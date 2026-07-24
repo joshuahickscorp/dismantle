@@ -3,6 +3,7 @@ pub mod attn;
 pub mod backend;
 pub mod cache;
 pub mod gguf;
+pub mod gravity;
 pub mod json_constrain;
 pub mod kernel_bench;
 pub mod kernels;

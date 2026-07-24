@@ -1,0 +1,519 @@
+//! `.gravity` container reader + `gravity-pq` tensor codec.
+//!
+//! Mirrors the container framing in `tools/condense/gravity_format.py` and
+//! the `gravity-pq` tensor payload codec in `tools/condense/glm52_pack.py`.
+//! [`pq_matvec`] mirrors the CPU reference `pq_execute` in
+//! `tools/condense/gravity_forge.py`.
+//!
+//! Container layout (little-endian throughout):
+//! ```text
+//! bytes 0..8    magic == b"GRAVITY\0"
+//! bytes 8..12   format_version: u32   (reject > 1)
+//! bytes 12..20  header_len: u64
+//! bytes 20..20+header_len   UTF-8 JSON header
+//! bytes 20+header_len..     tensor payload body (descriptor offsets are
+//!                           relative to this point)
+//! ```
+
+use std::collections::HashMap;
+use std::fs::File;
+use std::path::Path;
+
+use half::f16;
+use memmap2::Mmap;
+use serde::Deserialize;
+use sha2::{Digest, Sha256};
+
+use crate::{Error, Result};
+
+const MAGIC: &[u8; 8] = b"GRAVITY\0";
+const MAX_FORMAT_VERSION: u32 = 1;
+const PREFIX_LEN: usize = 20;
+
+/// One tensor's location + integrity info inside a `.gravity` shard's
+/// `tensors` header array.
+#[derive(Debug, Clone, Deserialize)]
+pub struct TensorDescriptor {
+    pub name: String,
+    pub codec: String,
+    /// Byte offset relative to the body (i.e. relative to `20 + header_len`).
+    pub offset: u64,
+    pub bytes: u64,
+    /// Hex-encoded SHA-256 of this tensor's payload bytes.
+    pub sha256: String,
+    pub shape: Vec<u64>,
+    pub elements: u64,
+}
+
+#[derive(Deserialize)]
+struct GravityHeader {
+    tensors: Vec<TensorDescriptor>,
+}
+
+/// An mmap-backed `.gravity` shard. `open` parses only the prefix + JSON
+/// header (cheap); tensor bytes are read/copied on demand via
+/// [`GravityShard::read_tensor`].
+pub struct GravityShard {
+    mmap: Mmap,
+    body_offset: u64,
+    tensors: HashMap<String, TensorDescriptor>,
+    tensor_order: Vec<String>,
+    /// The parsed JSON header with `tensors` removed (that part is modeled
+    /// above). Carries whatever else the writer put there — `model`,
+    /// `compression`, `integrity`, `architecture`, `tokenizer`, `shard`,
+    /// `schema`, etc. — verbatim and untyped.
+    pub extra: serde_json::Value,
+}
+
+impl GravityShard {
+    pub fn open(path: &Path) -> Result<GravityShard> {
+        let f = File::open(path)?;
+        // Safety: treated as read-only for the lifetime of `GravityShard`;
+        // truncation under us is caller error, same contract as gguf.rs.
+        let mmap = unsafe { Mmap::map(&f)? };
+        Self::from_mmap(mmap)
+    }
+
+    fn from_mmap(mmap: Mmap) -> Result<GravityShard> {
+        if mmap.len() < PREFIX_LEN {
+            return Err(Error::Gravity(format!(
+                "file too short for prefix: {} bytes",
+                mmap.len()
+            )));
+        }
+        let magic = &mmap[0..8];
+        if magic != MAGIC {
+            return Err(Error::Gravity(format!(
+                "bad magic {magic:?}, expected {MAGIC:?}"
+            )));
+        }
+        let format_version = u32::from_le_bytes(mmap[8..12].try_into().unwrap());
+        if format_version > MAX_FORMAT_VERSION {
+            return Err(Error::Gravity(format!(
+                "unsupported format_version {format_version} (max {MAX_FORMAT_VERSION})"
+            )));
+        }
+        let header_len = u64::from_le_bytes(mmap[12..20].try_into().unwrap());
+        let header_end = (PREFIX_LEN as u64)
+            .checked_add(header_len)
+            .ok_or_else(|| Error::Gravity("header_len overflow".into()))?;
+        if header_end > mmap.len() as u64 {
+            return Err(Error::Gravity(format!(
+                "header end {header_end} past file length {}",
+                mmap.len()
+            )));
+        }
+        let header_bytes = &mmap[PREFIX_LEN..header_end as usize];
+
+        let mut header_value: serde_json::Value = serde_json::from_slice(header_bytes)
+            .map_err(|e| Error::Gravity(format!("header JSON parse: {e}")))?;
+        let header: GravityHeader = serde_json::from_value(header_value.clone())
+            .map_err(|e| Error::Gravity(format!("header `tensors` parse: {e}")))?;
+        if let Some(obj) = header_value.as_object_mut() {
+            obj.remove("tensors");
+        }
+
+        let mut tensors = HashMap::with_capacity(header.tensors.len());
+        let mut tensor_order = Vec::with_capacity(header.tensors.len());
+        for d in header.tensors {
+            tensor_order.push(d.name.clone());
+            tensors.insert(d.name.clone(), d);
+        }
+
+        Ok(GravityShard {
+            mmap,
+            body_offset: header_end,
+            tensors,
+            tensor_order,
+            extra: header_value,
+        })
+    }
+
+    pub fn tensor_names(&self) -> impl Iterator<Item = &str> {
+        self.tensor_order.iter().map(String::as_str)
+    }
+
+    pub fn descriptor(&self, name: &str) -> Option<&TensorDescriptor> {
+        self.tensors.get(name)
+    }
+
+    /// Read one tensor's raw payload bytes (untouched — codec-specific
+    /// decoding, e.g. `gravity-pq`, is the caller's job). When
+    /// `verify_hash` is set, the payload's SHA-256 is checked against the
+    /// descriptor's `sha256` and a mismatch is an error.
+    pub fn read_tensor(&self, name: &str, verify_hash: bool) -> Result<Vec<u8>> {
+        let d = self
+            .descriptor(name)
+            .ok_or_else(|| Error::Gravity(format!("no such tensor {name:?}")))?;
+        let start = self
+            .body_offset
+            .checked_add(d.offset)
+            .ok_or_else(|| Error::Gravity(format!("tensor {name}: offset overflow")))?;
+        let end = start
+            .checked_add(d.bytes)
+            .ok_or_else(|| Error::Gravity(format!("tensor {name}: end overflow")))?;
+        if end > self.mmap.len() as u64 {
+            return Err(Error::Gravity(format!(
+                "tensor {name}: end {end} past file length {}",
+                self.mmap.len()
+            )));
+        }
+        let payload = &self.mmap[start as usize..end as usize];
+        if verify_hash {
+            let mut h = Sha256::new();
+            h.update(payload);
+            let digest = h.finalize();
+            let hex: String = digest.iter().map(|b| format!("{b:02x}")).collect();
+            if hex != d.sha256 {
+                return Err(Error::Gravity(format!(
+                    "tensor {name}: sha256 mismatch: expected {}, got {hex}",
+                    d.sha256
+                )));
+            }
+        }
+        Ok(payload.to_vec())
+    }
+}
+
+// ---------------------------------------------------------------------
+// `gravity-pq` tensor payload codec.
+// ---------------------------------------------------------------------
+
+const PQ_MAGIC: &[u8; 8] = b"GLM52CPK";
+/// Fixed size of the `gravity-pq` payload header (8B magic + 28B packed
+/// fields + 28B zero padding), i.e. where the codebooks start.
+const PQ_HEADER_LEN: usize = 64;
+/// Size in bytes of the `"<HHHHIIIIH?B"` packed field block that follows
+/// the magic.
+const PQ_FIELDS_LEN: usize = 28;
+
+/// Parsed `gravity-pq` payload header (bytes `8..36` of the payload).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PqHeader {
+    pub d: u16,
+    /// Subspaces. Production artifacts use 1.
+    pub s: u16,
+    pub sub: u16,
+    /// Codebook cardinality, e.g. 128 or 256.
+    pub card: u16,
+    pub rows: u32,
+    pub cols: u32,
+    pub nchunk: u32,
+    pub seed: u32,
+    /// Index width in bits: 7 for card=128, 8 for card=256.
+    pub bits: u16,
+    /// 0 or 1. Rotated payloads (`rotate == 1`) are not yet supported.
+    pub rotate: u8,
+    /// Always equals `s`.
+    pub n_codebooks: u8,
+}
+
+/// Parse a `gravity-pq` payload's fixed 64-byte header.
+pub fn parse_pq_header(payload: &[u8]) -> Result<PqHeader> {
+    if payload.len() < PQ_HEADER_LEN {
+        return Err(Error::Gravity(format!(
+            "gravity-pq payload too short for header: {} bytes, need {PQ_HEADER_LEN}",
+            payload.len()
+        )));
+    }
+    let magic = &payload[0..8];
+    if magic != PQ_MAGIC {
+        return Err(Error::Gravity(format!(
+            "bad gravity-pq magic {magic:?}, expected {PQ_MAGIC:?}"
+        )));
+    }
+    let f = &payload[8..8 + PQ_FIELDS_LEN];
+    let d = u16::from_le_bytes(f[0..2].try_into().unwrap());
+    let s = u16::from_le_bytes(f[2..4].try_into().unwrap());
+    let sub = u16::from_le_bytes(f[4..6].try_into().unwrap());
+    let card = u16::from_le_bytes(f[6..8].try_into().unwrap());
+    let rows = u32::from_le_bytes(f[8..12].try_into().unwrap());
+    let cols = u32::from_le_bytes(f[12..16].try_into().unwrap());
+    let nchunk = u32::from_le_bytes(f[16..20].try_into().unwrap());
+    let seed = u32::from_le_bytes(f[20..24].try_into().unwrap());
+    let bits = u16::from_le_bytes(f[24..26].try_into().unwrap());
+    let rotate = f[26];
+    let n_codebooks = f[27];
+
+    if rotate > 1 {
+        return Err(Error::Gravity(format!(
+            "gravity-pq header: rotate byte {rotate} is not 0/1"
+        )));
+    }
+    if d != s.wrapping_mul(sub) {
+        return Err(Error::Gravity(format!(
+            "gravity-pq header: D {d} != S {s} * sub {sub}"
+        )));
+    }
+    if cols != nchunk.wrapping_mul(d as u32) {
+        return Err(Error::Gravity(format!(
+            "gravity-pq header: cols {cols} != nchunk {nchunk} * D {d}"
+        )));
+    }
+    if n_codebooks as u16 != s {
+        return Err(Error::Gravity(format!(
+            "gravity-pq header: n_codebooks {n_codebooks} != S {s}"
+        )));
+    }
+
+    Ok(PqHeader {
+        d,
+        s,
+        sub,
+        card,
+        rows,
+        cols,
+        nchunk,
+        seed,
+        bits,
+        rotate,
+        n_codebooks,
+    })
+}
+
+/// Unpack `count` MSB-first, `bits`-wide unsigned values from a
+/// numpy-`packbits`-order bitstream: value `i` occupies stream bits
+/// `[i*bits, (i+1)*bits)`, and stream bit `k` is bit `7 - k%8` of byte
+/// `k/8`. Trailing bits in the final byte (if any) are ignored.
+fn unpack_bits(stream: &[u8], count: usize, bits: u32) -> Result<Vec<u32>> {
+    let need_bits = count as u64 * bits as u64;
+    let need_bytes = need_bits.div_ceil(8);
+    if (stream.len() as u64) < need_bytes {
+        return Err(Error::Gravity(format!(
+            "gravity-pq index bitstream too short: have {} bytes, need {need_bytes}",
+            stream.len()
+        )));
+    }
+    let mut out = Vec::with_capacity(count);
+    let mut k: usize = 0;
+    for _ in 0..count {
+        let mut v: u32 = 0;
+        for _ in 0..bits {
+            let bit = (stream[k / 8] >> (7 - (k % 8))) & 1;
+            v = (v << 1) | bit as u32;
+            k += 1;
+        }
+        out.push(v);
+    }
+    Ok(out)
+}
+
+/// CPU matvec over a `gravity-pq` payload: `y = W @ x` where `W` is the
+/// `[rows, cols]` matrix the payload encodes. `x.len()` must equal
+/// `cols`; returns `rows` values. Mirrors `gravity_forge.py::pq_execute`,
+/// accumulating in f32.
+pub fn pq_matvec(payload: &[u8], x: &[f32]) -> Result<Vec<f32>> {
+    let h = parse_pq_header(payload)?;
+    if x.len() != h.cols as usize {
+        return Err(Error::Gravity(format!(
+            "pq_matvec: x.len() {} != cols {}",
+            x.len(),
+            h.cols
+        )));
+    }
+    if h.rotate != 0 {
+        // TODO(rotation): port `_pq_rotation_np(D, seed)` from
+        // tools/condense/gravity_forge.py — do not guess the construction.
+        return Err(Error::Gravity(
+            "rotated gravity-pq artifacts (rotate=1) are not yet supported".into(),
+        ));
+    }
+
+    let d = h.d as usize;
+    let s = h.s as usize;
+    let sub = h.sub as usize;
+    let card = h.card as usize;
+    let rows = h.rows as usize;
+    let nchunk = h.nchunk as usize;
+
+    // Codebooks: `n_codebooks` back to back, each `card * sub` f16 values.
+    let cb_values = h.n_codebooks as usize * card * sub;
+    let cb_bytes = cb_values
+        .checked_mul(2)
+        .ok_or_else(|| Error::Gravity("gravity-pq codebook size overflow".into()))?;
+    let cb_start = PQ_HEADER_LEN;
+    let cb_end = cb_start
+        .checked_add(cb_bytes)
+        .ok_or_else(|| Error::Gravity("gravity-pq codebook size overflow".into()))?;
+    if payload.len() < cb_end {
+        return Err(Error::Gravity(format!(
+            "gravity-pq payload too short for codebooks: have {} bytes, need {cb_end}",
+            payload.len()
+        )));
+    }
+    // Widen f16 -> f32 once. Flat index (s*card + code)*sub + j.
+    let mut codebooks = vec![0f32; cb_values];
+    for (i, cbv) in codebooks.iter_mut().enumerate() {
+        let off = cb_start + i * 2;
+        let bits = u16::from_le_bytes(payload[off..off + 2].try_into().unwrap());
+        *cbv = f16::from_bits(bits).to_f32();
+    }
+
+    let idx_count = rows * nchunk * s;
+    let indices = unpack_bits(&payload[cb_end..], idx_count, h.bits as u32)?;
+
+    // xc[c][j] = x[c*D + j] (rotate==0, checked above, so no rotation applied).
+    // y[r] = sum_s sum_c sum_j codebook[s][index(r,c,s)][j] * xc[c][s*sub+j]
+    let mut y = vec![0f32; rows];
+    for sub_idx in 0..s {
+        let cb_base = sub_idx * card * sub;
+        let x_off = sub_idx * sub;
+        for r in 0..rows {
+            for c in 0..nchunk {
+                let flat = (r * nchunk + c) * s + sub_idx;
+                let code = indices[flat] as usize;
+                let cb_row = cb_base + code * sub;
+                let x_base = c * d + x_off;
+                for j in 0..sub {
+                    y[r] += codebooks[cb_row + j] * x[x_base + j];
+                }
+            }
+        }
+    }
+    Ok(y)
+}
+
+/// Metal `GravityPQParams` mirror (`shaders/gravity_pq.metal`): eight
+/// `uint`s in declaration order, 32 bytes total, `#[repr(C)]` so a raw
+/// pointer cast is a valid `set_bytes` payload.
+#[cfg(target_os = "macos")]
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+struct GravityPqParams {
+    dim: u32,
+    subspaces: u32,
+    sub: u32,
+    card: u32,
+    rows: u32,
+    cols: u32,
+    nchunk: u32,
+    bits: u32,
+}
+
+/// GPU counterpart of [`pq_matvec`]: dispatches `gravity_pq_matvec`
+/// (`shaders/gravity_pq.metal`), one SIMD group per output row, 8 SIMD
+/// groups (256 threads) per threadgroup. Same shape/rotate contract as
+/// the CPU path; results differ only in the last bit or two because the
+/// kernel's per-row reduction (`fma` chain + `simd_sum`) reassociates
+/// sums the CPU path performs strictly left-to-right.
+#[cfg(target_os = "macos")]
+pub fn pq_matvec_metal(
+    ctx: &crate::metal::MetalContext,
+    payload: &[u8],
+    x: &[f32],
+) -> Result<Vec<f32>> {
+    let h = parse_pq_header(payload)?;
+    if x.len() != h.cols as usize {
+        return Err(Error::Gravity(format!(
+            "pq_matvec_metal: x.len() {} != cols {}",
+            x.len(),
+            h.cols
+        )));
+    }
+    if h.rotate != 0 {
+        return Err(Error::Gravity(
+            "rotated gravity-pq artifacts (rotate=1) are not yet supported".into(),
+        ));
+    }
+
+    let card = h.card as usize;
+    let sub = h.sub as usize;
+    let rows = h.rows as usize;
+    let nchunk = h.nchunk as usize;
+
+    // Codebooks: `n_codebooks` back to back, each `card * sub` f16 values,
+    // uploaded byte-for-byte -- the kernel reads `half` directly, no host
+    // widening.
+    let cb_values = h.n_codebooks as usize * card * sub;
+    let cb_bytes = cb_values
+        .checked_mul(2)
+        .ok_or_else(|| Error::Gravity("gravity-pq codebook size overflow".into()))?;
+    let cb_start = PQ_HEADER_LEN;
+    let cb_end = cb_start
+        .checked_add(cb_bytes)
+        .ok_or_else(|| Error::Gravity("gravity-pq codebook size overflow".into()))?;
+    if payload.len() < cb_end {
+        return Err(Error::Gravity(format!(
+            "gravity-pq payload too short for codebooks: have {} bytes, need {cb_end}",
+            payload.len()
+        )));
+    }
+
+    // Index bitstream: same byte span `unpack_bits` would consume on the
+    // CPU path, plus 4 zero bytes of tail padding so the kernel's whole-word
+    // read at the last index's byte offset never runs past the buffer.
+    let idx_count = rows * nchunk * h.s as usize;
+    let need_bytes = (idx_count as u64 * h.bits as u64).div_ceil(8) as usize;
+    if payload.len() < cb_end + need_bytes {
+        return Err(Error::Gravity(format!(
+            "gravity-pq index bitstream too short: have {} bytes, need {need_bytes}",
+            payload.len() - cb_end
+        )));
+    }
+    let mut codes = payload[cb_end..cb_end + need_bytes].to_vec();
+    codes.extend_from_slice(&[0u8; 4]);
+
+    let codebooks_buf = ctx.new_buffer_with_bytes(&payload[cb_start..cb_end]);
+    let codes_buf = ctx.new_buffer_with_bytes(&codes);
+    let x_buf = ctx.new_buffer_with_bytes(bytemuck::cast_slice::<f32, u8>(x));
+    let y_buf = ctx.new_buffer(rows * std::mem::size_of::<f32>());
+
+    let params = GravityPqParams {
+        dim: h.d as u32,
+        subspaces: h.s as u32,
+        sub: h.sub as u32,
+        card: h.card as u32,
+        rows: h.rows,
+        cols: h.cols,
+        nchunk: h.nchunk,
+        bits: h.bits as u32,
+    };
+
+    // One SIMD group (32 lanes) per output row, 8 SIMD groups (256 threads)
+    // per threadgroup; the kernel guards `row >= rows` for the boundary
+    // threadgroup. `dispatch_threads` takes a total-thread grid, so scale
+    // the threadgroup count back up by the threadgroup size.
+    const TG: u32 = 256;
+    let n_tg = h.rows.div_ceil(8);
+    ctx.dispatch_threads("gravity_pq_matvec", (n_tg * TG, 1, 1), (TG, 1, 1), |enc| {
+        enc.set_buffer(0, Some(&codebooks_buf), 0);
+        enc.set_buffer(1, Some(&codes_buf), 0);
+        enc.set_buffer(2, Some(&x_buf), 0);
+        enc.set_buffer(3, Some(&y_buf), 0);
+        enc.set_bytes(
+            4,
+            std::mem::size_of::<GravityPqParams>() as u64,
+            &params as *const GravityPqParams as *const _,
+        );
+    })?;
+
+    let y_ptr = y_buf.contents() as *const f32;
+    Ok(unsafe { std::slice::from_raw_parts(y_ptr, rows) }.to_vec())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// `[0,1,126,127,64,3,2,1]` at 7 bits each, MSB-first, packed
+    /// numpy-`packbits`-style (56 bits = exactly 7 bytes, no trailing
+    /// padding needed):
+    ///
+    /// ```text
+    /// 0000000 0000001 1111110 1111111 1000000 0000011 0000010 0000001
+    /// -> 00000000 00000111 11110111 11111000 00000000 11000001 00000001
+    /// -> 0x00     0x07     0xF7     0xF8     0x00     0xC1     0x01
+    /// ```
+    #[test]
+    fn unpack_bits_matches_hand_packed_7bit_values() {
+        let packed: [u8; 7] = [0x00, 0x07, 0xF7, 0xF8, 0x00, 0xC1, 0x01];
+        let got = unpack_bits(&packed, 8, 7).expect("unpack");
+        assert_eq!(got, vec![0, 1, 126, 127, 64, 3, 2, 1]);
+    }
+
+    #[test]
+    fn unpack_bits_rejects_short_stream() {
+        let packed: [u8; 6] = [0x00, 0x07, 0xF7, 0xF8, 0x00, 0xC1];
+        assert!(unpack_bits(&packed, 8, 7).is_err());
+    }
+}

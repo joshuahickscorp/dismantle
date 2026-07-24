@@ -560,6 +560,151 @@ pub fn pq_matvec(payload: &[u8], x: &[f32]) -> Result<Vec<f32>> {
     PqTensor::from_payload(payload)?.matvec(x)
 }
 
+// ---------------------------------------------------------------------
+// Architecture-independent weight access.
+// ---------------------------------------------------------------------
+
+/// One tensor as a forward pass consumes it.
+pub enum Tensor {
+    Pq(PqTensor),
+    Dense(Vec<f32>),
+}
+
+/// Widen a `native.<dtype>` payload to f32. An unknown dtype is an error
+/// rather than a reinterpretation of the bytes as something plausible.
+pub fn widen_native(codec: &str, blob: &[u8]) -> Result<Vec<f32>> {
+    let dtype = codec.split_once('.').map(|(_, d)| d).unwrap_or("");
+    let (unit, name) = match dtype {
+        "bf16" | "f16" => (2usize, dtype),
+        "f32" => (4usize, dtype),
+        other => {
+            return Err(Error::Gravity(format!(
+                "unsupported native tensor dtype {other:?} (codec {codec:?})"
+            )))
+        }
+    };
+    if blob.len() % unit != 0 {
+        return Err(Error::Gravity(format!(
+            "native.{name} payload length {} is not a multiple of {unit}",
+            blob.len()
+        )));
+    }
+    Ok(match dtype {
+        "bf16" => blob
+            .chunks_exact(2)
+            .map(|c| f32::from_bits((u16::from_le_bytes([c[0], c[1]]) as u32) << 16))
+            .collect(),
+        "f16" => blob
+            .chunks_exact(2)
+            .map(|c| f16::from_bits(u16::from_le_bytes([c[0], c[1]])).to_f32())
+            .collect(),
+        _ => blob
+            .chunks_exact(4)
+            .map(|c| f32::from_le_bytes(c.try_into().unwrap()))
+            .collect(),
+    })
+}
+
+/// Every tensor of a `.gravity` shard, decoded once and addressed by name.
+///
+/// Architecture-independent on purpose: the Llama and GLM adapters differ in
+/// what they compute, not in how they reach a weight, and a second loader
+/// would be a second place for a codec or a hash check to be forgotten.
+pub struct GravityWeights {
+    tensors: HashMap<String, Tensor>,
+    /// The shard header minus `tensors` — architecture, compression,
+    /// integrity, tokenizer, as the writer left them.
+    pub header: serde_json::Value,
+}
+
+impl GravityWeights {
+    pub fn open(path: &Path, verify_hash: bool) -> Result<GravityWeights> {
+        let shard = GravityShard::open(path)?;
+        let names: Vec<String> = shard.tensor_names().map(str::to_string).collect();
+        let mut tensors = HashMap::with_capacity(names.len());
+        for name in &names {
+            let codec = shard
+                .descriptor(name)
+                .expect("name came from tensor_names")
+                .codec
+                .clone();
+            let blob = shard.read_tensor(name, verify_hash)?;
+            let t = if codec == "gravity-pq" {
+                Tensor::Pq(PqTensor::from_payload(&blob)?)
+            } else if codec.starts_with("native.") {
+                Tensor::Dense(widen_native(&codec, &blob)?)
+            } else {
+                return Err(Error::Gravity(format!(
+                    "tensor {name}: unsupported codec {codec:?}"
+                )));
+            };
+            tensors.insert(name.clone(), t);
+        }
+        Ok(GravityWeights {
+            tensors,
+            header: shard.extra,
+        })
+    }
+
+    pub fn contains(&self, name: &str) -> bool {
+        self.tensors.contains_key(name)
+    }
+
+    pub fn get(&self, name: &str) -> Result<&Tensor> {
+        self.tensors
+            .get(name)
+            .ok_or_else(|| Error::Gravity(format!("artifact has no tensor {name:?}")))
+    }
+
+    /// A natively-carried 1D tensor: norm weights, biases, router
+    /// corrections. Packing these is refused upstream, so finding one packed
+    /// here means the artifact disagrees with the runtime about what it is.
+    pub fn dense(&self, name: &str) -> Result<&[f32]> {
+        match self.get(name)? {
+            Tensor::Dense(v) => Ok(v),
+            Tensor::Pq(_) => Err(Error::Gravity(format!(
+                "tensor {name:?} is packed; expected a natively-carried dense tensor"
+            ))),
+        }
+    }
+
+    /// `y = W @ x` for a 2D weight, whichever codec carries it.
+    pub fn matvec(&self, name: &str, x: &[f32]) -> Result<Vec<f32>> {
+        match self.get(name)? {
+            Tensor::Pq(t) => t.matvec(x),
+            Tensor::Dense(w) => {
+                if x.is_empty() || w.len() % x.len() != 0 {
+                    return Err(Error::Gravity(format!(
+                        "tensor {name:?}: {} values is not a whole number of {}-wide rows",
+                        w.len(),
+                        x.len()
+                    )));
+                }
+                Ok(w.chunks_exact(x.len())
+                    .map(|row| row.iter().zip(x).map(|(a, b)| a * b).sum())
+                    .collect())
+            }
+        }
+    }
+
+    /// One row of a 2D weight — the embedding-lookup path. `cols` is needed
+    /// only for the dense case, where the payload carries no shape.
+    pub fn row(&self, name: &str, index: usize, cols: usize) -> Result<Vec<f32>> {
+        match self.get(name)? {
+            Tensor::Pq(t) => t.row(index),
+            Tensor::Dense(w) => {
+                let start = index * cols;
+                if start + cols > w.len() {
+                    return Err(Error::Gravity(format!(
+                        "tensor {name:?}: row {index} out of range"
+                    )));
+                }
+                Ok(w[start..start + cols].to_vec())
+            }
+        }
+    }
+}
+
 /// Metal `GravityPQParams` mirror (`shaders/gravity_pq.metal`): eight
 /// `uint`s in declaration order, 32 bytes total, `#[repr(C)]` so a raw
 /// pointer cast is a valid `set_bytes` payload.

@@ -17,7 +17,7 @@ use std::collections::HashMap;
 use std::path::Path;
 
 use crate::attn::mha_decode_step;
-use crate::gravity::{GravityShard, PqTensor};
+use crate::gravity::{widen_native, GravityShard, GravityWeights};
 use crate::kernels::{add_inplace, rmsnorm, rope_inplace_scaled, silu_mul, Llama3RopeScaling};
 use crate::{Error, Result};
 
@@ -115,68 +115,14 @@ impl GravityLlamaArch {
     }
 }
 
-/// One tensor as the forward pass consumes it: either a packed PQ payload
-/// decoded once, or a natively-carried dense tensor widened to f32.
-enum Weight {
-    Pq(PqTensor),
-    Dense(Vec<f32>),
-}
-
 /// A `.gravity` shard loaded as an executable Llama model.
 pub struct GravityLlama {
     pub arch: GravityLlamaArch,
-    weights: HashMap<String, Weight>,
+    weights: GravityWeights,
     /// `lm_head.weight` when the artifact carries one, otherwise the tied
     /// `model.embed_tokens.weight`.
     head_name: String,
     pub tied_head: bool,
-}
-
-/// Widen a `native.<dtype>` payload to f32. Mirrors the oracle's dtype
-/// handling; an unknown dtype is an error rather than a reinterpretation.
-fn widen_native(codec: &str, blob: &[u8]) -> Result<Vec<f32>> {
-    let dtype = codec.split_once('.').map(|(_, d)| d).unwrap_or("");
-    match dtype {
-        "bf16" => {
-            if blob.len() % 2 != 0 {
-                return Err(Error::Gravity(format!(
-                    "native.bf16 payload length {} is not even",
-                    blob.len()
-                )));
-            }
-            Ok(blob
-                .chunks_exact(2)
-                .map(|c| f32::from_bits((u16::from_le_bytes([c[0], c[1]]) as u32) << 16))
-                .collect())
-        }
-        "f16" => {
-            if blob.len() % 2 != 0 {
-                return Err(Error::Gravity(format!(
-                    "native.f16 payload length {} is not even",
-                    blob.len()
-                )));
-            }
-            Ok(blob
-                .chunks_exact(2)
-                .map(|c| half::f16::from_bits(u16::from_le_bytes([c[0], c[1]])).to_f32())
-                .collect())
-        }
-        "f32" => {
-            if blob.len() % 4 != 0 {
-                return Err(Error::Gravity(format!(
-                    "native.f32 payload length {} is not a multiple of 4",
-                    blob.len()
-                )));
-            }
-            Ok(blob
-                .chunks_exact(4)
-                .map(|c| f32::from_le_bytes(c.try_into().unwrap()))
-                .collect())
-        }
-        other => Err(Error::Gravity(format!(
-            "unsupported native tensor dtype {other:?} (codec {codec:?})"
-        ))),
-    }
 }
 
 impl GravityLlama {
@@ -185,100 +131,25 @@ impl GravityLlama {
     /// anything that matters, since a silently corrupt weight produces
     /// confident wrong logits.
     pub fn open(path: &Path, verify_hash: bool) -> Result<GravityLlama> {
-        let shard = GravityShard::open(path)?;
-        let arch = GravityLlamaArch::from_header(&shard.extra)?;
-
-        let names: Vec<String> = shard.tensor_names().map(str::to_string).collect();
-        let mut weights = HashMap::with_capacity(names.len());
-        for name in &names {
-            let codec = shard
-                .descriptor(name)
-                .expect("name came from tensor_names")
-                .codec
-                .clone();
-            let blob = shard.read_tensor(name, verify_hash)?;
-            let w = if codec == "gravity-pq" {
-                Weight::Pq(PqTensor::from_payload(&blob)?)
-            } else if codec.starts_with("native.") {
-                Weight::Dense(widen_native(&codec, &blob)?)
-            } else {
-                return Err(Error::Gravity(format!(
-                    "tensor {name}: unsupported codec {codec:?}"
-                )));
-            };
-            weights.insert(name.clone(), w);
-        }
-
-        let tied_head = !weights.contains_key("lm_head.weight");
+        let weights = GravityWeights::open(path, verify_hash)?;
+        let arch = GravityLlamaArch::from_header(&weights.header)?;
+        let tied_head = !weights.contains("lm_head.weight");
         let head_name = if tied_head {
             "model.embed_tokens.weight".to_string()
         } else {
             "lm_head.weight".to_string()
         };
-        if !weights.contains_key(&head_name) {
-            return Err(Error::Gravity(format!(
-                "artifact has neither lm_head.weight nor model.embed_tokens.weight"
-            )));
+        if !weights.contains(&head_name) {
+            return Err(Error::Gravity(
+                "artifact has neither lm_head.weight nor model.embed_tokens.weight".into(),
+            ));
         }
-
         Ok(GravityLlama {
             arch,
             weights,
             head_name,
             tied_head,
         })
-    }
-
-    fn weight(&self, name: &str) -> Result<&Weight> {
-        self.weights
-            .get(name)
-            .ok_or_else(|| Error::Gravity(format!("artifact has no tensor {name:?}")))
-    }
-
-    fn dense(&self, name: &str) -> Result<&[f32]> {
-        match self.weight(name)? {
-            Weight::Dense(v) => Ok(v),
-            Weight::Pq(_) => Err(Error::Gravity(format!(
-                "tensor {name:?} is packed; expected a natively-carried dense tensor"
-            ))),
-        }
-    }
-
-    fn matvec(&self, name: &str, x: &[f32]) -> Result<Vec<f32>> {
-        match self.weight(name)? {
-            Weight::Pq(t) => t.matvec(x),
-            // A natively-carried 2D tensor is stored row-major [rows, cols].
-            Weight::Dense(w) => {
-                if x.is_empty() || w.len() % x.len() != 0 {
-                    return Err(Error::Gravity(format!(
-                        "tensor {name:?}: {} values is not a whole number of {}-wide rows",
-                        w.len(),
-                        x.len()
-                    )));
-                }
-                let cols = x.len();
-                Ok(w.chunks_exact(cols)
-                    .map(|row| row.iter().zip(x).map(|(a, b)| a * b).sum())
-                    .collect())
-            }
-        }
-    }
-
-    /// One row of a weight matrix — the embedding lookup path.
-    fn row(&self, name: &str, index: usize) -> Result<Vec<f32>> {
-        match self.weight(name)? {
-            Weight::Pq(t) => t.row(index),
-            Weight::Dense(w) => {
-                let cols = self.arch.hidden;
-                let start = index * cols;
-                if start + cols > w.len() {
-                    return Err(Error::Gravity(format!(
-                        "tensor {name:?}: row {index} out of range"
-                    )));
-                }
-                Ok(w[start..start + cols].to_vec())
-            }
-        }
     }
 
     /// Run `tokens` through the model from an empty KV cache and return the
@@ -305,7 +176,7 @@ impl GravityLlama {
                     a.vocab_size
                 )));
             }
-            let mut x = self.row("model.embed_tokens.weight", token as usize)?;
+            let mut x = self.weights.row("model.embed_tokens.weight", token as usize, a.hidden)?;
             if x.len() != a.hidden {
                 return Err(Error::Gravity(format!(
                     "embedding row is {} wide, expected hidden_size {}",
@@ -319,13 +190,13 @@ impl GravityLlama {
 
                 rmsnorm(
                     &x,
-                    self.dense(&format!("{p}input_layernorm.weight"))?,
+                    self.weights.dense(&format!("{p}input_layernorm.weight"))?,
                     a.rms_norm_eps,
                     &mut scratch,
                 );
-                let mut q = self.matvec(&format!("{p}self_attn.q_proj.weight"), &scratch)?;
-                let mut k = self.matvec(&format!("{p}self_attn.k_proj.weight"), &scratch)?;
-                let v = self.matvec(&format!("{p}self_attn.v_proj.weight"), &scratch)?;
+                let mut q = self.weights.matvec(&format!("{p}self_attn.q_proj.weight"), &scratch)?;
+                let mut k = self.weights.matvec(&format!("{p}self_attn.k_proj.weight"), &scratch)?;
+                let v = self.weights.matvec(&format!("{p}self_attn.v_proj.weight"), &scratch)?;
 
                 for h in 0..a.n_heads {
                     rope_inplace_scaled(
@@ -360,30 +231,30 @@ impl GravityLlama {
                     &mut attn,
                 )?;
 
-                let o = self.matvec(&format!("{p}self_attn.o_proj.weight"), &attn)?;
+                let o = self.weights.matvec(&format!("{p}self_attn.o_proj.weight"), &attn)?;
                 add_inplace(&mut x, &o);
 
                 rmsnorm(
                     &x,
-                    self.dense(&format!("{p}post_attention_layernorm.weight"))?,
+                    self.weights.dense(&format!("{p}post_attention_layernorm.weight"))?,
                     a.rms_norm_eps,
                     &mut scratch,
                 );
-                let gate = self.matvec(&format!("{p}mlp.gate_proj.weight"), &scratch)?;
-                let up = self.matvec(&format!("{p}mlp.up_proj.weight"), &scratch)?;
+                let gate = self.weights.matvec(&format!("{p}mlp.gate_proj.weight"), &scratch)?;
+                let up = self.weights.matvec(&format!("{p}mlp.up_proj.weight"), &scratch)?;
                 let mut act = vec![0f32; gate.len()];
                 silu_mul(&gate, &up, &mut act);
-                let down = self.matvec(&format!("{p}mlp.down_proj.weight"), &act)?;
+                let down = self.weights.matvec(&format!("{p}mlp.down_proj.weight"), &act)?;
                 add_inplace(&mut x, &down);
             }
 
             rmsnorm(
                 &x,
-                self.dense("model.norm.weight")?,
+                self.weights.dense("model.norm.weight")?,
                 a.rms_norm_eps,
                 &mut scratch,
             );
-            logits = self.matvec(&self.head_name.clone(), &scratch)?;
+            logits = self.weights.matvec(&self.head_name.clone(), &scratch)?;
         }
 
         Ok(logits)

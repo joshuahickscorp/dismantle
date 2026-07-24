@@ -31,29 +31,32 @@
    }
   ]
  },
- "at": "2026-07-24T20:32:36Z",
+ "at": "2026-07-24T20:39:21Z",
  "git": {
   "branch": "campaign/glm52-generation-b",
-  "dirty_count": 3,
+  "dirty_count": 6,
   "dirty_paths": [
    "HAWKING_MOTHERLOAD_LEDGER.jsonl",
+   "HAWKING_MOTHERLOAD_LIVE_AUDIT.json",
    "HAWKING_MOTHERLOAD_STATUS.json",
-   "HAWKING_MOTHERLOAD_STATUS.md"
+   "HAWKING_MOTHERLOAD_STATUS.md",
+   "odyssey/ODYSSEY_DRY_RUN.json",
+   "odyssey/ODYSSEY_PACKAGE.json"
   ],
-  "head": "28ab557cf23450492d61f49521045683b437ed18",
-  "head_subject": "Stream real text out of .gravity, and fail the first rate on its own screening gate",
+  "head": "79630ef11d5c1ef0943e1c1198f592397e2d51a2",
+  "head_subject": "Make generation linear instead of quadratic, and prove the cache did not lie",
   "unpushed": 0,
   "upstream": "origin/campaign/glm52-generation-b"
  },
  "host": {
   "cpu_count": 28,
-  "free_disk_bytes": 257843232768,
-  "free_disk_gib": 240.1,
+  "free_disk_bytes": 434676125696,
+  "free_disk_gib": 404.8,
   "physical_memory_bytes": 103079215104,
   "swap_raw": "total = 22528.00M  used = 22032.31M  free = 495.69M  (encrypted)"
  },
  "processes": {
-  "hawking_lane_count": 2,
+  "hawking_lane_count": 3,
   "hawking_lanes": [
    {
     "command": "/Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python /Users/scammermike/Downloads/hawking/tools/condense/glm52_source_fetch.py run",
@@ -64,17 +67,22 @@
     "command": "/usr/bin/caffeinate -is -- /Users/scammermike/Downloads/hawking/.venv/glm52/bin/python /Users/scammermike/Downloads/hawking/tools/condense/glm52_source_fetch.py run",
     "pgid": 72608,
     "pid": 72610
+   },
+   {
+    "command": "/Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python /Users/scammermike/Downloads/hawking/tools/condense/glm52_source_fetch.py safe-to-leav",
+    "pgid": 87915,
+    "pid": 87915
    }
   ],
   "mop_isolation": "UNTOUCHED -- separate project, not read or signalled by this campaign",
-  "mop_process_count": 17
+  "mop_process_count": 18
  },
  "root": "/Users/scammermike/Downloads/hawking",
  "schema": "hawking.motherload.live_audit.v1",
  "source": {
   "controller": {
    "eviction_paused": false,
-   "heartbeat_age_seconds": 170.2,
+   "heartbeat_age_seconds": 74.0,
    "launchd_label": "com.hawking.glm52.source-fetch",
    "launchd_loaded": true,
    "lease_held": true,
@@ -89,18 +97,18 @@
    }
   },
   "faults_total": 0,
-  "fraction_verified": 0.2065,
+  "fraction_verified": 0.2457,
   "healthy": true,
   "repo": "zai-org/GLM-5.2",
-  "resident_bytes": 311192735512,
-  "resident_shard_files": 59,
+  "resident_bytes": 134336513960,
+  "resident_shard_files": 26,
   "revision": "b4734de4facf877f85769a911abafc5283eab3d9",
-  "shards_probed": 55,
-  "shards_verified": 59,
+  "shards_probed": 65,
+  "shards_verified": 70,
   "state": "RUNNING",
-  "teacher_capsules": 9,
+  "teacher_capsules": 17,
   "total_source_shards": 282,
-  "window": "W003",
+  "window": "W004",
   "window_count": 20
  }
 }

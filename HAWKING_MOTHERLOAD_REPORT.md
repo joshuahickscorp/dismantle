@@ -48,6 +48,13 @@ context. End-to-end generation is 60.7 tok/s after making decode incremental, an
 incremental decode is bit-identical to replaying the prefix — 0.0 difference, not "within
 tolerance".
 
+### The production path is closed
+
+`load_engine` dispatches on the container's magic bytes, so a `.gravity` artifact reaches
+`hawking-core` through the same reviewed registry as every other architecture, and streams
+tokens out. No source weights are opened. A file with a `.gravity` extension over GGUF
+bytes is asserted to be rejected — the registry routes on what a file *is*.
+
 ### GLM-5.2 architecture adapter
 
 MLA, DSA, IndexShare, the `noaux_tc` router, grouped expert selection, routed and shared
@@ -144,11 +151,14 @@ result  free disk 274.6 -> 404.8 GiB at the next window boundary
 3. Run the GLM adapter against the flagship artifact and the numpy oracle at scale.
 4. Walk the parity ladder H09 → H04, screening gate first, and seal the lowest passing
    rate.
-5. Implement `Engine` for the gravity runtime so the adapter registry can serve it. This
-   needs an ownership change — the GPU model currently borrows its Metal context and
-   holds a `RefCell`, so it is neither `Send` nor `Sync`. That is the one identified
-   blocker between here and HIDE.
-6. Claim A at equal bytes, using the solved rates already sealed in
+5. ~~Implement `Engine` for the gravity runtime.~~ **Done.** The GPU model now owns its
+   Metal context and locks a `Mutex`, so it is `Send + Sync`; `load_engine` dispatches on
+   container magic and streams tokens through the reviewed registry. A compile-time
+   assertion fails if `Send + Sync` ever regresses.
+6. Point HIDE at the serve boundary. HIDE lives on `build/hide-impl-2026-07-19`, not in
+   this worktree; the boundary it talks to is `hawking-serve`, which reaches models
+   through the registry that now handles `.gravity`.
+7. Claim A at equal bytes, using the solved rates already sealed in
    `PROMETHEUS_ARCHITECTURE.json`.
 
 ## Next-chat launch command

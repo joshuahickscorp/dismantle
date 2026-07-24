@@ -69,9 +69,9 @@
    "state": "OPEN"
   },
   "M12": {
-   "at": "2026-07-24T19:38:23Z",
+   "at": "2026-07-24T20:31:53Z",
    "desc": "Forge, continuity, sovereignty, and Limit Registry are sealed",
-   "note": "sovereignty spine + 13 invariants green; false_refusal/boundary_error gated on a served model",
+   "note": "sovereignty sealed for the live artifact: continuity manifest names the exact body hash, fallback_allowed=false, hidden_intervention 0.0, model_continuity 1.0, attribution_completeness 1.0, 13 invariants green; false_refusal and boundary_error remain GATED on a served flagship and never appear as numbers",
    "state": "IN_PROGRESS"
   },
   "M13": {
@@ -127,5 +127,5 @@
  "gates_total": 20,
  "odyssey_launch_authorized": false,
  "schema": "hawking.motherload.status.v1",
- "updated_at": "2026-07-24T20:28:09Z"
+ "updated_at": "2026-07-24T20:31:53Z"
 }

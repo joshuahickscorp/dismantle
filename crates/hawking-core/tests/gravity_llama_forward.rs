@@ -153,7 +153,7 @@ fn gravity_llama_gpu_forward_matches_frozen_oracle() {
         .collect();
 
     let ctx = MetalContext::new().expect("metal context");
-    let model = GravityLlamaGpu::open(&ctx, &art, true).expect("open .gravity artifact on device");
+    let model = GravityLlamaGpu::open_with(ctx, &art, true).expect("open .gravity artifact on device");
     let (got, stats) = model.forward(&reference.tokens).expect("gpu forward");
     assert_eq!(got.len(), want.len(), "logit count");
 
@@ -207,7 +207,7 @@ fn gravity_llama_incremental_decode_matches_full_replay() {
         return;
     };
     let ctx = MetalContext::new().expect("metal context");
-    let model = GravityLlamaGpu::open(&ctx, &art, false).expect("open artifact");
+    let model = GravityLlamaGpu::open_with(ctx, &art, false).expect("open artifact");
 
     let tokens: Vec<u32> = vec![128000, 9906, 1917, 11, 420, 374, 264, 1296];
     let (want, _) = model.forward(&tokens).expect("full replay");

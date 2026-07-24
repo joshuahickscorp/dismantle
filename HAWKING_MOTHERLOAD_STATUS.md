@@ -3,14 +3,14 @@
 endpoint: `IN_PROGRESS`  
 gates closed: 5/20  
 ODYSSEY_LAUNCH_AUTHORIZED: `false`  
-updated: 2026-07-24T20:37:27Z
+updated: 2026-07-24T20:50:10Z
 
 | gate | state | condition | note |
 |---|---|---|---|
 | M01 | running | GLM traversal is 282/282 | traversal live at 59/282 (W003); eviction had authorized nothing for 3 windows because every teacher capsule was sealed under the retired 8-token calibration -- stale capsules archived with a withdrawal receipt and the chain re-seeded from layer 0 under the live 256-token corpus calibration |
 | M02 | open | complete local GLM .gravity artifact exists |  |
 | M03 | open | lowest broad parity rate is sealed, sub-bit preferred and H15 maximum |  |
-| M04 | running | full GLM token executes from .gravity | GLM adapter (MLA+DSA+IndexShare+noaux_tc router+routed/shared experts) matches the numpy oracle at 3.8e-6 with argmax, top5 and DSA top-k exact on a tiny-GLM .gravity fixture; flagship artifact still traversing |
+| M04 | running | full GLM token executes from .gravity | production path closed on the instrument: load_engine dispatches on container magic, GravityEngine streams tokens through the reviewed registry with no source weights; GLM adapter green on fixture and awaiting the flagship artifact |
 | M05 | running | measured base TPS and prefill exist | base measured on the instrument: decode 105.8/68.8/29.2/13.3 tok/s at ctx 128/512/2048/8192, prefill 116.5/92.8/48.8/19.1, 1 command buffer + 210 dispatches per token; end-to-end generation 60.7 tok/s with incremental decode bit-identical to full replay; GLM numbers gated on the flagship artifact |
 | M06 | open | acceleration stack is terminal and measured separately |  |
 | M07 | open | GLM runs end to end inside HIDE |  |

@@ -48,19 +48,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     let artifact_bytes = std::fs::metadata(&artifact)?.len();
 
-    let ctx = MetalContext::new()?;
-
     // Cold load includes SHA-256 verification of every tensor -- that is
     // what a real first load does, so reporting it without would be
     // reporting a load nobody performs. Warm load is the same work with the
     // file already in the page cache, which is the honest repeat-open cost.
-    let cold = GravityLlamaGpu::open(&ctx, &artifact, true)?;
+    // Each open builds its own Metal context, exactly as a real first load
+    // does; sharing one would measure a warm load twice.
+    let cold = GravityLlamaGpu::open_with(MetalContext::new()?, &artifact, true)?;
     let cold_load_ms = cold.load_ms;
     let device_bytes = cold.device_bytes;
     drop(cold);
-    let warm = GravityLlamaGpu::open(&ctx, &artifact, true)?;
-    let warm_load_ms = warm.load_ms;
-    let model = warm;
+    let model = GravityLlamaGpu::open_with(MetalContext::new()?, &artifact, true)?;
+    let warm_load_ms = model.load_ms;
 
     // Deterministic pseudo-token stream inside the vocabulary. Content does
     // not affect cost on a dense model -- every token touches every weight --

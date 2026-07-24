@@ -21,9 +21,9 @@
    "state": "OPEN"
   },
   "M04": {
-   "at": "2026-07-24T20:14:37Z",
+   "at": "2026-07-24T20:50:10Z",
    "desc": "full GLM token executes from .gravity",
-   "note": "GLM adapter (MLA+DSA+IndexShare+noaux_tc router+routed/shared experts) matches the numpy oracle at 3.8e-6 with argmax, top5 and DSA top-k exact on a tiny-GLM .gravity fixture; flagship artifact still traversing",
+   "note": "production path closed on the instrument: load_engine dispatches on container magic, GravityEngine streams tokens through the reviewed registry with no source weights; GLM adapter green on fixture and awaiting the flagship artifact",
    "state": "IN_PROGRESS"
   },
   "M05": {
@@ -127,5 +127,5 @@
  "gates_total": 20,
  "odyssey_launch_authorized": false,
  "schema": "hawking.motherload.status.v1",
- "updated_at": "2026-07-24T20:37:27Z"
+ "updated_at": "2026-07-24T20:50:10Z"
 }

@@ -284,18 +284,182 @@ fn unpack_bits(stream: &[u8], count: usize, bits: u32) -> Result<Vec<u32>> {
             stream.len()
         )));
     }
+    // Rolling MSB-first window: feed whole bytes into `acc`, take `bits`
+    // off the top of the `nbits` live ones. `nbits` never exceeds
+    // `bits + 7 <= 39`, so shifting `acc` left by 8 cannot lose a live bit,
+    // and the mask discards the consumed ones still sitting above them.
+    let mask: u64 = if bits >= 32 { u32::MAX as u64 } else { (1u64 << bits) - 1 };
     let mut out = Vec::with_capacity(count);
-    let mut k: usize = 0;
+    let mut acc: u64 = 0;
+    let mut nbits: u32 = 0;
+    let mut pos: usize = 0;
     for _ in 0..count {
-        let mut v: u32 = 0;
-        for _ in 0..bits {
-            let bit = (stream[k / 8] >> (7 - (k % 8))) & 1;
-            v = (v << 1) | bit as u32;
-            k += 1;
+        while nbits < bits {
+            acc = (acc << 8) | stream[pos] as u64;
+            nbits += 8;
+            pos += 1;
         }
-        out.push(v);
+        out.push(((acc >> (nbits - bits)) & mask) as u32);
+        nbits -= bits;
     }
     Ok(out)
+}
+
+/// A `gravity-pq` payload decoded once into the two things execution
+/// actually needs: codebooks widened to f32, and the index bitstream
+/// unpacked to one value per (row, chunk, subspace).
+///
+/// [`pq_matvec`] decodes on every call, which is correct but re-walks the
+/// bitstream bit by bit each time. A forward pass hits the same tensor
+/// once per token, so anything holding weights across tokens wants this
+/// instead.
+pub struct PqTensor {
+    pub header: PqHeader,
+    /// `n_codebooks * card * sub` f32 values, flat index `(s*card + code)*sub + j`.
+    codebooks: Vec<f32>,
+    /// `rows * nchunk * s` codes, flat index `(r*nchunk + c)*s + subspace`.
+    /// `u16` covers every `card` the header can express (`bits <= 16`).
+    indices: Vec<u16>,
+}
+
+impl PqTensor {
+    /// Decode a `gravity-pq` payload. Rejects rotated payloads and any
+    /// `bits > 16` rather than guessing either construction.
+    pub fn from_payload(payload: &[u8]) -> Result<PqTensor> {
+        let h = parse_pq_header(payload)?;
+        if h.rotate != 0 {
+            // TODO(rotation): port `_pq_rotation_np(D, seed)` from
+            // tools/condense/gravity_forge.py — do not guess the construction.
+            return Err(Error::Gravity(
+                "rotated gravity-pq artifacts (rotate=1) are not yet supported".into(),
+            ));
+        }
+        if h.bits > 16 {
+            return Err(Error::Gravity(format!(
+                "gravity-pq bits {} exceeds the 16-bit index width this decoder stores",
+                h.bits
+            )));
+        }
+
+        let sub = h.sub as usize;
+        let card = h.card as usize;
+        let rows = h.rows as usize;
+        let nchunk = h.nchunk as usize;
+
+        // Codebooks: `n_codebooks` back to back, each `card * sub` f16 values.
+        let cb_values = h.n_codebooks as usize * card * sub;
+        let cb_bytes = cb_values
+            .checked_mul(2)
+            .ok_or_else(|| Error::Gravity("gravity-pq codebook size overflow".into()))?;
+        let cb_start = PQ_HEADER_LEN;
+        let cb_end = cb_start
+            .checked_add(cb_bytes)
+            .ok_or_else(|| Error::Gravity("gravity-pq codebook size overflow".into()))?;
+        if payload.len() < cb_end {
+            return Err(Error::Gravity(format!(
+                "gravity-pq payload too short for codebooks: have {} bytes, need {cb_end}",
+                payload.len()
+            )));
+        }
+        // Widen f16 -> f32 once. Flat index (s*card + code)*sub + j.
+        let mut codebooks = vec![0f32; cb_values];
+        for (i, cbv) in codebooks.iter_mut().enumerate() {
+            let off = cb_start + i * 2;
+            let bits = u16::from_le_bytes(payload[off..off + 2].try_into().unwrap());
+            *cbv = f16::from_bits(bits).to_f32();
+        }
+
+        let idx_count = rows * nchunk * h.s as usize;
+        let indices = unpack_bits(&payload[cb_end..], idx_count, h.bits as u32)?
+            .into_iter()
+            .map(|v| v as u16)
+            .collect();
+
+        Ok(PqTensor {
+            header: h,
+            codebooks,
+            indices,
+        })
+    }
+
+    pub fn rows(&self) -> usize {
+        self.header.rows as usize
+    }
+
+    pub fn cols(&self) -> usize {
+        self.header.cols as usize
+    }
+
+    /// `y = W @ x`, accumulating in f32 strictly left-to-right so the
+    /// result is bit-identical to [`pq_matvec`] on the same payload.
+    pub fn matvec(&self, x: &[f32]) -> Result<Vec<f32>> {
+        let h = &self.header;
+        if x.len() != h.cols as usize {
+            return Err(Error::Gravity(format!(
+                "pq matvec: x.len() {} != cols {}",
+                x.len(),
+                h.cols
+            )));
+        }
+        let d = h.d as usize;
+        let s = h.s as usize;
+        let sub = h.sub as usize;
+        let card = h.card as usize;
+        let rows = h.rows as usize;
+        let nchunk = h.nchunk as usize;
+
+        // xc[c][j] = x[c*D + j] (rotate==0, checked at decode, so no
+        // rotation applied).
+        // y[r] = sum_s sum_c sum_j codebook[s][index(r,c,s)][j] * xc[c][s*sub+j]
+        let mut y = vec![0f32; rows];
+        for sub_idx in 0..s {
+            let cb_base = sub_idx * card * sub;
+            let x_off = sub_idx * sub;
+            for r in 0..rows {
+                for c in 0..nchunk {
+                    let flat = (r * nchunk + c) * s + sub_idx;
+                    let code = self.indices[flat] as usize;
+                    let cb_row = cb_base + code * sub;
+                    let x_base = c * d + x_off;
+                    for j in 0..sub {
+                        y[r] += self.codebooks[cb_row + j] * x[x_base + j];
+                    }
+                }
+            }
+        }
+        Ok(y)
+    }
+
+    /// Decode a single row of the encoded matrix — `cols` values. Used for
+    /// embedding lookup, where materializing the whole `[vocab, hidden]`
+    /// matrix to read one row would be absurd. Mirrors
+    /// `gravity_llama_reference.py::GravityWeights.row`.
+    pub fn row(&self, index: usize) -> Result<Vec<f32>> {
+        let h = &self.header;
+        let rows = h.rows as usize;
+        if index >= rows {
+            return Err(Error::Gravity(format!(
+                "pq row: index {index} out of range for {rows} rows"
+            )));
+        }
+        let d = h.d as usize;
+        let s = h.s as usize;
+        let sub = h.sub as usize;
+        let card = h.card as usize;
+        let nchunk = h.nchunk as usize;
+
+        let mut out = vec![0f32; nchunk * d];
+        for c in 0..nchunk {
+            for sub_idx in 0..s {
+                let flat = (index * nchunk + c) * s + sub_idx;
+                let code = self.indices[flat] as usize;
+                let cb_row = sub_idx * card * sub + code * sub;
+                let dst = c * d + sub_idx * sub;
+                out[dst..dst + sub].copy_from_slice(&self.codebooks[cb_row..cb_row + sub]);
+            }
+        }
+        Ok(out)
+    }
 }
 
 /// CPU matvec over a `gravity-pq` payload: `y = W @ x` where `W` is the
@@ -303,74 +467,7 @@ fn unpack_bits(stream: &[u8], count: usize, bits: u32) -> Result<Vec<u32>> {
 /// `cols`; returns `rows` values. Mirrors `gravity_forge.py::pq_execute`,
 /// accumulating in f32.
 pub fn pq_matvec(payload: &[u8], x: &[f32]) -> Result<Vec<f32>> {
-    let h = parse_pq_header(payload)?;
-    if x.len() != h.cols as usize {
-        return Err(Error::Gravity(format!(
-            "pq_matvec: x.len() {} != cols {}",
-            x.len(),
-            h.cols
-        )));
-    }
-    if h.rotate != 0 {
-        // TODO(rotation): port `_pq_rotation_np(D, seed)` from
-        // tools/condense/gravity_forge.py — do not guess the construction.
-        return Err(Error::Gravity(
-            "rotated gravity-pq artifacts (rotate=1) are not yet supported".into(),
-        ));
-    }
-
-    let d = h.d as usize;
-    let s = h.s as usize;
-    let sub = h.sub as usize;
-    let card = h.card as usize;
-    let rows = h.rows as usize;
-    let nchunk = h.nchunk as usize;
-
-    // Codebooks: `n_codebooks` back to back, each `card * sub` f16 values.
-    let cb_values = h.n_codebooks as usize * card * sub;
-    let cb_bytes = cb_values
-        .checked_mul(2)
-        .ok_or_else(|| Error::Gravity("gravity-pq codebook size overflow".into()))?;
-    let cb_start = PQ_HEADER_LEN;
-    let cb_end = cb_start
-        .checked_add(cb_bytes)
-        .ok_or_else(|| Error::Gravity("gravity-pq codebook size overflow".into()))?;
-    if payload.len() < cb_end {
-        return Err(Error::Gravity(format!(
-            "gravity-pq payload too short for codebooks: have {} bytes, need {cb_end}",
-            payload.len()
-        )));
-    }
-    // Widen f16 -> f32 once. Flat index (s*card + code)*sub + j.
-    let mut codebooks = vec![0f32; cb_values];
-    for (i, cbv) in codebooks.iter_mut().enumerate() {
-        let off = cb_start + i * 2;
-        let bits = u16::from_le_bytes(payload[off..off + 2].try_into().unwrap());
-        *cbv = f16::from_bits(bits).to_f32();
-    }
-
-    let idx_count = rows * nchunk * s;
-    let indices = unpack_bits(&payload[cb_end..], idx_count, h.bits as u32)?;
-
-    // xc[c][j] = x[c*D + j] (rotate==0, checked above, so no rotation applied).
-    // y[r] = sum_s sum_c sum_j codebook[s][index(r,c,s)][j] * xc[c][s*sub+j]
-    let mut y = vec![0f32; rows];
-    for sub_idx in 0..s {
-        let cb_base = sub_idx * card * sub;
-        let x_off = sub_idx * sub;
-        for r in 0..rows {
-            for c in 0..nchunk {
-                let flat = (r * nchunk + c) * s + sub_idx;
-                let code = indices[flat] as usize;
-                let cb_row = cb_base + code * sub;
-                let x_base = c * d + x_off;
-                for j in 0..sub {
-                    y[r] += codebooks[cb_row + j] * x[x_base + j];
-                }
-            }
-        }
-    }
-    Ok(y)
+    PqTensor::from_payload(payload)?.matvec(x)
 }
 
 /// Metal `GravityPQParams` mirror (`shaders/gravity_pq.metal`): eight

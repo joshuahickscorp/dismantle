@@ -1,0 +1,107 @@
+{
+ "artifacts": {
+  "count": 3,
+  "gravity_artifacts": [
+   {
+    "body_sha256": "78052ad16cc3f49cf2b738bd78deddf5690349c2c4894b8974840b4ee25a7acc",
+    "bytes": 135575074,
+    "complete_bpw": 0.877372084351825,
+    "model": "llama32-1b-bf16",
+    "path": "/Users/scammermike/Library/Application Support/Hawking/CampaignS08/llama32-1b-R0.gravity",
+    "revision": "local",
+    "tensor_count": 146
+   },
+   {
+    "body_sha256": "88f60df6402c6befb53217bceea5535c5af1d6d4a3b4c1051c77871db583e4ae",
+    "bytes": 135575252,
+    "complete_bpw": 0.877372084351825,
+    "model": "llama32-1b-bf16",
+    "path": "/Users/scammermike/Library/Application Support/Hawking/CampaignS08/llama32-1b-R0.v2.gravity",
+    "revision": "local",
+    "tensor_count": 146
+   },
+   {
+    "body_sha256": "6138fdc63d2fd25a1e556dab87cb8d9fc47f2e2094ee9f8be29203423a037d1e",
+    "bytes": 12584647,
+    "complete_bpw": 0.01037450870113893,
+    "model": "zai-org/GLM-5.2",
+    "path": "/Users/scammermike/Library/Application Support/Hawking/GLM52Gravity/compact/generation_b_functional/GLM52_FUNCTIONAL_L38_L38.gravity",
+    "revision": "b4734de4facf877f85769a911abafc5283eab3d9",
+    "tensor_count": 1
+   }
+  ]
+ },
+ "at": "2026-07-24T19:38:07Z",
+ "git": {
+  "branch": "campaign/glm52-generation-b",
+  "dirty_count": 4,
+  "dirty_paths": [
+   "HAWKING_CAMPAIGN_LEDGER.jsonl",
+   "HAWKING_CAMPAIGN_STATUS.json",
+   "HAWKING_MOTHERLOAD_LIVE_AUDIT.json",
+   "tools/campaign/motherload.py"
+  ],
+  "head": "13457656b98d0341f13818e2f98763ac02029d85",
+  "head_subject": "Execute a complete token out of .gravity, graded against the frozen oracle",
+  "unpushed": 8,
+  "upstream": "origin/campaign/glm52-generation-b"
+ },
+ "host": {
+  "cpu_count": 28,
+  "free_disk_bytes": 425780207616,
+  "free_disk_gib": 396.5,
+  "physical_memory_bytes": 103079215104,
+  "swap_raw": "total = 11264.00M  used = 10140.06M  free = 1123.94M  (encrypted)"
+ },
+ "processes": {
+  "hawking_lane_count": 2,
+  "hawking_lanes": [
+   {
+    "command": "/Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python /Users/scammermike/Downloads/hawking/tools/condense/glm52_source_fetch.py run",
+    "pgid": 72608,
+    "pid": 72608
+   },
+   {
+    "command": "/usr/bin/caffeinate -is -- /Users/scammermike/Downloads/hawking/.venv/glm52/bin/python /Users/scammermike/Downloads/hawking/tools/condense/glm52_source_fetch.py run",
+    "pgid": 72608,
+    "pid": 72610
+   }
+  ],
+  "mop_isolation": "UNTOUCHED -- separate project, not read or signalled by this campaign",
+  "mop_process_count": 16
+ },
+ "root": "/Users/scammermike/Downloads/hawking",
+ "schema": "hawking.motherload.live_audit.v1",
+ "source": {
+  "controller": {
+   "eviction_paused": false,
+   "heartbeat_age_seconds": 124.3,
+   "launchd_label": "com.hawking.glm52.source-fetch",
+   "launchd_loaded": true,
+   "lease_held": true,
+   "lease_path": "/Users/scammermike/Library/Application Support/Hawking/GLM52Gravity/source_fetch/fetch.lock",
+   "pids": [
+    72608,
+    72610
+   ],
+   "pids_alive": {
+    "72608": true,
+    "72610": true
+   }
+  },
+  "faults_total": 0,
+  "fraction_verified": 0.1283,
+  "healthy": true,
+  "repo": "zai-org/GLM-5.2",
+  "resident_bytes": 193241580856,
+  "resident_shard_files": 37,
+  "revision": "b4734de4facf877f85769a911abafc5283eab3d9",
+  "shards_probed": 33,
+  "shards_verified": 37,
+  "state": "RUNNING",
+  "teacher_capsules": 10,
+  "total_source_shards": 282,
+  "window": "W001",
+  "window_count": 20
+ }
+}

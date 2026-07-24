@@ -2,7 +2,7 @@
  "completion_fraction": 0.0,
  "detached_jobs": {
   "glm52_source_fetch": {
-   "alive": true,
+   "alive": false,
    "at": "2026-07-24T18:48:14Z",
    "log": "/Users/scammermike/Library/Application Support/Hawking/GLM52Gravity/source_fetch/launchd.stdout.log",
    "pid": 67579
@@ -47,10 +47,10 @@
    "state": "OPEN"
   },
   "T07": {
-   "at": null,
+   "at": "2026-07-24T19:19:30Z",
    "desc": "Forge/sovereignty/continuity are sealed",
-   "note": "",
-   "state": "OPEN"
+   "note": "sovereignty spine built + 13 invariants green; false_refusal/boundary_error GATED on served model",
+   "state": "IN_PROGRESS"
   },
   "T08": {
    "at": "2026-07-24T19:00:52Z",
@@ -83,9 +83,9 @@
    "state": "OPEN"
   },
   "T13": {
-   "at": "2026-07-24T19:00:52Z",
+   "at": "2026-07-24T19:11:14Z",
    "desc": "source lifecycle and rollback are green",
-   "note": "GLM rehydration replays the sealed rollback receipt end to end; stale pack ledger archived, not deleted",
+   "note": "rollback seal live: 23/282 verified, 0 hash mismatches, fidelity GREEN",
    "state": "IN_PROGRESS"
   },
   "T14": {
@@ -98,6 +98,6 @@
  "gates_closed": 0,
  "gates_total": 14,
  "schema": "hawking.campaign.status.v1",
- "spend_cad": 26.0,
- "updated_at": "2026-07-24T19:00:52Z"
+ "spend_cad": 51.0,
+ "updated_at": "2026-07-24T19:19:30Z"
 }

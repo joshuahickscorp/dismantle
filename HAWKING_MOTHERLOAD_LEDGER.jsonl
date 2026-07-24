@@ -1,0 +1,4 @@
+{"at": "2026-07-24T19:38:23Z", "gate": "M01", "kind": "gate", "note": "GLM source traversal live: 37/282 verified, window W001/20, launchd com.hawking.glm52.source-fetch pid 72608, 0 faults", "state": "IN_PROGRESS"}
+{"at": "2026-07-24T19:38:23Z", "gate": "M04", "kind": "gate", "note": "complete-token .gravity forward green on the Llama-3.2-1B instrument (max logit diff 2.6e-5 vs numpy oracle, argmax+top5 exact); GLM architecture adapter not yet built", "state": "IN_PROGRESS"}
+{"at": "2026-07-24T19:38:23Z", "gate": "M12", "kind": "gate", "note": "sovereignty spine + 13 invariants green; false_refusal/boundary_error gated on a served model", "state": "IN_PROGRESS"}
+{"at": "2026-07-24T19:38:24Z", "gate": "M18", "kind": "gate", "note": "rollback seal replays the sealed receipt; 37/282 verified, 0 hash mismatches", "state": "IN_PROGRESS"}

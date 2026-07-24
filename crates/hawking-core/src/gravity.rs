@@ -305,6 +305,96 @@ fn unpack_bits(stream: &[u8], count: usize, bits: u32) -> Result<Vec<u32>> {
     Ok(out)
 }
 
+/// Byte spans of a `gravity-pq` payload's two sections: the f16 codebooks
+/// and the packed index stream. Both are returned verbatim — the GPU path
+/// uploads them as-is, since the kernel reads `half` and walks the packed
+/// stream itself, so nothing is widened or unpacked on the way in.
+pub fn pq_sections(payload: &[u8]) -> Result<(&[u8], &[u8])> {
+    let h = parse_pq_header(payload)?;
+    if h.rotate != 0 {
+        return Err(Error::Gravity(
+            "rotated gravity-pq artifacts (rotate=1) are not yet supported".into(),
+        ));
+    }
+    let cb_values = h.n_codebooks as usize * h.card as usize * h.sub as usize;
+    let cb_end = PQ_HEADER_LEN
+        .checked_add(cb_values.checked_mul(2).unwrap_or(usize::MAX))
+        .ok_or_else(|| Error::Gravity("gravity-pq codebook size overflow".into()))?;
+    let idx_count = h.rows as usize * h.nchunk as usize * h.s as usize;
+    let idx_bytes = (idx_count as u64 * h.bits as u64).div_ceil(8) as usize;
+    let idx_end = cb_end
+        .checked_add(idx_bytes)
+        .ok_or_else(|| Error::Gravity("gravity-pq index size overflow".into()))?;
+    if payload.len() < idx_end {
+        return Err(Error::Gravity(format!(
+            "gravity-pq payload too short: have {} bytes, need {idx_end}",
+            payload.len()
+        )));
+    }
+    Ok((&payload[PQ_HEADER_LEN..cb_end], &payload[cb_end..idx_end]))
+}
+
+/// Read one `bits`-wide MSB-first value at position `i` of a packed index
+/// stream, without walking the values before it.
+fn index_at(stream: &[u8], i: usize, bits: u32) -> u32 {
+    let bitoff = i * bits as usize;
+    let mut acc: u64 = 0;
+    let mut taken = 0u32;
+    let mut byte = bitoff / 8;
+    let skip = (bitoff % 8) as u32;
+    // Pull whole bytes until `skip + bits` of them are in hand.
+    while taken < skip + bits {
+        acc = (acc << 8) | *stream.get(byte).unwrap_or(&0) as u64;
+        taken += 8;
+        byte += 1;
+    }
+    let mask: u64 = if bits >= 32 { u32::MAX as u64 } else { (1u64 << bits) - 1 };
+    ((acc >> (taken - skip - bits)) & mask) as u32
+}
+
+/// Decode a single row of a `gravity-pq` payload straight from its bytes —
+/// `cols` values, touching only that row's chunk codes. This is the
+/// embedding-lookup path: materializing a `[vocab, hidden]` matrix to read
+/// one row of it would defeat the point of the format.
+pub fn pq_row(payload: &[u8], index: usize) -> Result<Vec<f32>> {
+    let h = parse_pq_header(payload)?;
+    let (cb, codes) = pq_sections(payload)?;
+    if index >= h.rows as usize {
+        return Err(Error::Gravity(format!(
+            "pq_row: index {index} out of range for {} rows",
+            h.rows
+        )));
+    }
+    let (d, s, sub, card, nchunk) = (
+        h.d as usize,
+        h.s as usize,
+        h.sub as usize,
+        h.card as usize,
+        h.nchunk as usize,
+    );
+    let mut out = vec![0f32; nchunk * d];
+    for c in 0..nchunk {
+        for sub_idx in 0..s {
+            let flat = (index * nchunk + c) * s + sub_idx;
+            let code = index_at(codes, flat, h.bits as u32) as usize;
+            if code >= card {
+                return Err(Error::Gravity(format!(
+                    "pq_row: code {code} exceeds codebook cardinality {card}"
+                )));
+            }
+            let cb_row = (sub_idx * card + code) * sub;
+            let dst = c * d + sub_idx * sub;
+            for j in 0..sub {
+                let off = (cb_row + j) * 2;
+                out[dst + j] =
+                    f16::from_bits(u16::from_le_bytes(cb[off..off + 2].try_into().unwrap()))
+                        .to_f32();
+            }
+        }
+    }
+    Ok(out)
+}
+
 /// A `gravity-pq` payload decoded once into the two things execution
 /// actually needs: codebooks widened to f32, and the index bitstream
 /// unpacked to one value per (row, chunk, subspace).
@@ -606,6 +696,19 @@ mod tests {
         let packed: [u8; 7] = [0x00, 0x07, 0xF7, 0xF8, 0x00, 0xC1, 0x01];
         let got = unpack_bits(&packed, 8, 7).expect("unpack");
         assert_eq!(got, vec![0, 1, 126, 127, 64, 3, 2, 1]);
+    }
+
+    /// `index_at` must agree with the sequential walk for every position,
+    /// including the ones straddling a byte boundary — it is the only
+    /// reader on the embedding path, where nothing else would catch a
+    /// one-bit skew.
+    #[test]
+    fn index_at_matches_sequential_unpack() {
+        let packed: [u8; 7] = [0x00, 0x07, 0xF7, 0xF8, 0x00, 0xC1, 0x01];
+        let seq = unpack_bits(&packed, 8, 7).expect("unpack");
+        for (i, &want) in seq.iter().enumerate() {
+            assert_eq!(index_at(&packed, i, 7), want, "index {i}");
+        }
     }
 
     #[test]

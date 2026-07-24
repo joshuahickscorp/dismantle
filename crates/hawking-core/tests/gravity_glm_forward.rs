@@ -155,3 +155,43 @@ fn glm_arch_refuses_a_leading_indexshare_layer() {
         "unexpected error: {err}"
     );
 }
+
+/// The flagship header the assembler synthesizes must be one the adapter
+/// accepts, and that has to be provable before the 1.5 TB artifact exists.
+///
+/// The per-shard headers the packer writes carry five architecture fields; the
+/// adapter needs twenty, including both layer schedules. So the assembler
+/// derives them from the sealed contract and pinned config, and this asserts
+/// the two ends agree — otherwise the disagreement surfaces only after the
+/// traversal finishes, which is the most expensive moment to find it.
+#[test]
+fn adapter_accepts_the_synthesized_flagship_architecture() {
+    use hawking_core::gravity_glm::GlmArch;
+
+    let raw = std::fs::read(fixtures_dir().join("flagship_arch.json"))
+        .expect("read flagship_arch.json");
+    let header: serde_json::Value = serde_json::from_slice(&raw).expect("parse");
+    let arch = GlmArch::from_header(&header).expect("adapter must accept the flagship header");
+
+    // GLM-5.2's published shape, so a contract edit that silently changes the
+    // model is caught here rather than in a 46 GB artifact.
+    assert_eq!(arch.n_layers, 78);
+    assert_eq!(arch.hidden, 6144);
+    assert_eq!(arch.n_heads, 64);
+    assert_eq!(arch.n_routed_experts, 256);
+    assert_eq!(arch.num_experts_per_tok, 8);
+    assert_eq!(arch.vocab_size, 154880);
+    assert_eq!(arch.qk_dim(), 256, "qk_nope + qk_rope");
+    assert_eq!(arch.index_topk, 2048);
+
+    // IndexShare is the schedule a wrong runtime gets wrong silently.
+    let full = arch.indexer_types.iter().filter(|t| *t == "full").count();
+    assert_eq!(full, 21, "full-indexer layers");
+    assert_eq!(arch.indexer_types.len() - full, 57, "IndexShare layers");
+    assert_eq!(arch.indexer_types[0], "full", "layer 0 cannot share");
+    assert_eq!(
+        arch.mlp_layer_types.iter().filter(|t| *t == "dense").count(),
+        3,
+        "first_k_dense_replace"
+    );
+}

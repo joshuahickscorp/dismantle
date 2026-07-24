@@ -9,10 +9,10 @@
    "state": "IN_PROGRESS"
   },
   "M02": {
-   "at": null,
+   "at": "2026-07-24T22:10:31Z",
    "desc": "complete local GLM .gravity artifact exists",
-   "note": "",
-   "state": "OPEN"
+   "note": "assembler built and coverage graded against the official 59585-tensor index at the pinned revision: of 112/282 shards packed, 23153 COMPACT + 267 PROTECTED_NATIVE, 0 undeclared, 0 misplaced, and every MISSING maps to an unpacked shard -- no packer coverage defect. Assembly refuses on incomplete coverage.",
+   "state": "IN_PROGRESS"
   },
   "M03": {
    "at": null,
@@ -127,5 +127,5 @@
  "gates_total": 20,
  "odyssey_launch_authorized": false,
  "schema": "hawking.motherload.status.v1",
- "updated_at": "2026-07-24T20:50:10Z"
+ "updated_at": "2026-07-24T22:10:31Z"
 }

@@ -53,10 +53,10 @@
    "state": "OPEN"
   },
   "T08": {
-   "at": null,
+   "at": "2026-07-24T19:00:52Z",
    "desc": "direct Metal complete-token runtime works",
-   "note": "",
-   "state": "OPEN"
+   "note": "Rust .gravity reader + Metal PQ matvec kernel landing; S0.8 vehicle = Llama-3.2-1B BF16 packed to R0 gravity",
+   "state": "IN_PROGRESS"
   },
   "T09": {
    "at": null,
@@ -83,10 +83,10 @@
    "state": "OPEN"
   },
   "T13": {
-   "at": null,
+   "at": "2026-07-24T19:00:52Z",
    "desc": "source lifecycle and rollback are green",
-   "note": "",
-   "state": "OPEN"
+   "note": "GLM rehydration replays the sealed rollback receipt end to end; stale pack ledger archived, not deleted",
+   "state": "IN_PROGRESS"
   },
   "T14": {
    "at": null,
@@ -98,6 +98,6 @@
  "gates_closed": 0,
  "gates_total": 14,
  "schema": "hawking.campaign.status.v1",
- "spend_cad": 6.0,
- "updated_at": "2026-07-24T18:48:14Z"
+ "spend_cad": 26.0,
+ "updated_at": "2026-07-24T19:00:52Z"
 }

@@ -450,9 +450,12 @@ pub mod gpu {
         params: PqParams,
     }
 
+    /// Norm weights live on the device too: leaving them on the host would
+    /// force a round trip per layer purely to hand a 2048-float vector to a
+    /// kernel that runs for microseconds.
     enum GpuWeight {
         Pq(GpuPq),
-        Dense(Vec<f32>),
+        Dense(Buffer),
     }
 
     /// Reusable device-side activation vectors, allocated once per role and
@@ -524,6 +527,18 @@ pub mod gpu {
         pub load_ms: f64,
         pub device_bytes: usize,
         pool: BufPool,
+        /// Per-layer K and V caches resident on the device, grown to fit the
+        /// longest run seen so far. Attention reads them in place, so the
+        /// only thing crossing the bus per layer is q/k/v and the attention
+        /// output -- not the O(seq_len) cache.
+        kv: RefCell<KvBuffers>,
+    }
+
+    #[derive(Default)]
+    struct KvBuffers {
+        k: Vec<Buffer>,
+        v: Vec<Buffer>,
+        capacity_tokens: usize,
     }
 
     impl<'ctx> GravityLlamaGpu<'ctx> {
@@ -568,7 +583,14 @@ pub mod gpu {
                         embed_payload = blob;
                     }
                 } else if codec.starts_with("native.") {
-                    weights.insert(name.clone(), GpuWeight::Dense(widen_native(&codec, &blob)?));
+                    let widened = widen_native(&codec, &blob)?;
+                    device_bytes += widened.len() * std::mem::size_of::<f32>();
+                    weights.insert(
+                        name.clone(),
+                        GpuWeight::Dense(ctx.new_buffer_with_bytes_checked(
+                            bytemuck::cast_slice::<f32, u8>(&widened),
+                        )?),
+                    );
                 } else {
                     return Err(Error::Gravity(format!(
                         "tensor {name}: unsupported codec {codec:?}"
@@ -598,7 +620,37 @@ pub mod gpu {
                 load_ms: t0.elapsed().as_secs_f64() * 1e3,
                 device_bytes,
                 pool: BufPool::new(),
+                kv: RefCell::new(KvBuffers::default()),
             })
+        }
+
+        /// Exact KV bytes for `tokens` positions -- two f32 caches of
+        /// `n_kv_heads * head_dim` per layer per position.
+        pub fn kv_bytes_for(&self, tokens: usize) -> usize {
+            2 * self.arch.n_layers * self.arch.n_kv_heads * self.arch.head_dim * 4 * tokens
+        }
+
+        /// Grow the device KV caches to hold at least `tokens` positions.
+        /// Reallocates rather than copies: a run always starts from an empty
+        /// cache here, so there is nothing to preserve.
+        fn reserve_kv(&self, tokens: usize) -> Result<()> {
+            let mut kv = self.kv.borrow_mut();
+            if kv.capacity_tokens >= tokens && !kv.k.is_empty() {
+                return Ok(());
+            }
+            let per_layer = tokens * self.arch.n_kv_heads * self.arch.head_dim * 4;
+            let mut k = Vec::with_capacity(self.arch.n_layers);
+            let mut v = Vec::with_capacity(self.arch.n_layers);
+            for _ in 0..self.arch.n_layers {
+                k.push(self.ctx.new_buffer_checked(per_layer)?);
+                v.push(self.ctx.new_buffer_checked(per_layer)?);
+            }
+            *kv = KvBuffers {
+                k,
+                v,
+                capacity_tokens: tokens,
+            };
+            Ok(())
         }
 
         fn pq(&self, name: &str) -> Result<&GpuPq> {
@@ -614,17 +666,145 @@ pub mod gpu {
             }
         }
 
-        fn dense(&self, name: &str) -> Result<&[f32]> {
+        fn dense(&self, name: &str) -> Result<&Buffer> {
             match self
                 .weights
                 .get(name)
                 .ok_or_else(|| Error::Gravity(format!("artifact has no tensor {name:?}")))?
             {
-                GpuWeight::Dense(v) => Ok(v),
+                GpuWeight::Dense(b) => Ok(b),
                 GpuWeight::Pq(_) => Err(Error::Gravity(format!(
                     "tensor {name:?} is packed; expected a natively-carried dense tensor"
                 ))),
             }
+        }
+
+        /// The RoPE cos/sin table for one position: `head_dim/2` cosines then
+        /// `head_dim/2` sines. Computed in f64 from the header's declared
+        /// scaling, matching the oracle's frequency math exactly, so the
+        /// kernel applies a rotation it does not need to understand.
+        fn rope_table(&self, pos: usize) -> Vec<f32> {
+            let a = &self.arch;
+            let half = a.head_dim / 2;
+            let mut out = vec![0f32; a.head_dim];
+            let base = a.rope_theta as f64;
+            for i in 0..half {
+                let inv = 1.0 / base.powf(2.0 * i as f64 / a.head_dim as f64);
+                let freq = match a.rope_scaling {
+                    None => inv,
+                    Some(s) => {
+                        let orig = s.original_max_position_embeddings as f64;
+                        let (low, high) = (s.low_freq_factor as f64, s.high_freq_factor as f64);
+                        let wavelen = std::f64::consts::TAU / inv;
+                        if wavelen < orig / high {
+                            inv
+                        } else if wavelen > orig / low {
+                            inv / s.factor as f64
+                        } else {
+                            let smooth = (orig / wavelen - low) / (high - low);
+                            (1.0 - smooth) * (inv / s.factor as f64) + smooth * inv
+                        }
+                    }
+                };
+                let theta = pos as f64 * freq;
+                out[i] = theta.cos() as f32;
+                out[half + i] = theta.sin() as f32;
+            }
+            out
+        }
+
+        /// Encode one packed matvec into an open command buffer, writing at
+        /// `y_offset` f32 elements into `y`. The offset is what lets the K
+        /// and V projections write straight into their layer's KV cache
+        /// slot: no append kernel, no copy, no round trip through the host.
+        fn encode_matvec_at(
+            &self,
+            tcb: &mut TokenCommandBuffer<'_>,
+            name: &str,
+            x: &Buffer,
+            y: &Buffer,
+            y_offset: usize,
+        ) -> Result<()> {
+            let w = self.pq(name)?;
+            const TG: u32 = 256;
+            let n_tg = w.params.rows.div_ceil(8);
+            let params = w.params;
+            let byte_off = (y_offset * std::mem::size_of::<f32>()) as u64;
+            tcb.dispatch_threads("gravity_pq_matvec", (n_tg * TG, 1, 1), (TG, 1, 1), |enc| {
+                enc.set_buffer(0, Some(&w.codebooks), 0);
+                enc.set_buffer(1, Some(&w.codes), 0);
+                enc.set_buffer(2, Some(x), 0);
+                enc.set_buffer(3, Some(y), byte_off);
+                enc.set_bytes(
+                    4,
+                    std::mem::size_of::<PqParams>() as u64,
+                    &params as *const PqParams as *const _,
+                );
+            })
+        }
+
+        /// Encode `gravity_rope_table_f32` over `n_heads` heads starting at
+        /// f32 element `offset` of `x`.
+        fn encode_rope(
+            &self,
+            tcb: &mut TokenCommandBuffer<'_>,
+            x: &Buffer,
+            offset: usize,
+            n_heads: usize,
+            table: &Buffer,
+        ) -> Result<()> {
+            #[repr(C)]
+            #[derive(Clone, Copy)]
+            struct RopeParams {
+                offset: u32,
+                n_heads: u32,
+                head_dim: u32,
+            }
+            let head_dim = self.arch.head_dim;
+            let total = (n_heads * head_dim / 2) as u32;
+            let tg = 64u32.min(total.max(1));
+            let p = RopeParams {
+                offset: offset as u32,
+                n_heads: n_heads as u32,
+                head_dim: head_dim as u32,
+            };
+            tcb.dispatch_threads(
+                "gravity_rope_table_f32",
+                (total.div_ceil(tg) * tg, 1, 1),
+                (tg, 1, 1),
+                |enc| {
+                    enc.set_buffer(0, Some(x), 0);
+                    enc.set_buffer(1, Some(table), 0);
+                    enc.set_bytes(
+                        2,
+                        std::mem::size_of::<RopeParams>() as u64,
+                        &p as *const RopeParams as *const _,
+                    );
+                },
+            )
+        }
+
+        fn encode_silu_mul(
+            &self,
+            tcb: &mut TokenCommandBuffer<'_>,
+            gate: &Buffer,
+            up: &Buffer,
+            out: &Buffer,
+            n: usize,
+        ) -> Result<()> {
+            const TG: u32 = 256;
+            let n_u32 = n as u32;
+            tcb.dispatch_threads(
+                "gravity_silu_mul_f32",
+                (n_u32.div_ceil(TG) * TG, 1, 1),
+                (TG, 1, 1),
+                |enc| {
+                    enc.set_buffer(0, Some(gate), 0);
+                    enc.set_buffer(1, Some(up), 0);
+                    enc.set_buffer(2, Some(out), 0);
+                    enc.set_bytes(3, 4, &n_u32 as *const u32 as *const _);
+                },
+            )
         }
 
         /// Encode one packed matvec into an open command buffer. Dispatches
@@ -666,18 +846,19 @@ pub mod gpu {
             let inter = self.pq("model.layers.0.mlp.gate_proj.weight")?.params.rows as usize;
 
             let x_buf = self.pool.get(self.ctx, "x", a.hidden);
+            let x_norm_buf = self.pool.get(self.ctx, "x_norm", a.hidden);
             let q_buf = self.pool.get(self.ctx, "q", a.n_heads * a.head_dim);
-            let k_buf = self.pool.get(self.ctx, "k", kv_width);
-            let v_buf = self.pool.get(self.ctx, "v", kv_width);
+            let attn_buf = self.pool.get(self.ctx, "attn", a.n_heads * a.head_dim);
             let gate_buf = self.pool.get(self.ctx, "gate", inter);
             let up_buf = self.pool.get(self.ctx, "up", inter);
             let act_buf = self.pool.get(self.ctx, "act", inter);
             let o_buf = self.pool.get(self.ctx, "o", a.hidden);
+            let rope_buf = self.pool.get(self.ctx, "rope", a.head_dim);
             let logits_buf = self.pool.get(self.ctx, "logits", a.vocab_size);
 
-            let mut k_cache: Vec<Vec<f32>> = vec![Vec::new(); a.n_layers];
-            let mut v_cache: Vec<Vec<f32>> = vec![Vec::new(); a.n_layers];
-            let mut scratch = vec![0f32; a.hidden];
+            self.reserve_kv(tokens.len())?;
+            let kv = self.kv.borrow();
+            let zeros = vec![0f32; a.hidden];
             let mut logits = Vec::new();
             let mut stats = ForwardStats {
                 tokens: tokens.len(),
@@ -693,113 +874,82 @@ pub mod gpu {
                         a.vocab_size
                     )));
                 }
-                let mut x = pq_row(&self.embed_payload, token as usize)?;
+                // The only host work per token: decode the embedding row and
+                // the position's rotation table. Everything after this is one
+                // command buffer.
+                write_f32(&x_buf, &pq_row(&self.embed_payload, token as usize)?);
+                write_f32(&rope_buf, &self.rope_table(pos));
+                // Layer 0's residual add has nothing to add yet, so it adds
+                // zero rather than needing a separate un-fused norm.
+                write_f32(&o_buf, &zeros);
+                let seq_len = pos + 1;
 
+                let mut tcb = TokenCommandBuffer::new(self.ctx);
                 for layer in 0..a.n_layers {
                     let p = format!("model.layers.{layer}.");
 
-                    rmsnorm(
-                        &x,
+                    // x += previous residual output, then normalize into
+                    // x_norm. One dispatch, one DRAM pass over x.
+                    crate::kernels::add_rmsnorm_fused_tcb(
+                        &mut tcb,
+                        &x_buf,
+                        &o_buf,
                         self.dense(&format!("{p}input_layernorm.weight"))?,
+                        &x_norm_buf,
                         a.rms_norm_eps,
-                        &mut scratch,
-                    );
-                    write_f32(&x_buf, &scratch);
-
-                    // Q/K/V read the same input and write disjoint outputs,
-                    // so they share one command buffer.
-                    let mut tcb = TokenCommandBuffer::new(self.ctx);
-                    self.encode_matvec(&mut tcb, &format!("{p}self_attn.q_proj.weight"), &x_buf, &q_buf)?;
-                    self.encode_matvec(&mut tcb, &format!("{p}self_attn.k_proj.weight"), &x_buf, &k_buf)?;
-                    self.encode_matvec(&mut tcb, &format!("{p}self_attn.v_proj.weight"), &x_buf, &v_buf)?;
-                    stats.dispatches += tcb.dispatch_count();
-                    tcb.commit_and_wait()?;
-                    stats.command_buffers += 1;
-
-                    let mut q = read_f32(&q_buf, a.n_heads * a.head_dim);
-                    let mut k = read_f32(&k_buf, kv_width);
-                    let v = read_f32(&v_buf, kv_width);
-
-                    for h in 0..a.n_heads {
-                        rope_inplace_scaled(
-                            &mut q[h * a.head_dim..(h + 1) * a.head_dim],
-                            pos as u32,
-                            a.rope_theta,
-                            a.rope_scaling,
-                        );
-                    }
-                    for h in 0..a.n_kv_heads {
-                        rope_inplace_scaled(
-                            &mut k[h * a.head_dim..(h + 1) * a.head_dim],
-                            pos as u32,
-                            a.rope_theta,
-                            a.rope_scaling,
-                        );
-                    }
-                    k_cache[layer].extend_from_slice(&k);
-                    v_cache[layer].extend_from_slice(&v);
-                    let seq_len = k_cache[layer].len() / kv_width;
-
-                    let mut attn = vec![0f32; a.n_heads * a.head_dim];
-                    mha_decode_step(
-                        &q,
-                        &k_cache[layer],
-                        &v_cache[layer],
-                        a.n_heads,
-                        a.n_kv_heads,
-                        a.head_dim,
-                        seq_len,
-                        &mut attn,
+                        a.hidden,
                     )?;
 
-                    write_f32(&q_buf, &attn);
-                    let mut tcb = TokenCommandBuffer::new(self.ctx);
-                    self.encode_matvec(&mut tcb, &format!("{p}self_attn.o_proj.weight"), &q_buf, &o_buf)?;
-                    stats.dispatches += tcb.dispatch_count();
-                    tcb.commit_and_wait()?;
-                    stats.command_buffers += 1;
-                    add_inplace(&mut x, &read_f32(&o_buf, a.hidden));
+                    // K and V project straight into this layer's cache slot:
+                    // no append kernel, no copy.
+                    self.encode_matvec(&mut tcb, &format!("{p}self_attn.q_proj.weight"), &x_norm_buf, &q_buf)?;
+                    self.encode_matvec_at(&mut tcb, &format!("{p}self_attn.k_proj.weight"), &x_norm_buf, &kv.k[layer], pos * kv_width)?;
+                    self.encode_matvec_at(&mut tcb, &format!("{p}self_attn.v_proj.weight"), &x_norm_buf, &kv.v[layer], pos * kv_width)?;
 
-                    rmsnorm(
-                        &x,
+                    self.encode_rope(&mut tcb, &q_buf, 0, a.n_heads, &rope_buf)?;
+                    self.encode_rope(&mut tcb, &kv.k[layer], pos * kv_width, a.n_kv_heads, &rope_buf)?;
+
+                    crate::kernels::mha_decode_flash_f32_tcb(
+                        &mut tcb,
+                        &q_buf,
+                        &kv.k[layer],
+                        0,
+                        &kv.v[layer],
+                        0,
+                        &attn_buf,
+                        seq_len,
+                        a.head_dim,
+                        a.n_heads,
+                        a.n_kv_heads,
+                    )?;
+                    self.encode_matvec(&mut tcb, &format!("{p}self_attn.o_proj.weight"), &attn_buf, &o_buf)?;
+
+                    crate::kernels::add_rmsnorm_fused_tcb(
+                        &mut tcb,
+                        &x_buf,
+                        &o_buf,
                         self.dense(&format!("{p}post_attention_layernorm.weight"))?,
+                        &x_norm_buf,
                         a.rms_norm_eps,
-                        &mut scratch,
-                    );
-                    write_f32(&x_buf, &scratch);
-
-                    // gate and up likewise read one input and write disjoint
-                    // outputs.
-                    let mut tcb = TokenCommandBuffer::new(self.ctx);
-                    self.encode_matvec(&mut tcb, &format!("{p}mlp.gate_proj.weight"), &x_buf, &gate_buf)?;
-                    self.encode_matvec(&mut tcb, &format!("{p}mlp.up_proj.weight"), &x_buf, &up_buf)?;
-                    stats.dispatches += tcb.dispatch_count();
-                    tcb.commit_and_wait()?;
-                    stats.command_buffers += 1;
-
-                    let gate = read_f32(&gate_buf, inter);
-                    let up = read_f32(&up_buf, inter);
-                    let mut act = vec![0f32; inter];
-                    silu_mul(&gate, &up, &mut act);
-                    write_f32(&act_buf, &act);
-
-                    let mut tcb = TokenCommandBuffer::new(self.ctx);
+                        a.hidden,
+                    )?;
+                    self.encode_matvec(&mut tcb, &format!("{p}mlp.gate_proj.weight"), &x_norm_buf, &gate_buf)?;
+                    self.encode_matvec(&mut tcb, &format!("{p}mlp.up_proj.weight"), &x_norm_buf, &up_buf)?;
+                    self.encode_silu_mul(&mut tcb, &gate_buf, &up_buf, &act_buf, inter)?;
                     self.encode_matvec(&mut tcb, &format!("{p}mlp.down_proj.weight"), &act_buf, &o_buf)?;
-                    stats.dispatches += tcb.dispatch_count();
-                    tcb.commit_and_wait()?;
-                    stats.command_buffers += 1;
-                    add_inplace(&mut x, &read_f32(&o_buf, a.hidden));
                 }
 
-                rmsnorm(
-                    &x,
+                crate::kernels::add_rmsnorm_fused_tcb(
+                    &mut tcb,
+                    &x_buf,
+                    &o_buf,
                     self.dense("model.norm.weight")?,
+                    &x_norm_buf,
                     a.rms_norm_eps,
-                    &mut scratch,
-                );
-                write_f32(&x_buf, &scratch);
-                let mut tcb = TokenCommandBuffer::new(self.ctx);
-                self.encode_matvec(&mut tcb, &self.head_name.clone(), &x_buf, &logits_buf)?;
+                    a.hidden,
+                )?;
+                self.encode_matvec(&mut tcb, &self.head_name.clone(), &x_norm_buf, &logits_buf)?;
+
                 stats.dispatches += tcb.dispatch_count();
                 tcb.commit_and_wait()?;
                 stats.command_buffers += 1;

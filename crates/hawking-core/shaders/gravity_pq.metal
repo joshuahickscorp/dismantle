@@ -68,3 +68,54 @@ kernel void gravity_pq_matvec(
     acc = simd_sum(acc);
     if (lane == 0u) { y[row] = acc; }
 }
+
+// ---------------------------------------------------------------------------
+// The elementwise ops the .gravity token graph needs in f32.
+//
+// The shared kernels in common.metal are half-precision (silu_mul) or fold the
+// frequency math into the kernel (rope_slice_f32_inplace, plain theta^(2i/d)).
+// Neither fits here: the activation path is f32 end to end, and the artifact's
+// declared rope_scaling may be any construction the header names -- so the
+// frequencies are computed once per position on the host, in f64, and arrive
+// as a table. The kernel then applies a rotation it does not have to
+// understand, which is what lets llama3, longrope and plain RoPE share it.
+// ---------------------------------------------------------------------------
+
+kernel void gravity_silu_mul_f32(
+    device const float *gate [[buffer(0)]],
+    device const float *up   [[buffer(1)]],
+    device       float *out  [[buffer(2)]],
+    constant     uint  &n    [[buffer(3)]],
+    uint id                  [[thread_position_in_grid]])
+{
+    if (id >= n) { return; }
+    float g = gate[id];
+    out[id] = (g / (1.0f + exp(-g))) * up[id];
+}
+
+struct GravityRopeParams {
+    uint offset;    // f32 element offset of head 0 within `x`
+    uint n_heads;
+    uint head_dim;
+};
+
+// NeoX pairing: element i pairs with i + head_dim/2, not with i + 1.
+// `table` is head_dim/2 cosines followed by head_dim/2 sines.
+kernel void gravity_rope_table_f32(
+    device       float             *x     [[buffer(0)]],
+    const device float             *table [[buffer(1)]],
+    constant     GravityRopeParams &p     [[buffer(2)]],
+    uint id                               [[thread_position_in_grid]])
+{
+    uint half_dim = p.head_dim / 2u;
+    if (id >= p.n_heads * half_dim) { return; }
+    uint h = id / half_dim;
+    uint i = id - h * half_dim;
+    uint b = p.offset + h * p.head_dim + i;
+    float c = table[i];
+    float s = table[half_dim + i];
+    float x0 = x[b];
+    float x1 = x[b + half_dim];
+    x[b]            = x0 * c - x1 * s;
+    x[b + half_dim] = x0 * s + x1 * c;
+}

@@ -27,9 +27,9 @@
    "state": "IN_PROGRESS"
   },
   "M05": {
-   "at": "2026-07-24T20:14:37Z",
+   "at": "2026-07-24T20:37:07Z",
    "desc": "measured base TPS and prefill exist",
-   "note": "BASE_TRUE_TPS measured on the Llama .gravity instrument: decode 105.8/68.8/29.2/13.3 tok/s and prefill 116.5/92.8/48.8/19.1 tok/s at ctx 128/512/2048/8192, 1 command buffer and 210 dispatches per token; GLM numbers gated on the flagship artifact",
+   "note": "base measured on the instrument: decode 105.8/68.8/29.2/13.3 tok/s at ctx 128/512/2048/8192, prefill 116.5/92.8/48.8/19.1, 1 command buffer + 210 dispatches per token; end-to-end generation 60.7 tok/s with incremental decode bit-identical to full replay; GLM numbers gated on the flagship artifact",
    "state": "IN_PROGRESS"
   },
   "M06": {
@@ -105,9 +105,9 @@
    "state": "GREEN"
   },
   "M18": {
-   "at": "2026-07-24T19:38:24Z",
+   "at": "2026-07-24T20:32:36Z",
    "desc": "rollback/source lifecycle is green",
-   "note": "rollback seal replays the sealed receipt; 37/282 verified, 0 hash mismatches",
+   "note": "eviction gate unblocked and verified: 33/33 deferred shards AUTHORIZED, 0 refused, after re-seeding the teacher chain L00-L15 under the live 256-token calibration; ~176 GB frees at the next window boundary",
    "state": "IN_PROGRESS"
   },
   "M19": {
@@ -127,5 +127,5 @@
  "gates_total": 20,
  "odyssey_launch_authorized": false,
  "schema": "hawking.motherload.status.v1",
- "updated_at": "2026-07-24T20:31:53Z"
+ "updated_at": "2026-07-24T20:37:07Z"
 }

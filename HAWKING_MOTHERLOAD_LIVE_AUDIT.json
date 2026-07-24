@@ -31,28 +31,26 @@
    }
   ]
  },
- "at": "2026-07-24T20:18:59Z",
+ "at": "2026-07-24T20:32:36Z",
  "git": {
   "branch": "campaign/glm52-generation-b",
-  "dirty_count": 5,
+  "dirty_count": 3,
   "dirty_paths": [
    "HAWKING_MOTHERLOAD_LEDGER.jsonl",
    "HAWKING_MOTHERLOAD_STATUS.json",
-   "HAWKING_MOTHERLOAD_STATUS.md",
-   "odyssey/",
-   "tools/campaign/odyssey_package.py"
+   "HAWKING_MOTHERLOAD_STATUS.md"
   ],
-  "head": "a594fddb7f71ed112602eec3f241fceb59b6bafd",
-  "head_subject": "Execute GLM-5.2 out of .gravity: MLA, DSA, IndexShare, and the noaux_tc router",
+  "head": "28ab557cf23450492d61f49521045683b437ed18",
+  "head_subject": "Stream real text out of .gravity, and fail the first rate on its own screening gate",
   "unpushed": 0,
   "upstream": "origin/campaign/glm52-generation-b"
  },
  "host": {
   "cpu_count": 28,
-  "free_disk_bytes": 294879686656,
-  "free_disk_gib": 274.6,
+  "free_disk_bytes": 257843232768,
+  "free_disk_gib": 240.1,
   "physical_memory_bytes": 103079215104,
-  "swap_raw": "total = 16384.00M  used = 15325.19M  free = 1058.81M  (encrypted)"
+  "swap_raw": "total = 22528.00M  used = 22032.31M  free = 495.69M  (encrypted)"
  },
  "processes": {
   "hawking_lane_count": 2,
@@ -69,14 +67,14 @@
    }
   ],
   "mop_isolation": "UNTOUCHED -- separate project, not read or signalled by this campaign",
-  "mop_process_count": 16
+  "mop_process_count": 17
  },
  "root": "/Users/scammermike/Downloads/hawking",
  "schema": "hawking.motherload.live_audit.v1",
  "source": {
   "controller": {
    "eviction_paused": false,
-   "heartbeat_age_seconds": 353.0,
+   "heartbeat_age_seconds": 170.2,
    "launchd_label": "com.hawking.glm52.source-fetch",
    "launchd_loaded": true,
    "lease_held": true,
@@ -100,7 +98,7 @@
   "shards_probed": 55,
   "shards_verified": 59,
   "state": "RUNNING",
-  "teacher_capsules": 10,
+  "teacher_capsules": 9,
   "total_source_shards": 282,
   "window": "W003",
   "window_count": 20

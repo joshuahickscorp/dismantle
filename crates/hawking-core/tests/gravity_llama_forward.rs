@@ -189,3 +189,47 @@ fn gravity_llama_gpu_forward_matches_frozen_oracle() {
         model.device_bytes
     );
 }
+
+/// Incremental decode must reach the same logits as replaying the prefix.
+///
+/// This is the failure mode that does not announce itself: a KV cache that
+/// loses or misplaces a position still produces fluent, confident, wrong
+/// continuations, and every other test here would still pass. So the two
+/// paths are compared directly rather than each compared to the oracle.
+#[cfg(target_os = "macos")]
+#[test]
+fn gravity_llama_incremental_decode_matches_full_replay() {
+    use hawking_core::gravity_llama::gpu::GravityLlamaGpu;
+    use hawking_core::metal::MetalContext;
+
+    let Some(art) = artifact_path() else {
+        eprintln!("skipping incremental decode parity: no llama32-1b .gravity artifact");
+        return;
+    };
+    let ctx = MetalContext::new().expect("metal context");
+    let model = GravityLlamaGpu::open(&ctx, &art, false).expect("open artifact");
+
+    let tokens: Vec<u32> = vec![128000, 9906, 1917, 11, 420, 374, 264, 1296];
+    let (want, _) = model.forward(&tokens).expect("full replay");
+
+    // Prefill a prefix, then extend one token at a time.
+    let split = 3;
+    let (mut got, _) = model.forward(&tokens[..split]).expect("prefill");
+    for (i, &t) in tokens[split..].iter().enumerate() {
+        got = model.forward_at(&[t], split + i).expect("extend").0;
+    }
+
+    assert_eq!(got.len(), want.len());
+    let max_abs = got
+        .iter()
+        .zip(want.iter())
+        .map(|(a, b)| (a - b).abs())
+        .fold(0f32, f32::max);
+    eprintln!("incremental vs full replay: max |logit diff| = {max_abs:.6e}");
+    // Same arithmetic in the same order on the same cache contents, so this
+    // is an equality check with a float-noise allowance, not a tolerance.
+    assert!(
+        max_abs <= 1e-4,
+        "incremental decode diverged from full replay by {max_abs}"
+    );
+}

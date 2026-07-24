@@ -3,9 +3,9 @@
  "endpoint": "IN_PROGRESS",
  "gates": {
   "M01": {
-   "at": "2026-07-24T19:38:23Z",
+   "at": "2026-07-24T20:24:06Z",
    "desc": "GLM traversal is 282/282",
-   "note": "GLM source traversal live: 37/282 verified, window W001/20, launchd com.hawking.glm52.source-fetch pid 72608, 0 faults",
+   "note": "traversal live at 59/282 (W003); eviction had authorized nothing for 3 windows because every teacher capsule was sealed under the retired 8-token calibration -- stale capsules archived with a withdrawal receipt and the chain re-seeded from layer 0 under the live 256-token corpus calibration",
    "state": "IN_PROGRESS"
   },
   "M02": {
@@ -127,5 +127,5 @@
  "gates_total": 20,
  "odyssey_launch_authorized": false,
  "schema": "hawking.motherload.status.v1",
- "updated_at": "2026-07-24T20:18:59Z"
+ "updated_at": "2026-07-24T20:24:06Z"
 }

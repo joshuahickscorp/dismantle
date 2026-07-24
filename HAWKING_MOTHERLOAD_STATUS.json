@@ -1,5 +1,5 @@
 {
- "completion_fraction": 0.0,
+ "completion_fraction": 0.2,
  "endpoint": "IN_PROGRESS",
  "gates": {
   "M01": {
@@ -75,34 +75,34 @@
    "state": "IN_PROGRESS"
   },
   "M13": {
-   "at": null,
+   "at": "2026-07-24T20:18:59Z",
    "desc": "Odyssey substrate and training bundle are complete",
-   "note": "",
-   "state": "OPEN"
+   "note": "training bundle complete: plan T0-T5, objective/checkpoint/evaluation contracts, data + teacher-trace manifests, profile manifest; substrate itself still GATED on M11 and declared so rather than named speculatively",
+   "state": "IN_PROGRESS"
   },
   "M14": {
-   "at": null,
+   "at": "2026-07-24T20:18:59Z",
    "desc": "sandbox, roles, Ledger, verifiers, Tribunal, and retrieval are scaffolded",
-   "note": "",
-   "state": "OPEN"
+   "note": "sandbox policy (network deny-by-default, filesystem allowlist, emergency stop), 12 roles with promotion held only by verifier and Tribunal, Ledger contract, 4-tier lattice, 7 memory stores, Tribunal + prior-art protocol, retrieval against a pinned snapshot, branch economics, Graveyard",
+   "state": "GREEN"
   },
   "M15": {
-   "at": null,
+   "at": "2026-07-24T20:18:59Z",
    "desc": "Lean/Mathlib and evidence environment are pinned",
-   "note": "",
-   "state": "OPEN"
+   "note": "Lean leanprover/lean4:v4.15.0 and Mathlib v4.15.0 pinned to concrete revisions; validator rejects 'latest'; container digest declared with gate ODYSSEY-ENV-01",
+   "state": "GREEN"
   },
   "M16": {
-   "at": null,
+   "at": "2026-07-24T20:18:59Z",
    "desc": "Odyssey dry-run validation passes",
-   "note": "",
-   "state": "OPEN"
+   "note": "odyssey_package.py validate: 86 checks, 0 failed, DRY_RUN_PASS; selftest proves a flipped fence FAILS validation and the runner exits 1",
+   "state": "GREEN"
   },
   "M17": {
-   "at": null,
+   "at": "2026-07-24T20:18:59Z",
    "desc": "ODYSSEY_LAUNCH_AUTHORIZED remains false",
-   "note": "",
-   "state": "OPEN"
+   "note": "ODYSSEY_LAUNCH_AUTHORIZED=false; the builder reads the fence and never writes it, so rebuilding cannot authorize a run",
+   "state": "GREEN"
   },
   "M18": {
    "at": "2026-07-24T19:38:24Z",
@@ -123,9 +123,9 @@
    "state": "OPEN"
   }
  },
- "gates_closed": 0,
+ "gates_closed": 4,
  "gates_total": 20,
  "odyssey_launch_authorized": false,
  "schema": "hawking.motherload.status.v1",
- "updated_at": "2026-07-24T20:14:37Z"
+ "updated_at": "2026-07-24T20:18:59Z"
 }

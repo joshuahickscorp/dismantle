@@ -1,9 +1,9 @@
 # Hawking Motherload Completion Status
 
 endpoint: `IN_PROGRESS`  
-gates closed: 0/20  
+gates closed: 4/20  
 ODYSSEY_LAUNCH_AUTHORIZED: `false`  
-updated: 2026-07-24T20:14:37Z
+updated: 2026-07-24T20:18:59Z
 
 | gate | state | condition | note |
 |---|---|---|---|
@@ -19,11 +19,11 @@ updated: 2026-07-24T20:14:37Z
 | M10 | open | equal-budget Claim A is sealed |  |
 | M11 | open | General and Math artifacts are selected and verified |  |
 | M12 | running | Forge, continuity, sovereignty, and Limit Registry are sealed | sovereignty spine + 13 invariants green; false_refusal/boundary_error gated on a served model |
-| M13 | open | Odyssey substrate and training bundle are complete |  |
-| M14 | open | sandbox, roles, Ledger, verifiers, Tribunal, and retrieval are scaffolded |  |
-| M15 | open | Lean/Mathlib and evidence environment are pinned |  |
-| M16 | open | Odyssey dry-run validation passes |  |
-| M17 | open | ODYSSEY_LAUNCH_AUTHORIZED remains false |  |
+| M13 | running | Odyssey substrate and training bundle are complete | training bundle complete: plan T0-T5, objective/checkpoint/evaluation contracts, data + teacher-trace manifests, profile manifest; substrate itself still GATED on M11 and declared so rather than named speculatively |
+| M14 | green | sandbox, roles, Ledger, verifiers, Tribunal, and retrieval are scaffolded | sandbox policy (network deny-by-default, filesystem allowlist, emergency stop), 12 roles with promotion held only by verifier and Tribunal, Ledger contract, 4-tier lattice, 7 memory stores, Tribunal + prior-art protocol, retrieval against a pinned snapshot, branch economics, Graveyard |
+| M15 | green | Lean/Mathlib and evidence environment are pinned | Lean leanprover/lean4:v4.15.0 and Mathlib v4.15.0 pinned to concrete revisions; validator rejects 'latest'; container digest declared with gate ODYSSEY-ENV-01 |
+| M16 | green | Odyssey dry-run validation passes | odyssey_package.py validate: 86 checks, 0 failed, DRY_RUN_PASS; selftest proves a flipped fence FAILS validation and the runner exits 1 |
+| M17 | green | ODYSSEY_LAUNCH_AUTHORIZED remains false | ODYSSEY_LAUNCH_AUTHORIZED=false; the builder reads the fence and never writes it, so rebuilding cannot authorize a run |
 | M18 | running | rollback/source lifecycle is green | rollback seal replays the sealed receipt; 37/282 verified, 0 hash mismatches |
 | M19 | open | all campaign commits are pushed |  |
 | M20 | open | worktree and process state are clean except intentional detached services |  |

@@ -1,0 +1,3 @@
+{"at": "2026-07-24T18:48:14Z", "kind": "job", "log": "/Users/scammermike/Library/Application Support/Hawking/GLM52Gravity/source_fetch/launchd.stdout.log", "name": "glm52_source_fetch", "pid": 67579}
+{"at": "2026-07-24T18:48:14Z", "gate": "T01", "kind": "gate", "note": "GLM source rehydration streaming: 282 shards / 1.507 TB, launchd com.hawking.glm52.source-fetch, eviction ON", "state": "IN_PROGRESS"}
+{"at": "2026-07-24T18:48:14Z", "cad": 6.0, "kind": "spend", "note": "Phase A audit"}

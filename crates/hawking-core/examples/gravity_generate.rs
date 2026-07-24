@@ -98,21 +98,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         temperature,
         ..Default::default()
     };
-    let mut ttft_ms = 0f64;
     let t0 = Instant::now();
     let mut emitted = 0usize;
 
-    for step in 0..max_tokens {
-        // The cache is rebuilt per step rather than extended: this runtime's
-        // forward starts from an empty cache by contract, so re-running the
-        // whole prefix is the honest way to use it. It is O(n^2) in the
-        // sequence and is the first thing an incremental-decode change fixes;
-        // it is not a shortcut that changes what comes out.
-        let (mut logits, _) = model.forward(&ids)?;
+    // Prefill the whole prompt once, then extend one token at a time. Each
+    // position owns its cache slot, so continuing is a matter of not
+    // resetting -- replaying the prefix would reach identical logits, slower.
+    let mut logits = model.forward(&ids)?.0;
+    let ttft_ms = t0.elapsed().as_secs_f64() * 1e3;
+    let mut pos = ids.len();
+
+    for _ in 0..max_tokens {
         let next = sampler.sample(&mut logits, &params);
-        if step == 0 {
-            ttft_ms = t0.elapsed().as_secs_f64() * 1e3;
-        }
         if tokenizer.is_eog(next) {
             break;
         }
@@ -120,13 +117,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         std::io::stdout().flush()?;
         ids.push(next);
         emitted += 1;
+        logits = model.forward_at(&[next], pos)?.0;
+        pos += 1;
     }
     println!();
 
     let wall = t0.elapsed().as_secs_f64();
     eprintln!(
         "\n{emitted} tokens in {wall:.2}s | ttft {ttft_ms:.0} ms | \
-         {:.2} tok/s end-to-end (prefix replayed each step)",
+         {:.2} tok/s end-to-end (incremental decode)",
         emitted as f64 / wall
     );
     Ok(())

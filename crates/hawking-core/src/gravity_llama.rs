@@ -501,26 +501,39 @@ pub mod gpu {
             2 * self.arch.n_layers * self.arch.n_kv_heads * self.arch.head_dim * 4 * tokens
         }
 
-        /// Grow the device KV caches to hold at least `tokens` positions.
-        /// Reallocates rather than copies: a run always starts from an empty
-        /// cache here, so there is nothing to preserve.
+        /// Grow the device KV caches to hold at least `tokens` positions,
+        /// preserving whatever is already cached.
+        ///
+        /// The copy is what makes an incremental session safe: a session that
+        /// outgrows its capacity must not silently forget its own prefix, and
+        /// a forgotten prefix produces fluent, confident, wrong continuations
+        /// that nothing downstream would flag.
         fn reserve_kv(&self, tokens: usize) -> Result<()> {
             let mut kv = self.kv.borrow_mut();
             if kv.capacity_tokens >= tokens && !kv.k.is_empty() {
                 return Ok(());
             }
             let per_layer = tokens * self.arch.n_kv_heads * self.arch.head_dim * 4;
+            let carry = kv.capacity_tokens * self.arch.n_kv_heads * self.arch.head_dim * 4;
             let mut k = Vec::with_capacity(self.arch.n_layers);
             let mut v = Vec::with_capacity(self.arch.n_layers);
-            for _ in 0..self.arch.n_layers {
-                k.push(self.ctx.new_buffer_checked(per_layer)?);
-                v.push(self.ctx.new_buffer_checked(per_layer)?);
+            for layer in 0..self.arch.n_layers {
+                let nk = self.ctx.new_buffer_checked(per_layer)?;
+                let nv = self.ctx.new_buffer_checked(per_layer)?;
+                if carry > 0 {
+                    // Safety: both buffers are shared storage and `carry` is the
+                    // old capacity in bytes, which the new buffers exceed.
+                    unsafe {
+                        std::ptr::copy_nonoverlapping(
+                            kv.k[layer].contents() as *const u8, nk.contents() as *mut u8, carry);
+                        std::ptr::copy_nonoverlapping(
+                            kv.v[layer].contents() as *const u8, nv.contents() as *mut u8, carry);
+                    }
+                }
+                k.push(nk);
+                v.push(nv);
             }
-            *kv = KvBuffers {
-                k,
-                v,
-                capacity_tokens: tokens,
-            };
+            *kv = KvBuffers { k, v, capacity_tokens: tokens };
             Ok(())
         }
 
@@ -709,6 +722,17 @@ pub mod gpu {
         /// Run `tokens` from an empty KV cache; returns the logits after the
         /// final token, plus what the run cost.
         pub fn forward(&self, tokens: &[u32]) -> Result<(Vec<f32>, ForwardStats)> {
+            self.forward_at(tokens, 0)
+        }
+
+        /// Run `tokens` starting at position `start_pos`, keeping whatever the
+        /// cache already holds below it.
+        ///
+        /// This is what makes generation linear instead of quadratic. Each
+        /// position writes its own cache slot, so continuing a sequence is a
+        /// matter of not resetting: replaying the prefix would recompute
+        /// identical keys and values and reach identical logits, just slower.
+        pub fn forward_at(&self, tokens: &[u32], start_pos: usize) -> Result<(Vec<f32>, ForwardStats)> {
             if tokens.is_empty() {
                 return Err(Error::Gravity("forward: no tokens".into()));
             }
@@ -727,7 +751,7 @@ pub mod gpu {
             let rope_buf = self.pool.get(self.ctx, "rope", a.head_dim);
             let logits_buf = self.pool.get(self.ctx, "logits", a.vocab_size);
 
-            self.reserve_kv(tokens.len())?;
+            self.reserve_kv(start_pos + tokens.len())?;
             let kv = self.kv.borrow();
             let zeros = vec![0f32; a.hidden];
             let mut logits = Vec::new();
@@ -738,7 +762,8 @@ pub mod gpu {
 
             let t_start = Instant::now();
             let mut t_token = t_start;
-            for (pos, &token) in tokens.iter().enumerate() {
+            for (step, &token) in tokens.iter().enumerate() {
+                let pos = start_pos + step;
                 if token as usize >= a.vocab_size {
                     return Err(Error::Gravity(format!(
                         "token {token} out of range for vocab_size {}",
@@ -831,7 +856,7 @@ pub mod gpu {
                     .per_token_ms
                     .push(now.duration_since(t_token).as_secs_f64() * 1e3);
                 t_token = now;
-                if pos == 0 {
+                if step == 0 {
                     stats.first_token_ms = t_start.elapsed().as_secs_f64() * 1e3;
                 }
             }

@@ -179,6 +179,14 @@ impl Engine for GravityEngine {
         &self.arch
     }
 
+    // Deliberately NOT implementing encode_prompt_for_batch /
+    // decode_token_for_batch. The trait's contract is that an engine without
+    // server-side batching keeps those defaults and the server falls back to
+    // `generate`. Implementing them advertises a batching path this engine
+    // does not have -- the server then admits the request into a slot,
+    // prefill_slot is unimplemented, and the caller gets an empty completion
+    // with a 200. Claiming half a capability is worse than claiming none.
+
     /// Positions must be the contiguous run the cache actually holds. The
     /// runtime writes each position into its own slot, so an arbitrary
     /// position list would silently read slots nobody wrote -- and produce

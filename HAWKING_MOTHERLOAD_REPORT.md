@@ -155,9 +155,21 @@ result  free disk 274.6 -> 404.8 GiB at the next window boundary
    Metal context and locks a `Mutex`, so it is `Send + Sync`; `load_engine` dispatches on
    container magic and streams tokens through the reviewed registry. A compile-time
    assertion fails if `Send + Sync` ever regresses.
-6. Point HIDE at the serve boundary. HIDE lives on `build/hide-impl-2026-07-19`, not in
-   this worktree; the boundary it talks to is `hawking-serve`, which reaches models
-   through the registry that now handles `.gravity`.
+6. Give the gravity engine a batch-slot path. `hawking serve --weights <.gravity>` starts,
+   loads through the registry, and `/v1/models` correctly reports the artifact's own model
+   id. Generation does not work yet, and the reason is exact rather than vague: every
+   serve path is continuous-batching, so it needs `encode_prompt_for_batch` **and**
+   `prefill_slot`, and `prefill_slot` plants per-layer KV into the multiseq arena while the
+   gravity runtime keeps its KV in its own per-layer device buffers. That is a real
+   integration, not a shim.
+
+   The trait documents a fallback to plain `generate` for engines without batching. The
+   server does not implement that fallback — it errors at admit. Worth noting because
+   implementing only `encode_prompt_for_batch` makes it *worse*: the request is admitted,
+   `prefill_slot` fails, and the caller gets an empty completion with a 200. That was
+   observed and backed out; claiming half a capability is worse than claiming none.
+
+   HIDE itself lives on `build/hide-impl-2026-07-19`, not in this worktree.
 7. Claim A at equal bytes, using the solved rates already sealed in
    `PROMETHEUS_ARCHITECTURE.json`.
 

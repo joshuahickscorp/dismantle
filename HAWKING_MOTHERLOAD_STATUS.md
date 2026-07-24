@@ -1,9 +1,9 @@
 # Hawking Motherload Completion Status
 
 endpoint: `IN_PROGRESS`  
-gates closed: 4/20  
+gates closed: 5/20  
 ODYSSEY_LAUNCH_AUTHORIZED: `false`  
-updated: 2026-07-24T20:24:06Z
+updated: 2026-07-24T20:28:09Z
 
 | gate | state | condition | note |
 |---|---|---|---|
@@ -15,8 +15,8 @@ updated: 2026-07-24T20:24:06Z
 | M06 | open | acceleration stack is terminal and measured separately |  |
 | M07 | open | GLM runs end to end inside HIDE |  |
 | M08 | open | Prometheus S0 and source decision are sealed |  |
-| M09 | open | Prometheus architecture and profiles are implemented |  |
-| M10 | open | equal-budget Claim A is sealed |  |
+| M09 | green | Prometheus architecture and profiles are implemented | all 14 Revision 3 §7 components implemented and wired: 8 measured, 5 gated with named gates, 1 sealer; profiles general/math/uniform/random compiled and hashed; equal-budget solver matches all four arms to 0.0175% at 46.70 GB |
+| M10 | running | equal-budget Claim A is sealed | Claim A NOT_SEALED and correctly so: allocation plans are byte-matched and ready, but retention is deliberately null -- at equal bytes retention IS the claim. Blocked on S0.8 cartography membership and the served flagship. |
 | M11 | open | General and Math artifacts are selected and verified |  |
 | M12 | running | Forge, continuity, sovereignty, and Limit Registry are sealed | sovereignty spine + 13 invariants green; false_refusal/boundary_error gated on a served model |
 | M13 | running | Odyssey substrate and training bundle are complete | training bundle complete: plan T0-T5, objective/checkpoint/evaluation contracts, data + teacher-trace manifests, profile manifest; substrate itself still GATED on M11 and declared so rather than named speculatively |

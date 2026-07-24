@@ -31,27 +31,34 @@
    }
   ]
  },
- "at": "2026-07-24T19:38:07Z",
+ "at": "2026-07-24T20:14:37Z",
  "git": {
   "branch": "campaign/glm52-generation-b",
-  "dirty_count": 4,
+  "dirty_count": 11,
   "dirty_paths": [
-   "HAWKING_CAMPAIGN_LEDGER.jsonl",
-   "HAWKING_CAMPAIGN_STATUS.json",
-   "HAWKING_MOTHERLOAD_LIVE_AUDIT.json",
-   "tools/campaign/motherload.py"
+   "HAWKING_GRAVITY_BASE_TPS.json",
+   "HAWKING_MOTHERLOAD_LEDGER.jsonl",
+   "HAWKING_MOTHERLOAD_STATUS.json",
+   "HAWKING_MOTHERLOAD_STATUS.md",
+   "crates/hawking-core/src/gravity.rs",
+   "crates/hawking-core/src/gravity_llama.rs",
+   "crates/hawking-core/src/lib.rs",
+   "crates/hawking-core/src/gravity_glm.rs",
+   "crates/hawking-core/tests/fixtures/gravity_glm/",
+   "crates/hawking-core/tests/gravity_glm_forward.rs",
+   "tools/condense/glm52_gravity_fixture.py"
   ],
-  "head": "13457656b98d0341f13818e2f98763ac02029d85",
-  "head_subject": "Execute a complete token out of .gravity, graded against the frozen oracle",
-  "unpushed": 8,
+  "head": "49629d15ba3c7b1fa373c67fa51f5fc438af619b",
+  "head_subject": "Collapse the token into one command buffer, and 3.2x the base runtime",
+  "unpushed": 11,
   "upstream": "origin/campaign/glm52-generation-b"
  },
  "host": {
   "cpu_count": 28,
-  "free_disk_bytes": 425780207616,
-  "free_disk_gib": 396.5,
+  "free_disk_bytes": 294872903680,
+  "free_disk_gib": 274.6,
   "physical_memory_bytes": 103079215104,
-  "swap_raw": "total = 11264.00M  used = 10140.06M  free = 1123.94M  (encrypted)"
+  "swap_raw": "total = 16384.00M  used = 15397.19M  free = 986.81M  (encrypted)"
  },
  "processes": {
   "hawking_lane_count": 2,
@@ -68,14 +75,14 @@
    }
   ],
   "mop_isolation": "UNTOUCHED -- separate project, not read or signalled by this campaign",
-  "mop_process_count": 16
+  "mop_process_count": 17
  },
  "root": "/Users/scammermike/Downloads/hawking",
  "schema": "hawking.motherload.live_audit.v1",
  "source": {
   "controller": {
    "eviction_paused": false,
-   "heartbeat_age_seconds": 124.3,
+   "heartbeat_age_seconds": 50.9,
    "launchd_label": "com.hawking.glm52.source-fetch",
    "launchd_loaded": true,
    "lease_held": true,
@@ -90,18 +97,18 @@
    }
   },
   "faults_total": 0,
-  "fraction_verified": 0.1283,
+  "fraction_verified": 0.2065,
   "healthy": true,
   "repo": "zai-org/GLM-5.2",
-  "resident_bytes": 193241580856,
-  "resident_shard_files": 37,
+  "resident_bytes": 311192735512,
+  "resident_shard_files": 59,
   "revision": "b4734de4facf877f85769a911abafc5283eab3d9",
-  "shards_probed": 33,
-  "shards_verified": 37,
+  "shards_probed": 55,
+  "shards_verified": 59,
   "state": "RUNNING",
   "teacher_capsules": 10,
   "total_source_shards": 282,
-  "window": "W001",
+  "window": "W003",
   "window_count": 20
  }
 }

@@ -1,5 +1,5 @@
 {
- "completion_fraction": 0.2,
+ "completion_fraction": 0.25,
  "endpoint": "IN_PROGRESS",
  "gates": {
   "M01": {
@@ -51,16 +51,16 @@
    "state": "OPEN"
   },
   "M09": {
-   "at": null,
+   "at": "2026-07-24T20:28:09Z",
    "desc": "Prometheus architecture and profiles are implemented",
-   "note": "",
-   "state": "OPEN"
+   "note": "all 14 Revision 3 \u00a77 components implemented and wired: 8 measured, 5 gated with named gates, 1 sealer; profiles general/math/uniform/random compiled and hashed; equal-budget solver matches all four arms to 0.0175% at 46.70 GB",
+   "state": "GREEN"
   },
   "M10": {
-   "at": null,
+   "at": "2026-07-24T20:28:09Z",
    "desc": "equal-budget Claim A is sealed",
-   "note": "",
-   "state": "OPEN"
+   "note": "Claim A NOT_SEALED and correctly so: allocation plans are byte-matched and ready, but retention is deliberately null -- at equal bytes retention IS the claim. Blocked on S0.8 cartography membership and the served flagship.",
+   "state": "IN_PROGRESS"
   },
   "M11": {
    "at": null,
@@ -123,9 +123,9 @@
    "state": "OPEN"
   }
  },
- "gates_closed": 4,
+ "gates_closed": 5,
  "gates_total": 20,
  "odyssey_launch_authorized": false,
  "schema": "hawking.motherload.status.v1",
- "updated_at": "2026-07-24T20:24:06Z"
+ "updated_at": "2026-07-24T20:28:09Z"
 }

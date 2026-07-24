@@ -105,9 +105,9 @@
    "state": "GREEN"
   },
   "M18": {
-   "at": "2026-07-24T20:32:36Z",
+   "at": "2026-07-24T20:37:27Z",
    "desc": "rollback/source lifecycle is green",
-   "note": "eviction gate unblocked and verified: 33/33 deferred shards AUTHORIZED, 0 refused, after re-seeding the teacher chain L00-L15 under the live 256-token calibration; ~176 GB frees at the next window boundary",
+   "note": "eviction VERIFIED FIRING: free disk 274.6 -> 404.8 GiB at the W003/W004 boundary, 1 EVICT event, 0 faults; traversal now sustainable to 282/282",
    "state": "IN_PROGRESS"
   },
   "M19": {
@@ -127,5 +127,5 @@
  "gates_total": 20,
  "odyssey_launch_authorized": false,
  "schema": "hawking.motherload.status.v1",
- "updated_at": "2026-07-24T20:37:07Z"
+ "updated_at": "2026-07-24T20:37:27Z"
 }

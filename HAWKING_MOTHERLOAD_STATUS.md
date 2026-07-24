@@ -3,7 +3,7 @@
 endpoint: `IN_PROGRESS`  
 gates closed: 5/20  
 ODYSSEY_LAUNCH_AUTHORIZED: `false`  
-updated: 2026-07-24T20:37:07Z
+updated: 2026-07-24T20:37:27Z
 
 | gate | state | condition | note |
 |---|---|---|---|
@@ -24,6 +24,6 @@ updated: 2026-07-24T20:37:07Z
 | M15 | green | Lean/Mathlib and evidence environment are pinned | Lean leanprover/lean4:v4.15.0 and Mathlib v4.15.0 pinned to concrete revisions; validator rejects 'latest'; container digest declared with gate ODYSSEY-ENV-01 |
 | M16 | green | Odyssey dry-run validation passes | odyssey_package.py validate: 86 checks, 0 failed, DRY_RUN_PASS; selftest proves a flipped fence FAILS validation and the runner exits 1 |
 | M17 | green | ODYSSEY_LAUNCH_AUTHORIZED remains false | ODYSSEY_LAUNCH_AUTHORIZED=false; the builder reads the fence and never writes it, so rebuilding cannot authorize a run |
-| M18 | running | rollback/source lifecycle is green | eviction gate unblocked and verified: 33/33 deferred shards AUTHORIZED, 0 refused, after re-seeding the teacher chain L00-L15 under the live 256-token calibration; ~176 GB frees at the next window boundary |
+| M18 | running | rollback/source lifecycle is green | eviction VERIFIED FIRING: free disk 274.6 -> 404.8 GiB at the W003/W004 boundary, 1 EVICT event, 0 faults; traversal now sustainable to 282/282 |
 | M19 | open | all campaign commits are pushed |  |
 | M20 | open | worktree and process state are clean except intentional detached services |  |

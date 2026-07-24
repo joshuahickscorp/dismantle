@@ -31,34 +31,28 @@
    }
   ]
  },
- "at": "2026-07-24T20:14:37Z",
+ "at": "2026-07-24T20:18:59Z",
  "git": {
   "branch": "campaign/glm52-generation-b",
-  "dirty_count": 11,
+  "dirty_count": 5,
   "dirty_paths": [
-   "HAWKING_GRAVITY_BASE_TPS.json",
    "HAWKING_MOTHERLOAD_LEDGER.jsonl",
    "HAWKING_MOTHERLOAD_STATUS.json",
    "HAWKING_MOTHERLOAD_STATUS.md",
-   "crates/hawking-core/src/gravity.rs",
-   "crates/hawking-core/src/gravity_llama.rs",
-   "crates/hawking-core/src/lib.rs",
-   "crates/hawking-core/src/gravity_glm.rs",
-   "crates/hawking-core/tests/fixtures/gravity_glm/",
-   "crates/hawking-core/tests/gravity_glm_forward.rs",
-   "tools/condense/glm52_gravity_fixture.py"
+   "odyssey/",
+   "tools/campaign/odyssey_package.py"
   ],
-  "head": "49629d15ba3c7b1fa373c67fa51f5fc438af619b",
-  "head_subject": "Collapse the token into one command buffer, and 3.2x the base runtime",
-  "unpushed": 11,
+  "head": "a594fddb7f71ed112602eec3f241fceb59b6bafd",
+  "head_subject": "Execute GLM-5.2 out of .gravity: MLA, DSA, IndexShare, and the noaux_tc router",
+  "unpushed": 0,
   "upstream": "origin/campaign/glm52-generation-b"
  },
  "host": {
   "cpu_count": 28,
-  "free_disk_bytes": 294872903680,
+  "free_disk_bytes": 294879686656,
   "free_disk_gib": 274.6,
   "physical_memory_bytes": 103079215104,
-  "swap_raw": "total = 16384.00M  used = 15397.19M  free = 986.81M  (encrypted)"
+  "swap_raw": "total = 16384.00M  used = 15325.19M  free = 1058.81M  (encrypted)"
  },
  "processes": {
   "hawking_lane_count": 2,
@@ -75,14 +69,14 @@
    }
   ],
   "mop_isolation": "UNTOUCHED -- separate project, not read or signalled by this campaign",
-  "mop_process_count": 17
+  "mop_process_count": 16
  },
  "root": "/Users/scammermike/Downloads/hawking",
  "schema": "hawking.motherload.live_audit.v1",
  "source": {
   "controller": {
    "eviction_paused": false,
-   "heartbeat_age_seconds": 50.9,
+   "heartbeat_age_seconds": 353.0,
    "launchd_label": "com.hawking.glm52.source-fetch",
    "launchd_loaded": true,
    "lease_held": true,

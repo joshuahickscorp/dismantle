@@ -280,7 +280,7 @@ pub mod gpu {
     use crate::gravity::{pq_row, pq_sections, parse_pq_header, PqHeader};
     use crate::metal::{MetalContext, TokenCommandBuffer};
     use metal::Buffer;
-    use std::cell::RefCell;
+    use std::sync::Mutex;
     use std::time::Instant;
 
     /// Mirror of `GravityPQParams` in `shaders/gravity_pq.metal`: eight
@@ -335,19 +335,20 @@ pub mod gpu {
     /// must still be two buffers, and a size key would silently alias them
     /// into one.
     struct BufPool {
-        buffers: RefCell<HashMap<&'static str, Buffer>>,
+        buffers: Mutex<HashMap<&'static str, Buffer>>,
     }
 
     impl BufPool {
         fn new() -> BufPool {
             BufPool {
-                buffers: RefCell::new(HashMap::new()),
+                buffers: Mutex::new(HashMap::new()),
             }
         }
 
         fn get(&self, ctx: &MetalContext, role: &'static str, elems: usize) -> Buffer {
             self.buffers
-                .borrow_mut()
+                .lock()
+                .expect("buffer pool mutex")
                 .entry(role)
                 .or_insert_with(|| ctx.new_buffer(elems * std::mem::size_of::<f32>()))
                 .clone()
@@ -385,8 +386,8 @@ pub mod gpu {
         pub per_token_ms: Vec<f64>,
     }
 
-    pub struct GravityLlamaGpu<'ctx> {
-        ctx: &'ctx MetalContext,
+    pub struct GravityLlamaGpu {
+        ctx: MetalContext,
         pub arch: GravityLlamaArch,
         weights: HashMap<String, GpuWeight>,
         /// Raw `gravity-pq` payload of the embedding table, kept for row
@@ -402,7 +403,7 @@ pub mod gpu {
         /// longest run seen so far. Attention reads them in place, so the
         /// only thing crossing the bus per layer is q/k/v and the attention
         /// output -- not the O(seq_len) cache.
-        kv: RefCell<KvBuffers>,
+        kv: Mutex<KvBuffers>,
     }
 
     #[derive(Default)]
@@ -412,12 +413,19 @@ pub mod gpu {
         capacity_tokens: usize,
     }
 
-    impl<'ctx> GravityLlamaGpu<'ctx> {
-        pub fn open(
-            ctx: &'ctx MetalContext,
+    impl GravityLlamaGpu {
+        /// Open with a context this model owns. An `Engine` must be `Send +
+        /// Sync`, and a borrowed context makes that impossible to express, so
+        /// the model holds its own rather than living inside someone's scope.
+        pub fn open(path: &Path, verify_hash: bool) -> Result<GravityLlamaGpu> {
+            Self::open_with(MetalContext::new()?, path, verify_hash)
+        }
+
+        pub fn open_with(
+            ctx: MetalContext,
             path: &Path,
             verify_hash: bool,
-        ) -> Result<GravityLlamaGpu<'ctx>> {
+        ) -> Result<GravityLlamaGpu> {
             let t0 = Instant::now();
             let shard = GravityShard::open(path)?;
             let arch = GravityLlamaArch::from_header(&shard.extra)?;
@@ -491,7 +499,7 @@ pub mod gpu {
                 load_ms: t0.elapsed().as_secs_f64() * 1e3,
                 device_bytes,
                 pool: BufPool::new(),
-                kv: RefCell::new(KvBuffers::default()),
+                kv: Mutex::new(KvBuffers::default()),
             })
         }
 
@@ -509,7 +517,7 @@ pub mod gpu {
         /// a forgotten prefix produces fluent, confident, wrong continuations
         /// that nothing downstream would flag.
         fn reserve_kv(&self, tokens: usize) -> Result<()> {
-            let mut kv = self.kv.borrow_mut();
+            let mut kv = self.kv.lock().expect("kv mutex");
             if kv.capacity_tokens >= tokens && !kv.k.is_empty() {
                 return Ok(());
             }
@@ -740,19 +748,19 @@ pub mod gpu {
             let kv_width = a.n_kv_heads * a.head_dim;
             let inter = self.pq("model.layers.0.mlp.gate_proj.weight")?.params.rows as usize;
 
-            let x_buf = self.pool.get(self.ctx, "x", a.hidden);
-            let x_norm_buf = self.pool.get(self.ctx, "x_norm", a.hidden);
-            let q_buf = self.pool.get(self.ctx, "q", a.n_heads * a.head_dim);
-            let attn_buf = self.pool.get(self.ctx, "attn", a.n_heads * a.head_dim);
-            let gate_buf = self.pool.get(self.ctx, "gate", inter);
-            let up_buf = self.pool.get(self.ctx, "up", inter);
-            let act_buf = self.pool.get(self.ctx, "act", inter);
-            let o_buf = self.pool.get(self.ctx, "o", a.hidden);
-            let rope_buf = self.pool.get(self.ctx, "rope", a.head_dim);
-            let logits_buf = self.pool.get(self.ctx, "logits", a.vocab_size);
+            let x_buf = self.pool.get(&self.ctx, "x", a.hidden);
+            let x_norm_buf = self.pool.get(&self.ctx, "x_norm", a.hidden);
+            let q_buf = self.pool.get(&self.ctx, "q", a.n_heads * a.head_dim);
+            let attn_buf = self.pool.get(&self.ctx, "attn", a.n_heads * a.head_dim);
+            let gate_buf = self.pool.get(&self.ctx, "gate", inter);
+            let up_buf = self.pool.get(&self.ctx, "up", inter);
+            let act_buf = self.pool.get(&self.ctx, "act", inter);
+            let o_buf = self.pool.get(&self.ctx, "o", a.hidden);
+            let rope_buf = self.pool.get(&self.ctx, "rope", a.head_dim);
+            let logits_buf = self.pool.get(&self.ctx, "logits", a.vocab_size);
 
             self.reserve_kv(start_pos + tokens.len())?;
-            let kv = self.kv.borrow();
+            let kv = self.kv.lock().expect("kv mutex");
             let zeros = vec![0f32; a.hidden];
             let mut logits = Vec::new();
             let mut stats = ForwardStats {
@@ -780,7 +788,7 @@ pub mod gpu {
                 write_f32(&o_buf, &zeros);
                 let seq_len = pos + 1;
 
-                let mut tcb = TokenCommandBuffer::new(self.ctx);
+                let mut tcb = TokenCommandBuffer::new(&self.ctx);
                 for layer in 0..a.n_layers {
                     let p = format!("model.layers.{layer}.");
 
@@ -863,5 +871,17 @@ pub mod gpu {
             stats.total_ms = t_start.elapsed().as_secs_f64() * 1e3;
             Ok((logits, stats))
         }
+    }
+}
+
+/// `GravityLlamaGpu` must be `Send + Sync` to be served behind the `Engine`
+/// trait. This fails to compile the moment that stops being true, which is
+/// the only way to notice: nothing else in the crate would.
+#[cfg(all(test, target_os = "macos"))]
+mod gpu_bounds {
+    fn _assert_send_sync<T: Send + Sync>() {}
+    #[test]
+    fn gravity_llama_gpu_is_send_and_sync() {
+        _assert_send_sync::<super::gpu::GravityLlamaGpu>();
     }
 }

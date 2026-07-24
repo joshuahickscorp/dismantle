@@ -80,7 +80,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     drop(shard);
 
     let ctx = MetalContext::new()?;
-    let model = GravityLlamaGpu::open(&ctx, &artifact, true)?;
+    let model = GravityLlamaGpu::open_with(ctx, &artifact, true)?;
 
     let mut ids = tokenizer.encode(&prompt, true)?;
     let prompt_len = ids.len();

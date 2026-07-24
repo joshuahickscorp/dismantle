@@ -131,6 +131,12 @@ def pack_model(model_dir: Path, out_path: Path, rung_name: str = "R0",
                       "intermediate_size": config.get("intermediate_size"),
                       "vocab_size": config.get("vocab_size"),
                       "rope_theta": config.get("rope_theta"),
+                      # Without this a reader silently falls back to plain RoPE and is
+                      # wrong by a factor of 32 on long positions. A container that needs
+                      # the source config to be served is not self-describing.
+                      "rope_scaling": config.get("rope_scaling"),
+                      "head_dim": config.get("head_dim"),
+                      "tie_word_embeddings": config.get("tie_word_embeddings"),
                       "rms_norm_eps": config.get("rms_norm_eps")},
         tokenizer={"source": "tokenizer.json", "dir": str(model_dir)},
         compression={"codec": "gravity-pq", "production_rung": rung["rung"],

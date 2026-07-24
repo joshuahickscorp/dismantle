@@ -126,3 +126,66 @@ fn gravity_llama_forward_matches_frozen_oracle() {
     );
     assert_eq!(got_top5, reference.top5, "top-5");
 }
+
+/// The resident-GPU path executes the same artifact and must reach the same
+/// oracle. Tolerance is looser than the CPU test because each row's
+/// reduction is an `fma` chain plus a `simd_sum`, which reassociates the sum
+/// the CPU path performs strictly left-to-right; over 16 layers that
+/// accumulates.
+#[cfg(target_os = "macos")]
+#[test]
+fn gravity_llama_gpu_forward_matches_frozen_oracle() {
+    use hawking_core::gravity_llama::gpu::GravityLlamaGpu;
+    use hawking_core::metal::MetalContext;
+
+    let Some(art) = artifact_path() else {
+        eprintln!("skipping gravity_llama_gpu_forward: no llama32-1b .gravity artifact on disk");
+        return;
+    };
+    let dir = fixtures_dir();
+    let reference: Reference =
+        serde_json::from_slice(&std::fs::read(dir.join("ref_3tok.json")).expect("read ref_3tok"))
+            .expect("parse ref_3tok");
+    let want: Vec<f32> = std::fs::read(dir.join("ref_logits_3tok.f32"))
+        .expect("read ref logits")
+        .chunks_exact(4)
+        .map(|c| f32::from_le_bytes(c.try_into().unwrap()))
+        .collect();
+
+    let ctx = MetalContext::new().expect("metal context");
+    let model = GravityLlamaGpu::open(&ctx, &art, true).expect("open .gravity artifact on device");
+    let (got, stats) = model.forward(&reference.tokens).expect("gpu forward");
+    assert_eq!(got.len(), want.len(), "logit count");
+
+    let max_abs = got
+        .iter()
+        .zip(want.iter())
+        .map(|(a, b)| (a - b).abs())
+        .fold(0f32, f32::max);
+    eprintln!(
+        "gravity_llama_gpu_forward: max |logit diff| vs oracle = {max_abs:.6e}, \
+         device_bytes={}, load_ms={:.0}, cmd_buffers={}, dispatches={}",
+        model.device_bytes, model.load_ms, stats.command_buffers, stats.dispatches
+    );
+
+    for (i, (&a, &b)) in got.iter().zip(want.iter()).enumerate() {
+        let tol = 1e-2 + 1e-3 * b.abs();
+        assert!(
+            (a - b).abs() <= tol,
+            "logit {i}: got {a}, want {b}, diff {} > tol {tol}",
+            (a - b).abs()
+        );
+    }
+
+    let got_top5 = top_k(&got, 5);
+    assert_eq!(got_top5[0], reference.argmax, "argmax");
+    assert_eq!(got_top5, reference.top5, "top-5");
+
+    // Device bytes must be the artifact's packed bytes, not a widened copy:
+    // the whole claim of the format is that what it stores is what it runs.
+    assert!(
+        model.device_bytes < 150 * 1024 * 1024,
+        "device_bytes {} suggests something was widened on upload",
+        model.device_bytes
+    );
+}

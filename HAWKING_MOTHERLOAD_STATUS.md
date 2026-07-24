@@ -3,11 +3,11 @@
 endpoint: `IN_PROGRESS`  
 gates closed: 4/20  
 ODYSSEY_LAUNCH_AUTHORIZED: `false`  
-updated: 2026-07-24T20:18:59Z
+updated: 2026-07-24T20:24:06Z
 
 | gate | state | condition | note |
 |---|---|---|---|
-| M01 | running | GLM traversal is 282/282 | GLM source traversal live: 37/282 verified, window W001/20, launchd com.hawking.glm52.source-fetch pid 72608, 0 faults |
+| M01 | running | GLM traversal is 282/282 | traversal live at 59/282 (W003); eviction had authorized nothing for 3 windows because every teacher capsule was sealed under the retired 8-token calibration -- stale capsules archived with a withdrawal receipt and the chain re-seeded from layer 0 under the live 256-token corpus calibration |
 | M02 | open | complete local GLM .gravity artifact exists |  |
 | M03 | open | lowest broad parity rate is sealed, sub-bit preferred and H15 maximum |  |
 | M04 | running | full GLM token executes from .gravity | GLM adapter (MLA+DSA+IndexShare+noaux_tc router+routed/shared experts) matches the numpy oracle at 3.8e-6 with argmax, top5 and DSA top-k exact on a tiny-GLM .gravity fixture; flagship artifact still traversing |

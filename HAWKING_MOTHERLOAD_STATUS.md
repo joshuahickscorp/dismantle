@@ -1,9 +1,9 @@
 # Hawking Motherload Completion Status
 
 endpoint: `IN_PROGRESS`  
-gates closed: 12/20  
+gates closed: 13/20  
 ODYSSEY_LAUNCH_AUTHORIZED: `false`  
-updated: 2026-07-25T03:53:08Z
+updated: 2026-07-25T03:53:22Z
 
 | gate | state | condition | note |
 |---|---|---|---|
@@ -26,4 +26,4 @@ updated: 2026-07-25T03:53:08Z
 | M17 | green | ODYSSEY_LAUNCH_AUTHORIZED remains false | ODYSSEY_LAUNCH_AUTHORIZED=false; the builder reads the fence and never writes it, so rebuilding cannot authorize a run |
 | M18 | running | rollback/source lifecycle is green | eviction VERIFIED FIRING: free disk 274.6 -> 404.8 GiB at the W003/W004 boundary, 1 EVICT event, 0 faults; traversal now sustainable to 282/282 |
 | M19 | green | all campaign commits are pushed | 0 unpushed commits, all campaign work pushed to origin/campaign/glm52-generation-b |
-| M20 | open | worktree and process state are clean except intentional detached services |  |
+| M20 | green | worktree and process state are clean except intentional detached services | worktree clean (git status empty), traversal controller exited naturally at 282/282, no stray hawking processes; MOP's 20 processes untouched throughout |

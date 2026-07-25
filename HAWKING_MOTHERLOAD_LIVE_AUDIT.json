@@ -2569,7 +2569,7 @@
    }
   ]
  },
- "at": "2026-07-25T03:53:08Z",
+ "at": "2026-07-25T03:53:22Z",
  "git": {
   "branch": "campaign/glm52-generation-b",
   "dirty_count": 3,
@@ -2578,14 +2578,14 @@
    "HAWKING_MOTHERLOAD_STATUS.json",
    "HAWKING_MOTHERLOAD_STATUS.md"
   ],
-  "head": "078648fd1a2193401c2c570a31cf8fb6af93eee5",
-  "head_subject": "Find the codec's real ceiling, catch a silent geometry bug before trusting it",
+  "head": "7ca87f1959bf5291e9c2ebba97908599cd79e45c",
+  "head_subject": "Seal M08 (Prometheus S0 + source eligibility separation) and M19 (commits pushed)",
   "unpushed": 0,
   "upstream": "origin/campaign/glm52-generation-b"
  },
  "host": {
   "cpu_count": 28,
-  "free_disk_bytes": 455533940736,
+  "free_disk_bytes": 455533236224,
   "free_disk_gib": 424.2,
   "physical_memory_bytes": 103079215104,
   "swap_raw": "total = 2048.00M  used = 970.75M  free = 1077.25M  (encrypted)"

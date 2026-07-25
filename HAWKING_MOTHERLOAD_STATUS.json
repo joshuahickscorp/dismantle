@@ -1,5 +1,5 @@
 {
- "completion_fraction": 0.6,
+ "completion_fraction": 0.65,
  "endpoint": "IN_PROGRESS",
  "gates": {
   "M01": {
@@ -117,15 +117,15 @@
    "state": "GREEN"
   },
   "M20": {
-   "at": null,
+   "at": "2026-07-25T03:53:22Z",
    "desc": "worktree and process state are clean except intentional detached services",
-   "note": "",
-   "state": "OPEN"
+   "note": "worktree clean (git status empty), traversal controller exited naturally at 282/282, no stray hawking processes; MOP's 20 processes untouched throughout",
+   "state": "GREEN"
   }
  },
- "gates_closed": 12,
+ "gates_closed": 13,
  "gates_total": 20,
  "odyssey_launch_authorized": false,
  "schema": "hawking.motherload.status.v1",
- "updated_at": "2026-07-25T03:53:08Z"
+ "updated_at": "2026-07-25T03:53:22Z"
 }

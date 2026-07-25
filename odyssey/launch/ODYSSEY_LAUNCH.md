@@ -14,10 +14,11 @@ Odyssey is **prepared and not started**. `ODYSSEY_LAUNCH_AUTHORIZED` is `false`.
 
 ## What is not ready, and why
 
-The Odyssey training substrate is the compact Math artifact Prometheus selects, and that
-selection is gated on the flagship traversal (gate M11). Odyssey trains that artifact and
-nothing else; substituting an available model would be a different experiment wearing this
-one's name.
+The Odyssey training substrate is the compact Math artifact Prometheus selects.
+It remains gated on AMENDED-04 (Math-Preserve complete and verified). Odyssey
+trains that artifact and nothing else; substituting an available model would be
+a different experiment wearing this one's name.
+
 
 ## To start Odyssey in the next session
 

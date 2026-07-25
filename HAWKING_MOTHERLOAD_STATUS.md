@@ -1,16 +1,16 @@
 # Hawking Motherload Completion Status
 
 endpoint: `IN_PROGRESS`  
-gates closed: 7/20  
+gates closed: 8/20  
 ODYSSEY_LAUNCH_AUTHORIZED: `false`  
-updated: 2026-07-25T02:22:16Z
+updated: 2026-07-25T02:53:59Z
 
 | gate | state | condition | note |
 |---|---|---|---|
 | M01 | green | GLM traversal is 282/282 | GLM source traversal complete: 282/282 verified, 282/282 packed, 0 faults across the run |
 | M02 | green | complete local GLM .gravity artifact exists | complete local GLM .gravity artifact assembled: 282/282 shards, 59585/59585 tensors, 0 missing/undeclared/misplaced, 0.882888 whole-model BPW, 83.14 GB physical (753.3B logical elements), path ~/Library/Application Support/Hawking/Models/GLM-5.2/b4734de4facf877f85769a911abafc5283eab3d9/General-R0/, hardlinked from the packer output (2 links confirmed, zero duplicate bytes) |
 | M03 | open | lowest broad parity rate is sealed, sub-bit preferred and H15 maximum |  |
-| M04 | running | full GLM token executes from .gravity | production path closed on the instrument: load_engine dispatches on container magic, GravityEngine streams tokens through the reviewed registry with no source weights; GLM adapter green on fixture and awaiting the flagship artifact |
+| M04 | green | full GLM token executes from .gravity | GLM-5.2 adapter executes a complete token from the REAL flagship .gravity artifact (282 shards, 83.14GB, 0.883 whole-model BPW) and agrees with an independent numpy oracle reading the same bytes: argmax exact (9540), top5 exact in order, discrete DSA key selection exact ([1,2,0] both), max logit diff 6.08e-5 mean 1.12e-5 across 154880 outputs after 78 real layers of MLA+DSA+256-expert MoE+noaux_tc router. Neither side touches source safetensors. Receipt: GLM52_FLAGSHIP_ADAPTER_PARITY.json |
 | M05 | running | measured base TPS and prefill exist | base measured on the instrument: decode 105.8/68.8/29.2/13.3 tok/s at ctx 128/512/2048/8192, prefill 116.5/92.8/48.8/19.1, 1 command buffer + 210 dispatches per token; end-to-end generation 60.7 tok/s with incremental decode bit-identical to full replay; GLM numbers gated on the flagship artifact |
 | M06 | open | acceleration stack is terminal and measured separately |  |
 | M07 | open | GLM runs end to end inside HIDE |  |

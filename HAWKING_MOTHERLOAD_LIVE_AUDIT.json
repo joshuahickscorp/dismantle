@@ -2569,51 +2569,35 @@
    }
   ]
  },
- "at": "2026-07-25T02:22:16Z",
+ "at": "2026-07-25T02:53:59Z",
  "git": {
   "branch": "campaign/glm52-generation-b",
-  "dirty_count": 5,
+  "dirty_count": 4,
   "dirty_paths": [
    "HAWKING_MOTHERLOAD_LEDGER.jsonl",
    "HAWKING_MOTHERLOAD_STATUS.json",
    "HAWKING_MOTHERLOAD_STATUS.md",
-   "GLM52_ASSEMBLY_COVERAGE.json",
-   "GLM52_ASSEMBLY_RESULT.json"
+   "GLM52_FLAGSHIP_ADAPTER_PARITY.json"
   ],
-  "head": "c3258b222e13db4a0889fe07854c5da84d08c13a",
-  "head_subject": "Grade the packer's coverage now, not after six more hours of traversal",
+  "head": "ee154578982592031e3e7319d462958010c77906",
+  "head_subject": "Read the flagship lazily, and run the GLM adapter on the real 77 GB artifact",
   "unpushed": 0,
   "upstream": "origin/campaign/glm52-generation-b"
  },
  "host": {
   "cpu_count": 28,
-  "free_disk_bytes": 375416307712,
-  "free_disk_gib": 349.6,
+  "free_disk_bytes": 464843427840,
+  "free_disk_gib": 432.9,
   "physical_memory_bytes": 103079215104,
-  "swap_raw": "total = 22528.00M  used = 21448.31M  free = 1079.69M  (encrypted)"
+  "swap_raw": "total = 2048.00M  used = 970.75M  free = 1077.25M  (encrypted)"
  },
  "processes": {
-  "hawking_lane_count": 4,
+  "hawking_lane_count": 1,
   "hawking_lanes": [
    {
-    "command": "/Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python /Users/scammermike/Downloads/hawking/tools/condense/glm52_source_fetch.py run",
-    "pgid": 72608,
-    "pid": 72608
-   },
-   {
-    "command": "/usr/bin/caffeinate -is -- /Users/scammermike/Downloads/hawking/.venv/glm52/bin/python /Users/scammermike/Downloads/hawking/tools/condense/glm52_source_fetch.py run",
-    "pgid": 72608,
-    "pid": 72610
-   },
-   {
-    "command": "/bin/zsh -c source /Users/scammermike/.claude/shell-snapshots/snapshot-zsh-1784921259391-u21b7j.sh 2>/dev/null || true && setopt NO_EXTENDED_GLOB NO_BARE_GLOB_QUAL 2>/dev/null || t",
-    "pgid": 89245,
-    "pid": 89245
-   },
-   {
-    "command": "/bin/zsh -c source /Users/scammermike/.claude/shell-snapshots/snapshot-zsh-1784921259391-u21b7j.sh 2>/dev/null || true && setopt NO_EXTENDED_GLOB NO_BARE_GLOB_QUAL 2>/dev/null || t",
-    "pgid": 96360,
-    "pid": 96360
+    "command": "/Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python /Users/scammermike/Downloads/hawking/tools/condense/glm52_source_fetch.py safe-to-leav",
+    "pgid": 13068,
+    "pid": 13068
    }
   ],
   "mop_isolation": "UNTOUCHED -- separate project, not read or signalled by this campaign",
@@ -2623,34 +2607,28 @@
  "schema": "hawking.motherload.live_audit.v1",
  "source": {
   "controller": {
-   "eviction_paused": false,
-   "heartbeat_age_seconds": 21.5,
+   "eviction_paused": null,
+   "heartbeat_age_seconds": 1374.6,
    "launchd_label": "com.hawking.glm52.source-fetch",
    "launchd_loaded": true,
-   "lease_held": true,
+   "lease_held": false,
    "lease_path": "/Users/scammermike/Library/Application Support/Hawking/GLM52Gravity/source_fetch/fetch.lock",
-   "pids": [
-    72608,
-    72610
-   ],
-   "pids_alive": {
-    "72608": true,
-    "72610": true
-   }
+   "pids": [],
+   "pids_alive": {}
   },
   "faults_total": 0,
   "fraction_verified": 1.0,
-  "healthy": true,
+  "healthy": false,
   "repo": "zai-org/GLM-5.2",
-  "resident_bytes": 69978460328,
-  "resident_shard_files": 14,
+  "resident_bytes": 0,
+  "resident_shard_files": 0,
   "revision": "b4734de4facf877f85769a911abafc5283eab3d9",
-  "shards_probed": 279,
+  "shards_probed": 282,
   "shards_verified": 282,
-  "state": "RUNNING",
-  "teacher_capsules": 32,
+  "state": "ALL_SHARDS_VERIFIED",
+  "teacher_capsules": 33,
   "total_source_shards": 282,
-  "window": "W019",
-  "window_count": 20
+  "window": null,
+  "window_count": null
  }
 }

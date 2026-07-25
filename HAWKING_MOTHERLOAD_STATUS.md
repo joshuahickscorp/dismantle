@@ -3,7 +3,7 @@
 endpoint: `IN_PROGRESS`  
 gates closed: 13/20  
 ODYSSEY_LAUNCH_AUTHORIZED: `false`  
-updated: 2026-07-25T03:56:09Z
+updated: 2026-07-25T03:56:45Z
 
 | gate | state | condition | note |
 |---|---|---|---|
@@ -17,7 +17,7 @@ updated: 2026-07-25T03:56:09Z
 | M08 | green | Prometheus S0 and source decision are sealed | Prometheus S0 sealed: S0.1 dtype=bfloat16 full_precision=true, S0.2 arch graph GlmMoeDsaForCausalLM 78L/256E validated PASS, S0.3 decoder bit-exactness MEASURED (fixture 3.84e-6, flagship 6.08e-5, both sealed separately), S0.4 streaming traversal complete, S0.6 census via GLM52_LOGICAL_WEIGHT_LEDGER.json (cross-validated 3 independent sources). claim_a_source_eligible=true, hide_eligible=true, explicitly separated per Rev3 S8.1 -- GLM's HIDE eligibility does not depend on Claim-A flagship eligibility or vice versa. S0.5 (numerical hygiene) and S0.7 (baseline capability) remain gated on a served model. |
 | M09 | green | Prometheus architecture and profiles are implemented | all 14 Revision 3 §7 components implemented and wired: 8 measured, 5 gated with named gates, 1 sealer; profiles general/math/uniform/random compiled and hashed; equal-budget solver matches all four arms to 0.0175% at 46.70 GB |
 | M10 | running | equal-budget Claim A is sealed | Claim A NOT_SEALED and correctly so: allocation plans are byte-matched and ready, but retention is deliberately null -- at equal bytes retention IS the claim. Blocked on S0.8 cartography membership and the served flagship. |
-| M11 | open | General and Math artifacts are selected and verified |  |
+| M11 | running | General and Math artifacts are selected and verified | General artifact SELECTED (R0+native head/embed, 0.921bpw) per campaign S12 'lowest defensible' -- not passing, since none passes under the binding one-bit ceiling; known limitation (screening-gate fail) explicitly documented not concealed. Math substrate selection still open (Math profile needs the same cartography-membership gate as General; no rate exists to select FROM regardless of profile). |
 | M12 | green | Forge, continuity, sovereignty, and Limit Registry are sealed | sovereignty sealed for both the Llama instrument and the real GLM-5.2 flagship (282-shard multi-shard manifest, artifact_hash = sha256 of model.gravity.index.json since no single body hash names a multi-shard model, refuses to seal on incomplete coverage -- proven via a synthetic INCOMPLETE fixture). hidden_intervention 0.0, model_continuity 1.0, attribution_completeness 1.0. false_refusal/boundary_error remain GATED on a served model. |
 | M13 | running | Odyssey substrate and training bundle are complete | training bundle complete: plan T0-T5, objective/checkpoint/evaluation contracts, data + teacher-trace manifests, profile manifest; substrate itself still GATED on M11 and declared so rather than named speculatively |
 | M14 | green | sandbox, roles, Ledger, verifiers, Tribunal, and retrieval are scaffolded | sandbox policy (network deny-by-default, filesystem allowlist, emergency stop), 12 roles with promotion held only by verifier and Tribunal, Ledger contract, 4-tier lattice, 7 memory stores, Tribunal + prior-art protocol, retrieval against a pinned snapshot, branch economics, Graveyard |

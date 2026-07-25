@@ -30,9 +30,9 @@
     "tensor_count": 1
    },
    {
-    "body_sha256": "075a7eb0fbffd05713fe3cf9f30061925769108ee83e5b865207b773c1115aa4",
-    "bytes": 327735380,
-    "complete_bpw": 0.9813994761954502,
+    "body_sha256": "38deedeed394abebd47d49c2fd0d3209e01d3ed5473a1985b86cc653357823cd",
+    "bytes": 3925903121,
+    "complete_bpw": 11.756742138858995,
     "model": "zai-org/GLM-5.2",
     "path": "/Users/scammermike/Library/Application Support/Hawking/Models/GLM-5.2/b4734de4facf877f85769a911abafc5283eab3d9/General-R0/model-00001-of-00282.gravity",
     "revision": "b4734de4facf877f85769a911abafc5283eab3d9",
@@ -2569,25 +2569,26 @@
    }
   ]
  },
- "at": "2026-07-25T03:12:15Z",
+ "at": "2026-07-25T03:32:44Z",
  "git": {
   "branch": "campaign/glm52-generation-b",
-  "dirty_count": 4,
+  "dirty_count": 5,
   "dirty_paths": [
    "HAWKING_MODEL_FEEL_PARITY_RESULTS.json",
    "HAWKING_MOTHERLOAD_LEDGER.jsonl",
    "HAWKING_MOTHERLOAD_STATUS.json",
-   "HAWKING_MOTHERLOAD_STATUS.md"
+   "HAWKING_MOTHERLOAD_STATUS.md",
+   "tools/condense/glm52_protect_head_embed.py"
   ],
-  "head": "99c5b5635c07293d084affd5ea066638fc563c8b",
-  "head_subject": "Rewrite the campaign report against the current true state",
+  "head": "6fb018290674d4b1e326b51367a4dd07f8262230",
+  "head_subject": "Seal M03: R0 fails the screening gate with the confound removed",
   "unpushed": 0,
   "upstream": "origin/campaign/glm52-generation-b"
  },
  "host": {
   "cpu_count": 28,
-  "free_disk_bytes": 464837840896,
-  "free_disk_gib": 432.9,
+  "free_disk_bytes": 455559692288,
+  "free_disk_gib": 424.3,
   "physical_memory_bytes": 103079215104,
   "swap_raw": "total = 2048.00M  used = 970.75M  free = 1077.25M  (encrypted)"
  },
@@ -2595,14 +2596,14 @@
   "hawking_lane_count": 0,
   "hawking_lanes": [],
   "mop_isolation": "UNTOUCHED -- separate project, not read or signalled by this campaign",
-  "mop_process_count": 10
+  "mop_process_count": 9
  },
  "root": "/Users/scammermike/Downloads/hawking",
  "schema": "hawking.motherload.live_audit.v1",
  "source": {
   "controller": {
    "eviction_paused": null,
-   "heartbeat_age_seconds": 2848.5,
+   "heartbeat_age_seconds": 3837.8,
    "launchd_label": "com.hawking.glm52.source-fetch",
    "launchd_loaded": true,
    "lease_held": false,

@@ -237,8 +237,21 @@ pub struct GlmTrace {
 }
 
 impl GravityGlm {
+    /// Open a single-shard `.gravity` artifact — the semantic fixture, which
+    /// is small enough to decode eagerly.
     pub fn open(path: &Path, verify_hash: bool) -> Result<GravityGlm> {
         let weights = GravityWeights::open(path, verify_hash)?;
+        let arch = GlmArch::from_header(&weights.header)?;
+        Ok(GravityGlm { arch, weights })
+    }
+
+    /// Open a multi-shard flagship model — every `model-*.gravity` file
+    /// under `dir`, indexed but not decoded. Only 8 of 256 experts activate
+    /// per layer, so eager decode of every shard would waste ~32x the
+    /// necessary work and, at this scale, exceed physical memory; see
+    /// [`crate::gravity::GravityWeights::open_dir`].
+    pub fn open_dir(dir: &Path, verify_hash: bool) -> Result<GravityGlm> {
+        let weights = GravityWeights::open_dir(dir, verify_hash)?;
         let arch = GlmArch::from_header(&weights.header)?;
         Ok(GravityGlm { arch, weights })
     }
@@ -289,8 +302,8 @@ impl GravityGlm {
         let k_raw = self.weights.matvec(&format!("{idx}.wk.weight"), hidden)?;
         let k = layernorm(
             &k_raw,
-            self.weights.dense(&format!("{idx}.k_norm.weight"))?,
-            self.weights.dense(&format!("{idx}.k_norm.bias"))?,
+            &self.weights.dense(&format!("{idx}.k_norm.weight"))?,
+            &self.weights.dense(&format!("{idx}.k_norm.bias"))?,
             1e-6,
         );
 
@@ -455,7 +468,7 @@ impl GravityGlm {
                 let attn_p = format!("{p}.self_attn");
                 let h = rmsnorm(
                     &x,
-                    self.weights.dense(&format!("{p}.input_layernorm.weight"))?,
+                    &self.weights.dense(&format!("{p}.input_layernorm.weight"))?,
                     a.rms_norm_eps,
                 );
 
@@ -463,7 +476,7 @@ impl GravityGlm {
                 let q_a = self.weights.matvec(&format!("{attn_p}.q_a_proj.weight"), &h)?;
                 let q_resid = rmsnorm(
                     &q_a,
-                    self.weights
+                    &self.weights
                         .dense(&format!("{attn_p}.q_a_layernorm.weight"))?,
                     a.rms_norm_eps,
                 );
@@ -478,7 +491,7 @@ impl GravityGlm {
                     .matvec(&format!("{attn_p}.kv_a_proj_with_mqa.weight"), &h)?;
                 let k_latent = rmsnorm(
                     &compressed[..a.kv_lora_rank],
-                    self.weights
+                    &self.weights
                         .dense(&format!("{attn_p}.kv_a_layernorm.weight"))?,
                     a.rms_norm_eps,
                 );
@@ -588,7 +601,7 @@ impl GravityGlm {
 
                 let h2 = rmsnorm(
                     &x,
-                    self.weights
+                    &self.weights
                         .dense(&format!("{p}.post_attention_layernorm.weight"))?,
                     a.rms_norm_eps,
                 );
@@ -616,7 +629,7 @@ impl GravityGlm {
 
             let final_hidden = rmsnorm(
                 &x,
-                self.weights.dense("model.norm.weight")?,
+                &self.weights.dense("model.norm.weight")?,
                 a.rms_norm_eps,
             );
             logits = self.weights.matvec("lm_head.weight", &final_hidden)?;

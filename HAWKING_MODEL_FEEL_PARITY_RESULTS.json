@@ -15,7 +15,13 @@
    "evidence": {
     "prompt": "The capital of France is",
     "greedy_continuation": " settle settle settle settle settle settle settle settle ...",
-    "oracle_top5_for_<bos>Hello_world": ["Ġsettled", "Ġsettles", "Ġsettle", "ewise", "Ġbooster"],
+    "oracle_top5_for_<bos>Hello_world": [
+     "\u0120settled",
+     "\u0120settles",
+     "\u0120settle",
+     "ewise",
+     "\u0120booster"
+    ],
     "note": "the numpy oracle reading the same container through the same codec predicts the same collapsed distribution, so this is the artifact's behaviour and not a runtime defect"
    },
    "execution_correctness": {
@@ -36,12 +42,45 @@
    "verdict": "NOT_MEASURED",
    "gate": "M02: a complete local GLM .gravity artifact",
    "planned_ladder": {
-    "downward": ["H09", "H08", "H07", "H06", "H05", "H04"],
-    "upward_only_if_broad_parity_fails": ["H10", "H12", "H15"],
+    "downward": [
+     "H09",
+     "H08",
+     "H07",
+     "H06",
+     "H05",
+     "H04"
+    ],
+    "upward_only_if_broad_parity_fails": [
+     "H10",
+     "H12",
+     "H15"
+    ],
     "rule": "the lowest passing rate is selected; a low headline never overrides the gate"
    }
+  },
+  {
+   "subject": "GLM-5.2",
+   "role": "flagship",
+   "artifact": "General-R0 (282 shards, 83.14GB, 0.882888 whole-model BPW)",
+   "rung": "R0",
+   "complete_bpw": 0.882888,
+   "stage": "SCREENING_GATE",
+   "verdict": "FAIL",
+   "decisive": true,
+   "evidence": {
+    "prompt": "The capital of France is",
+    "greedy_continuation_observed": " Fired Fired Fired (3 consecutive identical tokens, id 74242)",
+    "note": "exact fixed-point repetition under greedy decoding -- the same failure signature as the Llama-3.2-1B instrument, a different absorbing token. Decisive per the contract: degenerate repetition ends evaluation without further scoring."
+   },
+   "execution_correctness": {
+    "verdict": "PASS (separately sealed)",
+    "reference": "GLM52_FLAGSHIP_ADAPTER_PARITY.json",
+    "note": "the runtime correctly executes what this artifact encodes; the artifact itself, at this rate, does not preserve capability"
+   },
+   "interpretation": "Unlike the Llama-1B instrument (whose collapse bounded nothing about a 744B MoE), this IS the flagship. R0/H09-band (0.883 BPW) does not pass. Per campaign contingency (do not abandon; bracket upward), the next candidate is a higher, less-compressed rate -- which requires source bytes beyond what the R0-lossy artifact can supply, since re-packing at a higher rate from an already-compressed representation would compound error rather than match packing directly from BF16.",
+   "consequence": "M03 cannot select R0 as the passing General artifact. A pilot at a higher rate (targeted, not a blind full re-fetch) is the next step before committing to a full re-fetch+re-pack cycle."
   }
  ],
  "selected_general_artifact": null,
- "selection_gate": "M03: lowest broad parity rate is sealed"
+ "selection_gate": "M03: BLOCKED on R0 fail; upward bracket (H10/H12/H15) required per campaign contingency"
 }

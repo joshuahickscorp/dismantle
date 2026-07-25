@@ -15,10 +15,10 @@
    "state": "GREEN"
   },
   "M03": {
-   "at": null,
+   "at": "2026-07-25T03:01:53Z",
    "desc": "lowest broad parity rate is sealed, sub-bit preferred and H15 maximum",
-   "note": "",
-   "state": "OPEN"
+   "note": "R0/H09-band (0.883 BPW) FAILS the screening gate: greedy continuation of 'The capital of France is' produces 3 consecutive identical tokens (id 74242, ' Fired'), the same fixed-point collapse signature as the Llama-1B instrument. Decisive per the parity contract, no further evaluation spent. Unlike the instrument, this bounds the ACTUAL flagship. Per campaign contingency: bracket upward (H10/H12/H15), do not abandon. Recorded in HAWKING_MODEL_FEEL_PARITY_RESULTS.json.",
+   "state": "IN_PROGRESS"
   },
   "M04": {
    "at": "2026-07-25T02:53:59Z",
@@ -127,5 +127,5 @@
  "gates_total": 20,
  "odyssey_launch_authorized": false,
  "schema": "hawking.motherload.status.v1",
- "updated_at": "2026-07-25T02:59:58Z"
+ "updated_at": "2026-07-25T03:01:53Z"
 }

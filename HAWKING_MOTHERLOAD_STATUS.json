@@ -15,9 +15,9 @@
    "state": "GREEN"
   },
   "M03": {
-   "at": "2026-07-25T03:51:12Z",
+   "at": "2026-07-25T03:56:09Z",
    "desc": "lowest broad parity rate is sealed, sub-bit preferred and H15 maximum",
-   "note": "TERMINAL within current codec: R0 is at/near the practical ceiling gravity-pq (S=1, power-of-2 dim) can reach for GLM-5.2's tensor sizes. Systematic search found NO admissible geometry strictly between R0's 0.875 nominal and BPW_CEILING=1.0 across T1-tier sizes (routed_expert 12.58M elements down to attention 3.5M). A dim=11 candidate was tried and found INVALID: _pq_geometry() silently rejects non-power-of-2 dim with no error, producing meaningless results -- caught before being trusted. Bracketing upward per campaign S3.3 (H10/H12/H15) is not achievable within this codec architecture. Remaining levers: more native protection (expensive, already tried on the 2 worst tensors, insufficient) or crossing BPW_CEILING via a formal Escape Receipt (a policy reversal of the sub-bit-first LAW, not invoked without explicit authorization). Full detail: GLM52_R1_GEOMETRY_INVALID_FINDING.json",
+   "note": "CORRECTED+FINAL: no Escape Receipt exists to invoke. tools/foundry/one_bit_ceiling.py enforces in code (not prose): target_bpw>1 is REJECTED, literal message 'no automatic Escape Receipt' names something forbidden, not available. Going above 1.0 BPW is not reachable under any authorization in this project. M03 terminal under binding rules: R0 (0.875-0.921bpw) is the sealed floor per this project's own HONEST_EMPIRICAL_FLOOR precedent. Continuing per campaign contingency (do not abandon, continue Prometheus/Odyssey prep) on R0 as substrate.",
    "state": "NEGATIVE_SEALED"
   },
   "M04": {
@@ -127,5 +127,5 @@
  "gates_total": 20,
  "odyssey_launch_authorized": false,
  "schema": "hawking.motherload.status.v1",
- "updated_at": "2026-07-25T03:53:22Z"
+ "updated_at": "2026-07-25T03:56:09Z"
 }

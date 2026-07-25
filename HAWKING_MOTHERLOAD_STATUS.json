@@ -1,5 +1,5 @@
 {
- "completion_fraction": 0.4,
+ "completion_fraction": 0.45,
  "endpoint": "IN_PROGRESS",
  "gates": {
   "M01": {
@@ -69,10 +69,10 @@
    "state": "OPEN"
   },
   "M12": {
-   "at": "2026-07-24T20:31:53Z",
+   "at": "2026-07-25T02:59:58Z",
    "desc": "Forge, continuity, sovereignty, and Limit Registry are sealed",
-   "note": "sovereignty sealed for the live artifact: continuity manifest names the exact body hash, fallback_allowed=false, hidden_intervention 0.0, model_continuity 1.0, attribution_completeness 1.0, 13 invariants green; false_refusal and boundary_error remain GATED on a served flagship and never appear as numbers",
-   "state": "IN_PROGRESS"
+   "note": "sovereignty sealed for both the Llama instrument and the real GLM-5.2 flagship (282-shard multi-shard manifest, artifact_hash = sha256 of model.gravity.index.json since no single body hash names a multi-shard model, refuses to seal on incomplete coverage -- proven via a synthetic INCOMPLETE fixture). hidden_intervention 0.0, model_continuity 1.0, attribution_completeness 1.0. false_refusal/boundary_error remain GATED on a served model.",
+   "state": "GREEN"
   },
   "M13": {
    "at": "2026-07-24T20:18:59Z",
@@ -123,9 +123,9 @@
    "state": "OPEN"
   }
  },
- "gates_closed": 8,
+ "gates_closed": 9,
  "gates_total": 20,
  "odyssey_launch_authorized": false,
  "schema": "hawking.motherload.status.v1",
- "updated_at": "2026-07-25T02:53:59Z"
+ "updated_at": "2026-07-25T02:59:58Z"
 }

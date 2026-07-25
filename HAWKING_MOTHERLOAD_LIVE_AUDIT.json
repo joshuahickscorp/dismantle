@@ -2569,7 +2569,7 @@
    }
   ]
  },
- "at": "2026-07-25T02:53:59Z",
+ "at": "2026-07-25T02:59:58Z",
  "git": {
   "branch": "campaign/glm52-generation-b",
   "dirty_count": 4,
@@ -2577,29 +2577,23 @@
    "HAWKING_MOTHERLOAD_LEDGER.jsonl",
    "HAWKING_MOTHERLOAD_STATUS.json",
    "HAWKING_MOTHERLOAD_STATUS.md",
-   "GLM52_FLAGSHIP_ADAPTER_PARITY.json"
+   "tools/sovereignty/sovereignty.py"
   ],
-  "head": "ee154578982592031e3e7319d462958010c77906",
-  "head_subject": "Read the flagship lazily, and run the GLM adapter on the real 77 GB artifact",
+  "head": "a6568ab45a8a5884602b66e1872027f5260d5b51",
+  "head_subject": "Add the flagship screening-gate driver",
   "unpushed": 0,
   "upstream": "origin/campaign/glm52-generation-b"
  },
  "host": {
   "cpu_count": 28,
-  "free_disk_bytes": 464843427840,
+  "free_disk_bytes": 464840785920,
   "free_disk_gib": 432.9,
   "physical_memory_bytes": 103079215104,
   "swap_raw": "total = 2048.00M  used = 970.75M  free = 1077.25M  (encrypted)"
  },
  "processes": {
-  "hawking_lane_count": 1,
-  "hawking_lanes": [
-   {
-    "command": "/Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python /Users/scammermike/Downloads/hawking/tools/condense/glm52_source_fetch.py safe-to-leav",
-    "pgid": 13068,
-    "pid": 13068
-   }
-  ],
+  "hawking_lane_count": 0,
+  "hawking_lanes": [],
   "mop_isolation": "UNTOUCHED -- separate project, not read or signalled by this campaign",
   "mop_process_count": 10
  },
@@ -2608,7 +2602,7 @@
  "source": {
   "controller": {
    "eviction_paused": null,
-   "heartbeat_age_seconds": 1374.6,
+   "heartbeat_age_seconds": 1866.1,
    "launchd_label": "com.hawking.glm52.source-fetch",
    "launchd_loaded": true,
    "lease_held": false,

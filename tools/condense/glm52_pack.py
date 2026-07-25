@@ -262,7 +262,15 @@ def pack_tensor_ladder(weights: np.ndarray, *, ladder=LADDER, seed: int = 0,
         rows.append({
             "rung": rung["rung"], "dim": rung["dim"], "k": rung["k"], "admitted": True,
             "bpw": artifact.whole_artifact_bpw,
-            "relative_frobenius_error": forge._rel_error(weights, artifact.recon),
+            # Metal/BLAS reductions can differ in the seventh decimal between
+            # otherwise byte-identical fits.  The payload is deterministic; letting
+            # insignificant diagnostic jitter rewrite the JSON header made repeated
+            # packs differ despite identical tensor bytes.  Six decimals retains
+            # materially more precision than the survey uses while making the
+            # container reproducible.
+            "relative_frobenius_error": round(
+                forge._rel_error(weights, artifact.recon), 6
+            ),
             "artifact": artifact,
         })
     return rows
@@ -376,20 +384,21 @@ def run_tournament(samples: list[np.ndarray], *, cluster: list[np.ndarray] | Non
 
 def pack_shard(shard_path: Path, rows: list[dict], out_dir: Path, *,
                production_rung: str = PRODUCTION_RUNG, seed: int = 0,
-               rate_override: dict[tuple[int, int], str] | None = None) -> dict:
+               rate_override: dict[str | tuple[int, int], str] | None = None) -> dict:
     """Pack every tensor of one resident shard into the accumulating compact artifact.
 
     One binary blob and one index per source shard, so the compact artifact grows at 282
     files rather than 59,585.  Protected control tensors are carried at source precision
     and billed honestly at 16 BPW rather than quietly excluded from the denominator.
 
-    `rate_override` maps `(layer, expert)` to either `"native"` (carry that expert's
-    tensors at full source precision, same mechanism a protected control tensor
-    already uses) or a specific rung name from `LADDER` (pack at that rung instead of
-    `production_rung`). A `(layer, expert)` pair absent from the map, or
+    `rate_override` maps an exact tensor name, or the coarser `(layer, expert)` key,
+    to either `"native"` (carry the selected tensor(s) at full source precision, same
+    mechanism a protected control tensor already uses) or a specific rung name from
+    `LADDER` (pack at that rung instead of `production_rung`). Exact tensor decisions
+    take precedence over an expert-wide fallback. A key absent from the map, or
     `rate_override=None` altogether, reproduces today's behavior exactly -- this is
-    how Prometheus's Math-Preserve coalition promotion reaches the packer without a
-    second one: additive, and provably a no-op when unused (see
+    how Prometheus's frozen per-tensor Math-Preserve auction reaches the packer without
+    a second one: additive, and provably a no-op when unused (see
     tools/condense/tests/test_glm52_pack_rate_override.py).
     """
     import glm52_shard_probe as probe
@@ -456,12 +465,18 @@ def pack_shard(shard_path: Path, rows: list[dict], out_dir: Path, *,
                 carry_native(row, raw, weights.size, "PROTECTED_BUDGET_CLASS")
                 continue
 
-            override = (
-                rate_override.get((row.get("layer"), row.get("expert")))
-                if rate_override else None
-            )
+            override = None
+            if rate_override:
+                override = rate_override.get(row["name"])
+                if override is None:
+                    override = rate_override.get((row.get("layer"), row.get("expert")))
             if override == "native":
-                carry_native(row, raw, weights.size, "PROMETHEUS_COALITION_PROTECTED")
+                reason = (
+                    "PROMETHEUS_COALITION_PROTECTED"
+                    if row.get("expert") is not None
+                    else "PROMETHEUS_PROFILE_PROTECTED"
+                )
+                carry_native(row, raw, weights.size, reason)
                 continue
             target_rung = override or production_rung
 

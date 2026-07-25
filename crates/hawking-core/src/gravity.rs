@@ -605,15 +605,68 @@ pub fn widen_native(codec: &str, blob: &[u8]) -> Result<Vec<f32>> {
     })
 }
 
-/// Every tensor of a `.gravity` shard, decoded once and addressed by name.
+fn matvec_dense(w: &[f32], x: &[f32], name: &str) -> Result<Vec<f32>> {
+    if x.is_empty() || w.len() % x.len() != 0 {
+        return Err(Error::Gravity(format!(
+            "tensor {name:?}: {} values is not a whole number of {}-wide rows",
+            w.len(),
+            x.len()
+        )));
+    }
+    Ok(w.chunks_exact(x.len())
+        .map(|row| row.iter().zip(x).map(|(a, b)| a * b).sum())
+        .collect())
+}
+
+fn row_dense(w: &[f32], index: usize, cols: usize, name: &str) -> Result<Vec<f32>> {
+    let start = index * cols;
+    if start + cols > w.len() {
+        return Err(Error::Gravity(format!(
+            "tensor {name:?}: row {index} out of range"
+        )));
+    }
+    Ok(w[start..start + cols].to_vec())
+}
+
+/// Where a [`GravityWeights`] actually gets its bytes.
+enum Source {
+    /// Every tensor of a single shard, decoded once at open. Right for an
+    /// artifact small enough that "decode everything up front" is cheap —
+    /// the Llama and tiny-GLM fixtures are tens to hundreds of MB.
+    Eager(HashMap<String, Tensor>),
+    /// Every tensor's owning shard *filename* known; no shard opened and no
+    /// payload touched until a tensor from it is actually asked for.
+    ///
+    /// Right for a flagship-scale MoE artifact: only 8 of 256 experts
+    /// activate per layer, so eagerly decoding all of them would both do
+    /// ~32x the necessary work and — worse — exceed physical memory, since a
+    /// `PqTensor`'s u16-widened indices run close to 2x the packed size.
+    /// Opening all 282 shards up front would be comparatively cheap (mmap is
+    /// virtual address space, not resident pages) but still unnecessary for
+    /// a short run that never touches most of them, so shards open lazily
+    /// into `open_shards` on first use and stay there for the model's
+    /// lifetime. A tensor's payload bytes are read, decoded, used, and
+    /// dropped on every call — same as the Python `GravityGlmSource` this
+    /// mirrors. `RefCell` rather than `Mutex`: this path has no `Send+Sync`
+    /// requirement, unlike the GPU model's resident buffers.
+    Lazy {
+        shard_dir: std::path::PathBuf,
+        tensor_shard: HashMap<String, String>,
+        open_shards: std::cell::RefCell<HashMap<String, GravityShard>>,
+        verify_hash: bool,
+    },
+}
+
+/// Every tensor of a `.gravity` model, addressed by name.
 ///
 /// Architecture-independent on purpose: the Llama and GLM adapters differ in
 /// what they compute, not in how they reach a weight, and a second loader
 /// would be a second place for a codec or a hash check to be forgotten.
 pub struct GravityWeights {
-    tensors: HashMap<String, Tensor>,
+    source: Source,
     /// The shard header minus `tensors` — architecture, compression,
-    /// integrity, tokenizer, as the writer left them.
+    /// integrity, tokenizer, as the writer left them. Identical across every
+    /// shard of one model by construction, so shard 0's copy speaks for all.
     pub header: serde_json::Value,
 }
 
@@ -641,66 +694,229 @@ impl GravityWeights {
             tensors.insert(name.clone(), t);
         }
         Ok(GravityWeights {
-            tensors,
+            source: Source::Eager(tensors),
             header: shard.extra,
         })
     }
 
-    pub fn contains(&self, name: &str) -> bool {
-        self.tensors.contains_key(name)
+    /// Open a multi-shard model in `dir`, indexing which shard owns which
+    /// tensor without opening any shard or decoding any payload yet. See
+    /// [`Source::Lazy`] for why this stays lazy.
+    ///
+    /// Prefers `dir/model.gravity.index.json` — the assembler's own manifest,
+    /// written once when it graded this exact directory's coverage complete
+    /// against the official tensor count. That manifest carries the
+    /// synthesized full architecture (twenty fields) rather than the five a
+    /// single shard's own header holds, and reading one JSON file beats
+    /// opening all 282 shards just to learn what they contain. Falls back to
+    /// scanning shard headers directly for a `model-*.gravity` directory that
+    /// was never assembled — self-sufficient, just slower to open.
+    pub fn open_dir(dir: &Path, verify_hash: bool) -> Result<GravityWeights> {
+        let index_path = dir.join("model.gravity.index.json");
+        if index_path.is_file() {
+            let manifest: serde_json::Value = serde_json::from_slice(
+                &std::fs::read(&index_path)
+                    .map_err(|e| Error::Gravity(format!("{}: {e}", index_path.display())))?,
+            )
+            .map_err(|e| Error::Gravity(format!("{}: {e}", index_path.display())))?;
+            let tensor_shard: HashMap<String, String> = manifest
+                .get("weight_map")
+                .and_then(|v| v.as_object())
+                .ok_or_else(|| {
+                    Error::Gravity(format!("{}: no weight_map", index_path.display()))
+                })?
+                .iter()
+                .filter_map(|(k, v)| Some((k.clone(), v.as_str()?.to_string())))
+                .collect();
+            let header = manifest
+                .get("architecture")
+                .map(|a| serde_json::json!({"architecture": a}))
+                .ok_or_else(|| {
+                    Error::Gravity(format!("{}: no architecture block", index_path.display()))
+                })?;
+            return Ok(GravityWeights {
+                source: Source::Lazy {
+                    shard_dir: dir.to_path_buf(),
+                    tensor_shard,
+                    open_shards: std::cell::RefCell::new(HashMap::new()),
+                    verify_hash,
+                },
+                header,
+            });
+        }
+
+        let mut names: Vec<std::ffi::OsString> = std::fs::read_dir(dir)
+            .map_err(|e| Error::Gravity(format!("{}: {e}", dir.display())))?
+            .filter_map(|e| e.ok())
+            .map(|e| e.file_name())
+            .filter(|n| {
+                let s = n.to_string_lossy();
+                s.starts_with("model-") && s.ends_with(".gravity")
+            })
+            .collect();
+        names.sort();
+        if names.is_empty() {
+            return Err(Error::Gravity(format!(
+                "{}: no model.gravity.index.json and no model-*.gravity shards found",
+                dir.display()
+            )));
+        }
+        let mut tensor_shard = HashMap::new();
+        let mut header = None;
+        for name in &names {
+            let filename = name.to_string_lossy().into_owned();
+            let shard = GravityShard::open(&dir.join(name))?;
+            if header.is_none() {
+                header = Some(shard.extra.clone());
+            }
+            for tname in shard.tensor_names() {
+                tensor_shard.insert(tname.to_string(), filename.clone());
+            }
+        }
+        Ok(GravityWeights {
+            source: Source::Lazy {
+                shard_dir: dir.to_path_buf(),
+                tensor_shard,
+                open_shards: std::cell::RefCell::new(HashMap::new()),
+                verify_hash,
+            },
+            header: header.expect("names is non-empty"),
+        })
     }
 
-    pub fn get(&self, name: &str) -> Result<&Tensor> {
-        self.tensors
+    pub fn contains(&self, name: &str) -> bool {
+        match &self.source {
+            Source::Eager(t) => t.contains_key(name),
+            Source::Lazy { tensor_shard, .. } => tensor_shard.contains_key(name),
+        }
+    }
+
+    /// Open `name`'s owning shard if it is not already open, then run `f`
+    /// against it. The shard is inserted into `open_shards` before `f` runs
+    /// and stays there — a shard opened for one tensor is likely to be asked
+    /// for a sibling tensor later in the same forward pass (an artifact's
+    /// tensors are grouped by source shard, and a layer's projections
+    /// typically land together), so keeping it open trades a little
+    /// resident memory (mmap bookkeeping, not tensor bytes) for not
+    /// re-opening the same file repeatedly.
+    fn with_lazy_shard<T>(
+        shard_dir: &Path,
+        tensor_shard: &HashMap<String, String>,
+        open_shards: &std::cell::RefCell<HashMap<String, GravityShard>>,
+        name: &str,
+        f: impl FnOnce(&GravityShard) -> Result<T>,
+    ) -> Result<T> {
+        let filename = tensor_shard
             .get(name)
-            .ok_or_else(|| Error::Gravity(format!("artifact has no tensor {name:?}")))
+            .ok_or_else(|| Error::Gravity(format!("artifact has no tensor {name:?}")))?;
+        if !open_shards.borrow().contains_key(filename) {
+            let shard = GravityShard::open(&shard_dir.join(filename))?;
+            open_shards.borrow_mut().insert(filename.clone(), shard);
+        }
+        f(open_shards
+            .borrow()
+            .get(filename)
+            .expect("just opened or already present"))
     }
 
     /// A natively-carried 1D tensor: norm weights, biases, router
     /// corrections. Packing these is refused upstream, so finding one packed
     /// here means the artifact disagrees with the runtime about what it is.
-    pub fn dense(&self, name: &str) -> Result<&[f32]> {
-        match self.get(name)? {
-            Tensor::Dense(v) => Ok(v),
-            Tensor::Pq(_) => Err(Error::Gravity(format!(
-                "tensor {name:?} is packed; expected a natively-carried dense tensor"
-            ))),
+    /// Owned rather than borrowed so the same signature covers both a
+    /// pre-decoded eager tensor and one decoded fresh on this call.
+    pub fn dense(&self, name: &str) -> Result<Vec<f32>> {
+        match &self.source {
+            Source::Eager(tensors) => match tensors.get(name) {
+                Some(Tensor::Dense(v)) => Ok(v.clone()),
+                Some(Tensor::Pq(_)) => Err(Error::Gravity(format!(
+                    "tensor {name:?} is packed; expected a natively-carried dense tensor"
+                ))),
+                None => Err(Error::Gravity(format!("artifact has no tensor {name:?}"))),
+            },
+            Source::Lazy {
+                shard_dir,
+                tensor_shard,
+                open_shards,
+                verify_hash,
+            } => Self::with_lazy_shard(shard_dir, tensor_shard, open_shards, name, |shard| {
+                let codec = &shard
+                    .descriptor(name)
+                    .expect("name came from this shard's own index")
+                    .codec;
+                if !codec.starts_with("native.") {
+                    return Err(Error::Gravity(format!(
+                        "tensor {name:?} is packed; expected a natively-carried dense tensor"
+                    )));
+                }
+                widen_native(codec, &shard.read_tensor(name, *verify_hash)?)
+            }),
         }
     }
 
     /// `y = W @ x` for a 2D weight, whichever codec carries it.
     pub fn matvec(&self, name: &str, x: &[f32]) -> Result<Vec<f32>> {
-        match self.get(name)? {
-            Tensor::Pq(t) => t.matvec(x),
-            Tensor::Dense(w) => {
-                if x.is_empty() || w.len() % x.len() != 0 {
-                    return Err(Error::Gravity(format!(
-                        "tensor {name:?}: {} values is not a whole number of {}-wide rows",
-                        w.len(),
-                        x.len()
-                    )));
+        match &self.source {
+            Source::Eager(tensors) => match tensors.get(name) {
+                Some(Tensor::Pq(t)) => t.matvec(x),
+                Some(Tensor::Dense(w)) => matvec_dense(w, x, name),
+                None => Err(Error::Gravity(format!("artifact has no tensor {name:?}"))),
+            },
+            Source::Lazy {
+                shard_dir,
+                tensor_shard,
+                open_shards,
+                verify_hash,
+            } => Self::with_lazy_shard(shard_dir, tensor_shard, open_shards, name, |shard| {
+                let codec = shard
+                    .descriptor(name)
+                    .expect("name came from this shard's own index")
+                    .codec
+                    .clone();
+                let blob = shard.read_tensor(name, *verify_hash)?;
+                if codec == "gravity-pq" {
+                    PqTensor::from_payload(&blob)?.matvec(x)
+                } else if codec.starts_with("native.") {
+                    matvec_dense(&widen_native(&codec, &blob)?, x, name)
+                } else {
+                    Err(Error::Gravity(format!(
+                        "tensor {name}: unsupported codec {codec:?}"
+                    )))
                 }
-                Ok(w.chunks_exact(x.len())
-                    .map(|row| row.iter().zip(x).map(|(a, b)| a * b).sum())
-                    .collect())
-            }
+            }),
         }
     }
 
     /// One row of a 2D weight — the embedding-lookup path. `cols` is needed
     /// only for the dense case, where the payload carries no shape.
-    pub fn row(&self, name: &str, index: usize, cols: usize) -> Result<Vec<f32>> {
-        match self.get(name)? {
-            Tensor::Pq(t) => t.row(index),
-            Tensor::Dense(w) => {
-                let start = index * cols;
-                if start + cols > w.len() {
-                    return Err(Error::Gravity(format!(
-                        "tensor {name:?}: row {index} out of range"
-                    )));
+    pub fn row(&self, name: &str, index_: usize, cols: usize) -> Result<Vec<f32>> {
+        match &self.source {
+            Source::Eager(tensors) => match tensors.get(name) {
+                Some(Tensor::Pq(t)) => t.row(index_),
+                Some(Tensor::Dense(w)) => row_dense(w, index_, cols, name),
+                None => Err(Error::Gravity(format!("artifact has no tensor {name:?}"))),
+            },
+            Source::Lazy {
+                shard_dir,
+                tensor_shard,
+                open_shards,
+                verify_hash,
+            } => Self::with_lazy_shard(shard_dir, tensor_shard, open_shards, name, |shard| {
+                let codec = shard
+                    .descriptor(name)
+                    .expect("name came from this shard's own index")
+                    .codec
+                    .clone();
+                let blob = shard.read_tensor(name, *verify_hash)?;
+                if codec == "gravity-pq" {
+                    pq_row(&blob, index_)
+                } else if codec.starts_with("native.") {
+                    row_dense(&widen_native(&codec, &blob)?, index_, cols, name)
+                } else {
+                    Err(Error::Gravity(format!(
+                        "tensor {name}: unsupported codec {codec:?}"
+                    )))
                 }
-                Ok(w[start..start + cols].to_vec())
-            }
+            }),
         }
     }
 }

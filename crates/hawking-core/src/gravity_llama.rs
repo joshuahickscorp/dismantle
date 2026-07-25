@@ -190,7 +190,7 @@ impl GravityLlama {
 
                 rmsnorm(
                     &x,
-                    self.weights.dense(&format!("{p}input_layernorm.weight"))?,
+                    &self.weights.dense(&format!("{p}input_layernorm.weight"))?,
                     a.rms_norm_eps,
                     &mut scratch,
                 );
@@ -236,7 +236,7 @@ impl GravityLlama {
 
                 rmsnorm(
                     &x,
-                    self.weights.dense(&format!("{p}post_attention_layernorm.weight"))?,
+                    &self.weights.dense(&format!("{p}post_attention_layernorm.weight"))?,
                     a.rms_norm_eps,
                     &mut scratch,
                 );
@@ -250,7 +250,7 @@ impl GravityLlama {
 
             rmsnorm(
                 &x,
-                self.weights.dense("model.norm.weight")?,
+                &self.weights.dense("model.norm.weight")?,
                 a.rms_norm_eps,
                 &mut scratch,
             );

@@ -2569,24 +2569,24 @@
    }
   ]
  },
- "at": "2026-07-25T03:56:09Z",
+ "at": "2026-07-25T03:56:45Z",
  "git": {
   "branch": "campaign/glm52-generation-b",
   "dirty_count": 4,
   "dirty_paths": [
-   "GLM52_R1_GEOMETRY_INVALID_FINDING.json",
    "HAWKING_MOTHERLOAD_LEDGER.jsonl",
    "HAWKING_MOTHERLOAD_STATUS.json",
-   "HAWKING_MOTHERLOAD_STATUS.md"
+   "HAWKING_MOTHERLOAD_STATUS.md",
+   "GLM52_SELECTED_GENERAL_ARTIFACT.json"
   ],
-  "head": "a938d2836c0f93e71583a275b53f45377d6619fa",
-  "head_subject": "Seal M20: worktree and process state clean",
+  "head": "293e63c541a0b539e0d5a343d200c080de300e75",
+  "head_subject": "Correct the Escape Receipt claim: it does not exist, verified in enforced code",
   "unpushed": 0,
   "upstream": "origin/campaign/glm52-generation-b"
  },
  "host": {
   "cpu_count": 28,
-  "free_disk_bytes": 455528615936,
+  "free_disk_bytes": 455532744704,
   "free_disk_gib": 424.2,
   "physical_memory_bytes": 103079215104,
   "swap_raw": "total = 2048.00M  used = 970.75M  free = 1077.25M  (encrypted)"
@@ -2595,7 +2595,7 @@
   "hawking_lane_count": 0,
   "hawking_lanes": [],
   "mop_isolation": "UNTOUCHED -- separate project, not read or signalled by this campaign",
-  "mop_process_count": 9
+  "mop_process_count": 10
  },
  "root": "/Users/scammermike/Downloads/hawking",
  "schema": "hawking.motherload.live_audit.v1",

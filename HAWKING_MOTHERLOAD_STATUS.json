@@ -63,10 +63,10 @@
    "state": "IN_PROGRESS"
   },
   "M11": {
-   "at": null,
+   "at": "2026-07-25T03:56:45Z",
    "desc": "General and Math artifacts are selected and verified",
-   "note": "",
-   "state": "OPEN"
+   "note": "General artifact SELECTED (R0+native head/embed, 0.921bpw) per campaign S12 'lowest defensible' -- not passing, since none passes under the binding one-bit ceiling; known limitation (screening-gate fail) explicitly documented not concealed. Math substrate selection still open (Math profile needs the same cartography-membership gate as General; no rate exists to select FROM regardless of profile).",
+   "state": "IN_PROGRESS"
   },
   "M12": {
    "at": "2026-07-25T02:59:58Z",
@@ -127,5 +127,5 @@
  "gates_total": 20,
  "odyssey_launch_authorized": false,
  "schema": "hawking.motherload.status.v1",
- "updated_at": "2026-07-25T03:56:09Z"
+ "updated_at": "2026-07-25T03:56:45Z"
 }

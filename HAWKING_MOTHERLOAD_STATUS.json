@@ -15,9 +15,9 @@
    "state": "GREEN"
   },
   "M03": {
-   "at": "2026-07-25T03:12:15Z",
+   "at": "2026-07-25T03:32:44Z",
    "desc": "lowest broad parity rate is sealed, sub-bit preferred and H15 maximum",
-   "note": "R0/H09-band (0.883 BPW) FAILS the screening gate with the corrected methodology (chat-templated prompt, formatting confound ruled out): greedy decode of a properly formatted prompt produces 3 consecutive identical tokens (id 73810, ' brisk'), the same fixed-point collapse signature as both the retracted raw-prompt run (different token) and the Llama-1B instrument. Decisive per the parity contract. M03 selects no passing rate at R0. Per campaign contingency: bracket upward (H10/H12/H15) via a targeted pilot, not a blind full re-fetch, since re-packing higher from R0's lossy bytes would compound error.",
+   "note": "TWO decisive fails now sealed. (1) R0 uniform (0.883bpw): collapses, token 73810 repeated. (2) R0 + lm_head/embed_tokens native (0.921bpw, +3.6GB, single-shard re-fetch+repack, zero-cost diagnosis from the packer's own stored relative_frobenius_error=0.965/0.823 vs 0.62-0.65 for every other category): STILL collapses, different token (126218). Root cause points to routed_expert (97.5% of mass, R0 error ~0.62) not the two structural tensors alone -- Prometheus general-v1's OWN profile specifies routed_expert at T1=exactly 1.0bpw (H10), not R0's 0.876-0.883. Real fix needs a new H10 geometry (dim=8/k=256, unimplemented) applied across ~the whole model: a full ~1.5TB re-fetch+re-pack, not a small pilot. Both cheap single-shard tests are now spent.",
    "state": "NEGATIVE_SEALED"
   },
   "M04": {
@@ -127,5 +127,5 @@
  "gates_total": 20,
  "odyssey_launch_authorized": false,
  "schema": "hawking.motherload.status.v1",
- "updated_at": "2026-07-25T03:12:15Z"
+ "updated_at": "2026-07-25T03:32:44Z"
 }

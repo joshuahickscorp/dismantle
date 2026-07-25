@@ -103,8 +103,27 @@
    },
    "interpretation": "R0/H09-band (0.883 BPW) does not pass the screening gate, with the prompt-formatting confound identified and ruled out first. Unlike the Llama-1B instrument, this bounds the actual flagship.",
    "consequence": "M03 selects no passing rate at R0. Per campaign contingency (do not abandon; bracket upward), the next candidate is a higher, less-compressed rate. Re-packing a higher rate from R0 lossy representation would compound error rather than match packing directly from BF16, so this needs source bytes beyond what R0 lossy artifact can supply -- a targeted pilot at a higher rate, not a blind full re-fetch, is the next step."
+  },
+  {
+   "subject": "GLM-5.2",
+   "role": "flagship",
+   "artifact": "General-R0 + lm_head/embed_tokens native protection (282 shards, 86.74GB, 0.921099 whole-model BPW)",
+   "rung": "R0+targeted-native",
+   "complete_bpw": 0.921099,
+   "stage": "SCREENING_GATE",
+   "verdict": "FAIL",
+   "decisive": true,
+   "methodology": "Diagnosed from data already on disk at zero re-fetch cost: the packers own per-tensor relative_frobenius_error field showed lm_head=0.965 and embed_tokens=0.823 at R0, both COMPRESSIBLE_CANDIDATE, both far worse than every other category (attention/dense_mlp/shared_expert/routed_expert all 0.62-0.65). Re-fetched only the one shard both tensors live in (5.3GB, not 1.5TB), reclassified them PROTECTED_SOURCE_NATIVE (bf16), left the other 281 shards and all other tensors in shard 1 untouched. Cost: +3.6GB (0.883 -> 0.921 whole-model BPW), nowhere near the H10=1.0 uniform ceiling.",
+   "evidence": {
+    "prompt": "The capital of France is",
+    "rendered_prompt": "[gMASK]<sop><|user|>The capital of France is<|assistant|><think></think>",
+    "greedy_continuation_observed": "3 consecutive identical tokens (id 126218, a Chinese-language token '\u662f\u5b9e\u73b0')",
+    "note": "Still collapses, on a DIFFERENT stuck token than either the malformed-prompt run (id 74242) or the correctly-formatted R0-alone run (id 73810). The specific failure token moves with any change to the artifact, but the fixed-point COLLAPSE PATTERN itself does not -- ruling out lm_head/embed_tokens reconstruction as a sufficient explanation on its own, though the 0.965/0.823 error was real and worth fixing regardless."
+   },
+   "interpretation": "The dominant remaining candidate is routed_expert compression: 97.5% of logical weight mass, relative_frobenius_error ~0.62 at R0 (much better than lm_head but still substantial), packed at the SAME geometry across all 256 experts x 78 layers. Prometheus general-v1 -- already built, already profiled this session -- specifies routed_expert/shared_expert/attention/dense_mlp at tier T1 = num8/den8 = exactly 1.0 BPW (H10), not R0 own 0.876-0.883. That gap, compounding over 78 layers on 97.5% of the model, is the leading unexplained factor.",
+   "consequence": "A real fix now needs H10-equivalent packing (new geometry: dim=8/k=256, unimplemented) applied across essentially the WHOLE model, since routed_expert is 97.5% of the mass -- this is a full-scale re-fetch+re-pack (~1.5TB), not a small pilot. The two single-shard experiments already run were the correctly-scoped cheap tests before that commitment, and both are now spent."
   }
  ],
  "selected_general_artifact": null,
- "selection_gate": "M03: SEALED FAIL at R0 (0.883 BPW), corrected methodology. Upward bracket (H10/H12/H15) required."
+ "selection_gate": "M03: TWO FAILS sealed (R0 alone; R0+native head/embed). Root cause points to routed_expert compression (97.5% of mass) at R0 geometry, not the two structural tensors alone. Full H10-equivalent re-pack is the next well-evidenced step and requires a full-scale re-fetch."
 }

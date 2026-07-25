@@ -1,5 +1,5 @@
 {
- "completion_fraction": 0.45,
+ "completion_fraction": 0.5,
  "endpoint": "IN_PROGRESS",
  "gates": {
   "M01": {
@@ -15,10 +15,10 @@
    "state": "GREEN"
   },
   "M03": {
-   "at": "2026-07-25T03:04:23Z",
+   "at": "2026-07-25T03:12:15Z",
    "desc": "lowest broad parity rate is sealed, sub-bit preferred and H15 maximum",
-   "note": "RETRACTING prior FAIL verdict: it was measured on a raw-text prompt with no chat formatting. GLM-5.2 is chat/instruction-tuned; its pinned chat_template.jinja requires [gMASK]<sop><|user|>...<|assistant|> framing that the first run omitted entirely -- a real confound, caught before it was acted on. Re-running now with the prompt correctly rendered through the model's own template (jinja2, enable_thinking=False). No rate conclusion stands until this lands.",
-   "state": "IN_PROGRESS"
+   "note": "R0/H09-band (0.883 BPW) FAILS the screening gate with the corrected methodology (chat-templated prompt, formatting confound ruled out): greedy decode of a properly formatted prompt produces 3 consecutive identical tokens (id 73810, ' brisk'), the same fixed-point collapse signature as both the retracted raw-prompt run (different token) and the Llama-1B instrument. Decisive per the parity contract. M03 selects no passing rate at R0. Per campaign contingency: bracket upward (H10/H12/H15) via a targeted pilot, not a blind full re-fetch, since re-packing higher from R0's lossy bytes would compound error.",
+   "state": "NEGATIVE_SEALED"
   },
   "M04": {
    "at": "2026-07-25T02:53:59Z",
@@ -123,9 +123,9 @@
    "state": "OPEN"
   }
  },
- "gates_closed": 9,
+ "gates_closed": 10,
  "gates_total": 20,
  "odyssey_launch_authorized": false,
  "schema": "hawking.motherload.status.v1",
- "updated_at": "2026-07-25T03:04:23Z"
+ "updated_at": "2026-07-25T03:12:15Z"
 }

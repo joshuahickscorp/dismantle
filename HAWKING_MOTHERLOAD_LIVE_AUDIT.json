@@ -2569,25 +2569,24 @@
    }
   ]
  },
- "at": "2026-07-25T03:04:23Z",
+ "at": "2026-07-25T03:12:15Z",
  "git": {
   "branch": "campaign/glm52-generation-b",
-  "dirty_count": 5,
+  "dirty_count": 4,
   "dirty_paths": [
    "HAWKING_MODEL_FEEL_PARITY_RESULTS.json",
    "HAWKING_MOTHERLOAD_LEDGER.jsonl",
    "HAWKING_MOTHERLOAD_STATUS.json",
-   "HAWKING_MOTHERLOAD_STATUS.md",
-   "tools/condense/glm52_flagship_screening.py"
+   "HAWKING_MOTHERLOAD_STATUS.md"
   ],
-  "head": "d16384c5bd0e8d7a6e9c6e2ff509f3b8f02a7a48",
-  "head_subject": "Fail R0 on the screening gate: the flagship collapses, not just the instrument",
+  "head": "99c5b5635c07293d084affd5ea066638fc563c8b",
+  "head_subject": "Rewrite the campaign report against the current true state",
   "unpushed": 0,
   "upstream": "origin/campaign/glm52-generation-b"
  },
  "host": {
   "cpu_count": 28,
-  "free_disk_bytes": 464844402688,
+  "free_disk_bytes": 464837840896,
   "free_disk_gib": 432.9,
   "physical_memory_bytes": 103079215104,
   "swap_raw": "total = 2048.00M  used = 970.75M  free = 1077.25M  (encrypted)"
@@ -2603,7 +2602,7 @@
  "source": {
   "controller": {
    "eviction_paused": null,
-   "heartbeat_age_seconds": 2354.9,
+   "heartbeat_age_seconds": 2848.5,
    "launchd_label": "com.hawking.glm52.source-fetch",
    "launchd_loaded": true,
    "lease_held": false,

@@ -79,8 +79,32 @@
    },
    "interpretation": "Invalid: prompt-format confound identified before further action was taken on this result.",
    "consequence": "Re-running with correct chat formatting before any rate decision."
+  },
+  {
+   "subject": "GLM-5.2",
+   "role": "flagship",
+   "artifact": "General-R0 (282 shards, 83.14GB, 0.882888 whole-model BPW)",
+   "rung": "R0",
+   "complete_bpw": 0.882888,
+   "stage": "SCREENING_GATE",
+   "verdict": "FAIL",
+   "decisive": true,
+   "methodology": "CORRECTED: prompt rendered through the model own pinned chat_template.jinja ([gMASK]<sop><|user|>...<|assistant|><think></think>, enable_thinking=False), superseding the earlier raw-text run that was retracted for a formatting confound",
+   "evidence": {
+    "prompt": "The capital of France is",
+    "rendered_prompt": "[gMASK]<sop><|user|>The capital of France is<|assistant|><think></think>",
+    "greedy_continuation_observed": " brisk brisk brisk (3 consecutive identical tokens, id 73810)",
+    "note": "exact fixed-point repetition under greedy decoding, same signature as the retracted raw-prompt run (there anchored on a different token, id 74242 settle-Fired) and as the Llama-1B instrument. The chat-template fix changed WHICH token the model gets stuck on but not WHETHER it gets stuck -- ruling out prompt formatting as the explanation and leaving the compression rate as the remaining one."
+   },
+   "execution_correctness": {
+    "verdict": "PASS (separately sealed)",
+    "reference": "GLM52_FLAGSHIP_ADAPTER_PARITY.json",
+    "note": "the runtime correctly executes what this artifact encodes; the artifact itself, at this rate, does not preserve capability"
+   },
+   "interpretation": "R0/H09-band (0.883 BPW) does not pass the screening gate, with the prompt-formatting confound identified and ruled out first. Unlike the Llama-1B instrument, this bounds the actual flagship.",
+   "consequence": "M03 selects no passing rate at R0. Per campaign contingency (do not abandon; bracket upward), the next candidate is a higher, less-compressed rate. Re-packing a higher rate from R0 lossy representation would compound error rather than match packing directly from BF16, so this needs source bytes beyond what R0 lossy artifact can supply -- a targeted pilot at a higher rate, not a blind full re-fetch, is the next step."
   }
  ],
  "selected_general_artifact": null,
- "selection_gate": "M03: BLOCKED on R0 fail; upward bracket (H10/H12/H15) required per campaign contingency"
+ "selection_gate": "M03: SEALED FAIL at R0 (0.883 BPW), corrected methodology. Upward bracket (H10/H12/H15) required."
 }

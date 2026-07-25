@@ -1,9 +1,9 @@
 # Hawking Motherload Completion Status
 
 endpoint: `IN_PROGRESS`  
-gates closed: 15/20  
+gates closed: 15/23  
 ODYSSEY_LAUNCH_AUTHORIZED: `false`  
-updated: 2026-07-25T04:52:05Z
+updated: 2026-07-25T05:20:56Z
 
 | gate | state | condition | note |
 |---|---|---|---|
@@ -27,3 +27,6 @@ updated: 2026-07-25T04:52:05Z
 | M18 | running | rollback/source lifecycle is green | eviction VERIFIED FIRING: free disk 274.6 -> 404.8 GiB at the W003/W004 boundary, 1 EVICT event, 0 faults; traversal now sustainable to 282/282 |
 | M19 | green | all campaign commits are pushed | 0 unpushed commits, all campaign work pushed to origin/campaign/glm52-generation-b |
 | M20 | green | worktree and process state are clean except intentional detached services | worktree clean (git status empty), traversal controller exited naturally at 282/282, no stray hawking processes; MOP's 20 processes untouched throughout |
+| M21 | running | streamed Prometheus cartography (PASS 1) is complete | Math-Preserve PASS1 (streamed cartography) built and validated: math_calibration_batch pools 3 real mathematics-domain records across TRAIN_PARTITIONS (pinned corpus gives exactly 1/partition, honestly thin, not padded); routed_moe retains per-expert weighted output before summing (retain_per_expert, default off, zero effect on graded arithmetic) so capture_layer computes contribution_l2/hit_count/coselection_count (support-halo) with no second forward pass; routing margins were already free (_router_margin), trajectory is the existing per-layer metrics chain. Validated on the tiny fixture (contribution_l2 exactly zero iff hit_count zero, coselection diagonal == hit_count) and on real flagship shard 1 (layer 0 real BF16 forward, correct capsule sealed, layer 1 correctly left uncaptured pending its shards). Controller math_pass1_cartography.py: separate state from the original General traversal (own source/ledger/capsule dirs, no collision), VERIFY->CAPTURE->EVICT per shard with no packing (packing is PASS3, driven by PASS2's frozen global allocation -- per-shard packing decisions during PASS1 would be exactly the greedy allocation this pipeline avoids). Launched via launchd com.hawking.glm52.math-prometheus-pass1 (Standard/Nice 0, eviction paused by default -- the only irreversible step stays off until a full window is watched succeed). 1.507TB source re-fetch in progress, window 0 (123GB/23 shards) underway. |
+| M22 | open | global Math allocation manifest (PASS 2) is frozen |  |
+| M23 | open | Math-Preserve.gravity (PASS 3) is complete and verified |  |

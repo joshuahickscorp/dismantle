@@ -13,12 +13,43 @@
   "attention_smallest_elements": 3538944,
   "dense_mlp_largest_elements": 75497472,
   "candidates_tested": [
-   {"dim": 16, "k": 32768, "nominal_bpw": 0.9375, "admissible_routed_expert": false, "admissible_attention_smallest": false},
-   {"dim": 16, "k": 16384, "nominal_bpw": 0.8750, "admissible_routed_expert": false, "admissible_attention_smallest": false},
-   {"dim": 8, "k": 128, "nominal_bpw": 0.8750, "admissible_routed_expert": true, "admissible_attention_smallest": true, "note": "this IS R0"},
-   {"dim": 16, "k": 8192, "nominal_bpw": 0.8125, "admissible_routed_expert": true, "admissible_attention_smallest": false}
+   {
+    "dim": 16,
+    "k": 32768,
+    "nominal_bpw": 0.9375,
+    "admissible_routed_expert": false,
+    "admissible_attention_smallest": false
+   },
+   {
+    "dim": 16,
+    "k": 16384,
+    "nominal_bpw": 0.875,
+    "admissible_routed_expert": false,
+    "admissible_attention_smallest": false
+   },
+   {
+    "dim": 8,
+    "k": 128,
+    "nominal_bpw": 0.875,
+    "admissible_routed_expert": true,
+    "admissible_attention_smallest": true,
+    "note": "this IS R0"
+   },
+   {
+    "dim": 16,
+    "k": 8192,
+    "nominal_bpw": 0.8125,
+    "admissible_routed_expert": true,
+    "admissible_attention_smallest": false
+   }
   ]
  },
  "implication": "general-v1's tier_rates T1=num8/den8=1.0bpw is not reachable by the gravity-pq codec for routed_expert/shared_expert/attention/dense_mlp tensors at GLM-5.2's scale, regardless of Prometheus conditioning. Reaching it would require crossing BPW_CEILING=1.0, which needs a formal Escape Receipt -- a deliberate reversal of this project's sub-bit-first LAW (see hawking_gravity_subbit_law_2026_07_17 in memory), not invoked here.",
- "consequence": "Bracketing upward via a new PQ rung, as HAWKING_MOTHERLOAD_COMPLETION_CAMPAIGN.md §3.3 describes (H10/H12/H15), is not achievable within the current codec architecture for a uniform or near-uniform routed_expert rate. The only levers that remain inside the sub-bit LAW are (a) protecting MORE tensors natively (expensive: 16bpw vs 0.875, ~18x bytes for whatever fraction moves), which was already tried for the two worst-reconstructing tensors and did not fix the collapse, or (b) a fundamentally different, non-PQ codec, which is out of scope for this campaign. Formally invoking the Escape Receipt is a policy decision, not an engineering one, and needs explicit authorization."
+ "consequence": "Bracketing upward via a new PQ rung, as HAWKING_MOTHERLOAD_COMPLETION_CAMPAIGN.md \u00a73.3 describes (H10/H12/H15), is not achievable within the current codec architecture for a uniform or near-uniform routed_expert rate. The only levers that remain inside the sub-bit LAW are (a) protecting MORE tensors natively (expensive: 16bpw vs 0.875, ~18x bytes for whatever fraction moves), which was already tried for the two worst-reconstructing tensors and did not fix the collapse, or (b) a fundamentally different, non-PQ codec, which is out of scope for this campaign. Formally invoking the Escape Receipt is a policy decision, not an engineering one, and needs explicit authorization.",
+ "correction_2": {
+  "at": "2026-07-25T04:10:00Z",
+  "what": "The prior consequence field called crossing BPW_CEILING an Escape Receipt that could be formally invoked with authorization. That was wrong. tools/foundry/one_bit_ceiling.py enforces the ceiling in code, not prose: target_bpw > 1 is REJECTED with the literal message no automatic Escape Receipt as one of several forbidden overrides (alongside 1.2/1.5/2.0/3.0 anchors). There is no escape mechanism to invoke -- the phrase names something that does not exist, not a gate that does.",
+  "law_text": "Hawking does not climb above one bit to discover where conventional quantization works. Hawking changes the representation, model, allocation and treatment until useful intelligence survives at one bit or below.",
+  "implication": "M03 is terminal under this project own binding rules, not merely terminal within one codec family by choice. Going above 1.0 BPW is not available under any authorization. The only legal remaining levers are a different representation/allocation entirely (out of scope here; project history -- Gravity Forge sub-bit foundry, Second Light, Sub-Bit Readiness Diagnostic -- shows repeated prior negative results attempting exactly this at other model scales) or accepting R0 as the sealed floor per the HONEST_EMPIRICAL_FLOOR precedent this project has used before."
+ }
 }

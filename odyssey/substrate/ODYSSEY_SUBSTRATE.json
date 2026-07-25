@@ -9,9 +9,9 @@
    "sha256": "91c8c596343ab79f4e1f06012609b9afd27e2ba73aed9f382da4b2bfbd348e45"
   },
   {
-   "gate": "M11: General and Math artifacts are selected and verified",
+   "gate": "AMENDED-04: Math-Preserve.gravity complete and verified",
    "gate_state": "OPEN",
-   "note": "The selected compact Math artifact from Prometheus. Odyssey trains this and nothing else; a substitute substrate is a different experiment.",
+   "note": "The selected compact Math artifact from Prometheus. Odyssey trains this and nothing else; a substitute is a different experiment.",
    "path": null,
    "present": false,
    "role": "odyssey_training_substrate"
@@ -19,5 +19,5 @@
  ],
  "schema": "hawking.odyssey.substrate.v1",
  "selected": null,
- "selection_gate": "M11"
+ "selection_gate": "AMENDED-04"
 }

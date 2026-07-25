@@ -1,149 +1,49 @@
 {
- "completion_fraction": 0.7391,
+ "completion_fraction": 0.8333,
  "endpoint": "IN_PROGRESS",
  "gates": {
-  "M01": {
-   "at": "2026-07-25T02:22:16Z",
-   "desc": "GLM traversal is 282/282",
-   "note": "GLM source traversal complete: 282/282 verified, 282/282 packed, 0 faults across the run",
+  "A01": {
+   "at": "2026-07-25T20:12:35Z",
+   "desc": "General artifact is complete and HIDE-tested",
+   "note": "General-R0 complete: 282/282 shards and 59,585/59,585 tensors; real GLM production registry/HIDE path generated end to end through GPU adapter (legacy M02+M07 receipts).",
    "state": "GREEN"
   },
-  "M02": {
-   "at": "2026-07-25T02:22:16Z",
-   "desc": "complete local GLM .gravity artifact exists",
-   "note": "complete local GLM .gravity artifact assembled: 282/282 shards, 59585/59585 tensors, 0 missing/undeclared/misplaced, 0.882888 whole-model BPW, 83.14 GB physical (753.3B logical elements), path ~/Library/Application Support/Hawking/Models/GLM-5.2/b4734de4facf877f85769a911abafc5283eab3d9/General-R0/, hardlinked from the packer output (2 links confirmed, zero duplicate bytes)",
+  "A02": {
+   "at": "2026-07-25T20:12:35Z",
+   "desc": "streamed Prometheus cartography is complete",
+   "note": "Streamed PASS1 complete: 20/20 dependency windows, 282/282 immutable source shards verified and evicted, 78/78 layers captured, 75/75 sparse layers with per-expert math evidence, zero faults.",
    "state": "GREEN"
   },
-  "M03": {
-   "at": "2026-07-25T03:56:09Z",
-   "desc": "lowest broad parity rate is sealed, sub-bit preferred and H15 maximum",
-   "note": "CORRECTED+FINAL: no Escape Receipt exists to invoke. tools/foundry/one_bit_ceiling.py enforces in code (not prose): target_bpw>1 is REJECTED, literal message 'no automatic Escape Receipt' names something forbidden, not available. Going above 1.0 BPW is not reachable under any authorization in this project. M03 terminal under binding rules: R0 (0.875-0.921bpw) is the sealed floor per this project's own HONEST_EMPIRICAL_FLOOR precedent. Continuing per campaign contingency (do not abandon, continue Prometheus/Odyssey prep) on R0 as substrate.",
-   "state": "NEGATIVE_SEALED"
-  },
-  "M04": {
-   "at": "2026-07-25T02:53:59Z",
-   "desc": "full GLM token executes from .gravity",
-   "note": "GLM-5.2 adapter executes a complete token from the REAL flagship .gravity artifact (282 shards, 83.14GB, 0.883 whole-model BPW) and agrees with an independent numpy oracle reading the same bytes: argmax exact (9540), top5 exact in order, discrete DSA key selection exact ([1,2,0] both), max logit diff 6.08e-5 mean 1.12e-5 across 154880 outputs after 78 real layers of MLA+DSA+256-expert MoE+noaux_tc router. Neither side touches source safetensors. Receipt: GLM52_FLAGSHIP_ADAPTER_PARITY.json",
+  "A03": {
+   "at": "2026-07-25T20:12:35Z",
+   "desc": "global Math allocation manifest is frozen",
+   "note": "PASS2 v2 frozen globally after all cartography: 59,585/59,585 explicit tensor decisions, 975 coalition slots, 844 native + 131 R0, tail R4, predicted complete 0.979484 BPW including 256 MiB packaging/runtime reserve under H0.98.",
    "state": "GREEN"
   },
-  "M05": {
-   "at": "2026-07-25T04:44:01Z",
-   "desc": "measured base TPS and prefill exist",
-   "note": "GLM base measured on the real 282-shard flagship: verified (production verify_hash=true) prefill 0.087 tok/s (46.0s/4tok) decode 0.157 tok/s (6.36s/tok median); trusted (verify_hash=false, isolates SHA-256 cost) prefill 0.384 tok/s decode 0.569 tok/s -- SHA-256 verification of cold-touched tensors is 3.6-4.4x of per-token cost, dominant over GPU dispatch. Command-buffer batching of independent MoE-expert matvecs (TokenCommandBuffer, one commit_and_wait per layer's touched experts instead of one per matvec) measured a real but modest 12% win -- confirms disk read + hash verify of never-before-seen (layer,expert) pairs is the floor, not dispatch overhead, at this short a run. Llama numbers unchanged (105.8/68.8/29.2/13.3 decode tok/s at ctx 128/512/2048/8192). Receipt: GLM52_GPU_BASE_TPS.json",
-   "state": "GREEN"
-  },
-  "M06": {
-   "at": null,
-   "desc": "acceleration stack is terminal and measured separately",
-   "note": "",
-   "state": "OPEN"
-  },
-  "M07": {
-   "at": "2026-07-25T04:52:05Z",
-   "desc": "GLM runs end to end inside HIDE",
-   "note": "GLM runs end to end through the production registry (load_engine -> GravityEngine::load -> GPU-resident adapter -> Engine::generate), the same path HIDE/hawking-serve use. Two real gaps found+fixed getting here: (1) shard tokenizer block is {kind:reference,source:org/Model} not a local dir -- engine now falls back to <model_dir>/tokenizer/tokenizer.json convention when header names no dir; (2) per-shard raw header carries a minimal 5-field architecture summary keyed differently (type not model_type) -- engine now prefers the assembler's model.gravity.index.json beside the shards when present, falls back to the shard's own header for single-shard artifacts (Llama, unaffected). Registry test: 5 prompt + 2 completion tokens, prefill 57.3s, decode 12.8s -- degenerate output (\" Fahr Fahr\"), consistent with M03's sealed R0 screening-gate finding, not a regression. Test: registry_serves_a_multi_shard_glm_artifact_end_to_end.",
-   "state": "GREEN"
-  },
-  "M08": {
-   "at": "2026-07-25T03:53:08Z",
-   "desc": "Prometheus S0 and source decision are sealed",
-   "note": "Prometheus S0 sealed: S0.1 dtype=bfloat16 full_precision=true, S0.2 arch graph GlmMoeDsaForCausalLM 78L/256E validated PASS, S0.3 decoder bit-exactness MEASURED (fixture 3.84e-6, flagship 6.08e-5, both sealed separately), S0.4 streaming traversal complete, S0.6 census via GLM52_LOGICAL_WEIGHT_LEDGER.json (cross-validated 3 independent sources). claim_a_source_eligible=true, hide_eligible=true, explicitly separated per Rev3 S8.1 -- GLM's HIDE eligibility does not depend on Claim-A flagship eligibility or vice versa. S0.5 (numerical hygiene) and S0.7 (baseline capability) remain gated on a served model.",
-   "state": "GREEN"
-  },
-  "M09": {
-   "at": "2026-07-24T20:28:09Z",
-   "desc": "Prometheus architecture and profiles are implemented",
-   "note": "all 14 Revision 3 \u00a77 components implemented and wired: 8 measured, 5 gated with named gates, 1 sealer; profiles general/math/uniform/random compiled and hashed; equal-budget solver matches all four arms to 0.0175% at 46.70 GB",
-   "state": "GREEN"
-  },
-  "M10": {
-   "at": "2026-07-24T20:28:09Z",
-   "desc": "equal-budget Claim A is sealed",
-   "note": "Claim A NOT_SEALED and correctly so: allocation plans are byte-matched and ready, but retention is deliberately null -- at equal bytes retention IS the claim. Blocked on S0.8 cartography membership and the served flagship.",
+  "A04": {
+   "at": "2026-07-25T20:12:35Z",
+   "desc": "Math-Preserve.gravity is complete and verified",
+   "note": "PASS3 durable four-worker run active under launchd from pushed commit df1ea5df; shard 1 prediction matched actual payload byte-for-byte and integrity/rate verification passed; full 282-shard artifact pending.",
    "state": "IN_PROGRESS"
   },
-  "M11": {
-   "at": "2026-07-25T03:56:45Z",
-   "desc": "General and Math artifacts are selected and verified",
-   "note": "General artifact SELECTED (R0+native head/embed, 0.921bpw) per campaign S12 'lowest defensible' -- not passing, since none passes under the binding one-bit ceiling; known limitation (screening-gate fail) explicitly documented not concealed. Math substrate selection still open (Math profile needs the same cartography-membership gate as General; no rate exists to select FROM regardless of profile).",
-   "state": "IN_PROGRESS"
-  },
-  "M12": {
-   "at": "2026-07-25T02:59:58Z",
-   "desc": "Forge, continuity, sovereignty, and Limit Registry are sealed",
-   "note": "sovereignty sealed for both the Llama instrument and the real GLM-5.2 flagship (282-shard multi-shard manifest, artifact_hash = sha256 of model.gravity.index.json since no single body hash names a multi-shard model, refuses to seal on incomplete coverage -- proven via a synthetic INCOMPLETE fixture). hidden_intervention 0.0, model_continuity 1.0, attribution_completeness 1.0. false_refusal/boundary_error remain GATED on a served model.",
+  "A05": {
+   "at": "2026-07-25T20:12:35Z",
+   "desc": "Odyssey package is prepared",
+   "note": "Odyssey package prepared and dry-run validated: training T0-T5, sandbox, roles, Ledger, verifiers, Tribunal, retrieval, pinned Lean/Mathlib; substrate slot now binds only to a verified PASS3 receipt.",
    "state": "GREEN"
   },
-  "M13": {
-   "at": "2026-07-24T20:18:59Z",
-   "desc": "Odyssey substrate and training bundle are complete",
-   "note": "training bundle complete: plan T0-T5, objective/checkpoint/evaluation contracts, data + teacher-trace manifests, profile manifest; substrate itself still GATED on M11 and declared so rather than named speculatively",
-   "state": "IN_PROGRESS"
-  },
-  "M14": {
-   "at": "2026-07-24T20:18:59Z",
-   "desc": "sandbox, roles, Ledger, verifiers, Tribunal, and retrieval are scaffolded",
-   "note": "sandbox policy (network deny-by-default, filesystem allowlist, emergency stop), 12 roles with promotion held only by verifier and Tribunal, Ledger contract, 4-tier lattice, 7 memory stores, Tribunal + prior-art protocol, retrieval against a pinned snapshot, branch economics, Graveyard",
-   "state": "GREEN"
-  },
-  "M15": {
-   "at": "2026-07-24T20:18:59Z",
-   "desc": "Lean/Mathlib and evidence environment are pinned",
-   "note": "Lean leanprover/lean4:v4.15.0 and Mathlib v4.15.0 pinned to concrete revisions; validator rejects 'latest'; container digest declared with gate ODYSSEY-ENV-01",
-   "state": "GREEN"
-  },
-  "M16": {
-   "at": "2026-07-24T20:18:59Z",
-   "desc": "Odyssey dry-run validation passes",
-   "note": "odyssey_package.py validate: 86 checks, 0 failed, DRY_RUN_PASS; selftest proves a flipped fence FAILS validation and the runner exits 1",
-   "state": "GREEN"
-  },
-  "M17": {
-   "at": "2026-07-24T20:18:59Z",
+  "A06": {
+   "at": "2026-07-25T20:12:35Z",
    "desc": "ODYSSEY_LAUNCH_AUTHORIZED remains false",
-   "note": "ODYSSEY_LAUNCH_AUTHORIZED=false; the builder reads the fence and never writes it, so rebuilding cannot authorize a run",
+   "note": "ODYSSEY_LAUNCH_AUTHORIZED is false; builder reads and never authorizes it, validator and runner enforce the fence.",
    "state": "GREEN"
-  },
-  "M18": {
-   "at": "2026-07-24T20:37:27Z",
-   "desc": "rollback/source lifecycle is green",
-   "note": "eviction VERIFIED FIRING: free disk 274.6 -> 404.8 GiB at the W003/W004 boundary, 1 EVICT event, 0 faults; traversal now sustainable to 282/282",
-   "state": "IN_PROGRESS"
-  },
-  "M19": {
-   "at": "2026-07-25T03:53:08Z",
-   "desc": "all campaign commits are pushed",
-   "note": "0 unpushed commits, all campaign work pushed to origin/campaign/glm52-generation-b",
-   "state": "GREEN"
-  },
-  "M20": {
-   "at": "2026-07-25T03:53:22Z",
-   "desc": "worktree and process state are clean except intentional detached services",
-   "note": "worktree clean (git status empty), traversal controller exited naturally at 282/282, no stray hawking processes; MOP's 20 processes untouched throughout",
-   "state": "GREEN"
-  },
-  "M21": {
-   "at": "2026-07-25T07:31:15Z",
-   "desc": "streamed Prometheus cartography (PASS 1) is complete",
-   "note": "PASS1 complete: 20/20 windows, 78/78 layers captured, 282/282 shards fetched+verified+evicted, zero errors, zero refused evictions throughout. Real math-domain forward passes (3 pooled TRAIN_PARTITIONS records) captured teacher states for every layer; 75/75 sparse layers carry per-expert contribution_l2/hit_count/coselection_count cartography. Process ran clean via launchd, exited cleanly on completion (no restart, matching KeepAlive.SuccessfulExit=false).",
-   "state": "GREEN"
-  },
-  "M22": {
-   "at": "2026-07-25T07:31:15Z",
-   "desc": "global Math allocation manifest (PASS 2) is frozen",
-   "note": "PROMETHEUS_MATH_ALLOCATION_MANIFEST.json frozen: 75/75 sparse layers, coalition_fraction=0.05, 975 coalition expert-slots (13/layer) of 19200 total routed-expert slots. 95.7% confidently supported (>=2 calibration hits), 4.3% thin-evidence (30/75 layers have at least one thin member, honestly flagged per-layer not hidden). 28800 total hit observations across the calibration run. Membership only -- byte rates deferred to architecture.equal_budget_solver per this manifest's own note, not yet invoked.",
-   "state": "GREEN"
-  },
-  "M23": {
-   "at": null,
-   "desc": "Math-Preserve.gravity (PASS 3) is complete and verified",
-   "note": "",
-   "state": "OPEN"
   }
  },
- "gates_closed": 17,
- "gates_total": 23,
+ "gates_closed": 5,
+ "gates_total": 6,
+ "legacy_gate_events_preserved": 42,
  "odyssey_launch_authorized": false,
- "schema": "hawking.motherload.status.v1",
- "updated_at": "2026-07-25T07:31:15Z"
+ "schema": "hawking.motherload.status.v2",
+ "terminal_gate_set": "PROMETHEUS_STREAMED_PRE_ODYSSEY_AMENDMENT",
+ "updated_at": "2026-07-25T20:12:57Z"
 }

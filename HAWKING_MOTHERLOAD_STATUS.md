@@ -3,7 +3,7 @@
 endpoint: `IN_PROGRESS`  
 gates closed: 15/23  
 ODYSSEY_LAUNCH_AUTHORIZED: `false`  
-updated: 2026-07-25T05:36:46Z
+updated: 2026-07-25T06:21:48Z
 
 | gate | state | condition | note |
 |---|---|---|---|
@@ -27,6 +27,6 @@ updated: 2026-07-25T05:36:46Z
 | M18 | running | rollback/source lifecycle is green | eviction VERIFIED FIRING: free disk 274.6 -> 404.8 GiB at the W003/W004 boundary, 1 EVICT event, 0 faults; traversal now sustainable to 282/282 |
 | M19 | green | all campaign commits are pushed | 0 unpushed commits, all campaign work pushed to origin/campaign/glm52-generation-b |
 | M20 | green | worktree and process state are clean except intentional detached services | worktree clean (git status empty), traversal controller exited naturally at 282/282, no stray hawking processes; MOP's 20 processes untouched throughout |
-| M21 | running | streamed Prometheus cartography (PASS 1) is complete | Window 0/20 complete: layers 0-6 captured, 3 sparse (3,4,5,6) with real per-expert cartography -- 122-149 of 256 experts hit per layer (healthier than the pinned corpus's raw ~37-token count alone suggests; router selections concentrate). Eviction enabled after watching window 0's fetch+capture+skip-eviction-while-paused all behave correctly (disk was at 71%, 19 windows of accumulation left with eviction off would have hit the floor). Wired the real PASS3 extension point into glm52_pack.pack_shard: rate_override maps (layer,expert) to native-protect or a specific LADDER rung, proven byte-identical to today's packer when unused (193 existing pack tests + 4 new ones green). Found and separately flagged (task_bfe9935a, not fixed inline) a pre-existing pack_shard first-call determinism bug unrelated to this change. Job restarted with eviction on, resumed from ledger with zero re-fetch of verified shards. |
+| M21 | running | streamed Prometheus cartography (PASS 1) is complete | Halfway: window 10/20, 35 layers captured (32 sparse layers with real per-expert coalition evidence). Eviction steady, disk 369GB free, no refusals, no errors. Process 26791 stable throughout. |
 | M22 | open | global Math allocation manifest (PASS 2) is frozen |  |
 | M23 | open | Math-Preserve.gravity (PASS 3) is complete and verified |  |

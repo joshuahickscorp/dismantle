@@ -1,5 +1,5 @@
 {
- "completion_fraction": 0.65,
+ "completion_fraction": 0.75,
  "endpoint": "IN_PROGRESS",
  "gates": {
   "M01": {
@@ -27,10 +27,10 @@
    "state": "GREEN"
   },
   "M05": {
-   "at": "2026-07-24T20:37:07Z",
+   "at": "2026-07-25T04:44:01Z",
    "desc": "measured base TPS and prefill exist",
-   "note": "base measured on the instrument: decode 105.8/68.8/29.2/13.3 tok/s at ctx 128/512/2048/8192, prefill 116.5/92.8/48.8/19.1, 1 command buffer + 210 dispatches per token; end-to-end generation 60.7 tok/s with incremental decode bit-identical to full replay; GLM numbers gated on the flagship artifact",
-   "state": "IN_PROGRESS"
+   "note": "GLM base measured on the real 282-shard flagship: verified (production verify_hash=true) prefill 0.087 tok/s (46.0s/4tok) decode 0.157 tok/s (6.36s/tok median); trusted (verify_hash=false, isolates SHA-256 cost) prefill 0.384 tok/s decode 0.569 tok/s -- SHA-256 verification of cold-touched tensors is 3.6-4.4x of per-token cost, dominant over GPU dispatch. Command-buffer batching of independent MoE-expert matvecs (TokenCommandBuffer, one commit_and_wait per layer's touched experts instead of one per matvec) measured a real but modest 12% win -- confirms disk read + hash verify of never-before-seen (layer,expert) pairs is the floor, not dispatch overhead, at this short a run. Llama numbers unchanged (105.8/68.8/29.2/13.3 decode tok/s at ctx 128/512/2048/8192). Receipt: GLM52_GPU_BASE_TPS.json",
+   "state": "GREEN"
   },
   "M06": {
    "at": null,
@@ -39,10 +39,10 @@
    "state": "OPEN"
   },
   "M07": {
-   "at": null,
+   "at": "2026-07-25T04:52:05Z",
    "desc": "GLM runs end to end inside HIDE",
-   "note": "",
-   "state": "OPEN"
+   "note": "GLM runs end to end through the production registry (load_engine -> GravityEngine::load -> GPU-resident adapter -> Engine::generate), the same path HIDE/hawking-serve use. Two real gaps found+fixed getting here: (1) shard tokenizer block is {kind:reference,source:org/Model} not a local dir -- engine now falls back to <model_dir>/tokenizer/tokenizer.json convention when header names no dir; (2) per-shard raw header carries a minimal 5-field architecture summary keyed differently (type not model_type) -- engine now prefers the assembler's model.gravity.index.json beside the shards when present, falls back to the shard's own header for single-shard artifacts (Llama, unaffected). Registry test: 5 prompt + 2 completion tokens, prefill 57.3s, decode 12.8s -- degenerate output (\" Fahr Fahr\"), consistent with M03's sealed R0 screening-gate finding, not a regression. Test: registry_serves_a_multi_shard_glm_artifact_end_to_end.",
+   "state": "GREEN"
   },
   "M08": {
    "at": "2026-07-25T03:53:08Z",
@@ -123,9 +123,9 @@
    "state": "GREEN"
   }
  },
- "gates_closed": 13,
+ "gates_closed": 15,
  "gates_total": 20,
  "odyssey_launch_authorized": false,
  "schema": "hawking.motherload.status.v1",
- "updated_at": "2026-07-25T03:56:45Z"
+ "updated_at": "2026-07-25T04:52:05Z"
 }

@@ -180,17 +180,38 @@ def _fetch_one(row: dict, repo: str, revision: str) -> dict:
 
 
 PACK_WORKERS = int(os.environ.get("GLM52_PASS3_PACK_WORKERS", "4"))
+PACK_THREADS_PER_WORKER = int(
+    os.environ.get("GLM52_PASS3_TORCH_THREADS_PER_WORKER", "7")
+)
+
+
+def _worker_init() -> None:
+    """Give each spawned worker an independent, bounded CPU compute pool."""
+    import glm52_pack as pack
+    import torch
+
+    torch.set_num_threads(PACK_THREADS_PER_WORKER)
+    torch.set_num_interop_threads(1)
+    pack.forge._device = lambda: torch.device("cpu")
+
+
+def _worker_probe() -> tuple[int, str]:
+    """Pickleable spawn-path probe used by selftest."""
+    import glm52_pack as pack
+    import torch
+
+    return torch.get_num_threads(), str(pack.forge._device())
 
 
 def _pack_one(name: str, rows: list[dict], override: dict) -> dict:
-    """Runs in a worker thread against a unique source and destination shard.
+    """Runs in a spawned worker against a unique source and destination shard.
 
-    All workers intentionally share the same immutable manifest and CPU-only
-    device override.  `pack_shard` otherwise keeps its state local to the call.
+    Workers receive the same immutable manifest and keep all fit state process-local.
     """
     import glm52_pack as pack
     import torch
 
+    # Defensive for direct invocation in tests; ProcessPool runs _worker_init first.
     pack.forge._device = lambda: torch.device("cpu")
     receipt = pack.pack_shard(SOURCE_ROOT / name, rows, COMPACT, rate_override=override)
     return {"shard": name, "compact_bytes": receipt["compact_bytes"],
@@ -199,7 +220,8 @@ def _pack_one(name: str, rows: list[dict], override: dict) -> dict:
 
 def run(*, limit_shards: int | None = None) -> int:
     import fcntl
-    from concurrent.futures import ThreadPoolExecutor, as_completed
+    import multiprocessing
+    from concurrent.futures import ProcessPoolExecutor, as_completed
 
     # gravity_forge._device() defaults to MPS whenever available. On this machine
     # that path has previously produced a command-buffer error that silently
@@ -244,7 +266,16 @@ def run(*, limit_shards: int | None = None) -> int:
     # per shard, CPU-bound) dominates over fetch (~22s/shard, I/O-bound) by more
     # than an order of magnitude, so this simple batch-then-parallel-pack shape
     # gets nearly all of a full producer/consumer queue's throughput without one.
-    with ThreadPoolExecutor(max_workers=PACK_WORKERS) as pool:
+    # A ThreadPoolExecutor does not create independent PyTorch intra-op pools:
+    # four fits merely interleave on one ~20-thread process and the first real R4
+    # batch consumed essentially the sum of four shard compute times.  Spawned
+    # workers each receive seven threads on this 28-core host, giving real
+    # process-level parallelism without inheriting any parent torch state.
+    with ProcessPoolExecutor(
+        max_workers=PACK_WORKERS,
+        mp_context=multiprocessing.get_context("spawn"),
+        initializer=_worker_init,
+    ) as pool:
         for start in range(0, len(pending), PACK_WORKERS):
             batch = pending[start:start + PACK_WORKERS]
             if _free_bytes() < DISK_FLOOR_BYTES:
@@ -587,6 +618,9 @@ def status() -> dict:
 
 def selftest() -> None:
     """No live artifact required: prove exact per-tensor override extraction."""
+    import multiprocessing
+    from concurrent.futures import ProcessPoolExecutor
+
     synthetic = {
         "global_byte_auction": {
             "tensor_decisions": {
@@ -600,6 +634,14 @@ def selftest() -> None:
     assert override == synthetic["global_byte_auction"]["tensor_decisions"]
     assert override is not synthetic["global_byte_auction"]["tensor_decisions"], \
         "worker override must be a copy, not mutate the frozen manifest"
+    with ProcessPoolExecutor(
+        max_workers=1,
+        mp_context=multiprocessing.get_context("spawn"),
+        initializer=_worker_init,
+    ) as pool:
+        threads, device = pool.submit(_worker_probe).result(timeout=30)
+    assert threads == PACK_THREADS_PER_WORKER, (threads, PACK_THREADS_PER_WORKER)
+    assert device == "cpu", device
     print("math_pass3_pack selftest PASS")
 
 

@@ -8,6 +8,8 @@
 		<string>75000000000</string>
 		<key>GLM52_PASS3_PACK_WORKERS</key>
 		<string>4</string>
+		<key>GLM52_PASS3_TORCH_THREADS_PER_WORKER</key>
+		<string>7</string>
 		<key>HF_HUB_DISABLE_IMPLICIT_TOKEN</key>
 		<string>1</string>
 		<key>HF_HUB_DISABLE_TELEMETRY</key>

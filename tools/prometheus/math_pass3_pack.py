@@ -1,21 +1,16 @@
 #!/usr/bin/env python3.12
 """Math-Preserve PASS 3: profile-conditioned packing from PASS 2's frozen manifest.
 
-Per-shard loop: VERIFY -> PACK (frozen coalition promoted to native, everything else
-exactly as General-R0 already packs it) -> EVICT. Re-streams the source PASS 1
-already evicted -- the user's own spec names this explicitly ("Re-stream every
-required source shard"), so this is not a design mistake to route around: PASS 1
-measures and evicts per window before PASS 2 can see the whole model, so a second
-pass over the source is structural, not accidental.
+Per-shard loop: VERIFY -> PACK the exact per-tensor decision frozen by PASS 2 ->
+EVICT. Re-streams the source PASS 1 already evicted -- the user's specification
+names this explicitly ("Re-stream every required source shard"), so the second
+source pass is structural, not accidental.
 
-Byte-matching honesty: this build promotes each layer's coalition experts to native
-precision (full source bytes) and leaves every remainder expert at the same R0 rate
-General-R0 already uses -- it does NOT yet demote the remainder to compensate, so
-Math-Preserve.gravity as produced here is NOT byte-matched to General-R0's total.
-Solving the remainder's rate to hit a matched budget is architecture.
-equal_budget_solver's job (it already does exactly this kind of bisection for the
-four Claim-A arms); wiring it in is the next increment, not done by this module.
-That is reported explicitly in this run's receipt, not silently assumed away.
+After 282/282 shards, finalization grades coverage against the independent official
+weight map, verifies every payload hash and shard rate, writes the runtime model
+index, installs the tokenizer tables, and constructs an itemized one-bit ledger
+from actual on-disk bytes.  Prediction only controls admission; actual bytes decide
+whether `<Base>-H0.98-Math-Preserve.gravity` is sealable.
 
     python3.12 tools/prometheus/math_pass3_pack.py status
     python3.12 tools/prometheus/math_pass3_pack.py run [--limit-shards N]
@@ -48,8 +43,11 @@ PROGRESS = STATE_DIR / "progress.json"
 LOCK = STATE_DIR / "pass3.lock"
 COMPACT = Path(
     "/Users/scammermike/Library/Application Support/Hawking/Models/GLM-5.2/"
-    "b4734de4facf877f85769a911abafc5283eab3d9/Math-Preserve-PASS3"
+    "b4734de4facf877f85769a911abafc5283eab3d9/"
+    "GLM-5.2-H0.98-Math-Preserve.gravity"
 )
+GENERAL = COMPACT.parent / "General-R0"
+RECEIPT = REPO / "GLM52_H0_98_MATH_PRESERVE_RECEIPT.json"
 
 os.environ.setdefault("HF_HOME", str(STATE_DIR / "hf_home"))
 os.environ.setdefault("HF_HUB_CACHE", str(STATE_DIR / "hf_cache"))
@@ -117,19 +115,25 @@ def manifest_ready() -> tuple[bool, dict | None, str]:
             "still missing capsule evidence) -- PASS 2 should have refused to "
             "write this; do not pack against it"
         )
+    auction = manifest.get("global_byte_auction") or {}
+    if not auction.get("allocation_complete"):
+        return False, manifest, "PASS2 manifest has no complete global byte auction"
+    decisions = auction.get("tensor_decisions") or {}
+    expected = int(_read_json(GRAPH)["tensor_count"])
+    if len(decisions) != expected:
+        return False, manifest, (
+            f"PASS2 auction names {len(decisions)} tensors, dependency graph names "
+            f"{expected}; do not pack an implicit allocation"
+        )
+    if auction.get("predicted_complete_bytes_with_reserve", 1 << 100) > \
+            auction.get("max_complete_physical_bytes", 0):
+        return False, manifest, "PASS2 auction exceeds its own frozen complete-byte ceiling"
     return True, manifest, ""
 
 
-def coalition_rate_override(manifest: dict) -> dict[tuple[int, int], str]:
-    """Every coalition member across every layer, mapped to 'native'. Remainder
-    experts get no entry -- absent from the map, glm52_pack.pack_shard falls
-    through to its default production_rung (R0), unchanged from General-R0."""
-    override: dict[tuple[int, int], str] = {}
-    for layer_str, data in manifest["per_layer"].items():
-        layer = int(layer_str)
-        for expert in data["coalition_expert_ids"]:
-            override[(layer, expert)] = "native"
-    return override
+def tensor_rate_override(manifest: dict) -> dict[str, str]:
+    """The packer receives the frozen decision for every exact tensor name."""
+    return dict(manifest["global_byte_auction"]["tensor_decisions"])
 
 
 def _sha256_file(path: Path) -> str:
@@ -175,10 +179,38 @@ def _fetch_one(row: dict, repo: str, revision: str) -> dict:
     }
 
 
+PACK_WORKERS = int(os.environ.get("GLM52_PASS3_PACK_WORKERS", "4"))
+
+
+def _pack_one(name: str, rows: list[dict], override: dict) -> dict:
+    """Runs in a worker thread against a unique source and destination shard.
+
+    All workers intentionally share the same immutable manifest and CPU-only
+    device override.  `pack_shard` otherwise keeps its state local to the call.
+    """
+    import glm52_pack as pack
+    import torch
+
+    pack.forge._device = lambda: torch.device("cpu")
+    receipt = pack.pack_shard(SOURCE_ROOT / name, rows, COMPACT, rate_override=override)
+    return {"shard": name, "compact_bytes": receipt["compact_bytes"],
+            "complete_bpw": receipt["complete_bpw"]}
+
+
 def run(*, limit_shards: int | None = None) -> int:
     import fcntl
+    from concurrent.futures import ThreadPoolExecutor, as_completed
 
-    import glm52_pack as pack
+    # gravity_forge._device() defaults to MPS whenever available. On this machine
+    # that path has previously produced a command-buffer error that silently
+    # poisoned a LATER, unrelated tensor's PQ indices rather than raising where the
+    # corruption happened -- the failure surfaced elsewhere as "index does not fit
+    # in 7 bits" on a tensor that was never near the actual fault. A crash here is
+    # the safe outcome; the dangerous one is a bad pack that doesn't crash. Forced
+    # CPU for the same reason this campaign forced it everywhere else unattended
+    # correctness mattered: correctness over speed, verified once, not re-litigated
+    # per script. (Re-applied per-worker in _pack_one; done here too so a
+    # zero-worker/serial code path would still be safe.)
 
     ready, manifest, reason = manifest_ready()
     if not ready:
@@ -193,7 +225,7 @@ def run(*, limit_shards: int | None = None) -> int:
         sys.stderr.write("another PASS3 run holds the lock; exiting\n")
         return 0
 
-    override = coalition_rate_override(manifest)
+    override = tensor_rate_override(manifest)
     official = _read_json(OFFICIAL_MANIFEST)
     graph = _read_json(GRAPH)
     repo, revision = official["repo"], official["revision"]
@@ -205,82 +237,369 @@ def run(*, limit_shards: int | None = None) -> int:
     shard_names = sorted(by_path)
     if limit_shards is not None:
         shard_names = shard_names[:limit_shards]
-
     already_packed = packed_shards()
-    for name in shard_names:
-        if name in already_packed:
-            continue
-        if _free_bytes() < DISK_FLOOR_BYTES:
-            _append_ledger({"event": "DISK_FLOOR_STOP", "shard": name, "at": _now()})
-            sys.stderr.write(f"disk floor reached before {name}; stopping\n")
-            break
+    pending = [n for n in shard_names if n not in already_packed]
 
-        if name not in verified_shards():
-            result = _fetch_one(by_path[name], repo, revision)
-            _append_ledger(result)
-            if result["status"] != "VERIFIED":
-                sys.stderr.write(f"PASS3 fetch failed: {result}\n")
+    # Fetch, then pack, one PACK_WORKERS-sized batch at a time. Packing (minutes
+    # per shard, CPU-bound) dominates over fetch (~22s/shard, I/O-bound) by more
+    # than an order of magnitude, so this simple batch-then-parallel-pack shape
+    # gets nearly all of a full producer/consumer queue's throughput without one.
+    with ThreadPoolExecutor(max_workers=PACK_WORKERS) as pool:
+        for start in range(0, len(pending), PACK_WORKERS):
+            batch = pending[start:start + PACK_WORKERS]
+            if _free_bytes() < DISK_FLOOR_BYTES:
+                _append_ledger({"event": "DISK_FLOOR_STOP", "shard": batch[0], "at": _now()})
+                sys.stderr.write(f"disk floor reached before {batch[0]}; stopping\n")
+                break
+
+            ready_batch = []
+            for name in batch:
+                # A past VERIFIED row proves bytes once passed the source hash; it
+                # does not mean PASS1/PASS3 eviction left those bytes resident.
+                if not (SOURCE_ROOT / name).is_file() or name not in verified_shards():
+                    result = _fetch_one(by_path[name], repo, revision)
+                    _append_ledger(result)
+                    if result["status"] != "VERIFIED":
+                        sys.stderr.write(f"PASS3 fetch failed: {result}\n")
+                        continue
+                ready_batch.append(name)
+
+            futures = {
+                pool.submit(_pack_one, name, tensors_by_shard.get(name, []), override): name
+                for name in ready_batch
+            }
+            for future in as_completed(futures):
+                name = futures[future]
+                try:
+                    receipt = future.result()
+                except Exception as exc:  # noqa: BLE001 - one bad shard must not kill the batch
+                    _append_ledger({"event": "PACK_ERROR", "shard": name,
+                                    "error": f"{type(exc).__name__}: {exc}", "at": _now()})
+                    sys.stderr.write(f"PASS3 pack failed for {name}: {exc}\n")
+                    continue
+                _append_ledger({"event": "PACKED", **receipt, "at": _now()})
+                target = SOURCE_ROOT / name
+                if target.exists():
+                    size = target.stat().st_size
+                    target.unlink()
+                    _append_ledger({"event": "EVICT", "shard": name, "bytes": size, "at": _now()})
+
+            _write_json(PROGRESS, {
+                "shards_packed": len(packed_shards()), "shards_total": len(shard_names),
+                "last_batch": batch, "at": _now(),
+            })
+
+    if limit_shards is None and len(packed_shards()) == len(by_path):
+        finalize(manifest)
+    return 0
+
+
+def _install_runtime_tree(source: Path, target: Path) -> dict:
+    """Install immutable runtime files by hardlink when possible, copy otherwise."""
+    import shutil
+
+    if not source.is_dir():
+        raise FileNotFoundError(f"required runtime tree does not exist: {source}")
+    linked = copied = existing = 0
+    for src in sorted(p for p in source.rglob("*") if p.is_file()):
+        dst = target / src.relative_to(source)
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        if dst.exists():
+            existing += 1
+            continue
+        try:
+            os.link(src, dst)
+            linked += 1
+        except OSError:
+            shutil.copy2(src, dst)
+            copied += 1
+    return {"linked": linked, "copied": copied, "existing": existing}
+
+
+def _tree_bytes(root: Path) -> int:
+    return sum(p.stat().st_size for p in root.rglob("*") if p.is_file())
+
+
+def _actual_byte_ledger(manifest: dict) -> tuple[dict, dict]:
+    """Itemize every actual packaged byte into the binding one-bit ledger."""
+    import glm52_pack as pack
+    import gravity_format as gravity
+
+    found: set[str] = set()
+    decision_mismatches: list[dict] = []
+    components = {
+        "indices": 0,
+        "codebooks": 0,
+        "scales": 0,
+        "metadata": 0,
+        "alignment": 0,
+        "protected_islands": 0,
+        "doctor": 0,
+        "pass_through_tensors": 0,
+        "packaging": 0,
+        "runtime_tables": 0,
+    }
+    decisions = manifest["global_byte_auction"]["tensor_decisions"]
+    verified = []
+    rung_by_name = {r["rung"]: r for r in pack.LADDER}
+
+    for path in sorted(COMPACT.glob("model-*.gravity")):
+        verdict = gravity.verify(path)
+        verified.append(verdict)
+        if not verdict["ok"]:
+            raise RuntimeError(f"shard integrity verification failed: {verdict}")
+        header = gravity.read_header(path)
+        payload_bytes = 0
+        for tensor in header["tensors"]:
+            name = tensor["name"]
+            found.add(name)
+            body_bytes = int(tensor["bytes"])
+            payload_bytes += body_bytes
+            expected = decisions.get(name)
+            codec = str(tensor.get("codec", ""))
+            if codec.startswith("native."):
+                if expected != "native":
+                    decision_mismatches.append({
+                        "tensor": name, "expected": expected, "observed": codec,
+                    })
+                reason = str(tensor.get("reason", ""))
+                bucket = (
+                    "protected_islands"
+                    if reason.startswith("PROMETHEUS_")
+                    else "pass_through_tensors"
+                )
+                components[bucket] += body_bytes
                 continue
 
-        rows = tensors_by_shard.get(name, [])
-        receipt = pack.pack_shard(
-            SOURCE_ROOT / name, rows, COMPACT, rate_override=override,
+            observed = tensor.get("rung")
+            if codec != "gravity-pq" or expected != observed:
+                decision_mismatches.append({
+                    "tensor": name, "expected": expected,
+                    "observed": f"{codec}/{observed}",
+                })
+            rung = rung_by_name[observed]
+            shape = [int(x) for x in tensor["shape"]]
+            elements = math.prod(shape)
+            cols = shape[-1]
+            dim = int(rung["dim"])
+            effective_dim = (
+                dim if cols % dim == 0 and dim & (dim - 1) == 0
+                else cols & -cols
+            )
+            count = elements // effective_dim
+            index_bytes = math.ceil(
+                count * pack.index_bits(int(rung["k"])) / 8
+            )
+            codebook_bytes = int(rung["k"]) * effective_dim * 2
+            metadata_bytes = pack.HEADER_BYTES
+            if index_bytes + codebook_bytes + metadata_bytes != body_bytes:
+                raise AssertionError(
+                    f"{name}: itemized PQ bytes "
+                    f"{index_bytes + codebook_bytes + metadata_bytes} != {body_bytes}"
+                )
+            components["indices"] += index_bytes
+            components["codebooks"] += codebook_bytes
+            components["metadata"] += metadata_bytes
+        components["packaging"] += path.stat().st_size - payload_bytes
+
+    missing = sorted(set(decisions) - found)
+    undeclared = sorted(found - set(decisions))
+    if missing or undeclared or decision_mismatches:
+        raise RuntimeError(
+            "artifact differs from frozen allocation: "
+            f"missing={len(missing)}, undeclared={len(undeclared)}, "
+            f"decision_mismatches={len(decision_mismatches)}; "
+            f"examples={(missing + undeclared + decision_mismatches)[:3]}"
         )
-        _append_ledger({"event": "PACKED", "shard": name,
-                        "compact_bytes": receipt["compact_bytes"],
-                        "complete_bpw": receipt["complete_bpw"], "at": _now()})
 
-        target = SOURCE_ROOT / name
-        if target.exists():
-            size = target.stat().st_size
-            target.unlink()
-            _append_ledger({"event": "EVICT", "shard": name, "bytes": size, "at": _now()})
+    tokenizer = COMPACT / "tokenizer"
+    components["runtime_tables"] = _tree_bytes(tokenizer)
+    sidecars = [
+        p for p in COMPACT.rglob("*")
+        if p.is_file()
+        and p.suffix != ".gravity"
+        and tokenizer not in p.parents
+    ]
+    components["packaging"] += sum(p.stat().st_size for p in sidecars)
 
-        _write_json(PROGRESS, {
-            "shards_packed": len(packed_shards()), "shards_total": len(shard_names),
-            "last_shard": name, "at": _now(),
-        })
+    package_bytes = _tree_bytes(COMPACT)
+    itemized_bytes = sum(components.values())
+    if itemized_bytes != package_bytes:
+        raise AssertionError(
+            f"complete byte ledger itemizes {itemized_bytes}, package has {package_bytes}"
+        )
 
-    return 0
+    foundry = REPO / "tools/foundry"
+    if str(foundry) not in sys.path:
+        sys.path.insert(0, str(foundry))
+    from one_bit_ceiling import CompleteByteLedger, assert_complete_bpw_le_one
+
+    ledger = CompleteByteLedger(
+        **{name: value * 8 for name, value in components.items()},
+        metadata_alignment_reserve_bits=0,
+        note="Actual packaged bytes for GLM-5.2-H0.98-Math-Preserve.gravity; "
+             "no modeled-zero or payload-only exclusions.",
+    )
+    denominator = int(
+        manifest["global_byte_auction"]["logical_weight_denominator"]
+    )
+    law_receipt = assert_complete_bpw_le_one(ledger, denominator)
+    return (
+        {
+            **ledger.as_dict(denominator),
+            "component_bytes": components,
+            "actual_package_bytes": package_bytes,
+            "itemization_reconciles": True,
+        },
+        {
+            "shards_verified": len(verified),
+            "all_shards_ok": all(v["ok"] for v in verified),
+            "frozen_tensor_decisions_verified": len(found),
+            "decision_mismatches": 0,
+            "one_bit_law": law_receipt,
+        },
+    )
+
+
+def finalize(manifest: dict | None = None) -> dict:
+    """Turn the packed shard set into the verified standalone Odyssey substrate."""
+    import hashlib
+    import glm52_assemble as assembler
+    import gravity_format as gravity
+
+    if manifest is None:
+        ready, manifest, reason = manifest_ready()
+        if not ready:
+            raise SystemExit(reason)
+    coverage = assembler.check(COMPACT)
+    if not coverage["complete"]:
+        raise RuntimeError(
+            f"refusing Math-Preserve finalization over incomplete coverage: {coverage}"
+        )
+
+    tokenizer_install = _install_runtime_tree(
+        GENERAL / "tokenizer", COMPACT / "tokenizer"
+    )
+    _write_json(COMPACT / "PROMETHEUS_MATH_ALLOCATION_MANIFEST.json", manifest)
+    _write_json(COMPACT / "COVERAGE.json", coverage)
+
+    packed, shards = assembler.packed_index(COMPACT)
+    shard_hashes = {}
+    for name in shards:
+        header = gravity.read_header(COMPACT / name)
+        shard_hashes[name] = header["integrity"]["body_sha256"]
+    manifest_sha = hashlib.sha256(MANIFEST.read_bytes()).hexdigest()
+    index = {
+        "schema": "hawking.gravity.model_index.v1",
+        "assembled_at": _now(),
+        "model": {
+            "repo": "zai-org/GLM-5.2",
+            "revision": _read_json(OFFICIAL_MANIFEST)["revision"],
+            "representation": "QUANTIZED_TRANSFORMER",
+            "profile": "Math-Preserve",
+            "rate_label": "H0.98",
+        },
+        "architecture": assembler.synthesize_architecture(),
+        "shards": sorted(shards),
+        "shard_count": len(shards),
+        "tensor_count": len(packed),
+        "weight_map": {name: entry["shard"] for name, entry in sorted(packed.items())},
+        "shard_body_sha256": shard_hashes,
+        "allocation_manifest_sha256": manifest_sha,
+        "coverage": {
+            key: coverage[key]
+            for key in ("official_tensors", "dispositions", "verdict")
+        },
+        "byte_provenance": "PASS3 streamed from immutable source; every shard "
+                           "hash-verified before packing and evicted after atomic output.",
+    }
+    _write_json(COMPACT / "model.gravity.index.json", index)
+
+    byte_ledger, verification = _actual_byte_ledger(manifest)
+    actual_bytes = int(byte_ledger["actual_package_bytes"])
+    auction = manifest["global_byte_auction"]
+    if actual_bytes > int(auction["max_complete_physical_bytes"]):
+        raise RuntimeError(
+            f"actual Math-Preserve package {actual_bytes} bytes exceeds frozen "
+            f"H0.98 ceiling {auction['max_complete_physical_bytes']}"
+        )
+    receipt = {
+        "schema": "hawking.prometheus.math_preserve_receipt.v1",
+        "at": _now(),
+        "artifact": str(COMPACT),
+        "artifact_index_sha256": hashlib.sha256(
+            (COMPACT / "model.gravity.index.json").read_bytes()
+        ).hexdigest(),
+        "allocation_manifest_sha256": manifest_sha,
+        "rate_label": "H0.98",
+        "coverage": coverage,
+        "verification": verification,
+        "byte_ledger": byte_ledger,
+        "target_complete_bpw": auction["target_complete_bpw"],
+        "target_max_bytes": auction["max_complete_physical_bytes"],
+        "actual_complete_bpw": actual_bytes * 8 / int(
+            auction["logical_weight_denominator"]
+        ),
+        "headroom_bytes": int(auction["max_complete_physical_bytes"]) - actual_bytes,
+        "tokenizer_install": tokenizer_install,
+        "odyssey_input_ready": True,
+    }
+    _write_json(RECEIPT, receipt)
+    _append_ledger({
+        "event": "FINALIZED", "artifact": str(COMPACT),
+        "actual_bytes": actual_bytes,
+        "actual_complete_bpw": receipt["actual_complete_bpw"],
+        "receipt": str(RECEIPT), "at": _now(),
+    })
+    _write_json(PROGRESS, {
+        "state": "COMPLETE", "shards_packed": len(packed_shards()),
+        "shards_total": 282, "artifact": str(COMPACT),
+        "actual_complete_bpw": receipt["actual_complete_bpw"], "at": _now(),
+    })
+    return receipt
 
 
 def status() -> dict:
     ready, manifest, reason = manifest_ready()
+    auction = (manifest or {}).get("global_byte_auction", {})
+    progress = _read_json(PROGRESS) if PROGRESS.is_file() else {}
     return {
         "schema": "hawking.prometheus.math_pass3_status.v1",
         "at": _now(),
         "ready_to_pack": ready,
-        "reason": reason if not ready else "manifest complete; run `run` to pack",
+        "state": progress.get("state", "IN_PROGRESS" if packed_shards() else "READY"),
+        "reason": reason if not ready else (
+            "artifact finalized and verified" if RECEIPT.is_file()
+            else "global allocation complete; run `run` to pack"
+        ),
         "manifest_layers": len(manifest["per_layer"]) if manifest else 0,
-        "coalition_tensors_total": (
-            sum(len(d["coalition_expert_ids"]) for d in manifest["per_layer"].values()) * 3
-            if manifest else 0
+        "manifest_tensor_decisions": auction.get("tensor_decision_count", 0),
+        "target_complete_bpw": auction.get("target_complete_bpw"),
+        "predicted_complete_bpw_with_reserve": (
+            auction.get("predicted_complete_bpw_with_reserve")
         ),
         "shards_packed": len(packed_shards()),
         "shards_total": 282,
-        "byte_matched_to_general_r0": False,
-        "byte_matching_note": "coalition promoted to native, remainder left at R0's rate "
-                               "unchanged -- not yet demoted to match General-R0's total "
-                               "bytes; see module docstring",
+        "artifact": str(COMPACT),
+        "receipt": str(RECEIPT) if RECEIPT.is_file() else None,
     }
 
 
 def selftest() -> None:
-    """No manifest required: proves the override-building logic against a synthetic
-    one, independent of whatever PASS 2 has produced so far."""
+    """No live artifact required: prove exact per-tensor override extraction."""
     synthetic = {
-        "per_layer": {
-            "3": {"coalition_expert_ids": [7, 200, 15]},
-            "10": {"coalition_expert_ids": [0, 255]},
-        },
+        "global_byte_auction": {
+            "tensor_decisions": {
+                "model.layers.3.mlp.experts.7.gate_proj.weight": "native",
+                "model.layers.3.mlp.experts.8.gate_proj.weight": "R4",
+                "model.embed_tokens.weight": "native",
+            },
+        }
     }
-    override = coalition_rate_override(synthetic)
-    assert override == {
-        (3, 7): "native", (3, 200): "native", (3, 15): "native",
-        (10, 0): "native", (10, 255): "native",
-    }, override
-    assert (3, 8) not in override, "an expert not in the coalition must have no entry"
-    assert (4, 7) not in override, "the same expert id in a different layer is a different key"
+    override = tensor_rate_override(synthetic)
+    assert override == synthetic["global_byte_auction"]["tensor_decisions"]
+    assert override is not synthetic["global_byte_auction"]["tensor_decisions"], \
+        "worker override must be a copy, not mutate the frozen manifest"
     print("math_pass3_pack selftest PASS")
 
 
@@ -291,6 +610,10 @@ def main(argv: list[str]) -> int:
         return 0
     if command == "selftest":
         selftest()
+        return 0
+    if command == "finalize":
+        receipt = finalize()
+        print(json.dumps(receipt, indent=2, sort_keys=True))
         return 0
     if command == "run":
         limit = None

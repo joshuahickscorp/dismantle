@@ -117,3 +117,21 @@ def test_override_key_absent_from_this_shard_is_silently_irrelevant(tmp_path):
     by_expert = _descriptors_by_expert(out / "model-00001-of-00282.gravity")
     assert by_expert[0]["codec"].startswith("native.")
     assert by_expert[1]["codec"] == "gravity-pq"
+
+
+def test_exact_tensor_name_takes_precedence_over_expert_fallback(tmp_path):
+    """PASS2 freezes per-tensor decisions.  A name-level decision must therefore
+    be able to protect one matrix without leaking onto the expert's other matrices,
+    and must win if a coarser expert fallback is also present."""
+    shard, rows = _shard_with_experts(tmp_path, n=2)
+    out = tmp_path / "compact"
+    selected = rows[1]["name"]
+    pack.pack_shard(
+        shard, rows, out, seed=0,
+        rate_override={(0, 1): "R4", selected: "native"},
+    )
+    by_expert = _descriptors_by_expert(out / "model-00001-of-00282.gravity")
+    assert by_expert[1]["codec"].startswith("native.")
+    assert by_expert[1]["reason"] == "PROMETHEUS_COALITION_PROTECTED"
+    assert by_expert[0]["codec"] == "gravity-pq"
+    assert by_expert[0]["rung"] == pack.PRODUCTION_RUNG

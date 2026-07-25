@@ -65,20 +65,20 @@
    "rung": "R0",
    "complete_bpw": 0.882888,
    "stage": "SCREENING_GATE",
-   "verdict": "FAIL",
+   "verdict": "RETRACTED_INVALID_PROMPT",
    "decisive": true,
    "evidence": {
     "prompt": "The capital of France is",
     "greedy_continuation_observed": " Fired Fired Fired (3 consecutive identical tokens, id 74242)",
-    "note": "exact fixed-point repetition under greedy decoding -- the same failure signature as the Llama-3.2-1B instrument, a different absorbing token. Decisive per the contract: degenerate repetition ends evaluation without further scoring."
+    "note": "RETRACTED: GLM-5.2 is chat/instruction-tuned. Its own pinned chat_template.jinja requires [gMASK]<sop><|user|>...<|assistant|> framing; this run encoded raw completion-style text with none of it. A chat model fed a raw completion is out-of-distribution regardless of compression rate, so this result cannot be attributed to the artifact. Superseded by the next entry, run with the model's own chat template rendered via jinja2."
    },
    "execution_correctness": {
     "verdict": "PASS (separately sealed)",
     "reference": "GLM52_FLAGSHIP_ADAPTER_PARITY.json",
     "note": "the runtime correctly executes what this artifact encodes; the artifact itself, at this rate, does not preserve capability"
    },
-   "interpretation": "Unlike the Llama-1B instrument (whose collapse bounded nothing about a 744B MoE), this IS the flagship. R0/H09-band (0.883 BPW) does not pass. Per campaign contingency (do not abandon; bracket upward), the next candidate is a higher, less-compressed rate -- which requires source bytes beyond what the R0-lossy artifact can supply, since re-packing at a higher rate from an already-compressed representation would compound error rather than match packing directly from BF16.",
-   "consequence": "M03 cannot select R0 as the passing General artifact. A pilot at a higher rate (targeted, not a blind full re-fetch) is the next step before committing to a full re-fetch+re-pack cycle."
+   "interpretation": "Invalid: prompt-format confound identified before further action was taken on this result.",
+   "consequence": "Re-running with correct chat formatting before any rate decision."
   }
  ],
  "selected_general_artifact": null,

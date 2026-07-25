@@ -1,9 +1,9 @@
 # Hawking Motherload Completion Status
 
 endpoint: `IN_PROGRESS`  
-gates closed: 10/20  
+gates closed: 12/20  
 ODYSSEY_LAUNCH_AUTHORIZED: `false`  
-updated: 2026-07-25T03:51:12Z
+updated: 2026-07-25T03:53:08Z
 
 | gate | state | condition | note |
 |---|---|---|---|
@@ -14,7 +14,7 @@ updated: 2026-07-25T03:51:12Z
 | M05 | running | measured base TPS and prefill exist | base measured on the instrument: decode 105.8/68.8/29.2/13.3 tok/s at ctx 128/512/2048/8192, prefill 116.5/92.8/48.8/19.1, 1 command buffer + 210 dispatches per token; end-to-end generation 60.7 tok/s with incremental decode bit-identical to full replay; GLM numbers gated on the flagship artifact |
 | M06 | open | acceleration stack is terminal and measured separately |  |
 | M07 | open | GLM runs end to end inside HIDE |  |
-| M08 | open | Prometheus S0 and source decision are sealed |  |
+| M08 | green | Prometheus S0 and source decision are sealed | Prometheus S0 sealed: S0.1 dtype=bfloat16 full_precision=true, S0.2 arch graph GlmMoeDsaForCausalLM 78L/256E validated PASS, S0.3 decoder bit-exactness MEASURED (fixture 3.84e-6, flagship 6.08e-5, both sealed separately), S0.4 streaming traversal complete, S0.6 census via GLM52_LOGICAL_WEIGHT_LEDGER.json (cross-validated 3 independent sources). claim_a_source_eligible=true, hide_eligible=true, explicitly separated per Rev3 S8.1 -- GLM's HIDE eligibility does not depend on Claim-A flagship eligibility or vice versa. S0.5 (numerical hygiene) and S0.7 (baseline capability) remain gated on a served model. |
 | M09 | green | Prometheus architecture and profiles are implemented | all 14 Revision 3 §7 components implemented and wired: 8 measured, 5 gated with named gates, 1 sealer; profiles general/math/uniform/random compiled and hashed; equal-budget solver matches all four arms to 0.0175% at 46.70 GB |
 | M10 | running | equal-budget Claim A is sealed | Claim A NOT_SEALED and correctly so: allocation plans are byte-matched and ready, but retention is deliberately null -- at equal bytes retention IS the claim. Blocked on S0.8 cartography membership and the served flagship. |
 | M11 | open | General and Math artifacts are selected and verified |  |
@@ -25,5 +25,5 @@ updated: 2026-07-25T03:51:12Z
 | M16 | green | Odyssey dry-run validation passes | odyssey_package.py validate: 86 checks, 0 failed, DRY_RUN_PASS; selftest proves a flipped fence FAILS validation and the runner exits 1 |
 | M17 | green | ODYSSEY_LAUNCH_AUTHORIZED remains false | ODYSSEY_LAUNCH_AUTHORIZED=false; the builder reads the fence and never writes it, so rebuilding cannot authorize a run |
 | M18 | running | rollback/source lifecycle is green | eviction VERIFIED FIRING: free disk 274.6 -> 404.8 GiB at the W003/W004 boundary, 1 EVICT event, 0 faults; traversal now sustainable to 282/282 |
-| M19 | open | all campaign commits are pushed |  |
+| M19 | green | all campaign commits are pushed | 0 unpushed commits, all campaign work pushed to origin/campaign/glm52-generation-b |
 | M20 | open | worktree and process state are clean except intentional detached services |  |

@@ -1,18 +1,18 @@
 {
- "completion_fraction": 0.25,
+ "completion_fraction": 0.35,
  "endpoint": "IN_PROGRESS",
  "gates": {
   "M01": {
-   "at": "2026-07-24T20:24:06Z",
+   "at": "2026-07-25T02:22:16Z",
    "desc": "GLM traversal is 282/282",
-   "note": "traversal live at 59/282 (W003); eviction had authorized nothing for 3 windows because every teacher capsule was sealed under the retired 8-token calibration -- stale capsules archived with a withdrawal receipt and the chain re-seeded from layer 0 under the live 256-token corpus calibration",
-   "state": "IN_PROGRESS"
+   "note": "GLM source traversal complete: 282/282 verified, 282/282 packed, 0 faults across the run",
+   "state": "GREEN"
   },
   "M02": {
-   "at": "2026-07-24T22:10:31Z",
+   "at": "2026-07-25T02:22:16Z",
    "desc": "complete local GLM .gravity artifact exists",
-   "note": "assembler built and coverage graded against the official 59585-tensor index at the pinned revision: of 112/282 shards packed, 23153 COMPACT + 267 PROTECTED_NATIVE, 0 undeclared, 0 misplaced, and every MISSING maps to an unpacked shard -- no packer coverage defect. Assembly refuses on incomplete coverage.",
-   "state": "IN_PROGRESS"
+   "note": "complete local GLM .gravity artifact assembled: 282/282 shards, 59585/59585 tensors, 0 missing/undeclared/misplaced, 0.882888 whole-model BPW, 83.14 GB physical (753.3B logical elements), path ~/Library/Application Support/Hawking/Models/GLM-5.2/b4734de4facf877f85769a911abafc5283eab3d9/General-R0/, hardlinked from the packer output (2 links confirmed, zero duplicate bytes)",
+   "state": "GREEN"
   },
   "M03": {
    "at": null,
@@ -123,9 +123,9 @@
    "state": "OPEN"
   }
  },
- "gates_closed": 5,
+ "gates_closed": 7,
  "gates_total": 20,
  "odyssey_launch_authorized": false,
  "schema": "hawking.motherload.status.v1",
- "updated_at": "2026-07-24T22:10:31Z"
+ "updated_at": "2026-07-25T02:22:16Z"
 }

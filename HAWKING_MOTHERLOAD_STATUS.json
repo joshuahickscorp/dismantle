@@ -1,5 +1,5 @@
 {
- "completion_fraction": 0.35,
+ "completion_fraction": 0.4,
  "endpoint": "IN_PROGRESS",
  "gates": {
   "M01": {
@@ -21,10 +21,10 @@
    "state": "OPEN"
   },
   "M04": {
-   "at": "2026-07-24T20:50:10Z",
+   "at": "2026-07-25T02:53:59Z",
    "desc": "full GLM token executes from .gravity",
-   "note": "production path closed on the instrument: load_engine dispatches on container magic, GravityEngine streams tokens through the reviewed registry with no source weights; GLM adapter green on fixture and awaiting the flagship artifact",
-   "state": "IN_PROGRESS"
+   "note": "GLM-5.2 adapter executes a complete token from the REAL flagship .gravity artifact (282 shards, 83.14GB, 0.883 whole-model BPW) and agrees with an independent numpy oracle reading the same bytes: argmax exact (9540), top5 exact in order, discrete DSA key selection exact ([1,2,0] both), max logit diff 6.08e-5 mean 1.12e-5 across 154880 outputs after 78 real layers of MLA+DSA+256-expert MoE+noaux_tc router. Neither side touches source safetensors. Receipt: GLM52_FLAGSHIP_ADAPTER_PARITY.json",
+   "state": "GREEN"
   },
   "M05": {
    "at": "2026-07-24T20:37:07Z",
@@ -123,9 +123,9 @@
    "state": "OPEN"
   }
  },
- "gates_closed": 7,
+ "gates_closed": 8,
  "gates_total": 20,
  "odyssey_launch_authorized": false,
  "schema": "hawking.motherload.status.v1",
- "updated_at": "2026-07-25T02:22:16Z"
+ "updated_at": "2026-07-25T02:53:59Z"
 }

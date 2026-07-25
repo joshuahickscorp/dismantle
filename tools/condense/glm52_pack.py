@@ -176,6 +176,18 @@ LADDER = (
     {"rung": "R4", "dim": 32, "k": 256, "nominal_bpw": 0.261},
 )
 PRODUCTION_RUNG = "R0"
+# 2026-07-25: a non-power-of-2 "R1" (dim=11, k=1024, nominal 0.909) was tried here after
+# the screening gate failed twice and general-v1's own T1 tier called for ~1.0 bpw on
+# routed_expert. _pq_geometry() silently rejects a non-power-of-2 dim and falls back to
+# _largest_pow2_divisor(cols) instead -- no error, no warning -- so R1 was never actually
+# packed at the requested rate; it produced arbitrary, wildly-varying bpw depending on
+# each tensor's own column count. Once corrected to respect the power-of-2 constraint, a
+# systematic search over every (dim, k) admissible at GLM-5.2's real T1 tensor sizes
+# (routed_expert 12,582,912 elements, dense_mlp up to 75,497,472, attention as small as
+# 3,538,944) found NO candidate strictly between R0's 0.875 and BPW_CEILING=1.0 that is
+# admissible across that size range. R0 is not an arbitrary starting point -- for tensors
+# GLM-5.2's shape, it is at or extremely near the practical ceiling this codec family
+# (S=1, power-of-2 dim) can reach. See GLM52_R1_GEOMETRY_INVALID_FINDING.json.
 # The non-production rungs are a rate survey, not the artifact.  Fitting all three on every
 # tensor made the ladder the whole cost of a pack (measured 1.24 s x 213 tensors ~= the
 # 264 s one-worker pack_seconds), and it was re-establishing a near-constant: across the

@@ -122,8 +122,17 @@
    },
    "interpretation": "The dominant remaining candidate is routed_expert compression: 97.5% of logical weight mass, relative_frobenius_error ~0.62 at R0 (much better than lm_head but still substantial), packed at the SAME geometry across all 256 experts x 78 layers. Prometheus general-v1 -- already built, already profiled this session -- specifies routed_expert/shared_expert/attention/dense_mlp at tier T1 = num8/den8 = exactly 1.0 BPW (H10), not R0 own 0.876-0.883. That gap, compounding over 78 layers on 97.5% of the model, is the leading unexplained factor.",
    "consequence": "A real fix now needs H10-equivalent packing (new geometry: dim=8/k=256, unimplemented) applied across essentially the WHOLE model, since routed_expert is 97.5% of the mass -- this is a full-scale re-fetch+re-pack (~1.5TB), not a small pilot. The two single-shard experiments already run were the correctly-scoped cheap tests before that commitment, and both are now spent."
+  },
+  {
+   "subject": "GLM-5.2",
+   "role": "flagship",
+   "stage": "RATE_CEILING_ANALYSIS",
+   "verdict": "R0_IS_THE_PRACTICAL_CEILING",
+   "decisive": true,
+   "note": "See GLM52_R1_GEOMETRY_INVALID_FINDING.json for full detail. Summary: no gravity-pq geometry strictly between R0 (0.875 nominal bpw) and BPW_CEILING=1.0 is admissible across GLM-5.2 T1-tier tensor sizes (routed_expert 12.58M, attention as small as 3.5M, dense_mlp up to 75.5M elements). A candidate (dim=11,k=1024) was tried and found to silently fail: _pq_geometry() requires a power-of-2 dim and falls back without error when given one that is not, producing meaningless per-tensor bpw. Corrected search confirms R0 is at or extremely near this codec familys practical ceiling for GLM-5.2s tensor shapes.",
+   "consequence": "Bracketing upward via a new PQ rung (H10/H12/H15 per campaign S3.3) is not achievable within gravity-pq (S=1, power-of-2 dim) for routed_expert at GLM-5.2 scale. The only remaining levers inside the sub-bit-first LAW are protecting more categories natively (expensive, already tried on the two worst tensors, did not fix the collapse) or a different non-PQ codec. Crossing BPW_CEILING=1.0 needs a formal Escape Receipt -- a policy reversal of this projects sub-bit-first LAW, not an engineering choice, and is not invoked here without explicit authorization."
   }
  ],
  "selected_general_artifact": null,
- "selection_gate": "M03: TWO FAILS sealed (R0 alone; R0+native head/embed). Root cause points to routed_expert compression (97.5% of mass) at R0 geometry, not the two structural tensors alone. Full H10-equivalent re-pack is the next well-evidenced step and requires a full-scale re-fetch."
+ "selection_gate": "M03: R0 (0.883-0.921bpw depending on native-protection extent) is the practical ceiling of the current codec for GLM-5.2 and does not pass the screening gate. No higher uniform or near-uniform PQ rate exists to bracket to. Escape Receipt (crossing BPW_CEILING) or a different codec would be required for further recovery; neither is invoked without explicit authorization."
 }

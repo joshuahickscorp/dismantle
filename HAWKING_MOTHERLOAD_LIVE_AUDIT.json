@@ -2569,41 +2569,48 @@
    }
   ]
  },
- "at": "2026-07-25T03:32:44Z",
+ "at": "2026-07-25T03:51:12Z",
  "git": {
   "branch": "campaign/glm52-generation-b",
-  "dirty_count": 5,
+  "dirty_count": 6,
   "dirty_paths": [
    "HAWKING_MODEL_FEEL_PARITY_RESULTS.json",
    "HAWKING_MOTHERLOAD_LEDGER.jsonl",
    "HAWKING_MOTHERLOAD_STATUS.json",
    "HAWKING_MOTHERLOAD_STATUS.md",
-   "tools/condense/glm52_protect_head_embed.py"
+   "tools/condense/glm52_pack.py",
+   "GLM52_R1_GEOMETRY_INVALID_FINDING.json"
   ],
-  "head": "6fb018290674d4b1e326b51367a4dd07f8262230",
-  "head_subject": "Seal M03: R0 fails the screening gate with the confound removed",
+  "head": "4b235eaee2d702004771096d263508757d24668c",
+  "head_subject": "Fix a real 0.965 reconstruction error, and still fail \u2014 the cause is bigger than two tensors",
   "unpushed": 0,
   "upstream": "origin/campaign/glm52-generation-b"
  },
  "host": {
   "cpu_count": 28,
-  "free_disk_bytes": 455559692288,
-  "free_disk_gib": 424.3,
+  "free_disk_bytes": 455529226240,
+  "free_disk_gib": 424.2,
   "physical_memory_bytes": 103079215104,
   "swap_raw": "total = 2048.00M  used = 970.75M  free = 1077.25M  (encrypted)"
  },
  "processes": {
-  "hawking_lane_count": 0,
-  "hawking_lanes": [],
+  "hawking_lane_count": 1,
+  "hawking_lanes": [
+   {
+    "command": "/Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python /Users/scammermike/Downloads/hawking/tools/condense/glm52_source_fetch.py safe-to-leav",
+    "pgid": 17463,
+    "pid": 17463
+   }
+  ],
   "mop_isolation": "UNTOUCHED -- separate project, not read or signalled by this campaign",
-  "mop_process_count": 9
+  "mop_process_count": 8
  },
  "root": "/Users/scammermike/Downloads/hawking",
  "schema": "hawking.motherload.live_audit.v1",
  "source": {
   "controller": {
    "eviction_paused": null,
-   "heartbeat_age_seconds": 3837.8,
+   "heartbeat_age_seconds": 4803.5,
    "launchd_label": "com.hawking.glm52.source-fetch",
    "launchd_loaded": true,
    "lease_held": false,

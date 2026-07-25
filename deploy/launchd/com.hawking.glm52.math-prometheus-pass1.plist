@@ -7,7 +7,7 @@
 		<key>GLM52_PASS1_DISK_FLOOR_BYTES</key>
 		<string>75000000000</string>
 		<key>GLM52_PASS1_EVICTION_PAUSED</key>
-		<string>1</string>
+		<string>0</string>
 		<key>HF_HUB_DISABLE_IMPLICIT_TOKEN</key>
 		<string>1</string>
 		<key>HF_HUB_DISABLE_TELEMETRY</key>

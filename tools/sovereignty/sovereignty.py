@@ -122,6 +122,60 @@ def build_continuity_manifest(artifact_path: Path, *, requested_model: str | Non
     }
 
 
+def build_continuity_manifest_multi_shard(model_dir: Path, *, requested_model: str | None = None,
+                                          decoder_abi: str | None = None,
+                                          profile_hash: str | None = None,
+                                          policy_hash: str | None = None,
+                                          system_prompt_hash: str | None = None,
+                                          tool_schema_hash: str | None = None,
+                                          fallback_allowed: bool = False,
+                                          fallback_events: list | None = None) -> dict:
+    """Same contract as `build_continuity_manifest`, for a model assembled across
+    many `.gravity` shards (`model_dir/model.gravity.index.json`).
+
+    A single shard has no `integrity.body_sha256` for the WHOLE model -- that field
+    is per-shard by construction. So `artifact_hash` here is the sha256 of the
+    assembler's own manifest content (every tensor's owning shard, the synthesized
+    architecture, the coverage verdict): change which shard covers which tensor, or
+    which architecture was synthesized, and this hash changes. It names the exact
+    assembled model the same way a single body hash names a single shard.
+    """
+    model_dir = Path(model_dir)
+    index_path = model_dir / "model.gravity.index.json"
+    manifest = json.loads(index_path.read_text())
+
+    model_block = manifest.get("model") or {}
+    executed_model = model_block.get("repo")
+    source_weight_hash = model_block.get("revision")
+    if not executed_model or not source_weight_hash:
+        raise ValueError(
+            f"{index_path}: model.repo/revision missing -- refusing to build a "
+            "continuity manifest that cannot name its own artifact")
+    if manifest.get("coverage", {}).get("verdict") != "COMPLETE":
+        raise ValueError(
+            f"{index_path}: coverage verdict is {manifest.get('coverage', {}).get('verdict')!r}, "
+            "not COMPLETE -- refusing to seal continuity for an incomplete model")
+
+    return {
+        "requested_model": requested_model or executed_model,
+        "executed_model": executed_model,
+        "source_weight_hash": source_weight_hash,
+        "artifact_hash": hashlib.sha256(
+            json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest(),
+        "artifact_hash_basis": "sha256 of model.gravity.index.json (multi-shard: no "
+                               "single body hash names the whole model)",
+        "shard_count": manifest.get("shard_count"),
+        "decoder_abi": decoder_abi or "hawking.gravity.shard_header.v1+v1",
+        "profile_hash": profile_hash,
+        "policy_hash": policy_hash,
+        "system_prompt_hash": system_prompt_hash,
+        "tool_schema_hash": tool_schema_hash,
+        "fallback_allowed": fallback_allowed,
+        "fallback_events": fallback_events or [],
+    }
+
+
 # ---------------------------------------------------------------------------
 # 2. Sovereignty event log (Rev3 Appendix C)
 # ---------------------------------------------------------------------------
@@ -291,7 +345,14 @@ def attribution_completeness(events: list[dict]) -> float:
 
 def seal(artifact_path: Path, state_dir: Path = DEFAULT_STATE_DIR, *,
          requested_model: str | None = None) -> dict:
-    manifest = build_continuity_manifest(artifact_path, requested_model=requested_model)
+    # A directory means a multi-shard assembled model; a file means one .gravity
+    # shard. Dispatching on what was actually given, not on a flag the caller has
+    # to remember to set correctly.
+    if artifact_path.is_dir():
+        manifest = build_continuity_manifest_multi_shard(
+            artifact_path, requested_model=requested_model)
+    else:
+        manifest = build_continuity_manifest(artifact_path, requested_model=requested_model)
     events = read_events(state_dir)
     return {
         "continuity": manifest,

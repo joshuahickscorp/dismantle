@@ -35,6 +35,7 @@ import glm52_pack as pack  # noqa: E402
 import glm52_reference as ref  # noqa: E402
 import gravity_format as gravity  # noqa: E402
 import gravity_forge as forge  # noqa: E402
+from glm52_gravity_source import GravityGlmSource  # noqa: E402
 
 # Small enough to grade in a second, large enough that every code path is real.
 CONFIG = {
@@ -194,8 +195,10 @@ def build(out_dir: Path) -> dict:
     )
 
     # Grade against what the ARTIFACT encodes: read every tensor back through the
-    # container and the same codec, exactly as the runtime will.
-    source = GravityTensors(artifact)
+    # container and the same codec, exactly as the runtime will. GravityGlmSource
+    # is the same source class the flagship oracle run uses, so the fixture and
+    # the 77 GB artifact are graded by one methodology, not two that could drift.
+    source = GravityGlmSource(out_dir, single_shard=artifact.name)
     logits, _, trace = ref.main_forward(np.array([TOKENS], dtype=np.int64), source, CONFIG)
     flat = np.asarray(logits[0, -1], dtype=np.float32)
     order = np.argsort(-flat, kind="stable")
@@ -215,46 +218,6 @@ def build(out_dir: Path) -> dict:
     }
     (out_dir / "ref_glm.json").write_text(json.dumps(meta, indent=1) + "\n")
     return meta
-
-
-class GravityTensors:
-    """Read tensors out of a `.gravity` shard, decoding PQ payloads to dense."""
-
-    def __init__(self, path: Path) -> None:
-        self.path = path
-        self.index = {t["name"]: t for t in gravity.read_header(path)["tensors"]}
-        self._cache: dict[str, np.ndarray] = {}
-
-    def __contains__(self, name: str) -> bool:
-        return name in self.index
-
-    def __getitem__(self, name: str) -> np.ndarray:
-        if name not in self._cache:
-            entry = self.index[name]
-            blob = gravity.read_tensor(self.path, name, verify_hash=True)
-            shape = [int(d) for d in entry["shape"]]
-            if entry["codec"] == "gravity-pq":
-                art = pack.load_artifact(blob)
-                # Decode by executing against the identity: column j of W is
-                # W @ e_j, so the codec stays the single authority on meaning.
-                cols = shape[1]
-                dense = np.stack([forge.pq_execute(art, np.eye(cols, dtype=np.float32)[j])
-                                  for j in range(cols)], axis=1)
-                self._cache[name] = dense.astype(np.float32)
-            else:
-                u16 = np.frombuffer(blob, dtype=np.uint16).astype(np.uint32) << 16
-                self._cache[name] = u16.view(np.float32).reshape(shape)
-        return self._cache[name]
-
-    def tensor(self, name: str) -> np.ndarray:
-        """The `TensorSource` protocol the reference dispatches on."""
-        return self[name]
-
-    def get(self, name: str, default=None):
-        return self[name] if name in self.index else default
-
-    def rows(self, name: str, ids) -> np.ndarray:
-        return self[name][np.asarray(ids, dtype=np.int64)]
 
 
 def main() -> int:

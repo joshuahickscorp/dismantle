@@ -1,9 +1,9 @@
 # Hawking Motherload Completion Status
 
 endpoint: `IN_PROGRESS`  
-gates closed: 15/23  
+gates closed: 17/23  
 ODYSSEY_LAUNCH_AUTHORIZED: `false`  
-updated: 2026-07-25T06:21:48Z
+updated: 2026-07-25T07:31:15Z
 
 | gate | state | condition | note |
 |---|---|---|---|
@@ -27,6 +27,6 @@ updated: 2026-07-25T06:21:48Z
 | M18 | running | rollback/source lifecycle is green | eviction VERIFIED FIRING: free disk 274.6 -> 404.8 GiB at the W003/W004 boundary, 1 EVICT event, 0 faults; traversal now sustainable to 282/282 |
 | M19 | green | all campaign commits are pushed | 0 unpushed commits, all campaign work pushed to origin/campaign/glm52-generation-b |
 | M20 | green | worktree and process state are clean except intentional detached services | worktree clean (git status empty), traversal controller exited naturally at 282/282, no stray hawking processes; MOP's 20 processes untouched throughout |
-| M21 | running | streamed Prometheus cartography (PASS 1) is complete | Halfway: window 10/20, 35 layers captured (32 sparse layers with real per-expert coalition evidence). Eviction steady, disk 369GB free, no refusals, no errors. Process 26791 stable throughout. |
-| M22 | open | global Math allocation manifest (PASS 2) is frozen |  |
+| M21 | green | streamed Prometheus cartography (PASS 1) is complete | PASS1 complete: 20/20 windows, 78/78 layers captured, 282/282 shards fetched+verified+evicted, zero errors, zero refused evictions throughout. Real math-domain forward passes (3 pooled TRAIN_PARTITIONS records) captured teacher states for every layer; 75/75 sparse layers carry per-expert contribution_l2/hit_count/coselection_count cartography. Process ran clean via launchd, exited cleanly on completion (no restart, matching KeepAlive.SuccessfulExit=false). |
+| M22 | green | global Math allocation manifest (PASS 2) is frozen | PROMETHEUS_MATH_ALLOCATION_MANIFEST.json frozen: 75/75 sparse layers, coalition_fraction=0.05, 975 coalition expert-slots (13/layer) of 19200 total routed-expert slots. 95.7% confidently supported (>=2 calibration hits), 4.3% thin-evidence (30/75 layers have at least one thin member, honestly flagged per-layer not hidden). 28800 total hit observations across the calibration run. Membership only -- byte rates deferred to architecture.equal_budget_solver per this manifest's own note, not yet invoked. |
 | M23 | open | Math-Preserve.gravity (PASS 3) is complete and verified |  |

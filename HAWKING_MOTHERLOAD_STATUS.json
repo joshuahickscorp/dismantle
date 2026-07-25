@@ -1,5 +1,5 @@
 {
- "completion_fraction": 0.75,
+ "completion_fraction": 0.6522,
  "endpoint": "IN_PROGRESS",
  "gates": {
   "M01": {
@@ -121,11 +121,29 @@
    "desc": "worktree and process state are clean except intentional detached services",
    "note": "worktree clean (git status empty), traversal controller exited naturally at 282/282, no stray hawking processes; MOP's 20 processes untouched throughout",
    "state": "GREEN"
+  },
+  "M21": {
+   "at": "2026-07-25T05:20:56Z",
+   "desc": "streamed Prometheus cartography (PASS 1) is complete",
+   "note": "Math-Preserve PASS1 (streamed cartography) built and validated: math_calibration_batch pools 3 real mathematics-domain records across TRAIN_PARTITIONS (pinned corpus gives exactly 1/partition, honestly thin, not padded); routed_moe retains per-expert weighted output before summing (retain_per_expert, default off, zero effect on graded arithmetic) so capture_layer computes contribution_l2/hit_count/coselection_count (support-halo) with no second forward pass; routing margins were already free (_router_margin), trajectory is the existing per-layer metrics chain. Validated on the tiny fixture (contribution_l2 exactly zero iff hit_count zero, coselection diagonal == hit_count) and on real flagship shard 1 (layer 0 real BF16 forward, correct capsule sealed, layer 1 correctly left uncaptured pending its shards). Controller math_pass1_cartography.py: separate state from the original General traversal (own source/ledger/capsule dirs, no collision), VERIFY->CAPTURE->EVICT per shard with no packing (packing is PASS3, driven by PASS2's frozen global allocation -- per-shard packing decisions during PASS1 would be exactly the greedy allocation this pipeline avoids). Launched via launchd com.hawking.glm52.math-prometheus-pass1 (Standard/Nice 0, eviction paused by default -- the only irreversible step stays off until a full window is watched succeed). 1.507TB source re-fetch in progress, window 0 (123GB/23 shards) underway.",
+   "state": "IN_PROGRESS"
+  },
+  "M22": {
+   "at": null,
+   "desc": "global Math allocation manifest (PASS 2) is frozen",
+   "note": "",
+   "state": "OPEN"
+  },
+  "M23": {
+   "at": null,
+   "desc": "Math-Preserve.gravity (PASS 3) is complete and verified",
+   "note": "",
+   "state": "OPEN"
   }
  },
  "gates_closed": 15,
- "gates_total": 20,
+ "gates_total": 23,
  "odyssey_launch_authorized": false,
  "schema": "hawking.motherload.status.v1",
- "updated_at": "2026-07-25T04:52:05Z"
+ "updated_at": "2026-07-25T05:20:56Z"
 }

@@ -61,6 +61,13 @@ GATES = {
     "M18": "rollback/source lifecycle is green",
     "M19": "all campaign commits are pushed",
     "M20": "worktree and process state are clean except intentional detached services",
+    # M21-M23: Prometheus streamed pre-Odyssey quantization amendment. Odyssey may not
+    # start from plain R0 unless R0 independently wins the frozen Mathematics profile;
+    # these are the substrate Prometheus has to build first. Items 1/5/6 of the
+    # amendment's 6-item terminal list are already M02+M07 / M13 / M17 respectively.
+    "M21": "streamed Prometheus cartography (PASS 1) is complete",
+    "M22": "global Math allocation manifest (PASS 2) is frozen",
+    "M23": "Math-Preserve.gravity (PASS 3) is complete and verified",
 }
 STATES = {"OPEN", "IN_PROGRESS", "BLOCKED", "GREEN", "NEGATIVE_SEALED"}
 CLOSED = {"GREEN", "NEGATIVE_SEALED"}
@@ -317,7 +324,7 @@ def selftest() -> None:
 
         s = seal()
         assert s["gates_closed"] == 0 and s["endpoint"] == "IN_PROGRESS", s
-        assert len(s["gates"]) == 20, "the campaign declares 20 terminal gates"
+        assert len(s["gates"]) == 23, "the campaign declares 23 terminal gates"
 
         _append({"kind": "gate", "gate": "M04", "state": "GREEN", "note": "x"})
         _append({"kind": "gate", "gate": "M04", "state": "BLOCKED", "note": "y"})

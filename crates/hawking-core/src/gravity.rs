@@ -605,7 +605,7 @@ pub fn widen_native(codec: &str, blob: &[u8]) -> Result<Vec<f32>> {
     })
 }
 
-fn matvec_dense(w: &[f32], x: &[f32], name: &str) -> Result<Vec<f32>> {
+pub(crate) fn matvec_dense(w: &[f32], x: &[f32], name: &str) -> Result<Vec<f32>> {
     if x.is_empty() || w.len() % x.len() != 0 {
         return Err(Error::Gravity(format!(
             "tensor {name:?}: {} values is not a whole number of {}-wide rows",
@@ -647,12 +647,14 @@ enum Source {
     /// into `open_shards` on first use and stay there for the model's
     /// lifetime. A tensor's payload bytes are read, decoded, used, and
     /// dropped on every call — same as the Python `GravityGlmSource` this
-    /// mirrors. `RefCell` rather than `Mutex`: this path has no `Send+Sync`
-    /// requirement, unlike the GPU model's resident buffers.
+    /// mirrors. `Mutex` rather than `RefCell`: an `Engine` implementor must
+    /// be `Send + Sync` (the GPU weight cache wraps a `GravityWeights` for
+    /// its `dense`/`row` delegation), and an uncontended lock on a
+    /// single-threaded CPU forward costs nothing worth avoiding.
     Lazy {
         shard_dir: std::path::PathBuf,
         tensor_shard: HashMap<String, String>,
-        open_shards: std::cell::RefCell<HashMap<String, GravityShard>>,
+        open_shards: std::sync::Mutex<HashMap<String, GravityShard>>,
         verify_hash: bool,
     },
 }
@@ -738,7 +740,7 @@ impl GravityWeights {
                 source: Source::Lazy {
                     shard_dir: dir.to_path_buf(),
                     tensor_shard,
-                    open_shards: std::cell::RefCell::new(HashMap::new()),
+                    open_shards: std::sync::Mutex::new(HashMap::new()),
                     verify_hash,
                 },
                 header,
@@ -777,7 +779,7 @@ impl GravityWeights {
             source: Source::Lazy {
                 shard_dir: dir.to_path_buf(),
                 tensor_shard,
-                open_shards: std::cell::RefCell::new(HashMap::new()),
+                open_shards: std::sync::Mutex::new(HashMap::new()),
                 verify_hash,
             },
             header: header.expect("names is non-empty"),
@@ -788,6 +790,44 @@ impl GravityWeights {
         match &self.source {
             Source::Eager(t) => t.contains_key(name),
             Source::Lazy { tensor_shard, .. } => tensor_shard.contains_key(name),
+        }
+    }
+
+    /// Every tensor name this model declares. Eager mode only — used to
+    /// enumerate a fixture's tensors for testing; the flagship (Lazy) is
+    /// walked by the forward pass name-by-name, never enumerated wholesale.
+    pub fn tensor_names(&self) -> Vec<String> {
+        match &self.source {
+            Source::Eager(t) => t.keys().cloned().collect(),
+            Source::Lazy { tensor_shard, .. } => tensor_shard.keys().cloned().collect(),
+        }
+    }
+
+    /// Raw, undecoded payload bytes plus codec string — what a GPU cache
+    /// wants to upload verbatim, as opposed to [`dense`]/[`matvec`]/[`row`]
+    /// which decode for CPU execution. Lazy mode only: the flagship is the
+    /// only artifact large enough to need a GPU-resident cache in the first
+    /// place, and Eager mode never retains raw bytes past decode.
+    pub fn raw_payload(&self, name: &str) -> Result<(String, Vec<u8>)> {
+        match &self.source {
+            Source::Eager(_) => Err(Error::Gravity(
+                "raw_payload: not available in Eager mode (decoded at open, raw bytes discarded)"
+                    .into(),
+            )),
+            Source::Lazy {
+                shard_dir,
+                tensor_shard,
+                open_shards,
+                verify_hash,
+            } => Self::with_lazy_shard(shard_dir, tensor_shard, open_shards, name, |shard| {
+                let codec = shard
+                    .descriptor(name)
+                    .expect("name came from this shard's own index")
+                    .codec
+                    .clone();
+                let blob = shard.read_tensor(name, *verify_hash)?;
+                Ok((codec, blob))
+            }),
         }
     }
 
@@ -802,19 +842,27 @@ impl GravityWeights {
     fn with_lazy_shard<T>(
         shard_dir: &Path,
         tensor_shard: &HashMap<String, String>,
-        open_shards: &std::cell::RefCell<HashMap<String, GravityShard>>,
+        open_shards: &std::sync::Mutex<HashMap<String, GravityShard>>,
         name: &str,
         f: impl FnOnce(&GravityShard) -> Result<T>,
     ) -> Result<T> {
         let filename = tensor_shard
             .get(name)
             .ok_or_else(|| Error::Gravity(format!("artifact has no tensor {name:?}")))?;
-        if !open_shards.borrow().contains_key(filename) {
+        if !open_shards
+            .lock()
+            .expect("gravity lazy-shard mutex")
+            .contains_key(filename)
+        {
             let shard = GravityShard::open(&shard_dir.join(filename))?;
-            open_shards.borrow_mut().insert(filename.clone(), shard);
+            open_shards
+                .lock()
+                .expect("gravity lazy-shard mutex")
+                .insert(filename.clone(), shard);
         }
         f(open_shards
-            .borrow()
+            .lock()
+            .expect("gravity lazy-shard mutex")
             .get(filename)
             .expect("just opened or already present"))
     }

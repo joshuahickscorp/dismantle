@@ -53,7 +53,11 @@ STEPS = [
     ("MATH_FROZEN", "rerun Prometheus and pack Math-Frozen"),
     ("RECALIBRATE", "recalibrate acceleration and qualify HIDE"),
     ("FABRIC_BRIDGE", "Fabric, Bridge, adapters, schemas, canonical events, CLI"),
-    ("CONSOLIDATE_HAWKING", "final Hawking consolidation"),
+    ("CONSOLIDATE_HAWKING", "deep refactor: reclaim the hot foundry path to Rust/Metal "
+                            "(the codec is half-ported -- Rust reads a .gravity, only "
+                            "Python writes one), archive the one-shot campaign machinery, "
+                            "one authority per subsystem. Speed and line count are "
+                            "SEPARATE objectives with separate targets"),
     ("HAWKING_EVOLUTION_COMPLETE", "seal the evolution endpoint"),
     ("MIGRATE_RAMANUJAN", "create ~/Downloads/ramanujan and migrate owned contracts"),
     ("TRAIN_LOCAL_FORGE", "fully local retriever/formalizer/prover/repair training"),

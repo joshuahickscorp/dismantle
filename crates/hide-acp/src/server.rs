@@ -16,16 +16,24 @@
 //! - on `session/cancel`, records the cancellation; on `shutdown` (or transport
 //!   EOF), exits the loop cleanly.
 //!
+//! # Host binding
+//!
+//! With the `backend` feature, [`crate::backend_host::BackendTurnHandler`] posts
+//! each mapped prompt to [`hide_backend::BackendHost::handle_intent`] as
+//! `SubmitTurn` (same path as `/v1/hide/intent`). Without that feature this crate
+//! stays model-free and ships only [`ScriptedTurnHandler`] (tests) and
+//! [`DeferredTurnHandler`] (honest blocker).
+//!
 //! # What is DEFERRED_MODEL_REQUIRED
 //!
-//! - The real [`TurnHandler`] that binds to the HIDE backend and executes a turn
-//!   with a live model. This crate ships a [`ScriptedTurnHandler`] (fixed item
-//!   stream, for tests) and a [`DeferredTurnHandler`] (an honest blocker, for the
-//!   bin). Neither runs a model.
+//! - Streaming mid-turn agent tokens back into ACP session updates while a live
+//!   model runs (the handler currently records the intent and yields a bounded
+//!   item stream; full token projection needs a concurrent runtime).
 //! - Concurrent mid-turn interrupt: because a turn here runs synchronously to
 //!   completion, `session/cancel` is recorded but cannot preempt an in-flight
 //!   turn. True preemption needs a concurrent model-bearing runtime.
-//! - The editor-facing stdio/socket wiring (see [`crate::transport`]).
+//! - The editor-facing stdio/socket wiring beyond the line transport (see
+//!   [`crate::transport`]).
 
 use hide_protocol::ids::{ItemId, SessionId, ThreadId};
 use hide_protocol::item::{Blocker, Completion, Item, ItemKind};

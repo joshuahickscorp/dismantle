@@ -16,6 +16,20 @@ thiserror = { workspace = true }
 # Notifications onto ACP session updates and maps an ACP prompt back into a
 # HIDE turn intent.
 hide-protocol = { path = "../hide-protocol" }
+# Optional live host binding: TurnHandler / SessionBinder that reach
+# BackendHost via the existing handle_intent path (SubmitTurn). Default builds
+# stay model-free and free of the host dep; the bin enables `backend`.
+hide-backend = { path = "../hide-backend", optional = true }
+hide-core = { path = "../hide-core", optional = true }
+tokio = { workspace = true, optional = true }
 
 [features]
 default = []
+# Wire AcpServer to BackendHost (W6). Pulls hide-backend + a tokio handle for
+# the sync TurnHandler trait bridging async handle_intent.
+backend = ["dep:hide-backend", "dep:hide-core", "dep:tokio"]
+
+[[bin]]
+name = "hide-acp-server"
+path = "src/bin/hide-acp-server.rs"
+required-features = ["backend"]

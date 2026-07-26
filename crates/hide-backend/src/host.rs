@@ -848,8 +848,8 @@ impl BackendHost {
             _ => None,
         };
         // A paused effectful kernel step's approve/deny round-trip: `approve_effect`/
-        // `deny_effect` carry the `run_id` (and optional `step_id`) the
-        // `approval.requested` event was emitted with. `(approve, run_id, step_id)`.
+        // `deny_effect` carry the `run_id` and (for approve, required) `step_id`
+        // the `approval.requested` event was emitted with. `(approve, run_id, step_id)`.
         let approval_action: Option<(bool, RunId, Option<StepId>)> = match &intent {
             Intent::Custom { name, payload }
                 if name == "approve_effect" || name == "deny_effect" =>
@@ -1222,13 +1222,26 @@ impl BackendHost {
         // once the decision intent is recorded. The turn drains it while paused to
         // resume (approve) or skip (deny) the step. Buffered if it arrives before
         // the turn reaches its pause.
+        //
+        // Security (W5): `approve_effect` REQUIRES `step_id`. Depositing Approve
+        // with `None` while nothing is paused creates a blanket buffered approval
+        // applied to the next effectful step the user was never shown. Deny with
+        // no step_id stays fail-safe and is intentionally allowed.
         if let (true, Some((approve, run, step))) = (effect_ok, approval_action) {
-            let decision = if approve {
-                ApprovalDecision::Approve
+            if approve && step.is_none() {
+                self.effect_failed(
+                    &mut ack,
+                    "approve_effect",
+                    "approve_effect requires step_id (blanket approve is refused)".to_string(),
+                );
             } else {
-                ApprovalDecision::Deny
-            };
-            self.approvals.decide(run, step, decision);
+                let decision = if approve {
+                    ApprovalDecision::Approve
+                } else {
+                    ApprovalDecision::Deny
+                };
+                self.approvals.decide(run, step, decision);
+            }
         }
         // Fork a new independent session once the ForkSession intent is recorded.
         if let (true, Some((from, at_event))) = (effect_ok, fork_action) {
@@ -4081,6 +4094,13 @@ impl BackendHost {
         CheckpointStore::list_for_session(&self.services.key_value_store, session)
     }
 
+    /// Release (delete) a durable checkpoint by id. Idempotent: an unknown id is
+    /// a no-op success. This is the host-side authority for RPC `state/release`
+    /// (and does not involve the superseded `hide-state` capsule crate).
+    pub fn checkpoint_release(&self, checkpoint_id: &str) -> Result<()> {
+        CheckpointStore::delete(&self.services.key_value_store, checkpoint_id)
+    }
+
     /// Restore a CHECKPOINT: produce a NEW session whose durable history is the
     /// checkpoint's source folded up to (and including) the checkpoint boundary.
     /// The integrity digest is VERIFIED first (a tampered boundary errors); an
@@ -6499,11 +6519,16 @@ async fn run_turn_kernel(
                 // Drain a decision for this run. A decision that names a different
                 // step than the one pending is stale and ignored (re-buffered
                 // decisions do not resurface, matching InterruptHub semantics).
+                //
+                // Asymmetry is deliberate (W5): Deny with no step_id is fail-safe
+                // and resolves whatever is pending; Approve with no step_id never
+                // matches (defence in depth against a buffered blanket approve).
                 if let Some((step_id, decision)) = approvals.take(&run_id) {
-                    let targets_pending = step_id
-                        .as_ref()
-                        .map(|s| s == &request.step_id)
-                        .unwrap_or(true);
+                    let targets_pending = match (decision, step_id.as_ref()) {
+                        (ApprovalDecision::Deny, None) => true,
+                        (ApprovalDecision::Approve, None) => false,
+                        (_, Some(s)) => s == &request.step_id,
+                    };
                     if targets_pending {
                         match decision {
                             ApprovalDecision::Approve => {
@@ -9756,9 +9781,10 @@ for line in sys.stdin:
     }
 
     /// Build + drive an effectful kernel turn through the production
-    /// `run_turn_kernel`. `decision`, when `Some`, is buffered in the hub before
-    /// the drive (InterruptHub-style): the run still genuinely PAUSES and only
-    /// resumes because a decision is available - never auto-approved. `None`
+    /// `run_turn_kernel`. `decision`, when `Some(Deny)`, may be buffered in the
+    /// hub before the drive with no step_id (fail-safe blanket deny). When
+    /// `Some(Approve)`, a background task waits for `approval.requested` and
+    /// deposits a step-scoped approve (W5: never buffer blanket Approve). `None`
     /// leaves the hub empty to prove the decision is load-bearing. Returns the
     /// terminal state, the run's events, the effect target path, the temp repo,
     /// and the run id.
@@ -9773,6 +9799,7 @@ for line in sys.stdin:
         RunId,
     ) {
         use std::sync::atomic::{AtomicU64, Ordering};
+        use std::time::Duration;
         static SEQ: AtomicU64 = AtomicU64::new(0);
         let n = SEQ.fetch_add(1, Ordering::SeqCst);
         let dir = std::env::temp_dir().join(format!("hide_approval_{}_{}", now_ms(), n));
@@ -9812,8 +9839,48 @@ for line in sys.stdin:
         let approvals = Arc::new(ApprovalHub::default());
         let run_id = RunId::new();
 
-        if let Some(d) = decision {
-            approvals.decide(run_id.clone(), None, d);
+        match decision {
+            // Fail-safe: Deny without step_id may be buffered before the pause.
+            Some(ApprovalDecision::Deny) => {
+                approvals.decide(run_id.clone(), None, ApprovalDecision::Deny);
+            }
+            // W5: Approve requires a step_id. Wait for the pause announcement,
+            // then deposit a step-scoped approve (never a blanket buffer).
+            Some(ApprovalDecision::Approve) => {
+                let approvals_bg = approvals.clone();
+                let run_bg = run_id.clone();
+                let log_bg = services.event_log.clone();
+                let session_bg = session.clone();
+                tokio::spawn(async move {
+                    for _ in 0..200 {
+                        if let Ok(events) =
+                            log_bg.scan(Some(session_bg.clone()), None, None).await
+                        {
+                            if let Some(ev) = events.iter().find(|e| {
+                                e.kind == "approval.requested"
+                                    && e.payload.get("run_id").and_then(|v| v.as_str())
+                                        == Some(run_bg.as_str())
+                            }) {
+                                if let Some(step) = ev
+                                    .payload
+                                    .get("step_id")
+                                    .and_then(|v| v.as_str())
+                                    .map(StepId::from)
+                                {
+                                    approvals_bg.decide(
+                                        run_bg,
+                                        Some(step),
+                                        ApprovalDecision::Approve,
+                                    );
+                                    return;
+                                }
+                            }
+                        }
+                        tokio::time::sleep(Duration::from_millis(10)).await;
+                    }
+                });
+            }
+            None => {}
         }
 
         let state = run_turn_kernel(
@@ -10250,6 +10317,166 @@ for line in sys.stdin:
                     .unwrap_or(false)),
             "approved effectful turn must surface a non-empty assistant answer"
         );
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    /// W5 permission hole: a client that deposits `approve_effect` with no
+    /// `step_id` while nothing is paused must NOT create a buffered blanket
+    /// approval that later auto-runs an effect the user was never shown.
+    #[tokio::test]
+    async fn approve_effect_without_step_id_while_nothing_pending_does_not_run_effect() {
+        use std::sync::atomic::{AtomicU64, Ordering};
+        use std::time::Duration;
+        static SEQ: AtomicU64 = AtomicU64::new(0);
+        let n = SEQ.fetch_add(1, Ordering::SeqCst);
+        let dir = std::env::temp_dir().join(format!("hide_blanket_approve_{}_{}", now_ms(), n));
+        std::fs::create_dir_all(dir.join("src")).unwrap();
+        std::fs::write(dir.join("Cargo.toml"), "[package]\nname=\"fx\"\n").unwrap();
+        let _ = std::process::Command::new("git")
+            .args(["init", "-q"])
+            .current_dir(&dir)
+            .output();
+
+        let host = BackendHost::open_workspace(&dir).unwrap();
+        let services = host.services.clone();
+        let session = services.session();
+        let root = dir.to_string_lossy().to_string();
+        let target = dir.join("applied.txt");
+        let run_id = RunId::new();
+
+        // While nothing is pending: attempt a blanket approve (no step_id).
+        let ack = host
+            .handle_intent(Intent::Custom {
+                name: "approve_effect".to_string(),
+                payload: json!({ "run_id": run_id.as_str() }),
+            })
+            .await
+            .unwrap();
+        assert!(
+            !ack.accepted,
+            "approve_effect without step_id must be refused, got {ack:?}"
+        );
+        assert!(
+            !host.approvals().is_pending(&run_id),
+            "no decision may be buffered for a blanket approve"
+        );
+
+        let planner = Arc::new(EditPlanner {
+            target: target.to_string_lossy().to_string(),
+            content: EFFECT_CONTENT.to_string(),
+            oracle: "applied".to_string(),
+        });
+        let mut suite = hide_kernel::verify::OracleSuite::new();
+        suite.register(Arc::new(NoopPassOracle("applied")));
+        let dispatcher = hide_kernel::allow_all_dispatcher(root.clone());
+        let kernel = AgentKernel::builder(services.event_log.clone())
+            .workspace_root(root)
+            .autonomy(Autonomy::SuggestOnly)
+            .planner(planner as Arc<dyn hide_kernel::plan::planner::Planner>)
+            .dispatcher(dispatcher)
+            .oracle_suite(suite)
+            .build();
+
+        let ui_bus = host.ui_bus().clone();
+        let interrupts = host.interrupts().clone();
+        let approvals = host.approvals().clone();
+        let event_log = services.event_log.clone();
+        let key_value_store = services.key_value_store.clone();
+        let role_registry = services.role_registry.clone();
+        let code_index = services.code_index.clone();
+        let memory = services.memory_store.clone();
+        let repo_instructions = services.repo_instructions.clone();
+        let session_for_turn = session.clone();
+        let run_for_turn = run_id.clone();
+
+        let turn = tokio::spawn(async move {
+            run_turn_kernel(
+                kernel,
+                event_log,
+                key_value_store,
+                role_registry,
+                code_index,
+                memory,
+                ui_bus,
+                interrupts,
+                approvals,
+                run_for_turn,
+                session_for_turn,
+                "http://127.0.0.1:9/unreachable".to_string(),
+                "apply the effect".to_string(),
+                32,
+                repo_instructions,
+            )
+            .await
+        });
+
+        // Wait until the pause is announced — the effect must stay unapplied
+        // even after the (refused) blanket approve and the pause itself.
+        let mut saw_request = false;
+        for _ in 0..200 {
+            let events = services
+                .event_log
+                .scan(Some(session.clone()), None, None)
+                .await
+                .unwrap();
+            if events.iter().any(|e| {
+                e.kind == "approval.requested"
+                    && e.payload.get("run_id").and_then(|v| v.as_str()) == Some(run_id.as_str())
+            }) {
+                saw_request = true;
+                break;
+            }
+            assert!(
+                !target.exists(),
+                "effect must not run from a refused blanket approve"
+            );
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+        assert!(saw_request, "effectful SuggestOnly turn must surface approval.requested");
+
+        // Give the turn a window to wrongly consume a buffered approve if one
+        // had been deposited. It must not write the file.
+        for _ in 0..30 {
+            assert!(
+                !target.exists(),
+                "W5: blanket approve must never auto-run a later effectful step"
+            );
+            if turn.is_finished() {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+        assert!(
+            !target.exists(),
+            "W5: effect must not run without a step-scoped approve"
+        );
+
+        // Clean up: deny the pending step so the turn can exit (deny may omit step_id).
+        let step_id = services
+            .event_log
+            .scan(Some(session.clone()), None, None)
+            .await
+            .unwrap()
+            .into_iter()
+            .find(|e| e.kind == "approval.requested")
+            .and_then(|e| {
+                e.payload
+                    .get("step_id")
+                    .and_then(|v| v.as_str())
+                    .map(StepId::from)
+            })
+            .expect("step_id on approval.requested");
+        let _ = host
+            .handle_intent(Intent::Custom {
+                name: "deny_effect".to_string(),
+                payload: json!({
+                    "run_id": run_id.as_str(),
+                    "step_id": step_id.as_str(),
+                }),
+            })
+            .await;
+        let _ = turn.await;
+        assert!(!target.exists(), "deny path leaves the effect unapplied");
         let _ = std::fs::remove_dir_all(dir);
     }
 

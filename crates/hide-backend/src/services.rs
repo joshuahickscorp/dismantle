@@ -774,6 +774,12 @@ impl CheckpointStore {
         });
         out
     }
+
+    /// Drop a checkpoint record from the durable store (state/release). Missing
+    /// ids are a no-op success so release is idempotent.
+    pub fn delete(kv: &DynKeyValueStore, checkpoint_id: &str) -> Result<()> {
+        kv.delete(Self::NAMESPACE, checkpoint_id)
+    }
 }
 
 /// The blake3-hex digest over a checkpoint's BOUNDARY IDENTITY: the source

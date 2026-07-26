@@ -38,6 +38,12 @@ pub trait KeyValueStore: Send + Sync {
     fn list(&self, _table: &str) -> Result<Vec<(String, Value)>> {
         Ok(Vec::new())
     }
+    /// Remove a key from a table. Missing keys are a no-op success. Default is
+    /// "unsupported" empty success so older store adapters stay buildable; the
+    /// in-tree stores override it (used by checkpoint release / state/release).
+    fn delete(&self, _table: &str, _key: &str) -> Result<()> {
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -247,6 +253,13 @@ impl KeyValueStore for InMemoryKeyValueStore {
             })
             .unwrap_or_default())
     }
+
+    fn delete(&self, table: &str, key: &str) -> Result<()> {
+        if let Some(items) = self.tables.lock().get_mut(table) {
+            items.remove(key);
+        }
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -314,6 +327,14 @@ impl KeyValueStore for FileKeyValueStore {
             out.push((key, value));
         }
         Ok(out)
+    }
+
+    fn delete(&self, table: &str, key: &str) -> Result<()> {
+        let path = self.value_path(table, key);
+        if path.exists() {
+            std::fs::remove_file(path)?;
+        }
+        Ok(())
     }
 }
 

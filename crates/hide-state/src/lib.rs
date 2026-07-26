@@ -1,5 +1,15 @@
 //! hide-state: state-capsule schemas, integrity, and compatibility binding.
 //!
+//! # Superseded as the live checkpoint authority
+//!
+//! **This crate is NOT wired into the host.** Durable session restore boundaries
+//! live under `hide-backend`'s [`CheckpointStore`] / `BackendHost::checkpoint_*`
+//! (event-log KV). RPC `state/save|load|fork|release` routes onto that host
+//! implementation (see `hide-backend::rpc`), not onto the capsule store below.
+//! Wiring a second checkpoint authority would violate the consolidation law of
+//! one session/event authority. Keep this crate only as schema reference /
+//! offline fixtures; do not depend on it from `hide-backend` or `hide-serve`.
+//!
 //! HIDE carries agent state as capsules: opaque runtime bytes wrapped in a
 //! header that identifies them and a digest that lets a reader prove they are
 //! intact (Bible sec 23, sec 56). This crate defines those schemas and the

@@ -12,6 +12,7 @@
 //!   GET  /v1/hide/events?after_seq=N (plain GET) -> host.ui_events -> [UiEvent]
 //!   POST /v1/hide/connector  -> host.call_connector(id, method, p) -> Value
 //!   POST /v1/hide/rpc        -> host.rpc(Method, params)           -> RpcResult
+//!   POST /v1/hide/initialize -> host.initialize(conn, client, caps)-> InitializeResponse
 //!
 //! T5: depends only on hide-backend + hide-core, NEVER hawking-core/serve.
 
@@ -25,7 +26,7 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use hide_backend::BackendHost;
+use hide_backend::{BackendHost, ClientCapabilities, ClientInfo, InitializeResponse};
 use hide_core::api::{Intent, UiEvent, UiEventKind};
 use hide_core::ids::SessionId;
 use serde::Deserialize;
@@ -49,6 +50,9 @@ pub fn router(host: Arc<BackendHost>) -> Router {
         // Additive: the elevated Agent Server protocol surface (Bible sec 15).
         // Leaves /v1/hide/intent (Wire-A) untouched.
         .route("/v1/hide/rpc", post(post_rpc))
+        // Stage-4 capability negotiation: records per-connection opt-outs and
+        // the experimental_api gate on the host's ConnectionRegistry.
+        .route("/v1/hide/initialize", post(post_initialize))
         // Permissive-localhost CORS so the browser at the Vite dev origin
         // (e.g. http://127.0.0.1:5273 or :5174) can reach this localhost
         // transport (127.0.0.1:8744). The OPTIONS preflight is answered by the
@@ -285,6 +289,31 @@ struct RpcEnvelope {
 async fn post_rpc(State(host): State<Arc<BackendHost>>, Json(env): Json<RpcEnvelope>) -> Response {
     let result = host.rpc(env.method, env.params).await;
     Json(result).into_response()
+}
+
+// ── POST /v1/hide/initialize ────────────────────────────────────────────────
+
+/// Body for the Stage-4 Initialize handshake. Mirrors
+/// [`BackendHost::initialize`]: the transport supplies an opaque
+/// `connection_id`, the client identifies itself, and negotiates the two
+/// capability levers.
+#[derive(Debug, Deserialize)]
+struct InitializeReq {
+    connection_id: String,
+    client: ClientInfo,
+    #[serde(default)]
+    capabilities: ClientCapabilities,
+}
+
+/// Record negotiated capabilities for this connection and return the
+/// server-info reply. Same shape as the host method the integration tests
+/// already call directly — this is only the missing HTTP reachability seam.
+async fn post_initialize(
+    State(host): State<Arc<BackendHost>>,
+    Json(req): Json<InitializeReq>,
+) -> Response {
+    let resp: InitializeResponse = host.initialize(req.connection_id, req.client, req.capabilities);
+    Json(resp).into_response()
 }
 
 #[cfg(test)]
@@ -752,6 +781,53 @@ mod tests {
             value["status"],
             json!("not_implemented"),
             "a deferred method is typed, not a 500"
+        );
+    }
+
+    #[tokio::test]
+    async fn initialize_route_records_capabilities_on_the_host() {
+        let host = host_for_test();
+        let body = serde_json::to_vec(&json!({
+            "connection_id": "conn-serve-1",
+            "client": {
+                "name": "hide-desktop",
+                "title": "HIDE",
+                "version": "1.0.0",
+            },
+            "capabilities": {
+                "experimental_api": true,
+                "opt_out_notification_methods": ["runtime/status"],
+            },
+        }))
+        .unwrap();
+        let resp = router(host.clone())
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/v1/hide/initialize")
+                    .header("content-type", "application/json")
+                    .body(Body::from(body))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+        let bytes = resp.into_body().collect().await.unwrap().to_bytes();
+        let value: Value = serde_json::from_slice(&bytes).unwrap();
+        assert!(
+            value["user_agent"]
+                .as_str()
+                .is_some_and(|s| s.starts_with("hide-backend/")),
+            "server-info reply names the backend: {value:?}"
+        );
+        assert!(
+            host.connections().experimental_api("conn-serve-1"),
+            "POST /v1/hide/initialize must populate ConnectionRegistry"
+        );
+        assert!(
+            host.connections()
+                .is_notification_suppressed("conn-serve-1", "runtime/status"),
+            "opt-out methods must be stored for the connection"
         );
     }
 }

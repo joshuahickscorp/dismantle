@@ -37,7 +37,12 @@ pub enum ApprovalDecision {
 /// longer the pending one is ignored rather than mis-applied.
 #[derive(Debug, Clone)]
 struct ApprovalMessage {
-    /// The step the decision names, or `None` to resolve whatever is pending.
+    /// The step the decision names. `None` is fail-safe for [`ApprovalDecision::Deny`]
+    /// ("deny whatever is pending") but must never be used for a buffered
+    /// [`ApprovalDecision::Approve`] — a client that omits `step_id` while nothing
+    /// is paused would otherwise create a blanket approval for the next effectful
+    /// step. The host intent path rejects approve-without-step_id; the turn drain
+    /// also ignores Approve+None as defence in depth.
     step_id: Option<StepId>,
     decision: ApprovalDecision,
 }
@@ -52,6 +57,10 @@ pub struct ApprovalHub {
 impl ApprovalHub {
     /// Deposit a decision for `run_id`, optionally scoped to the `step_id` the
     /// `approval.requested` event carried. Last-write-wins.
+    ///
+    /// Callers must not deposit [`ApprovalDecision::Approve`] with `step_id: None`
+    /// as a buffered decision (the host intent path rejects that case). Deny with
+    /// `None` remains intentional and fail-safe.
     pub fn decide(&self, run_id: RunId, step_id: Option<StepId>, decision: ApprovalDecision) {
         self.pending
             .lock()
@@ -59,8 +68,9 @@ impl ApprovalHub {
     }
 
     /// Take (and clear) any decision buffered for `run_id`. Returns the decision
-    /// and the step it named (`None` step = "resolve whatever is pending").
-    /// Called by the turn loop while paused.
+    /// and the step it named. For Deny, `None` step means "resolve whatever is
+    /// pending"; for Approve, `None` step must never match a pending request
+    /// (see host drain). Called by the turn loop while paused.
     pub fn take(&self, run_id: &RunId) -> Option<(Option<StepId>, ApprovalDecision)> {
         self.pending
             .lock()

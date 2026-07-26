@@ -11,6 +11,12 @@
 //! * `goal/set` `goal/get` `goal/list` -> [`BackendHost::goal_set`] / [`BackendHost::goal_get`]
 //! * `checkpoint/create` `checkpoint/list` `checkpoint/restore`
 //!                          -> the durable `checkpoint_*` family
+//! * `state/save` `state/load` `state/fork` `state/release`
+//!                          -> the same host checkpoint authority
+//!                            (`checkpoint_create` / `checkpoint_restore` /
+//!                            `checkpoint_fork` / `checkpoint_release`). The
+//!                            `hide-state` capsule crate is superseded; see its
+//!                            crate docs. One session/event authority only.
 //! * `state/inspect`        -> a light, model-free runtime inspection
 //! * `approval/respond`     -> the [`crate::approval::ApprovalHub`]
 //!
@@ -318,8 +324,9 @@ impl BackendHost {
 
             // -- approval/respond -> the ApprovalHub ----------------------------
             // Deposit a human decision on a paused effectful step. `approve: bool`
-            // or a `decision` string ("approve" / "deny"); an optional `step_id`
-            // scopes it. Model-free.
+            // or a `decision` string ("approve" / "deny"); `step_id` is required
+            // for approve (W5: never buffer a blanket approve) and optional for
+            // deny (fail-safe). Model-free.
             Method::ApprovalRespond => {
                 #[derive(Deserialize)]
                 struct P {
@@ -348,6 +355,12 @@ impl BackendHost {
                         }
                     },
                 };
+                if approve && p.step_id.is_none() {
+                    return RpcResult::error(
+                        method,
+                        "approval/respond approve requires step_id (blanket approve is refused)",
+                    );
+                }
                 let decision = if approve {
                     ApprovalDecision::Approve
                 } else {
@@ -454,14 +467,92 @@ impl BackendHost {
                 )
             }
 
-            // -- state save/load/fork/release: capsule model not built (DEFERRED)
-            Method::StateSave
-            | Method::StateLoad
-            | Method::StateFork
-            | Method::StateRelease => RpcResult::not_implemented(
-                method,
-                "the durable state-capsule model is not built (DEFERRED)",
-            ),
+            // -- state/save|load|fork|release -> host CheckpointStore -----------
+            // One session/event authority: these map onto the existing durable
+            // checkpoint implementation under hide-backend. The hide-state
+            // capsule crate is superseded (see its crate docs) and is NOT wired
+            // as a parallel store.
+            Method::StateSave => {
+                #[derive(Deserialize)]
+                struct P {
+                    #[serde(alias = "session_id")]
+                    session: String,
+                    #[serde(default)]
+                    at_event: Option<String>,
+                    #[serde(default)]
+                    label: String,
+                }
+                let p: P = match serde_json::from_value(params) {
+                    Ok(p) => p,
+                    Err(e) => return RpcResult::error(method, format!("bad params: {e}")),
+                };
+                let at = p.at_event.map(EventId::from);
+                match self
+                    .checkpoint_create(SessionId::from(p.session), at.as_ref(), p.label)
+                    .await
+                {
+                    Ok(record) => RpcResult::ok(method, to_value_or_error(method, &record)),
+                    Err(e) => RpcResult::error(method, e.to_string()),
+                }
+            }
+
+            Method::StateLoad => {
+                #[derive(Deserialize)]
+                struct P {
+                    #[serde(alias = "id", alias = "checkpoint_id")]
+                    state_id: String,
+                }
+                let p: P = match serde_json::from_value(params) {
+                    Ok(p) => p,
+                    Err(e) => return RpcResult::error(method, format!("bad params: {e}")),
+                };
+                match self.checkpoint_restore(&p.state_id).await {
+                    Ok((restored, record, _projection)) => RpcResult::ok(
+                        method,
+                        json!({ "session_id": restored, "record": record }),
+                    ),
+                    Err(e) => RpcResult::error(method, e.to_string()),
+                }
+            }
+
+            Method::StateFork => {
+                #[derive(Deserialize)]
+                struct P {
+                    #[serde(alias = "id", alias = "checkpoint_id")]
+                    state_id: String,
+                }
+                let p: P = match serde_json::from_value(params) {
+                    Ok(p) => p,
+                    Err(e) => return RpcResult::error(method, format!("bad params: {e}")),
+                };
+                match self.checkpoint_fork(&p.state_id).await {
+                    Ok(outcome) => RpcResult::ok(
+                        method,
+                        json!({
+                            "session_id": outcome.session_id,
+                            "fork_point": outcome.fork_point,
+                            "ancestry": outcome.ancestry,
+                        }),
+                    ),
+                    Err(e) => RpcResult::error(method, e.to_string()),
+                }
+            }
+
+            Method::StateRelease => {
+                #[derive(Deserialize)]
+                struct P {
+                    #[serde(alias = "id", alias = "checkpoint_id")]
+                    state_id: String,
+                }
+                let p: P = match serde_json::from_value(params) {
+                    Ok(p) => p,
+                    Err(e) => return RpcResult::error(method, format!("bad params: {e}")),
+                };
+                match self.checkpoint_release(&p.state_id) {
+                    Ok(()) => RpcResult::ok(method, json!({ "released": p.state_id })),
+                    Err(e) => RpcResult::error(method, e.to_string()),
+                }
+            }
 
             // -- approval/request: a server push, not a client request (DEFERRED)
             Method::ApprovalRequestMethod => RpcResult::not_implemented(
@@ -587,15 +678,54 @@ mod tests {
     async fn approval_respond_deposits_a_decision() {
         let host = host_for_test();
         let run = hide_core::ids::RunId::new();
+        let step = hide_core::ids::StepId::new();
+        let out = host
+            .rpc(
+                Method::ApprovalRespond,
+                json!({
+                    "run_id": run.as_str(),
+                    "step_id": step.as_str(),
+                    "approve": true
+                }),
+            )
+            .await;
+        assert!(out.is_ok(), "approval/respond dispatches successfully");
+        // The decision landed in the hub's mailbox for that run.
+        assert!(host.approvals().is_pending(&run), "the decision was deposited");
+    }
+
+    #[tokio::test]
+    async fn approval_respond_refuse_approve_without_step_id() {
+        let host = host_for_test();
+        let run = hide_core::ids::RunId::new();
         let out = host
             .rpc(
                 Method::ApprovalRespond,
                 json!({ "run_id": run.as_str(), "approve": true }),
             )
             .await;
-        assert!(out.is_ok(), "approval/respond dispatches successfully");
-        // The decision landed in the hub's mailbox for that run.
-        assert!(host.approvals().is_pending(&run), "the decision was deposited");
+        assert!(
+            matches!(out, RpcResult::Error { .. }),
+            "approve without step_id must be a typed Error, got {out:?}"
+        );
+        assert!(
+            !host.approvals().is_pending(&run),
+            "no decision may be buffered for a blanket approve"
+        );
+    }
+
+    #[tokio::test]
+    async fn approval_respond_allows_deny_without_step_id() {
+        let host = host_for_test();
+        let run = hide_core::ids::RunId::new();
+        let out = host
+            .rpc(
+                Method::ApprovalRespond,
+                json!({ "run_id": run.as_str(), "approve": false }),
+            )
+            .await;
+        assert!(out.is_ok(), "deny without step_id remains fail-safe");
+        assert!(host.approvals().is_pending(&run));
     }
 
     #[tokio::test]
@@ -608,6 +738,66 @@ mod tests {
         assert_eq!(result["model_configured"], json!(false));
     }
 
+    /// W7: state/save|load|fork|release route onto the host CheckpointStore,
+    /// not the superseded hide-state capsule crate.
+    #[tokio::test]
+    async fn state_rpc_family_routes_onto_host_checkpoints() {
+        let host = host_for_test();
+        let session = seed_session(&host, "state rpc boundary").await;
+
+        let save = host
+            .rpc(
+                Method::StateSave,
+                json!({ "session": session.as_str(), "label": "via-state-save" }),
+            )
+            .await;
+        assert!(save.is_ok(), "state/save -> checkpoint_create: {save:?}");
+        let ckpt_id = save
+            .result()
+            .and_then(|r| r.get("checkpoint_id"))
+            .and_then(|v| v.as_str())
+            .expect("state/save returns a checkpoint_id")
+            .to_string();
+        assert!(
+            host.checkpoint_list(&session)
+                .iter()
+                .any(|c| c.checkpoint_id == ckpt_id),
+            "state/save must land a durable CheckpointRecord"
+        );
+
+        let fork = host
+            .rpc(Method::StateFork, json!({ "state_id": ckpt_id }))
+            .await;
+        assert!(fork.is_ok(), "state/fork -> checkpoint_fork: {fork:?}");
+        assert!(
+            fork.result()
+                .and_then(|r| r.get("session_id"))
+                .and_then(|v| v.as_str())
+                .is_some(),
+            "state/fork returns a child session id"
+        );
+
+        // load (restore) is gated Ask; exercise under the approved-writes seam
+        // the checkpoint_restore tests already use.
+        let load = crate::tools::with_approved_writes(host.rpc(
+            Method::StateLoad,
+            json!({ "state_id": ckpt_id }),
+        ))
+        .await;
+        assert!(load.is_ok(), "state/load -> checkpoint_restore: {load:?}");
+
+        let release = host
+            .rpc(Method::StateRelease, json!({ "state_id": ckpt_id }))
+            .await;
+        assert!(release.is_ok(), "state/release -> checkpoint_release: {release:?}");
+        assert!(
+            host.checkpoint_list(&session)
+                .iter()
+                .all(|c| c.checkpoint_id != ckpt_id),
+            "state/release must drop the durable checkpoint"
+        );
+    }
+
     #[tokio::test]
     async fn unimplemented_method_returns_typed_not_implemented_not_a_panic() {
         let host = host_for_test();
@@ -615,7 +805,6 @@ mod tests {
             Method::WorkspaceCreate,
             Method::AgentSpawn,
             Method::ArtifactGet,
-            Method::StateSave,
             Method::TurnCreate,
         ] {
             let out = host.rpc(method, json!({})).await;

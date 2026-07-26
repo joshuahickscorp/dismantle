@@ -75,6 +75,14 @@ impl SupervisorConfig {
     /// URL and the serve `--addr` agree, plus the model `weights` the serve
     /// loads for generation (the `serve` subcommand requires `--weights`).
     ///
+    /// Binary resolution (argv[0]):
+    /// * `HIDE_HAWKING_BIN` when set to a non-empty path (absolute or relative)
+    /// * else the bare name `hawking` (resolved via `PATH` by the OS)
+    ///
+    /// Boot timeout: `HIDE_MODEL_BOOT_TIMEOUT_SECS` when set to a positive
+    /// integer, else **300s**. Real GGUF loads (and Metal warmup) routinely
+    /// exceed the old 30s default; healthz only answers after `load_engine`.
+    ///
     /// When a `.tq` sidecar sits next to the weights (same stem, `.tq`
     /// extension), the runtime is asked to serve it: `HAWKING_QWEN_TQ=1` is set
     /// in the child's env so the engine builds the TQ side map and serves the
@@ -89,8 +97,13 @@ impl SupervisorConfig {
     ) -> Self {
         let bind = bind_addr.into();
         let weights = weights.as_ref();
+        let hawking_bin = std::env::var("HIDE_HAWKING_BIN")
+            .ok()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .unwrap_or_else(|| "hawking".to_string());
         let mut argv = vec![
-            "hawking".to_string(),
+            hawking_bin,
             "serve".to_string(),
             "--addr".to_string(),
             bind.clone(),
@@ -118,6 +131,13 @@ impl SupervisorConfig {
             }
         }
 
+        let boot_timeout = std::env::var("HIDE_MODEL_BOOT_TIMEOUT_SECS")
+            .ok()
+            .and_then(|s| s.trim().parse::<u64>().ok())
+            .filter(|n| *n > 0)
+            .map(Duration::from_secs)
+            .unwrap_or_else(|| Duration::from_secs(300));
+
         let spec = ProcessSpec {
             name: "hawking-serve".to_string(),
             argv,
@@ -129,7 +149,7 @@ impl SupervisorConfig {
             spec,
             backoff: BackoffPolicy::default(),
             health_interval: Duration::from_secs(5),
-            boot_timeout: Duration::from_secs(30),
+            boot_timeout,
             lock_path: Some(lock_path.into()),
         }
     }
@@ -804,6 +824,37 @@ mod tests {
             boot_timeout: Duration::from_secs(2),
             lock_path: None,
         }
+    }
+
+    #[test]
+    fn for_hawking_serve_honors_bin_and_boot_timeout_env() {
+        let dir = std::env::temp_dir().join(format!("hide_sup_cfg_{}", now_ms()));
+        let _ = std::fs::create_dir_all(&dir);
+        // Isolate from ambient env.
+        let prev_bin = std::env::var("HIDE_HAWKING_BIN").ok();
+        let prev_to = std::env::var("HIDE_MODEL_BOOT_TIMEOUT_SECS").ok();
+        std::env::set_var("HIDE_HAWKING_BIN", "/tmp/custom-hawking-bin");
+        std::env::set_var("HIDE_MODEL_BOOT_TIMEOUT_SECS", "123");
+        let cfg = SupervisorConfig::for_hawking_serve(
+            "127.0.0.1:9",
+            &dir,
+            dir.join("weights.gguf"),
+            dir.join("runtime.lock"),
+        );
+        assert_eq!(cfg.spec.argv[0], "/tmp/custom-hawking-bin");
+        assert_eq!(cfg.spec.argv[1], "serve");
+        assert!(cfg.spec.argv.iter().any(|a| a == "--weights"));
+        assert_eq!(cfg.boot_timeout, Duration::from_secs(123));
+        // Restore.
+        match prev_bin {
+            Some(v) => std::env::set_var("HIDE_HAWKING_BIN", v),
+            None => std::env::remove_var("HIDE_HAWKING_BIN"),
+        }
+        match prev_to {
+            Some(v) => std::env::set_var("HIDE_MODEL_BOOT_TIMEOUT_SECS", v),
+            None => std::env::remove_var("HIDE_MODEL_BOOT_TIMEOUT_SECS"),
+        }
+        let _ = std::fs::remove_dir_all(dir);
     }
 
     #[tokio::test]

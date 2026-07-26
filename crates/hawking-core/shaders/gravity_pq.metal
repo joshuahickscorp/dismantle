@@ -190,10 +190,10 @@ kernel void gravity_rope_interleaved_f32(
     constant GravityGlmRopeParams &p [[buffer(4)]],
     uint id [[thread_position_in_grid]])
 {
-    uint half = p.rotary_dim / 2u;
-    if (id >= p.n_heads * half) { return; }
-    uint h = id / half;
-    uint i = id - h * half;
+    uint half_dim = p.rotary_dim / 2u;
+    if (id >= p.n_heads * half_dim) { return; }
+    uint h = id / half_dim;
+    uint i = id - h * half_dim;
     uint in_base = h * p.in_stride;
     uint out_base = h * p.out_stride;
     float first = x[in_base + 2u * i];
@@ -201,7 +201,7 @@ kernel void gravity_rope_interleaved_f32(
     float c = cos[i];
     float s = sin[i];
     out[out_base + i] = first * c - second * s;
-    out[out_base + half + i] = second * c + first * s;
+    out[out_base + half_dim + i] = second * c + first * s;
 }
 
 // Copy unrotated tail after a rope-interleaved prefix (indexer / query assemble).

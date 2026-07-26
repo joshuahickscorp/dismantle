@@ -78,6 +78,16 @@ fn resident_matches_host_state_over_several_prompts() {
     let ctx = match MetalContext::new() {
         Ok(c) => c,
         Err(e) => {
+            // A shader COMPILE failure is not an absent device, and treating it as
+            // one makes this suite report green while proving nothing. That is
+            // exactly how a broken kernel ships. Only a genuinely missing device
+            // may skip; anything else fails loudly.
+            let msg = e.to_string();
+            assert!(
+                !msg.contains("shader") && !msg.contains("compile"),
+                "Metal is present but the shader failed to compile -- this is a real \
+                 failure, not a skip: {msg}"
+            );
             eprintln!("skip: no Metal device ({e})");
             return;
         }
@@ -184,6 +194,16 @@ fn resident_incremental_decode_matches_full_replay() {
     let ctx = match MetalContext::new() {
         Ok(c) => c,
         Err(e) => {
+            // A shader COMPILE failure is not an absent device, and treating it as
+            // one makes this suite report green while proving nothing. That is
+            // exactly how a broken kernel ships. Only a genuinely missing device
+            // may skip; anything else fails loudly.
+            let msg = e.to_string();
+            assert!(
+                !msg.contains("shader") && !msg.contains("compile"),
+                "Metal is present but the shader failed to compile -- this is a real \
+                 failure, not a skip: {msg}"
+            );
             eprintln!("skip: no Metal device ({e})");
             return;
         }

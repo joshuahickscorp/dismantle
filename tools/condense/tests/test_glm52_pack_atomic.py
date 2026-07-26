@@ -86,6 +86,34 @@ def test_ladder_survey_samples_experts_but_never_the_target_rung(tmp_path, monke
     assert (full, thin) == (2, 2)
 
 
+def test_the_fit_kernel_is_recorded_and_never_moves_the_ledger(tmp_path, monkeypatch):
+    """Either k-means arithmetic may be selected; the shard must say which, and the
+    billed size must not depend on the choice.
+
+    Deliberately NOT asserted: that the two kernels agree byte-for-byte. They agree on
+    small tensors and diverge on production-sized ones, because the only difference is a
+    per-row constant subtract that can collapse a strict inequality into a tie, and one
+    such collapse in the first iteration redirects the whole k-means trajectory. Pinning
+    byte-equality here would pass on a fixture and lie about the real artifact.
+
+    What must hold, and does: the payload SIZE is a function of (rung, element count)
+    alone, so the frozen byte auction is valid under either kernel.
+    """
+    shard, rows = _tiny_shard(tmp_path)
+    sizes = {}
+    for kernel in pack.forge.FIT_KERNELS:
+        monkeypatch.setattr(pack.forge, "FIT_KERNEL", kernel)
+        out = tmp_path / kernel
+        pack.pack_shard(shard, rows, out)
+        header = gravity_format.read_header(out / "model-00001-of-00282.gravity")
+        assert header["compression"]["fit_kernel"] == kernel, \
+            "a shard that does not name its fit kernel is not reproducible from (seed, iters)"
+        sizes[kernel] = [entry["bytes"] for entry in header["tensors"]]
+
+    assert sizes["v1_full_distance"] == sizes["v2_lean_argmin"], \
+        "the fit kernel changed a billed payload size; the frozen byte auction would be void"
+
+
 def test_an_overridden_tensor_is_sampled_like_any_other_routed_expert(tmp_path, monkeypatch):
     """A Prometheus override must move the target rung, not exempt the schedule.
 

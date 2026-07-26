@@ -14,8 +14,11 @@
 //! are written straight into those buffers and are not copied into host `Vec`s
 //! as the cache of record.
 //!
-//! `lm_head` remains a single per-token matvec (host dense or PQ). Command-
-//! buffer collapse is intentionally **not** done here.
+//! `lm_head` is once per token. Default: host dense or PQ via
+//! [`GpuWeightCache::matvec`]. With [`crate::gravity_glm::GPU_LM_HEAD_ENV`]=1 and
+//! a `native.bf16` head, the weight stays device-resident and the projection
+//! + greedy argmax run on GPU (no per-token host widen of the 1.90 GB table).
+//! Command-buffer collapse is intentionally **not** done here.
 //!
 //! Gated by [`GPU_RESIDENT_STATE_ENV`] (`HAWKING_GLM_GPU_RESIDENT_STATE`), default
 //! off, so the host-state path remains the parity oracle.
@@ -23,7 +26,9 @@
 #![cfg(target_os = "macos")]
 
 use crate::gravity::matvec_dense;
-use crate::gravity_glm::gpu::{GpuTensor, GpuWeightCache};
+use crate::gravity_glm::gpu::{
+    encode_argmax_f32, encode_gemv_native_bf16_seq, GpuTensor, GpuWeightCache,
+};
 use crate::gravity_glm::{
     rope_cos_sin, rope_interleaved, topk_desc, GlmArch, GlmTrace, WeightAccess,
 };
@@ -174,6 +179,10 @@ pub struct ActPool {
     #[allow(dead_code)]
     down: Buffer,
     final_hidden: Buffer,
+    /// Device logits for device-resident lm_head (vocab-sized).
+    logits: Buffer,
+    /// Single u32 greedy token from on-device argmax (sampling stays resident).
+    sample_token: Buffer,
     #[allow(dead_code)]
     gate_cap: usize,
 }
@@ -213,6 +222,8 @@ impl ActPool {
             act: ctx.new_buffer_checked(gate_cap * 4)?,
             down: ctx.new_buffer_checked(h * 4)?,
             final_hidden: ctx.new_buffer_checked(h * 4)?,
+            logits: ctx.new_buffer_checked(arch.vocab_size * 4)?,
+            sample_token: ctx.new_buffer_checked(4)?,
             gate_cap,
         })
     }
@@ -226,8 +237,9 @@ fn commit(tcb: Option<TokenCommandBuffer<'_>>, waits: &Cell<u64>) -> Result<()> 
     Ok(())
 }
 
-/// Matvec into a device buffer. Native weights run on the host into the shared
-/// buffer (no wait). PQ weights encode into `tcb` and need a later commit.
+/// Matvec into a device buffer. Host-native weights run on the host into the
+/// shared buffer (no wait). PQ and device-resident bf16 encode into `tcb` and
+/// need a later commit.
 fn matvec_into<'a>(
     tcb: &mut Option<TokenCommandBuffer<'a>>,
     ctx: &'a MetalContext,
@@ -246,6 +258,15 @@ fn matvec_into<'a>(
             let y_host = matvec_dense(w, &x_host, name)?;
             write_f32(y, &y_host);
             Ok(())
+        }
+        GpuTensor::NativeGpuBf16 { buf, rows, cols } => {
+            if x_len != *cols as usize {
+                return Err(Error::Gravity(format!(
+                    "resident matvec {name}: x_len {x_len} != cols {cols}"
+                )));
+            }
+            let tcb = tcb.get_or_insert_with(|| TokenCommandBuffer::new(ctx));
+            encode_gemv_native_bf16_seq(tcb, buf, *rows, *cols, x, y)
         }
         GpuTensor::Pq {
             codebooks,
@@ -600,22 +621,59 @@ pub fn forward_resident(
             a.rms_norm_eps,
             &pool.final_hidden,
         );
-        // lm_head once per token — allowed to leave the device.
-        let hidden = read_f32(&pool.final_hidden, a.hidden);
+        // lm_head once per token. Device-resident bf16 keeps weight + logits
+        // on GPU and runs greedy argmax without pulling the vocab vector back
+        // for sampling; full logits are still read for the forward API /
+        // parity oracle. Host dense / PQ keep the prior path.
         let waits_before_head = session.waits.get();
-        logits = weights.matvec("lm_head.weight", &hidden)?;
-        // matvec on PQ counts its own wait inside GpuWeightCache; approximate
-        // by checking whether waits advanced (native lm_head does not).
-        if session.waits.get() == waits_before_head {
-            // PQ path inside WeightAccess::matvec does commit; host path here
-            // already waited. Count a boundary wait only when the matvec is PQ
-            // and went through dispatch — handled inside matvec. For native
-            // lm_head, zero extra waits. For PQ, GpuWeightCache commits once;
-            // we cannot see it through waits cell. Manually probe:
+        {
+            let _head = crate::cost_ledger::Scope::new(
+                crate::cost_ledger::Bucket::FinalHeadAndSampling,
+            );
             let mut cache = weights.cache.lock().expect("gpu weight cache");
             weights.ensure_many_locked(&mut cache, &["lm_head.weight"])?;
-            if matches!(cache.get("lm_head.weight"), Some(GpuTensor::Pq { .. })) {
-                session.waits.set(session.waits.get().saturating_add(1));
+            match cache.get("lm_head.weight").expect("ensured lm_head") {
+                GpuTensor::NativeGpuBf16 { buf, rows, cols } => {
+                    if a.hidden != *cols as usize {
+                        return Err(Error::Gravity(format!(
+                            "lm_head device path: hidden {} != cols {cols}",
+                            a.hidden
+                        )));
+                    }
+                    if a.vocab_size != *rows as usize {
+                        return Err(Error::Gravity(format!(
+                            "lm_head device path: vocab {} != rows {rows}",
+                            a.vocab_size
+                        )));
+                    }
+                    crate::cost_ledger::record_matvec_call();
+                    crate::cost_ledger::record_active_bytes(buf.length());
+                    let mut tcb = TokenCommandBuffer::new(ctx);
+                    encode_gemv_native_bf16_seq(
+                        &mut tcb,
+                        buf,
+                        *rows,
+                        *cols,
+                        &pool.final_hidden,
+                        &pool.logits,
+                    )?;
+                    encode_argmax_f32(&mut tcb, &pool.logits, *rows, &pool.sample_token)?;
+                    tcb.commit_and_wait()?;
+                    session.waits.set(session.waits.get().saturating_add(1));
+                    logits = read_f32(&pool.logits, a.vocab_size);
+                }
+                GpuTensor::NativeCpu(_) | GpuTensor::Pq { .. } => {
+                    drop(cache);
+                    let hidden = read_f32(&pool.final_hidden, a.hidden);
+                    logits = weights.matvec("lm_head.weight", &hidden)?;
+                    if session.waits.get() == waits_before_head {
+                        let mut cache = weights.cache.lock().expect("gpu weight cache");
+                        weights.ensure_many_locked(&mut cache, &["lm_head.weight"])?;
+                        if matches!(cache.get("lm_head.weight"), Some(GpuTensor::Pq { .. })) {
+                            session.waits.set(session.waits.get().saturating_add(1));
+                        }
+                    }
+                }
             }
         }
     }

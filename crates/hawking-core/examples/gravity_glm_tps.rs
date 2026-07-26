@@ -114,13 +114,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         );
     }
 
+    let cache = model.cache_stats();
     let receipt = serde_json::json!({
         "schema": "hawking.gravity.glm_base_tps.v1",
         "scoreboard": "BASE_TRUE_TPS",
         "note": "measured, not modelled; no acceleration of any kind is enabled on this path. \
                  GLM's routed MoE means device-resident bytes grow with the run rather than \
                  being fixed at load, and cost is mildly content-dependent, unlike the dense \
-                 Llama instrument gravity_tps.rs measures.",
+                 Llama instrument gravity_tps.rs measures. Resident set is byte-budgeted LRU \
+                 (HAWKING_GRAVITY_GPU_CACHE_BUDGET_BYTES); high_water is the peak observed \
+                 this process, not modelled capacity.",
         "model_dir": dir.to_string_lossy(),
         "architecture": {
             "layers": model.arch.n_layers,
@@ -128,6 +131,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "routed_experts": model.arch.n_routed_experts,
             "experts_per_tok": model.arch.num_experts_per_tok,
             "vocab": model.arch.vocab_size,
+        },
+        "gpu_weight_cache": {
+            "budget_bytes": cache.budget_bytes,
+            "resident_bytes": cache.resident_bytes,
+            "high_water_bytes": cache.high_water_bytes,
+            "entries": cache.entries,
+            "evictions": cache.evictions,
+            "budget_env": "HAWKING_GRAVITY_GPU_CACHE_BUDGET_BYTES",
         },
         "open_ms": open_ms,
         "measurements": rows,

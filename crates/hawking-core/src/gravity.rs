@@ -1202,14 +1202,17 @@ impl GravityWeights {
                         let _decode = cost_ledger::Scope::new(Bucket::PackedIndexDecode);
                         PqTensor::from_payload(&blob)?
                     };
-                    cost_ledger::record_active_bytes(blob.len() as u64);
+                    // Exact payload extent (descriptor.bytes); not a page, not
+                    // a whole shard. mmap may still fault full pages into RSS
+                    // — that shows up in page_faults_*, not here.
+                    cost_ledger::record_active_bytes_for(name, blob.len() as u64);
                     t.matvec(x)
                 } else if codec.starts_with("native.") {
                     let w = {
                         let _decode = cost_ledger::Scope::new(Bucket::PackedIndexDecode);
                         widen_native(&codec, &blob)?
                     };
-                    cost_ledger::record_active_bytes((w.len() * 4) as u64);
+                    cost_ledger::record_active_bytes_for(name, (w.len() * 4) as u64);
                     matvec_dense(&w, x, name)
                 } else {
                     Err(Error::Gravity(format!(

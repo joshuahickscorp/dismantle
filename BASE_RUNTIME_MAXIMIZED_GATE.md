@@ -110,9 +110,11 @@ boundaries, rollback, KV and interaction.
 ## Standing
 
 ```
-per-token cost ledger        NOT STARTED
+per-token cost ledger        INSTRUMENTED  (default-off exclusive ledger + example;
+                             unit-tested; device measurement pending on controller —
+                             see reports/base_runtime/PER_TOKEN_COST_LEDGER.md)
 integrity out of hot loop    IN PROGRESS  (dense/row memoization delegated; ~2.6x measured available)
-production path proven clean NOT STARTED
+production path proven clean NOT STARTED  (static path audit in cost-ledger report; needs device counters)
 optimization order           NOT STARTED
 BASE_TRUE_TPS                0.1547 tok/s warm hashed | 0.4074 warm no-hash
 gap to target                ~323x to 50 tok/s

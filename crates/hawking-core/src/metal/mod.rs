@@ -1172,7 +1172,10 @@ mod imp {
             tg: (u32, u32, u32),
             encode: impl FnOnce(&metal::ComputeCommandEncoderRef),
         ) -> Result<()> {
+            use crate::cost_ledger::{self, Bucket};
+
             let trace_enabled = self.trace_dispatch;
+            let ledger = cost_ledger::is_recording();
             let t0 = if trace_enabled {
                 Some(Instant::now())
             } else {
@@ -1180,6 +1183,7 @@ mod imp {
             };
 
             let pipe = self.pipeline(fn_name)?;
+            let t_encode = if ledger { Some(Instant::now()) } else { None };
             let cmd = self.inner.queue.new_command_buffer();
             let physical_trace = physical_command_label("command_buffer");
             if let Some((_, label)) = physical_trace.as_ref() {
@@ -1198,11 +1202,27 @@ mod imp {
                 MTLSize::new(tg.0 as u64, tg.1 as u64, tg.2 as u64),
             );
             enc.end_encoding();
+            if let Some(t) = t_encode {
+                cost_ledger::add_duration(Bucket::MetalEncode, t.elapsed());
+                cost_ledger::record_dispatches(1);
+            }
+
+            let t_submit = if ledger { Some(Instant::now()) } else { None };
             cmd.commit();
+            if let Some(t) = t_submit {
+                cost_ledger::add_duration(Bucket::MetalSubmit, t.elapsed());
+                cost_ledger::record_command_buffer();
+            }
             if trace_enabled {
                 self.stats.commits.fetch_add(1, Ordering::Relaxed);
             }
+
+            let t_sync = if ledger { Some(Instant::now()) } else { None };
             cmd.wait_until_completed();
+            if let Some(t) = t_sync {
+                cost_ledger::add_duration(Bucket::MetalSynchronize, t.elapsed());
+                cost_ledger::record_sync_point();
+            }
 
             if let Some(t0) = t0 {
                 let wall_us = t0.elapsed().as_micros() as u64;
@@ -1746,6 +1766,63 @@ mod imp {
         pub fn commit_and_wait(mut self) -> Result<()> {
             if let Some(cmd) = self.cmd.take() {
                 self.flush_and_commit(cmd);
+            }
+            Ok(())
+        }
+
+        /// Like [`commit_and_wait`], but when the per-token cost ledger is
+        /// recording, attributes CPU wall time of `commit` and
+        /// `wait_until_completed` to separate buckets and counts one
+        /// command buffer + one sync point. Behaviour on the GPU is
+        /// identical; decode output is unchanged.
+        pub fn commit_and_wait_split(mut self) -> Result<()> {
+            use crate::cost_ledger::{self, Bucket};
+            use std::time::Instant;
+
+            if let Some(cmd) = self.cmd.take() {
+                // Close any still-open concurrent group before committing.
+                if let Some(enc) = self.concurrent_encoder.take() {
+                    enc.end_encoding();
+                }
+                if cost_ledger::is_recording() {
+                    let t_submit = Instant::now();
+                    cmd.commit();
+                    cost_ledger::add_duration(Bucket::MetalSubmit, t_submit.elapsed());
+                    cost_ledger::record_command_buffer();
+
+                    let t_sync = Instant::now();
+                    cmd.wait_until_completed();
+                    cost_ledger::add_duration(Bucket::MetalSynchronize, t_sync.elapsed());
+                    cost_ledger::record_sync_point();
+
+                    // Drain TCB-internal trace samples the same way
+                    // flush_and_commit does in Off mode (nothing to do).
+                    match self.mode {
+                        TcbTraceMode::Off => {}
+                        TcbTraceMode::CpuEncode => {
+                            let layer = super::current_layer();
+                            for s in self.tcb_samples.drain(..) {
+                                self.ctx.trace.record(s.kernel_name, s.wall_us, s.layer_hint);
+                            }
+                            self.ctx.trace.record("tcb_commit", 0, layer);
+                        }
+                        TcbTraceMode::SplitCbGpu => {
+                            for s in self.tcb_samples.drain(..) {
+                                self.ctx.trace.samples.lock().push(s);
+                            }
+                        }
+                        TcbTraceMode::ProdCbGpu => {
+                            if let Some(tracer) = self.prod_cb_tracer.as_ref() {
+                                for s in tracer.drain() {
+                                    self.ctx.trace.samples.lock().push(s);
+                                }
+                            }
+                            self.tcb_samples.clear();
+                        }
+                    }
+                } else {
+                    self.flush_and_commit(cmd);
+                }
             }
             Ok(())
         }

@@ -6,6 +6,8 @@ pub mod cost_ledger;
 pub mod gguf;
 pub mod gravity;
 pub mod gravity_glm;
+#[cfg(target_os = "macos")]
+pub mod gravity_glm_resident;
 pub mod gravity_llama;
 pub mod json_constrain;
 pub mod kernel_bench;

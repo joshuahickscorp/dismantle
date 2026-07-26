@@ -12,7 +12,13 @@
 //!
 //!     cargo run --release -p hawking-core --example gravity_glm_tps -- \
 //!         --context 16 --decode 8 --out receipt.json
+//!
+//! Long warm / residency-curve run (additive flag, off by default):
+//!
+//!     cargo run --release -p hawking-core --example gravity_glm_tps -- \
+//!         --context 4 --decode 80 --token-curve --out warm.json
 
+use std::io::Write;
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -28,6 +34,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut decode = 4usize;
     let mut out: Option<PathBuf> = None;
     let mut verify_hash = true;
+    // Additive: when set, record residency/eviction after every decode token
+    // and emit a per-token curve in the receipt. Default off so short
+    // scoreboard runs stay byte-identical in shape.
+    let mut token_curve = false;
+    // Additive: path for progressive JSONL (one line per decode token).
+    // Lets a detached long run be polled without waiting for the final receipt.
+    let mut progress: Option<PathBuf> = None;
     let mut args = std::env::args().skip(1);
     while let Some(a) = args.next() {
         match a.as_str() {
@@ -36,6 +49,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "--decode" => decode = args.next().ok_or("--decode needs a value")?.parse()?,
             "--out" => out = args.next().map(PathBuf::from),
             "--no-verify-hash" => verify_hash = false,
+            "--token-curve" => token_curve = true,
+            "--progress" => progress = args.next().map(PathBuf::from),
             other => return Err(format!("unknown argument {other:?}").into()),
         }
     }
@@ -49,7 +64,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Err(format!("no model directory at {dir:?}").into());
     }
 
+    let mut progress_file = match &progress {
+        Some(p) => {
+            if let Some(parent) = p.parent() {
+                if !parent.as_os_str().is_empty() {
+                    std::fs::create_dir_all(parent)?;
+                }
+            }
+            Some(std::fs::File::create(p)?)
+        }
+        None => None,
+    };
+
     eprintln!("opening (indexing shard headers, decoding nothing)...");
+    eprintln!("verify_hash={verify_hash} token_curve={token_curve}");
     let t_open = Instant::now();
     let model = GravityGlmGpu::open_dir(&dir, verify_hash)?;
     let open_ms = t_open.elapsed().as_secs_f64() * 1e3;
@@ -60,6 +88,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         model.arch.n_routed_experts,
         model.arch.vocab_size
     );
+    {
+        let c = model.cache_stats();
+        eprintln!(
+            "cache budget {} bytes ({:.1} GiB)",
+            c.budget_bytes,
+            c.budget_bytes as f64 / (1024.0 * 1024.0 * 1024.0)
+        );
+    }
 
     // Deterministic pseudo-token stream inside the vocabulary, continued
     // (not restarted) from prefill into decode so a run is reproducible.
@@ -74,17 +110,63 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     for &context in &contexts {
         let tokens = stream(context + decode);
 
+        let cache_before = model.cache_stats();
         let t_prefill = Instant::now();
         model.forward(&tokens[..context])?;
         let prefill_ms = t_prefill.elapsed().as_secs_f64() * 1e3;
+        let cache_after_prefill = model.cache_stats();
+        eprintln!(
+            "ctx {context} prefill done in {prefill_ms:.0} ms | resident {:.2} GB entries {} evictions {}",
+            cache_after_prefill.resident_bytes as f64 / 1e9,
+            cache_after_prefill.entries,
+            cache_after_prefill.evictions,
+        );
 
         let mut decode_ms_each = Vec::with_capacity(decode);
+        let mut curve = Vec::with_capacity(decode);
         let mut logits = Vec::new();
         for (i, &t) in tokens[context..].iter().enumerate() {
             let t0 = Instant::now();
             let (l, _) = model.forward_at(&[t], context + i)?;
-            decode_ms_each.push(t0.elapsed().as_secs_f64() * 1e3);
+            let ms = t0.elapsed().as_secs_f64() * 1e3;
+            decode_ms_each.push(ms);
             logits = l;
+
+            let cache = model.cache_stats();
+            let tok_index = i + 1; // 1-based decode token index within this run
+            let sample = serde_json::json!({
+                "decode_token_index": tok_index,
+                "absolute_position": context + i,
+                "ms": ms,
+                "tps": 1000.0 / ms,
+                "resident_bytes": cache.resident_bytes,
+                "high_water_bytes": cache.high_water_bytes,
+                "entries": cache.entries,
+                "evictions": cache.evictions,
+            });
+            if token_curve {
+                curve.push(sample.clone());
+            }
+            if let Some(f) = progress_file.as_mut() {
+                let mut line = sample;
+                line.as_object_mut().unwrap().insert(
+                    "context_tokens".into(),
+                    serde_json::json!(context),
+                );
+                line.as_object_mut().unwrap().insert(
+                    "verify_hash".into(),
+                    serde_json::json!(verify_hash),
+                );
+                writeln!(f, "{}", serde_json::to_string(&line)?)?;
+                f.flush()?;
+            }
+            eprintln!(
+                "  tok {tok_index:>3}/{decode}  {ms:>8.1} ms  {:.4} tok/s  resident {:.2} GB  entries {}  evictions {}",
+                1000.0 / ms,
+                cache.resident_bytes as f64 / 1e9,
+                cache.entries,
+                cache.evictions,
+            );
         }
         assert_eq!(logits.len(), model.arch.vocab_size);
 
@@ -92,18 +174,34 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let mut sorted = decode_ms_each.clone();
         sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
 
-        rows.push(serde_json::json!({
+        let mut row = serde_json::json!({
             "context_tokens": context,
             "decode_tokens": decode,
             "prefill_ms": prefill_ms,
             "prefill_tps": context as f64 / (prefill_ms / 1e3),
+            "cache_before_prefill": {
+                "resident_bytes": cache_before.resident_bytes,
+                "entries": cache_before.entries,
+                "evictions": cache_before.evictions,
+            },
+            "cache_after_prefill": {
+                "resident_bytes": cache_after_prefill.resident_bytes,
+                "entries": cache_after_prefill.entries,
+                "evictions": cache_after_prefill.evictions,
+            },
             "decode_ms": decode_ms,
             "base_true_decode_tps": decode as f64 / (decode_ms / 1e3),
             "decode_ms_per_token_median": sorted.get(sorted.len() / 2).copied().unwrap_or(0.0),
             "decode_ms_per_token_min": sorted.first().copied().unwrap_or(0.0),
             "decode_ms_per_token_max": sorted.last().copied().unwrap_or(0.0),
             "decode_ms_per_token_all": decode_ms_each,
-        }));
+        });
+        if token_curve {
+            row.as_object_mut()
+                .unwrap()
+                .insert("token_curve".into(), serde_json::json!(curve));
+        }
+        rows.push(row);
         let last = rows.last().unwrap();
         eprintln!(
             "ctx {context:>4}  prefill {:>7.2} tok/s ({prefill_ms:>8.0} ms)  decode {:>7.2} tok/s  \
@@ -118,6 +216,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let receipt = serde_json::json!({
         "schema": "hawking.gravity.glm_base_tps.v1",
         "scoreboard": "BASE_TRUE_TPS",
+        "verify_hash": verify_hash,
+        "token_curve": token_curve,
         "note": "measured, not modelled; no acceleration of any kind is enabled on this path. \
                  GLM's routed MoE means device-resident bytes grow with the run rather than \
                  being fixed at load, and cost is mildly content-dependent, unlike the dense \
@@ -145,7 +245,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
     let text = serde_json::to_string_pretty(&receipt)? + "\n";
     match out {
-        Some(p) => std::fs::write(&p, &text)?,
+        Some(p) => {
+            if let Some(parent) = p.parent() {
+                if !parent.as_os_str().is_empty() {
+                    std::fs::create_dir_all(parent)?;
+                }
+            }
+            std::fs::write(&p, &text)?;
+            eprintln!("wrote {}", p.display());
+        }
         None => print!("{text}"),
     }
     Ok(())

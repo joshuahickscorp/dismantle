@@ -20,6 +20,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -40,6 +41,7 @@ STATE_DIR = Path(
 SOURCE_ROOT = STATE_DIR / "source"
 LEDGER = STATE_DIR / "PASS3_LEDGER.jsonl"
 PROGRESS = STATE_DIR / "progress.json"
+TELEMETRY = STATE_DIR / "PASS3_TELEMETRY.jsonl"
 LOCK = STATE_DIR / "pass3.lock"
 COMPACT = Path(
     "/Users/scammermike/Library/Application Support/Hawking/Models/GLM-5.2/"
@@ -75,9 +77,22 @@ def _write_json(path: Path, obj) -> None:
     os.replace(tmp, path)
 
 
+# The fetch producer and the sealing consumer both write the ledger now. It is the
+# campaign's evidence authority, so serialize the append rather than rely on small
+# writes happening not to interleave.
+_LEDGER_LOCK = threading.Lock()
+
+
 def _append_ledger(row: dict) -> None:
     LEDGER.parent.mkdir(parents=True, exist_ok=True)
-    with open(LEDGER, "a") as fh:
+    with _LEDGER_LOCK, open(LEDGER, "a") as fh:
+        fh.write(json.dumps(row, sort_keys=True) + "\n")
+
+
+def _append_telemetry(row: dict) -> None:
+    """Write nondeterministic timing only to a side channel, never a receipt."""
+    TELEMETRY.parent.mkdir(parents=True, exist_ok=True)
+    with open(TELEMETRY, "a") as fh:
         fh.write(json.dumps(row, sort_keys=True) + "\n")
 
 
@@ -213,15 +228,53 @@ def _pack_one(name: str, rows: list[dict], override: dict) -> dict:
 
     # Defensive for direct invocation in tests; ProcessPool runs _worker_init first.
     pack.forge._device = lambda: torch.device("cpu")
-    receipt = pack.pack_shard(SOURCE_ROOT / name, rows, COMPACT, rate_override=override)
+    telemetry = {}
+    receipt = pack.pack_shard(
+        SOURCE_ROOT / name,
+        rows,
+        COMPACT,
+        rate_override=override,
+        telemetry=telemetry,
+    )
     return {"shard": name, "compact_bytes": receipt["compact_bytes"],
-            "complete_bpw": receipt["complete_bpw"]}
+            "complete_bpw": receipt["complete_bpw"], "telemetry": telemetry}
+
+
+def _fetch_loop(pending: list[str], by_path: dict, repo: str, revision: str,
+                ready: "queue.Queue", stop: "threading.Event") -> None:
+    """Producer: keep verified source shards resident just ahead of the packers.
+
+    Runs on its own thread so a ~22 s download is never wall-clock the 28 cores spend
+    idle.  The queue is small on purpose: each shard is ~5.4 GB, so running far ahead
+    buys nothing and spends the disk headroom the floor check exists to protect.
+    """
+    try:
+        for name in pending:
+            if stop.is_set():
+                break
+            # A past VERIFIED row proves bytes once passed the source hash; it does not
+            # mean PASS1/PASS3 eviction left those bytes resident.
+            if not (SOURCE_ROOT / name).is_file() or name not in verified_shards():
+                if _free_bytes() < DISK_FLOOR_BYTES:
+                    _append_ledger({"event": "DISK_FLOOR_STOP", "shard": name, "at": _now()})
+                    sys.stderr.write(f"disk floor reached before {name}; stopping fetch\n")
+                    break
+                result = _fetch_one(by_path[name], repo, revision)
+                _append_ledger(result)
+                if result["status"] != "VERIFIED":
+                    sys.stderr.write(f"PASS3 fetch failed: {result}\n")
+                    continue
+            ready.put(name)
+    finally:
+        ready.put(None)  # sentinel: no more shards will arrive
 
 
 def run(*, limit_shards: int | None = None) -> int:
     import fcntl
     import multiprocessing
-    from concurrent.futures import ProcessPoolExecutor, as_completed
+    import queue
+    import threading
+    from concurrent.futures import FIRST_COMPLETED, ProcessPoolExecutor, wait
 
     # gravity_forge._device() defaults to MPS whenever available. On this machine
     # that path has previously produced a command-buffer error that silently
@@ -262,63 +315,122 @@ def run(*, limit_shards: int | None = None) -> int:
     already_packed = packed_shards()
     pending = [n for n in shard_names if n not in already_packed]
 
-    # Fetch, then pack, one PACK_WORKERS-sized batch at a time. Packing (minutes
-    # per shard, CPU-bound) dominates over fetch (~22s/shard, I/O-bound) by more
-    # than an order of magnitude, so this simple batch-then-parallel-pack shape
-    # gets nearly all of a full producer/consumer queue's throughput without one.
-    # A ThreadPoolExecutor does not create independent PyTorch intra-op pools:
-    # four fits merely interleave on one ~20-thread process and the first real R4
-    # batch consumed essentially the sum of four shard compute times.  Spawned
-    # workers each receive seven threads on this 28-core host, giving real
-    # process-level parallelism without inheriting any parent torch state.
-    with ProcessPoolExecutor(
-        max_workers=PACK_WORKERS,
-        mp_context=multiprocessing.get_context("spawn"),
-        initializer=_worker_init,
-    ) as pool:
-        for start in range(0, len(pending), PACK_WORKERS):
-            batch = pending[start:start + PACK_WORKERS]
-            if _free_bytes() < DISK_FLOOR_BYTES:
-                _append_ledger({"event": "DISK_FLOOR_STOP", "shard": batch[0], "at": _now()})
-                sys.stderr.write(f"disk floor reached before {batch[0]}; stopping\n")
-                break
+    # Dynamic work queue, not fixed PACK_WORKERS-sized barriers.  Measured on the first
+    # real R4 batch (4 shards, 2607 s wall): the slowest shard finished 94.4 s after the
+    # fastest, and that batch's fetch ran serially in front of a fully idle pool, so the
+    # barrier shape cost ~3.6 percent to stragglers and ~3.4 percent to fetch.  Here a
+    # producer thread keeps sources resident ahead of the pool, a worker that finishes
+    # takes the next ready shard immediately, and each shard seals -- receipt, telemetry,
+    # eviction, progress -- on its own completion rather than at a batch edge.  Nothing
+    # about the artifact changes; only when a worker is allowed to be idle does.
+    #
+    # A ThreadPoolExecutor does not create independent PyTorch intra-op pools: four fits
+    # merely interleave on one ~20-thread process and the first real R4 batch consumed
+    # essentially the sum of four shard compute times.  Spawned workers each receive seven
+    # threads on this 28-core host, giving real process-level parallelism without
+    # inheriting any parent torch state.
+    ready: queue.Queue = queue.Queue(maxsize=2)
+    stop = threading.Event()
+    fetcher = threading.Thread(
+        target=_fetch_loop, args=(pending, by_path, repo, revision, ready, stop),
+        name="pass3-fetch", daemon=True,
+    )
+    fetcher.start()
 
-            ready_batch = []
-            for name in batch:
-                # A past VERIFIED row proves bytes once passed the source hash; it
-                # does not mean PASS1/PASS3 eviction left those bytes resident.
-                if not (SOURCE_ROOT / name).is_file() or name not in verified_shards():
-                    result = _fetch_one(by_path[name], repo, revision)
-                    _append_ledger(result)
-                    if result["status"] != "VERIFIED":
-                        sys.stderr.write(f"PASS3 fetch failed: {result}\n")
-                        continue
-                ready_batch.append(name)
+    run_started = time.perf_counter()
+    in_flight: dict = {}
+    sealed = 0
+    starved_worker_seconds = 0.0
+    last_measured = run_started
+    drained = False
 
-            futures = {
-                pool.submit(_pack_one, name, tensors_by_shard.get(name, []), override): name
-                for name in ready_batch
-            }
-            for future in as_completed(futures):
-                name = futures[future]
-                try:
-                    receipt = future.result()
-                except Exception as exc:  # noqa: BLE001 - one bad shard must not kill the batch
-                    _append_ledger({"event": "PACK_ERROR", "shard": name,
-                                    "error": f"{type(exc).__name__}: {exc}", "at": _now()})
-                    sys.stderr.write(f"PASS3 pack failed for {name}: {exc}\n")
-                    continue
-                _append_ledger({"event": "PACKED", **receipt, "at": _now()})
-                target = SOURCE_ROOT / name
-                if target.exists():
-                    size = target.stat().st_size
-                    target.unlink()
-                    _append_ledger({"event": "EVICT", "shard": name, "bytes": size, "at": _now()})
+    def seal(future) -> None:
+        """Publish exactly one shard, independently of every other shard in flight."""
+        nonlocal sealed
+        name = in_flight.pop(future)
+        try:
+            receipt = future.result()
+        except Exception as exc:  # noqa: BLE001 - one bad shard must not kill the run
+            _append_ledger({"event": "PACK_ERROR", "shard": name,
+                            "error": f"{type(exc).__name__}: {exc}", "at": _now()})
+            sys.stderr.write(f"PASS3 pack failed for {name}: {exc}\n")
+            return
+        timing = receipt.pop("telemetry")
+        timing.update({"event": "SHARD_TIMING", "scheduler": "dynamic_queue",
+                       "shard": name, "completed_at": _now()})
+        _append_telemetry(timing)
+        _append_ledger({"event": "PACKED", **receipt, "at": _now()})
+        target = SOURCE_ROOT / name
+        if target.exists():
+            size = target.stat().st_size
+            target.unlink()
+            _append_ledger({"event": "EVICT", "shard": name, "bytes": size, "at": _now()})
+        sealed += 1
+        _write_json(PROGRESS, {
+            "shards_packed": len(packed_shards()), "shards_total": len(shard_names),
+            "sealed_this_run": sealed, "scheduler": "dynamic_queue",
+            "last_sealed": name, "at": _now(),
+        })
 
-            _write_json(PROGRESS, {
-                "shards_packed": len(packed_shards()), "shards_total": len(shard_names),
-                "last_batch": batch, "at": _now(),
-            })
+    try:
+        with ProcessPoolExecutor(
+            max_workers=PACK_WORKERS,
+            mp_context=multiprocessing.get_context("spawn"),
+            initializer=_worker_init,
+        ) as pool:
+            while True:
+                # Fill every free slot before blocking on a completion, so a worker is
+                # never idle while a verified source is already sitting in the queue.
+                # Block on the queue only when nothing is in flight: with work running,
+                # an empty queue means the fetcher is behind and waiting on it would
+                # reintroduce exactly the serialization this replaced.
+                while not drained and len(in_flight) < PACK_WORKERS:
+                    try:
+                        name = ready.get(block=not in_flight)
+                    except queue.Empty:
+                        break
+                    if name is None:
+                        drained = True
+                        break
+                    future = pool.submit(
+                        _pack_one, name, tensors_by_shard.get(name, []), override)
+                    in_flight[future] = name
+                if not in_flight:
+                    break
+                now = time.perf_counter()
+                starved_worker_seconds += (PACK_WORKERS - len(in_flight)) * (now - last_measured)
+                last_measured = now
+                # `wait` watches futures, not the queue.  With a free slot and a fetch
+                # still to land, blocking on futures alone would hold the pool at
+                # whatever occupancy it happened to reach when the queue last ran dry --
+                # observed live as one busy worker out of four.  Poll for the refill in
+                # exactly that case; block outright when the pool is full or the
+                # producer is finished, so a full pipeline costs no wakeups at all.
+                done, _ = wait(
+                    list(in_flight), return_when=FIRST_COMPLETED,
+                    timeout=(None if drained or len(in_flight) == PACK_WORKERS else 5.0))
+                for future in done:
+                    seal(future)
+    finally:
+        stop.set()
+        # Unblock a producer parked on a full queue so the thread can retire.
+        try:
+            ready.get_nowait()
+        except queue.Empty:
+            pass
+
+    wall = time.perf_counter() - run_started
+    if sealed:
+        _append_telemetry({
+            "schema": "hawking.glm52.pass3_scheduler_telemetry.v1",
+            "event": "SCHEDULER_TIMING", "at": _now(), "scheduler": "dynamic_queue",
+            "workers": PACK_WORKERS, "shards_sealed": sealed, "wall_seconds": wall,
+            "seconds_per_shard": wall / sealed,
+            "starvation_worker_seconds": starved_worker_seconds,
+            "starvation_percentage": (
+                starved_worker_seconds * 100.0 / max(PACK_WORKERS * wall, 1e-12)
+            ),
+        })
 
     if limit_shards is None and len(packed_shards()) == len(by_path):
         finalize(manifest)

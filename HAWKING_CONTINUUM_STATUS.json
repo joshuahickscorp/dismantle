@@ -1,0 +1,115 @@
+{
+  "at": "2026-07-26T01:25:48Z",
+  "blockers": [],
+  "completed_steps": [
+    "OPTIMIZE_PASS3"
+  ],
+  "estimated_pass3_hours_remaining": 27.74,
+  "general_artifact_bytes": 87134289062,
+  "git": {
+    "branch": "campaign/glm52-generation-b",
+    "dirty": true,
+    "head": "0092d5d74f2b2cac1a091875d686123ebfd247da"
+  },
+  "launchd": {
+    "com.hawking.doctorv5.telegram": {
+      "last_exit": 75,
+      "pid": null,
+      "running": false
+    },
+    "com.hawking.doctorv5ultra.post120b": {
+      "last_exit": 2,
+      "pid": null,
+      "running": false
+    },
+    "com.hawking.glm52.math-prometheus-pass1": {
+      "last_exit": 0,
+      "pid": null,
+      "running": false
+    },
+    "com.hawking.glm52.math-prometheus-pass3": {
+      "last_exit": 0,
+      "pid": 11785,
+      "running": true
+    },
+    "com.hawking.glm52.readiness-gate": {
+      "last_exit": 0,
+      "pid": null,
+      "running": false
+    },
+    "com.hawking.glm52.safe-to-leave": {
+      "last_exit": 0,
+      "pid": 11597,
+      "running": true
+    },
+    "com.hawking.glm52.source-fetch": {
+      "last_exit": 0,
+      "pid": null,
+      "running": false
+    },
+    "com.hawking.odyssey-ready-finalize": {
+      "last_exit": 0,
+      "pid": 1336,
+      "running": true
+    },
+    "com.hawking.overnight.handoff": {
+      "last_exit": 126,
+      "pid": null,
+      "running": false
+    }
+  },
+  "next_command_file": "HAWKING_CONTINUUM_NEXT_COMMAND.sh",
+  "pass3": {
+    "artifact_bytes": 14193453650,
+    "free_disk_bytes": 417133920256,
+    "live_pids": [
+      11785,
+      11787
+    ],
+    "mean_shard_seconds_recent": 1604.2,
+    "percent": 11.7,
+    "progress_file": {
+      "at": "2026-07-26T01:05:33Z",
+      "last_sealed": "model-00031-of-00282.safetensors",
+      "scheduler": "dynamic_queue",
+      "sealed_this_run": 4,
+      "shards_packed": 33,
+      "shards_total": 33
+    },
+    "resident_source_shards": [
+      "model-00036-of-00282.safetensors",
+      "model-00034-of-00282.safetensors",
+      "model-00035-of-00282.safetensors"
+    ],
+    "scheduler": "dynamic_queue",
+    "shards_packed": 33,
+    "shards_total": 282
+  },
+  "remaining_steps": [
+    "ASSEMBLE_MATH_PRESERVE: assemble and verify the Math-Preserve artifact",
+    "SEAL_CLAIM_A: equal-budget Uniform/General/Math/RandomPolicy Claim A",
+    "HAWKING_ODYSSEY_READY: seal the pre-Odyssey checkpoint",
+    "BASE_RUNTIME: finish the base .gravity runtime and measured BASE_TRUE_TPS",
+    "ACCELERATION: generic speculative/parallel-token acceleration tournament",
+    "HIDE: Chat/IDE, Context OS, tools, agents, worktrees, verification",
+    "ODYSSEY: run Odyssey T0-T7",
+    "MATH_FROZEN: rerun Prometheus and pack Math-Frozen",
+    "RECALIBRATE: recalibrate acceleration and qualify HIDE",
+    "FABRIC_BRIDGE: Fabric, Bridge, adapters, schemas, canonical events, CLI",
+    "CONSOLIDATE_HAWKING: final Hawking consolidation",
+    "HAWKING_EVOLUTION_COMPLETE: seal the evolution endpoint",
+    "MIGRATE_RAMANUJAN: create ~/Downloads/ramanujan and migrate owned contracts",
+    "TRAIN_LOCAL_FORGE: fully local retriever/formalizer/prover/repair training",
+    "BUILD_SEARCH_GOVERNANCE: search, roles, memories, Ledger, Tribunal",
+    "QUALIFY_SANDBOX: Q0-Q6 and the multi-day pre-sandbox rehearsal",
+    "RAMANUJAN_SANDBOX_READY: terminal gate"
+  ],
+  "research_launch_fence": {
+    "ODYSSEY_LAUNCH_AUTHORIZED": "false",
+    "RAMANUJAN_RESEARCH_AUTHORIZED": "false"
+  },
+  "schema": "hawking.continuum.status.v1",
+  "state": "FINISH_MATH_PRESERVE",
+  "terminal_endpoint": "RAMANUJAN_SANDBOX_READY",
+  "why": "33/282 shards packed (11.7%)"
+}

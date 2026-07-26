@@ -26,6 +26,8 @@ import math
 import os
 import struct
 import sys
+import time
+from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
@@ -384,7 +386,8 @@ def run_tournament(samples: list[np.ndarray], *, cluster: list[np.ndarray] | Non
 
 def pack_shard(shard_path: Path, rows: list[dict], out_dir: Path, *,
                production_rung: str = PRODUCTION_RUNG, seed: int = 0,
-               rate_override: dict[str | tuple[int, int], str] | None = None) -> dict:
+               rate_override: dict[str | tuple[int, int], str] | None = None,
+               telemetry: dict[str, Any] | None = None) -> dict:
     """Pack every tensor of one resident shard into the accumulating compact artifact.
 
     One binary blob and one index per source shard, so the compact artifact grows at 282
@@ -402,6 +405,29 @@ def pack_shard(shard_path: Path, rows: list[dict], out_dir: Path, *,
     tools/condense/tests/test_glm52_pack_rate_override.py).
     """
     import glm52_shard_probe as probe
+
+    total_started = time.perf_counter()
+    stage_seconds: dict[str, float] = defaultdict(float)
+    category_stats: dict[str, dict[str, Any]] = {}
+
+    def category(row: dict) -> dict[str, Any]:
+        name = str(row["category"])
+        if name not in category_stats:
+            category_stats[name] = {
+                "tensors": 0,
+                "weights": 0,
+                "source_bytes": 0,
+                "artifact_bytes": 0,
+                "native_tensors": 0,
+                "packed_tensors": 0,
+                "stage_seconds": defaultdict(float),
+            }
+        return category_stats[name]
+
+    def add_time(name: str, elapsed: float, cat: dict[str, Any] | None = None) -> None:
+        stage_seconds[name] += elapsed
+        if cat is not None:
+            cat["stage_seconds"][name] += elapsed
 
     out_dir.mkdir(parents=True, exist_ok=True)
     # "model-00007-of-00282.safetensors" -> "model-00007-of-00282.gravity"
@@ -438,14 +464,24 @@ def pack_shard(shard_path: Path, rows: list[dict], out_dir: Path, *,
         payloads.append((descriptor, raw))
         entries.append(descriptor)
         offset += len(raw)
+        cat = category(row)
+        cat["artifact_bytes"] += len(raw)
+        cat["native_tensors"] += 1
 
     with open(shard_path, "rb", buffering=0) as source:
         for row in ordered:
-            source.seek(int(row["absolute_start"]))
-            raw = source.read(int(row["payload_bytes"]))
+            cat = category(row)
             elements = 1
             for dim in row["shape"]:
                 elements *= int(dim)
+            cat["tensors"] += 1
+            cat["weights"] += elements
+            cat["source_bytes"] += int(row["payload_bytes"])
+
+            started = time.perf_counter()
+            source.seek(int(row["absolute_start"]))
+            raw = source.read(int(row["payload_bytes"]))
+            add_time("source_read", time.perf_counter() - started, cat)
             # Every declared tensor counts in the denominator exactly once, whatever path
             # it takes.  The complete rate is the campaign's headline, so nothing may be
             # quietly excluded from it.
@@ -458,8 +494,10 @@ def pack_shard(shard_path: Path, rows: list[dict], out_dir: Path, *,
                 carry_native(row, raw, elements, "NON_BF16_CONTROL_TENSOR")
                 continue
 
+            started = time.perf_counter()
             weights = probe._bf16_to_f32(np.frombuffer(raw, dtype=np.uint16)).reshape(
                 row["shape"]).astype(np.float32)
+            add_time("bf16_decode", time.perf_counter() - started, cat)
 
             if row["provisional_budget_class"] == PROTECTED_BUDGET_CLASS:
                 carry_native(row, raw, weights.size, "PROTECTED_BUDGET_CLASS")
@@ -481,25 +519,42 @@ def pack_shard(shard_path: Path, rows: list[dict], out_dir: Path, *,
             target_rung = override or production_rung
 
             # Deterministic by position, not random: the same shard always surveys the
-            # same tensors, so a re-pack reproduces the record exactly. An overridden
-            # tensor always surveys every rung -- the sampling schedule below exists to
-            # bound cost on the common (uniform-rate) case, and a Prometheus-selected
-            # tensor is by definition not that case.
-            if row.get("expert") is None or LADDER_SAMPLE_EVERY <= 1 or override:
+            # same tensors, so a re-pack reproduces the record exactly.
+            #
+            # 2026-07-26: the non-survey branch used to fit `production_rung` rather than
+            # the tensor's own target, so an overridden tensor had to survey every rung
+            # merely to be sure its target got fitted at all -- correctness dressed as
+            # science.  Under Math-Preserve that exemption swallowed the schedule: the
+            # allocation manifest overrides 56,076 of 59,585 tensors, so "the uncommon
+            # case" was 94 percent of the model and the survey became the pack.  Measured
+            # on one real routed-expert shape (2048x6144): 6.29 s for {R0,R2,R4} against
+            # 1.62 s for the single target rung, 3.88x, with the packed payload bytes
+            # byte-identical either way (the ladder rungs share no RNG state -- _kmeans
+            # seeds its own generator -- so a rung not fitted cannot perturb one that is).
+            # Fitting the target directly keeps the same guarantee without the exemption,
+            # and the sampling schedule now applies to every routed expert on equal terms.
+            # Non-routed tensors stay exhaustively surveyed: they are shape-diverse, and
+            # there are 1,217 of them against 58,368 routed experts that are two shapes.
+            is_routed = row.get("expert") is not None
+            if not is_routed or LADDER_SAMPLE_EVERY <= 1:
                 rungs = all_rungs
             else:
                 rungs = (all_rungs if routed_seen % LADDER_SAMPLE_EVERY == 0
-                         else frozenset({production_rung}))
+                         else frozenset({target_rung}))
                 routed_seen += 1
             surveyed += rungs == all_rungs
+            started = time.perf_counter()
             ladder_rows = pack_tensor_ladder(weights, seed=seed, rungs=rungs)
+            add_time("fit", time.perf_counter() - started, cat)
             chosen = next((r for r in ladder_rows
                            if r["rung"] == target_rung and r["admitted"]), None)
             if chosen is None:  # no admissible rung: protect rather than exceed the ceiling
                 carry_native(row, raw, weights.size, "NO_ADMISSIBLE_LADDER_RUNG")
                 continue
 
+            started = time.perf_counter()
             payload = serialize(chosen["artifact"])
+            add_time("serialize", time.perf_counter() - started, cat)
             compact_bits += len(payload) * 8
             descriptor = {
                 "name": row["name"], "category": row["category"],
@@ -516,6 +571,8 @@ def pack_shard(shard_path: Path, rows: list[dict], out_dir: Path, *,
             payloads.append((descriptor, payload))
             entries.append(descriptor)
             offset += len(payload)
+            cat["artifact_bytes"] += len(payload)
+            cat["packed_tensors"] += 1
 
     # Fail closed on the coverage hole rather than write another artifact that the
     # streamer will treat as proof the source was consumed.  Every path above now hands
@@ -540,6 +597,7 @@ def pack_shard(shard_path: Path, rows: list[dict], out_dir: Path, *,
     # complete and authorizes eviction of the BF16 source.  Rename is atomic, which
     # makes a partial .gravity impossible rather than merely unlikely.
     partial_path = gravity_path.with_name(gravity_path.name + ".partial")
+    format_telemetry: dict[str, Any] = {}
     gravity_format.write_shard(
         partial_path, payloads,
         model={"repo": "zai-org/GLM-5.2",
@@ -560,10 +618,14 @@ def pack_shard(shard_path: Path, rows: list[dict], out_dir: Path, *,
             "native_tensors": len(native),
             "native_bytes": sum(len(b) for _, b in native),
             "compressed_tensors": len(compressed),
-            # The production rung is fitted on every tensor and is the artifact.  The other
-            # rungs are a survey; this says exactly how much of one this shard carries.
+            # Each tensor's own target rung is fitted and is the artifact.  The other rungs
+            # are a survey; this says exactly how much of one this shard carries.  `schedule`
+            # is versioned because shards 1-29 of this run were sealed under `v1_survey_
+            # every_overridden_tensor`, and a reader must be able to tell which density a
+            # given shard's survey rows were taken at.  Payload bytes are unaffected.
             "ladder_survey": {
-                "production_rung_coverage": "ALL_TENSORS",
+                "schedule": "v2_target_rung_always_survey_every_nth_routed_expert",
+                "target_rung_coverage": "ALL_TENSORS",
                 "other_rungs_sampled_every_nth_routed_expert": LADDER_SAMPLE_EVERY,
                 "non_routed_tensors_fully_surveyed": True,
                 "tensors_fully_surveyed": surveyed,
@@ -573,10 +635,80 @@ def pack_shard(shard_path: Path, rows: list[dict], out_dir: Path, *,
             "evidence_level": "F0_PHYSICAL_AND_F1_WEIGHT_SPACE_PROXY_ONLY",
             "not_evidence_of": "output divergence, capability, or end-to-end behaviour",
         },
-        shard={"source": shard_path.name, "of": 282})
+        shard={"source": shard_path.name, "of": 282},
+        telemetry=format_telemetry)
+    stage_seconds["hash_manifest"] += float(
+        format_telemetry.get("hash_manifest_seconds", 0.0)
+    )
+    stage_seconds["file_write"] += float(
+        format_telemetry.get("file_write_seconds", 0.0)
+    )
+    started = time.perf_counter()
     with open(partial_path, "rb") as handle:
         os.fsync(handle.fileno())
+    stage_seconds["fsync"] += time.perf_counter() - started
+    started = time.perf_counter()
     os.replace(partial_path, gravity_path)
+    stage_seconds["atomic_rename"] += time.perf_counter() - started
+
+    total_seconds = time.perf_counter() - total_started
+    measured_seconds = sum(stage_seconds.values())
+    stage_seconds["bookkeeping"] += max(0.0, total_seconds - measured_seconds)
+    if telemetry is not None:
+        clean_categories = {}
+        for name, stats in sorted(category_stats.items()):
+            cat_seconds = sum(stats["stage_seconds"].values())
+            clean_categories[name] = {
+                **{k: v for k, v in stats.items() if k != "stage_seconds"},
+                "stage_seconds": {
+                    key: round(value, 6)
+                    for key, value in sorted(stats["stage_seconds"].items())
+                },
+                "measured_seconds": round(cat_seconds, 6),
+                "tensors_per_second": (
+                    stats["tensors"] / max(total_seconds, 1e-12)
+                ),
+                "weights_per_second": (
+                    stats["weights"] / max(total_seconds, 1e-12)
+                ),
+            }
+        source_bytes = sum(int(row["payload_bytes"]) for row in ordered)
+        artifact_file_bytes = gravity_path.stat().st_size
+        telemetry.update({
+            "schema": "hawking.glm52.pass3_pack_telemetry.v1",
+            "shard": shard_path.name,
+            "timing_side_channel_only": True,
+            "excluded_from_artifact_and_canonical_receipts": True,
+            "total_seconds": total_seconds,
+            "stage_seconds": {
+                key: round(value, 6)
+                for key, value in sorted(stage_seconds.items())
+            },
+            "stage_time_percentage": {
+                key: round(value * 100.0 / max(total_seconds, 1e-12), 4)
+                for key, value in sorted(stage_seconds.items())
+            },
+            "categories": clean_categories,
+            "tensors": len(entries),
+            "weights": total_weights,
+            "source_bytes": source_bytes,
+            "artifact_payload_bytes": offset,
+            "artifact_file_bytes": artifact_file_bytes,
+            "tensors_per_second": len(entries) / max(total_seconds, 1e-12),
+            "weights_per_second": total_weights / max(total_seconds, 1e-12),
+            "source_mb_per_second_end_to_end": (
+                source_bytes / 1_000_000 / max(total_seconds, 1e-12)
+            ),
+            "artifact_mb_per_second_end_to_end": (
+                artifact_file_bytes / 1_000_000 / max(total_seconds, 1e-12)
+            ),
+            "source_read_mb_per_second": (
+                source_bytes
+                / 1_000_000
+                / max(stage_seconds["source_read"], 1e-12)
+            ),
+            "format": format_telemetry,
+        })
 
     return {
         "schema": "hawking.glm52.compact_shard_index.v1",

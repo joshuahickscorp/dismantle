@@ -716,8 +716,12 @@ impl BackendHost {
     /// missing binary, a bad path, or a `/healthz` that never comes up just
     /// leaves the supervisor in `Failed`/`Booting`; the host is still returned
     /// and fully usable (it will report "model offline" rather than fake a
-    /// token). The bind addr is overridable via `HIDE_MODEL_ADDR`
-    /// (default 127.0.0.1:8745, distinct from hide-serve's own 8744).
+    /// token). Related env:
+    /// * `HIDE_MODEL_ADDR` — bind (default `127.0.0.1:8745`, distinct from
+    ///   hide-serve's 8744)
+    /// * `HIDE_HAWKING_BIN` — path to the `hawking` binary (default: `hawking`
+    ///   on `PATH`)
+    /// * `HIDE_MODEL_BOOT_TIMEOUT_SECS` — wait for `/healthz` (default 300)
     fn maybe_boot_runtime(services: &Arc<BackendServices>) -> Option<Arc<RuntimeSupervisor>> {
         let weights = std::env::var("HIDE_MODEL_WEIGHTS").ok()?;
         if weights.trim().is_empty() {
@@ -6984,9 +6988,17 @@ async fn run_turn_core(
 
     // --- (S2) Derive the output budget from the window minus what context ate,
     // clamped to a sane band - replacing the hard-coded 256 facade. ---
-    let out_budget = max_input
+    // `HIDE_MAX_OUTPUT_TOKENS` (positive int) is an optional hard cap for live
+    // smoke / small-model turns; it never *raises* the derived budget.
+    let derived = max_input
         .saturating_sub(compiled.manifest.used_tokens)
         .clamp(256, 2048);
+    let out_budget = std::env::var("HIDE_MAX_OUTPUT_TOKENS")
+        .ok()
+        .and_then(|s| s.trim().parse::<usize>().ok())
+        .filter(|n| *n > 0)
+        .map(|cap| derived.min(cap))
+        .unwrap_or(derived);
 
     // Durable marker: compile stats + honest capability / rot / meter.
     // The compile receipt lives on the event log (not a pre-token Wire-B patch)

@@ -373,7 +373,7 @@ struct FlowOutcome {
 async fn run_scripted_flow(
     event_log: DynEventLog,
     role_registry: Arc<RoleRegistry>,
-    code_index: Arc<InMemoryCodeIndex>,
+    code_index: Arc<dyn CodeIndex>,
     dispatcher: Arc<ToolDispatcher>,
     fixture: &Path,
     session: SessionId,
@@ -395,10 +395,7 @@ async fn run_scripted_flow(
         .expect("at least one model role is registered");
     let max_input = role.model.context_tokens.max(4096);
     let mut compiler = ContextCompiler::new();
-    compiler.add_source(CodeIndexContextSource::new(
-        code_index.clone() as Arc<dyn CodeIndex>,
-        16,
-    ));
+    compiler.add_source(CodeIndexContextSource::new(code_index.clone(), 16));
     let compiled = compiler
         .compile(CompileInput {
             profile: ContextProfile::coding_default(max_input),
@@ -483,33 +480,34 @@ async fn run_scripted_flow(
 }
 
 /// Seed the code index with the fixture sources so the context compile has real
-/// spans to retain (behavior 4).
-fn seed_index(index: &InMemoryCodeIndex, root: &Path) {
-    index.add_text_file(
+/// spans to retain (behavior 4). Works for both the in-memory test default and
+/// the Sqlite index bound at workspace open.
+fn seed_index_with(mut write: impl FnMut(&str, &str), root: &Path) {
+    write(
         "src/lib.rs",
-        std::fs::read_to_string(root.join("src/lib.rs")).unwrap(),
-        None,
+        &std::fs::read_to_string(root.join("src/lib.rs")).unwrap(),
     );
-    index.add_text_file(
+    write(
         "src/math.rs",
-        std::fs::read_to_string(root.join("src/math.rs")).unwrap(),
-        None,
+        &std::fs::read_to_string(root.join("src/math.rs")).unwrap(),
     );
-    index.add_text_file(
+    write(
         "tests/behavior.rs",
-        std::fs::read_to_string(root.join("tests/behavior.rs")).unwrap(),
-        None,
+        &std::fs::read_to_string(root.join("tests/behavior.rs")).unwrap(),
     );
     // A task-anchor whose line contains the objective plus a token (`ZZFIXTURE`)
     // that exists ONLY in this indexed span - so retrieving it into the run
     // objective proves the compiled ContextPack (not the raw prompt) was folded in
     // (the sanctioned `ZZONLYINFILE` pattern from the host's kernel-turn test).
-    index.add_text_file(
+    write(
         "docs/TASK.md",
         "largest should return the maximum element so its failing test passes \
          (fixture task anchor ZZFIXTURE)",
-        None,
     );
+}
+
+fn seed_index(services: &hide_backend::BackendServices, root: &Path) {
+    seed_index_with(|p, c| services.seed_code_file(p, c), root);
 }
 
 /// A stable, id/timestamp-free signature token per event (for replay-equivalence).
@@ -538,7 +536,10 @@ async fn run_once_in_memory() -> Vec<String> {
     let event_log: DynEventLog = Arc::new(hide_core::event::InMemoryEventLog::new());
     let role_registry = Arc::new(RoleRegistry::with_default_local_roles());
     let code_index = Arc::new(InMemoryCodeIndex::default());
-    seed_index(&code_index, &repo);
+    seed_index_with(
+        |p, c| code_index.add_text_file(p, c, None),
+        &repo,
+    );
     let dispatcher = build_ws_dispatcher(&config, &repo.to_string_lossy());
     let session = SessionId::new();
 
@@ -707,7 +708,7 @@ async fn first_model_free_implementation_receipt() {
         .await
         .unwrap();
 
-    seed_index(&host.services.code_index, &repo);
+    seed_index(&host.services, &repo);
     let dispatcher = build_ws_dispatcher(&config, &root);
 
     // Capture the REAL "before" state: the failing test is RED.

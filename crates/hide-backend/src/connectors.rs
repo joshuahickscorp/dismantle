@@ -5,7 +5,8 @@ use hawking_context::compiler::CompileInput;
 use hawking_context::profiles::ContextProfile;
 use hawking_context::sources::CodeIndexContextSource;
 use hawking_context::{ContextCompiler, InMemoryMemoryStore, MemoryKind};
-use hawking_index::{CodeIndex, InMemoryCodeIndex, SearchQuery};
+use hawking_index::{InMemoryCodeIndex, SearchQuery};
+use crate::services::DynCodeIndex;
 use hawking_orch::{RoleRegistry, Router, SimpleRouter};
 use hawking_research::{DynResearchLedger, ResearchRun, ResearchState};
 use hide_core::error::{HideError, Result};
@@ -361,12 +362,25 @@ impl Connector for HomeConnector {
 
 #[derive(Clone)]
 pub struct CodeIndexConnector {
-    index: Arc<InMemoryCodeIndex>,
+    index: DynCodeIndex,
+    /// Present when the index is the in-memory implementation so test-only
+    /// `file.add_text` / `file.index` ingest still works. Absent for Sqlite.
+    memory: Option<Arc<InMemoryCodeIndex>>,
 }
 
 impl CodeIndexConnector {
-    pub fn new(index: Arc<InMemoryCodeIndex>) -> Self {
-        Self { index }
+    pub fn new(index: DynCodeIndex) -> Self {
+        Self {
+            index,
+            memory: None,
+        }
+    }
+
+    pub fn from_memory(index: Arc<InMemoryCodeIndex>) -> Self {
+        Self {
+            index: index.clone(),
+            memory: Some(index),
+        }
     }
 }
 
@@ -393,6 +407,12 @@ impl Connector for CodeIndexConnector {
         Box::pin(async move {
             match method {
                 "file.add_text" => {
+                    let memory = self.memory.as_ref().ok_or_else(|| {
+                        HideError::Config(
+                            "file.add_text requires an in-memory index (not available on sqlite)"
+                                .into(),
+                        )
+                    })?;
                     let path = params
                         .get("path")
                         .and_then(|value| value.as_str())
@@ -405,15 +425,21 @@ impl Connector for CodeIndexConnector {
                         .get("content_hash")
                         .and_then(|value| value.as_str())
                         .map(ToOwned::to_owned);
-                    self.index.add_text_file(path, content, content_hash);
+                    memory.add_text_file(path, content, content_hash);
                     Ok(json!({ "ok": true }))
                 }
                 "file.index" => {
+                    let memory = self.memory.as_ref().ok_or_else(|| {
+                        HideError::Config(
+                            "file.index requires an in-memory index (not available on sqlite)"
+                                .into(),
+                        )
+                    })?;
                     let path = params
                         .get("path")
                         .and_then(|value| value.as_str())
                         .ok_or_else(|| HideError::Config("missing path".to_string()))?;
-                    self.index.index_path(path)?;
+                    memory.index_path(path)?;
                     Ok(json!({ "ok": true }))
                 }
                 "search" => {
@@ -447,7 +473,7 @@ impl Connector for CodeIndexConnector {
 
 #[derive(Clone)]
 pub struct ContextConnector {
-    index: Arc<InMemoryCodeIndex>,
+    index: DynCodeIndex,
     roles: Arc<RoleRegistry>,
     /// Spine B: the persistent Project Brain — each compile upserts a record so
     /// the agent's working memory of this project accrues across turns/sessions.
@@ -456,7 +482,7 @@ pub struct ContextConnector {
 
 impl ContextConnector {
     pub fn new(
-        index: Arc<InMemoryCodeIndex>,
+        index: DynCodeIndex,
         roles: Arc<RoleRegistry>,
         memory: DynMemoryStore,
     ) -> Self {
@@ -509,8 +535,10 @@ impl Connector for ContextConnector {
                     let role_name = params.get("role").and_then(|value| value.as_str());
                     let role = choose_context_role(&self.roles, role_name)?;
                     let mut compiler = ContextCompiler::new();
-                    let index: Arc<dyn CodeIndex> = self.index.clone();
-                    compiler.add_source(CodeIndexContextSource::new(index, search_limit));
+                    compiler.add_source(CodeIndexContextSource::new(
+                        self.index.clone(),
+                        search_limit,
+                    ));
                     let compiled = compiler
                         .compile(CompileInput {
                             profile: ContextProfile::coding_default(max_input_tokens),
@@ -779,7 +807,14 @@ pub fn register_backend_connectors(registry: &ConnectorRegistry, services: &Back
     ));
     registry.register(ResearchConnector::new(services.research_ledger.clone()));
     registry.register(runtime_connector(services, None));
-    registry.register(CodeIndexConnector::new(services.code_index.clone()));
+    // Prefer the memory-backed constructor when tests use InMemory so
+    // `file.add_text` ingest still works on the connector; production open
+    // installs Sqlite and registers the trait object only.
+    if let Some(mem) = services.memory_index.clone() {
+        registry.register(CodeIndexConnector::from_memory(mem));
+    } else {
+        registry.register(CodeIndexConnector::new(services.code_index.clone()));
+    }
     registry.register(FsConnector::new(services.config.workspace_root.clone()));
     registry.register(ContextConnector::new(
         services.code_index.clone(),
@@ -1004,7 +1039,7 @@ mod tests {
     #[tokio::test]
     async fn code_index_connector_indexes_and_searches_text() {
         let registry = ConnectorRegistry::default();
-        registry.register(CodeIndexConnector::new(Arc::new(
+        registry.register(CodeIndexConnector::from_memory(Arc::new(
             InMemoryCodeIndex::default(),
         )));
 

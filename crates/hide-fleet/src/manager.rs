@@ -491,6 +491,10 @@ impl FleetManager {
     /// Drive ticks until the queue reaches quiescence: no ready jobs and no live
     /// jobs (everything terminal). Bounded by `max_ticks` to avoid a runaway loop
     /// in a misbehaving test. Used by batch drains + tests.
+    ///
+    /// When the queue reaches quiescence with 2+ terminal jobs, the merge funnel
+    /// ([`Self::merge_terminal_jobs`]) runs so a parallel fan-out has a
+    /// convergence step (bible ch.09 §4.4).
     pub async fn run_to_quiescence(&self, max_slots: u32, max_ticks: usize) -> Result<()> {
         for _ in 0..max_ticks {
             let _ = self.schedule_tick(max_slots, 40.0, 40.0).await?;
@@ -507,10 +511,140 @@ impl FleetManager {
             self.drain_completions().await?;
             let pending = self.queue.all().iter().any(|j| !j.status.is_terminal());
             if !pending {
+                // Convergence: fan-out / tournament results pass through the
+                // merge funnel once every branch is terminal.
+                let _ = self.merge_terminal_jobs().await?;
                 return Ok(());
             }
         }
         Ok(())
+    }
+
+    /// Wire the merge funnel ([`crate::merge`]) after parallel runs complete.
+    ///
+    /// **Assumptions** (documented because the launcher only reports status +
+    /// summary, not real oracle signals or file footprints):
+    ///
+    /// 1. A job whose terminal status is [`JobStatus::Done`] is treated as
+    ///    `oracle_passed = true` and `regression_clean = true` with one oracle
+    ///    credit; any other terminal status is a failed candidate.
+    /// 2. Without a real diff, each candidate's footprint is `{job_id}` — so
+    ///    independent fan-out jobs are footprint-disjoint by construction and
+    ///    [`crate::merge::integrate`] adopts every Done job.
+    /// 3. Pattern tag `tournament` / `speculative` / `debate` (from
+    ///    [`crate::patterns::materialise`]) selects [`TournamentSelector`];
+    ///    everything else with 2+ candidates uses the fan-out `integrate` path.
+    /// 4. Reduce/merger jobs (those with non-empty `dependencies`) are not
+    ///    candidates — only their children / peers are.
+    ///
+    /// Emits `merge.selected` (tournament) and/or `merge.integrated` (fan-out)
+    /// onto the event log. A single job needs no merge and returns `None`.
+    pub async fn merge_terminal_jobs(&self) -> Result<Option<crate::merge::IntegrationResult>> {
+        use crate::merge::{
+            integrate, CandidatePatch, Footprint, IntegrationResult, TournamentSelector,
+        };
+
+        let all = self.queue.all();
+        // Candidates = terminal non-reduce jobs. Reduce jobs depend on children
+        // and are the funnel consumer, not a patch source.
+        let candidates_jobs: Vec<_> = all
+            .iter()
+            .filter(|j| j.status.is_terminal() && j.dependencies.is_empty())
+            .cloned()
+            .collect();
+        if candidates_jobs.len() < 2 {
+            return Ok(None);
+        }
+
+        let patches: Vec<CandidatePatch> = candidates_jobs
+            .iter()
+            .map(|j| {
+                let ok = j.status == JobStatus::Done;
+                CandidatePatch {
+                    job_id: j.id.clone(),
+                    diff_hash: format!("status:{:?}", j.status),
+                    // Assumption 2: unique synthetic footprint when no real diff.
+                    changed_files: vec![j.id.clone()],
+                    oracle_passed: ok,
+                    regression_clean: ok,
+                    oracles_passed: if ok { 1 } else { 0 },
+                    diff_lines: 0,
+                    warnings: 0,
+                    summary: j.title.clone(),
+                }
+            })
+            .collect();
+
+        let tournament = candidates_jobs.iter().any(|j| {
+            matches!(
+                j.spec.pattern.as_deref(),
+                Some("tournament" | "speculative" | "debate")
+            )
+        });
+
+        let session = candidates_jobs
+            .first()
+            .map(|j| j.session_id.clone())
+            .unwrap_or_default();
+
+        if tournament {
+            let decision = TournamentSelector::select(&patches);
+            self.log
+                .append(
+                    NewEvent::of(
+                        session.clone(),
+                        EventSource::System,
+                        "merge.selected",
+                        json!({
+                            "winner_job_id": decision.winner_job_id,
+                            "beaten": decision.beaten,
+                            "strategy": format!("{:?}", decision.strategy),
+                            "basis": decision.basis,
+                            "needs_judge": decision.needs_judge,
+                            "judge_leaders": decision.judge_leaders,
+                        }),
+                    )
+                    .with_class(EventClass::Action),
+                )
+                .await?;
+            // Surface the tournament as an IntegrationResult so callers have one shape.
+            let result = IntegrationResult {
+                adopted: decision
+                    .winner_job_id
+                    .clone()
+                    .into_iter()
+                    .collect(),
+                dropped: decision.beaten.clone(),
+                conflicts: decision.conflicts.clone(),
+                suite_green: decision.winner_job_id.is_some(),
+            };
+            return Ok(Some(result));
+        }
+
+        let footprints: Vec<Footprint> = patches
+            .iter()
+            .map(|p| Footprint::new(p.job_id.clone(), p.changed_files.clone()))
+            .collect();
+        // suite_green: true when every adopted candidate was Done (no real suite).
+        let suite_green = patches.iter().any(|p| p.oracle_passed);
+        let result = integrate(&patches, &footprints, suite_green);
+        self.log
+            .append(
+                NewEvent::of(
+                    session,
+                    EventSource::System,
+                    "merge.integrated",
+                    json!({
+                        "adopted": result.adopted,
+                        "dropped": result.dropped,
+                        "conflicts": result.conflicts,
+                        "suite_green": result.suite_green,
+                    }),
+                )
+                .with_class(EventClass::Action),
+            )
+            .await?;
+        Ok(Some(result))
     }
 
     /// GC orphaned worktrees on boot (F9): reap any worktree whose run isn't live.
@@ -852,5 +986,110 @@ mod tests {
         }
         let (plan, _launched) = mgr.schedule_tick(1, 40.0, 40.0).await.unwrap();
         assert_eq!(plan.admit.len(), 3, "cpu pool admits all three shards");
+    }
+
+    /// Live entry: a multi-job fan-out driven through `run_to_quiescence` must
+    /// converge via the merge funnel (not by calling `integrate` directly).
+    #[tokio::test]
+    async fn fanout_converges_through_merge_funnel() {
+        let log: DynEventLog = Arc::new(InMemoryEventLog::new());
+        let envelope = ResourceEnvelope {
+            max_model_runs: 4,
+            ram_headroom_mb_min: 128,
+            max_spawns_per_min: 1_000_000.0,
+            ..Default::default()
+        };
+        let snap = ResourceSnapshot {
+            free_memory_mb: 32_000,
+            max_generation_slots: 4,
+            active_generation_slots: 0,
+            thermal: ThermalState::Nominal,
+            dec_tps_now: 40.0,
+            dec_tps_baseline: 40.0,
+            battery_percent: None,
+            on_ac_power: true,
+            idle: true,
+        };
+        let dir = std::env::temp_dir().join(format!("hide_fleet_merge_{}", ulid::Ulid::new()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let mgr = FleetManager::new(
+            log.clone(),
+            FleetGovernor::new(envelope),
+            Arc::new(FixedResourceProbe { snapshot: snap }),
+            Arc::new(ScriptedLauncher::default()),
+            FleetConfig {
+                repo_root: dir.display().to_string(),
+                ..Default::default()
+            },
+        )
+        .with_fake_worktrees();
+
+        for i in 0..3 {
+            let mut job = AgentJob::new(format!("part {i}"), PriorityClass::Normal);
+            job.spec.pattern = Some("map_reduce".into());
+            mgr.enqueue(job).await.unwrap();
+        }
+
+        mgr.run_to_quiescence(4, 8).await.unwrap();
+
+        let events = log.scan(None, None, None).await.unwrap();
+        let merge = events
+            .iter()
+            .find(|e| e.kind == "merge.integrated")
+            .expect("merge funnel must emit merge.integrated after fan-out");
+        let adopted = merge.payload["adopted"].as_array().unwrap();
+        assert_eq!(adopted.len(), 3, "all Done fan-out parts are adopted");
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    /// Tournament pattern converges through TournamentSelector (merge.selected).
+    #[tokio::test]
+    async fn tournament_converges_through_selector() {
+        let log: DynEventLog = Arc::new(InMemoryEventLog::new());
+        let envelope = ResourceEnvelope {
+            max_model_runs: 4,
+            ram_headroom_mb_min: 128,
+            max_spawns_per_min: 1_000_000.0,
+            ..Default::default()
+        };
+        let snap = ResourceSnapshot {
+            free_memory_mb: 32_000,
+            max_generation_slots: 4,
+            active_generation_slots: 0,
+            thermal: ThermalState::Nominal,
+            dec_tps_now: 40.0,
+            dec_tps_baseline: 40.0,
+            battery_percent: None,
+            on_ac_power: true,
+            idle: true,
+        };
+        let dir = std::env::temp_dir().join(format!("hide_fleet_tourn_{}", ulid::Ulid::new()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let mgr = FleetManager::new(
+            log.clone(),
+            FleetGovernor::new(envelope),
+            Arc::new(FixedResourceProbe { snapshot: snap }),
+            Arc::new(ScriptedLauncher::default()),
+            FleetConfig {
+                repo_root: dir.display().to_string(),
+                ..Default::default()
+            },
+        )
+        .with_fake_worktrees();
+
+        for i in 0..2 {
+            let mut job = AgentJob::new(format!("attempt {i}"), PriorityClass::Normal);
+            job.spec.pattern = Some("tournament".into());
+            mgr.enqueue(job).await.unwrap();
+        }
+        mgr.run_to_quiescence(4, 8).await.unwrap();
+
+        let events = log.scan(None, None, None).await.unwrap();
+        let sel = events
+            .iter()
+            .find(|e| e.kind == "merge.selected")
+            .expect("tournament must emit merge.selected");
+        assert!(sel.payload.get("winner_job_id").is_some());
+        let _ = std::fs::remove_dir_all(dir);
     }
 }

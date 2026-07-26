@@ -62,6 +62,7 @@ pub use connectors::{Connector, ConnectorRegistry, ConnectorStatus};
 pub use host::{
     BackendHost, BackendStatus, EvidenceLink, SideChatResult, StaticAnalysisReceipt,
 };
+pub use services::DynCodeIndex;
 pub use initialize::{ClientCapabilities, ClientInfo, ConnectionRegistry, InitializeResponse};
 pub use interrupt::InterruptHub;
 pub use live_thread::{LiveThread, LiveThreadInitGuard, THREAD_PERSISTED_KIND};

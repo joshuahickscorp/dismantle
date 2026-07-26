@@ -428,6 +428,8 @@ fn router(
     prefix: &str,
     hidden: &[f32],
 ) -> Result<(Vec<usize>, Vec<f32>)> {
+    use crate::cost_ledger::{self, Bucket};
+    let _route = cost_ledger::Scope::new(Bucket::Routing);
     let a = arch;
     let logits = weights.matvec(&format!("{prefix}.gate.weight"), hidden)?;
     let scores: Vec<f32> = logits.iter().map(|l| 1.0 / (1.0 + (-l).exp())).collect();
@@ -512,6 +514,8 @@ fn routed_moe(
     prefix: &str,
     x: &[f32],
 ) -> Result<(Vec<f32>, Vec<usize>)> {
+    use crate::cost_ledger::{self, Bucket};
+
     let (indices, moe_weights) = router(weights, arch, prefix, x)?;
     // The reference accumulates in ascending expert order, so match it:
     // float addition is not associative and the artifact is graded to
@@ -520,22 +524,41 @@ fn routed_moe(
     let mut order: Vec<usize> = (0..indices.len()).collect();
     order.sort_by_key(|&s| indices[s]);
 
+    // Routed experts and the shared expert are co-batched into three CBs
+    // (gate/up/down). Metal exclusive time lands in metal_* buckets; the
+    // scopes below capture the CPU orchestration around those dispatches
+    // and the weighted residual accumulate. Shared is last in `prefixes`.
     let prefixes: Vec<String> = order
         .iter()
         .map(|&slot| format!("{prefix}.experts.{}", indices[slot]))
         .chain(std::iter::once(format!("{prefix}.shared_experts")))
         .collect();
-    let mut outs = batched_mlp(weights, &prefixes, x)?;
+
+    let mut outs = {
+        // Parent scope is routed_experts for the co-batch; shared_experts
+        // only owns the final residual add so we do not invent a clean
+        // GPU split that the runtime does not actually perform.
+        let _routed = cost_ledger::Scope::new(Bucket::RoutedExperts);
+        batched_mlp(weights, &prefixes, x)?
+    };
     let shared = outs.pop().expect("prefixes has the shared expert last");
 
-    let mut routed = vec![0f32; x.len()];
-    for (out, &slot) in outs.iter().zip(&order) {
-        for (r, o) in routed.iter_mut().zip(out) {
-            *r += o * moe_weights[slot];
+    let mut routed = {
+        let _routed = cost_ledger::Scope::new(Bucket::RoutedExperts);
+        let mut routed = vec![0f32; x.len()];
+        cost_ledger::record_allocation((routed.len() * 4) as u64);
+        for (out, &slot) in outs.iter().zip(&order) {
+            for (r, o) in routed.iter_mut().zip(out) {
+                *r += o * moe_weights[slot];
+            }
         }
-    }
-    for (r, s) in routed.iter_mut().zip(&shared) {
-        *r += s;
+        routed
+    };
+    {
+        let _shared = cost_ledger::Scope::new(Bucket::SharedExperts);
+        for (r, s) in routed.iter_mut().zip(&shared) {
+            *r += s;
+        }
     }
     Ok((routed, indices))
 }
@@ -553,6 +576,8 @@ fn forward_impl(
     tokens: &[u32],
     start_pos: usize,
 ) -> Result<(Vec<f32>, GlmTrace)> {
+    use crate::cost_ledger::{self, Bucket};
+
     if tokens.is_empty() {
         return Err(Error::Gravity("forward: no tokens".into()));
     }
@@ -560,6 +585,14 @@ fn forward_impl(
     let qk_dim = a.qk_dim();
     let mut logits = Vec::new();
     let mut trace = GlmTrace::default();
+
+    // Gate geometry for active routed-expert bytes (projection byte size is
+    // filled in live by the GPU cache when known; default is the sealed figure).
+    cost_ledger::set_geometry_active_bytes(cost_ledger::geometry_active_bytes(
+        a.n_layers,
+        a.num_experts_per_tok,
+        None,
+    ));
 
     for (i, &token) in tokens.iter().enumerate() {
         let pos = start_pos + i;
@@ -569,137 +602,173 @@ fn forward_impl(
                 a.vocab_size
             )));
         }
-        let mut x = weights.row("model.embed_tokens.weight", token as usize, a.hidden)?;
-        let (cos, sin) = rope_cos_sin(arch, pos);
+        let mut x = {
+            let _orch = cost_ledger::Scope::new(Bucket::CpuOrchestration);
+            weights.row("model.embed_tokens.weight", token as usize, a.hidden)?
+        };
+        let (cos, sin) = {
+            let _orch = cost_ledger::Scope::new(Bucket::CpuOrchestration);
+            rope_cos_sin(arch, pos)
+        };
         let mut shared_topk: Option<Vec<usize>> = None;
         trace.expert_choices.clear();
 
         for layer in 0..a.n_layers {
             let p = format!("model.layers.{layer}");
             let attn_p = format!("{p}.self_attn");
-            let h = rmsnorm(
-                &x,
-                &weights.dense(&format!("{p}.input_layernorm.weight"))?,
-                a.rms_norm_eps,
-            );
 
-            // Queries through the low-rank path.
-            let q_a = weights.matvec(&format!("{attn_p}.q_a_proj.weight"), &h)?;
-            let q_resid = rmsnorm(
-                &q_a,
-                &weights.dense(&format!("{attn_p}.q_a_layernorm.weight"))?,
-                a.rms_norm_eps,
-            );
-            let q = weights.matvec(&format!("{attn_p}.q_b_proj.weight"), &q_resid)?;
+            // Attention + IndexShare: projections, DSA indexer, sparse attend,
+            // o_proj residual. Nested metal/verify buckets steal exclusive time.
+            let topk = {
+                let _attn = cost_ledger::Scope::new(Bucket::AttentionAndIndexShare);
+                let h = rmsnorm(
+                    &x,
+                    &weights.dense(&format!("{p}.input_layernorm.weight"))?,
+                    a.rms_norm_eps,
+                );
 
-            // Keys and values through the compressed MLA latent. The
-            // rope part is shared across heads (MQA on that slice).
-            let compressed = weights.matvec(&format!("{attn_p}.kv_a_proj_with_mqa.weight"), &h)?;
-            let k_latent = rmsnorm(
-                &compressed[..a.kv_lora_rank],
-                &weights.dense(&format!("{attn_p}.kv_a_layernorm.weight"))?,
-                a.rms_norm_eps,
-            );
-            let k_rot = rope_interleaved(&compressed[a.kv_lora_rank..], &cos, &sin);
-            let kv = weights.matvec(&format!("{attn_p}.kv_b_proj.weight"), &k_latent)?;
+                // Queries through the low-rank path.
+                let q_a = weights.matvec(&format!("{attn_p}.q_a_proj.weight"), &h)?;
+                let q_resid = rmsnorm(
+                    &q_a,
+                    &weights.dense(&format!("{attn_p}.q_a_layernorm.weight"))?,
+                    a.rms_norm_eps,
+                );
+                let q = weights.matvec(&format!("{attn_p}.q_b_proj.weight"), &q_resid)?;
 
-            let per_head_kv = a.qk_nope_head_dim + a.v_head_dim;
-            let cache = &mut session.caches[layer];
-            for head in 0..a.n_heads {
-                let src = &kv[head * per_head_kv..(head + 1) * per_head_kv];
-                cache.keys.extend_from_slice(&src[..a.qk_nope_head_dim]);
-                cache.keys.extend_from_slice(&k_rot);
-                cache.values.extend_from_slice(&src[a.qk_nope_head_dim..]);
-            }
+                // Keys and values through the compressed MLA latent. The
+                // rope part is shared across heads (MQA on that slice).
+                let compressed =
+                    weights.matvec(&format!("{attn_p}.kv_a_proj_with_mqa.weight"), &h)?;
+                let k_latent = rmsnorm(
+                    &compressed[..a.kv_lora_rank],
+                    &weights.dense(&format!("{attn_p}.kv_a_layernorm.weight"))?,
+                    a.rms_norm_eps,
+                );
+                let k_rot = rope_interleaved(&compressed[a.kv_lora_rank..], &cos, &sin);
+                let kv = weights.matvec(&format!("{attn_p}.kv_b_proj.weight"), &k_latent)?;
 
-            // Assemble this token's queries: unrotated nope half, then
-            // the interleaved-rotated rope half.
-            let mut queries = vec![0f32; a.n_heads * qk_dim];
-            for head in 0..a.n_heads {
-                let src = &q[head * qk_dim..(head + 1) * qk_dim];
-                let dst = &mut queries[head * qk_dim..(head + 1) * qk_dim];
-                dst[..a.qk_nope_head_dim].copy_from_slice(&src[..a.qk_nope_head_dim]);
-                dst[a.qk_nope_head_dim..]
-                    .copy_from_slice(&rope_interleaved(&src[a.qk_nope_head_dim..], &cos, &sin));
-            }
-
-            let topk = match a.indexer_types[layer].as_str() {
-                "full" => {
-                    let t = indexer_topk(weights, arch, &attn_p, &h, &q_resid, cache, pos, &cos, &sin)?;
-                    shared_topk = Some(t.clone());
-                    t
+                {
+                    let _kv = cost_ledger::Scope::new(Bucket::KvUpdate);
+                    let per_head_kv = a.qk_nope_head_dim + a.v_head_dim;
+                    let cache = &mut session.caches[layer];
+                    for head in 0..a.n_heads {
+                        let src = &kv[head * per_head_kv..(head + 1) * per_head_kv];
+                        cache.keys.extend_from_slice(&src[..a.qk_nope_head_dim]);
+                        cache.keys.extend_from_slice(&k_rot);
+                        cache.values.extend_from_slice(&src[a.qk_nope_head_dim..]);
+                    }
                 }
-                "shared" => shared_topk.clone().ok_or_else(|| {
-                    Error::Gravity(format!(
-                        "layer {layer} shares an index but no earlier layer computed one"
-                    ))
-                })?,
-                other => {
-                    return Err(Error::Gravity(format!(
-                        "layer {layer}: unknown indexer type {other:?}"
-                    )))
+
+                // Assemble this token's queries: unrotated nope half, then
+                // the interleaved-rotated rope half.
+                let mut queries = vec![0f32; a.n_heads * qk_dim];
+                cost_ledger::record_allocation((queries.len() * 4) as u64);
+                for head in 0..a.n_heads {
+                    let src = &q[head * qk_dim..(head + 1) * qk_dim];
+                    let dst = &mut queries[head * qk_dim..(head + 1) * qk_dim];
+                    dst[..a.qk_nope_head_dim].copy_from_slice(&src[..a.qk_nope_head_dim]);
+                    dst[a.qk_nope_head_dim..]
+                        .copy_from_slice(&rope_interleaved(&src[a.qk_nope_head_dim..], &cos, &sin));
                 }
+
+                let topk = match a.indexer_types[layer].as_str() {
+                    "full" => {
+                        let t = indexer_topk(
+                            weights, arch, &attn_p, &h, &q_resid, &mut session.caches[layer], pos,
+                            &cos, &sin,
+                        )?;
+                        shared_topk = Some(t.clone());
+                        t
+                    }
+                    "shared" => shared_topk.clone().ok_or_else(|| {
+                        Error::Gravity(format!(
+                            "layer {layer} shares an index but no earlier layer computed one"
+                        ))
+                    })?,
+                    other => {
+                        return Err(Error::Gravity(format!(
+                            "layer {layer}: unknown indexer type {other:?}"
+                        )))
+                    }
+                };
+
+                // Attend only to selected keys at or before this position.
+                let cache = &session.caches[layer];
+                let n_keys = cache.keys.len() / (a.n_heads * qk_dim);
+                let mut allow = vec![false; n_keys];
+                for &t in &topk {
+                    if t <= pos && t < n_keys {
+                        allow[t] = true;
+                    }
+                }
+
+                let scale = (qk_dim as f32).powf(-0.5);
+                let mut context = vec![0f32; a.n_heads * a.v_head_dim];
+                let mut scores = vec![f32::NEG_INFINITY; n_keys];
+                cost_ledger::record_allocation((context.len() * 4 + scores.len() * 4) as u64);
+                for head in 0..a.n_heads {
+                    let qh = &queries[head * qk_dim..(head + 1) * qk_dim];
+                    let mut best = f32::NEG_INFINITY;
+                    for t in 0..n_keys {
+                        if !allow[t] {
+                            scores[t] = f32::NEG_INFINITY;
+                            continue;
+                        }
+                        let off = (t * a.n_heads + head) * qk_dim;
+                        let dot: f32 = qh
+                            .iter()
+                            .zip(&cache.keys[off..off + qk_dim])
+                            .map(|(a, b)| a * b)
+                            .sum();
+                        scores[t] = dot * scale;
+                        best = best.max(scores[t]);
+                    }
+                    let mut total = 0f32;
+                    for s in scores.iter_mut() {
+                        *s = if s.is_finite() {
+                            (*s - best).exp()
+                        } else {
+                            0.0
+                        };
+                        total += *s;
+                    }
+                    let out = &mut context[head * a.v_head_dim..(head + 1) * a.v_head_dim];
+                    for (t, &prob) in scores.iter().enumerate() {
+                        if prob == 0.0 {
+                            continue;
+                        }
+                        let w = prob / total;
+                        let off = (t * a.n_heads + head) * a.v_head_dim;
+                        for (o, v) in out
+                            .iter_mut()
+                            .zip(&cache.values[off..off + a.v_head_dim])
+                        {
+                            *o += w * v;
+                        }
+                    }
+                }
+
+                let attn_out = weights.matvec(&format!("{attn_p}.o_proj.weight"), &context)?;
+                for (xv, o) in x.iter_mut().zip(&attn_out) {
+                    *xv += o;
+                }
+                topk
             };
 
-            // Attend only to selected keys at or before this position.
-            let n_keys = cache.keys.len() / (a.n_heads * qk_dim);
-            let mut allow = vec![false; n_keys];
-            for &t in &topk {
-                if t <= pos && t < n_keys {
-                    allow[t] = true;
-                }
-            }
-
-            let scale = (qk_dim as f32).powf(-0.5);
-            let mut context = vec![0f32; a.n_heads * a.v_head_dim];
-            let mut scores = vec![f32::NEG_INFINITY; n_keys];
-            for head in 0..a.n_heads {
-                let qh = &queries[head * qk_dim..(head + 1) * qk_dim];
-                let mut best = f32::NEG_INFINITY;
-                for t in 0..n_keys {
-                    if !allow[t] {
-                        scores[t] = f32::NEG_INFINITY;
-                        continue;
-                    }
-                    let off = (t * a.n_heads + head) * qk_dim;
-                    let dot: f32 = qh
-                        .iter()
-                        .zip(&cache.keys[off..off + qk_dim])
-                        .map(|(a, b)| a * b)
-                        .sum();
-                    scores[t] = dot * scale;
-                    best = best.max(scores[t]);
-                }
-                let mut total = 0f32;
-                for s in scores.iter_mut() {
-                    *s = if s.is_finite() { (*s - best).exp() } else { 0.0 };
-                    total += *s;
-                }
-                let out = &mut context[head * a.v_head_dim..(head + 1) * a.v_head_dim];
-                for (t, &prob) in scores.iter().enumerate() {
-                    if prob == 0.0 {
-                        continue;
-                    }
-                    let w = prob / total;
-                    let off = (t * a.n_heads + head) * a.v_head_dim;
-                    for (o, v) in out.iter_mut().zip(&cache.values[off..off + a.v_head_dim]) {
-                        *o += w * v;
-                    }
-                }
-            }
-
-            let attn_out = weights.matvec(&format!("{attn_p}.o_proj.weight"), &context)?;
-            for (xv, o) in x.iter_mut().zip(&attn_out) {
-                *xv += o;
-            }
-
-            let h2 = rmsnorm(
-                &x,
-                &weights.dense(&format!("{p}.post_attention_layernorm.weight"))?,
-                a.rms_norm_eps,
-            );
+            let h2 = {
+                let _orch = cost_ledger::Scope::new(Bucket::CpuOrchestration);
+                rmsnorm(
+                    &x,
+                    &weights.dense(&format!("{p}.post_attention_layernorm.weight"))?,
+                    a.rms_norm_eps,
+                )
+            };
             let mlp_out = match a.mlp_layer_types[layer].as_str() {
-                "dense" => dense_mlp(weights, &format!("{p}.mlp"), &h2)?,
+                "dense" => {
+                    let _orch = cost_ledger::Scope::new(Bucket::CpuOrchestration);
+                    dense_mlp(weights, &format!("{p}.mlp"), &h2)?
+                }
                 "sparse" => {
                     let (out, experts) = routed_moe(weights, arch, &format!("{p}.mlp"), &h2)?;
                     trace.expert_choices.push(experts);
@@ -711,8 +780,11 @@ fn forward_impl(
                     )))
                 }
             };
-            for (xv, m) in x.iter_mut().zip(&mlp_out) {
-                *xv += m;
+            {
+                let _orch = cost_ledger::Scope::new(Bucket::CpuOrchestration);
+                for (xv, m) in x.iter_mut().zip(&mlp_out) {
+                    *xv += m;
+                }
             }
 
             if layer + 1 == a.n_layers {
@@ -720,8 +792,11 @@ fn forward_impl(
             }
         }
 
-        let final_hidden = rmsnorm(&x, &weights.dense("model.norm.weight")?, a.rms_norm_eps);
-        logits = weights.matvec("lm_head.weight", &final_hidden)?;
+        {
+            let _head = cost_ledger::Scope::new(Bucket::FinalHeadAndSampling);
+            let final_hidden = rmsnorm(&x, &weights.dense("model.norm.weight")?, a.rms_norm_eps);
+            logits = weights.matvec("lm_head.weight", &final_hidden)?;
+        }
     }
     Ok((logits, trace))
 }
@@ -1061,27 +1136,47 @@ pub mod gpu {
 
         /// Decode + upload one tensor. Does not touch the cache.
         fn load_tensor(&self, name: &str) -> Result<(GpuTensor, u64)> {
+            use crate::cost_ledger::{self, Bucket};
+
             let (codec, blob) = self.weights.raw_payload(name)?;
             let entry = if codec == "gravity-pq" {
-                let h = parse_pq_header(&blob)?;
-                if h.rotate != 0 {
-                    return Err(Error::Gravity(format!(
-                        "tensor {name}: rotated gravity-pq artifacts (rotate=1) are not yet \
-                         supported on the GPU path"
-                    )));
-                }
-                let (cb, codes) = pq_sections(&blob)?;
-                // Four bytes of tail padding so the kernel's whole-word read
-                // at the last index's byte offset stays in bounds.
-                let mut codes_padded = Vec::with_capacity(codes.len() + 4);
-                codes_padded.extend_from_slice(codes);
-                codes_padded.extend_from_slice(&[0u8; 4]);
+                let (h, cb, codes_padded) = {
+                    let _decode = cost_ledger::Scope::new(Bucket::PackedIndexDecode);
+                    let h = parse_pq_header(&blob)?;
+                    if h.rotate != 0 {
+                        return Err(Error::Gravity(format!(
+                            "tensor {name}: rotated gravity-pq artifacts (rotate=1) are not yet \
+                             supported on the GPU path"
+                        )));
+                    }
+                    let (cb, codes) = pq_sections(&blob)?;
+                    // Four bytes of tail padding so the kernel's whole-word read
+                    // at the last index's byte offset stays in bounds.
+                    let mut codes_padded = Vec::with_capacity(codes.len() + 4);
+                    codes_padded.extend_from_slice(codes);
+                    codes_padded.extend_from_slice(&[0u8; 4]);
+                    (h, cb, codes_padded)
+                };
+                let (codebooks, codes) = {
+                    let _xfer = cost_ledger::Scope::new(Bucket::HostDeviceTransfer);
+                    let codebooks = self.ctx.new_buffer_with_bytes_checked(cb)?;
+                    let codes = self.ctx.new_buffer_with_bytes_checked(&codes_padded)?;
+                    cost_ledger::record_transfer(cb.len() as u64, true, "pq_codebooks_upload");
+                    cost_ledger::record_transfer(
+                        codes_padded.len() as u64,
+                        true,
+                        "pq_codes_upload",
+                    );
+                    cost_ledger::record_allocation(cb.len() as u64 + codes_padded.len() as u64);
+                    (codebooks, codes)
+                };
                 GpuTensor::Pq {
-                    codebooks: self.ctx.new_buffer_with_bytes_checked(cb)?,
-                    codes: self.ctx.new_buffer_with_bytes_checked(&codes_padded)?,
+                    codebooks,
+                    codes,
                     params: PqParams::from_header(&h),
                 }
             } else if codec.starts_with("native.") {
+                let _decode = cost_ledger::Scope::new(Bucket::PackedIndexDecode);
                 GpuTensor::NativeCpu(widen_native(&codec, &blob)?)
             } else {
                 return Err(Error::Gravity(format!(
@@ -1089,6 +1184,7 @@ pub mod gpu {
                 )));
             };
             let bytes = Self::tensor_bytes(&entry);
+            cost_ledger::record_first_touch_load_bytes(bytes);
             Ok((entry, bytes))
         }
 
@@ -1145,15 +1241,24 @@ pub mod gpu {
         }
 
         fn matvec(&self, name: &str, x: &[f32]) -> Result<Vec<f32>> {
+            use crate::cost_ledger;
+            cost_ledger::record_matvec_call();
             let mut cache = self.cache.lock().expect("gpu weight cache mutex");
             self.ensure_many_locked(&mut cache, &[name])?;
             match cache.get(name).expect("ensure just inserted it") {
-                GpuTensor::NativeCpu(w) => matvec_dense(w, x, name),
+                GpuTensor::NativeCpu(w) => {
+                    cost_ledger::record_active_bytes((w.len() * 4) as u64);
+                    matvec_dense(w, x, name)
+                }
                 GpuTensor::Pq {
                     codebooks,
                     codes,
                     params,
-                } => dispatch_pq_matvec(&self.ctx, codebooks, codes, *params, x),
+                } => {
+                    let bytes = codebooks.length() + codes.length();
+                    cost_ledger::record_active_bytes(bytes);
+                    dispatch_pq_matvec(&self.ctx, codebooks, codes, *params, x)
+                }
             }
         }
 
@@ -1167,6 +1272,8 @@ pub mod gpu {
         /// Admission pins the whole name set before any eviction runs, so a
         /// budget hit cannot drop a tensor this batch just uploaded.
         fn matvec_batch(&self, calls: &[(&str, &[f32])]) -> Result<Vec<Vec<f32>>> {
+            use crate::cost_ledger;
+            cost_ledger::record_matvec_batch(calls.len() as u64);
             let names: Vec<&str> = calls.iter().map(|&(n, _)| n).collect();
             let mut cache = self.cache.lock().expect("gpu weight cache mutex");
             self.ensure_many_locked(&mut cache, &names)?;
@@ -1175,12 +1282,18 @@ pub mod gpu {
             let mut gpu_calls: Vec<(usize, &Buffer, &Buffer, PqParams, &[f32])> = Vec::new();
             for (i, &(name, x)) in calls.iter().enumerate() {
                 match cache.get(name).expect("ensure just inserted it") {
-                    GpuTensor::NativeCpu(w) => results[i] = Some(matvec_dense(w, x, name)?),
+                    GpuTensor::NativeCpu(w) => {
+                        cost_ledger::record_active_bytes((w.len() * 4) as u64);
+                        results[i] = Some(matvec_dense(w, x, name)?);
+                    }
                     GpuTensor::Pq {
                         codebooks,
                         codes,
                         params,
-                    } => gpu_calls.push((i, codebooks, codes, *params, x)),
+                    } => {
+                        cost_ledger::record_active_bytes(codebooks.length() + codes.length());
+                        gpu_calls.push((i, codebooks, codes, *params, x));
+                    }
                 }
             }
 
@@ -1218,6 +1331,9 @@ pub mod gpu {
         params: PqParams,
         x: &[f32],
     ) -> Result<Vec<f32>> {
+        use crate::cost_ledger::{self, Bucket};
+        use std::time::Instant;
+
         if x.len() != params.cols as usize {
             return Err(Error::Gravity(format!(
                 "gpu matvec: x.len() {} != cols {}",
@@ -1225,28 +1341,65 @@ pub mod gpu {
                 params.cols
             )));
         }
-        let x_buf = ctx.new_buffer_with_bytes(bytemuck::cast_slice::<f32, u8>(x));
-        let y_buf = ctx.new_buffer(params.rows as usize * std::mem::size_of::<f32>());
+        let x_bytes = std::mem::size_of_val(x) as u64;
+        let y_bytes = params.rows as usize * std::mem::size_of::<f32>();
+        let (x_buf, y_buf) = {
+            let _xfer = cost_ledger::Scope::new(Bucket::HostDeviceTransfer);
+            let x_buf = ctx.new_buffer_with_bytes(bytemuck::cast_slice::<f32, u8>(x));
+            let y_buf = ctx.new_buffer(y_bytes);
+            cost_ledger::record_transfer(x_bytes, true, "matvec_x_upload");
+            cost_ledger::record_allocation(x_bytes + y_bytes as u64);
+            (x_buf, y_buf)
+        };
 
         // One SIMD group (32 lanes) per output row, 8 SIMD groups (256
         // threads) per threadgroup; the kernel guards `row >= rows` for the
         // boundary threadgroup.
         const TG: u32 = 256;
         let n_tg = params.rows.div_ceil(8);
-        ctx.dispatch_threads("gravity_pq_matvec", (n_tg * TG, 1, 1), (TG, 1, 1), |enc| {
-            enc.set_buffer(0, Some(codebooks), 0);
-            enc.set_buffer(1, Some(codes), 0);
-            enc.set_buffer(2, Some(&x_buf), 0);
-            enc.set_buffer(3, Some(&y_buf), 0);
-            enc.set_bytes(
-                4,
-                std::mem::size_of::<PqParams>() as u64,
-                &params as *const PqParams as *const _,
-            );
-        })?;
+        // When the cost ledger is recording, encode into a TCB and split
+        // submit vs synchronize so the three Metal buckets are distinct.
+        // When off, the existing single-dispatch path is unchanged.
+        if cost_ledger::is_recording() {
+            let t_encode = Instant::now();
+            let mut tcb = TokenCommandBuffer::new(ctx);
+            tcb.dispatch_threads("gravity_pq_matvec", (n_tg * TG, 1, 1), (TG, 1, 1), |enc| {
+                enc.set_buffer(0, Some(codebooks), 0);
+                enc.set_buffer(1, Some(codes), 0);
+                enc.set_buffer(2, Some(&x_buf), 0);
+                enc.set_buffer(3, Some(&y_buf), 0);
+                enc.set_bytes(
+                    4,
+                    std::mem::size_of::<PqParams>() as u64,
+                    &params as *const PqParams as *const _,
+                );
+            })?;
+            cost_ledger::add_duration(Bucket::MetalEncode, t_encode.elapsed());
+            cost_ledger::record_dispatches(tcb.dispatch_count() as u64);
+            tcb.commit_and_wait_split()?;
+        } else {
+            ctx.dispatch_threads("gravity_pq_matvec", (n_tg * TG, 1, 1), (TG, 1, 1), |enc| {
+                enc.set_buffer(0, Some(codebooks), 0);
+                enc.set_buffer(1, Some(codes), 0);
+                enc.set_buffer(2, Some(&x_buf), 0);
+                enc.set_buffer(3, Some(&y_buf), 0);
+                enc.set_bytes(
+                    4,
+                    std::mem::size_of::<PqParams>() as u64,
+                    &params as *const PqParams as *const _,
+                );
+            })?;
+        }
 
-        let y_ptr = y_buf.contents() as *const f32;
-        Ok(unsafe { std::slice::from_raw_parts(y_ptr, params.rows as usize) }.to_vec())
+        let y = {
+            let _xfer = cost_ledger::Scope::new(Bucket::HostDeviceTransfer);
+            let y_ptr = y_buf.contents() as *const f32;
+            let y = unsafe { std::slice::from_raw_parts(y_ptr, params.rows as usize) }.to_vec();
+            cost_ledger::record_transfer(y_bytes as u64, false, "matvec_y_download");
+            cost_ledger::record_allocation(y_bytes as u64);
+            y
+        };
+        Ok(y)
     }
 
     /// `calls.len()` independent `gravity_pq_matvec` dispatches into one
@@ -1258,47 +1411,107 @@ pub mod gpu {
         ctx: &MetalContext,
         calls: &[(&Buffer, &Buffer, PqParams, &[f32])],
     ) -> Result<Vec<Vec<f32>>> {
+        use crate::cost_ledger::{self, Bucket};
+        use std::time::Instant;
+
         if calls.is_empty() {
             return Ok(Vec::new());
         }
         let mut x_bufs = Vec::with_capacity(calls.len());
         let mut y_bufs = Vec::with_capacity(calls.len());
-        for &(_, _, params, x) in calls {
-            if x.len() != params.cols as usize {
-                return Err(Error::Gravity(format!(
-                    "gpu matvec_batch: x.len() {} != cols {}",
-                    x.len(),
-                    params.cols
-                )));
+        let mut y_lens = Vec::with_capacity(calls.len());
+        {
+            let _xfer = cost_ledger::Scope::new(Bucket::HostDeviceTransfer);
+            for &(_, _, params, x) in calls {
+                if x.len() != params.cols as usize {
+                    return Err(Error::Gravity(format!(
+                        "gpu matvec_batch: x.len() {} != cols {}",
+                        x.len(),
+                        params.cols
+                    )));
+                }
+                let x_bytes = std::mem::size_of_val(x) as u64;
+                let y_bytes = params.rows as usize * std::mem::size_of::<f32>();
+                x_bufs.push(ctx.new_buffer_with_bytes(bytemuck::cast_slice::<f32, u8>(x)));
+                y_bufs.push(ctx.new_buffer(y_bytes));
+                y_lens.push(params.rows as usize);
+                cost_ledger::record_transfer(x_bytes, true, "matvec_batch_x_upload");
+                cost_ledger::record_allocation(x_bytes + y_bytes as u64);
             }
-            x_bufs.push(ctx.new_buffer_with_bytes(bytemuck::cast_slice::<f32, u8>(x)));
-            y_bufs.push(ctx.new_buffer(params.rows as usize * std::mem::size_of::<f32>()));
         }
 
-        let mut tcb = TokenCommandBuffer::new(ctx);
-        const TG: u32 = 256;
-        for (i, &(codebooks, codes, params, _)) in calls.iter().enumerate() {
-            let n_tg = params.rows.div_ceil(8);
-            tcb.dispatch_threads("gravity_pq_matvec", (n_tg * TG, 1, 1), (TG, 1, 1), |enc| {
-                enc.set_buffer(0, Some(codebooks), 0);
-                enc.set_buffer(1, Some(codes), 0);
-                enc.set_buffer(2, Some(&x_bufs[i]), 0);
-                enc.set_buffer(3, Some(&y_bufs[i]), 0);
-                enc.set_bytes(
-                    4,
-                    std::mem::size_of::<PqParams>() as u64,
-                    &params as *const PqParams as *const _,
-                );
-            })?;
-        }
-        tcb.commit_and_wait()?;
+        if cost_ledger::is_recording() {
+            // Manual TCB so encode / submit / synchronize are separate lines.
+            const TG: u32 = 256;
+            let t_encode = Instant::now();
+            let mut tcb = TokenCommandBuffer::new(ctx);
+            for (i, &(codebooks, codes, params, _)) in calls.iter().enumerate() {
+                let n_tg = params.rows.div_ceil(8);
+                tcb.dispatch_threads(
+                    "gravity_pq_matvec",
+                    (n_tg * TG, 1, 1),
+                    (TG, 1, 1),
+                    |enc| {
+                        enc.set_buffer(0, Some(codebooks), 0);
+                        enc.set_buffer(1, Some(codes), 0);
+                        enc.set_buffer(2, Some(&x_bufs[i]), 0);
+                        enc.set_buffer(3, Some(&y_bufs[i]), 0);
+                        enc.set_bytes(
+                            4,
+                            std::mem::size_of::<PqParams>() as u64,
+                            &params as *const PqParams as *const _,
+                        );
+                    },
+                )?;
+            }
+            let n_disp = tcb.dispatch_count() as u64;
+            cost_ledger::add_duration(Bucket::MetalEncode, t_encode.elapsed());
+            cost_ledger::record_dispatches(n_disp);
 
+            // commit_and_wait is one submit + one sync for the whole batch.
+            // Split by timing commit vs wait via the TCB's internal path when
+            // possible; here we re-implement the commit/wait pair.
+            tcb.commit_and_wait_split()?;
+        } else {
+            let mut tcb = TokenCommandBuffer::new(ctx);
+            const TG: u32 = 256;
+            for (i, &(codebooks, codes, params, _)) in calls.iter().enumerate() {
+                let n_tg = params.rows.div_ceil(8);
+                tcb.dispatch_threads(
+                    "gravity_pq_matvec",
+                    (n_tg * TG, 1, 1),
+                    (TG, 1, 1),
+                    |enc| {
+                        enc.set_buffer(0, Some(codebooks), 0);
+                        enc.set_buffer(1, Some(codes), 0);
+                        enc.set_buffer(2, Some(&x_bufs[i]), 0);
+                        enc.set_buffer(3, Some(&y_bufs[i]), 0);
+                        enc.set_bytes(
+                            4,
+                            std::mem::size_of::<PqParams>() as u64,
+                            &params as *const PqParams as *const _,
+                        );
+                    },
+                )?;
+            }
+            tcb.commit_and_wait()?;
+        }
+
+        let _xfer = cost_ledger::Scope::new(Bucket::HostDeviceTransfer);
         Ok(calls
             .iter()
             .zip(&y_bufs)
-            .map(|(&(_, _, params, _), y_buf)| {
+            .zip(&y_lens)
+            .map(|((&(_, _, params, _), y_buf), &rows)| {
                 let y_ptr = y_buf.contents() as *const f32;
-                unsafe { std::slice::from_raw_parts(y_ptr, params.rows as usize) }.to_vec()
+                let y = unsafe { std::slice::from_raw_parts(y_ptr, rows) }.to_vec();
+                cost_ledger::record_transfer(
+                    (params.rows as usize * std::mem::size_of::<f32>()) as u64,
+                    false,
+                    "matvec_batch_y_download",
+                );
+                cost_ledger::record_allocation((y.len() * 4) as u64);
+                y
             })
             .collect())
     }
@@ -1375,6 +1588,23 @@ pub mod gpu {
         ) -> Result<(Vec<f32>, GlmTrace)> {
             let mut session = self.session.lock().expect("glm session mutex");
             forward_impl(&self.weights, &self.arch, &mut session, tokens, start_pos)
+        }
+
+        /// One decode step with the per-token cost ledger recording.
+        /// Requires `HAWKING_COST_LEDGER=1` or a prior
+        /// [`crate::cost_ledger::set_enabled(true)`]; when the ledger is
+        /// off this is identical to [`forward_at`] and returns `None` for
+        /// the report.
+        pub fn forward_at_with_ledger(
+            &self,
+            tokens: &[u32],
+            start_pos: usize,
+        ) -> Result<(Vec<f32>, GlmTrace, Option<crate::cost_ledger::TokenCostReport>)> {
+            crate::cost_ledger::begin_token();
+            let result = self.forward_at(tokens, start_pos);
+            let report = crate::cost_ledger::end_token();
+            let (logits, trace) = result?;
+            Ok((logits, trace, report))
         }
     }
 }

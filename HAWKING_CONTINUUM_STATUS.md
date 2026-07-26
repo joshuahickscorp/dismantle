@@ -2,7 +2,7 @@
 
 Generated from live evidence by `tools/campaign/continuum_status.py`. Do not hand-edit.
 
-    at:       2026-07-26T18:04:10Z
+    at:       2026-07-26T18:17:21Z
     state:    SEAL_CLAIM_A
     why:      HAWKING_ODYSSEY_READY sealed; equal-budget Claim A not yet sealed
     endpoint: RAMANUJAN_SANDBOX_READY (not reached)
@@ -15,7 +15,7 @@ Generated from live evidence by `tools/campaign/continuum_status.py`. Do not han
     remaining:  not estimable yet
     artifact:   92,008,825,475 bytes
     resident:   0 source shards
-    free disk:  306,778,071,040 bytes
+    free disk:  296,634,982,400 bytes
 
 ## Detached work
 
@@ -23,7 +23,7 @@ Generated from live evidence by `tools/campaign/continuum_status.py`. Do not han
 - `com.hawking.doctorv5ultra.post120b` pid=None last_exit=2
 - `com.hawking.glm52.math-prometheus-pass1` pid=None last_exit=0
 - `com.hawking.glm52.readiness-gate` pid=None last_exit=0
-- `com.hawking.glm52.safe-to-leave` pid=None last_exit=0
+- `com.hawking.glm52.safe-to-leave` pid=71206 last_exit=0
 - `com.hawking.glm52.source-fetch` pid=None last_exit=0
 - `com.hawking.odyssey-ready-finalize` pid=None last_exit=0
 - `com.hawking.overnight.handoff` pid=None last_exit=126
@@ -59,12 +59,13 @@ Generated from live evidence by `tools/campaign/continuum_status.py`. Do not han
 - `consult-20260726-002802` consult/consult on `` -- finished
 - `consult-20260726-014436` consult/consult on `` -- finished
 - `consult-20260726-140226` consult/consult on `` -- finished
-- `consult-20260726-140247` consult/consult on `` -- STILL RUNNING
+- `consult-20260726-140247` consult/consult on `` -- finished
 - `cx-arch-20260726-014435` audit/maximum on `` -- finished
 - `cx-claims-20260726-014433` audit/maximum on `` -- finished
 - `cx-dx-20260726-014435` audit/maximum on `` -- finished
 - `cx-money-20260726-014434` audit/maximum on `` -- finished
 - `cx-perf-20260726-014433` audit/maximum on `` -- finished
+- `eval-harness-20260726-141543` delegate/maximum on `grok/eval-harness-20260726-141543` -- STILL RUNNING
 - `fabric-bridge-archaeology-20260726-005742` audit/maximum on `` -- finished
 - `fit-kernel-v3-20260726-011556` delegate/maximum on `grok/fit-kernel-v3-20260726-011556` -- finished
 - `gravity-gpu-cache-20260726-005741` delegate/power on `grok/gravity-gpu-cache-20260726-005741` -- finished
@@ -79,7 +80,7 @@ Generated from live evidence by `tools/campaign/continuum_status.py`. Do not han
 - `mop-ramanujan-assessment-20260726-001628` audit/maximum on `` -- finished
 - `plan-machine-20260726-023414` audit/maximum on `` -- finished
 - `ramanujan-cognition-20260726-003050` audit/maximum on `` -- finished
-- `warm-runtime-20260726-140218` delegate/maximum on `grok/warm-runtime-20260726-140218` -- STILL RUNNING
+- `warm-runtime-20260726-140218` delegate/maximum on `grok/warm-runtime-20260726-140218` -- finished
 - `ws10b-20260726-133108` delegate/maximum on `grok/ws10b-20260726-133108` -- finished
 - `ws12-20260726-132408` delegate/maximum on `grok/ws12-20260726-132408` -- finished
 - `ws1b-20260726-123717` delegate/maximum on `grok/ws1b-20260726-123717` -- finished

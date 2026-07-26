@@ -2,6 +2,7 @@
 pub mod attn;
 pub mod backend;
 pub mod cache;
+pub mod cost_ledger;
 pub mod gguf;
 pub mod gravity;
 pub mod gravity_glm;

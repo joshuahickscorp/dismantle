@@ -18,6 +18,7 @@ whether `<Base>-H0.98-Math-Preserve.gravity` is sealable.
 from __future__ import annotations
 
 import json
+import math
 import os
 import sys
 import threading
@@ -623,7 +624,13 @@ def finalize(manifest: dict | None = None) -> dict:
     tokenizer_install = _install_runtime_tree(
         GENERAL / "tokenizer", COMPACT / "tokenizer"
     )
-    _write_json(COMPACT / "PROMETHEUS_MATH_ALLOCATION_MANIFEST.json", manifest)
+    # Copy the allocation manifest BYTE FOR BYTE rather than re-serializing it. The receipt
+    # records the sha256 of the repository file, and the Odyssey-ready audit independently
+    # requires that BOTH the repository copy and the artifact copy hash to that value. A
+    # re-serialized copy carries identical JSON content and different bytes, so it fails an
+    # integrity check that is correct to insist. A content-addressed artifact should carry
+    # the exact bytes it was packed against, not a pretty-printed equivalent.
+    (COMPACT / "PROMETHEUS_MATH_ALLOCATION_MANIFEST.json").write_bytes(MANIFEST.read_bytes())
     _write_json(COMPACT / "COVERAGE.json", coverage)
 
     packed, shards = assembler.packed_index(COMPACT)

@@ -75,7 +75,16 @@ def audit_pass3(
     verification = receipt["verification"]
     byte_ledger = receipt["byte_ledger"]
     actual_bpw = float(receipt["actual_complete_bpw"])
-    target_bpw = float(receipt["target_complete_bpw"])
+    # The target rate is carried as an EXACT rational ({"num": 49, "den": 50}), because the
+    # campaign's rate law is exact-rational and a float target would let a rounding artefact
+    # decide a gate. float() on that dict is what crashed this watcher on the first real
+    # receipt it ever saw -- the path had never run end to end before.
+    target = receipt["target_complete_bpw"]
+    target_bpw = (
+        float(target["num"]) / float(target["den"])
+        if isinstance(target, dict)
+        else float(target)
+    )
 
     _require(Path(receipt["artifact"]) == artifact, "receipt names the wrong artifact")
     _require(receipt.get("odyssey_input_ready") is True, "receipt does not admit Odyssey input")

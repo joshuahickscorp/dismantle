@@ -195,10 +195,16 @@ def _derive_state(pass3: dict, jobs: dict) -> tuple[str, str, list[str]]:
     if not receipt.exists():
         return ("ASSEMBLE_MATH_PRESERVE",
                 "282/282 packed; finalization has not written the receipt yet", blockers)
-    if not audit.get("sealed"):
+    # The audit records its outcome in `verdict`, not a `sealed` flag. Reading the wrong key
+    # made a sealed checkpoint report as unsealed, which is the exact failure this file
+    # exists to prevent -- a resume authority that understates progress gets work redone.
+    if audit.get("verdict") != "HAWKING_ODYSSEY_READY":
         return ("SEAL_CLAIM_A",
                 "Math-Preserve receipt exists; Odyssey-ready audit not sealed", blockers)
-    return ("HAWKING_ODYSSEY_READY", "pre-Odyssey checkpoint sealed", blockers)
+    if not (ROOT / "GLM52_CLAIM_A.json").exists():
+        return ("SEAL_CLAIM_A",
+                "HAWKING_ODYSSEY_READY sealed; equal-budget Claim A not yet sealed", blockers)
+    return ("BASE_RUNTIME", "Odyssey-ready and Claim A sealed", blockers)
 
 
 def _next_command(state: str, jobs: dict) -> str:

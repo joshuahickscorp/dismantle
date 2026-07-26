@@ -2,31 +2,30 @@
 
 Generated from live evidence by `tools/campaign/continuum_status.py`. Do not hand-edit.
 
-    at:       2026-07-26T05:28:27Z
-    state:    FINISH_MATH_PRESERVE
-    why:      148/282 shards packed (52.48%)
+    at:       2026-07-26T16:30:50Z
+    state:    SEAL_CLAIM_A
+    why:      HAWKING_ODYSSEY_READY sealed; equal-budget Claim A not yet sealed
     endpoint: RAMANUJAN_SANDBOX_READY (not reached)
 
 ## Math-Preserve PASS3
 
-    shards:     148/282 (52.48%)
+    shards:     282/282 (100.0%)
     scheduler:  dynamic_queue
-    per shard:  392.2 s (recent mean, per worker)
-    remaining:  3.65 h at the current measured rate
-    artifact:   51,936,354,373 bytes
-    resident:   7 source shards
-    free disk:  332,784,472,064 bytes
+    per shard:  339.9 s (recent mean, per worker)
+    remaining:  not estimable yet
+    artifact:   92,008,825,475 bytes
+    resident:   0 source shards
+    free disk:  320,157,835,264 bytes
 
 ## Detached work
 
 - `com.hawking.doctorv5.telegram` pid=None last_exit=75
 - `com.hawking.doctorv5ultra.post120b` pid=None last_exit=2
 - `com.hawking.glm52.math-prometheus-pass1` pid=None last_exit=0
-- `com.hawking.glm52.math-prometheus-pass3` pid=11785 last_exit=0
 - `com.hawking.glm52.readiness-gate` pid=None last_exit=0
-- `com.hawking.glm52.safe-to-leave` pid=8359 last_exit=0
+- `com.hawking.glm52.safe-to-leave` pid=None last_exit=0
 - `com.hawking.glm52.source-fetch` pid=None last_exit=0
-- `com.hawking.odyssey-ready-finalize` pid=1336 last_exit=0
+- `com.hawking.odyssey-ready-finalize` pid=None last_exit=0
 - `com.hawking.overnight.handoff` pid=None last_exit=126
 
 ## Blockers
@@ -35,8 +34,6 @@ Generated from live evidence by `tools/campaign/continuum_status.py`. Do not han
 
 ## Remaining programme
 
-- ASSEMBLE_MATH_PRESERVE: assemble and verify the Math-Preserve artifact
-- SEAL_CLAIM_A: equal-budget Uniform/General/Math/RandomPolicy Claim A
 - HAWKING_ODYSSEY_READY: seal the pre-Odyssey checkpoint
 - BASE_RUNTIME: finish the base .gravity runtime and measured BASE_TRUE_TPS
 - ACCELERATION: generic speculative/parallel-token acceleration tournament
@@ -56,17 +53,26 @@ Generated from live evidence by `tools/campaign/continuum_status.py`. Do not han
 
 ## Delegated lanes (do not restart one that is still running)
 
-- `acceleration-archaeology-20260726-012813` audit/maximum on `` -- STILL RUNNING
+- `acceleration-archaeology-20260726-012813` audit/maximum on `` -- finished
+- `audit-product-plan-20260726-023917` audit/maximum on `` -- finished
 - `consult-20260726-002802` consult/consult on `` -- finished
+- `consult-20260726-014436` consult/consult on `` -- finished
+- `cx-arch-20260726-014435` audit/maximum on `` -- finished
+- `cx-claims-20260726-014433` audit/maximum on `` -- finished
+- `cx-dx-20260726-014435` audit/maximum on `` -- finished
+- `cx-money-20260726-014434` audit/maximum on `` -- finished
+- `cx-perf-20260726-014433` audit/maximum on `` -- finished
 - `fabric-bridge-archaeology-20260726-005742` audit/maximum on `` -- finished
-- `fit-kernel-v3-20260726-011556` delegate/maximum on `grok/fit-kernel-v3-20260726-011556` -- STILL RUNNING
+- `fit-kernel-v3-20260726-011556` delegate/maximum on `grok/fit-kernel-v3-20260726-011556` -- finished
 - `gravity-gpu-cache-20260726-005741` delegate/power on `grok/gravity-gpu-cache-20260726-005741` -- finished
 - `hawking-reclamation-20260726-004627` audit/maximum on `` -- finished
 - `hide-approval-inc2-20260725-233330` delegate/maximum on `grok/hide-approval-inc2-20260725-233330` -- finished
 - `hide-archaeology-20260725-212751` audit/maximum on `` -- finished
+- `hide-context-os-20260726-032000` delegate/maximum on `grok/hide-context-os-20260726-032000` -- finished
 - `hide-inc3-20260726-005734` delegate/power on `grok/hide-inc3-20260726-005734` -- finished
 - `hide-wiring-inc1-20260725-224036` delegate/power on `grok/hide-wiring-inc1-20260725-224036` -- finished
 - `mop-ramanujan-assessment-20260726-001628` audit/maximum on `` -- finished
+- `plan-machine-20260726-023414` audit/maximum on `` -- finished
 - `ramanujan-cognition-20260726-003050` audit/maximum on `` -- finished
 
 ## Queued work with a written receipt

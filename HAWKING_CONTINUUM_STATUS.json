@@ -1,15 +1,47 @@
 {
-  "at": "2026-07-26T01:36:58Z",
+  "at": "2026-07-26T03:34:12Z",
   "blockers": [],
   "completed_steps": [
     "OPTIMIZE_PASS3"
   ],
-  "estimated_pass3_hours_remaining": 11.12,
+  "delegated_lanes": [
+    {
+      "base_commit": "8682e8a6564cfecd6e0f16832f818d85fb2fd4d0",
+      "branch": "grok/hide-approval-inc2-20260725-233330",
+      "finished": false,
+      "mode": "delegate",
+      "profile": "maximum",
+      "reviewed_by_claude": false,
+      "task_id": "hide-approval-inc2-20260725-233330",
+      "worktree": "/Users/scammermike/.claude-grok/worktrees/hide-approval-inc2-20260725-233330"
+    },
+    {
+      "base_commit": "",
+      "branch": "",
+      "finished": true,
+      "mode": "audit",
+      "profile": "maximum",
+      "reviewed_by_claude": false,
+      "task_id": "hide-archaeology-20260725-212751",
+      "worktree": "/private/tmp/claude-503/-Users-scammermike-Downloads-hawking/106b1d5a-5fb0-44c4-8140-fdf7a8a96041/scratchpad/hide-recon"
+    },
+    {
+      "base_commit": "fccb6b3036f94ad85453f130f394b8ff7be4bca9",
+      "branch": "grok/hide-wiring-inc1-20260725-224036",
+      "finished": true,
+      "mode": "delegate",
+      "profile": "power",
+      "reviewed_by_claude": false,
+      "task_id": "hide-wiring-inc1-20260725-224036",
+      "worktree": "/Users/scammermike/.claude-grok/worktrees/hide-wiring-inc1-20260725-224036"
+    }
+  ],
+  "estimated_pass3_hours_remaining": 5.7,
   "general_artifact_bytes": 87134289062,
   "git": {
     "branch": "campaign/glm52-generation-b",
     "dirty": true,
-    "head": "515809d8952b2a39923053346cf8f942942f4eb7"
+    "head": "9e51460d3d896ec1e1fd0690206a056c3d33c1f9"
   },
   "launchd": {
     "com.hawking.doctorv5.telegram": {
@@ -39,8 +71,8 @@
     },
     "com.hawking.glm52.safe-to-leave": {
       "last_exit": 0,
-      "pid": 19903,
-      "running": true
+      "pid": null,
+      "running": false
     },
     "com.hawking.glm52.source-fetch": {
       "last_exit": 0,
@@ -60,35 +92,36 @@
   },
   "next_command_file": "HAWKING_CONTINUUM_NEXT_COMMAND.sh",
   "pass3": {
-    "artifact_bytes": 14193453650,
-    "free_disk_bytes": 388022829056,
+    "artifact_bytes": 29813802105,
+    "free_disk_bytes": 363888377856,
     "live_pids": [
       11785,
       11787,
-      12385
+      12385,
+      41104
     ],
-    "mean_shard_seconds_recent": 643.2,
-    "percent": 11.7,
+    "mean_shard_seconds_recent": 406.6,
+    "percent": 28.37,
     "progress_file": {
-      "at": "2026-07-26T01:05:33Z",
-      "last_sealed": "model-00031-of-00282.safetensors",
+      "at": "2026-07-26T03:33:24Z",
+      "last_sealed": "model-00080-of-00282.safetensors",
       "scheduler": "dynamic_queue",
-      "sealed_this_run": 4,
-      "shards_packed": 33,
-      "shards_total": 33
+      "sealed_this_run": 47,
+      "shards_packed": 80,
+      "shards_total": 282
     },
-    "rate_sample_shards": 4,
+    "rate_sample_shards": 8,
     "resident_source_shards": [
-      "model-00040-of-00282.safetensors",
-      "model-00039-of-00282.safetensors",
-      "model-00036-of-00282.safetensors",
-      "model-00037-of-00282.safetensors",
-      "model-00038-of-00282.safetensors",
-      "model-00034-of-00282.safetensors",
-      "model-00035-of-00282.safetensors"
+      "model-00081-of-00282.safetensors",
+      "model-00084-of-00282.safetensors",
+      "model-00085-of-00282.safetensors",
+      "model-00086-of-00282.safetensors",
+      "model-00083-of-00282.safetensors",
+      "model-00087-of-00282.safetensors",
+      "model-00082-of-00282.safetensors"
     ],
     "scheduler": "dynamic_queue",
-    "shards_packed": 33,
+    "shards_packed": 80,
     "shards_total": 282
   },
   "remaining_steps": [
@@ -117,5 +150,5 @@
   "schema": "hawking.continuum.status.v1",
   "state": "FINISH_MATH_PRESERVE",
   "terminal_endpoint": "RAMANUJAN_SANDBOX_READY",
-  "why": "33/282 shards packed (11.7%)"
+  "why": "80/282 shards packed (28.37%)"
 }

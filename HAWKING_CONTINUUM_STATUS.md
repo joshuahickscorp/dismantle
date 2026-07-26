@@ -2,20 +2,20 @@
 
 Generated from live evidence by `tools/campaign/continuum_status.py`. Do not hand-edit.
 
-    at:       2026-07-26T01:36:58Z
+    at:       2026-07-26T03:34:12Z
     state:    FINISH_MATH_PRESERVE
-    why:      33/282 shards packed (11.7%)
+    why:      80/282 shards packed (28.37%)
     endpoint: RAMANUJAN_SANDBOX_READY (not reached)
 
 ## Math-Preserve PASS3
 
-    shards:     33/282 (11.7%)
+    shards:     80/282 (28.37%)
     scheduler:  dynamic_queue
-    per shard:  643.2 s (recent mean, per worker)
-    remaining:  11.12 h at the current measured rate
-    artifact:   14,193,453,650 bytes
+    per shard:  406.6 s (recent mean, per worker)
+    remaining:  5.7 h at the current measured rate
+    artifact:   29,813,802,105 bytes
     resident:   7 source shards
-    free disk:  388,022,829,056 bytes
+    free disk:  363,888,377,856 bytes
 
 ## Detached work
 
@@ -24,7 +24,7 @@ Generated from live evidence by `tools/campaign/continuum_status.py`. Do not han
 - `com.hawking.glm52.math-prometheus-pass1` pid=None last_exit=0
 - `com.hawking.glm52.math-prometheus-pass3` pid=11785 last_exit=0
 - `com.hawking.glm52.readiness-gate` pid=None last_exit=0
-- `com.hawking.glm52.safe-to-leave` pid=19903 last_exit=0
+- `com.hawking.glm52.safe-to-leave` pid=None last_exit=0
 - `com.hawking.glm52.source-fetch` pid=None last_exit=0
 - `com.hawking.odyssey-ready-finalize` pid=1336 last_exit=0
 - `com.hawking.overnight.handoff` pid=None last_exit=126
@@ -52,6 +52,12 @@ Generated from live evidence by `tools/campaign/continuum_status.py`. Do not han
 - BUILD_SEARCH_GOVERNANCE: search, roles, memories, Ledger, Tribunal
 - QUALIFY_SANDBOX: Q0-Q6 and the multi-day pre-sandbox rehearsal
 - RAMANUJAN_SANDBOX_READY: terminal gate
+
+## Delegated lanes (do not restart one that is still running)
+
+- `hide-approval-inc2-20260725-233330` delegate/maximum on `grok/hide-approval-inc2-20260725-233330` -- STILL RUNNING
+- `hide-archaeology-20260725-212751` audit/maximum on `` -- finished
+- `hide-wiring-inc1-20260725-224036` delegate/power on `grok/hide-wiring-inc1-20260725-224036` -- finished
 
 ## Queued work with a written receipt
 

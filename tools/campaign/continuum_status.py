@@ -135,6 +135,32 @@ def _free_bytes() -> int:
     return shutil.disk_usage(str(SUPPORT if SUPPORT.exists() else ROOT)).free
 
 
+def _delegated_lanes() -> list[dict]:
+    """In-flight and finished delegations, so a successor does not re-run one.
+
+    A delegation that produced no report is either still running or died; either way the
+    next agent needs to know it exists before starting the same work again.
+    """
+    root = Path.home() / ".claude-grok/tasks"
+    lanes = []
+    for meta_path in sorted(root.glob("*/metadata.json")) if root.is_dir() else []:
+        meta = _read_json(meta_path) or {}
+        report = meta_path.parent / "grok-report.md"
+        lanes.append({
+            "task_id": meta.get("task_id"),
+            "mode": meta.get("mode"),
+            "profile": meta.get("profile"),
+            "branch": meta.get("branch"),
+            "worktree": meta.get("workdir"),
+            "base_commit": meta.get("base_commit"),
+            "finished": report.exists(),
+            "reviewed_by_claude": bool(
+                list(ROOT.glob(f"*{str(meta.get('task_id', '')).split('-2026')[0].upper()}*REVIEW*.json"))
+            ),
+        })
+    return lanes
+
+
 def _derive_state(pass3: dict, jobs: dict) -> tuple[str, str, list[str]]:
     """Return (state, why, blockers) from evidence alone."""
     blockers: list[str] = []
@@ -216,6 +242,7 @@ def build() -> dict:
             "head": _sh("git", "rev-parse", "HEAD"),
             "dirty": bool(_sh("git", "status", "--porcelain")),
         },
+        "delegated_lanes": _delegated_lanes(),
         "completed_steps": done,
         "remaining_steps": remaining,
         "next_command_file": str(NEXT_COMMAND.relative_to(ROOT)),
@@ -245,6 +272,11 @@ def publish(status: dict) -> None:
         f"- `{p.name}` -- {_read_json(p).get('scope') or _read_json(p).get('question') or ''}"[:200]
         for p in sorted(ROOT.glob("*_GAPS.json")) + sorted(ROOT.glob("*_PRECLEARANCE.json"))
     ) or "- none recorded"
+    lanes = "\n".join(
+        f"- `{lane['task_id']}` {lane['mode']}/{lane['profile']} on `{lane['branch']}` "
+        f"-- {'finished' if lane['finished'] else 'STILL RUNNING'}"
+        for lane in status["delegated_lanes"]
+    ) or "- none"
     STATUS_MD.write_text(f"""# HAWKING CONTINUUM STATUS
 
 Generated from live evidence by `tools/campaign/continuum_status.py`. Do not hand-edit.
@@ -276,6 +308,10 @@ Generated from live evidence by `tools/campaign/continuum_status.py`. Do not han
 ## Remaining programme
 
 {remaining}
+
+## Delegated lanes (do not restart one that is still running)
+
+{lanes}
 
 ## Queued work with a written receipt
 

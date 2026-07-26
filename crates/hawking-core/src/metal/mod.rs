@@ -367,15 +367,61 @@ mod imp {
     /// (`wait_until_completed`) before reading; otherwise the values are
     /// undefined.
     unsafe fn cb_gpu_duration_us(cb: &metal::CommandBufferRef) -> u64 {
-        // CFTimeInterval is `double` (f64) -- seconds since absolute reference.
+        match cb_gpu_start_end_s(cb) {
+            (Some(start), Some(end)) if end > start => ((end - start) * 1_000_000.0) as u64,
+            _ => 0,
+        }
+    }
+
+    /// Raw GPU start/end CFTimeInterval seconds, or `None` when the driver
+    /// returns non-positive / inverted values. Used by the Temporal Gravity
+    /// cost ledger so queue-wait derivation never silently substitutes a
+    /// CPU proxy for a missing GPU timestamp.
+    ///
+    /// SAFETY: command buffer must have finished (`wait_until_completed`).
+    unsafe fn cb_gpu_start_end_s(cb: &metal::CommandBufferRef) -> (Option<f64>, Option<f64>) {
         let start: f64 = msg_send![cb, GPUStartTime];
         let end: f64 = msg_send![cb, GPUEndTime];
-        let dt = end - start;
-        if dt > 0.0 {
-            (dt * 1_000_000.0) as u64
+        if start > 0.0 && end > start {
+            (Some(start), Some(end))
         } else {
-            0
+            (None, None)
         }
+    }
+
+    /// After commit+wait, push host + GPU times into the cost ledger when
+    /// recording. No-op when the ledger is off.
+    fn ledger_record_cb_gpu(
+        cb: &metal::CommandBufferRef,
+        host_commit_us: u64,
+        host_wait_us: u64,
+        dispatches: u64,
+    ) {
+        use crate::cost_ledger;
+        if !cost_ledger::is_recording() {
+            return;
+        }
+        let (start, end) = unsafe { cb_gpu_start_end_s(cb) };
+        cost_ledger::record_gpu_command_buffer(
+            host_commit_us,
+            host_wait_us,
+            start,
+            end,
+            dispatches,
+        );
+    }
+
+    /// Probe whether the device exposes the Metal `timestamp` common counter
+    /// set. Does **not** encode sample markers (that would perturb the CB);
+    /// only reports capability so the ledger can say "supported but not
+    /// recorded" vs "unsupported" vs "unprobed".
+    fn ledger_probe_counter_capability(device: &Device) {
+        use crate::cost_ledger;
+        if !cost_ledger::is_recording() {
+            return;
+        }
+        let supported = find_timestamp_counter_set(device).is_some();
+        cost_ledger::record_counter_sample_capability(true, Some(supported));
     }
     use parking_lot::Mutex;
     use std::collections::HashMap;
@@ -1209,19 +1255,32 @@ mod imp {
 
             let t_submit = if ledger { Some(Instant::now()) } else { None };
             cmd.commit();
-            if let Some(t) = t_submit {
-                cost_ledger::add_duration(Bucket::MetalSubmit, t.elapsed());
-                cost_ledger::record_command_buffer();
-            }
+            let commit_us = t_submit
+                .map(|t| {
+                    let d = t.elapsed();
+                    cost_ledger::add_duration(Bucket::MetalSubmit, d);
+                    cost_ledger::record_command_buffer();
+                    d.as_micros() as u64
+                })
+                .unwrap_or(0);
             if trace_enabled {
                 self.stats.commits.fetch_add(1, Ordering::Relaxed);
             }
 
             let t_sync = if ledger { Some(Instant::now()) } else { None };
             cmd.wait_until_completed();
-            if let Some(t) = t_sync {
-                cost_ledger::add_duration(Bucket::MetalSynchronize, t.elapsed());
-                cost_ledger::record_sync_point();
+            let wait_us = t_sync
+                .map(|t| {
+                    let d = t.elapsed();
+                    cost_ledger::add_duration(Bucket::MetalSynchronize, d);
+                    cost_ledger::record_sync_point();
+                    d.as_micros() as u64
+                })
+                .unwrap_or(0);
+            if ledger {
+                // GPU timestamps — never invent when the driver returns zeros.
+                ledger_record_cb_gpu(&cmd, commit_us, wait_us, 1);
+                ledger_probe_counter_capability(&self.inner.device);
             }
 
             if let Some(t0) = t0 {
@@ -1787,13 +1846,27 @@ mod imp {
                 if cost_ledger::is_recording() {
                     let t_submit = Instant::now();
                     cmd.commit();
-                    cost_ledger::add_duration(Bucket::MetalSubmit, t_submit.elapsed());
+                    let commit_d = t_submit.elapsed();
+                    cost_ledger::add_duration(Bucket::MetalSubmit, commit_d);
                     cost_ledger::record_command_buffer();
 
                     let t_sync = Instant::now();
                     cmd.wait_until_completed();
-                    cost_ledger::add_duration(Bucket::MetalSynchronize, t_sync.elapsed());
+                    let wait_d = t_sync.elapsed();
+                    cost_ledger::add_duration(Bucket::MetalSynchronize, wait_d);
                     cost_ledger::record_sync_point();
+
+                    // Device timeline: GPUStartTime/GPUEndTime after wait.
+                    // Counter-sample markers are not encoded on this path
+                    // (would change the CB); capability is probed only.
+                    let n_disp = self.dispatch_count() as u64;
+                    ledger_record_cb_gpu(
+                        &cmd,
+                        commit_d.as_micros() as u64,
+                        wait_d.as_micros() as u64,
+                        n_disp,
+                    );
+                    ledger_probe_counter_capability(&self.ctx.inner.device);
 
                     // Drain TCB-internal trace samples the same way
                     // flush_and_commit does in Off mode (nothing to do).

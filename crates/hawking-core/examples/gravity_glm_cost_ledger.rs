@@ -1,14 +1,26 @@
-//! Per-token cost ledger for the sealed GLM-5.2 Math-Preserve GPU path.
+//! Per-token Temporal Gravity cost ledger for the sealed GLM-5.2 Math-Preserve
+//! GPU path.
 //!
-//! Implements the first required deliverable of `BASE_RUNTIME_MAXIMIZED_GATE.md`:
-//! attribute every microsecond of one decode token so the buckets sum to
-//! measured wall time, with an explicit unattributed remainder.
+//! Attributes every microsecond of one or more decode tokens so exclusive CPU
+//! buckets + an explicit **unattributed** line sum to wall time, and a separate
+//! **device timeline** reports GPU execution vs queue wait from Metal
+//! `GPUStartTime`/`GPUEndTime`. Reports p50/p95/p99 across ledger tokens and
+//! discloses profiler overhead.
 //!
 //! Default-off instrumentation (`HAWKING_COST_LEDGER=1`). Does not change
 //! decode output. This binary only runs on macOS with Metal; the executor
 //! sandbox cannot create a Metal device, so hand the controller this command.
 //!
-//! Warm ledger (after a short residency warm-up), one attributed token:
+//! Full multi-token ledger (warm, distributions):
+//!
+//! ```text
+//! HAWKING_COST_LEDGER=1 cargo run --release -p hawking-core \
+//!   --example gravity_glm_cost_ledger -- \
+//!   --context 4 --warmup 8 --ledger-tokens 16 \
+//!   --out reports/base_runtime/tg_cost_ledger_warm.json
+//! ```
+//!
+//! Single-token warm ledger:
 //!
 //! ```text
 //! HAWKING_COST_LEDGER=1 cargo run --release -p hawking-core \
@@ -34,12 +46,13 @@ const DEFAULT_MODEL_DIR: &str = "Library/Application Support/Hawking/Models/GLM-
 
 #[cfg(target_os = "macos")]
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    use hawking_core::cost_ledger::{self, SEALED_ARTIFACT_ACTIVE_ROUTED_BYTES};
+    use hawking_core::cost_ledger::{
+        self, aggregate_reports, bucket_source_catalogue, SEALED_ARTIFACT_ACTIVE_ROUTED_BYTES,
+    };
     use hawking_core::gravity_glm::gpu::GravityGlmGpu;
 
     // Force the ledger on for this process even if the env var was omitted
-    // (the example's whole point is the ledger). Env still wins if set to 0
-    // via set_enabled after resolve — we set explicitly.
+    // (the example's whole point is the ledger).
     cost_ledger::set_enabled(true);
 
     let mut dir: Option<PathBuf> = None;
@@ -70,7 +83,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     eprintln!(
-        "cost ledger | verify_hash={verify_hash} context={context} warmup={warmup} \
+        "TG cost ledger | verify_hash={verify_hash} context={context} warmup={warmup} \
          ledger_tokens={ledger_tokens}"
     );
     eprintln!("model dir: {}", dir.display());
@@ -115,6 +128,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let mut token_reports = Vec::with_capacity(ledger_tokens);
+    let mut raw_reports = Vec::with_capacity(ledger_tokens);
     for (i, &t) in tokens[context + warmup..].iter().enumerate() {
         let abs_pos = context + warmup + i;
         let wall = Instant::now();
@@ -122,10 +136,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let wall_ms = wall.elapsed().as_secs_f64() * 1e3;
         assert_eq!(logits.len(), model.arch.vocab_size);
 
-        let report = report.ok_or("ledger enabled but no report returned")?;
+        let mut report = report.ok_or("ledger enabled but no report returned")?;
+
+        // Residency snapshot from the live GPU weight cache (not a proxy).
+        let cache = model.cache_stats();
+        // Re-open a micro begin/end is wrong; stamp residency via a side
+        // channel: the report is already finished. Attach via mutation of
+        // the counters we own in the JSON path below, and also patch the
+        // struct for aggregation.
+        report.counters.residency_bytes = Some(cache.resident_bytes);
+        report.counters.residency_entries = Some(cache.entries as u64);
+        report.counters.residency_evictions = Some(cache.evictions);
+
         eprintln!(
             "  ledger {:>3}/{}  wall {:>8.1} ms  attributed {:.1}%  unattributed_us={}  \
-             cbs={} disp={} syncs={} active_bytes={:.3} GB",
+             cbs={} disp={} syncs={} gpu_exec_us={} gpu_q_us={:?} active_bytes={:.3} GB  \
+             profiler_oh_us={} ({:.2}%)",
             i + 1,
             ledger_tokens,
             wall_ms,
@@ -134,10 +160,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             report.counters.command_buffers_submitted,
             report.counters.dispatches_encoded,
             report.counters.synchronization_points,
+            report.device.gpu_execution_us,
+            report.device.gpu_queue_wait_us,
             report.counters.active_bytes_read as f64 / 1e9,
+            report.profiler_overhead_us,
+            report.profiler_overhead_fraction * 100.0,
         );
         // Print bucket table for the operator.
-        eprintln!("  buckets (us, exclusive):");
+        eprintln!("  buckets (us, exclusive CPU):");
         let mut keys: Vec<_> = report.buckets_us.keys().cloned().collect();
         keys.sort();
         for k in keys {
@@ -146,14 +176,35 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 continue;
             }
             let pct = 100.0 * us as f64 / report.wall_us.max(1) as f64;
-            eprintln!("    {k:<32} {us:>12}  ({pct:5.1}%)");
+            eprintln!("    {k:<36} {us:>12}  ({pct:5.1}%)");
         }
         eprintln!(
-            "    {:<32} {:>12}  ({:5.1}%)",
-            "unattributed",
+            "    {:<36} {:>12}  ({:5.1}%)",
+            report.unattributed_name,
             report.unattributed_us,
             100.0 * report.unattributed_us as f64 / report.wall_us.max(1) as f64
         );
+        eprintln!(
+            "  device: gpu_execution_us={}  gpu_queue_wait_us={:?}  \
+             ts_observed={} ts_missing={} counter_supported={:?} counter_samples={}",
+            report.device.gpu_execution_us,
+            report.device.gpu_queue_wait_us,
+            report.device.gpu_timestamps_observed,
+            report.device.gpu_timestamps_missing,
+            report.device.counter_sample_supported,
+            report.device.counter_samples_recorded,
+        );
+        for n in &report.device.notes {
+            eprintln!("    note: {n}");
+        }
+        if let Some(pf) = report.counters.page_faults_minor {
+            eprintln!(
+                "  page_faults: minor={} major={:?} (getrusage)",
+                pf, report.counters.page_faults_major
+            );
+        } else {
+            eprintln!("  page_faults: unavailable on this path");
+        }
 
         token_reports.push(serde_json::json!({
             "decode_token_index": i + 1,
@@ -161,13 +212,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "external_wall_ms": wall_ms,
             "ledger": report.to_json_value(),
         }));
+        raw_reports.push(report);
     }
+
+    let aggregate = if raw_reports.is_empty() {
+        None
+    } else {
+        Some(aggregate_reports(&raw_reports))
+    };
 
     let cache = model.cache_stats();
     let receipt = serde_json::json!({
-        "schema": "hawking.gravity.per_token_cost_ledger_run.v1",
-        "gate": "BASE_RUNTIME_MAXIMIZED",
-        "deliverable": "per-token cost ledger",
+        "schema": "hawking.gravity.per_token_cost_ledger_run.v2",
+        "gate": "TEMPORAL_GRAVITY / BASE_RUNTIME_MAXIMIZED",
+        "deliverable": "per-token cost ledger with device timeline + p50/p95/p99",
         "verify_hash": verify_hash,
         "model_dir": dir.to_string_lossy(),
         "architecture": {
@@ -178,11 +236,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "vocab": model.arch.vocab_size,
         },
         "geometry_active_routed_bytes_sealed": SEALED_ARTIFACT_ACTIVE_ROUTED_BYTES,
+        "geometry_gb": SEALED_ARTIFACT_ACTIVE_ROUTED_BYTES as f64 / 1e9,
         "open_ms": open_ms,
         "prefill_ms": prefill_ms,
         "context_tokens": context,
         "warmup_decode_tokens": warmup,
         "ledger_tokens": ledger_tokens,
+        "bucket_sources": bucket_source_catalogue(),
         "gpu_weight_cache": {
             "budget_bytes": cache.budget_bytes,
             "resident_bytes": cache.resident_bytes,
@@ -190,13 +250,29 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "entries": cache.entries,
             "evictions": cache.evictions,
         },
+        "aggregate": aggregate,
         "tokens": token_reports,
         "notes": [
             "Exclusive stack timing: nested metal/verify/transfer steal time from parent semantic scopes so sum(buckets)+unattributed ≈ wall.",
-            "Routed experts and the shared expert are co-batched into three command buffers (gate/up/down); metal_* owns that GPU time, shared_experts owns only the CPU residual add.",
+            "unattributed is a first-class line with its own magnitude — never absorbed into cpu_residual_scoped or any neighbour.",
+            "cpu_residual_scoped is only what callers explicitly Scope; it is not the wall remainder.",
+            "Device timeline (gpu_execution_us, gpu_queue_wait_us) is independent of exclusive CPU buckets; GPU work overlaps metal_synchronize_cpu_wait.",
+            "gpu_queue_wait_us = sum max(0, host_wait_us - gpu_execution_us) per CB when GPUStartTime/GPUEndTime are readable; otherwise None (no CPU proxy).",
+            "Metal timestamp counter samples are opt-in (markers must be encoded). This path records CB-level GPUStartTime/GPUEndTime only unless a counter probe is wired.",
+            "page_faults from getrusage(RUSAGE_SELF) minflt/majflt deltas when available.",
+            "profiler_overhead_us is ledger bookkeeping cost disclosed on every token.",
+            "p50/p95/p99 live under aggregate.* when ledger-tokens > 1.",
+            "Routed experts and the shared expert are co-batched into command buffers; metal_* owns that GPU host-wait, shared_experts owns only the CPU residual add.",
             "Attention (including DSA IndexShare) runs on the CPU today; its matvecs still go through the GPU PQ path and land in metal_*.",
-            "An unattributed remainder is a finding — do not redistribute it into neighbours.",
+            "Bucket::Norm is defined for RMSNorm/LayerNorm hooks; wire Scope::new(Bucket::Norm) from gravity_glm when that lane is free.",
             "This binary does not claim timings it did not measure; empty buckets mean that work was not observed on the instrumented path.",
+            "No Metal device in the agent sandbox — live numbers require running this command on a Mac with the model present.",
+        ],
+        "hooks_not_yet_in_gravity_glm_decode": [
+            "Scope::new(Bucket::Norm) around RMSNorm/LayerNorm",
+            "record_operations(n) for attention cells / FMA estimates",
+            "record_counter_sample_capability + encode timestamp counter markers if device supports them",
+            "record_residency inside the token (example stamps post-hoc from cache_stats)",
         ],
     });
 
@@ -212,6 +288,42 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             eprintln!("wrote {}", p.display());
         }
         None => print!("{text}"),
+    }
+
+    if let Some(agg) = receipt.get("aggregate") {
+        eprintln!("\n=== aggregate (p50 / p95 / p99) ===");
+        if let Some(w) = agg.get("wall_us") {
+            eprintln!(
+                "wall_us:     p50={:.0}  p95={:.0}  p99={:.0}  mean={:.0}",
+                w["p50"].as_f64().unwrap_or(0.0),
+                w["p95"].as_f64().unwrap_or(0.0),
+                w["p99"].as_f64().unwrap_or(0.0),
+                w["mean"].as_f64().unwrap_or(0.0),
+            );
+        }
+        if let Some(u) = agg.get("unattributed_us") {
+            eprintln!(
+                "unattributed p50={:.0}  p95={:.0}  p99={:.0}",
+                u["p50"].as_f64().unwrap_or(0.0),
+                u["p95"].as_f64().unwrap_or(0.0),
+                u["p99"].as_f64().unwrap_or(0.0),
+            );
+        }
+        if let Some(g) = agg.get("device_gpu_execution_us") {
+            eprintln!(
+                "gpu_exec_us  p50={:.0}  p95={:.0}  p99={:.0}",
+                g["p50"].as_f64().unwrap_or(0.0),
+                g["p95"].as_f64().unwrap_or(0.0),
+                g["p99"].as_f64().unwrap_or(0.0),
+            );
+        }
+        if let Some(oh) = agg.get("profiler_overhead_us") {
+            eprintln!(
+                "profiler_oh  p50={:.0}  mean={:.0}",
+                oh["p50"].as_f64().unwrap_or(0.0),
+                oh["mean"].as_f64().unwrap_or(0.0),
+            );
+        }
     }
     Ok(())
 }

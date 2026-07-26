@@ -215,7 +215,7 @@ fn silu_mul(gate: &[f32], up: &[f32]) -> Vec<f32> {
 /// Descending top-k with `np.argsort(kind="stable")` tie-breaking: equal
 /// values keep ascending index order. NaN never wins, matching the way the
 /// reference's `-inf` masking removes a candidate entirely.
-fn topk_desc(values: &[f32], k: usize) -> Vec<usize> {
+pub(crate) fn topk_desc(values: &[f32], k: usize) -> Vec<usize> {
     let mut idx: Vec<usize> = (0..values.len()).collect();
     idx.sort_by(|&a, &b| {
         values[b]
@@ -232,7 +232,7 @@ fn topk_desc(values: &[f32], k: usize) -> Vec<usize> {
 /// The trap: the rotated first and second components are **concatenated**,
 /// so output element `i` is not input element `i` rotated. `cos`/`sin` are
 /// `rotary_dim/2` long.
-fn rope_interleaved(v: &[f32], cos: &[f32], sin: &[f32]) -> Vec<f32> {
+pub(crate) fn rope_interleaved(v: &[f32], cos: &[f32], sin: &[f32]) -> Vec<f32> {
     let half = v.len() / 2;
     let mut out = vec![0f32; v.len()];
     for i in 0..half {
@@ -328,7 +328,7 @@ impl GravityGlm {
 /// reference builds a `rotary_dim`-wide table by concatenating the
 /// frequencies with themselves and then takes the first half, which is
 /// exactly these values.
-fn rope_cos_sin(arch: &GlmArch, pos: usize) -> (Vec<f32>, Vec<f32>) {
+pub(crate) fn rope_cos_sin(arch: &GlmArch, pos: usize) -> (Vec<f32>, Vec<f32>) {
     let rot = arch.qk_rope_head_dim;
     let half = rot / 2;
     let mut cos = vec![0f32; half];
@@ -801,6 +801,61 @@ fn forward_impl(
     Ok((logits, trace))
 }
 
+/// Opt-in GPU-resident decode state (activations, KV, router/top-k/expert
+/// offsets). Default off — the host-state path remains the parity oracle.
+/// See [`estimate_host_state_waits_per_token`] / [`estimate_resident_waits_per_token`].
+pub const GPU_RESIDENT_STATE_ENV: &str = "HAWKING_GLM_GPU_RESIDENT_STATE";
+
+/// Whether [`GPU_RESIDENT_STATE_ENV`] requests the resident decode path.
+pub fn gpu_resident_state_enabled() -> bool {
+    crate::env_on(GPU_RESIDENT_STATE_ENV)
+}
+
+/// Static `commit_and_wait` count on the host-state GPU path (default).
+/// Matches the measured ~1,171 figure on the flagship schedule.
+pub fn estimate_host_state_waits_per_token(arch: &GlmArch) -> u64 {
+    let mut waits = 0u64;
+    for layer in 0..arch.n_layers {
+        waits += 5; // q_a, q_b, kv_a, kv_b, o_proj
+        if arch.indexer_types[layer] == "full" {
+            waits += 3; // wq_b, wk, weights_proj
+        }
+        match arch.mlp_layer_types[layer].as_str() {
+            "dense" => waits += 3,
+            "sparse" => waits += 1 + 3, // router + 3 expert batches
+            _ => {}
+        }
+    }
+    waits + 1 // lm_head
+}
+
+/// Static `commit_and_wait` count on the resident-state path.
+///
+/// Attention projections that share a dependency rank are co-issued (q_a with
+/// kv_a, q_b with kv_b); expert gate/up/down stay three batched waits like the
+/// host path, with the residual / KV living on device between them. Live counts
+/// come from the resident forward's wait counter when a device is available.
+pub fn estimate_resident_waits_per_token(arch: &GlmArch) -> u64 {
+    let mut waits = 0u64;
+    for layer in 0..arch.n_layers {
+        // Co-issued q_a+kv_a, then q_b+kv_b, then o_proj.
+        waits += 3;
+        if arch.indexer_types[layer] == "full" {
+            // wq_b+wk together, then weights_proj
+            waits += 2;
+        }
+        match arch.mlp_layer_types[layer].as_str() {
+            "dense" => waits += 2, // gate+up, then down
+            "sparse" => {
+                // router + three expert batches (gate/up/down, routed+shared)
+                waits += 1 + 3;
+            }
+            _ => {}
+        }
+    }
+    waits + 1 // lm_head boundary
+}
+
 /// Env var for the GPU weight-cache byte budget. Explicit (bytes, not
 /// inferred from free RAM). Unset → [`DEFAULT_GPU_WEIGHT_CACHE_BUDGET_BYTES`].
 pub const GPU_WEIGHT_CACHE_BUDGET_ENV: &str = "HAWKING_GRAVITY_GPU_CACHE_BUDGET_BYTES";
@@ -1061,15 +1116,15 @@ pub mod gpu {
     /// architecture module privately owns.
     #[repr(C)]
     #[derive(Debug, Clone, Copy)]
-    struct PqParams {
-        dim: u32,
-        subspaces: u32,
-        sub: u32,
-        card: u32,
-        rows: u32,
-        cols: u32,
-        nchunk: u32,
-        bits: u32,
+    pub(crate) struct PqParams {
+        pub(crate) dim: u32,
+        pub(crate) subspaces: u32,
+        pub(crate) sub: u32,
+        pub(crate) card: u32,
+        pub(crate) rows: u32,
+        pub(crate) cols: u32,
+        pub(crate) nchunk: u32,
+        pub(crate) bits: u32,
     }
 
     impl PqParams {
@@ -1092,7 +1147,7 @@ pub mod gpu {
     /// once and left on the host. A matvec against the vocabulary runs once
     /// per token, not once per layer, so it is not worth a dedicated dense
     /// kernel the way the 30-odd per-layer projections are.
-    enum GpuTensor {
+    pub(crate) enum GpuTensor {
         Pq {
             codebooks: Buffer,
             codes: Buffer,
@@ -1117,9 +1172,9 @@ pub mod gpu {
     /// after that wait is safe: Metal command buffers retain the resources
     /// they use for the lifetime of the encode.
     pub struct GpuWeightCache {
-        ctx: MetalContext,
-        weights: GravityWeights,
-        cache: Mutex<BoundedLru<GpuTensor>>,
+        pub(crate) ctx: MetalContext,
+        pub(crate) weights: GravityWeights,
+        pub(crate) cache: Mutex<BoundedLru<GpuTensor>>,
     }
 
     impl GpuWeightCache {
@@ -1193,7 +1248,7 @@ pub mod gpu {
         /// across load+admit; load is disk I/O but the alternative (ensure
         /// then re-lock) reintroduces a TOCTOU where another thread's
         /// admission could evict between ensure and use.
-        fn ensure_many_locked(
+        pub(crate) fn ensure_many_locked(
             &self,
             cache: &mut BoundedLru<GpuTensor>,
             names: &[&str],
@@ -1517,13 +1572,21 @@ pub mod gpu {
     }
 
     /// A `.gravity` GLM-5.2 model with weights lazily resident on the GPU.
-    /// Runs the identical orchestration [`GravityGlm`] does (same
-    /// [`forward_impl`]); the only difference is where a matvec's bytes
-    /// live and who reads them.
+    ///
+    /// Default: host-state orchestration ([`forward_impl`]) — KV and the
+    /// residual stream are host `Vec<f32>`, every projection round-trips.
+    /// With [`super::GPU_RESIDENT_STATE_ENV`]=1 the resident path keeps
+    /// activations / KV / router state on device; see
+    /// [`crate::gravity_glm_resident`].
     pub struct GravityGlmGpu {
         pub arch: GlmArch,
         weights: GpuWeightCache,
         session: Mutex<GlmSession>,
+        /// Present when opened with the resident-state flag (or forced).
+        resident: Option<crate::gravity_glm_resident::ResidentRuntime>,
+        /// Sticky per-instance override; `None` means follow the env flag at
+        /// open time (already reflected in `resident.is_some()`).
+        resident_enabled: bool,
     }
 
     impl GravityGlmGpu {
@@ -1551,9 +1614,32 @@ pub mod gpu {
             verify_hash: bool,
             budget_bytes: u64,
         ) -> Result<GravityGlmGpu> {
+            Self::open_dir_with_budget_resident(
+                ctx,
+                dir,
+                verify_hash,
+                budget_bytes,
+                super::gpu_resident_state_enabled(),
+            )
+        }
+
+        /// Open with an explicit resident-state choice (parity tests force
+        /// both sides without fighting the process environment).
+        pub fn open_dir_with_budget_resident(
+            ctx: MetalContext,
+            dir: &Path,
+            verify_hash: bool,
+            budget_bytes: u64,
+            resident_enabled: bool,
+        ) -> Result<GravityGlmGpu> {
             let weights = GravityWeights::open_dir(dir, verify_hash)?;
             let arch = GlmArch::from_header(&weights.header)?;
             let session = Mutex::new(GlmSession::new(&arch));
+            let resident = if resident_enabled {
+                Some(crate::gravity_glm_resident::ResidentRuntime::new(&ctx, &arch)?)
+            } else {
+                None
+            };
             Ok(GravityGlmGpu {
                 weights: GpuWeightCache {
                     ctx,
@@ -1562,6 +1648,8 @@ pub mod gpu {
                 },
                 arch,
                 session,
+                resident,
+                resident_enabled,
             })
         }
 
@@ -1570,9 +1658,34 @@ pub mod gpu {
             self.weights.stats()
         }
 
+        /// Whether this instance is on the device-resident decode path.
+        pub fn resident_state_enabled(&self) -> bool {
+            self.resident_enabled
+        }
+
+        /// Live `commit_and_wait` count from the last resident generation, if any.
+        pub fn last_resident_waits(&self) -> Option<u64> {
+            self.resident
+                .as_ref()
+                .map(|r| r.session.lock().expect("resident session").waits())
+        }
+
         /// Run `tokens` from an empty cache -- the start of a new request on
         /// a model kept resident across many of them.
         pub fn forward(&self, tokens: &[u32]) -> Result<(Vec<f32>, GlmTrace)> {
+            if let Some(rt) = &self.resident {
+                let mut session = rt.session.lock().expect("resident session");
+                session.reset();
+                let (logits, trace, _waits) = crate::gravity_glm_resident::forward_resident(
+                    &self.weights,
+                    &self.arch,
+                    &mut session,
+                    &rt.pool,
+                    tokens,
+                    0,
+                )?;
+                return Ok((logits, trace));
+            }
             let mut session = self.session.lock().expect("glm session mutex");
             session.reset();
             forward_impl(&self.weights, &self.arch, &mut session, tokens, 0)
@@ -1586,8 +1699,42 @@ pub mod gpu {
             tokens: &[u32],
             start_pos: usize,
         ) -> Result<(Vec<f32>, GlmTrace)> {
+            if let Some(rt) = &self.resident {
+                let mut session = rt.session.lock().expect("resident session");
+                let (logits, trace, _waits) = crate::gravity_glm_resident::forward_resident(
+                    &self.weights,
+                    &self.arch,
+                    &mut session,
+                    &rt.pool,
+                    tokens,
+                    start_pos,
+                )?;
+                return Ok((logits, trace));
+            }
             let mut session = self.session.lock().expect("glm session mutex");
             forward_impl(&self.weights, &self.arch, &mut session, tokens, start_pos)
+        }
+
+        /// Resident forward that also returns the live wait count for this call.
+        pub fn forward_resident_counted(
+            &self,
+            tokens: &[u32],
+        ) -> Result<(Vec<f32>, GlmTrace, u64)> {
+            let rt = self.resident.as_ref().ok_or_else(|| {
+                Error::Gravity(
+                    "forward_resident_counted requires HAWKING_GLM_GPU_RESIDENT_STATE=1".into(),
+                )
+            })?;
+            let mut session = rt.session.lock().expect("resident session");
+            session.reset();
+            crate::gravity_glm_resident::forward_resident(
+                &self.weights,
+                &self.arch,
+                &mut session,
+                &rt.pool,
+                tokens,
+                0,
+            )
         }
 
         /// One decode step with the per-token cost ledger recording.
@@ -1634,6 +1781,45 @@ mod tests {
         let v = [0f32, 1.0, 2.0, 3.0];
         let got = rope_interleaved(&v, &[1.0, 1.0], &[0.0, 0.0]);
         assert_eq!(got, vec![0.0, 2.0, 1.0, 3.0]);
+    }
+
+    /// Resident-state flag defaults off so the host path stays the oracle.
+    #[test]
+    fn resident_state_flag_defaults_off() {
+        // Ensure we do not inherit a sticky env from another test in-process.
+        let prev = std::env::var_os(GPU_RESIDENT_STATE_ENV);
+        std::env::remove_var(GPU_RESIDENT_STATE_ENV);
+        assert!(!gpu_resident_state_enabled());
+        match prev {
+            Some(v) => std::env::set_var(GPU_RESIDENT_STATE_ENV, v),
+            None => std::env::remove_var(GPU_RESIDENT_STATE_ENV),
+        }
+    }
+
+    /// Static wait arithmetic for the flagship schedule. The campaign's
+    /// ~1,171 figure used a uniform 15 waits/layer; the precise schedule
+    /// (3 dense, 21 full-indexer, co-batched MoE) is lower. Resident co-issues
+    /// independent projections and is strictly below host-state. Neither is
+    /// command-buffer collapse (<=78).
+    #[test]
+    fn flagship_wait_estimates_match_the_ordering_constraint() {
+        let raw = std::fs::read(
+            Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("tests/fixtures/gravity_glm/flagship_arch.json"),
+        )
+        .expect("flagship_arch.json");
+        let header: serde_json::Value = serde_json::from_slice(&raw).unwrap();
+        let arch = GlmArch::from_header(&header).unwrap();
+        let host = estimate_host_state_waits_per_token(&arch);
+        let resident = estimate_resident_waits_per_token(&arch);
+        // Precise static count from the per-layer schedule (not 15×78).
+        assert_eq!(host, 763, "host-state static waits");
+        assert_eq!(resident, 583, "resident static waits");
+        assert!(resident < host);
+        // Collapse target is <=78; residency alone is not collapse.
+        assert!(resident > 78);
+        // The campaign's uniform 15×78+1 figure for comparison.
+        assert_eq!(15 * arch.n_layers + 1, 1171);
     }
 
     #[test]

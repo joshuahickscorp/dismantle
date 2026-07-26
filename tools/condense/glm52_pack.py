@@ -623,6 +623,10 @@ def pack_shard(shard_path: Path, rows: list[dict], out_dir: Path, *,
             # is versioned because shards 1-29 of this run were sealed under `v1_survey_
             # every_overridden_tensor`, and a reader must be able to tell which density a
             # given shard's survey rows were taken at.  Payload bytes are unaffected.
+            # Which k-means assignment arithmetic produced these codebooks. Both are
+            # correct; they are not byte-compatible, so a shard must say which one it used
+            # or the artifact is no longer reproducible from (seed, iters) alone.
+            "fit_kernel": forge.FIT_KERNEL,
             "ladder_survey": {
                 "schedule": "v2_target_rung_always_survey_every_nth_routed_expert",
                 "target_rung_coverage": "ALL_TENSORS",

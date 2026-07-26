@@ -835,6 +835,8 @@ mod imp {
             // v1.1.0-X simdgroup LM-head
             "gemv_f16_simdmat" => "gemv_f16_simdmat",
             "gemv_simdgroup_f32" => "gemv_simdgroup_f32",
+            // GLM native.bf16 lm_head (sequential accumulate, host parity)
+            "gemv_native_bf16_seq" => "gemv_native_bf16_seq",
             // v0.5.10 fp16 Q-format kernels
             "gemm_q4_k_m_fused_f16" => "gemm_q4_k_m_fused_f16",
             "moe_grouped_gemm_q4_f16" => "moe_grouped_gemm_q4_f16",

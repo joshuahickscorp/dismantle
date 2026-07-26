@@ -630,6 +630,27 @@ pub(crate) fn matvec_dense(w: &[f32], x: &[f32], name: &str) -> Result<Vec<f32>>
         .collect())
 }
 
+/// Host oracle for device `gemv_native_bf16_seq`: widen little-endian bf16
+/// the same way as [`widen_native`], then left-to-right f32 Σ per row via
+/// [`matvec_dense`]. Public so parity tests (and the GPU module) share one
+/// definition.
+pub fn matvec_bf16_host(weight_le: &[u8], cols: usize, x: &[f32]) -> Result<Vec<f32>> {
+    if x.len() != cols {
+        return Err(Error::Gravity(format!(
+            "matvec_bf16_host: x.len() {} != cols {cols}",
+            x.len()
+        )));
+    }
+    if cols == 0 || weight_le.len() % (cols * 2) != 0 {
+        return Err(Error::Gravity(format!(
+            "matvec_bf16_host: payload {} B is not a whole number of {cols}-wide bf16 rows",
+            weight_le.len()
+        )));
+    }
+    let w = widen_native("native.bf16", weight_le)?;
+    matvec_dense(&w, x, "lm_head.weight")
+}
+
 fn row_dense(w: &[f32], index: usize, cols: usize, name: &str) -> Result<Vec<f32>> {
     let start = index * cols;
     if start + cols > w.len() {
@@ -1037,6 +1058,14 @@ impl GravityWeights {
     /// only artifact large enough to need a GPU-resident cache in the first
     /// place, and Eager mode never retains raw bytes past decode.
     pub fn raw_payload(&self, name: &str) -> Result<(String, Vec<u8>)> {
+        let (codec, blob, _shape) = self.raw_payload_with_shape(name)?;
+        Ok((codec, blob))
+    }
+
+    /// Like [`raw_payload`], but also returns the descriptor shape so a
+    /// device-resident dense path (e.g. `lm_head.weight` as `native.bf16`)
+    /// can size the GEMV without decoding.
+    pub fn raw_payload_with_shape(&self, name: &str) -> Result<(String, Vec<u8>, Vec<u64>)> {
         match &self.source {
             Source::Eager(_) => Err(Error::Gravity(
                 "raw_payload: not available in Eager mode (decoded at open, raw bytes discarded)"
@@ -1049,13 +1078,13 @@ impl GravityWeights {
                 verify_hash,
                 ..
             } => Self::with_lazy_shard(shard_dir, tensor_shard, open_shards, name, |shard| {
-                let codec = shard
+                let d = shard
                     .descriptor(name)
-                    .expect("name came from this shard's own index")
-                    .codec
-                    .clone();
+                    .expect("name came from this shard's own index");
+                let codec = d.codec.clone();
+                let shape = d.shape.clone();
                 let blob = shard.read_tensor(name, *verify_hash)?;
-                Ok((codec, blob))
+                Ok((codec, blob, shape))
             }),
         }
     }

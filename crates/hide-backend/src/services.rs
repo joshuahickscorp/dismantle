@@ -1739,16 +1739,12 @@ impl BackendServices {
             }
         };
         let max_file_bytes = self.config.index.max_file_bytes;
-        let n = bounded_sqlite_ingest(
+        let _n = bounded_sqlite_ingest(
             &sqlite,
             &self.config.workspace_root,
             OPEN_INGEST_FILE_CAP,
             max_file_bytes,
         );
-        if n > 0 {
-            // Quiet in tests; useful when debugging a large open.
-            let _ = n;
-        }
         self.code_index = sqlite.clone();
         self.sqlite_index = Some(sqlite);
         self.memory_index = None;

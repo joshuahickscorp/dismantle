@@ -6482,8 +6482,11 @@ async fn run_turn_kernel(
         // Effect+approval round-trip: while the driver holds the run at
         // `Phase::Paused` with a `pending_approval`, surface the request once and
         // deliver any host decision from the `ApprovalHub`. We NEVER auto-approve:
-        // absent a decision the run stays paused (and eventually aborts on the
-        // Governor's step cap), exactly as before.
+        // absent a decision the run stays paused (and eventually leaves the loop
+        // when `max_steps` is exhausted). A tight no-yield spin would burn that
+        // budget in <1ms and make a concurrent `approve_effect`/`deny_effect`
+        // impossible to land; yield while parking so the live intent path can
+        // deposit into the hub.
         if state.phase == Phase::Paused {
             if let Some(request) = state.pending_approval.clone() {
                 if announced_approval.as_ref() != Some(&request.step_id) {
@@ -6516,7 +6519,15 @@ async fn run_turn_kernel(
                         .await?;
                         // A later effectful step re-announces (fresh step id).
                         announced_approval = None;
+                    } else {
+                        // Wrong step: keep parking (yield so a corrected intent
+                        // can arrive).
+                        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
                     }
+                } else {
+                    // Still waiting on the human/host: yield the runtime so a
+                    // concurrent handle_intent can deposit into the hub.
+                    tokio::time::sleep(std::time::Duration::from_millis(20)).await;
                 }
             }
         }
@@ -9859,6 +9870,18 @@ for line in sys.stdin:
                 && e.payload.get("decision").and_then(|v| v.as_str()) == Some("approve")),
             "an approval.resolved(approve) must be recorded"
         );
+        // (5) Answer surfacing (F2): a pure-edit turn still publishes a visible
+        // assistant answer (synthesized completion summary when no model text).
+        assert!(
+            events.iter().any(|e| e.kind == "agent.message"
+                && e.payload.get("role").and_then(|r| r.as_str()) == Some("assistant")
+                && e.payload
+                    .get("text")
+                    .and_then(|t| t.as_str())
+                    .map(|t| !t.trim().is_empty())
+                    .unwrap_or(false)),
+            "approved effectful turn must surface a non-empty assistant answer"
+        );
         let _ = std::fs::remove_dir_all(dir);
     }
 
@@ -9873,7 +9896,22 @@ for line in sys.stdin:
             "the deny path must still pause + surface the request"
         );
         // The Deny SKIPPED the step: the effect was never applied.
+        // This is the load-bearing assertion: a denial implemented as a bare
+        // clear of pending_approval would RESUME the step and write the file.
         assert!(!target.exists(), "deny must skip the effectful edit");
+        // The cursor step itself is marked Skipped (deny_pending_effect), not
+        // Completed.
+        let step_status = state
+            .plan
+            .as_ref()
+            .and_then(|p| p.steps.first())
+            .map(|s| s.status);
+        assert_eq!(
+            step_status,
+            Some(hide_kernel::plan::schema::StepStatus::Skipped),
+            "deny must mark the effectful step Skipped, got {:?}",
+            step_status
+        );
         // The run still resolved to a terminal phase (the skipped step drains the plan).
         assert!(
             state.phase.is_terminal(),
@@ -9990,6 +10028,227 @@ for line in sys.stdin:
             host.approvals().take(&run2),
             Some((None, ApprovalDecision::Deny)),
             "deny_effect deposits a Deny (step_id optional)"
+        );
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    /// Drive an effectful SuggestOnly turn concurrently with a live host intent.
+    /// The turn starts with an EMPTY hub; the decision is delivered only after
+    /// `approval.requested` is observed, via `BackendHost::handle_intent` (the
+    /// production intent path - never `ApprovalHub::decide` / never the state
+    /// methods directly). Returns terminal state, events, the effect target, the
+    /// temp dir, and whether the effect file exists at join time.
+    async fn drive_effectful_turn_via_live_intent(
+        approve: bool,
+    ) -> (AgentState, Vec<hide_core::event::Event>, PathBuf, PathBuf) {
+        use std::sync::atomic::{AtomicU64, Ordering};
+        use std::time::Duration;
+        static SEQ: AtomicU64 = AtomicU64::new(0);
+        let n = SEQ.fetch_add(1, Ordering::SeqCst);
+        let dir = std::env::temp_dir().join(format!("hide_live_intent_{}_{}", now_ms(), n));
+        std::fs::create_dir_all(dir.join("src")).unwrap();
+        std::fs::write(dir.join("Cargo.toml"), "[package]\nname=\"fx\"\n").unwrap();
+        let _ = std::process::Command::new("git")
+            .args(["init", "-q"])
+            .current_dir(&dir)
+            .output();
+
+        // Real host: the intent router and the hub the turn will drain share one
+        // process-local ApprovalHub.
+        let host = BackendHost::open_workspace(&dir).unwrap();
+        let services = host.services.clone();
+        let session = services.session();
+        let root = dir.to_string_lossy().to_string();
+        let target = dir.join("applied.txt");
+
+        let planner = Arc::new(EditPlanner {
+            target: target.to_string_lossy().to_string(),
+            content: EFFECT_CONTENT.to_string(),
+            oracle: "applied".to_string(),
+        });
+        let mut suite = hide_kernel::verify::OracleSuite::new();
+        suite.register(Arc::new(NoopPassOracle("applied")));
+        let dispatcher = hide_kernel::allow_all_dispatcher(root.clone());
+
+        let kernel = AgentKernel::builder(services.event_log.clone())
+            .workspace_root(root)
+            .autonomy(Autonomy::SuggestOnly)
+            .planner(planner as Arc<dyn hide_kernel::plan::planner::Planner>)
+            .dispatcher(dispatcher)
+            .oracle_suite(suite)
+            .build();
+
+        let ui_bus = host.ui_bus().clone();
+        let interrupts = host.interrupts().clone();
+        let approvals = host.approvals().clone();
+        let run_id = RunId::new();
+        let event_log = services.event_log.clone();
+        let key_value_store = services.key_value_store.clone();
+        let role_registry = services.role_registry.clone();
+        let code_index = services.code_index.clone();
+        let memory = services.memory_store.clone();
+        let repo_instructions = services.repo_instructions.clone();
+        let session_for_turn = session.clone();
+        let run_for_turn = run_id.clone();
+
+        // Start the production kernel loop with NO decision buffered. It must
+        // pause on the effectful edit and wait.
+        let turn = tokio::spawn(async move {
+            run_turn_kernel(
+                kernel,
+                event_log,
+                key_value_store,
+                role_registry,
+                code_index,
+                memory,
+                ui_bus,
+                interrupts,
+                approvals,
+                run_for_turn,
+                session_for_turn,
+                "http://127.0.0.1:9/unreachable".to_string(),
+                "apply the effect".to_string(),
+                128,
+                repo_instructions,
+            )
+            .await
+        });
+
+        // Wait until the pause is announced (durable event), then deliver the
+        // decision through the LIVE intent path.
+        let step_id = {
+            let mut found = None;
+            for _ in 0..200 {
+                let events = services
+                    .event_log
+                    .scan(Some(session.clone()), None, None)
+                    .await
+                    .unwrap();
+                if let Some(ev) = events.iter().find(|e| {
+                    e.kind == "approval.requested"
+                        && e.payload.get("run_id").and_then(|v| v.as_str())
+                            == Some(run_id.as_str())
+                }) {
+                    found = ev
+                        .payload
+                        .get("step_id")
+                        .and_then(|v| v.as_str())
+                        .map(StepId::from);
+                    break;
+                }
+                // The effect must not have run while we waited for the pause.
+                assert!(
+                    !target.exists(),
+                    "effect must not run before the live decision arrives"
+                );
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
+            found.expect("effectful SuggestOnly turn must surface approval.requested")
+        };
+
+        let name = if approve {
+            "approve_effect"
+        } else {
+            "deny_effect"
+        };
+        let ack = host
+            .handle_intent(Intent::Custom {
+                name: name.to_string(),
+                payload: json!({
+                    "run_id": run_id.as_str(),
+                    "step_id": step_id.as_str(),
+                }),
+            })
+            .await
+            .unwrap();
+        assert!(ack.accepted, "{name} intent must be accepted");
+
+        let state = turn
+            .await
+            .expect("turn task joins")
+            .expect("run_turn_kernel succeeds");
+        let events = services
+            .event_log
+            .scan(Some(session), None, None)
+            .await
+            .unwrap();
+        (state, events, target, dir)
+    }
+
+    #[tokio::test]
+    async fn deny_effect_live_intent_skips_effect_and_does_not_hang() {
+        // DENY FIRST (acceptance): a denial that only cleared pending_approval
+        // would resume into Act and write the file. This must fail that class of
+        // bug by asserting the side effect never happens AND the step is Skipped.
+        let (state, events, target, dir) = drive_effectful_turn_via_live_intent(false).await;
+
+        assert!(
+            events.iter().any(|e| e.kind == "approval.requested"),
+            "live deny path still pauses + surfaces the request"
+        );
+        assert!(
+            !target.exists(),
+            "deny_effect via live intent must never run the effectful edit"
+        );
+        let step_status = state
+            .plan
+            .as_ref()
+            .and_then(|p| p.steps.first())
+            .map(|s| s.status);
+        assert_eq!(
+            step_status,
+            Some(hide_kernel::plan::schema::StepStatus::Skipped),
+            "deny_pending_effect must mark the step Skipped, got {:?}",
+            step_status
+        );
+        assert!(
+            state.phase.is_terminal(),
+            "denied turn must continue to terminal (not hang in Paused), got {:?}",
+            state.phase
+        );
+        assert!(
+            events.iter().any(|e| e.kind == "approval.resolved"
+                && e.payload.get("decision").and_then(|v| v.as_str()) == Some("deny")),
+            "live deny must record approval.resolved(deny)"
+        );
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[tokio::test]
+    async fn approve_effect_live_intent_resumes_runs_effect_and_surfaces_answer() {
+        // APPROVE: pause is observed, approve_effect arrives through the live
+        // intent path, the same effectful step runs (file written), and F2
+        // answer surfacing publishes a non-empty assistant message.
+        let (state, events, target, dir) = drive_effectful_turn_via_live_intent(true).await;
+
+        assert!(
+            events.iter().any(|e| e.kind == "approval.requested"),
+            "live approve path still pauses + surfaces the request"
+        );
+        assert!(
+            target.exists(),
+            "approve_effect via live intent must let the effectful edit run"
+        );
+        assert_eq!(
+            std::fs::read_to_string(&target).unwrap(),
+            EFFECT_CONTENT,
+            "the approved edit wrote the expected content"
+        );
+        assert_eq!(state.phase, Phase::Done, "approved turn must finish Done");
+        assert!(
+            events.iter().any(|e| e.kind == "approval.resolved"
+                && e.payload.get("decision").and_then(|v| v.as_str()) == Some("approve")),
+            "live approve must record approval.resolved(approve)"
+        );
+        assert!(
+            events.iter().any(|e| e.kind == "agent.message"
+                && e.payload.get("role").and_then(|r| r.as_str()) == Some("assistant")
+                && e.payload
+                    .get("text")
+                    .and_then(|t| t.as_str())
+                    .map(|t| !t.trim().is_empty())
+                    .unwrap_or(false)),
+            "approved effectful turn must surface a non-empty assistant answer"
         );
         let _ = std::fs::remove_dir_all(dir);
     }

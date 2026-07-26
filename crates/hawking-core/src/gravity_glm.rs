@@ -811,6 +811,32 @@ pub fn gpu_resident_state_enabled() -> bool {
     crate::env_on(GPU_RESIDENT_STATE_ENV)
 }
 
+/// Opt-in collapse of one MoE/dense MLP layer to a **single** command buffer
+/// on the resident path: `gate` + `up` + device `silu_mul` + `down`, one
+/// `commit_and_wait`. Default off — the three-batch resident path remains
+/// the in-process parity oracle for the collapse itself.
+///
+/// Requires [`GPU_RESIDENT_STATE_ENV`]=1 (no parallel host-state mechanism).
+/// Host-state and the sealed Math-Preserve artifact are unchanged.
+pub const EXPERT_CB_COLLAPSE_ENV: &str = "HAWKING_GLM_EXPERT_CB_COLLAPSE";
+
+/// Whether [`EXPERT_CB_COLLAPSE_ENV`] requests one-CB expert/MLP layers.
+pub fn expert_cb_collapse_enabled() -> bool {
+    crate::env_on(EXPERT_CB_COLLAPSE_ENV)
+}
+
+/// Static `commit_and_wait` count **from `batched_mlp` alone** without collapse:
+/// three batches (gate / up / down) per layer → `3 * n_layers`.
+pub fn estimate_mlp_batch_waits_per_token(arch: &GlmArch) -> u64 {
+    3 * arch.n_layers as u64
+}
+
+/// Static `commit_and_wait` count **from the collapsed MLP** alone:
+/// one command buffer per layer → `n_layers` (flagship: 78).
+pub fn estimate_mlp_collapsed_waits_per_token(arch: &GlmArch) -> u64 {
+    arch.n_layers as u64
+}
+
 /// Static `commit_and_wait` count on the host-state GPU path (default).
 /// Matches the measured ~1,171 figure on the flagship schedule.
 pub fn estimate_host_state_waits_per_token(arch: &GlmArch) -> u64 {
@@ -832,10 +858,18 @@ pub fn estimate_host_state_waits_per_token(arch: &GlmArch) -> u64 {
 /// Static `commit_and_wait` count on the resident-state path.
 ///
 /// Attention projections that share a dependency rank are co-issued (q_a with
-/// kv_a, q_b with kv_b); expert gate/up/down stay three batched waits like the
-/// host path, with the residual / KV living on device between them. Live counts
-/// come from the resident forward's wait counter when a device is available.
+/// kv_a, q_b with kv_b). Without [`EXPERT_CB_COLLAPSE_ENV`], expert gate/up/down
+/// stay three batched waits like the host path. With collapse, each MLP layer
+/// is one wait (device `silu_mul` removes the host drain between up and down).
+/// Live counts come from the resident forward's wait counter when a device is
+/// available.
 pub fn estimate_resident_waits_per_token(arch: &GlmArch) -> u64 {
+    estimate_resident_waits_per_token_with(arch, expert_cb_collapse_enabled())
+}
+
+/// Static resident waits with an explicit collapse choice (parity tests force
+/// both sides without fighting the process environment).
+pub fn estimate_resident_waits_per_token_with(arch: &GlmArch, expert_collapse: bool) -> u64 {
     let mut waits = 0u64;
     for layer in 0..arch.n_layers {
         // Co-issued q_a+kv_a, then q_b+kv_b, then o_proj.
@@ -845,10 +879,13 @@ pub fn estimate_resident_waits_per_token(arch: &GlmArch) -> u64 {
             waits += 2;
         }
         match arch.mlp_layer_types[layer].as_str() {
-            "dense" => waits += 2, // gate+up, then down
+            "dense" => {
+                // Collapse: one CB (gate+up+silu+down). Else: gate+up, then down.
+                waits += if expert_collapse { 1 } else { 2 };
+            }
             "sparse" => {
-                // router + three expert batches (gate/up/down, routed+shared)
-                waits += 1 + 3;
+                // router + (collapsed one expert CB | three gate/up/down batches)
+                waits += if expert_collapse { 1 + 1 } else { 1 + 3 };
             }
             _ => {}
         }
@@ -1799,8 +1836,8 @@ mod tests {
     /// Static wait arithmetic for the flagship schedule. The campaign's
     /// ~1,171 figure used a uniform 15 waits/layer; the precise schedule
     /// (3 dense, 21 full-indexer, co-batched MoE) is lower. Resident co-issues
-    /// independent projections and is strictly below host-state. Neither is
-    /// command-buffer collapse (<=78).
+    /// independent projections and is strictly below host-state. Expert CB
+    /// collapse is a separate lever on top of residency.
     #[test]
     fn flagship_wait_estimates_match_the_ordering_constraint() {
         let raw = std::fs::read(
@@ -1811,15 +1848,50 @@ mod tests {
         let header: serde_json::Value = serde_json::from_slice(&raw).unwrap();
         let arch = GlmArch::from_header(&header).unwrap();
         let host = estimate_host_state_waits_per_token(&arch);
-        let resident = estimate_resident_waits_per_token(&arch);
+        // Force the no-collapse resident figure regardless of process env.
+        let resident = estimate_resident_waits_per_token_with(&arch, false);
+        let collapsed = estimate_resident_waits_per_token_with(&arch, true);
         // Precise static count from the per-layer schedule (not 15×78).
         assert_eq!(host, 763, "host-state static waits");
-        assert_eq!(resident, 583, "resident static waits");
+        assert_eq!(resident, 583, "resident static waits (no expert collapse)");
+        assert_eq!(collapsed, 430, "resident + expert CB collapse");
         assert!(resident < host);
-        // Collapse target is <=78; residency alone is not collapse.
-        assert!(resident > 78);
+        assert!(collapsed < resident);
+        // MLP function alone: 3 waits/layer → 1 wait/layer (234 → 78).
+        assert_eq!(estimate_mlp_batch_waits_per_token(&arch), 234);
+        assert_eq!(estimate_mlp_collapsed_waits_per_token(&arch), 78);
         // The campaign's uniform 15×78+1 figure for comparison.
         assert_eq!(15 * arch.n_layers + 1, 1171);
+    }
+
+    /// Host `silu_mul` formula — device kernel must match bit-for-bit.
+    ///
+    /// Formula: `out[i] = (g / (1 + exp(-g))) * up[i]` with f32 `exp`, one
+    /// multiply, no extra accumulation. Element order is sequential index
+    /// order (no reduction). Same expression as `gravity_silu_mul_f32` and
+    /// the host path in this module.
+    #[test]
+    fn silu_mul_formula_is_sigmoid_times_up() {
+        let gate = [0.0f32, 1.0, -1.0, 2.5, -3.0, 0.125];
+        let up = [1.0f32, 2.0, 3.0, -0.5, 4.0, 0.25];
+        let got = silu_mul(&gate, &up);
+        for i in 0..gate.len() {
+            let g = gate[i];
+            let want = (g / (1.0 + (-g).exp())) * up[i];
+            assert_eq!(got[i], want, "index {i}");
+        }
+    }
+
+    /// Collapse flag defaults off so the three-batch path stays the oracle.
+    #[test]
+    fn expert_cb_collapse_flag_defaults_off() {
+        let prev = std::env::var_os(EXPERT_CB_COLLAPSE_ENV);
+        std::env::remove_var(EXPERT_CB_COLLAPSE_ENV);
+        assert!(!expert_cb_collapse_enabled());
+        match prev {
+            Some(v) => std::env::set_var(EXPERT_CB_COLLAPSE_ENV, v),
+            None => std::env::remove_var(EXPERT_CB_COLLAPSE_ENV),
+        }
     }
 
     #[test]

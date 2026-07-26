@@ -52,6 +52,16 @@ pub struct ContextManifest {
     /// ages (RWKV recall fidelity). None until the runtime reports it.
     #[serde(default)]
     pub live: Option<ManifestLive>,
+    /// Honest capability declaration for this turn (campaign §7.3). Never
+    /// confuses retrieval/compaction usable context with the native window.
+    #[serde(default)]
+    pub capability: Option<crate::capability::ContextCapability>,
+    /// Context-rot report for the agent loop (campaign §7.3).
+    #[serde(default)]
+    pub rot: Option<crate::rot::ContextRotReport>,
+    /// Auditable context meter: numbers plus explanations.
+    #[serde(default)]
+    pub meter: Option<ContextMeter>,
 }
 
 impl ContextManifest {
@@ -73,6 +83,91 @@ impl ContextManifest {
             kv: ManifestKv::default(),
             compaction_events: Vec::new(),
             live: None,
+            capability: None,
+            rot: None,
+            meter: None,
+        }
+    }
+}
+
+/// Auditable context meter: the numbers a user/loop sees, with explanations
+/// so a figure can never stand alone without saying *why* it is that figure.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct ContextMeter {
+    pub native_tokens: Option<usize>,
+    pub effective_tokens: Option<usize>,
+    pub used_tokens: usize,
+    pub free_tokens: Option<usize>,
+    pub occupancy: Option<f32>,
+    pub watermark: Option<WatermarkLevel>,
+    /// True when used/occupancy is an estimate (chars/4 or partial stream).
+    pub used_estimated: bool,
+    /// Lines that explain every figure above. A meter that cannot explain
+    /// itself is not auditable.
+    pub explanations: Vec<String>,
+}
+
+impl ContextMeter {
+    /// Build a meter from the capability declaration, budget, and optional live
+    /// reading. Always distinguishes native from effective.
+    pub fn from_parts(
+        capability: &crate::capability::ContextCapability,
+        used_tokens: usize,
+        used_estimated: bool,
+        live: Option<&ManifestLive>,
+        rot: Option<&crate::rot::ContextRotReport>,
+    ) -> Self {
+        let native = capability.native_maximum.tokens;
+        let effective = capability.effective_ceiling.tokens;
+        let free = effective
+            .or(native)
+            .map(|ceil| ceil.saturating_sub(used_tokens));
+        let (occupancy, watermark) = match live {
+            Some(l) => (Some(l.occupancy), Some(l.watermark)),
+            None => {
+                let occ = effective.or(native).filter(|c| *c > 0).map(|c| {
+                    (used_tokens as f32 / c as f32).clamp(0.0, 1.0)
+                });
+                let wm = occ.map(WatermarkLevel::for_occupancy);
+                (occ, wm)
+            }
+        };
+
+        let mut explanations = capability.explanations.clone();
+        explanations.push(format!(
+            "used_tokens={used_tokens}{}",
+            if used_estimated {
+                " (estimated; not tokenizer-true this reading)"
+            } else {
+                " (from compile counter)"
+            }
+        ));
+        if let Some(f) = free {
+            explanations.push(format!("free_tokens≈{f} against effective/native ceiling"));
+        }
+        if let Some(o) = occupancy {
+            explanations.push(format!(
+                "occupancy={o:.2} watermark={:?}",
+                watermark.unwrap_or_default()
+            ));
+        }
+        if let Some(r) = rot {
+            explanations.extend(r.explanations.iter().cloned());
+        }
+        // Hard rule, restated on every meter so UI never conflates the two.
+        explanations.push(
+            "usable context (retrieval+compaction) is not native_maximum".into(),
+        );
+
+        Self {
+            native_tokens: native,
+            effective_tokens: effective,
+            used_tokens,
+            free_tokens: free,
+            occupancy,
+            watermark,
+            used_estimated,
+            explanations,
         }
     }
 }
@@ -364,6 +459,20 @@ pub struct CompactionEvent {
     /// True when the RecallOracle reverted this compaction (recall regressed).
     #[serde(default)]
     pub rolled_back: bool,
+    /// Original pre-compaction body, archived so compaction is reversible.
+    /// Verification and the recall gate can restore evidence the compacted
+    /// rendering dropped. Empty / absent only for rolled-back events that
+    /// never replaced the original in the window.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub original_text: Option<String>,
+}
+
+impl CompactionEvent {
+    /// Restore the pre-compaction body when archived. Returns `None` when the
+    /// event has no archive (legacy manifests / rolled-back keepers).
+    pub fn restore_original(&self) -> Option<&str> {
+        self.original_text.as_deref().filter(|s| !s.is_empty())
+    }
 }
 
 #[cfg(test)]

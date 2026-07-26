@@ -680,6 +680,9 @@ impl ContextCompiler {
                 let original_id = e.cand.id.clone();
                 let result_id = span_content_id(&e.cand.source, &e.cand.title, &text);
                 let ratio = tokens as f32 / cost.max(1) as f32;
+                // Archive the pre-compaction body so compaction is reversible:
+                // verification (and a later restore) can recover evidence the
+                // degrade path dropped. `e.cand.text` is still the original.
                 let cf = if compacted {
                     compaction.push(CompactionEvent {
                         original_id: original_id.clone(),
@@ -690,6 +693,7 @@ impl ContextCompiler {
                         depth: 1,
                         recall_score,
                         rolled_back: false,
+                        original_text: Some(e.cand.text.clone()),
                     });
                     Some(crate::manifest::CompactedFrom {
                         original_id,
@@ -700,6 +704,7 @@ impl ContextCompiler {
                 } else {
                     if rolled_back {
                         // Record the reverted compaction for telemetry (original kept, no compacted span).
+                        // Archive still retained so a later audit can see what was almost lost.
                         compaction.push(CompactionEvent {
                             original_id: original_id.clone(),
                             result_id,
@@ -709,6 +714,7 @@ impl ContextCompiler {
                             depth: 1,
                             recall_score,
                             rolled_back: true,
+                            original_text: Some(e.cand.text.clone()),
                         });
                     }
                     None
@@ -1062,6 +1068,58 @@ mod tests {
             !dc.text.contains("masked"),
             "code should be truncated, not masked"
         );
+    }
+
+    #[tokio::test]
+    async fn compaction_archives_original_for_reversible_restore() {
+        // Pin a bulky never-evict span so the degrade ladder must compact it;
+        // the original body must be archived on CompactionEvent for restore.
+        let original = format!(
+            "unique_needle_alpha must survive archive\n{}\nunique_needle_beta also required",
+            "padding line with enough content to force degrade ".repeat(80)
+        );
+        let mut cand = ContextCandidate::new(
+            "pinned-bulky",
+            ContextSourceKind::Code,
+            "pinned-bulky",
+            original.clone(),
+            1.0,
+            Provenance::trusted("test"),
+        );
+        cand.pin = PinState::NeverEvict;
+        let mut compiler = ContextCompiler::new();
+        compiler.add_source(StaticSource(vec![cand]));
+        let compiled = compiler
+            .compile(CompileInput {
+                // Tiny window forces degrade-to-fit on the pin.
+                profile: ContextProfile::tight(48),
+                model: model(48),
+                task: "unique_needle_alpha".to_string(),
+            })
+            .await
+            .unwrap();
+        let events = &compiled.manifest.compaction_events;
+        // Either a standing compaction or a recall-gated rollback — both archive.
+        assert!(
+            !events.is_empty()
+                || compiled
+                    .manifest
+                    .retained
+                    .iter()
+                    .any(|s| s.compacted_from.is_some()),
+            "expected a compaction or compacted retained span; events={events:?} retained={:?}",
+            compiled.manifest.retained
+        );
+        if let Some(ev) = events.first() {
+            let restored = ev
+                .restore_original()
+                .expect("original_text must be archived for reversible compaction");
+            assert!(
+                restored.contains("unique_needle_alpha"),
+                "archive must preserve the pre-compaction evidence"
+            );
+            assert_eq!(restored, original);
+        }
     }
 
     #[tokio::test]

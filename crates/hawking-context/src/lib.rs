@@ -7,6 +7,7 @@
 //! reuse-banking seam to `hawking-serve`.
 
 pub mod budget;
+pub mod capability;
 pub mod compiler;
 pub mod embed;
 pub mod fidelity;
@@ -15,9 +16,13 @@ pub mod manifest;
 pub mod memory;
 pub mod profiles;
 pub mod recall;
+pub mod rot;
 pub mod sources;
 
 pub use budget::{estimate_tokens, RegionBudget, Reservations, TokenBudget, TokenCounter};
+pub use capability::{
+    CompactionMode, ContextCapability, CurvePoint, DeclaredNumber, NumberSource, RetrievalMode,
+};
 pub use compiler::{
     CompileInput, CompiledContext, ContextCandidate, ContextCompiler, ContextSource, RealizedSpan,
 };
@@ -28,8 +33,8 @@ pub use kv::{
     RestoredSession, SlotId, StubKvStore, WorkingSetBudget,
 };
 pub use manifest::{
-    ContextManifest, ContextSourceKind, ContextSpan, DropReason, DroppedContextSpan, PinState,
-    SpanSignals,
+    CompactionEvent, ContextManifest, ContextMeter, ContextSourceKind, ContextSpan, DropReason,
+    DroppedContextSpan, ManifestLive, PinState, SpanSignals, WatermarkLevel,
 };
 pub use memory::{
     InMemoryMemoryStore, MemoryKind, MemoryQuery, MemoryRecord, MemoryStore, RankedMemory,
@@ -39,3 +44,4 @@ pub use profiles::{
     ContextProfile, EvictionChoice, KvPrecision, OrderingPolicy, PositionPolicy, SourceWeights,
     WorkingSetMode,
 };
+pub use rot::{detect_context_rot, ContextRotReport, RotSeverity, RotSignal, RotThresholds};

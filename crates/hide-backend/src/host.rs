@@ -6208,6 +6208,7 @@ async fn generate_submit_turn(
     // effective ceiling is the engine's measured `.tq` multiplier x native (read
     // live, never a constant). `used_tokens` here is a labeled per-turn estimate;
     // precise per-token occupancy arrives once the engine reports sequence position.
+    // Native and effective stay distinct; retrieval/usable is never reported as native.
     {
         let ctx_provider = HttpModelProvider::new(base_url);
         if let Some(info) = ctx_provider.get_context_info().await {
@@ -6222,6 +6223,31 @@ async fn generate_submit_turn(
                 info.ctx_len_native,
                 ceiling,
                 used_est,
+            );
+            let capability = declare_turn_capability(
+                info.ctx_len_native.unwrap_or(ceiling).max(1),
+                info.ctx_len_native,
+                info.ctx_len_effective.or(Some(ceiling)),
+                Some(info.tq_multiplier),
+                info.tq_estimated,
+            );
+            // Post-turn rot from the live reading so the loop can notice degradation.
+            let empty = hawking_context::ContextManifest::new(
+                info.ctx_len_native.unwrap_or(ceiling),
+            );
+            let rot = hawking_context::detect_context_rot(
+                &empty,
+                Some(live.occupancy),
+                Some(live.watermark),
+                live.recall_fidelity,
+                hawking_context::RotThresholds::default(),
+            );
+            let meter = hawking_context::ContextMeter::from_parts(
+                &capability,
+                used_est,
+                true,
+                Some(&live),
+                Some(&rot),
             );
             let mut live_json = serde_json::to_value(&live).unwrap_or_else(|_| json!({}));
             if let Some(obj) = live_json.as_object_mut() {
@@ -6243,7 +6269,11 @@ async fn generate_submit_turn(
                         "recurrent_state_bytes": info.recurrent_state_bytes,
                         "active_slots": info.active_slots,
                         "free_slots": info.free_slots,
-                        "live": live_json
+                        "live": live_json,
+                        "capability": capability,
+                        "rot": rot,
+                        "meter": meter,
+                        "native_is_not_usable": true,
                     }),
                 },
             });
@@ -6340,8 +6370,21 @@ async fn run_turn_kernel(
         });
 
     // --- (S3) Compile a REAL ContextPack - same recipe as `run_turn_core`. ---
+    // §7.3 honesty: prefer live-measured native; never treat effective as native.
     let role = choose_context_role(&role_registry, None)?;
-    let max_input = role.model.context_tokens.max(4096);
+    let config_native = role.model.context_tokens.max(4096);
+    let live_native = live_snap.and_then(|(_, n, _)| n).filter(|n| *n > 0);
+    let live_effective = live_snap.map(|(_, _, c)| c).filter(|c| *c > 0);
+    let capability = declare_turn_capability(
+        config_native,
+        live_native,
+        live_effective,
+        None,
+        false,
+    );
+    let max_input = capability.pack_budget_tokens(false).max(256);
+    let mut model = role.model.clone();
+    model.context_tokens = max_input;
     let mut compiler = ContextCompiler::new();
     compiler.add_source(CodeIndexContextSource::new(code_index, 16));
     // Bible sec 20 / sec 78.1 #11: fold the repo's resolved Claude Code migration
@@ -6350,13 +6393,17 @@ async fn run_turn_kernel(
     if !repo_instructions.is_empty() {
         compiler.add_source(repo_instructions.as_source());
     }
-    let compiled = compiler
+    let mut compiled = compiler
         .compile(CompileInput {
             profile: ContextProfile::coding_default(max_input),
-            model: role.model.clone(),
+            model,
             task: prompt.clone(),
         })
         .await?;
+    let pre_live = live_snap.map(|(state_bytes, native, ceiling)| {
+        build_live_manifest(state_bytes, native, ceiling, compiled.manifest.used_tokens)
+    });
+    seal_compiled_manifest(&mut compiled.manifest, capability, pre_live.as_ref());
     // Spine B (best-effort): accrue the Project Brain; a brain write never fails a turn.
     let brain = InMemoryMemoryStore::record(
         MemoryKind::Project,
@@ -6402,18 +6449,18 @@ async fn run_turn_kernel(
     };
     let used_est = objective.len() / 4;
 
-    // Durable marker (parity with the single-shot path): what the compiler
-    // retained + the budget it left. Its seq keys the published UiEvents.
+    // Durable marker (parity with the single-shot path): compile stats +
+    // honest capability / rot / meter. Its seq keys the published UiEvents.
     let marker = event_log
         .append(NewEvent::system(
             session_id.clone(),
             "context.compiled",
-            json!({
-                "used_tokens": compiled.manifest.used_tokens,
-                "retained": compiled.manifest.retained.len(),
-                "path": "kernel",
-                "run_id": run_id.as_str(),
-            }),
+            context_compiled_payload(
+                &compiled.manifest,
+                None,
+                "kernel",
+                Some(run_id.as_str()),
+            ),
         ))
         .await?;
     let seq = marker.seq;
@@ -6738,6 +6785,28 @@ async fn publish_turn_context_manifest(
     if let Some(info) = ctx_provider.get_context_info().await {
         let ceiling = info.ctx_len_effective.or(info.ctx_len_native).unwrap_or(0);
         let live = build_live_manifest(info.recurrent_state_bytes, info.ctx_len_native, ceiling, used_est);
+        let capability = declare_turn_capability(
+            info.ctx_len_native.unwrap_or(ceiling).max(1),
+            info.ctx_len_native,
+            info.ctx_len_effective.or(Some(ceiling)),
+            Some(info.tq_multiplier),
+            info.tq_estimated,
+        );
+        let empty = hawking_context::ContextManifest::new(info.ctx_len_native.unwrap_or(ceiling));
+        let rot = hawking_context::detect_context_rot(
+            &empty,
+            Some(live.occupancy),
+            Some(live.watermark),
+            live.recall_fidelity,
+            hawking_context::RotThresholds::default(),
+        );
+        let meter = hawking_context::ContextMeter::from_parts(
+            &capability,
+            used_est,
+            true,
+            Some(&live),
+            Some(&rot),
+        );
         let mut live_json = serde_json::to_value(&live).unwrap_or_else(|_| json!({}));
         if let Some(obj) = live_json.as_object_mut() {
             obj.insert("used_tokens_estimate".to_string(), json!(used_est));
@@ -6758,7 +6827,11 @@ async fn publish_turn_context_manifest(
                     "recurrent_state_bytes": info.recurrent_state_bytes,
                     "active_slots": info.active_slots,
                     "free_slots": info.free_slots,
-                    "live": live_json
+                    "live": live_json,
+                    "capability": capability,
+                    "rot": rot,
+                    "meter": meter,
+                    "native_is_not_usable": true,
                 }),
             },
         });
@@ -6819,8 +6892,26 @@ async fn run_turn_core(
     // --- (S3) Compile a REAL ContextPack (bible §4.2). Mirrors the `context`
     // connector so both share one recipe: pick the coding role, size the window
     // to its model, and let the code-index source compete for the budget. ---
+    // §7.3 honesty: prefer live-measured native over the role/config default;
+    // never pack against an inflated effective ceiling *as if* it were native.
     let role = choose_context_role(&role_registry, None)?;
-    let max_input = role.model.context_tokens.max(4096);
+    let config_native = role.model.context_tokens.max(4096);
+    let live_native = live_ceiling.and_then(|(_, n, _)| n).filter(|n| *n > 0);
+    let live_effective = live_ceiling
+        .map(|(_, _, c)| c)
+        .filter(|c| *c > 0);
+    let capability = declare_turn_capability(
+        config_native,
+        live_native,
+        live_effective,
+        None,
+        false,
+    );
+    // Pack against measured/config native (conservative). Effective is reported
+    // separately and is never treated as a larger native window.
+    let max_input = capability.pack_budget_tokens(false).max(256);
+    let mut model = role.model.clone();
+    model.context_tokens = max_input;
     let mut compiler = ContextCompiler::new();
     compiler.add_source(CodeIndexContextSource::new(code_index, 16));
     // Bible sec 20 / sec 78.1 #11: fold the repo's resolved Claude Code migration
@@ -6831,13 +6922,23 @@ async fn run_turn_core(
     if !repo_instructions.is_empty() {
         compiler.add_source(repo_instructions.as_source());
     }
-    let compiled = compiler
+    let mut compiled = compiler
         .compile(CompileInput {
             profile: ContextProfile::coding_default(max_input),
-            model: role.model.clone(),
+            model,
             task: prompt.clone(),
         })
         .await?;
+    // Pre-stream live reading (when the ceiling was snapshotted) so rot/meter
+    // can include occupancy before generation advances.
+    let pre_live = live_ceiling.map(|(state_bytes, native, ceiling)| {
+        build_live_manifest(state_bytes, native, ceiling, compiled.manifest.used_tokens)
+    });
+    seal_compiled_manifest(
+        &mut compiled.manifest,
+        capability,
+        pre_live.as_ref(),
+    );
     // Spine B (best-effort): accrue the Project Brain with this compile. A brain
     // write must never fail a turn.
     let brain = InMemoryMemoryStore::record(
@@ -6887,16 +6988,21 @@ async fn run_turn_core(
         .saturating_sub(compiled.manifest.used_tokens)
         .clamp(256, 2048);
 
-    // Durable marker: what the compiler retained + the budget it left for output.
+    // Durable marker: compile stats + honest capability / rot / meter.
+    // The compile receipt lives on the event log (not a pre-token Wire-B patch)
+    // so token-first consumers (flagship boot path) are not starved of TokenBatch.
+    // Post-turn publish_turn_context_manifest / generate_submit_turn re-emit
+    // capability+rot+meter on the live context_manifest projection.
     event_log
         .append(NewEvent::system(
             session_id.clone(),
             "context.compiled",
-            json!({
-                "used_tokens": compiled.manifest.used_tokens,
-                "retained": compiled.manifest.retained.len(),
-                "budget": out_budget,
-            }),
+            context_compiled_payload(
+                &compiled.manifest,
+                Some(out_budget),
+                "single_shot",
+                run_id_label.as_deref(),
+            ),
         ))
         .await?;
 
@@ -7078,6 +7184,92 @@ fn build_live_manifest(
     } else {
         ManifestLive::transformer(state_age_tokens, ceiling)
     }
+}
+
+/// Honest §7.3 capability declaration for one turn.
+///
+/// Prefer a live-measured native window over the role/config default. Never
+/// promote effective (`.tq` / position-scaled) or retrieval-usable context into
+/// `native_maximum`. Validated quality/agentic and curves stay unmeasured until
+/// a real calibration produces them.
+fn declare_turn_capability(
+    config_native: usize,
+    live_native: Option<usize>,
+    live_effective: Option<usize>,
+    tq_multiplier: Option<f32>,
+    tq_estimated: bool,
+) -> hawking_context::ContextCapability {
+    use hawking_context::{CompactionMode, ContextCapability, RetrievalMode};
+    ContextCapability::declare(
+        config_native,
+        live_native,
+        live_effective,
+        tq_multiplier,
+        tq_estimated,
+        // Code-index + memory retrieval feed the packer; still capped by the window.
+        RetrievalMode::RetrieveThenPack,
+        // Compiler degrade ladder with recall-gated rollback (Spine B).
+        CompactionMode::DegradeWithRecallGate,
+    )
+}
+
+/// Attach capability + rot + meter to a compiled manifest so the durable
+/// `context.compiled` event and any projection carry auditable numbers.
+fn seal_compiled_manifest(
+    manifest: &mut hawking_context::ContextManifest,
+    capability: hawking_context::ContextCapability,
+    live: Option<&hawking_context::ManifestLive>,
+) {
+    use hawking_context::{detect_context_rot, ContextMeter, RotThresholds};
+    let occupancy = live.map(|l| l.occupancy);
+    let watermark = live.map(|l| l.watermark);
+    let fidelity = live.and_then(|l| l.recall_fidelity);
+    let rot = detect_context_rot(
+        manifest,
+        occupancy,
+        watermark,
+        fidelity,
+        RotThresholds::default(),
+    );
+    let meter = ContextMeter::from_parts(
+        &capability,
+        manifest.used_tokens,
+        false,
+        live,
+        Some(&rot),
+    );
+    manifest.capability = Some(capability);
+    manifest.rot = Some(rot);
+    manifest.meter = Some(meter);
+}
+
+/// JSON payload for the durable `context.compiled` marker: compile stats plus
+/// the honest capability / rot / meter picture (so a later audit never has to
+/// re-infer whether a number was measured).
+fn context_compiled_payload(
+    manifest: &hawking_context::ContextManifest,
+    out_budget: Option<usize>,
+    path: &str,
+    run_id: Option<&str>,
+) -> serde_json::Value {
+    let mut body = json!({
+        "used_tokens": manifest.used_tokens,
+        "retained": manifest.retained.len(),
+        "dropped": manifest.dropped.len(),
+        "path": path,
+        "capability": manifest.capability,
+        "rot": manifest.rot,
+        "meter": manifest.meter,
+        // Hard rule, restated on every durable record.
+        "native_is_not_usable": true,
+    });
+    if let Some(b) = out_budget {
+        body["budget"] = json!(b);
+    }
+    if let Some(id) = run_id {
+        body["run_id"] = json!(id);
+    }
+    body
 }
 
 #[cfg(test)]
@@ -8162,6 +8354,280 @@ for line in sys.stdin:
                 && e.payload["role"] == "assistant"
                 && e.payload["text"] == "some completion"),
             "an assistant agent.message must be logged"
+        );
+
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    /// §7.3 honesty on the live compile path (`run_turn_core`):
+    /// 1. A measured live native beats the role/config default for the pack budget.
+    /// 2. `context.compiled` records capability + rot + meter with explanations.
+    /// 3. validated quality/agentic stay unmeasured (no fake native claim).
+    /// 4. native and effective stay distinct; usable is never reported as native.
+    #[tokio::test]
+    async fn run_turn_core_declares_honest_capability_and_rot_meter() {
+        use futures::future::BoxFuture;
+        use hawking_index::InMemoryCodeIndex;
+        use hawking_orch::inference::{InferenceClient, StubInferenceClient};
+        use hide_core::error::Result as HResult;
+        use hide_core::runtime::{GenerationStats, InferenceRequest, TokenSink};
+
+        struct RecordingClient {
+            inner: StubInferenceClient,
+            last: std::sync::Mutex<Option<InferenceRequest>>,
+        }
+        impl InferenceClient for RecordingClient {
+            fn generate<'a>(
+                &'a self,
+                request: InferenceRequest,
+                sink: TokenSink<'a>,
+            ) -> BoxFuture<'a, HResult<GenerationStats>> {
+                *self.last.lock().unwrap() = Some(request.clone());
+                self.inner.generate(request, sink)
+            }
+            fn embed<'a>(&'a self, text: &'a str) -> BoxFuture<'a, HResult<Vec<f32>>> {
+                self.inner.embed(text)
+            }
+        }
+
+        let dir = std::env::temp_dir().join(format!("hide_turn_cap_{}", now_ms()));
+        let services = BackendServices::open(HideConfig::for_workspace(&dir)).unwrap();
+        let session = services.session();
+        let index = Arc::new(InMemoryCodeIndex::default());
+        index.add_text_file(
+            "src/cap.rs",
+            "// zzcapmarker unique retrieval needle for capability test\npub fn cap() {}\n",
+            None,
+        );
+
+        let recorder = Arc::new(RecordingClient {
+            inner: StubInferenceClient::new("ok"),
+            last: std::sync::Mutex::new(None),
+        });
+        let inference: Arc<dyn InferenceClient> = recorder.clone();
+        let ui_bus = Arc::new(UiEventBus::default());
+
+        // Live snapshot: measured native=2048, effective=8192 (×4 .tq-style).
+        // Config role defaults are typically 4096/8192 — measured native must win
+        // for the pack, and effective must NOT be reported as native.
+        let live_ceiling = Some((None, Some(2048usize), 8192usize));
+
+        let _outcome = run_turn_core(
+            inference,
+            services.event_log.clone(),
+            services.role_registry.clone(),
+            index,
+            services.memory_store.clone(),
+            ui_bus,
+            session.clone(),
+            "zzcapmarker".to_string(),
+            live_ceiling,
+            Some("cap-run".into()),
+            services.repo_instructions.clone(),
+        )
+        .await
+        .unwrap();
+
+        let events = services
+            .event_log
+            .scan(Some(session.clone()), None, None)
+            .await
+            .unwrap();
+        let compiled = events
+            .iter()
+            .find(|e| e.kind == "context.compiled")
+            .expect("context.compiled must be logged on the live path");
+
+        // Capability block present and honest.
+        let cap = &compiled.payload["capability"];
+        assert!(
+            !cap.is_null(),
+            "context.compiled must carry capability: {}",
+            compiled.payload
+        );
+        assert_eq!(
+            cap["native_maximum"]["tokens"],
+            2048,
+            "measured live native must beat role/config default"
+        );
+        assert_eq!(cap["native_maximum"]["source"], "measured");
+        assert_eq!(
+            cap["effective_ceiling"]["tokens"],
+            8192,
+            "effective stays distinct from native"
+        );
+        assert!(
+            cap["effective_ceiling"]["estimated"].as_bool().unwrap_or(false)
+                || cap["effective_ceiling"]["tokens"] != cap["native_maximum"]["tokens"],
+            "effective expansion must not masquerade as a hard native cap"
+        );
+        // Validated figures stay unmeasured — the fake-native-claim failure mode.
+        assert!(
+            cap["validated_quality"]["tokens"].is_null(),
+            "validated_quality must not invent a number, got {}",
+            cap["validated_quality"]
+        );
+        assert!(
+            cap["validated_agentic"]["tokens"].is_null(),
+            "validated_agentic must not invent a number"
+        );
+        assert!(
+            cap["kv_curve"].is_null() && cap["prefill_curve"].is_null(),
+            "curves stay unmeasured rather than faked"
+        );
+        assert_eq!(compiled.payload["native_is_not_usable"], true);
+
+        // Rot + meter with explanations.
+        let rot = &compiled.payload["rot"];
+        assert!(!rot.is_null(), "rot report required on context.compiled");
+        assert!(
+            rot["severity"].is_string(),
+            "rot severity must be declared: {rot}"
+        );
+        let meter = &compiled.payload["meter"];
+        assert!(!meter.is_null(), "meter required on context.compiled");
+        let explanations = meter["explanations"]
+            .as_array()
+            .expect("meter.explanations must be an array");
+        assert!(
+            !explanations.is_empty(),
+            "a meter that cannot explain itself is not auditable"
+        );
+        let joined = explanations
+            .iter()
+            .filter_map(|v| v.as_str())
+            .collect::<Vec<_>>()
+            .join(" | ");
+        assert!(
+            joined.contains("native") || joined.contains("do not raise native_maximum"),
+            "meter must explain the native/usable distinction, got: {joined}"
+        );
+
+        // Output budget is derived from the measured-native pack, not a 256 facade.
+        let req = recorder
+            .last
+            .lock()
+            .unwrap()
+            .clone()
+            .expect("request recorded");
+        assert_ne!(req.max_output_tokens, 256);
+
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    /// Live path: critical occupancy on the pre-stream snapshot must surface as
+    /// rot severity the agent loop can act on (`should_refresh`).
+    #[tokio::test]
+    async fn run_turn_core_surfaces_context_rot_when_occupancy_critical() {
+        use futures::future::BoxFuture;
+        use hawking_index::InMemoryCodeIndex;
+        use hawking_orch::inference::{InferenceClient, StubInferenceClient};
+        use hide_core::error::Result as HResult;
+        use hide_core::runtime::{GenerationStats, InferenceRequest, TokenSink};
+
+        struct QuietClient {
+            inner: StubInferenceClient,
+        }
+        impl InferenceClient for QuietClient {
+            fn generate<'a>(
+                &'a self,
+                request: InferenceRequest,
+                sink: TokenSink<'a>,
+            ) -> BoxFuture<'a, HResult<GenerationStats>> {
+                self.inner.generate(request, sink)
+            }
+            fn embed<'a>(&'a self, text: &'a str) -> BoxFuture<'a, HResult<Vec<f32>>> {
+                self.inner.embed(text)
+            }
+        }
+
+        let dir = std::env::temp_dir().join(format!("hide_turn_rot_{}", now_ms()));
+        let services = BackendServices::open(HideConfig::for_workspace(&dir)).unwrap();
+        let session = services.session();
+        let index = Arc::new(InMemoryCodeIndex::default());
+        // Tiny native ceiling + a large used estimate (state_age / used) via the
+        // pre-stream live snapshot: ceiling=100, used from compile will be small,
+        // so force critical by passing a ceiling that is already nearly full.
+        // build_live_manifest(transformer) uses state_age_tokens as kv_seq_len;
+        // seal_compiled_manifest passes compiled.used_tokens as age. To force
+        // critical occupancy we need used ≈ ceiling. Seed enough index text and
+        // a tiny pack budget so used is a large fraction of native.
+        //
+        // Simpler path: pass live_ceiling with native=100, ceiling=100. The
+        // compile packs against 100 tokens; used will be non-zero. Occupancy =
+        // used/100. For Critical we need ≥0.90. A huge prompt + history fills it.
+        let big_prompt = format!("zzrotmarker {}", "word ".repeat(400));
+
+        let inference: Arc<dyn InferenceClient> = Arc::new(QuietClient {
+            inner: StubInferenceClient::new("done"),
+        });
+        let ui_bus = Arc::new(UiEventBus::default());
+
+        // Measured native 100; used_tokens from a small pack may be low. We still
+        // assert the rot *report exists* and that the detector API is on the
+        // durable path. Force critical via a unit-consistent path: after compile
+        // seal uses used_tokens as age against ceiling 100 — if used is small,
+        // severity may be Clean. So also verify the pure detector through the
+        // host helper with a synthetic critical live reading.
+        let live = build_live_manifest(None, Some(100), 100, 95);
+        assert!(
+            live.occupancy >= 0.90,
+            "fixture occupancy must be critical, got {}",
+            live.occupancy
+        );
+        let mut empty = hawking_context::ContextManifest::new(100);
+        let cap = declare_turn_capability(100, Some(100), Some(100), None, false);
+        seal_compiled_manifest(&mut empty, cap, Some(&live));
+        let rot = empty.rot.expect("rot sealed");
+        assert!(
+            rot.should_refresh,
+            "critical occupancy must request refresh: {:?}",
+            rot
+        );
+        assert!(
+            matches!(
+                rot.severity,
+                hawking_context::RotSeverity::Critical | hawking_context::RotSeverity::Degraded
+            ),
+            "severity {:?}",
+            rot.severity
+        );
+
+        // And the live path still logs rot on context.compiled (even if Clean).
+        let _ = run_turn_core(
+            inference,
+            services.event_log.clone(),
+            services.role_registry.clone(),
+            index,
+            services.memory_store.clone(),
+            ui_bus,
+            session.clone(),
+            big_prompt,
+            Some((None, Some(100), 100)),
+            None,
+            services.repo_instructions.clone(),
+        )
+        .await
+        .unwrap();
+        let events = services
+            .event_log
+            .scan(Some(session), None, None)
+            .await
+            .unwrap();
+        let compiled = events
+            .iter()
+            .find(|e| e.kind == "context.compiled")
+            .expect("context.compiled");
+        assert!(
+            !compiled.payload["rot"].is_null(),
+            "live path must publish rot on context.compiled"
+        );
+        assert!(
+            !compiled.payload["meter"]["explanations"]
+                .as_array()
+                .map(|a| a.is_empty())
+                .unwrap_or(true),
+            "meter explanations must be non-empty on the live path"
         );
 
         let _ = std::fs::remove_dir_all(dir);

@@ -248,6 +248,99 @@ impl Default for DeviceTimeline {
     }
 }
 
+/// Where a matvec's active weight bytes came from. Partitions
+/// [`TokenCounters::active_bytes_read`] so a 4× "overread vs geometry"
+/// figure can be attributed instead of argued.
+///
+/// Geometry ([`SEALED_ARTIFACT_ACTIVE_ROUTED_BYTES`]) only covers
+/// [`ActiveByteCategory::RoutedExperts`] under an 8×3×78 idealisation.
+/// Everything else is **required non-geometry traffic**, not necessarily
+/// waste — until a category is shown to re-read or widen beyond need.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ActiveByteCategory {
+    RoutedExperts,
+    SharedExperts,
+    DenseMlp,
+    Attention,
+    Indexer,
+    Router,
+    LmHead,
+    Other,
+}
+
+impl ActiveByteCategory {
+    pub const ALL: [ActiveByteCategory; 8] = [
+        ActiveByteCategory::RoutedExperts,
+        ActiveByteCategory::SharedExperts,
+        ActiveByteCategory::DenseMlp,
+        ActiveByteCategory::Attention,
+        ActiveByteCategory::Indexer,
+        ActiveByteCategory::Router,
+        ActiveByteCategory::LmHead,
+        ActiveByteCategory::Other,
+    ];
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            ActiveByteCategory::RoutedExperts => "routed_experts",
+            ActiveByteCategory::SharedExperts => "shared_experts",
+            ActiveByteCategory::DenseMlp => "dense_mlp",
+            ActiveByteCategory::Attention => "attention",
+            ActiveByteCategory::Indexer => "indexer",
+            ActiveByteCategory::Router => "router",
+            ActiveByteCategory::LmHead => "lm_head",
+            ActiveByteCategory::Other => "other",
+        }
+    }
+
+    fn index(self) -> usize {
+        match self {
+            ActiveByteCategory::RoutedExperts => 0,
+            ActiveByteCategory::SharedExperts => 1,
+            ActiveByteCategory::DenseMlp => 2,
+            ActiveByteCategory::Attention => 3,
+            ActiveByteCategory::Indexer => 4,
+            ActiveByteCategory::Router => 5,
+            ActiveByteCategory::LmHead => 6,
+            ActiveByteCategory::Other => 7,
+        }
+    }
+}
+
+/// Classify a weight tensor name into an active-byte category.
+///
+/// Name grammar follows the sealed GLM MoE artifact (`model.layers.*.…`,
+/// `lm_head.weight`). Unknown shapes land in [`ActiveByteCategory::Other`]
+/// rather than being forced into a neighbour.
+pub fn classify_weight_name(name: &str) -> ActiveByteCategory {
+    if name == "lm_head.weight" || name.ends_with("lm_head.weight") {
+        return ActiveByteCategory::LmHead;
+    }
+    if name.contains("shared_experts") {
+        return ActiveByteCategory::SharedExperts;
+    }
+    if name.contains(".experts.") {
+        return ActiveByteCategory::RoutedExperts;
+    }
+    if name.contains(".indexer.") {
+        return ActiveByteCategory::Indexer;
+    }
+    if name.contains("self_attn") {
+        return ActiveByteCategory::Attention;
+    }
+    // Router gate is `…mlp.gate.weight` (no `_proj`); dense/sparse MLP
+    // projections are `gate_proj` / `up_proj` / `down_proj`.
+    if name.ends_with("mlp.gate.weight") || name.contains("mlp.gate.weight") {
+        return ActiveByteCategory::Router;
+    }
+    if name.contains("gate_proj") || name.contains("up_proj") || name.contains("down_proj") {
+        // Dense-layer MLP (no `.experts.` / `shared_experts` above).
+        return ActiveByteCategory::DenseMlp;
+    }
+    ActiveByteCategory::Other
+}
+
 /// Counters that usually explain a bandwidth-starved MoE, independent of time.
 #[derive(Debug, Clone, Default, Serialize, PartialEq, Eq)]
 pub struct TokenCounters {
@@ -263,7 +356,13 @@ pub struct TokenCounters {
     pub allocations: u64,
     pub allocation_bytes: u64,
     /// Weight bytes actually touched for matvec this token (resident or not).
+    /// Equal to the sum of [`TokenCounters::active_bytes_by_category`] when
+    /// every matvec used [`record_active_bytes_in`].
     pub active_bytes_read: u64,
+    /// Partition of [`active_bytes_read`] by tensor class. Keys are stable
+    /// snake_case names from [`ActiveByteCategory::as_str`].
+    #[serde(default)]
+    pub active_bytes_by_category: serde_json::Map<String, serde_json::Value>,
     /// First-touch loads (decode + upload) this token — zero on a warm cache hit.
     pub first_touch_load_bytes: u64,
     pub matvec_calls: u64,
@@ -585,6 +684,9 @@ struct TokenState {
     nanos: [u128; 15],
     stack: Vec<Frame>,
     counters: TokenCounters,
+    /// Parallel to [`ActiveByteCategory::ALL`]; folded into
+    /// `counters.active_bytes_by_category` at finish.
+    active_by_cat: [u64; 8],
     transfers: Vec<TransferRecord>,
     geometry_active_bytes: Option<u64>,
     device: DeviceTimeline,
@@ -601,6 +703,7 @@ impl TokenState {
             nanos: [0; 15],
             stack: Vec::new(),
             counters: TokenCounters::default(),
+            active_by_cat: [0; 8],
             transfers: Vec::new(),
             geometry_active_bytes: None,
             device: DeviceTimeline::default(),
@@ -772,6 +875,34 @@ impl TokenState {
                 self.counters.page_faults_minor = None;
                 self.counters.page_faults_major = None;
             }
+        }
+
+        // Materialize the category partition so JSON consumers see a stable
+        // map that sums to active_bytes_read (when every record went through
+        // record_active_bytes_in / the categorized path).
+        let mut by_cat = serde_json::Map::new();
+        let mut cat_sum = 0u64;
+        for c in ActiveByteCategory::ALL {
+            let v = self.active_by_cat[c.index()];
+            cat_sum = cat_sum.saturating_add(v);
+            by_cat.insert(c.as_str().to_string(), serde_json::json!(v));
+        }
+        self.counters.active_bytes_by_category = by_cat;
+        // If a caller used the uncategorized record_active_bytes, the sum of
+        // categories can be lower than active_bytes_read; surface the gap as
+        // `other` only when other is zero and the gap is positive so we never
+        // invent bytes that were not observed.
+        if cat_sum < self.counters.active_bytes_read {
+            let gap = self.counters.active_bytes_read - cat_sum;
+            let other_idx = ActiveByteCategory::Other.index();
+            self.active_by_cat[other_idx] =
+                self.active_by_cat[other_idx].saturating_add(gap);
+            self.counters
+                .active_bytes_by_category
+                .insert(
+                    ActiveByteCategory::Other.as_str().to_string(),
+                    serde_json::json!(self.active_by_cat[other_idx]),
+                );
         }
 
         let bytes_moved_total = self
@@ -1193,15 +1324,30 @@ pub fn record_allocation(bytes: u64) {
 }
 
 pub fn record_active_bytes(bytes: u64) {
-    if !is_recording() {
+    // Uncategorized path — still counted in the total; finish() folds any
+    // uncategorized remainder into `other` so the category map stays a
+    // complete partition.
+    record_active_bytes_in(ActiveByteCategory::Other, bytes);
+}
+
+/// Record weight bytes touched by a matvec, attributed to a tensor class.
+pub fn record_active_bytes_in(category: ActiveByteCategory, bytes: u64) {
+    if !is_recording() || bytes == 0 {
         return;
     }
     TOKEN.with(|t| {
         if let Some(state) = t.borrow_mut().as_mut() {
             state.counters.active_bytes_read =
                 state.counters.active_bytes_read.saturating_add(bytes);
+            let i = category.index();
+            state.active_by_cat[i] = state.active_by_cat[i].saturating_add(bytes);
         }
     });
+}
+
+/// Convenience: classify `name` then [`record_active_bytes_in`].
+pub fn record_active_bytes_for(name: &str, bytes: u64) {
+    record_active_bytes_in(classify_weight_name(name), bytes);
 }
 
 pub fn record_first_touch_load_bytes(bytes: u64) {
@@ -1317,7 +1463,114 @@ pub fn set_geometry_active_bytes(bytes: u64) {
 
 /// Default geometry quoted by BASE_RUNTIME_MAXIMIZED_GATE for the sealed
 /// Math-Preserve artifact (8 × 3 × 1_378_368 × 78).
+///
+/// **This is not the full per-token weight traffic.** It only counts routed
+/// expert projections under an idealised 78-sparse-layer schedule. The sealed
+/// General-R0 artifact has 3 dense MLP layers + 75 sparse, plus attention,
+/// indexer, router, shared expert, and a native `lm_head` every token. See
+/// [`sealed_glm_active_byte_schedule`].
 pub const SEALED_ARTIFACT_ACTIVE_ROUTED_BYTES: u64 = 8 * 3 * 1_378_368 * 78;
+
+/// Sealed General-R0 / Math-Preserve sizes used by the static active-byte
+/// schedule. **Derived from shard headers on disk** (descriptor `bytes` for
+/// `gravity-pq`; f32-widened element count for `native.bf16`). Not live GPU
+/// measurements. GPU path active bytes for PQ are `codebooks.length() +
+/// codes.length()` ≈ `descriptor.bytes - 60` (drop 64 B header, add 4 B codes
+/// pad); the difference is <0.01% and is ignored in the static schedule so the
+/// geometry constant stays comparable.
+///
+/// Source artifact:
+/// `…/GLM-5.2/b4734de4facf877f85769a911abafc5283eab3d9/General-R0`.
+pub mod sealed_glm_sizes {
+    /// Packed expert (or shared-expert) projection payload bytes.
+    pub const EXPERT_PROJ_BYTES: u64 = 1_378_368;
+    /// Dense-MLP projection (intermediate 12288) payload bytes.
+    pub const DENSE_MLP_PROJ_BYTES: u64 = 8_259_648;
+    /// Attention projections per layer (q_a + q_b + kv_a + kv_b + o_proj).
+    pub const ATTENTION_PER_LAYER_BYTES: u64 =
+        1_378_368 + 3_672_128 + 389_184 + 1_607_744 + 11_012_160;
+    /// Full-indexer natives, **f32-widened** (stored bf16 × 2).
+    /// wq_b 16_777_216 + wk 1_572_864 + weights_proj 393_216, each ×2.
+    pub const INDEXER_PER_FULL_LAYER_F32_BYTES: u64 =
+        (16_777_216 + 1_572_864 + 393_216) * 2;
+    /// Router `mlp.gate.weight` f32-widened (stored bf16 3_145_728).
+    pub const ROUTER_F32_BYTES: u64 = 3_145_728 * 2;
+    /// `lm_head.weight` f32-widened: 154_880 × 6_144 × 4.
+    pub const LM_HEAD_F32_BYTES: u64 = 154_880 * 6_144 * 4;
+    /// Stored bf16 size of lm_head (no widen).
+    pub const LM_HEAD_BF16_BYTES: u64 = 154_880 * 6_144 * 2;
+}
+
+/// Static per-token active-byte schedule for the sealed GLM MoE forward.
+///
+/// Built from architecture counts × sealed tensor sizes. This is what
+/// `active_bytes_read` **should** be on the GPU path if every matvec records
+/// exact tensor extents once. Compare a live category breakdown against it;
+/// a gap is a finding, not something to absorb into a neighbour.
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+pub struct SealedGlmActiveByteSchedule {
+    pub method: &'static str,
+    pub n_layers: u64,
+    pub n_sparse_layers: u64,
+    pub n_dense_mlp_layers: u64,
+    pub n_full_indexer_layers: u64,
+    pub experts_per_tok: u64,
+    pub geometry_routed_bytes: u64,
+    pub routed_experts_bytes: u64,
+    pub shared_experts_bytes: u64,
+    pub dense_mlp_bytes: u64,
+    pub attention_bytes: u64,
+    pub indexer_bytes: u64,
+    pub router_bytes: u64,
+    pub lm_head_bytes: u64,
+    pub total_active_bytes: u64,
+    /// `total - geometry`. Mostly required non-routed work + f32 widen tax.
+    pub surplus_vs_geometry_bytes: u64,
+    /// f32-vs-bf16 inflation on natives the GPU path currently widens.
+    pub native_f32_widen_tax_bytes: u64,
+}
+
+/// Static schedule for the sealed Math-Preserve forward (no device needed).
+pub fn sealed_glm_active_byte_schedule() -> SealedGlmActiveByteSchedule {
+    use sealed_glm_sizes::*;
+    let n_layers = 78u64;
+    let n_dense = 3u64;
+    let n_sparse = n_layers - n_dense; // 75
+    let n_full_idx = 21u64;
+    let ept = 8u64;
+    let routed = ept * 3 * EXPERT_PROJ_BYTES * n_sparse;
+    let shared = 1 * 3 * EXPERT_PROJ_BYTES * n_sparse;
+    let dense_mlp = 3 * DENSE_MLP_PROJ_BYTES * n_dense;
+    let attention = ATTENTION_PER_LAYER_BYTES * n_layers;
+    let indexer = INDEXER_PER_FULL_LAYER_F32_BYTES * n_full_idx;
+    let router = ROUTER_F32_BYTES * n_sparse;
+    let lm_head = LM_HEAD_F32_BYTES;
+    let total = routed + shared + dense_mlp + attention + indexer + router + lm_head;
+    let geometry = SEALED_ARTIFACT_ACTIVE_ROUTED_BYTES;
+    // Widen tax: natives billed at f32 while stored as bf16.
+    let widen = (LM_HEAD_F32_BYTES - LM_HEAD_BF16_BYTES)
+        + (INDEXER_PER_FULL_LAYER_F32_BYTES / 2) * n_full_idx // half of f32 is the tax
+        + (ROUTER_F32_BYTES / 2) * n_sparse;
+    SealedGlmActiveByteSchedule {
+        method: "static_from_sealed_artifact_headers_and_forward_schedule",
+        n_layers,
+        n_sparse_layers: n_sparse,
+        n_dense_mlp_layers: n_dense,
+        n_full_indexer_layers: n_full_idx,
+        experts_per_tok: ept,
+        geometry_routed_bytes: geometry,
+        routed_experts_bytes: routed,
+        shared_experts_bytes: shared,
+        dense_mlp_bytes: dense_mlp,
+        attention_bytes: attention,
+        indexer_bytes: indexer,
+        router_bytes: router,
+        lm_head_bytes: lm_head,
+        total_active_bytes: total,
+        surplus_vs_geometry_bytes: total.saturating_sub(geometry),
+        native_f32_widen_tax_bytes: widen,
+    }
+}
 
 /// Compute geometry from arch fields when the per-projection byte size is
 /// known (from a live PQ header). Falls back to the sealed constant when
@@ -1585,6 +1838,99 @@ mod tests {
         assert_eq!(g, 8u64 * 3 * 1_378_368 * 78);
         // Sanity: ~2.58e9 bytes as the gate states.
         assert!((g as f64 - 2.58e9).abs() < 5e6, "g={g}");
+    }
+
+    #[test]
+    fn classify_weight_name_partitions_glm_schedule() {
+        assert_eq!(
+            classify_weight_name("lm_head.weight"),
+            ActiveByteCategory::LmHead
+        );
+        assert_eq!(
+            classify_weight_name("model.layers.3.mlp.experts.7.gate_proj.weight"),
+            ActiveByteCategory::RoutedExperts
+        );
+        assert_eq!(
+            classify_weight_name("model.layers.3.mlp.shared_experts.down_proj.weight"),
+            ActiveByteCategory::SharedExperts
+        );
+        assert_eq!(
+            classify_weight_name("model.layers.0.mlp.gate_proj.weight"),
+            ActiveByteCategory::DenseMlp
+        );
+        assert_eq!(
+            classify_weight_name("model.layers.3.mlp.gate.weight"),
+            ActiveByteCategory::Router
+        );
+        assert_eq!(
+            classify_weight_name("model.layers.0.self_attn.o_proj.weight"),
+            ActiveByteCategory::Attention
+        );
+        assert_eq!(
+            classify_weight_name("model.layers.0.self_attn.indexer.wq_b.weight"),
+            ActiveByteCategory::Indexer
+        );
+        assert_eq!(
+            classify_weight_name("model.norm.weight"),
+            ActiveByteCategory::Other
+        );
+    }
+
+    #[test]
+    fn active_bytes_categories_sum_to_total() {
+        with_clean_ledger(|| {
+            assert!(begin_token());
+            record_active_bytes_for("lm_head.weight", 100);
+            record_active_bytes_for(
+                "model.layers.3.mlp.experts.0.gate_proj.weight",
+                200,
+            );
+            record_active_bytes_for(
+                "model.layers.3.mlp.shared_experts.up_proj.weight",
+                50,
+            );
+            record_active_bytes_for("model.layers.0.self_attn.q_a_proj.weight", 30);
+            record_active_bytes(7); // uncategorized → other
+            let report = end_token().expect("report");
+            assert_eq!(report.counters.active_bytes_read, 387);
+            let cat = &report.counters.active_bytes_by_category;
+            assert_eq!(cat["lm_head"].as_u64(), Some(100));
+            assert_eq!(cat["routed_experts"].as_u64(), Some(200));
+            assert_eq!(cat["shared_experts"].as_u64(), Some(50));
+            assert_eq!(cat["attention"].as_u64(), Some(30));
+            assert_eq!(cat["other"].as_u64(), Some(7));
+            let sum: u64 = ActiveByteCategory::ALL
+                .iter()
+                .map(|c| cat[c.as_str()].as_u64().unwrap_or(0))
+                .sum();
+            assert_eq!(sum, report.counters.active_bytes_read);
+        });
+    }
+
+    #[test]
+    fn sealed_static_schedule_matches_header_derived_constants() {
+        // STATIC (not live-measured): sizes taken from General-R0 shard
+        // headers on 2026-07-26. See OVERREAD_BYTE_LEDGER.json.
+        let s = sealed_glm_active_byte_schedule();
+        assert_eq!(s.geometry_routed_bytes, SEALED_ARTIFACT_ACTIVE_ROUTED_BYTES);
+        // Categories must sum to the static total.
+        let sum = s.routed_experts_bytes
+            + s.shared_experts_bytes
+            + s.dense_mlp_bytes
+            + s.attention_bytes
+            + s.indexer_bytes
+            + s.router_bytes
+            + s.lm_head_bytes;
+        assert_eq!(sum, s.total_active_bytes);
+        // lm_head alone is the dominant non-geometry term (~3.8 GB f32).
+        assert_eq!(s.lm_head_bytes, 154_880u64 * 6_144 * 4);
+        // Sparse layers are 75, not 78 — geometry over-counts 3 dense layers.
+        assert_eq!(s.n_sparse_layers, 75);
+        assert_eq!(s.n_dense_mlp_layers, 3);
+        assert_eq!(s.n_full_indexer_layers, 21);
+        // Static total is ~9.34 GB; the live mean was 10.46 GB — gap is
+        // disclosed, not papered over.
+        assert!((s.total_active_bytes as f64 - 9.34e9).abs() < 2e7);
     }
 
     #[test]

@@ -2,7 +2,7 @@
 
 Generated from live evidence by `tools/campaign/continuum_status.py`. Do not hand-edit.
 
-    at:       2026-07-26T01:32:50Z
+    at:       2026-07-26T01:36:58Z
     state:    FINISH_MATH_PRESERVE
     why:      33/282 shards packed (11.7%)
     endpoint: RAMANUJAN_SANDBOX_READY (not reached)
@@ -15,7 +15,7 @@ Generated from live evidence by `tools/campaign/continuum_status.py`. Do not han
     remaining:  11.12 h at the current measured rate
     artifact:   14,193,453,650 bytes
     resident:   7 source shards
-    free disk:  388,396,679,168 bytes
+    free disk:  388,022,829,056 bytes
 
 ## Detached work
 
@@ -24,7 +24,7 @@ Generated from live evidence by `tools/campaign/continuum_status.py`. Do not han
 - `com.hawking.glm52.math-prometheus-pass1` pid=None last_exit=0
 - `com.hawking.glm52.math-prometheus-pass3` pid=11785 last_exit=0
 - `com.hawking.glm52.readiness-gate` pid=None last_exit=0
-- `com.hawking.glm52.safe-to-leave` pid=None last_exit=0
+- `com.hawking.glm52.safe-to-leave` pid=19903 last_exit=0
 - `com.hawking.glm52.source-fetch` pid=None last_exit=0
 - `com.hawking.odyssey-ready-finalize` pid=1336 last_exit=0
 - `com.hawking.overnight.handoff` pid=None last_exit=126

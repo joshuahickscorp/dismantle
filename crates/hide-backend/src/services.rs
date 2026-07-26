@@ -1,5 +1,5 @@
 use hawking_context::{InMemoryMemoryStore, MemoryStore, SqliteMemoryStore};
-use hawking_index::InMemoryCodeIndex;
+use hawking_index::{CodeIndex, InMemoryCodeIndex, SqliteCodeIndex};
 use hawking_orch::RoleRegistry;
 use hawking_research::{DynResearchLedger, InMemoryResearchLedger, JsonlResearchLedger};
 use hide_core::config::HideConfig;
@@ -18,8 +18,128 @@ use hide_personalize::{
 use hide_security::audit::EventChainAuditor;
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
+
+/// Shared code-index handle consumed by grounding / context compile / connectors.
+pub type DynCodeIndex = Arc<dyn CodeIndex>;
+
+/// How many source files to index synchronously at workspace open. Beyond this
+/// the open returns immediately (a failed/absent index already degrades to the
+/// empty in-memory default); further files can be filled in by a later daemon
+/// pass. Keeps open non-blocking on large repositories.
+const OPEN_INGEST_FILE_CAP: usize = 64;
+
+/// Directory name components / extensions skipped during bounded open ingest.
+fn should_skip_index_path(path: &Path) -> bool {
+    let mut comps = path.components();
+    // Skip anything under these directory names anywhere in the relative path.
+    const SKIP_DIRS: &[&str] = &[
+        ".git",
+        ".hide",
+        "target",
+        "node_modules",
+        ".grok",
+        "dist",
+        "build",
+        ".venv",
+        "vendor",
+    ];
+    for c in comps.by_ref() {
+        if let std::path::Component::Normal(s) = c {
+            if SKIP_DIRS.iter().any(|d| s == *d) {
+                return true;
+            }
+        }
+    }
+    // Only index text-ish source extensions (bounded, deterministic).
+    match path.extension().and_then(|e| e.to_str()) {
+        Some(ext) => {
+            const OK: &[&str] = &[
+                "rs", "ts", "tsx", "js", "jsx", "py", "go", "java", "kt", "c", "h", "cc", "cpp",
+                "hpp", "md", "toml", "json", "yaml", "yml", "sh", "css", "html", "txt",
+            ];
+            !OK.iter().any(|e| ext.eq_ignore_ascii_case(e))
+        }
+        None => true,
+    }
+}
+
+/// Bounded, best-effort workspace ingest into a Sqlite index. Caps file count and
+/// per-file size so open never blocks on a large repo. Errors on individual files
+/// are skipped; a total failure leaves the index empty (still usable).
+fn bounded_sqlite_ingest(
+    index: &SqliteCodeIndex,
+    root: &Path,
+    max_files: usize,
+    max_file_bytes: u64,
+) -> usize {
+    let mut indexed = 0usize;
+    let walker = walkdir_shallow(root);
+    for path in walker {
+        if indexed >= max_files {
+            break;
+        }
+        let rel = match path.strip_prefix(root) {
+            Ok(r) => r,
+            Err(_) => continue,
+        };
+        if should_skip_index_path(rel) {
+            continue;
+        }
+        let meta = match std::fs::metadata(&path) {
+            Ok(m) if m.is_file() => m,
+            _ => continue,
+        };
+        if meta.len() > max_file_bytes {
+            continue;
+        }
+        let content = match std::fs::read_to_string(&path) {
+            Ok(c) => c,
+            Err(_) => continue,
+        };
+        let hash = blake3::hash(content.as_bytes()).to_hex().to_string();
+        let rel_s = rel.to_string_lossy().replace('\\', "/");
+        if index.index_text(&rel_s, &content, &hash).is_ok() {
+            indexed += 1;
+        }
+    }
+    indexed
+}
+
+/// Non-recursive-feeling walk that still descends, but is simple and dependency-free.
+fn walkdir_shallow(root: &Path) -> Vec<PathBuf> {
+    let mut out = Vec::new();
+    let mut stack = vec![root.to_path_buf()];
+    while let Some(dir) = stack.pop() {
+        let entries = match std::fs::read_dir(&dir) {
+            Ok(e) => e,
+            Err(_) => continue,
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            let name = entry.file_name();
+            // Skip hidden / heavy dirs early.
+            if name == ".git"
+                || name == ".hide"
+                || name == "target"
+                || name == "node_modules"
+                || name == ".grok"
+                || name == "vendor"
+            {
+                continue;
+            }
+            if path.is_dir() {
+                stack.push(path);
+            } else if path.is_file() {
+                out.push(path);
+            }
+        }
+    }
+    // Stable order so tests are deterministic.
+    out.sort();
+    out
+}
 
 /// The session registry — open-or-create stable sessions (bible ch.07).
 ///
@@ -1460,7 +1580,19 @@ pub struct BackendServices {
     pub personalization_store: DynPersonalizationStore,
     pub research_ledger: DynResearchLedger,
     pub role_registry: Arc<RoleRegistry>,
-    pub code_index: Arc<InMemoryCodeIndex>,
+    /// Live code index used by grounding / ContextCompiler / connectors.
+    /// Tests default to an empty [`InMemoryCodeIndex`]; `open` / `open_workspace`
+    /// bind a durable [`SqliteCodeIndex`] with bounded ingest (degrading to the
+    /// empty in-memory index on any open/ingest failure).
+    pub code_index: DynCodeIndex,
+    /// When the live index is the in-memory implementation (test constructors),
+    /// this is `Some` so callers that need `add_text_file` can seed without a
+    /// downcast. `None` when the live index is Sqlite (or the empty fallback is
+    /// already empty and only reachable via the trait).
+    pub memory_index: Option<Arc<InMemoryCodeIndex>>,
+    /// When the live index is Sqlite (workspace open path), this is `Some` so
+    /// ingest / tests can write through `index_text` without a downcast.
+    pub sqlite_index: Option<Arc<SqliteCodeIndex>>,
     pub capabilities: BackendCapabilities,
     /// Stable session registry (open-or-create, not fresh-per-call).
     pub sessions: Arc<SessionRegistry>,
@@ -1475,6 +1607,7 @@ pub struct BackendServices {
 
 impl BackendServices {
     pub fn new(config: HideConfig, event_log: DynEventLog) -> Self {
+        let memory = Arc::new(InMemoryCodeIndex::default());
         Self {
             config,
             event_log,
@@ -1486,7 +1619,9 @@ impl BackendServices {
             personalization_store: Arc::new(InMemoryPersonalizationStore::default()),
             research_ledger: Arc::new(InMemoryResearchLedger::default()),
             role_registry: Arc::new(RoleRegistry::with_default_local_roles()),
-            code_index: Arc::new(InMemoryCodeIndex::default()),
+            code_index: memory.clone(),
+            memory_index: Some(memory),
+            sqlite_index: None,
             capabilities: BackendCapabilities::wired(),
             sessions: Arc::new(SessionRegistry::default()),
             repo_instructions: Arc::new(
@@ -1504,6 +1639,8 @@ impl BackendServices {
         personalization_store: DynPersonalizationStore,
         research_ledger: DynResearchLedger,
     ) -> Self {
+        // Tests / in-memory constructors: empty InMemoryCodeIndex stays the default.
+        let memory = Arc::new(InMemoryCodeIndex::default());
         Self {
             config,
             event_log,
@@ -1515,7 +1652,9 @@ impl BackendServices {
             personalization_store,
             research_ledger,
             role_registry: Arc::new(RoleRegistry::with_default_local_roles()),
-            code_index: Arc::new(InMemoryCodeIndex::default()),
+            code_index: memory.clone(),
+            memory_index: Some(memory),
+            sqlite_index: None,
             capabilities: BackendCapabilities::wired(),
             sessions: Arc::new(SessionRegistry::default()),
             repo_instructions: Arc::new(
@@ -1575,7 +1714,60 @@ impl BackendServices {
         );
         services.memory_store = memory_store;
         services.repo_instructions = Arc::new(repo_instructions);
+
+        // W4: bind the real SqliteCodeIndex at workspace open. A failed open or
+        // ingest degrades to the empty in-memory index already installed by
+        // with_stores — never fails the workspace open.
+        services.bind_workspace_code_index(&layout);
         Ok(services)
+    }
+
+    /// Install SqliteCodeIndex + bounded workspace ingest. Best-effort: any
+    /// failure leaves the empty InMemory default in place.
+    fn bind_workspace_code_index(&mut self, layout: &WorkspaceLayout) {
+        let index_dir = layout.hide_dir.join("index");
+        if let Err(e) = std::fs::create_dir_all(&index_dir) {
+            eprintln!("warning: code index dir create failed (using empty index): {e}");
+            return;
+        }
+        let db_path = index_dir.join("code.sqlite");
+        let sqlite = match SqliteCodeIndex::open(&db_path) {
+            Ok(idx) => Arc::new(idx),
+            Err(e) => {
+                eprintln!("warning: SqliteCodeIndex open failed (using empty index): {e}");
+                return;
+            }
+        };
+        let max_file_bytes = self.config.index.max_file_bytes;
+        let n = bounded_sqlite_ingest(
+            &sqlite,
+            &self.config.workspace_root,
+            OPEN_INGEST_FILE_CAP,
+            max_file_bytes,
+        );
+        if n > 0 {
+            // Quiet in tests; useful when debugging a large open.
+            let _ = n;
+        }
+        self.code_index = sqlite.clone();
+        self.sqlite_index = Some(sqlite);
+        self.memory_index = None;
+    }
+
+    /// Seed a text file into whichever concrete index is live. Used by tests and
+    /// by anything that needs to write without knowing the backend. No-op only
+    /// if both handles are somehow absent (should not happen).
+    pub fn seed_code_file(&self, path: impl AsRef<str>, content: impl AsRef<str>) {
+        let path = path.as_ref();
+        let content = content.as_ref();
+        if let Some(mem) = &self.memory_index {
+            mem.add_text_file(path, content, None);
+            return;
+        }
+        if let Some(sql) = &self.sqlite_index {
+            let hash = blake3::hash(content.as_bytes()).to_hex().to_string();
+            let _ = sql.index_text(path, content, &hash);
+        }
     }
 
     pub fn layout(&self) -> WorkspaceLayout {

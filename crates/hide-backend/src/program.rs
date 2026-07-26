@@ -47,7 +47,6 @@
 use std::collections::BTreeSet;
 use std::future::Future;
 use std::path::PathBuf;
-use std::sync::Arc;
 
 use hide_core::api::{UiEvent, UiEventKind};
 use hide_core::event::NewEvent;
@@ -60,7 +59,7 @@ use hide_program_runtime::{
 use hide_tools::fs::FsReadTool;
 use hide_tools::git::{GitDiffTool, GitLogTool};
 use hide_tools::search::SearchTextTool;
-use hawking_index::{CodeIndex, InMemoryCodeIndex};
+use crate::services::DynCodeIndex;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
@@ -124,7 +123,7 @@ pub struct HostProgramHandles {
     fs_read_tool: FsReadTool,
     git_diff_tool: GitDiffTool,
     git_log_tool: GitLogTool,
-    code_index: Arc<InMemoryCodeIndex>,
+    code_index: DynCodeIndex,
 }
 
 impl HostProgramHandles {
@@ -133,7 +132,7 @@ impl HostProgramHandles {
     /// pull an unbounded blob through one handle.
     pub fn new(
         workspace_root: PathBuf,
-        code_index: Arc<InMemoryCodeIndex>,
+        code_index: DynCodeIndex,
         output_cap_bytes: u64,
     ) -> Self {
         Self {

@@ -494,6 +494,7 @@ const HANDLED_CUSTOM_NAMES: &[&str] = &[
     "edit_plan_step",
     "environment_switch",
     "export_review_receipt",
+    "fleet_run",
     "goal_clear",
     "goal_evaluate",
     "goal_set",
@@ -568,6 +569,87 @@ pub struct BackendHost {
     connections: Arc<ConnectionRegistry>,
 }
 
+/// Load MCP server descriptors for host boot.
+///
+/// Chosen source: `<workspace>/.hide/mcp.json` — a JSON array of
+/// [`hide_tools::mcp::McpServerDescriptor`]. Matches the existing workspace
+/// layout (every durable host artifact already lives under `.hide/`) and reuses
+/// the descriptor type's own serde, so there is no parallel config schema.
+/// Absent / unreadable / invalid files yield an empty list (no MCP, no error).
+fn load_mcp_descriptors(workspace_root: &Path) -> Vec<hide_tools::mcp::McpServerDescriptor> {
+    let path = workspace_root.join(".hide").join("mcp.json");
+    let bytes = match std::fs::read(&path) {
+        Ok(b) => b,
+        Err(_) => return Vec::new(),
+    };
+    match serde_json::from_slice(&bytes) {
+        Ok(descs) => descs,
+        Err(e) => {
+            eprintln!(
+                "warning: ignoring invalid MCP config at {}: {e}",
+                path.display()
+            );
+            Vec::new()
+        }
+    }
+}
+
+/// Drive an async future from the sync `from_services` path. Prefer the current
+/// tokio runtime (multi-thread tests use `block_in_place`); otherwise spin a
+/// short-lived current-thread runtime.
+fn block_on_async<F: std::future::Future>(fut: F) -> F::Output {
+    match tokio::runtime::Handle::try_current() {
+        Ok(handle) => tokio::task::block_in_place(|| handle.block_on(fut)),
+        Err(_) => tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .expect("mcp boot runtime")
+            .block_on(fut),
+    }
+}
+
+/// Connect configured MCP servers and register their tools into `tools`.
+/// Per-server failures are logged + recorded as `mcp.server_failed` events and
+/// never abort host construction.
+fn register_mcp_servers_at_boot(services: &BackendServices, tools: &ToolRegistry) {
+    let descriptors = load_mcp_descriptors(&services.config.workspace_root);
+    if descriptors.is_empty() {
+        return;
+    }
+    let log = services.event_log.clone();
+    let session = services.session();
+    block_on_async(async move {
+        let results = hide_tools::mcp::register_mcp_servers(&descriptors, tools).await;
+        for reg in results {
+            let (kind, payload) = match &reg.error {
+                Some(err) => {
+                    eprintln!(
+                        "warning: MCP server '{}' failed to register (non-fatal): {err}",
+                        reg.server_id
+                    );
+                    (
+                        "mcp.server_failed",
+                        json!({
+                            "server_id": reg.server_id,
+                            "error": err,
+                        }),
+                    )
+                }
+                None => (
+                    "mcp.server_registered",
+                    json!({
+                        "server_id": reg.server_id,
+                        "tools": reg.tools,
+                    }),
+                ),
+            };
+            let _ = log
+                .append(NewEvent::system(session.clone(), kind, payload))
+                .await;
+        }
+    });
+}
+
 impl BackendHost {
     pub fn open_workspace(workspace_root: impl Into<PathBuf>) -> Result<Self> {
         Self::from_services(BackendServices::open_workspace(workspace_root)?)
@@ -576,6 +658,13 @@ impl BackendHost {
     pub fn from_services(services: BackendServices) -> Result<Self> {
         let services = Arc::new(services);
         let tools = Arc::new(build_default_tool_registry());
+        // W1: register configured MCP servers into the live tool registry at boot.
+        // Source: `.hide/mcp.json` (array of `McpServerDescriptor`) under the
+        // workspace root — same `.hide/` layout every other durable workspace
+        // artifact uses. A server that fails to start is logged + evented and
+        // does NOT fail host boot (`register_mcp_servers` already returns
+        // per-server results).
+        register_mcp_servers_at_boot(&services, &tools);
         let ui_bus = Arc::new(UiEventBus::default());
         // RECORDED at construction, so there is no such thing as a dispatch through this host that
         // produces no tool events and no reviewable diff.
@@ -798,12 +887,13 @@ impl BackendHost {
             _ => None,
         };
         // Launcher (courtyard) custom intents: snapshot the ones with a side effect so we can act after
-        // the router has recorded them in the event log.
+        // the router has recorded them in the event log. `fleet_run` is additive: it reaches
+        // `BackendHost::fleet_run` the same way neighbouring intents reach their handlers.
         let launcher_action: Option<(String, Value)> = match &intent {
             Intent::Custom { name, payload }
                 if matches!(
                     name.as_str(),
-                    "create_worktree" | "new_session" | "open_session"
+                    "create_worktree" | "new_session" | "open_session" | "fleet_run"
                 ) =>
             {
                 Some((name.clone(), payload.clone()))
@@ -1193,6 +1283,37 @@ impl BackendHost {
                 "open_session" => {
                     if let Some(id) = payload.get("session_id").and_then(|v| v.as_str()) {
                         self.spawn_open_session(SessionId::from(id));
+                    }
+                }
+                // W2: live entry for `BackendHost::fleet_run`. Payload: `{ task|objective,
+                // session_id? }`. Runs inline (model-free fleet scheduling is short) so the
+                // ack carries the terminal status; a failure refuses the ack.
+                "fleet_run" => {
+                    let objective = payload
+                        .get("task")
+                        .or_else(|| payload.get("objective"))
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("fleet run")
+                        .to_string();
+                    let session = payload
+                        .get("session_id")
+                        .and_then(|v| v.as_str())
+                        .map(SessionId::from)
+                        .unwrap_or_else(|| self.services.session());
+                    match self.fleet_run(session.clone(), objective.clone()).await {
+                        Ok(status) => {
+                            ack.message = Some(format!("fleet_run status={status}"));
+                            self.ui_bus.publish(UiEvent {
+                                seq: 0,
+                                session_id: Some(session),
+                                kind: UiEventKind::Custom(json!({
+                                    "kind": "fleet_run_completed",
+                                    "status": status,
+                                    "task": objective,
+                                })),
+                            });
+                        }
+                        Err(err) => self.effect_failed(&mut ack, "fleet_run", err.to_string()),
                     }
                 }
                 _ => {}
@@ -2262,9 +2383,7 @@ impl BackendHost {
         ));
 
         let dispatcher = self.build_turn_dispatcher(session_id, Some(run_id));
-        let grounding = Arc::new(Grounding::new(
-            self.services.code_index.clone() as Arc<dyn hawking_index::CodeIndex>
-        ));
+        let grounding = Arc::new(Grounding::new(self.services.code_index.clone()));
 
         AgentKernel::builder(self.services.event_log.clone())
             .workspace_root(self.services.config.workspace_root.to_string_lossy().to_string())
@@ -7564,6 +7683,206 @@ mod tests {
         let _ = std::fs::remove_dir_all(dir);
     }
 
+    /// W2 reachability: the live `fleet_run` custom intent reaches
+    /// `BackendHost::fleet_run` (not a direct method call from the test).
+    #[tokio::test]
+    async fn fleet_run_intent_reaches_fleet_manager() {
+        let dir = std::env::temp_dir().join(format!("hide_host_fleet_intent_{}", now_ms()));
+        let host = BackendHost::open_workspace(&dir).unwrap();
+        let session = host.services.session();
+        let mut rx = host.subscribe_ui();
+        let ack = host
+            .handle_intent(Intent::Custom {
+                name: "fleet_run".into(),
+                payload: json!({
+                    "task": "scaffold a module via intent",
+                    "session_id": session.as_str(),
+                }),
+            })
+            .await
+            .unwrap();
+        assert!(ack.accepted, "fleet_run intent must be accepted: {:?}", ack.message);
+        assert!(
+            ack.message
+                .as_deref()
+                .unwrap_or("")
+                .contains("status=Done"),
+            "ack should carry the fleet terminal status: {:?}",
+            ack.message
+        );
+        // Surface event on the bus (live path proof).
+        let mut saw = false;
+        for _ in 0..8 {
+            match tokio::time::timeout(std::time::Duration::from_millis(200), rx.recv()).await {
+                Ok(Ok(ev)) => {
+                    if let UiEventKind::Custom(v) = ev.kind {
+                        if v.get("kind").and_then(|k| k.as_str()) == Some("fleet_run_completed") {
+                            assert_eq!(v.get("status").and_then(|s| s.as_str()), Some("Done"));
+                            saw = true;
+                            break;
+                        }
+                    }
+                }
+                _ => break,
+            }
+        }
+        assert!(saw, "fleet_run_completed UiEvent must be published");
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    /// W1 reachability: boot a host with a configured (stub) MCP server and
+    /// assert its tools appear in the live registry; a bad server must not
+    /// fail boot.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn mcp_servers_register_into_live_registry_at_boot() {
+        // Skip cleanly when python3 is unavailable (same stance as hide-tools).
+        let py = ["python3", "python"].into_iter().find(|c| {
+            std::process::Command::new(c)
+                .arg("--version")
+                .output()
+                .map(|o| o.status.success())
+                .unwrap_or(false)
+        });
+        let Some(py) = py else {
+            eprintln!("python3 not found; skipping MCP boot registration test");
+            return;
+        };
+
+        let dir = std::env::temp_dir().join(format!("hide_host_mcp_{}", now_ms()));
+        std::fs::create_dir_all(dir.join(".hide")).unwrap();
+        // Tiny stdio MCP server (mirrors hide-tools' FAKE_SERVER).
+        let fake = r#"
+import sys, json
+def send(obj):
+    sys.stdout.write(json.dumps(obj) + "\n"); sys.stdout.flush()
+for line in sys.stdin:
+    line = line.strip()
+    if not line: continue
+    req = json.loads(line)
+    m = req.get("method"); i = req.get("id")
+    if m == "initialize":
+        send({"jsonrpc":"2.0","id":i,"result":{"protocolVersion":"2025-11-25","capabilities":{},"serverInfo":{"name":"fake","version":"0"}}})
+    elif m == "notifications/initialized":
+        pass
+    elif m == "tools/list":
+        send({"jsonrpc":"2.0","id":i,"result":{"tools":[{"name":"echo","description":"echo","inputSchema":{"type":"object","properties":{"msg":{"type":"string"}},"required":["msg"],"additionalProperties":False}}]}})
+    elif m == "tools/call":
+        msg = req["params"]["arguments"]["msg"]
+        send({"jsonrpc":"2.0","id":i,"result":{"isError":False,"structuredContent":{"echoed":msg},"content":[{"type":"text","text":msg}]}})
+    else:
+        send({"jsonrpc":"2.0","id":i,"error":{"code":-32601,"message":"method not found"}})
+"#;
+        let mcp_cfg = json!([
+            {
+                "id": "boot_good",
+                "transport": { "stdio": { "command": py, "args": ["-c", fake] } },
+                "trust": "third-party"
+            },
+            {
+                "id": "boot_bad",
+                "transport": {
+                    "stdio": {
+                        "command": "definitely-not-a-real-binary-xyzzy",
+                        "args": []
+                    }
+                },
+                "trust": "third-party"
+            }
+        ]);
+        std::fs::write(
+            dir.join(".hide").join("mcp.json"),
+            serde_json::to_vec_pretty(&mcp_cfg).unwrap(),
+        )
+        .unwrap();
+
+        // Boot must succeed despite the bad server.
+        let host = BackendHost::from_services(
+            BackendServices::open(HideConfig::for_workspace(&dir)).unwrap(),
+        )
+        .expect("host boot must not fail on a bad MCP server");
+
+        assert!(
+            host.tools.get("mcp:boot_good/echo").is_some(),
+            "good MCP server's tools must land in the live registry"
+        );
+        // Bad server must not have registered anything under its id.
+        assert!(host.tools.get("mcp:boot_bad/echo").is_none());
+
+        // Failures surface as events, not as boot errors.
+        let events = host
+            .services
+            .event_log
+            .scan(None, None, None)
+            .await
+            .unwrap();
+        assert!(
+            events.iter().any(|e| e.kind == "mcp.server_registered"
+                && e.payload.get("server_id").and_then(|v| v.as_str()) == Some("boot_good")),
+            "registered event for the good server"
+        );
+        assert!(
+            events.iter().any(|e| e.kind == "mcp.server_failed"
+                && e.payload.get("server_id").and_then(|v| v.as_str()) == Some("boot_bad")),
+            "failed event for the bad server"
+        );
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    /// W4 reachability: open a workspace over a small fixture repo and assert a
+    /// grounded index query returns a real hit the empty index could not produce.
+    #[tokio::test]
+    async fn open_workspace_binds_sqlite_index_with_real_hits() {
+        let dir = std::env::temp_dir().join(format!("hide_host_idx_{}", now_ms()));
+        std::fs::create_dir_all(dir.join("src")).unwrap();
+        // Unique token that only exists in this fixture file.
+        const MARKER: &str = "ZZW4SQLITEONLYTOKEN";
+        std::fs::write(
+            dir.join("src").join("marker.rs"),
+            format!("// {MARKER} unique grounding anchor\npub fn w4_marker_fn() {{}}\n"),
+        )
+        .unwrap();
+
+        let services = BackendServices::open_workspace(&dir).unwrap();
+        // Open bound Sqlite (not the empty in-memory default).
+        assert!(
+            services.sqlite_index.is_some(),
+            "open_workspace must bind SqliteCodeIndex"
+        );
+        assert!(
+            services.memory_index.is_none(),
+            "open_workspace should not keep the empty in-memory index as live"
+        );
+
+        let results = services
+            .code_index
+            .search(hawking_index::SearchQuery {
+                text: MARKER.to_string(),
+                limit: 10,
+                include_symbols: true,
+                include_lexical: true,
+                include_semantic: false,
+            })
+            .await
+            .unwrap();
+        assert!(
+            !results.is_empty(),
+            "bounded ingest must surface a hit for the fixture marker; empty index cannot"
+        );
+        assert!(
+            results.iter().any(|r| r.snippet.contains(MARKER) || r.title.contains(MARKER) || r.snippet.contains("w4_marker")),
+            "hit should reference the fixture content: {results:?}"
+        );
+
+        // Test constructors still default to InMemory.
+        let mem = BackendServices::new(
+            HideConfig::for_workspace(&dir),
+            services.event_log.clone(),
+        );
+        assert!(mem.memory_index.is_some());
+        assert!(mem.sqlite_index.is_none());
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
     /// THE FLAGSHIP integration test (WP-11). Proves the whole host loop:
     ///
     /// 1. Boot the [`RuntimeSupervisor`] against a FAKE in-process serve (health
@@ -7990,10 +8309,9 @@ mod tests {
         // put a token - `ZZONLYINFILE` - that appears ONLY in the seeded file, so
         // finding it in the objective proves the compiled snippet (not the raw
         // prompt) was folded in.
-        services.code_index.add_text_file(
+        services.seed_code_file(
             "src/marker.rs",
             "// zzkernelmarker context bridge anchor ZZONLYINFILE\npub fn helper() {}\n",
-            None,
         );
 
         // Stub runtime (no HTTP): the auto-installed `RuntimePlanner` asks the
@@ -8014,9 +8332,7 @@ mod tests {
         suite.register(Arc::new(NoopPassOracle("build")));
         suite.register(Arc::new(NoopPassOracle("test")));
         suite.register(Arc::new(NoopPassOracle("typecheck")));
-        let grounding = Arc::new(Grounding::new(
-            services.code_index.clone() as Arc<dyn hawking_index::CodeIndex>
-        ));
+        let grounding = Arc::new(Grounding::new(services.code_index.clone()));
         let kernel = AgentKernel::builder(services.event_log.clone())
             .workspace_root(dir.to_string_lossy().to_string())
             .autonomy(Autonomy::SuggestOnly) // bounded; the plan step is non-effectful

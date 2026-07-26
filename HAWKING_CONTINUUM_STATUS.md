@@ -2,20 +2,20 @@
 
 Generated from live evidence by `tools/campaign/continuum_status.py`. Do not hand-edit.
 
-    at:       2026-07-26T04:46:42Z
+    at:       2026-07-26T05:28:27Z
     state:    FINISH_MATH_PRESERVE
-    why:      123/282 shards packed (43.62%)
+    why:      148/282 shards packed (52.48%)
     endpoint: RAMANUJAN_SANDBOX_READY (not reached)
 
 ## Math-Preserve PASS3
 
-    shards:     123/282 (43.62%)
+    shards:     148/282 (52.48%)
     scheduler:  dynamic_queue
-    per shard:  408.6 s (recent mean, per worker)
-    remaining:  4.51 h at the current measured rate
-    artifact:   43,736,929,111 bytes
+    per shard:  392.2 s (recent mean, per worker)
+    remaining:  3.65 h at the current measured rate
+    artifact:   51,936,354,373 bytes
     resident:   7 source shards
-    free disk:  350,760,407,040 bytes
+    free disk:  332,784,472,064 bytes
 
 ## Detached work
 
@@ -24,7 +24,7 @@ Generated from live evidence by `tools/campaign/continuum_status.py`. Do not han
 - `com.hawking.glm52.math-prometheus-pass1` pid=None last_exit=0
 - `com.hawking.glm52.math-prometheus-pass3` pid=11785 last_exit=0
 - `com.hawking.glm52.readiness-gate` pid=None last_exit=0
-- `com.hawking.glm52.safe-to-leave` pid=None last_exit=0
+- `com.hawking.glm52.safe-to-leave` pid=8359 last_exit=0
 - `com.hawking.glm52.source-fetch` pid=None last_exit=0
 - `com.hawking.odyssey-ready-finalize` pid=1336 last_exit=0
 - `com.hawking.overnight.handoff` pid=None last_exit=126
@@ -56,10 +56,15 @@ Generated from live evidence by `tools/campaign/continuum_status.py`. Do not han
 
 ## Delegated lanes (do not restart one that is still running)
 
+- `acceleration-archaeology-20260726-012813` audit/maximum on `` -- STILL RUNNING
 - `consult-20260726-002802` consult/consult on `` -- finished
-- `hawking-reclamation-20260726-004627` audit/maximum on `` -- STILL RUNNING
+- `fabric-bridge-archaeology-20260726-005742` audit/maximum on `` -- finished
+- `fit-kernel-v3-20260726-011556` delegate/maximum on `grok/fit-kernel-v3-20260726-011556` -- STILL RUNNING
+- `gravity-gpu-cache-20260726-005741` delegate/power on `grok/gravity-gpu-cache-20260726-005741` -- finished
+- `hawking-reclamation-20260726-004627` audit/maximum on `` -- finished
 - `hide-approval-inc2-20260725-233330` delegate/maximum on `grok/hide-approval-inc2-20260725-233330` -- finished
 - `hide-archaeology-20260725-212751` audit/maximum on `` -- finished
+- `hide-inc3-20260726-005734` delegate/power on `grok/hide-inc3-20260726-005734` -- finished
 - `hide-wiring-inc1-20260725-224036` delegate/power on `grok/hide-wiring-inc1-20260725-224036` -- finished
 - `mop-ramanujan-assessment-20260726-001628` audit/maximum on `` -- finished
 - `ramanujan-cognition-20260726-003050` audit/maximum on `` -- finished

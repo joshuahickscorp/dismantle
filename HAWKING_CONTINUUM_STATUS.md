@@ -2,20 +2,20 @@
 
 Generated from live evidence by `tools/campaign/continuum_status.py`. Do not hand-edit.
 
-    at:       2026-07-26T04:42:27Z
+    at:       2026-07-26T04:46:42Z
     state:    FINISH_MATH_PRESERVE
-    why:      119/282 shards packed (42.2%)
+    why:      123/282 shards packed (43.62%)
     endpoint: RAMANUJAN_SANDBOX_READY (not reached)
 
 ## Math-Preserve PASS3
 
-    shards:     119/282 (42.2%)
+    shards:     123/282 (43.62%)
     scheduler:  dynamic_queue
-    per shard:  411.8 s (recent mean, per worker)
-    remaining:  4.66 h at the current measured rate
-    artifact:   42,270,319,331 bytes
+    per shard:  408.6 s (recent mean, per worker)
+    remaining:  4.51 h at the current measured rate
+    artifact:   43,736,929,111 bytes
     resident:   7 source shards
-    free disk:  352,228,864,000 bytes
+    free disk:  350,760,407,040 bytes
 
 ## Detached work
 
@@ -45,7 +45,7 @@ Generated from live evidence by `tools/campaign/continuum_status.py`. Do not han
 - MATH_FROZEN: rerun Prometheus and pack Math-Frozen
 - RECALIBRATE: recalibrate acceleration and qualify HIDE
 - FABRIC_BRIDGE: Fabric, Bridge, adapters, schemas, canonical events, CLI
-- CONSOLIDATE_HAWKING: final Hawking consolidation
+- CONSOLIDATE_HAWKING: deep refactor: reclaim the hot foundry path to Rust/Metal (the codec is half-ported -- Rust reads a .gravity, only Python writes one), archive the one-shot campaign machinery, one authority per subsystem. Speed and line count are SEPARATE objectives with separate targets
 - HAWKING_EVOLUTION_COMPLETE: seal the evolution endpoint
 - MIGRATE_RAMANUJAN: create ~/Downloads/ramanujan and migrate owned contracts
 - TRAIN_LOCAL_FORGE: fully local retriever/formalizer/prover/repair training
@@ -57,6 +57,7 @@ Generated from live evidence by `tools/campaign/continuum_status.py`. Do not han
 ## Delegated lanes (do not restart one that is still running)
 
 - `consult-20260726-002802` consult/consult on `` -- finished
+- `hawking-reclamation-20260726-004627` audit/maximum on `` -- STILL RUNNING
 - `hide-approval-inc2-20260725-233330` delegate/maximum on `grok/hide-approval-inc2-20260725-233330` -- finished
 - `hide-archaeology-20260725-212751` audit/maximum on `` -- finished
 - `hide-wiring-inc1-20260725-224036` delegate/power on `grok/hide-wiring-inc1-20260725-224036` -- finished

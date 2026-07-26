@@ -811,6 +811,21 @@ pub fn gpu_resident_state_enabled() -> bool {
     crate::env_on(GPU_RESIDENT_STATE_ENV)
 }
 
+/// Opt-in device-resident `lm_head` + GPU argmax for GLM.
+///
+/// Default off — host dense matvec remains the parity oracle. When set,
+/// a native.bf16 `lm_head.weight` is uploaded once (raw bf16 bytes, no host
+/// widen), kept under the GPU weight-cache budget, and projected with the
+/// `gemv_native_bf16_seq` Metal kernel (sequential f32 accumulate matching
+/// host widen + `matvec_dense`). Integrates with the existing
+/// `GpuWeightCache` / resident-state path; does not invent a second cache.
+pub const GPU_LM_HEAD_ENV: &str = "HAWKING_GLM_GPU_LM_HEAD";
+
+/// Whether [`GPU_LM_HEAD_ENV`] requests the device lm_head path.
+pub fn gpu_lm_head_enabled() -> bool {
+    crate::env_on(GPU_LM_HEAD_ENV)
+}
+
 /// Static `commit_and_wait` count on the host-state GPU path (default).
 /// Matches the measured ~1,171 figure on the flagship schedule.
 pub fn estimate_host_state_waits_per_token(arch: &GlmArch) -> u64 {
@@ -1142,11 +1157,15 @@ pub mod gpu {
         }
     }
 
-    /// One tensor resident on the device, or -- for the natively-carried
-    /// ones (`lm_head.weight` in the frozen General artifact) -- widened
-    /// once and left on the host. A matvec against the vocabulary runs once
-    /// per token, not once per layer, so it is not worth a dedicated dense
-    /// kernel the way the 30-odd per-layer projections are.
+    /// One tensor resident for matvec.
+    ///
+    /// - `Pq`: gravity-pq codebooks+codes on device.
+    /// - `NativeCpu`: small native tensors widened to f32 on the host (norms
+    ///   go through [`GravityWeights::dense`], not this path; this is for
+    ///   native matvec targets when the device lm_head flag is off).
+    /// - `NativeGpuBf16`: raw `native.bf16` matrix uploaded once and kept
+    ///   device-resident under the weight-cache budget (flagship
+    ///   `lm_head.weight`, gated by [`super::GPU_LM_HEAD_ENV`]).
     pub(crate) enum GpuTensor {
         Pq {
             codebooks: Buffer,
@@ -1154,6 +1173,11 @@ pub mod gpu {
             params: PqParams,
         },
         NativeCpu(Vec<f32>),
+        NativeGpuBf16 {
+            buf: Buffer,
+            rows: u32,
+            cols: u32,
+        },
     }
 
     /// A [`WeightAccess`] backend that uploads each `gravity-pq` tensor to
@@ -1179,13 +1203,15 @@ pub mod gpu {
 
     impl GpuWeightCache {
         /// Resident byte size of a cached tensor.
-        /// `Pq` = codebooks + codes buffer lengths; `NativeCpu` = f32 vec × 4.
+        /// `Pq` = codebooks + codes buffer lengths; `NativeCpu` = f32 vec × 4;
+        /// `NativeGpuBf16` = raw bf16 buffer length (no host widen).
         fn tensor_bytes(t: &GpuTensor) -> u64 {
             match t {
                 GpuTensor::Pq {
                     codebooks, codes, ..
                 } => codebooks.length() + codes.length(),
                 GpuTensor::NativeCpu(v) => (v.len() as u64).saturating_mul(4),
+                GpuTensor::NativeGpuBf16 { buf, .. } => buf.length(),
             }
         }
 
@@ -1193,7 +1219,7 @@ pub mod gpu {
         fn load_tensor(&self, name: &str) -> Result<(GpuTensor, u64)> {
             use crate::cost_ledger::{self, Bucket};
 
-            let (codec, blob) = self.weights.raw_payload(name)?;
+            let (codec, blob, shape) = self.weights.raw_payload_with_shape(name)?;
             let entry = if codec == "gravity-pq" {
                 let (h, cb, codes_padded) = {
                     let _decode = cost_ledger::Scope::new(Bucket::PackedIndexDecode);
@@ -1231,8 +1257,42 @@ pub mod gpu {
                     params: PqParams::from_header(&h),
                 }
             } else if codec.starts_with("native.") {
-                let _decode = cost_ledger::Scope::new(Bucket::PackedIndexDecode);
-                GpuTensor::NativeCpu(widen_native(&codec, &blob)?)
+                // Device-resident lm_head: upload raw bf16 once. The dense-memo
+                // host path re-reads + re-widens this oversized tensor every
+                // token (1.90 GB); residency under the 32 GiB weight budget
+                // eliminates that. Gated; non-bf16 / non-lm_head stay host.
+                if super::gpu_lm_head_enabled()
+                    && name == "lm_head.weight"
+                    && codec == "native.bf16"
+                {
+                    if shape.len() != 2 {
+                        return Err(Error::Gravity(format!(
+                            "tensor {name}: native.bf16 device path expects rank-2 shape, got {shape:?}"
+                        )));
+                    }
+                    let rows = shape[0] as u32;
+                    let cols = shape[1] as u32;
+                    let expect = (rows as u64)
+                        .saturating_mul(cols as u64)
+                        .saturating_mul(2);
+                    if blob.len() as u64 != expect {
+                        return Err(Error::Gravity(format!(
+                            "tensor {name}: bf16 payload {} B != rows*cols*2 ({expect})",
+                            blob.len()
+                        )));
+                    }
+                    let buf = {
+                        let _xfer = cost_ledger::Scope::new(Bucket::HostDeviceTransfer);
+                        let b = self.ctx.new_buffer_with_bytes_checked(&blob)?;
+                        cost_ledger::record_transfer(blob.len() as u64, true, "lm_head_bf16_upload");
+                        cost_ledger::record_allocation(blob.len() as u64);
+                        b
+                    };
+                    GpuTensor::NativeGpuBf16 { buf, rows, cols }
+                } else {
+                    let _decode = cost_ledger::Scope::new(Bucket::PackedIndexDecode);
+                    GpuTensor::NativeCpu(widen_native(&codec, &blob)?)
+                }
             } else {
                 return Err(Error::Gravity(format!(
                     "tensor {name}: unsupported codec {codec:?}"
@@ -1305,6 +1365,10 @@ pub mod gpu {
                     cost_ledger::record_active_bytes((w.len() * 4) as u64);
                     matvec_dense(w, x, name)
                 }
+                GpuTensor::NativeGpuBf16 { buf, rows, cols } => {
+                    cost_ledger::record_active_bytes(buf.length());
+                    dispatch_gemv_native_bf16_seq(&self.ctx, buf, *rows, *cols, x)
+                }
                 GpuTensor::Pq {
                     codebooks,
                     codes,
@@ -1341,6 +1405,13 @@ pub mod gpu {
                         cost_ledger::record_active_bytes((w.len() * 4) as u64);
                         results[i] = Some(matvec_dense(w, x, name)?);
                     }
+                    GpuTensor::NativeGpuBf16 { buf, rows, cols } => {
+                        // lm_head is once-per-token; batch path still works
+                        // for completeness if a caller includes it.
+                        cost_ledger::record_active_bytes(buf.length());
+                        results[i] =
+                            Some(dispatch_gemv_native_bf16_seq(&self.ctx, buf, *rows, *cols, x)?);
+                    }
                     GpuTensor::Pq {
                         codebooks,
                         codes,
@@ -1371,6 +1442,136 @@ pub mod gpu {
                 })
                 .collect()
         }
+    }
+
+    /// Device-resident `native.bf16` GEMV: weights already on GPU; upload `x`,
+    /// sequential accumulate per row (bit-identical to host widen+matvec),
+    /// read logits back. Also used from the resident path via the buffer API.
+    /// Public for parity tests and micro-benchmarks.
+    pub fn dispatch_gemv_native_bf16_seq(
+        ctx: &MetalContext,
+        weight: &Buffer,
+        rows: u32,
+        cols: u32,
+        x: &[f32],
+    ) -> Result<Vec<f32>> {
+        use crate::cost_ledger::{self, Bucket};
+        use std::time::Instant;
+
+        if x.len() != cols as usize {
+            return Err(Error::Gravity(format!(
+                "gemv_native_bf16_seq: x.len() {} != cols {cols}",
+                x.len()
+            )));
+        }
+        let expect = (rows as u64).saturating_mul(cols as u64).saturating_mul(2);
+        if weight.length() < expect {
+            return Err(Error::Gravity(format!(
+                "gemv_native_bf16_seq: weight buffer {} B < rows*cols*2 ({expect})",
+                weight.length()
+            )));
+        }
+        let x_bytes = std::mem::size_of_val(x) as u64;
+        let y_bytes = rows as usize * std::mem::size_of::<f32>();
+        let (x_buf, y_buf) = {
+            let _xfer = cost_ledger::Scope::new(Bucket::HostDeviceTransfer);
+            let x_buf = ctx.new_buffer_with_bytes(bytemuck::cast_slice::<f32, u8>(x));
+            let y_buf = ctx.new_buffer(y_bytes);
+            cost_ledger::record_transfer(x_bytes, true, "lm_head_x_upload");
+            cost_ledger::record_allocation(x_bytes + y_bytes as u64);
+            (x_buf, y_buf)
+        };
+        let rows_u = rows;
+        let cols_u = cols;
+        // One thread per output row; TG size 256 packs the grid densely.
+        const TG: u32 = 256;
+        let n_tg = rows.div_ceil(TG);
+        let grid = (n_tg * TG, 1, 1);
+        let tg = (TG, 1, 1);
+
+        if cost_ledger::is_recording() {
+            let t_encode = Instant::now();
+            let mut tcb = TokenCommandBuffer::new(ctx);
+            tcb.dispatch_threads("gemv_native_bf16_seq", grid, tg, |enc| {
+                enc.set_buffer(0, Some(weight), 0);
+                enc.set_buffer(1, Some(&x_buf), 0);
+                enc.set_buffer(2, Some(&y_buf), 0);
+                enc.set_bytes(3, 4, &rows_u as *const u32 as *const _);
+                enc.set_bytes(4, 4, &cols_u as *const u32 as *const _);
+            })?;
+            cost_ledger::add_duration(Bucket::MetalEncode, t_encode.elapsed());
+            cost_ledger::record_dispatches(tcb.dispatch_count() as u64);
+            tcb.commit_and_wait_split()?;
+        } else {
+            ctx.dispatch_threads("gemv_native_bf16_seq", grid, tg, |enc| {
+                enc.set_buffer(0, Some(weight), 0);
+                enc.set_buffer(1, Some(&x_buf), 0);
+                enc.set_buffer(2, Some(&y_buf), 0);
+                enc.set_bytes(3, 4, &rows_u as *const u32 as *const _);
+                enc.set_bytes(4, 4, &cols_u as *const u32 as *const _);
+            })?;
+        }
+
+        let y = {
+            let _xfer = cost_ledger::Scope::new(Bucket::HostDeviceTransfer);
+            let y_ptr = y_buf.contents() as *const f32;
+            let y = unsafe { std::slice::from_raw_parts(y_ptr, rows as usize) }.to_vec();
+            cost_ledger::record_transfer(y_bytes as u64, false, "lm_head_y_download");
+            cost_ledger::record_allocation(y_bytes as u64);
+            y
+        };
+        Ok(y)
+    }
+
+    /// Encode bf16 GEMV into an existing command buffer (device x → device y).
+    /// Caller commits. Used by the resident path so final_hidden never leaves
+    /// the device for the projection.
+    pub(crate) fn encode_gemv_native_bf16_seq(
+        tcb: &mut TokenCommandBuffer<'_>,
+        weight: &Buffer,
+        rows: u32,
+        cols: u32,
+        x: &Buffer,
+        y: &Buffer,
+    ) -> Result<()> {
+        const TG: u32 = 256;
+        let n_tg = rows.div_ceil(TG);
+        let grid = (n_tg * TG, 1, 1);
+        let tg = (TG, 1, 1);
+        let rows_u = rows;
+        let cols_u = cols;
+        let w = weight.clone();
+        let xb = x.clone();
+        let yb = y.clone();
+        tcb.dispatch_threads("gemv_native_bf16_seq", grid, tg, move |enc| {
+            enc.set_buffer(0, Some(&w), 0);
+            enc.set_buffer(1, Some(&xb), 0);
+            enc.set_buffer(2, Some(&yb), 0);
+            enc.set_bytes(3, 4, &rows_u as *const u32 as *const _);
+            enc.set_bytes(4, 4, &cols_u as *const u32 as *const _);
+        })?;
+        Ok(())
+    }
+
+    /// Encode greedy argmax over device logits → single u32 token buffer.
+    pub(crate) fn encode_argmax_f32(
+        tcb: &mut TokenCommandBuffer<'_>,
+        logits: &Buffer,
+        n: u32,
+        token_out: &Buffer,
+    ) -> Result<()> {
+        const TG: u32 = 256;
+        let n_u = n;
+        let lg = logits.clone();
+        let tok = token_out.clone();
+        tcb.dispatch_threads("sample_argmax_f32", (TG, 1, 1), (TG, 1, 1), move |enc| {
+            enc.set_buffer(0, Some(&lg), 0);
+            enc.set_buffer(1, Some(&tok), 0);
+            enc.set_bytes(2, 4, &n_u as *const u32 as *const _);
+            enc.set_threadgroup_memory_length(0, (TG as u64) * 4);
+            enc.set_threadgroup_memory_length(1, (TG as u64) * 4);
+        })?;
+        Ok(())
     }
 
     /// One `gravity_pq_matvec` dispatch against already-resident codebooks
@@ -1793,6 +1994,49 @@ mod tests {
         match prev {
             Some(v) => std::env::set_var(GPU_RESIDENT_STATE_ENV, v),
             None => std::env::remove_var(GPU_RESIDENT_STATE_ENV),
+        }
+    }
+
+    /// Device lm_head flag defaults off so host dense matvec stays the oracle.
+    #[test]
+    fn gpu_lm_head_flag_defaults_off() {
+        let prev = std::env::var_os(GPU_LM_HEAD_ENV);
+        std::env::remove_var(GPU_LM_HEAD_ENV);
+        assert!(!gpu_lm_head_enabled());
+        match prev {
+            Some(v) => std::env::set_var(GPU_LM_HEAD_ENV, v),
+            None => std::env::remove_var(GPU_LM_HEAD_ENV),
+        }
+    }
+
+    /// Host bf16 matvec: widen then sequential sum — the parity oracle for
+    /// `gemv_native_bf16_seq`. Covers several activation vectors so a single
+    /// lucky x cannot hide accumulation-order bugs.
+    #[test]
+    fn matvec_bf16_host_matches_widen_then_dense() {
+        use crate::gravity::{matvec_bf16_host, matvec_dense, widen_native};
+        let rows = 7usize;
+        let cols = 11usize;
+        // Deterministic bf16 bit patterns (little-endian u16).
+        let mut bits = Vec::with_capacity(rows * cols * 2);
+        for i in 0..(rows * cols) {
+            let u = ((i * 37 + 11) % 0x7F80) as u16; // avoid NaN/Inf quiet region
+            bits.extend_from_slice(&u.to_le_bytes());
+        }
+        let w = widen_native("native.bf16", &bits).expect("widen");
+        let xs: Vec<Vec<f32>> = vec![
+            (0..cols).map(|c| c as f32 * 0.1 - 0.5).collect(),
+            (0..cols).map(|c| ((c * 3) % 7) as f32 - 3.0).collect(),
+            vec![1.0; cols],
+            vec![0.0; cols],
+            (0..cols)
+                .map(|c| if c % 2 == 0 { 0.25 } else { -0.125 })
+                .collect(),
+        ];
+        for (pi, x) in xs.iter().enumerate() {
+            let got = matvec_bf16_host(&bits, cols, x).expect("host bf16");
+            let expect = matvec_dense(&w, x, "lm_head.weight").expect("dense");
+            assert_eq!(got, expect, "prompt/vector {pi}: bit-identical required");
         }
     }
 

@@ -1362,7 +1362,10 @@ pub mod gpu {
             self.ensure_many_locked(&mut cache, &[name])?;
             match cache.get(name).expect("ensure just inserted it") {
                 GpuTensor::NativeCpu(w) => {
-                    cost_ledger::record_active_bytes((w.len() * 4) as u64);
+                    // Widened f32 residency (native.bf16 artifacts pay a 2×
+                    // traffic tax vs stored bytes). Category partition is what
+                    // makes the 4×-vs-geometry figure explainable.
+                    cost_ledger::record_active_bytes_for(name, (w.len() * 4) as u64);
                     matvec_dense(w, x, name)
                 }
                 GpuTensor::NativeGpuBf16 { buf, rows, cols } => {
@@ -1374,8 +1377,10 @@ pub mod gpu {
                     codes,
                     params,
                 } => {
+                    // Device buffer lengths: codebooks + codes (+4 pad on
+                    // codes at upload). Not the mmap slice, not page size.
                     let bytes = codebooks.length() + codes.length();
-                    cost_ledger::record_active_bytes(bytes);
+                    cost_ledger::record_active_bytes_for(name, bytes);
                     dispatch_pq_matvec(&self.ctx, codebooks, codes, *params, x)
                 }
             }
@@ -1402,7 +1407,7 @@ pub mod gpu {
             for (i, &(name, x)) in calls.iter().enumerate() {
                 match cache.get(name).expect("ensure just inserted it") {
                     GpuTensor::NativeCpu(w) => {
-                        cost_ledger::record_active_bytes((w.len() * 4) as u64);
+                        cost_ledger::record_active_bytes_for(name, (w.len() * 4) as u64);
                         results[i] = Some(matvec_dense(w, x, name)?);
                     }
                     GpuTensor::NativeGpuBf16 { buf, rows, cols } => {
@@ -1417,7 +1422,10 @@ pub mod gpu {
                         codes,
                         params,
                     } => {
-                        cost_ledger::record_active_bytes(codebooks.length() + codes.length());
+                        cost_ledger::record_active_bytes_for(
+                            name,
+                            codebooks.length() + codes.length(),
+                        );
                         gpu_calls.push((i, codebooks, codes, *params, x));
                     }
                 }

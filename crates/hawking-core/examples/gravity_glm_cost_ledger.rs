@@ -47,7 +47,8 @@ const DEFAULT_MODEL_DIR: &str = "Library/Application Support/Hawking/Models/GLM-
 #[cfg(target_os = "macos")]
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     use hawking_core::cost_ledger::{
-        self, aggregate_reports, bucket_source_catalogue, SEALED_ARTIFACT_ACTIVE_ROUTED_BYTES,
+        self, aggregate_reports, bucket_source_catalogue, sealed_glm_active_byte_schedule,
+        SEALED_ARTIFACT_ACTIVE_ROUTED_BYTES,
     };
     use hawking_core::gravity_glm::gpu::GravityGlmGpu;
 
@@ -206,6 +207,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             eprintln!("  page_faults: unavailable on this path");
         }
 
+        // Active-byte category partition (must sum to active_bytes_read).
+        let cat = &report.counters.active_bytes_by_category;
+        if !cat.is_empty() {
+            eprintln!("  active_bytes_by_category (GB):");
+            let mut keys: Vec<_> = cat.keys().cloned().collect();
+            keys.sort();
+            for k in keys {
+                let b = cat[&k].as_u64().unwrap_or(0);
+                if b == 0 {
+                    continue;
+                }
+                eprintln!("    {k:<20} {:>8.3}", b as f64 / 1e9);
+            }
+        }
+
         token_reports.push(serde_json::json!({
             "decode_token_index": i + 1,
             "absolute_position": abs_pos,
@@ -237,6 +253,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         },
         "geometry_active_routed_bytes_sealed": SEALED_ARTIFACT_ACTIVE_ROUTED_BYTES,
         "geometry_gb": SEALED_ARTIFACT_ACTIVE_ROUTED_BYTES as f64 / 1e9,
+        "static_active_byte_schedule": sealed_glm_active_byte_schedule(),
+        "static_schedule_note": "Header-derived static expectation for active_bytes_read. Compare aggregate counters_mean.active_bytes_read and per-token active_bytes_by_category against it. A gap is a finding.",
         "open_ms": open_ms,
         "prefill_ms": prefill_ms,
         "context_tokens": context,
@@ -267,6 +285,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "Bucket::Norm is defined for RMSNorm/LayerNorm hooks; wire Scope::new(Bucket::Norm) from gravity_glm when that lane is free.",
             "This binary does not claim timings it did not measure; empty buckets mean that work was not observed on the instrumented path.",
             "No Metal device in the agent sandbox — live numbers require running this command on a Mac with the model present.",
+            "active_bytes_by_category partitions active_bytes_read by tensor class (routed/shared/dense_mlp/attention/indexer/router/lm_head/other).",
+            "Geometry (2.58 GB) is routed-experts only under an 8×3×78 idealisation; the static schedule is the full forward touch set (~9.34 GB).",
         ],
         "hooks_not_yet_in_gravity_glm_decode": [
             "Scope::new(Bucket::Norm) around RMSNorm/LayerNorm",

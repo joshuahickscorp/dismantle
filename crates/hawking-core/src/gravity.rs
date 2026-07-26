@@ -142,9 +142,13 @@ impl GravityShard {
     /// `verify_hash` is set, the payload's SHA-256 is checked against the
     /// descriptor's `sha256` and a mismatch is an error.
     pub fn read_tensor(&self, name: &str, verify_hash: bool) -> Result<Vec<u8>> {
-        let d = self
-            .descriptor(name)
-            .ok_or_else(|| Error::Gravity(format!("no such tensor {name:?}")))?;
+        use crate::cost_ledger::{self, Bucket};
+
+        let d = {
+            let _lookup = cost_ledger::Scope::new(Bucket::ContainerLookup);
+            self.descriptor(name)
+                .ok_or_else(|| Error::Gravity(format!("no such tensor {name:?}")))?
+        };
         let start = self
             .body_offset
             .checked_add(d.offset)
@@ -158,8 +162,13 @@ impl GravityShard {
                 self.mmap.len()
             )));
         }
-        let payload = &self.mmap[start as usize..end as usize];
+        let payload = {
+            let _lookup = cost_ledger::Scope::new(Bucket::ContainerLookup);
+            &self.mmap[start as usize..end as usize]
+        };
         if verify_hash {
+            let _verify = cost_ledger::Scope::new(Bucket::ArtifactVerificationAndSha);
+            cost_ledger::record_sha_verification();
             let mut h = Sha256::new();
             h.update(payload);
             let digest = h.finalize();
@@ -171,6 +180,9 @@ impl GravityShard {
                 )));
             }
         }
+        // Host-side copy out of the mmap. Counts as a hot-loop allocation when
+        // the cost ledger is recording a decode token.
+        cost_ledger::record_allocation(payload.len() as u64);
         Ok(payload.to_vec())
     }
 }
@@ -1094,9 +1106,14 @@ impl GravityWeights {
     /// a byte budget). Integrity hashing still runs on the first load when
     /// `verify_hash` is on, then is skipped for the rest of the process.
     pub fn dense(&self, name: &str) -> Result<Vec<f32>> {
+        use crate::cost_ledger::{self, Bucket};
+        cost_ledger::record_dense_call();
         match &self.source {
             Source::Eager(tensors) => match tensors.get(name) {
-                Some(Tensor::Dense(v)) => Ok(v.clone()),
+                Some(Tensor::Dense(v)) => {
+                    cost_ledger::record_allocation((v.len() * 4) as u64);
+                    Ok(v.clone())
+                }
                 Some(Tensor::Pq(_)) => Err(Error::Gravity(format!(
                     "tensor {name:?} is packed; expected a natively-carried dense tensor"
                 ))),
@@ -1135,7 +1152,10 @@ impl GravityWeights {
                         let blob = shard.read_tensor(name, need_verify)?;
                         Ok((codec, blob))
                     })?;
-                let v = widen_native(&codec, &blob)?;
+                let v = {
+                    let _decode = cost_ledger::Scope::new(Bucket::PackedIndexDecode);
+                    widen_native(&codec, &blob)?
+                };
                 {
                     let mut memo = dense_memo.lock().expect("gravity dense-memo mutex");
                     if need_verify {
@@ -1156,6 +1176,8 @@ impl GravityWeights {
 
     /// `y = W @ x` for a 2D weight, whichever codec carries it.
     pub fn matvec(&self, name: &str, x: &[f32]) -> Result<Vec<f32>> {
+        use crate::cost_ledger::{self, Bucket};
+        cost_ledger::record_matvec_call();
         match &self.source {
             Source::Eager(tensors) => match tensors.get(name) {
                 Some(Tensor::Pq(t)) => t.matvec(x),
@@ -1176,9 +1198,19 @@ impl GravityWeights {
                     .clone();
                 let blob = shard.read_tensor(name, *verify_hash)?;
                 if codec == "gravity-pq" {
-                    PqTensor::from_payload(&blob)?.matvec(x)
+                    let t = {
+                        let _decode = cost_ledger::Scope::new(Bucket::PackedIndexDecode);
+                        PqTensor::from_payload(&blob)?
+                    };
+                    cost_ledger::record_active_bytes(blob.len() as u64);
+                    t.matvec(x)
                 } else if codec.starts_with("native.") {
-                    matvec_dense(&widen_native(&codec, &blob)?, x, name)
+                    let w = {
+                        let _decode = cost_ledger::Scope::new(Bucket::PackedIndexDecode);
+                        widen_native(&codec, &blob)?
+                    };
+                    cost_ledger::record_active_bytes((w.len() * 4) as u64);
+                    matvec_dense(&w, x, name)
                 } else {
                     Err(Error::Gravity(format!(
                         "tensor {name}: unsupported codec {codec:?}"
@@ -1199,6 +1231,8 @@ impl GravityWeights {
     /// re-read without re-hashing; row-level decoded caching would be wrong
     /// for a vocab-scale table.
     pub fn row(&self, name: &str, index_: usize, cols: usize) -> Result<Vec<f32>> {
+        use crate::cost_ledger::{self, Bucket};
+        cost_ledger::record_row_call();
         match &self.source {
             Source::Eager(tensors) => match tensors.get(name) {
                 Some(Tensor::Pq(t)) => t.row(index_),
@@ -1244,9 +1278,13 @@ impl GravityWeights {
                     // Packed embeddings: verify-once only. Caching every row
                     // of a vocab-scale table would blow the budget; caching
                     // the whole decoded matrix is worse.
+                    let _decode = cost_ledger::Scope::new(Bucket::PackedIndexDecode);
                     pq_row(&blob, index_)
                 } else if codec.starts_with("native.") {
-                    let w = widen_native(&codec, &blob)?;
+                    let w = {
+                        let _decode = cost_ledger::Scope::new(Bucket::PackedIndexDecode);
+                        widen_native(&codec, &blob)?
+                    };
                     let row = row_dense(&w, index_, cols, name)?;
                     {
                         let mut memo = dense_memo.lock().expect("gravity dense-memo mutex");

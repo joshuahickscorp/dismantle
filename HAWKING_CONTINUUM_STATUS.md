@@ -2,7 +2,7 @@
 
 Generated from live evidence by `tools/campaign/continuum_status.py`. Do not hand-edit.
 
-    at:       2026-07-26T16:30:50Z
+    at:       2026-07-26T18:04:10Z
     state:    SEAL_CLAIM_A
     why:      HAWKING_ODYSSEY_READY sealed; equal-budget Claim A not yet sealed
     endpoint: RAMANUJAN_SANDBOX_READY (not reached)
@@ -15,7 +15,7 @@ Generated from live evidence by `tools/campaign/continuum_status.py`. Do not han
     remaining:  not estimable yet
     artifact:   92,008,825,475 bytes
     resident:   0 source shards
-    free disk:  320,157,835,264 bytes
+    free disk:  306,778,071,040 bytes
 
 ## Detached work
 
@@ -53,10 +53,13 @@ Generated from live evidence by `tools/campaign/continuum_status.py`. Do not han
 
 ## Delegated lanes (do not restart one that is still running)
 
+- `accel-rereceipt-20260726-140200` delegate/maximum on `grok/accel-rereceipt-20260726-140200` -- STILL RUNNING
 - `acceleration-archaeology-20260726-012813` audit/maximum on `` -- finished
 - `audit-product-plan-20260726-023917` audit/maximum on `` -- finished
 - `consult-20260726-002802` consult/consult on `` -- finished
 - `consult-20260726-014436` consult/consult on `` -- finished
+- `consult-20260726-140226` consult/consult on `` -- finished
+- `consult-20260726-140247` consult/consult on `` -- STILL RUNNING
 - `cx-arch-20260726-014435` audit/maximum on `` -- finished
 - `cx-claims-20260726-014433` audit/maximum on `` -- finished
 - `cx-dx-20260726-014435` audit/maximum on `` -- finished
@@ -70,10 +73,22 @@ Generated from live evidence by `tools/campaign/continuum_status.py`. Do not han
 - `hide-archaeology-20260725-212751` audit/maximum on `` -- finished
 - `hide-context-os-20260726-032000` delegate/maximum on `grok/hide-context-os-20260726-032000` -- finished
 - `hide-inc3-20260726-005734` delegate/power on `grok/hide-inc3-20260726-005734` -- finished
+- `hide-live-loop-20260726-140240` delegate/maximum on `grok/hide-live-loop-20260726-140240` -- STILL RUNNING
+- `hide-live-loop2-20260726-140311` delegate/maximum on `grok/hide-live-loop2-20260726-140311` -- STILL RUNNING
 - `hide-wiring-inc1-20260725-224036` delegate/power on `grok/hide-wiring-inc1-20260725-224036` -- finished
 - `mop-ramanujan-assessment-20260726-001628` audit/maximum on `` -- finished
 - `plan-machine-20260726-023414` audit/maximum on `` -- finished
 - `ramanujan-cognition-20260726-003050` audit/maximum on `` -- finished
+- `warm-runtime-20260726-140218` delegate/maximum on `grok/warm-runtime-20260726-140218` -- STILL RUNNING
+- `ws10b-20260726-133108` delegate/maximum on `grok/ws10b-20260726-133108` -- finished
+- `ws12-20260726-132408` delegate/maximum on `grok/ws12-20260726-132408` -- finished
+- `ws1b-20260726-123717` delegate/maximum on `grok/ws1b-20260726-123717` -- finished
+- `ws2b-20260726-123407` delegate/maximum on `grok/ws2b-20260726-123407` -- finished
+- `ws4-20260726-125824` delegate/maximum on `grok/ws4-20260726-125824` -- finished
+- `ws5-20260726-125855` delegate/maximum on `grok/ws5-20260726-125855` -- finished
+- `ws7-20260726-132307` delegate/maximum on `grok/ws7-20260726-132307` -- finished
+- `ws8b-20260726-123742` delegate/maximum on `grok/ws8b-20260726-123742` -- finished
+- `ws9b-20260726-123808` delegate/maximum on `grok/ws9b-20260726-123808` -- finished
 
 ## Queued work with a written receipt
 

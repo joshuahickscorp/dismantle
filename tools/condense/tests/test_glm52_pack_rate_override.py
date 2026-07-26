@@ -68,6 +68,67 @@ def test_no_override_is_byte_identical_to_the_existing_packer(tmp_path):
         assert got == baseline, f"rate_override={other!r} changed packed bytes with no override entries"
 
 
+def test_telemetry_is_a_side_channel_and_does_not_change_artifact_bytes(tmp_path):
+    shard, rows = _shard_with_experts(tmp_path, n=1)
+    pack.pack_shard(shard, rows, tmp_path / "warmup", seed=0)
+    pack.pack_shard(shard, rows, tmp_path / "baseline", seed=0)
+
+    telemetry = {}
+    pack.pack_shard(
+        shard, rows, tmp_path / "instrumented", seed=0, telemetry=telemetry
+    )
+    name = "model-00001-of-00282.gravity"
+    assert (tmp_path / "instrumented" / name).read_bytes() == (
+        tmp_path / "baseline" / name
+    ).read_bytes()
+    assert telemetry["timing_side_channel_only"] is True
+    assert telemetry["excluded_from_artifact_and_canonical_receipts"] is True
+    assert telemetry["stage_seconds"]["fit"] > 0
+    assert telemetry["categories"]["routed_expert"]["tensors"] == 1
+    assert telemetry["tensors_per_second"] > 0
+    assert telemetry["weights_per_second"] > 0
+
+
+def test_ladder_sampling_does_not_change_any_tensor_payload(tmp_path):
+    """Surveying fewer rungs must move only the survey record, never the artifact.
+
+    The schedule change that made PASS3 fit each tensor's own target rung instead of
+    all three is worth 3.88x, and is only admissible because the rungs share no state:
+    every ladder rung seeds its own k-means generator, so a rung that is not fitted
+    cannot perturb the one that is.  This pins that.  Exhaustive survey (N=1) against
+    target-only (N huge) must produce identical payload bytes for every tensor.
+    """
+    shard, rows = _shard_with_experts(tmp_path, n=8)
+    override = {f"model.layers.0.mlp.experts.{i}.gate_proj.weight": "R4" for i in range(8)}
+    pack.pack_shard(shard, rows, tmp_path / "warmup", seed=0, rate_override=override)
+
+    name = "model-00001-of-00282.gravity"
+    payloads = {}
+    for label, every in (("exhaustive", 1), ("sampled", 10_000)):
+        original, pack.LADDER_SAMPLE_EVERY = pack.LADDER_SAMPLE_EVERY, every
+        try:
+            pack.pack_shard(shard, rows, tmp_path / label, seed=0, rate_override=override)
+        finally:
+            pack.LADDER_SAMPLE_EVERY = original
+        header, body = gravity_format.open_shard(tmp_path / label / name)
+        blob = (tmp_path / label / name).read_bytes()
+        payloads[label] = {
+            entry["name"]: blob[body + entry["offset"]: body + entry["offset"] + entry["bytes"]]
+            for entry in header["tensors"]
+        }
+        assert all(e["rung"] == "R4" for e in header["tensors"]), label
+
+    assert payloads["exhaustive"] == payloads["sampled"], (
+        "ladder survey density changed a packed tensor payload")
+
+    # ...and the survey record itself must move, or the schedule did nothing.
+    surveyed = {}
+    for label in ("exhaustive", "sampled"):
+        header = gravity_format.read_header(tmp_path / label / name)
+        surveyed[label] = header["compression"]["ladder_survey"]["tensors_fully_surveyed"]
+    assert surveyed["exhaustive"] == 8 and surveyed["sampled"] == 1, surveyed
+
+
 def test_native_override_protects_exactly_the_named_expert(tmp_path):
     shard, rows = _shard_with_experts(tmp_path, n=4)
     out = tmp_path / "compact"

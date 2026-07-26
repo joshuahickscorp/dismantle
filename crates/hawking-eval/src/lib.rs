@@ -1,16 +1,22 @@
-//! `hawking-eval` — a local, $0 coding-capability harness for HIDE.
+//! `hawking-eval` — local capability evaluation for HIDE and Odyssey G5.
 //!
-//! It drives a model through the existing OpenAI-compatible serve path
-//! (`POST /v1/chat/completions`) and scores deterministic tasks, reporting
-//! pass@1 with an honest Wilson confidence interval. At N=100 the Wilson
-//! half-width is ~10pp, so only models whose intervals do NOT overlap are
-//! distinguishable — the report carries the interval so we never over-claim a
-//! sub-10pp difference (the H3 "build hawking-eval first" gate).
+//! Two layers:
 //!
-//! The scoring + statistics are pure and unit-tested; the network client sits
-//! behind [`CompletionClient`], so the runner is exercised with a deterministic
-//! mock in CI and against a real server when one is running. This crate makes
-//! NO engine change — it only consumes the serve path.
+//! 1. **Coding serve-path harness** (original): drives `POST /v1/chat/completions`
+//!    and scores substring / Wilson CI reports. Useful when a server is already up.
+//! 2. **Support-halo tournament judge** ([`support_halo`]): pure offline scoring of
+//!    the seven G5 dimensions against a frozen corpus and frozen rules. This is the
+//!    T7 judge. Generation against a live `.gravity` artifact is deliberately
+//!    outside the pure core — feed completions, or use `tools/eval/support_halo_gate.py`.
+//!
+//! A crate that compiles is not a wired harness: the support-halo path is wired
+//! when (a) rules+corpus are frozen, (b) unit tests pass, and (c) a baseline
+//! receipt on the Math-Preserve substrate is sealed. (c) is deferred while the
+//! GPU is occupied; (a) and (b) are this crate's job.
+
+mod support_halo;
+
+pub use support_halo::*;
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};

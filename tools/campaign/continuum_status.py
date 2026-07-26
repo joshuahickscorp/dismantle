@@ -45,7 +45,10 @@ STEPS = [
     ("HAWKING_ODYSSEY_READY", "seal the pre-Odyssey checkpoint"),
     ("BASE_RUNTIME", "finish the base .gravity runtime and measured BASE_TRUE_TPS"),
     ("ACCELERATION", "generic speculative/parallel-token acceleration tournament"),
-    ("HIDE", "Chat/IDE, Context OS, tools, agents, worktrees, verification"),
+    ("HIDE_WIRED", "every claimed subsystem REAL_WIRED: model actually serving, kernel "
+                   "turn default-on behind a closed approval round-trip, Context OS, "
+                   "tools/effects, permissions, durable sessions, agents, fleets, "
+                   "worktrees, verification"),
     ("ODYSSEY", "run Odyssey T0-T7"),
     ("MATH_FROZEN", "rerun Prometheus and pack Math-Frozen"),
     ("RECALIBRATE", "recalibrate acceleration and qualify HIDE"),
@@ -54,7 +57,12 @@ STEPS = [
     ("HAWKING_EVOLUTION_COMPLETE", "seal the evolution endpoint"),
     ("MIGRATE_RAMANUJAN", "create ~/Downloads/ramanujan and migrate owned contracts"),
     ("TRAIN_LOCAL_FORGE", "fully local retriever/formalizer/prover/repair training"),
-    ("BUILD_SEARCH_GOVERNANCE", "search, roles, memories, Ledger, Tribunal"),
+    ("RAMANUJAN_COGNITION", "the discovery loop the consensus stack lacks: retina, "
+                            "definitional library, obstruction objects, significance, "
+                            "dual-channel fusion, analogy, competence map -- each with a "
+                            "falsifier and a kill condition"),
+    ("BUILD_SEARCH_GOVERNANCE", "search, roles, memories, Ledger, Tribunal, plus MOP's "
+                                "refusal layer ported"),
     ("QUALIFY_SANDBOX", "Q0-Q6 and the multi-day pre-sandbox rehearsal"),
     ("RAMANUJAN_SANDBOX_READY", "terminal gate"),
 ]

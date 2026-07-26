@@ -107,7 +107,10 @@ def _pass3() -> dict:
                 except json.JSONDecodeError:
                     continue
     shard_rows = [r for r in telemetry if r.get("event") == "SHARD_TIMING"]
-    recent = shard_rows[-8:]
+    # Rate the CURRENT scheduler only. Averaging across a scheduler change mixes two
+    # different machines and produces an ETA that is true of neither.
+    scheduler = shard_rows[-1].get("scheduler") if shard_rows else None
+    recent = [r for r in shard_rows if r.get("scheduler") == scheduler][-8:]
     return {
         "shards_packed": len(packed),
         "shards_total": SHARDS_TOTAL,
@@ -115,7 +118,8 @@ def _pass3() -> dict:
         "artifact_bytes": sum(p.stat().st_size for p in packed),
         "progress_file": progress,
         "resident_source_shards": resident,
-        "scheduler": (shard_rows[-1].get("scheduler") if shard_rows else None),
+        "scheduler": scheduler,
+        "rate_sample_shards": len(recent),
         "live_pids": [int(p) for p in _sh("pgrep", "-f", "math_pass3_pack.py").split()],
         "mean_shard_seconds_recent": (
             round(sum(float(r["total_seconds"]) for r in recent) / len(recent), 1)
@@ -235,6 +239,12 @@ def publish(status: dict) -> None:
     remaining = "\n".join(f"- {s}" for s in status["remaining_steps"])
     eta = (f"{status['estimated_pass3_hours_remaining']} h at the current measured rate"
            if status["estimated_pass3_hours_remaining"] else "not estimable yet")
+    # Deferred work is only real if a successor can find it. Anything queued rather than
+    # done gets a receipt in the repo naming what is missing and why it was not fixed.
+    queued = "\n".join(
+        f"- `{p.name}` -- {_read_json(p).get('scope') or _read_json(p).get('question') or ''}"[:200]
+        for p in sorted(ROOT.glob("*_GAPS.json")) + sorted(ROOT.glob("*_PRECLEARANCE.json"))
+    ) or "- none recorded"
     STATUS_MD.write_text(f"""# HAWKING CONTINUUM STATUS
 
 Generated from live evidence by `tools/campaign/continuum_status.py`. Do not hand-edit.
@@ -266,6 +276,10 @@ Generated from live evidence by `tools/campaign/continuum_status.py`. Do not han
 ## Remaining programme
 
 {remaining}
+
+## Queued work with a written receipt
+
+{queued}
 
 ## Next command
 

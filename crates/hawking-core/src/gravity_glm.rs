@@ -726,6 +726,246 @@ fn forward_impl(
     Ok((logits, trace))
 }
 
+/// Env var for the GPU weight-cache byte budget. Explicit (bytes, not
+/// inferred from free RAM). Unset → [`DEFAULT_GPU_WEIGHT_CACHE_BUDGET_BYTES`].
+pub const GPU_WEIGHT_CACHE_BUDGET_ENV: &str = "HAWKING_GRAVITY_GPU_CACHE_BUDGET_BYTES";
+
+/// Default residency budget: 32 GiB. Enough for many MoE tokens of working
+/// set on a 96 GiB unified-memory host without claiming the whole machine.
+/// Override with [`GPU_WEIGHT_CACHE_BUDGET_ENV`].
+pub const DEFAULT_GPU_WEIGHT_CACHE_BUDGET_BYTES: u64 = 32 * 1024 * 1024 * 1024;
+
+/// Resolve the GPU weight-cache budget from the environment, or the default.
+pub fn gpu_weight_cache_budget_bytes() -> Result<u64> {
+    match std::env::var(GPU_WEIGHT_CACHE_BUDGET_ENV) {
+        Ok(raw) => {
+            let bytes: u64 = raw.parse().map_err(|_| {
+                Error::Gravity(format!(
+                    "{GPU_WEIGHT_CACHE_BUDGET_ENV}={raw:?} is not an integer byte count"
+                ))
+            })?;
+            if bytes == 0 {
+                return Err(Error::Gravity(format!(
+                    "{GPU_WEIGHT_CACHE_BUDGET_ENV} must be > 0 (got 0)"
+                )));
+            }
+            Ok(bytes)
+        }
+        Err(std::env::VarError::NotPresent) => Ok(DEFAULT_GPU_WEIGHT_CACHE_BUDGET_BYTES),
+        Err(std::env::VarError::NotUnicode(_)) => Err(Error::Gravity(format!(
+            "{GPU_WEIGHT_CACHE_BUDGET_ENV} is not valid UTF-8"
+        ))),
+    }
+}
+
+/// Snapshot of GPU weight-cache residency. Surfaced on the model and in the
+/// BASE_TRUE_TPS receipt so a long run has an explicit number rather than
+/// "whatever the HashMap happened to hold".
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct GpuWeightCacheStats {
+    pub budget_bytes: u64,
+    pub resident_bytes: u64,
+    pub high_water_bytes: u64,
+    pub entries: usize,
+    pub evictions: u64,
+}
+
+/// Byte-budgeted LRU of named tensors. Platform-independent so the eviction
+/// policy can be unit-tested without Metal. The GPU path holds one of these
+/// under a mutex and never evicts under a concurrent encode: `matvec` /
+/// `matvec_batch` keep the guard across dispatch, which is synchronous.
+///
+/// **Pinning:** [`BoundedLru::admit_pinned`] takes a pin set of names that
+/// must stay resident for the current call (an MoE layer's ~8×3 projections).
+/// Eviction only considers entries outside that set, so a batch can never
+/// punch a hole in itself. If the pinned working set alone exceeds the
+/// budget, admission fails loudly instead of thrashing.
+#[derive(Debug)]
+pub struct BoundedLru<T> {
+    map: std::collections::HashMap<String, LruEntry<T>>,
+    budget_bytes: u64,
+    resident_bytes: u64,
+    high_water_bytes: u64,
+    clock: u64,
+    evictions: u64,
+}
+
+#[derive(Debug)]
+struct LruEntry<T> {
+    value: T,
+    bytes: u64,
+    last_tick: u64,
+}
+
+impl<T> BoundedLru<T> {
+    /// Build a cache with an explicit byte budget. `budget_bytes == 0` is
+    /// rejected: a zero budget can never admit a tensor and would only thrash.
+    pub fn new(budget_bytes: u64) -> Result<Self> {
+        if budget_bytes == 0 {
+            return Err(Error::Gravity(
+                "GPU weight cache budget must be > 0".into(),
+            ));
+        }
+        Ok(Self {
+            map: std::collections::HashMap::new(),
+            budget_bytes,
+            resident_bytes: 0,
+            high_water_bytes: 0,
+            clock: 0,
+            evictions: 0,
+        })
+    }
+
+    pub fn budget_bytes(&self) -> u64 {
+        self.budget_bytes
+    }
+
+    pub fn resident_bytes(&self) -> u64 {
+        self.resident_bytes
+    }
+
+    pub fn high_water_bytes(&self) -> u64 {
+        self.high_water_bytes
+    }
+
+    pub fn len(&self) -> usize {
+        self.map.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.map.is_empty()
+    }
+
+    pub fn contains(&self, name: &str) -> bool {
+        self.map.contains_key(name)
+    }
+
+    pub fn get(&self, name: &str) -> Option<&T> {
+        self.map.get(name).map(|e| &e.value)
+    }
+
+    pub fn stats(&self) -> GpuWeightCacheStats {
+        GpuWeightCacheStats {
+            budget_bytes: self.budget_bytes,
+            resident_bytes: self.resident_bytes,
+            high_water_bytes: self.high_water_bytes,
+            entries: self.map.len(),
+            evictions: self.evictions,
+        }
+    }
+
+    /// Mark `name` as most-recently used. No-op if absent.
+    pub fn touch(&mut self, name: &str) {
+        if let Some(e) = self.map.get_mut(name) {
+            self.clock = self.clock.saturating_add(1);
+            e.last_tick = self.clock;
+        }
+    }
+
+    /// Admit `items` while pinning every name in `pin`.
+    ///
+    /// - Existing pin members are touched (LRU refresh) and not re-inserted.
+    /// - Items whose name is already resident are dropped (caller lost a race
+    ///   or passed a duplicate); the resident copy is touched.
+    /// - Room is made only by evicting entries **outside** `pin`.
+    /// - If the pinned working set (already-resident pin members + new items)
+    ///   exceeds the budget, returns `Err` without mutating residency for the
+    ///   new items — never thrash inside the pin set.
+    pub fn admit_pinned(
+        &mut self,
+        items: Vec<(String, T, u64)>,
+        pin: &std::collections::HashSet<String>,
+    ) -> Result<()> {
+        for name in pin {
+            self.touch(name);
+        }
+
+        let mut to_insert = Vec::with_capacity(items.len());
+        for (name, value, bytes) in items {
+            if self.map.contains_key(&name) {
+                self.touch(&name);
+                continue;
+            }
+            if bytes > self.budget_bytes {
+                return Err(Error::Gravity(format!(
+                    "tensor {name} ({bytes} B) alone exceeds GPU weight cache budget \
+                     ({} B); raise {GPU_WEIGHT_CACHE_BUDGET_ENV}",
+                    self.budget_bytes
+                )));
+            }
+            to_insert.push((name, value, bytes));
+        }
+
+        if to_insert.is_empty() {
+            return Ok(());
+        }
+
+        let new_bytes: u64 = to_insert.iter().map(|(_, _, b)| *b).sum();
+        let mut pinned_bytes = new_bytes;
+        for name in pin {
+            if let Some(e) = self.map.get(name) {
+                pinned_bytes = pinned_bytes.saturating_add(e.bytes);
+            }
+        }
+        if pinned_bytes > self.budget_bytes {
+            return Err(Error::Gravity(format!(
+                "pinned GPU weight working set ({pinned_bytes} B) exceeds cache budget \
+                 ({} B); raise {GPU_WEIGHT_CACHE_BUDGET_ENV} or shrink the batch",
+                self.budget_bytes
+            )));
+        }
+
+        while self.resident_bytes.saturating_add(new_bytes) > self.budget_bytes {
+            if !self.evict_one_unpinned(pin) {
+                // pinned_bytes check above should make this unreachable.
+                return Err(Error::Gravity(format!(
+                    "GPU weight cache cannot free enough bytes for a {new_bytes} B admission \
+                     under budget {} B (pinned set blocked eviction)",
+                    self.budget_bytes
+                )));
+            }
+        }
+
+        for (name, value, bytes) in to_insert {
+            self.clock = self.clock.saturating_add(1);
+            self.map.insert(
+                name,
+                LruEntry {
+                    value,
+                    bytes,
+                    last_tick: self.clock,
+                },
+            );
+            self.resident_bytes = self.resident_bytes.saturating_add(bytes);
+            if self.resident_bytes > self.high_water_bytes {
+                self.high_water_bytes = self.resident_bytes;
+            }
+        }
+        Ok(())
+    }
+
+    /// Evict the least-recently-used entry whose name is not in `pin`.
+    /// Returns whether an entry was removed.
+    fn evict_one_unpinned(&mut self, pin: &std::collections::HashSet<String>) -> bool {
+        let victim = self
+            .map
+            .iter()
+            .filter(|(k, _)| !pin.contains(k.as_str()))
+            .min_by_key(|(_, e)| e.last_tick)
+            .map(|(k, _)| k.clone());
+        let Some(name) = victim else {
+            return false;
+        };
+        if let Some(e) = self.map.remove(&name) {
+            self.resident_bytes = self.resident_bytes.saturating_sub(e.bytes);
+            self.evictions = self.evictions.saturating_add(1);
+            true
+        } else {
+            false
+        }
+    }
+}
+
 /// GPU-resident execution: the same [`forward_impl`] orchestration above,
 /// against weights lazily uploaded to Metal buffers instead of decoded on
 /// the CPU on every call.
@@ -735,7 +975,7 @@ pub mod gpu {
     use crate::gravity::{matvec_dense, parse_pq_header, pq_sections, widen_native, PqHeader};
     use crate::metal::{MetalContext, TokenCommandBuffer};
     use metal::Buffer;
-    use std::collections::HashMap;
+    use std::collections::HashSet;
     use std::sync::Mutex;
 
     /// Mirror of `GravityPQParams` in `shaders/gravity_pq.metal`: eight
@@ -787,27 +1027,40 @@ pub mod gpu {
     }
 
     /// A [`WeightAccess`] backend that uploads each `gravity-pq` tensor to
-    /// the device the first time it is asked for and keeps it there for the
-    /// life of the model. Correct for GLM's MoE sparsity the same way the
-    /// CPU `Lazy` source is: a short run touches 8 of 256 experts per layer,
-    /// so most of the artifact is never uploaded at all, and nothing pays
-    /// twice for an expert two different tokens both happen to route to.
+    /// the device on first use and keeps it under a **byte-budgeted LRU**.
+    ///
+    /// Unbounded residency was justified by "a short run touches 8 of 256
+    /// experts per layer", but a real generation's routing diversity grows
+    /// the resident set toward the whole routed artifact (~82 GB on
+    /// General-R0). The budget is explicit
+    /// ([`super::GPU_WEIGHT_CACHE_BUDGET_ENV`]); eviction is LRU outside the
+    /// current call's pin set so a `matvec_batch` can never lose a tensor
+    /// an earlier admission in the same batch just installed.
+    ///
+    /// The cache mutex is held across `dispatch_pq_matvec(_batch)`, which is
+    /// synchronous (encode, commit, wait). Dropping an evicted `Buffer`
+    /// after that wait is safe: Metal command buffers retain the resources
+    /// they use for the lifetime of the encode.
     pub struct GpuWeightCache {
         ctx: MetalContext,
         weights: GravityWeights,
-        cache: Mutex<HashMap<String, GpuTensor>>,
+        cache: Mutex<BoundedLru<GpuTensor>>,
     }
 
     impl GpuWeightCache {
-        fn ensure(&self, name: &str) -> Result<()> {
-            if self
-                .cache
-                .lock()
-                .expect("gpu weight cache mutex")
-                .contains_key(name)
-            {
-                return Ok(());
+        /// Resident byte size of a cached tensor.
+        /// `Pq` = codebooks + codes buffer lengths; `NativeCpu` = f32 vec × 4.
+        fn tensor_bytes(t: &GpuTensor) -> u64 {
+            match t {
+                GpuTensor::Pq {
+                    codebooks, codes, ..
+                } => codebooks.length() + codes.length(),
+                GpuTensor::NativeCpu(v) => (v.len() as u64).saturating_mul(4),
             }
+        }
+
+        /// Decode + upload one tensor. Does not touch the cache.
+        fn load_tensor(&self, name: &str) -> Result<(GpuTensor, u64)> {
             let (codec, blob) = self.weights.raw_payload(name)?;
             let entry = if codec == "gravity-pq" {
                 let h = parse_pq_header(&blob)?;
@@ -835,11 +1088,42 @@ pub mod gpu {
                     "tensor {name}: unsupported codec {codec:?}"
                 )));
             };
+            let bytes = Self::tensor_bytes(&entry);
+            Ok((entry, bytes))
+        }
+
+        /// Admit every name in the call set under one lock, pinning the whole
+        /// set so mid-batch eviction cannot create a hole. Holds `cache`
+        /// across load+admit; load is disk I/O but the alternative (ensure
+        /// then re-lock) reintroduces a TOCTOU where another thread's
+        /// admission could evict between ensure and use.
+        fn ensure_many_locked(
+            &self,
+            cache: &mut BoundedLru<GpuTensor>,
+            names: &[&str],
+        ) -> Result<()> {
+            let pin: HashSet<String> = names.iter().map(|s| (*s).to_string()).collect();
+            let mut prepared = Vec::new();
+            let mut seen_missing: HashSet<String> = HashSet::new();
+            for &name in names {
+                if cache.contains(name) {
+                    cache.touch(name);
+                    continue;
+                }
+                if !seen_missing.insert(name.to_string()) {
+                    continue;
+                }
+                let (tensor, bytes) = self.load_tensor(name)?;
+                prepared.push((name.to_string(), tensor, bytes));
+            }
+            cache.admit_pinned(prepared, &pin)
+        }
+
+        pub fn stats(&self) -> GpuWeightCacheStats {
             self.cache
                 .lock()
                 .expect("gpu weight cache mutex")
-                .insert(name.to_string(), entry);
-            Ok(())
+                .stats()
         }
     }
 
@@ -858,8 +1142,8 @@ pub mod gpu {
         }
 
         fn matvec(&self, name: &str, x: &[f32]) -> Result<Vec<f32>> {
-            self.ensure(name)?;
-            let cache = self.cache.lock().expect("gpu weight cache mutex");
+            let mut cache = self.cache.lock().expect("gpu weight cache mutex");
+            self.ensure_many_locked(&mut cache, &[name])?;
             match cache.get(name).expect("ensure just inserted it") {
                 GpuTensor::NativeCpu(w) => matvec_dense(w, x, name),
                 GpuTensor::Pq {
@@ -876,11 +1160,13 @@ pub mod gpu {
         /// submission/wait cost is what a straight per-matvec `dispatch`
         /// pays 8-9x over for a layer's worth of experts, regardless of how
         /// cheap the kernel itself is.
+        ///
+        /// Admission pins the whole name set before any eviction runs, so a
+        /// budget hit cannot drop a tensor this batch just uploaded.
         fn matvec_batch(&self, calls: &[(&str, &[f32])]) -> Result<Vec<Vec<f32>>> {
-            for &(name, _) in calls {
-                self.ensure(name)?;
-            }
-            let cache = self.cache.lock().expect("gpu weight cache mutex");
+            let names: Vec<&str> = calls.iter().map(|&(n, _)| n).collect();
+            let mut cache = self.cache.lock().expect("gpu weight cache mutex");
+            self.ensure_many_locked(&mut cache, &names)?;
 
             let mut results: Vec<Option<Vec<f32>>> = vec![None; calls.len()];
             let mut gpu_calls: Vec<(usize, &Buffer, &Buffer, PqParams, &[f32])> = Vec::new();
@@ -1038,6 +1324,17 @@ pub mod gpu {
             dir: &Path,
             verify_hash: bool,
         ) -> Result<GravityGlmGpu> {
+            Self::open_dir_with_budget(ctx, dir, verify_hash, gpu_weight_cache_budget_bytes()?)
+        }
+
+        /// Open with an explicit GPU weight-cache byte budget (tests and
+        /// callers that do not want the env default).
+        pub fn open_dir_with_budget(
+            ctx: MetalContext,
+            dir: &Path,
+            verify_hash: bool,
+            budget_bytes: u64,
+        ) -> Result<GravityGlmGpu> {
             let weights = GravityWeights::open_dir(dir, verify_hash)?;
             let arch = GlmArch::from_header(&weights.header)?;
             let session = Mutex::new(GlmSession::new(&arch));
@@ -1045,11 +1342,16 @@ pub mod gpu {
                 weights: GpuWeightCache {
                     ctx,
                     weights,
-                    cache: Mutex::new(HashMap::new()),
+                    cache: Mutex::new(BoundedLru::new(budget_bytes)?),
                 },
                 arch,
                 session,
             })
+        }
+
+        /// Current GPU weight-cache residency (budget, live bytes, high-water).
+        pub fn cache_stats(&self) -> GpuWeightCacheStats {
+            self.weights.stats()
         }
 
         /// Run `tokens` from an empty cache -- the start of a new request on
@@ -1089,6 +1391,7 @@ mod gpu_bounds {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::HashSet;
 
     /// The reference's own selfcheck pins position zero to `[x0,x2,x1,x3]`
     /// for a 4-wide vector -- the concatenated layout, not the scattered
@@ -1104,5 +1407,146 @@ mod tests {
     fn topk_desc_breaks_ties_toward_the_lower_index() {
         assert_eq!(topk_desc(&[1.0, 3.0, 3.0, 0.0], 2), vec![1, 2]);
         assert_eq!(topk_desc(&[f32::NEG_INFINITY, 0.5], 1), vec![1]);
+    }
+
+    fn pin(names: &[&str]) -> HashSet<String> {
+        names.iter().map(|s| (*s).to_string()).collect()
+    }
+
+    fn admit(
+        cache: &mut BoundedLru<()>,
+        items: &[(&str, u64)],
+        pin_names: &[&str],
+    ) -> Result<()> {
+        let prepared = items
+            .iter()
+            .map(|(n, b)| (n.to_string(), (), *b))
+            .collect();
+        cache.admit_pinned(prepared, &pin(pin_names))
+    }
+
+    #[test]
+    fn bounded_lru_rejects_zero_budget() {
+        assert!(BoundedLru::<()>::new(0).is_err());
+    }
+
+    #[test]
+    fn bounded_lru_tracks_resident_bytes_and_high_water() {
+        let mut c = BoundedLru::<()>::new(100).unwrap();
+        admit(&mut c, &[("a", 40), ("b", 30)], &["a", "b"]).unwrap();
+        assert_eq!(c.resident_bytes(), 70);
+        assert_eq!(c.high_water_bytes(), 70);
+        assert_eq!(c.len(), 2);
+
+        // Evict a (LRU after touching b via a later single-name admit of c).
+        // First touch a so b is older? Insert order: a then b, so a is older.
+        admit(&mut c, &[("c", 50)], &["c"]).unwrap();
+        assert!(c.contains("c"));
+        assert!(!c.contains("a"), "oldest unpinned entry should be evicted");
+        assert_eq!(c.resident_bytes(), 80); // b(30)+c(50)
+        assert_eq!(c.high_water_bytes(), 80);
+        assert_eq!(c.stats().evictions, 1);
+    }
+
+    #[test]
+    fn bounded_lru_evicts_least_recently_used_unpinned() {
+        let mut c = BoundedLru::<()>::new(90).unwrap();
+        admit(&mut c, &[("a", 30), ("b", 30), ("c", 30)], &["a", "b", "c"]).unwrap();
+        // Refresh a and b; c remains the LRU.
+        c.touch("a");
+        c.touch("b");
+        admit(&mut c, &[("d", 30)], &["d"]).unwrap();
+        assert!(!c.contains("c"), "untouched c must be the victim");
+        assert!(c.contains("a") && c.contains("b") && c.contains("d"));
+        assert_eq!(c.resident_bytes(), 90);
+    }
+
+    /// The defect that makes naive per-name ensure unsafe: admitting a
+    /// multi-tensor batch under a budget that forces eviction must never
+    /// drop a member of that same batch. Constructed explicitly.
+    #[test]
+    fn bounded_lru_pinned_batch_is_never_evicted_mid_batch() {
+        // Budget fits exactly 3 entries of 30. A batch of 3 new names pins
+        // all three; any earlier residents must yield, and no pin member
+        // may disappear.
+        let mut c = BoundedLru::<()>::new(90).unwrap();
+        admit(&mut c, &[("old1", 30), ("old2", 30), ("old3", 30)], &[
+            "old1", "old2", "old3",
+        ])
+        .unwrap();
+        assert_eq!(c.len(), 3);
+
+        // MoE-shaped batch: 3 projections that must all land.
+        let batch = ["e0_gate", "e0_up", "e0_down"];
+        admit(
+            &mut c,
+            &[("e0_gate", 30), ("e0_up", 30), ("e0_down", 30)],
+            &batch,
+        )
+        .unwrap();
+
+        for name in batch {
+            assert!(
+                c.contains(name),
+                "pinned batch member {name} must survive admission"
+            );
+        }
+        assert_eq!(c.resident_bytes(), 90);
+        assert_eq!(c.stats().evictions, 3, "all three old entries yield to the pin set");
+        assert!(!c.contains("old1") && !c.contains("old2") && !c.contains("old3"));
+    }
+
+    /// Even when the pin set itself is admitted under one admit_pinned call,
+    /// a working set larger than the budget must fail loudly rather than
+    /// thrash by evicting within the pin set.
+    #[test]
+    fn bounded_lru_pin_protects_entries_inserted_earlier_in_same_admit() {
+        let mut c = BoundedLru::<()>::new(60).unwrap();
+        // Single admit of three 30-byte items under a 60 budget: pinned
+        // working set is 90 > 60 → must fail, not thrash.
+        let err = admit(
+            &mut c,
+            &[("p0", 30), ("p1", 30), ("p2", 30)],
+            &["p0", "p1", "p2"],
+        )
+        .unwrap_err();
+        let msg = err.to_string();
+        assert!(
+            msg.contains("pinned") || msg.contains("exceeds"),
+            "expected pinned-set over-budget error, got: {msg}"
+        );
+        assert!(c.is_empty(), "failed admission must not leave partial state");
+        assert_eq!(c.resident_bytes(), 0);
+    }
+
+    #[test]
+    fn bounded_lru_single_tensor_over_budget_fails_loudly() {
+        let mut c = BoundedLru::<()>::new(50).unwrap();
+        let err = admit(&mut c, &[("huge", 51)], &["huge"]).unwrap_err();
+        assert!(err.to_string().contains("alone exceeds"));
+        assert!(c.is_empty());
+    }
+
+    #[test]
+    fn bounded_lru_partial_pin_can_evict_unpinned_to_make_room() {
+        // Budget 100. Resident: a,b,c at 30 each. Pin only {a,b} while
+        // admitting d(40): c must go, a and b stay.
+        let mut c = BoundedLru::<()>::new(100).unwrap();
+        admit(&mut c, &[("a", 30), ("b", 30), ("c", 30)], &["a", "b", "c"]).unwrap();
+        c.touch("a");
+        c.touch("b");
+        // c is LRU among unpinned when pin is {a,b,d}
+        admit(&mut c, &[("d", 40)], &["a", "b", "d"]).unwrap();
+        assert!(c.contains("a") && c.contains("b") && c.contains("d"));
+        assert!(!c.contains("c"));
+        assert_eq!(c.resident_bytes(), 100);
+    }
+
+    #[test]
+    fn default_budget_is_thirty_two_gib() {
+        assert_eq!(
+            DEFAULT_GPU_WEIGHT_CACHE_BUDGET_BYTES,
+            32 * 1024 * 1024 * 1024
+        );
     }
 }

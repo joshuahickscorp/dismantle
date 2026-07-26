@@ -2,20 +2,20 @@
 
 Generated from live evidence by `tools/campaign/continuum_status.py`. Do not hand-edit.
 
-    at:       2026-07-26T03:34:12Z
+    at:       2026-07-26T03:43:12Z
     state:    FINISH_MATH_PRESERVE
-    why:      80/282 shards packed (28.37%)
+    why:      86/282 shards packed (30.5%)
     endpoint: RAMANUJAN_SANDBOX_READY (not reached)
 
 ## Math-Preserve PASS3
 
-    shards:     80/282 (28.37%)
+    shards:     86/282 (30.5%)
     scheduler:  dynamic_queue
-    per shard:  406.6 s (recent mean, per worker)
-    remaining:  5.7 h at the current measured rate
-    artifact:   29,813,802,105 bytes
-    resident:   7 source shards
-    free disk:  363,888,377,856 bytes
+    per shard:  413.7 s (recent mean, per worker)
+    remaining:  5.63 h at the current measured rate
+    artifact:   31,559,804,142 bytes
+    resident:   6 source shards
+    free disk:  364,505,944,064 bytes
 
 ## Detached work
 
@@ -55,7 +55,7 @@ Generated from live evidence by `tools/campaign/continuum_status.py`. Do not han
 
 ## Delegated lanes (do not restart one that is still running)
 
-- `hide-approval-inc2-20260725-233330` delegate/maximum on `grok/hide-approval-inc2-20260725-233330` -- STILL RUNNING
+- `hide-approval-inc2-20260725-233330` delegate/maximum on `grok/hide-approval-inc2-20260725-233330` -- finished
 - `hide-archaeology-20260725-212751` audit/maximum on `` -- finished
 - `hide-wiring-inc1-20260725-224036` delegate/power on `grok/hide-wiring-inc1-20260725-224036` -- finished
 

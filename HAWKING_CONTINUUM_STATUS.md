@@ -2,20 +2,20 @@
 
 Generated from live evidence by `tools/campaign/continuum_status.py`. Do not hand-edit.
 
-    at:       2026-07-26T03:43:12Z
+    at:       2026-07-26T04:42:27Z
     state:    FINISH_MATH_PRESERVE
-    why:      86/282 shards packed (30.5%)
+    why:      119/282 shards packed (42.2%)
     endpoint: RAMANUJAN_SANDBOX_READY (not reached)
 
 ## Math-Preserve PASS3
 
-    shards:     86/282 (30.5%)
+    shards:     119/282 (42.2%)
     scheduler:  dynamic_queue
-    per shard:  413.7 s (recent mean, per worker)
-    remaining:  5.63 h at the current measured rate
-    artifact:   31,559,804,142 bytes
-    resident:   6 source shards
-    free disk:  364,505,944,064 bytes
+    per shard:  411.8 s (recent mean, per worker)
+    remaining:  4.66 h at the current measured rate
+    artifact:   42,270,319,331 bytes
+    resident:   7 source shards
+    free disk:  352,228,864,000 bytes
 
 ## Detached work
 
@@ -40,7 +40,7 @@ Generated from live evidence by `tools/campaign/continuum_status.py`. Do not han
 - HAWKING_ODYSSEY_READY: seal the pre-Odyssey checkpoint
 - BASE_RUNTIME: finish the base .gravity runtime and measured BASE_TRUE_TPS
 - ACCELERATION: generic speculative/parallel-token acceleration tournament
-- HIDE: Chat/IDE, Context OS, tools, agents, worktrees, verification
+- HIDE_WIRED: every claimed subsystem REAL_WIRED: model actually serving, kernel turn default-on behind a closed approval round-trip, Context OS, tools/effects, permissions, durable sessions, agents, fleets, worktrees, verification
 - ODYSSEY: run Odyssey T0-T7
 - MATH_FROZEN: rerun Prometheus and pack Math-Frozen
 - RECALIBRATE: recalibrate acceleration and qualify HIDE
@@ -49,15 +49,19 @@ Generated from live evidence by `tools/campaign/continuum_status.py`. Do not han
 - HAWKING_EVOLUTION_COMPLETE: seal the evolution endpoint
 - MIGRATE_RAMANUJAN: create ~/Downloads/ramanujan and migrate owned contracts
 - TRAIN_LOCAL_FORGE: fully local retriever/formalizer/prover/repair training
-- BUILD_SEARCH_GOVERNANCE: search, roles, memories, Ledger, Tribunal
+- RAMANUJAN_COGNITION: the discovery loop the consensus stack lacks: retina, definitional library, obstruction objects, significance, dual-channel fusion, analogy, competence map -- each with a falsifier and a kill condition
+- BUILD_SEARCH_GOVERNANCE: search, roles, memories, Ledger, Tribunal, plus MOP's refusal layer ported
 - QUALIFY_SANDBOX: Q0-Q6 and the multi-day pre-sandbox rehearsal
 - RAMANUJAN_SANDBOX_READY: terminal gate
 
 ## Delegated lanes (do not restart one that is still running)
 
+- `consult-20260726-002802` consult/consult on `` -- finished
 - `hide-approval-inc2-20260725-233330` delegate/maximum on `grok/hide-approval-inc2-20260725-233330` -- finished
 - `hide-archaeology-20260725-212751` audit/maximum on `` -- finished
 - `hide-wiring-inc1-20260725-224036` delegate/power on `grok/hide-wiring-inc1-20260725-224036` -- finished
+- `mop-ramanujan-assessment-20260726-001628` audit/maximum on `` -- finished
+- `ramanujan-cognition-20260726-003050` audit/maximum on `` -- finished
 
 ## Queued work with a written receipt
 

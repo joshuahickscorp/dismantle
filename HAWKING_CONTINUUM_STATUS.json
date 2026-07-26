@@ -1,10 +1,20 @@
 {
-  "at": "2026-07-26T03:43:12Z",
+  "at": "2026-07-26T04:42:27Z",
   "blockers": [],
   "completed_steps": [
     "OPTIMIZE_PASS3"
   ],
   "delegated_lanes": [
+    {
+      "base_commit": "",
+      "branch": "",
+      "finished": true,
+      "mode": "consult",
+      "profile": "consult",
+      "reviewed_by_claude": false,
+      "task_id": "consult-20260726-002802",
+      "worktree": "/Users/scammermike/Downloads/hawking"
+    },
     {
       "base_commit": "8682e8a6564cfecd6e0f16832f818d85fb2fd4d0",
       "branch": "grok/hide-approval-inc2-20260725-233330",
@@ -34,14 +44,34 @@
       "reviewed_by_claude": false,
       "task_id": "hide-wiring-inc1-20260725-224036",
       "worktree": "/Users/scammermike/.claude-grok/worktrees/hide-wiring-inc1-20260725-224036"
+    },
+    {
+      "base_commit": "",
+      "branch": "",
+      "finished": true,
+      "mode": "audit",
+      "profile": "maximum",
+      "reviewed_by_claude": false,
+      "task_id": "mop-ramanujan-assessment-20260726-001628",
+      "worktree": "/Users/scammermike/Downloads/mop"
+    },
+    {
+      "base_commit": "",
+      "branch": "",
+      "finished": true,
+      "mode": "audit",
+      "profile": "maximum",
+      "reviewed_by_claude": false,
+      "task_id": "ramanujan-cognition-20260726-003050",
+      "worktree": "/private/tmp/claude-503/-Users-scammermike-Downloads-hawking/106b1d5a-5fb0-44c4-8140-fdf7a8a96041/scratchpad/hide-recon"
     }
   ],
-  "estimated_pass3_hours_remaining": 5.63,
+  "estimated_pass3_hours_remaining": 4.66,
   "general_artifact_bytes": 87134289062,
   "git": {
     "branch": "campaign/glm52-generation-b",
     "dirty": true,
-    "head": "d2cf81b851a31a5b38467077653d14072b026ffb"
+    "head": "e244ec1b8c4fe80c0553460d4931107a1ebaded8"
   },
   "launchd": {
     "com.hawking.doctorv5.telegram": {
@@ -92,35 +122,36 @@
   },
   "next_command_file": "HAWKING_CONTINUUM_NEXT_COMMAND.sh",
   "pass3": {
-    "artifact_bytes": 31559804142,
-    "free_disk_bytes": 364505944064,
+    "artifact_bytes": 42270319331,
+    "free_disk_bytes": 352228864000,
     "live_pids": [
       11785,
       11787,
       12385,
       41104
     ],
-    "mean_shard_seconds_recent": 413.7,
-    "percent": 30.5,
+    "mean_shard_seconds_recent": 411.8,
+    "percent": 42.2,
     "progress_file": {
-      "at": "2026-07-26T03:43:00Z",
-      "last_sealed": "model-00086-of-00282.safetensors",
+      "at": "2026-07-26T04:38:09Z",
+      "last_sealed": "model-00119-of-00282.safetensors",
       "scheduler": "dynamic_queue",
-      "sealed_this_run": 53,
-      "shards_packed": 86,
+      "sealed_this_run": 86,
+      "shards_packed": 119,
       "shards_total": 282
     },
     "rate_sample_shards": 8,
     "resident_source_shards": [
-      "model-00092-of-00282.safetensors",
-      "model-00091-of-00282.safetensors",
-      "model-00089-of-00282.safetensors",
-      "model-00090-of-00282.safetensors",
-      "model-00087-of-00282.safetensors",
-      "model-00088-of-00282.safetensors"
+      "model-00120-of-00282.safetensors",
+      "model-00125-of-00282.safetensors",
+      "model-00121-of-00282.safetensors",
+      "model-00124-of-00282.safetensors",
+      "model-00122-of-00282.safetensors",
+      "model-00126-of-00282.safetensors",
+      "model-00123-of-00282.safetensors"
     ],
     "scheduler": "dynamic_queue",
-    "shards_packed": 86,
+    "shards_packed": 119,
     "shards_total": 282
   },
   "remaining_steps": [
@@ -129,7 +160,7 @@
     "HAWKING_ODYSSEY_READY: seal the pre-Odyssey checkpoint",
     "BASE_RUNTIME: finish the base .gravity runtime and measured BASE_TRUE_TPS",
     "ACCELERATION: generic speculative/parallel-token acceleration tournament",
-    "HIDE: Chat/IDE, Context OS, tools, agents, worktrees, verification",
+    "HIDE_WIRED: every claimed subsystem REAL_WIRED: model actually serving, kernel turn default-on behind a closed approval round-trip, Context OS, tools/effects, permissions, durable sessions, agents, fleets, worktrees, verification",
     "ODYSSEY: run Odyssey T0-T7",
     "MATH_FROZEN: rerun Prometheus and pack Math-Frozen",
     "RECALIBRATE: recalibrate acceleration and qualify HIDE",
@@ -138,7 +169,8 @@
     "HAWKING_EVOLUTION_COMPLETE: seal the evolution endpoint",
     "MIGRATE_RAMANUJAN: create ~/Downloads/ramanujan and migrate owned contracts",
     "TRAIN_LOCAL_FORGE: fully local retriever/formalizer/prover/repair training",
-    "BUILD_SEARCH_GOVERNANCE: search, roles, memories, Ledger, Tribunal",
+    "RAMANUJAN_COGNITION: the discovery loop the consensus stack lacks: retina, definitional library, obstruction objects, significance, dual-channel fusion, analogy, competence map -- each with a falsifier and a kill condition",
+    "BUILD_SEARCH_GOVERNANCE: search, roles, memories, Ledger, Tribunal, plus MOP's refusal layer ported",
     "QUALIFY_SANDBOX: Q0-Q6 and the multi-day pre-sandbox rehearsal",
     "RAMANUJAN_SANDBOX_READY: terminal gate"
   ],
@@ -149,5 +181,5 @@
   "schema": "hawking.continuum.status.v1",
   "state": "FINISH_MATH_PRESERVE",
   "terminal_endpoint": "RAMANUJAN_SANDBOX_READY",
-  "why": "86/282 shards packed (30.5%)"
+  "why": "119/282 shards packed (42.2%)"
 }

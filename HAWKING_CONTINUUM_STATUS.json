@@ -1,15 +1,15 @@
 {
-  "at": "2026-07-26T01:30:30Z",
+  "at": "2026-07-26T01:32:50Z",
   "blockers": [],
   "completed_steps": [
     "OPTIMIZE_PASS3"
   ],
-  "estimated_pass3_hours_remaining": 27.74,
+  "estimated_pass3_hours_remaining": 11.12,
   "general_artifact_bytes": 87134289062,
   "git": {
     "branch": "campaign/glm52-generation-b",
     "dirty": true,
-    "head": "f1a86a2fc30d7274160a2facdb1308c606356d8e"
+    "head": "404445b14026bfd0eec4da562f6403d06e5a00a8"
   },
   "launchd": {
     "com.hawking.doctorv5.telegram": {
@@ -61,13 +61,13 @@
   "next_command_file": "HAWKING_CONTINUUM_NEXT_COMMAND.sh",
   "pass3": {
     "artifact_bytes": 14193453650,
-    "free_disk_bytes": 391351341056,
+    "free_disk_bytes": 388396679168,
     "live_pids": [
       11785,
       11787,
       12385
     ],
-    "mean_shard_seconds_recent": 1604.2,
+    "mean_shard_seconds_recent": 643.2,
     "percent": 11.7,
     "progress_file": {
       "at": "2026-07-26T01:05:33Z",
@@ -77,6 +77,7 @@
       "shards_packed": 33,
       "shards_total": 33
     },
+    "rate_sample_shards": 4,
     "resident_source_shards": [
       "model-00040-of-00282.safetensors",
       "model-00039-of-00282.safetensors",

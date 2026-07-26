@@ -2,7 +2,7 @@
 
 Generated from live evidence by `tools/campaign/continuum_status.py`. Do not hand-edit.
 
-    at:       2026-07-26T01:30:30Z
+    at:       2026-07-26T01:32:50Z
     state:    FINISH_MATH_PRESERVE
     why:      33/282 shards packed (11.7%)
     endpoint: RAMANUJAN_SANDBOX_READY (not reached)
@@ -11,11 +11,11 @@ Generated from live evidence by `tools/campaign/continuum_status.py`. Do not han
 
     shards:     33/282 (11.7%)
     scheduler:  dynamic_queue
-    per shard:  1604.2 s (recent mean, per worker)
-    remaining:  27.74 h at the current measured rate
+    per shard:  643.2 s (recent mean, per worker)
+    remaining:  11.12 h at the current measured rate
     artifact:   14,193,453,650 bytes
     resident:   7 source shards
-    free disk:  391,351,341,056 bytes
+    free disk:  388,396,679,168 bytes
 
 ## Detached work
 
@@ -52,6 +52,11 @@ Generated from live evidence by `tools/campaign/continuum_status.py`. Do not han
 - BUILD_SEARCH_GOVERNANCE: search, roles, memories, Ledger, Tribunal
 - QUALIFY_SANDBOX: Q0-Q6 and the multi-day pre-sandbox rehearsal
 - RAMANUJAN_SANDBOX_READY: terminal gate
+
+## Queued work with a written receipt
+
+- `HAWKING_GRAVITY_RUNTIME_GAPS.json` -- Continuum step 5 (base .gravity runtime and measured BASE_TRUE_TPS) -- what the required list still lacks, established by reading the runtime against the real 
+- `GLM52_PASS3_BYTE_PRECLEARANCE.json` -- Will PASS3 finalization refuse the artifact for exceeding the frozen H0.98 ceiling after ~13 hours of packing?
 
 ## Next command
 

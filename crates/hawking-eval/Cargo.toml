@@ -6,7 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 authors.workspace = true
-description = "Local coding-capability evaluation for HIDE (pass@1 + Wilson CI over the serve path)"
+description = "Local capability evaluation: HIDE coding pass@1 + Odyssey G5 support-halo tournament judge"
 
 [dependencies]
 serde = { workspace = true }

@@ -14,13 +14,8 @@
 //! are written straight into those buffers and are not copied into host `Vec`s
 //! as the cache of record.
 //!
-//! `lm_head` remains a single per-token matvec (host dense or PQ).
-//!
-//! Expert/MLP **command-buffer collapse** lives here on top of residency:
-//! with [`crate::gravity_glm::EXPERT_CB_COLLAPSE_ENV`]=1, each MoE (or dense
-//! MLP) layer encodes gate + up + device `silu_mul` + down into one
-//! [`TokenCommandBuffer`] (one `commit_and_wait` per layer instead of three).
-//! Default off; the three-batch path and host-state path remain parity oracles.
+//! `lm_head` remains a single per-token matvec (host dense or PQ). Command-
+//! buffer collapse is intentionally **not** done here.
 //!
 //! Gated by [`GPU_RESIDENT_STATE_ENV`] (`HAWKING_GLM_GPU_RESIDENT_STATE`), default
 //! off, so the host-state path remains the parity oracle.
@@ -28,10 +23,9 @@
 #![cfg(target_os = "macos")]
 
 use crate::gravity::matvec_dense;
-use crate::gravity_glm::gpu::{GpuTensor, GpuWeightCache, PqParams};
+use crate::gravity_glm::gpu::{GpuTensor, GpuWeightCache};
 use crate::gravity_glm::{
-    expert_cb_collapse_enabled, rope_cos_sin, rope_interleaved, topk_desc, GlmArch, GlmTrace,
-    WeightAccess,
+    rope_cos_sin, rope_interleaved, topk_desc, GlmArch, GlmTrace, WeightAccess,
 };
 use crate::metal::{MetalContext, TokenCommandBuffer};
 use crate::{Error, Result};
@@ -168,8 +162,9 @@ pub struct ActPool {
     router_corrected: Buffer,
     expert_idx: Buffer,
     expert_w: Buffer,
-    // Dense-MLP-sized scratch retained for future reuse; collapsed expert
-    // batches allocate per-prefix gate/up/act/down (inter varies per weight).
+    // Expert scratch (sized for future device-side expert chaining; the
+    // batched path currently uses matvec_batch into host Vecs for the three
+    // co-issued waits that match the host oracle).
     #[allow(dead_code)]
     gate: Buffer,
     #[allow(dead_code)]
@@ -879,15 +874,10 @@ fn mlp_one<'a>(
     outs.pop().ok_or_else(|| Error::Gravity("mlp_one empty".into()))
 }
 
-/// Gate/up/down for every prefix.
-///
-/// **Default (oracle):** three `matvec_batch` round trips with host `silu_mul`
-/// between up and down — matches host `batched_mlp`, three waits.
-///
-/// **Collapse (`HAWKING_GLM_EXPERT_CB_COLLAPSE=1`):** encode gate, up, device
-/// `gravity_silu_mul_f32`, and down into **one** [`TokenCommandBuffer`] and a
-/// single `commit_and_wait`. Device silu uses the host formula bit-for-bit:
-/// `out[i] = (g / (1 + exp(-g))) * up[i]` (f32 exp, sequential element order).
+/// Gate/up/down co-issued across all prefixes via `matvec_batch` — three waits
+/// total for the whole expert set (matches host `batched_mlp`). The residual
+/// `x` and KV stay on device; per-expert gate/up/act vectors are ephemeral
+/// because each down_proj takes a different input.
 #[allow(clippy::too_many_arguments)]
 fn batched_mlp<'a>(
     weights: &GpuWeightCache,
@@ -896,19 +886,15 @@ fn batched_mlp<'a>(
     x_len: usize,
     _pool: &ActPool,
     tcb: &mut Option<TokenCommandBuffer<'a>>,
-    ctx: &'a MetalContext,
+    _ctx: &'a MetalContext,
     waits: &Cell<u64>,
 ) -> Result<Vec<Vec<f32>>> {
     if prefixes.is_empty() {
         return Ok(Vec::new());
     }
-    // Flush any pending attention/router encodes before the MLP path.
+    // Flush any pending attention/router encodes before the batch path, which
+    // commits on its own.
     commit(tcb.take(), waits)?;
-
-    if expert_cb_collapse_enabled() {
-        return batched_mlp_one_cb(weights, prefixes, x, x_len, ctx, waits);
-    }
-
     let x_host = read_f32(x, x_len);
     let gate_names: Vec<String> = prefixes
         .iter()
@@ -952,264 +938,6 @@ fn batched_mlp<'a>(
     let downs = weights.matvec_batch(&down_calls)?;
     waits.set(waits.get().saturating_add(1));
     Ok(downs)
-}
-
-/// One command buffer for the whole expert set (or dense MLP prefixes):
-/// all gate matvecs, all up matvecs, device silu_mul per prefix, all down
-/// matvecs, then a single `commit_and_wait`.
-///
-/// Native (host) weights write shared-memory buffers before encode; PQ
-/// weights encode into the same TCB. Silu always runs on device so the
-/// host drain that forced three waits is gone. After the wait, native
-/// downs (if any) run on the host from the device act buffer; PQ downs
-/// are read back from their y buffers.
-fn batched_mlp_one_cb(
-    weights: &GpuWeightCache,
-    prefixes: &[String],
-    x: &Buffer,
-    x_len: usize,
-    ctx: &MetalContext,
-    waits: &Cell<u64>,
-) -> Result<Vec<Vec<f32>>> {
-    use crate::cost_ledger;
-
-    let n = prefixes.len();
-    let gate_names: Vec<String> = prefixes
-        .iter()
-        .map(|p| format!("{p}.gate_proj.weight"))
-        .collect();
-    let up_names: Vec<String> = prefixes
-        .iter()
-        .map(|p| format!("{p}.up_proj.weight"))
-        .collect();
-    let down_names: Vec<String> = prefixes
-        .iter()
-        .map(|p| format!("{p}.down_proj.weight"))
-        .collect();
-    let all_names: Vec<&str> = gate_names
-        .iter()
-        .chain(up_names.iter())
-        .chain(down_names.iter())
-        .map(String::as_str)
-        .collect();
-
-    cost_ledger::record_matvec_batch((n * 3) as u64);
-
-    let mut cache = weights.cache.lock().expect("gpu weight cache");
-    weights.ensure_many_locked(&mut cache, &all_names)?;
-
-    // Per-prefix intermediate width from gate (rows) / x_len (cols).
-    let mut inters = Vec::with_capacity(n);
-    for name in &gate_names {
-        let inter = match cache.get(name).expect("ensured") {
-            GpuTensor::Pq { params, .. } => {
-                if params.cols as usize != x_len {
-                    return Err(Error::Gravity(format!(
-                        "expert collapse {name}: cols {} != x_len {x_len}",
-                        params.cols
-                    )));
-                }
-                params.rows as usize
-            }
-            GpuTensor::NativeCpu(w) => {
-                if w.len() % x_len != 0 {
-                    return Err(Error::Gravity(format!(
-                        "expert collapse {name}: weight len {} not divisible by x_len {x_len}",
-                        w.len()
-                    )));
-                }
-                w.len() / x_len
-            }
-        };
-        inters.push(inter);
-    }
-
-    // Scratch: gate_y, up_y, act, down_y per prefix (device-shared).
-    let mut gate_bufs = Vec::with_capacity(n);
-    let mut up_bufs = Vec::with_capacity(n);
-    let mut act_bufs = Vec::with_capacity(n);
-    let mut down_bufs = Vec::with_capacity(n);
-    for &inter in &inters {
-        gate_bufs.push(ctx.new_buffer_checked(inter * 4)?);
-        up_bufs.push(ctx.new_buffer_checked(inter * 4)?);
-        act_bufs.push(ctx.new_buffer_checked(inter * 4)?);
-        down_bufs.push(ctx.new_buffer_checked(x_len * 4)?);
-    }
-
-    // Snapshot PQ handles / native weights while we hold the cache lock, then
-    // drop the lock before encode+wait so we do not serialize the whole token.
-    enum Proj {
-        Pq {
-            codebooks: Buffer,
-            codes: Buffer,
-            params: PqParams,
-        },
-        Native(Vec<f32>),
-    }
-    fn proj_of(cache: &crate::gravity_glm::BoundedLru<GpuTensor>, name: &str) -> Result<Proj> {
-        match cache.get(name).expect("ensured") {
-            GpuTensor::Pq {
-                codebooks,
-                codes,
-                params,
-            } => Ok(Proj::Pq {
-                codebooks: codebooks.clone(),
-                codes: codes.clone(),
-                params: *params,
-            }),
-            GpuTensor::NativeCpu(w) => Ok(Proj::Native(w.clone())),
-        }
-    }
-    let mut gates = Vec::with_capacity(n);
-    let mut ups = Vec::with_capacity(n);
-    let mut downs_w = Vec::with_capacity(n);
-    for i in 0..n {
-        gates.push(proj_of(&cache, &gate_names[i])?);
-        ups.push(proj_of(&cache, &up_names[i])?);
-        downs_w.push(proj_of(&cache, &down_names[i])?);
-    }
-    drop(cache);
-
-    // Native gate/up: host matvec into shared buffers (x is already on device).
-    let x_host = read_f32(x, x_len);
-    for i in 0..n {
-        if let Proj::Native(ref w) = gates[i] {
-            let y = matvec_dense(w, &x_host, &gate_names[i])?;
-            write_f32(&gate_bufs[i], &y);
-        }
-        if let Proj::Native(ref w) = ups[i] {
-            let y = matvec_dense(w, &x_host, &up_names[i])?;
-            write_f32(&up_bufs[i], &y);
-        }
-    }
-
-    let mut tcb = TokenCommandBuffer::new(ctx);
-
-    // 1) PQ gate + up (independent; same x).
-    for i in 0..n {
-        if let Proj::Pq {
-            ref codebooks,
-            ref codes,
-            params,
-        } = gates[i]
-        {
-            encode_pq_matvec(&mut tcb, codebooks, codes, params, x, &gate_bufs[i])?;
-        }
-        if let Proj::Pq {
-            ref codebooks,
-            ref codes,
-            params,
-        } = ups[i]
-        {
-            encode_pq_matvec(&mut tcb, codebooks, codes, params, x, &up_bufs[i])?;
-        }
-    }
-
-    // 2) Device silu_mul: act = silu(gate) * up. Formula matches host silu_mul.
-    for i in 0..n {
-        encode_silu_mul_f32(
-            &mut tcb,
-            &gate_bufs[i],
-            &up_bufs[i],
-            &act_bufs[i],
-            inters[i],
-        )?;
-    }
-
-    // 3) PQ downs (read act written by silu).
-    for i in 0..n {
-        if let Proj::Pq {
-            ref codebooks,
-            ref codes,
-            params,
-        } = downs_w[i]
-        {
-            if params.cols as usize != inters[i] {
-                return Err(Error::Gravity(format!(
-                    "expert collapse {}: down cols {} != inter {}",
-                    down_names[i], params.cols, inters[i]
-                )));
-            }
-            encode_pq_matvec(
-                &mut tcb,
-                codebooks,
-                codes,
-                params,
-                &act_bufs[i],
-                &down_bufs[i],
-            )?;
-        }
-    }
-
-    // One pipeline drain for the whole layer's expert set.
-    tcb.commit_and_wait()?;
-    waits.set(waits.get().saturating_add(1));
-
-    // Collect downs: PQ from device y; native from host matvec of device act.
-    let mut results = Vec::with_capacity(n);
-    for i in 0..n {
-        match &downs_w[i] {
-            Proj::Pq { .. } => {
-                results.push(read_f32(&down_bufs[i], x_len));
-            }
-            Proj::Native(w) => {
-                let act = read_f32(&act_bufs[i], inters[i]);
-                results.push(matvec_dense(w, &act, &down_names[i])?);
-            }
-        }
-    }
-    Ok(results)
-}
-
-fn encode_pq_matvec(
-    tcb: &mut TokenCommandBuffer<'_>,
-    codebooks: &Buffer,
-    codes: &Buffer,
-    params: PqParams,
-    x: &Buffer,
-    y: &Buffer,
-) -> Result<()> {
-    const TG: u32 = 256;
-    let n_tg = params.rows.div_ceil(8);
-    let cb = codebooks.clone();
-    let co = codes.clone();
-    tcb.dispatch_threads("gravity_pq_matvec", (n_tg * TG, 1, 1), (TG, 1, 1), |enc| {
-        enc.set_buffer(0, Some(&cb), 0);
-        enc.set_buffer(1, Some(&co), 0);
-        enc.set_buffer(2, Some(x), 0);
-        enc.set_buffer(3, Some(y), 0);
-        enc.set_bytes(
-            4,
-            std::mem::size_of_val(&params) as u64,
-            &params as *const _ as *const _,
-        );
-    })
-}
-
-/// Device SwiGLU: `out[i] = (g / (1 + exp(-g))) * up[i]` — bit-identical to
-/// host `silu_mul` when both use f32 `exp` (kernel: `gravity_silu_mul_f32`).
-fn encode_silu_mul_f32(
-    tcb: &mut TokenCommandBuffer<'_>,
-    gate: &Buffer,
-    up: &Buffer,
-    out: &Buffer,
-    n: usize,
-) -> Result<()> {
-    const TG: u32 = 256;
-    let n_u32 = n as u32;
-    // Never name a shader/local after a Metal type (trap: `uint half = ...`).
-    let n_elems = n_u32;
-    tcb.dispatch_threads(
-        "gravity_silu_mul_f32",
-        (n_elems.div_ceil(TG) * TG, 1, 1),
-        (TG, 1, 1),
-        |enc| {
-            enc.set_buffer(0, Some(gate), 0);
-            enc.set_buffer(1, Some(up), 0);
-            enc.set_buffer(2, Some(out), 0);
-            enc.set_bytes(3, 4, &n_elems as *const u32 as *const _);
-        },
-    )
 }
 
 /// Holds the long-lived resident state for a [`crate::gravity_glm::gpu::GravityGlmGpu`].

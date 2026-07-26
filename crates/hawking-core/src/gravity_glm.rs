@@ -1130,13 +1130,16 @@ pub mod gpu {
     impl WeightAccess for GpuWeightCache {
         // Norm weights and biases: small, natively carried, touched every
         // layer -- decoding them on the CPU each call is cheaper than the
-        // round trip a GPU read-back would cost.
+        // round trip a GPU read-back would cost. `GravityWeights::dense`
+        // memoizes the widened vector (and one-shot hash verification) so
+        // this path no longer re-hashes the same bytes every token.
         fn dense(&self, name: &str) -> Result<Vec<f32>> {
             self.weights.dense(name)
         }
 
         // The embedding table's row lookup: one row, once per token. Also
-        // not worth a device-resident path.
+        // not worth a device-resident path. Shares the native dense memo
+        // for small tensors; large tables only memoize verification.
         fn row(&self, name: &str, index: usize, cols: usize) -> Result<Vec<f32>> {
             self.weights.row(name, index, cols)
         }

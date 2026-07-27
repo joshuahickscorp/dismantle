@@ -58,11 +58,12 @@ export const FAMILY_ADAPTERS: FamilyAdapterEntry[] = [
     id: "deepseek",
     aliases: ["deepseek", "deepseek2", "deepseek_v2"],
     displayName: "DeepSeek V2",
-    level: "SMALL_REAL_CHECKPOINT",
+    level: "SOURCE_HEADER_VALIDATED",
     evidence: [
       { path: "crates/hawking-core/src/model/deepseek_v2.rs", claim: "in-tree DeepSeekV2 engine", kind: "description" },
       { path: "crates/hawking-core/tests/cpu_backend_parity_deepseek.rs", claim: "CPU backend parity for deepseek path", kind: "small_checkpoint_run" },
       { path: "crates/hawking-core/src/model/mod.rs", claim: "load_engine dispatches deepseek2", kind: "description" },
+      { path: "adapters/receipts/ADAPTER_DEEPSEEK_RECEIPT.json", claim: "Stage A: official config/tokenizer/safetensors header parsed and mapped", kind: "source_header" },
     ],
     module: "crates/hawking-core/src/model/deepseek_v2.rs",
     executes: true,
@@ -208,7 +209,7 @@ export const FAMILY_ADAPTERS: FamilyAdapterEntry[] = [
     id: "qwen",
     aliases: ["qwen", "qwen2", "qwen2moe", "qwen-moe", "qwen3"],
     displayName: "Qwen (dense + MoE)",
-    level: "FULL_PARENT_VALIDATED",
+    level: "SMALL_REAL_CHECKPOINT",
     evidence: [
       { path: "crates/hawking-core/src/model/qwen_dense.rs", claim: "in-tree QwenDense engine", kind: "description" },
       { path: "crates/hawking-core/src/model/qwen_moe.rs", claim: "in-tree QwenMoE engine", kind: "description" },
@@ -229,7 +230,7 @@ export const FAMILY_ADAPTERS: FamilyAdapterEntry[] = [
     id: "state_space",
     aliases: ["state_space", "rwkv7", "rwkv", "mamba2", "mamba"],
     displayName: "State-space (RWKV7 + Mamba2)",
-    level: "SMALL_REAL_CHECKPOINT",
+    level: "DECLARED",
     evidence: [
       { path: "crates/hawking-core/src/model/rwkv7.rs", claim: "in-tree RwkvSeven engine", kind: "description" },
       { path: "crates/hawking-core/tests/rwkv7_parity.rs", claim: "RWKV7 parity + load_engine routing", kind: "small_checkpoint_run" },

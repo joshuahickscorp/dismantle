@@ -16,7 +16,7 @@
       "canonical_after_migration": "plan-summary metadata; family support grade + full ABI is hawking-adapters",
       "name": "seed-c ArchAdapter",
       "path": "crates/hawking-seed-c/src/providers/adapters.rs",
-      "role": "declarative plan summary \u2014 does not execute"
+      "role": "declarative plan summary — does not execute"
     },
     {
       "canonical_after_migration": "stays empty until a real PRODUCTION grade is earned in hawking-adapters",
@@ -33,16 +33,16 @@
     {
       "name": "hawking-adapters FamilyRegistry",
       "path": "crates/hawking-adapters/src/registry.rs",
-      "role": "THIS crate \u2014 sole honest support-level + full ABI index (metadata ABI, not a second runtime)"
+      "role": "THIS crate — sole honest support-level + full ABI index (metadata ABI, not a second runtime)"
     },
     {
       "canonical_after_migration": "unchanged; not architecture-family ABI",
       "name": "hawking-orch adapters",
       "path": "crates/hawking-orch/src/adapters.rs",
-      "role": "LoRA language/task selection \u2014 different concept"
+      "role": "LoRA language/task selection — different concept"
     }
   ],
-  "canonical_home": "crates/hawking-adapters \u2014 sole metadata/ABI authority; execution remains load_engine + gravity_engine",
+  "canonical_home": "crates/hawking-adapters — sole metadata/ABI authority; execution remains load_engine + gravity_engine",
   "families": [
     {
       "abi": {
@@ -57,7 +57,7 @@
           "value": "MLA-style / multi-latent attention as implemented in deepseek_v2"
         },
         "capability_limitations": [
-          "shipping path is GGUF deepseek2 \u2014 not V3/V4 safetensors ladder",
+          "shipping path is GGUF deepseek2 — not V3/V4 safetensors ladder",
           "no PRODUCTION receipt"
         ],
         "chat_template": {
@@ -96,6 +96,11 @@
             "claim": "load_engine dispatches deepseek2",
             "kind": "description",
             "path": "crates/hawking-core/src/model/mod.rs"
+          },
+          {
+            "claim": "Stage A: official config/tokenizer/safetensors header parsed and mapped",
+            "kind": "source_header",
+            "path": "adapters/receipts/ADAPTER_DEEPSEEK_RECEIPT.json"
           }
         ],
         "positional_encoding": {
@@ -105,7 +110,7 @@
         "providers": {
           "cpu": {
             "null_reason": null,
-            "value": "available \u2014 cpu_backend_parity_deepseek"
+            "value": "available — cpu_backend_parity_deepseek"
           },
           "cuda": {
             "null_reason": "no in-tree CUDA provider",
@@ -113,7 +118,7 @@
           },
           "metal": {
             "null_reason": null,
-            "value": "partial \u2014 shared metal path when configured"
+            "value": "partial — shared metal path when configured"
           }
         },
         "source_config_classes": {
@@ -167,6 +172,11 @@
           "claim": "load_engine dispatches deepseek2",
           "kind": "description",
           "path": "crates/hawking-core/src/model/mod.rs"
+        },
+        {
+          "claim": "Stage A: official config/tokenizer/safetensors header parsed and mapped",
+          "kind": "source_header",
+          "path": "adapters/receipts/ADAPTER_DEEPSEEK_RECEIPT.json"
         }
       ],
       "executes": true,
@@ -178,19 +188,7 @@
       "id": "deepseek",
       "level": "SOURCE_HEADER_VALIDATED",
       "module": "crates/hawking-core/src/model/deepseek_v2.rs",
-      "serve_registered": true,
-      "demoted_by_verifier": {
-        "from": "SMALL_REAL_CHECKPOINT",
-        "why": "cited evidence does not execute or does not exist",
-        "rejected": [
-          {
-            "kind": "small_checkpoint_run",
-            "path": "crates/hawking-core/tests/cpu_backend_parity_deepseek.rs",
-            "ok": false,
-            "why": "skips when weights are absent (1 presence guards, 1 skip markers)"
-          }
-        ]
-      }
+      "serve_registered": true
     },
     {
       "abi": {
@@ -340,7 +338,7 @@
           "value": "MLA + DSA lightning indexer (glm_moe_dsa)"
         },
         "capability_limitations": [
-          "execution is .gravity only for glm_moe_dsa \u2014 not raw HF safetensors serve",
+          "execution is .gravity only for glm_moe_dsa — not raw HF safetensors serve",
           "MLA+DSA indexer shapes are gravity-contract specific",
           "no PRODUCTION standing receipt"
         ],
@@ -389,7 +387,7 @@
         "providers": {
           "cpu": {
             "null_reason": null,
-            "value": "partial \u2014 CPU oracle/parity paths exist for gravity shards"
+            "value": "partial — CPU oracle/parity paths exist for gravity shards"
           },
           "cuda": {
             "null_reason": "no in-tree CUDA provider for glm_moe_dsa",
@@ -397,14 +395,14 @@
           },
           "metal": {
             "null_reason": null,
-            "value": "partial \u2014 Metal gravity kernels used in sealed parity lanes"
+            "value": "partial — Metal gravity kernels used in sealed parity lanes"
           }
         },
         "source_config_classes": {
           "null_reason": null,
           "value": [
             "gravity.glm_moe_dsa",
-            "hf.config (GLM-5.2 \u2014 campaign ladder, not serve authority)"
+            "hf.config (GLM-5.2 — campaign ladder, not serve authority)"
           ]
         },
         "source_precision_classes": {
@@ -425,7 +423,7 @@
         },
         "topology": {
           "null_reason": null,
-          "value": "MoE (routed experts + shared) with dense early layers \u2014 gravity contract"
+          "value": "MoE (routed experts + shared) with dense early layers — gravity contract"
         }
       },
       "aliases": [
@@ -455,7 +453,7 @@
       "executes": true,
       "gaps": [
         "not PRODUCTION",
-        "gravity_glm.rs is another lane's sealed path \u2014 not claimed as open production serve",
+        "gravity_glm.rs is another lane's sealed path — not claimed as open production serve",
         "full parent source safetensors not the parity authority (gravity bytes are)"
       ],
       "id": "glm",
@@ -529,7 +527,7 @@
           },
           "metal": {
             "null_reason": null,
-            "value": "partial \u2014 bound real-source metal K1 twin, not full serve"
+            "value": "partial — bound real-source metal K1 twin, not full serve"
           }
         },
         "source_config_classes": {
@@ -553,7 +551,7 @@
         },
         "tokenizer": {
           "null_reason": null,
-          "value": "tiktoken (tiktoken.model + tokenization_kimi.py) \u2014 not HF tokenizers JSON"
+          "value": "tiktoken (tiktoken.model + tokenization_kimi.py) — not HF tokenizers JSON"
         },
         "topology": {
           "null_reason": null,
@@ -657,7 +655,7 @@
         "providers": {
           "cpu": {
             "null_reason": null,
-            "value": "available \u2014 CPU backend path exercises LlamaDense"
+            "value": "available — CPU backend path exercises LlamaDense"
           },
           "cuda": {
             "null_reason": "no in-tree CUDA provider for this family",
@@ -665,7 +663,7 @@
           },
           "metal": {
             "null_reason": null,
-            "value": "partial \u2014 Metal kernels used when configured; not family-grade sealed"
+            "value": "partial — Metal kernels used when configured; not family-grade sealed"
           }
         },
         "source_config_classes": {
@@ -802,7 +800,7 @@
         "source_config_classes": {
           "null_reason": null,
           "value": [
-            "hf.config (MiniMax-M3 \u2014 ladder F3, declared only)"
+            "hf.config (MiniMax-M3 — ladder F3, declared only)"
           ]
         },
         "source_precision_classes": {
@@ -846,7 +844,7 @@
       ],
       "id": "minimax",
       "level": "DECLARED",
-      "module": "(none \u2014 declared only)",
+      "module": "(none — declared only)",
       "serve_registered": false
     },
     {
@@ -862,7 +860,7 @@
           "value": "GQA causal attention (dense mistral); mixtral same attention + MoE FFN"
         },
         "capability_limitations": [
-          "mixtral MoE requires pack hydrate \u2014 not shipping",
+          "mixtral MoE requires pack hydrate — not shipping",
           "dense mistral only is serve-registered"
         ],
         "chat_template": {
@@ -923,7 +921,7 @@
           },
           "metal": {
             "null_reason": null,
-            "value": "partial \u2014 shared llama metal path"
+            "value": "partial — shared llama metal path"
           }
         },
         "source_config_classes": {
@@ -1208,7 +1206,7 @@
         "providers": {
           "cpu": {
             "null_reason": null,
-            "value": "available \u2014 CPU backend parity tests"
+            "value": "available — CPU backend parity tests"
           },
           "cuda": {
             "null_reason": "no in-tree CUDA provider",
@@ -1216,7 +1214,7 @@
           },
           "metal": {
             "null_reason": null,
-            "value": "partial \u2014 Metal path used in serve when configured"
+            "value": "partial — Metal path used in serve when configured"
           }
         },
         "source_config_classes": {
@@ -1300,25 +1298,7 @@
       "id": "qwen",
       "level": "SMALL_REAL_CHECKPOINT",
       "module": "crates/hawking-core/src/model/qwen_dense.rs",
-      "serve_registered": true,
-      "demoted_by_verifier": {
-        "from": "FULL_PARENT_VALIDATED",
-        "why": "cited evidence does not execute or does not exist",
-        "rejected": [
-          {
-            "kind": "full_parent_validation",
-            "path": "crates/hawking-core/tests/integration_greedy_64.rs",
-            "ok": false,
-            "why": "skips when weights are absent (1 presence guards, 2 skip markers)"
-          },
-          {
-            "kind": "full_parent_validation",
-            "path": "crates/hawking-core/tests/cpu_backend_parity.rs",
-            "ok": false,
-            "why": "skips when weights are absent (1 presence guards, 1 skip markers)"
-          }
-        ]
-      }
+      "serve_registered": true
     },
     {
       "abi": {
@@ -1389,7 +1369,7 @@
           },
           "metal": {
             "null_reason": null,
-            "value": "partial \u2014 when configured for rwkv7"
+            "value": "partial — when configured for rwkv7"
           }
         },
         "source_config_classes": {
@@ -1453,21 +1433,9 @@
         "family spans RWKV (executes) and Mamba2 (declared pack only)"
       ],
       "id": "state_space",
-      "level": "SOURCE_HEADER_VALIDATED",
+      "level": "DECLARED",
       "module": "crates/hawking-core/src/model/rwkv7.rs",
-      "serve_registered": true,
-      "demoted_by_verifier": {
-        "from": "SMALL_REAL_CHECKPOINT",
-        "why": "cited evidence does not execute or does not exist",
-        "rejected": [
-          {
-            "kind": "small_checkpoint_run",
-            "path": "crates/hawking-core/tests/rwkv7_parity.rs",
-            "ok": false,
-            "why": "skips when weights are absent (3 presence guards, 2 skip markers)"
-          }
-        ]
-      }
+      "serve_registered": true
     }
   ],
   "note": "No family is PRODUCTION today. Levels are never inflated from a code reading alone. Extended ABI: every field present or null with reason.",
@@ -1480,15 +1448,5 @@
     "SMALL_REAL_CHECKPOINT",
     "FULL_PARENT_VALIDATED",
     "PRODUCTION"
-  ],
-  "grade_verification": {
-    "at": "generated by tools/adapters/verify_grades.py",
-    "law": "a test that skips when its weights are absent is not evidence",
-    "models_on_disk": false,
-    "demoted": [
-      "deepseek",
-      "qwen",
-      "state_space"
-    ]
-  }
+  ]
 }

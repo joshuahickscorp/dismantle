@@ -141,11 +141,21 @@ mod tests {
         }
     }
 
+    /// Qwen is SMALL_REAL_CHECKPOINT, not FULL_PARENT_VALIDATED.
+    ///
+    /// The earlier grade rested on `integration_greedy_64.rs` and `cpu_backend_parity.rs`,
+    /// both of which skip when no GGUF is on disk -- and none is, so they finish in 0.00 s
+    /// having asserted nothing. A conditional test whose condition is false is not
+    /// evidence. Separately, the runs that did happen were on small parents, and a small
+    /// parent is not a full parent whatever the test is named.
+    ///
+    /// Promote again only when a real full-size Qwen parent has been validated and the
+    /// receipt is registered as evidence of kind `full_parent_validation`.
     #[test]
-    fn qwen_is_full_parent_validated() {
+    fn qwen_is_small_real_checkpoint_not_full_parent() {
         let r = builtin_registry();
         let q = r.get("qwen").unwrap();
-        assert_eq!(q.level, SupportLevel::FullParentValidated);
+        assert_eq!(q.level, SupportLevel::SmallRealCheckpoint);
         assert!(q.executes);
         assert!(q.serve_registered);
     }

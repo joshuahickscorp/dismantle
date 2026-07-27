@@ -26,6 +26,16 @@ const EVIDENCE: &[Evidence] = &[
         claim: "load_engine dispatches deepseek2",
         kind: EvidenceKind::Description,
     },
+    // The grade names the evidence, so the grade must cite it. Stage A of the family
+    // gauntlet parsed DeepSeek's official config, tokenizer and safetensors header; that
+    // is what SOURCE_HEADER_VALIDATED means, and it is the only evidence here that is
+    // unconditionally true. The cpu_backend_parity test above skips when no weights are
+    // on disk, and none are.
+    Evidence {
+        path: "adapters/receipts/ADAPTER_DEEPSEEK_RECEIPT.json",
+        claim: "Stage A: official config/tokenizer/safetensors header parsed and mapped",
+        kind: EvidenceKind::SourceHeader,
+    },
 ];
 
 const GAPS: &[&str] = &[
@@ -76,7 +86,8 @@ impl FamilyAdapter for DeepSeekFamily {
             id: "deepseek",
             aliases: ALIASES,
             display_name: "DeepSeek V2",
-            level: SupportLevel::SmallRealCheckpoint,
+            // Demoted: cpu_backend_parity_deepseek.rs skips when weights are absent.
+            level: SupportLevel::SourceHeaderValidated,
             evidence: EVIDENCE,
             module: "crates/hawking-core/src/model/deepseek_v2.rs",
             executes: true,

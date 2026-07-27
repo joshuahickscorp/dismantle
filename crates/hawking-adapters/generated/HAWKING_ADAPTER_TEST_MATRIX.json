@@ -3,7 +3,7 @@
   "rows": [
     {
       "family": "deepseek",
-      "support_level": "SMALL_REAL_CHECKPOINT",
+      "support_level": "SOURCE_HEADER_VALIDATED",
       "tests": [
         {
           "claim": "in-tree DeepSeekV2 engine",
@@ -33,6 +33,42 @@
           "status": "present"
         },
         {
+          "claim": "Stage A: official config/tokenizer/safetensors header parsed and mapped",
+          "exists": true,
+          "is_test": false,
+          "kind": "source_header",
+          "path": "adapters/receipts/ADAPTER_DEEPSEEK_RECEIPT.json",
+          "role": "evidence",
+          "status": "present"
+        },
+        {
+          "claim": "no SYNTHETIC_PARITY test registered for this family",
+          "exists": false,
+          "is_test": true,
+          "kind": "synthetic_parity",
+          "path": "MISSING:synthetic_parity_test",
+          "role": "desired",
+          "status": "missing"
+        },
+        {
+          "claim": "no REAL_TENSOR_DECODE test registered for this family",
+          "exists": false,
+          "is_test": true,
+          "kind": "real_tensor_decode",
+          "path": "MISSING:real_tensor_decode_test",
+          "role": "desired",
+          "status": "missing"
+        },
+        {
+          "claim": "no SMALL_REAL_CHECKPOINT e2e test registered for this family",
+          "exists": false,
+          "is_test": true,
+          "kind": "small_checkpoint_run",
+          "path": "MISSING:small_real_checkpoint_test",
+          "role": "desired",
+          "status": "missing"
+        },
+        {
           "claim": "no FULL_PARENT_VALIDATED receipt/test registered for this family",
           "exists": false,
           "is_test": true,
@@ -51,8 +87,8 @@
           "status": "missing"
         }
       ],
-      "tests_missing": 2,
-      "tests_present": 3
+      "tests_missing": 5,
+      "tests_present": 4
     },
     {
       "family": "gemma",
@@ -544,7 +580,7 @@
     },
     {
       "family": "qwen",
-      "support_level": "FULL_PARENT_VALIDATED",
+      "support_level": "SMALL_REAL_CHECKPOINT",
       "tests": [
         {
           "claim": "in-tree QwenDense engine",
@@ -601,6 +637,15 @@
           "status": "present"
         },
         {
+          "claim": "no FULL_PARENT_VALIDATED receipt/test registered for this family",
+          "exists": false,
+          "is_test": true,
+          "kind": "full_parent_validation",
+          "path": "MISSING:full_parent_validation_test",
+          "role": "desired",
+          "status": "missing"
+        },
+        {
           "claim": "no PRODUCTION standing parity receipt (forbidden until deliberately lifted)",
           "exists": false,
           "is_test": true,
@@ -610,12 +655,12 @@
           "status": "missing"
         }
       ],
-      "tests_missing": 1,
+      "tests_missing": 2,
       "tests_present": 6
     },
     {
       "family": "state_space",
-      "support_level": "SMALL_REAL_CHECKPOINT",
+      "support_level": "DECLARED",
       "tests": [
         {
           "claim": "in-tree RwkvSeven engine",
@@ -645,6 +690,42 @@
           "status": "present"
         },
         {
+          "claim": "no SOURCE_HEADER_VALIDATED test registered for this family",
+          "exists": false,
+          "is_test": true,
+          "kind": "source_header",
+          "path": "MISSING:source_header_validation_test",
+          "role": "desired",
+          "status": "missing"
+        },
+        {
+          "claim": "no SYNTHETIC_PARITY test registered for this family",
+          "exists": false,
+          "is_test": true,
+          "kind": "synthetic_parity",
+          "path": "MISSING:synthetic_parity_test",
+          "role": "desired",
+          "status": "missing"
+        },
+        {
+          "claim": "no REAL_TENSOR_DECODE test registered for this family",
+          "exists": false,
+          "is_test": true,
+          "kind": "real_tensor_decode",
+          "path": "MISSING:real_tensor_decode_test",
+          "role": "desired",
+          "status": "missing"
+        },
+        {
+          "claim": "no SMALL_REAL_CHECKPOINT e2e test registered for this family",
+          "exists": false,
+          "is_test": true,
+          "kind": "small_checkpoint_run",
+          "path": "MISSING:small_real_checkpoint_test",
+          "role": "desired",
+          "status": "missing"
+        },
+        {
           "claim": "no FULL_PARENT_VALIDATED receipt/test registered for this family",
           "exists": false,
           "is_test": true,
@@ -663,7 +744,7 @@
           "status": "missing"
         }
       ],
-      "tests_missing": 2,
+      "tests_missing": 6,
       "tests_present": 3
     }
   ],

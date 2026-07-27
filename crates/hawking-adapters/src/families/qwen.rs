@@ -100,7 +100,10 @@ impl FamilyAdapter for QwenFamily {
             id: "qwen",
             aliases: ALIASES,
             display_name: "Qwen (dense + MoE)",
-            level: SupportLevel::FullParentValidated,
+            // Demoted from FullParentValidated by tools/adapters/verify_grades.py: the cited
+            // evidence (integration_greedy_64.rs, cpu_backend_parity.rs) skips when no GGUF is
+            // on disk, and none is. A small parent is also not a full parent.
+            level: SupportLevel::SmallRealCheckpoint,
             evidence: EVIDENCE,
             module: "crates/hawking-core/src/model/qwen_dense.rs",
             executes: true,

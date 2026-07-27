@@ -5,7 +5,9 @@
 //! allocates full row/code streams, keeps them resident across candidates,
 //! gates every candidate against an FP64 authority under Numeric Parity V2.1,
 //! and only ranks parity-green candidates. It never changes the runtime
-//! default.
+//! default. Full census geometries additionally require the explicit
+//! `--allow-exact-geometry` acknowledgement; this harness is never an
+//! automatic test.
 
 #[cfg(not(target_os = "macos"))]
 fn main() {
@@ -42,6 +44,7 @@ mod macos {
         iterations: usize,
         rounds: usize,
         max_dispatches: usize,
+        allow_exact_geometry: bool,
         out: PathBuf,
     }
 
@@ -51,9 +54,12 @@ mod macos {
                 geometries: vec![(2048, 6144), (6144, 2048)],
                 variants: PqMetalKernelVariant::ALL.to_vec(),
                 warmup: 2,
-                iterations: 12,
+                // Six candidates total eight dispatches per pass. Eleven
+                // samples keep the acknowledged full sweep at exactly 640.
+                iterations: 11,
                 rounds: 3,
                 max_dispatches: 640,
+                allow_exact_geometry: false,
                 out: PathBuf::from("reports/base_runtime/gravity_pq_autotune.json"),
             }
         }
@@ -62,7 +68,8 @@ mod macos {
     fn usage() -> &'static str {
         "gravity_pq_autotune \
          [--geometry ROWSxCOLS ...] \
-         [--variants generic,bits8-direct,bits8-vec4,bits8-2d-split4,bits8-2d-split8] \
+         [--variants generic,bits8-direct,bits8-vec4,bits8-double-single,bits8-2d-split4,bits8-2d-split8] \
+         [--allow-exact-geometry] \
          [--warmup N] [--iters N] [--rounds N] [--max-dispatches N] [--out PATH]"
     }
 
@@ -119,6 +126,7 @@ mod macos {
                 "--warmup" => cfg.warmup = parse_usize("--warmup", args.next())?,
                 "--iters" => cfg.iterations = parse_usize("--iters", args.next())?,
                 "--rounds" => cfg.rounds = parse_usize("--rounds", args.next())?,
+                "--allow-exact-geometry" => cfg.allow_exact_geometry = true,
                 "--max-dispatches" => {
                     cfg.max_dispatches = parse_usize("--max-dispatches", args.next())?
                 }
@@ -141,6 +149,7 @@ mod macos {
         if cfg.iterations == 0 || cfg.rounds == 0 {
             return Err("--iters and --rounds must be at least 1".into());
         }
+        enforce_exact_geometry_gate(&cfg)?;
         let per_pass: usize = cfg.variants.iter().map(|v| v.dispatches_per_matvec()).sum();
         let estimated =
             cfg.geometries.len() * per_pass * (1 + cfg.rounds * (cfg.warmup + cfg.iterations));
@@ -153,6 +162,22 @@ mod macos {
             ));
         }
         Ok(cfg)
+    }
+
+    fn enforce_exact_geometry_gate(cfg: &Config) -> Result<(), String> {
+        let exact: Vec<_> = cfg
+            .geometries
+            .iter()
+            .copied()
+            .filter(|&(rows, cols)| census_count(rows, cols).is_some())
+            .collect();
+        if exact.is_empty() || cfg.allow_exact_geometry {
+            return Ok(());
+        }
+        Err(format!(
+            "manual exact-geometry gate: {exact:?} requires \
+             --allow-exact-geometry; do not run the full sweep under MOP contention"
+        ))
     }
 
     fn push_u16(out: &mut Vec<u8>, v: u16) {
@@ -283,7 +308,14 @@ mod macos {
             "parity_gate_passed": parity_gate_passed,
             "device": device,
             "default_unchanged": PqMetalKernelVariant::Generic.as_str(),
+            "promotion": "NONE",
+            "throughput_claim": "NONE; candidates remain unpromoted until a separately authorized exact-geometry run",
             "numeric_contract": "Numeric Parity V2.1; FP64 compact-matvec authority; continuous-only bounds still require exact top-k/argmax",
+            "exact_geometry_gate": {
+                "required_flag": "--allow-exact-geometry",
+                "acknowledged": cfg.allow_exact_geometry,
+                "automatic_test": false,
+            },
             "bound": {
                 "estimated_dispatches": estimated_dispatches,
                 "max_dispatches": cfg.max_dispatches,
@@ -514,8 +546,35 @@ mod macos {
                 iterations: 1,
                 rounds: 1,
                 max_dispatches: 8,
+                allow_exact_geometry: false,
                 out: PathBuf::from("unused-by-unit-test.json"),
             }
+        }
+
+        #[test]
+        fn exact_geometry_sweep_requires_explicit_manual_acknowledgement() {
+            let default = Config::default();
+            let per_pass: usize = default
+                .variants
+                .iter()
+                .map(|v| v.dispatches_per_matvec())
+                .sum();
+            let estimated = default.geometries.len()
+                * per_pass
+                * (1 + default.rounds * (default.warmup + default.iterations));
+            assert_eq!(estimated, default.max_dispatches);
+
+            let mut cfg = cfg();
+            let err = enforce_exact_geometry_gate(&cfg).expect_err("exact geometry must gate");
+            assert!(err.contains("--allow-exact-geometry"));
+            assert!(err.contains("MOP contention"));
+
+            cfg.allow_exact_geometry = true;
+            enforce_exact_geometry_gate(&cfg).expect("explicit acknowledgement");
+
+            cfg.allow_exact_geometry = false;
+            cfg.geometries = vec![(37, 2048)];
+            enforce_exact_geometry_gate(&cfg).expect("tiny geometry stays bounded");
         }
 
         #[test]

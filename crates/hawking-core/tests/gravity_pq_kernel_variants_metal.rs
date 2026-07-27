@@ -1,12 +1,14 @@
 //! Focused Metal parity for every additive bits=8 gravity-pq candidate.
-//! Uses the flagship D=32/S=1/sub=32/card=256/bits=8 geometry with reduced
-//! row counts and both real chunk counts (64 and 192).
+//! Uses the flagship D=32/S=1/sub=32/card=256/bits=8 geometry with a tiny
+//! single-chunk probe plus reduced row counts at both real chunk counts
+//! (64 and 192). It never dispatches a full census geometry.
 
 #![cfg(target_os = "macos")]
 
 use half::f16;
 use hawking_core::gravity::{
-    pq_matvec_f64_authority, pq_matvec_metal, PqMetalKernelVariant, PqMetalMatrix,
+    parse_pq_header, pq_matvec_f64_authority, pq_matvec_metal, pq_sections, PqMetalKernelVariant,
+    PqMetalMatrix,
 };
 use hawking_core::metal::MetalContext;
 use hawking_core::numeric_parity::{format_score_line, score_against_f64, Bounds};
@@ -68,6 +70,66 @@ fn make_x(cols: usize) -> Vec<f32> {
         .collect()
 }
 
+#[derive(Clone, Copy, Default)]
+struct DoubleSingle {
+    hi: f32,
+    lo: f32,
+}
+
+impl DoubleSingle {
+    fn product(a: f32, b: f32) -> Self {
+        let hi = a * b;
+        let lo = a.mul_add(b, -hi);
+        Self { hi, lo }
+    }
+
+    fn add(self, rhs: Self) -> Self {
+        let sum = self.hi + rhs.hi;
+        let rhs_virtual = sum - self.hi;
+        let sum_error = (self.hi - (sum - rhs_virtual)) + (rhs.hi - rhs_virtual);
+        let tail = (self.lo + rhs.lo) + sum_error;
+        let hi = sum + tail;
+        let lo = tail - (hi - sum);
+        Self { hi, lo }
+    }
+}
+
+/// Exact CPU counterpart of the candidate's per-lane accumulation and
+/// fixed 32-lane compensated reduction tree.
+fn emulate_bits8_double_single(payload: &[u8], x: &[f32]) -> Vec<f32> {
+    let h = parse_pq_header(payload).expect("header");
+    let (cb_bytes, codes) = pq_sections(payload).expect("sections");
+    let codebooks: Vec<f32> = cb_bytes
+        .chunks_exact(2)
+        .map(|bytes| f16::from_bits(u16::from_le_bytes([bytes[0], bytes[1]])).to_f32())
+        .collect();
+    let mut out = vec![0.0f32; h.rows as usize];
+    for row in 0..h.rows as usize {
+        let mut lanes = [DoubleSingle::default(); 32];
+        for (lane, lane_sum) in lanes.iter_mut().enumerate() {
+            for s in 0..h.s as usize {
+                for chunk in (lane..h.nchunk as usize).step_by(32) {
+                    let flat = (row * h.nchunk as usize + chunk) * h.s as usize + s;
+                    let code = codes[flat] as usize;
+                    let cb_base = (s * h.card as usize + code) * h.sub as usize;
+                    let x_base = chunk * h.d as usize + s * h.sub as usize;
+                    for j in 0..h.sub as usize {
+                        *lane_sum = lane_sum
+                            .add(DoubleSingle::product(codebooks[cb_base + j], x[x_base + j]));
+                    }
+                }
+            }
+        }
+        for width in [16usize, 8, 4, 2, 1] {
+            for lane in 0..width {
+                lanes[lane] = lanes[lane].add(lanes[lane + width]);
+            }
+        }
+        out[row] = lanes[0].hi + lanes[0].lo;
+    }
+    out
+}
+
 #[test]
 fn bits8_variants_are_deterministic_and_pass_v21_at_real_chunk_counts() {
     let ctx = match MetalContext::new() {
@@ -77,11 +139,13 @@ fn bits8_variants_are_deterministic_and_pass_v21_at_real_chunk_counts() {
             return;
         }
     };
+    eprintln!("tiny PQ candidate device={}", ctx.device_name());
 
-    for (rows, nchunk) in [(37u32, 64u32), (37u32, 192u32)] {
+    for (rows, nchunk) in [(3u32, 1u32), (37u32, 64u32), (37u32, 192u32)] {
         let payload = make_bits8_payload(rows, nchunk);
         let x = make_x(nchunk as usize * 32);
         let authority = pq_matvec_f64_authority(&payload, &x).expect("f64 authority");
+        let double_single_cpu = emulate_bits8_double_single(&payload, &x);
         let matrix = PqMetalMatrix::from_payload(&ctx, &payload).expect("resident PQ matrix");
         let established_default = pq_matvec_metal(&ctx, &payload, &x).expect("default");
 
@@ -105,6 +169,22 @@ fn bits8_variants_are_deterministic_and_pass_v21_at_real_chunk_counts() {
                         .all(|(a, b)| a.to_bits() == b.to_bits()),
                     "explicit generic variant diverged from pq_matvec_metal default"
                 );
+            }
+            if variant == PqMetalKernelVariant::Bits8DoubleSingle {
+                if let Some((row, (&gpu, &cpu))) = first
+                    .iter()
+                    .zip(&double_single_cpu)
+                    .enumerate()
+                    .find(|(_, (gpu, cpu))| gpu.to_bits() != cpu.to_bits())
+                {
+                    panic!(
+                        "double-single Metal output diverged from the explicit CPU tree \
+                         for nchunk={nchunk}, row={row}: gpu={gpu:.9e}/0x{:08x}, \
+                         cpu={cpu:.9e}/0x{:08x}",
+                        gpu.to_bits(),
+                        cpu.to_bits(),
+                    );
+                }
             }
             let score = score_against_f64(
                 &first,

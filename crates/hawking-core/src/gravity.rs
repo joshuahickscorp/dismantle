@@ -1401,6 +1401,11 @@ pub enum PqMetalKernelVariant {
     Bits8Direct,
     /// Direct byte lookup plus four independent `float4` accumulators.
     Bits8Vec4,
+    /// Direct byte lookup plus an f32 double-single accumulator/reduction.
+    ///
+    /// This is an unpromoted numeric candidate. It has no throughput claim
+    /// and is selected only through the explicit variant/autotune APIs.
+    Bits8DoubleSingle,
     /// 2D row × four chunk slices, then ordered slice reduction.
     Bits8Vec4Split4,
     /// 2D row × eight chunk slices, then ordered slice reduction.
@@ -1408,10 +1413,11 @@ pub enum PqMetalKernelVariant {
 }
 
 impl PqMetalKernelVariant {
-    pub const ALL: [Self; 5] = [
+    pub const ALL: [Self; 6] = [
         Self::Generic,
         Self::Bits8Direct,
         Self::Bits8Vec4,
+        Self::Bits8DoubleSingle,
         Self::Bits8Vec4Split4,
         Self::Bits8Vec4Split8,
     ];
@@ -1421,6 +1427,7 @@ impl PqMetalKernelVariant {
             Self::Generic => "generic",
             Self::Bits8Direct => "bits8-direct",
             Self::Bits8Vec4 => "bits8-vec4",
+            Self::Bits8DoubleSingle => "bits8-double-single",
             Self::Bits8Vec4Split4 => "bits8-2d-split4",
             Self::Bits8Vec4Split8 => "bits8-2d-split8",
         }
@@ -1431,9 +1438,8 @@ impl PqMetalKernelVariant {
             Self::Generic => "gravity_pq_matvec",
             Self::Bits8Direct => "gravity_pq_matvec_bits8_direct",
             Self::Bits8Vec4 => "gravity_pq_matvec_bits8_vec4",
-            Self::Bits8Vec4Split4 | Self::Bits8Vec4Split8 => {
-                "gravity_pq_matvec_bits8_2d"
-            }
+            Self::Bits8DoubleSingle => "gravity_pq_matvec_bits8_double_single",
+            Self::Bits8Vec4Split4 | Self::Bits8Vec4Split8 => "gravity_pq_matvec_bits8_2d",
         }
     }
 
@@ -1459,7 +1465,7 @@ impl PqMetalKernelVariant {
     pub fn supports(self, h: &PqHeader) -> bool {
         match self {
             Self::Generic => true,
-            Self::Bits8Direct => h.bits == 8,
+            Self::Bits8Direct | Self::Bits8DoubleSingle => h.bits == 8,
             Self::Bits8Vec4 | Self::Bits8Vec4Split4 | Self::Bits8Vec4Split8 => {
                 h.bits == 8 && h.d % 4 == 0 && h.sub % 4 == 0
             }

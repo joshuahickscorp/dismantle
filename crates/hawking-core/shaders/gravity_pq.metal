@@ -440,6 +440,17 @@ struct GravityGlmRopeParams {
     uint out_stride; // elements between heads in `out`
 };
 
+// Replay-safe form: both base offsets are scalar contents so an ICB can bind
+// the full persistent buffers at offset zero while sequence position changes.
+struct GravityGlmPositionedRopeParams {
+    uint n_heads;
+    uint rotary_dim;
+    uint in_stride;
+    uint out_stride;
+    uint input_element_offset;
+    uint output_element_offset;
+};
+
 kernel void gravity_rope_interleaved_f32(
     device const float *x     [[buffer(0)]],
     device       float *out   [[buffer(1)]],
@@ -479,6 +490,34 @@ kernel void gravity_rope_prefix_tail_f32(
     uint col = id - h * p.out_stride;
     uint in_base = h * p.in_stride;
     uint out_base = h * p.out_stride;
+    uint half_dim = p.rotary_dim / 2u;
+    if (col < half_dim) {
+        float first = x[in_base + 2u * col];
+        float second = x[in_base + 2u * col + 1u];
+        out[out_base + col] = first * cos[col] - second * sin[col];
+    } else if (col < p.rotary_dim) {
+        uint pair = col - half_dim;
+        float first = x[in_base + 2u * pair];
+        float second = x[in_base + 2u * pair + 1u];
+        out[out_base + col] = second * cos[pair] + first * sin[pair];
+    } else {
+        out[out_base + col] = x[in_base + col];
+    }
+}
+
+kernel void gravity_rope_prefix_tail_positioned_f32(
+    device const float *x     [[buffer(0)]],
+    device       float *out   [[buffer(1)]],
+    device const float *cos   [[buffer(2)]],
+    device const float *sin   [[buffer(3)]],
+    constant GravityGlmPositionedRopeParams &p [[buffer(4)]],
+    uint id [[thread_position_in_grid]])
+{
+    if (id >= p.n_heads * p.out_stride) { return; }
+    uint h = id / p.out_stride;
+    uint col = id - h * p.out_stride;
+    uint in_base = p.input_element_offset + h * p.in_stride;
+    uint out_base = p.output_element_offset + h * p.out_stride;
     uint half_dim = p.rotary_dim / 2u;
     if (col < half_dim) {
         float first = x[in_base + 2u * col];

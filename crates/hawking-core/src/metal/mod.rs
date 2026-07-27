@@ -2125,6 +2125,43 @@ mod imp {
             assert_eq!(n_buffer.gpu_address(), n_address);
         }
 
+        #[test]
+        fn replayable_icb_group_orders_cross_graph_dependencies() {
+            const N: u32 = 257;
+            let Ok(ctx) = MetalContext::new_with_trace(true) else {
+                return;
+            };
+            let output = ctx.new_buffer(N as usize * std::mem::size_of::<f32>());
+            let input: Vec<f32> = (0..N).map(|index| index as f32 * 0.25 - 9.0).collect();
+            let input_buffer = ctx.new_buffer_with_bytes(bytemuck::cast_slice(&input));
+            let n_buffer = ctx.new_buffer_with_bytes(&N.to_ne_bytes());
+            let zero_graph =
+                ReplayableComputeGraph::new(&ctx, zero_replay_stages(&output, &n_buffer, N, 1))
+                    .unwrap();
+            let add_graph = ReplayableComputeGraph::new(
+                &ctx,
+                vec![ReplayComputeStage::new(
+                    "gravity_add_inplace_f32",
+                    (N, 1, 1),
+                    (64, 1, 1),
+                    vec![
+                        ReplayBufferBinding::read_write(0, &output, 0),
+                        ReplayBufferBinding::read(1, &input_buffer, 0),
+                        ReplayBufferBinding::read(2, &n_buffer, 0),
+                    ],
+                )],
+            )
+            .unwrap();
+
+            write_f32(&output, &vec![f32::NAN; N as usize]);
+            let mut tcb = TokenCommandBuffer::new(&ctx);
+            tcb.execute_replayable_graphs(&[&zero_graph, &add_graph])
+                .unwrap();
+            assert_eq!(tcb.dispatch_count(), 2);
+            tcb.commit_and_wait().unwrap();
+            assert_eq!(read_f32(&output, N as usize), input);
+        }
+
         /// Bounded host-encoding comparison for the full-indexer pre-score
         /// partition: two replay calls containing 9 + 6 commands versus one
         /// replay call containing the same 15 commands. GPU execution and
@@ -2193,8 +2230,45 @@ mod imp {
             );
             drop(fused_guard);
 
+            let input: Vec<f32> = (0..N).map(|index| index as f32 * 0.25 - 9.0).collect();
+            let input_buffer = ctx.new_buffer_with_bytes(bytemuck::cast_slice(&input));
+            let zero_graph =
+                ReplayableComputeGraph::new(&ctx, zero_replay_stages(&output, &n_buffer, N, 1))
+                    .unwrap();
+            let add_graph = ReplayableComputeGraph::new(
+                &ctx,
+                vec![ReplayComputeStage::new(
+                    "gravity_add_inplace_f32",
+                    (N, 1, 1),
+                    (64, 1, 1),
+                    vec![
+                        ReplayBufferBinding::read_write(0, &output, 0),
+                        ReplayBufferBinding::read(1, &input_buffer, 0),
+                        ReplayBufferBinding::read(2, &n_buffer, 0),
+                    ],
+                )],
+            )
+            .unwrap();
+            write_f32(&output, &vec![f32::NAN; N as usize]);
+            let dependency_guard = PhysicalTraceGuard::begin(identity("dependency")).unwrap();
+            let mut dependency_tcb = TokenCommandBuffer::new(&ctx);
+            dependency_tcb
+                .execute_replayable_graphs(&[&zero_graph, &add_graph])
+                .unwrap();
+            dependency_tcb.commit_and_wait().unwrap();
+            assert_eq!(
+                dependency_guard.counts(),
+                PhysicalTraceCounts {
+                    command_count: 1,
+                    encoder_count: 1,
+                }
+            );
+            drop(dependency_guard);
+            assert_eq!(read_f32(&output, N as usize), input);
+
             let mut direct_ns = Vec::with_capacity(SAMPLES);
             let mut split_ns = Vec::with_capacity(SAMPLES);
+            let mut grouped_ns = Vec::with_capacity(SAMPLES);
             let mut fused_ns = Vec::with_capacity(SAMPLES);
             for iteration in 0..SAMPLES {
                 let measure_direct = || {
@@ -2226,6 +2300,15 @@ mod imp {
                     tcb.commit_and_wait().unwrap();
                     elapsed
                 };
+                let measure_grouped = || {
+                    let mut tcb = TokenCommandBuffer::new(&ctx);
+                    let started = Instant::now();
+                    tcb.execute_replayable_graphs(&[&split_9, &split_6])
+                        .unwrap();
+                    let elapsed = started.elapsed().as_nanos();
+                    tcb.commit_and_wait().unwrap();
+                    elapsed
+                };
                 let measure_fused = || {
                     let mut tcb = TokenCommandBuffer::new(&ctx);
                     let started = Instant::now();
@@ -2237,9 +2320,11 @@ mod imp {
                 if iteration % 2 == 0 {
                     direct_ns.push(measure_direct());
                     split_ns.push(measure_split());
+                    grouped_ns.push(measure_grouped());
                     fused_ns.push(measure_fused());
                 } else {
                     fused_ns.push(measure_fused());
+                    grouped_ns.push(measure_grouped());
                     split_ns.push(measure_split());
                     direct_ns.push(measure_direct());
                 }
@@ -2250,11 +2335,14 @@ mod imp {
                 "ICB_FUSION_ENCODE_BENCHMARK samples={SAMPLES} \
                  direct_15_p50_ns={} direct_15_p95_ns={} \
                  split_9_6_p50_ns={} split_9_6_p95_ns={} \
+                 grouped_9_6_p50_ns={} grouped_9_6_p95_ns={} \
                  fused_15_p50_ns={} fused_15_p95_ns={}",
                 percentile_ns(&direct_ns, 50),
                 percentile_ns(&direct_ns, 95),
                 percentile_ns(&split_ns, 50),
                 percentile_ns(&split_ns, 95),
+                percentile_ns(&grouped_ns, 50),
+                percentile_ns(&grouped_ns, 95),
                 percentile_ns(&fused_ns, 50),
                 percentile_ns(&fused_ns, 95),
             );

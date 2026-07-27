@@ -54,8 +54,9 @@
 //! `HAWKING_GLM_GPU_COMPACT_ATTENTION_ICB=1` additionally replays the
 //! nine-command input/q/kv prelude, the full indexer's six fixed-grid
 //! transforms, and the fixed-grid radix/compact-attention/residual post-score
-//! DAG. Exact active-length DSA scoring remains directly encoded between those
-//! replay boundaries.
+//! DAG. Full-indexer layers group the contiguous nine- and six-command
+//! pre-score ICBs behind one direct encoder. Exact active-length DSA scoring
+//! remains directly encoded between the pre-score and post-score boundaries.
 //!
 //! Gated by [`GPU_RESIDENT_STATE_ENV`] (`HAWKING_GLM_GPU_RESIDENT_STATE`), default
 //! off, so the host-state path remains the parity oracle.
@@ -1824,7 +1825,7 @@ pub struct ActPool {
     /// affected layer entry.
     compact_attention_replay_layers: Mutex<Vec<Option<CachedCompactAttentionReplayGraph>>>,
     /// One lazily captured fixed-grid full-indexer pre-score DAG per layer.
-    /// The exact active-length score and radix stages remain direct.
+    /// The exact active-length score stage remains direct.
     device_dsa_pre_score_replay_layers: Mutex<Vec<Option<CachedDeviceDsaPreScoreReplayGraph>>>,
     /// One lazily captured input/q/kv projection prelude per compact layer.
     /// Full-indexer and shared-indexer layers have the same prelude geometry.
@@ -2393,6 +2394,7 @@ pub fn forward_resident(
             let attn_p = format!("{p}.self_attn");
             let compact_attention = session.attention.is_compact();
             let mut tcb: Option<TokenCommandBuffer<'_>> = None;
+            let mut deferred_attention_prelude: Option<Arc<ReplayableComputeGraph>> = None;
 
             // Attention + IndexShare: projections, DSA indexer, sparse attend,
             // o_proj residual. Nested metal/norm/kv buckets steal exclusive time.
@@ -2518,8 +2520,12 @@ pub fn forward_resident(
                         let replay = slot
                             .as_ref()
                             .expect("attention prelude replay graph just populated");
-                        let wave = tcb.get_or_insert_with(|| TokenCommandBuffer::new(ctx));
-                        wave.execute_replayable_graph(&replay.graph)?;
+                        if a.indexer_types[layer] == "full" {
+                            deferred_attention_prelude = Some(Arc::clone(&replay.graph));
+                        } else {
+                            let wave = tcb.get_or_insert_with(|| TokenCommandBuffer::new(ctx));
+                            wave.execute_replayable_graph(&replay.graph)?;
+                        }
                     } else {
                         {
                             let wave = tcb.get_or_insert_with(|| TokenCommandBuffer::new(ctx));
@@ -2748,6 +2754,7 @@ pub fn forward_resident(
                                 &cos,
                                 &sin,
                                 closed_attention_prelude,
+                                deferred_attention_prelude.as_deref(),
                                 &mut tcb,
                                 ctx,
                             )?;
@@ -4035,11 +4042,12 @@ fn indexer_topk<'a>(
 
 /// Default-off device DSA path.
 ///
-/// `wq_b + wk + weights_proj → affine LayerNorm → q/k RoPE assembly → DSA
-/// scores → exact radix top-k` stays in the caller's open command buffer.
-/// Compact attention appends to the same graph and consumes the ranked u32
-/// buffer directly, so no projection, score, or rank readback lies on the
-/// attention dependency path.
+/// `wq_b + wk + weights_proj → affine LayerNorm → q/k RoPE assembly` groups
+/// with the deferred attention-prelude ICB when available. Exact active-length
+/// DSA scores stay directly encoded in the caller's open command buffer; the
+/// post-score replay starts with radix top-k and consumes its ranked u32 buffer
+/// directly, so no projection, score, or rank readback lies on the attention
+/// dependency path.
 #[allow(clippy::too_many_arguments)]
 fn indexer_topk_device<'a>(
     weights: &GpuWeightCache,
@@ -4055,6 +4063,7 @@ fn indexer_topk_device<'a>(
     cos: &[f32],
     sin: &[f32],
     replay_inputs_ready: bool,
+    deferred_prelude_replay: Option<&ReplayableComputeGraph>,
     tcb: &mut Option<TokenCommandBuffer<'a>>,
     ctx: &'a MetalContext,
 ) -> Result<usize> {
@@ -4153,8 +4162,16 @@ fn indexer_topk_device<'a>(
             .expect("device DSA pre-score replay graph just populated");
         replay.update_position(pos)?;
         let wave = tcb.get_or_insert_with(|| TokenCommandBuffer::new(ctx));
-        wave.execute_replayable_graph(&replay.graph)?;
+        if let Some(prelude) = deferred_prelude_replay {
+            wave.execute_replayable_graphs(&[prelude, &replay.graph])?;
+        } else {
+            wave.execute_replayable_graph(&replay.graph)?;
+        }
     } else {
+        if let Some(prelude) = deferred_prelude_replay {
+            let wave = tcb.get_or_insert_with(|| TokenCommandBuffer::new(ctx));
+            wave.execute_replayable_graph(prelude)?;
+        }
         matvec_into(
             tcb,
             ctx,
@@ -6668,7 +6685,7 @@ struct AttentionPreludeReplayKey {
 
 struct CachedAttentionPreludeReplayGraph {
     key: AttentionPreludeReplayKey,
-    graph: ReplayableComputeGraph,
+    graph: Arc<ReplayableComputeGraph>,
 }
 
 struct AttentionPreludeReplayInputs<'a> {
@@ -7006,7 +7023,7 @@ fn build_attention_prelude_replay_graph(
     )?;
     Ok(CachedAttentionPreludeReplayGraph {
         key: inputs.key(),
-        graph,
+        graph: Arc::new(graph),
     })
 }
 

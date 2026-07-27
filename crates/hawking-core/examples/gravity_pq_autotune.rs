@@ -15,6 +15,7 @@ fn main() {
 
 #[cfg(target_os = "macos")]
 mod macos {
+    use std::io::Write;
     use std::path::PathBuf;
     use std::str::FromStr;
 
@@ -25,6 +26,7 @@ mod macos {
     };
     use hawking_core::metal::MetalContext;
     use hawking_core::numeric_parity::{score_against_f64, Bounds};
+    use serde::Serialize;
     use serde_json::{json, Value};
 
     const D: u16 = 32;
@@ -40,7 +42,7 @@ mod macos {
         iterations: usize,
         rounds: usize,
         max_dispatches: usize,
-        out: Option<PathBuf>,
+        out: PathBuf,
     }
 
     impl Default for Config {
@@ -52,7 +54,7 @@ mod macos {
                 iterations: 12,
                 rounds: 3,
                 max_dispatches: 640,
-                out: None,
+                out: PathBuf::from("reports/base_runtime/gravity_pq_autotune.json"),
             }
         }
     }
@@ -121,10 +123,10 @@ mod macos {
                     cfg.max_dispatches = parse_usize("--max-dispatches", args.next())?
                 }
                 "--out" => {
-                    cfg.out = Some(PathBuf::from(
+                    cfg.out = PathBuf::from(
                         args.next()
                             .ok_or_else(|| "--out requires a path".to_string())?,
-                    ))
+                    )
                 }
                 "-h" | "--help" => {
                     println!("{}", usage());
@@ -239,6 +241,90 @@ mod macos {
         }
     }
 
+    #[derive(Debug, Clone)]
+    struct CandidateGate {
+        variant: String,
+        parity_passed: bool,
+        ranking_us: f64,
+    }
+
+    #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+    struct GeometrySelection {
+        parity_gate_passed: bool,
+        winner: Option<String>,
+    }
+
+    /// Select only among V2.1-green candidates. An all-fail geometry is a
+    /// first-class negative result, not an exceptional control-flow shortcut.
+    fn select_candidate(rows: &[CandidateGate]) -> GeometrySelection {
+        let winner = rows
+            .iter()
+            .filter(|row| row.parity_passed)
+            .min_by(|a, b| a.ranking_us.total_cmp(&b.ranking_us))
+            .map(|row| row.variant.clone());
+        GeometrySelection {
+            parity_gate_passed: winner.is_some(),
+            winner,
+        }
+    }
+
+    fn build_report(
+        device: &str,
+        estimated_dispatches: usize,
+        cfg: &Config,
+        geometry_reports: Vec<Value>,
+    ) -> Value {
+        let parity_gate_passed = geometry_reports
+            .iter()
+            .all(|geometry| geometry["parity_gate_passed"].as_bool() == Some(true));
+        json!({
+            "schema": "hawking.gravity.pq_kernel_autotune.v1",
+            "status": if parity_gate_passed { "PASS" } else { "FAIL" },
+            "parity_gate_passed": parity_gate_passed,
+            "device": device,
+            "default_unchanged": PqMetalKernelVariant::Generic.as_str(),
+            "numeric_contract": "Numeric Parity V2.1; FP64 compact-matvec authority; continuous-only bounds still require exact top-k/argmax",
+            "bound": {
+                "estimated_dispatches": estimated_dispatches,
+                "max_dispatches": cfg.max_dispatches,
+                "warmup": cfg.warmup,
+                "iterations": cfg.iterations,
+                "rounds": cfg.rounds,
+            },
+            "geometries": geometry_reports,
+        })
+    }
+
+    /// Complete and sync the receipt before any parity-failure exit.
+    fn write_receipt(path: &std::path::Path, text: &str) -> std::io::Result<()> {
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        let mut file = std::fs::File::create(path)?;
+        file.write_all(text.as_bytes())?;
+        file.write_all(b"\n")?;
+        file.sync_all()
+    }
+
+    /// Emit first, then surface the parity verdict as process failure.
+    fn emit_report_and_gate(
+        report: &Value,
+        path: &std::path::Path,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let parity_gate_passed = report["parity_gate_passed"].as_bool() == Some(true);
+        let text = serde_json::to_string_pretty(report)?;
+        write_receipt(path, &text)?;
+        println!("{}", path.display());
+        if !parity_gate_passed {
+            return Err(format!(
+                "Numeric Parity V2.1 gate failed; negative receipt written to {}",
+                path.display()
+            )
+            .into());
+        }
+        Ok(())
+    }
+
     pub fn run() -> Result<(), Box<dyn std::error::Error>> {
         let cfg = parse_config().map_err(|e| format!("{e}\n{}", usage()))?;
         let ctx = MetalContext::new()?;
@@ -288,6 +374,15 @@ mod macos {
                     score.continuous.ulp.p99,
                     score.continuous.ulp.max,
                 );
+                if !score.pass {
+                    if score.failures.is_empty() {
+                        eprintln!("    parity failure {variant}: no detailed reason reported");
+                    } else {
+                        for failure in &score.failures {
+                            eprintln!("    parity failure {variant}: {failure}");
+                        }
+                    }
+                }
                 parity.push((variant, score));
             }
 
@@ -333,6 +428,7 @@ mod macos {
             } else {
                 "wall_median_of_round_medians"
             };
+            let mut gate_rows = Vec::with_capacity(measurements.len());
             for (variant, rounds) in measurements {
                 let score = parity
                     .iter()
@@ -347,30 +443,32 @@ mod macos {
                             .collect(),
                     )
                 });
+                let ranking_us = gpu_median.unwrap_or(wall_median);
+                gate_rows.push(CandidateGate {
+                    variant: variant.as_str().to_string(),
+                    parity_passed: score.1.pass,
+                    ranking_us,
+                });
                 candidates.push(json!({
                     "variant": variant.as_str(),
                     "parity": score.1,
                     "rounds": rounds.iter().map(benchmark_json).collect::<Vec<_>>(),
                     "wall_median_of_round_medians_us": wall_median,
                     "gpu_median_of_round_medians_us": gpu_median,
-                    "ranking_us": gpu_median.unwrap_or(wall_median),
+                    "ranking_us": ranking_us,
                 }));
             }
-            let winner = candidates
-                .iter()
-                .filter(|c| c["parity"]["pass"].as_bool() == Some(true))
-                .min_by(|a, b| {
-                    a["ranking_us"]
-                        .as_f64()
-                        .unwrap()
-                        .total_cmp(&b["ranking_us"].as_f64().unwrap())
-                })
-                .and_then(|c| c["variant"].as_str())
-                .ok_or("no parity-green candidate")?;
-            eprintln!(
-                "  winner {rows}x{cols}/nchunk{nchunk}: {winner} ({timing_source}); \
-                 default remains generic"
-            );
+            let selection = select_candidate(&gate_rows);
+            match selection.winner.as_deref() {
+                Some(winner) => eprintln!(
+                    "  winner {rows}x{cols}/nchunk{nchunk}: {winner} ({timing_source}); \
+                     default remains generic"
+                ),
+                None => eprintln!(
+                    "  parity gate FAILED {rows}x{cols}/nchunk{nchunk}: no V2.1-green \
+                     candidate; receipt will record winner=null; default remains generic"
+                ),
+            }
             geometry_reports.push(json!({
                 "rows": rows,
                 "cols": cols,
@@ -386,36 +484,145 @@ mod macos {
                     "bytes": payload.len(),
                 },
                 "timing_source": timing_source,
-                "winner": winner,
+                "parity_gate_passed": selection.parity_gate_passed,
+                "winner": selection.winner,
                 "candidates": candidates,
             }));
         }
 
-        let report = json!({
-            "schema": "hawking.gravity.pq_kernel_autotune.v1",
-            "device": ctx.device_name(),
-            "default_unchanged": PqMetalKernelVariant::Generic.as_str(),
-            "numeric_contract": "Numeric Parity V2.1; FP64 compact-matvec authority; continuous-only bounds still require exact top-k/argmax",
-            "bound": {
-                "estimated_dispatches": estimated_dispatches,
-                "max_dispatches": cfg.max_dispatches,
-                "warmup": cfg.warmup,
-                "iterations": cfg.iterations,
-                "rounds": cfg.rounds,
-            },
-            "geometries": geometry_reports,
-        });
-        let text = serde_json::to_string_pretty(&report)?;
-        if let Some(path) = cfg.out {
-            if let Some(parent) = path.parent() {
-                std::fs::create_dir_all(parent)?;
+        let report = build_report(
+            &ctx.device_name(),
+            estimated_dispatches,
+            &cfg,
+            geometry_reports,
+        );
+        emit_report_and_gate(&report, &cfg.out)
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        fn cfg() -> Config {
+            Config {
+                geometries: vec![(2048, 6144)],
+                variants: vec![
+                    PqMetalKernelVariant::Generic,
+                    PqMetalKernelVariant::Bits8Vec4,
+                ],
+                warmup: 0,
+                iterations: 1,
+                rounds: 1,
+                max_dispatches: 8,
+                out: PathBuf::from("unused-by-unit-test.json"),
             }
-            std::fs::write(&path, format!("{text}\n"))?;
-            println!("{}", path.display());
-        } else {
-            println!("{text}");
         }
-        Ok(())
+
+        #[test]
+        fn selection_picks_fastest_parity_green_candidate() {
+            let rows = vec![
+                CandidateGate {
+                    variant: "generic".into(),
+                    parity_passed: true,
+                    ranking_us: 40.0,
+                },
+                CandidateGate {
+                    variant: "bits8-direct".into(),
+                    parity_passed: false,
+                    ranking_us: 1.0,
+                },
+                CandidateGate {
+                    variant: "bits8-vec4".into(),
+                    parity_passed: true,
+                    ranking_us: 20.0,
+                },
+            ];
+            let selection = select_candidate(&rows);
+            assert_eq!(
+                selection,
+                GeometrySelection {
+                    parity_gate_passed: true,
+                    winner: Some("bits8-vec4".into()),
+                }
+            );
+            let report = build_report(
+                "test-device",
+                6,
+                &cfg(),
+                vec![json!({
+                    "parity_gate_passed": selection.parity_gate_passed,
+                    "winner": selection.winner,
+                })],
+            );
+            assert_eq!(report["status"], "PASS");
+            assert_eq!(report["parity_gate_passed"], true);
+            assert_eq!(report["geometries"][0]["winner"], "bits8-vec4");
+        }
+
+        #[test]
+        fn all_fail_report_keeps_scores_and_uses_null_winner() {
+            let selection = select_candidate(&[
+                CandidateGate {
+                    variant: "generic".into(),
+                    parity_passed: false,
+                    ranking_us: 40.0,
+                },
+                CandidateGate {
+                    variant: "bits8-vec4".into(),
+                    parity_passed: false,
+                    ranking_us: 20.0,
+                },
+            ]);
+            assert_eq!(
+                selection,
+                GeometrySelection {
+                    parity_gate_passed: false,
+                    winner: None,
+                }
+            );
+
+            let geometry = json!({
+                "rows": 2048,
+                "cols": 6144,
+                "parity_gate_passed": selection.parity_gate_passed,
+                "winner": selection.winner,
+                "candidates": [
+                    {
+                        "variant": "generic",
+                        "parity": {"pass": false, "failures": ["relative_l2"]},
+                    },
+                    {
+                        "variant": "bits8-vec4",
+                        "parity": {"pass": false, "failures": ["meaningful_rel"]},
+                    },
+                ],
+            });
+            let report = build_report("test-device", 6, &cfg(), vec![geometry]);
+            assert_eq!(report["status"], "FAIL");
+            assert_eq!(report["parity_gate_passed"], false);
+            assert!(report["geometries"][0]["winner"].is_null());
+            assert_eq!(
+                report["geometries"][0]["candidates"][0]["parity"]["failures"][0],
+                "relative_l2"
+            );
+            assert_eq!(
+                report["geometries"][0]["candidates"][1]["parity"]["failures"][0],
+                "meaningful_rel"
+            );
+
+            let dir = tempfile::tempdir().expect("tempdir");
+            let path = dir.path().join("negative.json");
+            let result = emit_report_and_gate(&report, &path);
+            assert!(result.is_err(), "all-fail report must return nonzero");
+            let emitted: Value =
+                serde_json::from_slice(&std::fs::read(&path).expect("durable receipt"))
+                    .expect("receipt JSON");
+            assert_eq!(
+                emitted, report,
+                "emitted negative evidence must be complete"
+            );
+            assert!(emitted["geometries"][0]["winner"].is_null());
+        }
     }
 }
 

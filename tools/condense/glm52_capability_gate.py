@@ -81,7 +81,15 @@ def gate_math(artifact: Path, decode) -> dict:
     if not r.get("ok"):
         return {"gate": "G_math", "status": "ERROR", "detail": r.get("error")}
     top1 = r["argmax"]
-    text = decode(top1) if decode else None
+    if decode is None:
+        # Still refuses -- but as ERROR, not FAIL. "We could not read the answer" and "the
+        # answer was wrong" both block promotion, and only one of them is true. Reporting
+        # a missing tokenizer as a capability failure would send the next reader to debug
+        # the artifact instead of the artifact directory.
+        return {"gate": "G_math", "status": "ERROR", "argmax": top1,
+                "detail": "no tokenizer/tokenizer.json in the artifact; the argmax cannot be "
+                          "decoded, so this gate has no verdict to give"}
+    text = decode(top1)
     passed = (text or "").strip() == G_MATH_EXPECT_TEXT.strip()
     return {
         "gate": "G_math", "status": "PASS" if passed else "FAIL",
@@ -108,13 +116,51 @@ def gate_live(artifact: Path, decode) -> dict:
     }
 
 
+def _byte_decoder() -> dict[str, int]:
+    """Inverse of GPT-2's bytes_to_unicode: printable stand-in char -> original byte."""
+    bs = (list(range(ord("!"), ord("~") + 1))
+          + list(range(ord("\xa1"), ord("\xac") + 1))
+          + list(range(ord("\xae"), ord("\xff") + 1)))
+    cs = bs[:]
+    n = 0
+    for b in range(256):
+        if b not in bs:
+            bs.append(b)
+            cs.append(256 + n)
+            n += 1
+    return {chr(c): b for b, c in zip(bs, cs)}
+
+
 def load_decoder(artifact: Path):
+    """Decode a token id to real text, not to its byte-BPE spelling.
+
+    The vocab stores " 4" as "Ġ4": GPT-2 byte-BPE substitutes printable stand-ins for
+    bytes that would otherwise be whitespace or control characters. Returning that spelling
+    raw made this gate compare "Ġ4" against " 4", which is never equal -- so an artifact
+    that correctly answered "2 + 2 =" with " 4" would have been reported as FAILING the one
+    gate that decides whether this campaign has a substrate.
+
+    The bug was invisible because the only artifact ever run through here was Math-Preserve,
+    which fails honestly (argmax 20300 = "rus"). A broken comparison and a broken artifact
+    both say FAIL, and agreement between two wrong things reads exactly like confirmation.
+    """
     tok = artifact / "tokenizer/tokenizer.json"
     if not tok.is_file():
         return None
     vocab = json.loads(tok.read_text())["model"]["vocab"]
     inv = {v: k for k, v in vocab.items()}
-    return lambda i: inv.get(i, f"<{i}>")
+    bd = _byte_decoder()
+
+    def decode(i: int) -> str:
+        piece = inv.get(i)
+        if piece is None:
+            return f"<{i}>"
+        try:
+            return bytes(bd[c] for c in piece).decode("utf-8", errors="replace")
+        except KeyError:  # a piece outside the byte-BPE alphabet; return it as-is
+            return piece
+
+    return decode
 
 
 def planned_commands(artifact: Path) -> list[dict]:
@@ -140,7 +186,7 @@ def planned_commands(artifact: Path) -> list[dict]:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--artifact", required=True, type=Path)
+    ap.add_argument("--artifact", type=Path)
     ap.add_argument("--name", help="name for the capability register entry")
     ap.add_argument("--emit", action="store_true", help="write the verdict into the register")
     ap.add_argument(
@@ -154,7 +200,16 @@ def main() -> int:
         help="plan only; retained as an explicit alias for the safe default",
     )
     ap.add_argument("--out", type=Path, help="write the executed gate receipt")
+    ap.add_argument(
+        "--selfcheck",
+        action="store_true",
+        help="verify the gate grades a correct answer as PASS; needs no artifact",
+    )
     a = ap.parse_args()
+
+    if a.selfcheck:
+        _selfcheck()
+        return 0
 
     artifact = a.artifact.expanduser()
     if not artifact.is_dir():
@@ -226,6 +281,48 @@ def main() -> int:
         print(f"\nwrote verdict {verdict['capability_verdict']} into {REGISTER}", file=sys.stderr)
 
     return 0 if passed else 1
+
+
+def _selfcheck() -> None:
+    """The check that would have caught the byte-BPE bug, runnable without an artifact.
+
+        python3.12 tools/condense/glm52_capability_gate.py --selfcheck
+    """
+    import tempfile
+
+    tok_path = (Path.home() / "Library/Application Support/Hawking/Models/GLM-5.2"
+                / "b4734de4facf877f85769a911abafc5283eab3d9/General-R0/tokenizer/tokenizer.json")
+    if not tok_path.is_file():
+        print("SKIP: no real tokenizer on disk to check against")
+        return
+    with tempfile.TemporaryDirectory() as td:
+        art = Path(td)
+        (art / "tokenizer").mkdir()
+        (art / "tokenizer/tokenizer.json").write_bytes(tok_path.read_bytes())
+        decode = load_decoder(art)
+        assert decode is not None
+
+        vocab = json.loads(tok_path.read_text())["model"]["vocab"]
+        # The prompt must be the prompt this gate claims to ask.
+        prompt = "".join(
+            {i: s for s, i in vocab.items()}[t] for t in G_MATH_TOKENS
+        ).replace("Ġ", " ")
+        assert prompt == "2 + 2 =", f"G_math asks {prompt!r}, not '2 + 2 ='"
+
+        # A correct answer must PASS. This is the assertion that was false before the fix.
+        four = vocab["Ġ4"]
+        got = decode(four)
+        assert got == " 4", f"decode({four}) = {got!r}, expected ' 4'"
+        assert got.strip() == G_MATH_EXPECT_TEXT.strip(), (
+            f"a correct artifact answering ' 4' would be graded FAIL: "
+            f"{got!r} != {G_MATH_EXPECT_TEXT!r}"
+        )
+        # The bare digit must pass too -- with or without a leading space, four is four.
+        assert decode(vocab["4"]).strip() == G_MATH_EXPECT_TEXT.strip()
+        # And a wrong answer must still fail: 20300 is what Math-Preserve actually returned.
+        assert decode(20300).strip() != G_MATH_EXPECT_TEXT.strip()
+        print(f"selfcheck OK: prompt={prompt!r} "
+              f"correct-answer-passes={got!r} wrong-answer-fails={decode(20300)!r}")
 
 
 if __name__ == "__main__":

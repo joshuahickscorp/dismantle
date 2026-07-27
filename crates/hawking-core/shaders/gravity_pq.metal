@@ -1242,6 +1242,21 @@ struct GravityRouterSelectParams {
     float routed_scaling_factor;
 };
 
+struct GravityExpertTraceCopyParams {
+    uint count;
+    uint destination_offset;
+};
+
+kernel void gravity_glm_expert_trace_copy(
+    const device uint *expert_indices [[buffer(0)]],
+    device uint *expert_trace [[buffer(1)]],
+    constant GravityExpertTraceCopyParams &p [[buffer(2)]],
+    uint id [[thread_position_in_grid]])
+{
+    if (id >= p.count) { return; }
+    expert_trace[p.destination_offset + id] = expert_indices[id];
+}
+
 // Exact noaux_tc router selection with stable lower-index ties. One thread is
 // intentional: the flagship router has only 256 experts, while preserving the
 // host reduction/selection order is part of the model's discrete contract.
@@ -1425,8 +1440,8 @@ static inline bool gravity_device_expert_tensor_valid(
         return tensor.secondary != nullptr &&
                tensor.bits == 8u &&
                tensor.subspaces == 1u &&
-               tensor.sub > 0u &&
-               tensor.dim == tensor.sub &&
+               tensor.dim == 32u &&
+               tensor.sub == 32u &&
                tensor.card == 256u &&
                tensor.nchunk > 0u &&
                tensor.cols == tensor.nchunk * tensor.dim;

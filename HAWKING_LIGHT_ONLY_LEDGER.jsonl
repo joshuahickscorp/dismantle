@@ -14,3 +14,4 @@
 {"at": "2026-07-27T04:06:13Z", "mode": "LIGHT_ONLY", "why": ["load/core 0.832 above the relief ceiling 0.7", "foreign work holding ~15.92 cores across 18 processes"], "load_per_core": 0.832, "foreign_cores": 15.92}
 {"at": "2026-07-27T04:06:58Z", "mode": "LIGHT_ONLY", "why": ["load/core 1.172 above the relief ceiling 0.7", "foreign work holding ~16.32 cores across 17 processes"], "load_per_core": 1.172, "foreign_cores": 16.32}
 {"at": "2026-07-27T04:12:34Z", "mode": "LIGHT_ONLY", "why": ["load/core 0.924 above the relief ceiling 0.7", "foreign work holding ~15.77 cores across 17 processes"], "load_per_core": 0.924, "foreign_cores": 15.77}
+{"at": "2026-07-27T04:13:14Z", "mode": "LIGHT_ONLY", "why": ["load/core 0.943 above the relief ceiling 0.7", "foreign work holding ~15.25 cores across 16 processes"], "load_per_core": 0.943, "foreign_cores": 15.25}

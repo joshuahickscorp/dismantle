@@ -1034,6 +1034,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "hawking-adapters"
+version = "0.2.2"
+dependencies = [
+ "anyhow",
+ "hawking-events",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+]
+
+[[package]]
 name = "hawking-bench"
 version = "0.2.2"
 dependencies = [
@@ -1098,6 +1109,18 @@ version = "0.2.2"
 dependencies = [
  "async-trait",
  "reqwest",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "tokio",
+]
+
+[[package]]
+name = "hawking-events"
+version = "0.2.2"
+dependencies = [
+ "hide-core",
+ "hide-protocol",
  "serde",
  "serde_json",
  "thiserror 2.0.18",

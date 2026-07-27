@@ -167,8 +167,36 @@ pub fn router(state: AppState) -> Router {
         .route("/v1/hawking/tokens", post(hawking_tokens))
         .route("/v1/hawking/generate", post(hawking_generate))
         .route("/v1/hawking/context", get(hawking_context))
+        // Honest capability surface — live declaration, never a facade.
+        .route("/v1/hawking/surface", get(hawking_surface))
+        // Explicit 501s: a canned success body would be strictly worse.
+        .route("/v1/responses", post(not_implemented_responses))
+        .route("/v1/messages", post(not_implemented_anthropic_messages))
         .route("/metrics", get(metrics))
         .with_state(state)
+}
+
+/// Honest Bridge capability table (see [`crate::surface`]).
+async fn hawking_surface() -> Json<serde_json::Value> {
+    Json(crate::surface::bridge_surface_document())
+}
+
+/// OpenAI Responses API — not implemented. Returns 501, never a fake body.
+async fn not_implemented_responses() -> Response {
+    (
+        StatusCode::NOT_IMPLEMENTED,
+        Json(crate::surface::not_implemented_body("POST /v1/responses")),
+    )
+        .into_response()
+}
+
+/// Anthropic Messages API — not implemented. Returns 501, never a fake body.
+async fn not_implemented_anthropic_messages() -> Response {
+    (
+        StatusCode::NOT_IMPLEMENTED,
+        Json(crate::surface::not_implemented_body("POST /v1/messages")),
+    )
+        .into_response()
 }
 
 async fn healthz() -> &'static str {

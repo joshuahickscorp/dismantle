@@ -1,0 +1,78 @@
+{
+  "$id": "hawking.adapters.registry.v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "families": {
+      "items": {
+        "properties": {
+          "evidence": {
+            "items": {
+              "properties": {
+                "claim": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path",
+                "claim"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "executes": {
+            "type": "boolean"
+          },
+          "gaps": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "id": {
+            "type": "string"
+          },
+          "level": {
+            "enum": [
+              "DECLARED",
+              "SYNTHETIC_PARITY",
+              "SMALL_REAL_CHECKPOINT",
+              "FULL_PARENT_VALIDATED",
+              "PRODUCTION"
+            ],
+            "type": "string"
+          },
+          "module": {
+            "type": "string"
+          },
+          "serve_registered": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "level",
+          "evidence",
+          "module",
+          "executes",
+          "serve_registered",
+          "gaps"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "schema": {
+      "const": "hawking.adapters.registry.v1"
+    }
+  },
+  "required": [
+    "schema",
+    "families"
+  ],
+  "title": "HawkingAdapterRegistry",
+  "type": "object"
+}

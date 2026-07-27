@@ -184,6 +184,17 @@ pub struct GenerateRequest {
     pub json_mode: bool,
 }
 
+/// Inference hot-path token stream (`Token` | `Done` only).
+///
+/// # Authority / deprecation note
+///
+/// This is **not** the durable product-event model. Canonical events live in
+/// `hide_core::event::Event` (see crate `hawking-events`). Project token/usage
+/// traffic into the canonical model via
+/// `hawking_events::adapters::stream` when a durable log is required.
+///
+/// `StreamEvent` remains live for generate/serve hot paths; do not expand it
+/// into a second product-event bus.
 #[derive(Debug, Clone)]
 pub enum StreamEvent {
     Token { id: u32, text: String },

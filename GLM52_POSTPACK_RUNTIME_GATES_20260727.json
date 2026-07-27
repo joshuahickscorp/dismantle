@@ -54,8 +54,23 @@
     "identity_contract": "The local artifact index SHA-256 must equal /healthz before and after the run; the endpoint must attest base_runtime=true and fallback_present=false.",
     "completion_evidence": "deterministic JSONL sidecar bound into the score receipt by SHA-256"
   },
+  "long_context_quality": {
+    "tool": "tools/condense/glm52_long_context_gate.py",
+    "default": "dry-run",
+    "execution_guard": "--run",
+    "default_rungs": [
+      "2K",
+      "8K",
+      "32K"
+    ],
+    "tasks": 27,
+    "coverage": "nine frozen partitions per rung, alternating retrieval and synthesis with disclosed position buckets",
+    "identity_contract": "Exact local index SHA-256 must match base-runtime /healthz before and after the run; fallback_present must remain false.",
+    "scoring": "exact greedy answer; all nine partition tasks must pass each rung",
+    "dry_run_check": "General-R0 plan emitted heavy_execution_started=false"
+  },
   "verification": {
-    "python": "15 passed plus frozen support-halo self-check",
+    "python": "18 passed plus frozen support-halo self-check",
     "rust": "cargo check -q -p hawking-core --example gravity_glm_tps: PASS",
     "heavy_execution_started": false
   },
@@ -64,6 +79,6 @@
     "No activation-aware runtime-agreement result exists until --run is used under a valid heavy window.",
     "The frozen support-halo scorer is prepared but remains unexecuted until the cheap gates pass and a valid heavy window exists.",
     "The full-cascade representation gate still needs an artifact-connected executable; the existing functional-student cascade is a different mechanism and cannot be relabelled.",
-    "Long-context quality and the sustained speed/TTFT/bytes/commands/memory/swap/thermal campaign remain unexecuted."
+    "Long-context quality and the sustained speed/TTFT/bytes/commands/memory/swap/thermal campaign are prepared but remain unexecuted."
   ]
 }

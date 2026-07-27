@@ -915,6 +915,139 @@ kernel void gravity_glm_stable_topk_f32(
     }
 }
 
+// Parallel exact stable top-k for the admitted n<=32K, k<=2048 DSA domain.
+//
+// A monotone IEEE-f32 key occupies the high 32 bits; inverted position
+// occupies the low 32 bits, so unsigned descending order is precisely
+// (score descending, lower position first). Sixteen 4-bit histogram passes
+// identify the unique kth composite key. Exactly k qualifying keys then fit
+// in 16 KiB of threadgroup memory and are bitonic-ranked in place.
+inline ulong gravity_glm_score_position_key(float value, uint position)
+{
+    // DSA scores are required finite. Mapping NaN to -inf keeps malformed
+    // arithmetic from outranking a valid score; complete-token parity gates
+    // separately reject any resulting decision drift.
+    if (isnan(value)) value = -INFINITY;
+    if (value == 0.0f) value = 0.0f; // canonicalize -0/+0 host equality
+    uint bits = as_type<uint>(value);
+    uint ordered = (bits & 0x80000000u) ? ~bits : (bits ^ 0x80000000u);
+    return ((ulong)ordered << 32) | (ulong)(0xFFFFFFFFu - position);
+}
+
+kernel void gravity_glm_radix_topk_f32(
+    device const float *values [[buffer(0)]],
+    device       uint  *indices [[buffer(1)]],
+    constant GravityGlmTopkParams &p [[buffer(2)]],
+    uint tid [[thread_position_in_threadgroup]],
+    uint tg [[threads_per_threadgroup]])
+{
+    threadgroup atomic_uint histogram[16];
+    threadgroup atomic_uint selected_count;
+    threadgroup ulong ranked[2048];
+    threadgroup ulong prefix;
+    threadgroup uint prefix_nibbles;
+    threadgroup uint target_rank;
+    threadgroup uint invalid;
+
+    uint out_k = min(p.k, p.n);
+    if (out_k == 0u) return;
+    if (tid == 0u) {
+        prefix = 0ul;
+        prefix_nibbles = 0u;
+        target_rank = out_k - 1u;
+        invalid = 0u;
+    }
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+
+    // MSD radix-select the kth-largest unique (score, inverted-position) key.
+    for (uint pass = 0u; pass < 16u; ++pass) {
+        if (tid < 16u) {
+            atomic_store_explicit(&histogram[tid], 0u, memory_order_relaxed);
+        }
+        threadgroup_barrier(mem_flags::mem_threadgroup);
+
+        uint known = prefix_nibbles;
+        ulong mask = known == 0u ? 0ul : (~0ul << (64u - 4u * known));
+        ulong wanted = prefix;
+        uint shift = 60u - 4u * pass;
+        for (uint i = tid; i < p.n; i += tg) {
+            ulong key = gravity_glm_score_position_key(values[i], i);
+            if ((key & mask) == wanted) {
+                uint digit = (uint)((key >> shift) & 0xFul);
+                atomic_fetch_add_explicit(&histogram[digit], 1u, memory_order_relaxed);
+            }
+        }
+        threadgroup_barrier(mem_flags::mem_threadgroup);
+
+        if (tid == 0u) {
+            uint rank = target_rank;
+            bool found = false;
+            for (int digit = 15; digit >= 0; --digit) {
+                uint count = atomic_load_explicit(
+                    &histogram[(uint)digit], memory_order_relaxed);
+                if (rank < count) {
+                    prefix |= ((ulong)(uint)digit << shift);
+                    prefix_nibbles = pass + 1u;
+                    target_rank = rank;
+                    found = true;
+                    break;
+                }
+                rank -= count;
+            }
+            if (!found) invalid = 1u;
+        }
+        threadgroup_barrier(mem_flags::mem_threadgroup);
+    }
+
+    atomic_store_explicit(&selected_count, 0u, memory_order_relaxed);
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    ulong threshold = prefix;
+    for (uint i = tid; i < p.n; i += tg) {
+        ulong key = gravity_glm_score_position_key(values[i], i);
+        if (key >= threshold) {
+            uint slot = atomic_fetch_add_explicit(
+                &selected_count, 1u, memory_order_relaxed);
+            if (slot < out_k) ranked[slot] = key;
+        }
+    }
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+
+    uint selected = atomic_load_explicit(&selected_count, memory_order_relaxed);
+    if (tid == 0u && selected != out_k) invalid = 1u;
+    uint width = 1u;
+    while (width < out_k) width <<= 1u;
+    for (uint i = out_k + tid; i < width; i += tg) ranked[i] = 0ul;
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+
+    // Ascending bitonic sort, then emit in reverse for descending score rank.
+    for (uint size = 2u; size <= width; size <<= 1u) {
+        for (uint stride = size >> 1u; stride > 0u; stride >>= 1u) {
+            for (uint i = tid; i < width; i += tg) {
+                uint peer = i ^ stride;
+                if (peer > i) {
+                    ulong a = ranked[i];
+                    ulong b = ranked[peer];
+                    bool ascending = (i & size) == 0u;
+                    if ((ascending && a > b) || (!ascending && a < b)) {
+                        ranked[i] = b;
+                        ranked[peer] = a;
+                    }
+                }
+            }
+            threadgroup_barrier(mem_flags::mem_threadgroup);
+        }
+    }
+
+    for (uint slot = tid; slot < out_k; slot += tg) {
+        if (invalid) {
+            indices[slot] = 0xFFFFFFFFu;
+        } else {
+            uint inverted_position = (uint)ranked[width - 1u - slot];
+            indices[slot] = 0xFFFFFFFFu - inverted_position;
+        }
+    }
+}
+
 // Reorder the unique score-ordered top-k IDs into ascending position order,
 // matching the host sparse-attention accumulation order. One 256-thread group
 // sorts at most 2048 u32 IDs in <=8 KiB of dynamic threadgroup memory.

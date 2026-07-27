@@ -57,7 +57,7 @@ fi
 
 echo
 echo "=== THE decisive next action, once a packed artifact exists ==="
-echo "  .venv/glm52/bin/python tools/condense/glm52_capability_gate.py --artifact <packed-dir> --dry-run"
+echo "  .venv/glm52/bin/python tools/condense/glm52_capability_gate.py --artifact <packed-dir> --run --out CAPABILITY.json"
 echo "  G_math is ONE forward pass on '2 + 2 ='. It decides whether this campaign has a substrate."
 echo "  Only an artifact passing G_math and G_live gets its hash bound APPROVED, and only"
 echo "  then does Odyssey become a live question."

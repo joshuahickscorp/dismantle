@@ -19,6 +19,20 @@
     "discrete_contract": "exact argmax and ordered top-5 for every case",
     "continuous_contract": "finite logits, relative L2 <= 1e-5, cosine >= 0.9999999"
   },
+  "capability": {
+    "tool": "tools/condense/glm52_capability_gate.py",
+    "default": "dry-run",
+    "execution_guard": "--run or --emit",
+    "change": "The former --dry-run footgun no longer executes whole-model inference; explicit plan mode emits heavy_execution_started=false.",
+    "artifact_verification": "required; oracle shard verification is not disabled",
+    "receipt_output": "--out"
+  },
+  "whole_model_composition": {
+    "tool": "tools/condense/glm52_composition_gate.py",
+    "execution": "offline receipt composition only",
+    "admission": "requires complete 282-shard/78-layer assembly, verified G_math and G_live approval, and exact three-prompt numpy-versus-Rust/Metal agreement under one artifact index SHA-256",
+    "claim_limit": "proves end-to-end representation composition on the capability suite; does not claim teacher hidden-state parity, support halo, long context, broader quality, or speed"
+  },
   "base_speed": {
     "tool": "tools/condense/glm52_runtime_speed_gate.py",
     "default": "dry-run",
@@ -70,7 +84,7 @@
     "dry_run_check": "General-R0 plan emitted heavy_execution_started=false"
   },
   "verification": {
-    "python": "18 passed plus frozen support-halo self-check",
+    "python": "21 passed plus frozen support-halo self-check",
     "rust": "cargo check -q -p hawking-core --example gravity_glm_tps: PASS",
     "heavy_execution_started": false
   },
@@ -78,7 +92,7 @@
     "No activation-aware whole-model capability result exists until the pack is assembled.",
     "No activation-aware runtime-agreement result exists until --run is used under a valid heavy window.",
     "The frozen support-halo scorer is prepared but remains unexecuted until the cheap gates pass and a valid heavy window exists.",
-    "The full-cascade representation gate still needs an artifact-connected executable; the existing functional-student cascade is a different mechanism and cannot be relabelled.",
+    "The whole-model composition gate is prepared but cannot pass until assembly, capability, and runtime-agreement receipts exist for one artifact hash.",
     "Long-context quality and the sustained speed/TTFT/bytes/commands/memory/swap/thermal campaign are prepared but remain unexecuted."
   ]
 }

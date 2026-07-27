@@ -2,6 +2,8 @@
   "schema": "hawking.gravity.compact_mla.pq_k_transpose_candidate.v1",
   "at_utc": "2026-07-27T03:08:30Z",
   "observed_base_sha": "e2712c838c9b5592f0dcd4a7ca0092af73a77b7b",
+  "bits_gate_amended_at_utc": "2026-07-27T03:35:16Z",
+  "bits_gate_amendment_base_sha": "0d12fbde7157b302a15325bf3d5a0e8740b960a4",
   "status": "PREREQUISITE_ONLY_NOT_PROMOTED",
   "scope": {
     "runtime_or_default_change": false,
@@ -80,6 +82,7 @@
       "fail_closed_cases": [
         "dim != sub",
         "cardinality != 256",
+        "bits != 8",
         "undersized code stream"
       ]
     },
@@ -91,6 +94,14 @@
       "fp64_backed_numeric_parity_v2_1": "PASS"
     },
     "static_trace_name": "registered and compiled; cannot fall into the generic Metal trace bucket"
+  },
+  "bits_gate_amendment": {
+    "finding": "The original direct-u8 encoder validated cardinality and geometry but did not receive the codec bit width as an argument, so its documented bits=8 admission was not mechanically closed.",
+    "correction": "The encoder now requires pq_bits and rejects any value other than 8 before encoding a dispatch.",
+    "targeted_test": "route_segment_pq_k_transpose_is_deterministic_and_passes_v21",
+    "result": "PASS including explicit bits=7 rejection with zero encoded dispatches",
+    "route_segment_suite_after_correction": "PASS (11 passed, 0 failed)",
+    "runtime_or_default_change": false
   },
   "validation": {
     "route_segment_suite": {

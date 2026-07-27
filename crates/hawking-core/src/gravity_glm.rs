@@ -1153,15 +1153,16 @@ pub fn estimate_resident_waits_per_token(arch: &GlmArch) -> u64 {
 
 /// Static resident boundary count for compact MLA with device DSA selection.
 ///
-/// Each full-indexer layer keeps its `wq_b + wk` normalization boundary, but
-/// `weights_proj → scores → stable top-k` is encoded into the compact
-/// attention command buffer. That removes exactly one dependency drain per
+/// Each full-indexer layer encodes `wq_b + wk + weights_proj → affine
+/// LayerNorm → q/k RoPE → scores → exact radix top-k` into the compact
+/// attention command buffer. That removes both indexer dependency drains per
 /// `"full"` layer. This is source-derived; actual physical commands still
 /// depend on tensor codecs and must be measured before promotion.
 pub fn estimate_resident_device_dsa_waits_per_token(arch: &GlmArch) -> u64 {
     let breakdown = estimate_resident_logical_wait_breakdown(arch);
-    let full_indexer_layers = breakdown.indexer_projection_boundaries / 2;
-    breakdown.total().saturating_sub(full_indexer_layers)
+    breakdown
+        .total()
+        .saturating_sub(breakdown.indexer_projection_boundaries)
 }
 
 /// Static drains from `batched_mlp` alone (gate / up / down commits).
@@ -2930,8 +2931,8 @@ mod tests {
         assert_eq!(resident, 586, "resident logical/source boundaries");
         assert_eq!(
             estimate_resident_device_dsa_waits_per_token(&arch),
-            565,
-            "device DSA removes one boundary for each of 21 full indexers"
+            544,
+            "device DSA removes two boundaries for each of 21 full indexers"
         );
         assert_eq!(
             estimate_resident_logical_wait_breakdown(&arch),

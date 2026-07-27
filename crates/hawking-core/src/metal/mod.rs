@@ -891,6 +891,7 @@ mod imp {
             "gravity_add_inplace_f32" => "gravity_add_inplace_f32",
             "gravity_rmsnorm_f32" => "gravity_rmsnorm_f32",
             "gravity_rope_interleaved_f32" => "gravity_rope_interleaved_f32",
+            "gravity_rope_prefix_tail_f32" => "gravity_rope_prefix_tail_f32",
             "gravity_glm_mla_append_kv" => "gravity_glm_mla_append_kv",
             "gravity_glm_mla_append_compact" => "gravity_glm_mla_append_compact",
             "gravity_pq_k_transpose_heads" => "gravity_pq_k_transpose_heads",
@@ -1077,6 +1078,7 @@ mod imp {
             const DORMANT_RESIDENT_KERNELS: &[&str] = &[
                 "gravity_rmsnorm_f32",
                 "gravity_rope_interleaved_f32",
+                "gravity_rope_prefix_tail_f32",
                 "gravity_glm_mla_append_kv",
                 "gravity_glm_mla_append_compact",
                 "gravity_pq_k_transpose_heads",

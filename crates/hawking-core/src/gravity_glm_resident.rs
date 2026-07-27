@@ -33,9 +33,10 @@
 //! o_proj in one five-dispatch command buffer after host DSA ranking.
 //!
 //! **Device DSA** (`HAWKING_GLM_GPU_DEVICE_DSA=1`, default off, requires compact
-//! MLA): keeps index scores and stable rank on device, then appends the five
-//! compact-attention dispatches to that same command buffer. The final rank is
-//! read only for diagnostics after attention, never as an attention dependency.
+//! MLA): keeps index projections, affine normalization, q/k RoPE, scores, and
+//! exact radix rank on device, then appends the five compact-attention
+//! dispatches to that same command buffer. The final rank is read only for
+//! diagnostics after attention, never as an attention dependency.
 //!
 //! Gated by [`GPU_RESIDENT_STATE_ENV`] (`HAWKING_GLM_GPU_RESIDENT_STATE`), default
 //! off, so the host-state path remains the parity oracle.
@@ -921,6 +922,8 @@ pub struct ActPool {
     gate_cap: usize,
     /// Lazily allocated only for the default-off compact MLA path.
     compact_attention_scratch: Mutex<Option<CompactAttentionScratch>>,
+    /// Lazily allocated only for device DSA's normalization/RoPE graph.
+    device_dsa_transform_scratch: Mutex<Option<DeviceDsaTransformScratch>>,
     /// Grow-once scratch for the default-off expert-wave candidate. Keeping
     /// this lazy preserves the default path's allocation and residency shape.
     expert_wave_scratch: Mutex<Option<ExpertWaveScratch>>,
@@ -956,6 +959,59 @@ impl CompactAttentionScratch {
             && self.nope_dim == arch.qk_nope_head_dim
             && self.rope_dim == arch.qk_rope_head_dim
             && self.latent_dim == arch.kv_lora_rank
+    }
+}
+
+struct DeviceDsaTransformScratch {
+    query: Buffer,
+    cos: Buffer,
+    sin: Buffer,
+    norm_weight: Buffer,
+    norm_bias: Buffer,
+    n_heads: usize,
+    head_dim: usize,
+    rope_dim: usize,
+}
+
+impl DeviceDsaTransformScratch {
+    fn new(ctx: &MetalContext, arch: &GlmArch) -> Result<Self> {
+        if arch.index_n_heads == 0
+            || arch.index_head_dim == 0
+            || arch.qk_rope_head_dim == 0
+            || arch.qk_rope_head_dim % 2 != 0
+            || arch.qk_rope_head_dim > arch.index_head_dim
+        {
+            return Err(Error::Gravity(format!(
+                "device DSA transform scratch has invalid geometry: heads={} head_dim={} rope_dim={}",
+                arch.index_n_heads, arch.index_head_dim, arch.qk_rope_head_dim
+            )));
+        }
+        let rope_half = arch.qk_rope_head_dim / 2;
+        Ok(Self {
+            query: ctx.new_buffer_checked(
+                arch.index_n_heads
+                    .checked_mul(arch.index_head_dim)
+                    .and_then(|elements| elements.checked_mul(4))
+                    .ok_or_else(|| {
+                        Error::Gravity(
+                            "device DSA transformed-query scratch byte size overflow".into(),
+                        )
+                    })?,
+            )?,
+            cos: ctx.new_buffer_checked(rope_half * 4)?,
+            sin: ctx.new_buffer_checked(rope_half * 4)?,
+            norm_weight: ctx.new_buffer_checked(arch.index_head_dim * 4)?,
+            norm_bias: ctx.new_buffer_checked(arch.index_head_dim * 4)?,
+            n_heads: arch.index_n_heads,
+            head_dim: arch.index_head_dim,
+            rope_dim: arch.qk_rope_head_dim,
+        })
+    }
+
+    fn matches(&self, arch: &GlmArch) -> bool {
+        self.n_heads == arch.index_n_heads
+            && self.head_dim == arch.index_head_dim
+            && self.rope_dim == arch.qk_rope_head_dim
     }
 }
 
@@ -1052,6 +1108,7 @@ impl ActPool {
             head_topk_val: ctx.new_buffer_checked((GPU_LM_HEAD_DIAG_TOPK as usize) * 4)?,
             gate_cap,
             compact_attention_scratch: Mutex::new(None),
+            device_dsa_transform_scratch: Mutex::new(None),
             expert_wave_scratch: Mutex::new(None),
         })
     }
@@ -1067,6 +1124,21 @@ impl ActPool {
             .expect("compact attention scratch");
         if !scratch.as_ref().is_some_and(|state| state.matches(arch)) {
             *scratch = Some(CompactAttentionScratch::new(ctx, arch)?);
+        }
+        Ok(scratch)
+    }
+
+    fn ensure_device_dsa_transform_scratch(
+        &self,
+        ctx: &MetalContext,
+        arch: &GlmArch,
+    ) -> Result<std::sync::MutexGuard<'_, Option<DeviceDsaTransformScratch>>> {
+        let mut scratch = self
+            .device_dsa_transform_scratch
+            .lock()
+            .expect("device DSA transform scratch");
+        if !scratch.as_ref().is_some_and(|state| state.matches(arch)) {
+            *scratch = Some(DeviceDsaTransformScratch::new(ctx, arch)?);
         }
         Ok(scratch)
     }
@@ -1465,7 +1537,6 @@ pub fn forward_resident(
                                 &sin,
                                 &mut tcb,
                                 ctx,
-                                &session.waits,
                             )?;
                             ResidentDsaSelection::Device { len }
                         } else {
@@ -2369,10 +2440,10 @@ fn indexer_topk<'a>(
 
 /// Default-off device DSA path.
 ///
-/// The two query/key projections retain the host normalization/RoPE parity
-/// scaffold, but `weights_proj → index-key append → DSA scores → stable top-k`
-/// stays in the caller's open command buffer. Compact attention consumes the
-/// ranked u32 buffer directly, so no score or rank readback lies on the
+/// `wq_b + wk + weights_proj → affine LayerNorm → q/k RoPE assembly → DSA
+/// scores → exact radix top-k` stays in the caller's open command buffer.
+/// Compact attention appends to the same graph and consumes the ranked u32
+/// buffer directly, so no projection, score, or rank readback lies on the
 /// attention dependency path.
 #[allow(clippy::too_many_arguments)]
 fn indexer_topk_device<'a>(
@@ -2389,7 +2460,6 @@ fn indexer_topk_device<'a>(
     sin: &[f32],
     tcb: &mut Option<TokenCommandBuffer<'a>>,
     ctx: &'a MetalContext,
-    waits: &Cell<u64>,
 ) -> Result<usize> {
     let a = arch;
     let (ih, idim, rot) = (a.index_n_heads, a.index_head_dim, a.qk_rope_head_dim);
@@ -2413,33 +2483,31 @@ fn indexer_topk_device<'a>(
         a.hidden,
         &pool.idx_k_raw,
     )?;
-    commit(tcb.take(), waits)?;
-
-    let k_raw = read_f32(&pool.idx_k_raw, idim);
     let kw = weights.dense(&format!("{idx}.k_norm.weight"))?;
     let kb = weights.dense(&format!("{idx}.k_norm.bias"))?;
-    let k = {
-        let n = k_raw.len() as f32;
-        let mean = k_raw.iter().sum::<f32>() / n;
-        let var = k_raw.iter().map(|v| (v - mean) * (v - mean)).sum::<f32>() / n;
-        let inv = 1.0 / (var + 1e-6).sqrt();
-        (0..k_raw.len())
-            .map(|i| (k_raw[i] - mean) * inv * kw[i] + kb[i])
-            .collect::<Vec<_>>()
-    };
-    let mut k_full = rope_interleaved(&k[..rot], cos, sin);
-    k_full.extend_from_slice(&k[rot..]);
-    write_f32(&pool.idx_k_raw, &k_full);
-
-    let q = read_f32(&pool.idx_q, ih * idim);
-    let mut q_full = vec![0f32; ih * idim];
-    for h in 0..ih {
-        let src = &q[h * idim..(h + 1) * idim];
-        let rotated = rope_interleaved(&src[..rot], cos, sin);
-        q_full[h * idim..h * idim + rot].copy_from_slice(&rotated);
-        q_full[h * idim + rot..(h + 1) * idim].copy_from_slice(&src[rot..]);
+    if kw.len() != idim || kb.len() != idim {
+        return Err(Error::Gravity(format!(
+            "device DSA affine parameters for {idx}: weight={} bias={} expected={idim}",
+            kw.len(),
+            kb.len()
+        )));
     }
-    write_f32(&pool.idx_q, &q_full);
+    if cos.len() != rot / 2 || sin.len() != rot / 2 {
+        return Err(Error::Gravity(format!(
+            "device DSA RoPE tables: cos={} sin={} expected={}",
+            cos.len(),
+            sin.len(),
+            rot / 2
+        )));
+    }
+    let mut transform_guard = pool.ensure_device_dsa_transform_scratch(ctx, a)?;
+    let transform = transform_guard
+        .as_mut()
+        .expect("device DSA transform scratch initialized");
+    write_f32(&transform.norm_weight, &kw);
+    write_f32(&transform.norm_bias, &kb);
+    write_f32(&transform.cos, cos);
+    write_f32(&transform.sin, sin);
 
     matvec_into(
         tcb,
@@ -2463,16 +2531,49 @@ fn indexer_topk_device<'a>(
         0,
     );
     let wave = tcb.get_or_insert_with(|| TokenCommandBuffer::new(ctx));
-    route_segment_primitives::encode_append_index_key(
+    route_segment_primitives::encode_layernorm_affine(
         wave,
         &pool.idx_k_raw,
+        &transform.norm_weight,
+        &transform.norm_bias,
+        &pool.idx_k_raw,
+        idim,
+        1e-6,
+    )?;
+    let key_offset = pos.checked_mul(idim).ok_or_else(|| {
+        Error::Gravity(format!(
+            "device DSA index-key offset overflow: position={pos} dim={idim}"
+        ))
+    })?;
+    route_segment_primitives::encode_rope_prefix_tail(
+        wave,
+        &pool.idx_k_raw,
+        0,
         index_key_buffer,
-        pos,
+        key_offset,
+        &transform.cos,
+        &transform.sin,
+        1,
+        rot,
+        idim,
+        idim,
+    )?;
+    route_segment_primitives::encode_rope_prefix_tail(
+        wave,
+        &pool.idx_q,
+        0,
+        &transform.query,
+        0,
+        &transform.cos,
+        &transform.sin,
+        ih,
+        rot,
+        idim,
         idim,
     )?;
     route_segment_primitives::encode_dsa_scores(
         wave,
-        &pool.idx_q,
+        &transform.query,
         index_key_buffer,
         &pool.idx_head_w,
         score_buffer,
@@ -2949,6 +3050,91 @@ mod route_segment_primitives {
         let sb = sin.clone();
         tcb.dispatch_threads(
             "gravity_rope_interleaved_f32",
+            grid,
+            (TG, 1, 1),
+            move |enc| {
+                enc.set_buffer(0, Some(&xb), input_byte_offset);
+                enc.set_buffer(1, Some(&ob), output_byte_offset);
+                enc.set_buffer(2, Some(&cb), 0);
+                enc.set_buffer(3, Some(&sb), 0);
+                enc.set_bytes(
+                    4,
+                    std::mem::size_of_val(&params) as u64,
+                    &params as *const _ as *const _,
+                );
+            },
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub(super) fn encode_rope_prefix_tail(
+        tcb: &mut TokenCommandBuffer<'_>,
+        x: &Buffer,
+        input_element_offset: usize,
+        out: &Buffer,
+        output_element_offset: usize,
+        cos: &Buffer,
+        sin: &Buffer,
+        n_heads: usize,
+        rotary_dim: usize,
+        in_stride: usize,
+        out_stride: usize,
+    ) -> Result<()> {
+        if n_heads == 0 || out_stride == 0 {
+            return Ok(());
+        }
+        if rotary_dim == 0
+            || rotary_dim % 2 != 0
+            || in_stride < out_stride
+            || out_stride < rotary_dim
+        {
+            return Err(Error::Gravity(format!(
+                "gravity_rope_prefix_tail_f32 invalid geometry: heads={n_heads}, rotary_dim={rotary_dim}, in_stride={in_stride}, out_stride={out_stride}"
+            )));
+        }
+        if x.contents() == out.contents() {
+            return Err(Error::Gravity(
+                "gravity_rope_prefix_tail_f32 requires non-aliasing input/output".into(),
+            ));
+        }
+        let input_len = strided_elements(
+            n_heads,
+            in_stride,
+            out_stride,
+            "gravity_rope_prefix_tail_f32 input",
+        )?;
+        let output_len = checked_mul(n_heads, out_stride, "gravity_rope_prefix_tail_f32 output")?;
+        let input_byte_offset = require_f32(
+            x,
+            input_element_offset,
+            input_len,
+            "gravity_rope_prefix_tail_f32 input",
+        )?;
+        let output_byte_offset = require_f32(
+            out,
+            output_element_offset,
+            output_len,
+            "gravity_rope_prefix_tail_f32 output",
+        )?;
+        require_f32(cos, 0, rotary_dim / 2, "gravity_rope_prefix_tail_f32 cos")?;
+        require_f32(sin, 0, rotary_dim / 2, "gravity_rope_prefix_tail_f32 sin")?;
+        let params = GlmRopeParams {
+            n_heads: u32_arg(n_heads, "gravity_rope_prefix_tail_f32 n_heads")?,
+            rotary_dim: u32_arg(rotary_dim, "gravity_rope_prefix_tail_f32 rotary_dim")?,
+            in_stride: u32_arg(in_stride, "gravity_rope_prefix_tail_f32 in_stride")?,
+            out_stride: u32_arg(out_stride, "gravity_rope_prefix_tail_f32 out_stride")?,
+        };
+        let threads = params
+            .n_heads
+            .checked_mul(params.out_stride)
+            .ok_or_else(|| Error::Gravity("gravity_rope_prefix_tail_f32 grid overflow".into()))?;
+        let grid = grid_1d(threads, "gravity_rope_prefix_tail_f32")?;
+        let xb = x.clone();
+        let ob = out.clone();
+        let cb = cos.clone();
+        let sb = sin.clone();
+        tcb.dispatch_threads(
+            "gravity_rope_prefix_tail_f32",
             grid,
             (TG, 1, 1),
             move |enc| {
@@ -6110,6 +6296,94 @@ mod tests {
     }
 
     #[test]
+    fn route_segment_rope_prefix_tail_matches_host_and_fails_closed() {
+        let shader = include_str!("../shaders/gravity_pq.metal");
+        assert!(shader.contains("kernel void gravity_rope_prefix_tail_f32("));
+        let registry = include_str!("metal/mod.rs");
+        assert!(registry
+            .contains("\"gravity_rope_prefix_tail_f32\" => \"gravity_rope_prefix_tail_f32\""));
+
+        let Ok(ctx) = MetalContext::new() else {
+            return;
+        };
+        let input = vec![
+            1.0, 2.0, 3.0, 4.0, 91.0, 92.0, // head 0: rotary prefix + tail
+            -1.5, 0.5, 2.5, -3.0, 81.0, 82.0, // head 1
+        ];
+        let cos = vec![0.875, -0.25];
+        let sin = vec![0.125, 0.75];
+        let input_buffer = f32_buffer(&ctx, &input);
+        let cos_buffer = f32_buffer(&ctx, &cos);
+        let sin_buffer = f32_buffer(&ctx, &sin);
+        let output = filled_f32_buffer(&ctx, 14, -99.0);
+
+        let mut tcb = TokenCommandBuffer::new(&ctx);
+        encode_rope_prefix_tail(
+            &mut tcb,
+            &input_buffer,
+            0,
+            &output,
+            1,
+            &cos_buffer,
+            &sin_buffer,
+            2,
+            4,
+            6,
+            6,
+        )
+        .expect("encode RoPE prefix plus tail");
+        assert_eq!(tcb.dispatch_count(), 1);
+        tcb.commit_and_wait().expect("RoPE prefix plus tail");
+
+        let mut expected = vec![-99.0];
+        let mut authority = Vec::new();
+        for head in 0..2 {
+            let source = &input[head * 6..(head + 1) * 6];
+            expected.extend(rope_interleaved(&source[..4], &cos, &sin));
+            expected.extend_from_slice(&source[4..]);
+            for i in 0..2 {
+                authority.push(
+                    source[2 * i] as f64 * cos[i] as f64 - source[2 * i + 1] as f64 * sin[i] as f64,
+                );
+            }
+            for i in 0..2 {
+                authority.push(
+                    source[2 * i + 1] as f64 * cos[i] as f64 + source[2 * i] as f64 * sin[i] as f64,
+                );
+            }
+            authority.extend(source[4..].iter().map(|&value| value as f64));
+        }
+        expected.push(-99.0);
+        let actual = read_f32(&output, expected.len());
+        assert_eq!(actual.first(), Some(&-99.0));
+        assert_eq!(actual.last(), Some(&-99.0));
+        assert_v21_pair(
+            "RoPE prefix plus tail",
+            &expected[1..expected.len() - 1],
+            &actual[1..actual.len() - 1],
+            &authority,
+        );
+
+        let mut rejected = TokenCommandBuffer::new(&ctx);
+        let error = encode_rope_prefix_tail(
+            &mut rejected,
+            &input_buffer,
+            0,
+            &input_buffer,
+            0,
+            &cos_buffer,
+            &sin_buffer,
+            2,
+            4,
+            6,
+            6,
+        )
+        .expect_err("in-place prefix assembly is not alias safe");
+        assert!(error.to_string().contains("non-aliasing"));
+        assert_eq!(rejected.dispatch_count(), 0);
+    }
+
+    #[test]
     fn route_segment_mla_build_and_index_append_match_host_exactly() {
         let Ok(ctx) = MetalContext::new() else {
             return;
@@ -6905,6 +7179,40 @@ mod tests {
             "ranked output is O(index_topk), not O(sequence), and does not grow"
         );
         assert!(device.dsa.device_selection_enabled());
+
+        assert!(
+            DeviceDsaTransformScratch::new(&ctx, &arch).is_err(),
+            "zero/odd synthetic RoPE geometry must fail before allocation"
+        );
+        let mut transform_arch = arch.clone();
+        transform_arch.index_head_dim = 4;
+        transform_arch.qk_rope_head_dim = 2;
+        let pool = ActPool::new(&ctx, &transform_arch).expect("default activation pool");
+        assert!(
+            pool.device_dsa_transform_scratch
+                .lock()
+                .expect("device DSA transform scratch")
+                .is_none(),
+            "ordinary activation-pool construction must allocate no device DSA transform buffers"
+        );
+        let mut transform_guard = pool
+            .ensure_device_dsa_transform_scratch(&ctx, &transform_arch)
+            .expect("lazy device DSA transform scratch");
+        let transform = transform_guard
+            .as_mut()
+            .expect("device DSA transform scratch initialized");
+        assert_eq!(
+            transform.query.length(),
+            (transform_arch.index_n_heads * transform_arch.index_head_dim * 4) as u64
+        );
+        assert_eq!(
+            transform.cos.length(),
+            (transform_arch.qk_rope_head_dim / 2 * 4) as u64
+        );
+        assert_eq!(
+            transform.norm_weight.length(),
+            (transform_arch.index_head_dim * 4) as u64
+        );
     }
 
     #[test]

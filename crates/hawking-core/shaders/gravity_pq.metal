@@ -747,6 +747,46 @@ kernel void gravity_glm_compact_ranked_attn(
     }
 }
 
+// Apply the value-row window of an interleaved per-head K/V matrix directly
+// from a single-subspace, byte-indexed gravity-pq tensor. One thread owns one
+// output row and reduces latent columns in strict ascending order.
+struct GravityPqVRowsHeadsParams {
+    uint n_heads;
+    uint row_stride;
+    uint value_row_offset;
+    uint value_rows;
+    uint latent_dim;
+    uint pq_dim;
+    uint pq_sub;
+    uint pq_nchunk;
+};
+
+kernel void gravity_pq_v_rows_heads(
+    device const half  *codebooks [[buffer(0)]],
+    device const uchar *codes [[buffer(1)]],
+    device const float *weighted_latent [[buffer(2)]],
+    device       float *context [[buffer(3)]],
+    constant GravityPqVRowsHeadsParams &p [[buffer(4)]],
+    uint id [[thread_position_in_grid]])
+{
+    uint total = p.n_heads * p.value_rows;
+    if (id >= total) { return; }
+    uint head = id / p.value_rows;
+    uint value_row = id - head * p.value_rows;
+    uint source_row = head * p.row_stride + p.value_row_offset + value_row;
+    device const float *x = weighted_latent + head * p.latent_dim;
+    float acc = 0.0f;
+    for (uint chunk = 0u; chunk < p.pq_nchunk; ++chunk) {
+        uint code = uint(codes[source_row * p.pq_nchunk + chunk]);
+        device const half *entry = codebooks + code * p.pq_sub;
+        device const float *xs = x + chunk * p.pq_dim;
+        for (uint within = 0u; within < p.pq_sub; ++within) {
+            acc = fma(float(entry[within]), xs[within], acc);
+        }
+    }
+    context[id] = acc;
+}
+
 // Build queries: per head, copy nope half from q, rope-interleaved rope half.
 // `q_rope_rot` is already rope-interleaved per head (n_heads * qk_rope).
 struct GravityGlmBuildQParams {

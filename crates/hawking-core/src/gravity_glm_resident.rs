@@ -1690,6 +1690,19 @@ mod route_segment_primitives {
 
     #[repr(C)]
     #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    pub(super) struct GlmPqVRowsParams {
+        pub n_heads: u32,
+        pub row_stride: u32,
+        pub value_row_offset: u32,
+        pub value_rows: u32,
+        pub latent_dim: u32,
+        pub pq_dim: u32,
+        pub pq_sub: u32,
+        pub pq_nchunk: u32,
+    }
+
+    #[repr(C)]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
     pub(super) struct GlmBuildQParams {
         pub n_heads: u32,
         pub qk_nope: u32,
@@ -1735,6 +1748,7 @@ mod route_segment_primitives {
     const _: [(); 12] = [(); std::mem::size_of::<GlmMlaCompactAppendParams>()];
     const _: [(); 28] = [(); std::mem::size_of::<GlmPqKTransposeParams>()];
     const _: [(); 24] = [(); std::mem::size_of::<GlmCompactRankedAttnParams>()];
+    const _: [(); 32] = [(); std::mem::size_of::<GlmPqVRowsParams>()];
     const _: [(); 12] = [(); std::mem::size_of::<GlmBuildQParams>()];
     const _: [(); 20] = [(); std::mem::size_of::<GlmDsaParams>()];
     const _: [(); 8] = [(); std::mem::size_of::<GlmTopkParams>()];
@@ -1745,6 +1759,7 @@ mod route_segment_primitives {
     const _: [(); 4] = [(); std::mem::align_of::<GlmMlaCompactAppendParams>()];
     const _: [(); 4] = [(); std::mem::align_of::<GlmPqKTransposeParams>()];
     const _: [(); 4] = [(); std::mem::align_of::<GlmCompactRankedAttnParams>()];
+    const _: [(); 4] = [(); std::mem::align_of::<GlmPqVRowsParams>()];
     const _: [(); 4] = [(); std::mem::align_of::<GlmBuildQParams>()];
     const _: [(); 4] = [(); std::mem::align_of::<GlmDsaParams>()];
     const _: [(); 4] = [(); std::mem::align_of::<GlmTopkParams>()];
@@ -2159,6 +2174,7 @@ mod route_segment_primitives {
         pq_dim: usize,
         pq_sub: usize,
         pq_card: usize,
+        pq_bits: usize,
         pq_nchunk: usize,
     ) -> Result<()> {
         if n_heads == 0 || key_rows == 0 || latent_dim == 0 {
@@ -2169,9 +2185,9 @@ mod route_segment_primitives {
                 "gravity_pq_k_transpose_heads row_stride {row_stride} < key_rows {key_rows}"
             )));
         }
-        if pq_dim == 0 || pq_sub == 0 || pq_card != 256 {
+        if pq_dim == 0 || pq_sub == 0 || pq_card != 256 || pq_bits != 8 {
             return Err(Error::Gravity(format!(
-                "gravity_pq_k_transpose_heads requires direct-u8 cardinality 256, got dim={pq_dim}, sub={pq_sub}, card={pq_card}"
+                "gravity_pq_k_transpose_heads requires direct-u8 bits=8 cardinality=256, got dim={pq_dim}, sub={pq_sub}, card={pq_card}, bits={pq_bits}"
             )));
         }
         if pq_dim != pq_sub {
@@ -2392,6 +2408,130 @@ mod route_segment_primitives {
                 enc.set_threadgroup_memory_length(0, shmem as u64);
             },
         )
+    }
+
+    /// Encode the per-head value-row window directly from a bits=8,
+    /// single-subspace gravity-pq K/V matrix.
+    ///
+    /// Each output owns one logical value row and reduces the corresponding
+    /// head's weighted latent in ascending column order. This encode-only
+    /// candidate is not wired into [`forward_resident`].
+    #[allow(clippy::too_many_arguments)]
+    pub(super) fn encode_pq_v_rows_heads(
+        tcb: &mut TokenCommandBuffer<'_>,
+        codebooks: &Buffer,
+        codes: &Buffer,
+        weighted_latent: &Buffer,
+        context: &Buffer,
+        n_heads: usize,
+        row_stride: usize,
+        value_row_offset: usize,
+        value_rows: usize,
+        latent_dim: usize,
+        pq_dim: usize,
+        pq_sub: usize,
+        pq_card: usize,
+        pq_bits: usize,
+        pq_nchunk: usize,
+    ) -> Result<()> {
+        if n_heads == 0 || value_rows == 0 || latent_dim == 0 {
+            return Ok(());
+        }
+        let row_end = checked_add(
+            value_row_offset,
+            value_rows,
+            "gravity_pq_v_rows_heads value row window",
+        )?;
+        if row_end > row_stride {
+            return Err(Error::Gravity(format!(
+                "gravity_pq_v_rows_heads value window [{value_row_offset}, {row_end}) exceeds row_stride {row_stride}"
+            )));
+        }
+        if pq_dim == 0 || pq_sub == 0 || pq_card != 256 || pq_bits != 8 {
+            return Err(Error::Gravity(format!(
+                "gravity_pq_v_rows_heads requires direct-u8 bits=8 cardinality=256, got dim={pq_dim}, sub={pq_sub}, card={pq_card}, bits={pq_bits}"
+            )));
+        }
+        if pq_dim != pq_sub {
+            return Err(Error::Gravity(format!(
+                "gravity_pq_v_rows_heads requires one subspace with dim == sub, got dim={pq_dim}, sub={pq_sub}"
+            )));
+        }
+        let represented_cols = checked_mul(
+            pq_nchunk,
+            pq_dim,
+            "gravity_pq_v_rows_heads represented columns",
+        )?;
+        if represented_cols != latent_dim {
+            return Err(Error::Gravity(format!(
+                "gravity_pq_v_rows_heads latent_dim {latent_dim} != pq_nchunk {pq_nchunk} * pq_dim {pq_dim}"
+            )));
+        }
+        require_range(
+            codebooks,
+            0,
+            checked_mul(pq_card, pq_sub, "gravity_pq_v_rows_heads codebook")?,
+            std::mem::size_of::<half::f16>(),
+            "gravity_pq_v_rows_heads codebook",
+        )?;
+        let last_head_base =
+            checked_mul(n_heads - 1, row_stride, "gravity_pq_v_rows_heads last head")?;
+        let rows_touched = checked_add(
+            last_head_base,
+            row_end,
+            "gravity_pq_v_rows_heads rows touched",
+        )?;
+        require_range(
+            codes,
+            0,
+            checked_mul(rows_touched, pq_nchunk, "gravity_pq_v_rows_heads codes")?,
+            std::mem::size_of::<u8>(),
+            "gravity_pq_v_rows_heads codes",
+        )?;
+        require_f32(
+            weighted_latent,
+            0,
+            checked_mul(
+                n_heads,
+                latent_dim,
+                "gravity_pq_v_rows_heads weighted latent",
+            )?,
+            "gravity_pq_v_rows_heads weighted latent",
+        )?;
+        let outputs = checked_mul(n_heads, value_rows, "gravity_pq_v_rows_heads output")?;
+        require_f32(context, 0, outputs, "gravity_pq_v_rows_heads context")?;
+        let params = GlmPqVRowsParams {
+            n_heads: u32_arg(n_heads, "gravity_pq_v_rows_heads n_heads")?,
+            row_stride: u32_arg(row_stride, "gravity_pq_v_rows_heads row_stride")?,
+            value_row_offset: u32_arg(
+                value_row_offset,
+                "gravity_pq_v_rows_heads value_row_offset",
+            )?,
+            value_rows: u32_arg(value_rows, "gravity_pq_v_rows_heads value_rows")?,
+            latent_dim: u32_arg(latent_dim, "gravity_pq_v_rows_heads latent_dim")?,
+            pq_dim: u32_arg(pq_dim, "gravity_pq_v_rows_heads pq_dim")?,
+            pq_sub: u32_arg(pq_sub, "gravity_pq_v_rows_heads pq_sub")?,
+            pq_nchunk: u32_arg(pq_nchunk, "gravity_pq_v_rows_heads pq_nchunk")?,
+        };
+        let grid = grid_1d(
+            u32_arg(outputs, "gravity_pq_v_rows_heads outputs")?,
+            "gravity_pq_v_rows_heads",
+        )?;
+        let cbb = codebooks.clone();
+        let cib = codes.clone();
+        let wlb = weighted_latent.clone();
+        let cb = context.clone();
+        tcb.dispatch_threads("gravity_pq_v_rows_heads", grid, (TG, 1, 1), move |enc| {
+            enc.set_buffer(0, Some(&cbb), 0);
+            enc.set_buffer(1, Some(&cib), 0);
+            enc.set_buffer(2, Some(&wlb), 0);
+            enc.set_buffer(3, Some(&cb), 0);
+            enc.set_bytes(
+                4,
+                std::mem::size_of_val(&params) as u64,
+                &params as *const _ as *const _,
+            );
+        })
     }
 
     pub(super) fn encode_build_queries(
@@ -3301,6 +3441,12 @@ mod tests {
         );
         assert_eq!(std::mem::offset_of!(GlmCompactRankedAttnParams, scale), 20);
 
+        assert_eq!(std::mem::size_of::<GlmPqVRowsParams>(), 32);
+        assert_eq!(std::mem::offset_of!(GlmPqVRowsParams, n_heads), 0);
+        assert_eq!(std::mem::offset_of!(GlmPqVRowsParams, value_row_offset), 8);
+        assert_eq!(std::mem::offset_of!(GlmPqVRowsParams, latent_dim), 16);
+        assert_eq!(std::mem::offset_of!(GlmPqVRowsParams, pq_nchunk), 28);
+
         assert_eq!(std::mem::size_of::<GlmBuildQParams>(), 12);
         assert_eq!(std::mem::offset_of!(GlmBuildQParams, qk_rope), 8);
 
@@ -3369,7 +3515,7 @@ mod tests {
         for output in [&output_a, &output_b] {
             encode_pq_k_transpose_heads(
                 &mut tcb, &codebookb, &codesb, &queryb, output, n_heads, key_rows, row_stride,
-                latent_dim, pq_dim, pq_sub, pq_card, pq_nchunk,
+                latent_dim, pq_dim, pq_sub, pq_card, 8, pq_nchunk,
             )
             .expect("encode direct PQ K transpose");
         }
@@ -3419,10 +3565,31 @@ mod tests {
             pq_dim,
             2,
             pq_card,
+            8,
             pq_nchunk,
         )
         .expect_err("multi-subspace-like geometry must fail before dispatch");
         assert!(error.to_string().contains("dim == sub"));
+        assert_eq!(rejected.dispatch_count(), 0);
+
+        let error = encode_pq_k_transpose_heads(
+            &mut rejected,
+            &codebookb,
+            &codesb,
+            &queryb,
+            &output_a,
+            n_heads,
+            key_rows,
+            row_stride,
+            latent_dim,
+            pq_dim,
+            pq_sub,
+            pq_card,
+            7,
+            pq_nchunk,
+        )
+        .expect_err("packed non-byte codes must fail before dispatch");
+        assert!(error.to_string().contains("bits=8"));
         assert_eq!(rejected.dispatch_count(), 0);
 
         let short_codes = ctx
@@ -3441,6 +3608,7 @@ mod tests {
             pq_dim,
             pq_sub,
             pq_card,
+            8,
             pq_nchunk,
         )
         .expect_err("undersized PQ codes must fail before dispatch");
@@ -3487,7 +3655,7 @@ mod tests {
         let mut tcb = TokenCommandBuffer::new(&ctx);
         encode_pq_k_transpose_heads(
             &mut tcb, &codebookb, &codesb, &queryb, &output, n_heads, key_rows, row_stride,
-            latent_dim, pq_dim, pq_sub, pq_card, pq_nchunk,
+            latent_dim, pq_dim, pq_sub, pq_card, 8, pq_nchunk,
         )
         .expect("encode flagship direct PQ K transpose");
         assert_eq!(tcb.dispatch_count(), 1);
@@ -3709,6 +3877,251 @@ mod tests {
         .expect_err("undersized ranked-index buffer must fail before dispatch");
         assert!(error.to_string().contains("byte range"));
         assert_eq!(rejected.dispatch_count(), 0);
+    }
+
+    #[test]
+    fn route_segment_pq_v_rows_is_deterministic_fail_closed_and_v21() {
+        let shader = include_str!("../shaders/gravity_pq.metal");
+        assert!(shader.contains("kernel void gravity_pq_v_rows_heads("));
+        let registry = include_str!("metal/mod.rs");
+        assert!(registry.contains("\"gravity_pq_v_rows_heads\" => \"gravity_pq_v_rows_heads\""));
+
+        let Ok(ctx) = MetalContext::new() else {
+            return;
+        };
+        let (n_heads, row_stride, value_row_offset, value_rows) = (2usize, 5usize, 2usize, 3usize);
+        let (latent_dim, pq_dim, pq_sub, pq_card, pq_nchunk) =
+            (8usize, 4usize, 4usize, 256usize, 2usize);
+        let codebook_prefix = [
+            0.25, -0.5, 0.75, 1.0, -1.0, 0.125, 0.5, -0.25, 1.5, -0.75, 0.25, 0.625, -0.375, 1.25,
+            -1.5, 0.875,
+        ];
+        let mut codebook = vec![half::f16::ZERO; pq_card * pq_sub];
+        for (dst, value) in codebook.iter_mut().zip(codebook_prefix) {
+            *dst = half::f16::from_f32(value);
+        }
+        let rows_touched = (n_heads - 1) * row_stride + value_row_offset + value_rows;
+        let codes: Vec<u8> = (0..rows_touched * pq_nchunk)
+            .map(|index| ((index * 5 + index / 3) % 4) as u8)
+            .collect();
+        let weighted_latent = [
+            0.75, -1.25, 0.5, -0.625, 1.5, 0.25, -0.375, 0.875, -0.5, 1.25, 0.625, -0.75, 0.375,
+            -1.5, 0.25, 1.0,
+        ];
+        let codebookb = f16_buffer(&ctx, &codebook);
+        let codesb = ctx
+            .new_buffer_with_bytes_checked(&codes)
+            .expect("PQ V-row code test buffer");
+        let weightedb = f32_buffer(&ctx, &weighted_latent);
+        let output_a = filled_f32_buffer(&ctx, n_heads * value_rows, f32::NAN);
+        let output_b = filled_f32_buffer(&ctx, n_heads * value_rows, f32::NAN);
+
+        let mut tcb = TokenCommandBuffer::new(&ctx);
+        for output in [&output_a, &output_b] {
+            encode_pq_v_rows_heads(
+                &mut tcb,
+                &codebookb,
+                &codesb,
+                &weightedb,
+                output,
+                n_heads,
+                row_stride,
+                value_row_offset,
+                value_rows,
+                latent_dim,
+                pq_dim,
+                pq_sub,
+                pq_card,
+                8,
+                pq_nchunk,
+            )
+            .expect("encode direct PQ V rows");
+        }
+        assert_eq!(tcb.dispatch_count(), 2);
+        tcb.commit_and_wait()
+            .expect("direct PQ V-row command buffer");
+
+        let mut host = vec![0.0f32; n_heads * value_rows];
+        let mut authority = vec![0.0f64; n_heads * value_rows];
+        for head in 0..n_heads {
+            for value_row in 0..value_rows {
+                let source_row = head * row_stride + value_row_offset + value_row;
+                let mut host_acc = 0.0f32;
+                let mut authority_acc = 0.0f64;
+                for chunk in 0..pq_nchunk {
+                    let code = codes[source_row * pq_nchunk + chunk] as usize;
+                    for within in 0..pq_sub {
+                        let weight = codebook[code * pq_sub + within].to_f32();
+                        let x = weighted_latent[head * latent_dim + chunk * pq_dim + within];
+                        host_acc = weight.mul_add(x, host_acc);
+                        authority_acc += weight as f64 * x as f64;
+                    }
+                }
+                let output = head * value_rows + value_row;
+                host[output] = host_acc;
+                authority[output] = authority_acc;
+            }
+        }
+        let device_a = read_f32(&output_a, host.len());
+        let device_b = read_f32(&output_b, host.len());
+        assert_eq!(device_a, device_b, "repeated V-row dispatch must be exact");
+        assert_v21_pair("direct PQ V rows", &host, &device_a, &authority);
+
+        let mut rejected = TokenCommandBuffer::new(&ctx);
+        let error = encode_pq_v_rows_heads(
+            &mut rejected,
+            &codebookb,
+            &codesb,
+            &weightedb,
+            &output_a,
+            n_heads,
+            row_stride,
+            value_row_offset,
+            value_rows,
+            latent_dim,
+            pq_dim,
+            pq_sub,
+            pq_card,
+            7,
+            pq_nchunk,
+        )
+        .expect_err("packed non-byte codes must fail before dispatch");
+        assert!(error.to_string().contains("bits=8"));
+        assert_eq!(rejected.dispatch_count(), 0);
+
+        let error = encode_pq_v_rows_heads(
+            &mut rejected,
+            &codebookb,
+            &codesb,
+            &weightedb,
+            &output_a,
+            n_heads,
+            row_stride,
+            value_row_offset + 1,
+            value_rows,
+            latent_dim,
+            pq_dim,
+            pq_sub,
+            pq_card,
+            8,
+            pq_nchunk,
+        )
+        .expect_err("out-of-stride value window must fail before dispatch");
+        assert!(error.to_string().contains("exceeds row_stride"));
+        assert_eq!(rejected.dispatch_count(), 0);
+
+        let short_codes = ctx
+            .new_buffer_with_bytes_checked(&codes[..codes.len() - 1])
+            .expect("short V-row codes");
+        let error = encode_pq_v_rows_heads(
+            &mut rejected,
+            &codebookb,
+            &short_codes,
+            &weightedb,
+            &output_a,
+            n_heads,
+            row_stride,
+            value_row_offset,
+            value_rows,
+            latent_dim,
+            pq_dim,
+            pq_sub,
+            pq_card,
+            8,
+            pq_nchunk,
+        )
+        .expect_err("undersized V-row codes must fail before dispatch");
+        assert!(error.to_string().contains("byte range"));
+        assert_eq!(rejected.dispatch_count(), 0);
+    }
+
+    #[test]
+    fn route_segment_pq_v_rows_flagship_geometry_passes_v21() {
+        let Ok(ctx) = MetalContext::new() else {
+            return;
+        };
+        let (n_heads, row_stride, value_row_offset, value_rows) =
+            (64usize, 448usize, 192usize, 256usize);
+        let (latent_dim, pq_dim, pq_sub, pq_card, pq_nchunk) =
+            (512usize, 32usize, 32usize, 256usize, 16usize);
+        let codebook: Vec<half::f16> = (0..pq_card * pq_sub)
+            .map(|index| {
+                let signed = ((index * 19 + index / 23) % 257) as i32 - 128;
+                half::f16::from_f32(signed as f32 * (1.0 / 512.0))
+            })
+            .collect();
+        let rows_touched = (n_heads - 1) * row_stride + value_row_offset + value_rows;
+        assert_eq!(rows_touched, 28_672);
+        let codes: Vec<u8> = (0..rows_touched * pq_nchunk)
+            .map(|index| {
+                let row = index / pq_nchunk;
+                let chunk = index % pq_nchunk;
+                ((row * 13 + chunk * 29 + row / 11) & 255) as u8
+            })
+            .collect();
+        let weighted_latent: Vec<f32> = (0..n_heads * latent_dim)
+            .map(|index| {
+                let signed = ((index * 17 + index / 31) % 127) as i32 - 63;
+                signed as f32 * (1.0 / 128.0)
+            })
+            .collect();
+        let codebookb = f16_buffer(&ctx, &codebook);
+        let codesb = ctx
+            .new_buffer_with_bytes_checked(&codes)
+            .expect("flagship V-row codes");
+        let weightedb = f32_buffer(&ctx, &weighted_latent);
+        let output = filled_f32_buffer(&ctx, n_heads * value_rows, f32::NAN);
+
+        let mut tcb = TokenCommandBuffer::new(&ctx);
+        encode_pq_v_rows_heads(
+            &mut tcb,
+            &codebookb,
+            &codesb,
+            &weightedb,
+            &output,
+            n_heads,
+            row_stride,
+            value_row_offset,
+            value_rows,
+            latent_dim,
+            pq_dim,
+            pq_sub,
+            pq_card,
+            8,
+            pq_nchunk,
+        )
+        .expect("encode flagship direct PQ V rows");
+        assert_eq!(tcb.dispatch_count(), 1);
+        tcb.commit_and_wait()
+            .expect("flagship direct PQ V-row command buffer");
+
+        let mut host = vec![0.0f32; n_heads * value_rows];
+        let mut authority = vec![0.0f64; n_heads * value_rows];
+        for head in 0..n_heads {
+            for value_row in 0..value_rows {
+                let source_row = head * row_stride + value_row_offset + value_row;
+                let mut host_acc = 0.0f32;
+                let mut authority_acc = 0.0f64;
+                for chunk in 0..pq_nchunk {
+                    let code = codes[source_row * pq_nchunk + chunk] as usize;
+                    for within in 0..pq_sub {
+                        let weight = codebook[code * pq_sub + within].to_f32();
+                        let x = weighted_latent[head * latent_dim + chunk * pq_dim + within];
+                        host_acc = weight.mul_add(x, host_acc);
+                        authority_acc += weight as f64 * x as f64;
+                    }
+                }
+                let output_index = head * value_rows + value_row;
+                host[output_index] = host_acc;
+                authority[output_index] = authority_acc;
+            }
+        }
+        assert_v21_pair(
+            "flagship direct PQ V rows",
+            &host,
+            &read_f32(&output, host.len()),
+            &authority,
+        );
     }
 
     #[test]

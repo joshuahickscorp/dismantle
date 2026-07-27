@@ -888,6 +888,9 @@ mod imp {
             "gemv_simdgroup_f32" => "gemv_simdgroup_f32",
             // GLM native.bf16 lm_head (sequential accumulate, host parity)
             "gemv_native_bf16_seq" => "gemv_native_bf16_seq",
+            // GLM activation-aware factorized GEMV.
+            "activation_aware_project_f16" => "activation_aware_project_f16",
+            "activation_aware_expand_f16" => "activation_aware_expand_f16",
             // Additive/default-off native.bf16 accuracy candidates.
             "gemv_native_bf16_neumaier" => "gemv_native_bf16_neumaier",
             "gemv_native_bf16_neumaier_compensated_product" => {

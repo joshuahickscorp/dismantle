@@ -65,7 +65,8 @@
 
 use crate::gravity::matvec_dense;
 use crate::gravity_glm::gpu::{
-    encode_argmax_f32, encode_gemv_native_bf16_seq, encode_sample_topk_f32,
+    encode_activation_aware_matvec, encode_argmax_f32, encode_gemv_native_bf16_seq,
+    encode_sample_topk_f32, record_activation_aware_matvec_ops,
     record_routed_tensor_representation, routed_pq_representation, GpuTensor, GpuWeightCache,
 };
 use crate::gravity_glm::{
@@ -226,7 +227,7 @@ fn device_expert_tensor_ref(
             },
             vec![buf.clone()],
         )),
-        GpuTensor::NativeCpu(_) => None,
+        GpuTensor::NativeCpu(_) | GpuTensor::ActivationAware { .. } => None,
     }
 }
 
@@ -2289,6 +2290,27 @@ fn matvec_into<'a>(
             })?;
             Ok(())
         }
+        GpuTensor::ActivationAware {
+            coefficients,
+            basis,
+            params,
+        } => {
+            if x_len != params.cols as usize {
+                return Err(Error::Gravity(format!(
+                    "resident matvec {name}: x_len {x_len} != cols {}",
+                    params.cols
+                )));
+            }
+            crate::cost_ledger::record_active_bytes_for(
+                name,
+                coefficients.length() + basis.length(),
+            );
+            record_activation_aware_matvec_ops(*params);
+            let latent =
+                ctx.new_buffer_checked(params.rank as usize * std::mem::size_of::<f32>())?;
+            let tcb = tcb.get_or_insert_with(|| TokenCommandBuffer::new(ctx));
+            encode_activation_aware_matvec(tcb, coefficients, basis, *params, x, &latent, y)
+        }
     }
 }
 
@@ -3260,7 +3282,9 @@ pub fn forward_resident(
                         params: *params,
                     })
                 }
-                GpuTensor::NativeCpu(_) | GpuTensor::Pq { .. } => None,
+                GpuTensor::NativeCpu(_)
+                | GpuTensor::Pq { .. }
+                | GpuTensor::ActivationAware { .. } => None,
             };
             drop(cache);
 
@@ -6341,6 +6365,27 @@ fn encode_weight_matvec(
             record_pq_matvec_ops(*params);
             encode_pq_matvec_device(tcb, codebooks, codes, *params, x, y)
         }
+        GpuTensor::ActivationAware {
+            coefficients,
+            basis,
+            params,
+        } => {
+            if x_len != params.cols as usize {
+                return Err(Error::Gravity(format!(
+                    "expert-wave matvec {name}: x_len {x_len} != cols {}",
+                    params.cols
+                )));
+            }
+            crate::cost_ledger::record_active_bytes_for(
+                name,
+                coefficients.length() + basis.length(),
+            );
+            record_activation_aware_matvec_ops(*params);
+            let latent = weights
+                .ctx
+                .new_buffer_checked(params.rank as usize * std::mem::size_of::<f32>())?;
+            encode_activation_aware_matvec(tcb, coefficients, basis, *params, x, &latent, y)
+        }
     }
 }
 
@@ -6552,7 +6597,7 @@ fn device_replay_projection_triplet(
                 codes: codes.clone(),
                 params: *params,
             }),
-            GpuTensor::NativeCpu(_) => None,
+            GpuTensor::NativeCpu(_) | GpuTensor::ActivationAware { .. } => None,
         }
     };
     let Some(first) = projection(names[0]) else {
@@ -8094,7 +8139,7 @@ fn device_expert_projection_metrics(tensor: &GpuTensor) -> Option<DeviceExpertPr
                 bytes: buf.length(),
             })
         }
-        GpuTensor::NativeCpu(_) => None,
+        GpuTensor::NativeCpu(_) | GpuTensor::ActivationAware { .. } => None,
     }
 }
 
@@ -9392,7 +9437,9 @@ fn moe_device_wave<'a>(
         all_names.iter().all(|n| {
             matches!(
                 cache.get(n),
-                Some(GpuTensor::Pq { .. }) | Some(GpuTensor::NativeGpuBf16 { .. })
+                Some(GpuTensor::Pq { .. })
+                    | Some(GpuTensor::NativeGpuBf16 { .. })
+                    | Some(GpuTensor::ActivationAware { .. })
             )
         })
     };
@@ -9408,6 +9455,7 @@ fn moe_device_wave<'a>(
         match cache.get(&gname).expect("ensured gate") {
             GpuTensor::Pq { params, .. } => params.rows as usize,
             GpuTensor::NativeGpuBf16 { rows, .. } => *rows as usize,
+            GpuTensor::ActivationAware { params, .. } => params.rows as usize,
             GpuTensor::NativeCpu(_) => {
                 return Err(Error::Gravity(
                     "expert-wave: gate is NativeCpu after device check".into(),
@@ -9841,6 +9889,11 @@ mod tests {
             GpuTensor::Pq {
                 codebooks, codes, ..
             } => codebooks.length() + codes.length(),
+            GpuTensor::ActivationAware {
+                coefficients,
+                basis,
+                ..
+            } => coefficients.length() + basis.length(),
             GpuTensor::NativeGpuBf16 { buf, .. } => buf.length(),
             GpuTensor::NativeCpu(values) => (values.len() * std::mem::size_of::<f32>()) as u64,
         }

@@ -156,8 +156,13 @@
         "HIDE_ARCHAEOLOGY.json (stale, commit fccb6b30)",
         "FABRIC_BRIDGE_ARCHAEOLOGY.md"
       ],
-      "outputs": ["HIDE_ARCHAEOLOGY_V2.md", "HIDE_ARCHAEOLOGY_V2.json"],
-      "forbidden_paths": ["everything except the two deliverables"],
+      "outputs": [
+        "HIDE_ARCHAEOLOGY_V2.md",
+        "HIDE_ARCHAEOLOGY_V2.json"
+      ],
+      "forbidden_paths": [
+        "everything except the two deliverables"
+      ],
       "tests": "cargo build --workspace; cargo test -p each hide-* crate; report exit codes, fix nothing",
       "promotion_gate": "controller re-derives at least three load-bearing verdicts independently before any lane acts on the report",
       "dependencies": [],
@@ -178,7 +183,10 @@
         "crates/hide-state/src/{store,capsule,identity}.rs",
         "odyssey/memory/MEMORY_STORES.json (read-only vocabulary reference)"
       ],
-      "outputs": ["crates/hawking-context changes", "HIDE_MEMORY_CLASSES.json"],
+      "outputs": [
+        "crates/hawking-context changes",
+        "HIDE_MEMORY_CLASSES.json"
+      ],
       "forbidden_paths": [
         "tool registry",
         "permission system",
@@ -199,13 +207,19 @@
       "task_id": "odyssey-t0-20260726-213445",
       "branch": "grok/odyssey-t0-20260726-213445",
       "worktree": "~/.claude-grok/worktrees/odyssey-t0-20260726-213445",
-      "inputs": ["odyssey/**", "the sealed Math-Preserve artifact (READ ONLY)"],
+      "inputs": [
+        "odyssey/**",
+        "the sealed Math-Preserve artifact (READ ONLY)"
+      ],
       "outputs": [
         "ODYSSEY_T0_RECEIPT.json",
         "ODYSSEY_CONTRACT_CLOSURE.json",
         "ODYSSEY_FEASIBILITY.json"
       ],
-      "forbidden_paths": ["odyssey/launch/", "all globally forbidden paths"],
+      "forbidden_paths": [
+        "odyssey/launch/",
+        "all globally forbidden paths"
+      ],
       "tests": "substrate hash verification fails on a mutated byte; hidden memberships are hash-committed not naming-convention; checkpoint tournament ties to the incumbent",
       "promotion_gate": "T0 reproduces substrate, data, runtime and known failures FOR REAL. The existing 87/87 dry run is directory-existence checks and does not count.",
       "dependencies": [],
@@ -221,9 +235,18 @@
       "task_id": "fabric-software-20260726-213447",
       "branch": "grok/fabric-software-20260726-213447",
       "worktree": "~/.claude-grok/worktrees/fabric-software-20260726-213447",
-      "inputs": ["crates/hide-fleet/**", "FABRIC_BRIDGE_ARCHAEOLOGY.md"],
-      "outputs": ["FABRIC_SOFTWARE_STATUS.json", "FABRIC_QUALIFICATION_LADDER.json"],
-      "forbidden_paths": ["the inference hot path", "all globally forbidden paths"],
+      "inputs": [
+        "crates/hide-fleet/**",
+        "FABRIC_BRIDGE_ARCHAEOLOGY.md"
+      ],
+      "outputs": [
+        "FABRIC_SOFTWARE_STATUS.json",
+        "FABRIC_QUALIFICATION_LADDER.json"
+      ],
+      "forbidden_paths": [
+        "the inference hot path",
+        "all globally forbidden paths"
+      ],
       "tests": "placement determinism; KV ownership invariant across failure and replan; two-process fixture with injected node death and replay receipt; real resource probe returns real values",
       "promotion_gate": "software qualification only. FABRIC_HARDWARE_QUALIFICATION_PENDING is the honest terminal state; a simulated result must be labelled simulated in filename, schema, logs and report.",
       "dependencies": [],
@@ -239,13 +262,21 @@
       "task_id": "bridge-events-20260726-213449",
       "branch": "grok/bridge-events-20260726-213449",
       "worktree": "~/.claude-grok/worktrees/bridge-events-20260726-213449",
-      "inputs": ["FABRIC_BRIDGE_ARCHAEOLOGY.md", "crates/hide-protocol", "crates/hide-sdk", "crates/hawking-serve"],
+      "inputs": [
+        "FABRIC_BRIDGE_ARCHAEOLOGY.md",
+        "crates/hide-protocol",
+        "crates/hide-sdk",
+        "crates/hawking-serve"
+      ],
       "outputs": [
         "HAWKING_CANONICAL_EVENTS.json",
         "HAWKING_ADAPTER_REGISTRY.json",
         "HAWKING_BRIDGE_SURFACE.json"
       ],
-      "forbidden_paths": ["hide-fleet (L04 owns it)", "all globally forbidden paths"],
+      "forbidden_paths": [
+        "hide-fleet (L04 owns it)",
+        "all globally forbidden paths"
+      ],
       "tests": "canonical event round-trip per category; deprecated-model adapters produce identical events; a support level asserted without backing evidence fails; schema regeneration produces no diff",
       "promotion_gate": "support levels used literally. No family is PRODUCTION today. A route returning a plausible canned response is worse than a 501.",
       "dependencies": [],
@@ -261,9 +292,18 @@
       "task_id": "consolidation-inventory-20260726-213450",
       "branch": "none (read-only)",
       "worktree": "/Users/scammermike/Downloads/hawking (read-only sandbox)",
-      "inputs": ["the whole repository", "HIDE_ARCHAEOLOGY.md", "FABRIC_BRIDGE_ARCHAEOLOGY.md"],
-      "outputs": ["HAWKING_CONSOLIDATION_INVENTORY.md", "HAWKING_CONSOLIDATION_INVENTORY.json"],
-      "forbidden_paths": ["all of them; this lane deletes and moves nothing"],
+      "inputs": [
+        "the whole repository",
+        "HIDE_ARCHAEOLOGY.md",
+        "FABRIC_BRIDGE_ARCHAEOLOGY.md"
+      ],
+      "outputs": [
+        "HAWKING_CONSOLIDATION_INVENTORY.md",
+        "HAWKING_CONSOLIDATION_INVENTORY.json"
+      ],
+      "forbidden_paths": [
+        "all of them; this lane deletes and moves nothing"
+      ],
       "tests": "none; read-only",
       "promotion_gate": "inventory only. Destructive consolidation is deferred until after Math-Frozen, HIDE, Bridge and Fabric are real.",
       "dependencies": [],
@@ -285,8 +325,14 @@
         "crates/hawking-core/examples/gravity_glm_tps.rs",
         "hawking_core::gravity_glm::gpu::GravityGlmGpu (CALL ONLY, never edit)"
       ],
-      "outputs": ["HAWKING_GRAVITY_SERVE_RECEIPT.json", "an HTTP path that serves the sealed artifact"],
-      "forbidden_paths": ["editing gravity_glm.rs and gravity_glm_resident.rs (calling them is allowed)", "all globally forbidden paths"],
+      "outputs": [
+        "HAWKING_GRAVITY_SERVE_RECEIPT.json",
+        "an HTTP path that serves the sealed artifact"
+      ],
+      "forbidden_paths": [
+        "editing gravity_glm.rs and gravity_glm_resident.rs (calling them is allowed)",
+        "all globally forbidden paths"
+      ],
       "tests": "one real completion of at least 8 tokens with the text pasted into the report; two prompts produce different continuations; existing serve tests pass with the feature off",
       "promotion_gate": "no fallback model, ever. A correct slow path is the deliverable; a fast wrong one silently answers G4 and G5 with the wrong model.",
       "dependencies": [],
@@ -302,9 +348,16 @@
       "task_id": null,
       "branch": null,
       "worktree": null,
-      "inputs": ["crates/hawking-speculate", "crates/hide-backend/src/host.rs"],
-      "outputs": ["HIDE_SPECULATION_SAFETY.json"],
-      "forbidden_paths": ["all globally forbidden paths"],
+      "inputs": [
+        "crates/hawking-speculate",
+        "crates/hide-backend/src/host.rs"
+      ],
+      "outputs": [
+        "HIDE_SPECULATION_SAFETY.json"
+      ],
+      "forbidden_paths": [
+        "all globally forbidden paths"
+      ],
       "tests": "draft token cannot reach a durable sink (compile-fail preferred); one test per suspension boundary; rollback restores committed KV bit-identically; accepted-TPS includes rollback cost",
       "promotion_gate": "type-level separation of Draft and Verified tokens. Convention is not enough.",
       "dependencies": [],
@@ -320,12 +373,20 @@
       "task_id": null,
       "branch": null,
       "worktree": null,
-      "inputs": ["HIDE_ARCHAEOLOGY_V2.json (L01 output)"],
-      "outputs": ["remaining REAL_UNWIRED subsystems moved to REAL_WIRED"],
-      "forbidden_paths": ["all globally forbidden paths"],
+      "inputs": [
+        "HIDE_ARCHAEOLOGY_V2.json (L01 output)"
+      ],
+      "outputs": [
+        "remaining REAL_UNWIRED subsystems moved to REAL_WIRED"
+      ],
+      "forbidden_paths": [
+        "all globally forbidden paths"
+      ],
       "tests": "each newly wired subsystem exercised through a live entry point, not a constructed host",
       "promotion_gate": "no facade: a subsystem is wired only when a live route reaches real code that does real work",
-      "dependencies": ["L01"],
+      "dependencies": [
+        "L01"
+      ],
       "status": "BLOCKED",
       "blocked_on": "L01 must name the true remaining gaps at HEAD; acting on the stale archaeology would rewire things that are already wired"
     },
@@ -335,7 +396,9 @@
       "owner": "claude",
       "mode": "controller",
       "resource_class": "light",
-      "outputs": ["RAMANUJAN_HANDOFF_CONTRACT.json"],
+      "outputs": [
+        "RAMANUJAN_HANDOFF_CONTRACT.json"
+      ],
       "dependencies": [],
       "status": "QUEUED",
       "note": "prepare bindings and contracts only. The repository split happens at HAWKING_EVOLUTION_COMPLETE, not before."
@@ -346,7 +409,9 @@
       "owner": "unassigned",
       "mode": "heavy",
       "resource_class": "HEAVY-EXCLUSIVE",
-      "dependencies": ["L03"],
+      "dependencies": [
+        "L03"
+      ],
       "status": "BLOCKED",
       "blocked_on": [
         "ODYSSEY_FEASIBILITY.json must first establish whether training a 92GB artifact is possible at all on a 96GB machine at load ~29",
@@ -360,14 +425,23 @@
       "name": "math-frozen",
       "owner": "unassigned",
       "resource_class": "HEAVY-EXCLUSIVE",
-      "dependencies": ["L10"],
+      "dependencies": [
+        "L10"
+      ],
       "status": "BLOCKED"
     },
     {
       "id": "L12",
       "name": "consolidation-execute",
       "owner": "unassigned",
-      "dependencies": ["L06", "L02", "L04", "L05", "L08", "L11"],
+      "dependencies": [
+        "L06",
+        "L02",
+        "L04",
+        "L05",
+        "L08",
+        "L11"
+      ],
       "status": "BLOCKED",
       "blocked_on": "destructive consolidation is forbidden until Math-Frozen, HIDE, Bridge and Fabric software are real"
     },
@@ -375,7 +449,9 @@
       "id": "L13",
       "name": "ramanujan-migrate",
       "owner": "unassigned",
-      "dependencies": ["L12"],
+      "dependencies": [
+        "L12"
+      ],
       "status": "BLOCKED",
       "gate": "HAWKING_EVOLUTION_COMPLETE"
     },
@@ -383,7 +459,9 @@
       "id": "L14",
       "name": "ramanujan-cognition",
       "owner": "unassigned",
-      "dependencies": ["L13"],
+      "dependencies": [
+        "L13"
+      ],
       "status": "BLOCKED"
     },
     {
@@ -391,7 +469,10 @@
       "name": "local-forge-training",
       "owner": "unassigned",
       "resource_class": "HEAVY-EXCLUSIVE",
-      "dependencies": ["L13", "L11"],
+      "dependencies": [
+        "L13",
+        "L11"
+      ],
       "status": "BLOCKED",
       "note": "F0-F9. Requires the frozen Math-Frozen Director as teacher."
     },
@@ -399,16 +480,30 @@
       "id": "L16",
       "name": "search-governance",
       "owner": "unassigned",
-      "dependencies": ["L13"],
+      "dependencies": [
+        "L13"
+      ],
       "status": "BLOCKED"
     },
     {
       "id": "L17",
       "name": "q0-q6-qualification",
       "owner": "unassigned",
-      "dependencies": ["L14", "L15", "L16"],
+      "dependencies": [
+        "L14",
+        "L15",
+        "L16"
+      ],
       "status": "BLOCKED",
       "gate": "RAMANUJAN_SANDBOX_READY"
     }
-  ]
+  ],
+  "branch_sharing_hazard": {
+    "discovered_at": "2026-07-27T01:58:19Z",
+    "what": "The Codex Temporal Gravity lane is committing to campaign/glm52-generation-b, the SAME branch this campaign integrates into. Commits 30b9894d, 2463cbb2, e68fd32f and 63c7555b landed interleaved between this session's integration commits, touching crates/hawking-core/shaders/gravity_pq.metal, crates/hawking-core/examples/gravity_pq_autotune.rs and tools/condense/gravity_lab_lease.py.",
+    "why_it_did_not_corrupt_anything": "The lane ownership map assigns disjoint file sets. Every commit from this campaign was audited after the fact against the forbidden-path list and all eight are clean; no Temporal Gravity work was swept into them and none of this campaign's work landed in theirs.",
+    "the_actual_hazard": "`git add -A` on a shared branch can stage another agent's in-flight work into this campaign's commit. It was used once, for the Bridge integration, and that commit was verified clean before this was noticed. It is luck, not design.",
+    "standing_rule_from_now_on": "Stage explicit paths. Never `git add -A` on this branch while another lane holds it. Audit every commit against the forbidden-path list before writing it, not after.",
+    "not_escalated_to_the_user_as_a_conflict": "Because nothing was lost or corrupted and the file sets remain disjoint. Recorded so the next session does not rediscover it the hard way."
+  }
 }

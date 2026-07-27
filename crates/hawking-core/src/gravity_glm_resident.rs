@@ -109,6 +109,23 @@ struct CompactResidentCache {
     seq_len: usize,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum ResidentAttentionLayout {
+    Expanded,
+    Compact,
+}
+
+/// Exactly one attention-cache representation is owned by a session.
+///
+/// Keeping compact and expanded state in an enum makes a side-by-side
+/// flagship allocation unrepresentable. The ordinary constructor selects
+/// `Expanded`; compact construction remains private and runtime-unreachable
+/// until the compact forward path is wired end to end.
+enum ResidentAttentionState {
+    Expanded(Vec<LayerGpuCache>),
+    Compact(CompactResidentCache),
+}
+
 const MIN_SEQUENCE_CAPACITY: usize = 4;
 
 fn checked_sequence_bytes(elements: usize, element_bytes: usize, what: &str) -> Result<usize> {
@@ -243,6 +260,127 @@ impl CompactResidentCache {
         }
         self.capacity = capacity;
         Ok(())
+    }
+}
+
+impl ResidentAttentionState {
+    fn new(
+        ctx: &MetalContext,
+        arch: &GlmArch,
+        initial_cap: usize,
+        layout: ResidentAttentionLayout,
+    ) -> Result<Self> {
+        match layout {
+            ResidentAttentionLayout::Expanded => {
+                let capacity = initial_cap.max(MIN_SEQUENCE_CAPACITY);
+                let qk = arch.qk_dim();
+                let mut layers = Vec::with_capacity(arch.n_layers);
+                for _ in 0..arch.n_layers {
+                    layers.push(LayerGpuCache {
+                        keys: ctx.new_buffer_checked(capacity * arch.n_heads * qk * 4)?,
+                        values: ctx
+                            .new_buffer_checked(capacity * arch.n_heads * arch.v_head_dim * 4)?,
+                        capacity,
+                    });
+                }
+                Ok(Self::Expanded(layers))
+            }
+            ResidentAttentionLayout::Compact => Ok(Self::Compact(CompactResidentCache::new(
+                ctx,
+                arch,
+                initial_cap,
+            )?)),
+        }
+    }
+
+    fn capacity(&self) -> usize {
+        match self {
+            Self::Expanded(layers) => layers.first().map(|layer| layer.capacity).unwrap_or(0),
+            Self::Compact(cache) => cache.capacity,
+        }
+    }
+
+    fn reset(&mut self) {
+        if let Self::Compact(cache) = self {
+            cache.reset();
+        }
+    }
+
+    fn reserve(
+        &mut self,
+        ctx: &MetalContext,
+        arch: &GlmArch,
+        need: usize,
+        seq_len: usize,
+    ) -> Result<usize> {
+        match self {
+            Self::Expanded(layers) => {
+                if layers.len() != arch.n_layers {
+                    return Err(Error::Gravity(format!(
+                        "resident expanded cache layer count {} != architecture {}",
+                        layers.len(),
+                        arch.n_layers
+                    )));
+                }
+                let current = layers.first().map(|layer| layer.capacity).unwrap_or(0);
+                if seq_len > current {
+                    return Err(Error::Gravity(format!(
+                        "resident expanded cache seq_len {seq_len} exceeds capacity {current}"
+                    )));
+                }
+                let capacity = grown_sequence_capacity(current, need)?;
+                if capacity == current {
+                    return Ok(capacity);
+                }
+                let qk = arch.qk_dim();
+                for layer in layers {
+                    let next_keys = ctx.new_buffer_checked(capacity * arch.n_heads * qk * 4)?;
+                    let next_values =
+                        ctx.new_buffer_checked(capacity * arch.n_heads * arch.v_head_dim * 4)?;
+                    if seq_len > 0 {
+                        let key_bytes = seq_len * arch.n_heads * qk * 4;
+                        let value_bytes = seq_len * arch.n_heads * arch.v_head_dim * 4;
+                        unsafe {
+                            std::ptr::copy_nonoverlapping(
+                                layer.keys.contents() as *const u8,
+                                next_keys.contents() as *mut u8,
+                                key_bytes,
+                            );
+                            std::ptr::copy_nonoverlapping(
+                                layer.values.contents() as *const u8,
+                                next_values.contents() as *mut u8,
+                                value_bytes,
+                            );
+                        }
+                    }
+                    *layer = LayerGpuCache {
+                        keys: next_keys,
+                        values: next_values,
+                        capacity,
+                    };
+                }
+                Ok(capacity)
+            }
+            Self::Compact(cache) => {
+                cache.seq_len = seq_len;
+                cache.reserve(ctx, arch, need)?;
+                Ok(cache.capacity)
+            }
+        }
+    }
+
+    fn expanded_layer(&self, layer: usize) -> Result<&LayerGpuCache> {
+        match self {
+            Self::Expanded(layers) => layers.get(layer).ok_or_else(|| {
+                Error::Gravity(format!(
+                    "resident expanded cache layer {layer} out of range {}",
+                    layers.len()
+                ))
+            }),
+            Self::Compact(_) => Err(Error::Gravity(
+                "compact resident attention state reached the expanded forward path".into(),
+            )),
+        }
     }
 }
 
@@ -402,7 +540,7 @@ fn topk_desc_with_scratch(
 
 /// Device-resident working set for one generation.
 pub struct ResidentSession {
-    layers: Vec<LayerGpuCache>,
+    attention: ResidentAttentionState,
     index_keys: Vec<Buffer>,
     sequence_scratch: SequenceScratch,
     pub seq_len: usize,
@@ -412,20 +550,28 @@ pub struct ResidentSession {
 
 impl ResidentSession {
     pub fn new(ctx: &MetalContext, arch: &GlmArch, initial_cap: usize) -> Result<Self> {
+        Self::new_with_layout(ctx, arch, initial_cap, ResidentAttentionLayout::Expanded)
+    }
+
+    #[allow(dead_code)]
+    fn new_compact(ctx: &MetalContext, arch: &GlmArch, initial_cap: usize) -> Result<Self> {
+        Self::new_with_layout(ctx, arch, initial_cap, ResidentAttentionLayout::Compact)
+    }
+
+    fn new_with_layout(
+        ctx: &MetalContext,
+        arch: &GlmArch,
+        initial_cap: usize,
+        layout: ResidentAttentionLayout,
+    ) -> Result<Self> {
         let cap = initial_cap.max(MIN_SEQUENCE_CAPACITY);
-        let qk = arch.qk_dim();
-        let mut layers = Vec::with_capacity(arch.n_layers);
+        let attention = ResidentAttentionState::new(ctx, arch, cap, layout)?;
         let mut index_keys = Vec::with_capacity(arch.n_layers);
         for _ in 0..arch.n_layers {
-            layers.push(LayerGpuCache {
-                keys: ctx.new_buffer_checked(cap * arch.n_heads * qk * 4)?,
-                values: ctx.new_buffer_checked(cap * arch.n_heads * arch.v_head_dim * 4)?,
-                capacity: cap,
-            });
             index_keys.push(ctx.new_buffer_checked(cap * arch.index_head_dim * 4)?);
         }
         Ok(Self {
-            layers,
+            attention,
             index_keys,
             sequence_scratch: SequenceScratch::new(ctx, cap)?,
             seq_len: 0,
@@ -435,6 +581,7 @@ impl ResidentSession {
     }
 
     pub fn reset(&mut self) {
+        self.attention.reset();
         self.seq_len = 0;
         self.shared_topk = None;
         self.waits.set(0);
@@ -446,12 +593,6 @@ impl ResidentSession {
 
     fn reserve(&mut self, ctx: &MetalContext, arch: &GlmArch, need: usize) -> Result<()> {
         self.sequence_scratch.reserve(ctx, need)?;
-        let cur = self.layers.first().map(|l| l.capacity).unwrap_or(0);
-        if need <= cur {
-            return Ok(());
-        }
-        let cap = grown_sequence_capacity(cur, need)?;
-        let qk = arch.qk_dim();
         if self.index_keys.len() != arch.n_layers {
             return Err(Error::Gravity(format!(
                 "resident index cache layer count {} != architecture {}",
@@ -459,27 +600,17 @@ impl ResidentSession {
                 arch.n_layers
             )));
         }
+        let current = self.attention.capacity();
+        let cap = self.attention.reserve(ctx, arch, need, self.seq_len)?;
+        if cap == current {
+            return Ok(());
+        }
         for layer in 0..arch.n_layers {
-            let old = &self.layers[layer];
             let old_index_keys = &self.index_keys[layer];
-            let nk = ctx.new_buffer_checked(cap * arch.n_heads * qk * 4)?;
-            let nv = ctx.new_buffer_checked(cap * arch.n_heads * arch.v_head_dim * 4)?;
             let ni = ctx.new_buffer_checked(cap * arch.index_head_dim * 4)?;
             if self.seq_len > 0 {
-                let ck = self.seq_len * arch.n_heads * qk * 4;
-                let cv = self.seq_len * arch.n_heads * arch.v_head_dim * 4;
                 let ci = self.seq_len * arch.index_head_dim * 4;
                 unsafe {
-                    std::ptr::copy_nonoverlapping(
-                        old.keys.contents() as *const u8,
-                        nk.contents() as *mut u8,
-                        ck,
-                    );
-                    std::ptr::copy_nonoverlapping(
-                        old.values.contents() as *const u8,
-                        nv.contents() as *mut u8,
-                        cv,
-                    );
                     std::ptr::copy_nonoverlapping(
                         old_index_keys.contents() as *const u8,
                         ni.contents() as *mut u8,
@@ -487,11 +618,6 @@ impl ResidentSession {
                     );
                 }
             }
-            self.layers[layer] = LayerGpuCache {
-                keys: nk,
-                values: nv,
-                capacity: cap,
-            };
             self.index_keys[layer] = ni;
         }
         Ok(())
@@ -949,7 +1075,7 @@ pub fn forward_resident(
                 {
                     let _kv = cost_ledger::Scope::new(Bucket::KvUpdate);
                     let kv = read_f32(&pool.kv, a.n_heads * (a.qk_nope_head_dim + a.v_head_dim));
-                    let cache = &session.layers[layer];
+                    let cache = session.attention.expanded_layer(layer)?;
                     let per = a.qk_nope_head_dim + a.v_head_dim;
                     let mut keys_pos = Vec::with_capacity(a.n_heads * qk);
                     let mut vals_pos = Vec::with_capacity(a.n_heads * a.v_head_dim);
@@ -995,7 +1121,7 @@ pub fn forward_resident(
 
                 let topk = match a.indexer_types[layer].as_str() {
                     "full" => {
-                        let cache = &session.layers[layer];
+                        let cache = session.attention.expanded_layer(layer)?;
                         let index_keys = &session.index_keys[layer];
                         let scratch = &mut session.sequence_scratch;
                         let t = indexer_topk(
@@ -1030,7 +1156,7 @@ pub fn forward_resident(
                 };
 
                 // Sparse attend over device-resident KV (same math as forward_impl).
-                let cache = &session.layers[layer];
+                let cache = session.attention.expanded_layer(layer)?;
                 let scratch = &mut session.sequence_scratch;
                 let context = sparse_attend(a, pool, cache, scratch, pos, &topk, qk)?;
                 write_f32(&pool.context, &context);
@@ -5614,10 +5740,14 @@ mod tests {
         let arch = tiny_arch();
         let qk = arch.qk_dim();
         let mut session = ResidentSession::new(&ctx, &arch, 8192).expect("initial session");
-        assert_eq!(session.index_keys.len(), session.layers.len());
+        let expanded_layers = match &session.attention {
+            ResidentAttentionState::Expanded(layers) => layers,
+            ResidentAttentionState::Compact(_) => panic!("default session must be expanded"),
+        };
+        assert_eq!(session.index_keys.len(), expanded_layers.len());
 
         {
-            let cache = &session.layers[0];
+            let cache = session.attention.expanded_layer(0).expect("expanded layer");
             unsafe {
                 *(cache.keys.contents() as *mut f32) = 1.0;
                 *(cache.keys.contents() as *mut f32).add(8191 * qk + (qk - 1)) = 2.0;
@@ -5636,10 +5766,17 @@ mod tests {
         session
             .reserve(&ctx, &arch, 8193)
             .expect("grow beyond the old 8K limit");
-        assert_eq!(session.layers[0].capacity, 16384);
+        assert_eq!(
+            session
+                .attention
+                .expanded_layer(0)
+                .expect("expanded layer")
+                .capacity,
+            16384
+        );
         assert_eq!(session.sequence_scratch.capacity, 16384);
         {
-            let cache = &session.layers[0];
+            let cache = session.attention.expanded_layer(0).expect("expanded layer");
             unsafe {
                 assert_eq!(*(cache.keys.contents() as *const f32), 1.0);
                 assert_eq!(
@@ -5658,7 +5795,7 @@ mod tests {
         assert_eq!(scores[8191], 6.0);
 
         {
-            let cache = &session.layers[0];
+            let cache = session.attention.expanded_layer(0).expect("expanded layer");
             unsafe {
                 *(cache.keys.contents() as *mut f32).add(8192 * qk) = 7.0;
                 *(cache.values.contents() as *mut f32).add(8192) = 8.0;
@@ -5675,10 +5812,17 @@ mod tests {
         session
             .reserve(&ctx, &arch, 32768)
             .expect("reserve through position 32767");
-        assert_eq!(session.layers[0].capacity, 32768);
+        assert_eq!(
+            session
+                .attention
+                .expanded_layer(0)
+                .expect("expanded layer")
+                .capacity,
+            32768
+        );
         assert_eq!(session.sequence_scratch.capacity, 32768);
         {
-            let cache = &session.layers[0];
+            let cache = session.attention.expanded_layer(0).expect("expanded layer");
             unsafe {
                 assert_eq!(*(cache.keys.contents() as *const f32), 1.0);
                 assert_eq!(
@@ -5701,6 +5845,66 @@ mod tests {
         assert_eq!(scores[0], 5.0);
         assert_eq!(scores[8191], 6.0);
         assert_eq!(scores[8192], 10.0);
+    }
+
+    #[test]
+    fn resident_compact_layout_excludes_expanded_kv_and_grows_with_index_state() {
+        let Ok(ctx) = MetalContext::new() else {
+            return;
+        };
+        let arch = tiny_arch();
+        let default =
+            ResidentSession::new(&ctx, &arch, 8).expect("default expanded resident session");
+        assert!(matches!(
+            default.attention,
+            ResidentAttentionState::Expanded(_)
+        ));
+
+        let mut compact =
+            ResidentSession::new_compact(&ctx, &arch, 8).expect("compact resident session");
+        assert!(compact.attention.expanded_layer(0).is_err());
+        assert_eq!(compact.index_keys.len(), arch.n_layers);
+        {
+            let ResidentAttentionState::Compact(cache) = &mut compact.attention else {
+                panic!("compact constructor must own only compact MLA state");
+            };
+            assert_eq!(cache.layers.len(), arch.n_layers);
+            assert_eq!(cache.capacity, 8);
+            assert_eq!(
+                cache.layers[0].latents.length(),
+                (8 * arch.kv_lora_rank * 4) as u64
+            );
+            assert_eq!(
+                cache.layers[0].rope_tails.length(),
+                (8 * arch.qk_rope_head_dim * 4) as u64
+            );
+            unsafe {
+                *(cache.layers[0].latents.contents() as *mut f32) = 11.0;
+                *(cache.layers[0].rope_tails.contents() as *mut f32) = 12.0;
+            }
+        }
+        unsafe {
+            *(compact.index_keys[0].contents() as *mut f32) = 13.0;
+        }
+        compact.seq_len = 8;
+        compact
+            .reserve(&ctx, &arch, 9)
+            .expect("compact and index state grow together");
+
+        let ResidentAttentionState::Compact(cache) = &compact.attention else {
+            panic!("compact reserve must not replace the selected layout");
+        };
+        assert_eq!(cache.capacity, 16);
+        assert_eq!(compact.sequence_scratch.capacity, 16);
+        assert_eq!(
+            compact.index_keys[0].length(),
+            (16 * arch.index_head_dim * 4) as u64
+        );
+        unsafe {
+            assert_eq!(*(cache.layers[0].latents.contents() as *const f32), 11.0);
+            assert_eq!(*(cache.layers[0].rope_tails.contents() as *const f32), 12.0);
+            assert_eq!(*(compact.index_keys[0].contents() as *const f32), 13.0);
+        }
     }
 
     #[test]

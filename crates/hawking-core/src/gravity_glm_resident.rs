@@ -73,9 +73,201 @@ struct LayerGpuCache {
     capacity: usize,
 }
 
+const MIN_SEQUENCE_CAPACITY: usize = 4;
+
+fn checked_sequence_bytes(elements: usize, element_bytes: usize, what: &str) -> Result<usize> {
+    elements.checked_mul(element_bytes).ok_or_else(|| {
+        Error::Gravity(format!(
+            "{what}: sequence buffer size overflow ({elements} elements x {element_bytes} bytes)"
+        ))
+    })
+}
+
+fn grown_sequence_capacity(current: usize, need: usize) -> Result<usize> {
+    if need <= current {
+        return Ok(current);
+    }
+    need.checked_next_power_of_two()
+        .map(|cap| cap.max(8))
+        .ok_or_else(|| {
+            Error::Gravity(format!(
+                "resident sequence capacity overflow: current={current}, need={need}"
+            ))
+        })
+}
+
+fn active_sequence_len(position: usize, capacity: usize, owner: &str) -> Result<usize> {
+    let need = position.checked_add(1).ok_or_else(|| {
+        Error::Gravity(format!(
+            "{owner}: position {position} cannot be represented as a sequence length"
+        ))
+    })?;
+    if need > capacity {
+        return Err(Error::Gravity(format!(
+            "{owner}: position {position} needs {need} elements, capacity is {capacity}"
+        )));
+    }
+    Ok(need)
+}
+
+/// Host workspaces whose lengths track the resident sequence capacity.
+///
+/// Keeping these vectors at their reserved length means index scoring,
+/// stable top-k selection, and sparse-attention masking do not allocate
+/// sequence-sized temporaries after [`ResidentSession::reserve`] succeeds.
+#[derive(Debug)]
+struct HostSequenceScratch {
+    index_scores: Vec<f32>,
+    selection_indices: Vec<usize>,
+    attention_allowed: Vec<u8>,
+    attention_scores: Vec<f32>,
+}
+
+impl HostSequenceScratch {
+    fn new(capacity: usize) -> Self {
+        Self {
+            index_scores: vec![0.0; capacity],
+            selection_indices: vec![0; capacity],
+            attention_allowed: vec![0; capacity],
+            attention_scores: vec![f32::NEG_INFINITY; capacity],
+        }
+    }
+
+    fn grow_preserving(&mut self, capacity: usize) {
+        if capacity <= self.index_scores.len() {
+            return;
+        }
+        self.index_scores.resize(capacity, 0.0);
+        self.selection_indices.resize(capacity, 0);
+        self.attention_allowed.resize(capacity, 0);
+        self.attention_scores.resize(capacity, f32::NEG_INFINITY);
+    }
+}
+
+/// Sequence-sized DSA/index-selection scratch owned by one resident session.
+///
+/// `ActPool` is model-global and fixed-size, so sequence-dependent buffers do
+/// not belong there. This workspace grows in lockstep with the session's KV
+/// caches and is then reused serially by every layer.
+struct SequenceScratch {
+    index_scores_device: Buffer,
+    host: HostSequenceScratch,
+    capacity: usize,
+    device_score_len: usize,
+}
+
+impl SequenceScratch {
+    fn new(ctx: &MetalContext, initial_cap: usize) -> Result<Self> {
+        let capacity = initial_cap.max(MIN_SEQUENCE_CAPACITY);
+        let bytes = checked_sequence_bytes(
+            capacity,
+            std::mem::size_of::<f32>(),
+            "resident index scores",
+        )?;
+        Ok(Self {
+            index_scores_device: ctx.new_buffer_checked(bytes)?,
+            host: HostSequenceScratch::new(capacity),
+            capacity,
+            device_score_len: 0,
+        })
+    }
+
+    fn reserve(&mut self, ctx: &MetalContext, need: usize) -> Result<()> {
+        let capacity = grown_sequence_capacity(self.capacity, need)?;
+        if capacity == self.capacity {
+            return Ok(());
+        }
+
+        let bytes = checked_sequence_bytes(
+            capacity,
+            std::mem::size_of::<f32>(),
+            "resident index scores",
+        )?;
+        let next = ctx.new_buffer_checked(bytes)?;
+        if self.device_score_len > 0 {
+            let copy_bytes = checked_sequence_bytes(
+                self.device_score_len,
+                std::mem::size_of::<f32>(),
+                "resident index score copy",
+            )?;
+            unsafe {
+                std::ptr::copy_nonoverlapping(
+                    self.index_scores_device.contents() as *const u8,
+                    next.contents() as *mut u8,
+                    copy_bytes,
+                );
+            }
+        }
+        self.host.grow_preserving(capacity);
+        self.index_scores_device = next;
+        self.capacity = capacity;
+        Ok(())
+    }
+
+    fn active_len(&self, position: usize) -> Result<usize> {
+        active_sequence_len(position, self.capacity, "resident sequence scratch")
+    }
+
+    fn store_index_scores(&mut self, len: usize) -> Result<()> {
+        if len > self.capacity || len > self.host.index_scores.len() {
+            return Err(Error::Gravity(format!(
+                "resident index score write needs {len} elements, capacity is {}",
+                self.capacity
+            )));
+        }
+        let bytes = checked_sequence_bytes(
+            len,
+            std::mem::size_of::<f32>(),
+            "resident index score write",
+        )?;
+        if bytes as u64 > self.index_scores_device.length() {
+            return Err(Error::Gravity(format!(
+                "resident index score write needs {bytes} bytes, device buffer has {}",
+                self.index_scores_device.length()
+            )));
+        }
+        write_f32(&self.index_scores_device, &self.host.index_scores[..len]);
+        self.device_score_len = len;
+        Ok(())
+    }
+}
+
+/// Reuses the session's O(sequence-length) index workspace for [`topk_desc`].
+///
+/// The index tie-break makes the comparator a total order even though the
+/// backing sort is unstable, preserving the reference's ascending-index
+/// result for equal finite scores without allocating a stable-sort merge
+/// buffer. The returned O(k) result remains owned, matching the existing
+/// resident-path interface.
+fn topk_desc_with_scratch(
+    values: &[f32],
+    k: usize,
+    selection_indices: &mut [usize],
+) -> Result<Vec<usize>> {
+    if selection_indices.len() < values.len() {
+        return Err(Error::Gravity(format!(
+            "resident top-k selection needs {} indices, scratch has {}",
+            values.len(),
+            selection_indices.len()
+        )));
+    }
+    let indices = &mut selection_indices[..values.len()];
+    for (index, slot) in indices.iter_mut().enumerate() {
+        *slot = index;
+    }
+    indices.sort_unstable_by(|&a, &b| {
+        values[b]
+            .partial_cmp(&values[a])
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then(a.cmp(&b))
+    });
+    Ok(indices[..k.min(indices.len())].to_vec())
+}
+
 /// Device-resident working set for one generation.
 pub struct ResidentSession {
     layers: Vec<LayerGpuCache>,
+    sequence_scratch: SequenceScratch,
     pub seq_len: usize,
     shared_topk: Option<Vec<usize>>,
     waits: Cell<u64>,
@@ -83,7 +275,7 @@ pub struct ResidentSession {
 
 impl ResidentSession {
     pub fn new(ctx: &MetalContext, arch: &GlmArch, initial_cap: usize) -> Result<Self> {
-        let cap = initial_cap.max(4);
+        let cap = initial_cap.max(MIN_SEQUENCE_CAPACITY);
         let qk = arch.qk_dim();
         let mut layers = Vec::with_capacity(arch.n_layers);
         for _ in 0..arch.n_layers {
@@ -96,6 +288,7 @@ impl ResidentSession {
         }
         Ok(Self {
             layers,
+            sequence_scratch: SequenceScratch::new(ctx, cap)?,
             seq_len: 0,
             shared_topk: None,
             waits: Cell::new(0),
@@ -113,11 +306,12 @@ impl ResidentSession {
     }
 
     fn reserve(&mut self, ctx: &MetalContext, arch: &GlmArch, need: usize) -> Result<()> {
+        self.sequence_scratch.reserve(ctx, need)?;
         let cur = self.layers.first().map(|l| l.capacity).unwrap_or(0);
         if need <= cur {
             return Ok(());
         }
-        let cap = need.next_power_of_two().max(8);
+        let cap = grown_sequence_capacity(cur, need)?;
         let qk = arch.qk_dim();
         for layer in 0..arch.n_layers {
             let old = &self.layers[layer];
@@ -174,7 +368,6 @@ pub struct ActPool {
     idx_q: Buffer,
     idx_k_raw: Buffer,
     idx_head_w: Buffer,
-    idx_scores: Buffer,
     router_logits: Buffer,
     router_scores: Buffer,
     router_corrected: Buffer,
@@ -210,7 +403,6 @@ impl ActPool {
         let h = arch.hidden;
         let qk = arch.qk_dim();
         let gate_cap = (h * 32).max(4096);
-        let max_keys = 8192;
         Ok(Self {
             x: ctx.new_buffer_checked(h * 4)?,
             h: ctx.new_buffer_checked(h * 4)?,
@@ -227,7 +419,6 @@ impl ActPool {
             idx_q: ctx.new_buffer_checked(arch.index_n_heads * arch.index_head_dim * 4)?,
             idx_k_raw: ctx.new_buffer_checked(arch.index_head_dim * 4)?,
             idx_head_w: ctx.new_buffer_checked(arch.index_n_heads * 4)?,
-            idx_scores: ctx.new_buffer_checked(max_keys * 4)?,
             router_logits: ctx.new_buffer_checked(arch.n_routed_experts * 4)?,
             router_scores: ctx.new_buffer_checked(arch.n_routed_experts * 4)?,
             router_corrected: ctx.new_buffer_checked(arch.n_routed_experts * 4)?,
@@ -397,9 +588,15 @@ pub fn forward_resident(
     let ctx = &weights.ctx;
     let a = arch;
     let qk = a.qk_dim();
+    let required_sequence = start_pos.checked_add(tokens.len()).ok_or_else(|| {
+        Error::Gravity(format!(
+            "forward_resident: sequence length overflow ({start_pos} + {})",
+            tokens.len()
+        ))
+    })?;
     {
         let _kv = cost_ledger::Scope::new(Bucket::KvUpdate);
-        session.reserve(ctx, arch, start_pos + tokens.len())?;
+        session.reserve(ctx, arch, required_sequence)?;
     }
     let waits_before = session.waits.get();
     let mut logits = Vec::new();
@@ -562,12 +759,15 @@ pub fn forward_resident(
 
                 let topk = match a.indexer_types[layer].as_str() {
                     "full" => {
+                        let cache = &session.layers[layer];
+                        let scratch = &mut session.sequence_scratch;
                         let t = indexer_topk(
                             weights,
                             arch,
                             &attn_p,
                             pool,
-                            &session.layers[layer],
+                            cache,
+                            scratch,
                             pos,
                             &cos,
                             &sin,
@@ -592,7 +792,9 @@ pub fn forward_resident(
                 };
 
                 // Sparse attend over device-resident KV (same math as forward_impl).
-                let context = sparse_attend(a, pool, &session.layers[layer], pos, &topk, qk)?;
+                let cache = &session.layers[layer];
+                let scratch = &mut session.sequence_scratch;
+                let context = sparse_attend(a, pool, cache, scratch, pos, &topk, qk)?;
                 write_f32(&pool.context, &context);
 
                 matvec_into(
@@ -883,7 +1085,7 @@ pub fn forward_resident(
         }
     }
 
-    session.seq_len = start_pos + tokens.len();
+    session.seq_len = required_sequence;
     let waits = session.waits.get().saturating_sub(waits_before);
     Ok((logits, trace, waits))
 }
@@ -959,11 +1161,18 @@ fn sparse_attend(
     a: &GlmArch,
     pool: &ActPool,
     cache: &LayerGpuCache,
+    scratch: &mut SequenceScratch,
     pos: usize,
     topk: &[usize],
     qk: usize,
 ) -> Result<Vec<f32>> {
-    let n_keys = pos + 1;
+    let n_keys = active_sequence_len(pos, cache.capacity, "resident attention cache")?;
+    let scratch_len = scratch.active_len(pos)?;
+    if scratch_len != n_keys {
+        return Err(Error::Gravity(format!(
+            "resident sparse attention capacity mismatch: cache={n_keys}, scratch={scratch_len}"
+        )));
+    }
     let keys = unsafe {
         std::slice::from_raw_parts(cache.keys.contents() as *const f32, n_keys * a.n_heads * qk)
     };
@@ -974,13 +1183,19 @@ fn sparse_attend(
         )
     };
     let queries = read_f32(&pool.queries, a.n_heads * qk);
-    let mut allow = vec![false; n_keys];
+    let HostSequenceScratch {
+        attention_allowed,
+        attention_scores,
+        ..
+    } = &mut scratch.host;
+    let allow = &mut attention_allowed[..n_keys];
+    allow.fill(0);
     for &t in topk {
         if t <= pos && t < n_keys {
-            allow[t] = true;
+            allow[t] = 1;
         }
     }
-    let selected = allow.iter().filter(|&&v| v).count() as u64;
+    let selected = allow.iter().filter(|&&v| v != 0).count() as u64;
     let heads = a.n_heads as u64;
     let per_selected_fp = (2 * qk + 4 + 2 * a.v_head_dim) as u64;
     crate::cost_ledger::record_source_modelled_operations(
@@ -994,15 +1209,14 @@ fn sparse_attend(
     );
     let scale = (qk as f32).powf(-0.5);
     let mut context = vec![0f32; a.n_heads * a.v_head_dim];
-    let mut scores = vec![f32::NEG_INFINITY; n_keys];
-    crate::cost_ledger::record_allocation(
-        ((context.len() + scores.len()) * 4 + allow.len()) as u64,
-    );
+    let scores = &mut attention_scores[..n_keys];
+    scores.fill(f32::NEG_INFINITY);
+    crate::cost_ledger::record_allocation((context.len() * 4) as u64);
     for head in 0..a.n_heads {
         let qh = &queries[head * qk..(head + 1) * qk];
         let mut best = f32::NEG_INFINITY;
         for t in 0..n_keys {
-            if !allow[t] {
+            if allow[t] == 0 {
                 scores[t] = f32::NEG_INFINITY;
                 continue;
             }
@@ -1046,6 +1260,7 @@ fn indexer_topk<'a>(
     attn_p: &str,
     pool: &ActPool,
     cache: &LayerGpuCache,
+    scratch: &mut SequenceScratch,
     pos: usize,
     cos: &[f32],
     sin: &[f32],
@@ -1124,12 +1339,17 @@ fn indexer_topk<'a>(
         *w *= head_scale;
     }
 
-    let n_keys = pos + 1;
+    let n_keys = active_sequence_len(pos, cache.capacity, "resident index-key cache")?;
+    let scratch_len = scratch.active_len(pos)?;
+    if scratch_len != n_keys {
+        return Err(Error::Gravity(format!(
+            "resident indexer capacity mismatch: cache={n_keys}, scratch={scratch_len}"
+        )));
+    }
     let dim_scale = (idim as f32).powf(-0.5);
     let index_keys = unsafe {
         std::slice::from_raw_parts(cache.index_keys.contents() as *const f32, n_keys * idim)
     };
-    let mut index_scores = vec![0f32; n_keys];
     crate::cost_ledger::record_source_modelled_operations(
         (n_keys as u64)
             .saturating_mul(ih as u64)
@@ -1139,24 +1359,37 @@ fn indexer_topk<'a>(
         0,
         0,
     );
-    crate::cost_ledger::record_allocation((index_scores.len() * 4) as u64);
-    for (t, score) in index_scores.iter_mut().enumerate() {
-        let key = &index_keys[t * idim..(t + 1) * idim];
-        let mut acc = 0f32;
-        for h in 0..ih {
-            let qh = &q_full[h * idim..(h + 1) * idim];
-            let dot: f32 = qh.iter().zip(key).map(|(x, y)| x * y).sum();
-            acc += head_weights[h] * (dot * dim_scale).max(0.0);
+    let topk = {
+        let HostSequenceScratch {
+            index_scores,
+            selection_indices,
+            ..
+        } = &mut scratch.host;
+        let index_scores = &mut index_scores[..n_keys];
+        index_scores.fill(0.0);
+        for (t, score) in index_scores.iter_mut().enumerate() {
+            let key = &index_keys[t * idim..(t + 1) * idim];
+            let mut acc = 0f32;
+            for h in 0..ih {
+                let qh = &q_full[h * idim..(h + 1) * idim];
+                let dot: f32 = qh.iter().zip(key).map(|(x, y)| x * y).sum();
+                acc += head_weights[h] * (dot * dim_scale).max(0.0);
+            }
+            *score = acc;
         }
-        *score = acc;
-    }
-    for (t, score) in index_scores.iter_mut().enumerate() {
-        if t > pos {
-            *score = f32::NEG_INFINITY;
+        for (t, score) in index_scores.iter_mut().enumerate() {
+            if t > pos {
+                *score = f32::NEG_INFINITY;
+            }
         }
-    }
-    write_f32(&pool.idx_scores, &index_scores);
-    Ok(topk_desc(&index_scores, a.index_topk.min(n_keys)))
+        topk_desc_with_scratch(
+            index_scores,
+            a.index_topk.min(n_keys),
+            &mut selection_indices[..n_keys],
+        )?
+    };
+    scratch.store_index_scores(n_keys)?;
+    Ok(topk)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -1610,5 +1843,273 @@ impl ResidentRuntime {
             session: Mutex::new(ResidentSession::new(ctx, arch, 64)?),
             pool: ActPool::new(ctx, arch)?,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn tiny_arch() -> GlmArch {
+        GlmArch {
+            n_layers: 1,
+            hidden: 4,
+            n_heads: 1,
+            q_lora_rank: 2,
+            kv_lora_rank: 2,
+            qk_nope_head_dim: 1,
+            qk_rope_head_dim: 1,
+            v_head_dim: 1,
+            index_n_heads: 1,
+            index_head_dim: 1,
+            index_topk: 2,
+            n_routed_experts: 2,
+            n_group: 1,
+            topk_group: 1,
+            num_experts_per_tok: 1,
+            norm_topk_prob: true,
+            routed_scaling_factor: 1.0,
+            vocab_size: 8,
+            rms_norm_eps: 1e-6,
+            rope_theta: 10_000.0,
+            indexer_types: vec!["full".into()],
+            mlp_layer_types: vec!["dense".into()],
+        }
+    }
+
+    #[test]
+    fn sequence_scratch_covers_8k_boundary_and_32k_last_position() {
+        let cases = [
+            (8191usize, 8192usize),
+            (8192usize, 16384usize),
+            (32767usize, 32768usize),
+        ];
+        let mut host = HostSequenceScratch::new(64);
+        let mut capacity = 64usize;
+
+        for (position, expected_capacity) in cases {
+            let need = position.checked_add(1).expect("fixture length");
+            capacity = grown_sequence_capacity(capacity, need).expect("capacity growth");
+            assert_eq!(capacity, expected_capacity);
+            host.grow_preserving(capacity);
+
+            let active =
+                active_sequence_len(position, capacity, "test scratch").expect("position fits");
+            assert_eq!(active, need);
+            assert!(
+                checked_sequence_bytes(active, std::mem::size_of::<f32>(), "test active")
+                    .expect("active bytes")
+                    <= checked_sequence_bytes(
+                        capacity,
+                        std::mem::size_of::<f32>(),
+                        "test capacity"
+                    )
+                    .expect("capacity bytes")
+            );
+
+            // These are the exact four sequence-sized writes used by the
+            // resident indexer/selection path.
+            host.index_scores[active - 1] = position as f32;
+            host.selection_indices[active - 1] = position;
+            host.attention_allowed[active - 1] = 1;
+            host.attention_scores[active - 1] = -(position as f32);
+        }
+
+        assert!(
+            active_sequence_len(8192, 8192, "old fixed ActPool score buffer").is_err(),
+            "the former fixed buffer must be recognized as too small at position 8192"
+        );
+    }
+
+    #[test]
+    fn host_scratch_growth_preserves_state_and_adequate_reserve_is_allocation_free() {
+        let mut host = HostSequenceScratch::new(8192);
+        host.index_scores[0] = 1.25;
+        host.index_scores[8191] = -7.5;
+        host.selection_indices[8191] = 4096;
+        host.attention_allowed[8191] = 1;
+        host.attention_scores[8191] = 3.75;
+
+        host.grow_preserving(16384);
+        assert_eq!(host.index_scores[0], 1.25);
+        assert_eq!(host.index_scores[8191], -7.5);
+        assert_eq!(host.selection_indices[8191], 4096);
+        assert_eq!(host.attention_allowed[8191], 1);
+        assert_eq!(host.attention_scores[8191], 3.75);
+
+        host.index_scores[8192] = 9.5;
+        host.grow_preserving(32768);
+        assert_eq!(host.index_scores[8192], 9.5);
+
+        let pointers = (
+            host.index_scores.as_ptr(),
+            host.selection_indices.as_ptr(),
+            host.attention_allowed.as_ptr(),
+            host.attention_scores.as_ptr(),
+        );
+        let capacities = (
+            host.index_scores.capacity(),
+            host.selection_indices.capacity(),
+            host.attention_allowed.capacity(),
+            host.attention_scores.capacity(),
+        );
+        host.grow_preserving(32768);
+        assert_eq!(
+            pointers,
+            (
+                host.index_scores.as_ptr(),
+                host.selection_indices.as_ptr(),
+                host.attention_allowed.as_ptr(),
+                host.attention_scores.as_ptr(),
+            ),
+            "an adequate reserve must not replace any sequence workspace"
+        );
+        assert_eq!(
+            capacities,
+            (
+                host.index_scores.capacity(),
+                host.selection_indices.capacity(),
+                host.attention_allowed.capacity(),
+                host.attention_scores.capacity(),
+            ),
+            "an adequate reserve must not allocate more host capacity"
+        );
+    }
+
+    #[test]
+    fn reused_sequence_topk_matches_numeric_parity_oracle() {
+        let mut values = vec![f32::NEG_INFINITY; 32768];
+        values[0] = 2.0;
+        values[8191] = 8.0;
+        values[8192] = 8.0;
+        values[16384] = -1.0;
+        values[32767] = 7.0;
+        let expected = topk_desc(&values, 4);
+        let mut selection = vec![usize::MAX; values.len()];
+        let pointer = selection.as_ptr();
+        let capacity = selection.capacity();
+
+        let actual = topk_desc_with_scratch(&values, 4, &mut selection).expect("scratch selection");
+        assert_eq!(actual, expected);
+        assert_eq!(actual[..2], [8191, 8192], "lower index wins a score tie");
+
+        let again =
+            topk_desc_with_scratch(&values, 4, &mut selection).expect("scratch selection reuse");
+        assert_eq!(again, expected);
+        assert_eq!(selection.as_ptr(), pointer);
+        assert_eq!(selection.capacity(), capacity);
+    }
+
+    #[test]
+    fn device_index_score_growth_copies_prior_state() {
+        let Ok(ctx) = MetalContext::new() else {
+            return;
+        };
+        let mut scratch = SequenceScratch::new(&ctx, 8192).expect("initial scratch");
+        scratch.host.index_scores[0] = 0.25;
+        scratch.host.index_scores[8191] = -3.5;
+        scratch
+            .store_index_scores(8192)
+            .expect("store initial score state");
+
+        scratch.reserve(&ctx, 8193).expect("grow past 8K");
+        assert_eq!(scratch.capacity, 16384);
+        assert_eq!(scratch.device_score_len, 8192);
+        let copied = read_f32(&scratch.index_scores_device, 8192);
+        assert_eq!(copied[0], 0.25);
+        assert_eq!(copied[8191], -3.5);
+
+        let device_contents = scratch.index_scores_device.contents();
+        scratch
+            .reserve(&ctx, 16384)
+            .expect("adequate reserve is a no-op");
+        assert_eq!(scratch.index_scores_device.contents(), device_contents);
+    }
+
+    #[test]
+    fn resident_growth_preserves_kv_index_keys_and_scores_through_32k_reserve() {
+        let Ok(ctx) = MetalContext::new() else {
+            return;
+        };
+        let arch = tiny_arch();
+        let qk = arch.qk_dim();
+        let mut session = ResidentSession::new(&ctx, &arch, 8192).expect("initial session");
+
+        {
+            let cache = &session.layers[0];
+            unsafe {
+                *(cache.keys.contents() as *mut f32) = 1.0;
+                *(cache.keys.contents() as *mut f32).add(8191 * qk + (qk - 1)) = 2.0;
+                *(cache.values.contents() as *mut f32).add(8191) = 3.0;
+                *(cache.index_keys.contents() as *mut f32).add(8191) = 4.0;
+            }
+        }
+        session.sequence_scratch.host.index_scores[0] = 5.0;
+        session.sequence_scratch.host.index_scores[8191] = 6.0;
+        session
+            .sequence_scratch
+            .store_index_scores(8192)
+            .expect("store 8K scores");
+        session.seq_len = 8192;
+
+        session
+            .reserve(&ctx, &arch, 8193)
+            .expect("grow beyond the old 8K limit");
+        assert_eq!(session.layers[0].capacity, 16384);
+        assert_eq!(session.sequence_scratch.capacity, 16384);
+        {
+            let cache = &session.layers[0];
+            unsafe {
+                assert_eq!(*(cache.keys.contents() as *const f32), 1.0);
+                assert_eq!(
+                    *(cache.keys.contents() as *const f32).add(8191 * qk + (qk - 1)),
+                    2.0
+                );
+                assert_eq!(*(cache.values.contents() as *const f32).add(8191), 3.0);
+                assert_eq!(*(cache.index_keys.contents() as *const f32).add(8191), 4.0);
+            }
+        }
+        let scores = read_f32(&session.sequence_scratch.index_scores_device, 8192);
+        assert_eq!(scores[0], 5.0);
+        assert_eq!(scores[8191], 6.0);
+
+        {
+            let cache = &session.layers[0];
+            unsafe {
+                *(cache.keys.contents() as *mut f32).add(8192 * qk) = 7.0;
+                *(cache.values.contents() as *mut f32).add(8192) = 8.0;
+                *(cache.index_keys.contents() as *mut f32).add(8192) = 9.0;
+            }
+        }
+        session.sequence_scratch.host.index_scores[8192] = 10.0;
+        session
+            .sequence_scratch
+            .store_index_scores(8193)
+            .expect("store post-8K score");
+        session.seq_len = 8193;
+
+        session
+            .reserve(&ctx, &arch, 32768)
+            .expect("reserve through position 32767");
+        assert_eq!(session.layers[0].capacity, 32768);
+        assert_eq!(session.sequence_scratch.capacity, 32768);
+        {
+            let cache = &session.layers[0];
+            unsafe {
+                assert_eq!(*(cache.keys.contents() as *const f32), 1.0);
+                assert_eq!(
+                    *(cache.keys.contents() as *const f32).add(8191 * qk + (qk - 1)),
+                    2.0
+                );
+                assert_eq!(*(cache.index_keys.contents() as *const f32).add(8191), 4.0);
+                assert_eq!(*(cache.keys.contents() as *const f32).add(8192 * qk), 7.0);
+                assert_eq!(*(cache.values.contents() as *const f32).add(8192), 8.0);
+                assert_eq!(*(cache.index_keys.contents() as *const f32).add(8192), 9.0);
+            }
+        }
+        let scores = read_f32(&session.sequence_scratch.index_scores_device, 8193);
+        assert_eq!(scores[0], 5.0);
+        assert_eq!(scores[8191], 6.0);
+        assert_eq!(scores[8192], 10.0);
     }
 }

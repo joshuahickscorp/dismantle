@@ -237,6 +237,40 @@ def pack_a5(w: np.ndarray, importance: np.ndarray, protect_frac: float = 0.05) -
                    "codebooks": len(bb), "codes": len(cb)})
 
 
+def unpack_a5(p: Packed, nsub: int = 8, ncent: int = 16) -> np.ndarray:
+    """Decode A5.
+
+    Without this the arm could be priced but not judged, and pricing without judging is
+    exactly the trap: Math-Preserve spends 67,526,197,248 bytes on protected islands and
+    still cannot complete '2 + 2 ='. Whether islands help depends entirely on whether they
+    are in the right PLACES, and that is a functional question no byte count answers.
+    """
+    m, n, k = struct.unpack("<HHH", p.payload[4:10])
+    o = 10
+    keep = np.frombuffer(p.payload[o : o + k * 2], dtype=np.uint16).astype(np.int64)
+    o += k * 2
+    prot = np.frombuffer(p.payload[o : o + k * n * 2], dtype=np.float16).astype(np.float32)
+    prot = prot.reshape(k, n)
+    o += k * n * 2
+
+    rest_rows = m - k
+    sub = n // nsub
+    nb = nsub * ncent * sub
+    books = np.frombuffer(p.payload[o : o + nb * 2], dtype=np.float16).astype(np.float32)
+    books = books.reshape(nsub, ncent, sub)
+    o += nb * 2
+    codes = np.frombuffer(p.payload[o : o + rest_rows * nsub], dtype=np.uint8)
+    codes = codes.reshape(rest_rows, nsub)
+
+    out = np.zeros((m, n), np.float32)
+    mask = np.zeros(m, bool)
+    mask[keep] = True
+    out[mask] = prot
+    if rest_rows:
+        out[~mask] = np.concatenate([books[j][codes[:, j]] for j in range(nsub)], 1)
+    return out
+
+
 # --------------------------------------------------------------------------
 # A6 trajectory-stabilized hybrid
 # --------------------------------------------------------------------------

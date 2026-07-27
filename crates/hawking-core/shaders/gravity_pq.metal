@@ -1252,7 +1252,8 @@ kernel void gravity_glm_router_select_noaux_f32(
     device       float *corrected [[buffer(3)]],
     device        uint *expert_indices [[buffer(4)]],
     device       float *expert_weights [[buffer(5)]],
-    constant GravityRouterSelectParams &p [[buffer(6)]],
+    device        uint *expert_exec_slots [[buffer(6)]],
+    constant GravityRouterSelectParams &p [[buffer(7)]],
     uint id [[thread_position_in_grid]])
 {
     if (id != 0u) { return; }
@@ -1328,6 +1329,23 @@ kernel void gravity_glm_router_select_noaux_f32(
     for (uint slot = 0u; slot < p.experts_per_token; ++slot) {
         expert_weights[slot] =
             (expert_weights[slot] / total) * p.routed_scaling_factor;
+        expert_exec_slots[slot] = slot;
+    }
+
+    // A second device-owned view gives execution order without disturbing
+    // the score-ranked diagnostic IDs or their aligned weights. Insertion
+    // sort is exact and bounded (flagship k=8); lower expert ID wins.
+    for (uint slot = 1u; slot < p.experts_per_token; ++slot) {
+        uint selected_slot = expert_exec_slots[slot];
+        uint selected_expert = expert_indices[selected_slot];
+        uint pos = slot;
+        while (pos > 0u) {
+            uint prior_slot = expert_exec_slots[pos - 1u];
+            if (expert_indices[prior_slot] <= selected_expert) { break; }
+            expert_exec_slots[pos] = prior_slot;
+            --pos;
+        }
+        expert_exec_slots[pos] = selected_slot;
     }
 }
 

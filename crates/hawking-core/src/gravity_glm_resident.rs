@@ -907,6 +907,8 @@ pub struct ActPool {
     router_corrected: Buffer,
     expert_idx: Buffer,
     expert_w: Buffer,
+    /// Permutation of score-ranked expert slots in ascending expert-ID order.
+    expert_exec_slots: Buffer,
     // Expert scratch (sized for future device-side expert chaining; the
     // batched path currently uses matvec_batch into host Vecs for the three
     // co-issued waits that match the host oracle).
@@ -1159,6 +1161,7 @@ impl ActPool {
             router_corrected: ctx.new_buffer_checked(arch.n_routed_experts * 4)?,
             expert_idx: ctx.new_buffer_checked(arch.num_experts_per_tok.max(1) * 4)?,
             expert_w: ctx.new_buffer_checked(arch.num_experts_per_tok.max(1) * 4)?,
+            expert_exec_slots: ctx.new_buffer_checked(arch.num_experts_per_tok.max(1) * 4)?,
             gate: ctx.new_buffer_checked(gate_cap * 4)?,
             up: ctx.new_buffer_checked(gate_cap * 4)?,
             act: ctx.new_buffer_checked(gate_cap * 4)?,
@@ -1969,6 +1972,7 @@ pub fn forward_resident(
                                 &pool.router_corrected,
                                 &pool.expert_idx,
                                 &pool.expert_w,
+                                &pool.expert_exec_slots,
                                 a.n_routed_experts,
                                 a.n_group,
                                 a.topk_group,
@@ -4679,6 +4683,7 @@ mod route_segment_primitives {
         corrected: &Buffer,
         expert_indices: &Buffer,
         expert_weights: &Buffer,
+        expert_exec_slots: &Buffer,
         n_experts: usize,
         n_group: usize,
         topk_group: usize,
@@ -4748,6 +4753,13 @@ mod route_segment_primitives {
             experts_per_token,
             "gravity_glm_router_select_noaux_f32 expert weights",
         )?;
+        require_range(
+            expert_exec_slots,
+            0,
+            experts_per_token,
+            std::mem::size_of::<u32>(),
+            "gravity_glm_router_select_noaux_f32 expert execution slots",
+        )?;
         let params = GlmRouterSelectParams {
             n_experts: u32_arg(n_experts, "gravity_glm_router_select_noaux_f32 n_experts")?,
             n_group: u32_arg(n_group, "gravity_glm_router_select_noaux_f32 n_group")?,
@@ -4765,6 +4777,7 @@ mod route_segment_primitives {
         let cb = corrected.clone();
         let ib = expert_indices.clone();
         let wb = expert_weights.clone();
+        let eb = expert_exec_slots.clone();
         tcb.dispatch_threads(
             "gravity_glm_router_select_noaux_f32",
             (1, 1, 1),
@@ -4776,8 +4789,9 @@ mod route_segment_primitives {
                 enc.set_buffer(3, Some(&cb), 0);
                 enc.set_buffer(4, Some(&ib), 0);
                 enc.set_buffer(5, Some(&wb), 0);
+                enc.set_buffer(6, Some(&eb), 0);
                 enc.set_bytes(
-                    6,
+                    7,
                     std::mem::size_of_val(&params) as u64,
                     &params as *const _ as *const _,
                 );
@@ -7204,6 +7218,7 @@ mod tests {
         let corrected = filled_f32_buffer(&ctx, logits.len(), f32::NAN);
         let router_indices = u32_buffer(&ctx, &[u32::MAX; 3]);
         let router_weights = filled_f32_buffer(&ctx, 3, f32::NAN);
+        let router_exec_slots = u32_buffer(&ctx, &[u32::MAX; 3]);
 
         let mut tcb = TokenCommandBuffer::new(&ctx);
         encode_dsa_scores(
@@ -7254,6 +7269,7 @@ mod tests {
             &corrected,
             &router_indices,
             &router_weights,
+            &router_exec_slots,
             logits.len(),
             3,
             2,
@@ -7422,6 +7438,13 @@ mod tests {
             expected_indices,
             "device noaux selection must preserve stable lower-index ties"
         );
+        let mut expected_exec_slots: Vec<u32> = (0..expected_indices.len() as u32).collect();
+        expected_exec_slots.sort_by_key(|&slot| expected_indices[slot as usize]);
+        assert_eq!(
+            read_u32(&router_exec_slots, 3),
+            expected_exec_slots,
+            "device execution slots must sort selected experts by ascending ID"
+        );
         let mut expected_weights: Vec<f32> = expected_indices
             .iter()
             .map(|&index| router_host[index])
@@ -7454,6 +7477,7 @@ mod tests {
             &corrected,
             &router_indices,
             &router_weights,
+            &router_exec_slots,
             logits.len(),
             4,
             2,
@@ -7471,6 +7495,7 @@ mod tests {
         let tie_corrected = filled_f32_buffer(&ctx, 4, f32::NAN);
         let tie_indices = u32_buffer(&ctx, &[u32::MAX; 2]);
         let tie_weights = filled_f32_buffer(&ctx, 2, f32::NAN);
+        let tie_exec_slots = u32_buffer(&ctx, &[u32::MAX; 2]);
         let mut tie_tcb = TokenCommandBuffer::new(&ctx);
         encode_router_select_noaux(
             &mut tie_tcb,
@@ -7480,6 +7505,7 @@ mod tests {
             &tie_corrected,
             &tie_indices,
             &tie_weights,
+            &tie_exec_slots,
             4,
             2,
             1,
@@ -7495,6 +7521,7 @@ mod tests {
             "lower group and expert indices must win exact ties"
         );
         assert_eq!(read_f32(&tie_weights, 2), vec![0.5, 0.5]);
+        assert_eq!(read_u32(&tie_exec_slots, 2), vec![0, 1]);
     }
 
     #[test]
@@ -7511,6 +7538,10 @@ mod tests {
         assert_eq!(
             pool.final_hidden.length(),
             (arch.hidden * std::mem::size_of::<f32>()) as u64
+        );
+        assert_eq!(
+            pool.expert_exec_slots.length(),
+            (arch.num_experts_per_tok.max(1) * std::mem::size_of::<u32>()) as u64
         );
         assert!(
             pool.expert_wave_scratch

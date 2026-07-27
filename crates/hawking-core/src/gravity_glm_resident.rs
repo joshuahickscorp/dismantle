@@ -57,10 +57,11 @@ use crate::gravity_glm::gpu::{
     record_routed_tensor_representation, GpuTensor, GpuWeightCache,
 };
 use crate::gravity_glm::{
-    gpu_compact_mla_enabled, gpu_device_router_enabled, gpu_expert_wave_concurrent_enabled,
-    gpu_expert_wave_enabled, gpu_lm_head_enabled, gpu_lm_head_full_logits_enabled, rope_cos_sin,
-    rope_interleaved, topk_desc, BoundedLru, GlmArch, GlmTrace, WeightAccess,
-    GPU_LM_HEAD_DIAG_TOPK, RESIDENT_RUNTIME_INITIAL_KV_CAPACITY_TOKENS,
+    gpu_compact_mla_enabled, gpu_device_router_enabled, gpu_expert_table_hit_enabled,
+    gpu_expert_wave_concurrent_enabled, gpu_expert_wave_enabled, gpu_lm_head_enabled,
+    gpu_lm_head_full_logits_enabled, rope_cos_sin, rope_interleaved, topk_desc, BoundedLru,
+    GlmArch, GlmTrace, WeightAccess, GPU_LM_HEAD_DIAG_TOPK,
+    RESIDENT_RUNTIME_INITIAL_KV_CAPACITY_TOKENS,
 };
 use crate::metal::{MetalContext, TokenCommandBuffer};
 use crate::{Error, Result};
@@ -345,9 +346,65 @@ struct DeviceExpertTableAxpyParams {
     use_router_weight: u32,
 }
 
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct DeviceExpertTraceCopyParams {
+    count: u32,
+    destination_offset: u32,
+}
+
 const _: [(); 24] = [(); std::mem::size_of::<DeviceExpertTableValidateParams>()];
 const _: [(); 28] = [(); std::mem::size_of::<DeviceExpertTableMatvecParams>()];
 const _: [(); 16] = [(); std::mem::size_of::<DeviceExpertTableAxpyParams>()];
+const _: [(); 8] = [(); std::mem::size_of::<DeviceExpertTraceCopyParams>()];
+
+fn encode_device_expert_trace_copy(
+    tcb: &mut TokenCommandBuffer<'_>,
+    expert_indices: &Buffer,
+    expert_trace: &Buffer,
+    count: usize,
+    destination_offset: usize,
+) -> Result<()> {
+    let source_bytes = count
+        .checked_mul(std::mem::size_of::<u32>())
+        .ok_or_else(|| Error::Gravity("device expert trace source byte overflow".into()))?;
+    let trace_elements = destination_offset
+        .checked_add(count)
+        .ok_or_else(|| Error::Gravity("device expert trace range overflow".into()))?;
+    let trace_bytes = trace_elements
+        .checked_mul(std::mem::size_of::<u32>())
+        .ok_or_else(|| Error::Gravity("device expert trace byte overflow".into()))?;
+    if expert_indices.length() < source_bytes as u64 || expert_trace.length() < trace_bytes as u64 {
+        return Err(Error::Gravity(format!(
+            "device expert trace buffers are undersized: source={}/{} B trace={}/{} B",
+            expert_indices.length(),
+            source_bytes,
+            expert_trace.length(),
+            trace_bytes
+        )));
+    }
+    let params = DeviceExpertTraceCopyParams {
+        count: count as u32,
+        destination_offset: destination_offset as u32,
+    };
+    let indices = expert_indices.clone();
+    let trace = expert_trace.clone();
+    const TG: u32 = 32;
+    tcb.dispatch_threads(
+        "gravity_glm_expert_trace_copy",
+        ((count as u32).div_ceil(TG) * TG, 1, 1),
+        (TG, 1, 1),
+        move |enc| {
+            enc.set_buffer(0, Some(&indices), 0);
+            enc.set_buffer(1, Some(&trace), 0);
+            enc.set_bytes(
+                2,
+                std::mem::size_of_val(&params) as u64,
+                &params as *const _ as *const _,
+            );
+        },
+    )
+}
 
 #[allow(clippy::too_many_arguments)]
 #[allow(dead_code)]
@@ -1475,6 +1532,15 @@ pub struct ActPool {
     expert_w: Buffer,
     /// Permutation of score-ranked expert slots in ascending expert-ID order.
     expert_exec_slots: Buffer,
+    /// Four-byte guarded-wave hit/miss result. Validation overwrites it before
+    /// every cache-indexed expert wave.
+    expert_miss_mask: Buffer,
+    /// Device-side diagnostic trace, indexed as layer × experts-per-token.
+    /// Cache-indexed hits never download selections on the layer critical path.
+    expert_trace: Buffer,
+    /// Host-known singleton selection used by the shared-expert table lease.
+    shared_expert_idx: Buffer,
+    shared_expert_slot: Buffer,
     // Expert scratch (sized for future device-side expert chaining; the
     // batched path currently uses matvec_batch into host Vecs for the three
     // co-issued waits that match the host oracle).
@@ -1728,6 +1794,16 @@ impl ActPool {
             expert_idx: ctx.new_buffer_checked(arch.num_experts_per_tok.max(1) * 4)?,
             expert_w: ctx.new_buffer_checked(arch.num_experts_per_tok.max(1) * 4)?,
             expert_exec_slots: ctx.new_buffer_checked(arch.num_experts_per_tok.max(1) * 4)?,
+            expert_miss_mask: ctx.new_buffer_checked(4)?,
+            expert_trace: ctx.new_buffer_checked(
+                arch.n_layers
+                    .max(1)
+                    .checked_mul(arch.num_experts_per_tok.max(1))
+                    .and_then(|elements| elements.checked_mul(4))
+                    .ok_or_else(|| Error::Gravity("expert trace byte size overflow".into()))?,
+            )?,
+            shared_expert_idx: ctx.new_buffer_with_bytes_checked(bytemuck::bytes_of(&0u32))?,
+            shared_expert_slot: ctx.new_buffer_with_bytes_checked(bytemuck::bytes_of(&0u32))?,
             gate: ctx.new_buffer_checked(gate_cap * 4)?,
             up: ctx.new_buffer_checked(gate_cap * 4)?,
             act: ctx.new_buffer_checked(gate_cap * 4)?,
@@ -2046,6 +2122,8 @@ pub fn forward_resident(
             rope_cos_sin(arch, pos)
         };
         let device_dsa = session.dsa.device_selection_enabled();
+        let device_expert_table = gpu_expert_table_hit_enabled();
+        let mut device_expert_trace_layers = 0usize;
         let mut shared_topk = session.dsa.shared_topk.clone();
         trace.expert_choices.clear();
 
@@ -2546,136 +2624,199 @@ pub fn forward_resident(
                                 a.norm_topk_prob,
                                 a.routed_scaling_factor,
                             )?;
+                            if device_expert_table {
+                                encode_device_expert_trace_copy(
+                                    wave,
+                                    &pool.expert_idx,
+                                    &pool.expert_trace,
+                                    a.num_experts_per_tok,
+                                    device_expert_trace_layers
+                                        .checked_mul(a.num_experts_per_tok)
+                                        .ok_or_else(|| {
+                                            Error::Gravity(
+                                                "device expert trace layer offset overflow".into(),
+                                            )
+                                        })?,
+                                )?;
+                                device_expert_trace_layers =
+                                    device_expert_trace_layers.saturating_add(1);
+                            }
                         }
-                        commit(tcb.take(), &session.waits)?;
+                        if !device_expert_table {
+                            commit(tcb.take(), &session.waits)?;
+                        }
                     }
 
-                    let (indices, moe_weights) = if device_router {
-                        let indices = read_u32(&pool.expert_idx, a.num_experts_per_tok)
-                            .into_iter()
-                            .map(|index| index as usize)
-                            .collect::<Vec<_>>();
-                        if let Some(index) = indices
-                            .iter()
-                            .copied()
-                            .find(|&index| index >= a.n_routed_experts)
-                        {
-                            return Err(Error::Gravity(format!(
+                    let table_wave = if device_expert_table {
+                        let generation = u32::try_from(layer.saturating_add(1)).map_err(|_| {
+                            Error::Gravity(format!(
+                                "device expert table layer generation overflow: {layer}"
+                            ))
+                        })?;
+                        let _routed = cost_ledger::Scope::new(Bucket::RoutedExperts);
+                        Some(moe_device_table_wave(
+                            weights,
+                            &prefix,
+                            a.hidden,
+                            a.num_experts_per_tok,
+                            a.n_routed_experts,
+                            generation,
+                            &pool.h,
+                            &pool.x,
+                            pool,
+                            &mut tcb,
+                            ctx,
+                            &session.waits,
+                        )?)
+                    } else {
+                        None
+                    };
+                    let table_hit = match table_wave {
+                        Some(DeviceExpertTableWaveResult::Hit) => true,
+                        Some(DeviceExpertTableWaveResult::Miss(mask)) => {
+                            debug_assert_ne!(mask, 0);
+                            false
+                        }
+                        Some(DeviceExpertTableWaveResult::Unsupported) => {
+                            // Shared layout could not use the guarded direct-u8
+                            // graph. Commit router + trace before the ordinary
+                            // host-known selection/fallback path.
+                            commit(tcb.take(), &session.waits)?;
+                            false
+                        }
+                        None => false,
+                    };
+
+                    if !table_hit {
+                        let (indices, moe_weights) = if device_router {
+                            let indices = read_u32(&pool.expert_idx, a.num_experts_per_tok)
+                                .into_iter()
+                                .map(|index| index as usize)
+                                .collect::<Vec<_>>();
+                            if let Some(index) = indices
+                                .iter()
+                                .copied()
+                                .find(|&index| index >= a.n_routed_experts)
+                            {
+                                return Err(Error::Gravity(format!(
                                 "device router returned expert {index}, but layer {layer} has {} experts",
                                 a.n_routed_experts
                             )));
-                        }
-                        let moe_weights = read_f32(&pool.expert_w, a.num_experts_per_tok);
-                        cost_ledger::record_transfer(
-                            (a.num_experts_per_tok
-                                * (std::mem::size_of::<u32>() + std::mem::size_of::<f32>()))
-                                as u64,
-                            false,
-                            "router_selection_download",
-                        );
-                        (indices, moe_weights)
-                    } else {
-                        router_select(weights, a, &prefix, pool)?
-                    };
-                    // Residency: expert selection + weights live on device.
-                    if !device_router {
-                        let _route_state = cost_ledger::Scope::new(Bucket::Routing);
-                        let idx_u: Vec<u32> = indices.iter().map(|&i| i as u32).collect();
-                        unsafe {
-                            std::ptr::copy_nonoverlapping(
-                                idx_u.as_ptr(),
-                                pool.expert_idx.contents() as *mut u32,
-                                idx_u.len(),
+                            }
+                            let moe_weights = read_f32(&pool.expert_w, a.num_experts_per_tok);
+                            cost_ledger::record_transfer(
+                                (a.num_experts_per_tok
+                                    * (std::mem::size_of::<u32>() + std::mem::size_of::<f32>()))
+                                    as u64,
+                                false,
+                                "router_selection_download",
                             );
-                        }
-                        write_f32(&pool.expert_w, &moe_weights);
-                    }
-                    trace.expert_choices.push(indices.clone());
-
-                    // Ascending expert order (float-add associativity), then
-                    // shared last — same as host `routed_moe` / `batched_mlp`.
-                    let mut order: Vec<usize> = (0..indices.len()).collect();
-                    order.sort_by_key(|&s| indices[s]);
-                    let prefixes: Vec<String> = order
-                        .iter()
-                        .map(|&slot| format!("{prefix}.experts.{}", indices[slot]))
-                        .chain(std::iter::once(format!("{prefix}.shared_experts")))
-                        .collect();
-                    // Expert-wave (flagged, default off): one CB for gate/up/SiLU/
-                    // down/weighted combine. Default three-batch path is unchanged.
-                    // RoutedExperts owns co-batch CPU glue; metal_* steals GPU waits.
-                    let routed = {
-                        let _routed = cost_ledger::Scope::new(Bucket::RoutedExperts);
-                        if gpu_expert_wave_enabled() {
-                            let scales: Vec<f32> = order
-                                .iter()
-                                .map(|&slot| moe_weights[slot])
-                                .chain(std::iter::once(1.0f32))
-                                .collect();
-                            moe_device_wave(
-                                weights,
-                                &prefixes,
-                                &scales,
-                                &pool.h,
-                                &pool.x,
-                                a.hidden,
-                                pool,
-                                &mut tcb,
-                                ctx,
-                                &session.waits,
-                            )?
+                            (indices, moe_weights)
                         } else {
-                            let mut outs = batched_mlp(
-                                weights,
-                                &prefixes,
-                                &pool.h,
-                                a.hidden,
-                                pool,
-                                &mut tcb,
-                                ctx,
-                                &session.waits,
-                            )?;
-                            let shared = outs.pop().expect("shared last");
-                            let mut routed = {
-                                let _r = cost_ledger::Scope::new(Bucket::RoutedExperts);
-                                let mut routed = vec![0f32; a.hidden];
-                                cost_ledger::record_allocation((routed.len() * 4) as u64);
-                                cost_ledger::record_source_modelled_operations(
-                                    (2usize
-                                        .saturating_mul(routed.len())
-                                        .saturating_mul(outs.len()))
-                                        as u64,
-                                    0,
-                                    0,
-                                    0,
-                                    0,
+                            router_select(weights, a, &prefix, pool)?
+                        };
+                        // Residency: expert selection + weights live on device.
+                        if !device_router {
+                            let _route_state = cost_ledger::Scope::new(Bucket::Routing);
+                            let idx_u: Vec<u32> = indices.iter().map(|&i| i as u32).collect();
+                            unsafe {
+                                std::ptr::copy_nonoverlapping(
+                                    idx_u.as_ptr(),
+                                    pool.expert_idx.contents() as *mut u32,
+                                    idx_u.len(),
                                 );
-                                for (out, &slot) in outs.iter().zip(&order) {
-                                    for (r, o) in routed.iter_mut().zip(out) {
-                                        *r += o * moe_weights[slot];
+                            }
+                            write_f32(&pool.expert_w, &moe_weights);
+                        }
+                        if !device_expert_table {
+                            trace.expert_choices.push(indices.clone());
+                        }
+
+                        // Ascending expert order (float-add associativity), then
+                        // shared last — same as host `routed_moe` / `batched_mlp`.
+                        let mut order: Vec<usize> = (0..indices.len()).collect();
+                        order.sort_by_key(|&s| indices[s]);
+                        let prefixes: Vec<String> = order
+                            .iter()
+                            .map(|&slot| format!("{prefix}.experts.{}", indices[slot]))
+                            .chain(std::iter::once(format!("{prefix}.shared_experts")))
+                            .collect();
+                        // Expert-wave (flagged, default off): one CB for gate/up/SiLU/
+                        // down/weighted combine. Default three-batch path is unchanged.
+                        // RoutedExperts owns co-batch CPU glue; metal_* steals GPU waits.
+                        let routed = {
+                            let _routed = cost_ledger::Scope::new(Bucket::RoutedExperts);
+                            if gpu_expert_wave_enabled() {
+                                let scales: Vec<f32> = order
+                                    .iter()
+                                    .map(|&slot| moe_weights[slot])
+                                    .chain(std::iter::once(1.0f32))
+                                    .collect();
+                                moe_device_wave(
+                                    weights,
+                                    &prefixes,
+                                    &scales,
+                                    &pool.h,
+                                    &pool.x,
+                                    a.hidden,
+                                    pool,
+                                    &mut tcb,
+                                    ctx,
+                                    &session.waits,
+                                )?
+                            } else {
+                                let mut outs = batched_mlp(
+                                    weights,
+                                    &prefixes,
+                                    &pool.h,
+                                    a.hidden,
+                                    pool,
+                                    &mut tcb,
+                                    ctx,
+                                    &session.waits,
+                                )?;
+                                let shared = outs.pop().expect("shared last");
+                                let mut routed = {
+                                    let _r = cost_ledger::Scope::new(Bucket::RoutedExperts);
+                                    let mut routed = vec![0f32; a.hidden];
+                                    cost_ledger::record_allocation((routed.len() * 4) as u64);
+                                    cost_ledger::record_source_modelled_operations(
+                                        (2usize
+                                            .saturating_mul(routed.len())
+                                            .saturating_mul(outs.len()))
+                                            as u64,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                    );
+                                    for (out, &slot) in outs.iter().zip(&order) {
+                                        for (r, o) in routed.iter_mut().zip(out) {
+                                            *r += o * moe_weights[slot];
+                                        }
+                                    }
+                                    routed
+                                };
+                                {
+                                    let _shared = cost_ledger::Scope::new(Bucket::SharedExperts);
+                                    cost_ledger::record_source_modelled_operations(
+                                        routed.len() as u64,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                    );
+                                    for (r, s) in routed.iter_mut().zip(&shared) {
+                                        *r += *s;
                                     }
                                 }
-                                routed
-                            };
-                            {
-                                let _shared = cost_ledger::Scope::new(Bucket::SharedExperts);
-                                cost_ledger::record_source_modelled_operations(
-                                    routed.len() as u64,
-                                    0,
-                                    0,
-                                    0,
-                                    0,
-                                );
-                                for (r, s) in routed.iter_mut().zip(&shared) {
-                                    *r += *s;
-                                }
+                                MlpWaveResult::Host(routed)
                             }
-                            MlpWaveResult::Host(routed)
+                        };
+                        if let MlpWaveResult::Host(routed) = routed {
+                            write_f32(&pool.o, &routed);
+                            residual_add(&pool.x, &pool.o, a.hidden);
                         }
-                    };
-                    if let MlpWaveResult::Host(routed) = routed {
-                        write_f32(&pool.o, &routed);
-                        residual_add(&pool.x, &pool.o, a.hidden);
                     }
                 }
                 other => {
@@ -2919,6 +3060,22 @@ pub fn forward_resident(
                     }
                 }
             }
+        }
+
+        if device_expert_table {
+            let trace_elements = device_expert_trace_layers
+                .checked_mul(a.num_experts_per_tok)
+                .ok_or_else(|| Error::Gravity("device expert trace readback overflow".into()))?;
+            let flat = read_u32(&pool.expert_trace, trace_elements);
+            trace.expert_choices = flat
+                .chunks_exact(a.num_experts_per_tok)
+                .map(|layer| layer.iter().map(|&expert| expert as usize).collect())
+                .collect();
+            crate::cost_ledger::record_transfer(
+                (trace_elements * std::mem::size_of::<u32>()) as u64,
+                false,
+                "device_expert_trace_download",
+            );
         }
     }
 
@@ -5576,6 +5733,380 @@ enum MlpWaveResult {
     DeviceResidualApplied,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum DeviceExpertTableWaveResult {
+    Hit,
+    Miss(u32),
+    Unsupported,
+}
+
+#[derive(Clone, Copy)]
+struct DirectU8TripletMetrics {
+    params: [crate::gravity_glm::gpu::PqParams; 3],
+    bytes: [u64; 3],
+}
+
+fn direct_u8_pq_metrics(tensor: &GpuTensor) -> Option<(crate::gravity_glm::gpu::PqParams, u64)> {
+    let GpuTensor::Pq {
+        codebooks,
+        codes,
+        params,
+    } = tensor
+    else {
+        return None;
+    };
+    if params.bits != 8
+        || params.subspaces != 1
+        || params.dim != 32
+        || params.sub != 32
+        || params.card != 256
+        || params.nchunk == 0
+        || params.cols != params.nchunk.saturating_mul(params.dim)
+    {
+        return None;
+    }
+    Some((*params, codebooks.length().saturating_add(codes.length())))
+}
+
+fn direct_u8_shared_intermediate(
+    gate: &GpuTensor,
+    up: &GpuTensor,
+    down: &GpuTensor,
+    hidden: usize,
+) -> Option<(usize, DirectU8TripletMetrics)> {
+    let (gate, gate_bytes) = direct_u8_pq_metrics(gate)?;
+    let (up, up_bytes) = direct_u8_pq_metrics(up)?;
+    let (down, down_bytes) = direct_u8_pq_metrics(down)?;
+    let intermediate = gate.rows as usize;
+    if intermediate == 0
+        || gate.cols as usize != hidden
+        || up.rows as usize != intermediate
+        || up.cols as usize != hidden
+        || down.rows as usize != hidden
+        || down.cols as usize != intermediate
+    {
+        return None;
+    }
+    Some((
+        intermediate,
+        DirectU8TripletMetrics {
+            params: [gate, up, down],
+            bytes: [gate_bytes, up_bytes, down_bytes],
+        },
+    ))
+}
+
+fn record_device_expert_table_hit_costs(
+    mlp_prefix: &str,
+    experts_per_token: usize,
+    hidden: usize,
+    intermediate: usize,
+    metrics: DirectU8TripletMetrics,
+) {
+    use crate::cost_ledger::{self, RoutedWeightRepresentation};
+
+    let projection_names = ["gate_proj", "up_proj", "down_proj"];
+    for execution_position in 0..experts_per_token {
+        for projection in 0..3 {
+            let name = format!(
+                "{mlp_prefix}.experts.device_slot_{execution_position}.{}.weight",
+                projection_names[projection]
+            );
+            cost_ledger::record_matvec_call();
+            cost_ledger::record_active_bytes_for(&name, metrics.bytes[projection]);
+            cost_ledger::record_routed_weight_representation(
+                &name,
+                RoutedWeightRepresentation::R4,
+                metrics.bytes[projection],
+            );
+            record_pq_matvec_ops(metrics.params[projection]);
+        }
+    }
+    for projection in 0..3 {
+        let name = format!(
+            "{mlp_prefix}.shared_experts.{}.weight",
+            projection_names[projection]
+        );
+        cost_ledger::record_matvec_call();
+        cost_ledger::record_active_bytes_for(&name, metrics.bytes[projection]);
+        record_pq_matvec_ops(metrics.params[projection]);
+    }
+
+    let expert_count = experts_per_token.saturating_add(1) as u64;
+    cost_ledger::record_source_modelled_operations(
+        expert_count
+            .saturating_mul((4usize.saturating_mul(intermediate)) as u64)
+            .saturating_add(expert_count.saturating_mul((2usize.saturating_mul(hidden)) as u64))
+            .saturating_add(hidden as u64),
+        0,
+        0,
+        expert_count.saturating_mul(intermediate as u64),
+        0,
+    );
+}
+
+/// Append the cache-indexed routed/shared expert graph after an already
+/// encoded device-router selection.
+///
+/// A hit commits router + trace + validation + all expert work + residual as
+/// one command buffer and downloads only the four-byte miss mask. A miss
+/// commits the same guarded graph, whose validation prevents every subsequent
+/// write, and lets the caller replay through the qualified host-known wave.
+/// Unsupported shared-expert layouts leave the router command buffer open for
+/// the caller's ordinary selection readback.
+#[allow(clippy::too_many_arguments)]
+fn moe_device_table_wave<'a>(
+    weights: &GpuWeightCache,
+    mlp_prefix: &str,
+    hidden: usize,
+    experts_per_token: usize,
+    n_routed_experts: usize,
+    generation: u32,
+    x: &Buffer,
+    residual: &Buffer,
+    pool: &ActPool,
+    tcb: &mut Option<TokenCommandBuffer<'a>>,
+    ctx: &'a MetalContext,
+    waits: &Cell<u64>,
+) -> Result<DeviceExpertTableWaveResult> {
+    if generation == 0 {
+        return Err(Error::Gravity(
+            "device expert production table requires a nonzero generation".into(),
+        ));
+    }
+    if experts_per_token == 0 || experts_per_token > 32 {
+        return Ok(DeviceExpertTableWaveResult::Unsupported);
+    }
+    if tcb.is_none() {
+        return Err(Error::Gravity(
+            "device expert table wave requires an open router command buffer".into(),
+        ));
+    }
+
+    let shared_prefix = format!("{mlp_prefix}.shared_experts");
+    let shared_gate_name = format!("{shared_prefix}.gate_proj.weight");
+    let shared_up_name = format!("{shared_prefix}.up_proj.weight");
+    let shared_down_name = format!("{shared_prefix}.down_proj.weight");
+    let shared_names = [
+        shared_gate_name.as_str(),
+        shared_up_name.as_str(),
+        shared_down_name.as_str(),
+    ];
+
+    let (routed_lease, shared_lease, intermediate, metrics) = {
+        let mut cache = weights.cache.lock().expect("gpu weight cache");
+        weights.ensure_many_locked(&mut cache, &shared_names)?;
+        let shared_gate = cache.get(&shared_gate_name).expect("ensured shared gate");
+        let shared_up = cache.get(&shared_up_name).expect("ensured shared up");
+        let shared_down = cache.get(&shared_down_name).expect("ensured shared down");
+        let Some((intermediate, metrics)) =
+            direct_u8_shared_intermediate(shared_gate, shared_up, shared_down, hidden)
+        else {
+            return Ok(DeviceExpertTableWaveResult::Unsupported);
+        };
+        let shared_lease = build_single_device_expert_snapshot(
+            ctx,
+            shared_gate,
+            shared_up,
+            shared_down,
+            generation,
+        )?;
+        let routed_lease = build_device_expert_table_snapshot(
+            ctx,
+            &cache,
+            mlp_prefix,
+            n_routed_experts,
+            generation,
+        )?;
+        (routed_lease, shared_lease, intermediate, metrics)
+    };
+
+    let snapshot_bytes = routed_lease
+        .table
+        .length()
+        .saturating_add(shared_lease.table.length());
+    crate::cost_ledger::record_transfer(
+        snapshot_bytes,
+        true,
+        "device_expert_table_snapshot_upload",
+    );
+    crate::cost_ledger::record_allocation(snapshot_bytes);
+
+    let scratch_guard =
+        pool.ensure_expert_wave_scratch(ctx, experts_per_token + 1, intermediate, hidden)?;
+    let scratch = scratch_guard
+        .as_ref()
+        .expect("device expert table scratch ensured");
+    let wave = tcb
+        .as_mut()
+        .expect("device expert table router command buffer");
+
+    encode_device_expert_table_validate(
+        wave,
+        &routed_lease,
+        &pool.expert_idx,
+        &pool.expert_exec_slots,
+        &pool.expert_miss_mask,
+        experts_per_token,
+        hidden,
+        intermediate,
+        DEVICE_EXPERT_TENSOR_KIND_PQ,
+    )?;
+    encode_device_expert_table_zero(wave, &scratch.combined, &pool.expert_miss_mask, hidden)?;
+
+    for execution_position in 0..experts_per_token {
+        encode_device_expert_table_pq_matvec(
+            wave,
+            &routed_lease,
+            &pool.expert_idx,
+            &pool.expert_exec_slots,
+            &pool.expert_miss_mask,
+            experts_per_token,
+            execution_position,
+            0,
+            x,
+            intermediate,
+            hidden,
+            &scratch.gate[execution_position],
+        )?;
+        encode_device_expert_table_pq_matvec(
+            wave,
+            &routed_lease,
+            &pool.expert_idx,
+            &pool.expert_exec_slots,
+            &pool.expert_miss_mask,
+            experts_per_token,
+            execution_position,
+            1,
+            x,
+            intermediate,
+            hidden,
+            &scratch.up[execution_position],
+        )?;
+        encode_device_expert_table_silu_mul(
+            wave,
+            &scratch.gate[execution_position],
+            &scratch.up[execution_position],
+            &scratch.act[execution_position],
+            &pool.expert_miss_mask,
+            intermediate,
+        )?;
+        encode_device_expert_table_pq_matvec(
+            wave,
+            &routed_lease,
+            &pool.expert_idx,
+            &pool.expert_exec_slots,
+            &pool.expert_miss_mask,
+            experts_per_token,
+            execution_position,
+            2,
+            &scratch.act[execution_position],
+            hidden,
+            intermediate,
+            &scratch.down[execution_position],
+        )?;
+        encode_device_expert_table_axpy(
+            wave,
+            &scratch.combined,
+            &scratch.down[execution_position],
+            &pool.expert_w,
+            &pool.expert_exec_slots,
+            &pool.expert_miss_mask,
+            hidden,
+            experts_per_token,
+            execution_position,
+            true,
+        )?;
+    }
+
+    let shared_position = experts_per_token;
+    encode_device_expert_table_pq_matvec(
+        wave,
+        &shared_lease,
+        &pool.shared_expert_idx,
+        &pool.shared_expert_slot,
+        &pool.expert_miss_mask,
+        1,
+        0,
+        0,
+        x,
+        intermediate,
+        hidden,
+        &scratch.gate[shared_position],
+    )?;
+    encode_device_expert_table_pq_matvec(
+        wave,
+        &shared_lease,
+        &pool.shared_expert_idx,
+        &pool.shared_expert_slot,
+        &pool.expert_miss_mask,
+        1,
+        0,
+        1,
+        x,
+        intermediate,
+        hidden,
+        &scratch.up[shared_position],
+    )?;
+    encode_device_expert_table_silu_mul(
+        wave,
+        &scratch.gate[shared_position],
+        &scratch.up[shared_position],
+        &scratch.act[shared_position],
+        &pool.expert_miss_mask,
+        intermediate,
+    )?;
+    encode_device_expert_table_pq_matvec(
+        wave,
+        &shared_lease,
+        &pool.shared_expert_idx,
+        &pool.shared_expert_slot,
+        &pool.expert_miss_mask,
+        1,
+        0,
+        2,
+        &scratch.act[shared_position],
+        hidden,
+        intermediate,
+        &scratch.down[shared_position],
+    )?;
+    encode_device_expert_table_axpy(
+        wave,
+        &scratch.combined,
+        &scratch.down[shared_position],
+        &pool.expert_w,
+        &pool.shared_expert_slot,
+        &pool.expert_miss_mask,
+        hidden,
+        1,
+        0,
+        false,
+    )?;
+    encode_device_expert_table_residual_add(
+        wave,
+        residual,
+        &scratch.combined,
+        &pool.expert_miss_mask,
+        hidden,
+    )?;
+
+    commit(tcb.take(), waits)?;
+    let miss_mask = read_u32(&pool.expert_miss_mask, 1)[0];
+    crate::cost_ledger::record_transfer(4, false, "device_expert_table_miss_mask_download");
+    if miss_mask == 0 {
+        record_device_expert_table_hit_costs(
+            mlp_prefix,
+            experts_per_token,
+            hidden,
+            intermediate,
+            metrics,
+        );
+        Ok(DeviceExpertTableWaveResult::Hit)
+    } else {
+        Ok(DeviceExpertTableWaveResult::Miss(miss_mask))
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 fn moe_device_wave<'a>(
     weights: &GpuWeightCache,
@@ -6596,6 +7127,78 @@ mod tests {
             after, before,
             "a table miss must suppress every expert scratch and residual write"
         );
+    }
+
+    #[test]
+    fn device_expert_table_hit_costs_cover_routed_shared_and_elementwise_work() {
+        use crate::gravity_glm::gpu::PqParams;
+
+        crate::cost_ledger::set_enabled(true);
+        let _ = crate::cost_ledger::end_token();
+        assert!(crate::cost_ledger::begin_token());
+        let metrics = DirectU8TripletMetrics {
+            params: [
+                PqParams {
+                    dim: 32,
+                    subspaces: 1,
+                    sub: 32,
+                    card: 256,
+                    rows: 64,
+                    cols: 32,
+                    nchunk: 1,
+                    bits: 8,
+                },
+                PqParams {
+                    dim: 32,
+                    subspaces: 1,
+                    sub: 32,
+                    card: 256,
+                    rows: 64,
+                    cols: 32,
+                    nchunk: 1,
+                    bits: 8,
+                },
+                PqParams {
+                    dim: 32,
+                    subspaces: 1,
+                    sub: 32,
+                    card: 256,
+                    rows: 32,
+                    cols: 64,
+                    nchunk: 2,
+                    bits: 8,
+                },
+            ],
+            bytes: [100, 120, 80],
+        };
+        record_device_expert_table_hit_costs("model.layers.0.mlp", 2, 32, 64, metrics);
+        let report = crate::cost_ledger::end_token().expect("table-hit cost report");
+        crate::cost_ledger::set_enabled(false);
+
+        assert_eq!(report.counters.matvec_calls, 9);
+        assert_eq!(report.counters.active_bytes_read, 900);
+        assert_eq!(
+            report.counters.active_bytes_by_category["routed_experts"].as_u64(),
+            Some(600)
+        );
+        assert_eq!(
+            report.counters.active_bytes_by_category["shared_experts"].as_u64(),
+            Some(300)
+        );
+        assert_eq!(
+            report.counters.routed_representations.r4_projection_touches,
+            6
+        );
+        assert_eq!(report.counters.routed_representations.r4_active_bytes, 600);
+        assert_eq!(report.counters.dense_equivalent_fp_operations, 36_864);
+        assert_eq!(report.counters.source_modelled_fp_operations, 52_736);
+        assert_eq!(
+            report
+                .counters
+                .source_modelled_integer_bitwise_ops_lower_bound,
+            8_640
+        );
+        assert_eq!(report.counters.source_modelled_transcendentals, 192);
     }
 
     #[test]
@@ -8775,6 +9378,18 @@ mod tests {
         );
         assert_eq!(read_f32(&tie_weights, 2), vec![0.5, 0.5]);
         assert_eq!(read_u32(&tie_exec_slots, 2), vec![0, 1]);
+
+        let expert_trace = u32_buffer(&ctx, &[u32::MAX; 6]);
+        let mut trace_tcb = TokenCommandBuffer::new(&ctx);
+        encode_device_expert_trace_copy(&mut trace_tcb, &tie_indices, &expert_trace, 2, 3)
+            .expect("encode deferred expert trace");
+        trace_tcb
+            .commit_and_wait()
+            .expect("deferred expert trace command");
+        assert_eq!(
+            read_u32(&expert_trace, 6),
+            vec![u32::MAX, u32::MAX, u32::MAX, 0, 1, u32::MAX]
+        );
     }
 
     #[test]
@@ -8796,6 +9411,17 @@ mod tests {
             pool.expert_exec_slots.length(),
             (arch.num_experts_per_tok.max(1) * std::mem::size_of::<u32>()) as u64
         );
+        assert_eq!(
+            pool.expert_trace.length(),
+            (arch.n_layers.max(1) * arch.num_experts_per_tok.max(1) * std::mem::size_of::<u32>())
+                as u64
+        );
+        assert_eq!(
+            pool.expert_miss_mask.length(),
+            std::mem::size_of::<u32>() as u64
+        );
+        assert_eq!(read_u32(&pool.shared_expert_idx, 1), vec![0]);
+        assert_eq!(read_u32(&pool.shared_expert_slot, 1), vec![0]);
         assert!(
             pool.expert_wave_scratch
                 .lock()

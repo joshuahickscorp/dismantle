@@ -958,6 +958,20 @@ pub fn gpu_expert_wave_concurrent_enabled() -> bool {
     gpu_expert_wave_enabled() && crate::env_on(GPU_EXPERT_WAVE_CONCURRENT_ENV)
 }
 
+/// Opt-in cache-indexed routed-expert hit path.
+///
+/// This requires the qualified device router and expert-wave parents. A
+/// resident descriptor-table hit consumes device-owned IDs and weights without
+/// downloading them before expert dispatch. Cold/unsupported selections must
+/// fail closed and use the existing host-known fallback.
+pub const GPU_EXPERT_TABLE_HIT_ENV: &str = "HAWKING_GLM_GPU_EXPERT_TABLE_HIT";
+
+pub fn gpu_expert_table_hit_enabled() -> bool {
+    gpu_device_router_enabled()
+        && gpu_expert_wave_enabled()
+        && crate::env_on(GPU_EXPERT_TABLE_HIT_ENV)
+}
+
 /// Static `commit_and_wait` count on the host-state GPU path (default).
 /// Matches the measured ~1,171 figure on the flagship schedule.
 pub fn estimate_host_state_waits_per_token(arch: &GlmArch) -> u64 {
@@ -2855,6 +2869,43 @@ mod tests {
         match prev_concurrent {
             Some(v) => std::env::set_var(GPU_EXPERT_WAVE_CONCURRENT_ENV, v),
             None => std::env::remove_var(GPU_EXPERT_WAVE_CONCURRENT_ENV),
+        }
+    }
+
+    /// The cache-indexed hit path is independently opt-in and cannot bypass
+    /// either the qualified device router or the parent expert-wave gate.
+    #[test]
+    fn gpu_expert_table_hit_flag_defaults_off_and_requires_parents() {
+        let prev_router = std::env::var_os(GPU_DEVICE_ROUTER_ENV);
+        let prev_wave = std::env::var_os(GPU_EXPERT_WAVE_ENV);
+        let prev_table = std::env::var_os(GPU_EXPERT_TABLE_HIT_ENV);
+        std::env::remove_var(GPU_DEVICE_ROUTER_ENV);
+        std::env::remove_var(GPU_EXPERT_WAVE_ENV);
+        std::env::remove_var(GPU_EXPERT_TABLE_HIT_ENV);
+        assert!(!gpu_expert_table_hit_enabled());
+        std::env::set_var(GPU_EXPERT_TABLE_HIT_ENV, "1");
+        assert!(
+            !gpu_expert_table_hit_enabled(),
+            "table hit cannot enable its parent runtime paths"
+        );
+        std::env::set_var(GPU_DEVICE_ROUTER_ENV, "1");
+        assert!(
+            !gpu_expert_table_hit_enabled(),
+            "table hit requires the expert-wave parent"
+        );
+        std::env::set_var(GPU_EXPERT_WAVE_ENV, "1");
+        assert!(gpu_expert_table_hit_enabled());
+        match prev_router {
+            Some(v) => std::env::set_var(GPU_DEVICE_ROUTER_ENV, v),
+            None => std::env::remove_var(GPU_DEVICE_ROUTER_ENV),
+        }
+        match prev_wave {
+            Some(v) => std::env::set_var(GPU_EXPERT_WAVE_ENV, v),
+            None => std::env::remove_var(GPU_EXPERT_WAVE_ENV),
+        }
+        match prev_table {
+            Some(v) => std::env::set_var(GPU_EXPERT_TABLE_HIT_ENV, v),
+            None => std::env::remove_var(GPU_EXPERT_TABLE_HIT_ENV),
         }
     }
 

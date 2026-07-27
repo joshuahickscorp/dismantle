@@ -113,6 +113,7 @@ fn app() -> Router {
         requests_admitted: Arc::new(AtomicU64::new(0)),
         tokens_generated: Arc::new(AtomicU64::new(0)),
         requests_queued: Arc::new(AtomicU64::new(0)),
+        gravity: None,
     };
     router(state)
 }
@@ -129,6 +130,7 @@ fn failing_app() -> Router {
         requests_admitted: Arc::new(AtomicU64::new(0)),
         tokens_generated: Arc::new(AtomicU64::new(0)),
         requests_queued: Arc::new(AtomicU64::new(0)),
+        gravity: None,
     };
     router(state)
 }

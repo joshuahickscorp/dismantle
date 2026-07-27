@@ -319,6 +319,32 @@ pub trait Engine: Send + Sync {
         "unknown"
     }
 
+    /// SHA-256 of the artifact's `model.gravity.index.json` when this engine was
+    /// loaded from a multi-shard `.gravity` directory. `None` for GGUF / single
+    /// file paths that carry no index. Used by serve model-info/health to name
+    /// the exact sealed artifact under load.
+    fn artifact_index_sha256(&self) -> Option<&str> {
+        None
+    }
+
+    /// Raw chat-template text loaded from the artifact itself (e.g. the
+    /// `tokenizer/chat_template.jinja` staged beside a `.gravity` tokenizer).
+    /// `None` means the serve layer must not invent a template for this engine.
+    fn chat_template(&self) -> Option<&str> {
+        None
+    }
+
+    /// Path the chat template was loaded from, for honest capability reporting.
+    fn chat_template_path(&self) -> Option<&str> {
+        None
+    }
+
+    /// True when this engine is the base (unaccelerated) runtime. Gravity
+    /// artifacts report true so callers never confuse them with an optimized path.
+    fn is_base_runtime(&self) -> bool {
+        false
+    }
+
     /// Spine A — live context introspection. Native context length in tokens as
     /// declared by the model config (GGUF `*.context_length` / `max_position_
     /// embeddings`). `None` when the engine cannot determine it. This is the

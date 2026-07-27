@@ -1,0 +1,4 @@
+{"at": "2026-07-27T03:56:25Z", "mode": "LIGHT_ONLY", "why": ["load/core 1.655 above the relief ceiling 0.7", "foreign work holding ~21.1 cores across 24 processes"], "load_per_core": 1.655, "foreign_cores": 21.1}
+{"at": "2026-07-27T03:58:41Z", "mode": "LIGHT_ONLY", "why": ["load/core 1.376 above the relief ceiling 0.7", "foreign work holding ~19.39 cores across 23 processes"], "load_per_core": 1.376, "foreign_cores": 19.39}
+{"at": "2026-07-27T03:59:26Z", "mode": "LIGHT_ONLY", "why": ["load/core 1.224 above the relief ceiling 0.7", "foreign work holding ~18.81 cores across 22 processes"], "load_per_core": 1.224, "foreign_cores": 18.81}
+{"at": "2026-07-27T04:00:11Z", "mode": "LIGHT_ONLY", "why": ["load/core 1.287 above the relief ceiling 0.7", "foreign work holding ~17.04 cores across 20 processes"], "load_per_core": 1.287, "foreign_cores": 17.04}

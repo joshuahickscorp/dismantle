@@ -1,9 +1,24 @@
 {
   "schema": "hawking.gravity.profiler_acceptance_contract.v1",
   "recorded_at_utc": "2026-07-27T02:46:51Z",
+  "math_preserve_byte_contract_amended_at_utc": "2026-07-27T03:19:42Z",
   "base_commit": "2b6d8f793043012fc89b7051c37eb0962bc58421",
+  "math_preserve_byte_contract_base_commit": "00d337f0a4350b442343252f91fd6da06f104578",
   "validator": "tools/condense/gravity_profiler_acceptance.py",
   "purpose": "Fail-closed promotion boundary for the first post-memoization sealed-model profiler receipt.",
+  "math_preserve_byte_authority": {
+    "receipt": "reports/base_runtime/GLM52_MATH_PRESERVE_RESIDENT_BF16_BYTE_CENSUS.json",
+    "metric": "resident source extent touched once per scheduled matvec; not physical DRAM",
+    "fixed_active_bytes": 3054873024,
+    "r4_projection_bytes": 409604,
+    "r0_projection_bytes": 1378308,
+    "native_bf16_projection_bytes": 25165824,
+    "whole_token_layer_constrained_range_bytes": [
+      3792160224,
+      45570216852
+    ],
+    "historical_general_r0_934_gb_scalar_is_current_authority": false
+  },
   "minimum_contract": {
     "ledger_tokens": 16,
     "minimum_attributed_fraction_every_token": 0.95,
@@ -15,7 +30,15 @@
     "tokens_missing_gpu_timestamps": 0,
     "operations_nonzero_every_token": true,
     "exclusive_cpu_bucket_arithmetic_exact": true,
-    "active_byte_category_partition_exact": true
+    "active_byte_category_partition_exact": true,
+    "math_preserve_fixed_active_bytes": 3054873024,
+    "routed_projection_touches": 1800,
+    "routed_expert_triplets": 600,
+    "routed_other_representation_touches": 0,
+    "route_conditioned_active_byte_formula_exact_every_token": true,
+    "route_conditioned_total_within_layer_constrained_range": true,
+    "active_bytes_vs_route_conditioned_expectation": 1.0,
+    "physical_dram_claim_from_source_extents": false
   },
   "selftest": {
     "command": "python3.12 tools/condense/gravity_profiler_acceptance.py --selftest",
@@ -24,7 +47,9 @@
     "rejects_untagged_dispatch": true,
     "rejects_ab_mismatch": true,
     "rejects_inconsistent_exclusive_arithmetic": true,
-    "rejects_missing_physical_timestamp": true
+    "rejects_missing_physical_timestamp": true,
+    "rejects_route_conditioned_active_byte_mismatch": true,
+    "rejects_architecturally_impossible_representation_mix": true
   },
   "historical_defect_rejection": {
     "input": "HAWKING_LEDGER_BF16.json",
@@ -33,7 +58,9 @@
     "observed_attributed_fraction": 0.32424303458100684,
     "observed_generic_orchestration_bucket": true,
     "observed_operations_zero": true,
-    "note": "The historical defect receipt predates the recovered run configuration, exact same-process A/B, coverage gate, and physical stage compositions; it is intentionally not promotable."
+    "observed_math_preserve_byte_contract_missing": true,
+    "observed_routed_representation_evidence_missing": true,
+    "note": "The historical defect receipt predates the recovered run configuration, exact same-process A/B, coverage gate, physical stage compositions, and the corrected Math-Preserve route-conditioned byte contract; it is intentionally not promotable."
   },
   "live_status": {
     "accepted_live_receipt": null,

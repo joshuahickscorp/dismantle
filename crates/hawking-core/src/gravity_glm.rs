@@ -625,14 +625,6 @@ fn forward_impl(
     let mut logits = Vec::new();
     let mut trace = GlmTrace::default();
 
-    // Gate geometry for active routed-expert bytes (projection byte size is
-    // filled in live by the GPU cache when known; default is the sealed figure).
-    cost_ledger::set_geometry_active_bytes(cost_ledger::geometry_active_bytes(
-        a.n_layers,
-        a.num_experts_per_tok,
-        None,
-    ));
-
     for (i, &token) in tokens.iter().enumerate() {
         let pos = start_pos + i;
         if token as usize >= a.vocab_size {
@@ -1512,6 +1504,94 @@ pub mod gpu {
         },
     }
 
+    fn routed_pq_representation(
+        params: &PqParams,
+    ) -> crate::cost_ledger::RoutedWeightRepresentation {
+        use crate::cost_ledger::RoutedWeightRepresentation;
+        if params.dim == 32
+            && params.subspaces == 1
+            && params.sub == 32
+            && params.card == 256
+            && params.bits == 8
+        {
+            RoutedWeightRepresentation::R4
+        } else if params.dim == 8
+            && params.subspaces == 1
+            && params.sub == 8
+            && params.card == 128
+            && params.bits == 7
+        {
+            RoutedWeightRepresentation::R0
+        } else {
+            RoutedWeightRepresentation::Other
+        }
+    }
+
+    /// Add exact routed representation evidence to the active-byte ledger.
+    /// Non-routed names are ignored by the ledger helper.
+    pub(crate) fn record_routed_tensor_representation(name: &str, tensor: &GpuTensor) {
+        use crate::cost_ledger::{record_routed_weight_representation, RoutedWeightRepresentation};
+        let (representation, bytes) = match tensor {
+            GpuTensor::Pq {
+                codebooks,
+                codes,
+                params,
+            } => (
+                routed_pq_representation(params),
+                codebooks.length() + codes.length(),
+            ),
+            GpuTensor::NativeGpuBf16 { buf, .. } => {
+                (RoutedWeightRepresentation::NativeBf16, buf.length())
+            }
+            GpuTensor::NativeCpu(values) => (
+                RoutedWeightRepresentation::Other,
+                (values.len() as u64).saturating_mul(4),
+            ),
+        };
+        record_routed_weight_representation(name, representation, bytes);
+    }
+
+    #[cfg(test)]
+    mod routed_representation_tests {
+        use super::*;
+        use crate::cost_ledger::RoutedWeightRepresentation;
+
+        fn params(dim: u32, sub: u32, card: u32, bits: u32) -> PqParams {
+            PqParams {
+                dim,
+                subspaces: 1,
+                sub,
+                card,
+                rows: 2048,
+                cols: 6144,
+                nchunk: 6144 / dim,
+                bits,
+            }
+        }
+
+        #[test]
+        fn math_preserve_routed_codec_classifier_is_fail_closed() {
+            assert_eq!(
+                routed_pq_representation(&params(32, 32, 256, 8)),
+                RoutedWeightRepresentation::R4
+            );
+            assert_eq!(
+                routed_pq_representation(&params(8, 8, 128, 7)),
+                RoutedWeightRepresentation::R0
+            );
+            assert_eq!(
+                routed_pq_representation(&params(16, 16, 256, 8)),
+                RoutedWeightRepresentation::Other
+            );
+            let mut multi = params(32, 32, 256, 8);
+            multi.subspaces = 2;
+            assert_eq!(
+                routed_pq_representation(&multi),
+                RoutedWeightRepresentation::Other
+            );
+        }
+    }
+
     /// A [`WeightAccess`] backend that uploads each `gravity-pq` tensor to
     /// the device on first use and keeps it under a **byte-budgeted LRU**.
     ///
@@ -1689,7 +1769,9 @@ pub mod gpu {
             cost_ledger::record_matvec_call();
             let mut cache = self.cache.lock().expect("gpu weight cache mutex");
             self.ensure_many_locked(&mut cache, &[name])?;
-            match cache.get(name).expect("ensure just inserted it") {
+            let tensor = cache.get(name).expect("ensure just inserted it");
+            record_routed_tensor_representation(name, tensor);
+            match tensor {
                 GpuTensor::NativeCpu(w) => {
                     // Widened f32 residency (native.bf16 artifacts pay a 2×
                     // traffic tax vs stored bytes). Category partition is what
@@ -1738,7 +1820,9 @@ pub mod gpu {
             let mut results: Vec<Option<Vec<f32>>> = vec![None; calls.len()];
             let mut gpu_calls: Vec<(usize, &str, &Buffer, &Buffer, PqParams, &[f32])> = Vec::new();
             for (i, &(name, x)) in calls.iter().enumerate() {
-                match cache.get(name).expect("ensure just inserted it") {
+                let tensor = cache.get(name).expect("ensure just inserted it");
+                record_routed_tensor_representation(name, tensor);
+                match tensor {
                     GpuTensor::NativeCpu(w) => {
                         cost_ledger::record_active_bytes_for(name, (w.len() * 4) as u64);
                         record_dense_matvec_ops((w.len() / x.len()) as u64, x.len() as u64);

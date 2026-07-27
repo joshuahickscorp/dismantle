@@ -34,8 +34,8 @@
 
 use crate::gravity::matvec_dense;
 use crate::gravity_glm::gpu::{
-    encode_argmax_f32, encode_gemv_native_bf16_seq, encode_sample_topk_f32, GpuTensor,
-    GpuWeightCache,
+    encode_argmax_f32, encode_gemv_native_bf16_seq, encode_sample_topk_f32,
+    record_routed_tensor_representation, GpuTensor, GpuWeightCache,
 };
 use crate::gravity_glm::{
     gpu_expert_wave_enabled, gpu_lm_head_full_logits_enabled, rope_cos_sin, rope_interleaved,
@@ -599,7 +599,9 @@ fn matvec_into<'a>(
     crate::cost_ledger::record_matvec_call();
     let mut cache = weights.cache.lock().expect("gpu weight cache");
     weights.ensure_many_locked(&mut cache, &[name])?;
-    match cache.get(name).expect("ensured") {
+    let tensor = cache.get(name).expect("ensured");
+    record_routed_tensor_representation(name, tensor);
+    match tensor {
         GpuTensor::NativeCpu(w) => {
             // Host-oracle path (flag off): do not change default billing or
             // numerics. Active-byte category partition for native.f32 widen is
@@ -712,13 +714,6 @@ pub fn forward_resident(
     let waits_before = session.waits.get();
     let mut logits = Vec::new();
     let mut trace = GlmTrace::default();
-
-    // Same geometry stamp as host forward_impl so live vs geometry is comparable.
-    cost_ledger::set_geometry_active_bytes(cost_ledger::geometry_active_bytes(
-        a.n_layers,
-        a.num_experts_per_tok,
-        None,
-    ));
 
     for (step, &token) in tokens.iter().enumerate() {
         let pos = start_pos + step;
@@ -2805,7 +2800,9 @@ fn encode_weight_matvec(
     crate::cost_ledger::record_matvec_call();
     let mut cache = weights.cache.lock().expect("gpu weight cache");
     weights.ensure_many_locked(&mut cache, &[name])?;
-    match cache.get(name).expect("ensured") {
+    let tensor = cache.get(name).expect("ensured");
+    record_routed_tensor_representation(name, tensor);
+    match tensor {
         GpuTensor::NativeCpu(w) => {
             crate::cost_ledger::record_active_bytes_for(name, (w.len() * 4) as u64);
             record_dense_matvec_ops((w.len() / x_len) as u64, x_len as u64);

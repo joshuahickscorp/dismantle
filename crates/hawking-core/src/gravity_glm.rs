@@ -294,6 +294,16 @@ pub struct GlmTrace {
     pub final_topk: Vec<usize>,
     /// Per sparse layer, the experts the router chose for this token.
     pub expert_choices: Vec<Vec<usize>>,
+    /// Greedy token from the device lm_head path (token-only readback).
+    /// Present when [`GPU_LM_HEAD_ENV`] is on and the head ran on device.
+    pub sample_token: Option<u32>,
+    /// On-device top-k indices over logits (diagnostics; empty when not computed).
+    pub head_topk_idx: Vec<u32>,
+    /// On-device top-k values over logits (diagnostics; empty when not computed).
+    pub head_topk_val: Vec<f32>,
+    /// True when the full vocab logit vector was read back to the host.
+    /// Default device path leaves this false (token + diagnostics only).
+    pub head_full_logits_readback: bool,
 }
 
 impl GravityGlm {
@@ -811,19 +821,42 @@ pub fn gpu_resident_state_enabled() -> bool {
     crate::env_on(GPU_RESIDENT_STATE_ENV)
 }
 
-/// Opt-in device-resident `lm_head` + GPU argmax for GLM.
+/// Opt-in device-resident native.bf16 matvec + GPU head sampling for GLM.
 ///
-/// Default off — host dense matvec remains the parity oracle. When set,
-/// a native.bf16 `lm_head.weight` is uploaded once (raw bf16 bytes, no host
-/// widen), kept under the GPU weight-cache budget, and projected with the
-/// `gemv_native_bf16_seq` Metal kernel (sequential f32 accumulate matching
-/// host widen + `matvec_dense`). Integrates with the existing
-/// `GpuWeightCache` / resident-state path; does not invent a second cache.
+/// Default off — host dense matvec remains the parity oracle. When set:
+/// - every rank-2 `native.bf16` matvec target (flagship: `lm_head.weight`,
+///   indexer projections, router `gate.weight`) is uploaded once as raw bf16
+///   (no host widen), kept under the GPU weight-cache budget, and projected
+///   with `gemv_native_bf16_seq` (bf16 input, sequential f32 accumulate);
+/// - on the resident path the head runs blockwise logits + argmax + top-k on
+///   device and **reads back only the token plus top-k diagnostics** (not the
+///   154,880-element logit vector). Full logits require
+///   [`GPU_LM_HEAD_FULL_LOGITS_ENV`]=1 (parity / debug only).
+///
+/// Integrates with the existing `GpuWeightCache` / resident-state path; does
+/// not invent a second cache. Default resident path with this flag unset is
+/// unchanged (Parity V2.1 item 6).
 pub const GPU_LM_HEAD_ENV: &str = "HAWKING_GLM_GPU_LM_HEAD";
 
-/// Whether [`GPU_LM_HEAD_ENV`] requests the device lm_head path.
+/// Opt-in full vocab logit readback on the device lm_head path.
+///
+/// Default off. When unset under [`GPU_LM_HEAD_ENV`], the resident head returns
+/// an empty logit vector and fills [`GlmTrace::sample_token`] /
+/// [`GlmTrace::head_topk_idx`] instead. Set to `1` for continuous-logit parity
+/// against the host oracle / FP64 authority.
+pub const GPU_LM_HEAD_FULL_LOGITS_ENV: &str = "HAWKING_GLM_GPU_LM_HEAD_FULL_LOGITS";
+
+/// Default diagnostic top-k size for device head sampling (exact decision set).
+pub const GPU_LM_HEAD_DIAG_TOPK: u32 = 5;
+
+/// Whether [`GPU_LM_HEAD_ENV`] requests the device native-bf16 path.
 pub fn gpu_lm_head_enabled() -> bool {
     crate::env_on(GPU_LM_HEAD_ENV)
+}
+
+/// Whether the device head should also pull the full logit vector to the host.
+pub fn gpu_lm_head_full_logits_enabled() -> bool {
+    crate::env_on(GPU_LM_HEAD_FULL_LOGITS_ENV)
 }
 
 /// Static `commit_and_wait` count on the host-state GPU path (default).
@@ -1160,12 +1193,14 @@ pub mod gpu {
     /// One tensor resident for matvec.
     ///
     /// - `Pq`: gravity-pq codebooks+codes on device.
-    /// - `NativeCpu`: small native tensors widened to f32 on the host (norms
-    ///   go through [`GravityWeights::dense`], not this path; this is for
-    ///   native matvec targets when the device lm_head flag is off).
+    /// - `NativeCpu`: native tensors widened to f32 on the host (norms go
+    ///   through [`GravityWeights::dense`], not this path; this is for
+    ///   native matvec targets when [`super::GPU_LM_HEAD_ENV`] is off, or
+    ///   non-bf16 / non-rank-2 natives).
     /// - `NativeGpuBf16`: raw `native.bf16` matrix uploaded once and kept
-    ///   device-resident under the weight-cache budget (flagship
-    ///   `lm_head.weight`, gated by [`super::GPU_LM_HEAD_ENV`]).
+    ///   device-resident under the weight-cache budget. Covers every rank-2
+    ///   `native.bf16` matvec target when the flag is on (lm_head, indexer,
+    ///   router) so the f32 widen tax is not billed as active bytes.
     pub(crate) enum GpuTensor {
         Pq {
             codebooks: Buffer,
@@ -1257,19 +1292,12 @@ pub mod gpu {
                     params: PqParams::from_header(&h),
                 }
             } else if codec.starts_with("native.") {
-                // Device-resident lm_head: upload raw bf16 once. The dense-memo
-                // host path re-reads + re-widens this oversized tensor every
-                // token (1.90 GB); residency under the 32 GiB weight budget
-                // eliminates that. Gated; non-bf16 / non-lm_head stay host.
-                if super::gpu_lm_head_enabled()
-                    && name == "lm_head.weight"
-                    && codec == "native.bf16"
-                {
-                    if shape.len() != 2 {
-                        return Err(Error::Gravity(format!(
-                            "tensor {name}: native.bf16 device path expects rank-2 shape, got {shape:?}"
-                        )));
-                    }
+                // Device-resident native.bf16: upload raw bytes once (no host
+                // widen). Flagship lm_head is 1.90 GB; indexer + router add
+                // the rest of the native f32 widen tax (~2.53 GB of the
+                // surplus). Rank-2 only — norms/biases stay host dense().
+                // Gated by HAWKING_GLM_GPU_LM_HEAD; default path untouched.
+                if super::gpu_lm_head_enabled() && codec == "native.bf16" && shape.len() == 2 {
                     let rows = shape[0] as u32;
                     let cols = shape[1] as u32;
                     let expect = (rows as u64)
@@ -1281,10 +1309,19 @@ pub mod gpu {
                             blob.len()
                         )));
                     }
+                    let xfer_tag = if name == "lm_head.weight" || name.ends_with("lm_head.weight") {
+                        "lm_head_bf16_upload"
+                    } else if name.contains(".indexer.") {
+                        "indexer_bf16_upload"
+                    } else if name.contains("gate.weight") {
+                        "router_bf16_upload"
+                    } else {
+                        "native_bf16_upload"
+                    };
                     let buf = {
                         let _xfer = cost_ledger::Scope::new(Bucket::HostDeviceTransfer);
                         let b = self.ctx.new_buffer_with_bytes_checked(&blob)?;
-                        cost_ledger::record_transfer(blob.len() as u64, true, "lm_head_bf16_upload");
+                        cost_ledger::record_transfer(blob.len() as u64, true, xfer_tag);
                         cost_ledger::record_allocation(blob.len() as u64);
                         b
                     };
@@ -1369,7 +1406,8 @@ pub mod gpu {
                     matvec_dense(w, x, name)
                 }
                 GpuTensor::NativeGpuBf16 { buf, rows, cols } => {
-                    cost_ledger::record_active_bytes(buf.length());
+                    // Bill stored bf16 size, not the 2× f32 widen tax.
+                    cost_ledger::record_active_bytes_for(name, buf.length());
                     dispatch_gemv_native_bf16_seq(&self.ctx, buf, *rows, *cols, x)
                 }
                 GpuTensor::Pq {
@@ -1411,9 +1449,9 @@ pub mod gpu {
                         results[i] = Some(matvec_dense(w, x, name)?);
                     }
                     GpuTensor::NativeGpuBf16 { buf, rows, cols } => {
-                        // lm_head is once-per-token; batch path still works
-                        // for completeness if a caller includes it.
-                        cost_ledger::record_active_bytes(buf.length());
+                        // Device bf16: once-per-token for lm_head; indexer /
+                        // router also land here under the same flag.
+                        cost_ledger::record_active_bytes_for(name, buf.length());
                         results[i] =
                             Some(dispatch_gemv_native_bf16_seq(&self.ctx, buf, *rows, *cols, x)?);
                     }
@@ -1578,6 +1616,36 @@ pub mod gpu {
             enc.set_bytes(2, 4, &n_u as *const u32 as *const _);
             enc.set_threadgroup_memory_length(0, (TG as u64) * 4);
             enc.set_threadgroup_memory_length(1, (TG as u64) * 4);
+        })?;
+        Ok(())
+    }
+
+    /// Encode parallel top-k over device logits (diagnostics + decision set).
+    /// `k` must be ≤ 64 (Metal `sample_topk` limit). Outputs indices + values.
+    pub(crate) fn encode_sample_topk_f32(
+        tcb: &mut TokenCommandBuffer<'_>,
+        logits: &Buffer,
+        n: u32,
+        k: u32,
+        topk_idx: &Buffer,
+        topk_val: &Buffer,
+    ) -> Result<()> {
+        const TG: u32 = 256;
+        let n_u = n;
+        let k_u = k.min(64);
+        let lg = logits.clone();
+        let idx = topk_idx.clone();
+        let val = topk_val.clone();
+        tcb.dispatch_threads("sample_topk", (TG, 1, 1), (TG, 1, 1), move |enc| {
+            enc.set_buffer(0, Some(&lg), 0);
+            enc.set_buffer(1, Some(&idx), 0);
+            enc.set_buffer(2, Some(&val), 0);
+            enc.set_bytes(3, 4, &n_u as *const u32 as *const _);
+            enc.set_bytes(4, 4, &k_u as *const u32 as *const _);
+            enc.set_threadgroup_memory_length(0, (TG as u64) * 4);
+            enc.set_threadgroup_memory_length(1, (TG as u64) * 4);
+            // selected[64] for exclusion across rounds
+            enc.set_threadgroup_memory_length(2, 64 * 4);
         })?;
         Ok(())
     }
@@ -2015,6 +2083,46 @@ mod tests {
             Some(v) => std::env::set_var(GPU_LM_HEAD_ENV, v),
             None => std::env::remove_var(GPU_LM_HEAD_ENV),
         }
+    }
+
+    /// Full-logits readback is opt-in; default device path is token + diagnostics.
+    #[test]
+    fn gpu_lm_head_full_logits_flag_defaults_off() {
+        let prev = std::env::var_os(GPU_LM_HEAD_FULL_LOGITS_ENV);
+        std::env::remove_var(GPU_LM_HEAD_FULL_LOGITS_ENV);
+        assert!(!gpu_lm_head_full_logits_enabled());
+        match prev {
+            Some(v) => std::env::set_var(GPU_LM_HEAD_FULL_LOGITS_ENV, v),
+            None => std::env::remove_var(GPU_LM_HEAD_FULL_LOGITS_ENV),
+        }
+    }
+
+    /// Token-only readback size vs full vocab: the whole point of not returning
+    /// 154_880 logits. Diagnostic top-k is fixed and tiny.
+    #[test]
+    fn token_only_readback_bytes_are_orders_smaller_than_full_logits() {
+        let vocab = 154_880usize;
+        let full = vocab * std::mem::size_of::<f32>();
+        let token = std::mem::size_of::<u32>();
+        let diag = (GPU_LM_HEAD_DIAG_TOPK as usize)
+            * (std::mem::size_of::<u32>() + std::mem::size_of::<f32>());
+        let token_only = token + diag;
+        assert_eq!(full, 619_520);
+        assert_eq!(token_only, 4 + 5 * 8);
+        assert!(token_only * 1000 < full);
+    }
+
+    /// Active-byte billing: bf16 stored size is half of the f32 widen tax.
+    #[test]
+    fn native_bf16_active_bytes_half_of_f32_widen() {
+        // Flagship lm_head geometry from the sealed artifact headers.
+        let rows = 154_880u64;
+        let cols = 6_144u64;
+        let bf16 = rows * cols * 2;
+        let f32_widen = rows * cols * 4;
+        assert_eq!(bf16, 1_903_165_440);
+        assert_eq!(f32_widen, 3_806_330_880);
+        assert_eq!(f32_widen, bf16 * 2);
     }
 
     /// Host bf16 matvec: widen then sequential sum — the parity oracle for

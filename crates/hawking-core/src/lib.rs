@@ -9,6 +9,8 @@ pub mod gravity_glm;
 #[cfg(target_os = "macos")]
 pub mod gravity_glm_resident;
 pub mod gravity_llama;
+/// Numeric Parity Contract V2.1 — condition-aware hybrid metrics + FP64 authority.
+pub mod numeric_parity;
 pub mod json_constrain;
 pub mod kernel_bench;
 pub mod kernels;

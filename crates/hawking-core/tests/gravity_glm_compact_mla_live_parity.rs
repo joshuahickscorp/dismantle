@@ -16,6 +16,51 @@ use hawking_core::gravity_glm::{
 use hawking_core::metal::MetalContext;
 use hawking_core::numeric_parity::{score_pair, Bounds};
 
+fn invalid_compact_geometry_fixture(source: &std::path::Path) -> tempfile::TempDir {
+    let invalid = tempfile::tempdir().expect("temporary invalid compact fixture");
+    for entry in std::fs::read_dir(source).expect("read compact fixture") {
+        let entry = entry.expect("fixture directory entry");
+        if entry.file_type().expect("fixture entry type").is_file() {
+            std::fs::copy(entry.path(), invalid.path().join(entry.file_name()))
+                .expect("copy compact fixture file");
+        }
+    }
+
+    let index: serde_json::Value = serde_json::from_slice(
+        &std::fs::read(invalid.path().join("model.gravity.index.json"))
+            .expect("copied gravity index"),
+    )
+    .expect("parse copied gravity index");
+    let kv_name = "model.layers.0.self_attn.kv_b_proj.weight";
+    let shard_name = index["weight_map"][kv_name]
+        .as_str()
+        .expect("KV owning shard");
+    let shard_path = invalid.path().join(shard_name);
+    let mut shard = std::fs::read(&shard_path).expect("read copied compact shard");
+    let header_len = u64::from_le_bytes(shard[12..20].try_into().unwrap()) as usize;
+    let header: serde_json::Value =
+        serde_json::from_slice(&shard[20..20 + header_len]).expect("parse shard header");
+    let descriptor = header["tensors"]
+        .as_array()
+        .expect("shard tensors")
+        .iter()
+        .find(|tensor| tensor["name"].as_str() == Some(kv_name))
+        .expect("KV descriptor");
+    let payload =
+        20 + header_len + descriptor["offset"].as_u64().expect("KV payload offset") as usize;
+
+    // Keep the PQ header structurally self-consistent (D=S*sub and
+    // cols=nchunk*D), but make it unsupported by the exact D32 compact
+    // kernels. The descriptor SHA is intentionally left stale: with
+    // verify_hash=true, seeing the geometry error proves preflight ran before
+    // the ordinary complete-payload verification/load.
+    shard[payload + 8..payload + 10].copy_from_slice(&16u16.to_le_bytes()); // D
+    shard[payload + 12..payload + 14].copy_from_slice(&16u16.to_le_bytes()); // sub
+    shard[payload + 24..payload + 28].copy_from_slice(&2u32.to_le_bytes()); // nchunk
+    std::fs::write(shard_path, shard).expect("write invalid compact shard");
+    invalid
+}
+
 fn prompts(base: &[u32]) -> Vec<Vec<u32>> {
     let mut prompts = vec![base.to_vec(), vec![7], vec![9, 7]];
     if base.len() > 1 {
@@ -37,12 +82,31 @@ fn compact_mla_complete_tokens_match_expanded_v21_and_exact_decisions() {
         return;
     };
     let compact_ctx = MetalContext::new().expect("second Metal context");
+    let invalid_ctx = MetalContext::new().expect("invalid-admission Metal context");
 
     let prior_compact = std::env::var_os(GPU_COMPACT_MLA_ENV);
     let prior_head = std::env::var_os(GPU_LM_HEAD_ENV);
     let prior_full_logits = std::env::var_os(GPU_LM_HEAD_FULL_LOGITS_ENV);
     std::env::remove_var(GPU_LM_HEAD_ENV);
     std::env::remove_var(GPU_LM_HEAD_FULL_LOGITS_ENV);
+
+    let invalid = invalid_compact_geometry_fixture(&dir);
+    std::env::set_var(GPU_COMPACT_MLA_ENV, "1");
+    let invalid_error = match GravityGlmGpu::open_dir_with_budget_resident(
+        invalid_ctx,
+        invalid.path(),
+        true,
+        512 * 1024 * 1024,
+        true,
+    ) {
+        Ok(_) => panic!("D16 compact KV geometry was admitted"),
+        Err(error) => error,
+    };
+    assert!(
+        invalid_error.to_string().contains("dim=16")
+            && invalid_error.to_string().contains("unsupported"),
+        "invalid compact geometry did not fail in header preflight: {invalid_error}"
+    );
 
     std::env::remove_var(GPU_COMPACT_MLA_ENV);
     let expanded = GravityGlmGpu::open_dir_with_budget_resident(

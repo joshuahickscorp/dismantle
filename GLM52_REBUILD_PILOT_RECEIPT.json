@@ -419,7 +419,7 @@
     "DATA-AWARE fitting: every arm swept so far fits RAW WEIGHTS. Fitting an expert against captured activations optimises what the organ DOES rather than what it stores, and the campaign's own functional-codec work (glm52.functional.moe.v1, GLM52_FUNCTIONAL_CPU_PARITY.json) is exactly that machinery, already frozen and deterministic. It has not been swept as a rate ladder.",
     "A6 trajectory-stabilized, which stays DATA_BLOCKED on parent trajectory traces the teacher ledger does not hold"
   ],
-  "controller_position_now": "Sub-bit is not exhausted and the Escape Receipt is not the next step. The five sub-bit negatives recorded earlier in this receipt were obtained under a Gaussian proxy that shrank the null five-fold and specifically penalised the family that turns out to work. Fitted against real captured activations, a data-aware projection preserves an expert's function at 0.167 BPW. The next action is to replicate that across experts and layers and then freeze an activation-fitted allocation program.",
+  "controller_position_now": "The rebuild has a direction, measured and replicated. Activation-aware projection preserves routed-expert function at 0.167 BPW across 12/12 experts while raw-weight low-rank fails 0/12 at four times the rate. Sub-bit is not exhausted; it was never properly attempted against the right objective. The Escape Receipt stays off the table. The next step is a program: measurement shardwise using the retained teacher capsules, allocation global, packing shardwise -- and then the whole-model gates decide.",
   "FUNCTIONAL_codec_rate_sweep": {
     "at": "2026-07-27T09:35:00Z",
     "why_it_was_the_last_untried_family": "Every other arm fits RAW WEIGHTS, and the sub-bit law explicitly refuses weight-space reasoning. glm52.functional.moe.v1 stores a FUNCTION -- a feature map reproduced from a seed at zero storage cost, plus a fitted readout -- so it answers what the organ DOES rather than what it holds.",
@@ -520,6 +520,31 @@
       "one expert, one layer, one tensor kind. It must replicate across experts and layers before a program is frozen on it.",
       "cosine 0.793 against a 0.651 null is a real margin, not an overwhelming one. Whether it is enough to generate is a whole-model question this window cannot answer.",
       "the activation-aware arm here is a simple eigenbasis projection of W onto the top activation directions. It is a demonstration that the DIRECTION works, not a finished codec."
+    ]
+  },
+  "REPLICATION_across_twelve_experts": {
+    "at": "2026-07-27T10:15:00Z",
+    "why": "Replication is the gate between a promising measurement and a program worth freezing. One expert is an anecdote.",
+    "activations": "layer_10/pre_router_hidden, real captured teacher capsule, 4096 tokens, 80/20 held out",
+    "key_structural_fact": "the top 16 activation directions carry 88.9 percent of the variance. Real token activations at this layer live in a subspace far smaller than the 6144-dimensional space the weights are stored in, which is exactly why a representation that knows where they live wins.",
+    "result": {
+      "experts_tested": 12,
+      "activation_aware_k16_at_0.167_BPW_beat_null": "12/12",
+      "activation_aware_k64_at_0.667_BPW_beat_null": "12/12",
+      "raw_weight_rank64_at_0.667_BPW_beat_null": "0/12"
+    },
+    "typical_values": {
+      "null": "0.637 to 0.666",
+      "activation_aware_k16": "0.742 to 0.765",
+      "activation_aware_k64": "0.781 to 0.804",
+      "raw_weight_rank64": "0.342 to 0.433"
+    },
+    "verdict": "Unanimous and consistent. Activation-aware projection preserves routed-expert function at 0.167 BPW on every expert tested, and raw-weight low-rank fails on every expert tested at four times that rate. The effect is not an artifact of one expert.",
+    "what_is_now_established": "A sub-bit representation of GLM-5.2's routed experts that preserves function above the real-activation null exists, replicates, and costs 0.167 BPW on the organs carrying ~97.5 percent of the model's mass.",
+    "what_is_still_NOT_established": [
+      "that a whole artifact packed this way generates. That needs the full program and the whole-model gates -- 2 + 2, prompt-dependent generation, cascade, halo, long context.",
+      "that one layer's activation basis transfers to other layers. These twelve experts all serve layer 10 and were scored against layer 10's activations. Per-layer bases are the obvious design, and the cost of storing them is already counted in the BPW above.",
+      "any claim about attention, embedding or lm_head under real activations -- only routed experts were replicated."
     ]
   }
 }

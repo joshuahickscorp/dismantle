@@ -16,6 +16,7 @@
 //! ```text
 //! HAWKING_COST_LEDGER=1 cargo run --release -p hawking-core \
 //!   --example gravity_glm_cost_ledger -- \
+//!   --dir /absolute/path/GLM-5.2-H0.98-Math-Preserve.gravity \
 //!   --context 4 --warmup 8 --ledger-tokens 16 \
 //!   --out reports/base_runtime/tg_cost_ledger_warm.json
 //! ```
@@ -25,6 +26,7 @@
 //! ```text
 //! HAWKING_COST_LEDGER=1 cargo run --release -p hawking-core \
 //!   --example gravity_glm_cost_ledger -- \
+//!   --dir /absolute/path/GLM-5.2-H0.98-Math-Preserve.gravity \
 //!   --context 4 --warmup 8 --ledger-tokens 1 \
 //!   --out reports/base_runtime/cost_ledger_warm.json
 //! ```
@@ -34,6 +36,7 @@
 //! ```text
 //! HAWKING_COST_LEDGER=1 cargo run --release -p hawking-core \
 //!   --example gravity_glm_cost_ledger -- \
+//!   --dir /absolute/path/GLM-5.2-H0.98-Math-Preserve.gravity \
 //!   --context 4 --warmup 0 --ledger-tokens 1 --no-verify-hash \
 //!   --out reports/base_runtime/cost_ledger_cold_nohash.json
 //! ```
@@ -41,8 +44,7 @@
 use std::path::PathBuf;
 use std::time::Instant;
 
-const DEFAULT_MODEL_DIR: &str = "Library/Application Support/Hawking/Models/GLM-5.2/\
-    b4734de4facf877f85769a911abafc5283eab3d9/General-R0";
+const EXPECTED_ARTIFACT_DIR_NAME: &str = "GLM-5.2-H0.98-Math-Preserve.gravity";
 
 #[cfg(target_os = "macos")]
 #[derive(Debug, PartialEq, Eq, serde::Serialize)]
@@ -161,8 +163,7 @@ fn env_snapshot() -> serde_json::Value {
 #[cfg(target_os = "macos")]
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     use hawking_core::cost_ledger::{
-        self, aggregate_reports, bucket_source_catalogue, sealed_glm_active_byte_schedule,
-        SEALED_ARTIFACT_ACTIVE_ROUTED_BYTES,
+        self, aggregate_reports, bucket_source_catalogue, math_preserve_active_byte_contract,
     };
     use hawking_core::gravity_glm::gpu::GravityGlmGpu;
 
@@ -197,11 +198,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             other => return Err(format!("unknown argument {other:?}").into()),
         }
     }
-    let dir = dir.unwrap_or_else(|| {
-        PathBuf::from(std::env::var_os("HOME").expect("HOME")).join(DEFAULT_MODEL_DIR)
-    });
+    let dir = dir.ok_or(
+        "--dir is required and must name the sealed GLM-5.2-H0.98-Math-Preserve.gravity artifact",
+    )?;
     if !dir.is_dir() {
         return Err(format!("no model directory at {dir:?}").into());
+    }
+    if dir.file_name().and_then(|name| name.to_str()) != Some(EXPECTED_ARTIFACT_DIR_NAME) {
+        return Err(format!(
+            "profiler recovery is Math-Preserve-specific: --dir must end in \
+             {EXPECTED_ARTIFACT_DIR_NAME:?}, got {dir:?}"
+        )
+        .into());
     }
     if ab_context == 0 {
         return Err("--ab-context must be at least 1".into());
@@ -239,6 +247,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .into(),
         );
     }
+    cost_ledger::set_expected_fixed_active_bytes(Some(
+        cost_ledger::MATH_PRESERVE_FIXED_ACTIVE_BYTES,
+    ));
     let open_ms = t_open.elapsed().as_secs_f64() * 1e3;
     eprintln!(
         "opened in {open_ms:.0} ms | layers={} hidden={} experts_per_tok={} vocab={}",
@@ -589,10 +600,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "experts_per_tok": model.arch.num_experts_per_tok,
             "vocab": model.arch.vocab_size,
         },
-        "geometry_active_routed_bytes_sealed": SEALED_ARTIFACT_ACTIVE_ROUTED_BYTES,
-        "geometry_gb": SEALED_ARTIFACT_ACTIVE_ROUTED_BYTES as f64 / 1e9,
-        "static_active_byte_schedule": sealed_glm_active_byte_schedule(),
-        "static_schedule_note": "Header-derived static expectation for active_bytes_read. Compare aggregate counters_mean.active_bytes_read and per-token active_bytes_by_category against it. A gap is a finding.",
+        "math_preserve_active_byte_contract": math_preserve_active_byte_contract(),
+        "active_byte_accounting_note": "Each token seeds the exact fixed Math-Preserve resident-source extent, then extends it from live R4/R0/native-bf16 routed projection evidence. active_bytes_read and its category partition must equal that route-conditioned expectation. This is not a physical-DRAM claim.",
         "open_ms": open_ms,
         "prefill_ms": prefill_ms,
         "context_tokens": context,
@@ -623,7 +632,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "Operation counters are source-modelled rather than hardware counters: floating point, packed integer/bitwise lower bound, comparisons, transcendentals, and dense-equivalent FP are separate.",
             "This binary does not claim timings it did not measure; empty buckets mean that work was not observed on the instrumented path.",
             "active_bytes_by_category partitions active_bytes_read by tensor class (routed/shared/dense_mlp/attention/indexer/router/lm_head/other).",
-            "Geometry (2.58 GB) is routed-experts only under an 8×3×78 idealisation; the static schedule is the full forward touch set (~9.34 GB).",
+            "Historical General-R0 2.58/9.34 GB geometry is not current Math-Preserve evidence. The current fixed set is 3,054,873,024 B plus the exact live routed representation mix.",
         ],
         "explicit_limitations": [
             "Metal counter-sample markers are not encoded; CB GPUStartTime/GPUEndTime is the non-perturbing device source.",

@@ -335,13 +335,8 @@ impl Default for DeviceTimeline {
 }
 
 /// Where a matvec's active weight bytes came from. Partitions
-/// [`TokenCounters::active_bytes_read`] so a 4× "overread vs geometry"
-/// figure can be attributed instead of argued.
-///
-/// Geometry ([`SEALED_ARTIFACT_ACTIVE_ROUTED_BYTES`]) only covers
-/// [`ActiveByteCategory::RoutedExperts`] under an 8×3×78 idealisation.
-/// Everything else is **required non-geometry traffic**, not necessarily
-/// waste — until a category is shown to re-read or widen beyond need.
+/// [`TokenCounters::active_bytes_read`] so the exact Math-Preserve fixed set
+/// and route-conditioned expert set can be reconciled without a residual.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ActiveByteCategory {
@@ -427,6 +422,32 @@ pub fn classify_weight_name(name: &str) -> ActiveByteCategory {
     ActiveByteCategory::Other
 }
 
+/// Runtime representation of one routed-expert projection.
+///
+/// These labels intentionally match the sealed Math-Preserve header census.
+/// `Other` is fail-closed evidence: the recovered profiler must reject a
+/// promoted run if any routed projection lands there.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RoutedWeightRepresentation {
+    R4,
+    R0,
+    NativeBf16,
+    Other,
+}
+
+/// Per-token routed representation evidence.
+#[derive(Debug, Clone, Default, Serialize, PartialEq, Eq)]
+pub struct RoutedRepresentationCounters {
+    pub r4_projection_touches: u64,
+    pub r4_active_bytes: u64,
+    pub r0_projection_touches: u64,
+    pub r0_active_bytes: u64,
+    pub native_bf16_projection_touches: u64,
+    pub native_bf16_active_bytes: u64,
+    pub other_projection_touches: u64,
+    pub other_active_bytes: u64,
+}
+
 /// Counters that usually explain a bandwidth-starved MoE, independent of time.
 #[derive(Debug, Clone, Default, Serialize, PartialEq, Eq)]
 pub struct TokenCounters {
@@ -449,6 +470,9 @@ pub struct TokenCounters {
     /// snake_case names from [`ActiveByteCategory::as_str`].
     #[serde(default)]
     pub active_bytes_by_category: serde_json::Map<String, serde_json::Value>,
+    /// Exact representation and active extent of every routed projection.
+    #[serde(default)]
+    pub routed_representations: RoutedRepresentationCounters,
     /// First-touch loads (decode + upload) this token — zero on a warm cache hit.
     pub first_touch_load_bytes: u64,
     pub matvec_calls: u64,
@@ -508,7 +532,8 @@ pub struct TokenCostReport {
     pub counters: TokenCounters,
     /// Device-side GPU execution / queue wait (not exclusive-stack).
     pub device: DeviceTimeline,
-    /// Geometry the gate quotes: 8 × 3 × 1_378_368 × 78 when known.
+    /// Expected active extent for this exact Math-Preserve route: fixed set
+    /// plus the live R4/R0/native-bf16 routed representation mix.
     pub geometry_active_bytes: Option<u64>,
     pub active_bytes_vs_geometry_fraction: Option<f64>,
     /// Host+device bytes moved this token vs geometry (informational).
@@ -903,7 +928,7 @@ impl TokenState {
             counters: TokenCounters::default(),
             active_by_cat: [0; 8],
             transfers: Vec::new(),
-            geometry_active_bytes: None,
+            geometry_active_bytes: expected_fixed_active_bytes(),
             device: DeviceTimeline::default(),
             profiler_overhead_ns: 0,
             fault_baseline: sample_page_faults(),
@@ -1291,6 +1316,21 @@ thread_local! {
     /// `PROCESS_ENABLED` (env / process-wide `set_enabled`). Lets unit
     /// tests enable on one thread without racing siblings.
     static THREAD_ENABLED: std::cell::Cell<Option<bool>> = const { std::cell::Cell::new(None) };
+    /// Optional artifact-specific fixed active-byte expectation. The
+    /// Math-Preserve profiler sets this explicitly; ordinary runtime paths do
+    /// not inherit a flagship-only geometry.
+    static EXPECTED_FIXED_ACTIVE_BYTES: std::cell::Cell<Option<u64>> =
+        const { std::cell::Cell::new(None) };
+}
+
+fn expected_fixed_active_bytes() -> Option<u64> {
+    EXPECTED_FIXED_ACTIVE_BYTES.with(std::cell::Cell::get)
+}
+
+/// Configure the fixed portion of an artifact-specific active-byte contract
+/// for subsequently started tokens on this thread.
+pub fn set_expected_fixed_active_bytes(bytes: Option<u64>) {
+    EXPECTED_FIXED_ACTIVE_BYTES.with(|slot| slot.set(bytes));
 }
 
 /// Resolve `HAWKING_COST_LEDGER` once. Safe to call repeatedly.
@@ -1686,6 +1726,58 @@ pub fn record_active_bytes_for(name: &str, bytes: u64) {
     record_active_bytes_in(classify_weight_name(name), bytes);
 }
 
+/// Record one routed projection's representation and extent.
+///
+/// The live representation label supplies the route-conditioned expected
+/// geometry; `actual_bytes` remains separately auditable. Unknown codecs or
+/// widened natives land in `Other` and do not extend expected geometry, so a
+/// recovered-profiler acceptance check fails instead of normalizing them.
+pub fn record_routed_weight_representation(
+    name: &str,
+    representation: RoutedWeightRepresentation,
+    actual_bytes: u64,
+) {
+    if !is_recording() || classify_weight_name(name) != ActiveByteCategory::RoutedExperts {
+        return;
+    }
+    TOKEN.with(|t| {
+        if let Some(state) = t.borrow_mut().as_mut() {
+            let routed = &mut state.counters.routed_representations;
+            let expected_bytes = match representation {
+                RoutedWeightRepresentation::R4 => {
+                    routed.r4_projection_touches = routed.r4_projection_touches.saturating_add(1);
+                    routed.r4_active_bytes = routed.r4_active_bytes.saturating_add(actual_bytes);
+                    Some(MATH_PRESERVE_R4_PROJECTION_BYTES)
+                }
+                RoutedWeightRepresentation::R0 => {
+                    routed.r0_projection_touches = routed.r0_projection_touches.saturating_add(1);
+                    routed.r0_active_bytes = routed.r0_active_bytes.saturating_add(actual_bytes);
+                    Some(MATH_PRESERVE_R0_PROJECTION_BYTES)
+                }
+                RoutedWeightRepresentation::NativeBf16 => {
+                    routed.native_bf16_projection_touches =
+                        routed.native_bf16_projection_touches.saturating_add(1);
+                    routed.native_bf16_active_bytes =
+                        routed.native_bf16_active_bytes.saturating_add(actual_bytes);
+                    Some(MATH_PRESERVE_NATIVE_BF16_PROJECTION_BYTES)
+                }
+                RoutedWeightRepresentation::Other => {
+                    routed.other_projection_touches =
+                        routed.other_projection_touches.saturating_add(1);
+                    routed.other_active_bytes =
+                        routed.other_active_bytes.saturating_add(actual_bytes);
+                    None
+                }
+            };
+            if let (Some(geometry), Some(expected)) =
+                (state.geometry_active_bytes.as_mut(), expected_bytes)
+            {
+                *geometry = geometry.saturating_add(expected);
+            }
+        }
+    });
+}
+
 pub fn record_first_touch_load_bytes(bytes: u64) {
     if !is_recording() {
         return;
@@ -1838,17 +1930,64 @@ pub fn set_geometry_active_bytes(bytes: u64) {
     });
 }
 
-/// Default geometry quoted by BASE_RUNTIME_MAXIMIZED_GATE for the sealed
-/// Math-Preserve artifact (8 × 3 × 1_378_368 × 78).
+/// Exact fixed Math-Preserve resident-source extent per promoted decode token:
+/// attention, dense MLP, shared experts, full indexers, routers, and the
+/// native-bf16 head. Routed experts are added from live representation
+/// evidence by [`record_routed_weight_representation`].
+pub const MATH_PRESERVE_FIXED_ACTIVE_BYTES: u64 = 3_054_873_024;
+pub const MATH_PRESERVE_EXPECTED_ROUTED_EXPERTS: u64 = 75 * 8;
+pub const MATH_PRESERVE_EXPECTED_ROUTED_PROJECTIONS: u64 =
+    MATH_PRESERVE_EXPECTED_ROUTED_EXPERTS * 3;
+pub const MATH_PRESERVE_R4_PROJECTION_BYTES: u64 = 409_604;
+pub const MATH_PRESERVE_R0_PROJECTION_BYTES: u64 = 1_378_308;
+pub const MATH_PRESERVE_NATIVE_BF16_PROJECTION_BYTES: u64 = 25_165_824;
+pub const MATH_PRESERVE_WHOLE_TOKEN_MIN_ACTIVE_BYTES: u64 = 3_792_160_224;
+pub const MATH_PRESERVE_WHOLE_TOKEN_MAX_ACTIVE_BYTES: u64 = 45_570_216_852;
+
+/// Header-only current-artifact contract. `active_bytes_read` is a
+/// resident-source extent/touch metric, not a physical-DRAM counter.
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+pub struct MathPreserveActiveByteContract {
+    pub authority: &'static str,
+    pub metric: &'static str,
+    pub fixed_active_bytes: u64,
+    pub expected_routed_experts: u64,
+    pub expected_routed_projections: u64,
+    pub r4_projection_bytes: u64,
+    pub r0_projection_bytes: u64,
+    pub native_bf16_projection_bytes: u64,
+    pub whole_token_min_bytes: u64,
+    pub whole_token_layer_constrained_max_bytes: u64,
+    pub physical_dram_claim: &'static str,
+}
+
+pub fn math_preserve_active_byte_contract() -> MathPreserveActiveByteContract {
+    MathPreserveActiveByteContract {
+        authority: "reports/base_runtime/GLM52_MATH_PRESERVE_RESIDENT_BF16_BYTE_CENSUS.json",
+        metric: "resident source extent touched once per scheduled matvec",
+        fixed_active_bytes: MATH_PRESERVE_FIXED_ACTIVE_BYTES,
+        expected_routed_experts: MATH_PRESERVE_EXPECTED_ROUTED_EXPERTS,
+        expected_routed_projections: MATH_PRESERVE_EXPECTED_ROUTED_PROJECTIONS,
+        r4_projection_bytes: MATH_PRESERVE_R4_PROJECTION_BYTES,
+        r0_projection_bytes: MATH_PRESERVE_R0_PROJECTION_BYTES,
+        native_bf16_projection_bytes: MATH_PRESERVE_NATIVE_BF16_PROJECTION_BYTES,
+        whole_token_min_bytes: MATH_PRESERVE_WHOLE_TOKEN_MIN_ACTIVE_BYTES,
+        whole_token_layer_constrained_max_bytes: MATH_PRESERVE_WHOLE_TOKEN_MAX_ACTIVE_BYTES,
+        physical_dram_claim: "none; hardware cache/DRAM counters remain required",
+    }
+}
+
+/// Historical General-R0 gate geometry (8 × 3 × 1_378_368 × 78).
 ///
 /// **This is not the full per-token weight traffic.** It only counts routed
 /// expert projections under an idealised 78-sparse-layer schedule. The sealed
 /// General-R0 artifact has 3 dense MLP layers + 75 sparse, plus attention,
 /// indexer, router, shared expert, and a native `lm_head` every token. See
-/// [`sealed_glm_active_byte_schedule`].
+/// [`sealed_glm_active_byte_schedule`]. It is not current Math-Preserve
+/// evidence and is retained only for interpreting historical receipts.
 pub const SEALED_ARTIFACT_ACTIVE_ROUTED_BYTES: u64 = 8 * 3 * 1_378_368 * 78;
 
-/// Sealed General-R0 / Math-Preserve sizes used by the static active-byte
+/// Historical General-R0 sizes used by the legacy static active-byte
 /// schedule. **Derived from shard headers on disk** (descriptor `bytes` for
 /// `gravity-pq`; f32-widened element count for `native.bf16`). Not live GPU
 /// measurements. GPU path active bytes for PQ are `codebooks.length() +
@@ -1877,7 +2016,7 @@ pub mod sealed_glm_sizes {
     pub const LM_HEAD_BF16_BYTES: u64 = 154_880 * 6_144 * 2;
 }
 
-/// Static per-token active-byte schedule for the sealed GLM MoE forward.
+/// Historical General-R0 per-token active-byte schedule.
 ///
 /// Built from architecture counts × sealed tensor sizes. This is what
 /// `active_bytes_read` **should** be on the GPU path if every matvec records
@@ -1906,7 +2045,7 @@ pub struct SealedGlmActiveByteSchedule {
     pub native_f32_widen_tax_bytes: u64,
 }
 
-/// Static schedule for the sealed Math-Preserve forward (no device needed).
+/// Historical General-R0 schedule (no device needed).
 pub fn sealed_glm_active_byte_schedule() -> SealedGlmActiveByteSchedule {
     use sealed_glm_sizes::*;
     let n_layers = 78u64;
@@ -1928,7 +2067,7 @@ pub fn sealed_glm_active_byte_schedule() -> SealedGlmActiveByteSchedule {
         + (INDEXER_PER_FULL_LAYER_F32_BYTES / 2) * n_full_idx // half of f32 is the tax
         + (ROUTER_F32_BYTES / 2) * n_sparse;
     SealedGlmActiveByteSchedule {
-        method: "static_from_sealed_artifact_headers_and_forward_schedule",
+        method: "historical_general_r0_static_from_headers_and_forward_schedule",
         n_layers,
         n_sparse_layers: n_sparse,
         n_dense_mlp_layers: n_dense,
@@ -1948,9 +2087,9 @@ pub fn sealed_glm_active_byte_schedule() -> SealedGlmActiveByteSchedule {
     }
 }
 
-/// Compute geometry from arch fields when the per-projection byte size is
-/// known (from a live PQ header). Falls back to the sealed constant when
-/// `bytes_per_projection` is `None`.
+/// Historical routed-only geometry helper. Current Math-Preserve profiling
+/// seeds [`MATH_PRESERVE_FIXED_ACTIVE_BYTES`] and extends it from live routed
+/// representation evidence instead.
 pub fn geometry_active_bytes(
     n_layers: usize,
     experts_per_tok: usize,
@@ -2202,7 +2341,7 @@ mod tests {
     }
 
     #[test]
-    fn geometry_helper_matches_gate_number() {
+    fn historical_general_r0_geometry_helper_matches_old_gate_number() {
         // 8 experts × 3 projections × 1_378_368 × 78 layers ≈ 2.58 GB.
         let g = geometry_active_bytes(78, 8, Some(1_378_368));
         assert_eq!(g, SEALED_ARTIFACT_ACTIVE_ROUTED_BYTES);
@@ -2273,7 +2412,7 @@ mod tests {
     }
 
     #[test]
-    fn sealed_static_schedule_matches_header_derived_constants() {
+    fn historical_general_r0_static_schedule_matches_header_derived_constants() {
         // STATIC (not live-measured): sizes taken from General-R0 shard
         // headers on 2026-07-26. See OVERREAD_BYTE_LEDGER.json.
         let s = sealed_glm_active_byte_schedule();
@@ -2296,6 +2435,64 @@ mod tests {
         // Static total is ~9.34 GB; the live mean was 10.46 GB — gap is
         // disclosed, not papered over.
         assert!((s.total_active_bytes as f64 - 9.34e9).abs() < 2e7);
+    }
+
+    #[test]
+    fn math_preserve_contract_and_live_route_conditioning_are_exact() {
+        let contract = math_preserve_active_byte_contract();
+        assert_eq!(contract.fixed_active_bytes, 3_054_873_024);
+        assert_eq!(contract.expected_routed_experts, 600);
+        assert_eq!(contract.expected_routed_projections, 1_800);
+        assert_eq!(contract.r4_projection_bytes, 409_604);
+        assert_eq!(contract.r0_projection_bytes, 1_378_308);
+        assert_eq!(contract.native_bf16_projection_bytes, 25_165_824);
+        assert_eq!(contract.whole_token_min_bytes, 3_792_160_224);
+        assert_eq!(
+            contract.whole_token_layer_constrained_max_bytes,
+            45_570_216_852
+        );
+
+        with_clean_ledger(|| {
+            set_expected_fixed_active_bytes(Some(MATH_PRESERVE_FIXED_ACTIVE_BYTES));
+            assert!(begin_token());
+            let name = "model.layers.3.mlp.experts.7.gate_proj.weight";
+            record_routed_weight_representation(
+                name,
+                RoutedWeightRepresentation::R4,
+                MATH_PRESERVE_R4_PROJECTION_BYTES,
+            );
+            record_routed_weight_representation(
+                name,
+                RoutedWeightRepresentation::R0,
+                MATH_PRESERVE_R0_PROJECTION_BYTES,
+            );
+            record_routed_weight_representation(
+                name,
+                RoutedWeightRepresentation::NativeBf16,
+                MATH_PRESERVE_NATIVE_BF16_PROJECTION_BYTES,
+            );
+            record_routed_weight_representation(
+                "model.layers.3.mlp.shared_experts.gate_proj.weight",
+                RoutedWeightRepresentation::Other,
+                99,
+            );
+            let report = end_token().expect("route-conditioned report");
+            let routed = &report.counters.routed_representations;
+            assert_eq!(routed.r4_projection_touches, 1);
+            assert_eq!(routed.r0_projection_touches, 1);
+            assert_eq!(routed.native_bf16_projection_touches, 1);
+            assert_eq!(routed.other_projection_touches, 0);
+            assert_eq!(
+                report.geometry_active_bytes,
+                Some(
+                    MATH_PRESERVE_FIXED_ACTIVE_BYTES
+                        + MATH_PRESERVE_R4_PROJECTION_BYTES
+                        + MATH_PRESERVE_R0_PROJECTION_BYTES
+                        + MATH_PRESERVE_NATIVE_BF16_PROJECTION_BYTES
+                )
+            );
+            set_expected_fixed_active_bytes(None);
+        });
     }
 
     #[test]

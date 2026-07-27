@@ -22,6 +22,16 @@ RUN_SCHEMA = "hawking.gravity.per_token_cost_ledger_run.v2"
 ACCEPTANCE_SCHEMA = "hawking.gravity.profiler_acceptance.v1"
 DEFAULT_MIN_TOKENS = 16
 DEFAULT_MIN_ATTRIBUTION = 0.95
+MATH_PRESERVE_FIXED_ACTIVE_BYTES = 3_054_873_024
+MATH_PRESERVE_EXPECTED_ROUTED_EXPERTS = 600
+MATH_PRESERVE_EXPECTED_ROUTED_PROJECTIONS = 1_800
+MATH_PRESERVE_PROJECTION_BYTES = {
+    "r4": 409_604,
+    "r0": 1_378_308,
+    "native_bf16": 25_165_824,
+}
+MATH_PRESERVE_WHOLE_TOKEN_MIN_BYTES = 3_792_160_224
+MATH_PRESERVE_WHOLE_TOKEN_LAYER_CONSTRAINED_MAX_BYTES = 45_570_216_852
 
 
 def _at(value: Any, *path: str) -> Any:
@@ -79,6 +89,30 @@ def evaluate(
         isinstance(resolved, dict)
         and all(resolved.get(key) == expected for key, expected in required_flags.items()),
         f"resolved flags must equal {required_flags!r}, got {resolved!r}",
+    )
+
+    active_contract = receipt.get("math_preserve_active_byte_contract")
+    require(
+        "math_preserve_active_byte_contract",
+        isinstance(active_contract, dict)
+        and active_contract.get("fixed_active_bytes")
+        == MATH_PRESERVE_FIXED_ACTIVE_BYTES
+        and active_contract.get("expected_routed_experts")
+        == MATH_PRESERVE_EXPECTED_ROUTED_EXPERTS
+        and active_contract.get("expected_routed_projections")
+        == MATH_PRESERVE_EXPECTED_ROUTED_PROJECTIONS
+        and active_contract.get("r4_projection_bytes")
+        == MATH_PRESERVE_PROJECTION_BYTES["r4"]
+        and active_contract.get("r0_projection_bytes")
+        == MATH_PRESERVE_PROJECTION_BYTES["r0"]
+        and active_contract.get("native_bf16_projection_bytes")
+        == MATH_PRESERVE_PROJECTION_BYTES["native_bf16"]
+        and active_contract.get("whole_token_min_bytes")
+        == MATH_PRESERVE_WHOLE_TOKEN_MIN_BYTES
+        and active_contract.get("whole_token_layer_constrained_max_bytes")
+        == MATH_PRESERVE_WHOLE_TOKEN_LAYER_CONSTRAINED_MAX_BYTES
+        and active_contract.get("physical_dram_claim", "").startswith("none"),
+        f"current Math-Preserve byte contract is absent or wrong: {active_contract!r}",
     )
 
     ab = _at(receipt, "same_process_exact_input_ab", "equivalent")
@@ -300,6 +334,96 @@ def evaluate(
                 token_failures.append(
                     f"token {token_index}: active-byte categories do not partition the total"
                 )
+            representations = counters.get("routed_representations")
+            rep_fields = {
+                "r4": ("r4_projection_touches", "r4_active_bytes"),
+                "r0": ("r0_projection_touches", "r0_active_bytes"),
+                "native_bf16": (
+                    "native_bf16_projection_touches",
+                    "native_bf16_active_bytes",
+                ),
+            }
+            if not isinstance(representations, dict):
+                token_failures.append(
+                    f"token {token_index}: routed representation evidence is missing"
+                )
+            else:
+                rep_values = list(representations.values())
+                valid_rep_values = all(_is_nonnegative_int(value) for value in rep_values)
+                touches = {
+                    label: representations.get(touch_field)
+                    for label, (touch_field, _) in rep_fields.items()
+                }
+                observed_rep_bytes = {
+                    label: representations.get(byte_field)
+                    for label, (_, byte_field) in rep_fields.items()
+                }
+                expected_rep_bytes = {
+                    label: (
+                        touches[label] * MATH_PRESERVE_PROJECTION_BYTES[label]
+                        if _is_nonnegative_int(touches[label])
+                        else None
+                    )
+                    for label in rep_fields
+                }
+                total_projection_touches = (
+                    sum(touches.values())
+                    if all(_is_nonnegative_int(value) for value in touches.values())
+                    else -1
+                )
+                expected_routed_bytes = (
+                    sum(expected_rep_bytes.values())
+                    if all(
+                        _is_nonnegative_int(value)
+                        for value in expected_rep_bytes.values()
+                    )
+                    else -1
+                )
+                expected_total_bytes = (
+                    MATH_PRESERVE_FIXED_ACTIVE_BYTES + expected_routed_bytes
+                    if expected_routed_bytes >= 0
+                    else -1
+                )
+                fixed_observed = (
+                    sum(
+                        value
+                        for key, value in categories.items()
+                        if key != "routed_experts"
+                    )
+                    if isinstance(categories, dict)
+                    and all(_is_nonnegative_int(value) for value in categories.values())
+                    else -1
+                )
+                if not (
+                    valid_rep_values
+                    and representations.get("other_projection_touches") == 0
+                    and representations.get("other_active_bytes") == 0
+                    and total_projection_touches
+                    == MATH_PRESERVE_EXPECTED_ROUTED_PROJECTIONS
+                    and all(value % 3 == 0 for value in touches.values())
+                    and sum(value // 3 for value in touches.values())
+                    == MATH_PRESERVE_EXPECTED_ROUTED_EXPERTS
+                    and observed_rep_bytes == expected_rep_bytes
+                    and isinstance(categories, dict)
+                    and categories.get("routed_experts") == expected_routed_bytes
+                    and fixed_observed == MATH_PRESERVE_FIXED_ACTIVE_BYTES
+                    and counters.get("active_bytes_read") == expected_total_bytes
+                    and ledger.get("geometry_active_bytes") == expected_total_bytes
+                    and MATH_PRESERVE_WHOLE_TOKEN_MIN_BYTES
+                    <= expected_total_bytes
+                    <= MATH_PRESERVE_WHOLE_TOKEN_LAYER_CONSTRAINED_MAX_BYTES
+                    and _is_number(ledger.get("active_bytes_vs_geometry_fraction"))
+                    and math.isclose(
+                        float(ledger["active_bytes_vs_geometry_fraction"]),
+                        1.0,
+                        rel_tol=0.0,
+                        abs_tol=1e-12,
+                    )
+                ):
+                    token_failures.append(
+                        f"token {token_index}: Math-Preserve active bytes do not "
+                        "match the exact route-conditioned representation formula"
+                    )
 
             device = ledger.get("device")
             command_buffers = _at(device, "command_buffers")
@@ -392,6 +516,11 @@ def evaluate(
 
 
 def _synthetic_receipt() -> dict[str, Any]:
+    routed_bytes = (
+        MATH_PRESERVE_EXPECTED_ROUTED_PROJECTIONS
+        * MATH_PRESERVE_PROJECTION_BYTES["r4"]
+    )
+    active_bytes = MATH_PRESERVE_FIXED_ACTIVE_BYTES + routed_bytes
     stage = {"stage": "routed_experts", "dispatches": 2}
     command = {
         "gpu_start_s": 1.0,
@@ -417,9 +546,24 @@ def _synthetic_receipt() -> dict[str, Any]:
             "synchronization_points": 1,
             "operations": 10,
             "source_modelled_fp_operations": 8,
-            "active_bytes_read": 11,
-            "active_bytes_by_category": {"routed_experts": 11},
+            "active_bytes_read": active_bytes,
+            "active_bytes_by_category": {
+                "attention": MATH_PRESERVE_FIXED_ACTIVE_BYTES,
+                "routed_experts": routed_bytes,
+            },
+            "routed_representations": {
+                "r4_projection_touches": MATH_PRESERVE_EXPECTED_ROUTED_PROJECTIONS,
+                "r4_active_bytes": routed_bytes,
+                "r0_projection_touches": 0,
+                "r0_active_bytes": 0,
+                "native_bf16_projection_touches": 0,
+                "native_bf16_active_bytes": 0,
+                "other_projection_touches": 0,
+                "other_active_bytes": 0,
+            },
         },
+        "geometry_active_bytes": active_bytes,
+        "active_bytes_vs_geometry_fraction": 1.0,
         "device": {
             "gpu_timestamps_observed": 1,
             "gpu_timestamps_missing": 0,
@@ -450,6 +594,21 @@ def _synthetic_receipt() -> dict[str, Any]:
     }
     return {
         "schema": RUN_SCHEMA,
+        "math_preserve_active_byte_contract": {
+            "fixed_active_bytes": MATH_PRESERVE_FIXED_ACTIVE_BYTES,
+            "expected_routed_experts": MATH_PRESERVE_EXPECTED_ROUTED_EXPERTS,
+            "expected_routed_projections": MATH_PRESERVE_EXPECTED_ROUTED_PROJECTIONS,
+            "r4_projection_bytes": MATH_PRESERVE_PROJECTION_BYTES["r4"],
+            "r0_projection_bytes": MATH_PRESERVE_PROJECTION_BYTES["r0"],
+            "native_bf16_projection_bytes": MATH_PRESERVE_PROJECTION_BYTES[
+                "native_bf16"
+            ],
+            "whole_token_min_bytes": MATH_PRESERVE_WHOLE_TOKEN_MIN_BYTES,
+            "whole_token_layer_constrained_max_bytes": (
+                MATH_PRESERVE_WHOLE_TOKEN_LAYER_CONSTRAINED_MAX_BYTES
+            ),
+            "physical_dram_claim": "none; synthetic fixture",
+        },
         "run_configuration": {
             "resolved": {
                 "resident_state": True,
@@ -530,6 +689,39 @@ def selftest() -> int:
     assert not rejected["accepted"], rejected
     assert not rejected["checks"]["every_token_contract"], rejected
 
+    bad = copy.deepcopy(good)
+    bad["tokens"][0]["ledger"]["counters"]["routed_representations"][
+        "r4_projection_touches"
+    ] -= 1
+    rejected = evaluate(bad, min_tokens=1)
+    assert not rejected["accepted"], rejected
+    assert not rejected["checks"]["every_token_contract"], rejected
+
+    # Internally byte-consistent, but impossible under the per-layer census:
+    # there are not eight native-bf16 routed experts available in every layer.
+    bad = copy.deepcopy(good)
+    ledger = bad["tokens"][0]["ledger"]
+    reps = ledger["counters"]["routed_representations"]
+    reps["r4_projection_touches"] = 0
+    reps["r4_active_bytes"] = 0
+    reps["native_bf16_projection_touches"] = (
+        MATH_PRESERVE_EXPECTED_ROUTED_PROJECTIONS
+    )
+    impossible_routed_bytes = (
+        MATH_PRESERVE_EXPECTED_ROUTED_PROJECTIONS
+        * MATH_PRESERVE_PROJECTION_BYTES["native_bf16"]
+    )
+    reps["native_bf16_active_bytes"] = impossible_routed_bytes
+    impossible_total_bytes = MATH_PRESERVE_FIXED_ACTIVE_BYTES + impossible_routed_bytes
+    ledger["counters"]["active_bytes_by_category"]["routed_experts"] = (
+        impossible_routed_bytes
+    )
+    ledger["counters"]["active_bytes_read"] = impossible_total_bytes
+    ledger["geometry_active_bytes"] = impossible_total_bytes
+    rejected = evaluate(bad, min_tokens=1)
+    assert not rejected["accepted"], rejected
+    assert not rejected["checks"]["every_token_contract"], rejected
+
     print(
         json.dumps(
             {
@@ -540,6 +732,8 @@ def selftest() -> int:
                 "rejects_ab_mismatch": True,
                 "rejects_inconsistent_exclusive_arithmetic": True,
                 "rejects_missing_physical_timestamp": True,
+                "rejects_route_conditioned_active_byte_mismatch": True,
+                "rejects_architecturally_impossible_representation_mix": True,
             },
             indent=2,
         )

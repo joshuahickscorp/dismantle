@@ -1,6 +1,6 @@
 {
   "schema": "hawking.ramanujan.toolchain_selftest.v1",
-  "at": "2026-07-27T03:05:43Z",
+  "at": "2026-07-27T15:11:50Z",
   "host": {
     "platform": "darwin",
     "python": "3.12.6"
@@ -8,21 +8,21 @@
   "resource_mode_when_run": "LIGHT_ONLY",
   "binaries": {
     "elan": {
-      "status": "NOT_INSTALLED",
-      "path": null,
-      "version": null,
+      "status": "INSTALLED",
+      "path": "/Users/scammermike/.elan/bin/elan",
+      "version": "elan 4.2.3 (b6cec7e10 2026-06-08)",
       "needed_for": "Lean toolchain manager; pins the Lean version"
     },
     "lean": {
-      "status": "NOT_INSTALLED",
-      "path": null,
-      "version": null,
+      "status": "INSTALLED",
+      "path": "/Users/scammermike/.elan/bin/lean",
+      "version": "Lean (version 4.32.1, arm64-apple-darwin24.6.0, commit f054605aea4b840552cca2e725580bffd1e1b704, Release)",
       "needed_for": "the proof assistant; Tier 3 machine checks run here"
     },
     "lake": {
-      "status": "NOT_INSTALLED",
-      "path": null,
-      "version": null,
+      "status": "INSTALLED",
+      "path": "/Users/scammermike/.elan/bin/lake",
+      "version": "Lake version 5.0.0-src+f054605 (Lean version 4.32.1)",
       "needed_for": "Lean build tool; fetches and builds Mathlib"
     },
     "z3": {
@@ -60,40 +60,40 @@
     "sympy": {
       "status": "INSTALLED",
       "version": "1.13.1",
+      "where": "current interpreter",
       "needed_for": "symbolic algebra; the informal-to-formal bridge"
     },
     "numpy": {
       "status": "INSTALLED",
       "version": "2.2.6",
+      "where": "current interpreter",
       "needed_for": "numeric computation; already present for the Hawking oracle"
     },
     "scipy": {
       "status": "INSTALLED",
       "version": "1.14.1",
+      "where": "current interpreter",
       "needed_for": "numeric computation"
     },
     "z3": {
-      "status": "NOT_INSTALLED",
-      "version": null,
+      "status": "INSTALLED",
+      "version": "ok",
+      "where": "/Users/scammermike/Downloads/hawking/.venv/glm52/bin/python",
       "needed_for": "Z3 Python bindings"
     },
     "pysat": {
-      "status": "NOT_INSTALLED",
-      "version": null,
+      "status": "INSTALLED",
+      "version": "1.9.dev7",
+      "where": "/Users/scammermike/Downloads/hawking/.venv/glm52/bin/python",
       "needed_for": "SAT interfaces"
     }
   },
   "missing": [
-    "elan",
-    "lean",
-    "lake",
     "z3",
     "cvc5",
     "gp",
     "gap",
-    "cadical",
-    "z3",
-    "pysat"
+    "cadical"
   ],
   "verdict": "TOOLCHAIN_INCOMPLETE",
   "q0_reproducibility": {

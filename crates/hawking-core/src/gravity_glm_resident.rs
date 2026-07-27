@@ -1510,6 +1510,754 @@ fn batched_mlp<'a>(
     Ok(downs)
 }
 
+// ── Future route-segment primitives (encode-only; default path untouched) ───
+
+/// Typed ABI boundary for the dormant GLM resident kernels.
+///
+/// These wrappers only append work to a caller-owned [`TokenCommandBuffer`].
+/// They never submit, wait, inspect flags, or participate in
+/// [`forward_resident`]. That keeps the current default path byte-for-byte
+/// structurally unchanged while making future graph work explicit and
+/// independently testable.
+///
+/// The existing MLA append and sparse-attention shaders use the expanded
+/// `[position][head][qk/value]` cache. They are transitional correctness
+/// scaffolding, not the 32K cache solution: the compact design must consume
+/// normalized 512-wide MLA latent plus the shared 64-wide RoPE tail, or
+/// reconstruct expanded K/V only for selected positions.
+#[allow(dead_code)]
+mod route_segment_primitives {
+    use super::*;
+
+    const TG: u32 = 256;
+
+    #[repr(C)]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    pub(super) struct GlmRopeParams {
+        pub n_heads: u32,
+        pub rotary_dim: u32,
+        pub in_stride: u32,
+        pub out_stride: u32,
+    }
+
+    #[repr(C)]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    pub(super) struct GlmMlaAppendParams {
+        pub n_heads: u32,
+        pub qk_nope: u32,
+        pub qk_rope: u32,
+        pub v_dim: u32,
+        pub pos: u32,
+    }
+
+    #[repr(C)]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    pub(super) struct GlmBuildQParams {
+        pub n_heads: u32,
+        pub qk_nope: u32,
+        pub qk_rope: u32,
+    }
+
+    #[repr(C)]
+    #[derive(Clone, Copy, Debug, PartialEq)]
+    pub(super) struct GlmDsaParams {
+        pub n_keys: u32,
+        pub n_heads: u32,
+        pub head_dim: u32,
+        pub pos: u32,
+        pub dim_scale: f32,
+    }
+
+    #[repr(C)]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    pub(super) struct GlmTopkParams {
+        pub n: u32,
+        pub k: u32,
+    }
+
+    #[repr(C)]
+    #[derive(Clone, Copy, Debug, PartialEq)]
+    pub(super) struct GlmSparseAttnParams {
+        pub n_heads: u32,
+        pub qk_dim: u32,
+        pub v_dim: u32,
+        pub n_keys: u32,
+        pub n_allow: u32,
+        pub scale: f32,
+    }
+
+    const _: [(); 16] = [(); std::mem::size_of::<GlmRopeParams>()];
+    const _: [(); 20] = [(); std::mem::size_of::<GlmMlaAppendParams>()];
+    const _: [(); 12] = [(); std::mem::size_of::<GlmBuildQParams>()];
+    const _: [(); 20] = [(); std::mem::size_of::<GlmDsaParams>()];
+    const _: [(); 8] = [(); std::mem::size_of::<GlmTopkParams>()];
+    const _: [(); 24] = [(); std::mem::size_of::<GlmSparseAttnParams>()];
+    const _: [(); 4] = [(); std::mem::align_of::<GlmRopeParams>()];
+    const _: [(); 4] = [(); std::mem::align_of::<GlmMlaAppendParams>()];
+    const _: [(); 4] = [(); std::mem::align_of::<GlmBuildQParams>()];
+    const _: [(); 4] = [(); std::mem::align_of::<GlmDsaParams>()];
+    const _: [(); 4] = [(); std::mem::align_of::<GlmTopkParams>()];
+    const _: [(); 4] = [(); std::mem::align_of::<GlmSparseAttnParams>()];
+
+    fn u32_arg(value: usize, what: &str) -> Result<u32> {
+        u32::try_from(value)
+            .map_err(|_| Error::Gravity(format!("{what}: {value} does not fit the Metal u32 ABI")))
+    }
+
+    fn checked_add(a: usize, b: usize, what: &str) -> Result<usize> {
+        a.checked_add(b)
+            .ok_or_else(|| Error::Gravity(format!("{what}: size overflow ({a} + {b})")))
+    }
+
+    fn checked_mul(a: usize, b: usize, what: &str) -> Result<usize> {
+        a.checked_mul(b)
+            .ok_or_else(|| Error::Gravity(format!("{what}: size overflow ({a} x {b})")))
+    }
+
+    fn require_range(
+        buffer: &Buffer,
+        element_offset: usize,
+        elements: usize,
+        element_bytes: usize,
+        what: &str,
+    ) -> Result<u64> {
+        let offset = checked_mul(element_offset, element_bytes, what)?;
+        let bytes = checked_mul(elements, element_bytes, what)?;
+        let end = checked_add(offset, bytes, what)?;
+        if end as u64 > buffer.length() {
+            return Err(Error::Gravity(format!(
+                "{what}: needs byte range [{offset}, {end}), buffer has {} bytes",
+                buffer.length()
+            )));
+        }
+        Ok(offset as u64)
+    }
+
+    fn require_f32(
+        buffer: &Buffer,
+        element_offset: usize,
+        elements: usize,
+        what: &str,
+    ) -> Result<u64> {
+        require_range(
+            buffer,
+            element_offset,
+            elements,
+            std::mem::size_of::<f32>(),
+            what,
+        )
+    }
+
+    fn grid_1d(elements: u32, what: &str) -> Result<(u32, u32, u32)> {
+        let groups = elements.div_ceil(TG);
+        let width = groups
+            .checked_mul(TG)
+            .ok_or_else(|| Error::Gravity(format!("{what}: rounded Metal grid width overflow")))?;
+        Ok((width, 1, 1))
+    }
+
+    fn strided_elements(count: usize, stride: usize, width: usize, what: &str) -> Result<usize> {
+        if count == 0 {
+            return Ok(0);
+        }
+        let preceding = checked_mul(count - 1, stride, what)?;
+        checked_add(preceding, width, what)
+    }
+
+    pub(super) fn encode_rmsnorm(
+        tcb: &mut TokenCommandBuffer<'_>,
+        x: &Buffer,
+        weight: &Buffer,
+        out: &Buffer,
+        n: usize,
+        eps: f32,
+    ) -> Result<()> {
+        if n == 0 {
+            return Ok(());
+        }
+        require_f32(x, 0, n, "gravity_rmsnorm_f32 x")?;
+        require_f32(weight, 0, n, "gravity_rmsnorm_f32 weight")?;
+        require_f32(out, 0, n, "gravity_rmsnorm_f32 out")?;
+        let n = u32_arg(n, "gravity_rmsnorm_f32 n")?;
+        let xb = x.clone();
+        let wb = weight.clone();
+        let ob = out.clone();
+        tcb.dispatch_threads("gravity_rmsnorm_f32", (TG, 1, 1), (TG, 1, 1), move |enc| {
+            enc.set_buffer(0, Some(&xb), 0);
+            enc.set_buffer(1, Some(&wb), 0);
+            enc.set_buffer(2, Some(&ob), 0);
+            enc.set_bytes(3, 4, &n as *const u32 as *const _);
+            enc.set_bytes(4, 4, &eps as *const f32 as *const _);
+            enc.set_threadgroup_memory_length(0, (TG as u64) * 4);
+        })
+    }
+
+    pub(super) fn encode_layernorm_affine(
+        tcb: &mut TokenCommandBuffer<'_>,
+        x: &Buffer,
+        weight: &Buffer,
+        bias: &Buffer,
+        out: &Buffer,
+        n: usize,
+        eps: f32,
+    ) -> Result<()> {
+        if n == 0 {
+            return Ok(());
+        }
+        require_f32(x, 0, n, "gravity_layernorm_affine_f32 x")?;
+        require_f32(weight, 0, n, "gravity_layernorm_affine_f32 weight")?;
+        require_f32(bias, 0, n, "gravity_layernorm_affine_f32 bias")?;
+        require_f32(out, 0, n, "gravity_layernorm_affine_f32 out")?;
+        let n = u32_arg(n, "gravity_layernorm_affine_f32 n")?;
+        let xb = x.clone();
+        let wb = weight.clone();
+        let bb = bias.clone();
+        let ob = out.clone();
+        tcb.dispatch_threads(
+            "gravity_layernorm_affine_f32",
+            (TG, 1, 1),
+            (TG, 1, 1),
+            move |enc| {
+                enc.set_buffer(0, Some(&xb), 0);
+                enc.set_buffer(1, Some(&wb), 0);
+                enc.set_buffer(2, Some(&bb), 0);
+                enc.set_buffer(3, Some(&ob), 0);
+                enc.set_bytes(4, 4, &n as *const u32 as *const _);
+                enc.set_bytes(5, 4, &eps as *const f32 as *const _);
+                enc.set_threadgroup_memory_length(0, (TG as u64) * 4);
+            },
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub(super) fn encode_rope_interleaved(
+        tcb: &mut TokenCommandBuffer<'_>,
+        x: &Buffer,
+        input_element_offset: usize,
+        out: &Buffer,
+        output_element_offset: usize,
+        cos: &Buffer,
+        sin: &Buffer,
+        n_heads: usize,
+        rotary_dim: usize,
+        in_stride: usize,
+        out_stride: usize,
+    ) -> Result<()> {
+        if n_heads == 0 || rotary_dim == 0 {
+            return Ok(());
+        }
+        if rotary_dim % 2 != 0 || in_stride < rotary_dim || out_stride < rotary_dim {
+            return Err(Error::Gravity(format!(
+                "gravity_rope_interleaved_f32 invalid geometry: heads={n_heads}, rotary_dim={rotary_dim}, in_stride={in_stride}, out_stride={out_stride}"
+            )));
+        }
+        let input_len = strided_elements(
+            n_heads,
+            in_stride,
+            rotary_dim,
+            "gravity_rope_interleaved_f32 input",
+        )?;
+        let output_len = strided_elements(
+            n_heads,
+            out_stride,
+            rotary_dim,
+            "gravity_rope_interleaved_f32 output",
+        )?;
+        let input_byte_offset = require_f32(
+            x,
+            input_element_offset,
+            input_len,
+            "gravity_rope_interleaved_f32 input",
+        )?;
+        let output_byte_offset = require_f32(
+            out,
+            output_element_offset,
+            output_len,
+            "gravity_rope_interleaved_f32 output",
+        )?;
+        require_f32(cos, 0, rotary_dim / 2, "gravity_rope_interleaved_f32 cos")?;
+        require_f32(sin, 0, rotary_dim / 2, "gravity_rope_interleaved_f32 sin")?;
+        let params = GlmRopeParams {
+            n_heads: u32_arg(n_heads, "gravity_rope_interleaved_f32 n_heads")?,
+            rotary_dim: u32_arg(rotary_dim, "gravity_rope_interleaved_f32 rotary_dim")?,
+            in_stride: u32_arg(in_stride, "gravity_rope_interleaved_f32 in_stride")?,
+            out_stride: u32_arg(out_stride, "gravity_rope_interleaved_f32 out_stride")?,
+        };
+        let threads = params
+            .n_heads
+            .checked_mul(params.rotary_dim / 2)
+            .ok_or_else(|| Error::Gravity("gravity_rope_interleaved_f32 grid overflow".into()))?;
+        let grid = grid_1d(threads, "gravity_rope_interleaved_f32")?;
+        let xb = x.clone();
+        let ob = out.clone();
+        let cb = cos.clone();
+        let sb = sin.clone();
+        tcb.dispatch_threads(
+            "gravity_rope_interleaved_f32",
+            grid,
+            (TG, 1, 1),
+            move |enc| {
+                enc.set_buffer(0, Some(&xb), input_byte_offset);
+                enc.set_buffer(1, Some(&ob), output_byte_offset);
+                enc.set_buffer(2, Some(&cb), 0);
+                enc.set_buffer(3, Some(&sb), 0);
+                enc.set_bytes(
+                    4,
+                    std::mem::size_of_val(&params) as u64,
+                    &params as *const _ as *const _,
+                );
+            },
+        )
+    }
+
+    pub(super) fn encode_copy_tail(
+        tcb: &mut TokenCommandBuffer<'_>,
+        src: &Buffer,
+        dst: &Buffer,
+        src_offset: usize,
+        dst_offset: usize,
+        n: usize,
+    ) -> Result<()> {
+        if n == 0 {
+            return Ok(());
+        }
+        require_f32(src, src_offset, n, "gravity_copy_tail_f32 src")?;
+        require_f32(dst, dst_offset, n, "gravity_copy_tail_f32 dst")?;
+        let src_offset = u32_arg(src_offset, "gravity_copy_tail_f32 src_off")?;
+        let dst_offset = u32_arg(dst_offset, "gravity_copy_tail_f32 dst_off")?;
+        let n = u32_arg(n, "gravity_copy_tail_f32 n")?;
+        let grid = grid_1d(n, "gravity_copy_tail_f32")?;
+        let sb = src.clone();
+        let db = dst.clone();
+        tcb.dispatch_threads("gravity_copy_tail_f32", grid, (TG, 1, 1), move |enc| {
+            enc.set_buffer(0, Some(&sb), 0);
+            enc.set_buffer(1, Some(&db), 0);
+            enc.set_bytes(2, 4, &src_offset as *const u32 as *const _);
+            enc.set_bytes(3, 4, &dst_offset as *const u32 as *const _);
+            enc.set_bytes(4, 4, &n as *const u32 as *const _);
+        })
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub(super) fn encode_mla_append_kv_expanded(
+        tcb: &mut TokenCommandBuffer<'_>,
+        kv: &Buffer,
+        k_rot: &Buffer,
+        keys: &Buffer,
+        values: &Buffer,
+        n_heads: usize,
+        qk_nope: usize,
+        qk_rope: usize,
+        v_dim: usize,
+        position: usize,
+    ) -> Result<()> {
+        let qk = checked_add(qk_nope, qk_rope, "gravity_glm_mla_append_kv qk")?;
+        let per_kv = checked_add(qk_nope, v_dim, "gravity_glm_mla_append_kv per_kv")?;
+        let key_elems = checked_mul(n_heads, qk, "gravity_glm_mla_append_kv key elements")?;
+        let value_elems = checked_mul(n_heads, v_dim, "gravity_glm_mla_append_kv value elements")?;
+        let total = checked_add(key_elems, value_elems, "gravity_glm_mla_append_kv grid")?;
+        if total == 0 {
+            return Ok(());
+        }
+        require_f32(
+            kv,
+            0,
+            checked_mul(n_heads, per_kv, "gravity_glm_mla_append_kv kv")?,
+            "gravity_glm_mla_append_kv kv",
+        )?;
+        require_f32(k_rot, 0, qk_rope, "gravity_glm_mla_append_kv k_rot")?;
+        let positions = checked_add(position, 1, "gravity_glm_mla_append_kv position")?;
+        require_f32(
+            keys,
+            0,
+            checked_mul(positions, key_elems, "gravity_glm_mla_append_kv keys")?,
+            "gravity_glm_mla_append_kv expanded keys",
+        )?;
+        require_f32(
+            values,
+            0,
+            checked_mul(positions, value_elems, "gravity_glm_mla_append_kv values")?,
+            "gravity_glm_mla_append_kv expanded values",
+        )?;
+        let params = GlmMlaAppendParams {
+            n_heads: u32_arg(n_heads, "gravity_glm_mla_append_kv n_heads")?,
+            qk_nope: u32_arg(qk_nope, "gravity_glm_mla_append_kv qk_nope")?,
+            qk_rope: u32_arg(qk_rope, "gravity_glm_mla_append_kv qk_rope")?,
+            v_dim: u32_arg(v_dim, "gravity_glm_mla_append_kv v_dim")?,
+            pos: u32_arg(position, "gravity_glm_mla_append_kv pos")?,
+        };
+        let grid = grid_1d(
+            u32_arg(total, "gravity_glm_mla_append_kv total")?,
+            "gravity_glm_mla_append_kv",
+        )?;
+        let kvb = kv.clone();
+        let krb = k_rot.clone();
+        let kb = keys.clone();
+        let vb = values.clone();
+        tcb.dispatch_threads("gravity_glm_mla_append_kv", grid, (TG, 1, 1), move |enc| {
+            enc.set_buffer(0, Some(&kvb), 0);
+            enc.set_buffer(1, Some(&krb), 0);
+            enc.set_buffer(2, Some(&kb), 0);
+            enc.set_buffer(3, Some(&vb), 0);
+            enc.set_bytes(
+                4,
+                std::mem::size_of_val(&params) as u64,
+                &params as *const _ as *const _,
+            );
+        })
+    }
+
+    pub(super) fn encode_build_queries(
+        tcb: &mut TokenCommandBuffer<'_>,
+        q: &Buffer,
+        q_rope_rot: &Buffer,
+        queries: &Buffer,
+        n_heads: usize,
+        qk_nope: usize,
+        qk_rope: usize,
+    ) -> Result<()> {
+        let qk = checked_add(qk_nope, qk_rope, "gravity_glm_build_queries qk")?;
+        let total = checked_mul(n_heads, qk, "gravity_glm_build_queries total")?;
+        if total == 0 {
+            return Ok(());
+        }
+        require_f32(q, 0, total, "gravity_glm_build_queries q")?;
+        require_f32(
+            q_rope_rot,
+            0,
+            checked_mul(n_heads, qk_rope, "gravity_glm_build_queries q_rope_rot")?,
+            "gravity_glm_build_queries q_rope_rot",
+        )?;
+        require_f32(queries, 0, total, "gravity_glm_build_queries queries")?;
+        let params = GlmBuildQParams {
+            n_heads: u32_arg(n_heads, "gravity_glm_build_queries n_heads")?,
+            qk_nope: u32_arg(qk_nope, "gravity_glm_build_queries qk_nope")?,
+            qk_rope: u32_arg(qk_rope, "gravity_glm_build_queries qk_rope")?,
+        };
+        let grid = grid_1d(
+            u32_arg(total, "gravity_glm_build_queries total")?,
+            "gravity_glm_build_queries",
+        )?;
+        let qb = q.clone();
+        let rb = q_rope_rot.clone();
+        let ob = queries.clone();
+        tcb.dispatch_threads("gravity_glm_build_queries", grid, (TG, 1, 1), move |enc| {
+            enc.set_buffer(0, Some(&qb), 0);
+            enc.set_buffer(1, Some(&rb), 0);
+            enc.set_buffer(2, Some(&ob), 0);
+            enc.set_bytes(
+                3,
+                std::mem::size_of_val(&params) as u64,
+                &params as *const _ as *const _,
+            );
+        })
+    }
+
+    pub(super) fn encode_append_index_key(
+        tcb: &mut TokenCommandBuffer<'_>,
+        k_full: &Buffer,
+        index_keys: &Buffer,
+        position: usize,
+        head_dim: usize,
+    ) -> Result<()> {
+        if head_dim == 0 {
+            return Ok(());
+        }
+        require_f32(k_full, 0, head_dim, "gravity_glm_append_index_key k_full")?;
+        let positions = checked_add(position, 1, "gravity_glm_append_index_key position")?;
+        require_f32(
+            index_keys,
+            0,
+            checked_mul(
+                positions,
+                head_dim,
+                "gravity_glm_append_index_key index_keys",
+            )?,
+            "gravity_glm_append_index_key index_keys",
+        )?;
+        let position = u32_arg(position, "gravity_glm_append_index_key pos")?;
+        let head_dim = u32_arg(head_dim, "gravity_glm_append_index_key idim")?;
+        let grid = grid_1d(head_dim, "gravity_glm_append_index_key")?;
+        let kb = k_full.clone();
+        let ib = index_keys.clone();
+        tcb.dispatch_threads(
+            "gravity_glm_append_index_key",
+            grid,
+            (TG, 1, 1),
+            move |enc| {
+                enc.set_buffer(0, Some(&kb), 0);
+                enc.set_buffer(1, Some(&ib), 0);
+                enc.set_bytes(2, 4, &position as *const u32 as *const _);
+                enc.set_bytes(3, 4, &head_dim as *const u32 as *const _);
+            },
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub(super) fn encode_dsa_scores(
+        tcb: &mut TokenCommandBuffer<'_>,
+        q_full: &Buffer,
+        index_keys: &Buffer,
+        head_weights: &Buffer,
+        scores: &Buffer,
+        n_keys: usize,
+        n_heads: usize,
+        head_dim: usize,
+        position: usize,
+        dim_scale: f32,
+    ) -> Result<()> {
+        if n_keys == 0 {
+            return Ok(());
+        }
+        require_f32(
+            q_full,
+            0,
+            checked_mul(n_heads, head_dim, "gravity_glm_dsa_scores q_full")?,
+            "gravity_glm_dsa_scores q_full",
+        )?;
+        require_f32(
+            index_keys,
+            0,
+            checked_mul(n_keys, head_dim, "gravity_glm_dsa_scores index_keys")?,
+            "gravity_glm_dsa_scores index_keys",
+        )?;
+        require_f32(
+            head_weights,
+            0,
+            n_heads,
+            "gravity_glm_dsa_scores head_weights",
+        )?;
+        require_f32(scores, 0, n_keys, "gravity_glm_dsa_scores scores")?;
+        let params = GlmDsaParams {
+            n_keys: u32_arg(n_keys, "gravity_glm_dsa_scores n_keys")?,
+            n_heads: u32_arg(n_heads, "gravity_glm_dsa_scores n_heads")?,
+            head_dim: u32_arg(head_dim, "gravity_glm_dsa_scores head_dim")?,
+            pos: u32_arg(position, "gravity_glm_dsa_scores pos")?,
+            dim_scale,
+        };
+        let grid = grid_1d(params.n_keys, "gravity_glm_dsa_scores")?;
+        let qb = q_full.clone();
+        let kb = index_keys.clone();
+        let wb = head_weights.clone();
+        let sb = scores.clone();
+        tcb.dispatch_threads("gravity_glm_dsa_scores", grid, (TG, 1, 1), move |enc| {
+            enc.set_buffer(0, Some(&qb), 0);
+            enc.set_buffer(1, Some(&kb), 0);
+            enc.set_buffer(2, Some(&wb), 0);
+            enc.set_buffer(3, Some(&sb), 0);
+            enc.set_bytes(
+                4,
+                std::mem::size_of_val(&params) as u64,
+                &params as *const _ as *const _,
+            );
+        })
+    }
+
+    pub(super) fn encode_stable_topk(
+        tcb: &mut TokenCommandBuffer<'_>,
+        values: &Buffer,
+        indices: &Buffer,
+        selected_scratch: &Buffer,
+        n: usize,
+        k: usize,
+    ) -> Result<()> {
+        if n == 0 || k == 0 {
+            return Ok(());
+        }
+        let out_len = k.min(n);
+        require_f32(values, 0, n, "gravity_glm_stable_topk_f32 values")?;
+        require_range(
+            indices,
+            0,
+            out_len,
+            std::mem::size_of::<u32>(),
+            "gravity_glm_stable_topk_f32 indices",
+        )?;
+        require_range(
+            selected_scratch,
+            0,
+            n,
+            std::mem::size_of::<u8>(),
+            "gravity_glm_stable_topk_f32 selected",
+        )?;
+        let params = GlmTopkParams {
+            n: u32_arg(n, "gravity_glm_stable_topk_f32 n")?,
+            k: u32_arg(k, "gravity_glm_stable_topk_f32 k")?,
+        };
+        let vb = values.clone();
+        let ib = indices.clone();
+        let sb = selected_scratch.clone();
+        tcb.dispatch_threads(
+            "gravity_glm_stable_topk_f32",
+            (1, 1, 1),
+            (1, 1, 1),
+            move |enc| {
+                enc.set_buffer(0, Some(&vb), 0);
+                enc.set_buffer(1, Some(&ib), 0);
+                enc.set_buffer(2, Some(&sb), 0);
+                enc.set_bytes(
+                    3,
+                    std::mem::size_of_val(&params) as u64,
+                    &params as *const _ as *const _,
+                );
+            },
+        )
+    }
+
+    /// Encode transitional expanded-cache sparse attention.
+    ///
+    /// `allow_idx` must contain unique positions in ascending position order
+    /// to preserve the current host accumulation order. The stable-top-k
+    /// output is score-ordered and therefore cannot be passed here directly;
+    /// a future fully-device graph needs an exact ascending reorder primitive.
+    #[allow(clippy::too_many_arguments)]
+    pub(super) fn encode_sparse_attention_expanded_ascending_allow(
+        tcb: &mut TokenCommandBuffer<'_>,
+        queries: &Buffer,
+        keys: &Buffer,
+        values: &Buffer,
+        allow_idx: &Buffer,
+        context: &Buffer,
+        n_heads: usize,
+        qk_dim: usize,
+        v_dim: usize,
+        n_keys: usize,
+        n_allow: usize,
+        scale: f32,
+    ) -> Result<()> {
+        if n_heads == 0 || qk_dim == 0 || v_dim == 0 {
+            return Ok(());
+        }
+        require_f32(
+            queries,
+            0,
+            checked_mul(n_heads, qk_dim, "gravity_glm_sparse_attn queries")?,
+            "gravity_glm_sparse_attn queries",
+        )?;
+        require_f32(
+            keys,
+            0,
+            checked_mul(
+                checked_mul(n_keys, n_heads, "gravity_glm_sparse_attn keys")?,
+                qk_dim,
+                "gravity_glm_sparse_attn keys",
+            )?,
+            "gravity_glm_sparse_attn expanded keys",
+        )?;
+        require_f32(
+            values,
+            0,
+            checked_mul(
+                checked_mul(n_keys, n_heads, "gravity_glm_sparse_attn values")?,
+                v_dim,
+                "gravity_glm_sparse_attn values",
+            )?,
+            "gravity_glm_sparse_attn expanded values",
+        )?;
+        require_range(
+            allow_idx,
+            0,
+            n_allow,
+            std::mem::size_of::<u32>(),
+            "gravity_glm_sparse_attn allow_idx",
+        )?;
+        require_f32(
+            context,
+            0,
+            checked_mul(n_heads, v_dim, "gravity_glm_sparse_attn context")?,
+            "gravity_glm_sparse_attn context",
+        )?;
+        let params = GlmSparseAttnParams {
+            n_heads: u32_arg(n_heads, "gravity_glm_sparse_attn n_heads")?,
+            qk_dim: u32_arg(qk_dim, "gravity_glm_sparse_attn qk_dim")?,
+            v_dim: u32_arg(v_dim, "gravity_glm_sparse_attn v_dim")?,
+            n_keys: u32_arg(n_keys, "gravity_glm_sparse_attn n_keys")?,
+            n_allow: u32_arg(n_allow, "gravity_glm_sparse_attn n_allow")?,
+            scale,
+        };
+        let grid_width = params
+            .n_heads
+            .checked_mul(TG)
+            .ok_or_else(|| Error::Gravity("gravity_glm_sparse_attn grid overflow".into()))?;
+        let shmem = checked_mul(
+            n_allow.max(1),
+            std::mem::size_of::<f32>(),
+            "gravity_glm_sparse_attn threadgroup memory",
+        )?;
+        let qb = queries.clone();
+        let kb = keys.clone();
+        let vb = values.clone();
+        let ab = allow_idx.clone();
+        let cb = context.clone();
+        tcb.dispatch_threads(
+            "gravity_glm_sparse_attn",
+            (grid_width, 1, 1),
+            (TG, 1, 1),
+            move |enc| {
+                enc.set_buffer(0, Some(&qb), 0);
+                enc.set_buffer(1, Some(&kb), 0);
+                enc.set_buffer(2, Some(&vb), 0);
+                enc.set_buffer(3, Some(&ab), 0);
+                enc.set_buffer(4, Some(&cb), 0);
+                enc.set_bytes(
+                    5,
+                    std::mem::size_of_val(&params) as u64,
+                    &params as *const _ as *const _,
+                );
+                enc.set_threadgroup_memory_length(0, shmem as u64);
+            },
+        )
+    }
+
+    pub(super) fn encode_router_correction(
+        tcb: &mut TokenCommandBuffer<'_>,
+        logits: &Buffer,
+        bias: &Buffer,
+        scores: &Buffer,
+        corrected: &Buffer,
+        n: usize,
+    ) -> Result<()> {
+        if n == 0 {
+            return Ok(());
+        }
+        require_f32(logits, 0, n, "gravity_glm_router_correct logits")?;
+        require_f32(bias, 0, n, "gravity_glm_router_correct bias")?;
+        require_f32(scores, 0, n, "gravity_glm_router_correct scores")?;
+        require_f32(corrected, 0, n, "gravity_glm_router_correct corrected")?;
+        let n = u32_arg(n, "gravity_glm_router_correct n")?;
+        let grid = grid_1d(n, "gravity_glm_router_correct")?;
+        let lb = logits.clone();
+        let bb = bias.clone();
+        let sb = scores.clone();
+        let cb = corrected.clone();
+        tcb.dispatch_threads("gravity_glm_router_correct", grid, (TG, 1, 1), move |enc| {
+            enc.set_buffer(0, Some(&lb), 0);
+            enc.set_buffer(1, Some(&bb), 0);
+            enc.set_buffer(2, Some(&sb), 0);
+            enc.set_buffer(3, Some(&cb), 0);
+            enc.set_bytes(4, 4, &n as *const u32 as *const _);
+        })
+    }
+
+    pub(super) fn encode_zero(
+        tcb: &mut TokenCommandBuffer<'_>,
+        buffer: &Buffer,
+        n: usize,
+    ) -> Result<()> {
+        if n == 0 {
+            return Ok(());
+        }
+        require_f32(buffer, 0, n, "gravity_zero_f32 buffer")?;
+        let n = u32_arg(n, "gravity_zero_f32 n")?;
+        let grid = grid_1d(n, "gravity_zero_f32")?;
+        let xb = buffer.clone();
+        tcb.dispatch_threads("gravity_zero_f32", grid, (TG, 1, 1), move |enc| {
+            enc.set_buffer(0, Some(&xb), 0);
+            enc.set_bytes(1, 4, &n as *const u32 as *const _);
+        })
+    }
+}
+
 // ── Expert-wave (flagged; default path above is untouched) ─────────────────
 
 fn encode_silu_mul_f32(
@@ -1853,7 +2601,9 @@ impl ResidentRuntime {
 
 #[cfg(test)]
 mod tests {
+    use super::route_segment_primitives::*;
     use super::*;
+    use crate::numeric_parity::{score_pair, Bounds};
 
     fn tiny_arch() -> GlmArch {
         GlmArch {
@@ -1880,6 +2630,498 @@ mod tests {
             indexer_types: vec!["full".into()],
             mlp_layer_types: vec!["dense".into()],
         }
+    }
+
+    fn f32_buffer(ctx: &MetalContext, values: &[f32]) -> Buffer {
+        let buffer = ctx
+            .new_buffer_checked(values.len() * std::mem::size_of::<f32>())
+            .expect("f32 test buffer");
+        write_f32(&buffer, values);
+        buffer
+    }
+
+    fn filled_f32_buffer(ctx: &MetalContext, len: usize, value: f32) -> Buffer {
+        f32_buffer(ctx, &vec![value; len])
+    }
+
+    fn u32_buffer(ctx: &MetalContext, values: &[u32]) -> Buffer {
+        let buffer = ctx
+            .new_buffer_checked(values.len() * std::mem::size_of::<u32>())
+            .expect("u32 test buffer");
+        unsafe {
+            std::ptr::copy_nonoverlapping(
+                values.as_ptr(),
+                buffer.contents() as *mut u32,
+                values.len(),
+            );
+        }
+        buffer
+    }
+
+    fn empty_u8_buffer(ctx: &MetalContext, len: usize) -> Buffer {
+        ctx.new_buffer_checked(len).expect("u8 test buffer")
+    }
+
+    fn assert_v21_pair(label: &str, host: &[f32], device: &[f32], reference: &[f64]) {
+        let score = score_pair(host, device, reference, &Bounds::continuous_only());
+        assert!(
+            score.pass,
+            "{label}: Numeric Parity V2.1 failure against FP64 authority; host={:?}, device={:?}",
+            score.host.failures, score.device.failures
+        );
+    }
+
+    fn topk_desc_f64(values: &[f64], k: usize) -> Vec<usize> {
+        let mut indices: Vec<usize> = (0..values.len()).collect();
+        indices.sort_by(|&a, &b| {
+            values[b]
+                .partial_cmp(&values[a])
+                .unwrap_or(std::cmp::Ordering::Equal)
+                .then(a.cmp(&b))
+        });
+        indices.truncate(k);
+        indices
+    }
+
+    #[test]
+    fn route_segment_parameter_abis_are_frozen_and_ranges_fail_closed() {
+        assert_eq!(std::mem::size_of::<GlmRopeParams>(), 16);
+        assert_eq!(std::mem::offset_of!(GlmRopeParams, n_heads), 0);
+        assert_eq!(std::mem::offset_of!(GlmRopeParams, rotary_dim), 4);
+        assert_eq!(std::mem::offset_of!(GlmRopeParams, in_stride), 8);
+        assert_eq!(std::mem::offset_of!(GlmRopeParams, out_stride), 12);
+
+        assert_eq!(std::mem::size_of::<GlmMlaAppendParams>(), 20);
+        assert_eq!(std::mem::offset_of!(GlmMlaAppendParams, n_heads), 0);
+        assert_eq!(std::mem::offset_of!(GlmMlaAppendParams, pos), 16);
+
+        assert_eq!(std::mem::size_of::<GlmBuildQParams>(), 12);
+        assert_eq!(std::mem::offset_of!(GlmBuildQParams, qk_rope), 8);
+
+        assert_eq!(std::mem::size_of::<GlmDsaParams>(), 20);
+        assert_eq!(std::mem::offset_of!(GlmDsaParams, pos), 12);
+        assert_eq!(std::mem::offset_of!(GlmDsaParams, dim_scale), 16);
+
+        assert_eq!(std::mem::size_of::<GlmTopkParams>(), 8);
+        assert_eq!(std::mem::offset_of!(GlmTopkParams, k), 4);
+
+        assert_eq!(std::mem::size_of::<GlmSparseAttnParams>(), 24);
+        assert_eq!(std::mem::offset_of!(GlmSparseAttnParams, n_allow), 16);
+        assert_eq!(std::mem::offset_of!(GlmSparseAttnParams, scale), 20);
+
+        let Ok(ctx) = MetalContext::new() else {
+            return;
+        };
+        let one = f32_buffer(&ctx, &[1.0]);
+        let mut tcb = TokenCommandBuffer::new(&ctx);
+        let error = encode_rmsnorm(&mut tcb, &one, &one, &one, 2, 1e-6)
+            .expect_err("undersized buffers must be rejected before encoding");
+        assert!(error.to_string().contains("byte range"));
+        assert_eq!(tcb.dispatch_count(), 0);
+    }
+
+    #[test]
+    fn route_segment_norm_rope_copy_and_zero_match_host_and_f64() {
+        let Ok(ctx) = MetalContext::new() else {
+            return;
+        };
+
+        let x = vec![0.5, -1.25, 2.0, 0.75, -0.125, 3.5, -2.25];
+        let weight = vec![0.75, -0.5, 1.25, 0.875, -1.5, 0.25, 2.0];
+        let bias = vec![0.1, -0.2, 0.3, -0.4, 0.05, 0.125, -0.25];
+        let xb = f32_buffer(&ctx, &x);
+        let wb = f32_buffer(&ctx, &weight);
+        let bb = f32_buffer(&ctx, &bias);
+        let rms_out = filled_f32_buffer(&ctx, x.len(), f32::NAN);
+        let affine_out = filled_f32_buffer(&ctx, x.len(), f32::NAN);
+
+        let rope_input = vec![
+            91.0, 92.0, 1.0, 2.0, 3.0, 4.0, // head 0, rotate tail
+            81.0, 82.0, -1.5, 0.5, 2.5, -3.0, // head 1
+        ];
+        let cos = vec![0.875, -0.25];
+        let sin = vec![0.125, 0.75];
+        let rope_in = f32_buffer(&ctx, &rope_input);
+        let cosb = f32_buffer(&ctx, &cos);
+        let sinb = f32_buffer(&ctx, &sin);
+        let rope_out = filled_f32_buffer(&ctx, 8, f32::NAN);
+
+        let copy_src = f32_buffer(&ctx, &[10.0, 11.0, 12.0, 13.0, 14.0]);
+        let copy_dst = filled_f32_buffer(&ctx, 7, -9.0);
+        let zero_out = filled_f32_buffer(&ctx, 9, 7.0);
+
+        let mut tcb = TokenCommandBuffer::new(&ctx);
+        encode_rmsnorm(&mut tcb, &xb, &wb, &rms_out, x.len(), 1e-6).expect("encode rms");
+        encode_layernorm_affine(&mut tcb, &xb, &wb, &bb, &affine_out, x.len(), 1e-6)
+            .expect("encode affine layernorm");
+        encode_rope_interleaved(
+            &mut tcb, &rope_in, 2, &rope_out, 0, &cosb, &sinb, 2, 4, 6, 4,
+        )
+        .expect("encode GLM RoPE");
+        encode_copy_tail(&mut tcb, &copy_src, &copy_dst, 1, 3, 3).expect("encode copy tail");
+        encode_zero(&mut tcb, &zero_out, 9).expect("encode zero");
+        assert_eq!(tcb.dispatch_count(), 5);
+        tcb.commit_and_wait().expect("primitive command buffer");
+
+        let mean_sq_f32 = x.iter().map(|v| v * v).sum::<f32>() / x.len() as f32;
+        let inv_f32 = 1.0 / (mean_sq_f32 + 1e-6).sqrt();
+        let rms_host: Vec<f32> = x
+            .iter()
+            .zip(&weight)
+            .map(|(v, w)| v * inv_f32 * w)
+            .collect();
+        let mean_sq_f64 = x.iter().map(|&v| (v as f64) * (v as f64)).sum::<f64>() / x.len() as f64;
+        let inv_f64 = 1.0 / (mean_sq_f64 + 1e-6f64).sqrt();
+        let rms_f64: Vec<f64> = x
+            .iter()
+            .zip(&weight)
+            .map(|(&v, &w)| (v as f64) * inv_f64 * (w as f64))
+            .collect();
+        assert_v21_pair("rmsnorm", &rms_host, &read_f32(&rms_out, x.len()), &rms_f64);
+
+        let mean_f32 = x.iter().sum::<f32>() / x.len() as f32;
+        let var_f32 = x
+            .iter()
+            .map(|v| (v - mean_f32) * (v - mean_f32))
+            .sum::<f32>()
+            / x.len() as f32;
+        let affine_inv_f32 = 1.0 / (var_f32 + 1e-6).sqrt();
+        let affine_host: Vec<f32> = x
+            .iter()
+            .zip(&weight)
+            .zip(&bias)
+            .map(|((&v, &w), &b)| (v - mean_f32) * affine_inv_f32 * w + b)
+            .collect();
+        let mean_f64 = x.iter().map(|&v| v as f64).sum::<f64>() / x.len() as f64;
+        let var_f64 = x
+            .iter()
+            .map(|&v| {
+                let d = v as f64 - mean_f64;
+                d * d
+            })
+            .sum::<f64>()
+            / x.len() as f64;
+        let affine_inv_f64 = 1.0 / (var_f64 + 1e-6f64).sqrt();
+        let affine_f64: Vec<f64> = x
+            .iter()
+            .zip(&weight)
+            .zip(&bias)
+            .map(|((&v, &w), &b)| (v as f64 - mean_f64) * affine_inv_f64 * w as f64 + b as f64)
+            .collect();
+        assert_v21_pair(
+            "affine layernorm",
+            &affine_host,
+            &read_f32(&affine_out, x.len()),
+            &affine_f64,
+        );
+
+        let mut rope_host = Vec::new();
+        let mut rope_f64 = Vec::new();
+        for head in 0..2 {
+            let base = head * 6 + 2;
+            rope_host.extend(rope_interleaved(&rope_input[base..base + 4], &cos, &sin));
+            let src = &rope_input[base..base + 4];
+            for i in 0..2 {
+                rope_f64.push(
+                    src[2 * i] as f64 * cos[i] as f64 - src[2 * i + 1] as f64 * sin[i] as f64,
+                );
+            }
+            for i in 0..2 {
+                rope_f64.push(
+                    src[2 * i + 1] as f64 * cos[i] as f64 + src[2 * i] as f64 * sin[i] as f64,
+                );
+            }
+        }
+        assert_v21_pair(
+            "interleaved RoPE",
+            &rope_host,
+            &read_f32(&rope_out, 8),
+            &rope_f64,
+        );
+
+        assert_eq!(
+            read_f32(&copy_dst, 7),
+            vec![-9.0, -9.0, -9.0, 11.0, 12.0, 13.0, -9.0]
+        );
+        assert_eq!(read_f32(&zero_out, 9), vec![0.0; 9]);
+    }
+
+    #[test]
+    fn route_segment_mla_build_and_index_append_match_host_exactly() {
+        let Ok(ctx) = MetalContext::new() else {
+            return;
+        };
+        let (n_heads, qk_nope, qk_rope, v_dim, position) = (2usize, 2usize, 2usize, 2usize, 1usize);
+        let qk = qk_nope + qk_rope;
+        let kv = vec![1.0, 2.0, 11.0, 12.0, 3.0, 4.0, 13.0, 14.0];
+        let k_rot = vec![21.0, 22.0];
+        let kvb = f32_buffer(&ctx, &kv);
+        let krb = f32_buffer(&ctx, &k_rot);
+        let keys = filled_f32_buffer(&ctx, 3 * n_heads * qk, -99.0);
+        let values = filled_f32_buffer(&ctx, 3 * n_heads * v_dim, -77.0);
+
+        let q = vec![1.0, 2.0, 90.0, 91.0, 3.0, 4.0, 92.0, 93.0];
+        let q_rot = vec![31.0, 32.0, 33.0, 34.0];
+        let qb = f32_buffer(&ctx, &q);
+        let qrb = f32_buffer(&ctx, &q_rot);
+        let queries = filled_f32_buffer(&ctx, n_heads * qk, f32::NAN);
+
+        let k_full = vec![41.0, 42.0, 43.0, 44.0];
+        let kfb = f32_buffer(&ctx, &k_full);
+        let index_keys = filled_f32_buffer(&ctx, 3 * k_full.len(), -55.0);
+
+        let mut tcb = TokenCommandBuffer::new(&ctx);
+        encode_mla_append_kv_expanded(
+            &mut tcb, &kvb, &krb, &keys, &values, n_heads, qk_nope, qk_rope, v_dim, position,
+        )
+        .expect("encode expanded MLA append");
+        encode_build_queries(&mut tcb, &qb, &qrb, &queries, n_heads, qk_nope, qk_rope)
+            .expect("encode build queries");
+        encode_append_index_key(&mut tcb, &kfb, &index_keys, 2, k_full.len())
+            .expect("encode index-key append");
+        assert_eq!(tcb.dispatch_count(), 3);
+        tcb.commit_and_wait().expect("MLA primitive command buffer");
+
+        let mut expected_keys = vec![-99.0; 3 * n_heads * qk];
+        let mut expected_values = vec![-77.0; 3 * n_heads * v_dim];
+        for head in 0..n_heads {
+            let kv_base = head * (qk_nope + v_dim);
+            let key_base = (position * n_heads + head) * qk;
+            expected_keys[key_base..key_base + qk_nope]
+                .copy_from_slice(&kv[kv_base..kv_base + qk_nope]);
+            expected_keys[key_base + qk_nope..key_base + qk].copy_from_slice(&k_rot);
+            let value_base = (position * n_heads + head) * v_dim;
+            expected_values[value_base..value_base + v_dim]
+                .copy_from_slice(&kv[kv_base + qk_nope..kv_base + qk_nope + v_dim]);
+        }
+        assert_eq!(read_f32(&keys, expected_keys.len()), expected_keys);
+        assert_eq!(read_f32(&values, expected_values.len()), expected_values);
+
+        let expected_queries = vec![1.0, 2.0, 31.0, 32.0, 3.0, 4.0, 33.0, 34.0];
+        assert_eq!(read_f32(&queries, expected_queries.len()), expected_queries);
+        assert_eq!(
+            read_f32(&index_keys, 3 * k_full.len()),
+            vec![-55.0, -55.0, -55.0, -55.0, -55.0, -55.0, -55.0, -55.0, 41.0, 42.0, 43.0, 44.0,]
+        );
+    }
+
+    #[test]
+    fn route_segment_dsa_topk_sparse_and_router_pass_v21_and_exact_ids() {
+        let Ok(ctx) = MetalContext::new() else {
+            return;
+        };
+        let (n_keys, n_heads, head_dim) = (5usize, 2usize, 3usize);
+        let q_full = vec![1.0, -0.5, 2.0, -1.5, 0.25, 0.75];
+        let index_keys = vec![
+            0.5, 1.0, -0.25, 2.0, -0.5, 1.0, 2.0, -0.5, 1.0, 0.125, 0.25, 0.5, -0.75, 1.5, -1.0,
+        ];
+        let head_weights = vec![0.75, -0.25];
+        let dim_scale = (head_dim as f32).powf(-0.5);
+        let dsa_position = n_keys - 2;
+        let qfb = f32_buffer(&ctx, &q_full);
+        let ikb = f32_buffer(&ctx, &index_keys);
+        let hwb = f32_buffer(&ctx, &head_weights);
+        let dsa_scores = filled_f32_buffer(&ctx, n_keys, f32::NAN);
+        let topk_indices = u32_buffer(&ctx, &[u32::MAX; 3]);
+        let selected = empty_u8_buffer(&ctx, n_keys);
+
+        let qk_dim = 3usize;
+        let v_dim = 2usize;
+        let queries = vec![0.5, -1.0, 1.5, -0.75, 0.25, 2.0];
+        let sparse_keys: Vec<f32> = (0..n_keys * n_heads * qk_dim)
+            .map(|i| ((i as f32 * 0.173).sin() * 1.25) + 0.05)
+            .collect();
+        let sparse_values: Vec<f32> = (0..n_keys * n_heads * v_dim)
+            .map(|i| ((i as f32 * 0.219).cos() * 0.75) - 0.1)
+            .collect();
+        let allow = vec![0u32, 2, 4];
+        let queryb = f32_buffer(&ctx, &queries);
+        let sparse_keyb = f32_buffer(&ctx, &sparse_keys);
+        let sparse_valueb = f32_buffer(&ctx, &sparse_values);
+        let allowb = u32_buffer(&ctx, &allow);
+        let context = filled_f32_buffer(&ctx, n_heads * v_dim, f32::NAN);
+        let sparse_scale = (qk_dim as f32).powf(-0.5);
+
+        let logits = vec![-4.0, -0.25, 0.0, 1.25, 5.0, 0.75];
+        let bias = vec![0.125, -0.05, 0.2, -0.125, 0.01, 0.3];
+        let logitb = f32_buffer(&ctx, &logits);
+        let biasb = f32_buffer(&ctx, &bias);
+        let router_scores = filled_f32_buffer(&ctx, logits.len(), f32::NAN);
+        let corrected = filled_f32_buffer(&ctx, logits.len(), f32::NAN);
+
+        let mut tcb = TokenCommandBuffer::new(&ctx);
+        encode_dsa_scores(
+            &mut tcb,
+            &qfb,
+            &ikb,
+            &hwb,
+            &dsa_scores,
+            n_keys,
+            n_heads,
+            head_dim,
+            dsa_position,
+            dim_scale,
+        )
+        .expect("encode DSA scores");
+        encode_stable_topk(&mut tcb, &dsa_scores, &topk_indices, &selected, n_keys, 3)
+            .expect("encode exact stable top-k");
+        encode_sparse_attention_expanded_ascending_allow(
+            &mut tcb,
+            &queryb,
+            &sparse_keyb,
+            &sparse_valueb,
+            &allowb,
+            &context,
+            n_heads,
+            qk_dim,
+            v_dim,
+            n_keys,
+            allow.len(),
+            sparse_scale,
+        )
+        .expect("encode expanded sparse attention");
+        encode_router_correction(
+            &mut tcb,
+            &logitb,
+            &biasb,
+            &router_scores,
+            &corrected,
+            logits.len(),
+        )
+        .expect("encode router correction");
+        assert_eq!(tcb.dispatch_count(), 4);
+        tcb.commit_and_wait()
+            .expect("decision primitive command buffer");
+
+        let mut dsa_host = vec![0.0f32; n_keys];
+        let mut dsa_f64 = vec![0.0f64; n_keys];
+        for key_index in 0..n_keys {
+            if key_index > dsa_position {
+                dsa_host[key_index] = f32::NEG_INFINITY;
+                dsa_f64[key_index] = f64::NEG_INFINITY;
+                continue;
+            }
+            let key = &index_keys[key_index * head_dim..(key_index + 1) * head_dim];
+            let mut host_acc = 0.0f32;
+            let mut authority_acc = 0.0f64;
+            for head in 0..n_heads {
+                let query = &q_full[head * head_dim..(head + 1) * head_dim];
+                let host_dot = query.iter().zip(key).map(|(x, y)| x * y).sum::<f32>();
+                host_acc += head_weights[head] * (host_dot * dim_scale).max(0.0);
+                let authority_dot = query
+                    .iter()
+                    .zip(key)
+                    .map(|(&x, &y)| x as f64 * y as f64)
+                    .sum::<f64>();
+                authority_acc +=
+                    head_weights[head] as f64 * (authority_dot * dim_scale as f64).max(0.0);
+            }
+            dsa_host[key_index] = host_acc;
+            dsa_f64[key_index] = authority_acc;
+        }
+        let dsa_device = read_f32(&dsa_scores, n_keys);
+        assert_v21_pair(
+            "DSA scores",
+            &dsa_host[..=dsa_position],
+            &dsa_device[..=dsa_position],
+            &dsa_f64[..=dsa_position],
+        );
+        assert_eq!(dsa_device[dsa_position + 1], f32::NEG_INFINITY);
+        let topk_device: Vec<usize> = read_u32(&topk_indices, 3)
+            .into_iter()
+            .map(|v| v as usize)
+            .collect();
+        assert_eq!(topk_device, topk_desc(&dsa_host, 3));
+        assert_eq!(topk_device, topk_desc_f64(&dsa_f64, 3));
+        assert!(
+            topk_device.iter().position(|&index| index == 1)
+                < topk_device.iter().position(|&index| index == 2),
+            "the lower index must win the exact DSA score tie"
+        );
+
+        let mut sparse_host = vec![0.0f32; n_heads * v_dim];
+        let mut sparse_f64 = vec![0.0f64; n_heads * v_dim];
+        for head in 0..n_heads {
+            let query = &queries[head * qk_dim..(head + 1) * qk_dim];
+            let mut host_logits = Vec::new();
+            let mut authority_logits = Vec::new();
+            for &position in &allow {
+                let position = position as usize;
+                let key_base = (position * n_heads + head) * qk_dim;
+                let key = &sparse_keys[key_base..key_base + qk_dim];
+                host_logits
+                    .push(query.iter().zip(key).map(|(x, y)| x * y).sum::<f32>() * sparse_scale);
+                authority_logits.push(
+                    query
+                        .iter()
+                        .zip(key)
+                        .map(|(&x, &y)| x as f64 * y as f64)
+                        .sum::<f64>()
+                        * sparse_scale as f64,
+                );
+            }
+            let host_best = host_logits
+                .iter()
+                .copied()
+                .fold(f32::NEG_INFINITY, f32::max);
+            let mut host_probs: Vec<f32> =
+                host_logits.iter().map(|v| (v - host_best).exp()).collect();
+            let host_total = host_probs.iter().sum::<f32>();
+            for value in &mut host_probs {
+                *value /= host_total;
+            }
+            let authority_best = authority_logits
+                .iter()
+                .copied()
+                .fold(f64::NEG_INFINITY, f64::max);
+            let mut authority_probs: Vec<f64> = authority_logits
+                .iter()
+                .map(|v| (v - authority_best).exp())
+                .collect();
+            let authority_total = authority_probs.iter().sum::<f64>();
+            for value in &mut authority_probs {
+                *value /= authority_total;
+            }
+            for (slot, &position) in allow.iter().enumerate() {
+                let value_base = (position as usize * n_heads + head) * v_dim;
+                for dim in 0..v_dim {
+                    sparse_host[head * v_dim + dim] +=
+                        host_probs[slot] * sparse_values[value_base + dim];
+                    sparse_f64[head * v_dim + dim] +=
+                        authority_probs[slot] * sparse_values[value_base + dim] as f64;
+                }
+            }
+        }
+        assert_v21_pair(
+            "expanded sparse attention",
+            &sparse_host,
+            &read_f32(&context, sparse_host.len()),
+            &sparse_f64,
+        );
+
+        let router_host: Vec<f32> = logits.iter().map(|l| 1.0 / (1.0 + (-l).exp())).collect();
+        let router_f64: Vec<f64> = logits
+            .iter()
+            .map(|&l| 1.0 / (1.0 + (-(l as f64)).exp()))
+            .collect();
+        assert_v21_pair(
+            "router sigmoid",
+            &router_host,
+            &read_f32(&router_scores, logits.len()),
+            &router_f64,
+        );
+        let corrected_host: Vec<f32> = router_host.iter().zip(&bias).map(|(s, b)| s + b).collect();
+        let corrected_f64: Vec<f64> = router_f64
+            .iter()
+            .zip(&bias)
+            .map(|(s, &b)| s + b as f64)
+            .collect();
+        assert_v21_pair(
+            "router correction",
+            &corrected_host,
+            &read_f32(&corrected, logits.len()),
+            &corrected_f64,
+        );
     }
 
     #[test]

@@ -1,6 +1,6 @@
 {
   "schema": "hawking.ramanujan.data_source_matrix.v1",
-  "at": "2026-07-27T16:03:38Z",
+  "at": "2026-07-27T18:56:47Z",
   "generated_from": "ramanujan/RAMANUJAN_OFFLINE_MANIFEST.json",
   "generation_receipt": "ramanujan/data/corpora/GENERATION_RECEIPT.json",
   "contamination_receipt": "ramanujan/data/corpora/CONTAMINATION_RECEIPT.json",
@@ -27,17 +27,17 @@
       "bindings": {
         "license": "INHERITED_FROM_MATHLIB_APACHE_2_0",
         "version": "2ec0166b31100827cd34bacca4d3b9ea3da9d618",
-        "hash": "62590eda47156c6d85cb9b1f73e22c9ebc5db84e510bba1f47ebbde7518bc31b",
+        "hash": "52270d4121d62444657be20f6814ade0eaf75512157acaec58b85fb319b966f2",
         "split": "train",
         "deduplication": "content_hash_sha256_exact",
-        "contamination_boundary": "PASS (barrier indexed 33 eval items; 400/400 admitted)",
-        "evidence_status": "400 admitted training items; method=mathlib_source_theorem_proof_pair; NOT production-prover evidence; NON_PRODUCTION corpus for local training loops",
+        "contamination_boundary": "PASS (barrier indexed 33 eval items; 5000/5000 admitted)",
+        "evidence_status": "5000 admitted training items; method=mathlib_source_theorem_proof_pair; NOT production-prover evidence; NON_PRODUCTION corpus for local training loops",
         "local_offline_location": "ramanujan/data/corpora/d1_proof_traces.jsonl"
       },
       "bindings_satisfied": 8,
       "bindings_required": 8,
-      "n_items": 400,
-      "n_admitted": 400,
+      "n_items": 5000,
+      "n_admitted": 5000,
       "extraction_method": "mathlib_source_theorem_proof_pair"
     },
     {
@@ -51,17 +51,17 @@
       "bindings": {
         "license": "INHERITED_FROM_MATHLIB_APACHE_2_0",
         "version": "2ec0166b31100827cd34bacca4d3b9ea3da9d618",
-        "hash": "0b12eb93cbd26c7e1acaa41138b94ad48505ad574750bcaf6e48cd6f190154c3",
+        "hash": "bdaadf16863b2b849c5edc69f0d5b430ed2b9a4823b3482f0c85fcf44afcee3f",
         "split": "train",
         "deduplication": "content_hash_sha256_exact",
-        "contamination_boundary": "PASS (barrier indexed 33 eval items; 400/400 admitted)",
-        "evidence_status": "400 admitted training items; method=mathlib_source_tactic_sequence_transitions; NOT production-prover evidence; NON_PRODUCTION corpus for local training loops",
+        "contamination_boundary": "PASS (barrier indexed 33 eval items; 5000/5000 admitted)",
+        "evidence_status": "5000 admitted training items; method=mathlib_source_tactic_sequence_transitions; NOT production-prover evidence; NON_PRODUCTION corpus for local training loops",
         "local_offline_location": "ramanujan/data/corpora/d2_state_transitions.jsonl"
       },
       "bindings_satisfied": 8,
       "bindings_required": 8,
-      "n_items": 400,
-      "n_admitted": 400,
+      "n_items": 5000,
+      "n_admitted": 5000,
       "extraction_method": "mathlib_source_tactic_sequence_transitions"
     },
     {
@@ -75,17 +75,17 @@
       "bindings": {
         "license": "INHERITED_FROM_MATHLIB_APACHE_2_0",
         "version": "2ec0166b31100827cd34bacca4d3b9ea3da9d618",
-        "hash": "87011bebbeb81f36ccd4d800f5508351d4109c3750b063207298daeb400edc63",
+        "hash": "c08a0efb545c26bfe6f29acbc518720935f48b595dd1df645291357b0bec44f5",
         "split": "train",
         "deduplication": "content_hash_sha256_exact",
-        "contamination_boundary": "PASS (barrier indexed 33 eval items; 400/400 admitted)",
-        "evidence_status": "400 admitted training items; method=mathlib_proof_dependency_name_extraction; NOT production-prover evidence; NON_PRODUCTION corpus for local training loops",
+        "contamination_boundary": "PASS (barrier indexed 33 eval items; 5000/5000 admitted)",
+        "evidence_status": "5000 admitted training items; method=mathlib_proof_dependency_name_extraction; NOT production-prover evidence; NON_PRODUCTION corpus for local training loops",
         "local_offline_location": "ramanujan/data/corpora/d3_premise_pairs.jsonl"
       },
       "bindings_satisfied": 8,
       "bindings_required": 8,
-      "n_items": 400,
-      "n_admitted": 400,
+      "n_items": 5000,
+      "n_admitted": 5000,
       "extraction_method": "mathlib_proof_dependency_name_extraction"
     },
     {
@@ -99,17 +99,17 @@
       "bindings": {
         "license": "LOCALLY_GENERATED",
         "version": "2ec0166b31100827cd34bacca4d3b9ea3da9d618",
-        "hash": "d358c187c6671ce8c10ec908670978dccd378af14c5e3285b917e510894c413b",
+        "hash": "271537b446f7b2dfc832497368ceff3a578b5a119381bc5879789a9b82e5c97f",
         "split": "train",
         "deduplication": "content_hash_sha256_exact",
-        "contamination_boundary": "PASS (barrier indexed 33 eval items; 60/60 admitted)",
-        "evidence_status": "60 admitted training items; method=perturb_valid_proof_capture_real_lean_error; NOT production-prover evidence; NON_PRODUCTION corpus for local training loops",
+        "contamination_boundary": "PASS (barrier indexed 33 eval items; 800/800 admitted)",
+        "evidence_status": "800 admitted training items; method=perturb_valid_proof_capture_real_lean_error; NOT production-prover evidence; NON_PRODUCTION corpus for local training loops",
         "local_offline_location": "ramanujan/data/corpora/d4_repair_pairs.jsonl"
       },
       "bindings_satisfied": 8,
       "bindings_required": 8,
-      "n_items": 60,
-      "n_admitted": 60,
+      "n_items": 800,
+      "n_admitted": 800,
       "extraction_method": "perturb_valid_proof_capture_real_lean_error"
     },
     {
@@ -144,7 +144,7 @@
       "bindings": {
         "license": "LOCALLY_GENERATED",
         "version": "2ec0166b31100827cd34bacca4d3b9ea3da9d618",
-        "hash": "9194456ec73bab85e759b01ae5836e52987325572ac02bc3c24ba1c232fde16b",
+        "hash": "f8f02c99d1aac3c8352cb89b05486d5c28b87eab47d6cc667e62c5199d732eec",
         "split": "train",
         "deduplication": "content_hash_sha256_exact",
         "contamination_boundary": "PASS (barrier indexed 33 eval items; 302/302 admitted)",
@@ -168,7 +168,7 @@
       "bindings": {
         "license": "LOCALLY_GENERATED",
         "version": "2ec0166b31100827cd34bacca4d3b9ea3da9d618",
-        "hash": "16f96ffa137178c7a807442c5af833bb582a1f60d03e96a321a4d1b5ebd2331a",
+        "hash": "4a47c7fd1e7d98cc78ed43c15abf0d1db0920ee4e4e0c539e7b24f92e0b13680",
         "split": "train",
         "deduplication": "content_hash_sha256_exact",
         "contamination_boundary": "PASS (barrier indexed 33 eval items; 86/86 admitted)",
@@ -231,10 +231,10 @@
     "present_on_disk": 6,
     "bindings_fully_satisfied": 6,
     "counts": {
-      "D1": 400,
-      "D2": 400,
-      "D3": 400,
-      "D4": 60,
+      "D1": 5000,
+      "D2": 5000,
+      "D3": 5000,
+      "D4": 800,
       "D6": 302,
       "D7": 86
     }

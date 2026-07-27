@@ -1,6 +1,6 @@
 {
   "schema": "hawking.ramanujan.acquisition_queue.v1",
-  "at": "2026-07-27T16:03:38Z",
+  "at": "2026-07-27T18:56:47Z",
   "generated_from": "ramanujan/RAMANUJAN_OFFLINE_MANIFEST.json",
   "resource_mode": "LIGHT_ONLY",
   "queue": [
@@ -12,7 +12,7 @@
       "unblocked_by_toolchain_install": false,
       "network_required": false,
       "safe_under_light_only": true,
-      "n_items": 400
+      "n_items": 5000
     },
     {
       "id": "D2",
@@ -22,7 +22,7 @@
       "unblocked_by_toolchain_install": false,
       "network_required": false,
       "safe_under_light_only": true,
-      "n_items": 400
+      "n_items": 5000
     },
     {
       "id": "D3",
@@ -32,7 +32,7 @@
       "unblocked_by_toolchain_install": false,
       "network_required": false,
       "safe_under_light_only": true,
-      "n_items": 400
+      "n_items": 5000
     },
     {
       "id": "D4",
@@ -42,7 +42,7 @@
       "unblocked_by_toolchain_install": false,
       "network_required": false,
       "safe_under_light_only": true,
-      "n_items": 60
+      "n_items": 800
     },
     {
       "id": "D5",

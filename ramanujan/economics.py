@@ -166,3 +166,117 @@ def value_for_tier_step(from_tier: int, to_tier: int) -> str | None:
     """Map a tier transition to a reward kind, or None if the step is not paid."""
     key = f"tier{from_tier}_to_tier{to_tier}"
     return key if key in REWARDS else None
+
+
+class SessionHalted(RuntimeError):
+    """Raised when the session-level budget is exhausted; no branch may spend further."""
+
+
+@dataclass
+class SessionEconomics:
+    """System-level cost model: a hard cap across every open branch.
+
+    `SearchEconomics.max_expansions` stops one search. This stops the *session*: the
+    sum of branch spends cannot talk past `max_total_expansions`. When the session
+    halts, every open branch is halted with the same reason so nothing sneaks a
+    charge through a still-open branch account.
+    """
+
+    session_id: str
+    max_total_expansions: int = 500
+    spent: int = 0
+    branches: dict[str, BranchAccount] = field(default_factory=dict)
+    halt: HaltRecord | None = None
+    grants: list[dict] = field(default_factory=list)
+
+    def is_halted(self) -> bool:
+        return self.halt is not None
+
+    def remaining(self) -> int:
+        if self.is_halted():
+            return 0
+        return max(0, self.max_total_expansions - self.spent)
+
+    def may_spend(self, units: int = 1) -> bool:
+        if self.is_halted():
+            return False
+        return self.spent + units <= self.max_total_expansions
+
+    def open_branch(
+        self,
+        branch_id: str,
+        max_expansions: int | None = None,
+        max_depth: int = 12,
+    ) -> BranchAccount:
+        if branch_id in self.branches:
+            raise ValueError(f"branch {branch_id!r} already open in session {self.session_id!r}")
+        if self.is_halted():
+            raise SessionHalted(
+                f"session {self.session_id!r} is halted ({self.halt.reason}); no new branches"
+            )
+        # Branch budget cannot exceed what the session has left.
+        cap = self.remaining() if max_expansions is None else min(max_expansions, self.remaining())
+        if cap <= 0:
+            raise SessionHalted(
+                f"session {self.session_id!r} has no remaining expansions"
+            )
+        branch = BranchAccount(
+            branch_id=branch_id,
+            economics=SearchEconomics(max_expansions=cap, max_depth=max_depth),
+        )
+        self.branches[branch_id] = branch
+        self.grants.append(
+            {"branch": branch_id, "max_expansions": cap, "session_remaining_after": self.remaining()}
+        )
+        return branch
+
+    def charge(self, branch_id: str, units: int = 1, what: str = "expand") -> None:
+        """Charge a branch and the session together. Either both spend or neither does."""
+        if self.is_halted():
+            raise SessionHalted(
+                f"session {self.session_id!r} is halted ({self.halt.reason}); no further charges"
+            )
+        if branch_id not in self.branches:
+            raise KeyError(f"unknown branch {branch_id!r}")
+        branch = self.branches[branch_id]
+        if not self.may_spend(units):
+            self.stop("economics: max_total_expansions", detail={"last_branch": branch_id})
+            raise SessionHalted(
+                f"session {self.session_id!r} exhausted total budget after {self.spent} expansions"
+            )
+        # Branch.charge may itself halt the branch; session spent still advances on success.
+        before = branch.economics.spent
+        branch.charge(units=units, what=what)
+        advanced = branch.economics.spent - before
+        self.spent += advanced
+        if self.spent >= self.max_total_expansions:
+            self.stop("economics: max_total_expansions", detail={"last_branch": branch_id})
+
+    def stop(self, reason: str, detail: dict | None = None) -> HaltRecord:
+        if self.halt is not None:
+            return self.halt
+        self.halt = HaltRecord(
+            reason=reason,
+            spent=self.spent,
+            value_earned=sum(b.value_earned for b in self.branches.values()),
+            detail=dict(detail or {}),
+        )
+        # Propagate: a halted session freezes every open branch.
+        for b in self.branches.values():
+            if not b.is_halted():
+                b.stop(f"session_halted: {reason}", detail={"session": self.session_id})
+        return self.halt
+
+    def score(self) -> dict:
+        return {
+            "session_id": self.session_id,
+            "spent": self.spent,
+            "max_total_expansions": self.max_total_expansions,
+            "remaining": self.remaining(),
+            "halted": self.is_halted(),
+            "halt_reason": None if self.halt is None else self.halt.reason,
+            "n_branches": len(self.branches),
+            "value_earned": sum(b.value_earned for b in self.branches.values()),
+            "currency": CURRENCY,
+            "authority": "NON_PRODUCTION_AUTHORITY",
+        }

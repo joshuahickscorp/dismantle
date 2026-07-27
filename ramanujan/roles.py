@@ -297,17 +297,16 @@ class RoleSession:
         self._consult_before_write("write_objection")
         self.stores.bury(claim_id, reason, actor=self.role_id)
 
-    def write_lean(self, claim_id: str, lean_text: str) -> dict:
+    def write_lean(self, claim_id: str, lean_text: str):
         self.capability.require("write_lean")
         self._consult_before_write("write_lean")
-        ps = {"claim": claim_id, "lean": lean_text, "author": self.role_id}
-        self.stores.proof_states[claim_id] = ps
-        self.stores.ledger.append(
-            "formalization",
-            {"claim": claim_id, "bytes": len(lean_text)},
+        # One proof-state entry per claim id for the session surface; stores refuse overwrite.
+        return self.stores.add_proof_state(
+            ps_id=claim_id,
+            claim_id=claim_id,
+            lean=lean_text,
             actor=self.role_id,
         )
-        return ps
 
     def write_evidence(self, claim_id: str, event: VerifierEvent):
         """Record a verifier event. The event's actor must be this role.
@@ -324,31 +323,17 @@ class RoleSession:
             )
         return self.stores.record_evidence(claim_id, event)
 
-    def write_literature(self, entry_id: str, body: dict) -> dict:
+    def write_literature(self, entry_id: str, body: dict):
         self.capability.require("write_literature")
         self._consult_before_write("write_literature")
-        entry = {"id": entry_id, **body}
-        self.stores.prior_art[entry_id] = entry
-        self.stores.ledger.append(
-            "literature_query",
-            {"id": entry_id, "keys": sorted(body)},
-            actor=self.role_id,
-        )
-        return entry
+        return self.stores.add_prior_art(entry_id, body, actor=self.role_id)
 
-    def write_topology(self, node_id: str, body: dict) -> dict:
+    def write_topology(self, node_id: str, body: dict):
         self.capability.require("write_topology")
         self._consult_before_write("write_topology")
-        # Topology rides in strategies for the fixture stores; a dedicated topology
-        # store is not present yet. The ledger row is what makes the write real.
-        node = {"id": node_id, **body}
-        self.stores.strategies[f"topo:{node_id}"] = node
-        self.stores.ledger.append(
-            "checkpoint",
-            {"topology_node": node_id},
-            actor=self.role_id,
-        )
-        return node
+        # Topology rides in the Strategy store under a topo: prefix. A dedicated
+        # topology store remains scaffold; the ledger row is what makes the write real.
+        return self.stores.add_strategy(f"topo:{node_id}", {"topology_node": node_id, **body}, actor=self.role_id)
 
     def write_budget(self, branch_id: str, grant: dict) -> dict:
         """Economist path. Deliberately rejects claim content in the grant payload.
@@ -374,13 +359,10 @@ class RoleSession:
         self.stores.ledger.append("objection", {"audit": payload}, actor=self.role_id)
         return payload
 
-    def write_strategy(self, sid: str, body: dict) -> dict:
+    def write_strategy(self, sid: str, body: dict):
         self.capability.require("write_strategy")
         self._consult_before_write("write_strategy")
-        entry = {"id": sid, **body}
-        self.stores.strategies[sid] = entry
-        self.stores.ledger.append("checkpoint", {"strategy": sid}, actor=self.role_id)
-        return entry
+        return self.stores.add_strategy(sid, body, actor=self.role_id)
 
     # -- promotion (promoters only) ---------------------------------------
     def tribunal_admit(self, claim_id: str, human_expert_gate: bool) -> None:

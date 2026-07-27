@@ -1233,6 +1233,104 @@ kernel void gravity_glm_router_correct(
     corrected[id] = s + bias[id];
 }
 
+struct GravityRouterSelectParams {
+    uint n_experts;
+    uint n_group;
+    uint topk_group;
+    uint experts_per_token;
+    uint norm_topk_prob;
+    float routed_scaling_factor;
+};
+
+// Exact noaux_tc router selection with stable lower-index ties. One thread is
+// intentional: the flagship router has only 256 experts, while preserving the
+// host reduction/selection order is part of the model's discrete contract.
+kernel void gravity_glm_router_select_noaux_f32(
+    device const float *logits [[buffer(0)]],
+    device const float *bias [[buffer(1)]],
+    device       float *scores [[buffer(2)]],
+    device       float *corrected [[buffer(3)]],
+    device        uint *expert_indices [[buffer(4)]],
+    device       float *expert_weights [[buffer(5)]],
+    constant GravityRouterSelectParams &p [[buffer(6)]],
+    uint id [[thread_position_in_grid]])
+{
+    if (id != 0u) { return; }
+
+    float group_scores[64];
+    bool group_chosen[64];
+    uint per_group = p.n_experts / p.n_group;
+
+    for (uint expert = 0u; expert < p.n_experts; ++expert) {
+        float s = 1.0f / (1.0f + exp(-logits[expert]));
+        scores[expert] = s;
+        corrected[expert] = s + bias[expert];
+    }
+
+    for (uint group = 0u; group < p.n_group; ++group) {
+        float first = -INFINITY;
+        float second = -INFINITY;
+        uint begin = group * per_group;
+        for (uint local = 0u; local < per_group; ++local) {
+            float value = corrected[begin + local];
+            if (value > first) {
+                second = first;
+                first = value;
+            } else if (value > second) {
+                second = value;
+            }
+        }
+        group_scores[group] = first + ((per_group > 1u) ? second : 0.0f);
+        group_chosen[group] = false;
+    }
+
+    for (uint slot = 0u; slot < p.topk_group; ++slot) {
+        float best = -INFINITY;
+        uint best_group = 0xFFFFFFFFu;
+        for (uint group = 0u; group < p.n_group; ++group) {
+            if (!group_chosen[group]
+                && (best_group == 0xFFFFFFFFu || group_scores[group] > best)) {
+                best = group_scores[group];
+                best_group = group;
+            }
+        }
+        group_chosen[best_group] = true;
+    }
+
+    for (uint slot = 0u; slot < p.experts_per_token; ++slot) {
+        float best = -INFINITY;
+        uint best_expert = 0xFFFFFFFFu;
+        for (uint expert = 0u; expert < p.n_experts; ++expert) {
+            if (!group_chosen[expert / per_group]) { continue; }
+            bool already_chosen = false;
+            for (uint prior = 0u; prior < slot; ++prior) {
+                already_chosen = already_chosen || expert_indices[prior] == expert;
+            }
+            if (!already_chosen
+                && (best_expert == 0xFFFFFFFFu || corrected[expert] > best)) {
+                best = corrected[expert];
+                best_expert = expert;
+            }
+        }
+        expert_indices[slot] = best_expert;
+        expert_weights[slot] = scores[best_expert];
+    }
+
+    float total = 0.0f;
+    if (p.norm_topk_prob != 0u) {
+        for (uint slot = 0u; slot < p.experts_per_token; ++slot) {
+            total += expert_weights[slot];
+        }
+        total += 1.0e-20f;
+    } else {
+        total = 1.0f;
+    }
+    for (uint slot = 0u; slot < p.experts_per_token; ++slot) {
+        expert_weights[slot] =
+            (expert_weights[slot] / total) * p.routed_scaling_factor;
+    }
+}
+
 // Zero a buffer (used when starting a residual accumulate).
 kernel void gravity_zero_f32(
     device float *x [[buffer(0)]],

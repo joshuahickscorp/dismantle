@@ -1,4 +1,4 @@
-//! Complete-token live compact MLA parity on a direct-u8 PQ fixture.
+//! Complete-token live compact MLA + sparse-MLP parity on a direct-u8 fixture.
 //!
 //! The ordinary checked-in fixture intentionally uses the historical R0
 //! codec, which the absorbed K/V kernels reject. The controller supplies a
@@ -11,7 +11,8 @@ use std::path::PathBuf;
 
 use hawking_core::gravity_glm::gpu::GravityGlmGpu;
 use hawking_core::gravity_glm::{
-    GPU_COMPACT_MLA_ENV, GPU_DEVICE_DSA_ENV, GPU_LM_HEAD_ENV, GPU_LM_HEAD_FULL_LOGITS_ENV,
+    GPU_COMPACT_MLA_ENV, GPU_DEVICE_DSA_ENV, GPU_DEVICE_ROUTER_ENV, GPU_LM_HEAD_ENV,
+    GPU_LM_HEAD_FULL_LOGITS_ENV,
 };
 use hawking_core::metal::MetalContext;
 use hawking_core::numeric_parity::{score_pair, Bounds};
@@ -61,16 +62,6 @@ fn invalid_compact_geometry_fixture(source: &std::path::Path) -> tempfile::TempD
     invalid
 }
 
-fn prompts(base: &[u32]) -> Vec<Vec<u32>> {
-    let mut prompts = vec![base.to_vec(), vec![7], vec![9, 7]];
-    if base.len() > 1 {
-        let mut reversed = base.to_vec();
-        reversed.reverse();
-        prompts.push(reversed);
-    }
-    prompts
-}
-
 #[test]
 fn compact_mla_complete_tokens_match_expanded_v21_and_exact_decisions() {
     let Some(dir) = std::env::var_os("HAWKING_GLM_COMPACT_FIXTURE_DIR").map(PathBuf::from) else {
@@ -83,14 +74,18 @@ fn compact_mla_complete_tokens_match_expanded_v21_and_exact_decisions() {
     };
     let compact_ctx = MetalContext::new().expect("second Metal context");
     let device_dsa_ctx = MetalContext::new().expect("device DSA Metal context");
+    let device_router_ctx = MetalContext::new().expect("device router Metal context");
     let invalid_ctx = MetalContext::new().expect("invalid-admission Metal context");
     let misconfigured_ctx = MetalContext::new().expect("misconfigured DSA Metal context");
+    let misconfigured_router_ctx = MetalContext::new().expect("misconfigured router Metal context");
 
     let prior_compact = std::env::var_os(GPU_COMPACT_MLA_ENV);
     let prior_device_dsa = std::env::var_os(GPU_DEVICE_DSA_ENV);
+    let prior_device_router = std::env::var_os(GPU_DEVICE_ROUTER_ENV);
     let prior_head = std::env::var_os(GPU_LM_HEAD_ENV);
     let prior_full_logits = std::env::var_os(GPU_LM_HEAD_FULL_LOGITS_ENV);
     std::env::remove_var(GPU_DEVICE_DSA_ENV);
+    std::env::remove_var(GPU_DEVICE_ROUTER_ENV);
     std::env::remove_var(GPU_LM_HEAD_ENV);
     std::env::remove_var(GPU_LM_HEAD_FULL_LOGITS_ENV);
 
@@ -112,6 +107,25 @@ fn compact_mla_complete_tokens_match_expanded_v21_and_exact_decisions() {
         "device DSA mode coupling did not fail closed: {mode_error}"
     );
     std::env::remove_var(GPU_DEVICE_DSA_ENV);
+
+    std::env::set_var(GPU_DEVICE_ROUTER_ENV, "1");
+    let router_mode_error = match GravityGlmGpu::open_dir_with_budget_resident(
+        misconfigured_router_ctx,
+        &dir,
+        true,
+        512 * 1024 * 1024,
+        false,
+    ) {
+        Ok(_) => panic!("device router was admitted without resident state"),
+        Err(error) => error,
+    };
+    assert!(
+        router_mode_error
+            .to_string()
+            .contains("requires resident state"),
+        "device router mode coupling did not fail closed: {router_mode_error}"
+    );
+    std::env::remove_var(GPU_DEVICE_ROUTER_ENV);
 
     let invalid = invalid_compact_geometry_fixture(&dir);
     std::env::set_var(GPU_COMPACT_MLA_ENV, "1");
@@ -162,19 +176,55 @@ fn compact_mla_complete_tokens_match_expanded_v21_and_exact_decisions() {
     .expect("compact resident device DSA fixture");
     std::env::remove_var(GPU_DEVICE_DSA_ENV);
     std::env::remove_var(GPU_COMPACT_MLA_ENV);
-
-    #[derive(serde::Deserialize)]
-    struct Reference {
-        tokens: Vec<u32>,
-    }
-    let reference: Reference = serde_json::from_slice(
-        &std::fs::read(dir.join("ref_glm.json")).expect("compact ref_glm.json"),
+    std::env::set_var(GPU_COMPACT_MLA_ENV, "1");
+    std::env::set_var(GPU_DEVICE_DSA_ENV, "1");
+    std::env::set_var(GPU_DEVICE_ROUTER_ENV, "1");
+    let compact_device_router = GravityGlmGpu::open_dir_with_budget_resident(
+        device_router_ctx,
+        &dir,
+        true,
+        512 * 1024 * 1024,
+        true,
     )
-    .expect("parse compact reference");
+    .expect("compact resident device DSA plus router fixture");
+    std::env::remove_var(GPU_DEVICE_ROUTER_ENV);
+    std::env::remove_var(GPU_DEVICE_DSA_ENV);
+    std::env::remove_var(GPU_COMPACT_MLA_ENV);
+
+    let receipt: serde_json::Value = serde_json::from_slice(
+        &std::fs::read(dir.join("compact_mla_fixture_receipt.json"))
+            .expect("compact sparse fixture receipt"),
+    )
+    .expect("parse compact sparse fixture receipt");
+    assert_eq!(receipt["production_artifact"], false);
+    assert_eq!(receipt["runtime_default_enabled"], false);
+    assert_eq!(receipt["layers"], 1);
+    assert_eq!(receipt["mlp_schedule"], serde_json::json!(["sparse"]));
+    let direct_u8 =
+        serde_json::json!({"dim": 32, "subspaces": 1, "sub": 32, "cardinality": 256, "bits": 8});
+    assert_eq!(receipt["physical_attention_codec"], direct_u8);
+    for field in ["dim", "subspaces", "sub", "cardinality", "bits"] {
+        assert_eq!(
+            receipt["physical_routed_expert_codec"][field],
+            direct_u8[field]
+        );
+    }
+    assert_eq!(
+        receipt["physical_routed_expert_codec"]["projection_tensors"],
+        27
+    );
+    assert_eq!(receipt["direct_u8_validation"]["validated_tensors"], 29);
+    assert_eq!(receipt["direct_u8_validation"]["status"], "PASS");
+    assert_eq!(
+        receipt["fp64_complete_token_authority"]["selection_patterns"],
+        4
+    );
     #[derive(serde::Deserialize)]
     struct Authority {
         tokens: Vec<u32>,
         logits: Vec<f64>,
+        final_topk: Vec<usize>,
+        expert_choices: Vec<Vec<usize>>,
     }
     let authorities: Vec<Authority> = serde_json::from_slice(
         &std::fs::read(dir.join("ref_logits_f64.json"))
@@ -182,34 +232,47 @@ fn compact_mla_complete_tokens_match_expanded_v21_and_exact_decisions() {
     )
     .expect("parse FP64 complete-token authorities");
 
-    for (case, prompt) in prompts(&reference.tokens).into_iter().enumerate() {
-        let (expanded_logits, expanded_trace) =
-            expanded.forward(&prompt).expect("expanded forward");
-        let (compact_logits, compact_trace) = compact.forward(&prompt).expect("compact forward");
+    for (case, authority) in authorities.iter().enumerate() {
+        let prompt = &authority.tokens;
+        let (expanded_logits, expanded_trace) = expanded.forward(prompt).expect("expanded forward");
+        let (compact_logits, compact_trace) = compact.forward(prompt).expect("compact forward");
         let compact_waits = compact
             .last_resident_waits()
             .expect("compact resident wait count");
         let (device_dsa_logits, device_dsa_trace) = compact_device_dsa
-            .forward(&prompt)
+            .forward(prompt)
             .expect("compact device DSA forward");
         let device_dsa_waits = compact_device_dsa
             .last_resident_waits()
             .expect("device DSA resident wait count");
-        let authority = &authorities
-            .iter()
-            .find(|authority| authority.tokens == prompt)
-            .unwrap_or_else(|| panic!("missing FP64 authority for prompt {prompt:?}"))
-            .logits;
+        std::env::set_var(GPU_DEVICE_ROUTER_ENV, "1");
+        let (device_router_logits, device_router_trace) = compact_device_router
+            .forward(prompt)
+            .expect("compact device DSA plus router forward");
+        std::env::remove_var(GPU_DEVICE_ROUTER_ENV);
+        let device_router_waits = compact_device_router
+            .last_resident_waits()
+            .expect("device router resident wait count");
+        assert!(
+            !authority.expert_choices.is_empty(),
+            "prompt {prompt:?}: sparse router authority is vacuous"
+        );
         let pair = score_pair(
             &expanded_logits,
             &compact_logits,
-            authority,
+            &authority.logits,
             &Bounds::logits(),
         );
         let device_dsa_pair = score_pair(
             &expanded_logits,
             &device_dsa_logits,
-            authority,
+            &authority.logits,
+            &Bounds::logits(),
+        );
+        let device_router_pair = score_pair(
+            &expanded_logits,
+            &device_router_logits,
+            &authority.logits,
             &Bounds::logits(),
         );
         eprintln!(
@@ -232,6 +295,20 @@ fn compact_mla_complete_tokens_match_expanded_v21_and_exact_decisions() {
             compact_waits,
             device_dsa_waits
         );
+        eprintln!(
+            "device router case {case}: rel_l2={:.3e} meaningful={:.3e}; \
+             greedy={} top5={}; waits device-dsa={} device-router={}",
+            device_router_pair.device.continuous.relative_l2,
+            device_router_pair.device.continuous.max_meaningful_rel,
+            device_router_pair.device.discrete.greedy_match,
+            device_router_pair.device.discrete.top_k_exact_match,
+            device_dsa_waits,
+            device_router_waits
+        );
+        eprintln!(
+            "device router decisions case {case}: authority={:?} device={:?}",
+            authority.expert_choices, device_router_trace.expert_choices
+        );
         assert!(
             pair.pass,
             "case {case} prompt {prompt:?}: compact complete-token V2.1 {pair:#?}"
@@ -240,26 +317,50 @@ fn compact_mla_complete_tokens_match_expanded_v21_and_exact_decisions() {
             device_dsa_pair.pass,
             "case {case} prompt {prompt:?}: device DSA complete-token V2.1 {device_dsa_pair:#?}"
         );
-        assert_eq!(
-            compact_trace.final_topk, expanded_trace.final_topk,
-            "case {case}: exact DSA selection"
+        assert!(
+            device_router_pair.pass,
+            "case {case} prompt {prompt:?}: device router complete-token V2.1 {device_router_pair:#?}"
         );
         assert_eq!(
-            compact_trace.expert_choices, expanded_trace.expert_choices,
-            "case {case}: exact expert choices"
+            expanded_trace.final_topk, authority.final_topk,
+            "case {case}: expanded exact DSA selection vs FP64 authority"
         );
         assert_eq!(
-            device_dsa_trace.final_topk, expanded_trace.final_topk,
-            "case {case}: exact device DSA selection"
+            compact_trace.final_topk, authority.final_topk,
+            "case {case}: compact exact DSA selection vs FP64 authority"
         );
         assert_eq!(
-            device_dsa_trace.expert_choices, expanded_trace.expert_choices,
-            "case {case}: exact device DSA expert choices"
+            expanded_trace.expert_choices, authority.expert_choices,
+            "case {case}: expanded exact expert choices vs FP64 authority"
+        );
+        assert_eq!(
+            compact_trace.expert_choices, authority.expert_choices,
+            "case {case}: compact exact expert choices vs FP64 authority"
+        );
+        assert_eq!(
+            device_dsa_trace.final_topk, authority.final_topk,
+            "case {case}: exact device DSA selection vs FP64 authority"
+        );
+        assert_eq!(
+            device_dsa_trace.expert_choices, authority.expert_choices,
+            "case {case}: exact device DSA expert choices vs FP64 authority"
+        );
+        assert_eq!(
+            device_router_trace.final_topk, authority.final_topk,
+            "case {case}: exact device-router DSA selection vs FP64 authority"
+        );
+        assert_eq!(
+            device_router_trace.expert_choices, authority.expert_choices,
+            "case {case}: exact device router expert choices vs FP64 authority"
         );
         assert_eq!(
             compact_waits.saturating_sub(device_dsa_waits),
             (4 * prompt.len()) as u64,
             "case {case}: two attention-prelude and two full-indexer drains must be removed per token"
+        );
+        assert_eq!(
+            device_router_waits, device_dsa_waits,
+            "case {case}: device router selection must reuse the existing router commit"
         );
     }
 
@@ -270,6 +371,10 @@ fn compact_mla_complete_tokens_match_expanded_v21_and_exact_decisions() {
     match prior_device_dsa {
         Some(value) => std::env::set_var(GPU_DEVICE_DSA_ENV, value),
         None => std::env::remove_var(GPU_DEVICE_DSA_ENV),
+    }
+    match prior_device_router {
+        Some(value) => std::env::set_var(GPU_DEVICE_ROUTER_ENV, value),
+        None => std::env::remove_var(GPU_DEVICE_ROUTER_ENV),
     }
     match prior_head {
         Some(value) => std::env::set_var(GPU_LM_HEAD_ENV, value),

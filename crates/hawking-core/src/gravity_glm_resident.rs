@@ -50,9 +50,9 @@ use crate::gravity_glm::gpu::{
     record_routed_tensor_representation, GpuTensor, GpuWeightCache,
 };
 use crate::gravity_glm::{
-    gpu_compact_mla_enabled, gpu_expert_wave_enabled, gpu_lm_head_full_logits_enabled,
-    rope_cos_sin, rope_interleaved, topk_desc, GlmArch, GlmTrace, WeightAccess,
-    GPU_LM_HEAD_DIAG_TOPK, RESIDENT_RUNTIME_INITIAL_KV_CAPACITY_TOKENS,
+    gpu_compact_mla_enabled, gpu_device_router_enabled, gpu_expert_wave_enabled,
+    gpu_lm_head_full_logits_enabled, rope_cos_sin, rope_interleaved, topk_desc, GlmArch, GlmTrace,
+    WeightAccess, GPU_LM_HEAD_DIAG_TOPK, RESIDENT_RUNTIME_INITIAL_KV_CAPACITY_TOKENS,
 };
 use crate::metal::{MetalContext, TokenCommandBuffer};
 use crate::{Error, Result};
@@ -894,6 +894,7 @@ pub struct ActPool {
     idx_k_raw: Buffer,
     idx_head_w: Buffer,
     router_logits: Buffer,
+    router_bias: Buffer,
     router_scores: Buffer,
     router_corrected: Buffer,
     expert_idx: Buffer,
@@ -1144,6 +1145,7 @@ impl ActPool {
             idx_k_raw: ctx.new_buffer_checked(arch.index_head_dim * 4)?,
             idx_head_w: ctx.new_buffer_checked(arch.index_n_heads * 4)?,
             router_logits: ctx.new_buffer_checked(arch.n_routed_experts * 4)?,
+            router_bias: ctx.new_buffer_checked(arch.n_routed_experts * 4)?,
             router_scores: ctx.new_buffer_checked(arch.n_routed_experts * 4)?,
             router_corrected: ctx.new_buffer_checked(arch.n_routed_experts * 4)?,
             expert_idx: ctx.new_buffer_checked(arch.num_experts_per_tok.max(1) * 4)?,
@@ -1906,7 +1908,8 @@ pub fn forward_resident(
                 }
                 "sparse" => {
                     let prefix = format!("{p}.mlp");
-                    // Router gate matvec + host select — Routing bucket (matches host).
+                    let device_router = gpu_device_router_enabled();
+                    // Router gate plus optional exact device noaux_tc selection.
                     {
                         let _route = cost_ledger::Scope::new(Bucket::Routing);
                         matvec_into(
@@ -1918,12 +1921,81 @@ pub fn forward_resident(
                             a.hidden,
                             &pool.router_logits,
                         )?;
+                        if device_router {
+                            let bias =
+                                weights.dense(&format!("{prefix}.gate.e_score_correction_bias"))?;
+                            if bias.len() != a.n_routed_experts {
+                                return Err(Error::Gravity(format!(
+                                    "device router bias at layer {layer}: {} values, expected {}",
+                                    bias.len(),
+                                    a.n_routed_experts
+                                )));
+                            }
+                            write_f32(&pool.router_bias, &bias);
+                            cost_ledger::record_transfer(
+                                (bias.len() * std::mem::size_of::<f32>()) as u64,
+                                true,
+                                "router_bias_upload",
+                            );
+                            cost_ledger::record_source_modelled_operations(
+                                (4 * a.n_routed_experts
+                                    + 2 * a.n_group
+                                    + a.num_experts_per_tok * a.n_routed_experts)
+                                    as u64,
+                                0,
+                                0,
+                                a.n_routed_experts as u64,
+                                0,
+                            );
+                            let wave = tcb.get_or_insert_with(|| TokenCommandBuffer::new(ctx));
+                            route_segment_primitives::encode_router_select_noaux(
+                                wave,
+                                &pool.router_logits,
+                                &pool.router_bias,
+                                &pool.router_scores,
+                                &pool.router_corrected,
+                                &pool.expert_idx,
+                                &pool.expert_w,
+                                a.n_routed_experts,
+                                a.n_group,
+                                a.topk_group,
+                                a.num_experts_per_tok,
+                                a.norm_topk_prob,
+                                a.routed_scaling_factor,
+                            )?;
+                        }
                         commit(tcb.take(), &session.waits)?;
                     }
 
-                    let (indices, moe_weights) = router_select(weights, a, &prefix, pool)?;
+                    let (indices, moe_weights) = if device_router {
+                        let indices = read_u32(&pool.expert_idx, a.num_experts_per_tok)
+                            .into_iter()
+                            .map(|index| index as usize)
+                            .collect::<Vec<_>>();
+                        if let Some(index) = indices
+                            .iter()
+                            .copied()
+                            .find(|&index| index >= a.n_routed_experts)
+                        {
+                            return Err(Error::Gravity(format!(
+                                "device router returned expert {index}, but layer {layer} has {} experts",
+                                a.n_routed_experts
+                            )));
+                        }
+                        let moe_weights = read_f32(&pool.expert_w, a.num_experts_per_tok);
+                        cost_ledger::record_transfer(
+                            (a.num_experts_per_tok
+                                * (std::mem::size_of::<u32>() + std::mem::size_of::<f32>()))
+                                as u64,
+                            false,
+                            "router_selection_download",
+                        );
+                        (indices, moe_weights)
+                    } else {
+                        router_select(weights, a, &prefix, pool)?
+                    };
                     // Residency: expert selection + weights live on device.
-                    {
+                    if !device_router {
                         let _route_state = cost_ledger::Scope::new(Bucket::Routing);
                         let idx_u: Vec<u32> = indices.iter().map(|&i| i as u32).collect();
                         unsafe {
@@ -3095,6 +3167,17 @@ mod route_segment_primitives {
         pub scale: f32,
     }
 
+    #[repr(C)]
+    #[derive(Clone, Copy, Debug, PartialEq)]
+    pub(super) struct GlmRouterSelectParams {
+        pub n_experts: u32,
+        pub n_group: u32,
+        pub topk_group: u32,
+        pub experts_per_token: u32,
+        pub norm_topk_prob: u32,
+        pub routed_scaling_factor: f32,
+    }
+
     const _: [(); 16] = [(); std::mem::size_of::<GlmRopeParams>()];
     const _: [(); 20] = [(); std::mem::size_of::<GlmMlaAppendParams>()];
     const _: [(); 12] = [(); std::mem::size_of::<GlmMlaCompactAppendParams>()];
@@ -3106,6 +3189,7 @@ mod route_segment_primitives {
     const _: [(); 8] = [(); std::mem::size_of::<GlmTopkParams>()];
     const _: [(); 4] = [(); std::mem::size_of::<GlmSortU32Params>()];
     const _: [(); 24] = [(); std::mem::size_of::<GlmSparseAttnParams>()];
+    const _: [(); 24] = [(); std::mem::size_of::<GlmRouterSelectParams>()];
     const _: [(); 4] = [(); std::mem::align_of::<GlmRopeParams>()];
     const _: [(); 4] = [(); std::mem::align_of::<GlmMlaAppendParams>()];
     const _: [(); 4] = [(); std::mem::align_of::<GlmMlaCompactAppendParams>()];
@@ -3117,6 +3201,7 @@ mod route_segment_primitives {
     const _: [(); 4] = [(); std::mem::align_of::<GlmTopkParams>()];
     const _: [(); 4] = [(); std::mem::align_of::<GlmSortU32Params>()];
     const _: [(); 4] = [(); std::mem::align_of::<GlmSparseAttnParams>()];
+    const _: [(); 4] = [(); std::mem::align_of::<GlmRouterSelectParams>()];
 
     fn u32_arg(value: usize, what: &str) -> Result<u32> {
         u32::try_from(value)
@@ -4467,6 +4552,121 @@ mod route_segment_primitives {
             enc.set_buffer(3, Some(&cb), 0);
             enc.set_bytes(4, 4, &n as *const u32 as *const _);
         })
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub(super) fn encode_router_select_noaux(
+        tcb: &mut TokenCommandBuffer<'_>,
+        logits: &Buffer,
+        bias: &Buffer,
+        scores: &Buffer,
+        corrected: &Buffer,
+        expert_indices: &Buffer,
+        expert_weights: &Buffer,
+        n_experts: usize,
+        n_group: usize,
+        topk_group: usize,
+        experts_per_token: usize,
+        norm_topk_prob: bool,
+        routed_scaling_factor: f32,
+    ) -> Result<()> {
+        const MAX_GROUPS: usize = 64;
+        const MAX_EXPERTS_PER_TOKEN: usize = 64;
+        if n_experts == 0
+            || n_group == 0
+            || n_experts % n_group != 0
+            || topk_group == 0
+            || topk_group > n_group
+            || experts_per_token == 0
+            || n_group > MAX_GROUPS
+            || experts_per_token > MAX_EXPERTS_PER_TOKEN
+        {
+            return Err(Error::Gravity(format!(
+                "gravity_glm_router_select_noaux_f32 unsupported geometry: experts={n_experts} groups={n_group} topk_group={topk_group} experts_per_token={experts_per_token}"
+            )));
+        }
+        let selectable_experts = topk_group.checked_mul(n_experts / n_group).ok_or_else(|| {
+            Error::Gravity(
+                "gravity_glm_router_select_noaux_f32 selectable geometry overflow".into(),
+            )
+        })?;
+        if experts_per_token > selectable_experts {
+            return Err(Error::Gravity(format!(
+                "gravity_glm_router_select_noaux_f32 experts_per_token={experts_per_token} exceeds selected-group capacity {selectable_experts}"
+            )));
+        }
+        require_f32(
+            logits,
+            0,
+            n_experts,
+            "gravity_glm_router_select_noaux_f32 logits",
+        )?;
+        require_f32(
+            bias,
+            0,
+            n_experts,
+            "gravity_glm_router_select_noaux_f32 bias",
+        )?;
+        require_f32(
+            scores,
+            0,
+            n_experts,
+            "gravity_glm_router_select_noaux_f32 scores",
+        )?;
+        require_f32(
+            corrected,
+            0,
+            n_experts,
+            "gravity_glm_router_select_noaux_f32 corrected",
+        )?;
+        require_range(
+            expert_indices,
+            0,
+            experts_per_token,
+            std::mem::size_of::<u32>(),
+            "gravity_glm_router_select_noaux_f32 expert indices",
+        )?;
+        require_f32(
+            expert_weights,
+            0,
+            experts_per_token,
+            "gravity_glm_router_select_noaux_f32 expert weights",
+        )?;
+        let params = GlmRouterSelectParams {
+            n_experts: u32_arg(n_experts, "gravity_glm_router_select_noaux_f32 n_experts")?,
+            n_group: u32_arg(n_group, "gravity_glm_router_select_noaux_f32 n_group")?,
+            topk_group: u32_arg(topk_group, "gravity_glm_router_select_noaux_f32 topk_group")?,
+            experts_per_token: u32_arg(
+                experts_per_token,
+                "gravity_glm_router_select_noaux_f32 experts_per_token",
+            )?,
+            norm_topk_prob: u32::from(norm_topk_prob),
+            routed_scaling_factor,
+        };
+        let lb = logits.clone();
+        let bb = bias.clone();
+        let sb = scores.clone();
+        let cb = corrected.clone();
+        let ib = expert_indices.clone();
+        let wb = expert_weights.clone();
+        tcb.dispatch_threads(
+            "gravity_glm_router_select_noaux_f32",
+            (1, 1, 1),
+            (1, 1, 1),
+            move |enc| {
+                enc.set_buffer(0, Some(&lb), 0);
+                enc.set_buffer(1, Some(&bb), 0);
+                enc.set_buffer(2, Some(&sb), 0);
+                enc.set_buffer(3, Some(&cb), 0);
+                enc.set_buffer(4, Some(&ib), 0);
+                enc.set_buffer(5, Some(&wb), 0);
+                enc.set_bytes(
+                    6,
+                    std::mem::size_of_val(&params) as u64,
+                    &params as *const _ as *const _,
+                );
+            },
+        )
     }
 
     /// Encode the residual add `x[i] += y[i]`.
@@ -6857,6 +7057,8 @@ mod tests {
         let biasb = f32_buffer(&ctx, &bias);
         let router_scores = filled_f32_buffer(&ctx, logits.len(), f32::NAN);
         let corrected = filled_f32_buffer(&ctx, logits.len(), f32::NAN);
+        let router_indices = u32_buffer(&ctx, &[u32::MAX; 3]);
+        let router_weights = filled_f32_buffer(&ctx, 3, f32::NAN);
 
         let mut tcb = TokenCommandBuffer::new(&ctx);
         encode_dsa_scores(
@@ -6899,7 +7101,23 @@ mod tests {
             logits.len(),
         )
         .expect("encode router correction");
-        assert_eq!(tcb.dispatch_count(), 4);
+        encode_router_select_noaux(
+            &mut tcb,
+            &logitb,
+            &biasb,
+            &router_scores,
+            &corrected,
+            &router_indices,
+            &router_weights,
+            logits.len(),
+            3,
+            2,
+            3,
+            true,
+            1.25,
+        )
+        .expect("encode exact noaux router selection");
+        assert_eq!(tcb.dispatch_count(), 5);
         tcb.commit_and_wait()
             .expect("decision primitive command buffer");
 
@@ -7033,6 +7251,105 @@ mod tests {
             &read_f32(&corrected, logits.len()),
             &corrected_f64,
         );
+
+        let per_group = 2;
+        let group_scores: Vec<f32> = corrected_host
+            .chunks_exact(per_group)
+            .map(|group| {
+                topk_desc(group, 2)
+                    .into_iter()
+                    .map(|index| group[index])
+                    .sum()
+            })
+            .collect();
+        let chosen_groups = topk_desc(&group_scores, 2);
+        let mut expert_choice = vec![f32::NEG_INFINITY; logits.len()];
+        for group in chosen_groups {
+            expert_choice[group * per_group..(group + 1) * per_group]
+                .copy_from_slice(&corrected_host[group * per_group..(group + 1) * per_group]);
+        }
+        let expected_indices = topk_desc(&expert_choice, 3);
+        assert_eq!(
+            read_u32(&router_indices, 3)
+                .into_iter()
+                .map(|index| index as usize)
+                .collect::<Vec<_>>(),
+            expected_indices,
+            "device noaux selection must preserve stable lower-index ties"
+        );
+        let mut expected_weights: Vec<f32> = expected_indices
+            .iter()
+            .map(|&index| router_host[index])
+            .collect();
+        let total = expected_weights.iter().sum::<f32>() + 1e-20;
+        for weight in &mut expected_weights {
+            *weight = (*weight / total) * 1.25;
+        }
+        let mut authority_weights: Vec<f64> = expected_indices
+            .iter()
+            .map(|&index| router_f64[index])
+            .collect();
+        let authority_total = authority_weights.iter().sum::<f64>() + 1e-20;
+        for weight in &mut authority_weights {
+            *weight = (*weight / authority_total) * 1.25;
+        }
+        assert_v21_pair(
+            "router selected weights",
+            &expected_weights,
+            &read_f32(&router_weights, 3),
+            &authority_weights,
+        );
+
+        let mut rejected = TokenCommandBuffer::new(&ctx);
+        let error = encode_router_select_noaux(
+            &mut rejected,
+            &logitb,
+            &biasb,
+            &router_scores,
+            &corrected,
+            &router_indices,
+            &router_weights,
+            logits.len(),
+            4,
+            2,
+            3,
+            true,
+            1.25,
+        )
+        .expect_err("non-divisible expert groups must fail before dispatch");
+        assert!(error.to_string().contains("unsupported geometry"));
+        assert_eq!(rejected.dispatch_count(), 0);
+
+        let tie_logits = f32_buffer(&ctx, &[0.0; 4]);
+        let tie_bias = f32_buffer(&ctx, &[0.0; 4]);
+        let tie_scores = filled_f32_buffer(&ctx, 4, f32::NAN);
+        let tie_corrected = filled_f32_buffer(&ctx, 4, f32::NAN);
+        let tie_indices = u32_buffer(&ctx, &[u32::MAX; 2]);
+        let tie_weights = filled_f32_buffer(&ctx, 2, f32::NAN);
+        let mut tie_tcb = TokenCommandBuffer::new(&ctx);
+        encode_router_select_noaux(
+            &mut tie_tcb,
+            &tie_logits,
+            &tie_bias,
+            &tie_scores,
+            &tie_corrected,
+            &tie_indices,
+            &tie_weights,
+            4,
+            2,
+            1,
+            2,
+            false,
+            1.0,
+        )
+        .expect("encode tied router");
+        tie_tcb.commit_and_wait().expect("tied router command");
+        assert_eq!(
+            read_u32(&tie_indices, 2),
+            vec![0, 1],
+            "lower group and expert indices must win exact ties"
+        );
+        assert_eq!(read_f32(&tie_weights, 2), vec![0.5, 0.5]);
     }
 
     #[test]

@@ -58,6 +58,22 @@ fn write_f32(buf: &Buffer, src: &[f32]) {
     }
 }
 
+fn zero_f32(buf: &Buffer, n: usize) -> Result<()> {
+    let bytes = n
+        .checked_mul(std::mem::size_of::<f32>())
+        .ok_or_else(|| Error::Gravity(format!("zero_f32 byte size overflow: {n} elements")))?;
+    if bytes as u64 > buf.length() {
+        return Err(Error::Gravity(format!(
+            "zero_f32 byte range 0..{bytes} exceeds buffer length {}",
+            buf.length()
+        )));
+    }
+    unsafe {
+        std::ptr::write_bytes(buf.contents() as *mut u8, 0, bytes);
+    }
+    Ok(())
+}
+
 fn read_f32(buf: &Buffer, n: usize) -> Vec<f32> {
     unsafe { std::slice::from_raw_parts(buf.contents() as *const f32, n).to_vec() }
 }
@@ -397,6 +413,65 @@ pub struct ActPool {
     head_topk_val: Buffer,
     #[allow(dead_code)]
     gate_cap: usize,
+    /// Grow-once scratch for the default-off expert-wave candidate. Keeping
+    /// this lazy preserves the default path's allocation and residency shape.
+    expert_wave_scratch: Mutex<Option<ExpertWaveScratch>>,
+}
+
+struct ExpertWaveScratch {
+    expert_capacity: usize,
+    intermediate_capacity: usize,
+    hidden_capacity: usize,
+    gate: Vec<Buffer>,
+    up: Vec<Buffer>,
+    act: Vec<Buffer>,
+    down: Vec<Buffer>,
+    combined: Buffer,
+}
+
+impl ExpertWaveScratch {
+    fn new(
+        ctx: &MetalContext,
+        expert_capacity: usize,
+        intermediate_capacity: usize,
+        hidden_capacity: usize,
+    ) -> Result<Self> {
+        if expert_capacity == 0 || intermediate_capacity == 0 || hidden_capacity == 0 {
+            return Err(Error::Gravity(format!(
+                "expert-wave scratch dimensions must be nonzero: experts={expert_capacity} \
+                 intermediate={intermediate_capacity} hidden={hidden_capacity}"
+            )));
+        }
+        let inter_bytes = intermediate_capacity.checked_mul(4).ok_or_else(|| {
+            Error::Gravity(format!(
+                "expert-wave intermediate scratch byte size overflow: {intermediate_capacity}"
+            ))
+        })?;
+        let hidden_bytes = hidden_capacity.checked_mul(4).ok_or_else(|| {
+            Error::Gravity(format!(
+                "expert-wave hidden scratch byte size overflow: {hidden_capacity}"
+            ))
+        })?;
+        let allocate_many = |count: usize, bytes: usize| -> Result<Vec<Buffer>> {
+            (0..count).map(|_| ctx.new_buffer_checked(bytes)).collect()
+        };
+        Ok(Self {
+            expert_capacity,
+            intermediate_capacity,
+            hidden_capacity,
+            gate: allocate_many(expert_capacity, inter_bytes)?,
+            up: allocate_many(expert_capacity, inter_bytes)?,
+            act: allocate_many(expert_capacity, inter_bytes)?,
+            down: allocate_many(expert_capacity, hidden_bytes)?,
+            combined: ctx.new_buffer_checked(hidden_bytes)?,
+        })
+    }
+
+    fn fits(&self, experts: usize, intermediate: usize, hidden: usize) -> bool {
+        experts <= self.expert_capacity
+            && intermediate <= self.intermediate_capacity
+            && hidden <= self.hidden_capacity
+    }
 }
 
 impl ActPool {
@@ -435,7 +510,42 @@ impl ActPool {
             head_topk_idx: ctx.new_buffer_checked((GPU_LM_HEAD_DIAG_TOPK as usize) * 4)?,
             head_topk_val: ctx.new_buffer_checked((GPU_LM_HEAD_DIAG_TOPK as usize) * 4)?,
             gate_cap,
+            expert_wave_scratch: Mutex::new(None),
         })
+    }
+
+    fn ensure_expert_wave_scratch(
+        &self,
+        ctx: &MetalContext,
+        experts: usize,
+        intermediate: usize,
+        hidden: usize,
+    ) -> Result<std::sync::MutexGuard<'_, Option<ExpertWaveScratch>>> {
+        let mut scratch = self
+            .expert_wave_scratch
+            .lock()
+            .expect("expert-wave scratch");
+        let fits = scratch
+            .as_ref()
+            .is_some_and(|s| s.fits(experts, intermediate, hidden));
+        if !fits {
+            let expert_capacity = scratch
+                .as_ref()
+                .map_or(experts, |s| s.expert_capacity.max(experts));
+            let intermediate_capacity = scratch
+                .as_ref()
+                .map_or(intermediate, |s| s.intermediate_capacity.max(intermediate));
+            let hidden_capacity = scratch
+                .as_ref()
+                .map_or(hidden, |s| s.hidden_capacity.max(hidden));
+            *scratch = Some(ExpertWaveScratch::new(
+                ctx,
+                expert_capacity,
+                intermediate_capacity,
+                hidden_capacity,
+            )?);
+        }
+        Ok(scratch)
     }
 }
 
@@ -891,6 +1001,7 @@ pub fn forward_resident(
                                 &scales,
                                 &pool.h,
                                 a.hidden,
+                                pool,
                                 &mut tcb,
                                 ctx,
                                 &session.waits,
@@ -1412,6 +1523,7 @@ fn mlp_one<'a>(
             &[1.0f32],
             x,
             x_len,
+            pool,
             tcb,
             ctx,
             waits,
@@ -2520,6 +2632,7 @@ fn moe_device_wave<'a>(
     scales: &[f32],
     x: &Buffer,
     x_len: usize,
+    pool: &ActPool,
     tcb: &mut Option<TokenCommandBuffer<'a>>,
     ctx: &'a MetalContext,
     waits: &Cell<u64>,
@@ -2582,20 +2695,14 @@ fn moe_device_wave<'a>(
     };
 
     let n_exp = prefixes.len();
-    let mut gate_bufs = Vec::with_capacity(n_exp);
-    let mut up_bufs = Vec::with_capacity(n_exp);
-    let mut act_bufs = Vec::with_capacity(n_exp);
-    let mut down_bufs = Vec::with_capacity(n_exp);
-    for _ in 0..n_exp {
-        gate_bufs.push(ctx.new_buffer_checked(inter * 4)?);
-        up_bufs.push(ctx.new_buffer_checked(inter * 4)?);
-        act_bufs.push(ctx.new_buffer_checked(inter * 4)?);
-        down_bufs.push(ctx.new_buffer_checked(x_len * 4)?);
-    }
-    let combined = ctx.new_buffer_checked(x_len * 4)?;
-    // Host-zero the accumulator so device axpy starts from 0 (Metal shared).
-    write_f32(&combined, &vec![0f32; x_len]);
+    let scratch_guard = pool.ensure_expert_wave_scratch(ctx, n_exp, inter, x_len)?;
+    let scratch = scratch_guard
+        .as_ref()
+        .expect("expert-wave scratch ensured above");
 
+    // Preserve the original host-zero semantics while avoiding its temporary
+    // `Vec`: this candidate changes resource lifetime, not dispatch shape.
+    zero_f32(&scratch.combined, x_len)?;
     let mut wave = TokenCommandBuffer::new(ctx);
     for (i, p) in prefixes.iter().enumerate() {
         encode_weight_matvec(
@@ -2604,7 +2711,7 @@ fn moe_device_wave<'a>(
             &format!("{p}.gate_proj.weight"),
             x,
             x_len,
-            &gate_bufs[i],
+            &scratch.gate[i],
         )?;
         encode_weight_matvec(
             &mut wave,
@@ -2612,15 +2719,15 @@ fn moe_device_wave<'a>(
             &format!("{p}.up_proj.weight"),
             x,
             x_len,
-            &up_bufs[i],
+            &scratch.up[i],
         )?;
     }
     for i in 0..n_exp {
         encode_silu_mul_f32(
             &mut wave,
-            &gate_bufs[i],
-            &up_bufs[i],
-            &act_bufs[i],
+            &scratch.gate[i],
+            &scratch.up[i],
+            &scratch.act[i],
             inter as u32,
         )?;
     }
@@ -2629,21 +2736,27 @@ fn moe_device_wave<'a>(
             &mut wave,
             weights,
             &format!("{p}.down_proj.weight"),
-            &act_bufs[i],
+            &scratch.act[i],
             inter,
-            &down_bufs[i],
+            &scratch.down[i],
         )?;
     }
     // Weighted combine in prefix order (associativity matches host).
     for i in 0..n_exp {
-        encode_axpy_f32(&mut wave, &combined, &down_bufs[i], scales[i], x_len as u32)?;
+        encode_axpy_f32(
+            &mut wave,
+            &scratch.combined,
+            &scratch.down[i],
+            scales[i],
+            x_len as u32,
+        )?;
     }
 
     // Encode/submit/sync + dispatch count fold at TCB commit when ledger on.
     wave.commit_and_wait()?;
     waits.set(waits.get().saturating_add(1));
 
-    let out = read_f32(&combined, x_len);
+    let out = read_f32(&scratch.combined, x_len);
     crate::cost_ledger::record_transfer((x_len * 4) as u64, false, "expert_wave_y_download");
     Ok(out)
 }
@@ -3382,6 +3495,110 @@ mod tests {
             &read_f32(&corrected, logits.len()),
             &corrected_f64,
         );
+    }
+
+    #[test]
+    fn expert_wave_scratch_is_lazy_reused_and_grows_monotonically() {
+        let Ok(ctx) = MetalContext::new() else {
+            return;
+        };
+        let pool = ActPool::new(&ctx, &tiny_arch()).expect("activation pool");
+        assert!(
+            pool.expert_wave_scratch
+                .lock()
+                .expect("scratch lock")
+                .is_none(),
+            "default path must not allocate expert-wave scratch"
+        );
+
+        let first_address = {
+            let scratch = pool
+                .ensure_expert_wave_scratch(&ctx, 2, 7, 4)
+                .expect("initial scratch");
+            let scratch = scratch.as_ref().expect("scratch allocated");
+            assert_eq!(scratch.expert_capacity, 2);
+            assert_eq!(scratch.intermediate_capacity, 7);
+            assert_eq!(scratch.hidden_capacity, 4);
+            assert_eq!(scratch.gate.len(), 2);
+            scratch.combined.gpu_address()
+        };
+        {
+            let scratch = pool
+                .ensure_expert_wave_scratch(&ctx, 1, 6, 4)
+                .expect("reuse adequate scratch");
+            let scratch = scratch.as_ref().expect("scratch retained");
+            assert_eq!(
+                scratch.combined.gpu_address(),
+                first_address,
+                "adequate scratch must retain its Metal resources"
+            );
+        }
+        {
+            let scratch = pool
+                .ensure_expert_wave_scratch(&ctx, 3, 9, 8)
+                .expect("grow scratch");
+            let scratch = scratch.as_ref().expect("scratch grown");
+            assert_eq!(scratch.expert_capacity, 3);
+            assert_eq!(scratch.intermediate_capacity, 9);
+            assert_eq!(scratch.hidden_capacity, 8);
+            assert_eq!(scratch.gate.len(), 3);
+            assert_ne!(
+                scratch.combined.gpu_address(),
+                first_address,
+                "growth must replace the undersized Metal resources"
+            );
+        }
+
+        let error = match ExpertWaveScratch::new(&ctx, 1, usize::MAX, 1) {
+            Ok(_) => panic!("overflowing f32 scratch geometry must fail before allocation"),
+            Err(error) => error,
+        };
+        assert!(error.to_string().contains("byte size overflow"));
+    }
+
+    #[test]
+    fn expert_wave_reused_accumulator_is_zeroed_and_combined_in_host_order() {
+        let Ok(ctx) = MetalContext::new() else {
+            return;
+        };
+        let n = 257usize;
+        let first: Vec<f32> = (0..n)
+            .map(|i| ((i % 19) as i32 - 9) as f32 * 0.25)
+            .collect();
+        let second: Vec<f32> = (0..n)
+            .map(|i| (((i * 7) % 23) as i32 - 11) as f32 * 0.125)
+            .collect();
+        let first_scale = 0.75f32;
+        let second_scale = -1.25f32;
+        let expected: Vec<f32> = first
+            .iter()
+            .zip(&second)
+            .map(|(&a, &b)| {
+                let mut value = 0.0f32;
+                value += a * first_scale;
+                value += b * second_scale;
+                value
+            })
+            .collect();
+        let first_buffer = f32_buffer(&ctx, &first);
+        let second_buffer = f32_buffer(&ctx, &second);
+        let combined = f32_buffer(&ctx, &vec![91.0; n]);
+
+        for stale in [91.0f32, -37.5f32] {
+            write_f32(&combined, &vec![stale; n]);
+            zero_f32(&combined, n).expect("zero reused accumulator");
+            let mut wave = TokenCommandBuffer::new(&ctx);
+            encode_axpy_f32(&mut wave, &combined, &first_buffer, first_scale, n as u32)
+                .expect("encode first ordered combine");
+            encode_axpy_f32(&mut wave, &combined, &second_buffer, second_scale, n as u32)
+                .expect("encode second ordered combine");
+            wave.commit_and_wait().expect("reused combine wave");
+            assert_eq!(
+                read_f32(&combined, n),
+                expected,
+                "stale accumulator contents must not leak across wave reuse"
+            );
+        }
     }
 
     #[test]

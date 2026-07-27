@@ -71,7 +71,8 @@
     "ODYSSEY_LAUNCH_AUTHORIZED": false,
     "RAMANUJAN_RESEARCH_AUTHORIZED": false,
     "HIDE_KERNEL_TURN": false,
-    "ODYSSEY_LAUNCH_AUTHORIZED_reason": "REFUSED decisively: GLM-5.2-H0.98-Math-Preserve predicts \" combust\" for the capital of France and \"rus\" for 2 + 2, confirmed by numpy oracle on the artifact itself."
+    "ODYSSEY_LAUNCH_AUTHORIZED_reason": "REFUSED decisively: GLM-5.2-H0.98-Math-Preserve predicts \" combust\" for the capital of France and \"rus\" for 2 + 2, confirmed by numpy oracle on the artifact itself.",
+    "SUBSTRATE_CAPABILITY_GATE": "second gate, independent of the fence, keyed by artifact hash; no artifact is APPROVED"
   },
   "external_lanes": [
     {
@@ -403,7 +404,7 @@
         "RAMANUJAN_HANDOFF_CONTRACT.json"
       ],
       "dependencies": [],
-      "status": "QUEUED",
+      "status": "INTEGRATED",
       "note": "prepare bindings and contracts only. The repository split happens at HAWKING_EVOLUTION_COMPLETE, not before."
     },
     {
@@ -587,6 +588,66 @@
       "why_it_is_the_most_important_open_lane": "It decides whether the sealed substrate can generate at all. If H1, Odyssey would train on a model that cannot produce conditioned output, which is the exact failure ODYSSEY_PROMOTION_GATE.md exists to prevent and which cannot be un-trained.",
       "blocked_by_resource": "all six Grok slots are held by a concurrent unrelated campaign (v2-spatial, v2-reconstruction, v2-procedural, v2-materials-lighting, v2-cinematic-delivery, v2-critics-active). Not this campaign's lanes; left alone rather than killed.",
       "verdict": "H1_ARTIFACT -- the substrate cannot generate; runtime and serve path both exonerated by exact oracle top-5 agreement on Math-Preserve itself"
+    },
+    {
+      "id": "L22",
+      "name": "odyssey-readiness-supersession",
+      "owner": "claude",
+      "mode": "controller",
+      "outputs": [
+        "HAWKING_ODYSSEY_READY_SUPERSEDED.json",
+        "odyssey/launch/SUBSTRATE_CAPABILITY.json",
+        "tools/odyssey/substrate_capability.py"
+      ],
+      "status": "INTEGRATED",
+      "dependencies": [
+        "L21"
+      ],
+      "why": "a stale six-green-gate receipt in the repo root reads like permission to train. The refusal is now a second gate in code, verified adversarially with the fence flipped true."
+    },
+    {
+      "id": "L23",
+      "name": "representation-escalation-preregistration",
+      "owner": "claude",
+      "mode": "controller",
+      "outputs": [
+        "HAWKING_REPRESENTATION_ESCALATION_TOURNAMENT.json"
+      ],
+      "status": "INTEGRATED",
+      "dependencies": [
+        "L21"
+      ],
+      "why": "the only genuinely blocked question. Design fixed before any compute so the heavy window is not spent arguing about it."
+    },
+    {
+      "id": "L24",
+      "name": "ramanujan-governance-and-cognition",
+      "owner": "claude",
+      "mode": "controller",
+      "outputs": [
+        "ramanujan/ledger.py",
+        "ramanujan/evidence.py",
+        "ramanujan/stores.py",
+        "ramanujan/RAMANUJAN_COGNITION_REGISTER.json"
+      ],
+      "status": "INTEGRATED",
+      "dependencies": [],
+      "tests": "16 green",
+      "why": "the odyssey/ contracts declared these laws; this enforces them. Append-only hash-chained Ledger, tier promotion that refuses rather than ignores, Tribunal separation of powers, burial that is not deletion."
+    },
+    {
+      "id": "L25",
+      "name": "ramanujan-environment-lock",
+      "owner": "claude",
+      "mode": "controller",
+      "outputs": [
+        "ramanujan/RAMANUJAN_ENVIRONMENT_LOCK.json",
+        "ramanujan/RAMANUJAN_OFFLINE_MANIFEST.json",
+        "ramanujan/RAMANUJAN_TOOLCHAIN_SELFTEST.json"
+      ],
+      "status": "INTEGRATED",
+      "dependencies": [],
+      "why": "10 of 12 formal tools absent; Q0 BLOCKED on a bounded install, not a research question. Six of nine Ramanujan data sources are locally generated once Lean exists."
     }
   ],
   "branch_sharing_hazard": {
@@ -596,5 +657,11 @@
     "the_actual_hazard": "`git add -A` on a shared branch can stage another agent's in-flight work into this campaign's commit. It was used once, for the Bridge integration, and that commit was verified clean before this was noticed. It is luck, not design.",
     "standing_rule_from_now_on": "Stage explicit paths. Never `git add -A` on this branch while another lane holds it. Audit every commit against the forbidden-path list before writing it, not after.",
     "not_escalated_to_the_user_as_a_conflict": "Because nothing was lost or corrupted and the file sets remain disjoint. Recorded so the next session does not rediscover it the hard way."
+  },
+  "resource_mode": {
+    "mode": "LIGHT_ONLY",
+    "file": "HAWKING_RESOURCE_MODE.json",
+    "why": "MOP owns the heavy machine overnight",
+    "set_by": "user"
   }
 }

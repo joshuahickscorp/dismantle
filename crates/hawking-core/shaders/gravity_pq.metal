@@ -1438,11 +1438,12 @@ static inline bool gravity_device_expert_tensor_valid(
     }
     if (required_kind == GRAVITY_EXPERT_KIND_PQ) {
         return tensor.secondary != nullptr &&
-               tensor.bits == 8u &&
-               tensor.subspaces == 1u &&
-               tensor.dim == 32u &&
-               tensor.sub == 32u &&
-               tensor.card == 256u &&
+               tensor.bits > 0u &&
+               tensor.bits <= 8u &&
+               tensor.subspaces > 0u &&
+               tensor.sub > 0u &&
+               tensor.dim == tensor.subspaces * tensor.sub &&
+               tensor.card == (1u << tensor.bits) &&
                tensor.nchunk > 0u &&
                tensor.cols == tensor.nchunk * tensor.dim;
     }
@@ -1552,13 +1553,35 @@ kernel void gravity_glm_expert_table_pq_matvec(
         reinterpret_cast<const device half *>(tensor->primary);
     const device uchar *codes = tensor->secondary;
     float acc = 0.0f;
-    for (uint chunk = lane; chunk < tensor->nchunk; chunk += 32u) {
-        uint flat = row * tensor->nchunk + chunk;
-        const device half *entry_values =
-            codebooks + uint(codes[flat]) * tensor->sub;
-        const device float *xs = x + chunk * tensor->dim;
-        for (uint j = 0u; j < tensor->sub; ++j) {
-            acc = fma(float(entry_values[j]), xs[j], acc);
+    if (tensor->bits == 8u && tensor->subspaces == 1u) {
+        // Preserve the qualified R4 direct-byte path exactly.
+        for (uint chunk = lane; chunk < tensor->nchunk; chunk += 32u) {
+            uint flat = row * tensor->nchunk + chunk;
+            const device half *entry_values =
+                codebooks + uint(codes[flat]) * tensor->sub;
+            const device float *xs = x + chunk * tensor->dim;
+            for (uint j = 0u; j < tensor->sub; ++j) {
+                acc = fma(float(entry_values[j]), xs[j], acc);
+            }
+        }
+    } else {
+        // Packed-PQ path used by R0 (D8/S1/sub8/card128/bits7) and any
+        // descriptor satisfying the same immutable tensor invariants.
+        for (uint s = 0u; s < tensor->subspaces; ++s) {
+            const device half *codebook =
+                codebooks + s * tensor->card * tensor->sub;
+            const uint xbase = s * tensor->sub;
+            for (uint chunk = lane; chunk < tensor->nchunk; chunk += 32u) {
+                uint flat =
+                    (row * tensor->nchunk + chunk) * tensor->subspaces + s;
+                const device half *entry_values =
+                    codebook + pq_index(codes, flat, tensor->bits) * tensor->sub;
+                const device float *xs =
+                    x + chunk * tensor->dim + xbase;
+                for (uint j = 0u; j < tensor->sub; ++j) {
+                    acc = fma(float(entry_values[j]), xs[j], acc);
+                }
+            }
         }
     }
     acc = simd_sum(acc);

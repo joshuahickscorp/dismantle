@@ -6728,6 +6728,79 @@ mod tests {
         )
     }
 
+    fn pack_msb_indices(indices: &[usize], bits: usize) -> Vec<u8> {
+        assert!((1..=8).contains(&bits));
+        let mut packed = vec![0u8; (indices.len() * bits).div_ceil(8) + 4];
+        for (index, &value) in indices.iter().enumerate() {
+            assert!(value < (1usize << bits));
+            let bit_offset = index * bits;
+            for bit in 0..bits {
+                let source = (value >> (bits - 1 - bit)) & 1;
+                if source != 0 {
+                    let destination = bit_offset + bit;
+                    packed[destination / 8] |= 1u8 << (7 - destination % 8);
+                }
+            }
+        }
+        packed
+    }
+
+    fn packed_r0_pq_tensor(
+        ctx: &MetalContext,
+        rows: usize,
+        cols: usize,
+        salt: usize,
+    ) -> (GpuTensor, Vec<f32>) {
+        const DIM: usize = 8;
+        const CARD: usize = 128;
+        const BITS: usize = 7;
+        assert_eq!(cols % DIM, 0);
+        let nchunk = cols / DIM;
+        let codebooks: Vec<half::f16> = (0..CARD * DIM)
+            .map(|flat| {
+                let code = flat / DIM;
+                let element = flat % DIM;
+                let positive = ((code * 11 + element * 7 + salt * 13) % 61) + 1;
+                half::f16::from_f32(positive as f32 * (1.0 / 192.0))
+            })
+            .collect();
+        let indices: Vec<usize> = (0..rows * nchunk)
+            .map(|flat| (flat * 29 + salt * 17 + flat / nchunk * 3) % CARD)
+            .collect();
+        let codes = pack_msb_indices(&indices, BITS);
+        let mut dense = vec![0.0f32; rows * cols];
+        for row in 0..rows {
+            for chunk in 0..nchunk {
+                let code = indices[row * nchunk + chunk];
+                for element in 0..DIM {
+                    dense[row * cols + chunk * DIM + element] =
+                        codebooks[code * DIM + element].to_f32();
+                }
+            }
+        }
+        let codebooks = f16_buffer(ctx, &codebooks);
+        let codes = ctx
+            .new_buffer_with_bytes_checked(&codes)
+            .expect("packed-r0 codes");
+        (
+            GpuTensor::Pq {
+                codebooks,
+                codes,
+                params: crate::gravity_glm::gpu::PqParams {
+                    dim: DIM as u32,
+                    subspaces: 1,
+                    sub: DIM as u32,
+                    card: CARD as u32,
+                    rows: rows as u32,
+                    cols: cols as u32,
+                    nchunk: nchunk as u32,
+                    bits: BITS as u32,
+                },
+            },
+            dense,
+        )
+    }
+
     fn gpu_tensor_bytes(tensor: &GpuTensor) -> u64 {
         match tensor {
             GpuTensor::Pq {
@@ -6997,6 +7070,156 @@ mod tests {
         assert_eq!(
             after_bits, before_bits,
             "a table miss must not mutate the projection destination"
+        );
+    }
+
+    #[test]
+    fn device_expert_table_packed_r0_is_indirect_and_invalid_bits_fail_closed() {
+        let Ok(ctx) = MetalContext::new() else {
+            return;
+        };
+        const HIDDEN: usize = 32;
+        const INTERMEDIATE: usize = 24;
+        const GENERATION: u32 = 13;
+
+        let (gate, gate_dense) = packed_r0_pq_tensor(&ctx, INTERMEDIATE, HIDDEN, 1);
+        let (up, _) = packed_r0_pq_tensor(&ctx, INTERMEDIATE, HIDDEN, 2);
+        let (down, _) = packed_r0_pq_tensor(&ctx, HIDDEN, INTERMEDIATE, 3);
+        let lease = build_single_device_expert_snapshot(&ctx, &gate, &up, &down, GENERATION)
+            .expect("packed-r0 immutable expert table");
+        assert_eq!(lease.ready_entries, 1);
+        assert_eq!(lease.resources.len(), 6);
+
+        let expert_indices = u32_buffer(&ctx, &[0]);
+        let execution_slots = u32_buffer(&ctx, &[0]);
+        let miss_mask = u32_buffer(&ctx, &[u32::MAX]);
+        let x_values: Vec<f32> = deterministic_fixture_f32(0x70_2026, HIDDEN, 0.5)
+            .into_iter()
+            .map(|value| value.abs() + 0.0625)
+            .collect();
+        let x = f32_buffer(&ctx, &x_values);
+        let y = filled_f32_buffer(&ctx, INTERMEDIATE, -4_096.0);
+        let mut hit = TokenCommandBuffer::new(&ctx);
+        encode_device_expert_table_validate(
+            &mut hit,
+            &lease,
+            &expert_indices,
+            &execution_slots,
+            &miss_mask,
+            1,
+            HIDDEN,
+            INTERMEDIATE,
+            DEVICE_EXPERT_TENSOR_KIND_PQ,
+        )
+        .expect("validate packed-r0 hit");
+        encode_device_expert_table_pq_matvec(
+            &mut hit,
+            &lease,
+            &expert_indices,
+            &execution_slots,
+            &miss_mask,
+            1,
+            0,
+            0,
+            &x,
+            INTERMEDIATE,
+            HIDDEN,
+            &y,
+        )
+        .expect("packed-r0 indirect gate");
+        hit.commit_and_wait().expect("packed-r0 command");
+        assert_eq!(read_u32(&miss_mask, 1), vec![0]);
+
+        let host = matvec_dense(&gate_dense, &x_values, "packed-r0 host")
+            .expect("packed-r0 host comparator");
+        let authority: Vec<f64> = gate_dense
+            .chunks_exact(HIDDEN)
+            .map(|row| {
+                row.iter()
+                    .zip(&x_values)
+                    .map(|(&weight, &activation)| weight as f64 * activation as f64)
+                    .sum()
+            })
+            .collect();
+        let device = read_f32(&y, INTERMEDIATE);
+        let score = score_pair(&host, &device, &authority, &Bounds::continuous_only());
+        eprintln!(
+            "device expert table packed-r0 gate: rel_l2={:.3e} meaningful={:.3e} \
+             greedy={} top5={}",
+            score.device.continuous.relative_l2,
+            score.device.continuous.max_meaningful_rel,
+            score.device.discrete.greedy_match,
+            score.device.discrete.top_k_exact_match
+        );
+        assert!(
+            score.pass,
+            "packed-r0 indirect gate failed V2.1: host={:?}, device={:?}",
+            score.host.failures, score.device.failures
+        );
+        assert_eq!(
+            topk_desc_f64(&authority, 5),
+            topk_desc_f64(
+                &device.iter().map(|&value| value as f64).collect::<Vec<_>>(),
+                5
+            ),
+            "packed-r0 top-5 must remain exact"
+        );
+
+        // Corrupt only the immutable descriptor copy. bits=9 is unsupported,
+        // so validation must set the miss bit and suppress every following
+        // projection write without dereferencing the packed stream.
+        let invalid_table = unsafe {
+            std::slice::from_raw_parts_mut(
+                lease.table.contents() as *mut DeviceExpertTriplet,
+                lease.n_experts,
+            )
+        };
+        invalid_table[0].gate.bits = 9;
+        let invalid_mask = u32_buffer(&ctx, &[u32::MAX]);
+        let sentinel: Vec<f32> = (0..INTERMEDIATE)
+            .map(|index| -2_000.0 - index as f32)
+            .collect();
+        let invalid_y = f32_buffer(&ctx, &sentinel);
+        let mut invalid = TokenCommandBuffer::new(&ctx);
+        encode_device_expert_table_validate(
+            &mut invalid,
+            &lease,
+            &expert_indices,
+            &execution_slots,
+            &invalid_mask,
+            1,
+            HIDDEN,
+            INTERMEDIATE,
+            DEVICE_EXPERT_TENSOR_KIND_PQ,
+        )
+        .expect("validate invalid packed descriptor");
+        encode_device_expert_table_pq_matvec(
+            &mut invalid,
+            &lease,
+            &expert_indices,
+            &execution_slots,
+            &invalid_mask,
+            1,
+            0,
+            0,
+            &x,
+            INTERMEDIATE,
+            HIDDEN,
+            &invalid_y,
+        )
+        .expect("suppressed invalid packed projection");
+        invalid.commit_and_wait().expect("invalid packed command");
+        assert_eq!(read_u32(&invalid_mask, 1), vec![1]);
+        assert_eq!(
+            read_f32(&invalid_y, INTERMEDIATE)
+                .iter()
+                .map(|value| value.to_bits())
+                .collect::<Vec<_>>(),
+            sentinel
+                .iter()
+                .map(|value| value.to_bits())
+                .collect::<Vec<_>>(),
+            "an invalid packed descriptor must not mutate the destination"
         );
     }
 

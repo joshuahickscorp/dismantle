@@ -4491,6 +4491,243 @@ mod tests {
     }
 
     #[test]
+    fn compact_absorbed_five_dispatch_dag_passes_v21_without_readback() {
+        const TOKENS: usize = 5;
+        const HEADS: usize = 2;
+        const LATENT: usize = 8;
+        const NOPE: usize = 3;
+        const ROPE: usize = 2;
+        const VALUE: usize = 4;
+        const CONTEXT: usize = HEADS * VALUE;
+        const ROW_STRIDE: usize = NOPE + VALUE;
+        const CARD: usize = 256;
+
+        let Ok(ctx) = MetalContext::new() else {
+            return;
+        };
+        let latents = deterministic_fixture_f32(0x1357_2468, TOKENS * LATENT, 0.7);
+        let rope_keys = deterministic_fixture_f32(0x2468_1357, TOKENS * ROPE, 0.5);
+        let query_nope = deterministic_fixture_f32(0xabcd_0123, HEADS * NOPE, 0.6);
+        let query_rope = deterministic_fixture_f32(0x7654_3210, HEADS * ROPE, 0.4);
+        let ranked = [4u32, 1, 3];
+        let scale = ((NOPE + ROPE) as f32).powf(-0.5);
+
+        let mut kv_codebook = vec![half::f16::ZERO; CARD * LATENT];
+        let mut kv_codes = vec![0u8; HEADS * ROW_STRIDE];
+        let kv_weights: Vec<f32> =
+            deterministic_fixture_f32(0xcafe_babe, HEADS * ROW_STRIDE * LATENT, 0.3)
+                .into_iter()
+                .map(|value| half::f16::from_f32(value).to_f32())
+                .collect();
+        for row in 0..HEADS * ROW_STRIDE {
+            kv_codes[row] = row as u8;
+            for latent in 0..LATENT {
+                kv_codebook[row * LATENT + latent] =
+                    half::f16::from_f32(kv_weights[row * LATENT + latent]);
+            }
+        }
+
+        // Identity o_proj in the same direct-u8 single-chunk representation.
+        let mut o_codebook = vec![half::f16::ZERO; CARD * CONTEXT];
+        let mut o_codes = vec![0u8; CONTEXT + 4];
+        for row in 0..CONTEXT {
+            o_codes[row] = row as u8;
+            o_codebook[row * CONTEXT + row] = half::f16::ONE;
+        }
+
+        let mut host_query_latent = vec![0.0f32; HEADS * LATENT];
+        let mut authority_query_latent = vec![0.0f64; HEADS * LATENT];
+        for head in 0..HEADS {
+            for latent in 0..LATENT {
+                for key_row in 0..NOPE {
+                    let weight = kv_weights[(head * ROW_STRIDE + key_row) * LATENT + latent];
+                    let query = query_nope[head * NOPE + key_row];
+                    let output = head * LATENT + latent;
+                    host_query_latent[output] = weight.mul_add(query, host_query_latent[output]);
+                    authority_query_latent[output] += weight as f64 * query as f64;
+                }
+            }
+        }
+        let mut host_weighted = vec![0.0f32; HEADS * LATENT];
+        let mut authority_weighted = vec![0.0f64; HEADS * LATENT];
+        for head in 0..HEADS {
+            let mut logits = vec![0.0f32; ranked.len()];
+            let mut authority_logits = vec![0.0f64; ranked.len()];
+            for (slot, &token) in ranked.iter().enumerate() {
+                let token = token as usize;
+                for latent in 0..LATENT {
+                    logits[slot] = host_query_latent[head * LATENT + latent]
+                        .mul_add(latents[token * LATENT + latent], logits[slot]);
+                    authority_logits[slot] += authority_query_latent[head * LATENT + latent]
+                        * latents[token * LATENT + latent] as f64;
+                }
+                for rope in 0..ROPE {
+                    logits[slot] = query_rope[head * ROPE + rope]
+                        .mul_add(rope_keys[token * ROPE + rope], logits[slot]);
+                    authority_logits[slot] += query_rope[head * ROPE + rope] as f64
+                        * rope_keys[token * ROPE + rope] as f64;
+                }
+                logits[slot] *= scale;
+                authority_logits[slot] *= scale as f64;
+            }
+            let best = logits.iter().copied().fold(f32::NEG_INFINITY, f32::max);
+            let authority_best = authority_logits
+                .iter()
+                .copied()
+                .fold(f64::NEG_INFINITY, f64::max);
+            let exponentials: Vec<f32> = logits.iter().map(|&score| (score - best).exp()).collect();
+            let authority_exponentials: Vec<f64> = authority_logits
+                .iter()
+                .map(|&score| (score - authority_best).exp())
+                .collect();
+            let total: f32 = exponentials.iter().sum();
+            let authority_total: f64 = authority_exponentials.iter().sum();
+            for (slot, &token) in ranked.iter().enumerate() {
+                let token = token as usize;
+                for latent in 0..LATENT {
+                    let output = head * LATENT + latent;
+                    host_weighted[output] = (exponentials[slot] / total)
+                        .mul_add(latents[token * LATENT + latent], host_weighted[output]);
+                    authority_weighted[output] += (authority_exponentials[slot] / authority_total)
+                        * latents[token * LATENT + latent] as f64;
+                }
+            }
+        }
+        let mut host = vec![0.0f32; CONTEXT];
+        let mut authority = vec![0.0f64; CONTEXT];
+        for head in 0..HEADS {
+            for value_row in 0..VALUE {
+                let source_row = head * ROW_STRIDE + NOPE + value_row;
+                let output = head * VALUE + value_row;
+                for latent in 0..LATENT {
+                    let weight = kv_weights[source_row * LATENT + latent];
+                    host[output] =
+                        weight.mul_add(host_weighted[head * LATENT + latent], host[output]);
+                    authority[output] += weight as f64 * authority_weighted[head * LATENT + latent];
+                }
+            }
+        }
+
+        let kv_codebookb = f16_buffer(&ctx, &kv_codebook);
+        let kv_codesb = ctx
+            .new_buffer_with_bytes_checked(&kv_codes)
+            .expect("five-dispatch KV codes");
+        let o_codebookb = f16_buffer(&ctx, &o_codebook);
+        let o_codesb = ctx
+            .new_buffer_with_bytes_checked(&o_codes)
+            .expect("five-dispatch o_proj codes");
+        let query_nopeb = f32_buffer(&ctx, &query_nope);
+        let query_ropeb = f32_buffer(&ctx, &query_rope);
+        let latent_cacheb = filled_f32_buffer(&ctx, TOKENS * LATENT, f32::NAN);
+        let rope_cacheb = filled_f32_buffer(&ctx, TOKENS * ROPE, f32::NAN);
+        write_f32(&latent_cacheb, &latents[..(TOKENS - 1) * LATENT]);
+        write_f32(&rope_cacheb, &rope_keys[..(TOKENS - 1) * ROPE]);
+        let current_latentb = f32_buffer(&ctx, &latents[(TOKENS - 1) * LATENT..TOKENS * LATENT]);
+        let current_ropeb = f32_buffer(&ctx, &rope_keys[(TOKENS - 1) * ROPE..TOKENS * ROPE]);
+        let rankedb = u32_buffer(&ctx, &ranked);
+        let query_latentb = filled_f32_buffer(&ctx, HEADS * LATENT, f32::NAN);
+        let contextb = filled_f32_buffer(&ctx, CONTEXT, f32::NAN);
+        let hiddenb = filled_f32_buffer(&ctx, CONTEXT, f32::NAN);
+
+        let mut tcb = TokenCommandBuffer::new(&ctx);
+        encode_mla_append_compact(
+            &mut tcb,
+            &current_latentb,
+            &current_ropeb,
+            &latent_cacheb,
+            &rope_cacheb,
+            LATENT,
+            ROPE,
+            TOKENS - 1,
+        )
+        .expect("encode compact append");
+        encode_pq_k_transpose_heads(
+            &mut tcb,
+            &kv_codebookb,
+            &kv_codesb,
+            &query_nopeb,
+            &query_latentb,
+            HEADS,
+            NOPE,
+            ROW_STRIDE,
+            LATENT,
+            LATENT,
+            LATENT,
+            CARD,
+            8,
+            1,
+        )
+        .expect("encode absorbed K");
+        encode_compact_ranked_attention(
+            &mut tcb,
+            &query_latentb,
+            &query_ropeb,
+            &latent_cacheb,
+            &rope_cacheb,
+            &rankedb,
+            &query_latentb,
+            HEADS,
+            LATENT,
+            ROPE,
+            TOKENS,
+            ranked.len(),
+            scale,
+        )
+        .expect("encode ranked compact attention");
+        encode_pq_v_rows_heads(
+            &mut tcb,
+            &kv_codebookb,
+            &kv_codesb,
+            &query_latentb,
+            &contextb,
+            HEADS,
+            ROW_STRIDE,
+            NOPE,
+            VALUE,
+            LATENT,
+            LATENT,
+            LATENT,
+            CARD,
+            8,
+            1,
+        )
+        .expect("encode absorbed V");
+        encode_pq_matvec_device(
+            &mut tcb,
+            &o_codebookb,
+            &o_codesb,
+            crate::gravity_glm::gpu::PqParams {
+                dim: CONTEXT as u32,
+                subspaces: 1,
+                sub: CONTEXT as u32,
+                card: CARD as u32,
+                rows: CONTEXT as u32,
+                cols: CONTEXT as u32,
+                nchunk: 1,
+                bits: 8,
+            },
+            &contextb,
+            &hiddenb,
+        )
+        .expect("encode unchanged o_proj");
+        assert_eq!(tcb.dispatch_count(), 5);
+        tcb.commit_and_wait()
+            .expect("five-dispatch compact attention DAG");
+
+        assert_eq!(read_f32(&latent_cacheb, latents.len()), latents);
+        assert_eq!(read_f32(&rope_cacheb, rope_keys.len()), rope_keys);
+        let device = read_f32(&hiddenb, CONTEXT);
+        let mut bounds = Bounds::continuous_only();
+        bounds.top_k = 5;
+        let pair = score_pair(&host, &device, &authority, &bounds);
+        assert!(pair.pass, "five-dispatch compact DAG V2.1: {pair:#?}");
+        assert!(
+            pair.device.discrete.greedy_match && pair.device.discrete.top_k_exact_match,
+            "five-dispatch final decisions must be exact"
+        );
+    }
+
+    #[test]
     fn route_segment_reorder_is_exact_at_edges_and_after_tied_topk() {
         let shader = include_str!("../shaders/gravity_pq.metal");
         assert!(shader.contains("kernel void gravity_glm_sort_u32_ascending("));

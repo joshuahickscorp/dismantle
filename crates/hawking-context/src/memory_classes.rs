@@ -25,7 +25,7 @@ use hide_core::ids::now_ms;
 use parking_lot::Mutex;
 use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -127,6 +127,120 @@ pub enum WriteAuthority {
     UserExplicit,
     /// Verifier path only (never the model turn).
     Verifier,
+}
+
+// ---------------------------------------------------------------------------
+// Personal scopes (orthogonal to the six classes)
+// ---------------------------------------------------------------------------
+
+/// Eight personal scopes. Orthogonal to [`MemoryClass`]: a record has exactly
+/// one class and exactly one scope.
+///
+/// Connector-scoped content never becomes global without an explicit, recorded
+/// promotion (see [`ClassedMemorySystem::set_scope`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, PartialOrd, Ord)]
+#[serde(rename_all = "snake_case")]
+pub enum PersonalScope {
+    Global,
+    Workspace,
+    Project,
+    Conversation,
+    Connector,
+    Person,
+    PrivateVault,
+    Ephemeral,
+}
+
+impl PersonalScope {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Global => "global",
+            Self::Workspace => "workspace",
+            Self::Project => "project",
+            Self::Conversation => "conversation",
+            Self::Connector => "connector",
+            Self::Person => "person",
+            Self::PrivateVault => "private_vault",
+            Self::Ephemeral => "ephemeral",
+        }
+    }
+
+    pub fn all() -> [PersonalScope; 8] {
+        [
+            Self::Global,
+            Self::Workspace,
+            Self::Project,
+            Self::Conversation,
+            Self::Connector,
+            Self::Person,
+            Self::PrivateVault,
+            Self::Ephemeral,
+        ]
+    }
+
+    pub fn parse(s: &str) -> Option<Self> {
+        match s {
+            "global" => Some(Self::Global),
+            "workspace" => Some(Self::Workspace),
+            "project" => Some(Self::Project),
+            "conversation" => Some(Self::Conversation),
+            "connector" => Some(Self::Connector),
+            "person" => Some(Self::Person),
+            "private_vault" => Some(Self::PrivateVault),
+            "ephemeral" => Some(Self::Ephemeral),
+            _ => None,
+        }
+    }
+
+    /// Default scope for a class when the draft does not set one.
+    pub fn default_for_class(class: MemoryClass) -> Self {
+        match class {
+            MemoryClass::Working => Self::Conversation,
+            MemoryClass::Episodic => Self::Conversation,
+            MemoryClass::SemanticProject => Self::Workspace,
+            MemoryClass::Procedural => Self::Workspace,
+            MemoryClass::User => Self::Global,
+            MemoryClass::Verification => Self::Workspace,
+        }
+    }
+}
+
+impl std::fmt::Display for PersonalScope {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+/// Filter for [`ClassedMemorySystem::inspect`].
+#[derive(Debug, Clone, Default)]
+pub struct InspectFilter {
+    pub class: Option<MemoryClass>,
+    pub scope: Option<PersonalScope>,
+    /// When true, include expired records (default false for active inspect).
+    pub include_expired: bool,
+    /// When true, include working (turn-local) records.
+    pub include_working: bool,
+}
+
+/// Portable export of everything the user owns in the six class stores.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct MemoryExport {
+    pub schema: String,
+    pub exported_at_ms: u64,
+    pub workspace_id: String,
+    pub records: Vec<ClassMemoryRecord>,
+    pub promotions: Vec<ScopePromotion>,
+    pub disabled_classes: Vec<String>,
+}
+
+/// Recorded scope transition (connector → global never silent).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ScopePromotion {
+    pub record_id: String,
+    pub from_scope: PersonalScope,
+    pub to_scope: PersonalScope,
+    pub at_ms: u64,
+    pub approved_by: String,
 }
 
 /// Capability: kernel/executor writing working memory for one turn.
@@ -254,6 +368,8 @@ impl ClassProvenance {
 pub struct ClassMemoryRecord {
     pub id: String,
     pub class: MemoryClass,
+    /// Exactly one personal scope, orthogonal to class.
+    pub scope: PersonalScope,
     pub text: String,
     pub importance: f32,
     /// Workspace id for workspace-scoped classes; always `None` for `user`.
@@ -263,6 +379,14 @@ pub struct ClassMemoryRecord {
     pub provenance: ClassProvenance,
     /// Evidence tier for verification (asserted / tested / proven); unused elsewhere.
     pub evidence_tier: Option<String>,
+    /// Pinned records are exempt from expiry, never from forget.
+    pub pinned: bool,
+    /// Soft-expired (left the working set); still reachable by inspect until forgotten.
+    pub expired: bool,
+    /// Absolute expiry deadline; `None` means no TTL.
+    pub expire_at_ms: Option<u64>,
+    /// When this record supersedes another (correct creates a new id).
+    pub supersedes: Option<String>,
 }
 
 /// Draft content supplied by a writer. Authority is NOT on the draft.
@@ -275,6 +399,9 @@ pub struct ClassMemoryDraft {
     pub evidence: Vec<String>,
     pub session_id: Option<String>,
     pub evidence_tier: Option<String>,
+    pub scope: Option<PersonalScope>,
+    pub expire_at_ms: Option<u64>,
+    pub supersedes: Option<String>,
 }
 
 impl ClassMemoryDraft {
@@ -287,6 +414,9 @@ impl ClassMemoryDraft {
             evidence: Vec::new(),
             session_id: None,
             evidence_tier: None,
+            scope: None,
+            expire_at_ms: None,
+            supersedes: None,
         }
     }
 
@@ -317,6 +447,21 @@ impl ClassMemoryDraft {
 
     pub fn with_evidence_tier(mut self, tier: impl Into<String>) -> Self {
         self.evidence_tier = Some(tier.into());
+        self
+    }
+
+    pub fn with_scope(mut self, scope: PersonalScope) -> Self {
+        self.scope = Some(scope);
+        self
+    }
+
+    pub fn with_expire_at_ms(mut self, at: u64) -> Self {
+        self.expire_at_ms = Some(at);
+        self
+    }
+
+    pub fn with_supersedes(mut self, id: impl Into<String>) -> Self {
+        self.supersedes = Some(id.into());
         self
     }
 }
@@ -422,6 +567,10 @@ impl ClassCompileRetrieval {
 /// - `working`: RAM only, cleared by [`Self::end_turn`].
 /// - `episodic` / `semantic_project` / `procedural` / `verification`: workspace SQLite, separate tables.
 /// - `user`: separate user-scoped SQLite (not under the workspace root).
+///
+/// User controls (inspect / correct / pin / scope / expire / forget / export / disable)
+/// apply across all six classes. Write authority types are never weakened: correcting
+/// a verification record still requires [`VerifierWriteCap`].
 pub struct ClassedMemorySystem {
     workspace_id: String,
     /// Live turn scratch: turn_id → records.
@@ -435,6 +584,9 @@ pub struct ClassedMemorySystem {
     /// Paths kept for restart tests / diagnostics.
     workspace_db_path: Option<PathBuf>,
     user_db_path: Option<PathBuf>,
+    /// Classes the user has disabled: no new writes, excluded from compile retrieval.
+    /// Existing records remain inspectable and forgettable.
+    disabled_classes: Mutex<BTreeSet<MemoryClass>>,
 }
 
 impl ClassedMemorySystem {
@@ -465,6 +617,7 @@ impl ClassedMemorySystem {
             last_retrieval: Mutex::new(None),
             workspace_db_path: Some(workspace_db_path),
             user_db_path: Some(user_db_path),
+            disabled_classes: Mutex::new(BTreeSet::new()),
         })
     }
 
@@ -482,6 +635,7 @@ impl ClassedMemorySystem {
             last_retrieval: Mutex::new(None),
             workspace_db_path: None,
             user_db_path: None,
+            disabled_classes: Mutex::new(BTreeSet::new()),
         })
     }
 
@@ -504,6 +658,22 @@ impl ClassedMemorySystem {
 
     // ----- writes (capability-gated) ---------------------------------------
 
+    fn ensure_class_enabled(&self, class: MemoryClass) -> Result<()> {
+        if self.disabled_classes.lock().contains(&class) {
+            return Err(HideError::PolicyDenied(format!(
+                "memory class {} is disabled by user control",
+                class.as_str()
+            )));
+        }
+        Ok(())
+    }
+
+    fn resolve_scope(class: MemoryClass, draft: &ClassMemoryDraft) -> PersonalScope {
+        draft
+            .scope
+            .unwrap_or_else(|| PersonalScope::default_for_class(class))
+    }
+
     /// Write working (turn-local) memory. Requires [`TurnWriteCap`].
     pub fn write_working(
         &self,
@@ -511,9 +681,12 @@ impl ClassedMemorySystem {
         writer: impl Into<String>,
         draft: ClassMemoryDraft,
     ) -> Result<ClassMemoryRecord> {
+        self.ensure_class_enabled(MemoryClass::Working)?;
+        let scope = Self::resolve_scope(MemoryClass::Working, &draft);
         let rec = ClassMemoryRecord {
             id: mint_id("working"),
             class: MemoryClass::Working,
+            scope,
             text: draft.text,
             importance: draft.importance.clamp(0.0, 1.0),
             workspace_id: Some(self.workspace_id.clone()),
@@ -526,6 +699,10 @@ impl ClassedMemorySystem {
                 draft.evidence,
             ),
             evidence_tier: None,
+            pinned: false,
+            expired: false,
+            expire_at_ms: draft.expire_at_ms,
+            supersedes: draft.supersedes,
         };
         self.working
             .lock()
@@ -547,9 +724,12 @@ impl ClassedMemorySystem {
         writer: impl Into<String>,
         draft: ClassMemoryDraft,
     ) -> Result<ClassMemoryRecord> {
+        self.ensure_class_enabled(MemoryClass::Episodic)?;
+        let scope = Self::resolve_scope(MemoryClass::Episodic, &draft);
         let rec = ClassMemoryRecord {
             id: mint_id("episodic"),
             class: MemoryClass::Episodic,
+            scope,
             text: draft.text,
             importance: draft.importance.clamp(0.0, 1.0),
             workspace_id: Some(self.workspace_id.clone()),
@@ -562,12 +742,17 @@ impl ClassedMemorySystem {
                 draft.evidence,
             ),
             evidence_tier: None,
+            pinned: false,
+            expired: false,
+            expire_at_ms: draft.expire_at_ms,
+            supersedes: draft.supersedes,
         };
         insert_workspace(&self.workspace_db, "mem_episodic", &rec)?;
         Ok(rec)
     }
 
     /// Evict all episodic records for a session (session end / GC).
+    /// Real deletion — not a tombstone.
     pub fn evict_session(&self, session_id: &str) -> Result<usize> {
         let conn = self.workspace_db.lock();
         let n = conn
@@ -576,6 +761,20 @@ impl ClassedMemorySystem {
                 [session_id],
             )
             .map_err(sql_err)?;
+        // Also drop any durable records that still reference this session id
+        // in non-episodic tables (should be rare; keeps ephemeral cleanup honest).
+        for table in [
+            "mem_semantic_project",
+            "mem_procedural",
+            "mem_verification",
+        ] {
+            let _ = conn
+                .execute(
+                    &format!("DELETE FROM {table} WHERE session_id = ?1"),
+                    [session_id],
+                )
+                .map_err(sql_err)?;
+        }
         Ok(n)
     }
 
@@ -586,9 +785,12 @@ impl ClassedMemorySystem {
         writer: impl Into<String>,
         draft: ClassMemoryDraft,
     ) -> Result<ClassMemoryRecord> {
+        self.ensure_class_enabled(MemoryClass::SemanticProject)?;
+        let scope = Self::resolve_scope(MemoryClass::SemanticProject, &draft);
         let rec = ClassMemoryRecord {
             id: mint_id("sem_proj"),
             class: MemoryClass::SemanticProject,
+            scope,
             text: draft.text,
             importance: draft.importance.clamp(0.0, 1.0),
             workspace_id: Some(self.workspace_id.clone()),
@@ -601,6 +803,10 @@ impl ClassedMemorySystem {
                 draft.evidence,
             ),
             evidence_tier: None,
+            pinned: false,
+            expired: false,
+            expire_at_ms: draft.expire_at_ms,
+            supersedes: draft.supersedes,
         };
         insert_workspace(&self.workspace_db, "mem_semantic_project", &rec)?;
         Ok(rec)
@@ -613,9 +819,12 @@ impl ClassedMemorySystem {
         writer: impl Into<String>,
         draft: ClassMemoryDraft,
     ) -> Result<ClassMemoryRecord> {
+        self.ensure_class_enabled(MemoryClass::Procedural)?;
+        let scope = Self::resolve_scope(MemoryClass::Procedural, &draft);
         let rec = ClassMemoryRecord {
             id: mint_id("procedural"),
             class: MemoryClass::Procedural,
+            scope,
             text: draft.text,
             importance: draft.importance.clamp(0.0, 1.0),
             workspace_id: Some(self.workspace_id.clone()),
@@ -628,6 +837,10 @@ impl ClassedMemorySystem {
                 draft.evidence,
             ),
             evidence_tier: None,
+            pinned: false,
+            expired: false,
+            expire_at_ms: draft.expire_at_ms,
+            supersedes: draft.supersedes,
         };
         insert_workspace(&self.workspace_db, "mem_procedural", &rec)?;
         Ok(rec)
@@ -641,9 +854,12 @@ impl ClassedMemorySystem {
         writer: impl Into<String>,
         draft: ClassMemoryDraft,
     ) -> Result<ClassMemoryRecord> {
+        self.ensure_class_enabled(MemoryClass::User)?;
+        let scope = Self::resolve_scope(MemoryClass::User, &draft);
         let rec = ClassMemoryRecord {
             id: mint_id("user"),
             class: MemoryClass::User,
+            scope,
             text: draft.text,
             importance: draft.importance.clamp(0.0, 1.0),
             workspace_id: None, // not workspace-scoped
@@ -656,6 +872,10 @@ impl ClassedMemorySystem {
                 draft.evidence,
             ),
             evidence_tier: None,
+            pinned: false,
+            expired: false,
+            expire_at_ms: draft.expire_at_ms,
+            supersedes: draft.supersedes,
         };
         insert_user(&self.user_db, &rec)?;
         Ok(rec)
@@ -669,9 +889,12 @@ impl ClassedMemorySystem {
         writer: impl Into<String>,
         draft: ClassMemoryDraft,
     ) -> Result<ClassMemoryRecord> {
+        self.ensure_class_enabled(MemoryClass::Verification)?;
+        let scope = Self::resolve_scope(MemoryClass::Verification, &draft);
         let rec = ClassMemoryRecord {
             id: mint_id("verify"),
             class: MemoryClass::Verification,
+            scope,
             text: draft.text,
             importance: draft.importance.clamp(0.0, 1.0),
             workspace_id: Some(self.workspace_id.clone()),
@@ -684,6 +907,10 @@ impl ClassedMemorySystem {
                 draft.evidence,
             ),
             evidence_tier: draft.evidence_tier.or_else(|| Some("asserted".into())),
+            pinned: false,
+            expired: false,
+            expire_at_ms: draft.expire_at_ms,
+            supersedes: draft.supersedes,
         };
         insert_workspace(&self.workspace_db, "mem_verification", &rec)?;
         Ok(rec)
@@ -723,6 +950,9 @@ impl ClassedMemorySystem {
     /// Retrieve for context compile: each class is asked its own question and
     /// filled under its own token budget. Results are independent — filling
     /// one class does not borrow from another.
+    ///
+    /// Disabled classes and expired records are excluded. Pinned records still
+    /// participate if not expired.
     pub fn retrieve_for_compile(
         &self,
         task: &str,
@@ -730,10 +960,21 @@ impl ClassedMemorySystem {
         session_id: Option<&str>,
         budgets: &ClassBudgets,
     ) -> Result<ClassCompileRetrieval> {
+        let disabled = self.disabled_classes.lock().clone();
         let mut slices = Vec::with_capacity(6);
         for class in MemoryClass::all() {
             let budget = budgets.for_class(class);
-            let candidates = match class {
+            if disabled.contains(&class) {
+                slices.push(ClassRetrievalSlice {
+                    class,
+                    question: class.retrieval_question().to_string(),
+                    budget_tokens: budget,
+                    used_tokens: 0,
+                    hits: Vec::new(),
+                });
+                continue;
+            }
+            let mut candidates = match class {
                 MemoryClass::Working => match turn_id {
                     Some(t) => self.list_working(t),
                     None => Vec::new(),
@@ -747,6 +988,7 @@ impl ClassedMemorySystem {
                 }
                 other => self.list_class(other)?,
             };
+            candidates.retain(|r| !r.expired);
             let ranked = rank_for_query(task, candidates);
             let (hits, used) = pack_to_budget(ranked, budget);
             slices.push(ClassRetrievalSlice {
@@ -764,6 +1006,547 @@ impl ClassedMemorySystem {
 
     pub fn last_retrieval(&self) -> Option<ClassCompileRetrieval> {
         self.last_retrieval.lock().clone()
+    }
+
+    // ----- eight user controls ---------------------------------------------
+
+    /// **inspect** — every durable record is reachable. No hidden permanent memory.
+    pub fn inspect(&self, filter: &InspectFilter) -> Result<Vec<ClassMemoryRecord>> {
+        let mut out = Vec::new();
+        let classes: Vec<MemoryClass> = match filter.class {
+            Some(c) => vec![c],
+            None => MemoryClass::all().to_vec(),
+        };
+        for class in classes {
+            if class == MemoryClass::Working && !filter.include_working {
+                continue;
+            }
+            let mut rows = self.list_class(class)?;
+            if let Some(scope) = filter.scope {
+                rows.retain(|r| r.scope == scope);
+            }
+            if !filter.include_expired {
+                rows.retain(|r| !r.expired);
+            }
+            out.extend(rows);
+        }
+        out.sort_by(|a, b| a.id.cmp(&b.id));
+        Ok(out)
+    }
+
+    /// Look up a single record by id across all stores (including working).
+    pub fn get(&self, id: &str) -> Result<Option<ClassMemoryRecord>> {
+        for class in MemoryClass::all() {
+            for r in self.list_class(class)? {
+                if r.id == id {
+                    return Ok(Some(r));
+                }
+            }
+        }
+        Ok(None)
+    }
+
+    /// **correct** (user class). Supersession: new record names the old; both
+    /// remain until forgotten. Requires [`UserWriteCap`].
+    pub fn correct_user(
+        &self,
+        cap: &UserWriteCap,
+        id: &str,
+        writer: impl Into<String>,
+        new_text: impl Into<String>,
+    ) -> Result<ClassMemoryRecord> {
+        let old = self
+            .get(id)?
+            .ok_or_else(|| HideError::NotFound(format!("memory record {id}")))?;
+        if old.class != MemoryClass::User {
+            return Err(HideError::InvalidState(
+                "correct_user requires a user-class record".into(),
+            ));
+        }
+        self.write_user(
+            cap,
+            writer,
+            ClassMemoryDraft::new(new_text.into())
+                .with_scope(old.scope)
+                .with_importance(old.importance)
+                .with_supersedes(id),
+        )
+    }
+
+    /// **correct** (verification class). Still requires [`VerifierWriteCap`].
+    pub fn correct_verification(
+        &self,
+        cap: &VerifierWriteCap,
+        id: &str,
+        writer: impl Into<String>,
+        new_text: impl Into<String>,
+    ) -> Result<ClassMemoryRecord> {
+        let old = self
+            .get(id)?
+            .ok_or_else(|| HideError::NotFound(format!("memory record {id}")))?;
+        if old.class != MemoryClass::Verification {
+            return Err(HideError::InvalidState(
+                "correct_verification requires a verification-class record".into(),
+            ));
+        }
+        self.write_verification(
+            cap,
+            writer,
+            ClassMemoryDraft::new(new_text.into())
+                .with_scope(old.scope)
+                .with_importance(old.importance)
+                .with_evidence(old.provenance.evidence.clone())
+                .with_evidence_tier(
+                    old.evidence_tier
+                        .clone()
+                        .unwrap_or_else(|| "asserted".into()),
+                )
+                .with_supersedes(id),
+        )
+    }
+
+    /// **correct** (semantic_project). Requires [`ProjectWriteCap`].
+    pub fn correct_semantic_project(
+        &self,
+        cap: &ProjectWriteCap,
+        id: &str,
+        writer: impl Into<String>,
+        new_text: impl Into<String>,
+    ) -> Result<ClassMemoryRecord> {
+        let old = self
+            .get(id)?
+            .ok_or_else(|| HideError::NotFound(format!("memory record {id}")))?;
+        if old.class != MemoryClass::SemanticProject {
+            return Err(HideError::InvalidState(
+                "correct_semantic_project requires a semantic_project record".into(),
+            ));
+        }
+        self.write_semantic_project(
+            cap,
+            writer,
+            ClassMemoryDraft::new(new_text.into())
+                .with_scope(old.scope)
+                .with_importance(old.importance)
+                .with_evidence(old.provenance.evidence.clone())
+                .with_supersedes(id),
+        )
+    }
+
+    /// **correct** (procedural). Requires [`ProceduralWriteCap`].
+    pub fn correct_procedural(
+        &self,
+        cap: &ProceduralWriteCap,
+        id: &str,
+        writer: impl Into<String>,
+        new_text: impl Into<String>,
+    ) -> Result<ClassMemoryRecord> {
+        let old = self
+            .get(id)?
+            .ok_or_else(|| HideError::NotFound(format!("memory record {id}")))?;
+        if old.class != MemoryClass::Procedural {
+            return Err(HideError::InvalidState(
+                "correct_procedural requires a procedural record".into(),
+            ));
+        }
+        self.write_procedural(
+            cap,
+            writer,
+            ClassMemoryDraft::new(new_text.into())
+                .with_scope(old.scope)
+                .with_importance(old.importance)
+                .with_evidence(old.provenance.evidence.clone())
+                .with_supersedes(id),
+        )
+    }
+
+    /// **correct** (episodic). Requires [`EpisodicWriteCap`].
+    pub fn correct_episodic(
+        &self,
+        cap: &EpisodicWriteCap,
+        id: &str,
+        writer: impl Into<String>,
+        new_text: impl Into<String>,
+    ) -> Result<ClassMemoryRecord> {
+        let old = self
+            .get(id)?
+            .ok_or_else(|| HideError::NotFound(format!("memory record {id}")))?;
+        if old.class != MemoryClass::Episodic {
+            return Err(HideError::InvalidState(
+                "correct_episodic requires an episodic record".into(),
+            ));
+        }
+        let mut draft = ClassMemoryDraft::new(new_text.into())
+            .with_scope(old.scope)
+            .with_importance(old.importance)
+            .with_supersedes(id);
+        if let Some(sid) = old.session_id {
+            draft = draft.with_session(sid);
+        }
+        self.write_episodic(cap, writer, draft)
+    }
+
+    /// **pin** — pinned records are exempt from expiry, never from forget.
+    pub fn pin(&self, id: &str, pinned: bool) -> Result<()> {
+        let rec = self
+            .get(id)?
+            .ok_or_else(|| HideError::NotFound(format!("memory record {id}")))?;
+        self.update_record_flags(&rec, Some(pinned), None)
+    }
+
+    /// **scope** — explicit, recorded scope transition. Connector content cannot
+    /// reach global any other way.
+    pub fn set_scope(
+        &self,
+        id: &str,
+        to_scope: PersonalScope,
+        approved_by: impl Into<String>,
+    ) -> Result<ScopePromotion> {
+        let approved_by = approved_by.into();
+        if approved_by.is_empty() {
+            return Err(HideError::InvalidState(
+                "scope promotion requires an explicit approver".into(),
+            ));
+        }
+        let rec = self
+            .get(id)?
+            .ok_or_else(|| HideError::NotFound(format!("memory record {id}")))?;
+        let from = rec.scope;
+        if from == to_scope {
+            return Ok(ScopePromotion {
+                record_id: id.into(),
+                from_scope: from,
+                to_scope,
+                at_ms: now_ms(),
+                approved_by,
+            });
+        }
+        self.update_scope_column(&rec, to_scope)?;
+        let promo = ScopePromotion {
+            record_id: id.into(),
+            from_scope: from,
+            to_scope,
+            at_ms: now_ms(),
+            approved_by,
+        };
+        self.record_promotion(&promo)?;
+        Ok(promo)
+    }
+
+    /// **expire** — mark due records expired (leave working set). Pinned survive.
+    pub fn expire_due(&self, now_ms: u64) -> Result<usize> {
+        let mut n = 0usize;
+        for class in MemoryClass::all() {
+            if class == MemoryClass::Working {
+                // Working is turn-local; expire flag is not load-bearing there.
+                continue;
+            }
+            for rec in self.list_class(class)? {
+                if rec.expired || rec.pinned {
+                    continue;
+                }
+                if let Some(at) = rec.expire_at_ms {
+                    if now_ms >= at {
+                        self.update_record_flags(&rec, None, Some(true))?;
+                        n += 1;
+                    }
+                }
+            }
+        }
+        Ok(n)
+    }
+
+    /// **forget** — real deletion for user-owned data. Not a tombstone.
+    ///
+    /// Returns true if a record was removed. Works for every class, including
+    /// working (RAM) and durable tables.
+    pub fn forget(&self, id: &str) -> Result<bool> {
+        // Working (RAM)
+        {
+            let mut map = self.working.lock();
+            for (_turn, rows) in map.iter_mut() {
+                let before = rows.len();
+                rows.retain(|r| r.id != id);
+                if rows.len() < before {
+                    return Ok(true);
+                }
+            }
+        }
+        // Durable workspace tables
+        {
+            let conn = self.workspace_db.lock();
+            for table in [
+                "mem_episodic",
+                "mem_semantic_project",
+                "mem_procedural",
+                "mem_verification",
+            ] {
+                let n = conn
+                    .execute(&format!("DELETE FROM {table} WHERE id = ?1"), [id])
+                    .map_err(sql_err)?;
+                if n > 0 {
+                    return Ok(true);
+                }
+            }
+        }
+        // User db
+        {
+            let conn = self.user_db.lock();
+            let n = conn
+                .execute("DELETE FROM mem_user WHERE id = ?1", [id])
+                .map_err(sql_err)?;
+            if n > 0 {
+                return Ok(true);
+            }
+        }
+        Ok(false)
+    }
+
+    /// Forget every record in a personal scope (real deletion).
+    pub fn forget_scope(&self, scope: PersonalScope) -> Result<usize> {
+        let ids: Vec<String> = self
+            .inspect(&InspectFilter {
+                scope: Some(scope),
+                include_expired: true,
+                include_working: true,
+                ..Default::default()
+            })?
+            .into_iter()
+            .map(|r| r.id)
+            .collect();
+        let mut n = 0usize;
+        for id in ids {
+            if self.forget(&id)? {
+                n += 1;
+            }
+        }
+        Ok(n)
+    }
+
+    /// **export** — portable, complete, readable without this tool (JSON).
+    pub fn export(&self) -> Result<MemoryExport> {
+        let records = self.inspect(&InspectFilter {
+            include_expired: true,
+            include_working: false,
+            ..Default::default()
+        })?;
+        let promotions = self.list_promotions()?;
+        let disabled: Vec<String> = self
+            .disabled_classes
+            .lock()
+            .iter()
+            .map(|c| c.as_str().to_string())
+            .collect();
+        Ok(MemoryExport {
+            schema: "hide.you.memory_export.v1".into(),
+            exported_at_ms: now_ms(),
+            workspace_id: self.workspace_id.clone(),
+            records,
+            promotions,
+            disabled_classes: disabled,
+        })
+    }
+
+    /// **disable** — user control that blocks new writes and compile retrieval
+    /// for a class. Existing records remain inspectable and forgettable.
+    pub fn disable_class(&self, class: MemoryClass, disabled: bool) {
+        let mut set = self.disabled_classes.lock();
+        if disabled {
+            set.insert(class);
+        } else {
+            set.remove(&class);
+        }
+    }
+
+    pub fn is_class_disabled(&self, class: MemoryClass) -> bool {
+        self.disabled_classes.lock().contains(&class)
+    }
+
+    pub fn list_promotions(&self) -> Result<Vec<ScopePromotion>> {
+        let conn = self.workspace_db.lock();
+        let mut stmt = conn
+            .prepare(
+                "SELECT record_id, from_scope, to_scope, at_ms, approved_by
+                 FROM mem_scope_promotions ORDER BY at_ms ASC",
+            )
+            .map_err(sql_err)?;
+        let rows = stmt
+            .query_map([], |row| {
+                let from_s: String = row.get(1)?;
+                let to_s: String = row.get(2)?;
+                Ok(ScopePromotion {
+                    record_id: row.get(0)?,
+                    from_scope: PersonalScope::parse(&from_s).unwrap_or(PersonalScope::Workspace),
+                    to_scope: PersonalScope::parse(&to_s).unwrap_or(PersonalScope::Workspace),
+                    at_ms: row.get::<_, i64>(3)? as u64,
+                    approved_by: row.get(4)?,
+                })
+            })
+            .map_err(sql_err)?
+            .collect::<std::result::Result<Vec<_>, _>>()
+            .map_err(sql_err)?;
+        Ok(rows)
+    }
+
+    /// Count durable records that still reference a session id (any class table).
+    pub fn durable_refs_to_session(&self, session_id: &str) -> Result<usize> {
+        let mut n = 0usize;
+        for class in [
+            MemoryClass::Episodic,
+            MemoryClass::SemanticProject,
+            MemoryClass::Procedural,
+            MemoryClass::Verification,
+        ] {
+            n += self
+                .list_class(class)?
+                .into_iter()
+                .filter(|r| r.session_id.as_deref() == Some(session_id))
+                .count();
+        }
+        Ok(n)
+    }
+
+    fn record_promotion(&self, promo: &ScopePromotion) -> Result<()> {
+        let conn = self.workspace_db.lock();
+        conn.execute(
+            "INSERT INTO mem_scope_promotions
+             (record_id, from_scope, to_scope, at_ms, approved_by)
+             VALUES (?1,?2,?3,?4,?5)",
+            rusqlite::params![
+                promo.record_id,
+                promo.from_scope.as_str(),
+                promo.to_scope.as_str(),
+                promo.at_ms as i64,
+                promo.approved_by,
+            ],
+        )
+        .map_err(sql_err)?;
+        Ok(())
+    }
+
+    fn update_scope_column(&self, rec: &ClassMemoryRecord, to: PersonalScope) -> Result<()> {
+        match rec.class {
+            MemoryClass::Working => {
+                let mut map = self.working.lock();
+                for rows in map.values_mut() {
+                    for r in rows.iter_mut() {
+                        if r.id == rec.id {
+                            r.scope = to;
+                            return Ok(());
+                        }
+                    }
+                }
+                Err(HideError::NotFound(format!("memory record {}", rec.id)))
+            }
+            MemoryClass::User => {
+                let conn = self.user_db.lock();
+                let n = conn
+                    .execute(
+                        "UPDATE mem_user SET scope = ?1 WHERE id = ?2",
+                        rusqlite::params![to.as_str(), rec.id],
+                    )
+                    .map_err(sql_err)?;
+                if n == 0 {
+                    return Err(HideError::NotFound(format!("memory record {}", rec.id)));
+                }
+                Ok(())
+            }
+            other => {
+                let table = table_for_class(other)?;
+                let conn = self.workspace_db.lock();
+                let n = conn
+                    .execute(
+                        &format!("UPDATE {table} SET scope = ?1 WHERE id = ?2"),
+                        rusqlite::params![to.as_str(), rec.id],
+                    )
+                    .map_err(sql_err)?;
+                if n == 0 {
+                    return Err(HideError::NotFound(format!("memory record {}", rec.id)));
+                }
+                Ok(())
+            }
+        }
+    }
+
+    fn update_record_flags(
+        &self,
+        rec: &ClassMemoryRecord,
+        pinned: Option<bool>,
+        expired: Option<bool>,
+    ) -> Result<()> {
+        match rec.class {
+            MemoryClass::Working => {
+                let mut map = self.working.lock();
+                for rows in map.values_mut() {
+                    for r in rows.iter_mut() {
+                        if r.id == rec.id {
+                            if let Some(p) = pinned {
+                                r.pinned = p;
+                            }
+                            if let Some(e) = expired {
+                                r.expired = e;
+                            }
+                            return Ok(());
+                        }
+                    }
+                }
+                Err(HideError::NotFound(format!("memory record {}", rec.id)))
+            }
+            MemoryClass::User => {
+                let conn = self.user_db.lock();
+                let n = conn
+                    .execute(
+                        "UPDATE mem_user SET
+                           pinned = COALESCE(?1, pinned),
+                           expired = COALESCE(?2, expired)
+                         WHERE id = ?3",
+                        rusqlite::params![
+                            pinned.map(|b| b as i64),
+                            expired.map(|b| b as i64),
+                            rec.id,
+                        ],
+                    )
+                    .map_err(sql_err)?;
+                if n == 0 {
+                    return Err(HideError::NotFound(format!("memory record {}", rec.id)));
+                }
+                Ok(())
+            }
+            other => {
+                let table = table_for_class(other)?;
+                let conn = self.workspace_db.lock();
+                let n = conn
+                    .execute(
+                        &format!(
+                            "UPDATE {table} SET
+                               pinned = COALESCE(?1, pinned),
+                               expired = COALESCE(?2, expired)
+                             WHERE id = ?3"
+                        ),
+                        rusqlite::params![
+                            pinned.map(|b| b as i64),
+                            expired.map(|b| b as i64),
+                            rec.id,
+                        ],
+                    )
+                    .map_err(sql_err)?;
+                if n == 0 {
+                    return Err(HideError::NotFound(format!("memory record {}", rec.id)));
+                }
+                Ok(())
+            }
+        }
+    }
+}
+
+fn table_for_class(class: MemoryClass) -> Result<&'static str> {
+    match class {
+        MemoryClass::Episodic => Ok("mem_episodic"),
+        MemoryClass::SemanticProject => Ok("mem_semantic_project"),
+        MemoryClass::Procedural => Ok("mem_procedural"),
+        MemoryClass::Verification => Ok("mem_verification"),
+        MemoryClass::Working | MemoryClass::User => Err(HideError::Storage(
+            "working/user are not workspace tables".into(),
+        )),
     }
 }
 
@@ -833,7 +1616,12 @@ fn init_workspace_schema(conn: &Connection) -> Result<()> {
             workspace_id TEXT,
             session_id TEXT,
             provenance_json TEXT NOT NULL,
-            evidence_tier TEXT
+            evidence_tier TEXT,
+            scope TEXT NOT NULL DEFAULT 'conversation',
+            pinned INTEGER NOT NULL DEFAULT 0,
+            expired INTEGER NOT NULL DEFAULT 0,
+            expire_at_ms INTEGER,
+            supersedes TEXT
         );
         CREATE TABLE IF NOT EXISTS mem_semantic_project (
             id TEXT PRIMARY KEY,
@@ -842,7 +1630,12 @@ fn init_workspace_schema(conn: &Connection) -> Result<()> {
             workspace_id TEXT,
             session_id TEXT,
             provenance_json TEXT NOT NULL,
-            evidence_tier TEXT
+            evidence_tier TEXT,
+            scope TEXT NOT NULL DEFAULT 'workspace',
+            pinned INTEGER NOT NULL DEFAULT 0,
+            expired INTEGER NOT NULL DEFAULT 0,
+            expire_at_ms INTEGER,
+            supersedes TEXT
         );
         CREATE TABLE IF NOT EXISTS mem_procedural (
             id TEXT PRIMARY KEY,
@@ -851,7 +1644,12 @@ fn init_workspace_schema(conn: &Connection) -> Result<()> {
             workspace_id TEXT,
             session_id TEXT,
             provenance_json TEXT NOT NULL,
-            evidence_tier TEXT
+            evidence_tier TEXT,
+            scope TEXT NOT NULL DEFAULT 'workspace',
+            pinned INTEGER NOT NULL DEFAULT 0,
+            expired INTEGER NOT NULL DEFAULT 0,
+            expire_at_ms INTEGER,
+            supersedes TEXT
         );
         CREATE TABLE IF NOT EXISTS mem_verification (
             id TEXT PRIMARY KEY,
@@ -860,7 +1658,19 @@ fn init_workspace_schema(conn: &Connection) -> Result<()> {
             workspace_id TEXT,
             session_id TEXT,
             provenance_json TEXT NOT NULL,
-            evidence_tier TEXT
+            evidence_tier TEXT,
+            scope TEXT NOT NULL DEFAULT 'workspace',
+            pinned INTEGER NOT NULL DEFAULT 0,
+            expired INTEGER NOT NULL DEFAULT 0,
+            expire_at_ms INTEGER,
+            supersedes TEXT
+        );
+        CREATE TABLE IF NOT EXISTS mem_scope_promotions (
+            record_id TEXT NOT NULL,
+            from_scope TEXT NOT NULL,
+            to_scope TEXT NOT NULL,
+            at_ms INTEGER NOT NULL,
+            approved_by TEXT NOT NULL
         );
         "#,
     )
@@ -878,7 +1688,12 @@ fn init_user_schema(conn: &Connection) -> Result<()> {
             workspace_id TEXT,
             session_id TEXT,
             provenance_json TEXT NOT NULL,
-            evidence_tier TEXT
+            evidence_tier TEXT,
+            scope TEXT NOT NULL DEFAULT 'global',
+            pinned INTEGER NOT NULL DEFAULT 0,
+            expired INTEGER NOT NULL DEFAULT 0,
+            expire_at_ms INTEGER,
+            supersedes TEXT
         );
         "#,
     )
@@ -899,8 +1714,9 @@ fn insert_workspace(
     let prov = serde_json::to_string(&rec.provenance)?;
     let sql = format!(
         "INSERT OR REPLACE INTO {table}
-         (id, text, importance, workspace_id, session_id, provenance_json, evidence_tier)
-         VALUES (?1,?2,?3,?4,?5,?6,?7)"
+         (id, text, importance, workspace_id, session_id, provenance_json, evidence_tier,
+          scope, pinned, expired, expire_at_ms, supersedes)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12)"
     );
     let conn = conn.lock();
     conn.execute(
@@ -913,6 +1729,11 @@ fn insert_workspace(
             rec.session_id,
             prov,
             rec.evidence_tier,
+            rec.scope.as_str(),
+            rec.pinned as i64,
+            rec.expired as i64,
+            rec.expire_at_ms.map(|v| v as i64),
+            rec.supersedes,
         ],
     )
     .map_err(sql_err)?;
@@ -924,8 +1745,9 @@ fn insert_user(conn: &Mutex<Connection>, rec: &ClassMemoryRecord) -> Result<()> 
     let conn = conn.lock();
     conn.execute(
         "INSERT OR REPLACE INTO mem_user
-         (id, text, importance, workspace_id, session_id, provenance_json, evidence_tier)
-         VALUES (?1,?2,?3,?4,?5,?6,?7)",
+         (id, text, importance, workspace_id, session_id, provenance_json, evidence_tier,
+          scope, pinned, expired, expire_at_ms, supersedes)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12)",
         rusqlite::params![
             rec.id,
             rec.text,
@@ -934,6 +1756,11 @@ fn insert_user(conn: &Mutex<Connection>, rec: &ClassMemoryRecord) -> Result<()> 
             rec.session_id,
             prov,
             rec.evidence_tier,
+            rec.scope.as_str(),
+            rec.pinned as i64,
+            rec.expired as i64,
+            rec.expire_at_ms.map(|v| v as i64),
+            rec.supersedes,
         ],
     )
     .map_err(sql_err)?;
@@ -953,7 +1780,8 @@ fn list_workspace(conn: &Mutex<Connection>, table: &str) -> Result<Vec<ClassMemo
         _ => return Err(HideError::Storage(format!("unknown table {table}"))),
     };
     let sql = format!(
-        "SELECT id, text, importance, workspace_id, session_id, provenance_json, evidence_tier
+        "SELECT id, text, importance, workspace_id, session_id, provenance_json, evidence_tier,
+                scope, pinned, expired, expire_at_ms, supersedes
          FROM {table}"
     );
     let conn = conn.lock();
@@ -970,7 +1798,8 @@ fn list_user(conn: &Mutex<Connection>) -> Result<Vec<ClassMemoryRecord>> {
     let conn = conn.lock();
     let mut stmt = conn
         .prepare(
-            "SELECT id, text, importance, workspace_id, session_id, provenance_json, evidence_tier
+            "SELECT id, text, importance, workspace_id, session_id, provenance_json, evidence_tier,
+                    scope, pinned, expired, expire_at_ms, supersedes
              FROM mem_user",
         )
         .map_err(sql_err)?;
@@ -997,15 +1826,25 @@ fn row_to_record(
             authority: WriteAuthority::Turn,
         }
     });
+    let scope_s: String = row.get(7)?;
+    let scope = PersonalScope::parse(&scope_s)
+        .unwrap_or_else(|| PersonalScope::default_for_class(class));
     Ok(ClassMemoryRecord {
         id: row.get(0)?,
         class,
+        scope,
         text: row.get(1)?,
         importance: row.get::<_, f64>(2)? as f32,
         workspace_id: row.get(3)?,
         session_id: row.get(4)?,
         provenance,
         evidence_tier: row.get(6)?,
+        pinned: row.get::<_, i64>(8)? != 0,
+        expired: row.get::<_, i64>(9)? != 0,
+        expire_at_ms: row
+            .get::<_, Option<i64>>(10)?
+            .map(|v| v as u64),
+        supersedes: row.get(11)?,
     })
 }
 
@@ -1317,6 +2156,206 @@ mod tests {
         assert_eq!(v.provenance.authority, WriteAuthority::Verifier);
         assert_eq!(v.provenance.run_id.as_deref(), Some("run-1"));
         assert!(!v.provenance.evidence.is_empty());
+    }
+
+    // --- eight user controls + properties ----------------------------------
+
+    #[test]
+    fn property_no_hidden_permanent_memory_inspect_and_forget() {
+        // Every durable record is reachable by inspect and removable by forget;
+        // forget is real deletion for user-scoped data.
+        let sys = system();
+        let u = sys
+            .write_user(
+                &UserWriteCap::mint(),
+                "user_intent",
+                ClassMemoryDraft::new("prefer dark mode"),
+            )
+            .unwrap();
+        let v = sys
+            .write_verification(
+                &VerifierWriteCap::mint(),
+                "verifier",
+                ClassMemoryDraft::new("claim proven")
+                    .with_evidence_tier("proven"),
+            )
+            .unwrap();
+        let p = sys
+            .write_semantic_project(
+                &ProjectWriteCap::mint(),
+                "distill",
+                ClassMemoryDraft::new("crate layout fact"),
+            )
+            .unwrap();
+
+        let all = sys
+            .inspect(&InspectFilter {
+                include_expired: true,
+                ..Default::default()
+            })
+            .unwrap();
+        let ids: Vec<_> = all.iter().map(|r| r.id.as_str()).collect();
+        assert!(ids.contains(&u.id.as_str()), "user record must be inspectable");
+        assert!(ids.contains(&v.id.as_str()), "verification must be inspectable");
+        assert!(ids.contains(&p.id.as_str()), "semantic must be inspectable");
+
+        assert!(sys.forget(&u.id).unwrap());
+        assert!(sys.get(&u.id).unwrap().is_none(), "forget must really delete");
+        assert_eq!(sys.count(MemoryClass::User).unwrap(), 0);
+
+        // export is portable JSON-serializable without this tool
+        let exp = sys.export().unwrap();
+        assert_eq!(exp.schema, "hide.you.memory_export.v1");
+        let json = serde_json::to_string_pretty(&exp).unwrap();
+        assert!(json.contains("claim proven") || json.contains(&v.id));
+        let round: MemoryExport = serde_json::from_str(&json).unwrap();
+        assert_eq!(round.records.len(), exp.records.len());
+    }
+
+    #[test]
+    fn property_correct_verification_requires_verifier_cap() {
+        let sys = system();
+        let rec = sys
+            .write_verification(
+                &VerifierWriteCap::mint(),
+                "verifier",
+                ClassMemoryDraft::new("old claim").with_evidence_tier("asserted"),
+            )
+            .unwrap();
+        let corrected = sys
+            .correct_verification(
+                &VerifierWriteCap::mint(),
+                &rec.id,
+                "verifier",
+                "corrected claim",
+            )
+            .unwrap();
+        assert_eq!(corrected.provenance.authority, WriteAuthority::Verifier);
+        assert_eq!(corrected.supersedes.as_deref(), Some(rec.id.as_str()));
+        // Both remain until forgotten (supersession, not in-place edit).
+        assert_eq!(sys.count(MemoryClass::Verification).unwrap(), 2);
+        assert!(sys.get(&rec.id).unwrap().is_some());
+    }
+
+    #[test]
+    fn property_scope_orthogonal_to_class_and_promotion_recorded() {
+        let sys = system();
+        let rec = sys
+            .write_episodic(
+                &EpisodicWriteCap::mint(),
+                "event_stream",
+                ClassMemoryDraft::new("email snippet")
+                    .with_scope(PersonalScope::Connector)
+                    .with_session("s1"),
+            )
+            .unwrap();
+        assert_eq!(rec.class, MemoryClass::Episodic);
+        assert_eq!(rec.scope, PersonalScope::Connector);
+
+        // Not global until explicit promotion.
+        let global = sys
+            .inspect(&InspectFilter {
+                scope: Some(PersonalScope::Global),
+                include_expired: true,
+                ..Default::default()
+            })
+            .unwrap();
+        assert!(global.is_empty());
+
+        let promo = sys
+            .set_scope(&rec.id, PersonalScope::Global, "user")
+            .unwrap();
+        assert_eq!(promo.from_scope, PersonalScope::Connector);
+        assert_eq!(promo.to_scope, PersonalScope::Global);
+        assert_eq!(promo.approved_by, "user");
+
+        let after = sys.get(&rec.id).unwrap().unwrap();
+        assert_eq!(after.scope, PersonalScope::Global);
+        assert_eq!(after.class, MemoryClass::Episodic); // class unchanged
+        assert_eq!(sys.list_promotions().unwrap().len(), 1);
+
+        // Empty approver refused.
+        assert!(sys
+            .set_scope(&rec.id, PersonalScope::Person, "")
+            .is_err());
+    }
+
+    #[test]
+    fn property_pin_expire_disable_controls() {
+        let sys = system();
+        let a = sys
+            .write_user(
+                &UserWriteCap::mint(),
+                "user",
+                ClassMemoryDraft::new("will expire").with_expire_at_ms(100),
+            )
+            .unwrap();
+        let b = sys
+            .write_user(
+                &UserWriteCap::mint(),
+                "user",
+                ClassMemoryDraft::new("pinned forever").with_expire_at_ms(100),
+            )
+            .unwrap();
+        sys.pin(&b.id, true).unwrap();
+        assert_eq!(sys.expire_due(200).unwrap(), 1);
+        let a2 = sys.get(&a.id).unwrap().unwrap();
+        let b2 = sys.get(&b.id).unwrap().unwrap();
+        assert!(a2.expired);
+        assert!(!b2.expired);
+        assert!(b2.pinned);
+
+        // disable blocks writes and compile retrieval; records stay inspectable
+        sys.disable_class(MemoryClass::User, true);
+        assert!(sys
+            .write_user(
+                &UserWriteCap::mint(),
+                "user",
+                ClassMemoryDraft::new("blocked"),
+            )
+            .is_err());
+        let still = sys
+            .inspect(&InspectFilter {
+                class: Some(MemoryClass::User),
+                include_expired: true,
+                ..Default::default()
+            })
+            .unwrap();
+        assert_eq!(still.len(), 2);
+        let ret = sys
+            .retrieve_for_compile("prefer", None, None, &ClassBudgets::default_small())
+            .unwrap();
+        assert!(
+            ret.slice(MemoryClass::User).unwrap().hits.is_empty(),
+            "disabled class must not enter compile"
+        );
+    }
+
+    #[test]
+    fn property_export_and_real_deletion_path() {
+        let sys = system();
+        let id = sys
+            .write_procedural(
+                &ProceduralWriteCap::mint(),
+                "tool",
+                ClassMemoryDraft::new("cargo test works"),
+            )
+            .unwrap()
+            .id;
+        let exp = sys.export().unwrap();
+        assert!(exp.records.iter().any(|r| r.id == id));
+        assert!(sys.forget(&id).unwrap());
+        assert!(!sys.export().unwrap().records.iter().any(|r| r.id == id));
+        assert!(sys.list_class(MemoryClass::Procedural).unwrap().is_empty());
+    }
+
+    #[test]
+    fn property_eight_scopes_closed_vocabulary() {
+        assert_eq!(PersonalScope::all().len(), 8);
+        for s in PersonalScope::all() {
+            assert_eq!(PersonalScope::parse(s.as_str()), Some(s));
+        }
+        assert!(PersonalScope::parse("ambient_global").is_none());
     }
 }
 

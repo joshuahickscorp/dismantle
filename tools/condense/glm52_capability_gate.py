@@ -273,7 +273,6 @@ def main() -> int:
         "artifact": str(artifact),
         "artifact_index_sha256": sha,
         "proven_at_rate": rate,
-        "tier": a.tier,
         "gates": results,
         "capability_verdict": "APPROVED" if passed else "REFUSED",
         "artifact_verification": True,
@@ -295,7 +294,6 @@ def main() -> int:
             "artifact_index_sha256": sha,
             "capability_verdict": verdict["capability_verdict"],
             "proven_at_rate": rate,
-            "tier": a.tier,
             "capability_reason": "produced by tools/condense/glm52_capability_gate.py",
             "capability_evidence": {"gate_run": verdict},
         }

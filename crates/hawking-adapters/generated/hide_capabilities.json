@@ -1,0 +1,85 @@
+{
+  "capabilities": [
+    {
+      "description": "DeepSeek V2 — SMALL_REAL_CHECKPOINT",
+      "executes": true,
+      "id": "model_family.deepseek",
+      "kind": "model_family",
+      "level": "SMALL_REAL_CHECKPOINT",
+      "serve_registered": true
+    },
+    {
+      "description": "Gemma 2 — DECLARED",
+      "executes": false,
+      "id": "model_family.gemma",
+      "kind": "model_family",
+      "level": "DECLARED",
+      "serve_registered": false
+    },
+    {
+      "description": "GLM (gravity glm_moe_dsa) — SMALL_REAL_CHECKPOINT",
+      "executes": true,
+      "id": "model_family.glm",
+      "kind": "model_family",
+      "level": "SMALL_REAL_CHECKPOINT",
+      "serve_registered": true
+    },
+    {
+      "description": "Kimi K2.x — SYNTHETIC_PARITY",
+      "executes": false,
+      "id": "model_family.kimi",
+      "kind": "model_family",
+      "level": "SYNTHETIC_PARITY",
+      "serve_registered": false
+    },
+    {
+      "description": "Llama (dense GGUF + gravity) — SMALL_REAL_CHECKPOINT",
+      "executes": true,
+      "id": "model_family.llama",
+      "kind": "model_family",
+      "level": "SMALL_REAL_CHECKPOINT",
+      "serve_registered": true
+    },
+    {
+      "description": "MiniMax — DECLARED",
+      "executes": false,
+      "id": "model_family.minimax",
+      "kind": "model_family",
+      "level": "DECLARED",
+      "serve_registered": false
+    },
+    {
+      "description": "Mistral / Mixtral — SMALL_REAL_CHECKPOINT",
+      "executes": true,
+      "id": "model_family.mistral_mixtral",
+      "kind": "model_family",
+      "level": "SMALL_REAL_CHECKPOINT",
+      "serve_registered": true
+    },
+    {
+      "description": "Phi-3 — DECLARED",
+      "executes": false,
+      "id": "model_family.phi",
+      "kind": "model_family",
+      "level": "DECLARED",
+      "serve_registered": false
+    },
+    {
+      "description": "Qwen (dense + MoE) — FULL_PARENT_VALIDATED",
+      "executes": true,
+      "id": "model_family.qwen",
+      "kind": "model_family",
+      "level": "FULL_PARENT_VALIDATED",
+      "serve_registered": true
+    },
+    {
+      "description": "State-space (RWKV7 + Mamba2) — SMALL_REAL_CHECKPOINT",
+      "executes": true,
+      "id": "model_family.state_space",
+      "kind": "model_family",
+      "level": "SMALL_REAL_CHECKPOINT",
+      "serve_registered": true
+    }
+  ],
+  "schema": "hawking.hide.model_family_capabilities.v1"
+}

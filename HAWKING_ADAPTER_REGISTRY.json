@@ -1,0 +1,316 @@
+{
+  "authorities_not_sole": [
+    {
+      "name": "load_engine",
+      "path": "crates/hawking-core/src/model/mod.rs",
+      "role": "GGUF live dispatch (llama, deepseek2, qwen, qwen-moe, rwkv7) + gravity"
+    },
+    {
+      "name": "gravity_engine",
+      "path": "crates/hawking-core/src/model/gravity_engine.rs",
+      "role": "live .gravity for llama + glm_moe_dsa only"
+    },
+    {
+      "name": "seed-c ArchAdapter",
+      "path": "crates/hawking-seed-c/src/providers/adapters.rs",
+      "role": "declarative plan summary — does not execute"
+    },
+    {
+      "name": "PRODUCTION_EXECUTION_ADAPTER_REGISTRY",
+      "path": "tools/condense/glm52_worker.py",
+      "role": "empty by contract (fail-closed)"
+    },
+    {
+      "name": "hawking-adapters-extra",
+      "path": "packs/hawking-adapters-extra.json",
+      "role": "gemma2/phi3/mixtral/mamba2/olmoe extracted off-tree"
+    },
+    {
+      "name": "hawking-adapters FamilyRegistry",
+      "path": "crates/hawking-adapters/src/registry.rs",
+      "role": "THIS crate — honest support-level index (metadata ABI, not a second runtime)"
+    }
+  ],
+  "families": [
+    {
+      "display_name": "DeepSeek V2",
+      "evidence": [
+        {
+          "claim": "in-tree DeepSeekV2 engine",
+          "path": "crates/hawking-core/src/model/deepseek_v2.rs"
+        },
+        {
+          "claim": "CPU backend parity for deepseek path",
+          "path": "crates/hawking-core/tests/cpu_backend_parity_deepseek.rs"
+        },
+        {
+          "claim": "load_engine dispatches deepseek2",
+          "path": "crates/hawking-core/src/model/mod.rs"
+        }
+      ],
+      "executes": true,
+      "gaps": [
+        "not FULL_PARENT_VALIDATED: no sealed full-size parent receipt in registry evidence",
+        "not PRODUCTION"
+      ],
+      "id": "deepseek",
+      "level": "SMALL_REAL_CHECKPOINT",
+      "module": "crates/hawking-core/src/model/deepseek_v2.rs",
+      "serve_registered": true
+    },
+    {
+      "display_name": "Gemma 2",
+      "evidence": [
+        {
+          "claim": "gemma2 extracted off-tree",
+          "path": "packs/hawking-adapters-extra.json"
+        },
+        {
+          "claim": "smoke test remains but load_engine rejects unknown gemma2 arch without pack",
+          "path": "crates/hawking-core/tests/gemma2_smoke.rs"
+        },
+        {
+          "claim": "seed-c ArchAdapter::gemma2 is declarative plan-only",
+          "path": "crates/hawking-seed-c/src/providers/adapters.rs"
+        }
+      ],
+      "executes": false,
+      "gaps": [
+        "module not in shipping load_engine",
+        "pack hydrate required to execute",
+        "not PRODUCTION"
+      ],
+      "id": "gemma",
+      "level": "DECLARED",
+      "module": "packs/hawking-adapters-extra (gemma2)",
+      "serve_registered": false
+    },
+    {
+      "display_name": "GLM (gravity glm_moe_dsa)",
+      "evidence": [
+        {
+          "claim": "M04_SEALED: Rust adapter vs oracle on real flagship .gravity shards",
+          "path": "GLM52_FLAGSHIP_ADAPTER_PARITY.json"
+        },
+        {
+          "claim": "GravityEngine dispatches glm_moe_dsa",
+          "path": "crates/hawking-core/src/model/gravity_engine.rs"
+        },
+        {
+          "claim": "registry path for .gravity artifacts",
+          "path": "crates/hawking-core/tests/gravity_engine_registry.rs"
+        }
+      ],
+      "executes": true,
+      "gaps": [
+        "not PRODUCTION",
+        "gravity_glm.rs is another lane's sealed path — not claimed as open production serve",
+        "full parent source safetensors not the parity authority (gravity bytes are)"
+      ],
+      "id": "glm",
+      "level": "SMALL_REAL_CHECKPOINT",
+      "module": "crates/hawking-core/src/model/gravity_engine.rs",
+      "serve_registered": true
+    },
+    {
+      "display_name": "Kimi K2.x",
+      "evidence": [
+        {
+          "claim": "synthetic CPU reference + bound real-source metal K1 twin",
+          "path": "KIMI_K26_ADAPTER_TWIN.json"
+        },
+        {
+          "claim": "load_engine has no kimi arch arm (not serve-registered)",
+          "path": "crates/hawking-core/src/model/mod.rs"
+        }
+      ],
+      "executes": false,
+      "gaps": [
+        "not serve-registered in load_engine",
+        "no SMALL_REAL_CHECKPOINT sealed receipt for full generate path",
+        "not PRODUCTION"
+      ],
+      "id": "kimi",
+      "level": "SYNTHETIC_PARITY",
+      "module": "KIMI_K26_ADAPTER_TWIN.json (reference twin; no in-tree serve module)",
+      "serve_registered": false
+    },
+    {
+      "display_name": "Llama (dense GGUF + gravity)",
+      "evidence": [
+        {
+          "claim": "in-tree LlamaDense engine module",
+          "path": "crates/hawking-core/src/model/llama.rs"
+        },
+        {
+          "claim": "small-parent greedy smoke when GGUF present",
+          "path": "crates/hawking-core/tests/llama32_smoke.rs"
+        },
+        {
+          "claim": "gravity llama forward path",
+          "path": "crates/hawking-core/tests/gravity_llama_forward.rs"
+        },
+        {
+          "claim": "load_engine dispatches llama|mistral GGUF arch strings",
+          "path": "crates/hawking-core/src/model/mod.rs"
+        }
+      ],
+      "executes": true,
+      "gaps": [
+        "no standing PRODUCTION parity receipt",
+        "smoke tests skip when weights absent"
+      ],
+      "id": "llama",
+      "level": "SMALL_REAL_CHECKPOINT",
+      "module": "crates/hawking-core/src/model/llama.rs",
+      "serve_registered": true
+    },
+    {
+      "display_name": "MiniMax",
+      "evidence": [
+        {
+          "claim": "family listed in bridge archaeology; no serve path found",
+          "path": "FABRIC_BRIDGE_ARCHAEOLOGY.md"
+        }
+      ],
+      "executes": false,
+      "gaps": [
+        "no in-tree engine module",
+        "not serve-registered",
+        "not PRODUCTION"
+      ],
+      "id": "minimax",
+      "level": "DECLARED",
+      "module": "(none — declared only)",
+      "serve_registered": false
+    },
+    {
+      "display_name": "Mistral / Mixtral",
+      "evidence": [
+        {
+          "claim": "dense mistral arch string routes to LlamaDense",
+          "path": "crates/hawking-core/src/model/mod.rs"
+        },
+        {
+          "claim": "mixtral extracted off-tree to adapters-extra pack",
+          "path": "packs/hawking-adapters-extra.json"
+        },
+        {
+          "claim": "seed-c ArchAdapter::mixtral is declarative plan-only (does not execute)",
+          "path": "crates/hawking-seed-c/src/providers/adapters.rs"
+        }
+      ],
+      "executes": true,
+      "gaps": [
+        "mixtral MoE not in shipping load_engine",
+        "seed-c ArchAdapter does not execute",
+        "no PRODUCTION receipt"
+      ],
+      "id": "mistral_mixtral",
+      "level": "SMALL_REAL_CHECKPOINT",
+      "module": "crates/hawking-core/src/model/llama.rs (+ pack mixtral)",
+      "serve_registered": true
+    },
+    {
+      "display_name": "Phi-3",
+      "evidence": [
+        {
+          "claim": "phi3 extracted off-tree",
+          "path": "packs/hawking-adapters-extra.json"
+        },
+        {
+          "claim": "smoke test remains; arch not in shipping load_engine",
+          "path": "crates/hawking-core/tests/phi3_smoke.rs"
+        },
+        {
+          "claim": "seed-c ArchAdapter::phi3 is declarative plan-only",
+          "path": "crates/hawking-seed-c/src/providers/adapters.rs"
+        }
+      ],
+      "executes": false,
+      "gaps": [
+        "module not in shipping load_engine",
+        "pack hydrate required to execute",
+        "not PRODUCTION"
+      ],
+      "id": "phi",
+      "level": "DECLARED",
+      "module": "packs/hawking-adapters-extra (phi3)",
+      "serve_registered": false
+    },
+    {
+      "display_name": "Qwen (dense + MoE)",
+      "evidence": [
+        {
+          "claim": "in-tree QwenDense engine",
+          "path": "crates/hawking-core/src/model/qwen_dense.rs"
+        },
+        {
+          "claim": "in-tree QwenMoE engine",
+          "path": "crates/hawking-core/src/model/qwen_moe.rs"
+        },
+        {
+          "claim": "greedy integration path used as parent-validation gate",
+          "path": "crates/hawking-core/tests/integration_greedy_64.rs"
+        },
+        {
+          "claim": "CPU backend parity against live engine",
+          "path": "crates/hawking-core/tests/cpu_backend_parity.rs"
+        },
+        {
+          "claim": "TQ serve parity test (feature-gated)",
+          "path": "crates/hawking-core/tests/qwen_tq_serve_parity.rs"
+        },
+        {
+          "claim": "load_engine dispatches qwen2/qwen2moe",
+          "path": "crates/hawking-core/src/model/mod.rs"
+        }
+      ],
+      "executes": true,
+      "gaps": [
+        "not PRODUCTION: no standing production parity receipt under continuous serve",
+        "large MoE parents (235B/397B) are campaign-side, not this registry's PRODUCTION claim"
+      ],
+      "id": "qwen",
+      "level": "FULL_PARENT_VALIDATED",
+      "module": "crates/hawking-core/src/model/qwen_dense.rs",
+      "serve_registered": true
+    },
+    {
+      "display_name": "State-space (RWKV7 + Mamba2)",
+      "evidence": [
+        {
+          "claim": "in-tree RwkvSeven engine",
+          "path": "crates/hawking-core/src/model/rwkv7.rs"
+        },
+        {
+          "claim": "RWKV7 parity + load_engine routing",
+          "path": "crates/hawking-core/tests/rwkv7_parity.rs"
+        },
+        {
+          "claim": "mamba2 extracted off-tree",
+          "path": "packs/hawking-adapters-extra.json"
+        }
+      ],
+      "executes": true,
+      "gaps": [
+        "mamba2 not in shipping load_engine",
+        "not PRODUCTION",
+        "family spans RWKV (executes) and Mamba2 (declared pack only)"
+      ],
+      "id": "state_space",
+      "level": "SMALL_REAL_CHECKPOINT",
+      "module": "crates/hawking-core/src/model/rwkv7.rs",
+      "serve_registered": true
+    }
+  ],
+  "note": "No family is PRODUCTION today. Levels are never inflated from a code reading alone.",
+  "schema": "hawking.adapters.registry.v1",
+  "support_levels": [
+    "DECLARED",
+    "SYNTHETIC_PARITY",
+    "SMALL_REAL_CHECKPOINT",
+    "FULL_PARENT_VALIDATED",
+    "PRODUCTION"
+  ]
+}

@@ -7,12 +7,12 @@
 //!
 //! This module keeps those tensors in device (Metal shared) buffers across a
 //! token: activations, KV, index keys, router logits / top-k / expert offsets.
-//! Discrete decisions (stable top-k, noaux_tc groups, sparse softmax) still use
-//! the same host arithmetic as [`crate::gravity_glm::forward_impl`] so token
-//! identity is bit-exact against the host-state path; they read device-mapped
-//! memory in place rather than owning a separate host cache. Projection outputs
-//! are written straight into those buffers and are not copied into host `Vec`s
-//! as the cache of record.
+//! By default, discrete decisions (stable top-k, noaux_tc groups, sparse
+//! softmax) still use the same host arithmetic as
+//! [`crate::gravity_glm::forward_impl`] so token identity is bit-exact against
+//! the host-state path; they read device-mapped memory in place rather than
+//! owning a separate host cache. Projection outputs are written straight into
+//! those buffers and are not copied into host `Vec`s as the cache of record.
 //!
 //! `lm_head` is once per token. Default: host dense or PQ via
 //! [`GpuWeightCache::matvec`]. With [`crate::gravity_glm::GPU_LM_HEAD_ENV`]=1 and
@@ -31,6 +31,11 @@
 //! persistent expanded per-head K/V with normalized MLA latent + shared RoPE
 //! tail and executes append → absorbed K → ranked attention → absorbed V →
 //! o_proj in one five-dispatch command buffer after host DSA ranking.
+//!
+//! **Device DSA** (`HAWKING_GLM_GPU_DEVICE_DSA=1`, default off, requires compact
+//! MLA): keeps index scores and stable rank on device, then appends the five
+//! compact-attention dispatches to that same command buffer. The final rank is
+//! read only for diagnostics after attention, never as an attention dependency.
 //!
 //! Gated by [`GPU_RESIDENT_STATE_ENV`] (`HAWKING_GLM_GPU_RESIDENT_STATE`), default
 //! off, so the host-state path remains the parity oracle.
@@ -590,6 +595,7 @@ struct DsaIndexState {
     sequence_scratch: SequenceScratch,
     shared_topk: Option<Vec<usize>>,
     ranked_indices: Option<Buffer>,
+    device_topk_selected: Option<Buffer>,
     ranked_capacity: usize,
     capacity: usize,
 }
@@ -600,7 +606,13 @@ impl DsaIndexState {
         arch: &GlmArch,
         initial_cap: usize,
         compact_rank_upload: bool,
+        device_dsa: bool,
     ) -> Result<Self> {
+        if device_dsa && !compact_rank_upload {
+            return Err(Error::Gravity(
+                "device DSA requires compact ranked-index state".into(),
+            ));
+        }
         let capacity = initial_cap.max(MIN_SEQUENCE_CAPACITY);
         let elements = capacity.checked_mul(arch.index_head_dim).ok_or_else(|| {
             Error::Gravity(format!(
@@ -624,11 +636,17 @@ impl DsaIndexState {
         } else {
             None
         };
+        let device_topk_selected = if device_dsa {
+            Some(ctx.new_buffer_checked(capacity)?)
+        } else {
+            None
+        };
         Ok(Self {
             index_keys,
             sequence_scratch: SequenceScratch::new(ctx, capacity)?,
             shared_topk: None,
             ranked_indices,
+            device_topk_selected,
             ranked_capacity: if compact_rank_upload {
                 ranked_capacity
             } else {
@@ -706,8 +724,14 @@ impl DsaIndexState {
             }
             next_index_keys.push(next);
         }
+        let next_device_topk_selected = if self.device_topk_selected.is_some() {
+            Some(ctx.new_buffer_checked(capacity)?)
+        } else {
+            None
+        };
         self.sequence_scratch.reserve(ctx, capacity)?;
         self.index_keys = next_index_keys;
+        self.device_topk_selected = next_device_topk_selected;
         self.capacity = capacity;
         Ok(())
     }
@@ -746,6 +770,16 @@ impl DsaIndexState {
     fn ranked_indices(&self) -> Result<&Buffer> {
         self.ranked_indices.as_ref().ok_or_else(|| {
             Error::Gravity("resident compact attention has no DSA rank buffer".into())
+        })
+    }
+
+    fn device_selection_enabled(&self) -> bool {
+        self.device_topk_selected.is_some()
+    }
+
+    fn device_topk_selected(&self) -> Result<&Buffer> {
+        self.device_topk_selected.as_ref().ok_or_else(|| {
+            Error::Gravity("resident device DSA has no selected-index scratch buffer".into())
         })
     }
 }
@@ -792,12 +826,24 @@ pub struct ResidentSession {
 
 impl ResidentSession {
     pub fn new(ctx: &MetalContext, arch: &GlmArch, initial_cap: usize) -> Result<Self> {
-        Self::new_with_layout(ctx, arch, initial_cap, ResidentAttentionLayout::Expanded)
+        Self::new_with_layout(
+            ctx,
+            arch,
+            initial_cap,
+            ResidentAttentionLayout::Expanded,
+            false,
+        )
     }
 
     #[allow(dead_code)]
     fn new_compact(ctx: &MetalContext, arch: &GlmArch, initial_cap: usize) -> Result<Self> {
-        Self::new_with_layout(ctx, arch, initial_cap, ResidentAttentionLayout::Compact)
+        Self::new_with_layout(
+            ctx,
+            arch,
+            initial_cap,
+            ResidentAttentionLayout::Compact,
+            false,
+        )
     }
 
     fn new_with_layout(
@@ -805,12 +851,24 @@ impl ResidentSession {
         arch: &GlmArch,
         initial_cap: usize,
         layout: ResidentAttentionLayout,
+        device_dsa: bool,
     ) -> Result<Self> {
+        if device_dsa && layout != ResidentAttentionLayout::Compact {
+            return Err(Error::Gravity(
+                "resident device DSA requires compact attention layout".into(),
+            ));
+        }
         let cap = initial_cap.max(MIN_SEQUENCE_CAPACITY);
         let attention = ResidentAttentionState::new(ctx, arch, cap, layout)?;
         Ok(Self {
             attention,
-            dsa: DsaIndexState::new(ctx, arch, cap, layout == ResidentAttentionLayout::Compact)?,
+            dsa: DsaIndexState::new(
+                ctx,
+                arch,
+                cap,
+                layout == ResidentAttentionLayout::Compact,
+                device_dsa,
+            )?,
             seq_len: 0,
             waits: Cell::new(0),
         })
@@ -1200,6 +1258,27 @@ fn residual_add(x: &Buffer, add: &Buffer, n: usize) {
     write_f32(x, &xv);
 }
 
+enum ResidentDsaSelection {
+    Host(Vec<usize>),
+    Device { len: usize },
+}
+
+impl ResidentDsaSelection {
+    fn len(&self) -> usize {
+        match self {
+            Self::Host(indices) => indices.len(),
+            Self::Device { len } => *len,
+        }
+    }
+
+    fn host_indices(&self) -> Option<&[usize]> {
+        match self {
+            Self::Host(indices) => Some(indices),
+            Self::Device { .. } => None,
+        }
+    }
+}
+
 /// One generation step (or prefill) with decode state on device.
 pub fn forward_resident(
     weights: &GpuWeightCache,
@@ -1249,6 +1328,7 @@ pub fn forward_resident(
             let _position = cost_ledger::Scope::new(Bucket::EmbeddingAndPosition);
             rope_cos_sin(arch, pos)
         };
+        let device_dsa = session.dsa.device_selection_enabled();
         let mut shared_topk = session.dsa.shared_topk.clone();
         trace.expert_choices.clear();
 
@@ -1387,32 +1467,66 @@ pub fn forward_resident(
 
                 let topk = match a.indexer_types[layer].as_str() {
                     "full" => {
-                        let index_keys = &session.dsa.index_keys[layer];
-                        let scratch = &mut session.dsa.sequence_scratch;
-                        let t = indexer_topk(
-                            weights,
-                            arch,
-                            &attn_p,
-                            pool,
-                            index_keys,
-                            session.dsa.capacity,
-                            scratch,
-                            pos,
-                            &cos,
-                            &sin,
-                            &mut tcb,
-                            ctx,
-                            &session.waits,
-                        )?;
-                        shared_topk = Some(t.clone());
-                        session.dsa.shared_topk = Some(t.clone());
-                        t
+                        if device_dsa {
+                            let len = indexer_topk_device(
+                                weights,
+                                arch,
+                                &attn_p,
+                                pool,
+                                &session.dsa.index_keys[layer],
+                                &session.dsa.sequence_scratch.index_scores_device,
+                                session.dsa.ranked_indices()?,
+                                session.dsa.device_topk_selected()?,
+                                session.dsa.capacity,
+                                pos,
+                                &cos,
+                                &sin,
+                                &mut tcb,
+                                ctx,
+                                &session.waits,
+                            )?;
+                            ResidentDsaSelection::Device { len }
+                        } else {
+                            let index_keys = &session.dsa.index_keys[layer];
+                            let scratch = &mut session.dsa.sequence_scratch;
+                            let t = indexer_topk(
+                                weights,
+                                arch,
+                                &attn_p,
+                                pool,
+                                index_keys,
+                                session.dsa.capacity,
+                                scratch,
+                                pos,
+                                &cos,
+                                &sin,
+                                &mut tcb,
+                                ctx,
+                                &session.waits,
+                            )?;
+                            shared_topk = Some(t.clone());
+                            session.dsa.shared_topk = Some(t.clone());
+                            ResidentDsaSelection::Host(t)
+                        }
                     }
-                    "shared" => shared_topk.clone().ok_or_else(|| {
-                        Error::Gravity(format!(
-                            "layer {layer} shares an index but no earlier layer computed one"
-                        ))
-                    })?,
+                    "shared" => {
+                        if device_dsa {
+                            let n_keys = active_sequence_len(
+                                pos,
+                                session.dsa.capacity,
+                                "resident shared device DSA index cache",
+                            )?;
+                            ResidentDsaSelection::Device {
+                                len: a.index_topk.min(n_keys),
+                            }
+                        } else {
+                            ResidentDsaSelection::Host(shared_topk.clone().ok_or_else(|| {
+                                Error::Gravity(format!(
+                                    "layer {layer} shares an index but no earlier layer computed one"
+                                ))
+                            })?)
+                        }
+                    }
                     other => {
                         return Err(Error::Gravity(format!(
                             "layer {layer}: unknown indexer type {other:?}"
@@ -1441,6 +1555,12 @@ pub fn forward_resident(
                     // Sparse attend over expanded device-resident K/V.
                     let cache = session.attention.expanded_layer(layer)?;
                     let scratch = &mut session.dsa.sequence_scratch;
+                    let host_topk = topk.host_indices().ok_or_else(|| {
+                        Error::Gravity(
+                            "device DSA reached expanded attention without compact admission"
+                                .into(),
+                        )
+                    })?;
                     let context = sparse_attend(
                         a,
                         pool,
@@ -1448,7 +1568,7 @@ pub fn forward_resident(
                         session.attention.capacity(),
                         scratch,
                         pos,
-                        &topk,
+                        host_topk,
                         qk,
                     )?;
                     write_f32(&pool.context, &context);
@@ -1612,7 +1732,15 @@ pub fn forward_resident(
             }
 
             if layer + 1 == a.n_layers {
-                trace.final_topk = topk;
+                trace.final_topk = match topk {
+                    ResidentDsaSelection::Host(indices) => indices,
+                    ResidentDsaSelection::Device { len } => {
+                        read_u32(session.dsa.ranked_indices()?, len)
+                            .into_iter()
+                            .map(|index| index as usize)
+                            .collect()
+                    }
+                };
             }
         }
 
@@ -1921,7 +2049,7 @@ fn compact_attend_into<'a>(
     pool: &ActPool,
     layer: usize,
     pos: usize,
-    topk: &[usize],
+    topk: &ResidentDsaSelection,
     k_rot: &[f32],
     cos: &[f32],
     sin: &[f32],
@@ -1931,13 +2059,20 @@ fn compact_attend_into<'a>(
 ) -> Result<()> {
     let cache = attention.compact_layer(layer)?;
     let n_keys = active_sequence_len(pos, attention.capacity(), "compact MLA attention cache")?;
-    if topk.len() > 2048 {
+    let n_allow = topk.len();
+    if n_allow > 2048 {
         return Err(Error::Gravity(format!(
             "compact MLA ranked attention supports at most 2048 positions, got {}",
-            topk.len()
+            n_allow
         )));
     }
-    dsa.store_ranked_indices(topk)?;
+    if let Some(host_ranked) = topk.host_indices() {
+        dsa.store_ranked_indices(host_ranked)?;
+    } else if !dsa.device_selection_enabled() {
+        return Err(Error::Gravity(
+            "compact MLA received device-ranked DSA without device selection state".into(),
+        ));
+    }
 
     let mut scratch_guard = pool.ensure_compact_attention_scratch(ctx, a)?;
     let scratch = scratch_guard
@@ -2020,7 +2155,7 @@ fn compact_attend_into<'a>(
     record_pq_matvec_ops(kv_params);
     crate::cost_ledger::record_active_bytes_for(&o_name, o_codebooks.length() + o_codes.length());
     record_pq_matvec_ops(o_params);
-    let selected = topk.len() as u64;
+    let selected = n_allow as u64;
     let attention_fp = (a.n_heads as u64)
         .saturating_mul(selected)
         .saturating_mul((4 * a.kv_lora_rank + 2 * a.qk_rope_head_dim + 6) as u64);
@@ -2032,10 +2167,10 @@ fn compact_attend_into<'a>(
         0,
     );
 
-    commit(pending.take(), waits)?;
-    let mut tcb = TokenCommandBuffer::new(ctx);
+    let tcb = pending.get_or_insert_with(|| TokenCommandBuffer::new(ctx));
+    let dispatches_before = tcb.dispatch_count();
     route_segment_primitives::encode_mla_append_compact(
-        &mut tcb,
+        tcb,
         &pool.k_latent,
         &scratch.key_rope,
         &cache.latents,
@@ -2045,7 +2180,7 @@ fn compact_attend_into<'a>(
         pos,
     )?;
     route_segment_primitives::encode_pq_k_transpose_heads(
-        &mut tcb,
+        tcb,
         &kv_codebooks,
         &kv_codes,
         &scratch.query_nope,
@@ -2061,7 +2196,7 @@ fn compact_attend_into<'a>(
         kv_params.nchunk as usize,
     )?;
     route_segment_primitives::encode_compact_ranked_attention(
-        &mut tcb,
+        tcb,
         &scratch.query_latent,
         &scratch.query_rope,
         &cache.latents,
@@ -2072,11 +2207,11 @@ fn compact_attend_into<'a>(
         a.kv_lora_rank,
         a.qk_rope_head_dim,
         n_keys,
-        topk.len(),
+        n_allow,
         (qk as f32).powf(-0.5),
     )?;
     route_segment_primitives::encode_pq_v_rows_heads(
-        &mut tcb,
+        tcb,
         &kv_codebooks,
         &kv_codes,
         &scratch.query_latent,
@@ -2093,20 +2228,21 @@ fn compact_attend_into<'a>(
         kv_params.nchunk as usize,
     )?;
     encode_pq_matvec_device(
-        &mut tcb,
+        tcb,
         &o_codebooks,
         &o_codes,
         o_params,
         &pool.context,
         &pool.o,
     )?;
-    if tcb.dispatch_count() != 5 {
+    let compact_dispatches = tcb.dispatch_count().saturating_sub(dispatches_before);
+    if compact_dispatches != 5 {
         return Err(Error::Gravity(format!(
             "compact MLA expected five dispatches, encoded {}",
-            tcb.dispatch_count()
+            compact_dispatches
         )));
     }
-    commit(Some(tcb), waits)
+    commit(pending.take(), waits)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -2247,6 +2383,134 @@ fn indexer_topk<'a>(
     };
     scratch.store_index_scores(n_keys)?;
     Ok(topk)
+}
+
+/// Default-off device DSA path.
+///
+/// The two query/key projections retain the host normalization/RoPE parity
+/// scaffold, but `weights_proj → index-key append → DSA scores → stable top-k`
+/// stays in the caller's open command buffer. Compact attention consumes the
+/// ranked u32 buffer directly, so no score or rank readback lies on the
+/// attention dependency path.
+#[allow(clippy::too_many_arguments)]
+fn indexer_topk_device<'a>(
+    weights: &GpuWeightCache,
+    arch: &GlmArch,
+    attn_p: &str,
+    pool: &ActPool,
+    index_key_buffer: &Buffer,
+    score_buffer: &Buffer,
+    ranked_indices: &Buffer,
+    selected_scratch: &Buffer,
+    cache_capacity: usize,
+    pos: usize,
+    cos: &[f32],
+    sin: &[f32],
+    tcb: &mut Option<TokenCommandBuffer<'a>>,
+    ctx: &'a MetalContext,
+    waits: &Cell<u64>,
+) -> Result<usize> {
+    let a = arch;
+    let (ih, idim, rot) = (a.index_n_heads, a.index_head_dim, a.qk_rope_head_dim);
+    let idx = format!("{attn_p}.indexer");
+
+    matvec_into(
+        tcb,
+        ctx,
+        weights,
+        &format!("{idx}.wq_b.weight"),
+        &pool.q_resid,
+        a.q_lora_rank,
+        &pool.idx_q,
+    )?;
+    matvec_into(
+        tcb,
+        ctx,
+        weights,
+        &format!("{idx}.wk.weight"),
+        &pool.h,
+        a.hidden,
+        &pool.idx_k_raw,
+    )?;
+    commit(tcb.take(), waits)?;
+
+    let k_raw = read_f32(&pool.idx_k_raw, idim);
+    let kw = weights.dense(&format!("{idx}.k_norm.weight"))?;
+    let kb = weights.dense(&format!("{idx}.k_norm.bias"))?;
+    let k = {
+        let n = k_raw.len() as f32;
+        let mean = k_raw.iter().sum::<f32>() / n;
+        let var = k_raw.iter().map(|v| (v - mean) * (v - mean)).sum::<f32>() / n;
+        let inv = 1.0 / (var + 1e-6).sqrt();
+        (0..k_raw.len())
+            .map(|i| (k_raw[i] - mean) * inv * kw[i] + kb[i])
+            .collect::<Vec<_>>()
+    };
+    let mut k_full = rope_interleaved(&k[..rot], cos, sin);
+    k_full.extend_from_slice(&k[rot..]);
+    write_f32(&pool.idx_k_raw, &k_full);
+
+    let q = read_f32(&pool.idx_q, ih * idim);
+    let mut q_full = vec![0f32; ih * idim];
+    for h in 0..ih {
+        let src = &q[h * idim..(h + 1) * idim];
+        let rotated = rope_interleaved(&src[..rot], cos, sin);
+        q_full[h * idim..h * idim + rot].copy_from_slice(&rotated);
+        q_full[h * idim + rot..(h + 1) * idim].copy_from_slice(&src[rot..]);
+    }
+    write_f32(&pool.idx_q, &q_full);
+
+    matvec_into(
+        tcb,
+        ctx,
+        weights,
+        &format!("{idx}.weights_proj.weight"),
+        &pool.h,
+        a.hidden,
+        &pool.idx_head_w,
+    )?;
+
+    let n_keys = active_sequence_len(pos, cache_capacity, "resident device DSA index cache")?;
+    let k = a.index_topk.min(n_keys);
+    crate::cost_ledger::record_source_modelled_operations(
+        (n_keys as u64)
+            .saturating_mul(ih as u64)
+            .saturating_mul((2 * idim + 3) as u64),
+        0,
+        (n_keys as u64).saturating_mul(ih as u64),
+        0,
+        0,
+    );
+    let wave = tcb.get_or_insert_with(|| TokenCommandBuffer::new(ctx));
+    route_segment_primitives::encode_append_index_key(
+        wave,
+        &pool.idx_k_raw,
+        index_key_buffer,
+        pos,
+        idim,
+    )?;
+    route_segment_primitives::encode_dsa_scores(
+        wave,
+        &pool.idx_q,
+        index_key_buffer,
+        &pool.idx_head_w,
+        score_buffer,
+        n_keys,
+        ih,
+        idim,
+        pos,
+        (idim as f32).powf(-0.5),
+        (ih as f32).powf(-0.5),
+    )?;
+    route_segment_primitives::encode_stable_topk(
+        wave,
+        score_buffer,
+        ranked_indices,
+        selected_scratch,
+        n_keys,
+        k,
+    )?;
+    Ok(k)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -2466,6 +2730,7 @@ mod route_segment_primitives {
         pub head_dim: u32,
         pub pos: u32,
         pub dim_scale: f32,
+        pub head_scale: f32,
     }
 
     #[repr(C)]
@@ -2499,7 +2764,7 @@ mod route_segment_primitives {
     const _: [(); 24] = [(); std::mem::size_of::<GlmCompactRankedAttnParams>()];
     const _: [(); 32] = [(); std::mem::size_of::<GlmPqVRowsParams>()];
     const _: [(); 12] = [(); std::mem::size_of::<GlmBuildQParams>()];
-    const _: [(); 20] = [(); std::mem::size_of::<GlmDsaParams>()];
+    const _: [(); 24] = [(); std::mem::size_of::<GlmDsaParams>()];
     const _: [(); 8] = [(); std::mem::size_of::<GlmTopkParams>()];
     const _: [(); 4] = [(); std::mem::size_of::<GlmSortU32Params>()];
     const _: [(); 24] = [(); std::mem::size_of::<GlmSparseAttnParams>()];
@@ -3385,6 +3650,7 @@ mod route_segment_primitives {
         head_dim: usize,
         position: usize,
         dim_scale: f32,
+        head_scale: f32,
     ) -> Result<()> {
         if n_keys == 0 {
             return Ok(());
@@ -3414,6 +3680,7 @@ mod route_segment_primitives {
             head_dim: u32_arg(head_dim, "gravity_glm_dsa_scores head_dim")?,
             pos: u32_arg(position, "gravity_glm_dsa_scores pos")?,
             dim_scale,
+            head_scale,
         };
         let grid = grid_1d(params.n_keys, "gravity_glm_dsa_scores")?;
         let qb = q_full.clone();
@@ -4062,7 +4329,16 @@ pub struct ResidentRuntime {
 
 impl ResidentRuntime {
     pub fn new(ctx: &MetalContext, arch: &GlmArch) -> Result<Self> {
-        Self::new_with_compact_mla(ctx, arch, gpu_compact_mla_enabled())
+        let compact_mla = gpu_compact_mla_enabled();
+        let device_dsa = crate::gravity_glm::gpu_device_dsa_enabled();
+        if device_dsa && !compact_mla {
+            return Err(Error::Gravity(format!(
+                "{} requires {}=1",
+                crate::gravity_glm::GPU_DEVICE_DSA_ENV,
+                crate::gravity_glm::GPU_COMPACT_MLA_ENV
+            )));
+        }
+        Self::new_with_compact_mla(ctx, arch, compact_mla, device_dsa)
     }
 
     /// Construct the layout already admitted by the model opener. Capturing
@@ -4072,12 +4348,20 @@ impl ResidentRuntime {
         ctx: &MetalContext,
         arch: &GlmArch,
         compact_mla: bool,
+        device_dsa: bool,
     ) -> Result<Self> {
-        let session = if compact_mla {
-            ResidentSession::new_compact(ctx, arch, RESIDENT_RUNTIME_INITIAL_KV_CAPACITY_TOKENS)?
+        let layout = if compact_mla {
+            ResidentAttentionLayout::Compact
         } else {
-            ResidentSession::new(ctx, arch, RESIDENT_RUNTIME_INITIAL_KV_CAPACITY_TOKENS)?
+            ResidentAttentionLayout::Expanded
         };
+        let session = ResidentSession::new_with_layout(
+            ctx,
+            arch,
+            RESIDENT_RUNTIME_INITIAL_KV_CAPACITY_TOKENS,
+            layout,
+            device_dsa,
+        )?;
         Ok(Self {
             session: Mutex::new(session),
             pool: ActPool::new(ctx, arch)?,
@@ -4225,9 +4509,10 @@ mod tests {
         assert_eq!(std::mem::size_of::<GlmBuildQParams>(), 12);
         assert_eq!(std::mem::offset_of!(GlmBuildQParams, qk_rope), 8);
 
-        assert_eq!(std::mem::size_of::<GlmDsaParams>(), 20);
+        assert_eq!(std::mem::size_of::<GlmDsaParams>(), 24);
         assert_eq!(std::mem::offset_of!(GlmDsaParams, pos), 12);
         assert_eq!(std::mem::offset_of!(GlmDsaParams, dim_scale), 16);
+        assert_eq!(std::mem::offset_of!(GlmDsaParams, head_scale), 20);
 
         assert_eq!(std::mem::size_of::<GlmTopkParams>(), 8);
         assert_eq!(std::mem::offset_of!(GlmTopkParams, k), 4);
@@ -5777,6 +6062,7 @@ mod tests {
             0.5, 1.0, -0.25, 2.0, -0.5, 1.0, 2.0, -0.5, 1.0, 0.125, 0.25, 0.5, -0.75, 1.5, -1.0,
         ];
         let head_weights = vec![0.75, -0.25];
+        let head_scale = (n_heads as f32).powf(-0.5);
         let dim_scale = (head_dim as f32).powf(-0.5);
         let dsa_position = n_keys - 2;
         let qfb = f32_buffer(&ctx, &q_full);
@@ -5822,6 +6108,7 @@ mod tests {
             head_dim,
             dsa_position,
             dim_scale,
+            head_scale,
         )
         .expect("encode DSA scores");
         encode_stable_topk(&mut tcb, &dsa_scores, &topk_indices, &selected, n_keys, 3)
@@ -5868,14 +6155,15 @@ mod tests {
             for head in 0..n_heads {
                 let query = &q_full[head * head_dim..(head + 1) * head_dim];
                 let host_dot = query.iter().zip(key).map(|(x, y)| x * y).sum::<f32>();
-                host_acc += head_weights[head] * (host_dot * dim_scale).max(0.0);
+                let scaled_weight = head_weights[head] * head_scale;
+                host_acc += scaled_weight * (host_dot * dim_scale).max(0.0);
                 let authority_dot = query
                     .iter()
                     .zip(key)
                     .map(|(&x, &y)| x as f64 * y as f64)
                     .sum::<f64>();
-                authority_acc +=
-                    head_weights[head] as f64 * (authority_dot * dim_scale as f64).max(0.0);
+                authority_acc += (head_weights[head] * head_scale) as f64
+                    * (authority_dot * dim_scale as f64).max(0.0);
             }
             dsa_host[key_index] = host_acc;
             dsa_f64[key_index] = authority_acc;
@@ -6354,12 +6642,14 @@ mod tests {
             ResidentAttentionState::Expanded(_)
         ));
         assert!(default.dsa.ranked_indices.is_none());
+        assert!(default.dsa.device_topk_selected.is_none());
 
         let mut compact =
             ResidentSession::new_compact(&ctx, &arch, 8).expect("compact resident session");
         assert!(compact.attention.expanded_layer(0).is_err());
         assert_eq!(compact.dsa.index_keys.len(), arch.n_layers);
         assert!(compact.dsa.ranked_indices.is_some());
+        assert!(compact.dsa.device_topk_selected.is_none());
         {
             let ResidentAttentionState::Compact(cache) = &mut compact.attention else {
                 panic!("compact constructor must own only compact MLA state");
@@ -6404,6 +6694,52 @@ mod tests {
     }
 
     #[test]
+    fn device_dsa_scratch_is_compact_only_and_grows_with_sequence_state() {
+        let Ok(ctx) = MetalContext::new() else {
+            return;
+        };
+        let arch = tiny_arch();
+        assert!(
+            ResidentSession::new_with_layout(
+                &ctx,
+                &arch,
+                8,
+                ResidentAttentionLayout::Expanded,
+                true,
+            )
+            .is_err(),
+            "device DSA must not allocate under expanded attention"
+        );
+
+        let mut device = ResidentSession::new_with_layout(
+            &ctx,
+            &arch,
+            8,
+            ResidentAttentionLayout::Compact,
+            true,
+        )
+        .expect("compact device DSA session");
+        assert!(device.dsa.device_selection_enabled());
+        assert_eq!(
+            device.dsa.device_topk_selected().unwrap().length(),
+            8,
+            "one selected byte per sequence position"
+        );
+        let before = device.dsa.device_topk_selected().unwrap().contents();
+        device.seq_len = 8;
+        device
+            .reserve(&ctx, &arch, 9)
+            .expect("device DSA state growth");
+        assert_eq!(device.dsa.capacity, 16);
+        assert_eq!(device.dsa.device_topk_selected().unwrap().length(), 16);
+        assert_ne!(
+            device.dsa.device_topk_selected().unwrap().contents(),
+            before,
+            "growth must replace the bounded selected scratch"
+        );
+    }
+
+    #[test]
     fn resident_reserve_repairs_dsa_after_attention_only_growth() {
         let Ok(ctx) = MetalContext::new() else {
             return;
@@ -6441,7 +6777,7 @@ mod tests {
         };
         let mut arch = tiny_arch();
         arch.index_topk = 3;
-        let dsa = DsaIndexState::new(&ctx, &arch, 8, true).expect("DSA state");
+        let dsa = DsaIndexState::new(&ctx, &arch, 8, true, false).expect("DSA state");
         dsa.store_ranked_indices(&[4, 1, 3])
             .expect("stable ranked upload");
         assert_eq!(
@@ -6460,7 +6796,8 @@ mod tests {
                 .expect_err("rank upload beyond u32 must fail");
             assert!(overflow.to_string().contains("exceeds u32"));
         }
-        let expanded_dsa = DsaIndexState::new(&ctx, &arch, 8, false).expect("expanded DSA state");
+        let expanded_dsa =
+            DsaIndexState::new(&ctx, &arch, 8, false, false).expect("expanded DSA state");
         assert!(expanded_dsa.ranked_indices.is_none());
         assert!(expanded_dsa.store_ranked_indices(&[0]).is_err());
     }

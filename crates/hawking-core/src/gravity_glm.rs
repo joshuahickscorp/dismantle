@@ -861,6 +861,17 @@ pub fn gpu_compact_mla_enabled() -> bool {
     crate::env_on(GPU_COMPACT_MLA_ENV)
 }
 
+/// Opt-in device DSA scoring and stable top-k feeding compact MLA directly.
+///
+/// Default off and admitted only together with resident compact MLA. The
+/// ordinary host DSA selection remains the parity oracle when absent.
+pub const GPU_DEVICE_DSA_ENV: &str = "HAWKING_GLM_GPU_DEVICE_DSA";
+
+/// Whether [`GPU_DEVICE_DSA_ENV`] requests device-resident DSA selection.
+pub fn gpu_device_dsa_enabled() -> bool {
+    crate::env_on(GPU_DEVICE_DSA_ENV)
+}
+
 /// Opt-in device-resident native.bf16 matvec + GPU head sampling for GLM.
 ///
 /// Default off — host dense matvec remains the parity oracle. When set:
@@ -1138,6 +1149,19 @@ pub fn estimate_resident_logical_wait_breakdown(arch: &GlmArch) -> ResidentLogic
 /// collapses — see [`estimate_resident_expert_wave_waits_per_token`].
 pub fn estimate_resident_waits_per_token(arch: &GlmArch) -> u64 {
     estimate_resident_logical_wait_breakdown(arch).total()
+}
+
+/// Static resident boundary count for compact MLA with device DSA selection.
+///
+/// Each full-indexer layer keeps its `wq_b + wk` normalization boundary, but
+/// `weights_proj → scores → stable top-k` is encoded into the compact
+/// attention command buffer. That removes exactly one dependency drain per
+/// `"full"` layer. This is source-derived; actual physical commands still
+/// depend on tensor codecs and must be measured before promotion.
+pub fn estimate_resident_device_dsa_waits_per_token(arch: &GlmArch) -> u64 {
+    let breakdown = estimate_resident_logical_wait_breakdown(arch);
+    let full_indexer_layers = breakdown.indexer_projection_boundaries / 2;
+    breakdown.total().saturating_sub(full_indexer_layers)
 }
 
 /// Static drains from `batched_mlp` alone (gate / up / down commits).
@@ -1535,6 +1559,12 @@ pub mod gpu {
     /// admission, not integrity verification: the first live weight load
     /// still reads and verifies the complete payload before dispatch.
     fn preflight_compact_mla_weights(weights: &GravityWeights, arch: &GlmArch) -> Result<()> {
+        if arch.index_topk == 0 || arch.index_topk > 2048 {
+            return Err(Error::Gravity(format!(
+                "compact MLA admission requires 1 <= index_topk <= 2048, got {}",
+                arch.index_topk
+            )));
+        }
         for layer in 0..arch.n_layers {
             let attn_p = format!("model.layers.{layer}.self_attn");
             let kv_name = format!("{attn_p}.kv_b_proj.weight");
@@ -2452,6 +2482,14 @@ pub mod gpu {
             let weights = GravityWeights::open_dir(dir, verify_hash)?;
             let arch = GlmArch::from_header(&weights.header)?;
             let compact_mla = resident_enabled && super::gpu_compact_mla_enabled();
+            let device_dsa = super::gpu_device_dsa_enabled();
+            if device_dsa && (!resident_enabled || !compact_mla) {
+                return Err(Error::Gravity(format!(
+                    "{} requires resident state and {}=1",
+                    super::GPU_DEVICE_DSA_ENV,
+                    super::GPU_COMPACT_MLA_ENV
+                )));
+            }
             if compact_mla {
                 preflight_compact_mla_weights(&weights, &arch)?;
             }
@@ -2462,6 +2500,7 @@ pub mod gpu {
                         &ctx,
                         &arch,
                         compact_mla,
+                        device_dsa,
                     )?,
                 )
             } else {
@@ -2632,6 +2671,19 @@ mod tests {
         match prev {
             Some(v) => std::env::set_var(GPU_COMPACT_MLA_ENV, v),
             None => std::env::remove_var(GPU_COMPACT_MLA_ENV),
+        }
+    }
+
+    /// Device DSA is separately opt-in so compact MLA's host-selection parity
+    /// candidate stays unchanged unless both flags are explicit.
+    #[test]
+    fn gpu_device_dsa_flag_defaults_off() {
+        let prev = std::env::var_os(GPU_DEVICE_DSA_ENV);
+        std::env::remove_var(GPU_DEVICE_DSA_ENV);
+        assert!(!gpu_device_dsa_enabled());
+        match prev {
+            Some(v) => std::env::set_var(GPU_DEVICE_DSA_ENV, v),
+            None => std::env::remove_var(GPU_DEVICE_DSA_ENV),
         }
     }
 
@@ -2876,6 +2928,11 @@ mod tests {
         // Precise static count from the per-layer schedule (not 15×78).
         assert_eq!(host, 763, "host-state static waits");
         assert_eq!(resident, 586, "resident logical/source boundaries");
+        assert_eq!(
+            estimate_resident_device_dsa_waits_per_token(&arch),
+            565,
+            "device DSA removes one boundary for each of 21 full indexers"
+        );
         assert_eq!(
             estimate_resident_logical_wait_breakdown(&arch),
             ResidentLogicalWaitBreakdown {

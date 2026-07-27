@@ -848,6 +848,7 @@ struct GravityGlmDsaParams {
     uint head_dim;
     uint pos;         // causal: mask t > pos
     float dim_scale;
+    float head_scale;
 };
 
 kernel void gravity_glm_dsa_scores(
@@ -872,7 +873,8 @@ kernel void gravity_glm_dsa_scores(
             dot = fma(qh[d], key[d], dot);
         }
         float relu = max(dot * p.dim_scale, 0.0f);
-        acc = fma(head_weights[h], relu, acc);
+        float weight = head_weights[h] * p.head_scale;
+        acc = fma(weight, relu, acc);
     }
     scores[t] = acc;
 }

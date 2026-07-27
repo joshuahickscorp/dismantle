@@ -561,6 +561,44 @@ fn project_unifies_members_and_states() {
     assert!(p.transition(ProjectState::Explore, 15).is_err());
 }
 
+/// One session identity across YOU / CHAT / IDE. Surfaces are lenses; they do
+/// not each own a session. Handoffs stay claim-only on that shared id.
+#[test]
+fn three_lenses_share_one_session_not_three() {
+    use hide_you::SurfaceGraph;
+    let mut g = SurfaceGraph::open("ses_product");
+    for s in Surface::all() {
+        assert_eq!(g.lens(s).unwrap().session_id, "ses_product");
+    }
+    g.switch(Surface::You);
+    let cap = g
+        .create_handoff(
+            HandoffKind::YouToChat,
+            10,
+            vec![Claim {
+                id: "c".into(),
+                text: "shared".into(),
+                evidence_tier: EvidenceTier::Cited,
+                payload: json!({}),
+            }],
+            vec![DeliberateExclusion {
+                item: "gmail".into(),
+                reason: "claim only".into(),
+            }],
+            json!({"kind": "implementation_campaign"}),
+            "user",
+        )
+        .unwrap();
+    assert_eq!(cap.origin_session, "ses_product");
+    g.receive_handoff(&cap.id).unwrap();
+    assert_eq!(g.session_id(), "ses_product");
+    assert!(g
+        .lens(Surface::Chat)
+        .unwrap()
+        .require_connector("gmail")
+        .is_err());
+}
+
 #[test]
 fn all_roles_and_modes_exist() {
     assert_eq!(AgentRole::all().len(), 12);

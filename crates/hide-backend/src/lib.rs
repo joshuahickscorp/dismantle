@@ -50,6 +50,8 @@ pub mod services;
 /// Speculation safety: host durable sinks accept only target-verified tokens.
 pub mod speculation_safety;
 pub mod supervisor;
+/// YOU / CHAT / IDE shared session graph (claim-only handoffs).
+pub mod surfaces;
 pub mod tools;
 pub mod tq_metadata;
 pub mod ui_bus;

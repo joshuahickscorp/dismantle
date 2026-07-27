@@ -916,6 +916,12 @@ mod imp {
             "gravity_glm_router_select_noaux_f32" => "gravity_glm_router_select_noaux_f32",
             "gravity_glm_expert_table_validate" => "gravity_glm_expert_table_validate",
             "gravity_glm_expert_table_pq_matvec" => "gravity_glm_expert_table_pq_matvec",
+            "gravity_glm_expert_table_zero_f32" => "gravity_glm_expert_table_zero_f32",
+            "gravity_glm_expert_table_silu_mul_f32" => "gravity_glm_expert_table_silu_mul_f32",
+            "gravity_glm_expert_table_axpy_f32" => "gravity_glm_expert_table_axpy_f32",
+            "gravity_glm_expert_table_residual_add_f32" => {
+                "gravity_glm_expert_table_residual_add_f32"
+            }
             "gravity_zero_f32" => "gravity_zero_f32",
             "gravity_pq_matvec" => "gravity_pq_matvec",
             "gravity_pq_matvec_bits8_direct" => "gravity_pq_matvec_bits8_direct",
@@ -1106,6 +1112,10 @@ mod imp {
                 "gravity_glm_router_select_noaux_f32",
                 "gravity_glm_expert_table_validate",
                 "gravity_glm_expert_table_pq_matvec",
+                "gravity_glm_expert_table_zero_f32",
+                "gravity_glm_expert_table_silu_mul_f32",
+                "gravity_glm_expert_table_axpy_f32",
+                "gravity_glm_expert_table_residual_add_f32",
                 "gravity_zero_f32",
             ];
 

@@ -38,8 +38,14 @@
 //! cargo test -p hawking-core numeric_parity -- --nocapture
 //! ```
 //!
-//! Flag for the full model path (not required for this unit suite):
-//! `HAWKING_GLM_GPU_LM_HEAD=1` (with optional `HAWKING_GLM_GPU_RESIDENT_STATE=1`).
+//! Flags for the full model path (not required for this unit suite):
+//! - `HAWKING_GLM_GPU_LM_HEAD=1` — device-resident native.bf16 matvecs + GPU head
+//! - `HAWKING_GLM_GPU_RESIDENT_STATE=1` — resident activations/KV
+//! - `HAWKING_GLM_GPU_LM_HEAD_FULL_LOGITS=1` — opt-in full vocab readback for
+//!   continuous-logit scoring on the forward path (default is token + top-k only)
+//!
+//! This unit suite calls `dispatch_gemv_native_bf16_seq` directly, so it always
+//! scores the full logit vector against the FP64 authority under V2.1.
 //!
 //! **Isolation:** this suite does not touch the default resident path.
 

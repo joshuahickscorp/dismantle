@@ -1406,6 +1406,7 @@ def phase_measure(
     floor: int = DISK_FLOOR_BYTES,
     bill_basis_per_tensor: bool = False,
     enforce_floor: bool = True,
+    workers: int = 1,
 ) -> dict[str, Any]:
     capsule_map = discover_capsule_layers()
     if not capsule_map:
@@ -1416,26 +1417,66 @@ def phase_measure(
     per_shard: list[dict[str, Any]] = []
     t0 = time.time()
     prefetch = _Prefetcher(shards, source_dir, fetch=fetch, floor=floor)
-    for n in shards:
-        if enforce_floor or fetch:
-            assert_disk_floor(0, path=source_dir, floor=floor)
-        path = prefetch.get(n)
+
+    def _one(n: int, path: Path) -> tuple[int, list, float]:
         t1 = time.time()
         ms = measure_shard(
             path, capsule_map, basis_cache, ranks,
             max_basis_rank=max_basis_rank,
             bill_basis_per_tensor=bill_basis_per_tensor,
         )
-        measurements.extend(m.as_dict() for m in ms)
-        per_shard.append({
-            "shard": n,
-            "path": str(path),
-            "n_tensors": len(ms),
-            "seconds": round(time.time() - t1, 2),
-        })
-        # Evict the body. Never hold more than a few shards.
-        if evict:
-            evict_shard(path)
+        return n, ms, time.time() - t1
+
+    if workers > 1:
+        # numpy releases the GIL inside BLAS, so threads genuinely overlap here. Each
+        # in-flight shard is one body on disk, so `workers` bounds residency and the floor
+        # is checked before every admission.
+        from concurrent.futures import ThreadPoolExecutor
+
+        pending: dict = {}
+        results: dict[int, tuple[list, float, Path]] = {}
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            for n in shards:
+                if enforce_floor or fetch:
+                    assert_disk_floor(0, path=source_dir, floor=floor)
+                path = prefetch.get(n)
+                pending[pool.submit(_one, n, path)] = path
+                if len(pending) >= workers:
+                    done = next(f for f in list(pending) if f.done()) if any(
+                        f.done() for f in pending) else None
+                    if done is None:
+                        # block on the oldest rather than spin
+                        done = next(iter(pending))
+                    pth = pending.pop(done)
+                    gn, ms, secs = done.result()
+                    results[gn] = (ms, secs, pth)
+                    if evict:
+                        evict_shard(pth)
+            for f, pth in list(pending.items()):
+                gn, ms, secs = f.result()
+                results[gn] = (ms, secs, pth)
+                if evict:
+                    evict_shard(pth)
+        # Emit in shard order: allocation must not depend on completion order.
+        for n in shards:
+            if n not in results:
+                continue
+            ms, secs, pth = results[n]
+            measurements.extend(m.as_dict() for m in ms)
+            per_shard.append({"shard": n, "path": str(pth), "n_tensors": len(ms),
+                              "seconds": round(secs, 2)})
+    else:
+        for n in shards:
+            if enforce_floor or fetch:
+                assert_disk_floor(0, path=source_dir, floor=floor)
+            path = prefetch.get(n)
+            gn, ms, secs = _one(n, path)
+            measurements.extend(m.as_dict() for m in ms)
+            per_shard.append({"shard": n, "path": str(path), "n_tensors": len(ms),
+                              "seconds": round(secs, 2)})
+            # Evict the body. Never hold more than a few shards.
+            if evict:
+                evict_shard(path)
         # Drop large arrays from basis cache's X_hold? Keep -- small vs shard bodies.
     return {
         "schema": "hawking.glm52.activation_aware_measurement.v1",
@@ -1490,6 +1531,49 @@ def phase_allocate(
     ).hexdigest()
     return doc
 
+
+
+
+class _SharedBasisCache:
+    """Thread-safe basis cache with per-layer locks.
+
+    Workers share bases because a layer's basis is identical whoever asks for it. A single
+    global lock would serialise the expensive part -- building one is an eigendecomposition
+    over a 4096x6144 capsule -- so each layer gets its own lock: two workers needing
+    different layers proceed in parallel, two needing the same one build it once.
+    """
+
+    def __init__(self) -> None:
+        self._d: dict[int, ActivationBasis] = {}
+        self._locks: dict[int, threading.Lock] = {}
+        self._guard = threading.Lock()
+
+    def _lock_for(self, layer: int) -> threading.Lock:
+        with self._guard:
+            return self._locks.setdefault(layer, threading.Lock())
+
+    def get(self, layer: int, build):
+        hit = self._d.get(layer)
+        if hit is not None:
+            return hit
+        with self._lock_for(layer):
+            hit = self._d.get(layer)          # another worker may have won the race
+            if hit is None:
+                hit = build()
+                self._d[layer] = hit
+            return hit
+
+    def __contains__(self, k) -> bool:
+        return k in self._d
+
+    def __getitem__(self, k):
+        return self._d[k]
+
+    def __setitem__(self, k, v) -> None:
+        self._d[k] = v
+
+    def get_plain(self, k, default=None):
+        return self._d.get(k, default)
 
 
 class _Prefetcher:
@@ -1869,6 +1953,10 @@ def main(argv: list[str] | None = None) -> int:
                     help="fetch missing shards via glm52_rehydrate_window (respects floor)")
     ap.add_argument("--evict", action="store_true",
                     help="delete each shard body after measure/pack")
+    ap.add_argument("--workers", type=int, default=1,
+                    help="parallel shard workers for measurement. Measured 24 s fetch + "
+                         "23 s work per shard on 1.2 of 28 cores; each worker holds one "
+                         "shard body, so this bounds residency too.")
     ap.add_argument("--disk-floor-gib", type=int, default=DISK_FLOOR_GIB,
                     help=f"free-space floor in GiB (default {DISK_FLOOR_GIB})")
     ap.add_argument("--selftest", action="store_true")
@@ -1996,6 +2084,7 @@ def main(argv: list[str] | None = None) -> int:
                 shards, args.source_dir, ranks,
                 fetch=args.fetch, evict=args.evict,
                 floor=floor, bill_basis_per_tensor=False,
+                workers=max(1, int(args.workers)),
             )
             (dest_dir / "MEASUREMENT.json").write_text(
                 json.dumps(measurement, indent=2, sort_keys=True) + "\n"

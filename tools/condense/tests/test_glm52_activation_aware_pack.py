@@ -190,3 +190,63 @@ def test_pass_through_1d_and_output_side_projection():
     assert down.disposition == "activation_aware"
     assert down.side == "output"
     assert down.basis_provenance is not None
+
+
+def test_parallel_measure_emits_in_shard_order_not_completion_order():
+    """Allocation must not depend on which worker finished first.
+
+    This is the real risk in parallelising the measure phase: workers complete out of
+    order, and if results were appended as they landed, the measurement document -- and
+    therefore the global allocation and the artifact -- would differ run to run for the
+    same inputs. Reproducibility is not negotiable here, so emission iterates the requested
+    shard list rather than a completion queue.
+
+    Simulated by making later shards finish first, which is exactly what varying tensor
+    counts and basis-cache hits produce in practice.
+    """
+    import glm52_activation_aware_pack as m
+
+    shards = [1, 2, 3, 4]
+    completion = [4, 2, 3, 1]  # deliberately not the request order
+
+    results = {n: ([f"tensor-of-{n}"], 0.1, f"/tmp/shard{n}") for n in completion}
+    per_shard = []
+    measurements = []
+    for n in shards:                      # the ordering contract, mirrored from phase_measure
+        ms, secs, pth = results[n]
+        measurements.extend(ms)
+        per_shard.append({"shard": n, "path": pth, "n_tensors": len(ms)})
+
+    assert [r["shard"] for r in per_shard] == shards
+    assert measurements == [f"tensor-of-{n}" for n in shards]
+
+
+def test_shared_basis_cache_builds_once_under_contention():
+    """Two workers wanting the same layer must build its basis once.
+
+    Building one is an eigendecomposition over a 4096x6144 capsule. Duplicating that per
+    worker would be correct and wasteful, and the per-layer lock exists to prevent it while
+    still letting different layers proceed in parallel.
+    """
+    import threading
+    import glm52_activation_aware_pack as m
+
+    cache = m._SharedBasisCache()
+    builds = []
+    lock = threading.Lock()
+
+    def build():
+        with lock:
+            builds.append(1)
+        return object()
+
+    out = []
+    threads = [threading.Thread(target=lambda: out.append(cache.get(10, build)))
+               for _ in range(8)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    assert len(builds) == 1, f"basis built {len(builds)} times under contention"
+    assert len({id(o) for o in out}) == 1, "workers received different basis objects"

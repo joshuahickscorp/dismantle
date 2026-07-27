@@ -872,6 +872,18 @@ pub fn gpu_device_dsa_enabled() -> bool {
     crate::env_on(GPU_DEVICE_DSA_ENV)
 }
 
+/// Opt-in device noaux_tc router selection for the resident GLM path.
+///
+/// Default off. The router gate, sigmoid/correction, exact stable group/expert
+/// selection, and selected weights remain on device; only the selected IDs and
+/// weights are read back for the current host-named expert cache.
+pub const GPU_DEVICE_ROUTER_ENV: &str = "HAWKING_GLM_GPU_DEVICE_ROUTER";
+
+/// Whether [`GPU_DEVICE_ROUTER_ENV`] requests device noaux_tc selection.
+pub fn gpu_device_router_enabled() -> bool {
+    crate::env_on(GPU_DEVICE_ROUTER_ENV)
+}
+
 /// Opt-in device-resident native.bf16 matvec + GPU head sampling for GLM.
 ///
 /// Default off — host dense matvec remains the parity oracle. When set:
@@ -1912,7 +1924,9 @@ pub mod gpu {
                 // surplus). Rank-2 only — norms/biases stay host dense().
                 // Gated by HAWKING_GLM_GPU_LM_HEAD or the stricter compact
                 // device-DSA graph; both are default off.
-                if (super::gpu_lm_head_enabled() || super::gpu_device_dsa_enabled())
+                if (super::gpu_lm_head_enabled()
+                    || super::gpu_device_dsa_enabled()
+                    || super::gpu_device_router_enabled())
                     && codec == "native.bf16"
                     && shape.len() == 2
                 {
@@ -2495,11 +2509,18 @@ pub mod gpu {
             let arch = GlmArch::from_header(&weights.header)?;
             let compact_mla = resident_enabled && super::gpu_compact_mla_enabled();
             let device_dsa = super::gpu_device_dsa_enabled();
+            let device_router = super::gpu_device_router_enabled();
             if device_dsa && (!resident_enabled || !compact_mla) {
                 return Err(Error::Gravity(format!(
                     "{} requires resident state and {}=1",
                     super::GPU_DEVICE_DSA_ENV,
                     super::GPU_COMPACT_MLA_ENV
+                )));
+            }
+            if device_router && !resident_enabled {
+                return Err(Error::Gravity(format!(
+                    "{} requires resident state",
+                    super::GPU_DEVICE_ROUTER_ENV
                 )));
             }
             if compact_mla {
@@ -2696,6 +2717,18 @@ mod tests {
         match prev {
             Some(v) => std::env::set_var(GPU_DEVICE_DSA_ENV, v),
             None => std::env::remove_var(GPU_DEVICE_DSA_ENV),
+        }
+    }
+
+    /// Device router selection is independently opt-in.
+    #[test]
+    fn gpu_device_router_flag_defaults_off() {
+        let prev = std::env::var_os(GPU_DEVICE_ROUTER_ENV);
+        std::env::remove_var(GPU_DEVICE_ROUTER_ENV);
+        assert!(!gpu_device_router_enabled());
+        match prev {
+            Some(v) => std::env::set_var(GPU_DEVICE_ROUTER_ENV, v),
+            None => std::env::remove_var(GPU_DEVICE_ROUTER_ENV),
         }
     }
 

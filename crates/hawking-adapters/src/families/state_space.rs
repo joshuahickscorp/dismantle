@@ -83,7 +83,11 @@ impl FamilyAdapter for StateSpaceFamily {
             id: "state_space",
             aliases: ALIASES,
             display_name: "State-space (RWKV7 + Mamba2)",
-            level: SupportLevel::SmallRealCheckpoint,
+            // Demoted: rwkv7_parity.rs skips when weights are absent.
+            // No source-header receipt exists: state-space families were not in the Stage A
+            // gauntlet's five, and the rwkv7_parity test it previously cited skips without
+            // weights. DECLARED is what the evidence actually supports.
+            level: SupportLevel::Declared,
             evidence: EVIDENCE,
             module: "crates/hawking-core/src/model/rwkv7.rs",
             executes: true,

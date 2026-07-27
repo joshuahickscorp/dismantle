@@ -34,13 +34,14 @@
       "evidence_paths": [
         "crates/hawking-core/src/model/deepseek_v2.rs",
         "crates/hawking-core/tests/cpu_backend_parity_deepseek.rs",
-        "crates/hawking-core/src/model/mod.rs"
+        "crates/hawking-core/src/model/mod.rs",
+        "adapters/receipts/ADAPTER_DEEPSEEK_RECEIPT.json"
       ],
       "executes": true,
       "family": "deepseek",
       "forbid_production": true,
-      "max_level": "SMALL_REAL_CHECKPOINT",
-      "require_evidence_kind": "small_checkpoint_run",
+      "max_level": "SOURCE_HEADER_VALIDATED",
+      "require_evidence_kind": "source_header",
       "require_evidence_when_above": "DECLARED",
       "serve_registered": true
     },
@@ -364,8 +365,8 @@
       "executes": true,
       "family": "qwen",
       "forbid_production": true,
-      "max_level": "FULL_PARENT_VALIDATED",
-      "require_evidence_kind": "full_parent_validation",
+      "max_level": "SMALL_REAL_CHECKPOINT",
+      "require_evidence_kind": "small_checkpoint_run",
       "require_evidence_when_above": "DECLARED",
       "serve_registered": true
     },
@@ -406,8 +407,8 @@
       "executes": true,
       "family": "state_space",
       "forbid_production": true,
-      "max_level": "SMALL_REAL_CHECKPOINT",
-      "require_evidence_kind": "small_checkpoint_run",
+      "max_level": "DECLARED",
+      "require_evidence_kind": null,
       "require_evidence_when_above": "DECLARED",
       "serve_registered": true
     }

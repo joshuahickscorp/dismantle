@@ -6,11 +6,11 @@
         "deepseek2",
         "deepseek_v2"
       ],
-      "description": "DeepSeek V2 — SMALL_REAL_CHECKPOINT",
+      "description": "DeepSeek V2 — SOURCE_HEADER_VALIDATED",
       "executes": true,
       "id": "model_family.deepseek",
       "kind": "model_family",
-      "level": "SMALL_REAL_CHECKPOINT",
+      "level": "SOURCE_HEADER_VALIDATED",
       "serve_registered": true
     },
     {
@@ -113,11 +113,11 @@
         "qwen-moe",
         "qwen3"
       ],
-      "description": "Qwen (dense + MoE) — FULL_PARENT_VALIDATED",
+      "description": "Qwen (dense + MoE) — SMALL_REAL_CHECKPOINT",
       "executes": true,
       "id": "model_family.qwen",
       "kind": "model_family",
-      "level": "FULL_PARENT_VALIDATED",
+      "level": "SMALL_REAL_CHECKPOINT",
       "serve_registered": true
     },
     {
@@ -128,11 +128,11 @@
         "mamba2",
         "mamba"
       ],
-      "description": "State-space (RWKV7 + Mamba2) — SMALL_REAL_CHECKPOINT",
+      "description": "State-space (RWKV7 + Mamba2) — DECLARED",
       "executes": true,
       "id": "model_family.state_space",
       "kind": "model_family",
-      "level": "SMALL_REAL_CHECKPOINT",
+      "level": "DECLARED",
       "serve_registered": true
     }
   ],

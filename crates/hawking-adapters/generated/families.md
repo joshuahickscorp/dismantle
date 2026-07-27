@@ -6,7 +6,7 @@ Generated from `hawking-adapters` — do not hand-edit.
 
 | Family | Level | Executes | Serve-registered | Module |
 |---|---|---|---|---|
-| DeepSeek V2 | SMALL_REAL_CHECKPOINT | true | true | `crates/hawking-core/src/model/deepseek_v2.rs` |
+| DeepSeek V2 | SOURCE_HEADER_VALIDATED | true | true | `crates/hawking-core/src/model/deepseek_v2.rs` |
 | Gemma 2 | DECLARED | false | false | `packs/hawking-adapters-extra (gemma2)` |
 | GLM (gravity glm_moe_dsa) | SMALL_REAL_CHECKPOINT | true | true | `crates/hawking-core/src/model/gravity_engine.rs` |
 | Kimi K2.x | SYNTHETIC_PARITY | false | false | `KIMI_K26_ADAPTER_TWIN.json (reference twin; no in-tree serve module)` |
@@ -14,8 +14,8 @@ Generated from `hawking-adapters` — do not hand-edit.
 | MiniMax | DECLARED | false | false | `(none — declared only)` |
 | Mistral / Mixtral | SMALL_REAL_CHECKPOINT | true | true | `crates/hawking-core/src/model/llama.rs (+ pack mixtral)` |
 | Phi-3 | DECLARED | false | false | `packs/hawking-adapters-extra (phi3)` |
-| Qwen (dense + MoE) | FULL_PARENT_VALIDATED | true | true | `crates/hawking-core/src/model/qwen_dense.rs` |
-| State-space (RWKV7 + Mamba2) | SMALL_REAL_CHECKPOINT | true | true | `crates/hawking-core/src/model/rwkv7.rs` |
+| Qwen (dense + MoE) | SMALL_REAL_CHECKPOINT | true | true | `crates/hawking-core/src/model/qwen_dense.rs` |
+| State-space (RWKV7 + Mamba2) | DECLARED | true | true | `crates/hawking-core/src/model/rwkv7.rs` |
 
 ## Gaps
 

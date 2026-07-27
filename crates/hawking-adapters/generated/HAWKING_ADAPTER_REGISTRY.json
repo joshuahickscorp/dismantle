@@ -96,6 +96,11 @@
             "claim": "load_engine dispatches deepseek2",
             "kind": "description",
             "path": "crates/hawking-core/src/model/mod.rs"
+          },
+          {
+            "claim": "Stage A: official config/tokenizer/safetensors header parsed and mapped",
+            "kind": "source_header",
+            "path": "adapters/receipts/ADAPTER_DEEPSEEK_RECEIPT.json"
           }
         ],
         "positional_encoding": {
@@ -167,6 +172,11 @@
           "claim": "load_engine dispatches deepseek2",
           "kind": "description",
           "path": "crates/hawking-core/src/model/mod.rs"
+        },
+        {
+          "claim": "Stage A: official config/tokenizer/safetensors header parsed and mapped",
+          "kind": "source_header",
+          "path": "adapters/receipts/ADAPTER_DEEPSEEK_RECEIPT.json"
         }
       ],
       "executes": true,
@@ -176,7 +186,7 @@
         "DeepSeek V3/V4 MLA+DSA ladder rungs are NOT this family's shipping GGUF deepseek2 path"
       ],
       "id": "deepseek",
-      "level": "SMALL_REAL_CHECKPOINT",
+      "level": "SOURCE_HEADER_VALIDATED",
       "module": "crates/hawking-core/src/model/deepseek_v2.rs",
       "serve_registered": true
     },
@@ -1286,7 +1296,7 @@
         "large MoE parents (235B/397B) are campaign-side, not this registry's PRODUCTION claim"
       ],
       "id": "qwen",
-      "level": "FULL_PARENT_VALIDATED",
+      "level": "SMALL_REAL_CHECKPOINT",
       "module": "crates/hawking-core/src/model/qwen_dense.rs",
       "serve_registered": true
     },
@@ -1423,7 +1433,7 @@
         "family spans RWKV (executes) and Mamba2 (declared pack only)"
       ],
       "id": "state_space",
-      "level": "SMALL_REAL_CHECKPOINT",
+      "level": "DECLARED",
       "module": "crates/hawking-core/src/model/rwkv7.rs",
       "serve_registered": true
     }

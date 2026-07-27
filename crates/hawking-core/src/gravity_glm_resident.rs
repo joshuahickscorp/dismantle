@@ -217,12 +217,10 @@ impl ActPool {
             q_a: ctx.new_buffer_checked(arch.q_lora_rank * 4)?,
             q_resid: ctx.new_buffer_checked(arch.q_lora_rank * 4)?,
             q: ctx.new_buffer_checked(arch.n_heads * qk * 4)?,
-            compressed: ctx
-                .new_buffer_checked((arch.kv_lora_rank + arch.qk_rope_head_dim) * 4)?,
+            compressed: ctx.new_buffer_checked((arch.kv_lora_rank + arch.qk_rope_head_dim) * 4)?,
             k_latent: ctx.new_buffer_checked(arch.kv_lora_rank * 4)?,
-            kv: ctx.new_buffer_checked(
-                arch.n_heads * (arch.qk_nope_head_dim + arch.v_head_dim) * 4,
-            )?,
+            kv: ctx
+                .new_buffer_checked(arch.n_heads * (arch.qk_nope_head_dim + arch.v_head_dim) * 4)?,
             queries: ctx.new_buffer_checked(arch.n_heads * qk * 4)?,
             context: ctx.new_buffer_checked(arch.n_heads * arch.v_head_dim * 4)?,
             o: ctx.new_buffer_checked(h * 4)?,
@@ -242,10 +240,8 @@ impl ActPool {
             final_hidden: ctx.new_buffer_checked(h * 4)?,
             logits: ctx.new_buffer_checked(arch.vocab_size * 4)?,
             sample_token: ctx.new_buffer_checked(4)?,
-            head_topk_idx: ctx
-                .new_buffer_checked((GPU_LM_HEAD_DIAG_TOPK as usize) * 4)?,
-            head_topk_val: ctx
-                .new_buffer_checked((GPU_LM_HEAD_DIAG_TOPK as usize) * 4)?,
+            head_topk_idx: ctx.new_buffer_checked((GPU_LM_HEAD_DIAG_TOPK as usize) * 4)?,
+            head_topk_val: ctx.new_buffer_checked((GPU_LM_HEAD_DIAG_TOPK as usize) * 4)?,
             gate_cap,
         })
     }
@@ -253,10 +249,37 @@ impl ActPool {
 
 fn commit(tcb: Option<TokenCommandBuffer<'_>>, waits: &Cell<u64>) -> Result<()> {
     if let Some(buf) = tcb {
+        // When the cost ledger is recording, commit folds metal_encode /
+        // metal_submit / metal_synchronize + GPU timestamps. Off path is
+        // the historical uninstrumented flush (single atomic load).
         buf.commit_and_wait()?;
         waits.set(waits.get().saturating_add(1));
     }
     Ok(())
+}
+
+fn record_dense_matvec_ops(rows: u64, cols: u64) {
+    let fp = rows.saturating_mul(cols).saturating_mul(2);
+    crate::cost_ledger::record_source_modelled_operations(fp, 0, 0, 0, fp);
+}
+
+fn record_pq_matvec_ops(params: crate::gravity_glm::gpu::PqParams) {
+    let rows = params.rows as u64;
+    let dense_fp = rows.saturating_mul(params.cols as u64).saturating_mul(2);
+    // Kernel source executes one FMA per logical weight plus a 32-lane
+    // simd_sum (31 adds/row). pq_index's visible bit arithmetic is a
+    // documented 15-op lower bound per row/chunk/subspace lookup.
+    let fp = dense_fp.saturating_add(rows.saturating_mul(31));
+    let lookups = rows
+        .saturating_mul(params.nchunk as u64)
+        .saturating_mul(params.subspaces as u64);
+    crate::cost_ledger::record_source_modelled_operations(
+        fp,
+        lookups.saturating_mul(15),
+        0,
+        0,
+        dense_fp,
+    );
 }
 
 /// Matvec into a device buffer. Host-native weights run on the host into the
@@ -278,7 +301,11 @@ fn matvec_into<'a>(
         GpuTensor::NativeCpu(w) => {
             // Host-oracle path (flag off): do not change default billing or
             // numerics. Active-byte category partition for native.f32 widen is
-            // owned by WeightAccess::matvec when that path is used.
+            // owned by WeightAccess::matvec when that path is used — still
+            // bill here so the resident path is not a blind hole when the
+            // ledger is on.
+            crate::cost_ledger::record_active_bytes_for(name, (w.len() * 4) as u64);
+            record_dense_matvec_ops((w.len() / x_len) as u64, x_len as u64);
             let x_host = read_f32(x, x_len);
             let y_host = matvec_dense(w, &x_host, name)?;
             write_f32(y, &y_host);
@@ -292,7 +319,9 @@ fn matvec_into<'a>(
             }
             // Bill stored bf16 length (no f32 widen tax).
             crate::cost_ledger::record_active_bytes_for(name, buf.length());
+            record_dense_matvec_ops(*rows as u64, *cols as u64);
             let tcb = tcb.get_or_insert_with(|| TokenCommandBuffer::new(ctx));
+            // MetalEncode charged at TCB commit from dispatch_threads wall.
             encode_gemv_native_bf16_seq(tcb, buf, *rows, *cols, x, y)
         }
         GpuTensor::Pq {
@@ -306,6 +335,8 @@ fn matvec_into<'a>(
                     params.cols
                 )));
             }
+            crate::cost_ledger::record_active_bytes_for(name, codebooks.length() + codes.length());
+            record_pq_matvec_ops(*params);
             let tcb = tcb.get_or_insert_with(|| TokenCommandBuffer::new(ctx));
             const TG: u32 = 256;
             let n_tg = params.rows.div_ceil(8);
@@ -329,18 +360,18 @@ fn matvec_into<'a>(
 }
 
 fn rmsnorm_into(x: &Buffer, x_len: usize, weight: &[f32], eps: f32, out: &Buffer) {
+    let _norm = crate::cost_ledger::Scope::new(crate::cost_ledger::Bucket::Norm);
+    crate::cost_ledger::record_source_modelled_operations((4 * x_len) as u64, 0, 0, 1, 0);
     let xv = read_f32(x, x_len);
     let mean_sq = xv.iter().map(|v| v * v).sum::<f32>() / x_len as f32;
     let inv = 1.0 / (mean_sq + eps).sqrt();
-    let y: Vec<f32> = xv
-        .iter()
-        .zip(weight)
-        .map(|(v, w)| v * inv * *w)
-        .collect();
+    let y: Vec<f32> = xv.iter().zip(weight).map(|(v, w)| v * inv * *w).collect();
     write_f32(out, &y);
 }
 
 fn residual_add(x: &Buffer, add: &Buffer, n: usize) {
+    let _state = crate::cost_ledger::Scope::new(crate::cost_ledger::Bucket::ResidualAndState);
+    crate::cost_ledger::record_source_modelled_operations(n as u64, 0, 0, 0, 0);
     let mut xv = read_f32(x, n);
     let av = read_f32(add, n);
     for (a, b) in xv.iter_mut().zip(&av) {
@@ -358,16 +389,28 @@ pub fn forward_resident(
     tokens: &[u32],
     start_pos: usize,
 ) -> Result<(Vec<f32>, GlmTrace, u64)> {
+    use crate::cost_ledger::{self, Bucket};
+
     if tokens.is_empty() {
         return Err(Error::Gravity("forward_resident: no tokens".into()));
     }
     let ctx = &weights.ctx;
     let a = arch;
     let qk = a.qk_dim();
-    session.reserve(ctx, arch, start_pos + tokens.len())?;
+    {
+        let _kv = cost_ledger::Scope::new(Bucket::KvUpdate);
+        session.reserve(ctx, arch, start_pos + tokens.len())?;
+    }
     let waits_before = session.waits.get();
     let mut logits = Vec::new();
     let mut trace = GlmTrace::default();
+
+    // Same geometry stamp as host forward_impl so live vs geometry is comparable.
+    cost_ledger::set_geometry_active_bytes(cost_ledger::geometry_active_bytes(
+        a.n_layers,
+        a.num_experts_per_tok,
+        None,
+    ));
 
     for (step, &token) in tokens.iter().enumerate() {
         let pos = start_pos + step;
@@ -378,9 +421,15 @@ pub fn forward_resident(
             )));
         }
 
-        let emb = weights.row("model.embed_tokens.weight", token as usize, a.hidden)?;
-        write_f32(&pool.x, &emb);
-        let (cos, sin) = rope_cos_sin(arch, pos);
+        {
+            let _embedding = cost_ledger::Scope::new(Bucket::EmbeddingAndPosition);
+            let emb = weights.row("model.embed_tokens.weight", token as usize, a.hidden)?;
+            write_f32(&pool.x, &emb);
+        }
+        let (cos, sin) = {
+            let _position = cost_ledger::Scope::new(Bucket::EmbeddingAndPosition);
+            rope_cos_sin(arch, pos)
+        };
         let mut shared_topk = session.shared_topk.clone();
         trace.expert_choices.clear();
 
@@ -389,173 +438,183 @@ pub fn forward_resident(
             let attn_p = format!("{p}.self_attn");
             let mut tcb: Option<TokenCommandBuffer<'_>> = None;
 
-            let w_in = weights.dense(&format!("{p}.input_layernorm.weight"))?;
-            rmsnorm_into(&pool.x, a.hidden, &w_in, a.rms_norm_eps, &pool.h);
+            // Attention + IndexShare: projections, DSA indexer, sparse attend,
+            // o_proj residual. Nested metal/norm/kv buckets steal exclusive time.
+            let topk = {
+                let _attn = cost_ledger::Scope::new(Bucket::AttentionAndIndexShare);
 
-            // Q path
-            matvec_into(
-                &mut tcb,
-                ctx,
-                weights,
-                &format!("{attn_p}.q_a_proj.weight"),
-                &pool.h,
-                a.hidden,
-                &pool.q_a,
-            )?;
-            // KV-a is independent of q_a — co-issue before the wait.
-            matvec_into(
-                &mut tcb,
-                ctx,
-                weights,
-                &format!("{attn_p}.kv_a_proj_with_mqa.weight"),
-                &pool.h,
-                a.hidden,
-                &pool.compressed,
-            )?;
-            commit(tcb.take(), &session.waits)?;
+                let w_in = weights.dense(&format!("{p}.input_layernorm.weight"))?;
+                rmsnorm_into(&pool.x, a.hidden, &w_in, a.rms_norm_eps, &pool.h);
 
-            let w_q = weights.dense(&format!("{attn_p}.q_a_layernorm.weight"))?;
-            rmsnorm_into(
-                &pool.q_a,
-                a.q_lora_rank,
-                &w_q,
-                a.rms_norm_eps,
-                &pool.q_resid,
-            );
+                // Q path
+                matvec_into(
+                    &mut tcb,
+                    ctx,
+                    weights,
+                    &format!("{attn_p}.q_a_proj.weight"),
+                    &pool.h,
+                    a.hidden,
+                    &pool.q_a,
+                )?;
+                // KV-a is independent of q_a — co-issue before the wait.
+                matvec_into(
+                    &mut tcb,
+                    ctx,
+                    weights,
+                    &format!("{attn_p}.kv_a_proj_with_mqa.weight"),
+                    &pool.h,
+                    a.hidden,
+                    &pool.compressed,
+                )?;
+                commit(tcb.take(), &session.waits)?;
 
-            let compressed =
-                read_f32(&pool.compressed, a.kv_lora_rank + a.qk_rope_head_dim);
-            let w_kv = weights.dense(&format!("{attn_p}.kv_a_layernorm.weight"))?;
-            let k_latent = {
-                let x = &compressed[..a.kv_lora_rank];
-                let mean_sq = x.iter().map(|v| v * v).sum::<f32>() / x.len() as f32;
-                let inv = 1.0 / (mean_sq + a.rms_norm_eps).sqrt();
-                x.iter()
-                    .zip(&w_kv)
-                    .map(|(v, w)| v * inv * w)
-                    .collect::<Vec<_>>()
-            };
-            write_f32(&pool.k_latent, &k_latent);
-            let k_rot = rope_interleaved(&compressed[a.kv_lora_rank..], &cos, &sin);
-
-            matvec_into(
-                &mut tcb,
-                ctx,
-                weights,
-                &format!("{attn_p}.q_b_proj.weight"),
-                &pool.q_resid,
-                a.q_lora_rank,
-                &pool.q,
-            )?;
-            matvec_into(
-                &mut tcb,
-                ctx,
-                weights,
-                &format!("{attn_p}.kv_b_proj.weight"),
-                &pool.k_latent,
-                a.kv_lora_rank,
-                &pool.kv,
-            )?;
-            commit(tcb.take(), &session.waits)?;
-
-            // Append MLA K/V into the device cache (cache of record).
-            {
-                let kv = read_f32(
-                    &pool.kv,
-                    a.n_heads * (a.qk_nope_head_dim + a.v_head_dim),
+                let w_q = weights.dense(&format!("{attn_p}.q_a_layernorm.weight"))?;
+                rmsnorm_into(
+                    &pool.q_a,
+                    a.q_lora_rank,
+                    &w_q,
+                    a.rms_norm_eps,
+                    &pool.q_resid,
                 );
-                let cache = &session.layers[layer];
-                let per = a.qk_nope_head_dim + a.v_head_dim;
-                let mut keys_pos = Vec::with_capacity(a.n_heads * qk);
-                let mut vals_pos = Vec::with_capacity(a.n_heads * a.v_head_dim);
-                for head in 0..a.n_heads {
-                    let src = &kv[head * per..(head + 1) * per];
-                    keys_pos.extend_from_slice(&src[..a.qk_nope_head_dim]);
-                    keys_pos.extend_from_slice(&k_rot);
-                    vals_pos.extend_from_slice(&src[a.qk_nope_head_dim..]);
-                }
-                let k_off = pos * a.n_heads * qk;
-                let v_off = pos * a.n_heads * a.v_head_dim;
-                unsafe {
-                    std::ptr::copy_nonoverlapping(
-                        keys_pos.as_ptr(),
-                        (cache.keys.contents() as *mut f32).add(k_off),
-                        keys_pos.len(),
-                    );
-                    std::ptr::copy_nonoverlapping(
-                        vals_pos.as_ptr(),
-                        (cache.values.contents() as *mut f32).add(v_off),
-                        vals_pos.len(),
-                    );
-                }
-            }
 
-            // Queries
-            {
-                let q = read_f32(&pool.q, a.n_heads * qk);
-                let mut queries = vec![0f32; a.n_heads * qk];
-                for head in 0..a.n_heads {
-                    let src = &q[head * qk..(head + 1) * qk];
-                    let dst = &mut queries[head * qk..(head + 1) * qk];
-                    dst[..a.qk_nope_head_dim].copy_from_slice(&src[..a.qk_nope_head_dim]);
-                    dst[a.qk_nope_head_dim..]
-                        .copy_from_slice(&rope_interleaved(&src[a.qk_nope_head_dim..], &cos, &sin));
-                }
-                write_f32(&pool.queries, &queries);
-            }
+                let compressed = read_f32(&pool.compressed, a.kv_lora_rank + a.qk_rope_head_dim);
+                let w_kv = weights.dense(&format!("{attn_p}.kv_a_layernorm.weight"))?;
+                let k_latent = {
+                    let _norm = cost_ledger::Scope::new(Bucket::Norm);
+                    let x = &compressed[..a.kv_lora_rank];
+                    let mean_sq = x.iter().map(|v| v * v).sum::<f32>() / x.len() as f32;
+                    let inv = 1.0 / (mean_sq + a.rms_norm_eps).sqrt();
+                    x.iter()
+                        .zip(&w_kv)
+                        .map(|(v, w)| v * inv * w)
+                        .collect::<Vec<_>>()
+                };
+                write_f32(&pool.k_latent, &k_latent);
+                let k_rot = rope_interleaved(&compressed[a.kv_lora_rank..], &cos, &sin);
 
-            let topk = match a.indexer_types[layer].as_str() {
-                "full" => {
-                    let t = indexer_topk(
-                        weights,
-                        arch,
-                        &attn_p,
-                        pool,
-                        &session.layers[layer],
-                        pos,
-                        &cos,
-                        &sin,
-                        &mut tcb,
-                        ctx,
-                        &session.waits,
-                    )?;
-                    shared_topk = Some(t.clone());
-                    session.shared_topk = Some(t.clone());
-                    t
+                matvec_into(
+                    &mut tcb,
+                    ctx,
+                    weights,
+                    &format!("{attn_p}.q_b_proj.weight"),
+                    &pool.q_resid,
+                    a.q_lora_rank,
+                    &pool.q,
+                )?;
+                matvec_into(
+                    &mut tcb,
+                    ctx,
+                    weights,
+                    &format!("{attn_p}.kv_b_proj.weight"),
+                    &pool.k_latent,
+                    a.kv_lora_rank,
+                    &pool.kv,
+                )?;
+                commit(tcb.take(), &session.waits)?;
+
+                // Append MLA K/V into the device cache (cache of record).
+                {
+                    let _kv = cost_ledger::Scope::new(Bucket::KvUpdate);
+                    let kv = read_f32(&pool.kv, a.n_heads * (a.qk_nope_head_dim + a.v_head_dim));
+                    let cache = &session.layers[layer];
+                    let per = a.qk_nope_head_dim + a.v_head_dim;
+                    let mut keys_pos = Vec::with_capacity(a.n_heads * qk);
+                    let mut vals_pos = Vec::with_capacity(a.n_heads * a.v_head_dim);
+                    for head in 0..a.n_heads {
+                        let src = &kv[head * per..(head + 1) * per];
+                        keys_pos.extend_from_slice(&src[..a.qk_nope_head_dim]);
+                        keys_pos.extend_from_slice(&k_rot);
+                        vals_pos.extend_from_slice(&src[a.qk_nope_head_dim..]);
+                    }
+                    let k_off = pos * a.n_heads * qk;
+                    let v_off = pos * a.n_heads * a.v_head_dim;
+                    unsafe {
+                        std::ptr::copy_nonoverlapping(
+                            keys_pos.as_ptr(),
+                            (cache.keys.contents() as *mut f32).add(k_off),
+                            keys_pos.len(),
+                        );
+                        std::ptr::copy_nonoverlapping(
+                            vals_pos.as_ptr(),
+                            (cache.values.contents() as *mut f32).add(v_off),
+                            vals_pos.len(),
+                        );
+                    }
                 }
-                "shared" => shared_topk.clone().ok_or_else(|| {
-                    Error::Gravity(format!(
-                        "layer {layer} shares an index but no earlier layer computed one"
-                    ))
-                })?,
-                other => {
-                    return Err(Error::Gravity(format!(
-                        "layer {layer}: unknown indexer type {other:?}"
-                    )))
+
+                // Queries
+                {
+                    let q = read_f32(&pool.q, a.n_heads * qk);
+                    let mut queries = vec![0f32; a.n_heads * qk];
+                    cost_ledger::record_allocation((queries.len() * 4) as u64);
+                    for head in 0..a.n_heads {
+                        let src = &q[head * qk..(head + 1) * qk];
+                        let dst = &mut queries[head * qk..(head + 1) * qk];
+                        dst[..a.qk_nope_head_dim].copy_from_slice(&src[..a.qk_nope_head_dim]);
+                        dst[a.qk_nope_head_dim..].copy_from_slice(&rope_interleaved(
+                            &src[a.qk_nope_head_dim..],
+                            &cos,
+                            &sin,
+                        ));
+                    }
+                    write_f32(&pool.queries, &queries);
                 }
+
+                let topk = match a.indexer_types[layer].as_str() {
+                    "full" => {
+                        let t = indexer_topk(
+                            weights,
+                            arch,
+                            &attn_p,
+                            pool,
+                            &session.layers[layer],
+                            pos,
+                            &cos,
+                            &sin,
+                            &mut tcb,
+                            ctx,
+                            &session.waits,
+                        )?;
+                        shared_topk = Some(t.clone());
+                        session.shared_topk = Some(t.clone());
+                        t
+                    }
+                    "shared" => shared_topk.clone().ok_or_else(|| {
+                        Error::Gravity(format!(
+                            "layer {layer} shares an index but no earlier layer computed one"
+                        ))
+                    })?,
+                    other => {
+                        return Err(Error::Gravity(format!(
+                            "layer {layer}: unknown indexer type {other:?}"
+                        )))
+                    }
+                };
+
+                // Sparse attend over device-resident KV (same math as forward_impl).
+                let context = sparse_attend(a, pool, &session.layers[layer], pos, &topk, qk)?;
+                write_f32(&pool.context, &context);
+
+                matvec_into(
+                    &mut tcb,
+                    ctx,
+                    weights,
+                    &format!("{attn_p}.o_proj.weight"),
+                    &pool.context,
+                    a.n_heads * a.v_head_dim,
+                    &pool.o,
+                )?;
+                commit(tcb.take(), &session.waits)?;
+                residual_add(&pool.x, &pool.o, a.hidden);
+                topk
             };
-
-            // Sparse attend over device-resident KV (same math as forward_impl).
-            let context = sparse_attend(a, pool, &session.layers[layer], pos, &topk, qk)?;
-            write_f32(&pool.context, &context);
-
-            matvec_into(
-                &mut tcb,
-                ctx,
-                weights,
-                &format!("{attn_p}.o_proj.weight"),
-                &pool.context,
-                a.n_heads * a.v_head_dim,
-                &pool.o,
-            )?;
-            commit(tcb.take(), &session.waits)?;
-            residual_add(&pool.x, &pool.o, a.hidden);
 
             let w_post = weights.dense(&format!("{p}.post_attention_layernorm.weight"))?;
             rmsnorm_into(&pool.x, a.hidden, &w_post, a.rms_norm_eps, &pool.h);
 
             match a.mlp_layer_types[layer].as_str() {
                 "dense" => {
+                    let _dense = cost_ledger::Scope::new(Bucket::DenseExperts);
                     let prefix = format!("{p}.mlp");
                     let out = mlp_one(
                         weights,
@@ -572,28 +631,35 @@ pub fn forward_resident(
                 }
                 "sparse" => {
                     let prefix = format!("{p}.mlp");
-                    matvec_into(
-                        &mut tcb,
-                        ctx,
-                        weights,
-                        &format!("{prefix}.gate.weight"),
-                        &pool.h,
-                        a.hidden,
-                        &pool.router_logits,
-                    )?;
-                    commit(tcb.take(), &session.waits)?;
+                    // Router gate matvec + host select — Routing bucket (matches host).
+                    {
+                        let _route = cost_ledger::Scope::new(Bucket::Routing);
+                        matvec_into(
+                            &mut tcb,
+                            ctx,
+                            weights,
+                            &format!("{prefix}.gate.weight"),
+                            &pool.h,
+                            a.hidden,
+                            &pool.router_logits,
+                        )?;
+                        commit(tcb.take(), &session.waits)?;
+                    }
 
                     let (indices, moe_weights) = router_select(weights, a, &prefix, pool)?;
                     // Residency: expert selection + weights live on device.
-                    let idx_u: Vec<u32> = indices.iter().map(|&i| i as u32).collect();
-                    unsafe {
-                        std::ptr::copy_nonoverlapping(
-                            idx_u.as_ptr(),
-                            pool.expert_idx.contents() as *mut u32,
-                            idx_u.len(),
-                        );
+                    {
+                        let _route_state = cost_ledger::Scope::new(Bucket::Routing);
+                        let idx_u: Vec<u32> = indices.iter().map(|&i| i as u32).collect();
+                        unsafe {
+                            std::ptr::copy_nonoverlapping(
+                                idx_u.as_ptr(),
+                                pool.expert_idx.contents() as *mut u32,
+                                idx_u.len(),
+                            );
+                        }
+                        write_f32(&pool.expert_w, &moe_weights);
                     }
-                    write_f32(&pool.expert_w, &moe_weights);
                     trace.expert_choices.push(indices.clone());
 
                     // Ascending expert order (float-add associativity), then
@@ -607,44 +673,73 @@ pub fn forward_resident(
                         .collect();
                     // Expert-wave (flagged, default off): one CB for gate/up/SiLU/
                     // down/weighted combine. Default three-batch path is unchanged.
-                    let routed = if gpu_expert_wave_enabled() {
-                        let scales: Vec<f32> = order
-                            .iter()
-                            .map(|&slot| moe_weights[slot])
-                            .chain(std::iter::once(1.0f32))
-                            .collect();
-                        moe_device_wave(
-                            weights,
-                            &prefixes,
-                            &scales,
-                            &pool.h,
-                            a.hidden,
-                            &mut tcb,
-                            ctx,
-                            &session.waits,
-                        )?
-                    } else {
-                        let mut outs = batched_mlp(
-                            weights,
-                            &prefixes,
-                            &pool.h,
-                            a.hidden,
-                            pool,
-                            &mut tcb,
-                            ctx,
-                            &session.waits,
-                        )?;
-                        let shared = outs.pop().expect("shared last");
-                        let mut routed = vec![0f32; a.hidden];
-                        for (out, &slot) in outs.iter().zip(&order) {
-                            for (r, o) in routed.iter_mut().zip(out) {
-                                *r += o * moe_weights[slot];
+                    // RoutedExperts owns co-batch CPU glue; metal_* steals GPU waits.
+                    let routed = {
+                        let _routed = cost_ledger::Scope::new(Bucket::RoutedExperts);
+                        if gpu_expert_wave_enabled() {
+                            let scales: Vec<f32> = order
+                                .iter()
+                                .map(|&slot| moe_weights[slot])
+                                .chain(std::iter::once(1.0f32))
+                                .collect();
+                            moe_device_wave(
+                                weights,
+                                &prefixes,
+                                &scales,
+                                &pool.h,
+                                a.hidden,
+                                &mut tcb,
+                                ctx,
+                                &session.waits,
+                            )?
+                        } else {
+                            let mut outs = batched_mlp(
+                                weights,
+                                &prefixes,
+                                &pool.h,
+                                a.hidden,
+                                pool,
+                                &mut tcb,
+                                ctx,
+                                &session.waits,
+                            )?;
+                            let shared = outs.pop().expect("shared last");
+                            let mut routed = {
+                                let _r = cost_ledger::Scope::new(Bucket::RoutedExperts);
+                                let mut routed = vec![0f32; a.hidden];
+                                cost_ledger::record_allocation((routed.len() * 4) as u64);
+                                cost_ledger::record_source_modelled_operations(
+                                    (2usize
+                                        .saturating_mul(routed.len())
+                                        .saturating_mul(outs.len()))
+                                        as u64,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                );
+                                for (out, &slot) in outs.iter().zip(&order) {
+                                    for (r, o) in routed.iter_mut().zip(out) {
+                                        *r += o * moe_weights[slot];
+                                    }
+                                }
+                                routed
+                            };
+                            {
+                                let _shared = cost_ledger::Scope::new(Bucket::SharedExperts);
+                                cost_ledger::record_source_modelled_operations(
+                                    routed.len() as u64,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                );
+                                for (r, s) in routed.iter_mut().zip(&shared) {
+                                    *r += *s;
+                                }
                             }
+                            routed
                         }
-                        for (r, s) in routed.iter_mut().zip(&shared) {
-                            *r += *s;
-                        }
-                        routed
                     };
                     write_f32(&pool.o, &routed);
                     residual_add(&pool.x, &pool.o, a.hidden);
@@ -676,9 +771,7 @@ pub fn forward_resident(
         // keep the prior path (full logits).
         let waits_before_head = session.waits.get();
         {
-            let _head = crate::cost_ledger::Scope::new(
-                crate::cost_ledger::Bucket::FinalHeadAndSampling,
-            );
+            let _head = crate::cost_ledger::Scope::new(crate::cost_ledger::Bucket::FinalHead);
             let mut cache = weights.cache.lock().expect("gpu weight cache");
             weights.ensure_many_locked(&mut cache, &["lm_head.weight"])?;
             match cache.get("lm_head.weight").expect("ensured lm_head") {
@@ -697,6 +790,15 @@ pub fn forward_resident(
                     }
                     crate::cost_ledger::record_matvec_call();
                     crate::cost_ledger::record_active_bytes_for("lm_head.weight", buf.length());
+                    crate::cost_ledger::record_source_modelled_operations(
+                        2u64.saturating_mul(*rows as u64)
+                            .saturating_mul(*cols as u64),
+                        0,
+                        0,
+                        0,
+                        2u64.saturating_mul(*rows as u64)
+                            .saturating_mul(*cols as u64),
+                    );
                     let mut tcb = TokenCommandBuffer::new(ctx);
                     encode_gemv_native_bf16_seq(
                         &mut tcb,
@@ -706,31 +808,47 @@ pub fn forward_resident(
                         &pool.final_hidden,
                         &pool.logits,
                     )?;
-                    encode_argmax_f32(&mut tcb, &pool.logits, *rows, &pool.sample_token)?;
-                    encode_sample_topk_f32(
-                        &mut tcb,
-                        &pool.logits,
-                        *rows,
-                        GPU_LM_HEAD_DIAG_TOPK,
-                        &pool.head_topk_idx,
-                        &pool.head_topk_val,
-                    )?;
+                    {
+                        let _sampling = cost_ledger::Scope::new(cost_ledger::Bucket::Sampling);
+                        encode_argmax_f32(&mut tcb, &pool.logits, *rows, &pool.sample_token)?;
+                        encode_sample_topk_f32(
+                            &mut tcb,
+                            &pool.logits,
+                            *rows,
+                            GPU_LM_HEAD_DIAG_TOPK,
+                            &pool.head_topk_idx,
+                            &pool.head_topk_val,
+                        )?;
+                        let rounds = GPU_LM_HEAD_DIAG_TOPK as u64 + 1;
+                        cost_ledger::record_source_modelled_operations(
+                            0,
+                            0,
+                            rounds
+                                .saturating_mul(*rows as u64)
+                                .saturating_add(rounds.saturating_mul(255)),
+                            0,
+                            0,
+                        );
+                    }
                     tcb.commit_and_wait()?;
                     session.waits.set(session.waits.get().saturating_add(1));
 
                     // Token + diagnostics only (default). Full vector is opt-in.
-                    let tok = read_u32(&pool.sample_token, 1)[0];
-                    let k = GPU_LM_HEAD_DIAG_TOPK as usize;
-                    let topk_idx = read_u32(&pool.head_topk_idx, k);
-                    let topk_val = read_f32(&pool.head_topk_val, k);
-                    crate::cost_ledger::record_transfer(
-                        (4 + k * 4 + k * 4) as u64,
-                        false,
-                        "lm_head_token_diag_download",
-                    );
-                    trace.sample_token = Some(tok);
-                    trace.head_topk_idx = topk_idx;
-                    trace.head_topk_val = topk_val;
+                    {
+                        let _sampling = cost_ledger::Scope::new(cost_ledger::Bucket::Sampling);
+                        let tok = read_u32(&pool.sample_token, 1)[0];
+                        let k = GPU_LM_HEAD_DIAG_TOPK as usize;
+                        let topk_idx = read_u32(&pool.head_topk_idx, k);
+                        let topk_val = read_f32(&pool.head_topk_val, k);
+                        crate::cost_ledger::record_transfer(
+                            (4 + k * 4 + k * 4) as u64,
+                            false,
+                            "lm_head_token_diag_download",
+                        );
+                        trace.sample_token = Some(tok);
+                        trace.head_topk_idx = topk_idx;
+                        trace.head_topk_val = topk_val;
+                    }
 
                     if gpu_lm_head_full_logits_enabled() {
                         logits = read_f32(&pool.logits, a.vocab_size);
@@ -776,11 +894,24 @@ fn router_select(
     prefix: &str,
     pool: &ActPool,
 ) -> Result<(Vec<usize>, Vec<f32>)> {
+    // Host-side noaux_tc arithmetic after the gate matvec. Nested under any
+    // open parent; when none is open this is the exclusive Routing line.
+    let _route = crate::cost_ledger::Scope::new(crate::cost_ledger::Bucket::Routing);
     let logits = read_f32(&pool.router_logits, a.n_routed_experts);
     let scores: Vec<f32> = logits.iter().map(|l| 1.0 / (1.0 + (-l).exp())).collect();
+    crate::cost_ledger::record_source_modelled_operations(
+        (3 * a.n_routed_experts) as u64,
+        0,
+        0,
+        a.n_routed_experts as u64,
+        0,
+    );
+    crate::cost_ledger::record_allocation((scores.len() * 4) as u64);
     write_f32(&pool.router_scores, &scores);
     let bias = weights.dense(&format!("{prefix}.gate.e_score_correction_bias"))?;
     let corrected: Vec<f32> = scores.iter().zip(&bias).map(|(s, b)| s + b).collect();
+    crate::cost_ledger::record_source_modelled_operations(corrected.len() as u64, 0, 0, 0, 0);
+    crate::cost_ledger::record_allocation((corrected.len() * 4) as u64);
     write_f32(&pool.router_corrected, &corrected);
     let per_group = a.n_routed_experts / a.n_group;
     let group_scores: Vec<f32> = (0..a.n_group)
@@ -801,12 +932,23 @@ fn router_select(
     }
     let indices = topk_desc(&choice, a.num_experts_per_tok);
     let mut weights_out: Vec<f32> = indices.iter().map(|&i| scores[i]).collect();
+    crate::cost_ledger::record_allocation(
+        ((group_scores.len() + choice.len() + weights_out.len()) * 4) as u64,
+    );
     if a.norm_topk_prob {
         let total: f32 = weights_out.iter().sum::<f32>() + 1e-20;
+        crate::cost_ledger::record_source_modelled_operations(
+            (2 * weights_out.len() + 1) as u64,
+            0,
+            0,
+            0,
+            0,
+        );
         for w in weights_out.iter_mut() {
             *w /= total;
         }
     }
+    crate::cost_ledger::record_source_modelled_operations(weights_out.len() as u64, 0, 0, 0, 0);
     for w in weights_out.iter_mut() {
         *w *= a.routed_scaling_factor;
     }
@@ -823,10 +965,7 @@ fn sparse_attend(
 ) -> Result<Vec<f32>> {
     let n_keys = pos + 1;
     let keys = unsafe {
-        std::slice::from_raw_parts(
-            cache.keys.contents() as *const f32,
-            n_keys * a.n_heads * qk,
-        )
+        std::slice::from_raw_parts(cache.keys.contents() as *const f32, n_keys * a.n_heads * qk)
     };
     let values = unsafe {
         std::slice::from_raw_parts(
@@ -841,9 +980,24 @@ fn sparse_attend(
             allow[t] = true;
         }
     }
+    let selected = allow.iter().filter(|&&v| v).count() as u64;
+    let heads = a.n_heads as u64;
+    let per_selected_fp = (2 * qk + 4 + 2 * a.v_head_dim) as u64;
+    crate::cost_ledger::record_source_modelled_operations(
+        heads
+            .saturating_mul(selected)
+            .saturating_mul(per_selected_fp),
+        0,
+        heads.saturating_mul(n_keys as u64),
+        heads.saturating_mul(selected),
+        0,
+    );
     let scale = (qk as f32).powf(-0.5);
     let mut context = vec![0f32; a.n_heads * a.v_head_dim];
     let mut scores = vec![f32::NEG_INFINITY; n_keys];
+    crate::cost_ledger::record_allocation(
+        ((context.len() + scores.len()) * 4 + allow.len()) as u64,
+    );
     for head in 0..a.n_heads {
         let qh = &queries[head * qk..(head + 1) * qk];
         let mut best = f32::NEG_INFINITY;
@@ -976,6 +1130,16 @@ fn indexer_topk<'a>(
         std::slice::from_raw_parts(cache.index_keys.contents() as *const f32, n_keys * idim)
     };
     let mut index_scores = vec![0f32; n_keys];
+    crate::cost_ledger::record_source_modelled_operations(
+        (n_keys as u64)
+            .saturating_mul(ih as u64)
+            .saturating_mul((2 * idim + 3) as u64),
+        0,
+        (n_keys as u64).saturating_mul(ih as u64),
+        0,
+        0,
+    );
+    crate::cost_ledger::record_allocation((index_scores.len() * 4) as u64);
     for (t, score) in index_scores.iter_mut().enumerate() {
         let key = &index_keys[t * idim..(t + 1) * idim];
         let mut acc = 0f32;
@@ -1029,7 +1193,8 @@ fn mlp_one<'a>(
         ctx,
         waits,
     )?;
-    outs.pop().ok_or_else(|| Error::Gravity("mlp_one empty".into()))
+    outs.pop()
+        .ok_or_else(|| Error::Gravity("mlp_one empty".into()))
 }
 
 /// Gate/up/down co-issued across all prefixes via `matvec_batch` — three waits
@@ -1088,6 +1253,15 @@ fn batched_mlp<'a>(
                 .collect()
         })
         .collect();
+    let activation_elements = gate_outs.iter().map(Vec::len).sum::<usize>() as u64;
+    crate::cost_ledger::record_source_modelled_operations(
+        activation_elements.saturating_mul(4),
+        0,
+        0,
+        activation_elements,
+        0,
+    );
+    crate::cost_ledger::record_allocation(activation_elements.saturating_mul(4));
     let down_names: Vec<String> = prefixes
         .iter()
         .map(|p| format!("{p}.down_proj.weight"))
@@ -1111,6 +1285,13 @@ fn encode_silu_mul_f32(
     out: &Buffer,
     n: u32,
 ) -> Result<()> {
+    crate::cost_ledger::record_source_modelled_operations(
+        (n as u64).saturating_mul(4),
+        0,
+        0,
+        n as u64,
+        0,
+    );
     const TG: u32 = 256;
     let n_u = n;
     let g = gate.clone();
@@ -1136,6 +1317,7 @@ fn encode_axpy_f32(
     scale: f32,
     n: u32,
 ) -> Result<()> {
+    crate::cost_ledger::record_source_modelled_operations((n as u64).saturating_mul(2), 0, 0, 0, 0);
     const TG: u32 = 256;
     let s = scale;
     let n_u = n;
@@ -1202,6 +1384,8 @@ fn encode_weight_matvec(
     weights.ensure_many_locked(&mut cache, &[name])?;
     match cache.get(name).expect("ensured") {
         GpuTensor::NativeCpu(w) => {
+            crate::cost_ledger::record_active_bytes_for(name, (w.len() * 4) as u64);
+            record_dense_matvec_ops((w.len() / x_len) as u64, x_len as u64);
             let x_host = read_f32(x, x_len);
             let y_host = matvec_dense(w, &x_host, name)?;
             write_f32(y, &y_host);
@@ -1214,6 +1398,7 @@ fn encode_weight_matvec(
                 )));
             }
             crate::cost_ledger::record_active_bytes_for(name, buf.length());
+            record_dense_matvec_ops(*rows as u64, *cols as u64);
             encode_gemv_native_bf16_seq(tcb, buf, *rows, *cols, x, y)
         }
         GpuTensor::Pq {
@@ -1227,10 +1412,8 @@ fn encode_weight_matvec(
                     params.cols
                 )));
             }
-            crate::cost_ledger::record_active_bytes_for(
-                name,
-                codebooks.length() + codes.length(),
-            );
+            crate::cost_ledger::record_active_bytes_for(name, codebooks.length() + codes.length());
+            record_pq_matvec_ops(*params);
             encode_pq_matvec_device(tcb, codebooks, codes, *params, x, y)
         }
     }
@@ -1372,16 +1555,10 @@ fn moe_device_wave<'a>(
     }
     // Weighted combine in prefix order (associativity matches host).
     for i in 0..n_exp {
-        encode_axpy_f32(
-            &mut wave,
-            &combined,
-            &down_bufs[i],
-            scales[i],
-            x_len as u32,
-        )?;
+        encode_axpy_f32(&mut wave, &combined, &down_bufs[i], scales[i], x_len as u32)?;
     }
 
-    crate::cost_ledger::record_dispatches(wave.dispatch_count() as u64);
+    // Encode/submit/sync + dispatch count fold at TCB commit when ledger on.
     wave.commit_and_wait()?;
     waits.set(waits.get().saturating_add(1));
 

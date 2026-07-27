@@ -2,6 +2,7 @@
   "schema": "hawking.route_segment_primitives.v1",
   "date": "2026-07-26",
   "base_commit": "28b88c4027154bafd2d06124b5e67fc65c38fc2b",
+  "latest_update_base_commit": "6ee9b929ce0f98ec22f704fce0508bde3fd8ade5",
   "scope": {
     "implementation": "typed encode-only TokenCommandBuffer wrappers for dormant GLM resident primitives",
     "default_path_wired": false,
@@ -23,6 +24,7 @@
     "gravity_glm_stable_topk_f32",
     "gravity_glm_sparse_attn",
     "gravity_glm_router_correct",
+    "gravity_add_inplace_f32",
     "gravity_zero_f32"
   ],
   "abi": {
@@ -59,8 +61,25 @@
       "all buffer byte ranges are checked before encode",
       "all size and grid arithmetic is checked",
       "GLM RoPE requires even rotary_dim and strides at least rotary_dim",
-      "undersized buffers fail before dispatch_count changes"
+      "undersized buffers fail before dispatch_count changes",
+      "residual-add zero length is a no-dispatch success",
+      "residual-add n must fit the Metal u32 ABI and its rounded grid must not overflow"
     ]
+  },
+  "residual_add_contract": {
+    "kernel": "gravity_add_inplace_f32",
+    "typed_encode_only_wrapper": "encode_residual_add_inplace",
+    "operation": "x[i] += y[i]",
+    "full_buffer_x_y_alias_supported": true,
+    "alias_safety_basis": "one thread owns each element and the shader performs no cross-element access",
+    "exact_fixture_elements": 257,
+    "non_multiple_of_256_grid_covered": true,
+    "zero_length_dispatches": 0,
+    "undersized_range_error_before_dispatch": true,
+    "rounded_grid_overflow_error_before_dispatch": true,
+    "u32_overflow_error_before_dispatch": true,
+    "shader_source_assertion": true,
+    "static_trace_name_assertion": true
   },
   "numeric_parity_v2_1": {
     "authority": "FP64",
@@ -86,19 +105,28 @@
       "query build",
       "index-key append"
     ],
+    "exact_elementwise_passes": [
+      "residual add over exactly representable fixtures, including full-buffer x/y aliasing"
+    ],
     "mismatches": []
   },
   "tests": [
     {
+      "command": "cargo test -p hawking-core --lib gravity_glm_resident::tests::route_segment_residual_add_is_exact_alias_safe_and_fail_closed -- --nocapture",
+      "result": "PASS",
+      "passed": 1,
+      "failed": 0
+    },
+    {
       "command": "cargo test -p hawking-core --lib gravity_glm_resident::tests::route_segment -- --nocapture",
       "result": "PASS",
-      "passed": 4,
+      "passed": 6,
       "failed": 0
     },
     {
       "command": "cargo test -p hawking-core --lib gravity_glm_resident::tests -- --nocapture",
       "result": "PASS",
-      "passed": 9,
+      "passed": 11,
       "failed": 0
     },
     {
@@ -125,7 +153,8 @@
     "topk_to_sparse_order_hazard": "stable-top-k emits score order; current host sparse attention accumulates in ascending position order. The sparse wrapper therefore requires unique ascending allow_idx and cannot directly consume the top-k output without an exact reorder primitive.",
     "serial_kernel_risk": "stable top-k is one-thread O(n*k), while sparse softmax and value accumulation are serialized on thread 0 per head. Correctness parity does not establish runtime feasibility.",
     "static_trace_registry_on_base": "the historical branch base did not list these dormant names; metal/mod.rs was deliberately not edited in the conflict-minimal branch patch",
-    "static_trace_registry_on_integrated_main": "integration commit cd7c5410 applies after a0dd47b9, whose static_kernel_name table already lists all 12 exact dormant kernel names; no route primitive can be attributed as other"
+    "static_trace_registry_on_integrated_main": "integration commit cd7c5410 applies after a0dd47b9, whose static_kernel_name table already lists the 12 original dormant kernel names; gravity_add_inplace_f32 is also explicitly registered, so all 13 typed route-segment wrappers have exact static trace names and none can be attributed as other",
+    "residual_add_static_trace_on_integrated_main": "gravity_add_inplace_f32 is explicitly registered and the wrapper test asserts the exact source and static trace name"
   },
   "promotion": "NOT_WIRED_NOT_BENCHMARKED"
 }

@@ -270,3 +270,8 @@ kernel void gemv_native_bf16_neumaier_compensated_product(
     }
     out_logits[row_idx] = acc + correction;
 }
+
+// `MetalContext` compiles every checked-in shader source as one translation
+// unit. Restore the pre-candidate default so this additive accuracy lane cannot
+// silently change reassociation in gravity-pq or any later source file.
+#pragma clang fp reassociate(on)

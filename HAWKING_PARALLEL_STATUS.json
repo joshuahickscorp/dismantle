@@ -1,12 +1,13 @@
 {
   "schema": "hawking.parallel.status.v1",
-  "at": "2026-07-27T02:17:19Z",
+  "at": "2026-07-27T02:48:17Z",
   "endpoint": "RAMANUJAN_SANDBOX_READY",
   "endpoint_reached": false,
   "fences": {
     "ODYSSEY_LAUNCH_AUTHORIZED": false,
     "RAMANUJAN_RESEARCH_AUTHORIZED": false,
-    "HIDE_KERNEL_TURN": false
+    "HIDE_KERNEL_TURN": false,
+    "ODYSSEY_LAUNCH_AUTHORIZED_reason": "REFUSED decisively: GLM-5.2-H0.98-Math-Preserve predicts \" combust\" for the capital of France and \"rus\" for 2 + 2, confirmed by numpy oracle on the artifact itself."
   },
   "sealed_inputs": {
     "math_preserve_artifact": "~/Library/Application Support/Hawking/Models/GLM-5.2/b4734de4facf877f85769a911abafc5283eab3d9/GLM-5.2-H0.98-Math-Preserve.gravity",
@@ -332,8 +333,8 @@
       "id": "L10",
       "name": "odyssey-t1-t7",
       "owner": "unassigned",
-      "declared_status": "BLOCKED",
-      "evidence_status": "BLOCKED",
+      "declared_status": "REFUSED",
+      "evidence_status": "REFUSED",
       "disagrees": false,
       "task": {
         "present": false
@@ -354,8 +355,8 @@
       "id": "L11",
       "name": "math-frozen",
       "owner": "unassigned",
-      "declared_status": "BLOCKED",
-      "evidence_status": "BLOCKED",
+      "declared_status": "REFUSED",
+      "evidence_status": "REFUSED",
       "disagrees": false,
       "task": {
         "present": false
@@ -581,32 +582,28 @@
     {
       "id": "L21",
       "name": "gravity-degenerate-attribution",
-      "owner": "grok",
-      "declared_status": "QUEUED_SLOTS_TAKEN",
-      "evidence_status": "FINISHED_OUTPUTS_MISSING",
-      "disagrees": true,
+      "owner": "claude (controller, run inline -- Grok slots held by a concurrent campaign; user authorized)",
+      "declared_status": "INTEGRATED",
+      "evidence_status": "INTEGRATED",
+      "disagrees": false,
       "task": {
-        "present": true,
-        "status": "unknown",
-        "exit_code": null,
-        "process_alive": false,
-        "stale_running": false,
-        "report": null,
-        "diff": null
+        "present": false
       },
       "outputs": {
-        "found": [],
-        "missing": [
+        "found": [
           "GRAVITY_DEGENERATE_ATTRIBUTION.json"
         ],
-        "integrated": [],
-        "fully_integrated": false
+        "missing": [],
+        "integrated": [
+          "GRAVITY_DEGENERATE_ATTRIBUTION.json"
+        ],
+        "fully_integrated": true
       },
       "dependencies": [
         "L18"
       ],
       "promotion_gate": "one of H1_ARTIFACT / H2_PATH / BOTH / UNRESOLVED. UNRESOLVED is an acceptable answer; a confident wrong attribution is much worse.",
-      "reviewed_by_controller": false
+      "reviewed_by_controller": true
     }
   ],
   "critical_path": {
@@ -677,5 +674,5 @@
       "no_block_rule": "no lane in this campaign waits on TG. HIDE_KERNEL_TURN stays false until a real provider passes its promotion gate."
     }
   ],
-  "next_action": "review L21 (gravity-degenerate-attribution) -- a report is a claim; re-derive before merging"
+  "next_action": "launch L08 (hide-os-wiring) -- a slot is free"
 }

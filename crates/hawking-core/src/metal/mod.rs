@@ -837,6 +837,11 @@ mod imp {
             "gemv_simdgroup_f32" => "gemv_simdgroup_f32",
             // GLM native.bf16 lm_head (sequential accumulate, host parity)
             "gemv_native_bf16_seq" => "gemv_native_bf16_seq",
+            // Gravity .gravity elementwise / PQ (expert-wave, resident)
+            "gravity_silu_mul_f32" => "gravity_silu_mul_f32",
+            "gravity_axpy_f32" => "gravity_axpy_f32",
+            "gravity_add_inplace_f32" => "gravity_add_inplace_f32",
+            "gravity_pq_matvec" => "gravity_pq_matvec",
             // v0.5.10 fp16 Q-format kernels
             "gemm_q4_k_m_fused_f16" => "gemm_q4_k_m_fused_f16",
             "moe_grouped_gemm_q4_f16" => "moe_grouped_gemm_q4_f16",

@@ -129,7 +129,12 @@ def envelope(s: dict) -> dict:
     return {
         "load_per_core_relief_max": 0.70,   # relief needs real headroom, not merely 'not on fire'
         "mem_available_frac_min": 0.10,     # 10 percent of RAM must stay available
-        "swap_used_mb_max": 512.0,
+        # Swap is judged on GROWTH, not level. macOS keeps swap allocated after a memory
+        # peak, so this machine sits at ~13 GB with 56 GiB available and is in no distress.
+        # An absolute 512 MB guard fired on every sample, and a backoff that always fires
+        # trains its reader to ignore it -- which is worse than not having one.
+        "swap_growth_mb_max": 2048.0,       # across the sampled window
+        "swap_used_mb_absolute_ceiling": 24576.0,  # genuine distress on a 96 GiB machine
         "disk_free_gib_min": 40.0,
         "foreign_cores_idle": 1.0,          # below this, MOP is effectively gone
         # Deliberately NOT a backoff trigger: high load. MOP's normal working state is
@@ -149,22 +154,47 @@ def decide(samples: list[dict]) -> dict:
         reasons.append("thermal pressure recorded")
     if s["mem_available_frac"] < env["mem_available_frac_min"]:
         reasons.append(f"available memory {s['mem_available_frac']:.1%} below guard")
-    if s["swap_used_mb"] > env["swap_used_mb_max"]:
-        reasons.append(f"swap {s['swap_used_mb']:.0f} MB above guard")
+    if s["swap_used_mb"] > env["swap_used_mb_absolute_ceiling"]:
+        reasons.append(f"swap {s['swap_used_mb']:.0f} MB above the absolute ceiling")
+    if len(samples) >= 2:
+        growth = s["swap_used_mb"] - samples[0]["swap_used_mb"]
+        if growth > env["swap_growth_mb_max"]:
+            reasons.append(
+                f"swap GREW {growth:.0f} MB across the sampled window -- something is "
+                f"actively consuming memory"
+            )
     if s["disk_free_gib"] < env["disk_free_gib_min"]:
         reasons.append(f"disk free {s['disk_free_gib']:.0f} GiB below reserve")
 
     if reasons:
         return {"mode": "BACKOFF", "why": reasons, "sample": s, "envelope": env}
 
-    # MOP gone?
-    if all(x["foreign_cpu_cores"] < env["foreign_cores_idle"] for x in samples):
+    # MOP gone? Two independent signals must agree, because either alone lies.
+    #
+    # `ps -eo pcpu` reports CPU averaged over a process's LIFETIME, so a freshly restarted
+    # MOP worker shows near-zero pcpu while pinning a core. Trusting it alone once reported
+    # "foreign 0.94 cores" against a load average of 20.7 -- which would have declared a
+    # heavy window in the middle of MOP restarting. Load average cannot be fooled that way,
+    # so it is the veto.
+    quiet_by_pcpu = all(x["foreign_cpu_cores"] < env["foreign_cores_idle"] for x in samples)
+    quiet_by_load = all(x["load1"] < env["foreign_cores_idle"] + 1.0 for x in samples)
+    if quiet_by_pcpu and quiet_by_load:
         return {
             "mode": "HEAVY_WINDOW_AVAILABLE",
-            "why": ["no foreign heavy process observed across every sample"],
+            "why": ["no foreign heavy process observed across every sample",
+                    f"and load average stayed below {env['foreign_cores_idle'] + 1.0}"],
             "sample": s,
             "envelope": env,
             "law": "MARKED ONLY. Heavy work is never auto-launched; a human decides.",
+        }
+    if quiet_by_pcpu and not quiet_by_load:
+        return {
+            "mode": "LIGHT_ONLY",
+            "why": [f"per-process CPU suggests idle ({s['foreign_cpu_cores']} cores) but load "
+                    f"average is {s['load1']} -- foreign work is running and its pcpu is still "
+                    f"averaging up. Treating as busy."],
+            "sample": s,
+            "envelope": env,
         }
 
     sustained_green = all(x["load_per_core"] <= env["load_per_core_relief_max"] for x in samples)

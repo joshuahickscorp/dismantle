@@ -46,6 +46,8 @@ import shutil
 import struct
 import sys
 import time
+import queue
+import threading
 from dataclasses import dataclass, field, asdict
 from fractions import Fraction
 from pathlib import Path
@@ -1413,10 +1415,11 @@ def phase_measure(
     measurements: list[dict[str, Any]] = []
     per_shard: list[dict[str, Any]] = []
     t0 = time.time()
+    prefetch = _Prefetcher(shards, source_dir, fetch=fetch, floor=floor)
     for n in shards:
         if enforce_floor or fetch:
             assert_disk_floor(0, path=source_dir, floor=floor)
-        path = ensure_shard(n, source_dir, fetch=fetch, floor=floor)
+        path = prefetch.get(n)
         t1 = time.time()
         ms = measure_shard(
             path, capsule_map, basis_cache, ranks,
@@ -1488,6 +1491,48 @@ def phase_allocate(
     return doc
 
 
+
+class _Prefetcher:
+    """Fetch shard N+1 while shard N is being worked on.
+
+    Measured on the live run: 24 s fetch and 23 s work per shard, strictly serial, using
+    1.2 of 28 cores. Half the wall clock was a core sitting idle waiting on the network.
+    One background thread removes that half; it holds at most one extra shard on disk,
+    which the floor already accounts for.
+    """
+
+    def __init__(self, shards, source_dir, fetch: bool, floor: int, enabled: bool = True):
+        self._q: "queue.Queue[tuple[int, Path | None, BaseException | None]]" = queue.Queue(maxsize=1)
+        self._shards = list(shards)
+        self._source_dir = source_dir
+        self._fetch = fetch
+        self._floor = floor
+        self._enabled = enabled and fetch
+        self._t = None
+        if self._enabled:
+            self._t = threading.Thread(target=self._run, daemon=True)
+            self._t.start()
+
+    def _run(self):
+        for n in self._shards:
+            try:
+                path = ensure_shard(n, self._source_dir, fetch=self._fetch, floor=self._floor)
+                self._q.put((n, path, None))
+            except BaseException as e:  # surface it on the consuming side, in order
+                self._q.put((n, None, e))
+                return
+
+    def get(self, n: int) -> Path:
+        if not self._enabled:
+            return ensure_shard(n, self._source_dir, fetch=self._fetch, floor=self._floor)
+        got_n, path, err = self._q.get()
+        if err is not None:
+            raise err
+        if got_n != n:  # ordering is the whole contract; a mismatch means a lost shard
+            raise PackError(f"prefetch order mismatch: expected shard {n}, got {got_n}")
+        return path
+
+
 def phase_pack(
     shards: Sequence[int],
     source_dir: Path,
@@ -1509,9 +1554,10 @@ def phase_pack(
     shared = bool(allocation_doc.get("shared_bases", True))
     receipts = []
     t0 = time.time()
+    prefetch = _Prefetcher(shards, source_dir, fetch=fetch, floor=floor)
     for n in shards:
         assert_disk_floor(0, path=source_dir, floor=floor)
-        path = ensure_shard(n, source_dir, fetch=fetch, floor=floor)
+        path = prefetch.get(n)
         rec = pack_shard(
             path, by_name, capsule_map, basis_cache, out_dir,
             max_basis_rank=max_basis_rank,

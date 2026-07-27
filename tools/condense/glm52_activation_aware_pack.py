@@ -1936,9 +1936,17 @@ def main(argv: list[str] | None = None) -> int:
         if args.full:
             dest_dir = Path(out or DEFAULT_OUT)
             dest_dir.mkdir(parents=True, exist_ok=True)
+            # Evict during measurement, and let the pack pass RE-FETCH.
+            #
+            # The original kept every body "for the pack pass", which cannot work at
+            # 282 shards: that is 1.507 TB resident against a 139 GiB disk, and it is
+            # what filled the disk to the floor after six shards with zero measurements
+            # written. Fetching twice costs about 3.4 h of network at the measured
+            # 2.0 Gbit/s and needs only a few GB resident. On this disk that is the only
+            # trade available, and network is the cheap side of it.
             measurement = phase_measure(
                 shards, args.source_dir, ranks,
-                fetch=args.fetch, evict=False,  # keep bodies for pack pass
+                fetch=args.fetch, evict=args.evict,
                 floor=floor, bill_basis_per_tensor=False,
             )
             (dest_dir / "MEASUREMENT.json").write_text(

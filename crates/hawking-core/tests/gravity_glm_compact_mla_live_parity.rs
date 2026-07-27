@@ -11,7 +11,7 @@ use std::path::PathBuf;
 
 use hawking_core::gravity_glm::gpu::GravityGlmGpu;
 use hawking_core::gravity_glm::{
-    GPU_COMPACT_MLA_ENV, GPU_LM_HEAD_ENV, GPU_LM_HEAD_FULL_LOGITS_ENV,
+    GPU_COMPACT_MLA_ENV, GPU_DEVICE_DSA_ENV, GPU_LM_HEAD_ENV, GPU_LM_HEAD_FULL_LOGITS_ENV,
 };
 use hawking_core::metal::MetalContext;
 use hawking_core::numeric_parity::{score_pair, Bounds};
@@ -82,13 +82,36 @@ fn compact_mla_complete_tokens_match_expanded_v21_and_exact_decisions() {
         return;
     };
     let compact_ctx = MetalContext::new().expect("second Metal context");
+    let device_dsa_ctx = MetalContext::new().expect("device DSA Metal context");
     let invalid_ctx = MetalContext::new().expect("invalid-admission Metal context");
+    let misconfigured_ctx = MetalContext::new().expect("misconfigured DSA Metal context");
 
     let prior_compact = std::env::var_os(GPU_COMPACT_MLA_ENV);
+    let prior_device_dsa = std::env::var_os(GPU_DEVICE_DSA_ENV);
     let prior_head = std::env::var_os(GPU_LM_HEAD_ENV);
     let prior_full_logits = std::env::var_os(GPU_LM_HEAD_FULL_LOGITS_ENV);
+    std::env::remove_var(GPU_DEVICE_DSA_ENV);
     std::env::remove_var(GPU_LM_HEAD_ENV);
     std::env::remove_var(GPU_LM_HEAD_FULL_LOGITS_ENV);
+
+    std::env::set_var(GPU_DEVICE_DSA_ENV, "1");
+    let mode_error = match GravityGlmGpu::open_dir_with_budget_resident(
+        misconfigured_ctx,
+        &dir,
+        true,
+        512 * 1024 * 1024,
+        true,
+    ) {
+        Ok(_) => panic!("device DSA was admitted without compact MLA"),
+        Err(error) => error,
+    };
+    assert!(
+        mode_error
+            .to_string()
+            .contains("requires resident state and"),
+        "device DSA mode coupling did not fail closed: {mode_error}"
+    );
+    std::env::remove_var(GPU_DEVICE_DSA_ENV);
 
     let invalid = invalid_compact_geometry_fixture(&dir);
     std::env::set_var(GPU_COMPACT_MLA_ENV, "1");
@@ -127,6 +150,18 @@ fn compact_mla_complete_tokens_match_expanded_v21_and_exact_decisions() {
     )
     .expect("compact resident fixture");
     std::env::remove_var(GPU_COMPACT_MLA_ENV);
+    std::env::set_var(GPU_COMPACT_MLA_ENV, "1");
+    std::env::set_var(GPU_DEVICE_DSA_ENV, "1");
+    let compact_device_dsa = GravityGlmGpu::open_dir_with_budget_resident(
+        device_dsa_ctx,
+        &dir,
+        true,
+        512 * 1024 * 1024,
+        true,
+    )
+    .expect("compact resident device DSA fixture");
+    std::env::remove_var(GPU_DEVICE_DSA_ENV);
+    std::env::remove_var(GPU_COMPACT_MLA_ENV);
 
     #[derive(serde::Deserialize)]
     struct Reference {
@@ -151,6 +186,15 @@ fn compact_mla_complete_tokens_match_expanded_v21_and_exact_decisions() {
         let (expanded_logits, expanded_trace) =
             expanded.forward(&prompt).expect("expanded forward");
         let (compact_logits, compact_trace) = compact.forward(&prompt).expect("compact forward");
+        let compact_waits = compact
+            .last_resident_waits()
+            .expect("compact resident wait count");
+        let (device_dsa_logits, device_dsa_trace) = compact_device_dsa
+            .forward(&prompt)
+            .expect("compact device DSA forward");
+        let device_dsa_waits = compact_device_dsa
+            .last_resident_waits()
+            .expect("device DSA resident wait count");
         let authority = &authorities
             .iter()
             .find(|authority| authority.tokens == prompt)
@@ -159,6 +203,12 @@ fn compact_mla_complete_tokens_match_expanded_v21_and_exact_decisions() {
         let pair = score_pair(
             &expanded_logits,
             &compact_logits,
+            authority,
+            &Bounds::logits(),
+        );
+        let device_dsa_pair = score_pair(
+            &expanded_logits,
+            &device_dsa_logits,
             authority,
             &Bounds::logits(),
         );
@@ -172,9 +222,23 @@ fn compact_mla_complete_tokens_match_expanded_v21_and_exact_decisions() {
             pair.device.discrete.greedy_match,
             pair.device.discrete.top_k_exact_match
         );
+        eprintln!(
+            "device DSA case {case}: rel_l2={:.3e} meaningful={:.3e}; \
+             greedy={} top5={}; waits host-rank={} device-rank={}",
+            device_dsa_pair.device.continuous.relative_l2,
+            device_dsa_pair.device.continuous.max_meaningful_rel,
+            device_dsa_pair.device.discrete.greedy_match,
+            device_dsa_pair.device.discrete.top_k_exact_match,
+            compact_waits,
+            device_dsa_waits
+        );
         assert!(
             pair.pass,
             "case {case} prompt {prompt:?}: compact complete-token V2.1 {pair:#?}"
+        );
+        assert!(
+            device_dsa_pair.pass,
+            "case {case} prompt {prompt:?}: device DSA complete-token V2.1 {device_dsa_pair:#?}"
         );
         assert_eq!(
             compact_trace.final_topk, expanded_trace.final_topk,
@@ -184,11 +248,28 @@ fn compact_mla_complete_tokens_match_expanded_v21_and_exact_decisions() {
             compact_trace.expert_choices, expanded_trace.expert_choices,
             "case {case}: exact expert choices"
         );
+        assert_eq!(
+            device_dsa_trace.final_topk, expanded_trace.final_topk,
+            "case {case}: exact device DSA selection"
+        );
+        assert_eq!(
+            device_dsa_trace.expert_choices, expanded_trace.expert_choices,
+            "case {case}: exact device DSA expert choices"
+        );
+        assert_eq!(
+            compact_waits.saturating_sub(device_dsa_waits),
+            prompt.len() as u64,
+            "case {case}: one full-indexer rank drain must be removed per token"
+        );
     }
 
     match prior_compact {
         Some(value) => std::env::set_var(GPU_COMPACT_MLA_ENV, value),
         None => std::env::remove_var(GPU_COMPACT_MLA_ENV),
+    }
+    match prior_device_dsa {
+        Some(value) => std::env::set_var(GPU_DEVICE_DSA_ENV, value),
+        None => std::env::remove_var(GPU_DEVICE_DSA_ENV),
     }
     match prior_head {
         Some(value) => std::env::set_var(GPU_LM_HEAD_ENV, value),

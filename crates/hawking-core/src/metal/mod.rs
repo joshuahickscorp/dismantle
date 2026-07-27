@@ -889,6 +889,18 @@ mod imp {
             "gravity_silu_mul_f32" => "gravity_silu_mul_f32",
             "gravity_axpy_f32" => "gravity_axpy_f32",
             "gravity_add_inplace_f32" => "gravity_add_inplace_f32",
+            "gravity_rmsnorm_f32" => "gravity_rmsnorm_f32",
+            "gravity_rope_interleaved_f32" => "gravity_rope_interleaved_f32",
+            "gravity_glm_mla_append_kv" => "gravity_glm_mla_append_kv",
+            "gravity_glm_build_queries" => "gravity_glm_build_queries",
+            "gravity_layernorm_affine_f32" => "gravity_layernorm_affine_f32",
+            "gravity_glm_append_index_key" => "gravity_glm_append_index_key",
+            "gravity_copy_tail_f32" => "gravity_copy_tail_f32",
+            "gravity_glm_dsa_scores" => "gravity_glm_dsa_scores",
+            "gravity_glm_stable_topk_f32" => "gravity_glm_stable_topk_f32",
+            "gravity_glm_sparse_attn" => "gravity_glm_sparse_attn",
+            "gravity_glm_router_correct" => "gravity_glm_router_correct",
+            "gravity_zero_f32" => "gravity_zero_f32",
             "gravity_pq_matvec" => "gravity_pq_matvec",
             "gravity_pq_matvec_bits8_direct" => "gravity_pq_matvec_bits8_direct",
             "gravity_pq_matvec_bits8_vec4" => "gravity_pq_matvec_bits8_vec4",
@@ -1045,6 +1057,43 @@ mod imp {
             "rwkv7_value_residual_mix_multiseq" => "rwkv7_value_residual_mix_multiseq",
             "rwkv7_add_into_flat" => "rwkv7_add_into_flat",
             _ => "other",
+        }
+    }
+
+    #[cfg(test)]
+    mod static_kernel_name_tests {
+        use super::static_kernel_name;
+        use crate::metal::SHADER_GRAVITY_PQ;
+
+        #[test]
+        fn compiled_dormant_resident_kernels_have_static_trace_names() {
+            const DORMANT_RESIDENT_KERNELS: &[&str] = &[
+                "gravity_rmsnorm_f32",
+                "gravity_rope_interleaved_f32",
+                "gravity_glm_mla_append_kv",
+                "gravity_glm_build_queries",
+                "gravity_layernorm_affine_f32",
+                "gravity_glm_append_index_key",
+                "gravity_copy_tail_f32",
+                "gravity_glm_dsa_scores",
+                "gravity_glm_stable_topk_f32",
+                "gravity_glm_sparse_attn",
+                "gravity_glm_router_correct",
+                "gravity_zero_f32",
+            ];
+
+            for &name in DORMANT_RESIDENT_KERNELS {
+                assert_eq!(
+                    static_kernel_name(name),
+                    name,
+                    "{name} would be attributed to the generic trace bucket"
+                );
+                assert!(
+                    SHADER_GRAVITY_PQ.contains(&format!("kernel void {name}(")),
+                    "{name} is registered but not compiled from gravity_pq.metal"
+                );
+            }
+            assert_eq!(static_kernel_name("not_a_hawking_kernel"), "other");
         }
     }
 

@@ -12,9 +12,10 @@ The gates run cheapest first, so a failure costs the least:
             than after a full seal and six green infrastructure gates.
   G_live    two unrelated prompts must not produce identical output. Prompt-independent
             generation is what Math-Preserve does.
-  G_parity  the numpy oracle over the same container and codec versus the runtime, argmax
-            and top-5 in exact order. A failure here implicates the RUNTIME, and the
-            correct response is to stop everything rather than to blame the artifact.
+Runtime parity is deliberately a separate post-capability gate. This program does
+not claim it: G_math and G_live answer only whether the artifact's own numpy
+execution generates prompt-conditioned output. Rust/Metal must then be compared
+against that oracle before speed or sustained-runtime claims.
 
 Reconstruction error is not consulted at any point. It cannot promote, by the frozen
 tournament and by the sub-bit law.

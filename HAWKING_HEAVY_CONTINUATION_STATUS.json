@@ -1,6 +1,6 @@
 {
   "schema": "hawking.heavy_continuation.status.v1",
-  "at": "2026-07-27T15:41:12Z",
+  "at": "2026-07-27T19:25:19Z",
   "endpoint": "RAMANUJAN_SANDBOX_READY",
   "endpoint_reached": false,
   "honest_position": "The blocking gate is executing. It is a ~15 hour job, not the ~5 the packer's own model projected, because fetch and measure are serial rather than overlapped. Whether the artifact GENERATES is still unproven and only the whole-model gates answer it.",
@@ -76,21 +76,15 @@
   "next_scientific_action": "When the pack completes, run tools/condense/glm52_capability_gate.py against it. G_math is one forward pass on '2 + 2 ='. If it passes, G_live. Only an artifact passing both gets its hash bound APPROVED in the capability register, and only then does Odyssey become a live question.",
   "method_lesson_for_the_next_session": "Never evaluate a compression scheme on synthetic activations. The input distribution is not a detail -- it decides which family wins, and it moved the null five-fold here.",
   "full_pack_run": {
-    "status": "RUNNING, measurement phase",
-    "launched": "2026-07-27T09:20Z",
-    "measured_rate": "3 shards in 4 min 39 s -> ~93 s per shard (22 s fetch + ~70 s measure, serial)",
-    "honest_projection": {
-      "measure_hours": 7.3,
-      "pack_hours": "~7 (re-fetches, then packs)",
-      "total_hours": "~15",
-      "packer_projected": 4.9,
-      "why_the_packer_underestimated": "its model assumed fetch overlapped measurement. They are serial: each shard is fetched, then measured, then evicted. The 2.0 Gbit/s fetch figure was right; the overlap assumption was not."
-    },
-    "eviction": "WORKING. 1 shard resident, free disk rising from 133 to 169 GiB as it proceeds -- it is reclaiming the pilot bodies as it passes them.",
-    "no_parallelism": "the packer measures shards serially and has no worker flag. Adding one to a running job was judged not worth the risk against a correct run already in flight.",
-    "detached": "survives this session. Progress is countable from /tmp/glm_pilot/fullpack2.log and from the resident-shard count.",
-    "progress": "164/282 shards measured",
-    "stale_code_handover": "The running process loaded the module at 11:09:59, before the prefetch and --workers commits. Its PACK phase would run serially. Measurement is written to disk before packing starts, so once MEASUREMENT.json exists the process is killed and the pack phase re-invoked with --pack-from --workers 4. Only packing is redone."
+    "progress": "74/282 shards packed",
+    "complete_bpw_exact": "401814614/367836885",
+    "complete_bpw_float": 1.0923717288438868,
+    "projected_artifact_gib": 95.8,
+    "activation_aware_weight_share": "93.49%",
+    "pass_through_weight_share": "6.51%",
+    "bottleneck": "network, not CPU. ~780 Mbit/s per connection on a 10Gbase-T link; packer at 97% of one core of 28.",
+    "accelerators_that_did_nothing": "hf_transfer (deprecated, unused by hub 1.24) and Xet high-performance both measured no gain",
+    "lever_that_works": "concurrency. A second stream sustained 760 Mbit/s while the pack held 765, so the cap is PER CONNECTION."
   },
   "parallel_lanes_landed": [
     "HIDE YOU: swarms, projects, typed handoffs (capsule carries the claim never the capability)",
@@ -137,5 +131,32 @@
     "prefetch": "overlaps fetch N+1 with work N, roughly halves both phases",
     "workers": "parallel shard workers with per-layer basis locks; emission ordered by shard rather than completion so allocation is reproducible",
     "applies_to": "the pack phase, not the running measure"
+  },
+  "endpoint_blockers": [
+    "Math-Preserve-v2 does not exist: the pack is at 74/282 shards",
+    "Odyssey T0-T7 not run and cannot be: gated on an artifact that passes G_math",
+    "Math-Frozen does not exist",
+    "Q1-Q6 not started (Q0 ACHIEVED and verified by running the container)",
+    "no separate /Users/scammermike/Downloads/ramanujan directory yet -- migration happens at HAWKING_EVOLUTION_COMPLETE",
+    "formal system training in flight, no held-out metrics yet"
+  ],
+  "law_change_today": {
+    "directive": "no tier choice: condense and gravity convey one philosophy",
+    "law": "capability is the constraint, BPW is what gets minimized; lowest usable rate wins",
+    "sealed_receipt_above": "3/2 BPW",
+    "why_it_matters_here": "at 1.0924 BPW this artifact needed a sealed Escape Receipt under the old sub-bit law. Under the new law it is admissible if and only if G_math and G_live pass.",
+    "hole_closed": "Evidence had no capability field, so sub-bit alone returned allow. That is how Math-Preserve was sealed at 0.9774 with six green gates."
+  },
+  "verified_by_running_not_by_reading": [
+    "Q0 container replay: two_plus_two exit 0; 2 + 2 = 5 exit 1 with 'unsolved goals' from Lean inside --network=none",
+    "codec round-trip: 5 tests through the real pack_shard, corrupt magic and SHA-256 mismatch both refused",
+    "contamination barrier negative control: a sealed halo item returns exact_match, clean Lean text returns empty",
+    "capability gate selfcheck: a correct ' 4' now passes where it previously graded FAIL"
+  ],
+  "open_defect": {
+    "what": "host::tests::every_write_lease_revocation_trigger_revokes is order-dependent",
+    "evidence": "219 pass without the patch (parallel), 222 pass with it single-threaded, 1 fails with it in parallel",
+    "cause": "the write lease is process-global; revoke_write_lease is a free function with no session scoping, so every lease-touching test mutates one object",
+    "status": "delegated; forbidden to fix by weakening the assertion, ignoring the test, or forcing single-threaded"
   }
 }

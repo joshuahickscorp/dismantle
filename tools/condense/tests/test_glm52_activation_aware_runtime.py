@@ -215,6 +215,138 @@ def test_assembly_check_grades_official_map_not_packer_against_itself(tmp_path):
     assert incomplete["missing_count"] == 1
 
 
+def test_zero_byte_descriptor_counts_as_missing_not_complete(tmp_path, monkeypatch):
+    """A named tensor billing zero bytes is a hole — sample and missing_count agree.
+
+    The format reader rejects spans under HEADER_BYTES for real shards; this still
+    pins the completeness arithmetic so a descriptor cannot promote the coverage
+    proof the way a self-consistent packer index once could.
+    """
+    fx = _fixture(tmp_path)
+    scan = assemble.scan_artifact(tmp_path)
+    ghost = "model.layers.0.ghost.weight"
+    scan["tensors"][ghost] = {
+        "shard": fx["shard_name"],
+        "disposition": "pass_through",
+        "dtype": "BF16",
+        "bytes": 0,
+        "shape": [1],
+    }
+    expected = {name: fx["source_name"] for name in fx["names"].values()}
+    expected[ghost] = fx["source_name"]
+    (tmp_path / "MEASUREMENT.json").write_text(
+        json.dumps(
+            {
+                "schema": "hawking.glm52.activation_aware_measurement.v1",
+                "measurements": [
+                    {"name": name, "dtype": "BF16"} for name in expected
+                ],
+            }
+        )
+    )
+    monkeypatch.setattr(assemble, "scan_artifact", lambda _artifact: scan)
+    coverage = assemble.check(
+        tmp_path,
+        expected_weight_map=expected,
+        measurement_path=tmp_path / "MEASUREMENT.json",
+    )
+    assert coverage["verdict"] == "INCOMPLETE"
+    assert coverage["missing_count"] == 1, coverage
+    assert ghost in coverage["missing_sample"]
+    # Before the fix, missing_count used set-difference only and would have been 0
+    # while the sample still listed the ghost — complete could have flipped true.
+    assert coverage["complete"] is False
+
+
+def test_assemble_writes_index_openable_for_tensor_fetch(tmp_path, monkeypatch):
+    """assemble() success path: index + hashes + dtypes → source.tensor().
+
+    The packer-only fixture hand-wrote the model index.  That left the real
+    assembler — the thing the post-pack handoff runs — unexercised.  Partial
+    coverage must still refuse; complete coverage must open through the same
+    ActivationAwareGlmSource the flagship oracle uses.
+    """
+    fx = _fixture(tmp_path)
+    # Drop the hand-written index so only assemble can create it.
+    hand = tmp_path / assemble.INDEX_NAME
+    if hand.is_file():
+        hand.unlink()
+
+    expected = {name: fx["source_name"] for name in fx["names"].values()}
+
+    # Incomplete official map → refuse; do not write an index over a hole.
+    hole = dict(expected)
+    hole["model.layers.0.missing.weight"] = fx["source_name"]
+    refused = assemble.assemble(
+        tmp_path,
+        expected_weight_map=hole,
+        measurement_path=tmp_path / "MEASUREMENT.json",
+    )
+    assert refused["action"] == "REFUSED"
+    assert refused["reason"] == "activation-aware coverage is incomplete"
+    assert not (tmp_path / assemble.INDEX_NAME).exists()
+
+    # Tokenizer install is a pinned-identity hardlink; stub it so the test does
+    # not depend on the host's General-R0 tree (still exercised on the live path).
+    monkeypatch.setattr(
+        assemble,
+        "_install_tokenizer",
+        lambda _src, _artifact: {
+            "tokenizer.json": {
+                "sha256": "0" * 64,
+                "bytes": 1,
+                "method": "test_stub",
+            }
+        },
+    )
+    # Architecture synthesis needs sealed contract+config; keep real if present,
+    # otherwise pin a minimal header the index will carry.
+    monkeypatch.setattr(
+        assemble,
+        "synthesize_architecture",
+        lambda: {
+            "model_type": "glm_moe_dsa",
+            "hidden_size": 3,
+            "num_hidden_layers": 1,
+            "n_routed_experts": 1,
+            "vocab_size": 8,
+        },
+    )
+
+    receipt = assemble.assemble(
+        tmp_path,
+        expected_weight_map=expected,
+        measurement_path=tmp_path / "MEASUREMENT.json",
+    )
+    assert receipt["action"] == "ASSEMBLED"
+    assert receipt["model_bytes_copied"] == 0
+    assert receipt["shards_hashed"] == 1
+    assert receipt["tensors"] == 3
+    assert receipt["coverage"] == "COMPLETE"
+
+    index_path = tmp_path / assemble.INDEX_NAME
+    assert index_path.is_file()
+    doc = json.loads(index_path.read_text())
+    assert doc["schema"] == "hawking.activation_aware.model_index.v1"
+    assert doc["tensor_count"] == 3
+    assert doc["shard_count"] == 1
+    assert fx["shard_name"] in doc["shard_sha256"]
+    assert len(doc["shard_sha256"][fx["shard_name"]]) == 64
+    for name in fx["names"].values():
+        assert doc["weight_map"][name] == fx["shard_name"]
+        assert doc["tensor_dtypes"][name] == "BF16"
+
+    # Exactly the flagship-oracle open path: index schema + hash-bound tensor fetch.
+    source = ActivationAwareGlmSource(tmp_path, index_json=index_path, verify_hash=True)
+    native = source.tensor(fx["names"]["native"])
+    np.testing.assert_array_equal(native, fx["native"])
+    input_weight = fx["input_left"] @ fx["basis"].T
+    np.testing.assert_allclose(
+        source.tensor(fx["names"]["input"]), input_weight, rtol=0, atol=2e-3
+    )
+    assert (tmp_path / assemble.RECEIPT_NAME).is_file()
+
+
 def test_format_rejects_overlapping_payload_spans(tmp_path):
     fx = _fixture(tmp_path)
     raw = fx["shard"].read_bytes()

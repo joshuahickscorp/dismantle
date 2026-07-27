@@ -127,13 +127,18 @@ def check(
     packed = scan["tensors"]
 
     missing: list[str] = []
+    missing_count = 0
     misplaced: list[dict[str, str]] = []
     bad_disposition: list[dict[str, str]] = []
     dtype_missing: list[str] = []
     counts = {"ACTIVATION_AWARE_PAYLOAD": 0, "PASS_THROUGH_PAYLOAD": 0}
     for name, source_shard in expected_weight_map.items():
         row = packed.get(name)
+        # A name in the packer's index with zero billed bytes is a descriptor, not a
+        # payload — same rule as gravity assemble. Count it as missing for completeness
+        # even when the key is present; the sample list and missing_count must agree.
         if row is None or int(row["bytes"]) <= 0:
+            missing_count += 1
             if len(missing) < 20:
                 missing.append(name)
             continue
@@ -165,7 +170,6 @@ def check(
         for filename in expected_weight_map.values()
     }
     present_shards = {path.name for path in scan["paths"]}
-    missing_count = len(set(expected_weight_map) - set(packed))
     complete = (
         missing_count == 0
         and not misplaced

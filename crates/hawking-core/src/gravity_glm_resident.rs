@@ -1870,7 +1870,17 @@ pub fn forward_resident(
                     )?;
                     commit(tcb.take(), &session.waits)?;
                 }
-                residual_add(&pool.x, &pool.o, a.hidden);
+                if closed_attention_prelude {
+                    let _state = cost_ledger::Scope::new(Bucket::ResidualAndState);
+                    cost_ledger::record_source_modelled_operations(a.hidden as u64, 0, 0, 0, 0);
+                    let wave = tcb.get_or_insert_with(|| TokenCommandBuffer::new(ctx));
+                    route_segment_primitives::encode_residual_add_inplace(
+                        wave, &pool.x, &pool.o, a.hidden,
+                    )?;
+                    commit(tcb.take(), &session.waits)?;
+                } else {
+                    residual_add(&pool.x, &pool.o, a.hidden);
+                }
                 topk
             };
 
@@ -2544,7 +2554,11 @@ fn compact_attend_into<'a>(
             compact_dispatches
         )));
     }
-    commit(pending.take(), waits)
+    if device_inputs_ready {
+        Ok(())
+    } else {
+        commit(pending.take(), waits)
+    }
 }
 
 #[allow(clippy::too_many_arguments)]

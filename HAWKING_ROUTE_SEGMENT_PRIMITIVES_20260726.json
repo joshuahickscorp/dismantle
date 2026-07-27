@@ -124,7 +124,8 @@
     "compact_requirement": "eventual attention must consume normalized 512-wide MLA latent plus shared 64-wide RoPE tail, or reconstruct expanded K/V only for selected positions",
     "topk_to_sparse_order_hazard": "stable-top-k emits score order; current host sparse attention accumulates in ascending position order. The sparse wrapper therefore requires unique ascending allow_idx and cannot directly consume the top-k output without an exact reorder primitive.",
     "serial_kernel_risk": "stable top-k is one-thread O(n*k), while sparse softmax and value accumulation are serialized on thread 0 per head. Correctness parity does not establish runtime feasibility.",
-    "static_trace_registry_on_base": "the base static_kernel_name table does not list these dormant names, so branch integration must add or preserve explicit names to avoid profiler attribution as other; metal/mod.rs was deliberately not edited in this conflict-minimal patch"
+    "static_trace_registry_on_base": "the historical branch base did not list these dormant names; metal/mod.rs was deliberately not edited in the conflict-minimal branch patch",
+    "static_trace_registry_on_integrated_main": "integration commit cd7c5410 applies after a0dd47b9, whose static_kernel_name table already lists all 12 exact dormant kernel names; no route primitive can be attributed as other"
   },
   "promotion": "NOT_WIRED_NOT_BENCHMARKED"
 }

@@ -586,6 +586,33 @@ kernel void gravity_glm_mla_append_kv(
     }
 }
 
+// Append one position's compact MLA state without expanding per-head K/V.
+// latent_cache layout: [pos][kv_lora_rank]
+// rope_cache layout:   [pos][qk_rope_head_dim] (shared across heads)
+struct GravityGlmMlaCompactAppendParams {
+    uint latent_dim;
+    uint rope_dim;
+    uint pos;
+};
+
+kernel void gravity_glm_mla_append_compact(
+    device const float *latent [[buffer(0)]],
+    device const float *k_rot [[buffer(1)]],
+    device       float *latent_cache [[buffer(2)]],
+    device       float *rope_cache [[buffer(3)]],
+    constant GravityGlmMlaCompactAppendParams &p [[buffer(4)]],
+    uint id [[thread_position_in_grid]])
+{
+    uint total = p.latent_dim + p.rope_dim;
+    if (id >= total) { return; }
+    if (id < p.latent_dim) {
+        latent_cache[p.pos * p.latent_dim + id] = latent[id];
+    } else {
+        uint rope = id - p.latent_dim;
+        rope_cache[p.pos * p.rope_dim + rope] = k_rot[rope];
+    }
+}
+
 // Build queries: per head, copy nope half from q, rope-interleaved rope half.
 // `q_rope_rot` is already rope-interleaved per head (n_heads * qk_rope).
 struct GravityGlmBuildQParams {

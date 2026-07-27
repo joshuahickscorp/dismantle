@@ -1,9 +1,9 @@
 {
   "schema": "hawking.heavy_continuation.status.v1",
-  "at": "2026-07-27T10:30:00Z",
+  "at": "2026-07-27T13:21:17Z",
   "endpoint": "RAMANUJAN_SANDBOX_READY",
   "endpoint_reached": false,
-  "honest_position": "The campaign's central blocked question now has a measured, replicated answer pointing at a specific program. Everything downstream -- Odyssey, Math-Frozen, Ramanujan, Q0-Q6 -- remains gated behind actually packing an artifact that passes the whole-model gates, which this session did not do.",
+  "honest_position": "The blocking gate is no longer a plan. The activation-aware program is frozen and the full 282-shard streaming pack is executing. What remains genuinely unproven is whether the resulting artifact GENERATES -- per-tensor beats-null is necessary and not sufficient, and only the whole-model gates answer it.",
   "machine": {
     "MOP": "STOPPED. Load 4.26 is desktop applications; zero Python workers. The heavy window is genuinely open.",
     "heavy_window": "OPEN, and used for the GLM rebuild pilot",
@@ -28,9 +28,24 @@
       "structural_reason": "top 16 activation directions carry 88.9 percent of variance; weights are stored across 6144 dimensions the model never visits"
     },
     "step_3_gates": "the whole-model gates -- 2+2, live generation, cascade, halo, long context -- are NOT measurable on a four-layer window and none was claimed",
-    "step_4_freeze_program": "NOT YET, and now for a good reason: there is a direction worth freezing. Measurement shardwise against the 66 retained teacher capsules, allocation global, packing shardwise.",
+    "step_4_freeze_program": {
+      "status": "FROZEN AND EXECUTING",
+      "program": "activation-aware projection onto the top-k directions of each layer's real captured activation covariance, with beating the constant-mean null as a HARD allocation constraint",
+      "tool": "tools/condense/glm52_activation_aware_pack.py",
+      "phases": "measurement shardwise streaming -> allocation global -> packing shardwise",
+      "launched": "full run over 282 shards, fetch+evict, disk floor 110 GiB",
+      "projected_hours": 4.9,
+      "projected_complete_bpw": 0.091,
+      "projected_artifact_gb": 8.6
+    },
     "step_5_escape_receipt": "OFF THE TABLE. It would have been prepared on measurements that the correct input distribution reverses.",
-    "step_6_math_preserve_v2": "NOT REACHED"
+    "step_6_math_preserve_v2": "NOT REACHED",
+    "the_catch_that_mattered": {
+      "what": "the first dry run reconciled its bytes and came in under budget, and would still have shipped lm_head at cosine 0.683 against a null of 0.852 -- 18 tensors below their null carrying 17 percent of the activation-aware mass",
+      "why_fatal": "an lm_head below its null produces logits worse than the mean row, which is exactly Math-Preserve's failure mode",
+      "fix": "beats-null is now a hard allocation constraint; a tensor that cannot beat its null at any rank falls through to native",
+      "cost_whole_model": "~0.04 BPW. Close to free at scale."
+    }
   },
   "odyssey": {
     "status": "CORRECTLY BLOCKED",
@@ -58,6 +73,6 @@
     "RAMANUJAN_RESEARCH_AUTHORIZED": false
   },
   "next_command": "bash HAWKING_LIGHT_ONLY_NEXT_COMMAND.sh",
-  "next_scientific_action": "Freeze and run an activation-fitted packing program: measurement shardwise using the teacher capsules, allocation global, packing shardwise. Then probe the artifact with 2 + 2 and prompt-dependent generation BEFORE anything trains on it.",
+  "next_scientific_action": "When the pack completes, run tools/condense/glm52_capability_gate.py against it. G_math is one forward pass on '2 + 2 ='. If it passes, G_live. Only an artifact passing both gets its hash bound APPROVED in the capability register, and only then does Odyssey become a live question.",
   "method_lesson_for_the_next_session": "Never evaluate a compression scheme on synthetic activations. The input distribution is not a detail -- it decides which family wins, and it moved the null five-fold here."
 }

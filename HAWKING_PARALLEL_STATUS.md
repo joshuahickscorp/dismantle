@@ -3,7 +3,7 @@
 Generated from live evidence by `tools/campaign/parallel_status.py`. Do not hand-edit.
 Ownership and the DAG are hand-authored architecture and are read, never written, by this tool.
 
-    at:       2026-07-27T02:17:19Z
+    at:       2026-07-27T02:48:17Z
     endpoint: RAMANUJAN_SANDBOX_READY (not reached)
     width:    0/6 lanes running
     fences:   ODYSSEY_LAUNCH_AUTHORIZED=False RAMANUJAN_RESEARCH_AUTHORIZED=False HIDE_KERNEL_TURN=False
@@ -14,7 +14,7 @@ Ownership and the DAG are hand-authored architecture and are read, never written
 
 ## Finished, awaiting controller review
 
-- `L21` gravity-degenerate-attribution (grok) -- outputs missing: GRAVITY_DEGENERATE_ATTRIBUTION.json -- DECLARED QUEUED_SLOTS_TAKEN BUT EVIDENCE FINISHED_OUTPUTS_MISSING
+- none
 
 ## Integrated by the controller
 
@@ -28,6 +28,7 @@ Ownership and the DAG are hand-authored architecture and are read, never written
 - `L07` speculation-safety (grok)
 - `L19` odyssey-data (grok)
 - `L20` memory-writers (grok)
+- `L21` gravity-degenerate-attribution (claude (controller, run inline -- Grok slots held by a concurrent campaign; user authorized))
 
 ## Queued
 
@@ -36,8 +37,6 @@ Ownership and the DAG are hand-authored architecture and are read, never written
 
 ## Blocked (real data dependencies, see the DAG)
 
-- `L10` odyssey-t1-t7 (unassigned)
-- `L11` math-frozen (unassigned)
 - `L12` consolidation-execute (unassigned)
 - `L13` ramanujan-migrate (unassigned)
 - `L14` ramanujan-cognition (unassigned)
@@ -53,8 +52,8 @@ Ownership and the DAG are hand-authored architecture and are read, never written
 
 ## Next action
 
-    review L21 (gravity-degenerate-attribution) -- a report is a claim; re-derive before merging
+    launch L08 (hide-os-wiring) -- a slot is free
 
 ```bash
-# no report file
+# see HAWKING_PARALLEL_LANE_OWNERSHIP.json for the lane's contract
 ```

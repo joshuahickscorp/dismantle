@@ -70,7 +70,8 @@
   "fences": {
     "ODYSSEY_LAUNCH_AUTHORIZED": false,
     "RAMANUJAN_RESEARCH_AUTHORIZED": false,
-    "HIDE_KERNEL_TURN": false
+    "HIDE_KERNEL_TURN": false,
+    "ODYSSEY_LAUNCH_AUTHORIZED_reason": "REFUSED decisively: GLM-5.2-H0.98-Math-Preserve predicts \" combust\" for the capital of France and \"rus\" for 2 + 2, confirmed by numpy oracle on the artifact itself."
   },
   "external_lanes": [
     {
@@ -414,13 +415,8 @@
       "dependencies": [
         "L03"
       ],
-      "status": "BLOCKED",
-      "blocked_on": [
-        "ODYSSEY_FEASIBILITY.json must first establish whether training a 92GB artifact is possible at all on a 96GB machine at load ~29",
-        "controller must flip ODYSSEY_LAUNCH_AUTHORIZED, which requires G1-G4 of ODYSSEY_PROMOTION_GATE.md",
-        "G2 (runtime truth) currently reads BASE_TRUE_TPS 0.3961 with the dominant decode cost owned by the Codex TG lane",
-        "one exclusive heavy-lane window, which does not exist while MOP holds ~19 of 28 cores"
-      ]
+      "status": "REFUSED",
+      "blocked_on": "the substrate cannot generate (GRAVITY_DEGENERATE_ATTRIBUTION.json). Not a scheduling block -- a disqualification. Requires a pack of this parent that demonstrates capability."
     },
     {
       "id": "L11",
@@ -430,7 +426,8 @@
       "dependencies": [
         "L10"
       ],
-      "status": "BLOCKED"
+      "status": "REFUSED",
+      "blocked_on": "the substrate cannot generate (GRAVITY_DEGENERATE_ATTRIBUTION.json). Not a scheduling block -- a disqualification. Requires a pack of this parent that demonstrates capability."
     },
     {
       "id": "L12",
@@ -561,19 +558,20 @@
     {
       "id": "L21",
       "name": "gravity-degenerate-attribution",
-      "owner": "grok",
+      "owner": "claude (controller, run inline -- Grok slots held by a concurrent campaign; user authorized)",
       "mode": "delegate",
       "resource_class": "medium-gpu",
-      "task_id": "gravity-degenerate-20260726-221229",
-      "branch": "grok/gravity-degenerate-20260726-221229",
-      "worktree": "~/.claude-grok/worktrees/gravity-degenerate-20260726-221229",
+      "task_id": null,
+      "branch": null,
+      "worktree": null,
       "inputs": [
         "HAWKING_GRAVITY_SERVE_FIRST_GENERATION.json",
         "HAWKING_MODEL_FEEL_PARITY_RESULTS.json",
         "tools/odyssey/runtime_authority.py"
       ],
       "outputs": [
-        "GRAVITY_DEGENERATE_ATTRIBUTION.json"
+        "GRAVITY_DEGENERATE_ATTRIBUTION.json",
+        "crates/hawking-core/examples/gravity_glm_attribution.rs"
       ],
       "forbidden_paths": [
         "editing gravity_glm.rs (calling it is allowed)",
@@ -585,9 +583,10 @@
       "dependencies": [
         "L18"
       ],
-      "status": "QUEUED_SLOTS_TAKEN",
+      "status": "INTEGRATED",
       "why_it_is_the_most_important_open_lane": "It decides whether the sealed substrate can generate at all. If H1, Odyssey would train on a model that cannot produce conditioned output, which is the exact failure ODYSSEY_PROMOTION_GATE.md exists to prevent and which cannot be un-trained.",
-      "blocked_by_resource": "all six Grok slots are held by a concurrent unrelated campaign (v2-spatial, v2-reconstruction, v2-procedural, v2-materials-lighting, v2-cinematic-delivery, v2-critics-active). Not this campaign's lanes; left alone rather than killed."
+      "blocked_by_resource": "all six Grok slots are held by a concurrent unrelated campaign (v2-spatial, v2-reconstruction, v2-procedural, v2-materials-lighting, v2-cinematic-delivery, v2-critics-active). Not this campaign's lanes; left alone rather than killed.",
+      "verdict": "H1_ARTIFACT -- the substrate cannot generate; runtime and serve path both exonerated by exact oracle top-5 agreement on Math-Preserve itself"
     }
   ],
   "branch_sharing_hazard": {

@@ -34,6 +34,64 @@ def _fence_still_false() -> bool:
     return FENCE.is_file() and FENCE.read_text().strip().lower() == "false"
 
 
+def run_unit(*, include_runtime: bool = True) -> dict:
+    """Callable T0 unit path for tests and apparatus proof.
+
+    Exercises the four T0 reproduction legs without a multi-shard hash sweep:
+      - substrate static checks (hashes/counts; no 92 GB scan)
+      - data classification (DECLARED_NOT_PRESENT is success)
+      - runtime authority (optional; bit-identical single-layer)
+      - known-failure registry
+
+    Does not flip the fence. Does not start training. Does not write launch/.
+    """
+    if not _fence_still_false():
+        fence_val = FENCE.read_text().strip() if FENCE.is_file() else "missing"
+        fence_note = f"fence reads {fence_val!r}; T0 unit does not write the fence"
+    else:
+        fence_note = "ODYSSEY_LAUNCH_AUTHORIZED remains false"
+
+    hidden_memberships.write_seed_sets()
+    static = substrate_verify.static_checks()
+    data = data_verify.verify_all()
+    runtime = runtime_authority.verify_runtime() if include_runtime else {
+        "status": "SKIPPED",
+        "note": "runtime skipped by caller",
+    }
+    failures = known_failures.build_registry()
+
+    summary = {
+        "substrate_static": "PASS" if static.get("ok") else "FAIL",
+        "data": data["status"],
+        "runtime": runtime["status"],
+        "known_failures": failures["status"],
+    }
+    bad = [
+        k
+        for k, v in summary.items()
+        if v not in ("PASS", "PARTIAL", "SKIPPED")
+    ]
+    return {
+        "schema": "hawking.odyssey.t0.unit.v1",
+        "at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "fence": fence_note,
+        "launch_authorized": False,
+        "mode": "unit",
+        "summary": summary,
+        "status": "PASS" if not bad else "FAIL",
+        "detail": {
+            "static": static,
+            "data": data,
+            "runtime": runtime,
+            "known_failures": {
+                "status": failures["status"],
+                "n_entries": failures["n_entries"],
+            },
+        },
+        "note": "Unit path; full shard verification is tools/odyssey/t0_run.py:run",
+    }
+
+
 def run(*, max_shards: int = 8, max_bytes: int | None = 512 * 1024 * 1024) -> dict:
     if not _fence_still_false():
         # Refuse to continue if someone flipped the fence in this session by accident

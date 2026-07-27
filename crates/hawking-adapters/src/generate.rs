@@ -1,14 +1,20 @@
 //! Generate family documentation, JSON schemas, CLI validation, SDK types,
-//! HIDE capability declarations, and Fabric declarations from the registry.
+//! HIDE capability declarations, Fabric declarations, and the five root
+//! deliverables from the registry.
 //!
 //! Pattern mirrors `hide-sdk-codegen`: pure deterministic strings, checked-in
-//! goldens under `generated/`, drift test fails on diff.
+//! goldens under `generated/`, drift test fails on diff. **Do not add a second
+//! codegen system** — extend this generator.
 
 use std::path::{Path, PathBuf};
 
-use crate::export::adapter_registry_json;
+use crate::export::{
+    adapter_abi_json, adapter_registry_json, capability_matrix_json, migration_map_json,
+    test_matrix_json,
+};
 use crate::registry::builtin_registry;
 use crate::support_level::SupportLevel;
+use crate::{ABI_SCHEMA, REGISTRY_SCHEMA};
 
 /// One generated artifact (relative path under the crate + contents).
 #[derive(Debug, Clone)]
@@ -45,13 +51,50 @@ pub fn generate_all() -> Vec<GeneratedArtifact> {
             contents: fabric_declarations_json(),
         },
         GeneratedArtifact {
+            relative_path: "generated/HAWKING_ADAPTER_ABI.json",
+            contents: adapter_abi_json(),
+        },
+        GeneratedArtifact {
             relative_path: "generated/HAWKING_ADAPTER_REGISTRY.json",
             contents: adapter_registry_json(),
+        },
+        GeneratedArtifact {
+            relative_path: "generated/HAWKING_ADAPTER_CAPABILITY_MATRIX.json",
+            contents: capability_matrix_json(),
+        },
+        GeneratedArtifact {
+            relative_path: "generated/HAWKING_ADAPTER_TEST_MATRIX.json",
+            contents: test_matrix_json(),
+        },
+        GeneratedArtifact {
+            relative_path: "generated/HAWKING_ADAPTER_MIGRATION_MAP.json",
+            contents: migration_map_json(),
         },
         GeneratedArtifact {
             relative_path: "generated/HAWKING_CANONICAL_EVENTS.json",
             contents: hawking_events::canonical_events_json(),
         },
+    ]
+}
+
+/// Repo-root deliverables written by the codegen binary.
+pub fn repo_root_artifacts() -> Vec<(&'static str, String)> {
+    vec![
+        ("HAWKING_ADAPTER_ABI.json", adapter_abi_json()),
+        ("HAWKING_ADAPTER_REGISTRY.json", adapter_registry_json()),
+        (
+            "HAWKING_ADAPTER_CAPABILITY_MATRIX.json",
+            capability_matrix_json(),
+        ),
+        ("HAWKING_ADAPTER_TEST_MATRIX.json", test_matrix_json()),
+        (
+            "HAWKING_ADAPTER_MIGRATION_MAP.json",
+            migration_map_json(),
+        ),
+        (
+            "HAWKING_CANONICAL_EVENTS.json",
+            hawking_events::canonical_events_json(),
+        ),
     ]
 }
 
@@ -100,26 +143,38 @@ fn family_docs_md() -> String {
 }
 
 fn registry_json_schema() -> String {
+    let grades: Vec<&str> = SupportLevel::all().iter().map(|g| g.as_str()).collect();
     let schema = serde_json::json!({
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "$id": "hawking.adapters.registry.v1",
+        "$id": REGISTRY_SCHEMA,
         "title": "HawkingAdapterRegistry",
         "type": "object",
-        "required": ["schema", "families"],
+        "required": ["schema", "families", "support_levels"],
         "properties": {
-            "schema": { "const": "hawking.adapters.registry.v1" },
+            "schema": { "const": REGISTRY_SCHEMA },
+            "abi_schema": { "const": ABI_SCHEMA },
+            "support_levels": {
+                "type": "array",
+                "items": { "type": "string", "enum": grades }
+            },
             "families": {
                 "type": "array",
                 "items": {
                     "type": "object",
-                    "required": ["id", "level", "evidence", "module", "executes", "serve_registered", "gaps"],
+                    "required": [
+                        "id", "aliases", "level", "evidence", "module",
+                        "executes", "serve_registered", "gaps", "abi"
+                    ],
                     "properties": {
                         "id": { "type": "string" },
+                        "aliases": { "type": "array", "items": { "type": "string" } },
                         "level": {
                             "type": "string",
                             "enum": [
                                 "DECLARED",
+                                "SOURCE_HEADER_VALIDATED",
                                 "SYNTHETIC_PARITY",
+                                "REAL_TENSOR_DECODE",
                                 "SMALL_REAL_CHECKPOINT",
                                 "FULL_PARENT_VALIDATED",
                                 "PRODUCTION"
@@ -129,19 +184,17 @@ fn registry_json_schema() -> String {
                             "type": "array",
                             "items": {
                                 "type": "object",
-                                "required": ["path", "claim"],
+                                "required": ["path", "claim", "kind"],
                                 "properties": {
                                     "path": { "type": "string" },
-                                    "claim": { "type": "string" }
+                                    "claim": { "type": "string" },
+                                    "kind": { "type": "string" }
                                 }
                             }
                         },
-                        "module": { "type": "string" },
-                        "executes": { "type": "boolean" },
-                        "serve_registered": { "type": "boolean" },
-                        "gaps": {
-                            "type": "array",
-                            "items": { "type": "string" }
+                        "abi": {
+                            "type": "object",
+                            "description": "Full family ABI; every field value or null+reason"
                         }
                     }
                 }
@@ -154,19 +207,22 @@ fn registry_json_schema() -> String {
 }
 
 fn cli_validate_json() -> String {
-    // Machine-readable rules a CLI can load to reject inflated levels / missing evidence.
     let r = builtin_registry();
     let rules: Vec<_> = r
         .families()
         .map(|d| {
             serde_json::json!({
                 "family": d.id,
+                "aliases": d.aliases,
                 "max_level": d.level.as_str(),
                 "require_evidence_when_above": SupportLevel::Declared.as_str(),
+                "require_evidence_kind": crate::abi::required_evidence_kind(d.level)
+                    .map(|k| k.as_str()),
                 "forbid_production": true,
                 "executes": d.executes,
                 "serve_registered": d.serve_registered,
                 "evidence_paths": d.evidence.iter().map(|e| e.path).collect::<Vec<_>>(),
+                "abi_fields_required": crate::abi::ABI_FIELD_NAMES,
             })
         })
         .collect();
@@ -175,7 +231,7 @@ fn cli_validate_json() -> String {
         "rules": rules,
         "global": {
             "forbid_production": true,
-            "note": "A level asserted without backing evidence must fail validation."
+            "note": "A level asserted without backing evidence of the grade-named kind must fail validation. Every ABI field must be present or null with a reason."
         }
     });
     let mut s = serde_json::to_string_pretty(&doc).unwrap();
@@ -184,16 +240,25 @@ fn cli_validate_json() -> String {
 }
 
 fn sdk_types_ts() -> String {
-    // Mirrors hide-sdk's protocol.d.ts style: deterministic hand-shaped TS from the registry.
     let r = builtin_registry();
     let mut out = String::from(
         "/* Generated by hawking-adapters-codegen — do not hand-edit. */\n\n\
          export type SupportLevel =\n\
            | \"DECLARED\"\n\
+           | \"SOURCE_HEADER_VALIDATED\"\n\
            | \"SYNTHETIC_PARITY\"\n\
+           | \"REAL_TENSOR_DECODE\"\n\
            | \"SMALL_REAL_CHECKPOINT\"\n\
            | \"FULL_PARENT_VALIDATED\"\n\
            | \"PRODUCTION\";\n\n\
+         export type EvidenceKind =\n\
+           | \"description\"\n\
+           | \"source_header\"\n\
+           | \"synthetic_parity\"\n\
+           | \"real_tensor_decode\"\n\
+           | \"small_checkpoint_run\"\n\
+           | \"full_parent_validation\"\n\
+           | \"production_receipt\";\n\n\
          export type FamilyId =\n",
     );
     let ids: Vec<_> = r.families().map(|d| d.id).collect();
@@ -205,9 +270,15 @@ fn sdk_types_ts() -> String {
         "\nexport interface FamilyEvidence {\n\
          \tpath: string;\n\
          \tclaim: string;\n\
+         \tkind: EvidenceKind;\n\
+         }\n\n\
+         export interface AbiField<T = string> {\n\
+         \tvalue: T | null;\n\
+         \tnull_reason: string | null;\n\
          }\n\n\
          export interface FamilyAdapterEntry {\n\
          \tid: FamilyId;\n\
+         \taliases: string[];\n\
          \tdisplayName: string;\n\
          \tlevel: SupportLevel;\n\
          \tevidence: FamilyEvidence[];\n\
@@ -221,6 +292,14 @@ fn sdk_types_ts() -> String {
     for d in r.families() {
         out.push_str("  {\n");
         out.push_str(&format!("    id: \"{}\",\n", d.id));
+        out.push_str("    aliases: [");
+        for (i, a) in d.aliases.iter().enumerate() {
+            if i > 0 {
+                out.push_str(", ");
+            }
+            out.push_str(&format!("\"{a}\""));
+        }
+        out.push_str("],\n");
         out.push_str(&format!(
             "    displayName: \"{}\",\n",
             d.display_name.replace('"', "\\\"")
@@ -229,13 +308,17 @@ fn sdk_types_ts() -> String {
         out.push_str("    evidence: [\n");
         for e in d.evidence {
             out.push_str(&format!(
-                "      {{ path: \"{}\", claim: \"{}\" }},\n",
+                "      {{ path: \"{}\", claim: \"{}\", kind: \"{}\" }},\n",
                 e.path,
-                e.claim.replace('"', "\\\"")
+                e.claim.replace('"', "\\\""),
+                e.kind.as_str()
             ));
         }
         out.push_str("    ],\n");
-        out.push_str(&format!("    module: \"{}\",\n", d.module.replace('"', "\\\"")));
+        out.push_str(&format!(
+            "    module: \"{}\",\n",
+            d.module.replace('"', "\\\"")
+        ));
         out.push_str(&format!("    executes: {},\n", d.executes));
         out.push_str(&format!("    serveRegistered: {},\n", d.serve_registered));
         out.push_str("    gaps: [\n");
@@ -258,6 +341,7 @@ fn hide_capabilities_json() -> String {
                 "id": format!("model_family.{}", d.id),
                 "kind": "model_family",
                 "level": d.level.as_str(),
+                "aliases": d.aliases,
                 "executes": d.executes,
                 "serve_registered": d.serve_registered,
                 "description": format!("{} — {}", d.display_name, d.level.as_str()),
@@ -274,8 +358,6 @@ fn hide_capabilities_json() -> String {
 }
 
 fn fabric_declarations_json() -> String {
-    // Fabric-facing only: declare event categories + family placement hooks.
-    // Do not implement Fabric itself.
     let cats: Vec<_> = hawking_events::all_categories()
         .iter()
         .map(|c| {
@@ -293,6 +375,8 @@ fn fabric_declarations_json() -> String {
                 "family": d.id,
                 "serve_registered": d.serve_registered,
                 "placement": if d.serve_registered { "local_serve_eligible" } else { "not_serve_registered" },
+                "fabric_partition": d.abi.fabric_partition_boundaries.value,
+                "fabric_partition_null_reason": d.abi.fabric_partition_boundaries.null_reason,
             })
         })
         .collect();

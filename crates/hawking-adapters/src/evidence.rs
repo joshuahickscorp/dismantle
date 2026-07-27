@@ -1,8 +1,8 @@
-//! Evidence path checks for the registry honesty test.
+//! Evidence path + grade-kind checks for the registry honesty test.
 
 use std::path::{Path, PathBuf};
 
-use crate::abi::{Evidence, FamilyDescriptor};
+use crate::abi::{required_evidence_kind, Evidence, FamilyDescriptor};
 use crate::support_level::SupportLevel;
 
 /// Paths that are allowed as evidence even when the binary artifact itself is
@@ -14,12 +14,13 @@ const RECEIPT_ALLOWLIST: &[&str] = &[
     "FABRIC_BRIDGE_ARCHAEOLOGY.md",
 ];
 
-/// Validate that a family's declared level is backed by named evidence.
+/// Validate that a family's declared level is backed by named evidence of the
+/// kind the grade names, and that every evidence path exists on disk.
 ///
 /// Rules:
 /// - `DECLARED`: evidence optional (family description is the claim).
-/// - Any higher level: at least one evidence entry; every `path` must resolve
-///   under `workspace_root` OR be in the receipt allowlist with a present file.
+/// - Any higher level: at least one evidence entry of the *required kind*;
+///   every `path` must resolve under `workspace_root`.
 /// - `PRODUCTION`: always fails today (no family may claim it).
 pub fn validate_family_evidence(
     workspace_root: &Path,
@@ -33,7 +34,16 @@ pub fn validate_family_evidence(
         ));
     }
 
+    // ABI completeness (value or null+reason for every field).
+    if let Err(errs) = desc.abi.validate_complete(desc.id) {
+        return Err(errs.join("; "));
+    }
+
     if desc.level == SupportLevel::Declared {
+        // Paths that *are* listed must still exist.
+        for ev in desc.evidence {
+            check_evidence_path(workspace_root, desc.id, ev)?;
+        }
         return Ok(());
     }
 
@@ -42,6 +52,30 @@ pub fn validate_family_evidence(
             "family {}: level {} requires at least one named evidence path",
             desc.id,
             desc.level.as_str()
+        ));
+    }
+
+    let required = required_evidence_kind(desc.level).ok_or_else(|| {
+        format!(
+            "family {}: internal error — no required kind for {}",
+            desc.id,
+            desc.level.as_str()
+        )
+    })?;
+
+    let has_kind = desc.evidence.iter().any(|e| e.kind == required);
+    if !has_kind {
+        return Err(format!(
+            "family {}: level {} requires evidence kind `{}` (the grade names the evidence); \
+             found kinds: [{}]",
+            desc.id,
+            desc.level.as_str(),
+            required.as_str(),
+            desc.evidence
+                .iter()
+                .map(|e| e.kind.as_str())
+                .collect::<Vec<_>>()
+                .join(", ")
         ));
     }
 
@@ -61,7 +95,6 @@ fn check_evidence_path(root: &Path, family: &str, ev: &Evidence) -> Result<(), S
     if full.exists() {
         return Ok(());
     }
-    // Allowlisted receipt names: still must exist at repo root / given path.
     if RECEIPT_ALLOWLIST.contains(&ev.path) {
         return Err(format!(
             "family {family}: allowlisted evidence {} is missing on disk at {}",

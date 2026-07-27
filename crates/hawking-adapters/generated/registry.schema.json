@@ -1,14 +1,30 @@
 {
-  "$id": "hawking.adapters.registry.v1",
+  "$id": "hawking.adapters.registry.v2",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "properties": {
+    "abi_schema": {
+      "const": "hawking.adapters.abi.v1"
+    },
     "families": {
       "items": {
         "properties": {
+          "abi": {
+            "description": "Full family ABI; every field value or null+reason",
+            "type": "object"
+          },
+          "aliases": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "evidence": {
             "items": {
               "properties": {
                 "claim": {
+                  "type": "string"
+                },
+                "kind": {
                   "type": "string"
                 },
                 "path": {
@@ -17,18 +33,10 @@
               },
               "required": [
                 "path",
-                "claim"
+                "claim",
+                "kind"
               ],
               "type": "object"
-            },
-            "type": "array"
-          },
-          "executes": {
-            "type": "boolean"
-          },
-          "gaps": {
-            "items": {
-              "type": "string"
             },
             "type": "array"
           },
@@ -38,40 +46,54 @@
           "level": {
             "enum": [
               "DECLARED",
+              "SOURCE_HEADER_VALIDATED",
               "SYNTHETIC_PARITY",
+              "REAL_TENSOR_DECODE",
               "SMALL_REAL_CHECKPOINT",
               "FULL_PARENT_VALIDATED",
               "PRODUCTION"
             ],
             "type": "string"
-          },
-          "module": {
-            "type": "string"
-          },
-          "serve_registered": {
-            "type": "boolean"
           }
         },
         "required": [
           "id",
+          "aliases",
           "level",
           "evidence",
           "module",
           "executes",
           "serve_registered",
-          "gaps"
+          "gaps",
+          "abi"
         ],
         "type": "object"
       },
       "type": "array"
     },
     "schema": {
-      "const": "hawking.adapters.registry.v1"
+      "const": "hawking.adapters.registry.v2"
+    },
+    "support_levels": {
+      "items": {
+        "enum": [
+          "DECLARED",
+          "SOURCE_HEADER_VALIDATED",
+          "SYNTHETIC_PARITY",
+          "REAL_TENSOR_DECODE",
+          "SMALL_REAL_CHECKPOINT",
+          "FULL_PARENT_VALIDATED",
+          "PRODUCTION"
+        ],
+        "type": "string"
+      },
+      "type": "array"
     }
   },
   "required": [
     "schema",
-    "families"
+    "families",
+    "support_levels"
   ],
   "title": "HawkingAdapterRegistry",
   "type": "object"

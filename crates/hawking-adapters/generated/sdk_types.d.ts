@@ -2,10 +2,21 @@
 
 export type SupportLevel =
 | "DECLARED"
+| "SOURCE_HEADER_VALIDATED"
 | "SYNTHETIC_PARITY"
+| "REAL_TENSOR_DECODE"
 | "SMALL_REAL_CHECKPOINT"
 | "FULL_PARENT_VALIDATED"
 | "PRODUCTION";
+
+export type EvidenceKind =
+| "description"
+| "source_header"
+| "synthetic_parity"
+| "real_tensor_decode"
+| "small_checkpoint_run"
+| "full_parent_validation"
+| "production_receipt";
 
 export type FamilyId =
   | "deepseek"
@@ -22,10 +33,17 @@ export type FamilyId =
 export interface FamilyEvidence {
 	path: string;
 	claim: string;
+	kind: EvidenceKind;
+}
+
+export interface AbiField<T = string> {
+	value: T | null;
+	null_reason: string | null;
 }
 
 export interface FamilyAdapterEntry {
 	id: FamilyId;
+	aliases: string[];
 	displayName: string;
 	level: SupportLevel;
 	evidence: FamilyEvidence[];
@@ -38,12 +56,13 @@ export interface FamilyAdapterEntry {
 export const FAMILY_ADAPTERS: FamilyAdapterEntry[] = [
   {
     id: "deepseek",
+    aliases: ["deepseek", "deepseek2", "deepseek_v2"],
     displayName: "DeepSeek V2",
     level: "SMALL_REAL_CHECKPOINT",
     evidence: [
-      { path: "crates/hawking-core/src/model/deepseek_v2.rs", claim: "in-tree DeepSeekV2 engine" },
-      { path: "crates/hawking-core/tests/cpu_backend_parity_deepseek.rs", claim: "CPU backend parity for deepseek path" },
-      { path: "crates/hawking-core/src/model/mod.rs", claim: "load_engine dispatches deepseek2" },
+      { path: "crates/hawking-core/src/model/deepseek_v2.rs", claim: "in-tree DeepSeekV2 engine", kind: "description" },
+      { path: "crates/hawking-core/tests/cpu_backend_parity_deepseek.rs", claim: "CPU backend parity for deepseek path", kind: "small_checkpoint_run" },
+      { path: "crates/hawking-core/src/model/mod.rs", claim: "load_engine dispatches deepseek2", kind: "description" },
     ],
     module: "crates/hawking-core/src/model/deepseek_v2.rs",
     executes: true,
@@ -51,16 +70,18 @@ export const FAMILY_ADAPTERS: FamilyAdapterEntry[] = [
     gaps: [
       "not FULL_PARENT_VALIDATED: no sealed full-size parent receipt in registry evidence",
       "not PRODUCTION",
+      "DeepSeek V3/V4 MLA+DSA ladder rungs are NOT this family's shipping GGUF deepseek2 path",
     ],
   },
   {
     id: "gemma",
+    aliases: ["gemma", "gemma2"],
     displayName: "Gemma 2",
     level: "DECLARED",
     evidence: [
-      { path: "packs/hawking-adapters-extra.json", claim: "gemma2 extracted off-tree" },
-      { path: "crates/hawking-core/tests/gemma2_smoke.rs", claim: "smoke test remains but load_engine rejects unknown gemma2 arch without pack" },
-      { path: "crates/hawking-seed-c/src/providers/adapters.rs", claim: "seed-c ArchAdapter::gemma2 is declarative plan-only" },
+      { path: "packs/hawking-adapters-extra.json", claim: "gemma2 extracted off-tree", kind: "description" },
+      { path: "crates/hawking-core/tests/gemma2_smoke.rs", claim: "smoke test remains but load_engine rejects unknown gemma2 arch without pack", kind: "description" },
+      { path: "crates/hawking-seed-c/src/providers/adapters.rs", claim: "seed-c ArchAdapter::gemma2 is declarative plan-only", kind: "description" },
     ],
     module: "packs/hawking-adapters-extra (gemma2)",
     executes: false,
@@ -73,12 +94,13 @@ export const FAMILY_ADAPTERS: FamilyAdapterEntry[] = [
   },
   {
     id: "glm",
+    aliases: ["glm", "glm52", "glm_moe_dsa", "glm-5.2"],
     displayName: "GLM (gravity glm_moe_dsa)",
     level: "SMALL_REAL_CHECKPOINT",
     evidence: [
-      { path: "GLM52_FLAGSHIP_ADAPTER_PARITY.json", claim: "M04_SEALED: Rust adapter vs oracle on real flagship .gravity shards" },
-      { path: "crates/hawking-core/src/model/gravity_engine.rs", claim: "GravityEngine dispatches glm_moe_dsa" },
-      { path: "crates/hawking-core/tests/gravity_engine_registry.rs", claim: "registry path for .gravity artifacts" },
+      { path: "GLM52_FLAGSHIP_ADAPTER_PARITY.json", claim: "M04_SEALED: Rust adapter vs oracle on real flagship .gravity shards", kind: "small_checkpoint_run" },
+      { path: "crates/hawking-core/src/model/gravity_engine.rs", claim: "GravityEngine dispatches glm_moe_dsa", kind: "description" },
+      { path: "crates/hawking-core/tests/gravity_engine_registry.rs", claim: "registry path for .gravity artifacts", kind: "description" },
     ],
     module: "crates/hawking-core/src/model/gravity_engine.rs",
     executes: true,
@@ -91,11 +113,12 @@ export const FAMILY_ADAPTERS: FamilyAdapterEntry[] = [
   },
   {
     id: "kimi",
+    aliases: ["kimi", "kimi_k2", "kimi_k26", "moonshot"],
     displayName: "Kimi K2.x",
     level: "SYNTHETIC_PARITY",
     evidence: [
-      { path: "KIMI_K26_ADAPTER_TWIN.json", claim: "synthetic CPU reference + bound real-source metal K1 twin" },
-      { path: "crates/hawking-core/src/model/mod.rs", claim: "load_engine has no kimi arch arm (not serve-registered)" },
+      { path: "KIMI_K26_ADAPTER_TWIN.json", claim: "synthetic CPU reference + bound real-source metal K1 twin", kind: "synthetic_parity" },
+      { path: "crates/hawking-core/src/model/mod.rs", claim: "load_engine has no kimi arch arm (not serve-registered)", kind: "description" },
     ],
     module: "KIMI_K26_ADAPTER_TWIN.json (reference twin; no in-tree serve module)",
     executes: false,
@@ -108,13 +131,14 @@ export const FAMILY_ADAPTERS: FamilyAdapterEntry[] = [
   },
   {
     id: "llama",
+    aliases: ["llama", "llama2", "llama3", "llama3.2"],
     displayName: "Llama (dense GGUF + gravity)",
     level: "SMALL_REAL_CHECKPOINT",
     evidence: [
-      { path: "crates/hawking-core/src/model/llama.rs", claim: "in-tree LlamaDense engine module" },
-      { path: "crates/hawking-core/tests/llama32_smoke.rs", claim: "small-parent greedy smoke when GGUF present" },
-      { path: "crates/hawking-core/tests/gravity_llama_forward.rs", claim: "gravity llama forward path" },
-      { path: "crates/hawking-core/src/model/mod.rs", claim: "load_engine dispatches llama|mistral GGUF arch strings" },
+      { path: "crates/hawking-core/src/model/llama.rs", claim: "in-tree LlamaDense engine module", kind: "description" },
+      { path: "crates/hawking-core/tests/llama32_smoke.rs", claim: "small-parent greedy smoke when GGUF present", kind: "small_checkpoint_run" },
+      { path: "crates/hawking-core/tests/gravity_llama_forward.rs", claim: "gravity llama forward path", kind: "small_checkpoint_run" },
+      { path: "crates/hawking-core/src/model/mod.rs", claim: "load_engine dispatches llama|mistral GGUF arch strings", kind: "description" },
     ],
     module: "crates/hawking-core/src/model/llama.rs",
     executes: true,
@@ -126,10 +150,11 @@ export const FAMILY_ADAPTERS: FamilyAdapterEntry[] = [
   },
   {
     id: "minimax",
+    aliases: ["minimax", "minimax_m3", "minimax-m3"],
     displayName: "MiniMax",
     level: "DECLARED",
     evidence: [
-      { path: "FABRIC_BRIDGE_ARCHAEOLOGY.md", claim: "family listed in bridge archaeology; no serve path found" },
+      { path: "FABRIC_BRIDGE_ARCHAEOLOGY.md", claim: "family listed in bridge archaeology; no serve path found", kind: "description" },
     ],
     module: "(none — declared only)",
     executes: false,
@@ -142,12 +167,14 @@ export const FAMILY_ADAPTERS: FamilyAdapterEntry[] = [
   },
   {
     id: "mistral_mixtral",
+    aliases: ["mistral", "mixtral", "mistral_mixtral"],
     displayName: "Mistral / Mixtral",
     level: "SMALL_REAL_CHECKPOINT",
     evidence: [
-      { path: "crates/hawking-core/src/model/mod.rs", claim: "dense mistral arch string routes to LlamaDense" },
-      { path: "packs/hawking-adapters-extra.json", claim: "mixtral extracted off-tree to adapters-extra pack" },
-      { path: "crates/hawking-seed-c/src/providers/adapters.rs", claim: "seed-c ArchAdapter::mixtral is declarative plan-only (does not execute)" },
+      { path: "crates/hawking-core/src/model/mod.rs", claim: "dense mistral arch string routes to LlamaDense", kind: "description" },
+      { path: "crates/hawking-core/tests/llama32_smoke.rs", claim: "dense llama-family small checkpoint path (mistral shares LlamaDense)", kind: "small_checkpoint_run" },
+      { path: "packs/hawking-adapters-extra.json", claim: "mixtral extracted off-tree to adapters-extra pack", kind: "description" },
+      { path: "crates/hawking-seed-c/src/providers/adapters.rs", claim: "seed-c ArchAdapter::mixtral is declarative plan-only (does not execute)", kind: "description" },
     ],
     module: "crates/hawking-core/src/model/llama.rs (+ pack mixtral)",
     executes: true,
@@ -160,12 +187,13 @@ export const FAMILY_ADAPTERS: FamilyAdapterEntry[] = [
   },
   {
     id: "phi",
+    aliases: ["phi", "phi3"],
     displayName: "Phi-3",
     level: "DECLARED",
     evidence: [
-      { path: "packs/hawking-adapters-extra.json", claim: "phi3 extracted off-tree" },
-      { path: "crates/hawking-core/tests/phi3_smoke.rs", claim: "smoke test remains; arch not in shipping load_engine" },
-      { path: "crates/hawking-seed-c/src/providers/adapters.rs", claim: "seed-c ArchAdapter::phi3 is declarative plan-only" },
+      { path: "packs/hawking-adapters-extra.json", claim: "phi3 extracted off-tree", kind: "description" },
+      { path: "crates/hawking-core/tests/phi3_smoke.rs", claim: "smoke test remains; arch not in shipping load_engine", kind: "description" },
+      { path: "crates/hawking-seed-c/src/providers/adapters.rs", claim: "seed-c ArchAdapter::phi3 is declarative plan-only", kind: "description" },
     ],
     module: "packs/hawking-adapters-extra (phi3)",
     executes: false,
@@ -178,15 +206,16 @@ export const FAMILY_ADAPTERS: FamilyAdapterEntry[] = [
   },
   {
     id: "qwen",
+    aliases: ["qwen", "qwen2", "qwen2moe", "qwen-moe", "qwen3"],
     displayName: "Qwen (dense + MoE)",
     level: "FULL_PARENT_VALIDATED",
     evidence: [
-      { path: "crates/hawking-core/src/model/qwen_dense.rs", claim: "in-tree QwenDense engine" },
-      { path: "crates/hawking-core/src/model/qwen_moe.rs", claim: "in-tree QwenMoE engine" },
-      { path: "crates/hawking-core/tests/integration_greedy_64.rs", claim: "greedy integration path used as parent-validation gate" },
-      { path: "crates/hawking-core/tests/cpu_backend_parity.rs", claim: "CPU backend parity against live engine" },
-      { path: "crates/hawking-core/tests/qwen_tq_serve_parity.rs", claim: "TQ serve parity test (feature-gated)" },
-      { path: "crates/hawking-core/src/model/mod.rs", claim: "load_engine dispatches qwen2/qwen2moe" },
+      { path: "crates/hawking-core/src/model/qwen_dense.rs", claim: "in-tree QwenDense engine", kind: "description" },
+      { path: "crates/hawking-core/src/model/qwen_moe.rs", claim: "in-tree QwenMoE engine", kind: "description" },
+      { path: "crates/hawking-core/tests/integration_greedy_64.rs", claim: "greedy integration path used as parent-validation gate", kind: "full_parent_validation" },
+      { path: "crates/hawking-core/tests/cpu_backend_parity.rs", claim: "CPU backend parity against live engine", kind: "full_parent_validation" },
+      { path: "crates/hawking-core/tests/qwen_tq_serve_parity.rs", claim: "TQ serve parity test (feature-gated)", kind: "small_checkpoint_run" },
+      { path: "crates/hawking-core/src/model/mod.rs", claim: "load_engine dispatches qwen2/qwen2moe", kind: "description" },
     ],
     module: "crates/hawking-core/src/model/qwen_dense.rs",
     executes: true,
@@ -198,12 +227,13 @@ export const FAMILY_ADAPTERS: FamilyAdapterEntry[] = [
   },
   {
     id: "state_space",
+    aliases: ["state_space", "rwkv7", "rwkv", "mamba2", "mamba"],
     displayName: "State-space (RWKV7 + Mamba2)",
     level: "SMALL_REAL_CHECKPOINT",
     evidence: [
-      { path: "crates/hawking-core/src/model/rwkv7.rs", claim: "in-tree RwkvSeven engine" },
-      { path: "crates/hawking-core/tests/rwkv7_parity.rs", claim: "RWKV7 parity + load_engine routing" },
-      { path: "packs/hawking-adapters-extra.json", claim: "mamba2 extracted off-tree" },
+      { path: "crates/hawking-core/src/model/rwkv7.rs", claim: "in-tree RwkvSeven engine", kind: "description" },
+      { path: "crates/hawking-core/tests/rwkv7_parity.rs", claim: "RWKV7 parity + load_engine routing", kind: "small_checkpoint_run" },
+      { path: "packs/hawking-adapters-extra.json", claim: "mamba2 extracted off-tree", kind: "description" },
     ],
     module: "crates/hawking-core/src/model/rwkv7.rs",
     executes: true,

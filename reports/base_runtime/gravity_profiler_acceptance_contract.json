@@ -1,0 +1,42 @@
+{
+  "schema": "hawking.gravity.profiler_acceptance_contract.v1",
+  "recorded_at_utc": "2026-07-27T02:46:51Z",
+  "base_commit": "2b6d8f793043012fc89b7051c37eb0962bc58421",
+  "validator": "tools/condense/gravity_profiler_acceptance.py",
+  "purpose": "Fail-closed promotion boundary for the first post-memoization sealed-model profiler receipt.",
+  "minimum_contract": {
+    "ledger_tokens": 16,
+    "minimum_attributed_fraction_every_token": 0.95,
+    "promoted_resident_native_bf16_token_only_path": true,
+    "same_process_exact_input_ab_all_checks": true,
+    "generic_orchestration_or_residual_buckets": 0,
+    "untagged_gpu_dispatches": 0,
+    "physical_stage_dispatch_mismatches": 0,
+    "tokens_missing_gpu_timestamps": 0,
+    "operations_nonzero_every_token": true,
+    "exclusive_cpu_bucket_arithmetic_exact": true,
+    "active_byte_category_partition_exact": true
+  },
+  "selftest": {
+    "command": "python3.12 tools/condense/gravity_profiler_acceptance.py --selftest",
+    "result": "PASS",
+    "accepts_complete_fixture": true,
+    "rejects_untagged_dispatch": true,
+    "rejects_ab_mismatch": true,
+    "rejects_inconsistent_exclusive_arithmetic": true,
+    "rejects_missing_physical_timestamp": true
+  },
+  "historical_defect_rejection": {
+    "input": "HAWKING_LEDGER_BF16.json",
+    "command": "python3.12 tools/condense/gravity_profiler_acceptance.py HAWKING_LEDGER_BF16.json --min-tokens 1",
+    "result": "REJECTED_EXIT_2",
+    "observed_attributed_fraction": 0.32424303458100684,
+    "observed_generic_orchestration_bucket": true,
+    "observed_operations_zero": true,
+    "note": "The historical defect receipt predates the recovered run configuration, exact same-process A/B, coverage gate, and physical stage compositions; it is intentionally not promotable."
+  },
+  "live_status": {
+    "accepted_live_receipt": null,
+    "reason": "The full MOP contention A/B gate remains unauthorized; no sealed-model run is admitted until that gate passes."
+  }
+}

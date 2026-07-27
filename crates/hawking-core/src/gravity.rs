@@ -744,6 +744,104 @@ pub fn matvec_bf16_host(weight_le: &[u8], cols: usize, x: &[f32]) -> Result<Vec<
     matvec_dense(&w, x, "lm_head.weight")
 }
 
+/// Additive, default-off accumulation candidates for native-BF16 GEMV.
+///
+/// `Sequential` is the existing left-to-right f32 contract. The other
+/// variants are exposed only to parity tests and explicit microbenchmarks;
+/// no runtime selection consults this enum.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NativeBf16Accumulation {
+    Sequential,
+    Neumaier,
+    /// Neumaier summation plus the residual of every rounded f32 product,
+    /// recovered with an explicit fused multiply-add.
+    NeumaierCompensatedProduct,
+}
+
+impl NativeBf16Accumulation {
+    pub const ALL: [Self; 3] = [
+        Self::Sequential,
+        Self::Neumaier,
+        Self::NeumaierCompensatedProduct,
+    ];
+
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Sequential => "sequential",
+            Self::Neumaier => "neumaier",
+            Self::NeumaierCompensatedProduct => "neumaier_compensated_product",
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    pub const fn metal_kernel(self) -> &'static str {
+        match self {
+            Self::Sequential => "gemv_native_bf16_seq",
+            Self::Neumaier => "gemv_native_bf16_neumaier",
+            Self::NeumaierCompensatedProduct => {
+                "gemv_native_bf16_neumaier_compensated_product"
+            }
+        }
+    }
+}
+
+/// Matching f32 host comparator for the additive native-BF16 accumulation
+/// candidates. Bounds and authority remain external: this function changes
+/// arithmetic only, never parity policy.
+pub fn matvec_bf16_host_accumulation(
+    weight_le: &[u8],
+    cols: usize,
+    x: &[f32],
+    accumulation: NativeBf16Accumulation,
+) -> Result<Vec<f32>> {
+    if accumulation == NativeBf16Accumulation::Sequential {
+        return matvec_bf16_host(weight_le, cols, x);
+    }
+    if x.len() != cols {
+        return Err(Error::Gravity(format!(
+            "matvec_bf16_host_accumulation: x.len() {} != cols {cols}",
+            x.len()
+        )));
+    }
+    if cols == 0 || weight_le.len() % (cols * 2) != 0 {
+        return Err(Error::Gravity(format!(
+            "matvec_bf16_host_accumulation: payload {} B is not a whole number of \
+             {cols}-wide bf16 rows",
+            weight_le.len()
+        )));
+    }
+
+    let weights = widen_native("native.bf16", weight_le)?;
+    Ok(weights
+        .chunks_exact(cols)
+        .map(|row| {
+            let mut sum = 0.0f32;
+            let mut correction = 0.0f32;
+            for (&weight, &activation) in row.iter().zip(x) {
+                let product = weight * activation;
+                let product_residual =
+                    if accumulation == NativeBf16Accumulation::NeumaierCompensatedProduct {
+                        weight.mul_add(activation, -product)
+                    } else {
+                        0.0
+                    };
+                let next = sum + product;
+                let addition_residual = if sum.abs() >= product.abs() {
+                    let delta = sum - next;
+                    delta + product
+                } else {
+                    let delta = product - next;
+                    delta + sum
+                };
+                correction += addition_residual;
+                correction += product_residual;
+                sum = next;
+            }
+            sum + correction
+        })
+        .collect())
+}
+
 fn row_dense(w: &[f32], index: usize, cols: usize, name: &str) -> Result<Vec<f32>> {
     let start = index * cols;
     if start + cols > w.len() {

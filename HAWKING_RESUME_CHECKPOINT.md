@@ -66,15 +66,47 @@ are not low-rank and target exactly this failure.
 
 Everything except the packing is intact.
 
-## Open question that must be answered before spending 6 more hours
+## ANSWERED: the quality floors, measured on Llama-1B
 
-**What per-tensor reconstruction quality does capability require?** Nobody has measured it.
-A calibration on Llama-1B was running when the machine was handed over -- sweep ranks 8..512
-and full, find where `2 + 2 =` survives, and determine whether median, worst-case, or
-per-layer worst-case cosine predicts collapse. An allocator can only optimise what predicts.
+The calibration finished. Three results.
 
-Working hypothesis, untested: per-layer worst case, because GLM's residual stream measured
-expansive at 1.4-2.4x per layer with no contractive regime.
+**1. `beats_null` is FALSIFIED as an admission criterion, empirically.** Rank 128 and the
+every-layer variant both reach ~100% beats_null while capability is dead. It is a floor test
+and nothing more.
+
+**2. Worst-case structural quality predicts collapse better than the median** -- the
+hypothesis held. `every_layer` at median cosine 0.961 still collapses, so a good median does
+not save you if one layer is bad.
+
+**3. Numeric floors (Llama-1B; transfer the OBJECTIVE, re-measure the numbers on GLM):**
+
+    math + live capability:  min cosine >= 0.70, median >= 0.92, rank >= 256
+    strong capability:       min cosine >= 0.74, median >= 0.96, rank >= 512
+
+Generation B swept ranks 16 and 64 and shipped a 0.6782 median. It was never in range.
+
+The corrected objective:
+
+    minimise BPW
+    subject to  every tensor: functional_cosine(real X_hold) >= T_tensor
+                every layer:  min tensor cosine in that layer >= T_layer
+    NEVER rank = cheapest that beats the constant-mean null
+    NEVER promote on reconstruction error
+    NEVER Gaussian activation proxies
+
+## AND A METHOD BUG IN THE GLM PACKER -- confirmed in source
+
+`glm52_activation_aware_pack.py:454` does `mu = X_fit.mean(axis=0)`, `Xc = X_fit - mu`, then
+SVD on the CENTERED activation matrix. The calibration used **uncentered** SVD and notes that
+centering **ceilings** functional cosine by discarding the mean activation direction.
+
+This is structurally unfair as scored: the basis is denied the mean direction, and its
+reconstruction is then measured against a null that IS the mean. For `gate_proj` that null is
+0.9874, i.e. the mean direction dominates the tensor -- and the basis was forbidden from
+using it. Some unknown part of Generation B's collapse is this, not the family.
+
+**So test uncentered SVD BEFORE concluding low-rank is dead.** It is a one-line change to the
+basis builder and it changes what "rank 64 cannot do this" means.
 
 ## Resume commands
 

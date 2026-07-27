@@ -211,6 +211,15 @@
           "status": "present"
         },
         {
+          "claim": "unconditional: real .gravity container decoded, complete token executed, matches numpy oracle reading the same container (3 passed, 0.04s)",
+          "exists": true,
+          "is_test": true,
+          "kind": "real_tensor_decode",
+          "path": "crates/hawking-core/tests/gravity_glm_forward.rs",
+          "role": "evidence",
+          "status": "present"
+        },
+        {
           "claim": "no FULL_PARENT_VALIDATED receipt/test registered for this family",
           "exists": false,
           "is_test": true,
@@ -230,7 +239,7 @@
         }
       ],
       "tests_missing": 2,
-      "tests_present": 3
+      "tests_present": 4
     },
     {
       "family": "kimi",
@@ -335,6 +344,15 @@
           "status": "present"
         },
         {
+          "claim": "unconditional: CPU+GPU forward match frozen oracle, incremental decode matches full replay (3 passed, 57.48s of real work)",
+          "exists": true,
+          "is_test": true,
+          "kind": "real_tensor_decode",
+          "path": "crates/hawking-core/tests/gravity_llama_forward.rs",
+          "role": "evidence",
+          "status": "present"
+        },
+        {
           "claim": "no FULL_PARENT_VALIDATED receipt/test registered for this family",
           "exists": false,
           "is_test": true,
@@ -354,7 +372,7 @@
         }
       ],
       "tests_missing": 2,
-      "tests_present": 4
+      "tests_present": 5
     },
     {
       "family": "minimax",

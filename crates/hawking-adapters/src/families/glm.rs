@@ -29,6 +29,13 @@ const EVIDENCE: &[Evidence] = &[
         claim: "registry path for .gravity artifacts",
         kind: EvidenceKind::Description,
     },
+    // Stage C: this test runs UNCONDITIONALLY. Unlike the weight-gated tests, it does
+    // not skip -- the fixture is committed. Real container, real codec, real oracle.
+    Evidence {
+        path: "crates/hawking-core/tests/gravity_glm_forward.rs",
+        claim: "unconditional: real .gravity container decoded, complete token executed, matches numpy oracle reading the same container (3 passed, 0.04s)",
+        kind: EvidenceKind::RealTensorDecode,
+    },
 ];
 
 const GAPS: &[&str] = &[

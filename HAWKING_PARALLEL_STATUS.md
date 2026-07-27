@@ -3,27 +3,26 @@
 Generated from live evidence by `tools/campaign/parallel_status.py`. Do not hand-edit.
 Ownership and the DAG are hand-authored architecture and are read, never written, by this tool.
 
-    at:       2026-07-27T01:42:43Z
+    at:       2026-07-27T01:58:19Z
     endpoint: RAMANUJAN_SANDBOX_READY (not reached)
-    width:    6/6 lanes running
+    width:    1/6 lanes running
     fences:   ODYSSEY_LAUNCH_AUTHORIZED=False RAMANUJAN_RESEARCH_AUTHORIZED=False HIDE_KERNEL_TURN=False
 
 ## Running
 
 - `L01` hide-archaeology-v2 (grok) -- outputs missing: HIDE_ARCHAEOLOGY_V2.md, HIDE_ARCHAEOLOGY_V2.json
-- `L02` hide-memory-six (grok) -- outputs missing: HIDE_MEMORY_CLASSES.json
-- `L03` odyssey-t0 (grok) -- outputs missing: ODYSSEY_T0_RECEIPT.json, ODYSSEY_CONTRACT_CLOSURE.json, ODYSSEY_FEASIBILITY.json
-- `L04` fabric-software (grok) -- outputs missing: FABRIC_SOFTWARE_STATUS.json, FABRIC_QUALIFICATION_LADDER.json
-- `L05` bridge-events-adapters (grok) -- outputs missing: HAWKING_CANONICAL_EVENTS.json, HAWKING_ADAPTER_REGISTRY.json, HAWKING_BRIDGE_SURFACE.json
-- `L06` consolidation-inventory (grok) -- outputs missing: HAWKING_CONSOLIDATION_INVENTORY.md, HAWKING_CONSOLIDATION_INVENTORY.json
 
 ## Finished, awaiting controller review
 
-- none
+- `L02` hide-memory-six (grok) -- DECLARED RUNNING BUT EVIDENCE FINISHED_AWAITING_REVIEW
+- `L03` odyssey-t0 (grok) -- outputs missing: ODYSSEY_T0_RECEIPT.json, ODYSSEY_CONTRACT_CLOSURE.json, ODYSSEY_FEASIBILITY.json -- DECLARED RUNNING BUT EVIDENCE FINISHED_OUTPUTS_MISSING
+- `L04` fabric-software (grok) -- DECLARED RUNNING BUT EVIDENCE FINISHED_AWAITING_REVIEW
+- `L05` bridge-events-adapters (grok) -- DECLARED RUNNING BUT EVIDENCE FINISHED_AWAITING_REVIEW
+- `L06` consolidation-inventory (grok) -- DECLARED RUNNING BUT EVIDENCE FINISHED_AWAITING_REVIEW
 
 ## Queued
 
-- `L07` speculation-safety (grok) -- outputs missing: HIDE_SPECULATION_SAFETY.json
+- `L07` speculation-safety (grok)
 - `L09` ramanujan-migration-prep (claude)
 
 ## Blocked (real data dependencies, see the DAG)
@@ -46,8 +45,8 @@ Ownership and the DAG are hand-authored architecture and are read, never written
 
 ## Next action
 
-    6 lanes running at width 6/6; do not poll, wait on a milestone
+    review L02 (hide-memory-six) -- a report is a claim; re-derive before merging
 
 ```bash
-~/.claude-grok/bin/grok-run wait
+cat /Users/scammermike/.claude-grok/tasks/hide-memory-six-20260726-213344/grok-report.md
 ```

@@ -1,6 +1,6 @@
 {
   "schema": "hawking.parallel.status.v1",
-  "at": "2026-07-27T01:42:43Z",
+  "at": "2026-07-27T01:58:19Z",
   "endpoint": "RAMANUJAN_SANDBOX_READY",
   "endpoint_reached": false,
   "fences": {
@@ -22,7 +22,7 @@
     "verification_method": "read GLM52_H0_98_MATH_PRESERVE_RECEIPT.json + HAWKING_ODYSSEY_READY_AUDIT.json and confirmed the artifact directory exists on disk"
   },
   "width": {
-    "running": 6,
+    "running": 1,
     "limit": 6
   },
   "lanes": [
@@ -58,22 +58,22 @@
       "name": "hide-memory-six",
       "owner": "grok",
       "declared_status": "RUNNING",
-      "evidence_status": "RUNNING",
-      "disagrees": false,
+      "evidence_status": "FINISHED_AWAITING_REVIEW",
+      "disagrees": true,
       "task": {
         "present": true,
-        "status": "running",
-        "exit_code": null,
-        "process_alive": true,
+        "status": "done",
+        "exit_code": "0",
+        "process_alive": false,
         "stale_running": false,
-        "report": null,
-        "diff": null
+        "report": "/Users/scammermike/.claude-grok/tasks/hide-memory-six-20260726-213344/grok-report.md",
+        "diff": "/Users/scammermike/.claude-grok/tasks/hide-memory-six-20260726-213344/diff.patch"
       },
       "outputs": {
-        "found": [],
-        "missing": [
+        "found": [
           "HIDE_MEMORY_CLASSES.json"
-        ]
+        ],
+        "missing": []
       },
       "dependencies": [],
       "promotion_gate": "six classes with SEPARATE write authority, retention, retrieval and budget. Six labels on one blob store fails.",
@@ -84,16 +84,16 @@
       "name": "odyssey-t0",
       "owner": "grok",
       "declared_status": "RUNNING",
-      "evidence_status": "RUNNING",
-      "disagrees": false,
+      "evidence_status": "FINISHED_OUTPUTS_MISSING",
+      "disagrees": true,
       "task": {
         "present": true,
-        "status": "running",
-        "exit_code": null,
-        "process_alive": true,
+        "status": "done",
+        "exit_code": "0",
+        "process_alive": false,
         "stale_running": false,
-        "report": null,
-        "diff": null
+        "report": "/Users/scammermike/.claude-grok/tasks/odyssey-t0-20260726-213445/grok-report.md",
+        "diff": "/Users/scammermike/.claude-grok/tasks/odyssey-t0-20260726-213445/diff.patch"
       },
       "outputs": {
         "found": [],
@@ -112,23 +112,23 @@
       "name": "fabric-software",
       "owner": "grok",
       "declared_status": "RUNNING",
-      "evidence_status": "RUNNING",
-      "disagrees": false,
+      "evidence_status": "FINISHED_AWAITING_REVIEW",
+      "disagrees": true,
       "task": {
         "present": true,
-        "status": "running",
-        "exit_code": null,
-        "process_alive": true,
+        "status": "done",
+        "exit_code": "0",
+        "process_alive": false,
         "stale_running": false,
-        "report": null,
-        "diff": null
+        "report": "/Users/scammermike/.claude-grok/tasks/fabric-software-20260726-213447/grok-report.md",
+        "diff": "/Users/scammermike/.claude-grok/tasks/fabric-software-20260726-213447/diff.patch"
       },
       "outputs": {
-        "found": [],
-        "missing": [
+        "found": [
           "FABRIC_SOFTWARE_STATUS.json",
           "FABRIC_QUALIFICATION_LADDER.json"
-        ]
+        ],
+        "missing": []
       },
       "dependencies": [],
       "promotion_gate": "software qualification only. FABRIC_HARDWARE_QUALIFICATION_PENDING is the honest terminal state; a simulated result must be labelled simulated in filename, schema, logs and report.",
@@ -139,24 +139,24 @@
       "name": "bridge-events-adapters",
       "owner": "grok",
       "declared_status": "RUNNING",
-      "evidence_status": "RUNNING",
-      "disagrees": false,
+      "evidence_status": "FINISHED_AWAITING_REVIEW",
+      "disagrees": true,
       "task": {
         "present": true,
-        "status": "running",
-        "exit_code": null,
-        "process_alive": true,
+        "status": "done",
+        "exit_code": "0",
+        "process_alive": false,
         "stale_running": false,
-        "report": null,
-        "diff": null
+        "report": "/Users/scammermike/.claude-grok/tasks/bridge-events-20260726-213449/grok-report.md",
+        "diff": "/Users/scammermike/.claude-grok/tasks/bridge-events-20260726-213449/diff.patch"
       },
       "outputs": {
-        "found": [],
-        "missing": [
+        "found": [
           "HAWKING_CANONICAL_EVENTS.json",
           "HAWKING_ADAPTER_REGISTRY.json",
           "HAWKING_BRIDGE_SURFACE.json"
-        ]
+        ],
+        "missing": []
       },
       "dependencies": [],
       "promotion_gate": "support levels used literally. No family is PRODUCTION today. A route returning a plausible canned response is worse than a 501.",
@@ -167,23 +167,23 @@
       "name": "consolidation-inventory",
       "owner": "grok",
       "declared_status": "RUNNING",
-      "evidence_status": "RUNNING",
-      "disagrees": false,
+      "evidence_status": "FINISHED_AWAITING_REVIEW",
+      "disagrees": true,
       "task": {
         "present": true,
-        "status": "running",
-        "exit_code": null,
-        "process_alive": true,
+        "status": "done",
+        "exit_code": "0",
+        "process_alive": false,
         "stale_running": false,
-        "report": null,
+        "report": "/Users/scammermike/.claude-grok/tasks/consolidation-inventory-20260726-213450/grok-report.md",
         "diff": null
       },
       "outputs": {
-        "found": [],
-        "missing": [
+        "found": [
           "HAWKING_CONSOLIDATION_INVENTORY.md",
           "HAWKING_CONSOLIDATION_INVENTORY.json"
-        ]
+        ],
+        "missing": []
       },
       "dependencies": [],
       "promotion_gate": "inventory only. Destructive consolidation is deferred until after Math-Frozen, HIDE, Bridge and Fabric are real.",
@@ -220,10 +220,10 @@
         "present": false
       },
       "outputs": {
-        "found": [],
-        "missing": [
+        "found": [
           "HIDE_SPECULATION_SAFETY.json"
-        ]
+        ],
+        "missing": []
       },
       "dependencies": [],
       "promotion_gate": "type-level separation of Draft and Verified tokens. Convention is not enough.",
@@ -506,5 +506,5 @@
       "no_block_rule": "no lane in this campaign waits on TG. HIDE_KERNEL_TURN stays false until a real provider passes its promotion gate."
     }
   ],
-  "next_action": "6 lanes running at width 6/6; do not poll, wait on a milestone"
+  "next_action": "review L02 (hide-memory-six) -- a report is a claim; re-derive before merging"
 }

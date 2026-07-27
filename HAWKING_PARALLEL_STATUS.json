@@ -1,6 +1,6 @@
 {
   "schema": "hawking.parallel.status.v1",
-  "at": "2026-07-27T01:58:19Z",
+  "at": "2026-07-27T02:17:19Z",
   "endpoint": "RAMANUJAN_SANDBOX_READY",
   "endpoint_reached": false,
   "fences": {
@@ -22,7 +22,7 @@
     "verification_method": "read GLM52_H0_98_MATH_PRESERVE_RECEIPT.json + HAWKING_ODYSSEY_READY_AUDIT.json and confirmed the artifact directory exists on disk"
   },
   "width": {
-    "running": 1,
+    "running": 0,
     "limit": 6
   },
   "lanes": [
@@ -30,36 +30,41 @@
       "id": "L01",
       "name": "hide-archaeology-v2",
       "owner": "grok",
-      "declared_status": "RUNNING",
-      "evidence_status": "RUNNING",
+      "declared_status": "INTEGRATED",
+      "evidence_status": "INTEGRATED",
       "disagrees": false,
       "task": {
         "present": true,
-        "status": "running",
-        "exit_code": null,
-        "process_alive": true,
+        "status": "done",
+        "exit_code": "0",
+        "process_alive": false,
         "stale_running": false,
-        "report": null,
+        "report": "/Users/scammermike/.claude-grok/tasks/hide-arch-v2-20260726-213343/grok-report.md",
         "diff": null
       },
       "outputs": {
-        "found": [],
-        "missing": [
+        "found": [
           "HIDE_ARCHAEOLOGY_V2.md",
           "HIDE_ARCHAEOLOGY_V2.json"
-        ]
+        ],
+        "missing": [],
+        "integrated": [
+          "HIDE_ARCHAEOLOGY_V2.md",
+          "HIDE_ARCHAEOLOGY_V2.json"
+        ],
+        "fully_integrated": true
       },
       "dependencies": [],
       "promotion_gate": "controller re-derives at least three load-bearing verdicts independently before any lane acts on the report",
-      "reviewed_by_controller": false
+      "reviewed_by_controller": true
     },
     {
       "id": "L02",
       "name": "hide-memory-six",
       "owner": "grok",
-      "declared_status": "RUNNING",
-      "evidence_status": "FINISHED_AWAITING_REVIEW",
-      "disagrees": true,
+      "declared_status": "INTEGRATED",
+      "evidence_status": "INTEGRATED",
+      "disagrees": false,
       "task": {
         "present": true,
         "status": "done",
@@ -73,19 +78,23 @@
         "found": [
           "HIDE_MEMORY_CLASSES.json"
         ],
-        "missing": []
+        "missing": [],
+        "integrated": [
+          "HIDE_MEMORY_CLASSES.json"
+        ],
+        "fully_integrated": true
       },
       "dependencies": [],
       "promotion_gate": "six classes with SEPARATE write authority, retention, retrieval and budget. Six labels on one blob store fails.",
-      "reviewed_by_controller": false
+      "reviewed_by_controller": true
     },
     {
       "id": "L03",
       "name": "odyssey-t0",
       "owner": "grok",
-      "declared_status": "RUNNING",
-      "evidence_status": "FINISHED_OUTPUTS_MISSING",
-      "disagrees": true,
+      "declared_status": "INTEGRATED",
+      "evidence_status": "INTEGRATED",
+      "disagrees": false,
       "task": {
         "present": true,
         "status": "done",
@@ -96,24 +105,30 @@
         "diff": "/Users/scammermike/.claude-grok/tasks/odyssey-t0-20260726-213445/diff.patch"
       },
       "outputs": {
-        "found": [],
-        "missing": [
-          "ODYSSEY_T0_RECEIPT.json",
-          "ODYSSEY_CONTRACT_CLOSURE.json",
-          "ODYSSEY_FEASIBILITY.json"
-        ]
+        "found": [
+          "odyssey/ODYSSEY_T0_RECEIPT.json",
+          "odyssey/ODYSSEY_CONTRACT_CLOSURE.json",
+          "odyssey/ODYSSEY_FEASIBILITY.json"
+        ],
+        "missing": [],
+        "integrated": [
+          "odyssey/ODYSSEY_T0_RECEIPT.json",
+          "odyssey/ODYSSEY_CONTRACT_CLOSURE.json",
+          "odyssey/ODYSSEY_FEASIBILITY.json"
+        ],
+        "fully_integrated": true
       },
       "dependencies": [],
       "promotion_gate": "T0 reproduces substrate, data, runtime and known failures FOR REAL. The existing 87/87 dry run is directory-existence checks and does not count.",
-      "reviewed_by_controller": false
+      "reviewed_by_controller": true
     },
     {
       "id": "L04",
       "name": "fabric-software",
       "owner": "grok",
-      "declared_status": "RUNNING",
-      "evidence_status": "FINISHED_AWAITING_REVIEW",
-      "disagrees": true,
+      "declared_status": "INTEGRATED",
+      "evidence_status": "INTEGRATED",
+      "disagrees": false,
       "task": {
         "present": true,
         "status": "done",
@@ -128,19 +143,24 @@
           "FABRIC_SOFTWARE_STATUS.json",
           "FABRIC_QUALIFICATION_LADDER.json"
         ],
-        "missing": []
+        "missing": [],
+        "integrated": [
+          "FABRIC_SOFTWARE_STATUS.json",
+          "FABRIC_QUALIFICATION_LADDER.json"
+        ],
+        "fully_integrated": true
       },
       "dependencies": [],
       "promotion_gate": "software qualification only. FABRIC_HARDWARE_QUALIFICATION_PENDING is the honest terminal state; a simulated result must be labelled simulated in filename, schema, logs and report.",
-      "reviewed_by_controller": false
+      "reviewed_by_controller": true
     },
     {
       "id": "L05",
       "name": "bridge-events-adapters",
       "owner": "grok",
-      "declared_status": "RUNNING",
-      "evidence_status": "FINISHED_AWAITING_REVIEW",
-      "disagrees": true,
+      "declared_status": "INTEGRATED",
+      "evidence_status": "INTEGRATED",
+      "disagrees": false,
       "task": {
         "present": true,
         "status": "done",
@@ -156,19 +176,25 @@
           "HAWKING_ADAPTER_REGISTRY.json",
           "HAWKING_BRIDGE_SURFACE.json"
         ],
-        "missing": []
+        "missing": [],
+        "integrated": [
+          "HAWKING_CANONICAL_EVENTS.json",
+          "HAWKING_ADAPTER_REGISTRY.json",
+          "HAWKING_BRIDGE_SURFACE.json"
+        ],
+        "fully_integrated": true
       },
       "dependencies": [],
       "promotion_gate": "support levels used literally. No family is PRODUCTION today. A route returning a plausible canned response is worse than a 501.",
-      "reviewed_by_controller": false
+      "reviewed_by_controller": true
     },
     {
       "id": "L06",
       "name": "consolidation-inventory",
       "owner": "grok",
-      "declared_status": "RUNNING",
-      "evidence_status": "FINISHED_AWAITING_REVIEW",
-      "disagrees": true,
+      "declared_status": "INTEGRATED",
+      "evidence_status": "INTEGRATED",
+      "disagrees": false,
       "task": {
         "present": true,
         "status": "done",
@@ -183,35 +209,82 @@
           "HAWKING_CONSOLIDATION_INVENTORY.md",
           "HAWKING_CONSOLIDATION_INVENTORY.json"
         ],
-        "missing": []
+        "missing": [],
+        "integrated": [
+          "HAWKING_CONSOLIDATION_INVENTORY.md",
+          "HAWKING_CONSOLIDATION_INVENTORY.json"
+        ],
+        "fully_integrated": true
       },
       "dependencies": [],
       "promotion_gate": "inventory only. Destructive consolidation is deferred until after Math-Frozen, HIDE, Bridge and Fabric are real.",
-      "reviewed_by_controller": false
+      "reviewed_by_controller": true
     },
     {
       "id": "L18",
       "name": "gravity-serve",
       "owner": "grok",
-      "declared_status": "QUEUED_HEAD_OF_WAVE_2",
-      "evidence_status": "QUEUED_HEAD_OF_WAVE_2",
+      "declared_status": "INTEGRATED",
+      "evidence_status": "INTEGRATED",
       "disagrees": false,
       "task": {
-        "present": false
+        "present": true,
+        "status": "done",
+        "exit_code": "0",
+        "process_alive": false,
+        "stale_running": false,
+        "report": "/Users/scammermike/.claude-grok/tasks/gravity-serve-20260726-214344/grok-report.md",
+        "diff": "/Users/scammermike/.claude-grok/tasks/gravity-serve-20260726-214344/diff.patch"
       },
       "outputs": {
-        "found": [],
-        "missing": [
-          "HAWKING_GRAVITY_SERVE_RECEIPT.json"
-        ]
+        "found": [
+          "HAWKING_GRAVITY_SERVE_RECEIPT.json",
+          "HAWKING_GRAVITY_SERVE_FIRST_GENERATION.json"
+        ],
+        "missing": [],
+        "integrated": [
+          "HAWKING_GRAVITY_SERVE_RECEIPT.json",
+          "HAWKING_GRAVITY_SERVE_FIRST_GENERATION.json"
+        ],
+        "fully_integrated": true
       },
       "dependencies": [],
       "promotion_gate": "no fallback model, ever. A correct slow path is the deliverable; a fast wrong one silently answers G4 and G5 with the wrong model.",
-      "reviewed_by_controller": false
+      "reviewed_by_controller": true
     },
     {
       "id": "L07",
       "name": "speculation-safety",
+      "owner": "grok",
+      "declared_status": "INTEGRATED",
+      "evidence_status": "INTEGRATED",
+      "disagrees": false,
+      "task": {
+        "present": true,
+        "status": "done",
+        "exit_code": "0",
+        "process_alive": false,
+        "stale_running": false,
+        "report": "/Users/scammermike/.claude-grok/tasks/spec-safe-20260726-214346/grok-report.md",
+        "diff": "/Users/scammermike/.claude-grok/tasks/spec-safe-20260726-214346/diff.patch"
+      },
+      "outputs": {
+        "found": [
+          "HIDE_SPECULATION_SAFETY.json"
+        ],
+        "missing": [],
+        "integrated": [
+          "HIDE_SPECULATION_SAFETY.json"
+        ],
+        "fully_integrated": true
+      },
+      "dependencies": [],
+      "promotion_gate": "type-level separation of Draft and Verified tokens. Convention is not enough.",
+      "reviewed_by_controller": true
+    },
+    {
+      "id": "L08",
+      "name": "hide-os-wiring",
       "owner": "grok",
       "declared_status": "QUEUED",
       "evidence_status": "QUEUED",
@@ -220,28 +293,10 @@
         "present": false
       },
       "outputs": {
-        "found": [
-          "HIDE_SPECULATION_SAFETY.json"
-        ],
-        "missing": []
-      },
-      "dependencies": [],
-      "promotion_gate": "type-level separation of Draft and Verified tokens. Convention is not enough.",
-      "reviewed_by_controller": false
-    },
-    {
-      "id": "L08",
-      "name": "hide-os-wiring",
-      "owner": "grok",
-      "declared_status": "BLOCKED",
-      "evidence_status": "BLOCKED",
-      "disagrees": false,
-      "task": {
-        "present": false
-      },
-      "outputs": {
         "found": [],
-        "missing": []
+        "missing": [],
+        "integrated": [],
+        "fully_integrated": false
       },
       "dependencies": [
         "L01"
@@ -263,11 +318,15 @@
         "found": [
           "RAMANUJAN_HANDOFF_CONTRACT.json"
         ],
-        "missing": []
+        "missing": [],
+        "integrated": [
+          "RAMANUJAN_HANDOFF_CONTRACT.json"
+        ],
+        "fully_integrated": true
       },
       "dependencies": [],
       "promotion_gate": null,
-      "reviewed_by_controller": false
+      "reviewed_by_controller": true
     },
     {
       "id": "L10",
@@ -281,7 +340,9 @@
       },
       "outputs": {
         "found": [],
-        "missing": []
+        "missing": [],
+        "integrated": [],
+        "fully_integrated": false
       },
       "dependencies": [
         "L03"
@@ -301,7 +362,9 @@
       },
       "outputs": {
         "found": [],
-        "missing": []
+        "missing": [],
+        "integrated": [],
+        "fully_integrated": false
       },
       "dependencies": [
         "L10"
@@ -321,7 +384,9 @@
       },
       "outputs": {
         "found": [],
-        "missing": []
+        "missing": [],
+        "integrated": [],
+        "fully_integrated": false
       },
       "dependencies": [
         "L06",
@@ -346,7 +411,9 @@
       },
       "outputs": {
         "found": [],
-        "missing": []
+        "missing": [],
+        "integrated": [],
+        "fully_integrated": false
       },
       "dependencies": [
         "L12"
@@ -366,7 +433,9 @@
       },
       "outputs": {
         "found": [],
-        "missing": []
+        "missing": [],
+        "integrated": [],
+        "fully_integrated": false
       },
       "dependencies": [
         "L13"
@@ -386,7 +455,9 @@
       },
       "outputs": {
         "found": [],
-        "missing": []
+        "missing": [],
+        "integrated": [],
+        "fully_integrated": false
       },
       "dependencies": [
         "L13",
@@ -407,7 +478,9 @@
       },
       "outputs": {
         "found": [],
-        "missing": []
+        "missing": [],
+        "integrated": [],
+        "fully_integrated": false
       },
       "dependencies": [
         "L13"
@@ -427,7 +500,9 @@
       },
       "outputs": {
         "found": [],
-        "missing": []
+        "missing": [],
+        "integrated": [],
+        "fully_integrated": false
       },
       "dependencies": [
         "L14",
@@ -435,6 +510,102 @@
         "L16"
       ],
       "promotion_gate": null,
+      "reviewed_by_controller": false
+    },
+    {
+      "id": "L19",
+      "name": "odyssey-data",
+      "owner": "grok",
+      "declared_status": "INTEGRATED",
+      "evidence_status": "INTEGRATED",
+      "disagrees": false,
+      "task": {
+        "present": true,
+        "status": "done",
+        "exit_code": "0",
+        "process_alive": false,
+        "stale_running": false,
+        "report": "/Users/scammermike/.claude-grok/tasks/odyssey-data-20260726-214631/grok-report.md",
+        "diff": "/Users/scammermike/.claude-grok/tasks/odyssey-data-20260726-214631/diff.patch"
+      },
+      "outputs": {
+        "found": [
+          "odyssey/data/ODYSSEY_DATA_INVENTORY.json",
+          "odyssey/data/ODYSSEY_DATA_ACQUISITION_REQUEST.md",
+          "odyssey/data/ODYSSEY_CONTAMINATION_BARRIER.json"
+        ],
+        "missing": [],
+        "integrated": [
+          "odyssey/data/ODYSSEY_DATA_INVENTORY.json",
+          "odyssey/data/ODYSSEY_DATA_ACQUISITION_REQUEST.md",
+          "odyssey/data/ODYSSEY_CONTAMINATION_BARRIER.json"
+        ],
+        "fully_integrated": true
+      },
+      "dependencies": [],
+      "promotion_gate": "no downloading, and no fabricated corpus content. An empty pipeline with a labelled fixture is honest; one full of invented math problems is not.",
+      "reviewed_by_controller": true
+    },
+    {
+      "id": "L20",
+      "name": "memory-writers",
+      "owner": "grok",
+      "declared_status": "INTEGRATED",
+      "evidence_status": "INTEGRATED",
+      "disagrees": false,
+      "task": {
+        "present": true,
+        "status": "done",
+        "exit_code": "0",
+        "process_alive": false,
+        "stale_running": false,
+        "report": "/Users/scammermike/.claude-grok/tasks/memory-writers-20260726-215341/grok-report.md",
+        "diff": "/Users/scammermike/.claude-grok/tasks/memory-writers-20260726-215341/diff.patch"
+      },
+      "outputs": {
+        "found": [
+          "HIDE_MEMORY_CLASSES.json"
+        ],
+        "missing": [],
+        "integrated": [
+          "HIDE_MEMORY_CLASSES.json"
+        ],
+        "fully_integrated": true
+      },
+      "dependencies": [
+        "L02"
+      ],
+      "promotion_gate": "a store nothing writes is structure without content. Each class needs exactly one production mint site.",
+      "reviewed_by_controller": true
+    },
+    {
+      "id": "L21",
+      "name": "gravity-degenerate-attribution",
+      "owner": "grok",
+      "declared_status": "QUEUED_SLOTS_TAKEN",
+      "evidence_status": "FINISHED_OUTPUTS_MISSING",
+      "disagrees": true,
+      "task": {
+        "present": true,
+        "status": "unknown",
+        "exit_code": null,
+        "process_alive": false,
+        "stale_running": false,
+        "report": null,
+        "diff": null
+      },
+      "outputs": {
+        "found": [],
+        "missing": [
+          "GRAVITY_DEGENERATE_ATTRIBUTION.json"
+        ],
+        "integrated": [],
+        "fully_integrated": false
+      },
+      "dependencies": [
+        "L18"
+      ],
+      "promotion_gate": "one of H1_ARTIFACT / H2_PATH / BOTH / UNRESOLVED. UNRESOLVED is an acceptable answer; a confident wrong attribution is much worse.",
       "reviewed_by_controller": false
     }
   ],
@@ -506,5 +677,5 @@
       "no_block_rule": "no lane in this campaign waits on TG. HIDE_KERNEL_TURN stays false until a real provider passes its promotion gate."
     }
   ],
-  "next_action": "review L02 (hide-memory-six) -- a report is a claim; re-derive before merging"
+  "next_action": "review L21 (gravity-degenerate-attribution) -- a report is a claim; re-derive before merging"
 }

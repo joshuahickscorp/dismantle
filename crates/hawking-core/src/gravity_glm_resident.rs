@@ -1672,6 +1672,18 @@ mod route_segment_primitives {
 
     #[repr(C)]
     #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    pub(super) struct GlmPqKTransposeParams {
+        pub n_heads: u32,
+        pub key_rows: u32,
+        pub row_stride: u32,
+        pub latent_dim: u32,
+        pub pq_dim: u32,
+        pub pq_sub: u32,
+        pub pq_nchunk: u32,
+    }
+
+    #[repr(C)]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
     pub(super) struct GlmBuildQParams {
         pub n_heads: u32,
         pub qk_nope: u32,
@@ -1715,6 +1727,7 @@ mod route_segment_primitives {
     const _: [(); 16] = [(); std::mem::size_of::<GlmRopeParams>()];
     const _: [(); 20] = [(); std::mem::size_of::<GlmMlaAppendParams>()];
     const _: [(); 12] = [(); std::mem::size_of::<GlmMlaCompactAppendParams>()];
+    const _: [(); 28] = [(); std::mem::size_of::<GlmPqKTransposeParams>()];
     const _: [(); 12] = [(); std::mem::size_of::<GlmBuildQParams>()];
     const _: [(); 20] = [(); std::mem::size_of::<GlmDsaParams>()];
     const _: [(); 8] = [(); std::mem::size_of::<GlmTopkParams>()];
@@ -1723,6 +1736,7 @@ mod route_segment_primitives {
     const _: [(); 4] = [(); std::mem::align_of::<GlmRopeParams>()];
     const _: [(); 4] = [(); std::mem::align_of::<GlmMlaAppendParams>()];
     const _: [(); 4] = [(); std::mem::align_of::<GlmMlaCompactAppendParams>()];
+    const _: [(); 4] = [(); std::mem::align_of::<GlmPqKTransposeParams>()];
     const _: [(); 4] = [(); std::mem::align_of::<GlmBuildQParams>()];
     const _: [(); 4] = [(); std::mem::align_of::<GlmDsaParams>()];
     const _: [(); 4] = [(); std::mem::align_of::<GlmTopkParams>()];
@@ -2107,6 +2121,133 @@ mod route_segment_primitives {
                 enc.set_buffer(1, Some(&rb), 0);
                 enc.set_buffer(2, Some(&lcb), 0);
                 enc.set_buffer(3, Some(&rcb), 0);
+                enc.set_bytes(
+                    4,
+                    std::mem::size_of_val(&params) as u64,
+                    &params as *const _ as *const _,
+                );
+            },
+        )
+    }
+
+    /// Encode `W_key^T @ query_nope` per head directly from a bits=8,
+    /// single-subspace gravity-pq matrix.
+    ///
+    /// Logical key rows are the first `key_rows` rows inside each
+    /// `row_stride`-wide head block. The inner reduction is strictly ascending
+    /// in key-row order. This encode-only candidate is not wired into
+    /// [`forward_resident`].
+    #[allow(clippy::too_many_arguments)]
+    pub(super) fn encode_pq_k_transpose_heads(
+        tcb: &mut TokenCommandBuffer<'_>,
+        codebooks: &Buffer,
+        codes: &Buffer,
+        query_nope: &Buffer,
+        query_latent: &Buffer,
+        n_heads: usize,
+        key_rows: usize,
+        row_stride: usize,
+        latent_dim: usize,
+        pq_dim: usize,
+        pq_sub: usize,
+        pq_card: usize,
+        pq_nchunk: usize,
+    ) -> Result<()> {
+        if n_heads == 0 || key_rows == 0 || latent_dim == 0 {
+            return Ok(());
+        }
+        if row_stride < key_rows {
+            return Err(Error::Gravity(format!(
+                "gravity_pq_k_transpose_heads row_stride {row_stride} < key_rows {key_rows}"
+            )));
+        }
+        if pq_dim == 0 || pq_sub == 0 || pq_card != 256 {
+            return Err(Error::Gravity(format!(
+                "gravity_pq_k_transpose_heads requires direct-u8 cardinality 256, got dim={pq_dim}, sub={pq_sub}, card={pq_card}"
+            )));
+        }
+        if pq_dim != pq_sub {
+            return Err(Error::Gravity(format!(
+                "gravity_pq_k_transpose_heads requires one subspace with dim == sub, got dim={pq_dim}, sub={pq_sub}"
+            )));
+        }
+        let represented_cols = checked_mul(
+            pq_nchunk,
+            pq_dim,
+            "gravity_pq_k_transpose_heads represented columns",
+        )?;
+        if represented_cols != latent_dim {
+            return Err(Error::Gravity(format!(
+                "gravity_pq_k_transpose_heads latent_dim {latent_dim} != pq_nchunk {pq_nchunk} * pq_dim {pq_dim}"
+            )));
+        }
+        require_range(
+            codebooks,
+            0,
+            checked_mul(pq_card, pq_sub, "gravity_pq_k_transpose_heads codebook")?,
+            std::mem::size_of::<half::f16>(),
+            "gravity_pq_k_transpose_heads codebook",
+        )?;
+        let last_head_base = checked_mul(
+            n_heads - 1,
+            row_stride,
+            "gravity_pq_k_transpose_heads last head",
+        )?;
+        let rows_touched = checked_add(
+            last_head_base,
+            key_rows,
+            "gravity_pq_k_transpose_heads rows touched",
+        )?;
+        require_range(
+            codes,
+            0,
+            checked_mul(
+                rows_touched,
+                pq_nchunk,
+                "gravity_pq_k_transpose_heads codes",
+            )?,
+            std::mem::size_of::<u8>(),
+            "gravity_pq_k_transpose_heads codes",
+        )?;
+        require_f32(
+            query_nope,
+            0,
+            checked_mul(n_heads, key_rows, "gravity_pq_k_transpose_heads query")?,
+            "gravity_pq_k_transpose_heads query",
+        )?;
+        let outputs = checked_mul(n_heads, latent_dim, "gravity_pq_k_transpose_heads output")?;
+        require_f32(
+            query_latent,
+            0,
+            outputs,
+            "gravity_pq_k_transpose_heads output",
+        )?;
+        let params = GlmPqKTransposeParams {
+            n_heads: u32_arg(n_heads, "gravity_pq_k_transpose_heads n_heads")?,
+            key_rows: u32_arg(key_rows, "gravity_pq_k_transpose_heads key_rows")?,
+            row_stride: u32_arg(row_stride, "gravity_pq_k_transpose_heads row_stride")?,
+            latent_dim: u32_arg(latent_dim, "gravity_pq_k_transpose_heads latent_dim")?,
+            pq_dim: u32_arg(pq_dim, "gravity_pq_k_transpose_heads pq_dim")?,
+            pq_sub: u32_arg(pq_sub, "gravity_pq_k_transpose_heads pq_sub")?,
+            pq_nchunk: u32_arg(pq_nchunk, "gravity_pq_k_transpose_heads pq_nchunk")?,
+        };
+        let grid = grid_1d(
+            u32_arg(outputs, "gravity_pq_k_transpose_heads outputs")?,
+            "gravity_pq_k_transpose_heads",
+        )?;
+        let cbb = codebooks.clone();
+        let cib = codes.clone();
+        let qb = query_nope.clone();
+        let ob = query_latent.clone();
+        tcb.dispatch_threads(
+            "gravity_pq_k_transpose_heads",
+            grid,
+            (TG, 1, 1),
+            move |enc| {
+                enc.set_buffer(0, Some(&cbb), 0);
+                enc.set_buffer(1, Some(&cib), 0);
+                enc.set_buffer(2, Some(&qb), 0);
+                enc.set_buffer(3, Some(&ob), 0);
                 enc.set_bytes(
                     4,
                     std::mem::size_of_val(&params) as u64,
@@ -2963,6 +3104,11 @@ mod tests {
         ctx.new_buffer_checked(len).expect("u8 test buffer")
     }
 
+    fn f16_buffer(ctx: &MetalContext, values: &[half::f16]) -> Buffer {
+        ctx.new_buffer_with_bytes_checked(bytemuck::cast_slice(values))
+            .expect("f16 test buffer")
+    }
+
     fn assert_v21_pair(label: &str, host: &[f32], device: &[f32], reference: &[f64]) {
         let score = score_pair(host, device, reference, &Bounds::continuous_only());
         assert!(
@@ -2996,6 +3142,18 @@ mod tests {
         assert_eq!(std::mem::offset_of!(GlmMlaAppendParams, n_heads), 0);
         assert_eq!(std::mem::offset_of!(GlmMlaAppendParams, pos), 16);
 
+        assert_eq!(std::mem::size_of::<GlmMlaCompactAppendParams>(), 12);
+        assert_eq!(
+            std::mem::offset_of!(GlmMlaCompactAppendParams, latent_dim),
+            0
+        );
+        assert_eq!(std::mem::offset_of!(GlmMlaCompactAppendParams, pos), 8);
+
+        assert_eq!(std::mem::size_of::<GlmPqKTransposeParams>(), 28);
+        assert_eq!(std::mem::offset_of!(GlmPqKTransposeParams, n_heads), 0);
+        assert_eq!(std::mem::offset_of!(GlmPqKTransposeParams, latent_dim), 12);
+        assert_eq!(std::mem::offset_of!(GlmPqKTransposeParams, pq_nchunk), 24);
+
         assert_eq!(std::mem::size_of::<GlmBuildQParams>(), 12);
         assert_eq!(std::mem::offset_of!(GlmBuildQParams, qk_rope), 8);
 
@@ -3023,6 +3181,198 @@ mod tests {
             .expect_err("undersized buffers must be rejected before encoding");
         assert!(error.to_string().contains("byte range"));
         assert_eq!(tcb.dispatch_count(), 0);
+    }
+
+    #[test]
+    fn route_segment_pq_k_transpose_is_deterministic_and_passes_v21() {
+        let shader = include_str!("../shaders/gravity_pq.metal");
+        assert!(shader.contains("kernel void gravity_pq_k_transpose_heads("));
+        let registry = include_str!("metal/mod.rs");
+        assert!(registry
+            .contains("\"gravity_pq_k_transpose_heads\" => \"gravity_pq_k_transpose_heads\""));
+
+        let Ok(ctx) = MetalContext::new() else {
+            return;
+        };
+        let (n_heads, key_rows, row_stride) = (2usize, 3usize, 5usize);
+        let (latent_dim, pq_dim, pq_sub, pq_card, pq_nchunk) =
+            (8usize, 4usize, 4usize, 256usize, 2usize);
+        let codebook_prefix = [
+            0.25, -0.5, 0.75, 1.0, -1.0, 0.125, 0.5, -0.25, 1.5, -0.75, 0.25, 0.625, -0.375, 1.25,
+            -1.5, 0.875,
+        ];
+        let mut codebook = vec![half::f16::ZERO; pq_card * pq_sub];
+        for (dst, value) in codebook.iter_mut().zip(codebook_prefix) {
+            *dst = half::f16::from_f32(value);
+        }
+        let rows_touched = (n_heads - 1) * row_stride + key_rows;
+        let codes: Vec<u8> = (0..rows_touched * pq_nchunk)
+            .map(|index| ((index * 3 + index / 2) % 4) as u8)
+            .collect();
+        let query = vec![0.75, -1.25, 0.5, -0.625, 1.5, 0.25];
+        let codebookb = f16_buffer(&ctx, &codebook);
+        let codesb = ctx
+            .new_buffer_with_bytes_checked(&codes)
+            .expect("PQ code test buffer");
+        let queryb = f32_buffer(&ctx, &query);
+        let output_a = filled_f32_buffer(&ctx, n_heads * latent_dim, f32::NAN);
+        let output_b = filled_f32_buffer(&ctx, n_heads * latent_dim, f32::NAN);
+
+        let mut tcb = TokenCommandBuffer::new(&ctx);
+        for output in [&output_a, &output_b] {
+            encode_pq_k_transpose_heads(
+                &mut tcb, &codebookb, &codesb, &queryb, output, n_heads, key_rows, row_stride,
+                latent_dim, pq_dim, pq_sub, pq_card, pq_nchunk,
+            )
+            .expect("encode direct PQ K transpose");
+        }
+        assert_eq!(tcb.dispatch_count(), 2);
+        tcb.commit_and_wait()
+            .expect("PQ K transpose command buffer");
+
+        let mut host = vec![0.0f32; n_heads * latent_dim];
+        let mut authority = vec![0.0f64; n_heads * latent_dim];
+        for head in 0..n_heads {
+            for col in 0..latent_dim {
+                let chunk = col / pq_dim;
+                let within = col % pq_dim;
+                let mut host_acc = 0.0f32;
+                let mut authority_acc = 0.0f64;
+                for key_row in 0..key_rows {
+                    let row = head * row_stride + key_row;
+                    let code = codes[row * pq_nchunk + chunk] as usize;
+                    let weight = codebook[code * pq_sub + within].to_f32();
+                    let q = query[head * key_rows + key_row];
+                    host_acc = weight.mul_add(q, host_acc);
+                    authority_acc += weight as f64 * q as f64;
+                }
+                host[head * latent_dim + col] = host_acc;
+                authority[head * latent_dim + col] = authority_acc;
+            }
+        }
+        let device_a = read_f32(&output_a, host.len());
+        let device_b = read_f32(&output_b, host.len());
+        assert_eq!(
+            device_a, device_b,
+            "one-thread-per-output reduction must be bit-stable"
+        );
+        assert_v21_pair("direct PQ K transpose", &host, &device_a, &authority);
+
+        let mut rejected = TokenCommandBuffer::new(&ctx);
+        let error = encode_pq_k_transpose_heads(
+            &mut rejected,
+            &codebookb,
+            &codesb,
+            &queryb,
+            &output_a,
+            n_heads,
+            key_rows,
+            row_stride,
+            latent_dim,
+            pq_dim,
+            2,
+            pq_card,
+            pq_nchunk,
+        )
+        .expect_err("multi-subspace-like geometry must fail before dispatch");
+        assert!(error.to_string().contains("dim == sub"));
+        assert_eq!(rejected.dispatch_count(), 0);
+
+        let short_codes = ctx
+            .new_buffer_with_bytes_checked(&codes[..codes.len() - 1])
+            .expect("short code test buffer");
+        let error = encode_pq_k_transpose_heads(
+            &mut rejected,
+            &codebookb,
+            &short_codes,
+            &queryb,
+            &output_a,
+            n_heads,
+            key_rows,
+            row_stride,
+            latent_dim,
+            pq_dim,
+            pq_sub,
+            pq_card,
+            pq_nchunk,
+        )
+        .expect_err("undersized PQ codes must fail before dispatch");
+        assert!(error.to_string().contains("byte range"));
+        assert_eq!(rejected.dispatch_count(), 0);
+    }
+
+    #[test]
+    fn route_segment_pq_k_transpose_flagship_geometry_passes_v21() {
+        let Ok(ctx) = MetalContext::new() else {
+            return;
+        };
+        let (n_heads, key_rows, row_stride) = (64usize, 192usize, 448usize);
+        let (latent_dim, pq_dim, pq_sub, pq_card, pq_nchunk) =
+            (512usize, 32usize, 32usize, 256usize, 16usize);
+        let codebook: Vec<half::f16> = (0..pq_card * pq_sub)
+            .map(|index| {
+                let signed = ((index * 17 + index / 31) % 257) as i32 - 128;
+                half::f16::from_f32(signed as f32 * (1.0 / 512.0))
+            })
+            .collect();
+        let rows_touched = (n_heads - 1) * row_stride + key_rows;
+        assert_eq!(rows_touched, 28_416);
+        let codes: Vec<u8> = (0..rows_touched * pq_nchunk)
+            .map(|index| {
+                let row = index / pq_nchunk;
+                let chunk = index % pq_nchunk;
+                ((row * 11 + chunk * 17 + row / 7) & 255) as u8
+            })
+            .collect();
+        let query: Vec<f32> = (0..n_heads * key_rows)
+            .map(|index| {
+                let signed = ((index * 13 + index / 29) % 127) as i32 - 63;
+                signed as f32 * (1.0 / 128.0)
+            })
+            .collect();
+        let codebookb = f16_buffer(&ctx, &codebook);
+        let codesb = ctx
+            .new_buffer_with_bytes_checked(&codes)
+            .expect("flagship PQ codes");
+        let queryb = f32_buffer(&ctx, &query);
+        let output = filled_f32_buffer(&ctx, n_heads * latent_dim, f32::NAN);
+
+        let mut tcb = TokenCommandBuffer::new(&ctx);
+        encode_pq_k_transpose_heads(
+            &mut tcb, &codebookb, &codesb, &queryb, &output, n_heads, key_rows, row_stride,
+            latent_dim, pq_dim, pq_sub, pq_card, pq_nchunk,
+        )
+        .expect("encode flagship direct PQ K transpose");
+        assert_eq!(tcb.dispatch_count(), 1);
+        tcb.commit_and_wait()
+            .expect("flagship PQ K transpose command buffer");
+
+        let mut host = vec![0.0f32; n_heads * latent_dim];
+        let mut authority = vec![0.0f64; n_heads * latent_dim];
+        for head in 0..n_heads {
+            for col in 0..latent_dim {
+                let chunk = col / pq_dim;
+                let within = col % pq_dim;
+                let mut host_acc = 0.0f32;
+                let mut authority_acc = 0.0f64;
+                for key_row in 0..key_rows {
+                    let row = head * row_stride + key_row;
+                    let code = codes[row * pq_nchunk + chunk] as usize;
+                    let weight = codebook[code * pq_sub + within].to_f32();
+                    let q = query[head * key_rows + key_row];
+                    host_acc = weight.mul_add(q, host_acc);
+                    authority_acc += weight as f64 * q as f64;
+                }
+                host[head * latent_dim + col] = host_acc;
+                authority[head * latent_dim + col] = authority_acc;
+            }
+        }
+        assert_v21_pair(
+            "flagship direct PQ K transpose",
+            &host,
+            &read_f32(&output, host.len()),
+            &authority,
+        );
     }
 
     #[test]

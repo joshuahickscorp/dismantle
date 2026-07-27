@@ -613,6 +613,45 @@ kernel void gravity_glm_mla_append_compact(
     }
 }
 
+// Absorb the content-key projection into each head's query directly from a
+// single-subspace, byte-indexed gravity-pq matrix. The logical source matrix
+// is kv_b_proj [head * row_stride + key_row, latent_col]. One thread owns one
+// output and visits key_row in ascending order, so there is no atomic or
+// cross-thread reduction.
+struct GravityPqKTransposeHeadsParams {
+    uint n_heads;
+    uint key_rows;
+    uint row_stride;
+    uint latent_dim;
+    uint pq_dim;
+    uint pq_sub;
+    uint pq_nchunk;
+};
+
+kernel void gravity_pq_k_transpose_heads(
+    device const half  *codebooks [[buffer(0)]],
+    device const uchar *codes [[buffer(1)]],
+    device const float *query_nope [[buffer(2)]],
+    device       float *query_latent [[buffer(3)]],
+    constant GravityPqKTransposeHeadsParams &p [[buffer(4)]],
+    uint id [[thread_position_in_grid]])
+{
+    uint total = p.n_heads * p.latent_dim;
+    if (id >= total) { return; }
+    uint head = id / p.latent_dim;
+    uint col = id - head * p.latent_dim;
+    uint chunk = col / p.pq_dim;
+    uint within = col - chunk * p.pq_dim;
+    float acc = 0.0f;
+    for (uint key_row = 0u; key_row < p.key_rows; ++key_row) {
+        uint row = head * p.row_stride + key_row;
+        uint code = uint(codes[row * p.pq_nchunk + chunk]);
+        float weight = float(codebooks[code * p.pq_sub + within]);
+        acc = fma(weight, query_nope[head * p.key_rows + key_row], acc);
+    }
+    query_latent[id] = acc;
+}
+
 // Build queries: per head, copy nope half from q, rope-interleaved rope half.
 // `q_rope_rot` is already rope-interleaved per head (n_heads * qk_rope).
 struct GravityGlmBuildQParams {

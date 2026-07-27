@@ -1,6 +1,6 @@
 {
   "schema": "hawking.gravity.compact_mla.append_candidate.v1",
-  "at_utc": "2026-07-27T03:24:00Z",
+  "at_utc": "2026-07-27T03:03:07Z",
   "observed_base_sha": "4dc6e0c9",
   "receipt_head_sha": "fbf8098447f35d20653242999c9ab57841bc9f71",
   "status": "PREREQUISITE_ONLY_NOT_PROMOTED",

@@ -33,8 +33,8 @@ use hide_core::tool::{ToolCall, ToolDispatcher, ToolRegistry, ToolResult, ToolSp
 use hide_core::Result;
 use hide_fleet::manager::KernelRunLauncher;
 use hide_fleet::{
-    AgentJob, ConcurrencyClass, FixedResourceProbe, FleetConfig, FleetGovernor, FleetManager,
-    PriorityClass, ResourceSnapshot,
+    AgentJob, ConcurrencyClass, FleetConfig, FleetGovernor, FleetManager, OsResourceProbe,
+    PriorityClass,
 };
 use hide_kernel::govern::{Autonomy, Interrupt};
 use hide_kernel::machine::state::{AgentState, ApprovalRequest, Phase};
@@ -2845,15 +2845,11 @@ impl BackendHost {
         session_id: SessionId,
         objective: impl Into<String>,
     ) -> Result<String> {
-        // A deterministic fixed probe with ample headroom (no thermal/RAM
-        // pressure) so the run admits in the test/headless path; production swaps
-        // in `OsResourceProbe`.
-        let probe = Arc::new(FixedResourceProbe {
-            snapshot: ResourceSnapshot {
-                free_memory_mb: 32_768,
-                ..ResourceSnapshot::idle()
-            },
-        });
+        // Real OS probe (free RAM + thermal proxy). Replaces the prior canned
+        // FixedResourceProbe { free_memory_mb: 32_768 } so discovery reports
+        // this machine, not a fake 32 GiB. Tests that need a fixed envelope
+        // still inject FixedResourceProbe at the FleetManager constructor.
+        let probe = Arc::new(OsResourceProbe::default());
         let kernel = Arc::new(AgentKernel::new(self.services.event_log.clone()));
         let launcher = Arc::new(KernelRunLauncher::new(kernel).with_max_steps(64));
         let manager = FleetManager::new(

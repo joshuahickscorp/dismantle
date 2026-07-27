@@ -15,12 +15,15 @@
 //! those buffers and are not copied into host `Vec`s as the cache of record.
 //!
 //! `lm_head` is once per token. Default: host dense or PQ via
-//! [`GpuWeightCache::matvec`]. With [`crate::gravity_glm::GPU_LM_HEAD_ENV`]=1 and
-//! a `native.bf16` head, the weight stays device-resident and the projection
-//! + greedy argmax + top-k diagnostics run on GPU (no per-token host widen of
-//! the 1.90 GB table). Default readback is **token + top-k only**; full logits
-//! require `HAWKING_GLM_GPU_LM_HEAD_FULL_LOGITS=1`. The same flag keeps other
-//! rank-2 `native.bf16` matvecs (indexer, router) as device bf16.
+//! [`GpuWeightCache::matvec`]. With [`crate::gravity_glm::GPU_LM_HEAD_ENV`]=1,
+//! final RMSNorm + projection + greedy argmax + top-k diagnostics share one
+//! device command buffer, so the residual stream stays on device at the head
+//! boundary. A native.bf16 head also stays device-resident with no per-token
+//! widening of its 1.90 GB table; an opt-in PQ head lets bounded direct-u8
+//! fixtures exercise the same final graph. Default readback is **token + top-k
+//! only**; full logits require `HAWKING_GLM_GPU_LM_HEAD_FULL_LOGITS=1`. The same
+//! flag keeps other rank-2 `native.bf16` matvecs (indexer, router) as device
+//! bf16.
 //!
 //! **Expert-wave** (`HAWKING_GLM_GPU_EXPERT_WAVE=1`, default off): opt-in collapse
 //! of each MLP layer to one command buffer (`gate + up → SiLU → down` and MoE
@@ -51,8 +54,9 @@ use crate::gravity_glm::gpu::{
 };
 use crate::gravity_glm::{
     gpu_compact_mla_enabled, gpu_device_router_enabled, gpu_expert_wave_enabled,
-    gpu_lm_head_full_logits_enabled, rope_cos_sin, rope_interleaved, topk_desc, GlmArch, GlmTrace,
-    WeightAccess, GPU_LM_HEAD_DIAG_TOPK, RESIDENT_RUNTIME_INITIAL_KV_CAPACITY_TOKENS,
+    gpu_lm_head_enabled, gpu_lm_head_full_logits_enabled, rope_cos_sin, rope_interleaved,
+    topk_desc, GlmArch, GlmTrace, WeightAccess, GPU_LM_HEAD_DIAG_TOPK,
+    RESIDENT_RUNTIME_INITIAL_KV_CAPACITY_TOKENS,
 };
 use crate::metal::{MetalContext, TokenCommandBuffer};
 use crate::{Error, Result};
@@ -910,6 +914,7 @@ pub struct ActPool {
     act: Buffer,
     #[allow(dead_code)]
     down: Buffer,
+    final_norm_weight: Buffer,
     final_hidden: Buffer,
     /// Device logits for device-resident lm_head (vocab-sized). Stay on device;
     /// host only reads them under `HAWKING_GLM_GPU_LM_HEAD_FULL_LOGITS=1`.
@@ -1154,6 +1159,7 @@ impl ActPool {
             up: ctx.new_buffer_checked(gate_cap * 4)?,
             act: ctx.new_buffer_checked(gate_cap * 4)?,
             down: ctx.new_buffer_checked(h * 4)?,
+            final_norm_weight: ctx.new_buffer_checked(h * 4)?,
             final_hidden: ctx.new_buffer_checked(h * 4)?,
             logits: ctx.new_buffer_checked(arch.vocab_size * 4)?,
             sample_token: ctx.new_buffer_checked(4)?,
@@ -2112,25 +2118,30 @@ pub fn forward_resident(
             }
         }
 
-        let w_norm = weights.dense("model.norm.weight")?;
-        rmsnorm_into(
-            &pool.x,
-            a.hidden,
-            &w_norm,
-            a.rms_norm_eps,
-            &pool.final_hidden,
-        );
-        // lm_head once per token. Device-resident bf16 keeps weight + logits
-        // on GPU, runs blockwise gemv + greedy argmax + top-k, and by default
-        // reads back only the token + top-k diagnostics (not 154_880 logits).
-        // Full logits: HAWKING_GLM_GPU_LM_HEAD_FULL_LOGITS=1. Host dense / PQ
-        // keep the prior path (full logits).
+        // lm_head once per token. A device head appends final RMSNorm, logits,
+        // greedy argmax, and diagnostic top-k into one command buffer. The
+        // flagship native.bf16 path is selected whenever that tensor is device
+        // resident; default-off GPU_LM_HEAD also permits a PQ head so bounded
+        // complete-token fixtures exercise the same final graph.
         let waits_before_head = session.waits.get();
         {
             let _head = crate::cost_ledger::Scope::new(crate::cost_ledger::Bucket::FinalHead);
+            enum DeviceHead {
+                NativeBf16 {
+                    weight: Buffer,
+                    rows: u32,
+                    cols: u32,
+                },
+                Pq {
+                    codebooks: Buffer,
+                    codes: Buffer,
+                    params: crate::gravity_glm::gpu::PqParams,
+                },
+            }
+
             let mut cache = weights.cache.lock().expect("gpu weight cache");
             weights.ensure_many_locked(&mut cache, &["lm_head.weight"])?;
-            match cache.get("lm_head.weight").expect("ensured lm_head") {
+            let device_head = match cache.get("lm_head.weight").expect("ensured lm_head") {
                 GpuTensor::NativeGpuBf16 { buf, rows, cols } => {
                     if a.hidden != *cols as usize {
                         return Err(Error::Gravity(format!(
@@ -2155,84 +2166,176 @@ pub fn forward_resident(
                         2u64.saturating_mul(*rows as u64)
                             .saturating_mul(*cols as u64),
                     );
-                    let mut tcb = TokenCommandBuffer::new(ctx);
-                    encode_gemv_native_bf16_seq(
-                        &mut tcb,
-                        buf,
-                        *rows,
-                        *cols,
-                        &pool.final_hidden,
-                        &pool.logits,
-                    )?;
-                    {
-                        let _sampling = cost_ledger::Scope::new(cost_ledger::Bucket::Sampling);
-                        encode_argmax_f32(&mut tcb, &pool.logits, *rows, &pool.sample_token)?;
-                        encode_sample_topk_f32(
-                            &mut tcb,
-                            &pool.logits,
-                            *rows,
-                            GPU_LM_HEAD_DIAG_TOPK,
-                            &pool.head_topk_idx,
-                            &pool.head_topk_val,
-                        )?;
-                        let rounds = GPU_LM_HEAD_DIAG_TOPK as u64 + 1;
-                        cost_ledger::record_source_modelled_operations(
-                            0,
-                            0,
-                            rounds
-                                .saturating_mul(*rows as u64)
-                                .saturating_add(rounds.saturating_mul(255)),
-                            0,
-                            0,
-                        );
-                    }
-                    tcb.commit_and_wait()?;
-                    session.waits.set(session.waits.get().saturating_add(1));
-
-                    // Token + diagnostics only (default). Full vector is opt-in.
-                    {
-                        let _sampling = cost_ledger::Scope::new(cost_ledger::Bucket::Sampling);
-                        let tok = read_u32(&pool.sample_token, 1)[0];
-                        let k = GPU_LM_HEAD_DIAG_TOPK as usize;
-                        let topk_idx = read_u32(&pool.head_topk_idx, k);
-                        let topk_val = read_f32(&pool.head_topk_val, k);
-                        crate::cost_ledger::record_transfer(
-                            (4 + k * 4 + k * 4) as u64,
-                            false,
-                            "lm_head_token_diag_download",
-                        );
-                        trace.sample_token = Some(tok);
-                        trace.head_topk_idx = topk_idx;
-                        trace.head_topk_val = topk_val;
-                    }
-
-                    if gpu_lm_head_full_logits_enabled() {
-                        logits = read_f32(&pool.logits, a.vocab_size);
-                        crate::cost_ledger::record_transfer(
-                            (a.vocab_size * 4) as u64,
-                            false,
-                            "lm_head_y_download",
-                        );
-                        trace.head_full_logits_readback = true;
-                    } else {
-                        // Empty host logits: callers that need a token use
-                        // `trace.sample_token`. Continuous-logit parity sets
-                        // FULL_LOGITS=1.
-                        logits = Vec::new();
-                        trace.head_full_logits_readback = false;
-                    }
+                    Some(DeviceHead::NativeBf16 {
+                        weight: buf.clone(),
+                        rows: *rows,
+                        cols: *cols,
+                    })
                 }
-                GpuTensor::NativeCpu(_) | GpuTensor::Pq { .. } => {
-                    drop(cache);
-                    let hidden = read_f32(&pool.final_hidden, a.hidden);
-                    logits = weights.matvec("lm_head.weight", &hidden)?;
+                GpuTensor::Pq {
+                    codebooks,
+                    codes,
+                    params,
+                } if gpu_lm_head_enabled() => {
+                    if a.hidden != params.cols as usize {
+                        return Err(Error::Gravity(format!(
+                            "lm_head device PQ path: hidden {} != cols {}",
+                            a.hidden, params.cols
+                        )));
+                    }
+                    if a.vocab_size != params.rows as usize {
+                        return Err(Error::Gravity(format!(
+                            "lm_head device PQ path: vocab {} != rows {}",
+                            a.vocab_size, params.rows
+                        )));
+                    }
+                    crate::cost_ledger::record_matvec_call();
+                    crate::cost_ledger::record_active_bytes_for(
+                        "lm_head.weight",
+                        codebooks.length() + codes.length(),
+                    );
+                    record_pq_matvec_ops(*params);
+                    Some(DeviceHead::Pq {
+                        codebooks: codebooks.clone(),
+                        codes: codes.clone(),
+                        params: *params,
+                    })
+                }
+                GpuTensor::NativeCpu(_) | GpuTensor::Pq { .. } => None,
+            };
+            drop(cache);
+
+            let w_norm = weights.dense("model.norm.weight")?;
+            if w_norm.len() != a.hidden {
+                return Err(Error::Gravity(format!(
+                    "final RMSNorm weight has {} values, expected {}",
+                    w_norm.len(),
+                    a.hidden
+                )));
+            }
+            if let Some(device_head) = device_head {
+                write_f32(&pool.final_norm_weight, &w_norm);
+                cost_ledger::record_transfer(
+                    (w_norm.len() * std::mem::size_of::<f32>()) as u64,
+                    true,
+                    "final_norm_weight_upload",
+                );
+                let mut tcb = TokenCommandBuffer::new(ctx);
+                {
+                    let _norm = cost_ledger::Scope::new(Bucket::Norm);
+                    cost_ledger::record_source_modelled_operations(
+                        (4 * a.hidden) as u64,
+                        0,
+                        0,
+                        1,
+                        0,
+                    );
+                    route_segment_primitives::encode_rmsnorm(
+                        &mut tcb,
+                        &pool.x,
+                        &pool.final_norm_weight,
+                        &pool.final_hidden,
+                        a.hidden,
+                        a.rms_norm_eps,
+                    )?;
+                }
+                let rows = match device_head {
+                    DeviceHead::NativeBf16 { weight, rows, cols } => {
+                        encode_gemv_native_bf16_seq(
+                            &mut tcb,
+                            &weight,
+                            rows,
+                            cols,
+                            &pool.final_hidden,
+                            &pool.logits,
+                        )?;
+                        rows
+                    }
+                    DeviceHead::Pq {
+                        codebooks,
+                        codes,
+                        params,
+                    } => {
+                        encode_pq_matvec_device(
+                            &mut tcb,
+                            &codebooks,
+                            &codes,
+                            params,
+                            &pool.final_hidden,
+                            &pool.logits,
+                        )?;
+                        params.rows
+                    }
+                };
+                {
+                    let _sampling = cost_ledger::Scope::new(cost_ledger::Bucket::Sampling);
+                    encode_argmax_f32(&mut tcb, &pool.logits, rows, &pool.sample_token)?;
+                    encode_sample_topk_f32(
+                        &mut tcb,
+                        &pool.logits,
+                        rows,
+                        GPU_LM_HEAD_DIAG_TOPK,
+                        &pool.head_topk_idx,
+                        &pool.head_topk_val,
+                    )?;
+                    let rounds = GPU_LM_HEAD_DIAG_TOPK as u64 + 1;
+                    cost_ledger::record_source_modelled_operations(
+                        0,
+                        0,
+                        rounds
+                            .saturating_mul(rows as u64)
+                            .saturating_add(rounds.saturating_mul(255)),
+                        0,
+                        0,
+                    );
+                }
+                tcb.commit_and_wait()?;
+                session.waits.set(session.waits.get().saturating_add(1));
+
+                {
+                    let _sampling = cost_ledger::Scope::new(cost_ledger::Bucket::Sampling);
+                    let tok = read_u32(&pool.sample_token, 1)[0];
+                    let k = GPU_LM_HEAD_DIAG_TOPK as usize;
+                    let topk_idx = read_u32(&pool.head_topk_idx, k);
+                    let topk_val = read_f32(&pool.head_topk_val, k);
+                    crate::cost_ledger::record_transfer(
+                        (4 + k * 4 + k * 4) as u64,
+                        false,
+                        "lm_head_token_diag_download",
+                    );
+                    trace.sample_token = Some(tok);
+                    trace.head_topk_idx = topk_idx;
+                    trace.head_topk_val = topk_val;
+                }
+
+                if gpu_lm_head_full_logits_enabled() {
+                    logits = read_f32(&pool.logits, a.vocab_size);
+                    crate::cost_ledger::record_transfer(
+                        (a.vocab_size * 4) as u64,
+                        false,
+                        "lm_head_y_download",
+                    );
                     trace.head_full_logits_readback = true;
-                    if session.waits.get() == waits_before_head {
-                        let mut cache = weights.cache.lock().expect("gpu weight cache");
-                        weights.ensure_many_locked(&mut cache, &["lm_head.weight"])?;
-                        if matches!(cache.get("lm_head.weight"), Some(GpuTensor::Pq { .. })) {
-                            session.waits.set(session.waits.get().saturating_add(1));
-                        }
+                } else {
+                    logits = Vec::new();
+                    trace.head_full_logits_readback = false;
+                }
+            } else {
+                rmsnorm_into(
+                    &pool.x,
+                    a.hidden,
+                    &w_norm,
+                    a.rms_norm_eps,
+                    &pool.final_hidden,
+                );
+                let hidden = read_f32(&pool.final_hidden, a.hidden);
+                logits = weights.matvec("lm_head.weight", &hidden)?;
+                trace.head_full_logits_readback = true;
+                if session.waits.get() == waits_before_head {
+                    let mut cache = weights.cache.lock().expect("gpu weight cache");
+                    weights.ensure_many_locked(&mut cache, &["lm_head.weight"])?;
+                    if matches!(cache.get("lm_head.weight"), Some(GpuTensor::Pq { .. })) {
+                        session.waits.set(session.waits.get().saturating_add(1));
                     }
                 }
             }
@@ -7357,7 +7460,16 @@ mod tests {
         let Ok(ctx) = MetalContext::new() else {
             return;
         };
-        let pool = ActPool::new(&ctx, &tiny_arch()).expect("activation pool");
+        let arch = tiny_arch();
+        let pool = ActPool::new(&ctx, &arch).expect("activation pool");
+        assert_eq!(
+            pool.final_norm_weight.length(),
+            (arch.hidden * std::mem::size_of::<f32>()) as u64
+        );
+        assert_eq!(
+            pool.final_hidden.length(),
+            (arch.hidden * std::mem::size_of::<f32>()) as u64
+        );
         assert!(
             pool.expert_wave_scratch
                 .lock()

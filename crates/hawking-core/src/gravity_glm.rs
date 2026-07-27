@@ -892,9 +892,13 @@ pub fn gpu_device_router_enabled() -> bool {
 ///   (no host widen), kept under the GPU weight-cache budget, and projected
 ///   with `gemv_native_bf16_seq` (bf16 input, sequential f32 accumulate);
 /// - on the resident path the head runs blockwise logits + argmax + top-k on
-///   device and **reads back only the token plus top-k diagnostics** (not the
-///   154,880-element logit vector). Full logits require
+///   device; final RMSNorm is prepended to the same command buffer, so the
+///   shared residual stream is not touched by the CPU at the head boundary. The default
+///   readback is **only the token plus top-k diagnostics** (not the 154,880-
+///   element logit vector). Full logits require
 ///   [`GPU_LM_HEAD_FULL_LOGITS_ENV`]=1 (parity / debug only).
+/// - a PQ head follows the same final device graph only when this flag is set,
+///   which gives bounded direct-u8 fixtures a complete-token authority lane.
 ///
 /// Integrates with the existing `GpuWeightCache` / resident-state path; does
 /// not invent a second cache. Default resident path with this flag unset is

@@ -40,6 +40,7 @@ use crate::gravity_glm::gpu::{
 use crate::gravity_glm::{
     gpu_expert_wave_enabled, gpu_lm_head_full_logits_enabled, rope_cos_sin, rope_interleaved,
     topk_desc, GlmArch, GlmTrace, WeightAccess, GPU_LM_HEAD_DIAG_TOPK,
+    RESIDENT_RUNTIME_INITIAL_KV_CAPACITY_TOKENS,
 };
 use crate::metal::{MetalContext, TokenCommandBuffer};
 use crate::{Error, Result};
@@ -1840,7 +1841,11 @@ pub struct ResidentRuntime {
 impl ResidentRuntime {
     pub fn new(ctx: &MetalContext, arch: &GlmArch) -> Result<Self> {
         Ok(Self {
-            session: Mutex::new(ResidentSession::new(ctx, arch, 64)?),
+            session: Mutex::new(ResidentSession::new(
+                ctx,
+                arch,
+                RESIDENT_RUNTIME_INITIAL_KV_CAPACITY_TOKENS,
+            )?),
             pool: ActPool::new(ctx, arch)?,
         })
     }

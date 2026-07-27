@@ -932,6 +932,138 @@ pub fn estimate_host_state_waits_per_token(arch: &GlmArch) -> u64 {
     waits + 1 // lm_head
 }
 
+/// Initial per-layer KV/index capacity used by `ResidentRuntime::new`.
+pub const RESIDENT_RUNTIME_INITIAL_KV_CAPACITY_TOKENS: usize = 64;
+
+/// Static resident KV/state allocation projection for one sequence.
+///
+/// `expanded_*` mirrors the current resident-runtime layout:
+/// every layer stores a fully expanded key and value for every attention head,
+/// plus one DSA index key. `compact_*` projects the storage floor after an MLA
+/// attention rewrite: one normalized KV latent and one shared RoPE tail per
+/// layer/token, plus the unchanged DSA index key. The maximally compact total
+/// additionally removes the index-key buffers that the 57 shared-indexer
+/// layers never read or write.
+///
+/// These values are source-modelled allocation bytes, not live allocator or
+/// process-residency measurements. They exclude weights, activation scratch,
+/// allocator metadata, and the transient old+new buffers held during growth.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ResidentKvStateStaticProjection {
+    pub requested_tokens: u64,
+    /// Mirrors the live resident runtime: initial capacity 64; subsequent
+    /// growth rounds to a power of two.
+    pub allocation_capacity_tokens: u64,
+    pub expanded_keys_bytes: u64,
+    pub expanded_values_bytes: u64,
+    pub index_keys_bytes: u64,
+    pub current_expanded_total_bytes: u64,
+    pub compact_mla_latent_bytes: u64,
+    pub compact_rope_tail_bytes: u64,
+    /// DSA index keys allocated only for `"full"` indexer layers.
+    pub index_keys_full_layers_only_bytes: u64,
+    /// Compact MLA while retaining the current all-layer index-key allocation.
+    pub compact_mla_total_bytes: u64,
+    /// Compact MLA plus full-indexer-only index-key ownership.
+    pub maximally_compact_mla_total_bytes: u64,
+}
+
+fn checked_static_bytes(factors: &[u64], label: &str) -> Result<u64> {
+    factors.iter().try_fold(1u64, |acc, &factor| {
+        acc.checked_mul(factor).ok_or_else(|| {
+            Error::Gravity(format!(
+                "resident KV/state static projection overflow in {label}"
+            ))
+        })
+    })
+}
+
+/// Project steady-state resident KV/state bytes from architecture and context.
+///
+/// Arithmetic and capacity rounding are checked so an impossible static query
+/// returns an error rather than wrapping into a plausible-looking byte count.
+pub fn estimate_resident_kv_state_static_bytes(
+    arch: &GlmArch,
+    required_tokens: usize,
+) -> Result<ResidentKvStateStaticProjection> {
+    let requested_tokens = u64::try_from(required_tokens)
+        .map_err(|_| Error::Gravity("resident KV/state token count does not fit u64".into()))?;
+    let allocation_capacity = if required_tokens <= RESIDENT_RUNTIME_INITIAL_KV_CAPACITY_TOKENS {
+        RESIDENT_RUNTIME_INITIAL_KV_CAPACITY_TOKENS
+    } else {
+        required_tokens
+            .checked_next_power_of_two()
+            .ok_or_else(|| Error::Gravity("resident KV/state capacity overflow".into()))?
+            .max(RESIDENT_RUNTIME_INITIAL_KV_CAPACITY_TOKENS)
+    };
+    let capacity = u64::try_from(allocation_capacity)
+        .map_err(|_| Error::Gravity("resident KV/state capacity does not fit u64".into()))?;
+    let layers = u64::try_from(arch.n_layers)
+        .map_err(|_| Error::Gravity("resident KV/state layer count does not fit u64".into()))?;
+    let heads = u64::try_from(arch.n_heads)
+        .map_err(|_| Error::Gravity("resident KV/state head count does not fit u64".into()))?;
+    let qk_dim = u64::try_from(arch.qk_dim())
+        .map_err(|_| Error::Gravity("resident KV/state qk dimension does not fit u64".into()))?;
+    let v_dim = u64::try_from(arch.v_head_dim)
+        .map_err(|_| Error::Gravity("resident KV/state value dimension does not fit u64".into()))?;
+    let index_dim = u64::try_from(arch.index_head_dim)
+        .map_err(|_| Error::Gravity("resident KV/state index dimension does not fit u64".into()))?;
+    let latent_dim = u64::try_from(arch.kv_lora_rank).map_err(|_| {
+        Error::Gravity("resident KV/state latent dimension does not fit u64".into())
+    })?;
+    let rope_dim = u64::try_from(arch.qk_rope_head_dim)
+        .map_err(|_| Error::Gravity("resident KV/state RoPE dimension does not fit u64".into()))?;
+    let full_indexer_layers = u64::try_from(
+        arch.indexer_types
+            .iter()
+            .filter(|kind| kind.as_str() == "full")
+            .count(),
+    )
+    .map_err(|_| Error::Gravity("resident full-indexer count does not fit u64".into()))?;
+
+    let expanded_keys_bytes =
+        checked_static_bytes(&[capacity, layers, heads, qk_dim, 4], "expanded keys")?;
+    let expanded_values_bytes =
+        checked_static_bytes(&[capacity, layers, heads, v_dim, 4], "expanded values")?;
+    let index_keys_bytes = checked_static_bytes(&[capacity, layers, index_dim, 4], "index keys")?;
+    let compact_mla_latent_bytes =
+        checked_static_bytes(&[capacity, layers, latent_dim, 4], "compact MLA latent")?;
+    let compact_rope_tail_bytes =
+        checked_static_bytes(&[capacity, layers, rope_dim, 4], "compact RoPE tail")?;
+    let index_keys_full_layers_only_bytes = checked_static_bytes(
+        &[capacity, full_indexer_layers, index_dim, 4],
+        "full-indexer-only index keys",
+    )?;
+    let current_expanded_total_bytes = expanded_keys_bytes
+        .checked_add(expanded_values_bytes)
+        .and_then(|bytes| bytes.checked_add(index_keys_bytes))
+        .ok_or_else(|| Error::Gravity("resident expanded KV/state total overflow".into()))?;
+    let compact_mla_total_bytes = compact_mla_latent_bytes
+        .checked_add(compact_rope_tail_bytes)
+        .and_then(|bytes| bytes.checked_add(index_keys_bytes))
+        .ok_or_else(|| Error::Gravity("resident compact MLA/state total overflow".into()))?;
+    let maximally_compact_mla_total_bytes = compact_mla_latent_bytes
+        .checked_add(compact_rope_tail_bytes)
+        .and_then(|bytes| bytes.checked_add(index_keys_full_layers_only_bytes))
+        .ok_or_else(|| {
+            Error::Gravity("resident maximally compact MLA/state total overflow".into())
+        })?;
+
+    Ok(ResidentKvStateStaticProjection {
+        requested_tokens,
+        allocation_capacity_tokens: capacity,
+        expanded_keys_bytes,
+        expanded_values_bytes,
+        index_keys_bytes,
+        current_expanded_total_bytes,
+        compact_mla_latent_bytes,
+        compact_rope_tail_bytes,
+        index_keys_full_layers_only_bytes,
+        compact_mla_total_bytes,
+        maximally_compact_mla_total_bytes,
+    })
+}
+
 /// Source-derived logical synchronization boundaries on the default
 /// resident-state schedule.
 ///
@@ -2293,6 +2425,129 @@ mod tests {
             let expect = matvec_dense(&w, x, "lm_head.weight").expect("dense");
             assert_eq!(got, expect, "prompt/vector {pi}: bit-identical required");
         }
+    }
+
+    /// Source-derived, steady-state resident allocation floors at the campaign
+    /// context gates. These are exact bytes for the fixture dimensions and the
+    /// allocator's capacity rule, not device/process measurements.
+    #[test]
+    fn flagship_resident_kv_state_static_floors_are_exact() {
+        let raw = std::fs::read(
+            Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("tests/fixtures/gravity_glm/flagship_arch.json"),
+        )
+        .expect("flagship_arch.json");
+        let header: serde_json::Value = serde_json::from_slice(&raw).unwrap();
+        let arch = GlmArch::from_header(&header).unwrap();
+
+        assert_eq!(arch.n_layers, 78);
+        assert_eq!(arch.n_heads, 64);
+        assert_eq!(arch.qk_dim(), 256);
+        assert_eq!(arch.v_head_dim, 256);
+        assert_eq!(arch.kv_lora_rank, 512);
+        assert_eq!(arch.qk_rope_head_dim, 64);
+        assert_eq!(arch.index_head_dim, 128);
+
+        let expected = [
+            (
+                2_048usize,
+                10_468_982_784u64,
+                10_468_982_784u64,
+                81_788_928u64,
+                21_019_754_496u64,
+                327_155_712u64,
+                40_894_464u64,
+                449_839_104u64,
+                22_020_096u64,
+                390_070_272u64,
+            ),
+            (
+                8_192usize,
+                41_875_931_136u64,
+                41_875_931_136u64,
+                327_155_712u64,
+                84_079_017_984u64,
+                1_308_622_848u64,
+                163_577_856u64,
+                1_799_356_416u64,
+                88_080_384u64,
+                1_560_281_088u64,
+            ),
+            (
+                32_768usize,
+                167_503_724_544u64,
+                167_503_724_544u64,
+                1_308_622_848u64,
+                336_316_071_936u64,
+                5_234_491_392u64,
+                654_311_424u64,
+                7_197_425_664u64,
+                352_321_536u64,
+                6_241_124_352u64,
+            ),
+        ];
+        for (
+            tokens,
+            expanded_keys,
+            expanded_values,
+            index_keys,
+            expanded_total,
+            compact_latent,
+            compact_rope,
+            compact_total,
+            full_index_keys,
+            maximally_compact_total,
+        ) in expected
+        {
+            let got = estimate_resident_kv_state_static_bytes(&arch, tokens)
+                .expect("static KV/state projection");
+            assert_eq!(got.requested_tokens, tokens as u64);
+            assert_eq!(got.allocation_capacity_tokens, tokens as u64);
+            assert_eq!(got.expanded_keys_bytes, expanded_keys);
+            assert_eq!(got.expanded_values_bytes, expanded_values);
+            assert_eq!(got.index_keys_bytes, index_keys);
+            assert_eq!(got.current_expanded_total_bytes, expanded_total);
+            assert_eq!(got.compact_mla_latent_bytes, compact_latent);
+            assert_eq!(got.compact_rope_tail_bytes, compact_rope);
+            assert_eq!(got.compact_mla_total_bytes, compact_total);
+            assert_eq!(got.index_keys_full_layers_only_bytes, full_index_keys);
+            assert_eq!(
+                got.maximally_compact_mla_total_bytes,
+                maximally_compact_total
+            );
+            assert!(got.maximally_compact_mla_total_bytes < got.compact_mla_total_bytes);
+            assert!(got.compact_mla_total_bytes < got.current_expanded_total_bytes);
+        }
+    }
+
+    #[test]
+    fn resident_kv_state_static_projection_checks_capacity_arithmetic() {
+        let raw = std::fs::read(
+            Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("tests/fixtures/gravity_glm/flagship_arch.json"),
+        )
+        .expect("flagship_arch.json");
+        let header: serde_json::Value = serde_json::from_slice(&raw).unwrap();
+        let arch = GlmArch::from_header(&header).unwrap();
+
+        for requested in [0usize, 1, 63, 64] {
+            let initial = estimate_resident_kv_state_static_bytes(&arch, requested)
+                .expect("initial-capacity projection");
+            assert_eq!(initial.requested_tokens, requested as u64);
+            assert_eq!(initial.allocation_capacity_tokens, 64);
+            assert_eq!(initial.current_expanded_total_bytes, 656_867_328);
+            assert_eq!(initial.compact_mla_total_bytes, 14_057_472);
+            assert_eq!(initial.maximally_compact_mla_total_bytes, 12_189_696);
+        }
+
+        let rounded =
+            estimate_resident_kv_state_static_bytes(&arch, 2_049).expect("rounded projection");
+        assert_eq!(rounded.requested_tokens, 2_049);
+        assert_eq!(rounded.allocation_capacity_tokens, 4_096);
+
+        let err = estimate_resident_kv_state_static_bytes(&arch, usize::MAX)
+            .expect_err("capacity overflow must fail closed");
+        assert!(err.to_string().contains("capacity overflow"), "{err}");
     }
 
     /// Static wait arithmetic for the flagship schedule. The campaign's

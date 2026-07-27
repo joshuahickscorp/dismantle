@@ -1,6 +1,6 @@
 {
   "schema": "hawking.heavy_continuation.status.v1",
-  "at": "2026-07-27T14:43:56Z",
+  "at": "2026-07-27T15:41:12Z",
   "endpoint": "RAMANUJAN_SANDBOX_READY",
   "endpoint_reached": false,
   "honest_position": "The blocking gate is executing. It is a ~15 hour job, not the ~5 the packer's own model projected, because fetch and measure are serial rather than overlapped. Whether the artifact GENERATES is still unproven and only the whole-model gates answer it.",
@@ -89,7 +89,8 @@
     "eviction": "WORKING. 1 shard resident, free disk rising from 133 to 169 GiB as it proceeds -- it is reclaiming the pilot bodies as it passes them.",
     "no_parallelism": "the packer measures shards serially and has no worker flag. Adding one to a running job was judged not worth the risk against a correct run already in flight.",
     "detached": "survives this session. Progress is countable from /tmp/glm_pilot/fullpack2.log and from the resident-shard count.",
-    "progress": "95/282 shards measured"
+    "progress": "164/282 shards measured",
+    "stale_code_handover": "The running process loaded the module at 11:09:59, before the prefetch and --workers commits. Its PACK phase would run serially. Measurement is written to disk before packing starts, so once MEASUREMENT.json exists the process is killed and the pack phase re-invoked with --pack-from --workers 4. Only packing is redone."
   },
   "parallel_lanes_landed": [
     "HIDE YOU: swarms, projects, typed handoffs (capsule carries the claim never the capability)",
@@ -108,5 +109,33 @@
     "the 282-shard activation-aware pack",
     "hide-wiring (tokenizer-true budgeting, real worktrees, RuntimePlanner, embedding stub refusal)"
   ],
-  "shared_tree": "Codex commits into this tree. Two silent failures recorded in HAWKING_SHARED_TREE_PROTOCOL.json: unstaged work reverted by a concurrent commit, and git apply -3 reporting success while writing nothing. Protocol: apply and commit atomically, assert a named file exists before concluding from the tree."
+  "shared_tree": "Codex commits into this tree. Two silent failures recorded in HAWKING_SHARED_TREE_PROTOCOL.json: unstaged work reverted by a concurrent commit, and git apply -3 reporting success while writing nothing. Protocol: apply and commit atomically, assert a named file exists before concluding from the tree.",
+  "disk": {
+    "freed_this_session_gb": 83,
+    "what": "~/Desktop/GLM52-Gravity-SubBit, generation A's PQ R0 negative control, deleted on explicit user authorization with GLM52_GENERATION_A_DELETION_RECEIPT.json",
+    "new_artifact_location": "~/Library/Application Support/Hawking/GLM52Gravity/activation_aware_pack -- never the Desktop"
+  },
+  "formal_environment": {
+    "status": "Lean and Mathlib REAL and pinned",
+    "elan": "4.2.3",
+    "lean": "4.32.1",
+    "mathlib_commit": "2ec0166b31100827cd34bacca4d3b9ea3da9d618",
+    "proof": "machine-checked two real theorems, exit 0",
+    "installed_count": "7 of 12",
+    "still_missing": [
+      "z3 binary",
+      "cvc5",
+      "PARI/GP",
+      "GAP",
+      "cadical"
+    ],
+    "q0": "BLOCKED -> UNBLOCKED_FOR_LEAN"
+  },
+  "newly_unblocked": "Six of nine Ramanujan data sources are generated locally from the pinned Mathlib and need no licensing decision. A lane is generating them now: proof traces, state transitions, premise pairs, compiler-error repair pairs, counterexample negatives, tool-use traces.",
+  "speed_work": {
+    "measured": "46.9 s per shard: 24.0 s fetch, 22.9 s work, serial, on 1.2 of 28 cores",
+    "prefetch": "overlaps fetch N+1 with work N, roughly halves both phases",
+    "workers": "parallel shard workers with per-layer basis locks; emission ordered by shard rather than completion so allocation is reproducible",
+    "applies_to": "the pack phase, not the running measure"
+  }
 }

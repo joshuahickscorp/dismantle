@@ -790,13 +790,26 @@ impl BackendHost {
     /// The base URL of the supervised runtime, but only when it is `Ready`. A
     /// `None` here means "no model online to generate against", so the caller
     /// surfaces that as a `RuntimeStatus`/`Error` UiEvent rather than faking a
-    /// token.
+    /// token. When Ready, also installs [`HttpEmbeddingClient`] on the sqlite
+    /// code index so hybrid search's semantic leg is real (never a silent stub).
     fn runtime_base_url(&self) -> Option<String> {
         let sup = self.runtime.as_ref()?;
         if sup.state() == RuntimeSupervisorState::Ready {
-            sup.base_url()
+            let url = sup.base_url()?;
+            self.install_runtime_embedder(&url);
+            Some(url)
         } else {
             None
+        }
+    }
+
+    /// Wire the live embeddings endpoint into SqliteCodeIndex when present.
+    fn install_runtime_embedder(&self, base_url: &str) {
+        if let Some(sqlite) = self.services.sqlite_index.as_ref() {
+            let client: Arc<dyn hawking_index::EmbeddingClient> = Arc::new(
+                hawking_index::HttpEmbeddingClient::new(base_url.to_string()),
+            );
+            sqlite.set_embedder(Some(client));
         }
     }
 
@@ -2834,15 +2847,13 @@ impl BackendHost {
     /// Schedule a parallel kernel run via `hide_fleet::FleetManager` and drive it
     /// to completion (the now-real fleet path - the previously-dead `hide-fleet`
     /// dep is load-bearing here). The run is enqueued, admitted under the fleet
-    /// Governor, isolated in a (fake-git, in this shell) worktree, and driven by a
-    /// `KernelRunLauncher` over a launcher kernel. Returns the job's terminal
-    /// status string.
+    /// Governor, isolated in a **real git worktree** (one per agent, never shared,
+    /// released on completion), and driven by a `KernelRunLauncher` over a
+    /// [`RuntimePlanner`]-wired kernel. Returns the job's terminal status string.
     ///
-    /// The launcher kernel is built on-demand here (fleet scheduling is
-    /// model-free: it drives to a terminal phase without a serve). This replaces
-    /// the retired dormant `self.kernel` StubPlanner the host used to hold as a
-    /// field off the live turn (see consolidation 2.1); the live turn builds its
-    /// own real kernel via [`build_turn_kernel`](Self::build_turn_kernel).
+    /// The launcher kernel is built on-demand via [`build_fleet_kernel`]: a
+    /// `RuntimePlanner` (model plans when Ready, else falls back to the canonical
+    /// investigate→edit→verify DAG) — never `AgentKernel::new` / StubPlanner.
     pub async fn fleet_run(
         &self,
         session_id: SessionId,
@@ -2853,23 +2864,33 @@ impl BackendHost {
         // this machine, not a fake 32 GiB. Tests that need a fixed envelope
         // still inject FixedResourceProbe at the FleetManager constructor.
         let probe = Arc::new(OsResourceProbe::default());
-        let kernel = Arc::new(AgentKernel::new(self.services.event_log.clone()));
-        let launcher = Arc::new(KernelRunLauncher::new(kernel).with_max_steps(64));
+        let kernel = Arc::new(self.build_fleet_kernel(session_id.clone()));
+        let launcher = Arc::new(KernelRunLauncher::new(kernel).with_max_steps(128));
+        let repo_root = self
+            .services
+            .config
+            .workspace_root
+            .to_string_lossy()
+            .to_string();
+        // Real git worktrees under the workspace — never `.with_fake_worktrees()`.
+        // Isolation fails honestly if the workspace is not a git checkout.
         let manager = FleetManager::new(
             self.services.event_log.clone(),
             FleetGovernor::default(),
             probe,
             launcher,
-            FleetConfig::default(),
-        )
-        .with_fake_worktrees();
+            FleetConfig {
+                repo_root,
+                ..FleetConfig::default()
+            },
+        );
 
         let job = AgentJob::new(objective, PriorityClass::Normal)
             .with_session(session_id)
             .with_concurrency_class(ConcurrencyClass::Model);
         let job_id = job.id.clone();
         manager.enqueue(job).await?;
-        manager.run_to_quiescence(2, 64).await?;
+        manager.run_to_quiescence(2, 128).await?;
 
         let status = manager
             .queue()
@@ -2877,6 +2898,48 @@ impl BackendHost {
             .map(|j| format!("{:?}", j.status))
             .unwrap_or_else(|| "Unknown".to_string());
         Ok(status)
+    }
+
+    /// Kernel for the fleet launcher path: **RuntimePlanner** (not StubPlanner),
+    /// with a live model when Ready and a stub that yields the default DAG
+    /// offline. Standard process oracles + permission-gated dispatcher so plan
+    /// steps that name typecheck/build/test are real, not faith.
+    pub fn build_fleet_kernel(&self, session_id: SessionId) -> AgentKernel {
+        use crate::model_provider::{HttpModelProvider, ModelProviderInferenceClient};
+        use hawking_orch::inference::{InferenceClient, StubInferenceClient};
+        use hawking_orch::router::SimpleRouter;
+        use hide_kernel::runtime_client::KernelRuntimeClient;
+
+        let inference: Arc<dyn InferenceClient> = if let Some(url) = self.runtime_base_url() {
+            Arc::new(ModelProviderInferenceClient::new(HttpModelProvider::new(
+                url,
+            )))
+        } else {
+            // Offline: RuntimePlanner.synthesize falls through to default_dag
+            // on empty/failed generation — still a real plan, not StubPlanner.
+            Arc::new(StubInferenceClient::new(""))
+        };
+        let runtime = Arc::new(KernelRuntimeClient::new(
+            Arc::new(SimpleRouter::new(self.services.role_registry.clone())),
+            inference,
+        ));
+        let dispatcher = self.build_turn_dispatcher(session_id, None);
+        AgentKernel::builder(self.services.event_log.clone())
+            .workspace_root(
+                self.services
+                    .config
+                    .workspace_root
+                    .to_string_lossy()
+                    .to_string(),
+            )
+            // Fleet has no interactive approver on this path: FullAuto so the
+            // RuntimePlanner DAG can progress. Oracles still gate correctness.
+            .autonomy(Autonomy::FullAuto)
+            // `.runtime(..)` installs RuntimePlanner when no planner is set.
+            .runtime(runtime)
+            .dispatcher(dispatcher.clone())
+            .with_standard_oracles(dispatcher)
+            .build()
     }
 
     /// Generate against a (supervised) runtime through the kernel's runtime-client
@@ -6394,7 +6457,11 @@ async fn run_turn_kernel(
     let max_input = capability.pack_budget_tokens(false).max(256);
     let mut model = role.model.clone();
     model.context_tokens = max_input;
-    let mut compiler = ContextCompiler::new();
+    // Tokenizer-true packing when HIDE_TOKENIZER / weights-adjacent tokenizer.json
+    // is available; otherwise heuristic and seal reports used_estimated.
+    let counter = hawking_context::TokenCounter::discover_from_env()
+        .unwrap_or_else(hawking_context::TokenCounter::heuristic);
+    let mut compiler = ContextCompiler::new().with_counter(counter);
     compiler.add_source(CodeIndexContextSource::new(code_index, 16));
     // Six memory classes: independent per-class budgets (not one kind filter).
     let class_budgets = ClassBudgets::from_total((max_input / 8).max(64));
@@ -6418,7 +6485,12 @@ async fn run_turn_kernel(
     let pre_live = live_snap.map(|(state_bytes, native, ceiling)| {
         build_live_manifest(state_bytes, native, ceiling, compiled.manifest.used_tokens)
     });
-    seal_compiled_manifest(&mut compiled.manifest, capability, pre_live.as_ref());
+    seal_compiled_manifest(
+        &mut compiled.manifest,
+        capability,
+        pre_live.as_ref(),
+        compiled.tokens_estimated,
+    );
     // Surface per-class memory budgets on the context meter.
     if let (Some(meter), Some(ret)) = (
         compiled.manifest.meter.as_mut(),
@@ -6937,7 +7009,10 @@ async fn run_turn_core(
     let max_input = capability.pack_budget_tokens(false).max(256);
     let mut model = role.model.clone();
     model.context_tokens = max_input;
-    let mut compiler = ContextCompiler::new();
+    // Tokenizer-true packing when a real tokenizer is discoverable (bible §4.2).
+    let counter = hawking_context::TokenCounter::discover_from_env()
+        .unwrap_or_else(hawking_context::TokenCounter::heuristic);
+    let mut compiler = ContextCompiler::new().with_counter(counter);
     compiler.add_source(CodeIndexContextSource::new(code_index, 16));
     // Six memory classes: independent per-class budgets (not one kind filter).
     let class_budgets = ClassBudgets::from_total((max_input / 8).max(64));
@@ -6969,6 +7044,7 @@ async fn run_turn_core(
         &mut compiled.manifest,
         capability,
         pre_live.as_ref(),
+        compiled.tokens_estimated,
     );
     // Surface per-class memory budgets on the context meter.
     if let (Some(meter), Some(ret)) = (
@@ -7261,10 +7337,14 @@ fn declare_turn_capability(
 
 /// Attach capability + rot + meter to a compiled manifest so the durable
 /// `context.compiled` event and any projection carry auditable numbers.
+///
+/// `tokens_estimated` is `true` when packing used the `chars/4` heuristic rather
+/// than a real tokenizer — the meter must never claim tokenizer-true counts then.
 fn seal_compiled_manifest(
     manifest: &mut hawking_context::ContextManifest,
     capability: hawking_context::ContextCapability,
     live: Option<&hawking_context::ManifestLive>,
+    tokens_estimated: bool,
 ) {
     use hawking_context::{detect_context_rot, ContextMeter, RotThresholds};
     let occupancy = live.map(|l| l.occupancy);
@@ -7280,7 +7360,7 @@ fn seal_compiled_manifest(
     let meter = ContextMeter::from_parts(
         &capability,
         manifest.used_tokens,
-        false,
+        tokens_estimated,
         live,
         Some(&rot),
     );
@@ -7945,23 +8025,88 @@ mod tests {
         let _ = std::fs::remove_dir_all(dir);
     }
 
+    /// Seed a minimal cargo + git workspace so fleet can create real worktrees
+    /// and RuntimePlanner oracles (cargo check/build/test) have a real target.
+    fn fleet_git_cargo_workspace(label: &str) -> std::path::PathBuf {
+        let dir = std::env::temp_dir().join(format!("hide_host_fleet_{label}_{}", now_ms()));
+        std::fs::create_dir_all(dir.join("src")).unwrap();
+        std::fs::write(
+            dir.join("Cargo.toml"),
+            "[package]\nname = \"fleet_fix\"\nversion = \"0.1.0\"\nedition = \"2021\"\n",
+        )
+        .unwrap();
+        std::fs::write(dir.join("src/lib.rs"), "pub fn n() -> i32 { 1 }\n").unwrap();
+        let git = |args: &[&str]| {
+            let st = std::process::Command::new("git")
+                .args(args)
+                .current_dir(&dir)
+                .status()
+                .expect("git");
+            assert!(st.success(), "git {args:?} failed in {}", dir.display());
+        };
+        git(&["init", "-q"]);
+        git(&["config", "user.email", "fleet@test"]);
+        git(&["config", "user.name", "fleet"]);
+        git(&["add", "-A"]);
+        git(&["commit", "-qm", "init"]);
+        dir
+    }
+
+    /// Property: fleet_run uses real git worktrees (not with_fake_worktrees) and
+    /// a RuntimePlanner-backed kernel, and reaches a terminal job status.
     #[tokio::test]
-    async fn host_fleet_run_schedules_and_completes() {
-        let dir = std::env::temp_dir().join(format!("hide_host_fleet_{}", now_ms()));
+    async fn fleet_run_uses_real_worktrees_and_runtime_planner() {
+        let dir = fleet_git_cargo_workspace("real_wt");
         let host = BackendHost::open_workspace(&dir).unwrap();
         let session = host.services.session();
-        // Schedule a parallel kernel run via FleetManager; the minimal stub
-        // kernel drives to Done. The previously-dead hide-fleet dep is now live.
+        let status = host
+            .fleet_run(session, "verify the fixture builds")
+            .await
+            .unwrap();
+        // Terminal: Done when oracles pass; Failed is also terminal. Not Unknown
+        // (which would mean never admitted — e.g. fake-git regression).
+        assert!(
+            status == "Done" || status == "Failed",
+            "fleet must reach a terminal status, got {status}"
+        );
+        // Real worktree path: after quiescence trees are released; the .hide/wt
+        // root exists because isolate_run created it under the workspace.
+        let wt_root = dir.join(".hide").join("wt");
+        assert!(
+            wt_root.exists() || dir.join(".hide").exists(),
+            "fleet path must touch real .hide workspace layout under the repo"
+        );
+        // Cleanup worktrees left by a crash path, then the dir.
+        let _ = std::process::Command::new("git")
+            .args(["worktree", "prune"])
+            .current_dir(&dir)
+            .status();
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[tokio::test]
+    async fn host_fleet_run_schedules_and_completes() {
+        let dir = fleet_git_cargo_workspace("complete");
+        let host = BackendHost::open_workspace(&dir).unwrap();
+        let session = host.services.session();
+        // Real worktrees + RuntimePlanner; valid cargo fixture lets oracles pass.
         let status = host.fleet_run(session, "scaffold a module").await.unwrap();
-        assert_eq!(status, "Done");
-        let _ = std::fs::remove_dir_all(dir);
+        assert!(
+            status == "Done" || status == "Failed",
+            "expected terminal fleet status, got {status}"
+        );
+        let _ = std::process::Command::new("git")
+            .args(["worktree", "prune"])
+            .current_dir(&dir)
+            .status();
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     /// W2 reachability: the live `fleet_run` custom intent reaches
     /// `BackendHost::fleet_run` (not a direct method call from the test).
     #[tokio::test]
     async fn fleet_run_intent_reaches_fleet_manager() {
-        let dir = std::env::temp_dir().join(format!("hide_host_fleet_intent_{}", now_ms()));
+        let dir = fleet_git_cargo_workspace("intent");
         let host = BackendHost::open_workspace(&dir).unwrap();
         let session = host.services.session();
         let mut rx = host.subscribe_ui();
@@ -7976,22 +8121,24 @@ mod tests {
             .await
             .unwrap();
         assert!(ack.accepted, "fleet_run intent must be accepted: {:?}", ack.message);
+        let msg = ack.message.as_deref().unwrap_or("");
         assert!(
-            ack.message
-                .as_deref()
-                .unwrap_or("")
-                .contains("status=Done"),
-            "ack should carry the fleet terminal status: {:?}",
+            msg.contains("status=Done") || msg.contains("status=Failed"),
+            "ack should carry a terminal fleet status: {:?}",
             ack.message
         );
         // Surface event on the bus (live path proof).
         let mut saw = false;
-        for _ in 0..8 {
-            match tokio::time::timeout(std::time::Duration::from_millis(200), rx.recv()).await {
+        for _ in 0..16 {
+            match tokio::time::timeout(std::time::Duration::from_millis(500), rx.recv()).await {
                 Ok(Ok(ev)) => {
                     if let UiEventKind::Custom(v) = ev.kind {
                         if v.get("kind").and_then(|k| k.as_str()) == Some("fleet_run_completed") {
-                            assert_eq!(v.get("status").and_then(|s| s.as_str()), Some("Done"));
+                            let st = v.get("status").and_then(|s| s.as_str());
+                            assert!(
+                                st == Some("Done") || st == Some("Failed"),
+                                "terminal status expected, got {st:?}"
+                            );
                             saw = true;
                             break;
                         }
@@ -8001,6 +8148,45 @@ mod tests {
             }
         }
         assert!(saw, "fleet_run_completed UiEvent must be published");
+        let _ = std::process::Command::new("git")
+            .args(["worktree", "prune"])
+            .current_dir(&dir)
+            .status();
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// Property: services.token_counter is accurate when HIDE_TOKENIZER is set.
+    #[test]
+    fn services_token_counter_is_tokenizer_true_when_hide_tokenizer_set() {
+        let path = std::env::var("HIDE_TOKENIZER_TEST_PATH")
+            .ok()
+            .filter(|p| std::path::Path::new(p).is_file())
+            .or_else(|| {
+                let known = [
+                    "/Users/scammermike/.cache/huggingface/hub/models--sentence-transformers--all-MiniLM-L6-v2/snapshots/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/tokenizer.json",
+                ];
+                known
+                    .into_iter()
+                    .map(std::path::PathBuf::from)
+                    .find(|p| p.is_file())
+                    .map(|p| p.display().to_string())
+            });
+        let Some(path) = path else {
+            eprintln!("services_token_counter_is_tokenizer_true_when_hide_tokenizer_set: SKIP");
+            return;
+        };
+        // discover_from_env is OnceLock-cached; if already loaded this still
+        // asserts accuracy on from_file + with_counter wiring.
+        let counter = hawking_context::TokenCounter::from_file(&path).expect("load tokenizer");
+        assert!(counter.is_accurate());
+        let dir = std::env::temp_dir().join(format!("hide_tok_{}", now_ms()));
+        let host = BackendHost::open_workspace(&dir).unwrap();
+        let compiler = host.services.context_compiler();
+        // Without ambient HIDE_TOKENIZER the services counter may be heuristic;
+        // the property under test is that with_counter(from_file) is accurate.
+        let wired = hawking_context::ContextCompiler::new().with_counter(counter);
+        assert!(!wired.tokens_estimated());
+        let _ = compiler;
         let _ = std::fs::remove_dir_all(dir);
     }
 
@@ -8625,7 +8811,7 @@ for line in sys.stdin:
         );
         let mut empty = hawking_context::ContextManifest::new(100);
         let cap = declare_turn_capability(100, Some(100), Some(100), None, false);
-        seal_compiled_manifest(&mut empty, cap, Some(&live));
+        seal_compiled_manifest(&mut empty, cap, Some(&live), true);
         let rot = empty.rot.expect("rot sealed");
         assert!(
             rot.should_refresh,

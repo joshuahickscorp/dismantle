@@ -35,6 +35,12 @@ def _dispatch_stage(stage_id: str) -> int:
     """Dispatch a stage after authorization. Training stages are stubs that
     refuse heavy work without an explicit second confirmation file — but the
     fence is the first gate and is never written here.
+
+    The fence is not the only gate. Every stage that would train must also pass
+    the substrate capability register, which asks a different question: can this
+    artifact generate at all? Math-Preserve is byte-perfect and cannot, so it is
+    refused there regardless of what the fence says. T0 is exempt because
+    reproducing a substrate is exactly how you learn it is broken.
     """
     sys.path.insert(0, str(ROOT))
     if stage_id == "T0":
@@ -43,6 +49,16 @@ def _dispatch_stage(stage_id: str) -> int:
         receipt = t0_run(max_shards=8, max_bytes=512 * 1024 * 1024)
         print(json.dumps({"stage": "T0", "status": receipt["status"], "summary": receipt["summary"]}))
         return 0 if receipt["status"] == "PASS" else 3
+
+    # Second gate, independent of the fence: is the substrate fit to train on?
+    from tools.odyssey._paths import EXPECTED_INDEX_SHA256
+    from tools.odyssey.substrate_capability import SubstrateRefused, assert_trainable
+
+    try:
+        assert_trainable(EXPECTED_INDEX_SHA256)
+    except SubstrateRefused as e:
+        print(f"SUBSTRATE_REFUSED: {e}", file=sys.stderr)
+        return 5
 
     # T1–T5: machinery exists as contracts; full training is not started here.
     from tools.odyssey.feasibility import estimate

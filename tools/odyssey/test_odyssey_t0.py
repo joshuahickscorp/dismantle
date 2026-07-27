@@ -181,5 +181,47 @@ class TestRunnerRefusesTraining(unittest.TestCase):
         self.assertIn("ODYSSEY_LAUNCH_AUTHORIZED=false", proc.stderr)
 
 
+
+class TestSubstrateCapabilityGate(unittest.TestCase):
+    """The second gate. The fence answers 'did a human authorize a run'; this
+    answers 'can the artifact generate'. Before it existed the fence was the only
+    thing between an agent and training on a substrate that cannot complete
+    '2 + 2 ='. These pin it so it is not quietly removed."""
+
+    def test_math_preserve_is_refused(self):
+        from tools.odyssey.substrate_capability import SubstrateRefused, assert_trainable
+        from tools.odyssey._paths import EXPECTED_INDEX_SHA256
+
+        with self.assertRaises(SubstrateRefused):
+            assert_trainable(EXPECTED_INDEX_SHA256)
+
+    def test_unknown_artifact_is_refused_not_permitted(self):
+        """Silence is not a pass. An artifact nobody probed is not one known to work."""
+        from tools.odyssey.substrate_capability import SubstrateRefused, assert_trainable, verdict_for
+
+        unknown = "0" * 64
+        self.assertEqual(verdict_for(unknown)["capability_verdict"], "UNVERIFIED")
+        with self.assertRaises(SubstrateRefused):
+            assert_trainable(unknown)
+
+    def test_runner_refuses_even_when_the_fence_is_true(self):
+        """The whole point: the two gates are independent."""
+        import subprocess, sys
+        from tools.odyssey._paths import FENCE, ROOT
+
+        original = FENCE.read_text()
+        try:
+            FENCE.write_text("true")
+            r = subprocess.run(
+                [sys.executable, str(ROOT / "odyssey/training/run.py"), "T1"],
+                capture_output=True, text=True, cwd=str(ROOT),
+            )
+            self.assertEqual(r.returncode, 5, f"expected SUBSTRATE_REFUSED, got {r.returncode}: {r.stderr}")
+            self.assertIn("SUBSTRATE_REFUSED", r.stderr)
+        finally:
+            FENCE.write_text(original)
+        self.assertEqual(FENCE.read_text().strip(), "false", "the fence must be left false")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

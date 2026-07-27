@@ -3,7 +3,7 @@
 Generated from live evidence by `tools/campaign/parallel_status.py`. Do not hand-edit.
 Ownership and the DAG are hand-authored architecture and are read, never written, by this tool.
 
-    at:       2026-07-27T02:48:17Z
+    at:       2026-07-27T03:07:26Z
     endpoint: RAMANUJAN_SANDBOX_READY (not reached)
     width:    0/6 lanes running
     fences:   ODYSSEY_LAUNCH_AUTHORIZED=False RAMANUJAN_RESEARCH_AUTHORIZED=False HIDE_KERNEL_TURN=False
@@ -26,14 +26,18 @@ Ownership and the DAG are hand-authored architecture and are read, never written
 - `L06` consolidation-inventory (grok)
 - `L18` gravity-serve (grok)
 - `L07` speculation-safety (grok)
+- `L09` ramanujan-migration-prep (claude)
 - `L19` odyssey-data (grok)
 - `L20` memory-writers (grok)
 - `L21` gravity-degenerate-attribution (claude (controller, run inline -- Grok slots held by a concurrent campaign; user authorized))
+- `L22` odyssey-readiness-supersession (claude)
+- `L23` representation-escalation-preregistration (claude)
+- `L24` ramanujan-governance-and-cognition (claude)
+- `L25` ramanujan-environment-lock (claude)
 
 ## Queued
 
 - `L08` hide-os-wiring (grok)
-- `L09` ramanujan-migration-prep (claude)
 
 ## Blocked (real data dependencies, see the DAG)
 

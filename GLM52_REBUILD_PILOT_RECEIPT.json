@@ -175,9 +175,10 @@
     "that A6 fails. It is DATA_BLOCKED on trajectory traces, of which the teacher ledger holds zero."
   ],
   "next_actions_in_order": [
-    "A4 across a REAL expert bank: 256 routed experts per layer share structure that a shared latent basis could exploit, and the pilot only ever ran A4 across 8 synthetic blocks of one tensor. This is the single most promising untried representation and it is specifically suited to a MoE parent.",
-    "expert fitted against captured activations rather than SVD of raw weights",
-    "only if both fail is representation escalation genuinely exhausted, and only then does an Escape Receipt for a separately versioned parity artifact become honest"
+    "replicate the activation-aware result across many experts and several layers using the 66 retained teacher capsules",
+    "if it holds, freeze an activation-fitted allocation program and run measurement shardwise -> allocation global -> packing shardwise",
+    "re-probe the resulting artifact with 2 + 2 and prompt-dependent generation before anything trains on it",
+    "the Escape Receipt is OFF the table until data-aware fitting has been genuinely exhausted, which it has not even been started at scale"
   ],
   "fences_unchanged": {
     "ODYSSEY_LAUNCH_AUTHORIZED": false,
@@ -418,7 +419,7 @@
     "DATA-AWARE fitting: every arm swept so far fits RAW WEIGHTS. Fitting an expert against captured activations optimises what the organ DOES rather than what it stores, and the campaign's own functional-codec work (glm52.functional.moe.v1, GLM52_FUNCTIONAL_CPU_PARITY.json) is exactly that machinery, already frozen and deterministic. It has not been swept as a rate ladder.",
     "A6 trajectory-stabilized, which stays DATA_BLOCKED on parent trajectory traces the teacher ledger does not hold"
   ],
-  "controller_position_now": "Five of six arms are measured and negative sub-bit on the organs carrying 97.5 percent of the mass, including the MoE-specific one. That is close to the exhaustion the sub-bit law demands, but it is not yet complete: every swept arm fits raw weights, and the one family that fits FUNCTION rather than weights has not been rate-swept. Preparing an Escape Receipt before running it would skip the most relevant remaining experiment, and the law names weight-space reasoning as exactly what it refuses.",
+  "controller_position_now": "Sub-bit is not exhausted and the Escape Receipt is not the next step. The five sub-bit negatives recorded earlier in this receipt were obtained under a Gaussian proxy that shrank the null five-fold and specifically penalised the family that turns out to work. Fitted against real captured activations, a data-aware projection preserves an expert's function at 0.167 BPW. The next action is to replicate that across experts and layers and then freeze an activation-fitted allocation program.",
   "FUNCTIONAL_codec_rate_sweep": {
     "at": "2026-07-27T09:35:00Z",
     "why_it_was_the_last_untried_family": "Every other arm fits RAW WEIGHTS, and the sub-bit law explicitly refuses weight-space reasoning. glm52.functional.moe.v1 stores a FUNCTION -- a feature map reproduced from a seed at zero storage cost, plus a fitted readout -- so it answers what the organ DOES rather than what it holds.",
@@ -476,5 +477,49 @@
       "A6 trajectory-stabilized, still DATA_BLOCKED on parent trajectory traces the ledger does not hold"
     ],
     "controller_position": "Six families are now measured negative at sub-bit rates on the organs carrying 97.5 percent of the mass, including the MoE-specific one and the function-fitting one. That is most of the way to the exhaustion the sub-bit law demands. It is not all the way, and the gap is specific and cheap: one experiment against real captured activations. Preparing an Escape Receipt before running it would rest the campaign's largest architectural decision on a Gaussian proxy."
+  },
+  "DECISIVE_REVERSAL_real_captured_activations": {
+    "at": "2026-07-27T09:55:00Z",
+    "status": "THIS OVERTURNS EVERY SUB-BIT NEGATIVE IN THIS RECEIPT",
+    "what_changed": "Every earlier sweep fitted and scored against sampled GAUSSIAN activations. These use the campaign's own retained teacher capsule L10_L10.npz -- 4096 real token activations captured from the real parent at layer 10, which is exactly the input distribution these experts see.",
+    "the_first_thing_that_changed": {
+      "constant_mean_cosine_null_gaussian": 0.126,
+      "constant_mean_cosine_null_REAL": 0.65101,
+      "why": "real token activations are strongly anisotropic -- they live near a low-dimensional subspace -- so the mean row is a far better predictor than it is under isotropic noise. Every cosine in the Gaussian sweeps was being read against a null five times too small."
+    },
+    "measured_at_identical_0.667_BPW_same_expert": [
+      {
+        "arm": "A1_raw_weights",
+        "cosine": 0.3839,
+        "verdict": "BELOW the null -- raw-weight low-rank is worse than useless on real data"
+      },
+      {
+        "arm": "FUNCTIONAL_real_activations",
+        "cosine": 0.68694,
+        "verdict": "above the null"
+      },
+      {
+        "arm": "A1_activation_aware",
+        "cosine": 0.7925,
+        "verdict": "well above the null"
+      }
+    ],
+    "the_headline": "A data-aware projection reaches cosine 0.755 at 0.167 BPW and 0.793 at 0.667 BPW, both sub-bit, both clearly above the 0.651 null. At the same rate raw-weight low-rank returns 0.384 and sits BELOW the null. Knowing where the activations live is worth roughly a doubling of preserved function per bit.",
+    "why_the_gaussian_proxy_misled_in_the_direction_that_mattered": [
+      "it shrank the null five-fold, so weak arms looked like they were clearing a bar",
+      "it flattered raw-weight methods, which have nothing to lose when the input is isotropic",
+      "it penalised data-aware methods specifically, because an isotropic input has no structure for them to exploit -- the exact property they exist to use"
+    ],
+    "what_this_does_to_the_campaign": {
+      "sub_bit_is_NOT_exhausted": "A working sub-bit representation of a real routed expert now exists and is measured. The five negatives in this receipt were negatives about fitting raw weights under a proxy, not about sub-bit.",
+      "escape_receipt": "DEFINITIVELY NOT the next step. It would have been prepared on the strength of measurements that a better input distribution reverses.",
+      "the_direction": "data-aware allocation -- fit every organ against captured activations, not against its own weights. The campaign has 66 teacher capsules retained and has never used them as the fitting target for a packing program.",
+      "what_it_suggests_about_math_preserve": "if the PASS3 program fitted raw weights rather than activations, it optimised the wrong objective at every one of 59,585 frozen decisions. That is a hypothesis this result makes worth testing, not yet a finding."
+    },
+    "honest_limits": [
+      "one expert, one layer, one tensor kind. It must replicate across experts and layers before a program is frozen on it.",
+      "cosine 0.793 against a 0.651 null is a real margin, not an overwhelming one. Whether it is enough to generate is a whole-model question this window cannot answer.",
+      "the activation-aware arm here is a simple eigenbasis projection of W onto the top activation directions. It is a demonstration that the DIRECTION works, not a finished codec."
+    ]
   }
 }

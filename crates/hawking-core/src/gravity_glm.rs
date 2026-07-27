@@ -932,35 +932,76 @@ pub fn estimate_host_state_waits_per_token(arch: &GlmArch) -> u64 {
     waits + 1 // lm_head
 }
 
-/// Static `commit_and_wait` count on the resident-state path.
+/// Source-derived logical synchronization boundaries on the default
+/// resident-state schedule.
+///
+/// This is deliberately not a physical Metal command-buffer count. A
+/// projection boundary creates a command buffer only when at least one tensor
+/// at that rank is PQ or device-bf16. Conversely, one logical `matvec_batch`
+/// boundary may submit multiple physical command buffers when it mixes
+/// device-bf16 calls with a PQ batch. Physical command counts therefore have
+/// to be measured with [`crate::metal::PhysicalTraceCounts::command_count`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ResidentLogicalWaitBreakdown {
+    /// q_a+kv_a, q_b+kv_b, and o_proj: three ranks per layer.
+    pub attention_projection_boundaries: u64,
+    /// wq_b+wk and weights_proj: two ranks for each full-indexer layer.
+    pub indexer_projection_boundaries: u64,
+    /// One host-visible router projection boundary per sparse layer.
+    pub router_projection_boundaries: u64,
+    /// Gate, up, and down `matvec_batch` calls: three per MLP layer.
+    pub mlp_batch_boundaries: u64,
+    /// The final lm_head boundary.
+    pub head_boundary: u64,
+}
+
+impl ResidentLogicalWaitBreakdown {
+    /// Total logical/source-conditional wait accounting for the schedule.
+    pub fn total(self) -> u64 {
+        self.attention_projection_boundaries
+            .saturating_add(self.indexer_projection_boundaries)
+            .saturating_add(self.router_projection_boundaries)
+            .saturating_add(self.mlp_batch_boundaries)
+            .saturating_add(self.head_boundary)
+    }
+}
+
+/// Exact source-schedule breakdown used by
+/// [`estimate_resident_waits_per_token`].
+pub fn estimate_resident_logical_wait_breakdown(arch: &GlmArch) -> ResidentLogicalWaitBreakdown {
+    let full_indexer_layers = arch
+        .indexer_types
+        .iter()
+        .filter(|kind| kind.as_str() == "full")
+        .count() as u64;
+    let sparse_layers = arch
+        .mlp_layer_types
+        .iter()
+        .filter(|kind| kind.as_str() == "sparse")
+        .count() as u64;
+    let layers = arch.n_layers as u64;
+    ResidentLogicalWaitBreakdown {
+        attention_projection_boundaries: layers.saturating_mul(3),
+        indexer_projection_boundaries: full_indexer_layers.saturating_mul(2),
+        router_projection_boundaries: sparse_layers,
+        mlp_batch_boundaries: layers.saturating_mul(3),
+        head_boundary: 1,
+    }
+}
+
+/// Static logical/source-conditional wait accounting on the resident path.
 ///
 /// Attention projections that share a dependency rank are co-issued (q_a with
-/// kv_a, q_b with kv_b); expert gate/up/down stay three batched waits like the
-/// host path, with the residual / KV living on device between them. Live counts
-/// come from the resident forward's wait counter when a device is available.
+/// kv_a, q_b with kv_b); every dense and sparse MLP invokes gate, up, and down
+/// as three `matvec_batch` boundaries. This function describes that source
+/// schedule, not the number of physical Metal command buffers submitted for a
+/// particular tensor-format mix. Use
+/// [`crate::metal::PhysicalTraceCounts::command_count`] for the latter.
 ///
 /// **Default path only.** When [`gpu_expert_wave_enabled`] the MLP portion
-/// collapses — see [`estimate_resident_expert_wave_waits_per_token`]. This
-/// function's numbers must stay fixed (Parity V2.1 item 6).
+/// collapses — see [`estimate_resident_expert_wave_waits_per_token`].
 pub fn estimate_resident_waits_per_token(arch: &GlmArch) -> u64 {
-    let mut waits = 0u64;
-    for layer in 0..arch.n_layers {
-        // Co-issued q_a+kv_a, then q_b+kv_b, then o_proj.
-        waits += 3;
-        if arch.indexer_types[layer] == "full" {
-            // wq_b+wk together, then weights_proj
-            waits += 2;
-        }
-        match arch.mlp_layer_types[layer].as_str() {
-            "dense" => waits += 2, // gate+up, then down
-            "sparse" => {
-                // router + three expert batches (gate/up/down, routed+shared)
-                waits += 1 + 3;
-            }
-            _ => {}
-        }
-    }
-    waits + 1 // lm_head boundary
+    estimate_resident_logical_wait_breakdown(arch).total()
 }
 
 /// Static drains from `batched_mlp` alone (gate / up / down commits).
@@ -2260,8 +2301,9 @@ mod tests {
     /// independent projections and is strictly below host-state. Neither is
     /// command-buffer collapse (<=78).
     ///
-    /// Default resident estimate is **frozen** at 583 (Parity V2.1 item 6).
-    /// Expert-wave is a separate estimator and must not move that number.
+    /// The exact source-derived resident schedule is 586 logical boundaries.
+    /// Expert-wave is a separate estimator and must not rewrite the default
+    /// path's source schedule.
     #[test]
     fn flagship_wait_estimates_match_the_ordering_constraint() {
         let raw = std::fs::read(
@@ -2275,7 +2317,17 @@ mod tests {
         let resident = estimate_resident_waits_per_token(&arch);
         // Precise static count from the per-layer schedule (not 15×78).
         assert_eq!(host, 763, "host-state static waits");
-        assert_eq!(resident, 583, "resident static waits (default path frozen)");
+        assert_eq!(resident, 586, "resident logical/source boundaries");
+        assert_eq!(
+            estimate_resident_logical_wait_breakdown(&arch),
+            ResidentLogicalWaitBreakdown {
+                attention_projection_boundaries: 234,
+                indexer_projection_boundaries: 42,
+                router_projection_boundaries: 75,
+                mlp_batch_boundaries: 234,
+                head_boundary: 1,
+            }
+        );
         assert!(resident < host);
         // Collapse target is <=78; residency alone is not collapse.
         assert!(resident > 78);
@@ -2288,10 +2340,10 @@ mod tests {
         let wave = estimate_resident_expert_wave_waits_per_token(&arch);
         assert_eq!(wave, 430, "resident + expert-wave static waits");
         assert!(wave < resident);
-        // Default estimator must stay 583 even though wave exists.
+        // The default estimator remains source-derived even though wave exists.
         assert_eq!(
             estimate_resident_waits_per_token(&arch),
-            583,
+            586,
             "default resident estimate must not be rewritten by expert-wave"
         );
     }

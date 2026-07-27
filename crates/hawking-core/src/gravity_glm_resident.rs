@@ -273,6 +273,46 @@ fn build_device_expert_table_snapshot(
     })
 }
 
+#[allow(dead_code)]
+fn build_single_device_expert_snapshot(
+    ctx: &MetalContext,
+    gate_tensor: &GpuTensor,
+    up_tensor: &GpuTensor,
+    down_tensor: &GpuTensor,
+    generation: u32,
+) -> Result<DeviceExpertTableLease> {
+    if generation == 0 {
+        return Err(Error::Gravity(
+            "device expert table generation 0 is reserved for missing entries".into(),
+        ));
+    }
+    let (gate, gate_resources) = device_expert_tensor_ref(gate_tensor, generation)
+        .ok_or_else(|| Error::Gravity("single expert gate is not device-resident".into()))?;
+    let (up, up_resources) = device_expert_tensor_ref(up_tensor, generation)
+        .ok_or_else(|| Error::Gravity("single expert up is not device-resident".into()))?;
+    let (down, down_resources) = device_expert_tensor_ref(down_tensor, generation)
+        .ok_or_else(|| Error::Gravity("single expert down is not device-resident".into()))?;
+    let entry = DeviceExpertTriplet {
+        gate,
+        up,
+        down,
+        ready_mask: DEVICE_EXPERT_TRIPLET_READY,
+        generation,
+    };
+    let mut resources =
+        Vec::with_capacity(gate_resources.len() + up_resources.len() + down_resources.len());
+    resources.extend(gate_resources);
+    resources.extend(up_resources);
+    resources.extend(down_resources);
+    Ok(DeviceExpertTableLease {
+        table: ctx.new_buffer_with_bytes_checked(bytemuck::bytes_of(&entry))?,
+        resources,
+        generation,
+        n_experts: 1,
+        ready_entries: 1,
+    })
+}
+
 #[repr(C)]
 #[derive(Clone, Copy)]
 struct DeviceExpertTableValidateParams {
@@ -296,8 +336,18 @@ struct DeviceExpertTableMatvecParams {
     cols: u32,
 }
 
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct DeviceExpertTableAxpyParams {
+    n: u32,
+    experts_per_token: u32,
+    execution_position: u32,
+    use_router_weight: u32,
+}
+
 const _: [(); 24] = [(); std::mem::size_of::<DeviceExpertTableValidateParams>()];
 const _: [(); 28] = [(); std::mem::size_of::<DeviceExpertTableMatvecParams>()];
+const _: [(); 16] = [(); std::mem::size_of::<DeviceExpertTableAxpyParams>()];
 
 #[allow(clippy::too_many_arguments)]
 #[allow(dead_code)]
@@ -449,6 +499,171 @@ fn encode_device_expert_table_pq_matvec(
                 refs.push(resource);
             }
             enc.use_resources(&refs, MTLResourceUsage::Read);
+        },
+    )
+}
+
+fn require_f32_elements(buffer: &Buffer, elements: usize, label: &str) -> Result<()> {
+    let bytes = elements
+        .checked_mul(std::mem::size_of::<f32>())
+        .ok_or_else(|| Error::Gravity(format!("{label} byte overflow")))? as u64;
+    if buffer.length() < bytes {
+        return Err(Error::Gravity(format!(
+            "{label} has {} B, needs at least {bytes} B",
+            buffer.length()
+        )));
+    }
+    Ok(())
+}
+
+#[allow(dead_code)]
+fn encode_device_expert_table_zero(
+    tcb: &mut TokenCommandBuffer<'_>,
+    output: &Buffer,
+    miss_mask: &Buffer,
+    n: usize,
+) -> Result<()> {
+    require_f32_elements(output, n, "device expert guarded zero output")?;
+    if miss_mask.length() < std::mem::size_of::<u32>() as u64 {
+        return Err(Error::Gravity(
+            "device expert guarded zero miss buffer is undersized".into(),
+        ));
+    }
+    let output = output.clone();
+    let miss = miss_mask.clone();
+    let n = n as u32;
+    const TG: u32 = 256;
+    tcb.dispatch_threads(
+        "gravity_glm_expert_table_zero_f32",
+        (n.div_ceil(TG) * TG, 1, 1),
+        (TG, 1, 1),
+        move |enc| {
+            enc.set_buffer(0, Some(&output), 0);
+            enc.set_buffer(1, Some(&miss), 0);
+            enc.set_bytes(2, 4, &n as *const u32 as *const _);
+        },
+    )
+}
+
+#[allow(dead_code)]
+fn encode_device_expert_table_silu_mul(
+    tcb: &mut TokenCommandBuffer<'_>,
+    gate: &Buffer,
+    up: &Buffer,
+    output: &Buffer,
+    miss_mask: &Buffer,
+    n: usize,
+) -> Result<()> {
+    require_f32_elements(gate, n, "device expert guarded SiLU gate")?;
+    require_f32_elements(up, n, "device expert guarded SiLU up")?;
+    require_f32_elements(output, n, "device expert guarded SiLU output")?;
+    let gate = gate.clone();
+    let up = up.clone();
+    let output = output.clone();
+    let miss = miss_mask.clone();
+    let n = n as u32;
+    const TG: u32 = 256;
+    tcb.dispatch_threads(
+        "gravity_glm_expert_table_silu_mul_f32",
+        (n.div_ceil(TG) * TG, 1, 1),
+        (TG, 1, 1),
+        move |enc| {
+            enc.set_buffer(0, Some(&gate), 0);
+            enc.set_buffer(1, Some(&up), 0);
+            enc.set_buffer(2, Some(&output), 0);
+            enc.set_buffer(3, Some(&miss), 0);
+            enc.set_bytes(4, 4, &n as *const u32 as *const _);
+        },
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+#[allow(dead_code)]
+fn encode_device_expert_table_axpy(
+    tcb: &mut TokenCommandBuffer<'_>,
+    output: &Buffer,
+    input: &Buffer,
+    expert_weights: &Buffer,
+    expert_exec_slots: &Buffer,
+    miss_mask: &Buffer,
+    n: usize,
+    experts_per_token: usize,
+    execution_position: usize,
+    use_router_weight: bool,
+) -> Result<()> {
+    require_f32_elements(output, n, "device expert guarded AXPY output")?;
+    require_f32_elements(input, n, "device expert guarded AXPY input")?;
+    if use_router_weight {
+        require_f32_elements(
+            expert_weights,
+            experts_per_token,
+            "device expert guarded AXPY weights",
+        )?;
+        let slot_bytes = experts_per_token
+            .checked_mul(std::mem::size_of::<u32>())
+            .ok_or_else(|| Error::Gravity("device expert AXPY slot byte overflow".into()))?
+            as u64;
+        if expert_exec_slots.length() < slot_bytes || execution_position >= experts_per_token {
+            return Err(Error::Gravity(
+                "device expert guarded AXPY received invalid execution slots".into(),
+            ));
+        }
+    }
+    let params = DeviceExpertTableAxpyParams {
+        n: n as u32,
+        experts_per_token: experts_per_token as u32,
+        execution_position: execution_position as u32,
+        use_router_weight: use_router_weight as u32,
+    };
+    let output = output.clone();
+    let input = input.clone();
+    let weights = expert_weights.clone();
+    let slots = expert_exec_slots.clone();
+    let miss = miss_mask.clone();
+    const TG: u32 = 256;
+    tcb.dispatch_threads(
+        "gravity_glm_expert_table_axpy_f32",
+        ((n as u32).div_ceil(TG) * TG, 1, 1),
+        (TG, 1, 1),
+        move |enc| {
+            enc.set_buffer(0, Some(&output), 0);
+            enc.set_buffer(1, Some(&input), 0);
+            enc.set_buffer(2, Some(&weights), 0);
+            enc.set_buffer(3, Some(&slots), 0);
+            enc.set_buffer(4, Some(&miss), 0);
+            enc.set_bytes(
+                5,
+                std::mem::size_of_val(&params) as u64,
+                &params as *const _ as *const _,
+            );
+        },
+    )
+}
+
+#[allow(dead_code)]
+fn encode_device_expert_table_residual_add(
+    tcb: &mut TokenCommandBuffer<'_>,
+    residual: &Buffer,
+    expert_output: &Buffer,
+    miss_mask: &Buffer,
+    n: usize,
+) -> Result<()> {
+    require_f32_elements(residual, n, "device expert guarded residual")?;
+    require_f32_elements(expert_output, n, "device expert guarded residual input")?;
+    let residual = residual.clone();
+    let expert_output = expert_output.clone();
+    let miss = miss_mask.clone();
+    let n = n as u32;
+    const TG: u32 = 256;
+    tcb.dispatch_threads(
+        "gravity_glm_expert_table_residual_add_f32",
+        (n.div_ceil(TG) * TG, 1, 1),
+        (TG, 1, 1),
+        move |enc| {
+            enc.set_buffer(0, Some(&residual), 0);
+            enc.set_buffer(1, Some(&expert_output), 0);
+            enc.set_buffer(2, Some(&miss), 0);
+            enc.set_bytes(3, 4, &n as *const u32 as *const _);
         },
     )
 }
@@ -5759,6 +5974,57 @@ mod tests {
         }
     }
 
+    fn fixture_mlp_f32(
+        gate_weights: &[f32],
+        up_weights: &[f32],
+        down_weights: &[f32],
+        hidden: usize,
+        intermediate: usize,
+        x: &[f32],
+    ) -> Vec<f32> {
+        let gate = matvec_dense(gate_weights, x, "fixture gate").expect("fixture gate");
+        let up = matvec_dense(up_weights, x, "fixture up").expect("fixture up");
+        let act: Vec<f32> = gate
+            .iter()
+            .zip(&up)
+            .map(|(&gate, &up)| (gate / (1.0 + (-gate).exp())) * up)
+            .collect();
+        assert_eq!(act.len(), intermediate);
+        assert_eq!(down_weights.len(), hidden * intermediate);
+        matvec_dense(down_weights, &act, "fixture down").expect("fixture down")
+    }
+
+    fn fixture_mlp_f64(
+        gate_weights: &[f32],
+        up_weights: &[f32],
+        down_weights: &[f32],
+        hidden: usize,
+        intermediate: usize,
+        x: &[f32],
+    ) -> Vec<f64> {
+        let matvec = |weights: &[f32], cols: usize, input: &[f64]| {
+            weights
+                .chunks_exact(cols)
+                .map(|row| {
+                    row.iter()
+                        .zip(input)
+                        .map(|(&weight, &activation)| weight as f64 * activation)
+                        .sum::<f64>()
+                })
+                .collect::<Vec<_>>()
+        };
+        let x64: Vec<f64> = x.iter().map(|&value| value as f64).collect();
+        let gate = matvec(gate_weights, hidden, &x64);
+        let up = matvec(up_weights, hidden, &x64);
+        let act: Vec<f64> = gate
+            .iter()
+            .zip(&up)
+            .map(|(&gate, &up)| (gate / (1.0 + (-gate).exp())) * up)
+            .collect();
+        assert_eq!(act.len(), intermediate);
+        matvec(down_weights, intermediate, &act)
+    }
+
     #[test]
     fn device_expert_table_hit_is_indirect_leased_and_miss_is_fail_closed() {
         let Ok(ctx) = MetalContext::new() else {
@@ -5954,6 +6220,381 @@ mod tests {
         assert_eq!(
             after_bits, before_bits,
             "a table miss must not mutate the projection destination"
+        );
+    }
+
+    #[test]
+    fn device_expert_table_complete_wave_is_ordered_and_residual_miss_is_fail_closed() {
+        let Ok(ctx) = MetalContext::new() else {
+            return;
+        };
+        const HIDDEN: usize = 32;
+        const INTERMEDIATE: usize = 32;
+        const GENERATION: u32 = 11;
+        const PREFIX: &str = "model.layers.0.mlp";
+
+        let mut cache = BoundedLru::new(200_000).expect("bounded routed cache");
+        let mut items = Vec::new();
+        let mut dense = std::collections::HashMap::<String, Vec<f32>>::new();
+        for &expert in &[0usize, 2usize] {
+            for (projection, rows, cols, projection_salt) in [
+                ("gate_proj", INTERMEDIATE, HIDDEN, 1usize),
+                ("up_proj", INTERMEDIATE, HIDDEN, 2usize),
+                ("down_proj", HIDDEN, INTERMEDIATE, 3usize),
+            ] {
+                let key = format!("{expert}.{projection}");
+                let (tensor, authority) =
+                    direct_u8_pq_tensor(&ctx, rows, cols, expert * 11 + projection_salt);
+                dense.insert(key, authority);
+                let bytes = gpu_tensor_bytes(&tensor);
+                items.push((
+                    format!("{PREFIX}.experts.{expert}.{projection}.weight"),
+                    tensor,
+                    bytes,
+                ));
+            }
+        }
+        cache
+            .admit_pinned(items, &std::collections::HashSet::new())
+            .expect("admit routed triplets");
+        let routed_lease = build_device_expert_table_snapshot(&ctx, &cache, PREFIX, 4, GENERATION)
+            .expect("routed table snapshot");
+
+        let (shared_gate, shared_gate_dense) = direct_u8_pq_tensor(&ctx, INTERMEDIATE, HIDDEN, 101);
+        let (shared_up, shared_up_dense) = direct_u8_pq_tensor(&ctx, INTERMEDIATE, HIDDEN, 102);
+        let (shared_down, shared_down_dense) = direct_u8_pq_tensor(&ctx, HIDDEN, INTERMEDIATE, 103);
+        let shared_lease = build_single_device_expert_snapshot(
+            &ctx,
+            &shared_gate,
+            &shared_up,
+            &shared_down,
+            GENERATION,
+        )
+        .expect("shared expert snapshot");
+
+        // Router score order is expert [2,0], while execution order is [0,2].
+        // The weights remain aligned to score slots: expert 0 receives 0.7.
+        let expert_indices = u32_buffer(&ctx, &[2, 0]);
+        let execution_slots = u32_buffer(&ctx, &[1, 0]);
+        let expert_weights = f32_buffer(&ctx, &[0.3, 0.7]);
+        let shared_indices = u32_buffer(&ctx, &[0]);
+        let shared_slots = u32_buffer(&ctx, &[0]);
+        let x_values: Vec<f32> = deterministic_fixture_f32(0xE771_2026, HIDDEN, 0.2)
+            .into_iter()
+            .map(|value| value.abs() + 0.125)
+            .collect();
+        let x = f32_buffer(&ctx, &x_values);
+        let routed_gate: Vec<Buffer> = (0..2)
+            .map(|_| filled_f32_buffer(&ctx, INTERMEDIATE, -7_000.0))
+            .collect();
+        let routed_up: Vec<Buffer> = (0..2)
+            .map(|_| filled_f32_buffer(&ctx, INTERMEDIATE, -7_100.0))
+            .collect();
+        let routed_act: Vec<Buffer> = (0..2)
+            .map(|_| filled_f32_buffer(&ctx, INTERMEDIATE, -7_200.0))
+            .collect();
+        let routed_down: Vec<Buffer> = (0..2)
+            .map(|_| filled_f32_buffer(&ctx, HIDDEN, -7_300.0))
+            .collect();
+        let shared_gate_out = filled_f32_buffer(&ctx, INTERMEDIATE, -7_400.0);
+        let shared_up_out = filled_f32_buffer(&ctx, INTERMEDIATE, -7_500.0);
+        let shared_act = filled_f32_buffer(&ctx, INTERMEDIATE, -7_600.0);
+        let shared_down_out = filled_f32_buffer(&ctx, HIDDEN, -7_700.0);
+        let combined = filled_f32_buffer(&ctx, HIDDEN, -7_800.0);
+        let residual_values = deterministic_fixture_f32(0x5E51_DA1, HIDDEN, 0.1);
+        let residual = f32_buffer(&ctx, &residual_values);
+
+        let encode_wave = |wave: &mut TokenCommandBuffer<'_>,
+                           selected_indices: &Buffer,
+                           selected_slots: &Buffer,
+                           miss_mask: &Buffer|
+         -> Result<()> {
+            encode_device_expert_table_validate(
+                wave,
+                &routed_lease,
+                selected_indices,
+                selected_slots,
+                miss_mask,
+                2,
+                HIDDEN,
+                INTERMEDIATE,
+                DEVICE_EXPERT_TENSOR_KIND_PQ,
+            )?;
+            encode_device_expert_table_zero(wave, &combined, miss_mask, HIDDEN)?;
+            for execution_position in 0..2 {
+                encode_device_expert_table_pq_matvec(
+                    wave,
+                    &routed_lease,
+                    selected_indices,
+                    selected_slots,
+                    miss_mask,
+                    2,
+                    execution_position,
+                    0,
+                    &x,
+                    INTERMEDIATE,
+                    HIDDEN,
+                    &routed_gate[execution_position],
+                )?;
+                encode_device_expert_table_pq_matvec(
+                    wave,
+                    &routed_lease,
+                    selected_indices,
+                    selected_slots,
+                    miss_mask,
+                    2,
+                    execution_position,
+                    1,
+                    &x,
+                    INTERMEDIATE,
+                    HIDDEN,
+                    &routed_up[execution_position],
+                )?;
+                encode_device_expert_table_silu_mul(
+                    wave,
+                    &routed_gate[execution_position],
+                    &routed_up[execution_position],
+                    &routed_act[execution_position],
+                    miss_mask,
+                    INTERMEDIATE,
+                )?;
+                encode_device_expert_table_pq_matvec(
+                    wave,
+                    &routed_lease,
+                    selected_indices,
+                    selected_slots,
+                    miss_mask,
+                    2,
+                    execution_position,
+                    2,
+                    &routed_act[execution_position],
+                    HIDDEN,
+                    INTERMEDIATE,
+                    &routed_down[execution_position],
+                )?;
+                encode_device_expert_table_axpy(
+                    wave,
+                    &combined,
+                    &routed_down[execution_position],
+                    &expert_weights,
+                    selected_slots,
+                    miss_mask,
+                    HIDDEN,
+                    2,
+                    execution_position,
+                    true,
+                )?;
+            }
+
+            // Shared expert is host-known and always scheduled after all
+            // routed execution positions, but its pointers are still leased
+            // and indirectly dereferenced through the same triplet ABI.
+            encode_device_expert_table_pq_matvec(
+                wave,
+                &shared_lease,
+                &shared_indices,
+                &shared_slots,
+                miss_mask,
+                1,
+                0,
+                0,
+                &x,
+                INTERMEDIATE,
+                HIDDEN,
+                &shared_gate_out,
+            )?;
+            encode_device_expert_table_pq_matvec(
+                wave,
+                &shared_lease,
+                &shared_indices,
+                &shared_slots,
+                miss_mask,
+                1,
+                0,
+                1,
+                &x,
+                INTERMEDIATE,
+                HIDDEN,
+                &shared_up_out,
+            )?;
+            encode_device_expert_table_silu_mul(
+                wave,
+                &shared_gate_out,
+                &shared_up_out,
+                &shared_act,
+                miss_mask,
+                INTERMEDIATE,
+            )?;
+            encode_device_expert_table_pq_matvec(
+                wave,
+                &shared_lease,
+                &shared_indices,
+                &shared_slots,
+                miss_mask,
+                1,
+                0,
+                2,
+                &shared_act,
+                HIDDEN,
+                INTERMEDIATE,
+                &shared_down_out,
+            )?;
+            encode_device_expert_table_axpy(
+                wave,
+                &combined,
+                &shared_down_out,
+                &expert_weights,
+                &shared_slots,
+                miss_mask,
+                HIDDEN,
+                1,
+                0,
+                false,
+            )?;
+            encode_device_expert_table_residual_add(wave, &residual, &combined, miss_mask, HIDDEN)
+        };
+
+        let miss_mask = u32_buffer(&ctx, &[u32::MAX]);
+        let mut hit = TokenCommandBuffer::new(&ctx);
+        encode_wave(&mut hit, &expert_indices, &execution_slots, &miss_mask)
+            .expect("encode complete table hit");
+        assert_eq!(hit.dispatch_count(), 18);
+        hit.commit_and_wait().expect("complete table hit command");
+        assert_eq!(read_u32(&miss_mask, 1), vec![0]);
+
+        let routed_0_f32 = fixture_mlp_f32(
+            &dense["0.gate_proj"],
+            &dense["0.up_proj"],
+            &dense["0.down_proj"],
+            HIDDEN,
+            INTERMEDIATE,
+            &x_values,
+        );
+        let routed_2_f32 = fixture_mlp_f32(
+            &dense["2.gate_proj"],
+            &dense["2.up_proj"],
+            &dense["2.down_proj"],
+            HIDDEN,
+            INTERMEDIATE,
+            &x_values,
+        );
+        let shared_f32 = fixture_mlp_f32(
+            &shared_gate_dense,
+            &shared_up_dense,
+            &shared_down_dense,
+            HIDDEN,
+            INTERMEDIATE,
+            &x_values,
+        );
+        let mut host = residual_values.clone();
+        for index in 0..HIDDEN {
+            let mut expert_output = 0.0f32;
+            expert_output += routed_0_f32[index] * 0.7f32;
+            expert_output += routed_2_f32[index] * 0.3f32;
+            expert_output += shared_f32[index];
+            host[index] += expert_output;
+        }
+
+        let routed_0_f64 = fixture_mlp_f64(
+            &dense["0.gate_proj"],
+            &dense["0.up_proj"],
+            &dense["0.down_proj"],
+            HIDDEN,
+            INTERMEDIATE,
+            &x_values,
+        );
+        let routed_2_f64 = fixture_mlp_f64(
+            &dense["2.gate_proj"],
+            &dense["2.up_proj"],
+            &dense["2.down_proj"],
+            HIDDEN,
+            INTERMEDIATE,
+            &x_values,
+        );
+        let shared_f64 = fixture_mlp_f64(
+            &shared_gate_dense,
+            &shared_up_dense,
+            &shared_down_dense,
+            HIDDEN,
+            INTERMEDIATE,
+            &x_values,
+        );
+        let authority: Vec<f64> = (0..HIDDEN)
+            .map(|index| {
+                residual_values[index] as f64
+                    + routed_0_f64[index] * 0.7f32 as f64
+                    + routed_2_f64[index] * 0.3f32 as f64
+                    + shared_f64[index]
+            })
+            .collect();
+        let device = read_f32(&residual, HIDDEN);
+        let score = score_pair(&host, &device, &authority, &Bounds::continuous_only());
+        eprintln!(
+            "device expert table complete wave: rel_l2={:.3e} meaningful={:.3e} \
+             greedy={} top5={} dispatches=18 waits=1",
+            score.device.continuous.relative_l2,
+            score.device.continuous.max_meaningful_rel,
+            score.device.discrete.greedy_match,
+            score.device.discrete.top_k_exact_match
+        );
+        assert!(
+            score.pass,
+            "device expert table complete wave failed V2.1: host={:?}, device={:?}",
+            score.host.failures, score.device.failures
+        );
+
+        // A routed miss must suppress every scratch write and the residual
+        // mutation across the complete already-encoded wave.
+        let all_outputs: Vec<&Buffer> = routed_gate
+            .iter()
+            .chain(&routed_up)
+            .chain(&routed_act)
+            .chain(&routed_down)
+            .chain([
+                &shared_gate_out,
+                &shared_up_out,
+                &shared_act,
+                &shared_down_out,
+                &combined,
+                &residual,
+            ])
+            .collect();
+        for (buffer_index, buffer) in all_outputs.iter().enumerate() {
+            let sentinel: Vec<f32> = (0..HIDDEN)
+                .map(|index| 10_000.0 + (buffer_index * HIDDEN + index) as f32)
+                .collect();
+            write_f32(buffer, &sentinel);
+        }
+        let before: Vec<Vec<u32>> = all_outputs
+            .iter()
+            .map(|buffer| {
+                read_f32(buffer, HIDDEN)
+                    .iter()
+                    .map(|value| value.to_bits())
+                    .collect()
+            })
+            .collect();
+        let missing_indices = u32_buffer(&ctx, &[2, 1]);
+        let missing_slots = u32_buffer(&ctx, &[1, 0]);
+        let missing_mask = u32_buffer(&ctx, &[u32::MAX]);
+        let mut miss = TokenCommandBuffer::new(&ctx);
+        encode_wave(&mut miss, &missing_indices, &missing_slots, &missing_mask)
+            .expect("encode complete table miss");
+        assert_eq!(miss.dispatch_count(), 18);
+        miss.commit_and_wait().expect("complete table miss command");
+        assert_eq!(read_u32(&missing_mask, 1), vec![1]);
+        let after: Vec<Vec<u32>> = all_outputs
+            .iter()
+            .map(|buffer| {
+                read_f32(buffer, HIDDEN)
+                    .iter()
+                    .map(|value| value.to_bits())
+                    .collect()
+            })
+            .collect();
+        assert_eq!(
+            after, before,
+            "a table miss must suppress every expert scratch and residual write"
         );
     }
 

@@ -1552,6 +1552,79 @@ kernel void gravity_glm_expert_table_pq_matvec(
     }
 }
 
+struct GravityDeviceExpertAxpyParams {
+    uint n;
+    uint experts_per_token;
+    uint execution_position;
+    uint use_router_weight;
+};
+
+kernel void gravity_glm_expert_table_zero_f32(
+    device float *x [[buffer(0)]],
+    device atomic_uint *miss_mask [[buffer(1)]],
+    constant uint &n [[buffer(2)]],
+    uint id [[thread_position_in_grid]])
+{
+    if (id >= n ||
+        atomic_load_explicit(miss_mask, memory_order_relaxed) != 0u) {
+        return;
+    }
+    x[id] = 0.0f;
+}
+
+kernel void gravity_glm_expert_table_silu_mul_f32(
+    const device float *gate [[buffer(0)]],
+    const device float *up [[buffer(1)]],
+    device float *out [[buffer(2)]],
+    device atomic_uint *miss_mask [[buffer(3)]],
+    constant uint &n [[buffer(4)]],
+    uint id [[thread_position_in_grid]])
+{
+    if (id >= n ||
+        atomic_load_explicit(miss_mask, memory_order_relaxed) != 0u) {
+        return;
+    }
+    float g = gate[id];
+    out[id] = (g / (1.0f + exp(-g))) * up[id];
+}
+
+kernel void gravity_glm_expert_table_axpy_f32(
+    device float *y [[buffer(0)]],
+    const device float *x [[buffer(1)]],
+    const device float *expert_weights [[buffer(2)]],
+    const device uint *expert_exec_slots [[buffer(3)]],
+    device atomic_uint *miss_mask [[buffer(4)]],
+    constant GravityDeviceExpertAxpyParams &p [[buffer(5)]],
+    uint id [[thread_position_in_grid]])
+{
+    if (id >= p.n ||
+        atomic_load_explicit(miss_mask, memory_order_relaxed) != 0u) {
+        return;
+    }
+    float scale = 1.0f;
+    if (p.use_router_weight != 0u) {
+        if (p.execution_position >= p.experts_per_token) { return; }
+        uint slot = expert_exec_slots[p.execution_position];
+        if (slot >= p.experts_per_token) { return; }
+        scale = expert_weights[slot];
+    }
+    y[id] += x[id] * scale;
+}
+
+kernel void gravity_glm_expert_table_residual_add_f32(
+    device float *residual [[buffer(0)]],
+    const device float *expert_output [[buffer(1)]],
+    device atomic_uint *miss_mask [[buffer(2)]],
+    constant uint &n [[buffer(3)]],
+    uint id [[thread_position_in_grid]])
+{
+    if (id >= n ||
+        atomic_load_explicit(miss_mask, memory_order_relaxed) != 0u) {
+        return;
+    }
+    residual[id] += expert_output[id];
+}
+
 // Zero a buffer (used when starting a residual accumulate).
 kernel void gravity_zero_f32(
     device float *x [[buffer(0)]],

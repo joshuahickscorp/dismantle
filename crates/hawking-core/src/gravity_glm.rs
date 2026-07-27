@@ -1455,6 +1455,104 @@ pub mod gpu {
         }
     }
 
+    fn validate_pq_descriptor_shape(name: &str, header: &PqHeader, shape: &[u64]) -> Result<()> {
+        let expected = [header.rows as u64, header.cols as u64];
+        if shape != expected {
+            return Err(Error::Gravity(format!(
+                "compact MLA admission {name}: descriptor shape {shape:?} != PQ header shape {expected:?}"
+            )));
+        }
+        if header.rotate != 0 {
+            return Err(Error::Gravity(format!(
+                "compact MLA admission {name}: rotated gravity-pq (rotate={}) is unsupported",
+                header.rotate
+            )));
+        }
+        Ok(())
+    }
+
+    /// Exact common gate used both by header-only open-time admission and by
+    /// the live loaded-weight path. Keeping one predicate prevents the
+    /// preflight from admitting a geometry the kernels later reinterpret.
+    pub(crate) fn validate_compact_mla_layer_params(
+        arch: &GlmArch,
+        layer: usize,
+        kv_params: PqParams,
+        o_params: PqParams,
+    ) -> Result<()> {
+        let attn_p = format!("model.layers.{layer}.self_attn");
+        let kv_name = format!("{attn_p}.kv_b_proj.weight");
+        let o_name = format!("{attn_p}.o_proj.weight");
+        let row_stride = arch
+            .qk_nope_head_dim
+            .checked_add(arch.v_head_dim)
+            .ok_or_else(|| Error::Gravity("compact MLA KV row stride overflow".into()))?;
+        let expected_kv_rows = arch
+            .n_heads
+            .checked_mul(row_stride)
+            .ok_or_else(|| Error::Gravity("compact MLA KV row count overflow".into()))?;
+        let represented_latent = (kv_params.nchunk as usize)
+            .checked_mul(kv_params.dim as usize)
+            .ok_or_else(|| Error::Gravity("compact MLA represented latent overflow".into()))?;
+        if kv_params.rows as usize != expected_kv_rows
+            || kv_params.cols as usize != arch.kv_lora_rank
+            || kv_params.subspaces != 1
+            || kv_params.dim != 32
+            || kv_params.sub != 32
+            || kv_params.card != 256
+            || kv_params.bits != 8
+            || represented_latent != arch.kv_lora_rank
+        {
+            return Err(Error::Gravity(format!(
+                "compact MLA unsupported {kv_name} geometry: rows={}, cols={}, dim={}, subspaces={}, sub={}, card={}, nchunk={}, bits={}",
+                kv_params.rows,
+                kv_params.cols,
+                kv_params.dim,
+                kv_params.subspaces,
+                kv_params.sub,
+                kv_params.card,
+                kv_params.nchunk,
+                kv_params.bits
+            )));
+        }
+        let context_width = arch
+            .n_heads
+            .checked_mul(arch.v_head_dim)
+            .ok_or_else(|| Error::Gravity("compact MLA context width overflow".into()))?;
+        if o_params.rows as usize != arch.hidden || o_params.cols as usize != context_width {
+            return Err(Error::Gravity(format!(
+                "compact MLA unsupported {o_name} geometry: rows={}, cols={}, expected rows={}, cols={context_width}",
+                o_params.rows, o_params.cols, arch.hidden
+            )));
+        }
+        Ok(())
+    }
+
+    /// Reject an incompatible compact artifact before any resident session,
+    /// attention cache, DSA buffer, or activation pool is allocated.
+    ///
+    /// Exactly two 64-byte PQ payload prefixes are copied per layer. This is
+    /// admission, not integrity verification: the first live weight load
+    /// still reads and verifies the complete payload before dispatch.
+    fn preflight_compact_mla_weights(weights: &GravityWeights, arch: &GlmArch) -> Result<()> {
+        for layer in 0..arch.n_layers {
+            let attn_p = format!("model.layers.{layer}.self_attn");
+            let kv_name = format!("{attn_p}.kv_b_proj.weight");
+            let o_name = format!("{attn_p}.o_proj.weight");
+            let (kv_header, kv_shape) = weights.pq_header_prefix_unverified_with_shape(&kv_name)?;
+            let (o_header, o_shape) = weights.pq_header_prefix_unverified_with_shape(&o_name)?;
+            validate_pq_descriptor_shape(&kv_name, &kv_header, &kv_shape)?;
+            validate_pq_descriptor_shape(&o_name, &o_header, &o_shape)?;
+            validate_compact_mla_layer_params(
+                arch,
+                layer,
+                PqParams::from_header(&kv_header),
+                PqParams::from_header(&o_header),
+            )?;
+        }
+        Ok(())
+    }
+
     fn record_dense_matvec_ops(rows: u64, cols: u64) {
         let fp = rows.saturating_mul(cols).saturating_mul(2);
         crate::cost_ledger::record_source_modelled_operations(fp, 0, 0, 0, fp);
@@ -1600,6 +1698,95 @@ pub mod gpu {
             assert_eq!(
                 routed_pq_representation(&multi),
                 RoutedWeightRepresentation::Other
+            );
+        }
+
+        fn compact_arch() -> GlmArch {
+            GlmArch {
+                n_layers: 1,
+                hidden: 64,
+                n_heads: 2,
+                q_lora_rank: 32,
+                kv_lora_rank: 64,
+                qk_nope_head_dim: 16,
+                qk_rope_head_dim: 8,
+                v_head_dim: 16,
+                index_n_heads: 1,
+                index_head_dim: 8,
+                index_topk: 4,
+                n_routed_experts: 8,
+                n_group: 2,
+                topk_group: 1,
+                num_experts_per_tok: 2,
+                norm_topk_prob: true,
+                routed_scaling_factor: 1.0,
+                vocab_size: 32,
+                rms_norm_eps: 1e-5,
+                rope_theta: 10_000.0,
+                indexer_types: vec!["full".into()],
+                mlp_layer_types: vec!["dense".into()],
+            }
+        }
+
+        fn compact_kv_params() -> PqParams {
+            PqParams {
+                dim: 32,
+                subspaces: 1,
+                sub: 32,
+                card: 256,
+                rows: 64,
+                cols: 64,
+                nchunk: 2,
+                bits: 8,
+            }
+        }
+
+        fn compact_o_params() -> PqParams {
+            PqParams {
+                dim: 32,
+                subspaces: 1,
+                sub: 32,
+                card: 256,
+                rows: 64,
+                cols: 32,
+                nchunk: 1,
+                bits: 8,
+            }
+        }
+
+        #[test]
+        fn compact_mla_admission_is_exact_and_fail_closed() {
+            let arch = compact_arch();
+            validate_compact_mla_layer_params(&arch, 0, compact_kv_params(), compact_o_params())
+                .expect("exact direct-u8 compact geometry");
+
+            let mut wrong_dim = compact_kv_params();
+            wrong_dim.dim = 16;
+            wrong_dim.sub = 16;
+            wrong_dim.nchunk = 4;
+            assert!(
+                validate_compact_mla_layer_params(&arch, 0, wrong_dim, compact_o_params())
+                    .unwrap_err()
+                    .to_string()
+                    .contains("unsupported")
+            );
+
+            let mut wrong_bits = compact_kv_params();
+            wrong_bits.bits = 7;
+            assert!(
+                validate_compact_mla_layer_params(&arch, 0, wrong_bits, compact_o_params())
+                    .unwrap_err()
+                    .to_string()
+                    .contains("bits=7")
+            );
+
+            let mut wrong_o = compact_o_params();
+            wrong_o.rows -= 1;
+            assert!(
+                validate_compact_mla_layer_params(&arch, 0, compact_kv_params(), wrong_o)
+                    .unwrap_err()
+                    .to_string()
+                    .contains("o_proj")
             );
         }
     }
@@ -2264,11 +2451,19 @@ pub mod gpu {
         ) -> Result<GravityGlmGpu> {
             let weights = GravityWeights::open_dir(dir, verify_hash)?;
             let arch = GlmArch::from_header(&weights.header)?;
+            let compact_mla = resident_enabled && super::gpu_compact_mla_enabled();
+            if compact_mla {
+                preflight_compact_mla_weights(&weights, &arch)?;
+            }
             let session = Mutex::new(GlmSession::new(&arch));
             let resident = if resident_enabled {
-                Some(crate::gravity_glm_resident::ResidentRuntime::new(
-                    &ctx, &arch,
-                )?)
+                Some(
+                    crate::gravity_glm_resident::ResidentRuntime::new_with_compact_mla(
+                        &ctx,
+                        &arch,
+                        compact_mla,
+                    )?,
+                )
             } else {
                 None
             };

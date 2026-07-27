@@ -185,6 +185,51 @@ impl GravityShard {
         cost_ledger::record_allocation(payload.len() as u64);
         Ok(payload.to_vec())
     }
+
+    /// Copy only the first `prefix_len` bytes of one tensor payload.
+    ///
+    /// This deliberately does **not** claim SHA-256 verification: a digest
+    /// covers the complete payload, so a prefix cannot authenticate it.
+    /// Header-only admission may use this to reject unsupported codecs before
+    /// allocating runtime state; execution must still reach [`read_tensor`]
+    /// and its ordinary full-payload verification before using the weight.
+    fn read_tensor_prefix_unverified(&self, name: &str, prefix_len: usize) -> Result<Vec<u8>> {
+        use crate::cost_ledger::{self, Bucket};
+
+        let d = {
+            let _lookup = cost_ledger::Scope::new(Bucket::ContainerLookup);
+            self.descriptor(name)
+                .ok_or_else(|| Error::Gravity(format!("no such tensor {name:?}")))?
+        };
+        if prefix_len as u64 > d.bytes {
+            return Err(Error::Gravity(format!(
+                "tensor {name}: payload {} bytes is shorter than requested {prefix_len}-byte prefix",
+                d.bytes
+            )));
+        }
+        let start = self
+            .body_offset
+            .checked_add(d.offset)
+            .ok_or_else(|| Error::Gravity(format!("tensor {name}: offset overflow")))?;
+        let tensor_end = start
+            .checked_add(d.bytes)
+            .ok_or_else(|| Error::Gravity(format!("tensor {name}: end overflow")))?;
+        if tensor_end > self.mmap.len() as u64 {
+            return Err(Error::Gravity(format!(
+                "tensor {name}: end {tensor_end} past file length {}",
+                self.mmap.len()
+            )));
+        }
+        let prefix_end = start
+            .checked_add(prefix_len as u64)
+            .ok_or_else(|| Error::Gravity(format!("tensor {name}: prefix end overflow")))?;
+        let prefix = {
+            let _lookup = cost_ledger::Scope::new(Bucket::ContainerLookup);
+            &self.mmap[start as usize..prefix_end as usize]
+        };
+        cost_ledger::record_allocation(prefix.len() as u64);
+        Ok(prefix.to_vec())
+    }
 }
 
 // ---------------------------------------------------------------------
@@ -1137,6 +1182,50 @@ impl GravityWeights {
         }
     }
 
+    /// Read just a `gravity-pq` tensor's fixed header plus descriptor shape.
+    ///
+    /// Lazy mode copies 64 payload bytes and does not hash the remaining
+    /// payload. This is an admission-only view: callers can reject an
+    /// incompatible artifact before allocating device/session state, while
+    /// the later ordinary payload load still performs the configured full
+    /// SHA-256 verification before execution. Eager mode returns the header
+    /// already decoded during [`open`](Self::open).
+    pub fn pq_header_prefix_unverified_with_shape(
+        &self,
+        name: &str,
+    ) -> Result<(PqHeader, Vec<u64>)> {
+        match &self.source {
+            Source::Eager(tensors) => match tensors.get(name) {
+                Some(Tensor::Pq(tensor)) => Ok((
+                    tensor.header,
+                    vec![tensor.header.rows as u64, tensor.header.cols as u64],
+                )),
+                Some(Tensor::Dense(_)) => Err(Error::Gravity(format!(
+                    "tensor {name}: compact admission requires gravity-pq, found native tensor"
+                ))),
+                None => Err(Error::Gravity(format!("artifact has no tensor {name:?}"))),
+            },
+            Source::Lazy {
+                shard_dir,
+                tensor_shard,
+                open_shards,
+                ..
+            } => Self::with_lazy_shard(shard_dir, tensor_shard, open_shards, name, |shard| {
+                let d = shard
+                    .descriptor(name)
+                    .expect("name came from this shard's own index");
+                if d.codec != "gravity-pq" {
+                    return Err(Error::Gravity(format!(
+                        "tensor {name}: compact admission requires gravity-pq, found {:?}",
+                        d.codec
+                    )));
+                }
+                let prefix = shard.read_tensor_prefix_unverified(name, PQ_HEADER_LEN)?;
+                Ok((parse_pq_header(&prefix)?, d.shape.clone()))
+            }),
+        }
+    }
+
     /// Open `name`'s owning shard if it is not already open, then run `f`
     /// against it. The shard is inserted into `open_shards` before `f` runs
     /// and stays there — a shard opened for one tensor is likely to be asked
@@ -1917,6 +2006,92 @@ mod tests {
         f.write_all(&header_bytes).unwrap();
         f.write_all(&body).unwrap();
         path
+    }
+
+    /// One header-only PQ tensor with a deliberately false payload digest.
+    /// Admission must be able to inspect the 64-byte header without claiming
+    /// integrity; the ordinary full-payload access must still reject it.
+    fn write_lazy_unverified_pq_header_fixture(dir: &Path, name: &str) {
+        let mut payload = Vec::with_capacity(PQ_HEADER_LEN);
+        payload.extend_from_slice(PQ_MAGIC);
+        payload.extend_from_slice(&32u16.to_le_bytes()); // D
+        payload.extend_from_slice(&1u16.to_le_bytes()); // S
+        payload.extend_from_slice(&32u16.to_le_bytes()); // sub
+        payload.extend_from_slice(&256u16.to_le_bytes()); // card
+        payload.extend_from_slice(&2u32.to_le_bytes()); // rows
+        payload.extend_from_slice(&32u32.to_le_bytes()); // cols
+        payload.extend_from_slice(&1u32.to_le_bytes()); // nchunk
+        payload.extend_from_slice(&7u32.to_le_bytes()); // seed
+        payload.extend_from_slice(&8u16.to_le_bytes()); // bits
+        payload.push(0); // rotate
+        payload.push(1); // n_codebooks
+        payload.resize(PQ_HEADER_LEN, 0);
+
+        let header = serde_json::json!({
+            "schema": "hawking.gravity.shard_header.v1",
+            "format_version": 1,
+            "model": {"name": "pq-header-prefix-fixture"},
+            "architecture": {},
+            "tokenizer": {},
+            "compression": {"codec": "gravity-pq"},
+            "shard": {"index": 1, "count": 1},
+            "integrity": {"tensor_count": 1},
+            "tensors": [{
+                "name": name,
+                "codec": "gravity-pq",
+                "offset": 0,
+                "bytes": payload.len() as u64,
+                "sha256": "00".repeat(32),
+                "shape": [2, 32],
+                "elements": 64,
+            }],
+        });
+        let header_bytes = serde_json::to_vec(&header).expect("header json");
+        let path = dir.join("model-00001-of-00001.gravity");
+        let mut f = File::create(path).expect("create PQ prefix shard");
+        f.write_all(MAGIC).unwrap();
+        f.write_all(&1u32.to_le_bytes()).unwrap();
+        f.write_all(&(header_bytes.len() as u64).to_le_bytes())
+            .unwrap();
+        f.write_all(&header_bytes).unwrap();
+        f.write_all(&payload).unwrap();
+    }
+
+    #[test]
+    fn pq_admission_header_prefix_does_not_claim_full_payload_verification() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let name = "model.layers.0.self_attn.kv_b_proj.weight";
+        write_lazy_unverified_pq_header_fixture(dir.path(), name);
+
+        let weights = GravityWeights::open_dir(dir.path(), true).expect("open_dir");
+        let (header, shape) = weights
+            .pq_header_prefix_unverified_with_shape(name)
+            .expect("header-only admission");
+        assert_eq!(
+            header,
+            PqHeader {
+                d: 32,
+                s: 1,
+                sub: 32,
+                card: 256,
+                rows: 2,
+                cols: 32,
+                nchunk: 1,
+                seed: 7,
+                bits: 8,
+                rotate: 0,
+                n_codebooks: 1,
+            }
+        );
+        assert_eq!(shape, vec![2, 32]);
+
+        let err = weights
+            .raw_payload_with_shape(name)
+            .expect_err("ordinary payload load must still enforce full SHA-256");
+        assert!(
+            err.to_string().contains("sha256 mismatch"),
+            "full load did not preserve verification: {err}"
+        );
     }
 
     #[test]

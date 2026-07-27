@@ -2007,48 +2007,11 @@ fn compact_attend_into<'a>(
         )
     };
 
+    crate::gravity_glm::gpu::validate_compact_mla_layer_params(a, layer, kv_params, o_params)?;
     let row_stride = a
         .qk_nope_head_dim
         .checked_add(a.v_head_dim)
         .ok_or_else(|| Error::Gravity("compact MLA KV row stride overflow".into()))?;
-    let expected_kv_rows = a
-        .n_heads
-        .checked_mul(row_stride)
-        .ok_or_else(|| Error::Gravity("compact MLA KV row count overflow".into()))?;
-    let represented_latent = (kv_params.nchunk as usize)
-        .checked_mul(kv_params.dim as usize)
-        .ok_or_else(|| Error::Gravity("compact MLA represented latent overflow".into()))?;
-    if kv_params.rows as usize != expected_kv_rows
-        || kv_params.cols as usize != a.kv_lora_rank
-        || kv_params.subspaces != 1
-        || kv_params.dim == 0
-        || kv_params.dim != kv_params.sub
-        || kv_params.card != 256
-        || kv_params.bits != 8
-        || represented_latent != a.kv_lora_rank
-    {
-        return Err(Error::Gravity(format!(
-            "compact MLA unsupported {kv_name} geometry: rows={}, cols={}, dim={}, subspaces={}, sub={}, card={}, nchunk={}, bits={}",
-            kv_params.rows,
-            kv_params.cols,
-            kv_params.dim,
-            kv_params.subspaces,
-            kv_params.sub,
-            kv_params.card,
-            kv_params.nchunk,
-            kv_params.bits
-        )));
-    }
-    let context_width = a
-        .n_heads
-        .checked_mul(a.v_head_dim)
-        .ok_or_else(|| Error::Gravity("compact MLA context width overflow".into()))?;
-    if o_params.rows as usize != a.hidden || o_params.cols as usize != context_width {
-        return Err(Error::Gravity(format!(
-            "compact MLA unsupported {o_name} geometry: rows={}, cols={}, expected rows={}, cols={context_width}",
-            o_params.rows, o_params.cols, a.hidden
-        )));
-    }
 
     crate::cost_ledger::record_active_bytes_for(
         &kv_name,
@@ -4099,7 +4062,18 @@ pub struct ResidentRuntime {
 
 impl ResidentRuntime {
     pub fn new(ctx: &MetalContext, arch: &GlmArch) -> Result<Self> {
-        let session = if gpu_compact_mla_enabled() {
+        Self::new_with_compact_mla(ctx, arch, gpu_compact_mla_enabled())
+    }
+
+    /// Construct the layout already admitted by the model opener. Capturing
+    /// the flag once prevents a process-environment race from selecting a
+    /// compact session after the header preflight decision was made.
+    pub(crate) fn new_with_compact_mla(
+        ctx: &MetalContext,
+        arch: &GlmArch,
+        compact_mla: bool,
+    ) -> Result<Self> {
+        let session = if compact_mla {
             ResidentSession::new_compact(ctx, arch, RESIDENT_RUNTIME_INITIAL_KV_CAPACITY_TOKENS)?
         } else {
             ResidentSession::new(ctx, arch, RESIDENT_RUNTIME_INITIAL_KV_CAPACITY_TOKENS)?

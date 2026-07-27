@@ -1969,6 +1969,42 @@ mod imp {
             unsafe { std::slice::from_raw_parts(buffer.contents() as *const f32, count).to_vec() }
         }
 
+        fn zero_replay_stages(
+            output: &Buffer,
+            n_buffer: &Buffer,
+            n: u32,
+            count: usize,
+        ) -> Vec<ReplayComputeStage> {
+            (0..count)
+                .map(|index| {
+                    let stage = ReplayComputeStage::new(
+                        "gravity_zero_f32",
+                        (n, 1, 1),
+                        (64, 1, 1),
+                        vec![
+                            ReplayBufferBinding::write(0, output, 0),
+                            ReplayBufferBinding::read(1, n_buffer, 0),
+                        ],
+                    );
+                    if index == 0 {
+                        stage
+                    } else {
+                        stage.with_barrier_before()
+                    }
+                })
+                .collect()
+        }
+
+        fn percentile_ns(samples: &[u128], percentile: usize) -> u128 {
+            let mut sorted = samples.to_vec();
+            sorted.sort_unstable();
+            let rank = percentile
+                .saturating_mul(sorted.len().saturating_sub(1))
+                .saturating_add(99)
+                / 100;
+            sorted[rank.min(sorted.len().saturating_sub(1))]
+        }
+
         /// This is ignored in the ordinary suite because it requires a Metal
         /// device with compute-ICB support. Run explicitly on the target Mac:
         ///
@@ -2087,6 +2123,141 @@ mod imp {
             assert_eq!(output.gpu_address(), output_address);
             assert_eq!(input.gpu_address(), input_address);
             assert_eq!(n_buffer.gpu_address(), n_address);
+        }
+
+        /// Bounded host-encoding comparison for the full-indexer pre-score
+        /// partition: two replay calls containing 9 + 6 commands versus one
+        /// replay call containing the same 15 commands. GPU execution and
+        /// command-buffer creation/commit are deliberately outside the timed
+        /// region; this answers only whether one fewer direct encoder reduces
+        /// host replay sequencing overhead on the target Mac.
+        ///
+        /// `cargo test -p hawking-core replayable_icb_fifteen_command_fusion_encode_benchmark -- --ignored --nocapture`
+        #[test]
+        #[ignore = "explicit bounded Metal ICB host-encoding benchmark"]
+        fn replayable_icb_fifteen_command_fusion_encode_benchmark() {
+            use std::time::Instant;
+
+            const N: u32 = 257;
+            const SAMPLES: usize = 257;
+            let ctx = MetalContext::new_with_trace(true).unwrap();
+            let output = ctx.new_buffer(N as usize * std::mem::size_of::<f32>());
+            let n_buffer = ctx.new_buffer_with_bytes(&N.to_ne_bytes());
+            let split_9 =
+                ReplayableComputeGraph::new(&ctx, zero_replay_stages(&output, &n_buffer, N, 9))
+                    .unwrap();
+            let split_6 =
+                ReplayableComputeGraph::new(&ctx, zero_replay_stages(&output, &n_buffer, N, 6))
+                    .unwrap();
+            let fused_15 =
+                ReplayableComputeGraph::new(&ctx, zero_replay_stages(&output, &n_buffer, N, 15))
+                    .unwrap();
+
+            let identity = |run: &str| {
+                PhysicalTraceIdentity::new(
+                    "a".repeat(64),
+                    "b".repeat(64),
+                    "icb".into(),
+                    run.into(),
+                    None,
+                    0,
+                )
+                .unwrap()
+            };
+            let split_guard = PhysicalTraceGuard::begin(identity("split")).unwrap();
+            let mut split_tcb = TokenCommandBuffer::new(&ctx);
+            split_tcb.execute_replayable_graph(&split_9).unwrap();
+            split_tcb.execute_replayable_graph(&split_6).unwrap();
+            assert_eq!(split_tcb.dispatch_count(), 15);
+            split_tcb.commit_and_wait().unwrap();
+            assert_eq!(
+                split_guard.counts(),
+                PhysicalTraceCounts {
+                    command_count: 1,
+                    encoder_count: 2,
+                }
+            );
+            drop(split_guard);
+
+            let fused_guard = PhysicalTraceGuard::begin(identity("fused")).unwrap();
+            let mut fused_tcb = TokenCommandBuffer::new(&ctx);
+            fused_tcb.execute_replayable_graph(&fused_15).unwrap();
+            assert_eq!(fused_tcb.dispatch_count(), 15);
+            fused_tcb.commit_and_wait().unwrap();
+            assert_eq!(
+                fused_guard.counts(),
+                PhysicalTraceCounts {
+                    command_count: 1,
+                    encoder_count: 1,
+                }
+            );
+            drop(fused_guard);
+
+            let mut direct_ns = Vec::with_capacity(SAMPLES);
+            let mut split_ns = Vec::with_capacity(SAMPLES);
+            let mut fused_ns = Vec::with_capacity(SAMPLES);
+            for iteration in 0..SAMPLES {
+                let measure_direct = || {
+                    let mut tcb = TokenCommandBuffer::new(&ctx);
+                    let started = Instant::now();
+                    for _ in 0..15 {
+                        let output = output.clone();
+                        tcb.dispatch_threads(
+                            "gravity_zero_f32",
+                            (N, 1, 1),
+                            (64, 1, 1),
+                            move |encoder| {
+                                encoder.set_buffer(0, Some(&output), 0);
+                                encoder.set_bytes(1, 4, &N as *const u32 as *const _);
+                            },
+                        )
+                        .unwrap();
+                    }
+                    let elapsed = started.elapsed().as_nanos();
+                    tcb.commit_and_wait().unwrap();
+                    elapsed
+                };
+                let measure_split = || {
+                    let mut tcb = TokenCommandBuffer::new(&ctx);
+                    let started = Instant::now();
+                    tcb.execute_replayable_graph(&split_9).unwrap();
+                    tcb.execute_replayable_graph(&split_6).unwrap();
+                    let elapsed = started.elapsed().as_nanos();
+                    tcb.commit_and_wait().unwrap();
+                    elapsed
+                };
+                let measure_fused = || {
+                    let mut tcb = TokenCommandBuffer::new(&ctx);
+                    let started = Instant::now();
+                    tcb.execute_replayable_graph(&fused_15).unwrap();
+                    let elapsed = started.elapsed().as_nanos();
+                    tcb.commit_and_wait().unwrap();
+                    elapsed
+                };
+                if iteration % 2 == 0 {
+                    direct_ns.push(measure_direct());
+                    split_ns.push(measure_split());
+                    fused_ns.push(measure_fused());
+                } else {
+                    fused_ns.push(measure_fused());
+                    split_ns.push(measure_split());
+                    direct_ns.push(measure_direct());
+                }
+            }
+
+            assert_eq!(read_f32(&output, N as usize), vec![0.0; N as usize]);
+            eprintln!(
+                "ICB_FUSION_ENCODE_BENCHMARK samples={SAMPLES} \
+                 direct_15_p50_ns={} direct_15_p95_ns={} \
+                 split_9_6_p50_ns={} split_9_6_p95_ns={} \
+                 fused_15_p50_ns={} fused_15_p95_ns={}",
+                percentile_ns(&direct_ns, 50),
+                percentile_ns(&direct_ns, 95),
+                percentile_ns(&split_ns, 50),
+                percentile_ns(&split_ns, 95),
+                percentile_ns(&fused_ns, 50),
+                percentile_ns(&fused_ns, 95),
+            );
         }
     }
 
@@ -2300,7 +2471,35 @@ mod imp {
         /// inside an ICB and therefore fail closed. Off and aggregate
         /// CPU-encode modes preserve one command-buffer submit/wait.
         pub fn execute_replayable_graph(&mut self, graph: &ReplayableComputeGraph) -> Result<()> {
-            if !Arc::ptr_eq(&self.ctx.inner, &graph.context) {
+            self.execute_replayable_graph_group(&[graph], "replayable_compute_graph")
+        }
+
+        /// Append several dependency-ordered pre-encoded graphs through one
+        /// direct compute encoder. A resource-scoped Metal memory barrier is
+        /// inserted between adjacent ICB executions, so a later graph can
+        /// consume buffers written by the preceding graph without paying an
+        /// additional direct-encoder boundary.
+        pub fn execute_replayable_graphs(
+            &mut self,
+            graphs: &[&ReplayableComputeGraph],
+        ) -> Result<()> {
+            self.execute_replayable_graph_group(graphs, "replayable_compute_graph_group")
+        }
+
+        fn execute_replayable_graph_group(
+            &mut self,
+            graphs: &[&ReplayableComputeGraph],
+            label: &'static str,
+        ) -> Result<()> {
+            if graphs.is_empty() {
+                return Err(Error::Metal(
+                    "replayable compute graph group cannot be empty".into(),
+                ));
+            }
+            if graphs
+                .iter()
+                .any(|graph| !Arc::ptr_eq(&self.ctx.inner, &graph.context))
+            {
                 return Err(Error::Metal(
                     "replayable compute graph belongs to a different Metal context".into(),
                 ));
@@ -2323,17 +2522,19 @@ mod imp {
                 None
             };
             if ledger_t0.is_some() {
-                if graph.explicit_ledger_stages {
-                    for stage in crate::cost_ledger::GpuStage::ALL {
-                        let graph_dispatches = graph.ledger_stage_dispatches[stage.index()];
+                for graph in graphs {
+                    if graph.explicit_ledger_stages {
+                        for stage in crate::cost_ledger::GpuStage::ALL {
+                            let graph_dispatches = graph.ledger_stage_dispatches[stage.index()];
+                            let slot = &mut self.ledger_stage_dispatches[stage.index()];
+                            *slot = slot.saturating_add(graph_dispatches);
+                        }
+                    } else {
+                        let stage = crate::cost_ledger::current_gpu_stage()
+                            .unwrap_or(crate::cost_ledger::GpuStage::Untagged);
                         let slot = &mut self.ledger_stage_dispatches[stage.index()];
-                        *slot = slot.saturating_add(graph_dispatches);
+                        *slot = slot.saturating_add(graph.command_count as u64);
                     }
-                } else {
-                    let stage = crate::cost_ledger::current_gpu_stage()
-                        .unwrap_or(crate::cost_ledger::GpuStage::Untagged);
-                    let slot = &mut self.ledger_stage_dispatches[stage.index()];
-                    *slot = slot.saturating_add(graph.command_count as u64);
                 }
             }
             let cpu_t0 = if self.mode == TcbTraceMode::CpuEncode {
@@ -2347,31 +2548,55 @@ mod imp {
                 .ok_or_else(|| Error::Metal("TokenCommandBuffer already committed".into()))?;
             let enc = cmd.new_compute_command_encoder();
             if let Some(command) = self.physical_trace.as_ref() {
-                enc.set_label(&physical_encoder_label(
-                    command,
-                    "compute_encoder",
-                    "replayable_compute_graph",
-                ));
+                enc.set_label(&physical_encoder_label(command, "compute_encoder", label));
             } else {
-                enc.set_label("replayable_compute_graph");
+                enc.set_label(label);
             }
-            for resource in &graph.resources {
+
+            let mut resources = Vec::<ReplayResource>::new();
+            let mut resource_slots = HashMap::<u64, usize>::new();
+            for graph in graphs {
+                for resource in &graph.resources {
+                    let address = resource.buffer.gpu_address();
+                    if let Some(&slot) = resource_slots.get(&address) {
+                        resources[slot].usage |= resource.usage;
+                    } else {
+                        resource_slots.insert(address, resources.len());
+                        resources.push(ReplayResource {
+                            buffer: resource.buffer.clone(),
+                            usage: resource.usage,
+                        });
+                    }
+                }
+            }
+            for resource in &resources {
                 enc.use_resource(&resource.buffer, resource.usage);
             }
-            let range = NSRange {
-                location: 0,
-                length: graph.command_count as u64,
-            };
-            unsafe {
-                let _: () = msg_send![
-                    enc,
-                    executeCommandsInBuffer: &*graph.icb
-                    withRange: range
-                ];
+            let barrier_resources: Vec<&metal::ResourceRef> = resources
+                .iter()
+                .map(|resource| &**resource.buffer)
+                .collect();
+            let mut command_count = 0usize;
+            for (index, graph) in graphs.iter().enumerate() {
+                if index != 0 {
+                    enc.memory_barrier_with_resources(&barrier_resources);
+                }
+                let range = NSRange {
+                    location: 0,
+                    length: graph.command_count as u64,
+                };
+                unsafe {
+                    let _: () = msg_send![
+                        enc,
+                        executeCommandsInBuffer: &*graph.icb
+                        withRange: range
+                    ];
+                }
+                command_count = command_count.saturating_add(graph.command_count);
             }
             enc.end_encoding();
 
-            self.dispatch_count = self.dispatch_count.saturating_add(graph.command_count);
+            self.dispatch_count = self.dispatch_count.saturating_add(command_count);
             if let Some(t0) = ledger_t0 {
                 self.ledger_encode_ns = self
                     .ledger_encode_ns
@@ -2379,7 +2604,7 @@ mod imp {
             }
             if let Some(t0) = cpu_t0 {
                 self.tcb_samples.push(super::DispatchSample {
-                    kernel_name: static_kernel_name("replayable_compute_graph"),
+                    kernel_name: static_kernel_name(label),
                     wall_us: t0.elapsed().as_micros() as u64,
                     layer_hint: super::current_layer(),
                     gpu_us: None,

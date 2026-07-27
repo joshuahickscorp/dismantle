@@ -1,5 +1,6 @@
 use hawking_context::{
-    ClassedMemorySystem, DynClassedMemory, InMemoryMemoryStore, MemoryStore, SqliteMemoryStore,
+    ClassedMemorySystem, ContextCompiler, DynClassedMemory, InMemoryMemoryStore, MemoryStore,
+    SqliteMemoryStore, TokenCounter,
 };
 use hawking_index::{CodeIndex, InMemoryCodeIndex, SqliteCodeIndex};
 use hawking_orch::RoleRegistry;
@@ -1615,6 +1616,18 @@ pub struct BackendServices {
     /// (`new`/`with_stores`); populated by `open` from the workspace root.
     /// Cache-invalidation on a live config edit is DEFERRED (reopen to refresh).
     pub repo_instructions: Arc<crate::compat_instructions::ResolvedInstructions>,
+    /// Tokenizer-true token counter for context packing. Loaded once from
+    /// `HIDE_TOKENIZER` / beside `HIDE_MODEL_WEIGHTS` when available; otherwise
+    /// the `chars/4` heuristic (and compile reports `tokens_estimated`).
+    pub token_counter: TokenCounter,
+}
+
+/// Resolve the live packing counter once at service construction.
+fn discover_token_counter() -> TokenCounter {
+    match TokenCounter::discover_from_env() {
+        Some(c) => c,
+        None => TokenCounter::heuristic(),
+    }
 }
 
 impl BackendServices {
@@ -1644,6 +1657,7 @@ impl BackendServices {
             repo_instructions: Arc::new(
                 crate::compat_instructions::ResolvedInstructions::empty(),
             ),
+            token_counter: discover_token_counter(),
         }
     }
 
@@ -1682,7 +1696,14 @@ impl BackendServices {
             repo_instructions: Arc::new(
                 crate::compat_instructions::ResolvedInstructions::empty(),
             ),
+            token_counter: discover_token_counter(),
         }
+    }
+
+    /// A [`ContextCompiler`] pre-loaded with the workspace token counter so
+    /// packing is tokenizer-true whenever a real tokenizer was discovered.
+    pub fn context_compiler(&self) -> ContextCompiler {
+        ContextCompiler::new().with_counter(self.token_counter.clone())
     }
 
     pub fn open_workspace(workspace_root: impl Into<PathBuf>) -> Result<Self> {

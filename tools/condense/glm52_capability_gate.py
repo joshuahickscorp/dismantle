@@ -1,5 +1,5 @@
 #!/usr/bin/env python3.12
-"""Run the capability gates against a `.gravity` artifact and emit a verdict.
+"""Run capability gates against an assembled Gravity or activation-aware artifact.
 
 `odyssey/launch/SUBSTRATE_CAPABILITY.json` decides whether an artifact may be trained on,
 and until now its entries were written by hand.  A hand-written capability verdict is the
@@ -45,10 +45,14 @@ G_LIVE_PROMPTS = [
 
 
 def index_sha256(artifact: Path) -> str | None:
-    idx = artifact / "model.gravity.index.json"
-    if not idx.is_file():
+    candidates = [
+        artifact / "model.gravity.index.json",
+        artifact / "model.activation_aware.index.json",
+    ]
+    present = [path for path in candidates if path.is_file()]
+    if len(present) != 1:
         return None
-    return hashlib.sha256(idx.read_bytes()).hexdigest()
+    return hashlib.sha256(present[0].read_bytes()).hexdigest()
 
 
 def run_oracle(artifact: Path, tokens: list[int]) -> dict:

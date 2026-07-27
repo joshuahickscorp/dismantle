@@ -1227,6 +1227,7 @@ def pack_shard(
             tensors_out.append({
                 "name": name,
                 "disposition": "pass_through",
+                "dtype": dtype,
                 "bytes": len(blob),
                 "offset": basis_bytes_total + sum(len(p) for p in tensor_section),
                 "shape": list(W.shape),
@@ -1275,6 +1276,7 @@ def pack_shard(
         tensors_out.append({
             "name": name,
             "disposition": "activation_aware",
+            "dtype": dtype,
             "bytes": len(blob),
             "offset": basis_bytes_total + sum(len(p) for p in tensor_section),
             "shape": list(W.shape),

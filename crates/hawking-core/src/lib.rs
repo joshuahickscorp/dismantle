@@ -20,7 +20,6 @@ pub mod model;
 pub mod moe;
 /// Numeric Parity Contract V2.1 — condition-aware hybrid metrics + FP64 authority.
 /// See root `NUMERIC_PARITY_V2_1.md`.
-pub mod numeric_parity;
 pub mod profile;
 pub mod q4k_fast;
 pub mod quant;

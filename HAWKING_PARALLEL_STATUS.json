@@ -1,6 +1,6 @@
 {
   "schema": "hawking.parallel.status.v1",
-  "at": "2026-07-27T01:40:59Z",
+  "at": "2026-07-27T01:42:43Z",
   "endpoint": "RAMANUJAN_SANDBOX_READY",
   "endpoint_reached": false,
   "fences": {
@@ -260,10 +260,10 @@
         "present": false
       },
       "outputs": {
-        "found": [],
-        "missing": [
+        "found": [
           "RAMANUJAN_HANDOFF_CONTRACT.json"
-        ]
+        ],
+        "missing": []
       },
       "dependencies": [],
       "promotion_gate": null,

@@ -3,7 +3,7 @@
 Generated from live evidence by `tools/campaign/parallel_status.py`. Do not hand-edit.
 Ownership and the DAG are hand-authored architecture and are read, never written, by this tool.
 
-    at:       2026-07-27T01:40:59Z
+    at:       2026-07-27T01:42:43Z
     endpoint: RAMANUJAN_SANDBOX_READY (not reached)
     width:    6/6 lanes running
     fences:   ODYSSEY_LAUNCH_AUTHORIZED=False RAMANUJAN_RESEARCH_AUTHORIZED=False HIDE_KERNEL_TURN=False
@@ -24,7 +24,7 @@ Ownership and the DAG are hand-authored architecture and are read, never written
 ## Queued
 
 - `L07` speculation-safety (grok) -- outputs missing: HIDE_SPECULATION_SAFETY.json
-- `L09` ramanujan-migration-prep (claude) -- outputs missing: RAMANUJAN_HANDOFF_CONTRACT.json
+- `L09` ramanujan-migration-prep (claude)
 
 ## Blocked (real data dependencies, see the DAG)
 

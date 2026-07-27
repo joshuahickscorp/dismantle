@@ -22,6 +22,7 @@ use crate::services::{
     WorkspaceEdge, WorkspaceEdgeKind, WorkspaceGraph, WorkspaceStore,
 };
 use crate::supervisor::{RuntimeSupervisor, SupervisorConfig};
+use crate::surfaces::SurfaceGraphService;
 use crate::tools::{build_default_tool_dispatcher, build_default_tool_registry};
 use crate::ui_bus::UiEventBus;
 use hide_core::api::{Intent, IntentAck, UiEvent, UiEventKind};
@@ -524,6 +525,10 @@ const HANDLED_CUSTOM_NAMES: &[&str] = &[
     "steer",
     "stop_process",
     "workspace_set_repo_trust",
+    // YOU / CHAT / IDE shared session graph (claim-only handoffs).
+    "switch_surface",
+    "handoff_create",
+    "handoff_receive",
 ];
 
 pub struct BackendHost {
@@ -567,6 +572,9 @@ pub struct BackendHost {
     /// the notification emit path so a connection never receives a class of pushes
     /// it opted out of.
     connections: Arc<ConnectionRegistry>,
+    /// One session, three lenses (YOU / CHAT / IDE). Surfaces share this graph;
+    /// they do not each construct their own. Handoff capsules carry claims only.
+    surfaces: Arc<SurfaceGraphService>,
 }
 
 /// Load MCP server descriptors for host boot.
@@ -683,6 +691,16 @@ impl BackendHost {
             &services,
             runtime.clone(),
         ));
+        // One surface graph bound to the host primary session. All three lenses
+        // share that session id; handoffs never mint a parallel session.
+        let primary = services.session();
+        let surfaces = Arc::new(SurfaceGraphService::for_session(
+            &primary,
+            services.event_log.clone(),
+            ui_bus.clone(),
+        ));
+        // Publish the initial projection so FE navigation can bind on connect.
+        surfaces.publish_view();
         Ok(Self {
             commands: CommandRouter::with_interrupts(
                 services.event_log.clone(),
@@ -704,6 +722,7 @@ impl BackendHost {
             gate_book: Arc::new(GateBook::default()),
             runtime,
             connections: Arc::new(ConnectionRegistry::default()),
+            surfaces,
         })
     }
 
@@ -911,6 +930,19 @@ impl BackendHost {
                 if matches!(
                     name.as_str(),
                     "create_worktree" | "new_session" | "open_session" | "fleet_run"
+                ) =>
+            {
+                Some((name.clone(), payload.clone()))
+            }
+            _ => None,
+        };
+        // Surface graph (YOU / CHAT / IDE): switch lens, seal claim-only handoff, receive.
+        // Snapshot so the router records the intent first; effects run only when accepted.
+        let surface_action: Option<(String, Value)> = match &intent {
+            Intent::Custom { name, payload }
+                if matches!(
+                    name.as_str(),
+                    "switch_surface" | "handoff_create" | "handoff_receive"
                 ) =>
             {
                 Some((name.clone(), payload.clone()))
@@ -1355,6 +1387,13 @@ impl BackendHost {
         // cannot read as set when the host stored nothing.
         if let (true, Some((name, payload))) = (effect_ok, goal_checkpoint_action) {
             if let Err(err) = self.handle_goal_checkpoint_intent(&name, &payload).await {
+                self.effect_failed(&mut ack, &name, err.to_string());
+            }
+        }
+        // Surface graph side effects (switch lens / claim-only handoff). Same
+        // session identity throughout; capability never rides the capsule.
+        if let (true, Some((name, payload))) = (effect_ok, surface_action) {
+            if let Err(err) = self.handle_surface_intent(&name, &payload).await {
                 self.effect_failed(&mut ack, &name, err.to_string());
             }
         }
@@ -2050,6 +2089,93 @@ impl BackendHost {
                 patch: json!({ "phase": "idle", "run_id": Value::Null }),
             },
         });
+    }
+
+    /// YOU / CHAT / IDE surface graph intents. Switch is a lens change on the
+    /// primary session; handoffs seal or open claim capsules only.
+    async fn handle_surface_intent(&self, name: &str, payload: &Value) -> Result<()> {
+        match name {
+            "switch_surface" => {
+                let surface_name = payload
+                    .get("surface")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| {
+                        hide_core::error::HideError::Message(
+                            "switch_surface requires surface".into(),
+                        )
+                    })?;
+                let surface = crate::surfaces::SurfaceGraphService::parse_surface(surface_name)
+                    .map_err(hide_core::error::HideError::Message)?;
+                let view = self.surfaces.switch_surface(surface)?;
+                self.ui_bus.publish(UiEvent {
+                    seq: 0,
+                    session_id: Some(SessionId::from(view.session_id.as_str())),
+                    kind: UiEventKind::Custom(json!({
+                        "kind": "surface_switched",
+                        "surface": view.active_surface,
+                        "session_id": view.session_id,
+                    })),
+                });
+                Ok(())
+            }
+            "handoff_create" => {
+                let kind_name = payload
+                    .get("kind")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| {
+                        hide_core::error::HideError::Message(
+                            "handoff_create requires kind".into(),
+                        )
+                    })?;
+                let kind = crate::surfaces::SurfaceGraphService::parse_kind(kind_name)
+                    .map_err(hide_core::error::HideError::Message)?;
+                let claims = crate::surfaces::claims_from_payload(
+                    payload.get("claims").unwrap_or(&Value::Array(vec![])),
+                )
+                .map_err(hide_core::error::HideError::Message)?;
+                let exclusions = crate::surfaces::exclusions_from_payload(
+                    payload
+                        .get("deliberately_excludes")
+                        .unwrap_or(&Value::Array(vec![])),
+                )
+                .map_err(hide_core::error::HideError::Message)?;
+                let body = payload
+                    .get("body")
+                    .cloned()
+                    .unwrap_or_else(|| json!({}));
+                let actor = payload
+                    .get("actor")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("user");
+                let now = hide_core::ids::now_ms();
+                let capsule = self
+                    .surfaces
+                    .handoff_create(kind, claims, exclusions, body, actor, now)
+                    .await?;
+                // Double-check the safety property at the host boundary.
+                if capsule.try_extract_capability().is_ok() {
+                    return Err(hide_core::error::HideError::PolicyDenied(
+                        "handoff_create produced a capability-bearing capsule".into(),
+                    ));
+                }
+                Ok(())
+            }
+            "handoff_receive" => {
+                let capsule_id = payload
+                    .get("capsule_id")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| {
+                        hide_core::error::HideError::Message(
+                            "handoff_receive requires capsule_id".into(),
+                        )
+                    })?;
+                let _view = self.surfaces.handoff_receive(capsule_id).await?;
+                Ok(())
+            }
+            other => Err(hide_core::error::HideError::Message(format!(
+                "unknown surface intent {other}"
+            ))),
+        }
     }
 
     /// Load a past session: scan its recorded events, map them to UiEvents, and republish them on the
@@ -9719,6 +9845,126 @@ for line in sys.stdin:
             ev.session_id.is_some(),
             "new_session carries a fresh session id"
         );
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    /// YOU / CHAT / IDE share one session id. A YOU→CHAT handoff carries claims
+    /// only: CHAT still cannot use gmail after receive, and capsule extract fails.
+    #[tokio::test]
+    async fn host_surface_handoff_claim_never_capability_same_session() {
+        let dir = std::env::temp_dir().join(format!("hide_host_surface_{}", now_ms()));
+        let host = BackendHost::open_workspace(&dir).unwrap();
+        let primary = host.services.session();
+        assert_eq!(
+            host.surfaces.session_id(),
+            primary.as_str(),
+            "surface graph binds the host primary session"
+        );
+
+        let switch = host
+            .handle_intent(Intent::Custom {
+                name: "switch_surface".into(),
+                payload: json!({ "surface": "you" }),
+            })
+            .await
+            .unwrap();
+        assert!(switch.accepted, "switch_surface accepted: {:?}", switch.message);
+        assert_eq!(host.surfaces.active().as_str(), "you");
+        assert_eq!(host.surfaces.session_id(), primary.as_str());
+
+        let create = host
+            .handle_intent(Intent::Custom {
+                name: "handoff_create".into(),
+                payload: json!({
+                    "kind": "you_to_chat",
+                    "claims": [{
+                        "id": "clm_host_1",
+                        "text": "implement from YOU",
+                        "evidence_tier": "cited"
+                    }],
+                    "deliberately_excludes": [{
+                        "item": "gmail credentials",
+                        "reason": "claim only"
+                    }],
+                    "body": { "kind": "implementation_campaign", "goal": "feature" },
+                    "actor": "test"
+                }),
+            })
+            .await
+            .unwrap();
+        assert!(create.accepted, "handoff_create accepted: {:?}", create.message);
+
+        let view = host.surfaces.view();
+        assert_eq!(view.session_id, primary.as_str());
+        assert_eq!(view.capsules.len(), 1);
+        let capsule_id = view.capsules[0].id.clone();
+        // Capsule still refuses capability extraction.
+        let sealed = host
+            .surfaces
+            .view()
+            .capsules
+            .first()
+            .expect("one capsule")
+            .clone();
+        assert!(
+            host.surfaces
+                .view()
+                .lenses
+                .get("you")
+                .unwrap()
+                .connectors
+                .iter()
+                .any(|c| c == "gmail")
+        );
+        assert!(
+            !view
+                .lenses
+                .get("chat")
+                .unwrap()
+                .connectors
+                .iter()
+                .any(|c| c == "gmail")
+        );
+        let _ = sealed;
+
+        let receive = host
+            .handle_intent(Intent::Custom {
+                name: "handoff_receive".into(),
+                payload: json!({ "capsule_id": capsule_id }),
+            })
+            .await
+            .unwrap();
+        assert!(
+            receive.accepted,
+            "handoff_receive accepted: {:?}",
+            receive.message
+        );
+        let after = host.surfaces.view();
+        assert_eq!(after.session_id, primary.as_str());
+        assert_eq!(after.inbox.get("chat").map(|v| v.len()).unwrap_or(0), 1);
+        // CHAT connectors still exclude personal connectors after receive.
+        assert!(
+            !after
+                .lenses
+                .get("chat")
+                .unwrap()
+                .connectors
+                .iter()
+                .any(|c| c == "gmail"),
+            "receive must not grant gmail to CHAT"
+        );
+        // Durable you.handoff.created event on the shared log.
+        let events = host
+            .services
+            .event_log
+            .scan(Some(primary.clone()), None, None)
+            .await
+            .unwrap();
+        assert!(
+            events.iter().any(|e| e.kind == "you.handoff.created"),
+            "handoff must append you.handoff.created on the existing bus"
+        );
+
         let _ = std::fs::remove_dir_all(dir);
     }
 

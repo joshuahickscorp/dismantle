@@ -59,12 +59,12 @@ use crate::gravity_glm::gpu::{
 use crate::gravity_glm::{
     gpu_compact_mla_enabled, gpu_device_router_enabled, gpu_expert_wave_concurrent_enabled,
     gpu_expert_wave_enabled, gpu_lm_head_enabled, gpu_lm_head_full_logits_enabled, rope_cos_sin,
-    rope_interleaved, topk_desc, GlmArch, GlmTrace, WeightAccess, GPU_LM_HEAD_DIAG_TOPK,
-    RESIDENT_RUNTIME_INITIAL_KV_CAPACITY_TOKENS,
+    rope_interleaved, topk_desc, BoundedLru, GlmArch, GlmTrace, WeightAccess,
+    GPU_LM_HEAD_DIAG_TOPK, RESIDENT_RUNTIME_INITIAL_KV_CAPACITY_TOKENS,
 };
 use crate::metal::{MetalContext, TokenCommandBuffer};
 use crate::{Error, Result};
-use metal::Buffer;
+use metal::{Buffer, MTLResourceUsage};
 use std::cell::Cell;
 use std::sync::Mutex;
 
@@ -100,6 +100,357 @@ fn read_f32(buf: &Buffer, n: usize) -> Vec<f32> {
 
 fn read_u32(buf: &Buffer, n: usize) -> Vec<u32> {
     unsafe { std::slice::from_raw_parts(buf.contents() as *const u32, n).to_vec() }
+}
+
+#[allow(dead_code)]
+const DEVICE_EXPERT_TENSOR_KIND_PQ: u32 = 1;
+#[allow(dead_code)]
+const DEVICE_EXPERT_TENSOR_KIND_NATIVE_BF16: u32 = 2;
+#[allow(dead_code)]
+const DEVICE_EXPERT_TRIPLET_READY: u32 = 0b111;
+#[allow(dead_code)]
+const DEVICE_EXPERT_TABLE_MAX_EXPERTS: usize = 256;
+
+/// Tagged device pointer plus projection geometry. The byte layout is frozen
+/// against `GravityDeviceExpertTensorRef` in `gravity_pq.metal`.
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, bytemuck::Pod, bytemuck::Zeroable)]
+struct DeviceExpertTensorRef {
+    primary_address: u64,
+    secondary_address: u64,
+    dim: u32,
+    subspaces: u32,
+    sub: u32,
+    card: u32,
+    rows: u32,
+    cols: u32,
+    nchunk: u32,
+    bits: u32,
+    kind: u32,
+    generation: u32,
+}
+
+/// One routed expert's gate/up/down descriptor. An entry is ready only when
+/// all three projections were cloned into the immutable snapshot lease.
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, bytemuck::Pod, bytemuck::Zeroable)]
+struct DeviceExpertTriplet {
+    gate: DeviceExpertTensorRef,
+    up: DeviceExpertTensorRef,
+    down: DeviceExpertTensorRef,
+    ready_mask: u32,
+    generation: u32,
+}
+
+const _: [(); 56] = [(); std::mem::size_of::<DeviceExpertTensorRef>()];
+const _: [(); 8] = [(); std::mem::align_of::<DeviceExpertTensorRef>()];
+const _: [(); 176] = [(); std::mem::size_of::<DeviceExpertTriplet>()];
+const _: [(); 8] = [(); std::mem::align_of::<DeviceExpertTriplet>()];
+
+#[allow(dead_code)]
+struct DeviceExpertTableLease {
+    table: Buffer,
+    /// Cloned Metal handles keep every indirectly referenced buffer alive even
+    /// if its logical LRU entry is evicted after this snapshot is built.
+    resources: Vec<Buffer>,
+    generation: u32,
+    n_experts: usize,
+    ready_entries: usize,
+}
+
+#[allow(dead_code)]
+fn device_expert_tensor_ref(
+    tensor: &GpuTensor,
+    generation: u32,
+) -> Option<(DeviceExpertTensorRef, Vec<Buffer>)> {
+    match tensor {
+        GpuTensor::Pq {
+            codebooks,
+            codes,
+            params,
+        } => Some((
+            DeviceExpertTensorRef {
+                primary_address: codebooks.gpu_address(),
+                secondary_address: codes.gpu_address(),
+                dim: params.dim,
+                subspaces: params.subspaces,
+                sub: params.sub,
+                card: params.card,
+                rows: params.rows,
+                cols: params.cols,
+                nchunk: params.nchunk,
+                bits: params.bits,
+                kind: DEVICE_EXPERT_TENSOR_KIND_PQ,
+                generation,
+            },
+            vec![codebooks.clone(), codes.clone()],
+        )),
+        GpuTensor::NativeGpuBf16 { buf, rows, cols } => Some((
+            DeviceExpertTensorRef {
+                primary_address: buf.gpu_address(),
+                rows: *rows,
+                cols: *cols,
+                kind: DEVICE_EXPERT_TENSOR_KIND_NATIVE_BF16,
+                generation,
+                ..DeviceExpertTensorRef::default()
+            },
+            vec![buf.clone()],
+        )),
+        GpuTensor::NativeCpu(_) => None,
+    }
+}
+
+/// Snapshot the currently resident routed triplets for one layer.
+///
+/// The caller owns the cache guard while this walks the name-keyed LRU. Each
+/// ready entry clones its backing Metal buffers into the returned lease, then
+/// the descriptor bytes are uploaded once and never patched in place.
+#[allow(dead_code)]
+fn build_device_expert_table_snapshot(
+    ctx: &MetalContext,
+    cache: &BoundedLru<GpuTensor>,
+    mlp_prefix: &str,
+    n_experts: usize,
+    generation: u32,
+) -> Result<DeviceExpertTableLease> {
+    if n_experts == 0 || n_experts > DEVICE_EXPERT_TABLE_MAX_EXPERTS {
+        return Err(Error::Gravity(format!(
+            "device expert table supports 1..={DEVICE_EXPERT_TABLE_MAX_EXPERTS} experts, got \
+             {n_experts}"
+        )));
+    }
+    if generation == 0 {
+        return Err(Error::Gravity(
+            "device expert table generation 0 is reserved for missing entries".into(),
+        ));
+    }
+
+    let mut entries = vec![DeviceExpertTriplet::default(); n_experts];
+    let mut resources = Vec::new();
+    let mut ready_entries = 0usize;
+    for (expert, entry) in entries.iter_mut().enumerate() {
+        let expert_prefix = format!("{mlp_prefix}.experts.{expert}");
+        let gate_name = format!("{expert_prefix}.gate_proj.weight");
+        let up_name = format!("{expert_prefix}.up_proj.weight");
+        let down_name = format!("{expert_prefix}.down_proj.weight");
+        let Some((gate, gate_resources)) = cache
+            .get(&gate_name)
+            .and_then(|tensor| device_expert_tensor_ref(tensor, generation))
+        else {
+            continue;
+        };
+        let Some((up, up_resources)) = cache
+            .get(&up_name)
+            .and_then(|tensor| device_expert_tensor_ref(tensor, generation))
+        else {
+            continue;
+        };
+        let Some((down, down_resources)) = cache
+            .get(&down_name)
+            .and_then(|tensor| device_expert_tensor_ref(tensor, generation))
+        else {
+            continue;
+        };
+        *entry = DeviceExpertTriplet {
+            gate,
+            up,
+            down,
+            ready_mask: DEVICE_EXPERT_TRIPLET_READY,
+            generation,
+        };
+        resources.extend(gate_resources);
+        resources.extend(up_resources);
+        resources.extend(down_resources);
+        ready_entries += 1;
+    }
+    let table = ctx.new_buffer_with_bytes_checked(bytemuck::cast_slice(&entries))?;
+    Ok(DeviceExpertTableLease {
+        table,
+        resources,
+        generation,
+        n_experts,
+        ready_entries,
+    })
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct DeviceExpertTableValidateParams {
+    n_experts: u32,
+    experts_per_token: u32,
+    generation: u32,
+    required_kind: u32,
+    hidden: u32,
+    intermediate: u32,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct DeviceExpertTableMatvecParams {
+    n_experts: u32,
+    experts_per_token: u32,
+    generation: u32,
+    execution_position: u32,
+    projection: u32,
+    rows: u32,
+    cols: u32,
+}
+
+const _: [(); 24] = [(); std::mem::size_of::<DeviceExpertTableValidateParams>()];
+const _: [(); 28] = [(); std::mem::size_of::<DeviceExpertTableMatvecParams>()];
+
+#[allow(clippy::too_many_arguments)]
+#[allow(dead_code)]
+fn encode_device_expert_table_validate(
+    tcb: &mut TokenCommandBuffer<'_>,
+    lease: &DeviceExpertTableLease,
+    expert_indices: &Buffer,
+    expert_exec_slots: &Buffer,
+    miss_mask: &Buffer,
+    experts_per_token: usize,
+    hidden: usize,
+    intermediate: usize,
+    required_kind: u32,
+) -> Result<()> {
+    if experts_per_token == 0 || experts_per_token > 32 {
+        return Err(Error::Gravity(format!(
+            "device expert table validation requires 1..=32 selected experts, got \
+             {experts_per_token}"
+        )));
+    }
+    let selected_bytes = experts_per_token
+        .checked_mul(std::mem::size_of::<u32>())
+        .ok_or_else(|| Error::Gravity("device expert selection byte overflow".into()))?
+        as u64;
+    if expert_indices.length() < selected_bytes
+        || expert_exec_slots.length() < selected_bytes
+        || miss_mask.length() < std::mem::size_of::<u32>() as u64
+    {
+        return Err(Error::Gravity(
+            "device expert table validation received an undersized selection or miss buffer".into(),
+        ));
+    }
+    let expect_table = lease
+        .n_experts
+        .checked_mul(std::mem::size_of::<DeviceExpertTriplet>())
+        .ok_or_else(|| Error::Gravity("device expert table byte overflow".into()))?
+        as u64;
+    if lease.table.length() != expect_table {
+        return Err(Error::Gravity(format!(
+            "device expert table has {} B, expected exactly {expect_table} B",
+            lease.table.length()
+        )));
+    }
+    let params = DeviceExpertTableValidateParams {
+        n_experts: lease.n_experts as u32,
+        experts_per_token: experts_per_token as u32,
+        generation: lease.generation,
+        required_kind,
+        hidden: hidden as u32,
+        intermediate: intermediate as u32,
+    };
+    let indices = expert_indices.clone();
+    let slots = expert_exec_slots.clone();
+    let table = lease.table.clone();
+    let miss = miss_mask.clone();
+    tcb.dispatch_threads(
+        "gravity_glm_expert_table_validate",
+        (1, 1, 1),
+        (1, 1, 1),
+        move |enc| {
+            enc.set_buffer(0, Some(&indices), 0);
+            enc.set_buffer(1, Some(&slots), 0);
+            enc.set_buffer(2, Some(&table), 0);
+            enc.set_buffer(3, Some(&miss), 0);
+            enc.set_bytes(
+                4,
+                std::mem::size_of_val(&params) as u64,
+                &params as *const _ as *const _,
+            );
+        },
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+#[allow(dead_code)]
+fn encode_device_expert_table_pq_matvec(
+    tcb: &mut TokenCommandBuffer<'_>,
+    lease: &DeviceExpertTableLease,
+    expert_indices: &Buffer,
+    expert_exec_slots: &Buffer,
+    miss_mask: &Buffer,
+    experts_per_token: usize,
+    execution_position: usize,
+    projection: u32,
+    x: &Buffer,
+    rows: usize,
+    cols: usize,
+    y: &Buffer,
+) -> Result<()> {
+    if execution_position >= experts_per_token || projection > 2 {
+        return Err(Error::Gravity(format!(
+            "invalid device expert table matvec position/projection: position \
+             {execution_position}/{experts_per_token}, projection {projection}"
+        )));
+    }
+    let x_bytes = cols
+        .checked_mul(std::mem::size_of::<f32>())
+        .ok_or_else(|| Error::Gravity("device expert matvec input byte overflow".into()))?
+        as u64;
+    let y_bytes = rows
+        .checked_mul(std::mem::size_of::<f32>())
+        .ok_or_else(|| Error::Gravity("device expert matvec output byte overflow".into()))?
+        as u64;
+    if x.length() < x_bytes || y.length() < y_bytes {
+        return Err(Error::Gravity(format!(
+            "device expert table matvec buffer too small: x={}/{} B y={}/{} B",
+            x.length(),
+            x_bytes,
+            y.length(),
+            y_bytes
+        )));
+    }
+    let params = DeviceExpertTableMatvecParams {
+        n_experts: lease.n_experts as u32,
+        experts_per_token: experts_per_token as u32,
+        generation: lease.generation,
+        execution_position: execution_position as u32,
+        projection,
+        rows: rows as u32,
+        cols: cols as u32,
+    };
+    let indices = expert_indices.clone();
+    let slots = expert_exec_slots.clone();
+    let table = lease.table.clone();
+    let miss = miss_mask.clone();
+    let xb = x.clone();
+    let yb = y.clone();
+    let resources = lease.resources.clone();
+    const TG: u32 = 256;
+    let n_tg = (rows as u32).div_ceil(8);
+    tcb.dispatch_threads(
+        "gravity_glm_expert_table_pq_matvec",
+        (n_tg * TG, 1, 1),
+        (TG, 1, 1),
+        move |enc| {
+            enc.set_buffer(0, Some(&indices), 0);
+            enc.set_buffer(1, Some(&slots), 0);
+            enc.set_buffer(2, Some(&table), 0);
+            enc.set_buffer(3, Some(&miss), 0);
+            enc.set_buffer(4, Some(&xb), 0);
+            enc.set_buffer(5, Some(&yb), 0);
+            enc.set_bytes(
+                6,
+                std::mem::size_of_val(&params) as u64,
+                &params as *const _ as *const _,
+            );
+            let mut refs: Vec<&metal::ResourceRef> = Vec::with_capacity(resources.len());
+            for resource in &resources {
+                refs.push(resource);
+            }
+            enc.use_resources(&refs, MTLResourceUsage::Read);
+        },
+    )
 }
 
 /// Per-layer expanded device K/V cache. DSA index keys have independent
@@ -5343,6 +5694,267 @@ mod tests {
             out.push(unit * scale);
         }
         out
+    }
+
+    fn direct_u8_pq_tensor(
+        ctx: &MetalContext,
+        rows: usize,
+        cols: usize,
+        salt: usize,
+    ) -> (GpuTensor, Vec<f32>) {
+        const DIM: usize = 32;
+        const CARD: usize = 256;
+        assert_eq!(cols % DIM, 0);
+        let nchunk = cols / DIM;
+        let codebooks: Vec<half::f16> = (0..CARD * DIM)
+            .map(|flat| {
+                let code = flat / DIM;
+                let element = flat % DIM;
+                let positive = ((code * 17 + element * 13 + salt * 19) % 47) + 1;
+                half::f16::from_f32(positive as f32 * (1.0 / 256.0))
+            })
+            .collect();
+        let mut codes = vec![0u8; rows * nchunk + 4];
+        let mut dense = vec![0.0f32; rows * cols];
+        for row in 0..rows {
+            for chunk in 0..nchunk {
+                let code = (row * nchunk + chunk + salt * 7) % CARD;
+                codes[row * nchunk + chunk] = code as u8;
+                for element in 0..DIM {
+                    dense[row * cols + chunk * DIM + element] =
+                        codebooks[code * DIM + element].to_f32();
+                }
+            }
+        }
+        let codebooks = f16_buffer(ctx, &codebooks);
+        let codes = ctx
+            .new_buffer_with_bytes_checked(&codes)
+            .expect("direct-u8 codes");
+        (
+            GpuTensor::Pq {
+                codebooks,
+                codes,
+                params: crate::gravity_glm::gpu::PqParams {
+                    dim: DIM as u32,
+                    subspaces: 1,
+                    sub: DIM as u32,
+                    card: CARD as u32,
+                    rows: rows as u32,
+                    cols: cols as u32,
+                    nchunk: nchunk as u32,
+                    bits: 8,
+                },
+            },
+            dense,
+        )
+    }
+
+    fn gpu_tensor_bytes(tensor: &GpuTensor) -> u64 {
+        match tensor {
+            GpuTensor::Pq {
+                codebooks, codes, ..
+            } => codebooks.length() + codes.length(),
+            GpuTensor::NativeGpuBf16 { buf, .. } => buf.length(),
+            GpuTensor::NativeCpu(values) => (values.len() * std::mem::size_of::<f32>()) as u64,
+        }
+    }
+
+    #[test]
+    fn device_expert_table_hit_is_indirect_leased_and_miss_is_fail_closed() {
+        let Ok(ctx) = MetalContext::new() else {
+            return;
+        };
+        const HIDDEN: usize = 32;
+        const INTERMEDIATE: usize = 32;
+        const GENERATION: u32 = 7;
+        const PREFIX: &str = "model.layers.0.mlp";
+
+        let mut cache = BoundedLru::new(110_000).expect("bounded cache");
+        let mut items = Vec::new();
+        let mut gate_authorities = std::collections::HashMap::new();
+        for &expert in &[0usize, 2usize] {
+            for (projection, rows, cols, projection_salt) in [
+                ("gate_proj", INTERMEDIATE, HIDDEN, 1usize),
+                ("up_proj", INTERMEDIATE, HIDDEN, 2usize),
+                ("down_proj", HIDDEN, INTERMEDIATE, 3usize),
+            ] {
+                let (tensor, dense) =
+                    direct_u8_pq_tensor(&ctx, rows, cols, expert * 11 + projection_salt);
+                if projection == "gate_proj" {
+                    gate_authorities.insert(expert, dense);
+                }
+                let bytes = gpu_tensor_bytes(&tensor);
+                items.push((
+                    format!("{PREFIX}.experts.{expert}.{projection}.weight"),
+                    tensor,
+                    bytes,
+                ));
+            }
+        }
+        cache
+            .admit_pinned(items, &std::collections::HashSet::new())
+            .expect("admit selected triplets");
+        let lease = build_device_expert_table_snapshot(&ctx, &cache, PREFIX, 4, GENERATION)
+            .expect("immutable expert table");
+        assert_eq!(std::mem::size_of::<DeviceExpertTensorRef>(), 56);
+        assert_eq!(std::mem::size_of::<DeviceExpertTriplet>(), 176);
+        assert_eq!(
+            DEVICE_EXPERT_TABLE_MAX_EXPERTS * std::mem::size_of::<DeviceExpertTriplet>(),
+            45_056
+        );
+        assert_eq!(lease.table.length(), (4 * 176) as u64);
+        assert_eq!(lease.ready_entries, 2);
+        assert_eq!(lease.resources.len(), 12);
+        let table_entries = unsafe {
+            std::slice::from_raw_parts(
+                lease.table.contents() as *const DeviceExpertTriplet,
+                lease.n_experts,
+            )
+        };
+        assert_eq!(table_entries[0].ready_mask, DEVICE_EXPERT_TRIPLET_READY);
+        assert_eq!(table_entries[1], DeviceExpertTriplet::default());
+        assert_eq!(table_entries[2].generation, GENERATION);
+
+        // Logical LRU eviction after the immutable snapshot cannot free a
+        // leased Metal resource before this command completes.
+        let evicting = GpuTensor::NativeGpuBf16 {
+            buf: ctx.new_buffer_checked(20_000).expect("evicting buffer"),
+            rows: 100,
+            cols: 100,
+        };
+        let evicting_bytes = gpu_tensor_bytes(&evicting);
+        cache
+            .admit_pinned(
+                vec![("unrelated.native.weight".into(), evicting, evicting_bytes)],
+                &std::collections::HashSet::new(),
+            )
+            .expect("bounded eviction");
+        assert!(
+            !cache.contains(&format!("{PREFIX}.experts.0.gate_proj.weight")),
+            "oldest logical entry should have been evicted"
+        );
+        assert!(cache.high_water_bytes() <= cache.budget_bytes());
+
+        // Score-ranked IDs [2,0], device execution slots [1,0]: execution
+        // position zero must indirectly address expert 0 without a host ID
+        // read or concrete expert buffer binding.
+        let expert_indices = u32_buffer(&ctx, &[2, 0]);
+        let execution_slots = u32_buffer(&ctx, &[1, 0]);
+        let miss_mask = u32_buffer(&ctx, &[u32::MAX]);
+        let x_values: Vec<f32> = deterministic_fixture_f32(0x51A7_2026, HIDDEN, 0.25)
+            .into_iter()
+            .map(|value| value.abs() + 0.125)
+            .collect();
+        let x = f32_buffer(&ctx, &x_values);
+        let y = filled_f32_buffer(&ctx, INTERMEDIATE, -9_999.0);
+        let mut hit = TokenCommandBuffer::new(&ctx);
+        encode_device_expert_table_validate(
+            &mut hit,
+            &lease,
+            &expert_indices,
+            &execution_slots,
+            &miss_mask,
+            2,
+            HIDDEN,
+            INTERMEDIATE,
+            DEVICE_EXPERT_TENSOR_KIND_PQ,
+        )
+        .expect("validate resident hit");
+        encode_device_expert_table_pq_matvec(
+            &mut hit,
+            &lease,
+            &expert_indices,
+            &execution_slots,
+            &miss_mask,
+            2,
+            0,
+            0,
+            &x,
+            INTERMEDIATE,
+            HIDDEN,
+            &y,
+        )
+        .expect("indirect gate projection");
+        assert_eq!(hit.dispatch_count(), 2);
+        hit.commit_and_wait().expect("resident-hit command");
+        assert_eq!(read_u32(&miss_mask, 1), vec![0]);
+
+        let weights = &gate_authorities[&0];
+        let host = matvec_dense(weights, &x_values, "expert-0 gate authority")
+            .expect("host gate comparator");
+        let authority: Vec<f64> = weights
+            .chunks_exact(HIDDEN)
+            .map(|row| {
+                row.iter()
+                    .zip(&x_values)
+                    .map(|(&weight, &activation)| weight as f64 * activation as f64)
+                    .sum()
+            })
+            .collect();
+        let device = read_f32(&y, INTERMEDIATE);
+        let score = score_pair(&host, &device, &authority, &Bounds::continuous_only());
+        eprintln!(
+            "device expert table indirect gate: rel_l2={:.3e} meaningful={:.3e} \
+             greedy={} top5={}",
+            score.device.continuous.relative_l2,
+            score.device.continuous.max_meaningful_rel,
+            score.device.discrete.greedy_match,
+            score.device.discrete.top_k_exact_match
+        );
+        assert!(
+            score.pass,
+            "device expert table indirect gate failed V2.1: host={:?}, device={:?}",
+            score.host.failures, score.device.failures
+        );
+
+        // Expert 1 has no ready triplet. Validation writes bit 0 and the
+        // following indirect projection must leave its destination untouched.
+        let missing_indices = u32_buffer(&ctx, &[2, 1]);
+        let missing_slots = u32_buffer(&ctx, &[1, 0]);
+        let missing_mask = u32_buffer(&ctx, &[u32::MAX]);
+        let sentinel: Vec<f32> = (0..INTERMEDIATE)
+            .map(|index| 1_000.0 + index as f32)
+            .collect();
+        let missing_y = f32_buffer(&ctx, &sentinel);
+        let before_bits: Vec<u32> = sentinel.iter().map(|value| value.to_bits()).collect();
+        let mut miss = TokenCommandBuffer::new(&ctx);
+        encode_device_expert_table_validate(
+            &mut miss,
+            &lease,
+            &missing_indices,
+            &missing_slots,
+            &missing_mask,
+            2,
+            HIDDEN,
+            INTERMEDIATE,
+            DEVICE_EXPERT_TENSOR_KIND_PQ,
+        )
+        .expect("validate resident miss");
+        encode_device_expert_table_pq_matvec(
+            &mut miss,
+            &lease,
+            &missing_indices,
+            &missing_slots,
+            &missing_mask,
+            2,
+            0,
+            0,
+            &x,
+            INTERMEDIATE,
+            HIDDEN,
+            &missing_y,
+        )
+        .expect("suppressed missing projection");
+        miss.commit_and_wait().expect("resident-miss command");
+        assert_eq!(read_u32(&missing_mask, 1), vec![1]);
+        let after_bits: Vec<u32> = read_f32(&missing_y, INTERMEDIATE)
+            .iter()
+            .map(|value| value.to_bits())
+            .collect();
+        assert_eq!(
+            after_bits, before_bits,
+            "a table miss must not mutate the projection destination"
+        );
     }
 
     #[test]

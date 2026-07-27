@@ -3,31 +3,39 @@
 Generated from live evidence by `tools/campaign/parallel_status.py`. Do not hand-edit.
 Ownership and the DAG are hand-authored architecture and are read, never written, by this tool.
 
-    at:       2026-07-27T01:58:19Z
+    at:       2026-07-27T02:17:19Z
     endpoint: RAMANUJAN_SANDBOX_READY (not reached)
-    width:    1/6 lanes running
+    width:    0/6 lanes running
     fences:   ODYSSEY_LAUNCH_AUTHORIZED=False RAMANUJAN_RESEARCH_AUTHORIZED=False HIDE_KERNEL_TURN=False
 
 ## Running
 
-- `L01` hide-archaeology-v2 (grok) -- outputs missing: HIDE_ARCHAEOLOGY_V2.md, HIDE_ARCHAEOLOGY_V2.json
+- none
 
 ## Finished, awaiting controller review
 
-- `L02` hide-memory-six (grok) -- DECLARED RUNNING BUT EVIDENCE FINISHED_AWAITING_REVIEW
-- `L03` odyssey-t0 (grok) -- outputs missing: ODYSSEY_T0_RECEIPT.json, ODYSSEY_CONTRACT_CLOSURE.json, ODYSSEY_FEASIBILITY.json -- DECLARED RUNNING BUT EVIDENCE FINISHED_OUTPUTS_MISSING
-- `L04` fabric-software (grok) -- DECLARED RUNNING BUT EVIDENCE FINISHED_AWAITING_REVIEW
-- `L05` bridge-events-adapters (grok) -- DECLARED RUNNING BUT EVIDENCE FINISHED_AWAITING_REVIEW
-- `L06` consolidation-inventory (grok) -- DECLARED RUNNING BUT EVIDENCE FINISHED_AWAITING_REVIEW
+- `L21` gravity-degenerate-attribution (grok) -- outputs missing: GRAVITY_DEGENERATE_ATTRIBUTION.json -- DECLARED QUEUED_SLOTS_TAKEN BUT EVIDENCE FINISHED_OUTPUTS_MISSING
+
+## Integrated by the controller
+
+- `L01` hide-archaeology-v2 (grok)
+- `L02` hide-memory-six (grok)
+- `L03` odyssey-t0 (grok)
+- `L04` fabric-software (grok)
+- `L05` bridge-events-adapters (grok)
+- `L06` consolidation-inventory (grok)
+- `L18` gravity-serve (grok)
+- `L07` speculation-safety (grok)
+- `L19` odyssey-data (grok)
+- `L20` memory-writers (grok)
 
 ## Queued
 
-- `L07` speculation-safety (grok)
+- `L08` hide-os-wiring (grok)
 - `L09` ramanujan-migration-prep (claude)
 
 ## Blocked (real data dependencies, see the DAG)
 
-- `L08` hide-os-wiring (grok)
 - `L10` odyssey-t1-t7 (unassigned)
 - `L11` math-frozen (unassigned)
 - `L12` consolidation-execute (unassigned)
@@ -45,8 +53,8 @@ Ownership and the DAG are hand-authored architecture and are read, never written
 
 ## Next action
 
-    review L02 (hide-memory-six) -- a report is a claim; re-derive before merging
+    review L21 (gravity-degenerate-attribution) -- a report is a claim; re-derive before merging
 
 ```bash
-cat /Users/scammermike/.claude-grok/tasks/hide-memory-six-20260726-213344/grok-report.md
+# no report file
 ```

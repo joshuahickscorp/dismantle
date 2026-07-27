@@ -945,6 +945,19 @@ pub fn gpu_expert_wave_enabled() -> bool {
     crate::env_on(GPU_EXPERT_WAVE_ENV)
 }
 
+/// Opt-in concurrent projection groups inside [`GPU_EXPERT_WAVE_ENV`].
+///
+/// Gate/up dispatches write disjoint expert scratch and may overlap. After the
+/// dependent SiLU stage, down projections likewise write disjoint buffers and
+/// may overlap. Weighted combine remains ordered. This flag has no effect
+/// unless the parent expert-wave flag is also on.
+pub const GPU_EXPERT_WAVE_CONCURRENT_ENV: &str = "HAWKING_GLM_GPU_EXPERT_WAVE_CONCURRENT";
+
+/// Whether the collapsed expert wave should use concurrent projection groups.
+pub fn gpu_expert_wave_concurrent_enabled() -> bool {
+    gpu_expert_wave_enabled() && crate::env_on(GPU_EXPERT_WAVE_CONCURRENT_ENV)
+}
+
 /// Static `commit_and_wait` count on the host-state GPU path (default).
 /// Matches the measured ~1,171 figure on the flagship schedule.
 pub fn estimate_host_state_waits_per_token(arch: &GlmArch) -> u64 {
@@ -2769,6 +2782,32 @@ mod tests {
         match prev {
             Some(v) => std::env::set_var(GPU_EXPERT_WAVE_ENV, v),
             None => std::env::remove_var(GPU_EXPERT_WAVE_ENV),
+        }
+    }
+
+    /// Concurrent projection groups are independently opt-in and cannot
+    /// escape the parent expert-wave gate.
+    #[test]
+    fn gpu_expert_wave_concurrent_flag_defaults_off_and_requires_wave() {
+        let prev_wave = std::env::var_os(GPU_EXPERT_WAVE_ENV);
+        let prev_concurrent = std::env::var_os(GPU_EXPERT_WAVE_CONCURRENT_ENV);
+        std::env::remove_var(GPU_EXPERT_WAVE_ENV);
+        std::env::remove_var(GPU_EXPERT_WAVE_CONCURRENT_ENV);
+        assert!(!gpu_expert_wave_concurrent_enabled());
+        std::env::set_var(GPU_EXPERT_WAVE_CONCURRENT_ENV, "1");
+        assert!(
+            !gpu_expert_wave_concurrent_enabled(),
+            "concurrency cannot enable the expert-wave runtime by itself"
+        );
+        std::env::set_var(GPU_EXPERT_WAVE_ENV, "1");
+        assert!(gpu_expert_wave_concurrent_enabled());
+        match prev_wave {
+            Some(v) => std::env::set_var(GPU_EXPERT_WAVE_ENV, v),
+            None => std::env::remove_var(GPU_EXPERT_WAVE_ENV),
+        }
+        match prev_concurrent {
+            Some(v) => std::env::set_var(GPU_EXPERT_WAVE_CONCURRENT_ENV, v),
+            None => std::env::remove_var(GPU_EXPERT_WAVE_CONCURRENT_ENV),
         }
     }
 

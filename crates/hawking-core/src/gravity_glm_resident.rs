@@ -28,7 +28,10 @@
 //! **Expert-wave** (`HAWKING_GLM_GPU_EXPERT_WAVE=1`, default off): opt-in collapse
 //! of each MLP layer to one command buffer (`gate + up → SiLU → down` and MoE
 //! weighted combine). The default three-`matvec_batch` path is unchanged when
-//! the flag is unset (Parity V2.1 item 6).
+//! the flag is unset (Parity V2.1 item 6). The additional default-off
+//! `HAWKING_GLM_GPU_EXPERT_WAVE_CONCURRENT=1` groups independent gate/up and
+//! down projections in concurrent Metal encoders while preserving dependency
+//! boundaries and ordered weighted combine.
 //!
 //! **Compact MLA** (`HAWKING_GLM_GPU_COMPACT_MLA=1`, default off): replaces
 //! persistent expanded per-head K/V with normalized MLA latent + shared RoPE
@@ -53,9 +56,9 @@ use crate::gravity_glm::gpu::{
     record_routed_tensor_representation, GpuTensor, GpuWeightCache,
 };
 use crate::gravity_glm::{
-    gpu_compact_mla_enabled, gpu_device_router_enabled, gpu_expert_wave_enabled,
-    gpu_lm_head_enabled, gpu_lm_head_full_logits_enabled, rope_cos_sin, rope_interleaved,
-    topk_desc, GlmArch, GlmTrace, WeightAccess, GPU_LM_HEAD_DIAG_TOPK,
+    gpu_compact_mla_enabled, gpu_device_router_enabled, gpu_expert_wave_concurrent_enabled,
+    gpu_expert_wave_enabled, gpu_lm_head_enabled, gpu_lm_head_full_logits_enabled, rope_cos_sin,
+    rope_interleaved, topk_desc, GlmArch, GlmTrace, WeightAccess, GPU_LM_HEAD_DIAG_TOPK,
     RESIDENT_RUNTIME_INITIAL_KV_CAPACITY_TOKENS,
 };
 use crate::metal::{MetalContext, TokenCommandBuffer};
@@ -5054,6 +5057,10 @@ fn moe_device_wave<'a>(
     // `Vec`: this candidate changes resource lifetime, not dispatch shape.
     zero_f32(&scratch.combined, x_len)?;
     let mut wave = TokenCommandBuffer::new(ctx);
+    let concurrent_projections = gpu_expert_wave_concurrent_enabled();
+    if concurrent_projections {
+        wave.begin_concurrent_group()?;
+    }
     for (i, p) in prefixes.iter().enumerate() {
         encode_weight_matvec(
             &mut wave,
@@ -5072,6 +5079,9 @@ fn moe_device_wave<'a>(
             &scratch.up[i],
         )?;
     }
+    if concurrent_projections {
+        wave.end_concurrent_group()?;
+    }
     for i in 0..n_exp {
         encode_silu_mul_f32(
             &mut wave,
@@ -5080,6 +5090,9 @@ fn moe_device_wave<'a>(
             &scratch.act[i],
             inter as u32,
         )?;
+    }
+    if concurrent_projections {
+        wave.begin_concurrent_group()?;
     }
     for (i, p) in prefixes.iter().enumerate() {
         encode_weight_matvec(
@@ -5090,6 +5103,9 @@ fn moe_device_wave<'a>(
             inter,
             &scratch.down[i],
         )?;
+    }
+    if concurrent_projections {
+        wave.end_concurrent_group()?;
     }
     // Weighted combine in prefix order (associativity matches host).
     for i in 0..n_exp {

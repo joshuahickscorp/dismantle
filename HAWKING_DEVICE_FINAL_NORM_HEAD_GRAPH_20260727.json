@@ -118,6 +118,22 @@
     "gate_changed": false,
     "interpretation": "This is an inherited sequential-f32 accumulation limitation, not a regression from final RMSNorm. It blocks a production-native-head parity promotion even though the new bounded complete-token final graph passes."
   },
+  "flagged_native_complete_token_observation": {
+    "fixture": "crates/hawking-core/tests/fixtures/gravity_glm",
+    "flags": [
+      "HAWKING_GLM_GPU_RESIDENT_STATE=1",
+      "HAWKING_GLM_GPU_LM_HEAD=1",
+      "HAWKING_GLM_GPU_LM_HEAD_FULL_LOGITS=1"
+    ],
+    "greedy_exact": true,
+    "top5_exact": true,
+    "dsa_selection_exact": true,
+    "expert_selection_exact": true,
+    "full_logits_bit_identical_to_host_rmsnorm": false,
+    "fp64_complete_token_authority_available": false,
+    "result": "UNQUALIFIED",
+    "interpretation": "Moving final RMSNorm from host arithmetic to Metal changes continuous logits on the native-heavy fixture. Exact decisions survive, but without a native-bf16 FP64 complete-token authority this flagged production path cannot be promoted."
+  },
   "validation": {
     "sparse_complete_token": {
       "command": "HAWKING_GLM_COMPACT_FIXTURE_DIR=$SPARSE_FIXTURE cargo test -p hawking-core --test gravity_glm_compact_mla_live_parity -- --nocapture --test-threads=1",

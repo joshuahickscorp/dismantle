@@ -827,6 +827,7 @@ mod imp {
         queue: CommandQueue,
         library: Library,
         pipelines: Mutex<HashMap<String, ComputePipelineState>>,
+        icb_pipelines: Mutex<HashMap<String, ComputePipelineState>>,
     }
 
     /// Resolve a runtime kernel name to a `&'static str` for zero-alloc
@@ -1165,6 +1166,7 @@ mod imp {
                     queue,
                     library,
                     pipelines: Mutex::new(HashMap::new()),
+                    icb_pipelines: Mutex::new(HashMap::new()),
                 }),
                 trace: Arc::new(DispatchTrace::new()),
                 stats: Arc::new(MetalContextStats::new()),
@@ -1228,6 +1230,35 @@ mod imp {
                 .map_err(|e| Error::Metal(format!("pipeline `{fn_name}`: {e}")))?;
             pipes.insert(fn_name.to_string(), p.clone());
             Ok(p)
+        }
+
+        /// Resolve an ICB-capable pipeline. Metal requires
+        /// `supportIndirectCommandBuffers=true` at pipeline construction;
+        /// ordinary cached pipelines cannot be retrofitted after creation.
+        fn icb_pipeline(&self, fn_name: &str) -> Result<ComputePipelineState> {
+            let mut pipes = self.inner.icb_pipelines.lock();
+            if let Some(pipeline) = pipes.get(fn_name) {
+                return Ok(pipeline.clone());
+            }
+            let function = self
+                .inner
+                .library
+                .get_function(fn_name, None)
+                .map_err(|e| Error::Metal(format!("kernel `{fn_name}` not found: {e}")))?;
+            let descriptor = ComputePipelineDescriptor::new();
+            descriptor.set_compute_function(Some(&function));
+            descriptor.set_support_indirect_command_buffers(true);
+            let pipeline = self
+                .inner
+                .device
+                .new_compute_pipeline_state(&descriptor)
+                .map_err(|e| {
+                    Error::Metal(format!(
+                        "ICB-capable pipeline `{fn_name}` could not be created: {e}"
+                    ))
+                })?;
+            pipes.insert(fn_name.to_owned(), pipeline.clone());
+            Ok(pipeline)
         }
 
         /// Shared (CPU+GPU readable) buffer of the given byte size.
@@ -1570,6 +1601,37 @@ mod imp {
         }
     }
 
+    /// A captured resource referenced indirectly (for example by a GPU address
+    /// stored in a descriptor table) rather than through a kernel buffer slot.
+    #[derive(Clone)]
+    pub struct ReplayResourceDeclaration {
+        buffer: Buffer,
+        usage: MTLResourceUsage,
+    }
+
+    impl ReplayResourceDeclaration {
+        pub fn read(buffer: &Buffer) -> Self {
+            Self {
+                buffer: buffer.clone(),
+                usage: MTLResourceUsage::Read,
+            }
+        }
+
+        pub fn write(buffer: &Buffer) -> Self {
+            Self {
+                buffer: buffer.clone(),
+                usage: MTLResourceUsage::Write,
+            }
+        }
+
+        pub fn read_write(buffer: &Buffer) -> Self {
+            Self {
+                buffer: buffer.clone(),
+                usage: MTLResourceUsage::Read | MTLResourceUsage::Write,
+            }
+        }
+    }
+
     /// One pre-encoded compute dispatch in a [`ReplayableComputeGraph`].
     ///
     /// `barrier_before` makes this command wait for all preceding commands in
@@ -1630,13 +1692,25 @@ mod imp {
         /// resolution happens before the ICB is allocated, so invalid graphs
         /// fail closed without creating a partially encoded replay object.
         pub fn new(ctx: &MetalContext, stages: Vec<ReplayComputeStage>) -> Result<Self> {
+            Self::new_with_resources(ctx, stages, Vec::new())
+        }
+
+        /// As [`Self::new`], plus resources reached through captured GPU
+        /// addresses rather than direct kernel buffer bindings.
+        pub fn new_with_resources(
+            ctx: &MetalContext,
+            stages: Vec<ReplayComputeStage>,
+            indirect_resources: Vec<ReplayResourceDeclaration>,
+        ) -> Result<Self> {
             if stages.is_empty() {
                 return Err(Error::Metal(
                     "replayable compute graph requires at least one stage".into(),
                 ));
             }
 
-            let mut pipelines = Vec::with_capacity(stages.len());
+            let mut pipelines = Vec::new();
+            let mut pipeline_slots = HashMap::<String, usize>::new();
+            let mut stage_pipeline_slots = Vec::with_capacity(stages.len());
             let mut max_bind_count = 0usize;
             for (stage_index, stage) in stages.iter().enumerate() {
                 if stage.kernel.is_empty() {
@@ -1706,26 +1780,16 @@ mod imp {
                     max_bind_count = max_bind_count.max(binding.index + 1);
                 }
 
-                let function = ctx
-                    .inner
-                    .library
-                    .get_function(&stage.kernel, None)
-                    .map_err(|e| {
-                        Error::Metal(format!("kernel `{}` not found: {e}", stage.kernel))
-                    })?;
-                let pipeline_descriptor = ComputePipelineDescriptor::new();
-                pipeline_descriptor.set_compute_function(Some(&function));
-                pipeline_descriptor.set_support_indirect_command_buffers(true);
-                let pipeline = ctx
-                    .inner
-                    .device
-                    .new_compute_pipeline_state(&pipeline_descriptor)
-                    .map_err(|e| {
-                        Error::Metal(format!(
-                            "ICB-capable pipeline `{}` could not be created: {e}",
-                            stage.kernel
-                        ))
-                    })?;
+                let pipeline_slot = if let Some(&slot) = pipeline_slots.get(&stage.kernel) {
+                    slot
+                } else {
+                    let pipeline = ctx.icb_pipeline(&stage.kernel)?;
+                    let slot = pipelines.len();
+                    pipeline_slots.insert(stage.kernel.clone(), slot);
+                    pipelines.push(pipeline);
+                    slot
+                };
+                let pipeline = &pipelines[pipeline_slot];
                 let threads = (stage.threadgroup.0 as usize)
                     .checked_mul(stage.threadgroup.1 as usize)
                     .and_then(|n| n.checked_mul(stage.threadgroup.2 as usize))
@@ -1744,7 +1808,7 @@ mod imp {
                         pipeline.max_total_threads_per_threadgroup()
                     )));
                 }
-                pipelines.push(pipeline);
+                stage_pipeline_slots.push(pipeline_slot);
             }
 
             let descriptor = IndirectCommandBufferDescriptor::new();
@@ -1764,9 +1828,32 @@ mod imp {
 
             let mut resources: Vec<ReplayResource> = Vec::new();
             let mut resource_slots = HashMap::<u64, usize>::new();
-            for (command_index, (stage, pipeline)) in
-                stages.iter().zip(pipelines.iter()).enumerate()
-            {
+            let declare_resource =
+                |buffer: &Buffer,
+                 usage: MTLResourceUsage,
+                 resources: &mut Vec<ReplayResource>,
+                 resource_slots: &mut HashMap<u64, usize>| {
+                    let address = buffer.gpu_address();
+                    if let Some(&resource_index) = resource_slots.get(&address) {
+                        resources[resource_index].usage |= usage;
+                    } else {
+                        resource_slots.insert(address, resources.len());
+                        resources.push(ReplayResource {
+                            buffer: buffer.clone(),
+                            usage,
+                        });
+                    }
+                };
+            for declaration in &indirect_resources {
+                declare_resource(
+                    &declaration.buffer,
+                    declaration.usage,
+                    &mut resources,
+                    &mut resource_slots,
+                );
+            }
+            for (command_index, stage) in stages.iter().enumerate() {
+                let pipeline = &pipelines[stage_pipeline_slots[command_index]];
                 let command = icb.indirect_compute_command_at_index(command_index as u64);
                 command.set_compute_pipeline_state(pipeline);
                 for binding in &stage.bindings {
@@ -1775,16 +1862,12 @@ mod imp {
                         Some(&binding.buffer),
                         binding.offset as u64,
                     );
-                    let address = binding.buffer.gpu_address();
-                    if let Some(&resource_index) = resource_slots.get(&address) {
-                        resources[resource_index].usage |= binding.usage;
-                    } else {
-                        resource_slots.insert(address, resources.len());
-                        resources.push(ReplayResource {
-                            buffer: binding.buffer.clone(),
-                            usage: binding.usage,
-                        });
-                    }
+                    declare_resource(
+                        &binding.buffer,
+                        binding.usage,
+                        &mut resources,
+                        &mut resource_slots,
+                    );
                 }
                 if stage.barrier_before {
                     command.set_barrier();
@@ -2784,7 +2867,10 @@ mod imp {
 pub use imp::{MetalContext, PinnedBuffer, TokenCommandBuffer};
 
 #[cfg(target_os = "macos")]
-pub use imp::{CommandBatch, ReplayBufferBinding, ReplayComputeStage, ReplayableComputeGraph};
+pub use imp::{
+    CommandBatch, ReplayBufferBinding, ReplayComputeStage, ReplayResourceDeclaration,
+    ReplayableComputeGraph,
+};
 
 pub mod argbuf;
 pub use argbuf::{ArgLayout, KernelArgBuffer};

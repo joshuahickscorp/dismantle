@@ -608,6 +608,88 @@ fn encode_device_expert_table_pq_matvec(
     )
 }
 
+#[allow(clippy::too_many_arguments)]
+#[allow(dead_code)]
+fn encode_device_expert_table_native_bf16_matvec(
+    tcb: &mut TokenCommandBuffer<'_>,
+    lease: &DeviceExpertTableLease,
+    expert_indices: &Buffer,
+    expert_exec_slots: &Buffer,
+    miss_mask: &Buffer,
+    experts_per_token: usize,
+    execution_position: usize,
+    projection: u32,
+    x: &Buffer,
+    rows: usize,
+    cols: usize,
+    y: &Buffer,
+) -> Result<()> {
+    if execution_position >= experts_per_token || projection > 2 {
+        return Err(Error::Gravity(format!(
+            "invalid native device expert table matvec position/projection: position \
+             {execution_position}/{experts_per_token}, projection {projection}"
+        )));
+    }
+    let x_bytes = cols
+        .checked_mul(std::mem::size_of::<f32>())
+        .ok_or_else(|| Error::Gravity("native device expert matvec input byte overflow".into()))?
+        as u64;
+    let y_bytes = rows
+        .checked_mul(std::mem::size_of::<f32>())
+        .ok_or_else(|| Error::Gravity("native device expert matvec output byte overflow".into()))?
+        as u64;
+    if x.length() < x_bytes || y.length() < y_bytes {
+        return Err(Error::Gravity(format!(
+            "native device expert table matvec buffer too small: x={}/{} B y={}/{} B",
+            x.length(),
+            x_bytes,
+            y.length(),
+            y_bytes
+        )));
+    }
+    let params = DeviceExpertTableMatvecParams {
+        n_experts: lease.n_experts as u32,
+        experts_per_token: experts_per_token as u32,
+        generation: lease.generation,
+        execution_position: execution_position as u32,
+        projection,
+        rows: rows as u32,
+        cols: cols as u32,
+    };
+    let indices = expert_indices.clone();
+    let slots = expert_exec_slots.clone();
+    let table = lease.table.clone();
+    let miss = miss_mask.clone();
+    let xb = x.clone();
+    let yb = y.clone();
+    let resources = lease.resources.clone();
+    const TG: u32 = 256;
+    let grid = (rows as u32).div_ceil(TG) * TG;
+    tcb.dispatch_threads(
+        "gravity_glm_expert_table_native_bf16_matvec",
+        (grid, 1, 1),
+        (TG, 1, 1),
+        move |enc| {
+            enc.set_buffer(0, Some(&indices), 0);
+            enc.set_buffer(1, Some(&slots), 0);
+            enc.set_buffer(2, Some(&table), 0);
+            enc.set_buffer(3, Some(&miss), 0);
+            enc.set_buffer(4, Some(&xb), 0);
+            enc.set_buffer(5, Some(&yb), 0);
+            enc.set_bytes(
+                6,
+                std::mem::size_of_val(&params) as u64,
+                &params as *const _ as *const _,
+            );
+            let mut refs: Vec<&metal::ResourceRef> = Vec::with_capacity(resources.len());
+            for resource in &resources {
+                refs.push(resource);
+            }
+            enc.use_resources(&refs, MTLResourceUsage::Read);
+        },
+    )
+}
+
 fn require_f32_elements(buffer: &Buffer, elements: usize, label: &str) -> Result<()> {
     let bytes = elements
         .checked_mul(std::mem::size_of::<f32>())
@@ -6801,6 +6883,36 @@ mod tests {
         )
     }
 
+    fn native_bf16_tensor(
+        ctx: &MetalContext,
+        rows: usize,
+        cols: usize,
+        salt: usize,
+    ) -> (GpuTensor, Vec<f32>) {
+        let bits: Vec<u16> = (0..rows * cols)
+            .map(|flat| {
+                let positive = ((flat * 13 + salt * 17 + flat / cols * 5) % 63) + 1;
+                let value = positive as f32 * (1.0 / 64.0);
+                (value.to_bits() >> 16) as u16
+            })
+            .collect();
+        let dense: Vec<f32> = bits
+            .iter()
+            .map(|&value| f32::from_bits((value as u32) << 16))
+            .collect();
+        let buf = ctx
+            .new_buffer_with_bytes_checked(bytemuck::cast_slice(&bits))
+            .expect("native-bf16 weights");
+        (
+            GpuTensor::NativeGpuBf16 {
+                buf,
+                rows: rows as u32,
+                cols: cols as u32,
+            },
+            dense,
+        )
+    }
+
     fn gpu_tensor_bytes(tensor: &GpuTensor) -> u64 {
         match tensor {
             GpuTensor::Pq {
@@ -7220,6 +7332,156 @@ mod tests {
                 .map(|value| value.to_bits())
                 .collect::<Vec<_>>(),
             "an invalid packed descriptor must not mutate the destination"
+        );
+    }
+
+    #[test]
+    fn device_expert_table_native_bf16_is_exact_and_invalid_descriptor_fails_closed() {
+        let Ok(ctx) = MetalContext::new() else {
+            return;
+        };
+        const HIDDEN: usize = 31;
+        const INTERMEDIATE: usize = 23;
+        const GENERATION: u32 = 17;
+
+        let (gate, gate_dense) = native_bf16_tensor(&ctx, INTERMEDIATE, HIDDEN, 1);
+        let (up, _) = native_bf16_tensor(&ctx, INTERMEDIATE, HIDDEN, 2);
+        let (down, _) = native_bf16_tensor(&ctx, HIDDEN, INTERMEDIATE, 3);
+        let lease = build_single_device_expert_snapshot(&ctx, &gate, &up, &down, GENERATION)
+            .expect("native-bf16 immutable expert table");
+        assert_eq!(lease.ready_entries, 1);
+        assert_eq!(lease.resources.len(), 3);
+
+        let expert_indices = u32_buffer(&ctx, &[0]);
+        let execution_slots = u32_buffer(&ctx, &[0]);
+        let miss_mask = u32_buffer(&ctx, &[u32::MAX]);
+        let x_values: Vec<f32> = deterministic_fixture_f32(0xBF16_2026, HIDDEN, 0.25)
+            .into_iter()
+            .map(|value| value.abs() + 0.03125)
+            .collect();
+        let x = f32_buffer(&ctx, &x_values);
+        let y = filled_f32_buffer(&ctx, INTERMEDIATE, -8_192.0);
+        let mut hit = TokenCommandBuffer::new(&ctx);
+        encode_device_expert_table_validate(
+            &mut hit,
+            &lease,
+            &expert_indices,
+            &execution_slots,
+            &miss_mask,
+            1,
+            HIDDEN,
+            INTERMEDIATE,
+            DEVICE_EXPERT_TENSOR_KIND_NATIVE_BF16,
+        )
+        .expect("validate native-bf16 hit");
+        encode_device_expert_table_native_bf16_matvec(
+            &mut hit,
+            &lease,
+            &expert_indices,
+            &execution_slots,
+            &miss_mask,
+            1,
+            0,
+            0,
+            &x,
+            INTERMEDIATE,
+            HIDDEN,
+            &y,
+        )
+        .expect("native-bf16 indirect gate");
+        hit.commit_and_wait().expect("native-bf16 command");
+        assert_eq!(read_u32(&miss_mask, 1), vec![0]);
+
+        let host = matvec_dense(&gate_dense, &x_values, "native-bf16 host")
+            .expect("native-bf16 host comparator");
+        let authority: Vec<f64> = gate_dense
+            .chunks_exact(HIDDEN)
+            .map(|row| {
+                row.iter()
+                    .zip(&x_values)
+                    .map(|(&weight, &activation)| weight as f64 * activation as f64)
+                    .sum()
+            })
+            .collect();
+        let device = read_f32(&y, INTERMEDIATE);
+        assert_eq!(
+            device
+                .iter()
+                .map(|value| value.to_bits())
+                .collect::<Vec<_>>(),
+            host.iter().map(|value| value.to_bits()).collect::<Vec<_>>(),
+            "native-bf16 indirect projection must match sequential host bits"
+        );
+        let score = score_pair(&host, &device, &authority, &Bounds::continuous_only());
+        eprintln!(
+            "device expert table native-bf16 gate: rel_l2={:.3e} meaningful={:.3e} \
+             greedy={} top5={}",
+            score.device.continuous.relative_l2,
+            score.device.continuous.max_meaningful_rel,
+            score.device.discrete.greedy_match,
+            score.device.discrete.top_k_exact_match
+        );
+        assert!(
+            score.pass,
+            "native-bf16 indirect gate failed V2.1: host={:?}, device={:?}",
+            score.host.failures, score.device.failures
+        );
+
+        // Native descriptors may not carry a secondary pointer. Validation
+        // must set the miss bit before the projection and preserve the
+        // destination bit-for-bit.
+        let invalid_table = unsafe {
+            std::slice::from_raw_parts_mut(
+                lease.table.contents() as *mut DeviceExpertTriplet,
+                lease.n_experts,
+            )
+        };
+        invalid_table[0].gate.secondary_address = 1;
+        let invalid_mask = u32_buffer(&ctx, &[u32::MAX]);
+        let sentinel: Vec<f32> = (0..INTERMEDIATE)
+            .map(|index| 4_000.0 + index as f32)
+            .collect();
+        let invalid_y = f32_buffer(&ctx, &sentinel);
+        let mut invalid = TokenCommandBuffer::new(&ctx);
+        encode_device_expert_table_validate(
+            &mut invalid,
+            &lease,
+            &expert_indices,
+            &execution_slots,
+            &invalid_mask,
+            1,
+            HIDDEN,
+            INTERMEDIATE,
+            DEVICE_EXPERT_TENSOR_KIND_NATIVE_BF16,
+        )
+        .expect("validate invalid native descriptor");
+        encode_device_expert_table_native_bf16_matvec(
+            &mut invalid,
+            &lease,
+            &expert_indices,
+            &execution_slots,
+            &invalid_mask,
+            1,
+            0,
+            0,
+            &x,
+            INTERMEDIATE,
+            HIDDEN,
+            &invalid_y,
+        )
+        .expect("suppressed invalid native projection");
+        invalid.commit_and_wait().expect("invalid native command");
+        assert_eq!(read_u32(&invalid_mask, 1), vec![1]);
+        assert_eq!(
+            read_f32(&invalid_y, INTERMEDIATE)
+                .iter()
+                .map(|value| value.to_bits())
+                .collect::<Vec<_>>(),
+            sentinel
+                .iter()
+                .map(|value| value.to_bits())
+                .collect::<Vec<_>>(),
+            "an invalid native descriptor must not mutate the destination"
         );
     }
 

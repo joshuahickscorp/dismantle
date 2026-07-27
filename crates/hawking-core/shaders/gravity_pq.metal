@@ -1590,6 +1590,72 @@ kernel void gravity_glm_expert_table_pq_matvec(
     }
 }
 
+// Native-BF16 indirect counterpart. `matmul.metal` precedes this source in the
+// single Metal translation unit and establishes contract(off) for the
+// qualified sequential path. Reassert it here so the multiply and add remain
+// separate even if source ordering changes.
+#pragma clang fp contract(off)
+kernel void gravity_glm_expert_table_native_bf16_matvec(
+    const device uint *expert_indices [[buffer(0)]],
+    const device uint *expert_exec_slots [[buffer(1)]],
+    const device GravityDeviceExpertTriplet *table [[buffer(2)]],
+    device atomic_uint *miss_mask [[buffer(3)]],
+    const device float *x [[buffer(4)]],
+    device float *y [[buffer(5)]],
+    constant GravityDeviceExpertMatvecParams &p [[buffer(6)]],
+    uint row [[thread_position_in_grid]])
+{
+    if (atomic_load_explicit(miss_mask, memory_order_relaxed) != 0u) {
+        return;
+    }
+    if (p.execution_position >= p.experts_per_token) {
+        return;
+    }
+    uint slot = expert_exec_slots[p.execution_position];
+    if (slot >= p.experts_per_token) {
+        return;
+    }
+    uint expert = expert_indices[slot];
+    if (expert >= p.n_experts) {
+        return;
+    }
+    const device GravityDeviceExpertTriplet &entry = table[expert];
+    const device GravityDeviceExpertTensorRef *tensor =
+        p.projection == 0u ? &entry.gate :
+        (p.projection == 1u ? &entry.up : &entry.down);
+    bool valid =
+        p.projection <= 2u &&
+        entry.ready_mask == GRAVITY_EXPERT_TRIPLET_READY &&
+        entry.generation == p.generation &&
+        gravity_device_expert_tensor_valid(
+            *tensor, p.generation, GRAVITY_EXPERT_KIND_NATIVE_BF16) &&
+        tensor->rows == p.rows &&
+        tensor->cols == p.cols;
+    if (!valid) {
+        if (row == 0u) {
+            atomic_fetch_or_explicit(
+                miss_mask, 1u << p.execution_position, memory_order_relaxed);
+        }
+        return;
+    }
+    if (row >= tensor->rows) {
+        return;
+    }
+
+    const device ushort *weight_bits =
+        reinterpret_cast<const device ushort *>(tensor->primary);
+    const device ushort *row_bits =
+        weight_bits + ulong(row) * ulong(tensor->cols);
+    float acc = 0.0f;
+    for (uint col = 0u; col < tensor->cols; ++col) {
+        uint wide_bits = uint(row_bits[col]) << 16;
+        float weight = as_type<float>(wide_bits);
+        float product = weight * x[col];
+        acc = acc + product;
+    }
+    y[row] = acc;
+}
+
 struct GravityDeviceExpertAxpyParams {
     uint n;
     uint experts_per_token;

@@ -875,8 +875,8 @@ pub fn gpu_device_dsa_enabled() -> bool {
 /// Opt-in replay of compact MLA's fixed-grid attention subgraphs.
 ///
 /// Requires compact MLA plus device DSA. The full-indexer pre-score transforms
-/// and the five-dispatch post-rank DAG are captured per layer. Exact
-/// active-length DSA scoring and radix selection remain direct. Default off.
+/// and fixed-grid post-score DAG are captured per layer. Exact active-length
+/// DSA scoring remains direct. Default off.
 pub const GPU_COMPACT_ATTENTION_ICB_ENV: &str = "HAWKING_GLM_GPU_COMPACT_ATTENTION_ICB";
 
 /// Whether compact MLA's fixed-grid attention subgraphs should use Metal ICB replay.

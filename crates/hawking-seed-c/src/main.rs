@@ -199,7 +199,6 @@ fn cmd_run() -> i32 {
             Rate::new(4, 5),
             &Ask::AdmitRate {
                 to: Rate::new(4, 5),
-                tier: gravity::Tier::Gravity,
                 artifact_index_sha256: String::new(),
                 sealed_receipt: false,
             },

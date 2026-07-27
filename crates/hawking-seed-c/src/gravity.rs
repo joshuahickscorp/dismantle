@@ -7,10 +7,11 @@
 //! `Evidence` had no capability field at all. **Being small was being legal.**
 //!
 //! The law is now inverted. A rate is admissible only if the artifact AT THAT RATE is proven
-//! usable, and the search is for the lowest rate that still is. Two tiers:
-//!
-//!   Tier::Condense  no hard ceiling, prefers <= 3/2 BPW, must be usable with capability
-//!   Tier::Gravity   the lowest usable rate, whatever it turns out to be
+//! usable, and the search is for the lowest rate that still is. There is one law, not two modes:
+//! find the lowest BPW that keeps capability. Rates at or below
+//! [`SEALED_RECEIPT_ABOVE`] (3/2 BPW) need no sealed receipt once proven usable; strictly above
+//! that bound, admission is allowed only against a sealed receipt so a high-BPW artifact is a
+//! recorded decision rather than a drift nobody noticed.
 //!
 //! What did not change, because it is what kept the campaign honest: representation escalation
 //! precedes BPW escalation; Doctor bytes count inside the same physical budget; exact rational
@@ -54,24 +55,11 @@ impl Rate {
     }
 }
 
-/// Which ladder is being walked.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Tier {
-    /// Lowest usable rate that keeps capability. No hard ceiling; prefers 3/2 BPW or below.
-    Condense,
-    /// The lowest usable rate, full stop.
-    Gravity,
-}
-impl Tier {
-    /// A *preference*, not a wall. Exceeding it is allowed and must be receipted, so that a
-    /// high-BPW artifact is a recorded decision rather than a drift nobody noticed.
-    pub fn preferred_ceiling(&self) -> Option<Rate> {
-        match self {
-            Tier::Condense => Some(Rate::new(3, 2)),
-            Tier::Gravity => None,
-        }
-    }
-}
+/// Rates strictly above this BPW require a sealed receipt on admission.
+///
+/// Capability is still required at every rate; this only decides whether the admission must
+/// be receipted. At or below 3/2, a usable proof is enough. Above it, usable + sealed receipt.
+pub const SEALED_RECEIPT_ABOVE: Rate = Rate { num: 3, den: 2 };
 
 /// Proof that a specific artifact, at a specific rate, actually works.
 ///
@@ -101,9 +89,8 @@ pub enum Ask {
     /// there is no longer a magic boundary at one bit, so there is nothing to "escape".
     AdmitRate {
         to: Rate,
-        tier: Tier,
         artifact_index_sha256: String,
-        /// Required only to exceed the tier's preferred ceiling.
+        /// Required to exceed [`SEALED_RECEIPT_ABOVE`].
         sealed_receipt: bool,
     },
 }
@@ -134,7 +121,7 @@ pub fn decide(_current: Rate, ask: &Ask, ev: &Evidence) -> Decision {
             reason: "representation escalation precedes BPW escalation".into(),
             requires_receipt: false,
         },
-        Ask::AdmitRate { to, tier, artifact_index_sha256, sealed_receipt } => {
+        Ask::AdmitRate { to, artifact_index_sha256, sealed_receipt } => {
             if ev.representation_families_tried < 1 {
                 return Decision {
                     allow: false,
@@ -199,31 +186,32 @@ pub fn decide(_current: Rate, ask: &Ask, ev: &Evidence) -> Decision {
                     requires_receipt: true,
                 };
             }
-            match tier.preferred_ceiling() {
-                Some(ceiling) if !to.le(&ceiling) && !*sealed_receipt => Decision {
+            if !to.le(&SEALED_RECEIPT_ABOVE) && !*sealed_receipt {
+                Decision {
                     allow: false,
                     reason: format!(
-                        "{} exceeds the {:?} preferred ceiling of {}; allowed, but only against a sealed receipt",
+                        "{} exceeds {}; allowed, but only against a sealed receipt",
                         to.label(),
-                        tier,
-                        ceiling.label()
+                        SEALED_RECEIPT_ABOVE.label()
                     ),
                     requires_receipt: true,
-                },
-                Some(ceiling) if !to.le(&ceiling) => Decision {
+                }
+            } else if !to.le(&SEALED_RECEIPT_ABOVE) {
+                Decision {
                     allow: true,
                     reason: format!(
-                        "usable at {}, above the preferred {} and receipted",
+                        "usable at {}, above {} and receipted",
                         to.label(),
-                        ceiling.label()
+                        SEALED_RECEIPT_ABOVE.label()
                     ),
                     requires_receipt: true,
-                },
-                _ => Decision {
+                }
+            } else {
+                Decision {
                     allow: true,
                     reason: format!("usable at {}", to.label()),
                     requires_receipt: false,
-                },
+                }
             }
         }
     }
@@ -254,14 +242,6 @@ impl Ladder {
             .map(|r| r.rate)
             .reduce(|a, b| if b.lt(&a) { b } else { a })
     }
-    /// The lowest usable rate within a tier's preference, if the tier has one.
-    pub fn lowest_usable_for(&self, tier: Tier) -> Option<Rate> {
-        let lowest = self.lowest_usable()?;
-        match tier.preferred_ceiling() {
-            Some(c) if !lowest.le(&c) => None,
-            _ => Some(lowest),
-        }
-    }
 }
 
 /// Physical-byte conservation guard: Doctor bytes count inside the total budget.
@@ -291,8 +271,8 @@ mod tests {
     fn ev(cap: Option<CapabilityProof>) -> Evidence {
         Evidence { representation_families_tried: 2, capability: cap, ..Default::default() }
     }
-    fn admit(to: Rate, tier: Tier, sealed_receipt: bool) -> Ask {
-        Ask::AdmitRate { to, tier, artifact_index_sha256: H.into(), sealed_receipt }
+    fn admit(to: Rate, sealed_receipt: bool) -> Ask {
+        Ask::AdmitRate { to, artifact_index_sha256: H.into(), sealed_receipt }
     }
 
     /// The Math-Preserve case, which the old law allowed: deeply sub-bit, no capability.
@@ -300,7 +280,7 @@ mod tests {
     fn small_is_not_legal_without_capability() {
         let rate = Rate::new(9774, 10000);
         assert!(rate.is_subbit());
-        let d = decide(rate, &admit(rate, Tier::Gravity, false), &ev(None));
+        let d = decide(rate, &admit(rate, false), &ev(None));
         assert!(!d.allow, "sub-bit with no capability proof must be refused");
         assert!(d.reason.contains("Being small is not being usable"));
     }
@@ -308,7 +288,7 @@ mod tests {
     #[test]
     fn failing_g_math_is_refused_at_any_rate() {
         for rate in [Rate::new(1, 2), Rate::new(9774, 10000), Rate::new(3, 2)] {
-            let d = decide(rate, &admit(rate, Tier::Condense, true), &ev(Some(proof(rate, false, true))));
+            let d = decide(rate, &admit(rate, true), &ev(Some(proof(rate, false, true))));
             assert!(!d.allow);
             assert!(d.reason.contains("G_math"));
         }
@@ -319,7 +299,7 @@ mod tests {
     fn proof_does_not_inherit_to_another_rate_or_artifact() {
         let proven = Rate::new(6, 5);
         let cheaper = Rate::new(9, 10);
-        let d = decide(proven, &admit(cheaper, Tier::Gravity, false), &ev(Some(proof(proven, true, true))));
+        let d = decide(proven, &admit(cheaper, false), &ev(Some(proof(proven, true, true))));
         assert!(!d.allow);
         assert!(d.reason.contains("must be proven at that rate"));
 
@@ -333,7 +313,7 @@ mod tests {
             }),
             ..Default::default()
         };
-        assert!(!decide(proven, &admit(proven, Tier::Gravity, false), &other).allow);
+        assert!(!decide(proven, &admit(proven, false), &other).allow);
     }
 
     #[test]
@@ -341,30 +321,34 @@ mod tests {
         let rate = Rate::new(1, 2);
         let mut e = ev(Some(proof(rate, true, true)));
         e.f1_only = true;
-        assert!(!decide(rate, &admit(rate, Tier::Gravity, true), &e).allow);
+        assert!(!decide(rate, &admit(rate, true), &e).allow);
         let mut e = ev(Some(proof(rate, true, true)));
         e.scheduler_deferred = true;
-        assert!(!decide(rate, &admit(rate, Tier::Gravity, true), &e).allow);
+        assert!(!decide(rate, &admit(rate, true), &e).allow);
     }
 
     #[test]
-    fn condense_prefers_but_does_not_forbid_above_one_point_five() {
+    fn above_sealed_receipt_bound_requires_a_receipt() {
         let high = Rate::new(2, 1); // 2.0 BPW
         let e = ev(Some(proof(high, true, true)));
-        let d = decide(high, &admit(high, Tier::Condense, false), &e);
-        assert!(!d.allow, "above the preferred ceiling without a receipt");
+        let d = decide(high, &admit(high, false), &e);
+        assert!(!d.allow, "above SEALED_RECEIPT_ABOVE without a receipt");
         assert!(d.requires_receipt);
-        let d = decide(high, &admit(high, Tier::Condense, true), &e);
-        assert!(d.allow, "a preference is not a wall: receipted, it is admitted");
+        let d = decide(high, &admit(high, true), &e);
+        assert!(d.allow, "a bound is not a wall: receipted, it is admitted");
         assert!(d.requires_receipt);
-        // Gravity has no ceiling at all -- it takes the lowest usable, whatever it is.
-        assert!(decide(high, &admit(high, Tier::Gravity, false), &e).allow);
+        // Exactly at the bound needs no receipt.
+        let at = SEALED_RECEIPT_ABOVE;
+        let e = ev(Some(proof(at, true, true)));
+        let d = decide(at, &admit(at, false), &e);
+        assert!(d.allow);
+        assert!(!d.requires_receipt);
     }
 
     #[test]
     fn usable_sub_bit_is_admitted_without_a_receipt() {
         let rate = Rate::new(167, 1000);
-        let d = decide(rate, &admit(rate, Tier::Condense, false), &ev(Some(proof(rate, true, true))));
+        let d = decide(rate, &admit(rate, false), &ev(Some(proof(rate, true, true))));
         assert!(d.allow);
         assert!(!d.requires_receipt);
     }
@@ -376,25 +360,23 @@ mod tests {
         l.record(Rate::new(1, 1), true);
         l.record(Rate::new(1, 2), false); // built, measured, not usable
         assert_eq!(l.lowest_usable(), Some(Rate::new(1, 1)));
-        assert_eq!(l.lowest_usable_for(Tier::Condense), Some(Rate::new(1, 1)));
 
         // Nothing usable is a real answer and must stay None rather than round up.
         let mut none = Ladder::default();
         none.record(Rate::new(1, 2), false);
         assert_eq!(none.lowest_usable(), None);
 
-        // Lowest usable above the Condense preference is not silently returned as within it.
+        // A high lowest-usable is still reported; the receipt bound is enforced at admit time.
         let mut high = Ladder::default();
         high.record(Rate::new(2, 1), true);
         assert_eq!(high.lowest_usable(), Some(Rate::new(2, 1)));
-        assert_eq!(high.lowest_usable_for(Tier::Condense), None);
     }
 
     #[test]
     fn representation_precedes_bpw_and_doctor_budget() {
         let rate = Rate::new(9, 10);
         let e = Evidence { capability: Some(proof(rate, true, true)), ..Default::default() };
-        assert!(!decide(rate, &admit(rate, Tier::Gravity, false), &e).allow, "no family tried yet");
+        assert!(!decide(rate, &admit(rate, false), &e).allow, "no family tried yet");
         assert!(doctor_within_budget(500, 300, 0, 0.8, 1000).is_ok());
         assert!(doctor_within_budget(500, 400, 0, 0.8, 1000).is_err());
     }

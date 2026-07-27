@@ -14,6 +14,7 @@ pub mod fidelity;
 pub mod kv;
 pub mod manifest;
 pub mod memory;
+pub mod memory_classes;
 pub mod profiles;
 pub mod recall;
 pub mod rot;
@@ -39,6 +40,12 @@ pub use manifest::{
 pub use memory::{
     InMemoryMemoryStore, MemoryKind, MemoryQuery, MemoryRecord, MemoryStore, RankedMemory,
     ScoredMemory, SqliteMemoryStore,
+};
+pub use memory_classes::{
+    ClassBudgets, ClassCompileRetrieval, ClassMemoryDraft, ClassMemoryRecord, ClassProvenance,
+    ClassRetrievalSlice, ClassedMemorySystem, DynClassedMemory, EpisodicWriteCap, MemoryClass,
+    ProceduralWriteCap, ProjectWriteCap, TurnWriteCap, UserWriteCap, VerifierWriteCap,
+    WriteAuthority,
 };
 pub use profiles::{
     ContextProfile, EvictionChoice, KvPrecision, OrderingPolicy, PositionPolicy, SourceWeights,

@@ -80,7 +80,17 @@ DISK_FLOOR_BYTES = DISK_FLOOR_GIB * (1 << 30)
 DEFAULT_SHARD_BODY_BYTES = 5_370_000_000
 # Concurrent fetch depth. One HF stream tops out ~780 Mbit/s on 10G; a second stream
 # sustained ~760 alongside it. Default 4 aims at ~3 Gbit/s without unbounded residency.
+# 4 concurrent files is the measured knee: autotuned 1/4/8 = 1698/1984/2001 Mbit/s, so
+# 8 buys under 1% while costing 8 resident shard bodies. The ~2.0 Gbit/s path ceiling is
+# roughly 20% of the 10Gbase-T line, and a lone ~780 Mbit/s stream is what contention
+# looks like, not the cap.
 DEFAULT_FETCH_WORKERS = 4
+
+# Pack work is 3.5 s per shard against ~21 s of fetch, so this was never the bottleneck --
+# but it defaulted to 1 while fetch defaulted to 4, which left the compute side serialised
+# behind a parallel fetcher for no reason. Each worker pins one shard body in RAM, and RAM
+# is the binding constraint on this box, so 4 rather than the 28 cores available.
+DEFAULT_WORKERS = 4
 # Rank ladder measured in the pilot. Allocation picks one per tensor.
 DEFAULT_RANKS: tuple[int, ...] = (8, 16, 32, 64, 128, 256)
 # Deterministic everywhere: same inputs, same allocation, same bytes.
@@ -2173,14 +2183,16 @@ def main(argv: list[str] | None = None) -> int:
                     help="fetch missing shards via glm52_rehydrate_window (respects floor)")
     ap.add_argument("--evict", action="store_true",
                     help="delete each shard body after measure/pack")
-    ap.add_argument("--workers", type=int, default=1,
-                    help="parallel shard workers for measurement. Measured 24 s fetch + "
-                         "23 s work per shard on 1.2 of 28 cores; each worker holds one "
-                         "shard body, so this bounds residency too.")
+    ap.add_argument("--workers", type=int, default=DEFAULT_WORKERS,
+                    help=f"parallel shard workers for measurement (default {DEFAULT_WORKERS}). "
+                         "Measured per shard: measure 51.2 s of which 40.8 s is rank scoring, "
+                         "pack work 3.5 s, sha256 2.5 s, against ~21 s of fetch. Each worker "
+                         "holds one shard body, so this bounds residency as well as CPU.")
     ap.add_argument("--fetch-workers", type=int, default=DEFAULT_FETCH_WORKERS,
                     help="concurrent shard fetches in the prefetcher window (default "
-                         f"{DEFAULT_FETCH_WORKERS}). One HF stream tops ~780 Mbit/s; a "
-                         "second sustained ~760 alongside it. Residency is bounded by "
+                         f"{DEFAULT_FETCH_WORKERS}). Autotuned 1/4/8 files = 1698/1984/2001 "
+                         "Mbit/s, so 4 is the knee and 8 buys under 1%%. The ~2.0 Gbit/s path "
+                         "ceiling is about 20%% of a 10Gbase-T line. Residency is bounded by "
                          "this depth; floor accounting reserves N bodies, not one.")
     ap.add_argument("--disk-floor-gib", type=int, default=DISK_FLOOR_GIB,
                     help=f"free-space floor in GiB (default {DISK_FLOOR_GIB})")

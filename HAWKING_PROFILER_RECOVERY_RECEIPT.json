@@ -94,7 +94,7 @@
     },
     "gravity_glm_unit_tests": {
       "result": "PASS",
-      "passed": 20,
+      "passed": 19,
       "failed": 0
     },
     "numeric_parity_v2_focused_tests": {
@@ -104,17 +104,18 @@
     },
     "hawking_core_full_lib_tests": {
       "result": "PASS",
-      "passed": 181,
+      "passed": 182,
       "failed": 0,
       "ignored": 2
     },
     "gravity_lab_lease_selftest": "PASS",
-    "live_campaign_pids_observed": [],
+    "mop_contention_gate_receipt": "reports/base_runtime/profiler_recovery_mop_contention_gate.json",
+    "live_mop_workers_observed": 24,
     "live_gpu_measurement_authorized": false,
-    "live_gpu_measurement_reason": "The paired contention gate fails closed when no live campaign is observable. No heavy profiler or benchmark run was started."
+    "live_gpu_measurement_reason": "The full A/B/A/B gate measured a 14.656% MOP progress regression under the compiled Rust Metal candidate load, exceeding the 5% ceiling. No sustained sealed-model profiler or benchmark run was started."
   },
   "live_acceptance_gate": {
-    "status": "PENDING_AUTHORIZED_DEVICE_RUN",
+    "status": "PENDING_MOP_SAFE_DEVICE_RUN",
     "required_minimum_attributed_fraction_each_token": 0.95,
     "required": [
       "all measured tokens have attributed_fraction >= 0.95",
@@ -128,7 +129,7 @@
       "profiled ledger command count equals profiled physical command count"
     ],
     "bounded_command": "HAWKING_GLM_GPU_RESIDENT_STATE=1 HAWKING_GLM_GPU_LM_HEAD=1 HAWKING_GLM_GPU_LM_HEAD_FULL_LOGITS=0 HAWKING_GLM_GPU_EXPERT_WAVE=0 HAWKING_TCB_TRACE=off HAWKING_COST_LEDGER=1 cargo run --release -p hawking-core --example gravity_glm_cost_ledger -- --context 4 --warmup 8 --ledger-tokens 16 --ab-context 1 --out HAWKING_PROFILER_RECOVERY_LIVE.json",
-    "measurement_policy": "Run only after tools/condense/gravity_lab_lease.py authorizes the real candidate load against an observable live campaign."
+    "measurement_policy": "Run only after the paired contention evaluator authorizes a representative candidate load against the live MOP workers. The current full-duration receipt is a rejection, not authorization."
   },
   "numeric_parity_and_default_behavior": {
     "numeric_parity_v2_1": "HELD_BY_FOCUSED_TESTS; no arithmetic ordering or sampling decision was intentionally changed.",
@@ -145,5 +146,5 @@
     "crates/hawking-core/examples/gravity_glm_tps.rs",
     "HAWKING_PROFILER_RECOVERY_RECEIPT.json"
   ],
-  "remaining_gap": "The code path and gates are implemented, but the >=95% live complete-token result and a measured 828-vs-profiled reconciliation remain unclaimed until the contention lease authorizes the bounded device run."
+  "remaining_gap": "The code path and gates are implemented, but the >=95% live complete-token result and a measured 828-vs-profiled reconciliation remain unclaimed. The current full-duration contention receipt rejects sustained GPU work because it reduced live MOP progress by 14.656%; MOP remains untouched."
 }

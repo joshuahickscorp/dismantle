@@ -1664,6 +1664,14 @@ mod route_segment_primitives {
 
     #[repr(C)]
     #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    pub(super) struct GlmMlaCompactAppendParams {
+        pub latent_dim: u32,
+        pub rope_dim: u32,
+        pub pos: u32,
+    }
+
+    #[repr(C)]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
     pub(super) struct GlmBuildQParams {
         pub n_heads: u32,
         pub qk_nope: u32,
@@ -1706,6 +1714,7 @@ mod route_segment_primitives {
 
     const _: [(); 16] = [(); std::mem::size_of::<GlmRopeParams>()];
     const _: [(); 20] = [(); std::mem::size_of::<GlmMlaAppendParams>()];
+    const _: [(); 12] = [(); std::mem::size_of::<GlmMlaCompactAppendParams>()];
     const _: [(); 12] = [(); std::mem::size_of::<GlmBuildQParams>()];
     const _: [(); 20] = [(); std::mem::size_of::<GlmDsaParams>()];
     const _: [(); 8] = [(); std::mem::size_of::<GlmTopkParams>()];
@@ -1713,6 +1722,7 @@ mod route_segment_primitives {
     const _: [(); 24] = [(); std::mem::size_of::<GlmSparseAttnParams>()];
     const _: [(); 4] = [(); std::mem::align_of::<GlmRopeParams>()];
     const _: [(); 4] = [(); std::mem::align_of::<GlmMlaAppendParams>()];
+    const _: [(); 4] = [(); std::mem::align_of::<GlmMlaCompactAppendParams>()];
     const _: [(); 4] = [(); std::mem::align_of::<GlmBuildQParams>()];
     const _: [(); 4] = [(); std::mem::align_of::<GlmDsaParams>()];
     const _: [(); 4] = [(); std::mem::align_of::<GlmTopkParams>()];
@@ -2025,6 +2035,85 @@ mod route_segment_primitives {
                 &params as *const _ as *const _,
             );
         })
+    }
+
+    /// Encode one compact MLA cache append.
+    ///
+    /// This stores the normalized KV latent and shared rotated RoPE tail
+    /// directly as `[position][dimension]`. It does not expand either value
+    /// across attention heads and is not wired into [`forward_resident`].
+    #[allow(clippy::too_many_arguments)]
+    pub(super) fn encode_mla_append_compact(
+        tcb: &mut TokenCommandBuffer<'_>,
+        latent: &Buffer,
+        k_rot: &Buffer,
+        latent_cache: &Buffer,
+        rope_cache: &Buffer,
+        latent_dim: usize,
+        rope_dim: usize,
+        position: usize,
+    ) -> Result<()> {
+        let total = checked_add(latent_dim, rope_dim, "gravity_glm_mla_append_compact grid")?;
+        if total == 0 {
+            return Ok(());
+        }
+        require_f32(
+            latent,
+            0,
+            latent_dim,
+            "gravity_glm_mla_append_compact latent",
+        )?;
+        require_f32(k_rot, 0, rope_dim, "gravity_glm_mla_append_compact k_rot")?;
+        let positions = checked_add(position, 1, "gravity_glm_mla_append_compact position")?;
+        require_f32(
+            latent_cache,
+            0,
+            checked_mul(
+                positions,
+                latent_dim,
+                "gravity_glm_mla_append_compact latent cache",
+            )?,
+            "gravity_glm_mla_append_compact latent cache",
+        )?;
+        require_f32(
+            rope_cache,
+            0,
+            checked_mul(
+                positions,
+                rope_dim,
+                "gravity_glm_mla_append_compact rope cache",
+            )?,
+            "gravity_glm_mla_append_compact rope cache",
+        )?;
+        let params = GlmMlaCompactAppendParams {
+            latent_dim: u32_arg(latent_dim, "gravity_glm_mla_append_compact latent_dim")?,
+            rope_dim: u32_arg(rope_dim, "gravity_glm_mla_append_compact rope_dim")?,
+            pos: u32_arg(position, "gravity_glm_mla_append_compact pos")?,
+        };
+        let grid = grid_1d(
+            u32_arg(total, "gravity_glm_mla_append_compact total")?,
+            "gravity_glm_mla_append_compact",
+        )?;
+        let lb = latent.clone();
+        let rb = k_rot.clone();
+        let lcb = latent_cache.clone();
+        let rcb = rope_cache.clone();
+        tcb.dispatch_threads(
+            "gravity_glm_mla_append_compact",
+            grid,
+            (TG, 1, 1),
+            move |enc| {
+                enc.set_buffer(0, Some(&lb), 0);
+                enc.set_buffer(1, Some(&rb), 0);
+                enc.set_buffer(2, Some(&lcb), 0);
+                enc.set_buffer(3, Some(&rcb), 0);
+                enc.set_bytes(
+                    4,
+                    std::mem::size_of_val(&params) as u64,
+                    &params as *const _ as *const _,
+                );
+            },
+        )
     }
 
     pub(super) fn encode_build_queries(
@@ -3232,6 +3321,10 @@ mod tests {
         let krb = f32_buffer(&ctx, &k_rot);
         let keys = filled_f32_buffer(&ctx, 3 * n_heads * qk, -99.0);
         let values = filled_f32_buffer(&ctx, 3 * n_heads * v_dim, -77.0);
+        let latent = vec![0.25, -1.5, 3.75];
+        let latentb = f32_buffer(&ctx, &latent);
+        let compact_latent = filled_f32_buffer(&ctx, 3 * latent.len(), -66.0);
+        let compact_rope = filled_f32_buffer(&ctx, 3 * k_rot.len(), -44.0);
 
         let q = vec![1.0, 2.0, 90.0, 91.0, 3.0, 4.0, 92.0, 93.0];
         let q_rot = vec![31.0, 32.0, 33.0, 34.0];
@@ -3248,11 +3341,22 @@ mod tests {
             &mut tcb, &kvb, &krb, &keys, &values, n_heads, qk_nope, qk_rope, v_dim, position,
         )
         .expect("encode expanded MLA append");
+        encode_mla_append_compact(
+            &mut tcb,
+            &latentb,
+            &krb,
+            &compact_latent,
+            &compact_rope,
+            latent.len(),
+            k_rot.len(),
+            position,
+        )
+        .expect("encode compact MLA append");
         encode_build_queries(&mut tcb, &qb, &qrb, &queries, n_heads, qk_nope, qk_rope)
             .expect("encode build queries");
         encode_append_index_key(&mut tcb, &kfb, &index_keys, 2, k_full.len())
             .expect("encode index-key append");
-        assert_eq!(tcb.dispatch_count(), 3);
+        assert_eq!(tcb.dispatch_count(), 4);
         tcb.commit_and_wait().expect("MLA primitive command buffer");
 
         let mut expected_keys = vec![-99.0; 3 * n_heads * qk];
@@ -3269,6 +3373,14 @@ mod tests {
         }
         assert_eq!(read_f32(&keys, expected_keys.len()), expected_keys);
         assert_eq!(read_f32(&values, expected_values.len()), expected_values);
+        assert_eq!(
+            read_f32(&compact_latent, 3 * latent.len()),
+            vec![-66.0, -66.0, -66.0, 0.25, -1.5, 3.75, -66.0, -66.0, -66.0]
+        );
+        assert_eq!(
+            read_f32(&compact_rope, 3 * k_rot.len()),
+            vec![-44.0, -44.0, 21.0, 22.0, -44.0, -44.0]
+        );
 
         let expected_queries = vec![1.0, 2.0, 31.0, 32.0, 3.0, 4.0, 33.0, 34.0];
         assert_eq!(read_f32(&queries, expected_queries.len()), expected_queries);
@@ -3276,6 +3388,34 @@ mod tests {
             read_f32(&index_keys, 3 * k_full.len()),
             vec![-55.0, -55.0, -55.0, -55.0, -55.0, -55.0, -55.0, -55.0, 41.0, 42.0, 43.0, 44.0,]
         );
+
+        let mut rejected = TokenCommandBuffer::new(&ctx);
+        encode_mla_append_compact(
+            &mut rejected,
+            &latentb,
+            &krb,
+            &compact_latent,
+            &compact_rope,
+            0,
+            0,
+            usize::MAX,
+        )
+        .expect("empty compact append is an encode no-op");
+        assert_eq!(rejected.dispatch_count(), 0);
+        let too_small = filled_f32_buffer(&ctx, latent.len(), 0.0);
+        let error = encode_mla_append_compact(
+            &mut rejected,
+            &latentb,
+            &krb,
+            &too_small,
+            &compact_rope,
+            latent.len(),
+            k_rot.len(),
+            position,
+        )
+        .expect_err("undersized compact latent cache must fail before dispatch");
+        assert!(error.to_string().contains("byte range"));
+        assert_eq!(rejected.dispatch_count(), 0);
     }
 
     #[test]

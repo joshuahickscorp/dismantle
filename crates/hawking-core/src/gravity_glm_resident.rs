@@ -3997,7 +3997,7 @@ fn indexer_topk_device<'a>(
             "device DSA index-key offset overflow: position={pos} dim={idim}"
         ))
     })?;
-    route_segment_primitives::encode_rope_prefix_tail(
+    route_segment_primitives::encode_rope_prefix_tail_positioned(
         wave,
         &pool.idx_k_raw,
         0,
@@ -4191,6 +4191,17 @@ mod route_segment_primitives {
     }
 
     #[repr(C)]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, bytemuck::Pod, bytemuck::Zeroable)]
+    pub(super) struct GlmPositionedRopeParams {
+        pub n_heads: u32,
+        pub rotary_dim: u32,
+        pub in_stride: u32,
+        pub out_stride: u32,
+        pub input_element_offset: u32,
+        pub output_element_offset: u32,
+    }
+
+    #[repr(C)]
     #[derive(Clone, Copy, Debug, PartialEq, Eq)]
     pub(super) struct GlmMlaAppendParams {
         pub n_heads: u32,
@@ -4299,6 +4310,7 @@ mod route_segment_primitives {
     }
 
     const _: [(); 16] = [(); std::mem::size_of::<GlmRopeParams>()];
+    const _: [(); 24] = [(); std::mem::size_of::<GlmPositionedRopeParams>()];
     const _: [(); 20] = [(); std::mem::size_of::<GlmMlaAppendParams>()];
     const _: [(); 12] = [(); std::mem::size_of::<GlmMlaCompactAppendParams>()];
     const _: [(); 28] = [(); std::mem::size_of::<GlmPqKTransposeParams>()];
@@ -4311,6 +4323,7 @@ mod route_segment_primitives {
     const _: [(); 24] = [(); std::mem::size_of::<GlmSparseAttnParams>()];
     const _: [(); 24] = [(); std::mem::size_of::<GlmRouterSelectParams>()];
     const _: [(); 4] = [(); std::mem::align_of::<GlmRopeParams>()];
+    const _: [(); 4] = [(); std::mem::align_of::<GlmPositionedRopeParams>()];
     const _: [(); 4] = [(); std::mem::align_of::<GlmMlaAppendParams>()];
     const _: [(); 4] = [(); std::mem::align_of::<GlmMlaCompactAppendParams>()];
     const _: [(); 4] = [(); std::mem::align_of::<GlmPqKTransposeParams>()];
@@ -4608,6 +4621,127 @@ mod route_segment_primitives {
             move |enc| {
                 enc.set_buffer(0, Some(&xb), input_byte_offset);
                 enc.set_buffer(1, Some(&ob), output_byte_offset);
+                enc.set_buffer(2, Some(&cb), 0);
+                enc.set_buffer(3, Some(&sb), 0);
+                enc.set_bytes(
+                    4,
+                    std::mem::size_of_val(&params) as u64,
+                    &params as *const _ as *const _,
+                );
+            },
+        )
+    }
+
+    /// Replay-safe indexer RoPE assembly. Unlike [`encode_rope_prefix_tail`],
+    /// both element offsets live in the parameter ABI and the full buffers are
+    /// bound at offset zero, so position can change without rebuilding an ICB.
+    #[allow(clippy::too_many_arguments)]
+    pub(super) fn encode_rope_prefix_tail_positioned(
+        tcb: &mut TokenCommandBuffer<'_>,
+        x: &Buffer,
+        input_element_offset: usize,
+        out: &Buffer,
+        output_element_offset: usize,
+        cos: &Buffer,
+        sin: &Buffer,
+        n_heads: usize,
+        rotary_dim: usize,
+        in_stride: usize,
+        out_stride: usize,
+    ) -> Result<()> {
+        if n_heads == 0 || out_stride == 0 {
+            return Ok(());
+        }
+        if rotary_dim == 0
+            || rotary_dim % 2 != 0
+            || in_stride < out_stride
+            || out_stride < rotary_dim
+        {
+            return Err(Error::Gravity(format!(
+                "gravity_rope_prefix_tail_positioned_f32 invalid geometry: heads={n_heads}, rotary_dim={rotary_dim}, in_stride={in_stride}, out_stride={out_stride}"
+            )));
+        }
+        if x.contents() == out.contents() {
+            return Err(Error::Gravity(
+                "gravity_rope_prefix_tail_positioned_f32 requires non-aliasing input/output".into(),
+            ));
+        }
+        let input_len = strided_elements(
+            n_heads,
+            in_stride,
+            out_stride,
+            "gravity_rope_prefix_tail_positioned_f32 input",
+        )?;
+        let output_len = checked_mul(
+            n_heads,
+            out_stride,
+            "gravity_rope_prefix_tail_positioned_f32 output",
+        )?;
+        require_f32(
+            x,
+            input_element_offset,
+            input_len,
+            "gravity_rope_prefix_tail_positioned_f32 input",
+        )?;
+        require_f32(
+            out,
+            output_element_offset,
+            output_len,
+            "gravity_rope_prefix_tail_positioned_f32 output",
+        )?;
+        require_f32(
+            cos,
+            0,
+            rotary_dim / 2,
+            "gravity_rope_prefix_tail_positioned_f32 cos",
+        )?;
+        require_f32(
+            sin,
+            0,
+            rotary_dim / 2,
+            "gravity_rope_prefix_tail_positioned_f32 sin",
+        )?;
+        let params = GlmPositionedRopeParams {
+            n_heads: u32_arg(n_heads, "gravity_rope_prefix_tail_positioned_f32 n_heads")?,
+            rotary_dim: u32_arg(
+                rotary_dim,
+                "gravity_rope_prefix_tail_positioned_f32 rotary_dim",
+            )?,
+            in_stride: u32_arg(
+                in_stride,
+                "gravity_rope_prefix_tail_positioned_f32 in_stride",
+            )?,
+            out_stride: u32_arg(
+                out_stride,
+                "gravity_rope_prefix_tail_positioned_f32 out_stride",
+            )?,
+            input_element_offset: u32_arg(
+                input_element_offset,
+                "gravity_rope_prefix_tail_positioned_f32 input offset",
+            )?,
+            output_element_offset: u32_arg(
+                output_element_offset,
+                "gravity_rope_prefix_tail_positioned_f32 output offset",
+            )?,
+        };
+        let threads = params
+            .n_heads
+            .checked_mul(params.out_stride)
+            .ok_or_else(|| {
+                Error::Gravity("gravity_rope_prefix_tail_positioned_f32 grid overflow".into())
+            })?;
+        let grid = grid_1d(threads, "gravity_rope_prefix_tail_positioned_f32")?;
+        let xb = x.clone();
+        let ob = out.clone();
+        let cb = cos.clone();
+        let sb = sin.clone();
+        tcb.dispatch_threads(
+            "gravity_rope_prefix_tail_positioned_f32",
+            grid,
+            (TG, 1, 1),
+            move |enc| {
+                enc.set_buffer(0, Some(&xb), 0);
+                enc.set_buffer(1, Some(&ob), 0);
                 enc.set_buffer(2, Some(&cb), 0);
                 enc.set_buffer(3, Some(&sb), 0);
                 enc.set_bytes(
@@ -9720,6 +9854,17 @@ mod tests {
         assert_eq!(std::mem::offset_of!(GlmRopeParams, in_stride), 8);
         assert_eq!(std::mem::offset_of!(GlmRopeParams, out_stride), 12);
 
+        assert_eq!(std::mem::size_of::<GlmPositionedRopeParams>(), 24);
+        assert_eq!(std::mem::offset_of!(GlmPositionedRopeParams, n_heads), 0);
+        assert_eq!(
+            std::mem::offset_of!(GlmPositionedRopeParams, input_element_offset),
+            16
+        );
+        assert_eq!(
+            std::mem::offset_of!(GlmPositionedRopeParams, output_element_offset),
+            20
+        );
+
         assert_eq!(std::mem::size_of::<GlmMlaAppendParams>(), 20);
         assert_eq!(std::mem::offset_of!(GlmMlaAppendParams, n_heads), 0);
         assert_eq!(std::mem::offset_of!(GlmMlaAppendParams, pos), 16);
@@ -11331,9 +11476,11 @@ mod tests {
     fn route_segment_rope_prefix_tail_matches_host_and_fails_closed() {
         let shader = include_str!("../shaders/gravity_pq.metal");
         assert!(shader.contains("kernel void gravity_rope_prefix_tail_f32("));
+        assert!(shader.contains("kernel void gravity_rope_prefix_tail_positioned_f32("));
         let registry = include_str!("metal/mod.rs");
         assert!(registry
             .contains("\"gravity_rope_prefix_tail_f32\" => \"gravity_rope_prefix_tail_f32\""));
+        assert!(registry.contains("\"gravity_rope_prefix_tail_positioned_f32\""));
 
         let Ok(ctx) = MetalContext::new() else {
             return;
@@ -11348,6 +11495,7 @@ mod tests {
         let cos_buffer = f32_buffer(&ctx, &cos);
         let sin_buffer = f32_buffer(&ctx, &sin);
         let output = filled_f32_buffer(&ctx, 14, -99.0);
+        let positioned_output = filled_f32_buffer(&ctx, 14, -99.0);
 
         let mut tcb = TokenCommandBuffer::new(&ctx);
         encode_rope_prefix_tail(
@@ -11364,7 +11512,21 @@ mod tests {
             6,
         )
         .expect("encode RoPE prefix plus tail");
-        assert_eq!(tcb.dispatch_count(), 1);
+        encode_rope_prefix_tail_positioned(
+            &mut tcb,
+            &input_buffer,
+            0,
+            &positioned_output,
+            1,
+            &cos_buffer,
+            &sin_buffer,
+            2,
+            4,
+            6,
+            6,
+        )
+        .expect("encode replay-safe positioned RoPE prefix plus tail");
+        assert_eq!(tcb.dispatch_count(), 2);
         tcb.commit_and_wait().expect("RoPE prefix plus tail");
 
         let mut expected = vec![-99.0];
@@ -11387,6 +11549,18 @@ mod tests {
         }
         expected.push(-99.0);
         let actual = read_f32(&output, expected.len());
+        let positioned_actual = read_f32(&positioned_output, expected.len());
+        assert_eq!(
+            positioned_actual
+                .iter()
+                .map(|value| value.to_bits())
+                .collect::<Vec<_>>(),
+            actual
+                .iter()
+                .map(|value| value.to_bits())
+                .collect::<Vec<_>>(),
+            "position-scalar and binding-offset RoPE paths must be bit-identical"
+        );
         assert_eq!(actual.first(), Some(&-99.0));
         assert_eq!(actual.last(), Some(&-99.0));
         assert_v21_pair(

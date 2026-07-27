@@ -399,8 +399,10 @@ mod imp {
     use super::*;
     use metal::objc::{class, msg_send, sel, sel_impl};
     use metal::{
-        Buffer, CommandBufferRef, CommandQueue, ComputeCommandEncoder, ComputePipelineState,
-        Device, Library, MTLDispatchType, MTLResourceOptions, MTLSize,
+        Buffer, CommandBufferRef, CommandQueue, ComputeCommandEncoder, ComputePipelineDescriptor,
+        ComputePipelineState, Device, IndirectCommandBuffer, IndirectCommandBufferDescriptor,
+        Library, MTLDispatchType, MTLIndirectCommandType, MTLResourceOptions, MTLResourceUsage,
+        MTLSize, NSRange,
     };
 
     /// Read `GPUStartTime` / `GPUEndTime` on an MTLCommandBuffer via raw
@@ -927,6 +929,7 @@ mod imp {
                 "gravity_glm_expert_table_residual_add_f32"
             }
             "gravity_zero_f32" => "gravity_zero_f32",
+            "replayable_compute_graph" => "replayable_compute_graph",
             "gravity_pq_matvec" => "gravity_pq_matvec",
             "gravity_pq_matvec_bits8_direct" => "gravity_pq_matvec_bits8_direct",
             "gravity_pq_matvec_bits8_vec4" => "gravity_pq_matvec_bits8_vec4",
@@ -1522,6 +1525,425 @@ mod imp {
         }
     }
 
+    // ── Temporal Gravity replay substrate (default-off) ─────────────────────
+
+    const MAX_REPLAY_KERNEL_BUFFERS: usize = 31;
+
+    /// One persistent `MTLBuffer` binding captured by a replayable compute
+    /// graph. Scalar arguments must also live in buffers (for example a
+    /// [`KernelArgBuffer`](super::KernelArgBuffer)); ICB commands cannot
+    /// capture `set_bytes` payloads.
+    #[derive(Clone)]
+    pub struct ReplayBufferBinding {
+        index: usize,
+        buffer: Buffer,
+        offset: usize,
+        usage: MTLResourceUsage,
+    }
+
+    impl ReplayBufferBinding {
+        pub fn read(index: usize, buffer: &Buffer, offset: usize) -> Self {
+            Self {
+                index,
+                buffer: buffer.clone(),
+                offset,
+                usage: MTLResourceUsage::Read,
+            }
+        }
+
+        pub fn write(index: usize, buffer: &Buffer, offset: usize) -> Self {
+            Self {
+                index,
+                buffer: buffer.clone(),
+                offset,
+                usage: MTLResourceUsage::Write,
+            }
+        }
+
+        pub fn read_write(index: usize, buffer: &Buffer, offset: usize) -> Self {
+            Self {
+                index,
+                buffer: buffer.clone(),
+                offset,
+                usage: MTLResourceUsage::Read | MTLResourceUsage::Write,
+            }
+        }
+    }
+
+    /// One pre-encoded compute dispatch in a [`ReplayableComputeGraph`].
+    ///
+    /// `barrier_before` makes this command wait for all preceding commands in
+    /// the ICB. It is required when a prior stage writes a buffer this stage
+    /// reads or writes. Independent stages may leave it false.
+    pub struct ReplayComputeStage {
+        kernel: String,
+        grid: (u32, u32, u32),
+        threadgroup: (u32, u32, u32),
+        bindings: Vec<ReplayBufferBinding>,
+        barrier_before: bool,
+    }
+
+    impl ReplayComputeStage {
+        pub fn new(
+            kernel: impl Into<String>,
+            grid: (u32, u32, u32),
+            threadgroup: (u32, u32, u32),
+            bindings: Vec<ReplayBufferBinding>,
+        ) -> Self {
+            Self {
+                kernel: kernel.into(),
+                grid,
+                threadgroup,
+                bindings,
+                barrier_before: false,
+            }
+        }
+
+        pub fn with_barrier_before(mut self) -> Self {
+            self.barrier_before = true;
+            self
+        }
+    }
+
+    struct ReplayResource {
+        buffer: Buffer,
+        usage: MTLResourceUsage,
+    }
+
+    /// An immutable sequence of Metal compute commands encoded once into an
+    /// indirect command buffer and replayed against stable buffer addresses.
+    ///
+    /// This is intentionally not wired into decode selection yet. It is a
+    /// correctness/replayability substrate, not a throughput claim: Hawking's
+    /// measured CPU encoding share remains below the ICB ship gate.
+    pub struct ReplayableComputeGraph {
+        context: Arc<Inner>,
+        icb: IndirectCommandBuffer,
+        resources: Vec<ReplayResource>,
+        // Retain pipelines explicitly for the lifetime of the encoded ICB.
+        _pipelines: Vec<ComputePipelineState>,
+        command_count: usize,
+    }
+
+    impl ReplayableComputeGraph {
+        /// Validate and pre-encode `stages`. All validation and pipeline
+        /// resolution happens before the ICB is allocated, so invalid graphs
+        /// fail closed without creating a partially encoded replay object.
+        pub fn new(ctx: &MetalContext, stages: Vec<ReplayComputeStage>) -> Result<Self> {
+            if stages.is_empty() {
+                return Err(Error::Metal(
+                    "replayable compute graph requires at least one stage".into(),
+                ));
+            }
+
+            let mut pipelines = Vec::with_capacity(stages.len());
+            let mut max_bind_count = 0usize;
+            for (stage_index, stage) in stages.iter().enumerate() {
+                if stage.kernel.is_empty() {
+                    return Err(Error::Metal(format!(
+                        "replayable compute stage {stage_index} has an empty kernel name"
+                    )));
+                }
+                if [stage.grid.0, stage.grid.1, stage.grid.2]
+                    .into_iter()
+                    .any(|dim| dim == 0)
+                {
+                    return Err(Error::Metal(format!(
+                        "replayable compute stage {} (`{}`) has a zero grid dimension",
+                        stage_index, stage.kernel
+                    )));
+                }
+                if [
+                    stage.threadgroup.0,
+                    stage.threadgroup.1,
+                    stage.threadgroup.2,
+                ]
+                .into_iter()
+                .any(|dim| dim == 0)
+                {
+                    return Err(Error::Metal(format!(
+                        "replayable compute stage {} (`{}`) has a zero threadgroup dimension",
+                        stage_index, stage.kernel
+                    )));
+                }
+                if stage.bindings.is_empty() {
+                    return Err(Error::Metal(format!(
+                        "replayable compute stage {} (`{}`) has no persistent buffer bindings",
+                        stage_index, stage.kernel
+                    )));
+                }
+
+                let mut occupied = [false; MAX_REPLAY_KERNEL_BUFFERS];
+                for binding in &stage.bindings {
+                    if binding.index >= MAX_REPLAY_KERNEL_BUFFERS {
+                        return Err(Error::Metal(format!(
+                            "replayable compute stage {} (`{}`) buffer index {} exceeds Metal limit {}",
+                            stage_index,
+                            stage.kernel,
+                            binding.index,
+                            MAX_REPLAY_KERNEL_BUFFERS - 1
+                        )));
+                    }
+                    if occupied[binding.index] {
+                        return Err(Error::Metal(format!(
+                            "replayable compute stage {} (`{}`) binds buffer index {} twice",
+                            stage_index, stage.kernel, binding.index
+                        )));
+                    }
+                    occupied[binding.index] = true;
+                    if binding.buffer.length() == 0
+                        || binding.offset as u64 >= binding.buffer.length()
+                    {
+                        return Err(Error::Metal(format!(
+                            "replayable compute stage {} (`{}`) buffer index {} offset {} is outside {} bytes",
+                            stage_index,
+                            stage.kernel,
+                            binding.index,
+                            binding.offset,
+                            binding.buffer.length()
+                        )));
+                    }
+                    max_bind_count = max_bind_count.max(binding.index + 1);
+                }
+
+                let function = ctx
+                    .inner
+                    .library
+                    .get_function(&stage.kernel, None)
+                    .map_err(|e| {
+                        Error::Metal(format!("kernel `{}` not found: {e}", stage.kernel))
+                    })?;
+                let pipeline_descriptor = ComputePipelineDescriptor::new();
+                pipeline_descriptor.set_compute_function(Some(&function));
+                pipeline_descriptor.set_support_indirect_command_buffers(true);
+                let pipeline = ctx
+                    .inner
+                    .device
+                    .new_compute_pipeline_state(&pipeline_descriptor)
+                    .map_err(|e| {
+                        Error::Metal(format!(
+                            "ICB-capable pipeline `{}` could not be created: {e}",
+                            stage.kernel
+                        ))
+                    })?;
+                let threads = (stage.threadgroup.0 as usize)
+                    .checked_mul(stage.threadgroup.1 as usize)
+                    .and_then(|n| n.checked_mul(stage.threadgroup.2 as usize))
+                    .ok_or_else(|| {
+                        Error::Metal(format!(
+                            "replayable compute stage {} (`{}`) threadgroup size overflows",
+                            stage_index, stage.kernel
+                        ))
+                    })?;
+                if threads > pipeline.max_total_threads_per_threadgroup() as usize {
+                    return Err(Error::Metal(format!(
+                        "replayable compute stage {} (`{}`) requests {} threads per group; pipeline maximum is {}",
+                        stage_index,
+                        stage.kernel,
+                        threads,
+                        pipeline.max_total_threads_per_threadgroup()
+                    )));
+                }
+                pipelines.push(pipeline);
+            }
+
+            let descriptor = IndirectCommandBufferDescriptor::new();
+            descriptor.set_command_types(MTLIndirectCommandType::ConcurrentDispatchThreads);
+            descriptor.set_inherit_buffers(false);
+            descriptor.set_inherit_pipeline_state(false);
+            descriptor.set_max_kernel_buffer_bind_count(max_bind_count as u64);
+            let icb = ctx
+                .inner
+                .device
+                .new_indirect_command_buffer_with_descriptor(
+                    &descriptor,
+                    stages.len() as u64,
+                    MTLResourceOptions::StorageModePrivate,
+                );
+            icb.set_label("hawking.replayable_compute_graph");
+
+            let mut resources: Vec<ReplayResource> = Vec::new();
+            let mut resource_slots = HashMap::<u64, usize>::new();
+            for (command_index, (stage, pipeline)) in
+                stages.iter().zip(pipelines.iter()).enumerate()
+            {
+                let command = icb.indirect_compute_command_at_index(command_index as u64);
+                command.set_compute_pipeline_state(pipeline);
+                for binding in &stage.bindings {
+                    command.set_kernel_buffer(
+                        binding.index as u64,
+                        Some(&binding.buffer),
+                        binding.offset as u64,
+                    );
+                    let address = binding.buffer.gpu_address();
+                    if let Some(&resource_index) = resource_slots.get(&address) {
+                        resources[resource_index].usage |= binding.usage;
+                    } else {
+                        resource_slots.insert(address, resources.len());
+                        resources.push(ReplayResource {
+                            buffer: binding.buffer.clone(),
+                            usage: binding.usage,
+                        });
+                    }
+                }
+                if stage.barrier_before {
+                    command.set_barrier();
+                }
+                command.concurrent_dispatch_threads(
+                    MTLSize::new(
+                        stage.grid.0 as u64,
+                        stage.grid.1 as u64,
+                        stage.grid.2 as u64,
+                    ),
+                    MTLSize::new(
+                        stage.threadgroup.0 as u64,
+                        stage.threadgroup.1 as u64,
+                        stage.threadgroup.2 as u64,
+                    ),
+                );
+            }
+
+            Ok(Self {
+                context: ctx.inner.clone(),
+                icb,
+                resources,
+                _pipelines: pipelines,
+                command_count: stages.len(),
+            })
+        }
+
+        pub fn command_count(&self) -> usize {
+            self.command_count
+        }
+    }
+
+    #[cfg(test)]
+    mod replayable_compute_graph_tests {
+        use super::*;
+
+        fn write_f32(buffer: &Buffer, values: &[f32]) {
+            assert!(buffer.length() >= std::mem::size_of_val(values) as u64);
+            unsafe {
+                (buffer.contents() as *mut f32)
+                    .copy_from_nonoverlapping(values.as_ptr(), values.len());
+            }
+        }
+
+        fn read_f32(buffer: &Buffer, count: usize) -> Vec<f32> {
+            assert!(buffer.length() >= (count * std::mem::size_of::<f32>()) as u64);
+            unsafe { std::slice::from_raw_parts(buffer.contents() as *const f32, count).to_vec() }
+        }
+
+        /// This is ignored in the ordinary suite because it requires a Metal
+        /// device with compute-ICB support. Run explicitly on the target Mac:
+        ///
+        /// `cargo test -p hawking-core replayable_icb_reuses_addresses_and_one_submit -- --ignored`
+        #[test]
+        #[ignore = "requires a Metal device with compute indirect-command-buffer support"]
+        fn replayable_icb_reuses_addresses_and_one_submit() {
+            let ctx = MetalContext::new_with_trace(true).unwrap();
+            let n = 257u32;
+            let bytes = n as usize * std::mem::size_of::<f32>();
+            let output = ctx.new_buffer(bytes);
+            let input = ctx.new_buffer(bytes);
+            let n_buffer = ctx.new_buffer_with_bytes(&n.to_ne_bytes());
+
+            let invalid = ReplayableComputeGraph::new(
+                &ctx,
+                vec![ReplayComputeStage::new(
+                    "gravity_zero_f32",
+                    (0, 1, 1),
+                    (64, 1, 1),
+                    vec![
+                        ReplayBufferBinding::write(0, &output, 0),
+                        ReplayBufferBinding::read(1, &n_buffer, 0),
+                    ],
+                )],
+            );
+            let invalid_error = match invalid {
+                Ok(_) => panic!("zero grid dimension unexpectedly produced a replay graph"),
+                Err(error) => error,
+            };
+            assert!(invalid_error.to_string().contains("zero grid dimension"));
+
+            let output_address = output.gpu_address();
+            let input_address = input.gpu_address();
+            let n_address = n_buffer.gpu_address();
+            let graph = ReplayableComputeGraph::new(
+                &ctx,
+                vec![
+                    ReplayComputeStage::new(
+                        "gravity_zero_f32",
+                        (n, 1, 1),
+                        (64, 1, 1),
+                        vec![
+                            ReplayBufferBinding::write(0, &output, 0),
+                            ReplayBufferBinding::read(1, &n_buffer, 0),
+                        ],
+                    ),
+                    ReplayComputeStage::new(
+                        "gravity_add_inplace_f32",
+                        (n, 1, 1),
+                        (64, 1, 1),
+                        vec![
+                            ReplayBufferBinding::read_write(0, &output, 0),
+                            ReplayBufferBinding::read(1, &input, 0),
+                            ReplayBufferBinding::read(2, &n_buffer, 0),
+                        ],
+                    )
+                    .with_barrier_before(),
+                ],
+            )
+            .unwrap();
+            assert_eq!(graph.command_count(), 2);
+            assert_eq!(output.gpu_address(), output_address);
+            assert_eq!(input.gpu_address(), input_address);
+            assert_eq!(n_buffer.gpu_address(), n_address);
+            let _ = ctx.drain_stats();
+
+            let first: Vec<f32> = (0..n).map(|i| i as f32 * 0.25 - 17.0).collect();
+            write_f32(&input, &first);
+            write_f32(&output, &vec![f32::NAN; n as usize]);
+
+            let identity = PhysicalTraceIdentity::new(
+                "a".repeat(64),
+                "b".repeat(64),
+                "icb".into(),
+                "replay".into(),
+                None,
+                0,
+            )
+            .unwrap();
+            let guard = PhysicalTraceGuard::begin(identity).unwrap();
+            let mut tcb = TokenCommandBuffer::new(&ctx);
+            tcb.execute_replayable_graph(&graph).unwrap();
+            assert_eq!(tcb.dispatch_count(), 2);
+            tcb.commit_and_wait().unwrap();
+            assert_eq!(
+                guard.counts(),
+                PhysicalTraceCounts {
+                    command_count: 1,
+                    encoder_count: 1,
+                }
+            );
+            drop(guard);
+            assert_eq!(read_f32(&output, n as usize), first);
+
+            let second: Vec<f32> = (0..n).map(|i| 100.0 - i as f32 * 0.5).collect();
+            write_f32(&input, &second);
+            write_f32(&output, &vec![-1234.0; n as usize]);
+            let mut tcb = TokenCommandBuffer::new(&ctx);
+            tcb.execute_replayable_graph(&graph).unwrap();
+            assert_eq!(tcb.dispatch_count(), 2);
+            tcb.commit_and_wait().unwrap();
+            assert_eq!(read_f32(&output, n as usize), second);
+            assert_eq!(ctx.drain_stats(), (0, 0, 0));
+            assert_eq!(output.gpu_address(), output_address);
+            assert_eq!(input.gpu_address(), input_address);
+            assert_eq!(n_buffer.gpu_address(), n_address);
+        }
+    }
+
     // ── v0.5.12: TokenCommandBuffer ───────────────────────────────────────────
 
     /// Owns one MTLCommandBuffer; multiple kernels can be dispatched into it
@@ -1720,6 +2142,96 @@ mod imp {
         pub fn end_concurrent_group(&mut self) -> Result<()> {
             if let Some(enc) = self.concurrent_encoder.take() {
                 enc.end_encoding();
+            }
+            Ok(())
+        }
+
+        /// Append one execution of a pre-encoded compute graph to this token
+        /// command buffer. The replay itself creates one direct compute
+        /// encoder and performs no pipeline lookup or buffer-address rebinding.
+        ///
+        /// Split/per-dispatch GPU trace modes cannot attribute timestamps
+        /// inside an ICB and therefore fail closed. Off and aggregate
+        /// CPU-encode modes preserve one command-buffer submit/wait.
+        pub fn execute_replayable_graph(&mut self, graph: &ReplayableComputeGraph) -> Result<()> {
+            if !Arc::ptr_eq(&self.ctx.inner, &graph.context) {
+                return Err(Error::Metal(
+                    "replayable compute graph belongs to a different Metal context".into(),
+                ));
+            }
+            if self.concurrent_encoder.is_some() {
+                return Err(Error::Metal(
+                    "cannot execute a replayable compute graph inside a concurrent group".into(),
+                ));
+            }
+            if !matches!(self.mode, TcbTraceMode::Off | TcbTraceMode::CpuEncode) {
+                return Err(Error::Metal(
+                    "replayable compute graph does not support split or production per-dispatch tracing"
+                        .into(),
+                ));
+            }
+
+            let ledger_t0 = if crate::cost_ledger::is_recording() {
+                Some(Instant::now())
+            } else {
+                None
+            };
+            if ledger_t0.is_some() {
+                let stage = crate::cost_ledger::current_gpu_stage()
+                    .unwrap_or(crate::cost_ledger::GpuStage::Untagged);
+                let slot = &mut self.ledger_stage_dispatches[stage.index()];
+                *slot = slot.saturating_add(graph.command_count as u64);
+            }
+            let cpu_t0 = if self.mode == TcbTraceMode::CpuEncode {
+                Some(Instant::now())
+            } else {
+                None
+            };
+            let cmd = self
+                .cmd
+                .as_ref()
+                .ok_or_else(|| Error::Metal("TokenCommandBuffer already committed".into()))?;
+            let enc = cmd.new_compute_command_encoder();
+            if let Some(command) = self.physical_trace.as_ref() {
+                enc.set_label(&physical_encoder_label(
+                    command,
+                    "compute_encoder",
+                    "replayable_compute_graph",
+                ));
+            } else {
+                enc.set_label("replayable_compute_graph");
+            }
+            for resource in &graph.resources {
+                enc.use_resource(&resource.buffer, resource.usage);
+            }
+            let range = NSRange {
+                location: 0,
+                length: graph.command_count as u64,
+            };
+            unsafe {
+                let _: () = msg_send![
+                    enc,
+                    executeCommandsInBuffer: &*graph.icb
+                    withRange: range
+                ];
+            }
+            enc.end_encoding();
+
+            self.dispatch_count = self.dispatch_count.saturating_add(graph.command_count);
+            if let Some(t0) = ledger_t0 {
+                self.ledger_encode_ns = self
+                    .ledger_encode_ns
+                    .saturating_add(t0.elapsed().as_nanos());
+            }
+            if let Some(t0) = cpu_t0 {
+                self.tcb_samples.push(super::DispatchSample {
+                    kernel_name: static_kernel_name("replayable_compute_graph"),
+                    wall_us: t0.elapsed().as_micros() as u64,
+                    layer_hint: super::current_layer(),
+                    gpu_us: None,
+                    gpu_start_ns: None,
+                    gpu_end_ns: None,
+                });
             }
             Ok(())
         }
@@ -2272,7 +2784,7 @@ mod imp {
 pub use imp::{MetalContext, PinnedBuffer, TokenCommandBuffer};
 
 #[cfg(target_os = "macos")]
-pub use imp::CommandBatch;
+pub use imp::{CommandBatch, ReplayBufferBinding, ReplayComputeStage, ReplayableComputeGraph};
 
 pub mod argbuf;
 pub use argbuf::{ArgLayout, KernelArgBuffer};

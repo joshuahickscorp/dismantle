@@ -70,6 +70,162 @@ kernel void gravity_pq_matvec(
 }
 
 // ---------------------------------------------------------------------------
+// Additive bits=8/autotune lane.
+//
+// `gravity_pq_matvec` above is deliberately unchanged and remains the runtime
+// default.  The kernels below are selected only through the explicit
+// `PqMetalKernelVariant` API.  Production GLM gravity-pq tensors overwhelmingly
+// use D=32, S=1, sub=32, card=256, bits=8, so their indices are already bytes:
+// the generic four-byte MSB window is pure overhead for that geometry.
+// ---------------------------------------------------------------------------
+
+// Four independent vector accumulators shorten the dependency chain from 32
+// scalar FMAs per chunk to two vector FMAs per accumulator for sub=32.  The
+// host registry admits this helper only when `sub` and `dim` are multiples of
+// four, which guarantees aligned half4/float4 entry points.
+static inline float pq_bits8_vec4_lane(
+    const device half  *codebooks,
+    const device uchar *codes,
+    const device float *x,
+    constant GravityPQParams &p,
+    uint row,
+    uint first_chunk,
+    uint chunk_stride)
+{
+    float4 acc0 = 0.0f;
+    float4 acc1 = 0.0f;
+    float4 acc2 = 0.0f;
+    float4 acc3 = 0.0f;
+    for (uint s = 0; s < p.subspaces; ++s) {
+        const device half *cb = codebooks + s * p.card * p.sub;
+        const uint xbase = s * p.sub;
+        for (uint c = first_chunk; c < p.nchunk; c += chunk_stride) {
+            uint flat = (row * p.nchunk + c) * p.subspaces + s;
+            const device half *entry = cb + uint(codes[flat]) * p.sub;
+            const device float *xs = x + c * p.dim + xbase;
+            const device half4 *entry4 =
+                reinterpret_cast<const device half4 *>(entry);
+            const device float4 *xs4 =
+                reinterpret_cast<const device float4 *>(xs);
+            uint nvec = p.sub >> 2u;
+            for (uint q = 0u; q < nvec; q += 4u) {
+                if (q < nvec) {
+                    acc0 = fma(float4(entry4[q]), xs4[q], acc0);
+                }
+                if (q + 1u < nvec) {
+                    acc1 = fma(float4(entry4[q + 1u]), xs4[q + 1u], acc1);
+                }
+                if (q + 2u < nvec) {
+                    acc2 = fma(float4(entry4[q + 2u]), xs4[q + 2u], acc2);
+                }
+                if (q + 3u < nvec) {
+                    acc3 = fma(float4(entry4[q + 3u]), xs4[q + 3u], acc3);
+                }
+            }
+        }
+    }
+    float4 v = (acc0 + acc1) + (acc2 + acc3);
+    return (v.x + v.y) + (v.z + v.w);
+}
+
+// Direct byte lookup while retaining the default kernel's scalar FMA shape.
+// This isolates the cost of generic packed extraction from every other change.
+kernel void gravity_pq_matvec_bits8_direct(
+    const device half         *codebooks [[buffer(0)]],
+    const device uchar        *codes     [[buffer(1)]],
+    const device float        *x         [[buffer(2)]],
+    device float              *y         [[buffer(3)]],
+    constant GravityPQParams  &p         [[buffer(4)]],
+    uint  tgid                           [[threadgroup_position_in_grid]],
+    uint  sg_in_tg                       [[simdgroup_index_in_threadgroup]],
+    uint  sgs_per_tg                     [[simdgroups_per_threadgroup]],
+    uint  lane                           [[thread_index_in_simdgroup]])
+{
+    uint row = tgid * sgs_per_tg + sg_in_tg;
+    if (row >= p.rows) { return; }
+
+    float acc = 0.0f;
+    for (uint s = 0; s < p.subspaces; ++s) {
+        const device half *cb = codebooks + s * p.card * p.sub;
+        const uint xbase = s * p.sub;
+        for (uint c = lane; c < p.nchunk; c += 32u) {
+            uint flat = (row * p.nchunk + c) * p.subspaces + s;
+            const device half *entry = cb + uint(codes[flat]) * p.sub;
+            const device float *xs = x + c * p.dim + xbase;
+            for (uint j = 0; j < p.sub; ++j) {
+                acc = fma(float(entry[j]), xs[j], acc);
+            }
+        }
+    }
+    acc = simd_sum(acc);
+    if (lane == 0u) { y[row] = acc; }
+}
+
+// Same row mapping as the default, but with vector loads and four independent
+// vector FMA chains.  This lets the sweep distinguish byte extraction from
+// arithmetic dependency depth.
+kernel void gravity_pq_matvec_bits8_vec4(
+    const device half         *codebooks [[buffer(0)]],
+    const device uchar        *codes     [[buffer(1)]],
+    const device float        *x         [[buffer(2)]],
+    device float              *y         [[buffer(3)]],
+    constant GravityPQParams  &p         [[buffer(4)]],
+    uint  tgid                           [[threadgroup_position_in_grid]],
+    uint  sg_in_tg                       [[simdgroup_index_in_threadgroup]],
+    uint  sgs_per_tg                     [[simdgroups_per_threadgroup]],
+    uint  lane                           [[thread_index_in_simdgroup]])
+{
+    uint row = tgid * sgs_per_tg + sg_in_tg;
+    if (row >= p.rows) { return; }
+    float acc = pq_bits8_vec4_lane(
+        codebooks, codes, x, p, row, lane, 32u);
+    acc = simd_sum(acc);
+    if (lane == 0u) { y[row] = acc; }
+}
+
+// True 2D row x chunk-slice decomposition.  One SIMD group computes one
+// deterministic slice and writes exactly one partial.  A separate kernel
+// reduces those partials in ascending slice order, so there is no atomic
+// accumulation and repeated runs are bit-stable.
+kernel void gravity_pq_matvec_bits8_2d(
+    const device half         *codebooks [[buffer(0)]],
+    const device uchar        *codes     [[buffer(1)]],
+    const device float        *x         [[buffer(2)]],
+    device float              *partials  [[buffer(3)]],
+    constant GravityPQParams  &p         [[buffer(4)]],
+    constant uint             &splits    [[buffer(5)]],
+    uint3 tgid                           [[threadgroup_position_in_grid]],
+    uint  lane                           [[thread_index_in_simdgroup]])
+{
+    uint row = tgid.x;
+    uint split = tgid.y;
+    if (row >= p.rows || split >= splits) { return; }
+    uint first_chunk = split * 32u + lane;
+    uint chunk_stride = splits * 32u;
+    float acc = pq_bits8_vec4_lane(
+        codebooks, codes, x, p, row, first_chunk, chunk_stride);
+    acc = simd_sum(acc);
+    if (lane == 0u) {
+        partials[row * splits + split] = acc;
+    }
+}
+
+kernel void gravity_pq_reduce_2d(
+    const device float        *partials [[buffer(0)]],
+    device float              *y        [[buffer(1)]],
+    constant GravityPQParams  &p        [[buffer(2)]],
+    constant uint             &splits   [[buffer(3)]],
+    uint id                              [[thread_position_in_grid]])
+{
+    if (id >= p.rows) { return; }
+    float acc = 0.0f;
+    for (uint split = 0u; split < splits; ++split) {
+        acc += partials[id * splits + split];
+    }
+    y[id] = acc;
+}
+
+// ---------------------------------------------------------------------------
 // The elementwise ops the .gravity token graph needs in f32.
 //
 // The shared kernels in common.metal are half-precision (silu_mul) or fold the

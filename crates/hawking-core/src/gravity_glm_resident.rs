@@ -595,7 +595,7 @@ struct DsaIndexState {
     sequence_scratch: SequenceScratch,
     shared_topk: Option<Vec<usize>>,
     ranked_indices: Option<Buffer>,
-    device_topk_selected: Option<Buffer>,
+    device_selection: bool,
     ranked_capacity: usize,
     capacity: usize,
 }
@@ -636,17 +636,12 @@ impl DsaIndexState {
         } else {
             None
         };
-        let device_topk_selected = if device_dsa {
-            Some(ctx.new_buffer_checked(capacity)?)
-        } else {
-            None
-        };
         Ok(Self {
             index_keys,
             sequence_scratch: SequenceScratch::new(ctx, capacity)?,
             shared_topk: None,
             ranked_indices,
-            device_topk_selected,
+            device_selection: device_dsa,
             ranked_capacity: if compact_rank_upload {
                 ranked_capacity
             } else {
@@ -724,14 +719,8 @@ impl DsaIndexState {
             }
             next_index_keys.push(next);
         }
-        let next_device_topk_selected = if self.device_topk_selected.is_some() {
-            Some(ctx.new_buffer_checked(capacity)?)
-        } else {
-            None
-        };
         self.sequence_scratch.reserve(ctx, capacity)?;
         self.index_keys = next_index_keys;
-        self.device_topk_selected = next_device_topk_selected;
         self.capacity = capacity;
         Ok(())
     }
@@ -774,13 +763,7 @@ impl DsaIndexState {
     }
 
     fn device_selection_enabled(&self) -> bool {
-        self.device_topk_selected.is_some()
-    }
-
-    fn device_topk_selected(&self) -> Result<&Buffer> {
-        self.device_topk_selected.as_ref().ok_or_else(|| {
-            Error::Gravity("resident device DSA has no selected-index scratch buffer".into())
-        })
+        self.device_selection
     }
 }
 
@@ -1476,7 +1459,6 @@ pub fn forward_resident(
                                 &session.dsa.index_keys[layer],
                                 &session.dsa.sequence_scratch.index_scores_device,
                                 session.dsa.ranked_indices()?,
-                                session.dsa.device_topk_selected()?,
                                 session.dsa.capacity,
                                 pos,
                                 &cos,
@@ -2401,7 +2383,6 @@ fn indexer_topk_device<'a>(
     index_key_buffer: &Buffer,
     score_buffer: &Buffer,
     ranked_indices: &Buffer,
-    selected_scratch: &Buffer,
     cache_capacity: usize,
     pos: usize,
     cos: &[f32],
@@ -2502,14 +2483,7 @@ fn indexer_topk_device<'a>(
         (idim as f32).powf(-0.5),
         (ih as f32).powf(-0.5),
     )?;
-    route_segment_primitives::encode_stable_topk(
-        wave,
-        score_buffer,
-        ranked_indices,
-        selected_scratch,
-        n_keys,
-        k,
-    )?;
+    route_segment_primitives::encode_radix_topk(wave, score_buffer, ranked_indices, n_keys, k)?;
     Ok(k)
 }
 
@@ -3744,6 +3718,58 @@ mod route_segment_primitives {
                 enc.set_buffer(2, Some(&sb), 0);
                 enc.set_bytes(
                     3,
+                    std::mem::size_of_val(&params) as u64,
+                    &params as *const _ as *const _,
+                );
+            },
+        )
+    }
+
+    /// One-threadgroup exact radix-select + bitonic-rank candidate.
+    ///
+    /// Output order is identical to [`encode_stable_topk`]: descending score,
+    /// lower position first on ties. The fixed 16 KiB rank workspace admits
+    /// at most 2048 indices, matching compact attention's bound.
+    pub(super) fn encode_radix_topk(
+        tcb: &mut TokenCommandBuffer<'_>,
+        values: &Buffer,
+        indices: &Buffer,
+        n: usize,
+        k: usize,
+    ) -> Result<()> {
+        const MAX_K: usize = 2048;
+        if n == 0 || k == 0 {
+            return Ok(());
+        }
+        if k > MAX_K {
+            return Err(Error::Gravity(format!(
+                "gravity_glm_radix_topk_f32 supports k <= {MAX_K}, got {k}"
+            )));
+        }
+        let out_len = k.min(n);
+        require_f32(values, 0, n, "gravity_glm_radix_topk_f32 values")?;
+        require_range(
+            indices,
+            0,
+            out_len,
+            std::mem::size_of::<u32>(),
+            "gravity_glm_radix_topk_f32 indices",
+        )?;
+        let params = GlmTopkParams {
+            n: u32_arg(n, "gravity_glm_radix_topk_f32 n")?,
+            k: u32_arg(k, "gravity_glm_radix_topk_f32 k")?,
+        };
+        let vb = values.clone();
+        let ib = indices.clone();
+        tcb.dispatch_threads(
+            "gravity_glm_radix_topk_f32",
+            (TG, 1, 1),
+            (TG, 1, 1),
+            move |enc| {
+                enc.set_buffer(0, Some(&vb), 0);
+                enc.set_buffer(1, Some(&ib), 0);
+                enc.set_bytes(
+                    2,
                     std::mem::size_of_val(&params) as u64,
                     &params as *const _ as *const _,
                 );
@@ -5754,6 +5780,148 @@ mod tests {
     }
 
     #[test]
+    fn radix_topk_is_exact_at_32k_2048_with_ties_and_signed_zero() {
+        let shader = include_str!("../shaders/gravity_pq.metal");
+        assert!(shader.contains("kernel void gravity_glm_radix_topk_f32("));
+        let registry = include_str!("metal/mod.rs");
+        assert!(
+            registry.contains("\"gravity_glm_radix_topk_f32\" => \"gravity_glm_radix_topk_f32\"")
+        );
+
+        let Ok(ctx) = MetalContext::new() else {
+            return;
+        };
+        const N: usize = 32768;
+        let mut state = 0x1bad_f00du32;
+        let mut values = Vec::with_capacity(N);
+        for index in 0..N {
+            state = state.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
+            let bucket = ((state >> 8) % 4096) as i32 - 2048;
+            let mut score = bucket as f32 * (1.0 / 128.0);
+            if index % 127 == 0 {
+                score = 7.0; // many exact ties, lower position must rank first
+            }
+            values.push(score);
+        }
+        values[3] = -0.0;
+        values[4] = 0.0;
+        values[17] = f32::INFINITY;
+        values[18] = f32::NEG_INFINITY;
+
+        let values_buffer = f32_buffer(&ctx, &values);
+        let ks = [1usize, 3, 33, 2048, 2048, 2048];
+        let mut outputs = Vec::new();
+        let mut tcb = TokenCommandBuffer::new(&ctx);
+        for &k in &ks {
+            let output = u32_buffer(&ctx, &vec![u32::MAX; k]);
+            encode_radix_topk(&mut tcb, &values_buffer, &output, values.len(), k)
+                .expect("encode 32K radix top-k");
+            outputs.push((k, output));
+        }
+        assert_eq!(tcb.dispatch_count(), ks.len());
+        tcb.commit_and_wait()
+            .expect("32K radix top-k command buffer");
+
+        for (k, output) in outputs {
+            let expected: Vec<u32> = topk_desc(&values, k)
+                .into_iter()
+                .map(|index| index as u32)
+                .collect();
+            assert_eq!(
+                read_u32(&output, k),
+                expected,
+                "radix rank mismatch at k={k}"
+            );
+        }
+
+        let oversized = u32_buffer(&ctx, &vec![0; 2049]);
+        let mut rejected = TokenCommandBuffer::new(&ctx);
+        let error = encode_radix_topk(&mut rejected, &values_buffer, &oversized, N, 2049)
+            .expect_err("radix k above compact bound must fail before encode");
+        assert!(error.to_string().contains("k <= 2048"));
+        assert_eq!(rejected.dispatch_count(), 0);
+    }
+
+    #[test]
+    #[ignore = "bounded Metal timing; run explicitly on a free-enough GPU"]
+    fn benchmark_radix_topk_32k_2048_against_serial_oracle() {
+        let ctx = MetalContext::new().expect("Metal device for bounded top-k benchmark");
+        const N: usize = 32768;
+        const K: usize = 2048;
+        const ITERS: usize = 5;
+        let mut state = 0x5eed_1234u32;
+        let values: Vec<f32> = (0..N)
+            .map(|index| {
+                state = state.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
+                if index % 113 == 0 {
+                    3.5
+                } else {
+                    (((state >> 8) % 16384) as i32 - 8192) as f32 * (1.0 / 256.0)
+                }
+            })
+            .collect();
+        let expected: Vec<u32> = topk_desc(&values, K)
+            .into_iter()
+            .map(|index| index as u32)
+            .collect();
+        let values_buffer = f32_buffer(&ctx, &values);
+        let serial_output = u32_buffer(&ctx, &vec![u32::MAX; K]);
+        let serial_selected = empty_u8_buffer(&ctx, N);
+        let radix_output = u32_buffer(&ctx, &vec![u32::MAX; K]);
+
+        let run_serial = || {
+            let mut tcb = TokenCommandBuffer::new(&ctx);
+            encode_stable_topk(
+                &mut tcb,
+                &values_buffer,
+                &serial_output,
+                &serial_selected,
+                N,
+                K,
+            )
+            .expect("encode serial stable top-k");
+            tcb.commit_and_wait().expect("serial stable top-k");
+        };
+        let run_radix = || {
+            let mut tcb = TokenCommandBuffer::new(&ctx);
+            encode_radix_topk(&mut tcb, &values_buffer, &radix_output, N, K)
+                .expect("encode radix top-k");
+            tcb.commit_and_wait().expect("radix top-k");
+        };
+
+        run_serial();
+        run_radix();
+        assert_eq!(read_u32(&serial_output, K), expected);
+        assert_eq!(read_u32(&radix_output, K), expected);
+
+        let mut serial_us = Vec::with_capacity(ITERS);
+        let mut radix_us = Vec::with_capacity(ITERS);
+        for _ in 0..ITERS {
+            let started = std::time::Instant::now();
+            run_serial();
+            serial_us.push(started.elapsed().as_secs_f64() * 1e6);
+        }
+        for _ in 0..ITERS {
+            let started = std::time::Instant::now();
+            run_radix();
+            radix_us.push(started.elapsed().as_secs_f64() * 1e6);
+        }
+        serial_us.sort_by(f64::total_cmp);
+        radix_us.sort_by(f64::total_cmp);
+        let serial_median = serial_us[ITERS / 2];
+        let radix_median = radix_us[ITERS / 2];
+        eprintln!(
+            "device DSA top-k N={N} K={K}: serial_us={serial_us:?} radix_us={radix_us:?} \
+             median_speedup={:.3}x",
+            serial_median / radix_median
+        );
+        assert!(
+            radix_median < serial_median,
+            "parallel radix median {radix_median:.3} us did not beat serial {serial_median:.3} us"
+        );
+    }
+
+    #[test]
     fn route_segment_residual_add_is_exact_alias_safe_and_fail_closed() {
         let shader = include_str!("../shaders/gravity_pq.metal");
         assert!(shader.contains("kernel void gravity_add_inplace_f32("));
@@ -6642,14 +6810,14 @@ mod tests {
             ResidentAttentionState::Expanded(_)
         ));
         assert!(default.dsa.ranked_indices.is_none());
-        assert!(default.dsa.device_topk_selected.is_none());
+        assert!(!default.dsa.device_selection_enabled());
 
         let mut compact =
             ResidentSession::new_compact(&ctx, &arch, 8).expect("compact resident session");
         assert!(compact.attention.expanded_layer(0).is_err());
         assert_eq!(compact.dsa.index_keys.len(), arch.n_layers);
         assert!(compact.dsa.ranked_indices.is_some());
-        assert!(compact.dsa.device_topk_selected.is_none());
+        assert!(!compact.dsa.device_selection_enabled());
         {
             let ResidentAttentionState::Compact(cache) = &mut compact.attention else {
                 panic!("compact constructor must own only compact MLA state");
@@ -6694,7 +6862,7 @@ mod tests {
     }
 
     #[test]
-    fn device_dsa_scratch_is_compact_only_and_grows_with_sequence_state() {
+    fn device_dsa_mode_is_compact_only_and_adds_no_sequence_scratch() {
         let Ok(ctx) = MetalContext::new() else {
             return;
         };
@@ -6721,22 +6889,22 @@ mod tests {
         .expect("compact device DSA session");
         assert!(device.dsa.device_selection_enabled());
         assert_eq!(
-            device.dsa.device_topk_selected().unwrap().length(),
-            8,
-            "one selected byte per sequence position"
+            device.dsa.ranked_indices().unwrap().length(),
+            (arch.index_topk.max(1) * 4) as u64,
+            "device DSA reuses compact MLA's fixed ranked-index buffer"
         );
-        let before = device.dsa.device_topk_selected().unwrap().contents();
+        let ranked_before = device.dsa.ranked_indices().unwrap().contents();
         device.seq_len = 8;
         device
             .reserve(&ctx, &arch, 9)
             .expect("device DSA state growth");
         assert_eq!(device.dsa.capacity, 16);
-        assert_eq!(device.dsa.device_topk_selected().unwrap().length(), 16);
-        assert_ne!(
-            device.dsa.device_topk_selected().unwrap().contents(),
-            before,
-            "growth must replace the bounded selected scratch"
+        assert_eq!(
+            device.dsa.ranked_indices().unwrap().contents(),
+            ranked_before,
+            "ranked output is O(index_topk), not O(sequence), and does not grow"
         );
+        assert!(device.dsa.device_selection_enabled());
     }
 
     #[test]

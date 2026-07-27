@@ -11,8 +11,8 @@ use std::path::PathBuf;
 
 use hawking_core::gravity_glm::gpu::GravityGlmGpu;
 use hawking_core::gravity_glm::{
-    GPU_COMPACT_MLA_ENV, GPU_DEVICE_DSA_ENV, GPU_DEVICE_ROUTER_ENV, GPU_LM_HEAD_ENV,
-    GPU_LM_HEAD_FULL_LOGITS_ENV,
+    GPU_COMPACT_MLA_ENV, GPU_DEVICE_DSA_ENV, GPU_DEVICE_ROUTER_ENV, GPU_EXPERT_WAVE_CONCURRENT_ENV,
+    GPU_EXPERT_WAVE_ENV, GPU_LM_HEAD_ENV, GPU_LM_HEAD_FULL_LOGITS_ENV,
 };
 use hawking_core::metal::MetalContext;
 use hawking_core::numeric_parity::{score_pair, Bounds};
@@ -83,10 +83,14 @@ fn compact_mla_complete_tokens_match_expanded_v21_and_exact_decisions() {
     let prior_compact = std::env::var_os(GPU_COMPACT_MLA_ENV);
     let prior_device_dsa = std::env::var_os(GPU_DEVICE_DSA_ENV);
     let prior_device_router = std::env::var_os(GPU_DEVICE_ROUTER_ENV);
+    let prior_expert_wave = std::env::var_os(GPU_EXPERT_WAVE_ENV);
+    let prior_expert_wave_concurrent = std::env::var_os(GPU_EXPERT_WAVE_CONCURRENT_ENV);
     let prior_head = std::env::var_os(GPU_LM_HEAD_ENV);
     let prior_full_logits = std::env::var_os(GPU_LM_HEAD_FULL_LOGITS_ENV);
     std::env::remove_var(GPU_DEVICE_DSA_ENV);
     std::env::remove_var(GPU_DEVICE_ROUTER_ENV);
+    std::env::remove_var(GPU_EXPERT_WAVE_ENV);
+    std::env::remove_var(GPU_EXPERT_WAVE_CONCURRENT_ENV);
     std::env::remove_var(GPU_LM_HEAD_ENV);
     std::env::remove_var(GPU_LM_HEAD_FULL_LOGITS_ENV);
 
@@ -288,6 +292,44 @@ fn compact_mla_complete_tokens_match_expanded_v21_and_exact_decisions() {
         let device_head_waits = compact_device_head
             .last_resident_waits()
             .expect("device final norm plus head resident wait count");
+        std::env::set_var(GPU_COMPACT_MLA_ENV, "1");
+        std::env::set_var(GPU_DEVICE_DSA_ENV, "1");
+        std::env::set_var(GPU_DEVICE_ROUTER_ENV, "1");
+        std::env::set_var(GPU_EXPERT_WAVE_ENV, "1");
+        std::env::set_var(GPU_LM_HEAD_ENV, "1");
+        std::env::set_var(GPU_LM_HEAD_FULL_LOGITS_ENV, "1");
+        let (expert_wave_logits, expert_wave_trace) = compact_device_head
+            .forward(prompt)
+            .expect("sequential projection expert-wave forward");
+        std::env::remove_var(GPU_LM_HEAD_FULL_LOGITS_ENV);
+        std::env::remove_var(GPU_LM_HEAD_ENV);
+        std::env::remove_var(GPU_EXPERT_WAVE_ENV);
+        std::env::remove_var(GPU_DEVICE_ROUTER_ENV);
+        std::env::remove_var(GPU_DEVICE_DSA_ENV);
+        std::env::remove_var(GPU_COMPACT_MLA_ENV);
+        let expert_wave_waits = compact_device_head
+            .last_resident_waits()
+            .expect("sequential expert-wave resident wait count");
+        std::env::set_var(GPU_COMPACT_MLA_ENV, "1");
+        std::env::set_var(GPU_DEVICE_DSA_ENV, "1");
+        std::env::set_var(GPU_DEVICE_ROUTER_ENV, "1");
+        std::env::set_var(GPU_EXPERT_WAVE_ENV, "1");
+        std::env::set_var(GPU_EXPERT_WAVE_CONCURRENT_ENV, "1");
+        std::env::set_var(GPU_LM_HEAD_ENV, "1");
+        std::env::set_var(GPU_LM_HEAD_FULL_LOGITS_ENV, "1");
+        let (concurrent_wave_logits, concurrent_wave_trace) = compact_device_head
+            .forward(prompt)
+            .expect("concurrent projection expert-wave forward");
+        std::env::remove_var(GPU_LM_HEAD_FULL_LOGITS_ENV);
+        std::env::remove_var(GPU_LM_HEAD_ENV);
+        std::env::remove_var(GPU_EXPERT_WAVE_CONCURRENT_ENV);
+        std::env::remove_var(GPU_EXPERT_WAVE_ENV);
+        std::env::remove_var(GPU_DEVICE_ROUTER_ENV);
+        std::env::remove_var(GPU_DEVICE_DSA_ENV);
+        std::env::remove_var(GPU_COMPACT_MLA_ENV);
+        let concurrent_wave_waits = compact_device_head
+            .last_resident_waits()
+            .expect("concurrent expert-wave resident wait count");
         assert!(
             !authority.expert_choices.is_empty(),
             "prompt {prompt:?}: sparse router authority is vacuous"
@@ -313,6 +355,18 @@ fn compact_mla_complete_tokens_match_expanded_v21_and_exact_decisions() {
         let device_head_pair = score_pair(
             &expanded_logits,
             &device_head_logits,
+            &authority.logits,
+            &Bounds::logits(),
+        );
+        let expert_wave_pair = score_pair(
+            &expanded_logits,
+            &expert_wave_logits,
+            &authority.logits,
+            &Bounds::logits(),
+        );
+        let concurrent_wave_pair = score_pair(
+            &expanded_logits,
+            &concurrent_wave_logits,
             &authority.logits,
             &Bounds::logits(),
         );
@@ -360,6 +414,16 @@ fn compact_mla_complete_tokens_match_expanded_v21_and_exact_decisions() {
             device_router_waits,
             device_head_waits
         );
+        eprintln!(
+            "expert waves case {case}: sequential rel_l2={:.3e} meaningful={:.3e}; \
+             concurrent rel_l2={:.3e} meaningful={:.3e}; waits sequential={} concurrent={}",
+            expert_wave_pair.device.continuous.relative_l2,
+            expert_wave_pair.device.continuous.max_meaningful_rel,
+            concurrent_wave_pair.device.continuous.relative_l2,
+            concurrent_wave_pair.device.continuous.max_meaningful_rel,
+            expert_wave_waits,
+            concurrent_wave_waits
+        );
         assert!(
             pair.pass,
             "case {case} prompt {prompt:?}: compact complete-token V2.1 {pair:#?}"
@@ -375,6 +439,14 @@ fn compact_mla_complete_tokens_match_expanded_v21_and_exact_decisions() {
         assert!(
             device_head_pair.pass,
             "case {case} prompt {prompt:?}: device final norm + head complete-token V2.1 {device_head_pair:#?}"
+        );
+        assert!(
+            expert_wave_pair.pass,
+            "case {case} prompt {prompt:?}: sequential expert-wave complete-token V2.1 {expert_wave_pair:#?}"
+        );
+        assert!(
+            concurrent_wave_pair.pass,
+            "case {case} prompt {prompt:?}: concurrent expert-wave complete-token V2.1 {concurrent_wave_pair:#?}"
         );
         assert_eq!(
             expanded_trace.final_topk, authority.final_topk,
@@ -435,6 +507,26 @@ fn compact_mla_complete_tokens_match_expanded_v21_and_exact_decisions() {
             "case {case}: full logits were requested for V2.1 scoring"
         );
         assert_eq!(
+            concurrent_wave_logits, expert_wave_logits,
+            "case {case}: independent concurrent projection groups must be bit-exact to the sequential wave"
+        );
+        assert_eq!(
+            concurrent_wave_trace.final_topk, expert_wave_trace.final_topk,
+            "case {case}: concurrent projection scheduling cannot change DSA"
+        );
+        assert_eq!(
+            concurrent_wave_trace.expert_choices, expert_wave_trace.expert_choices,
+            "case {case}: concurrent projection scheduling cannot change expert choices"
+        );
+        assert_eq!(
+            concurrent_wave_trace.sample_token, expert_wave_trace.sample_token,
+            "case {case}: concurrent projection scheduling cannot change greedy readback"
+        );
+        assert_eq!(
+            concurrent_wave_trace.head_topk_idx, expert_wave_trace.head_topk_idx,
+            "case {case}: concurrent projection scheduling cannot change head top-k"
+        );
+        assert_eq!(
             compact_waits.saturating_sub(device_dsa_waits),
             (4 * prompt.len()) as u64,
             "case {case}: two attention-prelude and two full-indexer drains must be removed per token"
@@ -446,6 +538,15 @@ fn compact_mla_complete_tokens_match_expanded_v21_and_exact_decisions() {
         assert_eq!(
             device_head_waits, device_router_waits,
             "case {case}: final RMSNorm must append to the existing device-head commit"
+        );
+        assert_eq!(
+            device_head_waits.saturating_sub(expert_wave_waits),
+            (2 * prompt.len()) as u64,
+            "case {case}: one expert wave must replace three expert batches per token"
+        );
+        assert_eq!(
+            concurrent_wave_waits, expert_wave_waits,
+            "case {case}: projection concurrency must not add command buffers or waits"
         );
     }
 
@@ -460,6 +561,14 @@ fn compact_mla_complete_tokens_match_expanded_v21_and_exact_decisions() {
     match prior_device_router {
         Some(value) => std::env::set_var(GPU_DEVICE_ROUTER_ENV, value),
         None => std::env::remove_var(GPU_DEVICE_ROUTER_ENV),
+    }
+    match prior_expert_wave {
+        Some(value) => std::env::set_var(GPU_EXPERT_WAVE_ENV, value),
+        None => std::env::remove_var(GPU_EXPERT_WAVE_ENV),
+    }
+    match prior_expert_wave_concurrent {
+        Some(value) => std::env::set_var(GPU_EXPERT_WAVE_CONCURRENT_ENV, value),
+        None => std::env::remove_var(GPU_EXPERT_WAVE_CONCURRENT_ENV),
     }
     match prior_head {
         Some(value) => std::env::set_var(GPU_LM_HEAD_ENV, value),

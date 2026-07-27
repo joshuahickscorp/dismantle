@@ -885,6 +885,11 @@ mod imp {
             "gemv_simdgroup_f32" => "gemv_simdgroup_f32",
             // GLM native.bf16 lm_head (sequential accumulate, host parity)
             "gemv_native_bf16_seq" => "gemv_native_bf16_seq",
+            // Additive/default-off native.bf16 accuracy candidates.
+            "gemv_native_bf16_neumaier" => "gemv_native_bf16_neumaier",
+            "gemv_native_bf16_neumaier_compensated_product" => {
+                "gemv_native_bf16_neumaier_compensated_product"
+            }
             // Gravity .gravity elementwise / PQ (expert-wave, resident)
             "gravity_silu_mul_f32" => "gravity_silu_mul_f32",
             "gravity_axpy_f32" => "gravity_axpy_f32",

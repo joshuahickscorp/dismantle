@@ -2221,6 +2221,53 @@ pub mod gpu {
         Ok(y)
     }
 
+    /// Explicit additive accuracy candidate for device-resident native-BF16
+    /// GEMV. `Sequential` delegates to the established path; the other modes
+    /// select separate Metal symbols and are not consulted by runtime policy.
+    /// Public only for parity gates and bounded microbenchmarks.
+    pub fn dispatch_gemv_native_bf16_accumulation(
+        ctx: &MetalContext,
+        weight: &Buffer,
+        rows: u32,
+        cols: u32,
+        x: &[f32],
+        accumulation: crate::gravity::NativeBf16Accumulation,
+    ) -> Result<Vec<f32>> {
+        if accumulation == crate::gravity::NativeBf16Accumulation::Sequential {
+            return dispatch_gemv_native_bf16_seq(ctx, weight, rows, cols, x);
+        }
+        if x.len() != cols as usize {
+            return Err(Error::Gravity(format!(
+                "gemv_native_bf16_accumulation: x.len() {} != cols {cols}",
+                x.len()
+            )));
+        }
+        let expect = (rows as u64).saturating_mul(cols as u64).saturating_mul(2);
+        if weight.length() < expect {
+            return Err(Error::Gravity(format!(
+                "gemv_native_bf16_accumulation: weight buffer {} B < rows*cols*2 ({expect})",
+                weight.length()
+            )));
+        }
+
+        let x_buf = ctx.new_buffer_with_bytes_checked(bytemuck::cast_slice::<f32, u8>(x))?;
+        let y_buf = ctx.new_buffer_checked(rows as usize * std::mem::size_of::<f32>())?;
+        let rows_u = rows;
+        let cols_u = cols;
+        const TG: u32 = 256;
+        let grid = (rows.div_ceil(TG) * TG, 1, 1);
+        ctx.dispatch_threads(accumulation.metal_kernel(), grid, (TG, 1, 1), |enc| {
+            enc.set_buffer(0, Some(weight), 0);
+            enc.set_buffer(1, Some(&x_buf), 0);
+            enc.set_buffer(2, Some(&y_buf), 0);
+            enc.set_bytes(3, 4, &rows_u as *const u32 as *const _);
+            enc.set_bytes(4, 4, &cols_u as *const u32 as *const _);
+        })?;
+
+        let y_ptr = y_buf.contents() as *const f32;
+        Ok(unsafe { std::slice::from_raw_parts(y_ptr, rows as usize) }.to_vec())
+    }
+
     /// Encode bf16 GEMV into an existing command buffer (device x → device y).
     /// Caller commits. Used by the resident path so final_hidden never leaves
     /// the device for the projection.

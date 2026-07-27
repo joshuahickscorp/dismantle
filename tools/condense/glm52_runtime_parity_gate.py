@@ -12,7 +12,8 @@ labelled runtime agreement rather than Numeric Parity V2.1. Discrete decisions
 and cosine. Without ``--run`` the command only prints the future heavy commands.
 
     python3.12 tools/condense/glm52_runtime_parity_gate.py --artifact <dir>
-    python3.12 tools/condense/glm52_runtime_parity_gate.py --artifact <dir> --run --out PARITY.json
+    python3.12 tools/condense/glm52_runtime_parity_gate.py --artifact <dir> \
+        --suite capability --run --out PARITY.json
 """
 from __future__ import annotations
 
@@ -28,6 +29,8 @@ from typing import Any
 
 import numpy as np
 
+from glm52_capability_gate import G_LIVE_PROMPTS, G_MATH_TOKENS
+
 
 ROOT = Path(__file__).resolve().parents[2]
 INDEX_NAMES = (
@@ -40,6 +43,24 @@ MIN_COSINE = 1.0 - 1e-7
 
 class RuntimeParityError(RuntimeError):
     """The gate could not produce an honest comparison."""
+
+
+def prompt_cases(
+    suite: str,
+    tokens: list[int] | None,
+) -> list[tuple[str, list[int]]]:
+    if suite == "capability":
+        if tokens is not None:
+            raise RuntimeParityError(
+                "--tokens cannot be combined with --suite capability"
+            )
+        return [
+            ("math", list(G_MATH_TOKENS)),
+            *[(name, list(prompt)) for name, prompt in G_LIVE_PROMPTS],
+        ]
+    if suite != "single":
+        raise RuntimeParityError(f"unknown prompt suite {suite!r}")
+    return [("single", list(tokens or G_MATH_TOKENS))]
 
 
 def artifact_index(artifact: Path) -> Path:
@@ -194,7 +215,13 @@ def commands(
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--artifact", required=True, type=Path)
-    parser.add_argument("--tokens", nargs="+", type=int, default=[17, 488, 220, 17, 284])
+    parser.add_argument("--tokens", nargs="+", type=int)
+    parser.add_argument(
+        "--suite",
+        choices=("single", "capability"),
+        default="single",
+        help="capability compares math plus both live prompts; single uses --tokens or G_math",
+    )
     parser.add_argument(
         "--run",
         action="store_true",
@@ -207,17 +234,30 @@ def main() -> int:
 
     artifact = args.artifact.expanduser().resolve()
     index = artifact_index(artifact)
+    cases = prompt_cases(args.suite, args.tokens)
     with tempfile.TemporaryDirectory(prefix="glm52-runtime-parity-") as temporary:
         temporary_path = Path(temporary)
-        oracle_dump = temporary_path / "oracle.f32"
-        runtime_dump = temporary_path / "runtime.f32"
-        oracle_command, runtime_command = commands(
-            artifact,
-            args.tokens,
-            oracle_dump,
-            runtime_dump,
-            verify_hash=not args.no_verify_hash,
-        )
+        planned = []
+        for name, tokens in cases:
+            oracle_dump = temporary_path / f"{name}.oracle.f32"
+            runtime_dump = temporary_path / f"{name}.runtime.f32"
+            oracle_command, runtime_command = commands(
+                artifact,
+                tokens,
+                oracle_dump,
+                runtime_dump,
+                verify_hash=not args.no_verify_hash,
+            )
+            planned.append(
+                {
+                    "name": name,
+                    "tokens": tokens,
+                    "oracle_dump": oracle_dump,
+                    "runtime_dump": runtime_dump,
+                    "oracle_command": oracle_command,
+                    "runtime_command": runtime_command,
+                }
+            )
         if not args.run:
             print(
                 json.dumps(
@@ -226,9 +266,16 @@ def main() -> int:
                         "heavy_execution_started": False,
                         "artifact": str(artifact),
                         "index": str(index),
-                        "tokens": args.tokens,
-                        "oracle_command": oracle_command,
-                        "runtime_command": runtime_command,
+                        "suite": args.suite,
+                        "cases": [
+                            {
+                                "name": row["name"],
+                                "tokens": row["tokens"],
+                                "oracle_command": row["oracle_command"],
+                                "runtime_command": row["runtime_command"],
+                            }
+                            for row in planned
+                        ],
                         "note": "rerun with --run only under a valid heavy window",
                     },
                     indent=2,
@@ -237,24 +284,33 @@ def main() -> int:
             return 0
 
         started = time.time()
-        oracle_result = _run(oracle_command, args.timeout_seconds)
-        runtime_result = _run(runtime_command, args.timeout_seconds)
-        oracle_logits = np.fromfile(oracle_dump, dtype="<f4")
-        runtime_logits = np.fromfile(runtime_dump, dtype="<f4")
-        comparison = compare_logits(oracle_logits, runtime_logits)
-        runtime_meta = _last_json(runtime_result.stdout)
+        case_receipts = []
+        for row in planned:
+            oracle_result = _run(row["oracle_command"], args.timeout_seconds)
+            runtime_result = _run(row["runtime_command"], args.timeout_seconds)
+            oracle_logits = np.fromfile(row["oracle_dump"], dtype="<f4")
+            runtime_logits = np.fromfile(row["runtime_dump"], dtype="<f4")
+            comparison = compare_logits(oracle_logits, runtime_logits)
+            case_receipts.append(
+                {
+                    "name": row["name"],
+                    "tokens": row["tokens"],
+                    "oracle_stderr_tail": oracle_result.stderr[-1000:],
+                    "runtime": _last_json(runtime_result.stdout),
+                    "comparison": comparison,
+                }
+            )
+        passed = all(row["comparison"]["pass"] for row in case_receipts)
         receipt = {
             "schema": "hawking.glm52.runtime_parity_gate.v1",
             "at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             "artifact": str(artifact),
             "artifact_index": index.name,
             "artifact_index_sha256": hashlib.sha256(index.read_bytes()).hexdigest(),
-            "tokens": args.tokens,
-            "oracle_stderr_tail": oracle_result.stderr[-1000:],
-            "runtime": runtime_meta,
-            "comparison": comparison,
+            "suite": args.suite,
+            "cases": case_receipts,
             "elapsed_seconds": time.time() - started,
-            "verdict": "PASS" if comparison["pass"] else "FAIL",
+            "verdict": "PASS" if passed else "FAIL",
             "claims": {
                 "runtime_agreement_only": True,
                 "fp64_numeric_parity_v2_1": False,
@@ -262,11 +318,15 @@ def main() -> int:
                 "speed": False,
             },
         }
+        if len(case_receipts) == 1:
+            receipt["tokens"] = case_receipts[0]["tokens"]
+            receipt["runtime"] = case_receipts[0]["runtime"]
+            receipt["comparison"] = case_receipts[0]["comparison"]
         text = json.dumps(receipt, indent=2, sort_keys=True) + "\n"
         if args.out:
             args.out.write_text(text)
         print(text, end="")
-        return 0 if comparison["pass"] else 1
+        return 0 if passed else 1
 
 
 if __name__ == "__main__":

@@ -42,3 +42,17 @@ def test_runtime_agreement_rejects_shape_and_nonfinite():
     )
     assert not nonfinite["pass"]
     assert not nonfinite["all_finite"]
+
+
+def test_capability_suite_is_shared_with_capability_gate():
+    cases = gate.prompt_cases("capability", None)
+    assert [name for name, _ in cases] == ["math", "capital", "python"]
+    assert cases[0][1] == gate.G_MATH_TOKENS
+    assert [tokens for _, tokens in cases[1:]] == [
+        tokens for _, tokens in gate.G_LIVE_PROMPTS
+    ]
+
+
+def test_capability_suite_refuses_ambiguous_custom_tokens():
+    with pytest.raises(gate.RuntimeParityError, match="cannot be combined"):
+        gate.prompt_cases("capability", [1, 2, 3])

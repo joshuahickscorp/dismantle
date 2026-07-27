@@ -31,7 +31,8 @@
 //! the flag is unset (Parity V2.1 item 6). The additional default-off
 //! `HAWKING_GLM_GPU_EXPERT_WAVE_CONCURRENT=1` groups independent gate/up and
 //! down projections in concurrent Metal encoders while preserving dependency
-//! boundaries and ordered weighted combine.
+//! boundaries and ordered weighted combine. The pure device wave appends its
+//! residual add before the same commit and returns no activation to the host.
 //!
 //! **Compact MLA** (`HAWKING_GLM_GPU_COMPACT_MLA=1`, default off): replaces
 //! persistent expanded per-head K/V with normalized MLA latent + shared RoPE
@@ -1906,14 +1907,17 @@ pub fn forward_resident(
                         weights,
                         &prefix,
                         &pool.h,
+                        &pool.x,
                         a.hidden,
                         pool,
                         &mut tcb,
                         ctx,
                         &session.waits,
                     )?;
-                    write_f32(&pool.o, &out);
-                    residual_add(&pool.x, &pool.o, a.hidden);
+                    if let MlpWaveResult::Host(out) = out {
+                        write_f32(&pool.o, &out);
+                        residual_add(&pool.x, &pool.o, a.hidden);
+                    }
                 }
                 "sparse" => {
                     let prefix = format!("{p}.mlp");
@@ -2043,6 +2047,7 @@ pub fn forward_resident(
                                 &prefixes,
                                 &scales,
                                 &pool.h,
+                                &pool.x,
                                 a.hidden,
                                 pool,
                                 &mut tcb,
@@ -2095,11 +2100,13 @@ pub fn forward_resident(
                                     *r += *s;
                                 }
                             }
-                            routed
+                            MlpWaveResult::Host(routed)
                         }
                     };
-                    write_f32(&pool.o, &routed);
-                    residual_add(&pool.x, &pool.o, a.hidden);
+                    if let MlpWaveResult::Host(routed) = routed {
+                        write_f32(&pool.o, &routed);
+                        residual_add(&pool.x, &pool.o, a.hidden);
+                    }
                 }
                 other => {
                     return Err(Error::Gravity(format!(
@@ -3034,12 +3041,13 @@ fn mlp_one<'a>(
     weights: &GpuWeightCache,
     prefix: &str,
     x: &Buffer,
+    residual: &Buffer,
     x_len: usize,
     pool: &ActPool,
     tcb: &mut Option<TokenCommandBuffer<'a>>,
     ctx: &'a MetalContext,
     waits: &Cell<u64>,
-) -> Result<Vec<f32>> {
+) -> Result<MlpWaveResult> {
     // Expert-wave: one CB for dense MLP. Default path below is unchanged.
     if gpu_expert_wave_enabled() {
         return moe_device_wave(
@@ -3047,6 +3055,7 @@ fn mlp_one<'a>(
             &[prefix.to_string()],
             &[1.0f32],
             x,
+            residual,
             x_len,
             pool,
             tcb,
@@ -3065,6 +3074,7 @@ fn mlp_one<'a>(
         waits,
     )?;
     outs.pop()
+        .map(MlpWaveResult::Host)
         .ok_or_else(|| Error::Gravity("mlp_one empty".into()))
 }
 
@@ -4978,20 +4988,29 @@ fn encode_weight_matvec(
 /// `NativeGpuBf16`). Host-native tensors fall back to a single host pass with
 /// one wait tick (tiny fixtures without `HAWKING_GLM_GPU_LM_HEAD`); the pure
 /// device path is what flagship PQ experts hit.
+enum MlpWaveResult {
+    /// Host-native fallback or the ordinary three-batch path: caller applies
+    /// the residual add exactly as before.
+    Host(Vec<f32>),
+    /// Pure device wave appended the residual add before its existing commit.
+    DeviceResidualApplied,
+}
+
 #[allow(clippy::too_many_arguments)]
 fn moe_device_wave<'a>(
     weights: &GpuWeightCache,
     prefixes: &[String],
     scales: &[f32],
     x: &Buffer,
+    residual: &Buffer,
     x_len: usize,
     pool: &ActPool,
     tcb: &mut Option<TokenCommandBuffer<'a>>,
     ctx: &'a MetalContext,
     waits: &Cell<u64>,
-) -> Result<Vec<f32>> {
+) -> Result<MlpWaveResult> {
     if prefixes.is_empty() {
-        return Ok(vec![0f32; x_len]);
+        return Ok(MlpWaveResult::Host(vec![0f32; x_len]));
     }
     if scales.len() != prefixes.len() {
         return Err(Error::Gravity(format!(
@@ -5029,7 +5048,8 @@ fn moe_device_wave<'a>(
         })
     };
     if !all_device {
-        return moe_wave_host_fallback(weights, prefixes, scales, x, x_len, waits);
+        return moe_wave_host_fallback(weights, prefixes, scales, x, x_len, waits)
+            .map(MlpWaveResult::Host);
     }
 
     // Discover intermediate width from the first gate projection.
@@ -5117,14 +5137,20 @@ fn moe_device_wave<'a>(
             x_len as u32,
         )?;
     }
+    // The expert output is consumed only by the residual add. Keep both on
+    // device and append that exact elementwise operation before the wave's
+    // existing commit; no new command buffer or wait.
+    route_segment_primitives::encode_residual_add_inplace(
+        &mut wave,
+        residual,
+        &scratch.combined,
+        x_len,
+    )?;
 
     // Encode/submit/sync + dispatch count fold at TCB commit when ledger on.
     wave.commit_and_wait()?;
     waits.set(waits.get().saturating_add(1));
-
-    let out = read_f32(&scratch.combined, x_len);
-    crate::cost_ledger::record_transfer((x_len * 4) as u64, false, "expert_wave_y_download");
-    Ok(out)
+    Ok(MlpWaveResult::DeviceResidualApplied)
 }
 
 /// Host-side gate/up/SiLU/down/combine used when expert weights are not

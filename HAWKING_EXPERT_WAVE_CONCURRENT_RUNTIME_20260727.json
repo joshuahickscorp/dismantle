@@ -26,7 +26,8 @@
     "trace_behavior": "Split/per-command-buffer GPU trace modes deliberately fall back to the existing ordered encoders; production Off and CPU-encode modes use concurrent groups.",
     "command_buffers_per_wave": 1,
     "waits_per_wave": 1,
-    "dispatches_per_flagship_wave": 45
+    "runtime_dispatches_per_flagship_wave_after_device_residual": 46,
+    "synthetic_projection_benchmark_dispatches_per_wave": 45
   },
   "replicated_synthetic_flagship_geometry": {
     "device": "Apple M3 Ultra",

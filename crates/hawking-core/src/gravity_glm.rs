@@ -1153,16 +1153,21 @@ pub fn estimate_resident_waits_per_token(arch: &GlmArch) -> u64 {
 
 /// Static resident boundary count for compact MLA with device DSA selection.
 ///
-/// Each full-indexer layer encodes `wq_b + wk + weights_proj → affine
-/// LayerNorm → q/k RoPE → scores → exact radix top-k` into the compact
-/// attention command buffer. That removes both indexer dependency drains per
-/// `"full"` layer. This is source-derived; actual physical commands still
-/// depend on tensor codecs and must be measured before promotion.
+/// Device-encodable compact layers fold input/q/kv normalization,
+/// `q_a + kv_a + q_b`, compact query/key RoPE, DSA, and compact attention into
+/// the o-projection command buffer. This removes two attention-prelude drains
+/// per layer plus both indexer drains per `"full"` layer. Host-native
+/// projection tensors fall back to the ordinary schedule at runtime. This is
+/// source-derived; actual physical commands still depend on tensor codecs and
+/// must be measured before promotion.
 pub fn estimate_resident_device_dsa_waits_per_token(arch: &GlmArch) -> u64 {
     let breakdown = estimate_resident_logical_wait_breakdown(arch);
+    let attention_prelude_boundaries =
+        (breakdown.attention_projection_boundaries / 3).saturating_mul(2);
     breakdown
         .total()
         .saturating_sub(breakdown.indexer_projection_boundaries)
+        .saturating_sub(attention_prelude_boundaries)
 }
 
 /// Static drains from `batched_mlp` alone (gate / up / down commits).
@@ -1903,8 +1908,12 @@ pub mod gpu {
                 // widen). Flagship lm_head is 1.90 GB; indexer + router add
                 // the rest of the native f32 widen tax (~2.53 GB of the
                 // surplus). Rank-2 only — norms/biases stay host dense().
-                // Gated by HAWKING_GLM_GPU_LM_HEAD; default path untouched.
-                if super::gpu_lm_head_enabled() && codec == "native.bf16" && shape.len() == 2 {
+                // Gated by HAWKING_GLM_GPU_LM_HEAD or the stricter compact
+                // device-DSA graph; both are default off.
+                if (super::gpu_lm_head_enabled() || super::gpu_device_dsa_enabled())
+                    && codec == "native.bf16"
+                    && shape.len() == 2
+                {
                     let rows = shape[0] as u32;
                     let cols = shape[1] as u32;
                     let expect = (rows as u64).saturating_mul(cols as u64).saturating_mul(2);
@@ -2931,8 +2940,8 @@ mod tests {
         assert_eq!(resident, 586, "resident logical/source boundaries");
         assert_eq!(
             estimate_resident_device_dsa_waits_per_token(&arch),
-            544,
-            "device DSA removes two boundaries for each of 21 full indexers"
+            388,
+            "device graph removes two prelude boundaries per layer and both boundaries for each full indexer"
         );
         assert_eq!(
             estimate_resident_logical_wait_breakdown(&arch),

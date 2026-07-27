@@ -1,10 +1,13 @@
 //! Codegen entry: regenerate checked-in adapter/event artifacts.
 //!
 //! Mirrors `hide-sdk-codegen`: pure deterministic write of goldens; drift tests
-//! fail when regeneration would change bytes.
+//! fail when regeneration would change bytes. **This is the one adapter
+//! codegen** — extend it; do not fork a second system.
 //!
-//! Also writes the three repo-root deliverables when `--repo-root` is set
-//! (default: two levels above this crate).
+//! Writes:
+//! - `crates/hawking-adapters/generated/*`
+//! - repo-root: `HAWKING_ADAPTER_{ABI,REGISTRY,CAPABILITY_MATRIX,TEST_MATRIX,MIGRATION_MAP}.json`
+//! - repo-root: `HAWKING_CANONICAL_EVENTS.json` (+ bridge surface lockstep)
 
 use std::path::PathBuf;
 
@@ -15,46 +18,43 @@ fn main() -> Result<()> {
     let written = hawking_adapters::generate::write_all(&crate_root)
         .context("write generated/ under hawking-adapters")?;
     for p in &written {
-        println!("wrote {} ({} bytes)", p.display(), std::fs::metadata(p)?.len());
+        println!(
+            "wrote {} ({} bytes)",
+            p.display(),
+            std::fs::metadata(p)?.len()
+        );
     }
 
-    // Repo-root deliverables (contract).
     let repo_root = crate_root
         .parent()
         .and_then(|p| p.parent())
         .map(|p| p.to_path_buf())
         .context("resolve repo root")?;
 
-    let root_artifacts = [
-        (
-            "HAWKING_ADAPTER_REGISTRY.json",
-            hawking_adapters::adapter_registry_json(),
-        ),
-        (
-            "HAWKING_CANONICAL_EVENTS.json",
-            hawking_events::canonical_events_json(),
-        ),
-        (
-            "HAWKING_BRIDGE_SURFACE.json",
-            // Bridge surface is owned by hawking-serve; we re-export a
-            // static declaration here so codegen stays one command. The
-            // serve crate's module is the live source — keep in sync via
-            // the bridge_surface module string below matching serve.
-            bridge_surface_json(),
-        ),
-    ];
-    for (name, contents) in &root_artifacts {
+    for (name, contents) in hawking_adapters::generate::repo_root_artifacts() {
         let path = repo_root.join(name);
-        std::fs::write(&path, contents).with_context(|| format!("write {}", path.display()))?;
+        std::fs::write(&path, &contents)
+            .with_context(|| format!("write {}", path.display()))?;
         println!("wrote {} ({} bytes)", path.display(), contents.len());
     }
+
+    // Bridge surface stays in lockstep (owned by serve; string-duplicated here
+    // to avoid a hawking-serve dep from this bin).
+    let bridge_path = repo_root.join("HAWKING_BRIDGE_SURFACE.json");
+    let bridge = bridge_surface_json();
+    std::fs::write(&bridge_path, &bridge)
+        .with_context(|| format!("write {}", bridge_path.display()))?;
+    println!(
+        "wrote {} ({} bytes)",
+        bridge_path.display(),
+        bridge.len()
+    );
+
     Ok(())
 }
 
 /// Keep in lockstep with `hawking_serve::surface::bridge_surface_json`.
 fn bridge_surface_json() -> String {
-    // Duplicated as a string builder to avoid a hawking-serve dep from this
-    // codegen bin (serve pulls Metal/core). The serve crate tests assert equality.
     let doc = serde_json::json!({
         "schema": "hawking.bridge.surface.v1",
         "endpoints": [

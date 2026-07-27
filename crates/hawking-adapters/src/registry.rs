@@ -25,7 +25,9 @@ impl FamilyRegistry {
     }
 
     pub fn get(&self, id: &str) -> Option<&FamilyDescriptor> {
-        self.by_id.get(id)
+        self.by_id.get(id).or_else(|| {
+            self.by_id.values().find(|d| d.aliases.contains(&id))
+        })
     }
 
     pub fn families(&self) -> impl Iterator<Item = &FamilyDescriptor> {
@@ -40,7 +42,8 @@ impl FamilyRegistry {
         self.by_id.is_empty()
     }
 
-    /// Every declared family's support level must be backed by evidence.
+    /// Every declared family's support level must be backed by evidence, and
+    /// every ABI field must be complete (value or null+reason).
     pub fn validate_all_evidence(&self) -> Result<(), Vec<String>> {
         let root = workspace_root();
         let mut errs = Vec::new();
@@ -53,6 +56,21 @@ impl FamilyRegistry {
                     "family {}: PRODUCTION forbidden (no family is PRODUCTION today)",
                     d.id
                 ));
+            }
+        }
+        if errs.is_empty() {
+            Ok(())
+        } else {
+            Err(errs)
+        }
+    }
+
+    /// ABI completeness for every family.
+    pub fn validate_all_abi(&self) -> Result<(), Vec<String>> {
+        let mut errs = Vec::new();
+        for d in self.families() {
+            if let Err(e) = d.abi.validate_complete(d.id) {
+                errs.extend(e);
             }
         }
         if errs.is_empty() {
@@ -103,6 +121,14 @@ mod tests {
     }
 
     #[test]
+    fn aliases_resolve() {
+        let r = builtin_registry();
+        assert_eq!(r.get("llama3").unwrap().id, "llama");
+        assert_eq!(r.get("gemma2").unwrap().id, "gemma");
+        assert_eq!(r.get("rwkv7").unwrap().id, "state_space");
+    }
+
+    #[test]
     fn no_family_is_production() {
         let r = builtin_registry();
         for d in r.families() {
@@ -142,5 +168,12 @@ mod tests {
         assert_eq!(k.level, SupportLevel::SyntheticParity);
         assert!(!k.serve_registered);
         assert!(!k.executes);
+    }
+
+    #[test]
+    fn every_family_abi_complete() {
+        let r = builtin_registry();
+        r.validate_all_abi()
+            .unwrap_or_else(|e| panic!("ABI incomplete:\n{}", e.join("\n")));
     }
 }

@@ -23,6 +23,7 @@ Generated from `hawking-adapters` — do not hand-edit.
 
 - not FULL_PARENT_VALIDATED: no sealed full-size parent receipt in registry evidence
 - not PRODUCTION
+- DeepSeek V3/V4 MLA+DSA ladder rungs are NOT this family's shipping GGUF deepseek2 path
 
 ### gemma
 

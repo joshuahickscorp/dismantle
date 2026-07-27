@@ -57,9 +57,9 @@
         "llama3.2"
       ],
       "executes": true,
-      "help": "Llama (dense GGUF + gravity) — support SMALL_REAL_CHECKPOINT; executes; serve-registered",
+      "help": "Llama (dense GGUF + gravity) — support SOURCE_HEADER_VALIDATED; executes; serve-registered",
       "id": "llama",
-      "level": "SMALL_REAL_CHECKPOINT",
+      "level": "SOURCE_HEADER_VALIDATED",
       "serve_registered": true
     },
     {
@@ -81,9 +81,9 @@
         "mistral_mixtral"
       ],
       "executes": true,
-      "help": "Mistral / Mixtral — support SMALL_REAL_CHECKPOINT; executes; serve-registered",
+      "help": "Mistral / Mixtral — support SOURCE_HEADER_VALIDATED; executes; serve-registered",
       "id": "mistral_mixtral",
-      "level": "SMALL_REAL_CHECKPOINT",
+      "level": "SOURCE_HEADER_VALIDATED",
       "serve_registered": true
     },
     {
@@ -106,9 +106,9 @@
         "qwen3"
       ],
       "executes": true,
-      "help": "Qwen (dense + MoE) — support SMALL_REAL_CHECKPOINT; executes; serve-registered",
+      "help": "Qwen (dense + MoE) — support SOURCE_HEADER_VALIDATED; executes; serve-registered",
       "id": "qwen",
-      "level": "SMALL_REAL_CHECKPOINT",
+      "level": "SOURCE_HEADER_VALIDATED",
       "serve_registered": true
     },
     {

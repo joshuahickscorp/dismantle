@@ -2312,6 +2312,32 @@ mod route_segment_primitives {
         })
     }
 
+    /// Encode the residual add `x[i] += y[i]`.
+    ///
+    /// `x` and `y` may be the same Metal buffer: the shader assigns exactly
+    /// one thread to each element and performs no cross-element access.
+    pub(super) fn encode_residual_add_inplace(
+        tcb: &mut TokenCommandBuffer<'_>,
+        x: &Buffer,
+        y: &Buffer,
+        n: usize,
+    ) -> Result<()> {
+        if n == 0 {
+            return Ok(());
+        }
+        let n = u32_arg(n, "gravity_add_inplace_f32 n")?;
+        let grid = grid_1d(n, "gravity_add_inplace_f32")?;
+        require_f32(x, 0, n as usize, "gravity_add_inplace_f32 x")?;
+        require_f32(y, 0, n as usize, "gravity_add_inplace_f32 y")?;
+        let xb = x.clone();
+        let yb = y.clone();
+        tcb.dispatch_threads("gravity_add_inplace_f32", grid, (TG, 1, 1), move |enc| {
+            enc.set_buffer(0, Some(&xb), 0);
+            enc.set_buffer(1, Some(&yb), 0);
+            enc.set_bytes(2, 4, &n as *const u32 as *const _);
+        })
+    }
+
     pub(super) fn encode_zero(
         tcb: &mut TokenCommandBuffer<'_>,
         buffer: &Buffer,
@@ -2890,6 +2916,68 @@ mod tests {
         let mut expected_ascending = expected_score_order;
         expected_ascending.sort_unstable();
         assert_eq!(read_u32(&ascending, k), expected_ascending);
+    }
+
+    #[test]
+    fn route_segment_residual_add_is_exact_alias_safe_and_fail_closed() {
+        let shader = include_str!("../shaders/gravity_pq.metal");
+        assert!(shader.contains("kernel void gravity_add_inplace_f32("));
+        let registry = include_str!("metal/mod.rs");
+        assert!(registry.contains("\"gravity_add_inplace_f32\" => \"gravity_add_inplace_f32\""));
+
+        let Ok(ctx) = MetalContext::new() else {
+            return;
+        };
+        let x: Vec<f32> = (0..257)
+            .map(|index| ((index % 31) as i32 - 15) as f32 * 0.5)
+            .collect();
+        let y: Vec<f32> = (0..257)
+            .map(|index| (((index * 7) % 29) as i32 - 14) as f32 * 0.25)
+            .collect();
+        let expected: Vec<f32> = x.iter().zip(&y).map(|(x, y)| x + y).collect();
+        let xb = f32_buffer(&ctx, &x);
+        let yb = f32_buffer(&ctx, &y);
+
+        let alias_values = vec![1.5, -2.0, 0.25, 4.0];
+        let alias = f32_buffer(&ctx, &alias_values);
+        let mut tcb = TokenCommandBuffer::new(&ctx);
+        encode_residual_add_inplace(&mut tcb, &xb, &yb, x.len())
+            .expect("encode residual add over a rounded grid");
+        encode_residual_add_inplace(&mut tcb, &alias, &alias, alias_values.len())
+            .expect("encode explicitly supported full-buffer alias");
+        assert_eq!(tcb.dispatch_count(), 2);
+        tcb.commit_and_wait().expect("residual add command buffer");
+        assert_eq!(read_f32(&xb, x.len()), expected);
+        assert_eq!(
+            read_f32(&alias, alias_values.len()),
+            vec![3.0, -4.0, 0.5, 8.0]
+        );
+
+        let one = f32_buffer(&ctx, &[1.0]);
+        let mut rejected = TokenCommandBuffer::new(&ctx);
+        encode_residual_add_inplace(&mut rejected, &one, &one, 0)
+            .expect("zero elements are an encode no-op");
+        assert_eq!(rejected.dispatch_count(), 0);
+
+        let error = encode_residual_add_inplace(&mut rejected, &one, &one, 2)
+            .expect_err("undersized buffers must fail before dispatch");
+        assert!(error.to_string().contains("byte range"));
+        assert_eq!(rejected.dispatch_count(), 0);
+
+        let error = encode_residual_add_inplace(&mut rejected, &one, &one, u32::MAX as usize)
+            .expect_err("rounded grid overflow must fail before dispatch");
+        assert!(error
+            .to_string()
+            .contains("rounded Metal grid width overflow"));
+        assert_eq!(rejected.dispatch_count(), 0);
+
+        let oversized_n = (u32::MAX as usize)
+            .checked_add(1)
+            .expect("usize exceeds the Metal u32 ABI on supported hosts");
+        let error = encode_residual_add_inplace(&mut rejected, &one, &one, oversized_n)
+            .expect_err("oversized geometry must fail before dispatch");
+        assert!(error.to_string().contains("does not fit the Metal u32 ABI"));
+        assert_eq!(rejected.dispatch_count(), 0);
     }
 
     #[test]

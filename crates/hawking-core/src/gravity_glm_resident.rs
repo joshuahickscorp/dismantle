@@ -1576,6 +1576,12 @@ mod route_segment_primitives {
     }
 
     #[repr(C)]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    pub(super) struct GlmSortU32Params {
+        pub n: u32,
+    }
+
+    #[repr(C)]
     #[derive(Clone, Copy, Debug, PartialEq)]
     pub(super) struct GlmSparseAttnParams {
         pub n_heads: u32,
@@ -1591,12 +1597,14 @@ mod route_segment_primitives {
     const _: [(); 12] = [(); std::mem::size_of::<GlmBuildQParams>()];
     const _: [(); 20] = [(); std::mem::size_of::<GlmDsaParams>()];
     const _: [(); 8] = [(); std::mem::size_of::<GlmTopkParams>()];
+    const _: [(); 4] = [(); std::mem::size_of::<GlmSortU32Params>()];
     const _: [(); 24] = [(); std::mem::size_of::<GlmSparseAttnParams>()];
     const _: [(); 4] = [(); std::mem::align_of::<GlmRopeParams>()];
     const _: [(); 4] = [(); std::mem::align_of::<GlmMlaAppendParams>()];
     const _: [(); 4] = [(); std::mem::align_of::<GlmBuildQParams>()];
     const _: [(); 4] = [(); std::mem::align_of::<GlmDsaParams>()];
     const _: [(); 4] = [(); std::mem::align_of::<GlmTopkParams>()];
+    const _: [(); 4] = [(); std::mem::align_of::<GlmSortU32Params>()];
     const _: [(); 4] = [(); std::mem::align_of::<GlmSparseAttnParams>()];
 
     fn u32_arg(value: usize, what: &str) -> Result<u32> {
@@ -2104,12 +2112,77 @@ mod route_segment_primitives {
         )
     }
 
+    /// Sort unique stable-top-k position IDs into ascending host accumulation
+    /// order. Bounded to the flagship `index_topk <= 2048` contract.
+    ///
+    /// The kernel uses one 256-thread group and one power-of-two-padded u32
+    /// array in dynamic threadgroup memory (maximum 8 KiB). Input and output
+    /// may be the same Metal buffer.
+    pub(super) fn encode_sort_positions_ascending(
+        tcb: &mut TokenCommandBuffer<'_>,
+        score_ordered_indices: &Buffer,
+        ascending_indices: &Buffer,
+        k: usize,
+    ) -> Result<()> {
+        const MAX_K: usize = 2048;
+        if k == 0 {
+            return Ok(());
+        }
+        if k > MAX_K {
+            return Err(Error::Gravity(format!(
+                "gravity_glm_sort_u32_ascending supports k <= {MAX_K}, got {k}"
+            )));
+        }
+        require_range(
+            score_ordered_indices,
+            0,
+            k,
+            std::mem::size_of::<u32>(),
+            "gravity_glm_sort_u32_ascending input",
+        )?;
+        require_range(
+            ascending_indices,
+            0,
+            k,
+            std::mem::size_of::<u32>(),
+            "gravity_glm_sort_u32_ascending output",
+        )?;
+        let padded = k.checked_next_power_of_two().ok_or_else(|| {
+            Error::Gravity("gravity_glm_sort_u32_ascending padded width overflow".into())
+        })?;
+        let shmem = checked_mul(
+            padded,
+            std::mem::size_of::<u32>(),
+            "gravity_glm_sort_u32_ascending threadgroup memory",
+        )?;
+        let params = GlmSortU32Params {
+            n: u32_arg(k, "gravity_glm_sort_u32_ascending n")?,
+        };
+        let input = score_ordered_indices.clone();
+        let output = ascending_indices.clone();
+        tcb.dispatch_threads(
+            "gravity_glm_sort_u32_ascending",
+            (TG, 1, 1),
+            (TG, 1, 1),
+            move |enc| {
+                enc.set_buffer(0, Some(&input), 0);
+                enc.set_buffer(1, Some(&output), 0);
+                enc.set_bytes(
+                    2,
+                    std::mem::size_of_val(&params) as u64,
+                    &params as *const _ as *const _,
+                );
+                enc.set_threadgroup_memory_length(0, shmem as u64);
+            },
+        )
+    }
+
     /// Encode transitional expanded-cache sparse attention.
     ///
     /// `allow_idx` must contain unique positions in ascending position order
     /// to preserve the current host accumulation order. The stable-top-k
-    /// output is score-ordered and therefore cannot be passed here directly;
-    /// a future fully-device graph needs an exact ascending reorder primitive.
+    /// output is score-ordered and must first pass through
+    /// [`encode_sort_positions_ascending`].
     #[allow(clippy::too_many_arguments)]
     pub(super) fn encode_sparse_attention_expanded_ascending_allow(
         tcb: &mut TokenCommandBuffer<'_>,
@@ -2705,6 +2778,10 @@ mod tests {
         assert_eq!(std::mem::size_of::<GlmTopkParams>(), 8);
         assert_eq!(std::mem::offset_of!(GlmTopkParams, k), 4);
 
+        assert_eq!(std::mem::size_of::<GlmSortU32Params>(), 4);
+        assert_eq!(std::mem::align_of::<GlmSortU32Params>(), 4);
+        assert_eq!(std::mem::offset_of!(GlmSortU32Params, n), 0);
+
         assert_eq!(std::mem::size_of::<GlmSparseAttnParams>(), 24);
         assert_eq!(std::mem::offset_of!(GlmSparseAttnParams, n_allow), 16);
         assert_eq!(std::mem::offset_of!(GlmSparseAttnParams, scale), 20);
@@ -2718,6 +2795,101 @@ mod tests {
             .expect_err("undersized buffers must be rejected before encoding");
         assert!(error.to_string().contains("byte range"));
         assert_eq!(tcb.dispatch_count(), 0);
+    }
+
+    #[test]
+    fn route_segment_reorder_is_exact_at_edges_and_after_tied_topk() {
+        let shader = include_str!("../shaders/gravity_pq.metal");
+        assert!(shader.contains("kernel void gravity_glm_sort_u32_ascending("));
+        let registry = include_str!("metal/mod.rs");
+        assert!(registry
+            .contains("\"gravity_glm_sort_u32_ascending\" => \"gravity_glm_sort_u32_ascending\""));
+
+        let Ok(ctx) = MetalContext::new() else {
+            return;
+        };
+        let edge_sizes = [1usize, 2, 3, 31, 32, 33, 255, 256, 257, 1023, 2047, 2048];
+        let mut fixtures = Vec::new();
+        let mut tcb = TokenCommandBuffer::new(&ctx);
+
+        let dummy = u32_buffer(&ctx, &[0]);
+        encode_sort_positions_ascending(&mut tcb, &dummy, &dummy, 0)
+            .expect("k=0 is an encode no-op");
+        assert_eq!(tcb.dispatch_count(), 0);
+
+        for &k in &edge_sizes {
+            let mut input: Vec<u32> = (0..k as u32).collect();
+            for index in 0..k {
+                let peer = (index.wrapping_mul(37).wrapping_add(11)) % k;
+                input.swap(index, peer);
+            }
+            if k == 3 {
+                input = vec![32767, 0, 8192];
+            }
+            let input_buffer = u32_buffer(&ctx, &input);
+            let output_buffer = if k == 33 {
+                input_buffer.clone()
+            } else {
+                u32_buffer(&ctx, &vec![u32::MAX; k])
+            };
+            encode_sort_positions_ascending(&mut tcb, &input_buffer, &output_buffer, k)
+                .expect("encode bounded ascending reorder");
+            let mut expected = input.clone();
+            expected.sort_unstable();
+            fixtures.push((output_buffer, expected));
+        }
+        assert_eq!(tcb.dispatch_count(), edge_sizes.len());
+        tcb.commit_and_wait().expect("edge reorder command buffer");
+        for (output, expected) in fixtures {
+            assert_eq!(
+                read_u32(&output, expected.len()),
+                expected,
+                "GPU reorder must be exact"
+            );
+        }
+
+        let oversized_input = u32_buffer(&ctx, &vec![0; 2049]);
+        let oversized_output = u32_buffer(&ctx, &vec![0; 2049]);
+        let mut oversized_tcb = TokenCommandBuffer::new(&ctx);
+        let error = encode_sort_positions_ascending(
+            &mut oversized_tcb,
+            &oversized_input,
+            &oversized_output,
+            2049,
+        )
+        .expect_err("k above the flagship bound must fail before encode");
+        assert!(error.to_string().contains("k <= 2048"));
+        assert_eq!(oversized_tcb.dispatch_count(), 0);
+
+        let tied_values = vec![3.0, 7.0, 7.0, -1.0, 7.0, 2.0, 9.0, 9.0, 0.0, 9.0];
+        let k = 7usize;
+        let values = f32_buffer(&ctx, &tied_values);
+        let score_order = u32_buffer(&ctx, &vec![u32::MAX; k]);
+        let selected = empty_u8_buffer(&ctx, tied_values.len());
+        let ascending = u32_buffer(&ctx, &vec![u32::MAX; k]);
+        let mut chain = TokenCommandBuffer::new(&ctx);
+        encode_stable_topk(
+            &mut chain,
+            &values,
+            &score_order,
+            &selected,
+            tied_values.len(),
+            k,
+        )
+        .expect("encode tied stable top-k");
+        encode_sort_positions_ascending(&mut chain, &score_order, &ascending, k)
+            .expect("encode top-k reorder");
+        assert_eq!(chain.dispatch_count(), 2);
+        chain.commit_and_wait().expect("top-k reorder chain");
+
+        let expected_score_order: Vec<u32> = topk_desc(&tied_values, k)
+            .into_iter()
+            .map(|index| index as u32)
+            .collect();
+        assert_eq!(read_u32(&score_order, k), expected_score_order);
+        let mut expected_ascending = expected_score_order;
+        expected_ascending.sort_unstable();
+        assert_eq!(read_u32(&ascending, k), expected_ascending);
     }
 
     #[test]

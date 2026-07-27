@@ -378,6 +378,11 @@
             "claim": "registry path for .gravity artifacts",
             "kind": "description",
             "path": "crates/hawking-core/tests/gravity_engine_registry.rs"
+          },
+          {
+            "claim": "unconditional: real .gravity container decoded, complete token executed, matches numpy oracle reading the same container (3 passed, 0.04s)",
+            "kind": "real_tensor_decode",
+            "path": "crates/hawking-core/tests/gravity_glm_forward.rs"
           }
         ],
         "positional_encoding": {
@@ -448,6 +453,11 @@
           "claim": "registry path for .gravity artifacts",
           "kind": "description",
           "path": "crates/hawking-core/tests/gravity_engine_registry.rs"
+        },
+        {
+          "claim": "unconditional: real .gravity container decoded, complete token executed, matches numpy oracle reading the same container (3 passed, 0.04s)",
+          "kind": "real_tensor_decode",
+          "path": "crates/hawking-core/tests/gravity_glm_forward.rs"
         }
       ],
       "executes": true,
@@ -646,6 +656,11 @@
             "claim": "load_engine dispatches llama|mistral GGUF arch strings",
             "kind": "description",
             "path": "crates/hawking-core/src/model/mod.rs"
+          },
+          {
+            "claim": "unconditional: CPU+GPU forward match frozen oracle, incremental decode matches full replay (3 passed, 57.48s of real work)",
+            "kind": "real_tensor_decode",
+            "path": "crates/hawking-core/tests/gravity_llama_forward.rs"
           }
         ],
         "positional_encoding": {
@@ -725,6 +740,11 @@
           "claim": "load_engine dispatches llama|mistral GGUF arch strings",
           "kind": "description",
           "path": "crates/hawking-core/src/model/mod.rs"
+        },
+        {
+          "claim": "unconditional: CPU+GPU forward match frozen oracle, incremental decode matches full replay (3 passed, 57.48s of real work)",
+          "kind": "real_tensor_decode",
+          "path": "crates/hawking-core/tests/gravity_llama_forward.rs"
         }
       ],
       "executes": true,

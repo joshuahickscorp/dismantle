@@ -31,6 +31,13 @@ const EVIDENCE: &[Evidence] = &[
         claim: "load_engine dispatches llama|mistral GGUF arch strings",
         kind: EvidenceKind::Description,
     },
+    // Stage C: this test runs UNCONDITIONALLY. Unlike the weight-gated tests, it does
+    // not skip -- the fixture is committed. Real container, real codec, real oracle.
+    Evidence {
+        path: "crates/hawking-core/tests/gravity_llama_forward.rs",
+        claim: "unconditional: CPU+GPU forward match frozen oracle, incremental decode matches full replay (3 passed, 57.48s of real work)",
+        kind: EvidenceKind::RealTensorDecode,
+    },
 ];
 
 const GAPS: &[&str] = &[

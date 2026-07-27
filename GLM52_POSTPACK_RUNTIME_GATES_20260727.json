@@ -45,15 +45,24 @@
       "does not describe an enabled flag profile as unaccelerated"
     ]
   },
+  "support_halo": {
+    "tool": "tools/eval/support_halo_gate.py run-artifact",
+    "default": "refused",
+    "execution_guard": "--force",
+    "tasks": 26,
+    "frozen_corpus_sha256": "b3ebda04ce48aa84b51faf47bff6284083029e0517b33e8c7c3f55b5fb54ec67",
+    "identity_contract": "The local artifact index SHA-256 must equal /healthz before and after the run; the endpoint must attest base_runtime=true and fallback_present=false.",
+    "completion_evidence": "deterministic JSONL sidecar bound into the score receipt by SHA-256"
+  },
   "verification": {
-    "python": "12 passed",
+    "python": "15 passed plus frozen support-halo self-check",
     "rust": "cargo check -q -p hawking-core --example gravity_glm_tps: PASS",
     "heavy_execution_started": false
   },
   "remaining_postpack_gaps": [
     "No activation-aware whole-model capability result exists until the pack is assembled.",
     "No activation-aware runtime-agreement result exists until --run is used under a valid heavy window.",
-    "The frozen support-halo corpus still needs an artifact-connected scorer.",
+    "The frozen support-halo scorer is prepared but remains unexecuted until the cheap gates pass and a valid heavy window exists.",
     "The full-cascade representation gate still needs an artifact-connected executable; the existing functional-student cascade is a different mechanism and cannot be relabelled.",
     "Long-context quality and the sustained speed/TTFT/bytes/commands/memory/swap/thermal campaign remain unexecuted."
   ]

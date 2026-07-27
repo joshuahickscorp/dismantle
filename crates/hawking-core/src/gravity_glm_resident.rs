@@ -51,10 +51,11 @@
 //! rank, and compact attention into one command buffer. Host-native projections
 //! retain the qualified host-prelude fallback. The final rank is read only for
 //! diagnostics after attention, never as an attention dependency.
-//! `HAWKING_GLM_GPU_COMPACT_ATTENTION_ICB=1` additionally replays the full
-//! indexer's six fixed-grid pre-score commands and compact attention's
-//! five-command post-rank DAG; exact active-length DSA scoring and radix rank
-//! remain directly encoded between those replay boundaries.
+//! `HAWKING_GLM_GPU_COMPACT_ATTENTION_ICB=1` additionally replays the
+//! nine-command input/q/kv prelude, the full indexer's six fixed-grid
+//! transforms, and compact attention's five-command post-rank DAG. Exact
+//! active-length DSA scoring and radix rank remain directly encoded between
+//! those replay boundaries.
 //!
 //! Gated by [`GPU_RESIDENT_STATE_ENV`] (`HAWKING_GLM_GPU_RESIDENT_STATE`), default
 //! off, so the host-state path remains the parity oracle.
@@ -1825,6 +1826,9 @@ pub struct ActPool {
     /// One lazily captured fixed-grid full-indexer pre-score DAG per layer.
     /// The exact active-length score and radix stages remain direct.
     device_dsa_pre_score_replay_layers: Mutex<Vec<Option<CachedDeviceDsaPreScoreReplayGraph>>>,
+    /// One lazily captured input/q/kv projection prelude per compact layer.
+    /// Full-indexer and shared-indexer layers have the same prelude geometry.
+    attention_prelude_replay_layers: Mutex<Vec<Option<CachedAttentionPreludeReplayGraph>>>,
 }
 
 struct CompactAttentionScratch {
@@ -2075,6 +2079,7 @@ impl ActPool {
             device_dsa_pre_score_replay_layers: Mutex::new(
                 (0..arch.n_layers).map(|_| None).collect(),
             ),
+            attention_prelude_replay_layers: Mutex::new((0..arch.n_layers).map(|_| None).collect()),
         })
     }
 
@@ -2458,93 +2463,152 @@ pub fn forward_resident(
                         0,
                     );
 
-                    {
+                    let replay_projections = if gpu_compact_attention_icb_enabled() {
+                        device_replay_projection_triplet(
+                            weights,
+                            [q_a_name.as_str(), kv_a_name.as_str(), q_b_name.as_str()],
+                        )?
+                    } else {
+                        None
+                    };
+                    if let Some(projections) = replay_projections {
+                        record_device_replay_projection_cost(&q_a_name, &projections[0]);
+                        record_device_replay_projection_cost(&kv_a_name, &projections[1]);
+                        record_device_replay_projection_cost(&q_b_name, &projections[2]);
+                        let inputs = AttentionPreludeReplayInputs {
+                            layer,
+                            hidden: a.hidden,
+                            q_lora_rank: a.q_lora_rank,
+                            kv_lora_rank: a.kv_lora_rank,
+                            n_heads: a.n_heads,
+                            qk_nope_dim: a.qk_nope_head_dim,
+                            rope_dim: a.qk_rope_head_dim,
+                            rms_norm_eps: a.rms_norm_eps,
+                            projections: &projections,
+                            x: &pool.x,
+                            h: &pool.h,
+                            q_a: &pool.q_a,
+                            compressed: &pool.compressed,
+                            q_resid: &pool.q_resid,
+                            k_latent: &pool.k_latent,
+                            q: &pool.q,
+                            input_norm_weight: &prelude.input_norm_weight,
+                            q_norm_weight: &prelude.q_norm_weight,
+                            kv_norm_weight: &prelude.kv_norm_weight,
+                            cos: &prelude.cos,
+                            sin: &prelude.sin,
+                            key_rope: &compact_scratch.key_rope,
+                            query_nope: &compact_scratch.query_nope,
+                            query_rope: &compact_scratch.query_rope,
+                        };
+                        let key = inputs.key();
+                        let mut replay_layers = pool
+                            .attention_prelude_replay_layers
+                            .lock()
+                            .expect("attention prelude replay layers");
+                        let replay_layer_count = replay_layers.len();
+                        let slot = replay_layers.get_mut(layer).ok_or_else(|| {
+                            Error::Gravity(format!(
+                                "attention prelude replay layer {layer} exceeds pool extent {replay_layer_count}"
+                            ))
+                        })?;
+                        if !slot.as_ref().is_some_and(|entry| entry.key == key) {
+                            *slot = Some(build_attention_prelude_replay_graph(ctx, &inputs)?);
+                        }
+                        let replay = slot
+                            .as_ref()
+                            .expect("attention prelude replay graph just populated");
                         let wave = tcb.get_or_insert_with(|| TokenCommandBuffer::new(ctx));
-                        route_segment_primitives::encode_rmsnorm(
-                            wave,
-                            &pool.x,
-                            &prelude.input_norm_weight,
+                        wave.execute_replayable_graph(&replay.graph)?;
+                    } else {
+                        {
+                            let wave = tcb.get_or_insert_with(|| TokenCommandBuffer::new(ctx));
+                            route_segment_primitives::encode_rmsnorm(
+                                wave,
+                                &pool.x,
+                                &prelude.input_norm_weight,
+                                &pool.h,
+                                a.hidden,
+                                a.rms_norm_eps,
+                            )?;
+                        }
+                        matvec_into(
+                            &mut tcb, ctx, weights, &q_a_name, &pool.h, a.hidden, &pool.q_a,
+                        )?;
+                        matvec_into(
+                            &mut tcb,
+                            ctx,
+                            weights,
+                            &kv_a_name,
                             &pool.h,
                             a.hidden,
-                            a.rms_norm_eps,
+                            &pool.compressed,
                         )?;
-                    }
-                    matvec_into(
-                        &mut tcb, ctx, weights, &q_a_name, &pool.h, a.hidden, &pool.q_a,
-                    )?;
-                    matvec_into(
-                        &mut tcb,
-                        ctx,
-                        weights,
-                        &kv_a_name,
-                        &pool.h,
-                        a.hidden,
-                        &pool.compressed,
-                    )?;
-                    {
-                        let wave = tcb.get_or_insert_with(|| TokenCommandBuffer::new(ctx));
-                        route_segment_primitives::encode_rmsnorm(
-                            wave,
-                            &pool.q_a,
-                            &prelude.q_norm_weight,
+                        {
+                            let wave = tcb.get_or_insert_with(|| TokenCommandBuffer::new(ctx));
+                            route_segment_primitives::encode_rmsnorm(
+                                wave,
+                                &pool.q_a,
+                                &prelude.q_norm_weight,
+                                &pool.q_resid,
+                                a.q_lora_rank,
+                                a.rms_norm_eps,
+                            )?;
+                            route_segment_primitives::encode_rmsnorm(
+                                wave,
+                                &pool.compressed,
+                                &prelude.kv_norm_weight,
+                                &pool.k_latent,
+                                a.kv_lora_rank,
+                                a.rms_norm_eps,
+                            )?;
+                            route_segment_primitives::encode_rope_interleaved(
+                                wave,
+                                &pool.compressed,
+                                a.kv_lora_rank,
+                                &compact_scratch.key_rope,
+                                0,
+                                &prelude.cos,
+                                &prelude.sin,
+                                1,
+                                a.qk_rope_head_dim,
+                                a.qk_rope_head_dim,
+                                a.qk_rope_head_dim,
+                            )?;
+                        }
+                        matvec_into(
+                            &mut tcb,
+                            ctx,
+                            weights,
+                            &q_b_name,
                             &pool.q_resid,
                             a.q_lora_rank,
-                            a.rms_norm_eps,
-                        )?;
-                        route_segment_primitives::encode_rmsnorm(
-                            wave,
-                            &pool.compressed,
-                            &prelude.kv_norm_weight,
-                            &pool.k_latent,
-                            a.kv_lora_rank,
-                            a.rms_norm_eps,
-                        )?;
-                        route_segment_primitives::encode_rope_interleaved(
-                            wave,
-                            &pool.compressed,
-                            a.kv_lora_rank,
-                            &compact_scratch.key_rope,
-                            0,
-                            &prelude.cos,
-                            &prelude.sin,
-                            1,
-                            a.qk_rope_head_dim,
-                            a.qk_rope_head_dim,
-                            a.qk_rope_head_dim,
-                        )?;
-                    }
-                    matvec_into(
-                        &mut tcb,
-                        ctx,
-                        weights,
-                        &q_b_name,
-                        &pool.q_resid,
-                        a.q_lora_rank,
-                        &pool.q,
-                    )?;
-                    {
-                        let wave = tcb.get_or_insert_with(|| TokenCommandBuffer::new(ctx));
-                        route_segment_primitives::encode_copy_head_prefix(
-                            wave,
                             &pool.q,
-                            &compact_scratch.query_nope,
-                            a.n_heads,
-                            a.qk_nope_head_dim,
-                            a.qk_rope_head_dim,
                         )?;
-                        route_segment_primitives::encode_rope_interleaved(
-                            wave,
-                            &pool.q,
-                            a.qk_nope_head_dim,
-                            &compact_scratch.query_rope,
-                            0,
-                            &prelude.cos,
-                            &prelude.sin,
-                            a.n_heads,
-                            a.qk_rope_head_dim,
-                            qk,
-                            a.qk_rope_head_dim,
-                        )?;
+                        {
+                            let wave = tcb.get_or_insert_with(|| TokenCommandBuffer::new(ctx));
+                            route_segment_primitives::encode_copy_head_prefix(
+                                wave,
+                                &pool.q,
+                                &compact_scratch.query_nope,
+                                a.n_heads,
+                                a.qk_nope_head_dim,
+                                a.qk_rope_head_dim,
+                            )?;
+                            route_segment_primitives::encode_rope_interleaved(
+                                wave,
+                                &pool.q,
+                                a.qk_nope_head_dim,
+                                &compact_scratch.query_rope,
+                                0,
+                                &prelude.cos,
+                                &prelude.sin,
+                                a.n_heads,
+                                a.qk_rope_head_dim,
+                                qk,
+                                a.qk_rope_head_dim,
+                            )?;
+                        }
                     }
                     Vec::new()
                 } else {
@@ -4384,7 +4448,7 @@ mod route_segment_primitives {
     }
 
     #[repr(C)]
-    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, bytemuck::Pod, bytemuck::Zeroable)]
     pub(super) struct GlmBuildQParams {
         pub n_heads: u32,
         pub qk_nope: u32,
@@ -6574,6 +6638,364 @@ fn build_replay_projection_stage(
         }
     };
     Ok(stage.with_ledger_stage(crate::cost_ledger::GpuStage::AttentionAndIndexShare))
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct AttentionPreludeReplayKey {
+    layer: usize,
+    hidden: usize,
+    q_lora_rank: usize,
+    kv_lora_rank: usize,
+    n_heads: usize,
+    qk_nope_dim: usize,
+    rope_dim: usize,
+    rms_norm_eps_bits: u32,
+    projection_geometry: [DeviceReplayProjectionGeometry; 3],
+    buffer_addresses: Vec<u64>,
+}
+
+struct CachedAttentionPreludeReplayGraph {
+    key: AttentionPreludeReplayKey,
+    graph: ReplayableComputeGraph,
+}
+
+struct AttentionPreludeReplayInputs<'a> {
+    layer: usize,
+    hidden: usize,
+    q_lora_rank: usize,
+    kv_lora_rank: usize,
+    n_heads: usize,
+    qk_nope_dim: usize,
+    rope_dim: usize,
+    rms_norm_eps: f32,
+    projections: &'a [DeviceReplayProjection; 3],
+    x: &'a Buffer,
+    h: &'a Buffer,
+    q_a: &'a Buffer,
+    compressed: &'a Buffer,
+    q_resid: &'a Buffer,
+    k_latent: &'a Buffer,
+    q: &'a Buffer,
+    input_norm_weight: &'a Buffer,
+    q_norm_weight: &'a Buffer,
+    kv_norm_weight: &'a Buffer,
+    cos: &'a Buffer,
+    sin: &'a Buffer,
+    key_rope: &'a Buffer,
+    query_nope: &'a Buffer,
+    query_rope: &'a Buffer,
+}
+
+impl AttentionPreludeReplayInputs<'_> {
+    fn key(&self) -> AttentionPreludeReplayKey {
+        let mut buffer_addresses = Vec::with_capacity(21);
+        for projection in self.projections {
+            projection.append_addresses(&mut buffer_addresses);
+        }
+        buffer_addresses.extend([
+            self.x.gpu_address(),
+            self.h.gpu_address(),
+            self.q_a.gpu_address(),
+            self.compressed.gpu_address(),
+            self.q_resid.gpu_address(),
+            self.k_latent.gpu_address(),
+            self.q.gpu_address(),
+            self.input_norm_weight.gpu_address(),
+            self.q_norm_weight.gpu_address(),
+            self.kv_norm_weight.gpu_address(),
+            self.cos.gpu_address(),
+            self.sin.gpu_address(),
+            self.key_rope.gpu_address(),
+            self.query_nope.gpu_address(),
+            self.query_rope.gpu_address(),
+        ]);
+        AttentionPreludeReplayKey {
+            layer: self.layer,
+            hidden: self.hidden,
+            q_lora_rank: self.q_lora_rank,
+            kv_lora_rank: self.kv_lora_rank,
+            n_heads: self.n_heads,
+            qk_nope_dim: self.qk_nope_dim,
+            rope_dim: self.rope_dim,
+            rms_norm_eps_bits: self.rms_norm_eps.to_bits(),
+            projection_geometry: [
+                self.projections[0].geometry(),
+                self.projections[1].geometry(),
+                self.projections[2].geometry(),
+            ],
+            buffer_addresses,
+        }
+    }
+}
+
+fn build_attention_prelude_replay_graph(
+    ctx: &MetalContext,
+    inputs: &AttentionPreludeReplayInputs<'_>,
+) -> Result<CachedAttentionPreludeReplayGraph> {
+    const TG: u32 = 256;
+    let qk = inputs
+        .qk_nope_dim
+        .checked_add(inputs.rope_dim)
+        .ok_or_else(|| Error::Gravity("attention prelude replay qk overflow".into()))?;
+    if inputs.hidden == 0
+        || inputs.q_lora_rank == 0
+        || inputs.kv_lora_rank == 0
+        || inputs.n_heads == 0
+        || inputs.qk_nope_dim == 0
+        || inputs.rope_dim == 0
+        || inputs.rope_dim % 2 != 0
+    {
+        return Err(Error::Gravity(format!(
+            "attention prelude replay has invalid geometry: hidden={} q_lora={} kv_lora={} heads={} qk_nope={} rope={}",
+            inputs.hidden,
+            inputs.q_lora_rank,
+            inputs.kv_lora_rank,
+            inputs.n_heads,
+            inputs.qk_nope_dim,
+            inputs.rope_dim
+        )));
+    }
+    let (q_a_rows, q_a_cols) = inputs.projections[0].rows_cols();
+    let (kv_a_rows, kv_a_cols) = inputs.projections[1].rows_cols();
+    let (q_b_rows, q_b_cols) = inputs.projections[2].rows_cols();
+    let expected_q_b_rows = inputs
+        .n_heads
+        .checked_mul(qk)
+        .ok_or_else(|| Error::Gravity("attention prelude replay q_b rows overflow".into()))?;
+    let expected_kv_rows = inputs
+        .kv_lora_rank
+        .checked_add(inputs.rope_dim)
+        .ok_or_else(|| Error::Gravity("attention prelude replay kv_a rows overflow".into()))?;
+    if q_a_rows as usize != inputs.q_lora_rank
+        || q_a_cols as usize != inputs.hidden
+        || kv_a_rows as usize != expected_kv_rows
+        || kv_a_cols as usize != inputs.hidden
+        || q_b_rows as usize != expected_q_b_rows
+        || q_b_cols as usize != inputs.q_lora_rank
+    {
+        return Err(Error::Gravity(format!(
+            "attention prelude replay projection mismatch: q_a={q_a_rows}x{q_a_cols}, kv_a={kv_a_rows}x{kv_a_cols}, q_b={q_b_rows}x{q_b_cols}; expected {}x{}, {}x{}, {}x{}",
+            inputs.q_lora_rank,
+            inputs.hidden,
+            expected_kv_rows,
+            inputs.hidden,
+            expected_q_b_rows,
+            inputs.q_lora_rank
+        )));
+    }
+
+    let mut parameters = ReplayParameterArena::default();
+    let projection_offsets = [
+        append_replay_projection_parameters(&mut parameters, &inputs.projections[0]),
+        append_replay_projection_parameters(&mut parameters, &inputs.projections[1]),
+        append_replay_projection_parameters(&mut parameters, &inputs.projections[2]),
+    ];
+    let hidden = replay_u32(inputs.hidden, "attention prelude replay hidden")?;
+    let q_lora = replay_u32(inputs.q_lora_rank, "attention prelude replay q_lora")?;
+    let kv_lora = replay_u32(inputs.kv_lora_rank, "attention prelude replay kv_lora")?;
+    let hidden_offset = parameters.push(&hidden);
+    let q_lora_offset = parameters.push(&q_lora);
+    let kv_lora_offset = parameters.push(&kv_lora);
+    let eps_offset = parameters.push(&inputs.rms_norm_eps);
+    let key_rope_params = route_segment_primitives::GlmRopeParams {
+        n_heads: 1,
+        rotary_dim: replay_u32(inputs.rope_dim, "attention prelude replay RoPE dimension")?,
+        in_stride: replay_u32(inputs.rope_dim, "attention prelude replay key input stride")?,
+        out_stride: replay_u32(
+            inputs.rope_dim,
+            "attention prelude replay key output stride",
+        )?,
+    };
+    let key_rope_parameter_offset = parameters.push(&key_rope_params);
+    let copy_params = route_segment_primitives::GlmBuildQParams {
+        n_heads: replay_u32(inputs.n_heads, "attention prelude replay head count")?,
+        qk_nope: replay_u32(inputs.qk_nope_dim, "attention prelude replay qk_nope")?,
+        qk_rope: key_rope_params.rotary_dim,
+    };
+    let copy_parameter_offset = parameters.push(&copy_params);
+    let query_rope_params = route_segment_primitives::GlmRopeParams {
+        n_heads: copy_params.n_heads,
+        rotary_dim: key_rope_params.rotary_dim,
+        in_stride: replay_u32(qk, "attention prelude replay query input stride")?,
+        out_stride: key_rope_params.rotary_dim,
+    };
+    let query_rope_parameter_offset = parameters.push(&query_rope_params);
+    let parameter_buffer = parameters.finish(ctx, "attention prelude replay graph")?;
+
+    let input_norm = ReplayComputeStage::new(
+        "gravity_rmsnorm_f32",
+        (TG, 1, 1),
+        (TG, 1, 1),
+        vec![
+            ReplayBufferBinding::read(0, inputs.x, 0),
+            ReplayBufferBinding::read(1, inputs.input_norm_weight, 0),
+            ReplayBufferBinding::write(2, inputs.h, 0),
+            ReplayBufferBinding::read(3, &parameter_buffer, hidden_offset),
+            ReplayBufferBinding::read(4, &parameter_buffer, eps_offset),
+        ],
+    )
+    .with_threadgroup_memory_length(0, TG as usize * 4)
+    .with_ledger_stage(crate::cost_ledger::GpuStage::AttentionAndIndexShare);
+    let q_a = build_replay_projection_stage(
+        &inputs.projections[0],
+        inputs.h,
+        inputs.q_a,
+        &parameter_buffer,
+        projection_offsets[0],
+        "attention prelude replay q_a",
+    )?
+    .with_barrier_before();
+    let kv_a = build_replay_projection_stage(
+        &inputs.projections[1],
+        inputs.h,
+        inputs.compressed,
+        &parameter_buffer,
+        projection_offsets[1],
+        "attention prelude replay kv_a",
+    )?
+    .with_barrier_before();
+    let q_norm = ReplayComputeStage::new(
+        "gravity_rmsnorm_f32",
+        (TG, 1, 1),
+        (TG, 1, 1),
+        vec![
+            ReplayBufferBinding::read(0, inputs.q_a, 0),
+            ReplayBufferBinding::read(1, inputs.q_norm_weight, 0),
+            ReplayBufferBinding::write(2, inputs.q_resid, 0),
+            ReplayBufferBinding::read(3, &parameter_buffer, q_lora_offset),
+            ReplayBufferBinding::read(4, &parameter_buffer, eps_offset),
+        ],
+    )
+    .with_threadgroup_memory_length(0, TG as usize * 4)
+    .with_barrier_before()
+    .with_ledger_stage(crate::cost_ledger::GpuStage::AttentionAndIndexShare);
+    let kv_norm = ReplayComputeStage::new(
+        "gravity_rmsnorm_f32",
+        (TG, 1, 1),
+        (TG, 1, 1),
+        vec![
+            ReplayBufferBinding::read(0, inputs.compressed, 0),
+            ReplayBufferBinding::read(1, inputs.kv_norm_weight, 0),
+            ReplayBufferBinding::write(2, inputs.k_latent, 0),
+            ReplayBufferBinding::read(3, &parameter_buffer, kv_lora_offset),
+            ReplayBufferBinding::read(4, &parameter_buffer, eps_offset),
+        ],
+    )
+    .with_threadgroup_memory_length(0, TG as usize * 4)
+    .with_barrier_before()
+    .with_ledger_stage(crate::cost_ledger::GpuStage::AttentionAndIndexShare);
+    let key_input_byte_offset = inputs
+        .kv_lora_rank
+        .checked_mul(std::mem::size_of::<f32>())
+        .ok_or_else(|| Error::Gravity("attention prelude key RoPE offset overflow".into()))?;
+    let key_rope_threads = key_rope_params.rotary_dim / 2;
+    let key_rope = ReplayComputeStage::new(
+        "gravity_rope_interleaved_f32",
+        (
+            replay_grid(
+                key_rope_threads,
+                TG,
+                TG,
+                "attention prelude replay key RoPE",
+            )?,
+            1,
+            1,
+        ),
+        (TG, 1, 1),
+        vec![
+            ReplayBufferBinding::read(0, inputs.compressed, key_input_byte_offset),
+            ReplayBufferBinding::write(1, inputs.key_rope, 0),
+            ReplayBufferBinding::read(2, inputs.cos, 0),
+            ReplayBufferBinding::read(3, inputs.sin, 0),
+            ReplayBufferBinding::read(4, &parameter_buffer, key_rope_parameter_offset),
+        ],
+    )
+    .with_barrier_before()
+    .with_ledger_stage(crate::cost_ledger::GpuStage::AttentionAndIndexShare);
+    let q_b = build_replay_projection_stage(
+        &inputs.projections[2],
+        inputs.q_resid,
+        inputs.q,
+        &parameter_buffer,
+        projection_offsets[2],
+        "attention prelude replay q_b",
+    )?
+    .with_barrier_before();
+    let copy_elements = copy_params
+        .n_heads
+        .checked_mul(copy_params.qk_nope)
+        .ok_or_else(|| Error::Gravity("attention prelude replay prefix grid overflow".into()))?;
+    let copy_prefix = ReplayComputeStage::new(
+        "gravity_copy_head_prefix_f32",
+        (
+            replay_grid(
+                copy_elements,
+                TG,
+                TG,
+                "attention prelude replay query prefix",
+            )?,
+            1,
+            1,
+        ),
+        (TG, 1, 1),
+        vec![
+            ReplayBufferBinding::read(0, inputs.q, 0),
+            ReplayBufferBinding::write(1, inputs.query_nope, 0),
+            ReplayBufferBinding::read(2, &parameter_buffer, copy_parameter_offset),
+        ],
+    )
+    .with_barrier_before()
+    .with_ledger_stage(crate::cost_ledger::GpuStage::AttentionAndIndexShare);
+    let query_input_byte_offset = inputs
+        .qk_nope_dim
+        .checked_mul(std::mem::size_of::<f32>())
+        .ok_or_else(|| Error::Gravity("attention prelude query RoPE offset overflow".into()))?;
+    let query_rope_threads = query_rope_params
+        .n_heads
+        .checked_mul(query_rope_params.rotary_dim / 2)
+        .ok_or_else(|| Error::Gravity("attention prelude query RoPE grid overflow".into()))?;
+    let query_rope = ReplayComputeStage::new(
+        "gravity_rope_interleaved_f32",
+        (
+            replay_grid(
+                query_rope_threads,
+                TG,
+                TG,
+                "attention prelude replay query RoPE",
+            )?,
+            1,
+            1,
+        ),
+        (TG, 1, 1),
+        vec![
+            ReplayBufferBinding::read(0, inputs.q, query_input_byte_offset),
+            ReplayBufferBinding::write(1, inputs.query_rope, 0),
+            ReplayBufferBinding::read(2, inputs.cos, 0),
+            ReplayBufferBinding::read(3, inputs.sin, 0),
+            ReplayBufferBinding::read(4, &parameter_buffer, query_rope_parameter_offset),
+        ],
+    )
+    .with_barrier_before()
+    .with_ledger_stage(crate::cost_ledger::GpuStage::AttentionAndIndexShare);
+
+    let graph = ReplayableComputeGraph::new(
+        ctx,
+        vec![
+            input_norm,
+            q_a,
+            kv_a,
+            q_norm,
+            kv_norm,
+            key_rope,
+            q_b,
+            copy_prefix,
+            query_rope,
+        ],
+    )?;
+    Ok(CachedAttentionPreludeReplayGraph {
+        key: inputs.key(),
+        graph,
+    })
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -12815,6 +13237,237 @@ mod tests {
             ctx.drain_stats(),
             (0, 0, 0),
             "warm pre-score graph replays must not allocate buffers"
+        );
+    }
+
+    #[test]
+    fn attention_prelude_icb_replays_nine_fixed_grid_commands_bit_exact() {
+        let Ok(ctx) = MetalContext::new() else {
+            return;
+        };
+        const HIDDEN: usize = 4;
+        const Q_LORA: usize = 3;
+        const KV_LORA: usize = 3;
+        const HEADS: usize = 2;
+        const NOPE: usize = 2;
+        const ROPE: usize = 2;
+        const QK: usize = NOPE + ROPE;
+
+        let projection_from = |tensor: GpuTensor| match tensor {
+            GpuTensor::NativeGpuBf16 { buf, rows, cols } => DeviceReplayProjection::NativeBf16 {
+                weight: buf,
+                rows,
+                cols,
+            },
+            _ => panic!("native replay projection fixture"),
+        };
+        let projections = [
+            projection_from(native_bf16_tensor(&ctx, Q_LORA, HIDDEN, 31).0),
+            projection_from(native_bf16_tensor(&ctx, KV_LORA + ROPE, HIDDEN, 37).0),
+            projection_from(native_bf16_tensor(&ctx, HEADS * QK, Q_LORA, 41).0),
+        ];
+        let input_norm_weight = f32_buffer(&ctx, &[1.0, 0.75, 1.25, 0.5]);
+        let q_norm_weight = f32_buffer(&ctx, &[0.625, 1.375, 0.875]);
+        let kv_norm_weight = f32_buffer(&ctx, &[1.125, 0.5, 1.5]);
+        let cos = f32_buffer(&ctx, &[0.875]);
+        let sin = f32_buffer(&ctx, &[0.125]);
+
+        let direct_x = filled_f32_buffer(&ctx, HIDDEN, f32::NAN);
+        let direct_h = filled_f32_buffer(&ctx, HIDDEN, f32::NAN);
+        let direct_q_a = filled_f32_buffer(&ctx, Q_LORA, f32::NAN);
+        let direct_compressed = filled_f32_buffer(&ctx, KV_LORA + ROPE, f32::NAN);
+        let direct_q_resid = filled_f32_buffer(&ctx, Q_LORA, f32::NAN);
+        let direct_k_latent = filled_f32_buffer(&ctx, KV_LORA, f32::NAN);
+        let direct_q = filled_f32_buffer(&ctx, HEADS * QK, f32::NAN);
+        let direct_key_rope = filled_f32_buffer(&ctx, ROPE, f32::NAN);
+        let direct_query_nope = filled_f32_buffer(&ctx, HEADS * NOPE, f32::NAN);
+        let direct_query_rope = filled_f32_buffer(&ctx, HEADS * ROPE, f32::NAN);
+
+        let replay_x = filled_f32_buffer(&ctx, HIDDEN, f32::NAN);
+        let replay_h = filled_f32_buffer(&ctx, HIDDEN, f32::NAN);
+        let replay_q_a = filled_f32_buffer(&ctx, Q_LORA, f32::NAN);
+        let replay_compressed = filled_f32_buffer(&ctx, KV_LORA + ROPE, f32::NAN);
+        let replay_q_resid = filled_f32_buffer(&ctx, Q_LORA, f32::NAN);
+        let replay_k_latent = filled_f32_buffer(&ctx, KV_LORA, f32::NAN);
+        let replay_q = filled_f32_buffer(&ctx, HEADS * QK, f32::NAN);
+        let replay_key_rope = filled_f32_buffer(&ctx, ROPE, f32::NAN);
+        let replay_query_nope = filled_f32_buffer(&ctx, HEADS * NOPE, f32::NAN);
+        let replay_query_rope = filled_f32_buffer(&ctx, HEADS * ROPE, f32::NAN);
+
+        let replay_inputs = AttentionPreludeReplayInputs {
+            layer: 0,
+            hidden: HIDDEN,
+            q_lora_rank: Q_LORA,
+            kv_lora_rank: KV_LORA,
+            n_heads: HEADS,
+            qk_nope_dim: NOPE,
+            rope_dim: ROPE,
+            rms_norm_eps: 1e-6,
+            projections: &projections,
+            x: &replay_x,
+            h: &replay_h,
+            q_a: &replay_q_a,
+            compressed: &replay_compressed,
+            q_resid: &replay_q_resid,
+            k_latent: &replay_k_latent,
+            q: &replay_q,
+            input_norm_weight: &input_norm_weight,
+            q_norm_weight: &q_norm_weight,
+            kv_norm_weight: &kv_norm_weight,
+            cos: &cos,
+            sin: &sin,
+            key_rope: &replay_key_rope,
+            query_nope: &replay_query_nope,
+            query_rope: &replay_query_rope,
+        };
+        let replay = build_attention_prelude_replay_graph(&ctx, &replay_inputs)
+            .expect("capture nine-command attention prelude");
+        assert_eq!(replay.graph.command_count(), 9);
+
+        let snapshots = |buffers: [(&Buffer, usize); 9]| {
+            buffers
+                .into_iter()
+                .map(|(buffer, len)| {
+                    read_f32(buffer, len)
+                        .into_iter()
+                        .map(f32::to_bits)
+                        .collect::<Vec<_>>()
+                })
+                .collect::<Vec<_>>()
+        };
+        let _ = ctx.drain_stats();
+        for x_values in [[0.5f32, -1.25, 2.0, 0.75], [1.5f32, 0.25, -0.75, 2.25]] {
+            write_f32(&direct_x, &x_values);
+            let mut direct = TokenCommandBuffer::new(&ctx);
+            encode_rmsnorm(
+                &mut direct,
+                &direct_x,
+                &input_norm_weight,
+                &direct_h,
+                HIDDEN,
+                1e-6,
+            )
+            .expect("encode direct input norm");
+            for (projection, input, output) in [
+                (&projections[0], &direct_h, &direct_q_a),
+                (&projections[1], &direct_h, &direct_compressed),
+            ] {
+                let DeviceReplayProjection::NativeBf16 { weight, rows, cols } = projection else {
+                    unreachable!("native fixture");
+                };
+                encode_gemv_native_bf16_seq(&mut direct, weight, *rows, *cols, input, output)
+                    .expect("encode direct prelude projection");
+            }
+            encode_rmsnorm(
+                &mut direct,
+                &direct_q_a,
+                &q_norm_weight,
+                &direct_q_resid,
+                Q_LORA,
+                1e-6,
+            )
+            .expect("encode direct q norm");
+            encode_rmsnorm(
+                &mut direct,
+                &direct_compressed,
+                &kv_norm_weight,
+                &direct_k_latent,
+                KV_LORA,
+                1e-6,
+            )
+            .expect("encode direct kv norm");
+            encode_rope_interleaved(
+                &mut direct,
+                &direct_compressed,
+                KV_LORA,
+                &direct_key_rope,
+                0,
+                &cos,
+                &sin,
+                1,
+                ROPE,
+                ROPE,
+                ROPE,
+            )
+            .expect("encode direct key RoPE");
+            let DeviceReplayProjection::NativeBf16 { weight, rows, cols } = &projections[2] else {
+                unreachable!("native fixture");
+            };
+            encode_gemv_native_bf16_seq(
+                &mut direct,
+                weight,
+                *rows,
+                *cols,
+                &direct_q_resid,
+                &direct_q,
+            )
+            .expect("encode direct q_b");
+            encode_copy_head_prefix(
+                &mut direct,
+                &direct_q,
+                &direct_query_nope,
+                HEADS,
+                NOPE,
+                ROPE,
+            )
+            .expect("encode direct query prefix");
+            encode_rope_interleaved(
+                &mut direct,
+                &direct_q,
+                NOPE,
+                &direct_query_rope,
+                0,
+                &cos,
+                &sin,
+                HEADS,
+                ROPE,
+                QK,
+                ROPE,
+            )
+            .expect("encode direct query RoPE");
+            assert_eq!(direct.dispatch_count(), 9);
+            direct.commit_and_wait().expect("direct attention prelude");
+            let expected = snapshots([
+                (&direct_h, HIDDEN),
+                (&direct_q_a, Q_LORA),
+                (&direct_compressed, KV_LORA + ROPE),
+                (&direct_q_resid, Q_LORA),
+                (&direct_k_latent, KV_LORA),
+                (&direct_q, HEADS * QK),
+                (&direct_key_rope, ROPE),
+                (&direct_query_nope, HEADS * NOPE),
+                (&direct_query_rope, HEADS * ROPE),
+            ]);
+
+            write_f32(&replay_x, &x_values);
+            let mut replay_tcb = TokenCommandBuffer::new(&ctx);
+            replay_tcb
+                .execute_replayable_graph(&replay.graph)
+                .expect("execute attention prelude replay");
+            assert_eq!(replay_tcb.dispatch_count(), 9);
+            replay_tcb
+                .commit_and_wait()
+                .expect("attention prelude replay");
+            let actual = snapshots([
+                (&replay_h, HIDDEN),
+                (&replay_q_a, Q_LORA),
+                (&replay_compressed, KV_LORA + ROPE),
+                (&replay_q_resid, Q_LORA),
+                (&replay_k_latent, KV_LORA),
+                (&replay_q, HEADS * QK),
+                (&replay_key_rope, ROPE),
+                (&replay_query_nope, HEADS * NOPE),
+                (&replay_query_rope, HEADS * ROPE),
+            ]);
+            assert_eq!(
+                actual, expected,
+                "nine-command replay must be bit-exact to direct encoding"
+            );
+        }
+        assert_eq!(
+            ctx.drain_stats(),
+            (0, 0, 0),
+            "warm attention prelude replays must not allocate buffers"
         );
     }
 

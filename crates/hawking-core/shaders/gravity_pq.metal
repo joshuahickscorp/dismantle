@@ -628,6 +628,17 @@ struct GravityPqKTransposeHeadsParams {
     uint pq_nchunk;
 };
 
+static inline void gravity_compensated_add(
+    float value,
+    thread float &sum,
+    thread float &compensation)
+{
+    float corrected = value - compensation;
+    float next = sum + corrected;
+    compensation = (next - sum) - corrected;
+    sum = next;
+}
+
 kernel void gravity_pq_k_transpose_heads(
     device const half  *codebooks [[buffer(0)]],
     device const uchar *codes [[buffer(1)]],
@@ -643,11 +654,13 @@ kernel void gravity_pq_k_transpose_heads(
     uint chunk = col / p.pq_dim;
     uint within = col - chunk * p.pq_dim;
     float acc = 0.0f;
+    float compensation = 0.0f;
     for (uint key_row = 0u; key_row < p.key_rows; ++key_row) {
         uint row = head * p.row_stride + key_row;
         uint code = uint(codes[row * p.pq_nchunk + chunk]);
         float weight = float(codebooks[code * p.pq_sub + within]);
-        acc = fma(weight, query_nope[head * p.key_rows + key_row], acc);
+        float product = fma(weight, query_nope[head * p.key_rows + key_row], 0.0f);
+        gravity_compensated_add(product, acc, compensation);
     }
     query_latent[id] = acc;
 }
@@ -692,11 +705,14 @@ kernel void gravity_glm_compact_ranked_attn(
             device const float *latent = latent_cache + token * p.latent_dim;
             device const float *rope = rope_cache + token * p.rope_dim;
             float dot = 0.0f;
+            float compensation = 0.0f;
             for (uint d = 0u; d < p.latent_dim; ++d) {
-                dot = fma(qh[d], latent[d], dot);
+                float product = fma(qh[d], latent[d], 0.0f);
+                gravity_compensated_add(product, dot, compensation);
             }
             for (uint d = 0u; d < p.rope_dim; ++d) {
-                dot = fma(qr[d], rope[d], dot);
+                float product = fma(qr[d], rope[d], 0.0f);
+                gravity_compensated_add(product, dot, compensation);
             }
             score = dot * p.scale;
         }
@@ -711,6 +727,7 @@ kernel void gravity_glm_compact_ranked_attn(
             best = max(best, scores[a]);
         }
         float total = 0.0f;
+        float total_compensation = 0.0f;
         for (uint a = 0u; a < p.n_allow; ++a) {
             float score = scores[a];
             float probability =
@@ -718,7 +735,7 @@ kernel void gravity_glm_compact_ranked_attn(
                     ? metal::precise::exp(score - best)
                     : 0.0f;
             scores[a] = probability;
-            total += probability;
+            gravity_compensated_add(probability, total, total_compensation);
         }
         if (total > 0.0f) {
             for (uint a = 0u; a < p.n_allow; ++a) {
@@ -737,10 +754,13 @@ kernel void gravity_glm_compact_ranked_attn(
     device float *out = weighted_latent + head * p.latent_dim;
     for (uint d = tid; d < p.latent_dim; d += tg) {
         float acc = 0.0f;
+        float compensation = 0.0f;
         for (uint a = 0u; a < p.n_allow; ++a) {
             uint token = ranked_idx[a];
             if (token < p.n_keys) {
-                acc = fma(scores[a], latent_cache[token * p.latent_dim + d], acc);
+                float product =
+                    fma(scores[a], latent_cache[token * p.latent_dim + d], 0.0f);
+                gravity_compensated_add(product, acc, compensation);
             }
         }
         out[d] = acc;
@@ -748,8 +768,9 @@ kernel void gravity_glm_compact_ranked_attn(
 }
 
 // Apply the value-row window of an interleaved per-head K/V matrix directly
-// from a single-subspace, byte-indexed gravity-pq tensor. One thread owns one
-// output row and reduces latent columns in strict ascending order.
+// from a single-subspace, byte-indexed gravity-pq tensor. One SIMD group owns
+// one output row and uses the generic gravity_pq_matvec lane/chunk order and
+// simd_sum so value reconstruction is arithmetically aligned with expansion.
 struct GravityPqVRowsHeadsParams {
     uint n_heads;
     uint row_stride;
@@ -767,16 +788,20 @@ kernel void gravity_pq_v_rows_heads(
     device const float *weighted_latent [[buffer(2)]],
     device       float *context [[buffer(3)]],
     constant GravityPqVRowsHeadsParams &p [[buffer(4)]],
-    uint id [[thread_position_in_grid]])
+    uint tgid [[threadgroup_position_in_grid]],
+    uint sg_in_tg [[simdgroup_index_in_threadgroup]],
+    uint sgs_per_tg [[simdgroups_per_threadgroup]],
+    uint lane [[thread_index_in_simdgroup]])
 {
     uint total = p.n_heads * p.value_rows;
+    uint id = tgid * sgs_per_tg + sg_in_tg;
     if (id >= total) { return; }
     uint head = id / p.value_rows;
     uint value_row = id - head * p.value_rows;
     uint source_row = head * p.row_stride + p.value_row_offset + value_row;
     device const float *x = weighted_latent + head * p.latent_dim;
     float acc = 0.0f;
-    for (uint chunk = 0u; chunk < p.pq_nchunk; ++chunk) {
+    for (uint chunk = lane; chunk < p.pq_nchunk; chunk += 32u) {
         uint code = uint(codes[source_row * p.pq_nchunk + chunk]);
         device const half *entry = codebooks + code * p.pq_sub;
         device const float *xs = x + chunk * p.pq_dim;
@@ -784,7 +809,10 @@ kernel void gravity_pq_v_rows_heads(
             acc = fma(float(entry[within]), xs[within], acc);
         }
     }
-    context[id] = acc;
+    acc = simd_sum(acc);
+    if (lane == 0u) {
+        context[id] = acc;
+    }
 }
 
 // Build queries: per head, copy nope half from q, rope-interleaved rope half.

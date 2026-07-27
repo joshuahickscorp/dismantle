@@ -27,6 +27,11 @@
 //! weighted combine). The default three-`matvec_batch` path is unchanged when
 //! the flag is unset (Parity V2.1 item 6).
 //!
+//! **Compact MLA** (`HAWKING_GLM_GPU_COMPACT_MLA=1`, default off): replaces
+//! persistent expanded per-head K/V with normalized MLA latent + shared RoPE
+//! tail and executes append → absorbed K → ranked attention → absorbed V →
+//! o_proj in one five-dispatch command buffer after host DSA ranking.
+//!
 //! Gated by [`GPU_RESIDENT_STATE_ENV`] (`HAWKING_GLM_GPU_RESIDENT_STATE`), default
 //! off, so the host-state path remains the parity oracle.
 
@@ -38,9 +43,9 @@ use crate::gravity_glm::gpu::{
     record_routed_tensor_representation, GpuTensor, GpuWeightCache,
 };
 use crate::gravity_glm::{
-    gpu_expert_wave_enabled, gpu_lm_head_full_logits_enabled, rope_cos_sin, rope_interleaved,
-    topk_desc, GlmArch, GlmTrace, WeightAccess, GPU_LM_HEAD_DIAG_TOPK,
-    RESIDENT_RUNTIME_INITIAL_KV_CAPACITY_TOKENS,
+    gpu_compact_mla_enabled, gpu_expert_wave_enabled, gpu_lm_head_full_logits_enabled,
+    rope_cos_sin, rope_interleaved, topk_desc, GlmArch, GlmTrace, WeightAccess,
+    GPU_LM_HEAD_DIAG_TOPK, RESIDENT_RUNTIME_INITIAL_KV_CAPACITY_TOKENS,
 };
 use crate::metal::{MetalContext, TokenCommandBuffer};
 use crate::{Error, Result};
@@ -87,6 +92,10 @@ fn read_u32(buf: &Buffer, n: usize) -> Vec<u32> {
 struct LayerGpuCache {
     keys: Buffer,
     values: Buffer,
+}
+
+struct ExpandedResidentCache {
+    layers: Vec<LayerGpuCache>,
     capacity: usize,
 }
 
@@ -106,7 +115,6 @@ struct CompactLayerGpuCache {
 struct CompactResidentCache {
     layers: Vec<CompactLayerGpuCache>,
     capacity: usize,
-    seq_len: usize,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -122,7 +130,7 @@ enum ResidentAttentionLayout {
 /// `Expanded`; compact construction remains private and runtime-unreachable
 /// until the compact forward path is wired end to end.
 enum ResidentAttentionState {
-    Expanded(Vec<LayerGpuCache>),
+    Expanded(ExpandedResidentCache),
     Compact(CompactResidentCache),
 }
 
@@ -163,7 +171,116 @@ fn active_sequence_len(position: usize, capacity: usize, owner: &str) -> Result<
     Ok(need)
 }
 
-#[allow(dead_code)]
+impl ExpandedResidentCache {
+    fn layer_bytes(capacity: usize, heads: usize, width: usize, what: &str) -> Result<usize> {
+        let elements = capacity
+            .checked_mul(heads)
+            .and_then(|value| value.checked_mul(width))
+            .ok_or_else(|| {
+                Error::Gravity(format!(
+                    "{what}: expanded cache element count overflow ({capacity} x {heads} x {width})"
+                ))
+            })?;
+        checked_sequence_bytes(elements, std::mem::size_of::<f32>(), what)
+    }
+
+    fn new(ctx: &MetalContext, arch: &GlmArch, initial_cap: usize) -> Result<Self> {
+        let capacity = initial_cap.max(MIN_SEQUENCE_CAPACITY);
+        let key_bytes =
+            Self::layer_bytes(capacity, arch.n_heads, arch.qk_dim(), "expanded MLA keys")?;
+        let value_bytes = Self::layer_bytes(
+            capacity,
+            arch.n_heads,
+            arch.v_head_dim,
+            "expanded MLA values",
+        )?;
+        let mut layers = Vec::with_capacity(arch.n_layers);
+        for _ in 0..arch.n_layers {
+            layers.push(LayerGpuCache {
+                keys: ctx.new_buffer_checked(key_bytes)?,
+                values: ctx.new_buffer_checked(value_bytes)?,
+            });
+        }
+        Ok(Self { layers, capacity })
+    }
+
+    fn reserve(
+        &mut self,
+        ctx: &MetalContext,
+        arch: &GlmArch,
+        need: usize,
+        seq_len: usize,
+    ) -> Result<()> {
+        if self.layers.len() != arch.n_layers {
+            return Err(Error::Gravity(format!(
+                "resident expanded cache layer count {} != architecture {}",
+                self.layers.len(),
+                arch.n_layers
+            )));
+        }
+        if seq_len > self.capacity {
+            return Err(Error::Gravity(format!(
+                "resident expanded cache seq_len {seq_len} exceeds capacity {}",
+                self.capacity
+            )));
+        }
+        let capacity = grown_sequence_capacity(self.capacity, need)?;
+        if capacity == self.capacity {
+            return Ok(());
+        }
+        let key_bytes = Self::layer_bytes(
+            capacity,
+            arch.n_heads,
+            arch.qk_dim(),
+            "expanded MLA key growth",
+        )?;
+        let value_bytes = Self::layer_bytes(
+            capacity,
+            arch.n_heads,
+            arch.v_head_dim,
+            "expanded MLA value growth",
+        )?;
+        let key_copy_bytes = Self::layer_bytes(
+            seq_len,
+            arch.n_heads,
+            arch.qk_dim(),
+            "expanded MLA key copy",
+        )?;
+        let value_copy_bytes = Self::layer_bytes(
+            seq_len,
+            arch.n_heads,
+            arch.v_head_dim,
+            "expanded MLA value copy",
+        )?;
+        let mut next_layers = Vec::with_capacity(arch.n_layers);
+        for layer in &self.layers {
+            let next_keys = ctx.new_buffer_checked(key_bytes)?;
+            let next_values = ctx.new_buffer_checked(value_bytes)?;
+            if seq_len > 0 {
+                unsafe {
+                    std::ptr::copy_nonoverlapping(
+                        layer.keys.contents() as *const u8,
+                        next_keys.contents() as *mut u8,
+                        key_copy_bytes,
+                    );
+                    std::ptr::copy_nonoverlapping(
+                        layer.values.contents() as *const u8,
+                        next_values.contents() as *mut u8,
+                        value_copy_bytes,
+                    );
+                }
+            }
+            next_layers.push(LayerGpuCache {
+                keys: next_keys,
+                values: next_values,
+            });
+        }
+        self.layers = next_layers;
+        self.capacity = capacity;
+        Ok(())
+    }
+}
+
 impl CompactResidentCache {
     fn layer_bytes(capacity: usize, width: usize, what: &str) -> Result<usize> {
         let elements = capacity.checked_mul(width).ok_or_else(|| {
@@ -187,18 +304,16 @@ impl CompactResidentCache {
                 rope_tails: ctx.new_buffer_checked(rope_bytes)?,
             });
         }
-        Ok(Self {
-            layers,
-            capacity,
-            seq_len: 0,
-        })
+        Ok(Self { layers, capacity })
     }
 
-    fn reset(&mut self) {
-        self.seq_len = 0;
-    }
-
-    fn reserve(&mut self, ctx: &MetalContext, arch: &GlmArch, need: usize) -> Result<()> {
+    fn reserve(
+        &mut self,
+        ctx: &MetalContext,
+        arch: &GlmArch,
+        need: usize,
+        seq_len: usize,
+    ) -> Result<()> {
         if self.layers.len() != arch.n_layers {
             return Err(Error::Gravity(format!(
                 "compact MLA cache layer count {} != architecture {}",
@@ -206,10 +321,10 @@ impl CompactResidentCache {
                 arch.n_layers
             )));
         }
-        if self.seq_len > self.capacity {
+        if seq_len > self.capacity {
             return Err(Error::Gravity(format!(
                 "compact MLA cache seq_len {} exceeds capacity {}",
-                self.seq_len, self.capacity
+                seq_len, self.capacity
             )));
         }
         let capacity = grown_sequence_capacity(self.capacity, need)?;
@@ -226,38 +341,37 @@ impl CompactResidentCache {
             arch.qk_rope_head_dim,
             "compact MLA rope cache growth",
         )?;
-        let latent_copy_bytes = Self::layer_bytes(
-            self.seq_len,
-            arch.kv_lora_rank,
-            "compact MLA latent cache copy",
-        )?;
+        let latent_copy_bytes =
+            Self::layer_bytes(seq_len, arch.kv_lora_rank, "compact MLA latent cache copy")?;
         let rope_copy_bytes = Self::layer_bytes(
-            self.seq_len,
+            seq_len,
             arch.qk_rope_head_dim,
             "compact MLA rope cache copy",
         )?;
-        for layer in 0..arch.n_layers {
+        let mut next_layers = Vec::with_capacity(arch.n_layers);
+        for layer in &self.layers {
             let next_latents = ctx.new_buffer_checked(latent_bytes)?;
             let next_rope_tails = ctx.new_buffer_checked(rope_bytes)?;
-            if self.seq_len > 0 {
+            if seq_len > 0 {
                 unsafe {
                     std::ptr::copy_nonoverlapping(
-                        self.layers[layer].latents.contents() as *const u8,
+                        layer.latents.contents() as *const u8,
                         next_latents.contents() as *mut u8,
                         latent_copy_bytes,
                     );
                     std::ptr::copy_nonoverlapping(
-                        self.layers[layer].rope_tails.contents() as *const u8,
+                        layer.rope_tails.contents() as *const u8,
                         next_rope_tails.contents() as *mut u8,
                         rope_copy_bytes,
                     );
                 }
             }
-            self.layers[layer] = CompactLayerGpuCache {
+            next_layers.push(CompactLayerGpuCache {
                 latents: next_latents,
                 rope_tails: next_rope_tails,
-            };
+            });
         }
+        self.layers = next_layers;
         self.capacity = capacity;
         Ok(())
     }
@@ -271,20 +385,11 @@ impl ResidentAttentionState {
         layout: ResidentAttentionLayout,
     ) -> Result<Self> {
         match layout {
-            ResidentAttentionLayout::Expanded => {
-                let capacity = initial_cap.max(MIN_SEQUENCE_CAPACITY);
-                let qk = arch.qk_dim();
-                let mut layers = Vec::with_capacity(arch.n_layers);
-                for _ in 0..arch.n_layers {
-                    layers.push(LayerGpuCache {
-                        keys: ctx.new_buffer_checked(capacity * arch.n_heads * qk * 4)?,
-                        values: ctx
-                            .new_buffer_checked(capacity * arch.n_heads * arch.v_head_dim * 4)?,
-                        capacity,
-                    });
-                }
-                Ok(Self::Expanded(layers))
-            }
+            ResidentAttentionLayout::Expanded => Ok(Self::Expanded(ExpandedResidentCache::new(
+                ctx,
+                arch,
+                initial_cap,
+            )?)),
             ResidentAttentionLayout::Compact => Ok(Self::Compact(CompactResidentCache::new(
                 ctx,
                 arch,
@@ -295,15 +400,13 @@ impl ResidentAttentionState {
 
     fn capacity(&self) -> usize {
         match self {
-            Self::Expanded(layers) => layers.first().map(|layer| layer.capacity).unwrap_or(0),
+            Self::Expanded(cache) => cache.capacity,
             Self::Compact(cache) => cache.capacity,
         }
     }
 
-    fn reset(&mut self) {
-        if let Self::Compact(cache) = self {
-            cache.reset();
-        }
+    fn is_compact(&self) -> bool {
+        matches!(self, Self::Compact(_))
     }
 
     fn reserve(
@@ -314,56 +417,12 @@ impl ResidentAttentionState {
         seq_len: usize,
     ) -> Result<usize> {
         match self {
-            Self::Expanded(layers) => {
-                if layers.len() != arch.n_layers {
-                    return Err(Error::Gravity(format!(
-                        "resident expanded cache layer count {} != architecture {}",
-                        layers.len(),
-                        arch.n_layers
-                    )));
-                }
-                let current = layers.first().map(|layer| layer.capacity).unwrap_or(0);
-                if seq_len > current {
-                    return Err(Error::Gravity(format!(
-                        "resident expanded cache seq_len {seq_len} exceeds capacity {current}"
-                    )));
-                }
-                let capacity = grown_sequence_capacity(current, need)?;
-                if capacity == current {
-                    return Ok(capacity);
-                }
-                let qk = arch.qk_dim();
-                for layer in layers {
-                    let next_keys = ctx.new_buffer_checked(capacity * arch.n_heads * qk * 4)?;
-                    let next_values =
-                        ctx.new_buffer_checked(capacity * arch.n_heads * arch.v_head_dim * 4)?;
-                    if seq_len > 0 {
-                        let key_bytes = seq_len * arch.n_heads * qk * 4;
-                        let value_bytes = seq_len * arch.n_heads * arch.v_head_dim * 4;
-                        unsafe {
-                            std::ptr::copy_nonoverlapping(
-                                layer.keys.contents() as *const u8,
-                                next_keys.contents() as *mut u8,
-                                key_bytes,
-                            );
-                            std::ptr::copy_nonoverlapping(
-                                layer.values.contents() as *const u8,
-                                next_values.contents() as *mut u8,
-                                value_bytes,
-                            );
-                        }
-                    }
-                    *layer = LayerGpuCache {
-                        keys: next_keys,
-                        values: next_values,
-                        capacity,
-                    };
-                }
-                Ok(capacity)
+            Self::Expanded(cache) => {
+                cache.reserve(ctx, arch, need, seq_len)?;
+                Ok(cache.capacity)
             }
             Self::Compact(cache) => {
-                cache.seq_len = seq_len;
-                cache.reserve(ctx, arch, need)?;
+                cache.reserve(ctx, arch, need, seq_len)?;
                 Ok(cache.capacity)
             }
         }
@@ -371,14 +430,28 @@ impl ResidentAttentionState {
 
     fn expanded_layer(&self, layer: usize) -> Result<&LayerGpuCache> {
         match self {
-            Self::Expanded(layers) => layers.get(layer).ok_or_else(|| {
+            Self::Expanded(cache) => cache.layers.get(layer).ok_or_else(|| {
                 Error::Gravity(format!(
                     "resident expanded cache layer {layer} out of range {}",
-                    layers.len()
+                    cache.layers.len()
                 ))
             }),
             Self::Compact(_) => Err(Error::Gravity(
                 "compact resident attention state reached the expanded forward path".into(),
+            )),
+        }
+    }
+
+    fn compact_layer(&self, layer: usize) -> Result<&CompactLayerGpuCache> {
+        match self {
+            Self::Compact(cache) => cache.layers.get(layer).ok_or_else(|| {
+                Error::Gravity(format!(
+                    "resident compact cache layer {layer} out of range {}",
+                    cache.layers.len()
+                ))
+            }),
+            Self::Expanded(_) => Err(Error::Gravity(
+                "expanded resident attention state reached the compact forward path".into(),
             )),
         }
     }
@@ -506,6 +579,177 @@ impl SequenceScratch {
     }
 }
 
+/// DSA/index state has an independent capacity and recovery path from MLA K/V.
+///
+/// A failed attention-cache growth may leave attention at the requested
+/// capacity while this owner remains unchanged. Retrying `reserve` therefore
+/// rechecks and repairs DSA state independently instead of returning early
+/// from the attention capacity alone.
+struct DsaIndexState {
+    index_keys: Vec<Buffer>,
+    sequence_scratch: SequenceScratch,
+    shared_topk: Option<Vec<usize>>,
+    ranked_indices: Option<Buffer>,
+    ranked_capacity: usize,
+    capacity: usize,
+}
+
+impl DsaIndexState {
+    fn new(
+        ctx: &MetalContext,
+        arch: &GlmArch,
+        initial_cap: usize,
+        compact_rank_upload: bool,
+    ) -> Result<Self> {
+        let capacity = initial_cap.max(MIN_SEQUENCE_CAPACITY);
+        let elements = capacity.checked_mul(arch.index_head_dim).ok_or_else(|| {
+            Error::Gravity(format!(
+                "resident DSA index-key element count overflow: {capacity} x {}",
+                arch.index_head_dim
+            ))
+        })?;
+        let bytes = checked_sequence_bytes(elements, std::mem::size_of::<f32>(), "DSA index keys")?;
+        let mut index_keys = Vec::with_capacity(arch.n_layers);
+        for _ in 0..arch.n_layers {
+            index_keys.push(ctx.new_buffer_checked(bytes)?);
+        }
+        let ranked_capacity = arch.index_topk.max(1);
+        let ranked_indices = if compact_rank_upload {
+            let ranked_bytes = checked_sequence_bytes(
+                ranked_capacity,
+                std::mem::size_of::<u32>(),
+                "DSA ranked indices",
+            )?;
+            Some(ctx.new_buffer_checked(ranked_bytes)?)
+        } else {
+            None
+        };
+        Ok(Self {
+            index_keys,
+            sequence_scratch: SequenceScratch::new(ctx, capacity)?,
+            shared_topk: None,
+            ranked_indices,
+            ranked_capacity: if compact_rank_upload {
+                ranked_capacity
+            } else {
+                0
+            },
+            capacity,
+        })
+    }
+
+    fn reset(&mut self) {
+        self.shared_topk = None;
+        self.sequence_scratch.device_score_len = 0;
+    }
+
+    fn reserve(
+        &mut self,
+        ctx: &MetalContext,
+        arch: &GlmArch,
+        need: usize,
+        seq_len: usize,
+    ) -> Result<()> {
+        if self.index_keys.len() != arch.n_layers {
+            return Err(Error::Gravity(format!(
+                "resident index cache layer count {} != architecture {}",
+                self.index_keys.len(),
+                arch.n_layers
+            )));
+        }
+        if self.sequence_scratch.capacity != self.capacity {
+            return Err(Error::Gravity(format!(
+                "resident DSA scratch capacity {} != index capacity {}",
+                self.sequence_scratch.capacity, self.capacity
+            )));
+        }
+        if seq_len > self.capacity {
+            return Err(Error::Gravity(format!(
+                "resident DSA seq_len {seq_len} exceeds capacity {}",
+                self.capacity
+            )));
+        }
+        let capacity = grown_sequence_capacity(self.capacity, need)?;
+        if capacity == self.capacity {
+            return Ok(());
+        }
+        let elements = capacity.checked_mul(arch.index_head_dim).ok_or_else(|| {
+            Error::Gravity(format!(
+                "resident DSA index-key growth overflow: {capacity} x {}",
+                arch.index_head_dim
+            ))
+        })?;
+        let bytes =
+            checked_sequence_bytes(elements, std::mem::size_of::<f32>(), "DSA index-key growth")?;
+        let copy_elements = seq_len.checked_mul(arch.index_head_dim).ok_or_else(|| {
+            Error::Gravity(format!(
+                "resident DSA index-key copy overflow: {seq_len} x {}",
+                arch.index_head_dim
+            ))
+        })?;
+        let copy_bytes = checked_sequence_bytes(
+            copy_elements,
+            std::mem::size_of::<f32>(),
+            "DSA index-key copy",
+        )?;
+        let mut next_index_keys = Vec::with_capacity(arch.n_layers);
+        for index_keys in &self.index_keys {
+            let next = ctx.new_buffer_checked(bytes)?;
+            if seq_len > 0 {
+                unsafe {
+                    std::ptr::copy_nonoverlapping(
+                        index_keys.contents() as *const u8,
+                        next.contents() as *mut u8,
+                        copy_bytes,
+                    );
+                }
+            }
+            next_index_keys.push(next);
+        }
+        self.sequence_scratch.reserve(ctx, capacity)?;
+        self.index_keys = next_index_keys;
+        self.capacity = capacity;
+        Ok(())
+    }
+
+    fn store_ranked_indices(&self, ranked: &[usize]) -> Result<()> {
+        if ranked.len() > self.ranked_capacity {
+            return Err(Error::Gravity(format!(
+                "resident DSA rank upload needs {} slots, capacity is {}",
+                ranked.len(),
+                self.ranked_capacity
+            )));
+        }
+        let mut checked = Vec::with_capacity(ranked.len());
+        for &index in ranked {
+            checked.push(u32::try_from(index).map_err(|_| {
+                Error::Gravity(format!("resident DSA rank index {index} exceeds u32"))
+            })?);
+        }
+        unsafe {
+            std::ptr::copy_nonoverlapping(
+                checked.as_ptr(),
+                self.ranked_indices
+                    .as_ref()
+                    .ok_or_else(|| {
+                        Error::Gravity(
+                            "resident DSA rank upload requested without compact state".into(),
+                        )
+                    })?
+                    .contents() as *mut u32,
+                checked.len(),
+            );
+        }
+        Ok(())
+    }
+
+    fn ranked_indices(&self) -> Result<&Buffer> {
+        self.ranked_indices.as_ref().ok_or_else(|| {
+            Error::Gravity("resident compact attention has no DSA rank buffer".into())
+        })
+    }
+}
+
 /// Reuses the session's O(sequence-length) index workspace for [`topk_desc`].
 ///
 /// The index tie-break makes the comparator a total order even though the
@@ -541,10 +785,8 @@ fn topk_desc_with_scratch(
 /// Device-resident working set for one generation.
 pub struct ResidentSession {
     attention: ResidentAttentionState,
-    index_keys: Vec<Buffer>,
-    sequence_scratch: SequenceScratch,
+    dsa: DsaIndexState,
     pub seq_len: usize,
-    shared_topk: Option<Vec<usize>>,
     waits: Cell<u64>,
 }
 
@@ -566,24 +808,17 @@ impl ResidentSession {
     ) -> Result<Self> {
         let cap = initial_cap.max(MIN_SEQUENCE_CAPACITY);
         let attention = ResidentAttentionState::new(ctx, arch, cap, layout)?;
-        let mut index_keys = Vec::with_capacity(arch.n_layers);
-        for _ in 0..arch.n_layers {
-            index_keys.push(ctx.new_buffer_checked(cap * arch.index_head_dim * 4)?);
-        }
         Ok(Self {
             attention,
-            index_keys,
-            sequence_scratch: SequenceScratch::new(ctx, cap)?,
+            dsa: DsaIndexState::new(ctx, arch, cap, layout == ResidentAttentionLayout::Compact)?,
             seq_len: 0,
-            shared_topk: None,
             waits: Cell::new(0),
         })
     }
 
     pub fn reset(&mut self) {
-        self.attention.reset();
+        self.dsa.reset();
         self.seq_len = 0;
-        self.shared_topk = None;
         self.waits.set(0);
     }
 
@@ -592,34 +827,8 @@ impl ResidentSession {
     }
 
     fn reserve(&mut self, ctx: &MetalContext, arch: &GlmArch, need: usize) -> Result<()> {
-        self.sequence_scratch.reserve(ctx, need)?;
-        if self.index_keys.len() != arch.n_layers {
-            return Err(Error::Gravity(format!(
-                "resident index cache layer count {} != architecture {}",
-                self.index_keys.len(),
-                arch.n_layers
-            )));
-        }
-        let current = self.attention.capacity();
-        let cap = self.attention.reserve(ctx, arch, need, self.seq_len)?;
-        if cap == current {
-            return Ok(());
-        }
-        for layer in 0..arch.n_layers {
-            let old_index_keys = &self.index_keys[layer];
-            let ni = ctx.new_buffer_checked(cap * arch.index_head_dim * 4)?;
-            if self.seq_len > 0 {
-                let ci = self.seq_len * arch.index_head_dim * 4;
-                unsafe {
-                    std::ptr::copy_nonoverlapping(
-                        old_index_keys.contents() as *const u8,
-                        ni.contents() as *mut u8,
-                        ci,
-                    );
-                }
-            }
-            self.index_keys[layer] = ni;
-        }
+        self.attention.reserve(ctx, arch, need, self.seq_len)?;
+        self.dsa.reserve(ctx, arch, need, self.seq_len)?;
         Ok(())
     }
 }
@@ -669,9 +878,44 @@ pub struct ActPool {
     head_topk_val: Buffer,
     #[allow(dead_code)]
     gate_cap: usize,
+    /// Lazily allocated only for the default-off compact MLA path.
+    compact_attention_scratch: Mutex<Option<CompactAttentionScratch>>,
     /// Grow-once scratch for the default-off expert-wave candidate. Keeping
     /// this lazy preserves the default path's allocation and residency shape.
     expert_wave_scratch: Mutex<Option<ExpertWaveScratch>>,
+}
+
+struct CompactAttentionScratch {
+    query_nope: Buffer,
+    query_rope: Buffer,
+    key_rope: Buffer,
+    query_latent: Buffer,
+    n_heads: usize,
+    nope_dim: usize,
+    rope_dim: usize,
+    latent_dim: usize,
+}
+
+impl CompactAttentionScratch {
+    fn new(ctx: &MetalContext, arch: &GlmArch) -> Result<Self> {
+        Ok(Self {
+            query_nope: ctx.new_buffer_checked(arch.n_heads * arch.qk_nope_head_dim * 4)?,
+            query_rope: ctx.new_buffer_checked(arch.n_heads * arch.qk_rope_head_dim * 4)?,
+            key_rope: ctx.new_buffer_checked(arch.qk_rope_head_dim * 4)?,
+            query_latent: ctx.new_buffer_checked(arch.n_heads * arch.kv_lora_rank * 4)?,
+            n_heads: arch.n_heads,
+            nope_dim: arch.qk_nope_head_dim,
+            rope_dim: arch.qk_rope_head_dim,
+            latent_dim: arch.kv_lora_rank,
+        })
+    }
+
+    fn matches(&self, arch: &GlmArch) -> bool {
+        self.n_heads == arch.n_heads
+            && self.nope_dim == arch.qk_nope_head_dim
+            && self.rope_dim == arch.qk_rope_head_dim
+            && self.latent_dim == arch.kv_lora_rank
+    }
 }
 
 struct ExpertWaveScratch {
@@ -766,8 +1010,24 @@ impl ActPool {
             head_topk_idx: ctx.new_buffer_checked((GPU_LM_HEAD_DIAG_TOPK as usize) * 4)?,
             head_topk_val: ctx.new_buffer_checked((GPU_LM_HEAD_DIAG_TOPK as usize) * 4)?,
             gate_cap,
+            compact_attention_scratch: Mutex::new(None),
             expert_wave_scratch: Mutex::new(None),
         })
+    }
+
+    fn ensure_compact_attention_scratch(
+        &self,
+        ctx: &MetalContext,
+        arch: &GlmArch,
+    ) -> Result<std::sync::MutexGuard<'_, Option<CompactAttentionScratch>>> {
+        let mut scratch = self
+            .compact_attention_scratch
+            .lock()
+            .expect("compact attention scratch");
+        if !scratch.as_ref().is_some_and(|state| state.matches(arch)) {
+            *scratch = Some(CompactAttentionScratch::new(ctx, arch)?);
+        }
+        Ok(scratch)
     }
 
     fn ensure_expert_wave_scratch(
@@ -989,12 +1249,13 @@ pub fn forward_resident(
             let _position = cost_ledger::Scope::new(Bucket::EmbeddingAndPosition);
             rope_cos_sin(arch, pos)
         };
-        let mut shared_topk = session.shared_topk.clone();
+        let mut shared_topk = session.dsa.shared_topk.clone();
         trace.expert_choices.clear();
 
         for layer in 0..a.n_layers {
             let p = format!("model.layers.{layer}");
             let attn_p = format!("{p}.self_attn");
+            let compact_attention = session.attention.is_compact();
             let mut tcb: Option<TokenCommandBuffer<'_>> = None;
 
             // Attention + IndexShare: projections, DSA indexer, sparse attend,
@@ -1060,19 +1321,23 @@ pub fn forward_resident(
                     a.q_lora_rank,
                     &pool.q,
                 )?;
-                matvec_into(
-                    &mut tcb,
-                    ctx,
-                    weights,
-                    &format!("{attn_p}.kv_b_proj.weight"),
-                    &pool.k_latent,
-                    a.kv_lora_rank,
-                    &pool.kv,
-                )?;
+                if !compact_attention {
+                    matvec_into(
+                        &mut tcb,
+                        ctx,
+                        weights,
+                        &format!("{attn_p}.kv_b_proj.weight"),
+                        &pool.k_latent,
+                        a.kv_lora_rank,
+                        &pool.kv,
+                    )?;
+                }
                 commit(tcb.take(), &session.waits)?;
 
-                // Append MLA K/V into the device cache (cache of record).
-                {
+                // Expanded path: materialize and append per-head K/V. Compact
+                // mode postpones its latent/RoPE append into the five-dispatch
+                // DAG after the stable DSA rank is available.
+                if !compact_attention {
                     let _kv = cost_ledger::Scope::new(Bucket::KvUpdate);
                     let kv = read_f32(&pool.kv, a.n_heads * (a.qk_nope_head_dim + a.v_head_dim));
                     let cache = session.attention.expanded_layer(layer)?;
@@ -1101,8 +1366,9 @@ pub fn forward_resident(
                     }
                 }
 
-                // Queries
-                {
+                // Expanded path query layout. Compact mode packs only the
+                // content and rotated-RoPE components into lazy scratch.
+                if !compact_attention {
                     let q = read_f32(&pool.q, a.n_heads * qk);
                     let mut queries = vec![0f32; a.n_heads * qk];
                     cost_ledger::record_allocation((queries.len() * 4) as u64);
@@ -1121,16 +1387,15 @@ pub fn forward_resident(
 
                 let topk = match a.indexer_types[layer].as_str() {
                     "full" => {
-                        let cache = session.attention.expanded_layer(layer)?;
-                        let index_keys = &session.index_keys[layer];
-                        let scratch = &mut session.sequence_scratch;
+                        let index_keys = &session.dsa.index_keys[layer];
+                        let scratch = &mut session.dsa.sequence_scratch;
                         let t = indexer_topk(
                             weights,
                             arch,
                             &attn_p,
                             pool,
                             index_keys,
-                            cache.capacity,
+                            session.dsa.capacity,
                             scratch,
                             pos,
                             &cos,
@@ -1140,7 +1405,7 @@ pub fn forward_resident(
                             &session.waits,
                         )?;
                         shared_topk = Some(t.clone());
-                        session.shared_topk = Some(t.clone());
+                        session.dsa.shared_topk = Some(t.clone());
                         t
                     }
                     "shared" => shared_topk.clone().ok_or_else(|| {
@@ -1155,22 +1420,50 @@ pub fn forward_resident(
                     }
                 };
 
-                // Sparse attend over device-resident KV (same math as forward_impl).
-                let cache = session.attention.expanded_layer(layer)?;
-                let scratch = &mut session.sequence_scratch;
-                let context = sparse_attend(a, pool, cache, scratch, pos, &topk, qk)?;
-                write_f32(&pool.context, &context);
+                if compact_attention {
+                    compact_attend_into(
+                        weights,
+                        a,
+                        &session.attention,
+                        &session.dsa,
+                        pool,
+                        layer,
+                        pos,
+                        &topk,
+                        &k_rot,
+                        &cos,
+                        &sin,
+                        &mut tcb,
+                        ctx,
+                        &session.waits,
+                    )?;
+                } else {
+                    // Sparse attend over expanded device-resident K/V.
+                    let cache = session.attention.expanded_layer(layer)?;
+                    let scratch = &mut session.dsa.sequence_scratch;
+                    let context = sparse_attend(
+                        a,
+                        pool,
+                        cache,
+                        session.attention.capacity(),
+                        scratch,
+                        pos,
+                        &topk,
+                        qk,
+                    )?;
+                    write_f32(&pool.context, &context);
 
-                matvec_into(
-                    &mut tcb,
-                    ctx,
-                    weights,
-                    &format!("{attn_p}.o_proj.weight"),
-                    &pool.context,
-                    a.n_heads * a.v_head_dim,
-                    &pool.o,
-                )?;
-                commit(tcb.take(), &session.waits)?;
+                    matvec_into(
+                        &mut tcb,
+                        ctx,
+                        weights,
+                        &format!("{attn_p}.o_proj.weight"),
+                        &pool.context,
+                        a.n_heads * a.v_head_dim,
+                        &pool.o,
+                    )?;
+                    commit(tcb.take(), &session.waits)?;
+                }
                 residual_add(&pool.x, &pool.o, a.hidden);
                 topk
             };
@@ -1526,12 +1819,13 @@ fn sparse_attend(
     a: &GlmArch,
     pool: &ActPool,
     cache: &LayerGpuCache,
+    cache_capacity: usize,
     scratch: &mut SequenceScratch,
     pos: usize,
     topk: &[usize],
     qk: usize,
 ) -> Result<Vec<f32>> {
-    let n_keys = active_sequence_len(pos, cache.capacity, "resident attention cache")?;
+    let n_keys = active_sequence_len(pos, cache_capacity, "resident attention cache")?;
     let scratch_len = scratch.active_len(pos)?;
     if scratch_len != n_keys {
         return Err(Error::Gravity(format!(
@@ -1616,6 +1910,240 @@ fn sparse_attend(
         }
     }
     Ok(context)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn compact_attend_into<'a>(
+    weights: &GpuWeightCache,
+    a: &GlmArch,
+    attention: &ResidentAttentionState,
+    dsa: &DsaIndexState,
+    pool: &ActPool,
+    layer: usize,
+    pos: usize,
+    topk: &[usize],
+    k_rot: &[f32],
+    cos: &[f32],
+    sin: &[f32],
+    pending: &mut Option<TokenCommandBuffer<'a>>,
+    ctx: &'a MetalContext,
+    waits: &Cell<u64>,
+) -> Result<()> {
+    let cache = attention.compact_layer(layer)?;
+    let n_keys = active_sequence_len(pos, attention.capacity(), "compact MLA attention cache")?;
+    if topk.len() > 2048 {
+        return Err(Error::Gravity(format!(
+            "compact MLA ranked attention supports at most 2048 positions, got {}",
+            topk.len()
+        )));
+    }
+    dsa.store_ranked_indices(topk)?;
+
+    let mut scratch_guard = pool.ensure_compact_attention_scratch(ctx, a)?;
+    let scratch = scratch_guard
+        .as_mut()
+        .expect("compact attention scratch initialized");
+    let qk = a.qk_dim();
+    let query = read_f32(&pool.q, a.n_heads * qk);
+    let mut query_nope = vec![0.0f32; a.n_heads * a.qk_nope_head_dim];
+    let mut query_rope = vec![0.0f32; a.n_heads * a.qk_rope_head_dim];
+    for head in 0..a.n_heads {
+        let source = &query[head * qk..(head + 1) * qk];
+        let nope_out = &mut query_nope[head * a.qk_nope_head_dim..(head + 1) * a.qk_nope_head_dim];
+        nope_out.copy_from_slice(&source[..a.qk_nope_head_dim]);
+        let rotated = rope_interleaved(&source[a.qk_nope_head_dim..], cos, sin);
+        let rope_out = &mut query_rope[head * a.qk_rope_head_dim..(head + 1) * a.qk_rope_head_dim];
+        rope_out.copy_from_slice(&rotated);
+    }
+    write_f32(&scratch.query_nope, &query_nope);
+    write_f32(&scratch.query_rope, &query_rope);
+    write_f32(&scratch.key_rope, k_rot);
+
+    let attn_p = format!("model.layers.{layer}.self_attn");
+    let kv_name = format!("{attn_p}.kv_b_proj.weight");
+    let o_name = format!("{attn_p}.o_proj.weight");
+    let (kv_codebooks, kv_codes, kv_params, o_codebooks, o_codes, o_params) = {
+        let mut weight_cache = weights.cache.lock().expect("gpu weight cache");
+        weights.ensure_many_locked(&mut weight_cache, &[&kv_name, &o_name])?;
+        let (kv_codebooks, kv_codes, kv_params) =
+            match weight_cache.get(&kv_name).expect("ensured compact kv_b") {
+                tensor @ GpuTensor::Pq {
+                    codebooks,
+                    codes,
+                    params,
+                } => {
+                    record_routed_tensor_representation(&kv_name, tensor);
+                    (codebooks.clone(), codes.clone(), *params)
+                }
+                _ => {
+                    return Err(Error::Gravity(format!(
+                        "compact MLA requires PQ tensor {kv_name}"
+                    )))
+                }
+            };
+        let (o_codebooks, o_codes, o_params) =
+            match weight_cache.get(&o_name).expect("ensured compact o_proj") {
+                tensor @ GpuTensor::Pq {
+                    codebooks,
+                    codes,
+                    params,
+                } => {
+                    record_routed_tensor_representation(&o_name, tensor);
+                    (codebooks.clone(), codes.clone(), *params)
+                }
+                _ => {
+                    return Err(Error::Gravity(format!(
+                        "compact MLA requires PQ tensor {o_name}"
+                    )))
+                }
+            };
+        (
+            kv_codebooks,
+            kv_codes,
+            kv_params,
+            o_codebooks,
+            o_codes,
+            o_params,
+        )
+    };
+
+    let row_stride = a
+        .qk_nope_head_dim
+        .checked_add(a.v_head_dim)
+        .ok_or_else(|| Error::Gravity("compact MLA KV row stride overflow".into()))?;
+    let expected_kv_rows = a
+        .n_heads
+        .checked_mul(row_stride)
+        .ok_or_else(|| Error::Gravity("compact MLA KV row count overflow".into()))?;
+    let represented_latent = (kv_params.nchunk as usize)
+        .checked_mul(kv_params.dim as usize)
+        .ok_or_else(|| Error::Gravity("compact MLA represented latent overflow".into()))?;
+    if kv_params.rows as usize != expected_kv_rows
+        || kv_params.cols as usize != a.kv_lora_rank
+        || kv_params.subspaces != 1
+        || kv_params.dim == 0
+        || kv_params.dim != kv_params.sub
+        || kv_params.card != 256
+        || kv_params.bits != 8
+        || represented_latent != a.kv_lora_rank
+    {
+        return Err(Error::Gravity(format!(
+            "compact MLA unsupported {kv_name} geometry: rows={}, cols={}, dim={}, subspaces={}, sub={}, card={}, nchunk={}, bits={}",
+            kv_params.rows,
+            kv_params.cols,
+            kv_params.dim,
+            kv_params.subspaces,
+            kv_params.sub,
+            kv_params.card,
+            kv_params.nchunk,
+            kv_params.bits
+        )));
+    }
+    let context_width = a
+        .n_heads
+        .checked_mul(a.v_head_dim)
+        .ok_or_else(|| Error::Gravity("compact MLA context width overflow".into()))?;
+    if o_params.rows as usize != a.hidden || o_params.cols as usize != context_width {
+        return Err(Error::Gravity(format!(
+            "compact MLA unsupported {o_name} geometry: rows={}, cols={}, expected rows={}, cols={context_width}",
+            o_params.rows, o_params.cols, a.hidden
+        )));
+    }
+
+    crate::cost_ledger::record_active_bytes_for(
+        &kv_name,
+        (kv_codebooks.length() + kv_codes.length()).saturating_mul(2),
+    );
+    record_pq_matvec_ops(kv_params);
+    crate::cost_ledger::record_active_bytes_for(&o_name, o_codebooks.length() + o_codes.length());
+    record_pq_matvec_ops(o_params);
+    let selected = topk.len() as u64;
+    let attention_fp = (a.n_heads as u64)
+        .saturating_mul(selected)
+        .saturating_mul((4 * a.kv_lora_rank + 2 * a.qk_rope_head_dim + 6) as u64);
+    crate::cost_ledger::record_source_modelled_operations(
+        attention_fp,
+        0,
+        (a.n_heads as u64).saturating_mul(selected),
+        (a.n_heads as u64).saturating_mul(selected),
+        0,
+    );
+
+    commit(pending.take(), waits)?;
+    let mut tcb = TokenCommandBuffer::new(ctx);
+    route_segment_primitives::encode_mla_append_compact(
+        &mut tcb,
+        &pool.k_latent,
+        &scratch.key_rope,
+        &cache.latents,
+        &cache.rope_tails,
+        a.kv_lora_rank,
+        a.qk_rope_head_dim,
+        pos,
+    )?;
+    route_segment_primitives::encode_pq_k_transpose_heads(
+        &mut tcb,
+        &kv_codebooks,
+        &kv_codes,
+        &scratch.query_nope,
+        &scratch.query_latent,
+        a.n_heads,
+        a.qk_nope_head_dim,
+        row_stride,
+        a.kv_lora_rank,
+        kv_params.dim as usize,
+        kv_params.sub as usize,
+        kv_params.card as usize,
+        kv_params.bits as usize,
+        kv_params.nchunk as usize,
+    )?;
+    route_segment_primitives::encode_compact_ranked_attention(
+        &mut tcb,
+        &scratch.query_latent,
+        &scratch.query_rope,
+        &cache.latents,
+        &cache.rope_tails,
+        dsa.ranked_indices()?,
+        &scratch.query_latent,
+        a.n_heads,
+        a.kv_lora_rank,
+        a.qk_rope_head_dim,
+        n_keys,
+        topk.len(),
+        (qk as f32).powf(-0.5),
+    )?;
+    route_segment_primitives::encode_pq_v_rows_heads(
+        &mut tcb,
+        &kv_codebooks,
+        &kv_codes,
+        &scratch.query_latent,
+        &pool.context,
+        a.n_heads,
+        row_stride,
+        a.qk_nope_head_dim,
+        a.v_head_dim,
+        a.kv_lora_rank,
+        kv_params.dim as usize,
+        kv_params.sub as usize,
+        kv_params.card as usize,
+        kv_params.bits as usize,
+        kv_params.nchunk as usize,
+    )?;
+    encode_pq_matvec_device(
+        &mut tcb,
+        &o_codebooks,
+        &o_codes,
+        o_params,
+        &pool.context,
+        &pool.o,
+    )?;
+    if tcb.dispatch_count() != 5 {
+        return Err(Error::Gravity(format!(
+            "compact MLA expected five dispatches, encoded {}",
+            tcb.dispatch_count()
+        )));
+    }
+    commit(Some(tcb), waits)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -1876,15 +2404,14 @@ fn batched_mlp<'a>(
     Ok(downs)
 }
 
-// ── Future route-segment primitives (encode-only; default path untouched) ───
+// ── Typed route-segment primitives (default path untouched) ────────────────
 
-/// Typed ABI boundary for the dormant GLM resident kernels.
+/// Typed ABI boundary for GLM resident kernels.
 ///
 /// These wrappers only append work to a caller-owned [`TokenCommandBuffer`].
-/// They never submit, wait, inspect flags, or participate in
-/// [`forward_resident`]. That keeps the current default path byte-for-byte
-/// structurally unchanged while making future graph work explicit and
-/// independently testable.
+/// They never submit, wait, or inspect flags. The compact append/K/attention/V
+/// subset participates in [`forward_resident`] only after the default-off
+/// compact session layout is selected; the ordinary expanded path is unchanged.
 ///
 /// The existing MLA append and sparse-attention shaders use the expanded
 /// `[position][head][qk/value]` cache. They are transitional correctness
@@ -2337,7 +2864,7 @@ mod route_segment_primitives {
     ///
     /// This stores the normalized KV latent and shared rotated RoPE tail
     /// directly as `[position][dimension]`. It does not expand either value
-    /// across attention heads and is not wired into [`forward_resident`].
+    /// across attention heads.
     #[allow(clippy::too_many_arguments)]
     pub(super) fn encode_mla_append_compact(
         tcb: &mut TokenCommandBuffer<'_>,
@@ -2416,9 +2943,8 @@ mod route_segment_primitives {
     /// single-subspace gravity-pq matrix.
     ///
     /// Logical key rows are the first `key_rows` rows inside each
-    /// `row_stride`-wide head block. The inner reduction is strictly ascending
-    /// in key-row order. This encode-only candidate is not wired into
-    /// [`forward_resident`].
+    /// `row_stride`-wide head block. The inner reduction is compensated in
+    /// ascending key-row order.
     #[allow(clippy::too_many_arguments)]
     pub(super) fn encode_pq_k_transpose_heads(
         tcb: &mut TokenCommandBuffer<'_>,
@@ -2545,8 +3071,7 @@ mod route_segment_primitives {
     /// Each head computes content scores from the compact latent cache,
     /// appends the shared RoPE score, normalizes in the supplied rank order,
     /// and produces one probability-weighted latent. `query_latent` and
-    /// `weighted_latent` may be the same buffer. This encode-only candidate is
-    /// not wired into [`forward_resident`].
+    /// `weighted_latent` may be the same buffer.
     #[allow(clippy::too_many_arguments)]
     pub(super) fn encode_compact_ranked_attention(
         tcb: &mut TokenCommandBuffer<'_>,
@@ -2672,9 +3197,9 @@ mod route_segment_primitives {
     /// Encode the per-head value-row window directly from a bits=8,
     /// single-subspace gravity-pq K/V matrix.
     ///
-    /// Each output owns one logical value row and reduces the corresponding
-    /// head's weighted latent in ascending column order. This encode-only
-    /// candidate is not wired into [`forward_resident`].
+    /// One SIMD group owns each logical value row and matches the generic PQ
+    /// matvec lane/chunk reduction order. Compact MLA calls this from its
+    /// default-off five-dispatch attention DAG.
     #[allow(clippy::too_many_arguments)]
     pub(super) fn encode_pq_v_rows_heads(
         tcb: &mut TokenCommandBuffer<'_>,
@@ -2772,10 +3297,16 @@ mod route_segment_primitives {
             pq_sub: u32_arg(pq_sub, "gravity_pq_v_rows_heads pq_sub")?,
             pq_nchunk: u32_arg(pq_nchunk, "gravity_pq_v_rows_heads pq_nchunk")?,
         };
-        let grid = grid_1d(
-            u32_arg(outputs, "gravity_pq_v_rows_heads outputs")?,
-            "gravity_pq_v_rows_heads",
-        )?;
+        const OUTPUTS_PER_THREADGROUP: usize = (TG / 32) as usize;
+        let grid_threads = outputs
+            .div_ceil(OUTPUTS_PER_THREADGROUP)
+            .checked_mul(TG as usize)
+            .ok_or_else(|| Error::Gravity("gravity_pq_v_rows_heads grid overflow".into()))?;
+        let grid = (
+            u32_arg(grid_threads, "gravity_pq_v_rows_heads grid threads")?,
+            1,
+            1,
+        );
         let cbb = codebooks.clone();
         let cib = codes.clone();
         let wlb = weighted_latent.clone();
@@ -3568,12 +4099,13 @@ pub struct ResidentRuntime {
 
 impl ResidentRuntime {
     pub fn new(ctx: &MetalContext, arch: &GlmArch) -> Result<Self> {
+        let session = if gpu_compact_mla_enabled() {
+            ResidentSession::new_compact(ctx, arch, RESIDENT_RUNTIME_INITIAL_KV_CAPACITY_TOKENS)?
+        } else {
+            ResidentSession::new(ctx, arch, RESIDENT_RUNTIME_INITIAL_KV_CAPACITY_TOKENS)?
+        };
         Ok(Self {
-            session: Mutex::new(ResidentSession::new(
-                ctx,
-                arch,
-                RESIDENT_RUNTIME_INITIAL_KV_CAPACITY_TOKENS,
-            )?),
+            session: Mutex::new(session),
             pool: ActPool::new(ctx, arch)?,
         })
     }
@@ -5741,10 +6273,10 @@ mod tests {
         let qk = arch.qk_dim();
         let mut session = ResidentSession::new(&ctx, &arch, 8192).expect("initial session");
         let expanded_layers = match &session.attention {
-            ResidentAttentionState::Expanded(layers) => layers,
+            ResidentAttentionState::Expanded(cache) => &cache.layers,
             ResidentAttentionState::Compact(_) => panic!("default session must be expanded"),
         };
-        assert_eq!(session.index_keys.len(), expanded_layers.len());
+        assert_eq!(session.dsa.index_keys.len(), expanded_layers.len());
 
         {
             let cache = session.attention.expanded_layer(0).expect("expanded layer");
@@ -5752,12 +6284,13 @@ mod tests {
                 *(cache.keys.contents() as *mut f32) = 1.0;
                 *(cache.keys.contents() as *mut f32).add(8191 * qk + (qk - 1)) = 2.0;
                 *(cache.values.contents() as *mut f32).add(8191) = 3.0;
-                *(session.index_keys[0].contents() as *mut f32).add(8191) = 4.0;
+                *(session.dsa.index_keys[0].contents() as *mut f32).add(8191) = 4.0;
             }
         }
-        session.sequence_scratch.host.index_scores[0] = 5.0;
-        session.sequence_scratch.host.index_scores[8191] = 6.0;
+        session.dsa.sequence_scratch.host.index_scores[0] = 5.0;
+        session.dsa.sequence_scratch.host.index_scores[8191] = 6.0;
         session
+            .dsa
             .sequence_scratch
             .store_index_scores(8192)
             .expect("store 8K scores");
@@ -5766,15 +6299,8 @@ mod tests {
         session
             .reserve(&ctx, &arch, 8193)
             .expect("grow beyond the old 8K limit");
-        assert_eq!(
-            session
-                .attention
-                .expanded_layer(0)
-                .expect("expanded layer")
-                .capacity,
-            16384
-        );
-        assert_eq!(session.sequence_scratch.capacity, 16384);
+        assert_eq!(session.attention.capacity(), 16384);
+        assert_eq!(session.dsa.sequence_scratch.capacity, 16384);
         {
             let cache = session.attention.expanded_layer(0).expect("expanded layer");
             unsafe {
@@ -5785,12 +6311,12 @@ mod tests {
                 );
                 assert_eq!(*(cache.values.contents() as *const f32).add(8191), 3.0);
                 assert_eq!(
-                    *(session.index_keys[0].contents() as *const f32).add(8191),
+                    *(session.dsa.index_keys[0].contents() as *const f32).add(8191),
                     4.0
                 );
             }
         }
-        let scores = read_f32(&session.sequence_scratch.index_scores_device, 8192);
+        let scores = read_f32(&session.dsa.sequence_scratch.index_scores_device, 8192);
         assert_eq!(scores[0], 5.0);
         assert_eq!(scores[8191], 6.0);
 
@@ -5799,11 +6325,12 @@ mod tests {
             unsafe {
                 *(cache.keys.contents() as *mut f32).add(8192 * qk) = 7.0;
                 *(cache.values.contents() as *mut f32).add(8192) = 8.0;
-                *(session.index_keys[0].contents() as *mut f32).add(8192) = 9.0;
+                *(session.dsa.index_keys[0].contents() as *mut f32).add(8192) = 9.0;
             }
         }
-        session.sequence_scratch.host.index_scores[8192] = 10.0;
+        session.dsa.sequence_scratch.host.index_scores[8192] = 10.0;
         session
+            .dsa
             .sequence_scratch
             .store_index_scores(8193)
             .expect("store post-8K score");
@@ -5812,15 +6339,8 @@ mod tests {
         session
             .reserve(&ctx, &arch, 32768)
             .expect("reserve through position 32767");
-        assert_eq!(
-            session
-                .attention
-                .expanded_layer(0)
-                .expect("expanded layer")
-                .capacity,
-            32768
-        );
-        assert_eq!(session.sequence_scratch.capacity, 32768);
+        assert_eq!(session.attention.capacity(), 32768);
+        assert_eq!(session.dsa.sequence_scratch.capacity, 32768);
         {
             let cache = session.attention.expanded_layer(0).expect("expanded layer");
             unsafe {
@@ -5830,18 +6350,18 @@ mod tests {
                     2.0
                 );
                 assert_eq!(
-                    *(session.index_keys[0].contents() as *const f32).add(8191),
+                    *(session.dsa.index_keys[0].contents() as *const f32).add(8191),
                     4.0
                 );
                 assert_eq!(*(cache.keys.contents() as *const f32).add(8192 * qk), 7.0);
                 assert_eq!(*(cache.values.contents() as *const f32).add(8192), 8.0);
                 assert_eq!(
-                    *(session.index_keys[0].contents() as *const f32).add(8192),
+                    *(session.dsa.index_keys[0].contents() as *const f32).add(8192),
                     9.0
                 );
             }
         }
-        let scores = read_f32(&session.sequence_scratch.index_scores_device, 8193);
+        let scores = read_f32(&session.dsa.sequence_scratch.index_scores_device, 8193);
         assert_eq!(scores[0], 5.0);
         assert_eq!(scores[8191], 6.0);
         assert_eq!(scores[8192], 10.0);
@@ -5859,11 +6379,13 @@ mod tests {
             default.attention,
             ResidentAttentionState::Expanded(_)
         ));
+        assert!(default.dsa.ranked_indices.is_none());
 
         let mut compact =
             ResidentSession::new_compact(&ctx, &arch, 8).expect("compact resident session");
         assert!(compact.attention.expanded_layer(0).is_err());
-        assert_eq!(compact.index_keys.len(), arch.n_layers);
+        assert_eq!(compact.dsa.index_keys.len(), arch.n_layers);
+        assert!(compact.dsa.ranked_indices.is_some());
         {
             let ResidentAttentionState::Compact(cache) = &mut compact.attention else {
                 panic!("compact constructor must own only compact MLA state");
@@ -5884,7 +6406,7 @@ mod tests {
             }
         }
         unsafe {
-            *(compact.index_keys[0].contents() as *mut f32) = 13.0;
+            *(compact.dsa.index_keys[0].contents() as *mut f32) = 13.0;
         }
         compact.seq_len = 8;
         compact
@@ -5895,16 +6417,78 @@ mod tests {
             panic!("compact reserve must not replace the selected layout");
         };
         assert_eq!(cache.capacity, 16);
-        assert_eq!(compact.sequence_scratch.capacity, 16);
+        assert_eq!(compact.dsa.sequence_scratch.capacity, 16);
         assert_eq!(
-            compact.index_keys[0].length(),
+            compact.dsa.index_keys[0].length(),
             (16 * arch.index_head_dim * 4) as u64
         );
         unsafe {
             assert_eq!(*(cache.layers[0].latents.contents() as *const f32), 11.0);
             assert_eq!(*(cache.layers[0].rope_tails.contents() as *const f32), 12.0);
-            assert_eq!(*(compact.index_keys[0].contents() as *const f32), 13.0);
+            assert_eq!(*(compact.dsa.index_keys[0].contents() as *const f32), 13.0);
         }
+    }
+
+    #[test]
+    fn resident_reserve_repairs_dsa_after_attention_only_growth() {
+        let Ok(ctx) = MetalContext::new() else {
+            return;
+        };
+        let arch = tiny_arch();
+        let mut session =
+            ResidentSession::new(&ctx, &arch, 8).expect("initial expanded resident session");
+        unsafe {
+            *(session.dsa.index_keys[0].contents() as *mut f32) = 17.0;
+        }
+        session.seq_len = 8;
+
+        session
+            .attention
+            .reserve(&ctx, &arch, 9, session.seq_len)
+            .expect("simulate attention owner completing before DSA");
+        assert_eq!(session.attention.capacity(), 16);
+        assert_eq!(session.dsa.capacity, 8);
+
+        session
+            .reserve(&ctx, &arch, 9)
+            .expect("retry independently repairs DSA owner");
+        assert_eq!(session.attention.capacity(), 16);
+        assert_eq!(session.dsa.capacity, 16);
+        assert_eq!(session.dsa.sequence_scratch.capacity, 16);
+        unsafe {
+            assert_eq!(*(session.dsa.index_keys[0].contents() as *const f32), 17.0);
+        }
+    }
+
+    #[test]
+    fn dsa_rank_upload_preserves_stable_order_and_fails_closed() {
+        let Ok(ctx) = MetalContext::new() else {
+            return;
+        };
+        let mut arch = tiny_arch();
+        arch.index_topk = 3;
+        let dsa = DsaIndexState::new(&ctx, &arch, 8, true).expect("DSA state");
+        dsa.store_ranked_indices(&[4, 1, 3])
+            .expect("stable ranked upload");
+        assert_eq!(
+            read_u32(dsa.ranked_indices().expect("rank buffer"), 3),
+            vec![4, 1, 3]
+        );
+
+        let too_many = dsa
+            .store_ranked_indices(&[0, 1, 2, 3])
+            .expect_err("rank upload beyond fixed capacity must fail");
+        assert!(too_many.to_string().contains("capacity"));
+
+        if usize::BITS > u32::BITS {
+            let overflow = dsa
+                .store_ranked_indices(&[u32::MAX as usize + 1])
+                .expect_err("rank upload beyond u32 must fail");
+            assert!(overflow.to_string().contains("exceeds u32"));
+        }
+        let expanded_dsa = DsaIndexState::new(&ctx, &arch, 8, false).expect("expanded DSA state");
+        assert!(expanded_dsa.ranked_indices.is_none());
+        assert!(expanded_dsa.store_ranked_indices(&[0]).is_err());
     }
 
     #[test]
@@ -5934,18 +6518,16 @@ mod tests {
             *rope = 3.0;
             *rope.add(8191 * arch.qk_rope_head_dim) = 4.0;
         }
-        cache.seq_len = 8192;
-
         let latent_pointer = cache.layers[0].latents.contents();
         let rope_pointer = cache.layers[0].rope_tails.contents();
         cache
-            .reserve(&ctx, &arch, 8192)
+            .reserve(&ctx, &arch, 8192, 8192)
             .expect("adequate compact reserve");
         assert_eq!(cache.layers[0].latents.contents(), latent_pointer);
         assert_eq!(cache.layers[0].rope_tails.contents(), rope_pointer);
 
         cache
-            .reserve(&ctx, &arch, 8193)
+            .reserve(&ctx, &arch, 8193, 8192)
             .expect("grow compact cache beyond 8K");
         assert_eq!(cache.capacity, 16384);
         unsafe {
@@ -5962,10 +6544,8 @@ mod tests {
             *latents.add(8192 * arch.kv_lora_rank + (arch.kv_lora_rank - 1)) = 6.0;
             *rope.add(8192 * arch.qk_rope_head_dim) = 7.0;
         }
-        cache.seq_len = 8193;
-
         cache
-            .reserve(&ctx, &arch, 32768)
+            .reserve(&ctx, &arch, 32768, 8193)
             .expect("grow compact cache through 32K");
         assert_eq!(cache.capacity, 32768);
         unsafe {
@@ -5985,12 +6565,9 @@ mod tests {
             assert_eq!(*rope.add(8191 * arch.qk_rope_head_dim), 4.0);
             assert_eq!(*rope.add(8192 * arch.qk_rope_head_dim), 7.0);
         }
-
-        cache.reset();
-        assert_eq!(cache.seq_len, 0);
-        cache.seq_len = cache.capacity + 1;
+        let invalid_seq_len = cache.capacity + 1;
         let error = cache
-            .reserve(&ctx, &arch, cache.capacity + 1)
+            .reserve(&ctx, &arch, invalid_seq_len, invalid_seq_len)
             .expect_err("invalid compact cache ownership state must fail closed");
         assert!(error.to_string().contains("seq_len"));
     }

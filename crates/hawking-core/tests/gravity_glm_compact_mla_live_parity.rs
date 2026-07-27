@@ -258,8 +258,8 @@ fn compact_mla_complete_tokens_match_expanded_v21_and_exact_decisions() {
         );
         assert_eq!(
             compact_waits.saturating_sub(device_dsa_waits),
-            prompt.len() as u64,
-            "case {case}: one full-indexer rank drain must be removed per token"
+            (2 * prompt.len()) as u64,
+            "case {case}: both full-indexer drains must be removed per token"
         );
     }
 

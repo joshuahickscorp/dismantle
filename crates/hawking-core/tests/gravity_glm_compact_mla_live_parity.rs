@@ -12,7 +12,7 @@ use std::path::PathBuf;
 use hawking_core::gravity_glm::gpu::GravityGlmGpu;
 use hawking_core::gravity_glm::{
     GPU_COMPACT_MLA_ENV, GPU_DEVICE_DSA_ENV, GPU_DEVICE_ROUTER_ENV, GPU_EXPERT_TABLE_HIT_ENV,
-    GPU_EXPERT_WAVE_CONCURRENT_ENV, GPU_EXPERT_WAVE_ENV, GPU_LM_HEAD_ENV,
+    GPU_EXPERT_TABLE_ICB_ENV, GPU_EXPERT_WAVE_CONCURRENT_ENV, GPU_EXPERT_WAVE_ENV, GPU_LM_HEAD_ENV,
     GPU_LM_HEAD_FULL_LOGITS_ENV,
 };
 use hawking_core::metal::MetalContext;
@@ -88,6 +88,7 @@ fn compact_mla_complete_tokens_match_expanded_v21_and_exact_decisions() {
     let prior_expert_wave = std::env::var_os(GPU_EXPERT_WAVE_ENV);
     let prior_expert_wave_concurrent = std::env::var_os(GPU_EXPERT_WAVE_CONCURRENT_ENV);
     let prior_expert_table = std::env::var_os(GPU_EXPERT_TABLE_HIT_ENV);
+    let prior_expert_table_icb = std::env::var_os(GPU_EXPERT_TABLE_ICB_ENV);
     let prior_head = std::env::var_os(GPU_LM_HEAD_ENV);
     let prior_full_logits = std::env::var_os(GPU_LM_HEAD_FULL_LOGITS_ENV);
     std::env::remove_var(GPU_DEVICE_DSA_ENV);
@@ -95,6 +96,7 @@ fn compact_mla_complete_tokens_match_expanded_v21_and_exact_decisions() {
     std::env::remove_var(GPU_EXPERT_WAVE_ENV);
     std::env::remove_var(GPU_EXPERT_WAVE_CONCURRENT_ENV);
     std::env::remove_var(GPU_EXPERT_TABLE_HIT_ENV);
+    std::env::remove_var(GPU_EXPERT_TABLE_ICB_ENV);
     std::env::remove_var(GPU_LM_HEAD_ENV);
     std::env::remove_var(GPU_LM_HEAD_FULL_LOGITS_ENV);
 
@@ -222,6 +224,7 @@ fn compact_mla_complete_tokens_match_expanded_v21_and_exact_decisions() {
     std::env::set_var(GPU_DEVICE_ROUTER_ENV, "1");
     std::env::set_var(GPU_EXPERT_WAVE_ENV, "1");
     std::env::set_var(GPU_EXPERT_TABLE_HIT_ENV, "1");
+    std::env::set_var(GPU_EXPERT_TABLE_ICB_ENV, "1");
     std::env::set_var(GPU_LM_HEAD_ENV, "1");
     std::env::set_var(GPU_LM_HEAD_FULL_LOGITS_ENV, "1");
     let compact_device_table_cold = GravityGlmGpu::open_dir_with_budget_resident(
@@ -235,6 +238,7 @@ fn compact_mla_complete_tokens_match_expanded_v21_and_exact_decisions() {
     std::env::remove_var(GPU_LM_HEAD_FULL_LOGITS_ENV);
     std::env::remove_var(GPU_LM_HEAD_ENV);
     std::env::remove_var(GPU_EXPERT_TABLE_HIT_ENV);
+    std::env::remove_var(GPU_EXPERT_TABLE_ICB_ENV);
     std::env::remove_var(GPU_EXPERT_WAVE_ENV);
     std::env::remove_var(GPU_DEVICE_ROUTER_ENV);
     std::env::remove_var(GPU_DEVICE_DSA_ENV);
@@ -287,6 +291,7 @@ fn compact_mla_complete_tokens_match_expanded_v21_and_exact_decisions() {
     std::env::set_var(GPU_DEVICE_ROUTER_ENV, "1");
     std::env::set_var(GPU_EXPERT_WAVE_ENV, "1");
     std::env::set_var(GPU_EXPERT_TABLE_HIT_ENV, "1");
+    std::env::set_var(GPU_EXPERT_TABLE_ICB_ENV, "1");
     std::env::set_var(GPU_LM_HEAD_ENV, "1");
     std::env::set_var(GPU_LM_HEAD_FULL_LOGITS_ENV, "1");
     let (cold_table_logits, cold_table_trace) = compact_device_table_cold
@@ -295,6 +300,7 @@ fn compact_mla_complete_tokens_match_expanded_v21_and_exact_decisions() {
     std::env::remove_var(GPU_LM_HEAD_FULL_LOGITS_ENV);
     std::env::remove_var(GPU_LM_HEAD_ENV);
     std::env::remove_var(GPU_EXPERT_TABLE_HIT_ENV);
+    std::env::remove_var(GPU_EXPERT_TABLE_ICB_ENV);
     std::env::remove_var(GPU_EXPERT_WAVE_ENV);
     std::env::remove_var(GPU_DEVICE_ROUTER_ENV);
     std::env::remove_var(GPU_DEVICE_DSA_ENV);
@@ -401,6 +407,7 @@ fn compact_mla_complete_tokens_match_expanded_v21_and_exact_decisions() {
         std::env::set_var(GPU_DEVICE_ROUTER_ENV, "1");
         std::env::set_var(GPU_EXPERT_WAVE_ENV, "1");
         std::env::set_var(GPU_EXPERT_TABLE_HIT_ENV, "1");
+        std::env::set_var(GPU_EXPERT_TABLE_ICB_ENV, "1");
         std::env::set_var(GPU_LM_HEAD_ENV, "1");
         std::env::set_var(GPU_LM_HEAD_FULL_LOGITS_ENV, "1");
         let _ = compact_device_head
@@ -428,6 +435,7 @@ fn compact_mla_complete_tokens_match_expanded_v21_and_exact_decisions() {
         std::env::remove_var(GPU_LM_HEAD_FULL_LOGITS_ENV);
         std::env::remove_var(GPU_LM_HEAD_ENV);
         std::env::remove_var(GPU_EXPERT_TABLE_HIT_ENV);
+        std::env::remove_var(GPU_EXPERT_TABLE_ICB_ENV);
         std::env::remove_var(GPU_EXPERT_WAVE_ENV);
         std::env::remove_var(GPU_DEVICE_ROUTER_ENV);
         std::env::remove_var(GPU_DEVICE_DSA_ENV);
@@ -741,6 +749,10 @@ fn compact_mla_complete_tokens_match_expanded_v21_and_exact_decisions() {
     match prior_expert_table {
         Some(value) => std::env::set_var(GPU_EXPERT_TABLE_HIT_ENV, value),
         None => std::env::remove_var(GPU_EXPERT_TABLE_HIT_ENV),
+    }
+    match prior_expert_table_icb {
+        Some(value) => std::env::set_var(GPU_EXPERT_TABLE_ICB_ENV, value),
+        None => std::env::remove_var(GPU_EXPERT_TABLE_ICB_ENV),
     }
     match prior_head {
         Some(value) => std::env::set_var(GPU_LM_HEAD_ENV, value),

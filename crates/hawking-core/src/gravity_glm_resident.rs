@@ -58,16 +58,19 @@ use crate::gravity_glm::gpu::{
 };
 use crate::gravity_glm::{
     gpu_compact_mla_enabled, gpu_device_router_enabled, gpu_expert_table_hit_enabled,
-    gpu_expert_wave_concurrent_enabled, gpu_expert_wave_enabled, gpu_lm_head_enabled,
-    gpu_lm_head_full_logits_enabled, rope_cos_sin, rope_interleaved, topk_desc, BoundedLru,
-    GlmArch, GlmTrace, WeightAccess, GPU_LM_HEAD_DIAG_TOPK,
+    gpu_expert_table_icb_enabled, gpu_expert_wave_concurrent_enabled, gpu_expert_wave_enabled,
+    gpu_lm_head_enabled, gpu_lm_head_full_logits_enabled, rope_cos_sin, rope_interleaved,
+    topk_desc, BoundedLru, GlmArch, GlmTrace, WeightAccess, GPU_LM_HEAD_DIAG_TOPK,
     RESIDENT_RUNTIME_INITIAL_KV_CAPACITY_TOKENS,
 };
-use crate::metal::{MetalContext, TokenCommandBuffer};
+use crate::metal::{
+    MetalContext, ReplayBufferBinding, ReplayComputeStage, ReplayResourceDeclaration,
+    ReplayableComputeGraph, TokenCommandBuffer,
+};
 use crate::{Error, Result};
 use metal::{Buffer, MTLResourceUsage};
 use std::cell::Cell;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 // Flag + static wait estimators live on `gravity_glm` so non-Metal unit tests
 // can see them: `GPU_RESIDENT_STATE_ENV`, `gpu_resident_state_enabled`,
@@ -170,6 +173,7 @@ struct PersistentDeviceExpertLayer {
     metrics: DeviceExpertLayerMetrics,
     routed_dispatch_mode: DeviceExpertDispatchMode,
     shared_dispatch_mode: DeviceExpertDispatchMode,
+    replay_graph: Arc<Mutex<Option<CachedDeviceExpertReplayGraph>>>,
 }
 
 #[allow(dead_code)]
@@ -367,7 +371,7 @@ fn build_single_device_expert_snapshot(
 }
 
 #[repr(C)]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 struct DeviceExpertTableValidateParams {
     n_experts: u32,
     experts_per_token: u32,
@@ -378,7 +382,7 @@ struct DeviceExpertTableValidateParams {
 }
 
 #[repr(C)]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 struct DeviceExpertTableMatvecParams {
     n_experts: u32,
     experts_per_token: u32,
@@ -391,7 +395,7 @@ struct DeviceExpertTableMatvecParams {
 }
 
 #[repr(C)]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 struct DeviceExpertTableAxpyParams {
     n: u32,
     experts_per_token: u32,
@@ -400,7 +404,7 @@ struct DeviceExpertTableAxpyParams {
 }
 
 #[repr(C)]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 struct DeviceExpertTraceCopyParams {
     count: u32,
     destination_offset: u32,
@@ -5993,6 +5997,22 @@ enum DeviceExpertDispatchMode {
     Heterogeneous,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct DeviceExpertReplayKey {
+    generation: u32,
+    experts_per_token: usize,
+    hidden: usize,
+    intermediate: usize,
+    routed_dispatch_mode: DeviceExpertDispatchMode,
+    shared_dispatch_mode: DeviceExpertDispatchMode,
+    buffer_addresses: Vec<u64>,
+}
+
+struct CachedDeviceExpertReplayGraph {
+    key: DeviceExpertReplayKey,
+    graph: ReplayableComputeGraph,
+}
+
 #[derive(Clone, Copy)]
 enum DeviceExpertProjectionMetrics {
     Pq {
@@ -6359,6 +6379,7 @@ fn build_persistent_device_expert_layer(
         metrics,
         routed_dispatch_mode,
         shared_dispatch_mode,
+        replay_graph: Arc::new(Mutex::new(None)),
     }))
 }
 
@@ -6440,6 +6461,650 @@ fn refresh_persistent_device_expert_layer(
     Ok(())
 }
 
+struct DeviceExpertReplayStageSpec {
+    kernel: &'static str,
+    grid: (u32, u32, u32),
+    threadgroup: (u32, u32, u32),
+    bindings: Vec<ReplayBufferBinding>,
+    parameter_index: usize,
+    parameter_offset: usize,
+}
+
+#[derive(Default)]
+struct DeviceExpertReplayPlan {
+    stages: Vec<DeviceExpertReplayStageSpec>,
+    parameters: Vec<u8>,
+}
+
+impl DeviceExpertReplayPlan {
+    fn push<T: bytemuck::Pod>(
+        &mut self,
+        kernel: &'static str,
+        grid: (u32, u32, u32),
+        threadgroup: (u32, u32, u32),
+        bindings: Vec<ReplayBufferBinding>,
+        parameter_index: usize,
+        parameters: &T,
+    ) {
+        let align = std::mem::align_of::<T>();
+        let padding = (align - (self.parameters.len() % align)) % align;
+        self.parameters
+            .resize(self.parameters.len().saturating_add(padding), 0);
+        let parameter_offset = self.parameters.len();
+        self.parameters
+            .extend_from_slice(bytemuck::bytes_of(parameters));
+        self.stages.push(DeviceExpertReplayStageSpec {
+            kernel,
+            grid,
+            threadgroup,
+            bindings,
+            parameter_index,
+            parameter_offset,
+        });
+    }
+
+    fn finish(
+        self,
+        ctx: &MetalContext,
+        indirect_resources: Vec<ReplayResourceDeclaration>,
+    ) -> Result<ReplayableComputeGraph> {
+        if self.parameters.is_empty() {
+            return Err(Error::Gravity(
+                "device expert replay graph has no persistent parameters".into(),
+            ));
+        }
+        let parameter_buffer = ctx.new_buffer_with_bytes_checked(&self.parameters)?;
+        crate::cost_ledger::record_allocation(parameter_buffer.length());
+        let stages = self
+            .stages
+            .into_iter()
+            .enumerate()
+            .map(|(stage_index, mut spec)| {
+                spec.bindings.push(ReplayBufferBinding::read(
+                    spec.parameter_index,
+                    &parameter_buffer,
+                    spec.parameter_offset,
+                ));
+                let stage = ReplayComputeStage::new(
+                    spec.kernel,
+                    spec.grid,
+                    spec.threadgroup,
+                    spec.bindings,
+                );
+                if stage_index == 0 {
+                    stage
+                } else {
+                    stage.with_barrier_before()
+                }
+            })
+            .collect();
+        ReplayableComputeGraph::new_with_resources(ctx, stages, indirect_resources)
+    }
+}
+
+fn replay_u32(value: usize, label: &str) -> Result<u32> {
+    u32::try_from(value)
+        .map_err(|_| Error::Gravity(format!("{label} {value} exceeds the Metal u32 ABI")))
+}
+
+fn replay_grid(n: u32, divisor: u32, threads: u32, label: &str) -> Result<u32> {
+    n.div_ceil(divisor)
+        .checked_mul(threads)
+        .ok_or_else(|| Error::Gravity(format!("{label} grid size overflow")))
+}
+
+fn device_expert_replay_key(
+    generation: u32,
+    experts_per_token: usize,
+    hidden: usize,
+    intermediate: usize,
+    routed_dispatch_mode: DeviceExpertDispatchMode,
+    shared_dispatch_mode: DeviceExpertDispatchMode,
+    routed: &DeviceExpertTableLease,
+    shared: &DeviceExpertTableLease,
+    x: &Buffer,
+    residual: &Buffer,
+    pool: &ActPool,
+    scratch: &ExpertWaveScratch,
+) -> DeviceExpertReplayKey {
+    let mut buffer_addresses = Vec::new();
+    visit_device_expert_replay_buffers(
+        experts_per_token,
+        routed,
+        shared,
+        x,
+        residual,
+        pool,
+        scratch,
+        |buffer| buffer_addresses.push(buffer.gpu_address()),
+    );
+    DeviceExpertReplayKey {
+        generation,
+        experts_per_token,
+        hidden,
+        intermediate,
+        routed_dispatch_mode,
+        shared_dispatch_mode,
+        buffer_addresses,
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn visit_device_expert_replay_buffers(
+    experts_per_token: usize,
+    routed: &DeviceExpertTableLease,
+    shared: &DeviceExpertTableLease,
+    x: &Buffer,
+    residual: &Buffer,
+    pool: &ActPool,
+    scratch: &ExpertWaveScratch,
+    mut visit: impl FnMut(&Buffer),
+) {
+    visit(&routed.table);
+    for resource in &routed.resources {
+        visit(resource);
+    }
+    visit(&shared.table);
+    for resource in &shared.resources {
+        visit(resource);
+    }
+    visit(x);
+    visit(residual);
+    visit(&pool.expert_idx);
+    visit(&pool.expert_exec_slots);
+    visit(&pool.expert_miss_mask);
+    visit(&pool.expert_w);
+    visit(&pool.shared_expert_idx);
+    visit(&pool.shared_expert_slot);
+    visit(&scratch.combined);
+    for position in 0..=experts_per_token {
+        visit(&scratch.gate[position]);
+        visit(&scratch.up[position]);
+        visit(&scratch.act[position]);
+        visit(&scratch.down[position]);
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn device_expert_replay_key_matches(
+    key: &DeviceExpertReplayKey,
+    generation: u32,
+    experts_per_token: usize,
+    hidden: usize,
+    intermediate: usize,
+    routed_dispatch_mode: DeviceExpertDispatchMode,
+    shared_dispatch_mode: DeviceExpertDispatchMode,
+    routed: &DeviceExpertTableLease,
+    shared: &DeviceExpertTableLease,
+    x: &Buffer,
+    residual: &Buffer,
+    pool: &ActPool,
+    scratch: &ExpertWaveScratch,
+) -> bool {
+    if key.generation != generation
+        || key.experts_per_token != experts_per_token
+        || key.hidden != hidden
+        || key.intermediate != intermediate
+        || key.routed_dispatch_mode != routed_dispatch_mode
+        || key.shared_dispatch_mode != shared_dispatch_mode
+    {
+        return false;
+    }
+    let mut index = 0usize;
+    let mut matches = true;
+    visit_device_expert_replay_buffers(
+        experts_per_token,
+        routed,
+        shared,
+        x,
+        residual,
+        pool,
+        scratch,
+        |buffer| {
+            matches &= key
+                .buffer_addresses
+                .get(index)
+                .is_some_and(|&address| address == buffer.gpu_address());
+            index = index.saturating_add(1);
+        },
+    );
+    matches && index == key.buffer_addresses.len()
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_device_expert_replay_matvec(
+    plan: &mut DeviceExpertReplayPlan,
+    mode: DeviceExpertDispatchMode,
+    lease: &DeviceExpertTableLease,
+    expert_indices: &Buffer,
+    expert_exec_slots: &Buffer,
+    miss_mask: &Buffer,
+    experts_per_token: usize,
+    execution_position: usize,
+    projection: u32,
+    x: &Buffer,
+    rows: usize,
+    cols: usize,
+    y: &Buffer,
+) -> Result<()> {
+    if execution_position >= experts_per_token || projection > 2 {
+        return Err(Error::Gravity(format!(
+            "invalid replay device expert position/projection: \
+             {execution_position}/{experts_per_token}, projection {projection}"
+        )));
+    }
+    require_f32_elements(x, cols, "replay device expert matvec input")?;
+    require_f32_elements(y, rows, "replay device expert matvec output")?;
+    let rows_u32 = replay_u32(rows, "replay device expert rows")?;
+    let cols_u32 = replay_u32(cols, "replay device expert cols")?;
+    let parameters = |allow_other_kind: bool| DeviceExpertTableMatvecParams {
+        n_experts: lease.n_experts as u32,
+        experts_per_token: experts_per_token as u32,
+        generation: lease.generation,
+        execution_position: execution_position as u32,
+        projection,
+        rows: rows_u32,
+        cols: cols_u32,
+        allow_other_kind: u32::from(allow_other_kind),
+    };
+    let bindings = || {
+        vec![
+            ReplayBufferBinding::read(0, expert_indices, 0),
+            ReplayBufferBinding::read(1, expert_exec_slots, 0),
+            ReplayBufferBinding::read(2, &lease.table, 0),
+            ReplayBufferBinding::read_write(3, miss_mask, 0),
+            ReplayBufferBinding::read(4, x, 0),
+            ReplayBufferBinding::write(5, y, 0),
+        ]
+    };
+    match mode {
+        DeviceExpertDispatchMode::PqOnly => plan.push(
+            "gravity_glm_expert_table_pq_matvec",
+            (
+                replay_grid(rows_u32, 8, 256, "replay device expert PQ matvec")?,
+                1,
+                1,
+            ),
+            (256, 1, 1),
+            bindings(),
+            6,
+            &parameters(false),
+        ),
+        DeviceExpertDispatchMode::NativeBf16Only => plan.push(
+            "gravity_glm_expert_table_native_bf16_matvec",
+            (
+                replay_grid(rows_u32, 256, 256, "replay native device expert matvec")?,
+                1,
+                1,
+            ),
+            (256, 1, 1),
+            bindings(),
+            6,
+            &parameters(false),
+        ),
+        DeviceExpertDispatchMode::Heterogeneous => {
+            plan.push(
+                "gravity_glm_expert_table_pq_matvec",
+                (
+                    replay_grid(rows_u32, 8, 256, "replay heterogeneous PQ matvec")?,
+                    1,
+                    1,
+                ),
+                (256, 1, 1),
+                bindings(),
+                6,
+                &parameters(true),
+            );
+            plan.push(
+                "gravity_glm_expert_table_native_bf16_matvec",
+                (
+                    replay_grid(rows_u32, 256, 256, "replay heterogeneous native matvec")?,
+                    1,
+                    1,
+                ),
+                (256, 1, 1),
+                bindings(),
+                6,
+                &parameters(true),
+            );
+        }
+    }
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+fn build_device_expert_replay_graph(
+    ctx: &MetalContext,
+    routed_dispatch_mode: DeviceExpertDispatchMode,
+    shared_dispatch_mode: DeviceExpertDispatchMode,
+    routed: &DeviceExpertTableLease,
+    shared: &DeviceExpertTableLease,
+    experts_per_token: usize,
+    hidden: usize,
+    intermediate: usize,
+    x: &Buffer,
+    residual: &Buffer,
+    pool: &ActPool,
+    scratch: &ExpertWaveScratch,
+) -> Result<ReplayableComputeGraph> {
+    if experts_per_token == 0
+        || experts_per_token > 32
+        || routed.generation == 0
+        || shared.generation == 0
+        || shared.n_experts != 1
+        || scratch.gate.len() <= experts_per_token
+        || scratch.up.len() <= experts_per_token
+        || scratch.act.len() <= experts_per_token
+        || scratch.down.len() <= experts_per_token
+    {
+        return Err(Error::Gravity(
+            "device expert replay graph received an invalid lease or scratch geometry".into(),
+        ));
+    }
+    let selected_bytes = experts_per_token
+        .checked_mul(std::mem::size_of::<u32>())
+        .ok_or_else(|| Error::Gravity("device expert replay selection byte overflow".into()))?
+        as u64;
+    let routed_table_bytes = routed
+        .n_experts
+        .checked_mul(std::mem::size_of::<DeviceExpertTriplet>())
+        .ok_or_else(|| Error::Gravity("device expert replay routed table overflow".into()))?
+        as u64;
+    if routed.table.length() != routed_table_bytes
+        || shared.table.length() != std::mem::size_of::<DeviceExpertTriplet>() as u64
+        || pool.expert_idx.length() < selected_bytes
+        || pool.expert_exec_slots.length() < selected_bytes
+        || pool.expert_w.length() < experts_per_token as u64 * 4
+        || pool.expert_miss_mask.length() < 4
+        || pool.shared_expert_idx.length() < 4
+        || pool.shared_expert_slot.length() < 4
+    {
+        return Err(Error::Gravity(
+            "device expert replay graph received an undersized table or selection buffer".into(),
+        ));
+    }
+    require_f32_elements(x, hidden, "device expert replay input")?;
+    require_f32_elements(residual, hidden, "device expert replay residual")?;
+    require_f32_elements(
+        &scratch.combined,
+        hidden,
+        "device expert replay combined output",
+    )?;
+    for position in 0..=experts_per_token {
+        require_f32_elements(
+            &scratch.gate[position],
+            intermediate,
+            "device expert replay gate scratch",
+        )?;
+        require_f32_elements(
+            &scratch.up[position],
+            intermediate,
+            "device expert replay up scratch",
+        )?;
+        require_f32_elements(
+            &scratch.act[position],
+            intermediate,
+            "device expert replay activation scratch",
+        )?;
+        require_f32_elements(
+            &scratch.down[position],
+            hidden,
+            "device expert replay down scratch",
+        )?;
+    }
+
+    let hidden_u32 = replay_u32(hidden, "device expert replay hidden")?;
+    let intermediate_u32 = replay_u32(intermediate, "device expert replay intermediate")?;
+    let experts_u32 = replay_u32(experts_per_token, "device expert replay experts")?;
+    let mut plan = DeviceExpertReplayPlan::default();
+    let validate = DeviceExpertTableValidateParams {
+        n_experts: routed.n_experts as u32,
+        experts_per_token: experts_u32,
+        generation: routed.generation,
+        required_kind: match routed_dispatch_mode {
+            DeviceExpertDispatchMode::PqOnly => DEVICE_EXPERT_TENSOR_KIND_PQ,
+            DeviceExpertDispatchMode::NativeBf16Only => DEVICE_EXPERT_TENSOR_KIND_NATIVE_BF16,
+            DeviceExpertDispatchMode::Heterogeneous => DEVICE_EXPERT_TENSOR_KIND_ANY_SUPPORTED,
+        },
+        hidden: hidden_u32,
+        intermediate: intermediate_u32,
+    };
+    plan.push(
+        "gravity_glm_expert_table_validate",
+        (1, 1, 1),
+        (1, 1, 1),
+        vec![
+            ReplayBufferBinding::read(0, &pool.expert_idx, 0),
+            ReplayBufferBinding::read(1, &pool.expert_exec_slots, 0),
+            ReplayBufferBinding::read(2, &routed.table, 0),
+            ReplayBufferBinding::write(3, &pool.expert_miss_mask, 0),
+        ],
+        4,
+        &validate,
+    );
+    plan.push(
+        "gravity_glm_expert_table_zero_f32",
+        (
+            replay_grid(hidden_u32, 256, 256, "device expert replay guarded zero")?,
+            1,
+            1,
+        ),
+        (256, 1, 1),
+        vec![
+            ReplayBufferBinding::write(0, &scratch.combined, 0),
+            ReplayBufferBinding::read(1, &pool.expert_miss_mask, 0),
+        ],
+        2,
+        &hidden_u32,
+    );
+
+    for execution_position in 0..experts_per_token {
+        push_device_expert_replay_matvec(
+            &mut plan,
+            routed_dispatch_mode,
+            routed,
+            &pool.expert_idx,
+            &pool.expert_exec_slots,
+            &pool.expert_miss_mask,
+            experts_per_token,
+            execution_position,
+            0,
+            x,
+            intermediate,
+            hidden,
+            &scratch.gate[execution_position],
+        )?;
+        push_device_expert_replay_matvec(
+            &mut plan,
+            routed_dispatch_mode,
+            routed,
+            &pool.expert_idx,
+            &pool.expert_exec_slots,
+            &pool.expert_miss_mask,
+            experts_per_token,
+            execution_position,
+            1,
+            x,
+            intermediate,
+            hidden,
+            &scratch.up[execution_position],
+        )?;
+        plan.push(
+            "gravity_glm_expert_table_silu_mul_f32",
+            (
+                replay_grid(intermediate_u32, 256, 256, "device expert replay SiLU")?,
+                1,
+                1,
+            ),
+            (256, 1, 1),
+            vec![
+                ReplayBufferBinding::read(0, &scratch.gate[execution_position], 0),
+                ReplayBufferBinding::read(1, &scratch.up[execution_position], 0),
+                ReplayBufferBinding::write(2, &scratch.act[execution_position], 0),
+                ReplayBufferBinding::read(3, &pool.expert_miss_mask, 0),
+            ],
+            4,
+            &intermediate_u32,
+        );
+        push_device_expert_replay_matvec(
+            &mut plan,
+            routed_dispatch_mode,
+            routed,
+            &pool.expert_idx,
+            &pool.expert_exec_slots,
+            &pool.expert_miss_mask,
+            experts_per_token,
+            execution_position,
+            2,
+            &scratch.act[execution_position],
+            hidden,
+            intermediate,
+            &scratch.down[execution_position],
+        )?;
+        let axpy = DeviceExpertTableAxpyParams {
+            n: hidden_u32,
+            experts_per_token: experts_u32,
+            execution_position: execution_position as u32,
+            use_router_weight: 1,
+        };
+        plan.push(
+            "gravity_glm_expert_table_axpy_f32",
+            (
+                replay_grid(hidden_u32, 256, 256, "device expert replay routed AXPY")?,
+                1,
+                1,
+            ),
+            (256, 1, 1),
+            vec![
+                ReplayBufferBinding::read_write(0, &scratch.combined, 0),
+                ReplayBufferBinding::read(1, &scratch.down[execution_position], 0),
+                ReplayBufferBinding::read(2, &pool.expert_w, 0),
+                ReplayBufferBinding::read(3, &pool.expert_exec_slots, 0),
+                ReplayBufferBinding::read(4, &pool.expert_miss_mask, 0),
+            ],
+            5,
+            &axpy,
+        );
+    }
+
+    let shared_position = experts_per_token;
+    push_device_expert_replay_matvec(
+        &mut plan,
+        shared_dispatch_mode,
+        shared,
+        &pool.shared_expert_idx,
+        &pool.shared_expert_slot,
+        &pool.expert_miss_mask,
+        1,
+        0,
+        0,
+        x,
+        intermediate,
+        hidden,
+        &scratch.gate[shared_position],
+    )?;
+    push_device_expert_replay_matvec(
+        &mut plan,
+        shared_dispatch_mode,
+        shared,
+        &pool.shared_expert_idx,
+        &pool.shared_expert_slot,
+        &pool.expert_miss_mask,
+        1,
+        0,
+        1,
+        x,
+        intermediate,
+        hidden,
+        &scratch.up[shared_position],
+    )?;
+    plan.push(
+        "gravity_glm_expert_table_silu_mul_f32",
+        (
+            replay_grid(
+                intermediate_u32,
+                256,
+                256,
+                "device expert replay shared SiLU",
+            )?,
+            1,
+            1,
+        ),
+        (256, 1, 1),
+        vec![
+            ReplayBufferBinding::read(0, &scratch.gate[shared_position], 0),
+            ReplayBufferBinding::read(1, &scratch.up[shared_position], 0),
+            ReplayBufferBinding::write(2, &scratch.act[shared_position], 0),
+            ReplayBufferBinding::read(3, &pool.expert_miss_mask, 0),
+        ],
+        4,
+        &intermediate_u32,
+    );
+    push_device_expert_replay_matvec(
+        &mut plan,
+        shared_dispatch_mode,
+        shared,
+        &pool.shared_expert_idx,
+        &pool.shared_expert_slot,
+        &pool.expert_miss_mask,
+        1,
+        0,
+        2,
+        &scratch.act[shared_position],
+        hidden,
+        intermediate,
+        &scratch.down[shared_position],
+    )?;
+    let shared_axpy = DeviceExpertTableAxpyParams {
+        n: hidden_u32,
+        experts_per_token: 1,
+        execution_position: 0,
+        use_router_weight: 0,
+    };
+    plan.push(
+        "gravity_glm_expert_table_axpy_f32",
+        (
+            replay_grid(hidden_u32, 256, 256, "device expert replay shared AXPY")?,
+            1,
+            1,
+        ),
+        (256, 1, 1),
+        vec![
+            ReplayBufferBinding::read_write(0, &scratch.combined, 0),
+            ReplayBufferBinding::read(1, &scratch.down[shared_position], 0),
+            ReplayBufferBinding::read(2, &pool.expert_w, 0),
+            ReplayBufferBinding::read(3, &pool.shared_expert_slot, 0),
+            ReplayBufferBinding::read(4, &pool.expert_miss_mask, 0),
+        ],
+        5,
+        &shared_axpy,
+    );
+    plan.push(
+        "gravity_glm_expert_table_residual_add_f32",
+        (
+            replay_grid(hidden_u32, 256, 256, "device expert replay residual add")?,
+            1,
+            1,
+        ),
+        (256, 1, 1),
+        vec![
+            ReplayBufferBinding::read_write(0, residual, 0),
+            ReplayBufferBinding::read(1, &scratch.combined, 0),
+            ReplayBufferBinding::read(2, &pool.expert_miss_mask, 0),
+        ],
+        3,
+        &hidden_u32,
+    );
+
+    let indirect_resources = routed
+        .resources
+        .iter()
+        .chain(shared.resources.iter())
+        .map(ReplayResourceDeclaration::read)
+        .collect();
+    plan.finish(ctx, indirect_resources)
+}
+
 /// Append the cache-indexed routed/shared expert graph after an already
 /// encoded device-router selection.
 ///
@@ -6492,6 +7157,7 @@ fn moe_device_table_wave<'a>(
     else {
         return Ok(DeviceExpertTableWaveResult::Unsupported);
     };
+    let replay_graph_cache = layer_state.replay_graph.clone();
     let routed_lease = layer_state.routed;
     let shared_lease = layer_state.shared;
     let intermediate = layer_state.intermediate;
@@ -6508,164 +7174,224 @@ fn moe_device_table_wave<'a>(
         .as_mut()
         .expect("device expert table router command buffer");
 
-    encode_device_expert_table_validate(
-        wave,
-        &routed_lease,
-        &pool.expert_idx,
-        &pool.expert_exec_slots,
-        &pool.expert_miss_mask,
-        experts_per_token,
-        hidden,
-        intermediate,
-        match routed_dispatch_mode {
-            DeviceExpertDispatchMode::PqOnly => DEVICE_EXPERT_TENSOR_KIND_PQ,
-            DeviceExpertDispatchMode::NativeBf16Only => DEVICE_EXPERT_TENSOR_KIND_NATIVE_BF16,
-            DeviceExpertDispatchMode::Heterogeneous => DEVICE_EXPERT_TENSOR_KIND_ANY_SUPPORTED,
-        },
-    )?;
-    encode_device_expert_table_zero(wave, &scratch.combined, &pool.expert_miss_mask, hidden)?;
-
-    for execution_position in 0..experts_per_token {
-        encode_device_expert_table_matvec(
+    if gpu_expert_table_icb_enabled() {
+        let mut cached = replay_graph_cache
+            .lock()
+            .expect("device expert replay graph");
+        let cache_hit = cached.as_ref().is_some_and(|state| {
+            device_expert_replay_key_matches(
+                &state.key,
+                generation,
+                experts_per_token,
+                hidden,
+                intermediate,
+                routed_dispatch_mode,
+                shared_dispatch_mode,
+                &routed_lease,
+                &shared_lease,
+                x,
+                residual,
+                pool,
+                scratch,
+            )
+        });
+        if !cache_hit {
+            let key = device_expert_replay_key(
+                generation,
+                experts_per_token,
+                hidden,
+                intermediate,
+                routed_dispatch_mode,
+                shared_dispatch_mode,
+                &routed_lease,
+                &shared_lease,
+                x,
+                residual,
+                pool,
+                scratch,
+            );
+            let graph = build_device_expert_replay_graph(
+                ctx,
+                routed_dispatch_mode,
+                shared_dispatch_mode,
+                &routed_lease,
+                &shared_lease,
+                experts_per_token,
+                hidden,
+                intermediate,
+                x,
+                residual,
+                pool,
+                scratch,
+            )?;
+            *cached = Some(CachedDeviceExpertReplayGraph { key, graph });
+        }
+        wave.execute_replayable_graph(
+            &cached
+                .as_ref()
+                .expect("device expert replay graph constructed")
+                .graph,
+        )?;
+    } else {
+        encode_device_expert_table_validate(
             wave,
-            routed_dispatch_mode,
             &routed_lease,
             &pool.expert_idx,
             &pool.expert_exec_slots,
             &pool.expert_miss_mask,
             experts_per_token,
-            execution_position,
+            hidden,
+            intermediate,
+            match routed_dispatch_mode {
+                DeviceExpertDispatchMode::PqOnly => DEVICE_EXPERT_TENSOR_KIND_PQ,
+                DeviceExpertDispatchMode::NativeBf16Only => DEVICE_EXPERT_TENSOR_KIND_NATIVE_BF16,
+                DeviceExpertDispatchMode::Heterogeneous => DEVICE_EXPERT_TENSOR_KIND_ANY_SUPPORTED,
+            },
+        )?;
+        encode_device_expert_table_zero(wave, &scratch.combined, &pool.expert_miss_mask, hidden)?;
+
+        for execution_position in 0..experts_per_token {
+            encode_device_expert_table_matvec(
+                wave,
+                routed_dispatch_mode,
+                &routed_lease,
+                &pool.expert_idx,
+                &pool.expert_exec_slots,
+                &pool.expert_miss_mask,
+                experts_per_token,
+                execution_position,
+                0,
+                x,
+                intermediate,
+                hidden,
+                &scratch.gate[execution_position],
+            )?;
+            encode_device_expert_table_matvec(
+                wave,
+                routed_dispatch_mode,
+                &routed_lease,
+                &pool.expert_idx,
+                &pool.expert_exec_slots,
+                &pool.expert_miss_mask,
+                experts_per_token,
+                execution_position,
+                1,
+                x,
+                intermediate,
+                hidden,
+                &scratch.up[execution_position],
+            )?;
+            encode_device_expert_table_silu_mul(
+                wave,
+                &scratch.gate[execution_position],
+                &scratch.up[execution_position],
+                &scratch.act[execution_position],
+                &pool.expert_miss_mask,
+                intermediate,
+            )?;
+            encode_device_expert_table_matvec(
+                wave,
+                routed_dispatch_mode,
+                &routed_lease,
+                &pool.expert_idx,
+                &pool.expert_exec_slots,
+                &pool.expert_miss_mask,
+                experts_per_token,
+                execution_position,
+                2,
+                &scratch.act[execution_position],
+                hidden,
+                intermediate,
+                &scratch.down[execution_position],
+            )?;
+            encode_device_expert_table_axpy(
+                wave,
+                &scratch.combined,
+                &scratch.down[execution_position],
+                &pool.expert_w,
+                &pool.expert_exec_slots,
+                &pool.expert_miss_mask,
+                hidden,
+                experts_per_token,
+                execution_position,
+                true,
+            )?;
+        }
+
+        let shared_position = experts_per_token;
+        encode_device_expert_table_matvec(
+            wave,
+            shared_dispatch_mode,
+            &shared_lease,
+            &pool.shared_expert_idx,
+            &pool.shared_expert_slot,
+            &pool.expert_miss_mask,
+            1,
+            0,
             0,
             x,
             intermediate,
             hidden,
-            &scratch.gate[execution_position],
+            &scratch.gate[shared_position],
         )?;
         encode_device_expert_table_matvec(
             wave,
-            routed_dispatch_mode,
-            &routed_lease,
-            &pool.expert_idx,
-            &pool.expert_exec_slots,
+            shared_dispatch_mode,
+            &shared_lease,
+            &pool.shared_expert_idx,
+            &pool.shared_expert_slot,
             &pool.expert_miss_mask,
-            experts_per_token,
-            execution_position,
+            1,
+            0,
             1,
             x,
             intermediate,
             hidden,
-            &scratch.up[execution_position],
+            &scratch.up[shared_position],
         )?;
         encode_device_expert_table_silu_mul(
             wave,
-            &scratch.gate[execution_position],
-            &scratch.up[execution_position],
-            &scratch.act[execution_position],
+            &scratch.gate[shared_position],
+            &scratch.up[shared_position],
+            &scratch.act[shared_position],
             &pool.expert_miss_mask,
             intermediate,
         )?;
         encode_device_expert_table_matvec(
             wave,
-            routed_dispatch_mode,
-            &routed_lease,
-            &pool.expert_idx,
-            &pool.expert_exec_slots,
+            shared_dispatch_mode,
+            &shared_lease,
+            &pool.shared_expert_idx,
+            &pool.shared_expert_slot,
             &pool.expert_miss_mask,
-            experts_per_token,
-            execution_position,
+            1,
+            0,
             2,
-            &scratch.act[execution_position],
+            &scratch.act[shared_position],
             hidden,
             intermediate,
-            &scratch.down[execution_position],
+            &scratch.down[shared_position],
         )?;
         encode_device_expert_table_axpy(
             wave,
             &scratch.combined,
-            &scratch.down[execution_position],
+            &scratch.down[shared_position],
             &pool.expert_w,
-            &pool.expert_exec_slots,
+            &pool.shared_expert_slot,
             &pool.expert_miss_mask,
             hidden,
-            experts_per_token,
-            execution_position,
-            true,
+            1,
+            0,
+            false,
+        )?;
+        encode_device_expert_table_residual_add(
+            wave,
+            residual,
+            &scratch.combined,
+            &pool.expert_miss_mask,
+            hidden,
         )?;
     }
-
-    let shared_position = experts_per_token;
-    encode_device_expert_table_matvec(
-        wave,
-        shared_dispatch_mode,
-        &shared_lease,
-        &pool.shared_expert_idx,
-        &pool.shared_expert_slot,
-        &pool.expert_miss_mask,
-        1,
-        0,
-        0,
-        x,
-        intermediate,
-        hidden,
-        &scratch.gate[shared_position],
-    )?;
-    encode_device_expert_table_matvec(
-        wave,
-        shared_dispatch_mode,
-        &shared_lease,
-        &pool.shared_expert_idx,
-        &pool.shared_expert_slot,
-        &pool.expert_miss_mask,
-        1,
-        0,
-        1,
-        x,
-        intermediate,
-        hidden,
-        &scratch.up[shared_position],
-    )?;
-    encode_device_expert_table_silu_mul(
-        wave,
-        &scratch.gate[shared_position],
-        &scratch.up[shared_position],
-        &scratch.act[shared_position],
-        &pool.expert_miss_mask,
-        intermediate,
-    )?;
-    encode_device_expert_table_matvec(
-        wave,
-        shared_dispatch_mode,
-        &shared_lease,
-        &pool.shared_expert_idx,
-        &pool.shared_expert_slot,
-        &pool.expert_miss_mask,
-        1,
-        0,
-        2,
-        &scratch.act[shared_position],
-        hidden,
-        intermediate,
-        &scratch.down[shared_position],
-    )?;
-    encode_device_expert_table_axpy(
-        wave,
-        &scratch.combined,
-        &scratch.down[shared_position],
-        &pool.expert_w,
-        &pool.shared_expert_slot,
-        &pool.expert_miss_mask,
-        hidden,
-        1,
-        0,
-        false,
-    )?;
-    encode_device_expert_table_residual_add(
-        wave,
-        residual,
-        &scratch.combined,
-        &pool.expert_miss_mask,
-        hidden,
-    )?;
 
     commit(tcb.take(), waits)?;
     let miss_mask = read_u32(&pool.expert_miss_mask, 1)[0];
@@ -7899,6 +8625,69 @@ mod tests {
             score.host.failures, score.device.failures
         );
 
+        let mut replay_arch = tiny_arch();
+        replay_arch.hidden = HIDDEN;
+        replay_arch.n_routed_experts = 1;
+        replay_arch.num_experts_per_tok = 1;
+        let replay_pool = ActPool::new(&ctx, &replay_arch).expect("heterogeneous replay pool");
+        unsafe {
+            (replay_pool.expert_idx.contents() as *mut u32).write(0);
+            (replay_pool.expert_exec_slots.contents() as *mut u32).write(0);
+            (replay_pool.expert_miss_mask.contents() as *mut u32).write(u32::MAX);
+        }
+        write_f32(&replay_pool.expert_w, &[0.25]);
+        let replay_scratch =
+            ExpertWaveScratch::new(&ctx, 2, INTERMEDIATE, HIDDEN).expect("heterogeneous scratch");
+        let residual_values = deterministic_fixture_f32(0x1CB0_0019, HIDDEN, 0.05);
+        let replay_residual = f32_buffer(&ctx, &residual_values);
+        let replay_graph = build_device_expert_replay_graph(
+            &ctx,
+            DeviceExpertDispatchMode::Heterogeneous,
+            DeviceExpertDispatchMode::Heterogeneous,
+            &lease,
+            &lease,
+            1,
+            HIDDEN,
+            INTERMEDIATE,
+            &x,
+            &replay_residual,
+            &replay_pool,
+            &replay_scratch,
+        )
+        .expect("heterogeneous complete-wave replay graph");
+        assert_eq!(replay_graph.command_count(), 19);
+        let mut replay = TokenCommandBuffer::new(&ctx);
+        replay
+            .execute_replayable_graph(&replay_graph)
+            .expect("execute heterogeneous complete wave");
+        assert_eq!(replay.dispatch_count(), 19);
+        replay
+            .commit_and_wait()
+            .expect("heterogeneous complete-wave command");
+        assert_eq!(read_u32(&replay_pool.expert_miss_mask, 1), vec![0]);
+        let replay_host: Vec<f32> = residual_values
+            .iter()
+            .zip(&host)
+            .map(|(&residual, &expert)| residual + expert * 0.25 + expert)
+            .collect();
+        let replay_authority: Vec<f64> = residual_values
+            .iter()
+            .zip(&authority)
+            .map(|(&residual, &expert)| residual as f64 + expert * 0.25 + expert)
+            .collect();
+        let replay_device = read_f32(&replay_residual, HIDDEN);
+        let replay_score = score_pair(
+            &replay_host,
+            &replay_device,
+            &replay_authority,
+            &Bounds::continuous_only(),
+        );
+        assert!(
+            replay_score.pass,
+            "heterogeneous replay wave failed V2.1: host={:?}, device={:?}",
+            replay_score.host.failures, replay_score.device.failures
+        );
+
         // Any unsupported member invalidates the whole triplet before either
         // paired projection kernel can write.
         let invalid_table = unsafe {
@@ -8283,6 +9072,177 @@ mod tests {
             score.pass,
             "device expert table complete wave failed V2.1: host={:?}, device={:?}",
             score.host.failures, score.device.failures
+        );
+
+        // Capture the same fixed-shape complete wave once into a real compute
+        // ICB, then replay it against device-owned selection/weight buffers.
+        // The parameter ABI is held in one persistent arena buffer.
+        let mut replay_arch = tiny_arch();
+        replay_arch.hidden = HIDDEN;
+        replay_arch.n_routed_experts = 4;
+        replay_arch.num_experts_per_tok = 2;
+        let replay_pool = ActPool::new(&ctx, &replay_arch).expect("replay activation pool");
+        unsafe {
+            std::ptr::copy_nonoverlapping(
+                [2u32, 0].as_ptr(),
+                replay_pool.expert_idx.contents() as *mut u32,
+                2,
+            );
+            std::ptr::copy_nonoverlapping(
+                [1u32, 0].as_ptr(),
+                replay_pool.expert_exec_slots.contents() as *mut u32,
+                2,
+            );
+            (replay_pool.expert_miss_mask.contents() as *mut u32).write(u32::MAX);
+        }
+        write_f32(&replay_pool.expert_w, &[0.3, 0.7]);
+        let replay_scratch =
+            ExpertWaveScratch::new(&ctx, 3, INTERMEDIATE, HIDDEN).expect("replay scratch");
+        let replay_residual = f32_buffer(&ctx, &residual_values);
+        let replay_graph = build_device_expert_replay_graph(
+            &ctx,
+            DeviceExpertDispatchMode::PqOnly,
+            DeviceExpertDispatchMode::PqOnly,
+            &routed_lease,
+            &shared_lease,
+            2,
+            HIDDEN,
+            INTERMEDIATE,
+            &x,
+            &replay_residual,
+            &replay_pool,
+            &replay_scratch,
+        )
+        .expect("complete-wave replay graph");
+        assert_eq!(replay_graph.command_count(), 18);
+        let replay_key_before = device_expert_replay_key(
+            GENERATION,
+            2,
+            HIDDEN,
+            INTERMEDIATE,
+            DeviceExpertDispatchMode::PqOnly,
+            DeviceExpertDispatchMode::PqOnly,
+            &routed_lease,
+            &shared_lease,
+            &x,
+            &replay_residual,
+            &replay_pool,
+            &replay_scratch,
+        );
+        let _ = ctx.drain_stats();
+        let mut replay_hit = TokenCommandBuffer::new(&ctx);
+        replay_hit
+            .execute_replayable_graph(&replay_graph)
+            .expect("execute complete-wave replay hit");
+        assert_eq!(replay_hit.dispatch_count(), 18);
+        replay_hit
+            .commit_and_wait()
+            .expect("complete-wave replay hit command");
+        assert_eq!(read_u32(&replay_pool.expert_miss_mask, 1), vec![0]);
+        let replay_device = read_f32(&replay_residual, HIDDEN);
+        let replay_score = score_pair(
+            &host,
+            &replay_device,
+            &authority,
+            &Bounds::continuous_only(),
+        );
+        assert!(
+            replay_score.pass,
+            "replayed device expert complete wave failed V2.1: host={:?}, device={:?}",
+            replay_score.host.failures, replay_score.device.failures
+        );
+        assert_eq!(
+            replay_device
+                .iter()
+                .map(|value| value.to_bits())
+                .collect::<Vec<_>>(),
+            device
+                .iter()
+                .map(|value| value.to_bits())
+                .collect::<Vec<_>>(),
+            "ICB and direct complete waves must be bit-identical"
+        );
+
+        let replay_outputs: Vec<&Buffer> = replay_scratch
+            .gate
+            .iter()
+            .chain(&replay_scratch.up)
+            .chain(&replay_scratch.act)
+            .chain(&replay_scratch.down)
+            .chain([&replay_scratch.combined, &replay_residual])
+            .collect();
+        for (buffer_index, buffer) in replay_outputs.iter().enumerate() {
+            let elements = if buffer.length() >= (INTERMEDIATE * 4) as u64 {
+                INTERMEDIATE
+            } else {
+                HIDDEN
+            };
+            let sentinel: Vec<f32> = (0..elements)
+                .map(|index| 20_000.0 + (buffer_index * INTERMEDIATE + index) as f32)
+                .collect();
+            write_f32(buffer, &sentinel);
+        }
+        let replay_before: Vec<Vec<u32>> = replay_outputs
+            .iter()
+            .map(|buffer| {
+                read_f32(buffer, HIDDEN)
+                    .iter()
+                    .map(|value| value.to_bits())
+                    .collect()
+            })
+            .collect();
+        unsafe {
+            std::ptr::copy_nonoverlapping(
+                [2u32, 1].as_ptr(),
+                replay_pool.expert_idx.contents() as *mut u32,
+                2,
+            );
+            (replay_pool.expert_miss_mask.contents() as *mut u32).write(u32::MAX);
+        }
+        let mut replay_miss = TokenCommandBuffer::new(&ctx);
+        replay_miss
+            .execute_replayable_graph(&replay_graph)
+            .expect("execute complete-wave replay miss");
+        assert_eq!(replay_miss.dispatch_count(), 18);
+        replay_miss
+            .commit_and_wait()
+            .expect("complete-wave replay miss command");
+        assert_eq!(read_u32(&replay_pool.expert_miss_mask, 1), vec![1]);
+        let replay_after: Vec<Vec<u32>> = replay_outputs
+            .iter()
+            .map(|buffer| {
+                read_f32(buffer, HIDDEN)
+                    .iter()
+                    .map(|value| value.to_bits())
+                    .collect()
+            })
+            .collect();
+        assert_eq!(
+            replay_after, replay_before,
+            "a replayed table miss must suppress every scratch and residual write"
+        );
+        assert!(
+            device_expert_replay_key_matches(
+                &replay_key_before,
+                GENERATION,
+                2,
+                HIDDEN,
+                INTERMEDIATE,
+                DeviceExpertDispatchMode::PqOnly,
+                DeviceExpertDispatchMode::PqOnly,
+                &routed_lease,
+                &shared_lease,
+                &x,
+                &replay_residual,
+                &replay_pool,
+                &replay_scratch,
+            ),
+            "selection content changes must not invalidate stable-address replay"
+        );
+        assert_eq!(
+            ctx.drain_stats(),
+            (0, 0, 0),
+            "replaying a captured expert graph must not allocate buffers"
         );
 
         // A routed miss must suppress every scratch write and the residual

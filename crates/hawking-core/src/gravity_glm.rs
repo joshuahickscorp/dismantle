@@ -849,6 +849,18 @@ pub fn gpu_resident_state_enabled() -> bool {
     crate::env_on(GPU_RESIDENT_STATE_ENV)
 }
 
+/// Opt-in compact MLA attention state and absorbed device attention path.
+///
+/// Default off. This is only consulted while constructing an already-enabled
+/// resident runtime. The ordinary resident layout and forward path remain the
+/// expanded K/V parity oracle when the flag is absent.
+pub const GPU_COMPACT_MLA_ENV: &str = "HAWKING_GLM_GPU_COMPACT_MLA";
+
+/// Whether [`GPU_COMPACT_MLA_ENV`] requests compact resident MLA attention.
+pub fn gpu_compact_mla_enabled() -> bool {
+    crate::env_on(GPU_COMPACT_MLA_ENV)
+}
+
 /// Opt-in device-resident native.bf16 matvec + GPU head sampling for GLM.
 ///
 /// Default off — host dense matvec remains the parity oracle. When set:
@@ -2413,6 +2425,18 @@ mod tests {
         match prev {
             Some(v) => std::env::set_var(GPU_RESIDENT_STATE_ENV, v),
             None => std::env::remove_var(GPU_RESIDENT_STATE_ENV),
+        }
+    }
+
+    /// Compact MLA cannot change the ordinary expanded resident path by default.
+    #[test]
+    fn compact_mla_flag_defaults_off() {
+        let prev = std::env::var_os(GPU_COMPACT_MLA_ENV);
+        std::env::remove_var(GPU_COMPACT_MLA_ENV);
+        assert!(!gpu_compact_mla_enabled());
+        match prev {
+            Some(v) => std::env::set_var(GPU_COMPACT_MLA_ENV, v),
+            None => std::env::remove_var(GPU_COMPACT_MLA_ENV),
         }
     }
 

@@ -73,8 +73,9 @@
     {
       "name": "gap",
       "role": "group theory and combinatorics",
-      "status": "NOT_INSTALLED",
-      "pin": null
+      "status": "UNAVAILABLE_VIA_PACKAGE_MANAGER",
+      "pin": null,
+      "note": "No homebrew formula for GAP either. Like cvc5 it would need a downloaded release binary or a source build, and downloading an executable is an action requiring explicit user authorisation. Recorded as absent."
     },
     {
       "name": "cadical",
@@ -163,8 +164,8 @@
     "note": "the second theorem is deliberate. The formal system proves 2 + 2 = 4 by machine check, while the compressed artifact this campaign is rebuilding cannot compute it. Two different senses of knowing, and only one of them is verifiable."
   },
   "still_missing": [
-    "cvc5 (no homebrew formula; needs an authorised binary download)",
-    "GAP (installing)"
+    "cvc5",
+    "GAP"
   ],
   "single_source_of_truth_note": "The components array is authoritative. installed_this_session is a record of one install run. An earlier revision left them contradicting each other -- components said NOT_INSTALLED while the install record said otherwise -- which is the same two-authorities fault this campaign keeps finding elsewhere.",
   "proof_solvers_work": {
@@ -182,5 +183,7 @@
       "note": "Cole's 1903 factorisation, reproduced in milliseconds"
     },
     "what_is_still_not_proven": "none of this says anything about mathematical research capability. It says the tools execute."
-  }
+  },
+  "why_the_last_two_are_missing": "Both are absent for the same reason and it is not a technical one: neither has a homebrew formula, so acquiring them means downloading and executing a release binary from the internet. That needs the user's explicit authorisation and it has not been asked for or given. 10 of 12 is the honest ceiling until it is. Neither gap blocks the Lean-derived data sources, which are what the current lane needs.",
+  "toolchain_count": "10 of 12 INSTALLED and machine-checked"
 }

@@ -859,6 +859,25 @@ pub fn gpu_lm_head_full_logits_enabled() -> bool {
     crate::env_on(GPU_LM_HEAD_FULL_LOGITS_ENV)
 }
 
+/// Opt-in **expert-wave** device path for resident GLM MoE / dense MLP.
+///
+/// Default **off**. When set with [`GPU_RESIDENT_STATE_ENV`]=1, each MLP layer
+/// encodes `gate + up → SiLU → down` (and MoE weighted combine) into **one**
+/// command buffer instead of three `matvec_batch` commits with a host silu
+/// readback between them. Static target for the `batched_mlp` bucket alone:
+/// **234 → 78** drains/token on the flagship schedule (3 waits/layer → 1).
+///
+/// Isolation (Parity V2.1 item 6): the default resident path is byte-identical
+/// and untouched when this flag is unset. Sealed Math-Preserve unchanged.
+/// Numerics under this flag use V2.1 (FP64 authority, continuous metrics +
+/// exact discrete decisions) — not bit-identical Metal-vs-libm `exp`.
+pub const GPU_EXPERT_WAVE_ENV: &str = "HAWKING_GLM_GPU_EXPERT_WAVE";
+
+/// Whether [`GPU_EXPERT_WAVE_ENV`] requests the collapsed expert-wave path.
+pub fn gpu_expert_wave_enabled() -> bool {
+    crate::env_on(GPU_EXPERT_WAVE_ENV)
+}
+
 /// Static `commit_and_wait` count on the host-state GPU path (default).
 /// Matches the measured ~1,171 figure on the flagship schedule.
 pub fn estimate_host_state_waits_per_token(arch: &GlmArch) -> u64 {
@@ -883,6 +902,10 @@ pub fn estimate_host_state_waits_per_token(arch: &GlmArch) -> u64 {
 /// kv_a, q_b with kv_b); expert gate/up/down stay three batched waits like the
 /// host path, with the residual / KV living on device between them. Live counts
 /// come from the resident forward's wait counter when a device is available.
+///
+/// **Default path only.** When [`gpu_expert_wave_enabled`] the MLP portion
+/// collapses — see [`estimate_resident_expert_wave_waits_per_token`]. This
+/// function's numbers must stay fixed (Parity V2.1 item 6).
 pub fn estimate_resident_waits_per_token(arch: &GlmArch) -> u64 {
     let mut waits = 0u64;
     for layer in 0..arch.n_layers {
@@ -898,6 +921,37 @@ pub fn estimate_resident_waits_per_token(arch: &GlmArch) -> u64 {
                 // router + three expert batches (gate/up/down, routed+shared)
                 waits += 1 + 3;
             }
+            _ => {}
+        }
+    }
+    waits + 1 // lm_head boundary
+}
+
+/// Static drains from `batched_mlp` alone (gate / up / down commits).
+///
+/// Default: **3 per layer** (dense and sparse). Expert-wave: **1 per layer**.
+/// Flagship (78 layers): **234 → 78**. Labelled static; live counts need a
+/// device and the wait counter on `forward_resident_counted`.
+pub fn estimate_batched_mlp_drains_per_token(arch: &GlmArch, expert_wave: bool) -> u64 {
+    let per_layer = if expert_wave { 1u64 } else { 3u64 };
+    (arch.n_layers as u64).saturating_mul(per_layer)
+}
+
+/// Resident-state wait estimate with the expert-wave MLP collapse enabled.
+///
+/// Same attention / indexer / router / head accounting as
+/// [`estimate_resident_waits_per_token`]; MLP is one commit per layer (dense
+/// or sparse) instead of three expert batches / two dense stages.
+pub fn estimate_resident_expert_wave_waits_per_token(arch: &GlmArch) -> u64 {
+    let mut waits = 0u64;
+    for layer in 0..arch.n_layers {
+        waits += 3; // co-issued attention
+        if arch.indexer_types[layer] == "full" {
+            waits += 2;
+        }
+        match arch.mlp_layer_types[layer].as_str() {
+            "dense" => waits += 1, // fused gate+up+silu+down
+            "sparse" => waits += 1 + 1, // router + fused expert wave
             _ => {}
         }
     }
@@ -2097,6 +2151,18 @@ mod tests {
         }
     }
 
+    /// Expert-wave collapse is opt-in; default resident path stays the oracle.
+    #[test]
+    fn gpu_expert_wave_flag_defaults_off() {
+        let prev = std::env::var_os(GPU_EXPERT_WAVE_ENV);
+        std::env::remove_var(GPU_EXPERT_WAVE_ENV);
+        assert!(!gpu_expert_wave_enabled());
+        match prev {
+            Some(v) => std::env::set_var(GPU_EXPERT_WAVE_ENV, v),
+            None => std::env::remove_var(GPU_EXPERT_WAVE_ENV),
+        }
+    }
+
     /// Token-only readback size vs full vocab: the whole point of not returning
     /// 154_880 logits. Diagnostic top-k is fixed and tiny.
     #[test]
@@ -2161,6 +2227,9 @@ mod tests {
     /// (3 dense, 21 full-indexer, co-batched MoE) is lower. Resident co-issues
     /// independent projections and is strictly below host-state. Neither is
     /// command-buffer collapse (<=78).
+    ///
+    /// Default resident estimate is **frozen** at 583 (Parity V2.1 item 6).
+    /// Expert-wave is a separate estimator and must not move that number.
     #[test]
     fn flagship_wait_estimates_match_the_ordering_constraint() {
         let raw = std::fs::read(
@@ -2174,12 +2243,25 @@ mod tests {
         let resident = estimate_resident_waits_per_token(&arch);
         // Precise static count from the per-layer schedule (not 15×78).
         assert_eq!(host, 763, "host-state static waits");
-        assert_eq!(resident, 583, "resident static waits");
+        assert_eq!(resident, 583, "resident static waits (default path frozen)");
         assert!(resident < host);
         // Collapse target is <=78; residency alone is not collapse.
         assert!(resident > 78);
         // The campaign's uniform 15×78+1 figure for comparison.
         assert_eq!(15 * arch.n_layers + 1, 1171);
+
+        // batched_mlp bucket alone: 3 waits × 78 layers → 1 wait × 78 layers.
+        assert_eq!(estimate_batched_mlp_drains_per_token(&arch, false), 234);
+        assert_eq!(estimate_batched_mlp_drains_per_token(&arch, true), 78);
+        let wave = estimate_resident_expert_wave_waits_per_token(&arch);
+        assert_eq!(wave, 430, "resident + expert-wave static waits");
+        assert!(wave < resident);
+        // Default estimator must stay 583 even though wave exists.
+        assert_eq!(
+            estimate_resident_waits_per_token(&arch),
+            583,
+            "default resident estimate must not be rewritten by expert-wave"
+        );
     }
 
     #[test]

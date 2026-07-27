@@ -434,6 +434,47 @@ pub fn top_k_indices_f32(xs: &[f32], k: usize) -> Vec<usize> {
     idx
 }
 
+// ── FP64 authority elementwise (SiLU ⊙) ────────────────────────────────────
+
+/// FP64 authority for SwiGLU intermediate: `silu(g) * u` with
+/// `silu(g) = g / (1 + exp(-g))` in f64.
+///
+/// Metal `exp` and libm `expf` differ in the last ULP; V2.1 scores both f32
+/// backends against this authority rather than requiring bit-identity between
+/// them. Continuous drift is allowed; discrete decisions (router top-k,
+/// selected experts, greedy token) stay exact elsewhere.
+pub fn silu_mul_f64_authority(gate: &[f64], up: &[f64]) -> Result<Vec<f64>, String> {
+    if gate.len() != up.len() {
+        return Err(format!(
+            "silu_mul_f64_authority: gate.len() {} != up.len() {}",
+            gate.len(),
+            up.len()
+        ));
+    }
+    Ok(gate
+        .iter()
+        .zip(up.iter())
+        .map(|(&g, &u)| (g / (1.0 + (-g).exp())) * u)
+        .collect())
+}
+
+/// Host f32 SiLU⊙ (libm `expf` via `f32::exp`). Same formula as the Metal
+/// kernel `gravity_silu_mul_f32` and the resident host oracle.
+pub fn silu_mul_f32_host(gate: &[f32], up: &[f32]) -> Result<Vec<f32>, String> {
+    if gate.len() != up.len() {
+        return Err(format!(
+            "silu_mul_f32_host: gate.len() {} != up.len() {}",
+            gate.len(),
+            up.len()
+        ));
+    }
+    Ok(gate
+        .iter()
+        .zip(up.iter())
+        .map(|(&g, &u)| (g / (1.0 + (-g).exp())) * u)
+        .collect())
+}
+
 // ── FP64 authority matvec ──────────────────────────────────────────────────
 
 /// Widen little-endian bf16 payload to f64 (same bit pattern as host widen,
@@ -728,6 +769,27 @@ mod tests {
         );
         assert!(s.continuous.n_near_zero >= 1);
         assert!(s.continuous.relative_l2 < 1e-5);
+    }
+
+    #[test]
+    fn silu_mul_f64_authority_matches_formula() {
+        let g = [0.0f64, 1.0, -2.0, 0.5];
+        let u = [1.0f64, 2.0, 3.0, -1.0];
+        let y = silu_mul_f64_authority(&g, &u).unwrap();
+        for i in 0..g.len() {
+            let expect = (g[i] / (1.0 + (-g[i]).exp())) * u[i];
+            assert!((y[i] - expect).abs() < 1e-15, "i={i}");
+        }
+        let gh: Vec<f32> = g.iter().map(|&v| v as f32).collect();
+        let uh: Vec<f32> = u.iter().map(|&v| v as f32).collect();
+        let host = silu_mul_f32_host(&gh, &uh).unwrap();
+        let ref64: Vec<f64> = g
+            .iter()
+            .zip(u.iter())
+            .map(|(&a, &b)| (a / (1.0 + (-a).exp())) * b)
+            .collect();
+        let s = score_against_f64(&host, &ref64, &Bounds::continuous_only(), "silu_host");
+        assert!(s.pass, "host silu vs f64: {:?}", s.failures);
     }
 
     #[test]

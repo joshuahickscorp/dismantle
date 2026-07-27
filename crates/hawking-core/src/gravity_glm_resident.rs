@@ -20,8 +20,12 @@
 //! + greedy argmax + top-k diagnostics run on GPU (no per-token host widen of
 //! the 1.90 GB table). Default readback is **token + top-k only**; full logits
 //! require `HAWKING_GLM_GPU_LM_HEAD_FULL_LOGITS=1`. The same flag keeps other
-//! rank-2 `native.bf16` matvecs (indexer, router) as device bf16. Command-buffer
-//! collapse is intentionally **not** done here.
+//! rank-2 `native.bf16` matvecs (indexer, router) as device bf16.
+//!
+//! **Expert-wave** (`HAWKING_GLM_GPU_EXPERT_WAVE=1`, default off): opt-in collapse
+//! of each MLP layer to one command buffer (`gate + up → SiLU → down` and MoE
+//! weighted combine). The default three-`matvec_batch` path is unchanged when
+//! the flag is unset (Parity V2.1 item 6).
 //!
 //! Gated by [`GPU_RESIDENT_STATE_ENV`] (`HAWKING_GLM_GPU_RESIDENT_STATE`), default
 //! off, so the host-state path remains the parity oracle.
@@ -34,8 +38,8 @@ use crate::gravity_glm::gpu::{
     GpuWeightCache,
 };
 use crate::gravity_glm::{
-    gpu_lm_head_full_logits_enabled, rope_cos_sin, rope_interleaved, topk_desc, GlmArch, GlmTrace,
-    WeightAccess, GPU_LM_HEAD_DIAG_TOPK,
+    gpu_expert_wave_enabled, gpu_lm_head_full_logits_enabled, rope_cos_sin, rope_interleaved,
+    topk_desc, GlmArch, GlmTrace, WeightAccess, GPU_LM_HEAD_DIAG_TOPK,
 };
 use crate::metal::{MetalContext, TokenCommandBuffer};
 use crate::{Error, Result};
@@ -601,26 +605,47 @@ pub fn forward_resident(
                         .map(|&slot| format!("{prefix}.experts.{}", indices[slot]))
                         .chain(std::iter::once(format!("{prefix}.shared_experts")))
                         .collect();
-                    let mut outs = batched_mlp(
-                        weights,
-                        &prefixes,
-                        &pool.h,
-                        a.hidden,
-                        pool,
-                        &mut tcb,
-                        ctx,
-                        &session.waits,
-                    )?;
-                    let shared = outs.pop().expect("shared last");
-                    let mut routed = vec![0f32; a.hidden];
-                    for (out, &slot) in outs.iter().zip(&order) {
-                        for (r, o) in routed.iter_mut().zip(out) {
-                            *r += o * moe_weights[slot];
+                    // Expert-wave (flagged, default off): one CB for gate/up/SiLU/
+                    // down/weighted combine. Default three-batch path is unchanged.
+                    let routed = if gpu_expert_wave_enabled() {
+                        let scales: Vec<f32> = order
+                            .iter()
+                            .map(|&slot| moe_weights[slot])
+                            .chain(std::iter::once(1.0f32))
+                            .collect();
+                        moe_device_wave(
+                            weights,
+                            &prefixes,
+                            &scales,
+                            &pool.h,
+                            a.hidden,
+                            &mut tcb,
+                            ctx,
+                            &session.waits,
+                        )?
+                    } else {
+                        let mut outs = batched_mlp(
+                            weights,
+                            &prefixes,
+                            &pool.h,
+                            a.hidden,
+                            pool,
+                            &mut tcb,
+                            ctx,
+                            &session.waits,
+                        )?;
+                        let shared = outs.pop().expect("shared last");
+                        let mut routed = vec![0f32; a.hidden];
+                        for (out, &slot) in outs.iter().zip(&order) {
+                            for (r, o) in routed.iter_mut().zip(out) {
+                                *r += o * moe_weights[slot];
+                            }
                         }
-                    }
-                    for (r, s) in routed.iter_mut().zip(&shared) {
-                        *r += *s;
-                    }
+                        for (r, s) in routed.iter_mut().zip(&shared) {
+                            *r += *s;
+                        }
+                        routed
+                    };
                     write_f32(&pool.o, &routed);
                     residual_add(&pool.x, &pool.o, a.hidden);
                 }
@@ -981,6 +1006,19 @@ fn mlp_one<'a>(
     ctx: &'a MetalContext,
     waits: &Cell<u64>,
 ) -> Result<Vec<f32>> {
+    // Expert-wave: one CB for dense MLP. Default path below is unchanged.
+    if gpu_expert_wave_enabled() {
+        return moe_device_wave(
+            weights,
+            &[prefix.to_string()],
+            &[1.0f32],
+            x,
+            x_len,
+            tcb,
+            ctx,
+            waits,
+        );
+    }
     let mut outs = batched_mlp(
         weights,
         &[prefix.to_string()],
@@ -998,6 +1036,10 @@ fn mlp_one<'a>(
 /// total for the whole expert set (matches host `batched_mlp`). The residual
 /// `x` and KV stay on device; per-expert gate/up/act vectors are ephemeral
 /// because each down_proj takes a different input.
+///
+/// **Default resident path. Do not edit for expert-wave.** The flagged collapse
+/// lives in [`moe_device_wave`]. Changing this function is a Parity V2.1 item 6
+/// regression.
 #[allow(clippy::too_many_arguments)]
 fn batched_mlp<'a>(
     weights: &GpuWeightCache,
@@ -1058,6 +1100,325 @@ fn batched_mlp<'a>(
     let downs = weights.matvec_batch(&down_calls)?;
     waits.set(waits.get().saturating_add(1));
     Ok(downs)
+}
+
+// ── Expert-wave (flagged; default path above is untouched) ─────────────────
+
+fn encode_silu_mul_f32(
+    tcb: &mut TokenCommandBuffer<'_>,
+    gate: &Buffer,
+    up: &Buffer,
+    out: &Buffer,
+    n: u32,
+) -> Result<()> {
+    const TG: u32 = 256;
+    let n_u = n;
+    let g = gate.clone();
+    let u = up.clone();
+    let o = out.clone();
+    tcb.dispatch_threads(
+        "gravity_silu_mul_f32",
+        (n.div_ceil(TG) * TG, 1, 1),
+        (TG, 1, 1),
+        move |enc| {
+            enc.set_buffer(0, Some(&g), 0);
+            enc.set_buffer(1, Some(&u), 0);
+            enc.set_buffer(2, Some(&o), 0);
+            enc.set_bytes(3, 4, &n_u as *const u32 as *const _);
+        },
+    )
+}
+
+fn encode_axpy_f32(
+    tcb: &mut TokenCommandBuffer<'_>,
+    y: &Buffer,
+    x: &Buffer,
+    scale: f32,
+    n: u32,
+) -> Result<()> {
+    const TG: u32 = 256;
+    let s = scale;
+    let n_u = n;
+    let yb = y.clone();
+    let xb = x.clone();
+    tcb.dispatch_threads(
+        "gravity_axpy_f32",
+        (n.div_ceil(TG) * TG, 1, 1),
+        (TG, 1, 1),
+        move |enc| {
+            enc.set_buffer(0, Some(&yb), 0);
+            enc.set_buffer(1, Some(&xb), 0);
+            enc.set_bytes(2, 4, &s as *const f32 as *const _);
+            enc.set_bytes(3, 4, &n_u as *const u32 as *const _);
+        },
+    )
+}
+
+fn encode_pq_matvec_device(
+    tcb: &mut TokenCommandBuffer<'_>,
+    codebooks: &Buffer,
+    codes: &Buffer,
+    params: crate::gravity_glm::gpu::PqParams,
+    x: &Buffer,
+    y: &Buffer,
+) -> Result<()> {
+    const TG: u32 = 256;
+    let n_tg = params.rows.div_ceil(8);
+    let p = params;
+    let cb = codebooks.clone();
+    let co = codes.clone();
+    let xb = x.clone();
+    let yb = y.clone();
+    tcb.dispatch_threads(
+        "gravity_pq_matvec",
+        (n_tg * TG, 1, 1),
+        (TG, 1, 1),
+        move |enc| {
+            enc.set_buffer(0, Some(&cb), 0);
+            enc.set_buffer(1, Some(&co), 0);
+            enc.set_buffer(2, Some(&xb), 0);
+            enc.set_buffer(3, Some(&yb), 0);
+            enc.set_bytes(
+                4,
+                std::mem::size_of_val(&p) as u64,
+                &p as *const _ as *const _,
+            );
+        },
+    )
+}
+
+/// Encode one weight matvec (device x → device y) into an open command buffer.
+/// Host-native weights are applied immediately into `y` (no encode).
+fn encode_weight_matvec(
+    tcb: &mut TokenCommandBuffer<'_>,
+    weights: &GpuWeightCache,
+    name: &str,
+    x: &Buffer,
+    x_len: usize,
+    y: &Buffer,
+) -> Result<()> {
+    crate::cost_ledger::record_matvec_call();
+    let mut cache = weights.cache.lock().expect("gpu weight cache");
+    weights.ensure_many_locked(&mut cache, &[name])?;
+    match cache.get(name).expect("ensured") {
+        GpuTensor::NativeCpu(w) => {
+            let x_host = read_f32(x, x_len);
+            let y_host = matvec_dense(w, &x_host, name)?;
+            write_f32(y, &y_host);
+            Ok(())
+        }
+        GpuTensor::NativeGpuBf16 { buf, rows, cols } => {
+            if x_len != *cols as usize {
+                return Err(Error::Gravity(format!(
+                    "expert-wave matvec {name}: x_len {x_len} != cols {cols}"
+                )));
+            }
+            crate::cost_ledger::record_active_bytes_for(name, buf.length());
+            encode_gemv_native_bf16_seq(tcb, buf, *rows, *cols, x, y)
+        }
+        GpuTensor::Pq {
+            codebooks,
+            codes,
+            params,
+        } => {
+            if x_len != params.cols as usize {
+                return Err(Error::Gravity(format!(
+                    "expert-wave matvec {name}: x_len {x_len} != cols {}",
+                    params.cols
+                )));
+            }
+            crate::cost_ledger::record_active_bytes_for(
+                name,
+                codebooks.length() + codes.length(),
+            );
+            encode_pq_matvec_device(tcb, codebooks, codes, *params, x, y)
+        }
+    }
+}
+
+/// Isolated device path: **gate + up → SiLU → down → weighted combine** in one
+/// command buffer (one `commit_and_wait`). Flagged via
+/// [`crate::gravity_glm::GPU_EXPERT_WAVE_ENV`]; never called from the default
+/// resident path.
+///
+/// `scales[i]` multiplies prefix `i`'s down projection into the sum (MoE router
+/// weights for routed experts, `1.0` for shared / dense). Accumulation order
+/// matches the host: prefixes are already sorted ascending-expert then shared.
+///
+/// Requires every gate/up/down weight to be device-resident (`Pq` or
+/// `NativeGpuBf16`). Host-native tensors fall back to a single host pass with
+/// one wait tick (tiny fixtures without `HAWKING_GLM_GPU_LM_HEAD`); the pure
+/// device path is what flagship PQ experts hit.
+#[allow(clippy::too_many_arguments)]
+fn moe_device_wave<'a>(
+    weights: &GpuWeightCache,
+    prefixes: &[String],
+    scales: &[f32],
+    x: &Buffer,
+    x_len: usize,
+    tcb: &mut Option<TokenCommandBuffer<'a>>,
+    ctx: &'a MetalContext,
+    waits: &Cell<u64>,
+) -> Result<Vec<f32>> {
+    if prefixes.is_empty() {
+        return Ok(vec![0f32; x_len]);
+    }
+    if scales.len() != prefixes.len() {
+        return Err(Error::Gravity(format!(
+            "expert-wave: scales.len() {} != prefixes.len() {}",
+            scales.len(),
+            prefixes.len()
+        )));
+    }
+    // Flush pending attention encodes; this path owns the next commit.
+    commit(tcb.take(), waits)?;
+
+    // Pin every projection for this layer before encoding so LRU cannot drop
+    // a tensor mid-wave (same invariant as matvec_batch).
+    let mut all_names: Vec<String> = Vec::with_capacity(prefixes.len() * 3);
+    for p in prefixes {
+        all_names.push(format!("{p}.gate_proj.weight"));
+        all_names.push(format!("{p}.up_proj.weight"));
+        all_names.push(format!("{p}.down_proj.weight"));
+    }
+    {
+        let name_refs: Vec<&str> = all_names.iter().map(String::as_str).collect();
+        let mut cache = weights.cache.lock().expect("gpu weight cache");
+        weights.ensure_many_locked(&mut cache, &name_refs)?;
+    }
+
+    // Device-resident weights only on the pure CB path. Host-native needs the
+    // host fallback (cannot encode silu→down dependence without a wait).
+    let all_device = {
+        let cache = weights.cache.lock().expect("gpu weight cache");
+        all_names.iter().all(|n| {
+            matches!(
+                cache.get(n),
+                Some(GpuTensor::Pq { .. }) | Some(GpuTensor::NativeGpuBf16 { .. })
+            )
+        })
+    };
+    if !all_device {
+        return moe_wave_host_fallback(weights, prefixes, scales, x, x_len, waits);
+    }
+
+    // Discover intermediate width from the first gate projection.
+    let inter = {
+        let cache = weights.cache.lock().expect("gpu weight cache");
+        let gname = format!("{}.gate_proj.weight", prefixes[0]);
+        match cache.get(&gname).expect("ensured gate") {
+            GpuTensor::Pq { params, .. } => params.rows as usize,
+            GpuTensor::NativeGpuBf16 { rows, .. } => *rows as usize,
+            GpuTensor::NativeCpu(_) => {
+                return Err(Error::Gravity(
+                    "expert-wave: gate is NativeCpu after device check".into(),
+                ));
+            }
+        }
+    };
+
+    let n_exp = prefixes.len();
+    let mut gate_bufs = Vec::with_capacity(n_exp);
+    let mut up_bufs = Vec::with_capacity(n_exp);
+    let mut act_bufs = Vec::with_capacity(n_exp);
+    let mut down_bufs = Vec::with_capacity(n_exp);
+    for _ in 0..n_exp {
+        gate_bufs.push(ctx.new_buffer_checked(inter * 4)?);
+        up_bufs.push(ctx.new_buffer_checked(inter * 4)?);
+        act_bufs.push(ctx.new_buffer_checked(inter * 4)?);
+        down_bufs.push(ctx.new_buffer_checked(x_len * 4)?);
+    }
+    let combined = ctx.new_buffer_checked(x_len * 4)?;
+    // Host-zero the accumulator so device axpy starts from 0 (Metal shared).
+    write_f32(&combined, &vec![0f32; x_len]);
+
+    let mut wave = TokenCommandBuffer::new(ctx);
+    for (i, p) in prefixes.iter().enumerate() {
+        encode_weight_matvec(
+            &mut wave,
+            weights,
+            &format!("{p}.gate_proj.weight"),
+            x,
+            x_len,
+            &gate_bufs[i],
+        )?;
+        encode_weight_matvec(
+            &mut wave,
+            weights,
+            &format!("{p}.up_proj.weight"),
+            x,
+            x_len,
+            &up_bufs[i],
+        )?;
+    }
+    for i in 0..n_exp {
+        encode_silu_mul_f32(
+            &mut wave,
+            &gate_bufs[i],
+            &up_bufs[i],
+            &act_bufs[i],
+            inter as u32,
+        )?;
+    }
+    for (i, p) in prefixes.iter().enumerate() {
+        encode_weight_matvec(
+            &mut wave,
+            weights,
+            &format!("{p}.down_proj.weight"),
+            &act_bufs[i],
+            inter,
+            &down_bufs[i],
+        )?;
+    }
+    // Weighted combine in prefix order (associativity matches host).
+    for i in 0..n_exp {
+        encode_axpy_f32(
+            &mut wave,
+            &combined,
+            &down_bufs[i],
+            scales[i],
+            x_len as u32,
+        )?;
+    }
+
+    crate::cost_ledger::record_dispatches(wave.dispatch_count() as u64);
+    wave.commit_and_wait()?;
+    waits.set(waits.get().saturating_add(1));
+
+    let out = read_f32(&combined, x_len);
+    crate::cost_ledger::record_transfer((x_len * 4) as u64, false, "expert_wave_y_download");
+    Ok(out)
+}
+
+/// Host-side gate/up/SiLU/down/combine used when expert weights are not
+/// device-resident. Still bills **one** wait for the wave accounting contract
+/// (flag on ⇒ collapsed MLP drain count); no intermediate readback loop.
+fn moe_wave_host_fallback(
+    weights: &GpuWeightCache,
+    prefixes: &[String],
+    scales: &[f32],
+    x: &Buffer,
+    x_len: usize,
+    waits: &Cell<u64>,
+) -> Result<Vec<f32>> {
+    let x_host = read_f32(x, x_len);
+    let mut combined = vec![0f32; x_len];
+    for (p, &scale) in prefixes.iter().zip(scales.iter()) {
+        let gate = weights.matvec(&format!("{p}.gate_proj.weight"), &x_host)?;
+        let up = weights.matvec(&format!("{p}.up_proj.weight"), &x_host)?;
+        let act: Vec<f32> = gate
+            .iter()
+            .zip(&up)
+            .map(|(g, u)| (g / (1.0 + (-g).exp())) * u)
+            .collect();
+        let down = weights.matvec(&format!("{p}.down_proj.weight"), &act)?;
+        for (c, d) in combined.iter_mut().zip(&down) {
+            *c += *d * scale;
+        }
+    }
+    // One wait tick: collapsed accounting for the flag-on path.
+    waits.set(waits.get().saturating_add(1));
+    Ok(combined)
 }
 
 /// Holds the long-lived resident state for a [`crate::gravity_glm::gpu::GravityGlmGpu`].

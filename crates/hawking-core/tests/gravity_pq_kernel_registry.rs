@@ -295,6 +295,15 @@ fn registry_is_explicit_unique_and_keeps_generic_first() {
         PqMetalKernelVariant::Generic.kernel_name(),
         "gravity_pq_matvec"
     );
+    assert_eq!(
+        PqMetalKernelVariant::Bits8DoubleSingle.kernel_name(),
+        "gravity_pq_matvec_bits8_double_single"
+    );
+    assert_eq!(
+        PqMetalKernelVariant::Bits8DoubleSingle.dispatches_per_matvec(),
+        1
+    );
+    assert_eq!(PqMetalKernelVariant::Bits8DoubleSingle.split_count(), None);
     let names: std::collections::HashSet<_> = PqMetalKernelVariant::ALL
         .iter()
         .map(|v| v.as_str())
@@ -321,9 +330,10 @@ fn primary_bits8_geometry_admits_all_candidates_but_packed_bits_do_not() {
 }
 
 #[test]
-fn shader_registers_direct_vector_and_deterministic_2d_reduction() {
+fn shader_registers_direct_double_single_vector_and_deterministic_reductions() {
     for symbol in [
         "kernel void gravity_pq_matvec_bits8_direct",
+        "kernel void gravity_pq_matvec_bits8_double_single",
         "kernel void gravity_pq_matvec_bits8_vec4",
         "kernel void gravity_pq_matvec_bits8_2d",
         "kernel void gravity_pq_reduce_2d",
@@ -331,6 +341,37 @@ fn shader_registers_direct_vector_and_deterministic_2d_reduction() {
         assert!(SHADER_GRAVITY_PQ.contains(symbol), "missing {symbol}");
     }
     assert!(SHADER_GRAVITY_PQ.contains("uint(codes[flat])"));
+    assert!(SHADER_GRAVITY_PQ.contains("out.lo = metal::precise::fma(a, b, -hi)"));
+    assert!(SHADER_GRAVITY_PQ.contains("acc = pq_ds_simd_tree(acc, lane)"));
+    for sequenced in [
+        "volatile float hi",
+        "volatile float sum",
+        "volatile float sum_error",
+        "volatile float tail",
+        "volatile float hi_delta",
+    ] {
+        assert!(
+            SHADER_GRAVITY_PQ.contains(sequenced),
+            "double-single error-free transform lost {sequenced}"
+        );
+    }
+    for width in [16, 8, 4, 2, 1] {
+        assert!(
+            SHADER_GRAVITY_PQ.contains(&format!("if (lane < {width}u)")),
+            "double-single reduction is missing width {width}"
+        );
+    }
+    let double_single_kernel = SHADER_GRAVITY_PQ
+        .split("kernel void gravity_pq_matvec_bits8_double_single")
+        .nth(1)
+        .expect("double-single kernel body")
+        .split("kernel void gravity_pq_matvec_bits8_vec4")
+        .next()
+        .expect("double-single kernel terminator");
+    assert!(
+        !double_single_kernel.contains("simd_sum("),
+        "double-single candidate must use its explicit compensated tree"
+    );
     assert!(SHADER_GRAVITY_PQ.contains("partials[row * splits + split] = acc"));
     assert!(SHADER_GRAVITY_PQ.contains("for (uint split = 0u; split < splits; ++split)"));
     assert!(

@@ -128,6 +128,72 @@ static inline float pq_bits8_vec4_lane(
     return (v.x + v.y) + (v.z + v.w);
 }
 
+// Two-float expansion used only by the unpromoted bits8-double-single
+// candidate. `hi` holds the rounded leading value and `lo` its residual.
+// This intentionally spends substantially more arithmetic/registers than the
+// ordinary FMA path; it carries no throughput claim until a manual bounded
+// exact-geometry sweep measures it.
+struct PqDoubleSingle {
+    float hi;
+    float lo;
+};
+
+static inline PqDoubleSingle pq_ds_product(float a, float b)
+{
+    PqDoubleSingle out;
+    volatile float hi = a * b;
+    out.hi = hi;
+    out.lo = metal::precise::fma(a, b, -hi);
+    return out;
+}
+
+// Error-free TwoSum on the leading terms followed by a hi/lo renormalization.
+// The operation order matches the CPU preflight model exactly.
+static inline PqDoubleSingle pq_ds_add(PqDoubleSingle lhs, PqDoubleSingle rhs)
+{
+    volatile float sum = lhs.hi + rhs.hi;
+    volatile float rhs_virtual = sum - lhs.hi;
+    volatile float sum_error =
+        (lhs.hi - (sum - rhs_virtual)) + (rhs.hi - rhs_virtual);
+    volatile float tail = (lhs.lo + rhs.lo) + sum_error;
+    PqDoubleSingle out;
+    out.hi = sum + tail;
+    volatile float hi_delta = out.hi - sum;
+    out.lo = tail - hi_delta;
+    return out;
+}
+
+// Fixed 32-lane tree: 0+16, 1+17, ...; then 0+8, ... down to 0+1.
+// Every lane executes each shuffle; only the lower half updates. This avoids
+// implementation-defined simd_sum reassociation and matches the CPU model's
+// explicit tree.
+static inline PqDoubleSingle pq_ds_simd_tree(
+    PqDoubleSingle acc,
+    uint lane)
+{
+    PqDoubleSingle rhs;
+    rhs.hi = simd_shuffle_down(acc.hi, ushort(16));
+    rhs.lo = simd_shuffle_down(acc.lo, ushort(16));
+    if (lane < 16u) { acc = pq_ds_add(acc, rhs); }
+
+    rhs.hi = simd_shuffle_down(acc.hi, ushort(8));
+    rhs.lo = simd_shuffle_down(acc.lo, ushort(8));
+    if (lane < 8u) { acc = pq_ds_add(acc, rhs); }
+
+    rhs.hi = simd_shuffle_down(acc.hi, ushort(4));
+    rhs.lo = simd_shuffle_down(acc.lo, ushort(4));
+    if (lane < 4u) { acc = pq_ds_add(acc, rhs); }
+
+    rhs.hi = simd_shuffle_down(acc.hi, ushort(2));
+    rhs.lo = simd_shuffle_down(acc.lo, ushort(2));
+    if (lane < 2u) { acc = pq_ds_add(acc, rhs); }
+
+    rhs.hi = simd_shuffle_down(acc.hi, ushort(1));
+    rhs.lo = simd_shuffle_down(acc.lo, ushort(1));
+    if (lane < 1u) { acc = pq_ds_add(acc, rhs); }
+    return acc;
+}
+
 // Direct byte lookup while retaining the default kernel's scalar FMA shape.
 // This isolates the cost of generic packed extraction from every other change.
 kernel void gravity_pq_matvec_bits8_direct(
@@ -159,6 +225,42 @@ kernel void gravity_pq_matvec_bits8_direct(
     }
     acc = simd_sum(acc);
     if (lane == 0u) { y[row] = acc; }
+}
+
+// Numerically strengthened direct-byte candidate. Each product is represented
+// by its rounded value plus FMA residual, accumulated as a double-single
+// expansion, then reduced through the fixed compensated lane tree above.
+// This is explicit/autotune-only; the production default remains unchanged.
+kernel void gravity_pq_matvec_bits8_double_single(
+    const device half         *codebooks [[buffer(0)]],
+    const device uchar        *codes     [[buffer(1)]],
+    const device float        *x         [[buffer(2)]],
+    device float              *y         [[buffer(3)]],
+    constant GravityPQParams  &p         [[buffer(4)]],
+    uint  tgid                           [[threadgroup_position_in_grid]],
+    uint  sg_in_tg                       [[simdgroup_index_in_threadgroup]],
+    uint  sgs_per_tg                     [[simdgroups_per_threadgroup]],
+    uint  lane                           [[thread_index_in_simdgroup]])
+{
+    uint row = tgid * sgs_per_tg + sg_in_tg;
+    if (row >= p.rows) { return; }
+
+    PqDoubleSingle acc = { 0.0f, 0.0f };
+    for (uint s = 0; s < p.subspaces; ++s) {
+        const device half *cb = codebooks + s * p.card * p.sub;
+        const uint xbase = s * p.sub;
+        for (uint c = lane; c < p.nchunk; c += 32u) {
+            uint flat = (row * p.nchunk + c) * p.subspaces + s;
+            const device half *entry = cb + uint(codes[flat]) * p.sub;
+            const device float *xs = x + c * p.dim + xbase;
+            for (uint j = 0; j < p.sub; ++j) {
+                acc = pq_ds_add(
+                    acc, pq_ds_product(float(entry[j]), xs[j]));
+            }
+        }
+    }
+    acc = pq_ds_simd_tree(acc, lane);
+    if (lane == 0u) { y[row] = acc.hi + acc.lo; }
 }
 
 // Same row mapping as the default, but with vector loads and four independent

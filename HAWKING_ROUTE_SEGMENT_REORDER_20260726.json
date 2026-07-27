@@ -108,6 +108,7 @@
     "The kernel rejects k > 2048; it is intentionally bounded to the flagship index_topk.",
     "Uniqueness is supplied by stable top-k and is not revalidated on GPU.",
     "This closes only the ordering dependency. The existing expanded MLA/sparse-attention cache remains transitional and is not the 32K memory solution.",
+    "The future compact absorbed MLA path must bypass this ascending reorder and preserve stable DSA-rank order for softmax and weighted-latent accumulation; HAWKING_COMPACT_MLA_PARITY_PROOF_20260727.json records ascending-position accumulation as a Numeric Parity V2.1 negative witness.",
     "No latency, occupancy, throughput, thermal, or complete-token measurement was performed."
   ],
   "performance": {

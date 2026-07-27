@@ -403,9 +403,28 @@ fn compact_mla_complete_tokens_match_expanded_v21_and_exact_decisions() {
         std::env::set_var(GPU_EXPERT_TABLE_HIT_ENV, "1");
         std::env::set_var(GPU_LM_HEAD_ENV, "1");
         std::env::set_var(GPU_LM_HEAD_FULL_LOGITS_ENV, "1");
-        let (table_wave_logits, table_wave_trace) = compact_device_head
+        let _ = compact_device_head
             .forward(prompt)
-            .expect("cache-indexed expert-table wave forward");
+            .expect("persistent expert-table route prewarm");
+        let ((table_wave_logits, table_wave_trace), table_hit_report) = if prompt.len() == 1 {
+            hawking_core::cost_ledger::set_enabled(true);
+            let _ = hawking_core::cost_ledger::end_token();
+            assert!(hawking_core::cost_ledger::begin_token());
+            let result = compact_device_head
+                .forward(prompt)
+                .expect("profiled persistent cache-indexed expert-table wave forward");
+            let report =
+                hawking_core::cost_ledger::end_token().expect("persistent table-hit ledger");
+            hawking_core::cost_ledger::set_enabled(false);
+            (result, Some(report))
+        } else {
+            (
+                compact_device_head
+                    .forward(prompt)
+                    .expect("persistent cache-indexed expert-table wave forward"),
+                None,
+            )
+        };
         std::env::remove_var(GPU_LM_HEAD_FULL_LOGITS_ENV);
         std::env::remove_var(GPU_LM_HEAD_ENV);
         std::env::remove_var(GPU_EXPERT_TABLE_HIT_ENV);
@@ -666,17 +685,37 @@ fn compact_mla_complete_tokens_match_expanded_v21_and_exact_decisions() {
             "case {case}: projection concurrency must not add command buffers or waits"
         );
         if case == 0 {
-            assert_eq!(
-                cold_table_waits,
-                table_wave_waits.saturating_add(1),
-                "one cold table miss must add exactly one guarded fallback replay wait"
+            assert!(
+                cold_table_waits >= table_wave_waits && cold_table_waits <= expert_wave_waits,
+                "cold table waits {cold_table_waits} must fall between persistent warm \
+                 {table_wave_waits} and qualified fallback {expert_wave_waits}"
             );
         }
-        assert_eq!(
-            concurrent_wave_waits.saturating_sub(table_wave_waits),
-            prompt.len() as u64,
-            "case {case}: a table hit must merge the one sparse-layer router and expert wave per token"
+        assert!(
+            table_wave_waits <= concurrent_wave_waits,
+            "case {case}: persistent table routing cannot add waits after prewarm"
         );
+        if prompt.len() == 1 {
+            assert_eq!(
+                concurrent_wave_waits.saturating_sub(table_wave_waits),
+                1,
+                "case {case}: a stable one-token route must merge router and expert wave"
+            );
+            let report = table_hit_report
+                .as_ref()
+                .expect("single-token persistent hit must be profiled");
+            assert!(
+                report
+                    .transfers
+                    .iter()
+                    .all(|transfer| transfer.kind != "device_expert_table_snapshot_upload"),
+                "case {case}: a persistent hit must not rebuild or upload its descriptor table"
+            );
+            assert_eq!(
+                report.counters.routed_representations.r4_projection_touches, 6,
+                "case {case}: two routed R4 triplets must remain visible to the profiler"
+            );
+        }
     }
 
     match prior_compact {

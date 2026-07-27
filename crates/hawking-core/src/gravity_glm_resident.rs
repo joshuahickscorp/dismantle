@@ -148,6 +148,7 @@ const _: [(); 8] = [(); std::mem::align_of::<DeviceExpertTensorRef>()];
 const _: [(); 176] = [(); std::mem::size_of::<DeviceExpertTriplet>()];
 const _: [(); 8] = [(); std::mem::align_of::<DeviceExpertTriplet>()];
 
+#[derive(Clone)]
 #[allow(dead_code)]
 struct DeviceExpertTableLease {
     table: Buffer,
@@ -157,6 +158,14 @@ struct DeviceExpertTableLease {
     generation: u32,
     n_experts: usize,
     ready_entries: usize,
+}
+
+#[derive(Clone)]
+struct PersistentDeviceExpertLayer {
+    routed: DeviceExpertTableLease,
+    shared: DeviceExpertTableLease,
+    intermediate: usize,
+    metrics: DirectU8TripletMetrics,
 }
 
 #[allow(dead_code)]
@@ -206,13 +215,13 @@ fn device_expert_tensor_ref(
 /// The caller owns the cache guard while this walks the name-keyed LRU. Each
 /// ready entry clones its backing Metal buffers into the returned lease, then
 /// the descriptor bytes are uploaded once and never patched in place.
-#[allow(dead_code)]
-fn build_device_expert_table_snapshot(
+fn build_device_expert_table_snapshot_filtered(
     ctx: &MetalContext,
     cache: &BoundedLru<GpuTensor>,
     mlp_prefix: &str,
     n_experts: usize,
     generation: u32,
+    selected_experts: Option<&[usize]>,
 ) -> Result<DeviceExpertTableLease> {
     if n_experts == 0 || n_experts > DEVICE_EXPERT_TABLE_MAX_EXPERTS {
         return Err(Error::Gravity(format!(
@@ -225,11 +234,21 @@ fn build_device_expert_table_snapshot(
             "device expert table generation 0 is reserved for missing entries".into(),
         ));
     }
+    if let Some(selected) = selected_experts {
+        if let Some(expert) = selected.iter().copied().find(|&expert| expert >= n_experts) {
+            return Err(Error::Gravity(format!(
+                "device expert table selected expert {expert} exceeds layer extent {n_experts}"
+            )));
+        }
+    }
 
     let mut entries = vec![DeviceExpertTriplet::default(); n_experts];
     let mut resources = Vec::new();
     let mut ready_entries = 0usize;
     for (expert, entry) in entries.iter_mut().enumerate() {
+        if selected_experts.is_some_and(|selected| !selected.contains(&expert)) {
+            continue;
+        }
         let expert_prefix = format!("{mlp_prefix}.experts.{expert}");
         let gate_name = format!("{expert_prefix}.gate_proj.weight");
         let up_name = format!("{expert_prefix}.up_proj.weight");
@@ -272,6 +291,35 @@ fn build_device_expert_table_snapshot(
         n_experts,
         ready_entries,
     })
+}
+
+#[allow(dead_code)]
+fn build_device_expert_table_snapshot(
+    ctx: &MetalContext,
+    cache: &BoundedLru<GpuTensor>,
+    mlp_prefix: &str,
+    n_experts: usize,
+    generation: u32,
+) -> Result<DeviceExpertTableLease> {
+    build_device_expert_table_snapshot_filtered(ctx, cache, mlp_prefix, n_experts, generation, None)
+}
+
+fn build_selected_device_expert_table_snapshot(
+    ctx: &MetalContext,
+    cache: &BoundedLru<GpuTensor>,
+    mlp_prefix: &str,
+    n_experts: usize,
+    generation: u32,
+    selected_experts: &[usize],
+) -> Result<DeviceExpertTableLease> {
+    build_device_expert_table_snapshot_filtered(
+        ctx,
+        cache,
+        mlp_prefix,
+        n_experts,
+        generation,
+        Some(selected_experts),
+    )
 }
 
 #[allow(dead_code)]
@@ -1575,6 +1623,10 @@ pub struct ActPool {
     /// Grow-once scratch for the default-off expert-wave candidate. Keeping
     /// this lazy preserves the default path's allocation and residency shape.
     expert_wave_scratch: Mutex<Option<ExpertWaveScratch>>,
+    /// At most one selected R4 route per layer. This bounds lease-pinned
+    /// expert resources to the previous route footprint and lets warm hits
+    /// reuse descriptor tables without a per-token rebuild/upload.
+    persistent_expert_layers: Mutex<Vec<Option<PersistentDeviceExpertLayer>>>,
 }
 
 struct CompactAttentionScratch {
@@ -1819,6 +1871,7 @@ impl ActPool {
             device_dsa_transform_scratch: Mutex::new(None),
             device_attention_prelude_scratch: Mutex::new(None),
             expert_wave_scratch: Mutex::new(None),
+            persistent_expert_layers: Mutex::new((0..arch.n_layers).map(|_| None).collect()),
         })
     }
 
@@ -2657,6 +2710,7 @@ pub fn forward_resident(
                         Some(moe_device_table_wave(
                             weights,
                             &prefix,
+                            layer,
                             a.hidden,
                             a.num_experts_per_tok,
                             a.n_routed_experts,
@@ -2671,20 +2725,20 @@ pub fn forward_resident(
                     } else {
                         None
                     };
-                    let table_hit = match table_wave {
-                        Some(DeviceExpertTableWaveResult::Hit) => true,
+                    let (table_hit, table_miss) = match table_wave {
+                        Some(DeviceExpertTableWaveResult::Hit) => (true, false),
                         Some(DeviceExpertTableWaveResult::Miss(mask)) => {
                             debug_assert_ne!(mask, 0);
-                            false
+                            (false, true)
                         }
                         Some(DeviceExpertTableWaveResult::Unsupported) => {
                             // Shared layout could not use the guarded direct-u8
                             // graph. Commit router + trace before the ordinary
                             // host-known selection/fallback path.
                             commit(tcb.take(), &session.waits)?;
-                            false
+                            (false, false)
                         }
-                        None => false,
+                        None => (false, false),
                     };
 
                     if !table_hit {
@@ -2816,6 +2870,25 @@ pub fn forward_resident(
                         if let MlpWaveResult::Host(routed) = routed {
                             write_f32(&pool.o, &routed);
                             residual_add(&pool.x, &pool.o, a.hidden);
+                        }
+                        if table_miss {
+                            let generation =
+                                u32::try_from(layer.saturating_add(1)).map_err(|_| {
+                                    Error::Gravity(format!(
+                                        "device expert table refresh generation overflow: {layer}"
+                                    ))
+                                })?;
+                            refresh_persistent_device_expert_layer(
+                                weights,
+                                &prefix,
+                                layer,
+                                a.hidden,
+                                a.n_routed_experts,
+                                generation,
+                                &indices,
+                                pool,
+                                ctx,
+                            )?;
                         }
                     }
                 }
@@ -5845,6 +5918,196 @@ fn record_device_expert_table_hit_costs(
     );
 }
 
+fn pq_params_match(
+    left: crate::gravity_glm::gpu::PqParams,
+    right: crate::gravity_glm::gpu::PqParams,
+) -> bool {
+    left.dim == right.dim
+        && left.subspaces == right.subspaces
+        && left.sub == right.sub
+        && left.card == right.card
+        && left.rows == right.rows
+        && left.cols == right.cols
+        && left.nchunk == right.nchunk
+        && left.bits == right.bits
+}
+
+#[allow(clippy::too_many_arguments)]
+fn build_persistent_device_expert_layer(
+    weights: &GpuWeightCache,
+    mlp_prefix: &str,
+    hidden: usize,
+    n_routed_experts: usize,
+    generation: u32,
+    selected_experts: &[usize],
+    ctx: &MetalContext,
+) -> Result<Option<PersistentDeviceExpertLayer>> {
+    let shared_prefix = format!("{mlp_prefix}.shared_experts");
+    let shared_gate_name = format!("{shared_prefix}.gate_proj.weight");
+    let shared_up_name = format!("{shared_prefix}.up_proj.weight");
+    let shared_down_name = format!("{shared_prefix}.down_proj.weight");
+    let mut names = vec![
+        shared_gate_name.clone(),
+        shared_up_name.clone(),
+        shared_down_name.clone(),
+    ];
+    for &expert in selected_experts {
+        if expert >= n_routed_experts {
+            return Err(Error::Gravity(format!(
+                "persistent device expert route selected {expert}, but layer has \
+                 {n_routed_experts} experts"
+            )));
+        }
+        let prefix = format!("{mlp_prefix}.experts.{expert}");
+        names.push(format!("{prefix}.gate_proj.weight"));
+        names.push(format!("{prefix}.up_proj.weight"));
+        names.push(format!("{prefix}.down_proj.weight"));
+    }
+    let name_refs: Vec<&str> = names.iter().map(String::as_str).collect();
+
+    let (routed, shared, intermediate, metrics) = {
+        let mut cache = weights.cache.lock().expect("gpu weight cache");
+        weights.ensure_many_locked(&mut cache, &name_refs)?;
+        let shared_gate = cache.get(&shared_gate_name).expect("ensured shared gate");
+        let shared_up = cache.get(&shared_up_name).expect("ensured shared up");
+        let shared_down = cache.get(&shared_down_name).expect("ensured shared down");
+        let Some((intermediate, metrics)) =
+            direct_u8_shared_intermediate(shared_gate, shared_up, shared_down, hidden)
+        else {
+            return Ok(None);
+        };
+
+        // A persistent hit's byte/operation ledger is derived from the shared
+        // R4 geometry. Admit a selected route only when every routed projection
+        // has the exact same physical geometry and byte extent.
+        for &expert in selected_experts {
+            let prefix = format!("{mlp_prefix}.experts.{expert}");
+            for (projection, expected_params, expected_bytes) in [
+                ("gate_proj", metrics.params[0], metrics.bytes[0]),
+                ("up_proj", metrics.params[1], metrics.bytes[1]),
+                ("down_proj", metrics.params[2], metrics.bytes[2]),
+            ] {
+                let name = format!("{prefix}.{projection}.weight");
+                let Some((params, bytes)) = cache.get(&name).and_then(direct_u8_pq_metrics) else {
+                    return Ok(None);
+                };
+                if !pq_params_match(params, expected_params) || bytes != expected_bytes {
+                    return Ok(None);
+                }
+            }
+        }
+
+        let shared = build_single_device_expert_snapshot(
+            ctx,
+            shared_gate,
+            shared_up,
+            shared_down,
+            generation,
+        )?;
+        let routed = build_selected_device_expert_table_snapshot(
+            ctx,
+            &cache,
+            mlp_prefix,
+            n_routed_experts,
+            generation,
+            selected_experts,
+        )?;
+        (routed, shared, intermediate, metrics)
+    };
+
+    let snapshot_bytes = routed.table.length().saturating_add(shared.table.length());
+    crate::cost_ledger::record_transfer(
+        snapshot_bytes,
+        true,
+        "device_expert_table_snapshot_upload",
+    );
+    crate::cost_ledger::record_allocation(snapshot_bytes);
+    Ok(Some(PersistentDeviceExpertLayer {
+        routed,
+        shared,
+        intermediate,
+        metrics,
+    }))
+}
+
+#[allow(clippy::too_many_arguments)]
+fn persistent_device_expert_layer(
+    weights: &GpuWeightCache,
+    mlp_prefix: &str,
+    layer: usize,
+    hidden: usize,
+    n_routed_experts: usize,
+    generation: u32,
+    pool: &ActPool,
+    ctx: &MetalContext,
+) -> Result<Option<PersistentDeviceExpertLayer>> {
+    let mut layers = pool
+        .persistent_expert_layers
+        .lock()
+        .expect("persistent device expert layers");
+    if layer >= layers.len() {
+        return Err(Error::Gravity(format!(
+            "persistent device expert layer {layer} exceeds pool extent {}",
+            layers.len()
+        )));
+    }
+    if let Some(state) = &layers[layer] {
+        return Ok(Some(state.clone()));
+    }
+    let state = build_persistent_device_expert_layer(
+        weights,
+        mlp_prefix,
+        hidden,
+        n_routed_experts,
+        generation,
+        &[],
+        ctx,
+    )?;
+    if let Some(state) = &state {
+        layers[layer] = Some(state.clone());
+    }
+    Ok(state)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn refresh_persistent_device_expert_layer(
+    weights: &GpuWeightCache,
+    mlp_prefix: &str,
+    layer: usize,
+    hidden: usize,
+    n_routed_experts: usize,
+    generation: u32,
+    selected_experts: &[usize],
+    pool: &ActPool,
+    ctx: &MetalContext,
+) -> Result<()> {
+    let Some(state) = build_persistent_device_expert_layer(
+        weights,
+        mlp_prefix,
+        hidden,
+        n_routed_experts,
+        generation,
+        selected_experts,
+        ctx,
+    )?
+    else {
+        return Ok(());
+    };
+    let mut layers = pool
+        .persistent_expert_layers
+        .lock()
+        .expect("persistent device expert layers");
+    let layer_count = layers.len();
+    let slot = layers.get_mut(layer).ok_or_else(|| {
+        Error::Gravity(format!(
+            "persistent device expert refresh layer {layer} exceeds pool extent {}",
+            layer_count
+        ))
+    })?;
+    *slot = Some(state);
+    Ok(())
+}
+
 /// Append the cache-indexed routed/shared expert graph after an already
 /// encoded device-router selection.
 ///
@@ -5858,6 +6121,7 @@ fn record_device_expert_table_hit_costs(
 fn moe_device_table_wave<'a>(
     weights: &GpuWeightCache,
     mlp_prefix: &str,
+    layer: usize,
     hidden: usize,
     experts_per_token: usize,
     n_routed_experts: usize,
@@ -5883,54 +6147,23 @@ fn moe_device_table_wave<'a>(
         ));
     }
 
-    let shared_prefix = format!("{mlp_prefix}.shared_experts");
-    let shared_gate_name = format!("{shared_prefix}.gate_proj.weight");
-    let shared_up_name = format!("{shared_prefix}.up_proj.weight");
-    let shared_down_name = format!("{shared_prefix}.down_proj.weight");
-    let shared_names = [
-        shared_gate_name.as_str(),
-        shared_up_name.as_str(),
-        shared_down_name.as_str(),
-    ];
-
-    let (routed_lease, shared_lease, intermediate, metrics) = {
-        let mut cache = weights.cache.lock().expect("gpu weight cache");
-        weights.ensure_many_locked(&mut cache, &shared_names)?;
-        let shared_gate = cache.get(&shared_gate_name).expect("ensured shared gate");
-        let shared_up = cache.get(&shared_up_name).expect("ensured shared up");
-        let shared_down = cache.get(&shared_down_name).expect("ensured shared down");
-        let Some((intermediate, metrics)) =
-            direct_u8_shared_intermediate(shared_gate, shared_up, shared_down, hidden)
-        else {
-            return Ok(DeviceExpertTableWaveResult::Unsupported);
-        };
-        let shared_lease = build_single_device_expert_snapshot(
-            ctx,
-            shared_gate,
-            shared_up,
-            shared_down,
-            generation,
-        )?;
-        let routed_lease = build_device_expert_table_snapshot(
-            ctx,
-            &cache,
-            mlp_prefix,
-            n_routed_experts,
-            generation,
-        )?;
-        (routed_lease, shared_lease, intermediate, metrics)
+    let Some(layer_state) = persistent_device_expert_layer(
+        weights,
+        mlp_prefix,
+        layer,
+        hidden,
+        n_routed_experts,
+        generation,
+        pool,
+        ctx,
+    )?
+    else {
+        return Ok(DeviceExpertTableWaveResult::Unsupported);
     };
-
-    let snapshot_bytes = routed_lease
-        .table
-        .length()
-        .saturating_add(shared_lease.table.length());
-    crate::cost_ledger::record_transfer(
-        snapshot_bytes,
-        true,
-        "device_expert_table_snapshot_upload",
-    );
-    crate::cost_ledger::record_allocation(snapshot_bytes);
+    let routed_lease = layer_state.routed;
+    let shared_lease = layer_state.shared;
+    let intermediate = layer_state.intermediate;
+    let metrics = layer_state.metrics;
 
     let scratch_guard =
         pool.ensure_expert_wave_scratch(ctx, experts_per_token + 1, intermediate, hidden)?;
@@ -6611,6 +6844,19 @@ mod tests {
         assert_eq!(table_entries[0].ready_mask, DEVICE_EXPERT_TRIPLET_READY);
         assert_eq!(table_entries[1], DeviceExpertTriplet::default());
         assert_eq!(table_entries[2].generation, GENERATION);
+        let selected_only =
+            build_selected_device_expert_table_snapshot(&ctx, &cache, PREFIX, 4, GENERATION, &[2])
+                .expect("selected-only immutable expert table");
+        assert_eq!(selected_only.ready_entries, 1);
+        assert_eq!(selected_only.resources.len(), 6);
+        let selected_entries = unsafe {
+            std::slice::from_raw_parts(
+                selected_only.table.contents() as *const DeviceExpertTriplet,
+                selected_only.n_experts,
+            )
+        };
+        assert_eq!(selected_entries[0], DeviceExpertTriplet::default());
+        assert_eq!(selected_entries[2].ready_mask, DEVICE_EXPERT_TRIPLET_READY);
 
         // Logical LRU eviction after the immutable snapshot cannot free a
         // leased Metal resource before this command completes.
@@ -9422,6 +9668,17 @@ mod tests {
         );
         assert_eq!(read_u32(&pool.shared_expert_idx, 1), vec![0]);
         assert_eq!(read_u32(&pool.shared_expert_slot, 1), vec![0]);
+        {
+            let layers = pool
+                .persistent_expert_layers
+                .lock()
+                .expect("persistent expert layers");
+            assert_eq!(layers.len(), arch.n_layers);
+            assert!(
+                layers.iter().all(Option::is_none),
+                "default path must not build or lease an expert descriptor table"
+            );
+        }
         assert!(
             pool.expert_wave_scratch
                 .lock()

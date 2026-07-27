@@ -346,5 +346,77 @@
       "that no representation can compress a GLM expert sub-bit. A1 is SVD of raw weights; an expert fitted against captured activations, or exploiting inter-expert redundancy at scale (A4 across the real 256-expert bank rather than 8 synthetic blocks), remains untried and is exactly the escalation the law demands before an escape.",
       "any whole-model result. Still a four-layer window, still a proxy input distribution."
     ]
-  }
+  },
+  "A4_across_a_REAL_expert_bank": {
+    "at": "2026-07-27T09:20:00Z",
+    "why_this_was_the_most_promising_untried_representation": "On a MoE parent, 256 routed experts serve the same layer. If they share structure, a shared latent basis exploits redundancy that per-expert compression cannot see at all -- and it is the only arm whose cost per expert FALLS as the bank grows. The pilot had only ever run A4 across 8 synthetic blocks of a single tensor.",
+    "bank": {
+      "experts": 70,
+      "expert_shape": [
+        2048,
+        6144
+      ],
+      "tensor_kind": "up_proj",
+      "layer": 10,
+      "constant_mean_cosine_null": 0.12457
+    },
+    "measured": [
+      {
+        "basis": 1,
+        "bpw": 0.22857,
+        "sub_bit": true,
+        "cosine": 0.12501,
+        "relative_output_error": 0.99215
+      },
+      {
+        "basis": 2,
+        "bpw": 0.45715,
+        "sub_bit": true,
+        "cosine": 0.1755,
+        "relative_output_error": 0.98448
+      },
+      {
+        "basis": 4,
+        "bpw": 0.91429,
+        "sub_bit": true,
+        "cosine": 0.24704,
+        "relative_output_error": 0.969
+      },
+      {
+        "basis": 8,
+        "bpw": 1.82858,
+        "sub_bit": false,
+        "cosine": 0.34729,
+        "relative_output_error": 0.93775
+      },
+      {
+        "basis": 16,
+        "bpw": 3.65716,
+        "sub_bit": false,
+        "cosine": 0.48817,
+        "relative_output_error": 0.87274
+      },
+      {
+        "basis": 32,
+        "bpw": 7.31433,
+        "sub_bit": false,
+        "cosine": 0.68523,
+        "relative_output_error": 0.7283
+      }
+    ],
+    "per_expert_baseline": {
+      "arm": "A1",
+      "rank": 64,
+      "bpw": 0.66676,
+      "cosine": 0.29795
+    },
+    "verdict": "NEGATIVE, and cleanly so. A4 at 0.914 BPW returns cosine 0.247; per-expert A1 at 0.667 BPW returns 0.299. The shared basis costs 37 percent MORE and delivers 17 percent LESS.",
+    "what_it_means": "The 70 routed experts sampled here do not share structure a shared linear basis can exploit. Inter-expert redundancy is not the win on this parent -- at least not the linear redundancy an SVD over the expert bank captures. At basis 1, where the shared basis is most aggressive, it sits exactly AT the null.",
+    "significance_for_the_law": "This closes the representation specifically suited to a MoE architecture, which was the strongest remaining sub-bit candidate. Linear representation escalation over routed experts is now measured and exhausted: low-rank per expert, PQ plus residual, additive multi-codebook, protected islands, and shared basis across a real bank have all been swept and none functions sub-bit on the organs that carry the mass."
+  },
+  "what_remains_untried_before_an_escape_is_honest": [
+    "DATA-AWARE fitting: every arm swept so far fits RAW WEIGHTS. Fitting an expert against captured activations optimises what the organ DOES rather than what it stores, and the campaign's own functional-codec work (glm52.functional.moe.v1, GLM52_FUNCTIONAL_CPU_PARITY.json) is exactly that machinery, already frozen and deterministic. It has not been swept as a rate ladder.",
+    "A6 trajectory-stabilized, which stays DATA_BLOCKED on parent trajectory traces the teacher ledger does not hold"
+  ],
+  "controller_position_now": "Five of six arms are measured and negative sub-bit on the organs carrying 97.5 percent of the mass, including the MoE-specific one. That is close to the exhaustion the sub-bit law demands, but it is not yet complete: every swept arm fits raw weights, and the one family that fits FUNCTION rather than weights has not been rate-swept. Preparing an Escape Receipt before running it would skip the most relevant remaining experiment, and the law names weight-space reasoning as exactly what it refuses."
 }

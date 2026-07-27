@@ -12,6 +12,7 @@ members = [
     # independent of the core's API drift. hide-fleet/personalize=REDESIGN, research=ARCHIVE
     # (kept for now to compile hide-backend; trimmed in Phase 1b).
     "crates/hide-core",
+    "crates/hide-you",
     "crates/hide-objects",
     "crates/hide-connectors",
     "crates/hide-serve",

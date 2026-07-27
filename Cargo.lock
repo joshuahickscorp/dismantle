@@ -1547,6 +1547,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "hide-you"
+version = "0.2.2"
+dependencies = [
+ "blake3",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "ulid",
+]
+
+[[package]]
 name = "http"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

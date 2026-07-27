@@ -1,9 +1,9 @@
 {
   "schema": "hawking.heavy_continuation.status.v1",
-  "at": "2026-07-27T13:21:17Z",
+  "at": "2026-07-27T13:35:56Z",
   "endpoint": "RAMANUJAN_SANDBOX_READY",
   "endpoint_reached": false,
-  "honest_position": "The blocking gate is no longer a plan. The activation-aware program is frozen and the full 282-shard streaming pack is executing. What remains genuinely unproven is whether the resulting artifact GENERATES -- per-tensor beats-null is necessary and not sufficient, and only the whole-model gates answer it.",
+  "honest_position": "The blocking gate is executing. It is a ~15 hour job, not the ~5 the packer's own model projected, because fetch and measure are serial rather than overlapped. Whether the artifact GENERATES is still unproven and only the whole-model gates answer it.",
   "machine": {
     "MOP": "STOPPED. Load 4.26 is desktop applications; zero Python workers. The heavy window is genuinely open.",
     "heavy_window": "OPEN, and used for the GLM rebuild pilot",
@@ -74,5 +74,20 @@
   },
   "next_command": "bash HAWKING_LIGHT_ONLY_NEXT_COMMAND.sh",
   "next_scientific_action": "When the pack completes, run tools/condense/glm52_capability_gate.py against it. G_math is one forward pass on '2 + 2 ='. If it passes, G_live. Only an artifact passing both gets its hash bound APPROVED in the capability register, and only then does Odyssey become a live question.",
-  "method_lesson_for_the_next_session": "Never evaluate a compression scheme on synthetic activations. The input distribution is not a detail -- it decides which family wins, and it moved the null five-fold here."
+  "method_lesson_for_the_next_session": "Never evaluate a compression scheme on synthetic activations. The input distribution is not a detail -- it decides which family wins, and it moved the null five-fold here.",
+  "full_pack_run": {
+    "status": "RUNNING, measurement phase",
+    "launched": "2026-07-27T09:20Z",
+    "measured_rate": "3 shards in 4 min 39 s -> ~93 s per shard (22 s fetch + ~70 s measure, serial)",
+    "honest_projection": {
+      "measure_hours": 7.3,
+      "pack_hours": "~7 (re-fetches, then packs)",
+      "total_hours": "~15",
+      "packer_projected": 4.9,
+      "why_the_packer_underestimated": "its model assumed fetch overlapped measurement. They are serial: each shard is fetched, then measured, then evicted. The 2.0 Gbit/s fetch figure was right; the overlap assumption was not."
+    },
+    "eviction": "WORKING. 1 shard resident, free disk rising from 133 to 169 GiB as it proceeds -- it is reclaiming the pilot bodies as it passes them.",
+    "no_parallelism": "the packer measures shards serially and has no worker flag. Adding one to a running job was judged not worth the risk against a correct run already in flight.",
+    "detached": "survives this session. Progress is countable from /tmp/glm_pilot/fullpack2.log and from the resident-shard count."
+  }
 }

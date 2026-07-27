@@ -33,9 +33,10 @@
 //! o_proj in one five-dispatch command buffer after host DSA ranking.
 //!
 //! **Device DSA** (`HAWKING_GLM_GPU_DEVICE_DSA=1`, default off, requires compact
-//! MLA): keeps index projections, affine normalization, q/k RoPE, scores, and
-//! exact radix rank on device, then appends the five compact-attention
-//! dispatches to that same command buffer. The final rank is read only for
+//! MLA): when every dependent projection is device-encodable, folds input/q/kv
+//! RMSNorm, q_a/kv_a/q_b, compact query/key RoPE, the full indexer, exact radix
+//! rank, and compact attention into one command buffer. Host-native projections
+//! retain the qualified host-prelude fallback. The final rank is read only for
 //! diagnostics after attention, never as an attention dependency.
 //!
 //! Gated by [`GPU_RESIDENT_STATE_ENV`] (`HAWKING_GLM_GPU_RESIDENT_STATE`), default
@@ -924,6 +925,9 @@ pub struct ActPool {
     compact_attention_scratch: Mutex<Option<CompactAttentionScratch>>,
     /// Lazily allocated only for device DSA's normalization/RoPE graph.
     device_dsa_transform_scratch: Mutex<Option<DeviceDsaTransformScratch>>,
+    /// Lazily allocated only when compact attention's projection prelude can
+    /// stay entirely device-side.
+    device_attention_prelude_scratch: Mutex<Option<DeviceAttentionPreludeScratch>>,
     /// Grow-once scratch for the default-off expert-wave candidate. Keeping
     /// this lazy preserves the default path's allocation and residency shape.
     expert_wave_scratch: Mutex<Option<ExpertWaveScratch>>,
@@ -1011,6 +1015,53 @@ impl DeviceDsaTransformScratch {
     fn matches(&self, arch: &GlmArch) -> bool {
         self.n_heads == arch.index_n_heads
             && self.head_dim == arch.index_head_dim
+            && self.rope_dim == arch.qk_rope_head_dim
+    }
+}
+
+struct DeviceAttentionPreludeScratch {
+    input_norm_weight: Buffer,
+    q_norm_weight: Buffer,
+    kv_norm_weight: Buffer,
+    cos: Buffer,
+    sin: Buffer,
+    hidden: usize,
+    q_lora_rank: usize,
+    kv_lora_rank: usize,
+    rope_dim: usize,
+}
+
+impl DeviceAttentionPreludeScratch {
+    fn new(ctx: &MetalContext, arch: &GlmArch) -> Result<Self> {
+        if arch.hidden == 0
+            || arch.q_lora_rank == 0
+            || arch.kv_lora_rank == 0
+            || arch.qk_rope_head_dim == 0
+            || arch.qk_rope_head_dim % 2 != 0
+        {
+            return Err(Error::Gravity(format!(
+                "device attention prelude scratch has invalid geometry: hidden={} q_lora={} kv_lora={} rope_dim={}",
+                arch.hidden, arch.q_lora_rank, arch.kv_lora_rank, arch.qk_rope_head_dim
+            )));
+        }
+        let rope_half = arch.qk_rope_head_dim / 2;
+        Ok(Self {
+            input_norm_weight: ctx.new_buffer_checked(arch.hidden * 4)?,
+            q_norm_weight: ctx.new_buffer_checked(arch.q_lora_rank * 4)?,
+            kv_norm_weight: ctx.new_buffer_checked(arch.kv_lora_rank * 4)?,
+            cos: ctx.new_buffer_checked(rope_half * 4)?,
+            sin: ctx.new_buffer_checked(rope_half * 4)?,
+            hidden: arch.hidden,
+            q_lora_rank: arch.q_lora_rank,
+            kv_lora_rank: arch.kv_lora_rank,
+            rope_dim: arch.qk_rope_head_dim,
+        })
+    }
+
+    fn matches(&self, arch: &GlmArch) -> bool {
+        self.hidden == arch.hidden
+            && self.q_lora_rank == arch.q_lora_rank
+            && self.kv_lora_rank == arch.kv_lora_rank
             && self.rope_dim == arch.qk_rope_head_dim
     }
 }
@@ -1109,6 +1160,7 @@ impl ActPool {
             gate_cap,
             compact_attention_scratch: Mutex::new(None),
             device_dsa_transform_scratch: Mutex::new(None),
+            device_attention_prelude_scratch: Mutex::new(None),
             expert_wave_scratch: Mutex::new(None),
         })
     }
@@ -1139,6 +1191,21 @@ impl ActPool {
             .expect("device DSA transform scratch");
         if !scratch.as_ref().is_some_and(|state| state.matches(arch)) {
             *scratch = Some(DeviceDsaTransformScratch::new(ctx, arch)?);
+        }
+        Ok(scratch)
+    }
+
+    fn ensure_device_attention_prelude_scratch(
+        &self,
+        ctx: &MetalContext,
+        arch: &GlmArch,
+    ) -> Result<std::sync::MutexGuard<'_, Option<DeviceAttentionPreludeScratch>>> {
+        let mut scratch = self
+            .device_attention_prelude_scratch
+            .lock()
+            .expect("device attention prelude scratch");
+        if !scratch.as_ref().is_some_and(|state| state.matches(arch)) {
+            *scratch = Some(DeviceAttentionPreludeScratch::new(ctx, arch)?);
         }
         Ok(scratch)
     }
@@ -1211,6 +1278,20 @@ fn record_pq_matvec_ops(params: crate::gravity_glm::gpu::PqParams) {
         0,
         dense_fp,
     );
+}
+
+fn matvecs_are_device_encodable(weights: &GpuWeightCache, names: &[&str]) -> Result<bool> {
+    let mut cache = weights.cache.lock().expect("gpu weight cache");
+    for &name in names {
+        weights.ensure_many_locked(&mut cache, &[name])?;
+        if !matches!(
+            cache.get(name).expect("ensured device-encodability probe"),
+            GpuTensor::Pq { .. } | GpuTensor::NativeGpuBf16 { .. }
+        ) {
+            return Ok(false);
+        }
+    }
+    Ok(true)
 }
 
 /// Matvec into a device buffer. Host-native weights run on the host into the
@@ -1398,76 +1479,227 @@ pub fn forward_resident(
             let topk = {
                 let _attn = cost_ledger::Scope::new(Bucket::AttentionAndIndexShare);
 
-                let w_in = weights.dense(&format!("{p}.input_layernorm.weight"))?;
-                rmsnorm_into(&pool.x, a.hidden, &w_in, a.rms_norm_eps, &pool.h);
-
-                // Q path
-                matvec_into(
-                    &mut tcb,
-                    ctx,
-                    weights,
-                    &format!("{attn_p}.q_a_proj.weight"),
-                    &pool.h,
-                    a.hidden,
-                    &pool.q_a,
-                )?;
-                // KV-a is independent of q_a — co-issue before the wait.
-                matvec_into(
-                    &mut tcb,
-                    ctx,
-                    weights,
-                    &format!("{attn_p}.kv_a_proj_with_mqa.weight"),
-                    &pool.h,
-                    a.hidden,
-                    &pool.compressed,
-                )?;
-                commit(tcb.take(), &session.waits)?;
-
-                let w_q = weights.dense(&format!("{attn_p}.q_a_layernorm.weight"))?;
-                rmsnorm_into(
-                    &pool.q_a,
-                    a.q_lora_rank,
-                    &w_q,
-                    a.rms_norm_eps,
-                    &pool.q_resid,
-                );
-
-                let compressed = read_f32(&pool.compressed, a.kv_lora_rank + a.qk_rope_head_dim);
-                let w_kv = weights.dense(&format!("{attn_p}.kv_a_layernorm.weight"))?;
-                let k_latent = {
-                    let _norm = cost_ledger::Scope::new(Bucket::Norm);
-                    let x = &compressed[..a.kv_lora_rank];
-                    let mean_sq = x.iter().map(|v| v * v).sum::<f32>() / x.len() as f32;
-                    let inv = 1.0 / (mean_sq + a.rms_norm_eps).sqrt();
-                    x.iter()
-                        .zip(&w_kv)
-                        .map(|(v, w)| v * inv * w)
-                        .collect::<Vec<_>>()
+                let input_norm_name = format!("{p}.input_layernorm.weight");
+                let q_a_name = format!("{attn_p}.q_a_proj.weight");
+                let kv_a_name = format!("{attn_p}.kv_a_proj_with_mqa.weight");
+                let q_norm_name = format!("{attn_p}.q_a_layernorm.weight");
+                let kv_norm_name = format!("{attn_p}.kv_a_layernorm.weight");
+                let q_b_name = format!("{attn_p}.q_b_proj.weight");
+                let mut graph_projection_names =
+                    vec![q_a_name.as_str(), kv_a_name.as_str(), q_b_name.as_str()];
+                let indexer_names = if a.indexer_types[layer] == "full" {
+                    let idx = format!("{attn_p}.indexer");
+                    Some([
+                        format!("{idx}.wq_b.weight"),
+                        format!("{idx}.wk.weight"),
+                        format!("{idx}.weights_proj.weight"),
+                    ])
+                } else {
+                    None
                 };
-                write_f32(&pool.k_latent, &k_latent);
-                let k_rot = rope_interleaved(&compressed[a.kv_lora_rank..], &cos, &sin);
+                if let Some(indexer_names) = &indexer_names {
+                    graph_projection_names.extend(indexer_names.iter().map(String::as_str));
+                }
+                let closed_attention_prelude = device_dsa
+                    && compact_attention
+                    && matvecs_are_device_encodable(weights, &graph_projection_names)?;
 
-                matvec_into(
-                    &mut tcb,
-                    ctx,
-                    weights,
-                    &format!("{attn_p}.q_b_proj.weight"),
-                    &pool.q_resid,
-                    a.q_lora_rank,
-                    &pool.q,
-                )?;
-                if !compact_attention {
+                let k_rot = if closed_attention_prelude {
+                    let w_in = weights.dense(&input_norm_name)?;
+                    let w_q = weights.dense(&q_norm_name)?;
+                    let w_kv = weights.dense(&kv_norm_name)?;
+                    if w_in.len() != a.hidden
+                        || w_q.len() != a.q_lora_rank
+                        || w_kv.len() != a.kv_lora_rank
+                    {
+                        return Err(Error::Gravity(format!(
+                            "device attention prelude norm geometry at layer {layer}: input={} expected={} q={} expected={} kv={} expected={}",
+                            w_in.len(),
+                            a.hidden,
+                            w_q.len(),
+                            a.q_lora_rank,
+                            w_kv.len(),
+                            a.kv_lora_rank
+                        )));
+                    }
+                    let mut compact_guard = pool.ensure_compact_attention_scratch(ctx, a)?;
+                    let compact_scratch = compact_guard
+                        .as_mut()
+                        .expect("compact attention scratch initialized");
+                    let mut prelude_guard = pool.ensure_device_attention_prelude_scratch(ctx, a)?;
+                    let prelude = prelude_guard
+                        .as_mut()
+                        .expect("device attention prelude scratch initialized");
+                    write_f32(&prelude.input_norm_weight, &w_in);
+                    write_f32(&prelude.q_norm_weight, &w_q);
+                    write_f32(&prelude.kv_norm_weight, &w_kv);
+                    write_f32(&prelude.cos, &cos);
+                    write_f32(&prelude.sin, &sin);
+                    cost_ledger::record_source_modelled_operations(
+                        (4 * (a.hidden + a.q_lora_rank + a.kv_lora_rank)) as u64,
+                        0,
+                        0,
+                        3,
+                        0,
+                    );
+
+                    {
+                        let wave = tcb.get_or_insert_with(|| TokenCommandBuffer::new(ctx));
+                        route_segment_primitives::encode_rmsnorm(
+                            wave,
+                            &pool.x,
+                            &prelude.input_norm_weight,
+                            &pool.h,
+                            a.hidden,
+                            a.rms_norm_eps,
+                        )?;
+                    }
+                    matvec_into(
+                        &mut tcb, ctx, weights, &q_a_name, &pool.h, a.hidden, &pool.q_a,
+                    )?;
                     matvec_into(
                         &mut tcb,
                         ctx,
                         weights,
-                        &format!("{attn_p}.kv_b_proj.weight"),
-                        &pool.k_latent,
-                        a.kv_lora_rank,
-                        &pool.kv,
+                        &kv_a_name,
+                        &pool.h,
+                        a.hidden,
+                        &pool.compressed,
                     )?;
-                }
-                commit(tcb.take(), &session.waits)?;
+                    {
+                        let wave = tcb.get_or_insert_with(|| TokenCommandBuffer::new(ctx));
+                        route_segment_primitives::encode_rmsnorm(
+                            wave,
+                            &pool.q_a,
+                            &prelude.q_norm_weight,
+                            &pool.q_resid,
+                            a.q_lora_rank,
+                            a.rms_norm_eps,
+                        )?;
+                        route_segment_primitives::encode_rmsnorm(
+                            wave,
+                            &pool.compressed,
+                            &prelude.kv_norm_weight,
+                            &pool.k_latent,
+                            a.kv_lora_rank,
+                            a.rms_norm_eps,
+                        )?;
+                        route_segment_primitives::encode_rope_interleaved(
+                            wave,
+                            &pool.compressed,
+                            a.kv_lora_rank,
+                            &compact_scratch.key_rope,
+                            0,
+                            &prelude.cos,
+                            &prelude.sin,
+                            1,
+                            a.qk_rope_head_dim,
+                            a.qk_rope_head_dim,
+                            a.qk_rope_head_dim,
+                        )?;
+                    }
+                    matvec_into(
+                        &mut tcb,
+                        ctx,
+                        weights,
+                        &q_b_name,
+                        &pool.q_resid,
+                        a.q_lora_rank,
+                        &pool.q,
+                    )?;
+                    {
+                        let wave = tcb.get_or_insert_with(|| TokenCommandBuffer::new(ctx));
+                        route_segment_primitives::encode_copy_head_prefix(
+                            wave,
+                            &pool.q,
+                            &compact_scratch.query_nope,
+                            a.n_heads,
+                            a.qk_nope_head_dim,
+                            a.qk_rope_head_dim,
+                        )?;
+                        route_segment_primitives::encode_rope_interleaved(
+                            wave,
+                            &pool.q,
+                            a.qk_nope_head_dim,
+                            &compact_scratch.query_rope,
+                            0,
+                            &prelude.cos,
+                            &prelude.sin,
+                            a.n_heads,
+                            a.qk_rope_head_dim,
+                            qk,
+                            a.qk_rope_head_dim,
+                        )?;
+                    }
+                    Vec::new()
+                } else {
+                    let w_in = weights.dense(&input_norm_name)?;
+                    rmsnorm_into(&pool.x, a.hidden, &w_in, a.rms_norm_eps, &pool.h);
+
+                    // Q path
+                    matvec_into(
+                        &mut tcb, ctx, weights, &q_a_name, &pool.h, a.hidden, &pool.q_a,
+                    )?;
+                    // KV-a is independent of q_a — co-issue before the wait.
+                    matvec_into(
+                        &mut tcb,
+                        ctx,
+                        weights,
+                        &kv_a_name,
+                        &pool.h,
+                        a.hidden,
+                        &pool.compressed,
+                    )?;
+                    commit(tcb.take(), &session.waits)?;
+
+                    let w_q = weights.dense(&q_norm_name)?;
+                    rmsnorm_into(
+                        &pool.q_a,
+                        a.q_lora_rank,
+                        &w_q,
+                        a.rms_norm_eps,
+                        &pool.q_resid,
+                    );
+
+                    let compressed =
+                        read_f32(&pool.compressed, a.kv_lora_rank + a.qk_rope_head_dim);
+                    let w_kv = weights.dense(&kv_norm_name)?;
+                    let k_latent = {
+                        let _norm = cost_ledger::Scope::new(Bucket::Norm);
+                        let x = &compressed[..a.kv_lora_rank];
+                        let mean_sq = x.iter().map(|v| v * v).sum::<f32>() / x.len() as f32;
+                        let inv = 1.0 / (mean_sq + a.rms_norm_eps).sqrt();
+                        x.iter()
+                            .zip(&w_kv)
+                            .map(|(v, w)| v * inv * w)
+                            .collect::<Vec<_>>()
+                    };
+                    write_f32(&pool.k_latent, &k_latent);
+                    let k_rot = rope_interleaved(&compressed[a.kv_lora_rank..], &cos, &sin);
+
+                    matvec_into(
+                        &mut tcb,
+                        ctx,
+                        weights,
+                        &q_b_name,
+                        &pool.q_resid,
+                        a.q_lora_rank,
+                        &pool.q,
+                    )?;
+                    if !compact_attention {
+                        matvec_into(
+                            &mut tcb,
+                            ctx,
+                            weights,
+                            &format!("{attn_p}.kv_b_proj.weight"),
+                            &pool.k_latent,
+                            a.kv_lora_rank,
+                            &pool.kv,
+                        )?;
+                    }
+                    commit(tcb.take(), &session.waits)?;
+                    k_rot
+                };
 
                 // Expanded path: materialize and append per-head K/V. Compact
                 // mode postpones its latent/RoPE append into the five-dispatch
@@ -1600,6 +1832,7 @@ pub fn forward_resident(
                         &k_rot,
                         &cos,
                         &sin,
+                        closed_attention_prelude,
                         &mut tcb,
                         ctx,
                         &session.waits,
@@ -2106,6 +2339,7 @@ fn compact_attend_into<'a>(
     k_rot: &[f32],
     cos: &[f32],
     sin: &[f32],
+    device_inputs_ready: bool,
     pending: &mut Option<TokenCommandBuffer<'a>>,
     ctx: &'a MetalContext,
     waits: &Cell<u64>,
@@ -2132,20 +2366,35 @@ fn compact_attend_into<'a>(
         .as_mut()
         .expect("compact attention scratch initialized");
     let qk = a.qk_dim();
-    let query = read_f32(&pool.q, a.n_heads * qk);
-    let mut query_nope = vec![0.0f32; a.n_heads * a.qk_nope_head_dim];
-    let mut query_rope = vec![0.0f32; a.n_heads * a.qk_rope_head_dim];
-    for head in 0..a.n_heads {
-        let source = &query[head * qk..(head + 1) * qk];
-        let nope_out = &mut query_nope[head * a.qk_nope_head_dim..(head + 1) * a.qk_nope_head_dim];
-        nope_out.copy_from_slice(&source[..a.qk_nope_head_dim]);
-        let rotated = rope_interleaved(&source[a.qk_nope_head_dim..], cos, sin);
-        let rope_out = &mut query_rope[head * a.qk_rope_head_dim..(head + 1) * a.qk_rope_head_dim];
-        rope_out.copy_from_slice(&rotated);
+    if device_inputs_ready {
+        if topk.host_indices().is_some() || !dsa.device_selection_enabled() {
+            return Err(Error::Gravity(
+                "device compact-attention inputs require device-ranked DSA".into(),
+            ));
+        }
+        if k_rot.len() != 0 {
+            return Err(Error::Gravity(
+                "device compact-attention inputs unexpectedly carried host key RoPE".into(),
+            ));
+        }
+    } else {
+        let query = read_f32(&pool.q, a.n_heads * qk);
+        let mut query_nope = vec![0.0f32; a.n_heads * a.qk_nope_head_dim];
+        let mut query_rope = vec![0.0f32; a.n_heads * a.qk_rope_head_dim];
+        for head in 0..a.n_heads {
+            let source = &query[head * qk..(head + 1) * qk];
+            let nope_out =
+                &mut query_nope[head * a.qk_nope_head_dim..(head + 1) * a.qk_nope_head_dim];
+            nope_out.copy_from_slice(&source[..a.qk_nope_head_dim]);
+            let rotated = rope_interleaved(&source[a.qk_nope_head_dim..], cos, sin);
+            let rope_out =
+                &mut query_rope[head * a.qk_rope_head_dim..(head + 1) * a.qk_rope_head_dim];
+            rope_out.copy_from_slice(&rotated);
+        }
+        write_f32(&scratch.query_nope, &query_nope);
+        write_f32(&scratch.query_rope, &query_rope);
+        write_f32(&scratch.key_rope, k_rot);
     }
-    write_f32(&scratch.query_nope, &query_nope);
-    write_f32(&scratch.query_rope, &query_rope);
-    write_f32(&scratch.key_rope, k_rot);
 
     let attn_p = format!("model.layers.{layer}.self_attn");
     let kv_name = format!("{attn_p}.kv_b_proj.weight");
@@ -3756,6 +4005,49 @@ mod route_segment_primitives {
                 &params as *const _ as *const _,
             );
         })
+    }
+
+    pub(super) fn encode_copy_head_prefix(
+        tcb: &mut TokenCommandBuffer<'_>,
+        q: &Buffer,
+        prefix: &Buffer,
+        n_heads: usize,
+        qk_nope: usize,
+        qk_rope: usize,
+    ) -> Result<()> {
+        let qk = checked_add(qk_nope, qk_rope, "gravity_copy_head_prefix_f32 qk")?;
+        let input = checked_mul(n_heads, qk, "gravity_copy_head_prefix_f32 input")?;
+        let output = checked_mul(n_heads, qk_nope, "gravity_copy_head_prefix_f32 output")?;
+        if output == 0 {
+            return Ok(());
+        }
+        require_f32(q, 0, input, "gravity_copy_head_prefix_f32 q")?;
+        require_f32(prefix, 0, output, "gravity_copy_head_prefix_f32 prefix")?;
+        let params = GlmBuildQParams {
+            n_heads: u32_arg(n_heads, "gravity_copy_head_prefix_f32 n_heads")?,
+            qk_nope: u32_arg(qk_nope, "gravity_copy_head_prefix_f32 qk_nope")?,
+            qk_rope: u32_arg(qk_rope, "gravity_copy_head_prefix_f32 qk_rope")?,
+        };
+        let grid = grid_1d(
+            u32_arg(output, "gravity_copy_head_prefix_f32 output")?,
+            "gravity_copy_head_prefix_f32",
+        )?;
+        let qb = q.clone();
+        let pb = prefix.clone();
+        tcb.dispatch_threads(
+            "gravity_copy_head_prefix_f32",
+            grid,
+            (TG, 1, 1),
+            move |enc| {
+                enc.set_buffer(0, Some(&qb), 0);
+                enc.set_buffer(1, Some(&pb), 0);
+                enc.set_bytes(
+                    2,
+                    std::mem::size_of_val(&params) as u64,
+                    &params as *const _ as *const _,
+                );
+            },
+        )
     }
 
     pub(super) fn encode_append_index_key(
@@ -6406,6 +6698,7 @@ mod tests {
         let qb = f32_buffer(&ctx, &q);
         let qrb = f32_buffer(&ctx, &q_rot);
         let queries = filled_f32_buffer(&ctx, n_heads * qk, f32::NAN);
+        let query_nope = filled_f32_buffer(&ctx, n_heads * qk_nope, f32::NAN);
 
         let k_full = vec![41.0, 42.0, 43.0, 44.0];
         let kfb = f32_buffer(&ctx, &k_full);
@@ -6429,9 +6722,11 @@ mod tests {
         .expect("encode compact MLA append");
         encode_build_queries(&mut tcb, &qb, &qrb, &queries, n_heads, qk_nope, qk_rope)
             .expect("encode build queries");
+        encode_copy_head_prefix(&mut tcb, &qb, &query_nope, n_heads, qk_nope, qk_rope)
+            .expect("encode compact query prefix");
         encode_append_index_key(&mut tcb, &kfb, &index_keys, 2, k_full.len())
             .expect("encode index-key append");
-        assert_eq!(tcb.dispatch_count(), 4);
+        assert_eq!(tcb.dispatch_count(), 5);
         tcb.commit_and_wait().expect("MLA primitive command buffer");
 
         let mut expected_keys = vec![-99.0; 3 * n_heads * qk];
@@ -6459,6 +6754,10 @@ mod tests {
 
         let expected_queries = vec![1.0, 2.0, 31.0, 32.0, 3.0, 4.0, 33.0, 34.0];
         assert_eq!(read_f32(&queries, expected_queries.len()), expected_queries);
+        assert_eq!(
+            read_f32(&query_nope, n_heads * qk_nope),
+            vec![1.0, 2.0, 3.0, 4.0]
+        );
         assert_eq!(
             read_f32(&index_keys, 3 * k_full.len()),
             vec![-55.0, -55.0, -55.0, -55.0, -55.0, -55.0, -55.0, -55.0, 41.0, 42.0, 43.0, 44.0,]
@@ -6489,6 +6788,13 @@ mod tests {
             position,
         )
         .expect_err("undersized compact latent cache must fail before dispatch");
+        assert!(error.to_string().contains("byte range"));
+        assert_eq!(rejected.dispatch_count(), 0);
+
+        let short_prefix = filled_f32_buffer(&ctx, n_heads * qk_nope - 1, 0.0);
+        let error =
+            encode_copy_head_prefix(&mut rejected, &qb, &short_prefix, n_heads, qk_nope, qk_rope)
+                .expect_err("undersized compact query prefix must fail before dispatch");
         assert!(error.to_string().contains("byte range"));
         assert_eq!(rejected.dispatch_count(), 0);
     }
@@ -7195,6 +7501,13 @@ mod tests {
                 .is_none(),
             "ordinary activation-pool construction must allocate no device DSA transform buffers"
         );
+        assert!(
+            pool.device_attention_prelude_scratch
+                .lock()
+                .expect("device attention prelude scratch")
+                .is_none(),
+            "ordinary activation-pool construction must allocate no device attention prelude buffers"
+        );
         let mut transform_guard = pool
             .ensure_device_dsa_transform_scratch(&ctx, &transform_arch)
             .expect("lazy device DSA transform scratch");
@@ -7212,6 +7525,30 @@ mod tests {
         assert_eq!(
             transform.norm_weight.length(),
             (transform_arch.index_head_dim * 4) as u64
+        );
+        drop(transform_guard);
+
+        let mut prelude_guard = pool
+            .ensure_device_attention_prelude_scratch(&ctx, &transform_arch)
+            .expect("lazy device attention prelude scratch");
+        let prelude = prelude_guard
+            .as_mut()
+            .expect("device attention prelude scratch initialized");
+        assert_eq!(
+            prelude.input_norm_weight.length(),
+            (transform_arch.hidden * 4) as u64
+        );
+        assert_eq!(
+            prelude.q_norm_weight.length(),
+            (transform_arch.q_lora_rank * 4) as u64
+        );
+        assert_eq!(
+            prelude.kv_norm_weight.length(),
+            (transform_arch.kv_lora_rank * 4) as u64
+        );
+        assert_eq!(
+            prelude.cos.length(),
+            (transform_arch.qk_rope_head_dim / 2 * 4) as u64
         );
     }
 

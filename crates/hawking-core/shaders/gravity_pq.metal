@@ -873,6 +873,20 @@ kernel void gravity_glm_build_queries(
     }
 }
 
+// Copy the per-head non-RoPE prefix from raw q into the compact MLA layout.
+kernel void gravity_copy_head_prefix_f32(
+    device const float *q [[buffer(0)]],
+    device       float *prefix [[buffer(1)]],
+    constant GravityGlmBuildQParams &p [[buffer(2)]],
+    uint id [[thread_position_in_grid]])
+{
+    uint total = p.n_heads * p.qk_nope;
+    if (id >= total) { return; }
+    uint head = id / p.qk_nope;
+    uint d = id - head * p.qk_nope;
+    prefix[id] = q[head * (p.qk_nope + p.qk_rope) + d];
+}
+
 // DSA index scores: for each cached index key, sum_h w_h * relu(dot(q_h, k) * dim_scale).
 struct GravityGlmDsaParams {
     uint n_keys;

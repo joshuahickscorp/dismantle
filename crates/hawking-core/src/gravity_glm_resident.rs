@@ -51,6 +51,10 @@
 //! rank, and compact attention into one command buffer. Host-native projections
 //! retain the qualified host-prelude fallback. The final rank is read only for
 //! diagnostics after attention, never as an attention dependency.
+//! `HAWKING_GLM_GPU_COMPACT_ATTENTION_ICB=1` additionally replays the full
+//! indexer's six fixed-grid pre-score commands and compact attention's
+//! five-command post-rank DAG; exact active-length DSA scoring and radix rank
+//! remain directly encoded between those replay boundaries.
 //!
 //! Gated by [`GPU_RESIDENT_STATE_ENV`] (`HAWKING_GLM_GPU_RESIDENT_STATE`), default
 //! off, so the host-state path remains the parity oracle.
@@ -1818,6 +1822,9 @@ pub struct ActPool {
     /// growth changes persistent addresses and therefore rebuilds only the
     /// affected layer entry.
     compact_attention_replay_layers: Mutex<Vec<Option<CachedCompactAttentionReplayGraph>>>,
+    /// One lazily captured fixed-grid full-indexer pre-score DAG per layer.
+    /// The exact active-length score and radix stages remain direct.
+    device_dsa_pre_score_replay_layers: Mutex<Vec<Option<CachedDeviceDsaPreScoreReplayGraph>>>,
 }
 
 struct CompactAttentionScratch {
@@ -2065,6 +2072,9 @@ impl ActPool {
             persistent_expert_layers: Mutex::new((0..arch.n_layers).map(|_| None).collect()),
             final_head_replay: Mutex::new(None),
             compact_attention_replay_layers: Mutex::new((0..arch.n_layers).map(|_| None).collect()),
+            device_dsa_pre_score_replay_layers: Mutex::new(
+                (0..arch.n_layers).map(|_| None).collect(),
+            ),
         })
     }
 
@@ -2665,6 +2675,7 @@ pub fn forward_resident(
                                 arch,
                                 &attn_p,
                                 pool,
+                                layer,
                                 &session.dsa.index_keys[layer],
                                 &session.dsa.sequence_scratch.index_scores_device,
                                 session.dsa.ranked_indices()?,
@@ -2672,6 +2683,7 @@ pub fn forward_resident(
                                 pos,
                                 &cos,
                                 &sin,
+                                closed_attention_prelude,
                                 &mut tcb,
                                 ctx,
                             )?;
@@ -3960,6 +3972,7 @@ fn indexer_topk_device<'a>(
     arch: &GlmArch,
     attn_p: &str,
     pool: &ActPool,
+    layer: usize,
     index_key_buffer: &Buffer,
     score_buffer: &Buffer,
     ranked_indices: &Buffer,
@@ -3967,31 +3980,16 @@ fn indexer_topk_device<'a>(
     pos: usize,
     cos: &[f32],
     sin: &[f32],
+    replay_inputs_ready: bool,
     tcb: &mut Option<TokenCommandBuffer<'a>>,
     ctx: &'a MetalContext,
 ) -> Result<usize> {
     let a = arch;
     let (ih, idim, rot) = (a.index_n_heads, a.index_head_dim, a.qk_rope_head_dim);
     let idx = format!("{attn_p}.indexer");
-
-    matvec_into(
-        tcb,
-        ctx,
-        weights,
-        &format!("{idx}.wq_b.weight"),
-        &pool.q_resid,
-        a.q_lora_rank,
-        &pool.idx_q,
-    )?;
-    matvec_into(
-        tcb,
-        ctx,
-        weights,
-        &format!("{idx}.wk.weight"),
-        &pool.h,
-        a.hidden,
-        &pool.idx_k_raw,
-    )?;
+    let wq_name = format!("{idx}.wq_b.weight");
+    let wk_name = format!("{idx}.wk.weight");
+    let head_weight_name = format!("{idx}.weights_proj.weight");
     let kw = weights.dense(&format!("{idx}.k_norm.weight"))?;
     let kb = weights.dense(&format!("{idx}.k_norm.bias"))?;
     if kw.len() != idim || kb.len() != idim {
@@ -4018,16 +4016,6 @@ fn indexer_topk_device<'a>(
     write_f32(&transform.cos, cos);
     write_f32(&transform.sin, sin);
 
-    matvec_into(
-        tcb,
-        ctx,
-        weights,
-        &format!("{idx}.weights_proj.weight"),
-        &pool.h,
-        a.hidden,
-        &pool.idx_head_w,
-    )?;
-
     let n_keys = active_sequence_len(pos, cache_capacity, "resident device DSA index cache")?;
     let k = a.index_topk.min(n_keys);
     crate::cost_ledger::record_source_modelled_operations(
@@ -4039,47 +4027,130 @@ fn indexer_topk_device<'a>(
         0,
         0,
     );
+    let projection_names = [
+        wq_name.as_str(),
+        wk_name.as_str(),
+        head_weight_name.as_str(),
+    ];
+    let replay_projections = if gpu_compact_attention_icb_enabled() && replay_inputs_ready {
+        device_replay_projection_triplet(weights, projection_names)?
+    } else {
+        None
+    };
+    if let Some(projections) = replay_projections {
+        record_device_replay_projection_cost(&wq_name, &projections[0]);
+        record_device_replay_projection_cost(&wk_name, &projections[1]);
+        record_device_replay_projection_cost(&head_weight_name, &projections[2]);
+        let inputs = DeviceDsaPreScoreReplayInputs {
+            layer,
+            n_heads: ih,
+            head_dim: idim,
+            rope_dim: rot,
+            norm_eps: 1e-6,
+            projections: &projections,
+            q_resid: &pool.q_resid,
+            h: &pool.h,
+            idx_q: &pool.idx_q,
+            idx_k_raw: &pool.idx_k_raw,
+            idx_head_w: &pool.idx_head_w,
+            norm_weight: &transform.norm_weight,
+            norm_bias: &transform.norm_bias,
+            cos: &transform.cos,
+            sin: &transform.sin,
+            query: &transform.query,
+            index_keys: index_key_buffer,
+        };
+        let key = inputs.key();
+        let mut replay_layers = pool
+            .device_dsa_pre_score_replay_layers
+            .lock()
+            .expect("device DSA pre-score replay layers");
+        let replay_layer_count = replay_layers.len();
+        let slot = replay_layers.get_mut(layer).ok_or_else(|| {
+            Error::Gravity(format!(
+                "device DSA pre-score replay layer {layer} exceeds pool extent {replay_layer_count}"
+            ))
+        })?;
+        if !slot.as_ref().is_some_and(|entry| entry.key == key) {
+            *slot = Some(build_device_dsa_pre_score_replay_graph(ctx, &inputs, pos)?);
+        }
+        let replay = slot
+            .as_ref()
+            .expect("device DSA pre-score replay graph just populated");
+        replay.update_position(pos)?;
+        let wave = tcb.get_or_insert_with(|| TokenCommandBuffer::new(ctx));
+        wave.execute_replayable_graph(&replay.graph)?;
+    } else {
+        matvec_into(
+            tcb,
+            ctx,
+            weights,
+            &wq_name,
+            &pool.q_resid,
+            a.q_lora_rank,
+            &pool.idx_q,
+        )?;
+        matvec_into(
+            tcb,
+            ctx,
+            weights,
+            &wk_name,
+            &pool.h,
+            a.hidden,
+            &pool.idx_k_raw,
+        )?;
+        matvec_into(
+            tcb,
+            ctx,
+            weights,
+            &head_weight_name,
+            &pool.h,
+            a.hidden,
+            &pool.idx_head_w,
+        )?;
+        let wave = tcb.get_or_insert_with(|| TokenCommandBuffer::new(ctx));
+        route_segment_primitives::encode_layernorm_affine(
+            wave,
+            &pool.idx_k_raw,
+            &transform.norm_weight,
+            &transform.norm_bias,
+            &pool.idx_k_raw,
+            idim,
+            1e-6,
+        )?;
+        let key_offset = pos.checked_mul(idim).ok_or_else(|| {
+            Error::Gravity(format!(
+                "device DSA index-key offset overflow: position={pos} dim={idim}"
+            ))
+        })?;
+        route_segment_primitives::encode_rope_prefix_tail_positioned(
+            wave,
+            &pool.idx_k_raw,
+            0,
+            index_key_buffer,
+            key_offset,
+            &transform.cos,
+            &transform.sin,
+            1,
+            rot,
+            idim,
+            idim,
+        )?;
+        route_segment_primitives::encode_rope_prefix_tail(
+            wave,
+            &pool.idx_q,
+            0,
+            &transform.query,
+            0,
+            &transform.cos,
+            &transform.sin,
+            ih,
+            rot,
+            idim,
+            idim,
+        )?;
+    }
     let wave = tcb.get_or_insert_with(|| TokenCommandBuffer::new(ctx));
-    route_segment_primitives::encode_layernorm_affine(
-        wave,
-        &pool.idx_k_raw,
-        &transform.norm_weight,
-        &transform.norm_bias,
-        &pool.idx_k_raw,
-        idim,
-        1e-6,
-    )?;
-    let key_offset = pos.checked_mul(idim).ok_or_else(|| {
-        Error::Gravity(format!(
-            "device DSA index-key offset overflow: position={pos} dim={idim}"
-        ))
-    })?;
-    route_segment_primitives::encode_rope_prefix_tail_positioned(
-        wave,
-        &pool.idx_k_raw,
-        0,
-        index_key_buffer,
-        key_offset,
-        &transform.cos,
-        &transform.sin,
-        1,
-        rot,
-        idim,
-        idim,
-    )?;
-    route_segment_primitives::encode_rope_prefix_tail(
-        wave,
-        &pool.idx_q,
-        0,
-        &transform.query,
-        0,
-        &transform.cos,
-        &transform.sin,
-        ih,
-        rot,
-        idim,
-        idim,
-    )?;
     route_segment_primitives::encode_dsa_scores(
         wave,
         &transform.query,
@@ -4239,7 +4310,7 @@ mod route_segment_primitives {
     const TG: u32 = 256;
 
     #[repr(C)]
-    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, bytemuck::Pod, bytemuck::Zeroable)]
     pub(super) struct GlmRopeParams {
         pub n_heads: u32,
         pub rotary_dim: u32,
@@ -6309,6 +6380,488 @@ fn write_replay_parameter<T: bytemuck::Pod>(
         );
     }
     Ok(())
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum DeviceReplayProjectionGeometry {
+    NativeBf16 { rows: u32, cols: u32 },
+    Pq(crate::gravity_glm::gpu::PqParams),
+}
+
+#[derive(Clone)]
+enum DeviceReplayProjection {
+    NativeBf16 {
+        weight: Buffer,
+        rows: u32,
+        cols: u32,
+    },
+    Pq {
+        codebooks: Buffer,
+        codes: Buffer,
+        params: crate::gravity_glm::gpu::PqParams,
+    },
+}
+
+impl DeviceReplayProjection {
+    fn geometry(&self) -> DeviceReplayProjectionGeometry {
+        match self {
+            Self::NativeBf16 { rows, cols, .. } => DeviceReplayProjectionGeometry::NativeBf16 {
+                rows: *rows,
+                cols: *cols,
+            },
+            Self::Pq { params, .. } => DeviceReplayProjectionGeometry::Pq(*params),
+        }
+    }
+
+    fn rows_cols(&self) -> (u32, u32) {
+        match self.geometry() {
+            DeviceReplayProjectionGeometry::NativeBf16 { rows, cols } => (rows, cols),
+            DeviceReplayProjectionGeometry::Pq(params) => (params.rows, params.cols),
+        }
+    }
+
+    fn append_addresses(&self, addresses: &mut Vec<u64>) {
+        match self {
+            Self::NativeBf16 { weight, .. } => addresses.push(weight.gpu_address()),
+            Self::Pq {
+                codebooks, codes, ..
+            } => {
+                addresses.push(codebooks.gpu_address());
+                addresses.push(codes.gpu_address());
+            }
+        }
+    }
+}
+
+fn device_replay_projection_triplet(
+    weights: &GpuWeightCache,
+    names: [&str; 3],
+) -> Result<Option<[DeviceReplayProjection; 3]>> {
+    let mut cache = weights.cache.lock().expect("gpu weight cache");
+    weights.ensure_many_locked(&mut cache, &names)?;
+    let projection = |name: &str| -> Option<DeviceReplayProjection> {
+        let tensor = cache.get(name).expect("ensured replay projection");
+        record_routed_tensor_representation(name, tensor);
+        match tensor {
+            GpuTensor::NativeGpuBf16 { buf, rows, cols } => {
+                Some(DeviceReplayProjection::NativeBf16 {
+                    weight: buf.clone(),
+                    rows: *rows,
+                    cols: *cols,
+                })
+            }
+            GpuTensor::Pq {
+                codebooks,
+                codes,
+                params,
+            } => Some(DeviceReplayProjection::Pq {
+                codebooks: codebooks.clone(),
+                codes: codes.clone(),
+                params: *params,
+            }),
+            GpuTensor::NativeCpu(_) => None,
+        }
+    };
+    let Some(first) = projection(names[0]) else {
+        return Ok(None);
+    };
+    let Some(second) = projection(names[1]) else {
+        return Ok(None);
+    };
+    let Some(third) = projection(names[2]) else {
+        return Ok(None);
+    };
+    Ok(Some([first, second, third]))
+}
+
+fn record_device_replay_projection_cost(name: &str, projection: &DeviceReplayProjection) {
+    crate::cost_ledger::record_matvec_call();
+    match projection {
+        DeviceReplayProjection::NativeBf16 { weight, rows, cols } => {
+            crate::cost_ledger::record_active_bytes_for(name, weight.length());
+            record_dense_matvec_ops(*rows as u64, *cols as u64);
+        }
+        DeviceReplayProjection::Pq {
+            codebooks,
+            codes,
+            params,
+        } => {
+            crate::cost_ledger::record_active_bytes_for(
+                name,
+                codebooks.length().saturating_add(codes.length()),
+            );
+            record_pq_matvec_ops(*params);
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+enum ReplayProjectionParameterOffsets {
+    NativeBf16 { rows: usize, cols: usize },
+    Pq { params: usize },
+}
+
+fn append_replay_projection_parameters(
+    parameters: &mut ReplayParameterArena,
+    projection: &DeviceReplayProjection,
+) -> ReplayProjectionParameterOffsets {
+    match projection {
+        DeviceReplayProjection::NativeBf16 { rows, cols, .. } => {
+            ReplayProjectionParameterOffsets::NativeBf16 {
+                rows: parameters.push(rows),
+                cols: parameters.push(cols),
+            }
+        }
+        DeviceReplayProjection::Pq { params, .. } => ReplayProjectionParameterOffsets::Pq {
+            params: parameters.push(params),
+        },
+    }
+}
+
+fn build_replay_projection_stage(
+    projection: &DeviceReplayProjection,
+    input: &Buffer,
+    output: &Buffer,
+    parameter_buffer: &Buffer,
+    offsets: ReplayProjectionParameterOffsets,
+    label: &str,
+) -> Result<ReplayComputeStage> {
+    const TG: u32 = 256;
+    let stage = match (projection, offsets) {
+        (
+            DeviceReplayProjection::NativeBf16 { weight, rows, .. },
+            ReplayProjectionParameterOffsets::NativeBf16 {
+                rows: rows_offset,
+                cols: cols_offset,
+            },
+        ) => ReplayComputeStage::new(
+            "gemv_native_bf16_seq",
+            (replay_grid(*rows, TG, TG, label)?, 1, 1),
+            (TG, 1, 1),
+            vec![
+                ReplayBufferBinding::read(0, weight, 0),
+                ReplayBufferBinding::read(1, input, 0),
+                ReplayBufferBinding::write(2, output, 0),
+                ReplayBufferBinding::read(3, parameter_buffer, rows_offset),
+                ReplayBufferBinding::read(4, parameter_buffer, cols_offset),
+            ],
+        ),
+        (
+            DeviceReplayProjection::Pq {
+                codebooks,
+                codes,
+                params,
+            },
+            ReplayProjectionParameterOffsets::Pq {
+                params: params_offset,
+            },
+        ) => ReplayComputeStage::new(
+            "gravity_pq_matvec",
+            (replay_grid(params.rows, 8, TG, label)?, 1, 1),
+            (TG, 1, 1),
+            vec![
+                ReplayBufferBinding::read(0, codebooks, 0),
+                ReplayBufferBinding::read(1, codes, 0),
+                ReplayBufferBinding::read(2, input, 0),
+                ReplayBufferBinding::write(3, output, 0),
+                ReplayBufferBinding::read(4, parameter_buffer, params_offset),
+            ],
+        ),
+        _ => {
+            return Err(Error::Gravity(format!(
+                "{label} projection geometry and parameter layout disagree"
+            )))
+        }
+    };
+    Ok(stage.with_ledger_stage(crate::cost_ledger::GpuStage::AttentionAndIndexShare))
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct DeviceDsaPreScoreReplayKey {
+    layer: usize,
+    n_heads: usize,
+    head_dim: usize,
+    rope_dim: usize,
+    q_lora_rank: usize,
+    hidden: usize,
+    norm_eps_bits: u32,
+    projection_geometry: [DeviceReplayProjectionGeometry; 3],
+    buffer_addresses: Vec<u64>,
+}
+
+struct CachedDeviceDsaPreScoreReplayGraph {
+    key: DeviceDsaPreScoreReplayKey,
+    graph: ReplayableComputeGraph,
+    parameter_buffer: Buffer,
+    positioned_rope_parameter_offset: usize,
+}
+
+impl CachedDeviceDsaPreScoreReplayGraph {
+    fn update_position(&self, position: usize) -> Result<()> {
+        let output_element_offset = position.checked_mul(self.key.head_dim).ok_or_else(|| {
+            Error::Gravity(format!(
+                "device DSA replay index-key offset overflow: position={position} dim={}",
+                self.key.head_dim
+            ))
+        })?;
+        let params = route_segment_primitives::GlmPositionedRopeParams {
+            n_heads: 1,
+            rotary_dim: replay_u32(self.key.rope_dim, "device DSA replay RoPE dimension")?,
+            in_stride: replay_u32(self.key.head_dim, "device DSA replay input stride")?,
+            out_stride: replay_u32(self.key.head_dim, "device DSA replay output stride")?,
+            input_element_offset: 0,
+            output_element_offset: replay_u32(
+                output_element_offset,
+                "device DSA replay index-key offset",
+            )?,
+        };
+        write_replay_parameter(
+            &self.parameter_buffer,
+            self.positioned_rope_parameter_offset,
+            &params,
+            "device DSA positioned key RoPE",
+        )?;
+        crate::cost_ledger::record_transfer(
+            std::mem::size_of_val(&params) as u64,
+            true,
+            "device_dsa_pre_score_icb_parameter_update",
+        );
+        Ok(())
+    }
+}
+
+struct DeviceDsaPreScoreReplayInputs<'a> {
+    layer: usize,
+    n_heads: usize,
+    head_dim: usize,
+    rope_dim: usize,
+    norm_eps: f32,
+    projections: &'a [DeviceReplayProjection; 3],
+    q_resid: &'a Buffer,
+    h: &'a Buffer,
+    idx_q: &'a Buffer,
+    idx_k_raw: &'a Buffer,
+    idx_head_w: &'a Buffer,
+    norm_weight: &'a Buffer,
+    norm_bias: &'a Buffer,
+    cos: &'a Buffer,
+    sin: &'a Buffer,
+    query: &'a Buffer,
+    index_keys: &'a Buffer,
+}
+
+impl DeviceDsaPreScoreReplayInputs<'_> {
+    fn key(&self) -> DeviceDsaPreScoreReplayKey {
+        let mut buffer_addresses = Vec::with_capacity(18);
+        for projection in self.projections {
+            projection.append_addresses(&mut buffer_addresses);
+        }
+        buffer_addresses.extend([
+            self.q_resid.gpu_address(),
+            self.h.gpu_address(),
+            self.idx_q.gpu_address(),
+            self.idx_k_raw.gpu_address(),
+            self.idx_head_w.gpu_address(),
+            self.norm_weight.gpu_address(),
+            self.norm_bias.gpu_address(),
+            self.cos.gpu_address(),
+            self.sin.gpu_address(),
+            self.query.gpu_address(),
+            self.index_keys.gpu_address(),
+        ]);
+        DeviceDsaPreScoreReplayKey {
+            layer: self.layer,
+            n_heads: self.n_heads,
+            head_dim: self.head_dim,
+            rope_dim: self.rope_dim,
+            q_lora_rank: self.projections[0].rows_cols().1 as usize,
+            hidden: self.projections[1].rows_cols().1 as usize,
+            norm_eps_bits: self.norm_eps.to_bits(),
+            projection_geometry: [
+                self.projections[0].geometry(),
+                self.projections[1].geometry(),
+                self.projections[2].geometry(),
+            ],
+            buffer_addresses,
+        }
+    }
+}
+
+fn build_device_dsa_pre_score_replay_graph(
+    ctx: &MetalContext,
+    inputs: &DeviceDsaPreScoreReplayInputs<'_>,
+    position: usize,
+) -> Result<CachedDeviceDsaPreScoreReplayGraph> {
+    const TG: u32 = 256;
+    if inputs.n_heads == 0
+        || inputs.head_dim == 0
+        || inputs.rope_dim == 0
+        || inputs.rope_dim % 2 != 0
+        || inputs.rope_dim > inputs.head_dim
+    {
+        return Err(Error::Gravity(format!(
+            "device DSA pre-score replay has invalid geometry: heads={} head_dim={} rope_dim={}",
+            inputs.n_heads, inputs.head_dim, inputs.rope_dim
+        )));
+    }
+    let (wq_rows, q_lora_rank) = inputs.projections[0].rows_cols();
+    let (wk_rows, hidden) = inputs.projections[1].rows_cols();
+    let (head_rows, head_cols) = inputs.projections[2].rows_cols();
+    let expected_q_rows = replay_u32(
+        inputs
+            .n_heads
+            .checked_mul(inputs.head_dim)
+            .ok_or_else(|| Error::Gravity("device DSA replay query rows overflow".into()))?,
+        "device DSA replay query rows",
+    )?;
+    if wq_rows != expected_q_rows
+        || wk_rows != inputs.head_dim as u32
+        || head_rows != inputs.n_heads as u32
+        || head_cols != hidden
+        || q_lora_rank == 0
+        || hidden == 0
+    {
+        return Err(Error::Gravity(format!(
+            "device DSA pre-score projection mismatch: wq={wq_rows}x{q_lora_rank}, wk={wk_rows}x{hidden}, head={head_rows}x{head_cols}, expected wq rows={expected_q_rows}, wk rows={}, head={}x{hidden}",
+            inputs.head_dim, inputs.n_heads
+        )));
+    }
+    let output_element_offset = position.checked_mul(inputs.head_dim).ok_or_else(|| {
+        Error::Gravity(format!(
+            "device DSA replay index-key offset overflow: position={position} dim={}",
+            inputs.head_dim
+        ))
+    })?;
+    let required_index_elements = output_element_offset
+        .checked_add(inputs.head_dim)
+        .ok_or_else(|| Error::Gravity("device DSA replay index-key extent overflow".into()))?;
+    if (required_index_elements as u64).saturating_mul(4) > inputs.index_keys.length() {
+        return Err(Error::Gravity(format!(
+            "device DSA replay index-key extent {required_index_elements} exceeds {} f32 elements",
+            inputs.index_keys.length() / 4
+        )));
+    }
+
+    let mut parameters = ReplayParameterArena::default();
+    let projection_offsets = [
+        append_replay_projection_parameters(&mut parameters, &inputs.projections[0]),
+        append_replay_projection_parameters(&mut parameters, &inputs.projections[1]),
+        append_replay_projection_parameters(&mut parameters, &inputs.projections[2]),
+    ];
+    let head_dim = replay_u32(inputs.head_dim, "device DSA replay head dimension")?;
+    let norm_n_offset = parameters.push(&head_dim);
+    let norm_eps_offset = parameters.push(&inputs.norm_eps);
+    let positioned_rope = route_segment_primitives::GlmPositionedRopeParams {
+        n_heads: 1,
+        rotary_dim: replay_u32(inputs.rope_dim, "device DSA replay RoPE dimension")?,
+        in_stride: head_dim,
+        out_stride: head_dim,
+        input_element_offset: 0,
+        output_element_offset: replay_u32(
+            output_element_offset,
+            "device DSA replay index-key offset",
+        )?,
+    };
+    let positioned_rope_parameter_offset = parameters.push(&positioned_rope);
+    let query_rope = route_segment_primitives::GlmRopeParams {
+        n_heads: replay_u32(inputs.n_heads, "device DSA replay head count")?,
+        rotary_dim: positioned_rope.rotary_dim,
+        in_stride: head_dim,
+        out_stride: head_dim,
+    };
+    let query_rope_offset = parameters.push(&query_rope);
+    let parameter_buffer = parameters.finish(ctx, "device DSA pre-score replay graph")?;
+
+    let mut stages = vec![
+        build_replay_projection_stage(
+            &inputs.projections[0],
+            inputs.q_resid,
+            inputs.idx_q,
+            &parameter_buffer,
+            projection_offsets[0],
+            "device DSA replay wq_b",
+        )?,
+        build_replay_projection_stage(
+            &inputs.projections[1],
+            inputs.h,
+            inputs.idx_k_raw,
+            &parameter_buffer,
+            projection_offsets[1],
+            "device DSA replay wk",
+        )?,
+        build_replay_projection_stage(
+            &inputs.projections[2],
+            inputs.h,
+            inputs.idx_head_w,
+            &parameter_buffer,
+            projection_offsets[2],
+            "device DSA replay head weights",
+        )?,
+    ];
+    let norm = ReplayComputeStage::new(
+        "gravity_layernorm_affine_f32",
+        (TG, 1, 1),
+        (TG, 1, 1),
+        vec![
+            ReplayBufferBinding::read(0, inputs.idx_k_raw, 0),
+            ReplayBufferBinding::read(1, inputs.norm_weight, 0),
+            ReplayBufferBinding::read(2, inputs.norm_bias, 0),
+            ReplayBufferBinding::write(3, inputs.idx_k_raw, 0),
+            ReplayBufferBinding::read(4, &parameter_buffer, norm_n_offset),
+            ReplayBufferBinding::read(5, &parameter_buffer, norm_eps_offset),
+        ],
+    )
+    .with_threadgroup_memory_length(0, TG as usize * 4)
+    .with_barrier_before()
+    .with_ledger_stage(crate::cost_ledger::GpuStage::AttentionAndIndexShare);
+    let key_rope_grid = replay_grid(head_dim, TG, TG, "device DSA replay key RoPE")?;
+    let key_rope = ReplayComputeStage::new(
+        "gravity_rope_prefix_tail_positioned_f32",
+        (key_rope_grid, 1, 1),
+        (TG, 1, 1),
+        vec![
+            ReplayBufferBinding::read(0, inputs.idx_k_raw, 0),
+            ReplayBufferBinding::write(1, inputs.index_keys, 0),
+            ReplayBufferBinding::read(2, inputs.cos, 0),
+            ReplayBufferBinding::read(3, inputs.sin, 0),
+            ReplayBufferBinding::read(4, &parameter_buffer, positioned_rope_parameter_offset),
+        ],
+    )
+    .with_barrier_before()
+    .with_ledger_stage(crate::cost_ledger::GpuStage::AttentionAndIndexShare);
+    let query_rope_elements = replay_u32(
+        inputs
+            .n_heads
+            .checked_mul(inputs.head_dim)
+            .ok_or_else(|| Error::Gravity("device DSA replay query RoPE grid overflow".into()))?,
+        "device DSA replay query RoPE elements",
+    )?;
+    let query_rope = ReplayComputeStage::new(
+        "gravity_rope_prefix_tail_f32",
+        (
+            replay_grid(query_rope_elements, TG, TG, "device DSA replay query RoPE")?,
+            1,
+            1,
+        ),
+        (TG, 1, 1),
+        vec![
+            ReplayBufferBinding::read(0, inputs.idx_q, 0),
+            ReplayBufferBinding::write(1, inputs.query, 0),
+            ReplayBufferBinding::read(2, inputs.cos, 0),
+            ReplayBufferBinding::read(3, inputs.sin, 0),
+            ReplayBufferBinding::read(4, &parameter_buffer, query_rope_offset),
+        ],
+    )
+    .with_barrier_before()
+    .with_ledger_stage(crate::cost_ledger::GpuStage::AttentionAndIndexShare);
+    stages.extend([norm, key_rope, query_rope]);
+    let graph = ReplayableComputeGraph::new(ctx, stages)?;
+    Ok(CachedDeviceDsaPreScoreReplayGraph {
+        key: inputs.key(),
+        graph,
+        parameter_buffer,
+        positioned_rope_parameter_offset,
+    })
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -12080,6 +12633,189 @@ mod tests {
         .expect_err("in-place prefix assembly is not alias safe");
         assert!(error.to_string().contains("non-aliasing"));
         assert_eq!(rejected.dispatch_count(), 0);
+    }
+
+    #[test]
+    fn device_dsa_pre_score_icb_replays_six_fixed_grid_commands_bit_exact() {
+        let Ok(ctx) = MetalContext::new() else {
+            return;
+        };
+        const HEADS: usize = 2;
+        const HEAD_DIM: usize = 4;
+        const ROPE_DIM: usize = 2;
+        const Q_LORA: usize = 3;
+        const HIDDEN: usize = 3;
+        const CAPACITY: usize = 3;
+        const POSITION: usize = 1;
+
+        let projection_from = |tensor: GpuTensor| match tensor {
+            GpuTensor::NativeGpuBf16 { buf, rows, cols } => DeviceReplayProjection::NativeBf16 {
+                weight: buf,
+                rows,
+                cols,
+            },
+            _ => panic!("native replay projection fixture"),
+        };
+        let projections = [
+            projection_from(native_bf16_tensor(&ctx, HEADS * HEAD_DIM, Q_LORA, 11).0),
+            projection_from(native_bf16_tensor(&ctx, HEAD_DIM, HIDDEN, 17).0),
+            projection_from(native_bf16_tensor(&ctx, HEADS, HIDDEN, 23).0),
+        ];
+        let q_resid = f32_buffer(&ctx, &[0.5, -1.25, 2.0]);
+        let h = f32_buffer(&ctx, &[1.5, 0.25, -0.75]);
+        let norm_weight = f32_buffer(&ctx, &[1.0, 0.75, 1.25, 0.5]);
+        let norm_bias = f32_buffer(&ctx, &[0.125, -0.25, 0.5, -0.75]);
+        let cos = f32_buffer(&ctx, &[0.875]);
+        let sin = f32_buffer(&ctx, &[0.125]);
+
+        let direct_q = filled_f32_buffer(&ctx, HEADS * HEAD_DIM, f32::NAN);
+        let direct_k = filled_f32_buffer(&ctx, HEAD_DIM, f32::NAN);
+        let direct_head_w = filled_f32_buffer(&ctx, HEADS, f32::NAN);
+        let direct_query = filled_f32_buffer(&ctx, HEADS * HEAD_DIM, f32::NAN);
+        let direct_index_keys = filled_f32_buffer(&ctx, CAPACITY * HEAD_DIM, -99.0);
+        let mut direct = TokenCommandBuffer::new(&ctx);
+        for (projection, input, output) in [
+            (&projections[0], &q_resid, &direct_q),
+            (&projections[1], &h, &direct_k),
+            (&projections[2], &h, &direct_head_w),
+        ] {
+            let DeviceReplayProjection::NativeBf16 { weight, rows, cols } = projection else {
+                unreachable!("native fixture");
+            };
+            encode_gemv_native_bf16_seq(&mut direct, weight, *rows, *cols, input, output)
+                .expect("encode direct pre-score projection");
+        }
+        encode_layernorm_affine(
+            &mut direct,
+            &direct_k,
+            &norm_weight,
+            &norm_bias,
+            &direct_k,
+            HEAD_DIM,
+            1e-6,
+        )
+        .expect("encode direct index-key norm");
+        encode_rope_prefix_tail_positioned(
+            &mut direct,
+            &direct_k,
+            0,
+            &direct_index_keys,
+            POSITION * HEAD_DIM,
+            &cos,
+            &sin,
+            1,
+            ROPE_DIM,
+            HEAD_DIM,
+            HEAD_DIM,
+        )
+        .expect("encode direct positioned key RoPE");
+        encode_rope_prefix_tail(
+            &mut direct,
+            &direct_q,
+            0,
+            &direct_query,
+            0,
+            &cos,
+            &sin,
+            HEADS,
+            ROPE_DIM,
+            HEAD_DIM,
+            HEAD_DIM,
+        )
+        .expect("encode direct query RoPE");
+        assert_eq!(direct.dispatch_count(), 6);
+        direct.commit_and_wait().expect("direct pre-score graph");
+
+        let replay_q = filled_f32_buffer(&ctx, HEADS * HEAD_DIM, f32::NAN);
+        let replay_k = filled_f32_buffer(&ctx, HEAD_DIM, f32::NAN);
+        let replay_head_w = filled_f32_buffer(&ctx, HEADS, f32::NAN);
+        let replay_query = filled_f32_buffer(&ctx, HEADS * HEAD_DIM, f32::NAN);
+        let replay_index_keys = filled_f32_buffer(&ctx, CAPACITY * HEAD_DIM, -99.0);
+        let replay_inputs = DeviceDsaPreScoreReplayInputs {
+            layer: 0,
+            n_heads: HEADS,
+            head_dim: HEAD_DIM,
+            rope_dim: ROPE_DIM,
+            norm_eps: 1e-6,
+            projections: &projections,
+            q_resid: &q_resid,
+            h: &h,
+            idx_q: &replay_q,
+            idx_k_raw: &replay_k,
+            idx_head_w: &replay_head_w,
+            norm_weight: &norm_weight,
+            norm_bias: &norm_bias,
+            cos: &cos,
+            sin: &sin,
+            query: &replay_query,
+            index_keys: &replay_index_keys,
+        };
+        let replay = build_device_dsa_pre_score_replay_graph(&ctx, &replay_inputs, POSITION)
+            .expect("capture six-command pre-score graph");
+        assert_eq!(replay.graph.command_count(), 6);
+        let _ = ctx.drain_stats();
+        replay
+            .update_position(POSITION)
+            .expect("update first replay position");
+        let mut replay_tcb = TokenCommandBuffer::new(&ctx);
+        replay_tcb
+            .execute_replayable_graph(&replay.graph)
+            .expect("execute pre-score replay");
+        assert_eq!(replay_tcb.dispatch_count(), 6);
+        replay_tcb.commit_and_wait().expect("pre-score replay");
+
+        for (label, expected, actual, len) in [
+            ("index query", &direct_q, &replay_q, HEADS * HEAD_DIM),
+            ("index key", &direct_k, &replay_k, HEAD_DIM),
+            ("head weights", &direct_head_w, &replay_head_w, HEADS),
+            (
+                "rotated query",
+                &direct_query,
+                &replay_query,
+                HEADS * HEAD_DIM,
+            ),
+            (
+                "index-key cache",
+                &direct_index_keys,
+                &replay_index_keys,
+                CAPACITY * HEAD_DIM,
+            ),
+        ] {
+            assert_eq!(
+                read_f32(actual, len)
+                    .iter()
+                    .map(|value| value.to_bits())
+                    .collect::<Vec<_>>(),
+                read_f32(expected, len)
+                    .iter()
+                    .map(|value| value.to_bits())
+                    .collect::<Vec<_>>(),
+                "{label} must be bit-exact between direct and replay encoding"
+            );
+        }
+
+        replay
+            .update_position(POSITION + 1)
+            .expect("update second replay position");
+        let mut second = TokenCommandBuffer::new(&ctx);
+        second
+            .execute_replayable_graph(&replay.graph)
+            .expect("execute changed-position pre-score replay");
+        second
+            .commit_and_wait()
+            .expect("changed-position pre-score replay");
+        assert_eq!(
+            read_f32(&replay_index_keys, CAPACITY * HEAD_DIM)
+                [(POSITION + 1) * HEAD_DIM..(POSITION + 2) * HEAD_DIM],
+            read_f32(&replay_index_keys, CAPACITY * HEAD_DIM)
+                [POSITION * HEAD_DIM..(POSITION + 1) * HEAD_DIM],
+            "dynamic position scalar must retarget the stable index-key buffer"
+        );
+        assert_eq!(
+            ctx.drain_stats(),
+            (0, 0, 0),
+            "warm pre-score graph replays must not allocate buffers"
+        );
     }
 
     #[test]

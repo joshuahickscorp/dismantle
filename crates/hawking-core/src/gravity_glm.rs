@@ -872,14 +872,14 @@ pub fn gpu_device_dsa_enabled() -> bool {
     crate::env_on(GPU_DEVICE_DSA_ENV)
 }
 
-/// Opt-in replay of compact MLA's fixed-grid five-dispatch post-rank DAG.
+/// Opt-in replay of compact MLA's fixed-grid attention subgraphs.
 ///
-/// Requires compact MLA plus device DSA. The exact active-length DSA score
-/// dispatch remains direct; only latent/RoPE append, absorbed K, ranked
-/// attention, absorbed V, and o_proj are captured. Default off.
+/// Requires compact MLA plus device DSA. The full-indexer pre-score transforms
+/// and the five-dispatch post-rank DAG are captured per layer. Exact
+/// active-length DSA scoring and radix selection remain direct. Default off.
 pub const GPU_COMPACT_ATTENTION_ICB_ENV: &str = "HAWKING_GLM_GPU_COMPACT_ATTENTION_ICB";
 
-/// Whether compact MLA's fixed-grid post-rank DAG should use Metal ICB replay.
+/// Whether compact MLA's fixed-grid attention subgraphs should use Metal ICB replay.
 pub fn gpu_compact_attention_icb_enabled() -> bool {
     crate::env_on(GPU_COMPACT_ATTENTION_ICB_ENV)
         && gpu_compact_mla_enabled()

@@ -898,6 +898,7 @@ mod imp {
             "gravity_copy_tail_f32" => "gravity_copy_tail_f32",
             "gravity_glm_dsa_scores" => "gravity_glm_dsa_scores",
             "gravity_glm_stable_topk_f32" => "gravity_glm_stable_topk_f32",
+            "gravity_glm_sort_u32_ascending" => "gravity_glm_sort_u32_ascending",
             "gravity_glm_sparse_attn" => "gravity_glm_sparse_attn",
             "gravity_glm_router_correct" => "gravity_glm_router_correct",
             "gravity_zero_f32" => "gravity_zero_f32",

@@ -684,6 +684,56 @@ kernel void gravity_glm_stable_topk_f32(
     }
 }
 
+// Reorder the unique score-ordered top-k IDs into ascending position order,
+// matching the host sparse-attention accumulation order. One 256-thread group
+// sorts at most 2048 u32 IDs in <=8 KiB of dynamic threadgroup memory.
+//
+// Bitonic padding uses UINT_MAX, which is outside the admitted context-position
+// domain. Input and output may alias: every live element is loaded into shared
+// memory before the first output write.
+struct GravityGlmSortU32Params {
+    uint n;
+};
+
+kernel void gravity_glm_sort_u32_ascending(
+    device const uint *input [[buffer(0)]],
+    device       uint *output [[buffer(1)]],
+    constant GravityGlmSortU32Params &p [[buffer(2)]],
+    threadgroup uint *items [[threadgroup(0)]],
+    uint tid [[thread_position_in_threadgroup]],
+    uint tg [[threads_per_threadgroup]])
+{
+    uint width = 1u;
+    while (width < p.n) { width <<= 1u; }
+
+    for (uint i = tid; i < width; i += tg) {
+        items[i] = i < p.n ? input[i] : 0xFFFFFFFFu;
+    }
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+
+    for (uint span = 2u; span <= width; span <<= 1u) {
+        for (uint stride = span >> 1u; stride > 0u; stride >>= 1u) {
+            for (uint i = tid; i < width; i += tg) {
+                uint peer = i ^ stride;
+                if (peer > i) {
+                    uint a = items[i];
+                    uint b = items[peer];
+                    bool ascending = (i & span) == 0u;
+                    if ((a > b) == ascending) {
+                        items[i] = b;
+                        items[peer] = a;
+                    }
+                }
+            }
+            threadgroup_barrier(mem_flags::mem_threadgroup);
+        }
+    }
+
+    for (uint i = tid; i < p.n; i += tg) {
+        output[i] = items[i];
+    }
+}
+
 // Sparse multi-head attention over an allow-list of key positions (DSA top-k).
 // One threadgroup per head; threads stride over allow entries for the dot,
 // then a serial softmax+accumulate on thread 0 for host-matching order.

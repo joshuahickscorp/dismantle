@@ -90,6 +90,25 @@ struct LayerGpuCache {
     capacity: usize,
 }
 
+/// Production-unreachable owner for the compact MLA core state.
+///
+/// This candidate deliberately remains separate from [`LayerGpuCache`] until
+/// the complete compact attention path can replace (rather than accompany)
+/// expanded K/V. Constructing the ordinary [`ResidentSession`] therefore
+/// allocates none of these buffers.
+#[allow(dead_code)]
+struct CompactLayerGpuCache {
+    latents: Buffer,
+    rope_tails: Buffer,
+}
+
+#[allow(dead_code)]
+struct CompactResidentCache {
+    layers: Vec<CompactLayerGpuCache>,
+    capacity: usize,
+    seq_len: usize,
+}
+
 const MIN_SEQUENCE_CAPACITY: usize = 4;
 
 fn checked_sequence_bytes(elements: usize, element_bytes: usize, what: &str) -> Result<usize> {
@@ -125,6 +144,106 @@ fn active_sequence_len(position: usize, capacity: usize, owner: &str) -> Result<
         )));
     }
     Ok(need)
+}
+
+#[allow(dead_code)]
+impl CompactResidentCache {
+    fn layer_bytes(capacity: usize, width: usize, what: &str) -> Result<usize> {
+        let elements = capacity.checked_mul(width).ok_or_else(|| {
+            Error::Gravity(format!(
+                "{what}: compact cache element count overflow ({capacity} x {width})"
+            ))
+        })?;
+        checked_sequence_bytes(elements, std::mem::size_of::<f32>(), what)
+    }
+
+    fn new(ctx: &MetalContext, arch: &GlmArch, initial_cap: usize) -> Result<Self> {
+        let capacity = initial_cap.max(MIN_SEQUENCE_CAPACITY);
+        let latent_bytes =
+            Self::layer_bytes(capacity, arch.kv_lora_rank, "compact MLA latent cache")?;
+        let rope_bytes =
+            Self::layer_bytes(capacity, arch.qk_rope_head_dim, "compact MLA rope cache")?;
+        let mut layers = Vec::with_capacity(arch.n_layers);
+        for _ in 0..arch.n_layers {
+            layers.push(CompactLayerGpuCache {
+                latents: ctx.new_buffer_checked(latent_bytes)?,
+                rope_tails: ctx.new_buffer_checked(rope_bytes)?,
+            });
+        }
+        Ok(Self {
+            layers,
+            capacity,
+            seq_len: 0,
+        })
+    }
+
+    fn reset(&mut self) {
+        self.seq_len = 0;
+    }
+
+    fn reserve(&mut self, ctx: &MetalContext, arch: &GlmArch, need: usize) -> Result<()> {
+        if self.layers.len() != arch.n_layers {
+            return Err(Error::Gravity(format!(
+                "compact MLA cache layer count {} != architecture {}",
+                self.layers.len(),
+                arch.n_layers
+            )));
+        }
+        if self.seq_len > self.capacity {
+            return Err(Error::Gravity(format!(
+                "compact MLA cache seq_len {} exceeds capacity {}",
+                self.seq_len, self.capacity
+            )));
+        }
+        let capacity = grown_sequence_capacity(self.capacity, need)?;
+        if capacity == self.capacity {
+            return Ok(());
+        }
+        let latent_bytes = Self::layer_bytes(
+            capacity,
+            arch.kv_lora_rank,
+            "compact MLA latent cache growth",
+        )?;
+        let rope_bytes = Self::layer_bytes(
+            capacity,
+            arch.qk_rope_head_dim,
+            "compact MLA rope cache growth",
+        )?;
+        let latent_copy_bytes = Self::layer_bytes(
+            self.seq_len,
+            arch.kv_lora_rank,
+            "compact MLA latent cache copy",
+        )?;
+        let rope_copy_bytes = Self::layer_bytes(
+            self.seq_len,
+            arch.qk_rope_head_dim,
+            "compact MLA rope cache copy",
+        )?;
+        for layer in 0..arch.n_layers {
+            let next_latents = ctx.new_buffer_checked(latent_bytes)?;
+            let next_rope_tails = ctx.new_buffer_checked(rope_bytes)?;
+            if self.seq_len > 0 {
+                unsafe {
+                    std::ptr::copy_nonoverlapping(
+                        self.layers[layer].latents.contents() as *const u8,
+                        next_latents.contents() as *mut u8,
+                        latent_copy_bytes,
+                    );
+                    std::ptr::copy_nonoverlapping(
+                        self.layers[layer].rope_tails.contents() as *const u8,
+                        next_rope_tails.contents() as *mut u8,
+                        rope_copy_bytes,
+                    );
+                }
+            }
+            self.layers[layer] = CompactLayerGpuCache {
+                latents: next_latents,
+                rope_tails: next_rope_tails,
+            };
+        }
+        self.capacity = capacity;
+        Ok(())
+    }
 }
 
 /// Host workspaces whose lengths track the resident sequence capacity.
@@ -5321,5 +5440,93 @@ mod tests {
         assert_eq!(scores[0], 5.0);
         assert_eq!(scores[8191], 6.0);
         assert_eq!(scores[8192], 10.0);
+    }
+
+    #[test]
+    fn compact_mla_cache_owner_grows_through_32k_and_preserves_state() {
+        let Ok(ctx) = MetalContext::new() else {
+            return;
+        };
+        let arch = tiny_arch();
+        let mut cache =
+            CompactResidentCache::new(&ctx, &arch, 8192).expect("initial compact cache");
+        assert_eq!(cache.layers.len(), arch.n_layers);
+        assert_eq!(cache.capacity, 8192);
+        assert_eq!(
+            cache.layers[0].latents.length(),
+            (8192 * arch.kv_lora_rank * 4) as u64
+        );
+        assert_eq!(
+            cache.layers[0].rope_tails.length(),
+            (8192 * arch.qk_rope_head_dim * 4) as u64
+        );
+
+        unsafe {
+            let latents = cache.layers[0].latents.contents() as *mut f32;
+            *latents = 1.0;
+            *latents.add(8191 * arch.kv_lora_rank + (arch.kv_lora_rank - 1)) = 2.0;
+            let rope = cache.layers[0].rope_tails.contents() as *mut f32;
+            *rope = 3.0;
+            *rope.add(8191 * arch.qk_rope_head_dim) = 4.0;
+        }
+        cache.seq_len = 8192;
+
+        let latent_pointer = cache.layers[0].latents.contents();
+        let rope_pointer = cache.layers[0].rope_tails.contents();
+        cache
+            .reserve(&ctx, &arch, 8192)
+            .expect("adequate compact reserve");
+        assert_eq!(cache.layers[0].latents.contents(), latent_pointer);
+        assert_eq!(cache.layers[0].rope_tails.contents(), rope_pointer);
+
+        cache
+            .reserve(&ctx, &arch, 8193)
+            .expect("grow compact cache beyond 8K");
+        assert_eq!(cache.capacity, 16384);
+        unsafe {
+            let latents = cache.layers[0].latents.contents() as *mut f32;
+            assert_eq!(*latents, 1.0);
+            assert_eq!(
+                *latents.add(8191 * arch.kv_lora_rank + (arch.kv_lora_rank - 1)),
+                2.0
+            );
+            let rope = cache.layers[0].rope_tails.contents() as *mut f32;
+            assert_eq!(*rope, 3.0);
+            assert_eq!(*rope.add(8191 * arch.qk_rope_head_dim), 4.0);
+            *latents.add(8192 * arch.kv_lora_rank) = 5.0;
+            *latents.add(8192 * arch.kv_lora_rank + (arch.kv_lora_rank - 1)) = 6.0;
+            *rope.add(8192 * arch.qk_rope_head_dim) = 7.0;
+        }
+        cache.seq_len = 8193;
+
+        cache
+            .reserve(&ctx, &arch, 32768)
+            .expect("grow compact cache through 32K");
+        assert_eq!(cache.capacity, 32768);
+        unsafe {
+            let latents = cache.layers[0].latents.contents() as *const f32;
+            assert_eq!(*latents, 1.0);
+            assert_eq!(
+                *latents.add(8191 * arch.kv_lora_rank + (arch.kv_lora_rank - 1)),
+                2.0
+            );
+            assert_eq!(*latents.add(8192 * arch.kv_lora_rank), 5.0);
+            assert_eq!(
+                *latents.add(8192 * arch.kv_lora_rank + (arch.kv_lora_rank - 1)),
+                6.0
+            );
+            let rope = cache.layers[0].rope_tails.contents() as *const f32;
+            assert_eq!(*rope, 3.0);
+            assert_eq!(*rope.add(8191 * arch.qk_rope_head_dim), 4.0);
+            assert_eq!(*rope.add(8192 * arch.qk_rope_head_dim), 7.0);
+        }
+
+        cache.reset();
+        assert_eq!(cache.seq_len, 0);
+        cache.seq_len = cache.capacity + 1;
+        let error = cache
+            .reserve(&ctx, &arch, cache.capacity + 1)
+            .expect_err("invalid compact cache ownership state must fail closed");
+        assert!(error.to_string().contains("seq_len"));
     }
 }

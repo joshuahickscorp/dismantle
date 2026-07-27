@@ -1247,6 +1247,7 @@ dependencies = [
  "hawking-index",
  "hawking-orch",
  "hawking-research",
+ "hawking-speculate",
  "hide-compat",
  "hide-core",
  "hide-extension-registry",

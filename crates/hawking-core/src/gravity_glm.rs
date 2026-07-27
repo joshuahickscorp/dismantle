@@ -1155,8 +1155,10 @@ pub fn estimate_resident_waits_per_token(arch: &GlmArch) -> u64 {
 ///
 /// Device-encodable compact layers fold input/q/kv normalization,
 /// `q_a + kv_a + q_b`, compact query/key RoPE, DSA, and compact attention into
-/// the o-projection command buffer. This removes two attention-prelude drains
-/// per layer plus both indexer drains per `"full"` layer. Host-native
+/// the o-projection command buffer, then append the elementwise residual add
+/// before its existing commit. This removes two attention-prelude drains per
+/// layer plus both indexer drains per `"full"` layer; the residual append
+/// removes host activation traffic without claiming another drain. Host-native
 /// projection tensors fall back to the ordinary schedule at runtime. This is
 /// source-derived; actual physical commands still depend on tensor codecs and
 /// must be measured before promotion.

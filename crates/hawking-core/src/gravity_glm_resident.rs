@@ -82,11 +82,11 @@ fn read_u32(buf: &Buffer, n: usize) -> Vec<u32> {
     unsafe { std::slice::from_raw_parts(buf.contents() as *const u32, n).to_vec() }
 }
 
-/// Per-layer device KV / DSA cache.
+/// Per-layer expanded device K/V cache. DSA index keys have independent
+/// session ownership so a future compact K/V layout can reuse them.
 struct LayerGpuCache {
     keys: Buffer,
     values: Buffer,
-    index_keys: Buffer,
     capacity: usize,
 }
 
@@ -403,6 +403,7 @@ fn topk_desc_with_scratch(
 /// Device-resident working set for one generation.
 pub struct ResidentSession {
     layers: Vec<LayerGpuCache>,
+    index_keys: Vec<Buffer>,
     sequence_scratch: SequenceScratch,
     pub seq_len: usize,
     shared_topk: Option<Vec<usize>>,
@@ -414,16 +415,18 @@ impl ResidentSession {
         let cap = initial_cap.max(MIN_SEQUENCE_CAPACITY);
         let qk = arch.qk_dim();
         let mut layers = Vec::with_capacity(arch.n_layers);
+        let mut index_keys = Vec::with_capacity(arch.n_layers);
         for _ in 0..arch.n_layers {
             layers.push(LayerGpuCache {
                 keys: ctx.new_buffer_checked(cap * arch.n_heads * qk * 4)?,
                 values: ctx.new_buffer_checked(cap * arch.n_heads * arch.v_head_dim * 4)?,
-                index_keys: ctx.new_buffer_checked(cap * arch.index_head_dim * 4)?,
                 capacity: cap,
             });
+            index_keys.push(ctx.new_buffer_checked(cap * arch.index_head_dim * 4)?);
         }
         Ok(Self {
             layers,
+            index_keys,
             sequence_scratch: SequenceScratch::new(ctx, cap)?,
             seq_len: 0,
             shared_topk: None,
@@ -449,8 +452,16 @@ impl ResidentSession {
         }
         let cap = grown_sequence_capacity(cur, need)?;
         let qk = arch.qk_dim();
+        if self.index_keys.len() != arch.n_layers {
+            return Err(Error::Gravity(format!(
+                "resident index cache layer count {} != architecture {}",
+                self.index_keys.len(),
+                arch.n_layers
+            )));
+        }
         for layer in 0..arch.n_layers {
             let old = &self.layers[layer];
+            let old_index_keys = &self.index_keys[layer];
             let nk = ctx.new_buffer_checked(cap * arch.n_heads * qk * 4)?;
             let nv = ctx.new_buffer_checked(cap * arch.n_heads * arch.v_head_dim * 4)?;
             let ni = ctx.new_buffer_checked(cap * arch.index_head_dim * 4)?;
@@ -470,7 +481,7 @@ impl ResidentSession {
                         cv,
                     );
                     std::ptr::copy_nonoverlapping(
-                        old.index_keys.contents() as *const u8,
+                        old_index_keys.contents() as *const u8,
                         ni.contents() as *mut u8,
                         ci,
                     );
@@ -479,9 +490,9 @@ impl ResidentSession {
             self.layers[layer] = LayerGpuCache {
                 keys: nk,
                 values: nv,
-                index_keys: ni,
                 capacity: cap,
             };
+            self.index_keys[layer] = ni;
         }
         Ok(())
     }
@@ -985,13 +996,15 @@ pub fn forward_resident(
                 let topk = match a.indexer_types[layer].as_str() {
                     "full" => {
                         let cache = &session.layers[layer];
+                        let index_keys = &session.index_keys[layer];
                         let scratch = &mut session.sequence_scratch;
                         let t = indexer_topk(
                             weights,
                             arch,
                             &attn_p,
                             pool,
-                            cache,
+                            index_keys,
+                            cache.capacity,
                             scratch,
                             pos,
                             &cos,
@@ -1485,7 +1498,8 @@ fn indexer_topk<'a>(
     arch: &GlmArch,
     attn_p: &str,
     pool: &ActPool,
-    cache: &LayerGpuCache,
+    index_key_buffer: &Buffer,
+    cache_capacity: usize,
     scratch: &mut SequenceScratch,
     pos: usize,
     cos: &[f32],
@@ -1535,7 +1549,7 @@ fn indexer_topk<'a>(
     unsafe {
         std::ptr::copy_nonoverlapping(
             k_full.as_ptr(),
-            (cache.index_keys.contents() as *mut f32).add(pos * idim),
+            (index_key_buffer.contents() as *mut f32).add(pos * idim),
             idim,
         );
     }
@@ -1565,7 +1579,7 @@ fn indexer_topk<'a>(
         *w *= head_scale;
     }
 
-    let n_keys = active_sequence_len(pos, cache.capacity, "resident index-key cache")?;
+    let n_keys = active_sequence_len(pos, cache_capacity, "resident index-key cache")?;
     let scratch_len = scratch.active_len(pos)?;
     if scratch_len != n_keys {
         return Err(Error::Gravity(format!(
@@ -1574,7 +1588,7 @@ fn indexer_topk<'a>(
     }
     let dim_scale = (idim as f32).powf(-0.5);
     let index_keys = unsafe {
-        std::slice::from_raw_parts(cache.index_keys.contents() as *const f32, n_keys * idim)
+        std::slice::from_raw_parts(index_key_buffer.contents() as *const f32, n_keys * idim)
     };
     crate::cost_ledger::record_source_modelled_operations(
         (n_keys as u64)
@@ -5600,6 +5614,7 @@ mod tests {
         let arch = tiny_arch();
         let qk = arch.qk_dim();
         let mut session = ResidentSession::new(&ctx, &arch, 8192).expect("initial session");
+        assert_eq!(session.index_keys.len(), session.layers.len());
 
         {
             let cache = &session.layers[0];
@@ -5607,7 +5622,7 @@ mod tests {
                 *(cache.keys.contents() as *mut f32) = 1.0;
                 *(cache.keys.contents() as *mut f32).add(8191 * qk + (qk - 1)) = 2.0;
                 *(cache.values.contents() as *mut f32).add(8191) = 3.0;
-                *(cache.index_keys.contents() as *mut f32).add(8191) = 4.0;
+                *(session.index_keys[0].contents() as *mut f32).add(8191) = 4.0;
             }
         }
         session.sequence_scratch.host.index_scores[0] = 5.0;
@@ -5632,7 +5647,10 @@ mod tests {
                     2.0
                 );
                 assert_eq!(*(cache.values.contents() as *const f32).add(8191), 3.0);
-                assert_eq!(*(cache.index_keys.contents() as *const f32).add(8191), 4.0);
+                assert_eq!(
+                    *(session.index_keys[0].contents() as *const f32).add(8191),
+                    4.0
+                );
             }
         }
         let scores = read_f32(&session.sequence_scratch.index_scores_device, 8192);
@@ -5644,7 +5662,7 @@ mod tests {
             unsafe {
                 *(cache.keys.contents() as *mut f32).add(8192 * qk) = 7.0;
                 *(cache.values.contents() as *mut f32).add(8192) = 8.0;
-                *(cache.index_keys.contents() as *mut f32).add(8192) = 9.0;
+                *(session.index_keys[0].contents() as *mut f32).add(8192) = 9.0;
             }
         }
         session.sequence_scratch.host.index_scores[8192] = 10.0;
@@ -5667,10 +5685,16 @@ mod tests {
                     *(cache.keys.contents() as *const f32).add(8191 * qk + (qk - 1)),
                     2.0
                 );
-                assert_eq!(*(cache.index_keys.contents() as *const f32).add(8191), 4.0);
+                assert_eq!(
+                    *(session.index_keys[0].contents() as *const f32).add(8191),
+                    4.0
+                );
                 assert_eq!(*(cache.keys.contents() as *const f32).add(8192 * qk), 7.0);
                 assert_eq!(*(cache.values.contents() as *const f32).add(8192), 8.0);
-                assert_eq!(*(cache.index_keys.contents() as *const f32).add(8192), 9.0);
+                assert_eq!(
+                    *(session.index_keys[0].contents() as *const f32).add(8192),
+                    9.0
+                );
             }
         }
         let scores = read_f32(&session.sequence_scratch.index_scores_device, 8193);

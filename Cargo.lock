@@ -1318,6 +1318,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "hide-connectors"
+version = "0.2.2"
+dependencies = [
+ "blake3",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.18",
+]
+
+[[package]]
 name = "hide-core"
 version = "0.2.2"
 dependencies = [
@@ -1384,6 +1395,19 @@ dependencies = [
  "thiserror 2.0.18",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "hide-objects"
+version = "0.2.2"
+dependencies = [
+ "blake3",
+ "parking_lot",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.18",
+ "ulid",
 ]
 
 [[package]]

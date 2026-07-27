@@ -75,6 +75,7 @@ fn compact_mla_complete_tokens_match_expanded_v21_and_exact_decisions() {
     let compact_ctx = MetalContext::new().expect("second Metal context");
     let device_dsa_ctx = MetalContext::new().expect("device DSA Metal context");
     let device_router_ctx = MetalContext::new().expect("device router Metal context");
+    let device_head_ctx = MetalContext::new().expect("device head Metal context");
     let invalid_ctx = MetalContext::new().expect("invalid-admission Metal context");
     let misconfigured_ctx = MetalContext::new().expect("misconfigured DSA Metal context");
     let misconfigured_router_ctx = MetalContext::new().expect("misconfigured router Metal context");
@@ -190,6 +191,24 @@ fn compact_mla_complete_tokens_match_expanded_v21_and_exact_decisions() {
     std::env::remove_var(GPU_DEVICE_ROUTER_ENV);
     std::env::remove_var(GPU_DEVICE_DSA_ENV);
     std::env::remove_var(GPU_COMPACT_MLA_ENV);
+    std::env::set_var(GPU_COMPACT_MLA_ENV, "1");
+    std::env::set_var(GPU_DEVICE_DSA_ENV, "1");
+    std::env::set_var(GPU_DEVICE_ROUTER_ENV, "1");
+    std::env::set_var(GPU_LM_HEAD_ENV, "1");
+    std::env::set_var(GPU_LM_HEAD_FULL_LOGITS_ENV, "1");
+    let compact_device_head = GravityGlmGpu::open_dir_with_budget_resident(
+        device_head_ctx,
+        &dir,
+        true,
+        512 * 1024 * 1024,
+        true,
+    )
+    .expect("compact resident device DSA, router, and head fixture");
+    std::env::remove_var(GPU_LM_HEAD_FULL_LOGITS_ENV);
+    std::env::remove_var(GPU_LM_HEAD_ENV);
+    std::env::remove_var(GPU_DEVICE_ROUTER_ENV);
+    std::env::remove_var(GPU_DEVICE_DSA_ENV);
+    std::env::remove_var(GPU_COMPACT_MLA_ENV);
 
     let receipt: serde_json::Value = serde_json::from_slice(
         &std::fs::read(dir.join("compact_mla_fixture_receipt.json"))
@@ -253,6 +272,22 @@ fn compact_mla_complete_tokens_match_expanded_v21_and_exact_decisions() {
         let device_router_waits = compact_device_router
             .last_resident_waits()
             .expect("device router resident wait count");
+        std::env::set_var(GPU_COMPACT_MLA_ENV, "1");
+        std::env::set_var(GPU_DEVICE_DSA_ENV, "1");
+        std::env::set_var(GPU_DEVICE_ROUTER_ENV, "1");
+        std::env::set_var(GPU_LM_HEAD_ENV, "1");
+        std::env::set_var(GPU_LM_HEAD_FULL_LOGITS_ENV, "1");
+        let (device_head_logits, device_head_trace) = compact_device_head
+            .forward(prompt)
+            .expect("compact device final norm plus head forward");
+        std::env::remove_var(GPU_LM_HEAD_FULL_LOGITS_ENV);
+        std::env::remove_var(GPU_LM_HEAD_ENV);
+        std::env::remove_var(GPU_DEVICE_ROUTER_ENV);
+        std::env::remove_var(GPU_DEVICE_DSA_ENV);
+        std::env::remove_var(GPU_COMPACT_MLA_ENV);
+        let device_head_waits = compact_device_head
+            .last_resident_waits()
+            .expect("device final norm plus head resident wait count");
         assert!(
             !authority.expert_choices.is_empty(),
             "prompt {prompt:?}: sparse router authority is vacuous"
@@ -272,6 +307,12 @@ fn compact_mla_complete_tokens_match_expanded_v21_and_exact_decisions() {
         let device_router_pair = score_pair(
             &expanded_logits,
             &device_router_logits,
+            &authority.logits,
+            &Bounds::logits(),
+        );
+        let device_head_pair = score_pair(
+            &expanded_logits,
+            &device_head_logits,
             &authority.logits,
             &Bounds::logits(),
         );
@@ -309,6 +350,16 @@ fn compact_mla_complete_tokens_match_expanded_v21_and_exact_decisions() {
             "device router decisions case {case}: authority={:?} device={:?}",
             authority.expert_choices, device_router_trace.expert_choices
         );
+        eprintln!(
+            "device final norm + head case {case}: rel_l2={:.3e} meaningful={:.3e}; \
+             greedy={} top5={}; waits router={} final-graph={}",
+            device_head_pair.device.continuous.relative_l2,
+            device_head_pair.device.continuous.max_meaningful_rel,
+            device_head_pair.device.discrete.greedy_match,
+            device_head_pair.device.discrete.top_k_exact_match,
+            device_router_waits,
+            device_head_waits
+        );
         assert!(
             pair.pass,
             "case {case} prompt {prompt:?}: compact complete-token V2.1 {pair:#?}"
@@ -320,6 +371,10 @@ fn compact_mla_complete_tokens_match_expanded_v21_and_exact_decisions() {
         assert!(
             device_router_pair.pass,
             "case {case} prompt {prompt:?}: device router complete-token V2.1 {device_router_pair:#?}"
+        );
+        assert!(
+            device_head_pair.pass,
+            "case {case} prompt {prompt:?}: device final norm + head complete-token V2.1 {device_head_pair:#?}"
         );
         assert_eq!(
             expanded_trace.final_topk, authority.final_topk,
@@ -354,6 +409,32 @@ fn compact_mla_complete_tokens_match_expanded_v21_and_exact_decisions() {
             "case {case}: exact device router expert choices vs FP64 authority"
         );
         assert_eq!(
+            device_head_trace.final_topk, authority.final_topk,
+            "case {case}: exact device-head DSA selection vs FP64 authority"
+        );
+        assert_eq!(
+            device_head_trace.expert_choices, authority.expert_choices,
+            "case {case}: exact device-head expert choices vs FP64 authority"
+        );
+        assert_eq!(
+            device_head_trace.sample_token.map(|token| token as usize),
+            device_head_pair.device.discrete.greedy_argmax_ref,
+            "case {case}: device greedy readback must match FP64 authority"
+        );
+        assert_eq!(
+            device_head_trace
+                .head_topk_idx
+                .iter()
+                .map(|&index| index as usize)
+                .collect::<Vec<_>>(),
+            device_head_pair.device.discrete.top_k_ref,
+            "case {case}: device top-k readback must match FP64 authority"
+        );
+        assert!(
+            device_head_trace.head_full_logits_readback,
+            "case {case}: full logits were requested for V2.1 scoring"
+        );
+        assert_eq!(
             compact_waits.saturating_sub(device_dsa_waits),
             (4 * prompt.len()) as u64,
             "case {case}: two attention-prelude and two full-indexer drains must be removed per token"
@@ -361,6 +442,10 @@ fn compact_mla_complete_tokens_match_expanded_v21_and_exact_decisions() {
         assert_eq!(
             device_router_waits, device_dsa_waits,
             "case {case}: device router selection must reuse the existing router commit"
+        );
+        assert_eq!(
+            device_head_waits, device_router_waits,
+            "case {case}: final RMSNorm must append to the existing device-head commit"
         );
     }
 

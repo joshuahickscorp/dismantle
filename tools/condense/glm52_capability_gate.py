@@ -46,6 +46,24 @@ G_LIVE_PROMPTS = [
 ]
 
 
+def measured_rate(artifact: Path) -> str | None:
+    """The artifact's complete BPW as an exact rational "num/den", read from the artifact.
+
+    Under the capability-first Gravity law an approval is bound to the rate it was earned
+    at, so the verdict has to carry one. A float would not do: the law compares rates by
+    cross-multiplication precisely so that admission is never decided in floating point.
+    """
+    for name in ("PACK_RECEIPT.json", "ALLOCATION.json"):
+        f = artifact / name
+        if not f.is_file():
+            continue
+        doc = json.loads(f.read_text())
+        for holder in (doc, doc.get("allocation", {})):
+            if isinstance(holder, dict) and holder.get("complete_bpw_exact"):
+                return str(holder["complete_bpw_exact"])
+    return None
+
+
 def index_sha256(artifact: Path) -> str | None:
     candidates = [
         artifact / "model.gravity.index.json",
@@ -217,6 +235,7 @@ def main() -> int:
         return 2
 
     sha = index_sha256(artifact)
+    rate = measured_rate(artifact)
     if sha is None:
         print("artifact must contain exactly one supported model index", file=sys.stderr)
         return 2
@@ -253,12 +272,15 @@ def main() -> int:
         "at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "artifact": str(artifact),
         "artifact_index_sha256": sha,
+        "proven_at_rate": rate,
+        "tier": a.tier,
         "gates": results,
         "capability_verdict": "APPROVED" if passed else "REFUSED",
         "artifact_verification": True,
         "law": "APPROVED means the artifact generates. It says nothing about quality, and it is "
                "not a substitute for the support halo or long context.",
         "reconstruction_error_consulted": False,
+        "rate_binding": "This approval is earned at proven_at_rate and nowhere else. A repack\nat a different BPW must re-run these gates: capability does not inherit across rates.",
     }
     text = json.dumps(verdict, indent=2) + "\n"
     print(text, end="")
@@ -272,6 +294,8 @@ def main() -> int:
             "path": str(artifact),
             "artifact_index_sha256": sha,
             "capability_verdict": verdict["capability_verdict"],
+            "proven_at_rate": rate,
+            "tier": a.tier,
             "capability_reason": "produced by tools/condense/glm52_capability_gate.py",
             "capability_evidence": {"gate_run": verdict},
         }

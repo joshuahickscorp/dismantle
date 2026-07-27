@@ -890,6 +890,10 @@ mod imp {
             "gravity_axpy_f32" => "gravity_axpy_f32",
             "gravity_add_inplace_f32" => "gravity_add_inplace_f32",
             "gravity_pq_matvec" => "gravity_pq_matvec",
+            "gravity_pq_matvec_bits8_direct" => "gravity_pq_matvec_bits8_direct",
+            "gravity_pq_matvec_bits8_vec4" => "gravity_pq_matvec_bits8_vec4",
+            "gravity_pq_matvec_bits8_2d" => "gravity_pq_matvec_bits8_2d",
+            "gravity_pq_reduce_2d" => "gravity_pq_reduce_2d",
             // v0.5.10 fp16 Q-format kernels
             "gemm_q4_k_m_fused_f16" => "gemm_q4_k_m_fused_f16",
             "moe_grouped_gemm_q4_f16" => "moe_grouped_gemm_q4_f16",

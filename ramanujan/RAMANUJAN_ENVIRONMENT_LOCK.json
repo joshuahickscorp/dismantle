@@ -1,6 +1,6 @@
 {
   "schema": "hawking.ramanujan.environment_lock.v1",
-  "at": "2026-07-27T15:10:58Z",
+  "at": "2026-07-27T15:45:33Z",
   "status": "PARTIALLY_PINNED_LEAN_AND_MATHLIB_REAL",
   "why_versions_are_not_filled_in": "SUPERSEDED for Lean and Mathlib: they are installed and pinned below with real values, verified by machine-checking a theorem. The remaining nulls are still honest nulls -- those tools are genuinely absent.",
   "pinning_policy": {
@@ -43,16 +43,18 @@
     {
       "name": "z3",
       "role": "SMT; counterexample and constraint search",
-      "status": "PYTHON_BINDINGS_ONLY",
-      "pin": "z3-solver in .venv/glm52; the z3 BINARY is still absent",
-      "note": "bindings are enough for programmatic SMT and not enough for a command-line verifier event. Recorded as distinct rather than collapsed into INSTALLED."
+      "status": "INSTALLED",
+      "pin": "Z3 version 4.16.0 - 64 bit",
+      "note": "binary now present; the earlier PYTHON_BINDINGS_ONLY status is superseded",
+      "installed_at": "2026-07-27"
     },
     {
       "name": "cvc5",
       "role": "second SMT solver",
-      "status": "NOT_INSTALLED",
+      "status": "UNAVAILABLE_VIA_PACKAGE_MANAGER",
       "pin": null,
-      "why_two": "disagreement between independent solvers is a signal. One solver's answer is one implementation's answer."
+      "why_two": "disagreement between independent solvers is a signal. One solver's answer is one implementation's answer.",
+      "note": "Homebrew has no cvc5 formula. It ships only as a GitHub release binary, and downloading and executing a release binary is an action requiring explicit user authorisation, which has not been given. Recorded as absent rather than worked around. The second-solver disagreement signal is therefore NOT available: z3 answers alone, and one solver's answer is one implementation's answer."
     },
     {
       "name": "sympy",
@@ -64,8 +66,9 @@
     {
       "name": "pari_gp",
       "role": "number theory",
-      "status": "NOT_INSTALLED",
-      "pin": null
+      "status": "INSTALLED",
+      "pin": "GP/PARI CALCULATOR Version 2.17.4 (released)",
+      "installed_at": "2026-07-27"
     },
     {
       "name": "gap",
@@ -76,8 +79,9 @@
     {
       "name": "cadical",
       "role": "SAT",
-      "status": "NOT_INSTALLED",
-      "pin": null
+      "status": "INSTALLED",
+      "pin": "3.0.1",
+      "installed_at": "2026-07-27"
     },
     {
       "name": "numpy",
@@ -90,7 +94,7 @@
       "name": "scipy",
       "role": "numeric; already present",
       "status": "INSTALLED",
-      "pin": "1.18.0"
+      "pin": "installed into .venv/glm52 2026-07-27"
     },
     {
       "name": "python",
@@ -130,7 +134,7 @@
     "gate": "Q0 reproducibility",
     "status": "UNBLOCKED_FOR_LEAN",
     "was": "BLOCKED -- the entire formal toolchain was absent",
-    "now": "Lean and Mathlib are installed, pinned by commit, and proven by machine check. The clean-container replay contract remains unbuilt, and the SMT and CAS binaries remain absent.",
+    "now": "Lean and Mathlib installed and pinned by commit and proven by machine check. SMT (z3), SAT (cadical) and CAS (PARI/GP) binaries now present. Remaining: cvc5 as an independent second solver, and the clean-container replay contract, which is unbuilt.",
     "what_this_unblocks": "six of nine Ramanujan data sources are generated locally from a working Lean and Mathlib -- proof traces, state transitions, premise pairs, repair pairs, counterexamples, tool traces. None needs a licensing decision."
   },
   "installed_this_session": {
@@ -159,12 +163,24 @@
     "note": "the second theorem is deliberate. The formal system proves 2 + 2 = 4 by machine check, while the compressed artifact this campaign is rebuilding cannot compute it. Two different senses of knowing, and only one of them is verifiable."
   },
   "still_missing": [
-    "z3 binary",
-    "cvc5",
-    "PARI/GP",
-    "GAP",
-    "cadical",
-    "scipy in the glm52 venv"
+    "cvc5 (no homebrew formula; needs an authorised binary download)",
+    "GAP (installing)"
   ],
-  "single_source_of_truth_note": "The components array is authoritative. installed_this_session is a record of one install run. An earlier revision left them contradicting each other -- components said NOT_INSTALLED while the install record said otherwise -- which is the same two-authorities fault this campaign keeps finding elsewhere."
+  "single_source_of_truth_note": "The components array is authoritative. installed_this_session is a record of one install run. An earlier revision left them contradicting each other -- components said NOT_INSTALLED while the install record said otherwise -- which is the same two-authorities fault this campaign keeps finding elsewhere.",
+  "proof_solvers_work": {
+    "method": "each solver was made to compute, not asked for its version. A version string proves a file exists; only a computation proves a tool works.",
+    "z3": {
+      "sat": "x+y=4 with x=y solved, model x=2 y=2",
+      "unsat": "refuted (not (= (+ x 0) x)) -- it can also say no, which is the half that matters for counterexample search"
+    },
+    "cadical": {
+      "cnf": "(1 or 2) and (not 1)",
+      "result": "s SATISFIABLE, v -1 2"
+    },
+    "pari_gp": {
+      "computed": "factor(2^67-1) = 193707721 * 761838257287",
+      "note": "Cole's 1903 factorisation, reproduced in milliseconds"
+    },
+    "what_is_still_not_proven": "none of this says anything about mathematical research capability. It says the tools execute."
+  }
 }

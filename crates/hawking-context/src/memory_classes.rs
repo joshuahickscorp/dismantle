@@ -1698,6 +1698,54 @@ fn init_user_schema(conn: &Connection) -> Result<()> {
         "#,
     )
     .map_err(sql_err)?;
+    migrate_add_missing_columns(
+        conn,
+        "mem_user",
+        &[
+            ("scope", "TEXT NOT NULL DEFAULT 'global'"),
+            ("pinned", "INTEGER NOT NULL DEFAULT 0"),
+            ("expired", "INTEGER NOT NULL DEFAULT 0"),
+            ("expire_at_ms", "INTEGER"),
+            ("supersedes", "TEXT"),
+        ],
+    )?;
+    Ok(())
+}
+
+/// Add columns an older database is missing.
+///
+/// `CREATE TABLE IF NOT EXISTS` does nothing to a table that already exists, and the user
+/// class is deliberately cross-workspace -- its database lives under the user root and
+/// survives every workspace, every test run and every schema change. So a `user.db` written
+/// before the scope/retention columns existed stays exactly as it was while the SELECT that
+/// reads it grows new columns, and every read fails with "no such column: scope".
+///
+/// That is what happened here: the file was created by the first six-class lane, the second
+/// lane added the columns to CREATE TABLE and to the query, and nothing migrated the file in
+/// between. Idempotent, and cheap enough to run on every open.
+fn migrate_add_missing_columns(
+    conn: &Connection,
+    table: &str,
+    columns: &[(&str, &str)],
+) -> Result<()> {
+    let mut have: Vec<String> = Vec::new();
+    {
+        let mut stmt = conn
+            .prepare(&format!("PRAGMA table_info({table})"))
+            .map_err(sql_err)?;
+        let rows = stmt
+            .query_map([], |r| r.get::<_, String>(1))
+            .map_err(sql_err)?;
+        for r in rows {
+            have.push(r.map_err(sql_err)?);
+        }
+    }
+    for (name, decl) in columns {
+        if !have.iter().any(|h| h == name) {
+            conn.execute_batch(&format!("ALTER TABLE {table} ADD COLUMN {name} {decl};"))
+                .map_err(sql_err)?;
+        }
+    }
     Ok(())
 }
 

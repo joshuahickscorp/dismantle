@@ -418,5 +418,63 @@
     "DATA-AWARE fitting: every arm swept so far fits RAW WEIGHTS. Fitting an expert against captured activations optimises what the organ DOES rather than what it stores, and the campaign's own functional-codec work (glm52.functional.moe.v1, GLM52_FUNCTIONAL_CPU_PARITY.json) is exactly that machinery, already frozen and deterministic. It has not been swept as a rate ladder.",
     "A6 trajectory-stabilized, which stays DATA_BLOCKED on parent trajectory traces the teacher ledger does not hold"
   ],
-  "controller_position_now": "Five of six arms are measured and negative sub-bit on the organs carrying 97.5 percent of the mass, including the MoE-specific one. That is close to the exhaustion the sub-bit law demands, but it is not yet complete: every swept arm fits raw weights, and the one family that fits FUNCTION rather than weights has not been rate-swept. Preparing an Escape Receipt before running it would skip the most relevant remaining experiment, and the law names weight-space reasoning as exactly what it refuses."
+  "controller_position_now": "Five of six arms are measured and negative sub-bit on the organs carrying 97.5 percent of the mass, including the MoE-specific one. That is close to the exhaustion the sub-bit law demands, but it is not yet complete: every swept arm fits raw weights, and the one family that fits FUNCTION rather than weights has not been rate-swept. Preparing an Escape Receipt before running it would skip the most relevant remaining experiment, and the law names weight-space reasoning as exactly what it refuses.",
+  "FUNCTIONAL_codec_rate_sweep": {
+    "at": "2026-07-27T09:35:00Z",
+    "why_it_was_the_last_untried_family": "Every other arm fits RAW WEIGHTS, and the sub-bit law explicitly refuses weight-space reasoning. glm52.functional.moe.v1 stores a FUNCTION -- a feature map reproduced from a seed at zero storage cost, plus a fitted readout -- so it answers what the organ DOES rather than what it holds.",
+    "organ": "model.layers.10.mlp.experts.0.up_proj.weight, a real routed expert",
+    "constant_mean_cosine_null": 0.12622,
+    "held_out": "fitted on 4096 sampled rows, scored on 512 unseen",
+    "measured": [
+      {
+        "hidden": 256,
+        "bpw": 0.66667,
+        "sub_bit": true,
+        "cosine": 0.1043,
+        "beats_null": false
+      },
+      {
+        "hidden": 512,
+        "bpw": 1.33333,
+        "sub_bit": false,
+        "cosine": 0.14857
+      },
+      {
+        "hidden": 1024,
+        "bpw": 2.66667,
+        "sub_bit": false,
+        "cosine": 0.20167
+      },
+      {
+        "hidden": 2048,
+        "bpw": 5.33333,
+        "sub_bit": false,
+        "cosine": 0.26244
+      },
+      {
+        "hidden": 4096,
+        "bpw": 10.66667,
+        "sub_bit": false,
+        "cosine": 0.32004
+      }
+    ],
+    "verdict": "NEGATIVE, and by a wide margin. At an identical 0.667 BPW the functional codec returns cosine 0.104 -- BELOW the null -- against low-rank's 0.298 on the same organ. At 10.67 BPW, sixteen times the rate, it reaches 0.320, barely matching what low-rank achieved at 0.667.",
+    "reading": "For this organ a seed-reproduced random feature map is a far worse basis than the organ's own principal directions. The feature map costs nothing to store, which is its appeal, and it also carries no information about this particular expert -- which is why it loses.",
+    "honest_caveat_that_keeps_this_from_being_final": "The fit used sampled Gaussian activations as a proxy, not the campaign's 47 retained teacher capsules. Fitting against REAL captured activations is a materially different experiment and remains untested. It is the last thing standing between this result and a defensible claim of exhaustion."
+  },
+  "exhaustion_status": {
+    "swept_and_negative_sub_bit_on_mass_carrying_organs": [
+      "A1 low-rank per expert",
+      "A2 PQ plus quantised residual",
+      "A3 additive multi-codebook",
+      "A5 protected islands (decoder implemented this session)",
+      "A4 shared latent basis across a REAL 70-expert bank",
+      "functional codec with seed-reproduced feature map"
+    ],
+    "remaining_before_exhaustion_is_defensible": [
+      "functional fitting against REAL captured activations from the 47 retained teacher capsules, rather than Gaussian proxies",
+      "A6 trajectory-stabilized, still DATA_BLOCKED on parent trajectory traces the ledger does not hold"
+    ],
+    "controller_position": "Six families are now measured negative at sub-bit rates on the organs carrying 97.5 percent of the mass, including the MoE-specific one and the function-fitting one. That is most of the way to the exhaustion the sub-bit law demands. It is not all the way, and the gap is specific and cheap: one experiment against real captured activations. Preparing an Escape Receipt before running it would rest the campaign's largest architectural decision on a Gaussian proxy."
+  }
 }

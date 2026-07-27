@@ -227,18 +227,20 @@ fn sdk_types_cover_required_domains() {
 }
 
 #[test]
-fn no_family_grade_changed_by_this_work() {
-    // Guardrail: grades were audited; this surface work must not touch them.
+fn honest_family_grades_match_evidence_ladder() {
+    // Guardrail: grades are claims about evidence. Inflated SMALL_REAL_CHECKPOINT
+    // claims that rested on skip/ignore-gated tests were demoted to Stage A
+    // SOURCE_HEADER_VALIDATED. Raising a grade requires evidence verify_grades accepts.
     let expected = [
         ("deepseek", "SOURCE_HEADER_VALIDATED"),
         ("gemma", "DECLARED"),
         ("glm", "SMALL_REAL_CHECKPOINT"),
         ("kimi", "SYNTHETIC_PARITY"),
-        ("llama", "SMALL_REAL_CHECKPOINT"),
+        ("llama", "SOURCE_HEADER_VALIDATED"),
         ("minimax", "DECLARED"),
-        ("mistral_mixtral", "SMALL_REAL_CHECKPOINT"),
+        ("mistral_mixtral", "SOURCE_HEADER_VALIDATED"),
         ("phi", "DECLARED"),
-        ("qwen", "SMALL_REAL_CHECKPOINT"),
+        ("qwen", "SOURCE_HEADER_VALIDATED"),
         ("state_space", "DECLARED"),
     ];
     let r = hawking_adapters::builtin_registry();
@@ -247,7 +249,7 @@ fn no_family_grade_changed_by_this_work() {
         assert_eq!(
             d.level.as_str(),
             level,
-            "family {id} grade changed — do not edit grades in this lane"
+            "family {id} grade drifted from the honest evidence ladder"
         );
     }
 }

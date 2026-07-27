@@ -163,7 +163,7 @@
         {
           "executes": true,
           "family": "llama",
-          "level": "SMALL_REAL_CHECKPOINT",
+          "level": "SOURCE_HEADER_VALIDATED",
           "providers": {
             "cpu": "available — CPU backend path exercises LlamaDense",
             "cuda": null,
@@ -185,7 +185,7 @@
         {
           "executes": true,
           "family": "mistral_mixtral",
-          "level": "SMALL_REAL_CHECKPOINT",
+          "level": "SOURCE_HEADER_VALIDATED",
           "providers": {
             "cpu": "available for dense mistral via LlamaDense",
             "cuda": null,
@@ -207,7 +207,7 @@
         {
           "executes": true,
           "family": "qwen",
-          "level": "SMALL_REAL_CHECKPOINT",
+          "level": "SOURCE_HEADER_VALIDATED",
           "providers": {
             "cpu": "available — CPU backend parity tests",
             "cuda": null,

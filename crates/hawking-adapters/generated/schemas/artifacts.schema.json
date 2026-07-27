@@ -9,6 +9,7 @@
         "gguf",
         "gguf (pack only)",
         "gravity",
+        "pack (mixtral extra)",
         "safetensors",
         "safetensors (source)",
         "synthetic twin",

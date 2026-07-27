@@ -27,6 +27,7 @@ from ramanujan.roles import (
     generators_may_not_promote,
 )
 from ramanujan.search import AUTHORITY, PremiseRetrieval, SearchEconomics
+from ramanujan.sovereignty import SovereigntyHooks, SovereigntyRefused
 from ramanujan.stores import STORE_NAMES
 
 FIXTURE_DIR = Path(__file__).resolve().parent / "fixtures"
@@ -56,6 +57,12 @@ def f0_diagnose(
     Does not train. Does not search. Does not claim research authorization.
     """
     reg = limits or LimitRegistry()
+    hooks = SovereigntyHooks(limits=reg)
+    # F0 itself must pass the forge gate (local fixture stage).
+    gate = hooks.forge_gate("F0")
+    if not gate["allowed"]:
+        raise RuntimeError(f"F0 forge gate refused: {gate['reason']}")
+
     fixture_ok = False
     fixture_meta: dict[str, Any] = {}
     try:
@@ -82,6 +89,7 @@ def f0_diagnose(
         "stores": {
             "status": "present",
             "names": list(STORE_NAMES),
+            "count": len(STORE_NAMES),
         },
         "economics": {
             "status": "present",
@@ -89,12 +97,23 @@ def f0_diagnose(
             "currency": CURRENCY,
             "reward_kinds": sorted(REWARDS),
             "search_economics": "ramanujan.search.SearchEconomics",
+            "session_economics": "ramanujan.economics.SessionEconomics",
         },
         "limit_registry": {
             "status": "present",
             "ids": list(reg.ids()),
             "RAMANUJAN_RESEARCH_AUTHORIZED": reg.research_authorized(),
             "consultable": True,
+        },
+        "sovereignty": {
+            "status": "present",
+            "hooks": "ramanujan.sovereignty.SovereigntyHooks",
+            "local_forge": sorted(hooks.as_public_dict()["local_forge_stages"]),
+            "gated_forge": sorted(hooks.as_public_dict()["gated_forge_stages"]),
+        },
+        "graveyard": {
+            "status": "present",
+            "law": "burial is not deletion; free resurrection is refused",
         },
         "premise_retrieval": {
             "status": "present_untrained" if not retriever.trained else "present_trained",
@@ -103,8 +122,11 @@ def f0_diagnose(
             "fixture_ok": fixture_ok,
         },
         "lean_mathlib": {
-            "status": "missing",
-            "note": "RAMANUJAN_TOOLCHAIN_SELFTEST.json: 10 of 12 components missing; fixtures only",
+            "status": "partial",
+            "note": (
+                "Lean/Mathlib may be present on this host (see toolchain_selftest); "
+                "fixture Lean remains NON_PRODUCTION_AUTHORITY for this layer"
+            ),
         },
         "math_preserve_teacher_traces": {
             "status": "REFUSED",
@@ -118,6 +140,7 @@ def f0_diagnose(
         "name": "diagnose",
         "authority": AUTHORITY,
         "RAMANUJAN_RESEARCH_AUTHORIZED": False,
+        "forge_gate": gate,
         "components": components,
         "ready_for_f1": fixture_ok and generators_may_not_promote(),
         "blocked_from_research": not reg.research_authorized(),
@@ -139,6 +162,8 @@ def f1_train_premise_retrieval(
     RAMANUJAN_RESEARCH_AUTHORIZED.
     """
     reg = limits or LimitRegistry()
+    hooks = SovereigntyHooks(limits=reg)
+    hooks.require_forge_stage("F1")
 
     # Training on fixtures is not "run_research" and is not a Math-Preserve trace.
     # Explicitly refuse the forbidden action so the consult log shows the block.
@@ -155,6 +180,13 @@ def f1_train_premise_retrieval(
         raise RuntimeError(
             "RAMANUJAN_RESEARCH_AUTHORIZED must remain false; registry is misconfigured"
         )
+    # Sovereignty path: refuse_research must raise while unauthorized.
+    try:
+        hooks.refuse_research(role_id="director")
+    except SovereigntyRefused:
+        pass
+    else:
+        raise RuntimeError("refuse_research must raise while unauthorized")
 
     fx = load_premise_fixture(premise_path)
     retriever = PremiseRetrieval(corpus=dict(fx["premises"]))

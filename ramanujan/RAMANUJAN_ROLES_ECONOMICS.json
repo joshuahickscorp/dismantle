@@ -15,11 +15,19 @@
   "modules": {
     "roles": "ramanujan/roles.py",
     "economics": "ramanujan/economics.py",
+    "session_economics": "ramanujan/economics.py::SessionEconomics",
     "limits": "ramanujan/limits.py",
+    "sovereignty": "ramanujan/sovereignty.py",
+    "stores": "ramanujan/stores.py",
     "forge": "ramanujan/forge.py",
     "premise_retrieval": "ramanujan/search.py::PremiseRetrieval",
-    "tests": "ramanujan/test_roles_economics.py",
-    "premise_fixture": "ramanujan/fixtures/premise_corpus.json"
+    "tests": [
+      "ramanujan/test_roles_economics.py",
+      "ramanujan/test_governance_invariants.py",
+      "ramanujan/test_ramanujan.py"
+    ],
+    "premise_fixture": "ramanujan/fixtures/premise_corpus.json",
+    "status_receipt": "ramanujan/RAMANUJAN_GOVERNANCE_STATUS.json"
   },
   "roles": {
     "source_catalogue": "odyssey/roles/ROLES.json",
@@ -95,9 +103,10 @@
     "no claim that fixture-trained retrieval is production premise selection"
   ],
   "how_to_verify": [
-    "python3.12 -m ramanujan.test_roles_economics",
-    "python3.12 -m ramanujan.test_ramanujan",
-    "python3.12 -m ramanujan.test_search",
-    "python3.12 -m ramanujan.test_cognition"
+    "python3 -m ramanujan.test_roles_economics",
+    "python3 -m ramanujan.test_ramanujan",
+    "python3 -m ramanujan.test_governance_invariants",
+    "python3 -m ramanujan.test_search",
+    "python3 -m ramanujan.test_cognition"
   ]
 }

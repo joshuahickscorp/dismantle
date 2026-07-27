@@ -17,8 +17,10 @@ GLM52_REAL_ACTIVATION_SWEEP.json, GLM52_ACTIVATION_AWARE_REPLICATION.json):
 
 Non-negotiable:
 
-  * Never fetch the whole parent to disk. Stream one (or a few) shards, then
-    evict the body. Disk floor is 141 GiB free; the parent is 1.507 TB.
+  * Never fetch the whole parent to disk. Stream a bounded window of shards
+    (``--fetch-workers``, default 4), then evict each body after use. Disk
+    floor is 141 GiB free; the parent is 1.507 TB. Floor accounting reserves
+    N concurrent bodies, not one.
   * Exact byte accounting that reconciles: sum(components) == total. Complete
     BPW is an exact rational over the sealed whole-model weight count.
   * Store the basis you used (or the artifact cannot be decoded) and bill it.
@@ -46,12 +48,12 @@ import shutil
 import struct
 import sys
 import time
-import queue
 import threading
+from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass, field, asdict
 from fractions import Fraction
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any, Callable, Sequence
 
 import numpy as np
 
@@ -73,6 +75,12 @@ ORIGINAL_WEIGHT_COUNT = 753_329_940_480
 # Disk floor is non-negotiable. Parent is 1.507 TB; free space may not fall below this.
 DISK_FLOOR_GIB = 141
 DISK_FLOOR_BYTES = DISK_FLOOR_GIB * (1 << 30)
+# Conservative upper bound on one BF16 shard body (max sealed size is 5_368_361_544).
+# Used to reserve floor headroom for N concurrent fetches before any of them land.
+DEFAULT_SHARD_BODY_BYTES = 5_370_000_000
+# Concurrent fetch depth. One HF stream tops out ~780 Mbit/s on 10G; a second stream
+# sustained ~760 alongside it. Default 4 aims at ~3 Gbit/s without unbounded residency.
+DEFAULT_FETCH_WORKERS = 4
 # Rank ladder measured in the pilot. Allocation picks one per tensor.
 DEFAULT_RANKS: tuple[int, ...] = (8, 16, 32, 64, 128, 256)
 # Deterministic everywhere: same inputs, same allocation, same bytes.
@@ -1363,13 +1371,28 @@ def shard_path(source_dir: Path, n: int) -> Path:
     return source_dir / f"model-{n:05d}-of-00282.safetensors"
 
 
+# Process-wide reservation for concurrent ensure_shard admissions. Without this, N
+# workers each check free-space independently, all pass, then all land and cross the floor.
+_ENSURE_RESERVE_LOCK = threading.Lock()
+_ENSURE_RESERVED_BYTES = 0
+
+
 def ensure_shard(
     n: int,
     source_dir: Path,
     *,
     fetch: bool,
     floor: int = DISK_FLOOR_BYTES,
+    body_bytes: int = DEFAULT_SHARD_BODY_BYTES,
+    reserve: bool = True,
 ) -> Path:
+    """Return a local path to shard ``n``, fetching if allowed.
+
+    When ``reserve`` is true (default), a missing body books ``body_bytes`` against the
+    disk floor for the whole download. Concurrent callers see each other's reservations,
+    so N in-flight fetches require free - N*body >= floor rather than free - 1*body.
+    """
+    global _ENSURE_RESERVED_BYTES
     path = shard_path(source_dir, n)
     if path.exists():
         return path
@@ -1378,22 +1401,38 @@ def ensure_shard(
             f"{path.name} not on disk at {source_dir}. "
             f"Rehydrate first (glm52_rehydrate_window.py) or pass --fetch."
         )
-    # Reuse the window rehydrator rather than re-implementing HF fetch.
-    assert_disk_floor(0, path=source_dir, floor=floor)
-    # Set the rehydrator's floor BEFORE importing it, and set it rather than defaulting it.
-    #
-    # Two bugs lived in these three lines. The rehydrator reads
-    # GLM52_PILOT_DISK_FLOOR_BYTES into a module-level constant at import time, and the
-    # assignment used to run *after* the import -- so it never reached the first import and
-    # the rehydrator kept its own default. And `setdefault` let a stale inherited value beat
-    # an explicit --disk-floor-gib, which is backwards: a flag the operator typed should win
-    # over a variable they cannot see.
-    os.environ["GLM52_PILOT_DISK_FLOOR_BYTES"] = str(floor)
-    from glm52_rehydrate_window import rehydrate  # local import, after the env is set
-    rc = rehydrate([n])
-    if rc != 0 or not path.exists():
-        raise PackError(f"rehydrate of shard {n} failed with rc={rc}")
-    return path
+    booked = 0
+    if reserve:
+        with _ENSURE_RESERVE_LOCK:
+            # Account for this body plus every other in-flight reservation.
+            assert_disk_floor(
+                int(body_bytes) + _ENSURE_RESERVED_BYTES,
+                path=source_dir,
+                floor=floor,
+            )
+            _ENSURE_RESERVED_BYTES += int(body_bytes)
+            booked = int(body_bytes)
+    else:
+        assert_disk_floor(int(body_bytes), path=source_dir, floor=floor)
+    try:
+        # Set the rehydrator's floor BEFORE importing it, and set it rather than defaulting it.
+        #
+        # Two bugs lived in these three lines. The rehydrator reads
+        # GLM52_PILOT_DISK_FLOOR_BYTES into a module-level constant at import time, and the
+        # assignment used to run *after* the import -- so it never reached the first import and
+        # the rehydrator kept its own default. And `setdefault` let a stale inherited value beat
+        # an explicit --disk-floor-gib, which is backwards: a flag the operator typed should win
+        # over a variable they cannot see.
+        os.environ["GLM52_PILOT_DISK_FLOOR_BYTES"] = str(floor)
+        from glm52_rehydrate_window import rehydrate  # local import, after the env is set
+        rc = rehydrate([n])
+        if rc != 0 or not path.exists():
+            raise PackError(f"rehydrate of shard {n} failed with rc={rc}")
+        return path
+    finally:
+        if booked:
+            with _ENSURE_RESERVE_LOCK:
+                _ENSURE_RESERVED_BYTES = max(0, _ENSURE_RESERVED_BYTES - booked)
 
 
 def evict_shard(path: Path) -> None:
@@ -1416,6 +1455,7 @@ def phase_measure(
     bill_basis_per_tensor: bool = False,
     enforce_floor: bool = True,
     workers: int = 1,
+    fetch_workers: int = DEFAULT_FETCH_WORKERS,
 ) -> dict[str, Any]:
     capsule_map = discover_capsule_layers()
     if not capsule_map:
@@ -1425,7 +1465,10 @@ def phase_measure(
     measurements: list[dict[str, Any]] = []
     per_shard: list[dict[str, Any]] = []
     t0 = time.time()
-    prefetch = _Prefetcher(shards, source_dir, fetch=fetch, floor=floor)
+    prefetch = _Prefetcher(
+        shards, source_dir, fetch=fetch, floor=floor,
+        workers=fetch_workers,
+    )
 
     def _one(n: int, path: Path) -> tuple[int, list, float]:
         t1 = time.time()
@@ -1436,57 +1479,80 @@ def phase_measure(
         )
         return n, ms, time.time() - t1
 
-    if workers > 1:
-        # numpy releases the GIL inside BLAS, so threads genuinely overlap here. Each
-        # in-flight shard is one body on disk, so `workers` bounds residency and the floor
-        # is checked before every admission.
-        from concurrent.futures import ThreadPoolExecutor
+    try:
+        if workers > 1:
+            # numpy releases the GIL inside BLAS, so threads genuinely overlap here. Each
+            # in-flight shard is one body on disk, so `workers` bounds residency and the floor
+            # is checked before every admission.
+            pending: dict = {}
+            results: dict[int, tuple[list, float, Path]] = {}
 
-        pending: dict = {}
-        results: dict[int, tuple[list, float, Path]] = {}
-        with ThreadPoolExecutor(max_workers=workers) as pool:
-            for n in shards:
-                if enforce_floor or fetch:
-                    assert_disk_floor(0, path=source_dir, floor=floor)
-                path = prefetch.get(n)
-                pending[pool.submit(_one, n, path)] = path
-                if len(pending) >= workers:
-                    done = next(f for f in list(pending) if f.done()) if any(
-                        f.done() for f in pending) else None
-                    if done is None:
-                        # block on the oldest rather than spin
-                        done = next(iter(pending))
-                    pth = pending.pop(done)
+            def _drain_one(*, block: bool) -> None:
+                if not pending:
+                    return
+                done = None
+                if any(f.done() for f in pending):
+                    done = next(f for f in pending if f.done())
+                elif block:
+                    done = next(iter(pending))
+                else:
+                    return
+                _n, pth = pending.pop(done)
+                try:
                     gn, ms, secs = done.result()
                     results[gn] = (ms, secs, pth)
                     if evict:
                         evict_shard(pth)
-            for f, pth in list(pending.items()):
-                gn, ms, secs = f.result()
-                results[gn] = (ms, secs, pth)
-                if evict:
-                    evict_shard(pth)
-        # Emit in shard order: allocation must not depend on completion order.
-        for n in shards:
-            if n not in results:
-                continue
-            ms, secs, pth = results[n]
-            measurements.extend(m.as_dict() for m in ms)
-            per_shard.append({"shard": n, "path": str(pth), "n_tensors": len(ms),
-                              "seconds": round(secs, 2)})
-    else:
-        for n in shards:
-            if enforce_floor or fetch:
-                assert_disk_floor(0, path=source_dir, floor=floor)
-            path = prefetch.get(n)
-            gn, ms, secs = _one(n, path)
-            measurements.extend(m.as_dict() for m in ms)
-            per_shard.append({"shard": n, "path": str(path), "n_tensors": len(ms),
-                              "seconds": round(secs, 2)})
-            # Evict the body. Never hold more than a few shards.
-            if evict:
-                evict_shard(path)
-        # Drop large arrays from basis cache's X_hold? Keep -- small vs shard bodies.
+                finally:
+                    # Always free the residency slot, even if measure raised.
+                    prefetch.release(_n)
+
+            with ThreadPoolExecutor(max_workers=workers) as pool:
+                for n in shards:
+                    if enforce_floor or fetch:
+                        assert_disk_floor(0, path=source_dir, floor=floor)
+                    # Drain when the measure pool is saturated OR the prefetch window is
+                    # full. Otherwise measure_workers > fetch_workers deadlocks: get()
+                    # waits for release(), and release only ran when pending hit workers.
+                    while pending and (
+                        len(pending) >= workers or prefetch.is_full()
+                    ):
+                        _drain_one(block=True)
+                    # get() holds a residency slot until release(). Do not release on
+                    # submit: the measure worker still needs the body on disk.
+                    path = prefetch.get(n)
+                    pending[pool.submit(_one, n, path)] = (n, path)
+                    # Opportunistically free finished work so the window can refill.
+                    while any(f.done() for f in pending):
+                        _drain_one(block=False)
+                while pending:
+                    _drain_one(block=True)
+            # Emit in shard order: allocation must not depend on completion order.
+            for n in shards:
+                if n not in results:
+                    continue
+                ms, secs, pth = results[n]
+                measurements.extend(m.as_dict() for m in ms)
+                per_shard.append({"shard": n, "path": str(pth), "n_tensors": len(ms),
+                                  "seconds": round(secs, 2)})
+        else:
+            for n in shards:
+                if enforce_floor or fetch:
+                    assert_disk_floor(0, path=source_dir, floor=floor)
+                path = prefetch.get(n)
+                try:
+                    gn, ms, secs = _one(n, path)
+                    measurements.extend(m.as_dict() for m in ms)
+                    per_shard.append({"shard": n, "path": str(path), "n_tensors": len(ms),
+                                      "seconds": round(secs, 2)})
+                    # Evict the body. Never hold more than a few shards.
+                    if evict:
+                        evict_shard(path)
+                finally:
+                    prefetch.release(n)
+            # Drop large arrays from basis cache's X_hold? Keep -- small vs shard bodies.
+    finally:
+        prefetch.close()
     return {
         "schema": "hawking.glm52.activation_aware_measurement.v1",
         "at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
@@ -1586,44 +1652,177 @@ class _SharedBasisCache:
 
 
 class _Prefetcher:
-    """Fetch shard N+1 while shard N is being worked on.
+    """Fetch up to ``workers`` shards concurrently; deliver them in request order.
 
-    Measured on the live run: 24 s fetch and 23 s work per shard, strictly serial, using
-    1.2 of 28 cores. Half the wall clock was a core sitting idle waiting on the network.
-    One background thread removes that half; it holds at most one extra shard on disk,
-    which the floor already accounts for.
+    One HF stream tops out around 780 Mbit/s on 10Gbase-T; a second concurrent stream
+    sustained ~760 alongside it. Concurrency is the lever. This window holds at most
+    ``workers`` not-yet-released bodies (in flight, ready, or checked out via get), so
+    residency stays bounded by N and does not grow with progress.
+
+    Floor accounting is process-wide in ``ensure_shard``: each missing body books
+    ``body_bytes`` before the download starts, so N concurrent misses require
+    free - N*body >= floor rather than free - 1*body. Delivery is always in the
+    requested shard order: a shard finishing early sits in the ready map until its
+    turn, and is never packed early.
     """
 
-    def __init__(self, shards, source_dir, fetch: bool, floor: int, enabled: bool = True):
-        self._q: "queue.Queue[tuple[int, Path | None, BaseException | None]]" = queue.Queue(maxsize=1)
+    def __init__(
+        self,
+        shards,
+        source_dir,
+        fetch: bool,
+        floor: int,
+        *,
+        workers: int = DEFAULT_FETCH_WORKERS,
+        enabled: bool = True,
+        body_bytes: int = DEFAULT_SHARD_BODY_BYTES,
+        ensure: Callable[..., Path] | None = None,
+    ):
         self._shards = list(shards)
         self._source_dir = source_dir
         self._fetch = fetch
         self._floor = floor
-        self._enabled = enabled and fetch
-        self._t = None
+        self._body_bytes = int(body_bytes)
+        self._workers = max(1, int(workers))
+        self._ensure = ensure or ensure_shard
+        # Prefetch is only useful when we are allowed to fetch missing bodies. When fetch
+        # is false we still resolve paths on the consumer thread (local-only / dry-run).
+        self._enabled = bool(enabled and fetch)
+        self._lock = threading.Lock()
+        self._cv = threading.Condition(self._lock)
+        self._ready: dict[int, tuple[Path | None, BaseException | None]] = {}
+        self._inflight: dict[int, Future] = {}
+        self._checked_out: set[int] = set()
+        self._next_idx = 0
+        self._closed = False
+        self._pool: ThreadPoolExecutor | None = None
+        # Peak not-yet-released occupancy (inflight + ready + checked_out). Tests pin this.
+        self.peak_resident = 0
         if self._enabled:
-            self._t = threading.Thread(target=self._run, daemon=True)
-            self._t.start()
+            # Floor accounting for the in-flight set lives in ensure_shard's process-wide
+            # reservation: each missing body books body_bytes before the download starts,
+            # so N concurrent misses require free - N*body >= floor. Already-present shards
+            # book nothing. Do not pre-charge the full window here -- that would refuse a
+            # near-floor pack that only needs to re-fetch one missing shard.
+            self._pool = ThreadPoolExecutor(
+                max_workers=self._workers,
+                thread_name_prefix="shard-prefetch",
+            )
+            with self._lock:
+                self._schedule_locked()
 
-    def _run(self):
-        for n in self._shards:
-            try:
-                path = ensure_shard(n, self._source_dir, fetch=self._fetch, floor=self._floor)
-                self._q.put((n, path, None))
-            except BaseException as e:  # surface it on the consuming side, in order
-                self._q.put((n, None, e))
-                return
+    def _occupancy_locked(self) -> int:
+        return len(self._inflight) + len(self._ready) + len(self._checked_out)
+
+    def _schedule_locked(self) -> None:
+        """Admit work until the window is full or the shard list is exhausted."""
+        if self._closed or self._pool is None:
+            return
+        while (
+            self._next_idx < len(self._shards)
+            and self._occupancy_locked() < self._workers
+        ):
+            n = self._shards[self._next_idx]
+            self._next_idx += 1
+            fut = self._pool.submit(self._fetch_one, n)
+            self._inflight[n] = fut
+            self.peak_resident = max(self.peak_resident, self._occupancy_locked())
+            fut.add_done_callback(lambda f, shard=n: self._on_done(shard, f))
+
+    def _fetch_one(self, n: int) -> Path:
+        try:
+            return self._ensure(
+                n,
+                self._source_dir,
+                fetch=self._fetch,
+                floor=self._floor,
+                body_bytes=self._body_bytes,
+            )
+        except TypeError:
+            # Test doubles may not accept body_bytes.
+            return self._ensure(
+                n, self._source_dir, fetch=self._fetch, floor=self._floor,
+            )
+        except BaseException as exc:
+            # Re-wrap with the shard id so a concurrent failure names the culprit.
+            raise PackError(f"prefetch failed for shard {n}: {exc}") from exc
+
+    def _on_done(self, n: int, fut: Future) -> None:
+        err: BaseException | None = None
+        path: Path | None = None
+        try:
+            path = fut.result()
+        except BaseException as exc:  # noqa: BLE001 -- surface on the consumer thread
+            err = exc
+        with self._lock:
+            self._inflight.pop(n, None)
+            self._ready[n] = (path, err)
+            self.peak_resident = max(self.peak_resident, self._occupancy_locked())
+            self._cv.notify_all()
 
     def get(self, n: int) -> Path:
+        """Block until shard ``n`` is ready. Always called in shard order by the packer."""
         if not self._enabled:
-            return ensure_shard(n, self._source_dir, fetch=self._fetch, floor=self._floor)
-        got_n, path, err = self._q.get()
+            return self._ensure(
+                n, self._source_dir, fetch=self._fetch, floor=self._floor,
+            )
+        with self._lock:
+            while n not in self._ready:
+                if self._closed and n not in self._inflight and n not in self._ready:
+                    # Window closed early (floor) or never scheduled -- make a clear error.
+                    if n not in self._shards:
+                        raise PackError(f"prefetch: shard {n} was not in the shard list")
+                    raise PackError(
+                        f"prefetch: shard {n} was never admitted "
+                        f"(window closed or list exhausted)"
+                    )
+                self._cv.wait(timeout=0.5)
+            path, err = self._ready.pop(n)
+            self._checked_out.add(n)
+            self.peak_resident = max(self.peak_resident, self._occupancy_locked())
+            # Do not schedule a replacement until release(): the consumer still holds the
+            # body, and residency must stay bounded by workers.
         if err is not None:
+            # Free the checkout slot so siblings can keep draining; re-raise named error.
+            with self._lock:
+                self._checked_out.discard(n)
+                self._schedule_locked()
             raise err
-        if got_n != n:  # ordering is the whole contract; a mismatch means a lost shard
-            raise PackError(f"prefetch order mismatch: expected shard {n}, got {got_n}")
+        if path is None:
+            with self._lock:
+                self._checked_out.discard(n)
+                self._schedule_locked()
+            raise PackError(f"prefetch returned no path for shard {n}")
         return path
+
+    def release(self, n: int) -> None:
+        """Mark shard ``n`` no longer resident (after use / eviction). Opens a window slot."""
+        if not self._enabled:
+            return
+        with self._lock:
+            self._checked_out.discard(n)
+            self._schedule_locked()
+            self._cv.notify_all()
+
+    def is_full(self) -> bool:
+        """True when the residency window has no free slot for another get()/fetch."""
+        if not self._enabled:
+            return False
+        with self._lock:
+            return self._occupancy_locked() >= self._workers
+
+    def close(self) -> None:
+        """Stop admitting work and shut down the pool. In-flight fetches are not cancelled
+        so a failure on one shard does not kill siblings mid-download; we just stop joining
+        them after a short wait.
+        """
+        with self._lock:
+            self._closed = True
+            pool = self._pool
+            self._pool = None
+            self._cv.notify_all()
+        if pool is not None:
+            pool.shutdown(wait=False, cancel_futures=False)
 
 
 def phase_pack(
@@ -1636,6 +1835,7 @@ def phase_pack(
     fetch: bool = False,
     evict: bool = False,
     floor: int = DISK_FLOOR_BYTES,
+    fetch_workers: int = DEFAULT_FETCH_WORKERS,
 ) -> dict[str, Any]:
     capsule_map = discover_capsule_layers()
     max_basis_rank = max(int(r) for r in ranks)
@@ -1647,20 +1847,29 @@ def phase_pack(
     shared = bool(allocation_doc.get("shared_bases", True))
     receipts = []
     t0 = time.time()
-    prefetch = _Prefetcher(shards, source_dir, fetch=fetch, floor=floor)
-    for n in shards:
-        assert_disk_floor(0, path=source_dir, floor=floor)
-        path = prefetch.get(n)
-        rec = pack_shard(
-            path, by_name, capsule_map, basis_cache, out_dir,
-            max_basis_rank=max_basis_rank,
-            shared_bases=shared,
-            layer_basis_ranks=layer_ranks,
-            floor=floor,
-        )
-        receipts.append(rec)
-        if evict:
-            evict_shard(path)
+    prefetch = _Prefetcher(
+        shards, source_dir, fetch=fetch, floor=floor,
+        workers=fetch_workers,
+    )
+    try:
+        for n in shards:
+            assert_disk_floor(0, path=source_dir, floor=floor)
+            path = prefetch.get(n)
+            try:
+                rec = pack_shard(
+                    path, by_name, capsule_map, basis_cache, out_dir,
+                    max_basis_rank=max_basis_rank,
+                    shared_bases=shared,
+                    layer_basis_ranks=layer_ranks,
+                    floor=floor,
+                )
+                receipts.append(rec)
+                if evict:
+                    evict_shard(path)
+            finally:
+                prefetch.release(n)
+    finally:
+        prefetch.close()
     # Aggregate ledger.
     ledger = ByteLedger()
     for rec in receipts:
@@ -1676,6 +1885,7 @@ def phase_pack(
         "byte_ledger": ledger.as_dict(total_w),
         "itemization_reconciles": ledger.reconciles(ledger.total_bytes()),
         "seconds": round(time.time() - t0, 2),
+        "fetch_workers": int(fetch_workers),
     }
 
 
@@ -1967,6 +2177,11 @@ def main(argv: list[str] | None = None) -> int:
                     help="parallel shard workers for measurement. Measured 24 s fetch + "
                          "23 s work per shard on 1.2 of 28 cores; each worker holds one "
                          "shard body, so this bounds residency too.")
+    ap.add_argument("--fetch-workers", type=int, default=DEFAULT_FETCH_WORKERS,
+                    help="concurrent shard fetches in the prefetcher window (default "
+                         f"{DEFAULT_FETCH_WORKERS}). One HF stream tops ~780 Mbit/s; a "
+                         "second sustained ~760 alongside it. Residency is bounded by "
+                         "this depth; floor accounting reserves N bodies, not one.")
     ap.add_argument("--disk-floor-gib", type=int, default=DISK_FLOOR_GIB,
                     help=f"free-space floor in GiB (default {DISK_FLOOR_GIB})")
     ap.add_argument("--selftest", action="store_true")
@@ -2035,6 +2250,8 @@ def main(argv: list[str] | None = None) -> int:
                 shards, args.source_dir, ranks,
                 fetch=args.fetch, evict=args.evict, floor=floor,
                 bill_basis_per_tensor=False,
+                workers=max(1, int(args.workers)),
+                fetch_workers=max(1, int(args.fetch_workers)),
             )
             dest = out or (DEFAULT_OUT / "MEASUREMENT.json")
             dest = Path(dest)
@@ -2069,6 +2286,7 @@ def main(argv: list[str] | None = None) -> int:
             doc = phase_pack(
                 shards, args.source_dir, allocation, dest_dir, ranks,
                 fetch=args.fetch, evict=args.evict, floor=floor,
+                fetch_workers=max(1, int(args.fetch_workers)),
             )
             receipt_path = dest_dir / "PACK_RECEIPT.json"
             receipt_path.write_text(json.dumps(doc, indent=2, sort_keys=True) + "\n")
@@ -2095,6 +2313,7 @@ def main(argv: list[str] | None = None) -> int:
                 fetch=args.fetch, evict=args.evict,
                 floor=floor, bill_basis_per_tensor=False,
                 workers=max(1, int(args.workers)),
+                fetch_workers=max(1, int(args.fetch_workers)),
             )
             (dest_dir / "MEASUREMENT.json").write_text(
                 json.dumps(measurement, indent=2, sort_keys=True) + "\n"
@@ -2118,6 +2337,7 @@ def main(argv: list[str] | None = None) -> int:
             pack_doc = phase_pack(
                 shards, args.source_dir, allocation, dest_dir, ranks,
                 fetch=args.fetch, evict=args.evict, floor=floor,
+                fetch_workers=max(1, int(args.fetch_workers)),
             )
             (dest_dir / "PACK_RECEIPT.json").write_text(
                 json.dumps(pack_doc, indent=2, sort_keys=True) + "\n"

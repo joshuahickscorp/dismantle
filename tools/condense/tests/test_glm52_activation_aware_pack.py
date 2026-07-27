@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import pathlib
 import sys
+import time
 
 import numpy as np
 import pytest
@@ -250,3 +251,194 @@ def test_shared_basis_cache_builds_once_under_contention():
 
     assert len(builds) == 1, f"basis built {len(builds)} times under contention"
     assert len({id(o) for o in out}) == 1, "workers received different basis objects"
+
+
+def test_prefetcher_preserves_order_under_out_of_order_completion(tmp_path):
+    """Pack order must follow the shard list, not which download finished first.
+
+    Same contract as the measure-phase emission fix: early completion of a later shard
+    must not deliver it early, or the receipt stops being reproducible.
+    """
+    import threading
+    import time
+    from pathlib import Path
+    import glm52_activation_aware_pack as m
+
+    shards = [1, 2, 3, 4]
+    # Later shards finish first.
+    delays = {1: 0.12, 2: 0.08, 3: 0.04, 4: 0.01}
+    active = 0
+    peak = 0
+    lock = threading.Lock()
+    deliver_order = []
+
+    def ensure(n, source_dir, fetch=True, floor=0, body_bytes=0, reserve=True):
+        nonlocal active, peak
+        with lock:
+            active += 1
+            peak = max(peak, active)
+        time.sleep(delays[n])
+        p = Path(source_dir) / f"model-{n:05d}-of-00282.safetensors"
+        p.write_bytes(b"x")
+        with lock:
+            active -= 1
+        return p
+
+    pref = m._Prefetcher(
+        shards, tmp_path, fetch=True, floor=0,
+        workers=4, body_bytes=1, ensure=ensure,
+    )
+    try:
+        got = []
+        for n in shards:
+            path = pref.get(n)
+            deliver_order.append(n)
+            got.append(path.name)
+            pref.release(n)
+    finally:
+        pref.close()
+
+    assert deliver_order == shards
+    assert got == [f"model-{n:05d}-of-00282.safetensors" for n in shards]
+    assert pref.peak_resident <= 4
+    assert peak <= 4, f"concurrent ensure calls peaked at {peak}"
+
+
+def test_prefetcher_residency_bounded_by_workers(tmp_path):
+    """Residency must stay bounded by N and not grow with progress."""
+    import threading
+    import time
+    from pathlib import Path
+    import glm52_activation_aware_pack as m
+
+    shards = list(range(1, 13))
+    workers = 3
+    active = 0
+    peak = 0
+    lock = threading.Lock()
+    gate = threading.Barrier(workers)  # force workers to overlap once
+
+    def ensure(n, source_dir, fetch=True, floor=0, body_bytes=0, reserve=True):
+        nonlocal active, peak
+        with lock:
+            active += 1
+            peak = max(peak, active)
+        # First wave overlaps; later waves just sleep briefly.
+        if n <= workers:
+            gate.wait()
+        time.sleep(0.02)
+        p = Path(source_dir) / f"shard-{n}"
+        p.write_bytes(b"y")
+        with lock:
+            active -= 1
+        return p
+
+    pref = m._Prefetcher(
+        shards, tmp_path, fetch=True, floor=0,
+        workers=workers, body_bytes=1, ensure=ensure,
+    )
+    try:
+        for n in shards:
+            pref.get(n)
+            # Simulate consumer holding the body briefly, then releasing (evict path).
+            time.sleep(0.005)
+            pref.release(n)
+    finally:
+        pref.close()
+
+    assert peak <= workers, f"in-flight ensure peaked at {peak} > {workers}"
+    assert pref.peak_resident <= workers, (
+        f"occupancy peaked at {pref.peak_resident} > {workers}"
+    )
+
+
+def test_prefetcher_failed_shard_does_not_wedge_siblings(tmp_path):
+    """A failed fetch must name its shard and let other in-flight fetches finish."""
+    import time
+    from pathlib import Path
+    import glm52_activation_aware_pack as m
+
+    shards = [10, 11, 12, 13]
+    finished = []
+
+    def ensure(n, source_dir, fetch=True, floor=0, body_bytes=0, reserve=True):
+        time.sleep(0.03 if n != 11 else 0.01)
+        if n == 11:
+            raise RuntimeError("simulated CDN reset")
+        p = Path(source_dir) / f"ok-{n}"
+        p.write_bytes(b"z")
+        finished.append(n)
+        return p
+
+    pref = m._Prefetcher(
+        shards, tmp_path, fetch=True, floor=0,
+        workers=4, body_bytes=1, ensure=ensure,
+    )
+    try:
+        p10 = pref.get(10)
+        assert p10.name == "ok-10"
+        pref.release(10)
+        with pytest.raises(m.PackError, match="shard 11"):
+            pref.get(11)
+        # Siblings admitted in the same window must still be deliverable.
+        p12 = pref.get(12)
+        assert p12.name == "ok-12"
+        pref.release(12)
+        p13 = pref.get(13)
+        assert p13.name == "ok-13"
+        pref.release(13)
+    finally:
+        pref.close()
+
+    assert 12 in finished and 13 in finished
+    assert 11 not in finished
+
+
+def test_ensure_shard_floor_accounts_for_concurrent_reservations(tmp_path, monkeypatch):
+    """N concurrent admissions must reserve N bodies, not one.
+
+    Two threads each needing a body of size B against free = floor + B + 1 must not
+    both pass: that is exactly the overrun that filled the disk once already.
+    """
+    import threading
+    import glm52_activation_aware_pack as m
+
+    body = 1_000_000
+    floor = 10_000_000
+    # free leaves room for exactly one body above the floor.
+    free = floor + body + 1
+    monkeypatch.setattr(m, "free_bytes", lambda path=None: free)
+
+    # Reset process-wide reservation so the test is hermetic.
+    with m._ENSURE_RESERVE_LOCK:
+        m._ENSURE_RESERVED_BYTES = 0
+
+    results = []
+
+    def try_admit(tag):
+        try:
+            with m._ENSURE_RESERVE_LOCK:
+                m.assert_disk_floor(
+                    body + m._ENSURE_RESERVED_BYTES,
+                    path=tmp_path,
+                    floor=floor,
+                )
+                m._ENSURE_RESERVED_BYTES += body
+            results.append((tag, "ok"))
+            time.sleep(0.05)  # hold reservation
+            with m._ENSURE_RESERVE_LOCK:
+                m._ENSURE_RESERVED_BYTES -= body
+        except m.DiskFloorError:
+            results.append((tag, "floor"))
+
+    t1 = threading.Thread(target=try_admit, args=("a",))
+    t2 = threading.Thread(target=try_admit, args=("b",))
+    t1.start()
+    t2.start()
+    t1.join()
+    t2.join()
+
+    statuses = sorted(s for _, s in results)
+    assert statuses == ["floor", "ok"], results
+    with m._ENSURE_RESERVE_LOCK:
+        assert m._ENSURE_RESERVED_BYTES == 0

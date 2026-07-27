@@ -474,42 +474,53 @@ def extract_d4(
             break
 
     items: list[dict[str, Any]] = []
+
+    def _pair_from_res(res: dict[str, Any]) -> dict[str, Any]:
+        return stamp_item(
+            {
+                "id": f"d4:{res['tag']}",
+                "source_id": "D4",
+                "split": "train",
+                "import": res["import"],
+                "signature": res["signature"],
+                "broken_proof": res["broken_proof"],
+                "error": res["error"],
+                "fix_proof": res["fix_proof"],
+                "lean_returncode": res["lean_returncode"],
+                "text": (
+                    f"signature: {res['signature']}\n"
+                    f"broken: {res['broken_proof']}\n"
+                    f"error: {res['error'][:500]}"
+                ),
+            },
+            extraction_method=METHOD_D4,
+        )
+
     # Thread pool (not process): each unit of work is a Lean subprocess wait.
     # Process pools need semaphores that some sandboxes refuse.
-    results: list[dict[str, Any] | None] = []
+    # Stop submitting work once we have `limit` successful pairs (yield, not
+    # pad): do not wait for the full candidate fan-out.
     if workers == 1 or len(candidates) <= 1:
-        results = [_run_lean_check(c) for c in candidates]
+        for c in candidates:
+            res = _run_lean_check(c)
+            if res:
+                items.append(_pair_from_res(res))
+                if len(items) >= limit:
+                    break
     else:
         with ThreadPoolExecutor(max_workers=workers) as ex:
-            futs = [ex.submit(_run_lean_check, c) for c in candidates]
+            futs = {ex.submit(_run_lean_check, c): c for c in candidates}
             for fut in as_completed(futs):
                 try:
-                    results.append(fut.result())
+                    res = fut.result()
                 except Exception:
-                    results.append(None)
-
-    for res in results:
-        if not res:
-            continue
-        item = {
-            "id": f"d4:{res['tag']}",
-            "source_id": "D4",
-            "split": "train",
-            "import": res["import"],
-            "signature": res["signature"],
-            "broken_proof": res["broken_proof"],
-            "error": res["error"],
-            "fix_proof": res["fix_proof"],
-            "lean_returncode": res["lean_returncode"],
-            "text": (
-                f"signature: {res['signature']}\n"
-                f"broken: {res['broken_proof']}\n"
-                f"error: {res['error'][:500]}"
-            ),
-        }
-        items.append(stamp_item(item, extraction_method=METHOD_D4))
-        if len(items) >= limit:
-            break
+                    res = None
+                if res:
+                    items.append(_pair_from_res(res))
+                    if len(items) >= limit:
+                        for pending in futs:
+                            pending.cancel()
+                        break
     return dedup_by_hash(items)
 
 

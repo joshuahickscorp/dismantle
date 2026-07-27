@@ -39,20 +39,34 @@ def file_sha256(path: Path) -> str:
     return h.hexdigest()
 
 
+# Process-level caches: stamp_item calls these once per item; without caching a
+# scale-up of ~15k items would spawn that many `git` / `lean --version` subprocesses.
+_MATHLIB_COMMIT_CACHE: dict[str, str] = {}
+_LEAN_VERSION_CACHE: str | None = None
+
+
 def mathlib_commit(mathlib: Path | None = None) -> str:
     root = mathlib or MATHLIB_ROOT
+    key = str(root)
+    cached = _MATHLIB_COMMIT_CACHE.get(key)
+    if cached is not None:
+        return cached
     try:
         out = subprocess.check_output(
             ["git", "-C", str(root), "rev-parse", "HEAD"],
             text=True,
             stderr=subprocess.DEVNULL,
         ).strip()
-        return out
     except (OSError, subprocess.CalledProcessError):
-        return EXPECTED_MATHLIB_COMMIT
+        out = EXPECTED_MATHLIB_COMMIT
+    _MATHLIB_COMMIT_CACHE[key] = out
+    return out
 
 
 def lean_version() -> str:
+    global _LEAN_VERSION_CACHE
+    if _LEAN_VERSION_CACHE is not None:
+        return _LEAN_VERSION_CACHE
     try:
         out = subprocess.check_output(
             ["lean", "--version"],
@@ -61,9 +75,11 @@ def lean_version() -> str:
             env=_elan_env(),
         )
         m = re.search(r"version\s+([\d.]+)", out)
-        return m.group(1) if m else out.strip().splitlines()[0]
+        ver = m.group(1) if m else out.strip().splitlines()[0]
     except (OSError, subprocess.CalledProcessError):
-        return EXPECTED_LEAN_VERSION
+        ver = EXPECTED_LEAN_VERSION
+    _LEAN_VERSION_CACHE = ver
+    return ver
 
 
 def _elan_env() -> dict[str, str]:

@@ -1,6 +1,6 @@
 {
   "schema": "hawking.ramanujan.contamination_receipt.v1",
-  "at": "2026-07-27T16:02:44Z",
+  "at": "2026-07-27T18:56:37Z",
   "barrier": {
     "schema": "hawking.odyssey.contamination_barrier.v1",
     "rules": [
@@ -25,44 +25,44 @@
     "expected_support_halo_sha256": "b3ebda04ce48aa84b51faf47bff6284083029e0517b33e8c7c3f55b5fb54ec67"
   },
   "summary": {
-    "total_input": 1648,
-    "total_admitted": 1648,
+    "total_input": 16188,
+    "total_admitted": 16188,
     "total_rejected": 0,
     "all_admitted": true
   },
   "per_source": {
     "D1": {
-      "path": "/Users/scammermike/.claude-grok/worktrees/ramanujan-data-20260727-114052/ramanujan/data/corpora/d1_proof_traces.jsonl",
-      "n_input": 400,
-      "n_admitted": 400,
+      "path": "/Users/scammermike/.claude-grok/worktrees/ramanujan-scaleup-20260727-144149/ramanujan/data/corpora/d1_proof_traces.jsonl",
+      "n_input": 5000,
+      "n_admitted": 5000,
       "n_rejected": 0
     },
     "D2": {
-      "path": "/Users/scammermike/.claude-grok/worktrees/ramanujan-data-20260727-114052/ramanujan/data/corpora/d2_state_transitions.jsonl",
-      "n_input": 400,
-      "n_admitted": 400,
+      "path": "/Users/scammermike/.claude-grok/worktrees/ramanujan-scaleup-20260727-144149/ramanujan/data/corpora/d2_state_transitions.jsonl",
+      "n_input": 5000,
+      "n_admitted": 5000,
       "n_rejected": 0
     },
     "D3": {
-      "path": "/Users/scammermike/.claude-grok/worktrees/ramanujan-data-20260727-114052/ramanujan/data/corpora/d3_premise_pairs.jsonl",
-      "n_input": 400,
-      "n_admitted": 400,
+      "path": "/Users/scammermike/.claude-grok/worktrees/ramanujan-scaleup-20260727-144149/ramanujan/data/corpora/d3_premise_pairs.jsonl",
+      "n_input": 5000,
+      "n_admitted": 5000,
       "n_rejected": 0
     },
     "D4": {
-      "path": "/Users/scammermike/.claude-grok/worktrees/ramanujan-data-20260727-114052/ramanujan/data/corpora/d4_repair_pairs.jsonl",
-      "n_input": 60,
-      "n_admitted": 60,
+      "path": "/Users/scammermike/.claude-grok/worktrees/ramanujan-scaleup-20260727-144149/ramanujan/data/corpora/d4_repair_pairs.jsonl",
+      "n_input": 800,
+      "n_admitted": 800,
       "n_rejected": 0
     },
     "D6": {
-      "path": "/Users/scammermike/.claude-grok/worktrees/ramanujan-data-20260727-114052/ramanujan/data/corpora/d6_counterexamples.jsonl",
+      "path": "/Users/scammermike/.claude-grok/worktrees/ramanujan-scaleup-20260727-144149/ramanujan/data/corpora/d6_counterexamples.jsonl",
       "n_input": 302,
       "n_admitted": 302,
       "n_rejected": 0
     },
     "D7": {
-      "path": "/Users/scammermike/.claude-grok/worktrees/ramanujan-data-20260727-114052/ramanujan/data/corpora/d7_tool_use_traces.jsonl",
+      "path": "/Users/scammermike/.claude-grok/worktrees/ramanujan-scaleup-20260727-144149/ramanujan/data/corpora/d7_tool_use_traces.jsonl",
       "n_input": 86,
       "n_admitted": 86,
       "n_rejected": 0

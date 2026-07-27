@@ -1349,6 +1349,209 @@ kernel void gravity_glm_router_select_noaux_f32(
     }
 }
 
+// ---------------------------------------------------------------------------
+// Cache-indexed routed-expert address-table proof.
+//
+// These layouts are frozen against DeviceExpertTensorRef (56 B) and
+// DeviceExpertTriplet (176 B) in gravity_glm_resident.rs. Pointer fields are
+// host-populated Metal gpuAddress values. Every indirectly referenced resource
+// must also be declared through useResources before the dispatch.
+// ---------------------------------------------------------------------------
+
+struct GravityDeviceExpertTensorRef {
+    const device uchar *primary;
+    const device uchar *secondary;
+    uint dim;
+    uint subspaces;
+    uint sub;
+    uint card;
+    uint rows;
+    uint cols;
+    uint nchunk;
+    uint bits;
+    uint kind;
+    uint generation;
+};
+
+struct GravityDeviceExpertTriplet {
+    GravityDeviceExpertTensorRef gate;
+    GravityDeviceExpertTensorRef up;
+    GravityDeviceExpertTensorRef down;
+    uint ready_mask;
+    uint generation;
+};
+
+static_assert(sizeof(GravityDeviceExpertTensorRef) == 56,
+              "GravityDeviceExpertTensorRef ABI drift");
+static_assert(sizeof(GravityDeviceExpertTriplet) == 176,
+              "GravityDeviceExpertTriplet ABI drift");
+
+constant constexpr uint GRAVITY_EXPERT_KIND_PQ = 1u;
+constant constexpr uint GRAVITY_EXPERT_KIND_NATIVE_BF16 = 2u;
+constant constexpr uint GRAVITY_EXPERT_TRIPLET_READY = 7u;
+
+struct GravityDeviceExpertValidateParams {
+    uint n_experts;
+    uint experts_per_token;
+    uint generation;
+    uint required_kind;
+    uint hidden;
+    uint intermediate;
+};
+
+struct GravityDeviceExpertMatvecParams {
+    uint n_experts;
+    uint experts_per_token;
+    uint generation;
+    uint execution_position;
+    uint projection;
+    uint rows;
+    uint cols;
+};
+
+static inline bool gravity_device_expert_tensor_valid(
+    const device GravityDeviceExpertTensorRef &tensor,
+    uint generation,
+    uint required_kind)
+{
+    if (tensor.generation != generation ||
+        tensor.kind != required_kind ||
+        tensor.primary == nullptr ||
+        tensor.rows == 0u ||
+        tensor.cols == 0u) {
+        return false;
+    }
+    if (required_kind == GRAVITY_EXPERT_KIND_PQ) {
+        return tensor.secondary != nullptr &&
+               tensor.bits == 8u &&
+               tensor.subspaces == 1u &&
+               tensor.sub > 0u &&
+               tensor.dim == tensor.sub &&
+               tensor.card == 256u &&
+               tensor.nchunk > 0u &&
+               tensor.cols == tensor.nchunk * tensor.dim;
+    }
+    if (required_kind == GRAVITY_EXPERT_KIND_NATIVE_BF16) {
+        return tensor.secondary == nullptr;
+    }
+    return false;
+}
+
+kernel void gravity_glm_expert_table_validate(
+    const device uint *expert_indices [[buffer(0)]],
+    const device uint *expert_exec_slots [[buffer(1)]],
+    const device GravityDeviceExpertTriplet *table [[buffer(2)]],
+    device atomic_uint *miss_mask [[buffer(3)]],
+    constant GravityDeviceExpertValidateParams &p [[buffer(4)]],
+    uint id [[thread_position_in_grid]])
+{
+    if (id != 0u) { return; }
+    uint missing = 0u;
+    for (uint execution_position = 0u;
+         execution_position < p.experts_per_token;
+         ++execution_position) {
+        uint bit = 1u << execution_position;
+        uint slot = expert_exec_slots[execution_position];
+        if (slot >= p.experts_per_token) {
+            missing |= bit;
+            continue;
+        }
+        uint expert = expert_indices[slot];
+        if (expert >= p.n_experts) {
+            missing |= bit;
+            continue;
+        }
+        const device GravityDeviceExpertTriplet &entry = table[expert];
+        bool ready =
+            entry.ready_mask == GRAVITY_EXPERT_TRIPLET_READY &&
+            entry.generation == p.generation &&
+            gravity_device_expert_tensor_valid(
+                entry.gate, p.generation, p.required_kind) &&
+            gravity_device_expert_tensor_valid(
+                entry.up, p.generation, p.required_kind) &&
+            gravity_device_expert_tensor_valid(
+                entry.down, p.generation, p.required_kind) &&
+            entry.gate.rows == p.intermediate &&
+            entry.gate.cols == p.hidden &&
+            entry.up.rows == p.intermediate &&
+            entry.up.cols == p.hidden &&
+            entry.down.rows == p.hidden &&
+            entry.down.cols == p.intermediate;
+        if (!ready) {
+            missing |= bit;
+        }
+    }
+    atomic_store_explicit(miss_mask, missing, memory_order_relaxed);
+}
+
+kernel void gravity_glm_expert_table_pq_matvec(
+    const device uint *expert_indices [[buffer(0)]],
+    const device uint *expert_exec_slots [[buffer(1)]],
+    const device GravityDeviceExpertTriplet *table [[buffer(2)]],
+    device atomic_uint *miss_mask [[buffer(3)]],
+    const device float *x [[buffer(4)]],
+    device float *y [[buffer(5)]],
+    constant GravityDeviceExpertMatvecParams &p [[buffer(6)]],
+    uint tgid [[threadgroup_position_in_grid]],
+    uint sg_in_tg [[simdgroup_index_in_threadgroup]],
+    uint sgs_per_tg [[simdgroups_per_threadgroup]],
+    uint lane [[thread_index_in_simdgroup]])
+{
+    if (atomic_load_explicit(miss_mask, memory_order_relaxed) != 0u) {
+        return;
+    }
+    if (p.execution_position >= p.experts_per_token) {
+        return;
+    }
+    uint slot = expert_exec_slots[p.execution_position];
+    if (slot >= p.experts_per_token) {
+        return;
+    }
+    uint expert = expert_indices[slot];
+    if (expert >= p.n_experts) {
+        return;
+    }
+    const device GravityDeviceExpertTriplet &entry = table[expert];
+    const device GravityDeviceExpertTensorRef *tensor =
+        p.projection == 0u ? &entry.gate :
+        (p.projection == 1u ? &entry.up : &entry.down);
+    bool valid =
+        p.projection <= 2u &&
+        entry.ready_mask == GRAVITY_EXPERT_TRIPLET_READY &&
+        entry.generation == p.generation &&
+        gravity_device_expert_tensor_valid(
+            *tensor, p.generation, GRAVITY_EXPERT_KIND_PQ) &&
+        tensor->rows == p.rows &&
+        tensor->cols == p.cols;
+    if (!valid) {
+        if (tgid == 0u && sg_in_tg == 0u && lane == 0u) {
+            atomic_fetch_or_explicit(
+                miss_mask, 1u << p.execution_position, memory_order_relaxed);
+        }
+        return;
+    }
+
+    uint row = tgid * sgs_per_tg + sg_in_tg;
+    if (row >= tensor->rows) { return; }
+    const device half *codebooks =
+        reinterpret_cast<const device half *>(tensor->primary);
+    const device uchar *codes = tensor->secondary;
+    float acc = 0.0f;
+    for (uint chunk = lane; chunk < tensor->nchunk; chunk += 32u) {
+        uint flat = row * tensor->nchunk + chunk;
+        const device half *entry_values =
+            codebooks + uint(codes[flat]) * tensor->sub;
+        const device float *xs = x + chunk * tensor->dim;
+        for (uint j = 0u; j < tensor->sub; ++j) {
+            acc = fma(float(entry_values[j]), xs[j], acc);
+        }
+    }
+    acc = simd_sum(acc);
+    if (lane == 0u) {
+        y[row] = acc;
+    }
+}
+
 // Zero a buffer (used when starting a residual accumulate).
 kernel void gravity_zero_f32(
     device float *x [[buffer(0)]],

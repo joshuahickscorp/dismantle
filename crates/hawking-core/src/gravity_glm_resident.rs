@@ -1678,6 +1678,17 @@ mod route_segment_primitives {
     }
 
     #[repr(C)]
+    #[derive(Clone, Copy, Debug, PartialEq)]
+    pub(super) struct GlmCompactRankedAttnParams {
+        pub n_heads: u32,
+        pub latent_dim: u32,
+        pub rope_dim: u32,
+        pub n_keys: u32,
+        pub n_allow: u32,
+        pub scale: f32,
+    }
+
+    #[repr(C)]
     #[derive(Clone, Copy, Debug, PartialEq, Eq)]
     pub(super) struct GlmBuildQParams {
         pub n_heads: u32,
@@ -1723,6 +1734,7 @@ mod route_segment_primitives {
     const _: [(); 20] = [(); std::mem::size_of::<GlmMlaAppendParams>()];
     const _: [(); 12] = [(); std::mem::size_of::<GlmMlaCompactAppendParams>()];
     const _: [(); 28] = [(); std::mem::size_of::<GlmPqKTransposeParams>()];
+    const _: [(); 24] = [(); std::mem::size_of::<GlmCompactRankedAttnParams>()];
     const _: [(); 12] = [(); std::mem::size_of::<GlmBuildQParams>()];
     const _: [(); 20] = [(); std::mem::size_of::<GlmDsaParams>()];
     const _: [(); 8] = [(); std::mem::size_of::<GlmTopkParams>()];
@@ -1732,6 +1744,7 @@ mod route_segment_primitives {
     const _: [(); 4] = [(); std::mem::align_of::<GlmMlaAppendParams>()];
     const _: [(); 4] = [(); std::mem::align_of::<GlmMlaCompactAppendParams>()];
     const _: [(); 4] = [(); std::mem::align_of::<GlmPqKTransposeParams>()];
+    const _: [(); 4] = [(); std::mem::align_of::<GlmCompactRankedAttnParams>()];
     const _: [(); 4] = [(); std::mem::align_of::<GlmBuildQParams>()];
     const _: [(); 4] = [(); std::mem::align_of::<GlmDsaParams>()];
     const _: [(); 4] = [(); std::mem::align_of::<GlmTopkParams>()];
@@ -2248,6 +2261,135 @@ mod route_segment_primitives {
                     std::mem::size_of_val(&params) as u64,
                     &params as *const _ as *const _,
                 );
+            },
+        )
+    }
+
+    /// Encode compact absorbed MLA attention over stable DSA-ranked positions.
+    ///
+    /// Each head computes content scores from the compact latent cache,
+    /// appends the shared RoPE score, normalizes in the supplied rank order,
+    /// and produces one probability-weighted latent. `query_latent` and
+    /// `weighted_latent` may be the same buffer. This encode-only candidate is
+    /// not wired into [`forward_resident`].
+    #[allow(clippy::too_many_arguments)]
+    pub(super) fn encode_compact_ranked_attention(
+        tcb: &mut TokenCommandBuffer<'_>,
+        query_latent: &Buffer,
+        query_rope: &Buffer,
+        latent_cache: &Buffer,
+        rope_cache: &Buffer,
+        ranked_indices: &Buffer,
+        weighted_latent: &Buffer,
+        n_heads: usize,
+        latent_dim: usize,
+        rope_dim: usize,
+        n_keys: usize,
+        n_allow: usize,
+        scale: f32,
+    ) -> Result<()> {
+        const MAX_ALLOW: usize = 2048;
+        if n_heads == 0 || latent_dim == 0 {
+            return Ok(());
+        }
+        if n_allow > MAX_ALLOW {
+            return Err(Error::Gravity(format!(
+                "gravity_glm_compact_ranked_attn supports n_allow <= {MAX_ALLOW}, got {n_allow}"
+            )));
+        }
+        let query_elements = checked_mul(
+            n_heads,
+            latent_dim,
+            "gravity_glm_compact_ranked_attn query latent",
+        )?;
+        require_f32(
+            query_latent,
+            0,
+            query_elements,
+            "gravity_glm_compact_ranked_attn query latent",
+        )?;
+        require_f32(
+            query_rope,
+            0,
+            checked_mul(
+                n_heads,
+                rope_dim,
+                "gravity_glm_compact_ranked_attn query rope",
+            )?,
+            "gravity_glm_compact_ranked_attn query rope",
+        )?;
+        require_f32(
+            latent_cache,
+            0,
+            checked_mul(
+                n_keys,
+                latent_dim,
+                "gravity_glm_compact_ranked_attn latent cache",
+            )?,
+            "gravity_glm_compact_ranked_attn latent cache",
+        )?;
+        require_f32(
+            rope_cache,
+            0,
+            checked_mul(
+                n_keys,
+                rope_dim,
+                "gravity_glm_compact_ranked_attn rope cache",
+            )?,
+            "gravity_glm_compact_ranked_attn rope cache",
+        )?;
+        require_range(
+            ranked_indices,
+            0,
+            n_allow,
+            std::mem::size_of::<u32>(),
+            "gravity_glm_compact_ranked_attn ranked indices",
+        )?;
+        require_f32(
+            weighted_latent,
+            0,
+            query_elements,
+            "gravity_glm_compact_ranked_attn weighted latent",
+        )?;
+        let params = GlmCompactRankedAttnParams {
+            n_heads: u32_arg(n_heads, "gravity_glm_compact_ranked_attn n_heads")?,
+            latent_dim: u32_arg(latent_dim, "gravity_glm_compact_ranked_attn latent_dim")?,
+            rope_dim: u32_arg(rope_dim, "gravity_glm_compact_ranked_attn rope_dim")?,
+            n_keys: u32_arg(n_keys, "gravity_glm_compact_ranked_attn n_keys")?,
+            n_allow: u32_arg(n_allow, "gravity_glm_compact_ranked_attn n_allow")?,
+            scale,
+        };
+        let grid_width = params.n_heads.checked_mul(TG).ok_or_else(|| {
+            Error::Gravity("gravity_glm_compact_ranked_attn grid overflow".into())
+        })?;
+        let shmem = checked_mul(
+            n_allow.max(1),
+            std::mem::size_of::<f32>(),
+            "gravity_glm_compact_ranked_attn threadgroup memory",
+        )?;
+        let qlb = query_latent.clone();
+        let qrb = query_rope.clone();
+        let lcb = latent_cache.clone();
+        let rcb = rope_cache.clone();
+        let rib = ranked_indices.clone();
+        let wlb = weighted_latent.clone();
+        tcb.dispatch_threads(
+            "gravity_glm_compact_ranked_attn",
+            (grid_width, 1, 1),
+            (TG, 1, 1),
+            move |enc| {
+                enc.set_buffer(0, Some(&qlb), 0);
+                enc.set_buffer(1, Some(&qrb), 0);
+                enc.set_buffer(2, Some(&lcb), 0);
+                enc.set_buffer(3, Some(&rcb), 0);
+                enc.set_buffer(4, Some(&rib), 0);
+                enc.set_buffer(5, Some(&wlb), 0);
+                enc.set_bytes(
+                    6,
+                    std::mem::size_of_val(&params) as u64,
+                    &params as *const _ as *const _,
+                );
+                enc.set_threadgroup_memory_length(0, shmem as u64);
             },
         )
     }
@@ -3151,6 +3293,14 @@ mod tests {
         assert_eq!(std::mem::offset_of!(GlmPqKTransposeParams, latent_dim), 12);
         assert_eq!(std::mem::offset_of!(GlmPqKTransposeParams, pq_nchunk), 24);
 
+        assert_eq!(std::mem::size_of::<GlmCompactRankedAttnParams>(), 24);
+        assert_eq!(std::mem::offset_of!(GlmCompactRankedAttnParams, n_heads), 0);
+        assert_eq!(
+            std::mem::offset_of!(GlmCompactRankedAttnParams, n_allow),
+            16
+        );
+        assert_eq!(std::mem::offset_of!(GlmCompactRankedAttnParams, scale), 20);
+
         assert_eq!(std::mem::size_of::<GlmBuildQParams>(), 12);
         assert_eq!(std::mem::offset_of!(GlmBuildQParams, qk_rope), 8);
 
@@ -3370,6 +3520,195 @@ mod tests {
             &read_f32(&output, host.len()),
             &authority,
         );
+    }
+
+    #[test]
+    fn route_segment_compact_ranked_attention_is_stable_alias_safe_and_v21() {
+        let shader = include_str!("../shaders/gravity_pq.metal");
+        assert!(shader.contains("kernel void gravity_glm_compact_ranked_attn("));
+        let registry = include_str!("metal/mod.rs");
+        assert!(registry.contains(
+            "\"gravity_glm_compact_ranked_attn\" => \"gravity_glm_compact_ranked_attn\""
+        ));
+
+        let Ok(ctx) = MetalContext::new() else {
+            return;
+        };
+        let (n_heads, latent_dim, rope_dim, n_keys) = (2usize, 8usize, 4usize, 10usize);
+        let ranked = [6u32, 2, 5, 9, 8, 0, 3];
+        let scale = 0.5f32;
+        let query_latent: Vec<f32> = (0..n_heads * latent_dim)
+            .map(|index| {
+                let signed = ((index * 11 + index / 3) % 29) as i32 - 14;
+                signed as f32 * (1.0 / 32.0)
+            })
+            .collect();
+        let query_rope: Vec<f32> = (0..n_heads * rope_dim)
+            .map(|index| {
+                let signed = ((index * 7 + 3) % 17) as i32 - 8;
+                signed as f32 * (1.0 / 16.0)
+            })
+            .collect();
+        let latent_cache: Vec<f32> = (0..n_keys * latent_dim)
+            .map(|index| {
+                let signed = ((index * 13 + index / 5) % 37) as i32 - 18;
+                0.75 + signed as f32 * (1.0 / 64.0)
+            })
+            .collect();
+        let rope_cache: Vec<f32> = (0..n_keys * rope_dim)
+            .map(|index| {
+                let signed = ((index * 5 + index / 4) % 23) as i32 - 11;
+                signed as f32 * (1.0 / 32.0)
+            })
+            .collect();
+
+        let mut host = vec![0.0f32; n_heads * latent_dim];
+        let mut authority = vec![0.0f64; n_heads * latent_dim];
+        for head in 0..n_heads {
+            let mut scores = vec![0.0f32; ranked.len()];
+            let mut authority_scores = vec![0.0f64; ranked.len()];
+            for (slot, &token) in ranked.iter().enumerate() {
+                let token = token as usize;
+                let mut dot = 0.0f32;
+                let mut authority_dot = 0.0f64;
+                for dim in 0..latent_dim {
+                    let q = query_latent[head * latent_dim + dim];
+                    let k = latent_cache[token * latent_dim + dim];
+                    dot = q.mul_add(k, dot);
+                    authority_dot += q as f64 * k as f64;
+                }
+                for dim in 0..rope_dim {
+                    let q = query_rope[head * rope_dim + dim];
+                    let k = rope_cache[token * rope_dim + dim];
+                    dot = q.mul_add(k, dot);
+                    authority_dot += q as f64 * k as f64;
+                }
+                scores[slot] = dot * scale;
+                authority_scores[slot] = authority_dot * scale as f64;
+            }
+            let best = scores.iter().copied().fold(f32::NEG_INFINITY, f32::max);
+            let authority_best = authority_scores
+                .iter()
+                .copied()
+                .fold(f64::NEG_INFINITY, f64::max);
+            let exponentials: Vec<f32> = scores.iter().map(|&score| (score - best).exp()).collect();
+            let authority_exponentials: Vec<f64> = authority_scores
+                .iter()
+                .map(|&score| (score - authority_best).exp())
+                .collect();
+            let total: f32 = exponentials.iter().sum();
+            let authority_total: f64 = authority_exponentials.iter().sum();
+            for dim in 0..latent_dim {
+                let mut acc = 0.0f32;
+                let mut authority_acc = 0.0f64;
+                for (slot, &token) in ranked.iter().enumerate() {
+                    let value = latent_cache[token as usize * latent_dim + dim];
+                    acc = (exponentials[slot] / total).mul_add(value, acc);
+                    authority_acc +=
+                        (authority_exponentials[slot] / authority_total) * value as f64;
+                }
+                host[head * latent_dim + dim] = acc;
+                authority[head * latent_dim + dim] = authority_acc;
+            }
+        }
+
+        let query_latent_a = f32_buffer(&ctx, &query_latent);
+        let query_latent_alias = f32_buffer(&ctx, &query_latent);
+        let query_rope_buffer = f32_buffer(&ctx, &query_rope);
+        let latent_cache_buffer = f32_buffer(&ctx, &latent_cache);
+        let rope_cache_buffer = f32_buffer(&ctx, &rope_cache);
+        let ranked_buffer = u32_buffer(&ctx, &ranked);
+        let output_a = filled_f32_buffer(&ctx, host.len(), f32::NAN);
+        let output_b = filled_f32_buffer(&ctx, host.len(), f32::NAN);
+
+        let mut tcb = TokenCommandBuffer::new(&ctx);
+        for output in [&output_a, &output_b] {
+            encode_compact_ranked_attention(
+                &mut tcb,
+                &query_latent_a,
+                &query_rope_buffer,
+                &latent_cache_buffer,
+                &rope_cache_buffer,
+                &ranked_buffer,
+                output,
+                n_heads,
+                latent_dim,
+                rope_dim,
+                n_keys,
+                ranked.len(),
+                scale,
+            )
+            .expect("encode compact ranked attention");
+        }
+        encode_compact_ranked_attention(
+            &mut tcb,
+            &query_latent_alias,
+            &query_rope_buffer,
+            &latent_cache_buffer,
+            &rope_cache_buffer,
+            &ranked_buffer,
+            &query_latent_alias,
+            n_heads,
+            latent_dim,
+            rope_dim,
+            n_keys,
+            ranked.len(),
+            scale,
+        )
+        .expect("encode in-place compact ranked attention");
+        assert_eq!(tcb.dispatch_count(), 3);
+        tcb.commit_and_wait()
+            .expect("compact ranked attention command buffer");
+
+        let device_a = read_f32(&output_a, host.len());
+        let device_b = read_f32(&output_b, host.len());
+        let device_alias = read_f32(&query_latent_alias, host.len());
+        assert_eq!(device_a, device_b, "repeated dispatch must be bit-stable");
+        assert_eq!(
+            device_a, device_alias,
+            "query/weighted-latent alias must be exact"
+        );
+        assert_v21_pair("compact ranked attention", &host, &device_a, &authority);
+
+        let mut rejected = TokenCommandBuffer::new(&ctx);
+        let error = encode_compact_ranked_attention(
+            &mut rejected,
+            &query_latent_a,
+            &query_rope_buffer,
+            &latent_cache_buffer,
+            &rope_cache_buffer,
+            &ranked_buffer,
+            &output_a,
+            n_heads,
+            latent_dim,
+            rope_dim,
+            n_keys,
+            2049,
+            scale,
+        )
+        .expect_err("oversized selection must fail before dispatch");
+        assert!(error.to_string().contains("n_allow <= 2048"));
+        assert_eq!(rejected.dispatch_count(), 0);
+
+        let short_ranked = u32_buffer(&ctx, &ranked[..ranked.len() - 1]);
+        let error = encode_compact_ranked_attention(
+            &mut rejected,
+            &query_latent_a,
+            &query_rope_buffer,
+            &latent_cache_buffer,
+            &rope_cache_buffer,
+            &short_ranked,
+            &output_a,
+            n_heads,
+            latent_dim,
+            rope_dim,
+            n_keys,
+            ranked.len(),
+            scale,
+        )
+        .expect_err("undersized ranked-index buffer must fail before dispatch");
+        assert!(error.to_string().contains("byte range"));
+        assert_eq!(rejected.dispatch_count(), 0);
     }
 
     #[test]

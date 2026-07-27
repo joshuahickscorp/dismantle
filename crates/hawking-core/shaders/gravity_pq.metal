@@ -652,6 +652,101 @@ kernel void gravity_pq_k_transpose_heads(
     query_latent[id] = acc;
 }
 
+// Compact absorbed MLA attention over the stable DSA score-ranked positions.
+// One threadgroup owns one head. Scores, softmax normalization, and the final
+// weighted-latent reduction all preserve the supplied rank order. The query
+// latent and weighted-latent buffers may alias: every query read completes
+// before the post-score threadgroup barrier permits any output write.
+struct GravityGlmCompactRankedAttnParams {
+    uint n_heads;
+    uint latent_dim;
+    uint rope_dim;
+    uint n_keys;
+    uint n_allow;
+    float scale;
+};
+
+kernel void gravity_glm_compact_ranked_attn(
+    device const float *query_latent [[buffer(0)]],   // n_heads * latent_dim
+    device const float *query_rope [[buffer(1)]],     // n_heads * rope_dim
+    device const float *latent_cache [[buffer(2)]],   // n_keys * latent_dim
+    device const float *rope_cache [[buffer(3)]],     // n_keys * rope_dim
+    device const uint  *ranked_idx [[buffer(4)]],     // n_allow, DSA rank order
+    device       float *weighted_latent [[buffer(5)]],// n_heads * latent_dim
+    constant GravityGlmCompactRankedAttnParams &p [[buffer(6)]],
+    uint head [[threadgroup_position_in_grid]],
+    uint tid [[thread_position_in_threadgroup]],
+    uint tg [[threads_per_threadgroup]],
+    threadgroup float *scores [[threadgroup(0)]])
+{
+    if (head >= p.n_heads) { return; }
+    device const float *qh = query_latent + head * p.latent_dim;
+    device const float *qr = query_rope + head * p.rope_dim;
+
+    // Each score has one owner and visits latent dimensions first, then the
+    // shared RoPE dimensions, both in strictly ascending dimension order.
+    for (uint a = tid; a < p.n_allow; a += tg) {
+        uint token = ranked_idx[a];
+        float score = -INFINITY;
+        if (token < p.n_keys) {
+            device const float *latent = latent_cache + token * p.latent_dim;
+            device const float *rope = rope_cache + token * p.rope_dim;
+            float dot = 0.0f;
+            for (uint d = 0u; d < p.latent_dim; ++d) {
+                dot = fma(qh[d], latent[d], dot);
+            }
+            for (uint d = 0u; d < p.rope_dim; ++d) {
+                dot = fma(qr[d], rope[d], dot);
+            }
+            score = dot * p.scale;
+        }
+        scores[a] = score;
+    }
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+
+    // Serial stable softmax in the supplied DSA rank order.
+    if (tid == 0u) {
+        float best = -INFINITY;
+        for (uint a = 0u; a < p.n_allow; ++a) {
+            best = max(best, scores[a]);
+        }
+        float total = 0.0f;
+        for (uint a = 0u; a < p.n_allow; ++a) {
+            float score = scores[a];
+            float probability =
+                (score > -INFINITY / 2.0f)
+                    ? metal::precise::exp(score - best)
+                    : 0.0f;
+            scores[a] = probability;
+            total += probability;
+        }
+        if (total > 0.0f) {
+            for (uint a = 0u; a < p.n_allow; ++a) {
+                scores[a] = metal::precise::divide(scores[a], total);
+            }
+        } else {
+            for (uint a = 0u; a < p.n_allow; ++a) {
+                scores[a] = 0.0f;
+            }
+        }
+    }
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+
+    // One owner per latent output, with probability-weighted accumulation in
+    // the same DSA rank order as the softmax normalization.
+    device float *out = weighted_latent + head * p.latent_dim;
+    for (uint d = tid; d < p.latent_dim; d += tg) {
+        float acc = 0.0f;
+        for (uint a = 0u; a < p.n_allow; ++a) {
+            uint token = ranked_idx[a];
+            if (token < p.n_keys) {
+                acc = fma(scores[a], latent_cache[token * p.latent_dim + d], acc);
+            }
+        }
+        out[d] = acc;
+    }
+}
+
 // Build queries: per head, copy nope half from q, rope-interleaved rope half.
 // `q_rope_rot` is already rope-interleaved per head (n_heads * qk_rope).
 struct GravityGlmBuildQParams {

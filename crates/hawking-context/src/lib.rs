@@ -15,6 +15,8 @@ pub mod kv;
 pub mod manifest;
 pub mod memory;
 pub mod memory_classes;
+pub mod personal_tools;
+pub mod privacy;
 pub mod profiles;
 pub mod recall;
 pub mod rot;
@@ -43,9 +45,18 @@ pub use memory::{
 };
 pub use memory_classes::{
     ClassBudgets, ClassCompileRetrieval, ClassMemoryDraft, ClassMemoryRecord, ClassProvenance,
-    ClassRetrievalSlice, ClassedMemorySystem, DynClassedMemory, EpisodicWriteCap, MemoryClass,
-    ProceduralWriteCap, ProjectWriteCap, TurnWriteCap, UserWriteCap, VerifierWriteCap,
-    WriteAuthority,
+    ClassRetrievalSlice, ClassedMemorySystem, DynClassedMemory, EpisodicWriteCap, InspectFilter,
+    MemoryClass, MemoryExport, PersonalScope, ProceduralWriteCap, ProjectWriteCap, ScopePromotion,
+    TurnWriteCap, UserWriteCap, VerifierWriteCap, WriteAuthority,
+};
+pub use personal_tools::{
+    execute_with_receipt, execute_without_receipt, LivePersonalTool, PermissionDecision as ToolPermissionDecision,
+    PersonalTool, PersonalToolAbi, PersonalToolRegistry, ToolEffectClass, ToolExecuteResult,
+    ToolPermissionGate, ToolPermissions, ToolProposal, ToolReceipt, ToolStatus,
+};
+pub use privacy::{
+    ConnectorCapableHandle, EncryptedVaultHandle, EphemeralEndReport, NetworkCapableHandle,
+    PrivacyBoundaryError, PrivacyMode, PrivacyPolicy, PrivacySession,
 };
 pub use profiles::{
     ContextProfile, EvictionChoice, KvPrecision, OrderingPolicy, PositionPolicy, SourceWeights,

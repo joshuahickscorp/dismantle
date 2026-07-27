@@ -163,10 +163,10 @@
     "the_shape": "function degrades catastrophically below about 1 BPW, and improves markedly just above it. Crossing from 0.58 BPW to 1.13 BPW roughly doubles the cosine, from 0.283 to 0.592."
   },
   "what_this_supports": [
-    "No swept sub-bit configuration of these four materially different families preserves the dense-MLP organ's function on the real GLM-5.2 parent. The best sub-bit point retains cosine 0.283 against a null of 0.124 with 96 percent relative output error.",
-    "This is measured, functional, on the real flagship parent, swept across rate -- not inferred from one artifact's collapse, and not weight-space reconstruction error.",
-    "It is consistent with, and independent of, the standing findings: R0 failed at 0.883, again at 0.921 with lm_head and embed_tokens protected, and Math-Preserve failed at 0.9774.",
-    "Protected islands are not the missing ingredient. Every sub-bit A5 configuration falls below the constant-mean null, and island placement only starts to matter above 1 BPW. This closes, negatively, the question of whether Math-Preserve's islands were merely mis-placed."
+    "Organ sensitivity varies enormously under sub-bit compression: attn_o retains cosine 0.692 at 0.563 BPW while dense_mlp retains 0.283 at 0.583 BPW, against nulls near 0.12.",
+    "A uniform sub-bit rate is therefore the wrong program for this parent, and per-organ functional allocation is an untried and cheaper direction than a BPW escape.",
+    "Protected islands are not the missing ingredient: every sub-bit A5 configuration falls below the null, and placement only begins to matter above 1 BPW.",
+    "This is measured, functional, on the real flagship parent, swept across rate -- not weight-space reconstruction error, which both the frozen tournament and the sub-bit law rule inadmissible."
   ],
   "what_this_does_NOT_support": [
     "that sub-bit is impossible for this parent. These are straightforward implementations of four families. A materially better A1 -- fitted to captured activations rather than SVD of raw weights, or with per-row scaling -- has not been tried, and the sub-bit law requires representation escalation to be genuinely exhausted before an escape is considered.",
@@ -175,10 +175,9 @@
     "that A6 fails. It is DATA_BLOCKED on trajectory traces, of which the teacher ledger holds zero."
   ],
   "next_actions_in_order": [
-    "extend the sweep to all four organs, and to routed-expert tensors which carry ~97.5 percent of the model's mass",
-    "implement the A5 decoder so profile-conditioned protected islands can be measured rather than only packed -- Math-Preserve already spends 67.5 GB on islands and still collapses, so whether the islands are in the wrong PLACES is a live and unanswered question",
-    "try A1 fitted against captured activations rather than SVD of raw weights, since the law requires representation escalation to be exhausted before any BPW escape",
-    "only then, if every distinct sub-bit family has genuinely failed, prepare the Escape Receipt for a separately versioned parity artifact up to 1.5 BPW -- and the strict sub-bit Frontier contract is not weakened by it"
+    "sweep the ROUTED EXPERT tensors, which carry ~97.5 percent of the model's mass and remain unmeasured. Their sensitivity decides whether a per-organ allocation can work at all.",
+    "build a measured per-organ allocation program: rate chosen per organ from its functional curve rather than uniformly or by tensor role",
+    "only then, if allocation also fails, revisit the escape question -- which this sweep has made LESS justified, not more"
   ],
   "fences_unchanged": {
     "ODYSSEY_LAUNCH_AUTHORIZED": false,
@@ -259,5 +258,48 @@
       "correction_to_my_own_first_reading": "My first control printed 'placement MATTERS' from a 1.058x ratio at 5 percent protection. That label was wrong: at 5 percent BOTH configurations sit below the null, so the difference is between two useless configurations. A ratio test without a null check will call noise a result, which is the exact error the null exists to prevent.",
       "corrected_answer_to_the_live_question": "Placement is NOT the binding issue at sub-bit rates. Islands only begin to help once the artifact is already above 1 BPW (10 to 20 percent protection), and by 40 percent importance is no better than random. So the hypothesis that Math-Preserve's 67.5 GB of islands were merely in the wrong PLACES is not supported: at sub-bit rates, what is destroyed is everything OUTSIDE the islands, and no placement of a 5 percent island rescues it."
     }
+  },
+  "CORRECTION_all_four_organs": {
+    "at": "2026-07-27T08:45:00Z",
+    "what_i_previously_wrote": "'At sub-bit rates every swept configuration of four materially different families destroys the organ's function on the real parent.'",
+    "why_that_was_wrong": "It generalised from dense_mlp alone, which the completed sweep shows is the OUTLIER rather than the rule. Reporting one organ's curve as the parent's behaviour is the same shape of error as reporting a window result as a capability result.",
+    "measured_across_four_organs_at_A1_rank_64": [
+      {
+        "organ": "attn_o",
+        "bpw": 0.56253,
+        "cosine": 0.69197,
+        "null": 0.1196,
+        "relative_output_error": 0.7179,
+        "sub_bit_points_beating_null": "5/5"
+      },
+      {
+        "organ": "embed",
+        "bpw": 0.66676,
+        "cosine": 0.61727,
+        "null": 0.1192,
+        "relative_output_error": 0.77452,
+        "sub_bit_points_beating_null": "5/5"
+      },
+      {
+        "organ": "lm_head",
+        "bpw": 0.66676,
+        "cosine": 0.48838,
+        "null": 0.1206,
+        "relative_output_error": 0.86579,
+        "sub_bit_points_beating_null": "3/5"
+      },
+      {
+        "organ": "dense_mlp",
+        "bpw": 0.58338,
+        "cosine": 0.28343,
+        "null": 0.1237,
+        "relative_output_error": 0.95871,
+        "sub_bit_points_beating_null": "2/5"
+      }
+    ],
+    "the_actual_finding": "Organ sensitivity to sub-bit compression varies by roughly 2.4x in preserved function at essentially the same rate. attn_o holds cosine 0.692 at 0.563 BPW; dense_mlp holds 0.283 at 0.583 BPW. Attention-out and embedding survive sub-bit substantially; dense MLP does not.",
+    "what_this_changes": "The recommendation reverses. A UNIFORM sub-bit rate is the wrong program, and the headroom that has not been explored is ALLOCATION, not escape. Spending more bits on dense MLP and fewer on attention and embedding is exactly the 'measurement shardwise -> allocation global -> packing shardwise' step, and it has never been driven by measured per-organ FUNCTIONAL sensitivity.",
+    "what_it_says_about_math_preserve": "Math-Preserve allocated by profile and by tensor role. It did not allocate by measured functional sensitivity per organ. That is a live, untried direction and it is cheaper than any escape.",
+    "escape_receipt_status": "NOT the next step, and further from justified than before this sweep. The sub-bit law demands representation escalation be exhausted first, and a measured allocation program is precisely an unexhausted avenue."
   }
 }

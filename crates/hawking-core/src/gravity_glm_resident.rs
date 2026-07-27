@@ -3409,6 +3409,16 @@ mod tests {
         indices
     }
 
+    fn deterministic_fixture_f32(mut state: u32, len: usize, scale: f32) -> Vec<f32> {
+        let mut out = Vec::with_capacity(len);
+        for _ in 0..len {
+            state = state.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
+            let unit = ((state >> 8) as f32) * (1.0 / 8_388_608.0) - 1.0;
+            out.push(unit * scale);
+        }
+        out
+    }
+
     #[test]
     fn route_segment_parameter_abis_are_frozen_and_ranges_fail_closed() {
         assert_eq!(std::mem::size_of::<GlmRopeParams>(), 16);
@@ -4121,6 +4131,243 @@ mod tests {
             &host,
             &read_f32(&output, host.len()),
             &authority,
+        );
+    }
+
+    #[test]
+    fn compact_absorbed_three_dispatch_chain_preserves_ranked_v21_contract() {
+        const TOKENS: usize = 11;
+        const HEADS: usize = 3;
+        const LATENT: usize = 17;
+        const NOPE: usize = 13;
+        const ROPE: usize = 4;
+        const VALUE: usize = 9;
+        const ROW_STRIDE: usize = NOPE + VALUE;
+        const CARD: usize = 256;
+        const SELECTED: usize = 7;
+
+        let Ok(ctx) = MetalContext::new() else {
+            return;
+        };
+        let latents = deterministic_fixture_f32(0x1020_3040, TOKENS * LATENT, 0.8);
+        let rope_keys = deterministic_fixture_f32(0x5566_7788, TOKENS * ROPE, 0.6);
+        let query_nope = deterministic_fixture_f32(0x90ab_cdef, HEADS * NOPE, 0.7);
+        let query_rope = deterministic_fixture_f32(0x3141_5926, HEADS * ROPE, 0.5);
+        let key_weight: Vec<f32> =
+            deterministic_fixture_f32(0x2718_2818, HEADS * NOPE * LATENT, 0.35)
+                .into_iter()
+                .map(|value| half::f16::from_f32(value).to_f32())
+                .collect();
+        let value_weight: Vec<f32> =
+            deterministic_fixture_f32(0xdead_beef, HEADS * VALUE * LATENT, 0.4)
+                .into_iter()
+                .map(|value| half::f16::from_f32(value).to_f32())
+                .collect();
+        let ranked = [6u32, 2, 5, 9, 8, 0, 3];
+        let mut ascending = ranked;
+        ascending.sort_unstable();
+        assert_eq!(ascending, [0, 2, 3, 5, 6, 8, 9]);
+
+        // One direct-u8 code per logical row. Each row receives a unique
+        // f16 codebook entry, so this tiny fixture exactly exercises the same
+        // D==sub, S=1 addressing used by the flagship D32 matrix.
+        let mut codebook = vec![half::f16::ZERO; CARD * LATENT];
+        let mut codes = vec![0u8; HEADS * ROW_STRIDE];
+        for head in 0..HEADS {
+            for key_row in 0..NOPE {
+                let source_row = head * ROW_STRIDE + key_row;
+                codes[source_row] = source_row as u8;
+                for latent in 0..LATENT {
+                    codebook[source_row * LATENT + latent] =
+                        half::f16::from_f32(key_weight[(head * NOPE + key_row) * LATENT + latent]);
+                }
+            }
+            for value_row in 0..VALUE {
+                let source_row = head * ROW_STRIDE + NOPE + value_row;
+                codes[source_row] = source_row as u8;
+                for latent in 0..LATENT {
+                    codebook[source_row * LATENT + latent] = half::f16::from_f32(
+                        value_weight[(head * VALUE + value_row) * LATENT + latent],
+                    );
+                }
+            }
+        }
+
+        // Expanded f32 source formulation and a shared f64 authority.
+        let selected_ascending: Vec<usize> = ascending
+            .iter()
+            .map(|&position| position as usize)
+            .collect();
+        let scale = ((NOPE + ROPE) as f32).powf(-0.5);
+        let mut expanded = vec![0.0f32; HEADS * VALUE];
+        let mut authority = vec![0.0f64; HEADS * VALUE];
+        for head in 0..HEADS {
+            let mut logits = vec![0.0f32; SELECTED];
+            let mut authority_logits = vec![0.0f64; SELECTED];
+            let mut expanded_values = vec![0.0f32; SELECTED * VALUE];
+            let mut authority_values = vec![0.0f64; SELECTED * VALUE];
+            for (slot, &token) in selected_ascending.iter().enumerate() {
+                let mut dot = 0.0f32;
+                let mut authority_dot = 0.0f64;
+                for key_row in 0..NOPE {
+                    let mut key = 0.0f32;
+                    let mut authority_key = 0.0f64;
+                    for latent in 0..LATENT {
+                        let weight = key_weight[(head * NOPE + key_row) * LATENT + latent];
+                        let value = latents[token * LATENT + latent];
+                        key = weight.mul_add(value, key);
+                        authority_key += weight as f64 * value as f64;
+                    }
+                    let query = query_nope[head * NOPE + key_row];
+                    dot = query.mul_add(key, dot);
+                    authority_dot += query as f64 * authority_key;
+                }
+                for rope in 0..ROPE {
+                    let query = query_rope[head * ROPE + rope];
+                    let key = rope_keys[token * ROPE + rope];
+                    dot = query.mul_add(key, dot);
+                    authority_dot += query as f64 * key as f64;
+                }
+                logits[slot] = dot * scale;
+                authority_logits[slot] = authority_dot * scale as f64;
+
+                for value_row in 0..VALUE {
+                    let mut value = 0.0f32;
+                    let mut authority_value = 0.0f64;
+                    for latent in 0..LATENT {
+                        let weight = value_weight[(head * VALUE + value_row) * LATENT + latent];
+                        let input = latents[token * LATENT + latent];
+                        value = weight.mul_add(input, value);
+                        authority_value += weight as f64 * input as f64;
+                    }
+                    expanded_values[slot * VALUE + value_row] = value;
+                    authority_values[slot * VALUE + value_row] = authority_value;
+                }
+            }
+            let best = logits.iter().copied().fold(f32::NEG_INFINITY, f32::max);
+            let authority_best = authority_logits
+                .iter()
+                .copied()
+                .fold(f64::NEG_INFINITY, f64::max);
+            let exponentials: Vec<f32> = logits.iter().map(|&score| (score - best).exp()).collect();
+            let authority_exponentials: Vec<f64> = authority_logits
+                .iter()
+                .map(|&score| (score - authority_best).exp())
+                .collect();
+            let total: f32 = exponentials.iter().sum();
+            let authority_total: f64 = authority_exponentials.iter().sum();
+            for slot in 0..SELECTED {
+                let probability = exponentials[slot] / total;
+                let authority_probability = authority_exponentials[slot] / authority_total;
+                for value_row in 0..VALUE {
+                    let output = head * VALUE + value_row;
+                    expanded[output] = probability
+                        .mul_add(expanded_values[slot * VALUE + value_row], expanded[output]);
+                    authority[output] +=
+                        authority_probability * authority_values[slot * VALUE + value_row];
+                }
+            }
+        }
+
+        let codebookb = f16_buffer(&ctx, &codebook);
+        let codesb = ctx
+            .new_buffer_with_bytes_checked(&codes)
+            .expect("chain direct-u8 codes");
+        let query_nopeb = f32_buffer(&ctx, &query_nope);
+        let query_ropeb = f32_buffer(&ctx, &query_rope);
+        let latentsb = f32_buffer(&ctx, &latents);
+        let rope_keysb = f32_buffer(&ctx, &rope_keys);
+        let rankedb = u32_buffer(&ctx, &ranked);
+        let ascendingb = u32_buffer(&ctx, &ascending);
+        let query_latent_ranked = filled_f32_buffer(&ctx, HEADS * LATENT, f32::NAN);
+        let query_latent_ascending = filled_f32_buffer(&ctx, HEADS * LATENT, f32::NAN);
+        let context_ranked = filled_f32_buffer(&ctx, HEADS * VALUE, f32::NAN);
+        let context_ascending = filled_f32_buffer(&ctx, HEADS * VALUE, f32::NAN);
+
+        let mut tcb = TokenCommandBuffer::new(&ctx);
+        for (indices, query_latent, context) in [
+            (&rankedb, &query_latent_ranked, &context_ranked),
+            (&ascendingb, &query_latent_ascending, &context_ascending),
+        ] {
+            encode_pq_k_transpose_heads(
+                &mut tcb,
+                &codebookb,
+                &codesb,
+                &query_nopeb,
+                query_latent,
+                HEADS,
+                NOPE,
+                ROW_STRIDE,
+                LATENT,
+                LATENT,
+                LATENT,
+                CARD,
+                8,
+                1,
+            )
+            .expect("encode chain K transpose");
+            encode_compact_ranked_attention(
+                &mut tcb,
+                query_latent,
+                &query_ropeb,
+                &latentsb,
+                &rope_keysb,
+                indices,
+                query_latent,
+                HEADS,
+                LATENT,
+                ROPE,
+                TOKENS,
+                SELECTED,
+                scale,
+            )
+            .expect("encode chain compact ranked attention");
+            encode_pq_v_rows_heads(
+                &mut tcb,
+                &codebookb,
+                &codesb,
+                query_latent,
+                context,
+                HEADS,
+                ROW_STRIDE,
+                NOPE,
+                VALUE,
+                LATENT,
+                LATENT,
+                LATENT,
+                CARD,
+                8,
+                1,
+            )
+            .expect("encode chain direct PQ V rows");
+        }
+        assert_eq!(tcb.dispatch_count(), 6);
+        tcb.commit_and_wait()
+            .expect("compact absorbed three-dispatch chains");
+
+        let ranked_context = read_f32(&context_ranked, expanded.len());
+        let ascending_context = read_f32(&context_ascending, expanded.len());
+        let mut bounds = Bounds::continuous_only();
+        bounds.top_k = 5;
+        let ranked_pair = score_pair(&expanded, &ranked_context, &authority, &bounds);
+        assert!(
+            ranked_pair.pass,
+            "ranked compact chain must pass V2.1: {ranked_pair:#?}"
+        );
+        assert!(
+            ranked_pair.device.discrete.greedy_match
+                && ranked_pair.device.discrete.top_k_exact_match,
+            "ranked chain final-context decisions must be exact"
+        );
+        let ascending_pair = score_pair(&expanded, &ascending_context, &authority, &bounds);
+        assert!(
+            ascending_pair.pass,
+            "the f16-codebook/FMA chain's ascending diagnostic must remain \
+             independently characterized: {ascending_pair:#?}"
+        );
+        assert_ne!(
+            ranked_context, ascending_context,
+            "selected-position traversal order must remain numerically observable"
         );
     }
 

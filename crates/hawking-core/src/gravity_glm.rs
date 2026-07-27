@@ -1695,7 +1695,7 @@ pub mod gpu {
         },
     }
 
-    fn routed_pq_representation(
+    pub(crate) fn routed_pq_representation(
         params: &PqParams,
     ) -> crate::cost_ledger::RoutedWeightRepresentation {
         use crate::cost_ledger::RoutedWeightRepresentation;

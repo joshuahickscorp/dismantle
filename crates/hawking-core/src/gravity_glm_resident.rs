@@ -54,7 +54,7 @@
 use crate::gravity::matvec_dense;
 use crate::gravity_glm::gpu::{
     encode_argmax_f32, encode_gemv_native_bf16_seq, encode_sample_topk_f32,
-    record_routed_tensor_representation, GpuTensor, GpuWeightCache,
+    record_routed_tensor_representation, routed_pq_representation, GpuTensor, GpuWeightCache,
 };
 use crate::gravity_glm::{
     gpu_compact_mla_enabled, gpu_device_router_enabled, gpu_expert_table_hit_enabled,
@@ -103,6 +103,8 @@ fn read_u32(buf: &Buffer, n: usize) -> Vec<u32> {
     unsafe { std::slice::from_raw_parts(buf.contents() as *const u32, n).to_vec() }
 }
 
+#[allow(dead_code)]
+const DEVICE_EXPERT_TENSOR_KIND_ANY_SUPPORTED: u32 = 0;
 #[allow(dead_code)]
 const DEVICE_EXPERT_TENSOR_KIND_PQ: u32 = 1;
 #[allow(dead_code)]
@@ -165,7 +167,9 @@ struct PersistentDeviceExpertLayer {
     routed: DeviceExpertTableLease,
     shared: DeviceExpertTableLease,
     intermediate: usize,
-    metrics: DirectU8TripletMetrics,
+    metrics: DeviceExpertLayerMetrics,
+    routed_dispatch_mode: DeviceExpertDispatchMode,
+    shared_dispatch_mode: DeviceExpertDispatchMode,
 }
 
 #[allow(dead_code)]
@@ -383,6 +387,7 @@ struct DeviceExpertTableMatvecParams {
     projection: u32,
     rows: u32,
     cols: u32,
+    allow_other_kind: u32,
 }
 
 #[repr(C)]
@@ -402,7 +407,7 @@ struct DeviceExpertTraceCopyParams {
 }
 
 const _: [(); 24] = [(); std::mem::size_of::<DeviceExpertTableValidateParams>()];
-const _: [(); 28] = [(); std::mem::size_of::<DeviceExpertTableMatvecParams>()];
+const _: [(); 32] = [(); std::mem::size_of::<DeviceExpertTableMatvecParams>()];
 const _: [(); 16] = [(); std::mem::size_of::<DeviceExpertTableAxpyParams>()];
 const _: [(); 8] = [(); std::mem::size_of::<DeviceExpertTraceCopyParams>()];
 
@@ -541,6 +546,7 @@ fn encode_device_expert_table_pq_matvec(
     rows: usize,
     cols: usize,
     y: &Buffer,
+    allow_other_kind: bool,
 ) -> Result<()> {
     if execution_position >= experts_per_token || projection > 2 {
         return Err(Error::Gravity(format!(
@@ -573,6 +579,7 @@ fn encode_device_expert_table_pq_matvec(
         projection,
         rows: rows as u32,
         cols: cols as u32,
+        allow_other_kind: u32::from(allow_other_kind),
     };
     let indices = expert_indices.clone();
     let slots = expert_exec_slots.clone();
@@ -623,6 +630,7 @@ fn encode_device_expert_table_native_bf16_matvec(
     rows: usize,
     cols: usize,
     y: &Buffer,
+    allow_other_kind: bool,
 ) -> Result<()> {
     if execution_position >= experts_per_token || projection > 2 {
         return Err(Error::Gravity(format!(
@@ -655,6 +663,7 @@ fn encode_device_expert_table_native_bf16_matvec(
         projection,
         rows: rows as u32,
         cols: cols as u32,
+        allow_other_kind: u32::from(allow_other_kind),
     };
     let indices = expert_indices.clone();
     let slots = expert_exec_slots.clone();
@@ -688,6 +697,88 @@ fn encode_device_expert_table_native_bf16_matvec(
             enc.use_resources(&refs, MTLResourceUsage::Read);
         },
     )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn encode_device_expert_table_matvec(
+    tcb: &mut TokenCommandBuffer<'_>,
+    mode: DeviceExpertDispatchMode,
+    lease: &DeviceExpertTableLease,
+    expert_indices: &Buffer,
+    expert_exec_slots: &Buffer,
+    miss_mask: &Buffer,
+    experts_per_token: usize,
+    execution_position: usize,
+    projection: u32,
+    x: &Buffer,
+    rows: usize,
+    cols: usize,
+    y: &Buffer,
+) -> Result<()> {
+    match mode {
+        DeviceExpertDispatchMode::PqOnly => encode_device_expert_table_pq_matvec(
+            tcb,
+            lease,
+            expert_indices,
+            expert_exec_slots,
+            miss_mask,
+            experts_per_token,
+            execution_position,
+            projection,
+            x,
+            rows,
+            cols,
+            y,
+            false,
+        ),
+        DeviceExpertDispatchMode::NativeBf16Only => encode_device_expert_table_native_bf16_matvec(
+            tcb,
+            lease,
+            expert_indices,
+            expert_exec_slots,
+            miss_mask,
+            experts_per_token,
+            execution_position,
+            projection,
+            x,
+            rows,
+            cols,
+            y,
+            false,
+        ),
+        DeviceExpertDispatchMode::Heterogeneous => {
+            encode_device_expert_table_pq_matvec(
+                tcb,
+                lease,
+                expert_indices,
+                expert_exec_slots,
+                miss_mask,
+                experts_per_token,
+                execution_position,
+                projection,
+                x,
+                rows,
+                cols,
+                y,
+                true,
+            )?;
+            encode_device_expert_table_native_bf16_matvec(
+                tcb,
+                lease,
+                expert_indices,
+                expert_exec_slots,
+                miss_mask,
+                experts_per_token,
+                execution_position,
+                projection,
+                x,
+                rows,
+                cols,
+                y,
+                true,
+            )
+        }
+    }
 }
 
 fn require_f32_elements(buffer: &Buffer, elements: usize, label: &str) -> Result<()> {
@@ -5895,86 +5986,239 @@ enum DeviceExpertTableWaveResult {
     Unsupported,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum DeviceExpertDispatchMode {
+    PqOnly,
+    NativeBf16Only,
+    Heterogeneous,
+}
+
 #[derive(Clone, Copy)]
-struct DirectU8TripletMetrics {
-    params: [crate::gravity_glm::gpu::PqParams; 3],
-    bytes: [u64; 3],
+enum DeviceExpertProjectionMetrics {
+    Pq {
+        params: crate::gravity_glm::gpu::PqParams,
+        bytes: u64,
+        representation: crate::cost_ledger::RoutedWeightRepresentation,
+    },
+    NativeBf16 {
+        rows: u32,
+        cols: u32,
+        bytes: u64,
+    },
 }
 
-fn direct_u8_pq_metrics(tensor: &GpuTensor) -> Option<(crate::gravity_glm::gpu::PqParams, u64)> {
-    let GpuTensor::Pq {
-        codebooks,
-        codes,
-        params,
-    } = tensor
-    else {
-        return None;
-    };
-    if params.bits != 8
-        || params.subspaces != 1
-        || params.dim != 32
-        || params.sub != 32
-        || params.card != 256
-        || params.nchunk == 0
-        || params.cols != params.nchunk.saturating_mul(params.dim)
-    {
-        return None;
+impl DeviceExpertProjectionMetrics {
+    fn rows_cols(self) -> (usize, usize) {
+        match self {
+            Self::Pq { params, .. } => (params.rows as usize, params.cols as usize),
+            Self::NativeBf16 { rows, cols, .. } => (rows as usize, cols as usize),
+        }
     }
-    Some((*params, codebooks.length().saturating_add(codes.length())))
+
+    fn bytes(self) -> u64 {
+        match self {
+            Self::Pq { bytes, .. } | Self::NativeBf16 { bytes, .. } => bytes,
+        }
+    }
+
+    fn is_pq(self) -> bool {
+        matches!(self, Self::Pq { .. })
+    }
 }
 
-fn direct_u8_shared_intermediate(
+#[derive(Clone)]
+struct DeviceExpertLayerMetrics {
+    routed: Vec<[DeviceExpertProjectionMetrics; 3]>,
+    shared: [DeviceExpertProjectionMetrics; 3],
+}
+
+impl DeviceExpertLayerMetrics {
+    #[cfg(test)]
+    fn dispatch_mode(&self) -> DeviceExpertDispatchMode {
+        Self::dispatch_mode_for(
+            self.routed
+                .iter()
+                .flatten()
+                .chain(self.shared.iter())
+                .copied(),
+        )
+        .expect("shared expert triplet is nonempty")
+    }
+
+    fn routed_dispatch_mode(&self) -> DeviceExpertDispatchMode {
+        Self::dispatch_mode_for(self.routed.iter().flatten().copied())
+            // The initial empty table cannot hit. Its provisional mode only
+            // determines which guarded no-op kernel follows validation.
+            .unwrap_or(DeviceExpertDispatchMode::PqOnly)
+    }
+
+    fn shared_dispatch_mode(&self) -> DeviceExpertDispatchMode {
+        Self::dispatch_mode_for(self.shared.iter().copied())
+            .expect("shared expert triplet is nonempty")
+    }
+
+    fn dispatch_mode_for(
+        metrics: impl Iterator<Item = DeviceExpertProjectionMetrics>,
+    ) -> Option<DeviceExpertDispatchMode> {
+        let mut saw_pq = false;
+        let mut saw_native = false;
+        for metric in metrics {
+            if metric.is_pq() {
+                saw_pq = true;
+            } else {
+                saw_native = true;
+            }
+        }
+        Some(match (saw_pq, saw_native) {
+            (true, false) => DeviceExpertDispatchMode::PqOnly,
+            (false, true) => DeviceExpertDispatchMode::NativeBf16Only,
+            (true, true) => DeviceExpertDispatchMode::Heterogeneous,
+            (false, false) => return None,
+        })
+    }
+}
+
+fn device_expert_projection_metrics(tensor: &GpuTensor) -> Option<DeviceExpertProjectionMetrics> {
+    use crate::cost_ledger::RoutedWeightRepresentation;
+
+    match tensor {
+        GpuTensor::Pq {
+            codebooks,
+            codes,
+            params,
+        } => {
+            let representation = routed_pq_representation(params);
+            if !matches!(
+                representation,
+                RoutedWeightRepresentation::R4 | RoutedWeightRepresentation::R0
+            ) || params.rows == 0
+                || params.cols == 0
+                || params.bits == 0
+                || params.bits > 8
+                || params.subspaces == 0
+                || params.sub == 0
+                || params.dim != params.subspaces.checked_mul(params.sub)?
+                || params.card != 1u32.checked_shl(params.bits)?
+                || params.nchunk == 0
+                || params.cols != params.nchunk.checked_mul(params.dim)?
+            {
+                return None;
+            }
+            let codebook_bytes = u64::from(params.subspaces)
+                .checked_mul(u64::from(params.card))?
+                .checked_mul(u64::from(params.sub))?
+                .checked_mul(2)?;
+            let index_count = u64::from(params.rows)
+                .checked_mul(u64::from(params.nchunk))?
+                .checked_mul(u64::from(params.subspaces))?;
+            let packed_bytes = index_count
+                .checked_mul(u64::from(params.bits))?
+                .div_ceil(8)
+                .checked_add(4)?;
+            if codebooks.length() < codebook_bytes || codes.length() < packed_bytes {
+                return None;
+            }
+            Some(DeviceExpertProjectionMetrics::Pq {
+                params: *params,
+                bytes: codebooks.length().saturating_add(codes.length()),
+                representation,
+            })
+        }
+        GpuTensor::NativeGpuBf16 { buf, rows, cols } => {
+            if *rows == 0 || *cols == 0 {
+                return None;
+            }
+            let required = u64::from(*rows)
+                .checked_mul(u64::from(*cols))?
+                .checked_mul(2)?;
+            if buf.length() < required {
+                return None;
+            }
+            Some(DeviceExpertProjectionMetrics::NativeBf16 {
+                rows: *rows,
+                cols: *cols,
+                bytes: buf.length(),
+            })
+        }
+        GpuTensor::NativeCpu(_) => None,
+    }
+}
+
+fn device_expert_triplet_metrics(
     gate: &GpuTensor,
     up: &GpuTensor,
     down: &GpuTensor,
     hidden: usize,
-) -> Option<(usize, DirectU8TripletMetrics)> {
-    let (gate, gate_bytes) = direct_u8_pq_metrics(gate)?;
-    let (up, up_bytes) = direct_u8_pq_metrics(up)?;
-    let (down, down_bytes) = direct_u8_pq_metrics(down)?;
-    let intermediate = gate.rows as usize;
-    if intermediate == 0
-        || gate.cols as usize != hidden
-        || up.rows as usize != intermediate
-        || up.cols as usize != hidden
-        || down.rows as usize != hidden
-        || down.cols as usize != intermediate
+) -> Option<(usize, [DeviceExpertProjectionMetrics; 3])> {
+    let metrics = [
+        device_expert_projection_metrics(gate)?,
+        device_expert_projection_metrics(up)?,
+        device_expert_projection_metrics(down)?,
+    ];
+    let (gate_rows, gate_cols) = metrics[0].rows_cols();
+    let (up_rows, up_cols) = metrics[1].rows_cols();
+    let (down_rows, down_cols) = metrics[2].rows_cols();
+    if gate_rows == 0
+        || gate_cols != hidden
+        || up_rows != gate_rows
+        || up_cols != hidden
+        || down_rows != hidden
+        || down_cols != gate_rows
     {
         return None;
     }
-    Some((
-        intermediate,
-        DirectU8TripletMetrics {
-            params: [gate, up, down],
-            bytes: [gate_bytes, up_bytes, down_bytes],
-        },
-    ))
+    Some((gate_rows, metrics))
+}
+
+fn record_device_expert_projection_cost(
+    name: &str,
+    metric: DeviceExpertProjectionMetrics,
+    routed: bool,
+) {
+    use crate::cost_ledger::{self, RoutedWeightRepresentation};
+
+    cost_ledger::record_matvec_call();
+    cost_ledger::record_active_bytes_for(name, metric.bytes());
+    match metric {
+        DeviceExpertProjectionMetrics::Pq {
+            params,
+            bytes,
+            representation,
+        } => {
+            if routed {
+                cost_ledger::record_routed_weight_representation(name, representation, bytes);
+            }
+            record_pq_matvec_ops(params);
+        }
+        DeviceExpertProjectionMetrics::NativeBf16 { rows, cols, bytes } => {
+            if routed {
+                cost_ledger::record_routed_weight_representation(
+                    name,
+                    RoutedWeightRepresentation::NativeBf16,
+                    bytes,
+                );
+            }
+            record_dense_matvec_ops(rows as u64, cols as u64);
+        }
+    }
 }
 
 fn record_device_expert_table_hit_costs(
     mlp_prefix: &str,
-    experts_per_token: usize,
     hidden: usize,
     intermediate: usize,
-    metrics: DirectU8TripletMetrics,
+    metrics: &DeviceExpertLayerMetrics,
 ) {
-    use crate::cost_ledger::{self, RoutedWeightRepresentation};
+    use crate::cost_ledger;
 
     let projection_names = ["gate_proj", "up_proj", "down_proj"];
-    for execution_position in 0..experts_per_token {
+    for (execution_position, triplet) in metrics.routed.iter().enumerate() {
         for projection in 0..3 {
             let name = format!(
                 "{mlp_prefix}.experts.device_slot_{execution_position}.{}.weight",
                 projection_names[projection]
             );
-            cost_ledger::record_matvec_call();
-            cost_ledger::record_active_bytes_for(&name, metrics.bytes[projection]);
-            cost_ledger::record_routed_weight_representation(
-                &name,
-                RoutedWeightRepresentation::R4,
-                metrics.bytes[projection],
-            );
-            record_pq_matvec_ops(metrics.params[projection]);
+            record_device_expert_projection_cost(&name, triplet[projection], true);
         }
     }
     for projection in 0..3 {
@@ -5982,12 +6226,10 @@ fn record_device_expert_table_hit_costs(
             "{mlp_prefix}.shared_experts.{}.weight",
             projection_names[projection]
         );
-        cost_ledger::record_matvec_call();
-        cost_ledger::record_active_bytes_for(&name, metrics.bytes[projection]);
-        record_pq_matvec_ops(metrics.params[projection]);
+        record_device_expert_projection_cost(&name, metrics.shared[projection], false);
     }
 
-    let expert_count = experts_per_token.saturating_add(1) as u64;
+    let expert_count = metrics.routed.len().saturating_add(1) as u64;
     cost_ledger::record_source_modelled_operations(
         expert_count
             .saturating_mul((4usize.saturating_mul(intermediate)) as u64)
@@ -5998,20 +6240,6 @@ fn record_device_expert_table_hit_costs(
         expert_count.saturating_mul(intermediate as u64),
         0,
     );
-}
-
-fn pq_params_match(
-    left: crate::gravity_glm::gpu::PqParams,
-    right: crate::gravity_glm::gpu::PqParams,
-) -> bool {
-    left.dim == right.dim
-        && left.subspaces == right.subspaces
-        && left.sub == right.sub
-        && left.card == right.card
-        && left.rows == right.rows
-        && left.cols == right.cols
-        && left.nchunk == right.nchunk
-        && left.bits == right.bits
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -6047,36 +6275,43 @@ fn build_persistent_device_expert_layer(
     }
     let name_refs: Vec<&str> = names.iter().map(String::as_str).collect();
 
-    let (routed, shared, intermediate, metrics) = {
+    let (routed, shared, intermediate, metrics, routed_dispatch_mode, shared_dispatch_mode) = {
         let mut cache = weights.cache.lock().expect("gpu weight cache");
         weights.ensure_many_locked(&mut cache, &name_refs)?;
         let shared_gate = cache.get(&shared_gate_name).expect("ensured shared gate");
         let shared_up = cache.get(&shared_up_name).expect("ensured shared up");
         let shared_down = cache.get(&shared_down_name).expect("ensured shared down");
-        let Some((intermediate, metrics)) =
-            direct_u8_shared_intermediate(shared_gate, shared_up, shared_down, hidden)
+        let Some((intermediate, shared_metrics)) =
+            device_expert_triplet_metrics(shared_gate, shared_up, shared_down, hidden)
         else {
             return Ok(None);
         };
 
-        // A persistent hit's byte/operation ledger is derived from the shared
-        // R4 geometry. Admit a selected route only when every routed projection
-        // has the exact same physical geometry and byte extent.
+        // The selected IDs are host-known only on the guarded miss path. Bind
+        // their exact representation/extent metadata to the immutable lease;
+        // a later hit can only reference these ready entries, so its ledger is
+        // exact without another ID or metrics readback.
+        let mut routed_metrics = Vec::with_capacity(selected_experts.len());
         for &expert in selected_experts {
             let prefix = format!("{mlp_prefix}.experts.{expert}");
-            for (projection, expected_params, expected_bytes) in [
-                ("gate_proj", metrics.params[0], metrics.bytes[0]),
-                ("up_proj", metrics.params[1], metrics.bytes[1]),
-                ("down_proj", metrics.params[2], metrics.bytes[2]),
-            ] {
-                let name = format!("{prefix}.{projection}.weight");
-                let Some((params, bytes)) = cache.get(&name).and_then(direct_u8_pq_metrics) else {
-                    return Ok(None);
-                };
-                if !pq_params_match(params, expected_params) || bytes != expected_bytes {
-                    return Ok(None);
-                }
+            let gate = cache
+                .get(&format!("{prefix}.gate_proj.weight"))
+                .expect("ensured routed gate");
+            let up = cache
+                .get(&format!("{prefix}.up_proj.weight"))
+                .expect("ensured routed up");
+            let down = cache
+                .get(&format!("{prefix}.down_proj.weight"))
+                .expect("ensured routed down");
+            let Some((routed_intermediate, triplet_metrics)) =
+                device_expert_triplet_metrics(gate, up, down, hidden)
+            else {
+                return Ok(None);
+            };
+            if routed_intermediate != intermediate {
+                return Ok(None);
             }
+            routed_metrics.push(triplet_metrics);
         }
 
         let shared = build_single_device_expert_snapshot(
@@ -6094,7 +6329,20 @@ fn build_persistent_device_expert_layer(
             generation,
             selected_experts,
         )?;
-        (routed, shared, intermediate, metrics)
+        let metrics = DeviceExpertLayerMetrics {
+            routed: routed_metrics,
+            shared: shared_metrics,
+        };
+        let routed_dispatch_mode = metrics.routed_dispatch_mode();
+        let shared_dispatch_mode = metrics.shared_dispatch_mode();
+        (
+            routed,
+            shared,
+            intermediate,
+            metrics,
+            routed_dispatch_mode,
+            shared_dispatch_mode,
+        )
     };
 
     let snapshot_bytes = routed.table.length().saturating_add(shared.table.length());
@@ -6109,6 +6357,8 @@ fn build_persistent_device_expert_layer(
         shared,
         intermediate,
         metrics,
+        routed_dispatch_mode,
+        shared_dispatch_mode,
     }))
 }
 
@@ -6246,6 +6496,8 @@ fn moe_device_table_wave<'a>(
     let shared_lease = layer_state.shared;
     let intermediate = layer_state.intermediate;
     let metrics = layer_state.metrics;
+    let routed_dispatch_mode = layer_state.routed_dispatch_mode;
+    let shared_dispatch_mode = layer_state.shared_dispatch_mode;
 
     let scratch_guard =
         pool.ensure_expert_wave_scratch(ctx, experts_per_token + 1, intermediate, hidden)?;
@@ -6265,13 +6517,18 @@ fn moe_device_table_wave<'a>(
         experts_per_token,
         hidden,
         intermediate,
-        DEVICE_EXPERT_TENSOR_KIND_PQ,
+        match routed_dispatch_mode {
+            DeviceExpertDispatchMode::PqOnly => DEVICE_EXPERT_TENSOR_KIND_PQ,
+            DeviceExpertDispatchMode::NativeBf16Only => DEVICE_EXPERT_TENSOR_KIND_NATIVE_BF16,
+            DeviceExpertDispatchMode::Heterogeneous => DEVICE_EXPERT_TENSOR_KIND_ANY_SUPPORTED,
+        },
     )?;
     encode_device_expert_table_zero(wave, &scratch.combined, &pool.expert_miss_mask, hidden)?;
 
     for execution_position in 0..experts_per_token {
-        encode_device_expert_table_pq_matvec(
+        encode_device_expert_table_matvec(
             wave,
+            routed_dispatch_mode,
             &routed_lease,
             &pool.expert_idx,
             &pool.expert_exec_slots,
@@ -6284,8 +6541,9 @@ fn moe_device_table_wave<'a>(
             hidden,
             &scratch.gate[execution_position],
         )?;
-        encode_device_expert_table_pq_matvec(
+        encode_device_expert_table_matvec(
             wave,
+            routed_dispatch_mode,
             &routed_lease,
             &pool.expert_idx,
             &pool.expert_exec_slots,
@@ -6306,8 +6564,9 @@ fn moe_device_table_wave<'a>(
             &pool.expert_miss_mask,
             intermediate,
         )?;
-        encode_device_expert_table_pq_matvec(
+        encode_device_expert_table_matvec(
             wave,
+            routed_dispatch_mode,
             &routed_lease,
             &pool.expert_idx,
             &pool.expert_exec_slots,
@@ -6335,8 +6594,9 @@ fn moe_device_table_wave<'a>(
     }
 
     let shared_position = experts_per_token;
-    encode_device_expert_table_pq_matvec(
+    encode_device_expert_table_matvec(
         wave,
+        shared_dispatch_mode,
         &shared_lease,
         &pool.shared_expert_idx,
         &pool.shared_expert_slot,
@@ -6349,8 +6609,9 @@ fn moe_device_table_wave<'a>(
         hidden,
         &scratch.gate[shared_position],
     )?;
-    encode_device_expert_table_pq_matvec(
+    encode_device_expert_table_matvec(
         wave,
+        shared_dispatch_mode,
         &shared_lease,
         &pool.shared_expert_idx,
         &pool.shared_expert_slot,
@@ -6371,8 +6632,9 @@ fn moe_device_table_wave<'a>(
         &pool.expert_miss_mask,
         intermediate,
     )?;
-    encode_device_expert_table_pq_matvec(
+    encode_device_expert_table_matvec(
         wave,
+        shared_dispatch_mode,
         &shared_lease,
         &pool.shared_expert_idx,
         &pool.shared_expert_slot,
@@ -6409,13 +6671,14 @@ fn moe_device_table_wave<'a>(
     let miss_mask = read_u32(&pool.expert_miss_mask, 1)[0];
     crate::cost_ledger::record_transfer(4, false, "device_expert_table_miss_mask_download");
     if miss_mask == 0 {
-        record_device_expert_table_hit_costs(
-            mlp_prefix,
-            experts_per_token,
-            hidden,
-            intermediate,
-            metrics,
-        );
+        if metrics.routed.len() != experts_per_token {
+            return Err(Error::Gravity(format!(
+                "device expert table hit admitted {} routed metric triplets for \
+                 {experts_per_token} execution positions",
+                metrics.routed.len()
+            )));
+        }
+        record_device_expert_table_hit_costs(mlp_prefix, hidden, intermediate, &metrics);
         Ok(DeviceExpertTableWaveResult::Hit)
     } else {
         Ok(DeviceExpertTableWaveResult::Miss(miss_mask))
@@ -7101,6 +7364,7 @@ mod tests {
             INTERMEDIATE,
             HIDDEN,
             &y,
+            false,
         )
         .expect("indirect gate projection");
         assert_eq!(hit.dispatch_count(), 2);
@@ -7171,6 +7435,7 @@ mod tests {
             INTERMEDIATE,
             HIDDEN,
             &missing_y,
+            false,
         )
         .expect("suppressed missing projection");
         miss.commit_and_wait().expect("resident-miss command");
@@ -7237,6 +7502,7 @@ mod tests {
             INTERMEDIATE,
             HIDDEN,
             &y,
+            false,
         )
         .expect("packed-r0 indirect gate");
         hit.commit_and_wait().expect("packed-r0 command");
@@ -7318,6 +7584,7 @@ mod tests {
             INTERMEDIATE,
             HIDDEN,
             &invalid_y,
+            false,
         )
         .expect("suppressed invalid packed projection");
         invalid.commit_and_wait().expect("invalid packed command");
@@ -7387,6 +7654,7 @@ mod tests {
             INTERMEDIATE,
             HIDDEN,
             &y,
+            false,
         )
         .expect("native-bf16 indirect gate");
         hit.commit_and_wait().expect("native-bf16 command");
@@ -7468,6 +7736,7 @@ mod tests {
             INTERMEDIATE,
             HIDDEN,
             &invalid_y,
+            false,
         )
         .expect("suppressed invalid native projection");
         invalid.commit_and_wait().expect("invalid native command");
@@ -7482,6 +7751,211 @@ mod tests {
                 .map(|value| value.to_bits())
                 .collect::<Vec<_>>(),
             "an invalid native descriptor must not mutate the destination"
+        );
+    }
+
+    #[test]
+    fn device_expert_table_heterogeneous_triplet_executes_and_fails_closed() {
+        let Ok(ctx) = MetalContext::new() else {
+            return;
+        };
+        const HIDDEN: usize = 32;
+        const INTERMEDIATE: usize = 32;
+        const GENERATION: u32 = 19;
+
+        let (gate, gate_dense) = packed_r0_pq_tensor(&ctx, INTERMEDIATE, HIDDEN, 4);
+        let (up, up_dense) = native_bf16_tensor(&ctx, INTERMEDIATE, HIDDEN, 5);
+        let (down, down_dense) = direct_u8_pq_tensor(&ctx, HIDDEN, INTERMEDIATE, 6);
+        let lease = build_single_device_expert_snapshot(&ctx, &gate, &up, &down, GENERATION)
+            .expect("heterogeneous immutable expert table");
+        assert_eq!(lease.ready_entries, 1);
+        assert_eq!(lease.resources.len(), 5);
+        let (_, triplet_metrics) =
+            device_expert_triplet_metrics(&gate, &up, &down, HIDDEN).expect("mixed metrics");
+        let metrics = DeviceExpertLayerMetrics {
+            routed: vec![triplet_metrics],
+            shared: triplet_metrics,
+        };
+        assert_eq!(
+            metrics.dispatch_mode(),
+            DeviceExpertDispatchMode::Heterogeneous
+        );
+
+        let expert_indices = u32_buffer(&ctx, &[0]);
+        let execution_slots = u32_buffer(&ctx, &[0]);
+        let miss_mask = u32_buffer(&ctx, &[u32::MAX]);
+        let x_values: Vec<f32> = deterministic_fixture_f32(0xA11C_E019, HIDDEN, 0.125)
+            .into_iter()
+            .map(|value| value.abs() + 0.03125)
+            .collect();
+        let x = f32_buffer(&ctx, &x_values);
+        let gate_out = filled_f32_buffer(&ctx, INTERMEDIATE, -1.0);
+        let up_out = filled_f32_buffer(&ctx, INTERMEDIATE, -2.0);
+        let act = filled_f32_buffer(&ctx, INTERMEDIATE, -3.0);
+        let down_out = filled_f32_buffer(&ctx, HIDDEN, -4.0);
+        let mut hit = TokenCommandBuffer::new(&ctx);
+        encode_device_expert_table_validate(
+            &mut hit,
+            &lease,
+            &expert_indices,
+            &execution_slots,
+            &miss_mask,
+            1,
+            HIDDEN,
+            INTERMEDIATE,
+            DEVICE_EXPERT_TENSOR_KIND_ANY_SUPPORTED,
+        )
+        .expect("validate heterogeneous hit");
+        encode_device_expert_table_matvec(
+            &mut hit,
+            DeviceExpertDispatchMode::Heterogeneous,
+            &lease,
+            &expert_indices,
+            &execution_slots,
+            &miss_mask,
+            1,
+            0,
+            0,
+            &x,
+            INTERMEDIATE,
+            HIDDEN,
+            &gate_out,
+        )
+        .expect("heterogeneous gate");
+        encode_device_expert_table_matvec(
+            &mut hit,
+            DeviceExpertDispatchMode::Heterogeneous,
+            &lease,
+            &expert_indices,
+            &execution_slots,
+            &miss_mask,
+            1,
+            0,
+            1,
+            &x,
+            INTERMEDIATE,
+            HIDDEN,
+            &up_out,
+        )
+        .expect("heterogeneous up");
+        encode_device_expert_table_silu_mul(
+            &mut hit,
+            &gate_out,
+            &up_out,
+            &act,
+            &miss_mask,
+            INTERMEDIATE,
+        )
+        .expect("heterogeneous silu");
+        encode_device_expert_table_matvec(
+            &mut hit,
+            DeviceExpertDispatchMode::Heterogeneous,
+            &lease,
+            &expert_indices,
+            &execution_slots,
+            &miss_mask,
+            1,
+            0,
+            2,
+            &act,
+            HIDDEN,
+            INTERMEDIATE,
+            &down_out,
+        )
+        .expect("heterogeneous down");
+        assert_eq!(hit.dispatch_count(), 8);
+        hit.commit_and_wait().expect("heterogeneous command");
+        assert_eq!(read_u32(&miss_mask, 1), vec![0]);
+
+        let host = fixture_mlp_f32(
+            &gate_dense,
+            &up_dense,
+            &down_dense,
+            HIDDEN,
+            INTERMEDIATE,
+            &x_values,
+        );
+        let authority = fixture_mlp_f64(
+            &gate_dense,
+            &up_dense,
+            &down_dense,
+            HIDDEN,
+            INTERMEDIATE,
+            &x_values,
+        );
+        let device = read_f32(&down_out, HIDDEN);
+        let score = score_pair(&host, &device, &authority, &Bounds::continuous_only());
+        eprintln!(
+            "device expert table heterogeneous triplet: rel_l2={:.3e} meaningful={:.3e} \
+             greedy={} top5={} dispatches=8 waits=1",
+            score.device.continuous.relative_l2,
+            score.device.continuous.max_meaningful_rel,
+            score.device.discrete.greedy_match,
+            score.device.discrete.top_k_exact_match
+        );
+        assert!(
+            score.pass,
+            "heterogeneous triplet failed V2.1: host={:?}, device={:?}",
+            score.host.failures, score.device.failures
+        );
+
+        // Any unsupported member invalidates the whole triplet before either
+        // paired projection kernel can write.
+        let invalid_table = unsafe {
+            std::slice::from_raw_parts_mut(
+                lease.table.contents() as *mut DeviceExpertTriplet,
+                lease.n_experts,
+            )
+        };
+        invalid_table[0].up.kind = 99;
+        let invalid_mask = u32_buffer(&ctx, &[u32::MAX]);
+        let sentinel: Vec<f32> = (0..INTERMEDIATE)
+            .map(|index| 8_000.0 + index as f32)
+            .collect();
+        let invalid_gate = f32_buffer(&ctx, &sentinel);
+        let mut invalid = TokenCommandBuffer::new(&ctx);
+        encode_device_expert_table_validate(
+            &mut invalid,
+            &lease,
+            &expert_indices,
+            &execution_slots,
+            &invalid_mask,
+            1,
+            HIDDEN,
+            INTERMEDIATE,
+            DEVICE_EXPERT_TENSOR_KIND_ANY_SUPPORTED,
+        )
+        .expect("validate unsupported mixed member");
+        encode_device_expert_table_matvec(
+            &mut invalid,
+            DeviceExpertDispatchMode::Heterogeneous,
+            &lease,
+            &expert_indices,
+            &execution_slots,
+            &invalid_mask,
+            1,
+            0,
+            0,
+            &x,
+            INTERMEDIATE,
+            HIDDEN,
+            &invalid_gate,
+        )
+        .expect("suppress mixed triplet after validation miss");
+        invalid
+            .commit_and_wait()
+            .expect("invalid heterogeneous command");
+        assert_eq!(read_u32(&invalid_mask, 1), vec![1]);
+        assert_eq!(
+            read_f32(&invalid_gate, INTERMEDIATE)
+                .iter()
+                .map(|value| value.to_bits())
+                .collect::<Vec<_>>(),
+            sentinel
+                .iter()
+                .map(|value| value.to_bits())
+                .collect::<Vec<_>>(),
+            "an unsupported heterogeneous triplet must not mutate the destination"
         );
     }
 
@@ -7597,6 +8071,7 @@ mod tests {
                     INTERMEDIATE,
                     HIDDEN,
                     &routed_gate[execution_position],
+                    false,
                 )?;
                 encode_device_expert_table_pq_matvec(
                     wave,
@@ -7611,6 +8086,7 @@ mod tests {
                     INTERMEDIATE,
                     HIDDEN,
                     &routed_up[execution_position],
+                    false,
                 )?;
                 encode_device_expert_table_silu_mul(
                     wave,
@@ -7633,6 +8109,7 @@ mod tests {
                     HIDDEN,
                     INTERMEDIATE,
                     &routed_down[execution_position],
+                    false,
                 )?;
                 encode_device_expert_table_axpy(
                     wave,
@@ -7664,6 +8141,7 @@ mod tests {
                 INTERMEDIATE,
                 HIDDEN,
                 &shared_gate_out,
+                false,
             )?;
             encode_device_expert_table_pq_matvec(
                 wave,
@@ -7678,6 +8156,7 @@ mod tests {
                 INTERMEDIATE,
                 HIDDEN,
                 &shared_up_out,
+                false,
             )?;
             encode_device_expert_table_silu_mul(
                 wave,
@@ -7700,6 +8179,7 @@ mod tests {
                 HIDDEN,
                 INTERMEDIATE,
                 &shared_down_out,
+                false,
             )?;
             encode_device_expert_table_axpy(
                 wave,
@@ -7862,47 +8342,33 @@ mod tests {
 
     #[test]
     fn device_expert_table_hit_costs_cover_routed_shared_and_elementwise_work() {
+        use crate::cost_ledger::RoutedWeightRepresentation;
         use crate::gravity_glm::gpu::PqParams;
 
         crate::cost_ledger::set_enabled(true);
         let _ = crate::cost_ledger::end_token();
         assert!(crate::cost_ledger::begin_token());
-        let metrics = DirectU8TripletMetrics {
-            params: [
-                PqParams {
-                    dim: 32,
-                    subspaces: 1,
-                    sub: 32,
-                    card: 256,
-                    rows: 64,
-                    cols: 32,
-                    nchunk: 1,
-                    bits: 8,
-                },
-                PqParams {
-                    dim: 32,
-                    subspaces: 1,
-                    sub: 32,
-                    card: 256,
-                    rows: 64,
-                    cols: 32,
-                    nchunk: 1,
-                    bits: 8,
-                },
-                PqParams {
-                    dim: 32,
-                    subspaces: 1,
-                    sub: 32,
-                    card: 256,
-                    rows: 32,
-                    cols: 64,
-                    nchunk: 2,
-                    bits: 8,
-                },
-            ],
-            bytes: [100, 120, 80],
+        let r4 = |rows, cols, bytes| DeviceExpertProjectionMetrics::Pq {
+            params: PqParams {
+                dim: 32,
+                subspaces: 1,
+                sub: 32,
+                card: 256,
+                rows,
+                cols,
+                nchunk: cols / 32,
+                bits: 8,
+            },
+            bytes,
+            representation: RoutedWeightRepresentation::R4,
         };
-        record_device_expert_table_hit_costs("model.layers.0.mlp", 2, 32, 64, metrics);
+        let triplet = [r4(64, 32, 100), r4(64, 32, 120), r4(32, 64, 80)];
+        let metrics = DeviceExpertLayerMetrics {
+            routed: vec![triplet, triplet],
+            shared: triplet,
+        };
+        assert_eq!(metrics.dispatch_mode(), DeviceExpertDispatchMode::PqOnly);
+        record_device_expert_table_hit_costs("model.layers.0.mlp", 32, 64, &metrics);
         let report = crate::cost_ledger::end_token().expect("table-hit cost report");
         crate::cost_ledger::set_enabled(false);
 
@@ -7930,6 +8396,88 @@ mod tests {
             8_640
         );
         assert_eq!(report.counters.source_modelled_transcendentals, 192);
+    }
+
+    #[test]
+    fn device_expert_table_heterogeneous_hit_costs_are_route_exact() {
+        use crate::cost_ledger::RoutedWeightRepresentation;
+        use crate::gravity_glm::gpu::PqParams;
+
+        let pq = |params, bytes, representation| DeviceExpertProjectionMetrics::Pq {
+            params,
+            bytes,
+            representation,
+        };
+        let triplet = [
+            pq(
+                PqParams {
+                    dim: 32,
+                    subspaces: 1,
+                    sub: 32,
+                    card: 256,
+                    rows: 64,
+                    cols: 32,
+                    nchunk: 1,
+                    bits: 8,
+                },
+                100,
+                RoutedWeightRepresentation::R4,
+            ),
+            pq(
+                PqParams {
+                    dim: 8,
+                    subspaces: 1,
+                    sub: 8,
+                    card: 128,
+                    rows: 64,
+                    cols: 32,
+                    nchunk: 4,
+                    bits: 7,
+                },
+                50,
+                RoutedWeightRepresentation::R0,
+            ),
+            DeviceExpertProjectionMetrics::NativeBf16 {
+                rows: 32,
+                cols: 64,
+                bytes: 4_096,
+            },
+        ];
+        let metrics = DeviceExpertLayerMetrics {
+            routed: vec![triplet, triplet],
+            shared: triplet,
+        };
+        assert_eq!(
+            metrics.dispatch_mode(),
+            DeviceExpertDispatchMode::Heterogeneous
+        );
+
+        crate::cost_ledger::set_enabled(true);
+        let _ = crate::cost_ledger::end_token();
+        assert!(crate::cost_ledger::begin_token());
+        record_device_expert_table_hit_costs("model.layers.0.mlp", 32, 64, &metrics);
+        let report = crate::cost_ledger::end_token().expect("heterogeneous cost report");
+        crate::cost_ledger::set_enabled(false);
+
+        assert_eq!(report.counters.matvec_calls, 9);
+        assert_eq!(report.counters.active_bytes_read, 12_738);
+        assert_eq!(
+            report.counters.active_bytes_by_category["routed_experts"].as_u64(),
+            Some(8_492)
+        );
+        assert_eq!(
+            report.counters.active_bytes_by_category["shared_experts"].as_u64(),
+            Some(4_246)
+        );
+        let routed = &report.counters.routed_representations;
+        assert_eq!(routed.r4_projection_touches, 2);
+        assert_eq!(routed.r4_active_bytes, 200);
+        assert_eq!(routed.r0_projection_touches, 2);
+        assert_eq!(routed.r0_active_bytes, 100);
+        assert_eq!(routed.native_bf16_projection_touches, 2);
+        assert_eq!(routed.native_bf16_active_bytes, 8_192);
+        assert_eq!(routed.other_projection_touches, 0);
+        assert_eq!(routed.other_active_bytes, 0);
     }
 
     #[test]

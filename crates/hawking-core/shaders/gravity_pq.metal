@@ -1403,6 +1403,7 @@ static_assert(sizeof(GravityDeviceExpertTriplet) == 176,
 
 constant constexpr uint GRAVITY_EXPERT_KIND_PQ = 1u;
 constant constexpr uint GRAVITY_EXPERT_KIND_NATIVE_BF16 = 2u;
+constant constexpr uint GRAVITY_EXPERT_KIND_ANY_SUPPORTED = 0u;
 constant constexpr uint GRAVITY_EXPERT_TRIPLET_READY = 7u;
 
 struct GravityDeviceExpertValidateParams {
@@ -1422,21 +1423,31 @@ struct GravityDeviceExpertMatvecParams {
     uint projection;
     uint rows;
     uint cols;
+    uint allow_other_kind;
 };
+
+static_assert(sizeof(GravityDeviceExpertValidateParams) == 24,
+              "GravityDeviceExpertValidateParams ABI drift");
+static_assert(sizeof(GravityDeviceExpertMatvecParams) == 32,
+              "GravityDeviceExpertMatvecParams ABI drift");
 
 static inline bool gravity_device_expert_tensor_valid(
     const device GravityDeviceExpertTensorRef &tensor,
     uint generation,
     uint required_kind)
 {
+    uint admitted_kind =
+        required_kind == GRAVITY_EXPERT_KIND_ANY_SUPPORTED
+        ? tensor.kind
+        : required_kind;
     if (tensor.generation != generation ||
-        tensor.kind != required_kind ||
+        tensor.kind != admitted_kind ||
         tensor.primary == nullptr ||
         tensor.rows == 0u ||
         tensor.cols == 0u) {
         return false;
     }
-    if (required_kind == GRAVITY_EXPERT_KIND_PQ) {
+    if (admitted_kind == GRAVITY_EXPERT_KIND_PQ) {
         return tensor.secondary != nullptr &&
                tensor.bits > 0u &&
                tensor.bits <= 8u &&
@@ -1447,7 +1458,7 @@ static inline bool gravity_device_expert_tensor_valid(
                tensor.nchunk > 0u &&
                tensor.cols == tensor.nchunk * tensor.dim;
     }
-    if (required_kind == GRAVITY_EXPERT_KIND_NATIVE_BF16) {
+    if (admitted_kind == GRAVITY_EXPERT_KIND_NATIVE_BF16) {
         return tensor.secondary == nullptr;
     }
     return false;
@@ -1531,6 +1542,10 @@ kernel void gravity_glm_expert_table_pq_matvec(
     const device GravityDeviceExpertTensorRef *tensor =
         p.projection == 0u ? &entry.gate :
         (p.projection == 1u ? &entry.up : &entry.down);
+    if (p.allow_other_kind != 0u &&
+        tensor->kind == GRAVITY_EXPERT_KIND_NATIVE_BF16) {
+        return;
+    }
     bool valid =
         p.projection <= 2u &&
         entry.ready_mask == GRAVITY_EXPERT_TRIPLET_READY &&
@@ -1623,6 +1638,10 @@ kernel void gravity_glm_expert_table_native_bf16_matvec(
     const device GravityDeviceExpertTensorRef *tensor =
         p.projection == 0u ? &entry.gate :
         (p.projection == 1u ? &entry.up : &entry.down);
+    if (p.allow_other_kind != 0u &&
+        tensor->kind == GRAVITY_EXPERT_KIND_PQ) {
+        return;
+    }
     bool valid =
         p.projection <= 2u &&
         entry.ready_mask == GRAVITY_EXPERT_TRIPLET_READY &&

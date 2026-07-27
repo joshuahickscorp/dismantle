@@ -63,11 +63,11 @@ use crate::gravity_glm::gpu::{
     record_routed_tensor_representation, routed_pq_representation, GpuTensor, GpuWeightCache,
 };
 use crate::gravity_glm::{
-    gpu_compact_mla_enabled, gpu_device_router_enabled, gpu_expert_table_hit_enabled,
-    gpu_expert_table_icb_enabled, gpu_expert_wave_concurrent_enabled, gpu_expert_wave_enabled,
-    gpu_lm_head_enabled, gpu_lm_head_full_logits_enabled, gpu_lm_head_icb_enabled, rope_cos_sin,
-    rope_interleaved, topk_desc, BoundedLru, GlmArch, GlmTrace, WeightAccess,
-    GPU_LM_HEAD_DIAG_TOPK, RESIDENT_RUNTIME_INITIAL_KV_CAPACITY_TOKENS,
+    gpu_compact_attention_icb_enabled, gpu_compact_mla_enabled, gpu_device_router_enabled,
+    gpu_expert_table_hit_enabled, gpu_expert_table_icb_enabled, gpu_expert_wave_concurrent_enabled,
+    gpu_expert_wave_enabled, gpu_lm_head_enabled, gpu_lm_head_full_logits_enabled,
+    gpu_lm_head_icb_enabled, rope_cos_sin, rope_interleaved, topk_desc, BoundedLru, GlmArch,
+    GlmTrace, WeightAccess, GPU_LM_HEAD_DIAG_TOPK, RESIDENT_RUNTIME_INITIAL_KV_CAPACITY_TOKENS,
 };
 use crate::metal::{
     MetalContext, ReplayBufferBinding, ReplayComputeStage, ReplayResourceDeclaration,
@@ -1814,6 +1814,10 @@ pub struct ActPool {
     /// The key includes every bound GPU address, so warm tokens reuse the ICB
     /// without allocating and any storage change rebuilds it fail-closed.
     final_head_replay: Mutex<Option<CachedFinalHeadReplayGraph>>,
+    /// One lazily captured fixed-grid compact-attention DAG per layer. Cache
+    /// growth changes persistent addresses and therefore rebuilds only the
+    /// affected layer entry.
+    compact_attention_replay_layers: Mutex<Vec<Option<CachedCompactAttentionReplayGraph>>>,
 }
 
 struct CompactAttentionScratch {
@@ -2060,6 +2064,7 @@ impl ActPool {
             expert_wave_scratch: Mutex::new(None),
             persistent_expert_layers: Mutex::new((0..arch.n_layers).map(|_| None).collect()),
             final_head_replay: Mutex::new(None),
+            compact_attention_replay_layers: Mutex::new((0..arch.n_layers).map(|_| None).collect()),
         })
     }
 
@@ -3670,72 +3675,124 @@ fn compact_attend_into<'a>(
 
     let tcb = pending.get_or_insert_with(|| TokenCommandBuffer::new(ctx));
     let dispatches_before = tcb.dispatch_count();
-    route_segment_primitives::encode_mla_append_compact(
-        tcb,
-        &pool.k_latent,
-        &scratch.key_rope,
-        &cache.latents,
-        &cache.rope_tails,
-        a.kv_lora_rank,
-        a.qk_rope_head_dim,
-        pos,
-    )?;
-    route_segment_primitives::encode_pq_k_transpose_heads(
-        tcb,
-        &kv_codebooks,
-        &kv_codes,
-        &scratch.query_nope,
-        &scratch.query_latent,
-        a.n_heads,
-        a.qk_nope_head_dim,
-        row_stride,
-        a.kv_lora_rank,
-        kv_params.dim as usize,
-        kv_params.sub as usize,
-        kv_params.card as usize,
-        kv_params.bits as usize,
-        kv_params.nchunk as usize,
-    )?;
-    route_segment_primitives::encode_compact_ranked_attention(
-        tcb,
-        &scratch.query_latent,
-        &scratch.query_rope,
-        &cache.latents,
-        &cache.rope_tails,
-        dsa.ranked_indices()?,
-        &scratch.query_latent,
-        a.n_heads,
-        a.kv_lora_rank,
-        a.qk_rope_head_dim,
-        n_keys,
-        n_allow,
-        (qk as f32).powf(-0.5),
-    )?;
-    route_segment_primitives::encode_pq_v_rows_heads(
-        tcb,
-        &kv_codebooks,
-        &kv_codes,
-        &scratch.query_latent,
-        &pool.context,
-        a.n_heads,
-        row_stride,
-        a.qk_nope_head_dim,
-        a.v_head_dim,
-        a.kv_lora_rank,
-        kv_params.dim as usize,
-        kv_params.sub as usize,
-        kv_params.card as usize,
-        kv_params.bits as usize,
-        kv_params.nchunk as usize,
-    )?;
-    encode_pq_matvec_device(
-        tcb,
-        &o_codebooks,
-        &o_codes,
-        o_params,
-        &pool.context,
-        &pool.o,
-    )?;
+    let ranked_indices = dsa.ranked_indices()?;
+    if gpu_compact_attention_icb_enabled() && device_inputs_ready {
+        let inputs = CompactAttentionReplayInputs {
+            layer,
+            n_heads: a.n_heads,
+            latent_dim: a.kv_lora_rank,
+            rope_dim: a.qk_rope_head_dim,
+            key_rows: a.qk_nope_head_dim,
+            row_stride,
+            value_rows: a.v_head_dim,
+            max_allow: a.index_topk,
+            scale: (qk as f32).powf(-0.5),
+            kv_params,
+            o_params,
+            k_latent: &pool.k_latent,
+            key_rope: &scratch.key_rope,
+            latent_cache: &cache.latents,
+            rope_cache: &cache.rope_tails,
+            kv_codebooks: &kv_codebooks,
+            kv_codes: &kv_codes,
+            query_nope: &scratch.query_nope,
+            query_latent: &scratch.query_latent,
+            query_rope: &scratch.query_rope,
+            ranked_indices,
+            context: &pool.context,
+            o_codebooks: &o_codebooks,
+            o_codes: &o_codes,
+            output: &pool.o,
+        };
+        let key = inputs.key();
+        let mut replay_layers = pool
+            .compact_attention_replay_layers
+            .lock()
+            .expect("compact-attention replay layers");
+        let replay_layer_count = replay_layers.len();
+        let slot = replay_layers.get_mut(layer).ok_or_else(|| {
+            Error::Gravity(format!(
+                "compact-attention replay layer {layer} exceeds pool extent {replay_layer_count}"
+            ))
+        })?;
+        if !slot.as_ref().is_some_and(|entry| entry.key == key) {
+            *slot = Some(build_compact_attention_replay_graph(
+                ctx, &inputs, pos, n_keys, n_allow,
+            )?);
+        }
+        let replay = slot
+            .as_ref()
+            .expect("compact-attention replay graph just populated");
+        replay.update_dynamic_parameters(pos, n_keys, n_allow)?;
+        tcb.execute_replayable_graph(&replay.graph)?;
+    } else {
+        route_segment_primitives::encode_mla_append_compact(
+            tcb,
+            &pool.k_latent,
+            &scratch.key_rope,
+            &cache.latents,
+            &cache.rope_tails,
+            a.kv_lora_rank,
+            a.qk_rope_head_dim,
+            pos,
+        )?;
+        route_segment_primitives::encode_pq_k_transpose_heads(
+            tcb,
+            &kv_codebooks,
+            &kv_codes,
+            &scratch.query_nope,
+            &scratch.query_latent,
+            a.n_heads,
+            a.qk_nope_head_dim,
+            row_stride,
+            a.kv_lora_rank,
+            kv_params.dim as usize,
+            kv_params.sub as usize,
+            kv_params.card as usize,
+            kv_params.bits as usize,
+            kv_params.nchunk as usize,
+        )?;
+        route_segment_primitives::encode_compact_ranked_attention(
+            tcb,
+            &scratch.query_latent,
+            &scratch.query_rope,
+            &cache.latents,
+            &cache.rope_tails,
+            ranked_indices,
+            &scratch.query_latent,
+            a.n_heads,
+            a.kv_lora_rank,
+            a.qk_rope_head_dim,
+            n_keys,
+            n_allow,
+            (qk as f32).powf(-0.5),
+        )?;
+        route_segment_primitives::encode_pq_v_rows_heads(
+            tcb,
+            &kv_codebooks,
+            &kv_codes,
+            &scratch.query_latent,
+            &pool.context,
+            a.n_heads,
+            row_stride,
+            a.qk_nope_head_dim,
+            a.v_head_dim,
+            a.kv_lora_rank,
+            kv_params.dim as usize,
+            kv_params.sub as usize,
+            kv_params.card as usize,
+            kv_params.bits as usize,
+            kv_params.nchunk as usize,
+        )?;
+        encode_pq_matvec_device(
+            tcb,
+            &o_codebooks,
+            &o_codes,
+            o_params,
+            &pool.context,
+            &pool.o,
+        )?;
+    }
     let compact_dispatches = tcb.dispatch_count().saturating_sub(dispatches_before);
     if compact_dispatches != 5 {
         return Err(Error::Gravity(format!(
@@ -4212,7 +4269,7 @@ mod route_segment_primitives {
     }
 
     #[repr(C)]
-    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, bytemuck::Pod, bytemuck::Zeroable)]
     pub(super) struct GlmMlaCompactAppendParams {
         pub latent_dim: u32,
         pub rope_dim: u32,
@@ -4220,7 +4277,7 @@ mod route_segment_primitives {
     }
 
     #[repr(C)]
-    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, bytemuck::Pod, bytemuck::Zeroable)]
     pub(super) struct GlmPqKTransposeParams {
         pub n_heads: u32,
         pub key_rows: u32,
@@ -4232,7 +4289,7 @@ mod route_segment_primitives {
     }
 
     #[repr(C)]
-    #[derive(Clone, Copy, Debug, PartialEq)]
+    #[derive(Clone, Copy, Debug, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
     pub(super) struct GlmCompactRankedAttnParams {
         pub n_heads: u32,
         pub latent_dim: u32,
@@ -4243,7 +4300,7 @@ mod route_segment_primitives {
     }
 
     #[repr(C)]
-    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, bytemuck::Pod, bytemuck::Zeroable)]
     pub(super) struct GlmPqVRowsParams {
         pub n_heads: u32,
         pub row_stride: u32,
@@ -6226,6 +6283,356 @@ impl ReplayParameterArena {
         crate::cost_ledger::record_allocation(buffer.length());
         Ok(buffer)
     }
+}
+
+fn write_replay_parameter<T: bytemuck::Pod>(
+    buffer: &Buffer,
+    offset: usize,
+    value: &T,
+    label: &str,
+) -> Result<()> {
+    let bytes = bytemuck::bytes_of(value);
+    let end = offset
+        .checked_add(bytes.len())
+        .ok_or_else(|| Error::Gravity(format!("{label} parameter offset overflow")))?;
+    if end as u64 > buffer.length() {
+        return Err(Error::Gravity(format!(
+            "{label} parameter range [{offset}, {end}) exceeds {} bytes",
+            buffer.length()
+        )));
+    }
+    unsafe {
+        std::ptr::copy_nonoverlapping(
+            bytes.as_ptr(),
+            (buffer.contents() as *mut u8).add(offset),
+            bytes.len(),
+        );
+    }
+    Ok(())
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct CompactAttentionReplayKey {
+    layer: usize,
+    n_heads: usize,
+    latent_dim: usize,
+    rope_dim: usize,
+    key_rows: usize,
+    row_stride: usize,
+    value_rows: usize,
+    max_allow: usize,
+    scale_bits: u32,
+    kv_params: crate::gravity_glm::gpu::PqParams,
+    o_params: crate::gravity_glm::gpu::PqParams,
+    buffer_addresses: [u64; 14],
+}
+
+struct CachedCompactAttentionReplayGraph {
+    key: CompactAttentionReplayKey,
+    graph: ReplayableComputeGraph,
+    parameter_buffer: Buffer,
+    append_parameter_offset: usize,
+    ranked_parameter_offset: usize,
+}
+
+impl CachedCompactAttentionReplayGraph {
+    fn update_dynamic_parameters(
+        &self,
+        position: usize,
+        n_keys: usize,
+        n_allow: usize,
+    ) -> Result<()> {
+        if n_allow > self.key.max_allow {
+            return Err(Error::Gravity(format!(
+                "compact-attention replay n_allow {n_allow} exceeds captured bound {}",
+                self.key.max_allow
+            )));
+        }
+        let append = route_segment_primitives::GlmMlaCompactAppendParams {
+            latent_dim: replay_u32(self.key.latent_dim, "compact replay latent dimension")?,
+            rope_dim: replay_u32(self.key.rope_dim, "compact replay RoPE dimension")?,
+            pos: replay_u32(position, "compact replay position")?,
+        };
+        let ranked = route_segment_primitives::GlmCompactRankedAttnParams {
+            n_heads: replay_u32(self.key.n_heads, "compact replay head count")?,
+            latent_dim: replay_u32(self.key.latent_dim, "compact replay latent dimension")?,
+            rope_dim: replay_u32(self.key.rope_dim, "compact replay RoPE dimension")?,
+            n_keys: replay_u32(n_keys, "compact replay active key count")?,
+            n_allow: replay_u32(n_allow, "compact replay selected key count")?,
+            scale: f32::from_bits(self.key.scale_bits),
+        };
+        write_replay_parameter(
+            &self.parameter_buffer,
+            self.append_parameter_offset,
+            &append,
+            "compact-attention append",
+        )?;
+        write_replay_parameter(
+            &self.parameter_buffer,
+            self.ranked_parameter_offset,
+            &ranked,
+            "compact-attention ranked",
+        )?;
+        crate::cost_ledger::record_transfer(
+            (std::mem::size_of_val(&append) + std::mem::size_of_val(&ranked)) as u64,
+            true,
+            "compact_attention_icb_parameter_update",
+        );
+        Ok(())
+    }
+}
+
+struct CompactAttentionReplayInputs<'a> {
+    layer: usize,
+    n_heads: usize,
+    latent_dim: usize,
+    rope_dim: usize,
+    key_rows: usize,
+    row_stride: usize,
+    value_rows: usize,
+    max_allow: usize,
+    scale: f32,
+    kv_params: crate::gravity_glm::gpu::PqParams,
+    o_params: crate::gravity_glm::gpu::PqParams,
+    k_latent: &'a Buffer,
+    key_rope: &'a Buffer,
+    latent_cache: &'a Buffer,
+    rope_cache: &'a Buffer,
+    kv_codebooks: &'a Buffer,
+    kv_codes: &'a Buffer,
+    query_nope: &'a Buffer,
+    query_latent: &'a Buffer,
+    query_rope: &'a Buffer,
+    ranked_indices: &'a Buffer,
+    context: &'a Buffer,
+    o_codebooks: &'a Buffer,
+    o_codes: &'a Buffer,
+    output: &'a Buffer,
+}
+
+impl CompactAttentionReplayInputs<'_> {
+    fn key(&self) -> CompactAttentionReplayKey {
+        CompactAttentionReplayKey {
+            layer: self.layer,
+            n_heads: self.n_heads,
+            latent_dim: self.latent_dim,
+            rope_dim: self.rope_dim,
+            key_rows: self.key_rows,
+            row_stride: self.row_stride,
+            value_rows: self.value_rows,
+            max_allow: self.max_allow,
+            scale_bits: self.scale.to_bits(),
+            kv_params: self.kv_params,
+            o_params: self.o_params,
+            buffer_addresses: [
+                self.k_latent.gpu_address(),
+                self.key_rope.gpu_address(),
+                self.latent_cache.gpu_address(),
+                self.rope_cache.gpu_address(),
+                self.kv_codebooks.gpu_address(),
+                self.kv_codes.gpu_address(),
+                self.query_nope.gpu_address(),
+                self.query_latent.gpu_address(),
+                self.query_rope.gpu_address(),
+                self.ranked_indices.gpu_address(),
+                self.context.gpu_address(),
+                self.o_codebooks.gpu_address(),
+                self.o_codes.gpu_address(),
+                self.output.gpu_address(),
+            ],
+        }
+    }
+}
+
+fn build_compact_attention_replay_graph(
+    ctx: &MetalContext,
+    inputs: &CompactAttentionReplayInputs<'_>,
+    position: usize,
+    n_keys: usize,
+    n_allow: usize,
+) -> Result<CachedCompactAttentionReplayGraph> {
+    const TG: u32 = 256;
+    if inputs.max_allow == 0 || inputs.max_allow > 2048 || n_allow > inputs.max_allow {
+        return Err(Error::Gravity(format!(
+            "compact-attention replay requires 1 <= max_allow <= 2048 and n_allow <= max_allow, got max_allow={} n_allow={n_allow}",
+            inputs.max_allow
+        )));
+    }
+    let expected_row_stride = inputs
+        .key_rows
+        .checked_add(inputs.value_rows)
+        .ok_or_else(|| Error::Gravity("compact replay row stride overflow".into()))?;
+    if inputs.row_stride != expected_row_stride {
+        return Err(Error::Gravity(format!(
+            "compact-attention replay row_stride {} != key_rows {} + value_rows {}",
+            inputs.row_stride, inputs.key_rows, inputs.value_rows
+        )));
+    }
+
+    let append = route_segment_primitives::GlmMlaCompactAppendParams {
+        latent_dim: replay_u32(inputs.latent_dim, "compact replay latent dimension")?,
+        rope_dim: replay_u32(inputs.rope_dim, "compact replay RoPE dimension")?,
+        pos: replay_u32(position, "compact replay position")?,
+    };
+    let k_transpose = route_segment_primitives::GlmPqKTransposeParams {
+        n_heads: replay_u32(inputs.n_heads, "compact replay head count")?,
+        key_rows: replay_u32(inputs.key_rows, "compact replay key rows")?,
+        row_stride: replay_u32(inputs.row_stride, "compact replay row stride")?,
+        latent_dim: replay_u32(inputs.latent_dim, "compact replay latent dimension")?,
+        pq_dim: inputs.kv_params.dim,
+        pq_sub: inputs.kv_params.sub,
+        pq_nchunk: inputs.kv_params.nchunk,
+    };
+    let ranked = route_segment_primitives::GlmCompactRankedAttnParams {
+        n_heads: replay_u32(inputs.n_heads, "compact replay head count")?,
+        latent_dim: replay_u32(inputs.latent_dim, "compact replay latent dimension")?,
+        rope_dim: replay_u32(inputs.rope_dim, "compact replay RoPE dimension")?,
+        n_keys: replay_u32(n_keys, "compact replay active key count")?,
+        n_allow: replay_u32(n_allow, "compact replay selected key count")?,
+        scale: inputs.scale,
+    };
+    let v_rows = route_segment_primitives::GlmPqVRowsParams {
+        n_heads: replay_u32(inputs.n_heads, "compact replay head count")?,
+        row_stride: replay_u32(inputs.row_stride, "compact replay row stride")?,
+        value_row_offset: replay_u32(inputs.key_rows, "compact replay value row offset")?,
+        value_rows: replay_u32(inputs.value_rows, "compact replay value rows")?,
+        latent_dim: replay_u32(inputs.latent_dim, "compact replay latent dimension")?,
+        pq_dim: inputs.kv_params.dim,
+        pq_sub: inputs.kv_params.sub,
+        pq_nchunk: inputs.kv_params.nchunk,
+    };
+
+    let mut parameters = ReplayParameterArena::default();
+    let append_parameter_offset = parameters.push(&append);
+    let k_parameter_offset = parameters.push(&k_transpose);
+    let ranked_parameter_offset = parameters.push(&ranked);
+    let v_parameter_offset = parameters.push(&v_rows);
+    let o_parameter_offset = parameters.push(&inputs.o_params);
+    let parameter_buffer = parameters.finish(ctx, "compact-attention replay graph")?;
+
+    let append_grid = replay_grid(
+        replay_u32(
+            inputs
+                .latent_dim
+                .checked_add(inputs.rope_dim)
+                .ok_or_else(|| Error::Gravity("compact replay append grid overflow".into()))?,
+            "compact replay append elements",
+        )?,
+        TG,
+        TG,
+        "compact replay append",
+    )?;
+    let k_outputs = inputs
+        .n_heads
+        .checked_mul(inputs.latent_dim)
+        .ok_or_else(|| Error::Gravity("compact replay K output count overflow".into()))?;
+    let k_grid = replay_grid(
+        replay_u32(k_outputs, "compact replay K outputs")?,
+        TG,
+        TG,
+        "compact replay K transpose",
+    )?;
+    let ranked_grid = replay_u32(inputs.n_heads, "compact replay head count")?
+        .checked_mul(TG)
+        .ok_or_else(|| Error::Gravity("compact replay ranked grid overflow".into()))?;
+    let v_outputs = inputs
+        .n_heads
+        .checked_mul(inputs.value_rows)
+        .ok_or_else(|| Error::Gravity("compact replay V output count overflow".into()))?;
+    let v_grid = replay_grid(
+        replay_u32(v_outputs, "compact replay V outputs")?,
+        8,
+        TG,
+        "compact replay V rows",
+    )?;
+    let o_grid = replay_grid(inputs.o_params.rows, 8, TG, "compact replay o_proj")?;
+    let ranked_threadgroup_bytes = inputs
+        .max_allow
+        .checked_mul(std::mem::size_of::<f32>())
+        .ok_or_else(|| Error::Gravity("compact replay ranked memory overflow".into()))?;
+
+    let stages = vec![
+        ReplayComputeStage::new(
+            "gravity_glm_mla_append_compact",
+            (append_grid, 1, 1),
+            (TG, 1, 1),
+            vec![
+                ReplayBufferBinding::read(0, inputs.k_latent, 0),
+                ReplayBufferBinding::read(1, inputs.key_rope, 0),
+                ReplayBufferBinding::write(2, inputs.latent_cache, 0),
+                ReplayBufferBinding::write(3, inputs.rope_cache, 0),
+                ReplayBufferBinding::read(4, &parameter_buffer, append_parameter_offset),
+            ],
+        )
+        .with_ledger_stage(crate::cost_ledger::GpuStage::AttentionAndIndexShare),
+        ReplayComputeStage::new(
+            "gravity_pq_k_transpose_heads",
+            (k_grid, 1, 1),
+            (TG, 1, 1),
+            vec![
+                ReplayBufferBinding::read(0, inputs.kv_codebooks, 0),
+                ReplayBufferBinding::read(1, inputs.kv_codes, 0),
+                ReplayBufferBinding::read(2, inputs.query_nope, 0),
+                ReplayBufferBinding::write(3, inputs.query_latent, 0),
+                ReplayBufferBinding::read(4, &parameter_buffer, k_parameter_offset),
+            ],
+        )
+        .with_barrier_before()
+        .with_ledger_stage(crate::cost_ledger::GpuStage::AttentionAndIndexShare),
+        ReplayComputeStage::new(
+            "gravity_glm_compact_ranked_attn",
+            (ranked_grid, 1, 1),
+            (TG, 1, 1),
+            vec![
+                ReplayBufferBinding::read(0, inputs.query_latent, 0),
+                ReplayBufferBinding::read(1, inputs.query_rope, 0),
+                ReplayBufferBinding::read(2, inputs.latent_cache, 0),
+                ReplayBufferBinding::read(3, inputs.rope_cache, 0),
+                ReplayBufferBinding::read(4, inputs.ranked_indices, 0),
+                ReplayBufferBinding::write(5, inputs.query_latent, 0),
+                ReplayBufferBinding::read(6, &parameter_buffer, ranked_parameter_offset),
+            ],
+        )
+        .with_threadgroup_memory_length(0, ranked_threadgroup_bytes)
+        .with_barrier_before()
+        .with_ledger_stage(crate::cost_ledger::GpuStage::AttentionAndIndexShare),
+        ReplayComputeStage::new(
+            "gravity_pq_v_rows_heads",
+            (v_grid, 1, 1),
+            (TG, 1, 1),
+            vec![
+                ReplayBufferBinding::read(0, inputs.kv_codebooks, 0),
+                ReplayBufferBinding::read(1, inputs.kv_codes, 0),
+                ReplayBufferBinding::read(2, inputs.query_latent, 0),
+                ReplayBufferBinding::write(3, inputs.context, 0),
+                ReplayBufferBinding::read(4, &parameter_buffer, v_parameter_offset),
+            ],
+        )
+        .with_barrier_before()
+        .with_ledger_stage(crate::cost_ledger::GpuStage::AttentionAndIndexShare),
+        ReplayComputeStage::new(
+            "gravity_pq_matvec",
+            (o_grid, 1, 1),
+            (TG, 1, 1),
+            vec![
+                ReplayBufferBinding::read(0, inputs.o_codebooks, 0),
+                ReplayBufferBinding::read(1, inputs.o_codes, 0),
+                ReplayBufferBinding::read(2, inputs.context, 0),
+                ReplayBufferBinding::write(3, inputs.output, 0),
+                ReplayBufferBinding::read(4, &parameter_buffer, o_parameter_offset),
+            ],
+        )
+        .with_barrier_before()
+        .with_ledger_stage(crate::cost_ledger::GpuStage::AttentionAndIndexShare),
+    ];
+    let graph = ReplayableComputeGraph::new(ctx, stages)?;
+    Ok(CachedCompactAttentionReplayGraph {
+        key: inputs.key(),
+        graph,
+        parameter_buffer,
+        append_parameter_offset,
+        ranked_parameter_offset,
+    })
 }
 
 fn final_head_replay_key(
@@ -10948,6 +11355,26 @@ mod tests {
         let query_latentb = filled_f32_buffer(&ctx, HEADS * LATENT, f32::NAN);
         let contextb = filled_f32_buffer(&ctx, CONTEXT, f32::NAN);
         let hiddenb = filled_f32_buffer(&ctx, CONTEXT, f32::NAN);
+        let kv_params = crate::gravity_glm::gpu::PqParams {
+            dim: LATENT as u32,
+            subspaces: 1,
+            sub: LATENT as u32,
+            card: CARD as u32,
+            rows: (HEADS * ROW_STRIDE) as u32,
+            cols: LATENT as u32,
+            nchunk: 1,
+            bits: 8,
+        };
+        let o_params = crate::gravity_glm::gpu::PqParams {
+            dim: CONTEXT as u32,
+            subspaces: 1,
+            sub: CONTEXT as u32,
+            card: CARD as u32,
+            rows: CONTEXT as u32,
+            cols: CONTEXT as u32,
+            nchunk: 1,
+            bits: 8,
+        };
 
         let mut tcb = TokenCommandBuffer::new(&ctx);
         encode_mla_append_compact(
@@ -11016,16 +11443,7 @@ mod tests {
             &mut tcb,
             &o_codebookb,
             &o_codesb,
-            crate::gravity_glm::gpu::PqParams {
-                dim: CONTEXT as u32,
-                subspaces: 1,
-                sub: CONTEXT as u32,
-                card: CARD as u32,
-                rows: CONTEXT as u32,
-                cols: CONTEXT as u32,
-                nchunk: 1,
-                bits: 8,
-            },
+            o_params,
             &contextb,
             &hiddenb,
         )
@@ -11044,6 +11462,81 @@ mod tests {
         assert!(
             pair.device.discrete.greedy_match && pair.device.discrete.top_k_exact_match,
             "five-dispatch final decisions must be exact"
+        );
+
+        let replay_latent_cache = filled_f32_buffer(&ctx, TOKENS * LATENT, f32::NAN);
+        let replay_rope_cache = filled_f32_buffer(&ctx, TOKENS * ROPE, f32::NAN);
+        write_f32(&replay_latent_cache, &latents[..(TOKENS - 1) * LATENT]);
+        write_f32(&replay_rope_cache, &rope_keys[..(TOKENS - 1) * ROPE]);
+        let replay_query_latent = filled_f32_buffer(&ctx, HEADS * LATENT, f32::NAN);
+        let replay_context = filled_f32_buffer(&ctx, CONTEXT, f32::NAN);
+        let replay_hidden = filled_f32_buffer(&ctx, CONTEXT, f32::NAN);
+        let replay_inputs = CompactAttentionReplayInputs {
+            layer: 0,
+            n_heads: HEADS,
+            latent_dim: LATENT,
+            rope_dim: ROPE,
+            key_rows: NOPE,
+            row_stride: ROW_STRIDE,
+            value_rows: VALUE,
+            max_allow: ranked.len(),
+            scale,
+            kv_params,
+            o_params,
+            k_latent: &current_latentb,
+            key_rope: &current_ropeb,
+            latent_cache: &replay_latent_cache,
+            rope_cache: &replay_rope_cache,
+            kv_codebooks: &kv_codebookb,
+            kv_codes: &kv_codesb,
+            query_nope: &query_nopeb,
+            query_latent: &replay_query_latent,
+            query_rope: &query_ropeb,
+            ranked_indices: &rankedb,
+            context: &replay_context,
+            o_codebooks: &o_codebookb,
+            o_codes: &o_codesb,
+            output: &replay_hidden,
+        };
+        let replay = build_compact_attention_replay_graph(
+            &ctx,
+            &replay_inputs,
+            TOKENS - 1,
+            TOKENS,
+            ranked.len(),
+        )
+        .expect("capture five-dispatch compact-attention graph");
+        assert_eq!(replay.graph.command_count(), 5);
+        let direct_hidden_bits: Vec<u32> = device.iter().map(|value| value.to_bits()).collect();
+        let _ = ctx.drain_stats();
+        for iteration in 0..2 {
+            write_f32(&replay_query_latent, &vec![f32::NAN; HEADS * LATENT]);
+            write_f32(&replay_context, &vec![f32::NAN; CONTEXT]);
+            write_f32(&replay_hidden, &vec![f32::NAN; CONTEXT]);
+            replay
+                .update_dynamic_parameters(TOKENS - 1, TOKENS, ranked.len())
+                .expect("update compact-attention replay scalars");
+            let mut replay_tcb = TokenCommandBuffer::new(&ctx);
+            replay_tcb
+                .execute_replayable_graph(&replay.graph)
+                .expect("execute compact-attention replay");
+            assert_eq!(replay_tcb.dispatch_count(), 5);
+            replay_tcb
+                .commit_and_wait()
+                .expect("compact-attention replay command");
+            assert_eq!(
+                read_f32(&replay_hidden, CONTEXT)
+                    .iter()
+                    .map(|value| value.to_bits())
+                    .collect::<Vec<_>>(),
+                direct_hidden_bits,
+                "compact-attention ICB replay {iteration} must be bit-exact to direct encoding"
+            );
+        }
+        assert_eq!(
+            ctx.drain_stats(),
+            (0, 0, 0),
+            "warm compact-attention graph replays must not allocate buffers"
         );
     }
 

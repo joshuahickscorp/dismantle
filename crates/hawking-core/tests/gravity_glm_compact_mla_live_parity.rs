@@ -11,9 +11,9 @@ use std::path::PathBuf;
 
 use hawking_core::gravity_glm::gpu::GravityGlmGpu;
 use hawking_core::gravity_glm::{
-    GPU_COMPACT_MLA_ENV, GPU_DEVICE_DSA_ENV, GPU_DEVICE_ROUTER_ENV, GPU_EXPERT_TABLE_HIT_ENV,
-    GPU_EXPERT_TABLE_ICB_ENV, GPU_EXPERT_WAVE_CONCURRENT_ENV, GPU_EXPERT_WAVE_ENV, GPU_LM_HEAD_ENV,
-    GPU_LM_HEAD_FULL_LOGITS_ENV, GPU_LM_HEAD_ICB_ENV,
+    GPU_COMPACT_ATTENTION_ICB_ENV, GPU_COMPACT_MLA_ENV, GPU_DEVICE_DSA_ENV, GPU_DEVICE_ROUTER_ENV,
+    GPU_EXPERT_TABLE_HIT_ENV, GPU_EXPERT_TABLE_ICB_ENV, GPU_EXPERT_WAVE_CONCURRENT_ENV,
+    GPU_EXPERT_WAVE_ENV, GPU_LM_HEAD_ENV, GPU_LM_HEAD_FULL_LOGITS_ENV, GPU_LM_HEAD_ICB_ENV,
 };
 use hawking_core::metal::MetalContext;
 use hawking_core::numeric_parity::{score_pair, Bounds};
@@ -83,6 +83,7 @@ fn compact_mla_complete_tokens_match_expanded_v21_and_exact_decisions() {
     let misconfigured_router_ctx = MetalContext::new().expect("misconfigured router Metal context");
 
     let prior_compact = std::env::var_os(GPU_COMPACT_MLA_ENV);
+    let prior_compact_attention_icb = std::env::var_os(GPU_COMPACT_ATTENTION_ICB_ENV);
     let prior_device_dsa = std::env::var_os(GPU_DEVICE_DSA_ENV);
     let prior_device_router = std::env::var_os(GPU_DEVICE_ROUTER_ENV);
     let prior_expert_wave = std::env::var_os(GPU_EXPERT_WAVE_ENV);
@@ -93,6 +94,7 @@ fn compact_mla_complete_tokens_match_expanded_v21_and_exact_decisions() {
     let prior_head_icb = std::env::var_os(GPU_LM_HEAD_ICB_ENV);
     let prior_full_logits = std::env::var_os(GPU_LM_HEAD_FULL_LOGITS_ENV);
     std::env::remove_var(GPU_DEVICE_DSA_ENV);
+    std::env::remove_var(GPU_COMPACT_ATTENTION_ICB_ENV);
     std::env::remove_var(GPU_DEVICE_ROUTER_ENV);
     std::env::remove_var(GPU_EXPERT_WAVE_ENV);
     std::env::remove_var(GPU_EXPERT_WAVE_CONCURRENT_ENV);
@@ -336,12 +338,24 @@ fn compact_mla_complete_tokens_match_expanded_v21_and_exact_decisions() {
         let compact_waits = compact
             .last_resident_waits()
             .expect("compact resident wait count");
+        let (device_dsa_direct_logits, device_dsa_direct_trace) = compact_device_dsa
+            .forward(prompt)
+            .expect("direct-encoded compact device DSA forward");
+        let device_dsa_direct_waits = compact_device_dsa
+            .last_resident_waits()
+            .expect("direct-encoded device DSA resident wait count");
+        std::env::set_var(GPU_COMPACT_MLA_ENV, "1");
+        std::env::set_var(GPU_DEVICE_DSA_ENV, "1");
+        std::env::set_var(GPU_COMPACT_ATTENTION_ICB_ENV, "1");
         let (device_dsa_logits, device_dsa_trace) = compact_device_dsa
             .forward(prompt)
-            .expect("compact device DSA forward");
+            .expect("ICB compact device DSA forward");
+        std::env::remove_var(GPU_COMPACT_ATTENTION_ICB_ENV);
+        std::env::remove_var(GPU_DEVICE_DSA_ENV);
+        std::env::remove_var(GPU_COMPACT_MLA_ENV);
         let device_dsa_waits = compact_device_dsa
             .last_resident_waits()
-            .expect("device DSA resident wait count");
+            .expect("ICB device DSA resident wait count");
         std::env::set_var(GPU_DEVICE_ROUTER_ENV, "1");
         let (device_router_logits, device_router_trace) = compact_device_router
             .forward(prompt)
@@ -576,6 +590,29 @@ fn compact_mla_complete_tokens_match_expanded_v21_and_exact_decisions() {
             device_dsa_pair.pass,
             "case {case} prompt {prompt:?}: device DSA complete-token V2.1 {device_dsa_pair:#?}"
         );
+        assert_eq!(
+            device_dsa_logits
+                .iter()
+                .map(|value| value.to_bits())
+                .collect::<Vec<_>>(),
+            device_dsa_direct_logits
+                .iter()
+                .map(|value| value.to_bits())
+                .collect::<Vec<_>>(),
+            "case {case}: compact-attention ICB and direct device-DSA logits must be bit-exact"
+        );
+        assert_eq!(
+            device_dsa_trace.final_topk, device_dsa_direct_trace.final_topk,
+            "case {case}: compact-attention ICB cannot change exact DSA selection"
+        );
+        assert_eq!(
+            device_dsa_trace.expert_choices, device_dsa_direct_trace.expert_choices,
+            "case {case}: compact-attention ICB cannot change expert choices"
+        );
+        assert_eq!(
+            device_dsa_waits, device_dsa_direct_waits,
+            "case {case}: compact-attention ICB cannot change waits"
+        );
         assert!(
             device_router_pair.pass,
             "case {case} prompt {prompt:?}: device router complete-token V2.1 {device_router_pair:#?}"
@@ -768,6 +805,10 @@ fn compact_mla_complete_tokens_match_expanded_v21_and_exact_decisions() {
     match prior_compact {
         Some(value) => std::env::set_var(GPU_COMPACT_MLA_ENV, value),
         None => std::env::remove_var(GPU_COMPACT_MLA_ENV),
+    }
+    match prior_compact_attention_icb {
+        Some(value) => std::env::set_var(GPU_COMPACT_ATTENTION_ICB_ENV, value),
+        None => std::env::remove_var(GPU_COMPACT_ATTENTION_ICB_ENV),
     }
     match prior_device_dsa {
         Some(value) => std::env::set_var(GPU_DEVICE_DSA_ENV, value),

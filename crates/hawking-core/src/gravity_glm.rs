@@ -872,6 +872,20 @@ pub fn gpu_device_dsa_enabled() -> bool {
     crate::env_on(GPU_DEVICE_DSA_ENV)
 }
 
+/// Opt-in replay of compact MLA's fixed-grid five-dispatch post-rank DAG.
+///
+/// Requires compact MLA plus device DSA. The exact active-length DSA score
+/// dispatch remains direct; only latent/RoPE append, absorbed K, ranked
+/// attention, absorbed V, and o_proj are captured. Default off.
+pub const GPU_COMPACT_ATTENTION_ICB_ENV: &str = "HAWKING_GLM_GPU_COMPACT_ATTENTION_ICB";
+
+/// Whether compact MLA's fixed-grid post-rank DAG should use Metal ICB replay.
+pub fn gpu_compact_attention_icb_enabled() -> bool {
+    crate::env_on(GPU_COMPACT_ATTENTION_ICB_ENV)
+        && gpu_compact_mla_enabled()
+        && gpu_device_dsa_enabled()
+}
+
 /// Opt-in device noaux_tc router selection for the resident GLM path.
 ///
 /// Default off. The router gate, sigmoid/correction, exact stable group/expert
@@ -2819,6 +2833,34 @@ mod tests {
         match prev {
             Some(v) => std::env::set_var(GPU_DEVICE_DSA_ENV, v),
             None => std::env::remove_var(GPU_DEVICE_DSA_ENV),
+        }
+    }
+
+    /// Compact-attention replay is opt-in and requires both layout parents.
+    #[test]
+    fn gpu_compact_attention_icb_flag_defaults_off_and_requires_parents() {
+        let prior_compact = std::env::var_os(GPU_COMPACT_MLA_ENV);
+        let prior_dsa = std::env::var_os(GPU_DEVICE_DSA_ENV);
+        let prior_icb = std::env::var_os(GPU_COMPACT_ATTENTION_ICB_ENV);
+        std::env::remove_var(GPU_COMPACT_MLA_ENV);
+        std::env::remove_var(GPU_DEVICE_DSA_ENV);
+        std::env::remove_var(GPU_COMPACT_ATTENTION_ICB_ENV);
+        assert!(!gpu_compact_attention_icb_enabled());
+        std::env::set_var(GPU_COMPACT_ATTENTION_ICB_ENV, "1");
+        assert!(!gpu_compact_attention_icb_enabled());
+        std::env::set_var(GPU_COMPACT_MLA_ENV, "1");
+        assert!(!gpu_compact_attention_icb_enabled());
+        std::env::set_var(GPU_DEVICE_DSA_ENV, "1");
+        assert!(gpu_compact_attention_icb_enabled());
+        for (name, prior) in [
+            (GPU_COMPACT_MLA_ENV, prior_compact),
+            (GPU_DEVICE_DSA_ENV, prior_dsa),
+            (GPU_COMPACT_ATTENTION_ICB_ENV, prior_icb),
+        ] {
+            match prior {
+                Some(value) => std::env::set_var(name, value),
+                None => std::env::remove_var(name),
+            }
         }
     }
 

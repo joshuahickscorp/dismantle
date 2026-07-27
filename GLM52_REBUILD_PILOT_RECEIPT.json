@@ -175,9 +175,9 @@
     "that A6 fails. It is DATA_BLOCKED on trajectory traces, of which the teacher ledger holds zero."
   ],
   "next_actions_in_order": [
-    "sweep the ROUTED EXPERT tensors, which carry ~97.5 percent of the model's mass and remain unmeasured. Their sensitivity decides whether a per-organ allocation can work at all.",
-    "build a measured per-organ allocation program: rate chosen per organ from its functional curve rather than uniformly or by tensor role",
-    "only then, if allocation also fails, revisit the escape question -- which this sweep has made LESS justified, not more"
+    "A4 across a REAL expert bank: 256 routed experts per layer share structure that a shared latent basis could exploit, and the pilot only ever ran A4 across 8 synthetic blocks of one tensor. This is the single most promising untried representation and it is specifically suited to a MoE parent.",
+    "expert fitted against captured activations rather than SVD of raw weights",
+    "only if both fail is representation escalation genuinely exhausted, and only then does an Escape Receipt for a separately versioned parity artifact become honest"
   ],
   "fences_unchanged": {
     "ODYSSEY_LAUNCH_AUTHORIZED": false,
@@ -301,5 +301,50 @@
     "what_this_changes": "The recommendation reverses. A UNIFORM sub-bit rate is the wrong program, and the headroom that has not been explored is ALLOCATION, not escape. Spending more bits on dense MLP and fewer on attention and embedding is exactly the 'measurement shardwise -> allocation global -> packing shardwise' step, and it has never been driven by measured per-organ FUNCTIONAL sensitivity.",
     "what_it_says_about_math_preserve": "Math-Preserve allocated by profile and by tensor role. It did not allocate by measured functional sensitivity per organ. That is a live, untried direction and it is cheaper than any escape.",
     "escape_receipt_status": "NOT the next step, and further from justified than before this sweep. The sub-bit law demands representation escalation be exhausted first, and a measured allocation program is precisely an unexhausted avenue."
+  },
+  "DECISIVE_routed_expert_sweep": {
+    "at": "2026-07-27T09:00:00Z",
+    "why_this_was_the_deciding_measurement": "Routed experts carry ~97.5 percent of GLM-5.2's mass. Whether per-organ allocation can rescue a sub-bit pack depends entirely on whether the MASSIVE organs are the sensitive ones.",
+    "measured_A1_rank_64_or_best_sub_bit": [
+      {
+        "organ": "expert_down",
+        "bpw": 0.25009,
+        "cosine": 0.1788,
+        "null": 0.1254,
+        "relative_output_error": 0.98333
+      },
+      {
+        "organ": "expert_gate",
+        "bpw": 0.66676,
+        "cosine": 0.29913,
+        "null": 0.1259,
+        "relative_output_error": 0.95391
+      },
+      {
+        "organ": "expert_up",
+        "bpw": 0.66676,
+        "cosine": 0.29795,
+        "null": 0.1262,
+        "relative_output_error": 0.95414
+      }
+    ],
+    "the_answer": "Routed experts behave like dense_mlp, not like attention. At ~0.67 BPW they retain cosine ~0.30 with 95 percent relative output error. The organs that SURVIVE sub-bit -- attn_o at 0.692, embed at 0.617 -- sit inside the ~2.5 percent of mass that is not experts.",
+    "the_arithmetic_that_settles_allocation": {
+      "premise": "experts ~97.5 percent of mass; everything that survives sub-bit is in the remaining ~2.5 percent",
+      "whole_model_bpw_if_experts_need_0.6": 0.5925,
+      "whole_model_bpw_if_experts_need_1.0": 0.9825,
+      "whole_model_bpw_if_experts_need_1.5": 1.47,
+      "reading": "Allocation can save at most about 2.5 percent of the budget, because the cheap organs are the small ones. Whole-model BPW is pinned to whatever the experts need, and at 0.667 BPW the experts are 95 percent wrong."
+    },
+    "correction_to_my_own_previous_correction": {
+      "what_i_wrote_an_hour_ago": "'A uniform sub-bit rate is the wrong program and the unexplored headroom is ALLOCATION rather than escape. The Escape Receipt is further from justified than before.'",
+      "why_that_was_premature": "It was written from four organs, none of which was a routed expert. Allocation headroom is real but tiny, because the sensitive organs ARE the massive ones. I generalised twice from partial organ coverage -- first from dense_mlp alone, then from four non-expert organs -- and both times the next measurement moved the conclusion.",
+      "the_lesson_worth_keeping": "On a MoE parent, no organ-level claim means anything until the routed experts are measured, because they are effectively the whole model by mass."
+    },
+    "what_this_now_supports": "Sub-bit compression of THIS parent is bounded by its experts, and at measured sub-bit rates the experts do not function. Math-Preserve shipped at 0.9774 BPW -- almost exactly the 0.9825 that experts-at-1.0-BPW would imply -- and is semantically collapsed. That is consistent with the experts having been the binding constraint all along.",
+    "what_it_still_does_not_establish": [
+      "that no representation can compress a GLM expert sub-bit. A1 is SVD of raw weights; an expert fitted against captured activations, or exploiting inter-expert redundancy at scale (A4 across the real 256-expert bank rather than 8 synthetic blocks), remains untried and is exactly the escalation the law demands before an escape.",
+      "any whole-model result. Still a four-layer window, still a proxy input distribution."
+    ]
   }
 }

@@ -1642,6 +1642,8 @@ mod imp {
         grid: (u32, u32, u32),
         threadgroup: (u32, u32, u32),
         bindings: Vec<ReplayBufferBinding>,
+        threadgroup_memory: Vec<(usize, usize)>,
+        ledger_stage: Option<crate::cost_ledger::GpuStage>,
         barrier_before: bool,
     }
 
@@ -1657,8 +1659,20 @@ mod imp {
                 grid,
                 threadgroup,
                 bindings,
+                threadgroup_memory: Vec::new(),
+                ledger_stage: None,
                 barrier_before: false,
             }
+        }
+
+        pub fn with_threadgroup_memory_length(mut self, index: usize, length: usize) -> Self {
+            self.threadgroup_memory.push((index, length));
+            self
+        }
+
+        pub fn with_ledger_stage(mut self, stage: crate::cost_ledger::GpuStage) -> Self {
+            self.ledger_stage = Some(stage);
+            self
         }
 
         pub fn with_barrier_before(mut self) -> Self {
@@ -1685,6 +1699,8 @@ mod imp {
         // Retain pipelines explicitly for the lifetime of the encoded ICB.
         _pipelines: Vec<ComputePipelineState>,
         command_count: usize,
+        explicit_ledger_stages: bool,
+        ledger_stage_dispatches: [u64; crate::cost_ledger::GpuStage::ALL.len()],
     }
 
     impl ReplayableComputeGraph {
@@ -1712,6 +1728,8 @@ mod imp {
             let mut pipeline_slots = HashMap::<String, usize>::new();
             let mut stage_pipeline_slots = Vec::with_capacity(stages.len());
             let mut max_bind_count = 0usize;
+            let mut tagged_stage_count = 0usize;
+            let mut ledger_stage_dispatches = [0u64; crate::cost_ledger::GpuStage::ALL.len()];
             for (stage_index, stage) in stages.iter().enumerate() {
                 if stage.kernel.is_empty() {
                     return Err(Error::Metal(format!(
@@ -1779,6 +1797,27 @@ mod imp {
                     }
                     max_bind_count = max_bind_count.max(binding.index + 1);
                 }
+                let mut occupied_threadgroup = [false; MAX_REPLAY_KERNEL_BUFFERS];
+                for &(index, length) in &stage.threadgroup_memory {
+                    if index >= MAX_REPLAY_KERNEL_BUFFERS || length == 0 {
+                        return Err(Error::Metal(format!(
+                            "replayable compute stage {} (`{}`) has invalid threadgroup memory binding {index}/{length}",
+                            stage_index, stage.kernel
+                        )));
+                    }
+                    if occupied_threadgroup[index] {
+                        return Err(Error::Metal(format!(
+                            "replayable compute stage {} (`{}`) binds threadgroup memory index {index} twice",
+                            stage_index, stage.kernel
+                        )));
+                    }
+                    occupied_threadgroup[index] = true;
+                }
+                if let Some(ledger_stage) = stage.ledger_stage {
+                    tagged_stage_count = tagged_stage_count.saturating_add(1);
+                    ledger_stage_dispatches[ledger_stage.index()] =
+                        ledger_stage_dispatches[ledger_stage.index()].saturating_add(1);
+                }
 
                 let pipeline_slot = if let Some(&slot) = pipeline_slots.get(&stage.kernel) {
                     slot
@@ -1809,6 +1848,12 @@ mod imp {
                     )));
                 }
                 stage_pipeline_slots.push(pipeline_slot);
+            }
+            if tagged_stage_count != 0 && tagged_stage_count != stages.len() {
+                return Err(Error::Metal(format!(
+                    "replayable compute graph must ledger-tag every stage or none: tagged {tagged_stage_count}/{}",
+                    stages.len()
+                )));
             }
 
             let descriptor = IndirectCommandBufferDescriptor::new();
@@ -1869,6 +1914,9 @@ mod imp {
                         &mut resource_slots,
                     );
                 }
+                for &(index, length) in &stage.threadgroup_memory {
+                    command.set_threadgroup_memory_length(index as u64, length as u64);
+                }
                 if stage.barrier_before {
                     command.set_barrier();
                 }
@@ -1892,6 +1940,8 @@ mod imp {
                 resources,
                 _pipelines: pipelines,
                 command_count: stages.len(),
+                explicit_ledger_stages: tagged_stage_count == stages.len(),
+                ledger_stage_dispatches,
             })
         }
 
@@ -1963,7 +2013,8 @@ mod imp {
                             ReplayBufferBinding::write(0, &output, 0),
                             ReplayBufferBinding::read(1, &n_buffer, 0),
                         ],
-                    ),
+                    )
+                    .with_ledger_stage(crate::cost_ledger::GpuStage::KvAndNorm),
                     ReplayComputeStage::new(
                         "gravity_add_inplace_f32",
                         (n, 1, 1),
@@ -1974,11 +2025,21 @@ mod imp {
                             ReplayBufferBinding::read(2, &n_buffer, 0),
                         ],
                     )
+                    .with_ledger_stage(crate::cost_ledger::GpuStage::FinalHead)
                     .with_barrier_before(),
                 ],
             )
             .unwrap();
             assert_eq!(graph.command_count(), 2);
+            assert!(graph.explicit_ledger_stages);
+            assert_eq!(
+                graph.ledger_stage_dispatches[crate::cost_ledger::GpuStage::KvAndNorm.index()],
+                1
+            );
+            assert_eq!(
+                graph.ledger_stage_dispatches[crate::cost_ledger::GpuStage::FinalHead.index()],
+                1
+            );
             assert_eq!(output.gpu_address(), output_address);
             assert_eq!(input.gpu_address(), input_address);
             assert_eq!(n_buffer.gpu_address(), n_address);
@@ -2260,10 +2321,18 @@ mod imp {
                 None
             };
             if ledger_t0.is_some() {
-                let stage = crate::cost_ledger::current_gpu_stage()
-                    .unwrap_or(crate::cost_ledger::GpuStage::Untagged);
-                let slot = &mut self.ledger_stage_dispatches[stage.index()];
-                *slot = slot.saturating_add(graph.command_count as u64);
+                if graph.explicit_ledger_stages {
+                    for stage in crate::cost_ledger::GpuStage::ALL {
+                        let graph_dispatches = graph.ledger_stage_dispatches[stage.index()];
+                        let slot = &mut self.ledger_stage_dispatches[stage.index()];
+                        *slot = slot.saturating_add(graph_dispatches);
+                    }
+                } else {
+                    let stage = crate::cost_ledger::current_gpu_stage()
+                        .unwrap_or(crate::cost_ledger::GpuStage::Untagged);
+                    let slot = &mut self.ledger_stage_dispatches[stage.index()];
+                    *slot = slot.saturating_add(graph.command_count as u64);
+                }
             }
             let cpu_t0 = if self.mode == TcbTraceMode::CpuEncode {
                 Some(Instant::now())

@@ -13,7 +13,7 @@ use hawking_core::gravity_glm::gpu::GravityGlmGpu;
 use hawking_core::gravity_glm::{
     GPU_COMPACT_MLA_ENV, GPU_DEVICE_DSA_ENV, GPU_DEVICE_ROUTER_ENV, GPU_EXPERT_TABLE_HIT_ENV,
     GPU_EXPERT_TABLE_ICB_ENV, GPU_EXPERT_WAVE_CONCURRENT_ENV, GPU_EXPERT_WAVE_ENV, GPU_LM_HEAD_ENV,
-    GPU_LM_HEAD_FULL_LOGITS_ENV,
+    GPU_LM_HEAD_FULL_LOGITS_ENV, GPU_LM_HEAD_ICB_ENV,
 };
 use hawking_core::metal::MetalContext;
 use hawking_core::numeric_parity::{score_pair, Bounds};
@@ -90,6 +90,7 @@ fn compact_mla_complete_tokens_match_expanded_v21_and_exact_decisions() {
     let prior_expert_table = std::env::var_os(GPU_EXPERT_TABLE_HIT_ENV);
     let prior_expert_table_icb = std::env::var_os(GPU_EXPERT_TABLE_ICB_ENV);
     let prior_head = std::env::var_os(GPU_LM_HEAD_ENV);
+    let prior_head_icb = std::env::var_os(GPU_LM_HEAD_ICB_ENV);
     let prior_full_logits = std::env::var_os(GPU_LM_HEAD_FULL_LOGITS_ENV);
     std::env::remove_var(GPU_DEVICE_DSA_ENV);
     std::env::remove_var(GPU_DEVICE_ROUTER_ENV);
@@ -98,6 +99,7 @@ fn compact_mla_complete_tokens_match_expanded_v21_and_exact_decisions() {
     std::env::remove_var(GPU_EXPERT_TABLE_HIT_ENV);
     std::env::remove_var(GPU_EXPERT_TABLE_ICB_ENV);
     std::env::remove_var(GPU_LM_HEAD_ENV);
+    std::env::remove_var(GPU_LM_HEAD_ICB_ENV);
     std::env::remove_var(GPU_LM_HEAD_FULL_LOGITS_ENV);
 
     std::env::set_var(GPU_DEVICE_DSA_ENV, "1");
@@ -352,11 +354,29 @@ fn compact_mla_complete_tokens_match_expanded_v21_and_exact_decisions() {
         std::env::set_var(GPU_DEVICE_DSA_ENV, "1");
         std::env::set_var(GPU_DEVICE_ROUTER_ENV, "1");
         std::env::set_var(GPU_LM_HEAD_ENV, "1");
+        std::env::set_var(GPU_LM_HEAD_ICB_ENV, "1");
         std::env::set_var(GPU_LM_HEAD_FULL_LOGITS_ENV, "1");
-        let (device_head_logits, device_head_trace) = compact_device_head
-            .forward(prompt)
-            .expect("compact device final norm plus head forward");
+        let ((device_head_logits, device_head_trace), device_head_report) = if prompt.len() == 1 {
+            hawking_core::cost_ledger::set_enabled(true);
+            let _ = hawking_core::cost_ledger::end_token();
+            assert!(hawking_core::cost_ledger::begin_token());
+            let result = compact_device_head
+                .forward(prompt)
+                .expect("profiled compact device final norm plus head forward");
+            let report =
+                hawking_core::cost_ledger::end_token().expect("device final-head ICB ledger");
+            hawking_core::cost_ledger::set_enabled(false);
+            (result, Some(report))
+        } else {
+            (
+                compact_device_head
+                    .forward(prompt)
+                    .expect("compact device final norm plus head forward"),
+                None,
+            )
+        };
         std::env::remove_var(GPU_LM_HEAD_FULL_LOGITS_ENV);
+        std::env::remove_var(GPU_LM_HEAD_ICB_ENV);
         std::env::remove_var(GPU_LM_HEAD_ENV);
         std::env::remove_var(GPU_DEVICE_ROUTER_ENV);
         std::env::remove_var(GPU_DEVICE_DSA_ENV);
@@ -683,6 +703,25 @@ fn compact_mla_complete_tokens_match_expanded_v21_and_exact_decisions() {
             device_head_waits, device_router_waits,
             "case {case}: final RMSNorm must append to the existing device-head commit"
         );
+        if let Some(report) = &device_head_report {
+            let head_cb = report
+                .device
+                .command_buffers
+                .iter()
+                .find(|sample| sample.stage_key == "mixed:kv_and_norm+final_head+sampling")
+                .expect("final-head ICB must retain exact mixed stage ownership");
+            let composition: Vec<(&str, u64)> = head_cb
+                .stage_composition
+                .iter()
+                .map(|entry| (entry.stage, entry.dispatches))
+                .collect();
+            assert_eq!(
+                composition,
+                vec![("kv_and_norm", 1), ("final_head", 1), ("sampling", 2)]
+            );
+            assert_eq!(head_cb.stage_dispatches_total, 4);
+            assert!(head_cb.stage_dispatches_match_buffer);
+        }
         assert_eq!(
             device_head_waits.saturating_sub(expert_wave_waits),
             (2 * prompt.len()) as u64,
@@ -757,6 +796,10 @@ fn compact_mla_complete_tokens_match_expanded_v21_and_exact_decisions() {
     match prior_head {
         Some(value) => std::env::set_var(GPU_LM_HEAD_ENV, value),
         None => std::env::remove_var(GPU_LM_HEAD_ENV),
+    }
+    match prior_head_icb {
+        Some(value) => std::env::set_var(GPU_LM_HEAD_ICB_ENV, value),
+        None => std::env::remove_var(GPU_LM_HEAD_ICB_ENV),
     }
     match prior_full_logits {
         Some(value) => std::env::set_var(GPU_LM_HEAD_FULL_LOGITS_ENV, value),

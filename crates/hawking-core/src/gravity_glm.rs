@@ -905,6 +905,13 @@ pub fn gpu_device_router_enabled() -> bool {
 /// unchanged (Parity V2.1 item 6).
 pub const GPU_LM_HEAD_ENV: &str = "HAWKING_GLM_GPU_LM_HEAD";
 
+/// Opt-in replay of the fixed-shape device final-normalization, lm-head, and
+/// sampling graph through one pre-encoded Metal indirect command buffer.
+///
+/// Default off. The ordinary direct-encode device head remains the parity
+/// oracle. This is a replayability/capture substrate, not a throughput claim.
+pub const GPU_LM_HEAD_ICB_ENV: &str = "HAWKING_GLM_GPU_LM_HEAD_ICB";
+
 /// Opt-in full vocab logit readback on the device lm_head path.
 ///
 /// Default off. When unset under [`GPU_LM_HEAD_ENV`], the resident head returns
@@ -919,6 +926,11 @@ pub const GPU_LM_HEAD_DIAG_TOPK: u32 = 5;
 /// Whether [`GPU_LM_HEAD_ENV`] requests the device native-bf16 path.
 pub fn gpu_lm_head_enabled() -> bool {
     crate::env_on(GPU_LM_HEAD_ENV)
+}
+
+/// Whether the fixed-shape device final-head graph should use Metal ICB replay.
+pub fn gpu_lm_head_icb_enabled() -> bool {
+    crate::env_on(GPU_LM_HEAD_ICB_ENV)
 }
 
 /// Whether the device head should also pull the full logit vector to the host.
@@ -1515,7 +1527,7 @@ pub mod gpu {
     /// as a second small struct rather than a shared one neither
     /// architecture module privately owns.
     #[repr(C)]
-    #[derive(Debug, Clone, Copy)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, bytemuck::Pod, bytemuck::Zeroable)]
     pub(crate) struct PqParams {
         pub(crate) dim: u32,
         pub(crate) subspaces: u32,
@@ -2831,6 +2843,18 @@ mod tests {
         match prev {
             Some(v) => std::env::set_var(GPU_LM_HEAD_ENV, v),
             None => std::env::remove_var(GPU_LM_HEAD_ENV),
+        }
+    }
+
+    /// Final-head graph replay is opt-in; direct encoding stays the oracle.
+    #[test]
+    fn gpu_lm_head_icb_flag_defaults_off() {
+        let prev = std::env::var_os(GPU_LM_HEAD_ICB_ENV);
+        std::env::remove_var(GPU_LM_HEAD_ICB_ENV);
+        assert!(!gpu_lm_head_icb_enabled());
+        match prev {
+            Some(v) => std::env::set_var(GPU_LM_HEAD_ICB_ENV, v),
+            None => std::env::remove_var(GPU_LM_HEAD_ICB_ENV),
         }
     }
 

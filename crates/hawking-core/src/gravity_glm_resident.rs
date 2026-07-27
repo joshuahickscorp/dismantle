@@ -25,6 +25,12 @@
 //! flag keeps other rank-2 `native.bf16` matvecs (indexer, router) as device
 //! bf16.
 //!
+//! **Final-head replay** (`HAWKING_GLM_GPU_LM_HEAD_ICB=1`, default off):
+//! captures final RMSNorm, native-BF16 or PQ projection, greedy argmax, and
+//! diagnostic top-k once into a four-command compute ICB. All scalar arguments
+//! live in one persistent buffer; stable-address warm tokens replay without
+//! rebinding while retaining exact norm/head/sampling ledger composition.
+//!
 //! **Expert-wave** (`HAWKING_GLM_GPU_EXPERT_WAVE=1`, default off): opt-in collapse
 //! of each MLP layer to one command buffer (`gate + up → SiLU → down` and MoE
 //! weighted combine). The default three-`matvec_batch` path is unchanged when
@@ -59,9 +65,9 @@ use crate::gravity_glm::gpu::{
 use crate::gravity_glm::{
     gpu_compact_mla_enabled, gpu_device_router_enabled, gpu_expert_table_hit_enabled,
     gpu_expert_table_icb_enabled, gpu_expert_wave_concurrent_enabled, gpu_expert_wave_enabled,
-    gpu_lm_head_enabled, gpu_lm_head_full_logits_enabled, rope_cos_sin, rope_interleaved,
-    topk_desc, BoundedLru, GlmArch, GlmTrace, WeightAccess, GPU_LM_HEAD_DIAG_TOPK,
-    RESIDENT_RUNTIME_INITIAL_KV_CAPACITY_TOKENS,
+    gpu_lm_head_enabled, gpu_lm_head_full_logits_enabled, gpu_lm_head_icb_enabled, rope_cos_sin,
+    rope_interleaved, topk_desc, BoundedLru, GlmArch, GlmTrace, WeightAccess,
+    GPU_LM_HEAD_DIAG_TOPK, RESIDENT_RUNTIME_INITIAL_KV_CAPACITY_TOKENS,
 };
 use crate::metal::{
     MetalContext, ReplayBufferBinding, ReplayComputeStage, ReplayResourceDeclaration,
@@ -1804,6 +1810,10 @@ pub struct ActPool {
     /// expert resources to the previous route footprint and lets warm hits
     /// reuse descriptor tables without a per-token rebuild/upload.
     persistent_expert_layers: Mutex<Vec<Option<PersistentDeviceExpertLayer>>>,
+    /// Lazily captured fixed-shape final norm → lm-head → sampling graph.
+    /// The key includes every bound GPU address, so warm tokens reuse the ICB
+    /// without allocating and any storage change rebuilds it fail-closed.
+    final_head_replay: Mutex<Option<CachedFinalHeadReplayGraph>>,
 }
 
 struct CompactAttentionScratch {
@@ -2049,6 +2059,7 @@ impl ActPool {
             device_attention_prelude_scratch: Mutex::new(None),
             expert_wave_scratch: Mutex::new(None),
             persistent_expert_layers: Mutex::new((0..arch.n_layers).map(|_| None).collect()),
+            final_head_replay: Mutex::new(None),
         })
     }
 
@@ -3097,19 +3108,6 @@ pub fn forward_resident(
         let waits_before_head = session.waits.get();
         {
             let _head = crate::cost_ledger::Scope::new(crate::cost_ledger::Bucket::FinalHead);
-            enum DeviceHead {
-                NativeBf16 {
-                    weight: Buffer,
-                    rows: u32,
-                    cols: u32,
-                },
-                Pq {
-                    codebooks: Buffer,
-                    codes: Buffer,
-                    params: crate::gravity_glm::gpu::PqParams,
-                },
-            }
-
             let mut cache = weights.cache.lock().expect("gpu weight cache");
             weights.ensure_many_locked(&mut cache, &["lm_head.weight"])?;
             let device_head = match cache.get("lm_head.weight").expect("ensured lm_head") {
@@ -3191,7 +3189,6 @@ pub fn forward_resident(
                     true,
                     "final_norm_weight_upload",
                 );
-                let mut tcb = TokenCommandBuffer::new(ctx);
                 {
                     let _norm = cost_ledger::Scope::new(Bucket::Norm);
                     cost_ledger::record_source_modelled_operations(
@@ -3201,54 +3198,84 @@ pub fn forward_resident(
                         1,
                         0,
                     );
-                    route_segment_primitives::encode_rmsnorm(
-                        &mut tcb,
-                        &pool.x,
-                        &pool.final_norm_weight,
-                        &pool.final_hidden,
-                        a.hidden,
-                        a.rms_norm_eps,
-                    )?;
                 }
-                let rows = match device_head {
-                    DeviceHead::NativeBf16 { weight, rows, cols } => {
-                        encode_gemv_native_bf16_seq(
-                            &mut tcb,
-                            &weight,
-                            rows,
-                            cols,
-                            &pool.final_hidden,
-                            &pool.logits,
+                let rows = device_head.rows();
+                let mut tcb = TokenCommandBuffer::new(ctx);
+                if gpu_lm_head_icb_enabled() {
+                    let key = final_head_replay_key(&device_head, pool, a.hidden, a.rms_norm_eps);
+                    let mut cached = pool
+                        .final_head_replay
+                        .lock()
+                        .expect("final-head replay graph");
+                    if !cached.as_ref().is_some_and(|entry| entry.key == key) {
+                        let graph = build_final_head_replay_graph(
+                            ctx,
+                            &device_head,
+                            pool,
+                            a.hidden,
+                            a.rms_norm_eps,
                         )?;
-                        rows
+                        *cached = Some(CachedFinalHeadReplayGraph { key, graph });
                     }
-                    DeviceHead::Pq {
-                        codebooks,
-                        codes,
-                        params,
-                    } => {
-                        encode_pq_matvec_device(
+                    tcb.execute_replayable_graph(
+                        &cached
+                            .as_ref()
+                            .expect("final-head replay graph just populated")
+                            .graph,
+                    )?;
+                } else {
+                    {
+                        let _norm = cost_ledger::Scope::new(Bucket::Norm);
+                        route_segment_primitives::encode_rmsnorm(
                             &mut tcb,
-                            &codebooks,
-                            &codes,
+                            &pool.x,
+                            &pool.final_norm_weight,
+                            &pool.final_hidden,
+                            a.hidden,
+                            a.rms_norm_eps,
+                        )?;
+                    }
+                    match &device_head {
+                        DeviceHead::NativeBf16 { weight, rows, cols } => {
+                            encode_gemv_native_bf16_seq(
+                                &mut tcb,
+                                weight,
+                                *rows,
+                                *cols,
+                                &pool.final_hidden,
+                                &pool.logits,
+                            )?;
+                        }
+                        DeviceHead::Pq {
+                            codebooks,
+                            codes,
                             params,
-                            &pool.final_hidden,
-                            &pool.logits,
-                        )?;
-                        params.rows
+                        } => {
+                            encode_pq_matvec_device(
+                                &mut tcb,
+                                codebooks,
+                                codes,
+                                *params,
+                                &pool.final_hidden,
+                                &pool.logits,
+                            )?;
+                        }
                     }
-                };
+                    {
+                        let _sampling = cost_ledger::Scope::new(cost_ledger::Bucket::Sampling);
+                        encode_argmax_f32(&mut tcb, &pool.logits, rows, &pool.sample_token)?;
+                        encode_sample_topk_f32(
+                            &mut tcb,
+                            &pool.logits,
+                            rows,
+                            GPU_LM_HEAD_DIAG_TOPK,
+                            &pool.head_topk_idx,
+                            &pool.head_topk_val,
+                        )?;
+                    }
+                }
                 {
                     let _sampling = cost_ledger::Scope::new(cost_ledger::Bucket::Sampling);
-                    encode_argmax_f32(&mut tcb, &pool.logits, rows, &pool.sample_token)?;
-                    encode_sample_topk_f32(
-                        &mut tcb,
-                        &pool.logits,
-                        rows,
-                        GPU_LM_HEAD_DIAG_TOPK,
-                        &pool.head_topk_idx,
-                        &pool.head_topk_val,
-                    )?;
                     let rounds = GPU_LM_HEAD_DIAG_TOPK as u64 + 1;
                     cost_ledger::record_source_modelled_operations(
                         0,
@@ -5995,6 +6022,251 @@ enum DeviceExpertDispatchMode {
     PqOnly,
     NativeBf16Only,
     Heterogeneous,
+}
+
+#[derive(Clone)]
+enum DeviceHead {
+    NativeBf16 {
+        weight: Buffer,
+        rows: u32,
+        cols: u32,
+    },
+    Pq {
+        codebooks: Buffer,
+        codes: Buffer,
+        params: crate::gravity_glm::gpu::PqParams,
+    },
+}
+
+impl DeviceHead {
+    fn rows(&self) -> u32 {
+        match self {
+            Self::NativeBf16 { rows, .. } => *rows,
+            Self::Pq { params, .. } => params.rows,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum FinalHeadReplayGeometry {
+    NativeBf16 { rows: u32, cols: u32 },
+    Pq(crate::gravity_glm::gpu::PqParams),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct FinalHeadReplayKey {
+    geometry: FinalHeadReplayGeometry,
+    hidden: usize,
+    rms_norm_eps_bits: u32,
+    buffer_addresses: [u64; 9],
+}
+
+struct CachedFinalHeadReplayGraph {
+    key: FinalHeadReplayKey,
+    graph: ReplayableComputeGraph,
+}
+
+#[derive(Default)]
+struct ReplayParameterArena {
+    bytes: Vec<u8>,
+}
+
+impl ReplayParameterArena {
+    fn push<T: bytemuck::Pod>(&mut self, value: &T) -> usize {
+        let align = std::mem::align_of::<T>();
+        let padding = (align - (self.bytes.len() % align)) % align;
+        self.bytes
+            .resize(self.bytes.len().saturating_add(padding), 0);
+        let offset = self.bytes.len();
+        self.bytes.extend_from_slice(bytemuck::bytes_of(value));
+        offset
+    }
+
+    fn finish(self, ctx: &MetalContext, label: &str) -> Result<Buffer> {
+        if self.bytes.is_empty() {
+            return Err(Error::Gravity(format!(
+                "{label} has no persistent parameters"
+            )));
+        }
+        let buffer = ctx.new_buffer_with_bytes_checked(&self.bytes)?;
+        crate::cost_ledger::record_allocation(buffer.length());
+        Ok(buffer)
+    }
+}
+
+fn final_head_replay_key(
+    head: &DeviceHead,
+    pool: &ActPool,
+    hidden: usize,
+    rms_norm_eps: f32,
+) -> FinalHeadReplayKey {
+    let (geometry, primary, secondary) = match head {
+        DeviceHead::NativeBf16 { weight, rows, cols } => (
+            FinalHeadReplayGeometry::NativeBf16 {
+                rows: *rows,
+                cols: *cols,
+            },
+            weight.gpu_address(),
+            0,
+        ),
+        DeviceHead::Pq {
+            codebooks,
+            codes,
+            params,
+        } => (
+            FinalHeadReplayGeometry::Pq(*params),
+            codebooks.gpu_address(),
+            codes.gpu_address(),
+        ),
+    };
+    FinalHeadReplayKey {
+        geometry,
+        hidden,
+        rms_norm_eps_bits: rms_norm_eps.to_bits(),
+        buffer_addresses: [
+            pool.x.gpu_address(),
+            pool.final_norm_weight.gpu_address(),
+            pool.final_hidden.gpu_address(),
+            pool.logits.gpu_address(),
+            pool.sample_token.gpu_address(),
+            pool.head_topk_idx.gpu_address(),
+            pool.head_topk_val.gpu_address(),
+            primary,
+            secondary,
+        ],
+    }
+}
+
+fn build_final_head_replay_graph(
+    ctx: &MetalContext,
+    head: &DeviceHead,
+    pool: &ActPool,
+    hidden: usize,
+    rms_norm_eps: f32,
+) -> Result<ReplayableComputeGraph> {
+    const TG: u32 = 256;
+    let hidden_u32 = replay_u32(hidden, "final-head hidden size")?;
+    let rows = head.rows();
+    if rows == 0 {
+        return Err(Error::Gravity(
+            "final-head replay graph has zero vocabulary rows".into(),
+        ));
+    }
+
+    let mut parameters = ReplayParameterArena::default();
+    let hidden_offset = parameters.push(&hidden_u32);
+    let eps_offset = parameters.push(&rms_norm_eps);
+    let sample_n_offset = parameters.push(&rows);
+    let sample_k = GPU_LM_HEAD_DIAG_TOPK.min(64);
+    let sample_k_offset = parameters.push(&sample_k);
+    let head_offsets = match head {
+        DeviceHead::NativeBf16 { rows, cols, .. } => {
+            let rows_offset = parameters.push(rows);
+            let cols_offset = parameters.push(cols);
+            (rows_offset, Some(cols_offset))
+        }
+        DeviceHead::Pq { params, .. } => (parameters.push(params), None),
+    };
+    let parameter_buffer = parameters.finish(ctx, "final-head replay graph")?;
+
+    let norm = ReplayComputeStage::new(
+        "gravity_rmsnorm_f32",
+        (TG, 1, 1),
+        (TG, 1, 1),
+        vec![
+            ReplayBufferBinding::read(0, &pool.x, 0),
+            ReplayBufferBinding::read(1, &pool.final_norm_weight, 0),
+            ReplayBufferBinding::write(2, &pool.final_hidden, 0),
+            ReplayBufferBinding::read(3, &parameter_buffer, hidden_offset),
+            ReplayBufferBinding::read(4, &parameter_buffer, eps_offset),
+        ],
+    )
+    .with_threadgroup_memory_length(0, TG as usize * 4)
+    .with_ledger_stage(crate::cost_ledger::GpuStage::KvAndNorm);
+
+    let head_stage = match head {
+        DeviceHead::NativeBf16 {
+            weight,
+            rows,
+            cols: _,
+        } => {
+            let grid = replay_grid(*rows, TG, TG, "native final-head replay")?;
+            ReplayComputeStage::new(
+                "gemv_native_bf16_seq",
+                (grid, 1, 1),
+                (TG, 1, 1),
+                vec![
+                    ReplayBufferBinding::read(0, weight, 0),
+                    ReplayBufferBinding::read(1, &pool.final_hidden, 0),
+                    ReplayBufferBinding::write(2, &pool.logits, 0),
+                    ReplayBufferBinding::read(3, &parameter_buffer, head_offsets.0),
+                    ReplayBufferBinding::read(
+                        4,
+                        &parameter_buffer,
+                        head_offsets
+                            .1
+                            .expect("native final-head replay has cols parameter"),
+                    ),
+                ],
+            )
+        }
+        DeviceHead::Pq {
+            codebooks,
+            codes,
+            params,
+        } => {
+            let grid = replay_grid(params.rows, 8, TG, "PQ final-head replay")?;
+            ReplayComputeStage::new(
+                "gravity_pq_matvec",
+                (grid, 1, 1),
+                (TG, 1, 1),
+                vec![
+                    ReplayBufferBinding::read(0, codebooks, 0),
+                    ReplayBufferBinding::read(1, codes, 0),
+                    ReplayBufferBinding::read(2, &pool.final_hidden, 0),
+                    ReplayBufferBinding::write(3, &pool.logits, 0),
+                    ReplayBufferBinding::read(4, &parameter_buffer, head_offsets.0),
+                ],
+            )
+        }
+    }
+    .with_barrier_before()
+    .with_ledger_stage(crate::cost_ledger::GpuStage::FinalHead);
+
+    let argmax = ReplayComputeStage::new(
+        "sample_argmax_f32",
+        (TG, 1, 1),
+        (TG, 1, 1),
+        vec![
+            ReplayBufferBinding::read(0, &pool.logits, 0),
+            ReplayBufferBinding::write(1, &pool.sample_token, 0),
+            ReplayBufferBinding::read(2, &parameter_buffer, sample_n_offset),
+        ],
+    )
+    .with_threadgroup_memory_length(0, TG as usize * 4)
+    .with_threadgroup_memory_length(1, TG as usize * 4)
+    .with_barrier_before()
+    .with_ledger_stage(crate::cost_ledger::GpuStage::Sampling);
+
+    let topk = ReplayComputeStage::new(
+        "sample_topk",
+        (TG, 1, 1),
+        (TG, 1, 1),
+        vec![
+            ReplayBufferBinding::read(0, &pool.logits, 0),
+            ReplayBufferBinding::write(1, &pool.head_topk_idx, 0),
+            ReplayBufferBinding::write(2, &pool.head_topk_val, 0),
+            ReplayBufferBinding::read(3, &parameter_buffer, sample_n_offset),
+            ReplayBufferBinding::read(4, &parameter_buffer, sample_k_offset),
+        ],
+    )
+    .with_threadgroup_memory_length(0, TG as usize * 4)
+    .with_threadgroup_memory_length(1, TG as usize * 4)
+    .with_threadgroup_memory_length(2, 64 * 4)
+    .with_barrier_before()
+    .with_ledger_stage(crate::cost_ledger::GpuStage::Sampling);
+
+    ReplayableComputeGraph::new(ctx, vec![norm, head_stage, argmax, topk])
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -11723,6 +11995,149 @@ mod tests {
             Err(error) => error,
         };
         assert!(error.to_string().contains("byte size overflow"));
+    }
+
+    #[test]
+    fn native_final_head_icb_replays_fixed_graph_bit_exact_without_allocations() {
+        let Ok(ctx) = MetalContext::new() else {
+            return;
+        };
+        let arch = tiny_arch();
+        let pool = ActPool::new(&ctx, &arch).expect("final-head activation pool");
+        let norm_weight = [1.0f32, 0.75, 1.25, 0.5];
+        write_f32(&pool.final_norm_weight, &norm_weight);
+
+        let weights: Vec<f32> = (0..arch.vocab_size)
+            .flat_map(|row| {
+                (0..arch.hidden)
+                    .map(move |col| ((row + 1) as f32 * 0.0625) - (col as f32 * 0.03125))
+            })
+            .collect();
+        let bf16_bits: Vec<u16> = weights
+            .iter()
+            .map(|value| half::bf16::from_f32(*value).to_bits())
+            .collect();
+        let weight = ctx
+            .new_buffer_with_bytes_checked(bytemuck::cast_slice(&bf16_bits))
+            .expect("native bf16 final-head weight");
+        let head = DeviceHead::NativeBf16 {
+            weight,
+            rows: arch.vocab_size as u32,
+            cols: arch.hidden as u32,
+        };
+
+        let run_direct = |x: &[f32]| {
+            write_f32(&pool.x, x);
+            let mut tcb = TokenCommandBuffer::new(&ctx);
+            encode_rmsnorm(
+                &mut tcb,
+                &pool.x,
+                &pool.final_norm_weight,
+                &pool.final_hidden,
+                arch.hidden,
+                arch.rms_norm_eps,
+            )
+            .expect("encode direct final norm");
+            let DeviceHead::NativeBf16 { weight, rows, cols } = &head else {
+                unreachable!("native fixture");
+            };
+            encode_gemv_native_bf16_seq(
+                &mut tcb,
+                weight,
+                *rows,
+                *cols,
+                &pool.final_hidden,
+                &pool.logits,
+            )
+            .expect("encode direct native head");
+            encode_argmax_f32(&mut tcb, &pool.logits, *rows, &pool.sample_token)
+                .expect("encode direct argmax");
+            encode_sample_topk_f32(
+                &mut tcb,
+                &pool.logits,
+                *rows,
+                GPU_LM_HEAD_DIAG_TOPK,
+                &pool.head_topk_idx,
+                &pool.head_topk_val,
+            )
+            .expect("encode direct top-k");
+            tcb.commit_and_wait().expect("direct final-head graph");
+            (
+                read_f32(&pool.final_hidden, arch.hidden)
+                    .into_iter()
+                    .map(f32::to_bits)
+                    .collect::<Vec<_>>(),
+                read_f32(&pool.logits, arch.vocab_size)
+                    .into_iter()
+                    .map(f32::to_bits)
+                    .collect::<Vec<_>>(),
+                read_u32(&pool.sample_token, 1),
+                read_u32(&pool.head_topk_idx, GPU_LM_HEAD_DIAG_TOPK as usize),
+                read_f32(&pool.head_topk_val, GPU_LM_HEAD_DIAG_TOPK as usize)
+                    .into_iter()
+                    .map(f32::to_bits)
+                    .collect::<Vec<_>>(),
+            )
+        };
+
+        let first_x = [0.5f32, -1.0, 1.5, 0.25];
+        let direct_first = run_direct(&first_x);
+        let graph =
+            build_final_head_replay_graph(&ctx, &head, &pool, arch.hidden, arch.rms_norm_eps)
+                .expect("capture native final-head graph");
+        assert_eq!(graph.command_count(), 4);
+        let key_before = final_head_replay_key(&head, &pool, arch.hidden, arch.rms_norm_eps);
+        let _ = ctx.drain_stats();
+
+        for (x, direct) in [
+            (first_x.as_slice(), direct_first),
+            (
+                [1.25f32, -0.5, 0.125, 2.0].as_slice(),
+                run_direct(&[1.25, -0.5, 0.125, 2.0]),
+            ),
+        ] {
+            write_f32(&pool.x, x);
+            write_f32(&pool.final_hidden, &vec![f32::NAN; arch.hidden]);
+            write_f32(&pool.logits, &vec![f32::NAN; arch.vocab_size]);
+            let mut replay = TokenCommandBuffer::new(&ctx);
+            replay
+                .execute_replayable_graph(&graph)
+                .expect("execute native final-head replay");
+            assert_eq!(replay.dispatch_count(), 4);
+            replay
+                .commit_and_wait()
+                .expect("native final-head replay command");
+            let actual = (
+                read_f32(&pool.final_hidden, arch.hidden)
+                    .into_iter()
+                    .map(f32::to_bits)
+                    .collect::<Vec<_>>(),
+                read_f32(&pool.logits, arch.vocab_size)
+                    .into_iter()
+                    .map(f32::to_bits)
+                    .collect::<Vec<_>>(),
+                read_u32(&pool.sample_token, 1),
+                read_u32(&pool.head_topk_idx, GPU_LM_HEAD_DIAG_TOPK as usize),
+                read_f32(&pool.head_topk_val, GPU_LM_HEAD_DIAG_TOPK as usize)
+                    .into_iter()
+                    .map(f32::to_bits)
+                    .collect::<Vec<_>>(),
+            );
+            assert_eq!(
+                actual, direct,
+                "ICB and direct native final-head graphs must be bit-identical"
+            );
+        }
+        assert_eq!(
+            final_head_replay_key(&head, &pool, arch.hidden, arch.rms_norm_eps),
+            key_before,
+            "activation content changes must preserve the stable-address replay key"
+        );
+        assert_eq!(
+            ctx.drain_stats(),
+            (0, 0, 0),
+            "warm final-head graph replays must not allocate buffers"
+        );
     }
 
     #[test]

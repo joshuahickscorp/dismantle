@@ -128,7 +128,8 @@ def assert_disk_floor(extra_bytes: int = 0, *, path: Path | None = None,
     if free - int(extra_bytes) < int(floor):
         raise DiskFloorError(
             f"disk floor: free={free} extra={int(extra_bytes)} floor={int(floor)} "
-            f"({DISK_FLOOR_GIB} GiB). Halt rather than overrun. "
+            f"({int(floor) / (1 << 30):.0f} GiB actual, module default {DISK_FLOOR_GIB} GiB). "
+            f"Halt rather than overrun. "
             f"Stream and evict; never stage the whole 1.507 TB parent."
         )
     return free
@@ -1143,6 +1144,7 @@ def pack_shard(
     max_basis_rank: int,
     shared_bases: bool = True,
     layer_basis_ranks: dict[int, int] | None = None,
+    floor: int = DISK_FLOOR_BYTES,
 ) -> dict[str, Any]:
     """Pack one shard at allocated ranks. Stream in, write artifact, return receipt.
 
@@ -1307,7 +1309,7 @@ def pack_shard(
         )
 
     out_path = out_dir / (shard.name.replace(".safetensors", ".aap"))
-    assert_disk_floor(len(physical), path=out_dir)
+    assert_disk_floor(len(physical), path=out_dir, floor=floor)
     tmp = out_path.with_suffix(out_path.suffix + ".partial")
     with tmp.open("wb") as fh:
         fh.write(physical)
@@ -1378,9 +1380,16 @@ def ensure_shard(
         )
     # Reuse the window rehydrator rather than re-implementing HF fetch.
     assert_disk_floor(0, path=source_dir, floor=floor)
-    from glm52_rehydrate_window import rehydrate  # local import
-    # The rehydrator has its own floor; align env if needed.
-    os.environ.setdefault("GLM52_PILOT_DISK_FLOOR_BYTES", str(floor))
+    # Set the rehydrator's floor BEFORE importing it, and set it rather than defaulting it.
+    #
+    # Two bugs lived in these three lines. The rehydrator reads
+    # GLM52_PILOT_DISK_FLOOR_BYTES into a module-level constant at import time, and the
+    # assignment used to run *after* the import -- so it never reached the first import and
+    # the rehydrator kept its own default. And `setdefault` let a stale inherited value beat
+    # an explicit --disk-floor-gib, which is backwards: a flag the operator typed should win
+    # over a variable they cannot see.
+    os.environ["GLM52_PILOT_DISK_FLOOR_BYTES"] = str(floor)
+    from glm52_rehydrate_window import rehydrate  # local import, after the env is set
     rc = rehydrate([n])
     if rc != 0 or not path.exists():
         raise PackError(f"rehydrate of shard {n} failed with rc={rc}")
@@ -1647,6 +1656,7 @@ def phase_pack(
             max_basis_rank=max_basis_rank,
             shared_bases=shared,
             layer_basis_ranks=layer_ranks,
+            floor=floor,
         )
         receipts.append(rec)
         if evict:

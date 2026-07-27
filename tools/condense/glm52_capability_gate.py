@@ -21,6 +21,7 @@ Reconstruction error is not consulted at any point. It cannot promote, by the fr
 tournament and by the sub-bit law.
 
     python3.12 tools/condense/glm52_capability_gate.py --artifact <dir> --dry-run
+    python3.12 tools/condense/glm52_capability_gate.py --artifact <dir> --run --out CAPABILITY.json
     python3.12 tools/condense/glm52_capability_gate.py --artifact <dir> --emit
 """
 from __future__ import annotations
@@ -60,7 +61,7 @@ def run_oracle(artifact: Path, tokens: list[int]) -> dict:
     """The numpy oracle reading the same container through the same codec."""
     cmd = [str(ROOT / ".venv/glm52/bin/python"),
            str(ROOT / "tools/condense/glm52_flagship_oracle.py"),
-           "--dir", str(artifact), "--tokens", *map(str, tokens), "--no-verify-hash"]
+           "--dir", str(artifact), "--tokens", *map(str, tokens)]
     r = subprocess.run(cmd, capture_output=True, text=True, cwd=ROOT)
     if r.returncode != 0:
         return {"ok": False, "error": (r.stderr or r.stdout)[-400:]}
@@ -116,12 +117,43 @@ def load_decoder(artifact: Path):
     return lambda i: inv.get(i, f"<{i}>")
 
 
+def planned_commands(artifact: Path) -> list[dict]:
+    python = str(ROOT / ".venv/glm52/bin/python")
+    oracle = str(ROOT / "tools/condense/glm52_flagship_oracle.py")
+    cases = [("math", G_MATH_TOKENS), *G_LIVE_PROMPTS]
+    return [
+        {
+            "name": name,
+            "tokens": tokens,
+            "command": [
+                python,
+                oracle,
+                "--dir",
+                str(artifact),
+                "--tokens",
+                *map(str, tokens),
+            ],
+        }
+        for name, tokens in cases
+    ]
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--artifact", required=True, type=Path)
     ap.add_argument("--name", help="name for the capability register entry")
     ap.add_argument("--emit", action="store_true", help="write the verdict into the register")
-    ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument(
+        "--run",
+        action="store_true",
+        help="execute whole-model capability inference without changing the register",
+    )
+    ap.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="plan only; retained as an explicit alias for the safe default",
+    )
+    ap.add_argument("--out", type=Path, help="write the executed gate receipt")
     a = ap.parse_args()
 
     artifact = a.artifact.expanduser()
@@ -130,6 +162,27 @@ def main() -> int:
         return 2
 
     sha = index_sha256(artifact)
+    if sha is None:
+        print("artifact must contain exactly one supported model index", file=sys.stderr)
+        return 2
+    if a.dry_run and (a.run or a.emit):
+        ap.error("--dry-run cannot be combined with --run or --emit")
+    if not a.run and not a.emit:
+        print(
+            json.dumps(
+                {
+                    "mode": "dry-run",
+                    "heavy_execution_started": False,
+                    "artifact": str(artifact),
+                    "artifact_index_sha256": sha,
+                    "planned_gates": planned_commands(artifact),
+                    "note": "rerun with --run only under a valid heavy window; --emit also writes the capability register",
+                },
+                indent=2,
+            )
+        )
+        return 0
+
     decode = load_decoder(artifact)
     results = [gate_math(artifact, decode)]
     # Cheapest first: only run the more expensive gate if the cheap one survived.
@@ -147,13 +200,17 @@ def main() -> int:
         "artifact_index_sha256": sha,
         "gates": results,
         "capability_verdict": "APPROVED" if passed else "REFUSED",
+        "artifact_verification": True,
         "law": "APPROVED means the artifact generates. It says nothing about quality, and it is "
                "not a substitute for the support halo or long context.",
         "reconstruction_error_consulted": False,
     }
-    print(json.dumps(verdict, indent=2))
+    text = json.dumps(verdict, indent=2) + "\n"
+    print(text, end="")
+    if a.out:
+        a.out.write_text(text)
 
-    if a.emit and not a.dry_run:
+    if a.emit:
         reg = json.loads(REGISTER.read_text())
         entry = {
             "name": a.name or artifact.name,

@@ -518,3 +518,25 @@ Restore: `git checkout pre-floor-prune-20260728 -- <path>`.
 - `tools/condense/tests/test_qwen_gravity_campaign.py`
 - `tools/condense/tests/test_second_light_controller.py`
 
+## T4 — adapter artifacts single location — 9 files
+
+Root copies of the nine adapter codegen deliverables were byte-identical to
+`crates/hawking-adapters/generated/` (verified with `shasum -a 256`). Readers
+(`tools/adapters/verify_grades.py`, `tools/campaign/light_status.py`,
+`tools/campaign/final_ascent_status.py`) now point at `generated/`. Codegen no
+longer writes repo-root duplicates; drift test requires generated-only placement.
+
+Restore root copies if needed: `git checkout pre-floor-prune-20260728 -- HAWKING_ADAPTER_*.json HAWKING_CANONICAL_EVENTS.json HAWKING_BRIDGE_SURFACE.json HAWKING_CLI_SURFACE.json HAWKING_SCHEMA_MIGRATIONS.json`
+
+### T4 / root duplicates removed — 9 files
+
+- `HAWKING_ADAPTER_ABI.json`
+- `HAWKING_ADAPTER_REGISTRY.json`
+- `HAWKING_ADAPTER_CAPABILITY_MATRIX.json`
+- `HAWKING_ADAPTER_TEST_MATRIX.json`
+- `HAWKING_ADAPTER_MIGRATION_MAP.json`
+- `HAWKING_CANONICAL_EVENTS.json`
+- `HAWKING_BRIDGE_SURFACE.json`
+- `HAWKING_CLI_SURFACE.json`
+- `HAWKING_SCHEMA_MIGRATIONS.json`
+

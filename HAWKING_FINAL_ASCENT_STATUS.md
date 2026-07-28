@@ -2,7 +2,7 @@
 
 Generated from live evidence by `tools/campaign/final_ascent_status.py`. Do not hand-edit.
 
-    at:                 2026-07-28T13:46:15Z
+    at:                 2026-07-28T14:04:55Z
     endpoint:           RAMANUJAN_SANDBOX_READY
     endpoint_reached:   False
     why:                RAMANUJAN_SANDBOX_READY not reached: no hash-APPROVED capable Math-Preserve-v2; substrate gate=REFUSED; generation_b=REFUSED
@@ -50,7 +50,7 @@ FA02 → FA05 → FA06 → FA08 → FA09 → FA10 → FA12
 ## Live git
 
     branch: campaign/glm52-generation-b
-    head:   b8a6a724573c264ae131e1475cc43d9752c9bc4e
+    head:   a3faa4651b56b4d1246fa10fa986420c2bebfcdc
     dirty:  False
 
 ## Next action

@@ -53,6 +53,25 @@ non-finite, internally inconsistent, or under-attributed receipt.
 Do not silently accept old receipt schemas. A migration diagnostic may explain
 why an old receipt is refused, but it cannot upgrade it.
 
+Parse every JSON input with duplicate-key rejection at every depth,
+non-finite-number rejection, and trailing-content rejection. Booleans are not
+integers.
+
+Every `true_batch_1`, `non_speculative`, resolved-flag, fallback, counter, and
+provider field must be raw runner evidence. The gate may compare or derive from
+raw evidence but may not manufacture a passing Boolean or omit contradictory
+extra fields.
+
+Recompute p50/p95/median and TPS from the exact cold/warm per-token samples.
+TG classification uses only recomputed measurements. A producer-supplied
+median, target, milestone, or scoreboard string is diagnostic and cannot
+control acceptance.
+
+Acceptance policy is frozen in source/schema. Command-line values may make a
+diagnostic stricter but cannot reduce minimum tokens, attribution, context,
+decode length, sustained mode, or TG thresholds. A four-token,
+non-sustained, caller-relaxed run cannot promote.
+
 ## Profiler accounting
 
 Represent attribution explicitly. The sum of attributed categories plus an
@@ -60,6 +79,11 @@ Represent attribution explicitly. The sum of attributed categories plus an
 tolerance. Operations and command buffers must distinguish logical planned
 work from physical submitted work. An unavailable physical counter is
 `unavailable` with a reason, never integer zero.
+
+Counter evidence binds the runtime instrumentation source and method. Arbitrary
+positive integers, synthetic labels, self-asserted provenance, and Boolean
+integers refuse. Synthetic receipts remain unit-test inputs only and can never
+satisfy the production acceptance entrypoint.
 
 Add source-body-free fake fixtures that exercise:
 
@@ -73,6 +97,11 @@ Add source-body-free fake fixtures that exercise:
 - NaN/infinity, Boolean-as-integer, duplicate JSON keys, alias/fallback fields,
   and attacker-resealed malformed receipts;
 - clean deterministic replay.
+
+Add direct pytest coverage for `gravity_profiler_acceptance.py`; its production
+entrypoint must face the same complete malformed/stale/refused/speculation/
+fallback/counter matrix as the speed gate. Tests that merely repeat the
+module's own synthetic receipt do not satisfy this requirement.
 
 ## Authorized files
 

@@ -9,6 +9,8 @@ promotion, not a flagship benchmark or permission to weaken parity.
 Read:
 
 - `NUMERIC_PARITY_V2.md`;
+- `NUMERIC_PARITY_V2_1.md`;
+- `NUMERIC_PARITY_V2_1_HARNESS.json`;
 - `crates/hawking-core/src/numeric_parity.rs`;
 - `crates/hawking-core/src/gravity_glm.rs`;
 - `crates/hawking-core/src/gravity_glm_resident.rs`;
@@ -34,10 +36,28 @@ Define one versioned `NearTiePolicy` with:
 - semantic seal/config identity suitable for runtime receipts.
 
 The policy must cover every load-bearing discrete decision that the current GLM
-runtime exposes through bounded fixture execution, including router/top-k and
-final token/top-k selection. Extend to DSA or other exact discrete decisions
-when those paths already share the same decision helper. Do not claim coverage
-for an unwired path.
+runtime exposes through bounded fixture execution:
+
+- router within-group top-2;
+- router group top-k;
+- final expert top-k;
+- DSA k/k+1;
+- token argmax;
+- every ordered token top-k adjacency and its k/k+1 boundary.
+
+Device DSA is already load-bearing. Wire its guard explicitly even if it does
+not share the router helper, or block device-DSA qualification. Do not claim
+coverage for an unwired path.
+
+The fast computation must expose every runner-up candidate needed to evaluate
+those boundaries. A guard computed only from already-selected results is
+incomplete. Acquire k+1 and internal router-boundary candidates without
+changing committed decisions outside a guard hit.
+
+The canonical fallback is the V2.1 FP64 authority. Freeze and bind its exact
+input slice, accumulation/order rule, dtype conversions, implementation source
+hash, and executable/build hash. Another deterministic f32 path is not
+canonical evidence.
 
 When the guard does not trigger, the existing fast decision remains
 byte-for-byte and decision-for-decision unchanged. When it triggers, recompute
@@ -45,10 +65,30 @@ the smallest decisive slice through one deterministic canonical path and
 require exact stable decisions. NaN, infinity, duplicate indices, invalid
 top-k, empty inputs, and unsupported dtype/backend refuse.
 
+The committed fallback decision must replace every downstream consumer before
+expert dispatch, attention, sampling, trace publication, tool/stop handling, or
+state persistence. Require consistent expert indices, expert weights, execution
+slots, and `sample_token == head_topk_idx[0]`.
+
 The policy must be configurable and fully receipted. Default selection must
 follow the existing Numeric Parity authority; if authority does not specify a
 production default or calibrated thresholds, leave promotion default-off and
 report the missing calibration instead of inventing one.
+
+Any enabled policy uses strictly positive calibrated guards. Zero thresholds
+are permitted only for an explicitly disabled/test policy and cannot qualify
+coverage.
+
+Each decision receipt carries a stable decision ID, domain, layer/token,
+backend/device, policy and implementation seals, observed margin and derived
+threshold, trigger result, fast decision, canonical decision, committed
+decision, and counter delta. A fallback may not commit if its receipt cannot be
+durably emitted. Missing, stale, duplicate, or cross-run receipts invalidate
+qualification.
+
+Define counter scope, reset and merge semantics, concurrency behavior, and
+exact reconciliation with decision receipts. Bind the receipt carrier schema
+and output artifact into the runtime measurement receipt.
 
 ## Tests
 
@@ -66,7 +106,12 @@ Add deterministic source-body-free tests for:
 - no fallback when disabled and explicit proof it is disabled.
 
 Add a bounded microbenchmark that reports fast-path overhead and guard-hit
-overhead separately. It must not claim whole-model TPS.
+overhead separately. Measure three modes—disabled baseline, enabled/no-hit,
+and forced-hit—at the real router, DSA, and head insertion points, including
+actual synchronization/readback costs. Freeze fixture sizes, warmups,
+iterations, timing statistic and percentiles, backend/device/build identity,
+policy seal, and machine-readable output schema. Helper-only timing is
+insufficient and the benchmark must not claim whole-model TPS.
 
 ## Authorized files
 

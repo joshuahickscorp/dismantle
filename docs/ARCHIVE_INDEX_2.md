@@ -403,3 +403,118 @@ Restore: `git checkout pre-floor-prune-20260728 -- <path>`.
 - `HAWKING_MOTHERLOAD_STATUS.md` — Hawking Motherload Completion Status
 - `HAWKING_PARALLEL_STATUS.md` — HAWKING PARALLEL CONTINUATION STATUS
 
+## T3 — closed-campaign condense modules — 62 files
+
+Pruned **62 files** (~1,174,292 bytes, ~24,624 lines) from sealed campaigns
+(kimi/qwen/gravity_frontier/second_light/deepseek_v4/frontier prefixes) where no non-test live
+module imports or shells out to them. Reader proof: `rg` over tools/, crates/, ramanujan/, app/
+for each module stem; hits inside other closed modules or `tools/condense/tests/test_*` counterparts
+do not count as live readers. **Kept 18 modules** with live readers (e.g. `gptoss_block` via
+mech/forge, `qwen_real_forward` via doctor_causal_harness, `deepseek_v4_adapter` via export.rs,
+overnight_supervisor path constants, emergency_detached_campaign hashes).
+Restore: `git checkout pre-floor-prune-20260728 -- <path>`.
+
+### T3 kept (live readers) — 18 modules
+
+- `tools/condense/deepseek_v4_adapter.py` — e.g. `crates/hawking-adapters/src/export.rs:646:                    "tools/condense/deepseek_v4_adapter.py`
+- `tools/condense/gptoss_block.py` — e.g. `tools/condense/forge_f2_fixture.py:83:        import gptoss_block as gb`
+- `tools/condense/gptoss_gravity_run.py` — e.g. `tools/condense/gravity_forge.py:4:The naive Gravity 120B run (gptoss_gravity_run.py) proved a BASELI`
+- `tools/condense/gptoss_moe_runtime.py` — e.g. `tools/condense/gravity_forge.py:539:    import gptoss_moe_runtime as rt`
+- `tools/condense/gptoss_real_forward.py` — e.g. `tools/condense/vulture_harvest.py:925:            "coherence-validated forward (gptoss_real_forward.`
+- `tools/condense/gptoss_subbit_packer.py` — e.g. `tools/foundry/gravity_potency.py:301:            "engine": "tools/condense/gravity_forge.py + gptoss`
+- `tools/condense/gravity_frontier_correction_wave.py` — e.g. `tools/condense/overnight_supervisor.py:270:        subprocess.run([PY, str(ROOT / "tools/condense/gr`
+- `tools/condense/gravity_frontier_g4_controller.py` — e.g. `tools/condense/seal_120b_conclusion.py:616:            f"{PY} tools/condense/gravity_frontier_g4_con`
+- `tools/condense/kimi_k26_phase2_recovery.py` — e.g. `tools/condense/emergency_detached_campaign.py:55:    "tools/condense/kimi_k26_phase2_recovery.py": "`
+- `tools/condense/kimi_k26_phase2_release.py` — e.g. `tools/condense/emergency_detached_campaign.py:56:    "tools/condense/kimi_k26_phase2_release.py": "9`
+- `tools/condense/kimi_k26_release_cycle.py` — e.g. `tools/condense/emergency_detached_campaign.py:57:    "tools/condense/kimi_k26_release_cycle.py": "10`
+- `tools/condense/qwen_adaptive_k.py` — e.g. `tools/condense/doctor_byte_auction.py:62:import qwen_adaptive_k as AK  # noqa: E402`
+- `tools/condense/qwen_correction_wave.py` — e.g. `tools/condense/overnight_supervisor.py:557:QWEN_CTRL = ROOT / "tools/condense/qwen_correction_wave.p`
+- `tools/condense/qwen_download_worker.py` — e.g. `tools/condense/overnight_supervisor.py:554:QWEN_DL_WORKER = ROOT / "tools/condense/qwen_download_wor`
+- `tools/condense/qwen_function_aware_codec.py` — e.g. `tools/condense/doctor_byte_auction.py:63:import qwen_function_aware_codec as FAC  # noqa: E402`
+- `tools/condense/qwen_real_forward.py` — e.g. `tools/condense/doctor_causal_harness.py:71:import qwen_real_forward as Q  # noqa: E402`
+- `tools/condense/qwen_structural_plan.py` — e.g. `tools/condense/doctor_byte_auction.py:64:import qwen_structural_plan as SP  # noqa: E402`
+- `tools/condense/qwen_subhalfbit_search.py` — e.g. `tools/condense/doctor_byte_auction.py:65:import qwen_subhalfbit_search as SHB  # noqa: E402`
+
+## T3 / deepseek_v4_* — 8 files
+
+- `tools/condense/deepseek_v4_amplification.py`
+- `tools/condense/deepseek_v4_cascade.py`
+- `tools/condense/deepseek_v4_contextual_probe.py`
+- `tools/condense/deepseek_v4_moe.py`
+- `tools/condense/deepseek_v4_primitive_parity.py`
+- `tools/condense/deepseek_v4_reference.py`
+- `tools/condense/deepseek_v4_release.py`
+- `tools/condense/deepseek_v4_source.py`
+
+## T3 / frontier_* — 1 files
+
+- `tools/condense/frontier_giant_scaffold.py`
+
+## T3 / gravity_frontier_* — 12 files
+
+- `tools/condense/gravity_frontier_controller.py`
+- `tools/condense/gravity_frontier_g1.py`
+- `tools/condense/gravity_frontier_g2_controller.py`
+- `tools/condense/gravity_frontier_g2_ignite.py`
+- `tools/condense/gravity_frontier_g2_program.py`
+- `tools/condense/gravity_frontier_g2_status.py`
+- `tools/condense/gravity_frontier_g3_controller.py`
+- `tools/condense/gravity_frontier_g3_program.py`
+- `tools/condense/gravity_frontier_g3_status.py`
+- `tools/condense/gravity_frontier_ignite.py`
+- `tools/condense/gravity_frontier_program.py`
+- `tools/condense/gravity_frontier_status.py`
+
+## T3 / kimi_* — 2 files
+
+- `tools/condense/kimi_k26_download_supervisor.py`
+- `tools/condense/kimi_k26_stale_download_cleanup.py`
+
+## T3 / qwen_* — 18 files
+
+- `tools/condense/qwen_bpw_budget.py`
+- `tools/condense/qwen_calibration_corpus.py`
+- `tools/condense/qwen_checkpoint_notifier.py`
+- `tools/condense/qwen_codec_portfolio.py`
+- `tools/condense/qwen_compressibility_train.py`
+- `tools/condense/qwen_distill_gate.py`
+- `tools/condense/qwen_doctor_gen2.py`
+- `tools/condense/qwen_function_aware_probe.py`
+- `tools/condense/qwen_generated_params.py`
+- `tools/condense/qwen_gravity_campaign.py`
+- `tools/condense/qwen_layer0_codec.py`
+- `tools/condense/qwen_layerwise_qat.py`
+- `tools/condense/qwen_q2_bootstrap.py`
+- `tools/condense/qwen_q2_diagnose.py`
+- `tools/condense/qwen_qat_disjoint.py`
+- `tools/condense/qwen_router_distill.py`
+- `tools/condense/qwen_routing_calibration.py`
+- `tools/condense/qwen_shannon_bound.py`
+
+## T3 / second_light_* — 13 files
+
+- `tools/condense/second_light_controller.py`
+- `tools/condense/second_light_controller_evidence.py`
+- `tools/condense/second_light_first_light_seal.py`
+- `tools/condense/second_light_gates.py`
+- `tools/condense/second_light_ignite.py`
+- `tools/condense/second_light_pack.py`
+- `tools/condense/second_light_pq_evidence.py`
+- `tools/condense/second_light_precheck.py`
+- `tools/condense/second_light_program.py`
+- `tools/condense/second_light_quality_contract.py`
+- `tools/condense/second_light_readiness.py`
+- `tools/condense/second_light_source_manifest.py`
+- `tools/condense/second_light_status.py`
+
+## T3 / tools/condense/tests — 8 files
+
+- `tools/condense/tests/test_gravity_frontier.py`
+- `tools/condense/tests/test_gravity_frontier_g2.py`
+- `tools/condense/tests/test_gravity_frontier_g3.py`
+- `tools/condense/tests/test_kimi_k26_download_supervisor.py`
+- `tools/condense/tests/test_kimi_k26_stale_download_cleanup.py`
+- `tools/condense/tests/test_qwen_bpw_budget.py`
+- `tools/condense/tests/test_qwen_gravity_campaign.py`
+- `tools/condense/tests/test_second_light_controller.py`
+

@@ -10,7 +10,7 @@
     ],
     "present": []
   },
-  "at": "2026-07-28T12:10:10Z",
+  "at": "2026-07-28T12:12:47Z",
   "capability_gate": {
     "any_approved": false,
     "approved": [],
@@ -102,9 +102,9 @@
   "generated": true,
   "generated_by": "tools/campaign/final_ascent_status.py",
   "git": {
-    "branch": "grok/final-ascent-control-plane-r2-20260728-080446",
-    "dirty": true,
-    "head": "361be94bdf67e234d754ce292e36706525f2f88a"
+    "branch": "campaign/glm52-generation-b",
+    "dirty": false,
+    "head": "18bd9564d46447fa3ff461616aee590cc64d027e"
   },
   "inputs": {
     "byte_attribution_present": true,
@@ -146,7 +146,7 @@
   },
   "lanes": [
     {
-      "branch": "grok/final-ascent-control-plane-r2-20260728-080446",
+      "branch": "campaign/glm52-generation-b",
       "dependencies": [],
       "forbidden_files": [
         "odyssey/launch/ODYSSEY_LAUNCH_AUTHORIZED",
@@ -184,7 +184,7 @@
       "status": "ACTIVE",
       "tests": "python3.12 -m tools.campaign.test_final_ascent_status",
       "why": "control plane publisher derives status from live evidence",
-      "worktree": "/Users/scammermike/.claude-grok/worktrees/final-ascent-control-plane-r2-20260728-080446"
+      "worktree": "/Users/scammermike/Downloads/hawking"
     },
     {
       "branch": "UNKNOWN",
@@ -542,7 +542,43 @@
       "worktree": "UNKNOWN"
     }
   ],
-  "launchd": {},
+  "launchd": {
+    "com.hawking.doctorv5.telegram": {
+      "last_exit": 75,
+      "pid": null,
+      "running": false
+    },
+    "com.hawking.doctorv5ultra.post120b": {
+      "last_exit": 2,
+      "pid": null,
+      "running": false
+    },
+    "com.hawking.glm52.math-prometheus-pass1": {
+      "last_exit": 0,
+      "pid": null,
+      "running": false
+    },
+    "com.hawking.glm52.readiness-gate": {
+      "last_exit": 0,
+      "pid": null,
+      "running": false
+    },
+    "com.hawking.glm52.source-fetch": {
+      "last_exit": 0,
+      "pid": null,
+      "running": false
+    },
+    "com.hawking.odyssey-ready-finalize": {
+      "last_exit": 0,
+      "pid": null,
+      "running": false
+    },
+    "com.hawking.overnight.handoff": {
+      "last_exit": 126,
+      "pid": null,
+      "running": false
+    }
+  },
   "next_action": "Advance FA02 capable basis/Math-Preserve-v2 until G_math+G_live PASS and bind artifact hash APPROVED; keep fences closed; bounded prep only elsewhere",
   "next_command_file": "HAWKING_FINAL_ASCENT_NEXT_COMMAND.sh",
   "q0": {
@@ -558,15 +594,15 @@
   },
   "resources": {
     "disk": {
-      "free_bytes": 77837434880,
-      "free_gib": 72.49,
+      "free_bytes": 77406806016,
+      "free_gib": 72.09,
       "total_bytes": 994662584320,
-      "used_bytes": 916825149440
+      "used_bytes": 917255778304
     },
-    "load1": 2.9501953125,
-    "load15": 3.91748046875,
-    "load5": 3.79541015625,
-    "load_per_core": 0.1054,
+    "load1": 4.70166015625,
+    "load15": 3.9462890625,
+    "load5": 3.97265625,
+    "load_per_core": 0.1679,
     "mop_inspection": "avoided",
     "ncpu": 28
   },

@@ -2,7 +2,7 @@
 
 Generated from live evidence by `tools/campaign/final_ascent_status.py`. Do not hand-edit.
 
-    at:                 2026-07-28T12:10:10Z
+    at:                 2026-07-28T12:12:47Z
     endpoint:           RAMANUJAN_SANDBOX_READY
     endpoint_reached:   False
     why:                RAMANUJAN_SANDBOX_READY not reached: no hash-APPROVED capable Math-Preserve-v2; substrate gate=REFUSED; generation_b=REFUSED
@@ -49,9 +49,9 @@ FA02 → FA05 → FA06 → FA08 → FA09 → FA10 → FA12
 
 ## Live git
 
-    branch: grok/final-ascent-control-plane-r2-20260728-080446
-    head:   361be94bdf67e234d754ce292e36706525f2f88a
-    dirty:  True
+    branch: campaign/glm52-generation-b
+    head:   18bd9564d46447fa3ff461616aee590cc64d027e
+    dirty:  False
 
 ## Next action
 

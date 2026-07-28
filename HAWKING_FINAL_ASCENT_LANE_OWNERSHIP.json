@@ -1,5 +1,5 @@
 {
-  "at": "2026-07-28T12:10:10Z",
+  "at": "2026-07-28T12:12:47Z",
   "campaign": "HAWKING_FINAL_ASCENT",
   "controller": {
     "may_not_delegate": [
@@ -37,7 +37,7 @@
   ],
   "lanes": [
     {
-      "branch": "grok/final-ascent-control-plane-r2-20260728-080446",
+      "branch": "campaign/glm52-generation-b",
       "dependencies": [],
       "forbidden_files": [
         "odyssey/launch/ODYSSEY_LAUNCH_AUTHORIZED",
@@ -75,7 +75,7 @@
       "status": "ACTIVE",
       "tests": "python3.12 -m tools.campaign.test_final_ascent_status",
       "why": "control plane publisher derives status from live evidence",
-      "worktree": "/Users/scammermike/.claude-grok/worktrees/final-ascent-control-plane-r2-20260728-080446"
+      "worktree": "/Users/scammermike/Downloads/hawking"
     },
     {
       "branch": "UNKNOWN",

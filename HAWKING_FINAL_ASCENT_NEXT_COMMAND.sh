@@ -3,7 +3,7 @@
 # Default mode is READ-ONLY diagnose/reconcile. Explicit action flags required
 # for anything that changes machine state. Stale leases must be refused; MOP preserved.
 set -euo pipefail
-ROOT="/Users/scammermike/.claude-grok/worktrees/final-ascent-control-plane-r2-20260728-080446"
+ROOT="/Users/scammermike/Downloads/hawking"
 cd "$ROOT"
 
 MODE="${1:-diagnose}"

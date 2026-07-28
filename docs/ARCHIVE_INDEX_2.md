@@ -562,3 +562,40 @@ is not a subcommand of the active `hawking` binary. `GO.md` rewritten to refuse 
 and name live `hawking` / `tools/campaign/*` entrypoints only. `BASELINES.md` marks `hawking studio`
 and `studio_run.py` command lines as sealed/not active. No replacement command invented.
 
+
+## vendor/strand-decode-kernel — archived 2026-07-28
+
+53 files, 18,151 Rust LOC, 836 KB. STRAND's reference decode runtime and gate harness,
+absorbed with the quant track and never a hawking build dependency: the root `Cargo.toml`
+listed it under `exclude`, and `cargo metadata` reports zero reverse dependencies on the
+package. Nothing links it.
+
+It also stopped being a mirror. `crates/hawking-core` carries the product port
+(`tq_gpu.rs`, `tq.rs`, `shaders/strand_bitslice.metal`), and the two shaders have diverged:
+
+    crates/hawking-core/shaders/strand_bitslice.metal   1324 lines
+    vendor/strand-decode-kernel/shaders/strand_bitslice.metal    549 lines
+
+The port added `CompactBitsliceEntry` (40 B/block) and expand helpers that the vendor copy
+never received. The port's stated contract is bit-identity to
+`strand_quant::decode::decode_tensor_fixed`, not to this crate's GPU binary.
+
+Gate run before removal, on the local M3 Ultra:
+
+    cargo test -p hawking-core --features tq --test tq_trellis_parity
+    5 passed; 1 ignored (trellis_k1_gpu_decode_parity, k=1 GPU path not yet validated)
+    including bitslice_gpu_decode_matches_cpu_oracle_over_matrix (321s, real Metal)
+
+    cargo test -p hawking-core --features tq --test qwen_tq_serve_parity
+    0 passed; 1 ignored -- NOT RUN. The test needs models/Qwen2.5-3B-Instruct-Q4_K_M.gguf,
+    which is not on this disk. The serve-trajectory half of the gate is unproven here.
+
+`vendor/strand-quant` is untouched and stays: it is live for encode via `tools/tq_bake`,
+`hawking-core`'s optional `tq` feature, and `hide-backend`'s optional `tq` feature.
+
+Provenance comments in `crates/hawking-core/src/{tq.rs,tq_gpu.rs,kernels/mod.rs,metal/mod.rs}`
+still cite `vendor/strand-decode-kernel/...` paths. They were left as-is: they record where
+the port came from, and that history is what this index points at.
+
+Restore: `git checkout pre-r3-vendor-drop-20260728 -- vendor/strand-decode-kernel`
+and re-add the `exclude` entry in the root `Cargo.toml`.

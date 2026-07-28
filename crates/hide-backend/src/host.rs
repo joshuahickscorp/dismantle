@@ -3624,6 +3624,16 @@ impl BackendHost {
                 serde_json::to_value(&record).unwrap_or(Value::Null),
             ))
             .await?;
+        // Verification class memory: sole VerifierWriteCap mint lives in
+        // classed_writers::write_verification_from_receipt (never model turn).
+        crate::classed_writers::write_verification_from_receipt(
+            &self.services.classed_memory,
+            &record.receipt,
+            &record.findings_summary(),
+            record.is_pass(),
+            session.as_str(),
+            None,
+        );
         self.publish_verification(&record, &session);
         self.publish_diagnostics(&record, &session);
         Ok(record)
@@ -5072,6 +5082,22 @@ impl BackendHost {
     pub fn memory_add(&self, draft: MemoryDraft) -> Result<MemoryRecord> {
         let record = MemoryRecord::from_draft(draft);
         MemoryLedger::put(&self.services.key_value_store, &record)?;
+        // Mirror explicit durable memory into the six-class stores by scope:
+        // User → user class (sole UserWriteCap mint); Repo/Session → semantic_project.
+        // Never verification (verifier path only).
+        let session_id = match &record.scope {
+            MemoryScope::Session(id) => Some(id.as_str()),
+            _ => None,
+        };
+        crate::classed_writers::mirror_memory_ledger_to_classes(
+            &self.services.classed_memory,
+            record.scope.kind(),
+            &record.claim,
+            &record.source,
+            &record.author,
+            &record.citations,
+            session_id,
+        );
         Ok(record)
     }
 
@@ -5928,6 +5954,15 @@ impl DispatchRecorder {
                 event_id: Some(result_event.id.as_str().to_string()),
             },
         });
+        // Procedural memory: only a *successful* command/build/test receipt becomes
+        // a recipe. Mint site is classed_writers::write_procedural_from_receipt.
+        let _ = crate::classed_writers::write_procedural_from_receipt(
+            &self.services.classed_memory,
+            call,
+            result,
+            ctx.session_id.as_str(),
+            ctx.run_id.as_ref().map(|r| r.as_str()),
+        );
         // Register the applied write as an addressable diff hunk (census sec 23): the
         // immediate-apply flow already wrote to disk, so we read the post-image and record
         // before/after for later per-hunk keep or revert. Grouped by the run, so an unattributed
@@ -6567,6 +6602,17 @@ async fn run_turn_kernel(
             )
         });
 
+    // Working memory (turn-local): RAII guard clears on every exit path
+    // (Ok / early Err / panic), not only the success return.
+    let turn_id = run_id.as_str().to_string();
+    let _working_guard = crate::classed_writers::WorkingTurnGuard::begin(
+        classed_memory.clone(),
+        turn_id.clone(),
+        session_id.as_str(),
+        Some(run_id.as_str()),
+        &prompt,
+    );
+
     // --- (S3) Compile a REAL ContextPack - same recipe as `run_turn_core`. ---
     // §7.3 honesty: prefer live-measured native; never treat effective as native.
     let role = choose_context_role(&role_registry, None)?;
@@ -6593,7 +6639,8 @@ async fn run_turn_kernel(
     let class_budgets = ClassBudgets::from_total((max_input / 8).max(64));
     compiler.add_source(
         ClassedMemoryContextSource::new(classed_memory.clone(), class_budgets)
-            .with_session(session_id.as_str()),
+            .with_session(session_id.as_str())
+            .with_turn(turn_id.clone()),
     );
     // Bible sec 20 / sec 78.1 #11: fold the repo's resolved Claude Code migration
     // instructions into the compiled context as a pinned instruction source
@@ -6869,6 +6916,7 @@ async fn run_turn_kernel(
         },
     });
 
+    // Working memory: cleared by `_working_guard` Drop on scope exit.
     Ok(state)
 }
 
@@ -7112,6 +7160,19 @@ async fn run_turn_core(
     use hide_core::types::Provenance;
     use hide_kernel::runtime_client::KernelRuntimeClient;
 
+    // Working memory (turn-local): sole TurnWriteCap mint is inside
+    // WorkingTurnGuard::begin; Drop clears the row on every exit path.
+    let turn_id = run_id_label
+        .clone()
+        .unwrap_or_else(|| format!("turn-{}", session_id.as_str()));
+    let _working_guard = crate::classed_writers::WorkingTurnGuard::begin(
+        classed_memory.clone(),
+        turn_id.clone(),
+        session_id.as_str(),
+        run_id_label.as_deref(),
+        &prompt,
+    );
+
     // --- (S3) Compile a REAL ContextPack (bible §4.2). Mirrors the `context`
     // connector so both share one recipe: pick the coding role, size the window
     // to its model, and let the code-index + classed memory compete for budget. ---
@@ -7144,7 +7205,8 @@ async fn run_turn_core(
     let class_budgets = ClassBudgets::from_total((max_input / 8).max(64));
     compiler.add_source(
         ClassedMemoryContextSource::new(classed_memory.clone(), class_budgets)
-            .with_session(session_id.as_str()),
+            .with_session(session_id.as_str())
+            .with_turn(turn_id.clone()),
     );
     // Bible sec 20 / sec 78.1 #11: fold the repo's resolved Claude Code migration
     // instructions (CLAUDE.md tree + un-scoped rules) into the compiled context as
@@ -7357,6 +7419,7 @@ async fn run_turn_core(
         ))
         .await?;
 
+    // Working memory must not outlive the turn — `_working_guard` Drop clears it.
     Ok(TurnOutcome {
         completion: buf,
         stream_seq: status_event.seq,
@@ -13564,6 +13627,363 @@ for line in sys.stdin:
         assert!(
             matches!(other, GateDecision::Inconclusive),
             "with no deterministic pass in scope, a review alone is inconclusive: {other:?}"
+        );
+
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    /// Isolated workspace + user_root so classed-memory tests do not touch the
+    /// shared `~/.hawking` (which may be non-writable under agent sandboxes).
+    fn memory_test_host(label: &str) -> (PathBuf, BackendHost) {
+        let dir = std::env::temp_dir().join(format!("hide_mem_{label}_{}", now_ms()));
+        let mut config = HideConfig::for_workspace(&dir);
+        config.user_root = dir.join("user_home");
+        config.security.shell_default = Decision::Allow;
+        config.security.workspace_write_default = Decision::Allow;
+        let host =
+            BackendHost::from_services(BackendServices::open(config).unwrap()).unwrap();
+        (dir, host)
+    }
+
+    /// Production: a SubmitTurn intent lands an episodic record with real provenance
+    /// (event stream mirror), because the event a client can read also hits memory.
+    #[tokio::test]
+    async fn production_submit_turn_writes_episodic_with_provenance() {
+        use hawking_context::MemoryClass;
+        use hide_core::api::Intent;
+
+        let (dir, host) = memory_test_host("epi");
+        let session = host.services.session();
+        let marker = format!("episodic-marker-{}", now_ms());
+
+        let ack = host
+            .handle_intent(Intent::SubmitTurn {
+                session_id: session.clone(),
+                text: marker.clone(),
+                attachments: vec![],
+            })
+            .await
+            .unwrap();
+        assert!(ack.accepted);
+
+        // Episodic write happens on the intent append itself (before generation).
+        let episodes = host
+            .services
+            .classed_memory
+            .list_class(MemoryClass::Episodic)
+            .unwrap();
+        let hit = episodes
+            .iter()
+            .find(|r| r.text.contains(&marker))
+            .expect("submit_turn must write an episodic record with the prompt text");
+        assert_eq!(hit.provenance.writer, "event_stream");
+        assert_eq!(hit.session_id.as_deref(), Some(session.as_str()));
+        assert!(hit.provenance.written_at_ms > 0);
+        assert!(hit
+            .provenance
+            .evidence
+            .iter()
+            .any(|e| e.starts_with("event_id:")));
+        // Model turn must not mint verification or user records.
+        assert_eq!(
+            host.services
+                .classed_memory
+                .count(MemoryClass::Verification)
+                .unwrap(),
+            0
+        );
+        assert_eq!(
+            host.services
+                .classed_memory
+                .count(MemoryClass::User)
+                .unwrap(),
+            0
+        );
+
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    /// Production: a successful tool receipt through the live DispatchRecorder
+    /// writes procedural; a failed / nonzero-exit receipt does not.
+    ///
+    /// Real `shell.run` under this agent sandbox may return status Ok with a
+    /// nonzero exit_code (sandbox refusal) — that is data, not a tool failure,
+    /// and correctly must NOT become a recipe. We therefore exercise the
+    /// production observer path with a receipt that has exit_code 0 (the shape
+    /// a successful sandboxed run produces on a capable host).
+    #[tokio::test]
+    async fn production_tool_receipt_procedural_success_only() {
+        use hawking_context::MemoryClass;
+        use hide_core::tool::{DispatchObserver, ToolError, ToolResult};
+        use hide_core::types::EffectSet;
+
+        let (dir, host) = memory_test_host("proc");
+        let session = host.services.session();
+        let recorder = DispatchRecorder::new(host.services.clone(), host.ui_bus().clone());
+
+        let ok_call = ToolCall::new(
+            "shell.run",
+            json!({ "argv": ["cargo", "test", "-p", "hide-core"] }),
+        );
+        let mut ok = ToolResult::ok(
+            ok_call.call_id.clone(),
+            Some(json!({ "stdout": "test result: ok. 1 passed" })),
+            EffectSet::default(),
+        );
+        ok.exit_code = Some(0);
+        // Production observer entry (same path dispatch_tool uses after the tool runs).
+        recorder.after(&ok_call, None, &ok).await;
+
+        let rows = host
+            .services
+            .classed_memory
+            .list_class(MemoryClass::Procedural)
+            .unwrap();
+        assert_eq!(rows.len(), 1, "successful receipt must write one recipe");
+        assert!(rows[0].text.contains("cargo test"));
+        assert_eq!(rows[0].provenance.writer, "tool_receipt");
+        assert_eq!(rows[0].session_id.as_deref(), Some(session.as_str()));
+        // Distillation from successful cargo test.
+        assert!(
+            host.services
+                .classed_memory
+                .count(MemoryClass::SemanticProject)
+                .unwrap()
+                >= 1
+        );
+        // Procedural producer must not mint protected classes.
+        assert_eq!(
+            host.services
+                .classed_memory
+                .count(MemoryClass::User)
+                .unwrap(),
+            0
+        );
+        assert_eq!(
+            host.services
+                .classed_memory
+                .count(MemoryClass::Verification)
+                .unwrap(),
+            0
+        );
+
+        let before = rows.len();
+        let proj_before = host
+            .services
+            .classed_memory
+            .count(MemoryClass::SemanticProject)
+            .unwrap();
+        // ToolError receipt: no recipe.
+        let fail_call = ToolCall::new("shell.run", json!({ "argv": ["false"] }));
+        let mut fail = ToolResult::ok(fail_call.call_id.clone(), None, EffectSet::default());
+        fail.status = ToolStatus::ToolError;
+        fail.ok = false;
+        fail.error = Some(ToolError::new("EXEC_FAILED", "boom", false));
+        recorder.after(&fail_call, None, &fail).await;
+        assert_eq!(
+            host.services
+                .classed_memory
+                .count(MemoryClass::Procedural)
+                .unwrap(),
+            before,
+            "ToolError receipt must not write procedural"
+        );
+        assert_eq!(
+            host.services
+                .classed_memory
+                .count(MemoryClass::SemanticProject)
+                .unwrap(),
+            proj_before,
+            "ToolError receipt must not distill semantic_project"
+        );
+
+        // Ok status but nonzero exit (sandbox refusal shape): still no recipe.
+        let mut sandbox_fail = ToolResult::ok(
+            ToolCall::new("shell.run", json!({ "argv": ["true"] })).call_id,
+            Some(json!({ "exit_code": 71, "stderr": "sandbox-exec: Operation not permitted" })),
+            EffectSet::default(),
+        );
+        sandbox_fail.exit_code = Some(71);
+        let nz_call = ToolCall::new("shell.run", json!({ "argv": ["true"] }));
+        recorder.after(&nz_call, None, &sandbox_fail).await;
+        assert_eq!(
+            host.services
+                .classed_memory
+                .count(MemoryClass::Procedural)
+                .unwrap(),
+            before,
+            "nonzero exit must not write procedural"
+        );
+
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    /// Production: verifier path writes verification memory; model turn core does not
+    /// write verification or user.
+    #[tokio::test]
+    async fn production_verifier_writes_verification_model_turn_does_not_write_protected() {
+        use hawking_context::MemoryClass;
+        use hawking_orch::inference::{InferenceClient, StubInferenceClient};
+
+        let (dir, host) = memory_test_host("ver");
+        let session = host.services.session();
+        let services = host.services.clone();
+
+        // Verifier path.
+        let clean = "pub fn add(a: i32, b: i32) -> i32 {\n    a + b\n}\n";
+        let receipt = host
+            .run_static_analysis(
+                session.clone(),
+                vec![SourceFile::new("src/math.rs", clean)],
+            )
+            .await
+            .unwrap();
+        assert!(receipt.is_pass());
+        let vrows = services
+            .classed_memory
+            .list_class(MemoryClass::Verification)
+            .unwrap();
+        assert_eq!(vrows.len(), 1);
+        assert_eq!(vrows[0].provenance.writer, "verifier");
+        assert_eq!(vrows[0].evidence_tier.as_deref(), Some("proven"));
+
+        // Model turn path: run_turn_core with a stub client.
+        let before_user = services.classed_memory.count(MemoryClass::User).unwrap();
+        let before_ver = services
+            .classed_memory
+            .count(MemoryClass::Verification)
+            .unwrap();
+        let inference: Arc<dyn InferenceClient> =
+            Arc::new(StubInferenceClient::new("model says hello"));
+        let ui_bus = Arc::new(UiEventBus::default());
+        let _ = run_turn_core(
+            inference,
+            services.event_log.clone(),
+            services.role_registry.clone(),
+            services.code_index.clone(),
+            services.memory_store.clone(),
+            services.classed_memory.clone(),
+            ui_bus,
+            session.clone(),
+            "please do not forge verification".into(),
+            None,
+            Some("run-model-turn".into()),
+            services.repo_instructions.clone(),
+        )
+        .await
+        .unwrap();
+        assert_eq!(
+            services.classed_memory.count(MemoryClass::User).unwrap(),
+            before_user,
+            "model turn must not write user memory"
+        );
+        assert_eq!(
+            services
+                .classed_memory
+                .count(MemoryClass::Verification)
+                .unwrap(),
+            before_ver,
+            "model turn must not write verification memory"
+        );
+
+        // Explicit user intent via memory_add (User scope) DOES write user class.
+        let draft = MemoryDraft::new(
+            MemoryScope::User("person-1".into()),
+            "prefer snake_case in rust",
+            "settings",
+            "user",
+        );
+        host.memory_add(draft).unwrap();
+        assert_eq!(
+            services.classed_memory.count(MemoryClass::User).unwrap(),
+            before_user + 1
+        );
+
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    /// Round trip through the live host: prior turn write is retrieved by a later compile.
+    #[tokio::test]
+    async fn production_write_then_compile_round_trip() {
+        use hawking_context::compiler::{CompileInput, ContextCompiler};
+        use hawking_context::profiles::ContextProfile;
+        use hawking_context::sources::ClassedMemoryContextSource;
+        use hawking_context::{ClassBudgets, MemoryClass};
+        use hide_core::api::Intent;
+        use hide_core::ids::ModelId;
+        use hide_core::runtime::{ModelArchitecture, ModelDescriptor};
+
+        let (dir, host) = memory_test_host("rt");
+        let session = host.services.session();
+        let marker = format!("roundtrip-live-{}", now_ms());
+
+        let ack = host
+            .handle_intent(Intent::SubmitTurn {
+                session_id: session.clone(),
+                text: marker.clone(),
+                attachments: vec![],
+            })
+            .await
+            .unwrap();
+        assert!(ack.accepted);
+
+        // Successful procedural receipt via the live DispatchRecorder (exit 0).
+        {
+            use hide_core::tool::{DispatchObserver, ToolResult};
+            use hide_core::types::EffectSet;
+            let recorder = DispatchRecorder::new(host.services.clone(), host.ui_bus().clone());
+            let call = ToolCall::new(
+                "shell.run",
+                json!({ "argv": ["cargo", "test"], "marker": &marker }),
+            );
+            let mut ok = ToolResult::ok(
+                call.call_id.clone(),
+                Some(json!({ "stdout": format!("ok {marker}") })),
+                EffectSet::default(),
+            );
+            ok.exit_code = Some(0);
+            recorder.after(&call, None, &ok).await;
+        }
+
+        let budgets = ClassBudgets::default_small();
+        let mut compiler = ContextCompiler::new();
+        compiler.add_source(
+            ClassedMemoryContextSource::new(host.services.classed_memory.clone(), budgets)
+                .with_session(session.as_str()),
+        );
+        let model = ModelDescriptor {
+            id: ModelId::new(),
+            name: "test".into(),
+            architecture: ModelArchitecture::Transformer,
+            context_tokens: 2048,
+            tokenizer_signature: "test".into(),
+            footprint_mb: 1,
+        };
+        let compiled = compiler
+            .compile(CompileInput {
+                profile: ContextProfile::coding_default(2048),
+                model,
+                task: marker.clone(),
+            })
+            .await
+            .unwrap();
+        assert!(
+            compiled.prompt.contains(&marker),
+            "subsequent compile must retrieve what the prior turn wrote; prompt={}",
+            compiled.prompt
+        );
+        let ret = host
+            .services
+            .classed_memory
+            .last_retrieval()
+            .expect("compile ran retrieve");
+        assert!(
+            !ret.slice(MemoryClass::Episodic).unwrap().hits.is_empty(),
+            "episodic hits required for round trip"
+        );
+        assert!(
+            !ret.slice(MemoryClass::Procedural).unwrap().hits.is_empty(),
+            "procedural hits required for round trip"
         );
 
         let _ = std::fs::remove_dir_all(dir);

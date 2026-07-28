@@ -778,6 +778,39 @@ impl ClassedMemorySystem {
         Ok(n)
     }
 
+    /// Cap unbounded session growth: drop the oldest episodic rows for
+    /// `session_id` until at most `keep` remain. Ids are ULIDs (time-ordered),
+    /// so ascending order is oldest-first. Returns the number of rows deleted.
+    pub fn prune_episodic_session(&self, session_id: &str, keep: usize) -> Result<usize> {
+        let conn = self.workspace_db.lock();
+        let count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM mem_episodic WHERE session_id = ?1",
+                [session_id],
+                |r| r.get(0),
+            )
+            .map_err(sql_err)?;
+        let excess = (count as usize).saturating_sub(keep);
+        if excess == 0 {
+            return Ok(0);
+        }
+        // Same-table DELETE needs a nested subquery in SQLite.
+        let n = conn
+            .execute(
+                "DELETE FROM mem_episodic WHERE id IN (
+                    SELECT id FROM (
+                        SELECT id FROM mem_episodic
+                        WHERE session_id = ?1
+                        ORDER BY id ASC
+                        LIMIT ?2
+                    )
+                )",
+                rusqlite::params![session_id, excess as i64],
+            )
+            .map_err(sql_err)?;
+        Ok(n)
+    }
+
     /// Write semantic_project. Requires [`ProjectWriteCap`].
     pub fn write_semantic_project(
         &self,

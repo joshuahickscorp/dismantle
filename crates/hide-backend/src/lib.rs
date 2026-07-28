@@ -28,6 +28,8 @@
 //!   `wasmtime` dep.
 
 pub mod approval;
+/// Production writers for the six classed memory stores (one mint site per cap).
+pub mod classed_writers;
 pub mod commands;
 pub mod compat_instructions;
 pub mod connectors;

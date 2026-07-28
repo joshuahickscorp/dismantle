@@ -2,7 +2,7 @@
 
 Generated from live evidence by `tools/campaign/final_ascent_status.py`. Do not hand-edit.
 
-    at:                 2026-07-28T12:12:47Z
+    at:                 2026-07-28T13:46:15Z
     endpoint:           RAMANUJAN_SANDBOX_READY
     endpoint_reached:   False
     why:                RAMANUJAN_SANDBOX_READY not reached: no hash-APPROVED capable Math-Preserve-v2; substrate gate=REFUSED; generation_b=REFUSED
@@ -24,7 +24,7 @@ Generated from live evidence by `tools/campaign/final_ascent_status.py`. Do not 
 | id | name | owner | status | pid | deps |
 |---|---|---|---|---|---|
 | `FA01` | live-state-control-plane | controller | ACTIVE | None | — |
-| `FA02` | capable-glm-basis-pilot-and-substrate | controller+grok | RUNNING_OR_OBSERVED | 91245 | — |
+| `FA02` | capable-glm-basis-pilot-and-substrate | controller+grok | CAPABILITY_REFUSED | None | — |
 | `FA03` | base-accelerated-runtime | codex+controller | MEASURED_ON_REFUSED_OR_STALE_PROVIDER | None | FA02 |
 | `FA04` | hide-you-chat-ide | grok+controller | PREP_ONLY_KERNEL_TURN_REFUSED | None | FA02, FA03 |
 | `FA05` | odyssey-t0-t7 | controller | BLOCKED_CAPABILITY_REFUSED | None | FA02, FA03 |
@@ -50,7 +50,7 @@ FA02 → FA05 → FA06 → FA08 → FA09 → FA10 → FA12
 ## Live git
 
     branch: campaign/glm52-generation-b
-    head:   18bd9564d46447fa3ff461616aee590cc64d027e
+    head:   b8a6a724573c264ae131e1475cc43d9752c9bc4e
     dirty:  False
 
 ## Next action

@@ -26,6 +26,7 @@ BYTE_CATEGORIES = (
     "transfer",
     "other",
 )
+MAX_BYTE_COUNT = (1 << 63) - 1
 MILESTONE_TARGET_MS = {
     "TG20": Decimal("20"),
     "TG10": Decimal("10"),
@@ -58,6 +59,8 @@ def _byte_count(value: Any, field: str) -> int:
         raise BudgetError(f"{field}: must be an integer byte count")
     if value < 0:
         raise BudgetError(f"{field}: must be nonnegative")
+    if value > MAX_BYTE_COUNT:
+        raise BudgetError(f"{field}: exceeds signed-u64 interoperability bound")
     return value
 
 
@@ -118,9 +121,14 @@ def _target_receipt(
     non_routed = total - routed
     max_routed = max(0, ceiling - non_routed)
     if max_routed == 0:
-        collapse_factor: float | None = None
+        collapse_factor: str | None = None
     else:
-        collapse_factor = max(1.0, ROUTED_WEIGHT_FLOOR_BYTES / max_routed)
+        collapse_factor = str(
+            max(
+                Decimal(1),
+                Decimal(ROUTED_WEIGHT_FLOOR_BYTES) / Decimal(max_routed),
+            ).normalize()
+        )
     usable_fraction = Decimal(1) - headroom_fraction
     current_minimum = required_bandwidth_gbps(total, target_ms)
     routed_minimum = required_bandwidth_gbps(ROUTED_WEIGHT_FLOOR_BYTES, target_ms)
@@ -206,8 +214,23 @@ def evaluate_budget(
 
 
 def _parse_categories(raw: str) -> Mapping[str, Any]:
+    def closed_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+        result: dict[str, Any] = {}
+        for key, value in pairs:
+            if key in result:
+                raise BudgetError(f"categories JSON: duplicate key {key!r}")
+            result[key] = value
+        return result
+
+    def reject_constant(value: str) -> None:
+        raise BudgetError(f"categories JSON: nonfinite {value}")
+
     try:
-        value = json.loads(raw)
+        value = json.loads(
+            raw,
+            object_pairs_hook=closed_object,
+            parse_constant=reject_constant,
+        )
     except json.JSONDecodeError as exc:
         raise BudgetError(f"categories JSON: {exc.msg}") from exc
     if not isinstance(value, dict):

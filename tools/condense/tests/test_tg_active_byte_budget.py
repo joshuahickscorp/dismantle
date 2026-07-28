@@ -35,7 +35,7 @@ def test_peak_800_gbps_has_exact_tg2_tg1_absolute_ceilings():
         ]
         == "2580.304896"
     )
-    assert target(receipt, "TG20")["routed_collapse_factor_required"] == 1.0
+    assert target(receipt, "TG20")["routed_collapse_factor_required"] == "1"
 
 
 def test_headroom_and_non_routed_bytes_tighten_routed_allowance():
@@ -52,10 +52,10 @@ def test_headroom_and_non_routed_bytes_tighten_routed_allowance():
     tg1 = target(receipt, "TG1")
     assert tg2["ceiling_bytes"] == 1_280_000_000
     assert tg2["max_routed_bytes_after_non_routed"] == 880_000_000
-    assert tg2["routed_collapse_factor_required"] > 2.93
+    assert Decimal(tg2["routed_collapse_factor_required"]) > Decimal("2.93")
     assert tg1["ceiling_bytes"] == 640_000_000
     assert tg1["max_routed_bytes_after_non_routed"] == 240_000_000
-    assert tg1["routed_collapse_factor_required"] > 10.75
+    assert Decimal(tg1["routed_collapse_factor_required"]) > Decimal("10.75")
     assert not tg2["full_routed_geometry_fits"]
     assert not tg1["admitted_by_bytes"]
 
@@ -109,6 +109,15 @@ def test_category_schema_is_closed_and_byte_counts_are_exact_ints():
         budget.normalize_categories(categories(router=1.5))
     with pytest.raises(budget.BudgetError, match="nonnegative"):
         budget.normalize_categories(categories(router=-1))
+    with pytest.raises(budget.BudgetError, match="interoperability"):
+        budget.normalize_categories(categories(router=1 << 63))
+
+
+def test_categories_json_rejects_duplicate_keys_and_nonfinite_values():
+    with pytest.raises(budget.BudgetError, match="duplicate"):
+        budget._parse_categories('{"routed_experts":0,"routed_experts":1}')
+    with pytest.raises(budget.BudgetError, match="nonfinite"):
+        budget._parse_categories('{"routed_experts":NaN}')
 
 
 @pytest.mark.parametrize(

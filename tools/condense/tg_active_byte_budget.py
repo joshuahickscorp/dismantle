@@ -60,7 +60,7 @@ def _byte_count(value: Any, field: str) -> int:
     if value < 0:
         raise BudgetError(f"{field}: must be nonnegative")
     if value > MAX_BYTE_COUNT:
-        raise BudgetError(f"{field}: exceeds signed-u64 interoperability bound")
+        raise BudgetError(f"{field}: exceeds signed-64-bit interoperability bound")
     return value
 
 

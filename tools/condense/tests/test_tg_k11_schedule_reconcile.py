@@ -113,3 +113,15 @@ def test_adapter_refuses_other_instead_of_absorbing_gap():
     ledger["other"] = 1
     with pytest.raises(ValueError, match="unclassified"):
         schedule.to_budget_categories(ledger, kv_cache_bytes=0, transfer_bytes=0)
+
+
+def test_public_reconciler_returns_one_typed_refusal_surface():
+    negative = schedule.emit_token_schedule(0)
+    negative["kv_cache_bytes"] = -1
+    with pytest.raises(reconcile.ReconcileError, match="schedule inputs"):
+        reconcile.reconcile_schedule(negative, bandwidth_gbps=800)
+    with pytest.raises(reconcile.ReconcileError, match="budget input"):
+        reconcile.reconcile_schedule(
+            schedule.emit_token_schedule(0),
+            bandwidth_gbps="nan",
+        )

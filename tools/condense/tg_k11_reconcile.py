@@ -98,13 +98,16 @@ def reconcile_schedule(
 
     token_index = candidate["token_index"]
     _refuse(isinstance(token_index, bool) or not isinstance(token_index, int), "token index")
-    canonical = schedule.emit_token_schedule(
-        token_index,
-        kv_cache_bytes=candidate["kv_cache_bytes"],
-        transfer_bytes=candidate["transfer_bytes"],
-        cache_generation=candidate["cache_generation"],
-        address_generation_base=candidate["address_generation_base"],
-    )
+    try:
+        canonical = schedule.emit_token_schedule(
+            token_index,
+            kv_cache_bytes=candidate["kv_cache_bytes"],
+            transfer_bytes=candidate["transfer_bytes"],
+            cache_generation=candidate["cache_generation"],
+            address_generation_base=candidate["address_generation_base"],
+        )
+    except ValueError as exc:
+        raise ReconcileError(f"schedule inputs: {exc}") from exc
     _refuse(candidate["geometry"] != canonical["geometry"], "geometry mismatch")
     _refuse(
         candidate["synthetic_dense_layers"] != canonical["synthetic_dense_layers"],
@@ -148,23 +151,29 @@ def reconcile_schedule(
     ledger = schedule.rollup_ledger_categories(touches)
     _refuse(ledger["other"] != 0, "unclassified other bytes")
     _refuse(candidate["category_bytes_ledger"] != ledger, "ledger category mismatch")
-    converted = schedule.to_budget_categories(
-        ledger,
-        kv_cache_bytes=candidate["kv_cache_bytes"],
-        transfer_bytes=candidate["transfer_bytes"],
-    )
+    try:
+        converted = schedule.to_budget_categories(
+            ledger,
+            kv_cache_bytes=candidate["kv_cache_bytes"],
+            transfer_bytes=candidate["transfer_bytes"],
+        )
+    except ValueError as exc:
+        raise ReconcileError(f"budget category conversion: {exc}") from exc
     _refuse(candidate["category_bytes_budget"] != converted, "budget category mismatch")
     weight_active = sum(ledger.values())
     _refuse(
         weight_active != candidate["geometry"]["static_total_weight_bytes"],
         "weight active total mismatch",
     )
-    receipt = budget.evaluate_budget(
-        bandwidth_gbps=bandwidth_gbps,
-        headroom_fraction=headroom_fraction,
-        category_bytes=converted,
-        diagnostic_target_ms=diagnostic_target_ms,
-    )
+    try:
+        receipt = budget.evaluate_budget(
+            bandwidth_gbps=bandwidth_gbps,
+            headroom_fraction=headroom_fraction,
+            category_bytes=converted,
+            diagnostic_target_ms=diagnostic_target_ms,
+        )
+    except budget.BudgetError as exc:
+        raise ReconcileError(f"budget input: {exc}") from exc
     _assert_false_map(receipt["claims"], "budget.claims")
     _assert_false_map(receipt["fences"], "budget.fences")
     return {

@@ -21,15 +21,13 @@
 //!   cargo test --release -p hawking-core --test prefill_slot_into_multiseq_parity \
 //!     -- --ignored --test-threads=1 --nocapture
 
-use std::path::PathBuf;
-
 use hawking_core::{
     model::qwen_dense::QwenDense, profile::fresh_test_profile, Engine, EngineConfig,
 };
 
-fn weights_path() -> PathBuf {
-    PathBuf::from("../../models/qwen2.5-3b-instruct-q4_k_m.gguf")
-}
+mod common;
+use common::weights_path_qwen as weights_path;
+use common::argmax;
 
 fn load() -> Option<QwenDense> {
     let w = weights_path();
@@ -52,19 +50,6 @@ fn load() -> Option<QwenDense> {
         ..Default::default()
     };
     Some(QwenDense::load(&w, cfg).expect("load qwen-3b"))
-}
-
-fn argmax(l: &[f32]) -> u32 {
-    l.iter()
-        .enumerate()
-        .fold((0u32, f32::NEG_INFINITY), |(bi, bv), (i, &v)| {
-            if v > bv {
-                (i as u32, v)
-            } else {
-                (bi, bv)
-            }
-        })
-        .0
 }
 
 /// Decode 3 tokens via the solo single-stream path starting after the prompt.

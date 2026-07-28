@@ -4,13 +4,10 @@
 //! allocation, and that auto-detection (Some(0)) does not erroneously
 //! block a model that fits in 80% of available RAM.
 
-use std::path::PathBuf;
-
-fn weights_path() -> PathBuf {
-    PathBuf::from("../../models/deepseek-v2-lite-q4.gguf")
-}
-
 /// Load with a 1 MiB budget — model is ~9 GiB so this must fail.
+mod common;
+use common::weights_path_deepseek as weights_path;
+
 #[test]
 fn memory_limit_too_low_returns_error() {
     let weights = weights_path();

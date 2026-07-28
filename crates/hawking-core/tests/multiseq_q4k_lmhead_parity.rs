@@ -28,15 +28,13 @@
 //!   cargo test --release -p hawking-core --test multiseq_q4k_lmhead_parity \
 //!     -- --ignored --test-threads=1 --nocapture
 
-use std::path::PathBuf;
-
 use hawking_core::{
     model::qwen_dense::QwenDense, profile::fresh_test_profile, Engine, EngineConfig,
 };
 
-fn weights_path() -> PathBuf {
-    PathBuf::from("../../models/qwen2.5-3b-instruct-q4_k_m.gguf")
-}
+mod common;
+use common::weights_path_qwen as weights_path;
+use common::argmax;
 
 /// Load Qwen-3B with the GPU Q4_K LM head FORCED ON. env_on() requires the value
 /// to be exactly "1", and the Q4_K LM-head buffer is built at LOAD time, so the
@@ -64,18 +62,6 @@ fn load_q4k_lmhead() -> Option<QwenDense> {
         ..Default::default()
     };
     Some(QwenDense::load(&w, cfg).expect("load qwen-3b (q4k lm-head)"))
-}
-
-fn argmax(l: &[f32]) -> u32 {
-    let mut best = 0u32;
-    let mut bv = f32::NEG_INFINITY;
-    for (i, &v) in l.iter().enumerate() {
-        if v > bv {
-            bv = v;
-            best = i as u32;
-        }
-    }
-    best
 }
 
 /// Decode `n` steps of ONE seed ALONE via the multiseq path (B=1, fresh KV),

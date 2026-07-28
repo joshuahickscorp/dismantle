@@ -26,12 +26,11 @@ use hawking_core::{
     EngineConfig,
 };
 
+mod common;
+use common::weights_path_qwen as weights_path;
+
 const PROMPT: &str = "Hello, my name is";
 const MAX_NEW: usize = 16;
-
-fn weights_path() -> PathBuf {
-    PathBuf::from("../../models/qwen2.5-3b-instruct-q4_k_m.gguf")
-}
 
 struct RunOut {
     logits: Vec<f32>,

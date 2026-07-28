@@ -18,16 +18,14 @@
 //!   cargo test --release -p hawking-core --test multiseq_aggregate_bench -- --ignored --nocapture
 //! (or via tools/bench/batch_aggregate_bench.sh, which the clean_bench_queue picks up).
 
-use std::path::PathBuf;
 use std::time::Instant;
 
 use hawking_core::{
     model::qwen_dense::QwenDense, profile::fresh_test_profile, Engine, EngineConfig,
 };
 
-fn weights_path() -> PathBuf {
-    PathBuf::from("../../models/qwen2.5-3b-instruct-q4_k_m.gguf")
-}
+mod common;
+use common::weights_path_qwen as weights_path;
 
 /// Load fresh and time B=1/4/8 under whatever env is currently set. Returns the
 /// per-B aggregate tps ([B1, B4, B8]). The Q4_K LM-head buffer is built at LOAD

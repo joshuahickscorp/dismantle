@@ -27,6 +27,9 @@ use hawking_core::{
     model::qwen_dense::QwenDense, profile::fresh_test_profile, Engine, EngineConfig,
 };
 
+mod common;
+use common::weights_path_qwen as weights_path;
+
 const PROMPTS: &[&str] = &[
     "Briefly explain what a transformer attention head does.",
     "Write a Python function that returns the n-th Fibonacci number.",
@@ -37,10 +40,6 @@ const PROMPTS: &[&str] = &[
 ];
 
 const STEPS_PER_PROMPT: usize = 16;
-
-fn weights_path() -> PathBuf {
-    PathBuf::from("../../models/qwen2.5-3b-instruct-q4_k_m.gguf")
-}
 
 #[test]
 #[ignore]

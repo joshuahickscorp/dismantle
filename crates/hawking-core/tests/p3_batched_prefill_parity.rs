@@ -9,20 +9,17 @@
 
 #![cfg(target_os = "macos")]
 
-use std::path::PathBuf;
-
 use hawking_core::{
     profile::fresh_test_profile, EngineConfig, GenerateRequest, SamplingParams, StreamEvent,
 };
+
+mod common;
+use common::weights_path_qwen as weights_path;
 
 const PROMPT: &str = "Write a detailed explanation of how the attention mechanism in transformer \
      neural networks computes scaled dot-product attention scores using query, \
      key, and value matrices.";
 const MAX_NEW_TOKENS: usize = 16;
-
-fn weights_path() -> PathBuf {
-    PathBuf::from("../../models/qwen2.5-3b-instruct-q4_k_m.gguf")
-}
 
 fn run_greedy() -> Vec<u32> {
     let weights = weights_path();

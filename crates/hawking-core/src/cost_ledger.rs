@@ -478,6 +478,21 @@ pub struct TokenCounters {
     pub matvec_calls: u64,
     pub matvec_batch_calls: u64,
     pub matvec_batch_items: u64,
+    /// Host materialization of gate/up intermediates before SiLU on the ordinary
+    /// three-batch MLP path (`batched_mlp`). Zero on the device-only SiLU path.
+    #[serde(default)]
+    pub mlp_gate_up_download_bytes: u64,
+    #[serde(default)]
+    pub mlp_gate_up_download_transfers: u64,
+    /// Host activation upload into the down-projection batch on the ordinary
+    /// three-batch MLP path. Zero when SiLU+mul stays device-resident.
+    #[serde(default)]
+    pub mlp_activation_upload_bytes: u64,
+    #[serde(default)]
+    pub mlp_activation_upload_transfers: u64,
+    /// Times the ordinary three-batch path took the device-only SiLU hit.
+    #[serde(default)]
+    pub device_only_mlp_hits: u64,
     /// Times `dense()` / `row()` re-entered the artifact (SHA path when verify on).
     pub dense_calls: u64,
     pub row_calls: u64,
@@ -1810,6 +1825,73 @@ pub fn record_matvec_batch(items: u64) {
             state.counters.matvec_batch_calls = state.counters.matvec_batch_calls.saturating_add(1);
             state.counters.matvec_batch_items =
                 state.counters.matvec_batch_items.saturating_add(items);
+        }
+    });
+}
+
+/// Record host materialization of gate/up vectors before SiLU on the ordinary
+/// three-batch MLP. The device-only SiLU path must not call this.
+pub fn record_mlp_gate_up_download(bytes: u64) {
+    if !is_recording() || bytes == 0 {
+        return;
+    }
+    TOKEN.with(|t| {
+        if let Some(state) = t.borrow_mut().as_mut() {
+            state.counters.mlp_gate_up_download_bytes = state
+                .counters
+                .mlp_gate_up_download_bytes
+                .saturating_add(bytes);
+            state.counters.mlp_gate_up_download_transfers = state
+                .counters
+                .mlp_gate_up_download_transfers
+                .saturating_add(1);
+            if state.transfers.len() < 4096 {
+                state.transfers.push(TransferRecord {
+                    bytes,
+                    host_to_device: false,
+                    kind: "mlp_gate_up_download",
+                });
+            }
+        }
+    });
+}
+
+/// Record host activation upload into down_proj on the ordinary three-batch MLP.
+/// The device-only SiLU path must not call this.
+pub fn record_mlp_activation_upload(bytes: u64) {
+    if !is_recording() || bytes == 0 {
+        return;
+    }
+    TOKEN.with(|t| {
+        if let Some(state) = t.borrow_mut().as_mut() {
+            state.counters.mlp_activation_upload_bytes = state
+                .counters
+                .mlp_activation_upload_bytes
+                .saturating_add(bytes);
+            state.counters.mlp_activation_upload_transfers = state
+                .counters
+                .mlp_activation_upload_transfers
+                .saturating_add(1);
+            if state.transfers.len() < 4096 {
+                state.transfers.push(TransferRecord {
+                    bytes,
+                    host_to_device: true,
+                    kind: "mlp_activation_upload",
+                });
+            }
+        }
+    });
+}
+
+/// Count one ordinary three-batch MLP that executed device-only SiLU.
+pub fn record_device_only_mlp_hit() {
+    if !is_recording() {
+        return;
+    }
+    TOKEN.with(|t| {
+        if let Some(state) = t.borrow_mut().as_mut() {
+            state.counters.device_only_mlp_hits =
+                state.counters.device_only_mlp_hits.saturating_add(1);
         }
     });
 }

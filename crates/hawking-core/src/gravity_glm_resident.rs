@@ -83,11 +83,55 @@ use crate::metal::{
 use crate::{Error, Result};
 use metal::{Buffer, MTLResourceUsage};
 use std::cell::Cell;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 // Flag + static wait estimators live on `gravity_glm` so non-Metal unit tests
 // can see them: `GPU_RESIDENT_STATE_ENV`, `gpu_resident_state_enabled`,
 // `estimate_host_state_waits_per_token`, `estimate_resident_waits_per_token`.
+
+/// Opt-in device-only SiLU on the **ordinary** three-batch resident MLP.
+///
+/// Default **off**. When set, `batched_mlp` keeps gate/up/act on device:
+/// `gate + up` encode → device `silu(g)*u` → `down` consume, with no host
+/// gate/up materialization and no activation re-upload. This is **not**
+/// expert-wave: weighted combine and residual stay on the caller path, and
+/// the expert-wave flag remains independently off.
+pub const GPU_DEVICE_ONLY_MLP_ENV: &str = "HAWKING_GLM_GPU_DEVICE_ONLY_MLP";
+
+/// Test-only poison: zero the device SiLU output so causal mutation fails.
+/// Has no effect unless [`GPU_DEVICE_ONLY_MLP_ENV`] is also on.
+pub const GPU_DEVICE_ONLY_MLP_POISON_ENV: &str = "HAWKING_GLM_GPU_DEVICE_ONLY_MLP_POISON";
+
+/// Whether [`GPU_DEVICE_ONLY_MLP_ENV`] requests device-only SiLU on ordinary MLP.
+pub fn gpu_device_only_mlp_enabled() -> bool {
+    crate::env_on(GPU_DEVICE_ONLY_MLP_ENV)
+}
+
+fn gpu_device_only_mlp_poison_enabled() -> bool {
+    crate::env_on(GPU_DEVICE_ONLY_MLP_POISON_ENV)
+}
+
+/// Process-global hit counter (works with ledger off). Reset via
+/// [`reset_device_only_mlp_probe`].
+static DEVICE_ONLY_MLP_HITS: AtomicU64 = AtomicU64::new(0);
+static DEVICE_ONLY_MLP_FALLBACKS: AtomicU64 = AtomicU64::new(0);
+
+/// Reset probe counters used by the device-only MLP acceptance test.
+pub fn reset_device_only_mlp_probe() {
+    DEVICE_ONLY_MLP_HITS.store(0, Ordering::Relaxed);
+    DEVICE_ONLY_MLP_FALLBACKS.store(0, Ordering::Relaxed);
+}
+
+/// Times the ordinary three-batch path took the device-only SiLU hit.
+pub fn device_only_mlp_hits() -> u64 {
+    DEVICE_ONLY_MLP_HITS.load(Ordering::Relaxed)
+}
+
+/// Times the flag was on but the path fell back to host SiLU.
+pub fn device_only_mlp_fallbacks() -> u64 {
+    DEVICE_ONLY_MLP_FALLBACKS.load(Ordering::Relaxed)
+}
 
 fn write_f32(buf: &Buffer, src: &[f32]) {
     unsafe {
@@ -1813,6 +1857,10 @@ pub struct ActPool {
     /// Grow-once scratch for the default-off expert-wave candidate. Keeping
     /// this lazy preserves the default path's allocation and residency shape.
     expert_wave_scratch: Mutex<Option<ExpertWaveScratch>>,
+    /// Grow-once scratch for the default-off **ordinary** device-only SiLU MLP
+    /// path. Separate from expert-wave so that sealed-negative wave code is
+    /// never entered from this lane.
+    device_only_mlp_scratch: Mutex<Option<DeviceOnlyMlpScratch>>,
     /// At most one selected R4 route per layer. This bounds lease-pinned
     /// expert resources to the previous route footprint and lets warm hits
     /// reuse descriptor tables without a per-token rebuild/upload.
@@ -1966,6 +2014,68 @@ impl DeviceAttentionPreludeScratch {
     }
 }
 
+/// Scratch for ordinary device-only SiLU three-batch MLP (not expert-wave).
+struct DeviceOnlyMlpScratch {
+    expert_capacity: usize,
+    intermediate_capacity: usize,
+    hidden_capacity: usize,
+    gate: Vec<Buffer>,
+    up: Vec<Buffer>,
+    act: Vec<Buffer>,
+    down: Vec<Buffer>,
+}
+
+impl DeviceOnlyMlpScratch {
+    fn new(
+        ctx: &MetalContext,
+        expert_capacity: usize,
+        intermediate_capacity: usize,
+        hidden_capacity: usize,
+    ) -> Result<Self> {
+        if expert_capacity == 0 || intermediate_capacity == 0 || hidden_capacity == 0 {
+            return Err(Error::Gravity(format!(
+                "device-only MLP scratch has zero capacity: experts={expert_capacity} \
+                 intermediate={intermediate_capacity} hidden={hidden_capacity}"
+            )));
+        }
+        let inter_bytes = intermediate_capacity.checked_mul(4).ok_or_else(|| {
+            Error::Gravity(format!(
+                "device-only MLP intermediate scratch byte size overflow: {intermediate_capacity}"
+            ))
+        })?;
+        let hidden_bytes = hidden_capacity.checked_mul(4).ok_or_else(|| {
+            Error::Gravity(format!(
+                "device-only MLP hidden scratch byte size overflow: {hidden_capacity}"
+            ))
+        })?;
+        let mut gate = Vec::with_capacity(expert_capacity);
+        let mut up = Vec::with_capacity(expert_capacity);
+        let mut act = Vec::with_capacity(expert_capacity);
+        let mut down = Vec::with_capacity(expert_capacity);
+        for _ in 0..expert_capacity {
+            gate.push(ctx.new_buffer_checked(inter_bytes)?);
+            up.push(ctx.new_buffer_checked(inter_bytes)?);
+            act.push(ctx.new_buffer_checked(inter_bytes)?);
+            down.push(ctx.new_buffer_checked(hidden_bytes)?);
+        }
+        Ok(Self {
+            expert_capacity,
+            intermediate_capacity,
+            hidden_capacity,
+            gate,
+            up,
+            act,
+            down,
+        })
+    }
+
+    fn fits(&self, experts: usize, intermediate: usize, hidden: usize) -> bool {
+        experts <= self.expert_capacity
+            && intermediate <= self.intermediate_capacity
+            && hidden <= self.hidden_capacity
+    }
+}
+
 struct ExpertWaveScratch {
     expert_capacity: usize,
     intermediate_capacity: usize,
@@ -2075,6 +2185,7 @@ impl ActPool {
             device_dsa_transform_scratch: Mutex::new(None),
             device_attention_prelude_scratch: Mutex::new(None),
             expert_wave_scratch: Mutex::new(None),
+            device_only_mlp_scratch: Mutex::new(None),
             persistent_expert_layers: Mutex::new((0..arch.n_layers).map(|_| None).collect()),
             final_head_replay: Mutex::new(None),
             compact_attention_replay_layers: Mutex::new((0..arch.n_layers).map(|_| None).collect()),
@@ -2126,6 +2237,40 @@ impl ActPool {
             .expect("device attention prelude scratch");
         if !scratch.as_ref().is_some_and(|state| state.matches(arch)) {
             *scratch = Some(DeviceAttentionPreludeScratch::new(ctx, arch)?);
+        }
+        Ok(scratch)
+    }
+
+    fn ensure_device_only_mlp_scratch(
+        &self,
+        ctx: &MetalContext,
+        experts: usize,
+        intermediate: usize,
+        hidden: usize,
+    ) -> Result<std::sync::MutexGuard<'_, Option<DeviceOnlyMlpScratch>>> {
+        let mut scratch = self
+            .device_only_mlp_scratch
+            .lock()
+            .expect("device-only MLP scratch");
+        let fits = scratch
+            .as_ref()
+            .is_some_and(|s| s.fits(experts, intermediate, hidden));
+        if !fits {
+            let expert_capacity = scratch
+                .as_ref()
+                .map_or(experts, |s| s.expert_capacity.max(experts));
+            let intermediate_capacity = scratch
+                .as_ref()
+                .map_or(intermediate, |s| s.intermediate_capacity.max(intermediate));
+            let hidden_capacity = scratch
+                .as_ref()
+                .map_or(hidden, |s| s.hidden_capacity.max(hidden));
+            *scratch = Some(DeviceOnlyMlpScratch::new(
+                ctx,
+                expert_capacity,
+                intermediate_capacity,
+                hidden_capacity,
+            )?);
         }
         Ok(scratch)
     }
@@ -4335,19 +4480,40 @@ fn mlp_one<'a>(
 /// **Default resident path. Do not edit for expert-wave.** The flagged collapse
 /// lives in [`moe_device_wave`]. Changing this function is a Parity V2.1 item 6
 /// regression.
+///
+/// When [`gpu_device_only_mlp_enabled`] is set, the ordinary three-batch path
+/// uses device SiLU (`gravity_silu_mul_f32`) so gate/up never materialize on
+/// the host and activations are not re-uploaded for down. Expert-wave remains
+/// a separate sealed-negative path and is never entered from here.
 #[allow(clippy::too_many_arguments)]
 fn batched_mlp<'a>(
     weights: &GpuWeightCache,
     prefixes: &[String],
     x: &Buffer,
     x_len: usize,
-    _pool: &ActPool,
+    pool: &ActPool,
     tcb: &mut Option<TokenCommandBuffer<'a>>,
-    _ctx: &'a MetalContext,
+    ctx: &'a MetalContext,
     waits: &Cell<u64>,
 ) -> Result<Vec<Vec<f32>>> {
     if prefixes.is_empty() {
         return Ok(Vec::new());
+    }
+    if gpu_device_only_mlp_enabled() {
+        match batched_mlp_device_only(weights, prefixes, x, x_len, pool, tcb, ctx, waits) {
+            Ok(downs) => return Ok(downs),
+            Err(e) => {
+                // Fail closed only on hard errors; soft "cannot encode" falls
+                // through to the host SiLU baseline below.
+                let msg = e.to_string();
+                if msg.contains("device-only MLP refuse") {
+                    DEVICE_ONLY_MLP_FALLBACKS.fetch_add(1, Ordering::Relaxed);
+                    // continue to host path
+                } else {
+                    return Err(e);
+                }
+            }
+        }
     }
     // Flush any pending attention/router encodes before the batch path, which
     // commits on its own.
@@ -4373,6 +4539,11 @@ fn batched_mlp<'a>(
     waits.set(waits.get().saturating_add(1));
     let up_outs = weights.matvec_batch(&up_calls)?;
     waits.set(waits.get().saturating_add(1));
+    // Physical proof counters: host path materializes gate/up for SiLU.
+    let gate_up_bytes = (gate_outs.iter().map(Vec::len).sum::<usize>()
+        + up_outs.iter().map(Vec::len).sum::<usize>())
+        .saturating_mul(std::mem::size_of::<f32>()) as u64;
+    crate::cost_ledger::record_mlp_gate_up_download(gate_up_bytes);
     let acts: Vec<Vec<f32>> = gate_outs
         .iter()
         .zip(&up_outs)
@@ -4392,6 +4563,8 @@ fn batched_mlp<'a>(
         0,
     );
     crate::cost_ledger::record_allocation(activation_elements.saturating_mul(4));
+    let act_bytes = activation_elements.saturating_mul(std::mem::size_of::<f32>() as u64);
+    crate::cost_ledger::record_mlp_activation_upload(act_bytes);
     let down_names: Vec<String> = prefixes
         .iter()
         .map(|p| format!("{p}.down_proj.weight"))
@@ -4403,6 +4576,156 @@ fn batched_mlp<'a>(
         .collect();
     let downs = weights.matvec_batch(&down_calls)?;
     waits.set(waits.get().saturating_add(1));
+    Ok(downs)
+}
+
+/// Ordinary three-batch MLP with device SiLU: gate/up encode → device
+/// `silu(g)*u` → down encode. Never calls `moe_device_wave` or expert-wave
+/// scratch. Returns host down vectors for the existing weighted-combine
+/// caller (residual stays on the ordinary path).
+#[allow(clippy::too_many_arguments)]
+fn batched_mlp_device_only<'a>(
+    weights: &GpuWeightCache,
+    prefixes: &[String],
+    x: &Buffer,
+    x_len: usize,
+    pool: &ActPool,
+    tcb: &mut Option<TokenCommandBuffer<'a>>,
+    ctx: &'a MetalContext,
+    waits: &Cell<u64>,
+) -> Result<Vec<Vec<f32>>> {
+    // Flush pending attention/router encodes; this path owns the next commits.
+    commit(tcb.take(), waits)?;
+
+    let mut all_names: Vec<String> = Vec::with_capacity(prefixes.len() * 3);
+    for p in prefixes {
+        all_names.push(format!("{p}.gate_proj.weight"));
+        all_names.push(format!("{p}.up_proj.weight"));
+        all_names.push(format!("{p}.down_proj.weight"));
+    }
+    {
+        let name_refs: Vec<&str> = all_names.iter().map(String::as_str).collect();
+        let mut cache = weights.cache.lock().expect("gpu weight cache");
+        weights.ensure_many_locked(&mut cache, &name_refs)?;
+    }
+
+    let inter = {
+        let cache = weights.cache.lock().expect("gpu weight cache");
+        let gname = format!("{}.gate_proj.weight", prefixes[0]);
+        match cache.get(&gname).expect("ensured gate") {
+            GpuTensor::Pq { params, .. } => params.rows as usize,
+            GpuTensor::NativeGpuBf16 { rows, .. } => *rows as usize,
+            GpuTensor::ActivationAware { params, .. } => params.rows as usize,
+            GpuTensor::NativeCpu(w) => {
+                if x_len == 0 {
+                    return Err(Error::Gravity(
+                        "device-only MLP refuse: zero x_len for NativeCpu gate".into(),
+                    ));
+                }
+                w.len() / x_len
+            }
+        }
+    };
+    if inter == 0 {
+        return Err(Error::Gravity(
+            "device-only MLP refuse: zero intermediate width".into(),
+        ));
+    }
+
+    let n_exp = prefixes.len();
+    let scratch_guard = pool.ensure_device_only_mlp_scratch(ctx, n_exp, inter, x_len)?;
+    let scratch = scratch_guard
+        .as_ref()
+        .expect("device-only MLP scratch ensured");
+
+    // Verify every projection is present (admission already pinned them).
+    {
+        let cache = weights.cache.lock().expect("gpu weight cache");
+        for name in &all_names {
+            if cache.get(name).is_none() {
+                return Err(Error::Gravity(format!(
+                    "device-only MLP refuse: missing tensor {name}"
+                )));
+            }
+        }
+    }
+
+    // Stage 1 — gate + up (+ device SiLU) co-issued:
+    // - device-encodable weights encode into the CB
+    // - NativeCpu weights write shared buffers immediately
+    // - SiLU always encodes on device so gate/up never become host SiLU inputs
+    let mut wave = TokenCommandBuffer::new(ctx);
+    for (i, p) in prefixes.iter().enumerate() {
+        encode_weight_matvec(
+            &mut wave,
+            weights,
+            &format!("{p}.gate_proj.weight"),
+            x,
+            x_len,
+            &scratch.gate[i],
+        )?;
+        encode_weight_matvec(
+            &mut wave,
+            weights,
+            &format!("{p}.up_proj.weight"),
+            x,
+            x_len,
+            &scratch.up[i],
+        )?;
+    }
+    for i in 0..n_exp {
+        encode_silu_mul_f32(
+            &mut wave,
+            &scratch.gate[i],
+            &scratch.up[i],
+            &scratch.act[i],
+            inter as u32,
+        )?;
+    }
+    // Real CB: SiLU (and any device gate/up). Physical CB count differs from
+    // the host-SiLU baseline which never encodes this kernel.
+    wave.commit_and_wait()?;
+    waits.set(waits.get().saturating_add(1));
+    if gpu_device_only_mlp_poison_enabled() {
+        // Causal mutation after the real SiLU fence: overwrite activations so
+        // any test requiring logit/token identity against the healthy path
+        // fails, while still counting a device-only hit.
+        let poison = vec![1.0f32; inter];
+        for i in 0..n_exp {
+            write_f32(&scratch.act[i], &poison);
+        }
+    }
+
+    // Stage 2 — down consumes device activations (no activation upload).
+    let mut wave2 = TokenCommandBuffer::new(ctx);
+    let down_dispatches_before = wave2.dispatch_count();
+    for (i, p) in prefixes.iter().enumerate() {
+        encode_weight_matvec(
+            &mut wave2,
+            weights,
+            &format!("{p}.down_proj.weight"),
+            &scratch.act[i],
+            inter,
+            &scratch.down[i],
+        )?;
+    }
+    if wave2.dispatch_count() > down_dispatches_before {
+        wave2.commit_and_wait()?;
+        waits.set(waits.get().saturating_add(1));
+    } else {
+        // NativeCpu downs already wrote scratch.down. Count one logical batch
+        // boundary so wait accounting stays ≤ the three-batch baseline (3).
+        waits.set(waits.get().saturating_add(1));
+    }
+
+    // Read only down outputs for the existing host weighted combine.
+    // Gate/up/act are never downloaded — transfer counters stay zero.
+    let mut downs = Vec::with_capacity(n_exp);
+    for i in 0..n_exp {
+        downs.push(read_f32(&scratch.down[i], x_len));
+    }
+    crate::cost_ledger::record_device_only_mlp_hit();
+    DEVICE_ONLY_MLP_HITS.fetch_add(1, Ordering::Relaxed);
     Ok(downs)
 }
 

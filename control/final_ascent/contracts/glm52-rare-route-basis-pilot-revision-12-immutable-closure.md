@@ -8,6 +8,23 @@ Apply Revision 4A science before Revision 4B lifecycle; filename lexical order
 is not semantic order. The stale `revision-bundle.md` is not complete
 authority.
 
+The only authorized Revision-9 predecessor is:
+
+- base `HEAD`:
+  `83bb2dcc2c30a0840afe19ff33ef253357e1b428`;
+- pilot SHA-256:
+  `98323fb2c5cad14a7a1c6155c9dc71de5768816dcad330c2a7d7f90cf7e21304`;
+- test SHA-256:
+  `f8d3b7d9a699719771c636c9e5e2fb2b2db7e81a13c134faeb5f3991bc67ba3e`;
+- preflight JSON SHA-256:
+  `ee5515b9c1f76dd815a804dce260b97cc06a4e9332b7d524e280b93e088fd1ae`;
+- preflight Markdown SHA-256:
+  `612a9381b181c2666d59604850e6991645b5a79594e043d5f648674e1c53dd0d`.
+
+The starting index also contains two forbidden intent-to-add paths,
+`.serena/.gitignore` and `.serena/project.yml`. Remove them. Refuse before
+editing if the base or any of the four authorized starting hashes differs.
+
 The result is not a real-source authorization. Do not acquire, map, inspect, or
 rehydrate a model shard. Current disk admission is known to fail:
 `free_bytes - sealed_shard_size >= 75,000,000,000` is false. Any generated

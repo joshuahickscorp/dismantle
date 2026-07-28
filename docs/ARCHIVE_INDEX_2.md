@@ -599,3 +599,409 @@ the port came from, and that history is what this index points at.
 
 Restore: `git checkout pre-r3-vendor-drop-20260728 -- vendor/strand-decode-kernel`
 and re-add the `exclude` entry in the root `Cargo.toml`.
+## T2 — historical campaign reports archive (2026-07-28) — 358 files
+
+Working-tree prune of historical `reports/condense/` campaign bodies with **no
+executable-code reader** of the file basename under `tools/`, `crates/`,
+`ramanujan/`, `adapters/`, `odyssey/`, or `app/` (`.py`/`.rs`/`.sh`/`.toml`).
+**Nothing is lost:** full content lives in git history at the annotated tag
+`pre-reports-archive-20260728`. Restore any file with:
+
+```
+git checkout pre-reports-archive-20260728 -- <path>
+# or
+git show pre-reports-archive-20260728:<path>
+```
+
+Pruned **358 tracked files** (~1,576,570 bytes, ~29,420 lines).
+Reader map: exact basename scan of executable sources. **Any basename hit kept**
+the file. Slices named by the lane (`second_light`, `general_frontier`,
+`gravity_forge`) were partially archived; fully no-reader siblings
+`gravity_frontier` and `deepseek_v4_flash` were archived entirely.
+
+### Kept in tree (not archived)
+
+- `reports/condense/glm52_generation_b` — **45 files, live**. Bound by
+  `glm52_pilot.py`, pack-v2 headers (`GLM52_SOURCE_SHARD_HEADERS.json`),
+  rate ladder, window plan, functional gauntlet/auction/roofline, generation-A
+  seal, odyssey inventory fixtures, and related generation-B tools.
+- Reader-hit files inside partially archived slices (36 files): second_light (4),
+  general_frontier (15), gravity_forge (17). Basenames appear in executable tools.
+- Untouched sibling slices with live readers: `breakthrough`, `kimi_k26`,
+  `storage_stripdown`, `subbit_frontier`.
+- Mega matrices left at repo root (T3): `GLM52_SHARD_DEPENDENCY_GRAPH.json`,
+  `GLM52_ROUTE_POPULATION_CENSUS.json`, `PROMETHEUS_MATH_ALLOCATION_MANIFEST.json`.
+
+## reports/condense/second_light — 199 files archived (~501,489 bytes, ~14,934 lines)
+
+- `reports/condense/second_light/GPT_OSS_120B_FIRST_LIGHT_CALIBRATION.json` — GPT_OSS_120B_FIRST_LIGHT_CALIBRATION.json
+- `reports/condense/second_light/GPT_OSS_120B_FIRST_LIGHT_DOSSIER.md` — GPT-OSS-120B FIRST-LIGHT CALIBRATION DOSSIER
+- `reports/condense/second_light/GPT_OSS_120B_PQ_GRAVITY_PROGRAM.json` — GPT_OSS_120B_PQ_GRAVITY_PROGRAM.json
+- `reports/condense/second_light/GPT_OSS_120B_PQ_READINESS.json` — GPT_OSS_120B_PQ_READINESS.json
+- `reports/condense/second_light/GPT_OSS_120B_QUALITY_CONTRACT.json` — GPT_OSS_120B_QUALITY_CONTRACT.json
+- `reports/condense/second_light/GPT_OSS_120B_SECOND_LIGHT_REPORT.md` — GPT-OSS-120B :: SECOND-LIGHT PQ BASELINE ARTIFACT
+- `reports/condense/second_light/GPT_OSS_120B_SECOND_LIGHT_REPRODUCTION.json` — hawking.gpt_oss_120b.second_light_reproduction.v1
+- `reports/condense/second_light/SECOND_LIGHT_FIRST_CANDIDATE.json` — hawking.second_light.first_candidate_artifact.v1
+- `reports/condense/second_light/SECOND_LIGHT_IGNITION_RECEIPT.json` — SECOND_LIGHT_IGNITION_RECEIPT.json
+- `reports/condense/second_light/SECOND_LIGHT_PRECHECK.json` — SECOND_LIGHT_PRECHECK.json
+- `reports/condense/second_light/SECOND_LIGHT_PRECHECK.md` — SECOND LIGHT PRECHECK
+- `reports/condense/second_light/SECOND_LIGHT_REPORT.md` — HAWKING SECOND LIGHT :: Required Report
+- `reports/condense/second_light/checkpoints/r0000.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0001.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0002.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0003.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0004.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0005.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0006.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0007.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0008.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0009.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0010.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0011.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0012.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0013.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0014.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0015.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0016.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0017.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0018.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0019.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0020.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0021.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0022.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0023.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0024.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0025.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0026.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0027.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0028.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0029.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0030.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0031.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0032.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0033.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0034.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0035.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0036.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0037.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0038.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0039.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0040.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0041.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0042.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0043.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0044.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0045.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0046.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0047.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0048.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0049.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0050.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0051.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0052.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0053.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0054.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0055.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0056.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0057.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0058.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0059.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0060.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0061.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0062.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0063.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0064.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0065.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0066.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0067.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0068.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0069.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0070.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0071.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0072.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0073.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0074.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0075.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0076.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0077.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0078.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0079.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0080.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0081.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0082.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0083.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0084.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0085.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0086.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0087.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0088.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0089.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0090.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0091.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0092.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0093.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0094.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0095.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0096.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0097.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0098.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0099.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0100.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0101.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0102.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0103.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0104.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0105.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0106.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0107.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0108.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0109.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0110.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0111.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0112.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0113.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0114.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0115.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0116.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0117.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0118.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0119.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0120.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0121.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0122.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0123.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0124.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0125.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0126.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0127.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0128.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0129.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0130.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0131.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0132.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0133.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0134.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0135.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0136.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0137.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0138.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0139.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0140.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0141.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0142.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0143.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0144.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0145.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0146.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0147.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0148.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0149.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0150.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0151.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0152.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0153.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0154.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0155.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0156.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0157.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0158.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0159.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0160.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0161.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0162.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0163.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0164.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0165.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0166.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0167.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0168.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0169.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0170.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0171.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0172.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0173.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0174.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0175.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0176.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0177.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0178.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0179.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0180.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0181.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/checkpoints/r0182.json` — hawking.second_light.row_checkpoint.v1
+- `reports/condense/second_light/evidence/ADVERSARIAL_VERIFICATION.json` — hawking.second_light.adversarial_verification.v1
+- `reports/condense/second_light/evidence/CONTROLLER_STATUS.json` — hawking.successor.resource_sample.v1
+- `reports/condense/second_light/evidence/SEED_FROZEN.json` — hawking.second_light.seed_frozen.v1
+- `reports/condense/second_light/evidence/STAGED_GATES.json` — STAGED_GATES.json
+
+## reports/condense/general_frontier — 81 files archived (~322,631 bytes, ~7,283 lines)
+
+- `reports/condense/general_frontier/ADAPTIVE_LADDER_PARENT_REGISTRY.json` — ADAPTIVE_LADDER_PARENT_REGISTRY.json
+- `reports/condense/general_frontier/FULL_FRONTIER_IGNITION_PRECHECK.json` — hawking.full_frontier_ignition.precheck.v1
+- `reports/condense/general_frontier/G2_IGNITION_RECEIPT.json` — hawking.full_frontier.g2_ignition_receipt.v1
+- `reports/condense/general_frontier/G2_LAUNCH_READINESS.json` — hawking.full_frontier.g2_readiness.v1
+- `reports/condense/general_frontier/G4/checkpoints/code_py__original.json` — code_py__original.json
+- `reports/condense/general_frontier/G4/checkpoints/code_py__rvq1.0.json` — code_py__rvq1.0.json
+- `reports/condense/general_frontier/G4/checkpoints/gen_paris__original.json` — gen_paris__original.json
+- `reports/condense/general_frontier/G4/checkpoints/gen_paris__rvq1.0.json` — gen_paris__rvq1.0.json
+- `reports/condense/general_frontier/G4/checkpoints/gen_science__original.json` — gen_science__original.json
+- `reports/condense/general_frontier/G4/checkpoints/gen_science__rvq1.0.json` — gen_science__rvq1.0.json
+- `reports/condense/general_frontier/G4/checkpoints/instr_list__original.json` — instr_list__original.json
+- `reports/condense/general_frontier/G4/checkpoints/instr_list__rvq1.0.json` — instr_list__rvq1.0.json
+- `reports/condense/general_frontier/G4/checkpoints/math_add__original.json` — math_add__original.json
+- `reports/condense/general_frontier/G4/checkpoints/math_add__rvq1.0.json` — math_add__rvq1.0.json
+- `reports/condense/general_frontier/G4/checkpoints/reason_syllogism__original.json` — reason_syllogism__original.json
+- `reports/condense/general_frontier/G4/checkpoints/reason_syllogism__rvq1.0.json` — reason_syllogism__rvq1.0.json
+- `reports/condense/general_frontier/G4_IGNITION_RECEIPT.json` — hawking.full_frontier.g4_ignition_receipt.v1
+- `reports/condense/general_frontier/GENERAL_FRONTIER_BACKEND_PARITY/CUDA_PROVISIONING_PLAN.json` — CUDA_PROVISIONING_PLAN.json
+- `reports/condense/general_frontier/GENERAL_FRONTIER_CLOUD_COSTS/CLOUD_BLOCKED_RECEIPT.json` — hawking.general_frontier.cloud_blocked.v1
+- `reports/condense/general_frontier/GENERAL_FRONTIER_CLOUD_COSTS/CLOUD_BUDGET_SCHEMA.json` — CLOUD_BUDGET_SCHEMA.json
+- `reports/condense/general_frontier/GENERAL_FRONTIER_LEDGER.md` — GENERAL FRONTIER LEDGER
+- `reports/condense/general_frontier/GENERAL_FRONTIER_PRECHECK.json` — hawking.general_frontier.precheck.v1
+- `reports/condense/general_frontier/GENERAL_FRONTIER_PROGRAMS/G2_COMPLETE_LAYER_PROGRAM.json` — G2_COMPLETE_LAYER_PROGRAM.json
+- `reports/condense/general_frontier/GENERAL_FRONTIER_PROGRAMS/G3_CROSS_LAYER_PROGRAM.json` — G3_CROSS_LAYER_PROGRAM.json
+- `reports/condense/general_frontier/GIANT_PARENT_PREPARATION.json` — GIANT_PARENT_PREPARATION.json
+- `reports/condense/general_frontier/GPT_OSS_120B_G4_UNTREATED_REPORT.md` — GPT-OSS-120B G4 Untreated Control Report
+- `reports/condense/general_frontier/HAWKING_FRONTIER_ATLAS.jsonl` — hawking.gpt_oss_120b.second_light_baseline.v1
+- `reports/condense/general_frontier/HAWKING_FRONTIER_ATLAS_SCHEMA.json` — HAWKING_FRONTIER_ATLAS_SCHEMA.json
+- `reports/condense/general_frontier/HAWKING_FRONTIER_GENERATION_F.json` — hawking.frontier.generation_f.v1
+- `reports/condense/general_frontier/KIMI_1T_FULLDISK_DECISION_DRAFT.json` — KIMI_1T_FULLDISK_DECISION_DRAFT.json
+- `reports/condense/general_frontier/OVERNIGHT_HANDOFF/SAFETY_AUDIT.md` — Overnight Supervisor - Adversarial Safety Audit
+- `reports/condense/general_frontier/QWEN35_397B_ADAPTER_PLAN.json` — QWEN35_397B_ADAPTER_PLAN.json
+- `reports/condense/general_frontier/QWEN35_397B_PREP_SEALED.json` — hawking.qwen35_397b.prep_sealed.v1
+- `reports/condense/general_frontier/QWEN35_397B_SOURCE_ADMISSION_DRAFT.json` — hawking.qwen35_397b.source_admission.v1
+- `reports/condense/general_frontier/QWEN3_235B_Q0_RECEIPT.json` — hawking.qwen3_235b.q0_source_feasibility.v1
+- `reports/condense/general_frontier/QWEN3_235B_Q1_RECEIPT.json` — hawking.qwen3_235b.q1_bounded_decode.v1
+- `reports/condense/general_frontier/QWEN_GRAVITY/checkpoints/PROBE__gen_paris__S64_structural.json` — PROBE__gen_paris__S64_structural.json
+- `reports/condense/general_frontier/QWEN_GRAVITY/checkpoints/PROBE__gen_science__S64_structural.json` — PROBE__gen_science__S64_structural.json
+- `reports/condense/general_frontier/QWEN_GRAVITY/checkpoints/code_py__D1_route_only.json` — code_py__D1_route_only.json
+- `reports/condense/general_frontier/QWEN_GRAVITY/checkpoints/code_py__D2_recon_only.json` — code_py__D2_recon_only.json
+- `reports/condense/general_frontier/QWEN_GRAVITY/checkpoints/code_py__S2A_adaptive_k.json` — code_py__S2A_adaptive_k.json
+- `reports/condense/general_frontier/QWEN_GRAVITY/checkpoints/code_py__S32_recon_first.json` — code_py__S32_recon_first.json
+- `reports/condense/general_frontier/QWEN_GRAVITY/checkpoints/code_py__S64_doctor.json` — code_py__S64_doctor.json
+- `reports/condense/general_frontier/QWEN_GRAVITY/checkpoints/code_py__S64_gamma.json` — code_py__S64_gamma.json
+- `reports/condense/general_frontier/QWEN_GRAVITY/checkpoints/code_py__S64_structural.json` — code_py__S64_structural.json
+- `reports/condense/general_frontier/QWEN_GRAVITY/checkpoints/gen_paris__D1_route_only.json` — gen_paris__D1_route_only.json
+- `reports/condense/general_frontier/QWEN_GRAVITY/checkpoints/gen_paris__D2_recon_only.json` — gen_paris__D2_recon_only.json
+- `reports/condense/general_frontier/QWEN_GRAVITY/checkpoints/gen_paris__S2A_adaptive_k.json` — gen_paris__S2A_adaptive_k.json
+- `reports/condense/general_frontier/QWEN_GRAVITY/checkpoints/gen_paris__S32_recon_first.json` — gen_paris__S32_recon_first.json
+- `reports/condense/general_frontier/QWEN_GRAVITY/checkpoints/gen_paris__S64_doctor.json` — gen_paris__S64_doctor.json
+- `reports/condense/general_frontier/QWEN_GRAVITY/checkpoints/gen_paris__S64_gamma.json` — gen_paris__S64_gamma.json
+- `reports/condense/general_frontier/QWEN_GRAVITY/checkpoints/gen_paris__S64_structural.json` — gen_paris__S64_structural.json
+- `reports/condense/general_frontier/QWEN_GRAVITY/checkpoints/gen_science__D1_route_only.json` — gen_science__D1_route_only.json
+- `reports/condense/general_frontier/QWEN_GRAVITY/checkpoints/gen_science__D2_recon_only.json` — gen_science__D2_recon_only.json
+- `reports/condense/general_frontier/QWEN_GRAVITY/checkpoints/gen_science__S2A_adaptive_k.json` — gen_science__S2A_adaptive_k.json
+- `reports/condense/general_frontier/QWEN_GRAVITY/checkpoints/gen_science__S32_recon_first.json` — gen_science__S32_recon_first.json
+- `reports/condense/general_frontier/QWEN_GRAVITY/checkpoints/gen_science__S64_doctor.json` — gen_science__S64_doctor.json
+- `reports/condense/general_frontier/QWEN_GRAVITY/checkpoints/gen_science__S64_gamma.json` — gen_science__S64_gamma.json
+- `reports/condense/general_frontier/QWEN_GRAVITY/checkpoints/gen_science__S64_structural.json` — gen_science__S64_structural.json
+- `reports/condense/general_frontier/QWEN_GRAVITY/checkpoints/instr_list__D1_route_only.json` — instr_list__D1_route_only.json
+- `reports/condense/general_frontier/QWEN_GRAVITY/checkpoints/instr_list__D2_recon_only.json` — instr_list__D2_recon_only.json
+- `reports/condense/general_frontier/QWEN_GRAVITY/checkpoints/instr_list__S2A_adaptive_k.json` — instr_list__S2A_adaptive_k.json
+- `reports/condense/general_frontier/QWEN_GRAVITY/checkpoints/instr_list__S32_recon_first.json` — instr_list__S32_recon_first.json
+- `reports/condense/general_frontier/QWEN_GRAVITY/checkpoints/instr_list__S64_doctor.json` — instr_list__S64_doctor.json
+- `reports/condense/general_frontier/QWEN_GRAVITY/checkpoints/instr_list__S64_gamma.json` — instr_list__S64_gamma.json
+- `reports/condense/general_frontier/QWEN_GRAVITY/checkpoints/instr_list__S64_structural.json` — instr_list__S64_structural.json
+- `reports/condense/general_frontier/QWEN_GRAVITY/checkpoints/math_add__D1_route_only.json` — math_add__D1_route_only.json
+- `reports/condense/general_frontier/QWEN_GRAVITY/checkpoints/math_add__D2_recon_only.json` — math_add__D2_recon_only.json
+- `reports/condense/general_frontier/QWEN_GRAVITY/checkpoints/math_add__S2A_adaptive_k.json` — math_add__S2A_adaptive_k.json
+- `reports/condense/general_frontier/QWEN_GRAVITY/checkpoints/math_add__S32_recon_first.json` — math_add__S32_recon_first.json
+- `reports/condense/general_frontier/QWEN_GRAVITY/checkpoints/math_add__S64_doctor.json` — math_add__S64_doctor.json
+- `reports/condense/general_frontier/QWEN_GRAVITY/checkpoints/math_add__S64_gamma.json` — math_add__S64_gamma.json
+- `reports/condense/general_frontier/QWEN_GRAVITY/checkpoints/math_add__S64_structural.json` — math_add__S64_structural.json
+- `reports/condense/general_frontier/QWEN_GRAVITY/checkpoints/reason_syllogism__D1_route_only.json` — reason_syllogism__D1_route_only.json
+- `reports/condense/general_frontier/QWEN_GRAVITY/checkpoints/reason_syllogism__D2_recon_only.json` — reason_syllogism__D2_recon_only.json
+- `reports/condense/general_frontier/QWEN_GRAVITY/checkpoints/reason_syllogism__S2A_adaptive_k.json` — reason_syllogism__S2A_adaptive_k.json
+- `reports/condense/general_frontier/QWEN_GRAVITY/checkpoints/reason_syllogism__S32_recon_first.json` — reason_syllogism__S32_recon_first.json
+- `reports/condense/general_frontier/QWEN_GRAVITY/checkpoints/reason_syllogism__S64_doctor.json` — reason_syllogism__S64_doctor.json
+- `reports/condense/general_frontier/QWEN_GRAVITY/checkpoints/reason_syllogism__S64_gamma.json` — reason_syllogism__S64_gamma.json
+- `reports/condense/general_frontier/QWEN_GRAVITY/checkpoints/reason_syllogism__S64_structural.json` — reason_syllogism__S64_structural.json
+- `reports/condense/general_frontier/QWEN_GRAVITY/telegram_delivered.json` — telegram_delivered.json
+
+## reports/condense/gravity_forge — 28 files archived (~74,768 bytes, ~1,758 lines)
+
+- `reports/condense/gravity_forge/FORGE_AUDIT.json` — FORGE_AUDIT.json
+- `reports/condense/gravity_forge/FORGE_BASELINE_NEGATIVE.json` — hawking.gravity_forge.baseline_negative.v1
+- `reports/condense/gravity_forge/FORGE_F2_RESIDUAL.json` — hawking.gravity_forge.f2_fixture.v1
+- `reports/condense/gravity_forge/FORGE_READINESS.json` — FORGE_READINESS.json
+- `reports/condense/gravity_forge/FORGE_RUN.json` — hawking.gravity_forge.run_contract.v1
+- `reports/condense/gravity_forge/condensation/ACCRETION_PRECHECK.json` — hawking.accretion_precheck.v1
+- `reports/condense/gravity_forge/condensation/ARCHB_CHECKPOINT.json` — hawking.archb_checkpoint.v1
+- `reports/condense/gravity_forge/condensation/CODEBASE_ESCAPE_RECEIPT.json` — CODEBASE_ESCAPE_RECEIPT.json
+- `reports/condense/gravity_forge/condensation/CONDENSATION_PLAN.md` — Stage B condensation plan (CLEAN SLATE Sections 11-27) - grounded in the measured census
+- `reports/condense/gravity_forge/condensation/GPT_OSS_120B_F2_EVIDENCE.json` — hawking.gpt_oss_120b_f2.v1
+- `reports/condense/gravity_forge/condensation/GPT_OSS_120B_GRAVITY_PROGRAM.json` — hawking.gpt_oss_120b_gravity_program.v1
+- `reports/condense/gravity_forge/condensation/GPT_OSS_120B_IGNITION.json` — hawking.120b_ignition.v1
+- `reports/condense/gravity_forge/condensation/GPT_OSS_120B_READINESS.json` — hawking.gpt_oss_120b_readiness.v2
+- `reports/condense/gravity_forge/condensation/GPT_OSS_120B_RUN_DOSSIER.json` — hawking.120b_run_dossier.v1
+- `reports/condense/gravity_forge/condensation/GPT_OSS_120B_RUN_DOSSIER.md` — GPT-OSS-120B — scientific run dossier (layer 0, 128 experts)
+- `reports/condense/gravity_forge/condensation/HAWKING_OWNED_GRAPH.json` — HAWKING_OWNED_GRAPH.json
+- `reports/condense/gravity_forge/condensation/HAWKING_OWNED_GRAPH.md` — Hawking owned graph (deduplicated, honest)
+- `reports/condense/gravity_forge/condensation/HAWKING_RELEASE_CLOSURE.json` — hawking.release_closure.v1
+- `reports/condense/gravity_forge/condensation/HAWKING_REUNIFIED_ARCHITECTURE.md` — Hawking reunified architecture — one Seed, one pack universe
+- `reports/condense/gravity_forge/condensation/HAWKING_REUNIFIED_GRAPH.json` — hawking.reunified_graph.v1
+- `reports/condense/gravity_forge/condensation/HAWKING_REUNIFIED_METRICS.json` — HAWKING_REUNIFIED_METRICS.json
+- `reports/condense/gravity_forge/condensation/HAWKING_SEED_CANDIDATE_COMPARISON.json` — HAWKING_SEED_CANDIDATE_COMPARISON.json
+- `reports/condense/gravity_forge/condensation/HAWKING_SEED_CANDIDATE_COMPARISON.md` — Hawking Seed — A / B / C comparison and final selection
+- `reports/condense/gravity_forge/condensation/HAWKING_SEED_C_METRICS.json` — hawking.seed_metrics.v1
+- `reports/condense/gravity_forge/condensation/PRE_SEED_RELEASE.json` — hawking.pre_seed_release.v1
+- `reports/condense/gravity_forge/condensation/SEED_PREDECESSOR_AUDIT.json` — hawking.seed_predecessor_audit.v1
+- `reports/condense/gravity_forge/giant_adapters/deepseek-v3.2-685b.json` — deepseek-v3.2-685b.json
+- `reports/condense/gravity_forge/giant_adapters/deepseek-v4-pro-1.6t.json` — deepseek-v4-pro-1.6t.json
+
+## reports/condense/gravity_frontier — 40 files archived (~119,369 bytes, ~3,790 lines)
+
+- `reports/condense/gravity_frontier/FRONTIER_SELECTION.json` — hawking.gravity_frontier.frontier_selection.v1
+- `reports/condense/gravity_frontier/GPT_OSS_120B_FRONTIER_QUALITY_CONTRACT.json` — hawking.gpt_oss_120b.frontier_quality_contract.v1
+- `reports/condense/gravity_frontier/GPT_OSS_120B_GRAVITY_FRONTIER_PROGRAM.json` — GPT_OSS_120B_GRAVITY_FRONTIER_PROGRAM.json
+- `reports/condense/gravity_frontier/GPT_OSS_120B_GRAVITY_FRONTIER_READINESS.json` — hawking.gpt_oss_120b.gravity_frontier_readiness.v1
+- `reports/condense/gravity_frontier/GRAVITY_FRONTIER_GEOMETRY_RESULT.json` — GRAVITY_FRONTIER_GEOMETRY_RESULT.json
+- `reports/condense/gravity_frontier/GRAVITY_FRONTIER_IGNITION_RECEIPT.json` — hawking.gravity_frontier.ignition_receipt.v1
+- `reports/condense/gravity_frontier/GRAVITY_FRONTIER_RELEASE_CLOSURE.json` — hawking.gravity_frontier.release_closure.v1
+- `reports/condense/gravity_frontier/GRAVITY_FRONTIER_STATE.json` — hawking.gravity_frontier.state.v1
+- `reports/condense/gravity_frontier/checkpoints/t0000.json` — hawking.gravity_frontier.trial_checkpoint.v1
+- `reports/condense/gravity_frontier/checkpoints/t0001.json` — hawking.gravity_frontier.trial_checkpoint.v1
+- `reports/condense/gravity_frontier/checkpoints/t0002.json` — hawking.gravity_frontier.trial_checkpoint.v1
+- `reports/condense/gravity_frontier/checkpoints/t0003.json` — hawking.gravity_frontier.trial_checkpoint.v1
+- `reports/condense/gravity_frontier/checkpoints/t0004.json` — hawking.gravity_frontier.trial_checkpoint.v1
+- `reports/condense/gravity_frontier/checkpoints/t0005.json` — hawking.gravity_frontier.trial_checkpoint.v1
+- `reports/condense/gravity_frontier/checkpoints/t0006.json` — hawking.gravity_frontier.trial_checkpoint.v1
+- `reports/condense/gravity_frontier/checkpoints/t0007.json` — hawking.gravity_frontier.trial_checkpoint.v1
+- `reports/condense/gravity_frontier/checkpoints/t0008.json` — hawking.gravity_frontier.trial_checkpoint.v1
+- `reports/condense/gravity_frontier/checkpoints/t0009.json` — hawking.gravity_frontier.trial_checkpoint.v1
+- `reports/condense/gravity_frontier/checkpoints/t0010.json` — hawking.gravity_frontier.trial_checkpoint.v1
+- `reports/condense/gravity_frontier/checkpoints/t0011.json` — hawking.gravity_frontier.trial_checkpoint.v1
+- `reports/condense/gravity_frontier/checkpoints/t0012.json` — hawking.gravity_frontier.trial_checkpoint.v1
+- `reports/condense/gravity_frontier/checkpoints/t0013.json` — hawking.gravity_frontier.trial_checkpoint.v1
+- `reports/condense/gravity_frontier/checkpoints/t0014.json` — hawking.gravity_frontier.trial_checkpoint.v1
+- `reports/condense/gravity_frontier/checkpoints/t0015.json` — hawking.gravity_frontier.trial_checkpoint.v1
+- `reports/condense/gravity_frontier/checkpoints/t0016.json` — hawking.gravity_frontier.trial_checkpoint.v1
+- `reports/condense/gravity_frontier/checkpoints/t0017.json` — hawking.gravity_frontier.trial_checkpoint.v1
+- `reports/condense/gravity_frontier/checkpoints/t0018.json` — hawking.gravity_frontier.trial_checkpoint.v1
+- `reports/condense/gravity_frontier/checkpoints/t0019.json` — hawking.gravity_frontier.trial_checkpoint.v1
+- `reports/condense/gravity_frontier/checkpoints/t0020.json` — hawking.gravity_frontier.trial_checkpoint.v1
+- `reports/condense/gravity_frontier/checkpoints/t0021.json` — hawking.gravity_frontier.trial_checkpoint.v1
+- `reports/condense/gravity_frontier/checkpoints/t0022.json` — hawking.gravity_frontier.trial_checkpoint.v1
+- `reports/condense/gravity_frontier/checkpoints/t0023.json` — hawking.gravity_frontier.trial_checkpoint.v1
+- `reports/condense/gravity_frontier/checkpoints/t0024.json` — hawking.gravity_frontier.trial_checkpoint.v1
+- `reports/condense/gravity_frontier/checkpoints/t0025.json` — hawking.gravity_frontier.trial_checkpoint.v1
+- `reports/condense/gravity_frontier/checkpoints/t0026.json` — hawking.gravity_frontier.trial_checkpoint.v1
+- `reports/condense/gravity_frontier/checkpoints/t0027.json` — hawking.gravity_frontier.trial_checkpoint.v1
+- `reports/condense/gravity_frontier/checkpoints/t0028.json` — hawking.gravity_frontier.trial_checkpoint.v1
+- `reports/condense/gravity_frontier/checkpoints/t0029.json` — hawking.gravity_frontier.trial_checkpoint.v1
+- `reports/condense/gravity_frontier/checkpoints/t0030.json` — hawking.gravity_frontier.trial_checkpoint.v1
+- `reports/condense/gravity_frontier/checkpoints/t0031.json` — hawking.gravity_frontier.trial_checkpoint.v1
+
+## reports/condense/deepseek_v4_flash — 10 files archived (~558,313 bytes, ~1,655 lines)
+
+- `reports/condense/deepseek_v4_flash/DEEPSEEK_V4_AMPLIFICATION_L05.json` — hawking.deepseek_v4.amplification.v1
+- `reports/condense/deepseek_v4_flash/DEEPSEEK_V4_AMPLIFICATION_L20.json` — hawking.deepseek_v4.amplification.v1
+- `reports/condense/deepseek_v4_flash/DEEPSEEK_V4_AMPLIFICATION_L38.json` — hawking.deepseek_v4.amplification.v1
+- `reports/condense/deepseek_v4_flash/DEEPSEEK_V4_CASCADE_STUDENT.json` — DEEPSEEK_V4_CASCADE_STUDENT.json
+- `reports/condense/deepseek_v4_flash/DEEPSEEK_V4_CONTEXTUAL_PROBE_L05.json` — DEEPSEEK_V4_CONTEXTUAL_PROBE_L05.json
+- `reports/condense/deepseek_v4_flash/DEEPSEEK_V4_MOE_DECOMPOSE_L20.json` — hawking.deepseek_v4.moe_decomposition.v1
+- `reports/condense/deepseek_v4_flash/DEEPSEEK_V4_MOE_PROBE_L20.json` — DEEPSEEK_V4_MOE_PROBE_L20.json
+- `reports/condense/deepseek_v4_flash/DEEPSEEK_V4_MOE_PROBE_L40.json` — DEEPSEEK_V4_MOE_PROBE_L40.json
+- `reports/condense/deepseek_v4_flash/DEEPSEEK_V4_PRIMITIVE_PARITY.json` — hawking.deepseek_v4.primitive_parity.v1
+- `reports/condense/deepseek_v4_flash/pre_moe_hidden_L05.npy` — pre_moe_hidden_L05.npy
+

@@ -2453,6 +2453,10 @@ mod imp {
         /// compared to the GPU work being encoded. Read back via
         /// `dispatch_count()` after encoding, before `commit_and_wait`.
         pub dispatch_count: usize,
+        /// True once any encoder work (compute dispatch, blit, replay) has
+        /// been recorded into `cmd`. Drop auto-commits only when set — an
+        /// empty temporary TCB must not pay submit/wait.
+        has_encoded_work: bool,
         /// Host nanos spent encoding dispatches while a cost-ledger token is
         /// active. Folded into [`crate::cost_ledger::Bucket::MetalEncode`] at
         /// commit. Zero when the ledger is off (no `Instant` on the hot path).
@@ -2484,6 +2488,7 @@ mod imp {
                 physical_trace: physical_trace.map(|(identity, _)| identity),
                 concurrent_encoder: None,
                 dispatch_count: 0,
+                has_encoded_work: false,
                 ledger_encode_ns: 0,
                 ledger_stage_dispatches: [0; crate::cost_ledger::GpuStage::ALL.len()],
             }
@@ -2688,6 +2693,7 @@ mod imp {
             enc.end_encoding();
 
             self.dispatch_count = self.dispatch_count.saturating_add(command_count);
+            self.has_encoded_work = true;
             if let Some(t0) = ledger_t0 {
                 self.ledger_encode_ns = self
                     .ledger_encode_ns
@@ -2727,6 +2733,7 @@ mod imp {
         ) -> Result<()> {
             // Track 3.1 / 5.1: count every kernel dispatch unconditionally.
             self.dispatch_count += 1;
+            self.has_encoded_work = true;
             // Cost-ledger encode wall: Instant only while a token is active.
             // Folded into MetalEncode at commit_and_wait_split. Default-off
             // path pays one atomic load via is_recording().
@@ -3004,6 +3011,7 @@ mod imp {
             }
             blit.copy_from_buffer(src, src_offset, dst, dst_offset, size);
             blit.end_encoding();
+            self.has_encoded_work = true;
             Ok(())
         }
 
@@ -3172,6 +3180,18 @@ mod imp {
 
     impl Drop for TokenCommandBuffer<'_> {
         fn drop(&mut self) {
+            // Only auto-commit when work was encoded. An empty Drop used to
+            // `commit` + `wait_until_completed` on a fresh CB (full submit
+            // latency, no useful GPU work). That topology bug made
+            // per-encode temporary TCBs look free in the ledger while still
+            // burning wall clock — the C1/C2 / device-SiLU failure shape.
+            // Explicit `commit_and_wait` still flushes empty buffers if a
+            // caller wants a fence with no dispatches.
+            if !self.has_encoded_work {
+                let _ = self.cmd.take();
+                let _ = self.concurrent_encoder.take();
+                return;
+            }
             if let Some(cmd) = self.cmd.take() {
                 self.flush_and_commit(cmd);
             }

@@ -4583,6 +4583,13 @@ fn batched_mlp<'a>(
 /// `silu(g)*u` → down encode. Never calls `moe_device_wave` or expert-wave
 /// scratch. Returns host down vectors for the existing weighted-combine
 /// caller (residual stays on the ordinary path).
+///
+/// **Command-buffer topology:** appends into the caller's open
+/// [`TokenCommandBuffer`] (same pattern as `matvec_into` / residual encodes).
+/// Gate, up, SiLU, and device-encodable downs share that single pending CB;
+/// one `commit` fences the whole MLP. Private per-stage waves are forbidden —
+/// each `TokenCommandBuffer::new` is a physical CB, and Drop used to
+/// auto-commit empties (extra submit/wait with no useful work).
 #[allow(clippy::too_many_arguments)]
 fn batched_mlp_device_only<'a>(
     weights: &GpuWeightCache,
@@ -4594,9 +4601,6 @@ fn batched_mlp_device_only<'a>(
     ctx: &'a MetalContext,
     waits: &Cell<u64>,
 ) -> Result<Vec<Vec<f32>>> {
-    // Flush pending attention/router encodes; this path owns the next commits.
-    commit(tcb.take(), waits)?;
-
     let mut all_names: Vec<String> = Vec::with_capacity(prefixes.len() * 3);
     for p in prefixes {
         all_names.push(format!("{p}.gate_proj.weight"));
@@ -4650,72 +4654,153 @@ fn batched_mlp_device_only<'a>(
         }
     }
 
-    // Stage 1 — gate + up (+ device SiLU) co-issued:
-    // - device-encodable weights encode into the CB
-    // - NativeCpu weights write shared buffers immediately
-    // - SiLU always encodes on device so gate/up never become host SiLU inputs
-    let mut wave = TokenCommandBuffer::new(ctx);
-    for (i, p) in prefixes.iter().enumerate() {
-        encode_weight_matvec(
-            &mut wave,
-            weights,
-            &format!("{p}.gate_proj.weight"),
-            x,
-            x_len,
-            &scratch.gate[i],
-        )?;
-        encode_weight_matvec(
-            &mut wave,
-            weights,
-            &format!("{p}.up_proj.weight"),
-            x,
-            x_len,
-            &scratch.up[i],
-        )?;
+    // Classify host-native projections. NativeCpu matvecs `read_f32` their
+    // inputs on the CPU, so any producer still pending in `tcb` must be
+    // fenced first. Device-encodable projections append into the open CB.
+    let mut host_gate_up = false;
+    let mut host_down: Vec<bool> = Vec::with_capacity(n_exp);
+    {
+        let cache = weights.cache.lock().expect("gpu weight cache");
+        for p in prefixes {
+            let g = format!("{p}.gate_proj.weight");
+            let u = format!("{p}.up_proj.weight");
+            let d = format!("{p}.down_proj.weight");
+            if matches!(cache.get(&g), Some(GpuTensor::NativeCpu(_)))
+                || matches!(cache.get(&u), Some(GpuTensor::NativeCpu(_)))
+            {
+                host_gate_up = true;
+            }
+            host_down.push(matches!(
+                cache.get(&d).expect("ensured down"),
+                GpuTensor::NativeCpu(_)
+            ));
+        }
     }
-    for i in 0..n_exp {
-        encode_silu_mul_f32(
-            &mut wave,
-            &scratch.gate[i],
-            &scratch.up[i],
-            &scratch.act[i],
-            inter as u32,
-        )?;
+    let any_host_down = host_down.iter().any(|&h| h);
+    let poison = gpu_device_only_mlp_poison_enabled();
+
+    // Host gate/up read `x` immediately. If prior attention/router work is
+    // still pending in the open CB and wrote `x` (or its producers) on device,
+    // fence it first — same safety as the host three-batch path's entry commit.
+    // Pure device gate/up/silu/down skips this so SiLU co-issues with whatever
+    // is already open (the topology fix vs a private per-MLP wave).
+    if host_gate_up {
+        commit(tcb.take(), waits)?;
     }
-    // Real CB: SiLU (and any device gate/up). Physical CB count differs from
-    // the host-SiLU baseline which never encodes this kernel.
-    wave.commit_and_wait()?;
-    waits.set(waits.get().saturating_add(1));
-    if gpu_device_only_mlp_poison_enabled() {
-        // Causal mutation after the real SiLU fence: overwrite activations so
-        // any test requiring logit/token identity against the healthy path
-        // fails, while still counting a device-only hit.
-        let poison = vec![1.0f32; inter];
+
+    // Encode gate + up + SiLU (+ device downs) into the caller's open CB.
+    // NativeCpu projections write scratch immediately (no dispatch); device
+    // projections and SiLU append dispatches. Do **not** open a private wave —
+    // each `TokenCommandBuffer::new` is a physical CB, and empty Drop used to
+    // auto-submit (the 1→5 per-token regression shape).
+    {
+        let wave = tcb.get_or_insert_with(|| TokenCommandBuffer::new(ctx));
+        for (i, p) in prefixes.iter().enumerate() {
+            encode_weight_matvec(
+                wave,
+                weights,
+                &format!("{p}.gate_proj.weight"),
+                x,
+                x_len,
+                &scratch.gate[i],
+            )?;
+            encode_weight_matvec(
+                wave,
+                weights,
+                &format!("{p}.up_proj.weight"),
+                x,
+                x_len,
+                &scratch.up[i],
+            )?;
+        }
         for i in 0..n_exp {
-            write_f32(&scratch.act[i], &poison);
+            encode_silu_mul_f32(
+                wave,
+                &scratch.gate[i],
+                &scratch.up[i],
+                &scratch.act[i],
+                inter as u32,
+            )?;
+        }
+        // Device downs share this CB when the host does not need to mutate
+        // activations between SiLU and down (poison path).
+        if !poison {
+            for (i, p) in prefixes.iter().enumerate() {
+                if host_down[i] {
+                    continue;
+                }
+                encode_weight_matvec(
+                    wave,
+                    weights,
+                    &format!("{p}.down_proj.weight"),
+                    &scratch.act[i],
+                    inter,
+                    &scratch.down[i],
+                )?;
+            }
         }
     }
 
-    // Stage 2 — down consumes device activations (no activation upload).
-    let mut wave2 = TokenCommandBuffer::new(ctx);
-    let down_dispatches_before = wave2.dispatch_count();
+    // One fence for this MLP's device encodes (and any co-issued prior work
+    // when gate/up stayed on device). Required before host-native downs,
+    // poison, or reading device downs back for the weighted combine.
+    let needs_fence = tcb
+        .as_ref()
+        .is_some_and(|w| w.dispatch_count() > 0)
+        || any_host_down
+        || poison;
+    if needs_fence {
+        commit(tcb.take(), waits)?;
+    }
+
+    if poison {
+        // Causal mutation after the real SiLU fence: overwrite activations so
+        // any test requiring logit/token identity against the healthy path
+        // fails, while still counting a device-only hit.
+        let poison_vec = vec![1.0f32; inter];
+        for i in 0..n_exp {
+            write_f32(&scratch.act[i], &poison_vec);
+        }
+        // Device downs after poison: encode into a fresh open CB (same
+        // get_or_insert pattern — not a private throwaway wave).
+        let encoded_poison_down = {
+            let wave = tcb.get_or_insert_with(|| TokenCommandBuffer::new(ctx));
+            let before = wave.dispatch_count();
+            for (i, p) in prefixes.iter().enumerate() {
+                if host_down[i] {
+                    continue;
+                }
+                encode_weight_matvec(
+                    wave,
+                    weights,
+                    &format!("{p}.down_proj.weight"),
+                    &scratch.act[i],
+                    inter,
+                    &scratch.down[i],
+                )?;
+            }
+            wave.dispatch_count() > before
+        };
+        if encoded_poison_down {
+            commit(tcb.take(), waits)?;
+        }
+    }
+
+    // Host-native downs: activations are fenced; matvec_into writes scratch
+    // without opening a CB for NativeCpu (and without a Drop-auto-commit).
     for (i, p) in prefixes.iter().enumerate() {
-        encode_weight_matvec(
-            &mut wave2,
+        if !host_down[i] {
+            continue;
+        }
+        matvec_into(
+            tcb,
+            ctx,
             weights,
             &format!("{p}.down_proj.weight"),
             &scratch.act[i],
             inter,
             &scratch.down[i],
         )?;
-    }
-    if wave2.dispatch_count() > down_dispatches_before {
-        wave2.commit_and_wait()?;
-        waits.set(waits.get().saturating_add(1));
-    } else {
-        // NativeCpu downs already wrote scratch.down. Count one logical batch
-        // boundary so wait accounting stays ≤ the three-batch baseline (3).
-        waits.set(waits.get().saturating_add(1));
     }
 
     // Read only down outputs for the existing host weighted combine.

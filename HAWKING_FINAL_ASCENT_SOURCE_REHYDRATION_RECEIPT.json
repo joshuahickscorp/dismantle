@@ -1,0 +1,76 @@
+{
+  "schema": "hawking.final_ascent.source_rehydration_receipt.v1",
+  "at": "2026-07-28T11:54:59Z",
+  "purpose": "Bounded real-activation basis pilot; this is not a full parent traversal.",
+  "source": {
+    "repo": "zai-org/GLM-5.2",
+    "revision": "b4734de4facf877f85769a911abafc5283eab3d9",
+    "manifest": "GLM52_REHYDRATION_RECEIPT.json",
+    "verified_ever_shards": 282,
+    "total_source_shards": 282,
+    "resident_now_shards": 3,
+    "resident_now_bytes": 16099220608,
+    "destination": "/Users/scammermike/Library/Application Support/Hawking/GLM52Gravity/pilot_source"
+  },
+  "shards": [
+    {
+      "name": "model-00108-of-00282.safetensors",
+      "role": "middle-layer routed expert gate/up/down tensors (layer 38)",
+      "bytes": 5366406824,
+      "sha256": "d201fa9064deea80a78282d315a5d124d35503e5b4b9b388daf4b2a9f092d855",
+      "seconds": 21.5,
+      "megabits_per_second": 1994.4
+    },
+    {
+      "name": "model-00156-of-00282.safetensors",
+      "role": "early-layer routed expert gate/up/down tensors (layer 5)",
+      "bytes": 5366406816,
+      "sha256": "abc8f728e74c908db917e71ce8a9c14137718be8c532bb9f8bb625e55ca51bc4",
+      "seconds": 21.8,
+      "megabits_per_second": 1968.2
+    },
+    {
+      "name": "model-00256-of-00282.safetensors",
+      "role": "late-layer routed expert gate/up/down tensors (layer 74)",
+      "bytes": 5366406968,
+      "sha256": "d4c1064d459bb858ed0e07970801a3bc3bed8a967aefe71e718bcd21c88a4542",
+      "seconds": 21.4,
+      "megabits_per_second": 2003.2
+    }
+  ],
+  "throughput": {
+    "aggregate_bytes": 16099220608,
+    "aggregate_seconds": 64.7,
+    "aggregate_megabits_per_second": 1990.6
+  },
+  "resource_state_after": {
+    "free_disk_bytes": 89532260352,
+    "free_disk_gib": 83.4,
+    "swap": "total = 2048.00M used = 1029.50M free = 1018.50M encrypted",
+    "thermal_warning": false,
+    "performance_warning": false
+  },
+  "controller": {
+    "label": "com.hawking.glm52.final-ascent-pilot-rehydrate",
+    "durability": "launchd plus caffeinate",
+    "completion_exit_code": 0,
+    "keepalive_repeat_detected": true,
+    "repeat_effect": "completed shards were re-hashed and reported already present; no source body was downloaded or published twice",
+    "final_state": "UNLOADED_AFTER_SUCCESS"
+  },
+  "residency_class": {
+    "verified_ever": true,
+    "resident_now": true,
+    "sealed_and_evictable": false,
+    "why_not_evictable_yet": "the bounded pilot has not yet sealed measurements and input hashes"
+  },
+  "safety": {
+    "full_parent_traversal_started": false,
+    "teacher_capsules_modified": false,
+    "prior_artifacts_modified": false,
+    "MOP_touched": false,
+    "ODYSSEY_LAUNCH_AUTHORIZED": false,
+    "RAMANUJAN_RESEARCH_AUTHORIZED": false,
+    "HIDE_KERNEL_TURN": false
+  }
+}

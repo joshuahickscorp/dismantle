@@ -146,6 +146,10 @@ def test_receipt_carries_all_false_fences():
         category_bytes=categories(),
     )
     assert receipt["schema"] == "hawking.tg_active_byte_budget.v1"
+    assert receipt["planning_admission_only"]
+    assert receipt["bandwidth_unit"] == "decimal_GB_per_s"
+    assert receipt["byte_unit"] == "byte"
+    assert all(row["not_sufficient_for_tg"] for row in receipt["targets"])
     assert set(receipt["category_bytes"]) == set(budget.BYTE_CATEGORIES)
     assert receipt["category_sum_bytes"] == 0
     assert all(value is False for value in receipt["claims"].values())

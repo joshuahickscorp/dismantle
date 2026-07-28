@@ -134,6 +134,8 @@ def _target_receipt(
     routed_minimum = required_bandwidth_gbps(ROUTED_WEIGHT_FLOOR_BYTES, target_ms)
     return {
         "milestone": name,
+        "planning_admission_only": True,
+        "not_sufficient_for_tg": True,
         "target_ms": str(target_ms),
         "ceiling_bytes": ceiling,
         "total_active_bytes": total,
@@ -189,10 +191,17 @@ def evaluate_budget(
     return {
         "schema": SCHEMA,
         "mode": "source_body_free_planning_only",
+        "planning_admission_only": True,
+        "bandwidth_provenance": "caller_declared_planning_input",
+        "bandwidth_unit": "decimal_GB_per_s",
+        "byte_unit": "byte",
         "bandwidth_gbps": str(bandwidth),
         "headroom_fraction": str(headroom),
         "usable_bandwidth_gbps": str(bandwidth * (Decimal(1) - headroom)),
         "routed_weight_floor_bytes": ROUTED_WEIGHT_FLOOR_BYTES,
+        "routed_weight_floor_semantics": (
+            "historical_ideal_78_sparse_layer_contract_floor_not_live_schedule"
+        ),
         "category_bytes": categories,
         "category_sum_bytes": sum(categories.values()),
         "targets": targets,

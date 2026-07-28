@@ -5,7 +5,7 @@ default-off, non-wave, source-body-free, no-real-model/no-MOP, live-Metal-kill,
 and false-fence requirement.
 
 Freeze the implementation base as
-`ba2ca65bf46691fe91fbf528b2f9dcf952689858` plus this contract-only
+`ba2ca65b1765e833ec381b454ee1d68b48534656` plus this contract-only
 revision. Do not silently rebase onto moving source.
 
 ## 1. Arithmetic authority is executable

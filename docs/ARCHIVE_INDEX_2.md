@@ -518,6 +518,13 @@ Restore: `git checkout pre-floor-prune-20260728 -- <path>`.
 - `tools/condense/tests/test_qwen_gravity_campaign.py`
 - `tools/condense/tests/test_second_light_controller.py`
 
+
+### T3 follow-up restores (gate repair)
+
+Restored from `pre-floor-prune-20260728` after pytest collection failed:
+- `tools/condense/kimi_k26_download_supervisor.py` (+ test) — imported by kept `kimi_k26_phase2_recovery`
+- `tools/condense/qwen_bpw_budget.py` (+ test) — imported by kept `qwen_subhalfbit_search`
+
 ## T4 — adapter artifacts single location — 9 files
 
 Root copies of the nine adapter codegen deliverables were byte-identical to
@@ -528,7 +535,14 @@ longer writes repo-root duplicates; drift test requires generated-only placement
 
 Restore root copies if needed: `git checkout pre-floor-prune-20260728 -- HAWKING_ADAPTER_*.json HAWKING_CANONICAL_EVENTS.json HAWKING_BRIDGE_SURFACE.json HAWKING_CLI_SURFACE.json HAWKING_SCHEMA_MIGRATIONS.json`
 
-### T4 / root duplicates removed — 9 files
+#
+### T3 follow-up restores (gate repair)
+
+Restored from `pre-floor-prune-20260728` after pytest collection failed:
+- `tools/condense/kimi_k26_download_supervisor.py` (+ test) — imported by kept `kimi_k26_phase2_recovery`
+- `tools/condense/qwen_bpw_budget.py` (+ test) — imported by kept `qwen_subhalfbit_search`
+
+## T4 / root duplicates removed — 9 files
 
 - `HAWKING_ADAPTER_ABI.json`
 - `HAWKING_ADAPTER_REGISTRY.json`

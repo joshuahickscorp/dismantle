@@ -1,25 +1,28 @@
-//! Numeric Parity V2.1 oracle for the ordinary GLM fixture path.
+//! Device-only MLP acceptance — Numeric Parity V2.1 with a real f64 reference.
 //!
-//! ## What this harness fixes
+//! ## What this harness measures
 //!
-//! Prior device-only MLP acceptance scored the host arm against an f64 lift
-//! of *itself* (`base_logits as f64`), so `host_f32` always reported
-//! `rel_l2 = 0` / `ulp = 0` and only the device arm was under test. That is
-//! circular: V2.1 requires scoring **both** f32 backends against an **FP64
-//! reference computation**, never against each other.
+//! Candidate flag `HAWKING_GLM_GPU_DEVICE_ONLY_MLP` (default **off**) keeps
+//! ordinary three-batch MLP SiLU on device so gate/up never download and
+//! activations are not re-uploaded. This file:
 //!
-//! This file builds that reference for the tiny fixture
-//! (`glm52-tiny-R0.gravity`) and scores host (and, when Metal is present,
-//! resident-GPU) logits against it.
+//! 1. Builds an independent **f64** fixture forward (not a host/device lift).
+//! 2. Scores host f32 and, when Metal is present, resident baseline (flag off)
+//!    and candidate (flag on) against that same f64 authority under
+//!    [`Bounds::full_forward_logits`].
+//! 3. Reports waits (`forward_resident_counted`), physical command buffers and
+//!    MLP transfer counters (`cost_ledger`), and warm p50/p95 wall clock.
+//! 4. Enforces non-negotiable physics (zero MLP transfers on candidate; no
+//!    wait/CB regression; CB counts must differ; causal poison works).
+//! 5. Emits a wall-clock promotion verdict — improve both p50 and p95 only with
+//!    hard gates green and transfers at zero. Tie/regress → negative, flag stays off.
 //!
-//! ## What this harness does **not** do
+//! Prior rejections compared device to **host** (circular). Against true f64 the
+//! host itself shows `max_meaningful_rel ≈ 1.7e-2`; that field is diagnostic
+//! for full multi-layer forward, not a hard gate.
 //!
-//! - Does not touch candidate kernels or `gravity_glm_resident` device-only
-//!   MLP implementation.
-//! - Does not promote any candidate. A pass against f64 is measurement;
-//!   promotion is a separate authorization.
-//! - When Metal is absent (`MTLCreateSystemDefaultDevice` null), the live
-//!   device arm is **unmeasured**, not invented.
+//! When Metal is absent (`MTLCreateSystemDefaultDevice` null), device legs are
+//! **unmeasured** — never fabricated, never greened by silence.
 //!
 //! ```text
 //! cargo test -p hawking-core --test gravity_glm_device_only_mlp -- --nocapture
@@ -35,9 +38,27 @@ use hawking_core::numeric_parity::{
 };
 
 #[cfg(target_os = "macos")]
+use std::sync::Mutex;
+#[cfg(target_os = "macos")]
+use std::time::Instant;
+
+#[cfg(target_os = "macos")]
+use hawking_core::cost_ledger::{self, TokenCostReport};
+#[cfg(target_os = "macos")]
 use hawking_core::gravity_glm::gpu::GravityGlmGpu;
 #[cfg(target_os = "macos")]
+use hawking_core::gravity_glm_resident::{
+    device_only_mlp_fallbacks, device_only_mlp_hits, reset_device_only_mlp_probe,
+    GPU_DEVICE_ONLY_MLP_ENV, GPU_DEVICE_ONLY_MLP_POISON_ENV,
+};
+#[cfg(target_os = "macos")]
 use hawking_core::metal::MetalContext;
+#[cfg(target_os = "macos")]
+use hawking_core::numeric_parity::BackendScore;
+
+/// Serializes process-global env mutation for device-only MLP flags.
+#[cfg(target_os = "macos")]
+static DEVICE_ONLY_ENV_LOCK: Mutex<()> = Mutex::new(());
 
 fn fixtures_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/gravity_glm")
@@ -595,6 +616,9 @@ fn fixture_host_scored_against_f64_reference() {
 
 /// When Metal is present, score host + resident device against the same f64
 /// reference. When Metal is absent, skip the device arm (unmeasured).
+///
+/// Does **not** enable the device-only MLP flag — that is the acceptance test
+/// below. Flag off is the resident baseline.
 #[test]
 fn fixture_host_and_device_scored_against_f64_reference() {
     let tokens = prompt();
@@ -607,6 +631,11 @@ fn fixture_host_and_device_scored_against_f64_reference() {
 
     #[cfg(target_os = "macos")]
     {
+        let _env_guard = DEVICE_ONLY_ENV_LOCK.lock().expect("device-only env lock");
+        // Baseline path only — keep device-only MLP off for this measurement.
+        std::env::remove_var(GPU_DEVICE_ONLY_MLP_ENV);
+        std::env::remove_var(GPU_DEVICE_ONLY_MLP_POISON_ENV);
+
         let ctx = match MetalContext::new() {
             Ok(c) => c,
             Err(e) => {
@@ -807,3 +836,622 @@ fn rescore_prior_rejection_record() {
 // import live for documentation of the host path relationship.
 #[allow(dead_code)]
 fn _weight_access_obj(_: &dyn WeightAccess) {}
+
+// ── device-only MLP acceptance (baseline vs candidate) ─────────────────────
+
+#[cfg(target_os = "macos")]
+fn percentile_u64(values: &[u64], p: usize) -> u64 {
+    assert!(!values.is_empty());
+    let mut sorted = values.to_vec();
+    sorted.sort_unstable();
+    let rank = p
+        .saturating_mul(sorted.len().saturating_sub(1))
+        .saturating_add(99)
+        / 100;
+    sorted[rank.min(sorted.len().saturating_sub(1))]
+}
+
+#[cfg(target_os = "macos")]
+fn set_device_only_mlp(on: bool) {
+    if on {
+        std::env::set_var(GPU_DEVICE_ONLY_MLP_ENV, "1");
+    } else {
+        std::env::remove_var(GPU_DEVICE_ONLY_MLP_ENV);
+    }
+    std::env::remove_var(GPU_DEVICE_ONLY_MLP_POISON_ENV);
+}
+
+#[cfg(target_os = "macos")]
+fn set_device_only_mlp_poison(on: bool) {
+    if on {
+        std::env::set_var(GPU_DEVICE_ONLY_MLP_POISON_ENV, "1");
+    } else {
+        std::env::remove_var(GPU_DEVICE_ONLY_MLP_POISON_ENV);
+    }
+}
+
+#[cfg(target_os = "macos")]
+#[derive(Clone, Debug)]
+struct ModeMeasurement {
+    name: &'static str,
+    flag_on: bool,
+    score: BackendScore,
+    /// Live waits from `forward_resident_counted` for the full fixture pass.
+    waits_total: u64,
+    /// `waits_total / n_tokens` (integer division; reported as measured).
+    waits_per_token: u64,
+    /// Physical command buffers from cost_ledger for the full fixture pass.
+    command_buffers_total: u64,
+    command_buffers_per_token: u64,
+    mlp_gate_up_download_bytes: u64,
+    mlp_activation_upload_bytes: u64,
+    device_only_mlp_hits_ledger: u64,
+    device_only_mlp_hits_probe: u64,
+    device_only_mlp_fallbacks: u64,
+    /// Warm wall microseconds for the full fixture forward (Instant).
+    wall_us_samples: Vec<u64>,
+    wall_us_p50: u64,
+    wall_us_p95: u64,
+    wall_us_per_token_p50: u64,
+    wall_us_per_token_p95: u64,
+    n_tokens: u64,
+}
+
+#[cfg(target_os = "macos")]
+fn measure_mode(
+    model: &GravityGlmGpu,
+    tokens: &[u32],
+    ref64: &[f64],
+    name: &'static str,
+    flag_on: bool,
+    timed_samples: usize,
+    warmups: usize,
+) -> ModeMeasurement {
+    set_device_only_mlp(flag_on);
+    set_device_only_mlp_poison(false);
+    reset_device_only_mlp_probe();
+
+    // Warm path: same process, same fixture, same model instance.
+    for _ in 0..warmups {
+        let _ = model
+            .forward_resident_counted(tokens)
+            .expect("warmup resident forward");
+    }
+
+    let n_tokens = tokens.len() as u64;
+    assert!(n_tokens > 0);
+
+    // Timed samples (no cost_ledger overhead).
+    let mut wall_us_samples = Vec::with_capacity(timed_samples);
+    let mut last_waits = 0u64;
+    let mut last_logits = Vec::new();
+    for _ in 0..timed_samples {
+        let t0 = Instant::now();
+        let (logits, _trace, waits) = model
+            .forward_resident_counted(tokens)
+            .expect("timed resident forward");
+        let wall_us = t0.elapsed().as_micros() as u64;
+        wall_us_samples.push(wall_us);
+        last_waits = waits;
+        last_logits = logits;
+    }
+
+    // One instrumented pass for physical transfer / CB counters.
+    cost_ledger::set_enabled(true);
+    let _ = cost_ledger::end_token();
+    assert!(cost_ledger::begin_token(), "cost ledger begin_token");
+    reset_device_only_mlp_probe();
+    let (ledger_logits, _trace, waits_ledger) = model
+        .forward_resident_counted(tokens)
+        .expect("ledger resident forward");
+    let report: TokenCostReport = cost_ledger::end_token().expect("cost ledger report");
+    cost_ledger::set_enabled(false);
+
+    // Prefer ledger-path logits for scoring (same mode as counters).
+    let score = score_against_f64(
+        &ledger_logits,
+        ref64,
+        &Bounds::full_forward_logits(),
+        name,
+    );
+    // Timed path should agree on discrete decisions with ledger path.
+    let timed_backend = format!("{name}_timed");
+    let timed_score = score_against_f64(
+        &last_logits,
+        ref64,
+        &Bounds::full_forward_logits(),
+        &timed_backend,
+    );
+    assert_eq!(
+        score.discrete.greedy_argmax_cand, timed_score.discrete.greedy_argmax_cand,
+        "{name}: timed vs ledger argmax diverge"
+    );
+
+    let wall_us_p50 = percentile_u64(&wall_us_samples, 50);
+    let wall_us_p95 = percentile_u64(&wall_us_samples, 95);
+    let per_token: Vec<u64> = wall_us_samples
+        .iter()
+        .map(|&w| w / n_tokens)
+        .collect();
+    let wall_us_per_token_p50 = percentile_u64(&per_token, 50);
+    let wall_us_per_token_p95 = percentile_u64(&per_token, 95);
+
+    // Ledger-pass waits are paired with the CB/transfer report; fall back to
+    // the last timed sample if the ledger pass somehow reports zero.
+    let waits_total = if waits_ledger > 0 {
+        waits_ledger
+    } else {
+        last_waits
+    };
+
+    ModeMeasurement {
+        name,
+        flag_on,
+        score,
+        waits_total,
+        waits_per_token: waits_total / n_tokens,
+        command_buffers_total: report.counters.command_buffers_submitted,
+        command_buffers_per_token: report.counters.command_buffers_submitted / n_tokens,
+        mlp_gate_up_download_bytes: report.counters.mlp_gate_up_download_bytes,
+        mlp_activation_upload_bytes: report.counters.mlp_activation_upload_bytes,
+        device_only_mlp_hits_ledger: report.counters.device_only_mlp_hits,
+        device_only_mlp_hits_probe: device_only_mlp_hits(),
+        device_only_mlp_fallbacks: device_only_mlp_fallbacks(),
+        wall_us_samples,
+        wall_us_p50,
+        wall_us_p95,
+        wall_us_per_token_p50,
+        wall_us_per_token_p95,
+        n_tokens,
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn print_mode(m: &ModeMeasurement) {
+    eprintln!("=== {} (HAWKING_GLM_GPU_DEVICE_ONLY_MLP={}) ===", m.name, if m.flag_on { "1" } else { "off" });
+    eprintln!("  {}", format_score_line(&m.score));
+    eprintln!(
+        "  waits_total={} waits_per_token={}  (from forward_resident_counted)",
+        m.waits_total, m.waits_per_token
+    );
+    eprintln!(
+        "  command_buffers_total={} command_buffers_per_token={}  (cost_ledger physical)",
+        m.command_buffers_total, m.command_buffers_per_token
+    );
+    eprintln!(
+        "  mlp_gate_up_download_bytes={} mlp_activation_upload_bytes={}",
+        m.mlp_gate_up_download_bytes, m.mlp_activation_upload_bytes
+    );
+    eprintln!(
+        "  device_only_mlp_hits ledger={} probe={} fallbacks={}",
+        m.device_only_mlp_hits_ledger, m.device_only_mlp_hits_probe, m.device_only_mlp_fallbacks
+    );
+    eprintln!(
+        "  wall_us full-fixture p50={} p95={}  (samples={})",
+        m.wall_us_p50,
+        m.wall_us_p95,
+        m.wall_us_samples.len()
+    );
+    eprintln!(
+        "  wall_us_per_token p50={} p95={}  (n_tokens={})",
+        m.wall_us_per_token_p50, m.wall_us_per_token_p95, m.n_tokens
+    );
+}
+
+/// One integration acceptance: baseline (flag off) vs candidate (flag on),
+/// both scored against the independent f64 forward. Wall clock decides
+/// promotion only when hard V2.1 full-forward gates are green, MLP transfer
+/// counters are zero on the candidate, waits/CBs do not regress, and CB
+/// counts differ (proof the candidate path ran).
+#[test]
+fn device_only_mlp_acceptance_vs_f64_reference() {
+    eprintln!("numeric parity schema={SCHEMA}");
+    eprintln!("bounds=Bounds::full_forward_logits (max_meaningful_rel diagnostic only)");
+
+    let tokens = prompt();
+    let w = F64Weights::open();
+    let arch = GlmArch::from_header(&w.inner.header).expect("arch");
+    let (ref64, _) = forward_f64(&w, &arch, &tokens);
+    eprintln!(
+        "fixture tokens={:?} n_layers={} hidden={} vocab={}",
+        tokens, arch.n_layers, arch.hidden, arch.vocab_size
+    );
+
+    // Host arm (always measurable without Metal) — oracle sanity.
+    let host = GravityGlm::open_dir(&fixtures_dir(), true).expect("host open");
+    let (host_logits, _) = host.forward(&tokens).expect("host forward");
+    let host_score = score_against_f64(
+        &host_logits,
+        &ref64,
+        &Bounds::full_forward_logits(),
+        "host_f32",
+    );
+    eprintln!("V2.1 {}", format_score_line(&host_score));
+    assert!(
+        host_score.pass,
+        "host baseline must pass full-forward V2.1; failures={:?}",
+        host_score.failures
+    );
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        eprintln!("VERDICT=unmeasured (non-macOS; no Metal path)");
+        eprintln!("device legs: waits/CBs/transfers/wall = unmeasured");
+        return;
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        let _env_guard = DEVICE_ONLY_ENV_LOCK.lock().expect("device-only env lock");
+        // Restore flags on exit so sibling tests see a clean process.
+        let prev_flag = std::env::var_os(GPU_DEVICE_ONLY_MLP_ENV);
+        let prev_poison = std::env::var_os(GPU_DEVICE_ONLY_MLP_POISON_ENV);
+        let _restore = scopeguard_restore(prev_flag, prev_poison);
+
+        set_device_only_mlp(false);
+        set_device_only_mlp_poison(false);
+        reset_device_only_mlp_probe();
+
+        let ctx = match MetalContext::new() {
+            Ok(c) => c,
+            Err(e) => {
+                let msg = e.to_string();
+                assert!(
+                    !msg.contains("shader") && !msg.contains("compile"),
+                    "Metal present but shader compile failed: {msg}"
+                );
+                if std::env::var_os("HAWKING_REQUIRE_METAL").is_some() {
+                    panic!("HAWKING_REQUIRE_METAL set but no device: {e}");
+                }
+                eprintln!("no Metal device ({e})");
+                eprintln!("VERDICT=unmeasured");
+                eprintln!(
+                    "device legs unmeasured: waits, command_buffers, \
+                     mlp_gate_up_download_bytes, mlp_activation_upload_bytes, \
+                     wall_us p50/p95, causal poison on device"
+                );
+                // Causal mutation off-path: without a device we cannot live-count
+                // hits, but the probe starts at zero.
+                assert_eq!(
+                    device_only_mlp_hits(),
+                    0,
+                    "with flag off and no forward, hits must be zero"
+                );
+                return;
+            }
+        };
+
+        let model = GravityGlmGpu::open_dir_with_budget_resident(
+            ctx,
+            &fixtures_dir(),
+            true,
+            256 * 1024 * 1024,
+            true,
+        )
+        .expect("resident open");
+        assert!(model.resident_state_enabled());
+
+        const WARMS: usize = 3;
+        const SAMPLES: usize = 21;
+
+        // ── baseline: flag off ──────────────────────────────────────────
+        let baseline = measure_mode(
+            &model,
+            &tokens,
+            &ref64,
+            "baseline_flag_off",
+            false,
+            SAMPLES,
+            WARMS,
+        );
+        print_mode(&baseline);
+
+        // Flag off: probe hits must be zero (path never entered).
+        assert_eq!(
+            baseline.device_only_mlp_hits_probe, 0,
+            "with HAWKING_GLM_GPU_DEVICE_ONLY_MLP off, device_only_mlp_hits must be 0; got {}",
+            baseline.device_only_mlp_hits_probe
+        );
+        assert_eq!(
+            baseline.device_only_mlp_hits_ledger, 0,
+            "ledger device_only_mlp_hits must be 0 with flag off"
+        );
+        // Baseline host-SiLU path must actually transfer gate/up + acts
+        // (otherwise the zero-transfer candidate gate is vacuous).
+        assert!(
+            baseline.mlp_gate_up_download_bytes > 0,
+            "baseline must record mlp_gate_up_download_bytes > 0 (host SiLU path); got 0"
+        );
+        assert!(
+            baseline.mlp_activation_upload_bytes > 0,
+            "baseline must record mlp_activation_upload_bytes > 0; got 0"
+        );
+        assert!(
+            baseline.score.pass,
+            "baseline must pass full-forward V2.1; failures={:?}",
+            baseline.score.failures
+        );
+
+        // ── candidate: flag on ──────────────────────────────────────────
+        let candidate = measure_mode(
+            &model,
+            &tokens,
+            &ref64,
+            "candidate_device_only_mlp",
+            true,
+            SAMPLES,
+            WARMS,
+        );
+        print_mode(&candidate);
+
+        // Hard V2.1 full-forward gates (rel_l2, cos, kl, abs-near, discrete).
+        assert!(
+            candidate.score.pass,
+            "candidate must pass full-forward V2.1 hard gates against f64; failures={:?}",
+            candidate.score.failures
+        );
+        // Non-negotiable: transfer counters zero on the device-only path.
+        assert_eq!(
+            candidate.mlp_gate_up_download_bytes, 0,
+            "candidate mlp_gate_up_download_bytes must be 0; got {}",
+            candidate.mlp_gate_up_download_bytes
+        );
+        assert_eq!(
+            candidate.mlp_activation_upload_bytes, 0,
+            "candidate mlp_activation_upload_bytes must be 0; got {}",
+            candidate.mlp_activation_upload_bytes
+        );
+        // Candidate must have actually taken the device-only hit (not silently
+        // fallen back to host SiLU — that would reintroduce transfers).
+        assert!(
+            candidate.device_only_mlp_hits_probe > 0 || candidate.device_only_mlp_hits_ledger > 0,
+            "candidate recorded zero device-only MLP hits — path did not run \
+             (probe={} ledger={} fallbacks={})",
+            candidate.device_only_mlp_hits_probe,
+            candidate.device_only_mlp_hits_ledger,
+            candidate.device_only_mlp_fallbacks
+        );
+        assert_eq!(
+            candidate.device_only_mlp_fallbacks, 0,
+            "candidate fell back to host SiLU {} times — not a device-only run",
+            candidate.device_only_mlp_fallbacks
+        );
+
+        // Waits and CBs must not regress vs baseline.
+        assert!(
+            candidate.waits_total <= baseline.waits_total,
+            "waits regressed: candidate {} > baseline {}",
+            candidate.waits_total,
+            baseline.waits_total
+        );
+        assert!(
+            candidate.command_buffers_total <= baseline.command_buffers_total,
+            "command buffers regressed: candidate {} > baseline {}",
+            candidate.command_buffers_total,
+            baseline.command_buffers_total
+        );
+        // The two modes' CB counts must differ — identical counts mean the
+        // candidate never ran (prior faked proof).
+        assert_ne!(
+            candidate.command_buffers_total, baseline.command_buffers_total,
+            "command_buffers identical ({}) between baseline and candidate — \
+             candidate path did not change physical CB structure",
+            baseline.command_buffers_total
+        );
+
+        // ── causal mutation ─────────────────────────────────────────────
+        // Flag off hits already asserted zero above.
+        // Poison on: device SiLU runs, then activations are zeroed — hard
+        // gates must fail (rel_l2 / discrete).
+        set_device_only_mlp(true);
+        set_device_only_mlp_poison(true);
+        reset_device_only_mlp_probe();
+        let (poison_logits, _, _) = model
+            .forward_resident_counted(&tokens)
+            .expect("poisoned resident forward");
+        let poison_hits = device_only_mlp_hits();
+        let poison_score = score_against_f64(
+            &poison_logits,
+            &ref64,
+            &Bounds::full_forward_logits(),
+            "poisoned_device_only_mlp",
+        );
+        eprintln!(
+            "causal poison: hits={} {}",
+            poison_hits,
+            format_score_line(&poison_score)
+        );
+        assert!(
+            poison_hits > 0,
+            "poison path must still take device-only hits; got 0"
+        );
+        assert!(
+            !poison_score.pass,
+            "HAWKING_GLM_GPU_DEVICE_ONLY_MLP_POISON=1 must fail V2.1 hard gates \
+             (causal mutation); score passed unexpectedly: {}",
+            format_score_line(&poison_score)
+        );
+        set_device_only_mlp_poison(false);
+        set_device_only_mlp(false);
+
+        // ── side-by-side summary + wall-clock verdict ───────────────────
+        eprintln!("======== SIDE-BY-SIDE ========");
+        eprintln!(
+            "{:<28} {:>14} {:>14}",
+            "metric", "baseline", "candidate"
+        );
+        let row = |label: &str, b: String, c: String| {
+            eprintln!("{label:<28} {b:>14} {c:>14}");
+        };
+        row(
+            "rel_l2",
+            format!("{:.3e}", baseline.score.continuous.relative_l2),
+            format!("{:.3e}", candidate.score.continuous.relative_l2),
+        );
+        row(
+            "cos",
+            format!("{:.9}", baseline.score.continuous.cosine_similarity),
+            format!("{:.9}", candidate.score.continuous.cosine_similarity),
+        );
+        row(
+            "kl",
+            baseline
+                .score
+                .continuous
+                .kl_divergence
+                .map(|k| format!("{k:.3e}"))
+                .unwrap_or_else(|| "n/a".into()),
+            candidate
+                .score
+                .continuous
+                .kl_divergence
+                .map(|k| format!("{k:.3e}"))
+                .unwrap_or_else(|| "n/a".into()),
+        );
+        row(
+            "max_meaningful_rel",
+            format!("{:.3e}", baseline.score.continuous.max_meaningful_rel),
+            format!("{:.3e}", candidate.score.continuous.max_meaningful_rel),
+        );
+        row(
+            "ulp[med/p95/p99/max]",
+            format!(
+                "{:.0}/{:.0}/{:.0}/{:.0}",
+                baseline.score.continuous.ulp.median,
+                baseline.score.continuous.ulp.p95,
+                baseline.score.continuous.ulp.p99,
+                baseline.score.continuous.ulp.max
+            ),
+            format!(
+                "{:.0}/{:.0}/{:.0}/{:.0}",
+                candidate.score.continuous.ulp.median,
+                candidate.score.continuous.ulp.p95,
+                candidate.score.continuous.ulp.p99,
+                candidate.score.continuous.ulp.max
+            ),
+        );
+        row(
+            "argmax ref/cand",
+            format!(
+                "{:?}/{:?}",
+                baseline.score.discrete.greedy_argmax_ref, baseline.score.discrete.greedy_argmax_cand
+            ),
+            format!(
+                "{:?}/{:?}",
+                candidate.score.discrete.greedy_argmax_ref,
+                candidate.score.discrete.greedy_argmax_cand
+            ),
+        );
+        row(
+            "topk_ok",
+            format!("{}", baseline.score.discrete.top_k_exact_match),
+            format!("{}", candidate.score.discrete.top_k_exact_match),
+        );
+        row(
+            "hard_gates_pass",
+            format!("{}", baseline.score.pass),
+            format!("{}", candidate.score.pass),
+        );
+        row(
+            "waits_total",
+            format!("{}", baseline.waits_total),
+            format!("{}", candidate.waits_total),
+        );
+        row(
+            "waits_per_token",
+            format!("{}", baseline.waits_per_token),
+            format!("{}", candidate.waits_per_token),
+        );
+        row(
+            "command_buffers_total",
+            format!("{}", baseline.command_buffers_total),
+            format!("{}", candidate.command_buffers_total),
+        );
+        row(
+            "command_buffers_per_token",
+            format!("{}", baseline.command_buffers_per_token),
+            format!("{}", candidate.command_buffers_per_token),
+        );
+        row(
+            "mlp_gate_up_download_bytes",
+            format!("{}", baseline.mlp_gate_up_download_bytes),
+            format!("{}", candidate.mlp_gate_up_download_bytes),
+        );
+        row(
+            "mlp_activation_upload_bytes",
+            format!("{}", baseline.mlp_activation_upload_bytes),
+            format!("{}", candidate.mlp_activation_upload_bytes),
+        );
+        row(
+            "wall_us_p50 (full fixture)",
+            format!("{}", baseline.wall_us_p50),
+            format!("{}", candidate.wall_us_p50),
+        );
+        row(
+            "wall_us_p95 (full fixture)",
+            format!("{}", baseline.wall_us_p95),
+            format!("{}", candidate.wall_us_p95),
+        );
+        row(
+            "wall_us_per_token_p50",
+            format!("{}", baseline.wall_us_per_token_p50),
+            format!("{}", candidate.wall_us_per_token_p50),
+        );
+        row(
+            "wall_us_per_token_p95",
+            format!("{}", baseline.wall_us_per_token_p95),
+            format!("{}", candidate.wall_us_per_token_p95),
+        );
+
+        let p50_improved = candidate.wall_us_per_token_p50 < baseline.wall_us_per_token_p50;
+        let p95_improved = candidate.wall_us_per_token_p95 < baseline.wall_us_per_token_p95;
+        let p50_tie = candidate.wall_us_per_token_p50 == baseline.wall_us_per_token_p50;
+        let p95_tie = candidate.wall_us_per_token_p95 == baseline.wall_us_per_token_p95;
+
+        let verdict = if p50_improved && p95_improved {
+            "PROMOTE"
+        } else {
+            // Tie or any regression → negative; leave flag off.
+            "NEGATIVE"
+        };
+        eprintln!(
+            "VERDICT={verdict}  decided by wall_us_per_token \
+             baseline p50/p95={}/{}  candidate p50/p95={}/{}  \
+             p50_improved={p50_improved} p95_improved={p95_improved} \
+             p50_tie={p50_tie} p95_tie={p95_tie}",
+            baseline.wall_us_per_token_p50,
+            baseline.wall_us_per_token_p95,
+            candidate.wall_us_per_token_p50,
+            candidate.wall_us_per_token_p95
+        );
+        eprintln!(
+            "promotion requires BOTH p50 and p95 improve with hard gates green \
+             and transfer counters zero; otherwise NEGATIVE and flag stays off"
+        );
+        // Do not flip the default. Measurement only.
+        set_device_only_mlp(false);
+        set_device_only_mlp_poison(false);
+    }
+}
+
+/// Restore process env for device-only MLP flags when the acceptance test ends.
+#[cfg(target_os = "macos")]
+fn scopeguard_restore(
+    prev_flag: Option<std::ffi::OsString>,
+    prev_poison: Option<std::ffi::OsString>,
+) -> impl Drop {
+    struct Restore(Option<std::ffi::OsString>, Option<std::ffi::OsString>);
+    impl Drop for Restore {
+        fn drop(&mut self) {
+            match self.0.take() {
+                Some(v) => std::env::set_var(GPU_DEVICE_ONLY_MLP_ENV, v),
+                None => std::env::remove_var(GPU_DEVICE_ONLY_MLP_ENV),
+            }
+            match self.1.take() {
+                Some(v) => std::env::set_var(GPU_DEVICE_ONLY_MLP_POISON_ENV, v),
+                None => std::env::remove_var(GPU_DEVICE_ONLY_MLP_POISON_ENV),
+            }
+        }
+    }
+    Restore(prev_flag, prev_poison)
+}

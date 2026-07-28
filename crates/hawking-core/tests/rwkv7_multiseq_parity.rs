@@ -36,6 +36,9 @@ use hawking_core::model::rwkv7::{RwkvMultiState, RwkvSeven};
 use hawking_core::{Engine, EngineConfig};
 use std::path::{Path, PathBuf};
 
+mod common;
+use common::argmax;
+
 fn read_ids(path: &Path) -> Vec<u32> {
     std::fs::read_to_string(path)
         .unwrap_or_else(|e| panic!("read fixture {path:?}: {e}"))
@@ -48,18 +51,6 @@ fn fixture(name: &str) -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("tests/fixtures/rwkv7")
         .join(name)
-}
-
-fn argmax(v: &[f32]) -> u32 {
-    let mut bi = 0u32;
-    let mut bv = f32::NEG_INFINITY;
-    for (i, &x) in v.iter().enumerate() {
-        if x > bv {
-            bv = x;
-            bi = i as u32;
-        }
-    }
-    bi
 }
 
 fn max_abs_diff(a: &[f32], b: &[f32]) -> f32 {

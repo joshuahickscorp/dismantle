@@ -21,6 +21,9 @@ use hawking_core::model::rwkv7::RwkvSeven;
 use hawking_core::{Engine, EngineConfig};
 use std::path::PathBuf;
 
+mod common;
+use common::argmax;
+
 fn locate(rel: &str, env_key: &str) -> Option<PathBuf> {
     if let Ok(p) = std::env::var(env_key) {
         let p = PathBuf::from(p);
@@ -48,19 +51,6 @@ fn load() -> Option<RwkvSeven> {
         return None;
     }
     Some(engine)
-}
-
-fn argmax(l: &[f32]) -> u32 {
-    l.iter()
-        .enumerate()
-        .fold((0u32, f32::NEG_INFINITY), |(bi, bv), (i, &v)| {
-            if v > bv {
-                (i as u32, v)
-            } else {
-                (bi, bv)
-            }
-        })
-        .0
 }
 
 const N_DECODE: usize = 3;

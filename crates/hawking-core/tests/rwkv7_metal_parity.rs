@@ -26,6 +26,9 @@ use hawking_core::model::rwkv7::RwkvSeven;
 use hawking_core::{Engine, EngineConfig};
 use std::path::{Path, PathBuf};
 
+mod common;
+use common::argmax;
+
 /// Tolerance on the per-step max-abs logit difference (GPU vs CPU). The two
 /// share f32 weights; only reduction order differs, so the gap is small. The
 /// LM-head logits reach magnitudes ~O(10–30), so a few 1e-2 of slack is ample
@@ -44,18 +47,6 @@ fn fixture(name: &str) -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("tests/fixtures/rwkv7")
         .join(name)
-}
-
-fn argmax(v: &[f32]) -> u32 {
-    let mut bi = 0u32;
-    let mut bv = f32::NEG_INFINITY;
-    for (i, &x) in v.iter().enumerate() {
-        if x > bv {
-            bv = x;
-            bi = i as u32;
-        }
-    }
-    bi
 }
 
 fn max_abs_diff(a: &[f32], b: &[f32]) -> f32 {

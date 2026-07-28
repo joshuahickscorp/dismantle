@@ -18,13 +18,12 @@ use hawking_core::{
     profile::fresh_test_profile, EngineConfig, GenerateRequest, SamplingParams, StreamEvent,
 };
 
+mod common;
+use common::weights_path_deepseek as weights_path;
+
 const PROMPT: &str = "Once upon a time";
 const MAX_NEW_TOKENS: usize = 64;
 const SEED: u64 = 42;
-
-fn weights_path() -> PathBuf {
-    PathBuf::from("../../models/deepseek-v2-lite-q4.gguf")
-}
 
 fn whitelist_path() -> PathBuf {
     PathBuf::from("../../artifacts/calibration/analysis/vocab_whitelist_995.json")

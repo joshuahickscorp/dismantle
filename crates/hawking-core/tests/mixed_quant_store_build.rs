@@ -12,9 +12,8 @@ use hawking_core::gguf::{GgmlType, GgufFile};
 use hawking_core::mixed_quant_store::{MixedQuantStore, StoreKey};
 use hawking_core::quant_tier_map::{GroupKind, TierMap};
 
-fn weights_path() -> PathBuf {
-    PathBuf::from("../../models/deepseek-v2-lite-q4.gguf")
-}
+mod common;
+use common::weights_path_deepseek as weights_path;
 
 #[test]
 fn build_default_tier_map_against_v2_lite_gguf() {

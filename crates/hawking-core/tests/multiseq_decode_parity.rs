@@ -14,15 +14,12 @@
 //!
 //! Skipped if weights are missing.
 
-use std::path::PathBuf;
-
 use hawking_core::{
     model::qwen_dense::QwenDense, profile::fresh_test_profile, Engine, EngineConfig,
 };
 
-fn weights_path() -> PathBuf {
-    PathBuf::from("../../models/qwen2.5-3b-instruct-q4_k_m.gguf")
-}
+mod common;
+use common::weights_path_qwen as weights_path;
 
 fn load() -> Option<QwenDense> {
     let w = weights_path();

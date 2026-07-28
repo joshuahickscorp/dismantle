@@ -251,3 +251,155 @@ odyssey chain, DEEPSEEK contraction pilot, doctor negative atlas, HIDE/Fabric sc
 
 - `run_7b_ladder.sh` — #!/usr/bin/env bash
 
+## T2 — superseded campaign narration — 127 files
+
+Pruned **127 tracked markdown files** (~2,073,871 bytes, ~30,329 lines).
+Includes root `HAWKING_*_STATUS.md` (tools rewrite on next run), one-shot `docs/plans/**` campaign plans
+without executable readers, `docs/hide-impl/**` campaign writeups without readers, other non-living `docs/*.md`
+narrative without readers, and superseded `control/final_ascent/contracts/*-revision-N.md` (kept highest N and all
+contracts with no revision suffix). Living reference kept: README/ARCHITECTURE/MODELS, docs/{dead_levers,serve,
+BENCHMARKS,env_flags,kernels}, docs/gravity/**, docs/hide-bible/**, docs/ARCHIVE_INDEX*.md.
+Restore: `git checkout pre-floor-prune-20260728 -- <path>`.
+
+## T2 / control/final_ascent/contracts (superseded revisions) — 27 files
+
+- `control/final_ascent/contracts/glm52-rare-route-basis-pilot-revision-1.md` — Revision 1: close rank, leakage, byte, and lifecycle gaps
+- `control/final_ascent/contracts/glm52-rare-route-basis-pilot-revision-10-adversarial-ledger-identity.md` — GLM-5 rare-route pilot — Revision 10 adversarial ledger/identity closure
+- `control/final_ascent/contracts/glm52-rare-route-basis-pilot-revision-11-science-witness-closure.md` — GLM-5 rare-route pilot — Revision 11 science/witness closure
+- `control/final_ascent/contracts/glm52-rare-route-basis-pilot-revision-12-immutable-closure.md` — GLM-5.2 rare-route basis pilot — Revision 12 immutable closure
+- `control/final_ascent/contracts/glm52-rare-route-basis-pilot-revision-2.md` — Revision 2: close deployed-representation, provenance, and recovery gaps
+- `control/final_ascent/contracts/glm52-rare-route-basis-pilot-revision-3.md` — Revision 3: eliminate false-positive science and lifecycle gates
+- `control/final_ascent/contracts/glm52-rare-route-basis-pilot-revision-4-lifecycle.md` — Revision 4B: implement the real reader and recoverable lifecycle
+- `control/final_ascent/contracts/glm52-rare-route-basis-pilot-revision-4-science.md` — Revision 4A: make science and provenance validation semantic
+- `control/final_ascent/contracts/glm52-rare-route-basis-pilot-revision-5-science.md` — Revision 5: close remaining science and provenance false positives
+- `control/final_ascent/contracts/glm52-rare-route-basis-pilot-revision-6-lifecycle.md` — Revision 6: close remaining lifecycle, recovery, and replay false positives
+- `control/final_ascent/contracts/glm52-rare-route-basis-pilot-revision-7-science-cleanup.md` — Revision 7: remove remaining science/provenance fail-open paths
+- `control/final_ascent/contracts/glm52-rare-route-basis-pilot-revision-8-lifecycle-science-closure.md` — Revision 8: close lifecycle recovery and streamed-reader evidence
+- `control/final_ascent/contracts/glm52-rare-route-basis-pilot-revision-9-atomic-epoch-replay.md` — GLM-5 2-shard rare-route pilot — Revision 9 atomic epoch/replay closure
+- `control/final_ascent/contracts/tg-cheap-hotpath-residual-router-scalars-revision-1.md` — Temporal Gravity cheap hot-path closure — Revision 1 physics/no-regression
+- `control/final_ascent/contracts/tg-device-resident-three-batch-mlp-revision-1.md` — TG device-resident ordinary three-batch MLP — Revision 1
+- `control/final_ascent/contracts/tg-device-resident-three-batch-mlp-revision-2.md` — TG device-resident three-batch MLP — Revision 2 live-Metal correction
+- `control/final_ascent/contracts/tg-device-resident-three-batch-mlp-revision-3.md` — TG device-resident three-batch MLP — Revision 3 device-only correction
+- `control/final_ascent/contracts/tg-hide-glm-live-token-path-revision-1.md` — Temporal Gravity GLM live-token path into HIDE — Revision 1
+- `control/final_ascent/contracts/tg-hide-glm-live-token-path-revision-2.md` — Temporal Gravity GLM live-token path into HIDE — Revision 2
+- `control/final_ascent/contracts/tg-hide-glm-live-token-path-revision-3.md` — Temporal Gravity → HIDE live-token path — Revision 3
+- `control/final_ascent/contracts/tg-numeric-parity-near-tie-fallback-revision-1.md` — Near-tie fallback Revision 1: real FP64 authority and durable evidence
+- `control/final_ascent/contracts/tg-numeric-parity-near-tie-fallback-revision-2.md` — Temporal Gravity Numeric Parity near-tie fallback — Revision 2
+- `control/final_ascent/contracts/tg-numeric-parity-near-tie-fallback-revision-3.md` — Temporal Gravity Numeric Parity near-tie fallback — Revision 3
+- `control/final_ascent/contracts/tg-router-bias-residency-bind-once-revision-1.md` — Temporal Gravity router-bias residency — Revision 1
+- `control/final_ascent/contracts/tg-runtime-receipt-profiler-hardening-revision-1.md` — Temporal Gravity runtime receipt/profiler hardening — Revision 1
+- `control/final_ascent/contracts/tg-runtime-receipt-profiler-hardening-revision-2.md` — Temporal Gravity runtime receipt/profiler hardening — Revision 2
+- `control/final_ascent/contracts/tg-runtime-receipt-profiler-hardening-revision-3.md` — Temporal Gravity runtime receipt/profiler hardening — Revision 3
+
+## T2 / docs (other narrative) — 4 files
+
+- `docs/architecture.md` — Hawking architecture map (2026-06-21)
+- `docs/design/continuous_batching.md` — Continuous Request Batching for `hawking serve`
+- `docs/mixtral.md` — Mixtral 8×7B support
+- `docs/rwkv7.md` — On-device instruct post-train: RWKV7-g1-0.4B (M3 Pro, $0, overnight)
+
+## T2 / docs/hide-impl — 16 files
+
+- `docs/hide-impl/FIRST_RECEIPT_HARNESS.md` — First Mandatory Implementation Receipt - Harness Spec
+- `docs/hide-impl/PHASE0_CRATE_MAP.md` — Phase 0: Crate Map (target vs current, reconciled)
+- `docs/hide-impl/PHASE0_SOURCE_LEGAL_INTAKE.md` — Phase 0: Source and Legal Intake Ledger
+- `docs/hide-impl/consolidation/HIDE_CODEX_DEPTH_MAP.md` — HIDE Codex Depth Map
+- `docs/hide-impl/consolidation/HIDE_CONTROL_DENSITY_SCORECARD.md` — HIDE Control Density Scorecard
+- `docs/hide-impl/consolidation/HIDE_DEAD_DUPLICATE_CONTROL_REPORT.md` — HIDE Dead / Duplicate / Misleading / Mock Control Report
+- `docs/hide-impl/consolidation/HIDE_FINAL_CONSOLIDATION_REPORT.md` — HIDE Final Consolidation Report
+- `docs/hide-impl/consolidation/HIDE_GROK_BUILD_DEPTH_MAP.md` — HIDE x grok-build depth map
+- `docs/hide-impl/consolidation/HIDE_OPENCODE_DEPTH_MAP.md` — HIDE opencode Depth Map
+- `docs/hide-impl/consolidation/HIDE_PRODUCTIVITY_DENSITY_BASELINE.md` — HIDE Productivity Density Baseline
+- `docs/hide-impl/consolidation/HIDE_SURFACE_WITHOUT_BACKEND_REPORT.md` — HIDE Surface Without Backend Report
+- `docs/hide-impl/consolidation/HIDE_UI_CONTROL_CENSUS.md` — HIDE UI Control Census
+- `docs/hide-impl/consolidation/HIDE_WORKFLOW_BEFORE_AFTER.md` — HIDE Workflow Before and After
+- `docs/hide-impl/preview/HIDE_FOURTH_ADVERSARIAL_REPORT.md` — HIDE fourth adversarial report
+- `docs/hide-impl/preview/HIDE_PREVIEW_CLOSEOUT_REPORT.md` — HIDE Preview Closeout Report
+- `docs/hide-impl/preview/HIDE_PREVIEW_GALLERY.md` — HIDE Preview Gallery
+
+## T2 / docs/plans — 75 files
+
+- `docs/plans/APPENDIX.md` — The Appendix
+- `docs/plans/APPENDIX_HANDOFF.md` — Appendix handoff and incorporation contract
+- `docs/plans/CONDENSATION_DOCTOR_V2.md` — Condensation Doctor v2 — Program Synthesis for Capability Restoration
+- `docs/plans/DOCTOR_V5.md` — Condensation Doctor v5 — Canonical Capability-First Specification
+- `docs/plans/DOCTOR_V5_3BPW_RESOURCE_STOP_RECOVERY.md` — Doctor V5 14B/3bpw resource-stop recovery staging
+- `docs/plans/DOCTOR_V5_AGGRESSIVE_ADMISSION_V2.md` — Doctor V5 aggressive admission v2 (unbound scaffold)
+- `docs/plans/DOCTOR_V5_BLOCKED_CELL_RECOVERY.md` — Doctor V5 14B/4bpw blocked-cell recovery
+- `docs/plans/DOCTOR_V5_ELASTIC_HOST_SPRINT.md` — Doctor V5 elastic phases and host sprint isolation
+- `docs/plans/DOCTOR_V5_MOUNTAIN_LADDER.md` — Doctor V5 post-120B mountain ladder
+- `docs/plans/DOCTOR_V5_PARALLEL_ACCELERATION_HANDOFF.md` — Doctor V5 unbound GPT-OSS and higher-tier acceleration handoff
+- `docs/plans/DOCTOR_V5_PHYSICAL_ADAPTER_AUTHORITY.md` — Doctor V5 physical adapter authority
+- `docs/plans/DOCTOR_V5_PHYSICAL_POST120_NEXT_GOAL_PROMPT.md` — Restart-proof next-goal prompt
+- `docs/plans/DOCTOR_V5_POST120_ACCELERATION.md` — Doctor V5 120B and post-120B acceleration handoff
+- `docs/plans/DOCTOR_V5_POST_120B.md` — Doctor V5 post-120B handoff
+- `docs/plans/DOCTOR_V5_REMAINING_SCRATCH_LEDGER.md` — Doctor V5 phase-aware remaining-scratch ledger
+- `docs/plans/DOCTOR_V5_RESEARCH_PASSES.md` — Condensation Doctor v5 — Three Expansion Passes and Adversarial Proof Plan
+- `docs/plans/DOCTOR_V5_SINGLE_DEVICE_SPRINT.md` — Doctor V5 single-device sprint handoff
+- `docs/plans/DOCTOR_V5_TELEGRAM_NOTIFICATIONS.md` — Doctor V5 Telegram rung notifications
+- `docs/plans/FRONTIER_ECOSYSTEM_SCAFFOLD.md` — Condenser Ecosystem Frontier: scaffold status
+- `docs/plans/HAWKING_GLM52_GENERATION_B_STREAMING_FRONTIER_ACTION_PLAN.md` — /goal
+- `docs/plans/HAWKING_GRAVITY_FORGE.md` — Hawking Gravity Forge
+- `docs/plans/HAWKING_GRAVITY_RUNBOOK.md` — Hawking Gravity Runbook
+- `docs/plans/HAWKING_LAPTOP_WAVE_2026_07_08.md` — Hawking laptop wave - 2026-07-08
+- `docs/plans/HAWKING_SEED_ARCHITECTURE.md` — Hawking Seed — architecture specification + 3-candidate design (Phase 1 oracle)
+- `docs/plans/HIDE_CONDENSER_GOAL_PROMPT.md` — HIDE condenser goal prompt
+- `docs/plans/HIDE_REFINEMENT_RUN_REPORT.md` — HIDE refinement run report
+- `docs/plans/M1ULTRA_GOAL_PROMPT.md` — M1 ULTRA GOAL PROMPT: the iterative maximization loop for the delivered box
+- `docs/plans/M1ULTRA_POTENTIAL_AUDIT.md` — M1 ULTRA POTENTIAL AUDIT: every evaluated category graded on the delivered box's ceiling
+- `docs/plans/STUDIO_DEEP_AUDIT_2026_07_08.md` — Studio deep audit - 2026-07-08
+- `docs/plans/STUDIO_GO.md` — STUDIO GO — the one-command entry point for the Hawking frontier program
+- `docs/plans/STUDIO_MODEL_LADDER.md` — Studio Model Ladder — Condensation, Not Quantization
+- `docs/plans/SUCCESSOR_RUNBOOK.md` — Successor condenser: operational + rollback runbook
+- `docs/plans/TABULA_RASA_SHIPPING_PLAN.md` — Hawking Tabula Rasa Shipping Plan
+- `docs/plans/TRAINING_LADDER_V5.md` — Hawking Training Ladder v5 — Capability-First Condensation
+- `docs/plans/agentic_tool_system_audit_2026_07_11.md` — Agentic Tool System: scaffold audit + rating (2026-07-11)
+- `docs/plans/apple_fit_frontier_2026_06_22.md` — Apple Fit Frontier (2026-06-22)
+- `docs/plans/bible_active.md` — > **THROUGHPUT BIBLE — ACTIVE (lean working doc).** Split 2026-05-31 from `throughput_bible_2026_05_30.md`. This is the 
+- `docs/plans/bible_archive.md` — > **ARCHIVE / REFERENCE — the long companion to [bible_active.md](bible_active.md)** (split 2026-05-31 from this file's 
+- `docs/plans/computational_efficiency_paradigms_2026_07_11.md` — Beyond FLOPS: a cross-layer research agenda for computational efficiency
+- `docs/plans/condense_autopilot_2026_06_27.md` — Condense Autopilot - 2026-06-27
+- `docs/plans/condense_naming_migration_2026_06_22.md` — Condense Naming Migration (2026-06-22)
+- `docs/plans/doctor_capability_and_speed_roadmap.md` — Doctor → ~1:1 quality + Speed, BEFORE the 32B (2026-06-23)
+- `docs/plans/doctor_maximization_plan.md` — Doctor Maximization Plan — Recovery to Outrun Compression's Decay
+- `docs/plans/g1a_v2_expansion_results_2026_06_20.md` — G1a V2 Expansion Chain Results
+- `docs/plans/h_autoverify_protocol.md` — Event Horizon Auto-Handoff Protocol (2026-06-21)
+- `docs/plans/hawking_capability_frontier_2026_06_28.md` — Hawking IDE — Capability Frontier & Build Roadmap
+- `docs/plans/hawking_capability_frontier_2026_06_28_HANDOFF_PROMPT.md` — Build-session handoff prompt (paste into the integrated/coding session)
+- `docs/plans/hawking_event_horizon_phase0_blueprint.md` — I have everything grounded against the real source. The skeletons in the designs match the actual signatures (`verify_dr
+- `docs/plans/hawking_event_horizon_proposal_engine.md` — Hawking Event Horizon — Unified Speculative Proposal Engine
+- `docs/plans/hawking_event_horizon_status.md` — Hawking Event Horizon — As-Built Status (2026-06-20)
+- `docs/plans/hawking_gravity_maximal_fidelity_ladder.md` — Hawking Gravity: maximal-fidelity ladder (as close to raw models as the box allows)
+- `docs/plans/hawking_handoff_2026_06_28.md` — Hawking — Maximal Handoff & Codebase Understanding (2026-06-28)
+- `docs/plans/hawking_ide_claude_research_handoff_2026_07_19.md` — Claude handoff: independent Hawking IDE frontier pass
+- `docs/plans/hawking_ide_frontier_2026_07_19.md` — Hawking IDE frontier dossier
+- `docs/plans/hawking_shippability_masterplan_2026_06_22.md` — Hawking — Shippability Master Plan (2026-06-22)
+- `docs/plans/hide_command_system_maximalist_2026_06_29.md` — HIDE — The Maximalist Command System (trigger grammar + local-unlimited depth)
+- `docs/plans/hide_deep_audit_2026_07_16.md` — HIDE deep audit and facet ladder
+- `docs/plans/hide_executor_plan_v2_enriched_2026_06_29.md` — HIDE Executor — Enriched Master Plan (v2)
+- `docs/plans/hide_handoff_2026_06_28.md` — HIDE handoff prompt (paste into the dedicated HIDE chat) — 2026-06-28
+- `docs/plans/hide_master_build_plan_2026_06_29.md` — HIDE / Hawking — Master Build Plan (2026-06-29)
+- `docs/plans/hide_refinement_roadmap_2026_07_05.md` — HIDE refinement roadmap
+- `docs/plans/hide_research_menu_2026_06_29.md` — HIDE Agentic-Frontier Research Menu (2026-06-29)
+- `docs/plans/hide_ship_readiness.md` — HIDE — Ship Readiness (living status, 2026-06-29)
+- `docs/plans/hide_ship_status_2026_06_29.md` — HIDE — Ship Status (2026-06-29)
+- `docs/plans/hide_sota_frontier_and_regrade_2026_07_16.md` — HIDE SOTA frontier read + regraded ladder (condenser pass)
+- `docs/plans/hide_ux_audit_and_research_2026_06_29.md` — HIDE — Deep Audit + UX Research (2026-06-29)
+- `docs/plans/parameter_sweep_pipeline.md` — Hawking Condense — Parameter-Sweep Testing Pipeline (2026-06-23)
+- `docs/plans/q6k_predec_design.md` — Q6_K predec ffn_down — implementation design (campaign R-design, 2026-06-21)
+- `docs/plans/quintessential_engine_2026_06_29.md` — Hawking — the quintessential local inference engine (unified plan, 2026-06-29)
+- `docs/plans/ratios_roadmap_2026_06_21.md` — Ratios Roadmap — speed · compression · density (validated 2026-06-21)
+- `docs/plans/spec_decode_reentry_appendix_2026_07_14.md` — Speculative-decode re-entry appendix — 2026-07-14
+- `docs/plans/spec_decode_studio_readiness_2026_07_12.md` — Speculative decoding on the 96 GB Studio: evidence and readiness
+- `docs/plans/storage_stripdown_resident_first_2026_07_20.md` — Storage stripdown and the resident-first resequencing
+- `docs/plans/throughput_pivot_campaign.md` — Throughput-Pivot Campaign — live autonomous run (started 2026-06-21)
+- `docs/plans/tq_compute_for_memory_appendix_2026_07_14.md` — TQ compute-for-memory appendix — 2026-07-14
+
+## T2 / root HAWKING_*_STATUS.md — 5 files
+
+- `HAWKING_CONTINUUM_STATUS.md` — HAWKING CONTINUUM STATUS
+- `HAWKING_FINAL_ASCENT_STATUS.md` — HAWKING FINAL ASCENT STATUS
+- `HAWKING_LIGHT_ONLY_STATUS.md` — HAWKING LIGHT-ONLY STATUS
+- `HAWKING_MOTHERLOAD_STATUS.md` — Hawking Motherload Completion Status
+- `HAWKING_PARALLEL_STATUS.md` — HAWKING PARALLEL CONTINUATION STATUS
+

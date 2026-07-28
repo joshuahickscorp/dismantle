@@ -1,0 +1,50 @@
+{
+  "active_files": 1561,
+  "archived_LOC": 0,
+  "by_language": {
+    "lean": 22,
+    "markdown": 22533,
+    "python": 244764,
+    "rust": 275589,
+    "shader": 15897,
+    "shell": 25314,
+    "typescript": 18327
+  },
+  "by_subsystem": {
+    "hawking": 193613,
+    "hide": 115473,
+    "laboratory": 271167,
+    "shared": 22193
+  },
+  "combined_active_monorepo_LOC": 602446,
+  "commit": "a2ff86aeb45850d2222b46cefe0a95dc95fd75d1",
+  "generated_LOC": 546,
+  "hawking_active_LOC": 193613,
+  "hide_active_LOC": 115473,
+  "laboratory_LOC": 271167,
+  "policy": {
+    "counts": "physical lines of tracked source files",
+    "excluded_buckets": [
+      "vendored",
+      "generated",
+      "archived",
+      "build"
+    ],
+    "languages": [
+      "lean",
+      "markdown",
+      "python",
+      "rust",
+      "shader",
+      "shell",
+      "typescript"
+    ],
+    "no_gaming": "physical lines only; comment stripping, line packing, minification, extension renaming and moving code out of the tree change nothing"
+  },
+  "rev": "WORKING_TREE",
+  "runtime_LOC": 516816,
+  "schema": "hawking.loc.authority.v1",
+  "shared_contract_LOC": 22193,
+  "test_LOC": 85630,
+  "vendored_LOC": 40837
+}

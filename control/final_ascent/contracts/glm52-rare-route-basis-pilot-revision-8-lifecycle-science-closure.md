@@ -143,6 +143,8 @@ snapshot, changed blob identity, second snapshot/hardlink race, busy or failed
 unlink, and corrupt cleanup journal. Every failure preserves the verified
 staging body and unrelated cache entries. `FINAL_PUBLISHED` cannot advance
 until cleanup is terminal and the exact complete-body scan proves one pathname.
+No unlink, fsync, parser, or identity error may be swallowed or converted into
+an absent-cache success.
 
 ## 4. Release completion requires the complete chain
 
@@ -273,11 +275,29 @@ canonical reader-evidence seal through partial, release intent, COMPLETE
 receipt, and `LEDGER_COMMITTED`. All checks occur before any score, floor, or
 promotion count.
 
+The aggregate reader checker must consume raw canonical `reader_evidence` and
+immutable authority directly. It may not call, wrap, delegate to, or consume
+the result of the partial reader-evidence checker. Aggregate must execute its
+independent checker even when `_validate_partial` has already found an error;
+validation collects both error sets without short-circuiting and emits stable,
+field-specific `aggregate_independent_*` evidence.
+
+The same independence requirement applies to Revision 7 sidecar and source
+identity evidence. Aggregate directly requires and recomputes every
+`sidecar_seal_verified`, `sidecar_seal_sha256`, capsule/member binding, and
+source-before/source-after device value from raw partial fields and immutable
+authority. It may not rely on `_validate_partial` to reject a missing sidecar
+seal or device.
+
 Mutation tests delete, alter, duplicate, add, and reorder every call, tensor
 field, capsule field, peer contribution, and retain/release event. They mutate
 peak/current/ceiling and both streaming Booleans, retain two peers
 simultaneously, and supply only legacy aliases. Each resealed mutation must
-refuse independently at partial and aggregate entrypoints.
+refuse independently at partial and aggregate entrypoints. Test each aggregate
+checker directly, then through `aggregate()`. Also run with the partial checker
+stubbed to return both empty and nonempty unrelated errors; the independent
+aggregate checker must still execute and return the same field-specific
+reader, sidecar, or device refusal.
 
 ## 7. Test and preflight evidence is unmaskable
 
@@ -293,7 +313,8 @@ Every mutation:
 2. asserts the intended field or condition changed;
 3. recomputes only attacker-controlled seals;
 4. calls the actual production partial and aggregate entrypoints;
-5. requires stable field-specific refusal from both;
+5. requires stable field-specific refusal from both, including direct
+   aggregate-local refusal rather than only propagated partial errors;
 6. restores and revalidates the pristine baseline.
 
 Do not mock validation success, rebuild authority from the mutation, silently

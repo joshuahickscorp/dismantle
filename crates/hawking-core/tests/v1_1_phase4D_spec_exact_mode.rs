@@ -9,9 +9,8 @@
 use hawking_core::{EngineConfig, GenerateRequest, SamplingParams, SpeculateMode, StreamEvent};
 use std::path::PathBuf;
 
-fn weights_path() -> PathBuf {
-    PathBuf::from("../../models/deepseek-v2-lite-q4.gguf")
-}
+mod common;
+use common::weights_path_deepseek as weights_path;
 
 fn load_engine(speculate_mode: SpeculateMode) -> Option<Box<dyn hawking_core::Engine>> {
     let p = weights_path();

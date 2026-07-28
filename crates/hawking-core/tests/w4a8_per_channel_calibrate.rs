@@ -36,6 +36,9 @@ use hawking_core::{
     model::qwen_dense::QwenDense, profile::fresh_test_profile, Engine, EngineConfig,
 };
 
+mod common;
+use common::weights_path_qwen as weights_path;
+
 /// 12 diverse prompts × 20 steps = 240 samples. Tighter outlier
 /// estimates than the 6×16=96 used in `w4a8_activation_distribution`
 /// because the calibration scales the production W4A8 path directly
@@ -56,10 +59,6 @@ const PROMPTS: &[&str] = &[
 ];
 
 const STEPS_PER_PROMPT: usize = 20;
-
-fn weights_path() -> PathBuf {
-    PathBuf::from("../../models/qwen2.5-3b-instruct-q4_k_m.gguf")
-}
 
 fn report_path() -> PathBuf {
     PathBuf::from("../../reports/w4a8_lmhead_calibration_2026_05_26.json")

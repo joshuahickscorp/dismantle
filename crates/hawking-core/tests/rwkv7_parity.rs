@@ -39,24 +39,15 @@ use hawking_core::model::rwkv7::RwkvSeven;
 use hawking_core::{Engine, EngineConfig};
 use std::path::{Path, PathBuf};
 
+mod common;
+use common::argmax;
+
 fn read_ids(path: &Path) -> Vec<u32> {
     std::fs::read_to_string(path)
         .unwrap_or_else(|e| panic!("read fixture {path:?}: {e}"))
         .split_whitespace()
         .map(|t| t.parse::<u32>().expect("fixture id parse"))
         .collect()
-}
-
-fn argmax(v: &[f32]) -> u32 {
-    let mut bi = 0u32;
-    let mut bv = f32::NEG_INFINITY;
-    for (i, &x) in v.iter().enumerate() {
-        if x > bv {
-            bv = x;
-            bi = i as u32;
-        }
-    }
-    bi
 }
 
 /// Feed `prompt_ids` through a fresh RWKV-7 state, then greedy-decode `n`

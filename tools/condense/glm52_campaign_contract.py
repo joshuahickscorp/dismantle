@@ -36,6 +36,7 @@ from glm52_common import (  # noqa: E402
     REPO_ROOT,
     atomic_json,
     canonical,
+    resolve_artifact,
     seal,
     sha256_file,
     verify_sealed,
@@ -326,8 +327,15 @@ def load_inputs(root: str | os.PathLike[str] = REPO_ROOT) -> InputBundle:
     base = Path(root).resolve(strict=False)
     artifacts: dict[str, dict[str, Any]] = {}
     byte_hashes: dict[str, str] = {}
+    use_resolver = base == REPO_ROOT.resolve()
     for spec in INPUT_SPECS:
-        path = base / spec.filename
+        if use_resolver and spec.filename == "GLM52_SHARD_DEPENDENCY_GRAPH.json":
+            try:
+                path = resolve_artifact(spec.filename)
+            except Glm52Error as exc:
+                raise CampaignContractError(str(exc)) from exc
+        else:
+            path = base / spec.filename
         if path.is_symlink() or not path.is_file():
             raise CampaignContractError(f"required sealed input is missing/unsafe: {spec.filename}")
         try:

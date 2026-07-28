@@ -3,8 +3,9 @@
 ## Role
 
 Act as an independent falsifier. Do not implement or edit files. Read the current
-repository at HEAD `299208e6e2ed22d6b74c6bbd391dc631b4e29ec5` and the exact evidence named
-below. The controller's current hypothesis may be wrong.
+repository at final-ascent HEAD, including receipts committed after
+`299208e6e2ed22d6b74c6bbd391dc631b4e29ec5`, and the exact evidence named below.
+The controller's current hypothesis may be wrong.
 
 ## Governing evidence
 
@@ -16,6 +17,7 @@ below. The controller's current hypothesis may be wrong.
 - `GLM52_REAL_ACTIVATION_SWEEP.json`
 - `QUALITY_CALIBRATION_CURVE.json` and `.md` if present in another reachable
   Grok worktree/commit; otherwise state that they are absent at this HEAD
+- `HAWKING_FINAL_ASCENT_SOURCE_REHYDRATION_RECEIPT.json`
 - `tools/condense/glm52_activation_aware_pack.py`
 - `tools/condense/tests/test_glm52_activation_aware_pack.py`
 - the retained real teacher capsules under
@@ -33,8 +35,11 @@ decisive next experiment is a real-capsule, held-out comparison of:
 3. explicit mean direction plus centered residual basis.
 
 The comparison must use the same fit/holdout rows, tensors, ranks, byte accounting,
-and capability-calibrated quality metrics. A full 282-shard traversal is forbidden
-until a bounded arm passes preregistered floors.
+and capability-calibrated quality metrics. Routed-expert promotion scores must
+use only held-out rows whose real capsule `topk_indices` routed to that expert;
+the existing all-row expert score is a competing causal defect, not valid
+promotion evidence. A full 282-shard traversal is forbidden until a bounded arm
+passes preregistered floors.
 
 ## Required report
 
@@ -45,11 +50,14 @@ Return:
    is not the dominant defect;
 3. the exact smallest experiment that distinguishes them;
 4. tensor/organ sampling that is representative and actually executable from
-   resident immutable source plus real capsules;
+   the five resident immutable shards in the source-rehydration receipt plus
+   real capsules, including high-traffic experts at early/middle/late layers;
 5. metrics, nulls, physical-byte accounting, floors, and kill/promotion rules;
 6. risks of leakage, unfair basis rank, double-counted explicit mean storage,
    wrong projection side, Gaussian fallback, or output-space-only inference;
-7. remaining uncertainty after the bounded experiment.
+7. whether `down_proj` can be evaluated with reconstructed real routed SwiGLU
+   intermediates rather than Gaussian or output-only inference;
+8. remaining uncertainty after the bounded experiment.
 
 Do not accept reconstruction error, `beats_null`, or a fixture as promotion
 evidence. Do not flip `ODYSSEY_LAUNCH_AUTHORIZED`,

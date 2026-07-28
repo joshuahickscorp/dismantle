@@ -2,8 +2,7 @@
 
 ## Goal
 
-In an isolated worktree at current HEAD
-`299208e6e2ed22d6b74c6bbd391dc631b4e29ec5`, implement an idempotent,
+In an isolated worktree at current final-ascent HEAD, implement an idempotent,
 evidence-derived status publisher for the autonomous final-ascent campaign.
 
 It must create/update exactly these required root artifacts:

@@ -6,6 +6,25 @@ Rust/Python payload and runner-median corrections are present. Preserve every
 earlier source-body-free, false-fence, fixed-TG-threshold, physical-evidence,
 and no-promotion requirement.
 
+The only authorized Revision-3 predecessor is the following exact six-file
+set:
+
+- `crates/hawking-core/examples/gravity_glm_tps.rs`
+  blob `5175ab5c64e5e70c49312b479613181f844fa1bb`;
+- `tools/condense/glm52_runtime_speed_gate.py`
+  blob `cbcd0108a68ff0afa732f3a0860b10cfae70ad68`;
+- `tools/condense/gravity_profiler_acceptance.py`
+  blob `2edce7bc98a21598af711f635293ff3fa0aade14`;
+- `tools/condense/tests/test_glm52_runtime_speed_gate.py`
+  blob `39c5a0dc43a4b493b7886fc2c6ff14d552dfa1a3`;
+- `tools/condense/tests/test_gravity_profiler_acceptance.py`
+  blob `4976cef26399eed8209523db2a7c37a87e6bc39d`;
+- `tools/condense/hawking_receipt_canonical_vectors.v1.json`
+  blob `f0cd3cbfa0e2b544417d0365af94a3d79ad86d60`.
+
+Refuse before editing if any identity differs. Remove `.serena`; it is not a
+deliverable.
+
 ## 1. Mandatory live evidence, not attacker-resealable structure
 
 A public content hash plus public semantic seal proves consistency, not
@@ -108,7 +127,8 @@ register/approval gate or predecessor disagreement, and extra approval gates.
 
 ## 6. Exit
 
-Retain the Revision-3 five-file implementation/test scope. Return exact blobs,
-SHA-256 identities, complete test counts, and a clean diff. No `.serena`
-deliverable, model-body access, `BASE_TRUE_TPS`, TG milestone, capable-provider
-claim, HIDE promotion, MOP action, or authorization transition.
+Retain the exact six-file implementation/test/vector scope above. Return exact
+blobs, SHA-256 identities, complete test counts, and a clean diff. No
+`.serena` deliverable, model-body access, `BASE_TRUE_TPS`, TG milestone,
+capable-provider claim, HIDE promotion, MOP action, or authorization
+transition.

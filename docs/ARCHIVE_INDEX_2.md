@@ -540,3 +540,11 @@ Restore root copies if needed: `git checkout pre-floor-prune-20260728 -- HAWKING
 - `HAWKING_CLI_SURFACE.json`
 - `HAWKING_SCHEMA_MIGRATIONS.json`
 
+## T5 — stale studio_run entrypoint
+
+`tools/condense/studio_run.py` was deleted in clean-slate collapse `0a970800` (legacy capsule /
+hawking-lab pack). No in-tree successor implements start/drain/resume/--go-plan. `hawking studio`
+is not a subcommand of the active `hawking` binary. `GO.md` rewritten to refuse the dead command
+and name live `hawking` / `tools/campaign/*` entrypoints only. `BASELINES.md` marks `hawking studio`
+and `studio_run.py` command lines as sealed/not active. No replacement command invented.
+

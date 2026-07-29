@@ -1,6 +1,5 @@
 
 
-// --- inlined machine/driver.rs ---
 pub mod driver {
 //! The real FSM driver (bible ch.02 §4.4) — the agent loop.
 //!
@@ -862,7 +861,6 @@ mod stall_tests {
 }
 
 
-// --- inlined machine/effects.rs ---
 pub mod effects {
 //! Effect helpers + the Live/Replay mode switch (bible tenet K5).
 //!
@@ -945,7 +943,6 @@ pub fn observation_event(
 }
 
 
-// --- inlined machine/guards.rs ---
 pub mod guards {
 //! Transition guards (bible ch.02 §4.4 / §4.5.2).
 
@@ -988,7 +985,6 @@ pub fn cursor_is_effectful(state: &AgentState) -> bool {
 }
 
 
-// --- inlined machine/state.rs ---
 pub mod state {
 use crate::govern::{Budget, BudgetLedger};
 use crate::plan::schema::{Plan, StepStatus};

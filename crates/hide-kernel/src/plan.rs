@@ -1,6 +1,5 @@
 
 
-// --- inlined plan/dag.rs ---
 pub mod dag {
 use crate::plan::schema::{Plan, StepStatus};
 use hide_core::ids::StepId;
@@ -65,7 +64,6 @@ fn visit(
 }
 
 
-// --- inlined plan/planner.rs ---
 pub mod planner {
 //! Plan synthesis (bible ch.02 §4.5). The planner turns an objective into a
 //! plan-as-data DAG where **every step declares its acceptance oracle up front**.
@@ -280,7 +278,6 @@ mod tests {
 }
 
 
-// --- inlined plan/replan.rs ---
 pub mod replan {
 //! Replanning (bible ch.02 §4.5.3 / §4.7.3).
 //!
@@ -391,7 +388,6 @@ mod tests {
 }
 
 
-// --- inlined plan/schema.rs ---
 pub mod schema {
 //! The plan-as-data contract (bible ch.02 Appendix A.1).
 //!

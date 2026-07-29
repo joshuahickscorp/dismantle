@@ -352,7 +352,6 @@ mod tests {
     }
 }
 
-// --- Track S absorbed authorities ---
 pub mod tooling;
 pub mod security;
 pub mod program_runtime;

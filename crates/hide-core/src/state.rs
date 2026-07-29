@@ -75,7 +75,6 @@ pub use identity::IdentityBinding;
 pub use integrity::{Integrity, IntegrityAlgo};
 pub use store::{Ancestry, CapsuleComparison, CapsuleStore, DiskStore, MemoryStore};
 
-// --- inlined state/capsule.rs ---
 pub mod capsule {
 //! The capsule itself: header, identity, payload, and its byte format.
 //!
@@ -495,7 +494,6 @@ mod tests {
 }
 
 
-// --- inlined state/error.rs ---
 pub mod error {
 //! Typed errors for capsule schemas, serialization, compatibility, and stores.
 //!
@@ -574,7 +572,6 @@ pub type Result<T> = std::result::Result<T, CapsuleError>;
 }
 
 
-// --- inlined state/header.rs ---
 pub mod header {
 //! Capsule kinds and the header that describes a sealed capsule.
 //!
@@ -711,7 +708,6 @@ mod tests {
 }
 
 
-// --- inlined state/identity.rs ---
 pub mod identity {
 //! Identity binding: the contract a capsule must satisfy to load into a runtime.
 //!
@@ -857,7 +853,6 @@ mod tests {
 }
 
 
-// --- inlined state/integrity.rs ---
 pub mod integrity {
 //! Integrity digests for capsule payloads.
 //!
@@ -1033,7 +1028,6 @@ mod tests {
 }
 
 
-// --- inlined state/store.rs ---
 pub mod store {
 //! Capsule stores: a trait plus an in-memory impl and a content-addressed
 //! on-disk impl.

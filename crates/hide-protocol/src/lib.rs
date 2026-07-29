@@ -657,6 +657,5 @@ mod tests {
     }
 }
 
-// --- Track S absorbed authorities ---
 pub mod sdk;
 

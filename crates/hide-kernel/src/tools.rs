@@ -144,7 +144,6 @@ mod tests {
     }
 }
 
-// --- inlined tools/parse.rs ---
 pub mod parse {
 //! Tool-call parser: turn model output text into structured tool calls.
 //!
@@ -538,7 +537,6 @@ mod tests {
 }
 
 
-// --- inlined tools/runner.rs ---
 pub mod runner {
 //! The parse -> lint -> dedup -> dispatch -> feedback loop.
 //!

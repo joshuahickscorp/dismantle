@@ -48,7 +48,6 @@ pub use manifest::{
 };
 pub use registry::{PinSpec, RankedCandidate, Registry, ResolveQuery};
 
-// --- inlined extension_registry/builtin_tools.rs ---
 pub mod builtin_tools {
 //! Bridge: the `hide-tools` builtin tool catalog as typed capability manifests.
 //!
@@ -428,7 +427,6 @@ mod tests {
 }
 
 
-// --- inlined extension_registry/error.rs ---
 pub mod error {
 use thiserror::Error;
 
@@ -482,7 +480,6 @@ impl std::fmt::Display for EffectList {
 }
 
 
-// --- inlined extension_registry/index.rs ---
 pub mod index {
 //! The compact metadata index.
 //!
@@ -522,7 +519,6 @@ impl CompactEntry {
 }
 
 
-// --- inlined extension_registry/manifest.rs ---
 pub mod manifest {
 //! Capability manifest types.
 //!
@@ -976,7 +972,6 @@ mod tests {
 }
 
 
-// --- inlined extension_registry/registry.rs ---
 pub mod registry {
 //! The unified capability registry.
 //!

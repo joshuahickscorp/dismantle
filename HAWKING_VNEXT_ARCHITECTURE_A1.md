@@ -30,9 +30,34 @@ Three families of repetition account for most of the mass, and each is the same 
 
 | family | today | the repeated decision |
 |---|---|---|
-| artifact codecs | `gravity.rs` 3,155 + `gravity_glm.rs` 3,584 + `gravity_glm_resident.rs` 13,035 + `gravity_llama.rs` 887 = 20,661 | one container and one codec, re-implemented per model family |
+| residency twins | `gravity_glm.rs` 3,584 + `gravity_glm_resident.rs` 13,035 = 16,619 | one model's forward pass written twice, host-resident and device-resident, held bit-identical by hand |
 | kernel lattice | `kernels/` 12,219 + `shaders/` 15,766 + `metal/` 5,012 = 32,997 | a host-selected A/B permutation space, written out by hand instead of generated from the variant table that defines it |
 | campaign controllers | ~44 controllers across `tools/condense`, `tools/foundry`, `tools/campaign`, `tools/prometheus`, `ramanujan`, `odyssey` | declare, acquire, measure, allocate, pack, verify, receipt, promote — re-typed per experiment, including its own argparse, resource policy, status file, ledger append, receipt shape and resume logic |
+
+### Correction, recorded rather than quietly fixed
+
+A1's first draft claimed the four `gravity*.rs` files were four implementations of one
+container and codec, worth 20,661 lines. **That was wrong**, and the check that caught it
+took two minutes: function-name Jaccard across the four is 0.007–0.054 and type-name
+Jaccard is 0.000, and reading their headers shows why. `gravity.rs` is the container reader
+and PQ tensor codec — one thing, correctly one file. `gravity_glm.rs` and `gravity_llama.rs`
+are *forward passes* for two model families, each graded against its own numpy oracle.
+Those belong to Core B, not Core A, and the two families are genuinely distinct.
+
+Name overlap is weak evidence and does not settle it — the same instrument would miss two
+codecs that agree in structure while disagreeing in every identifier, which is exactly what
+G2's control-flow-signature clone analysis exists to catch. So the four-codec claim is
+*withdrawn pending the graph*, not disproved.
+
+What replaced it is better evidenced. `gravity_glm.rs` (host-resident state) and
+`gravity_glm_resident.rs` (device-resident state) are **the same model's forward pass,
+written twice**. The second file's own header says so: discrete decisions "still use the
+same host arithmetic as `crate::gravity_glm::forward_impl` so token identity is bit-exact
+against the host-state path". Sixteen thousand lines are held in agreement by hand, and the
+only axis of variation is where a tensor lives. That is a compile-time specialization target
+in the precise sense of campaign section 7.3 — one forward spec, two residency strategies,
+both generated — and the bit-exactness that is protected becomes a property of the generator
+rather than of a human keeping two files in step.
 
 Plus one structural repetition that is not a family but is the largest single count: roughly
 two hundred root-level `*_RECEIPT.json` / `*_LEDGER.jsonl` / `*_VERDICT.json` shapes, each

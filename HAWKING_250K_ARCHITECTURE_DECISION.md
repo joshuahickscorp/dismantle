@@ -104,6 +104,41 @@ Ordered by reduction-per-risk, and by what unblocks what.
    and numerical contracts live and it is the one place a wrong boundary is expensive rather
    than merely wasteful.
 
+## Side-experiment 1, resolved: the shader lattice is half generable
+
+A1 proposed generating `crates/hawking-core/shaders/quant.metal` (5,622 lines) from a
+template plus the variant table that defines its host-selected A/B lattice. A2 called the
+shaders "mostly irreducible without changing kernels (protected perf)". The test was cheap
+and it has been run.
+
+The file holds **66 kernels, 3,855 lines of kernel bodies** and about 1,767 lines of shared
+headers and helpers. The names are exactly the combinatorial lattice A1 predicted —
+`gemm_q4_k_{v3,v4}_{predec}_{pair}_{2r,3r,4r,8r}_{inline}_{f16s}_{nox,halfreg}`, crossed with
+q3_k/q4_k/q6_k/q8_0, batched, mma and fused-swiglu.
+
+Line-level similarity between variants that differ on exactly one axis:
+
+```
+axis                            pair                                    similarity
+f16 scales      gemm_q4_k_v4_predec_pair        vs …_f16s                    0.911
+f16 scales      gemm_q4_k_m_fused               vs …_f16                     0.898
+predec          gemm_q4_k_m_batched_v3w         vs …_predec                  0.763
+inline          gemm_q4_k_v4_predec_pair_2r     vs …_2r_inline               0.667
+row blocking    gemm_q4_k_v4_predec_pair_2r     vs …_pair_3r                 0.386
+```
+
+**Both were partly right.** The dtype and predecode axes are near-pure parameterisation and
+generate cleanly. The row-blocking axis does not: `2r` and `3r` share 39% of their lines
+because they are hand-unrolled with different register allocation, and a generator for them
+would have to encode the tuning rather than the pattern — at which point the generator is
+the code and the amplification collapses.
+
+So the lever is real but smaller than A1 assumed and larger than A2 allowed: on the order of
+**1,500–1,900 lines** from the parameterisable axes, not 5,000 and not zero. That is inside
+A2's C2 budget of 28,000 rather than an argument to lower it, so **the plan of record does
+not change** — but the question is now closed with a measurement instead of two opinions,
+and the row-blocking families are named as hand-written for a reason.
+
 ## What would falsify the plan
 
 - C5 lands above 45k with a named observable behaviour behind every remaining line. That

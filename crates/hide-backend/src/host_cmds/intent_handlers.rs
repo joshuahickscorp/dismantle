@@ -58,18 +58,47 @@ use super::*;
 
 impl BackendHost {
 
-    /// Dispatch a PlanCard custom intent (Stage 1, bible sec 14): mutate the
-    /// session's durable plan record and republish the `plan` projection. Payload
-    /// shapes (all carry `session_id`):
-    ///
-    /// * `approve_plan`   -> `{ session_id, step_id? }` (absent step_id = whole plan)
-    /// * `edit_plan_step` -> `{ session_id, step_id, text }`
-    /// * `reorder_plan`   -> `{ session_id, order: [step_id, ..] }`
-    /// * `skip_step`      -> `{ session_id, step_id, reason? }`
-    /// * `repair_step`    -> `{ session_id, step_id }`
-    ///
-    /// Errors when no plan is set for the session, a named step is unknown, or a
-    /// reorder is not a permutation; the caller surfaces it as an Error UiEvent.
+    pub(crate) async fn handle_static_analysis_intent(&self, payload: &Value) -> Result<()> {
+        let session = payload
+            .get("session_id")
+            .and_then(|v| v.as_str())
+            .map(SessionId::from)
+            .unwrap_or_else(|| self.services.session());
+        let mut sources: Vec<SourceFile> = payload
+            .get("sources")
+            .and_then(|v| v.as_array())
+            .map(|rows| {
+                rows.iter()
+                    .filter_map(|r| {
+                        Some(SourceFile::new(
+                            r.get("path").and_then(|v| v.as_str())?,
+                            r.get("text").and_then(|v| v.as_str())?,
+                        ))
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+        if let Some(paths) = payload.get("paths").and_then(|v| v.as_array()) {
+            let root = &self.services.config.workspace_root;
+            for p in paths.iter().filter_map(|v| v.as_str()) {
+                let abs = crate::connectors::workspace_resolve(root, p)?;
+                let text = std::fs::read_to_string(&abs)
+                    .map_err(|e| hide_core::error::HideError::Storage(format!("{p}: {e}")))?;
+                sources.push(SourceFile::new(p, text));
+            }
+        }
+        if sources.is_empty() {
+            return Err(hide_core::error::HideError::Message(
+                "run_static_analysis: give 'sources' or 'paths'".to_string(),
+            ));
+        }
+        self.run_static_analysis(session, sources).await.map(|_| ())
+    }
+
+    /// Seed (or replace) the session's durable plan record from a live kernel
+    /// plan and publish the `plan` projection. Used by the live-turn emitter's
+    /// twin path and by tests; the FSM emitter in [`run_turn_kernel`] uses the
+    /// same [`crate::plan_domain::store_and_publish`] seam.
     pub(crate) async fn handle_plan_intent(&self, name: &str, payload: &Value) -> Result<()> {
         let missing = |field: &str| {
             hide_core::error::HideError::Message(format!("{name}: missing '{field}'"))
@@ -277,65 +306,6 @@ impl BackendHost {
     /// The session defaults to the control session when the caller does not name
     /// one (the FE gesture carries only `{ run_id, text }`); a caller that knows
     /// the run's session passes it so the steer event lands on that thread.
-    pub async fn steer_run(
-        &self,
-        run_id: RunId,
-        instruction: impl Into<String>,
-        session: Option<SessionId>,
-    ) -> Result<Event> {
-        let instruction = instruction.into();
-        // 1. Signal the running kernel (same hub Cancel/Pause/Resume ride).
-        self.interrupts.signal(
-            run_id.clone(),
-            Interrupt::Steer {
-                instruction: instruction.clone(),
-            },
-        );
-        // 2. Durable steer event (audit + projection), tagged with the run.
-        let session = session.unwrap_or_else(|| self.commands.control_session().clone());
-        let event = self
-            .services
-            .event_log
-            .append(
-                NewEvent::system(
-                    session.clone(),
-                    "turn.steer",
-                    json!({ "run_id": run_id.as_str(), "instruction": instruction }),
-                )
-                .with_run(run_id.clone()),
-            )
-            .await?;
-        // 3. Surface it on Wire-B so the transcript shows the redirect.
-        self.ui_bus.publish(UiEvent {
-            seq: event.seq,
-            session_id: Some(session),
-            kind: UiEventKind::Custom(json!({
-                "kind": "turn_steer",
-                "run_id": run_id.as_str(),
-                "instruction": instruction,
-            })),
-        });
-        Ok(event)
-    }
-
-    /// Dispatch a durable Memory / Goal-eval / Workspace-trust / Environment-switch
-    /// custom intent to the corresponding tested host method (bible sec 21-22, 14,
-    /// 35). These built methods were unreachable from the typed FE because
-    /// `handle_intent` had no custom-name arm for them. Payload shapes:
-    ///
-    /// * `memory_add`             -> a MemoryDraft: `{ scope: {kind,id}, claim,
-    ///   source, author, confidence?, citations?, invalidation?, privacy?,
-    ///   expiry_ms? }`
-    /// * `memory_supersede`       -> `{ old_id, replacement: <MemoryDraft> }`
-    /// * `memory_record_outcome`  -> `{ memory_id, success: bool }`
-    /// * `memory_revalidate`      -> `{ memory_id | scope: {kind,id}, repo_root? }`
-    /// * `goal_evaluate`          -> `{ session_id }`
-    /// * `workspace_set_repo_trust` -> `{ repo_id, trust: "trusted"|"untrusted" }`
-    /// * `environment_switch`     -> `{ session_id, env_id, reason? }`
-    ///
-    /// Each arm routes to the existing method (never re-implements its logic) and
-    /// surfaces the domain change on Wire-B; `environment_switch`/`goal_evaluate`
-    /// already emit their own durable events, so those are not double-recorded.
     pub(crate) async fn handle_memory_workspace_env_intent(&self, name: &str, payload: &Value) -> Result<()> {
         let missing = |field: &str| {
             hide_core::error::HideError::Message(format!("{name}: missing '{field}'"))
@@ -480,31 +450,6 @@ impl BackendHost {
     /// Publish a memory-lifecycle UiEvent carrying the record (bible sec 21-22).
     /// The memory ledger is durable in KV; this surfaces the change on Wire-B so
     /// the Context Stack reflects it (parity with the goal/checkpoint publishers).
-    pub(crate) fn publish_memory(&self, kind: &str, record: &MemoryRecord) {
-        let session_id = match &record.scope {
-            MemoryScope::Session(id) => Some(SessionId::from(id.as_str())),
-            _ => None,
-        };
-        self.ui_bus.publish(UiEvent {
-            seq: 0,
-            session_id,
-            kind: UiEventKind::Custom(json!({
-                "kind": kind,
-                "record": serde_json::to_value(record).unwrap_or_else(|_| json!({})),
-            })),
-        });
-    }
-
-    /// Create a real git worktree for an isolated session branch: `git worktree add -b hide/<slug>
-    /// <sibling-dir>` from the workspace root, streaming its output back as `tool_progress` (the
-    /// terminal and Context Stack mirror those rows).
-    ///
-    /// It must write to a SIBLING directory, which the sandbox denies, so it is the one raw
-    /// (unsandboxed) exec a frontend can reach. The human yes it needs is the ONE approval the
-    /// command authority already demands: `create_worktree` is `ApprovalPolicy::Ask`, so the intent
-    /// boundary parks it and `run_approved_intent` calls this only after the release. It used to
-    /// park a SECOND gate of its own, which meant the release handler had nothing to run and the
-    /// worktree was never created.
     pub(crate) fn spawn_worktree_add(&self, branch: Option<&str>) {
         let raw = branch.unwrap_or("session");
         let slug: String = raw
@@ -542,20 +487,6 @@ impl BackendHost {
 
     /// Mint a fresh session id and publish an idle `turn` projection under it, so the FE adopts the new
     /// session (its event router tracks `session_id` off any event) and the transcript starts clean.
-    pub(crate) fn emit_new_session(&self) {
-        let sid = SessionId::new();
-        self.ui_bus.publish(UiEvent {
-            seq: 0,
-            session_id: Some(sid),
-            kind: UiEventKind::ProjectionPatch {
-                projection: "turn".to_string(),
-                patch: json!({ "phase": "idle", "run_id": Value::Null }),
-            },
-        });
-    }
-
-    /// YOU / CHAT / IDE surface graph intents. Switch is a lens change on the
-    /// primary session; handoffs seal or open claim capsules only.
     pub(crate) async fn handle_surface_intent(&self, name: &str, payload: &Value) -> Result<()> {
         match name {
             "switch_surface" => {
@@ -722,27 +653,6 @@ impl BackendHost {
     /// The `ShellConfig` the process surface confines with: writes scoped to the
     /// workspace root, the absolute `.hide/log` write-deny threaded in. Mirrors the
     /// posture `hide_kernel::tooling::shell` renders for `shell.run`.
-    pub(crate) fn shell_config(&self) -> hide_kernel::tooling::ShellConfig {
-        hide_kernel::tooling::ShellConfig {
-            workspace_root: Some(
-                self.services
-                    .config
-                    .workspace_root
-                    .to_string_lossy()
-                    .into_owned(),
-            ),
-            hide_dir: Some(self.services.layout().hide_dir),
-            // Nested agent/CI seats break nested sandbox-exec. Unit tests assert
-            // process lifecycle and streaming; SBPL profile coverage is in
-            // hide-kernel::security. Production builds keep confinement (false).
-            disable_sandbox: cfg!(test),
-            ..Default::default()
-        }
-    }
-
-    /// Park an effect at the security gate and announce it: the ONE place an action becomes
-    /// "held", so every held effect is announced the same way and a book that cannot take another
-    /// decision refuses instead of dropping one silently.
     pub(crate) fn hold_at_gate(&self, action: PendingAction, message: String) -> Result<String> {
         let gate = self.gate_book.hold(action).ok_or_else(|| {
             hide_core::error::HideError::Message(format!(
@@ -833,10 +743,6 @@ impl BackendHost {
     /// per-hunk peel both bottom out in `inverse_write`, `save_file` in the `fs` connector) sees the
     /// approval the user just gave. It used to be relaxed in the `save_file` arm alone, which left
     /// every sibling releasing into a `PolicyDenied` on the shipped default.
-    pub(crate) async fn run_approved_intent(&self, name: &str, payload: &Value) -> Result<()> {
-        crate::tools::with_approved_writes(self.released_effect(name, payload)).await
-    }
-
     pub(crate) async fn released_effect(&self, name: &str, payload: &Value) -> Result<()> {
         match name {
             "create_worktree" => {
@@ -902,23 +808,6 @@ impl BackendHost {
     /// one effect can be reached by more than one payload shape: `reject_diff` with no `hunk_id` is
     /// the same whole-diff on-disk revert as `revert_diff`, and reading the policy off the name
     /// alone let the ungated button next to the gated one perform the gated effect.
-    pub(crate) fn effect_command(intent: &Intent) -> Option<(String, Value)> {
-        match intent {
-            Intent::RejectDiff {
-                diff_id,
-                hunk_id: None,
-                ..
-            } => Some(("revert_diff".to_string(), json!({ "diff_id": diff_id }))),
-            Intent::Custom { name, payload } => Some((name.clone(), payload.clone())),
-            _ => None,
-        }
-    }
-
-    /// Whether the command authority marks this command [`ApprovalPolicy::Ask`], i.e. its effect
-    /// may not run until a human approves. Read straight off the ONE registry so a policy change in
-    /// the catalog is enforced without a second list to keep in sync. Binding-agnostic on purpose:
-    /// filtering to `Custom` bindings meant no `Intent`-bound row could ever be enforced whatever
-    /// policy it declared.
     pub(crate) fn requires_approval(name: &str) -> bool {
         use hide_protocol::command::ApprovalPolicy;
         static ASK: std::sync::OnceLock<Vec<String>> = std::sync::OnceLock::new();
@@ -943,109 +832,588 @@ impl BackendHost {
     /// [`crate::tools::with_approved_writes`], which is exactly the released-gate scope, so the
     /// approved path passes and every other path is refused. The policy itself is still read off
     /// the ONE catalog, so there is no second list of gated names.
-    pub(crate) fn gated_effect(name: &str) -> Result<()> {
-        if Self::requires_approval(name) && !crate::tools::gate_released() {
-            return Err(hide_core::error::HideError::PolicyDenied(format!(
-                "{name} requires approval: send it as an intent so it is held at the security gate"
+    pub(crate) fn spawn_submit_turn_generation(&self, session_id: SessionId, prompt: String) {
+        let run_id = RunId::new();
+        match self.runtime_base_url() {
+            Some(base_url) => {
+                // Register the run with the interrupt hub so control intents can
+                // reach it (the generation task polls it cooperatively).
+                let ui_bus = self.ui_bus.clone();
+                let role_registry = self.services.role_registry.clone();
+                let event_log = self.services.event_log.clone();
+                let key_value_store = self.services.key_value_store.clone();
+                let code_index = self.services.code_index.clone();
+                let memory = self.services.memory_store.clone();
+                let classed_memory = self.services.classed_memory.clone();
+                let interrupts = self.interrupts.clone();
+                let approvals = self.approvals.clone();
+                let run = run_id.clone();
+                let repo_instructions = self.services.repo_instructions.clone();
+                if kernel_turn_enabled() {
+                    // Increment 2: route the turn through the REAL kernel loop so
+                    // it can plan, use tools (permission-gated), and verify with
+                    // deterministic oracles. The kernel is built here (sync) via
+                    // `build_turn_kernel` and moved into the spawned driver.
+                    let kernel =
+                        self.build_turn_kernel(base_url.clone(), session_id.clone(), run.clone());
+                    tokio::spawn(async move {
+                        if let Err(e) = run_turn_kernel(
+                            kernel,
+                            event_log,
+                            key_value_store,
+                            role_registry,
+                            code_index,
+                            memory,
+                            classed_memory,
+                            ui_bus.clone(),
+                            interrupts,
+                            approvals,
+                            run,
+                            session_id.clone(),
+                            base_url,
+                            prompt,
+                            DEFAULT_KERNEL_TURN_MAX_STEPS,
+                            repo_instructions,
+                        )
+                        .await
+                        {
+                            ui_bus.publish(UiEvent {
+                                seq: 0,
+                                session_id: Some(session_id),
+                                kind: UiEventKind::Error {
+                                    code: "generation".to_string(),
+                                    message: e.to_string(),
+                                },
+                            });
+                        }
+                    });
+                } else {
+                    // Single-shot fallback (no tools): the model-offline-safe path,
+                    // pinnable via `HIDE_KERNEL_TURN=0` for tests / degraded serves.
+                    tokio::spawn(async move {
+                        if let Err(e) = generate_submit_turn(
+                            event_log,
+                            role_registry,
+                            code_index,
+                            memory,
+                            classed_memory,
+                            ui_bus.clone(),
+                            interrupts,
+                            run,
+                            session_id.clone(),
+                            base_url,
+                            prompt,
+                            repo_instructions,
+                        )
+                        .await
+                        {
+                            // Surface the failure on the same typed Wire-B channel;
+                            // never swallow it.
+                            ui_bus.publish(UiEvent {
+                                seq: 0,
+                                session_id: Some(session_id),
+                                kind: UiEventKind::Error {
+                                    code: "generation".to_string(),
+                                    message: e.to_string(),
+                                },
+                            });
+                        }
+                    });
+                }
+            }
+            None => {
+                // No model online: surface "model offline" as a real UiEvent.
+                let status = self
+                    .runtime_state()
+                    .map(|s| format!("{s:?}").to_lowercase())
+                    .unwrap_or_else(|| "down".to_string());
+                let detail = match self.runtime.is_some() {
+                    true => "runtime not ready; reconnect when it reports ready".to_string(),
+                    false => "no model configured (set HIDE_MODEL_WEIGHTS)".to_string(),
+                };
+                self.ui_bus.publish(UiEvent {
+                    seq: 0,
+                    session_id: Some(session_id),
+                    kind: UiEventKind::RuntimeStatus {
+                        status,
+                        detail: Some(detail),
+                    },
+                });
+            }
+        }
+    }
+
+    pub(crate) async fn handle_process_intent(
+        &self,
+        name: &str,
+        payload: &Value,
+    ) -> std::result::Result<(), String> {
+        let id = payload.get("process").and_then(|v| v.as_str());
+        let named = || id.ok_or_else(|| format!("{name}: missing 'process'"));
+        match name {
+            "pty_input" => {
+                let data = payload
+                    .get("data")
+                    .or_else(|| payload.get("text"))
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| "pty_input: missing 'data'".to_string())?;
+                self.processes.write_stdin(id, data).await
+            }
+            "pty_resize" => {
+                let cols = payload.get("cols").and_then(|v| v.as_u64()).unwrap_or(0) as u16;
+                let rows = payload.get("rows").and_then(|v| v.as_u64()).unwrap_or(0) as u16;
+                self.processes.resize(id, cols, rows)
+            }
+            // Re-attaching replays the buffered output onto the bus under the attaching session, so
+            // a re-navigated terminal comes back with its scrollback instead of an empty pane.
+            "attach_process" => {
+                let id = named()?;
+                let session = payload
+                    .get("session_id")
+                    .and_then(|v| v.as_str())
+                    .map(SessionId::from)
+                    .unwrap_or_else(|| self.services.session());
+                let lines = self
+                    .attach_process(id, session.clone())
+                    .ok_or_else(|| format!("unknown process {id}"))?;
+                self.publish_custom(
+                    Some(session),
+                    json!({ "kind": "process_attached", "process": id, "lines": lines }),
+                );
+                Ok(())
+            }
+            "stop_process" => {
+                let id = named()?;
+                if !self.stop_process(id) {
+                    return Err(format!("unknown process {id}"));
+                }
+                self.publish_custom(None, json!({ "kind": "process_stopped", "process": id }));
+                Ok(())
+            }
+            "capture_process_artifact" => {
+                let id = named()?;
+                let blob = self.capture_process_artifact(id).map_err(|e| e.to_string())?;
+                self.publish_custom(
+                    None,
+                    json!({
+                        "kind": "process_artifact",
+                        "process": id,
+                        "artifact": serde_json::to_value(&blob).unwrap_or(Value::Null),
+                    }),
+                );
+                Ok(())
+            }
+            _ => Ok(()),
+        }
+    }
+
+    /// Publish a seq-0 `Custom` UiEvent on the live bus.
+    pub(crate) async fn save_file_effect(&self, payload: &Value) -> Result<()> {
+        let path = payload
+            .get("path")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| hide_core::error::HideError::Config("missing path".to_string()))?;
+        let content = payload
+            .get("content")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| hide_core::error::HideError::Config("missing content".to_string()))?;
+        // Same confinement the connector read path uses: `..`, absolute and prefix components are
+        // refused before the dispatcher ever sees the call.
+        let abs = crate::connectors::workspace_resolve(&self.services.config.workspace_root, path)?;
+        let mut args = json!({ "path": abs.to_string_lossy(), "content": content });
+        // `base_hash` (the blake3 of the text the caller read) is passed through when supplied, so
+        // a concurrently-changed file CONFLICTS instead of being clobbered.
+        if let Some(base) = payload.get("base_hash").and_then(|v| v.as_str()) {
+            args["base_hash"] = json!(base);
+        }
+        let session = payload
+            .get("session_id")
+            .and_then(|v| v.as_str())
+            .map(SessionId::from)
+            .unwrap_or_else(|| self.services.session());
+        let run = Self::editor_run(&session);
+        let result = self
+            .dispatch_tool(session, Some(run), ToolCall::new("edit.write_file", args))
+            .await?;
+        // `Tool`, not `PolicyDenied`: the permission verdict is the `?` above. This is the applier
+        // refusing (a `base_hash` conflict, most often), which no approval fixes, so it must not be
+        // mistaken for something to hold at a gate.
+        if result.status != ToolStatus::Ok {
+            return Err(hide_core::error::HideError::Tool(format!(
+                "write of {path} refused: {}",
+                result
+                    .error
+                    .as_ref()
+                    .map(|e| format!("{}: {}", e.code, e.message))
+                    .unwrap_or_else(|| "rejected by the applier".to_string())
             )));
         }
         Ok(())
     }
 
-    /// Deny a held gated command: drop it without running. An unknown gate is refused, for the
-    /// same reason approving one is: the caller is answering something that is not there.
-    pub(crate) fn deny_gate(&self, gate: &str) -> Result<()> {
-        if self.gate_book.remove(gate) {
-            return Ok(());
-        }
-        Err(hide_core::error::HideError::NotFound(format!(
-            "gate {gate} is not awaiting a decision (already answered, denied, or never held)"
-        )))
-    }
-
-    /// The count of commands currently parked awaiting an approve/deny decision (test/inspection).
-    #[cfg(test)]
-    pub(crate) fn pending_gate_count(&self) -> usize {
-        self.gate_book.len()
-    }
-
-    /// Increment 2 (defect S1): build the fully-wired agent kernel a live
-    /// `SubmitTurn` routes through - the REAL loop, not the minimal
-    /// [`AgentKernel::new`] (StubPlanner + no oracles) the host held before.
-    /// Mirrors the working recipe in `hide-kernel/tests/full_run.rs`:
+    /// Dispatch a tool ATTRIBUTED to a session and (optionally) a run.
     ///
-    /// * `runtime` - a [`KernelRuntimeClient`] over a [`SimpleRouter`] and the
-    ///   host's HTTP [`ModelProviderInferenceClient`], so `.runtime(..)` also
-    ///   auto-installs a `RuntimePlanner` (the model plans, we own acceptance).
-    /// * `dispatcher` - a permission-gated [`ToolDispatcher`] built from the
-    ///   host's tool registry + the config's **real** permission engine. NOT
-    ///   `allow_all_dispatcher`, which bypasses permissions.
-    /// * `grounding` - codebase [`Grounding`] over the code index.
-    /// * `autonomy` - a BOUNDED level ([`turn_kernel_autonomy`] defaults to
-    ///   `SuggestOnly`) so an effectful step pauses for approval rather than
-    ///   running an unsandboxed shell unattended; `HIDE_KERNEL_AUTONOMY` widens it.
-    /// * `with_standard_oracles` - the deterministic build/typecheck/test/lint
-    ///   oracles (no state advances on faith, K1).
-    pub fn build_turn_kernel(
+    /// A thin caller of the recorded path: the durable `tool.call`/`tool.result` pair, the live
+    /// `ToolProgress`, and the reviewable/revertible diff an `edit.*` write produces are recorded
+    /// by [`DispatchRecorder`] hanging off the dispatcher itself, so the kernel agent - which holds
+    /// the dispatcher directly and never enters this function - records exactly the same things.
+    /// All this adds is the attribution: without it a dispatch is recorded against the default
+    /// session with no run, which is honest but ungrouped.
+    pub(crate) async fn handle_search_intent(
         &self,
-        base_url: String,
-        session_id: SessionId,
-        run_id: RunId,
-    ) -> AgentKernel {
-        use crate::model_provider::{HttpModelProvider, ModelProviderInferenceClient};
-        use hawking_orch::inference::InferenceClient;
-        use hawking_orch::router::SimpleRouter;
-        use hide_kernel::runtime_client::KernelRuntimeClient;
-
-        let inference: Arc<dyn InferenceClient> = Arc::new(ModelProviderInferenceClient::new(
-            HttpModelProvider::new(base_url),
-        ));
-        let runtime = Arc::new(KernelRuntimeClient::new(
-            Arc::new(SimpleRouter::new(self.services.role_registry.clone())),
-            inference,
-        ));
-
-        let dispatcher = self.build_turn_dispatcher(session_id, Some(run_id));
-        let grounding = Arc::new(Grounding::new(self.services.code_index.clone()));
-
-        AgentKernel::builder(self.services.event_log.clone())
-            .workspace_root(self.services.config.workspace_root.to_string_lossy().to_string())
-            .autonomy(turn_kernel_autonomy())
-            .grounding(grounding)
-            // `.runtime(..)` installs a `RuntimePlanner` since no planner is set.
-            .runtime(runtime)
-            .dispatcher(dispatcher.clone())
-            .with_standard_oracles(dispatcher)
-            .build()
-    }
-
-    /// The dispatcher a turn's tools go through: the REAL permission engine (config-driven, NOT
-    /// `allow_all_dispatcher`), with the SAME [`DispatchRecorder`] the host's own dispatcher
-    /// carries, bound to this turn's session and run.
-    ///
-    /// The kernel holds this object directly, so binding the attribution HERE is what makes an
-    /// agent edit produce a `tool.call`/`tool.result` pair and an addressable diff hunk. It is
-    /// bound rather than ambient because a task-local would not survive the kernel spawning a task.
-    pub fn build_turn_dispatcher(
-        &self,
-        session_id: SessionId,
-        run_id: Option<RunId>,
-    ) -> Arc<ToolDispatcher> {
-        let bound = crate::tools::DispatchContext {
-            session_id,
-            run_id,
+        payload: &Value,
+    ) -> Result<Vec<crate::replay::TranscriptHit>> {
+        let scopes = payload.get("scopes");
+        // A field is read from the top level, falling back to `scopes`.
+        let field = |name: &str| {
+            payload
+                .get(name)
+                .or_else(|| scopes.and_then(|s| s.get(name)))
         };
-        Arc::new(
-            crate::tools::build_task_tool_dispatcher(
-                &self.services.config,
-                self.tools.clone(),
-                Some(bound.clone()),
-            )
-            .with_observer(Arc::new(DispatchRecorder::bound_to(
-                self.services.clone(),
-                self.ui_bus.clone(),
-                bound,
-            ))),
-        )
+        let mut query = crate::replay::TranscriptQuery {
+            text: payload
+                .get("query")
+                .or_else(|| payload.get("text"))
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string(),
+            ..Default::default()
+        };
+        query.session_id = field("session_id")
+            .and_then(|v| v.as_str())
+            .map(SessionId::from);
+        query.kind = field("kind").and_then(|v| v.as_str()).map(str::to_string);
+        query.role = field("role").and_then(|v| v.as_str()).map(str::to_string);
+        query.since_ts = field("since_ts").and_then(|v| v.as_u64());
+        query.until_ts = field("until_ts").and_then(|v| v.as_u64());
+        query.limit = payload
+            .get("limit")
+            .and_then(|v| v.as_u64())
+            .map(|n| n as usize);
+        self.search_transcript(&query).await
     }
+
+    /// Surface transcript-search hits to the FE as a `search_results` UiEvent
+    /// (echoing the query so the palette can correlate the response).
+    pub(crate) async fn handle_grant_write_lease(&self, payload: &Value) -> Result<()> {
+        let repo_id = payload
+            .get("repo_id")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| {
+                hide_core::error::HideError::Message(
+                    "grant_write_lease: missing 'repo_id'".to_string(),
+                )
+            })?;
+        let repo = self.workspace_repo(repo_id).ok_or_else(|| unknown_repo(repo_id))?;
+        if repo.trust != TrustState::Trusted {
+            return Err(hide_core::error::HideError::PolicyDenied(format!(
+                "{repo_id} is not trusted; trust the repository before granting it a write lease"
+            )));
+        }
+        let scopes = match payload.get("scopes").and_then(|v| v.as_array()) {
+            Some(rels) if !rels.is_empty() => rels
+                .iter()
+                .filter_map(|v| v.as_str())
+                .map(|rel| crate::connectors::workspace_resolve(&repo.root_path, rel))
+                .collect::<Result<Vec<_>>>()?,
+            _ => vec![repo.root_path.clone()],
+        };
+        let lease = crate::tools::install_write_lease(crate::tools::WriteLease {
+            lease_id: hide_core::ids::GrantId::new().as_str().to_string(),
+            repo_id: repo_id.to_string(),
+            session_id: payload
+                .get("session_id")
+                .and_then(|v| v.as_str())
+                .map(str::to_string),
+            run_id: payload
+                .get("run_id")
+                .and_then(|v| v.as_str())
+                .map(str::to_string),
+            scopes,
+            granted_ms: hide_core::ids::now_ms(),
+        });
+        publish_write_lease(&self.ui_bus, Some(&lease), "granted");
+        Ok(())
+    }
+
+    /// The lease in force, if any (test / inspection / the status read).
+    pub(crate) async fn inverse_write(
+        &self,
+        session: &SessionId,
+        file: &str,
+        before: &str,
+        after: &str,
+    ) -> Result<()> {
+        let after_hash = blake3::hash(after.as_bytes()).to_hex().to_string();
+        // Through the same recorded path as every other write (attributed, with no run: an undo is
+        // a tool step in the timeline, not a new reviewable hunk of its own). Recorded hunk paths
+        // are workspace-relative, so the applier is handed the absolute spelling.
+        let path = if Path::new(file).is_absolute() {
+            file.to_string()
+        } else {
+            self.services
+                .config
+                .workspace_root
+                .join(file)
+                .to_string_lossy()
+                .into_owned()
+        };
+        let result = self
+            .dispatch_tool(
+                session.clone(),
+                None,
+                ToolCall::new(
+                    "edit.write_file",
+                    json!({ "path": path, "content": before, "base_hash": after_hash }),
+                ),
+            )
+            .await?;
+        if result.status != ToolStatus::Ok {
+            return Err(hide_core::error::HideError::Message(format!(
+                "revert of {file} failed: {}",
+                tool_result_summary(&result)
+            )));
+        }
+        Ok(())
+    }
+
+    /// Append a durable `diff.*` event carrying the diff projection + the target
+    /// hunk's provenance (when a single hunk is addressed).
+    pub(crate) async fn record_diff_event(
+        &self,
+        proposal: &DiffProposal,
+        kind: &str,
+        hunk_id: Option<&str>,
+    ) -> Result<()> {
+        let provenance = hunk_id
+            .and_then(|id| proposal.hunk(id))
+            .map(|h| serde_json::to_value(&h.provenance).unwrap_or(Value::Null));
+        self.services
+            .event_log
+            .append(NewEvent::system(
+                proposal.session_id.clone(),
+                kind,
+                json!({
+                    "diff_id": proposal.diff_id,
+                    "run_id": proposal.run_id,
+                    "hunk_id": hunk_id,
+                    "provenance": provenance,
+                    "proposal": serde_json::to_value(proposal).unwrap_or(Value::Null),
+                }),
+            ))
+            .await?;
+        Ok(())
+    }
+
+    /// Republish the diff projection onto the Wire-B bus so the FE HunkReview
+    /// control re-renders with the current per-hunk status. The ONE producer of the
+    /// diff surface: every path that creates a proposal or flips a hunk status
+    /// (`record_edit_diff`, `apply_diff`, `apply_hunk`, `reject_hunk`, `revert_diff`)
+    /// routes through here.
+    ///
+    /// This used to publish an untyped `Custom{kind:"diff"}` that the frontend routes
+    /// nowhere, so it decayed into a truncated JSON toast and the whole review surface
+    /// had no live data at all. It now publishes the two projections the surface
+    /// actually reads (see [`diff_projections`]).
+    pub(crate) async fn handle_export_review_receipt_intent(&self, payload: &Value) -> Result<()> {
+        let diff_id = payload
+            .get("diff_id")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| {
+                hide_core::error::HideError::Message(
+                    "export_review_receipt: missing 'diff_id'".to_string(),
+                )
+            })?;
+        let proposal = self.diff_get(diff_id).ok_or_else(|| unknown_diff(diff_id))?;
+        let session = payload
+            .get("session_id")
+            .and_then(|v| v.as_str())
+            .map(SessionId::from)
+            .unwrap_or_else(|| proposal.session_id.clone());
+        let (before, after): (Vec<VerificationReceipt>, Vec<VerificationReceipt>) = self
+            .verification_receipts(&session)
+            .await?
+            .into_iter()
+            .map(|r| r.receipt)
+            .partition(|r| r.started_ms < proposal.created_ms);
+        let receipt = self
+            .export_diff_review_receipt(diff_id, before, after)
+            .await?;
+        self.publish_custom(
+            Some(session),
+            json!({
+                "kind": "diff_review_receipt",
+                "record": serde_json::to_value(&receipt).unwrap_or(Value::Null),
+            }),
+        );
+        Ok(())
+    }
+
+    /// Every sealed diff review receipt recorded for a session, in log order.
+    pub(crate) async fn handle_background_intent(&self, name: &str, payload: &Value) -> Result<()> {
+        let missing = |field: &str| {
+            hide_core::error::HideError::Message(format!("{name}: missing '{field}'"))
+        };
+        match name {
+            "promote_run" => {
+                let run_id = payload
+                    .get("run_id")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| missing("run_id"))?;
+                let session = payload
+                    .get("session_id")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| missing("session_id"))?;
+                let goal_id = payload
+                    .get("goal_id")
+                    .and_then(|v| v.as_str())
+                    .map(str::to_string);
+                let budget = payload
+                    .get("budget")
+                    .and_then(|v| serde_json::from_value(v.clone()).ok())
+                    .unwrap_or_default();
+                self.promote_run_to_background(
+                    RunId::from(run_id),
+                    SessionId::from(session),
+                    goal_id,
+                    budget,
+                )
+                .await?;
+            }
+            "resume_run_foreground" => {
+                let job_id = payload
+                    .get("job_id")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| missing("job_id"))?;
+                self.resume_background_job_in_foreground(job_id).await?;
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+
+    // --- Outcome-governed durable MEMORY + revalidation (bible sec 21-22, sec 78.1 #16) ---
+
+    /// Add a durable, provenance-carrying MEMORY record (bible sec 21-22). The
+    /// record is minted `Active` at the neutral outcome score from the `draft`
+    /// (scope + claim + source + author + citations + privacy + optional expiry)
+    /// and written to the KV `memory` namespace keyed by its minted id, so it
+    /// survives a workspace reopen. Returns the stored record (with its id).
+    pub(crate) fn spawn_create_side_chat(
+        &self,
+        parent: SessionId,
+        at_event: Option<EventId>,
+        inherit: bool,
+    ) {
+        let replay = self.replay.clone();
+        let sessions = self.services.sessions.clone();
+        let kv = self.services.key_value_store.clone();
+        let bus = Arc::clone(&self.ui_bus);
+        tokio::spawn(async move {
+            match branch_and_record(
+                &replay,
+                &sessions,
+                &kv,
+                parent.clone(),
+                at_event,
+                crate::services::SessionRelationship::SideChat,
+                true,
+                inherit,
+            )
+            .await
+            {
+                Ok((new_session, record, _)) => {
+                    bus.publish(UiEvent {
+                        seq: record.forked_at.unwrap_or(0),
+                        session_id: Some(new_session),
+                        kind: UiEventKind::Custom(json!({
+                            "kind": "side_chat_created",
+                            "record": serde_json::to_value(&record).unwrap_or_else(|_| json!({})),
+                        })),
+                    });
+                }
+                Err(err) => {
+                    bus.publish(UiEvent {
+                        seq: 0,
+                        session_id: Some(parent),
+                        kind: UiEventKind::Error {
+                            code: "create_side_chat".to_string(),
+                            message: err.to_string(),
+                        },
+                    });
+                }
+            }
+        });
+    }
+
+    /// Perform a `merge_side_chat` custom intent: append the merge summary onto
+    /// the parent (spawned; the ack returns immediately). Surfacing is done by
+    /// [`Self::merge_side_chat_summary`]; a failure surfaces as an Error UiEvent.
+    pub(crate) fn spawn_merge_side_chat(&self, side_chat: SessionId, parent: SessionId, summary: String) {
+        let event_log = self.services.event_log.clone();
+        let bus = Arc::clone(&self.ui_bus);
+        let result = SideChatResult::summary_only(summary);
+        tokio::spawn(async move {
+            let appended = event_log
+                .append(NewEvent::system(
+                    parent.clone(),
+                    "session.merge_summary",
+                    result.merge_event_payload(&side_chat),
+                ))
+                .await;
+            match appended {
+                Ok(event) => {
+                    bus.publish(UiEvent {
+                        seq: event.seq,
+                        session_id: Some(parent.clone()),
+                        kind: UiEventKind::Custom(result.merged_ui_payload(&parent, &side_chat)),
+                    });
+                }
+                Err(err) => {
+                    bus.publish(UiEvent {
+                        seq: 0,
+                        session_id: Some(parent),
+                        kind: UiEventKind::Error {
+                            code: "merge_side_chat".to_string(),
+                            message: err.to_string(),
+                        },
+                    });
+                }
+            }
+        });
+    }
+
+    /// Publish a `session_forked` UiEvent carrying the new thread's record, under
+    /// the new session id (so the FE, which adopts a session off any event's
+    /// `session_id`, switches to the fork).
+    pub(crate) fn spawn_fork_session(&self, from: SessionId, at_event: hide_core::ids::EventId) {
+        let replay = self.replay.clone();
+        let sessions = self.services.sessions.clone();
+        let kv = self.services.key_value_store.clone();
+        let bus = Arc::clone(&self.ui_bus);
+        tokio::spawn(async move {
+            match fork_and_record(&replay, &sessions, &kv, from.clone(), Some(at_event)).await {
+                Ok((new_session, record, _)) => {
+                    bus.publish(UiEvent {
+                        seq: record.forked_at.unwrap_or(0),
+                        session_id: Some(new_session),
+                        kind: UiEventKind::Custom(json!({
+                            "kind": "session_forked",
+                            "record": serde_json::to_value(&record).unwrap_or_else(|_| json!({})),
+                        })),
+                    });
+                }
+                Err(err) => {
+                    bus.publish(UiEvent {
+                        seq: 0,
+                        session_id: Some(from),
+                        kind: UiEventKind::Error {
+                            code: "fork_session".to_string(),
+                            message: err.to_string(),
+                        },
+                    });
+                }
+            }
+        });
+}
 }

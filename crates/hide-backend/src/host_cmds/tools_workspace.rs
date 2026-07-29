@@ -57,124 +57,6 @@ use std::sync::Arc;
 use super::*;
 
 impl BackendHost {
-
-    /// Spawn the generation for an accepted `SubmitTurn`: route it at the live
-    /// runtime and stream tokens onto Wire-B. The run's `run_id` is registered
-    /// so `CancelRun`/`PauseRun` reach it via the shared `InterruptHub`. When no
-    /// runtime is online (no model configured, or it is not yet `Ready`), this
-    /// publishes a `RuntimeStatus`/`Error` UiEvent instead of generating, so the
-    /// FE shows "model offline", never a fake token.
-    pub(crate) fn spawn_submit_turn_generation(&self, session_id: SessionId, prompt: String) {
-        let run_id = RunId::new();
-        match self.runtime_base_url() {
-            Some(base_url) => {
-                // Register the run with the interrupt hub so control intents can
-                // reach it (the generation task polls it cooperatively).
-                let ui_bus = self.ui_bus.clone();
-                let role_registry = self.services.role_registry.clone();
-                let event_log = self.services.event_log.clone();
-                let key_value_store = self.services.key_value_store.clone();
-                let code_index = self.services.code_index.clone();
-                let memory = self.services.memory_store.clone();
-                let classed_memory = self.services.classed_memory.clone();
-                let interrupts = self.interrupts.clone();
-                let approvals = self.approvals.clone();
-                let run = run_id.clone();
-                let repo_instructions = self.services.repo_instructions.clone();
-                if kernel_turn_enabled() {
-                    // Increment 2: route the turn through the REAL kernel loop so
-                    // it can plan, use tools (permission-gated), and verify with
-                    // deterministic oracles. The kernel is built here (sync) via
-                    // `build_turn_kernel` and moved into the spawned driver.
-                    let kernel =
-                        self.build_turn_kernel(base_url.clone(), session_id.clone(), run.clone());
-                    tokio::spawn(async move {
-                        if let Err(e) = run_turn_kernel(
-                            kernel,
-                            event_log,
-                            key_value_store,
-                            role_registry,
-                            code_index,
-                            memory,
-                            classed_memory,
-                            ui_bus.clone(),
-                            interrupts,
-                            approvals,
-                            run,
-                            session_id.clone(),
-                            base_url,
-                            prompt,
-                            DEFAULT_KERNEL_TURN_MAX_STEPS,
-                            repo_instructions,
-                        )
-                        .await
-                        {
-                            ui_bus.publish(UiEvent {
-                                seq: 0,
-                                session_id: Some(session_id),
-                                kind: UiEventKind::Error {
-                                    code: "generation".to_string(),
-                                    message: e.to_string(),
-                                },
-                            });
-                        }
-                    });
-                } else {
-                    // Single-shot fallback (no tools): the model-offline-safe path,
-                    // pinnable via `HIDE_KERNEL_TURN=0` for tests / degraded serves.
-                    tokio::spawn(async move {
-                        if let Err(e) = generate_submit_turn(
-                            event_log,
-                            role_registry,
-                            code_index,
-                            memory,
-                            classed_memory,
-                            ui_bus.clone(),
-                            interrupts,
-                            run,
-                            session_id.clone(),
-                            base_url,
-                            prompt,
-                            repo_instructions,
-                        )
-                        .await
-                        {
-                            // Surface the failure on the same typed Wire-B channel;
-                            // never swallow it.
-                            ui_bus.publish(UiEvent {
-                                seq: 0,
-                                session_id: Some(session_id),
-                                kind: UiEventKind::Error {
-                                    code: "generation".to_string(),
-                                    message: e.to_string(),
-                                },
-                            });
-                        }
-                    });
-                }
-            }
-            None => {
-                // No model online: surface "model offline" as a real UiEvent.
-                let status = self
-                    .runtime_state()
-                    .map(|s| format!("{s:?}").to_lowercase())
-                    .unwrap_or_else(|| "down".to_string());
-                let detail = match self.runtime.is_some() {
-                    true => "runtime not ready; reconnect when it reports ready".to_string(),
-                    false => "no model configured (set HIDE_MODEL_WEIGHTS)".to_string(),
-                };
-                self.ui_bus.publish(UiEvent {
-                    seq: 0,
-                    session_id: Some(session_id),
-                    kind: UiEventKind::RuntimeStatus {
-                        status,
-                        detail: Some(detail),
-                    },
-                });
-            }
-        }
-    }
-
     pub async fn call_connector(&self, id: &str, method: &str, params: Value) -> Result<Value> {
         self.connectors.call(id, method, params).await
     }
@@ -292,82 +174,6 @@ impl BackendHost {
     ///   no way to attach to it after navigating away, stop it, or keep its output. Not being able
     ///   to stop what you started is the safety half of that. `process` is REQUIRED here: these
     ///   address one named process, and guessing "the latest" would stop the wrong one.
-    pub(crate) async fn handle_process_intent(
-        &self,
-        name: &str,
-        payload: &Value,
-    ) -> std::result::Result<(), String> {
-        let id = payload.get("process").and_then(|v| v.as_str());
-        let named = || id.ok_or_else(|| format!("{name}: missing 'process'"));
-        match name {
-            "pty_input" => {
-                let data = payload
-                    .get("data")
-                    .or_else(|| payload.get("text"))
-                    .and_then(|v| v.as_str())
-                    .ok_or_else(|| "pty_input: missing 'data'".to_string())?;
-                self.processes.write_stdin(id, data).await
-            }
-            "pty_resize" => {
-                let cols = payload.get("cols").and_then(|v| v.as_u64()).unwrap_or(0) as u16;
-                let rows = payload.get("rows").and_then(|v| v.as_u64()).unwrap_or(0) as u16;
-                self.processes.resize(id, cols, rows)
-            }
-            // Re-attaching replays the buffered output onto the bus under the attaching session, so
-            // a re-navigated terminal comes back with its scrollback instead of an empty pane.
-            "attach_process" => {
-                let id = named()?;
-                let session = payload
-                    .get("session_id")
-                    .and_then(|v| v.as_str())
-                    .map(SessionId::from)
-                    .unwrap_or_else(|| self.services.session());
-                let lines = self
-                    .attach_process(id, session.clone())
-                    .ok_or_else(|| format!("unknown process {id}"))?;
-                self.publish_custom(
-                    Some(session),
-                    json!({ "kind": "process_attached", "process": id, "lines": lines }),
-                );
-                Ok(())
-            }
-            "stop_process" => {
-                let id = named()?;
-                if !self.stop_process(id) {
-                    return Err(format!("unknown process {id}"));
-                }
-                self.publish_custom(None, json!({ "kind": "process_stopped", "process": id }));
-                Ok(())
-            }
-            "capture_process_artifact" => {
-                let id = named()?;
-                let blob = self.capture_process_artifact(id).map_err(|e| e.to_string())?;
-                self.publish_custom(
-                    None,
-                    json!({
-                        "kind": "process_artifact",
-                        "process": id,
-                        "artifact": serde_json::to_value(&blob).unwrap_or(Value::Null),
-                    }),
-                );
-                Ok(())
-            }
-            _ => Ok(()),
-        }
-    }
-
-    /// Publish a seq-0 `Custom` UiEvent on the live bus.
-    pub(crate) fn publish_custom(&self, session_id: Option<SessionId>, data: Value) {
-        self.ui_bus.publish(UiEvent {
-            seq: 0,
-            session_id,
-            kind: UiEventKind::Custom(data),
-        });
-    }
-
-    /// The run a session's editor saves are grouped under, so every save lands on ONE addressable
-    /// [`DiffProposal`] (`diff-editor-<session>`) instead of a diff per keystroke-save. Stable per
-    /// session and derived, not stored, so a restart addresses the same diff.
     pub fn editor_run(session: &SessionId) -> RunId {
         RunId::from(format!("editor-{}", session.as_str()))
     }
@@ -385,57 +191,6 @@ impl BackendHost {
     /// The session is the caller's (the FE's `runCommand` fills `session_id` into every custom
     /// payload); a payload without one falls back to the default session, as the other
     /// session-scoped intents do.
-    pub(crate) async fn save_file_effect(&self, payload: &Value) -> Result<()> {
-        let path = payload
-            .get("path")
-            .and_then(|v| v.as_str())
-            .ok_or_else(|| hide_core::error::HideError::Config("missing path".to_string()))?;
-        let content = payload
-            .get("content")
-            .and_then(|v| v.as_str())
-            .ok_or_else(|| hide_core::error::HideError::Config("missing content".to_string()))?;
-        // Same confinement the connector read path uses: `..`, absolute and prefix components are
-        // refused before the dispatcher ever sees the call.
-        let abs = crate::connectors::workspace_resolve(&self.services.config.workspace_root, path)?;
-        let mut args = json!({ "path": abs.to_string_lossy(), "content": content });
-        // `base_hash` (the blake3 of the text the caller read) is passed through when supplied, so
-        // a concurrently-changed file CONFLICTS instead of being clobbered.
-        if let Some(base) = payload.get("base_hash").and_then(|v| v.as_str()) {
-            args["base_hash"] = json!(base);
-        }
-        let session = payload
-            .get("session_id")
-            .and_then(|v| v.as_str())
-            .map(SessionId::from)
-            .unwrap_or_else(|| self.services.session());
-        let run = Self::editor_run(&session);
-        let result = self
-            .dispatch_tool(session, Some(run), ToolCall::new("edit.write_file", args))
-            .await?;
-        // `Tool`, not `PolicyDenied`: the permission verdict is the `?` above. This is the applier
-        // refusing (a `base_hash` conflict, most often), which no approval fixes, so it must not be
-        // mistaken for something to hold at a gate.
-        if result.status != ToolStatus::Ok {
-            return Err(hide_core::error::HideError::Tool(format!(
-                "write of {path} refused: {}",
-                result
-                    .error
-                    .as_ref()
-                    .map(|e| format!("{}: {}", e.code, e.message))
-                    .unwrap_or_else(|| "rejected by the applier".to_string())
-            )));
-        }
-        Ok(())
-    }
-
-    /// Dispatch a tool ATTRIBUTED to a session and (optionally) a run.
-    ///
-    /// A thin caller of the recorded path: the durable `tool.call`/`tool.result` pair, the live
-    /// `ToolProgress`, and the reviewable/revertible diff an `edit.*` write produces are recorded
-    /// by [`DispatchRecorder`] hanging off the dispatcher itself, so the kernel agent - which holds
-    /// the dispatcher directly and never enters this function - records exactly the same things.
-    /// All this adds is the attribution: without it a dispatch is recorded against the default
-    /// session with no run, which is honest but ungrouped.
     pub async fn dispatch_tool(
         &self,
         session_id: SessionId,
@@ -506,89 +261,6 @@ impl BackendHost {
     /// with a live model when Ready and a stub that yields the default DAG
     /// offline. Standard process oracles + permission-gated dispatcher so plan
     /// steps that name typecheck/build/test are real, not faith.
-    pub fn build_fleet_kernel(&self, session_id: SessionId) -> AgentKernel {
-        use crate::model_provider::{HttpModelProvider, ModelProviderInferenceClient};
-        use hawking_orch::inference::{InferenceClient, StubInferenceClient};
-        use hawking_orch::router::SimpleRouter;
-        use hide_kernel::runtime_client::KernelRuntimeClient;
-
-        let inference: Arc<dyn InferenceClient> = if let Some(url) = self.runtime_base_url() {
-            Arc::new(ModelProviderInferenceClient::new(HttpModelProvider::new(
-                url,
-            )))
-        } else {
-            // Offline: RuntimePlanner.synthesize falls through to default_dag
-            // on empty/failed generation — still a real plan, not StubPlanner.
-            Arc::new(StubInferenceClient::new(""))
-        };
-        let runtime = Arc::new(KernelRuntimeClient::new(
-            Arc::new(SimpleRouter::new(self.services.role_registry.clone())),
-            inference,
-        ));
-        let dispatcher = self.build_turn_dispatcher(session_id, None);
-        AgentKernel::builder(self.services.event_log.clone())
-            .workspace_root(
-                self.services
-                    .config
-                    .workspace_root
-                    .to_string_lossy()
-                    .to_string(),
-            )
-            // Fleet has no interactive approver on this path: FullAuto so the
-            // RuntimePlanner DAG can progress. Oracles still gate correctness.
-            .autonomy(Autonomy::FullAuto)
-            // `.runtime(..)` installs RuntimePlanner when no planner is set.
-            .runtime(runtime)
-            .dispatcher(dispatcher.clone())
-            .with_standard_oracles(dispatcher)
-            .build()
-    }
-
-    /// Generate against a (supervised) runtime through the kernel's runtime-client
-    /// seam and publish the completion onto the push Wire-B bus.
-    ///
-    /// This is the host's end-to-end generation path: a `KernelRuntimeClient`
-    /// (router + the host's HTTP `ModelProvider`, adapted to the orch
-    /// `InferenceClient` seam) produces tokens; each token batch is published - 
-    /// with coalescing - onto the broadcast bus, then flushed at stream end. The
-    /// returned string is the full completion (for callers that also want it
-    /// inline). `base_url` is the supervised serve's base (from the
-    /// `RuntimeSupervisor`).
-    pub async fn generate_and_publish(
-        &self,
-        session_id: SessionId,
-        base_url: impl Into<String>,
-        prompt: impl Into<String>,
-    ) -> Result<String> {
-        use crate::model_provider::{HttpModelProvider, ModelProviderInferenceClient};
-
-        let provider = HttpModelProvider::new(base_url);
-        let inference: Arc<dyn hawking_orch::inference::InferenceClient> =
-            Arc::new(ModelProviderInferenceClient::new(provider));
-        // Both generation entry points funnel through `run_turn_core` so the live
-        // path and this one build the SAME real request (compiled context + real
-        // history + a derived budget) and can never drift. This twin skips the
-        // per-step / post-turn live-manifest telemetry (no run/interrupt wiring).
-        let outcome = run_turn_core(
-            inference,
-            self.services.event_log.clone(),
-            self.services.role_registry.clone(),
-            self.services.code_index.clone(),
-            self.services.memory_store.clone(),
-            self.services.classed_memory.clone(),
-            self.ui_bus.clone(),
-            session_id,
-            prompt.into(),
-            None,
-            None,
-            self.services.repo_instructions.clone(),
-        )
-        .await?;
-        Ok(outcome.completion)
-    }
-
-    /// Time-travel: scrub a session's projection to (and including) `seq`. A
-    /// read-only view into the past (does not clobber the live projection).
     pub async fn scrub_to_event(
         &self,
         session_id: SessionId,
@@ -657,64 +329,6 @@ impl BackendHost {
     /// limit?, scopes? }`. The structured filters (`kind` / `role`) may sit at the
     /// top level or under a `scopes` object (top level wins). Semantic search is
     /// DEFERRED_MODEL_REQUIRED and never runs here.
-    pub(crate) async fn handle_search_intent(
-        &self,
-        payload: &Value,
-    ) -> Result<Vec<crate::replay::TranscriptHit>> {
-        let scopes = payload.get("scopes");
-        // A field is read from the top level, falling back to `scopes`.
-        let field = |name: &str| {
-            payload
-                .get(name)
-                .or_else(|| scopes.and_then(|s| s.get(name)))
-        };
-        let mut query = crate::replay::TranscriptQuery {
-            text: payload
-                .get("query")
-                .or_else(|| payload.get("text"))
-                .and_then(|v| v.as_str())
-                .unwrap_or("")
-                .to_string(),
-            ..Default::default()
-        };
-        query.session_id = field("session_id")
-            .and_then(|v| v.as_str())
-            .map(SessionId::from);
-        query.kind = field("kind").and_then(|v| v.as_str()).map(str::to_string);
-        query.role = field("role").and_then(|v| v.as_str()).map(str::to_string);
-        query.since_ts = field("since_ts").and_then(|v| v.as_u64());
-        query.until_ts = field("until_ts").and_then(|v| v.as_u64());
-        query.limit = payload
-            .get("limit")
-            .and_then(|v| v.as_u64())
-            .map(|n| n as usize);
-        self.search_transcript(&query).await
-    }
-
-    /// Surface transcript-search hits to the FE as a `search_results` UiEvent
-    /// (echoing the query so the palette can correlate the response).
-    pub(crate) fn publish_search_results(&self, payload: &Value, hits: &[crate::replay::TranscriptHit]) {
-        let query = payload
-            .get("query")
-            .or_else(|| payload.get("text"))
-            .and_then(|v| v.as_str())
-            .unwrap_or("");
-        self.ui_bus.publish(UiEvent {
-            seq: 0,
-            session_id: None,
-            kind: UiEventKind::Custom(json!({
-                "kind": "search_results",
-                "query": query,
-                "count": hits.len(),
-                "hits": serde_json::to_value(hits).unwrap_or_else(|_| json!([])),
-            })),
-        });
-    }
-
-    /// The conversation graph (bible sec 32-33) rooted at `session_id`: the node,
-    /// its ancestry chain (to a root), and its direct children (forks / side chats
-    /// / ephemeral forks), with parent->child edges. A bounded, DETERMINISTIC
-    /// projection over the durable `session_records` KV -- no model, safe headless.
     pub fn conversation_graph(&self, session_id: &SessionId) -> crate::services::ConversationGraph {
         self.services
             .sessions
@@ -780,48 +394,6 @@ impl BackendHost {
     ///   declared scope cannot name a path outside the repo it claims to be inside.
     ///
     /// `{ repo_id, scopes?: [rel], session_id?, run_id? }`.
-    pub(crate) async fn handle_grant_write_lease(&self, payload: &Value) -> Result<()> {
-        let repo_id = payload
-            .get("repo_id")
-            .and_then(|v| v.as_str())
-            .ok_or_else(|| {
-                hide_core::error::HideError::Message(
-                    "grant_write_lease: missing 'repo_id'".to_string(),
-                )
-            })?;
-        let repo = self.workspace_repo(repo_id).ok_or_else(|| unknown_repo(repo_id))?;
-        if repo.trust != TrustState::Trusted {
-            return Err(hide_core::error::HideError::PolicyDenied(format!(
-                "{repo_id} is not trusted; trust the repository before granting it a write lease"
-            )));
-        }
-        let scopes = match payload.get("scopes").and_then(|v| v.as_array()) {
-            Some(rels) if !rels.is_empty() => rels
-                .iter()
-                .filter_map(|v| v.as_str())
-                .map(|rel| crate::connectors::workspace_resolve(&repo.root_path, rel))
-                .collect::<Result<Vec<_>>>()?,
-            _ => vec![repo.root_path.clone()],
-        };
-        let lease = crate::tools::install_write_lease(crate::tools::WriteLease {
-            lease_id: hide_core::ids::GrantId::new().as_str().to_string(),
-            repo_id: repo_id.to_string(),
-            session_id: payload
-                .get("session_id")
-                .and_then(|v| v.as_str())
-                .map(str::to_string),
-            run_id: payload
-                .get("run_id")
-                .and_then(|v| v.as_str())
-                .map(str::to_string),
-            scopes,
-            granted_ms: hide_core::ids::now_ms(),
-        });
-        publish_write_lease(&self.ui_bus, Some(&lease), "granted");
-        Ok(())
-    }
-
-    /// The lease in force, if any (test / inspection / the status read).
     pub fn write_lease(&self) -> Option<crate::tools::WriteLease> {
         crate::tools::active_write_lease()
     }
@@ -983,36 +555,6 @@ impl BackendHost {
     /// target extracted from the call args, and a risk keyed on the spec's
     /// `destructive` annotation. Consulted by [`Self::evaluate_tool_policy`] for
     /// the write path. Model-free.
-    pub(crate) fn permission_verdict_for(
-        &self,
-        tool_id: &str,
-        args: &Value,
-    ) -> hide_core::permission::PermissionVerdict {
-        use hide_core::permission::{PermissionEngine, PermissionRequest};
-        use hide_core::types::RiskLevel;
-        let engine = SecurityServices::permission_engine(&self.services.config);
-        let spec = self.tools.get(tool_id).map(|tool| tool.spec().clone());
-        let capability_kind = spec
-            .as_ref()
-            .and_then(|s| s.capabilities_required.first().cloned())
-            .unwrap_or_else(|| "tool.call".to_string());
-        let risk = match spec.as_ref() {
-            Some(s) if s.annotations.destructive => RiskLevel::High,
-            Some(_) => RiskLevel::Low,
-            None => RiskLevel::High,
-        };
-        let target = policy_target_from_args(tool_id, args);
-        engine.evaluate(&PermissionRequest {
-            capability_kind,
-            target,
-            risk,
-            effects: Vec::new(),
-            grant: None,
-        })
-    }
-
-    /// All durable policy decisions recorded for a session, in log order (bible
-    /// sec 40.1 reader).
     pub async fn policy_decisions(
         &self,
         session: &SessionId,
@@ -1027,5 +569,83 @@ impl BackendHost {
             .filter(|event| event.kind == "policy.decision")
             .filter_map(|event| event.payload_as::<PolicyDecisionRecord>())
             .collect())
+    }
+
+    // --- Deterministic verification plane (bible Book IX sec 28-29, sec 78.1 #6) ---
+
+    /// Run the model-free hide-verify [`StaticAnalysisOracle`] over `sources` and
+    /// RECORD a durable verification receipt.
+    ///
+    /// The oracle is a genuine Tier1 DETERMINISTIC check (unwrap/expect outside
+    /// test code, marker macros, the house-rule dash lint, long functions,
+    /// TODO/FIXME) that runs entirely in-process: NO model, NO subprocess, same
+    /// input -> same findings. It produces typed [`Finding`]s and a
+    /// [`Verdict`](hide_kernel::verify_plane::Verdict) (`Pass` when nothing at or above Warning
+    /// fired, else `Fail` carrying the blocking reasons).
+    ///
+    /// The result is sealed into a [`StaticAnalysisReceipt`] (the
+    /// [`VerificationReceipt`] + findings) with `tier = Tier1Deterministic`,
+    /// `oracle = "static_analysis"`, the analyzed file paths as `scope`, and a
+    /// content hash of the sources; it is appended as a `verify.result`-shaped
+    /// event to the session's durable log and surfaced as a UiEvent. Read the
+    /// recorded receipts back with [`Self::verification_receipts`].
+    pub(crate) fn publish_checkpoint(&self, record: &CheckpointRecord, kind: &str) {
+        self.ui_bus.publish(UiEvent {
+            seq: record.at_seq,
+            session_id: Some(record.session_id.clone()),
+            kind: UiEventKind::Custom(json!({
+                "kind": kind,
+                "record": serde_json::to_value(record).unwrap_or_else(|_| json!({})),
+            })),
+        });
+    }
+
+    /// Publish a `checkpoint_restored` UiEvent under the RESTORED session (so the
+    /// FE, which adopts a session off any event's id, switches to it), carrying the
+    /// source checkpoint + the restored session's ancestry record.
+    pub(crate) fn publish_checkpoint_restored(
+        &self,
+        restored: &SessionId,
+        checkpoint: &CheckpointRecord,
+        ancestry: &crate::services::SessionRecord,
+    ) {
+        self.ui_bus.publish(UiEvent {
+            seq: checkpoint.at_seq,
+            session_id: Some(restored.clone()),
+            kind: UiEventKind::Custom(json!({
+                "kind": "checkpoint_restored",
+                "checkpoint": serde_json::to_value(checkpoint).unwrap_or_else(|_| json!({})),
+                "record": serde_json::to_value(ancestry).unwrap_or_else(|_| json!({})),
+            })),
+        });
+    }
+
+    // --- Checkpoint rewind / replay / fork / compare / inspect (Trace E) -----
+    //
+    // Deepens the checkpoint boundary into a real rewind + fork surface over the
+    // event log. Port provenance (see HIDE_DONOR_PORT_LEDGER.md): the rewind fold
+    // adapts grok-build's merge_rewind_points_from (revert-as-event-fold instead
+    // of file write-back); the ForkPoint boundary is a clean-room reimplementation
+    // of Codex's subagent_history_start_ordinal. Model-free: no model is loaded.
+
+    /// Load a checkpoint and VERIFY its sealed integrity (boundary + coverage);
+    /// errors on an unknown id or a tampered record. Shared by every rewind path.
+    pub(crate) fn publish_checkpoint_child(
+        &self,
+        kind: &str,
+        child: &SessionId,
+        checkpoint: &CheckpointRecord,
+        detail: Value,
+    ) {
+        self.ui_bus.publish(UiEvent {
+            seq: checkpoint.at_seq,
+            session_id: Some(child.clone()),
+            kind: UiEventKind::Custom(json!({
+                "kind": kind,
+                "session_id": child.as_str(),
+                "checkpoint": serde_json::to_value(checkpoint).unwrap_or_else(|_| json!({})),
+                "detail": detail,
+            })),
+        });
     }
 }

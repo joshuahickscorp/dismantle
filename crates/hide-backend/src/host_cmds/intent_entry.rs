@@ -57,183 +57,6 @@ use std::sync::Arc;
 use super::*;
 
 impl BackendHost {
-    pub fn open_workspace(workspace_root: impl Into<PathBuf>) -> Result<Self> {
-        Self::from_services(BackendServices::open_workspace(workspace_root)?)
-    }
-
-    pub fn from_services(services: BackendServices) -> Result<Self> {
-        let services = Arc::new(services);
-        let tools = Arc::new(build_default_tool_registry());
-        // W1: register configured MCP servers into the live tool registry at boot.
-        // Source: `.hide/mcp.json` (array of `McpServerDescriptor`) under the
-        // workspace root — same `.hide/` layout every other durable workspace
-        // artifact uses. A server that fails to start is logged + evented and
-        // does NOT fail host boot (`register_mcp_servers` already returns
-        // per-server results).
-        register_mcp_servers_at_boot(&services, &tools);
-        let ui_bus = Arc::new(UiEventBus::default());
-        // RECORDED at construction, so there is no such thing as a dispatch through this host that
-        // produces no tool events and no reviewable diff.
-        let dispatcher = Arc::new(
-            build_default_tool_dispatcher(&services.config, tools.clone()).with_observer(Arc::new(
-                DispatchRecorder::new(services.clone(), ui_bus.clone()),
-            )),
-        );
-        let connectors = Arc::new(ConnectorRegistry::default());
-        register_backend_connectors(&connectors, &services);
-        let interrupts = Arc::new(InterruptHub::default());
-        let runtime = Self::maybe_boot_runtime(&services);
-        // Re-register the runtime connector now that the supervisor exists, so its `state` method
-        // is a real read of the engine instead of a guess from the static role registry.
-        connectors.register(crate::connectors::runtime_connector(
-            &services,
-            runtime.clone(),
-        ));
-        // One surface graph bound to the host primary session. All three lenses
-        // share that session id; handoffs never mint a parallel session.
-        let primary = services.session();
-        let surfaces = Arc::new(SurfaceGraphService::for_session(
-            &primary,
-            services.event_log.clone(),
-            ui_bus.clone(),
-        ));
-        // Publish the initial projection so FE navigation can bind on connect.
-        surfaces.publish_view();
-        Ok(Self {
-            commands: CommandRouter::with_interrupts(
-                services.event_log.clone(),
-                interrupts.clone(),
-            ),
-            replay: BackendReplayService::new(
-                services.event_log.clone(),
-                services.projection_store.clone(),
-            ),
-            services,
-            connectors,
-            tools,
-            dispatcher,
-            security: SecurityServices::default(),
-            processes: Arc::new(ProcessSupervisor::new(ui_bus.clone())),
-            ui_bus,
-            interrupts,
-            approvals: Arc::new(ApprovalHub::default()),
-            gate_book: Arc::new(GateBook::default()),
-            runtime,
-            connections: Arc::new(ConnectionRegistry::default()),
-            surfaces,
-        })
-    }
-
-    /// Construct + (in the background) boot the runtime supervisor, GATED behind
-    /// the `HIDE_MODEL_WEIGHTS` env var. When unset (the headless/test default)
-    /// this returns `None` and NO server is ever spawned, so the ~410 unit tests
-    /// stay model-free. When set to a weights path, the `RuntimeSupervisor` is
-    /// built for `hawking serve --weights <path>` and `boot()` is spawned on the
-    /// current tokio runtime so construction stays synchronous and NON-FATAL: a
-    /// missing binary, a bad path, or a `/healthz` that never comes up just
-    /// leaves the supervisor in `Failed`/`Booting`; the host is still returned
-    /// and fully usable (it will report "model offline" rather than fake a
-    /// token). Related env:
-    /// * `HIDE_MODEL_ADDR` — bind (default `127.0.0.1:8745`, distinct from
-    ///   hide-serve's 8744)
-    /// * `HIDE_HAWKING_BIN` — path to the `hawking` binary (default: `hawking`
-    ///   on `PATH`)
-    /// * `HIDE_MODEL_BOOT_TIMEOUT_SECS` — wait for `/healthz` (default 300)
-    pub(crate) fn maybe_boot_runtime(services: &Arc<BackendServices>) -> Option<Arc<RuntimeSupervisor>> {
-        let weights = std::env::var("HIDE_MODEL_WEIGHTS").ok()?;
-        if weights.trim().is_empty() {
-            return None;
-        }
-        let bind = std::env::var("HIDE_MODEL_ADDR")
-            .ok()
-            .filter(|s| !s.trim().is_empty())
-            .unwrap_or_else(|| "127.0.0.1:8745".to_string());
-        let layout = services.layout();
-        let cfg = SupervisorConfig::for_hawking_serve(
-            bind,
-            &services.config.workspace_root,
-            &weights,
-            layout.hide_dir.join("runtime.lock"),
-        );
-        let supervisor = Arc::new(RuntimeSupervisor::for_hawking_serve(cfg));
-        // Boot in the background so construction is sync + non-fatal. If we are
-        // not inside a tokio runtime (a sync test that set the env var), skip the
-        // spawn but still hand back the (Down) supervisor: health/status report
-        // it honestly and generation surfaces "model offline".
-        if let Ok(handle) = tokio::runtime::Handle::try_current() {
-            let sup = supervisor.clone();
-            handle.spawn(async move {
-                if let Err(e) = sup.boot().await {
-                    // Non-fatal: the supervisor already transitioned to Failed and
-                    // recorded the reason; just surface it (consistent with the
-                    // supervisor's own eprintln! diagnostics).
-                    eprintln!("warning: runtime supervisor boot failed (non-fatal): {e}");
-                }
-            });
-        }
-        Some(supervisor)
-    }
-
-    /// Subscribe to the live push UiEvent stream (Wire-B). Ordered; a lagging
-    /// subscriber gets a `Lagged` signal rather than stalling the host.
-    pub fn subscribe_ui(&self) -> tokio::sync::broadcast::Receiver<UiEvent> {
-        self.ui_bus.subscribe()
-    }
-
-    /// The push UiEvent bus (for callers that want to publish/coalesce directly).
-    pub fn ui_bus(&self) -> &Arc<UiEventBus> {
-        &self.ui_bus
-    }
-
-    /// The interrupt hub control intents signal onto (shared with the kernel).
-    pub fn interrupts(&self) -> &Arc<InterruptHub> {
-        &self.interrupts
-    }
-
-    /// The approval hub `approve_effect`/`deny_effect` intents deposit onto
-    /// (shared with the running kernel turn). A paused effectful step drains it
-    /// to resume or skip.
-    pub fn approvals(&self) -> &Arc<ApprovalHub> {
-        &self.approvals
-    }
-
-    /// The supervised runtime's state (`None` when no model is configured, i.e.
-    /// `HIDE_MODEL_WEIGHTS` unset). Surfaced so the FE's `RuntimeStatus` can
-    /// reflect down/booting/ready/degraded/failed.
-    pub fn runtime_state(&self) -> Option<RuntimeSupervisorState> {
-        self.runtime.as_ref().map(|s| s.state())
-    }
-
-    /// The base URL of the supervised runtime, but only when it is `Ready`. A
-    /// `None` here means "no model online to generate against", so the caller
-    /// surfaces that as a `RuntimeStatus`/`Error` UiEvent rather than faking a
-    /// token. When Ready, also installs [`HttpEmbeddingClient`] on the sqlite
-    /// code index so hybrid search's semantic leg is real (never a silent stub).
-    pub(crate) fn runtime_base_url(&self) -> Option<String> {
-        let sup = self.runtime.as_ref()?;
-        if sup.state() == RuntimeSupervisorState::Ready {
-            let url = sup.base_url()?;
-            self.install_runtime_embedder(&url);
-            Some(url)
-        } else {
-            None
-        }
-    }
-
-    /// Wire the live embeddings endpoint into SqliteCodeIndex when present.
-    pub(crate) fn install_runtime_embedder(&self, base_url: &str) {
-        if let Some(sqlite) = self.services.sqlite_index.as_ref() {
-            let client: Arc<dyn hawking_index::EmbeddingClient> = Arc::new(
-                hawking_index::HttpEmbeddingClient::new(base_url.to_string()),
-            );
-            sqlite.set_embedder(Some(client));
-        }
-    }
-
-    /// Handle a Wire-A intent. The `IntentAck` is returned SYNCHRONOUSLY (the
-    /// contract is unchanged); generation, when an accepted `SubmitTurn`
-    /// triggers it, is spawned as a background task that streams tokens onto the
-    /// Wire-B bus. The ack does not wait for generation.
     pub async fn handle_intent(&self, intent: Intent) -> Result<IntentAck> {
         // Snapshot the SubmitTurn parameters before the router consumes the
         // intent (it takes `intent` by value and returns only an `IntentAck`).
@@ -915,63 +738,6 @@ impl BackendHost {
     /// the Error UiEvent AND refuses the ack. Every side effect in [`Self::handle_intent`]
     /// reports through here, so no surface can print "saved" / "done" for work the host
     /// did not do (an 8-second error toast beside a success line is not a refusal).
-    pub(crate) fn effect_failed(&self, ack: &mut IntentAck, code: &str, message: String) {
-        ack.accepted = false;
-        ack.message = Some(message.clone());
-        self.ui_bus.publish(UiEvent {
-            seq: 0,
-            session_id: None,
-            kind: UiEventKind::Error {
-                code: code.to_string(),
-                message,
-            },
-        });
-    }
-
-    /// Dispatch `run_static_analysis` (bible Book IX sec 28-29). Payload:
-    /// `{ session_id?, sources: [{path,text}] }` (the editor's live buffers) or
-    /// `{ session_id?, paths: [workspace-relative] }` (read from disk, confined to the root).
-    pub(crate) async fn handle_static_analysis_intent(&self, payload: &Value) -> Result<()> {
-        let session = payload
-            .get("session_id")
-            .and_then(|v| v.as_str())
-            .map(SessionId::from)
-            .unwrap_or_else(|| self.services.session());
-        let mut sources: Vec<SourceFile> = payload
-            .get("sources")
-            .and_then(|v| v.as_array())
-            .map(|rows| {
-                rows.iter()
-                    .filter_map(|r| {
-                        Some(SourceFile::new(
-                            r.get("path").and_then(|v| v.as_str())?,
-                            r.get("text").and_then(|v| v.as_str())?,
-                        ))
-                    })
-                    .collect()
-            })
-            .unwrap_or_default();
-        if let Some(paths) = payload.get("paths").and_then(|v| v.as_array()) {
-            let root = &self.services.config.workspace_root;
-            for p in paths.iter().filter_map(|v| v.as_str()) {
-                let abs = crate::connectors::workspace_resolve(root, p)?;
-                let text = std::fs::read_to_string(&abs)
-                    .map_err(|e| hide_core::error::HideError::Storage(format!("{p}: {e}")))?;
-                sources.push(SourceFile::new(p, text));
-            }
-        }
-        if sources.is_empty() {
-            return Err(hide_core::error::HideError::Message(
-                "run_static_analysis: give 'sources' or 'paths'".to_string(),
-            ));
-        }
-        self.run_static_analysis(session, sources).await.map(|_| ())
-    }
-
-    /// Seed (or replace) the session's durable plan record from a live kernel
-    /// plan and publish the `plan` projection. Used by the live-turn emitter's
-    /// twin path and by tests; the FSM emitter in [`run_turn_kernel`] uses the
-    /// same [`crate::plan_domain::store_and_publish`] seam.
     pub fn publish_plan(
         &self,
         session: &SessionId,
@@ -991,5 +757,45 @@ impl BackendHost {
     /// The session's durable plan record, if one has been published.
     pub fn plan_get(&self, session: &SessionId) -> Option<crate::plan_domain::PlanRecord> {
         crate::plan_domain::PlanRecordStore::get(&self.services.key_value_store, session)
+    }
+
+    /// Dispatch a PlanCard custom intent (Stage 1, bible sec 14): mutate the
+    /// session's durable plan record and republish the `plan` projection. Payload
+    /// shapes (all carry `session_id`):
+    ///
+    /// * `approve_plan`   -> `{ session_id, step_id? }` (absent step_id = whole plan)
+    /// * `edit_plan_step` -> `{ session_id, step_id, text }`
+    /// * `reorder_plan`   -> `{ session_id, order: [step_id, ..] }`
+    /// * `skip_step`      -> `{ session_id, step_id, reason? }`
+    /// * `repair_step`    -> `{ session_id, step_id }`
+    ///
+    /// Errors when no plan is set for the session, a named step is unknown, or a
+    /// reorder is not a permutation; the caller surfaces it as an Error UiEvent.
+    pub(crate) fn permission_verdict_for(
+        &self,
+        tool_id: &str,
+        args: &Value,
+    ) -> hide_core::permission::PermissionVerdict {
+        use hide_core::permission::{PermissionEngine, PermissionRequest};
+        use hide_core::types::RiskLevel;
+        let engine = SecurityServices::permission_engine(&self.services.config);
+        let spec = self.tools.get(tool_id).map(|tool| tool.spec().clone());
+        let capability_kind = spec
+            .as_ref()
+            .and_then(|s| s.capabilities_required.first().cloned())
+            .unwrap_or_else(|| "tool.call".to_string());
+        let risk = match spec.as_ref() {
+            Some(s) if s.annotations.destructive => RiskLevel::High,
+            Some(_) => RiskLevel::Low,
+            None => RiskLevel::High,
+        };
+        let target = policy_target_from_args(tool_id, args);
+        engine.evaluate(&PermissionRequest {
+            capability_kind,
+            target,
+            risk,
+            effects: Vec::new(),
+            grant: None,
+        })
     }
 }

@@ -57,25 +57,6 @@ use std::sync::Arc;
 use super::*;
 
 impl BackendHost {
-
-    // --- Deterministic verification plane (bible Book IX sec 28-29, sec 78.1 #6) ---
-
-    /// Run the model-free hide-verify [`StaticAnalysisOracle`] over `sources` and
-    /// RECORD a durable verification receipt.
-    ///
-    /// The oracle is a genuine Tier1 DETERMINISTIC check (unwrap/expect outside
-    /// test code, marker macros, the house-rule dash lint, long functions,
-    /// TODO/FIXME) that runs entirely in-process: NO model, NO subprocess, same
-    /// input -> same findings. It produces typed [`Finding`]s and a
-    /// [`Verdict`](hide_kernel::verify_plane::Verdict) (`Pass` when nothing at or above Warning
-    /// fired, else `Fail` carrying the blocking reasons).
-    ///
-    /// The result is sealed into a [`StaticAnalysisReceipt`] (the
-    /// [`VerificationReceipt`] + findings) with `tier = Tier1Deterministic`,
-    /// `oracle = "static_analysis"`, the analyzed file paths as `scope`, and a
-    /// content hash of the sources; it is appended as a `verify.result`-shaped
-    /// event to the session's durable log and surfaced as a UiEvent. Read the
-    /// recorded receipts back with [`Self::verification_receipts`].
     pub async fn run_static_analysis(
         &self,
         session: SessionId,
@@ -220,41 +201,6 @@ impl BackendHost {
     /// receipt instead of a hardcoded 0/0. Additive: a new projection NAME only,
     /// no new UiEventKind. The durable `verify.result` receipt stays untouched and
     /// readable via [`Self::verification_receipts`].
-    pub(crate) fn publish_diagnostics(&self, record: &StaticAnalysisReceipt, session: &SessionId) {
-        self.ui_bus.publish(UiEvent {
-            seq: 0,
-            session_id: Some(session.clone()),
-            kind: UiEventKind::ProjectionPatch {
-                projection: "diagnostics".to_string(),
-                patch: record.diagnostics_projection(),
-            },
-        });
-    }
-
-    /// Publish a `verification_receipt` UiEvent carrying the receipt + a
-    /// findings-summary, under the analyzed session.
-    pub(crate) fn publish_verification(&self, record: &StaticAnalysisReceipt, session: &SessionId) {
-        self.ui_bus.publish(UiEvent {
-            seq: 0,
-            session_id: Some(session.clone()),
-            kind: UiEventKind::Custom(json!({
-                "kind": "verification_receipt",
-                "summary": record.findings_summary(),
-                "record": serde_json::to_value(record).unwrap_or_else(|_| json!({})),
-            })),
-        });
-    }
-
-    // --- Hunk-addressable diff review (census sec 23) ---
-
-    /// Capture one applied `edit.*` call as an addressable hunk on the run's
-    /// [`DiffProposal`] (creating it on the first edit of the run). The edit has
-    /// ALREADY been written to disk by the verifying applier; this records the
-    /// whole-file pre-image/post-image so the change can later be kept or reverted
-    /// per hunk. Appends a durable `diff.proposed` event and republishes the diff
-    /// projection. Called from [`Self::dispatch_tool`] for every successful edit
-    /// under a run.
-    /// Read a diff's hunks WITH provenance + base hash (census sec 23 reader).
     pub fn diff_get(&self, diff_id: &str) -> Option<DiffProposal> {
         DiffStore::get(&self.services.key_value_store, diff_id)
     }
@@ -367,94 +313,6 @@ impl BackendHost {
     ///
     /// ponytail: reverting a newly created file writes an empty file rather than
     /// deleting it. Delete-on-revert when a created-file hunk needs true undo.
-    pub(crate) async fn inverse_write(
-        &self,
-        session: &SessionId,
-        file: &str,
-        before: &str,
-        after: &str,
-    ) -> Result<()> {
-        let after_hash = blake3::hash(after.as_bytes()).to_hex().to_string();
-        // Through the same recorded path as every other write (attributed, with no run: an undo is
-        // a tool step in the timeline, not a new reviewable hunk of its own). Recorded hunk paths
-        // are workspace-relative, so the applier is handed the absolute spelling.
-        let path = if Path::new(file).is_absolute() {
-            file.to_string()
-        } else {
-            self.services
-                .config
-                .workspace_root
-                .join(file)
-                .to_string_lossy()
-                .into_owned()
-        };
-        let result = self
-            .dispatch_tool(
-                session.clone(),
-                None,
-                ToolCall::new(
-                    "edit.write_file",
-                    json!({ "path": path, "content": before, "base_hash": after_hash }),
-                ),
-            )
-            .await?;
-        if result.status != ToolStatus::Ok {
-            return Err(hide_core::error::HideError::Message(format!(
-                "revert of {file} failed: {}",
-                tool_result_summary(&result)
-            )));
-        }
-        Ok(())
-    }
-
-    /// Append a durable `diff.*` event carrying the diff projection + the target
-    /// hunk's provenance (when a single hunk is addressed).
-    pub(crate) async fn record_diff_event(
-        &self,
-        proposal: &DiffProposal,
-        kind: &str,
-        hunk_id: Option<&str>,
-    ) -> Result<()> {
-        let provenance = hunk_id
-            .and_then(|id| proposal.hunk(id))
-            .map(|h| serde_json::to_value(&h.provenance).unwrap_or(Value::Null));
-        self.services
-            .event_log
-            .append(NewEvent::system(
-                proposal.session_id.clone(),
-                kind,
-                json!({
-                    "diff_id": proposal.diff_id,
-                    "run_id": proposal.run_id,
-                    "hunk_id": hunk_id,
-                    "provenance": provenance,
-                    "proposal": serde_json::to_value(proposal).unwrap_or(Value::Null),
-                }),
-            ))
-            .await?;
-        Ok(())
-    }
-
-    /// Republish the diff projection onto the Wire-B bus so the FE HunkReview
-    /// control re-renders with the current per-hunk status. The ONE producer of the
-    /// diff surface: every path that creates a proposal or flips a hunk status
-    /// (`record_edit_diff`, `apply_diff`, `apply_hunk`, `reject_hunk`, `revert_diff`)
-    /// routes through here.
-    ///
-    /// This used to publish an untyped `Custom{kind:"diff"}` that the frontend routes
-    /// nowhere, so it decayed into a truncated JSON toast and the whole review surface
-    /// had no live data at all. It now publishes the two projections the surface
-    /// actually reads (see [`diff_projections`]).
-    pub(crate) fn publish_diff(&self, proposal: &DiffProposal) {
-        publish_diff_to(&self.ui_bus, proposal);
-    }
-
-    /// Mark the verification receipts whose scope intersects any of `files` as
-    /// invalidated (census sec 23): append a durable `verify.invalidated` event
-    /// naming the affected verification ids + scope so a rerun is warranted. Reuses
-    /// the same scope-intersection logic ([`scopes_intersect`] /
-    /// `hide_kernel::verify_plane::paths_intersect`) as [`Self::reconcile_review_for_scope`].
-    /// Model-free.
     pub(crate) async fn invalidate_verifications_for_files(
         &self,
         session: &SessionId,
@@ -555,41 +413,6 @@ impl BackendHost {
     /// hunk of this diff was recorded verified the pre-review tree, and one sealed after verified
     /// the reviewed tree. No client input picks the split, so two exports of the same diff seal the
     /// same body.
-    pub(crate) async fn handle_export_review_receipt_intent(&self, payload: &Value) -> Result<()> {
-        let diff_id = payload
-            .get("diff_id")
-            .and_then(|v| v.as_str())
-            .ok_or_else(|| {
-                hide_core::error::HideError::Message(
-                    "export_review_receipt: missing 'diff_id'".to_string(),
-                )
-            })?;
-        let proposal = self.diff_get(diff_id).ok_or_else(|| unknown_diff(diff_id))?;
-        let session = payload
-            .get("session_id")
-            .and_then(|v| v.as_str())
-            .map(SessionId::from)
-            .unwrap_or_else(|| proposal.session_id.clone());
-        let (before, after): (Vec<VerificationReceipt>, Vec<VerificationReceipt>) = self
-            .verification_receipts(&session)
-            .await?
-            .into_iter()
-            .map(|r| r.receipt)
-            .partition(|r| r.started_ms < proposal.created_ms);
-        let receipt = self
-            .export_diff_review_receipt(diff_id, before, after)
-            .await?;
-        self.publish_custom(
-            Some(session),
-            json!({
-                "kind": "diff_review_receipt",
-                "record": serde_json::to_value(&receipt).unwrap_or(Value::Null),
-            }),
-        );
-        Ok(())
-    }
-
-    /// Every sealed diff review receipt recorded for a session, in log order.
     pub async fn diff_review_receipts(
         &self,
         session: &SessionId,
@@ -688,39 +511,6 @@ impl BackendHost {
 
     /// Publish a goal-lifecycle UiEvent (`goal_set` / `goal_cleared`) carrying the
     /// record, under the goal's session.
-    pub(crate) fn publish_goal(&self, record: &GoalRecord, kind: &str) {
-        self.ui_bus.publish(UiEvent {
-            seq: 0,
-            session_id: Some(record.session_id.clone()),
-            kind: UiEventKind::Custom(json!({
-                "kind": kind,
-                "record": serde_json::to_value(record).unwrap_or_else(|_| json!({})),
-            })),
-        });
-    }
-
-    /// Publish a `goal_met` UiEvent carrying the record + the evaluation verdict.
-    pub(crate) fn publish_goal_met(&self, record: &GoalRecord, verdict: &GoalVerdict) {
-        self.ui_bus.publish(UiEvent {
-            seq: 0,
-            session_id: Some(record.session_id.clone()),
-            kind: UiEventKind::Custom(json!({
-                "kind": "goal_met",
-                "record": serde_json::to_value(record).unwrap_or_else(|_| json!({})),
-                "verdict": serde_json::to_value(verdict).unwrap_or_else(|_| json!({})),
-            })),
-        });
-    }
-
-    // --- Durable CHECKPOINT (bible sec 15.4, sec 78.1 #3) ---
-
-    /// Create a durable CHECKPOINT: a named restore boundary over a session's
-    /// event-sourced history. The boundary is `at_event` (resolved strictly;
-    /// `NotFound` if absent) or, when `None`, the session's current tail. The
-    /// record seals a blake3 `integrity` digest over its boundary identity
-    /// (session + seq + boundary event) so a later restore can prove the boundary
-    /// was not tampered. Written to the KV `checkpoints` namespace; surfaces a
-    /// `checkpoint_created` UiEvent under the session.
     pub async fn checkpoint_create(
         &self,
         session: SessionId,
@@ -854,77 +644,6 @@ impl BackendHost {
     }
 
     /// Publish a `checkpoint_created` UiEvent carrying the record, under its session.
-    pub(crate) fn publish_checkpoint(&self, record: &CheckpointRecord, kind: &str) {
-        self.ui_bus.publish(UiEvent {
-            seq: record.at_seq,
-            session_id: Some(record.session_id.clone()),
-            kind: UiEventKind::Custom(json!({
-                "kind": kind,
-                "record": serde_json::to_value(record).unwrap_or_else(|_| json!({})),
-            })),
-        });
-    }
-
-    /// Publish a `checkpoint_restored` UiEvent under the RESTORED session (so the
-    /// FE, which adopts a session off any event's id, switches to it), carrying the
-    /// source checkpoint + the restored session's ancestry record.
-    pub(crate) fn publish_checkpoint_restored(
-        &self,
-        restored: &SessionId,
-        checkpoint: &CheckpointRecord,
-        ancestry: &crate::services::SessionRecord,
-    ) {
-        self.ui_bus.publish(UiEvent {
-            seq: checkpoint.at_seq,
-            session_id: Some(restored.clone()),
-            kind: UiEventKind::Custom(json!({
-                "kind": "checkpoint_restored",
-                "checkpoint": serde_json::to_value(checkpoint).unwrap_or_else(|_| json!({})),
-                "record": serde_json::to_value(ancestry).unwrap_or_else(|_| json!({})),
-            })),
-        });
-    }
-
-    // --- Checkpoint rewind / replay / fork / compare / inspect (Trace E) -----
-    //
-    // Deepens the checkpoint boundary into a real rewind + fork surface over the
-    // event log. Port provenance (see HIDE_DONOR_PORT_LEDGER.md): the rewind fold
-    // adapts grok-build's merge_rewind_points_from (revert-as-event-fold instead
-    // of file write-back); the ForkPoint boundary is a clean-room reimplementation
-    // of Codex's subagent_history_start_ordinal. Model-free: no model is loaded.
-
-    /// Load a checkpoint and VERIFY its sealed integrity (boundary + coverage);
-    /// errors on an unknown id or a tampered record. Shared by every rewind path.
-    pub(crate) fn load_verified_checkpoint(&self, checkpoint_id: &str) -> Result<CheckpointRecord> {
-        let record = CheckpointStore::get(&self.services.key_value_store, checkpoint_id)
-            .ok_or_else(|| {
-                hide_core::error::HideError::NotFound(format!("unknown checkpoint {checkpoint_id}"))
-            })?;
-        if !record.verify_integrity() {
-            return Err(hide_core::error::HideError::InvalidState(format!(
-                "checkpoint {checkpoint_id} failed integrity check (boundary or coverage tampered)"
-            )));
-        }
-        Ok(record)
-    }
-
-    /// The code (repo) state of a session, folding `diff.proposed` up to `up_to`
-    /// (or the tail when `None`): file -> latest content hash.
-    pub(crate) async fn code_state_of(
-        &self,
-        session: &SessionId,
-        up_to: Option<u64>,
-    ) -> Result<std::collections::BTreeMap<String, String>> {
-        let events = self
-            .services
-            .event_log
-            .scan(Some(session.clone()), None, None)
-            .await?;
-        Ok(rewind::code_state(&events, up_to))
-    }
-
-    /// Build the fork-boundary marker for a child inheriting `inherited` prefix
-    /// events up to parent seq `at_seq`.
     pub(crate) fn fork_marker(&self, parent: &SessionId, inherited: usize, at_seq: u64) -> (ForkPoint, NewEvent) {
         let fp = ForkPoint::new(parent.clone(), inherited, at_seq);
         let marker = NewEvent::system(
@@ -1035,6 +754,134 @@ impl BackendHost {
             invalidated_receipts,
             projection,
             ancestry,
+        })
+    }
+
+    /// REPLAY from a checkpoint: re-apply the whole recorded history from the
+    /// checkpoint forward onto a fresh, independent lineage seeded at the
+    /// checkpoint (behind a [`ForkPoint`] marker). The post-boundary source events
+    /// are the replayed set (the child's own records). Unlike a rewind, replay
+    /// drops nothing. Model-free.
+    pub async fn checkpoint_replay(&self, checkpoint_id: &str) -> Result<ReplayOutcome> {
+        let record = self.load_verified_checkpoint(checkpoint_id)?;
+        let source = record.session_id.clone();
+        let at_seq = record.at_seq;
+        let events = self
+            .services
+            .event_log
+            .scan(Some(source.clone()), None, None)
+            .await?;
+        let child_events: Vec<&Event> = events.iter().collect();
+        let replayed_events: Vec<EventId> = events
+            .iter()
+            .filter(|e| e.seq > at_seq)
+            .map(|e| e.id.clone())
+            .collect();
+        let inherited = rewind::inherited_len(&events, at_seq);
+        let (fork_point, marker) = self.fork_marker(&source, inherited, at_seq);
+        let (child, projection) = self
+            .replay
+            .seed_child_session(Some(marker), &child_events)
+            .await?;
+        let ancestry = crate::services::SessionRecord::fork(
+            child.clone(),
+            source.clone(),
+            at_seq,
+            record.at_event.clone(),
+        );
+        self.services
+            .sessions
+            .record_session(&self.services.key_value_store, &ancestry);
+        self.publish_checkpoint_child(
+            "checkpoint_replayed",
+            &child,
+            &record,
+            json!({ "replayed": replayed_events.len(), "fork_point": fork_point }),
+        );
+        Ok(ReplayOutcome {
+            session_id: child,
+            fork_point,
+            replayed_events,
+            projection,
+            ancestry,
+        })
+    }
+
+    /// FORK from a checkpoint into an ephemeral branch: a new lineage seeded ONLY
+    /// with the checkpoint's inherited prefix (behind a [`ForkPoint`] marker), to
+    /// explore an alternative from the boundary with no post-boundary carry-over.
+    /// Recorded as an [`SessionRelationship::EphemeralFork`](crate::services::SessionRelationship)
+    /// so a client can prune it without ceremony. Model-free.
+    pub async fn checkpoint_fork(&self, checkpoint_id: &str) -> Result<ForkOutcome> {
+        let record = self.load_verified_checkpoint(checkpoint_id)?;
+        let source = record.session_id.clone();
+        let at_seq = record.at_seq;
+        let events = self
+            .services
+            .event_log
+            .scan(Some(source.clone()), None, None)
+            .await?;
+        let child_events: Vec<&Event> = events.iter().filter(|e| e.seq <= at_seq).collect();
+        let inherited = child_events.len();
+        let (fork_point, marker) = self.fork_marker(&source, inherited, at_seq);
+        let (child, projection) = self
+            .replay
+            .seed_child_session(Some(marker), &child_events)
+            .await?;
+        let ancestry = crate::services::SessionRecord::ephemeral_fork(
+            child.clone(),
+            source.clone(),
+            at_seq,
+            record.at_event.clone(),
+        );
+        self.services
+            .sessions
+            .record_session(&self.services.key_value_store, &ancestry);
+        self.publish_checkpoint_child(
+            "checkpoint_forked",
+            &child,
+            &record,
+            json!({ "fork_point": fork_point }),
+        );
+        Ok(ForkOutcome {
+            session_id: child,
+            fork_point,
+            projection,
+            ancestry,
+        })
+    }
+
+    /// COMPARE a session's current code state against a checkpoint's boundary code
+    /// state (current-versus-checkpoint): the file-level added/removed/modified
+    /// changes. Model-free.
+    pub async fn checkpoint_inspect(&self, checkpoint_id: &str) -> Result<CheckpointInspection> {
+        let record = CheckpointStore::get(&self.services.key_value_store, checkpoint_id)
+            .ok_or_else(|| {
+                hide_core::error::HideError::NotFound(format!("unknown checkpoint {checkpoint_id}"))
+            })?;
+        let integrity_ok = record.verify_integrity();
+        let current = self.compute_coverage(&record.session_id, record.at_seq).await?;
+        let drift = coverage_drift(&record.coverage, &current);
+
+        let events = self
+            .services
+            .event_log
+            .scan(Some(record.session_id.clone()), None, None)
+            .await?;
+        let base = rewind::code_state(&events, Some(record.at_seq));
+        let head = rewind::code_state(&events, None);
+        let reverted_files = rewind::changed_files(&base, &head);
+        let receipts = rewind::receipt_scopes(&events, record.at_seq);
+        let invalidated_receipts = rewind::invalidated_receipts(&reverted_files, &receipts);
+
+        Ok(CheckpointInspection {
+            checkpoint_id: record.checkpoint_id.clone(),
+            integrity_ok,
+            coverage_current: drift.is_empty(),
+            drift,
+            reverted_files,
+            invalidated_receipts,
+            coverage: record.coverage.clone(),
         })
     }
 }

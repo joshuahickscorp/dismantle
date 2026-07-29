@@ -10,7 +10,6 @@ pub mod config;
 pub mod error;
 pub mod event;
 pub mod ids;
-pub mod migration;
 pub mod observability;
 pub mod permission;
 pub mod persistence;
@@ -24,7 +23,5 @@ pub mod types;
 
 pub use error::{HideError, Result};
 
-pub mod state;
 pub mod objects;
-pub mod browser;
 

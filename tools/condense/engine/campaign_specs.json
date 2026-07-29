@@ -1,0 +1,1162 @@
+{
+  "deepseek_v4": {
+    "schema": "hawking.condense.experiment_spec.v1",
+    "campaign_id": "deepseek_v4",
+    "title": "DeepSeek V4 flash contraction pilot",
+    "family": "deepseek_v4",
+    "status": "sealed_negative",
+    "resource_class": "heavy",
+    "phases": [
+      "precheck",
+      "measure",
+      "seal",
+      "report"
+    ],
+    "steps": [
+      {
+        "id": "precheck.admission",
+        "phase": "precheck",
+        "handler": "record",
+        "description": "Source admission receipt present"
+      },
+      {
+        "id": "measure.contraction",
+        "phase": "measure",
+        "handler": "record",
+        "description": "Contraction pilot measurement"
+      },
+      {
+        "id": "seal.verdict",
+        "phase": "seal",
+        "handler": "seal.receipt",
+        "description": "Contraction verdict seal"
+      },
+      {
+        "id": "report.verdict",
+        "phase": "report",
+        "handler": "report.summary",
+        "description": "Publish sealed verdict paths"
+      }
+    ],
+    "receipt": "DEEPSEEK_V4_FLASH_CONTRACTION_VERDICT.json",
+    "fixture": "engine/fixtures/retirement_receipts.json",
+    "reproduction": "python3.12 -m tools.condense.engine.runtime tools/condense/engine/specs/deepseek_v4.json --work-dir reports/condense/engine/deepseek_v4",
+    "reopen": [
+      {
+        "id": "new_cascade_decision",
+        "description": "Reopen only with a new cascade decision that supersedes the sealed pilot",
+        "predicate": "deepseek_cascade_superseded",
+        "evidence": [
+          "DEEPSEEK_V4_FLASH_CASCADE_DECISION.json",
+          "DEEPSEEK_V4_FLASH_CONTRACTION_PILOT.json"
+        ]
+      }
+    ],
+    "notes": "must_not_delete: DEEPSEEK_V4 contraction pilot receipts. Lane F1 removed archive bodies; reproduction/reopen live on this spec.",
+    "metadata": {
+      "retired_controllers_deleted": [
+        "deepseek_v4_adapter",
+        "hawking_contraction_pilot"
+      ],
+      "controllers_restored_as_live": [],
+      "retired_controllers": [
+        "deepseek_v4_adapter",
+        "hawking_contraction_pilot"
+      ]
+    }
+  },
+  "eco": {
+    "schema": "hawking.condense.experiment_spec.v1",
+    "campaign_id": "eco",
+    "title": "ECO admission / planner campaign shell",
+    "family": "eco",
+    "status": "retired",
+    "resource_class": "light",
+    "phases": [
+      "precheck",
+      "measure",
+      "allocate",
+      "pack",
+      "seal",
+      "monitor",
+      "report"
+    ],
+    "steps": [
+      {
+        "id": "precheck.fences",
+        "phase": "precheck",
+        "handler": "precheck.fences",
+        "description": "Authorization fences stay closed"
+      },
+      {
+        "id": "measure.record",
+        "phase": "measure",
+        "handler": "record",
+        "description": "Record historical measure surface"
+      },
+      {
+        "id": "allocate.record",
+        "phase": "allocate",
+        "handler": "record",
+        "description": "Record allocation policy"
+      },
+      {
+        "id": "pack.record",
+        "phase": "pack",
+        "handler": "record",
+        "description": "Pack step (optional)",
+        "optional": true
+      },
+      {
+        "id": "seal.receipt",
+        "phase": "seal",
+        "handler": "seal.receipt",
+        "description": "Seal campaign receipt"
+      },
+      {
+        "id": "monitor.heartbeat",
+        "phase": "monitor",
+        "handler": "record",
+        "description": "Lease / heartbeat",
+        "optional": true
+      },
+      {
+        "id": "report.summary",
+        "phase": "report",
+        "handler": "report.summary",
+        "description": "Campaign summary"
+      }
+    ],
+    "receipt": "",
+    "fixture": "engine/fixtures/retirement_receipts.json",
+    "reproduction": "python3.12 -m tools.condense.engine.runtime tools/condense/engine/specs/eco.json --work-dir reports/condense/engine/eco",
+    "authorization_fences": [],
+    "reopen": [
+      {
+        "id": "new_evidence",
+        "description": "Reopen only when sealed science law for this family is superseded",
+        "predicate": "eco_law_superseded",
+        "evidence": []
+      }
+    ],
+    "notes": "eco_* controllers retired into engine lifecycle. eco_common library remains for external importers.",
+    "metadata": {
+      "retired_controllers_deleted": [
+        "eco_activation",
+        "eco_admission",
+        "eco_cli",
+        "eco_import",
+        "eco_passport",
+        "eco_pipeline",
+        "eco_planner",
+        "eco_status"
+      ],
+      "lane": "H1"
+    }
+  },
+  "glm52": {
+    "schema": "hawking.condense.experiment_spec.v1",
+    "campaign_id": "glm52",
+    "title": "GLM-5.2 Gravity streaming campaign",
+    "family": "glm52",
+    "status": "live",
+    "resource_class": "heavy",
+    "phases": [
+      "precheck",
+      "measure",
+      "allocate",
+      "pack",
+      "seal",
+      "monitor",
+      "report"
+    ],
+    "steps": [
+      {
+        "id": "precheck.fences",
+        "phase": "precheck",
+        "handler": "precheck.fences",
+        "description": "Authorization fences stay closed"
+      },
+      {
+        "id": "precheck.contract",
+        "phase": "precheck",
+        "handler": "precheck.contract",
+        "description": "Load glm52_contract / expected campaign contract",
+        "params": {
+          "module": "glm52_contract"
+        }
+      },
+      {
+        "id": "measure.parity",
+        "phase": "measure",
+        "handler": "measure.parity",
+        "description": "Parity and teacher capture surfaces",
+        "params": {
+          "modules": [
+            "glm52_parity",
+            "glm52_teacher_capture"
+          ]
+        }
+      },
+      {
+        "id": "allocate.windows",
+        "phase": "allocate",
+        "handler": "record",
+        "description": "Window plan / resource reserve policy",
+        "params": {
+          "policy": "GLM52_RESOURCE_RESERVE_POLICY.json"
+        }
+      },
+      {
+        "id": "pack.stream",
+        "phase": "pack",
+        "handler": "record",
+        "description": "Streaming pack via glm52_pack / activation-aware paths",
+        "optional": true
+      },
+      {
+        "id": "seal.artifacts",
+        "phase": "seal",
+        "handler": "seal.receipt",
+        "description": "Seal campaign artifacts through glm52_common.seal"
+      },
+      {
+        "id": "monitor.heartbeat",
+        "phase": "monitor",
+        "handler": "record",
+        "description": "Controller heartbeat and lease freshness"
+      },
+      {
+        "id": "report.status",
+        "phase": "report",
+        "handler": "report.summary",
+        "description": "Canonical campaign status message"
+      }
+    ],
+    "receipt": "GLM52_BASIS_PILOT_RECEIPT.json",
+    "fixture": "engine/fixtures/retirement_receipts.json",
+    "reproduction": "python3.12 -m tools.condense.engine.runtime tools/condense/engine/specs/glm52.json --work-dir reports/condense/engine/glm52",
+    "lease_name": "glm52.controller.lease",
+    "checkpoint_name": "glm52.checkpoint.json",
+    "authorization_fences": [
+      "ODYSSEY_LAUNCH_AUTHORIZED",
+      "RAMANUJAN_RESEARCH_AUTHORIZED",
+      "HIDE_KERNEL_TURN"
+    ],
+    "reopen": [
+      {
+        "id": "new_parity_surface",
+        "description": "Reopen only if a new sealed parity surface invalidates FUNCTIONAL_PARTIAL_ONLY",
+        "predicate": "sealed_parity_surface_changed",
+        "evidence": [
+          "GLM52_CORRECTED_SCIENTIFIC_LAW.json",
+          "GLM52_FLAGSHIP_ADAPTER_PARITY.json"
+        ]
+      }
+    ],
+    "notes": "Live contract readers remain at glm52_parity/contract/source_fetch/teacher_capture/xet_autotune. resolve_artifact in glm52_common is the single path authority. Lane F1 removed archive bodies; reproduction/reopen live on this spec.",
+    "metadata": {
+      "live_modules": [
+        "glm52_parity",
+        "glm52_contract",
+        "glm52_source_fetch",
+        "glm52_teacher_capture",
+        "glm52_xet_autotune",
+        "glm52_common",
+        "glm52_state"
+      ],
+      "resource_limits": {
+        "min_free_disk_bytes": 0,
+        "max_concurrent_workers": 1
+      },
+      "retired_controllers_deleted": [
+        "_bench_fetch_workers",
+        "_bench_fetch_workers_nodisk",
+        "glm52_activation_aware_assemble",
+        "glm52_activation_aware_source",
+        "glm52_allocation_probe",
+        "glm52_basis_pilot",
+        "glm52_campaign_contract",
+        "glm52_capability_gate",
+        "glm52_compact_mla_fixture",
+        "glm52_composition_gate",
+        "glm52_concurrency_autotune",
+        "glm52_external_baselines",
+        "glm52_flagship_oracle",
+        "glm52_flagship_screening",
+        "glm52_functional_auction",
+        "glm52_functional_cascade",
+        "glm52_functional_controller",
+        "glm52_functional_integration",
+        "glm52_functional_roofline",
+        "glm52_functional_student",
+        "glm52_generation_a_seal",
+        "glm52_gravity_fixture",
+        "glm52_gravity_source",
+        "glm52_long_context_gate",
+        "glm52_lowrank",
+        "glm52_maturity",
+        "glm52_metric_correction",
+        "glm52_moe_student_fit",
+        "glm52_notifications",
+        "glm52_pilot",
+        "glm52_pilot_fetch",
+        "glm52_pilot_seal",
+        "glm52_pilot_source_release",
+        "glm52_precheck",
+        "glm52_protect_head_embed",
+        "glm52_rate_ladder",
+        "glm52_readiness_gate",
+        "glm52_rehydrate_window",
+        "glm52_resource_policy",
+        "glm52_rollback_seal",
+        "glm52_route_population_census",
+        "glm52_runtime_parity_gate",
+        "glm52_runtime_speed_gate",
+        "glm52_schedule_freeze",
+        "glm52_source_release",
+        "glm52_teacher_rechain",
+        "glm52_window_execution",
+        "glm52_window_plan",
+        "glm52_worker",
+        "glm52_xet_live_driver",
+        "glm52_xet_window_fetch"
+      ],
+      "controllers_restored_as_live": [
+        "glm52_activation_aware_pack",
+        "glm52_activation_aware_pack_v2",
+        "glm52_functional_gauntlet",
+        "glm52_moe_student",
+        "glm52_shard_probe",
+        "glm52_terminal_proofs",
+        "glm52_xet_live"
+      ],
+      "retired_controllers": [
+        "glm52_activation_aware_assemble",
+        "glm52_activation_aware_source",
+        "glm52_allocation_probe",
+        "glm52_basis_pilot",
+        "glm52_campaign_contract",
+        "glm52_capability_gate",
+        "glm52_compact_mla_fixture",
+        "glm52_composition_gate",
+        "glm52_concurrency_autotune",
+        "glm52_external_baselines",
+        "glm52_flagship_oracle",
+        "glm52_flagship_screening",
+        "glm52_functional_auction",
+        "glm52_functional_cascade",
+        "glm52_functional_controller",
+        "glm52_functional_gauntlet",
+        "glm52_functional_integration",
+        "glm52_functional_roofline",
+        "glm52_functional_student",
+        "glm52_generation_a_seal",
+        "glm52_gravity_fixture",
+        "glm52_gravity_source",
+        "glm52_long_context_gate",
+        "glm52_lowrank",
+        "glm52_maturity",
+        "glm52_metric_correction",
+        "glm52_moe_student",
+        "glm52_moe_student_fit",
+        "glm52_notifications",
+        "glm52_pilot",
+        "glm52_pilot_fetch",
+        "glm52_pilot_seal",
+        "glm52_pilot_source_release",
+        "glm52_precheck",
+        "glm52_protect_head_embed",
+        "glm52_rate_ladder",
+        "glm52_readiness_gate",
+        "glm52_rehydrate_window",
+        "glm52_resource_policy",
+        "glm52_rollback_seal",
+        "glm52_route_population_census",
+        "glm52_runtime_parity_gate",
+        "glm52_runtime_speed_gate",
+        "glm52_schedule_freeze",
+        "glm52_shard_probe",
+        "glm52_source_release",
+        "glm52_teacher_rechain",
+        "glm52_window_execution",
+        "glm52_window_plan",
+        "glm52_worker",
+        "glm52_xet_live_driver",
+        "glm52_xet_window_fetch"
+      ]
+    }
+  },
+  "gptoss": {
+    "schema": "hawking.condense.experiment_spec.v1",
+    "campaign_id": "gptoss",
+    "title": "GPT-OSS-120B gravity / sub-bit / real-forward campaign",
+    "family": "gptoss",
+    "status": "retired",
+    "resource_class": "gpu-lab",
+    "phases": [
+      "precheck",
+      "measure",
+      "pack",
+      "seal",
+      "monitor",
+      "report"
+    ],
+    "steps": [
+      {
+        "id": "precheck.real_forward",
+        "phase": "precheck",
+        "handler": "record",
+        "description": "RealForward coherence precheck"
+      },
+      {
+        "id": "measure.holdout",
+        "phase": "measure",
+        "handler": "record",
+        "description": "Sealed holdout PPL / KL / argmax agreement"
+      },
+      {
+        "id": "pack.subbit",
+        "phase": "pack",
+        "handler": "record",
+        "description": "Sub-bit RVQ pack at rate ladder",
+        "optional": true
+      },
+      {
+        "id": "seal.g4",
+        "phase": "seal",
+        "handler": "seal.receipt",
+        "description": "G4 real-forward gate seal"
+      },
+      {
+        "id": "monitor.lease",
+        "phase": "monitor",
+        "handler": "record",
+        "description": "Singleton lease and heartbeat"
+      },
+      {
+        "id": "report.g4",
+        "phase": "report",
+        "handler": "report.summary",
+        "description": "G4 state report"
+      }
+    ],
+    "receipt": "reports/condense/general_frontier/G4/",
+    "fixture": "engine/fixtures/retirement_receipts.json",
+    "reproduction": "python3.12 -m tools.condense.engine.runtime tools/condense/engine/specs/gptoss.json --work-dir reports/condense/engine/gptoss",
+    "lease_name": "frontier_g4.lease",
+    "reopen": [
+      {
+        "id": "stronger_pack_family",
+        "description": "Reopen when pq_doctor_lowrank / protected_islands rows are admitted",
+        "predicate": "g3_winner_family_ready",
+        "evidence": []
+      }
+    ],
+    "notes": "gravity_frontier_g4_controller retired; engine owns lease/checkpoint/resume. Lane F1 removed archive bodies; reproduction/reopen live on this spec.",
+    "metadata": {
+      "retired_controllers": [
+        "doctor_campaign_supervisor",
+        "doctor_v5_telegram_rung_notifier",
+        "gptoss_gravity_run",
+        "gravity_frontier_g4_controller",
+        "source_release_readiness",
+        "vulture_harvest"
+      ],
+      "retired_controllers_deleted": [
+        "doctor_campaign_supervisor",
+        "doctor_v5_telegram_rung_notifier",
+        "gptoss_gravity_run",
+        "source_release_readiness",
+        "vulture_harvest"
+      ],
+      "controllers_restored_as_live": [
+        "gptoss_block",
+        "gptoss_moe_runtime",
+        "gptoss_real_forward",
+        "gptoss_subbit_packer"
+      ]
+    }
+  },
+  "gravity_frontier": {
+    "schema": "hawking.condense.experiment_spec.v1",
+    "campaign_id": "gravity_frontier",
+    "title": "Gravity General Frontier (G0-G4) and doctor campaign",
+    "family": "gravity_frontier",
+    "status": "retired",
+    "resource_class": "gpu-lab",
+    "phases": [
+      "precheck",
+      "measure",
+      "allocate",
+      "pack",
+      "seal",
+      "monitor",
+      "report"
+    ],
+    "steps": [
+      {
+        "id": "precheck.lab",
+        "phase": "precheck",
+        "handler": "record",
+        "description": "Lab lease / contention gate precheck"
+      },
+      {
+        "id": "measure.proxy",
+        "phase": "measure",
+        "handler": "record",
+        "description": "G0-G3 proxy fidelity measurements"
+      },
+      {
+        "id": "allocate.cache",
+        "phase": "allocate",
+        "handler": "record",
+        "description": "Bounded expert cache allocation"
+      },
+      {
+        "id": "pack.subbit",
+        "phase": "pack",
+        "handler": "record",
+        "description": "Sub-bit pack rows",
+        "optional": true
+      },
+      {
+        "id": "seal.doctor",
+        "phase": "seal",
+        "handler": "seal.receipt",
+        "description": "Doctor conclusion seal (one-use marker)"
+      },
+      {
+        "id": "monitor.supervisor",
+        "phase": "monitor",
+        "handler": "record",
+        "description": "Doctor campaign supervisor tick"
+      },
+      {
+        "id": "report.frontier",
+        "phase": "report",
+        "handler": "report.summary",
+        "description": "Frontier state report"
+      }
+    ],
+    "receipt": "reports/condense/general_frontier/",
+    "fixture": "engine/fixtures/retirement_receipts.json",
+    "reproduction": "python3.12 -m tools.condense.engine.runtime tools/condense/engine/specs/gravity_frontier.json --work-dir reports/condense/engine/gravity_frontier",
+    "lease_name": "doctor_campaign.lease",
+    "reopen": [
+      {
+        "id": "outcome_b_boundary",
+        "description": "Reopen doctor only if Outcome B boundary evidence is superseded",
+        "predicate": "doctor_boundary_superseded",
+        "evidence": [
+          "DOCTOR_NEGATIVE_TRANSFER_ATLAS.json"
+        ]
+      }
+    ],
+    "notes": "Controllers doctor_campaign_supervisor, gravity_frontier_g4_controller, seal_120b_conclusion deleted (git history + engine spec). Lane F1 removed archive bodies; reproduction/reopen live on this spec.",
+    "metadata": {
+      "retired_controllers": [
+        "doctor_campaign_supervisor",
+        "emergency_detached_campaign",
+        "gravity_execution_adapter",
+        "gravity_forge_run",
+        "gravity_frontier_correction_wave",
+        "gravity_frontier_g4_controller",
+        "gravity_global_allocator",
+        "gravity_llama_reference",
+        "gravity_metal_lab_a",
+        "overnight_supervisor",
+        "seal_120b_conclusion",
+        "storage_stripdown_controller"
+      ],
+      "retired_controllers_deleted": [
+        "codebase_census",
+        "condense_reachability",
+        "corpus_integrity",
+        "decode_parity_harness",
+        "doctor_byte_auction",
+        "doctor_causal_harness",
+        "doctor_gen3",
+        "doctor_treatment_abi",
+        "emergency_detached_campaign",
+        "forge_actaware_experiment",
+        "forge_controller_integration",
+        "forge_f2_fixture",
+        "forge_giant_adapters",
+        "forge_pre_run_readiness",
+        "gravity_attention",
+        "gravity_breakthrough_baseline",
+        "gravity_container_freeze",
+        "gravity_decode",
+        "gravity_execution_adapter",
+        "gravity_forge_run",
+        "gravity_frontier_correction_wave",
+        "gravity_frontier_g4_controller",
+        "gravity_functional_metal",
+        "gravity_global_allocator",
+        "gravity_lab_lease",
+        "gravity_llama_reference",
+        "gravity_metal_lab_a",
+        "gravity_pq_fixture",
+        "gravity_profiler_acceptance",
+        "gravity_runtime",
+        "gravity_scale_correction",
+        "hawking_compat",
+        "hawking_contraction_pilot",
+        "hawking_tps_budget",
+        "mech_fidelity_c",
+        "mech_fidelity_d",
+        "overnight_supervisor",
+        "resident_first_ladder",
+        "safetensors_to_gravity",
+        "seal_120b_conclusion",
+        "storage_stripdown",
+        "storage_stripdown_controller",
+        "succ_eta",
+        "test_activation_aware_roundtrip"
+      ],
+      "controllers_restored_as_live": [
+        "doctor_campaign_supervisor",
+        "doctor_v5_gptoss_mxfp4",
+        "doctor_v5_telegram_rung_notifier",
+        "gravity_bench_lab",
+        "gravity_flop_ledger",
+        "gravity_functional_codec",
+        "gravity_kernel_select",
+        "gravity_metal",
+        "gravity_metal_lab_b",
+        "gravity_moe_layer",
+        "gravity_real_fixtures"
+      ]
+    }
+  },
+  "kimi_k26": {
+    "schema": "hawking.condense.experiment_spec.v1",
+    "campaign_id": "kimi_k26",
+    "title": "Kimi K2.6 download / phase-2 recovery / release cycle",
+    "family": "kimi_k26",
+    "status": "retired",
+    "resource_class": "network",
+    "phases": [
+      "precheck",
+      "measure",
+      "allocate",
+      "pack",
+      "seal",
+      "monitor",
+      "report"
+    ],
+    "steps": [
+      {
+        "id": "precheck.blobs",
+        "phase": "precheck",
+        "handler": "record",
+        "description": "Bind frozen corpus blobs; read-only preflight"
+      },
+      {
+        "id": "measure.integrity",
+        "phase": "measure",
+        "handler": "record",
+        "description": "Verify historical blob seals before export"
+      },
+      {
+        "id": "allocate.sandbox",
+        "phase": "allocate",
+        "handler": "record",
+        "description": "Private export sandbox for generate"
+      },
+      {
+        "id": "pack.capsule",
+        "phase": "pack",
+        "handler": "record",
+        "description": "Exact capsule generate with crash-safe atomic publish",
+        "optional": true
+      },
+      {
+        "id": "seal.release",
+        "phase": "seal",
+        "handler": "seal.receipt",
+        "description": "Phase-2 release seal"
+      },
+      {
+        "id": "monitor.download",
+        "phase": "monitor",
+        "handler": "record",
+        "description": "Download supervisor heartbeat / stale cleanup",
+        "optional": true
+      },
+      {
+        "id": "report.cycle",
+        "phase": "report",
+        "handler": "report.summary",
+        "description": "Release cycle report"
+      }
+    ],
+    "receipt": "reports/condense/kimi_k26/",
+    "fixture": "engine/fixtures/retirement_receipts.json",
+    "reproduction": "python3.12 -m tools.condense.engine.runtime tools/condense/engine/specs/kimi_k26.json --work-dir reports/condense/engine/kimi_k26",
+    "lease_name": "kimi_k26.lease",
+    "checkpoint_name": "kimi_k26.checkpoint.json",
+    "authorization_fences": [],
+    "reopen": [
+      {
+        "id": "corpus_revision",
+        "description": "Reopen only on a new frozen corpus revision with sealed science law update",
+        "predicate": "kimi_corpus_revision_changed",
+        "evidence": [
+          "KIMI_K26 scientific law + long-run + gravity finals"
+        ]
+      }
+    ],
+    "notes": "Kimi K2.6 sealed DOES-NOT-FIT. Controllers deleted (lane H1); specification, fixture, receipt pointer, reproduction and reopen retained. Sealing invariants live in engine.seal_integrity.",
+    "metadata": {
+      "retired_controllers": [
+        "kimi_k26_download_supervisor",
+        "kimi_k26_phase2_recovery",
+        "kimi_k26_phase2_release",
+        "kimi_k26_release_cycle",
+        "kimi_k26_stale_download_cleanup"
+      ],
+      "retired_controllers_deleted": [
+        "kimi_k26_download_supervisor",
+        "kimi_k26_phase2_recovery",
+        "kimi_k26_phase2_release",
+        "kimi_k26_release_cycle",
+        "kimi_k26_stale_download_cleanup"
+      ],
+      "controllers_restored_as_live": []
+    }
+  },
+  "mechanics": {
+    "schema": "hawking.condense.experiment_spec.v1",
+    "campaign_id": "mechanics",
+    "title": "Mechanics/Thermodynamics tournament orchestrator",
+    "family": "mechanics",
+    "status": "retired",
+    "resource_class": "gpu-lab",
+    "phases": [
+      "precheck",
+      "measure",
+      "allocate",
+      "pack",
+      "seal",
+      "monitor",
+      "report"
+    ],
+    "steps": [
+      {
+        "id": "precheck.fences",
+        "phase": "precheck",
+        "handler": "precheck.fences",
+        "description": "Authorization fences stay closed"
+      },
+      {
+        "id": "measure.record",
+        "phase": "measure",
+        "handler": "record",
+        "description": "Record historical measure surface"
+      },
+      {
+        "id": "allocate.record",
+        "phase": "allocate",
+        "handler": "record",
+        "description": "Record allocation policy"
+      },
+      {
+        "id": "pack.record",
+        "phase": "pack",
+        "handler": "record",
+        "description": "Pack step (optional)",
+        "optional": true
+      },
+      {
+        "id": "seal.receipt",
+        "phase": "seal",
+        "handler": "seal.receipt",
+        "description": "Seal campaign receipt"
+      },
+      {
+        "id": "monitor.heartbeat",
+        "phase": "monitor",
+        "handler": "record",
+        "description": "Lease / heartbeat",
+        "optional": true
+      },
+      {
+        "id": "report.summary",
+        "phase": "report",
+        "handler": "report.summary",
+        "description": "Campaign summary"
+      }
+    ],
+    "receipt": "",
+    "fixture": "engine/fixtures/retirement_receipts.json",
+    "reproduction": "python3.12 -m tools.condense.engine.runtime tools/condense/engine/specs/mechanics.json --work-dir reports/condense/engine/mechanics",
+    "authorization_fences": [],
+    "reopen": [
+      {
+        "id": "new_evidence",
+        "description": "Reopen only when sealed science law for this family is superseded",
+        "predicate": "mechanics_law_superseded",
+        "evidence": []
+      }
+    ],
+    "notes": "mech_run_all orchestrator retired; mech_measure library may remain elsewhere if live. Measurement math retained only if irreducible.",
+    "metadata": {
+      "retired_controllers_deleted": [
+        "mech_measure",
+        "mech_run_all"
+      ],
+      "lane": "H1"
+    }
+  },
+  "qwen": {
+    "schema": "hawking.condense.experiment_spec.v1",
+    "campaign_id": "qwen",
+    "title": "Qwen MoE structural / correction / real-forward campaign",
+    "family": "qwen",
+    "status": "retired",
+    "resource_class": "gpu-lab",
+    "phases": [
+      "precheck",
+      "measure",
+      "allocate",
+      "pack",
+      "seal",
+      "report"
+    ],
+    "steps": [
+      {
+        "id": "precheck.adapter",
+        "phase": "precheck",
+        "handler": "record",
+        "description": "MoE adapter geometry precheck"
+      },
+      {
+        "id": "measure.bpw",
+        "phase": "measure",
+        "handler": "record",
+        "description": "BPW budget and correction wave"
+      },
+      {
+        "id": "allocate.rate",
+        "phase": "allocate",
+        "handler": "record",
+        "description": "Rate ladder / adaptive-k allocation"
+      },
+      {
+        "id": "pack.codec",
+        "phase": "pack",
+        "handler": "record",
+        "description": "Function-aware codec pack",
+        "optional": true
+      },
+      {
+        "id": "seal.forward",
+        "phase": "seal",
+        "handler": "seal.receipt",
+        "description": "Real-forward seal"
+      },
+      {
+        "id": "report.summary",
+        "phase": "report",
+        "handler": "report.summary",
+        "description": "Campaign summary"
+      }
+    ],
+    "receipt": "",
+    "fixture": "engine/fixtures/retirement_receipts.json",
+    "reproduction": "python3.12 -m tools.condense.engine.runtime tools/condense/engine/specs/qwen.json --work-dir reports/condense/engine/qwen",
+    "reopen": [
+      {
+        "id": "new_parent_weights",
+        "description": "Reopen when a new parent weight revision is admitted",
+        "predicate": "qwen_parent_revision_changed",
+        "evidence": []
+      }
+    ],
+    "notes": "Adapters remain importable for algorithmic tests; campaign controller shell retired. Lane F1 removed archive bodies; reproduction/reopen live on this spec.",
+    "metadata": {
+      "retired_controllers_deleted": [
+        "qwen35_moe_adapter",
+        "qwen3_moe_adapter",
+        "qwen_adaptive_k",
+        "qwen_bpw_budget",
+        "qwen_correction_wave",
+        "qwen_download_worker",
+        "qwen_function_aware_codec",
+        "qwen_real_forward",
+        "qwen_structural_plan",
+        "qwen_subhalfbit_search"
+      ],
+      "controllers_restored_as_live": [],
+      "retired_controllers": [
+        "qwen35_moe_adapter",
+        "qwen3_moe_adapter",
+        "qwen_adaptive_k",
+        "qwen_bpw_budget",
+        "qwen_correction_wave",
+        "qwen_download_worker",
+        "qwen_function_aware_codec",
+        "qwen_real_forward",
+        "qwen_structural_plan",
+        "qwen_subhalfbit_search"
+      ]
+    }
+  },
+  "second_light": {
+    "schema": "hawking.condense.experiment_spec.v1",
+    "campaign_id": "second_light",
+    "title": "Second Light PQ / protected-islands campaign",
+    "family": "second_light",
+    "status": "retired",
+    "resource_class": "gpu-lab",
+    "phases": [
+      "precheck",
+      "measure",
+      "pack",
+      "seal",
+      "report"
+    ],
+    "steps": [
+      {
+        "id": "precheck.pq_fixture",
+        "phase": "precheck",
+        "handler": "record",
+        "description": "PQ fixture geometry"
+      },
+      {
+        "id": "measure.roundtrip",
+        "phase": "measure",
+        "handler": "record",
+        "description": "PQ lifecycle roundtrip / dense match"
+      },
+      {
+        "id": "pack.islands",
+        "phase": "pack",
+        "handler": "record",
+        "description": "Protected island selection and BPW billing",
+        "optional": true
+      },
+      {
+        "id": "seal.pq",
+        "phase": "seal",
+        "handler": "seal.receipt",
+        "description": "PQ campaign seal"
+      },
+      {
+        "id": "report.pq",
+        "phase": "report",
+        "handler": "report.summary",
+        "description": "PQ report"
+      }
+    ],
+    "receipt": "reports/condense/second_light/",
+    "fixture": "engine/fixtures/retirement_receipts.json",
+    "reproduction": "python3.12 -m tools.condense.engine.runtime tools/condense/engine/specs/second_light.json --work-dir reports/condense/engine/second_light",
+    "reopen": [
+      {
+        "id": "new_island_strategy",
+        "description": "Reopen when a new island strategy is admitted beyond the sealed set",
+        "predicate": "island_strategy_extended",
+        "evidence": []
+      }
+    ],
+    "notes": "Algorithmic PQ helpers may remain as libraries; campaign shell is the engine. Lane F1 removed archive bodies; reproduction/reopen live on this spec.",
+    "metadata": {
+      "retired_controllers_deleted": [
+        "gravity_pq_fixture"
+      ],
+      "controllers_restored_as_live": [],
+      "retired_controllers": [
+        "gravity_pq_fixture"
+      ]
+    }
+  },
+  "succession": {
+    "schema": "hawking.condense.experiment_spec.v1",
+    "campaign_id": "succession",
+    "title": "Succession (succ_*) campaign shell",
+    "family": "succession",
+    "status": "retired",
+    "resource_class": "light",
+    "phases": [
+      "precheck",
+      "measure",
+      "allocate",
+      "pack",
+      "seal",
+      "monitor",
+      "report"
+    ],
+    "steps": [
+      {
+        "id": "precheck.fences",
+        "phase": "precheck",
+        "handler": "precheck.fences",
+        "description": "Authorization fences stay closed"
+      },
+      {
+        "id": "measure.record",
+        "phase": "measure",
+        "handler": "record",
+        "description": "Record historical measure surface"
+      },
+      {
+        "id": "allocate.record",
+        "phase": "allocate",
+        "handler": "record",
+        "description": "Record allocation policy"
+      },
+      {
+        "id": "pack.record",
+        "phase": "pack",
+        "handler": "record",
+        "description": "Pack step (optional)",
+        "optional": true
+      },
+      {
+        "id": "seal.receipt",
+        "phase": "seal",
+        "handler": "seal.receipt",
+        "description": "Seal campaign receipt"
+      },
+      {
+        "id": "monitor.heartbeat",
+        "phase": "monitor",
+        "handler": "record",
+        "description": "Lease / heartbeat",
+        "optional": true
+      },
+      {
+        "id": "report.summary",
+        "phase": "report",
+        "handler": "report.summary",
+        "description": "Campaign summary"
+      }
+    ],
+    "receipt": "",
+    "fixture": "engine/fixtures/retirement_receipts.json",
+    "reproduction": "python3.12 -m tools.condense.engine.runtime tools/condense/engine/specs/succession.json --work-dir reports/condense/engine/succession",
+    "authorization_fences": [],
+    "reopen": [
+      {
+        "id": "new_evidence",
+        "description": "Reopen only when sealed science law for this family is superseded",
+        "predicate": "succession_law_superseded",
+        "evidence": []
+      }
+    ],
+    "notes": "succ_* controllers retired into engine lifecycle. Keep receipts in reports/ and git history.",
+    "metadata": {
+      "retired_controllers_deleted": [
+        "succ_admission",
+        "succ_audit",
+        "succ_calibrate",
+        "succ_cli",
+        "succ_engine",
+        "succ_events",
+        "succ_frontier",
+        "succ_gc",
+        "succ_gravity",
+        "succ_gravity_policy",
+        "succ_gravity_receipts",
+        "succ_harvest",
+        "succ_press",
+        "succ_queue",
+        "succ_retire",
+        "succ_state",
+        "succ_telegram",
+        "succ_transition",
+        "succ_twin",
+        "succ_watch",
+        "succ_watchdog"
+      ],
+      "lane": "H1"
+    }
+  },
+  "tg": {
+    "schema": "hawking.condense.experiment_spec.v1",
+    "campaign_id": "tg",
+    "title": "TG K11 budget / reconcile shell",
+    "family": "tg",
+    "status": "retired",
+    "resource_class": "light",
+    "phases": [
+      "precheck",
+      "measure",
+      "allocate",
+      "pack",
+      "seal",
+      "monitor",
+      "report"
+    ],
+    "steps": [
+      {
+        "id": "precheck.fences",
+        "phase": "precheck",
+        "handler": "precheck.fences",
+        "description": "Authorization fences stay closed"
+      },
+      {
+        "id": "measure.record",
+        "phase": "measure",
+        "handler": "record",
+        "description": "Record historical measure surface"
+      },
+      {
+        "id": "allocate.record",
+        "phase": "allocate",
+        "handler": "record",
+        "description": "Record allocation policy"
+      },
+      {
+        "id": "pack.record",
+        "phase": "pack",
+        "handler": "record",
+        "description": "Pack step (optional)",
+        "optional": true
+      },
+      {
+        "id": "seal.receipt",
+        "phase": "seal",
+        "handler": "seal.receipt",
+        "description": "Seal campaign receipt"
+      },
+      {
+        "id": "monitor.heartbeat",
+        "phase": "monitor",
+        "handler": "record",
+        "description": "Lease / heartbeat",
+        "optional": true
+      },
+      {
+        "id": "report.summary",
+        "phase": "report",
+        "handler": "report.summary",
+        "description": "Campaign summary"
+      }
+    ],
+    "receipt": "",
+    "fixture": "engine/fixtures/retirement_receipts.json",
+    "reproduction": "python3.12 -m tools.condense.engine.runtime tools/condense/engine/specs/tg.json --work-dir reports/condense/engine/tg",
+    "authorization_fences": [],
+    "reopen": [
+      {
+        "id": "new_evidence",
+        "description": "Reopen only when sealed science law for this family is superseded",
+        "predicate": "tg_law_superseded",
+        "evidence": []
+      }
+    ],
+    "notes": "tg_* shells retired into engine lifecycle.",
+    "metadata": {
+      "retired_controllers_deleted": [
+        "tg_active_byte_budget",
+        "tg_k11_reconcile",
+        "tg_k11_synthetic_schedule"
+      ],
+      "lane": "H1"
+    }
+  }
+}

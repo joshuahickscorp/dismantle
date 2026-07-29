@@ -14,6 +14,7 @@ from typing import Any, Callable, Mapping
 from .checkpoint import CheckpointStore
 from .governor import ResourceGovernor, ResourceLimits
 from .lease import LeaseError, SingletonLease
+from .operators import OperatorRegistry, load_default_registry
 from .receipts import Receipt, ReceiptStore
 from .scheduler import Scheduler, WorkStatus
 from .spec import CampaignPhase, ExperimentSpec, load_spec
@@ -45,8 +46,23 @@ class RunResult:
 # Built-in handlers: pure bookkeeping / record steps. Campaign-specific heavy
 # work registers under explicit keys; missing handlers on optional steps skip.
 def _handle_record(runtime: "CampaignRuntime", params: Mapping[str, Any]) -> dict[str, Any]:
-    return {"recorded": True, **dict(params)}
-
+    """Bookkeeping step; when params name modules, verify they are registered."""
+    modules = params.get("modules") or params.get("module")
+    if modules is None:
+        return {"recorded": True, **dict(params)}
+    if isinstance(modules, str):
+        names = [modules]
+    else:
+        names = [str(m) for m in modules]
+    missing = [n for n in names if runtime.operators.get(n) is None]
+    if missing and not params.get("allow_missing"):
+        raise RuntimeError(f"operators not in registry: {missing}")
+    return {
+        "recorded": True,
+        "operators_present": [n for n in names if n not in missing],
+        "operators_missing": missing,
+        **{k: v for k, v in dict(params).items() if k not in {"modules", "module"}},
+    }
 
 def _handle_precheck_fences(
     runtime: "CampaignRuntime", params: Mapping[str, Any]
@@ -62,9 +78,36 @@ def _handle_precheck_fences(
     return {"fences_closed": closed}
 
 
+def _handle_operator_record(
+    runtime: "CampaignRuntime", params: Mapping[str, Any]
+) -> dict[str, Any]:
+    """Record that named operator modules are registered (dry-run / fixture path)."""
+    modules = params.get("modules") or params.get("module") or ()
+    if isinstance(modules, str):
+        modules = [modules]
+    missing: list[str] = []
+    present: list[str] = []
+    for name in modules:
+        rec = runtime.operators.get(str(name))
+        if rec is None:
+            missing.append(str(name))
+        else:
+            present.append(str(name))
+    if missing and not params.get("allow_missing"):
+        raise RuntimeError(f"operators not in registry: {missing}")
+    return {
+        "recorded": True,
+        "operators_present": present,
+        "operators_missing": missing,
+        **{k: v for k, v in dict(params).items() if k not in {"modules", "module"}},
+    }
+
+
 BUILTIN_HANDLERS: dict[str, Handler] = {
     "record": _handle_record,
     "precheck.fences": _handle_precheck_fences,
+    "precheck.contract": _handle_operator_record,
+    "measure.parity": _handle_operator_record,
     "report.summary": _handle_record,
     "seal.receipt": _handle_record,
 }
@@ -79,13 +122,18 @@ class CampaignRuntime:
         *,
         work_dir: Path,
         handlers: Mapping[str, Handler] | None = None,
+        operators: OperatorRegistry | None = None,
         controller_epoch: str = "1",
         acquire_lease: bool = True,
     ) -> None:
         self.spec = spec
         self.work_dir = Path(work_dir)
         self.work_dir.mkdir(parents=True, exist_ok=True)
+        self.operators = operators or load_default_registry()
         self.handlers: dict[str, Handler] = {**BUILTIN_HANDLERS, **dict(handlers or {})}
+        # Operator registry may supply additional handlers without owning lifecycle.
+        for key, handler in self.operators.handlers.items():
+            self.handlers.setdefault(key, handler)
         self.controller_epoch = controller_epoch
         self.acquire_lease = acquire_lease
 
@@ -162,8 +210,16 @@ class CampaignRuntime:
             raise RuntimeError(f"no handler registered for {name!r} (step {step_id})")
         if self.acquire_lease:
             self.lease.assert_held()
-        # Resource gate before non-light record steps.
-        if name not in {"record", "precheck.fences", "report.summary"}:
+        # Resource gate before non-light bookkeeping steps.
+        _LIGHT = {
+            "record",
+            "precheck.fences",
+            "precheck.contract",
+            "measure.parity",
+            "report.summary",
+            "seal.receipt",
+        }
+        if name not in _LIGHT:
             self.governor.require()
         result = handler(self, step.params)
         self.machine.mark_step(step_id)
@@ -303,6 +359,19 @@ class CampaignRuntime:
             "reproduction": self.spec.reproduction,
             "receipt": self.spec.receipt,
             "reopen": [r.to_dict() for r in self.spec.reopen],
+            "operators": {
+                step.handler: (
+                    None
+                    if not step.handler
+                    else (
+                        self.operators.for_handler(step.handler).module
+                        if self.operators.for_handler(step.handler)
+                        else step.handler
+                    )
+                )
+                for step in self.spec.steps
+                if step.handler
+            },
         }
 
 
@@ -327,11 +396,19 @@ def run_campaign(
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Single command surface: run / status / classify operators."""
     import argparse
-    import sys
 
-    parser = argparse.ArgumentParser(description="Run a condense campaign from a spec")
-    parser.add_argument("spec", type=Path, help="Path to ExperimentSpec JSON")
+    parser = argparse.ArgumentParser(
+        description="Campaign engine — one command surface for specs and operators"
+    )
+    parser.add_argument(
+        "spec",
+        type=Path,
+        nargs="?",
+        default=None,
+        help="Path to ExperimentSpec JSON (omit with --classify)",
+    )
     parser.add_argument(
         "--work-dir",
         type=Path,
@@ -345,7 +422,25 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Skip exclusive lease (fixture / dry paths only)",
     )
+    parser.add_argument(
+        "--classify",
+        action="store_true",
+        help="Emit operator registry classification (Track V contract)",
+    )
     args = parser.parse_args(argv)
+
+    if args.classify:
+        registry = load_default_registry()
+        payload = {
+            "summary": registry.summary(),
+            "modules": registry.classification(),
+        }
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 0
+
+    if args.spec is None:
+        parser.error("spec path is required unless --classify is set")
+
     spec = load_spec(args.spec)
     work_dir = args.work_dir or Path("reports/condense/engine") / spec.campaign_id
     with CampaignRuntime(

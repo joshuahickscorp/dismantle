@@ -12,6 +12,14 @@ from __future__ import annotations
 from .checkpoint import CheckpointStore, HashChainLog
 from .governor import ResourceGovernor, ResourceLimits, ResourceSample
 from .lease import LeaseError, SingletonLease
+from .operators import (
+    DEFAULT_REGISTRY,
+    OperatorClass,
+    OperatorRecord,
+    OperatorRegistry,
+    classify_all,
+    load_default_registry,
+)
 from .receipts import Receipt, ReceiptStore, seal_receipt, verify_receipt
 from .runtime import CampaignRuntime, RunResult, run_campaign
 from .seal_integrity import (
@@ -45,10 +53,14 @@ __all__ = [
     "CampaignPhase",
     "CampaignRuntime",
     "CheckpointStore",
+    "DEFAULT_REGISTRY",
     "ExperimentSpec",
     "HashChainLog",
     "IllegalTransition",
     "LeaseError",
+    "OperatorClass",
+    "OperatorRecord",
+    "OperatorRegistry",
     "Phase",
     "Receipt",
     "ReceiptStore",
@@ -67,7 +79,9 @@ __all__ = [
     "Transition",
     "WorkItem",
     "WorkStatus",
+    "classify_all",
     "inspect_launcher_node",
+    "load_default_registry",
     "load_spec",
     "load_spec_path",
     "preflight_must_not_use_subprocess",

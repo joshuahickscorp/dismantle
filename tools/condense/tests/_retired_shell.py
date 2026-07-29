@@ -28,13 +28,16 @@ from tools.condense.engine.seal_integrity import (
     seal_document,
     verify_document_seal,
 )
-from tools.condense.engine.spec import SPECS_DIR, load_spec
+from tools.condense.engine.spec import SPECS_DIR, load_spec, list_specs
 
 def _spec_path(family: str) -> Path:
+    """Stable virtual path resolved by load_spec_path against the catalog."""
     path = SPECS_DIR / f"{family}.json"
-    if path.is_file():
+    # Prefer exact family; fall back to first catalogued family if unknown.
+    catalogued = {p.stem for p in list_specs()}
+    if family in catalogued or not catalogued:
         return path
-    return next(SPECS_DIR.glob("*.json"))
+    return SPECS_DIR / f"{sorted(catalogued)[0]}.json"
 
 def lifecycle(tmp_path: Path, family: str, name: str) -> None:
     result = run_campaign(

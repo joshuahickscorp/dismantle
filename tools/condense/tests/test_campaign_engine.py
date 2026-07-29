@@ -24,6 +24,7 @@ from engine.spec import (  # noqa: E402
     SPECS_DIR,
     CampaignPhase,
     SpecError,
+    list_specs,
     load_all_specs,
     load_spec,
     load_spec_path,
@@ -31,8 +32,8 @@ from engine.spec import (  # noqa: E402
 )
 from engine.state_machine import IllegalTransition, Phase, StateMachine  # noqa: E402
 
-SPEC_CASES = sorted(SPECS_DIR.glob("*.json"))
-assert SPEC_CASES, "engine/specs must contain campaign JSON specs"
+SPEC_CASES = list_specs()
+assert SPEC_CASES, "campaign_specs catalog must contain campaign families"
 
 @pytest.mark.parametrize("spec_path", SPEC_CASES, ids=lambda p: p.stem)
 def test_spec_loads_and_validates(spec_path: Path) -> None:
@@ -359,3 +360,138 @@ def test_lifecycle_verb_is_known_phase(verb: str) -> None:
         }
     )
     assert spec.campaign_id.startswith("verb_")
+
+# --- Track V operator registry / classification contract --------------------
+
+from engine.operators import (  # noqa: E402
+    DEFAULT_REGISTRY,
+    OperatorClass,
+    OperatorRegistry,
+    classify_all,
+)
+
+
+def test_operator_registry_covers_every_top_level_module() -> None:
+    """Every tools/condense/*.py module is classified (the 44-module contract)."""
+    root = CONDENSE
+    on_disk = sorted(p.stem for p in root.glob("*.py"))
+    classified = {r.module for r in DEFAULT_REGISTRY.records}
+    missing = set(on_disk) - classified
+    extra = classified - set(on_disk)
+    assert not missing, f"unclassified modules: {sorted(missing)}"
+    assert not extra, f"registry names modules not on disk: {sorted(extra)}"
+    # Historical claim was 44; activation_aware_format was deleted (REV1).
+    assert len(on_disk) >= 40
+
+
+def test_operator_classes_are_the_six_plus_unclassified() -> None:
+    allowed = {c.value for c in OperatorClass}
+    for rec in DEFAULT_REGISTRY.records:
+        assert rec.class_name in allowed
+
+
+def test_live_glm52_readers_are_registered() -> None:
+    for name in (
+        "glm52_parity",
+        "glm52_contract",
+        "glm52_source_fetch",
+        "glm52_teacher_capture",
+        "glm52_xet_autotune",
+    ):
+        rec = DEFAULT_REGISTRY.get(name)
+        assert rec is not None, name
+        assert rec.class_ is not OperatorClass.SPEC
+
+
+def test_resolve_artifact_authority_is_numerical_not_deleted() -> None:
+    rec = DEFAULT_REGISTRY.get("glm52_common")
+    assert rec is not None
+    assert rec.class_ is OperatorClass.NUMERICAL_AUTHORITY
+    assert rec.path_sealed
+
+
+def test_glm52_state_is_named_unclassified_residual_controller() -> None:
+    rec = DEFAULT_REGISTRY.get("glm52_state")
+    assert rec is not None
+    assert rec.class_ is OperatorClass.UNCLASSIFIED
+    assert "lease" in rec.why.lower() or "controller" in rec.why.lower()
+    # Lease body lives in the engine; state keeps a thin StateError binding.
+    from tools.condense.engine.lease import SingletonLease as EngineLease
+    from glm52_state import SingletonLease as StateLease
+
+    assert issubclass(StateLease, EngineLease)
+
+
+def test_engine_lease_is_toctou_hardened() -> None:
+    """Production lease proofs are on the engine, not duplicated in glm52_state."""
+    import inspect
+    from tools.condense.engine import lease as lease_mod
+    from glm52_state import SingletonLease as StateLease
+
+    src = inspect.getsource(lease_mod.SingletonLease.acquire)
+    assert "O_NOFOLLOW" in inspect.getsource(lease_mod.SingletonLease) or (
+        "_open_parent_chain" in src or "_open_parent_chain" in inspect.getsource(lease_mod.SingletonLease)
+    )
+    assert "_open_parent_chain" in inspect.getsource(lease_mod.SingletonLease)
+    # State module must not re-implement acquire body.
+    assert "def acquire" not in inspect.getsource(StateLease)
+
+
+def test_science_floor_is_substantial() -> None:
+    floor = DEFAULT_REGISTRY.science_floor_loc()
+    # Scout named ~27,500 of pack/parity/gravity science. Floor must hold.
+    assert floor >= 25_000, f"science floor collapsed to {floor}"
+
+
+def test_classify_all_roundtrip() -> None:
+    rows = classify_all()
+    assert len(rows) == len(DEFAULT_REGISTRY.records)
+    assert all("module" in r and "class" in r and "loc" in r for r in rows)
+
+
+def test_runtime_validates_operator_modules(tmp_path: Path) -> None:
+    spec = load_spec(
+        {
+            "schema": SCHEMA,
+            "campaign_id": "ops",
+            "phases": ["precheck"],
+            "steps": [
+                {
+                    "id": "c",
+                    "phase": "precheck",
+                    "handler": "record",
+                    "params": {"module": "glm52_contract"},
+                }
+            ],
+            "reproduction": "true",
+        }
+    )
+    result = run_campaign(spec, work_dir=tmp_path, acquire_lease=True)
+    assert result.status == "PASS"
+
+
+def test_runtime_rejects_unknown_operator_module(tmp_path: Path) -> None:
+    spec = load_spec(
+        {
+            "schema": SCHEMA,
+            "campaign_id": "ops_bad",
+            "phases": ["precheck"],
+            "steps": [
+                {
+                    "id": "c",
+                    "phase": "precheck",
+                    "handler": "record",
+                    "params": {"module": "not_a_real_module_xyz"},
+                }
+            ],
+            "reproduction": "true",
+        }
+    )
+    result = run_campaign(spec, work_dir=tmp_path, acquire_lease=True)
+    assert result.status == "FAULT"
+
+
+def test_cli_classify_exits_zero() -> None:
+    from engine.runtime import main
+
+    assert main(["--classify"]) == 0

@@ -35,6 +35,7 @@ ending up with a `lab/` plus a surviving `tools/condense/tests/` proving the del
 | device + runtime | Core B (C2+C3) | last by design — it holds the protected performance and numerical contracts, and it is the one boundary where a wrong cut is expensive rather than merely wasteful |
 | `app/`, `hide-protocol`, `hide-acp`, `hide-serve`, `hide-fleet` | Core D (C9) + Core E (C4) | gated on `s3-hide` settling the agent core's shape |
 | tests rebuilt from the constitution | Core F | gated on the slices, since there is no point regenerating tests against code that is about to be replaced |
+| topology collapse | all cores | measured surface, waiting only on lane conflicts: **55 directories hold two or fewer source files** (78 files between them), and **251 files are under 50 lines** totalling 4,917. Collapsing those is most of the distance from 131 directories to the T4 target of 60, and it touches every crate, so it can only run when the build lanes are clear |
 
 ## Rules for every lane
 

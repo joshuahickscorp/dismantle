@@ -1229,3 +1229,36 @@ Reported as relocation (earns nothing as condensation).
 - receipt: `tools/condense/engine/fixtures/f1_retirement_receipt.json`
 
 - `tools/condense/test_activation_aware_roundtrip.py` — restored as live test (was archived test module; keeps 5 logical cases)
+
+
+## G1 — lab-tree stub reversal retirements (2026-07-29)
+
+After undoing the stub-and-archive laundering under `tools/bench|training|strand`,
+five archive-only modules had **no live twin** and no importers. They were a
+duplicate of the live `strand_eval` package (`tools/strand/tools/strand_eval/`
+and `tools/strand/scripts/strand_eval/`). Bodies deleted from the working tree;
+content remains in git history.
+
+**Tag / restore:**
+
+```
+# intended annotated tag (sandbox may block tag write on this worktree):
+git tag -a pre-unstub-20260729 -m "Working tree before the lab-tree stub reversal"
+# restore any retired path:
+git show pre-unstub-20260729:<path>
+# or from the commit this lane started on:
+git show 655f77c5d927c203aa5c5a85b0e448913d22a88a:<path>
+```
+
+| path | lines | summary | fixture | receipt | reopen when |
+|------|------:|---------|---------|---------|-------------|
+| `tools/strand/archive/strand_eval_scripts_dup/__init__.py` | 63 | strand_eval — THE canonical PPL eval module (audit measurement.md §3.1/§3.2). | none (duplicate of live strand_eval package) | none | If a consumer is found that imported strand_eval_scripts_dup specifically rather than tools/strand/tools/strand_eval |
+| `tools/strand/archive/strand_eval_scripts_dup/cli.py` | 95 | strand_eval.cli — the one CLI over the canon eval + ledger. | none (duplicate of live strand_eval package) | none | If a consumer is found that imported strand_eval_scripts_dup specifically rather than tools/strand/tools/strand_eval |
+| `tools/strand/archive/strand_eval_scripts_dup/core.py` | 331 | strand_eval.core — the eval engine + the by-construction identity helpers. | none (duplicate of live strand_eval package) | none | If a consumer is found that imported strand_eval_scripts_dup specifically rather than tools/strand/tools/strand_eval |
+| `tools/strand/archive/strand_eval_scripts_dup/ledger.py` | 200 | strand_eval.ledger — the results ledger + the tells as code (audit 3.2). | none (duplicate of live strand_eval package) | none | If a consumer is found that imported strand_eval_scripts_dup specifically rather than tools/strand/tools/strand_eval |
+| `tools/strand/archive/strand_eval_scripts_dup/qat_shim.py` | 71 | strand_eval.qat_shim — drop-in eval for scripts/strand-qat.py (copy #3 retires). | none (duplicate of live strand_eval package) | none | If a consumer is found that imported strand_eval_scripts_dup specifically rather than tools/strand/tools/strand_eval |
+
+**Reproduction (pre-delete identity check):** these five files lived only under
+`tools/strand/archive/strand_eval_scripts_dup/` and were not referenced by any
+live module, spec, or shell entrypoint after the unstub. Live eval entrypoints
+remain `tools/strand/tools/strand_eval/cli.py` and `tools/strand/scripts/strand_eval/cli.py`.

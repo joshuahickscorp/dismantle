@@ -809,7 +809,7 @@
     {
       "cases": 9,
       "file": "crates/hawking-core/src/model/qwen_dense.rs",
-      "ignored": 4,
+      "ignored": 3,
       "lang": "rust"
     },
     {
@@ -3584,9 +3584,9 @@
       "skipped_markers": 0
     }
   ],
-  "commit": "32a1bb0d0f723bc06f73d50538353f4df9c1bd2f",
+  "commit": "dee10fde8f42898ca8bd70758a9d5ece2451c342",
   "files": 578,
-  "ignored_rust": 55,
+  "ignored_rust": 54,
   "logical_cases": 3891,
   "parametrised_expansion": 693,
   "schema": "hawking.logical_test_inventory.v1",

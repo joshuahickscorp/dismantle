@@ -1,11 +1,12 @@
 # What the semantic graph actually says
 
-Built from `tools/graph/hawking_graph.py` over the tree at `5c4eee08`.
-24,762 nodes, 404,665 edges, 35s to extract, byte-reproducible across runs.
-Agreement against the frozen measurement authority: LOC exact, functions +3.4%,
-public symbols +2.8%.
+Built from `tools/graph/hawking_graph.py` over the tree at `6f3a1d2b`, after the repair
+lane described at the end of this file. 25,069 nodes, 412,852 edges, 41s to extract,
+byte-reproducible across runs. Agreement against the frozen measurement authority: LOC
+exact, functions +3.4%, public symbols +2.8%.
 
-Analyses run by `tools/graph/hawking_analyze.py` in 7.6s.
+Analyses run by `tools/graph/hawking_analyze.py` in 8.8s. Every number below is from the
+repaired graph unless it is explicitly labelled as a before/after.
 
 ---
 
@@ -38,7 +39,7 @@ confidence >= 0.8 only            12,063   24,269         4         7
 
 Sixty thousand of the 85,000 call edges — 71% — are the ambiguous kind. Drop them and the
 "one giant cyclic core" disappears entirely: the tree's real strongly connected structure is
-**four components, the largest of which is seven nodes.**
+**eight components, the largest of which is seven nodes.**
 
 That is a materially better architectural position than the artifact suggested, and it
 changes the plan. There is no giant mutual-dependency blob to break apart. Boundaries can be
@@ -64,7 +65,7 @@ directories.
 
 | community | files | LOC | dominant subsystem | dominant directory | directories spanned |
 |---|---:|---:|---|---|---:|
-| C-0000 | 225 | 114,148 | hawking | `crates/hawking-core/tests` | 21 |
+| C-0000 | 228 | 114,389 | hawking | `crates/hawking-core/tests` | 21 |
 | C-0001 | 133 | 45,929 | hawking | `crates/hawking-context/src` | 35 |
 | C-0002 | 102 | 41,682 | hide | `crates/hide-backend/src` | 4 |
 | C-0003 | 45 | 34,361 | laboratory | `tools/condense` | 15 |
@@ -82,8 +83,8 @@ HIDE consolidation is visible here and it held.
 
 ### Structural clones — there is no clone lever
 
-393 families with two or more members, matched on control-flow signature rather than text.
-The largest family is 23 members totalling **331 LOC**.
+400 families with two or more members, matched on control-flow signature rather than text.
+The largest family is 24 members totalling **400 LOC**.
 
 Combined with the prior arc's independent finding — 138 behavioural twins among 12,258
 functions, 0.95% — the conclusion is consistent from two unrelated instruments: **this
@@ -92,10 +93,11 @@ removed will not be removed by deduplication.
 
 ### Fan-in — small, real, and worth taking
 
-122 authorities carry four or more thin adapters. The generate-bindings candidates that
-follow are individually small (108 adapters worth 624 LOC around `Draft::map`, 478 around
-`lifecycle` worth 430 LOC, and so on) but they are low risk and they are exactly what
-campaign section 7.2 describes. Worth taking, not worth planning around.
+208 authorities carry four or more thin adapters, once the brace-match stubs that inflated
+the first run are excluded. The largest ring is 63 adapters totalling 445 LOC — about seven
+lines each, which is what a real thin forwarder looks like. The generate-bindings candidates
+that follow are low risk and exactly what campaign section 7.2 describes. Worth taking, not
+worth planning around.
 
 ### Betweenness and cuts
 
@@ -145,7 +147,7 @@ to come from re-expressing behaviour that is genuinely needed, in less code. Tha
 the clean-room bet the campaign makes, and the graph's contribution is to have ruled out
 every cheaper alternative before the building started.
 
-What the graph does hand the rebuild is where to cut: 178 real communities, sixteen of them
+What the graph does hand the rebuild is where to cut: 157 real communities, sixteen of them
 scattered across five or more directories, and a strongly connected structure whose largest
 genuine component is seven nodes. The boundaries are free to move.
 

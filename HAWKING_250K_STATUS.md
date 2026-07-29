@@ -252,6 +252,23 @@ control/REBUILD_ACCOUNTING_RULES.json   five ledgers, generation rules, topology
 control/LANE_MAP.md                     lane scopes and the one known merge collision
 ```
 
+## Regression check on the apparatus itself
+
+The instruments this campaign added are source like anything else, so they can break the
+suite like anything else. Re-run after all of them landed:
+
+```
+                    campaign start        now
+pytest passed            2,045          2,052     (+7, the new graph-instrument oracle)
+pytest failed               16             16
+pytest errors               58             58
+pytest skipped              44             44
+cargo failures              15             10     (five doctests fixed)
+```
+
+No regression from the apparatus. The five remaining non-GPU cargo failures are the seven
+`q8kv_*` tests plus the order-dependent env flag, both recorded above.
+
 ## Honest baseline, including what is already broken
 
 `cargo build --workspace` green. `pytest tools/ ramanujan/ odyssey/`:

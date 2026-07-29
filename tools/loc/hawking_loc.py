@@ -52,7 +52,13 @@ def classify(path: str) -> str:
         return "vendored"
     if "/generated/" in p or p.endswith(".generated.rs") or p.endswith(".generated.ts"):
         return "generated"
-    if "/archive/" in p or p.startswith("docs/archive/"):
+    # Only documentation archives are excluded. An earlier version excluded any path
+    # containing "/archive/", and a lane moved 102,159 lines of still-runnable Python --
+    # 161 modules with live __main__ entrypoints -- into tools/condense/archive/. The
+    # headline dropped 86,211 without a line being eliminated. Renaming a directory is
+    # not archiving, and the campaign counts neither packs, archives nor relocation as
+    # condensation. Executable code is active wherever it sits.
+    if p.startswith("docs/archive/") and not p.endswith((".py", ".rs", ".sh", ".ts", ".tsx")):
         return "archived"
     if "/target/" in p or p.startswith("target/"):
         return "build"

@@ -104,6 +104,19 @@ inventory clean. **Two gates open:**
 - `files_over_1500_lines` is 27 against a campaign start of 26, from
   `crates/hawking-context/src/memory_classes.rs` at 2,533 lines. Same lane splits it.
 
+### One flake found, and it is not S3's
+
+`cargo test` after S3 showed `gravity_glm::tests::gpu_expert_table_icb_flag_defaults_off_and_requires_table_hit`
+failing, in `hawking-core`, which S3 never touched. It passes with `-- --exact` and passes
+with `--test-threads=1`: it reads a process-global environment flag that a sibling test
+mutates concurrently, so it is **order-dependent, not a regression**. The pre-S3 run had it
+green purely because the scheduling differed.
+
+Recorded because a rung gated on "no new test failures" cannot be decided by a
+non-deterministic suite, and because the tempting move — blaming the change in front of you —
+would have been wrong here. Nine other failures are genuinely pre-existing and all GPU-bound
+(`device_only_mlp_acceptance_vs_f64_reference`, `shader_registers_...`, seven `q8kv_seq*`).
+
 ### How much the black-box gate actually proves
 
 Worth stating plainly, because "86/86 green" reads stronger than it is. Of 210 behaviours,

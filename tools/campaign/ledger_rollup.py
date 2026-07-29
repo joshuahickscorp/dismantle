@@ -28,6 +28,70 @@ ROOT = Path(__file__).resolve().parents[2]
 # the instruments and records the campaign itself adds belong to no slice, and without a slot
 # they surface as an unexplained residual. `added_apparatus` is that slot.
 KEYS = ("eliminated", "rewritten", "generated", "relocated", "facade", "added_apparatus")
+GENERATED_SOURCE_SUFFIXES = {
+    ".rs", ".py", ".ts", ".tsx", ".sh", ".metal", ".wgsl", ".lean", ".md",
+}
+MIN_GENERATION_AMPLIFICATION = 4.0
+
+
+def git_at(rev: str, *args: str) -> bytes | None:
+    r = subprocess.run(
+        ["git", *args], cwd=ROOT, capture_output=True,
+    )
+    return r.stdout if r.returncode == 0 else None
+
+
+def blob_at(rev: str, path: str) -> bytes | None:
+    return git_at(rev, "show", f"{rev}:{path}")
+
+
+def blob_loc(rev: str, path: str) -> int:
+    blob = blob_at(rev, path)
+    return 0 if blob is None else len(blob.split(b"\n")) - 1
+
+
+def is_generated_source(path: str) -> bool:
+    return (
+        Path(path).suffix in GENERATED_SOURCE_SUFFIXES
+        and ("/generated/" in path or path.endswith((".generated.rs", ".generated.ts")))
+    )
+
+
+def generation_reclassified_at(rev: str) -> int:
+    """Apply the generation registry's accounting rule to a committed tree.
+
+    The live generation gate also re-runs generators. A historical rollup cannot
+    safely execute a generator from an arbitrary revision in the current checkout,
+    so it uses the committed registry evidence (tracked output/spec/generator
+    paths and >=4x amplification). Commits are admitted only after the live gate
+    has already proved byte reproduction; an absent or incomplete registry is
+    conservatively reclassified active here.
+    """
+    tree = git_at(rev, "ls-tree", "-r", "--name-only", rev)
+    if tree is None:
+        return 0
+    generated = [
+        p for p in tree.decode("utf-8", "replace").splitlines()
+        if is_generated_source(p)
+    ]
+    registry_blob = blob_at(rev, "control/GENERATED_REGISTRY.json")
+    try:
+        registry = json.loads(registry_blob) if registry_blob is not None else {"entries": []}
+    except json.JSONDecodeError:
+        registry = {"entries": []}
+
+    earned: set[str] = set()
+    for entry in registry.get("entries", []):
+        outputs = entry.get("outputs", [])
+        specs = entry.get("specs", [])
+        generators = entry.get("generator_sources", [])
+        if not outputs or not specs or not generators or not entry.get("generator_cmd"):
+            continue
+        cost = sum(blob_loc(rev, p) for p in [*specs, *generators])
+        output_loc = sum(blob_loc(rev, p) for p in outputs)
+        if cost > 0 and output_loc / cost >= MIN_GENERATION_AMPLIFICATION:
+            earned.update(outputs)
+    return sum(blob_loc(rev, p) for p in generated if p not in earned)
 
 
 def loc_at(rev: str) -> int | None:
@@ -42,9 +106,11 @@ def loc_at(rev: str) -> int | None:
             cwd=ROOT, capture_output=True, text=True,
         )
         m = re.search(r"combined active LOC:\s*([\d,]+)", r.stdout)
-        return int(m.group(1).replace(",", "")) if m else None
+        raw = int(m.group(1).replace(",", "")) if m else None
+        return None if raw is None else raw + generation_reclassified_at(rev)
     try:
-        return json.loads(r.stdout)["combined_active_monorepo_LOC"]
+        raw = json.loads(r.stdout)["combined_active_monorepo_LOC"]
+        return raw + generation_reclassified_at(rev)
     except (json.JSONDecodeError, KeyError):
         return None
 

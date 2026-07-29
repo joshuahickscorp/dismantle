@@ -1,8 +1,8 @@
-//! One registry indexing all family adapters.
+//! One registry indexing all family descriptors.
 
 use std::collections::BTreeMap;
 
-use crate::abi::{FamilyAdapter, FamilyDescriptor};
+use crate::abi::FamilyDescriptor;
 use crate::evidence::{validate_family_evidence, workspace_root};
 use crate::families;
 use crate::support_level::SupportLevel;
@@ -19,8 +19,7 @@ impl FamilyRegistry {
         }
     }
 
-    pub fn register(&mut self, adapter: &dyn FamilyAdapter) {
-        let d = adapter.descriptor();
+    pub fn insert_descriptor(&mut self, d: FamilyDescriptor) {
         self.by_id.insert(d.id.to_string(), d);
     }
 
@@ -87,11 +86,11 @@ impl Default for FamilyRegistry {
     }
 }
 
-/// Built-in registry with every in-tree family module.
+/// Built-in registry with every in-tree family descriptor.
 pub fn builtin_registry() -> FamilyRegistry {
     let mut r = FamilyRegistry::new();
-    for f in families::all_families() {
-        r.register(f.as_ref());
+    for d in families::FAMILY_TABLE {
+        r.insert_descriptor(*d);
     }
     r
 }

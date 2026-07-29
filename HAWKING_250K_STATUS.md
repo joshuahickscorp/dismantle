@@ -117,6 +117,43 @@ non-deterministic suite, and because the tempting move — blaming the change in
 would have been wrong here. Nine other failures are genuinely pre-existing and all GPU-bound
 (`device_only_mlp_acceptance_vs_f64_reference`, `shader_registers_...`, seven `q8kv_seq*`).
 
+### A capability the runtime advertises and does not have
+
+Running the suite to completion after S3 turned up 15 failures. Five were doctests that had
+never compiled — `sidecar.rs` fenced a shell command as Rust, and four HIDE module docs used
+`crate::` paths, which inside a doctest resolve to the synthetic doctest crate rather than
+the library. Fixed; all five pass now.
+
+The other ten are pre-existing, and one group is a real finding:
+
+```
+q8kv_seq256_realistic      q8kv_seq256_worst_case
+q8kv_seq1024_realistic     q8kv_seq1024_worst_case
+q8kv_seq2048_realistic     q8kv_seq2048_worst_case
+kv_append_q8_gpu_matches_cpu_quantize
+
+  Metal("kernel `mla_decode_kernel_q8kv` not found:
+         Function 'mla_decode_kernel_q8kv' does not exist")
+```
+
+`mla_decode_kernel_q8kv` is named in the runtime's kernel registry
+(`crates/hawking-core/src/kernels/mod.rs:5633`) and in the Metal name mapping
+(`crates/hawking-core/src/metal/mod.rs:1027`), and seven tests assert it runs. **No `.metal`
+file in this repository defines it, and none ever has** — `git log -S` over `*.metal` across
+all history returns nothing. The runtime advertises a Q8 KV decode kernel it does not
+contain.
+
+Nothing in the protected set depends on it: no behaviour in the constitution names Q8 KV,
+and `BASELINES.md` makes no claim about it. So under this campaign's own rules it is code
+with no observable contract — a deletion candidate. It is **not** being deleted here, because
+"advertised capability turns out absent" is a product finding that deserves a decision rather
+than a quiet cleanup mid-campaign, and because an earlier measurement of this kernel as a
+1.28–1.96x per-kernel win exists, which suggests it was real somewhere and never landed here.
+
+What it must not become is a permanently red gate that everyone learns to ignore. It stays
+failing, in the recorded baseline, so the rung rule that matters — *no new failures* — keeps
+working.
+
 ### How much the black-box gate actually proves
 
 Worth stating plainly, because "86/86 green" reads stronger than it is. Of 210 behaviours,

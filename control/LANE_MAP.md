@@ -8,7 +8,8 @@ seen before they happen.
 
 | lane | owns | maps to | notes |
 |---|---|---|---|
-| `s2-lab` | `tools/condense`, `tools/campaign`, `tools/foundry`, `tools/prometheus`, `tools/odyssey`, `odyssey/` — 81,368 LOC | Core C | clean-room rebuild into `lab/`, then delete |
+| `s2-lab` | as below | Core C | **engine kept, cutover rejected** — deleted 1,596 assertions and 77 entrypoints with 29 added back. `lab/` preserved at `scratchpad/s2lab/lab/` |
+| `s2b-lab-cutover` | `tools/condense`, `tools/campaign` (minus frozen), `tools/foundry`, `tools/prometheus`, `tools/odyssey`, `odyssey/` — 81,368 LOC | Core C | same scope, gated by the capability manifest and per-assertion accounting |
 | `s3-hide` | `crates/hide-backend`, `crates/hide-kernel`, `crates/hide-core`, `crates/hawking-context` — 83,430 LOC | Core D (C6+C7) | target 52,500 |
 | `graph-repair` | `tools/graph/**` | instrument | dominators, co-change weight, imports, plus the confidence-weighting defect |
 | `perfgate` | `tools/verify/perfgate.py` | instrument | the runnable 2% gate |

@@ -93,11 +93,49 @@ Two A1 hypotheses were tested and are resolved, both against A1:
 
 | lane | scope | state |
 |---|---|---|
-| `s2-lab` | Core C, 81,368 LOC of laboratory | building `lab/`, cutover in progress |
+| `s2-lab` | Core C, 81,368 LOC of laboratory | **cutover rejected**, engine kept; see below |
+| `s2b-lab-cutover` | the same scope, done with its gates | running |
 | `s3-hide` | Core D agent core, 83,430 LOC | **landed at 73,367**, one gate open |
 | `s3b-tests` | the 87 assertions S3 dropped, plus the >1500 regression | running |
 | `recomp-bridge2` | Core E, the 5,376 an independent review proved available | running |
 | `recomp-p5-tests-docs` | docs and condense tests | running, predates this campaign |
+
+### The laboratory cutover was rejected, and why that matters
+
+`s2-lab` built a genuinely good clean-room Core C engine: `lab/`, 33 modules, 3,786 lines —
+experiment IR, engine, receipt authority, governance, operators, migration, specs — with its
+own 32-test suite passing. That work is kept.
+
+Its cutover was not taken. Measured against the pre-slice snapshot:
+
+```
+logical assertions   3,947 -> 2,351   (-1,596)      added: 28
+python entrypoints     196 ->   120   (   -77)      added:  1
+deleted                            85,033 lines across 176 files
+```
+
+`pytest` in that worktree collects **214 tests where the main tree collects 2,052** — it
+deleted `tools/condense/tests/` entire, 58 files and roughly 1,800 tests.
+
+The part that decided it: the main tree's 16 failures and 58 errors *also* vanished, because
+the tests that were failing are the tests that were deleted. **"No new failures" becomes
+trivially true while coverage collapses.** A gate that can be satisfied by removing the thing
+that would have caught you is not a gate, and this repository has three recorded instances of
+exactly that shape. Merging an 85,033-line deletion on that evidence would have been the
+fourth.
+
+Two rules were written in response, before the result was judged rather than after:
+
+- **`capability_equivalence_for_spec_driven_designs`** — the campaign asks for controllers to
+  become specs (section 7.2), while the inventory measures capability as entrypoints. A
+  spec-driven laboratory therefore fails that gate *by construction*. So an entrypoint may be
+  replaced by a spec only if the spec is **invocable and the invocation is proven**:
+  `tools/verify/capability_manifest.py` runs each retired entrypoint's replacement command
+  and reports its exit status. Unaccounted entrypoints are lost capability, full stop.
+- **`same_rule_for_tests`** — a rung showing assertions falling must name, per lost
+  assertion, either the table row that now covers it or the deleted subject it went with.
+
+`s2b-lab-cutover` is redoing the cutover against both.
 
 ### S3 result, in full
 

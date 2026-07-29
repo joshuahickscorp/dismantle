@@ -426,6 +426,21 @@ header .spacer { flex: 1; }
   min-width: 0;
   overflow: hidden;
 }
+/* Below ~900px the two fixed panels (280 + 300) leave the 1fr graph column at zero
+   width and the page scrolls sideways. Stack instead so the canvas always has room. */
+@media (max-width: 900px) {
+  #app {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: 48px minmax(240px, 50vh) auto auto;
+  }
+  /* DOM order is left panel, #cy, right panel -- place explicitly so the canvas takes
+     the tall row rather than whichever element happens to come second. */
+  #cy { grid-row: 2; border-right: none; border-bottom: 1px solid var(--border); }
+  .panel.left { grid-row: 3; }
+  .panel.right { grid-row: 4; border-left: none; }
+  .panel { max-height: 45vh; border-right: none; }
+  .panel * { max-width: 100%; box-sizing: border-box; }
+}
 .panel {
   background: var(--panel);
   border-right: 1px solid var(--border);

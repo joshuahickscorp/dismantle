@@ -136,7 +136,6 @@ mod tests {
     use crate::permissions::{ObjectPermissions, Surface};
     use crate::retention::RetentionPolicy;
     use crate::schema::*;
-
     fn sample_record() -> ObjectRecord {
         ObjectRecord {
             content_hash: ContentHash::of_bytes(b"body"),
@@ -164,7 +163,6 @@ mod tests {
             updated_at_ms: 0,
         }
     }
-
     #[test]
     fn compile_view_has_derivatives_not_raw() {
         let rec = sample_record();
@@ -176,9 +174,6 @@ mod tests {
         assert_eq!(view.derivatives.len(), 1);
         assert_eq!(view.derivatives[0].text.as_deref(), Some("body"));
         assert!(!CompileObjectView::exposes_raw_bytes());
-        assert!(matches!(
-            view.try_raw_bytes(),
-            Err(ObjectError::RawBytesForbidden)
-        ));
+ assert!(matches!( view.try_raw_bytes(), Err(ObjectError::RawBytesForbidden) ));
     }
 }

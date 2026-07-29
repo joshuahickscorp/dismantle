@@ -191,7 +191,6 @@ impl Registry {
 mod tests {
     use super::*;
     use crate::pack::{Implementation, PackManifest, Profile, SEED_COMPAT};
-
     fn forge_pack() -> PackManifest {
         PackManifest::capability_pack("packs-nucleus-forge", "1.0.0", Profile::Default)
             .with_source_commit("f0f0")
@@ -206,7 +205,6 @@ mod tests {
             })
             .add_capability("forge.ternary_latent", CapabilityKind::ForgeFamily, "ternary-latent")
     }
-
     #[test]
     fn one_registry_answers_all_questions() {
         let mut reg = Registry::new();
@@ -223,7 +221,6 @@ mod tests {
         assert!(sel.rollback.contains("git checkout"));
         assert_eq!(reg.active_loc(), 120);
     }
-
     #[test]
     fn ambiguous_activation_requires_explicit_choice() {
         let mut reg = Registry::new();
@@ -235,11 +232,8 @@ mod tests {
         assert!(reg.activate("forge.ternary_latent", "packs-nucleus-forge-alt", "measured winner").is_ok());
         assert_eq!(reg.active("forge.ternary_latent").unwrap().pack, "packs-nucleus-forge-alt");
     }
-
     #[test]
     fn activation_is_witnessed_by_one_sealed_admission_receipt() {
-        // The single activation authority: a sealed `admission` record through the Seed's ONE evidence
-        // engine (the registry never mutates run state).
         let mut reg = Registry::new();
         reg.insert(&forge_pack()).unwrap();
         let sel = reg.activate_sole("forge.ternary_latent").unwrap();

@@ -127,7 +127,6 @@ impl<'de> Deserialize<'de> for Integrity {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn sha256_and_blake3_differ_and_are_stable() {
         let bytes = b"synthetic capsule payload";
@@ -136,11 +135,9 @@ mod tests {
         assert_eq!(a.algo, IntegrityAlgo::Sha256);
         assert_eq!(b.algo, IntegrityAlgo::Blake3);
         assert_ne!(a.digest, b.digest);
-        // Deterministic recompute.
         assert_eq!(a, Integrity::sha256(bytes));
         assert_eq!(b, Integrity::blake3(bytes));
     }
-
     #[test]
     fn verify_accepts_original_rejects_mutated() {
         let bytes = vec![1u8, 2, 3, 4, 5];
@@ -152,7 +149,6 @@ mod tests {
             assert!(!integ.verify(&flipped));
         }
     }
-
     #[test]
     fn tagged_hex_roundtrips() {
         for algo in [IntegrityAlgo::Sha256, IntegrityAlgo::Blake3] {
@@ -164,7 +160,6 @@ mod tests {
         assert_eq!(Integrity::from_tagged_hex("nope"), None);
         assert_eq!(Integrity::from_tagged_hex("md5:00"), None);
     }
-
     #[test]
     fn serde_is_a_plain_string() {
         let integ = Integrity::blake3(b"payload");

@@ -587,7 +587,6 @@ mod tests {
     use super::*;
     use hide_core::permission::{PermissionPolicy, StaticPermissionEngine};
     use hide_core::tool::{ToolCall, ToolDispatcher, ToolRegistry, ToolStatus};
-
     fn allow_all_dispatcher(registry: Arc<ToolRegistry>) -> ToolDispatcher {
         ToolDispatcher::new(
             registry,
@@ -598,7 +597,6 @@ mod tests {
             })),
         )
     }
-
     #[tokio::test]
     async fn shell_run_executes_and_captures_stdout() {
         let registry = Arc::new(ToolRegistry::default());
@@ -614,13 +612,11 @@ mod tests {
         assert_eq!(result.status, ToolStatus::Ok);
         assert_eq!(result.structured_content.unwrap()["stdout"], "hello");
     }
-
     #[tokio::test]
     async fn shell_run_nonzero_exit_is_ok_data() {
         let registry = Arc::new(ToolRegistry::default());
         registry.register(ShellRunTool::default());
         let dispatcher = allow_all_dispatcher(registry);
-        // `sh -c 'exit 3'` — a non-zero exit MUST be ok:true with exit_code.
         let result = dispatcher
             .dispatch(ToolCall::new(
                 "shell.run",
@@ -634,10 +630,8 @@ mod tests {
         let sc = result.structured_content.unwrap();
         assert!(sc["stderr"].as_str().unwrap().contains("boom"));
     }
-
     #[tokio::test]
     async fn shell_run_times_out() {
-        // Direct call with a tiny deadline; the watchdog must kill + return TIMEOUT.
         let config = ShellConfig {
             disable_sandbox: true,
             ..Default::default()
@@ -656,7 +650,6 @@ mod tests {
         assert_eq!(result.status, ToolStatus::TimedOut);
         assert_eq!(result.error.unwrap().code, "TIMEOUT");
     }
-
     #[tokio::test]
     async fn shell_run_refuses_catastrophic() {
         let registry = Arc::new(ToolRegistry::default());
@@ -672,13 +665,8 @@ mod tests {
         assert!(!result.ok);
         assert_eq!(result.error.unwrap().code, "CAP_DENIED");
     }
-
     #[test]
     fn fail_closed_when_no_os_sandbox_available() {
-        // Simulate a platform with no usable OS sandbox: not disable_sandbox, not
-        // allow_unconfined. On a host where sandbox-exec/bwrap is genuinely
-        // unavailable this is the live path; on macOS CI we still assert the
-        // decision function refuses (it only ever runs UNCONFINED via an opt-out).
         let config = ShellConfig {
             allow_unconfined: false,
             disable_sandbox: false,
@@ -687,11 +675,7 @@ mod tests {
         let argv = vec!["true".to_string()];
         match build_confined_command(&argv, &config) {
             Ok(_) => {
-                // Only acceptable if this host actually HAS an OS sandbox.
-                assert!(
-                    sandbox_exec_available() || bubblewrap_path().is_some(),
-                    "got an Ok command with no OS sandbox available — fail-closed breached"
-                );
+                assert!(sandbox_exec_available() || bubblewrap_path().is_some());
             }
             Err(refusal) => {
                 let refusal = *refusal;
@@ -700,11 +684,8 @@ mod tests {
             }
         }
     }
-
     #[test]
     fn allow_unconfined_opt_out_runs_bare_with_warning() {
-        // The explicit escape hatch: a sandboxless host may run UNCONFINED only
-        // when allow_unconfined is set, and must surface a warning.
         let config = ShellConfig {
             allow_unconfined: true,
             ..Default::default()
@@ -712,23 +693,13 @@ mod tests {
         let argv = vec!["true".to_string()];
         let spawn = build_confined_command(&argv, &config).expect("opt-out must not refuse");
         if sandbox_exec_available() || bubblewrap_path().is_some() {
-            // Real sandbox present → confined, no escape-hatch warning.
             assert!(spawn.warning.is_none());
         } else {
-            assert!(
-                spawn
-                    .warning
-                    .as_deref()
-                    .map(|w| w.contains("UNCONFINED"))
-                    .unwrap_or(false),
-                "unconfined opt-out must carry a warning"
-            );
+            assert!(spawn .warning .as_deref() .map(|w| w.contains("UNCONFINED")) .unwrap_or(false));
         }
     }
-
     #[test]
     fn disable_sandbox_runs_bare_without_refusal() {
-        // An already-confined worktree run opts out and is never refused.
         let config = ShellConfig {
             disable_sandbox: true,
             ..Default::default()
@@ -737,11 +708,8 @@ mod tests {
         let spawn = build_confined_command(&argv, &config).expect("disable_sandbox never refuses");
         assert!(spawn.warning.is_none());
     }
-
     #[test]
     fn render_options_thread_hide_dir_and_worktree() {
-        // Item 2: the absolute .hide/log write-deny and the worktree confinement
-        // must reach the rendered SBPL via render_macos_seatbelt_with.
         let config = ShellConfig {
             workspace_root: Some("/tmp".to_string()),
             worktree_root: Some("/tmp/wt".to_string()),
@@ -753,25 +721,12 @@ mod tests {
         assert_eq!(opts.worktree_root.as_deref(), Some("/tmp/wt"));
         assert_eq!(opts.hide_dir, Some(PathBuf::from("/var/hide-test/.hide")));
         assert_eq!(opts.proxy_port, Some(8443));
-
         let profile = sandbox_profile(&config, &["cargo".to_string(), "test".to_string()]);
         let rendered = hide_security::sandbox::render_macos_seatbelt_with(&profile, &opts);
-        // Absolute .hide/log write-deny (S4) — not the relative fallback.
-        assert!(
-            rendered
-                .profile_text
-                .contains("(deny file-write* (subpath \"/var/hide-test/.hide/log\"))"),
-            "absolute .hide/log write-deny must be threaded:\n{}",
-            rendered.profile_text
-        );
-        // Worktree write confinement.
-        assert!(rendered
-            .profile_text
-            .contains("(allow file-write* (subpath \"/tmp/wt\"))"));
-        // Proxy egress route (S5b).
+        assert!(rendered .profile_text .contains("(deny file-write* (subpath \"/var/hide-test/.hide/log\"))"));
+ assert!(rendered .profile_text .contains("(allow file-write* (subpath \"/tmp/wt\"))"));
         assert!(rendered.profile_text.contains("localhost:8443"));
     }
-
     #[test]
     fn render_options_worktree_falls_back_to_workspace_root() {
         let config = ShellConfig {
@@ -781,7 +736,6 @@ mod tests {
         let opts = sandbox_render_options(&config);
         assert_eq!(opts.worktree_root.as_deref(), Some("/tmp/ws"));
     }
-
     #[tokio::test]
     async fn shell_plan_renders_sandbox_profile() {
         let tool = ShellPlanTool::default();
@@ -797,9 +751,6 @@ mod tests {
             .await;
         let sc = result.structured_content.unwrap();
         assert_eq!(sc["executed"], false);
-        assert!(sc["sandbox_profile"]
-            .as_str()
-            .unwrap()
-            .contains("(deny default)"));
+ assert!(sc["sandbox_profile"] .as_str() .unwrap() .contains("(deny default)"));
     }
 }

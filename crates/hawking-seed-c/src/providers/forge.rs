@@ -167,7 +167,6 @@ impl<F: Forge> Provider for ForgeProvider<F> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn ternary_family_forges_subbit_artifact_and_executes_directly() {
         let (m, n) = (256usize, 256usize);

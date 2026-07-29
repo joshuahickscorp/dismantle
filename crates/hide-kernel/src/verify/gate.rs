@@ -92,7 +92,6 @@ pub enum GateDecision {
 mod tests {
     use super::*;
     use crate::verify::oracle::Failure;
-
     fn det_pass() -> Verdict {
         Verdict::pass("build", OracleClass::Deterministic, "ok")
     }
@@ -109,45 +108,27 @@ mod tests {
         v.score = score;
         v
     }
-
     #[test]
     fn deterministic_pass_accepts() {
-        assert_eq!(
-            VerificationGate::default().decide(&[det_pass()]),
-            GateDecision::Accept
-        );
+ assert_eq!( VerificationGate::default().decide(&[det_pass()]), GateDecision::Accept );
     }
-
     #[test]
     fn deterministic_fail_repairs() {
-        assert_eq!(
-            VerificationGate::default().decide(&[det_fail()]),
-            GateDecision::Repair
-        );
+ assert_eq!( VerificationGate::default().decide(&[det_fail()]), GateDecision::Repair );
     }
-
     #[test]
     fn deterministic_outranks_probabilistic() {
-        // A high-scoring probabilistic PASS must NOT rescue a deterministic FAIL.
         let verdicts = vec![det_fail(), prob_pass(1.0)];
-        assert_eq!(
-            VerificationGate::default().decide(&verdicts),
-            GateDecision::Repair
-        );
+ assert_eq!( VerificationGate::default().decide(&verdicts), GateDecision::Repair );
     }
-
     #[test]
     fn probabilistic_only_uses_threshold() {
         let gate = VerificationGate::with_threshold(0.7);
         assert_eq!(gate.decide(&[prob_pass(0.9)]), GateDecision::Accept);
         assert_eq!(gate.decide(&[prob_pass(0.5)]), GateDecision::Repair);
     }
-
     #[test]
     fn no_oracle_is_inconclusive() {
-        assert_eq!(
-            VerificationGate::default().decide(&[]),
-            GateDecision::Inconclusive
-        );
+ assert_eq!( VerificationGate::default().decide(&[]), GateDecision::Inconclusive );
     }
 }

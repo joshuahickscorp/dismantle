@@ -519,7 +519,6 @@ fn hex_decode(input: &str) -> Result<Vec<u8>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn aead_round_trips_and_authenticates() {
         let cipher = AtRestCipher::generate();
@@ -528,16 +527,11 @@ mod tests {
             .unwrap();
         let pt = cipher.decrypt_segment("log", &seg).unwrap();
         assert_eq!(pt, b"hello secret world");
-
-        // Tamper the ciphertext → tag fails.
         let mut bad = seg.clone();
         bad.ciphertext[0] ^= 0xff;
         assert!(cipher.decrypt_segment("log", &bad).is_err());
-
-        // Wrong store id (AAD) → fails even with the same WDK.
         assert!(cipher.decrypt_segment("blobs", &seg).is_err());
     }
-
     #[test]
     fn nonces_are_per_segment_unique() {
         let cipher = AtRestCipher::generate();
@@ -546,32 +540,22 @@ mod tests {
         assert_ne!(a.nonce, b.nonce, "each segment gets a fresh nonce");
         assert_ne!(a.ciphertext, b.ciphertext);
     }
-
     #[test]
     fn distinct_stores_use_distinct_keys() {
         let cipher = AtRestCipher::generate();
-        // Encrypt under "log", attempt decrypt as "log" with same nonce bytes
-        // but the AAD/subkey separation means a blobs-keyed open of a log
-        // segment must fail (covered above). Here assert subkeys differ.
         let log = cipher.subkey("log");
         let blobs = cipher.subkey("blobs");
         assert_ne!(log, blobs);
     }
-
     #[test]
     fn wrap_unwrap_wdk_round_trip() {
         let wdk_cipher = AtRestCipher::generate();
         let wrap_key = [42u8; WDK_LEN];
         let wrapped = wdk_cipher.wrap_wdk(&wrap_key).unwrap();
-
         let recovered = AtRestCipher::unwrap_wdk(&wrap_key, &wrapped).unwrap();
-        // Recovered WDK must produce identical subkeys.
         assert_eq!(recovered.subkey("log"), wdk_cipher.subkey("log"));
-
-        // Wrong wrap key fails.
         assert!(AtRestCipher::unwrap_wdk(&[0u8; WDK_LEN], &wrapped).is_err());
     }
-
     #[test]
     fn file_wrap_key_store_persists() {
         let dir = tempfile::tempdir().unwrap();
@@ -583,25 +567,19 @@ mod tests {
         let k3 = store.get_or_create("atrest").unwrap();
         assert_ne!(k1, k3, "regenerated after delete");
     }
-
     #[test]
     fn full_wrap_key_to_segment_flow() {
-        // End-to-end: wrap-key store → wrap WDK → persist → reopen → decrypt.
         let dir = tempfile::tempdir().unwrap();
         let store = FileWrapKeyStore::new(dir.path().join("keys"));
         let wrap_key = store.get_or_create("ws").unwrap();
-
         let cipher = AtRestCipher::generate();
         let wrapped = cipher.wrap_wdk(&wrap_key).unwrap();
         let seg = cipher.encrypt_segment("log", b"audit event bytes").unwrap();
-
-        // Simulate reopen: reload wrap key, unwrap WDK, decrypt.
         let wrap_key2 = store.get_or_create("ws").unwrap();
         let cipher2 = AtRestCipher::unwrap_wdk(&wrap_key2, &wrapped).unwrap();
         let pt = cipher2.decrypt_segment("log", &seg).unwrap();
         assert_eq!(pt, b"audit event bytes");
     }
-
     #[cfg(unix)]
     #[test]
     fn layout_validation_enforces_0700() {
@@ -611,8 +589,6 @@ mod tests {
         let v = ensure_and_validate_layout(&hide).unwrap();
         assert!(v.ok, "fresh 0700 .hide should validate: {:?}", v.warnings);
         assert!(v.root_mode_owner_only);
-
-        // Loosen to 0755 → fail closed.
         let mut perms = std::fs::metadata(&hide).unwrap().permissions();
         perms.set_mode(0o755);
         std::fs::set_permissions(&hide, perms).unwrap();
@@ -621,7 +597,6 @@ mod tests {
         assert!(!v2.root_mode_owner_only);
         assert!(v2.warnings.iter().any(|w| w.contains("0700")));
     }
-
     #[cfg(unix)]
     #[test]
     fn layout_validation_flags_writable_log() {
@@ -631,13 +606,11 @@ mod tests {
         ensure_and_validate_layout(&hide).unwrap();
         let log = hide.join("log");
         std::fs::create_dir_all(&log).unwrap();
-        // group/world-writable log dir.
         std::fs::set_permissions(&log, std::fs::Permissions::from_mode(0o777)).unwrap();
         let v = validate_layout(&hide);
         assert!(!v.ok);
         assert!(v.hide_log_agent_writable);
     }
-
     #[test]
     fn missing_hide_dir_fails_closed() {
         let v = validate_layout(Path::new("/nonexistent/.hide/xyz"));

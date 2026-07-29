@@ -118,8 +118,6 @@ mod tests {
     use super::*;
     use crate::verify::oracle::Cost;
     use futures::future::BoxFuture;
-
-    /// A trivial always-Pass deterministic oracle for resolution tests.
     struct PassOracle(&'static str);
     impl Oracle for PassOracle {
         fn name(&self) -> &str {
@@ -129,13 +127,11 @@ mod tests {
             Box::pin(async move { Ok(Verdict::pass(self.0, OracleClass::Deterministic, "ok")) })
         }
     }
-
     fn suite_with(name: &'static str) -> OracleSuite {
         let mut suite = OracleSuite::new();
         suite.register(Arc::new(PassOracle(name)));
         suite
     }
-
     #[test]
     fn resolve_ranked_surfaces_unknown_ids() {
         let suite = suite_with("build");
@@ -144,12 +140,8 @@ mod tests {
         assert_eq!(resolved.len(), 1);
         assert_eq!(unknown, vec!["ghost"]);
     }
-
     #[tokio::test]
     async fn unknown_oracle_id_produces_visible_inconclusive_marker() {
-        // A step declaring an unregistered oracle must NOT yield an empty,
-        // silent verdict set — it must produce a Deterministic Inconclusive
-        // marker that names the unknown id (auditable signal).
         let suite = suite_with("build");
         let input = VerificationInput::new(".");
         let verdicts = suite
@@ -164,24 +156,16 @@ mod tests {
         assert_eq!(marker.class, OracleClass::Deterministic);
         assert!(marker.detail.contains("ghost"));
     }
-
     #[tokio::test]
     async fn unknown_oracle_id_does_not_let_gate_accept_on_faith() {
-        // The marker is Inconclusive, so a step whose ONLY declared oracle is
-        // unknown can never reach Accept.
         use crate::verify::gate::{GateDecision, VerificationGate};
         let suite = OracleSuite::new();
         let input = VerificationInput::new(".");
         let verdicts = suite.run(&["ghost".to_string()], &input).await.unwrap();
-        assert_ne!(
-            VerificationGate::default().decide(&verdicts),
-            GateDecision::Accept
-        );
+ assert_ne!( VerificationGate::default().decide(&verdicts), GateDecision::Accept );
     }
-
     #[test]
     fn resolve_ranked_orders_deterministic_then_cheap() {
-        // (sanity) keeps the ranking contract while returning unknowns.
         let _ = Cost::Cheap; // touch the import path used by other oracles
         let suite = suite_with("build");
         let ids = ["build".to_string()];

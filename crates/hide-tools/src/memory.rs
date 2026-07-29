@@ -336,7 +336,6 @@ fn safe_rel(rel: &str) -> Result<PathBuf, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     fn ctx() -> ToolCtx {
         ToolCtx {
             grant_id: None,
@@ -344,7 +343,6 @@ mod tests {
             output_cap_bytes: 1 << 20,
         }
     }
-
     fn tmp_tool(name: &str) -> (MemoryTool, PathBuf) {
         use std::sync::atomic::{AtomicU64, Ordering};
         static N: AtomicU64 = AtomicU64::new(0);
@@ -361,7 +359,6 @@ mod tests {
             root,
         )
     }
-
     #[tokio::test]
     async fn create_view_replace_roundtrip() {
         let (tool, root) = tmp_tool("rt");
@@ -372,11 +369,7 @@ mod tests {
             )
             .await;
         assert!(r.ok, "create failed: {:?}", r.error);
-        assert_eq!(
-            std::fs::read_to_string(root.join("notes.md")).unwrap(),
-            "a\nb\n"
-        );
-
+ assert_eq!( std::fs::read_to_string(root.join("notes.md")).unwrap(), "a\nb\n" );
         let v = tool
             .call(json!({ "command": "view", "path": "notes.md" }), ctx())
             .await;
@@ -386,7 +379,6 @@ mod tests {
             .unwrap()
             .to_string();
         assert!(content.contains("1\ta"), "numbered view: {content}");
-
         let rep = tool
             .call(
                 json!({ "command": "str_replace", "path": "notes.md", "old_str": "a", "new_str": "A" }),
@@ -394,13 +386,9 @@ mod tests {
             )
             .await;
         assert!(rep.ok, "replace failed: {:?}", rep.error);
-        assert_eq!(
-            std::fs::read_to_string(root.join("notes.md")).unwrap(),
-            "A\nb\n"
-        );
+ assert_eq!( std::fs::read_to_string(root.join("notes.md")).unwrap(), "A\nb\n" );
         let _ = std::fs::remove_dir_all(root);
     }
-
     #[tokio::test]
     async fn str_replace_requires_unique_match() {
         let (tool, root) = tmp_tool("uniq");
@@ -419,7 +407,6 @@ mod tests {
         assert_eq!(r.error.unwrap().code, "CONFLICT");
         let _ = std::fs::remove_dir_all(root);
     }
-
     #[tokio::test]
     async fn insert_at_line_and_delete() {
         let (tool, root) = tmp_tool("ins");
@@ -436,7 +423,6 @@ mod tests {
             .await;
         assert!(r.ok, "insert failed: {:?}", r.error);
         assert_eq!(std::fs::read_to_string(root.join("f")).unwrap(), "a\nb\nc");
-
         let d = tool
             .call(json!({ "command": "delete", "path": "f" }), ctx())
             .await;
@@ -444,7 +430,6 @@ mod tests {
         assert!(!root.join("f").exists());
         let _ = std::fs::remove_dir_all(root);
     }
-
     #[tokio::test]
     async fn view_lists_directory() {
         let (tool, root) = tmp_tool("ls");
@@ -466,9 +451,6 @@ mod tests {
         assert!(entries.contains(&"sub/".to_string()));
         let _ = std::fs::remove_dir_all(root);
     }
-
-    // --- the security boundary: every escape vector is rejected -------------
-
     #[tokio::test]
     async fn rejects_parent_traversal() {
         let (tool, root) = tmp_tool("esc1");
@@ -479,11 +461,9 @@ mod tests {
             )
             .await;
         assert!(!r.ok, "must reject ..");
-        // The escape file must not exist outside the root.
         assert!(!root.parent().unwrap().join("escape.txt").exists());
         let _ = std::fs::remove_dir_all(root);
     }
-
     #[tokio::test]
     async fn rejects_absolute_path() {
         let (tool, root) = tmp_tool("esc2");
@@ -497,7 +477,6 @@ mod tests {
         assert!(!Path::new("/tmp/hide_mem_escape").exists());
         let _ = std::fs::remove_dir_all(root);
     }
-
     #[tokio::test]
     async fn rejects_percent_encoded_traversal() {
         let (tool, root) = tmp_tool("esc3");
@@ -510,7 +489,6 @@ mod tests {
         assert!(!r.ok, "must reject percent-encoded ..");
         let _ = std::fs::remove_dir_all(root);
     }
-
     #[test]
     fn safe_rel_unit() {
         assert!(safe_rel("a/b.md").is_ok());

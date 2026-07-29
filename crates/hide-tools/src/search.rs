@@ -143,7 +143,6 @@ mod tests {
     use super::*;
     use std::path::PathBuf;
     use std::sync::Arc;
-
     fn ctx() -> ToolCtx {
         ToolCtx {
             grant_id: None,
@@ -151,7 +150,6 @@ mod tests {
             output_cap_bytes: 1 << 20,
         }
     }
-
     fn tmp() -> PathBuf {
         use std::sync::atomic::{AtomicU64, Ordering};
         static N: AtomicU64 = AtomicU64::new(0);
@@ -164,7 +162,6 @@ mod tests {
         std::fs::create_dir_all(&dir).unwrap();
         dir
     }
-
     #[tokio::test]
     async fn search_finds_matches_and_respects_gitignore() {
         let dir = tmp();
@@ -187,14 +184,12 @@ mod tests {
         assert_eq!(matches[0]["line"], 1);
         let _ = std::fs::remove_dir_all(dir);
     }
-
     #[tokio::test]
     async fn search_invalid_regex_is_arg_invalid() {
         let tool = SearchTextTool::default();
         let r = tool.call(json!({ "pattern": "(" }), ctx()).await;
         assert_eq!(r.error.unwrap().code, "ARG_INVALID");
     }
-
     #[test]
     fn arc_send_sync() {
         fn assert_send_sync<T: Send + Sync>() {}

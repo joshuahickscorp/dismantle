@@ -114,7 +114,6 @@ impl Proposer for SuffixArrayDraft {
 mod tests {
     use super::*;
     use crate::proposal::{Budget, Ctx, Telemetry};
-
     fn make_ctx<'a>(tokens: &'a [u32]) -> Ctx<'a> {
         Ctx {
             tokens,
@@ -122,7 +121,6 @@ mod tests {
             hidden: None,
         }
     }
-
     #[test]
     fn cold_stream_proposes_nothing() {
         let mut p = SuffixArrayDraft::new();
@@ -130,15 +128,10 @@ mod tests {
         let proposal = p.propose(&ctx, Budget::line(4), &Telemetry::default());
         assert!(proposal.is_empty(), "cold stream must propose nothing");
     }
-
     #[test]
     fn repeated_span_is_proposed() {
-        // Stream: A B C D A B C D A B C   ← tail is [A B C]
-        // Prior occurrence at index 0 → tokens after it: B C D A B C D A B C
-        // We request k=3 → draft = [D, A, B]  (the 3 tokens after prior [A B C])
         let span = [10u32, 20, 30, 40];
         let mut p = SuffixArrayDraft::new();
-        // Feed the stream: two full repetitions + partial third
         let stream: Vec<u32> = span
             .iter()
             .cloned()
@@ -146,65 +139,32 @@ mod tests {
             .chain([10u32, 20, 30])
             .collect(); // tail = [10, 20, 30]
         p.observe(&stream);
-
         let ctx = make_ctx(&[10, 20, 30]); // last 2 (last_two) not relevant here
         let proposal = p.propose(&ctx, Budget::line(3), &Telemetry::default());
         match proposal {
             Proposal::TokenLine(v) => {
-                // Stream: [10,20,30,40, 10,20,30,40, 10,20,30]  (indices 0..10)
-                // tail = [10,20,30] at index 8; search_end = 8
-                // Most recent prior: i=4 → stream[4..7]=[10,20,30] ✓
-                // copy_start=7, copy_end=min(10,11)=10 → [40,10,20]
                 assert_eq!(v, vec![40u32, 10, 20]);
             }
             _ => panic!("expected TokenLine"),
         }
     }
-
     #[test]
     fn non_recurring_tail_proposes_nothing() {
         let mut p = SuffixArrayDraft::new();
-        // A stream with no repeated H=3 spans.
         p.observe(&[1u32, 2, 3, 4, 5, 6, 7, 8, 9]);
-        // Tail is [7, 8, 9]; only occurrence is at index 6 (the tail itself is excluded).
         let ctx = make_ctx(&[7, 8, 9]);
         let proposal = p.propose(&ctx, Budget::line(4), &Telemetry::default());
-        assert!(
-            proposal.is_empty(),
-            "non-recurring tail must propose nothing"
-        );
+ assert!( proposal.is_empty(), "non-recurring tail must propose nothing" );
     }
-
     #[test]
     fn collision_guard_exact_match() {
-        // Deliberately craft a stream where near-misses exist but only
-        // one exact match: [ 1 2 3 99 ] followed by [ 1 2 4 ] (close but not equal)
-        // then [ 1 2 3 ] as the current tail.
-        // The [1,2,3] exact match is at index 0; [1,2,4] at index 4 must NOT match.
         let mut p = SuffixArrayDraft::new();
         p.observe(&[1u32, 2, 3, 99, 1, 2, 4, 88, 1, 2, 3]);
-        // tail = [1, 2, 3] (last h=3 tokens of stream)
-        // prior occurrence at index 0; stream after it: [2, 3, 99] (wait, copy_start=3 → [99,1,2])
-        // Actually: prior at index 0, copy_start = 0+3 = 3, copy_end = min(3+k, 11-3=8) = min(3+1,8)=4
-        // stream[3..4] = [99]
         let ctx = make_ctx(&[1, 2, 3]);
         let proposal = p.propose(&ctx, Budget::line(1), &Telemetry::default());
         match proposal {
             Proposal::TokenLine(v) => {
-                // Only exact match [1,2,3] at index 0 or index 8.
-                // Most recent search: index 8 is slen-h=11-3=8, excluded (= search_end).
-                // Wait: slen=11, search_end = slen - h = 11-3 = 8.
-                // Loop: i in (0..8).rev() → 7, 6, 5, ..., 0.
-                // i=5: stream[5..8] = [2, 4, 88] ≠ [1,2,3] → skip
-                // i=4: stream[4..7] = [1,2,4] ≠ [1,2,3] → skip (collision guard works!)
-                // i=3: stream[3..6] = [99,1,2] ≠ [1,2,3] → skip
-                // i=2: stream[2..5] = [3,99,1] ≠ [1,2,3] → skip
-                // i=1: stream[1..4] = [2,3,99] ≠ [1,2,3] → skip
-                // i=0: stream[0..3] = [1,2,3] = [1,2,3] → MATCH! copy_start=3, copy_end=4 → [99]
-                assert!(
-                    !v.is_empty(),
-                    "exact match at index 0 should produce a draft"
-                );
+ assert!( !v.is_empty(), "exact match at index 0 should produce a draft" );
             }
             _ => panic!("expected TokenLine"),
         }

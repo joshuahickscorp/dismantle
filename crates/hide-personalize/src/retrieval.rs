@@ -285,13 +285,10 @@ pub async fn route_and_search<I: CodeIndex>(
 mod tests {
     use super::*;
     use hawking_index::InMemoryCodeIndex;
-
     #[test]
     fn online_update_shifts_policy() {
         let mut router = EpsilonGreedyRouter::new(0.0, 0.5); // ε=0 → pure greedy
         let qt = QueryType::new("find_callers");
-
-        // Teach it that CallGraphProximity is useful for find_callers, Bm25 not.
         for _ in 0..10 {
             router.update(&RetrievalOutcomeRecord {
                 query_type: qt.clone(),
@@ -304,30 +301,22 @@ mod tests {
                 used_in_output: false,
             });
         }
-        // With enough observations, route picks the learned winner.
         let chosen = router.route("who calls foo", &qt, 0.5);
         assert_eq!(chosen, RetrievalStrategy::CallGraphProximity);
     }
-
     #[test]
     fn low_confidence_falls_back_to_prior() {
         let router = EpsilonGreedyRouter::new(0.0, 0.5);
         let qt = QueryType::new("novel_kind");
-        // No observations → confidence 0 < 0.5 → fall back to highest prior
-        // (Symbol, weight 1.5).
         assert_eq!(router.route("x", &qt, 0.5), RetrievalStrategy::Symbol);
     }
-
     #[test]
     fn epsilon_explores() {
-        // ε=1 → always explore (random); just assert it returns a valid variant
-        // and advances without panicking.
         let mut router = EpsilonGreedyRouter::with_seed(1.0, 0.5, 42);
         let qt = QueryType::new("k");
         let s = router.route_explore("q", &qt, 0.5);
         assert!(RetrievalStrategy::ALL.contains(&s));
     }
-
     #[tokio::test]
     async fn route_and_search_drives_real_index() {
         let index = InMemoryCodeIndex::default();

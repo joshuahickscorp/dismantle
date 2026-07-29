@@ -478,101 +478,58 @@ fn builtin_detectors() -> &'static [PatternDetector] {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn redacts_aws_access_key() {
         let r = Redactor::default().redact("export AWS_KEY=AKIAIOSFODNN7EXAMPLE done");
-        assert!(
-            r.text.contains("\u{00AB}redacted:aws_access_key\u{00BB}"),
-            "{}",
-            r.text
-        );
-        assert!(r
-            .redactions
-            .iter()
-            .any(|x| x.pattern_name == "aws_access_key"));
+ assert!( r.text.contains("\u{00AB}redacted:aws_access_key\u{00BB}"), "{}", r.text );
+ assert!(r .redactions .iter() .any(|x| x.pattern_name == "aws_access_key"));
         assert!(!r.text.contains("AKIA"));
     }
-
     #[test]
     fn redacts_github_pat() {
         let token = format!("ghp_{}", "a".repeat(36));
         let r = Redactor::default().redact(&format!("token={token}"));
-        assert!(
-            r.text.contains("\u{00AB}redacted:github_pat\u{00BB}"),
-            "{}",
-            r.text
-        );
+ assert!( r.text.contains("\u{00AB}redacted:github_pat\u{00BB}"), "{}", r.text );
     }
-
     #[test]
     fn redacts_jwt() {
         let jwt = "eyJhbGciOiJIUzI1Ni1.eyJzdWIiOiIxMjM0NTY3.SflKxwRJSMeKKF2QT4f";
         let r = Redactor::default().redact(&format!("auth {jwt} end"));
-        assert!(
-            r.text.contains("\u{00AB}redacted:jwt\u{00BB}"),
-            "{}",
-            r.text
-        );
+ assert!( r.text.contains("\u{00AB}redacted:jwt\u{00BB}"), "{}", r.text );
     }
-
     #[test]
     fn redacts_pem_block() {
         let pem = "-----BEGIN RSA PRIVATE KEY-----\nMIIBOgIBAAJBAKj...\nabcDEF123==\n-----END RSA PRIVATE KEY-----";
         let r = Redactor::default().redact(&format!("key:\n{pem}\nrest"));
-        assert!(
-            r.text.contains("\u{00AB}redacted:pem_private_key\u{00BB}"),
-            "{}",
-            r.text
-        );
+ assert!( r.text.contains("\u{00AB}redacted:pem_private_key\u{00BB}"), "{}", r.text );
         assert!(!r.text.contains("PRIVATE KEY-----\nMIIB"));
     }
-
     #[test]
     fn entropy_catches_unknown_high_entropy_token() {
-        // No known prefix, but high-entropy mixed-class blob → entropy detector.
         let secret = "Zk9Qm2Xp7Lv3Rt8Wf1Yc6Nb4Hd0Sg5Aj"; // 33 chars, mixed
         let r = Redactor::default().redact(&format!("password is {secret} ok"));
-        assert!(
-            r.text.contains("\u{00AB}redacted:entropy\u{00BB}"),
-            "got: {}",
-            r.text
-        );
+ assert!( r.text.contains("\u{00AB}redacted:entropy\u{00BB}"), "got: {}", r.text );
     }
-
     #[test]
     fn marker_uses_guillemets_and_lowercase_detector(/* item 1 */) {
-        // The marker must be «redacted:<detector>» with U+00AB/U+00BB guillemets
-        // and a LOWERCASE detector name (bible §4.8), never the old ASCII
-        // <<redacted:...>> form.
         let m = marker("AWS_Access_Key");
         assert_eq!(m, "\u{00AB}redacted:aws_access_key\u{00BB}");
         assert!(m.starts_with(MARKER_OPEN) && m.ends_with(MARKER_CLOSE));
         assert!(!m.contains("<<") && !m.contains(">>"));
-        // A plugin-registered detector with mixed case is lowercased in output.
         let r = Redactor::patterns_only()
             .with_detector("MyCorp_Token", Regex::new(r"\bMYC-[0-9]{6}\b").unwrap())
             .redact("see MYC-123456 here");
-        assert!(
-            r.text.contains("\u{00AB}redacted:mycorp_token\u{00BB}"),
-            "{}",
-            r.text
-        );
+ assert!( r.text.contains("\u{00AB}redacted:mycorp_token\u{00BB}"), "{}", r.text );
     }
-
     #[test]
     fn entropy_leaves_prose_and_ids_alone() {
         let prose = "the quick brown fox jumps over the lazy dog repeatedly today";
         let r = Redactor::default().redact(prose);
         assert!(r.is_clean(), "prose redacted: {:?}", r.redactions);
-
-        // A long decimal id and a pure-hex sha should survive the entropy pass
-        // (they fail looks_secretish), so we don't redact every commit hash.
         let idish = "0123456789012345678901234567 deadbeefdeadbeefdeadbeefdeadbeef";
         let r2 = Redactor::patterns_only().redact(idish);
         assert!(r2.is_clean());
     }
-
     #[test]
     fn redact_json_emits_pointer_paths() {
         let r = Redactor::default();
@@ -585,17 +542,8 @@ mod tests {
         });
         let report = r.redact_json(&payload);
         assert!(!report.is_clean());
-        assert!(
-            report.paths.contains(&"/output/stdout".to_string()),
-            "{:?}",
-            report.paths
-        );
-        assert!(
-            report.paths.contains(&"/args/1".to_string()),
-            "{:?}",
-            report.paths
-        );
-        // Clean leaves untouched; non-string leaves preserved.
+ assert!( report.paths.contains(&"/output/stdout".to_string()), "{:?}", report.paths );
+ assert!( report.paths.contains(&"/args/1".to_string()), "{:?}", report.paths );
         assert_eq!(report.value["output"]["exit"], 0);
         assert_eq!(report.value["args"][0], "clean");
         assert!(report.value["output"]["stdout"]
@@ -603,16 +551,13 @@ mod tests {
             .unwrap()
             .contains("\u{00AB}redacted:github_pat\u{00BB}"));
     }
-
     #[test]
     fn json_pointer_escapes_special_keys() {
         let r = Redactor::patterns_only();
         let payload = serde_json::json!({ "a/b": "AKIAIOSFODNN7EXAMPLE" });
         let report = r.redact_json(&payload);
-        // `/` in the key becomes `~1` per RFC 6901.
         assert_eq!(report.paths, vec!["/a~1b".to_string()]);
     }
-
     #[test]
     fn multiple_occurrences_tallied() {
         let two = "AKIAIOSFODNN7EXAMPL1 and AKIAIOSFODNN7EXAMPL2";
@@ -624,62 +569,29 @@ mod tests {
             .unwrap();
         assert_eq!(aws.occurrences, 2);
     }
-
     #[test]
     fn entropy_catches_single_class_all_lowercase_secret(/* item 3 */) {
-        // An all-lowercase, high-entropy base36-ish blob has only ONE character
-        // class, so the two-class `looks_secretish` gate misses it — the
-        // single-class branch must still redact it.
-        // 35 chars, ALL lowercase letters (one character class), drawing from
-        // ~24 distinct symbols → ~4.6 bits/char, over the 4.2 single-class floor.
         let secret = "qjxmfwbnzkdpvhsugtrclyaeoiqwrtmkxbv";
-        assert!(
-            !looks_secretish(secret),
-            "test premise: token must be single-class"
-        );
-        assert!(
-            shannon_entropy(secret) >= 4.2,
-            "entropy {} too low for fixture",
-            shannon_entropy(secret)
-        );
+ assert!( !looks_secretish(secret), "test premise: token must be single-class" );
+        assert!(shannon_entropy(secret) >= 4.2);
         let r = Redactor::default().redact(&format!("api_key={secret}"));
-        assert!(
-            r.text.contains("\u{00AB}redacted:entropy\u{00BB}"),
-            "single-class secret slipped: {}",
-            r.text
-        );
-
-        // The single-class branch must NOT swallow a hex sha (16 symbols → ≤4.0
-        // bits/char) or a long decimal id (10 symbols → ≤3.32).
+        assert!(r.text.contains("\u{00AB}redacted:entropy\u{00BB}"));
         let sha = "a1b9c3d7e5f1a2b4c6d8e0f2a4b6c8d0e2f4a6b8"; // 40 hex chars
         let id = "0123456789012345678901234567890123456789"; // 40 digits
         let clean = Redactor::default().redact(&format!("{sha} {id}"));
-        assert!(
-            clean.is_clean(),
-            "hex/decimal id redacted: {:?}",
-            clean.redactions
-        );
+ assert!( clean.is_clean(), "hex/decimal id redacted: {:?}", clean.redactions );
     }
-
     #[test]
     fn single_class_dial_is_tunable(/* item 3 dial */) {
-        // Lowering the dial redacts a shorter single-class token; raising it past
-        // the token's reach leaves it alone.
         let tok = "qjxmfwbnzkdpvhsugtrcl"; // 21 lowercase chars
         assert!(!looks_secretish(tok));
         let loosened = Redactor::default()
             .with_single_class(16, 3.5)
             .redact(&format!("x={tok}"));
-        assert!(
-            loosened.text.contains("\u{00AB}redacted:entropy\u{00BB}"),
-            "{}",
-            loosened.text
-        );
-        // Default dial (min_len 32) leaves the 21-char token untouched.
+ assert!( loosened.text.contains("\u{00AB}redacted:entropy\u{00BB}"), "{}", loosened.text );
         let tight = Redactor::default().redact(&format!("x={tok}"));
         assert!(tight.is_clean(), "{:?}", tight.redactions);
     }
-
     #[test]
     fn build_redaction_event_shape(/* item 2 */) {
         use hide_core::ids::SessionId;
@@ -690,25 +602,20 @@ mod tests {
         });
         let report = r.redact_json(&payload);
         assert!(!report.is_clean());
-
         let session = SessionId::new();
         let ev = report
             .build_redaction_event(session)
             .expect("redacted payload yields an event");
         assert_eq!(ev.kind, "security.redaction");
-        // Paths mirror what the host writes into Event.redactions.
         let paths = ev.payload["paths"].as_array().unwrap();
         assert!(paths.iter().any(|p| p == "/output/stdout"));
         assert!(paths.iter().any(|p| p == "/args/1"));
-        // Per-detector tallies present; total span count present.
         assert!(ev.payload["detectors"].is_array());
         assert!(ev.payload["total_spans"].as_u64().unwrap() >= 2);
-        // The event NEVER carries the secret itself.
         let serialized = serde_json::to_string(&ev.payload).unwrap();
         assert!(!serialized.contains("ghp_"));
         assert!(!serialized.contains("AKIA"));
     }
-
     #[test]
     fn build_redaction_event_none_when_clean(/* item 2 */) {
         use hide_core::ids::SessionId;

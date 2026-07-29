@@ -81,7 +81,6 @@ impl From<String> for ContentHash {
 mod tests {
     use super::*;
     use std::io::Cursor;
-
     #[test]
     fn same_bytes_same_hash() {
         let a = ContentHash::of_bytes(b"hello-you-object");
@@ -89,14 +88,12 @@ mod tests {
         assert_eq!(a, b);
         assert!(a.is_well_formed());
     }
-
     #[test]
     fn different_bytes_different_hash() {
         let a = ContentHash::of_bytes(b"alpha");
         let b = ContentHash::of_bytes(b"beta");
         assert_ne!(a, b);
     }
-
     #[test]
     fn reader_matches_bytes_and_bounds_buffer() {
         let payload = vec![0xABu8; CHUNK_SIZE * 3 + 17];

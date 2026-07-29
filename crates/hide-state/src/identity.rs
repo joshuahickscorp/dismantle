@@ -89,7 +89,6 @@ impl IdentityBinding {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     fn sample() -> IdentityBinding {
         IdentityBinding {
             model_weights_id: "weights-a".into(),
@@ -101,86 +100,42 @@ mod tests {
             security_domain: "domain-a".into(),
         }
     }
-
     #[test]
     fn identical_bindings_are_loadable() {
         let a = sample();
         assert_eq!(a.is_loadable(&sample()), Ok(()));
     }
-
     #[test]
     fn each_field_mismatch_has_its_own_reason() {
         let base = sample();
-
         let mut live = sample();
         live.model_weights_id = "weights-b".into();
-        assert_eq!(
-            base.is_loadable(&live),
-            Err(IncompatibleReason::ModelWeights {
-                capsule: "weights-a".into(),
-                live: "weights-b".into(),
-            })
-        );
-
+        assert_eq!(base.is_loadable(&live), Err(IncompatibleReason::ModelWeights { capsule: "weights-a".into(), live: "weights-b".into(), }));
         let mut live = sample();
         live.tokenizer_id = "tok-b".into();
-        assert_eq!(
-            base.is_loadable(&live),
-            Err(IncompatibleReason::Tokenizer {
-                capsule: "tok-a".into(),
-                live: "tok-b".into(),
-            })
-        );
-
+        assert_eq!(base.is_loadable(&live), Err(IncompatibleReason::Tokenizer { capsule: "tok-a".into(), live: "tok-b".into(), }));
         let mut live = sample();
         live.security_domain = "domain-b".into();
-        assert_eq!(
-            base.is_loadable(&live),
-            Err(IncompatibleReason::SecurityDomain {
-                capsule: "domain-a".into(),
-                live: "domain-b".into(),
-            })
-        );
-
+        assert_eq!(base.is_loadable(&live), Err(IncompatibleReason::SecurityDomain { capsule: "domain-a".into(), live: "domain-b".into(), }));
         let mut live = sample();
         live.arch_id = "arch-b".into();
-        assert!(matches!(
-            base.is_loadable(&live),
-            Err(IncompatibleReason::Arch { .. })
-        ));
-
+ assert!(matches!( base.is_loadable(&live), Err(IncompatibleReason::Arch { .. }) ));
         let mut live = sample();
         live.prompt_abi_version = "abi-2".into();
-        assert!(matches!(
-            base.is_loadable(&live),
-            Err(IncompatibleReason::PromptAbi { .. })
-        ));
-
+ assert!(matches!( base.is_loadable(&live), Err(IncompatibleReason::PromptAbi { .. }) ));
         let mut live = sample();
         live.tool_registry_id = "reg-b".into();
-        assert!(matches!(
-            base.is_loadable(&live),
-            Err(IncompatibleReason::ToolRegistry { .. })
-        ));
-
+ assert!(matches!( base.is_loadable(&live), Err(IncompatibleReason::ToolRegistry { .. }) ));
         let mut live = sample();
         live.engine_build_id = "build-b".into();
-        assert!(matches!(
-            base.is_loadable(&live),
-            Err(IncompatibleReason::EngineBuild { .. })
-        ));
+ assert!(matches!( base.is_loadable(&live), Err(IncompatibleReason::EngineBuild { .. }) ));
     }
-
     #[test]
     fn security_domain_is_reported_before_other_mismatches() {
         let base = sample();
         let mut live = sample();
         live.security_domain = "domain-b".into();
         live.tokenizer_id = "tok-b".into();
-        // Both differ; the security domain wins.
-        assert!(matches!(
-            base.is_loadable(&live),
-            Err(IncompatibleReason::SecurityDomain { .. })
-        ));
+ assert!(matches!( base.is_loadable(&live), Err(IncompatibleReason::SecurityDomain { .. }) ));
     }
 }

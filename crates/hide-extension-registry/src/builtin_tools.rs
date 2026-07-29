@@ -204,10 +204,6 @@ fn estimate_tokens(input_raw: &str, output: Option<&serde_json::Value>) -> u32 {
 mod tests {
     use super::*;
     use crate::registry::ResolveQuery;
-
-    /// The full builtin catalog id set, mirrored from
-    /// `hide_tools::registry::register_builtin_tools`. If hide-tools grows a tool
-    /// this list is what the bridge must keep covering.
     const CATALOG_IDS: &[&str] = &[
         "fs.read",
         "fs.list",
@@ -233,23 +229,18 @@ mod tests {
         "git.worktree.list",
         "memory",
     ];
-
     #[test]
     fn registers_every_builtin_tool() {
         let reg = build_builtin_tool_registry();
         for id in CATALOG_IDS {
             assert!(reg.contains(id), "missing builtin manifest for {id}");
-            // Every builtin is bridged as a Tool.
             assert_eq!(reg.kind(id).unwrap(), CapabilityKind::Tool, "kind for {id}");
-            // Honest provenance.
             let prov = reg.provenance(id).unwrap();
             assert_eq!(prov.source, "hide-tools", "provenance source for {id}");
             assert_eq!(prov.license, "internal", "provenance license for {id}");
         }
-        // 23 catalog tools + the mcp host bridge.
         assert_eq!(reg.active_len(), CATALOG_IDS.len() + 1);
     }
-
     #[test]
     fn fs_read_is_read_only() {
         let reg = build_builtin_tool_registry();
@@ -258,37 +249,27 @@ mod tests {
         assert!(!effects.contains(&Effect::Write));
         assert!(!effects.contains(&Effect::Execute));
         assert!(!effects.contains(&Effect::Process));
-        // A pure read never needs the sandbox.
         assert!(!reg.requires_sandbox("fs.read").unwrap());
     }
-
     #[test]
     fn edit_tool_declares_write() {
         let reg = build_builtin_tool_registry();
         for id in ["edit.search_replace", "edit.apply_patch", "edit.write_file"] {
             let effects = reg.declared_effects(id).unwrap();
             assert!(effects.contains(&Effect::Write), "{id} must declare Write");
-            // An edit tool is never declared read-only.
             assert_ne!(effects, vec![Effect::Read], "{id} must not be read-only");
         }
     }
-
     #[test]
     fn shell_run_is_execute_process_and_sandboxed() {
         let reg = build_builtin_tool_registry();
         let effects = reg.declared_effects("shell.run").unwrap();
         assert!(effects.contains(&Effect::Execute), "shell.run declares Execute");
         assert!(effects.contains(&Effect::Process), "shell.run declares Process");
-        assert!(
-            reg.requires_sandbox("shell.run").unwrap(),
-            "shell.run must require sandbox isolation"
-        );
+ assert!( reg.requires_sandbox("shell.run").unwrap(), "shell.run must require sandbox isolation" );
     }
-
     #[test]
     fn bounded_exec_is_execute_and_sandboxed_but_not_process() {
-        // proc tools execute a fixed command: Execute (sandboxed) without the
-        // open-world Process reach that shell.run carries.
         let reg = build_builtin_tool_registry();
         for id in ["test.run", "build.run", "compile.check"] {
             let effects = reg.declared_effects(id).unwrap();
@@ -297,25 +278,17 @@ mod tests {
             assert!(reg.requires_sandbox(id).unwrap(), "{id} must be sandboxed");
         }
     }
-
     #[test]
     fn git_mutation_tool_declares_git_mutation() {
         let reg = build_builtin_tool_registry();
         for id in ["git.commit", "git.worktree.add", "git.worktree.remove"] {
             let effects = reg.declared_effects(id).unwrap();
-            assert!(
-                effects.contains(&Effect::GitMutation),
-                "{id} must declare GitMutation"
-            );
-            // Git mutation is not a process execution, so no sandbox is required.
+ assert!( effects.contains(&Effect::GitMutation), "{id} must declare GitMutation" );
             assert!(!reg.requires_sandbox(id).unwrap(), "{id} sandbox");
         }
     }
-
     #[test]
     fn shell_plan_and_git_reads_are_read_only() {
-        // shell.plan requires shell.exec but only validates; it must not be
-        // mistaken for an executor. Same for the git read trio.
         let reg = build_builtin_tool_registry();
         for id in [
             "shell.plan",
@@ -329,20 +302,15 @@ mod tests {
             assert!(!reg.requires_sandbox(id).unwrap(), "{id} sandbox");
         }
     }
-
     #[test]
     fn memory_declares_both_read_and_write() {
-        // memory is dual-mode: honest declaration carries both, never just one.
         let reg = build_builtin_tool_registry();
         let effects = reg.declared_effects("memory").unwrap();
         assert!(effects.contains(&Effect::Read), "memory reads (view)");
         assert!(effects.contains(&Effect::Write), "memory writes (mutations)");
     }
-
     #[test]
     fn no_mutating_tool_is_silently_read_only() {
-        // Spot check the honesty floor: nothing that mutates is declared as a
-        // bare read, and nothing that executes forgets its sandbox.
         let reg = build_builtin_tool_registry();
         let mutators = [
             "fs.write",
@@ -360,11 +328,7 @@ mod tests {
         ];
         for id in mutators {
             let effects = reg.declared_effects(id).unwrap();
-            assert_ne!(
-                effects,
-                vec![Effect::Read],
-                "{id} performs mutation but is declared read-only"
-            );
+ assert_ne!( effects, vec![Effect::Read], "{id} performs mutation but is declared read-only" );
             let executes = effects
                 .iter()
                 .any(|e| matches!(e, Effect::Execute | Effect::Process));
@@ -373,58 +337,38 @@ mod tests {
             }
         }
     }
-
     #[test]
     fn progressive_disclosure_effects_without_schema_load() {
         let reg = build_builtin_tool_registry();
-        // Building, indexing, resolving, and querying effects must never load a
-        // full schema.
         assert_eq!(reg.schema_load_count(), 0);
         let _ = reg.index();
         let _ = reg.declared_effects("shell.run").unwrap();
         let _ = reg.scope_allows("fs.read", &Scope::Repo).unwrap();
         let _ = reg.resolve_for(&ResolveQuery::new().task("edit file").kind(CapabilityKind::Tool));
-        assert_eq!(
-            reg.schema_load_count(),
-            0,
-            "effect and index queries must stay schema-free"
-        );
-        // The compact index carries no schema payload at all.
+ assert_eq!( reg.schema_load_count(), 0, "effect and index queries must stay schema-free" );
         for entry in reg.index() {
-            // CompactEntry structurally cannot hold a schema; assert it still
-            // resolves the id/kind we expect for a known tool.
             if entry.id == "fs.read" {
                 assert_eq!(entry.kind, CapabilityKind::Tool);
             }
         }
-        // Only an explicit load materializes the schema, and it returns the real
-        // hide-tools input schema.
         let full = reg.load_full_schema("fs.read").unwrap();
         assert_eq!(reg.schema_load_count(), 1);
         let input = full.input.expect("fs.read carries an input schema");
         assert_eq!(input["properties"]["path"]["type"], "string");
     }
-
     #[test]
     fn scope_allows_repository() {
         let reg = build_builtin_tool_registry();
         for id in CATALOG_IDS {
-            assert!(
-                reg.scope_allows(id, &Scope::Repo).unwrap(),
-                "{id} must be scoped to the repository"
-            );
+ assert!( reg.scope_allows(id, &Scope::Repo).unwrap(), "{id} must be scoped to the repository" );
         }
     }
-
     #[test]
     fn mcp_bridge_declares_network_and_external_mutation() {
         let reg = build_builtin_tool_registry();
         let effects = reg.declared_effects("mcp").unwrap();
         assert!(effects.contains(&Effect::Network), "mcp reaches out");
-        assert!(
-            effects.contains(&Effect::ExternalMutation),
-            "mcp remote tools mutate external state"
-        );
+ assert!( effects.contains(&Effect::ExternalMutation), "mcp remote tools mutate external state" );
         assert_eq!(reg.kind("mcp").unwrap(), CapabilityKind::Mcp);
         assert!(reg.requires_sandbox("mcp").unwrap());
     }

@@ -418,29 +418,20 @@ pub fn index_by_id(nodes: &[NodeCapabilities]) -> BTreeMap<NodeId, NodeCapabilit
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[tokio::test]
     async fn os_probe_returns_real_memory_not_fake_32gib() {
         let probe = OsNodeProbe::new("test-local");
         let caps = probe.probe_once();
         assert_eq!(caps.discovery_source, DiscoverySource::OsProbe);
-        assert_ne!(
-            caps.total_memory_bytes, FIXED_FAKE_MEMORY_BYTES,
-            "real total memory must not be the canned FixedResourceProbe 32 GIB"
-        );
+        assert_ne!(caps.total_memory_bytes, FIXED_FAKE_MEMORY_BYTES);
         #[cfg(any(target_os = "macos", target_os = "linux"))]
         {
-            assert!(
-                caps.total_memory_bytes > FIXED_FAKE_MEMORY_BYTES,
-                "expected real total memory > 32 GIB on this host, got {}",
-                caps.total_memory_bytes
-            );
+            assert!(caps.total_memory_bytes > FIXED_FAKE_MEMORY_BYTES);
             assert!(caps.physical_cores >= 1);
             assert!(caps.logical_cores >= caps.physical_cores);
         }
         assert!(caps.not_physical_qualification);
     }
-
     #[tokio::test]
     async fn simulated_set_is_labelled_simulated() {
         let set = SimulatedNodeSet::heterogeneous_sim("sim-heterogeneous-v1");
@@ -453,7 +444,6 @@ mod tests {
             assert!(n.node_id.as_str().contains("sim"));
         }
     }
-
     #[test]
     #[should_panic(expected = "must contain 'sim'")]
     fn simulated_profile_name_must_say_sim() {

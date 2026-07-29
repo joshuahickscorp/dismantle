@@ -145,7 +145,6 @@ mod tests {
     use super::*;
     use serde_json::json;
     use std::sync::Arc;
-
     fn ctx() -> ToolCtx {
         ToolCtx {
             grant_id: None,
@@ -153,10 +152,8 @@ mod tests {
             output_cap_bytes: 1 << 20,
         }
     }
-
     #[tokio::test]
     async fn proc_failing_command_is_ok_data() {
-        // override argv with a command that exits non-zero
         let tool = ProcTool::test_run().with_config(ShellConfig {
             disable_sandbox: true,
             ..Default::default()
@@ -171,7 +168,6 @@ mod tests {
         assert_eq!(r.exit_code, Some(1));
         assert_eq!(pass_fail(&r), Some(false));
     }
-
     #[tokio::test]
     async fn proc_passing_command() {
         let tool = ProcTool::compile_check().with_config(ShellConfig {
@@ -182,7 +178,6 @@ mod tests {
         assert!(r.ok);
         assert_eq!(pass_fail(&r), Some(true));
     }
-
     #[test]
     fn send_sync() {
         fn assert_send_sync<T: Send + Sync>() {}

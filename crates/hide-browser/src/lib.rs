@@ -98,12 +98,8 @@ pub fn json_schema<T: schemars::JsonSchema>() -> serde_json::Value {
 mod tests {
     use super::*;
     use std::collections::BTreeMap;
-
-    // -- fixture: a recorded "add to cart" session -------------------------
-
     const PRODUCT_URL: &str = "https://shop.test/product/42";
     const CHECKOUT_URL: &str = "https://shop.test/checkout";
-
     fn page_dom() -> DomSnapshot {
         let mut btn = DomNode::leaf("n-btn", "button");
         btn.attributes.insert("id".into(), "add-to-cart".into());
@@ -130,17 +126,14 @@ mod tests {
             source: Some("app/product.css".into()),
             declarations: decls,
         }];
-
         let mut coupon = DomNode::leaf("n-coupon", "input");
         coupon.attributes.insert("id".into(), "coupon".into());
         coupon.a11y_node = Some(AccessibilityNodeId::from("ax-coupon"));
-
         let mut root = DomNode::leaf("n-root", "main");
         root.children.push(btn);
         root.children.push(coupon);
         DomSnapshot::new(root)
     }
-
     fn page_a11y(button_named: bool) -> AccessibilityTree {
         let button = if button_named {
             AccessibilityNode::new("ax-btn", "button").with_name("Add to cart")
@@ -153,7 +146,6 @@ mod tests {
                 .with_child(AccessibilityNode::new("ax-coupon", "textbox").with_name("Coupon code")),
         )
     }
-
     fn network_get() -> NetworkEvent {
         NetworkEvent {
             request_id: "req-1".into(),
@@ -169,7 +161,6 @@ mod tests {
             timing_ms: Some(80),
         }
     }
-
     fn session() -> BrowserSession {
         let step0 = BrowserStep {
             index: 0,
@@ -254,55 +245,35 @@ mod tests {
         };
         BrowserSession::new("bs-cart", vec![step0, step1, step2, step3])
     }
-
-    // -- test 1: replay captures each step in order ------------------------
-
     #[test]
     fn replay_plays_recorded_session_step_by_step_in_order() {
         let recorded = session();
-        // Round-trip through JSON to prove replay works from a serialized trace.
         let wire = serde_json::to_string(&recorded).unwrap();
         let restored: BrowserSession = serde_json::from_str(&wire).unwrap();
         assert_eq!(restored, recorded);
         assert!(restored.indices_are_sequential());
-
         let mut d = ReplayDriver::new(restored);
         assert_eq!(d.len(), 4);
-
         let mut played = Vec::new();
         played.push(d.navigate(PRODUCT_URL).unwrap());
-        // observers read the current (last-played) step's evidence
-        assert_eq!(
-            d.screenshot().unwrap(),
-            recorded.steps[0].screenshot_ref.clone().unwrap()
-        );
+ assert_eq!( d.screenshot().unwrap(), recorded.steps[0].screenshot_ref.clone().unwrap() );
         assert_eq!(d.dom().unwrap(), recorded.steps[0].dom_snapshot);
         assert_eq!(d.accessibility().unwrap(), recorded.steps[0].accessibility_tree);
         assert_eq!(d.network().unwrap(), recorded.steps[0].network_events);
         assert!(d.console().unwrap().is_empty());
-
         played.push(
             d.click(&ElementSelector::css("#add-to-cart"))
                 .unwrap(),
         );
         played.push(d.fill(&ElementSelector::css("#coupon"), "SAVE10").unwrap());
         played.push(d.navigate(CHECKOUT_URL).unwrap());
-
         assert_eq!(played, recorded.steps, "each step replayed in recorded order");
         assert!(d.is_exhausted());
-
-        // One more call runs off the end.
-        assert_eq!(
-            d.navigate("anywhere"),
-            Err(BrowserError::ReplayExhausted { requested: "navigate" })
-        );
+ assert_eq!( d.navigate("anywhere"), Err(BrowserError::ReplayExhausted { requested: "navigate" }) );
     }
-
     #[test]
     fn replay_is_a_strict_contract_and_reports_mismatch() {
         let mut d = ReplayDriver::new(session());
-        // The first recorded step is a navigate; asking to click instead is a
-        // typed mismatch that names the recorded action and index.
         let err = d.click(&ElementSelector::css("#add-to-cart")).unwrap_err();
         match err {
             BrowserError::ReplayMismatch {
@@ -317,19 +288,14 @@ mod tests {
             }
             other => panic!("expected a replay mismatch, got {other:?}"),
         }
-        // A mismatch does not advance the cursor: the correct call still works.
         assert!(d.navigate(PRODUCT_URL).is_ok());
     }
-
     #[test]
     fn observers_error_before_any_step_is_played() {
         let d = ReplayDriver::new(session());
         assert_eq!(d.dom(), Err(BrowserError::NoCurrentStep));
         assert_eq!(d.screenshot(), Err(BrowserError::NoCurrentStep));
     }
-
-    // -- test 2: functional oracle passes/fails with typed reasons ---------
-
     fn acceptance() -> VisualAcceptance {
         VisualAcceptance {
             id: "va-add-to-cart".into(),
@@ -396,7 +362,6 @@ mod tests {
             }),
         }
     }
-
     #[test]
     fn functional_oracle_passes_on_the_good_recorded_state() {
         let s = session();
@@ -404,23 +369,17 @@ mod tests {
         let verdict = acceptance().evaluate_functional(good);
         assert!(verdict.is_pass(), "good state passes: {verdict:?}");
     }
-
     #[test]
     fn functional_oracle_fails_on_a_bad_state_with_typed_reasons() {
         let s = session();
-        // Corrupt the post-click state: cart did not increment, toast missing,
-        // and two console errors fired.
         let mut bad = s.steps[1].resulting_state.clone();
         bad.signals.insert("cart.count".into(), "0".into());
         bad.present_selectors.remove("#cart-toast");
         bad.console_error_count = 2;
-
         let verdict = acceptance().evaluate_functional(&bad);
         assert!(!verdict.is_pass());
         let reasons = verdict.reasons();
         assert_eq!(reasons.len(), 3, "three requirements failed: {reasons:?}");
-
-        // Reasons are typed, not stringly. Find each expected failure kind.
         assert!(reasons.iter().any(|r| matches!(
             &r.kind,
             FailureKind::SignalMismatch { key, expected, actual }
@@ -434,95 +393,58 @@ mod tests {
             &r.kind,
             FailureKind::ConsoleErrors { count, allowed } if *count == 2 && *allowed == 0
         )));
-        // The typed reason carries its requirement id for traceability.
         assert!(reasons.iter().all(|r| !r.requirement_id.is_empty()));
     }
-
     #[test]
     fn a11y_oracle_passes_on_named_controls_and_fails_when_unnamed() {
         let acc = acceptance();
         assert!(acc.evaluate_a11y(&page_a11y(true)).is_pass());
-
         let verdict = acc.evaluate_a11y(&page_a11y(false));
         assert!(!verdict.is_pass());
-        // Both the "button named" and "no unnamed interactive" checks fail.
         assert!(verdict
             .reasons()
             .iter()
             .any(|r| matches!(&r.kind, FailureKind::A11yUnnamed { role } if role == "button")));
     }
-
-    // -- test 3: annotation maps a selection to a DOM node -----------------
-
     #[test]
     fn annotation_maps_a_selection_to_its_dom_node() {
         let dom = session().steps[0].dom_snapshot.clone();
-
-        // With a pre-resolved node id.
         let sel = ElementSelector::css("#add-to-cart").with_node("n-btn");
         let ann = annotate(&sel, &dom).unwrap();
         assert_eq!(ann.dom_node, DomNodeId::from("n-btn"));
         assert_eq!(ann.a11y_node, Some(AccessibilityNodeId::from("ax-btn")));
-        assert_eq!(
-            ann.source_symbol.as_ref().map(|s| s.symbol.as_str()),
-            Some("AddToCartButton")
-        );
-        assert_eq!(
-            ann.css_rule.as_ref().map(|c| c.selector.as_str()),
-            Some("#add-to-cart")
-        );
+ assert_eq!( ann.source_symbol.as_ref().map(|s| s.symbol.as_str()), Some("AddToCartButton") );
+ assert_eq!( ann.css_rule.as_ref().map(|c| c.selector.as_str()), Some("#add-to-cart") );
         assert!(ann.box_model.width > 0.0);
-
-        // Without a pre-resolved id: resolve structurally from the selector.
         let sel2 = ElementSelector::test_id("add-cart");
         let ann2 = annotate(&sel2, &dom).unwrap();
         assert_eq!(ann2.dom_node, DomNodeId::from("n-btn"));
-
-        // An unresolvable selection is a typed error.
         let ghost = ElementSelector::css("#ghost");
-        assert!(matches!(
-            annotate(&ghost, &dom),
-            Err(BrowserError::UnresolvedSelection { .. })
-        ));
+ assert!(matches!( annotate(&ghost, &dom), Err(BrowserError::UnresolvedSelection { .. }) ));
     }
-
-    // -- test 4: heavy artifacts referenced by id, never inlined -----------
-
     #[test]
     fn screenshots_and_network_bodies_are_referenced_not_inlined() {
         let s = session();
         let step = &s.steps[0];
-
-        // Screenshot is a content-addressed reference.
         let sref = step.screenshot_ref.as_ref().unwrap();
         assert!(sref.is_content_addressed());
-
-        // Network response body is referenced, not inlined.
         let net = &step.network_events[0];
         assert!(net.response_ref.as_ref().unwrap().is_content_addressed());
-
-        // The serialized step carries only the reference ids; the original
-        // bytes (b"png-step-0", the HTML body) never appear on the wire.
         let json = serde_json::to_string(step).unwrap();
         assert!(json.contains(&sref.id), "the screenshot ref id is on the wire");
         assert!(!json.contains("png-step-0"), "screenshot bytes are not inlined");
         assert!(!json.contains("<html>product</html>"), "response body not inlined");
     }
-
-    // -- serde + schema -----------------------------------------------------
-
     #[test]
     fn top_types_round_trip_through_serde_json() {
         let s = session();
         let back: BrowserSession =
             serde_json::from_str(&serde_json::to_string(&s).unwrap()).unwrap();
         assert_eq!(back, s);
-
         let acc = acceptance();
         let back_acc: VisualAcceptance =
             serde_json::from_str(&serde_json::to_string(&acc).unwrap()).unwrap();
         assert_eq!(back_acc, acc);
-
         let ann = annotate(
             &ElementSelector::css("#add-to-cart").with_node("n-btn"),
             &s.steps[0].dom_snapshot,
@@ -531,13 +453,11 @@ mod tests {
         let back_ann: DesignAnnotation =
             serde_json::from_str(&serde_json::to_string(&ann).unwrap()).unwrap();
         assert_eq!(back_ann, ann);
-
         let verdict = acc.evaluate_functional(&s.steps[1].resulting_state);
         let back_v: Verdict =
             serde_json::from_str(&serde_json::to_string(&verdict).unwrap()).unwrap();
         assert_eq!(back_v, verdict);
     }
-
     #[test]
     fn json_schema_generates_for_the_core_types() {
         for schema in [
@@ -548,13 +468,9 @@ mod tests {
             json_schema::<Verdict>(),
         ] {
             assert!(schema.is_object(), "each schema is a JSON object");
-            assert!(
-                schema.get("$schema").is_some() || schema.get("title").is_some(),
-                "a schemars root schema carries a $schema or title marker"
-            );
+            assert!(schema.get("$schema").is_some() || schema.get("title").is_some());
         }
     }
-
     #[test]
     fn browser_action_serializes_internally_tagged() {
         let value = serde_json::to_value(BrowserAction::Fill {

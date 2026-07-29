@@ -43,7 +43,6 @@ pub const HARDWARE_QUALIFICATION_PENDING: &str = "FABRIC_HARDWARE_QUALIFICATION_
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn simulated_is_not_physical() {
         assert!(!QualificationKind::Simulated.is_physical());

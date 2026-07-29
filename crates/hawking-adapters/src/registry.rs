@@ -99,7 +99,6 @@ pub fn builtin_registry() -> FamilyRegistry {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn builtin_has_expected_families() {
         let r = builtin_registry();
@@ -119,7 +118,6 @@ mod tests {
             assert!(r.get(id).is_some(), "missing {id}");
         }
     }
-
     #[test]
     fn aliases_resolve() {
         let r = builtin_registry();
@@ -127,30 +125,13 @@ mod tests {
         assert_eq!(r.get("gemma2").unwrap().id, "gemma");
         assert_eq!(r.get("rwkv7").unwrap().id, "state_space");
     }
-
     #[test]
     fn no_family_is_production() {
         let r = builtin_registry();
         for d in r.families() {
-            assert_ne!(
-                d.level,
-                SupportLevel::Production,
-                "{} must not be PRODUCTION",
-                d.id
-            );
+ assert_ne!( d.level, SupportLevel::Production, "{} must not be PRODUCTION", d.id );
         }
     }
-
-    /// Qwen is SOURCE_HEADER_VALIDATED, not SMALL_REAL_CHECKPOINT / FULL_PARENT.
-    ///
-    /// Earlier grades rested on `integration_greedy_64.rs`, `cpu_backend_parity.rs`, and
-    /// `qwen_tq_serve_parity.rs`. The first two skip when no GGUF is on disk (0.00 s, no
-    /// assertion). The TQ test is `#[ignore]` and also skips without weights. A
-    /// conditional test whose condition is false is not evidence. Stage A source-header
-    /// receipt is the live proof.
-    ///
-    /// Promote only when a small real checkpoint runs unconditionally (or a sealed
-    /// receipt is registered) and verify_grades accepts the kind.
     #[test]
     fn qwen_is_source_header_not_higher_without_live_checkpoint() {
         let r = builtin_registry();
@@ -158,23 +139,15 @@ mod tests {
         assert_eq!(q.level, SupportLevel::SourceHeaderValidated);
         assert!(q.executes);
         assert!(q.serve_registered);
-        assert!(q
-            .evidence
-            .iter()
-            .any(|e| e.path.contains("ADAPTER_QWEN_RECEIPT")));
+ assert!(q .evidence .iter() .any(|e| e.path.contains("ADAPTER_QWEN_RECEIPT")));
     }
-
     #[test]
     fn glm_is_small_real_checkpoint() {
         let r = builtin_registry();
         let g = r.get("glm").unwrap();
         assert_eq!(g.level, SupportLevel::SmallRealCheckpoint);
-        assert!(g
-            .evidence
-            .iter()
-            .any(|e| e.path.contains("GLM52_FLAGSHIP")));
+ assert!(g .evidence .iter() .any(|e| e.path.contains("GLM52_FLAGSHIP")));
     }
-
     #[test]
     fn kimi_is_synthetic_not_serve_registered() {
         let r = builtin_registry();
@@ -183,7 +156,6 @@ mod tests {
         assert!(!k.serve_registered);
         assert!(!k.executes);
     }
-
     #[test]
     fn every_family_abi_complete() {
         let r = builtin_registry();

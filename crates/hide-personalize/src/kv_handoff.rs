@@ -157,10 +157,6 @@ pub fn copy_for_group(copier: &dyn KvPrefixCopier, group: &KvShareGroup) -> Broa
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    /// A test double standing in for the runtime's `copy_kv_prefix_to_slot`.
-    /// It records the calls and returns `fork_seq` tokens restored — it does NOT
-    /// fabricate KV state, it only models the seam contract.
     struct FakeCopier {
         fail_for: Option<String>,
     }
@@ -177,7 +173,6 @@ mod tests {
             }
         }
     }
-
     #[test]
     fn share_group_handle_is_shared_across_members() {
         let group = KvShareGroup::new(
@@ -190,7 +185,6 @@ mod tests {
         assert_eq!(h.fork_seq, 2300);
         assert_eq!(h.store_key.as_str(), "planner-0-fork");
     }
-
     #[test]
     fn broadcast_sums_saved_prefill() {
         let group = KvShareGroup::new(
@@ -204,10 +198,8 @@ mod tests {
         let report = copy_for_group(&copier, &group);
         assert_eq!(report.restored.len(), 16);
         assert!(report.failed.is_empty());
-        // 16 workers × 2300-token prefix all skipped.
         assert_eq!(report.tokens_saved(), 16 * 2300);
     }
-
     #[test]
     fn broadcast_reports_failures_without_aborting() {
         let group = KvShareGroup::new(
@@ -223,7 +215,6 @@ mod tests {
         assert_eq!(report.failed.len(), 1);
         assert_eq!(report.tokens_saved(), 100);
     }
-
     #[test]
     fn generate_request_carries_seed() {
         let group = KvShareGroup::new(KvKey::new("k"), 42, vec![AgentId::new("worker:0")]);

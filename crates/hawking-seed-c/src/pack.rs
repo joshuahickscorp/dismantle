@@ -289,7 +289,6 @@ impl PackManifest {
 mod tests {
     use super::*;
     use std::io::Write;
-
     fn scratch() -> PathBuf {
         let d = std::env::temp_dir().join(format!("seedb-pack-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&d);
@@ -301,7 +300,6 @@ mod tests {
         std::fs::File::create(&p).unwrap().write_all(content).unwrap();
         sha256_hex(content)
     }
-
     #[test]
     fn verifies_offline_and_rejects_tamper_and_rollback() {
         let d = scratch();
@@ -322,7 +320,6 @@ mod tests {
         write(&d, "impl.txt", b"runtime pack v1\n"); // rollback
         assert!(man.verify(d.join("manifest.json")).is_ok());
     }
-
     fn sample_capability_pack() -> PackManifest {
         PackManifest::capability_pack("packs-nucleus-forge", "1.0.0", Profile::Default)
             .with_source_commit("deadbeef")
@@ -336,7 +333,6 @@ mod tests {
             })
             .add_capability("forge.ternary_latent", CapabilityKind::ForgeFamily, "ternary-latent")
     }
-
     #[test]
     fn capability_schema_validates_and_stays_seed_compatible() {
         let m = sample_capability_pack();
@@ -346,26 +342,20 @@ mod tests {
         assert_eq!(m.owned_loc(), 120);
         assert_eq!(m.profile(), Profile::Default);
     }
-
     #[test]
     fn content_identity_is_canonical_and_excludes_capability_schema() {
         let base = sample_capability_pack();
         let id = base.content_identity();
-        // identity is stable across a serde round-trip
         let m2: PackManifest =
             serde_json::from_str(&serde_json::to_string(&base).unwrap()).unwrap();
         assert_eq!(id, m2.content_identity());
-        // adding capability metadata does NOT change the content identity (additive, excluded from the block)
         let mut enriched = base.clone();
         enriched = enriched.add_asset("weights", "safetensors", "openai/gpt-oss-120b@b5c939de");
         enriched.dependencies.push("packs-nucleus-source".into());
         assert_eq!(id, enriched.content_identity(), "capability schema is excluded from content identity");
     }
-
     #[test]
     fn additive_schema_preserves_legacy_serialization() {
-        // A legacy manifest with none of the additive fields serializes byte-for-byte as before: the new
-        // fields are skipped when empty, so any previously sealed receipt over such a manifest is preserved.
         let legacy = PackManifest {
             pack: "hawking-seed-c-runtime".into(),
             version: "1.0.0".into(),
@@ -381,7 +371,6 @@ mod tests {
             r#"{"pack":"hawking-seed-c-runtime","version":"1.0.0","compatibility":"seed-c-1","source_commit":"seed-c","contents":[{"path":"runtime.txt","sha256":"abc"}],"offline_cache":"/tmp/x"}"#
         );
     }
-
     #[test]
     fn rejects_capability_without_impl() {
         let mut m = PackManifest::capability_pack("x", "1.0.0", Profile::Default);

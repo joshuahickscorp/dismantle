@@ -184,7 +184,6 @@ mod tests {
     use hawking_orch::inference::StubInferenceClient;
     use hawking_orch::registry::RoleRegistry;
     use hawking_orch::router::SimpleRouter;
-
     fn runtime(resp: &str) -> Arc<KernelRuntimeClient> {
         let registry = Arc::new(RoleRegistry::with_default_local_roles());
         let router = Arc::new(SimpleRouter::new(registry));
@@ -193,29 +192,19 @@ mod tests {
             Arc::new(StubInferenceClient::new(resp)),
         ))
     }
-
     #[tokio::test]
     async fn default_dag_is_acyclic_and_ordered() {
         let plan = RuntimePlanner::default_dag("do the thing");
         assert!(PlanDag::acyclic(&plan));
         assert_eq!(plan.steps.len(), 3);
-        // Only the first (investigate) step is ready initially.
         assert_eq!(PlanDag::ready_steps(&plan).len(), 1);
     }
-
     #[tokio::test]
     async fn runtime_planner_maps_model_lines() {
         let planner = RuntimePlanner::new(runtime("1. read code\n2. edit file\n3. run tests"));
         let plan = planner.synthesize("obj").await.unwrap();
         assert_eq!(plan.steps.len(), 3);
         assert!(PlanDag::acyclic(&plan));
-        // Last step requires tests.
-        assert!(plan
-            .steps
-            .last()
-            .unwrap()
-            .acceptance
-            .oracles
-            .contains(&"test".to_string()));
+ assert!(plan .steps .last() .unwrap() .acceptance .oracles .contains(&"test".to_string()));
     }
 }

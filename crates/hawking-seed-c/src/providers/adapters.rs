@@ -340,38 +340,30 @@ impl Provider for AdapterProvider {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     fn smol() -> Config {
         Config { n_layers: 2, hidden: 64, n_ff: 128, n_heads: 4, n_kv_heads: 2, head_dim: 16, vocab: 100, rms_eps: 1e-5, rope_base: 10000.0, quant: "Q4_K".into() }
     }
-
     #[test]
     fn dense_adapter_emits_valid_plan() {
         let a = llama();
         let plan = a.build_plan(&smol()).unwrap();
-        // embed + 2 layers*(15 ops) + output_norm + logits + sample
         assert!(plan.ops.len() > 10);
         assert_eq!(plan.n_layers, 2);
         assert!(a.moe_ops(&smol()).is_none());
     }
-
     #[test]
     fn moe_adapter_emits_route_experts_combine() {
         let a = gpt_oss();
         let ops = a.moe_ops(&smol()).unwrap();
         assert!(matches!(ops[0], MoeOp::Route { n_experts: 128, top_k: 4, .. }));
-        // 1 route + 4 experts + 1 combine
         assert_eq!(ops.len(), 6);
     }
-
     #[test]
     fn non_transformer_arch_refuses_dense_plan() {
         assert!(mamba2().build_plan(&smol()).is_err());
     }
-
     #[test]
     fn adapters_are_small_by_construction() {
-        // Every built-in adapter is pure data (no runtime), so its serialized descriptor is tiny.
         for a in builtins() {
             let bytes = serde_json::to_vec(&a).unwrap().len();
             assert!(bytes < 2000, "{} descriptor too large: {bytes} bytes", a.arch);

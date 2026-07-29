@@ -105,7 +105,6 @@ pub struct CapsuleHeader {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn capsule_ids_are_distinct() {
         let a = CapsuleId::new();
@@ -113,7 +112,6 @@ mod tests {
         assert_ne!(a, b);
         assert_eq!(a.as_str().len(), 26);
     }
-
     #[test]
     fn capsule_type_roundtrips_through_json() {
         for ty in [

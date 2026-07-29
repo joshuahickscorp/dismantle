@@ -260,7 +260,6 @@ impl PersonalLayout {
 mod tests {
     use super::*;
     use crate::records::TaskClass;
-
     #[test]
     fn jsonl_personalization_store_roundtrips_records() {
         let dir = tempfile::tempdir().unwrap();
@@ -268,10 +267,8 @@ mod tests {
         let store = JsonlPersonalizationStore::open(&path).unwrap();
         let first = PersonalizationRecord::accepted(TaskClass::EditCode, "prompt-a", "diff-a");
         let second = PersonalizationRecord::accepted(TaskClass::WriteTest, "prompt-b", "diff-b");
-
         store.append(&first).unwrap();
         store.append(&second).unwrap();
-
         let reopened = JsonlPersonalizationStore::open(&path).unwrap();
         let loaded = reopened.load_all().unwrap();
         assert_eq!(loaded.len(), 2);
@@ -280,13 +277,11 @@ mod tests {
         let edit_records = reopened.load_by_task(TaskClass::EditCode, 10).unwrap();
         assert_eq!(edit_records.len(), 1);
     }
-
     #[test]
     fn scrub_on_write_removes_secret_from_disk() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("records.jsonl");
         let store = JsonlPersonalizationStore::open(&path).unwrap();
-        // A GitHub PAT embedded in a proposed diff.
         let secret = "ghp_0123456789abcdefABCDEF0123456789abcdef";
         let rec = PersonalizationRecord::accepted(
             TaskClass::EditCode,
@@ -294,15 +289,11 @@ mod tests {
             format!("+const TOKEN = \"{secret}\";"),
         );
         store.append(&rec).unwrap();
-
         let raw = std::fs::read_to_string(&path).unwrap();
         assert!(!raw.contains(secret), "secret must not reach disk: {raw}");
         assert!(raw.contains("redacted"), "redaction marker expected");
-
-        // The in-memory record we passed in is untouched (scrub is on the copy).
         assert!(rec.diff_proposed.contains(secret));
     }
-
     #[test]
     fn dataset_version_allocator() {
         let dir = tempfile::tempdir().unwrap();

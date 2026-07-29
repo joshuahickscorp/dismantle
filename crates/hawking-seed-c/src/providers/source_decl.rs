@@ -95,7 +95,6 @@ impl SourceRecord {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn source_record_seals_and_is_content_addressed() {
         let s = SourceRecord::hf("openai/gpt-oss-120b", "b5c939de8f754692c1647ca79fbf85e8c1e70f8a")
@@ -105,7 +104,6 @@ mod tests {
             .with_shard("model--00001-of-00007.safetensors", "abc123", 1234);
         let rec = s.seal().unwrap();
         assert!(rec.verify().is_ok() && rec.kind == "source");
-        // identity is order-independent across a serde round-trip
         let s2: SourceRecord = serde_json::from_str(&serde_json::to_string(&s).unwrap()).unwrap();
         assert_eq!(s.identity().unwrap(), s2.identity().unwrap());
     }

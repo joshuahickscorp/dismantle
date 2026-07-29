@@ -171,8 +171,6 @@ impl Verifier {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    /// Mock target driven by canned argmax preds; no Metal, no model.
     struct MockTarget {
         preds: Vec<u32>,
     }
@@ -182,7 +180,6 @@ mod tests {
             tokens: &[u32],
             _positions: &[usize],
         ) -> TargetResult<(Vec<u32>, Vec<Vec<f32>>)> {
-            // Return the first `tokens.len()` canned preds.
             let n = tokens.len();
             Ok((self.preds[..n].to_vec(), vec![Vec::new(); n]))
         }
@@ -190,30 +187,19 @@ mod tests {
             Ok(self.preds[0])
         }
     }
-
     #[test]
     fn full_accept() {
-        // preds confirm every draft token (model argmax == draft[i] at each step)
-        // → full accept, no correction, next_seq_len = bonus_pos + k.
         let mut t = MockTarget {
             preds: vec![10, 20, 30],
         };
         let v = Verifier::default();
         let o = v.verify_line(&mut t, 1, 5, &[10, 20, 30]).unwrap();
         assert_eq!(o.accepted, vec![10, 20, 30]);
-        assert_eq!(
-            o.accepted_verified
-                .iter()
-                .map(|x| x.get())
-                .collect::<Vec<_>>(),
-            vec![10, 20, 30]
-        );
+ assert_eq!( o.accepted_verified .iter() .map(|x| x.get()) .collect::<Vec<_>>(), vec![10, 20, 30] );
         assert_eq!(o.correction, None);
         assert!(o.correction_verified.is_none());
         assert_eq!(o.next_seq_len, 5 + 3);
-        // Real losslessness is the engine bit-identity gate (P0.6); this pins the contract.
     }
-
     #[test]
     fn mid_reject() {
         let mut t = MockTarget {
@@ -228,7 +214,6 @@ mod tests {
         assert_eq!(o.correction_verified.map(|c| c.get()), Some(99));
         assert_eq!(o.next_seq_len, 5 + 1 + 1);
     }
-
     #[test]
     fn empty_draft_degenerates() {
         let mut t = MockTarget { preds: vec![42] };
@@ -240,7 +225,6 @@ mod tests {
         assert_eq!(o.correction_verified.map(|c| c.get()), Some(42));
         assert_eq!(o.next_seq_len, 6);
     }
-
     #[test]
     fn verified_accepted_may_enter_durable_sink_drafts_may_not() {
         use crate::durable::{DurableTokenSink, InMemoryDurableSink};

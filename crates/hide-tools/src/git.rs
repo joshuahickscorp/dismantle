@@ -487,7 +487,6 @@ mod tests {
     use hide_core::permission::{PermissionPolicy, StaticPermissionEngine};
     use hide_core::tool::{ToolCall, ToolDispatcher, ToolRegistry};
     use std::path::PathBuf;
-
     fn dispatcher(reg: Arc<ToolRegistry>) -> ToolDispatcher {
         ToolDispatcher::new(
             reg,
@@ -498,7 +497,6 @@ mod tests {
             })),
         )
     }
-
     fn unique() -> String {
         use std::sync::atomic::{AtomicU64, Ordering};
         static N: AtomicU64 = AtomicU64::new(0);
@@ -509,7 +507,6 @@ mod tests {
             N.fetch_add(1, Ordering::SeqCst)
         )
     }
-
     async fn init_repo() -> PathBuf {
         let dir = std::env::temp_dir().join(format!("hide_git_{}", unique()));
         std::fs::create_dir_all(&dir).unwrap();
@@ -527,7 +524,6 @@ mod tests {
         }
         dir
     }
-
     #[tokio::test]
     async fn git_status_clean_is_ok() {
         let dir = init_repo().await;
@@ -545,10 +541,8 @@ mod tests {
         assert_eq!(r.exit_code, Some(0));
         let _ = std::fs::remove_dir_all(dir);
     }
-
     #[tokio::test]
     async fn git_nonzero_exit_outside_repo_is_data_not_fault() {
-        // running git diff outside a repo exits non-zero; that must be ok:true.
         let dir = std::env::temp_dir().join(format!("hide_nogit_{}", unique()));
         std::fs::create_dir_all(&dir).unwrap();
         let reg = Arc::new(ToolRegistry::default());
@@ -561,13 +555,11 @@ mod tests {
             ))
             .await
             .unwrap();
-        // git exits 128 outside a repo → EXEC_NONZERO is data, ok stays true.
         assert!(r.ok, "non-zero git exit must be ok:true (EXEC_NONZERO)");
         assert_ne!(r.exit_code, Some(0));
         assert!(r.error.is_none());
         let _ = std::fs::remove_dir_all(dir);
     }
-
     #[tokio::test]
     async fn git_commit_then_log() {
         let dir = init_repo().await;
@@ -592,18 +584,11 @@ mod tests {
             ))
             .await
             .unwrap();
-        assert!(log.structured_content.unwrap()["stdout"]
-            .as_str()
-            .unwrap()
-            .contains("init"));
+ assert!(log.structured_content.unwrap()["stdout"] .as_str() .unwrap() .contains("init"));
         let _ = std::fs::remove_dir_all(dir);
     }
-
     #[tokio::test]
     async fn git_diff_ref_cannot_inject_write_option() {
-        // A malicious ref like "--output=FILE" must NOT be honored as a git option
-        // (which would create/truncate an arbitrary file). Regression guard for the
-        // option-injection the read-only auto-dispatch review found.
         let dir = init_repo().await;
         std::fs::write(dir.join("a.txt"), "dirty").unwrap();
         let evil = dir.join("evil_written.txt");
@@ -620,16 +605,11 @@ mod tests {
             ))
             .await
             .unwrap();
-        assert!(
-            !evil.exists(),
-            "git.diff ref must not inject --output and write a file"
-        );
+ assert!( !evil.exists(), "git.diff ref must not inject --output and write a file" );
         let _ = std::fs::remove_dir_all(dir);
     }
-
     #[tokio::test]
     async fn git_diff_normal_ref_still_works() {
-        // --end-of-options must not break a legitimate ref.
         let dir = init_repo().await;
         std::fs::write(dir.join("a.txt"), "x").unwrap();
         let reg = Arc::new(ToolRegistry::default());
@@ -653,7 +633,6 @@ mod tests {
         assert!(r.ok, "a normal ref diff must still work: {:?}", r.error);
         let _ = std::fs::remove_dir_all(dir);
     }
-
     #[tokio::test]
     async fn git_worktree_add_list_remove() {
         let dir = init_repo().await;
@@ -683,11 +662,7 @@ mod tests {
             ))
             .await
             .unwrap();
-        assert!(
-            add.ok && add.exit_code == Some(0),
-            "{:?}",
-            add.structured_content
-        );
+ assert!( add.ok && add.exit_code == Some(0), "{:?}", add.structured_content );
         let list = d
             .dispatch(ToolCall::new(
                 "git.worktree.list",
@@ -695,10 +670,7 @@ mod tests {
             ))
             .await
             .unwrap();
-        assert!(list.structured_content.unwrap()["stdout"]
-            .as_str()
-            .unwrap()
-            .contains("feat"));
+ assert!(list.structured_content.unwrap()["stdout"] .as_str() .unwrap() .contains("feat"));
         let remove = d
             .dispatch(ToolCall::new(
                 "git.worktree.remove",

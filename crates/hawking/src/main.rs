@@ -3834,7 +3834,6 @@ fn verify_main(weights: PathBuf, expected_sha256: Option<String>) -> Result<()> 
 #[cfg(test)]
 mod press_tests {
     use super::{parse_size_arg, parse_tier_arg, read_safetensors_inventory};
-
     #[test]
     fn parse_size_handles_units_and_raw_and_rejects_garbage() {
         assert_eq!(parse_size_arg("1024").unwrap(), 1024);
@@ -3849,7 +3848,6 @@ mod press_tests {
         assert!(parse_size_arg("-5gb").is_err());
         assert!(parse_size_arg("gb").is_err());
     }
-
     #[test]
     fn parse_tiers_maps_known_rungs_and_literals() {
         let t = parse_tier_arg("4,3,2,1").unwrap();
@@ -3863,11 +3861,9 @@ mod press_tests {
         assert!(parse_tier_arg("").is_err());
         assert!(parse_tier_arg("x").is_err());
     }
-
     #[test]
     fn safetensors_header_inventory_metadata_only() {
         use std::io::Write;
-        // Synthetic safetensors: 8-byte LE header length + JSON. __metadata__ skipped.
         let json = br#"{"__metadata__":{"format":"pt"},"a.weight":{"dtype":"F16","shape":[4,8],"data_offsets":[0,64]},"b.weight":{"dtype":"BF16","shape":[2,2],"data_offsets":[64,72]}}"#;
         let mut buf = Vec::new();
         buf.extend_from_slice(&(json.len() as u64).to_le_bytes());
@@ -3892,7 +3888,6 @@ mod press_tests {
 #[cfg(test)]
 mod fit_tests {
     use super::{auto_serve_pick, fit_zone, kv_cache_bytes, ModelFacts};
-
     fn qwen3b() -> ModelFacts {
         ModelFacts {
             arch: "qwen2".into(),
@@ -3904,17 +3899,14 @@ mod fit_tests {
             is_ssm: false,
         }
     }
-
     #[test]
     fn kv_cache_scales_with_context_concurrency_and_precision() {
-        // Qwen2.5-3B-ish geometry: 36 layers, 2 kv-heads (GQA), head_dim 128.
         let base = kv_cache_bytes(36, 2, 128, 8192, 2, 1);
         assert_eq!(base, 36u64 * 8192 * 2 * 128 * 2 * 2); // layers*ctx*kvh*hd*2(K+V)*elem
         assert_eq!(kv_cache_bytes(36, 2, 128, 16384, 2, 1), 2 * base); // 2x context
         assert_eq!(kv_cache_bytes(36, 2, 128, 8192, 2, 2), 2 * base); // 2x concurrency
         assert_eq!(kv_cache_bytes(36, 2, 128, 8192, 4, 1), 2 * base); // f32 = 2x f16
     }
-
     #[test]
     fn fit_zone_thresholds_and_unknown() {
         let total = 100u64;
@@ -3924,43 +3916,27 @@ mod fit_tests {
         assert_eq!(fit_zone(120, total), "OOM"); // > total
         assert_eq!(fit_zone(50, 0), "unknown"); // no machine info
     }
-
     #[test]
     fn auto_pick_is_capability_first_and_anti_throttle() {
         let f = qwen3b();
         let file = 1_900_000_000u64;
         let total18 = 18u64 << 30;
-
-        // Roomy Mac: max-capability serves native context at FULL-PRECISION KV,
-        // with NO downgrade flag.
         let cap = auto_serve_pick(&f, file, total18, "max-capability");
         assert!(cap.safety_downgrade.is_none());
         assert_eq!(cap.context, 32768);
         assert!(!cap.kv_f16);
-
-        // Safety-biased intents MUST flag the explicit downgrade (no hidden throttle)
-        // and must NOT push context beyond native (that would not be "safe").
         let sf = auto_serve_pick(&f, file, total18, "safe-fit");
         assert!(sf.safety_downgrade.is_some());
         assert!(sf.context <= f.native_ctx);
         let bat = auto_serve_pick(&f, file, total18, "max-battery");
-        assert!(
-            bat.safety_downgrade.is_some() && bat.energy_efficient && bat.context <= f.native_ctx
-        );
-
-        // max-context reaches the largest stable context via f16, no hidden downgrade.
+ assert!( bat.safety_downgrade.is_some() && bat.energy_efficient && bat.context <= f.native_ctx );
         let mc = auto_serve_pick(&f, file, total18, "max-context");
         assert!(mc.kv_f16 && mc.safety_downgrade.is_none() && mc.context >= 32768);
-
-        // Tight Mac: max-capability is FORCED to f16 + reduced context by HARD RAM.
-        // That is the capability ceiling, not a bias → no safety_downgrade flag.
         let total3 = 3u64 << 30;
         let tight = auto_serve_pick(&f, file, total3, "max-capability");
         assert!(tight.kv_f16);
         assert!(tight.safety_downgrade.is_none());
         assert!(tight.context < f.native_ctx);
-
-        // SSM: flat KV, full native context, no downgrade, even on a tiny Mac.
         let s = ModelFacts {
             arch: "rwkv7".into(),
             name: "r".into(),
@@ -3978,7 +3954,6 @@ mod fit_tests {
 #[cfg(test)]
 mod serve_auto_tests {
     use super::{auto_serve_pick, ModelFacts};
-
     fn qwen(layers: u64, kv_heads: u64, head_dim: u64, native: u64) -> ModelFacts {
         ModelFacts {
             arch: "qwen2".into(),
@@ -3990,59 +3965,29 @@ mod serve_auto_tests {
             is_ssm: false,
         }
     }
-
-    /// A8 — anti-throttle gate. `serve --auto` must never SILENTLY lose context vs
-    /// max-capability: the default/auto config carries no hidden downgrade, and any
-    /// safety-biased reduction is explicit (a `safety_downgrade` reason) and never
-    /// exceeds the capability ceiling. Stated-intent axes are the user's choice.
     #[test]
     fn auto_serve_never_hidden_throttle() {
-        // Qwen2.5-3B geometry (~1.93 GB weights), across a range of Macs.
         let f = qwen(36, 2, 128, 32768);
         let bytes = 1_930_000_000u64;
         for gib in [8u64, 12, 18, 36, 64] {
             let mem = gib << 30;
             let cap = auto_serve_pick(&f, bytes, mem, "max-capability");
-            assert!(
-                cap.safety_downgrade.is_none(),
-                "max-capability must never hide a throttle ({gib} GiB)"
-            );
+ assert!( cap.safety_downgrade.is_none(), "max-capability must never hide a throttle ({gib} GiB)" );
             for intent in ["safe-fit", "max-battery"] {
                 let p = auto_serve_pick(&f, bytes, mem, intent);
-                assert!(
-                    p.context <= cap.context,
-                    "{intent} must not exceed capability ({gib} GiB)"
-                );
+ assert!( p.context <= cap.context, "{intent} must not exceed capability ({gib} GiB)" );
                 if p.context < cap.context {
-                    assert!(
-                        p.safety_downgrade.is_some(),
-                        "{intent} reduction below capability must be EXPLICIT ({gib} GiB)"
-                    );
+                    assert!(p.safety_downgrade.is_some());
                 }
             }
             for intent in ["max-quality", "max-context", "max-speed"] {
-                assert!(
-                    auto_serve_pick(&f, bytes, mem, intent)
-                        .safety_downgrade
-                        .is_none(),
-                    "{intent} is a stated intent, not a hidden safety throttle ({gib} GiB)"
-                );
+                assert!(auto_serve_pick(&f, bytes, mem, intent) .safety_downgrade .is_none());
             }
         }
-        // On an 18 GiB Mac a 3B model fits at native context + full-precision KV →
-        // max-capability must serve exactly that (no throttle-down).
         let cap18 = auto_serve_pick(&f, bytes, 18u64 << 30, "max-capability");
-        assert_eq!(
-            cap18.context, 32768,
-            "native ctx should be served when it fits"
-        );
-        assert!(
-            !cap18.kv_f16,
-            "f32 KV fits at 18 GiB → must not drop to f16"
-        );
+ assert_eq!( cap18.context, 32768, "native ctx should be served when it fits" );
+ assert!( !cap18.kv_f16, "f32 KV fits at 18 GiB → must not drop to f16" );
     }
-
-    /// SSM: flat recurrent state → context is not RAM-bound; never throttled.
     #[test]
     fn ssm_is_never_throttled() {
         let s = ModelFacts {
@@ -4068,11 +4013,9 @@ mod profile_rank_tests {
         DEFAULT_QUALITY_FLOOR, PROFILE_SCHEMA_VERSION,
     };
     use std::collections::BTreeMap;
-
     fn mk(variant: &str, rank: u32, tps: f64, quality: f64) -> AutotuneMeasurement {
         AutotuneMeasurement::measured(variant, rank, tps, quality, RuntimeLevers::default())
     }
-
     fn profile_with(measurements: Vec<AutotuneMeasurement>) -> KernelProfile {
         KernelProfile {
             schema_version: PROFILE_SCHEMA_VERSION,
@@ -4113,58 +4056,39 @@ mod profile_rank_tests {
             },
         }
     }
-
     #[test]
     fn report_selects_highest_tps_above_floor_and_orders_table() {
         // `fast` has the highest tps (55) but FAILS the floor (q=0.80 < 0.90);
-        // `mid` (40 tps, q=0.95) must be the selected line. Table must be in
-        // descending score order: above-floor rows by tps desc, then the
-        // rejected `fast` last tagged REJECT.
         let p = profile_with(vec![
             mk("fast", 3, 55.0, 0.80),
             mk("mid", 2, 40.0, 0.95),
             mk("slow", 1, 30.0, 1.00),
         ]);
         let report = rank_profile_report(&p, DEFAULT_QUALITY_FLOOR);
-
-        // Chosen line names `mid`, NOT `fast`.
-        assert!(
-            report.contains("selected: mid"),
-            "expected `mid` selected, got:\n{report}"
-        );
+ assert!( report.contains("selected: mid"), "expected `mid` selected, got:\n{report}" );
         assert!(!report.contains("selected: fast"));
-
-        // Table order: rank 1 = mid (40 tps), rank 2 = slow (30 tps),
-        // rank 3 = fast (REJECT). Check by relative byte position.
         let line_idx = |needle: &str| report.find(needle).expect(needle);
         assert!(line_idx("1\t40.000\tmid") < line_idx("2\t30.000\tslow"));
         assert!(line_idx("2\t30.000\tslow") < line_idx("3\tREJECT\tfast"));
-        // The failing candidate is rendered as REJECT, not a numeric score.
         assert!(report.contains("3\tREJECT\tfast"));
-        // Selected block echoes the chosen tps/quality.
         assert!(report.contains("tps: 40.000"));
         assert!(report.contains("quality: 0.9500"));
     }
-
     #[test]
     fn report_handles_none_above_floor() {
         let p = profile_with(vec![mk("a", 1, 99.0, 0.10), mk("b", 2, 80.0, 0.50)]);
         let report = rank_profile_report(&p, DEFAULT_QUALITY_FLOOR);
         assert!(report.contains("selected: NONE"), "got:\n{report}");
-        // Both rows still listed, both REJECT (sub-floor), highest-tps first.
         assert!(report.contains("REJECT\ta"));
         assert!(report.contains("REJECT\tb"));
     }
-
     #[test]
     fn custom_floor_changes_selection() {
-        // With a 0.96 floor, `mid` (0.95) now fails and `slow` (1.00) wins.
         let p = profile_with(vec![mk("mid", 2, 40.0, 0.95), mk("slow", 1, 30.0, 1.00)]);
         let report = rank_profile_report(&p, 0.96);
         assert!(report.contains("selected: slow"), "got:\n{report}");
         assert!(report.contains("quality_floor: 0.9600"));
     }
-
     #[test]
     fn json_report_is_valid_and_marks_rejects() {
         let p = profile_with(vec![mk("fast", 3, 55.0, 0.80), mk("mid", 2, 40.0, 0.95)]);
@@ -4172,10 +4096,8 @@ mod profile_rank_tests {
         let v: serde_json::Value = serde_json::from_str(&out).unwrap();
         assert_eq!(v["selected"]["variant_id"], "mid");
         let ranked = v["ranked"].as_array().unwrap();
-        // First ranked entry is the winner `mid` with a numeric score.
         assert_eq!(ranked[0]["variant_id"], "mid");
         assert_eq!(ranked[0]["rejected"], false);
-        // The sub-floor `fast` is present and flagged rejected with null score.
         let fast = ranked.iter().find(|e| e["variant_id"] == "fast").unwrap();
         assert_eq!(fast["rejected"], true);
         assert!(fast["score"].is_null());
@@ -4369,23 +4291,15 @@ fn spec_oracle_main(
 #[cfg(test)]
 mod spec_oracle_tests {
     use super::*;
-
     #[test]
     fn parse_k_list_handles_comma_and_whitespace() {
         assert_eq!(spec_oracle_parse_k_list("4,7").unwrap(), vec![4, 7]);
-        assert_eq!(
-            spec_oracle_parse_k_list(" 4 , 7 ,8").unwrap(),
-            vec![4, 7, 8]
-        );
+ assert_eq!( spec_oracle_parse_k_list(" 4 , 7 ,8").unwrap(), vec![4, 7, 8] );
         assert!(spec_oracle_parse_k_list("").is_err());
         assert!(spec_oracle_parse_k_list("4,x").is_err());
     }
-
     #[test]
     fn synthetic_ids_flow_through_replay_grid() {
-        // The text->ids->report GLUE: feed a synthetic, highly-repetitive id
-        // stream (what encode() would yield on a repetitive corpus) straight
-        // into the shipped replay_grid and assert the report the handler prints.
         use hawking_speculate::replay_oracle::replay_grid;
         let mut ids: Vec<u32> = Vec::new();
         for _ in 0..200 {
@@ -4398,17 +4312,8 @@ mod spec_oracle_tests {
         assert_eq!(report.warm_start_tokens, warm);
         assert_eq!(report.scored_tokens, ids.len() - warm);
         let best = report.best().expect("non-empty grid");
-        assert!(
-            best.tau > 1.05,
-            "repetitive corpus must beat plain decode (tau {})",
-            best.tau
-        );
-        assert_eq!(
-            report.verdict(),
-            "GO",
-            "repetitive stream should clear the GO band"
-        );
-        // accounting closes for every row (the property the handler relies on).
+ assert!( best.tau > 1.05, "repetitive corpus must beat plain decode (tau {})", best.tau );
+ assert_eq!( report.verdict(), "GO", "repetitive stream should clear the GO band" );
         for r in &report.per_k {
             assert_eq!(r.tokens_emitted as usize, report.scored_tokens);
         }

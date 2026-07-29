@@ -333,7 +333,6 @@ pub fn allow_all_dispatcher(workspace_root: impl Into<String>) -> Arc<ToolDispat
 mod tests {
     use super::*;
     use hide_core::event::InMemoryEventLog;
-
     #[tokio::test]
     async fn kernel_can_drive_minimal_run_to_done() {
         let log = Arc::new(InMemoryEventLog::new());

@@ -101,7 +101,6 @@ impl Record {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn seal_roundtrip_and_tamper() {
         let r = Record::new("evaluation", serde_json::json!({"parity": true})).sealed();
@@ -110,7 +109,6 @@ mod tests {
         t.payload = serde_json::json!({"parity": false});
         assert!(t.verify().is_err(), "tamper must break the seal");
     }
-
     #[test]
     fn identity_is_content_addressed_and_canonical() {
         let a = Record::new("x", serde_json::json!({"a": 1, "b": 2}));

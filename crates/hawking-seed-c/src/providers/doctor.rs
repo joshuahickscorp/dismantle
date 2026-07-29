@@ -184,7 +184,6 @@ impl<D: Doctor> Provider for DoctorProvider<D> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn sparse_residual_reduces_divergence_within_budget() {
         let (m, n) = (256usize, 256usize);

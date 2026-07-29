@@ -106,7 +106,6 @@ mod tests {
     use crate::pack::{CapabilityKind, Implementation, PackManifest, Profile, SEED_COMPAT};
     use crate::record::sha256_hex;
     use std::io::Write;
-
     fn scratch(tag: &str) -> std::path::PathBuf {
         let d = std::env::temp_dir().join(format!("nucleus-verify-{}-{}", tag, std::process::id()));
         let _ = std::fs::remove_dir_all(&d);
@@ -117,7 +116,6 @@ mod tests {
         std::fs::File::create(dir.join(name)).unwrap().write_all(content).unwrap();
         sha256_hex(content)
     }
-
     fn manifest(dir: &Path, sha: String) -> PackManifest {
         PackManifest::capability_pack("packs-nucleus-metal", "1.0.0", Profile::Performance)
             .with_offline_cache(&dir.to_string_lossy())
@@ -132,32 +130,23 @@ mod tests {
             })
             .add_capability("metal.tied_logits", CapabilityKind::MetalImpl, "q8-gemv")
     }
-
     #[test]
     fn verify_hydrate_tamper_rollback_and_receipt() {
         let d = scratch("main");
         let sha = write(&d, "impl.txt", b"metal provider v1\n");
         let man = manifest(&d, sha.clone());
         let mpath = d.join("manifest.json");
-
         let r = verify_pack(&man, &mpath, SEED_COMPAT, &[]).unwrap();
         assert!(r.ok() && r.content_entries_ok == 1 && !r.tamper_detected);
-        // offline hydration proves reconstitution
         assert_eq!(offline_hydrate(&man, &mpath).unwrap(), 1);
-        // the verification is sealed as a Seed compatibility receipt (tamper-evident)
         let rec = seal_receipt(&r).unwrap();
         assert!(rec.verify().is_ok() && rec.kind == "compatibility");
-
-        // tamper -> refusal
         write(&d, "impl.txt", b"tampered\n");
         let r2 = verify_pack(&man, &mpath, SEED_COMPAT, &[]).unwrap();
         assert!(r2.tamper_detected && !r2.ok());
-
-        // rollback -> green again
         write(&d, "impl.txt", b"metal provider v1\n");
         assert!(verify_pack(&man, &mpath, SEED_COMPAT, &[]).unwrap().ok());
     }
-
     #[test]
     fn incompatible_abi_is_refused() {
         let d = scratch("abi");
@@ -167,7 +156,6 @@ mod tests {
         let r = verify_pack(&man, d.join("manifest.json"), SEED_COMPAT, &[]).unwrap();
         assert!(!r.compatible && !r.ok());
     }
-
     #[test]
     fn missing_dependency_is_reported() {
         let d = scratch("deps");
@@ -177,7 +165,6 @@ mod tests {
         let r = verify_pack(&man, d.join("manifest.json"), SEED_COMPAT, &[]).unwrap();
         assert_eq!(r.missing_dependencies, vec!["packs-nucleus-source".to_string()]);
         assert!(!r.ok());
-        // once the dependency is available, it verifies
         let r2 = verify_pack(&man, d.join("manifest.json"), SEED_COMPAT, &["packs-nucleus-source".into()]).unwrap();
         assert!(r2.ok());
     }

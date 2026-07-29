@@ -71,7 +71,6 @@ pub fn report(manifests: &[PackManifest]) -> Vec<ProfileReport> {
 mod tests {
     use super::*;
     use crate::pack::{CapabilityKind, Implementation};
-
     #[test]
     fn profiles_group_and_account_honestly() {
         let a = PackManifest::capability_pack("packs-nucleus-forge", "1.0.0", Profile::Default)

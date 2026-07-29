@@ -181,9 +181,7 @@ mod tests {
     use crate::fabric::placement::{
         ModelSection, PlacementRequest, PlacementSimulator, WorkloadClass,
     };
-
     const GIB: u64 = 1024 * 1024 * 1024;
-
     #[test]
     fn heartbeat_marks_dead_after_threshold() {
         let mut mon = HeartbeatMonitor::new(3);
@@ -194,7 +192,6 @@ mod tests {
         assert!(mon.note_missed(&n, 4)); // 4-1=3 >= 3
         assert!(mon.is_dead(&n));
     }
-
     #[test]
     fn receipt_names_lost_and_replayed() {
         let nodes = SimulatedNodeSet::heterogeneous_sim("sim-fail-v1").nodes;

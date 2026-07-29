@@ -43,7 +43,6 @@ pub fn is_known_kind(kind: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn receipt_seals_and_verifies() {
         let r = receipt("evaluation", serde_json::json!({"parent":"SmolLM","parity":true}));

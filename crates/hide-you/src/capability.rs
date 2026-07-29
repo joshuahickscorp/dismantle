@@ -223,20 +223,17 @@ impl CapabilitySnapshot {
 mod tests {
     use super::*;
     use serde_json::json;
-
     #[test]
     fn derive_is_live_default_is_not() {
         let empty = SurfaceCapability::default();
         assert!(!empty.is_live());
         assert!(!empty.allows_tool("x"));
-
         let set = SurfacePermissionSet::new(["t1"], ["c1"]);
         let cap = set.derive_capability();
         assert!(cap.is_live());
         assert!(cap.allows_tool("t1"));
         assert!(cap.allows_connector("c1"));
     }
-
     #[test]
     fn adversarial_serde_forge_is_not_live() {
         let forged: SurfaceCapability = serde_json::from_value(json!({
@@ -250,16 +247,11 @@ mod tests {
         assert!(forged.require_tool("shell.exec").is_err());
         assert!(forged.require_connector("gmail").is_err());
     }
-
     #[test]
     fn subset_cannot_widen() {
         let set = SurfacePermissionSet::new(["a"], ["x"]);
-        assert!(set
-            .derive_capability_subset(["a", "b"], None::<&str>)
-            .is_err());
-        assert!(set
-            .derive_capability_subset(["a"], ["y"])
-            .is_err());
+ assert!(set .derive_capability_subset(["a", "b"], None::<&str>) .is_err());
+ assert!(set .derive_capability_subset(["a"], ["y"]) .is_err());
         let ok = set.derive_capability_subset(["a"], ["x"]).unwrap();
         assert!(ok.is_live());
         assert!(ok.allows_tool("a"));

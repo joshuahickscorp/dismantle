@@ -143,10 +143,8 @@ impl Provider for MetalOpProvider {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn one_op_cpu_metal_parity() {
-        // CPU is always available; Metal is exercised when present. Parity (argmax agreement) must hold.
         let p = TiedLogitsOp.parity(256, 64).unwrap();
         assert!(p.argmax_agree, "Metal must agree with the CPU reference (or CPU-only fallback)");
         if p.metal_available {

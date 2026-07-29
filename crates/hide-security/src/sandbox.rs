@@ -385,7 +385,6 @@ fn escape_regex(value: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     fn profile_with(cmds: &[&str], net: Decision) -> SandboxProfile {
         SandboxProfile {
             tier: SandboxTier::Seatbelt,
@@ -399,7 +398,6 @@ mod tests {
             },
         }
     }
-
     #[test]
     fn renders_deny_default_and_exec_allowlist() {
         let p = profile_with(&["/usr/bin/cargo"], Decision::Deny);
@@ -409,19 +407,14 @@ mod tests {
         assert!(r.profile_text.contains("(literal \"/usr/bin/cargo\")"));
         assert!(r.profile_text.contains("(deny process-exec*)"));
     }
-
     #[test]
     fn empty_allowlist_denies_all_exec() {
         let p = profile_with(&[], Decision::Deny);
         let r = render_macos_seatbelt(&p);
         assert!(r.profile_text.contains("(deny process-exec*)"));
         assert!(!r.profile_text.contains("(allow process-exec\n"));
-        assert!(r
-            .warnings
-            .iter()
-            .any(|w| w.contains("process-exec fully denied")));
+ assert!(r .warnings .iter() .any(|w| w.contains("process-exec fully denied")));
     }
-
     #[test]
     fn denies_secret_reads_and_hide_log_writes() {
         let p = profile_with(&["/bin/sh"], Decision::Deny);
@@ -431,22 +424,11 @@ mod tests {
             worktree_root: Some("/work/wt".to_string()),
         };
         let r = render_macos_seatbelt_with(&p, &opts);
-        assert!(r
-            .profile_text
-            .contains("(deny file-read* (subpath \"$HOME/.ssh\"))"));
-        assert!(r
-            .profile_text
-            .contains(r#"(deny file-read* (regex #"\.pem$"))"#));
-        // .hide/log specifically write-denied.
-        assert!(r
-            .profile_text
-            .contains("(deny file-write* (subpath \"/work/.hide/log\"))"));
-        // whole .hide write-denied.
-        assert!(r
-            .profile_text
-            .contains("(deny file-write* (subpath \"/work/.hide\"))"));
+ assert!(r .profile_text .contains("(deny file-read* (subpath \"$HOME/.ssh\"))"));
+ assert!(r .profile_text .contains(r#"(deny file-read* (regex #"\.pem$"))"#));
+ assert!(r .profile_text .contains("(deny file-write* (subpath \"/work/.hide/log\"))"));
+ assert!(r .profile_text .contains("(deny file-write* (subpath \"/work/.hide\"))"));
     }
-
     #[test]
     fn proxy_port_is_the_only_egress() {
         let p = profile_with(&["/bin/sh"], Decision::Deny);
@@ -456,16 +438,9 @@ mod tests {
         };
         let r = render_macos_seatbelt_with(&p, &opts);
         assert!(r.profile_text.contains("(deny network*)"));
-        assert!(r
-            .profile_text
-            .contains("(allow network-outbound (remote ip \"localhost:8131\"))"));
-        // allowed_hosts are a proxy concern, surfaced as a warning.
-        assert!(r
-            .warnings
-            .iter()
-            .any(|w| w.contains("allowed_hosts are enforced at the proxy")));
+ assert!(r .profile_text .contains("(allow network-outbound (remote ip \"localhost:8131\"))"));
+ assert!(r .warnings .iter() .any(|w| w.contains("allowed_hosts are enforced at the proxy")));
     }
-
     #[test]
     fn deny_network_without_proxy_warns_zero_egress() {
         let p = profile_with(&["/bin/sh"], Decision::Deny);
@@ -473,18 +448,12 @@ mod tests {
         assert!(r.warnings.iter().any(|w| w.contains("zero egress")));
         assert!(!r.profile_text.contains("network-outbound"));
     }
-
     #[test]
     fn bare_command_renders_basename_regex() {
         let p = profile_with(&["cargo"], Decision::Deny);
         let r = render_macos_seatbelt(&p);
-        assert!(
-            r.profile_text.contains(r#"(regex #"/cargo$")"#),
-            "{}",
-            r.profile_text
-        );
+ assert!( r.profile_text.contains(r#"(regex #"/cargo$")"#), "{}", r.profile_text );
     }
-
     #[test]
     fn emit_grant_profile_writes_sb() {
         let dir = tempfile::tempdir().unwrap();
@@ -497,11 +466,8 @@ mod tests {
         let written = std::fs::read_to_string(&path).unwrap();
         assert!(written.contains("(deny default)"));
     }
-
     #[test]
     fn build_sandbox_exec_fails_closed_when_unavailable() {
-        // On non-macOS hosts (CI Linux) sandbox-exec is unavailable → the build
-        // must REFUSE, never hand back an unconfined command (S12).
         let dir = tempfile::tempdir().unwrap();
         let sb = dir.path().join("p.sb");
         std::fs::write(&sb, "(version 1)(deny default)").unwrap();
@@ -513,7 +479,6 @@ mod tests {
             assert!(res.is_err(), "must fail closed without sandbox-exec");
         }
     }
-
     #[test]
     fn escape_handles_quotes_and_backslashes() {
         assert_eq!(escape(r#"a"b\c"#), r#"a\"b\\c"#);

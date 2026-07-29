@@ -105,7 +105,6 @@ fn parse_dir(dir: &Path) -> Vec<Skill> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn parses_skill_flags_with_defaults() {
         let fm = frontmatter::parse_block(
@@ -115,11 +114,9 @@ mod tests {
         assert_eq!(skill.name, "deploy");
         assert_eq!(skill.allowed_tools, vec!["Bash", "Read"]);
         assert!(!skill.model_invocable());
-        // user-invocable defaults to true.
         assert!(skill.user_invocable);
         assert_eq!(skill.effort.as_deref(), Some("high"));
     }
-
     #[test]
     fn name_falls_back_to_dir() {
         let fm = frontmatter::parse_block("description: no name here\n");

@@ -461,7 +461,6 @@ pub fn run_inprocess_software_fixture() -> Result<TwoProcessFixtureResult, Strin
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn inprocess_fixture_produces_labelled_receipt() {
         let result = run_inprocess_software_fixture().expect("fixture");
@@ -469,9 +468,6 @@ mod tests {
         assert_eq!(result.qualification, QualificationKind::SoftwareFixture);
         assert!(result.receipt.not_physical_qualification);
         assert!(!result.receipt.lost_work.kv_ranges.is_empty() || !result.receipt.lost_work.stages.is_empty());
-        assert_eq!(
-            result.hardware_status,
-            super::super::qualification::HARDWARE_QUALIFICATION_PENDING
-        );
+ assert_eq!( result.hardware_status, super::super::qualification::HARDWARE_QUALIFICATION_PENDING );
     }
 }

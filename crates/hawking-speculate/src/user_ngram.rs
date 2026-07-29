@@ -262,7 +262,6 @@ impl Proposer for NgramProposer {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn cold_index_proposes_nothing() {
         let d = UserNgramDraft::new();
@@ -270,12 +269,8 @@ mod tests {
         assert_eq!(d.propose(&[1, 2], 4), Vec::<u32>::new());
         assert_eq!(d.propose(&[], 4), Vec::<u32>::new());
     }
-
     #[test]
     fn proposes_the_users_repeated_grams() {
-        // The user repeatedly emits the sequence 10, 11, 12, 13 (e.g. a
-        // frequent identifier / boilerplate run). After seeing it, proposing
-        // from the [.., 10, 11] context must roll out 12, 13.
         let mut d = UserNgramDraft::new();
         for _ in 0..3 {
             for &t in &[10u32, 11, 12, 13] {
@@ -283,62 +278,39 @@ mod tests {
             }
         }
         assert!(!d.is_empty());
-        // Context ends in (10, 11) → best successor 12 → (11,12)→13 → (12,13)→10.
         let drafted = d.propose(&[10, 11], 3);
         assert_eq!(drafted[0], 12, "2-gram (10,11) should predict 12");
         assert_eq!(drafted[1], 13, "chained (11,12) should predict 13");
-        // k limits the length.
         assert_eq!(d.propose(&[10, 11], 1), vec![12]);
     }
-
     #[test]
     fn warm_start_seeds_then_resets_context() {
-        // Seed from history, then a live prompt's first token must not chain
-        // off the seed's tail — only the rolling cursor resets, the learned
-        // grams persist.
         let mut d = UserNgramDraft::new();
         d.warm_start(&[1, 2, 3, 2, 3, 4]);
         assert!(!d.is_empty());
-        // (2,3) was seen twice → 2 then 4; argmax by count then smaller id → 2.
         let p = d.propose(&[2, 3], 2);
-        assert_eq!(
-            p[0], 2,
-            "warm-started (2,3) predicts the repeated successor"
-        );
-        // The seed left no live cursor; note_token after warm_start starts a
-        // fresh transition (no chaining off the seed's last token 4).
+ assert_eq!( p[0], 2, "warm-started (2,3) predicts the repeated successor" );
         d.note_token(99);
         assert!(d.bigram.get(&(4, 99)).is_none());
     }
-
     #[test]
     fn unigram_backoff_when_bigram_unseen() {
-        // Only a unigram transition exists for `cur`; an unseen (prev,cur)
-        // must back off to it rather than propose nothing.
         let mut d = UserNgramDraft::new();
-        // Seed cur=5 → 6 a few times via a context the bigram won't match.
         for _ in 0..2 {
             d.note_token(5);
             d.note_token(6);
             d.reset_context();
         }
-        // prev=777 never co-occurred with 5, so (777,5) misses → unigram 5→6.
         let p = d.propose(&[777, 5], 1);
         assert_eq!(p, vec![6], "should back off to the 1-gram successor");
     }
-
     #[test]
     fn repeat_run_is_capped() {
-        // A self-loop successor (8 → 8) must not fill the whole window.
         let mut d = UserNgramDraft::new();
         for _ in 0..5 {
             d.note_token(8);
         }
         let p = d.propose(&[8], 16);
-        assert!(
-            p.len() <= 3,
-            "self-loop successor must be capped, got {} tokens",
-            p.len()
-        );
+ assert!( p.len() <= 3, "self-loop successor must be capped, got {} tokens", p.len() );
     }
 }

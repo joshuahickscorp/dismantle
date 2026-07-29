@@ -1,7 +1,3 @@
-//! Candidate C integration + adversarial tests: full SmolLM direct-quant parity, per-format direct
-//! dequant on real tensors, CPU/Metal agreement, tokenizer multi-prompt, GGUF corruption. Gated on the
-//! fixture; fails closed (skips) when absent.
-
 use hawking_seed_c::adapter::LlamaConfig;
 use hawking_seed_c::cpu;
 use hawking_seed_c::gguf::{GgmlType, GgufFile};
@@ -11,10 +7,8 @@ use hawking_seed_c::quant;
 use hawking_seed_c::record::sha256_hex;
 use hawking_seed_c::tokenizer::Tokenizer;
 use std::path::Path;
-
 const WEIGHTS: &str = "../../models/SmolLM2-135M-Instruct-Q4_K_M.gguf";
 const GOLDEN: &str = "../../reports/condense/gravity_forge/condensation/seed_b_golden.json";
-
 fn present() -> bool {
     Path::new(WEIGHTS).exists()
 }
@@ -27,7 +21,6 @@ fn gold() -> serde_json::Value {
 fn ids(v: &serde_json::Value, k: &str) -> Vec<u32> {
     v[k].as_array().unwrap().iter().map(|x| x.as_u64().unwrap() as u32).collect()
 }
-
 #[test]
 fn full_smollm_parity_direct_quant() {
     if !present() {
@@ -46,14 +39,12 @@ fn full_smollm_parity_direct_quant() {
     let sha = sha256_hex(tok.decode(&out).trim().as_bytes());
     assert_eq!(sha, gold()["completion_text_sha256"].as_str().unwrap(), "text sha parity");
 }
-
 #[test]
 fn direct_row_dequant_matches_whole_for_each_real_format() {
     if !present() {
         return;
     }
     let g = open();
-    // one real tensor of each quant family in this fixture
     for (name, fmt) in [
         ("blk.0.attn_q.weight", GgmlType::Q5_0),
         ("blk.0.ffn_down.weight", GgmlType::Q6_K),
@@ -63,9 +54,7 @@ fn direct_row_dequant_matches_whole_for_each_real_format() {
         assert_eq!(t.dtype, fmt);
         let (cols, rows) = (t.dims[0] as usize, t.dims[1] as usize);
         let bytes = g.tensor_bytes(name).unwrap();
-        // whole-tensor dequant of the first 3 rows vs row-at-a-time direct dequant
         let mut whole = vec![0f32; 3 * cols];
-        // dequant only the first 3 rows' worth by slicing
         let (bs, bb) = fmt.block_layout();
         let rb = (cols as u64 / bs) * bb;
         quant::dequant(fmt, &bytes[..(3 * rb) as usize], &mut whole).unwrap();
@@ -77,14 +66,12 @@ fn direct_row_dequant_matches_whole_for_each_real_format() {
         let _ = rows;
     }
 }
-
 #[test]
 fn q4_k_present_and_direct_dequant_runs() {
     if !present() {
         return;
     }
     let g = open();
-    // find a Q4_K tensor (16 exist in this fixture) and direct-dequant one row
     let name = g
         .tensors
         .values()
@@ -98,7 +85,6 @@ fn q4_k_present_and_direct_dequant_runs() {
         assert!(row.iter().any(|&v| v != 0.0), "Q4_K row dequant produced values");
     }
 }
-
 #[test]
 fn cpu_metal_logits_agree_on_argmax() {
     if !present() {
@@ -120,20 +106,17 @@ fn cpu_metal_logits_agree_on_argmax() {
     let maxd = cpu_out.iter().zip(&gpu).map(|(a, b)| (a - b).abs()).fold(0f32, f32::max);
     assert!(maxd < 1e-3, "CPU/Metal logits within tolerance, got {maxd}");
 }
-
 #[test]
 fn corrupt_gguf_metadata_fails_closed() {
     if !present() {
         return;
     }
-    // truncating the header must yield a parse error, not a silent wrong model
     let bytes = std::fs::read(WEIGHTS).unwrap();
     let tmp = std::env::temp_dir().join("seedc_corrupt.gguf");
     std::fs::write(&tmp, &bytes[..1000]).unwrap();
     assert!(GgufFile::open(&tmp).is_err(), "truncated GGUF must fail to parse");
     let _ = std::fs::remove_file(&tmp);
 }
-
 #[test]
 fn tokenizer_multi_prompt_and_no_full_dequant() {
     if !present() {
@@ -144,8 +127,6 @@ fn tokenizer_multi_prompt_and_no_full_dequant() {
     for p in ["Hello world", "The quick brown fox"] {
         assert_eq!(tok.encode(p).unwrap(), tok.encode(p).unwrap());
     }
-    // structural no-full-dequant check: the mapped model is ~105 MB and the runtime holds no dense
-    // f32 weight copy (only the tiny norm cache). We assert the mapping equals the file size.
     let model = Model::open(Path::new(WEIGHTS)).unwrap();
     assert_eq!(model.mapped_bytes(), std::fs::metadata(WEIGHTS).unwrap().len() as usize);
 }

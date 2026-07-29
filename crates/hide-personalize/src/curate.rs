@@ -196,38 +196,28 @@ fn write_jsonl<T: Serialize>(path: &std::path::Path, rows: &[T]) -> Result<()> {
 mod tests {
     use super::*;
     use crate::records::TaskClass;
-
     fn rec_at(prompt: &str, diff: &str, latency: u32, age_us: u64) -> PersonalizationRecord {
         let mut r = PersonalizationRecord::accepted(TaskClass::EditCode, prompt, diff);
         r.latency_ms = latency;
         r.observed_at_us = age_us;
         r
     }
-
     #[test]
     fn curation_keeps_accepted_diffs() {
         let records = vec![rec_at("p1", "+hello", 10, 1), rec_at("p2", "+world", 10, 2)];
         let dataset = curate(&records, &CurationPolicy::default());
-        // 2 positives, 10% held-out rounds to 0 → both in train.
         assert_eq!(dataset.sft.len(), 2);
         assert_eq!(dataset.held_out.len(), 0);
     }
-
     #[test]
     fn latency_p95x3_outlier_dropped() {
-        // 20 fast records + 1 timeout. p95 of the fast pop is ~10; ×3 = 30; the
-        // 5000ms record is dropped.
         let mut records: Vec<_> = (0..20)
             .map(|i| rec_at(&format!("p{i}"), &format!("+d{i}"), 10, i as u64))
             .collect();
         records.push(rec_at("timeout", "+slow", 5000, 99));
         let dataset = curate(&records, &CurationPolicy::default());
-        assert!(
-            dataset.sft.iter().all(|e| e.target_diff != "+slow"),
-            "timeout artifact must be dropped by the p95x3 rule"
-        );
+        assert!(dataset.sft.iter().all(|e| e.target_diff != "+slow"));
     }
-
     #[test]
     fn recency_cap_keeps_newest() {
         let policy = CurationPolicy {
@@ -240,7 +230,6 @@ mod tests {
         assert_eq!(dataset.sft.len(), 1);
         assert_eq!(dataset.sft[0].target_diff, "+new");
     }
-
     #[test]
     fn dpo_pairs_on_matching_prompt() {
         let mut accepted = PersonalizationRecord::accepted(TaskClass::EditCode, "same", "+good");
@@ -251,7 +240,6 @@ mod tests {
         assert_eq!(dataset.preferences[0].chosen_diff, "+good");
         assert_eq!(dataset.preferences[0].rejected_diff, "+bad");
     }
-
     #[test]
     fn write_dataset_creates_versioned_layout() {
         let dir = tempfile::tempdir().unwrap();
@@ -262,9 +250,6 @@ mod tests {
         assert_eq!(v, 1);
         assert!(layout.dataset_version_dir(1).join("train.jsonl").exists());
         assert!(layout.dataset_version_dir(1).join("pref.jsonl").exists());
-        assert!(layout
-            .dataset_version_dir(1)
-            .join("held_out.jsonl")
-            .exists());
+ assert!(layout .dataset_version_dir(1) .join("held_out.jsonl") .exists());
     }
 }

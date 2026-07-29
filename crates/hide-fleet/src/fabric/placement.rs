@@ -570,7 +570,6 @@ pub enum PlacementError {
 mod tests {
     use super::*;
     use crate::fabric::node::SimulatedNodeSet;
-
     fn sample_sections() -> Vec<ModelSection> {
         vec![
             ModelSection::content_addressed("embed", 0, 2, 4 * GIB, b"embed-payload-v1"),
@@ -578,19 +577,15 @@ mod tests {
             ModelSection::content_addressed("head", 6, 8, 3 * GIB, b"head-payload-v1"),
         ]
     }
-
     const GIB: u64 = 1024 * 1024 * 1024;
-
     #[test]
     fn content_hash_stable_across_repacks() {
         let a = ModelSection::content_addressed("mid", 2, 6, 8 * GIB, b"mid-payload-v1");
         let b = ModelSection::content_addressed("mid", 2, 6, 999, b"mid-payload-v1");
-        // Same content (name/range/payload) → same hash even if advertised bytes differ.
         assert_eq!(a.content_hash, b.content_hash);
         let c = ModelSection::content_addressed("mid", 2, 6, 8 * GIB, b"mid-payload-v2");
         assert_ne!(a.content_hash, c.content_hash);
     }
-
     #[test]
     fn placement_determinism_same_seed_same_plan() {
         let nodes = SimulatedNodeSet::heterogeneous_sim("sim-det-v1").nodes;
@@ -613,7 +608,6 @@ mod tests {
         assert!(p1.not_physical_qualification);
         assert!(p1.artifact_label.contains("simulated"));
     }
-
     #[test]
     fn different_seeds_can_differ() {
         let nodes = SimulatedNodeSet::heterogeneous_sim("sim-seed-v1").nodes;
@@ -629,10 +623,8 @@ mod tests {
         let mut base2 = base.clone();
         base2.seed = 2;
         let p2 = sim.place(&base2).unwrap();
-        // plan_id embeds seed fingerprint; must differ.
         assert_ne!(p1.plan_id, p2.plan_id);
     }
-
     #[test]
     fn kv_ownership_invariant_holds() {
         let nodes = SimulatedNodeSet::heterogeneous_sim("sim-kv-v1").nodes;
@@ -651,7 +643,6 @@ mod tests {
         let plan = PlacementSimulator::new().place(&req).unwrap();
         KvOwnershipInvariant::assert_holds(&plan.kv_ownership, req.workload.seq_len).unwrap();
     }
-
     #[test]
     fn kv_invariant_after_failure_replan() {
         let nodes = SimulatedNodeSet::heterogeneous_sim("sim-kv-fail-v1").nodes;
@@ -673,16 +664,9 @@ mod tests {
         let lost = KvOwnershipInvariant::ranges_lost_on_failure(&plan.kv_ownership, &failed);
         assert!(!lost.is_empty(), "expected some KV lost on node failure");
         let replan = sim.replan_after_failure(&req, &failed).unwrap();
-        assert!(
-            replan
-                .section_placements
-                .iter()
-                .all(|sp| sp.node_id != failed),
-            "replan must not assign the failed node"
-        );
+        assert!(replan .section_placements .iter() .all(|sp| sp.node_id != failed));
         KvOwnershipInvariant::assert_holds(&replan.kv_ownership, req.workload.seq_len).unwrap();
     }
-
     #[test]
     fn schema_rejects_unlabelled_simulated_result() {
         let mut plan = PlacementPlan {
@@ -703,10 +687,8 @@ mod tests {
         };
         let err = reject_unlabelled_simulated(&plan).unwrap_err();
         assert!(matches!(err, PlacementError::Schema { .. }));
-
         plan.not_physical_qualification = true;
         plan.artifact_label = "placement_plan_simulated_seed0".into();
-        // Still fails full schema if we only fixed flags — empty plan is ok for schema check.
         validate_placement_plan_schema(&plan).unwrap();
     }
 }

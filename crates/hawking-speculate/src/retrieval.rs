@@ -170,7 +170,6 @@ impl Proposer for RetrievalProposer {
 mod tests {
     use super::*;
     use crate::proposal::{Budget, Ctx, Telemetry};
-
     fn make_ctx<'a>(tokens: &'a [u32]) -> Ctx<'a> {
         Ctx {
             tokens,
@@ -178,16 +177,12 @@ mod tests {
             hidden: None,
         }
     }
-
-    /// Helper: extract the Vec<u32> from a TokenLine or panic.
     fn token_line(p: Proposal) -> Vec<u32> {
         match p {
             Proposal::TokenLine(v) => v,
             _ => panic!("expected TokenLine"),
         }
     }
-
-    // Test 1: cold corpus → empty proposal regardless of ctx content.
     #[test]
     fn cold_corpus_proposes_nothing() {
         let mut p = RetrievalProposer::new();
@@ -195,123 +190,50 @@ mod tests {
         let proposal = p.propose(&ctx, Budget::line(4), &Telemetry::default());
         assert!(proposal.is_empty(), "cold corpus must propose nothing");
     }
-
-    // Test 2: span seeded via warm() is retrieved and proposed correctly.
-    //
-    // Corpus after warm(): [10, 20, 30, 40, 50, 60]
-    // ctx.tokens tail (h=4): [10, 20, 30, 40]
-    // anchor [10,20,30,40] matches at corpus index 0.
-    // copy_start = 0+4 = 4, copy_end = min(4+3, 6) = 6
-    // draft = corpus[4..6] = [50, 60]
     #[test]
     fn warm_seeded_span_is_retrieved() {
         let mut p = RetrievalProposer::new();
         p.warm(&[10u32, 20, 30, 40, 50, 60]);
-
-        // ctx.tokens is the anchor (last h=4 tokens of the emitted context).
         let tokens = [10u32, 20, 30, 40];
         let ctx = make_ctx(&tokens);
         let v = token_line(p.propose(&ctx, Budget::line(3), &Telemetry::default()));
-        // The anchor is found at corpus[0..4]; tokens after it are [50, 60].
-        assert_eq!(
-            v,
-            vec![50u32, 60],
-            "should draft the 2 tokens after the warm anchor"
-        );
+ assert_eq!( v, vec![50u32, 60], "should draft the 2 tokens after the warm anchor" );
     }
-
-    // Test 3: novel tail → nothing (anchor absent in corpus).
     #[test]
     fn novel_tail_proposes_nothing() {
         let mut p = RetrievalProposer::new();
-        // Corpus contains a specific sequence.
         p.warm(&[1u32, 2, 3, 4, 5, 6, 7, 8]);
-        // ctx.tokens uses a 4-token anchor not present in the corpus.
         let tokens = [99u32, 100, 101, 102];
         let ctx = make_ctx(&tokens);
         let proposal = p.propose(&ctx, Budget::line(4), &Telemetry::default());
         assert!(proposal.is_empty(), "novel anchor must propose nothing");
     }
-
-    // Test 4: collision guard — near-miss does NOT match, only the exact h-token
-    // anchor matches.
-    //
-    // Corpus: [1, 2, 3, 4, 99,  1, 2, 3, 5, 88,  1, 2, 3, 4]
-    //          ^--- exact [1,2,3,4]             ^--- near-miss [1,2,3,5]
-    //                                                            ^--- exact [1,2,3,4] (tail, excluded)
-    // h=4, anchor from ctx = [1,2,3,4]
-    // corpus.len()=14, search_end = 14-4 = 10
-    // Search backward: most recent match before index 10?
-    //   i=9: corpus[9..13]=[88,1,2,3] → no
-    //   i=8: corpus[8..12]=[5,88,1,2] → no
-    //   i=7: corpus[7..11]=[3,5,88,1] → no
-    //   i=6: corpus[6..10]=[2,3,5,88] → no
-    //   i=5: corpus[5..9]=[1,2,3,5]  → [1,2,3,5] ≠ [1,2,3,4] (collision guard fires!)
-    //   i=4: corpus[4..8]=[99,1,2,3] → no
-    //   i=3: corpus[3..7]=[4,99,1,2] → no
-    //   i=2: corpus[2..6]=[3,4,99,1] → no
-    //   i=1: corpus[1..5]=[2,3,4,99] → no
-    //   i=0: corpus[0..4]=[1,2,3,4]  → MATCH; copy_start=4, copy_end=min(4+1,14)=5 → [99]
     #[test]
     fn collision_guard_exact_match_only() {
         let mut p = RetrievalProposer::new();
-        // Near-miss [1,2,3,5] at index 5; exact [1,2,3,4] at index 0.
-        // Tail of corpus is [1,2,3,4] (the current emitted context, excluded).
         p.warm(&[1u32, 2, 3, 4, 99, 1, 2, 3, 5, 88, 1, 2, 3, 4]);
-
         let tokens = [1u32, 2, 3, 4];
         let ctx = make_ctx(&tokens);
         let v = token_line(p.propose(&ctx, Budget::line(1), &Telemetry::default()));
-        // Only exact match at index 0 should fire; draft = corpus[4..5] = [99].
-        assert_eq!(
-            v,
-            vec![99u32],
-            "only the exact 4-token match should produce a draft"
-        );
+ assert_eq!( v, vec![99u32], "only the exact 4-token match should produce a draft" );
     }
-
-    // Test 5: ctx.tokens.len() < h → nothing (not enough context to form anchor).
     #[test]
     fn insufficient_context_proposes_nothing() {
         let mut p = RetrievalProposer::new();
-        // Corpus is populated.
         p.warm(&[10u32, 20, 30, 40, 50, 60, 70, 80]);
-        // ctx.tokens has only 3 tokens but h=4; can't form a 4-token anchor.
         let tokens = [10u32, 20, 30]; // len=3 < h=4
         let ctx = make_ctx(&tokens);
         let proposal = p.propose(&ctx, Budget::line(4), &Telemetry::default());
-        assert!(
-            proposal.is_empty(),
-            "ctx shorter than h must propose nothing"
-        );
+ assert!( proposal.is_empty(), "ctx shorter than h must propose nothing" );
     }
-
-    // Test 6: observe() extends the corpus so emitted tokens become searchable.
-    //
-    // Start with a warm seed, then observe new tokens. After observation the
-    // new tokens should be findable as the continuation of a repeated anchor.
     #[test]
     fn observe_extends_corpus() {
         let mut p = RetrievalProposer::new();
-        // Seed corpus: [A B C D E]  (anchor [A B C D] at index 0 → continuation [E])
         p.warm(&[1u32, 2, 3, 4, 5]);
-        // Observe the generation: [1, 2, 3, 4]  (appended to corpus)
-        // Corpus now: [1, 2, 3, 4, 5, 1, 2, 3, 4]
-        //              ^0           ^5
-        // anchor [1,2,3,4]; search_end = 9-4 = 5
-        // i=4: corpus[4..8]=[5,1,2,3] → no
-        // i=3: corpus[3..7]=[4,5,1,2] → no
-        // i=2: corpus[2..6]=[3,4,5,1] → no
-        // i=1: corpus[1..5]=[2,3,4,5] → no
-        // i=0: corpus[0..4]=[1,2,3,4] → MATCH; copy_start=4, copy_end=min(5,9)=5 → [5]
         p.observe(&[1u32, 2, 3, 4]);
         let tokens = [1u32, 2, 3, 4];
         let ctx = make_ctx(&tokens);
         let v = token_line(p.propose(&ctx, Budget::line(1), &Telemetry::default()));
-        assert_eq!(
-            v,
-            vec![5u32],
-            "observed tokens must extend the searchable corpus"
-        );
+ assert_eq!( v, vec![5u32], "observed tokens must extend the searchable corpus" );
     }
 }

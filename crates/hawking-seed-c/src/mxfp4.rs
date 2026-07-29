@@ -46,23 +46,19 @@ pub fn dequant_matrix(blocks: &[u8], scales: &[u8], rows: usize, n: usize, out: 
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn ue8_is_power_of_two() {
         assert_eq!(ue8_scale(127), 1.0); // 2^0
         assert_eq!(ue8_scale(128), 2.0); // 2^1
         assert_eq!(ue8_scale(126), 0.5); // 2^-1
     }
-
     #[test]
     fn e2m1_codes_and_row() {
-        // one block of 2 values, codes: [+1.0 (2), +6.0 (7)] packed in one byte (low=2, high=7) => 0x72
         let blocks = [0x72u8];
         let scales = [127u8]; // scale 1.0
         let mut out = [0f32; 2];
         dequant_row(&blocks, &scales, 2, &mut out);
         assert_eq!(out, [1.0, 6.0]);
-        // scale 2.0
         let scales2 = [128u8];
         dequant_row(&blocks, &scales2, 2, &mut out);
         assert_eq!(out, [2.0, 12.0]);

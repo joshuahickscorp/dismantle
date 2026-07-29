@@ -237,7 +237,6 @@ pub enum SelectStrategy {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     fn tree() -> DomSnapshot {
         let mut button = DomNode::leaf("n-btn", "button");
         button
@@ -251,7 +250,6 @@ mod tests {
         root.children.push(button);
         DomSnapshot::new(root)
     }
-
     #[test]
     fn find_by_id_walks_the_tree() {
         let snap = tree();
@@ -259,25 +257,14 @@ mod tests {
         assert_eq!(n.tag, "button");
         assert!(snap.find(&DomNodeId::from("n-missing")).is_none());
     }
-
     #[test]
     fn resolve_supports_id_testid_and_text() {
         let snap = tree();
-        assert_eq!(
-            snap.resolve(SelectStrategy::Css, "#add-to-cart").unwrap().id,
-            DomNodeId::from("n-btn")
-        );
-        assert_eq!(
-            snap.resolve(SelectStrategy::TestId, "add-cart").unwrap().id,
-            DomNodeId::from("n-btn")
-        );
-        assert_eq!(
-            snap.resolve(SelectStrategy::Text, "Add to").unwrap().id,
-            DomNodeId::from("n-btn")
-        );
+        assert_eq!(snap.resolve(SelectStrategy::Css, "#add-to-cart").unwrap().id, DomNodeId::from("n-btn"));
+        assert_eq!(snap.resolve(SelectStrategy::TestId, "add-cart").unwrap().id, DomNodeId::from("n-btn"));
+ assert_eq!( snap.resolve(SelectStrategy::Text, "Add to").unwrap().id, DomNodeId::from("n-btn") );
         assert!(snap.resolve(SelectStrategy::Css, "#nope").is_none());
     }
-
     #[test]
     fn node_count_is_captured() {
         assert_eq!(tree().node_count, 2);

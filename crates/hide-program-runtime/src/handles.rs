@@ -185,7 +185,6 @@ impl HostHandles for DenyAllHost {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn handle_names_roundtrip_dotted_strings() {
         for h in HandleName::ALL {
@@ -196,7 +195,6 @@ mod tests {
         assert_eq!(HandleName::from_str("fs.write"), None);
         assert_eq!(HandleName::from_str("shell.exec"), None);
     }
-
     #[test]
     fn grants_are_explicit() {
         let g = HandleGrants::of([HandleName::FileRead]);
@@ -205,7 +203,6 @@ mod tests {
         assert!(HandleGrants::none().granted().next().is_none());
         assert_eq!(HandleGrants::all().granted().count(), 10);
     }
-
     #[test]
     fn every_handle_is_read_oriented() {
         assert!(HandleName::ALL.iter().all(|h| h.is_read_oriented()));

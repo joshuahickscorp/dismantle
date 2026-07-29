@@ -85,7 +85,6 @@ mod tests {
     use super::*;
     use crate::plan::dag::PlanDag;
     use crate::plan::planner::RuntimePlanner;
-
     #[test]
     fn localized_replan_resets_failed_and_inserts_probe() {
         let plan = RuntimePlanner::default_dag("obj");
@@ -97,13 +96,9 @@ mod tests {
             local_only: true,
         };
         let result = localized_replan(&plan, &req);
-        // The probe + the reset edit changed.
         assert_eq!(result.changed_steps.len(), 2);
-        // Still a DAG.
         assert!(PlanDag::acyclic(&result.plan));
-        // One more step than before.
         assert_eq!(result.plan.steps.len(), plan.steps.len() + 1);
-        // The failed step is pending again and carries the lesson.
         let edit = result.plan.step(&edit_id).unwrap();
         assert_eq!(edit.status, StepStatus::Pending);
         assert!(edit.rationale.contains("i64"));

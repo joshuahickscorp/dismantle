@@ -409,13 +409,11 @@ impl<'de> Deserialize<'de> for Value {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn serializes_as_plain_json_with_sorted_keys() {
         let v = map_of([("b", Value::Int(2)), ("a", Value::Int(1))]);
         assert_eq!(serde_json::to_string(&v).unwrap(), r#"{"a":1,"b":2}"#);
     }
-
     #[test]
     fn roundtrips_through_json() {
         let v = map_of([
@@ -427,20 +425,17 @@ mod tests {
         let back: Value = serde_json::from_str(&s).unwrap();
         assert_eq!(v, back);
     }
-
     #[test]
     fn total_cmp_interleaves_int_and_float() {
         assert_eq!(Value::Int(1).total_cmp(&Value::Float(1.5)), Ordering::Less);
         assert_eq!(Value::Float(2.0).total_cmp(&Value::Int(2)), Ordering::Equal);
     }
-
     #[test]
     fn citations_roundtrip_and_merge_dedup() {
         let rec = map_of([("id", Value::Int(1))]);
         let c1 = Citation::new("file.read").with_locator("L1-L3");
         let merged = rec.with_merged_citations(&[c1.clone(), c1.clone()]);
         assert_eq!(merged.citations(), vec![c1.clone()]);
-        // Merging an already-present citation is idempotent.
         let again = merged.with_merged_citations(&[c1.clone()]);
         assert_eq!(again.citations(), vec![c1]);
     }

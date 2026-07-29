@@ -454,7 +454,6 @@ impl Oracle for SchemaOracle {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn parses_rustc_error_with_location() {
         let stderr = "\
@@ -469,7 +468,6 @@ error[E0308]: mismatched types
         assert_eq!(f[0].file.as_deref(), Some("src/lib.rs"));
         assert_eq!(f[0].line, Some(12));
     }
-
     #[tokio::test]
     async fn schema_oracle_detects_missing_key() {
         let oracle = SchemaOracle {

@@ -695,13 +695,9 @@ pub fn validate_gguf_header(prefix: &[u8]) -> Result<u32> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     fn d(name: &str) -> &'static FormatDecl {
         lookup(name).unwrap()
     }
-
-    /// Serialize a synthetic tensor of `n` elements: (payload, scales, zeros). Bytes are arbitrary but
-    /// the LENGTHS are what the format really costs, which is what the accounting test compares against.
     fn synth(decl: &FormatDecl, n: u64) -> (Vec<u8>, Vec<u8>, Vec<u8>) {
         (
             vec![0u8; decl.payload_bytes(n) as usize],
@@ -709,9 +705,6 @@ mod tests {
             vec![0u8; decl.zero_point_bytes(n) as usize],
         )
     }
-
-    // ---- the honesty test ----
-
     #[test]
     fn accounted_bits_equal_serialized_bits() {
         for decl in FORMATS {
@@ -719,20 +712,11 @@ mod tests {
             let (p, s, z) = synth(decl, n);
             let serialized_bytes = p.len() + s.len() + z.len() + (decl.global_scale_bits as usize / 8);
             let acc = decl.accounting(n).unwrap();
-            assert_eq!(
-                acc.total_bits,
-                serialized_bytes as u64 * 8,
-                "{}: accounted {} bits vs {} bytes actually serialized",
-                decl.name,
-                acc.total_bits,
-                serialized_bytes
-            );
+            assert_eq!(acc.total_bits, serialized_bytes as u64 * 8);
             assert_eq!(acc.total_bits, decl.serialized_bits(n).unwrap());
-            // and the headline number nothing may hide behind
             assert!(acc.bits_per_weight >= decl.elem_bits as f64, "{}: bpw below element width", decl.name);
         }
     }
-
     #[test]
     fn gguf_rows_match_the_real_block_layout() {
         for decl in FORMATS.iter().filter(|f| f.container == Container::Gguf) {
@@ -755,51 +739,37 @@ mod tests {
             assert_eq!(decl.serialized_bits(bs).unwrap(), bb * 8, "{}: block bytes", decl.name);
         }
     }
-
     #[test]
     fn known_bits_per_weight_are_not_understated() {
-        // MXFP4 is 4.25 bpw, not 4: the E8M0 shared exponent is a real byte per 32 weights.
         assert_eq!(d("mxfp4").accounting(32).unwrap().bits_per_weight, 4.25);
-        // NVFP4 is 4.5 bpw plus the amortized per-tensor FP32 scale.
         let nv = d("nvfp4").accounting(1024).unwrap();
         assert_eq!(nv.bits_per_weight, 4.5 + 32.0 / 1024.0);
-        // INT4 g128 symmetric = 4.125; asymmetric adds a packed 4-bit zero point per group.
         assert_eq!(d("int4_g128_sym").accounting(1024).unwrap().bits_per_weight, 4.125);
         assert!(d("int4_g128_asym").accounting(1024).unwrap().bits_per_weight > 4.125);
-        // FP8 with a 128-wide FP32 block scale is 8.25, never 8.
         assert_eq!(d("fp8_e4m3_block128").accounting(128).unwrap().bits_per_weight, 8.25);
         assert_eq!(d("bf16").accounting(10).unwrap().bits_per_weight, 16.0);
     }
-
-    // ---- round-trip decode against hand-computed values ----
-
     #[test]
     fn f32_f16_bf16_decode_exactly() {
         let mut out = [0f32; 2];
         let p: Vec<u8> = [1.0f32, -2.5].iter().flat_map(|x| x.to_le_bytes()).collect();
         decode(d("f32"), &Block::new(&p), 2, &mut out).unwrap();
         assert_eq!(out, [1.0, -2.5]);
-        // f16: 0x3C00 = 1.0, 0xC100 = -2.5
         let p = [0x00u8, 0x3C, 0x00, 0xC1];
         decode(d("f16"), &Block::new(&p), 2, &mut out).unwrap();
         assert_eq!(out, [1.0, -2.5]);
-        // bf16: 0x3F80 = 1.0, 0xC020 = -2.5
         let p = [0x80u8, 0x3F, 0x20, 0xC0];
         decode(d("bf16"), &Block::new(&p), 2, &mut out).unwrap();
         assert_eq!(out, [1.0, -2.5]);
     }
-
     #[test]
     fn fp8_matches_ofp8_hand_values() {
-        // E4M3: 0x38 = exp 7 (bias 7) mantissa 0 -> 1.0; 0x3C -> 1.5; 0x7E = exp 15 man 6 -> 448 (max
-        // finite); 0x7F is NaN; 0x01 is the smallest subnormal 2^-9.
         assert_eq!(e4m3_to_f32(0x38), 1.0);
         assert_eq!(e4m3_to_f32(0x3C), 1.5);
         assert_eq!(e4m3_to_f32(0xB8), -1.0);
         assert_eq!(e4m3_to_f32(0x7E), 448.0);
         assert!(e4m3_to_f32(0x7F).is_nan());
         assert_eq!(e4m3_to_f32(0x01), 2.0f32.powi(-9));
-        // E5M2: 0x3C = exp 15 man 0 -> 1.0; 0x3D -> 1.25; 0x7B = exp 30 man 3 -> 57344; 0x7C is +inf.
         assert_eq!(e5m2_to_f32(0x3C), 1.0);
         assert_eq!(e5m2_to_f32(0x3D), 1.25);
         assert_eq!(e5m2_to_f32(0x7B), 57344.0);
@@ -807,27 +777,22 @@ mod tests {
         assert!(e5m2_to_f32(0x7D).is_nan());
         assert_eq!(e5m2_to_f32(0x01), 2.0f32.powi(-16));
     }
-
     #[test]
     fn fp8_block_and_tensor_scaling_round_trip() {
-        // 128 E4M3 ones with an FP32 block scale of 3.0 -> 3.0 everywhere.
         let decl = d("fp8_e4m3_block128");
         let payload = vec![0x38u8; 128];
         let scales = 3.0f32.to_le_bytes().to_vec();
         let mut out = vec![0f32; 128];
         decode(decl, &Block::new(&payload).with_scales(&scales), 128, &mut out).unwrap();
         assert!(out.iter().all(|v| *v == 3.0));
-        // per-tensor variant: same elements, scale carried on the block view.
         let decl = d("fp8_e5m2_tensor");
         let payload = vec![0x3Cu8; 4]; // 1.0
         let mut out = vec![0f32; 4];
         decode(decl, &Block::new(&payload).with_global(0.5), 4, &mut out).unwrap();
         assert_eq!(out, vec![0.5f32; 4]);
     }
-
     #[test]
     fn mxfp4_and_nvfp4_round_trip() {
-        // MXFP4: codes 2 (+1.0) and 7 (+6.0) packed low/high, E8M0 128 = 2^1.
         let mut payload = vec![0u8; 16];
         payload[0] = 0x72;
         let scales = [128u8];
@@ -835,7 +800,6 @@ mod tests {
         decode(d("mxfp4"), &Block::new(&payload).with_scales(&scales), 32, &mut out).unwrap();
         assert_eq!(out[0], 2.0);
         assert_eq!(out[1], 12.0);
-        // NVFP4: same codes, E4M3 block scale 0x38 = 1.0, per-tensor scale 4.0, block of 16.
         let mut payload = vec![0u8; 8];
         payload[0] = 0x72;
         let scales = [0x38u8];
@@ -844,10 +808,8 @@ mod tests {
         assert_eq!(out[0], 4.0);
         assert_eq!(out[1], 24.0);
     }
-
     #[test]
     fn int4_symmetric_and_asymmetric_round_trip() {
-        // group of 128, scale f16 = 2.0 (0x4000). nibbles: 8 -> 0, 9 -> +2, 0 -> -16 under symmetric.
         let mut payload = vec![0x88u8; 64];
         payload[0] = 0x98; // element0 = 8, element1 = 9
         let scales = 0x4000u16.to_le_bytes().to_vec();
@@ -855,16 +817,13 @@ mod tests {
         decode(d("int4_g128_sym"), &Block::new(&payload).with_scales(&scales), 128, &mut out).unwrap();
         assert_eq!(out[0], 0.0);
         assert_eq!(out[1], 2.0);
-        // asymmetric with zero point 9: element0 (q=8) -> -2, element1 (q=9) -> 0.
         let zeros = [0x09u8];
         decode(d("int4_g128_asym"), &Block::new(&payload).with_scales(&scales).with_zeros(&zeros), 128, &mut out).unwrap();
         assert_eq!(out[0], -2.0);
         assert_eq!(out[1], 0.0);
     }
-
     #[test]
     fn gguf_decode_delegates_to_the_one_dequantizer() {
-        // Q8_0 block: f16 d = 1.0, qs = 0..31.
         let mut payload = vec![0u8; 34];
         payload[0..2].copy_from_slice(&crate::quant::f32_to_f16_bits(1.0).to_le_bytes());
         for i in 0..32 {
@@ -875,44 +834,32 @@ mod tests {
         assert_eq!(out[5], 5.0);
         assert_eq!(out[31], 31.0);
     }
-
-    // ---- rejection: truncation, corruption, wrong dtype, unbounded reads ----
-
     #[test]
     fn truncated_and_wrong_dtype_buffers_are_rejected() {
         let mut out = vec![0f32; 32];
-        // MXFP4 row missing its last payload byte.
         let payload = vec![0u8; 15];
         let scales = [127u8];
         assert!(decode(d("mxfp4"), &Block::new(&payload).with_scales(&scales), 32, &mut out).is_err());
-        // right payload, missing scales (the classic "scales are free" bug).
         let payload = vec![0u8; 16];
         assert!(decode(d("mxfp4"), &Block::new(&payload), 32, &mut out).is_err());
-        // an MXFP4 row handed to the f16 decoder: sizes do not match, refused rather than misread.
         assert!(decode(d("f16"), &Block::new(&payload), 32, &mut out).is_err());
-        // asymmetric int4 with no zero points.
         let p = vec![0u8; 64];
         let s = vec![0u8; 2];
         let mut o = vec![0f32; 128];
         assert!(decode(d("int4_g128_asym"), &Block::new(&p).with_scales(&s), 128, &mut o).is_err());
-        // partial block.
         assert!(decode(d("mxfp4"), &Block::new(&vec![0u8; 8]).with_scales(&scales), 16, &mut out).is_err());
-        // unsupported format refuses even with perfectly sized bytes.
         let decl = d("gguf_q2_k");
         let (p, s, z) = synth(decl, 256);
         let mut o = vec![0f32; 256];
         assert!(decode(decl, &Block::new(&p).with_scales(&s).with_zeros(&z), 256, &mut o).is_err());
-        // a global scale on a format that declares none is a lie about the byte cost.
         assert!(decode(d("f32"), &Block::new(&vec![0u8; 8]).with_global(2.0), 2, &mut out).is_err());
     }
-
     #[test]
     fn decode_is_bounded() {
         let n = MAX_DECODE_ELEMS + 32;
         let mut out = vec![0f32; 1];
         assert!(decode(d("mxfp4"), &Block::new(&[]), n, &mut out).is_err());
     }
-
     #[test]
     fn row_span_reads_only_one_row() {
         let (p, s, z) = row_span(d("mxfp4"), 3, 64).unwrap();
@@ -921,26 +868,20 @@ mod tests {
         assert_eq!(z, 0..0);
         assert!(row_span(d("mxfp4"), 0, 48).is_err()); // 48 is not a multiple of 32
     }
-
     #[test]
     fn shape_validation() {
         assert_eq!(d("bf16").validate_shape(&[4, 8]).unwrap(), 32);
         assert!(d("bf16").validate_shape(&[]).is_err());
         assert!(d("bf16").validate_shape(&[4, 0]).is_err());
-        // last dim must be a whole number of blocks for bounded row decode
         assert!(d("mxfp4").validate_shape(&[8, 48]).is_err());
         assert_eq!(d("mxfp4").validate_shape(&[8, 64]).unwrap(), 512);
     }
-
-    // ---- container headers ----
-
     fn st_file(header: &str, data: usize) -> (Vec<u8>, usize) {
         let mut v = (header.len() as u64).to_le_bytes().to_vec();
         v.extend_from_slice(header.as_bytes());
         let total = v.len() + data;
         (v, total)
     }
-
     #[test]
     fn safetensors_header_validates_and_rejects_corruption() {
         let h = r#"{"a":{"dtype":"BF16","shape":[2,4],"data_offsets":[0,16]},"b":{"dtype":"F32","shape":[2],"data_offsets":[16,24]}}"#;
@@ -949,23 +890,15 @@ mod tests {
         assert_eq!(t.len(), 2);
         assert_eq!(t[0].name, "a");
         assert_eq!(t[0].end - t[0].begin, 16);
-
-        // shape/dtype disagree with the span: 2x4 BF16 is 16 bytes, not 12.
         let bad = r#"{"a":{"dtype":"BF16","shape":[2,4],"data_offsets":[0,12]}}"#;
         let (p, tot) = st_file(bad, 12);
         assert!(validate_safetensors_header(&p, tot).is_err());
-
-        // overlapping tensors
         let ov = r#"{"a":{"dtype":"F32","shape":[2],"data_offsets":[0,8]},"b":{"dtype":"F32","shape":[2],"data_offsets":[4,12]}}"#;
         let (p, tot) = st_file(ov, 12);
         assert!(validate_safetensors_header(&p, tot).is_err());
-
-        // span past the end of the file
         let past = r#"{"a":{"dtype":"F32","shape":[2],"data_offsets":[0,8]}}"#;
         let (p, tot) = st_file(past, 4);
         assert!(validate_safetensors_header(&p, tot).is_err());
-
-        // truncated header, absurd header length, non-object header, junk
         let (p, tot) = st_file(h, 24);
         assert!(validate_safetensors_header(&p[..p.len() - 5], tot).is_err());
         assert!(validate_safetensors_header(&[0xFFu8; 16], 1024).is_err());
@@ -975,14 +908,12 @@ mod tests {
         assert!(validate_safetensors_header(&p, tot).is_err());
         assert!(validate_safetensors_header(&[0u8; 4], 4).is_err());
     }
-
     #[test]
     fn unknown_safetensors_dtype_is_refused_not_guessed() {
         assert!(from_safetensors_dtype("BF16").is_ok());
         assert!(from_safetensors_dtype("F64").is_err());
         assert!(from_safetensors_dtype("F8_E4M3").is_err()); // scaling convention lives in the config
     }
-
     #[test]
     fn gguf_header_validation() {
         let mut v = b"GGUF".to_vec();
@@ -992,9 +923,6 @@ mod tests {
         assert!(validate_gguf_header(b"GGML\x03\x00\x00\x00").is_err());
         assert!(validate_gguf_header(b"GG").is_err());
     }
-
-    // ---- source identity hook ----
-
     #[test]
     fn formats_declare_into_the_one_source_record() {
         let s = d("mxfp4").declare_into(d("bf16").declare_into(SourceRecord::hf("openai/gpt-oss-120b", "b5c939de")));
@@ -1006,7 +934,6 @@ mod tests {
         assert!(rec.verify().is_ok() && rec.kind == "source_format_accounting");
         assert_eq!(acc.identity().unwrap().len(), 64);
     }
-
     #[test]
     fn registry_keys_are_unique() {
         for (i, a) in FORMATS.iter().enumerate() {

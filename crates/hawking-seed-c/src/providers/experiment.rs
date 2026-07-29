@@ -91,7 +91,6 @@ mod tests {
     use super::*;
     use super::super::source_decl::SourceRecord;
     use crate::gravity::Rate;
-
     #[test]
     fn one_runner_drives_hawking_controller_only() {
         let root = std::env::temp_dir().join(format!("nucleus-exp-{}", std::process::id()));

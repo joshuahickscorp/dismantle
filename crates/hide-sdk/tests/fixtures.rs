@@ -1,13 +1,5 @@
-//! Event fixtures round-trip through hide-protocol serde (test group d).
-//!
-//! Each canonical fixture is serialized and parsed back through the ONE schema
-//! authority, proving the fixtures are faithful protocol shapes. The committed
-//! `fixtures/events.json` golden is also regenerated-and-compared, and every
-//! entry in it reparses into its protocol type. No model, no network.
-
 use hide_protocol::item::Item;
 use hide_protocol::protocol::Notification;
-
 #[test]
 fn item_fixtures_round_trip_through_serde() {
     for (name, item) in hide_sdk::fixtures::item_fixtures() {
@@ -16,7 +8,6 @@ fn item_fixtures_round_trip_through_serde() {
         assert_eq!(back, item, "item fixture `{name}` must round-trip");
     }
 }
-
 #[test]
 fn notification_fixtures_round_trip_through_serde() {
     for (name, notification) in hide_sdk::fixtures::notification_fixtures() {
@@ -26,18 +17,11 @@ fn notification_fixtures_round_trip_through_serde() {
         assert_eq!(back, notification, "notification fixture `{name}` must round-trip");
     }
 }
-
 #[test]
 fn events_golden_is_stable_and_every_entry_reparses() {
     let generated = hide_sdk::fixtures::events_json();
     let golden = include_str!("../fixtures/events.json");
-    assert_eq!(
-        generated, golden,
-        "event fixtures drifted; regenerate with `cargo run -p hide-sdk --bin hide-sdk-codegen`"
-    );
-
-    // Every entry in the committed golden reparses into its protocol type,
-    // so the file cannot hold a shape hide-protocol would reject.
+    assert_eq!(generated, golden);
     let bundle: serde_json::Value = serde_json::from_str(golden).expect("golden is valid JSON");
     for (name, value) in bundle["items"].as_object().expect("items object") {
         serde_json::from_value::<Item>(value.clone())

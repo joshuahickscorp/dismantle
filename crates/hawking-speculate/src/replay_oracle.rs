@@ -277,9 +277,6 @@ pub fn replay_grid(corpus: &[u32], ks: &[usize], warm_start_tokens: usize) -> Re
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    /// Build a corpus of `reps` repetitions of `pattern` (a predictable stream
-    /// the n-gram draft should learn and then draft correctly).
     fn repeated(pattern: &[u32], reps: usize) -> Vec<u32> {
         let mut v = Vec::with_capacity(pattern.len() * reps);
         for _ in 0..reps {
@@ -287,132 +284,57 @@ mod tests {
         }
         v
     }
-
     #[test]
     fn repetitive_corpus_yields_positive_acceptance() {
-        // A highly repetitive corpus (the n-gram's best case): once the index
-        // has seen the cycle a few times, propose drafts the whole period and
-        // they verify against the corpus's own continuation.
         let corpus = repeated(&[10, 11, 12, 13, 14, 15, 16, 17], 200);
         let rep = replay_grid(&corpus, &[4, 7], 0);
         let best = rep.best().expect("non-empty grid");
-        assert!(
-            best.drafts_accepted > 0,
-            "repetitive corpus must accept drafts (got {})",
-            best.drafts_accepted
-        );
-        assert!(
-            best.tau > 1.05,
-            "repetitive corpus must beat plain decode (tau {})",
-            best.tau
-        );
-        assert!(
-            best.mean_accepted_len > 0.0 && best.proposal_coverage > 0.5,
-            "draft should propose on most cycles and accept (mal {}, cov {})",
-            best.mean_accepted_len,
-            best.proposal_coverage
-        );
-        // Per-token accounting must close: positions advanced == corpus scored.
+        assert!(best.drafts_accepted > 0);
+ assert!( best.tau > 1.05, "repetitive corpus must beat plain decode (tau {})", best.tau );
+        assert!(best.mean_accepted_len > 0.0 && best.proposal_coverage > 0.5);
         for r in &rep.per_k {
-            assert_eq!(
-                r.tokens_emitted as usize, rep.scored_tokens,
-                "k={} retired {} != scored {}",
-                r.k, r.tokens_emitted, rep.scored_tokens
-            );
-            assert_eq!(
-                r.drafts_accepted,
-                r.accept_hist
-                    .iter()
-                    .enumerate()
-                    .map(|(na, c)| na as u64 * c)
-                    .sum::<u64>(),
-                "accept_hist must reconstruct drafts_accepted (k={})",
-                r.k
-            );
+            assert_eq!(r.tokens_emitted as usize, rep.scored_tokens);
+            assert_eq!(r.drafts_accepted, r.accept_hist .iter() .enumerate() .map(|(na, c)| na as u64 * c) .sum::<u64>());
         }
     }
-
     #[test]
     fn non_repetitive_corpus_yields_near_zero_acceptance() {
-        // A strictly increasing stream: every (prev,cur) and cur is seen at most
-        // once before it must be predicted, so the index has no successor to
-        // propose -> ~zero acceptance, tau ~= 1 (no speedup).
         let corpus: Vec<u32> = (0u32..4000).collect();
         let rep = replay_grid(&corpus, &[4, 7], 0);
         for r in &rep.per_k {
-            assert_eq!(
-                r.drafts_accepted, 0,
-                "an all-unique stream cannot accept any draft (k={}, got {})",
-                r.k, r.drafts_accepted
-            );
-            assert!(
-                (r.tau - 1.0).abs() < 1e-3,
-                "no acceptance must give tau~=1 (k={}, tau {})",
-                r.k,
-                r.tau
-            );
-            assert!(
-                r.mean_accepted_len < 1e-6,
-                "mean accepted-run length must be ~0 (k={}, {})",
-                r.k,
-                r.mean_accepted_len
-            );
-            // Per-token accounting still closes (every cycle retires exactly 1).
+            assert_eq!(r.drafts_accepted, 0);
+ assert!( (r.tau - 1.0).abs() < 1e-3, "no acceptance must give tau~=1 (k={}, tau {})", r.k, r.tau );
+            assert!(r.mean_accepted_len < 1e-6);
             assert_eq!(r.tokens_emitted as usize, rep.scored_tokens);
         }
         assert_eq!(rep.verdict(), "NO-GO", "unique stream is below the gate");
     }
-
     #[test]
     fn warm_start_split_is_honored_and_helps() {
-        // Warm-starting the index from the corpus prefix should let the scored
-        // suffix accept immediately (the warm-start lever the oracle measured).
         let corpus = repeated(&[5, 6, 7, 8], 100);
-        // Score only the last 40 tokens; warm-start from the rest.
         let warm = corpus.len() - 40;
         let rep = replay_grid(&corpus, &[4], warm);
         assert_eq!(rep.warm_start_tokens, warm);
         assert_eq!(rep.scored_tokens, 40);
         let r = &rep.per_k[0];
-        assert!(
-            r.drafts_accepted > 0 && r.tau > 1.2,
-            "warm-started repetitive suffix should draft well (acc {}, tau {})",
-            r.drafts_accepted,
-            r.tau
-        );
+        assert!(r.drafts_accepted > 0 && r.tau > 1.2);
     }
-
     #[test]
     fn governor_shuts_off_on_unpredictable_corpus() {
-        // On a stream with no acceptance, the SpecGovernor's consecutive-miss
-        // bail must trip and it should propose on only a small fraction of
-        // cycles (it shuts the draft off) -- the governor-projection signal.
         let corpus: Vec<u32> = (0u32..2000).collect();
         let rep = replay_grid(&corpus, &[4], 0);
         let r = &rep.per_k[0];
-        assert!(
-            r.governor_propose_frac < 0.2,
-            "governor must mostly disable on an unpredictable stream (frac {})",
-            r.governor_propose_frac
-        );
-        // ...whereas on a predictable stream it stays mostly enabled.
+        assert!(r.governor_propose_frac < 0.2);
         let good = repeated(&[1, 2, 3, 4], 500);
         let gr = replay_grid(&good, &[4], 0);
-        assert!(
-            gr.per_k[0].governor_propose_frac > 0.8,
-            "governor must stay enabled on a predictable stream (frac {})",
-            gr.per_k[0].governor_propose_frac
-        );
+        assert!(gr.per_k[0].governor_propose_frac > 0.8);
     }
-
     #[test]
     fn empty_and_tiny_corpora_do_not_panic() {
         let empty: Vec<u32> = Vec::new();
         let rep = replay_grid(&empty, &[4], 0);
         assert_eq!(rep.scored_tokens, 0);
         assert_eq!(rep.best().map(|r| r.forward_cycles), Some(0));
-        // single token: bootstrap emits it "free" (0 forward cycles), no
-        // verify cycle runs.
         let one = replay_grid(&[42u32], &[4], 0);
         assert_eq!(one.per_k[0].forward_cycles, 0);
         assert_eq!(one.per_k[0].tokens_emitted, 1);

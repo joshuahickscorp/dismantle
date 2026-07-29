@@ -104,7 +104,6 @@ mod tests {
     use super::*;
     use crate::proposal::{Budget, Ctx, Telemetry};
     use crate::router::{ProposalRouter, ProposerId};
-
     fn ctx_no_hidden<'a>(tokens: &'a [u32]) -> Ctx<'a> {
         Ctx {
             tokens,
@@ -112,24 +111,13 @@ mod tests {
             hidden: None,
         }
     }
-
-    /// The scaffold is disabled by default (HAWKING_EH_PARALLEL_DRAFT not set).
     #[test]
     fn parallel_draft_scaffold_is_disabled() {
-        // This test must NOT set the env var — it verifies the default-off state.
-        // If the env var happens to be set in the test environment, skip gracefully.
         if std::env::var("HAWKING_EH_PARALLEL_DRAFT").is_ok() {
-            // Env already set externally; can't assert false without side-effects.
-            // The kill-ledger gate is still enforced by the router (see test below).
             return;
         }
-        assert!(
-            !ParallelDraftProposer::is_enabled(),
-            "ParallelDraftProposer must be disabled when HAWKING_EH_PARALLEL_DRAFT is not set"
-        );
+        assert!(!ParallelDraftProposer::is_enabled());
     }
-
-    /// propose() with budget.k=5 must return a TokenLine of exactly length 5.
     #[test]
     fn parallel_draft_emits_correct_budget() {
         let mut proposer = ParallelDraftProposer::new();
@@ -144,23 +132,14 @@ mod tests {
             other => panic!("expected TokenLine, got len={}", other.draft_len()),
         }
     }
-
-    /// requires_hidden() must return true — the router uses this to gate scheduling.
     #[test]
     fn parallel_draft_requires_hidden() {
         let proposer = ParallelDraftProposer::new();
-        assert!(
-            proposer.requires_hidden(),
-            "ParallelDraftProposer must advertise requires_hidden=true"
-        );
+ assert!( proposer.requires_hidden(), "ParallelDraftProposer must advertise requires_hidden=true" );
     }
-
-    /// The kill-ledger rule encoded structurally: enable_neural_slot refuses
-    /// any hidden slot whose oracle verdict is not "GO".
     #[test]
     fn parallel_draft_enable_refused_without_go() {
         let mut router = ProposalRouter::new(16, 0.35, 1.0);
-        // Attempting to register ParallelDraft with "NO-GO" must return Err.
         let result = router.enable_neural_slot(
             ProposerId::ParallelDraft,
             16,
@@ -169,38 +148,20 @@ mod tests {
             false, // requires_text_bridge
             "NO-GO",
         );
-        assert!(
-            result.is_err(),
-            "enable_neural_slot must refuse hidden slot with verdict=NO-GO"
-        );
+ assert!( result.is_err(), "enable_neural_slot must refuse hidden slot with verdict=NO-GO" );
     }
-
-    /// propose() caps at MAX_DRAFT_LEN even if budget.k exceeds it.
-    /// Budget::line() already enforces this, but verify the full chain.
     #[test]
     fn parallel_draft_shape_and_budget_respected() {
         let mut proposer = ParallelDraftProposer::new();
         let tokens = [0u32; 10];
         let ctx = ctx_no_hidden(&tokens);
         let tel = Telemetry::default();
-
-        // Budget::line caps at MAX_DRAFT_LEN=7; request 10 to exercise the cap.
         let budget = Budget::line(10);
-        assert!(
-            budget.k <= MAX_DRAFT_LEN,
-            "Budget::line must cap k at MAX_DRAFT_LEN={}",
-            MAX_DRAFT_LEN
-        );
-
+ assert!( budget.k <= MAX_DRAFT_LEN, "Budget::line must cap k at MAX_DRAFT_LEN={}", MAX_DRAFT_LEN );
         let proposal = proposer.propose(&ctx, budget, &tel);
         match proposal {
             Proposal::TokenLine(v) => {
-                assert!(
-                    v.len() <= MAX_DRAFT_LEN,
-                    "propose must never emit more than MAX_DRAFT_LEN={} tokens, got {}",
-                    MAX_DRAFT_LEN,
-                    v.len()
-                );
+                assert!(v.len() <= MAX_DRAFT_LEN);
             }
             other => panic!("expected TokenLine, got len={}", other.draft_len()),
         }

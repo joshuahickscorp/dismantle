@@ -305,7 +305,6 @@ impl CapsuleBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     fn identity() -> IdentityBinding {
         IdentityBinding {
             model_weights_id: "w".into(),
@@ -317,7 +316,6 @@ mod tests {
             security_domain: "d".into(),
         }
     }
-
     fn sample(payload: Vec<u8>) -> Capsule {
         CapsuleBuilder::new(CapsuleType::Recurrent, "model-x", identity())
             .runtime_version("rt-1")
@@ -327,7 +325,6 @@ mod tests {
             .context_pack_hash("ctx-hash")
             .seal(payload)
     }
-
     #[test]
     fn seal_records_length_and_digest() {
         let payload = vec![9u8; 128];
@@ -337,30 +334,22 @@ mod tests {
         assert_eq!(c.header().capsule_type, CapsuleType::Recurrent);
         assert!(c.header().parent_capsule_id.is_none());
     }
-
     #[test]
     fn to_bytes_from_bytes_is_byte_identical() {
         let c = sample((0u8..200).collect());
         let bytes = c.to_bytes();
         let back = Capsule::from_bytes(&bytes).unwrap();
         assert_eq!(c, back);
-        // Re-serializing the parsed capsule yields the same bytes.
         assert_eq!(back.to_bytes(), bytes);
     }
-
     #[test]
     fn flipped_payload_byte_is_rejected() {
         let c = sample((0u8..64).collect());
         let mut bytes = c.to_bytes();
-        // Flip the final byte, which is inside the payload.
         let last = bytes.len() - 1;
         bytes[last] ^= 0x01;
-        assert!(matches!(
-            Capsule::from_bytes(&bytes),
-            Err(CapsuleError::IntegrityMismatch)
-        ));
+ assert!(matches!( Capsule::from_bytes(&bytes), Err(CapsuleError::IntegrityMismatch) ));
     }
-
     #[test]
     fn bad_magic_and_short_stream_are_rejected() {
         assert!(matches!(
@@ -372,18 +361,13 @@ mod tests {
             Err(CapsuleError::BadMagic)
         ));
     }
-
     #[test]
     fn wrong_version_is_rejected() {
         let c = sample(vec![1, 2, 3]);
         let mut bytes = c.to_bytes();
         bytes[8] = 0xFF; // corrupt the version low byte
-        assert!(matches!(
-            Capsule::from_bytes(&bytes),
-            Err(CapsuleError::UnsupportedVersion { .. })
-        ));
+ assert!(matches!( Capsule::from_bytes(&bytes), Err(CapsuleError::UnsupportedVersion { .. }) ));
     }
-
     #[test]
     fn fork_preserves_payload_sets_ancestry_and_new_id() {
         let parent = sample((0u8..80).collect());
@@ -393,42 +377,32 @@ mod tests {
         assert_eq!(child.payload(), parent.payload());
         assert_eq!(child.header().integrity, parent.header().integrity);
         assert_eq!(child.header().bytes, parent.header().bytes);
-        // The fork is itself a valid, integrity-consistent capsule.
         let round = Capsule::from_bytes(&child.to_bytes()).unwrap();
         assert_eq!(round, child);
     }
-
     #[test]
     fn inspect_returns_metadata_without_payload() {
         let c = sample((0u8..50).collect());
         let meta = c.inspect();
         assert_eq!(meta.header, *c.header());
         assert_eq!(meta.identity, *c.identity());
-        // The inspect view records the payload length but carries no payload.
         assert_eq!(meta.header.bytes, c.payload().len() as u64);
-        // inspect_bytes over the serialized form agrees.
         let from_bytes = Capsule::inspect_bytes(&c.to_bytes()).unwrap();
         assert_eq!(from_bytes, meta);
     }
-
     #[test]
     fn release_reports_reclaimed_bytes() {
         let c = sample(vec![7u8; 256]);
         assert_eq!(c.release(), 256);
     }
-
     #[test]
     fn is_loadable_delegates_to_identity() {
         let c = sample(vec![1]);
         assert!(c.is_loadable(&identity()).is_ok());
         let mut live = identity();
         live.security_domain = "other".into();
-        assert!(matches!(
-            c.is_loadable(&live),
-            Err(IncompatibleReason::SecurityDomain { .. })
-        ));
+ assert!(matches!( c.is_loadable(&live), Err(IncompatibleReason::SecurityDomain { .. }) ));
     }
-
     #[test]
     fn sha256_sealed_capsule_roundtrips() {
         let c = CapsuleBuilder::new(CapsuleType::Kv, "m", identity())

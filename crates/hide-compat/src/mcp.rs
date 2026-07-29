@@ -197,7 +197,6 @@ fn discover_cursor_rules(layout: &Layout) -> Vec<CursorRule> {
 mod tests {
     use super::*;
     use serde_json::json;
-
     #[test]
     fn extract_pulls_top_level_and_project_servers() {
         let doc = json!({
@@ -208,7 +207,6 @@ mod tests {
         let names: Vec<&str> = servers.iter().map(|s| s.name.as_str()).collect();
         assert_eq!(names, vec!["a", "b"]);
     }
-
     #[test]
     fn whole_entry_wins_no_deep_merge() {
         let user = McpServer {
@@ -226,7 +224,6 @@ mod tests {
         servers.insert(project.name.clone(), project);
         let s = servers.get("srv").unwrap();
         assert_eq!(s.command(), Some("project-cmd"));
-        // The whole entry was replaced: the user-only `args` field is gone.
         assert!(s.entry.get("args").is_none());
     }
 }

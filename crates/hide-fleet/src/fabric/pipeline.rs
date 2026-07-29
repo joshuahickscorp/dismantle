@@ -254,9 +254,7 @@ mod tests {
         ModelSection, PlacementRequest, PlacementSimulator, WorkloadClass,
     };
     use crate::fabric::qualification::QualificationKind;
-
     const GIB: u64 = 1024 * 1024 * 1024;
-
     fn plan() -> (PlacementPlan, WorkloadClass) {
         let sections = vec![
             ModelSection::content_addressed("a", 0, 2, 2 * GIB, b"a"),
@@ -277,7 +275,6 @@ mod tests {
         };
         (PlacementSimulator::new().place(&req).unwrap(), workload)
     }
-
     #[test]
     fn pipeline_drains_all_microbatches() {
         let (p, w) = plan();
@@ -286,12 +283,10 @@ mod tests {
         assert!(st.done, "status={st:?}");
         assert_eq!(st.completed_microbatches, 4);
     }
-
     #[test]
     fn backpressure_appears_when_capacity_one() {
         let (p, w) = plan();
         let mut sched = PipelineScheduler::from_plan(&p, &w, 1);
-        // A few ticks with tight capacity should either complete or show backpressure at some point.
         let mut saw_bp = false;
         for _ in 0..8 {
             let st = sched.tick();
@@ -303,8 +298,6 @@ mod tests {
                 break;
             }
         }
-        // With capacity 1 and 2 stages, backpressure is common but not mandatory
-        // if drain is fast; accept either progress or explicit BP.
         let st = sched.status();
         assert!(saw_bp || st.completed_microbatches > 0 || st.in_flight > 0);
     }

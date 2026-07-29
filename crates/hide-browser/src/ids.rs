@@ -120,7 +120,6 @@ impl ArtifactRef {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn ids_serialize_transparently_as_bare_strings() {
         let id = DomNodeId::from("n-42");
@@ -128,7 +127,6 @@ mod tests {
         let back: DomNodeId = serde_json::from_str("\"n-42\"").unwrap();
         assert_eq!(back, id);
     }
-
     #[test]
     fn content_addressed_ref_is_deterministic_and_holds_no_bytes() {
         let bytes = b"fake-png-bytes";
@@ -137,7 +135,6 @@ mod tests {
         assert_eq!(a, b, "same bytes -> same reference");
         assert!(a.is_content_addressed());
         assert_eq!(a.size_bytes, Some(bytes.len() as u64));
-        // The serialized reference names the blob but never carries its bytes.
         let json = serde_json::to_string(&a).unwrap();
         assert!(json.contains("blake3:"));
         assert!(!json.contains("fake-png-bytes"));

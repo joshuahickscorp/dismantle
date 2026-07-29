@@ -1,0 +1,72 @@
+{
+  "schema": "hawking.analysis_report.v1",
+  "graph": "HAWKING_SEMANTIC_GRAPH.jsonl",
+  "graph_summary": {
+    "nodes": 24762,
+    "edges": 404665,
+    "node_types": {
+      "adapter": 10,
+      "artifact": 8,
+      "cli_command": 252,
+      "crate": 41,
+      "directory": 167,
+      "event": 132,
+      "feature_flag": 187,
+      "file": 1452,
+      "function": 15168,
+      "operator": 41,
+      "repository": 1,
+      "schema": 202,
+      "state": 9,
+      "test": 4239,
+      "tool": 80,
+      "type": 2773
+    },
+    "edge_types": {
+      "calls": 84976,
+      "co_changes": 12274,
+      "consumes": 7,
+      "contains": 25086,
+      "deserializes": 157,
+      "emits": 71,
+      "feature_gates": 3,
+      "implements": 201,
+      "imports": 291,
+      "reads_state": 405,
+      "serializes": 158,
+      "tests": 280708,
+      "writes_state": 328
+    }
+  },
+  "timings_seconds": {
+    "load": 1.924592625000514,
+    "scc": 0.24328254093416035,
+    "communities": 0.39464670803863555,
+    "betweenness": 6.309600249980576,
+    "dominators": 0.08451475005131215,
+    "clones": 0.049435292021371424,
+    "cochange": 0.09335454204119742,
+    "fanin": 0.2664611659711227,
+    "behaviour_coverage": 0.13682700006756932,
+    "total_analyses": 7.578122249105945,
+    "wall": 7.6384582499740645
+  },
+  "budget_seconds": 1200,
+  "within_budget": true,
+  "analysis_summaries": {
+    "scc": "Found 10 file-level SCC(s) size>=2 and 1 crate-level SCC(s) size>=2 (largest file SCC size=464, loc=222145). These mutually dependent groups are merge-to-one-authority candidates.",
+    "communities": "Louvain (+refinement) found 178 communities on 1362 files / 21112 edges. 14 communities span >=5 directories (layout/folder mismatch signal). Largest community: 225 files, 114148 LOC.",
+    "betweenness": "Approximate betweenness with k=64 samples on 1362 file nodes. Flagged 1 broker-like nodes (high BC, low LOC, low complexity). 31 articulation points in largest component. 15 community-pair cut sets enumerated.",
+    "dominators": "Dominator trees from 0 entry points (252 candidates: CLI + HTTP adapters). 0 nodes lie on control paths of >=2 entries \u2014 state-machine unification candidates. 0 entry-point pairs share >=2 dominated nodes.",
+    "clones": "Structural clone analysis (signature_match only; text_match not admissible) found 393 families with >= 2 members. Largest family: 23 members, 331 LOC.",
+    "cochange": "Found 0 file pairs with co_changes weight>=5.0 but no direct imports/calls coupling \u2014 layout-split module candidates. Top weight=0.",
+    "fanin": "Found 122 authorities with >=4 thin adapters (body LOC<=25). Largest ring: 478 adapters, 478 adapter LOC \u2014 generate-bindings candidates.",
+    "behaviour_coverage": "Behaviour coverage: 234 contracts, 21473 reachable nodes. Code reachable from no behaviour contract: 22634 LOC in 139 files (deletion/replacement *candidates* \u2014 still require behaviour gates). By subsystem: {'shared': 16845, 'hawking': 3531, 'hide': 1733, 'laboratory': 525}."
+  },
+  "n_candidates": 91,
+  "planted_verification": null,
+  "outputs": {
+    "cluster_map": "HAWKING_CLUSTER_MAP.json",
+    "candidates": "HAWKING_RECOMPOSITION_CANDIDATES.json"
+  }
+}

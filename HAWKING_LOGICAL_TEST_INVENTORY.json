@@ -882,7 +882,7 @@
     {
       "cases": 7,
       "file": "crates/hawking-adapters/src/registry.rs",
-      "ignored": 1,
+      "ignored": 0,
       "lang": "rust"
     },
     {
@@ -1216,7 +1216,7 @@
     {
       "cases": 5,
       "file": "crates/hawking-serve/tests/hawking_native_endpoint.rs",
-      "ignored": 1,
+      "ignored": 0,
       "lang": "rust"
     },
     {
@@ -3283,9 +3283,9 @@
       "skipped_markers": 0
     }
   ],
-  "commit": "3469c661ad555d6a96961a90a112cefcd77c3264",
+  "commit": "0cfcf53f9cdf87c6017a477629ab5778fa826dea",
   "files": 535,
-  "ignored_rust": 54,
+  "ignored_rust": 52,
   "logical_cases": 3925,
   "parametrised_expansion": 471,
   "schema": "hawking.logical_test_inventory.v1",

@@ -32,6 +32,8 @@ with only high-confidence edges settles it:
 edge set                          nodes    edges    SCCs>=2   largest
 all calls + imports               14,217   85,267        75       411
 confidence >= 0.8 only            12,063   24,269         4         7
+
+(re-measured on the repaired graph below: 79 and 8 components, same largest of 7)
 ```
 
 Sixty thousand of the 85,000 call edges — 71% — are the ambiguous kind. Drop them and the
@@ -57,7 +59,8 @@ behaviour coverage, none of which uses the ambiguous call edges as evidence of a
 
 ### Communities — the folders are wrong, and by how much
 
-178 communities over 1,362 files. Sixteen span five or more directories.
+157 communities over 1,386 files on the repaired graph. Sixteen span five or more
+directories.
 
 | community | files | LOC | dominant subsystem | dominant directory | directories spanned |
 |---|---:|---:|---|---|---:|
@@ -107,17 +110,25 @@ Joining the 210-behaviour constitution to the graph through `tools/graph/behavio
 under a deliberately generous depth-6 closure over `contains` and `calls`:
 
 ```
-reachable from at least one behaviour contract     21,473 nodes
-reachable from none                                22,634 LOC across 139 files
-  shared        16,845
+reachable from at least one behaviour contract     19,123 nodes
+reachable from none                                54,590 LOC across 404 files
+  laboratory    27,749
+  shared        21,577
   hawking        3,531
   hide           1,733
-  laboratory       525
 ```
 
 The closure is generous on purpose — a behaviour naming `crates/hawking/src/main.rs` drags
 in most of the runtime — so this **understates** the deletion candidates and the direction of
-the error favours keeping code. The `shared` bucket is mostly root-level markdown.
+the error favours keeping code. The `shared` bucket is mostly root-level markdown. Twenty-six
+of the 210 behaviours bind to no graph node at all, which is its own finding: those name
+paths the graph does not have, and each one is either a stale path in the constitution or a
+gap in the extractor.
+
+The number moved from 22,634 to 54,590 when the imports repair landed, which is worth
+stating plainly: **the first measurement was wrong in the direction of comfort.** With only
+291 import edges the closure could not reach much, so more code looked covered than is. The
+laboratory bucket in particular went from 525 to 27,749.
 
 ---
 
@@ -128,8 +139,8 @@ artifacts; the clone families are tiny; the broker count is one; the fan-in ring
 hundreds of lines, not tens of thousands. Two independent instruments now agree that
 duplicate logic is not where this tree's mass is.
 
-**So the 183,505 lines between here and 250,000 cannot come from deduplication, and they
-cannot come from deletion of uncovered code — there is only 22,634 LOC of that.** They have
+**So the 183,505 lines between here and 250,000 cannot come from deduplication, and only
+54,590 of them can come from deleting code no behaviour reaches.** They have
 to come from re-expressing behaviour that is genuinely needed, in less code. That is exactly
 the clean-room bet the campaign makes, and the graph's contribution is to have ruled out
 every cheaper alternative before the building started.
@@ -140,17 +151,39 @@ genuine component is seven nodes. The boundaries are free to move.
 
 ---
 
-## Instrument defects, recorded
+## Instrument defects, three repaired and one outstanding
 
-Three analyses produced nothing on the first run and are being repaired in a separate lane:
+Three analyses produced nothing on the first run. A repair lane fixed all three; the numbers
+above are from the repaired graph (25,069 nodes, 412,852 edges, byte-reproducible).
 
-- **Dominators** resolved 0 entry points from 252 `cli_command` candidates — the command
-  nodes are never linked by a `calls` edge to their handlers, so there is nothing to walk.
-- **Co-change** found 0 pairs because `weight` is unpopulated and the analysis threshold of
-  5.0 is above the schema's own `count / min(commits_a, commits_b)` ceiling of 1.0.
-- **Imports** are under-extracted: 291 edges against a measured ground truth of 4,472 Rust
-  `use` statements and 487 in-repo-resolvable Python imports.
+| defect | before | after |
+|---|---|---|
+| `imports` edges | 291 | **5,040** — Rust file-level 4,436 of ~4,472 `use` statements, Python 520 of 551 resolvable |
+| dominator entry points | 0 of 252 | **253 of 268**; 80 nodes lie on the control path of two or more entries |
+| co-change pairs above threshold | 0 | **59**; top pair `gravity_pq.metal` ↔ `gravity_glm_resident.rs`, 23 shared commits |
 
-The confidence-weighting defect found above is added to that lane's scope: SCC and any other
-cycle-derived analysis must exclude `confidence < 0.8` edges, or say in its summary that it
-did not.
+The co-change defect turned out to be in the analysis, not the schema: `weight` is defined as
+`count / min(commits_a, commits_b)` and is therefore bounded by 1.0, while the analysis
+thresholded at 5.0 — a bar nothing could clear. The threshold is now on raw co-commit count.
+
+The fan-in "478 adapters at 1 LOC each" ring was, as suspected, brace-match stubs rather than
+real forwarders. With `loc <= 1` stubs excluded the picture is 208 rings, largest 63 adapters
+at 445 LOC — about 7 lines each, which is what a real thin adapter looks like.
+
+**Still outstanding: cycle-derived analyses do not weight by confidence.** `analyze_scc` on
+the repaired graph still reports a 473-file, 223,790-LOC component, and it is still an
+artifact for the same reason as before. Re-measured on the repaired graph, now including
+4,435 high-confidence Rust import edges:
+
+```
+edge set                       edges     SCCs>=2   largest
+all calls + imports           91,574          79       411
+confidence >= 0.8 only        29,594           8         7
+```
+
+The conclusion is unchanged and now rests on better data: 61,645 of the call edges are the
+ambiguous `confidence: 0.4` kind, and without them the tree's real strongly connected
+structure is eight components whose largest is seven nodes.
+
+Until `analyze_scc` filters by confidence, **its output must not be read as evidence of a
+cycle**, and any candidate derived from it is withdrawn on sight.

@@ -89,6 +89,13 @@
       "skipped_markers": 0
     },
     {
+      "cases": 29,
+      "file": "tools/condense/tests/test_campaign_engine.py",
+      "lang": "python",
+      "parametrised_cases": 0,
+      "skipped_markers": 0
+    },
+    {
       "cases": 28,
       "file": "tools/condense/tests/test_glm52_activation_aware_pack_v2.py",
       "lang": "python",
@@ -1560,6 +1567,13 @@
     {
       "cases": 5,
       "file": "tools/condense/test_activation_aware_roundtrip.py",
+      "lang": "python",
+      "parametrised_cases": 0,
+      "skipped_markers": 0
+    },
+    {
+      "cases": 5,
+      "file": "tools/condense/tests/test_activation_aware_roundtrip.py",
       "lang": "python",
       "parametrised_cases": 0,
       "skipped_markers": 0
@@ -3584,10 +3598,10 @@
       "skipped_markers": 0
     }
   ],
-  "commit": "dee10fde8f42898ca8bd70758a9d5ece2451c342",
-  "files": 578,
+  "commit": "3aa9e5b303cc074cf9458d7004eab0703a79335a",
+  "files": 580,
   "ignored_rust": 54,
-  "logical_cases": 3891,
+  "logical_cases": 3925,
   "parametrised_expansion": 693,
   "schema": "hawking.logical_test_inventory.v1",
   "skipped_python_markers": 16

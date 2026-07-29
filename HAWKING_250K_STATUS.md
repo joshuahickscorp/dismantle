@@ -78,9 +78,50 @@ Two A1 hypotheses were tested and are resolved, both against A1:
 | lane | scope | state |
 |---|---|---|
 | `s2-lab` | Core C, 81,368 LOC of laboratory | building `lab/`, cutover in progress |
-| `s3-hide` | Core D agent core, 83,430 LOC | deleting the mechanically-chunked host surface |
+| `s3-hide` | Core D agent core, 83,430 LOC | **landed at 73,367**, one gate open |
+| `s3b-tests` | the 87 assertions S3 dropped, plus the >1500 regression | running |
 | `recomp-bridge2` | Core E, the 5,376 an independent review proved available | running |
 | `recomp-p5-tests-docs` | docs and condense tests | running, predates this campaign |
+
+### S3 result, in full
+
+Scope 83,430 -> **73,367**, a real elimination of 10,063 with `relocated` and `facade` both
+zero. The HIDE subsystem falls 107,129 -> 91,661. It did **not** reach its 52,500 target and
+stopped with a measured gap of 20,867, which is the correct behaviour: the lane eliminated
+unprotected mass and restructured the numbered `host_ops_0..5` chunking into semantic
+`host_cmds/` modules, but did not complete the clean-room re-expression of the surviving
+73k. `control/S3-report.md` carries the irreducible list, naming for every surviving block
+the constitution behaviour that forbids deleting it. That list is the deliverable that
+matters more than the number.
+
+Gates after the merge: `cargo build --workspace` green, black-box 86/86, capability
+inventory clean. **Two gates open:**
+
+- the test inventory lost 162 logical assertions. 82 went with modules that were genuinely
+  deleted; **87 came from `host_tests_0..3` and tested a host surface that still exists**,
+  so they are owed a re-expression rather than a deletion. Lane `s3b-tests` is doing it.
+- `files_over_1500_lines` is 27 against a campaign start of 26, from
+  `crates/hawking-context/src/memory_classes.rs` at 2,533 lines. Same lane splits it.
+
+### How much the black-box gate actually proves
+
+Worth stating plainly, because "86/86 green" reads stronger than it is. Of 210 behaviours,
+86 are runnable today; the rest name an exact missing fixture. Coverage is uneven:
+
+```
+domain          runnable / total        domain          runnable / total
+HIDE_SESSION        12 / 21             GRAVITY              9 / 17
+CONTEXT_OS           8 / 18             SOURCE               8 / 11
+AGENTS               8 / 12             ARTIFACT             5 / 15
+SECURITY             8 / 20             GENERATION           5 / 20
+BRIDGE               5 /  7             SERVER               5 / 22
+FABRIC               6 /  8             CLI                  4 / 23
+ACCEL                3 / 16
+```
+
+So for a HIDE change, roughly half of the relevant behaviours are actually exercised. That
+is why the inventory gate matters independently, and it is why it caught what the black-box
+gate did not.
 
 Not started, deliberately: Core B device and runtime, which holds the protected performance
 and numerical contracts and is where a wrong boundary is expensive rather than merely

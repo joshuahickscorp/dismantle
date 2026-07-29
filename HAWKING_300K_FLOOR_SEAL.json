@@ -1,0 +1,47 @@
+{
+  "schema": "hawking.300k.floor_seal.v1",
+  "sealed_at": "2026-07-29",
+  "endpoint": "HAWKING_300K_SEMANTIC_DENSITY_ARC — target not reachable, higher floor proven",
+  "target": 300000,
+  "sealed_floor": 437199,
+  "arc_start": 602669,
+  "eliminated": 165470,
+  "relocated": 0,
+  "pct_reduced": 27.5,
+  "ladder": [
+    {"rung": 550000, "achieved": 536532, "tag": "arc-rung-550k-green", "status": "CLEARED"},
+    {"rung": 475000, "achieved": 458272, "tag": "arc-rung-475k-green", "status": "CLEARED"},
+    {"rung": 400000, "achieved": 437199, "tag": "arc-437k-green", "status": "NOT REACHED"},
+    {"rung": 350000, "status": "NOT ATTEMPTED — no mechanism remains"},
+    {"rung": 325000, "status": "NOT ATTEMPTED"},
+    {"rung": 300000, "status": "NOT REACHABLE"},
+    {"rung": 275000, "status": "NOT REACHABLE"},
+    {"rung": 250000, "status": "NOT REACHABLE"}
+  ],
+  "architectures_attempted": [
+    {"name": "Track B — donor reconstruction", "mechanism": "rebuild on the 295,213 checkpoint and forward-port capability",
+     "verdict": "REJECTED", "evidence": "forward-port arithmetic lands ~458,113; all six target authorities absent from donor AND head; growth identity proven at 307,455"},
+    {"name": "Attempt 1 — condense in place", "mechanism": "remove what is removable, subsystem by subsystem",
+     "verdict": "PARTIAL THEN FLOOR", "evidence": "602,669 to 437,199 across seven attacked subsystems; three paid in full, four returned single-digit percentages of target with named refusals"},
+    {"name": "ARCH2 — generate the surfaces", "mechanism": "replace handwritten families with output from one authority (C4+C5)",
+     "verdict": "CANNOT DELIVER", "evidence": "handwritten mirror surface measured at 98 lines against a 25,000 target; the generative architecture is already absorbed"},
+    {"name": "ARCH3 — one language per role", "mechanism": "collapse dual Rust/Python production (C7)",
+     "verdict": "CANNOT DELIVER", "evidence": "6,350 lines of dual presence, ~0 of it dual production; the PQ oracle is already 33 lines, fit/pack and manifest validation have no Rust twin"}
+  ],
+  "irreducible_subsystem_budget": {
+    "at_floor": [
+      {"subsystem": "hawking-core src + context + speculate", "loc": 94428, "target": 78000, "delivered": 819},
+      {"subsystem": "HIDE 20 crates + app", "loc": 115089, "target": 95000, "delivered": 2536},
+      {"subsystem": "shaders + seed-c", "loc": 25002, "target": 18000, "delivered": 131},
+      {"subsystem": "embedded + crate tests", "loc": 42501, "target": 40000, "delivered": 10412}
+    ],
+    "paid_in_full": [
+      {"subsystem": "condense campaign controllers", "delivered": 66433},
+      {"subsystem": "laboratory trees", "delivered": 24880},
+      {"subsystem": "condense tests", "delivered": 10529}
+    ]
+  },
+  "why_300k_is_not_reachable": "Rust is 245,682 of the 437,199 tree and measured at roughly 1% reclaimable across two independent adversarial attempts. HIDE is 115,089 and returned 8% of target with the remainder named as live product. Reaching 300,000 would require eliminating 137,199 more lines from subsystems that have each been attacked and have each returned their reasons. The only remaining lever is relocation -- moving HIDE to a sibling repository -- which this campaign explicitly gives zero credit.",
+  "hide_split": "NOT PERFORMED. The campaign permits the split only after a green monorepo at or below 300,000. That condition was not met, so the split was not attempted and would earn no credit if it had been.",
+  "history_publication": "NOT PERFORMED. The rewritten history remains local. docs/COMMIT_MAP_20260728.txt (1,819 old-to-new pairs), docs/HISTORY_REWRITE_20260728.md and both backup bundles under ~/Downloads/hawking-backup/ are preserved. No force-push."
+}

@@ -1,0 +1,5 @@
+{
+  "behaviours": [],
+  "note": "Stub emitted by G1 extractor (tools/graph). A separate lane populates behaviours from the behaviour constitution.",
+  "schema": "hawking.behaviour_to_code_map.v1"
+}

@@ -14,26 +14,11 @@ if str(CONDENSE) not in sys.path:
 
 import glm52_evidence_auth as evidence  # noqa: E402
 
-
 CAMPAIGN = "glm52-evidence-auth-test"
 REVISION = "b4734de4facf877f85769a911abafc5283eab3d9"
 KEY = bytes(range(32))
 
-
-class FakeKeychain:
-    def __init__(self, values=None, *, discard_writes=False):
-        self.values = dict(values or {})
-        self.discard_writes = discard_writes
-        self.set_calls = []
-
-    def get(self, service):
-        return self.values.get(service)
-
-    def set(self, service, value):
-        self.set_calls.append((service, value))
-        if not self.discard_writes:
-            self.values[service] = value
-
+from tools.condense.tests._glm52_fakes import FakeKeychain  # noqa: E402
 
 def test_configure_is_idempotent_secret_free_and_loads_bound_auth() -> None:
     keychain = FakeKeychain()
@@ -57,7 +42,6 @@ def test_configure_is_idempotent_secret_free_and_loads_bound_auth() -> None:
     assert auth.source_revision == REVISION
     assert "redacted" in repr(auth)
 
-
 @pytest.mark.parametrize("encoded", ("invalid!!!", "", base64.urlsafe_b64encode(b"x").decode()))
 def test_malformed_keychain_values_fail_closed(encoded: str) -> None:
     keychain = FakeKeychain({evidence.EVIDENCE_HMAC_SERVICE: encoded})
@@ -69,12 +53,10 @@ def test_malformed_keychain_values_fail_closed(encoded: str) -> None:
             source_revision=REVISION,
         )
 
-
 def test_configure_requires_verified_keychain_persistence() -> None:
     keychain = FakeKeychain(discard_writes=True)
     with pytest.raises(evidence.EvidenceSecurityError, match="post-write"):
         evidence.configure_hmac_key(keychain, random_bytes=lambda size: KEY)
-
 
 def test_macos_keychain_write_keeps_secret_out_of_subprocesses() -> None:
     subprocess_calls = []
@@ -101,7 +83,6 @@ def test_macos_keychain_write_keeps_secret_out_of_subprocesses() -> None:
         encoded,
     )]
 
-
 def test_macos_keychain_read_keeps_secret_out_of_subprocesses() -> None:
     subprocess_calls = []
     native_calls = []
@@ -126,7 +107,6 @@ def test_macos_keychain_read_keeps_secret_out_of_subprocesses() -> None:
         evidence.EVIDENCE_HMAC_SERVICE,
         evidence.KEYCHAIN_ACCOUNT,
     )]
-
 
 def test_wrong_service_is_rejected_before_keychain_access() -> None:
     provider = evidence.MacOSKeychain(

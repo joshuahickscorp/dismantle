@@ -1,11 +1,5 @@
 #!/usr/bin/env python3.12
-"""Table-driven tests for the single campaign/experiment engine (lane A1).
-
-Logical cases formerly scattered across per-campaign controller suites are
-expressed here against ExperimentSpec + runtime, lease, checkpoint, and receipt
-surfaces. Campaign-specific algorithmic tests that cannot be expressed as a
-spec matrix remain in their original files (and may import archived bodies).
-"""
+"""Logical cases formerly scattered across per-campaign controller suites are"""
 from __future__ import annotations
 
 import json
@@ -37,13 +31,8 @@ from engine.spec import (  # noqa: E402
 )
 from engine.state_machine import IllegalTransition, Phase, StateMachine  # noqa: E402
 
-# ---------------------------------------------------------------------------
-# Spec matrix — every retired/live campaign loads and validates
-# ---------------------------------------------------------------------------
-
 SPEC_CASES = sorted(SPECS_DIR.glob("*.json"))
 assert SPEC_CASES, "engine/specs must contain campaign JSON specs"
-
 
 @pytest.mark.parametrize("spec_path", SPEC_CASES, ids=lambda p: p.stem)
 def test_spec_loads_and_validates(spec_path: Path) -> None:
@@ -63,7 +52,6 @@ def test_spec_loads_and_validates(spec_path: Path) -> None:
     for cond in spec.reopen:
         assert cond.id
         assert cond.description
-
 
 @pytest.mark.parametrize("spec_path", SPEC_CASES, ids=lambda p: p.stem)
 def test_spec_dry_run_completes(spec_path: Path, tmp_path: Path) -> None:
@@ -85,7 +73,6 @@ def test_spec_dry_run_completes(spec_path: Path, tmp_path: Path) -> None:
     assert result2.status == "PASS"
     assert set(result.completed_steps) <= set(result2.completed_steps)
 
-
 def test_load_all_specs_covers_historical_families() -> None:
     specs = load_all_specs()
     families = {s.family for s in specs}
@@ -100,42 +87,20 @@ def test_load_all_specs_covers_historical_families() -> None:
     ):
         assert needed in families, f"missing family {needed}"
 
+def _reject_spec(doc: dict) -> None:
+    with pytest.raises(SpecError):
+        validate_spec(doc)
 
 def test_invalid_schema_rejected() -> None:
-    with pytest.raises(SpecError):
-        validate_spec({"schema": "nope", "campaign_id": "x", "phases": ["precheck"]})
-
+    _reject_spec({"schema": "nope", "campaign_id": "x", "phases": ["precheck"]})
 
 def test_unknown_phase_rejected() -> None:
-    with pytest.raises(SpecError):
-        validate_spec(
-            {
-                "schema": SCHEMA,
-                "campaign_id": "x",
-                "phases": ["precheck"],
-                "steps": [{"id": "a", "phase": "teleport"}],
-            }
-        )
-
+    _reject_spec({"schema": SCHEMA, "campaign_id": "x", "phases": ["precheck"],
+                  "steps": [{"id": "a", "phase": "teleport"}]})
 
 def test_duplicate_step_id_rejected() -> None:
-    with pytest.raises(SpecError):
-        validate_spec(
-            {
-                "schema": SCHEMA,
-                "campaign_id": "x",
-                "phases": ["precheck"],
-                "steps": [
-                    {"id": "a", "phase": "precheck"},
-                    {"id": "a", "phase": "precheck"},
-                ],
-            }
-        )
-
-
-# ---------------------------------------------------------------------------
-# State machine — one FSM, illegal transitions, one-use claims
-# ---------------------------------------------------------------------------
+    _reject_spec({"schema": SCHEMA, "campaign_id": "x", "phases": ["precheck"],
+                  "steps": [{"id": "a", "phase": "precheck"}, {"id": "a", "phase": "precheck"}]})
 
 PHASE_FORWARD = [
     ("idle", "precheck"),
@@ -147,7 +112,6 @@ PHASE_FORWARD = [
     ("report", "complete"),
 ]
 
-
 @pytest.mark.parametrize("source,target", PHASE_FORWARD)
 def test_forward_transition(source: str, target: str) -> None:
     sm = StateMachine(campaign_id="t")
@@ -155,19 +119,16 @@ def test_forward_transition(source: str, target: str) -> None:
     sm.transition(target, claim_id=f"{source}->{target}")
     assert sm.phase == Phase(target)
 
-
 def test_illegal_transition_raises() -> None:
     sm = StateMachine(campaign_id="t")
     with pytest.raises(IllegalTransition):
         sm.transition(Phase.SEAL, claim_id="bad")
-
 
 def test_one_use_claim() -> None:
     sm = StateMachine(campaign_id="t")
     sm.transition(Phase.PRECHECK, claim_id="once")
     with pytest.raises(IllegalTransition):
         sm.transition(Phase.MEASURE, claim_id="once")
-
 
 def test_fault_and_resume() -> None:
     sm = StateMachine(campaign_id="t")
@@ -177,7 +138,6 @@ def test_fault_and_resume() -> None:
     sm.transition(Phase.RESUME, claim_id="r")
     sm.transition(Phase.PRECHECK, claim_id="p2")
 
-
 def test_snapshot_roundtrip() -> None:
     sm = StateMachine(campaign_id="t")
     sm.transition(Phase.PRECHECK, claim_id="p")
@@ -186,12 +146,6 @@ def test_snapshot_roundtrip() -> None:
     assert restored.phase == Phase.PRECHECK
     assert restored.is_step_done("step-a")
     assert "p" in restored.claims
-
-
-# ---------------------------------------------------------------------------
-# Lease — exclusive, process-local double-hold refused, release frees
-# ---------------------------------------------------------------------------
-
 
 def test_lease_exclusive(tmp_path: Path) -> None:
     path = tmp_path / "c.lease"
@@ -206,7 +160,6 @@ def test_lease_exclusive(tmp_path: Path) -> None:
     b.acquire()
     b.release()
 
-
 def test_lease_process_double_hold(tmp_path: Path) -> None:
     path = tmp_path / "c.lease"
     a = SingletonLease(path, campaign_id="c", owner="a")
@@ -218,7 +171,6 @@ def test_lease_process_double_hold(tmp_path: Path) -> None:
     finally:
         a.release()
 
-
 def test_lease_context_manager(tmp_path: Path) -> None:
     path = tmp_path / "c.lease"
     with SingletonLease(path, campaign_id="c") as lease:
@@ -228,17 +180,10 @@ def test_lease_context_manager(tmp_path: Path) -> None:
         assert owner["campaign_id"] == "c"
     assert not lease.held
 
-
 def test_assert_held(tmp_path: Path) -> None:
     lease = SingletonLease(tmp_path / "c.lease", campaign_id="c")
     with pytest.raises(LeaseError):
         lease.assert_held()
-
-
-# ---------------------------------------------------------------------------
-# Checkpoint / hash chain — crash resume, seal, split-brain refuse
-# ---------------------------------------------------------------------------
-
 
 def test_hash_chain_append_and_verify(tmp_path: Path) -> None:
     log = HashChainLog(tmp_path / "events.jsonl")
@@ -249,7 +194,6 @@ def test_hash_chain_append_and_verify(tmp_path: Path) -> None:
     log2.load()
     assert log2.count == 2
     assert log2.head == e2["event_sha256"]
-
 
 def test_checkpoint_save_load_resume(tmp_path: Path) -> None:
     store = CheckpointStore(tmp_path, campaign_id="c")
@@ -262,7 +206,6 @@ def test_checkpoint_save_load_resume(tmp_path: Path) -> None:
     state = store.resume_state()
     assert state["completed_steps"] == ["a"]
 
-
 def test_checkpoint_tamper_rejected(tmp_path: Path) -> None:
     store = CheckpointStore(tmp_path, campaign_id="c")
     store.save({"phase": "idle", "completed_steps": [], "claims": []})
@@ -273,18 +216,11 @@ def test_checkpoint_tamper_rejected(tmp_path: Path) -> None:
     with pytest.raises(RuntimeError, match="seal mismatch"):
         store.load()
 
-
 def test_resume_without_checkpoint(tmp_path: Path) -> None:
     store = CheckpointStore(tmp_path, campaign_id="c")
     state = store.resume_state()
     assert state["phase"] == "idle"
     assert state["completed_steps"] == []
-
-
-# ---------------------------------------------------------------------------
-# Governor
-# ---------------------------------------------------------------------------
-
 
 def test_governor_passes_zero_floor(tmp_path: Path) -> None:
     gov = ResourceGovernor(ResourceLimits(min_free_disk_bytes=0), root=tmp_path)
@@ -292,7 +228,6 @@ def test_governor_passes_zero_floor(tmp_path: Path) -> None:
     assert ok
     assert not failures
     assert sample.free_disk_bytes >= 0
-
 
 def test_governor_refuses_impossible_floor(tmp_path: Path) -> None:
     gov = ResourceGovernor(
@@ -302,12 +237,6 @@ def test_governor_refuses_impossible_floor(tmp_path: Path) -> None:
     ok, _, failures = gov.allow()
     assert not ok
     assert failures
-
-
-# ---------------------------------------------------------------------------
-# Scheduler — resume skips completed idempotent work
-# ---------------------------------------------------------------------------
-
 
 def test_scheduler_skips_completed() -> None:
     spec = load_spec(
@@ -327,19 +256,12 @@ def test_scheduler_skips_completed() -> None:
     assert nxt is not None
     assert nxt.id == "b"
 
-
 def test_scheduler_plan_order() -> None:
     spec = load_spec_path(SPECS_DIR / "glm52.json")
     sched = Scheduler(spec)
     plan = sched.plan()
     assert plan
     assert plan[0].phase == "precheck"
-
-
-# ---------------------------------------------------------------------------
-# Receipts
-# ---------------------------------------------------------------------------
-
 
 def test_receipt_seal_verify_roundtrip(tmp_path: Path) -> None:
     store = ReceiptStore(tmp_path)
@@ -356,18 +278,11 @@ def test_receipt_seal_verify_roundtrip(tmp_path: Path) -> None:
     verify_receipt(loaded)
     assert loaded["campaign_id"] == "c"
 
-
 def test_receipt_tamper_rejected() -> None:
     sealed = seal_receipt({"schema": "t", "campaign_id": "c", "status": "x", "phase": "y", "summary": {}})
     sealed["status"] = "mutated"
     with pytest.raises(ValueError, match="seal mismatch"):
         verify_receipt(sealed)
-
-
-# ---------------------------------------------------------------------------
-# Runtime integration — fences closed, fault path, custom handler
-# ---------------------------------------------------------------------------
-
 
 def test_runtime_fence_precheck(tmp_path: Path) -> None:
     spec = load_spec(
@@ -386,7 +301,6 @@ def test_runtime_fence_precheck(tmp_path: Path) -> None:
     with CampaignRuntime(spec, work_dir=tmp_path, acquire_lease=True) as rt:
         result = rt.run()
     assert result.status == "PASS"
-
 
 def test_runtime_fault_on_handler_error(tmp_path: Path) -> None:
     def boom(runtime, params):
@@ -408,7 +322,6 @@ def test_runtime_fault_on_handler_error(tmp_path: Path) -> None:
     assert result.status == "FAULT"
     assert result.phase == "fault"
 
-
 def test_runtime_status_surface(tmp_path: Path) -> None:
     spec = load_spec_path(SPECS_DIR / "deepseek_v4.json")
     with CampaignRuntime(spec, work_dir=tmp_path, acquire_lease=True) as rt:
@@ -417,13 +330,7 @@ def test_runtime_status_surface(tmp_path: Path) -> None:
     assert status["reproduction"]
     assert status["reopen"]
 
-
-# ---------------------------------------------------------------------------
-# Lifecycle verb matrix — one implementation covers all phase names
-# ---------------------------------------------------------------------------
-
 LIFECYCLE_VERBS = [p.value for p in CampaignPhase]
-
 
 @pytest.mark.parametrize("verb", LIFECYCLE_VERBS)
 def test_lifecycle_verb_is_known_phase(verb: str) -> None:

@@ -23,14 +23,12 @@ import glm52_pack as pack  # noqa: E402
 R0_COUNT = 2048 * 768
 R0_BITS = 7
 
-
 def _reference_unpack(raw: bytes, count: int, bits: int) -> np.ndarray:
     """The pre-fix decode, kept verbatim as the parity oracle."""
     unpacked = np.unpackbits(np.frombuffer(raw, dtype=np.uint8))[: count * bits]
     grid = unpacked.reshape(count, bits).astype(np.uint64)
     weights = (np.uint64(1) << np.arange(bits - 1, -1, -1, dtype=np.uint64))
     return (grid * weights).sum(axis=1)
-
 
 @pytest.mark.parametrize("bits", list(range(1, 17)))
 @pytest.mark.parametrize("count", [1, 7, 8, 9, 63, 100, 255, 1000, 4097])
@@ -41,7 +39,6 @@ def test_parity_with_reference(bits, count):
     got = pack.unpack_indices(raw, count, bits)
     assert np.array_equal(got.astype(np.uint64), _reference_unpack(raw, count, bits))
 
-
 @pytest.mark.parametrize("bits", list(range(1, 17)))
 def test_round_trip_is_exact(bits):
     rng = np.random.default_rng(bits)
@@ -50,7 +47,6 @@ def test_round_trip_is_exact(bits):
         got = pack.unpack_indices(pack.pack_indices(values, bits), count, bits)
         assert np.array_equal(got.astype(np.uint64), values)
 
-
 @pytest.mark.parametrize("bits", list(range(1, 17)))
 def test_extremal_values_survive(bits):
     """Saturated and zero indices are where an off-by-one shift shows up."""
@@ -58,18 +54,15 @@ def test_extremal_values_survive(bits):
     got = pack.unpack_indices(pack.pack_indices(values, bits), values.size, bits)
     assert np.array_equal(got.astype(np.uint64), values)
 
-
 @pytest.mark.parametrize("bits,expected", [(1, np.uint8), (7, np.uint8), (8, np.uint8),
                                            (9, np.uint16), (16, np.uint16)])
 def test_output_dtype_is_narrow(bits, expected):
     raw = pack.pack_indices(np.zeros(64, dtype=np.uint64), bits)
     assert pack.unpack_indices(raw, 64, bits).dtype == expected
 
-
 def test_bits_over_sixteen_refused():
     with pytest.raises(ValueError):
         pack.unpack_indices(b"\x00" * 64, 8, 17)
-
 
 def test_peak_memory_bounded_at_r0():
     """MEASURED at the production index count: temporaries must stay near the payload."""
@@ -88,7 +81,6 @@ def test_peak_memory_bounded_at_r0():
     assert out.dtype == np.uint8
     assert peak <= 4 * len(raw), f"peak {peak} B is {peak / len(raw):.1f}x the payload"
 
-
 def test_no_uint64_grid_allocated():
     """The 145x blowup was one array; assert no allocation can hold a per-bit uint64 grid."""
     rng = np.random.default_rng(1)
@@ -100,7 +92,6 @@ def test_no_uint64_grid_allocated():
     _, peak = tracemalloc.get_traced_memory()
     tracemalloc.stop()
     assert peak < count * 7 * 8, f"peak {peak} B admits a uint64 bit grid"
-
 
 def test_deserialize_round_trip_on_a_real_pq_artifact():
     """End to end: the indices a packed tensor decodes to are the ones it was packed with."""

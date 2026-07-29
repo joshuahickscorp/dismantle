@@ -9,7 +9,6 @@ from collections import Counter
 
 import pytest
 
-
 CONDENSE = pathlib.Path(__file__).resolve().parents[1]
 REPO_ROOT = CONDENSE.parents[1]
 if str(CONDENSE) not in sys.path:
@@ -18,11 +17,9 @@ if str(CONDENSE) not in sys.path:
 import glm52_contract as contract  # noqa: E402
 from glm52_common import Glm52Error, canonical, seal, sha256_file, verify_sealed  # noqa: E402
 
-
 def _read(name: str) -> dict:
     value = json.loads((REPO_ROOT / name).read_text(encoding="utf-8"))
     return verify_sealed(value, label=name)
-
 
 @pytest.fixture(scope="module")
 def artifacts() -> dict[str, dict]:
@@ -37,14 +34,12 @@ def artifacts() -> dict[str, dict]:
     )
     return {name: _read(name) for name in names}
 
-
 def test_seal_rejects_tampering() -> None:
     value = seal({"schema": "test", "status": "PASS", "count": 1})
     verify_sealed(value)
     value["count"] = 2
     with pytest.raises(Glm52Error, match="seal mismatch"):
         verify_sealed(value)
-
 
 def test_classifier_is_fail_closed_and_models_mtp_separately() -> None:
     config = {
@@ -66,7 +61,6 @@ def test_classifier_is_fail_closed_and_models_mtp_separately() -> None:
     with pytest.raises(Glm52Error, match="unrecognized"):
         contract.classify_tensor("model.layers.3.future_component.weight", config)
 
-
 def test_exact_official_totals_and_dtype_caveat(artifacts: dict[str, dict]) -> None:
     manifest = artifacts["GLM52_OFFICIAL_MANIFEST.json"]
     logical = artifacts["GLM52_LOGICAL_WEIGHT_LEDGER.json"]
@@ -82,7 +76,6 @@ def test_exact_official_totals_and_dtype_caveat(artifacts: dict[str, dict]) -> N
     assert source["tensor_payload_bytes"] == 1_506_659_919_872
     assert source["safetensors_framing_bytes"] == 7_467_536
 
-
 def test_architecture_distinguishes_config_and_checkpoint_mtp(artifacts: dict[str, dict]) -> None:
     architecture = artifacts["GLM52_ARCHITECTURE_CONTRACT.json"]
     dsa = architecture["dsa_indexshare"]
@@ -92,7 +85,6 @@ def test_architecture_distinguishes_config_and_checkpoint_mtp(artifacts: dict[st
     assert len(dsa["main_shared_indexer_layers"]) == 57
     assert dsa["mtp_checkpoint_indexer_type"] == "full"
     assert dsa["stored_indexer_layers"] == [0, 1, 2, *range(6, 78, 4), 78]
-
 
 def test_rate_budgets_bill_every_logical_weight(artifacts: dict[str, dict]) -> None:
     logical = artifacts["GLM52_LOGICAL_WEIGHT_LEDGER.json"]
@@ -106,7 +98,6 @@ def test_rate_budgets_bill_every_logical_weight(artifacts: dict[str, dict]) -> N
     assert major["main_text_routed_expert_weights"]["logical_weights"] == 724_775_731_200
     assert major["mtp_routed_expert_weights"]["logical_weights"] == 9_663_676_416
 
-
 def test_dependency_graph_partitions_every_tensor_once(artifacts: dict[str, dict]) -> None:
     graph = artifacts["GLM52_SHARD_DEPENDENCY_GRAPH.json"]
     organs = graph["organs"]
@@ -116,7 +107,6 @@ def test_dependency_graph_partitions_every_tensor_once(artifacts: dict[str, dict
     assert len(names) == 59_585
     assert len(counts) == 59_585
     assert max(counts.values()) == 1
-
 
 def test_schedule_is_one_fetch_and_carry_closed(artifacts: dict[str, dict]) -> None:
     schedule = artifacts["GLM52_STREAMING_SCHEDULE.json"]
@@ -132,7 +122,6 @@ def test_schedule_is_one_fetch_and_carry_closed(artifacts: dict[str, dict]) -> N
     assert max(len(window["source_shards"]) for window in windows) == (
         schedule["maximum_resident_shards_in_one_window"]
     )
-
 
 def test_admission_records_header_only_and_one_copy(artifacts: dict[str, dict]) -> None:
     admission = artifacts["GLM52_SOURCE_ADMISSION.json"]
@@ -163,7 +152,6 @@ def test_admission_records_header_only_and_one_copy(artifacts: dict[str, dict]) 
     }
     assert manifest["one_copy"]["weight_body_copies"] == 0
 
-
 def test_pre_audit_is_frozen_and_evidence_bound() -> None:
     audit = _read("GRAVITY_COMPLETENESS_AUDIT_GLM52_PRE.json")
     assert audit["snapshot"]["later_glm_artifacts_excluded_from_scores"] is True
@@ -177,7 +165,6 @@ def test_pre_audit_is_frozen_and_evidence_bound() -> None:
     for rows in audit["evidence"].values():
         for row in rows:
             assert sha256_file(REPO_ROOT / row["path"]) == row["sha256"]
-
 
 def test_external_matrix_separates_nominal_from_canonical_rates() -> None:
     matrix = _read("GRAVITY_EXTERNAL_BASELINE_MATRIX.json")

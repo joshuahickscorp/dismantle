@@ -18,18 +18,15 @@ from glm52_common import (  # noqa: E402
     resolve_artifact,
 )
 
-
 GRAPH = "GLM52_SHARD_DEPENDENCY_GRAPH.json"
 CENSUS = "GLM52_ROUTE_POPULATION_CENSUS.json"
 ALLOCATION = "PROMETHEUS_MATH_ALLOCATION_MANIFEST.json"
-
 
 def test_resolves_from_repo_root() -> None:
     for name in (GRAPH, CENSUS, ALLOCATION):
         path = resolve_artifact(name)
         assert path == REPO_ROOT / name
         assert path.is_file()
-
 
 def test_resolves_from_hawking_artifact_root_when_repo_copy_absent(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -52,7 +49,6 @@ def test_resolves_from_hawking_artifact_root_when_repo_copy_absent(
     assert path == external / name
     assert path.read_bytes() == payload
 
-
 def test_raises_actionable_error_when_neither_exists(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -73,7 +69,6 @@ def test_raises_actionable_error_when_neither_exists(
     assert str(empty_repo / name) in message
     assert str(empty_external / name) in message
 
-
 def test_repo_root_wins_over_external(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -90,7 +85,6 @@ def test_repo_root_wins_over_external(
     path = resolve_artifact(name)
     assert path == repo / name
     assert path.read_text(encoding="utf-8") == "from-repo\n"
-
 
 def test_rejects_non_basename() -> None:
     with pytest.raises(Glm52Error, match="basename"):

@@ -139,6 +139,56 @@ A2's C2 budget of 28,000 rather than an argument to lower it, so **the plan of r
 not change** — but the question is now closed with a measurement instead of two opinions,
 and the row-blocking families are named as hand-written for a reason.
 
+## Side-experiment 2, resolved: the residency twins are not twins
+
+A1's headline claim was that `gravity_glm.rs` (3,584, host-resident) and
+`gravity_glm_resident.rs` (13,035, device-resident) are one model's forward pass written
+twice, held bit-identical by hand, and therefore generable from a single forward spec with
+two residency strategies. The evidence for it was the resident file's own header, which says
+its discrete decisions "use the same host arithmetic as `crate::gravity_glm::forward_impl`
+so token identity is bit-exact against the host-state path".
+
+**Refuted.**
+
+```
+gravity_glm fns                                     135
+gravity_glm_resident fns                            204
+function names present in both                        7
+of those, pairs with >=0.75 line similarity           0
+best shared pair   batched_mlp     30 vs 83 lines   0.336
+                   indexer_topk    63 vs 124 lines  0.267
+
+resident functions with no counterpart at all       197, totalling 9,992 lines
+resident kernel/function bodies                     10,250 of 13,035 file lines
+```
+
+The two files share seven names and no implementation. The resident path is device buffer
+arenas, replay plans, expert offset tables and command encoding — work that simply does not
+exist in the host path. The header's bit-exactness claim is about **results**, not about
+code: the two agree on the token they produce, which is a property that had to be
+established precisely because the implementations differ.
+
+So there is no 16,619-line twin to collapse. A2's 20% compression on the resident file —
+extracting shared encode helpers and expert table builders — stands, and on this evidence it
+is if anything generous.
+
+## Both side-experiments point the same way
+
+A1 was wrong twice, in the same direction: it reasoned from names, file headers and shape,
+and in both cases the code turned out more different than the prose describing it. A2, which
+traced execution, was closer both times.
+
+That is worth stating plainly because it is the campaign's own thesis under test. The
+instruction was to build the graph before designing, precisely so that structure would be
+measured rather than assumed — and the two places where this controller assumed instead, it
+was wrong. The plan of record stays A2's, and the remaining A1 contribution is the six-core
+grouping, which A2's nine components fold into without strain.
+
+**Consequence for Core B:** its reduction does not come from collapsing duplicated
+executors, because there are none. It has to come from dead kernel variants, the
+parameterisable shader axes measured above, shared encode helpers, and rewriting the test
+surface. That is a thinner story than A1 told, and it is the true one.
+
 ## What would falsify the plan
 
 - C5 lands above 45k with a named observable behaviour behind every remaining line. That

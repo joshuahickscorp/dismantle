@@ -1,0 +1,97 @@
+{
+  "schema": "hawking.condense.experiment_spec.v1",
+  "campaign_id": "glm52",
+  "title": "GLM-5.2 Gravity streaming campaign",
+  "family": "glm52",
+  "status": "live",
+  "resource_class": "heavy",
+  "phases": ["precheck", "measure", "allocate", "pack", "seal", "monitor", "report"],
+  "steps": [
+    {
+      "id": "precheck.fences",
+      "phase": "precheck",
+      "handler": "precheck.fences",
+      "description": "Authorization fences stay closed"
+    },
+    {
+      "id": "precheck.contract",
+      "phase": "precheck",
+      "handler": "record",
+      "description": "Load glm52_contract / expected campaign contract",
+      "params": {"module": "glm52_contract"}
+    },
+    {
+      "id": "measure.parity",
+      "phase": "measure",
+      "handler": "record",
+      "description": "Parity and teacher capture surfaces",
+      "params": {"modules": ["glm52_parity", "glm52_teacher_capture"]}
+    },
+    {
+      "id": "allocate.windows",
+      "phase": "allocate",
+      "handler": "record",
+      "description": "Window plan / resource reserve policy",
+      "params": {"policy": "GLM52_RESOURCE_RESERVE_POLICY.json"}
+    },
+    {
+      "id": "pack.stream",
+      "phase": "pack",
+      "handler": "record",
+      "description": "Streaming pack via glm52_pack / activation-aware paths",
+      "optional": true
+    },
+    {
+      "id": "seal.artifacts",
+      "phase": "seal",
+      "handler": "seal.receipt",
+      "description": "Seal campaign artifacts through glm52_common.seal"
+    },
+    {
+      "id": "monitor.heartbeat",
+      "phase": "monitor",
+      "handler": "record",
+      "description": "Controller heartbeat and lease freshness"
+    },
+    {
+      "id": "report.status",
+      "phase": "report",
+      "handler": "report.summary",
+      "description": "Canonical campaign status message"
+    }
+  ],
+  "receipt": "GLM52_BASIS_PILOT_RECEIPT.json",
+  "fixture": "engine/fixtures/glm52_minimal.json",
+  "reproduction": "python3.12 -m tools.condense.engine.runtime tools/condense/engine/specs/glm52.json --work-dir reports/condense/engine/glm52",
+  "lease_name": "glm52.controller.lease",
+  "checkpoint_name": "glm52.checkpoint.json",
+  "authorization_fences": [
+    "ODYSSEY_LAUNCH_AUTHORIZED",
+    "RAMANUJAN_RESEARCH_AUTHORIZED",
+    "HIDE_KERNEL_TURN"
+  ],
+  "reopen": [
+    {
+      "id": "new_parity_surface",
+      "description": "Reopen only if a new sealed parity surface invalidates FUNCTIONAL_PARTIAL_ONLY",
+      "predicate": "sealed_parity_surface_changed",
+      "evidence": ["GLM52_CORRECTED_SCIENTIFIC_LAW.json", "GLM52_FLAGSHIP_ADAPTER_PARITY.json"]
+    }
+  ],
+  "notes": "Live contract readers remain at glm52_parity/contract/source_fetch/teacher_capture/xet_autotune. resolve_artifact in glm52_common is the single path authority.",
+  "metadata": {
+    "live_modules": [
+      "glm52_parity",
+      "glm52_contract",
+      "glm52_source_fetch",
+      "glm52_teacher_capture",
+      "glm52_xet_autotune",
+      "glm52_common",
+      "glm52_state"
+    ],
+    "resource_limits": {
+      "min_free_disk_bytes": 0,
+      "max_concurrent_workers": 1
+    }
+  }
+}

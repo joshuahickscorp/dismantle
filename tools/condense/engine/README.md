@@ -32,6 +32,11 @@ python3.12 -m tools.condense.engine tools/condense/engine/specs/glm52.json \
   --work-dir reports/condense/engine/glm52
 ```
 
-Retired controller bodies live under `tools/condense/archive/` (excluded from active LOC).
-Public import paths stay as thin shims that exec the archived source so tests and
-monkeypatches keep working.
+Lane F1 made retirement real: superseded controller bodies were **deleted** (not
+parked under `archive/`). Each campaign keeps this engine surface plus its
+specification, fixture, receipt, reproduction command, and reopen condition.
+Git history and tag `pre-controller-retirement-20260728` hold the old bodies.
+
+Modules still imported by tests or live readers were restored to
+`tools/condense/<module>.py` (relocation, not condensation). See
+`docs/ARCHIVE_INDEX_2.md` §F1 and `engine/fixtures/f1_retirement_receipt.json`.

@@ -5,7 +5,14 @@
   "family": "gptoss",
   "status": "retired",
   "resource_class": "gpu-lab",
-  "phases": ["precheck", "measure", "pack", "seal", "monitor", "report"],
+  "phases": [
+    "precheck",
+    "measure",
+    "pack",
+    "seal",
+    "monitor",
+    "report"
+  ],
   "steps": [
     {
       "id": "precheck.real_forward",
@@ -57,8 +64,20 @@
       "evidence": []
     }
   ],
-  "notes": "gravity_frontier_g4_controller retired; engine owns lease/checkpoint/resume.",
+  "notes": "gravity_frontier_g4_controller retired; engine owns lease/checkpoint/resume. Lane F1 removed archive bodies; reproduction/reopen live on this spec.",
   "metadata": {
-    "retired_controllers": ["gravity_frontier_g4_controller", "gptoss_gravity_run"]
+    "retired_controllers": [
+      "gravity_frontier_g4_controller",
+      "gptoss_gravity_run"
+    ],
+    "retired_controllers_deleted": [
+      "gptoss_gravity_run"
+    ],
+    "controllers_restored_as_live": [
+      "gptoss_block",
+      "gptoss_moe_runtime",
+      "gptoss_real_forward",
+      "gptoss_subbit_packer"
+    ]
   }
 }

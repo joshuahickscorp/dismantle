@@ -5,7 +5,15 @@
   "family": "kimi_k26",
   "status": "retired",
   "resource_class": "network",
-  "phases": ["precheck", "measure", "allocate", "pack", "seal", "monitor", "report"],
+  "phases": [
+    "precheck",
+    "measure",
+    "allocate",
+    "pack",
+    "seal",
+    "monitor",
+    "report"
+  ],
   "steps": [
     {
       "id": "precheck.blobs",
@@ -63,15 +71,25 @@
       "id": "corpus_revision",
       "description": "Reopen only on a new frozen corpus revision with sealed science law update",
       "predicate": "kimi_corpus_revision_changed",
-      "evidence": ["KIMI_K26 scientific law + long-run + gravity finals"]
+      "evidence": [
+        "KIMI_K26 scientific law + long-run + gravity finals"
+      ]
     }
   ],
-  "notes": "Bespoke controllers retired into archive/. Crash/resume and lease semantics live in engine.lease + engine.checkpoint.",
+  "notes": "Bespoke controllers deleted (git history + engine spec). Crash/resume and lease semantics live in engine.lease + engine.checkpoint. Lane F1 removed archive bodies; reproduction/reopen live on this spec.",
   "metadata": {
     "retired_controllers": [
       "kimi_k26_phase2_recovery",
       "kimi_k26_phase2_release",
       "kimi_k26_download_supervisor",
+      "kimi_k26_release_cycle",
+      "kimi_k26_stale_download_cleanup"
+    ],
+    "retired_controllers_deleted": [],
+    "controllers_restored_as_live": [
+      "kimi_k26_download_supervisor",
+      "kimi_k26_phase2_recovery",
+      "kimi_k26_phase2_release",
       "kimi_k26_release_cycle",
       "kimi_k26_stale_download_cleanup"
     ]

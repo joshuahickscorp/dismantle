@@ -5,7 +5,12 @@
   "family": "deepseek_v4",
   "status": "sealed_negative",
   "resource_class": "heavy",
-  "phases": ["precheck", "measure", "seal", "report"],
+  "phases": [
+    "precheck",
+    "measure",
+    "seal",
+    "report"
+  ],
   "steps": [
     {
       "id": "precheck.admission",
@@ -46,5 +51,16 @@
       ]
     }
   ],
-  "notes": "must_not_delete: DEEPSEEK_V4 contraction pilot receipts."
+  "notes": "must_not_delete: DEEPSEEK_V4 contraction pilot receipts. Lane F1 removed archive bodies; reproduction/reopen live on this spec.",
+  "metadata": {
+    "retired_controllers_deleted": [
+      "deepseek_v4_adapter",
+      "hawking_contraction_pilot"
+    ],
+    "controllers_restored_as_live": [],
+    "retired_controllers": [
+      "deepseek_v4_adapter",
+      "hawking_contraction_pilot"
+    ]
+  }
 }

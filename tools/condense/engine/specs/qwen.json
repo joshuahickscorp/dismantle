@@ -5,7 +5,14 @@
   "family": "qwen",
   "status": "retired",
   "resource_class": "gpu-lab",
-  "phases": ["precheck", "measure", "allocate", "pack", "seal", "report"],
+  "phases": [
+    "precheck",
+    "measure",
+    "allocate",
+    "pack",
+    "seal",
+    "report"
+  ],
   "steps": [
     {
       "id": "precheck.adapter",
@@ -56,5 +63,28 @@
       "evidence": []
     }
   ],
-  "notes": "Adapters remain importable for algorithmic tests; campaign controller shell retired."
+  "notes": "Adapters remain importable for algorithmic tests; campaign controller shell retired. Lane F1 removed archive bodies; reproduction/reopen live on this spec.",
+  "metadata": {
+    "retired_controllers_deleted": [
+      "qwen35_moe_adapter",
+      "qwen_adaptive_k",
+      "qwen_function_aware_codec",
+      "qwen_structural_plan",
+      "qwen_subhalfbit_search"
+    ],
+    "controllers_restored_as_live": [
+      "qwen3_moe_adapter",
+      "qwen_bpw_budget",
+      "qwen_correction_wave",
+      "qwen_download_worker",
+      "qwen_real_forward"
+    ],
+    "retired_controllers": [
+      "qwen35_moe_adapter",
+      "qwen_adaptive_k",
+      "qwen_function_aware_codec",
+      "qwen_structural_plan",
+      "qwen_subhalfbit_search"
+    ]
+  }
 }

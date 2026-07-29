@@ -5,7 +5,13 @@
   "family": "second_light",
   "status": "retired",
   "resource_class": "gpu-lab",
-  "phases": ["precheck", "measure", "pack", "seal", "report"],
+  "phases": [
+    "precheck",
+    "measure",
+    "pack",
+    "seal",
+    "report"
+  ],
   "steps": [
     {
       "id": "precheck.pq_fixture",
@@ -50,5 +56,14 @@
       "evidence": []
     }
   ],
-  "notes": "Algorithmic PQ helpers may remain as libraries; campaign shell is the engine."
+  "notes": "Algorithmic PQ helpers may remain as libraries; campaign shell is the engine. Lane F1 removed archive bodies; reproduction/reopen live on this spec.",
+  "metadata": {
+    "retired_controllers_deleted": [
+      "gravity_pq_fixture"
+    ],
+    "controllers_restored_as_live": [],
+    "retired_controllers": [
+      "gravity_pq_fixture"
+    ]
+  }
 }

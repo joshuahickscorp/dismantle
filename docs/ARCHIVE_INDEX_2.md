@@ -1005,3 +1005,227 @@ the file. Slices named by the lane (`second_light`, `general_frontier`,
 - `reports/condense/deepseek_v4_flash/DEEPSEEK_V4_PRIMITIVE_PARITY.json` — hawking.deepseek_v4.primitive_parity.v1
 - `reports/condense/deepseek_v4_flash/pre_moe_hidden_L05.npy` — pre_moe_hidden_L05.npy
 
+## F1 — condense controller retirement (2026-07-28) — 73 modules deleted from archive, 104 restored as live
+
+The campaign-engine lane had moved 173 files / 102,159 lines into
+`tools/condense/archive/` and left 21-line shims that `exec`'d those bodies.
+That was relocation, not condensation. Lane F1 made retirement real.
+
+**Annotated tag:** `pre-controller-retirement-20260728` → commit `53435e75f8e80f2b1351f5da0fd4dbea0449f567`
+
+Working-tree state immediately before deletions. Restore any removed path with:
+
+```
+git checkout pre-controller-retirement-20260728 -- <path>
+# or by commit if the annotated tag is not yet on this clone:
+git checkout 53435e75f8e80f2b1351f5da0fd4dbea0449f567 -- <path>
+git show pre-controller-retirement-20260728:<path>
+```
+
+If the annotated tag ref is missing on this clone (sandbox could not write the shared
+`.git` directory from the worktree), recreate it with:
+
+```
+git tag -a pre-controller-retirement-20260728 53435e75f8e80f2b1351f5da0fd4dbea0449f567 -m "Working tree before the archived controllers are removed"
+```
+
+### F1 / deleted (superseded or unreferenced) — 68 modules, ~23690 lines
+
+Archive bodies and live shims removed. Engine specs keep fixture, receipt, reproduction,
+and reopen. Git history holds the code.
+
+- `tools/condense/archive/_bench_fetch_workers.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/_bench_fetch_workers_nodisk.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/codebase_census.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/condense_reachability.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/corpus_integrity.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/decode_parity_harness.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/deepseek_v4_adapter.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/doctor_byte_auction.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/doctor_causal_harness.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/doctor_gen3.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/doctor_treatment_abi.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/forge_actaware_experiment.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/forge_controller_integration.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/forge_f2_fixture.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/forge_giant_adapters.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/forge_pre_run_readiness.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/glm52_allocation_probe.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/glm52_concurrency_autotune.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/glm52_flagship_screening.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/glm52_functional_auction.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/glm52_functional_cascade.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/glm52_functional_controller.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/glm52_functional_integration.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/glm52_functional_roofline.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/glm52_functional_student.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/glm52_generation_a_seal.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/glm52_lowrank.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/glm52_maturity.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/glm52_metric_correction.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/glm52_moe_student_fit.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/glm52_pilot.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/glm52_pilot_fetch.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/glm52_pilot_seal.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/glm52_precheck.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/glm52_protect_head_embed.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/glm52_rate_ladder.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/glm52_readiness_gate.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/glm52_rollback_seal.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/glm52_source_release.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/glm52_teacher_rechain.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/glm52_window_plan.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/gptoss_gravity_run.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/gravity_attention.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/gravity_breakthrough_baseline.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/gravity_container_freeze.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/gravity_decode.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/gravity_functional_metal.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/gravity_lab_lease.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/gravity_pq_fixture.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/gravity_profiler_acceptance.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/gravity_runtime.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/gravity_scale_correction.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/hawking_compat.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/hawking_contraction_pilot.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/hawking_tps_budget.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/mech_fidelity_c.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/mech_fidelity_d.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/qwen35_moe_adapter.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/qwen_adaptive_k.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/qwen_function_aware_codec.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/qwen_structural_plan.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/qwen_subhalfbit_search.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/resident_first_ladder.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/safetensors_to_gravity.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/storage_stripdown.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/storage_stripdown_controller.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/succ_eta.py` — deleted; restore via `pre-controller-retirement-20260728`
+- `tools/condense/archive/test_activation_aware_roundtrip.py` — deleted; restore via `pre-controller-retirement-20260728`
+
+### F1 / deleted archive duplicates of already-full live modules — 5 modules, ~8537 lines
+
+- `tools/condense/archive/glm52_external_baselines.py` — duplicate of live module; restore via `pre-controller-retirement-20260728` if needed
+- `tools/condense/archive/glm52_terminal_proofs.py` — duplicate of live module; restore via `pre-controller-retirement-20260728` if needed
+- `tools/condense/archive/glm52_window_execution.py` — duplicate of live module; restore via `pre-controller-retirement-20260728` if needed
+- `tools/condense/archive/glm52_xet_live.py` — duplicate of live module; restore via `pre-controller-retirement-20260728` if needed
+- `tools/condense/archive/gravity_execution_adapter.py` — duplicate of live module; restore via `pre-controller-retirement-20260728` if needed
+
+### F1 / restored as live (still referenced by tests or live code) — 104 modules, ~78465 lines
+
+These are **not** retired. Bodies moved from `archive/` back to `tools/condense/<module>.py`.
+Reported as relocation (earns nothing as condensation).
+
+- `tools/condense/activation_aware_format.py` — restored from archive (tests/live imports)
+- `tools/condense/bounded_cache.py` — restored from archive (tests/live imports)
+- `tools/condense/doctor_campaign_supervisor.py` — restored from archive (tests/live imports)
+- `tools/condense/doctor_v5_gptoss_mxfp4.py` — restored from archive (tests/live imports)
+- `tools/condense/doctor_v5_telegram_rung_notifier.py` — restored from archive (tests/live imports)
+- `tools/condense/eco_activation.py` — restored from archive (tests/live imports)
+- `tools/condense/eco_admission.py` — restored from archive (tests/live imports)
+- `tools/condense/eco_cli.py` — restored from archive (tests/live imports)
+- `tools/condense/eco_import.py` — restored from archive (tests/live imports)
+- `tools/condense/eco_passport.py` — restored from archive (tests/live imports)
+- `tools/condense/eco_pipeline.py` — restored from archive (tests/live imports)
+- `tools/condense/eco_planner.py` — restored from archive (tests/live imports)
+- `tools/condense/eco_status.py` — restored from archive (tests/live imports)
+- `tools/condense/glm52_activation_aware_assemble.py` — restored from archive (tests/live imports)
+- `tools/condense/glm52_activation_aware_pack.py` — restored from archive (tests/live imports)
+- `tools/condense/glm52_activation_aware_pack_v2.py` — restored from archive (tests/live imports)
+- `tools/condense/glm52_activation_aware_source.py` — restored from archive (tests/live imports)
+- `tools/condense/glm52_basis_pilot.py` — restored from archive (tests/live imports)
+- `tools/condense/glm52_campaign_contract.py` — restored from archive (tests/live imports)
+- `tools/condense/glm52_capability_gate.py` — restored from archive (tests/live imports)
+- `tools/condense/glm52_compact_mla_fixture.py` — restored from archive (tests/live imports)
+- `tools/condense/glm52_composition_gate.py` — restored from archive (tests/live imports)
+- `tools/condense/glm52_external_baselines.py` — restored from archive (tests/live imports)
+- `tools/condense/glm52_flagship_oracle.py` — restored from archive (tests/live imports)
+- `tools/condense/glm52_functional_gauntlet.py` — restored from archive (tests/live imports)
+- `tools/condense/glm52_gravity_fixture.py` — restored from archive (tests/live imports)
+- `tools/condense/glm52_gravity_source.py` — restored from archive (tests/live imports)
+- `tools/condense/glm52_long_context_gate.py` — restored from archive (tests/live imports)
+- `tools/condense/glm52_moe_student.py` — restored from archive (tests/live imports)
+- `tools/condense/glm52_pilot_source_release.py` — restored from archive (tests/live imports)
+- `tools/condense/glm52_rehydrate_window.py` — restored from archive (tests/live imports)
+- `tools/condense/glm52_resource_policy.py` — restored from archive (tests/live imports)
+- `tools/condense/glm52_route_population_census.py` — restored from archive (tests/live imports)
+- `tools/condense/glm52_runtime_parity_gate.py` — restored from archive (tests/live imports)
+- `tools/condense/glm52_runtime_speed_gate.py` — restored from archive (tests/live imports)
+- `tools/condense/glm52_schedule_freeze.py` — restored from archive (tests/live imports)
+- `tools/condense/glm52_shard_probe.py` — restored from archive (tests/live imports)
+- `tools/condense/glm52_terminal_proofs.py` — restored from archive (tests/live imports)
+- `tools/condense/glm52_window_execution.py` — restored from archive (tests/live imports)
+- `tools/condense/glm52_xet_live.py` — restored from archive (tests/live imports)
+- `tools/condense/glm52_xet_live_driver.py` — restored from archive (tests/live imports)
+- `tools/condense/glm52_xet_window_fetch.py` — restored from archive (tests/live imports)
+- `tools/condense/gptoss_block.py` — restored from archive (tests/live imports)
+- `tools/condense/gptoss_moe_runtime.py` — restored from archive (tests/live imports)
+- `tools/condense/gptoss_real_forward.py` — restored from archive (tests/live imports)
+- `tools/condense/gptoss_subbit_packer.py` — restored from archive (tests/live imports)
+- `tools/condense/gravity_bench_lab.py` — restored from archive (tests/live imports)
+- `tools/condense/gravity_execution_adapter.py` — restored from archive (tests/live imports)
+- `tools/condense/gravity_flop_ledger.py` — restored from archive (tests/live imports)
+- `tools/condense/gravity_forge_run.py` — restored from archive (tests/live imports)
+- `tools/condense/gravity_frontier_correction_wave.py` — restored from archive (tests/live imports)
+- `tools/condense/gravity_frontier_g4_controller.py` — restored from archive (tests/live imports)
+- `tools/condense/gravity_functional_codec.py` — restored from archive (tests/live imports)
+- `tools/condense/gravity_global_allocator.py` — restored from archive (tests/live imports)
+- `tools/condense/gravity_kernel_select.py` — restored from archive (tests/live imports)
+- `tools/condense/gravity_llama_reference.py` — restored from archive (tests/live imports)
+- `tools/condense/gravity_metal.py` — restored from archive (tests/live imports)
+- `tools/condense/gravity_metal_lab_a.py` — restored from archive (tests/live imports)
+- `tools/condense/gravity_metal_lab_b.py` — restored from archive (tests/live imports)
+- `tools/condense/gravity_moe_layer.py` — restored from archive (tests/live imports)
+- `tools/condense/gravity_real_fixtures.py` — restored from archive (tests/live imports)
+- `tools/condense/hawking_null_metric.py` — restored from archive (tests/live imports)
+- `tools/condense/kimi_k26_download_supervisor.py` — restored from archive (tests/live imports)
+- `tools/condense/kimi_k26_phase2_recovery.py` — restored from archive (tests/live imports)
+- `tools/condense/kimi_k26_phase2_release.py` — restored from archive (tests/live imports)
+- `tools/condense/kimi_k26_release_cycle.py` — restored from archive (tests/live imports)
+- `tools/condense/kimi_k26_stale_download_cleanup.py` — restored from archive (tests/live imports)
+- `tools/condense/mech_measure.py` — restored from archive (tests/live imports)
+- `tools/condense/mech_run_all.py` — restored from archive (tests/live imports)
+- `tools/condense/overnight_supervisor.py` — restored from archive (tests/live imports)
+- `tools/condense/qwen3_moe_adapter.py` — restored from archive (tests/live imports)
+- `tools/condense/qwen_bpw_budget.py` — restored from archive (tests/live imports)
+- `tools/condense/qwen_correction_wave.py` — restored from archive (tests/live imports)
+- `tools/condense/qwen_download_worker.py` — restored from archive (tests/live imports)
+- `tools/condense/qwen_real_forward.py` — restored from archive (tests/live imports)
+- `tools/condense/seal_120b_conclusion.py` — restored from archive (tests/live imports)
+- `tools/condense/size_frontier.py` — restored from archive (tests/live imports)
+- `tools/condense/source_release_readiness.py` — restored from archive (tests/live imports)
+- `tools/condense/studio_manifest.py` — restored from archive (tests/live imports)
+- `tools/condense/succ_admission.py` — restored from archive (tests/live imports)
+- `tools/condense/succ_audit.py` — restored from archive (tests/live imports)
+- `tools/condense/succ_calibrate.py` — restored from archive (tests/live imports)
+- `tools/condense/succ_cli.py` — restored from archive (tests/live imports)
+- `tools/condense/succ_engine.py` — restored from archive (tests/live imports)
+- `tools/condense/succ_events.py` — restored from archive (tests/live imports)
+- `tools/condense/succ_frontier.py` — restored from archive (tests/live imports)
+- `tools/condense/succ_gc.py` — restored from archive (tests/live imports)
+- `tools/condense/succ_gravity.py` — restored from archive (tests/live imports)
+- `tools/condense/succ_gravity_policy.py` — restored from archive (tests/live imports)
+- `tools/condense/succ_gravity_receipts.py` — restored from archive (tests/live imports)
+- `tools/condense/succ_harvest.py` — restored from archive (tests/live imports)
+- `tools/condense/succ_press.py` — restored from archive (tests/live imports)
+- `tools/condense/succ_queue.py` — restored from archive (tests/live imports)
+- `tools/condense/succ_retire.py` — restored from archive (tests/live imports)
+- `tools/condense/succ_state.py` — restored from archive (tests/live imports)
+- `tools/condense/succ_telegram.py` — restored from archive (tests/live imports)
+- `tools/condense/succ_transition.py` — restored from archive (tests/live imports)
+- `tools/condense/succ_twin.py` — restored from archive (tests/live imports)
+- `tools/condense/succ_watch.py` — restored from archive (tests/live imports)
+- `tools/condense/succ_watchdog.py` — restored from archive (tests/live imports)
+- `tools/condense/tg_active_byte_budget.py` — restored from archive (tests/live imports)
+- `tools/condense/tg_k11_reconcile.py` — restored from archive (tests/live imports)
+- `tools/condense/tg_k11_synthetic_schedule.py` — restored from archive (tests/live imports)
+- `tools/condense/vulture_harvest.py` — restored from archive (tests/live imports)
+
+### F1 / summary
+
+- eliminated (archive lines gone, not re-homed): ~32227
+- relocated (archive → live): ~78465
+- archive directory now holds only `tools/condense/archive/README.md`
+- receipt: `tools/condense/engine/fixtures/f1_retirement_receipt.json`
+
+- `tools/condense/test_activation_aware_roundtrip.py` — restored as live test (was archived test module; keeps 5 logical cases)

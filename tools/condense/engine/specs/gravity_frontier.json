@@ -5,7 +5,15 @@
   "family": "gravity_frontier",
   "status": "retired",
   "resource_class": "gpu-lab",
-  "phases": ["precheck", "measure", "allocate", "pack", "seal", "monitor", "report"],
+  "phases": [
+    "precheck",
+    "measure",
+    "allocate",
+    "pack",
+    "seal",
+    "monitor",
+    "report"
+  ],
   "steps": [
     {
       "id": "precheck.lab",
@@ -60,10 +68,12 @@
       "id": "outcome_b_boundary",
       "description": "Reopen doctor only if Outcome B boundary evidence is superseded",
       "predicate": "doctor_boundary_superseded",
-      "evidence": ["DOCTOR_NEGATIVE_TRANSFER_ATLAS.json"]
+      "evidence": [
+        "DOCTOR_NEGATIVE_TRANSFER_ATLAS.json"
+      ]
     }
   ],
-  "notes": "Controllers doctor_campaign_supervisor, gravity_frontier_g4_controller, seal_120b_conclusion retired to archive/.",
+  "notes": "Controllers doctor_campaign_supervisor, gravity_frontier_g4_controller, seal_120b_conclusion deleted (git history + engine spec). Lane F1 removed archive bodies; reproduction/reopen live on this spec.",
   "metadata": {
     "retired_controllers": [
       "doctor_campaign_supervisor",
@@ -71,6 +81,64 @@
       "seal_120b_conclusion",
       "storage_stripdown_controller",
       "emergency_detached_campaign"
+    ],
+    "retired_controllers_deleted": [
+      "codebase_census",
+      "condense_reachability",
+      "corpus_integrity",
+      "decode_parity_harness",
+      "doctor_byte_auction",
+      "doctor_causal_harness",
+      "doctor_gen3",
+      "doctor_treatment_abi",
+      "forge_actaware_experiment",
+      "forge_controller_integration",
+      "forge_f2_fixture",
+      "forge_giant_adapters",
+      "forge_pre_run_readiness",
+      "gravity_attention",
+      "gravity_breakthrough_baseline",
+      "gravity_container_freeze",
+      "gravity_decode",
+      "gravity_functional_metal",
+      "gravity_lab_lease",
+      "gravity_pq_fixture",
+      "gravity_profiler_acceptance",
+      "gravity_runtime",
+      "gravity_scale_correction",
+      "hawking_compat",
+      "hawking_contraction_pilot",
+      "hawking_tps_budget",
+      "mech_fidelity_c",
+      "mech_fidelity_d",
+      "resident_first_ladder",
+      "safetensors_to_gravity",
+      "storage_stripdown",
+      "storage_stripdown_controller",
+      "succ_eta",
+      "test_activation_aware_roundtrip"
+    ],
+    "controllers_restored_as_live": [
+      "doctor_campaign_supervisor",
+      "doctor_v5_gptoss_mxfp4",
+      "doctor_v5_telegram_rung_notifier",
+      "gravity_bench_lab",
+      "gravity_execution_adapter",
+      "gravity_flop_ledger",
+      "gravity_forge_run",
+      "gravity_frontier_correction_wave",
+      "gravity_frontier_g4_controller",
+      "gravity_functional_codec",
+      "gravity_global_allocator",
+      "gravity_kernel_select",
+      "gravity_llama_reference",
+      "gravity_metal",
+      "gravity_metal_lab_a",
+      "gravity_metal_lab_b",
+      "gravity_moe_layer",
+      "gravity_real_fixtures",
+      "overnight_supervisor",
+      "seal_120b_conclusion"
     ]
   }
 }

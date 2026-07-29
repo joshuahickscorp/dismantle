@@ -159,12 +159,12 @@
     {
       "id": "MIG-015",
       "name": "hide_session_memory_object_stores",
-      "location": "runtime workspace opened by hide-serve/BackendHost (user data dir; not fully fixed in-repo)",
-      "format": "HIDE session/memory/object store formats as implemented by hide-backend/hawking-context",
+      "location": "workspace/.hide/ layout (FileKeyValueStore, JsonlEventLog, blobs, projections, memory)",
+      "format": "HIDE durable workspace v1: .hide/log/events.jsonl, .hide/kv/<table>/<key>.json, .hide/blobs/, .hide/projections/, .hide/memory/, objects under .hide/objects/",
       "producer": "HIDE session operations",
       "consumer": "subsequent HIDE sessions; export/import tools",
-      "migration_policy": "must read prior session/memory/object records or provide explicit migrator; export portable without tool",
-      "sample_path": "crates/hide-protocol/fixtures/events.json (fixture only)",
+      "migration_policy": "must read prior session/memory/object/automation/permission records from tests/fixtures/hide_workspace_v1 sample or provide explicit migrator; export portable without tool",
+      "sample_path": "tests/fixtures/hide_workspace_v1/",
       "sample_exists": true
     },
     {
@@ -264,6 +264,28 @@
       "consumer": "graders of serve gravity status",
       "migration_policy": "read_as_is; status PARTIAL is historical truth",
       "sample_path": "HAWKING_GRAVITY_SERVE_RECEIPT.json",
+      "sample_exists": true
+    },
+    {
+      "id": "MIG-025",
+      "name": "hide_workspace_v1_fixture",
+      "location": "tests/fixtures/hide_workspace_v1/",
+      "format": "hawking.hide.workspace_fixture.v1 (see MANIFEST.json)",
+      "producer": "C2 constitution repair; hide-core File* store layout + ObjectStore + AutomationStore shapes",
+      "consumer": "rebuild migration graders; blackbox BC-HIDE_SESSION-022",
+      "migration_policy": "read_as_is_forever_v1 sample; new sessions may extend layout only with versioning",
+      "sample_path": "tests/fixtures/hide_workspace_v1/",
+      "sample_exists": true
+    },
+    {
+      "id": "MIG-026",
+      "name": "generation_golden_seeded_sampler_v1",
+      "location": "tests/fixtures/generation_golden_v1/",
+      "format": "fixed logits JSON + frozen greedy token_ids",
+      "producer": "C2 constitution repair (model-free bit-exact path)",
+      "consumer": "blackbox BC-GENERATION-020; rebuild generation graders",
+      "migration_policy": "bit-exact; any change is a generation regression",
+      "sample_path": "tests/fixtures/generation_golden_v1/seeded_sampler_greedy.json",
       "sample_exists": true
     }
   ],

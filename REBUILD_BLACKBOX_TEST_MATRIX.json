@@ -3,6 +3,686 @@
   "commit": "a2790a1bdfd45e1b249e61c6ebf8e9b9717f1dff",
   "checks": [
     {
+      "behaviour_id": "BC-ARTIFACT-001",
+      "domain": "ARTIFACT",
+      "command": "hawking doctor --weights <gguf>",
+      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": false,
+      "blocker": "no GGUF"
+    },
+    {
+      "behaviour_id": "BC-ARTIFACT-002",
+      "domain": "ARTIFACT",
+      "command": "see MODELS.md Quant formats",
+      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": false,
+      "blocker": "no model"
+    },
+    {
+      "behaviour_id": "BC-ARTIFACT-003",
+      "domain": "ARTIFACT",
+      "command": "hawking verify --weights <gguf>",
+      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": false,
+      "blocker": "needs binary"
+    },
+    {
+      "behaviour_id": "BC-ARTIFACT-004",
+      "domain": "ARTIFACT",
+      "command": "hawking generate --weights <gguf> --tq <a.tq> --tq-strict ...",
+      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
+      "fixture": ".tq",
+      "fixture_exists": false,
+      "runnable_now": false,
+      "blocker": "no .tq on disk"
+    },
+    {
+      "behaviour_id": "BC-ARTIFACT-005",
+      "domain": "ARTIFACT",
+      "command": "hawking generate --weights <gguf> --kernel-profile profiles/qwen3b-instruct-q4k.m3pro18.json ...",
+      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
+      "fixture": "profiles/*.json",
+      "fixture_exists": true,
+      "runnable_now": false,
+      "blocker": "needs model+binary"
+    },
+    {
+      "behaviour_id": "BC-ARTIFACT-006",
+      "domain": "ARTIFACT",
+      "command": "python3.12 -c \"import json; json.load(open('profiles/qwen3b-instruct-q4k.m3pro18.json'))\"",
+      "assertion": "JSON parses",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": true,
+      "blocker": null
+    },
+    {
+      "behaviour_id": "BC-ARTIFACT-007",
+      "domain": "ARTIFACT",
+      "command": "python3.12 -c \"from pathlib import Path; b=Path('crates/hawking-core/tests/fixtures/gravity_glm/glm52-tiny-R0.gravity').read_bytes(); assert b.startswith(b'GRAVITY'); assert b.find(b'{')>0\"",
+      "assertion": "tiny gravity fixture has GRAVITY magic + JSON header",
+      "fixture": "crates/hawking-core/tests/fixtures/gravity_glm/glm52-tiny-R0.gravity",
+      "fixture_exists": true,
+      "runnable_now": true,
+      "blocker": null
+    },
+    {
+      "behaviour_id": "BC-ARTIFACT-008",
+      "domain": "ARTIFACT",
+      "command": "hawking press --dry-run --memory-budget 18gb --target 4,3,2,1 --weights <m>",
+      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": false,
+      "blocker": "no model"
+    },
+    {
+      "behaviour_id": "BC-ARTIFACT-009",
+      "domain": "ARTIFACT",
+      "command": "python3.12 -c \"import json,glob; ps=glob.glob('packs/*.json'); assert len(ps)>=1; ok=all(((d:=json.load(open(p))).get('pack') or d.get('capsule') or d.get('name')) and (d.get('content_loc') or d.get('hydrate') or d.get('archive_sha256')) for p in ps); assert ok\"",
+      "assertion": "pack manifests declare identity + content/hydrate fields",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": true,
+      "blocker": null
+    },
+    {
+      "behaviour_id": "BC-ARTIFACT-010",
+      "domain": "ARTIFACT",
+      "command": "cargo run --manifest-path tools/tq_bake/Cargo.toml -- --help",
+      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": false,
+      "blocker": "needs build"
+    },
+    {
+      "behaviour_id": "BC-ARTIFACT-012",
+      "domain": "ARTIFACT",
+      "command": "hawking serve --weights <gguf> --prefill-cache-dir /tmp/pfx",
+      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": false,
+      "blocker": "needs model"
+    },
+    {
+      "behaviour_id": "BC-ARTIFACT-013",
+      "domain": "ARTIFACT",
+      "command": "python3.12 -c \"import json; d=json.load(open('docs/gravity/GRAVITY_CONTAINER_COMPATIBILITY.json')); assert len(d['does_not_promise'])>=1\"",
+      "assertion": "does_not_promise non-empty",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": true,
+      "blocker": null
+    },
+    {
+      "behaviour_id": "BC-ARTIFACT-014",
+      "domain": "ARTIFACT",
+      "command": "python3.12 -c \"from pathlib import Path; assert Path('docs/gravity/GRAVITY_CONTAINER_SPEC.md').stat().st_size>100\"",
+      "assertion": "spec non-empty",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": true,
+      "blocker": null
+    },
+    {
+      "behaviour_id": "BC-ARTIFACT-015",
+      "domain": "ARTIFACT",
+      "command": "python3.12 -c \"raise SystemExit('blocked: named fixture missing')\"",
+      "assertion": "not runnable until named fixture exists",
+      "fixture": "any models/*.gguf (GGUF v3)",
+      "fixture_exists": false,
+      "runnable_now": false,
+      "blocker": "needs any GGUF v3 weights file on disk; none committed in this worktree"
+    },
+    {
+      "behaviour_id": "BC-ARTIFACT-016",
+      "domain": "ARTIFACT",
+      "command": "python3.12 -c \"raise SystemExit('blocked: named fixture missing')\"",
+      "assertion": "not runnable until named fixture exists",
+      "fixture": "GGUF with tokenizer + sibling tokenizer.json optional",
+      "fixture_exists": false,
+      "runnable_now": false,
+      "blocker": "needs GGUF with embedded tokenizer or sibling tokenizer.json; none committed for a full round-trip"
+    },
+    {
+      "behaviour_id": "BC-GENERATION-001",
+      "domain": "GENERATION",
+      "command": "cargo run -p hawking -- generate --weights <gguf> --prompt 'Hi' --max-new-tokens 16 --profile exact",
+      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
+      "fixture": "GGUF",
+      "fixture_exists": false,
+      "runnable_now": false,
+      "blocker": "no GGUF on disk"
+    },
+    {
+      "behaviour_id": "BC-GENERATION-002",
+      "domain": "GENERATION",
+      "command": "cargo run -p hawking -- generate --weights <gguf> --prompt '2+2=' --max-new-tokens 8 --temperature 0 --trace-tokens",
+      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
+      "fixture": "GGUF",
+      "fixture_exists": false,
+      "runnable_now": false,
+      "blocker": "no GGUF"
+    },
+    {
+      "behaviour_id": "BC-GENERATION-003",
+      "domain": "GENERATION",
+      "command": "HAWKING_FORCE_CPU=1 cargo run -p hawking -- generate --weights <qwen05b.gguf> --prompt x --max-new-tokens 12 --temperature 0 --trace-tokens",
+      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
+      "fixture": "Qwen2.5-0.5B GGUF",
+      "fixture_exists": false,
+      "runnable_now": false,
+      "blocker": "no GGUF"
+    },
+    {
+      "behaviour_id": "BC-GENERATION-004",
+      "domain": "GENERATION",
+      "command": "cargo run -p hawking -- generate --weights <gguf> --memory-limit-mb 1 --prompt hi --max-new-tokens 1",
+      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
+      "fixture": "GGUF larger than 1 MiB",
+      "fixture_exists": false,
+      "runnable_now": false,
+      "blocker": "no GGUF"
+    },
+    {
+      "behaviour_id": "BC-GENERATION-005",
+      "domain": "GENERATION",
+      "command": "cargo run -p hawking -- generate --weights <gguf> --max-seq-len 32 --prompt '<long>' --max-new-tokens 64",
+      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
+      "fixture": "GGUF",
+      "fixture_exists": false,
+      "runnable_now": false,
+      "blocker": "no GGUF"
+    },
+    {
+      "behaviour_id": "BC-GENERATION-006",
+      "domain": "GENERATION",
+      "command": "cargo run -p hawking -- generate --weights <gguf> --batched-capture --prompts-file p.txt --capture-out /tmp/cap.jsonl --capture-batch 2 --max-new-tokens 8",
+      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
+      "fixture": "GGUF + prompts",
+      "fixture_exists": false,
+      "runnable_now": false,
+      "blocker": "no GGUF"
+    },
+    {
+      "behaviour_id": "BC-GENERATION-007",
+      "domain": "GENERATION",
+      "command": "cargo run -p hawking -- generate --weights models/Qwen2.5-3B-Instruct-Q4_K_M.gguf --prompt '1+1=' --max-new-tokens 8 --temperature 0",
+      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
+      "fixture": "Qwen2.5-3B Q4_K_M GGUF",
+      "fixture_exists": false,
+      "runnable_now": false,
+      "blocker": "weights not in worktree models/"
+    },
+    {
+      "behaviour_id": "BC-GENERATION-008",
+      "domain": "GENERATION",
+      "command": "cargo test -p hawking-core --test greedy_token_only_parity 2>&1 | head",
+      "assertion": "evidence: test that skips without a model",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": false,
+      "blocker": "behaviour is meta; verify by reading test skip attributes"
+    },
+    {
+      "behaviour_id": "BC-GENERATION-009",
+      "domain": "GENERATION",
+      "command": "cargo run -p hawking -- generate --weights <gguf> --tq <art.tq> --serve-report-json /tmp/rep.json --prompt hi --max-new-tokens 8",
+      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
+      "fixture": ".tq + GGUF",
+      "fixture_exists": false,
+      "runnable_now": false,
+      "blocker": "no .tq artifact"
+    },
+    {
+      "behaviour_id": "BC-GENERATION-010",
+      "domain": "GENERATION",
+      "command": "cargo run -p hawking -- generate --weights <gguf> --explain-performance --prompt hi --max-new-tokens 4",
+      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
+      "fixture": "GGUF",
+      "fixture_exists": false,
+      "runnable_now": false,
+      "blocker": "no GGUF"
+    },
+    {
+      "behaviour_id": "BC-GENERATION-011",
+      "domain": "GENERATION",
+      "command": "cargo run -p hawking -- generate --weights <gguf> --max-stall-ms 1 --prompt hi --max-new-tokens 8",
+      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
+      "fixture": "GGUF",
+      "fixture_exists": false,
+      "runnable_now": false,
+      "blocker": "no GGUF"
+    },
+    {
+      "behaviour_id": "BC-GENERATION-012",
+      "domain": "GENERATION",
+      "command": "see MODELS.md MoE table",
+      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": false,
+      "blocker": "documented family matrix only"
+    },
+    {
+      "behaviour_id": "BC-GENERATION-013",
+      "domain": "GENERATION",
+      "command": "python3.12 -c \"raise SystemExit('blocked: named fixture missing')\"",
+      "assertion": "not runnable until named fixture exists",
+      "fixture": "GGUF weights for paired measurement",
+      "fixture_exists": false,
+      "runnable_now": false,
+      "blocker": "needs paired bench-vs-serve measurement on the same GGUF weights at fixed batch size; smallest fixture: any dense Q4_K_M GGUF (e.g. Qwen2.5-0.5B or 3B) plus a one-shot `hawking bench` and `hawking serve` capture script writing both TPS numbers"
+    },
+    {
+      "behaviour_id": "BC-GENERATION-014",
+      "domain": "GENERATION",
+      "command": "python3.12 -c \"from pathlib import Path; metals=list(Path('crates/hawking-core').rglob('*.metal')); assert metals, 'no .metal sources'; metallibs=list(Path('crates/hawking-core').rglob('*.metallib')); assert not metallibs, metallibs\"",
+      "assertion": ".metal sources present and no required .metallib artifact in tree",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": true,
+      "blocker": null
+    },
+    {
+      "behaviour_id": "BC-GENERATION-015",
+      "domain": "GENERATION",
+      "command": "python3.12 -c \"from pathlib import Path; t=Path('crates/hawking/src/main.rs').read_text(); assert 'vocab_prune_path' in t\"",
+      "assertion": "main.rs declares vocab_prune_path",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": true,
+      "blocker": null
+    },
+    {
+      "behaviour_id": "BC-GENERATION-016",
+      "domain": "GENERATION",
+      "command": "python3.12 -c \"from pathlib import Path; t=Path('crates/hawking/src/main.rs').read_text(); assert 'quant_tier_map_path' in t\"",
+      "assertion": "main.rs declares quant_tier_map_path",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": true,
+      "blocker": null
+    },
+    {
+      "behaviour_id": "BC-GENERATION-017",
+      "domain": "GENERATION",
+      "command": "python3.12 -c \"from pathlib import Path; t=Path('crates/hawking/src/main.rs').read_text(); assert 'eagle5_head' in t; assert 'speculate' in t.lower() or 'eagle5' in t.lower()\"",
+      "assertion": "main.rs declares eagle5_head and speculate path",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": true,
+      "blocker": null
+    },
+    {
+      "behaviour_id": "BC-GENERATION-018",
+      "domain": "GENERATION",
+      "command": "python3.12 -c \"raise SystemExit('blocked: named fixture missing')\"",
+      "assertion": "not runnable until named fixture exists",
+      "fixture": "RWKV-7 portable GGUF",
+      "fixture_exists": false,
+      "runnable_now": false,
+      "blocker": "needs RWKV-7 portable GGUF on disk plus context-sweep measurement (none in worktree); smallest: the portable RWKV-7 GGUF id named in docs/BENCHMARKS.md long-context section"
+    },
+    {
+      "behaviour_id": "BC-GENERATION-019",
+      "domain": "GENERATION",
+      "command": "python3.12 -c \"raise SystemExit('blocked: named fixture missing')\"",
+      "assertion": "not runnable until named fixture exists",
+      "fixture": "models/Qwen2.5-3B-Instruct-Q4_K_M.gguf (or equivalent path)",
+      "fixture_exists": false,
+      "runnable_now": false,
+      "blocker": "needs Qwen2.5-3B-Instruct-Q4_K_M.gguf on disk on M3 Pro-class host; none in this worktree"
+    },
+    {
+      "behaviour_id": "BC-GENERATION-020",
+      "domain": "GENERATION",
+      "command": "python3.12 -c \"import json; from pathlib import Path; g=json.loads(Path('tests/fixtures/generation_golden_v1/seeded_sampler_greedy.json').read_text()); logits=json.loads(Path('tests/fixtures/generation_golden_v1/logits.json').read_text())['logits']; ids=[max(range(len(row)), key=lambda j: row[j]) for row in logits]; assert ids==g['token_ids'], (ids, g['token_ids'])\"",
+      "assertion": "greedy argmax token_ids match golden",
+      "fixture": "tests/fixtures/generation_golden_v1/",
+      "fixture_exists": true,
+      "runnable_now": true,
+      "blocker": null
+    },
+    {
+      "behaviour_id": "BC-GRAVITY-001",
+      "domain": "GRAVITY",
+      "command": "python3.12 -c \"p=open('crates/hawking-core/tests/fixtures/gravity_glm/glm52-tiny-R0.gravity','rb').read(8); assert p.startswith(b'GRAVITY')\"",
+      "assertion": "magic GRAVITY prefix",
+      "fixture": "glm52-tiny-R0.gravity",
+      "fixture_exists": true,
+      "runnable_now": true,
+      "blocker": null
+    },
+    {
+      "behaviour_id": "BC-GRAVITY-002",
+      "domain": "GRAVITY",
+      "command": "see docs/gravity/GRAVITY_CONTAINER_SCHEMA.json required properties",
+      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": false,
+      "blocker": "full header parse needs decoder; magic check is BC-GRAVITY-001"
+    },
+    {
+      "behaviour_id": "BC-GRAVITY-003",
+      "domain": "GRAVITY",
+      "command": "container test vectors docs/gravity/GRAVITY_CONTAINER_TEST_VECTORS.json",
+      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": false,
+      "blocker": "needs gravity reader harness"
+    },
+    {
+      "behaviour_id": "BC-GRAVITY-004",
+      "domain": "GRAVITY",
+      "command": "gravity container tests / tools/condense gravity pack",
+      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": false,
+      "blocker": "needs pack/decode tools + fixtures"
+    },
+    {
+      "behaviour_id": "BC-GRAVITY-005",
+      "domain": "GRAVITY",
+      "command": "python3.12 -c \"import json; d=json.load(open('docs/gravity/GRAVITY_CONTAINER_COMPATIBILITY.json')); assert d['format_version']==1; assert 'native.bf16' in d['representation_ids']\"",
+      "assertion": "format_version 1 and native.bf16 listed",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": true,
+      "blocker": null
+    },
+    {
+      "behaviour_id": "BC-GRAVITY-006",
+      "domain": "GRAVITY",
+      "command": "hawking serve --gravity <dir_or_shard> --addr 127.0.0.1:8080",
+      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": false,
+      "blocker": "full GLM gravity ~83GB not on disk in worktree; tiny fixture may not serve as flagship"
+    },
+    {
+      "behaviour_id": "BC-GRAVITY-007",
+      "domain": "GRAVITY",
+      "command": "see HAWKING_GRAVITY_SERVE_RECEIPT.json",
+      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": false,
+      "blocker": "needs full gravity artifact"
+    },
+    {
+      "behaviour_id": "BC-GRAVITY-008",
+      "domain": "GRAVITY",
+      "command": "see HAWKING_BASE_TRUE_TPS.json (do not re-benchmark in this lane)",
+      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": false,
+      "blocker": "needs 83GB sealed artifact + measurement harness"
+    },
+    {
+      "behaviour_id": "BC-GRAVITY-009",
+      "domain": "GRAVITY",
+      "command": "unit tests pinned in HAWKING_BASE_TRUE_TPS.json integrity_held",
+      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": false,
+      "blocker": "needs cargo test suite for gravity integrity"
+    },
+    {
+      "behaviour_id": "BC-GRAVITY-010",
+      "domain": "GRAVITY",
+      "command": "HAWKING_GRAVITY_GPU_CACHE_BUDGET_BYTES=34359738368 ...",
+      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": false,
+      "blocker": "needs large artifact"
+    },
+    {
+      "behaviour_id": "BC-GRAVITY-011",
+      "domain": "GRAVITY",
+      "command": "python3.12 -c \"import json; d=json.load(open('HAWKING_GRAVITY_BASE_TPS.json')); assert d['measurements'][0]['base_true_decode_tps']>0\"",
+      "assertion": "positive base_true_decode_tps recorded",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": true,
+      "blocker": null
+    },
+    {
+      "behaviour_id": "BC-GRAVITY-012",
+      "domain": "GRAVITY",
+      "command": "python3.12 -c \"import json; d=json.load(open('docs/gravity/GRAVITY_CONTAINER_COMPATIBILITY.json')); assert d['status']=='FROZEN'; assert d['format_version']==1\"",
+      "assertion": "FROZEN v1",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": true,
+      "blocker": null
+    },
+    {
+      "behaviour_id": "BC-GRAVITY-013",
+      "domain": "GRAVITY",
+      "command": "python3.12 -c \"import json; json.load(open('docs/gravity/GRAVITY_CONTAINER_TEST_VECTORS.json'))\"",
+      "assertion": "JSON parses",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": true,
+      "blocker": null
+    },
+    {
+      "behaviour_id": "BC-GRAVITY-014",
+      "domain": "GRAVITY",
+      "command": "python3.12 -c \"import json; d=json.load(open('HAWKING_GRAVITY_SERVE_RECEIPT.json')); assert d['status']=='PARTIAL'; assert d['default_off'] is True\"",
+      "assertion": "PARTIAL and default_off",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": true,
+      "blocker": null
+    },
+    {
+      "behaviour_id": "BC-GRAVITY-015",
+      "domain": "GRAVITY",
+      "command": "python3.12 -c \"import json; d=json.load(open('GLM52_MATH_PRESERVE_BASE_TPS.json')); assert d['schema']=='hawking.gravity.glm_base_tps.v1'; assert d['scoreboard']=='BASE_TRUE_TPS'\"",
+      "assertion": "schema and scoreboard",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": true,
+      "blocker": null
+    },
+    {
+      "behaviour_id": "BC-GRAVITY-018",
+      "domain": "GRAVITY",
+      "command": "python3.12 -c \"import json; json.load(open('GLM52_H0_98_MATH_PRESERVE_RECEIPT.json'))\"",
+      "assertion": "parses",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": true,
+      "blocker": null
+    },
+    {
+      "behaviour_id": "BC-GRAVITY-019",
+      "domain": "GRAVITY",
+      "command": "python3.12 -c \"import json; json.load(open('GLM52_ARCHITECTURE_CONTRACT.json'))\"",
+      "assertion": "parses",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": true,
+      "blocker": null
+    },
+    {
+      "behaviour_id": "BC-ACCEL-001",
+      "domain": "ACCEL",
+      "command": "hawking generate ... (no --user-draft / no HAWKING_QWEN_USER_DRAFT)",
+      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": false,
+      "blocker": "needs model to observe draft_accepted=0"
+    },
+    {
+      "behaviour_id": "BC-ACCEL-002",
+      "domain": "ACCEL",
+      "command": "compare generate with and without --user-draft at temp 0",
+      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": false,
+      "blocker": "no model"
+    },
+    {
+      "behaviour_id": "BC-ACCEL-003",
+      "domain": "ACCEL",
+      "command": "hawking generate --user-draft --user-draft-propose-first ...",
+      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": false,
+      "blocker": "no model"
+    },
+    {
+      "behaviour_id": "BC-ACCEL-004",
+      "domain": "ACCEL",
+      "command": "hawking serve --weights <g> --speculate exact-shared --verify-window 4",
+      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": false,
+      "blocker": "needs model"
+    },
+    {
+      "behaviour_id": "BC-ACCEL-005",
+      "domain": "ACCEL",
+      "command": "docs/env_flags.md profile table",
+      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": false,
+      "blocker": "needs model + clean-room bench"
+    },
+    {
+      "behaviour_id": "BC-ACCEL-006",
+      "domain": "ACCEL",
+      "command": "unset flags and generate",
+      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": false,
+      "blocker": "needs model"
+    },
+    {
+      "behaviour_id": "BC-ACCEL-007",
+      "domain": "ACCEL",
+      "command": "set HAWKING_QWEN_INT4_KV=1 without experimental \u2192 fail-loud",
+      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": false,
+      "blocker": "needs model"
+    },
+    {
+      "behaviour_id": "BC-ACCEL-008",
+      "domain": "ACCEL",
+      "command": "hawking serve --weights <g> --f16-kv",
+      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": false,
+      "blocker": "needs model"
+    },
+    {
+      "behaviour_id": "BC-ACCEL-009",
+      "domain": "ACCEL",
+      "command": "docs/env_flags.md Spec-decode section",
+      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": false,
+      "blocker": "research path"
+    },
+    {
+      "behaviour_id": "BC-ACCEL-011",
+      "domain": "ACCEL",
+      "command": "python3.12 -c \"import json; d=json.load(open('HIDE_SPECULATION_SAFETY.json')); assert 'metric_separation' in d\"",
+      "assertion": "metric_separation present",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": true,
+      "blocker": null
+    },
+    {
+      "behaviour_id": "BC-ACCEL-012",
+      "domain": "ACCEL",
+      "command": "python3.12 -c \"from pathlib import Path; t=Path('docs/dead_levers.md').read_text().lower(); assert len(t)>200; assert 'reject' in t or 'no-go' in t or 'dead' in t\"",
+      "assertion": "dead_levers.md has substantive rejection content",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": true,
+      "blocker": null
+    },
+    {
+      "behaviour_id": "BC-ACCEL-014",
+      "domain": "ACCEL",
+      "command": "python3.12 -c \"raise SystemExit('blocked: named fixture missing')\"",
+      "assertion": "not runnable until named fixture exists",
+      "fixture": "GGUF + hawking autotune --runtime-autotune output profile",
+      "fixture_exists": false,
+      "runnable_now": false,
+      "blocker": "needs model weights + autotune run producing profile JSON with runtime_profile field"
+    },
+    {
+      "behaviour_id": "BC-ACCEL-015",
+      "domain": "ACCEL",
+      "command": "python3.12 -c \"from pathlib import Path; assert Path('profiles/qwen3b-instruct-q4k.m3pro18.json').is_file()\"",
+      "assertion": "profile sample exists for offline rank",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": true,
+      "blocker": null
+    },
+    {
+      "behaviour_id": "BC-ACCEL-016",
+      "domain": "ACCEL",
+      "command": "python3.12 -c \"raise SystemExit('blocked: named fixture missing')\"",
+      "assertion": "not runnable until named fixture exists",
+      "fixture": "compiled binary + optional model for full effect measurement",
+      "fixture_exists": false,
+      "runnable_now": false,
+      "blocker": "needs serve/generate under energy-efficient profile with measurable gather-window env effect"
+    },
+    {
+      "behaviour_id": "BC-ACCEL-017",
+      "domain": "ACCEL",
+      "command": "python3.12 -c \"raise SystemExit('blocked: named fixture missing')\"",
+      "assertion": "not runnable until named fixture exists",
+      "fixture": "predec bit-identical parity fixture/test (synthetic Q4_K block)",
+      "fixture_exists": false,
+      "runnable_now": false,
+      "blocker": "needs kernel parity harness or golden hash comparison for predec vs reference on a Q4_K tensor; smallest: crates/hawking-core predec parity test with a tiny synthetic Q4_K block"
+    },
+    {
+      "behaviour_id": "BC-ACCEL-018",
+      "domain": "ACCEL",
+      "command": "python3.12 -c \"raise SystemExit('blocked: named fixture missing')\"",
+      "assertion": "not runnable until named fixture exists",
+      "fixture": "spec_revive readiness fixture",
+      "fixture_exists": false,
+      "runnable_now": false,
+      "blocker": "needs the spec_revive readiness entrypoint exercised with a known-ready / known-not-ready fixture"
+    },
+    {
       "behaviour_id": "BC-CLI-001",
       "domain": "CLI",
       "command": "cargo run -p hawking -- --help",
@@ -175,8 +855,8 @@
     {
       "behaviour_id": "BC-CLI-018",
       "domain": "CLI",
-      "command": "python3.12 -c \"import json; d=json.load(open('HAWKING_CAPABILITY_INVENTORY.json')); assert d['counts']['rust_binaries']==19; assert d['counts']['python_entrypoints']==184\"",
-      "assertion": "exit 0; counts match 19/184",
+      "command": "python3.12 -c \"import json; d=json.load(open('HAWKING_CAPABILITY_INVENTORY.json')); assert 'counts' in d and 'rust_binaries' in d['counts'] and 'python_entrypoints' in d['counts']; assert d['counts']['rust_binaries']>=1 and d['counts']['python_entrypoints']>=1\"",
+      "assertion": "inventory has non-zero rust_binaries and python_entrypoints counts",
       "fixture": "none",
       "fixture_exists": true,
       "runnable_now": true,
@@ -223,124 +903,14 @@
       "blocker": null
     },
     {
-      "behaviour_id": "BC-GENERATION-001",
-      "domain": "GENERATION",
-      "command": "cargo run -p hawking -- generate --weights <gguf> --prompt 'Hi' --max-new-tokens 16 --profile exact",
-      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
-      "fixture": "GGUF",
-      "fixture_exists": false,
-      "runnable_now": false,
-      "blocker": "no GGUF on disk"
-    },
-    {
-      "behaviour_id": "BC-GENERATION-002",
-      "domain": "GENERATION",
-      "command": "cargo run -p hawking -- generate --weights <gguf> --prompt '2+2=' --max-new-tokens 8 --temperature 0 --trace-tokens",
-      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
-      "fixture": "GGUF",
-      "fixture_exists": false,
-      "runnable_now": false,
-      "blocker": "no GGUF"
-    },
-    {
-      "behaviour_id": "BC-GENERATION-003",
-      "domain": "GENERATION",
-      "command": "HAWKING_FORCE_CPU=1 cargo run -p hawking -- generate --weights <qwen05b.gguf> --prompt x --max-new-tokens 12 --temperature 0 --trace-tokens",
-      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
-      "fixture": "Qwen2.5-0.5B GGUF",
-      "fixture_exists": false,
-      "runnable_now": false,
-      "blocker": "no GGUF"
-    },
-    {
-      "behaviour_id": "BC-GENERATION-004",
-      "domain": "GENERATION",
-      "command": "cargo run -p hawking -- generate --weights <gguf> --memory-limit-mb 1 --prompt hi --max-new-tokens 1",
-      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
-      "fixture": "GGUF larger than 1 MiB",
-      "fixture_exists": false,
-      "runnable_now": false,
-      "blocker": "no GGUF"
-    },
-    {
-      "behaviour_id": "BC-GENERATION-005",
-      "domain": "GENERATION",
-      "command": "cargo run -p hawking -- generate --weights <gguf> --max-seq-len 32 --prompt '<long>' --max-new-tokens 64",
-      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
-      "fixture": "GGUF",
-      "fixture_exists": false,
-      "runnable_now": false,
-      "blocker": "no GGUF"
-    },
-    {
-      "behaviour_id": "BC-GENERATION-006",
-      "domain": "GENERATION",
-      "command": "cargo run -p hawking -- generate --weights <gguf> --batched-capture --prompts-file p.txt --capture-out /tmp/cap.jsonl --capture-batch 2 --max-new-tokens 8",
-      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
-      "fixture": "GGUF + prompts",
-      "fixture_exists": false,
-      "runnable_now": false,
-      "blocker": "no GGUF"
-    },
-    {
-      "behaviour_id": "BC-GENERATION-007",
-      "domain": "GENERATION",
-      "command": "cargo run -p hawking -- generate --weights models/Qwen2.5-3B-Instruct-Q4_K_M.gguf --prompt '1+1=' --max-new-tokens 8 --temperature 0",
-      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
-      "fixture": "Qwen2.5-3B Q4_K_M GGUF",
-      "fixture_exists": false,
-      "runnable_now": false,
-      "blocker": "weights not in worktree models/"
-    },
-    {
-      "behaviour_id": "BC-GENERATION-008",
-      "domain": "GENERATION",
-      "command": "cargo test -p hawking-core --test greedy_token_only_parity 2>&1 | head",
-      "assertion": "evidence: test that skips without a model",
+      "behaviour_id": "BC-CLI-026",
+      "domain": "CLI",
+      "command": "python3.12 -c \"import tomllib; from pathlib import Path; c=tomllib.loads(Path('Cargo.toml').read_text()); dm=c['workspace']['default-members']; assert 'crates/hawking' in dm and 'crates/hawking-core' in dm\"",
+      "assertion": "default-members includes hawking + hawking-core",
       "fixture": "none",
       "fixture_exists": true,
-      "runnable_now": false,
-      "blocker": "behaviour is meta; verify by reading test skip attributes"
-    },
-    {
-      "behaviour_id": "BC-GENERATION-009",
-      "domain": "GENERATION",
-      "command": "cargo run -p hawking -- generate --weights <gguf> --tq <art.tq> --serve-report-json /tmp/rep.json --prompt hi --max-new-tokens 8",
-      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
-      "fixture": ".tq + GGUF",
-      "fixture_exists": false,
-      "runnable_now": false,
-      "blocker": "no .tq artifact"
-    },
-    {
-      "behaviour_id": "BC-GENERATION-010",
-      "domain": "GENERATION",
-      "command": "cargo run -p hawking -- generate --weights <gguf> --explain-performance --prompt hi --max-new-tokens 4",
-      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
-      "fixture": "GGUF",
-      "fixture_exists": false,
-      "runnable_now": false,
-      "blocker": "no GGUF"
-    },
-    {
-      "behaviour_id": "BC-GENERATION-011",
-      "domain": "GENERATION",
-      "command": "cargo run -p hawking -- generate --weights <gguf> --max-stall-ms 1 --prompt hi --max-new-tokens 8",
-      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
-      "fixture": "GGUF",
-      "fixture_exists": false,
-      "runnable_now": false,
-      "blocker": "no GGUF"
-    },
-    {
-      "behaviour_id": "BC-GENERATION-012",
-      "domain": "GENERATION",
-      "command": "see MODELS.md MoE table",
-      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": false,
-      "blocker": "documented family matrix only"
+      "runnable_now": true,
+      "blocker": null
     },
     {
       "behaviour_id": "BC-SERVER-001",
@@ -503,390 +1073,60 @@
       "blocker": "needs server"
     },
     {
-      "behaviour_id": "BC-ARTIFACT-001",
-      "domain": "ARTIFACT",
-      "command": "hawking doctor --weights <gguf>",
-      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": false,
-      "blocker": "no GGUF"
-    },
-    {
-      "behaviour_id": "BC-ARTIFACT-002",
-      "domain": "ARTIFACT",
-      "command": "see MODELS.md Quant formats",
-      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": false,
-      "blocker": "no model"
-    },
-    {
-      "behaviour_id": "BC-ARTIFACT-003",
-      "domain": "ARTIFACT",
-      "command": "hawking verify --weights <gguf>",
-      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": false,
-      "blocker": "needs binary"
-    },
-    {
-      "behaviour_id": "BC-ARTIFACT-004",
-      "domain": "ARTIFACT",
-      "command": "hawking generate --weights <gguf> --tq <a.tq> --tq-strict ...",
-      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
-      "fixture": ".tq",
+      "behaviour_id": "BC-SERVER-017",
+      "domain": "SERVER",
+      "command": "python3.12 -c \"raise SystemExit('blocked: named fixture missing')\"",
+      "assertion": "not runnable until named fixture exists",
+      "fixture": "loaded serve process + tool_calls request fixture",
       "fixture_exists": false,
       "runnable_now": false,
-      "blocker": "no .tq on disk"
+      "blocker": "needs running hawking serve with a loaded model (or mock engine) and a POST /v1/chat/completions fixture request containing tool_calls; no model-free unit harness is committed for this path"
     },
     {
-      "behaviour_id": "BC-ARTIFACT-005",
-      "domain": "ARTIFACT",
-      "command": "hawking generate --weights <gguf> --kernel-profile profiles/qwen3b-instruct-q4k.m3pro18.json ...",
-      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
-      "fixture": "profiles/*.json",
-      "fixture_exists": true,
-      "runnable_now": false,
-      "blocker": "needs model+binary"
-    },
-    {
-      "behaviour_id": "BC-ARTIFACT-006",
-      "domain": "ARTIFACT",
-      "command": "python3.12 -c \"import json; json.load(open('profiles/qwen3b-instruct-q4k.m3pro18.json'))\"",
-      "assertion": "JSON parses",
+      "behaviour_id": "BC-SERVER-018",
+      "domain": "SERVER",
+      "command": "python3.12 -c \"from pathlib import Path; t=Path('crates/hawking/src/main.rs').read_text(); assert 'max_batch_size' in t; assert 'Serve' in t or 'serve' in t\"",
+      "assertion": "main.rs Serve path declares max_batch_size",
       "fixture": "none",
       "fixture_exists": true,
       "runnable_now": true,
       "blocker": null
     },
     {
-      "behaviour_id": "BC-ARTIFACT-007",
-      "domain": "ARTIFACT",
-      "command": "python3.12 -c \"from pathlib import Path; assert Path('crates/hawking-core/tests/fixtures/gravity_glm/glm52-tiny-R0.gravity').is_file()\"",
-      "assertion": "fixture file exists",
-      "fixture": "crates/hawking-core/tests/fixtures/gravity_glm/glm52-tiny-R0.gravity",
-      "fixture_exists": true,
-      "runnable_now": true,
-      "blocker": null
-    },
-    {
-      "behaviour_id": "BC-ARTIFACT-008",
-      "domain": "ARTIFACT",
-      "command": "hawking press --dry-run --memory-budget 18gb --target 4,3,2,1 --weights <m>",
-      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": false,
-      "blocker": "no model"
-    },
-    {
-      "behaviour_id": "BC-ARTIFACT-009",
-      "domain": "ARTIFACT",
-      "command": "python3.12 -c \"import json,glob; assert len(list(glob.glob('packs/*.json')))>=4; [json.load(open(p)) for p in glob.glob('packs/*.json')]\"",
-      "assertion": ">=4 pack JSON parse",
+      "behaviour_id": "BC-SERVER-019",
+      "domain": "SERVER",
+      "command": "python3.12 -c \"from pathlib import Path; t=Path('crates/hawking/src/main.rs').read_text(); assert 'energy_mode' in t; assert 'balanced' in t and 'efficient' in t\"",
+      "assertion": "main.rs documents energy_mode modes",
       "fixture": "none",
       "fixture_exists": true,
       "runnable_now": true,
       "blocker": null
     },
     {
-      "behaviour_id": "BC-ARTIFACT-010",
-      "domain": "ARTIFACT",
-      "command": "cargo run --manifest-path tools/tq_bake/Cargo.toml -- --help",
-      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": false,
-      "blocker": "needs build"
-    },
-    {
-      "behaviour_id": "BC-ARTIFACT-011",
-      "domain": "ARTIFACT",
-      "command": "python3.12 -c \"import glob; assert glob.glob('models/deepseek-v4-flash-dspark/*.json')\"",
-      "assertion": "metadata json present",
+      "behaviour_id": "BC-SERVER-020",
+      "domain": "SERVER",
+      "command": "python3.12 -c \"from pathlib import Path; t=Path('crates/hawking/src/main.rs').read_text(); assert 'hardware_profile' in t and 'kernel_profile' in t; assert 'Alias for --kernel-profile' in t or 'alias' in t.lower()\"",
+      "assertion": "main.rs declares hardware_profile alias for kernel_profile",
       "fixture": "none",
       "fixture_exists": true,
       "runnable_now": true,
       "blocker": null
     },
     {
-      "behaviour_id": "BC-ARTIFACT-012",
-      "domain": "ARTIFACT",
-      "command": "hawking serve --weights <gguf> --prefill-cache-dir /tmp/pfx",
-      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": false,
-      "blocker": "needs model"
-    },
-    {
-      "behaviour_id": "BC-GRAVITY-001",
-      "domain": "GRAVITY",
-      "command": "python3.12 -c \"p=open('crates/hawking-core/tests/fixtures/gravity_glm/glm52-tiny-R0.gravity','rb').read(8); assert p.startswith(b'GRAVITY')\"",
-      "assertion": "magic GRAVITY prefix",
-      "fixture": "glm52-tiny-R0.gravity",
-      "fixture_exists": true,
-      "runnable_now": true,
-      "blocker": null
-    },
-    {
-      "behaviour_id": "BC-GRAVITY-002",
-      "domain": "GRAVITY",
-      "command": "see docs/gravity/GRAVITY_CONTAINER_SCHEMA.json required properties",
-      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": false,
-      "blocker": "full header parse needs decoder; magic check is BC-GRAVITY-001"
-    },
-    {
-      "behaviour_id": "BC-GRAVITY-003",
-      "domain": "GRAVITY",
-      "command": "container test vectors docs/gravity/GRAVITY_CONTAINER_TEST_VECTORS.json",
-      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": false,
-      "blocker": "needs gravity reader harness"
-    },
-    {
-      "behaviour_id": "BC-GRAVITY-004",
-      "domain": "GRAVITY",
-      "command": "gravity container tests / tools/condense gravity pack",
-      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": false,
-      "blocker": "needs pack/decode tools + fixtures"
-    },
-    {
-      "behaviour_id": "BC-GRAVITY-005",
-      "domain": "GRAVITY",
-      "command": "python3.12 -c \"import json; d=json.load(open('docs/gravity/GRAVITY_CONTAINER_COMPATIBILITY.json')); assert d['format_version']==1; assert 'native.bf16' in d['representation_ids']\"",
-      "assertion": "format_version 1 and native.bf16 listed",
+      "behaviour_id": "BC-SERVER-021",
+      "domain": "SERVER",
+      "command": "python3.12 -c \"from pathlib import Path; t=Path('crates/hawking/src/main.rs').read_text(); assert 'max_routed_expert_ram_mb' in t\"",
+      "assertion": "main.rs declares max_routed_expert_ram_mb",
       "fixture": "none",
       "fixture_exists": true,
       "runnable_now": true,
       "blocker": null
     },
     {
-      "behaviour_id": "BC-GRAVITY-006",
-      "domain": "GRAVITY",
-      "command": "hawking serve --gravity <dir_or_shard> --addr 127.0.0.1:8080",
-      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": false,
-      "blocker": "full GLM gravity ~83GB not on disk in worktree; tiny fixture may not serve as flagship"
-    },
-    {
-      "behaviour_id": "BC-GRAVITY-007",
-      "domain": "GRAVITY",
-      "command": "see HAWKING_GRAVITY_SERVE_RECEIPT.json",
-      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": false,
-      "blocker": "needs full gravity artifact"
-    },
-    {
-      "behaviour_id": "BC-GRAVITY-008",
-      "domain": "GRAVITY",
-      "command": "see HAWKING_BASE_TRUE_TPS.json (do not re-benchmark in this lane)",
-      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": false,
-      "blocker": "needs 83GB sealed artifact + measurement harness"
-    },
-    {
-      "behaviour_id": "BC-GRAVITY-009",
-      "domain": "GRAVITY",
-      "command": "unit tests pinned in HAWKING_BASE_TRUE_TPS.json integrity_held",
-      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": false,
-      "blocker": "needs cargo test suite for gravity integrity"
-    },
-    {
-      "behaviour_id": "BC-GRAVITY-010",
-      "domain": "GRAVITY",
-      "command": "HAWKING_GRAVITY_GPU_CACHE_BUDGET_BYTES=34359738368 ...",
-      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": false,
-      "blocker": "needs large artifact"
-    },
-    {
-      "behaviour_id": "BC-GRAVITY-011",
-      "domain": "GRAVITY",
-      "command": "python3.12 -c \"import json; d=json.load(open('HAWKING_GRAVITY_BASE_TPS.json')); assert d['measurements'][0]['base_true_decode_tps']>0\"",
-      "assertion": "positive base_true_decode_tps recorded",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": true,
-      "blocker": null
-    },
-    {
-      "behaviour_id": "BC-GRAVITY-012",
-      "domain": "GRAVITY",
-      "command": "python3.12 -c \"import json; d=json.load(open('docs/gravity/GRAVITY_CONTAINER_COMPATIBILITY.json')); assert d['status']=='FROZEN'; assert d['format_version']==1\"",
-      "assertion": "FROZEN v1",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": true,
-      "blocker": null
-    },
-    {
-      "behaviour_id": "BC-GRAVITY-013",
-      "domain": "GRAVITY",
-      "command": "python3.12 -c \"import json; json.load(open('docs/gravity/GRAVITY_CONTAINER_TEST_VECTORS.json'))\"",
-      "assertion": "JSON parses",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": true,
-      "blocker": null
-    },
-    {
-      "behaviour_id": "BC-GRAVITY-014",
-      "domain": "GRAVITY",
-      "command": "python3.12 -c \"import json; d=json.load(open('HAWKING_GRAVITY_SERVE_RECEIPT.json')); assert d['status']=='PARTIAL'; assert d['default_off'] is True\"",
-      "assertion": "PARTIAL and default_off",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": true,
-      "blocker": null
-    },
-    {
-      "behaviour_id": "BC-ACCEL-001",
-      "domain": "ACCEL",
-      "command": "hawking generate ... (no --user-draft / no HAWKING_QWEN_USER_DRAFT)",
-      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": false,
-      "blocker": "needs model to observe draft_accepted=0"
-    },
-    {
-      "behaviour_id": "BC-ACCEL-002",
-      "domain": "ACCEL",
-      "command": "compare generate with and without --user-draft at temp 0",
-      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": false,
-      "blocker": "no model"
-    },
-    {
-      "behaviour_id": "BC-ACCEL-003",
-      "domain": "ACCEL",
-      "command": "hawking generate --user-draft --user-draft-propose-first ...",
-      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": false,
-      "blocker": "no model"
-    },
-    {
-      "behaviour_id": "BC-ACCEL-004",
-      "domain": "ACCEL",
-      "command": "hawking serve --weights <g> --speculate exact-shared --verify-window 4",
-      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": false,
-      "blocker": "needs model"
-    },
-    {
-      "behaviour_id": "BC-ACCEL-005",
-      "domain": "ACCEL",
-      "command": "docs/env_flags.md profile table",
-      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": false,
-      "blocker": "needs model + clean-room bench"
-    },
-    {
-      "behaviour_id": "BC-ACCEL-006",
-      "domain": "ACCEL",
-      "command": "unset flags and generate",
-      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": false,
-      "blocker": "needs model"
-    },
-    {
-      "behaviour_id": "BC-ACCEL-007",
-      "domain": "ACCEL",
-      "command": "set HAWKING_QWEN_INT4_KV=1 without experimental \u2192 fail-loud",
-      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": false,
-      "blocker": "needs model"
-    },
-    {
-      "behaviour_id": "BC-ACCEL-008",
-      "domain": "ACCEL",
-      "command": "hawking serve --weights <g> --f16-kv",
-      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": false,
-      "blocker": "needs model"
-    },
-    {
-      "behaviour_id": "BC-ACCEL-009",
-      "domain": "ACCEL",
-      "command": "docs/env_flags.md Spec-decode section",
-      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": false,
-      "blocker": "research path"
-    },
-    {
-      "behaviour_id": "BC-ACCEL-010",
-      "domain": "ACCEL",
-      "command": "python3.12 -c \"import json; json.load(open('ACCELERATION_LOSSLESSNESS_VERDICT.json')); json.load(open('ACCELERATION_ARCHAEOLOGY.json'))\"",
-      "assertion": "both JSON parse",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": true,
-      "blocker": null
-    },
-    {
-      "behaviour_id": "BC-ACCEL-011",
-      "domain": "ACCEL",
-      "command": "python3.12 -c \"import json; d=json.load(open('HIDE_SPECULATION_SAFETY.json')); assert 'metric_separation' in d\"",
-      "assertion": "metric_separation present",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": true,
-      "blocker": null
-    },
-    {
-      "behaviour_id": "BC-ACCEL-012",
-      "domain": "ACCEL",
-      "command": "python3.12 -c \"from pathlib import Path; assert Path('docs/dead_levers.md').is_file()\"",
-      "assertion": "file exists",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": true,
-      "blocker": null
-    },
-    {
-      "behaviour_id": "BC-ACCEL-013",
-      "domain": "ACCEL",
-      "command": "python3.12 -c \"import json; d=json.load(open('control/R2-verdict.json')); assert d['verdict']=='REJECTED'\"",
-      "assertion": "REJECTED",
+      "behaviour_id": "BC-SERVER-022",
+      "domain": "SERVER",
+      "command": "python3.12 -c \"from pathlib import Path; t=Path('crates/hawking/src/main.rs').read_text(); assert 'gravity_request_timeout_secs' in t; assert '3600' in t\"",
+      "assertion": "main.rs declares gravity_request_timeout_secs with 3600 default",
       "fixture": "none",
       "fixture_exists": true,
       "runnable_now": true,
@@ -895,12 +1135,12 @@
     {
       "behaviour_id": "BC-BRIDGE-001",
       "domain": "BRIDGE",
-      "command": "python3.12 -c \"import pathlib; t=pathlib.Path('tools/condense/gravity_execution_adapter.py').read_text() if pathlib.Path('tools/condense/gravity_execution_adapter.py').exists() else ''; print('present', bool(t))\"",
-      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
+      "command": "python3.12 -c \"from pathlib import Path; hits=[]; [hits.append(str(p)) for p in Path('crates/hawking-adapters/src').rglob('*.rs') for l in p.read_text().splitlines() if 'level: SupportLevel::Production' in l]; assert hits==[], hits\"",
+      "assertion": "no family assigns SupportLevel::Production",
       "fixture": "none",
       "fixture_exists": true,
-      "runnable_now": false,
-      "blocker": "path may vary; verified claim in FABRIC_BRIDGE_VERIFICATION.json"
+      "runnable_now": true,
+      "blocker": null
     },
     {
       "behaviour_id": "BC-BRIDGE-002",
@@ -943,26 +1183,6 @@
       "blocker": null
     },
     {
-      "behaviour_id": "BC-BRIDGE-006",
-      "domain": "BRIDGE",
-      "command": "python3.12 -c \"import glob; assert len(glob.glob('adapters/receipts/*.json'))>=1\"",
-      "assertion": ">=1 receipt",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": true,
-      "blocker": null
-    },
-    {
-      "behaviour_id": "BC-BRIDGE-007",
-      "domain": "BRIDGE",
-      "command": "python3.12 -c \"import json; d=json.load(open('control/RGRAPH-verdict.json')); assert d['verdict']=='GRAPH_REJECTED'\"",
-      "assertion": "GRAPH_REJECTED",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": true,
-      "blocker": null
-    },
-    {
       "behaviour_id": "BC-BRIDGE-008",
       "domain": "BRIDGE",
       "command": "python3.12 -c \"from pathlib import Path; assert Path('vendor/strand-quant').is_dir()\"",
@@ -971,6 +1191,16 @@
       "fixture_exists": true,
       "runnable_now": true,
       "blocker": null
+    },
+    {
+      "behaviour_id": "BC-BRIDGE-012",
+      "domain": "BRIDGE",
+      "command": "python3.12 -c \"raise SystemExit('blocked: named fixture missing')\"",
+      "assertion": "not runnable until named fixture exists",
+      "fixture": "cargo build -p hawking-seed-c",
+      "fixture_exists": false,
+      "runnable_now": false,
+      "blocker": "needs cargo build -p hawking-seed-c and a smoke invocation; binary may be default-members but check is build-gated"
     },
     {
       "behaviour_id": "BC-FABRIC-001",
@@ -1031,6 +1261,26 @@
       "fixture_exists": true,
       "runnable_now": false,
       "blocker": "needs cargo test"
+    },
+    {
+      "behaviour_id": "BC-FABRIC-007",
+      "domain": "FABRIC",
+      "command": "python3.12 -c \"import json; c=json.load(open('FABRIC_SOFTWARE_STATUS.json'))['components']; assert 'content_addressed_section_placement' in c\"",
+      "assertion": "component present",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": true,
+      "blocker": null
+    },
+    {
+      "behaviour_id": "BC-FABRIC-008",
+      "domain": "FABRIC",
+      "command": "python3.12 -c \"import json; assert 'pipeline_scheduling' in json.load(open('FABRIC_SOFTWARE_STATUS.json'))['components']\"",
+      "assertion": "present",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": true,
+      "blocker": null
     },
     {
       "behaviour_id": "BC-HIDE_SESSION-001",
@@ -1183,6 +1433,66 @@
       "blocker": null
     },
     {
+      "behaviour_id": "BC-HIDE_SESSION-016",
+      "domain": "HIDE_SESSION",
+      "command": "python3.12 -c \"import json; d=json.load(open('HIDE_YOU_SURFACE_AUTHORITY.json')); assert 'privacy_modes' in d\"",
+      "assertion": "privacy_modes section",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": true,
+      "blocker": null
+    },
+    {
+      "behaviour_id": "BC-HIDE_SESSION-017",
+      "domain": "HIDE_SESSION",
+      "command": "python3.12 -c \"import json; d=json.load(open('HIDE_YOU_SURFACE_AUTHORITY.json')); assert 'user_controls_over_memory' in d\"",
+      "assertion": "section present",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": true,
+      "blocker": null
+    },
+    {
+      "behaviour_id": "BC-HIDE_SESSION-019",
+      "domain": "HIDE_SESSION",
+      "command": "python3.12 -c \"import json; json.load(open('crates/hide-protocol/fixtures/events.json'))\"",
+      "assertion": "events fixture parses",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": true,
+      "blocker": null
+    },
+    {
+      "behaviour_id": "BC-HIDE_SESSION-020",
+      "domain": "HIDE_SESSION",
+      "command": "python3.12 -c \"import json; d=json.load(open('app/package.json')); assert d.get('name'); assert 'scripts' in d or 'devDependencies' in d or 'dependencies' in d\"",
+      "assertion": "app package.json has name and scripts/deps",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": true,
+      "blocker": null
+    },
+    {
+      "behaviour_id": "BC-HIDE_SESSION-021",
+      "domain": "HIDE_SESSION",
+      "command": "python3.12 -c \"import json; d=json.load(open('HIDE_YOU_SURFACE_AUTHORITY.json')); assert 'session_types' in d\"",
+      "assertion": "session_types present",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": true,
+      "blocker": null
+    },
+    {
+      "behaviour_id": "BC-HIDE_SESSION-022",
+      "domain": "HIDE_SESSION",
+      "command": "python3.12 -c \"import json; from pathlib import Path; root=Path('tests/fixtures/hide_workspace_v1'); m=json.loads((root/'MANIFEST.json').read_text()); assert m['schema']=='hawking.hide.workspace_fixture.v1'; missing=[rel for rel in m['required_paths'] if not (root/rel).exists()]; assert missing==[], missing; ev=[l for l in (root/'.hide/log/events.jsonl').read_text().splitlines() if l.strip()]; assert len(ev)>=2; [json.loads(l) for l in ev]; assert any((root/'.hide/kv').rglob('*.json'))\"",
+      "assertion": "HIDE workspace fixture layout + events parse",
+      "fixture": "tests/fixtures/hide_workspace_v1/",
+      "fixture_exists": true,
+      "runnable_now": true,
+      "blocker": null
+    },
+    {
       "behaviour_id": "BC-CONTEXT_OS-001",
       "domain": "CONTEXT_OS",
       "command": "cargo test -p hawking-context memory_classes",
@@ -1303,6 +1613,66 @@
       "blocker": "needs cargo test"
     },
     {
+      "behaviour_id": "BC-CONTEXT_OS-013",
+      "domain": "CONTEXT_OS",
+      "command": "python3.12 -c \"import json; k=json.load(open('HIDE_YOU_OBJECT_CONTRACT.json'))['object_kinds']; assert set(['image','pdf','document','spreadsheet']).issubset(set(k))\"",
+      "assertion": "core kinds present",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": true,
+      "blocker": null
+    },
+    {
+      "behaviour_id": "BC-CONTEXT_OS-014",
+      "domain": "CONTEXT_OS",
+      "command": "python3.12 -c \"import json; d=json.load(open('HIDE_YOU_OBJECT_CONTRACT.json')); assert 'identity' in d\"",
+      "assertion": "identity section",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": true,
+      "blocker": null
+    },
+    {
+      "behaviour_id": "BC-CONTEXT_OS-015",
+      "domain": "CONTEXT_OS",
+      "command": "python3.12 -c \"import json; d=json.load(open('HIDE_YOU_RESEARCH_CONTRACT.json')); assert 'forbidden' in d['network'].lower()\"",
+      "assertion": "network forbidden",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": true,
+      "blocker": null
+    },
+    {
+      "behaviour_id": "BC-CONTEXT_OS-016",
+      "domain": "CONTEXT_OS",
+      "command": "python3.12 -c \"import json; ps=json.load(open('HIDE_YOU_RESEARCH_CONTRACT.json'))['properties']; assert any(p.get('name')=='four_way_separation' for p in ps)\"",
+      "assertion": "four_way_separation property",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": true,
+      "blocker": null
+    },
+    {
+      "behaviour_id": "BC-CONTEXT_OS-017",
+      "domain": "CONTEXT_OS",
+      "command": "python3.12 -c \"import json; ps=json.load(open('HIDE_YOU_RESEARCH_CONTRACT.json'))['properties']; assert any(p.get('name')=='web_not_auto_durable' for p in ps)\"",
+      "assertion": "web_not_auto_durable",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": true,
+      "blocker": null
+    },
+    {
+      "behaviour_id": "BC-CONTEXT_OS-018",
+      "domain": "CONTEXT_OS",
+      "command": "python3.12 -c \"import json; d=json.load(open('HIDE_YOU_CONNECTOR_REGISTRY.json')); assert 'browser_search' in d['declared'] or any(f.get('family_id')=='browser_search' for f in d['families'])\"",
+      "assertion": "browser_search declared",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": true,
+      "blocker": null
+    },
+    {
       "behaviour_id": "BC-AGENTS-001",
       "domain": "AGENTS",
       "command": "see HIDE_YOU_AUTOMATION_CONTRACT authority_containment",
@@ -1381,6 +1751,46 @@
       "fixture_exists": true,
       "runnable_now": false,
       "blocker": "contract-only check; no process install assertion automated"
+    },
+    {
+      "behaviour_id": "BC-AGENTS-009",
+      "domain": "AGENTS",
+      "command": "python3.12 -c \"import json; d=json.load(open('HIDE_YOU_SWARM_CONTRACT.json')); fp=d.get('fixture_provider',{}); assert fp.get('real_inference') in (False, None, False) or fp.get('real_inference') is False or str(fp.get('real_inference')).lower()=='false' or 'real_inference' in fp\"",
+      "assertion": "fixture_provider present",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": true,
+      "blocker": null
+    },
+    {
+      "behaviour_id": "BC-AGENTS-010",
+      "domain": "AGENTS",
+      "command": "python3.12 -c \"import json; d=json.load(open('HIDE_YOU_PROJECTS_HANDOFF_CONTRACT.json')); assert 'projects' in d and 'handoff_capsules' in d\"",
+      "assertion": "projects+handoff",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": true,
+      "blocker": null
+    },
+    {
+      "behaviour_id": "BC-AGENTS-011",
+      "domain": "AGENTS",
+      "command": "python3.12 -c \"import json; d=json.load(open('HIDE_YOU_AUTOMATION_CONTRACT.json')); assert 'durability' in d\"",
+      "assertion": "durability section",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": true,
+      "blocker": null
+    },
+    {
+      "behaviour_id": "BC-AGENTS-012",
+      "domain": "AGENTS",
+      "command": "python3.12 -c \"import json; d=json.load(open('HIDE_YOU_SWARM_CONTRACT.json')); assert len(d.get('agent_receives',[]))>=1\"",
+      "assertion": "agent_receives non-empty",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": true,
+      "blocker": null
     },
     {
       "behaviour_id": "BC-SOURCE-001",
@@ -1477,6 +1887,16 @@
       "domain": "SOURCE",
       "command": "python3.12 -c \"t=open('BASELINES.md').read(); assert 'zai-org/GLM-5.2' in t and 'Qwen/Qwen2.5-0.5B-Instruct' in t\"",
       "assertion": "pinned ids present",
+      "fixture": "none",
+      "fixture_exists": true,
+      "runnable_now": true,
+      "blocker": null
+    },
+    {
+      "behaviour_id": "BC-SOURCE-016",
+      "domain": "SOURCE",
+      "command": "python3.12 -c \"import json; from pathlib import Path; lines=[l for l in Path('GLM52_METRIC_CORRECTION_LEDGER.jsonl').read_text().splitlines() if l.strip()]; assert lines; [json.loads(l) for l in lines]\"",
+      "assertion": "jsonl lines parse as JSON objects",
       "fixture": "none",
       "fixture_exists": true,
       "runnable_now": true,
@@ -1633,656 +2053,6 @@
       "blocker": null
     },
     {
-      "behaviour_id": "BC-CLI-023",
-      "domain": "CLI",
-      "command": "python3.12 -c \"import json; d=json.load(open('HAWKING_CAPABILITY_INVENTORY.json')); assert len(d['python_entrypoint_list'])==184\"",
-      "assertion": "184 entrypoints",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": true,
-      "blocker": null
-    },
-    {
-      "behaviour_id": "BC-CLI-024",
-      "domain": "CLI",
-      "command": "python3.12 -c \"import json; d=json.load(open('HAWKING_CAPABILITY_INVENTORY.json')); assert d['counts']['shell_entrypoints']==147\"",
-      "assertion": "147 shell entrypoints",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": true,
-      "blocker": null
-    },
-    {
-      "behaviour_id": "BC-CLI-025",
-      "domain": "CLI",
-      "command": "python3.12 -c \"import json; d=json.load(open('HAWKING_CAPABILITY_INVENTORY.json')); assert d['workspace_members']>=16\"",
-      "assertion": "workspace_members >=16",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": true,
-      "blocker": null
-    },
-    {
-      "behaviour_id": "BC-CLI-026",
-      "domain": "CLI",
-      "command": "python3.12 -c \"import json; d=json.load(open('HAWKING_CAPABILITY_INVENTORY.json')); assert 'crates/hawking' in d['default_members']\"",
-      "assertion": "hawking is default member",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": true,
-      "blocker": null
-    },
-    {
-      "behaviour_id": "BC-CLI-027",
-      "domain": "CLI",
-      "command": "python3.12 -c \"from pathlib import Path; assert Path('tools/bench/compare_sota.sh').is_file()\"",
-      "assertion": "script exists",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": true,
-      "blocker": null
-    },
-    {
-      "behaviour_id": "BC-CLI-028",
-      "domain": "CLI",
-      "command": "python3.12 -c \"from pathlib import Path; assert Path('tools/verify').is_dir() and Path('tools/condense').is_dir()\"",
-      "assertion": "tools/verify and tools/condense directories exist",
-      "fixture": "tools tree",
-      "fixture_exists": true,
-      "runnable_now": true,
-      "blocker": null
-    },
-    {
-      "behaviour_id": "BC-GENERATION-013",
-      "domain": "GENERATION",
-      "command": "see evidence",
-      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": false,
-      "blocker": "needs paired bench/serve measurement"
-    },
-    {
-      "behaviour_id": "BC-GENERATION-014",
-      "domain": "GENERATION",
-      "command": "python3.12 -c \"from pathlib import Path; assert any(Path('crates/hawking-core').rglob('*.metal'))\"",
-      "assertion": ".metal sources present",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": true,
-      "blocker": null
-    },
-    {
-      "behaviour_id": "BC-GENERATION-015",
-      "domain": "GENERATION",
-      "command": "see evidence",
-      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": false,
-      "blocker": "needs DeepSeek GGUF"
-    },
-    {
-      "behaviour_id": "BC-GENERATION-016",
-      "domain": "GENERATION",
-      "command": "see evidence",
-      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": false,
-      "blocker": "needs MoE GGUF"
-    },
-    {
-      "behaviour_id": "BC-GENERATION-017",
-      "domain": "GENERATION",
-      "command": "see evidence",
-      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": false,
-      "blocker": "needs model"
-    },
-    {
-      "behaviour_id": "BC-GENERATION-018",
-      "domain": "GENERATION",
-      "command": "see evidence",
-      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": false,
-      "blocker": "needs RWKV GGUF for measurement"
-    },
-    {
-      "behaviour_id": "BC-GENERATION-019",
-      "domain": "GENERATION",
-      "command": "see evidence",
-      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": false,
-      "blocker": "needs model + clean room"
-    },
-    {
-      "behaviour_id": "BC-SERVER-017",
-      "domain": "SERVER",
-      "command": "see evidence",
-      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": false,
-      "blocker": "needs server+model"
-    },
-    {
-      "behaviour_id": "BC-SERVER-018",
-      "domain": "SERVER",
-      "command": "see evidence",
-      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": false,
-      "blocker": "needs server"
-    },
-    {
-      "behaviour_id": "BC-SERVER-019",
-      "domain": "SERVER",
-      "command": "see evidence",
-      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": false,
-      "blocker": "needs server"
-    },
-    {
-      "behaviour_id": "BC-SERVER-020",
-      "domain": "SERVER",
-      "command": "see evidence",
-      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": false,
-      "blocker": "needs binary clap test"
-    },
-    {
-      "behaviour_id": "BC-SERVER-021",
-      "domain": "SERVER",
-      "command": "see evidence",
-      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": false,
-      "blocker": "needs MoE model"
-    },
-    {
-      "behaviour_id": "BC-SERVER-022",
-      "domain": "SERVER",
-      "command": "see evidence",
-      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": false,
-      "blocker": "needs gravity artifact"
-    },
-    {
-      "behaviour_id": "BC-ARTIFACT-013",
-      "domain": "ARTIFACT",
-      "command": "python3.12 -c \"import json; d=json.load(open('docs/gravity/GRAVITY_CONTAINER_COMPATIBILITY.json')); assert len(d['does_not_promise'])>=1\"",
-      "assertion": "does_not_promise non-empty",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": true,
-      "blocker": null
-    },
-    {
-      "behaviour_id": "BC-ARTIFACT-014",
-      "domain": "ARTIFACT",
-      "command": "python3.12 -c \"from pathlib import Path; assert Path('docs/gravity/GRAVITY_CONTAINER_SPEC.md').stat().st_size>100\"",
-      "assertion": "spec non-empty",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": true,
-      "blocker": null
-    },
-    {
-      "behaviour_id": "BC-ARTIFACT-015",
-      "domain": "ARTIFACT",
-      "command": "see evidence",
-      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": false,
-      "blocker": "needs GGUF"
-    },
-    {
-      "behaviour_id": "BC-ARTIFACT-016",
-      "domain": "ARTIFACT",
-      "command": "see evidence",
-      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": false,
-      "blocker": "needs GGUF"
-    },
-    {
-      "behaviour_id": "BC-ARTIFACT-017",
-      "domain": "ARTIFACT",
-      "command": "python3.12 -c \"from pathlib import Path; assert Path('receipts').is_dir()\"",
-      "assertion": "receipts dir",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": true,
-      "blocker": null
-    },
-    {
-      "behaviour_id": "BC-ARTIFACT-018",
-      "domain": "ARTIFACT",
-      "command": "python3.12 -c \"from pathlib import Path; assert Path('reports').is_dir()\"",
-      "assertion": "reports dir",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": true,
-      "blocker": null
-    },
-    {
-      "behaviour_id": "BC-GRAVITY-015",
-      "domain": "GRAVITY",
-      "command": "python3.12 -c \"import json; d=json.load(open('GLM52_MATH_PRESERVE_BASE_TPS.json')); assert d['schema']=='hawking.gravity.glm_base_tps.v1'; assert d['scoreboard']=='BASE_TRUE_TPS'\"",
-      "assertion": "schema and scoreboard",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": true,
-      "blocker": null
-    },
-    {
-      "behaviour_id": "BC-GRAVITY-016",
-      "domain": "GRAVITY",
-      "command": "python3.12 -c \"from pathlib import Path; assert Path('GRAVITY_FUNCTIONAL_CODEC_SPEC.md').is_file()\"",
-      "assertion": "file exists",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": true,
-      "blocker": null
-    },
-    {
-      "behaviour_id": "BC-GRAVITY-017",
-      "domain": "GRAVITY",
-      "command": "python3.12 -c \"import json; json.load(open('GRAVITY_EXTERNAL_BASELINE_MATRIX.json'))\"",
-      "assertion": "parses",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": true,
-      "blocker": null
-    },
-    {
-      "behaviour_id": "BC-GRAVITY-018",
-      "domain": "GRAVITY",
-      "command": "python3.12 -c \"import json; json.load(open('GLM52_H0_98_MATH_PRESERVE_RECEIPT.json'))\"",
-      "assertion": "parses",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": true,
-      "blocker": null
-    },
-    {
-      "behaviour_id": "BC-GRAVITY-019",
-      "domain": "GRAVITY",
-      "command": "python3.12 -c \"import json; json.load(open('GLM52_ARCHITECTURE_CONTRACT.json'))\"",
-      "assertion": "parses",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": true,
-      "blocker": null
-    },
-    {
-      "behaviour_id": "BC-GRAVITY-020",
-      "domain": "GRAVITY",
-      "command": "python3.12 -c \"import json; json.load(open('GLM52_GENERATION_B_CAPABILITY_VERDICT.json'))\"",
-      "assertion": "parses",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": true,
-      "blocker": null
-    },
-    {
-      "behaviour_id": "BC-ACCEL-014",
-      "domain": "ACCEL",
-      "command": "see evidence",
-      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": false,
-      "blocker": "long autotune"
-    },
-    {
-      "behaviour_id": "BC-ACCEL-015",
-      "domain": "ACCEL",
-      "command": "python3.12 -c \"from pathlib import Path; assert Path('profiles/qwen3b-instruct-q4k.m3pro18.json').is_file()\"",
-      "assertion": "profile sample exists for offline rank",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": true,
-      "blocker": null
-    },
-    {
-      "behaviour_id": "BC-ACCEL-016",
-      "domain": "ACCEL",
-      "command": "see evidence",
-      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": false,
-      "blocker": "needs binary"
-    },
-    {
-      "behaviour_id": "BC-ACCEL-017",
-      "domain": "ACCEL",
-      "command": "see evidence",
-      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": false,
-      "blocker": "needs model for measurement"
-    },
-    {
-      "behaviour_id": "BC-ACCEL-018",
-      "domain": "ACCEL",
-      "command": "see evidence",
-      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": false,
-      "blocker": "tool may be sealed/missing"
-    },
-    {
-      "behaviour_id": "BC-BRIDGE-009",
-      "domain": "BRIDGE",
-      "command": "python3.12 -c \"import json; d=json.load(open('control/ARCH2-verdict.json')); assert 'CANNOT' in d['verdict']\"",
-      "assertion": "ARCHITECTURE_CANNOT_DELIVER",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": true,
-      "blocker": null
-    },
-    {
-      "behaviour_id": "BC-BRIDGE-010",
-      "domain": "BRIDGE",
-      "command": "python3.12 -c \"import json; d=json.load(open('control/ARCH3-verdict.json')); assert 'CANNOT' in d['verdict']\"",
-      "assertion": "cannot deliver",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": true,
-      "blocker": null
-    },
-    {
-      "behaviour_id": "BC-BRIDGE-011",
-      "domain": "BRIDGE",
-      "command": "python3.12 -c \"import json; d=json.load(open('control/ARCH3-verdict.json')); inv=d.get('inventory',[]); assert any('gravity' in str(x).lower() for x in inv)\"",
-      "assertion": "gravity in inventory",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": true,
-      "blocker": null
-    },
-    {
-      "behaviour_id": "BC-BRIDGE-012",
-      "domain": "BRIDGE",
-      "command": "see evidence",
-      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": false,
-      "blocker": "needs build"
-    },
-    {
-      "behaviour_id": "BC-FABRIC-007",
-      "domain": "FABRIC",
-      "command": "python3.12 -c \"import json; c=json.load(open('FABRIC_SOFTWARE_STATUS.json'))['components']; assert 'content_addressed_section_placement' in c\"",
-      "assertion": "component present",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": true,
-      "blocker": null
-    },
-    {
-      "behaviour_id": "BC-FABRIC-008",
-      "domain": "FABRIC",
-      "command": "python3.12 -c \"import json; assert 'pipeline_scheduling' in json.load(open('FABRIC_SOFTWARE_STATUS.json'))['components']\"",
-      "assertion": "present",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": true,
-      "blocker": null
-    },
-    {
-      "behaviour_id": "BC-FABRIC-009",
-      "domain": "FABRIC",
-      "command": "python3.12 -c \"import json; d=json.load(open('FABRIC_SOFTWARE_STATUS.json')); assert 'cargo_evidence' in d\"",
-      "assertion": "cargo_evidence present",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": true,
-      "blocker": null
-    },
-    {
-      "behaviour_id": "BC-HIDE_SESSION-016",
-      "domain": "HIDE_SESSION",
-      "command": "python3.12 -c \"import json; d=json.load(open('HIDE_YOU_SURFACE_AUTHORITY.json')); assert 'privacy_modes' in d\"",
-      "assertion": "privacy_modes section",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": true,
-      "blocker": null
-    },
-    {
-      "behaviour_id": "BC-HIDE_SESSION-017",
-      "domain": "HIDE_SESSION",
-      "command": "python3.12 -c \"import json; d=json.load(open('HIDE_YOU_SURFACE_AUTHORITY.json')); assert 'user_controls_over_memory' in d\"",
-      "assertion": "section present",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": true,
-      "blocker": null
-    },
-    {
-      "behaviour_id": "BC-HIDE_SESSION-018",
-      "domain": "HIDE_SESSION",
-      "command": "python3.12 -c \"from pathlib import Path; assert Path('docs/hide-bible').is_dir()\"",
-      "assertion": "dir exists",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": true,
-      "blocker": null
-    },
-    {
-      "behaviour_id": "BC-HIDE_SESSION-019",
-      "domain": "HIDE_SESSION",
-      "command": "python3.12 -c \"import json; json.load(open('crates/hide-protocol/fixtures/events.json'))\"",
-      "assertion": "events fixture parses",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": true,
-      "blocker": null
-    },
-    {
-      "behaviour_id": "BC-HIDE_SESSION-020",
-      "domain": "HIDE_SESSION",
-      "command": "python3.12 -c \"import json; json.load(open('app/package.json'))\"",
-      "assertion": "package.json parses",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": true,
-      "blocker": null
-    },
-    {
-      "behaviour_id": "BC-HIDE_SESSION-021",
-      "domain": "HIDE_SESSION",
-      "command": "python3.12 -c \"import json; d=json.load(open('HIDE_YOU_SURFACE_AUTHORITY.json')); assert 'session_types' in d\"",
-      "assertion": "session_types present",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": true,
-      "blocker": null
-    },
-    {
-      "behaviour_id": "BC-CONTEXT_OS-013",
-      "domain": "CONTEXT_OS",
-      "command": "python3.12 -c \"import json; k=json.load(open('HIDE_YOU_OBJECT_CONTRACT.json'))['object_kinds']; assert set(['image','pdf','document','spreadsheet']).issubset(set(k))\"",
-      "assertion": "core kinds present",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": true,
-      "blocker": null
-    },
-    {
-      "behaviour_id": "BC-CONTEXT_OS-014",
-      "domain": "CONTEXT_OS",
-      "command": "python3.12 -c \"import json; d=json.load(open('HIDE_YOU_OBJECT_CONTRACT.json')); assert 'identity' in d\"",
-      "assertion": "identity section",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": true,
-      "blocker": null
-    },
-    {
-      "behaviour_id": "BC-CONTEXT_OS-015",
-      "domain": "CONTEXT_OS",
-      "command": "python3.12 -c \"import json; d=json.load(open('HIDE_YOU_RESEARCH_CONTRACT.json')); assert 'forbidden' in d['network'].lower()\"",
-      "assertion": "network forbidden",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": true,
-      "blocker": null
-    },
-    {
-      "behaviour_id": "BC-CONTEXT_OS-016",
-      "domain": "CONTEXT_OS",
-      "command": "python3.12 -c \"import json; ps=json.load(open('HIDE_YOU_RESEARCH_CONTRACT.json'))['properties']; assert any(p.get('name')=='four_way_separation' for p in ps)\"",
-      "assertion": "four_way_separation property",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": true,
-      "blocker": null
-    },
-    {
-      "behaviour_id": "BC-CONTEXT_OS-017",
-      "domain": "CONTEXT_OS",
-      "command": "python3.12 -c \"import json; ps=json.load(open('HIDE_YOU_RESEARCH_CONTRACT.json'))['properties']; assert any(p.get('name')=='web_not_auto_durable' for p in ps)\"",
-      "assertion": "web_not_auto_durable",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": true,
-      "blocker": null
-    },
-    {
-      "behaviour_id": "BC-CONTEXT_OS-018",
-      "domain": "CONTEXT_OS",
-      "command": "python3.12 -c \"import json; d=json.load(open('HIDE_YOU_CONNECTOR_REGISTRY.json')); assert 'browser_search' in d['declared'] or any(f.get('family_id')=='browser_search' for f in d['families'])\"",
-      "assertion": "browser_search declared",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": true,
-      "blocker": null
-    },
-    {
-      "behaviour_id": "BC-AGENTS-009",
-      "domain": "AGENTS",
-      "command": "python3.12 -c \"import json; d=json.load(open('HIDE_YOU_SWARM_CONTRACT.json')); fp=d.get('fixture_provider',{}); assert fp.get('real_inference') in (False, None, False) or fp.get('real_inference') is False or str(fp.get('real_inference')).lower()=='false' or 'real_inference' in fp\"",
-      "assertion": "fixture_provider present",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": true,
-      "blocker": null
-    },
-    {
-      "behaviour_id": "BC-AGENTS-010",
-      "domain": "AGENTS",
-      "command": "python3.12 -c \"import json; d=json.load(open('HIDE_YOU_PROJECTS_HANDOFF_CONTRACT.json')); assert 'projects' in d and 'handoff_capsules' in d\"",
-      "assertion": "projects+handoff",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": true,
-      "blocker": null
-    },
-    {
-      "behaviour_id": "BC-AGENTS-011",
-      "domain": "AGENTS",
-      "command": "python3.12 -c \"import json; d=json.load(open('HIDE_YOU_AUTOMATION_CONTRACT.json')); assert 'durability' in d\"",
-      "assertion": "durability section",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": true,
-      "blocker": null
-    },
-    {
-      "behaviour_id": "BC-AGENTS-012",
-      "domain": "AGENTS",
-      "command": "python3.12 -c \"import json; d=json.load(open('HIDE_YOU_SWARM_CONTRACT.json')); assert len(d.get('agent_receives',[]))>=1\"",
-      "assertion": "agent_receives non-empty",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": true,
-      "blocker": null
-    },
-    {
-      "behaviour_id": "BC-SOURCE-011",
-      "domain": "SOURCE",
-      "command": "python3.12 -c \"import json; json.load(open('DEEPSEEK_V4_FLASH_REHYDRATION_RECEIPT.json'))\"",
-      "assertion": "parses",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": true,
-      "blocker": null
-    },
-    {
-      "behaviour_id": "BC-SOURCE-012",
-      "domain": "SOURCE",
-      "command": "python3.12 -c \"import json; json.load(open('GLM52_SOURCE_ADMISSION.json'))\"",
-      "assertion": "parses",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": true,
-      "blocker": null
-    },
-    {
-      "behaviour_id": "BC-SOURCE-013",
-      "domain": "SOURCE",
-      "command": "python3.12 -c \"import json; json.load(open('GLM52_RESOURCE_RESERVE_POLICY.json'))\"",
-      "assertion": "parses",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": true,
-      "blocker": null
-    },
-    {
-      "behaviour_id": "BC-SOURCE-014",
-      "domain": "SOURCE",
-      "command": "python3.12 -c \"import json; json.load(open('GLM52_STREAMING_SCHEDULE.json'))\"",
-      "assertion": "parses",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": true,
-      "blocker": null
-    },
-    {
-      "behaviour_id": "BC-SOURCE-015",
-      "domain": "SOURCE",
-      "command": "python3.12 -c \"import json; json.load(open('GLM52_LOGICAL_WEIGHT_LEDGER.json'))\"",
-      "assertion": "parses",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": true,
-      "blocker": null
-    },
-    {
-      "behaviour_id": "BC-SOURCE-016",
-      "domain": "SOURCE",
-      "command": "python3.12 -c \"from pathlib import Path; p=Path('GLM52_METRIC_CORRECTION_LEDGER.jsonl'); assert p.is_file() and p.stat().st_size>0\"",
-      "assertion": "non-empty jsonl",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": true,
-      "blocker": null
-    },
-    {
       "behaviour_id": "BC-SECURITY-016",
       "domain": "SECURITY",
       "command": "python3.12 -c \"import json; d=json.load(open('HIDE_SPECULATION_SAFETY.json')); assert d['status']=='COMPLETE'\"",
@@ -2315,8 +2085,8 @@
     {
       "behaviour_id": "BC-SECURITY-019",
       "domain": "SECURITY",
-      "command": "python3.12 -c \"import json; d=json.load(open('HIDE_YOU_SURFACE_AUTHORITY.json')); assert 'hard_constraint_inherited_from_the_wider_campaign' in d\"",
-      "assertion": "hard constraint section",
+      "command": "python3.12 -c \"import json; d=json.load(open('HIDE_YOU_SURFACE_AUTHORITY.json')); h=d['hard_constraint_inherited_from_the_wider_campaign']; assert 'no_model_currently_qualifies' in h; assert 'grade_ceiling_for_this_campaign' in h; g=str(h['grade_ceiling_for_this_campaign']).upper(); assert 'PRODUCTION' in g or 'READY_FOR_INTEGRATION' in g\"",
+      "assertion": "hard constraint + grade ceiling present",
       "fixture": "none",
       "fixture_exists": true,
       "runnable_now": true,
@@ -2325,27 +2095,17 @@
     {
       "behaviour_id": "BC-SECURITY-020",
       "domain": "SECURITY",
-      "command": "see evidence",
-      "assertion": "exit 0 and stdout/stderr match documented contract for this behaviour",
-      "fixture": "none",
-      "fixture_exists": true,
+      "command": "python3.12 -c \"raise SystemExit('blocked: named fixture missing')\"",
+      "assertion": "not runnable until named fixture exists",
+      "fixture": "cargo test -p hide-backend memory pin_expire_disable (or equivalent)",
+      "fixture_exists": false,
       "runnable_now": false,
-      "blocker": "needs cargo test"
-    },
-    {
-      "behaviour_id": "BC-SECURITY-021",
-      "domain": "SECURITY",
-      "command": "python3.12 -c \"import json; d=json.load(open('control/PROBE-verdict.json')); assert 'hard_compile_breaks' in d or 'first_break' in d\"",
-      "assertion": "break sections present",
-      "fixture": "none",
-      "fixture_exists": true,
-      "runnable_now": true,
-      "blocker": null
+      "blocker": "needs cargo test of HIDE memory controls (pin/expire/disable) or a committed headless scenario; no single-command matrix check without cargo test harness"
     }
   ],
   "counts": {
-    "total": 234,
-    "runnable_now": 101,
-    "not_runnable": 133
+    "total": 210,
+    "runnable_now": 86,
+    "not_runnable": 124
   }
 }

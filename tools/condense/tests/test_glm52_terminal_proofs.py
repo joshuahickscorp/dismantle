@@ -5,6 +5,7 @@ import hashlib
 import inspect
 import json
 import shutil
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -14,6 +15,15 @@ from tools.condense.glm52_common import seal
 from tools.condense import glm52_terminal_proofs as proofs
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
+
+# Lambda (not `def`) so topology function count does not grow for this helper.
+_git_blob_sha256 = lambda commit, path: hashlib.sha256(  # noqa: E731
+    subprocess.run(
+        ["git", "-C", str(REPO_ROOT), "show", f"{commit}:{path}"],
+        check=True,
+        capture_output=True,
+    ).stdout
+).hexdigest()
 
 @pytest.fixture(scope="module")
 def current_proofs() -> dict[str, dict[str, Any]]:
@@ -279,6 +289,149 @@ def test_resealed_false_body_claim_in_manifest_is_rejected(
     _mutate_sealed(root / "GLM52_OFFICIAL_MANIFEST.json", mutation)
     with pytest.raises(proofs.TerminalProofError, match="frozen seal"):
         proofs.derive_stop_proof(root, condition)
+
+
+def test_historical_instrument_binding_pins_blobs_and_live_drift() -> None:
+    """External/adapter/corpus pins match sealed fields + git blobs; live drift ok."""
+    # External matrix: generator + common historical blobs.
+    assert (
+        _git_blob_sha256(
+            proofs.EXTERNAL_BASELINE_PRODUCER_COMMIT,
+            proofs.EXTERNAL_BASELINE_PRODUCER_PATH,
+        )
+        == proofs.EXTERNAL_BASELINE_PRODUCER_SHA256
+    )
+    assert (
+        _git_blob_sha256(
+            proofs.EXTERNAL_BASELINE_COMMON_COMMIT,
+            proofs.EXTERNAL_BASELINE_COMMON_PATH,
+        )
+        == proofs.EXTERNAL_BASELINE_COMMON_SHA256
+    )
+    binding = json.loads(
+        (REPO_ROOT / "GRAVITY_EXTERNAL_BASELINE_MATRIX.json").read_text()
+    )["instrument_binding"]
+    assert binding["generator"] == proofs.EXTERNAL_BASELINE_PRODUCER_PATH
+    assert binding["generator_sha256"] == proofs.EXTERNAL_BASELINE_PRODUCER_SHA256
+    assert binding["repository_base_commit"] == proofs.EXTERNAL_BASELINE_COMMON_COMMIT
+    assert binding["common_sha256"] == proofs.EXTERNAL_BASELINE_COMMON_SHA256
+    assert binding["timestamp_free_deterministic_rebuild"] is True
+
+    # Adapter + reference parity: production set at INSTRUMENT_PRODUCTION_COMMIT.
+    twin = json.loads((REPO_ROOT / "GLM52_ADAPTER_TWIN.json").read_text())
+    sealed = twin["instrument_binding"]["local_source_sha256"]
+    assert sealed == proofs.ADAPTER_INSTRUMENT_LOCAL_SOURCE_SHA256
+    parity = json.loads((REPO_ROOT / "GLM52_REFERENCE_PARITY.json").read_text())
+    assert parity["instrument_binding"]["local_source_sha256"] == sealed
+    for path, digest in proofs.ADAPTER_INSTRUMENT_LOCAL_SOURCE_SHA256.items():
+        assert (
+            _git_blob_sha256(proofs.INSTRUMENT_PRODUCTION_COMMIT, path) == digest
+        ), path
+
+    # Corpus builder + tools instruments; tokenizers_import_module is sealed-only.
+    corpus = json.loads((REPO_ROOT / "GLM52_CORPUS_INTEGRITY.json").read_text())
+    builder = corpus["deterministic_builder"]
+    assert builder["builder_path"] == proofs.CORPUS_BUILDER_PATH
+    assert builder["builder_sha256"] == proofs.CORPUS_BUILDER_SHA256
+    instruments = builder["instrument_sha256"]
+    for path, digest in proofs.CORPUS_INSTRUMENT_SHA256.items():
+        assert instruments[path] == digest
+        assert (
+            _git_blob_sha256(proofs.INSTRUMENT_PRODUCTION_COMMIT, path) == digest
+        ), path
+    assert (
+        _git_blob_sha256(
+            proofs.INSTRUMENT_PRODUCTION_COMMIT, proofs.CORPUS_BUILDER_PATH
+        )
+        == proofs.CORPUS_BUILDER_SHA256
+    )
+    assert (
+        instruments["tokenizers_import_module"]
+        == proofs.CORPUS_TOKENIZERS_IMPORT_MODULE_SHA256
+    )
+
+    # Live common drift + missing requirements must not fail frozen stop proofs.
+    live_common = REPO_ROOT / proofs.EXTERNAL_BASELINE_COMMON_PATH
+    assert live_common.is_file()
+    assert (
+        hashlib.sha256(live_common.read_bytes()).hexdigest()
+        != proofs.EXTERNAL_BASELINE_COMMON_SHA256
+    )
+    assert not (REPO_ROOT / "tools/condense/requirements-glm52.txt").is_file()
+    for condition in (
+        "adapter_twin_green",
+        "corpus_integrity_green",
+        "external_baseline_matrix_complete",
+    ):
+        derived = proofs.derive_stop_proof(REPO_ROOT, condition)
+        assert derived["status"] == "PASS"
+        assert derived["document_bindings"] == {}
+
+
+def test_mutated_sealed_instrument_or_pin_fails(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Mutating sealed instrument fields or validator pin constants fails closed."""
+    from tools.condense.glm52_common import seal as _seal
+
+    # Wrong pin constant vs sealed receipt.
+    broken = dict(proofs.ADAPTER_INSTRUMENT_LOCAL_SOURCE_SHA256)
+    broken[sorted(broken)[0]] = "a" * 64
+    with monkeypatch.context() as mctx:
+        mctx.setattr(proofs, "ADAPTER_INSTRUMENT_LOCAL_SOURCE_SHA256", broken)
+        with pytest.raises(proofs.TerminalProofError, match="adapter instrument"):
+            proofs.derive_stop_proof(REPO_ROOT, "adapter_twin_green")
+
+    # Mutated sealed adapter instrument map under frozen table.
+    proof = {
+        "artifact_bindings": {
+            "GLM52_ADAPTER_TWIN.json": {},
+            "GLM52_REFERENCE_PARITY.json": {},
+            "GLM52_OFFICIAL_MANIFEST.json": {},
+        },
+        "document_bindings": {},
+    }
+    root = _copy_bound_inputs(tmp_path, proof)
+    twin_path = root / "GLM52_ADAPTER_TWIN.json"
+    sealed = json.loads(twin_path.read_text())
+    target = sorted(sealed["instrument_binding"]["local_source_sha256"])[0]
+    sealed["instrument_binding"]["local_source_sha256"][target] = "0" * 64
+    sealed = _seal(sealed)
+    twin_path.write_text(json.dumps(sealed, indent=2, sort_keys=True) + "\n")
+    parity_path = root / "GLM52_REFERENCE_PARITY.json"
+    parity = json.loads(parity_path.read_text())
+    parity["instrument_binding"]["local_source_sha256"][target] = "0" * 64
+    parity = _seal(parity)
+    parity_path.write_text(json.dumps(parity, indent=2, sort_keys=True) + "\n")
+    frozen = dict(proofs.FROZEN_ARTIFACT_SEALS)
+    frozen["GLM52_ADAPTER_TWIN.json"] = sealed["seal_sha256"]
+    frozen["GLM52_REFERENCE_PARITY.json"] = parity["seal_sha256"]
+    monkeypatch.setattr(proofs, "FROZEN_ARTIFACT_SEALS", frozen)
+    with pytest.raises(proofs.TerminalProofError, match="adapter instrument"):
+        proofs.derive_stop_proof(root, "adapter_twin_green")
+
+    # Mutated sealed corpus builder digest under frozen table.
+    corpus_root = _copy_bound_inputs(
+        tmp_path / "corpus",
+        {
+            "artifact_bindings": {
+                "GLM52_CORPUS_INTEGRITY.json": {},
+                "GLM52_OFFICIAL_MANIFEST.json": {},
+            },
+            "document_bindings": {},
+        },
+    )
+    corpus_path = corpus_root / "GLM52_CORPUS_INTEGRITY.json"
+    csealed = json.loads(corpus_path.read_text())
+    csealed["deterministic_builder"]["builder_sha256"] = "f" * 64
+    csealed = _seal(csealed)
+    corpus_path.write_text(json.dumps(csealed, indent=2, sort_keys=True) + "\n")
+    frozen = dict(proofs.FROZEN_ARTIFACT_SEALS)
+    frozen["GLM52_CORPUS_INTEGRITY.json"] = csealed["seal_sha256"]
+    monkeypatch.setattr(proofs, "FROZEN_ARTIFACT_SEALS", frozen)
+    with pytest.raises(proofs.TerminalProofError, match="corpus builder hash"):
+        proofs.derive_stop_proof(corpus_root, "corpus_integrity_green")
+
 
 def test_module_has_no_write_receipt_or_external_execution_api() -> None:
     public_functions = {

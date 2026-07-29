@@ -1,0 +1,16 @@
+{
+  "schema": "hawking.capability_manifest.v1",
+  "note": "S2b process-engine cutover: tools/condense/engine retired into lab/. Science floor remains under tools/condense/ (Track V). No second science implementation in lab/.",
+  "entries": [
+    {
+      "retired_entrypoint": "tools/condense/engine/runtime.py",
+      "invocation": "python3.12 -m lab --classify",
+      "disposition": "replaced",
+      "evidence": "lab/runtime.py + lab/campaigns.json + lab/science_registry.py; process lifecycle under python3.12 -m lab",
+      "also_invocable_as": [
+        "python3.12 -m lab --classify",
+        "python3.12 -m lab --help"
+      ]
+    }
+  ]
+}

@@ -48,6 +48,59 @@ OFFICIAL_F32_TENSOR_COUNT = 76
 OFFICIAL_F32_LOGICAL_WEIGHTS = 19_456
 OFFICIAL_F32_PAYLOAD_BYTES = 77_824
 
+# Historical instrument binding for frozen terminal receipts.
+# Runtime proof compares sealed instrument fields to these path+commit+digest
+# pins. It does not re-hash live HEAD for a frozen receipt. Live drift of
+# common/parity/reference or absence of requirements-glm52.txt must not
+# invalidate receipt integrity.
+#
+# External matrix producer (retired 791ced2c) + common campaign base:
+EXTERNAL_BASELINE_PRODUCER_PATH = "tools/condense/glm52_external_baselines.py"
+EXTERNAL_BASELINE_PRODUCER_COMMIT = "2ee17e0edf026e9ed0fa3c8b21f6e7b7dcd9b749"
+EXTERNAL_BASELINE_PRODUCER_SHA256 = (
+    "5a8f216905578f64bf6573fa1598250531d31fcf1a2d77ae1dd2a9e68ba65477"
+)
+EXTERNAL_BASELINE_COMMON_PATH = "tools/condense/glm52_common.py"
+EXTERNAL_BASELINE_COMMON_COMMIT = "753c73dc0685ce470090aba3e49c62fe4a4f9b08"
+EXTERNAL_BASELINE_COMMON_SHA256 = (
+    "6e67ada54b6b4dac24b50682b3d900de349f33d545921fb10169625507201eb2"
+)
+
+# Adapter twin / reference parity / corpus: simultaneous production identity at
+# 2a7fddad ("Close GLM activation security gaps"). Receipt repository_base_commit
+# remains the campaign base 753c73dc — not a simultaneous multi-path blob pin
+# for parity/reference (those paths did not exist there). Common is also valid
+# at 753c73dc (same digest as 2a7fddad).
+INSTRUMENT_PRODUCTION_COMMIT = "2a7fddad866ba73dda933daf310a948469f25bf3"
+ADAPTER_INSTRUMENT_LOCAL_SOURCE_SHA256: dict[str, str] = {
+    "tools/condense/glm52_adapter.py":
+        "f4ca10c3f8f790fa35dac112fdadc58066fc745a2a4b260fbed9fc40e8f3903a",
+    "tools/condense/glm52_common.py":
+        EXTERNAL_BASELINE_COMMON_SHA256,
+    "tools/condense/glm52_parity.py":
+        "90b51e99095dbfb9e427f40b67ba7e7eb81557344e3d77060f43887af83d2332",
+    "tools/condense/glm52_reference.py":
+        "18c480e5484ed8dae70bb7be8c1bc3e38124c0094e2c71d569e2a897611b21d7",
+    "tools/condense/glm52_synthetic.py":
+        "b4b83812cbe016333a75503f49d24a4077e5dbad8ab0dbcba6362fb4ee31433b",
+    "tools/condense/requirements-glm52.txt":
+        "b70154b77468197abe5e7986830b005286b1091deba5b8a2878b20bba5791835",
+}
+CORPUS_BUILDER_PATH = "tools/condense/glm52_corpus.py"
+CORPUS_BUILDER_SHA256 = (
+    "b08088608f97d72a1e773f436253db071830cad7bb5f7d31e84db0711d493a1e"
+)
+# Repository instrument paths only. tokenizers_import_module is a sealed value
+# (site package), not a git-blob path — pin the digest, never require a live open.
+CORPUS_INSTRUMENT_SHA256: dict[str, str] = {
+    "tools/condense/glm52_common.py": EXTERNAL_BASELINE_COMMON_SHA256,
+    "tools/condense/requirements-glm52.txt":
+        "b70154b77468197abe5e7986830b005286b1091deba5b8a2878b20bba5791835",
+}
+CORPUS_TOKENIZERS_IMPORT_MODULE_SHA256 = (
+    "148ecb122f3fee03be9abb1fe213dd85fbc691bf2ad2b437ff531533781a6a3a"
+)
+
 KIMI_REPO = "moonshotai/Kimi-K2.6"
 KIMI_REVISION = "7eb5002f6aadc958aed6a9177b7ed26bb94011bb"
 KIMI_SOURCE_LOGICAL_BYTES = 595_204_999_341
@@ -1463,19 +1516,27 @@ def _validate_external_matrix(reader: _Reader) -> _SemanticResult:
         },
         "rate taxonomy levels",
     )
+    # Producer and its common-module dependency are historical blobs. Compare every
+    # sealed instrument_binding field to the pinned constants (not live tree bytes).
     binding = _require_object(matrix.get("instrument_binding"), "matrix instrument")
-    source_paths = (
-        "tools/condense/glm52_external_baselines.py",
-        "tools/condense/glm52_common.py",
+    _expect(
+        binding.get("generator"),
+        EXTERNAL_BASELINE_PRODUCER_PATH,
+        "external matrix generator path",
     )
     _expect(
-        hashlib.sha256(reader.raw(source_paths[0])).hexdigest(),
         binding.get("generator_sha256"),
+        EXTERNAL_BASELINE_PRODUCER_SHA256,
         "external matrix generator hash",
     )
     _expect(
-        hashlib.sha256(reader.raw(source_paths[1])).hexdigest(),
+        binding.get("repository_base_commit"),
+        EXTERNAL_BASELINE_COMMON_COMMIT,
+        "external matrix repository base commit",
+    )
+    _expect(
         binding.get("common_sha256"),
+        EXTERNAL_BASELINE_COMMON_SHA256,
         "external matrix common hash",
     )
     _expect(binding.get("timestamp_free_deterministic_rebuild"), True, "matrix rebuild")
@@ -1485,7 +1546,7 @@ def _validate_external_matrix(reader: _Reader) -> _SemanticResult:
         _fail("external matrix omits its principal unsafe novelty claim")
     return _SemanticResult(
         artifact_paths=(path,),
-        document_paths=source_paths,
+        document_paths=(),
         facts={
             "method_count": len(methods),
             "paper_source_count": paper_sources,
@@ -1494,6 +1555,9 @@ def _validate_external_matrix(reader: _Reader) -> _SemanticResult:
             "rate_taxonomy_levels_distinguished": True,
             "qmoe_canonical_artifact_bpw": 0.807,
             "matched_cross_paper_leaderboard_claimed": False,
+            "historical_producer_path": EXTERNAL_BASELINE_PRODUCER_PATH,
+            "historical_common_path": EXTERNAL_BASELINE_COMMON_PATH,
+            "historical_common_commit": EXTERNAL_BASELINE_COMMON_COMMIT,
         },
         scope={
             "proves": "primary-source external method and accounting comparison",
@@ -1566,15 +1630,21 @@ def _validate_adapter(reader: _Reader) -> _SemanticResult:
         fixture.get("long_context_indexer_contract"), "adapter long-context scope"
     )
     _expect(long_context.get("capability_claimed"), False, "adapter capability claim")
+    # Historical instrument map: sealed digests must equal production pins.
+    # Do not open live instrument paths for hash equality.
     instrument = _require_object(twin.get("instrument_binding"), "adapter instrument")
     source_hashes = _require_object(
         instrument.get("local_source_sha256"), "adapter source hashes"
     )
-    source_paths = tuple(sorted(source_hashes))
-    for source_path in source_paths:
+    _expect(
+        dict(sorted(source_hashes.items())),
+        dict(sorted(ADAPTER_INSTRUMENT_LOCAL_SOURCE_SHA256.items())),
+        "adapter instrument historical pin map",
+    )
+    for source_path, expected_hash in ADAPTER_INSTRUMENT_LOCAL_SOURCE_SHA256.items():
         _expect(
-            hashlib.sha256(reader.raw(source_path)).hexdigest(),
-            source_hashes[source_path],
+            source_hashes.get(source_path),
+            expected_hash,
             f"adapter instrument hash {source_path}",
         )
     parity_instrument = _require_object(
@@ -1647,7 +1717,7 @@ def _validate_adapter(reader: _Reader) -> _SemanticResult:
         _expect(local.get("state"), "PRESENT_VERIFIED", f"tokenizer asset state {asset}")
     return _SemanticResult(
         artifact_paths=(path, parity_path, manifest_path),
-        document_paths=source_paths,
+        document_paths=(),
         facts={
             "repo": OFFICIAL_REPO,
             "revision": OFFICIAL_REVISION,
@@ -1659,6 +1729,10 @@ def _validate_adapter(reader: _Reader) -> _SemanticResult:
             "body_backed_parent_parity": False,
             "bf16_reference_forward_validated": False,
             "capability_claimed": False,
+            "historical_instrument_commit": INSTRUMENT_PRODUCTION_COMMIT,
+            "historical_instrument_paths": sorted(
+                ADAPTER_INSTRUMENT_LOCAL_SOURCE_SHA256
+            ),
         },
         scope={
             "proves": "synthetic adapter twin plus official header/tokenizer schema",
@@ -1745,22 +1819,26 @@ def _validate_corpus(reader: _Reader) -> _SemanticResult:
     builder_path = builder.get("builder_path")
     if not isinstance(builder_path, str):
         _fail("corpus builder path is invalid")
-    source_paths = [builder_path]
+    _expect(builder_path, CORPUS_BUILDER_PATH, "corpus builder path")
+    # Historical builder + instrument pins — no live tree hashing.
     _expect(
-        hashlib.sha256(reader.raw(builder_path)).hexdigest(),
         builder.get("builder_sha256"),
+        CORPUS_BUILDER_SHA256,
         "corpus builder hash",
     )
     instruments = _require_object(builder.get("instrument_sha256"), "corpus instruments")
-    for instrument_path, expected_hash in instruments.items():
-        if not isinstance(instrument_path, str) or not instrument_path.startswith("tools/"):
-            continue
+    for instrument_path, expected_hash in CORPUS_INSTRUMENT_SHA256.items():
         _expect(
-            hashlib.sha256(reader.raw(instrument_path)).hexdigest(),
+            instruments.get(instrument_path),
             expected_hash,
             f"corpus instrument hash {instrument_path}",
         )
-        source_paths.append(instrument_path)
+    # Non-repository sealed value: pin only; never require a git blob or live open.
+    _expect(
+        instruments.get("tokenizers_import_module"),
+        CORPUS_TOKENIZERS_IMPORT_MODULE_SHA256,
+        "corpus tokenizers_import_module pin",
+    )
     quality = _require_object(corpus.get("quality_metric_contract"), "corpus quality contract")
     _expect(
         quality.get("corpus_manifest_is_not_a_model_quality_result"),
@@ -1774,7 +1852,7 @@ def _validate_corpus(reader: _Reader) -> _SemanticResult:
     )
     return _SemanticResult(
         artifact_paths=(path, manifest_path),
-        document_paths=tuple(dict.fromkeys(source_paths)),
+        document_paths=(),
         facts={
             "repo": OFFICIAL_REPO,
             "revision": OFFICIAL_REVISION,
@@ -1787,6 +1865,8 @@ def _validate_corpus(reader: _Reader) -> _SemanticResult:
             "network_access_used": False,
             "model_payload_downloaded": False,
             "capability_claimed": False,
+            "historical_instrument_commit": INSTRUMENT_PRODUCTION_COMMIT,
+            "historical_builder_path": CORPUS_BUILDER_PATH,
         },
         scope={
             "proves": "offline deterministic corpus integrity and split hygiene",

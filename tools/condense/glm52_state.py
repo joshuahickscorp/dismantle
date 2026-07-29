@@ -50,7 +50,7 @@ from glm52_common import (
     verify_sealed,
 )
 
-from tools.condense.engine.lease import SingletonLease as _EngineSingletonLease
+from lab.lease import SingletonLease as _EngineSingletonLease
 
 
 EVENT_SCHEMA = "hawking.glm52.controller_event.v2"
@@ -1889,7 +1889,7 @@ class HashChainLog:
         return body
 
 
-# SingletonLease lives in tools.condense.engine.lease (TOCTOU-hardened).
+# SingletonLease lives in lab.lease (TOCTOU-hardened).
 # This thin binding preserves the GLM52 schema and StateError surface so
 # production callers and path-sealed tests keep their contracts. Dies when
 # Controller itself is absorbed into the engine (next absorption lane).

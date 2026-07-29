@@ -13,7 +13,8 @@ seen before they happen.
 | `graph-repair` | `tools/graph/**` | instrument | dominators, co-change weight, imports, plus the confidence-weighting defect |
 | `perfgate` | `tools/verify/perfgate.py` | instrument | the runnable 2% gate |
 | `recomp-p5-tests-docs` | `docs/**`, root `*.md`, `tools/condense/tests/**` | Core F, partial | started under the prior arc's rules, before this campaign |
-| `recomp-bridge2-take-5376` | `crates/hawking-adapters`, `-events`, `-index`, `-orch`, `-research` | Core E (C8) | taking the 5,376 an independent review proved available |
+| `recomp-bridge2-take-5376` | `crates/hawking-adapters`, `-events`, `-index`, `-orch`, `-research` | Core E (C8) | **stalled**: 2h20m, zero commits, zero bytes of output. Not blocking; left running |
+| `s4-surface` | `crates/hide-protocol`, `-fleet`, `-acp`, `-serve`, `app/` — 35,820 LOC | Core E (C4+C8) + Core D (C9) | target 24,500; also owns closing the 6 unearned generated files |
 
 ## Known merge collision
 
@@ -25,6 +26,12 @@ clean-room `lab/` and deletes it. If s2-lab lands, p5's work on that path is moo
 construction.
 
 **Resolution at merge: s2-lab wins for `tools/condense/**`. Take p5's `docs/**` work only.**
+As of 14:15 `recomp-p5-tests-docs` has also produced nothing in 2h20m, so this collision may
+resolve itself by p5 delivering nothing at all.
+
+Second, smaller collision: `s4-surface` owns `control/GENERATED_REGISTRY.json`, and one of
+the six unearned generated files it must register — `crates/hawking-adapters/generated/sdk_types.d.ts`
+— sits in `recomp-bridge2`'s tree. If bridge2 ever lands, that one entry is re-checked.
 Recorded here rather than discovered later, because the failure mode is taking both and
 ending up with a `lab/` plus a surviving `tools/condense/tests/` proving the deleted thing.
 

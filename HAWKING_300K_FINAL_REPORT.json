@@ -34,10 +34,14 @@
       "tag": "arc-rung-475k-green"
     },
     {
-      "achieved": 437199,
+      "achieved": 430406,
+      "attempt": "L1 condensed the 25,764 lines of laboratory no lane had owned and eliminated 6,898, none relocated.",
+      "probe_corroboration": "A destructive probe deleting every protected item independently landed at 404,264.",
       "proof": "floor probe removed all 32,935 refused lines and landed at 404,264, still above 400,000",
+      "residue": 29541,
+      "residue_reason": "Odyssey T0 and its sealed negatives, the Math-Preserve prometheus passes, ramanujan, and the final_ascent and light_governor publishers. Removing any of it deletes negative science or a live control surface.",
       "rung": 400000,
-      "status": "ATTEMPTED_NOT_REACHED",
+      "status": "ATTEMPTED_BY_LANE_NOT_REACHED",
       "tag": "arc-437k-green"
     },
     {
@@ -62,7 +66,7 @@
       "status": "NOT_REACHABLE"
     }
   ],
-  "eliminated_loc": 165470,
+  "eliminated_loc": 172263,
   "endpoint": "HAWKING_300K_SEMANTIC_DENSITY_COMPLETE",
   "final_by_language": {
     "lean": 22,
@@ -79,7 +83,7 @@
     "laboratory": 135989,
     "shared": 22546
   },
-  "final_pre_split_loc": 437199,
+  "final_pre_split_loc": 430406,
   "history_publication": {
     "bundles": 2,
     "commit_map_pairs": 1819,
@@ -87,8 +91,9 @@
     "packet": "HISTORY_PUBLICATION_PACKET.md",
     "state": "PREPARED_NOT_PUBLISHED"
   },
+  "ladder_note": "The 400,000 rung was both attempted by condensation and disproven by destructive probe. Two independent methods agree it is unreachable.",
   "outcome": "TARGET_NOT_REACHABLE_HIGHER_FLOOR_PROVEN",
-  "pct_reduced": 27.5,
+  "pct_reduced": 28.6,
   "performance": {
     "decode_path_touched": false,
     "measured_regressions": 0,

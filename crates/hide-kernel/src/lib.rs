@@ -311,9 +311,9 @@ impl KernelBuilder {
 /// real permission engine + sandbox config.
 pub fn allow_all_dispatcher(workspace_root: impl Into<String>) -> Arc<ToolDispatcher> {
     let registry = Arc::new(ToolRegistry::default());
-    hide_tools::register_builtin_tools_with(
+    crate::tooling::register_builtin_tools_with(
         &registry,
-        hide_tools::ShellConfig {
+        crate::tooling::ShellConfig {
             workspace_root: Some(workspace_root.into()),
             disable_sandbox: true,
             ..Default::default()
@@ -351,3 +351,11 @@ mod tests {
         assert!(log.len() >= 5);
     }
 }
+
+// --- Track S absorbed authorities ---
+pub mod tooling;
+pub mod security;
+pub mod program_runtime;
+pub mod extension_registry;
+pub mod verify_plane;
+

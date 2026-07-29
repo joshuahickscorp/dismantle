@@ -15,10 +15,10 @@ use hide_core::persistence::{
 };
 use hide_core::project::WorkspaceLayout;
 use hide_core::Result;
-use hide_personalize::{
+use crate::personalize::{
     DynPersonalizationStore, InMemoryPersonalizationStore, JsonlPersonalizationStore,
 };
-use hide_security::audit::EventChainAuditor;
+use hide_kernel::security::audit::EventChainAuditor;
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
@@ -1927,7 +1927,7 @@ mod tests {
     use hawking_research::{ResearchRun, ResearchState};
     use hide_core::event::NewEvent;
     use hide_core::ids::now_ms;
-    use hide_personalize::{PersonalizationRecord, TaskClass};
+    use crate::personalize::{PersonalizationRecord, TaskClass};
     #[tokio::test]
     async fn open_workspace_wires_durable_stores() {
         let dir = std::env::temp_dir().join(format!("hide_backend_{}", now_ms()));

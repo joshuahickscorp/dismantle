@@ -91,6 +91,9 @@ export const CUSTOM_NAMES = [
   "stop_process",
   "capture_process_artifact",
   "export_review_receipt",
+  "switch_surface",
+  "handoff_create",
+  "handoff_receive",
 ] as const;
 export type CustomName = (typeof CUSTOM_NAMES)[number];
 

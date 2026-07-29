@@ -5,7 +5,7 @@ use hide_core::event::{Event, NewEvent};
 use hide_core::ids::{now_ms, RunId, SessionId};
 use hide_core::tool::{ToolCall, ToolStatus};
 use hide_core::types::Decision;
-use hide_verify::SourceFile;
+use hide_kernel::verify_plane::SourceFile;
 use serde_json::json;
 use std::sync::atomic::{AtomicU64, Ordering};
 fn unique_dir() -> std::path::PathBuf {

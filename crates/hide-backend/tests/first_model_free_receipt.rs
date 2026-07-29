@@ -75,9 +75,9 @@ fn permissive_config(root: &Path) -> HideConfig {
 }
 fn build_ws_dispatcher(config: &HideConfig, root: &str) -> Arc<ToolDispatcher> {
     let registry = Arc::new(ToolRegistry::default());
-    hide_tools::register_builtin_tools_with(
+    hide_kernel::tooling::register_builtin_tools_with(
         &registry,
-        hide_tools::ShellConfig {
+        hide_kernel::tooling::ShellConfig {
             workspace_root: Some(root.to_string()),
             disable_sandbox: true,
             ..Default::default()
@@ -89,9 +89,9 @@ fn build_ws_dispatcher(config: &HideConfig, root: &str) -> Arc<ToolDispatcher> {
 }
 fn tool_names(config: &HideConfig, root: &str) -> Vec<String> {
     let registry = ToolRegistry::default();
-    hide_tools::register_builtin_tools_with(
+    hide_kernel::tooling::register_builtin_tools_with(
         &registry,
-        hide_tools::ShellConfig {
+        hide_kernel::tooling::ShellConfig {
             workspace_root: Some(root.to_string()),
             disable_sandbox: true,
             ..Default::default()

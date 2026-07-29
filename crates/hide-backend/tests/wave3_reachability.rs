@@ -2,7 +2,7 @@ use hide_backend::{BackendHost, EvidenceLink, SessionRelationship, SideChatResul
 use hide_core::api::{Intent, UiEvent, UiEventKind};
 use hide_core::event::NewEvent;
 use hide_core::ids::now_ms;
-use hide_verify::SourceFile;
+use hide_kernel::verify_plane::SourceFile;
 use serde_json::json;
 use std::sync::atomic::{AtomicU64, Ordering};
 fn test_host() -> BackendHost {
@@ -51,7 +51,7 @@ async fn trace_b_side_chat_folds_a_bounded_typed_result_not_the_full_transcript(
     let mut rx = host.subscribe_ui();
     let fixture_path = "src/net.rs";
     let fixture = "pub fn parse_port(raw: &str) -> u16 {\n    raw.parse::<u16>().unwrap_or(0)\n}\n";
-    let selection_hash = hide_verify::source_hash_of([(fixture_path, fixture)]);
+    let selection_hash = hide_kernel::verify_plane::source_hash_of([(fixture_path, fixture)]);
     let selection_ref = format!("{fixture_path}#{selection_hash}");
     for text in [
         "parse_port is called from the listener bootstrap",

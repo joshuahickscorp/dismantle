@@ -656,3 +656,7 @@ mod tests {
         assert_eq!(value.get("method").unwrap(), "turn/started");
     }
 }
+
+// --- Track S absorbed authorities ---
+pub mod sdk;
+

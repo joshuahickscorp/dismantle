@@ -23,3 +23,9 @@ pub mod tool;
 pub mod types;
 
 pub use error::{HideError, Result};
+
+// --- Track S absorbed authorities ---
+pub mod state;
+pub mod objects;
+pub mod browser;
+

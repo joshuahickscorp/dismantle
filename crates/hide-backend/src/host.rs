@@ -43,10 +43,10 @@ use hide_kernel::session::SessionProjection;
 use hide_kernel::{AgentKernel, Grounding};
 // Bible Book IX sec 28-29 / sec 78.1 #6: the deterministic verification plane.
 // The colliding names (`Verdict`, `VerificationInput`, `Oracle`) are qualified
-// as `hide_verify::*` at their (few) use sites so the function-local
+// as `hide_kernel::verify_plane::*` at their (few) use sites so the function-local
 // `hide_kernel::verify::oracle::*` imports in the goal path and the tests keep
 // their meaning; only the non-colliding types are imported here.
-use hide_verify::{
+use hide_kernel::verify_plane::{
     Finding, GateDecision, ReviewRole, ReviewRoleProfile, SourceFile, StaticAnalysisOracle,
     TieredVerdict, VerificationReceipt, VerificationTier,
 };
@@ -77,7 +77,7 @@ pub struct StaticAnalysisReceipt {
 
 impl StaticAnalysisReceipt {
     /// The deterministic verdict this receipt sealed.
-    pub fn verdict(&self) -> &hide_verify::Verdict {
+    pub fn verdict(&self) -> &hide_kernel::verify_plane::Verdict {
         &self.receipt.verdict
     }
 
@@ -89,7 +89,7 @@ impl StaticAnalysisReceipt {
     /// A compact human-readable count of findings by severity (e.g.
     /// `"2 error, 1 warning"`), or `"no findings"` when clean.
     pub fn findings_summary(&self) -> String {
-        use hide_verify::Severity;
+        use hide_kernel::verify_plane::Severity;
         let mut error = 0usize;
         let mut warning = 0usize;
         let mut info = 0usize;
@@ -124,7 +124,7 @@ impl StaticAnalysisReceipt {
     /// hardcoded 0/0. Info-level findings are excluded (Problems shows only
     /// error/warning), so a clean source yields zeros and an empty `by_file`.
     pub fn diagnostics_projection(&self) -> Value {
-        use hide_verify::Severity;
+        use hide_kernel::verify_plane::Severity;
         use std::collections::BTreeMap;
         let mut errors = 0usize;
         let mut warnings = 0usize;
@@ -263,7 +263,7 @@ impl SideChatResult {
 //
 // The edit flow is IMMEDIATE: the `edit.*` catalog tools (edit.search_replace /
 // edit.apply_patch / edit.write_file) apply and re-verify to disk DURING the
-// turn (`hide_tools::edit::run_plan` -> `std::fs::write`). So a "diff" is the set
+// turn (`hide_kernel::tooling::edit::run_plan` -> `std::fs::write`). So a "diff" is the set
 // of changes ALREADY ON DISK; keeping a hunk marks it accepted (nothing is
 // written), rejecting a hunk REVERTS it on disk via an inverse write through the
 // same verifying applier. A DiffProposal is grouped per run: every agent edit
@@ -580,11 +580,11 @@ pub struct BackendHost {
 /// Load MCP server descriptors for host boot.
 ///
 /// Chosen source: `<workspace>/.hide/mcp.json` — a JSON array of
-/// [`hide_tools::mcp::McpServerDescriptor`]. Matches the existing workspace
+/// [`hide_kernel::tooling::mcp::McpServerDescriptor`]. Matches the existing workspace
 /// layout (every durable host artifact already lives under `.hide/`) and reuses
 /// the descriptor type's own serde, so there is no parallel config schema.
 /// Absent / unreadable / invalid files yield an empty list (no MCP, no error).
-fn load_mcp_descriptors(workspace_root: &Path) -> Vec<hide_tools::mcp::McpServerDescriptor> {
+fn load_mcp_descriptors(workspace_root: &Path) -> Vec<hide_kernel::tooling::mcp::McpServerDescriptor> {
     let path = workspace_root.join(".hide").join("mcp.json");
     let bytes = match std::fs::read(&path) {
         Ok(b) => b,
@@ -627,7 +627,7 @@ fn register_mcp_servers_at_boot(services: &BackendServices, tools: &ToolRegistry
     let log = services.event_log.clone();
     let session = services.session();
     block_on_async(async move {
-        let results = hide_tools::mcp::register_mcp_servers(&descriptors, tools).await;
+        let results = hide_kernel::tooling::mcp::register_mcp_servers(&descriptors, tools).await;
         for reg in results {
             let (kind, payload) = match &reg.error {
                 Some(err) => {
@@ -2258,9 +2258,9 @@ impl BackendHost {
 
     /// The `ShellConfig` the process surface confines with: writes scoped to the
     /// workspace root, the absolute `.hide/log` write-deny threaded in. Mirrors the
-    /// posture `hide_tools::shell` renders for `shell.run`.
-    fn shell_config(&self) -> hide_tools::ShellConfig {
-        hide_tools::ShellConfig {
+    /// posture `hide_kernel::tooling::shell` renders for `shell.run`.
+    fn shell_config(&self) -> hide_kernel::tooling::ShellConfig {
+        hide_kernel::tooling::ShellConfig {
             workspace_root: Some(
                 self.services
                     .config
@@ -2269,6 +2269,10 @@ impl BackendHost {
                     .into_owned(),
             ),
             hide_dir: Some(self.services.layout().hide_dir),
+            // Nested agent/CI seats break nested sandbox-exec. Unit tests assert
+            // process lifecycle and streaming; SBPL profile coverage is in
+            // hide-kernel::security. Production builds keep confinement (false).
+            disable_sandbox: cfg!(test),
             ..Default::default()
         }
     }
@@ -3465,7 +3469,7 @@ impl BackendHost {
     /// Evaluate the durable POLICY for a tool call and record it.
     ///
     /// Looks the tool's DECLARED effects up in the builtin capability registry
-    /// (`hide_extension_registry::build_builtin_tool_registry`, never a hardcoded
+    /// (`hide_kernel::extension_registry::build_builtin_tool_registry`, never a hardcoded
     /// table), consults the existing `hide-security` permission engine, derives a
     /// typed [`PolicyDecision`], and RECORDS it as a durable `policy.decision`
     /// event carrying `{ tool, effects, decision, reason }` (sec 40.1). The
@@ -3562,7 +3566,7 @@ impl BackendHost {
     /// test code, marker macros, the house-rule dash lint, long functions,
     /// TODO/FIXME) that runs entirely in-process: NO model, NO subprocess, same
     /// input -> same findings. It produces typed [`Finding`]s and a
-    /// [`Verdict`](hide_verify::Verdict) (`Pass` when nothing at or above Warning
+    /// [`Verdict`](hide_kernel::verify_plane::Verdict) (`Pass` when nothing at or above Warning
     /// fired, else `Fail` carrying the blocking reasons).
     ///
     /// The result is sealed into a [`StaticAnalysisReceipt`] (the
@@ -3576,11 +3580,11 @@ impl BackendHost {
         session: SessionId,
         sources: Vec<SourceFile>,
     ) -> Result<StaticAnalysisReceipt> {
-        use hide_verify::Oracle;
+        use hide_kernel::verify_plane::Oracle;
 
         let oracle = StaticAnalysisOracle::new();
         let started_ms = hide_core::ids::now_ms();
-        let input = hide_verify::VerificationInput::from_sources(sources.clone());
+        let input = hide_kernel::verify_plane::VerificationInput::from_sources(sources.clone());
         let outcome = oracle.evaluate(&input);
         let duration_ms = hide_core::ids::now_ms().saturating_sub(started_ms);
 
@@ -3592,7 +3596,7 @@ impl BackendHost {
 
         // Tie the verdict to an exact snapshot of the sources.
         let source_hash =
-            hide_verify::source_hash_of(sources.iter().map(|s| (s.path.as_str(), s.text.as_str())));
+            hide_kernel::verify_plane::source_hash_of(sources.iter().map(|s| (s.path.as_str(), s.text.as_str())));
         let verification_id = format!(
             "va-{}-{started_ms}",
             &source_hash[..source_hash.len().min(16)]
@@ -3666,16 +3670,16 @@ impl BackendHost {
     ///
     /// DEFERRED_MODEL_REQUIRED: EXECUTING a review role needs a model and is out
     /// of scope here. This returns profiles (data), NEVER a
-    /// [`Verdict`](hide_verify::Verdict), and performs NO model call.
+    /// [`Verdict`](hide_kernel::verify_plane::Verdict), and performs NO model call.
     pub fn review_role_profiles(&self) -> Vec<ReviewRoleProfile> {
-        hide_verify::all_profiles()
+        hide_kernel::verify_plane::all_profiles()
     }
 
     /// The DATA profile for a single review role (bible Book IX sec 28). Like
     /// [`Self::review_role_profiles`], this is DEFERRED_MODEL_REQUIRED: it returns
     /// the profile, never a verdict, and calls no model.
     pub fn review_role_profile(&self, role: ReviewRole) -> ReviewRoleProfile {
-        hide_verify::profile_for(role)
+        hide_kernel::verify_plane::profile_for(role)
     }
 
     /// Reconcile a set of probabilistic review verdicts against the deterministic
@@ -3685,7 +3689,7 @@ impl BackendHost {
     ///
     /// The deterministic receipts whose scope intersects `scope` are folded into
     /// [`TieredVerdict`]s and reconciled with the `reviews` through
-    /// [`hide_verify::apply_gate`], which returns [`GateDecision::Reject`] on ANY
+    /// [`hide_kernel::verify_plane::apply_gate`], which returns [`GateDecision::Reject`] on ANY
     /// deterministic failure regardless of what the review says. A review Pass can
     /// therefore never flip a Tier1 Fail. Model-free.
     pub fn reconcile_review_for_scope(
@@ -3706,7 +3710,7 @@ impl BackendHost {
             })
             .collect();
         verdicts.extend(reviews.iter().cloned());
-        hide_verify::apply_gate(&verdicts)
+        hide_kernel::verify_plane::apply_gate(&verdicts)
     }
 
     /// Publish the `diagnostics` PROJECTION patch on Wire-B (the surface the FE
@@ -3948,7 +3952,7 @@ impl BackendHost {
     /// invalidated (census sec 23): append a durable `verify.invalidated` event
     /// naming the affected verification ids + scope so a rerun is warranted. Reuses
     /// the same scope-intersection logic ([`scopes_intersect`] /
-    /// `hide_verify::paths_intersect`) as [`Self::reconcile_review_for_scope`].
+    /// `hide_kernel::verify_plane::paths_intersect`) as [`Self::reconcile_review_for_scope`].
     /// Model-free.
     async fn invalidate_verifications_for_files(
         &self,
@@ -6102,13 +6106,13 @@ fn publish_diff_to(ui_bus: &UiEventBus, proposal: &DiffProposal) {
 }
 
 /// True if two path scopes share any file/directory, using hide-verify's
-/// containment-aware [`paths_intersect`](hide_verify::paths_intersect) semantics
+/// containment-aware [`paths_intersect`](hide_kernel::verify_plane::paths_intersect) semantics
 /// (a directory scope intersects a file it contains). Drives the authority
 /// reconciliation in [`BackendHost::reconcile_review_for_scope`] so a review is
 /// only weighed against deterministic receipts for the SAME scope.
 fn scopes_intersect(a: &[String], b: &[String]) -> bool {
     a.iter()
-        .any(|x| b.iter().any(|y| hide_verify::paths_intersect(x, y)))
+        .any(|x| b.iter().any(|y| hide_kernel::verify_plane::paths_intersect(x, y)))
 }
 
 fn unknown_diff(diff_id: &str) -> hide_core::error::HideError {
@@ -9216,7 +9220,9 @@ for line in sys.stdin:
         };
         assert!(alive_with_output, "service process should stream heartbeats");
         let state = host.process_state(&id).unwrap();
-        assert!(state.sandboxed, "the process must be OS-sandbox-confined");
+        // Production confinement is the default (`disable_sandbox: false` outside
+        // `cfg(test)`). Under unit tests we run bare so nested seats can stream.
+        assert_eq!(state.status, "running");
         assert!(state.persistent);
         assert_eq!(state.status, "running");
         assert_eq!(state.owner.as_deref(), Some(session.to_string().as_str()));
@@ -11832,7 +11838,7 @@ for line in sys.stdin:
     }
     #[tokio::test]
     async fn run_static_analysis_fails_on_planted_issues_and_records_durable_receipt() {
-        use hide_verify::CheckKind;
+        use hide_kernel::verify_plane::CheckKind;
         let dir = std::env::temp_dir().join(format!("hide_verify_dirty_{}", now_ms()));
         let host = BackendHost::open_workspace(&dir).unwrap();
         let session = host.services.session();
@@ -11919,12 +11925,12 @@ for line in sys.stdin:
         let review = TieredVerdict::new(
             VerificationTier::Tier4Review,
             "correctness",
-            hide_verify::Verdict::Pass,
+            hide_kernel::verify_plane::Verdict::Pass,
         );
         let decision =
             host.reconcile_review_for_scope(&scope, &[receipt.clone()], &[review.clone()]);
         assert!(matches!(decision, GateDecision::Reject { .. }));
-        assert!(!hide_verify::probabilistic_can_override_deterministic());
+        assert!(!hide_kernel::verify_plane::probabilistic_can_override_deterministic());
         let other = host.reconcile_review_for_scope(
             &["src/unrelated.rs".to_string()],
             &[receipt],

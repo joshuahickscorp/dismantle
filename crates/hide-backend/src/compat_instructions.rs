@@ -24,8 +24,8 @@ use std::path::Path;
 use futures::future::BoxFuture;
 use hawking_context::compiler::{CompileInput, ContextCandidate, ContextSource};
 use hawking_context::manifest::{ContextSourceKind, PinState};
-use hide_compat::layout::Layout;
-use hide_compat::CompatConfig;
+use crate::compat::layout::Layout;
+use crate::compat::CompatConfig;
 use hide_core::error::Result;
 use hide_core::types::{Provenance, TrustLevel};
 
@@ -168,8 +168,8 @@ fn resolve_from_config(config: &CompatConfig) -> ResolvedInstructions {
     ResolvedInstructions { text, files }
 }
 
-fn memory_kind_label(kind: hide_compat::claude_md::MemoryKind) -> &'static str {
-    use hide_compat::claude_md::MemoryKind::*;
+fn memory_kind_label(kind: crate::compat::claude_md::MemoryKind) -> &'static str {
+    use crate::compat::claude_md::MemoryKind::*;
     match kind {
         UserGlobal => "user-global",
         Project => "project",

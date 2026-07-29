@@ -17,7 +17,7 @@
 //! planner / UI can reason over, not a second enforcement point.
 //!
 //! Effects are READ FROM THE REGISTRY, never hardcoded here: the mapping is keyed
-//! on `hide_extension_registry::build_builtin_tool_registry`, so if a tool's
+//! on `hide_kernel::extension_registry::build_builtin_tool_registry`, so if a tool's
 //! declared effects change, this classification follows without an edit.
 //!
 //! ## Deferred model leg
@@ -30,7 +30,7 @@
 
 use hide_core::permission::PermissionVerdict;
 use hide_core::types::Decision;
-use hide_extension_registry::{build_builtin_tool_registry, Effect};
+use hide_kernel::extension_registry::{build_builtin_tool_registry, Effect};
 use serde::{Deserialize, Serialize};
 
 /// The typed decision the policy layer derives for a tool call. Richer than the
@@ -109,7 +109,7 @@ pub struct PolicyDecisionRecord {
 /// Look up a tool id's DECLARED effects from the builtin capability registry.
 ///
 /// This is the [`Effect`] class mapping: it reuses
-/// `hide_extension_registry::build_builtin_tool_registry` so the effects come
+/// `hide_kernel::extension_registry::build_builtin_tool_registry` so the effects come
 /// from each tool's honest manifest declaration, not a table maintained here. An
 /// unknown / unregistered tool id yields an empty set (which the derivation
 /// treats conservatively as "ask").

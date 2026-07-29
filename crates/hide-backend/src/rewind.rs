@@ -20,7 +20,7 @@
 //!   Apache-2.0). Only the boundary rule (count the inherited prefix, mark the
 //!   next ordinal as the child's first own record) is reproduced from the depth
 //!   map; no donor code is copied.
-//! * The invalidated-receipt scoping reuses `hide_verify::paths_intersect`, the
+//! * The invalidated-receipt scoping reuses `hide_kernel::verify_plane::paths_intersect`, the
 //!   same containment-aware primitive `run_static_analysis` uses.
 
 use hide_core::event::Event;
@@ -287,7 +287,7 @@ pub fn receipt_scopes(events: &[Event], after_seq: u64) -> Vec<ReceiptScope> {
 }
 
 /// The receipts a code rewind INVALIDATES: those whose file scope intersects a
-/// reverted file, using `hide_verify::paths_intersect` (the same containment-aware
+/// reverted file, using `hide_kernel::verify_plane::paths_intersect` (the same containment-aware
 /// primitive `run_static_analysis` reconciles authority with, so a directory scope
 /// intersects a file it contains).
 pub fn invalidated_receipts(reverted_files: &[String], receipts: &[ReceiptScope]) -> Vec<EventId> {
@@ -296,7 +296,7 @@ pub fn invalidated_receipts(reverted_files: &[String], receipts: &[ReceiptScope]
         .filter(|r| {
             r.scope
                 .iter()
-                .any(|s| reverted_files.iter().any(|f| hide_verify::paths_intersect(s, f)))
+                .any(|s| reverted_files.iter().any(|f| hide_kernel::verify_plane::paths_intersect(s, f)))
         })
         .map(|r| r.event_id.clone())
         .collect()

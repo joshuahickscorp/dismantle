@@ -10,7 +10,13 @@ use std::sync::Arc;
 
 pub fn build_default_tool_registry() -> ToolRegistry {
     let registry = ToolRegistry::default();
-    hide_tools::register_builtin_tools(&registry);
+    // Unit tests assert EXEC behaviour; nested sandbox-exec is flaky under
+    // agent/CI seats. Profile/SBPL coverage lives in hide-kernel::security tests.
+    let shell = hide_kernel::tooling::ShellConfig {
+        disable_sandbox: cfg!(test),
+        ..Default::default()
+    };
+    hide_kernel::tooling::register_builtin_tools_with(&registry, shell);
     registry
 }
 

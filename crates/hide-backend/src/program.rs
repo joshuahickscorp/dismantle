@@ -10,11 +10,11 @@
 //! * [`HostProgramHandles`] is the host's implementation of the runtime's
 //!   read-only [`HostHandles`] trait. Each granted handle is backed by a REAL
 //!   read path:
-//!   - `search.text`      -> `hide_tools::search::SearchTextTool`
-//!   - `file.read`        -> `hide_tools::fs::FsReadTool` (bounded by an output cap)
+//!   - `search.text`      -> `hide_kernel::tooling::search::SearchTextTool`
+//!   - `file.read`        -> `hide_kernel::tooling::fs::FsReadTool` (bounded by an output cap)
 //!   - `index.references` -> the backend `code_index` (`InMemoryCodeIndex`)
-//!   - `git.diff`         -> `hide_tools::git::GitDiffTool`
-//!   - `git.log`          -> `hide_tools::git::GitLogTool`
+//!   - `git.diff`         -> `hide_kernel::tooling::git::GitDiffTool`
+//!   - `git.log`          -> `hide_kernel::tooling::git::GitLogTool`
 //!   Every other read handle (`search.symbol`, `diagnostic.list`,
 //!   `test.result.read`, `artifact.read`, `mcp.readonly`) returns an honest
 //!   DEFERRED error rather than a faked result, and is not granted by default.
@@ -52,13 +52,13 @@ use hide_core::api::{UiEvent, UiEventKind};
 use hide_core::event::NewEvent;
 use hide_core::ids::SessionId;
 use hide_core::tool::{Tool, ToolCtx, ToolResult};
-use hide_program_runtime::{
+use hide_kernel::program_runtime::{
     map_of, run, Citation, Expr, HandleError, HandleGrants, HandleName, HostHandles, Limits,
     Program, RunOutput, RuntimeError, Usage, Value, WriteProposal, CITATIONS_KEY,
 };
-use hide_tools::fs::FsReadTool;
-use hide_tools::git::{GitDiffTool, GitLogTool};
-use hide_tools::search::SearchTextTool;
+use hide_kernel::tooling::fs::FsReadTool;
+use hide_kernel::tooling::git::{GitDiffTool, GitLogTool};
+use hide_kernel::tooling::search::SearchTextTool;
 use crate::services::DynCodeIndex;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -92,7 +92,7 @@ impl ProgramRunResult {
 
 /// Everything that can go wrong running a program through the backend. The
 /// runtime's typed failures (a granted-handle denial, a schema mismatch, a
-/// resource-limit breach carrying its [`hide_program_runtime::LimitKind`]) are
+/// resource-limit breach carrying its [`hide_kernel::program_runtime::LimitKind`]) are
 /// preserved as-is in [`ProgramRunError::Runtime`] so a caller can match on them.
 #[derive(Debug, thiserror::Error)]
 pub enum ProgramRunError {
@@ -561,7 +561,7 @@ mod tests {
     use crate::services::BackendServices;
     use hide_core::config::HideConfig;
     use hide_core::ids::now_ms;
-    use hide_program_runtime::{BinOp, Lambda, LimitKind, Operator, Order};
+    use hide_kernel::program_runtime::{BinOp, Lambda, LimitKind, Operator, Order};
     use std::path::Path;
     use std::sync::atomic::{AtomicU64, Ordering};
     fn unique(tag: &str) -> PathBuf {
@@ -749,7 +749,7 @@ mod tests {
             .expect("program runs");
         assert_eq!(result.write_proposals.len(), 1);
         let wp = &result.write_proposals[0];
-        assert_eq!(wp.kind, hide_program_runtime::WriteKind::Edit);
+        assert_eq!(wp.kind, hide_kernel::program_runtime::WriteKind::Edit);
         assert_eq!(wp.summary, "rename compute_needle across the crate");
         assert_eq!(wp.payload.get_path(&["path".into()]).and_then(Value::as_str), Some(target_str.as_str()));
         assert!(!target.exists(), "the proposed write must not touch disk");

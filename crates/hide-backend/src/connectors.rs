@@ -16,7 +16,7 @@ use hide_core::persistence::{DynEventLog, DynProjectionStore};
 use hide_core::plugin::ExtensionContribution;
 use hide_core::runtime::{InferenceRequest, RolePurpose};
 use hide_core::types::Provenance;
-use hide_personalize::{DynPersonalizationStore, PersonalizationRecord, TaskClass};
+use crate::personalize::{DynPersonalizationStore, PersonalizationRecord, TaskClass};
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -961,7 +961,7 @@ mod tests {
     use super::*;
     use hawking_research::{InMemoryResearchLedger, ResearchRun};
     use hide_core::runtime::InferenceRequest;
-    use hide_personalize::{InMemoryPersonalizationStore, Outcome};
+    use crate::personalize::{InMemoryPersonalizationStore, Outcome};
     use std::collections::BTreeMap;
     #[tokio::test]
     async fn registry_reports_connector_status() {

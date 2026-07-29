@@ -5,7 +5,7 @@ use hide_core::config::HideConfig;
 use hide_core::ids::{now_ms, RunId};
 use hide_core::tool::ToolCall;
 use hide_core::types::Decision;
-use hide_verify::SourceFile;
+use hide_kernel::verify_plane::SourceFile;
 use serde_json::json;
 fn write_host(tag: &str) -> (BackendHost, std::path::PathBuf) {
     let dir = std::env::temp_dir().join(format!("hide_trace_c_{tag}_{}", now_ms()));

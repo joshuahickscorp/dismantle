@@ -24,7 +24,7 @@ use hawking_context::{
 use hide_core::event::{Event, EventLog, NewEvent};
 use hide_core::tool::{ToolCall, ToolResult, ToolStatus};
 use hide_core::Result;
-use hide_verify::{VerificationReceipt, VerificationTier};
+use hide_kernel::verify_plane::{VerificationReceipt, VerificationTier};
 use std::sync::Arc;
 
 /// Hard cap on episodic rows per session. Without this, a long session that
@@ -599,7 +599,7 @@ mod tests {
     use hide_core::ids::{SessionId, ToolCallId};
     use hide_core::tool::{ToolCall, ToolError, ToolResult, ToolStatus};
     use hide_core::types::EffectSet;
-    use hide_verify::{source_hash, Verdict, VerificationReceipt, VerificationTier};
+    use hide_kernel::verify_plane::{source_hash, Verdict, VerificationReceipt, VerificationTier};
     use serde_json::json;
     fn mem() -> ClassedMemorySystem {
         ClassedMemorySystem::open_in_memory("ws-writers").unwrap()

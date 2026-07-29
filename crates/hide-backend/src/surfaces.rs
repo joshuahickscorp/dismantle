@@ -5,7 +5,7 @@
 //! They do not each own a copy. A handoff capsule carries a CLAIM, never a
 //! CAPABILITY.
 //!
-//! This module is the host-side holder of [`hide_you::SurfaceGraph`]. It is
+//! This module is the host-side holder of [`crate::lenses::SurfaceGraph`]. It is
 //! model-free: seal/receive/switch only. No connector credentials, no inference.
 
 use hide_core::api::{UiEvent, UiEventKind};
@@ -13,7 +13,7 @@ use hide_core::event::NewEvent;
 use hide_core::ids::SessionId;
 use hide_core::persistence::DynEventLog;
 use hide_core::Result;
-use hide_you::{
+use crate::lenses::{
     Claim, DeliberateExclusion, EvidenceTier, HandoffCapsule, HandoffKind, Surface, SurfaceGraph,
     SurfaceGraphView,
 };

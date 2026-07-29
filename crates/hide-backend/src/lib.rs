@@ -100,3 +100,10 @@ pub use supervisor::{
     ProcessLauncher, RuntimeChild, RuntimeLauncher, RuntimeSupervisor, SupervisorConfig,
 };
 pub use ui_bus::UiEventBus;
+
+// --- Track S absorbed authorities ---
+pub mod lenses;
+pub mod personalize;
+pub mod connector_abi;
+pub mod compat;
+

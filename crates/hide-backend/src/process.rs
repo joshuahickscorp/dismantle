@@ -5,9 +5,9 @@
 //! terminal a real, supervised process surface that inherits that safety:
 //!
 //! * **Sandboxed spawn** ([`confine`]) - every managed process is wrapped in the
-//!   SAME confinement `hide_tools::shell::run_command` uses: on macOS a
-//!   `sandbox-exec` profile rendered from `hide_tools::shell::sandbox_profile` +
-//!   `hide_security::sandbox::render_macos_seatbelt_with` (network-deny by default,
+//!   SAME confinement `hide_kernel::tooling::shell::run_command` uses: on macOS a
+//!   `sandbox-exec` profile rendered from `hide_kernel::tooling::shell::sandbox_profile` +
+//!   `hide_kernel::security::sandbox::render_macos_seatbelt_with` (network-deny by default,
 //!   writes confined to the workspace); on Linux a bubblewrap (`bwrap`) jail. If no
 //!   OS sandbox is available the spawn is REFUSED (fail-closed) rather than run
 //!   unconfined. The dangerous-command `SecurityGate` still sits UPSTREAM in the
@@ -32,8 +32,8 @@ use hide_core::api::{UiEvent, UiEventKind};
 use hide_core::ids::SessionId;
 use hide_core::persistence::DynBlobStore;
 use hide_core::types::BlobRef;
-use hide_tools::shell::{runnable_sbpl, sandbox_render_options, sandbox_profile};
-use hide_tools::ShellConfig;
+use hide_kernel::tooling::shell::{runnable_sbpl, sandbox_render_options, sandbox_profile};
+use hide_kernel::tooling::ShellConfig;
 use parking_lot::Mutex;
 use serde::Serialize;
 use std::collections::BTreeMap;
@@ -506,7 +506,7 @@ struct Confined {
 }
 
 /// Build the sandbox-confined command, reusing the SAME rendering pipeline
-/// `hide_tools::shell` uses (no policy is duplicated: the macOS SBPL comes wholly
+/// `hide_kernel::tooling::shell` uses (no policy is duplicated: the macOS SBPL comes wholly
 /// from `sandbox_profile` + `render_macos_seatbelt_with` + `runnable_sbpl`).
 ///
 /// Fail-closed: with no usable OS sandbox we return `Err` rather than run
@@ -525,7 +525,7 @@ fn confine(argv: &[String], config: &ShellConfig) -> Result<Confined, String> {
         if std::path::Path::new("/usr/bin/sandbox-exec").exists() {
             let profile = sandbox_profile(config, argv);
             let opts = sandbox_render_options(config);
-            let rendered = hide_security::sandbox::render_macos_seatbelt_with(&profile, &opts);
+            let rendered = hide_kernel::security::sandbox::render_macos_seatbelt_with(&profile, &opts);
             let sbpl = runnable_sbpl(&rendered.profile_text);
             let mut c = Command::new("/usr/bin/sandbox-exec");
             c.arg("-p").arg(sbpl).arg("--").args(argv);
@@ -578,7 +578,7 @@ fn bwrap_path() -> Option<String> {
 
 /// Wrap argv in bubblewrap: read-only root, a writable worktree + tmp, and
 /// `--unshare-net` (network denied by default). ponytail: mirrors
-/// `hide_tools::shell::bubblewrap_command`; that builder is private, so the small
+/// `hide_kernel::tooling::shell::bubblewrap_command`; that builder is private, so the small
 /// arg list is replicated here rather than widening its crate API.
 #[cfg(target_os = "linux")]
 fn bubblewrap(bwrap: &str, argv: &[String], config: &ShellConfig) -> Command {

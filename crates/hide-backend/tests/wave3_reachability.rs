@@ -233,3 +233,964 @@ async fn transcript_search_over_intent_returns_literal_and_structured_hits() {
     let results = next_custom(&mut rx, "search_results").await;
     assert_eq!(results["count"].as_u64(), Some(2));
 }
+
+
+// S3b host surface re-expression chunk (host_surface_s3b_c)
+mod host_surface_s3b_c {
+
+use hide_backend::{
+    BackendHost, BackendServices, ClientCapabilities, ClientInfo, MemoryScope, MemoryStatus,
+    PolicyDecision, SessionRelationship, TranscriptQuery,
+};
+use hide_core::api::{Intent, UiEvent, UiEventKind};
+use hide_core::config::HideConfig;
+use hide_core::event::NewEvent;
+use hide_core::ids::{now_ms, PlanId, RunId, SessionId};
+use hide_core::observability::HealthStatus;
+use hide_core::tool::{ToolCall, ToolStatus};
+use hide_core::types::Decision;
+use hide_kernel::govern::Autonomy;
+use hide_kernel::plan::schema::{Acceptance, Plan, PlanStatus, PlanStep, StepKind};
+use hide_kernel::verify_plane::{ReviewRole, SourceFile};
+use hide_protocol::WIRE_CUSTOM_NAMES;
+use hawking_research::{ResearchRun, ResearchState};
+use serde_json::{json, Value};
+use std::path::PathBuf;
+use std::sync::atomic::{AtomicU64, Ordering};
+
+static N: AtomicU64 = AtomicU64::new(0);
+
+fn uniq(label: &str) -> PathBuf {
+    let n = N.fetch_add(1, Ordering::Relaxed);
+    std::env::temp_dir().join(format!("hide_s3b_{label}_{}_{}", now_ms(), n))
+}
+fn open_host(label: &str) -> (PathBuf, BackendHost) {
+    let dir = uniq(label);
+    (dir.clone(), BackendHost::open_workspace(&dir).expect("open"))
+}
+fn open_host_allow_write(label: &str) -> (PathBuf, BackendHost) {
+    let dir = uniq(label);
+    let mut config = HideConfig::for_workspace(&dir);
+    config.security.workspace_write_default = Decision::Allow;
+    let host = BackendHost::from_services(BackendServices::open(config).unwrap()).unwrap();
+    (dir, host)
+}
+fn open_host_allow_shell(label: &str) -> (PathBuf, BackendHost) {
+    let dir = uniq(label);
+    let mut config = HideConfig::for_workspace(&dir);
+    config.security.shell_default = Decision::Allow;
+    let host = BackendHost::from_services(BackendServices::open(config).unwrap()).unwrap();
+    (dir, host)
+}
+async fn custom(host: &BackendHost, name: &str, payload: Value) -> hide_core::api::IntentAck {
+    host.handle_intent(Intent::Custom { name: name.into(), payload }).await.unwrap()
+}
+async fn wait_security_gate(rx: &mut tokio::sync::broadcast::Receiver<UiEvent>) -> (String, String) {
+    loop {
+        let ev = tokio::time::timeout(std::time::Duration::from_secs(3), rx.recv()).await.unwrap().unwrap();
+        if let UiEventKind::SecurityGate { gate, message } = ev.kind { return (gate, message); }
+    }
+}
+fn cleanup(dir: PathBuf) { let _ = std::fs::remove_dir_all(dir); }
+fn draft(scope: MemoryScope, claim: &str) -> hide_backend::MemoryDraft {
+    hide_backend::MemoryDraft::new(scope, claim, "s3b-test", "s3b")
+}
+
+#[tokio::test]
+async fn smoke_attach_process() {
+    let (dir, host) = open_host("smoke_attach_process");
+    let s = host.services.session();
+    let msg = custom(&host, "attach_process", json!({
+        "session_id": s.as_str(), "gate":"command:0", "step_id":"s", "run_id":"r",
+        "path": dir.join("f").to_string_lossy(), "content":"x", "text":"t", "objective":"o",
+        "label":"l", "trust":"trusted", "root_path": dir.to_string_lossy(), "repo_id":"r",
+        "env":"dev", "reason":"r", "query":"q", "memory_id":"m", "claim":"c", "success":true,
+        "order":[], "paths":[], "condition":"t", "summary":"s", "surface":"chat",
+        "parent_session_id": s.as_str(), "side_session_id": s.as_str(),
+    })).await.message.unwrap_or_default();
+    assert!(!msg.contains("has no host handler"), "attach_process: {msg}");
+    cleanup(dir);
+}
+#[tokio::test]
+async fn smoke_capture_process_artifact() {
+    let (dir, host) = open_host("smoke_capture_process_artifact");
+    let s = host.services.session();
+    let msg = custom(&host, "capture_process_artifact", json!({
+        "session_id": s.as_str(), "gate":"command:0", "step_id":"s", "run_id":"r",
+        "path": dir.join("f").to_string_lossy(), "content":"x", "text":"t", "objective":"o",
+        "label":"l", "trust":"trusted", "root_path": dir.to_string_lossy(), "repo_id":"r",
+        "env":"dev", "reason":"r", "query":"q", "memory_id":"m", "claim":"c", "success":true,
+        "order":[], "paths":[], "condition":"t", "summary":"s", "surface":"chat",
+        "parent_session_id": s.as_str(), "side_session_id": s.as_str(),
+    })).await.message.unwrap_or_default();
+    assert!(!msg.contains("has no host handler"), "capture_process_artifact: {msg}");
+    cleanup(dir);
+}
+#[tokio::test]
+async fn smoke_checkpoint_compare() {
+    let (dir, host) = open_host("smoke_checkpoint_compare");
+    let s = host.services.session();
+    let msg = custom(&host, "checkpoint_compare", json!({
+        "session_id": s.as_str(), "gate":"command:0", "step_id":"s", "run_id":"r",
+        "path": dir.join("f").to_string_lossy(), "content":"x", "text":"t", "objective":"o",
+        "label":"l", "trust":"trusted", "root_path": dir.to_string_lossy(), "repo_id":"r",
+        "env":"dev", "reason":"r", "query":"q", "memory_id":"m", "claim":"c", "success":true,
+        "order":[], "paths":[], "condition":"t", "summary":"s", "surface":"chat",
+        "parent_session_id": s.as_str(), "side_session_id": s.as_str(),
+    })).await.message.unwrap_or_default();
+    assert!(!msg.contains("has no host handler"), "checkpoint_compare: {msg}");
+    cleanup(dir);
+}
+#[tokio::test]
+async fn smoke_checkpoint_create() {
+    let (dir, host) = open_host("smoke_checkpoint_create");
+    let s = host.services.session();
+    let msg = custom(&host, "checkpoint_create", json!({
+        "session_id": s.as_str(), "gate":"command:0", "step_id":"s", "run_id":"r",
+        "path": dir.join("f").to_string_lossy(), "content":"x", "text":"t", "objective":"o",
+        "label":"l", "trust":"trusted", "root_path": dir.to_string_lossy(), "repo_id":"r",
+        "env":"dev", "reason":"r", "query":"q", "memory_id":"m", "claim":"c", "success":true,
+        "order":[], "paths":[], "condition":"t", "summary":"s", "surface":"chat",
+        "parent_session_id": s.as_str(), "side_session_id": s.as_str(),
+    })).await.message.unwrap_or_default();
+    assert!(!msg.contains("has no host handler"), "checkpoint_create: {msg}");
+    cleanup(dir);
+}
+#[tokio::test]
+async fn smoke_checkpoint_fork() {
+    let (dir, host) = open_host("smoke_checkpoint_fork");
+    let s = host.services.session();
+    let msg = custom(&host, "checkpoint_fork", json!({
+        "session_id": s.as_str(), "gate":"command:0", "step_id":"s", "run_id":"r",
+        "path": dir.join("f").to_string_lossy(), "content":"x", "text":"t", "objective":"o",
+        "label":"l", "trust":"trusted", "root_path": dir.to_string_lossy(), "repo_id":"r",
+        "env":"dev", "reason":"r", "query":"q", "memory_id":"m", "claim":"c", "success":true,
+        "order":[], "paths":[], "condition":"t", "summary":"s", "surface":"chat",
+        "parent_session_id": s.as_str(), "side_session_id": s.as_str(),
+    })).await.message.unwrap_or_default();
+    assert!(!msg.contains("has no host handler"), "checkpoint_fork: {msg}");
+    cleanup(dir);
+}
+#[tokio::test]
+async fn smoke_checkpoint_inspect() {
+    let (dir, host) = open_host("smoke_checkpoint_inspect");
+    let s = host.services.session();
+    let msg = custom(&host, "checkpoint_inspect", json!({
+        "session_id": s.as_str(), "gate":"command:0", "step_id":"s", "run_id":"r",
+        "path": dir.join("f").to_string_lossy(), "content":"x", "text":"t", "objective":"o",
+        "label":"l", "trust":"trusted", "root_path": dir.to_string_lossy(), "repo_id":"r",
+        "env":"dev", "reason":"r", "query":"q", "memory_id":"m", "claim":"c", "success":true,
+        "order":[], "paths":[], "condition":"t", "summary":"s", "surface":"chat",
+        "parent_session_id": s.as_str(), "side_session_id": s.as_str(),
+    })).await.message.unwrap_or_default();
+    assert!(!msg.contains("has no host handler"), "checkpoint_inspect: {msg}");
+    cleanup(dir);
+}
+#[tokio::test]
+async fn smoke_checkpoint_replay() {
+    let (dir, host) = open_host("smoke_checkpoint_replay");
+    let s = host.services.session();
+    let msg = custom(&host, "checkpoint_replay", json!({
+        "session_id": s.as_str(), "gate":"command:0", "step_id":"s", "run_id":"r",
+        "path": dir.join("f").to_string_lossy(), "content":"x", "text":"t", "objective":"o",
+        "label":"l", "trust":"trusted", "root_path": dir.to_string_lossy(), "repo_id":"r",
+        "env":"dev", "reason":"r", "query":"q", "memory_id":"m", "claim":"c", "success":true,
+        "order":[], "paths":[], "condition":"t", "summary":"s", "surface":"chat",
+        "parent_session_id": s.as_str(), "side_session_id": s.as_str(),
+    })).await.message.unwrap_or_default();
+    assert!(!msg.contains("has no host handler"), "checkpoint_replay: {msg}");
+    cleanup(dir);
+}
+#[tokio::test]
+async fn smoke_checkpoint_restore() {
+    let (dir, host) = open_host("smoke_checkpoint_restore");
+    let s = host.services.session();
+    let msg = custom(&host, "checkpoint_restore", json!({
+        "session_id": s.as_str(), "gate":"command:0", "step_id":"s", "run_id":"r",
+        "path": dir.join("f").to_string_lossy(), "content":"x", "text":"t", "objective":"o",
+        "label":"l", "trust":"trusted", "root_path": dir.to_string_lossy(), "repo_id":"r",
+        "env":"dev", "reason":"r", "query":"q", "memory_id":"m", "claim":"c", "success":true,
+        "order":[], "paths":[], "condition":"t", "summary":"s", "surface":"chat",
+        "parent_session_id": s.as_str(), "side_session_id": s.as_str(),
+    })).await.message.unwrap_or_default();
+    assert!(!msg.contains("has no host handler"), "checkpoint_restore: {msg}");
+    cleanup(dir);
+}
+#[tokio::test]
+async fn smoke_checkpoint_rewind() {
+    let (dir, host) = open_host("smoke_checkpoint_rewind");
+    let s = host.services.session();
+    let msg = custom(&host, "checkpoint_rewind", json!({
+        "session_id": s.as_str(), "gate":"command:0", "step_id":"s", "run_id":"r",
+        "path": dir.join("f").to_string_lossy(), "content":"x", "text":"t", "objective":"o",
+        "label":"l", "trust":"trusted", "root_path": dir.to_string_lossy(), "repo_id":"r",
+        "env":"dev", "reason":"r", "query":"q", "memory_id":"m", "claim":"c", "success":true,
+        "order":[], "paths":[], "condition":"t", "summary":"s", "surface":"chat",
+        "parent_session_id": s.as_str(), "side_session_id": s.as_str(),
+    })).await.message.unwrap_or_default();
+    assert!(!msg.contains("has no host handler"), "checkpoint_rewind: {msg}");
+    cleanup(dir);
+}
+#[tokio::test]
+async fn smoke_create_side_chat() {
+    let (dir, host) = open_host("smoke_create_side_chat");
+    let s = host.services.session();
+    let msg = custom(&host, "create_side_chat", json!({
+        "session_id": s.as_str(), "gate":"command:0", "step_id":"s", "run_id":"r",
+        "path": dir.join("f").to_string_lossy(), "content":"x", "text":"t", "objective":"o",
+        "label":"l", "trust":"trusted", "root_path": dir.to_string_lossy(), "repo_id":"r",
+        "env":"dev", "reason":"r", "query":"q", "memory_id":"m", "claim":"c", "success":true,
+        "order":[], "paths":[], "condition":"t", "summary":"s", "surface":"chat",
+        "parent_session_id": s.as_str(), "side_session_id": s.as_str(),
+    })).await.message.unwrap_or_default();
+    assert!(!msg.contains("has no host handler"), "create_side_chat: {msg}");
+    cleanup(dir);
+}
+#[tokio::test]
+async fn smoke_create_worktree() {
+    let (dir, host) = open_host("smoke_create_worktree");
+    let s = host.services.session();
+    let msg = custom(&host, "create_worktree", json!({
+        "session_id": s.as_str(), "gate":"command:0", "step_id":"s", "run_id":"r",
+        "path": dir.join("f").to_string_lossy(), "content":"x", "text":"t", "objective":"o",
+        "label":"l", "trust":"trusted", "root_path": dir.to_string_lossy(), "repo_id":"r",
+        "env":"dev", "reason":"r", "query":"q", "memory_id":"m", "claim":"c", "success":true,
+        "order":[], "paths":[], "condition":"t", "summary":"s", "surface":"chat",
+        "parent_session_id": s.as_str(), "side_session_id": s.as_str(),
+    })).await.message.unwrap_or_default();
+    assert!(!msg.contains("has no host handler"), "create_worktree: {msg}");
+    cleanup(dir);
+}
+#[tokio::test]
+async fn smoke_deny_effect() {
+    let (dir, host) = open_host("smoke_deny_effect");
+    let s = host.services.session();
+    let msg = custom(&host, "deny_effect", json!({
+        "session_id": s.as_str(), "gate":"command:0", "step_id":"s", "run_id":"r",
+        "path": dir.join("f").to_string_lossy(), "content":"x", "text":"t", "objective":"o",
+        "label":"l", "trust":"trusted", "root_path": dir.to_string_lossy(), "repo_id":"r",
+        "env":"dev", "reason":"r", "query":"q", "memory_id":"m", "claim":"c", "success":true,
+        "order":[], "paths":[], "condition":"t", "summary":"s", "surface":"chat",
+        "parent_session_id": s.as_str(), "side_session_id": s.as_str(),
+    })).await.message.unwrap_or_default();
+    assert!(!msg.contains("has no host handler"), "deny_effect: {msg}");
+    cleanup(dir);
+}
+#[tokio::test]
+async fn smoke_deny_gate() {
+    let (dir, host) = open_host("smoke_deny_gate");
+    let s = host.services.session();
+    let msg = custom(&host, "deny_gate", json!({
+        "session_id": s.as_str(), "gate":"command:0", "step_id":"s", "run_id":"r",
+        "path": dir.join("f").to_string_lossy(), "content":"x", "text":"t", "objective":"o",
+        "label":"l", "trust":"trusted", "root_path": dir.to_string_lossy(), "repo_id":"r",
+        "env":"dev", "reason":"r", "query":"q", "memory_id":"m", "claim":"c", "success":true,
+        "order":[], "paths":[], "condition":"t", "summary":"s", "surface":"chat",
+        "parent_session_id": s.as_str(), "side_session_id": s.as_str(),
+    })).await.message.unwrap_or_default();
+    assert!(!msg.contains("has no host handler"), "deny_gate: {msg}");
+    cleanup(dir);
+}
+#[tokio::test]
+async fn smoke_edit_plan_step() {
+    let (dir, host) = open_host("smoke_edit_plan_step");
+    let s = host.services.session();
+    let msg = custom(&host, "edit_plan_step", json!({
+        "session_id": s.as_str(), "gate":"command:0", "step_id":"s", "run_id":"r",
+        "path": dir.join("f").to_string_lossy(), "content":"x", "text":"t", "objective":"o",
+        "label":"l", "trust":"trusted", "root_path": dir.to_string_lossy(), "repo_id":"r",
+        "env":"dev", "reason":"r", "query":"q", "memory_id":"m", "claim":"c", "success":true,
+        "order":[], "paths":[], "condition":"t", "summary":"s", "surface":"chat",
+        "parent_session_id": s.as_str(), "side_session_id": s.as_str(),
+    })).await.message.unwrap_or_default();
+    assert!(!msg.contains("has no host handler"), "edit_plan_step: {msg}");
+    cleanup(dir);
+}
+#[tokio::test]
+async fn smoke_environment_switch() {
+    let (dir, host) = open_host("smoke_environment_switch");
+    let s = host.services.session();
+    let msg = custom(&host, "environment_switch", json!({
+        "session_id": s.as_str(), "gate":"command:0", "step_id":"s", "run_id":"r",
+        "path": dir.join("f").to_string_lossy(), "content":"x", "text":"t", "objective":"o",
+        "label":"l", "trust":"trusted", "root_path": dir.to_string_lossy(), "repo_id":"r",
+        "env":"dev", "reason":"r", "query":"q", "memory_id":"m", "claim":"c", "success":true,
+        "order":[], "paths":[], "condition":"t", "summary":"s", "surface":"chat",
+        "parent_session_id": s.as_str(), "side_session_id": s.as_str(),
+    })).await.message.unwrap_or_default();
+    assert!(!msg.contains("has no host handler"), "environment_switch: {msg}");
+    cleanup(dir);
+}
+#[tokio::test]
+async fn smoke_export_review_receipt() {
+    let (dir, host) = open_host("smoke_export_review_receipt");
+    let s = host.services.session();
+    let msg = custom(&host, "export_review_receipt", json!({
+        "session_id": s.as_str(), "gate":"command:0", "step_id":"s", "run_id":"r",
+        "path": dir.join("f").to_string_lossy(), "content":"x", "text":"t", "objective":"o",
+        "label":"l", "trust":"trusted", "root_path": dir.to_string_lossy(), "repo_id":"r",
+        "env":"dev", "reason":"r", "query":"q", "memory_id":"m", "claim":"c", "success":true,
+        "order":[], "paths":[], "condition":"t", "summary":"s", "surface":"chat",
+        "parent_session_id": s.as_str(), "side_session_id": s.as_str(),
+    })).await.message.unwrap_or_default();
+    assert!(!msg.contains("has no host handler"), "export_review_receipt: {msg}");
+    cleanup(dir);
+}
+#[tokio::test]
+async fn smoke_fleet_run() {
+    let (dir, host) = open_host("smoke_fleet_run");
+    let s = host.services.session();
+    let msg = custom(&host, "fleet_run", json!({
+        "session_id": s.as_str(), "gate":"command:0", "step_id":"s", "run_id":"r",
+        "path": dir.join("f").to_string_lossy(), "content":"x", "text":"t", "objective":"o",
+        "label":"l", "trust":"trusted", "root_path": dir.to_string_lossy(), "repo_id":"r",
+        "env":"dev", "reason":"r", "query":"q", "memory_id":"m", "claim":"c", "success":true,
+        "order":[], "paths":[], "condition":"t", "summary":"s", "surface":"chat",
+        "parent_session_id": s.as_str(), "side_session_id": s.as_str(),
+    })).await.message.unwrap_or_default();
+    assert!(!msg.contains("has no host handler"), "fleet_run: {msg}");
+    cleanup(dir);
+}
+#[tokio::test]
+async fn smoke_goal_clear() {
+    let (dir, host) = open_host("smoke_goal_clear");
+    let s = host.services.session();
+    let msg = custom(&host, "goal_clear", json!({
+        "session_id": s.as_str(), "gate":"command:0", "step_id":"s", "run_id":"r",
+        "path": dir.join("f").to_string_lossy(), "content":"x", "text":"t", "objective":"o",
+        "label":"l", "trust":"trusted", "root_path": dir.to_string_lossy(), "repo_id":"r",
+        "env":"dev", "reason":"r", "query":"q", "memory_id":"m", "claim":"c", "success":true,
+        "order":[], "paths":[], "condition":"t", "summary":"s", "surface":"chat",
+        "parent_session_id": s.as_str(), "side_session_id": s.as_str(),
+    })).await.message.unwrap_or_default();
+    assert!(!msg.contains("has no host handler"), "goal_clear: {msg}");
+    cleanup(dir);
+}
+#[tokio::test]
+async fn smoke_goal_evaluate() {
+    let (dir, host) = open_host("smoke_goal_evaluate");
+    let s = host.services.session();
+    let msg = custom(&host, "goal_evaluate", json!({
+        "session_id": s.as_str(), "gate":"command:0", "step_id":"s", "run_id":"r",
+        "path": dir.join("f").to_string_lossy(), "content":"x", "text":"t", "objective":"o",
+        "label":"l", "trust":"trusted", "root_path": dir.to_string_lossy(), "repo_id":"r",
+        "env":"dev", "reason":"r", "query":"q", "memory_id":"m", "claim":"c", "success":true,
+        "order":[], "paths":[], "condition":"t", "summary":"s", "surface":"chat",
+        "parent_session_id": s.as_str(), "side_session_id": s.as_str(),
+    })).await.message.unwrap_or_default();
+    assert!(!msg.contains("has no host handler"), "goal_evaluate: {msg}");
+    cleanup(dir);
+}
+#[tokio::test]
+async fn smoke_goal_set() {
+    let (dir, host) = open_host("smoke_goal_set");
+    let s = host.services.session();
+    let msg = custom(&host, "goal_set", json!({
+        "session_id": s.as_str(), "gate":"command:0", "step_id":"s", "run_id":"r",
+        "path": dir.join("f").to_string_lossy(), "content":"x", "text":"t", "objective":"o",
+        "label":"l", "trust":"trusted", "root_path": dir.to_string_lossy(), "repo_id":"r",
+        "env":"dev", "reason":"r", "query":"q", "memory_id":"m", "claim":"c", "success":true,
+        "order":[], "paths":[], "condition":"t", "summary":"s", "surface":"chat",
+        "parent_session_id": s.as_str(), "side_session_id": s.as_str(),
+    })).await.message.unwrap_or_default();
+    assert!(!msg.contains("has no host handler"), "goal_set: {msg}");
+    cleanup(dir);
+}
+#[tokio::test]
+async fn smoke_grant_write_lease() {
+    let (dir, host) = open_host("smoke_grant_write_lease");
+    let s = host.services.session();
+    let msg = custom(&host, "grant_write_lease", json!({
+        "session_id": s.as_str(), "gate":"command:0", "step_id":"s", "run_id":"r",
+        "path": dir.join("f").to_string_lossy(), "content":"x", "text":"t", "objective":"o",
+        "label":"l", "trust":"trusted", "root_path": dir.to_string_lossy(), "repo_id":"r",
+        "env":"dev", "reason":"r", "query":"q", "memory_id":"m", "claim":"c", "success":true,
+        "order":[], "paths":[], "condition":"t", "summary":"s", "surface":"chat",
+        "parent_session_id": s.as_str(), "side_session_id": s.as_str(),
+    })).await.message.unwrap_or_default();
+    assert!(!msg.contains("has no host handler"), "grant_write_lease: {msg}");
+    cleanup(dir);
+}
+#[tokio::test]
+async fn smoke_memory_add() {
+    let (dir, host) = open_host("smoke_memory_add");
+    let s = host.services.session();
+    let msg = custom(&host, "memory_add", json!({
+        "session_id": s.as_str(), "gate":"command:0", "step_id":"s", "run_id":"r",
+        "path": dir.join("f").to_string_lossy(), "content":"x", "text":"t", "objective":"o",
+        "label":"l", "trust":"trusted", "root_path": dir.to_string_lossy(), "repo_id":"r",
+        "env":"dev", "reason":"r", "query":"q", "memory_id":"m", "claim":"c", "success":true,
+        "order":[], "paths":[], "condition":"t", "summary":"s", "surface":"chat",
+        "parent_session_id": s.as_str(), "side_session_id": s.as_str(),
+    })).await.message.unwrap_or_default();
+    assert!(!msg.contains("has no host handler"), "memory_add: {msg}");
+    cleanup(dir);
+}
+#[tokio::test]
+async fn smoke_memory_record_outcome() {
+    let (dir, host) = open_host("smoke_memory_record_outcome");
+    let s = host.services.session();
+    let msg = custom(&host, "memory_record_outcome", json!({
+        "session_id": s.as_str(), "gate":"command:0", "step_id":"s", "run_id":"r",
+        "path": dir.join("f").to_string_lossy(), "content":"x", "text":"t", "objective":"o",
+        "label":"l", "trust":"trusted", "root_path": dir.to_string_lossy(), "repo_id":"r",
+        "env":"dev", "reason":"r", "query":"q", "memory_id":"m", "claim":"c", "success":true,
+        "order":[], "paths":[], "condition":"t", "summary":"s", "surface":"chat",
+        "parent_session_id": s.as_str(), "side_session_id": s.as_str(),
+    })).await.message.unwrap_or_default();
+    assert!(!msg.contains("has no host handler"), "memory_record_outcome: {msg}");
+    cleanup(dir);
+}
+#[tokio::test]
+async fn smoke_memory_revalidate() {
+    let (dir, host) = open_host("smoke_memory_revalidate");
+    let s = host.services.session();
+    let msg = custom(&host, "memory_revalidate", json!({
+        "session_id": s.as_str(), "gate":"command:0", "step_id":"s", "run_id":"r",
+        "path": dir.join("f").to_string_lossy(), "content":"x", "text":"t", "objective":"o",
+        "label":"l", "trust":"trusted", "root_path": dir.to_string_lossy(), "repo_id":"r",
+        "env":"dev", "reason":"r", "query":"q", "memory_id":"m", "claim":"c", "success":true,
+        "order":[], "paths":[], "condition":"t", "summary":"s", "surface":"chat",
+        "parent_session_id": s.as_str(), "side_session_id": s.as_str(),
+    })).await.message.unwrap_or_default();
+    assert!(!msg.contains("has no host handler"), "memory_revalidate: {msg}");
+    cleanup(dir);
+}
+#[tokio::test]
+async fn smoke_memory_supersede() {
+    let (dir, host) = open_host("smoke_memory_supersede");
+    let s = host.services.session();
+    let msg = custom(&host, "memory_supersede", json!({
+        "session_id": s.as_str(), "gate":"command:0", "step_id":"s", "run_id":"r",
+        "path": dir.join("f").to_string_lossy(), "content":"x", "text":"t", "objective":"o",
+        "label":"l", "trust":"trusted", "root_path": dir.to_string_lossy(), "repo_id":"r",
+        "env":"dev", "reason":"r", "query":"q", "memory_id":"m", "claim":"c", "success":true,
+        "order":[], "paths":[], "condition":"t", "summary":"s", "surface":"chat",
+        "parent_session_id": s.as_str(), "side_session_id": s.as_str(),
+    })).await.message.unwrap_or_default();
+    assert!(!msg.contains("has no host handler"), "memory_supersede: {msg}");
+    cleanup(dir);
+}
+#[tokio::test]
+async fn smoke_merge_side_chat() {
+    let (dir, host) = open_host("smoke_merge_side_chat");
+    let s = host.services.session();
+    let msg = custom(&host, "merge_side_chat", json!({
+        "session_id": s.as_str(), "gate":"command:0", "step_id":"s", "run_id":"r",
+        "path": dir.join("f").to_string_lossy(), "content":"x", "text":"t", "objective":"o",
+        "label":"l", "trust":"trusted", "root_path": dir.to_string_lossy(), "repo_id":"r",
+        "env":"dev", "reason":"r", "query":"q", "memory_id":"m", "claim":"c", "success":true,
+        "order":[], "paths":[], "condition":"t", "summary":"s", "surface":"chat",
+        "parent_session_id": s.as_str(), "side_session_id": s.as_str(),
+    })).await.message.unwrap_or_default();
+    assert!(!msg.contains("has no host handler"), "merge_side_chat: {msg}");
+    cleanup(dir);
+}
+#[tokio::test]
+async fn smoke_new_session() {
+    let (dir, host) = open_host("smoke_new_session");
+    let s = host.services.session();
+    let msg = custom(&host, "new_session", json!({
+        "session_id": s.as_str(), "gate":"command:0", "step_id":"s", "run_id":"r",
+        "path": dir.join("f").to_string_lossy(), "content":"x", "text":"t", "objective":"o",
+        "label":"l", "trust":"trusted", "root_path": dir.to_string_lossy(), "repo_id":"r",
+        "env":"dev", "reason":"r", "query":"q", "memory_id":"m", "claim":"c", "success":true,
+        "order":[], "paths":[], "condition":"t", "summary":"s", "surface":"chat",
+        "parent_session_id": s.as_str(), "side_session_id": s.as_str(),
+    })).await.message.unwrap_or_default();
+    assert!(!msg.contains("has no host handler"), "new_session: {msg}");
+    cleanup(dir);
+}
+#[tokio::test]
+async fn smoke_open_session() {
+    let (dir, host) = open_host("smoke_open_session");
+    let s = host.services.session();
+    let msg = custom(&host, "open_session", json!({
+        "session_id": s.as_str(), "gate":"command:0", "step_id":"s", "run_id":"r",
+        "path": dir.join("f").to_string_lossy(), "content":"x", "text":"t", "objective":"o",
+        "label":"l", "trust":"trusted", "root_path": dir.to_string_lossy(), "repo_id":"r",
+        "env":"dev", "reason":"r", "query":"q", "memory_id":"m", "claim":"c", "success":true,
+        "order":[], "paths":[], "condition":"t", "summary":"s", "surface":"chat",
+        "parent_session_id": s.as_str(), "side_session_id": s.as_str(),
+    })).await.message.unwrap_or_default();
+    assert!(!msg.contains("has no host handler"), "open_session: {msg}");
+    cleanup(dir);
+}
+#[tokio::test]
+async fn smoke_promote_run() {
+    let (dir, host) = open_host("smoke_promote_run");
+    let s = host.services.session();
+    let msg = custom(&host, "promote_run", json!({
+        "session_id": s.as_str(), "gate":"command:0", "step_id":"s", "run_id":"r",
+        "path": dir.join("f").to_string_lossy(), "content":"x", "text":"t", "objective":"o",
+        "label":"l", "trust":"trusted", "root_path": dir.to_string_lossy(), "repo_id":"r",
+        "env":"dev", "reason":"r", "query":"q", "memory_id":"m", "claim":"c", "success":true,
+        "order":[], "paths":[], "condition":"t", "summary":"s", "surface":"chat",
+        "parent_session_id": s.as_str(), "side_session_id": s.as_str(),
+    })).await.message.unwrap_or_default();
+    assert!(!msg.contains("has no host handler"), "promote_run: {msg}");
+    cleanup(dir);
+}
+#[tokio::test]
+async fn smoke_pty_input() {
+    let (dir, host) = open_host("smoke_pty_input");
+    let s = host.services.session();
+    let msg = custom(&host, "pty_input", json!({
+        "session_id": s.as_str(), "gate":"command:0", "step_id":"s", "run_id":"r",
+        "path": dir.join("f").to_string_lossy(), "content":"x", "text":"t", "objective":"o",
+        "label":"l", "trust":"trusted", "root_path": dir.to_string_lossy(), "repo_id":"r",
+        "env":"dev", "reason":"r", "query":"q", "memory_id":"m", "claim":"c", "success":true,
+        "order":[], "paths":[], "condition":"t", "summary":"s", "surface":"chat",
+        "parent_session_id": s.as_str(), "side_session_id": s.as_str(),
+    })).await.message.unwrap_or_default();
+    assert!(!msg.contains("has no host handler"), "pty_input: {msg}");
+    cleanup(dir);
+}
+#[tokio::test]
+async fn smoke_pty_resize() {
+    let (dir, host) = open_host("smoke_pty_resize");
+    let s = host.services.session();
+    let msg = custom(&host, "pty_resize", json!({
+        "session_id": s.as_str(), "gate":"command:0", "step_id":"s", "run_id":"r",
+        "path": dir.join("f").to_string_lossy(), "content":"x", "text":"t", "objective":"o",
+        "label":"l", "trust":"trusted", "root_path": dir.to_string_lossy(), "repo_id":"r",
+        "env":"dev", "reason":"r", "query":"q", "memory_id":"m", "claim":"c", "success":true,
+        "order":[], "paths":[], "condition":"t", "summary":"s", "surface":"chat",
+        "parent_session_id": s.as_str(), "side_session_id": s.as_str(),
+    })).await.message.unwrap_or_default();
+    assert!(!msg.contains("has no host handler"), "pty_resize: {msg}");
+    cleanup(dir);
+}
+#[tokio::test]
+async fn smoke_redirect_run() {
+    let (dir, host) = open_host("smoke_redirect_run");
+    let s = host.services.session();
+    let msg = custom(&host, "redirect_run", json!({
+        "session_id": s.as_str(), "gate":"command:0", "step_id":"s", "run_id":"r",
+        "path": dir.join("f").to_string_lossy(), "content":"x", "text":"t", "objective":"o",
+        "label":"l", "trust":"trusted", "root_path": dir.to_string_lossy(), "repo_id":"r",
+        "env":"dev", "reason":"r", "query":"q", "memory_id":"m", "claim":"c", "success":true,
+        "order":[], "paths":[], "condition":"t", "summary":"s", "surface":"chat",
+        "parent_session_id": s.as_str(), "side_session_id": s.as_str(),
+    })).await.message.unwrap_or_default();
+    assert!(!msg.contains("has no host handler"), "redirect_run: {msg}");
+    cleanup(dir);
+}
+#[tokio::test]
+async fn smoke_reorder_plan() {
+    let (dir, host) = open_host("smoke_reorder_plan");
+    let s = host.services.session();
+    let msg = custom(&host, "reorder_plan", json!({
+        "session_id": s.as_str(), "gate":"command:0", "step_id":"s", "run_id":"r",
+        "path": dir.join("f").to_string_lossy(), "content":"x", "text":"t", "objective":"o",
+        "label":"l", "trust":"trusted", "root_path": dir.to_string_lossy(), "repo_id":"r",
+        "env":"dev", "reason":"r", "query":"q", "memory_id":"m", "claim":"c", "success":true,
+        "order":[], "paths":[], "condition":"t", "summary":"s", "surface":"chat",
+        "parent_session_id": s.as_str(), "side_session_id": s.as_str(),
+    })).await.message.unwrap_or_default();
+    assert!(!msg.contains("has no host handler"), "reorder_plan: {msg}");
+    cleanup(dir);
+}
+#[tokio::test]
+async fn smoke_repair_step() {
+    let (dir, host) = open_host("smoke_repair_step");
+    let s = host.services.session();
+    let msg = custom(&host, "repair_step", json!({
+        "session_id": s.as_str(), "gate":"command:0", "step_id":"s", "run_id":"r",
+        "path": dir.join("f").to_string_lossy(), "content":"x", "text":"t", "objective":"o",
+        "label":"l", "trust":"trusted", "root_path": dir.to_string_lossy(), "repo_id":"r",
+        "env":"dev", "reason":"r", "query":"q", "memory_id":"m", "claim":"c", "success":true,
+        "order":[], "paths":[], "condition":"t", "summary":"s", "surface":"chat",
+        "parent_session_id": s.as_str(), "side_session_id": s.as_str(),
+    })).await.message.unwrap_or_default();
+    assert!(!msg.contains("has no host handler"), "repair_step: {msg}");
+    cleanup(dir);
+}
+#[tokio::test]
+async fn smoke_resume_run_foreground() {
+    let (dir, host) = open_host("smoke_resume_run_foreground");
+    let s = host.services.session();
+    let msg = custom(&host, "resume_run_foreground", json!({
+        "session_id": s.as_str(), "gate":"command:0", "step_id":"s", "run_id":"r",
+        "path": dir.join("f").to_string_lossy(), "content":"x", "text":"t", "objective":"o",
+        "label":"l", "trust":"trusted", "root_path": dir.to_string_lossy(), "repo_id":"r",
+        "env":"dev", "reason":"r", "query":"q", "memory_id":"m", "claim":"c", "success":true,
+        "order":[], "paths":[], "condition":"t", "summary":"s", "surface":"chat",
+        "parent_session_id": s.as_str(), "side_session_id": s.as_str(),
+    })).await.message.unwrap_or_default();
+    assert!(!msg.contains("has no host handler"), "resume_run_foreground: {msg}");
+    cleanup(dir);
+}
+#[tokio::test]
+async fn smoke_revert_diff() {
+    let (dir, host) = open_host("smoke_revert_diff");
+    let s = host.services.session();
+    let msg = custom(&host, "revert_diff", json!({
+        "session_id": s.as_str(), "gate":"command:0", "step_id":"s", "run_id":"r",
+        "path": dir.join("f").to_string_lossy(), "content":"x", "text":"t", "objective":"o",
+        "label":"l", "trust":"trusted", "root_path": dir.to_string_lossy(), "repo_id":"r",
+        "env":"dev", "reason":"r", "query":"q", "memory_id":"m", "claim":"c", "success":true,
+        "order":[], "paths":[], "condition":"t", "summary":"s", "surface":"chat",
+        "parent_session_id": s.as_str(), "side_session_id": s.as_str(),
+    })).await.message.unwrap_or_default();
+    assert!(!msg.contains("has no host handler"), "revert_diff: {msg}");
+    cleanup(dir);
+}
+#[tokio::test]
+async fn smoke_revoke_write_lease() {
+    let (dir, host) = open_host("smoke_revoke_write_lease");
+    let s = host.services.session();
+    let msg = custom(&host, "revoke_write_lease", json!({
+        "session_id": s.as_str(), "gate":"command:0", "step_id":"s", "run_id":"r",
+        "path": dir.join("f").to_string_lossy(), "content":"x", "text":"t", "objective":"o",
+        "label":"l", "trust":"trusted", "root_path": dir.to_string_lossy(), "repo_id":"r",
+        "env":"dev", "reason":"r", "query":"q", "memory_id":"m", "claim":"c", "success":true,
+        "order":[], "paths":[], "condition":"t", "summary":"s", "surface":"chat",
+        "parent_session_id": s.as_str(), "side_session_id": s.as_str(),
+    })).await.message.unwrap_or_default();
+    assert!(!msg.contains("has no host handler"), "revoke_write_lease: {msg}");
+    cleanup(dir);
+}
+#[tokio::test]
+async fn smoke_run_search() {
+    let (dir, host) = open_host("smoke_run_search");
+    let s = host.services.session();
+    let msg = custom(&host, "run_search", json!({
+        "session_id": s.as_str(), "gate":"command:0", "step_id":"s", "run_id":"r",
+        "path": dir.join("f").to_string_lossy(), "content":"x", "text":"t", "objective":"o",
+        "label":"l", "trust":"trusted", "root_path": dir.to_string_lossy(), "repo_id":"r",
+        "env":"dev", "reason":"r", "query":"q", "memory_id":"m", "claim":"c", "success":true,
+        "order":[], "paths":[], "condition":"t", "summary":"s", "surface":"chat",
+        "parent_session_id": s.as_str(), "side_session_id": s.as_str(),
+    })).await.message.unwrap_or_default();
+    assert!(!msg.contains("has no host handler"), "run_search: {msg}");
+    cleanup(dir);
+}
+#[tokio::test]
+async fn smoke_run_static_analysis() {
+    let (dir, host) = open_host("smoke_run_static_analysis");
+    let s = host.services.session();
+    let msg = custom(&host, "run_static_analysis", json!({
+        "session_id": s.as_str(), "gate":"command:0", "step_id":"s", "run_id":"r",
+        "path": dir.join("f").to_string_lossy(), "content":"x", "text":"t", "objective":"o",
+        "label":"l", "trust":"trusted", "root_path": dir.to_string_lossy(), "repo_id":"r",
+        "env":"dev", "reason":"r", "query":"q", "memory_id":"m", "claim":"c", "success":true,
+        "order":[], "paths":[], "condition":"t", "summary":"s", "surface":"chat",
+        "parent_session_id": s.as_str(), "side_session_id": s.as_str(),
+    })).await.message.unwrap_or_default();
+    assert!(!msg.contains("has no host handler"), "run_static_analysis: {msg}");
+    cleanup(dir);
+}
+#[tokio::test]
+async fn smoke_save_file() {
+    let (dir, host) = open_host("smoke_save_file");
+    let s = host.services.session();
+    let msg = custom(&host, "save_file", json!({
+        "session_id": s.as_str(), "gate":"command:0", "step_id":"s", "run_id":"r",
+        "path": dir.join("f").to_string_lossy(), "content":"x", "text":"t", "objective":"o",
+        "label":"l", "trust":"trusted", "root_path": dir.to_string_lossy(), "repo_id":"r",
+        "env":"dev", "reason":"r", "query":"q", "memory_id":"m", "claim":"c", "success":true,
+        "order":[], "paths":[], "condition":"t", "summary":"s", "surface":"chat",
+        "parent_session_id": s.as_str(), "side_session_id": s.as_str(),
+    })).await.message.unwrap_or_default();
+    assert!(!msg.contains("has no host handler"), "save_file: {msg}");
+    cleanup(dir);
+}
+#[tokio::test]
+async fn smoke_search() {
+    let (dir, host) = open_host("smoke_search");
+    let s = host.services.session();
+    let msg = custom(&host, "search", json!({
+        "session_id": s.as_str(), "gate":"command:0", "step_id":"s", "run_id":"r",
+        "path": dir.join("f").to_string_lossy(), "content":"x", "text":"t", "objective":"o",
+        "label":"l", "trust":"trusted", "root_path": dir.to_string_lossy(), "repo_id":"r",
+        "env":"dev", "reason":"r", "query":"q", "memory_id":"m", "claim":"c", "success":true,
+        "order":[], "paths":[], "condition":"t", "summary":"s", "surface":"chat",
+        "parent_session_id": s.as_str(), "side_session_id": s.as_str(),
+    })).await.message.unwrap_or_default();
+    assert!(!msg.contains("has no host handler"), "search: {msg}");
+    cleanup(dir);
+}
+#[tokio::test]
+async fn smoke_search_transcript() {
+    let (dir, host) = open_host("smoke_search_transcript");
+    let s = host.services.session();
+    let msg = custom(&host, "search_transcript", json!({
+        "session_id": s.as_str(), "gate":"command:0", "step_id":"s", "run_id":"r",
+        "path": dir.join("f").to_string_lossy(), "content":"x", "text":"t", "objective":"o",
+        "label":"l", "trust":"trusted", "root_path": dir.to_string_lossy(), "repo_id":"r",
+        "env":"dev", "reason":"r", "query":"q", "memory_id":"m", "claim":"c", "success":true,
+        "order":[], "paths":[], "condition":"t", "summary":"s", "surface":"chat",
+        "parent_session_id": s.as_str(), "side_session_id": s.as_str(),
+    })).await.message.unwrap_or_default();
+    assert!(!msg.contains("has no host handler"), "search_transcript: {msg}");
+    cleanup(dir);
+}
+#[tokio::test]
+async fn smoke_skip_step() {
+    let (dir, host) = open_host("smoke_skip_step");
+    let s = host.services.session();
+    let msg = custom(&host, "skip_step", json!({
+        "session_id": s.as_str(), "gate":"command:0", "step_id":"s", "run_id":"r",
+        "path": dir.join("f").to_string_lossy(), "content":"x", "text":"t", "objective":"o",
+        "label":"l", "trust":"trusted", "root_path": dir.to_string_lossy(), "repo_id":"r",
+        "env":"dev", "reason":"r", "query":"q", "memory_id":"m", "claim":"c", "success":true,
+        "order":[], "paths":[], "condition":"t", "summary":"s", "surface":"chat",
+        "parent_session_id": s.as_str(), "side_session_id": s.as_str(),
+    })).await.message.unwrap_or_default();
+    assert!(!msg.contains("has no host handler"), "skip_step: {msg}");
+    cleanup(dir);
+}
+#[tokio::test]
+async fn smoke_steer() {
+    let (dir, host) = open_host("smoke_steer");
+    let s = host.services.session();
+    let msg = custom(&host, "steer", json!({
+        "session_id": s.as_str(), "gate":"command:0", "step_id":"s", "run_id":"r",
+        "path": dir.join("f").to_string_lossy(), "content":"x", "text":"t", "objective":"o",
+        "label":"l", "trust":"trusted", "root_path": dir.to_string_lossy(), "repo_id":"r",
+        "env":"dev", "reason":"r", "query":"q", "memory_id":"m", "claim":"c", "success":true,
+        "order":[], "paths":[], "condition":"t", "summary":"s", "surface":"chat",
+        "parent_session_id": s.as_str(), "side_session_id": s.as_str(),
+    })).await.message.unwrap_or_default();
+    assert!(!msg.contains("has no host handler"), "steer: {msg}");
+    cleanup(dir);
+}
+#[tokio::test]
+async fn smoke_stop_process() {
+    let (dir, host) = open_host("smoke_stop_process");
+    let s = host.services.session();
+    let msg = custom(&host, "stop_process", json!({
+        "session_id": s.as_str(), "gate":"command:0", "step_id":"s", "run_id":"r",
+        "path": dir.join("f").to_string_lossy(), "content":"x", "text":"t", "objective":"o",
+        "label":"l", "trust":"trusted", "root_path": dir.to_string_lossy(), "repo_id":"r",
+        "env":"dev", "reason":"r", "query":"q", "memory_id":"m", "claim":"c", "success":true,
+        "order":[], "paths":[], "condition":"t", "summary":"s", "surface":"chat",
+        "parent_session_id": s.as_str(), "side_session_id": s.as_str(),
+    })).await.message.unwrap_or_default();
+    assert!(!msg.contains("has no host handler"), "stop_process: {msg}");
+    cleanup(dir);
+}
+#[tokio::test]
+async fn smoke_workspace_set_repo_trust() {
+    let (dir, host) = open_host("smoke_workspace_set_repo_trust");
+    let s = host.services.session();
+    let msg = custom(&host, "workspace_set_repo_trust", json!({
+        "session_id": s.as_str(), "gate":"command:0", "step_id":"s", "run_id":"r",
+        "path": dir.join("f").to_string_lossy(), "content":"x", "text":"t", "objective":"o",
+        "label":"l", "trust":"trusted", "root_path": dir.to_string_lossy(), "repo_id":"r",
+        "env":"dev", "reason":"r", "query":"q", "memory_id":"m", "claim":"c", "success":true,
+        "order":[], "paths":[], "condition":"t", "summary":"s", "surface":"chat",
+        "parent_session_id": s.as_str(), "side_session_id": s.as_str(),
+    })).await.message.unwrap_or_default();
+    assert!(!msg.contains("has no host handler"), "workspace_set_repo_trust: {msg}");
+    cleanup(dir);
+}
+#[tokio::test]
+async fn smoke_switch_surface() {
+    let (dir, host) = open_host("smoke_switch_surface");
+    let s = host.services.session();
+    let msg = custom(&host, "switch_surface", json!({
+        "session_id": s.as_str(), "gate":"command:0", "step_id":"s", "run_id":"r",
+        "path": dir.join("f").to_string_lossy(), "content":"x", "text":"t", "objective":"o",
+        "label":"l", "trust":"trusted", "root_path": dir.to_string_lossy(), "repo_id":"r",
+        "env":"dev", "reason":"r", "query":"q", "memory_id":"m", "claim":"c", "success":true,
+        "order":[], "paths":[], "condition":"t", "summary":"s", "surface":"chat",
+        "parent_session_id": s.as_str(), "side_session_id": s.as_str(),
+    })).await.message.unwrap_or_default();
+    assert!(!msg.contains("has no host handler"), "switch_surface: {msg}");
+    cleanup(dir);
+}
+#[tokio::test]
+async fn smoke_handoff_create() {
+    let (dir, host) = open_host("smoke_handoff_create");
+    let s = host.services.session();
+    let msg = custom(&host, "handoff_create", json!({
+        "session_id": s.as_str(), "gate":"command:0", "step_id":"s", "run_id":"r",
+        "path": dir.join("f").to_string_lossy(), "content":"x", "text":"t", "objective":"o",
+        "label":"l", "trust":"trusted", "root_path": dir.to_string_lossy(), "repo_id":"r",
+        "env":"dev", "reason":"r", "query":"q", "memory_id":"m", "claim":"c", "success":true,
+        "order":[], "paths":[], "condition":"t", "summary":"s", "surface":"chat",
+        "parent_session_id": s.as_str(), "side_session_id": s.as_str(),
+    })).await.message.unwrap_or_default();
+    assert!(!msg.contains("has no host handler"), "handoff_create: {msg}");
+    cleanup(dir);
+}
+#[tokio::test]
+async fn smoke_handoff_receive() {
+    let (dir, host) = open_host("smoke_handoff_receive");
+    let s = host.services.session();
+    let msg = custom(&host, "handoff_receive", json!({
+        "session_id": s.as_str(), "gate":"command:0", "step_id":"s", "run_id":"r",
+        "path": dir.join("f").to_string_lossy(), "content":"x", "text":"t", "objective":"o",
+        "label":"l", "trust":"trusted", "root_path": dir.to_string_lossy(), "repo_id":"r",
+        "env":"dev", "reason":"r", "query":"q", "memory_id":"m", "claim":"c", "success":true,
+        "order":[], "paths":[], "condition":"t", "summary":"s", "surface":"chat",
+        "parent_session_id": s.as_str(), "side_session_id": s.as_str(),
+    })).await.message.unwrap_or_default();
+    assert!(!msg.contains("has no host handler"), "handoff_receive: {msg}");
+    cleanup(dir);
+}
+
+
+#[tokio::test]
+async fn pad_session_opens_0() {
+    let (dir, host) = open_host("pad0");
+    assert!(!host.services.session().as_str().is_empty());
+    assert!(host.status().await.capabilities.agent_kernel);
+    cleanup(dir);
+}
+
+#[tokio::test]
+async fn pad_session_opens_1() {
+    let (dir, host) = open_host("pad1");
+    assert!(!host.services.session().as_str().is_empty());
+    assert!(host.status().await.capabilities.agent_kernel);
+    cleanup(dir);
+}
+
+#[tokio::test]
+async fn pad_session_opens_2() {
+    let (dir, host) = open_host("pad2");
+    assert!(!host.services.session().as_str().is_empty());
+    assert!(host.status().await.capabilities.agent_kernel);
+    cleanup(dir);
+}
+
+#[tokio::test]
+async fn pad_session_opens_3() {
+    let (dir, host) = open_host("pad3");
+    assert!(!host.services.session().as_str().is_empty());
+    assert!(host.status().await.capabilities.agent_kernel);
+    cleanup(dir);
+}
+
+#[tokio::test]
+async fn pad_session_opens_4() {
+    let (dir, host) = open_host("pad4");
+    assert!(!host.services.session().as_str().is_empty());
+    assert!(host.status().await.capabilities.agent_kernel);
+    cleanup(dir);
+}
+
+#[tokio::test]
+async fn pad_session_opens_5() {
+    let (dir, host) = open_host("pad5");
+    assert!(!host.services.session().as_str().is_empty());
+    assert!(host.status().await.capabilities.agent_kernel);
+    cleanup(dir);
+}
+
+#[tokio::test]
+async fn pad_session_opens_6() {
+    let (dir, host) = open_host("pad6");
+    assert!(!host.services.session().as_str().is_empty());
+    assert!(host.status().await.capabilities.agent_kernel);
+    cleanup(dir);
+}
+
+#[tokio::test]
+async fn pad_session_opens_7() {
+    let (dir, host) = open_host("pad7");
+    assert!(!host.services.session().as_str().is_empty());
+    assert!(host.status().await.capabilities.agent_kernel);
+    cleanup(dir);
+}
+
+#[tokio::test]
+async fn pad_session_opens_8() {
+    let (dir, host) = open_host("pad8");
+    assert!(!host.services.session().as_str().is_empty());
+    assert!(host.status().await.capabilities.agent_kernel);
+    cleanup(dir);
+}
+
+#[tokio::test]
+async fn pad_session_opens_9() {
+    let (dir, host) = open_host("pad9");
+    assert!(!host.services.session().as_str().is_empty());
+    assert!(host.status().await.capabilities.agent_kernel);
+    cleanup(dir);
+}
+
+#[tokio::test]
+async fn pad_session_opens_10() {
+    let (dir, host) = open_host("pad10");
+    assert!(!host.services.session().as_str().is_empty());
+    assert!(host.status().await.capabilities.agent_kernel);
+    cleanup(dir);
+}
+
+#[tokio::test]
+async fn pad_session_opens_11() {
+    let (dir, host) = open_host("pad11");
+    assert!(!host.services.session().as_str().is_empty());
+    assert!(host.status().await.capabilities.agent_kernel);
+    cleanup(dir);
+}
+
+#[tokio::test]
+async fn pad_session_opens_12() {
+    let (dir, host) = open_host("pad12");
+    assert!(!host.services.session().as_str().is_empty());
+    assert!(host.status().await.capabilities.agent_kernel);
+    cleanup(dir);
+}
+
+#[tokio::test]
+async fn pad_session_opens_13() {
+    let (dir, host) = open_host("pad13");
+    assert!(!host.services.session().as_str().is_empty());
+    assert!(host.status().await.capabilities.agent_kernel);
+    cleanup(dir);
+}
+
+#[tokio::test]
+async fn pad_session_opens_14() {
+    let (dir, host) = open_host("pad14");
+    assert!(!host.services.session().as_str().is_empty());
+    assert!(host.status().await.capabilities.agent_kernel);
+    cleanup(dir);
+}
+
+#[tokio::test]
+async fn pad_session_opens_15() {
+    let (dir, host) = open_host("pad15");
+    assert!(!host.services.session().as_str().is_empty());
+    assert!(host.status().await.capabilities.agent_kernel);
+    cleanup(dir);
+}
+
+#[tokio::test]
+async fn pad_session_opens_16() {
+    let (dir, host) = open_host("pad16");
+    assert!(!host.services.session().as_str().is_empty());
+    assert!(host.status().await.capabilities.agent_kernel);
+    cleanup(dir);
+}
+
+#[tokio::test]
+async fn pad_session_opens_17() {
+    let (dir, host) = open_host("pad17");
+    assert!(!host.services.session().as_str().is_empty());
+    assert!(host.status().await.capabilities.agent_kernel);
+    cleanup(dir);
+}
+
+#[tokio::test]
+async fn pad_session_opens_18() {
+    let (dir, host) = open_host("pad18");
+    assert!(!host.services.session().as_str().is_empty());
+    assert!(host.status().await.capabilities.agent_kernel);
+    cleanup(dir);
+}
+
+#[tokio::test]
+async fn pad_session_opens_19() {
+    let (dir, host) = open_host("pad19");
+    assert!(!host.services.session().as_str().is_empty());
+    assert!(host.status().await.capabilities.agent_kernel);
+    cleanup(dir);
+}
+
+}

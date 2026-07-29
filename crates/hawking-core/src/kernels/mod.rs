@@ -11683,95 +11683,51 @@ pub use metal_dispatch::*;
 mod tests {
     use super::*;
     use half::f16;
-
     #[test]
     fn rmsnorm_unit_weight() {
-        let x = [1.0, 2.0, 3.0, 4.0];
-        let w = [1.0, 1.0, 1.0, 1.0];
-        let mut out = [0.0; 4];
-        rmsnorm(&x, &w, 1e-6, &mut out);
-        // RMS = sqrt(30/4) = sqrt(7.5)
+        let x = [1.0, 2.0, 3.0, 4.0]; let w = [1.0, 1.0, 1.0, 1.0]; let mut out = [0.0; 4]; rmsnorm(&x, &w, 1e-6, &mut out);
         let rms = (7.5f32).sqrt();
         for i in 0..4 {
             assert!((out[i] - x[i] / rms).abs() < 1e-4);
         }
     }
-
     #[test]
     fn softmax_sums_to_one() {
-        let mut xs = [1.0, 2.0, 3.0, 4.0];
-        softmax_inplace(&mut xs);
-        let sum: f32 = xs.iter().sum();
+        let mut xs = [1.0, 2.0, 3.0, 4.0]; softmax_inplace(&mut xs); let sum: f32 = xs.iter().sum();
         assert!((sum - 1.0).abs() < 1e-5);
     }
-
     #[test]
     fn gemv_round_trip() {
-        let w_f32 = [1.0, 0.0, 0.0, 1.0];
-        let w: Vec<f16> = w_f32.iter().map(|&v| f16::from_f32(v)).collect();
-        let x = [3.0, 5.0];
-        let mut out = [0.0; 2];
-        gemv_f16(&w, 2, 2, &x, &mut out);
+        let w_f32 = [1.0, 0.0, 0.0, 1.0]; let w: Vec<f16> = w_f32.iter().map(|&v| f16::from_f32(v)).collect();
+        let x = [3.0, 5.0]; let mut out = [0.0; 2]; gemv_f16(&w, 2, 2, &x, &mut out);
         assert!((out[0] - 3.0).abs() < 1e-5);
         assert!((out[1] - 5.0).abs() < 1e-5);
     }
-
     #[test]
     fn longrope_neox_unit_factors_is_plain_neox() {
-        // With factors == 1 and mscale == 1, rope_inplace_longrope is
-        // plain NEOX RoPE: verify against the closed form on head_dim=8.
-        let head_dim = 8usize;
-        let half = head_dim / 2;
-        let base = 10_000.0f32;
-        let pos = 5u32;
-        let factors = vec![1.0f32; half];
-        let mut x: Vec<f32> = (0..head_dim).map(|i| (i as f32 + 1.0) * 0.1).collect();
-        let orig = x.clone();
-        rope_inplace_longrope(&mut x, pos, base, &factors, 1.0);
+        let head_dim = 8usize; let half = head_dim / 2; let base = 10_000.0f32; let pos = 5u32;
+        let factors = vec![1.0f32; half]; let mut x: Vec<f32> = (0..head_dim).map(|i| (i as f32 + 1.0) * 0.1).collect();
+        let orig = x.clone(); rope_inplace_longrope(&mut x, pos, base, &factors, 1.0);
         for i in 0..half {
-            let inv_freq = 1.0 / base.powf(2.0 * i as f32 / head_dim as f32);
-            let theta = pos as f32 * inv_freq;
-            let (s, c) = theta.sin_cos();
-            let x0 = orig[i];
-            let x1 = orig[i + half];
+            let inv_freq = 1.0 / base.powf(2.0 * i as f32 / head_dim as f32); let theta = pos as f32 * inv_freq;
+            let (s, c) = theta.sin_cos(); let x0 = orig[i]; let x1 = orig[i + half];
             assert!((x[i] - (x0 * c - x1 * s)).abs() < 1e-6);
             assert!((x[i + half] - (x0 * s + x1 * c)).abs() < 1e-6);
         }
     }
-
     #[test]
     fn longrope_factor_lowers_frequency() {
-        // A larger ext_factor divides the inverse frequency, so the
-        // rotation angle shrinks. At pos=1, dim i=1, factor 2 vs 1 must
-        // halve the effective angle (inv_freq scales by 1/factor).
-        let head_dim = 8usize;
-        let half = head_dim / 2;
-        let base = 10_000.0f32;
-        let i = 1usize;
-        let inv_freq = 1.0 / base.powf(2.0 * i as f32 / head_dim as f32);
-
-        let mut a = vec![0.0f32; head_dim];
-        a[i] = 1.0; // (x_i, x_{i+half}) = (1, 0) → reads out (cos, sin)
-        let mut b = a.clone();
-        let mut f1 = vec![1.0f32; half];
-        let mut f2 = vec![1.0f32; half];
-        f1[i] = 1.0;
-        f2[i] = 2.0;
-        rope_inplace_longrope(&mut a, 1, base, &f1, 1.0);
-        rope_inplace_longrope(&mut b, 1, base, &f2, 1.0);
-        let angle_a = a[i + half].atan2(a[i]); // = inv_freq
-        let angle_b = b[i + half].atan2(b[i]); // = inv_freq / 2
+        let head_dim = 8usize; let half = head_dim / 2; let base = 10_000.0f32; let i = 1usize;
+        let inv_freq = 1.0 / base.powf(2.0 * i as f32 / head_dim as f32); let mut a = vec![0.0f32; head_dim]; a[i] = 1.0;
+        let mut b = a.clone(); let mut f1 = vec![1.0f32; half]; let mut f2 = vec![1.0f32; half]; f1[i] = 1.0; f2[i] = 2.0;
+        rope_inplace_longrope(&mut a, 1, base, &f1, 1.0); rope_inplace_longrope(&mut b, 1, base, &f2, 1.0);
+        let angle_a = a[i + half].atan2(a[i]); let angle_b = b[i + half].atan2(b[i]);
         assert!((angle_a - inv_freq).abs() < 1e-6);
         assert!((angle_b - inv_freq / 2.0).abs() < 1e-6);
     }
-
     #[test]
     fn gelu_mul_matches_reference() {
-        let gate = [0.0f32, 1.0, -1.0, 2.5];
-        let up = [1.0f32, 2.0, 3.0, 0.5];
-        let mut out = [0.0f32; 4];
-        gelu_mul(&gate, &up, &mut out);
-        // Reference gelu_tanh computed independently.
+        let gate = [0.0f32, 1.0, -1.0, 2.5]; let up = [1.0f32, 2.0, 3.0, 0.5]; let mut out = [0.0f32; 4]; gelu_mul(&gate, &up, &mut out);
         let gelu = |x: f32| {
             let inner = (2.0f32 / std::f32::consts::PI).sqrt() * (x + 0.044715 * x * x * x);
             0.5 * x * (1.0 + inner.tanh())
@@ -11784,32 +11740,18 @@ mod tests {
                 out[i]
             );
         }
-        // gelu(0) == 0, so out[0] must be exactly 0.
         assert_eq!(out[0], 0.0);
     }
-
     #[test]
     fn logit_softcap_bounds_and_noop() {
-        // cap<=0 is a no-op.
-        let mut a = [5.0f32, -3.0, 100.0];
-        logit_softcap_inplace(&mut a, 0.0);
-        assert_eq!(a, [5.0, -3.0, 100.0]);
-
-        // With cap=30, output is bounded to (-30, 30) and monotone.
-        let cap = 30.0f32;
-        let mut b = [0.0f32, 30.0, 1000.0, -1000.0];
+        let mut a = [5.0f32, -3.0, 100.0]; logit_softcap_inplace(&mut a, 0.0);
+        assert_eq!(a, [5.0, -3.0, 100.0]); let cap = 30.0f32; let mut b = [0.0f32, 30.0, 1000.0, -1000.0];
         logit_softcap_inplace(&mut b, cap);
-        assert!((b[0] - 0.0).abs() < 1e-6); // tanh(0)=0
+        assert!((b[0] - 0.0).abs() < 1e-6);
         assert!((b[1] - cap * (1.0f32).tanh()).abs() < 1e-5);
-        // tanh saturates to exactly 1.0 in f32 for large args, so the
-        // capped value reaches cap; assert bounded (<=) and near-cap.
         assert!(b[2] <= cap && b[2] > cap - 1e-2);
         assert!(b[3] >= -cap && b[3] < -cap + 1e-2);
     }
-
-    /// `rope_inplace_scaled(..., None)` must be bit-identical to the
-    /// unscaled `rope_inplace` so Qwen2 / DeepSeek-V2 paths can swap
-    /// without behavioural change.
     #[test]
     fn rope_scaled_none_matches_unscaled() {
         let mut rng_state: u32 = 0xC0FFEEu32;
@@ -11817,96 +11759,49 @@ mod tests {
             rng_state = rng_state.wrapping_mul(1664525).wrapping_add(1013904223);
             ((rng_state >> 8) as f32 / (1u32 << 24) as f32) * 2.0 - 1.0
         };
-        let head_dim = 128;
-        let a: Vec<f32> = (0..head_dim).map(|_| next()).collect();
+        let head_dim = 128; let a: Vec<f32> = (0..head_dim).map(|_| next()).collect();
         for &(pos, base) in &[(0u32, 1_000_000.0f32), (37, 500_000.0), (4096, 1_000_000.0)] {
-            let mut a_unscaled = a.clone();
-            let mut a_scaled = a.clone();
-            rope_inplace(&mut a_unscaled, pos, base);
+            let mut a_unscaled = a.clone(); let mut a_scaled = a.clone(); rope_inplace(&mut a_unscaled, pos, base);
             rope_inplace_scaled(&mut a_scaled, pos, base, None);
             for i in 0..head_dim {
-                assert_eq!(
-                    a_unscaled[i].to_bits(),
-                    a_scaled[i].to_bits(),
-                    "rope_scaled(None) diverged from rope_inplace at pos={pos} base={base} i={i}"
-                );
+                assert_eq!(a_unscaled[i].to_bits(), a_scaled[i].to_bits(), "rope_scaled(None) diverged from rope_inplace at pos={pos} base={base} i={i}");
             }
         }
     }
-
-    /// Llama-3.1 reference parameters. Verify the three regimes:
-    ///   (a) high-frequency (small i): freq unchanged → angle = pos * freq
-    ///   (b) low-frequency  (large i): freq divided by `factor`
-    ///   (c) middle band: smooth interpolation between (a) and (b)
     #[test]
     fn rope_scaled_llama3_regimes() {
-        let head_dim = 64usize;
-        let base = 500_000.0f32;
-        let pos = 1u32; // pos=1 makes the rotated angle exactly equal to freq_eff
+        let head_dim = 64usize; let base = 500_000.0f32; let pos = 1u32;
         let scaling = Llama3RopeScaling {
             factor: 8.0,
             low_freq_factor: 1.0,
             high_freq_factor: 4.0,
             original_max_position_embeddings: 8192,
         };
-
-        // Use a NEOX vector of pairs (cos₀=1, sin₀=0) per half-pair so that after
-        // one rotation step the resulting (x0, x1) = (cos θ, sin θ) — i.e. we
-        // can read freq_eff[i] directly off the output without inversion.
-        let mut x = vec![0.0f32; head_dim];
-        let half = head_dim / 2;
+        let mut x = vec![0.0f32; head_dim]; let half = head_dim / 2;
         for i in 0..head_dim / 2 {
-            x[i] = 1.0;
-            x[i + half] = 0.0;
+            x[i] = 1.0; x[i + half] = 0.0;
         }
         rope_inplace_scaled(&mut x, pos, base, Some(scaling));
-
-        let two_pi = std::f32::consts::TAU;
-        let low_wavelen = scaling.original_max_position_embeddings as f32 / scaling.low_freq_factor;
+        let two_pi = std::f32::consts::TAU; let low_wavelen = scaling.original_max_position_embeddings as f32 / scaling.low_freq_factor;
         let high_wavelen =
             scaling.original_max_position_embeddings as f32 / scaling.high_freq_factor;
-
-        let mut saw_unscaled = false;
-        let mut saw_scaled = false;
-        let mut saw_smooth = false;
+        let mut saw_unscaled = false; let mut saw_scaled = false; let mut saw_smooth = false;
         for i in 0..head_dim / 2 {
-            let inv_freq = base.powf(2.0 * i as f32 / head_dim as f32);
-            let freq = 1.0 / inv_freq;
-            let wavelen = two_pi / freq;
-            let recovered_freq_eff = x[i + half].atan2(x[i]); // since pos=1, θ = freq_eff
+            let inv_freq = base.powf(2.0 * i as f32 / head_dim as f32); let freq = 1.0 / inv_freq;
+            let wavelen = two_pi / freq; let recovered_freq_eff = x[i + half].atan2(x[i]);
             if wavelen < high_wavelen {
-                // Regime (a): unchanged.
-                assert!(
-                    (recovered_freq_eff - freq).abs() < 1e-5,
-                    "i={i}: expected unscaled freq={freq}, got {recovered_freq_eff}"
-                );
-                saw_unscaled = true;
+                assert!((recovered_freq_eff - freq).abs() < 1e-5, "i={i}: expected unscaled freq={freq}, got {recovered_freq_eff}"); saw_unscaled = true;
             } else if wavelen > low_wavelen {
-                // Regime (b): freq / factor.
                 let expected = freq / scaling.factor;
-                assert!(
-                    (recovered_freq_eff - expected).abs() < 1e-5,
-                    "i={i}: expected freq/factor={expected}, got {recovered_freq_eff}"
-                );
-                saw_scaled = true;
+                assert!((recovered_freq_eff - expected).abs() < 1e-5, "i={i}: expected freq/factor={expected}, got {recovered_freq_eff}"); saw_scaled = true;
             } else {
-                // Regime (c): smooth.
                 let smooth = (scaling.original_max_position_embeddings as f32 / wavelen
-                    - scaling.low_freq_factor)
-                    / (scaling.high_freq_factor - scaling.low_freq_factor);
+                    - scaling.low_freq_factor) / (scaling.high_freq_factor - scaling.low_freq_factor);
                 let expected = (1.0 - smooth) * (freq / scaling.factor) + smooth * freq;
-                assert!(
-                    (recovered_freq_eff - expected).abs() < 1e-5,
-                    "i={i}: expected smooth={expected}, got {recovered_freq_eff}"
-                );
-                saw_smooth = true;
+                assert!((recovered_freq_eff - expected).abs() < 1e-5, "i={i}: expected smooth={expected}, got {recovered_freq_eff}"); saw_smooth = true;
             }
         }
-        // Confirm the test actually exercised all three regimes.
-        assert!(
-            saw_unscaled && saw_scaled && saw_smooth,
-            "test did not cover all three regimes"
-        );
+        assert!(saw_unscaled && saw_scaled && saw_smooth, "test did not cover all three regimes");
     }
 }
 

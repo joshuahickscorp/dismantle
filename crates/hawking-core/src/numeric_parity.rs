@@ -874,12 +874,9 @@ pub fn format_score_line(s: &BackendScore) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn identical_vectors_pass_with_zero_error() {
-        // Build both from f32 so the cast into the f64 authority is exact.
-        let c: Vec<f32> = (0..64).map(|i| (i as f32) * 0.1 - 3.0).collect();
-        let r: Vec<f64> = c.iter().map(|&v| v as f64).collect();
+        let c: Vec<f32> = (0..64).map(|i| (i as f32) * 0.1 - 3.0).collect(); let r: Vec<f64> = c.iter().map(|&v| v as f64).collect();
         let s = score_against_f64(&c, &r, &Bounds::logits(), "id");
         assert!(s.pass, "failures: {:?}", s.failures);
         assert_eq!(s.continuous.relative_l2, 0.0);
@@ -887,30 +884,16 @@ mod tests {
         assert!(s.discrete.greedy_match);
         assert!(s.discrete.top_k_exact_match);
     }
-
-    /// The V2 failure mode: one denormal-scale element with a tiny absolute
-    /// perturbation produces a huge scalar relative error, while the bulk of
-    /// the vector (and every decision) is fine. V2.1 must **pass**.
     #[test]
     fn denormal_scale_element_does_not_fail_relative_gate() {
-        let mut r: Vec<f64> = (0..128).map(|i| ((i as f64) - 64.0) * 0.05).collect();
-        // Inject a denormal-scale reference element.
-        r[3] = 1e-32;
-        // Candidate matches everywhere except a 1e-20 absolute hit on that element.
-        let mut c: Vec<f32> = r.iter().map(|&v| v as f32).collect();
-        // f32 cannot represent 1e-32; the cast is 0.0. Put a tiny value that is
-        // still denormal-scale relative to the bulk, and perturb it.
-        r[3] = 1e-20;
-        c[3] = 2e-20; // abs err 1e-20; relative = 1.0 if scored as relative
-
+        let mut r: Vec<f64> = (0..128).map(|i| ((i as f64) - 64.0) * 0.05).collect(); r[3] = 1e-32;
+        let mut c: Vec<f32> = r.iter().map(|&v| v as f32).collect(); r[3] = 1e-20; c[3] = 2e-20;
         let s = score_against_f64(&c, &r, &Bounds::logits(), "denorm");
-        // Diagnostic V2 metric is large:
         assert!(
             s.continuous.diagnostic_max_scalar_rel_all > 1e-5,
             "setup broken: V2 diagnostic should be large, got {}",
             s.continuous.diagnostic_max_scalar_rel_all
         );
-        // V2.1 must pass: near-zero uses abs, bulk is exact cast.
         assert!(
             s.pass,
             "V2.1 must not reject denormal-scale relative blow-up: {:?}",
@@ -919,72 +902,52 @@ mod tests {
         assert!(s.continuous.n_near_zero >= 1);
         assert!(s.continuous.relative_l2 < 1e-5);
     }
-
     #[test]
     fn silu_mul_f64_authority_matches_formula() {
-        let g = [0.0f64, 1.0, -2.0, 0.5];
-        let u = [1.0f64, 2.0, 3.0, -1.0];
-        let y = silu_mul_f64_authority(&g, &u).unwrap();
+        let g = [0.0f64, 1.0, -2.0, 0.5]; let u = [1.0f64, 2.0, 3.0, -1.0]; let y = silu_mul_f64_authority(&g, &u).unwrap();
         for i in 0..g.len() {
             let expect = (g[i] / (1.0 + (-g[i]).exp())) * u[i];
             assert!((y[i] - expect).abs() < 1e-15, "i={i}");
         }
-        let gh: Vec<f32> = g.iter().map(|&v| v as f32).collect();
-        let uh: Vec<f32> = u.iter().map(|&v| v as f32).collect();
+        let gh: Vec<f32> = g.iter().map(|&v| v as f32).collect(); let uh: Vec<f32> = u.iter().map(|&v| v as f32).collect();
         let host = silu_mul_f32_host(&gh, &uh).unwrap();
         let ref64: Vec<f64> = g
             .iter()
-            .zip(u.iter())
-            .map(|(&a, &b)| (a / (1.0 + (-a).exp())) * b)
-            .collect();
+            .zip(u.iter()).map(|(&a, &b)| (a / (1.0 + (-a).exp())) * b) .collect();
         let s = score_against_f64(&host, &ref64, &Bounds::continuous_only(), "silu_host");
         assert!(s.pass, "host silu vs f64: {:?}", s.failures);
     }
-
     #[test]
     fn wrong_argmax_fails_with_no_tolerance() {
-        let r: Vec<f64> = vec![1.0, 2.0, 3.0, 0.5];
-        let c: Vec<f32> = vec![1.0, 3.5, 3.0, 0.5]; // argmax 1 vs 2
+        let r: Vec<f64> = vec![1.0, 2.0, 3.0, 0.5]; let c: Vec<f32> = vec![1.0, 3.5, 3.0, 0.5];
         let s = score_against_f64(&c, &r, &Bounds::logits(), "argmax");
         assert!(!s.pass);
         assert!(!s.discrete.greedy_match);
         assert!(s.failures.iter().any(|f| f.contains("argmax")));
     }
-
     #[test]
     fn wrong_topk_fails_with_no_tolerance() {
-        let r: Vec<f64> = vec![5.0, 4.0, 3.0, 2.0, 1.0, 0.0];
-        // Swap rank-2 and rank-5 so top-5 set differs in order and membership.
-        let c: Vec<f32> = vec![5.0, 4.0, 0.5, 2.0, 1.0, 3.5];
-        let mut bounds = Bounds::logits();
-        bounds.top_k = 3;
-        let s = score_against_f64(&c, &r, &bounds, "topk");
+        let r: Vec<f64> = vec![5.0, 4.0, 3.0, 2.0, 1.0, 0.0]; let c: Vec<f32> = vec![5.0, 4.0, 0.5, 2.0, 1.0, 3.5];
+        let mut bounds = Bounds::logits(); bounds.top_k = 3; let s = score_against_f64(&c, &r, &bounds, "topk");
         assert!(!s.discrete.top_k_exact_match);
         assert!(!s.pass);
         assert!(s.failures.iter().any(|f| f.contains("top-")));
     }
-
     #[test]
     fn large_relative_l2_fails_headline_gate() {
-        let r: Vec<f64> = (0..32).map(|i| (i as f64) + 1.0).collect();
-        let c: Vec<f32> = r.iter().map(|&v| (v * 1.1) as f32).collect(); // 10% scale error
+        let r: Vec<f64> = (0..32).map(|i| (i as f64) + 1.0).collect(); let c: Vec<f32> = r.iter().map(|&v| (v * 1.1) as f32).collect();
         let s = score_against_f64(&c, &r, &Bounds::continuous_only(), "l2");
         assert!(!s.pass);
         assert!(s.continuous.relative_l2 > 1e-5);
         assert!(s.failures.iter().any(|f| f.contains("relative_l2")));
     }
-
-    /// Reduction-order style noise (~1e-7 relative) on well-scaled logits must pass.
     #[test]
     fn reduction_order_noise_passes() {
-        let r: Vec<f64> = (0..256)
-            .map(|i| ((i as f64) * 0.017 - 2.0).sin() * 1.5)
+        let r: Vec<f64> = (0..256).map(|i| ((i as f64) * 0.017 - 2.0).sin() * 1.5)
             .collect();
-        // ~1–2 ULP noise in f32, and a uniform 1e-7 relative wiggle.
         let c: Vec<f32> = r
             .iter()
-            .enumerate()
-            .map(|(i, &v)| {
+            .enumerate().map(|(i, &v)| {
                 let noise = v * 1e-7 * if i % 2 == 0 { 1.0 } else { -1.0 };
                 (v + noise) as f32
             })
@@ -996,96 +959,51 @@ mod tests {
             s.failures,
             format_score_line(&s)
         );
-        // ULP tail is information, not a reject:
         assert!(s.continuous.ulp.median >= 0.0);
     }
-
     #[test]
     fn abs_cutoff_is_data_derived_and_stated() {
-        // median(|r|) ≈ 1.0 → cutoff ≈ 1e-6
-        let r: Vec<f64> = vec![-2.0, -1.0, 0.0, 1.0, 2.0];
-        let cut = absolute_error_cutoff(&r);
-        assert!((cut - 1e-6).abs() < 1e-12, "cut={cut}");
-        let r2: Vec<f64> = vec![1e3, 1e3, 1e3];
-        let cut2 = absolute_error_cutoff(&r2);
+        let r: Vec<f64> = vec![-2.0, -1.0, 0.0, 1.0, 2.0]; let cut = absolute_error_cutoff(&r);
+        assert!((cut - 1e-6).abs() < 1e-12, "cut={cut}"); let r2: Vec<f64> = vec![1e3, 1e3, 1e3]; let cut2 = absolute_error_cutoff(&r2);
         assert!((cut2 - 1e-3).abs() < 1e-12, "cut2={cut2}");
     }
-
     #[test]
     fn ulp_distribution_reports_quartet_not_lone_max() {
-        let r: Vec<f64> = vec![1.0, 2.0, 3.0, 4.0];
-        // One element nudged by many ULPs; rest exact.
-        let mut c: Vec<f32> = r.iter().map(|&v| v as f32).collect();
-        c[0] = f32::from_bits((1.0f32).to_bits() + 50);
-        let u = ulp_distribution(&c, &r);
+        let r: Vec<f64> = vec![1.0, 2.0, 3.0, 4.0]; let mut c: Vec<f32> = r.iter().map(|&v| v as f32).collect();
+        c[0] = f32::from_bits((1.0f32).to_bits() + 50); let u = ulp_distribution(&c, &r);
         assert_eq!(u.n, 4);
         assert_eq!(u.median, 0.0);
         assert_eq!(u.max, 50.0);
-        // p95/p99 exist (not collapsed to max alone in the API).
         assert!(u.p95 >= u.median);
         assert!(u.p99 >= u.p95);
     }
-
     #[test]
     fn f64_authority_matvec_matches_manual_dot() {
-        // One row: bf16(1.0), bf16(2.0) · [3, 4] = 11
-        let one = 0x3f80u16; // bf16 1.0
-        let two = 0x4000u16; // bf16 2.0
-        let mut bits = Vec::new();
-        bits.extend_from_slice(&one.to_le_bytes());
-        bits.extend_from_slice(&two.to_le_bytes());
-        let y = matvec_bf16_f64_authority(&bits, 2, &[3.0, 4.0]).unwrap();
+        let one = 0x3f80u16; let two = 0x4000u16; let mut bits = Vec::new(); bits.extend_from_slice(&one.to_le_bytes());
+        bits.extend_from_slice(&two.to_le_bytes()); let y = matvec_bf16_f64_authority(&bits, 2, &[3.0, 4.0]).unwrap();
         assert_eq!(y.len(), 1);
         assert!((y[0] - 11.0).abs() < 1e-12, "y={}", y[0]);
     }
-
     #[test]
     fn pair_scores_both_backends() {
-        let r: Vec<f64> = vec![0.1, 0.2, 0.5, -0.1];
-        let h: Vec<f32> = r.iter().map(|&v| v as f32).collect();
-        let d = h.clone();
-        let p = score_pair(&h, &d, &r, &Bounds::logits());
+        let r: Vec<f64> = vec![0.1, 0.2, 0.5, -0.1]; let h: Vec<f32> = r.iter().map(|&v| v as f32).collect();
+        let d = h.clone(); let p = score_pair(&h, &d, &r, &Bounds::logits());
         assert!(p.pass);
         assert_eq!(p.schema, SCHEMA);
         assert!(p.host.pass && p.device.pass);
     }
-
     #[test]
     fn format_score_line_names_max_meaningful_rel_not_mean_rel() {
-        let r: Vec<f64> = vec![1.0, 2.0, 3.0, 4.0];
-        let mut c: Vec<f32> = r.iter().map(|&v| v as f32).collect();
-        // Single-element relative hit so max_meaningful_rel is nonzero.
-        c[1] = 2.0 * (1.0 + 1e-4);
-        let s = score_against_f64(&c, &r, &Bounds::continuous_only(), "label");
-        let line = format_score_line(&s);
-        assert!(
-            line.contains("max_meaningful_rel="),
-            "score line must label the max, got: {line}"
-        );
-        assert!(
-            !line.contains("mean_rel="),
-            "score line must not mislabel max as mean_rel, got: {line}"
-        );
+        let r: Vec<f64> = vec![1.0, 2.0, 3.0, 4.0]; let mut c: Vec<f32> = r.iter().map(|&v| v as f32).collect(); c[1] = 2.0 * (1.0 + 1e-4);
+        let s = score_against_f64(&c, &r, &Bounds::continuous_only(), "label"); let line = format_score_line(&s);
+        assert!(line.contains("max_meaningful_rel="), "score line must label the max, got: {line}");
+        assert!(!line.contains("mean_rel="), "score line must not mislabel max as mean_rel, got: {line}");
         assert!(s.continuous.max_meaningful_rel > 0.0);
     }
-
     #[test]
     fn full_forward_bounds_report_max_meaningful_rel_without_gating() {
-        // Large bulk so a single-element relative hit of ~1e-3 fails the
-        // max_meaningful_rel gate (1e-5) while full-vector rel_l2 stays
-        // under 1e-5 — same shape as host-vs-f64 on the tiny fixture.
-        let n = 4096usize;
-        let mut r = vec![1.0f64; n];
-        r[0] = 100.0; // clear argmax / top ranks
-        r[1] = 90.0;
-        r[2] = 80.0;
-        r[3] = 70.0;
-        r[4] = 60.0;
-        r[100] = 0.01; // small but meaningful-scale vs median≈1 cutoff
-        let mut c: Vec<f32> = r.iter().map(|&v| v as f32).collect();
-        // abs err 1e-4 on |r|=0.01 → max_meaningful_rel = 1e-2; energy of
-        // error is 1e-8 against ‖r‖₂ ≈ sqrt(4096 + big tops) ≫ 1e-5 rel_l2.
-        c[100] = 0.01 + 1e-4;
+        let n = 4096usize; let mut r = vec![1.0f64; n]; r[0] = 100.0; r[1] = 90.0; r[2] = 80.0; r[3] = 70.0; r[4] = 60.0; r[100] = 0.01;
+        let mut c: Vec<f32> = r.iter().map(|&v| v as f32).collect(); c[100] = 0.01 + 1e-4;
         let op_local = score_against_f64(&c, &r, &Bounds::logits(), "op_local");
         assert!(
             !op_local.pass,
@@ -1094,9 +1012,7 @@ mod tests {
         );
         assert!(op_local
             .failures
-            .iter()
-            .any(|f| f.starts_with("meaningful_rel")));
-
+            .iter() .any(|f| f.starts_with("meaningful_rel")));
         let full = score_against_f64(&c, &r, &Bounds::full_forward_logits(), "full_fwd");
         assert!(
             full.pass,
@@ -1106,31 +1022,17 @@ mod tests {
             format_score_line(&full)
         );
         assert!(full.continuous.max_meaningful_rel > 1e-5);
-        assert!(full.continuous.relative_l2 < 1e-5);
-        let line = format_score_line(&full);
+        assert!(full.continuous.relative_l2 < 1e-5); let line = format_score_line(&full);
         assert!(line.contains("max_meaningful_rel="));
     }
-
-    /// Reproduce the structural V2 false-reject: mixed scales, tiny abs error
-    /// on the small element, good bulk agreement — V2 diagnostic blows up,
-    /// V2.1 passes.
     #[test]
     fn v2_false_reject_reproduced_and_cleared() {
-        let mut r = vec![1.0f64; 64];
-        // Span that made max-relative unusable: near-denormal + large.
-        r[0] = 1e-32;
-        r[1] = 1e10;
-        let mut c: Vec<f32> = r.iter().map(|&v| v as f32).collect();
-        // Absolute perturbation on the tiny element: double it in f32 space.
-        // Relative error on that slot alone is O(1); absolute error is ~1e-32.
-        let tiny = c[0];
-        assert!(tiny > 0.0 && tiny < 1e-30, "expected tiny positive, got {tiny}");
-        c[0] = tiny * 2.0;
-        // Meaningful bulk: exact f32 cast of the reference.
+        let mut r = vec![1.0f64; 64]; r[0] = 1e-32; r[1] = 1e10;
+        let mut c: Vec<f32> = r.iter().map(|&v| v as f32).collect(); let tiny = c[0];
+        assert!(tiny > 0.0 && tiny < 1e-30, "expected tiny positive, got {tiny}"); c[0] = tiny * 2.0;
         for i in 1..64 {
             c[i] = r[i] as f32;
         }
-
         let s = score_against_f64(&c, &r, &Bounds::logits(), "v2_pathology");
         assert!(
             s.continuous.diagnostic_max_scalar_rel_all > 1e-3,

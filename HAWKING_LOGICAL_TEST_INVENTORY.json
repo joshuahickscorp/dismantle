@@ -1,10 +1,52 @@
 {
   "by_file": [
     {
+      "cases": 276,
+      "file": "tools/condense/tests/test_retired_glm52.py",
+      "lang": "python",
+      "parametrised_cases": 0,
+      "skipped_markers": 0
+    },
+    {
+      "cases": 100,
+      "file": "tools/condense/tests/test_retired_kimi_k26.py",
+      "lang": "python",
+      "parametrised_cases": 0,
+      "skipped_markers": 0
+    },
+    {
       "cases": 89,
       "file": "crates/hide-backend/src/host.rs",
       "ignored": 0,
       "lang": "rust"
+    },
+    {
+      "cases": 83,
+      "file": "tools/condense/tests/test_retired_gravity_frontier.py",
+      "lang": "python",
+      "parametrised_cases": 0,
+      "skipped_markers": 0
+    },
+    {
+      "cases": 64,
+      "file": "tools/condense/tests/test_retired_eco.py",
+      "lang": "python",
+      "parametrised_cases": 0,
+      "skipped_markers": 0
+    },
+    {
+      "cases": 64,
+      "file": "tools/condense/tests/test_retired_succession.py",
+      "lang": "python",
+      "parametrised_cases": 0,
+      "skipped_markers": 0
+    },
+    {
+      "cases": 42,
+      "file": "tools/condense/tests/test_retired_qwen.py",
+      "lang": "python",
+      "parametrised_cases": 0,
+      "skipped_markers": 0
     },
     {
       "cases": 41,
@@ -21,8 +63,8 @@
       "skipped_markers": 0
     },
     {
-      "cases": 40,
-      "file": "tools/condense/tests/test_glm52_worker.py",
+      "cases": 39,
+      "file": "tools/condense/tests/test_retired_gptoss.py",
       "lang": "python",
       "parametrised_cases": 0,
       "skipped_markers": 0
@@ -68,20 +110,6 @@
       "lang": "rust"
     },
     {
-      "cases": 34,
-      "file": "tools/condense/tests/test_succ_gravity.py",
-      "lang": "python",
-      "parametrised_cases": 0,
-      "skipped_markers": 0
-    },
-    {
-      "cases": 33,
-      "file": "tools/condense/tests/test_kimi_k26_release_cycle.py",
-      "lang": "python",
-      "parametrised_cases": 0,
-      "skipped_markers": 0
-    },
-    {
       "cases": 29,
       "file": "ramanujan/test_governance_invariants.py",
       "lang": "python",
@@ -100,14 +128,7 @@
       "file": "tools/condense/tests/test_glm52_activation_aware_pack_v2.py",
       "lang": "python",
       "parametrised_cases": 0,
-      "skipped_markers": 7
-    },
-    {
-      "cases": 28,
-      "file": "tools/condense/tests/test_glm52_pilot_source_release.py",
-      "lang": "python",
-      "parametrised_cases": 0,
-      "skipped_markers": 0
+      "skipped_markers": 1
     },
     {
       "cases": 28,
@@ -132,14 +153,7 @@
     },
     {
       "cases": 26,
-      "file": "tools/condense/tests/test_doctor_v5_telegram_rung_notifier.py",
-      "lang": "python",
-      "parametrised_cases": 0,
-      "skipped_markers": 0
-    },
-    {
-      "cases": 25,
-      "file": "tools/condense/tests/test_glm52_route_population_census.py",
+      "file": "tools/condense/tests/test_retired_mechanics.py",
       "lang": "python",
       "parametrised_cases": 0,
       "skipped_markers": 0
@@ -181,23 +195,9 @@
     },
     {
       "cases": 23,
-      "file": "tools/condense/tests/test_emergency_detached_campaign.py",
-      "lang": "python",
-      "parametrised_cases": 0,
-      "skipped_markers": 0
-    },
-    {
-      "cases": 23,
       "file": "tools/condense/tests/test_glm52_grounding.py",
       "lang": "python",
       "parametrised_cases": 205,
-      "skipped_markers": 0
-    },
-    {
-      "cases": 23,
-      "file": "tools/condense/tests/test_kimi_k26_phase2_recovery.py",
-      "lang": "python",
-      "parametrised_cases": 0,
       "skipped_markers": 0
     },
     {
@@ -210,34 +210,6 @@
     {
       "cases": 22,
       "file": "ramanujan/test_roles_economics.py",
-      "lang": "python",
-      "parametrised_cases": 0,
-      "skipped_markers": 0
-    },
-    {
-      "cases": 22,
-      "file": "tools/condense/tests/test_glm52_basis_pilot.py",
-      "lang": "python",
-      "parametrised_cases": 0,
-      "skipped_markers": 0
-    },
-    {
-      "cases": 22,
-      "file": "tools/condense/tests/test_gravity_execution_adapter.py",
-      "lang": "python",
-      "parametrised_cases": 0,
-      "skipped_markers": 0
-    },
-    {
-      "cases": 22,
-      "file": "tools/condense/tests/test_gravity_metal_lab_a.py",
-      "lang": "python",
-      "parametrised_cases": 0,
-      "skipped_markers": 0
-    },
-    {
-      "cases": 22,
-      "file": "tools/condense/tests/test_kimi_k26_download_supervisor.py",
       "lang": "python",
       "parametrised_cases": 0,
       "skipped_markers": 0
@@ -279,13 +251,6 @@
     },
     {
       "cases": 20,
-      "file": "tools/condense/tests/test_gravity_global_allocator.py",
-      "lang": "python",
-      "parametrised_cases": 0,
-      "skipped_markers": 0
-    },
-    {
-      "cases": 20,
       "file": "tools/foundry/tests/test_one_bit_ceiling.py",
       "lang": "python",
       "parametrised_cases": 4,
@@ -296,20 +261,6 @@
       "file": "crates/hawking-core/src/cost_ledger.rs",
       "ignored": 0,
       "lang": "rust"
-    },
-    {
-      "cases": 19,
-      "file": "tools/condense/tests/test_glm52_notifications.py",
-      "lang": "python",
-      "parametrised_cases": 0,
-      "skipped_markers": 0
-    },
-    {
-      "cases": 19,
-      "file": "tools/condense/tests/test_glm52_xet_window_fetch.py",
-      "lang": "python",
-      "parametrised_cases": 0,
-      "skipped_markers": 0
     },
     {
       "cases": 18,
@@ -339,24 +290,10 @@
     },
     {
       "cases": 18,
-      "file": "tools/condense/tests/test_glm52_window_execution.py",
-      "lang": "python",
-      "parametrised_cases": 0,
-      "skipped_markers": 0
-    },
-    {
-      "cases": 18,
       "file": "tools/condense/tests/test_gptoss_real_forward_adversarial.py",
       "lang": "python",
       "parametrised_cases": 0,
       "skipped_markers": 1
-    },
-    {
-      "cases": 18,
-      "file": "tools/condense/tests/test_overnight_supervisor.py",
-      "lang": "python",
-      "parametrised_cases": 0,
-      "skipped_markers": 0
     },
     {
       "cases": 17,
@@ -378,6 +315,13 @@
       "skipped_markers": 0
     },
     {
+      "cases": 17,
+      "file": "tools/condense/tests/test_retired_tg.py",
+      "lang": "python",
+      "parametrised_cases": 0,
+      "skipped_markers": 0
+    },
+    {
       "cases": 16,
       "file": "ramanujan/test_ramanujan.py",
       "lang": "python",
@@ -387,27 +331,6 @@
     {
       "cases": 16,
       "file": "tools/campaign/test_final_ascent_status.py",
-      "lang": "python",
-      "parametrised_cases": 0,
-      "skipped_markers": 0
-    },
-    {
-      "cases": 16,
-      "file": "tools/condense/tests/test_glm52_xet_live_driver.py",
-      "lang": "python",
-      "parametrised_cases": 0,
-      "skipped_markers": 0
-    },
-    {
-      "cases": 16,
-      "file": "tools/condense/tests/test_kimi_k26_phase2_release.py",
-      "lang": "python",
-      "parametrised_cases": 0,
-      "skipped_markers": 0
-    },
-    {
-      "cases": 16,
-      "file": "tools/condense/tests/test_qwen3_moe_adapter.py",
       "lang": "python",
       "parametrised_cases": 0,
       "skipped_markers": 0
@@ -452,20 +375,6 @@
       "lang": "rust"
     },
     {
-      "cases": 15,
-      "file": "tools/condense/tests/test_glm52_campaign_contract.py",
-      "lang": "python",
-      "parametrised_cases": 0,
-      "skipped_markers": 0
-    },
-    {
-      "cases": 15,
-      "file": "tools/condense/tests/test_succ_core.py",
-      "lang": "python",
-      "parametrised_cases": 0,
-      "skipped_markers": 0
-    },
-    {
       "cases": 14,
       "file": "crates/hawking-core/src/numeric_parity.rs",
       "ignored": 0,
@@ -502,13 +411,6 @@
       "lang": "rust"
     },
     {
-      "cases": 14,
-      "file": "tools/condense/tests/test_qwen_real_forward.py",
-      "lang": "python",
-      "parametrised_cases": 0,
-      "skipped_markers": 0
-    },
-    {
       "cases": 13,
       "file": "crates/hawking-orch/src/tool_spec_decode.rs",
       "ignored": 0,
@@ -531,34 +433,6 @@
     {
       "cases": 13,
       "file": "tools/condense/tests/test_glm52_activation_aware_pack.py",
-      "lang": "python",
-      "parametrised_cases": 0,
-      "skipped_markers": 0
-    },
-    {
-      "cases": 13,
-      "file": "tools/condense/tests/test_glm52_schedule_freeze.py",
-      "lang": "python",
-      "parametrised_cases": 0,
-      "skipped_markers": 0
-    },
-    {
-      "cases": 13,
-      "file": "tools/condense/tests/test_mech_measure.py",
-      "lang": "python",
-      "parametrised_cases": 0,
-      "skipped_markers": 0
-    },
-    {
-      "cases": 13,
-      "file": "tools/condense/tests/test_mech_run_all.py",
-      "lang": "python",
-      "parametrised_cases": 0,
-      "skipped_markers": 0
-    },
-    {
-      "cases": 13,
-      "file": "tools/condense/tests/test_vulture_harvest.py",
       "lang": "python",
       "parametrised_cases": 0,
       "skipped_markers": 0
@@ -725,13 +599,6 @@
     },
     {
       "cases": 11,
-      "file": "tools/condense/tests/test_eco_planner.py",
-      "lang": "python",
-      "parametrised_cases": 0,
-      "skipped_markers": 0
-    },
-    {
-      "cases": 11,
       "file": "tools/condense/tests/test_gravity_forge.py",
       "lang": "python",
       "parametrised_cases": 0,
@@ -794,28 +661,7 @@
     },
     {
       "cases": 10,
-      "file": "tools/condense/tests/test_activation_aware_roundtrip.py",
-      "lang": "python",
-      "parametrised_cases": 0,
-      "skipped_markers": 0
-    },
-    {
-      "cases": 10,
-      "file": "tools/condense/tests/test_eco_pipeline.py",
-      "lang": "python",
-      "parametrised_cases": 0,
-      "skipped_markers": 0
-    },
-    {
-      "cases": 10,
       "file": "tools/condense/tests/test_glm52_contract.py",
-      "lang": "python",
-      "parametrised_cases": 0,
-      "skipped_markers": 0
-    },
-    {
-      "cases": 10,
-      "file": "tools/condense/tests/test_qwen_correction_wave.py",
       "lang": "python",
       "parametrised_cases": 0,
       "skipped_markers": 0
@@ -915,13 +761,6 @@
       "file": "crates/hide-tools/src/mcp.rs",
       "ignored": 0,
       "lang": "rust"
-    },
-    {
-      "cases": 9,
-      "file": "tools/condense/tests/test_tg_active_byte_budget.py",
-      "lang": "python",
-      "parametrised_cases": 0,
-      "skipped_markers": 0
     },
     {
       "cases": 9,
@@ -1035,23 +874,9 @@
     },
     {
       "cases": 8,
-      "file": "tools/condense/tests/test_eco_activation.py",
-      "lang": "python",
-      "parametrised_cases": 0,
-      "skipped_markers": 0
-    },
-    {
-      "cases": 8,
       "file": "tools/condense/tests/test_glm52_pack_indices.py",
       "lang": "python",
       "parametrised_cases": 19,
-      "skipped_markers": 0
-    },
-    {
-      "cases": 8,
-      "file": "tools/condense/tests/test_tg_k11_schedule_reconcile.py",
-      "lang": "python",
-      "parametrised_cases": 0,
       "skipped_markers": 0
     },
     {
@@ -1167,20 +992,6 @@
       "file": "crates/hide-personalize/src/world.rs",
       "ignored": 0,
       "lang": "rust"
-    },
-    {
-      "cases": 7,
-      "file": "tools/condense/tests/test_eco_admission.py",
-      "lang": "python",
-      "parametrised_cases": 0,
-      "skipped_markers": 0
-    },
-    {
-      "cases": 7,
-      "file": "tools/condense/tests/test_eco_passport.py",
-      "lang": "python",
-      "parametrised_cases": 0,
-      "skipped_markers": 0
     },
     {
       "cases": 7,
@@ -1306,56 +1117,7 @@
     },
     {
       "cases": 6,
-      "file": "tools/condense/tests/test_eco_cli.py",
-      "lang": "python",
-      "parametrised_cases": 0,
-      "skipped_markers": 0
-    },
-    {
-      "cases": 6,
-      "file": "tools/condense/tests/test_eco_import.py",
-      "lang": "python",
-      "parametrised_cases": 0,
-      "skipped_markers": 0
-    },
-    {
-      "cases": 6,
-      "file": "tools/condense/tests/test_glm52_activation_aware_runtime.py",
-      "lang": "python",
-      "parametrised_cases": 0,
-      "skipped_markers": 0
-    },
-    {
-      "cases": 6,
       "file": "tools/condense/tests/test_glm52_evidence_auth.py",
-      "lang": "python",
-      "parametrised_cases": 0,
-      "skipped_markers": 0
-    },
-    {
-      "cases": 6,
-      "file": "tools/condense/tests/test_glm52_resource_policy.py",
-      "lang": "python",
-      "parametrised_cases": 0,
-      "skipped_markers": 0
-    },
-    {
-      "cases": 6,
-      "file": "tools/condense/tests/test_kimi_k26_stale_download_cleanup.py",
-      "lang": "python",
-      "parametrised_cases": 0,
-      "skipped_markers": 0
-    },
-    {
-      "cases": 6,
-      "file": "tools/condense/tests/test_succ_empirical.py",
-      "lang": "python",
-      "parametrised_cases": 0,
-      "skipped_markers": 0
-    },
-    {
-      "cases": 6,
-      "file": "tools/condense/tests/test_succ_watch_calibrate.py",
       "lang": "python",
       "parametrised_cases": 0,
       "skipped_markers": 0
@@ -1570,13 +1332,6 @@
       "file": "crates/hide-state/tests/store_roundtrip.rs",
       "ignored": 0,
       "lang": "rust"
-    },
-    {
-      "cases": 5,
-      "file": "tools/condense/tests/test_forge_integration.py",
-      "lang": "python",
-      "parametrised_cases": 0,
-      "skipped_markers": 0
     },
     {
       "cases": 5,
@@ -1976,30 +1731,9 @@
     },
     {
       "cases": 4,
-      "file": "tools/condense/tests/test_glm52_runtime_parity_gate.py",
-      "lang": "python",
-      "parametrised_cases": 0,
-      "skipped_markers": 0
-    },
-    {
-      "cases": 4,
-      "file": "tools/condense/tests/test_glm52_runtime_speed_gate.py",
-      "lang": "python",
-      "parametrised_cases": 0,
-      "skipped_markers": 0
-    },
-    {
-      "cases": 4,
       "file": "tools/condense/tests/test_gravity_largest_tensor.py",
       "lang": "python",
       "parametrised_cases": 9,
-      "skipped_markers": 0
-    },
-    {
-      "cases": 4,
-      "file": "tools/condense/tests/test_succ_cli.py",
-      "lang": "python",
-      "parametrised_cases": 0,
       "skipped_markers": 0
     },
     {
@@ -2526,27 +2260,6 @@
     },
     {
       "cases": 3,
-      "file": "tools/condense/tests/test_eco_status.py",
-      "lang": "python",
-      "parametrised_cases": 0,
-      "skipped_markers": 0
-    },
-    {
-      "cases": 3,
-      "file": "tools/condense/tests/test_glm52_compact_mla_fixture.py",
-      "lang": "python",
-      "parametrised_cases": 0,
-      "skipped_markers": 0
-    },
-    {
-      "cases": 3,
-      "file": "tools/condense/tests/test_glm52_long_context_gate.py",
-      "lang": "python",
-      "parametrised_cases": 0,
-      "skipped_markers": 0
-    },
-    {
-      "cases": 3,
       "file": "tools/condense/tests/test_glm52_parity.py",
       "lang": "python",
       "parametrised_cases": 0,
@@ -3003,20 +2716,6 @@
       "file": "crates/hide-state/src/header.rs",
       "ignored": 0,
       "lang": "rust"
-    },
-    {
-      "cases": 2,
-      "file": "tools/condense/tests/test_glm52_composition_gate.py",
-      "lang": "python",
-      "parametrised_cases": 0,
-      "skipped_markers": 0
-    },
-    {
-      "cases": 2,
-      "file": "tools/condense/tests/test_qwen_bpw_budget.py",
-      "lang": "python",
-      "parametrised_cases": 0,
-      "skipped_markers": 0
     },
     {
       "cases": 1,
@@ -3578,24 +3277,17 @@
     },
     {
       "cases": 1,
-      "file": "tools/condense/tests/test_glm52_capability_gate.py",
-      "lang": "python",
-      "parametrised_cases": 0,
-      "skipped_markers": 0
-    },
-    {
-      "cases": 1,
       "file": "tools/strand/tools/strand_eval/tests/test_smoke.py",
       "lang": "python",
       "parametrised_cases": 0,
       "skipped_markers": 0
     }
   ],
-  "commit": "d10e0efb1c58933152836b8aadea2be26cafa332",
-  "files": 579,
+  "commit": "3469c661ad555d6a96961a90a112cefcd77c3264",
+  "files": 535,
   "ignored_rust": 54,
   "logical_cases": 3925,
   "parametrised_expansion": 471,
   "schema": "hawking.logical_test_inventory.v1",
-  "skipped_python_markers": 10
+  "skipped_python_markers": 4
 }

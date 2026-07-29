@@ -221,19 +221,6 @@ pub(crate) struct TqServe {
     pub res_cpu: Option<(Vec<i32>, crate::tq::RhtMode, u64)>,
 }
 
-/// Fail-closed visibility surface for external Appendix runners. It reveals no
-/// weight data; it only proves how many projection owners were admitted to the
-/// Metal TQ path and which runtime interpretation their shared artifact uses.
-#[cfg(all(feature = "tq", target_os = "macos"))]
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct TqGpuProofCoverage {
-    pub expected_all_linear: usize,
-    pub mapped: usize,
-    pub gpu_resident: usize,
-    pub residual_gpu_resident: usize,
-    pub runtime_path: crate::tq_gpu::TqRuntimePath,
-}
-
 pub struct QwenDense {
     pub config: QwenConfig,
     pub tokenizer: Tokenizer,
@@ -4656,41 +4643,6 @@ impl QwenDense {
         }
         self.tq_ffn = Some(map);
         Ok(())
-    }
-
-    /// Build and report the exact TQ ownership used by both greedy and batched
-    /// verification. Mixed runtime interpretations are rejected because a
-    /// parity receipt must name one hardware path unambiguously.
-    #[cfg(all(feature = "tq", target_os = "macos"))]
-    pub fn tq_gpu_proof_coverage(&mut self) -> Result<TqGpuProofCoverage> {
-        self.ensure_tq_cache()?;
-        let map = self
-            .tq_ffn
-            .as_ref()
-            .ok_or_else(|| Error::Model("TQ proof coverage requested without a TQ map".into()))?;
-        let first = map
-            .values()
-            .find_map(|serve| serve.gpu.as_ref())
-            .ok_or_else(|| {
-                Error::Model("TQ proof coverage has zero GPU-resident projections".into())
-            })?;
-        let runtime_path = first.runtime_path;
-        if map
-            .values()
-            .filter_map(|serve| serve.gpu.as_ref())
-            .any(|gpu| gpu.runtime_path != runtime_path)
-        {
-            return Err(Error::Model(
-                "TQ proof coverage contains mixed runtime interpretations".into(),
-            ));
-        }
-        Ok(TqGpuProofCoverage {
-            expected_all_linear: self.config.n_layers * TQ_LINEAR_KINDS.len(),
-            mapped: map.len(),
-            gpu_resident: map.values().filter(|serve| serve.gpu.is_some()).count(),
-            residual_gpu_resident: map.values().filter(|serve| serve.gpu_res.is_some()).count(),
-            runtime_path,
-        })
     }
 
     /// Track E: load static per-channel scales for LM_HEAD W4A8.
@@ -9765,58 +9717,6 @@ impl hawking_speculate::verifier::ExactTarget for QwenDense {
         pos: usize,
     ) -> hawking_speculate::verifier::TargetResult<u32> {
         Ok(QwenDense::forward_token_greedy_tcb(self, token, pos)?)
-    }
-}
-
-// ── Q4K_FAST sidecar loader ──────────────────────────────────────────────
-//
-// Reads a `.hawking` sidecar file (see `crate::q4k_fast`) and returns
-// the bytes for a named tensor as a `Vec<u8>` ready to be passed to
-// `MetalContext::new_buffer_with_bytes`. NOT WIRED into the production
-// load path this session — the consolidation session decides whether to
-// route Q4_K projections through Q4K_FAST. Lives here so the parity test
-// + offline tool have a CPU-side reference for what the runtime will
-// eventually do.
-#[allow(dead_code)]
-pub(crate) fn load_q4k_fast_tensor(path: &Path, name: &str) -> Result<Option<Vec<u8>>> {
-    use crate::q4k_fast::parse_header;
-    if !path.exists() {
-        return Ok(None);
-    }
-    let bytes = std::fs::read(path)
-        .map_err(|e| Error::Model(format!("read Q4K_FAST sidecar {}: {e}", path.display())))?;
-    let hdr = parse_header(&bytes)
-        .map_err(|e| Error::Model(format!("parse Q4K_FAST sidecar {}: {e}", path.display())))?;
-    let Some(entry) = hdr.tensors.iter().find(|t| t.name == name) else {
-        return Ok(None);
-    };
-    let off = entry.byte_off as usize;
-    let len = entry.byte_len as usize;
-    if off + len > bytes.len() {
-        return Err(Error::Model(format!(
-            "Q4K_FAST sidecar {}: tensor {} offset/len out of bounds ({}+{} > {})",
-            path.display(),
-            name,
-            off,
-            len,
-            bytes.len()
-        )));
-    }
-    Ok(Some(bytes[off..off + len].to_vec()))
-}
-
-/// Wrapper that prefers a Q4K_FAST sidecar tensor when available, falling
-/// back to `None` if the sidecar is absent or doesn't carry this tensor.
-/// The caller (eventual consolidation session) is responsible for the
-/// fallback to the source GGUF path. Not wired in production this session.
-#[allow(dead_code)]
-pub(crate) fn maybe_load_q4k_fast_or_none(
-    sidecar: Option<&Path>,
-    name: &str,
-) -> Result<Option<Vec<u8>>> {
-    match sidecar {
-        Some(p) => load_q4k_fast_tensor(p, name),
-        None => Ok(None),
     }
 }
 

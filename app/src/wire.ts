@@ -140,7 +140,7 @@ export type UiEventKind =
   | { type: "custom"; data: unknown };
 
 // Keep GenUiEventKind referenced so drift in the generator still typechecks against use.
-type _AssertKind = GenUiEventKind;
+export type _AssertKind = GenUiEventKind;
 
 export const intent = {
   submitTurn: (session_id: SessionId, text: string, attachments: BlobRef[] = []): Intent => ({

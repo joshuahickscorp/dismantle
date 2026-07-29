@@ -351,7 +351,7 @@ export const useStore = create<State>((set, get) => ({
         break;
 
       case "runtime_status":
-        set({ runtimeStatus: k.data.status, runtimeDetail: k.data.detail, runtimeSeq: ev.seq });
+        set({ runtimeStatus: k.data.status as RuntimeState, runtimeDetail: k.data.detail, runtimeSeq: ev.seq });
         break;
 
       case "tool_progress":
@@ -378,7 +378,7 @@ export const useStore = create<State>((set, get) => ({
         break;
 
       case "projection_patch":
-        set((s) => routeProjection(s, k.data.projection, k.data.patch as Patch, ev.seq));
+        set((s) => routeProjection(s, k.data.projection as ProjectionName, k.data.patch as Patch, ev.seq));
         break;
 
       case "custom": {

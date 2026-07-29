@@ -42,6 +42,12 @@ def _replace_one(
     mutated[index] = replace(mutated[index], **changes)
     return mutated
 
+
+def _expect_code(mutated, bundle, code, *, verify_tokenization=False):
+    with pytest.raises(corpus.CorpusIntegrityError) as raised:
+        corpus.validate_records(mutated, bundle, verify_tokenization=verify_tokenization)
+    assert raised.value.code == code
+
 def test_markdown_rebuilds_byte_exact_from_canonical_json(
     manifest: dict, tmp_path: pathlib.Path
 ) -> None:
@@ -171,9 +177,7 @@ def test_missing_provenance_hard_fails(
     bundle: corpus.TokenizerBundle, records: list[corpus.CorpusRecord]
 ) -> None:
     mutated = _replace_one(records, 0, provenance={})
-    with pytest.raises(corpus.CorpusIntegrityError) as raised:
-        corpus.validate_records(mutated, bundle, verify_tokenization=False)
-    assert raised.value.code == "MISSING_PROVENANCE"
+    _expect_code(mutated, bundle, "MISSING_PROVENANCE")
 
 def test_repeated_segment_inflation_hard_fails(
     bundle: corpus.TokenizerBundle, records: list[corpus.CorpusRecord]
@@ -182,9 +186,7 @@ def test_repeated_segment_inflation_hard_fails(
     repeated = records[0].atomic_segments[0]
     segments = (repeated, *records[target].atomic_segments[1:])
     mutated = _replace_one(records, target, atomic_segments=segments)
-    with pytest.raises(corpus.CorpusIntegrityError) as raised:
-        corpus.validate_records(mutated, bundle, verify_tokenization=False)
-    assert raised.value.code == "REPEATED_SEGMENT_INFLATION"
+    _expect_code(mutated, bundle, "REPEATED_SEGMENT_INFLATION")
 
 def test_cross_split_context_overlap_hard_fails(
     bundle: corpus.TokenizerBundle, records: list[corpus.CorpusRecord]
@@ -192,9 +194,7 @@ def test_cross_split_context_overlap_hard_fails(
     source = records[0]
     target = next(i for i, row in enumerate(records) if row.partition != source.partition)
     mutated = _replace_one(records, target, context_window=source.context_window)
-    with pytest.raises(corpus.CorpusIntegrityError) as raised:
-        corpus.validate_records(mutated, bundle, verify_tokenization=False)
-    assert raised.value.code == "CROSS_SPLIT_CONTEXT_OVERLAP"
+    _expect_code(mutated, bundle, "CROSS_SPLIT_CONTEXT_OVERLAP")
 
 def test_evaluation_prompt_leakage_hard_fails(
     bundle: corpus.TokenizerBundle, records: list[corpus.CorpusRecord]
@@ -204,9 +204,7 @@ def test_evaluation_prompt_leakage_hard_fails(
         i for i, row in enumerate(records) if row.partition in corpus.EVALUATION_PARTITIONS
     )
     mutated = _replace_one(records, target, prompt=source.prompt)
-    with pytest.raises(corpus.CorpusIntegrityError) as raised:
-        corpus.validate_records(mutated, bundle, verify_tokenization=False)
-    assert raised.value.code == "EVALUATION_PROMPT_LEAKAGE"
+    _expect_code(mutated, bundle, "EVALUATION_PROMPT_LEAKAGE")
 
 def test_number_only_template_paraphrase_hard_fails_as_semantic_family(
     bundle: corpus.TokenizerBundle, records: list[corpus.CorpusRecord]
@@ -230,9 +228,7 @@ def test_number_only_template_paraphrase_hard_fails_as_semantic_family(
         source.prompt
     )
     mutated = _replace_one(records, target, prompt=number_salted)
-    with pytest.raises(corpus.CorpusIntegrityError) as raised:
-        corpus.validate_records(mutated, bundle, verify_tokenization=False)
-    assert raised.value.code == "CROSS_SPLIT_SEMANTIC_FAMILY"
+    _expect_code(mutated, bundle, "CROSS_SPLIT_SEMANTIC_FAMILY")
 
 def test_cross_split_document_family_hard_fails(
     bundle: corpus.TokenizerBundle, records: list[corpus.CorpusRecord]
@@ -244,9 +240,7 @@ def test_cross_split_document_family_hard_fails(
     mutated = _replace_one(
         records, target, document_family_id=source.document_family_id
     )
-    with pytest.raises(corpus.CorpusIntegrityError) as raised:
-        corpus.validate_records(mutated, bundle, verify_tokenization=False)
-    assert raised.value.code == "CROSS_SPLIT_DOCUMENT_FAMILY"
+    _expect_code(mutated, bundle, "CROSS_SPLIT_DOCUMENT_FAMILY")
 
 def test_lexically_near_duplicate_paraphrase_hard_fails(
     bundle: corpus.TokenizerBundle, records: list[corpus.CorpusRecord]
@@ -260,9 +254,7 @@ def test_lexically_near_duplicate_paraphrase_hard_fails(
         source.prompt
     )
     mutated = _replace_one(records, target, prompt=near_duplicate)
-    with pytest.raises(corpus.CorpusIntegrityError) as raised:
-        corpus.validate_records(mutated, bundle, verify_tokenization=False)
-    assert raised.value.code == "CROSS_SPLIT_NEAR_DUPLICATE"
+    _expect_code(mutated, bundle, "CROSS_SPLIT_NEAR_DUPLICATE")
 
 def test_within_split_semantic_sample_inflation_hard_fails(
     bundle: corpus.TokenizerBundle, records: list[corpus.CorpusRecord]
@@ -277,9 +269,7 @@ def test_within_split_semantic_sample_inflation_hard_fails(
         r"\d+", lambda match: str(int(match.group(0)) + 9001), source.prompt
     )
     mutated = _replace_one(records, target, prompt=number_salted)
-    with pytest.raises(corpus.CorpusIntegrityError) as raised:
-        corpus.validate_records(mutated, bundle, verify_tokenization=False)
-    assert raised.value.code == "REPEATED_SEMANTIC_FAMILY_INFLATION"
+    _expect_code(mutated, bundle, "REPEATED_SEMANTIC_FAMILY_INFLATION")
 
 def test_cross_split_embedding_claim_token_id_hard_fails(
     bundle: corpus.TokenizerBundle, records: list[corpus.CorpusRecord]
@@ -300,34 +290,26 @@ def test_cross_split_embedding_claim_token_id_hard_fails(
         token_ids_sha256=corpus._token_id_hash(ids),
         embedding_claim_token_ids=(source_id,),
     )
-    with pytest.raises(corpus.CorpusIntegrityError) as raised:
-        corpus.validate_records(mutated, bundle, verify_tokenization=False)
-    assert raised.value.code == "CROSS_SPLIT_EMBEDDING_TOKEN"
+    _expect_code(mutated, bundle, "CROSS_SPLIT_EMBEDDING_TOKEN")
 
 def test_position_only_leakage_hard_fails(
     bundle: corpus.TokenizerBundle, records: list[corpus.CorpusRecord]
 ) -> None:
     target = next(i for i, row in enumerate(records) if row.kind == "context_ladder")
     mutated = _replace_one(records, target, position_bucket="closing")
-    with pytest.raises(corpus.CorpusIntegrityError) as raised:
-        corpus.validate_records(mutated, bundle, verify_tokenization=False)
-    assert raised.value.code == "POSITION_ONLY_LEAKAGE"
+    _expect_code(mutated, bundle, "POSITION_ONLY_LEAKAGE")
 
 def test_hidden_domain_imbalance_hard_fails(
     bundle: corpus.TokenizerBundle, records: list[corpus.CorpusRecord]
 ) -> None:
     mutated = list(records[1:])
-    with pytest.raises(corpus.CorpusIntegrityError) as raised:
-        corpus.validate_records(mutated, bundle, verify_tokenization=False)
-    assert raised.value.code == "HIDDEN_DOMAIN_IMBALANCE"
+    _expect_code(mutated, bundle, "HIDDEN_DOMAIN_IMBALANCE")
 
 def test_tokenization_metadata_tamper_hard_fails(
     bundle: corpus.TokenizerBundle, records: list[corpus.CorpusRecord]
 ) -> None:
     mutated = _replace_one(records, 0, token_count=records[0].token_count + 1)
-    with pytest.raises(corpus.CorpusIntegrityError) as raised:
-        corpus.validate_records(mutated, bundle, verify_tokenization=True)
-    assert raised.value.code == "TOKENIZATION_TAMPER"
+    _expect_code(mutated, bundle, "TOKENIZATION_TAMPER", verify_tokenization=True)
 
 def test_adversarial_selfcheck(
     bundle: corpus.TokenizerBundle, records: list[corpus.CorpusRecord]

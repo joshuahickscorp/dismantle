@@ -194,16 +194,16 @@
       ],
       "campaign_id": "final_ascent_status",
       "family": "campaign",
-      "notes": "Replaces tools/campaign/final_ascent_status.py control-plane body.",
+      "notes": "C-HIST-R1 product-released tools/campaign/final_ascent_status.py. This lab row is a hollow historical spec, not an invocable replacement.",
       "phases": [
         "precheck",
         "measure",
         "report"
       ],
-      "reproduction": "python3.12 -m lab lab/specs/final_ascent_status.json --work-dir reports/lab/final_ascent_status",
+      "reproduction": null,
       "resource_class": "light-readonly",
       "schema": "hawking.lab.experiment_spec.v1",
-      "status": "live",
+      "status": "released_historical_non_invocable",
       "steps": [
         {
           "description": "Authorization fences closed",
@@ -944,10 +944,10 @@
         "measure",
         "report"
       ],
-      "reproduction": "python3.12 -m lab lab/specs/light_governor.json --work-dir reports/lab/light_governor",
+      "reproduction": null,
       "resource_class": "light",
       "schema": "hawking.lab.experiment_spec.v1",
-      "status": "live",
+      "status": "released_historical_non_invocable",
       "steps": [
         {
           "description": "Sample free disk and apply light limits",
@@ -970,7 +970,8 @@
           "phase": "report"
         }
       ],
-      "title": "Light-only resource governor campaign"
+      "title": "Light-only resource governor campaign",
+      "notes": "C-HIST-R1 product-released tools/campaign/light_governor.py. This lab row is a hollow historical spec, not an invocable replacement."
     },
     "mechanics": {
       "authorization_fences": [],
@@ -1082,10 +1083,10 @@
         "seal",
         "report"
       ],
-      "reproduction": "python3.12 -m lab lab/specs/odyssey_package.json --work-dir reports/lab/odyssey_package",
+      "reproduction": null,
       "resource_class": "light",
       "schema": "hawking.lab.experiment_spec.v1",
-      "status": "live",
+      "status": "released_historical_non_invocable",
       "steps": [
         {
           "handler": "record",
@@ -1119,7 +1120,8 @@
       "title": "Odyssey package seal",
       "verification_gates": [
         "package_complete"
-      ]
+      ],
+      "notes": "C-HIST-R1 product-released tools/campaign/odyssey_package.py. This lab row is a hollow historical spec, not an invocable replacement."
     },
     "odyssey_t0": {
       "authorization_fences": [

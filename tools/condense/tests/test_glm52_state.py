@@ -203,6 +203,16 @@ def _evidence_auth():
         source_revision=REVISION,
     )
 
+
+def _snap_policy(tmp_path, policy, contract, label):
+    return gs._snapshot_policy_evidence(
+        gs.TrustedArtifactStore(tmp_path), policy, label=label,
+        contract=contract, evidence_auth=_evidence_auth(),
+    )
+
+def _unsealed(value):
+    return {k: copy.deepcopy(v) for k, v in value.items() if k not in {"seal_sha256", "producer_hmac_sha256"}}
+
 def _wrap_xet_raw_result(raw, contract):
     semantic = {
         "raw_xet_autotune_result_seal_sha256": raw["seal_sha256"],
@@ -561,20 +571,10 @@ def test_xet_result_validator_reconstructs_raw_result_and_rejects_signed_fabrica
     atomic_json(tmp_path / plan_policy["path"], plan)
     raw, wrapped = _xet_result_for_plan(plan, contract)
     atomic_json(tmp_path / policy["path"], wrapped)
-    snapshot = gs._snapshot_policy_evidence(
-        gs.TrustedArtifactStore(tmp_path),
-        policy,
-        label="Xet result",
-        contract=contract,
-        evidence_auth=_evidence_auth(),
-    )
+    snapshot = _snap_policy(tmp_path, policy, contract, "Xet result")
     assert snapshot["seal_sha256"] == wrapped["seal_sha256"]
 
-    unanchored_body = {
-        key: copy.deepcopy(item)
-        for key, item in wrapped.items()
-        if key not in {"seal_sha256", "producer_hmac_sha256"}
-    }
+    unanchored_body = _unsealed(wrapped)
     unanchored_body["evidence"].pop("controller_anchor_sha256")
     unanchored_body["evidence_sha256"] = gs._sha256(
         unanchored_body["evidence"]
@@ -586,13 +586,7 @@ def test_xet_result_validator_reconstructs_raw_result_and_rejects_signed_fabrica
         ),
     )
     with pytest.raises(gs.StateError, match="producing controller anchor"):
-        gs._snapshot_policy_evidence(
-            gs.TrustedArtifactStore(tmp_path),
-            policy,
-            label="Xet result",
-            contract=contract,
-            evidence_auth=_evidence_auth(),
-        )
+        _snap_policy(tmp_path, policy, contract, "Xet result")
 
     fabricated_body = copy.deepcopy(raw)
     fabricated_body.pop("seal_sha256")
@@ -603,13 +597,7 @@ def test_xet_result_validator_reconstructs_raw_result_and_rejects_signed_fabrica
         _wrap_xet_raw_result(fabricated_raw, contract),
     )
     with pytest.raises(gs.StateError, match="raw live-Xet result validation failed.*coverage"):
-        gs._snapshot_policy_evidence(
-            gs.TrustedArtifactStore(tmp_path),
-            policy,
-            label="Xet result",
-            contract=contract,
-            evidence_auth=_evidence_auth(),
-        )
+        _snap_policy(tmp_path, policy, contract, "Xet result")
 
 def test_frozen_schedule_validator_reaches_window_membership_and_checks_producer_hmac(
     tmp_path,
@@ -678,20 +666,10 @@ def test_frozen_schedule_validator_reaches_window_membership_and_checks_producer
         "require_producer_hmac": True,
     }
     atomic_json(tmp_path / policy["path"], schedule)
-    snapshot = gs._snapshot_policy_evidence(
-        gs.TrustedArtifactStore(tmp_path),
-        policy,
-        label="frozen schedule",
-        contract=contract,
-        evidence_auth=_evidence_auth(),
-    )
+    snapshot = _snap_policy(tmp_path, policy, contract, "frozen schedule")
     assert snapshot["seal_sha256"] == schedule["seal_sha256"]
 
-    wrong_resource_body = {
-        key: copy.deepcopy(item)
-        for key, item in schedule.items()
-        if key not in {"seal_sha256", "producer_hmac_sha256"}
-    }
+    wrong_resource_body = _unsealed(schedule)
     wrong_resource_body["resource_policy_binding"]["required_free_disk_bytes"] -= 1
     atomic_json(
         tmp_path / policy["path"],
@@ -700,19 +678,9 @@ def test_frozen_schedule_validator_reaches_window_membership_and_checks_producer
         ),
     )
     with pytest.raises(gs.StateError, match="resource policy binding mismatch"):
-        gs._snapshot_policy_evidence(
-            gs.TrustedArtifactStore(tmp_path),
-            policy,
-            label="frozen schedule",
-            contract=contract,
-            evidence_auth=_evidence_auth(),
-        )
+        _snap_policy(tmp_path, policy, contract, "frozen schedule")
 
-    wrong_identity_body = {
-        key: copy.deepcopy(item)
-        for key, item in schedule.items()
-        if key not in {"seal_sha256", "producer_hmac_sha256"}
-    }
+    wrong_identity_body = _unsealed(schedule)
     wrong_identity_body["campaign_id"] = "different-campaign"
     atomic_json(
         tmp_path / policy["path"],
@@ -721,26 +689,14 @@ def test_frozen_schedule_validator_reaches_window_membership_and_checks_producer
         ),
     )
     with pytest.raises(gs.StateError, match="campaign_id identity mismatch"):
-        gs._snapshot_policy_evidence(
-            gs.TrustedArtifactStore(tmp_path),
-            policy,
-            label="frozen schedule",
-            contract=contract,
-            evidence_auth=_evidence_auth(),
-        )
+        _snap_policy(tmp_path, policy, contract, "frozen schedule")
 
     tampered = copy.deepcopy(schedule)
     tampered.pop("seal_sha256")
     tampered["producer_hmac_sha256"] = "d" * 64
     atomic_json(tmp_path / policy["path"], seal(tampered))
     with pytest.raises(gs.StateError, match="producer HMAC authentication failed"):
-        gs._snapshot_policy_evidence(
-            gs.TrustedArtifactStore(tmp_path),
-            policy,
-            label="frozen schedule",
-            contract=contract,
-            evidence_auth=_evidence_auth(),
-        )
+        _snap_policy(tmp_path, policy, contract, "frozen schedule")
 
 @pytest.mark.parametrize(
     ("validator_id", "message"),
@@ -780,13 +736,7 @@ def test_unimplemented_official_evidence_cannot_be_satisfied_by_signed_pass(
         "require_producer_hmac": True,
     }
     with pytest.raises(gs.StateError, match=message):
-        gs._snapshot_policy_evidence(
-            gs.TrustedArtifactStore(tmp_path),
-            policy,
-            label="unimplemented evidence",
-            contract=contract,
-            evidence_auth=_evidence_auth(),
-        )
+        _snap_policy(tmp_path, policy, contract, "unimplemented evidence")
 
 def test_official_source_profile_enforces_exact_282_shards_bytes_and_grounding(
     tmp_path,

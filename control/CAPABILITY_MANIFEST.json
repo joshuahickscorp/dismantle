@@ -1,6 +1,6 @@
 {
   "schema": "hawking.capability_manifest.v1",
-  "note": "S2b process-engine cutover: tools/condense/engine retired into lab/. Science floor remains under tools/condense/ (Track V). No second science implementation in lab/.",
+  "note": "S2b process-engine cutover retained. C-HIST-R1 appends evidence-backed disposition=released rows for historical training/ramanujan-research/campaign product entrypoints (invocation null; no lab --help facade). lab_harness retained (F2 tables still import it). Prometheus excluded.",
   "entries": [
     {
       "retired_entrypoint": "tools/condense/engine/runtime.py",
@@ -11,6 +11,1124 @@
         "python3.12 -m lab --classify",
         "python3.12 -m lab --help"
       ]
+    },
+    {
+      "retired_entrypoint": "ramanujan/data/freeze_memberships.py",
+      "invocation": null,
+      "disposition": "released",
+      "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+      "evidence": {
+        "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+        "subject": "ramanujan_research_non_you",
+        "released_path": "ramanujan/data/freeze_memberships.py",
+        "constitution_absence": true,
+        "blackbox_absence": true,
+        "rollback": "single-revert restores path; fixture kept; external state untouched",
+        "receipt": "control/C-HIST-R1-ledger.json",
+        "f1_identity_receipt": "control/C-HIST-R1-f1-identity-receipt.json"
+      },
+      "also_invocable_as": []
+    },
+    {
+      "retired_entrypoint": "ramanujan/data/generate.py",
+      "invocation": null,
+      "disposition": "released",
+      "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+      "evidence": {
+        "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+        "subject": "ramanujan_research_non_you",
+        "released_path": "ramanujan/data/generate.py",
+        "constitution_absence": true,
+        "blackbox_absence": true,
+        "rollback": "single-revert restores path; fixture kept; external state untouched",
+        "receipt": "control/C-HIST-R1-ledger.json",
+        "f1_identity_receipt": "control/C-HIST-R1-f1-identity-receipt.json"
+      },
+      "also_invocable_as": []
+    },
+    {
+      "retired_entrypoint": "ramanujan/data/test_data.py",
+      "invocation": null,
+      "disposition": "released",
+      "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+      "evidence": {
+        "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+        "subject": "ramanujan_research_non_you",
+        "released_path": "ramanujan/data/test_data.py",
+        "constitution_absence": true,
+        "blackbox_absence": true,
+        "rollback": "single-revert restores path; fixture kept; external state untouched",
+        "receipt": "control/C-HIST-R1-ledger.json",
+        "f1_identity_receipt": "control/C-HIST-R1-f1-identity-receipt.json"
+      },
+      "also_invocable_as": []
+    },
+    {
+      "retired_entrypoint": "ramanujan/data/test_freeze.py",
+      "invocation": null,
+      "disposition": "released",
+      "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+      "evidence": {
+        "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+        "subject": "ramanujan_research_non_you",
+        "released_path": "ramanujan/data/test_freeze.py",
+        "constitution_absence": true,
+        "blackbox_absence": true,
+        "rollback": "single-revert restores path; fixture kept; external state untouched",
+        "receipt": "control/C-HIST-R1-ledger.json",
+        "f1_identity_receipt": "control/C-HIST-R1-f1-identity-receipt.json"
+      },
+      "also_invocable_as": []
+    },
+    {
+      "retired_entrypoint": "ramanujan/gen_data_matrix.py",
+      "invocation": null,
+      "disposition": "released",
+      "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+      "evidence": {
+        "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+        "subject": "ramanujan_research_non_you",
+        "released_path": "ramanujan/gen_data_matrix.py",
+        "constitution_absence": true,
+        "blackbox_absence": true,
+        "rollback": "single-revert restores path; fixture kept; external state untouched",
+        "receipt": "control/C-HIST-R1-ledger.json",
+        "f1_identity_receipt": "control/C-HIST-R1-f1-identity-receipt.json"
+      },
+      "also_invocable_as": []
+    },
+    {
+      "retired_entrypoint": "ramanujan/test_governance_invariants.py",
+      "invocation": null,
+      "disposition": "released",
+      "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+      "evidence": {
+        "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+        "subject": "ramanujan_research_non_you",
+        "released_path": "ramanujan/test_governance_invariants.py",
+        "constitution_absence": true,
+        "blackbox_absence": true,
+        "rollback": "single-revert restores path; fixture kept; external state untouched",
+        "receipt": "control/C-HIST-R1-ledger.json",
+        "f1_identity_receipt": "control/C-HIST-R1-f1-identity-receipt.json"
+      },
+      "also_invocable_as": []
+    },
+    {
+      "retired_entrypoint": "ramanujan/test_ramanujan.py",
+      "invocation": null,
+      "disposition": "released",
+      "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+      "evidence": {
+        "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+        "subject": "ramanujan_research_non_you",
+        "released_path": "ramanujan/test_ramanujan.py",
+        "constitution_absence": true,
+        "blackbox_absence": true,
+        "rollback": "single-revert restores path; fixture kept; external state untouched",
+        "receipt": "control/C-HIST-R1-ledger.json",
+        "f1_identity_receipt": "control/C-HIST-R1-f1-identity-receipt.json"
+      },
+      "also_invocable_as": []
+    },
+    {
+      "retired_entrypoint": "ramanujan/test_roles_economics.py",
+      "invocation": null,
+      "disposition": "released",
+      "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+      "evidence": {
+        "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+        "subject": "ramanujan_research_non_you",
+        "released_path": "ramanujan/test_roles_economics.py",
+        "constitution_absence": true,
+        "blackbox_absence": true,
+        "rollback": "single-revert restores path; fixture kept; external state untouched",
+        "receipt": "control/C-HIST-R1-ledger.json",
+        "f1_identity_receipt": "control/C-HIST-R1-f1-identity-receipt.json"
+      },
+      "also_invocable_as": []
+    },
+    {
+      "retired_entrypoint": "ramanujan/test_search.py",
+      "invocation": null,
+      "disposition": "released",
+      "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+      "evidence": {
+        "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+        "subject": "ramanujan_research_non_you",
+        "released_path": "ramanujan/test_search.py",
+        "constitution_absence": true,
+        "blackbox_absence": true,
+        "rollback": "single-revert restores path; fixture kept; external state untouched",
+        "receipt": "control/C-HIST-R1-ledger.json",
+        "f1_identity_receipt": "control/C-HIST-R1-f1-identity-receipt.json"
+      },
+      "also_invocable_as": []
+    },
+    {
+      "retired_entrypoint": "ramanujan/toolchain_selftest.py",
+      "invocation": null,
+      "disposition": "released",
+      "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+      "evidence": {
+        "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+        "subject": "ramanujan_research_non_you",
+        "released_path": "ramanujan/toolchain_selftest.py",
+        "constitution_absence": true,
+        "blackbox_absence": true,
+        "rollback": "single-revert restores path; fixture kept; external state untouched",
+        "receipt": "control/C-HIST-R1-ledger.json",
+        "f1_identity_receipt": "control/C-HIST-R1-f1-identity-receipt.json"
+      },
+      "also_invocable_as": []
+    },
+    {
+      "retired_entrypoint": "ramanujan/train/train_components.py",
+      "invocation": null,
+      "disposition": "released",
+      "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+      "evidence": {
+        "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+        "subject": "ramanujan_research_non_you",
+        "released_path": "ramanujan/train/train_components.py",
+        "constitution_absence": true,
+        "blackbox_absence": true,
+        "rollback": "single-revert restores path; fixture kept; external state untouched",
+        "receipt": "control/C-HIST-R1-ledger.json",
+        "f1_identity_receipt": "control/C-HIST-R1-f1-identity-receipt.json"
+      },
+      "also_invocable_as": []
+    },
+    {
+      "retired_entrypoint": "tools/campaign/final_ascent_status.py",
+      "invocation": null,
+      "disposition": "released",
+      "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+      "evidence": {
+        "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+        "subject": "historical_campaign_product",
+        "released_path": "tools/campaign/final_ascent_status.py",
+        "constitution_absence": true,
+        "blackbox_absence": true,
+        "rollback": "single-revert restores path; fixture kept; external state untouched",
+        "receipt": "control/C-HIST-R1-ledger.json",
+        "f1_identity_receipt": "control/C-HIST-R1-f1-identity-receipt.json"
+      },
+      "also_invocable_as": []
+    },
+    {
+      "retired_entrypoint": "tools/campaign/light_governor.py",
+      "invocation": null,
+      "disposition": "released",
+      "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+      "evidence": {
+        "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+        "subject": "historical_campaign_product",
+        "released_path": "tools/campaign/light_governor.py",
+        "constitution_absence": true,
+        "blackbox_absence": true,
+        "rollback": "single-revert restores path; fixture kept; external state untouched",
+        "receipt": "control/C-HIST-R1-ledger.json",
+        "f1_identity_receipt": "control/C-HIST-R1-f1-identity-receipt.json"
+      },
+      "also_invocable_as": []
+    },
+    {
+      "retired_entrypoint": "tools/campaign/odyssey_package.py",
+      "invocation": null,
+      "disposition": "released",
+      "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+      "evidence": {
+        "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+        "subject": "historical_campaign_product",
+        "released_path": "tools/campaign/odyssey_package.py",
+        "constitution_absence": true,
+        "blackbox_absence": true,
+        "rollback": "single-revert restores path; fixture kept; external state untouched",
+        "receipt": "control/C-HIST-R1-ledger.json",
+        "f1_identity_receipt": "control/C-HIST-R1-f1-identity-receipt.json"
+      },
+      "also_invocable_as": []
+    },
+    {
+      "retired_entrypoint": "tools/campaign/test_final_ascent_status.py",
+      "invocation": null,
+      "disposition": "released",
+      "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+      "evidence": {
+        "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+        "subject": "historical_campaign_product",
+        "released_path": "tools/campaign/test_final_ascent_status.py",
+        "constitution_absence": true,
+        "blackbox_absence": true,
+        "rollback": "single-revert restores path; fixture kept; external state untouched",
+        "receipt": "control/C-HIST-R1-ledger.json",
+        "f1_identity_receipt": "control/C-HIST-R1-f1-identity-receipt.json"
+      },
+      "also_invocable_as": []
+    },
+    {
+      "retired_entrypoint": "tools/campaign/test_light_governor.py",
+      "invocation": null,
+      "disposition": "released",
+      "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+      "evidence": {
+        "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+        "subject": "historical_campaign_product",
+        "released_path": "tools/campaign/test_light_governor.py",
+        "constitution_absence": true,
+        "blackbox_absence": true,
+        "rollback": "single-revert restores path; fixture kept; external state untouched",
+        "receipt": "control/C-HIST-R1-ledger.json",
+        "f1_identity_receipt": "control/C-HIST-R1-f1-identity-receipt.json"
+      },
+      "also_invocable_as": []
+    },
+    {
+      "retired_entrypoint": "tools/training/analyze_corpus.py",
+      "invocation": null,
+      "disposition": "released",
+      "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+      "evidence": {
+        "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+        "subject": "historical_training_executable",
+        "released_path": "tools/training/analyze_corpus.py",
+        "constitution_absence": true,
+        "blackbox_absence": true,
+        "rollback": "single-revert restores path; fixture kept; external state untouched",
+        "receipt": "control/C-HIST-R1-ledger.json",
+        "f1_identity_receipt": "control/C-HIST-R1-f1-identity-receipt.json"
+      },
+      "also_invocable_as": []
+    },
+    {
+      "retired_entrypoint": "tools/training/awq_calibrate.py",
+      "invocation": null,
+      "disposition": "released",
+      "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+      "evidence": {
+        "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+        "subject": "historical_training_executable",
+        "released_path": "tools/training/awq_calibrate.py",
+        "constitution_absence": true,
+        "blackbox_absence": true,
+        "rollback": "single-revert restores path; fixture kept; external state untouched",
+        "receipt": "control/C-HIST-R1-ledger.json",
+        "f1_identity_receipt": "control/C-HIST-R1-f1-identity-receipt.json"
+      },
+      "also_invocable_as": []
+    },
+    {
+      "retired_entrypoint": "tools/training/build_corpus.py",
+      "invocation": null,
+      "disposition": "released",
+      "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+      "evidence": {
+        "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+        "subject": "historical_training_executable",
+        "released_path": "tools/training/build_corpus.py",
+        "constitution_absence": true,
+        "blackbox_absence": true,
+        "rollback": "single-revert restores path; fixture kept; external state untouched",
+        "receipt": "control/C-HIST-R1-ledger.json",
+        "f1_identity_receipt": "control/C-HIST-R1-f1-identity-receipt.json"
+      },
+      "also_invocable_as": []
+    },
+    {
+      "retired_entrypoint": "tools/training/build_minimal_corpus.py",
+      "invocation": null,
+      "disposition": "released",
+      "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+      "evidence": {
+        "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+        "subject": "historical_training_executable",
+        "released_path": "tools/training/build_minimal_corpus.py",
+        "constitution_absence": true,
+        "blackbox_absence": true,
+        "rollback": "single-revert restores path; fixture kept; external state untouched",
+        "receipt": "control/C-HIST-R1-ledger.json",
+        "f1_identity_receipt": "control/C-HIST-R1-f1-identity-receipt.json"
+      },
+      "also_invocable_as": []
+    },
+    {
+      "retired_entrypoint": "tools/training/build_qwen3b_frozen.py",
+      "invocation": null,
+      "disposition": "released",
+      "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+      "evidence": {
+        "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+        "subject": "historical_training_executable",
+        "released_path": "tools/training/build_qwen3b_frozen.py",
+        "constitution_absence": true,
+        "blackbox_absence": true,
+        "rollback": "single-revert restores path; fixture kept; external state untouched",
+        "receipt": "control/C-HIST-R1-ledger.json",
+        "f1_identity_receipt": "control/C-HIST-R1-f1-identity-receipt.json"
+      },
+      "also_invocable_as": []
+    },
+    {
+      "retired_entrypoint": "tools/training/diag_draft_rollout.py",
+      "invocation": null,
+      "disposition": "released",
+      "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+      "evidence": {
+        "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+        "subject": "historical_training_executable",
+        "released_path": "tools/training/diag_draft_rollout.py",
+        "constitution_absence": true,
+        "blackbox_absence": true,
+        "rollback": "single-revert restores path; fixture kept; external state untouched",
+        "receipt": "control/C-HIST-R1-ledger.json",
+        "f1_identity_receipt": "control/C-HIST-R1-f1-identity-receipt.json"
+      },
+      "also_invocable_as": []
+    },
+    {
+      "retired_entrypoint": "tools/training/diag_draft_step1.py",
+      "invocation": null,
+      "disposition": "released",
+      "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+      "evidence": {
+        "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+        "subject": "historical_training_executable",
+        "released_path": "tools/training/diag_draft_step1.py",
+        "constitution_absence": true,
+        "blackbox_absence": true,
+        "rollback": "single-revert restores path; fixture kept; external state untouched",
+        "receipt": "control/C-HIST-R1-ledger.json",
+        "f1_identity_receipt": "control/C-HIST-R1-f1-identity-receipt.json"
+      },
+      "also_invocable_as": []
+    },
+    {
+      "retired_entrypoint": "tools/training/diagnose_spec_decode_k1.py",
+      "invocation": null,
+      "disposition": "released",
+      "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+      "evidence": {
+        "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+        "subject": "historical_training_executable",
+        "released_path": "tools/training/diagnose_spec_decode_k1.py",
+        "constitution_absence": true,
+        "blackbox_absence": true,
+        "rollback": "single-revert restores path; fixture kept; external state untouched",
+        "receipt": "control/C-HIST-R1-ledger.json",
+        "f1_identity_receipt": "control/C-HIST-R1-f1-identity-receipt.json"
+      },
+      "also_invocable_as": []
+    },
+    {
+      "retired_entrypoint": "tools/training/eagle5_quantize.py",
+      "invocation": null,
+      "disposition": "released",
+      "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+      "evidence": {
+        "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+        "subject": "historical_training_executable",
+        "released_path": "tools/training/eagle5_quantize.py",
+        "constitution_absence": true,
+        "blackbox_absence": true,
+        "rollback": "single-revert restores path; fixture kept; external state untouched",
+        "receipt": "control/C-HIST-R1-ledger.json",
+        "f1_identity_receipt": "control/C-HIST-R1-f1-identity-receipt.json"
+      },
+      "also_invocable_as": []
+    },
+    {
+      "retired_entrypoint": "tools/training/eagle5_tau_eval.py",
+      "invocation": null,
+      "disposition": "released",
+      "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+      "evidence": {
+        "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+        "subject": "historical_training_executable",
+        "released_path": "tools/training/eagle5_tau_eval.py",
+        "constitution_absence": true,
+        "blackbox_absence": true,
+        "rollback": "single-revert restores path; fixture kept; external state untouched",
+        "receipt": "control/C-HIST-R1-ledger.json",
+        "f1_identity_receipt": "control/C-HIST-R1-f1-identity-receipt.json"
+      },
+      "also_invocable_as": []
+    },
+    {
+      "retired_entrypoint": "tools/training/eagle5_train.py",
+      "invocation": null,
+      "disposition": "released",
+      "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+      "evidence": {
+        "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+        "subject": "historical_training_executable",
+        "released_path": "tools/training/eagle5_train.py",
+        "constitution_absence": true,
+        "blackbox_absence": true,
+        "rollback": "single-revert restores path; fixture kept; external state untouched",
+        "receipt": "control/C-HIST-R1-ledger.json",
+        "f1_identity_receipt": "control/C-HIST-R1-f1-identity-receipt.json"
+      },
+      "also_invocable_as": []
+    },
+    {
+      "retired_entrypoint": "tools/training/eh_eagle_tau_sweep.py",
+      "invocation": null,
+      "disposition": "released",
+      "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+      "evidence": {
+        "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+        "subject": "historical_training_executable",
+        "released_path": "tools/training/eh_eagle_tau_sweep.py",
+        "constitution_absence": true,
+        "blackbox_absence": true,
+        "rollback": "single-revert restores path; fixture kept; external state untouched",
+        "receipt": "control/C-HIST-R1-ledger.json",
+        "f1_identity_receipt": "control/C-HIST-R1-f1-identity-receipt.json"
+      },
+      "also_invocable_as": []
+    },
+    {
+      "retired_entrypoint": "tools/training/hawking_after_ema.py",
+      "invocation": null,
+      "disposition": "released",
+      "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+      "evidence": {
+        "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+        "subject": "historical_training_executable",
+        "released_path": "tools/training/hawking_after_ema.py",
+        "constitution_absence": true,
+        "blackbox_absence": true,
+        "rollback": "single-revert restores path; fixture kept; external state untouched",
+        "receipt": "control/C-HIST-R1-ledger.json",
+        "f1_identity_receipt": "control/C-HIST-R1-f1-identity-receipt.json"
+      },
+      "also_invocable_as": []
+    },
+    {
+      "retired_entrypoint": "tools/training/rwkv7_build_corpus.py",
+      "invocation": null,
+      "disposition": "released",
+      "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+      "evidence": {
+        "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+        "subject": "historical_training_executable",
+        "released_path": "tools/training/rwkv7_build_corpus.py",
+        "constitution_absence": true,
+        "blackbox_absence": true,
+        "rollback": "single-revert restores path; fixture kept; external state untouched",
+        "receipt": "control/C-HIST-R1-ledger.json",
+        "f1_identity_receipt": "control/C-HIST-R1-f1-identity-receipt.json"
+      },
+      "also_invocable_as": []
+    },
+    {
+      "retired_entrypoint": "tools/training/rwkv7_capture_teacher_logits.py",
+      "invocation": null,
+      "disposition": "released",
+      "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+      "evidence": {
+        "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+        "subject": "historical_training_executable",
+        "released_path": "tools/training/rwkv7_capture_teacher_logits.py",
+        "constitution_absence": true,
+        "blackbox_absence": true,
+        "rollback": "single-revert restores path; fixture kept; external state untouched",
+        "receipt": "control/C-HIST-R1-ledger.json",
+        "f1_identity_receipt": "control/C-HIST-R1-f1-identity-receipt.json"
+      },
+      "also_invocable_as": []
+    },
+    {
+      "retired_entrypoint": "tools/training/rwkv7_chunked.py",
+      "invocation": null,
+      "disposition": "released",
+      "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+      "evidence": {
+        "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+        "subject": "historical_training_executable",
+        "released_path": "tools/training/rwkv7_chunked.py",
+        "constitution_absence": true,
+        "blackbox_absence": true,
+        "rollback": "single-revert restores path; fixture kept; external state untouched",
+        "receipt": "control/C-HIST-R1-ledger.json",
+        "f1_identity_receipt": "control/C-HIST-R1-f1-identity-receipt.json"
+      },
+      "also_invocable_as": []
+    },
+    {
+      "retired_entrypoint": "tools/training/rwkv7_competitive_scorecard.py",
+      "invocation": null,
+      "disposition": "released",
+      "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+      "evidence": {
+        "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+        "subject": "historical_training_executable",
+        "released_path": "tools/training/rwkv7_competitive_scorecard.py",
+        "constitution_absence": true,
+        "blackbox_absence": true,
+        "rollback": "single-revert restores path; fixture kept; external state untouched",
+        "receipt": "control/C-HIST-R1-ledger.json",
+        "f1_identity_receipt": "control/C-HIST-R1-f1-identity-receipt.json"
+      },
+      "also_invocable_as": []
+    },
+    {
+      "retired_entrypoint": "tools/training/rwkv7_dpo_build_pairs.py",
+      "invocation": null,
+      "disposition": "released",
+      "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+      "evidence": {
+        "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+        "subject": "historical_training_executable",
+        "released_path": "tools/training/rwkv7_dpo_build_pairs.py",
+        "constitution_absence": true,
+        "blackbox_absence": true,
+        "rollback": "single-revert restores path; fixture kept; external state untouched",
+        "receipt": "control/C-HIST-R1-ledger.json",
+        "f1_identity_receipt": "control/C-HIST-R1-f1-identity-receipt.json"
+      },
+      "also_invocable_as": []
+    },
+    {
+      "retired_entrypoint": "tools/training/rwkv7_dpo_torch.py",
+      "invocation": null,
+      "disposition": "released",
+      "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+      "evidence": {
+        "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+        "subject": "historical_training_executable",
+        "released_path": "tools/training/rwkv7_dpo_torch.py",
+        "constitution_absence": true,
+        "blackbox_absence": true,
+        "rollback": "single-revert restores path; fixture kept; external state untouched",
+        "receipt": "control/C-HIST-R1-ledger.json",
+        "f1_identity_receipt": "control/C-HIST-R1-f1-identity-receipt.json"
+      },
+      "also_invocable_as": []
+    },
+    {
+      "retired_entrypoint": "tools/training/rwkv7_draft_ppl_eval.py",
+      "invocation": null,
+      "disposition": "released",
+      "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+      "evidence": {
+        "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+        "subject": "historical_training_executable",
+        "released_path": "tools/training/rwkv7_draft_ppl_eval.py",
+        "constitution_absence": true,
+        "blackbox_absence": true,
+        "rollback": "single-revert restores path; fixture kept; external state untouched",
+        "receipt": "control/C-HIST-R1-ledger.json",
+        "f1_identity_receipt": "control/C-HIST-R1-f1-identity-receipt.json"
+      },
+      "also_invocable_as": []
+    },
+    {
+      "retired_entrypoint": "tools/training/rwkv7_eval_ppl.py",
+      "invocation": null,
+      "disposition": "released",
+      "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+      "evidence": {
+        "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+        "subject": "historical_training_executable",
+        "released_path": "tools/training/rwkv7_eval_ppl.py",
+        "constitution_absence": true,
+        "blackbox_absence": true,
+        "rollback": "single-revert restores path; fixture kept; external state untouched",
+        "receipt": "control/C-HIST-R1-ledger.json",
+        "f1_identity_receipt": "control/C-HIST-R1-f1-identity-receipt.json"
+      },
+      "also_invocable_as": []
+    },
+    {
+      "retired_entrypoint": "tools/training/rwkv7_export_hf.py",
+      "invocation": null,
+      "disposition": "released",
+      "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+      "evidence": {
+        "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+        "subject": "historical_training_executable",
+        "released_path": "tools/training/rwkv7_export_hf.py",
+        "constitution_absence": true,
+        "blackbox_absence": true,
+        "rollback": "single-revert restores path; fixture kept; external state untouched",
+        "receipt": "control/C-HIST-R1-ledger.json",
+        "f1_identity_receipt": "control/C-HIST-R1-f1-identity-receipt.json"
+      },
+      "also_invocable_as": []
+    },
+    {
+      "retired_entrypoint": "tools/training/rwkv7_export_strand.py",
+      "invocation": null,
+      "disposition": "released",
+      "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+      "evidence": {
+        "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+        "subject": "historical_training_executable",
+        "released_path": "tools/training/rwkv7_export_strand.py",
+        "constitution_absence": true,
+        "blackbox_absence": true,
+        "rollback": "single-revert restores path; fixture kept; external state untouched",
+        "receipt": "control/C-HIST-R1-ledger.json",
+        "f1_identity_receipt": "control/C-HIST-R1-f1-identity-receipt.json"
+      },
+      "also_invocable_as": []
+    },
+    {
+      "retired_entrypoint": "tools/training/rwkv7_load_weights.py",
+      "invocation": null,
+      "disposition": "released",
+      "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+      "evidence": {
+        "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+        "subject": "historical_training_executable",
+        "released_path": "tools/training/rwkv7_load_weights.py",
+        "constitution_absence": true,
+        "blackbox_absence": true,
+        "rollback": "single-revert restores path; fixture kept; external state untouched",
+        "receipt": "control/C-HIST-R1-ledger.json",
+        "f1_identity_receipt": "control/C-HIST-R1-f1-identity-receipt.json"
+      },
+      "also_invocable_as": []
+    },
+    {
+      "retired_entrypoint": "tools/training/rwkv7_parity_torch.py",
+      "invocation": null,
+      "disposition": "released",
+      "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+      "evidence": {
+        "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+        "subject": "historical_training_executable",
+        "released_path": "tools/training/rwkv7_parity_torch.py",
+        "constitution_absence": true,
+        "blackbox_absence": true,
+        "rollback": "single-revert restores path; fixture kept; external state untouched",
+        "receipt": "control/C-HIST-R1-ledger.json",
+        "f1_identity_receipt": "control/C-HIST-R1-f1-identity-receipt.json"
+      },
+      "also_invocable_as": []
+    },
+    {
+      "retired_entrypoint": "tools/training/rwkv7_progress.py",
+      "invocation": null,
+      "disposition": "released",
+      "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+      "evidence": {
+        "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+        "subject": "historical_training_executable",
+        "released_path": "tools/training/rwkv7_progress.py",
+        "constitution_absence": true,
+        "blackbox_absence": true,
+        "rollback": "single-revert restores path; fixture kept; external state untouched",
+        "receipt": "control/C-HIST-R1-ledger.json",
+        "f1_identity_receipt": "control/C-HIST-R1-f1-identity-receipt.json"
+      },
+      "also_invocable_as": []
+    },
+    {
+      "retired_entrypoint": "tools/training/rwkv7_qat.py",
+      "invocation": null,
+      "disposition": "released",
+      "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+      "evidence": {
+        "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+        "subject": "historical_training_executable",
+        "released_path": "tools/training/rwkv7_qat.py",
+        "constitution_absence": true,
+        "blackbox_absence": true,
+        "rollback": "single-revert restores path; fixture kept; external state untouched",
+        "receipt": "control/C-HIST-R1-ledger.json",
+        "f1_identity_receipt": "control/C-HIST-R1-f1-identity-receipt.json"
+      },
+      "also_invocable_as": []
+    },
+    {
+      "retired_entrypoint": "tools/training/rwkv7_sample_prompts.py",
+      "invocation": null,
+      "disposition": "released",
+      "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+      "evidence": {
+        "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+        "subject": "historical_training_executable",
+        "released_path": "tools/training/rwkv7_sample_prompts.py",
+        "constitution_absence": true,
+        "blackbox_absence": true,
+        "rollback": "single-revert restores path; fixture kept; external state untouched",
+        "receipt": "control/C-HIST-R1-ledger.json",
+        "f1_identity_receipt": "control/C-HIST-R1-f1-identity-receipt.json"
+      },
+      "also_invocable_as": []
+    },
+    {
+      "retired_entrypoint": "tools/training/rwkv7_sft_stream.py",
+      "invocation": null,
+      "disposition": "released",
+      "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+      "evidence": {
+        "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+        "subject": "historical_training_executable",
+        "released_path": "tools/training/rwkv7_sft_stream.py",
+        "constitution_absence": true,
+        "blackbox_absence": true,
+        "rollback": "single-revert restores path; fixture kept; external state untouched",
+        "receipt": "control/C-HIST-R1-ledger.json",
+        "f1_identity_receipt": "control/C-HIST-R1-f1-identity-receipt.json"
+      },
+      "also_invocable_as": []
+    },
+    {
+      "retired_entrypoint": "tools/training/rwkv7_sft_torch.py",
+      "invocation": null,
+      "disposition": "released",
+      "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+      "evidence": {
+        "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+        "subject": "historical_training_executable",
+        "released_path": "tools/training/rwkv7_sft_torch.py",
+        "constitution_absence": true,
+        "blackbox_absence": true,
+        "rollback": "single-revert restores path; fixture kept; external state untouched",
+        "receipt": "control/C-HIST-R1-ledger.json",
+        "f1_identity_receipt": "control/C-HIST-R1-f1-identity-receipt.json"
+      },
+      "also_invocable_as": []
+    },
+    {
+      "retired_entrypoint": "tools/training/rwkv7_spec_hardening.py",
+      "invocation": null,
+      "disposition": "released",
+      "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+      "evidence": {
+        "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+        "subject": "historical_training_executable",
+        "released_path": "tools/training/rwkv7_spec_hardening.py",
+        "constitution_absence": true,
+        "blackbox_absence": true,
+        "rollback": "single-revert restores path; fixture kept; external state untouched",
+        "receipt": "control/C-HIST-R1-ledger.json",
+        "f1_identity_receipt": "control/C-HIST-R1-f1-identity-receipt.json"
+      },
+      "also_invocable_as": []
+    },
+    {
+      "retired_entrypoint": "tools/training/rwkv7_star_loop.py",
+      "invocation": null,
+      "disposition": "released",
+      "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+      "evidence": {
+        "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+        "subject": "historical_training_executable",
+        "released_path": "tools/training/rwkv7_star_loop.py",
+        "constitution_absence": true,
+        "blackbox_absence": true,
+        "rollback": "single-revert restores path; fixture kept; external state untouched",
+        "receipt": "control/C-HIST-R1-ledger.json",
+        "f1_identity_receipt": "control/C-HIST-R1-f1-identity-receipt.json"
+      },
+      "also_invocable_as": []
+    },
+    {
+      "retired_entrypoint": "tools/training/rwkv7_train_draft.py",
+      "invocation": null,
+      "disposition": "released",
+      "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+      "evidence": {
+        "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+        "subject": "historical_training_executable",
+        "released_path": "tools/training/rwkv7_train_draft.py",
+        "constitution_absence": true,
+        "blackbox_absence": true,
+        "rollback": "single-revert restores path; fixture kept; external state untouched",
+        "receipt": "control/C-HIST-R1-ledger.json",
+        "f1_identity_receipt": "control/C-HIST-R1-f1-identity-receipt.json"
+      },
+      "also_invocable_as": []
+    },
+    {
+      "retired_entrypoint": "tools/training/rwkv7_train_smoke.py",
+      "invocation": null,
+      "disposition": "released",
+      "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+      "evidence": {
+        "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+        "subject": "historical_training_executable",
+        "released_path": "tools/training/rwkv7_train_smoke.py",
+        "constitution_absence": true,
+        "blackbox_absence": true,
+        "rollback": "single-revert restores path; fixture kept; external state untouched",
+        "receipt": "control/C-HIST-R1-ledger.json",
+        "f1_identity_receipt": "control/C-HIST-R1-f1-identity-receipt.json"
+      },
+      "also_invocable_as": []
+    },
+    {
+      "retired_entrypoint": "tools/training/test_rwkv7_batch_equiv.py",
+      "invocation": null,
+      "disposition": "released",
+      "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+      "evidence": {
+        "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+        "subject": "historical_training_executable",
+        "released_path": "tools/training/test_rwkv7_batch_equiv.py",
+        "constitution_absence": true,
+        "blackbox_absence": true,
+        "rollback": "single-revert restores path; fixture kept; external state untouched",
+        "receipt": "control/C-HIST-R1-ledger.json",
+        "f1_identity_receipt": "control/C-HIST-R1-f1-identity-receipt.json"
+      },
+      "also_invocable_as": []
+    },
+    {
+      "retired_entrypoint": "tools/training/test_rwkv7_chunked.py",
+      "invocation": null,
+      "disposition": "released",
+      "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+      "evidence": {
+        "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+        "subject": "historical_training_executable",
+        "released_path": "tools/training/test_rwkv7_chunked.py",
+        "constitution_absence": true,
+        "blackbox_absence": true,
+        "rollback": "single-revert restores path; fixture kept; external state untouched",
+        "receipt": "control/C-HIST-R1-ledger.json",
+        "f1_identity_receipt": "control/C-HIST-R1-f1-identity-receipt.json"
+      },
+      "also_invocable_as": []
+    },
+    {
+      "retired_entrypoint": "tree:tools/training/**",
+      "invocation": null,
+      "disposition": "released",
+      "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+      "released_paths": [
+        "tools/training/analyze_corpus.py",
+        "tools/training/awq_calibrate.py",
+        "tools/training/build_corpus.py",
+        "tools/training/build_minimal_corpus.py",
+        "tools/training/build_qwen3b_frozen.py",
+        "tools/training/diag_draft_rollout.py",
+        "tools/training/diag_draft_step1.py",
+        "tools/training/diagnose_spec_decode_k1.py",
+        "tools/training/eagle5_quantize.py",
+        "tools/training/eagle5_tau_eval.py",
+        "tools/training/eagle5_train.py",
+        "tools/training/eh_eagle_tau_sweep.py",
+        "tools/training/hawking_after_ema.py",
+        "tools/training/rwkv7_build_corpus.py",
+        "tools/training/rwkv7_capture_teacher_logits.py",
+        "tools/training/rwkv7_chunked.py",
+        "tools/training/rwkv7_competitive_scorecard.py",
+        "tools/training/rwkv7_dpo_build_pairs.py",
+        "tools/training/rwkv7_dpo_torch.py",
+        "tools/training/rwkv7_draft_ppl_eval.py",
+        "tools/training/rwkv7_eval_ppl.py",
+        "tools/training/rwkv7_export_hf.py",
+        "tools/training/rwkv7_export_strand.py",
+        "tools/training/rwkv7_load_weights.py",
+        "tools/training/rwkv7_parity_torch.py",
+        "tools/training/rwkv7_progress.py",
+        "tools/training/rwkv7_qat.py",
+        "tools/training/rwkv7_sample_prompts.py",
+        "tools/training/rwkv7_sft_stream.py",
+        "tools/training/rwkv7_sft_torch.py",
+        "tools/training/rwkv7_spec_hardening.py",
+        "tools/training/rwkv7_star_loop.py",
+        "tools/training/rwkv7_train_draft.py",
+        "tools/training/rwkv7_train_smoke.py",
+        "tools/training/test_rwkv7_batch_equiv.py",
+        "tools/training/test_rwkv7_chunked.py",
+        "ramanujan/container/build.sh",
+        "ramanujan/container/replay_capsule.sh",
+        "ramanujan/container/scripts/container_replay.sh",
+        "tools/training/autocycle_step50_ozempic.sh",
+        "tools/training/autoinject_g1a_fastsave.sh",
+        "tools/training/corpus_monitor.sh",
+        "tools/training/extended_v2_retry.sh",
+        "tools/training/g1a_phase2_chain.sh",
+        "tools/training/g1a_v2_expansion_chain.sh",
+        "tools/training/g1a_watcher.sh",
+        "tools/training/hawking_after_ema.sh",
+        "tools/training/launch_draft_sweep.sh",
+        "tools/training/overnight_6h_chain.sh",
+        "tools/training/overnight_extended_chain.sh",
+        "tools/training/overnight_path_to_50.sh",
+        "tools/training/overnight_path_to_50_bench.sh",
+        "tools/training/overnight_phase2_chain.sh",
+        "tools/training/overnight_resilient_chain.sh",
+        "tools/training/overnight_resume_stages_3_to_6.sh",
+        "tools/training/overnight_smart_chain_v3.sh",
+        "tools/training/path_to_75_autonomous.sh",
+        "tools/training/post_pipeline_trigger.sh",
+        "tools/training/rescue_vocab_bench.sh",
+        "tools/training/run_corpus_autonomous.sh",
+        "tools/training/rwkv7_draft_watcher.sh",
+        "tools/training/rwkv7_pipeline.sh",
+        "tools/training/rwkv7_track_b.sh",
+        "tools/training/status.sh",
+        "tools/training/tail_qat_progress.sh"
+      ],
+      "evidence": {
+        "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+        "subject": "historical_training_tree",
+        "released_paths": [
+          "tools/training/analyze_corpus.py",
+          "tools/training/awq_calibrate.py",
+          "tools/training/build_corpus.py",
+          "tools/training/build_minimal_corpus.py",
+          "tools/training/build_qwen3b_frozen.py",
+          "tools/training/diag_draft_rollout.py",
+          "tools/training/diag_draft_step1.py",
+          "tools/training/diagnose_spec_decode_k1.py",
+          "tools/training/eagle5_quantize.py",
+          "tools/training/eagle5_tau_eval.py",
+          "tools/training/eagle5_train.py",
+          "tools/training/eh_eagle_tau_sweep.py",
+          "tools/training/hawking_after_ema.py",
+          "tools/training/rwkv7_build_corpus.py",
+          "tools/training/rwkv7_capture_teacher_logits.py",
+          "tools/training/rwkv7_chunked.py",
+          "tools/training/rwkv7_competitive_scorecard.py",
+          "tools/training/rwkv7_dpo_build_pairs.py",
+          "tools/training/rwkv7_dpo_torch.py",
+          "tools/training/rwkv7_draft_ppl_eval.py",
+          "tools/training/rwkv7_eval_ppl.py",
+          "tools/training/rwkv7_export_hf.py",
+          "tools/training/rwkv7_export_strand.py",
+          "tools/training/rwkv7_load_weights.py",
+          "tools/training/rwkv7_parity_torch.py",
+          "tools/training/rwkv7_progress.py",
+          "tools/training/rwkv7_qat.py",
+          "tools/training/rwkv7_sample_prompts.py",
+          "tools/training/rwkv7_sft_stream.py",
+          "tools/training/rwkv7_sft_torch.py",
+          "tools/training/rwkv7_spec_hardening.py",
+          "tools/training/rwkv7_star_loop.py",
+          "tools/training/rwkv7_train_draft.py",
+          "tools/training/rwkv7_train_smoke.py",
+          "tools/training/test_rwkv7_batch_equiv.py",
+          "tools/training/test_rwkv7_chunked.py",
+          "ramanujan/container/build.sh",
+          "ramanujan/container/replay_capsule.sh",
+          "ramanujan/container/scripts/container_replay.sh",
+          "tools/training/autocycle_step50_ozempic.sh",
+          "tools/training/autoinject_g1a_fastsave.sh",
+          "tools/training/corpus_monitor.sh",
+          "tools/training/extended_v2_retry.sh",
+          "tools/training/g1a_phase2_chain.sh",
+          "tools/training/g1a_v2_expansion_chain.sh",
+          "tools/training/g1a_watcher.sh",
+          "tools/training/hawking_after_ema.sh",
+          "tools/training/launch_draft_sweep.sh",
+          "tools/training/overnight_6h_chain.sh",
+          "tools/training/overnight_extended_chain.sh",
+          "tools/training/overnight_path_to_50.sh",
+          "tools/training/overnight_path_to_50_bench.sh",
+          "tools/training/overnight_phase2_chain.sh",
+          "tools/training/overnight_resilient_chain.sh",
+          "tools/training/overnight_resume_stages_3_to_6.sh",
+          "tools/training/overnight_smart_chain_v3.sh",
+          "tools/training/path_to_75_autonomous.sh",
+          "tools/training/post_pipeline_trigger.sh",
+          "tools/training/rescue_vocab_bench.sh",
+          "tools/training/run_corpus_autonomous.sh",
+          "tools/training/rwkv7_draft_watcher.sh",
+          "tools/training/rwkv7_pipeline.sh",
+          "tools/training/rwkv7_track_b.sh",
+          "tools/training/status.sh",
+          "tools/training/tail_qat_progress.sh"
+        ],
+        "constitution": "No constitution BC requires invocable tools/training/* or released ramanujan research modules or campaign final_ascent_status/light_governor/odyssey_package. BC-CONTEXT_OS-008 keep-set retained.",
+        "blackbox": "Committed blackbox retains BC-CONTEXT_OS-008 via ramanujan.test_you_research; no runnable check depends on deleted training/campaign-hist/ramanujan-research paths.",
+        "rollback": "Single git revert of C-HIST-R1 candidate restores deleted trees; fixture never left the tree; no launchd/external state mutation.",
+        "receipt": "control/C-HIST-R1-ledger.json",
+        "f1_identity_receipt": "control/C-HIST-R1-f1-identity-receipt.json",
+        "future_merge_by_id": {
+          "BRT3": "BC-ACCEL-009 \u2014 training EAGLE/EH entrypoints released here; merge BRT3 release semantics by ID without re-importing BRT3 candidate tree",
+          "BRT5": "BC-BRIDGE-012 \u2014 no seed-c subject deleted here; preserve merge-by-ID prescription for BRT5"
+        }
+      },
+      "also_invocable_as": []
+    },
+    {
+      "retired_entrypoint": "tree:ramanujan/**-research",
+      "invocation": null,
+      "disposition": "released",
+      "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+      "released_paths": [
+        "ramanujan/data/freeze_memberships.py",
+        "ramanujan/data/generate.py",
+        "ramanujan/data/test_data.py",
+        "ramanujan/data/test_freeze.py",
+        "ramanujan/gen_data_matrix.py",
+        "ramanujan/test_governance_invariants.py",
+        "ramanujan/test_ramanujan.py",
+        "ramanujan/test_roles_economics.py",
+        "ramanujan/test_search.py",
+        "ramanujan/toolchain_selftest.py",
+        "ramanujan/train/train_components.py"
+      ],
+      "evidence": {
+        "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+        "subject": "ramanujan_research_non_you_tree",
+        "released_paths": [
+          "ramanujan/data/freeze_memberships.py",
+          "ramanujan/data/generate.py",
+          "ramanujan/data/test_data.py",
+          "ramanujan/data/test_freeze.py",
+          "ramanujan/gen_data_matrix.py",
+          "ramanujan/test_governance_invariants.py",
+          "ramanujan/test_ramanujan.py",
+          "ramanujan/test_roles_economics.py",
+          "ramanujan/test_search.py",
+          "ramanujan/toolchain_selftest.py",
+          "ramanujan/train/train_components.py"
+        ],
+        "constitution": "No constitution BC requires invocable tools/training/* or released ramanujan research modules or campaign final_ascent_status/light_governor/odyssey_package. BC-CONTEXT_OS-008 keep-set retained.",
+        "blackbox": "Committed blackbox retains BC-CONTEXT_OS-008 via ramanujan.test_you_research; no runnable check depends on deleted training/campaign-hist/ramanujan-research paths.",
+        "rollback": "Single git revert of C-HIST-R1 candidate restores deleted trees; fixture never left the tree; no launchd/external state mutation.",
+        "receipt": "control/C-HIST-R1-ledger.json",
+        "f1_identity_receipt": "control/C-HIST-R1-f1-identity-receipt.json",
+        "future_merge_by_id": {
+          "BRT3": "BC-ACCEL-009 \u2014 training EAGLE/EH entrypoints released here; merge BRT3 release semantics by ID without re-importing BRT3 candidate tree",
+          "BRT5": "BC-BRIDGE-012 \u2014 no seed-c subject deleted here; preserve merge-by-ID prescription for BRT5"
+        }
+      },
+      "also_invocable_as": []
+    },
+    {
+      "retired_entrypoint": "tree:tools/campaign-hist",
+      "invocation": null,
+      "disposition": "released",
+      "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+      "released_paths": [
+        "tools/campaign/final_ascent_status.py",
+        "tools/campaign/light_governor.py",
+        "tools/campaign/odyssey_package.py",
+        "tools/campaign/test_final_ascent_status.py",
+        "tools/campaign/test_light_governor.py"
+      ],
+      "evidence": {
+        "product_decision": "C-HIST-R1 historical executable release under single lab process authority: release training executables (keep rwkv7_sft_sample.jsonl fixture), release Ramanujan research except YOU/BC-CONTEXT_OS-008 keep-set, release historical campaign product bodies (keep rung_gate + ledger_rollup).",
+        "subject": "historical_campaign_product_tree",
+        "released_paths": [
+          "tools/campaign/final_ascent_status.py",
+          "tools/campaign/light_governor.py",
+          "tools/campaign/odyssey_package.py",
+          "tools/campaign/test_final_ascent_status.py",
+          "tools/campaign/test_light_governor.py"
+        ],
+        "constitution": "No constitution BC requires invocable tools/training/* or released ramanujan research modules or campaign final_ascent_status/light_governor/odyssey_package. BC-CONTEXT_OS-008 keep-set retained.",
+        "blackbox": "Committed blackbox retains BC-CONTEXT_OS-008 via ramanujan.test_you_research; no runnable check depends on deleted training/campaign-hist/ramanujan-research paths.",
+        "rollback": "Single git revert of C-HIST-R1 candidate restores deleted trees; fixture never left the tree; no launchd/external state mutation.",
+        "receipt": "control/C-HIST-R1-ledger.json",
+        "f1_identity_receipt": "control/C-HIST-R1-f1-identity-receipt.json",
+        "future_merge_by_id": {
+          "BRT3": "BC-ACCEL-009 \u2014 training EAGLE/EH entrypoints released here; merge BRT3 release semantics by ID without re-importing BRT3 candidate tree",
+          "BRT5": "BC-BRIDGE-012 \u2014 no seed-c subject deleted here; preserve merge-by-ID prescription for BRT5"
+        }
+      },
+      "also_invocable_as": []
     }
   ]
 }

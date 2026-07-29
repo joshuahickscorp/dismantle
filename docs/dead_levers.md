@@ -447,7 +447,7 @@ Before opening a wedge, audit:
    or fresh `HAWKING_TCB_TRACE=cpu` run. If the lever can save at
    most N%, and N < your ship gate, it's dead before you start.
 3. **Does it gate on a calibration insight?** Run
-   `tools/training/analyze_corpus.py` first if so. Routing-balance
+   the historical corpus analyzer (`tools/training/analyze_corpus.py`, product-released under C-HIST-R1) first if so — only against retained artifacts/artifacts, not as a live trainer entrypoint. Routing-balance
    killed two levers in one analysis run.
 4. **Does it depend on a downstream system that's already
    regressing?** (Spec-decode runtime, batched verify, etc.) Fix the

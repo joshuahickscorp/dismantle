@@ -15,7 +15,8 @@ It must create/update exactly these required root artifacts:
 - `HAWKING_FINAL_ASCENT_CONTINUATION_GOAL.md`
 - `HAWKING_FINAL_ASCENT_NEXT_COMMAND.sh`
 
-Prefer a generator under `tools/campaign/` plus tests. Generated status files must
+Historical generators under `tools/campaign/` (`final_ascent_status`, `light_governor`, `odyssey_package`) were product-released under C-HIST-R1.
+Prefer sealed status artifacts and rebuild apparatus (`rung_gate`, `ledger_rollup`) plus lab process authority. Generated status files must
 say they are generated and must not be hand-edited.
 
 ## Authoritative inputs

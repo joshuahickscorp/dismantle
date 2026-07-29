@@ -24,7 +24,7 @@ USAGE
   python3 tools/bench/eh_market_bench.py --model models/... --trials 3 --max-tokens 32
   python3 tools/bench/eh_market_bench.py --selftest
 
-NOTE: no new pip deps beyond tools/training/requirements.txt (numpy, etc.).
+NOTE: no new pip deps beyond numpy/etc. (historical tools/training/requirements.txt was product-released under C-HIST-R1).
       This file uses only the stdlib + numpy (already required).
 """
 

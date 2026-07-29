@@ -18,13 +18,18 @@ This runs that proof.
 `--scaffold` writes a manifest skeleton listing every entrypoint that disappeared between
 two inventory snapshots, so the lane that retired them has to fill in how each is reached
 now. An entry left unfilled is a lost capability, which is exactly the reading we want.
+
+Disposition semantics:
+  - replaced / invocable: `invocation` is required and is executed (dry-run / --help style).
+  - retired / released: product capability deliberately released; `invocation` must be
+    null/absent; nonempty exact `evidence` is required (product decision + rollback).
+    Never execute a fake command such as `true` or `lab --help` to paper over a release.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
-import shlex
 import subprocess
 import sys
 from pathlib import Path
@@ -32,6 +37,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 MANIFEST = ROOT / "control" / "CAPABILITY_MANIFEST.json"
 TIMEOUT = 120
+
+RELEASE_DISPOSITIONS = frozenset({"retired", "released"})
 
 
 def load_caps(snapshot: str) -> set[str]:
@@ -42,6 +49,24 @@ def load_caps(snapshot: str) -> set[str]:
     return set(d.get("python_entrypoint_list", [])) | {
         b if isinstance(b, str) else b.get("name", str(b)) for b in d.get("rust_binaries", [])
     }
+
+
+def evidence_is_meaningful(evidence) -> bool:
+    """True iff evidence is a nonempty string or nonempty list/object with meaningful values.
+
+    Rejects empty string, empty list, empty object, and arbitrary values whose
+    ``str(...)`` happens to be ``"{}"`` / ``"[]"`` (those used to pass the old
+    truthiness check). Only str / list / tuple / dict shapes are accepted.
+    """
+    if evidence is None:
+        return False
+    if isinstance(evidence, str):
+        return bool(evidence.strip())
+    if isinstance(evidence, (list, tuple)):
+        return bool(evidence) and any(evidence_is_meaningful(x) for x in evidence)
+    if isinstance(evidence, dict):
+        return bool(evidence) and any(evidence_is_meaningful(v) for v in evidence.values())
+    return False
 
 
 def run_entry(e: dict) -> dict:
@@ -60,17 +85,49 @@ def run_entry(e: dict) -> dict:
             "detail": f"exit {r.returncode}" + ("" if ok else f": {tail}")}
 
 
+def classify_entry(e: dict) -> dict:
+    """Classify one manifest entry without waiving unaccounted losses.
+
+    released/retired: evidence-backed product release — not executed.
+    replaced/other: must have a real invocable command.
+    """
+    disposition = e.get("disposition")
+    evidence = e.get("evidence")
+    if disposition in RELEASE_DISPOSITIONS:
+        if not evidence_is_meaningful(evidence):
+            return {
+                **e,
+                "status": "fail",
+                "detail": f"{disposition} disposition requires nonempty exact evidence "
+                          "(nonempty string or nonempty list/object with meaningful values)",
+            }
+        if e.get("invocation"):
+            return {
+                **e,
+                "status": "fail",
+                "detail": f"{disposition} entry must not claim an invocation "
+                          "(no true/lab --help facade)",
+            }
+        return {
+            **e,
+            "status": "released",
+            "detail": "evidence-backed product release (not invocable)",
+        }
+    return run_entry(e)
+
+
 def check() -> dict:
     if not MANIFEST.exists():
         return {"schema": "hawking.capability_manifest_report.v1",
-                "entries": [], "passed": 0, "failed": 0,
+                "entries": [], "passed": 0, "released": 0, "failed": 0,
                 "note": "control/CAPABILITY_MANIFEST.json does not exist; nothing claimed"}
     man = json.loads(MANIFEST.read_text(encoding="utf-8"))
-    results = [run_entry(e) for e in man.get("entries", [])]
+    results = [classify_entry(e) for e in man.get("entries", [])]
     return {
         "schema": "hawking.capability_manifest_report.v1",
         "entries": results,
         "passed": sum(1 for r in results if r["status"] == "pass"),
+        "released": sum(1 for r in results if r["status"] == "released"),
         "failed": sum(1 for r in results if r["status"] == "fail"),
     }
 
@@ -81,8 +138,8 @@ def scaffold(before: str, after: str) -> dict:
         "schema": "hawking.capability_manifest.v1",
         "note": ("Every entry below is an entrypoint that existed before this rung and does "
                  "not exist after it. Fill `invocation` with the exact command that reaches "
-                 "the same capability now, or set `disposition` to \"retired\" with the "
-                 "receipt that retired it. An entry left as-is is a lost capability."),
+                 "the same capability now, or set `disposition` to \"released\"/\"retired\" "
+                 "with the receipt that released it. An entry left as-is is a lost capability."),
         "entries": [
             {"retired_entrypoint": p, "invocation": None, "disposition": None,
              "evidence": None}
@@ -103,8 +160,11 @@ def gate(before: str, after: str) -> tuple[dict, list[str]]:
         bad.append(f"{len(unaccounted)} retired entrypoints are not in the manifest at all: "
                    f"{unaccounted[:6]}{' …' if len(unaccounted) > 6 else ''}")
     for e in rep["entries"]:
-        if e["status"] != "pass" and not (e.get("disposition") == "retired" and e.get("evidence")):
-            bad.append(f"not invocable: {e.get('retired_entrypoint')} -- {e['detail'][:120]}")
+        if e["status"] == "fail":
+            bad.append(
+                f"not accounted: {e.get('retired_entrypoint')} -- {e['detail'][:120]}"
+            )
+        # pass (invocable replacement) and released (evidence-backed) are OK
     rep["lost_entrypoints"] = len(lost)
     rep["unaccounted"] = unaccounted
     return rep, bad
@@ -132,8 +192,12 @@ def main() -> int:
         if not (args.before and args.after):
             print("--gate needs --before and --after", file=sys.stderr); return 2
         rep, bad = gate(args.before, args.after)
-        print(f"manifest: {rep['passed']} invocable, {rep['failed']} not; "
-              f"{rep['lost_entrypoints']} entrypoints retired this rung")
+        print(
+            f"manifest: {rep['passed']} invocable, {rep.get('released', 0)} released, "
+            f"{rep['failed']} invalid; "
+            f"{rep['lost_entrypoints']} entrypoints retired this rung; "
+            f"{len(rep.get('unaccounted', []))} unaccounted"
+        )
         for b in bad:
             print(f"  ! {b}")
         if args.out:
@@ -141,10 +205,15 @@ def main() -> int:
         return 1 if bad else 0
 
     rep = check()
-    print(f"{rep['passed']} invocable, {rep['failed']} not")
+    print(
+        f"{rep['passed']} invocable, {rep.get('released', 0)} released, "
+        f"{rep['failed']} invalid"
+    )
     for e in rep["entries"]:
-        if e["status"] != "pass":
+        if e["status"] == "fail":
             print(f"  ! {e.get('retired_entrypoint')}: {e['detail'][:140]}")
+        elif e["status"] == "released":
+            print(f"  ~ released: {e.get('retired_entrypoint')}")
     return 1 if rep["failed"] else 0
 
 
@@ -154,7 +223,75 @@ def _selfcheck() -> None:
     e_no = run_entry({"retired_entrypoint": "y", "invocation": "false"})
     assert e_ok["status"] == "pass" and e_no["status"] == "fail", (e_ok, e_no)
     assert run_entry({"retired_entrypoint": "z"})["status"] == "fail", "missing invocation must fail"
-    # an entrypoint that vanished and is not claimed anywhere must be reported unaccounted
+
+    r_ok = classify_entry({
+        "retired_entrypoint": "runtime:eagle5_event_horizon",
+        "disposition": "released",
+        "invocation": None,
+        "evidence": "BC-ACCEL-009 B-RT3 product release; control/BRT3-report.md",
+    })
+    assert r_ok["status"] == "released", r_ok
+
+    r_list_ok = classify_entry({
+        "retired_entrypoint": "runtime:eagle5_event_horizon",
+        "disposition": "released",
+        "invocation": None,
+        "evidence": ["BC-ACCEL-009", "control/BRT3-report.md"],
+    })
+    assert r_list_ok["status"] == "released", r_list_ok
+
+    r_obj_ok = classify_entry({
+        "retired_entrypoint": "runtime:eagle5_event_horizon",
+        "disposition": "released",
+        "invocation": None,
+        "evidence": {"product_decision": "BC-ACCEL-009", "receipt": "control/BRT3-report.md"},
+    })
+    assert r_obj_ok["status"] == "released", r_obj_ok
+
+    for bad_ev, label in (
+        (None, "None"),
+        ("", "empty string"),
+        ("   ", "whitespace string"),
+        ([], "empty list"),
+        ({}, "empty object"),
+        ([""], "list of empty strings"),
+        ({"x": ""}, "object with empty string values"),
+        ({"x": []}, "object with empty list values"),
+        ({"x": {}}, "object with empty object values"),
+        (0, "zero"),
+        (False, "false"),
+    ):
+        r_bad = classify_entry({
+            "retired_entrypoint": "runtime:eagle5_event_horizon",
+            "disposition": "released",
+            "invocation": None,
+            "evidence": bad_ev,
+        })
+        assert r_bad["status"] == "fail", (label, r_bad)
+
+    r_fake = classify_entry({
+        "retired_entrypoint": "runtime:eagle5_event_horizon",
+        "disposition": "released",
+        "invocation": "true",
+        "evidence": "some evidence",
+    })
+    assert r_fake["status"] == "fail", r_fake
+
+    r_fake_help = classify_entry({
+        "retired_entrypoint": "runtime:eagle5_event_horizon",
+        "disposition": "released",
+        "invocation": "lab --help",
+        "evidence": "some evidence",
+    })
+    assert r_fake_help["status"] == "fail", r_fake_help
+
+    # str({}) / str([]) used to pass the old nonempty check — must not now.
+    assert not evidence_is_meaningful({})
+    assert not evidence_is_meaningful([])
+    assert not evidence_is_meaningful("")
+    assert evidence_is_meaningful("x")
+    assert str({}).strip() == "{}" and str([]).strip() == "[]"
+
     lost, claimed = {"a", "b"}, {"a"}
     assert sorted(lost - claimed) == ["b"]
     print("selfcheck ok")

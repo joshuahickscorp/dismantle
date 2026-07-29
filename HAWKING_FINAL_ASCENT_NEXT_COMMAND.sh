@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# Generated from live evidence by `tools/campaign/final_ascent_status.py`. Do not hand-edit.
-# Default mode is READ-ONLY diagnose/reconcile. Explicit action flags required
-# for anything that changes machine state. Stale leases must be refused; MOP preserved.
+# Historical final-ascent resume shell. The generator
+# tools/campaign/final_ascent_status.py was product-released under C-HIST-R1.
+# Default mode is READ-ONLY diagnose. Explicit action flags required for state changes.
+# Stale leases must be refused; MOP preserved.
 set -euo pipefail
-ROOT="/Users/scammermike/Downloads/hawking"
+ROOT="$(cd "$(dirname "$0")" && pwd)"
 cd "$ROOT"
 
 MODE="${1:-diagnose}"
 
 refuse_stale_lease() {
-  # Placeholder policy: this control plane never auto-adopts a foreign lease.
   if [[ -n "${HAWKING_LEASE_ID:-}" ]]; then
     echo "REFUSING action under HAWKING_LEASE_ID=$HAWKING_LEASE_ID without explicit --accept-lease" >&2
     exit 2
@@ -39,8 +39,11 @@ diagnose() {
   launchctl list 2>/dev/null | grep com.hawking || true
   echo
   echo "=== safe next commands (not executed) ==="
-  echo "  python3.12 tools/campaign/final_ascent_status.py"
-  echo "  python3.12 tools/campaign/light_governor.py | head -5"
+  echo "  # C-HIST-R1 released: tools/campaign/final_ascent_status.py, light_governor.py"
+  echo "  # Rebuild apparatus still live:"
+  echo "  python3.12 tools/campaign/rung_gate.py --help"
+  echo "  python3.12 tools/campaign/ledger_rollup.py --help"
+  echo "  python3.12 -m lab --classify"
   echo "  cat GLM52_GENERATION_B_CAPABILITY_VERDICT.json"
   echo "  cat odyssey/launch/SUBSTRATE_CAPABILITY.json"
   echo '  # FA02 blocking: produce a capable Math-Preserve-v2, then:'
@@ -54,14 +57,16 @@ diagnose() {
 reconcile() {
   diagnose
   echo
-  echo "=== reconcile: republish control-plane artifacts ==="
-  python3.12 tools/campaign/final_ascent_status.py
+  echo "=== reconcile: historical generator released under C-HIST-R1 ==="
+  echo "REFUSED: tools/campaign/final_ascent_status.py is product-released (not invocable)."
+  echo "Sealed status artifacts remain readable; do not invent a replacement generator."
+  exit 4
 }
 
 action_help() {
   echo "Action mode is explicit. Supported:"
   echo "  $0 diagnose     # default, read-only"
-  echo "  $0 reconcile    # republish status from evidence (writes status files only)"
+  echo "  $0 reconcile    # refused: historical generator product-released (C-HIST-R1)"
   echo "  $0 action ...   # refused unless a future explicit allowlist is added"
   echo "Never: kill/start launch agents, flip fences, touch MOP, delete capsules."
 }

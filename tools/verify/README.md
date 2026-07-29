@@ -1,4 +1,41 @@
-# `tools/verify` — rebuild performance gate
+# `tools/verify` — rebuild verification instruments
+
+## Assertion ledger (Core F F1)
+
+Seals every current verification obligation under a durable `CASE.<kind>.<slug>`
+identity before any test mass is rewritten or deleted. Apparatus only — zero
+product behaviour change, zero test deletion.
+
+```bash
+python3.12 tools/verify/case_extract.py --json
+python3.12 tools/verify/case_extract.py --write control/ASSERTION_LEDGER.json
+python3.12 tools/verify/case_extract.py --write control/ASSERTION_LEDGER.json --rev HEAD
+python3.12 tools/verify/case_extract.py --check control/ASSERTION_LEDGER.json
+
+python3.12 tools/verify/test_case_manifest.py --seal-check \
+  control/ASSERTION_LEDGER.json control/TEST_CASE_MANIFEST.json
+python3.12 tools/verify/test_case_manifest.py --enumerate control/TEST_CASE_MANIFEST.json
+python3.12 tools/verify/test_case_manifest.py --dry-run control/TEST_CASE_MANIFEST.json
+python3.12 tools/verify/test_case_manifest.py --gate \
+  --before control/ASSERTION_LEDGER.json --after control/TEST_CASE_MANIFEST.json
+```
+
+- Extraction reads exact git tree/blob objects (`git ls-tree` / `git show`) at a revision — no worktree checkout.
+- `--write` / `--json` default to `HEAD` (or `--rev`). The ledger records `sealed_at_commit`.
+- `--check LEDGER` re-extracts at the ledger's `sealed_at_commit` (or an explicit identical `--rev`), not current HEAD. A later unrelated commit must leave a prior sealed ledger green.
+- Vitest identities: repository path + lexical `describe` chain + literal title; content digest only for same-chain title collisions; identical duplicates collision-fail (never `#L{line}`).
+- Fingerprints bind the full Rust test item (attr+signature+body) and the full Vitest call (including body/`expect`).
+- `--seal-check` may pass with an empty F1 scaffold when the ledger hash and phase/status are valid.
+- Normal `--gate` **must fail** while `entries` is empty and lists every unaccounted ledger id. There is no ledger-only gate pass.
+- Gate rejects unknown manifest ids, dual accounting owners for one sealed id, and incomplete N-entry rewrite receipt identity maps.
+
+Adversarial unit tests:
+
+```bash
+PYTHONNOUSERSITE=1 python3.12 -m unittest tools.verify.test_case_extract tools.verify.test_test_case_manifest
+```
+
+## Performance gate
 
 Instrument that decides the rebuild hard gate:
 
@@ -7,7 +44,7 @@ Instrument that decides the rebuild hard gate:
 - no >2% regression in transformation throughput
 - no material startup/compile regression without a measured trade receipt
 
-## Commands
+### Commands
 
 ```bash
 python3.12 tools/verify/perfgate.py --list

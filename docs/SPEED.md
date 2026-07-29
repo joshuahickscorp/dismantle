@@ -1,5 +1,10 @@
 # `speed` branch — RWKV-7 training throughput + max-RAM
 
+> **C-HIST-R1 (historical):** Active sources under `tools/training/**` were
+> product-released. Commands and module paths below are historical only and
+> are not invocable in this tree. Persisted fixture retained at
+> `tools/training/data/rwkv7_sft_sample.jsonl`.
+
 Branched from `main` @ the post-rename clean slate. Two things live here:
 1. A **~16× faster** RWKV-7 draft trainer that uses RAM for speed (opt-in, bit-exact).
 2. A **manifest** of the stale unmerged feature branches (consolidation status + hazard).
@@ -15,13 +20,13 @@ contention*, so absolute tok/s is depressed but the ratio holds):
 | **optimized** — bs=16, no `empty_cache()`, grad-checkpoint off | 1017 | ~7.8 GB |
 | | **~16×** | **6.4× RAM** |
 
-Three independent levers, all in `tools/training/rwkv7_train_draft.py` (all opt-in;
+Three independent levers, all historically in `tools/training/rwkv7_train_draft.py` (released) (all opt-in;
 defaults reproduce the old behaviour exactly):
 
 1. **Batching (`--batch-size N`)** — the old loop ran one sequence per forward/backward
    (`batch=1` + grad-accum). Now `N` sequences are right-padded into one `[N, T]` forward.
    RWKV-7's recurrence is strictly left-to-right, so right-padding cannot perturb real
-   positions — **verified bit-exact** (`tools/training/test_rwkv7_batch_equiv.py`, worst
+   positions — **verified bit-exact** (historical `tools/training/test_rwkv7_batch_equiv.py`, worst
    |Δlogit| = 0.0 across chunked + non-chunked paths). This is the bulk of the win and the
    main RAM consumer.
 2. **No per-example `empty_cache()`** — the old loop called `torch.mps.empty_cache()` after
@@ -40,7 +45,7 @@ not the bench's 256) even the 50M dies. A 12 GB cap from `MPS_MEM_FRACTION=0.9` 
 fail fast. **Lesson: pushing RAM harder is not free speed — past the ceiling you just
 crash.** The fix is to size the batch *per model*.
 
-### Run a fast sweep (AUTO_BATCH — recommended)
+### Historical run recipe (AUTO_BATCH) — not invocable after C-HIST-R1
 
 `AUTO_BATCH=1` probes, per variant, the largest batch that fits `MEM_CEILING_GB` (worst
 case = a full-length, fully-supervised batch), then **token-budget batches** so long

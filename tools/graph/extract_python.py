@@ -41,6 +41,51 @@ def _pkg_id_for(rel: str) -> str | None:
     return None
 
 
+def _module_aliases(rel: str) -> list[str]:
+    """All dotted module names under which this file may be imported.
+
+    The tree is imported as ``tools.condense.x``, ``condense.x``, and bare
+    ``glm52_state`` from inside the package directory — register each.
+    """
+    primary = _module_name_from_path(rel)
+    aliases: list[str] = []
+    seen: set[str] = set()
+
+    def add(name: str) -> None:
+        if name and name not in seen:
+            seen.add(name)
+            aliases.append(name)
+
+    add(primary)
+    parts = primary.split(".")
+    # All suffixes: tools.condense.glm52_state → condense.glm52_state, glm52_state
+    for i in range(1, len(parts)):
+        add(".".join(parts[i:]))
+    # tools/X/... also as X/... without the tools. prefix (already covered by suffixes)
+    # Directory path forms already handled via primary.
+    return aliases
+
+
+def build_python_module_index(files: list[str]) -> dict[str, Any]:
+    """Build path + multi-root dotted-name indexes for import resolution.
+
+    Returns {
+      path_to_file: rel → file:<rel>,
+      name_to_files: dotted module → [file:<rel>, ...]  (may collide on short names),
+    }
+    """
+    path_to_file: dict[str, str] = {}
+    name_to_files: dict[str, list[str]] = defaultdict(list)
+    for rel in files:
+        fid = f"file:{rel}"
+        path_to_file[rel] = fid
+        for alias in _module_aliases(rel):
+            name_to_files[alias].append(fid)
+        # also index path-shaped keys used by older resolvers
+        path_to_file[rel] = fid
+    return {"path_to_file": path_to_file, "name_to_files": dict(name_to_files)}
+
+
 def _complexity_ast(node: ast.AST) -> int:
     n = 1
     for child in ast.walk(node):
@@ -255,45 +300,113 @@ class PyExtractor(ast.NodeVisitor):
     def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
         mod = node.module or ""
         if node.level and node.level > 0:
-            # relative
-            parts = self.module.split(".")
-            base = parts[: max(0, len(parts) - node.level)]
-            if mod:
-                mod = ".".join(base + mod.split("."))
+            # PEP 328: level is number of leading dots. Anchor is the current
+            # package (parent of a module file; the package itself for __init__.py).
+            if self.rel.endswith("__init__.py"):
+                pkg_parts = self.module.split(".") if self.module else []
             else:
-                mod = ".".join(base)
+                pkg_parts = self.module.split(".")[:-1] if self.module else []
+            up = node.level - 1
+            if up > len(pkg_parts):
+                # outside the package tree — unresolvable in-repo
+                base_parts: list[str] = []
+            else:
+                base_parts = pkg_parts[: len(pkg_parts) - up] if up else list(pkg_parts)
+            if mod:
+                mod = ".".join(base_parts + mod.split(".")) if base_parts else mod
+            else:
+                mod = ".".join(base_parts)
         for alias in node.names:
             self._resolve_import(mod, alias.name if alias.name != "*" else None)
 
     def _resolve_import(self, module: str | None, name: str | None) -> None:
-        if not module:
+        """Resolve an absolute or already-absolutised import to an in-repo file.
+
+        Tries dotted multi-root names first, then path-shaped keys. Prefer the
+        longest unique match; on short-name collisions pick the candidate that
+        shares the longest module-prefix with the importer.
+        """
+        if not module and not name:
             return
-        # map to file/module node
-        candidates = [
-            module.replace(".", "/") + ".py",
-            module.replace(".", "/") + "/__init__.py",
-        ]
-        # also tools.condense.foo style
-        for c in candidates:
-            if c in self.module_index:
-                dst = self.module_index[c]
+
+        # Build lookup keys: module, module.name, and path forms
+        dotted_keys: list[str] = []
+        if module:
+            dotted_keys.append(module)
+            if name and name != "*":
+                dotted_keys.append(f"{module}.{name}")
+        elif name and name != "*":
+            dotted_keys.append(name)
+
+        name_to_files: dict[str, list[str]] = {}
+        path_to_file: dict[str, str] = {}
+        if isinstance(self.module_index, dict) and "name_to_files" in self.module_index:
+            name_to_files = self.module_index.get("name_to_files") or {}
+            path_to_file = self.module_index.get("path_to_file") or {}
+        else:
+            # legacy flat path index
+            path_to_file = self.module_index  # type: ignore[assignment]
+
+        def pick(cands: list[str]) -> str | None:
+            uniq = list(dict.fromkeys(cands))
+            if not uniq:
+                return None
+            if len(uniq) == 1:
+                return uniq[0]
+            # Prefer same package prefix as importer
+            importer_parts = self.module.split(".")
+            best = None
+            best_score = -1
+            for c in uniq:
+                # c is file:rel
+                rel = c.removeprefix("file:")
+                other = _module_name_from_path(rel).split(".")
+                score = 0
+                for a, b in zip(importer_parts, other):
+                    if a == b:
+                        score += 1
+                    else:
+                        break
+                # also prefer same top-level directory
+                if rel.split("/")[0:2] == self.rel.split("/")[0:2]:
+                    score += 0.5
+                if score > best_score:
+                    best_score = score
+                    best = c
+            # only accept if there is some shared prefix signal
+            if best is not None and best_score >= 1:
+                return best
+            return None
+
+        # 1) dotted multi-root index (longest key first)
+        for key in sorted(dotted_keys, key=len, reverse=True):
+            cands = name_to_files.get(key) or []
+            dst = pick(cands)
+            if dst and dst in self.g.nodes and dst != self.file_id:
                 self.g.add_edge(
                     self.file_id, "imports", dst,
                     evidence="ast", confidence=1.0,
                 )
                 return
-        # pkg level
-        top = module.split(".")[0]
-        for root in REPO_ROOTS:
-            if module.startswith(root) or top == root:
-                # try file path
-                p = module.replace(".", "/") + ".py"
-                if p in self.module_index:
+
+        # 2) path-shaped keys from dotted module
+        path_keys: list[str] = []
+        for key in dotted_keys:
+            path_keys.append(key.replace(".", "/") + ".py")
+            path_keys.append(key.replace(".", "/") + "/__init__.py")
+        for c in path_keys:
+            if c in path_to_file:
+                dst = path_to_file[c]
+                if dst in self.g.nodes and dst != self.file_id:
                     self.g.add_edge(
-                        self.file_id, "imports", self.module_index[p],
+                        self.file_id, "imports", dst,
                         evidence="ast", confidence=1.0,
                     )
                     return
+
+        # 3) if only a name was imported from a known module that itself resolves,
+        #    still emit the module-file edge (already handled when module set).
+        return
 
     def visit_If(self, node: ast.If) -> None:
         # if __name__ == "__main__"
@@ -410,11 +523,139 @@ def extract_all_python(
         "argparse_sites": [],
         "cli_commands": [],
     }
-    module_index: dict[str, str] = {}
-    for rel in files:
-        module_index[rel] = f"file:{rel}"
+    module_index = build_python_module_index(files)
+    indexes["py_module_index"] = module_index
 
     for rel in files:
         extract_python_file(repo, rel, g, indexes, module_index)
     resolve_python_calls(g, indexes)
+    link_python_cli_handlers(repo, files, g, indexes)
     return indexes
+
+
+def link_python_cli_handlers(
+    repo: Path,
+    files: list[str],
+    g: Graph,
+    indexes: dict[str, Any],
+) -> None:
+    """Attach ``calls`` edges from argparse / __main__ cli_command nodes to handlers."""
+    # set_defaults(func=handler) and add_parser("name") near each other
+    for rel in files:
+        path = repo / rel
+        try:
+            text = path.read_text(errors="ignore")
+        except OSError:
+            continue
+        try:
+            tree = ast.parse(text, filename=rel)
+        except SyntaxError:
+            continue
+
+        # Map subparser name -> handler function name via set_defaults(func=...)
+        # Walk AST for calls to add_parser / set_defaults.
+        # Heuristic: last add_parser name before a set_defaults(func=...) binds them.
+        last_parser: str | None = None
+        prog = Path(rel).stem
+
+        class _CliWalk(ast.NodeVisitor):
+            def __init__(self) -> None:
+                self.bindings: list[tuple[str, str]] = []  # (sub, handler_name)
+                self.main_calls: list[str] = []
+
+            def visit_Call(self, node: ast.Call) -> None:
+                nonlocal last_parser
+                cname = _call_name(node) or ""
+                short = cname.split(".")[-1] if cname else ""
+                if short == "add_parser" and node.args:
+                    a0 = node.args[0]
+                    if isinstance(a0, ast.Constant) and isinstance(a0.value, str):
+                        last_parser = a0.value
+                if short == "set_defaults":
+                    for kw in node.keywords:
+                        if kw.arg == "func":
+                            h = _attr_chain(kw.value) if not isinstance(kw.value, ast.Call) else None
+                            if isinstance(kw.value, ast.Name):
+                                h = kw.value.id
+                            elif isinstance(kw.value, ast.Attribute):
+                                h = kw.value.attr
+                            if h and last_parser:
+                                self.bindings.append((last_parser, h.split(".")[-1]))
+                self.generic_visit(node)
+
+            def visit_If(self, node: ast.If) -> None:
+                # if args.cmd == "x": handler(...)
+                # if args.command == "x": ...
+                cmd_val = None
+                if isinstance(node.test, ast.Compare) and node.test.ops:
+                    left = node.test.left
+                    left_name = _attr_chain(left) or ""
+                    if left_name.endswith((".cmd", ".command", ".subcmd", ".action")) or left_name in (
+                        "cmd", "command", "args.cmd", "args.command",
+                    ):
+                        for comp in node.test.comparators:
+                            if isinstance(comp, ast.Constant) and isinstance(comp.value, str):
+                                cmd_val = comp.value
+                if cmd_val:
+                    for child in node.body:
+                        for sub in ast.walk(child):
+                            if isinstance(sub, ast.Call):
+                                h = _call_name(sub)
+                                if h:
+                                    self.bindings.append((cmd_val, h.split(".")[-1]))
+                # __main__ guard: collect direct calls in the block
+                if isinstance(node.test, ast.Compare):
+                    left = node.test.left
+                    if isinstance(left, ast.Name) and left.id == "__name__":
+                        for comp in node.test.comparators:
+                            if isinstance(comp, ast.Constant) and comp.value == "__main__":
+                                for child in node.body:
+                                    for sub in ast.walk(child):
+                                        if isinstance(sub, ast.Call):
+                                            h = _call_name(sub)
+                                            if h:
+                                                short = h.split(".")[-1]
+                                                if short not in (
+                                                    "ArgumentParser", "add_argument",
+                                                    "add_parser", "add_subparsers",
+                                                    "parse_args", "print", "exit",
+                                                    "print_help", "SystemExit",
+                                                ):
+                                                    self.main_calls.append(short)
+                self.generic_visit(node)
+
+        walker = _CliWalk()
+        walker.visit(tree)
+
+        def resolve_fn(name: str) -> list[str]:
+            cands = list(dict.fromkeys(indexes["fns_by_name"].get(name, [])))
+            # prefer same file
+            same = [c for c in cands if c.startswith(f"fn:{rel}#")]
+            if same:
+                return same[:3]
+            if len(cands) == 1:
+                return cands
+            return cands[:2]
+
+        for sub, handler in walker.bindings:
+            cid = f"cli:{prog} {sub}"
+            if cid not in g.nodes:
+                # try with full module-ish prog variants already created
+                continue
+            for dst in resolve_fn(handler):
+                if dst in g.nodes:
+                    g.add_edge(
+                        cid, "calls", dst,
+                        evidence="ast", confidence=0.95, weight=1.0,
+                    )
+
+        # __main__ cli node
+        main_cid = f"cli:{_module_name_from_path(rel)} __main__"
+        if main_cid in g.nodes:
+            for h in walker.main_calls:
+                for dst in resolve_fn(h):
+                    if dst in g.nodes:
+                        g.add_edge(
+                            main_cid, "calls", dst,
+                            evidence="ast", confidence=0.95, weight=1.0,
+                        )

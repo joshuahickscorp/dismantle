@@ -34,6 +34,7 @@ digraph hawking_crates {
   "pkg:tools/eval" [label="tools/eval", style=filled, fillcolor="lightgreen"];
   "pkg:tools/foundry" [label="tools/foundry", style=filled, fillcolor="lightgreen"];
   "pkg:tools/glm52_gravity.py" [label="tools/glm52_gravity.py", style=filled, fillcolor="lightgreen"];
+  "pkg:tools/graph" [label="tools/graph", style=filled, fillcolor="lightgreen"];
   "pkg:tools/loc" [label="tools/loc", style=filled, fillcolor="lightgreen"];
   "pkg:tools/odyssey" [label="tools/odyssey", style=filled, fillcolor="lightgreen"];
   "pkg:tools/orchestrator" [label="tools/orchestrator", style=filled, fillcolor="lightgreen"];
@@ -49,7 +50,6 @@ digraph hawking_crates {
   "crate:hawking" -> "crate:hawking-serve" [label="imports", style=solid, weight=1.00];
   "crate:hawking" -> "crate:hawking-speculate" [label="imports", style=solid, weight=1.00];
   "crate:hawking-adapters" -> "crate:hawking-events" [label="imports", style=solid, weight=1.00];
-  "crate:hawking-bench" -> "crate:hawking" [label="imports", style=solid, weight=1.00];
   "crate:hawking-bench" -> "crate:hawking-core" [label="imports", style=solid, weight=1.00];
   "crate:hawking-context" -> "crate:hawking-index" [label="imports", style=solid, weight=1.00];
   "crate:hawking-context" -> "crate:hide-core" [label="imports", style=solid, weight=1.00];

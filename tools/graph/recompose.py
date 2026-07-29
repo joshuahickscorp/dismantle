@@ -103,11 +103,17 @@ def _semantic_merge_criteria(
         hits.append("lifecycle")
 
     # change history: high co_changes among members
+    # Schema weight is count/min(commits) ∈ [0,1]; use raw count (or legacy weight>1).
     member_set = set(members)
     co_hit = False
     for e in g.edges:
         if e["type"] == "co_changes" and e["src"] in member_set and e["dst"] in member_set:
-            if float(e.get("attrs", {}).get("weight", 0)) >= 3:
+            attrs = e.get("attrs") or {}
+            count = int(attrs.get("count") or 0)
+            w = float(attrs.get("weight", 0) or 0)
+            if count <= 0 and w > 1.0:
+                count = int(w)
+            if count >= 3 or (0 < w <= 1.0 and w >= 0.5):
                 co_hit = True
                 break
     if co_hit:
@@ -497,7 +503,8 @@ def build_candidates(
                 "members": members,
                 "paths": [p for p in [pair.get("a_path"), pair.get("b_path")] if p],
                 "evidence": [
-                    f"cochange: weight={pair.get('co_changes_weight')} "
+                    f"cochange: count={pair.get('co_changes_count')} "
+                    f"weight={pair.get('co_changes_weight')} "
                     f"direct_coupling=false loc={loc}",
                     f"semantic_merge_criteria: {criteria}",
                 ],

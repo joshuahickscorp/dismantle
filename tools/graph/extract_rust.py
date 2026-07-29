@@ -77,12 +77,392 @@ def _line_of(text: str, offset: int) -> int:
     return text.count("\n", 0, offset) + 1
 
 
+def _mod_path_for_file(rel: str, crate_root: str) -> tuple[str, ...] | None:
+    """Derive crate-local module path segments from a .rs file layout.
+
+    ``src/lib.rs`` / ``src/main.rs`` → () (crate root)
+    ``src/foo.rs`` / ``src/foo/mod.rs`` → ("foo",)
+    ``src/foo/bar.rs`` → ("foo", "bar")
+    """
+    if not crate_root:
+        return None
+    prefix = crate_root if crate_root.endswith("/") else crate_root + "/"
+    if not rel.startswith(prefix):
+        return None
+    rest = rel[len(prefix):]
+    # Prefer src/ layout; also accept root-level for binary-only crates
+    if rest.startswith("src/"):
+        rest = rest[4:]
+    elif "/" in rest and not rest.endswith(".rs"):
+        return None
+    if not rest.endswith(".rs"):
+        return None
+    if rest in ("lib.rs", "main.rs", "build.rs"):
+        return ()
+    if rest.endswith("/mod.rs"):
+        rest = rest[: -len("/mod.rs")]
+    elif rest.endswith(".rs"):
+        rest = rest[: -len(".rs")]
+    else:
+        return None
+    if not rest:
+        return ()
+    parts = tuple(p for p in rest.split("/") if p and p != "mod")
+    return parts
+
+
+def build_rust_module_index(
+    rust_files: list[str],
+    cargo_ctx: dict[str, Any],
+) -> dict[str, Any]:
+    """Map each crate's module tree from file layout.
+
+    Returns {
+      module_file: dict[crate_name, dict[tuple[str,...], file_rel]],
+      file_module: dict[file_rel, tuple[crate_name, tuple[str,...]]],
+    }
+    """
+    module_file: dict[str, dict[tuple[str, ...], str]] = defaultdict(dict)
+    file_module: dict[str, tuple[str, tuple[str, ...]]] = {}
+    for rel in rust_files:
+        cname = crate_for_path(rel, cargo_ctx)
+        if not cname:
+            continue
+        root = cargo_ctx["package_root"].get(cname) or ""
+        mpath = _mod_path_for_file(rel, root)
+        if mpath is None:
+            continue
+        # Prefer mod.rs over foo.rs when both map to the same module (rare)
+        existing = module_file[cname].get(mpath)
+        if existing is None or rel.endswith("/mod.rs") or rel.endswith("mod.rs"):
+            module_file[cname][mpath] = rel
+        file_module[rel] = (cname, mpath)
+    return {"module_file": dict(module_file), "file_module": file_module}
+
+
+def _split_use_segments(path_str: str) -> list[str]:
+    """Split a use path on '::' ignoring content inside <...> and (...)."""
+    segs: list[str] = []
+    cur: list[str] = []
+    depth_angle = 0
+    depth_paren = 0
+    i = 0
+    s = path_str.strip()
+    while i < len(s):
+        if s[i] == "<":
+            depth_angle += 1
+            cur.append(s[i])
+            i += 1
+        elif s[i] == ">":
+            depth_angle = max(0, depth_angle - 1)
+            cur.append(s[i])
+            i += 1
+        elif s[i] == "(":
+            depth_paren += 1
+            cur.append(s[i])
+            i += 1
+        elif s[i] == ")":
+            depth_paren = max(0, depth_paren - 1)
+            cur.append(s[i])
+            i += 1
+        elif (
+            s[i:i + 2] == "::"
+            and depth_angle == 0
+            and depth_paren == 0
+        ):
+            segs.append("".join(cur).strip())
+            cur = []
+            i += 2
+        else:
+            cur.append(s[i])
+            i += 1
+    if cur:
+        segs.append("".join(cur).strip())
+    return [x for x in segs if x]
+
+
+def _expand_use_tree(path_str: str) -> list[str]:
+    """Expand ``a::{b, c::d}`` / ``a::b as c`` into flat use paths (no aliases kept)."""
+    s = path_str.strip().rstrip(";").strip()
+    if not s:
+        return []
+    # Drop leading visibility already stripped by RE_USE
+    # Handle `self::` prefixes etc. as-is
+
+    def expand(prefix: str, body: str) -> list[str]:
+        body = body.strip()
+        if not body:
+            return [prefix] if prefix else []
+        # Find outermost brace group
+        if "{" not in body:
+            # strip `as Alias` / trailing rename
+            part = re.sub(r"\s+as\s+\w+\s*$", "", body).strip()
+            if not part or part == "*":
+                return [prefix] if prefix else []
+            if prefix:
+                return [f"{prefix}::{part}"]
+            return [part]
+        # split prefix before first {
+        brace = body.find("{")
+        head = body[:brace].rstrip().rstrip(":").rstrip()
+        # find matching }
+        depth = 0
+        end = -1
+        for i, ch in enumerate(body[brace:], start=brace):
+            if ch == "{":
+                depth += 1
+            elif ch == "}":
+                depth -= 1
+                if depth == 0:
+                    end = i
+                    break
+        if end < 0:
+            part = re.sub(r"\s+as\s+\w+\s*$", "", body).strip()
+            return [f"{prefix}::{part}" if prefix else part]
+        inner = body[brace + 1:end]
+        tail = body[end + 1:].strip()  # rarely used
+        new_prefix = (
+            f"{prefix}::{head}" if prefix and head else (prefix or head)
+        )
+        # split inner on commas at depth 0
+        items: list[str] = []
+        cur: list[str] = []
+        d = 0
+        for ch in inner:
+            if ch == "{":
+                d += 1
+                cur.append(ch)
+            elif ch == "}":
+                d -= 1
+                cur.append(ch)
+            elif ch == "," and d == 0:
+                items.append("".join(cur).strip())
+                cur = []
+            else:
+                cur.append(ch)
+        if cur:
+            items.append("".join(cur).strip())
+        out: list[str] = []
+        for item in items:
+            if not item:
+                continue
+            if item == "self":
+                if new_prefix:
+                    out.append(new_prefix)
+                continue
+            if item == "*":
+                if new_prefix:
+                    out.append(new_prefix)
+                continue
+            out.extend(expand(new_prefix, item))
+        if tail:
+            # ignore unexpected tail
+            pass
+        return out
+
+    return expand("", s)
+
+
+def _lookup_crate_id(name: str, cargo_ctx: dict[str, Any]) -> str | None:
+    return (
+        cargo_ctx["name_to_id"].get(name)
+        or cargo_ctx["name_to_id"].get(name.replace("_", "-"))
+        or cargo_ctx["name_to_id"].get(name.replace("-", "_"))
+    )
+
+
+def _resolve_use_path(
+    path_str: str,
+    *,
+    file_rel: str,
+    crate_name: str | None,
+    cargo_ctx: dict[str, Any],
+    mod_index: dict[str, Any],
+    g: Graph,
+    indexes: dict[str, Any],
+) -> tuple[str | None, float]:
+    """Resolve one expanded use path to an in-repo node id + confidence.
+
+    Returns (node_id_or_None, confidence). Drop unresolved paths (no guessing).
+    """
+    segs = _split_use_segments(path_str)
+    if not segs:
+        return None, 0.0
+    # strip generics from each segment for resolution
+    segs = [_strip_generics(s).strip().strip('"') for s in segs]
+    segs = [s for s in segs if s]
+    if not segs:
+        return None, 0.0
+
+    file_module = mod_index.get("file_module") or {}
+    module_file = mod_index.get("module_file") or {}
+
+    cur_info = file_module.get(file_rel)
+    cur_crate = crate_name or (cur_info[0] if cur_info else None)
+    cur_mod: tuple[str, ...] = cur_info[1] if cur_info else ()
+
+    target_crate = cur_crate
+    mod_segs: list[str] = []
+    first = segs[0]
+
+    if first == "crate":
+        if not cur_crate:
+            return None, 0.0
+        target_crate = cur_crate
+        mod_segs = list(segs[1:])
+    elif first == "super":
+        if not cur_crate:
+            return None, 0.0
+        # count leading supers
+        up = 0
+        while up < len(segs) and segs[up] == "super":
+            up += 1
+        if up > len(cur_mod):
+            return None, 0.0
+        base = cur_mod[: len(cur_mod) - up]
+        mod_segs = list(base) + list(segs[up:])
+        target_crate = cur_crate
+    elif first == "self":
+        if not cur_crate:
+            return None, 0.0
+        mod_segs = list(cur_mod) + list(segs[1:])
+        target_crate = cur_crate
+    else:
+        # external or absolute crate path (workspace member)
+        cid = _lookup_crate_id(first, cargo_ctx)
+        if cid:
+            # map to the canonical package name used by module_file keys
+            pkg = None
+            for n in cargo_ctx.get("package_names") or []:
+                if n == first or n.replace("-", "_") == first.replace("-", "_"):
+                    pkg = n
+                    break
+            if pkg is None:
+                # cid is "crate:<name>"
+                pkg = cid.removeprefix("crate:")
+            target_crate = pkg
+            mod_segs = list(segs[1:])
+            if not mod_segs:
+                # bare `use other_crate;` → crate node, first-segment only
+                return cid, 0.6
+        else:
+            # could be a prelude / extern crate we don't know — drop
+            return None, 0.0
+
+    if not target_crate:
+        return None, 0.0
+
+    crate_mods: dict[tuple[str, ...], str] = module_file.get(target_crate) or {}
+    # Also try underscore/hyphen crate name variants
+    if not crate_mods:
+        for alt in (
+            target_crate.replace("-", "_"),
+            target_crate.replace("_", "-"),
+        ):
+            if alt in module_file:
+                crate_mods = module_file[alt]
+                target_crate = alt
+                break
+
+    # Walk longest module prefix that exists as a file; remaining may be type/fn/item
+    best_file: str | None = None
+    best_len = -1
+    item_tail: list[str] = []
+    # try full path as module, then peel last segments as items
+    for peel in range(len(mod_segs) + 1):
+        keep = len(mod_segs) - peel
+        mpath = tuple(mod_segs[:keep])
+        if mpath in crate_mods:
+            best_file = crate_mods[mpath]
+            best_len = keep
+            item_tail = mod_segs[keep:]
+            break
+        # also try if last segment is `self`
+    if best_file is None:
+        # first-segment crate match only (no module path resolved)
+        cid = _lookup_crate_id(target_crate, cargo_ctx)
+        if cid and not mod_segs:
+            return cid, 0.6
+        if cid and first not in ("crate", "super", "self"):
+            # external workspace crate with unresolved subpath — crate-level edge
+            return cid, 0.6
+        return None, 0.0
+
+    conf = 0.9  # resolved through module tree
+    # Try to resolve item_tail to a type or function in that file
+    if item_tail:
+        item = item_tail[0]
+        # type in this file
+        tid = f"type:{best_file}#{item}"
+        if tid in g.nodes:
+            return tid, conf
+        # function free or Type::method — try free fn and any qname ending
+        fid = f"fn:{best_file}#{item}"
+        if fid in g.nodes:
+            return fid, conf
+        # methods / qualified names in this file
+        cands = [
+            nid for nid in indexes.get("fns_by_name", {}).get(item, [])
+            if nid.startswith(f"fn:{best_file}#")
+        ]
+        if len(cands) == 1:
+            return cands[0], conf
+        type_cands = [
+            nid for nid in indexes.get("types_by_name", {}).get(item, [])
+            if nid.startswith(f"type:{best_file}#")
+        ]
+        if len(type_cands) == 1:
+            return type_cands[0], conf
+        # unresolved item but module file known — point at file
+        return f"file:{best_file}", conf
+
+    return f"file:{best_file}", conf
+
+
+def emit_rust_imports(
+    repo: Path,
+    rel: str,
+    text: str,
+    code: str,
+    g: Graph,
+    cargo_ctx: dict[str, Any],
+    indexes: dict[str, Any],
+    mod_index: dict[str, Any],
+) -> None:
+    """Emit file-level ``imports`` edges from ``use`` statements."""
+    crate_name = crate_for_path(rel, cargo_ctx)
+    file_id = f"file:{rel}"
+    for m in RE_USE.finditer(code):
+        path_str = m.group(1).strip()
+        for expanded in _expand_use_tree(path_str):
+            dst, conf = _resolve_use_path(
+                expanded,
+                file_rel=rel,
+                crate_name=crate_name,
+                cargo_ctx=cargo_ctx,
+                mod_index=mod_index,
+                g=g,
+                indexes=indexes,
+            )
+            if not dst or dst == file_id:
+                continue
+            if dst not in g.nodes and not dst.startswith("crate:"):
+                continue
+            if dst not in g.nodes:
+                continue
+            g.add_edge(
+                file_id, "imports", dst,
+                evidence="regex", confidence=conf, weight=1.0,
+            )
+
+
 def extract_rust_file(
     repo: Path,
     rel: str,
     g: Graph,
     cargo_ctx: dict[str, Any],
     indexes: dict[str, Any],
+    mod_index: dict[str, Any] | None = None,
 ) -> None:
     """Extract nodes/edges from one .rs file into g; update indexes for call resolution."""
     path = repo / rel
@@ -107,25 +487,9 @@ def extract_rust_file(
     if file_id not in g.nodes:
         g.add_node(make_node("file", file_id, Path(rel).name, path=rel, lang="rust", loc=loc))
 
-    # --- use imports -> crate nodes ---
-    for m in RE_USE.finditer(code):
-        path_str = m.group(1).strip()
-        # take first segment
-        first = re.split(r"::|{|\s", path_str, maxsplit=1)[0].strip().strip(":")
-        if not first or first in ("self", "super", "crate"):
-            if first == "crate" and crate_id:
-                continue
-            continue
-        # normalise -/_
-        target = (
-            cargo_ctx["name_to_id"].get(first)
-            or cargo_ctx["name_to_id"].get(first.replace("_", "-"))
-            or cargo_ctx["name_to_id"].get(first.replace("-", "_"))
-        )
-        if target and crate_id:
-            g.add_edge(crate_id, "imports", target, evidence="regex", confidence=0.9)
-        elif target:
-            g.add_edge(file_id, "imports", target, evidence="regex", confidence=0.9)
+    # use imports are emitted in a second pass once the module tree + symbols exist
+    # (see extract_all_rust); stash blanked code for that pass.
+    indexes.setdefault("rust_file_code", {})[rel] = (text, code)
 
     # --- types ---
     type_nodes: dict[str, str] = {}  # short name -> id
@@ -497,8 +861,16 @@ def extract_all_rust(
     cargo_ctx: dict[str, Any],
 ) -> dict[str, Any]:
     indexes = empty_rust_indexes()
+    mod_index = build_rust_module_index(files, cargo_ctx)
+    indexes["rust_module_index"] = mod_index
     for rel in files:
-        extract_rust_file(repo, rel, g, cargo_ctx, indexes)
+        extract_rust_file(repo, rel, g, cargo_ctx, indexes, mod_index=mod_index)
+    # File-level imports after symbols exist so type/fn targets resolve.
+    for rel, (text, code) in indexes.get("rust_file_code", {}).items():
+        emit_rust_imports(
+            repo, rel, text, code, g, cargo_ctx, indexes, mod_index,
+        )
+    indexes.pop("rust_file_code", None)
     resolve_rust_calls(g, indexes, cargo_ctx)
     # serializes edges for Serialize derives (type -> mark via edge from crate file)
     for tid in indexes["serializable"]:

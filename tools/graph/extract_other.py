@@ -372,24 +372,223 @@ def mark_test_coverage(g: Graph, indexes: dict[str, Any]) -> None:
 
 # --- Registries ---
 
+def _extract_cmd_enum_variants(text: str) -> list[str]:
+    """Return clap ``enum Cmd`` variant names from main.rs source."""
+    m = re.search(r"\benum\s+Cmd\s*\{", text)
+    if not m:
+        return []
+    i = text.find("{", m.start())
+    if i < 0:
+        return []
+    depth = 0
+    end = -1
+    for j in range(i, len(text)):
+        if text[j] == "{":
+            depth += 1
+        elif text[j] == "}":
+            depth -= 1
+            if depth == 0:
+                end = j
+                break
+    if end < 0:
+        return []
+    block = text[i + 1:end]
+    variants: list[str] = []
+    for vm in re.finditer(r"^\s+([A-Z][A-Za-z0-9]*)\s*[{(]", block, re.M):
+        name = vm.group(1)
+        if name in ("Ok", "Err", "Some", "None", "Cmd", "PathBuf", "String"):
+            continue
+        variants.append(name)
+    return variants
+
+
+def _match_arm_bodies(text: str) -> dict[str, str]:
+    """Extract ``Cmd::Variant => body`` arm bodies from ``match cli.cmd``."""
+    idx = text.find("match cli.cmd")
+    if idx < 0:
+        # fall back to any match on .cmd
+        m = re.search(r"match\s+\w+\.cmd\b", text)
+        if not m:
+            return {}
+        idx = m.start()
+    arms: dict[str, str] = {}
+    pos = idx
+    # scan only within a reasonable window of the match (whole main is fine)
+    limit = min(len(text), idx + 250_000)
+    while pos < limit:
+        m = re.search(r"Cmd::([A-Z][A-Za-z0-9]*)", text[pos:limit])
+        if not m:
+            break
+        name = m.group(1)
+        abs_start = pos + m.start()
+        arrow = text.find("=>", abs_start)
+        if arrow < 0 or arrow - abs_start > 3000:
+            pos = abs_start + 1
+            continue
+        j = arrow + 2
+        while j < len(text) and text[j] in " \t\n":
+            j += 1
+        if j >= len(text):
+            break
+        if text[j] == "{":
+            depth = 0
+            k_end = j
+            for k in range(j, len(text)):
+                if text[k] == "{":
+                    depth += 1
+                elif text[k] == "}":
+                    depth -= 1
+                    if depth == 0:
+                        k_end = k
+                        break
+            body = text[j:k_end + 1]
+            pos = k_end + 1
+        else:
+            k = j
+            depth = 0
+            while k < len(text):
+                c = text[k]
+                if c in "({[":
+                    depth += 1
+                elif c in ")}]":
+                    depth -= 1
+                elif c == "," and depth == 0:
+                    break
+                k += 1
+            body = text[j:k]
+            pos = k + 1
+        # keep first body per variant (match arms, not matches! macros earlier)
+        if name not in arms:
+            arms[name] = body
+    return arms
+
+
+_CLI_CALL_SKIP = frozenset({
+    "if", "for", "while", "loop", "match", "return", "break", "continue",
+    "move", "async", "await", "unsafe", "let", "const", "static", "fn",
+    "impl", "struct", "enum", "trait", "type", "use", "mod", "crate",
+    "super", "self", "Self", "true", "false", "Some", "None", "Ok", "Err",
+    "vec", "format", "println", "eprintln", "print", "write", "writeln",
+    "panic", "assert", "assert_eq", "assert_ne", "todo", "unimplemented",
+    "or_else", "and_then", "map_err", "ok_or_else", "unwrap_or",
+    "unwrap_or_else", "as_deref", "into", "from", "clone", "to_string",
+    "to_owned", "default", "new", "with", "map", "filter", "collect",
+    "iter", "push", "insert", "get", "len", "is_empty", "expect", "unwrap",
+    "parse", "ok", "err", "then", "cfg", "display", "is_none", "from_str",
+    "var_os", "var", "not", "as_ref", "as_mut", "to_path_buf", "PathBuf",
+    "String", "bool", "usize", "u64", "i64", "f64", "Box", "Arc", "Vec",
+    "HashMap", "env", "std", "path", "Default", "Option", "Result",
+    "drop", "into_iter", "copied", "cloned", "take", "as_str", "to_vec",
+    "is_some", "is_ok", "is_err", "unwrap_or_default", "or", "and",
+    "format_args", "write_fmt", "as_os_str", "to_string_lossy",
+})
+
+
+def _handler_calls_from_body(body: str) -> list[str]:
+    """Return candidate handler function names / short ids from a match arm body."""
+    # Prefer path::func and Type::method last segments, plus free functions.
+    names: list[str] = []
+    for m in re.finditer(
+        r"\b([A-Za-z_][A-Za-z0-9_]*(?:::[A-Za-z_][A-Za-z0-9_]*)+)\s*\(",
+        body,
+    ):
+        path = m.group(1)
+        # skip std / tokio constructors etc.
+        if path.startswith(("std::", "core::", "alloc::", "tokio::", "anyhow::")):
+            # keep leaf if it looks like a domain handler
+            leaf = path.split("::")[-1]
+            if leaf not in _CLI_CALL_SKIP and not leaf[0].isupper():
+                names.append(leaf)
+            # also record full path leaf for crate-local resolution
+            names.append(path.split("::")[-1])
+            # keep middle segment for hawking_serve::run → run
+            continue
+        leaf = path.split("::")[-1]
+        if leaf not in _CLI_CALL_SKIP:
+            names.append(leaf)
+    for m in re.finditer(r"(?<![:\w])([a-z_][A-Za-z0-9_]*)\s*\(", body):
+        name = m.group(1)
+        if name in _CLI_CALL_SKIP:
+            continue
+        names.append(name)
+    # preserve order, unique
+    return list(dict.fromkeys(names))
+
+
+def _link_cli_to_handlers(
+    g: Graph,
+    indexes: dict[str, Any],
+    cid: str,
+    handler_names: list[str],
+    *,
+    prefer_file: str | None = None,
+    confidence: float = 0.95,
+) -> int:
+    """Add calls edges from cli/adapter node to resolved function handlers. Returns count."""
+    linked = 0
+    for name in handler_names:
+        cands = list(dict.fromkeys(indexes.get("fns_by_name", {}).get(name, [])))
+        if prefer_file:
+            same = [c for c in cands if c.startswith(f"fn:{prefer_file}#")]
+            if same:
+                cands = same
+        # also try qualified last-segment already
+        if not cands:
+            cands = list(dict.fromkeys(indexes.get("fns_by_qual", {}).get(name, [])))
+        # unique global only when not preferred-file filtered
+        if len(cands) > 5:
+            # keep same-crate-ish: prefer paths under crates/hawking
+            narrowed = [
+                c for c in cands
+                if "/hawking" in c or (prefer_file and prefer_file in c)
+            ]
+            if narrowed:
+                cands = narrowed
+        for dst in cands[:4]:
+            if dst not in g.nodes:
+                continue
+            g.add_edge(
+                cid, "calls", dst,
+                evidence="regex", confidence=confidence, weight=1.0,
+            )
+            linked += 1
+    return linked
+
+
 def extract_registries(repo: Path, g: Graph, indexes: dict[str, Any]) -> None:
-    # CLI from clap in hawking main
-    main_rs = repo / "crates/hawking/src/main.rs"
+    # CLI from clap in hawking main — only real Cmd enum variants, linked to handlers
+    main_rel = "crates/hawking/src/main.rs"
+    main_rs = repo / main_rel
     if main_rs.exists():
         text = main_rs.read_text(errors="ignore")
-        # enum Cmd variants: Serve { / Generate {
-        for m in re.finditer(r"^\s+([A-Z][A-Za-z0-9]*)\s*[{(]", text, re.M):
-            # filter to those inside Cmd - heuristic: after "enum Cmd"
-            name = m.group(1)
-            if name in ("Ok", "Err", "Some", "None", "Cmd", "PathBuf", "String"):
-                continue
-            # only title-case command-like near clap
+        variants = _extract_cmd_enum_variants(text)
+        arms = _match_arm_bodies(text)
+        # ShaderHash appears in match but may be missing from enum in some revisions
+        for name in list(dict.fromkeys([*variants, *arms.keys()])):
             cid = f"cli:hawking {name.lower()}"
             g.add_node(make_node(
                 "cli_command", cid, f"hawking {name.lower()}",
-                path="crates/hawking/src/main.rs", lang="rust", public=True,
+                path=main_rel, lang="rust", public=True,
             ))
-            g.ensure_contains("file:crates/hawking/src/main.rs", cid, evidence="registry")
+            g.ensure_contains(f"file:{main_rel}", cid, evidence="registry")
+            body = arms.get(name, "")
+            handlers = _handler_calls_from_body(body) if body else []
+            # Prefer *_main style and domain calls; still try all
+            handlers_sorted = sorted(
+                handlers,
+                key=lambda h: (
+                    0 if h.endswith("_main") or h in ("run", "main") else 1,
+                    0 if "main" in h else 1,
+                    h,
+                ),
+            )
+            _link_cli_to_handlers(
+                g, indexes, cid, handlers_sorted,
+                prefer_file=main_rel, confidence=0.95,
+            )
+
+    # HTTP routes (axum) → adapter nodes with calls to handlers
+    _extract_http_routes(repo, g, indexes)
 
     # Events from categories + you_events
     for rel in (
@@ -688,6 +887,68 @@ def extract_registries(repo: Path, g: Graph, indexes: dict[str, Any]) -> None:
                         g.add_edge(fid, "writes_state", sid, evidence="regex", confidence=0.45)
                     if any(w in low for w in ("read", "get", "load", "fetch", "query", "select", "open")):
                         g.add_edge(fid, "reads_state", sid, evidence="regex", confidence=0.45)
+
+
+def _extract_http_routes(repo: Path, g: Graph, indexes: dict[str, Any]) -> None:
+    """Create adapter:http/... nodes for axum ``.route(path, method(handler))`` sites."""
+    # Scan common serve / backend HTTP entry files
+    candidates = [
+        "crates/hawking-serve/src/http.rs",
+        "crates/hawking-serve/src/lib.rs",
+        "crates/hide-backend/src/http.rs",
+        "crates/hide-backend/src/server.rs",
+        "crates/hide-kernel/src/tooling_mcp.rs",
+    ]
+    # Also any .rs under hawking-serve and hide-backend mentioning .route(
+    extra: list[str] = []
+    for root in ("crates/hawking-serve", "crates/hide-backend", "crates/hide-kernel"):
+        p = repo / root
+        if not p.is_dir():
+            continue
+        for f in sorted(p.rglob("*.rs")):
+            try:
+                rel = str(f.relative_to(repo))
+            except ValueError:
+                continue
+            if rel not in candidates:
+                extra.append(rel)
+    seen_files: list[str] = []
+    for rel in [*candidates, *extra]:
+        if rel in seen_files:
+            continue
+        seen_files.append(rel)
+        path = repo / rel
+        if not path.is_file() or path.stat().st_size > 2_000_000:
+            continue
+        try:
+            text = path.read_text(errors="ignore")
+        except OSError:
+            continue
+        if ".route(" not in text and "Router::new" not in text:
+            continue
+        # .route("/path", get(handler)) or post(handler) / put / delete / patch
+        for m in re.finditer(
+            r"""\.route\(\s*["']([^"']+)["']\s*,\s*(get|post|put|delete|patch|head|options)\s*\(\s*([A-Za-z_][A-Za-z0-9_:]*)\s*\)""",
+            text,
+        ):
+            route_path, method, handler = m.group(1), m.group(2), m.group(3)
+            leaf = handler.split("::")[-1]
+            # id: adapter:http/<METHOD> <path>
+            safe_path = route_path if len(route_path) < 80 else route_path[:80]
+            aid = f"adapter:http/{method.upper()} {safe_path}"
+            if aid not in g.nodes:
+                g.add_node(make_node(
+                    "adapter", aid, f"{method.upper()} {safe_path}",
+                    path=rel, lang="rust", public=True,
+                ))
+                # contain under file when present
+                fid = f"file:{rel}"
+                if fid in g.nodes:
+                    g.ensure_contains(fid, aid, evidence="regex")
+            _link_cli_to_handlers(
+                g, indexes, aid, [leaf],
+                prefer_file=rel, confidence=0.95,
+            )
 
 
 def _git_ls(repo: Path, globs: list[str] | None = None) -> list[str]:

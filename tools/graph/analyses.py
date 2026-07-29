@@ -776,8 +776,31 @@ def analyze_clones(g: SemanticGraph, *, min_family: int = 2) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
-def analyze_cochange(g: SemanticGraph, *, min_weight: float = 5.0) -> dict[str, Any]:
+def analyze_cochange(
+    g: SemanticGraph,
+    *,
+    min_count: int = 5,
+    min_weight: float | None = None,
+) -> dict[str, Any]:
+    """Find co-changing file pairs with no structural coupling.
+
+    Schema ``weight`` is ``count / min(commits_a, commits_b)`` ∈ [0, 1] — it
+    can never clear an absolute threshold of 5.0. The analysis therefore
+    thresholds on raw ``count`` (co-commits), which is what a threshold of 5
+    was intended to mean. Schema-normalized weight is still reported.
+
+    If a legacy ``min_weight`` is passed and is > 1.0, it is treated as
+    ``min_count`` for backwards compatibility with fixtures that stored raw
+    co-commit counts in the weight field.
+    """
     def run() -> dict[str, Any]:
+        # Interpret legacy min_weight>1 as a count threshold (fixture plant uses weight=18).
+        count_threshold = min_count
+        if min_weight is not None:
+            if min_weight > 1.0:
+                count_threshold = int(min_weight)
+            # min_weight in (0,1] would be a normalized-weight threshold; unused by default
+
         # Direct coupling pairs (imports/calls) at file level
         coupled: set[tuple[str, str]] = set()
         file_of: dict[str, str] = {}
@@ -797,12 +820,21 @@ def analyze_cochange(g: SemanticGraph, *, min_weight: float = 5.0) -> dict[str, 
                 coupled.add((a, b))
 
         pairs = []
+        seen_pair: set[tuple[str, str]] = set()
         for e in g.edges:
             if e["type"] != "co_changes":
                 continue
-            w = float(e.get("attrs", {}).get("weight", 1.0))
-            if w < min_weight:
-                continue
+            attrs = e.get("attrs") or {}
+            # Prefer schema count; fall back to weight when fixtures stuffed count into weight
+            count = int(attrs.get("count") or 0)
+            w = float(attrs.get("weight", 0.0) or 0.0)
+            if count <= 0 and w > 1.0:
+                # fixture / legacy: weight carried the co-commit count
+                count = int(w)
+            if count < count_threshold:
+                # also accept high normalized weight only when explicitly requested
+                if not (min_weight is not None and 0 < min_weight <= 1.0 and w >= min_weight):
+                    continue
             s, d = e["src"], e["dst"]
             # map to files if needed
             s = file_of.get(s, s if s.startswith("file:") else None)
@@ -810,6 +842,9 @@ def analyze_cochange(g: SemanticGraph, *, min_weight: float = 5.0) -> dict[str, 
             if not s or not d or s == d:
                 continue
             a, b = (s, d) if s < d else (d, s)
+            if (a, b) in seen_pair:
+                continue
+            seen_pair.add((a, b))
             direct = (a, b) in coupled
             if direct:
                 continue
@@ -819,6 +854,7 @@ def analyze_cochange(g: SemanticGraph, *, min_weight: float = 5.0) -> dict[str, 
                     "b": b,
                     "a_path": g.path_of(a),
                     "b_path": g.path_of(b),
+                    "co_changes_count": count,
                     "co_changes_weight": w,
                     "direct_imports_or_calls": False,
                     "loc_a": g.loc_of(a),
@@ -828,16 +864,29 @@ def analyze_cochange(g: SemanticGraph, *, min_weight: float = 5.0) -> dict[str, 
                     "subsystem_b": _subsystem(g, b),
                 }
             )
-        pairs.sort(key=lambda x: (-x["co_changes_weight"], -x["combined_loc"]))
+        pairs.sort(
+            key=lambda x: (
+                -x["co_changes_count"],
+                -x["co_changes_weight"],
+                -x["combined_loc"],
+            )
+        )
 
+        top_c = pairs[0]["co_changes_count"] if pairs else 0
+        top_w = pairs[0]["co_changes_weight"] if pairs else 0
         summary = (
-            f"Found {len(pairs)} file pairs with co_changes weight>={min_weight} "
+            f"Found {len(pairs)} file pairs with co_changes count>={count_threshold} "
+            f"(schema weight=count/min(commits), ∈[0,1]; threshold is raw co-commit count) "
             f"but no direct imports/calls coupling — layout-split module candidates. "
-            f"Top weight={pairs[0]['co_changes_weight'] if pairs else 0}."
+            f"Top count={top_c}, top weight={top_w}."
         )
         return {
             "machine": {
-                "min_weight": min_weight,
+                "min_count": count_threshold,
+                "min_weight_schema_note": (
+                    "weight is count/min(commits_a,commits_b) per schema; "
+                    "analysis thresholds on count, not weight"
+                ),
                 "n_pairs": len(pairs),
                 "pairs": pairs[:100],
             },
@@ -854,10 +903,16 @@ def analyze_cochange(g: SemanticGraph, *, min_weight: float = 5.0) -> dict[str, 
 
 def analyze_fanin(g: SemanticGraph, *, min_adapters: int = 4, max_adapter_loc: int = 25) -> dict[str, Any]:
     def run() -> dict[str, Any]:
-        # Authority = function with many inbound calls from thin callers
+        # Authority = function with many inbound calls from thin callers.
+        # Exclude artefact edges: low-confidence ambiguous name matches and
+        # stub function nodes (loc<=1 with no real body) that inflate rings to
+        # hundreds of 1-LOC "adapters".
         callers_of: dict[str, list[str]] = defaultdict(list)
         for e in g.edges:
             if e["type"] not in ("calls", "runtime_calls"):
+                continue
+            conf = float(e.get("attrs", {}).get("confidence", 1.0) or 1.0)
+            if conf < 0.5:
                 continue
             if g.nodes.get(e["src"], {}).get("type") != "function":
                 continue
@@ -866,18 +921,25 @@ def analyze_fanin(g: SemanticGraph, *, min_adapters: int = 4, max_adapter_loc: i
             callers_of[e["dst"]].append(e["src"])
 
         rings = []
+        n_stub_excluded = 0
         for auth, callers in callers_of.items():
             if _is_excluded(g, auth):
                 continue
             thin = []
             for c in callers:
                 loc = g.loc_of(c)
+                # loc<=1 is almost always a brace-match failure or a pure
+                # forward declaration stub — not a real thin adapter body.
+                if loc <= 1:
+                    n_stub_excluded += 1
+                    continue
                 complexity = int(g.attr(c, "complexity", 0) or 0)
                 # thin body: low loc, low complexity, few outbound calls
                 out_calls = [
                     e
                     for e in g.out_edges.get(c, [])
                     if e["type"] in ("calls", "runtime_calls")
+                    and float(e.get("attrs", {}).get("confidence", 1.0) or 1.0) >= 0.5
                 ]
                 if loc <= max_adapter_loc and complexity <= 2 and len(out_calls) <= 2:
                     thin.append(c)
@@ -904,7 +966,7 @@ def analyze_fanin(g: SemanticGraph, *, min_adapters: int = 4, max_adapter_loc: i
 
         summary = (
             f"Found {len(rings)} authorities with >={min_adapters} thin adapters "
-            f"(body LOC<={max_adapter_loc}). "
+            f"(body LOC 2..{max_adapter_loc}, conf>=0.5; excluded loc<=1 stubs). "
             f"Largest ring: {rings[0]['adapter_count'] if rings else 0} adapters, "
             f"{rings[0]['adapter_total_loc'] if rings else 0} adapter LOC — "
             f"generate-bindings candidates."
@@ -913,6 +975,9 @@ def analyze_fanin(g: SemanticGraph, *, min_adapters: int = 4, max_adapter_loc: i
             "machine": {
                 "min_adapters": min_adapters,
                 "max_adapter_loc": max_adapter_loc,
+                "min_adapter_loc": 2,
+                "min_call_confidence": 0.5,
+                "stub_callers_excluded": n_stub_excluded,
                 "n_rings": len(rings),
                 "rings": rings[:80],
             },

@@ -13,14 +13,11 @@ import pytest
 from tools.condense.glm52_common import seal
 from tools.condense import glm52_terminal_proofs as proofs
 
-
 REPO_ROOT = Path(__file__).resolve().parents[3]
-
 
 @pytest.fixture(scope="module")
 def current_proofs() -> dict[str, dict[str, Any]]:
     return proofs.derive_all_ready_stop_proofs(REPO_ROOT)
-
 
 def _copy_bound_inputs(
     tmp_path: Path, proof: dict[str, Any]
@@ -33,7 +30,6 @@ def _copy_bound_inputs(
             shutil.copy2(source, target)
     return tmp_path
 
-
 def _mutate_sealed(path: Path, mutation: Any) -> None:
     value = json.loads(path.read_text(encoding="utf-8"))
     mutation(value)
@@ -41,7 +37,6 @@ def _mutate_sealed(path: Path, mutation: Any) -> None:
         json.dumps(seal(value), indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
-
 
 def test_all_and_only_nine_current_derivations_validate_read_only(
     current_proofs: dict[str, dict[str, Any]],
@@ -52,7 +47,6 @@ def test_all_and_only_nine_current_derivations_validate_read_only(
     assert validated == current_proofs
     assert sum(value["status"] == "PASS" for value in current_proofs.values()) == 8
     assert current_proofs["kimi_raw_source_safely_released"]["status"] == "BLOCKED"
-
 
 def test_proofs_bind_actual_validator_module_bytes(
     current_proofs: dict[str, dict[str, Any]],
@@ -69,7 +63,6 @@ def test_proofs_bind_actual_validator_module_bytes(
         expected["sha256"]
     }
 
-
 def test_semantic_derivations_are_not_production_receipts(
     current_proofs: dict[str, dict[str, Any]],
 ) -> None:
@@ -77,7 +70,6 @@ def test_semantic_derivations_are_not_production_receipts(
         assert "seal_sha256" not in value
         assert "producer_hmac_sha256" not in value
         assert "expected_contract_sha256" not in value
-
 
 def test_generic_test_true_object_is_rejected() -> None:
     with pytest.raises(proofs.TerminalProofError, match="fields"):
@@ -87,11 +79,9 @@ def test_generic_test_true_object_is_rejected() -> None:
             {"test": True},
         )
 
-
 def test_unknown_or_not_ready_stop_is_rejected() -> None:
     with pytest.raises(proofs.TerminalProofError, match="not offline-evidence-ready"):
         proofs.derive_stop_proof(REPO_ROOT, "capability_result_sealed")
-
 
 def test_one_stops_proof_cannot_be_swapped_into_another(
     current_proofs: dict[str, dict[str, Any]],
@@ -102,7 +92,6 @@ def test_one_stops_proof_cannot_be_swapped_into_another(
             "corpus_integrity_green",
             current_proofs["adapter_twin_green"],
         )
-
 
 @pytest.mark.parametrize(
     ("field", "value", "message"),
@@ -126,7 +115,6 @@ def test_wrong_proof_identity_is_rejected(
             REPO_ROOT, "bf16_source_manifest_complete", changed
         )
 
-
 def test_status_or_blocker_shape_cannot_be_forged(
     current_proofs: dict[str, dict[str, Any]],
 ) -> None:
@@ -142,7 +130,6 @@ def test_status_or_blocker_shape_cannot_be_forged(
             REPO_ROOT, "kimi_raw_source_safely_released", changed
         )
 
-
 def test_validator_source_drift_is_rejected(
     current_proofs: dict[str, dict[str, Any]],
 ) -> None:
@@ -152,7 +139,6 @@ def test_validator_source_drift_is_rejected(
         proofs.validate_stop_proof(
             REPO_ROOT, "external_baseline_matrix_complete", changed
         )
-
 
 def test_wrong_bound_artifact_seal_is_rejected(
     current_proofs: dict[str, dict[str, Any]],
@@ -166,7 +152,6 @@ def test_wrong_bound_artifact_seal_is_rejected(
             REPO_ROOT, "exact_logical_weight_ledger_sealed", changed
         )
 
-
 def test_wrong_authoritative_total_is_rejected(
     current_proofs: dict[str, dict[str, Any]],
 ) -> None:
@@ -176,7 +161,6 @@ def test_wrong_authoritative_total_is_rejected(
         proofs.validate_stop_proof(
             REPO_ROOT, "exact_logical_weight_ledger_sealed", changed
         )
-
 
 def test_manifest_completeness_cannot_be_promoted_to_body_verification(
     current_proofs: dict[str, dict[str, Any]],
@@ -198,7 +182,6 @@ def test_manifest_completeness_cannot_be_promoted_to_body_verification(
             REPO_ROOT, "bf16_source_manifest_complete", changed
         )
 
-
 def test_adapter_and_corpus_boundaries_do_not_overclaim(
     current_proofs: dict[str, dict[str, Any]],
 ) -> None:
@@ -211,7 +194,6 @@ def test_adapter_and_corpus_boundaries_do_not_overclaim(
     assert corpus["facts"]["network_access_used"] is False
     assert corpus["facts"]["capability_claimed"] is False
     assert corpus["facts"]["withheld_context_rungs"] == ["256K", "1M"]
-
 
 def test_kimi_partial_evidence_and_rollback_exceptions_remain_visible(
     current_proofs: dict[str, dict[str, Any]],
@@ -230,7 +212,6 @@ def test_kimi_partial_evidence_and_rollback_exceptions_remain_visible(
     assert release["facts"]["total_cleanup_delta_bytes"] == 597_515_915_264
     assert len(release["blockers"]) == 4
     assert len(release["scope"]["remediation_required"]) == 5
-
 
 @pytest.mark.parametrize(
     ("condition", "relative", "mutation"),
@@ -269,7 +250,6 @@ def test_resealed_wrong_revision_total_schema_or_status_is_rejected(
     with pytest.raises(proofs.TerminalProofError, match="frozen seal"):
         proofs.derive_stop_proof(root, condition)
 
-
 def test_bad_artifact_self_seal_is_rejected(
     tmp_path: Path,
     current_proofs: dict[str, dict[str, Any]],
@@ -282,7 +262,6 @@ def test_bad_artifact_self_seal_is_rejected(
     path.write_text(json.dumps(value), encoding="utf-8")
     with pytest.raises(proofs.TerminalProofError, match="seal mismatch"):
         proofs.derive_stop_proof(root, condition)
-
 
 def test_resealed_false_body_claim_in_manifest_is_rejected(
     tmp_path: Path,
@@ -300,7 +279,6 @@ def test_resealed_false_body_claim_in_manifest_is_rejected(
     _mutate_sealed(root / "GLM52_OFFICIAL_MANIFEST.json", mutation)
     with pytest.raises(proofs.TerminalProofError, match="frozen seal"):
         proofs.derive_stop_proof(root, condition)
-
 
 def test_module_has_no_write_receipt_or_external_execution_api() -> None:
     public_functions = {
@@ -321,7 +299,6 @@ def test_module_has_no_write_receipt_or_external_execution_api() -> None:
     for forbidden in ("atomic_json(", "unlink(", "remove(", "subprocess.", "socket."):
         assert forbidden not in source
 
-
 def test_reader_rejects_symlink_ancestor_root_and_hardlinked_evidence(
     tmp_path: Path,
 ) -> None:
@@ -338,7 +315,6 @@ def test_reader_rejects_symlink_ancestor_root_and_hardlinked_evidence(
     reader = proofs._Reader(real)
     with pytest.raises(proofs.TerminalProofError, match="multiple hard links"):
         reader.raw("evidence.json")
-
 
 def test_reader_rejects_root_replacement_after_initialization(tmp_path: Path) -> None:
     root = tmp_path / "root"

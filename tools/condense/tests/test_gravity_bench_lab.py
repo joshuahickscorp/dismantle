@@ -20,7 +20,6 @@ if _HERE not in sys.path:
 
 import gravity_bench_lab as bl  # noqa: E402
 
-
 def _spec(**over):
     base = dict(rows=64, cols=128, batch=1, input_seed=7, input_dtype="float32",
                 output_dtype="float32", warmup=1, reps=5,
@@ -28,7 +27,6 @@ def _spec(**over):
                 pack_in_timed_region=False, unpack_in_timed_region=True)
     base.update(over)
     return bl.BenchSpec(**base)
-
 
 def _result(baseline, samples, spec=None, **over):
     return bl.BenchResult(
@@ -38,12 +36,10 @@ def _result(baseline, samples, spec=None, **over):
         **over,
     )
 
-
 def test_matched_specs_are_field_identical():
     assert bl.matched(_spec(), _spec())
     assert bl.mismatched_fields(_spec(), _spec()) == ()
     bl.require_matched(_spec(), _spec())
-
 
 @pytest.mark.parametrize("field,value", [
     ("rows", 65), ("cols", 129), ("batch", 2), ("input_seed", 8),
@@ -62,20 +58,17 @@ def test_any_differing_field_breaks_the_match(field, value):
         bl.require_matched(_spec(), other)
     assert _spec().fingerprint != other.fingerprint
 
-
 def test_speedup_refuses_unmatched_specs():
     base = _result("cpu_authority", [1.0, 1.0, 1.0, 1.0, 1.0])
     cand = _result("custom_v2", [0.5, 0.5, 0.5, 0.5, 0.5], spec=_spec(batch=2))
     with pytest.raises(bl.MatchedBenchmarkError, match="unmatched BenchSpecs"):
         bl.speedup(base, cand)
 
-
 def test_speedup_refuses_unreproduced_baseline():
     base = _result("dense_fp16_mps", [1.0, 1.0, 1.0, 1.0, 1.0], reproduced=False)
     cand = _result("custom_v2", [0.5, 0.5, 0.5, 0.5, 0.5])
     with pytest.raises(bl.MatchedBenchmarkError, match="unreproduced"):
         bl.speedup(base, cand)
-
 
 def test_speedup_refuses_mismatched_timed_region():
     """GPU-only time on one side and wall clock on the other is not a matched comparison."""
@@ -86,7 +79,6 @@ def test_speedup_refuses_mismatched_timed_region():
     with pytest.raises(bl.MatchedBenchmarkError, match="component mismatch"):
         bl.speedup(base, cand)
 
-
 def test_speedup_on_matched_specs_reports_the_ratio_and_direction():
     base = _result("dense_fp16_mps", [0.3674] * 5)
     cand = _result("custom_v2", [0.5057] * 5)
@@ -96,11 +88,9 @@ def test_speedup_on_matched_specs_reports_the_ratio_and_direction():
     assert math.isclose(out["speedup"], 0.3674 / 0.5057, rel_tol=1e-9)
     assert out["slower_than_baseline"]           # the corrected truth, not 35.9x
 
-
 def test_unknown_baseline_name_is_rejected():
     with pytest.raises(bl.MatchedBenchmarkError, match="unknown baseline"):
         _result("my_fast_kernel", [1.0, 1.0])
-
 
 def test_raw_sample_statistics_are_correct_and_no_mean_is_exposed():
     samples = (1.0, 2.0, 3.0, 4.0, 100.0)
@@ -116,12 +106,10 @@ def test_raw_sample_statistics_are_correct_and_no_mean_is_exposed():
     assert not any("mean" in k for k in st.to_json())
     assert not hasattr(st, "mean_ms")
 
-
 def test_p95_nearest_rank_on_twenty_samples():
     st = bl.TimingStats(tuple(float(i) for i in range(1, 21)))
     assert st.median_ms == 10.5
     assert st.p95_ms == 19.0                      # ceil(0.95*20)=19 -> 19th smallest
-
 
 def test_timing_stats_reject_degenerate_input():
     with pytest.raises(bl.MatchedBenchmarkError):
@@ -130,7 +118,6 @@ def test_timing_stats_reject_degenerate_input():
         bl.TimingStats((1.0, float("nan")))
     with pytest.raises(bl.MatchedBenchmarkError):
         bl.TimingStats((1.0, -1.0))
-
 
 def test_contention_flag_tracks_the_documented_threshold():
     quiet = bl.TimingStats((1.00, 1.01, 0.99, 1.00, 1.02))
@@ -143,7 +130,6 @@ def test_contention_flag_tracks_the_documented_threshold():
     assert noisy.median_ms == 1.0 and noisy.max_ms == 5.0     # tail is load, not hardware
     assert noisy.to_json()["contention_cv_threshold"] == 0.15
 
-
 def test_unmeasured_components_serialise_as_unmeasured_not_zero():
     res = _result("cpu_authority", [1.0, 1.0, 1.0])
     timings = res.to_json()["timings"]
@@ -154,11 +140,9 @@ def test_unmeasured_components_serialise_as_unmeasured_not_zero():
         assert timings[name] == "UNMEASURED"
         assert timings[name] != 0
 
-
 def test_at_least_one_component_must_be_measured():
     with pytest.raises(bl.MatchedBenchmarkError):
         bl.ComponentTimings()
-
 
 def test_roofline_bills_against_the_measured_roofs():
     res = _result("cpu_authority", [1.0, 1.0, 1.0])
@@ -170,18 +154,15 @@ def test_roofline_bills_against_the_measured_roofs():
     assert math.isclose(roof["fraction_of_compute_roof"], 1.0, rel_tol=1e-9)
     assert bl.BANDWIDTH_ROOF_GB_S == 736.0 and bl.COMPUTE_ROOF_GFLOP_S == 17703.0
 
-
 def test_roofline_without_counters_is_unmeasured():
     roof = _result("cpu_authority", [1.0, 1.0, 1.0]).roofline()
     assert roof["achieved_gb_s"] == "UNMEASURED"
     assert roof["fraction_of_compute_roof"] == "UNMEASURED"
 
-
 @pytest.mark.parametrize("name", [c.name for c in bl.REFUTED_CLAIMS])
 def test_refuted_claims_are_rejected_by_name(name):
     with pytest.raises(bl.MatchedBenchmarkError, match="REFUTED"):
         bl.assert_not_refuted(name=name)
-
 
 @pytest.mark.parametrize("kind,value", [
     ("milliseconds", 9.012), ("ratio", 35.9), ("parity", 1.4e-6),
@@ -189,7 +170,6 @@ def test_refuted_claims_are_rejected_by_name(name):
 def test_refuted_claims_are_rejected_by_value(kind, value):
     with pytest.raises(bl.MatchedBenchmarkError, match="REFUTED"):
         bl.assert_not_refuted(kind=kind, value=value)
-
 
 def test_the_retracted_headline_cannot_be_rebuilt():
     """9.012 ms / 0.2511 ms = 35.9x. Both the baseline and the ratio are rejected."""
@@ -203,12 +183,10 @@ def test_the_retracted_headline_cannot_be_rebuilt():
     with pytest.raises(bl.MatchedBenchmarkError, match="speedup_35.9x"):
         bl.speedup(base2, cand2)
 
-
 def test_honest_numbers_pass_the_refuted_guard():
     bl.assert_not_refuted(kind="milliseconds", value=0.3674)
     bl.assert_not_refuted(kind="ratio", value=0.727)
     bl.assert_not_refuted(kind="parity", value=2.1e-4)
-
 
 def test_spec_and_result_json_round_trip():
     spec = _spec()
@@ -219,7 +197,6 @@ def test_spec_and_result_json_round_trip():
     back = bl.BenchResult.from_json(json.loads(json.dumps(res.to_json())))
     assert back == res
     assert back.to_json() == res.to_json()
-
 
 def test_report_schema_round_trip():
     base = _result("cpu_authority", [1.0, 1.0, 1.0])
@@ -235,16 +212,13 @@ def test_report_schema_round_trip():
     assert loaded["matched"][0]["specs_matched"] is True
     assert [bl.BenchResult.from_json(r).to_json() for r in loaded["results"]] == loaded["results"]
 
-
 def test_report_writer_refuses_a_foreign_schema(tmp_path):
     with pytest.raises(bl.MatchedBenchmarkError):
         bl.write_report(tmp_path / "x.json", {"schema": "something.else.v1"})
 
-
 def test_build_report_refuses_an_unasserted_speedup():
     with pytest.raises(bl.MatchedBenchmarkError, match="specs_matched"):
         bl.build_report([], [{"baseline": "cpu_authority", "candidate": "custom_v2"}], label="t")
-
 
 def test_measure_keeps_every_sample():
     spec = _spec(warmup=2, reps=7)
@@ -252,7 +226,6 @@ def test_measure_keeps_every_sample():
     stats = bl.measure(lambda: calls.append(1), spec)
     assert len(calls) == 9                       # warmup runs, but is not timed
     assert stats.count == 7 == len(stats.raw_samples_ms)
-
 
 def test_selftest_runs_cpu_only_and_is_internally_consistent():
     report = bl.selftest(rows=64, cols=128)

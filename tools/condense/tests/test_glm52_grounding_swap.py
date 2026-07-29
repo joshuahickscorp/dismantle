@@ -1,11 +1,4 @@
-"""Darwin swap parsing: rounded display values must not fail, and must fail safe.
-
-``sysctl -n vm.swapusage`` prints two-decimal display values, so the exact byte count is
-unrecoverable.  Requiring an integral byte count rejected almost every real reading -- the
-sampler failed as a function of live swap rather than of anything being wrong -- while
-guessing a midpoint would let admission be granted on a number the machine never proved.
-These tests pin the resolution: consumption rounds up, headroom rounds down.
-"""
+"""``sysctl -n vm.swapusage`` prints two-decimal display values, so the exact byte count is"""
 from __future__ import annotations
 
 import pytest
@@ -20,11 +13,9 @@ VM_STAT = (
     "Pages speculative:                            10.\n"
 )
 
-
 def sample(swapusage: str):
     return grounding.parse_darwin_memory(
         hw_memsize=HW_MEMSIZE, vm_stat=VM_STAT, swapusage=swapusage)
-
 
 @pytest.mark.parametrize(
     "swapusage,used,total",
@@ -42,19 +33,16 @@ def test_rounded_display_values_parse(swapusage: str, used: int, total: int) -> 
     assert got.used_swap_bytes == used
     assert got.total_swap_bytes == total
 
-
 def test_used_rounds_up_and_total_rounds_down() -> None:
     """Ambiguity is resolved against us, never in our favour."""
     got = sample("total = 1024.56M  used = 220.56M  free = 803.44M")
     assert got.used_swap_bytes == 231_273_923      # ceil of ...922.56
     assert got.total_swap_bytes == 1_074_329_026   # floor of ...026.56
 
-
 def test_full_swap_does_not_invert_the_invariant() -> None:
     """Opposite rounding at the cap must clamp, not raise."""
     got = sample("total = 1024.00M  used = 1024.00M  free = 0.00M")
     assert got.used_swap_bytes == got.total_swap_bytes
-
 
 @pytest.mark.parametrize("swapusage", [
     "garbage",
@@ -66,7 +54,6 @@ def test_full_swap_does_not_invert_the_invariant() -> None:
 def test_malformed_or_missing_is_refused(swapusage: str) -> None:
     with pytest.raises(grounding.GroundingError):
         sample(swapusage)
-
 
 def test_live_swap_parses_whatever_the_machine_currently_reports() -> None:
     """The regression this fixes only appeared against real live values."""

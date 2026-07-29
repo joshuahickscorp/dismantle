@@ -20,7 +20,6 @@ if str(CONDENSE) not in sys.path:
 import glm52_pack as pack  # noqa: E402
 import gravity_format  # noqa: E402
 
-
 def _tiny_shard(tmp_path: pathlib.Path):
     """One BF16 tensor written raw: pack_shard reads by offset, not by header."""
     rng = np.random.default_rng(0)
@@ -37,7 +36,6 @@ def _tiny_shard(tmp_path: pathlib.Path):
     }]
     return shard, rows
 
-
 def test_pack_leaves_no_partial_and_verifies(tmp_path):
     shard, rows = _tiny_shard(tmp_path)
     out = tmp_path / "compact"
@@ -48,7 +46,6 @@ def test_pack_leaves_no_partial_and_verifies(tmp_path):
     assert list(out.glob("*.partial")) == [], "a partial file survived the pack"
     assert receipt["shard"] == shard.name
     assert gravity_format.verify(gravity)["ok"], "packed artifact does not verify"
-
 
 def test_ladder_survey_samples_experts_but_never_the_target_rung(tmp_path, monkeypatch):
     """Sampling may thin the rate survey; it may never thin the artifact."""
@@ -85,20 +82,8 @@ def test_ladder_survey_samples_experts_but_never_the_target_rung(tmp_path, monke
             full += 1
     assert (full, thin) == (2, 2)
 
-
 def test_the_fit_kernel_is_recorded_and_never_moves_the_ledger(tmp_path, monkeypatch):
-    """Either k-means arithmetic may be selected; the shard must say which, and the
-    billed size must not depend on the choice.
-
-    Deliberately NOT asserted: that the two kernels agree byte-for-byte. They agree on
-    small tensors and diverge on production-sized ones, because the only difference is a
-    per-row constant subtract that can collapse a strict inequality into a tie, and one
-    such collapse in the first iteration redirects the whole k-means trajectory. Pinning
-    byte-equality here would pass on a fixture and lie about the real artifact.
-
-    What must hold, and does: the payload SIZE is a function of (rung, element count)
-    alone, so the frozen byte auction is valid under either kernel.
-    """
+    """Either k-means arithmetic may be selected; the shard must say which, and the billed size must not de"""
     shard, rows = _tiny_shard(tmp_path)
     sizes = {}
     for kernel in pack.forge.FIT_KERNELS:
@@ -113,15 +98,8 @@ def test_the_fit_kernel_is_recorded_and_never_moves_the_ledger(tmp_path, monkeyp
     assert sizes["v1_full_distance"] == sizes["v2_lean_argmin"], \
         "the fit kernel changed a billed payload size; the frozen byte auction would be void"
 
-
 def test_an_overridden_tensor_is_sampled_like_any_other_routed_expert(tmp_path, monkeypatch):
-    """A Prometheus override must move the target rung, not exempt the schedule.
-
-    This is the case Math-Preserve actually runs: the frozen allocation overrides 56,076
-    of 59,585 tensors, so an exemption for "the overridden tensor" is an exemption for
-    the whole model.  What must hold is narrower -- whatever rung a tensor is allocated
-    is fitted for that tensor, and the *other* rungs are a survey subject to sampling.
-    """
+    """A Prometheus override must move the target rung, not exempt the schedule. This is the case Math-Pres"""
     monkeypatch.setattr(pack, "LADDER_SAMPLE_EVERY", 2)
     shard, rows = _tiny_shard(tmp_path)
     base = rows[0]
@@ -149,7 +127,6 @@ def test_an_overridden_tensor_is_sampled_like_any_other_routed_expert(tmp_path, 
             sampled_out_production += 1
     assert sampled_out_production == 2, \
         "the unused production rung should be skipped on every non-survey tensor"
-
 
 def test_a_partial_write_never_takes_the_final_name(tmp_path, monkeypatch):
     """If the write dies, the .gravity name must still be absent."""

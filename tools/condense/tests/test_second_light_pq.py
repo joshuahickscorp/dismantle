@@ -18,7 +18,6 @@ if _HERE not in sys.path:
 
 import gravity_forge as gf  # noqa: E402
 
-
 def _lowrank(m=256, n=256, r=24, noise=0.01, seed=0):
     """A genuinely low-rank matrix (rank r of min(m,n)) plus a little full-rank noise, so PQ leaves a
     meaningful residual for islands and Doctor to work on. Not a 0.5B-style toy."""
@@ -26,10 +25,7 @@ def _lowrank(m=256, n=256, r=24, noise=0.01, seed=0):
     base = rng.standard_normal((m, r)).astype(np.float32) @ rng.standard_normal((r, n)).astype(np.float32)
     return (base * 0.1 + rng.standard_normal((m, n)).astype(np.float32) * noise).astype(np.float32)
 
-
-# --------------------------------------------------------------------------------------------
 # Lifecycle: inspect / fit / pack / measure / repairability roundtrip.
-# --------------------------------------------------------------------------------------------
 def test_pq_lifecycle_roundtrip():
     w = _lowrank()
     fam = gf.PQFamily(dim=32, subspaces=4, k=32, seed=0)
@@ -55,7 +51,6 @@ def test_pq_lifecycle_roundtrip():
     assert 0.0 <= rep["rank4_capture"] <= 1.0 and 0.0 <= rep["sparse_row_capture"] <= 1.0
     assert rep["residual_rel_energy"] > 0.0
 
-
 def test_pq_plain_and_rotated_both_available():
     """PQ must exist as its own geometry (plain, no Hadamard) AND as the rotated transform_pq variant."""
     w = _lowrank()
@@ -67,10 +62,7 @@ def test_pq_plain_and_rotated_both_available():
     assert "transform_seed" not in plain.ledger.items
     assert "transform_seed" in rotated.ledger.items
 
-
-# --------------------------------------------------------------------------------------------
 # Direct compact execution: y = W_pq @ x from codebooks, no full dense reconstruction.
-# --------------------------------------------------------------------------------------------
 @pytest.mark.parametrize("rotate", [False, True])
 def test_pq_direct_execute_matches_dense(rotate):
     w = _lowrank()
@@ -84,7 +76,6 @@ def test_pq_direct_execute_matches_dense(rotate):
     val = gf.pq_validate(w, art, x)
     assert val["within_tol"] and val["no_dense_reconstruction"] is True
 
-
 def test_pq_execute_batched():
     w = _lowrank()
     art = gf.pq_pack(w, dim=32, subspaces=4, k=32)
@@ -95,10 +86,7 @@ def test_pq_execute_batched():
     rel = float(np.linalg.norm(Y - art.recon @ X) / (np.linalg.norm(art.recon @ X) + 1e-12))
     assert rel < 1e-4
 
-
-# --------------------------------------------------------------------------------------------
 # Deterministic byte accounting: same seed => identical bytes, recon, and codes.
-# --------------------------------------------------------------------------------------------
 def test_pq_deterministic_bytes_and_recon():
     w = _lowrank()
     a = gf.pq_pack(w, dim=32, subspaces=4, k=32, seed=11)
@@ -110,7 +98,6 @@ def test_pq_deterministic_bytes_and_recon():
     # run-to-run (documented: CPU is authoritative). The bytes and codes are what the ledger bills.
     assert np.allclose(a.recon, b.recon, atol=1e-5)
 
-
 def test_pq_byte_ledger_counts_indices_and_codebooks():
     w = _lowrank()
     art = gf.pq_pack(w, dim=32, subspaces=4, k=32)
@@ -118,10 +105,7 @@ def test_pq_byte_ledger_counts_indices_and_codebooks():
     assert art.ledger.total_bits() > sum(art.ledger.items.values())   # metadata always charged
     assert art.whole_artifact_bpw >= art.base_bpw + art.doctor_bpw - 1e-6
 
-
-# --------------------------------------------------------------------------------------------
 # Protected islands: deterministic, evidence-based, and BILLED (no free islands).
-# --------------------------------------------------------------------------------------------
 @pytest.mark.parametrize("strategy", list(gf._ISLAND_STRATEGIES))
 def test_protected_island_selection_is_deterministic(strategy):
     w = _lowrank()
@@ -135,7 +119,6 @@ def test_protected_island_selection_is_deterministic(strategy):
     assert np.array_equal(a["row_indices"], b["row_indices"])     # deterministic
     assert a["n_islands"] == int(np.ceil(0.05 * w.shape[0]))      # respects budget_frac
     assert np.all(np.diff(a["row_indices"]) > 0)                  # sorted, unique
-
 
 def test_protected_islands_are_billed_and_increase_bpw():
     w = _lowrank()
@@ -151,13 +134,11 @@ def test_protected_islands_are_billed_and_increase_bpw():
     rows = isl.config["pq_codes"]["island_rows"]
     assert np.allclose(isl.recon[rows], w[rows], atol=1e-6)
 
-
 def test_more_islands_cost_more_bytes():
     w = _lowrank()
     small = gf.pack_pq_protected_islands(w, dim=32, subspaces=4, k=32, budget_frac=0.02)
     big = gf.pack_pq_protected_islands(w, dim=32, subspaces=4, k=32, budget_frac=0.10)
     assert big.whole_artifact_bpw > small.whole_artifact_bpw
-
 
 def test_protected_island_artifact_executes_with_exact_rows():
     w = _lowrank()
@@ -170,10 +151,7 @@ def test_protected_island_artifact_executes_with_exact_rows():
     # and the whole execute matches the artifact's own reconstruction matvec.
     assert np.linalg.norm(y - isl.recon @ x) / (np.linalg.norm(isl.recon @ x) + 1e-12) < 1e-4
 
-
-# --------------------------------------------------------------------------------------------
 # PQ-aware Doctor: within a hard byte budget, and it reduces error.
-# --------------------------------------------------------------------------------------------
 @pytest.mark.parametrize("treatment", list(gf._DOCTOR_TREATMENTS))
 def test_doctor_stays_within_budget(treatment):
     w = _lowrank()
@@ -184,7 +162,6 @@ def test_doctor_stays_within_budget(treatment):
     assert out["added_bytes"] <= budget and out["within_budget"]
     assert out["quality_delta"] >= -1e-6                          # never worsens the artifact
 
-
 def test_doctor_reduces_error_for_repairing_treatments():
     """The three treatments that add explicit residual capacity must strictly reduce weight error."""
     w = _lowrank()
@@ -194,7 +171,6 @@ def test_doctor_reduces_error_for_repairing_treatments():
         assert out["quality_delta"] > 0.0, treatment
         assert out["err_after"] < out["err_before"], treatment
 
-
 def test_doctor_respects_tiny_budget():
     """With a tiny budget the Doctor must still not exceed it (bounded, honest)."""
     w = _lowrank()
@@ -202,17 +178,13 @@ def test_doctor_respects_tiny_budget():
     out = gf.doctor_pq(w, base, byte_budget=200, strategy="sparse_residual")
     assert out["added_bytes"] <= 200
 
-
 def test_doctor_rejects_unknown_treatment():
     w = _lowrank()
     base = gf.pq_pack(w, dim=32, subspaces=4, k=16)
     with pytest.raises(ValueError):
         gf.doctor_pq(w, base, byte_budget=8000, strategy="not_a_treatment")
 
-
-# --------------------------------------------------------------------------------------------
 # Metal Quality Law: CPU (authoritative) vs MPS parity - no quality loss for speed.
-# --------------------------------------------------------------------------------------------
 def test_cpu_metal_parity_holds():
     w = _lowrank()
     par = gf.pq_cpu_metal_parity(w, dim=32, k=32, subspaces=4)
@@ -222,7 +194,6 @@ def test_cpu_metal_parity_holds():
     assert par["pass_match"]                                     # same survive/degrade/collapse verdict
     assert 0.0 <= par["assignment_agreement"] <= 1.0
     assert par["relerr_delta"] <= par["tol"]
-
 
 def test_selftest_reports_second_light_signals():
     out = gf.selftest()

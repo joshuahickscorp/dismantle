@@ -14,22 +14,9 @@ if str(CONDENSE) not in sys.path:
 import glm52_grounding_auth as auth  # noqa: E402
 import glm52_state as state  # noqa: E402
 
-
 KEY = bytes(range(32))
 
-
-class FakeKeychain:
-    def __init__(self, values=None, *, discard=False):
-        self.values = dict(values or {})
-        self.discard = discard
-
-    def get(self, service):
-        return self.values.get(service)
-
-    def set(self, service, value):
-        if not self.discard:
-            self.values[service] = value
-
+from tools.condense.tests._glm52_fakes import FakeKeychain  # noqa: E402
 
 def test_configures_idempotently_and_loads_redacted_authenticator() -> None:
     keychain = FakeKeychain()
@@ -49,7 +36,6 @@ def test_configures_idempotently_and_loads_redacted_authenticator() -> None:
         expected_chat_identity_digest="a" * 64,
     )._key_material_identity()
 
-
 @pytest.mark.parametrize("value", ("", "bad!!", base64.urlsafe_b64encode(b"x").decode()))
 def test_malformed_credentials_fail_closed(value: str) -> None:
     keychain = FakeKeychain({auth.GROUNDING_HMAC_SERVICE: value})
@@ -57,13 +43,11 @@ def test_malformed_credentials_fail_closed(value: str) -> None:
     with pytest.raises(auth.GroundingSecurityError, match="invalid"):
         auth.load_grounding_auth(keychain)
 
-
 def test_postwrite_persistence_is_mandatory() -> None:
     with pytest.raises(auth.GroundingSecurityError, match="post-write"):
         auth.configure_hmac_key(
             FakeKeychain(discard=True), random_bytes=lambda _size: KEY
         )
-
 
 def test_native_adapter_never_uses_subprocess_or_wrong_service() -> None:
     calls = []

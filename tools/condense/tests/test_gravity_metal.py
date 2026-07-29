@@ -1,11 +1,4 @@
-"""Guards for the Metal decoder that do not need a Metal device.
-
-The three defects this covers are all reachable without a GPU, which is the point: the
-buffer-overrun guard, the cache identity and the byte accounting are pure functions of the
-geometry, so they are tested as such.  The handful of assertions that genuinely need a
-dispatch are skipped when the framework or the device is missing rather than failed, because
-the test process is not guaranteed to have either.
-"""
+"""The three defects this covers are all reachable without a GPU, which is the point: the"""
 from __future__ import annotations
 
 import sys
@@ -21,7 +14,6 @@ if str(HERE) not in sys.path:
 import gravity_forge as forge  # noqa: E402
 import gravity_metal as gm  # noqa: E402
 
-
 def _codes(rows: int, cols: int, *, D: int = 8, k: int = 128, seed: int = 0) -> dict:
     """A real packed artifact's codes stash, so the shapes are the production ones."""
     rng = np.random.default_rng(seed)
@@ -29,11 +21,9 @@ def _codes(rows: int, cols: int, *, D: int = 8, k: int = 128, seed: int = 0) -> 
     art = forge.pack_product_quant(w, dim=D, subspaces=1, k=k, seed=seed, iters=2)
     return art.config["pq_codes"]
 
-
 # R0, the production rung: gate/up is [2048, 6144] at dim=8/k=128, nchunk=768.
 R0_ROWS, R0_COLS, R0_D, R0_K = 2048, 6144, 8, 128
 R0_NCHUNK = R0_COLS // R0_D
-
 
 def _r0_codes() -> dict:
     """Geometry-only stand-in: matvec_bytes reads shapes, never index values."""
@@ -42,13 +32,11 @@ def _r0_codes() -> dict:
             "codebooks": [np.zeros((R0_K, R0_D), dtype=np.float32)],
             "indices": np.zeros((R0_ROWS * R0_NCHUNK, 1), dtype=np.int64)}
 
-
 def _decoder():
     try:
         return gm.decoder()
     except gm.MetalUnavailable as exc:
         pytest.skip(f"no Metal device in this process: {exc}")
-
 
 # --- mandate 1.1, the buffer-overrun guard ---------------------------------------------
 
@@ -58,12 +46,10 @@ def test_exact_size_x_passes_the_guard():
     assert xv.nbytes == R0_NCHUNK * R0_D * 4
     assert xv.dtype == np.float32
 
-
 def test_short_x_is_rejected():
     with pytest.raises(gm.GravityMetalInputError, match="elements"):
         gm._validate_x(np.ones(R0_NCHUNK * R0_D - 1, dtype=np.float32),
                        nchunk=R0_NCHUNK, D=R0_D, allocated_bytes=R0_NCHUNK * R0_D * 4)
-
 
 def test_long_x_is_rejected_before_any_pointer_is_taken():
     # this is the overrun: 4 KB past the end of a fixed nchunk*D*4 allocation
@@ -71,19 +57,16 @@ def test_long_x_is_rejected_before_any_pointer_is_taken():
         gm._validate_x(np.ones(R0_NCHUNK * R0_D + 1024, dtype=np.float32),
                        nchunk=R0_NCHUNK, D=R0_D, allocated_bytes=R0_NCHUNK * R0_D * 4)
 
-
 def test_wrong_dtype_is_rejected():
     with pytest.raises(gm.GravityMetalInputError, match="float32"):
         gm._validate_x(np.ones(R0_NCHUNK * R0_D, dtype=np.float64),
                        nchunk=R0_NCHUNK, D=R0_D, allocated_bytes=R0_NCHUNK * R0_D * 4)
-
 
 def test_wrong_geometry_is_rejected():
     # right element count for some other tensor, wrong one for this cache entry
     with pytest.raises(gm.GravityMetalInputError, match="allocated with"):
         gm._validate_x(np.ones(R0_NCHUNK * R0_D, dtype=np.float32),
                        nchunk=R0_NCHUNK, D=R0_D, allocated_bytes=256 * R0_D * 4)
-
 
 def test_guard_fires_on_a_real_dispatch():
     gpu = _decoder()
@@ -94,7 +77,6 @@ def test_guard_fires_on_a_real_dispatch():
     with pytest.raises(gm.GravityMetalInputError):
         gpu.matvec(codes, np.ones(4096, dtype=np.float32), key=key)
 
-
 # --- mandate 1.2, explicit cache identity ----------------------------------------------
 
 def test_matvec_without_a_key_raises():
@@ -103,13 +85,11 @@ def test_matvec_without_a_key_raises():
     with pytest.raises(gm.GravityMetalInputError, match="explicit cache key"):
         gpu.matvec(codes, np.ones(128, dtype=np.float32))
 
-
 def test_same_explicit_key_returns_the_same_entry():
     gpu = _decoder()
     codes = _codes(256, 128, D=8, k=16)
     first = gpu._cache_tensor(codes, "tensor-a")
     assert gpu._cache_tensor(codes, "tensor-a") is first
-
 
 def test_different_keys_do_not_collide():
     gpu = _decoder()
@@ -124,7 +104,6 @@ def test_different_keys_do_not_collide():
     yb = gpu.matvec(b, x, key="collide-b")
     assert not np.allclose(ya, yb)
 
-
 def test_reusing_one_key_for_two_tensors_is_refused():
     """The explicit-key rule moves uniqueness to the caller; this is what enforces it."""
     gpu = _decoder()
@@ -132,7 +111,6 @@ def test_reusing_one_key_for_two_tensors_is_refused():
     gpu._cache_tensor(a, "shared-literal")
     with pytest.raises(gm.GravityMetalInputError, match="already holds a different tensor"):
         gpu._cache_tensor(b, "shared-literal")
-
 
 def test_codebook_width_must_match_declared_D():
     """A narrow codebook is an out-of-bounds device read, not a wrong answer."""
@@ -142,7 +120,6 @@ def test_codebook_width_must_match_declared_D():
     with pytest.raises(gm.GravityMetalInputError, match="codebook subvector"):
         gpu._cache_tensor(codes, "narrow-book")
 
-
 def test_index_beyond_codebook_is_refused_before_the_uint8_cast():
     """uint8 would wrap an out-of-range index and silently select the wrong codeword."""
     gpu = _decoder()
@@ -151,7 +128,6 @@ def test_index_beyond_codebook_is_refused_before_the_uint8_cast():
     codes["indices"][0] = 300
     with pytest.raises(gm.GravityMetalInputError, match="out of range"):
         gpu._cache_tensor(codes, "wrapping-index")
-
 
 def test_content_key_is_stable_and_discriminating():
     a = _codes(128, 64, D=8, k=16, seed=3)
@@ -177,12 +153,10 @@ def test_content_key_is_stable_and_discriminating():
     mutated["codebooks"] = [book]
     assert gm.content_key(mutated) != gm.content_key(a)
 
-
 # --- mandate 1.2, bounded eviction ------------------------------------------------------
 
 def _entry(nbytes: int) -> dict:
     return {"pinned_bytes": nbytes}
-
 
 def test_lru_evicts_past_the_budget_and_accounts_correctly():
     cache = gm._ByteBudgetCache(budget_bytes=250)
@@ -195,7 +169,6 @@ def test_lru_evicts_past_the_budget_and_accounts_correctly():
     assert cache.stats() == {"entries": 2, "bytes_pinned": 200, "budget_bytes": 250,
                              "evictions": 1, "keys": ["b", "c"]}
 
-
 def test_lru_evicts_by_recency_not_insertion():
     cache = gm._ByteBudgetCache(budget_bytes=250)
     cache.put("a", _entry(100))
@@ -205,7 +178,6 @@ def test_lru_evicts_by_recency_not_insertion():
     assert cache.get("b") is None
     assert cache.get("a") is not None
 
-
 def test_reinserting_an_evicted_entry_works():
     cache = gm._ByteBudgetCache(budget_bytes=250)
     for key in ("a", "b", "c"):
@@ -214,7 +186,6 @@ def test_reinserting_an_evicted_entry_works():
     assert cache.get("a") is fresh
     assert cache.stats()["bytes_pinned"] == 200
 
-
 def test_reput_of_a_live_key_does_not_double_count():
     cache = gm._ByteBudgetCache(budget_bytes=10_000)
     cache.put("a", _entry(100))
@@ -222,12 +193,10 @@ def test_reput_of_a_live_key_does_not_double_count():
     assert cache.stats() == {"entries": 1, "bytes_pinned": 300, "budget_bytes": 10_000,
                              "evictions": 0, "keys": ["a"]}
 
-
 def test_an_entry_larger_than_the_budget_still_runs():
     cache = gm._ByteBudgetCache(budget_bytes=10)
     entry = cache.put("huge", _entry(1_000))
     assert cache.get("huge") is entry
-
 
 def test_the_glm_walk_cannot_pin_ninety_gigabytes():
     # 78 layers x 256 experts of R0 gate/up indices is ~90 GB if nothing ever evicts
@@ -238,13 +207,11 @@ def test_the_glm_walk_cannot_pin_ninety_gigabytes():
     assert cache.stats()["bytes_pinned"] <= gm.DEFAULT_CACHE_BUDGET_BYTES
     assert cache.stats()["evictions"] > 0
 
-
 def test_decoder_exposes_the_accounting():
     gpu = _decoder()
     assert set(gpu.cache_stats) == {"entries", "bytes_pinned", "budget_bytes", "evictions",
                                     "keys"}
     assert gpu.cache_stats["budget_bytes"] == gm.DEFAULT_CACHE_BUDGET_BYTES
-
 
 # --- mandate 1.4, honest byte accounting ------------------------------------------------
 
@@ -269,18 +236,15 @@ def test_r0_gate_up_traffic_is_the_measured_split():
     assert round(got["logical_bpw"], 5) == 0.87630
     assert round(got["executed_read_bytes"] / got["dense_bf16_bytes"] * 100, 2) == 7.10
 
-
 def test_executed_exceeds_the_logical_artifact():
     got = gm.matvec_bytes(_r0_codes())
     ratio = got["executed_total_bytes"] / got["logical_artifact_bytes"]
     assert got["executed_total_bytes"] > got["logical_artifact_bytes"]
     assert round(ratio, 4) == round(1_794_048 / 1_378_304, 4) == 1.3016
 
-
 def test_the_seven_to_eight_bit_gap_is_exactly_eight_sevenths():
     got = gm.matvec_bytes(_r0_codes())
     assert got["executed_index_bytes"] * 7 == got["logical_index_bytes"] * 8
-
 
 def test_r0_down_projection_traffic():
     codes = _r0_codes()
@@ -294,14 +258,12 @@ def test_r0_down_projection_traffic():
     assert got["executed_activation_bytes"] == 24 * 256 * 8 * 4
     assert got["executed_index_bytes"] * 7 == got["logical_index_bytes"] * 8
 
-
 def test_unstaged_x_is_charged_once():
     # a tiny threadgroup allotment turns staging off; x is then billed a single read
     codes = _r0_codes()
     got = gm.matvec_bytes(codes, threadgroup_memory_limit=8192)
     assert got["stage_x"] is False
     assert got["executed_activation_bytes"] == R0_NCHUNK * R0_D * 4
-
 
 def test_accounting_matches_a_real_artifact_and_refuses_multi_subspace():
     codes = _codes(256, 128, D=8, k=16)
@@ -312,7 +274,6 @@ def test_accounting_matches_a_real_artifact_and_refuses_multi_subspace():
     codes["S"] = 2
     with pytest.raises(gm.GravityMetalInputError, match="subspaces == 1"):
         gm.matvec_bytes(codes)
-
 
 def test_bytes_read_per_matvec_returns_the_dict():
     gpu = _decoder()

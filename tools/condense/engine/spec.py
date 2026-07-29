@@ -15,7 +15,12 @@ from typing import Any, Mapping, Sequence
 
 
 SCHEMA = "hawking.condense.experiment_spec.v1"
-SPECS_DIR = Path(__file__).resolve().parent / "specs"
+# One catalog replaces N per-family JSON files (topology). Paths like
+# SPECS_DIR / "glm52.json" remain the stable address; load_spec_path resolves
+# the stem against the catalog.
+ENGINE_DIR = Path(__file__).resolve().parent
+CATALOG_PATH = ENGINE_DIR / "campaign_specs.json"
+SPECS_DIR = ENGINE_DIR / "specs"
 
 
 class SpecError(ValueError):
@@ -292,6 +297,16 @@ def validate_spec(raw: Mapping[str, Any]) -> ExperimentSpec:
     )
 
 
+def _load_catalog() -> dict[str, Any]:
+    try:
+        raw = json.loads(CATALOG_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise SpecError(f"cannot read campaign spec catalog {CATALOG_PATH}: {exc}") from exc
+    if not isinstance(raw, dict):
+        raise SpecError(f"campaign spec catalog root must be an object: {CATALOG_PATH}")
+    return raw
+
+
 def load_spec(raw: Mapping[str, Any] | str | Path) -> ExperimentSpec:
     """Load from mapping or JSON path."""
     if isinstance(raw, (str, Path)):
@@ -300,7 +315,15 @@ def load_spec(raw: Mapping[str, Any] | str | Path) -> ExperimentSpec:
 
 
 def load_spec_path(path: Path) -> ExperimentSpec:
+    """Load a spec by filesystem path or by catalog stem (e.g. specs/glm52.json)."""
     path = Path(path)
+    catalog = _load_catalog()
+    stem = path.stem
+    if stem in catalog:
+        data = catalog[stem]
+        if not isinstance(data, Mapping):
+            raise SpecError(f"catalog entry {stem!r} must be an object")
+        return validate_spec(data)
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
@@ -311,10 +334,13 @@ def load_spec_path(path: Path) -> ExperimentSpec:
 
 
 def list_specs(directory: Path | None = None) -> list[Path]:
-    directory = Path(directory) if directory else SPECS_DIR
-    if not directory.is_dir():
+    """Return stable virtual paths for every catalogued campaign family."""
+    if directory is not None and Path(directory) != SPECS_DIR:
+        directory = Path(directory)
+        if directory.is_dir():
+            return sorted(directory.glob("*.json"))
         return []
-    return sorted(directory.glob("*.json"))
+    return [SPECS_DIR / f"{name}.json" for name in sorted(_load_catalog())]
 
 
 def load_all_specs(directory: Path | None = None) -> list[ExperimentSpec]:

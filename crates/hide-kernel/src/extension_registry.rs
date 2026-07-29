@@ -23,7 +23,7 @@
 //!   and cannot be loaded, and its id cannot be silently reused.
 //!
 //! ```
-//! use crate::extension_registry::{
+//! use hide_kernel::extension_registry::{
 //!     Registry, CapabilityManifest, CapabilityKind, Effect, Scope, ResolveQuery,
 //! };
 //!
@@ -488,7 +488,7 @@ pub mod index {
 //! kind, description, and scopes, and nothing heavier. In particular it carries
 //! no schema and no raw schema text, so building or returning the index never
 //! materializes a full schema. The full schema is reached only through an
-//! explicit [`crate::extension_registry::Registry::load_full_schema`] call.
+//! explicit [`hide_kernel::extension_registry::Registry::load_full_schema`] call.
 
 use crate::extension_registry::manifest::{CapabilityKind, CapabilityManifest, Scope};
 

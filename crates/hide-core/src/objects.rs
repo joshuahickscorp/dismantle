@@ -24,7 +24,7 @@
 //! model. No embeddings, no large index builds, no Metal.
 //!
 //! ```
-//! use crate::objects::{
+//! use hide_core::objects::{
 //!     ObjectStore, StorageBudget, ObjectSource, ObjectPermissions, Surface,
 //!     RetentionPolicy, Priority, Reader, DerivativeSelection,
 //! };
@@ -43,11 +43,11 @@
 //!     Priority::NORMAL,
 //! ).unwrap();
 //! let (_id, status) = store.process_one().unwrap();
-//! assert_eq!(status, crate::objects::JobStatus::Succeeded);
+//! assert_eq!(status, hide_core::objects::JobStatus::Succeeded);
 //! let hash = store.hash_for_job(&job).unwrap();
 //! let reader = Reader { principal: "alice".into(), surface: Surface::You };
 //! let view = store.compile_view(&hash, &reader, &DerivativeSelection::default(), None).unwrap();
-//! assert!(!crate::objects::CompileObjectView::exposes_raw_bytes());
+//! assert!(!hide_core::objects::CompileObjectView::exposes_raw_bytes());
 //! assert!(view.try_raw_bytes().is_err());
 //! let _ = view;
 //! ```

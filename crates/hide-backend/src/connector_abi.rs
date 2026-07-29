@@ -24,8 +24,8 @@
 //! construction.
 //!
 //! ```
-//! use crate::connector_abi::{AccountStore, ConnectorRegistry, CredentialMaterial, ListRequest};
-//! use crate::connector_abi::abi::FamilyId;
+//! use hide_backend::connector_abi::{AccountStore, ConnectorRegistry, CredentialMaterial, ListRequest};
+//! use hide_backend::connector_abi::abi::FamilyId;
 //!
 //! let reg = ConnectorRegistry::builtin();
 //! assert!(reg.construct("github").is_err()); // declared, not constructible

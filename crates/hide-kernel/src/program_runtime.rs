@@ -61,7 +61,7 @@
 //! and prepare (but do not execute) a follow-up edit.
 //!
 //! ```
-//! use crate::program_runtime::{
+//! use hide_kernel::program_runtime::{
 //!     run, BinOp, Expr, HandleGrants, HandleName, Lambda, Limits, Operator, Order,
 //!     Program, Value, FnHost, map_of, Citation,
 //! };

@@ -7,16 +7,17 @@ tools, never estimated.
 
 ```
                  arc start      now       ladder position
-directories            179      130       rung 1 green (-25% target, hit -27%)
-source files         1,227    1,209       rung 1 at 982, not reached
+directories            179      131       rung 1 green (-25% target, hit -27%)
+source files         1,227    1,195       rung 1 at 982, not reached
 crates                  33       20
 hide crates             20        7       target <=7 MET
 hide directories        59       23       target <=30 MET (-61%)
-hide files             349      209       target <=209 MET (-40%)
-public symbols       9,412    9,362
-functions           14,587   14,629
-files over 1500         30       39       REGRESSED -- see debt below
-LOC                430,284  429,138       -1,146
+hide files             349      326       target <=209 not met -- 13 real modules
+                                          replaced 6 concatenations, deliberately
+public symbols       9,412    9,502
+functions           14,587   14,635
+files over 1500         30       26       BELOW baseline -- debt paid
+LOC                430,284  430,146       -138
 ```
 
 Prior arc floor was 430,284 under subtraction. This arc rejected that as the semantic floor
@@ -47,21 +48,25 @@ claimed by trading structure for lines.
 | 3 runtime graph | **rejected** | WKV-7's fixed per-head S state and token-shift cannot share an executable LayerOp core with a transformer's growing KV + RoPE + MHA while staying bit-exact on argmax/top-k, holding 1 command buffer/token, and being net-negative. IR cost 2,250 to delete 480; functions 154 -> 170. Six irreducible operators named, three per family. |
 | 4 function merging | **0.95%** | 138 twins of 12,258 functions, net -3,157. Converges with the prior arc's 1.02% from an unrelated instrument. 12 near-misses recorded where text similarity would have merged behaviourally different code. |
 | 1 laboratory | **decomposed** | `glm52_state` fit none of the six categories; its TOCTOU lease split out to `engine/lease.py` and the fusion proved **historical, not semantic**. No blocking contract. 12 modules, 105 files, LOC +156. |
-| Bridge/Fabric | **at floor** | path 3,759, capability floor 20,426, handwritten mirror already down to 98 lines. Dual event models `must_not_delete` until Bridge; `bridge_surface` dual-source with `hawking-serve` via a 98-line lockstep table. |
-| 2 HIDE | **topology real, method disallowed** | 20->7 crates and 59->23 dirs are genuine, but achieved by concatenation. Real elimination 1,416, not the claimed 8,634. See debt. |
+| Bridge/Fabric | **OVERTURNED** | claimed floor 20,426; reviewer proved it is where the lane stopped, not a floor. Honest floor 15,148, **5,376 available**. The dual-source `bridge_surface` lockstep has no crate dependency either way, so one side can generate the other. |
+| 2 HIDE | **topology real, debt paid** | 20->7 crates and 59->23 dirs genuine. First attempt was concatenation (real elimination 1,416, not 8,634); a second lane decomposed it into 13 modules with zero transplant markers and files-over-1500 below baseline. |
 | 5 tests/docs | **not run** | |
 
 Track V's four slices all measured. Every one: the path is tiny, the floor beneath it is not.
 Campaign 2,540 path against a 27,594 science floor — measured twice from opposite directions,
 by a Track S scout at 27,500 and a Track V builder at 27,594.
 
-## Open debt
+## Debt paid
 
-**HIDE concatenation.** `crates/hide-backend/src/host.rs` is 12,169 lines,
-`hide-kernel/src/tooling.rs` 5,573, and four `hide-*/src/lib.rs` still carry transplant
-markers. Repo `files_over_1500` went 30 -> 39, thirteen of them HIDE. The arc forbids reaching
-a file target this way. Lane `recomp-hdecomp` is running to decompose without reverting the
-crate topology. If it fails, revert HIDE to `arc-437k-green` topology.
+**HIDE concatenation — resolved.** Thirteen real modules replaced the mega-files. `host.rs`
+went from 12,169 lines to a largest-HIDE-file of 1,388; no HIDE file exceeds 1,500; the
+repository count fell from 39 to **26, below the 30 it started at**; every transplant marker
+is gone. The seven crates and twenty-three directories stand. HIDE files rose 209 -> 326
+because genuine modules cost more files than concatenations, which is the correct trade under
+an arc that ranks file topology above line count.
+
+Verified by the controller: `--gate` passes on both halves, hide-backend 311 passing,
+hide core/protocol/kernel suites pass, hawking builds untouched.
 
 ## In flight at handoff
 

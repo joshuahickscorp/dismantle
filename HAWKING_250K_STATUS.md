@@ -111,13 +111,29 @@ the constitution behaviour that forbids deleting it. That list is the deliverabl
 matters more than the number.
 
 Gates after the merge: `cargo build --workspace` green, black-box 86/86, capability
-inventory clean. **Two gates open:**
+inventory clean. Two gates opened and **both are now closed** by lane `s3b-tests`:
 
-- the test inventory lost 162 logical assertions. 82 went with modules that were genuinely
-  deleted; **87 came from `host_tests_0..3` and tested a host surface that still exists**,
-  so they are owed a re-expression rather than a deletion. Lane `s3b-tests` is doing it.
-- `files_over_1500_lines` is 27 against a campaign start of 26, from
-  `crates/hawking-context/src/memory_classes.rs` at 2,533 lines. Same lane splits it.
+- the test inventory had lost 162 logical assertions. 82 went with modules that were
+  genuinely deleted; 87 came from `host_tests_0..3` and tested a host surface that still
+  exists. Those 87 went back into the public-API black-box suites — not into a new stub —
+  and the inventory now reads **3,947 -> 3,959, +12, nothing lost**, with capabilities clean.
+- `files_over_1500_lines` is back to **26**. `memory_classes.rs` is split along its own
+  seams (`types`, `open_write`, `controls`, `sql`) rather than by numbered suffix.
+
+Verified in the main tree, not taken on report: `cargo build --workspace` green, twelve HIDE
+suites at 0 failed, black-box 86/86, inventory gate PASS. Tagged `rebuild-250k-s3-closed`.
+
+The trade is honestly positive in lines: 4,284 in-`src` test lines deleted, about 1,600 of
+public-API suite added back. A public suite that exercises the surface from outside is worth
+more than three times its size in `include!`-ed bodies living inside `src/`, but it is an
+addition and it is counted as one.
+
+**And it found ten behaviours the constitution did not name.** Classifying all 87 assertions
+turned up contracts with nothing behind them in the constitution — four of them security
+outcomes: the approval gate on destructive shell (held is not done), the durable tool-policy
+ledger, write-lease revocation on session fork and rewind, and trust-before-config on an
+untrusted workspace. Under-recording those would have licensed deleting the code that
+provides them. The constitution is now 220 behaviours.
 
 ### One flake found, and it is not S3's
 

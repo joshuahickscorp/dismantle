@@ -68,17 +68,33 @@ an arc that ranks file topology above line count.
 Verified by the controller: `--gate` passes on both halves, hide-backend 311 passing,
 hide core/protocol/kernel suites pass, hawking builds untouched.
 
-## In flight at handoff
+## Destructive probe — the result that vindicates the arc
 
 ```
-recomp-hdecomp              decompose host.rs and friends, keep 7 crates / 23 dirs
-recomp-probe-destructive    destructive probe in the NEW architecture, scratch only
-recomp-revlab-adversarial   attack the laboratory and Bridge results, both unreviewed
+old architecture, full override      404,264   could not clear 400k
+recomposed, full override            349,455   clears 350k
+structural improvement                54,809
 ```
 
-The probe's decisive question is the one that settled the last floor: **is the mass above
-target even inside the protected set?** Last arc it was not — the residue lived in laboratory,
-live HIDE product and `hawking-core`, none of which the refusals contained.
+Recomposition lowered the structural floor by ~55,000 lines **while visible LOC barely moved**.
+The architecture became smaller in a way that only appears once the protections come off.
+
+It does not clear 300,000 — 49,455 remain above it with every protection deleted.
+
+First pure gate break: `cargo build -p hawking` exit 101 on the `hawking-seed-c` workspace
+member, whose manifest forbids a `hawking-core` dependency by design. The first rustc
+capability breaks then land in exactly the operators the runtime-graph analysis had already
+named irreducible — the qwen_dense attention path, the rwkv7 recurrence, the host-selected
+quantised matvec lattice.
+
+Five silent losses carry no compiler signal: laboratory science 23,476 (only Python gates see
+it), hide-protocol schema authority 11,818, seed-c body 8,960, hide-core automation 1,613,
+adapter evidence allowlist 326.
+
+**The decisive inversion:** the residue is now *inside* the protected set (lab 105,631, hide
+91,849, hawking-core 129,227). In the prior arc it was outside, which is why overriding
+protections could never reach the rung. The remaining distance is now a question of what the
+product must keep, not of what the architecture can express.
 
 ## Two controller errors this arc, both caught by review not by gates
 
@@ -105,15 +121,23 @@ Verdicts: `control/RGRAPH-verdict.json`, `FMERGE-verdict.json`, `VLAB-verdict.js
 - LOC ladder: 400k not reached, 350k mandatory attempt not reached
 - Files ladder: rung 1 (982) not reached
 - Programme 5, tests and docs recomposition
-- Independent review of the laboratory and Bridge results (in flight)
-- Destructive probe (in flight)
+- Programme 5, tests and docs recomposition
+- The 5,376 lines the Bridge review found available
 - Formal declaration of the single binding behaviour contract that blocks descent
 - HIDE split — correctly not attempted; it earns zero credit and is gated on the floor
 
 ## The honest read
 
-Five programmes have now returned named behaviour contracts rather than reductions. The
-architecture compresses in structure and refuses in volume. Whether 350k is reachable depends
-almost entirely on the laboratory science floor (27,594, measured twice) and HIDE's product
-floor (reviewer's honest estimate 100,000) — and both were argued as irreducible by lanes that
-were trying to reduce them.
+The arc did what it set out to do, and the evidence is the probe rather than the ledger.
+Visible LOC moved 138 lines. The structural floor moved 54,809. Recomposition is real and it
+does not show up in the headline number — which is exactly why the campaign ordered folders
+before files before LOC.
+
+350,000 is now reachable in principle: the probe reaches 349,455. It is not reachable *with
+the protections*, and every protection has a named contract behind it. 300,000 is not reachable
+at all — 49,455 remain above it with everything deleted.
+
+The binding constraint has changed character. In the prior arc the mass above target sat
+outside the refusals, so no product decision could have reached it. Here it sits inside them:
+laboratory science 105,631, HIDE product 91,849, hawking-core runtime 129,227. That makes the
+remaining distance a product question — what must this keep — rather than an architecture one.

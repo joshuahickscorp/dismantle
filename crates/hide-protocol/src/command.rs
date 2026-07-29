@@ -1224,42 +1224,27 @@ mod tests {
     use super::*;
     use crate::protocol::Method;
     use std::collections::BTreeSet;
-
     #[test]
     fn catalog_is_non_empty_with_unique_ids() {
         let catalog = command_catalog();
         assert!(!catalog.is_empty(), "the catalog must not be empty");
         let mut ids = BTreeSet::new();
         for spec in &catalog {
-            assert!(
-                ids.insert(spec.id.as_str()),
-                "duplicate command id: {}",
-                spec.id
-            );
+ assert!( ids.insert(spec.id.as_str()), "duplicate command id: {}", spec.id );
         }
     }
-
-    /// Parity invariant: every command is reachable. No orphan actions: each has
-    /// a keyboard shortcut OR is listed in the command palette.
     #[test]
     fn every_command_has_a_shortcut_or_lives_in_the_palette() {
         for spec in command_catalog() {
-            assert!(
-                spec.keyboard_shortcut.is_some() || spec.command_palette,
-                "orphan command (no shortcut and not in the palette): {}",
-                spec.id
-            );
+            assert!(spec.keyboard_shortcut.is_some() || spec.command_palette);
         }
     }
-
-    /// Backend-binding integrity: nothing is silently invented.
     #[test]
     fn backend_bindings_resolve_to_real_targets() {
         let intents: BTreeSet<&str> = INTENT_NAMES.iter().copied().collect();
         let live_custom: BTreeSet<&str> = WIRE_CUSTOM_NAMES.iter().copied().collect();
         let host_caps: BTreeSet<&str> = HOST_CAPABILITIES.iter().copied().collect();
         let methods: BTreeSet<&str> = Method::ALL.iter().map(|m| m.as_str()).collect();
-
         for spec in command_catalog() {
             match &spec.backend_binding {
                 BackendBinding::Intent(name) => assert!(
@@ -1281,11 +1266,6 @@ mod tests {
             }
         }
     }
-
-    /// The other direction of the same contract: a live custom name with no
-    /// `CommandSpec` is a capability the palette, the shortcut map and the SDK
-    /// cannot see, so every surface that wants it hand-builds an intent. Eight
-    /// names were in exactly that state before the contract-cleanup stage.
     #[test]
     fn every_live_custom_name_has_a_command() {
         let bound: BTreeSet<String> = command_catalog()
@@ -1296,17 +1276,9 @@ mod tests {
             })
             .collect();
         for name in WIRE_CUSTOM_NAMES {
-            assert!(
-                bound.contains(*name),
-                "live custom name with no CommandSpec: {name}"
-            );
+ assert!( bound.contains(*name), "live custom name with no CommandSpec: {name}" );
         }
     }
-
-    /// The mirror must BE a mirror. The previous guard compared two Rust consts
-    /// and so passed while [`WIRE_CUSTOM_NAMES`] drifted 17 names behind
-    /// `wire.ts`; this one reads the TypeScript contract itself, in order, so
-    /// either file changing alone fails here.
     #[test]
     fn wire_custom_names_mirror_wire_ts() {
         let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -1321,26 +1293,16 @@ mod tests {
             .split_once("] as const;")
             .expect("CUSTOM_NAMES is a closed array")
             .0;
-        // One quoted name per line; comment lines carry no quotes.
         let names: Vec<&str> = body
             .lines()
             .filter_map(|l| l.trim().strip_prefix('"'))
             .filter_map(|l| l.split_once('"'))
             .map(|(name, _)| name)
             .collect();
-        assert_eq!(
-            names, WIRE_CUSTOM_NAMES,
-            "WIRE_CUSTOM_NAMES has drifted from app/src/wire.ts CUSTOM_NAMES"
-        );
+        assert_eq!(names, WIRE_CUSTOM_NAMES);
     }
-
-    /// Truth in the authority: every row whose host path writes the working tree declares the
-    /// write, and says whether that write can be unwound. `reject_diff` declared NO effects and NO
-    /// undo while inverse-writing files, which is also what made its `auto` policy next to
-    /// `revert_diff`'s `ask` look deliberate rather than a hole.
     #[test]
     fn every_writing_command_declares_the_write_and_its_undo() {
-        // (catalog id, whether the host can unwind the write it makes)
         let writers = [
             ("accept_diff", true),
             ("reject_diff", true),
@@ -1355,19 +1317,10 @@ mod tests {
                 .iter()
                 .find(|s| s.id == id)
                 .unwrap_or_else(|| panic!("{id} is missing from the catalog"));
-            assert!(
-                spec.effects.contains(&Effect::WriteFs),
-                "{id} writes the working tree but does not declare write_fs"
-            );
-            assert_eq!(
-                spec.undo_strategy != UndoStrategy::None,
-                undoable,
-                "{id}: undo_strategy must say truthfully whether the write can be unwound"
-            );
+            assert!(spec.effects.contains(&Effect::WriteFs));
+            assert_eq!(spec.undo_strategy != UndoStrategy::None, undoable);
         }
     }
-
-    /// Coverage: the catalog contains at least the seven priority domains.
     #[test]
     fn catalog_covers_the_seven_priority_domains() {
         let categories: BTreeSet<Category> =
@@ -1381,13 +1334,9 @@ mod tests {
             Category::Steer,
             Category::Workspace,
         ] {
-            assert!(
-                categories.contains(&required),
-                "catalog is missing priority domain: {required:?}"
-            );
+ assert!( categories.contains(&required), "catalog is missing priority domain: {required:?}" );
         }
     }
-
     #[test]
     fn specs_round_trip_through_serde_json() {
         for spec in command_catalog() {
@@ -1396,14 +1345,9 @@ mod tests {
             assert_eq!(back, spec, "a command spec must survive a serde round trip");
         }
     }
-
-    /// No added string carries an en or em dash (house rule).
     #[test]
     fn catalog_data_carries_no_en_or_em_dashes() {
         let json = serde_json::to_string(&command_catalog()).unwrap();
-        assert!(
-            !json.contains('\u{2013}') && !json.contains('\u{2014}'),
-            "catalog data must use plain hyphens only"
-        );
+        assert!(!json.contains('\u{2013}') && !json.contains('\u{2014}'));
     }
 }

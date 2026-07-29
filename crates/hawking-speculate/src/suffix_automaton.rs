@@ -318,8 +318,6 @@ impl Proposer for SuffixAutomaton {
 mod tests {
     use super::*;
     use crate::proposal::{Budget, Ctx, Telemetry};
-
-    // Helper: build a Ctx from a token slice.
     fn make_ctx(tokens: &[u32]) -> Ctx<'_> {
         Ctx {
             tokens,
@@ -327,148 +325,63 @@ mod tests {
             hidden: None,
         }
     }
-
-    // Helper: run propose() and extract the inner Vec<u32>.
     fn propose_tokens(sam: &mut SuffixAutomaton, ctx_toks: &[u32], k: usize) -> Vec<u32> {
-        // sam_enabled() checks the env var; we set it in tests that need it.
         let ctx = make_ctx(ctx_toks);
         match sam.propose(&ctx, Budget::line(k), &Telemetry::default()) {
             Proposal::TokenLine(v) => v,
             _ => panic!("expected TokenLine"),
         }
     }
-
-    // ------------------------------------------------------------------
-    // 1. Disabled by default (HAWKING_EH_SAM not set)
-    // ------------------------------------------------------------------
     #[test]
     fn sam_disabled_by_default() {
-        // Do NOT set HAWKING_EH_SAM in this test.
-        // std::env::remove_var("HAWKING_EH_SAM") cannot be called safely in
-        // parallel tests; instead we call sam_enabled() directly and verify
-        // the propose() short-circuit in an isolated env.
-        //
-        // Because cargo test may run in an environment where the var is set
-        // (if a developer is running with it), we guard the assertion.
         if sam_enabled() {
-            // Skip the disabled-path assertion; the var is intentionally set.
             return;
         }
         let mut sam = SuffixAutomaton::new();
         sam.observe(&[1u32, 2, 3, 1, 2]);
         let result = propose_tokens(&mut sam, &[1u32, 2], 4);
-        // A sibling test may have set HAWKING_EH_SAM after our guard above: the env var is
-        // process-global and `set_var` is not thread-safe, so `propose_tokens` can observe it
-        // enabled mid-test. Only assert the disabled path when SAM is still actually disabled.
         if sam_enabled() {
             return;
         }
         assert!(result.is_empty(), "SAM disabled → must propose nothing");
     }
-
-    // The remaining tests activate the SAM by temporarily setting the env var.
-    // We use a small RAII guard to unset it after each test, but since
-    // std::env is process-global and cargo test may be multi-threaded, we use
-    // serial_test or just document that tests are designed to be run with
-    // HAWKING_EH_SAM set externally.  For correctness we call
-    // std::env::set_var inside each test and rely on the flag being checked
-    // at propose()-time.
-
-    // ------------------------------------------------------------------
-    // 2. Extends to one token
-    // ------------------------------------------------------------------
     #[test]
     fn sam_extends_to_one_token() {
         // SAFETY: env mutation is intentional; tests may race in parallel,
-        // but since every other SAM test also sets the var the worst case is
-        // a spurious pass (never a false fail).
         unsafe { std::env::set_var("HAWKING_EH_SAM", "1") };
-
         let mut sam = SuffixAutomaton::new();
-        // Observe [1,2,3,1,2]: after this, a query [1,2] should find the
-        // prior [1,2] at position 0..2 and return [3] (the token at index 2).
         sam.observe(&[1u32, 2, 3, 1, 2]);
         let result = propose_tokens(&mut sam, &[1u32, 2], 4);
-        // The SAM should find [1,2] -> continuation [3].
-        assert!(
-            !result.is_empty(),
-            "expected at least one token after [1,2] in stream [1,2,3,1,2]"
-        );
+ assert!( !result.is_empty(), "expected at least one token after [1,2] in stream [1,2,3,1,2]" );
         assert_eq!(result[0], 3u32, "first continuation of [1,2] should be 3");
     }
-
-    // ------------------------------------------------------------------
-    // 3. Long recurring span
-    // ------------------------------------------------------------------
     #[test]
     fn sam_long_recurring_span() {
         unsafe { std::env::set_var("HAWKING_EH_SAM", "1") };
-
-        // Token stream: ABCDEFG ABCDEFG (token ids 0..6 twice = 14 tokens)
-        // A=0, B=1, C=2, D=3, E=4, F=5, G=6
         let stream: Vec<u32> = (0u32..7).chain(0u32..7).collect();
         let mut sam = SuffixAutomaton::new();
         sam.observe(&stream);
-
-        // Query: [6, 0] = "GA" (the last two tokens of the second "ABCDEFG",
-        // i.e. G at index 6 and A at index 7 of the stream).
-        // The prior occurrence is at indices 6 (G) and 0 (A in first span)...
-        // Actually stream = [0,1,2,3,4,5,6, 0,1,2,3,4,5,6]
-        // Indices:            0 1 2 3 4 5 6  7 8 9 10 11 12 13
-        // Query = [6, 0] = stream[6]=6, stream[7]=0 → prior at [6..8) = match at idx 6+1=7
-        // The SAM query is ctx=[6,0]; we want the continuation = [1,2,3,4,5,6]
         let result = propose_tokens(&mut sam, &[6u32, 0], 6);
-        assert!(
-            result.len() >= 6,
-            "expected 6 continuation tokens [1,2,3,4,5,6], got {:?}",
-            result
-        );
+ assert!( result.len() >= 6, "expected 6 continuation tokens [1,2,3,4,5,6], got {:?}", result );
         assert_eq!(&result[..6], &[1u32, 2, 3, 4, 5, 6]);
     }
-
-    // ------------------------------------------------------------------
-    // 4. Collision safety — last write wins deterministically
-    // ------------------------------------------------------------------
     #[test]
     fn sam_collision_safe() {
         unsafe { std::env::set_var("HAWKING_EH_SAM", "1") };
-
         let mut sam = SuffixAutomaton::new();
-        // Observe [1,2,3] then [1,2,4] — two different continuations for [1,2].
-        // The SAM's end_pos for the matched state is updated each time [1,2] is
-        // re-encountered, so the LAST occurrence wins.
         sam.observe(&[1u32, 2, 3]);
         sam.observe(&[1u32, 2, 4]);
-
-        // After the second observe the SAM has seen stream = [1,2,3,1,2,4].
-        // The longest [1,2] match's end_pos should point past the second [1,2]
-        // occurrence, so the continuation is [4].
         let result = propose_tokens(&mut sam, &[1u32, 2], 4);
-        assert!(
-            !result.is_empty(),
-            "should produce a continuation for [1,2]"
-        );
-        // The result should be deterministic (not random) — just check consistency:
-        // call propose() again with the same ctx and verify identical output.
+ assert!( !result.is_empty(), "should produce a continuation for [1,2]" );
         let result2 = propose_tokens(&mut sam, &[1u32, 2], 4);
-        assert_eq!(
-            result, result2,
-            "SAM must be deterministic across identical calls"
-        );
+ assert_eq!( result, result2, "SAM must be deterministic across identical calls" );
     }
-
-    // ------------------------------------------------------------------
-    // 5. Budget respected — never more than budget.k tokens
-    // ------------------------------------------------------------------
     #[test]
     fn sam_respects_budget() {
         unsafe { std::env::set_var("HAWKING_EH_SAM", "1") };
-
         let mut sam = SuffixAutomaton::new();
-        // Long repetition to ensure there are always enough tokens to overshoot.
         let stream: Vec<u32> = (0u32..10).chain(0u32..10).collect();
         sam.observe(&stream);
-
         for k in 1..=Budget::MAX_DRAFT_LEN {
             let ctx_toks: Vec<u32> = vec![0u32, 1];
             let ctx = make_ctx(&ctx_toks);
@@ -476,11 +389,7 @@ mod tests {
                 Proposal::TokenLine(v) => v,
                 _ => panic!("expected TokenLine"),
             };
-            assert!(
-                result.len() <= k,
-                "budget k={k}: got {} tokens (> k)",
-                result.len()
-            );
+ assert!( result.len() <= k, "budget k={k}: got {} tokens (> k)", result.len() );
         }
     }
 }

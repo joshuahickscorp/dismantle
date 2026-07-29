@@ -183,7 +183,6 @@ pub fn run() -> F2Report {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn f2_bridge_exercises_moe_contract() {
         let r = run();

@@ -1284,14 +1284,12 @@ fn notifications_for(policy: &NotificationPolicy, ok: bool) -> Vec<String> {
 mod tests {
     use super::*;
     use crate::persistence::InMemoryKeyValueStore;
-
     fn engine_at(ms: u64) -> (Arc<InjectedClock>, AutomationEngine) {
         let clock = Arc::new(InjectedClock::new(ms));
         let kv: DynKeyValueStore = Arc::new(InMemoryKeyValueStore::default());
         let engine = AutomationEngine::new(kv, clock.clone(), standard_fixture_registry());
         (clock, engine)
     }
-
     fn sample_automation(now: u64) -> Automation {
         Automation::declare(
             AutomationKind::EmailTriage,
@@ -1313,7 +1311,6 @@ mod tests {
             now,
         )
     }
-
     #[test]
     fn capability_is_derived_and_cannot_be_widened() {
         let perms = PermissionSet::new(["email.list", "email.summarize"], ["gmail"]);
@@ -1321,32 +1318,22 @@ mod tests {
         assert!(cap.allows_tool("email.list"));
         assert!(!cap.allows_tool("shell.run"));
         assert!(cap.is_within(&perms));
-
-        // Subset derivation works.
         let sub = perms
             .derive_capability_subset(["email.list"], None::<&str>)
             .unwrap();
         assert!(sub.allows_tool("email.list"));
         assert!(!sub.allows_tool("email.summarize"));
-
-        // Cannot derive a tool the automation never granted.
         let err = perms
             .derive_capability_subset(["shell.run"], None::<&str>)
             .unwrap_err();
-        assert!(
-            matches!(err, HideError::CapabilityMissing(_)),
-            "expected CapabilityMissing, got {err:?}"
-        );
+        assert!(matches!(err, HideError::CapabilityMissing(_)));
     }
-
     #[test]
     fn authority_containment_fail_closed_and_recorded() {
         let (clock, engine) = engine_at(1_000);
         let a = sample_automation(clock.now_ms());
         let id = a.id.as_str().to_string();
         engine.create(a).unwrap();
-
-        // Plan includes a tool the automation did NOT grant.
         let plan = JobPlan {
             tool_calls: vec![
                 ("email.list".into(), json!({})),
@@ -1354,47 +1341,23 @@ mod tests {
             ],
         };
         let result = engine.run_manual(&id, plan).unwrap();
-
         assert!(!result.ok, "job must fail closed on ungranted tool");
-        assert!(
-            result.tool_attempts.iter().any(|t| {
-                t.tool == "shell.run" && !t.authorized && !t.ok
-            }),
-            "ungranted tool attempt must be recorded as unauthorized: {:?}",
-            result.tool_attempts
-        );
-        assert!(
-            matches!(
-                result.stop_reason,
-                Some(StopReason::AuthorityDenied { ref tool }) if tool == "shell.run"
-            ),
-            "stop reason must record authority denial: {:?}",
-            result.stop_reason
-        );
-
-        // Job failed closed; the standing automation remains (failure is audited
-        // on the result, not a permanent kill of the declaration).
+        assert!(result.tool_attempts.iter().any(|t| { t.tool == "shell.run" && !t.authorized && !t.ok }));
+        assert!(matches!( result.stop_reason, Some(StopReason::AuthorityDenied { ref tool }) if tool == "shell.run" ));
         let a = engine.get(&id).unwrap();
-        assert_eq!(
-            a.status,
-            AutomationStatus::Active,
-            "authority denial fails the job, not the automation declaration"
-        );
+        assert_eq!(a.status, AutomationStatus::Active);
         assert!(a.last_result.as_ref().is_some_and(|r| !r.ok));
-        // Inspectable history contains the denial.
         let inspected = engine.inspect(&id, 5).unwrap();
         let results = inspected["results"].as_array().unwrap();
         assert_eq!(results.len(), 1);
         assert_eq!(results[0]["ok"], false);
     }
-
     #[test]
     fn authorized_tools_succeed_under_capability() {
         let (clock, engine) = engine_at(1_000);
         let a = sample_automation(clock.now_ms());
         let id = a.id.as_str().to_string();
         engine.create(a).unwrap();
-
         let plan = JobPlan {
             tool_calls: vec![
                 ("email.list".into(), json!({})),
@@ -1406,26 +1369,20 @@ mod tests {
         assert_eq!(result.tool_attempts.len(), 2);
         assert!(result.tool_attempts.iter().all(|t| t.authorized && t.ok));
     }
-
     #[test]
     fn durable_across_restart_next_run_survives() {
         let clock = Arc::new(InjectedClock::new(10_000));
         let kv: DynKeyValueStore = Arc::new(InMemoryKeyValueStore::default());
         let registry = standard_fixture_registry();
-
         let next_run = {
             let engine = AutomationEngine::new(kv.clone(), clock.clone(), registry.clone());
             let mut a = sample_automation(clock.now_ms());
-            // Pin a known next run.
             a.next_run_ms = Some(99_000);
             let created = engine.create(a).unwrap();
             let id = created.id.as_str().to_string();
-            // Drop the engine (process "restart"): only the KV remains.
             drop(engine);
             (id, 99_000u64)
         };
-
-        // Fresh engine, same durable store.
         let engine2 = AutomationEngine::new(kv, clock, registry);
         let recovered = engine2.recover().unwrap();
         assert_eq!(recovered.len(), 1);
@@ -1434,7 +1391,6 @@ mod tests {
         assert_eq!(a.goal, "triage unread mail");
         assert!(a.permissions.grants_tool("email.list"));
     }
-
     #[test]
     fn stop_condition_after_runs_is_enforced() {
         let (clock, engine) = engine_at(5_000);
@@ -1451,32 +1407,18 @@ mod tests {
         );
         let id = a.id.as_str().to_string();
         engine.create(a).unwrap();
-
         let plan = JobPlan {
             tool_calls: vec![("notify.send".into(), json!({}))],
         };
         let r1 = engine.run_manual(&id, plan.clone()).unwrap();
         assert!(r1.ok);
         assert!(engine.get(&id).unwrap().status.may_run());
-
         let r2 = engine.run_manual(&id, plan).unwrap();
         assert!(r2.ok);
-        assert!(
-            matches!(
-                r2.stop_reason,
-                Some(StopReason::AfterRuns { count: 2 })
-            ),
-            "second run must record AfterRuns: {:?}",
-            r2.stop_reason
-        );
+        assert!(matches!( r2.stop_reason, Some(StopReason::AfterRuns { count: 2 }) ));
         let a = engine.get(&id).unwrap();
         assert_eq!(a.status, AutomationStatus::Stopped);
-        assert!(matches!(
-            a.stop_reason,
-            Some(StopReason::AfterRuns { count: 2 })
-        ));
-
-        // Further manual runs refuse.
+ assert!(matches!( a.stop_reason, Some(StopReason::AfterRuns { count: 2 }) ));
         let err = engine
             .run_manual(
                 &id,
@@ -1487,7 +1429,6 @@ mod tests {
             .unwrap_err();
         assert!(matches!(err, HideError::InvalidState(_)));
     }
-
     #[test]
     fn budget_exhaustion_halts_and_records_why() {
         let (clock, engine) = engine_at(0);
@@ -1509,7 +1450,6 @@ mod tests {
         );
         let id = a.id.as_str().to_string();
         engine.create(a).unwrap();
-
         let r = engine
             .run_manual(
                 &id,
@@ -1519,19 +1459,11 @@ mod tests {
             )
             .unwrap();
         assert!(r.ok);
-        assert!(
-            matches!(
-                r.stop_reason,
-                Some(StopReason::BudgetExhausted { ref axis }) if axis == "max_runs"
-            ),
-            "budget stop reason: {:?}",
-            r.stop_reason
-        );
+        assert!(matches!( r.stop_reason, Some(StopReason::BudgetExhausted { ref axis }) if axis == "max_runs" ));
         let a = engine.get(&id).unwrap();
         assert_eq!(a.status, AutomationStatus::Stopped);
         assert!(!a.results[0].notifications.is_empty());
     }
-
     #[test]
     fn condition_met_stop_is_enforced() {
         let (clock, engine) = engine_at(0);
@@ -1552,8 +1484,6 @@ mod tests {
         );
         let id = a.id.as_str().to_string();
         engine.create(a).unwrap();
-
-        // Signaling the stop condition halts without a run.
         let result = engine.signal_condition(&id, "deploy_green").unwrap();
         assert!(result.is_none());
         let a = engine.get(&id).unwrap();
@@ -1563,7 +1493,6 @@ mod tests {
             Some(StopReason::ConditionMet { ref name }) if name == "deploy_green"
         ));
     }
-
     #[test]
     fn schedule_slot_is_idempotent() {
         let (clock, engine) = engine_at(100_000);
@@ -1583,37 +1512,24 @@ mod tests {
         );
         let id = a.id.as_str().to_string();
         engine.create(a).unwrap();
-
         let plan = JobPlan {
             tool_calls: vec![
                 ("calendar.list".into(), json!({})),
                 ("calendar.prepare".into(), json!({})),
             ],
         };
-
-        // Tick fires once.
         let r1 = engine.tick(&plan).unwrap();
         assert_eq!(r1.len(), 1, "first tick should run once");
         assert!(r1[0].ok);
-
-        // Same clock, same slot: second tick must not re-run.
         let r2 = engine.tick(&plan).unwrap();
-        assert!(
-            r2.is_empty(),
-            "idempotent: same slot must not run twice, got {:?}",
-            r2
-        );
-
-        // Explicit fire of the same slot is also a no-op.
+ assert!( r2.is_empty(), "idempotent: same slot must not run twice, got {:?}", r2 );
         let slot = "cron:2026-07-27T09:00";
         let r3 = engine.fire_slot(&id, slot, plan).unwrap();
         assert!(r3.is_none());
-
         let a = engine.get(&id).unwrap();
         assert_eq!(a.usage.runs, 1);
         assert_eq!(a.results.len(), 1);
     }
-
     #[test]
     fn interval_slots_advance_and_do_not_double_fire() {
         let (clock, engine) = engine_at(0);
@@ -1633,32 +1549,23 @@ mod tests {
         );
         let id = a.id.as_str().to_string();
         engine.create(a).unwrap();
-
         let plan = JobPlan {
             tool_calls: vec![("fs.read".into(), json!({}))],
         };
-
-        // At t=0, slot interval:3600000:0 is due.
         let r0 = engine.tick(&plan).unwrap();
         assert_eq!(r0.len(), 1);
         assert_eq!(r0[0].schedule_slot.as_deref(), Some("interval:3600000:0"));
-
-        // Still in the same hour: no re-fire.
         clock.advance(1_000);
         let r_same = engine.tick(&plan).unwrap();
         assert!(r_same.is_empty());
-
-        // Next hour: new slot.
         clock.set(3_600_000);
         let r1 = engine.tick(&plan).unwrap();
         assert_eq!(r1.len(), 1);
         assert_eq!(r1[0].schedule_slot.as_deref(), Some("interval:3600000:1"));
-
         let a = engine.get(&id).unwrap();
         assert_eq!(a.usage.runs, 2);
         assert_eq!(a.next_run_ms, Some(7_200_000));
     }
-
     #[test]
     fn inspect_exposes_full_declaration_and_history() {
         let (clock, engine) = engine_at(0);
@@ -1673,7 +1580,6 @@ mod tests {
                 },
             )
             .unwrap();
-
         let view = engine.inspect(&id, 10).unwrap();
         assert_eq!(view["declaration"]["goal"], "triage unread mail");
         assert!(view["declaration"]["permissions"]["tools"]
@@ -1683,20 +1589,14 @@ mod tests {
             .any(|t| t == "email.list"));
         assert_eq!(view["results"].as_array().unwrap().len(), 1);
     }
-
     #[test]
     fn job_capability_has_no_public_widen_path() {
-        // Compile-time documentation test: JobCapability fields are private,
-        // so the only construction is via PermissionSet. Runtime check: a
-        // capability equal to a parent set cannot claim a tool outside it.
         let parent = PermissionSet::new(["fs.read"], None::<&str>);
         let cap = parent.derive_capability();
         assert!(cap.is_live());
         assert!(!cap.allows_tool("fs.write"));
         assert!(cap.require_tool("fs.write").is_err());
     }
-
-    /// Adversarial: a capability-shaped JSON object is not a live grant.
     #[test]
     fn adversarial_forged_job_capability_via_serde_is_dead() {
         let forged: JobCapability = serde_json::from_value(json!({
@@ -1705,10 +1605,7 @@ mod tests {
             "live": true
         }))
         .expect("shape deserializes");
-        assert!(
-            !forged.is_live(),
-            "serde must not mint a live JobCapability"
-        );
+ assert!( !forged.is_live(), "serde must not mint a live JobCapability" );
         assert!(!forged.allows_tool("email.send"));
         assert!(forged.require_tool("email.send").is_err());
         assert!(!forged.allows_connector("gmail"));

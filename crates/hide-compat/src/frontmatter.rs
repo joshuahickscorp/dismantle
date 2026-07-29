@@ -240,7 +240,6 @@ fn unquote(s: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn splits_frontmatter_and_body() {
         let doc = "---\nname: foo\n---\nbody line\nmore\n";
@@ -249,7 +248,6 @@ mod tests {
         assert_eq!(fm.str("name").as_deref(), Some("foo"));
         assert_eq!(body, "body line\nmore\n");
     }
-
     #[test]
     fn no_frontmatter_returns_whole_body() {
         let doc = "just a body\nno fence\n";
@@ -257,7 +255,6 @@ mod tests {
         assert!(fm.is_none());
         assert_eq!(body, doc);
     }
-
     #[test]
     fn parses_inline_and_block_lists() {
         let block = "tools: [Read, Write]\nskills:\n  - a\n  - b\n";
@@ -265,7 +262,6 @@ mod tests {
         assert_eq!(fm.list("tools"), vec!["Read", "Write"]);
         assert_eq!(fm.list("skills"), vec!["a", "b"]);
     }
-
     #[test]
     fn parses_booleans_and_quotes() {
         let block = "user-invocable: true\ndisable-model-invocation: false\ndescription: \"hello world\"\n";
@@ -274,7 +270,6 @@ mod tests {
         assert_eq!(fm.bool("disable-model-invocation"), Some(false));
         assert_eq!(fm.str("description").as_deref(), Some("hello world"));
     }
-
     #[test]
     fn empty_key_becomes_null_not_list() {
         let block = "memory:\nname: x\n";
@@ -282,18 +277,13 @@ mod tests {
         assert_eq!(fm.get("memory"), Some(&Value::Null));
         assert_eq!(fm.str("name").as_deref(), Some("x"));
     }
-
     #[test]
     fn strips_inline_comment_and_quoted_hash_survives() {
         let block = "quoted: \"#ffffff\"\nname: foo # trailing\nglued: a#b\nbare: #ffffff\n";
         let fm = parse_block(block);
-        // Quoted hash survives.
         assert_eq!(fm.str("quoted").as_deref(), Some("#ffffff"));
-        // Trailing comment after whitespace is stripped.
         assert_eq!(fm.str("name").as_deref(), Some("foo"));
-        // A hash glued to non-whitespace is not a comment.
         assert_eq!(fm.str("glued").as_deref(), Some("a#b"));
-        // A bare hash after whitespace is a YAML comment: value becomes null.
         assert_eq!(fm.get("bare"), Some(&Value::Null));
     }
 }

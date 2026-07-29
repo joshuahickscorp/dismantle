@@ -767,17 +767,12 @@ fn build_model_prompt(title: &str, predicate: &str, rationale: &str, steer: &[St
 #[cfg(test)]
 mod steer_tests {
     use super::build_model_prompt;
-
     #[test]
     fn steer_is_prepended_verbatim_at_prompt_head() {
         let steer = vec!["use rayon".to_string(), "avoid unsafe".to_string()];
         let p = build_model_prompt("Impl", "compiles", "because", &steer);
-        assert!(
-            p.starts_with("User steering (apply first):\nuse rayon\navoid unsafe\n\nStep: Impl"),
-            "got: {p}"
-        );
+        assert!(p.starts_with("User steering (apply first):\nuse rayon\navoid unsafe\n\nStep: Impl"));
     }
-
     #[test]
     fn no_steer_leaves_prompt_unprefixed() {
         let p = build_model_prompt("Impl", "compiles", "because", &[]);
@@ -834,36 +829,27 @@ mod stall_tests {
     use super::{is_stalled, verdict_fingerprint, STALL_WINDOW};
     use crate::verify::oracle::{OracleClass, Verdict};
     use std::collections::VecDeque;
-
     fn hist(items: &[&str]) -> VecDeque<String> {
         items.iter().map(|s| s.to_string()).collect()
     }
-
     #[test]
     fn identical_window_is_stalled() {
         assert!(is_stalled(&hist(&["a", "a", "a"])));
     }
-
     #[test]
     fn changed_last_is_not_stalled() {
         assert!(!is_stalled(&hist(&["a", "a", "b"])));
     }
-
     #[test]
     fn short_history_is_not_stalled() {
         assert!(!is_stalled(&hist(&["a", "a"])));
         assert_eq!(STALL_WINDOW, 3);
     }
-
     #[test]
     fn fingerprint_is_order_independent_and_stable() {
         let a = Verdict::pass("build", OracleClass::Deterministic, "ok");
         let b = Verdict::fail("test", OracleClass::Deterministic, "boom", Vec::new());
-        assert_eq!(
-            verdict_fingerprint(&[a.clone(), b.clone()]),
-            verdict_fingerprint(&[b, a]),
-            "fingerprint must not depend on verdict order"
-        );
+        assert_eq!(verdict_fingerprint(&[a.clone(), b.clone()]), verdict_fingerprint(&[b, a]));
         let c = Verdict::fail("test", OracleClass::Deterministic, "boom", Vec::new());
         let d = Verdict::fail("test", OracleClass::Deterministic, "boom", Vec::new());
         assert_eq!(verdict_fingerprint(&[c]), verdict_fingerprint(&[d]));

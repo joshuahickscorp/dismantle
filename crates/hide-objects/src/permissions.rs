@@ -110,7 +110,6 @@ impl ObjectPermissions {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn owner_reads_on_allowed_surface() {
         let p = ObjectPermissions::owner_only("alice", vec![Surface::You]);
@@ -120,7 +119,6 @@ mod tests {
         };
         assert!(p.check_read(&r).is_ok());
     }
-
     #[test]
     fn stranger_denied() {
         let p = ObjectPermissions::owner_only("alice", vec![Surface::You]);
@@ -128,12 +126,8 @@ mod tests {
             principal: "bob".into(),
             surface: Surface::You,
         };
-        assert!(matches!(
-            p.check_read(&r),
-            Err(ObjectError::PermissionDenied { .. })
-        ));
+ assert!(matches!( p.check_read(&r), Err(ObjectError::PermissionDenied { .. }) ));
     }
-
     #[test]
     fn wrong_surface_denied() {
         let p = ObjectPermissions::owner_only("alice", vec![Surface::You]);
@@ -141,9 +135,6 @@ mod tests {
             principal: "alice".into(),
             surface: Surface::Chat,
         };
-        assert!(matches!(
-            p.check_read(&r),
-            Err(ObjectError::PermissionDenied { .. })
-        ));
+ assert!(matches!( p.check_read(&r), Err(ObjectError::PermissionDenied { .. }) ));
     }
 }

@@ -262,9 +262,7 @@ pub fn doctor_within_budget(base_bits: u64, doctor_bits: u64, overhead_bits: u64
 #[cfg(test)]
 mod tests {
     use super::*;
-
     const H: &str = "abc123";
-
     fn proof(rate: Rate, g_math: bool, g_live: bool) -> CapabilityProof {
         CapabilityProof { artifact_index_sha256: H.into(), rate, g_math, g_live }
     }
@@ -274,8 +272,6 @@ mod tests {
     fn admit(to: Rate, sealed_receipt: bool) -> Ask {
         Ask::AdmitRate { to, artifact_index_sha256: H.into(), sealed_receipt }
     }
-
-    /// The Math-Preserve case, which the old law allowed: deeply sub-bit, no capability.
     #[test]
     fn small_is_not_legal_without_capability() {
         let rate = Rate::new(9774, 10000);
@@ -284,7 +280,6 @@ mod tests {
         assert!(!d.allow, "sub-bit with no capability proof must be refused");
         assert!(d.reason.contains("Being small is not being usable"));
     }
-
     #[test]
     fn failing_g_math_is_refused_at_any_rate() {
         for rate in [Rate::new(1, 2), Rate::new(9774, 10000), Rate::new(3, 2)] {
@@ -293,8 +288,6 @@ mod tests {
             assert!(d.reason.contains("G_math"));
         }
     }
-
-    /// A proof is bound to one artifact and one rate; it cannot be carried downward.
     #[test]
     fn proof_does_not_inherit_to_another_rate_or_artifact() {
         let proven = Rate::new(6, 5);
@@ -302,7 +295,6 @@ mod tests {
         let d = decide(proven, &admit(cheaper, false), &ev(Some(proof(proven, true, true))));
         assert!(!d.allow);
         assert!(d.reason.contains("must be proven at that rate"));
-
         let other = Evidence {
             representation_families_tried: 2,
             capability: Some(CapabilityProof {
@@ -315,7 +307,6 @@ mod tests {
         };
         assert!(!decide(proven, &admit(proven, false), &other).allow);
     }
-
     #[test]
     fn reconstruction_can_never_admit() {
         let rate = Rate::new(1, 2);
@@ -326,7 +317,6 @@ mod tests {
         e.scheduler_deferred = true;
         assert!(!decide(rate, &admit(rate, true), &e).allow);
     }
-
     #[test]
     fn above_sealed_receipt_bound_requires_a_receipt() {
         let high = Rate::new(2, 1); // 2.0 BPW
@@ -337,14 +327,12 @@ mod tests {
         let d = decide(high, &admit(high, true), &e);
         assert!(d.allow, "a bound is not a wall: receipted, it is admitted");
         assert!(d.requires_receipt);
-        // Exactly at the bound needs no receipt.
         let at = SEALED_RECEIPT_ABOVE;
         let e = ev(Some(proof(at, true, true)));
         let d = decide(at, &admit(at, false), &e);
         assert!(d.allow);
         assert!(!d.requires_receipt);
     }
-
     #[test]
     fn usable_sub_bit_is_admitted_without_a_receipt() {
         let rate = Rate::new(167, 1000);
@@ -352,7 +340,6 @@ mod tests {
         assert!(d.allow);
         assert!(!d.requires_receipt);
     }
-
     #[test]
     fn ladder_reports_the_lowest_rate_actually_proven() {
         let mut l = Ladder::default();
@@ -360,18 +347,13 @@ mod tests {
         l.record(Rate::new(1, 1), true);
         l.record(Rate::new(1, 2), false); // built, measured, not usable
         assert_eq!(l.lowest_usable(), Some(Rate::new(1, 1)));
-
-        // Nothing usable is a real answer and must stay None rather than round up.
         let mut none = Ladder::default();
         none.record(Rate::new(1, 2), false);
         assert_eq!(none.lowest_usable(), None);
-
-        // A high lowest-usable is still reported; the receipt bound is enforced at admit time.
         let mut high = Ladder::default();
         high.record(Rate::new(2, 1), true);
         assert_eq!(high.lowest_usable(), Some(Rate::new(2, 1)));
     }
-
     #[test]
     fn representation_precedes_bpw_and_doctor_budget() {
         let rate = Rate::new(9, 10);
@@ -380,18 +362,11 @@ mod tests {
         assert!(doctor_within_budget(500, 300, 0, 0.8, 1000).is_ok());
         assert!(doctor_within_budget(500, 400, 0, 0.8, 1000).is_err());
     }
-
     #[test]
     fn exact_rational_comparison_is_exact_and_does_not_overflow() {
-        // Cross-multiplication at the u32 ceiling: 4294967295^2 = 18446744065119617025,
-        // against a u64 max of 18446744073709551615. It fits with 8.6e9 to spare, which is
-        // close enough that widening to u64 is load-bearing rather than defensive -- in u32
-        // this wraps and the law silently orders rates backwards.
         let big = Rate::new(u32::MAX, u32::MAX);
         assert!(big.le(&Rate::new(u32::MAX, u32::MAX)));
         assert!(Rate::new(u32::MAX - 1, u32::MAX).lt(&big));
-
-        // Adjacent fractions an f64 round-trip would blur, ordered exactly.
         let a = Rate::new(100_000_000, 300_000_000);
         let b = Rate::new(100_000_000, 300_000_001);
         assert!(b.lt(&a));

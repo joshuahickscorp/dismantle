@@ -290,7 +290,6 @@ pub fn ppl_gate(
 #[cfg(test)]
 mod tests {
     use super::*;
-
     fn group(outcomes: &[ExecutionOutcome]) -> TaskGroup {
         TaskGroup {
             run_id: RunId::new(),
@@ -306,7 +305,6 @@ mod tests {
                 .collect(),
         }
     }
-
     #[test]
     fn reward_is_derived_from_outcome() {
         let cfg = RewardConfig::default();
@@ -316,25 +314,14 @@ mod tests {
         assert_eq!(reward_for(ExecutionOutcome::LintOnly, &cfg), -0.25);
         assert_eq!(reward_for(ExecutionOutcome::Timeout, &cfg), -0.75);
     }
-
     #[test]
     fn signals_fold_to_worst_outcome() {
         let s = [FeedbackSignal::BuildPassed, FeedbackSignal::TestFailed];
-        assert_eq!(
-            ExecutionOutcome::from_signals(&s),
-            ExecutionOutcome::TestFail
-        );
+ assert_eq!( ExecutionOutcome::from_signals(&s), ExecutionOutcome::TestFail );
         let s2 = [FeedbackSignal::BuildFailed, FeedbackSignal::TestFailed];
-        assert_eq!(
-            ExecutionOutcome::from_signals(&s2),
-            ExecutionOutcome::BuildFail
-        );
-        assert_eq!(
-            ExecutionOutcome::from_signals(&[]),
-            ExecutionOutcome::AllGreen
-        );
+ assert_eq!( ExecutionOutcome::from_signals(&s2), ExecutionOutcome::BuildFail );
+ assert_eq!( ExecutionOutcome::from_signals(&[]), ExecutionOutcome::AllGreen );
     }
-
     #[test]
     fn group_advantage_is_zero_mean() {
         let g = group(&[
@@ -346,31 +333,25 @@ mod tests {
         let tuples = assemble_group(&g, &RewardConfig::default());
         let sum_adv: f32 = tuples.iter().map(|t| t.advantage).sum();
         assert!(sum_adv.abs() < 1e-4, "advantages should sum to ~0");
-        // The all-green attempts have positive advantage; the failures negative.
         assert!(tuples[0].advantage > 0.0);
         assert!(tuples[1].advantage < 0.0);
     }
-
     #[test]
     fn identical_group_has_no_signal() {
         let g = group(&[ExecutionOutcome::AllGreen, ExecutionOutcome::AllGreen]);
         let tuples = assemble_group(&g, &RewardConfig::default());
         assert!(tuples.iter().all(|t| t.advantage == 0.0));
     }
-
     struct FixedPpl(f64);
     impl PplEvaluator for FixedPpl {
         fn held_out_ppl(&self, _: &std::path::Path) -> f64 {
             self.0
         }
     }
-
     #[test]
     fn ppl_gate_keeps_within_threshold_rolls_back_beyond() {
         let daemon = RlefDaemon::new("hero", 10.0);
-        // +0.4 nats <= 0.5 threshold → keep.
         assert!(ppl_gate(&daemon, &FixedPpl(10.4), std::path::Path::new("a")).keeps());
-        // +0.6 nats > 0.5 → rollback.
         assert!(!ppl_gate(&daemon, &FixedPpl(10.6), std::path::Path::new("a")).keeps());
     }
 }

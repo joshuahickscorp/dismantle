@@ -232,22 +232,18 @@ pub fn doctor_rescue(w: &[f32], m: usize, n: usize, mut sb: SubBitMatrix, k: usi
 #[cfg(test)]
 mod tests {
     use super::*;
-
     fn probe(n: usize, seed: usize) -> Vec<f32> {
         (0..n).map(|j| (((j * 2654435761 + seed) >> 7) & 0xFF) as f32 / 128.0 - 1.0).collect()
     }
-
     #[test]
     fn subbit_is_under_one_bpw_and_executes_directly() {
         let (m, n, r) = (256usize, 256usize, 32usize);
         let w: Vec<f32> = (0..m * n).map(|i| (((i * 48271) % 997) as f32 / 997.0 - 0.5) * 0.1).collect();
         let sb = fit(&w, m, n, r);
         assert!(sb.whole_bpw() < 1.0, "must be sub-bit, got {}", sb.whole_bpw());
-        // executes without forming a dense matrix
         let y = sb.matvec(&probe(n, 1));
         assert_eq!(y.len(), m);
     }
-
     #[test]
     fn doctor_rescue_reduces_divergence_within_budget() {
         let (m, n, r) = (256usize, 256usize, 32usize);

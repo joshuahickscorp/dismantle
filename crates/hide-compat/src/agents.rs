@@ -137,7 +137,6 @@ fn parse_dir(dir: &Path) -> Vec<Agent> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn disallowed_applied_before_allow() {
         let fm = frontmatter::parse_block(
@@ -146,18 +145,14 @@ mod tests {
         let agent = from_frontmatter(Path::new("/x/reviewer.md"), &fm, String::new());
         assert_eq!(agent.effective_tools(), vec!["Read", "Write"]);
     }
-
     #[test]
     fn empty_tool_list_inherits_all_and_deny_still_wins() {
         let fm = frontmatter::parse_block("name: reviewer\ndisallowedTools: [Bash]\n");
         let agent = from_frontmatter(Path::new("/x/reviewer.md"), &fm, String::new());
-        // No `tools:` key, so the explicit list is empty ...
         assert!(agent.effective_tools().is_empty());
-        // ... but the profile still permits Read and still denies Bash.
         assert!(agent.allows_tool("Read"));
         assert!(!agent.allows_tool("Bash"));
     }
-
     #[test]
     fn explicit_tool_list_is_a_closed_set() {
         let fm = frontmatter::parse_block("name: r\ntools: [Read]\ndisallowedTools: [Bash]\n");
@@ -166,7 +161,6 @@ mod tests {
         assert!(!agent.allows_tool("Write"));
         assert!(!agent.allows_tool("Bash"));
     }
-
     #[test]
     fn model_defaults_to_inherit() {
         let fm = frontmatter::parse_block("name: a\n");

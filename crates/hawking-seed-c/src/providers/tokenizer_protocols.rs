@@ -791,17 +791,14 @@ pub fn seal_registry() -> Result<Record> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     fn user(s: &str) -> Turn {
         Turn::Chat { role: "user".into(), content: s.into() }
     }
-
     #[test]
     fn qwen_plain_chat_matches_local_chat_template() {
         let out = qwen3().assemble(&[user("Hi")], Some("default")).unwrap();
         assert_eq!(out, "<|im_start|>user\nHi<|im_end|>\n<|im_start|>assistant\n");
     }
-
     #[test]
     fn qwen_thinking_and_non_thinking_modes() {
         let p = qwen3();
@@ -810,23 +807,18 @@ mod tests {
         let nt = p.assemble(&[user("Hi")], Some("non_thinking")).unwrap();
         assert!(nt.ends_with("<|im_start|>assistant\n<think>\n\n</think>\n\n"));
     }
-
     #[test]
     fn qwen_tool_call_and_response() {
         let p = qwen3();
         let call = p
             .assemble(&[Turn::ToolCall { name: "get_time".into(), arguments: "{\"tz\": \"UTC\"}".into() }], None)
             .unwrap();
-        assert_eq!(
-            call,
-            "<|im_start|>assistant\n<tool_call>\n{\"name\": \"get_time\", \"arguments\": {\"tz\": \"UTC\"}}\n</tool_call><|im_end|>\n"
-        );
+        assert_eq!(call, "<|im_start|>assistant\n<tool_call>\n{\"name\": \"get_time\", \"arguments\": {\"tz\": \"UTC\"}}\n</tool_call><|im_end|>\n");
         let resp = p
             .assemble(&[Turn::ToolResponse { name: "get_time".into(), content: "12:00".into() }], None)
             .unwrap();
         assert_eq!(resp, "<|im_start|>user\n\n<tool_response>\n12:00\n</tool_response><|im_end|>\n");
     }
-
     #[test]
     fn harmony_chat_thinking_and_tool_call() {
         let p = harmony();
@@ -838,11 +830,9 @@ mod tests {
             .assemble(&[Turn::ToolCall { name: "lookup".into(), arguments: "{\"q\":1}".into() }], None)
             .unwrap();
         assert_eq!(call, "<|start|>assistant to=functions.lookup<|channel|>commentary<|message|>{\"q\":1}<|call|>");
-        // an assistant answer rides the `final` channel
         let ans = p.assemble(&[Turn::Chat { role: "assistant".into(), content: "42".into() }], None).unwrap();
         assert_eq!(ans, "<|start|>assistant<|channel|>final<|message|>42<|end|>");
     }
-
     #[test]
     fn deepseek_chat_thinking_and_tool_call() {
         let chat = deepseek_v3().assemble(&[user("Hi")], Some("default")).unwrap();
@@ -854,7 +844,6 @@ mod tests {
             .unwrap();
         assert!(call.contains("<｜tool▁calls▁begin｜><｜tool▁call▁begin｜>function<｜tool▁sep｜>f"));
     }
-
     #[test]
     fn multimodal_turn_assembles_only_where_declared() {
         let parts = vec![ContentPart::Image, ContentPart::Text("what is this".into())];
@@ -862,48 +851,37 @@ mod tests {
             .assemble(&[Turn::Multimodal { role: "user".into(), parts: parts.clone() }], None)
             .unwrap();
         assert_eq!(out, "<|im_start|>user\n<|vision_start|><|image_pad|><|vision_end|>what is this<|im_end|>\n");
-        // text-only Qwen declares no multimodal capability and REFUSES
         let refused = qwen3().assemble(&[Turn::Multimodal { role: "user".into(), parts }], None);
         assert!(refused.is_err(), "text-only protocol must refuse a multimodal turn");
     }
-
     #[test]
     fn missing_capability_refuses_instead_of_degrading() {
-        // no thinking channel
         assert!(llama3().assemble(&[Turn::Thinking { content: "x".into() }], None).is_err());
         assert!(gemma().assemble(&[Turn::Thinking { content: "x".into() }], None).is_err());
-        // no tool calls
         assert!(gemma().assemble(&[Turn::ToolCall { name: "f".into(), arguments: "{}".into() }], None).is_err());
         assert!(phi3().assemble(&[Turn::ToolCall { name: "f".into(), arguments: "{}".into() }], None).is_err());
-        // no system role
         assert!(mistral().assemble(&[Turn::Chat { role: "system".into(), content: "s".into() }], None).is_err());
         assert!(gemma().assemble(&[Turn::Chat { role: "system".into(), content: "s".into() }], None).is_err());
-        // no developer role
         assert!(qwen3().assemble(&[Turn::Chat { role: "developer".into(), content: "d".into() }], None).is_err());
         assert!(harmony().assemble(&[Turn::Chat { role: "developer".into(), content: "d".into() }], None).is_ok());
     }
-
     #[test]
     fn unverified_tokens_refuse_rather_than_guess() {
-        // Kimi and MiniMax declare capabilities but no attested tokens: every turn kind refuses.
         for p in [kimi_k2(), minimax()] {
             assert!(p.assemble(&[user("Hi")], None).is_err(), "{} must refuse", p.name);
             assert!(p.assemble(&[Turn::Thinking { content: "t".into() }], None).is_err());
             assert!(p.assemble(&[Turn::ToolCall { name: "f".into(), arguments: "{}".into() }], None).is_err());
             assert!(!p.unverified.is_empty());
         }
-        // GLM has turn tokens but no attested tool-call payload: chat works, tool call refuses.
         let glm = glm4();
         assert!(glm.assemble(&[user("Hi")], Some("default")).is_ok());
         assert!(glm.assemble(&[Turn::ToolCall { name: "f".into(), arguments: "{}".into() }], None).is_err());
     }
-
     #[test]
     fn unknown_role_and_unknown_mode_are_refused() {
         assert!(qwen3().assemble(&[Turn::Chat { role: "narrator".into(), content: "x".into() }], None).is_err());
         assert!(qwen3().assemble(&[user("Hi")], Some("turbo")).is_err());
     }
-
     #[test]
     fn every_protocol_declares_provenance_and_seals_as_json() {
         for p in builtins() {

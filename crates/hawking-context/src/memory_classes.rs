@@ -1993,13 +1993,9 @@ fn row_to_record(
 #[cfg(test)]
 mod tests {
     use super::*;
-
     fn system() -> ClassedMemorySystem {
         ClassedMemorySystem::open_in_memory("ws-test").unwrap()
     }
-
-    // --- retention / lifetime (one per class) ------------------------------
-
     #[test]
     fn retention_working_dies_at_turn_end() {
         let sys = system();
@@ -2012,12 +2008,8 @@ mod tests {
         .unwrap();
         assert_eq!(sys.list_working("turn-1").len(), 1);
         sys.end_turn("turn-1");
-        assert!(
-            sys.list_working("turn-1").is_empty(),
-            "working must die at turn end"
-        );
+ assert!( sys.list_working("turn-1").is_empty(), "working must die at turn end" );
     }
-
     #[test]
     fn retention_episodic_evicted_with_session() {
         let sys = system();
@@ -2041,7 +2033,6 @@ mod tests {
         assert_eq!(left.len(), 1);
         assert_eq!(left[0].session_id.as_deref(), Some("sess-b"));
     }
-
     #[test]
     fn retention_semantic_project_survives_session_restart() {
         let dir = tempfile::tempdir().unwrap();
@@ -2057,14 +2048,12 @@ mod tests {
         )
         .unwrap();
         drop(sys);
-        // Session restart = reopen durable path; working is gone, semantic stays.
         let sys2 = ClassedMemorySystem::open("ws-restart", &wdb, &udb).unwrap();
         let hits = sys2.list_class(MemoryClass::SemanticProject).unwrap();
         assert_eq!(hits.len(), 1);
         assert!(hits[0].text.contains("hawking-context"));
         assert_eq!(hits[0].workspace_id.as_deref(), Some("ws-restart"));
     }
-
     #[test]
     fn retention_procedural_survives_session_restart() {
         let dir = tempfile::tempdir().unwrap();
@@ -2082,11 +2071,9 @@ mod tests {
         let sys2 = ClassedMemorySystem::open("ws-proc", &wdb, &udb).unwrap();
         assert_eq!(sys2.count(MemoryClass::Procedural).unwrap(), 1);
     }
-
     #[test]
     fn retention_user_is_not_workspace_scoped() {
         let dir = tempfile::tempdir().unwrap();
-        // Shared user db across two "workspaces".
         let udb = dir.path().join("user_shared.db");
         let w1 = dir.path().join("ws1.db");
         let w2 = dir.path().join("ws2.db");
@@ -2100,15 +2087,12 @@ mod tests {
         .unwrap();
         let rec = a.list_class(MemoryClass::User).unwrap();
         assert!(rec[0].workspace_id.is_none(), "user must not be workspace-scoped");
-
-        // Different workspace id, same user db → preference still there.
         let b = ClassedMemorySystem::open("workspace-b", &w2, &udb).unwrap();
         let prefs = b.list_class(MemoryClass::User).unwrap();
         assert_eq!(prefs.len(), 1);
         assert!(prefs[0].text.contains("concise"));
         assert!(prefs[0].workspace_id.is_none());
     }
-
     #[test]
     fn retention_verification_survives_session_restart() {
         let dir = tempfile::tempdir().unwrap();
@@ -2131,14 +2115,9 @@ mod tests {
         assert_eq!(hits[0].evidence_tier.as_deref(), Some("proven"));
         assert_eq!(hits[0].provenance.authority, WriteAuthority::Verifier);
     }
-
-    // --- write authority ---------------------------------------------------
-
     #[test]
     fn write_authority_verification_and_user_require_caps() {
         let sys = system();
-        // Type system: only these methods accept VerifierWriteCap / UserWriteCap.
-        // Runtime proof: stamped authority cannot be supplied by the draft.
         let vcap = VerifierWriteCap::mint();
         let v = sys
             .write_verification(
@@ -2149,41 +2128,26 @@ mod tests {
             .unwrap();
         assert_eq!(v.provenance.authority, WriteAuthority::Verifier);
         assert_eq!(v.class, MemoryClass::Verification);
-
         let ucap = UserWriteCap::mint();
         let u = sys
             .write_user(&ucap, "user_intent", ClassMemoryDraft::new("be terse"))
             .unwrap();
         assert_eq!(u.provenance.authority, WriteAuthority::UserExplicit);
         assert!(u.workspace_id.is_none());
-
-        // Turn path can write working with TurnWriteCap; authority is Turn.
         let tcap = TurnWriteCap::new("t");
         let w = sys
             .write_working(&tcap, "kernel", ClassMemoryDraft::new("scratch"))
             .unwrap();
         assert_eq!(w.provenance.authority, WriteAuthority::Turn);
-        assert_ne!(
-            w.provenance.authority,
-            WriteAuthority::Verifier,
-            "turn path must not stamp verifier authority"
-        );
+        assert_ne!(w.provenance.authority, WriteAuthority::Verifier);
         assert_ne!(w.provenance.authority, WriteAuthority::UserExplicit);
-
-        // There is no write_verification without VerifierWriteCap — compile-time.
-        // Runtime: a turn-stamped record can never land in verification table
-        // because only write_verification inserts there.
         assert_eq!(sys.count(MemoryClass::Verification).unwrap(), 1);
         assert_eq!(sys.count(MemoryClass::User).unwrap(), 1);
         assert_eq!(sys.count(MemoryClass::Working).unwrap(), 1);
     }
-
-    // --- multi-class compile budgets ---------------------------------------
-
     #[test]
     fn retrieve_for_compile_uses_independent_class_budgets() {
         let sys = system();
-        // Flood semantic with long text; give it a tiny budget.
         let pcap = ProjectWriteCap::mint();
         for i in 0..20 {
             sys.write_semantic_project(
@@ -2212,7 +2176,6 @@ mod tests {
             ClassMemoryDraft::new("user prefers short diffs").with_importance(1.0),
         )
         .unwrap();
-
         let budgets = ClassBudgets {
             working: 0,
             episodic: 0,
@@ -2224,46 +2187,23 @@ mod tests {
         let ret = sys
             .retrieve_for_compile("repository layout conventions", None, None, &budgets)
             .unwrap();
-
         let sem = ret.slice(MemoryClass::SemanticProject).unwrap();
         let ver = ret.slice(MemoryClass::Verification).unwrap();
         let user = ret.slice(MemoryClass::User).unwrap();
-
-        assert!(
-            sem.used_tokens <= sem.budget_tokens,
-            "semantic used {} > budget {}",
-            sem.used_tokens,
-            sem.budget_tokens
-        );
-        assert!(
-            sem.hits.len() < 20,
-            "semantic budget must cap hits, got {}",
-            sem.hits.len()
-        );
-        // Independent: verification still retrieved despite semantic flood.
+        assert!(sem.used_tokens <= sem.budget_tokens);
+ assert!( sem.hits.len() < 20, "semantic budget must cap hits, got {}", sem.hits.len() );
         assert_eq!(ver.hits.len(), 1, "verification must not be starved");
         assert_eq!(user.hits.len(), 1, "user must not be starved");
         assert!(ver.used_tokens <= ver.budget_tokens);
         assert!(user.used_tokens <= user.budget_tokens);
-        // Six slices, each with its own question.
         assert_eq!(ret.slices.len(), 6);
-        assert!(ret
-            .slices
-            .iter()
-            .any(|s| s.question.contains("durable facts")));
-        assert!(ret
-            .slices
-            .iter()
-            .any(|s| s.question.contains("asserted vs proven")));
+ assert!(ret .slices .iter() .any(|s| s.question.contains("durable facts")));
+ assert!(ret .slices .iter() .any(|s| s.question.contains("asserted vs proven")));
     }
-
-    // --- provenance non-forgeable from turn path ---------------------------
-
     #[test]
     fn provenance_authority_not_forgeable_from_turn_path() {
         let sys = system();
         let tcap = TurnWriteCap::new("turn-x");
-        // Even if the draft tries to look "official", authority is stamped Turn.
         let rec = sys
             .write_working(
                 &tcap,
@@ -2278,10 +2218,7 @@ mod tests {
         assert_eq!(rec.provenance.writer, "kernel.turn");
         assert_eq!(rec.provenance.turn_id.as_deref(), Some("turn-x"));
         assert!(rec.provenance.written_at_ms > 0);
-        // Working write does not create a verification row.
         assert_eq!(sys.count(MemoryClass::Verification).unwrap(), 0);
-
-        // Only VerifierWriteCap path stamps Verifier + lands in verification table.
         let v = sys
             .write_verification(
                 &VerifierWriteCap::mint(),
@@ -2295,13 +2232,9 @@ mod tests {
         assert_eq!(v.provenance.run_id.as_deref(), Some("run-1"));
         assert!(!v.provenance.evidence.is_empty());
     }
-
-    // --- eight user controls + properties ----------------------------------
-
     #[test]
     fn property_no_hidden_permanent_memory_inspect_and_forget() {
         // Every durable record is reachable by inspect and removable by forget;
-        // forget is real deletion for user-scoped data.
         let sys = system();
         let u = sys
             .write_user(
@@ -2325,7 +2258,6 @@ mod tests {
                 ClassMemoryDraft::new("crate layout fact"),
             )
             .unwrap();
-
         let all = sys
             .inspect(&InspectFilter {
                 include_expired: true,
@@ -2336,12 +2268,9 @@ mod tests {
         assert!(ids.contains(&u.id.as_str()), "user record must be inspectable");
         assert!(ids.contains(&v.id.as_str()), "verification must be inspectable");
         assert!(ids.contains(&p.id.as_str()), "semantic must be inspectable");
-
         assert!(sys.forget(&u.id).unwrap());
         assert!(sys.get(&u.id).unwrap().is_none(), "forget must really delete");
         assert_eq!(sys.count(MemoryClass::User).unwrap(), 0);
-
-        // export is portable JSON-serializable without this tool
         let exp = sys.export().unwrap();
         assert_eq!(exp.schema, "hide.you.memory_export.v1");
         let json = serde_json::to_string_pretty(&exp).unwrap();
@@ -2349,7 +2278,6 @@ mod tests {
         let round: MemoryExport = serde_json::from_str(&json).unwrap();
         assert_eq!(round.records.len(), exp.records.len());
     }
-
     #[test]
     fn property_correct_verification_requires_verifier_cap() {
         let sys = system();
@@ -2370,11 +2298,9 @@ mod tests {
             .unwrap();
         assert_eq!(corrected.provenance.authority, WriteAuthority::Verifier);
         assert_eq!(corrected.supersedes.as_deref(), Some(rec.id.as_str()));
-        // Both remain until forgotten (supersession, not in-place edit).
         assert_eq!(sys.count(MemoryClass::Verification).unwrap(), 2);
         assert!(sys.get(&rec.id).unwrap().is_some());
     }
-
     #[test]
     fn property_scope_orthogonal_to_class_and_promotion_recorded() {
         let sys = system();
@@ -2389,8 +2315,6 @@ mod tests {
             .unwrap();
         assert_eq!(rec.class, MemoryClass::Episodic);
         assert_eq!(rec.scope, PersonalScope::Connector);
-
-        // Not global until explicit promotion.
         let global = sys
             .inspect(&InspectFilter {
                 scope: Some(PersonalScope::Global),
@@ -2399,25 +2323,18 @@ mod tests {
             })
             .unwrap();
         assert!(global.is_empty());
-
         let promo = sys
             .set_scope(&rec.id, PersonalScope::Global, "user")
             .unwrap();
         assert_eq!(promo.from_scope, PersonalScope::Connector);
         assert_eq!(promo.to_scope, PersonalScope::Global);
         assert_eq!(promo.approved_by, "user");
-
         let after = sys.get(&rec.id).unwrap().unwrap();
         assert_eq!(after.scope, PersonalScope::Global);
         assert_eq!(after.class, MemoryClass::Episodic); // class unchanged
         assert_eq!(sys.list_promotions().unwrap().len(), 1);
-
-        // Empty approver refused.
-        assert!(sys
-            .set_scope(&rec.id, PersonalScope::Person, "")
-            .is_err());
+ assert!(sys .set_scope(&rec.id, PersonalScope::Person, "") .is_err());
     }
-
     #[test]
     fn property_pin_expire_disable_controls() {
         let sys = system();
@@ -2442,8 +2359,6 @@ mod tests {
         assert!(a2.expired);
         assert!(!b2.expired);
         assert!(b2.pinned);
-
-        // disable blocks writes and compile retrieval; records stay inspectable
         sys.disable_class(MemoryClass::User, true);
         assert!(sys
             .write_user(
@@ -2463,12 +2378,8 @@ mod tests {
         let ret = sys
             .retrieve_for_compile("prefer", None, None, &ClassBudgets::default_small())
             .unwrap();
-        assert!(
-            ret.slice(MemoryClass::User).unwrap().hits.is_empty(),
-            "disabled class must not enter compile"
-        );
+        assert!(ret.slice(MemoryClass::User).unwrap().hits.is_empty());
     }
-
     #[test]
     fn property_export_and_real_deletion_path() {
         let sys = system();
@@ -2486,7 +2397,6 @@ mod tests {
         assert!(!sys.export().unwrap().records.iter().any(|r| r.id == id));
         assert!(sys.list_class(MemoryClass::Procedural).unwrap().is_empty());
     }
-
     #[test]
     fn property_eight_scopes_closed_vocabulary() {
         assert_eq!(PersonalScope::all().len(), 8);
@@ -2495,17 +2405,11 @@ mod tests {
         }
         assert!(PersonalScope::parse("ambient_global").is_none());
     }
-
-    /// The exact bug class that shipped once: user.db already exists without the
-    /// control columns, CREATE TABLE IF NOT EXISTS is a no-op, and reads fail
-    /// with "no such column". Migration must be PRAGMA table_info + ALTER.
     #[test]
     fn property_user_db_legacy_schema_migrates_idempotently() {
         let dir = tempfile::tempdir().unwrap();
         let wdb = dir.path().join("ws.db");
         let udb = dir.path().join("user_legacy.db");
-
-        // Simulate a user.db written by the first six-class lane (no scope/pin).
         {
             let conn = rusqlite::Connection::open(&udb).unwrap();
             conn.execute_batch(
@@ -2528,7 +2432,6 @@ mod tests {
                 "#,
             )
             .unwrap();
-            // Confirm pre-migration shape.
             let mut stmt = conn.prepare("PRAGMA table_info(mem_user)").unwrap();
             let cols: Vec<String> = stmt
                 .query_map([], |r| r.get::<_, String>(1))
@@ -2538,8 +2441,6 @@ mod tests {
             assert!(!cols.iter().any(|c| c == "scope"));
             assert!(!cols.iter().any(|c| c == "pinned"));
         }
-
-        // Open must migrate, not fail on SELECT scope.
         let sys = ClassedMemorySystem::open("ws-mig", &wdb, &udb).unwrap();
         let listed = sys.list_class(MemoryClass::User).unwrap();
         assert_eq!(listed.len(), 1);
@@ -2547,19 +2448,12 @@ mod tests {
         assert_eq!(listed[0].text, "prefer terse");
         assert_eq!(listed[0].scope, PersonalScope::Global); // default after migrate
         assert!(!listed[0].pinned);
-
-        // Pin / forget work on the migrated row.
         sys.pin("user_legacy_1", true).unwrap();
         assert!(sys.get("user_legacy_1").unwrap().unwrap().pinned);
-
-        // Idempotent: reopen does not fail or duplicate columns.
         let sys2 = ClassedMemorySystem::open("ws-mig", &wdb, &udb).unwrap();
         assert_eq!(sys2.count(MemoryClass::User).unwrap(), 1);
         assert!(sys2.get("user_legacy_1").unwrap().unwrap().pinned);
     }
-
-    /// Forget is real deletion of the record AND of dangling edges (promotions,
-    /// supersedes pointers). Export must not retain residual audit of forgotten ids.
     #[test]
     fn property_forget_clears_dangling_edges_and_export() {
         let sys = system();
@@ -2579,8 +2473,6 @@ mod tests {
             )
             .unwrap();
         assert_eq!(corrected.supersedes.as_deref(), Some(old.id.as_str()));
-
-        // Promote a workspace episodic so a promotion row exists for the id.
         let epi = sys
             .write_episodic(
                 &EpisodicWriteCap::mint(),
@@ -2593,35 +2485,20 @@ mod tests {
         sys.set_scope(&epi.id, PersonalScope::Global, "user")
             .unwrap();
         assert_eq!(sys.list_promotions().unwrap().len(), 1);
-
-        // Forget the superseded old user record: supersedes edge on corrected clears.
         assert!(sys.forget(&old.id).unwrap());
         let still = sys.get(&corrected.id).unwrap().unwrap();
-        assert!(
-            still.supersedes.is_none(),
-            "supersedes edge must not dangle after forget"
-        );
-
-        // Forget the promoted episodic: promotion row must go too.
+ assert!( still.supersedes.is_none(), "supersedes edge must not dangle after forget" );
         assert!(sys.forget(&epi.id).unwrap());
-        assert!(
-            sys.list_promotions().unwrap().is_empty(),
-            "promotion rows for forgotten ids are dangling edges"
-        );
-
+        assert!(sys.list_promotions().unwrap().is_empty());
         let exp = sys.export().unwrap();
         assert!(!exp.records.iter().any(|r| r.id == old.id));
         assert!(!exp.records.iter().any(|r| r.id == epi.id));
         assert!(!exp.promotions.iter().any(|p| p.record_id == epi.id));
-        // Surviving corrected row remains, without a pointer at the forgotten id.
         assert!(exp.records.iter().any(|r| r.id == corrected.id));
         let json = serde_json::to_string(&exp).unwrap();
         assert!(!json.contains(&old.id));
         assert!(!json.contains("connector blob"));
     }
-
-    /// Export is portable record data, not a capability grant. There is no
-    /// import path that rehydrates forgotten records or mints live authority.
     #[test]
     fn property_export_carries_no_capability_and_no_reimport_path() {
         let sys = system();
@@ -2635,29 +2512,19 @@ mod tests {
             .id;
         let exp = sys.export().unwrap();
         let json = serde_json::to_string(&exp).unwrap();
-        // No tool/connector grant vocabulary in the export schema.
         assert!(!json.contains("\"tools\""));
         assert!(!json.contains("\"connectors\""));
         assert!(!json.contains("JobCapability"));
         assert!(!json.contains("SurfaceCapability"));
         assert_eq!(exp.schema, "hide.you.memory_export.v1");
-
-        // Forget removes content from subsequent export (no outliving copy).
         assert!(sys.forget(&id).unwrap());
         let after = sys.export().unwrap();
         let after_json = serde_json::to_string(&after).unwrap();
         assert!(!after_json.contains("secret preference xyz"));
         assert!(!after.records.iter().any(|r| r.id == id));
-
-        // ClassedMemorySystem has no import_export / apply_export API that would
-        // reintroduce the forgotten row. Round-tripping the pre-forget JSON into
-        // MemoryExport is data only — it does not write itself back.
         let stale: MemoryExport = serde_json::from_str(&json).unwrap();
         assert!(stale.records.iter().any(|r| r.id == id));
-        assert!(
-            sys.get(&id).unwrap().is_none(),
-            "deserializing an old export must not rehydrate the store"
-        );
+        assert!(sys.get(&id).unwrap().is_none());
         assert_eq!(sys.count(MemoryClass::User).unwrap(), 0);
     }
 }

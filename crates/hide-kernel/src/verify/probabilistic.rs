@@ -189,20 +189,17 @@ mod tests {
     use hawking_orch::inference::StubInferenceClient;
     use hawking_orch::registry::RoleRegistry;
     use hawking_orch::router::SimpleRouter;
-
     fn runtime(response: &str) -> Arc<KernelRuntimeClient> {
         let registry = Arc::new(RoleRegistry::with_default_local_roles());
         let router = Arc::new(SimpleRouter::new(registry));
         let inference = Arc::new(StubInferenceClient::new(response));
         Arc::new(KernelRuntimeClient::new(router, inference))
     }
-
     #[test]
     fn parses_leading_float() {
         assert_eq!(parse_leading_float("0.83 because ..."), Some(0.83));
         assert_eq!(parse_leading_float("1.0"), Some(1.0));
     }
-
     #[tokio::test]
     async fn consistency_unanimous_yes_passes() {
         let oracle = ConsistencyOracle::new(runtime("YES"), 3, "does the thing");
@@ -213,7 +210,6 @@ mod tests {
         assert_eq!(v.score, 1.0);
         assert_eq!(v.class, OracleClass::Probabilistic);
     }
-
     #[tokio::test]
     async fn judge_low_score_fails() {
         let oracle = LlmJudgeOracle::new(runtime("0.2 not great"), "be great");

@@ -77,7 +77,6 @@ pub trait Provider {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     struct NoopProvider;
     impl Provider for NoopProvider {
         fn capability(&self) -> &str {
@@ -94,7 +93,6 @@ mod tests {
             ))
         }
     }
-
     #[test]
     fn provider_output_is_sealed_evidence() {
         let p = NoopProvider;

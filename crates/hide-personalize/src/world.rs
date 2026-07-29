@@ -398,7 +398,6 @@ impl StaticSimulator for LearnedForwardModel {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn clean_edit_predicts_build() {
         let sim = StaticProjectSimulator::new();
@@ -409,25 +408,18 @@ mod tests {
         assert!(res.issues.is_empty());
         assert!(res.confidence >= 0.7, "confidence was {}", res.confidence);
     }
-
     #[test]
     fn unbalanced_delimiters_predict_failure_with_issue() {
         let sim = StaticProjectSimulator::new();
         let snap = ProjectSnapshot::with_file("src/lib.rs", "");
-        // Missing the closing brace of the function.
         let diff = "+pub fn broken() {\n+    let x = (1 + 2;\n";
         let res = sim.predict_edit(Path::new("src/lib.rs"), diff, &snap);
         assert_eq!(res.predicted_outcome, PredictedOutcome::TypeErr);
-        assert!(
-            !res.issues.is_empty(),
-            "an unbalanced edit must report at least one issue"
-        );
+ assert!( !res.issues.is_empty(), "an unbalanced edit must report at least one issue" );
         assert_eq!(res.issues[0].kind, "unbalanced_delimiter");
     }
-
     #[test]
     fn broken_parse_predicts_failure() {
-        // Balanced delimiters, but not valid Rust — tree-sitter flags it.
         let sim = StaticProjectSimulator::new();
         let snap = ProjectSnapshot::with_file("src/lib.rs", "");
         let diff = "+pub fn oops( {}\n";
@@ -435,30 +427,24 @@ mod tests {
         assert_eq!(res.predicted_outcome, PredictedOutcome::TypeErr);
         assert!(!res.issues.is_empty());
     }
-
     #[test]
     fn delimiters_inside_strings_and_comments_are_ignored() {
         let sim = StaticProjectSimulator::new();
         let snap = ProjectSnapshot::with_file("src/lib.rs", "");
-        // The unmatched ')' and '{' live inside a string and a comment.
         let diff = "+pub fn ok() {\n+    let s = \") not a real paren {\";\n+    // and a } here too\n+}\n";
         let res = sim.predict_edit(Path::new("src/lib.rs"), diff, &snap);
         assert_eq!(res.predicted_outcome, PredictedOutcome::Build);
     }
-
     #[test]
     fn unknown_language_still_balance_checks() {
         let sim = StaticProjectSimulator::new();
         let snap = ProjectSnapshot::default();
-        // No grammar for `.txt` → balanced text is Build (low confidence)...
         let ok = sim.predict_edit(Path::new("notes.txt"), "+all good\n", &snap);
         assert_eq!(ok.predicted_outcome, PredictedOutcome::Build);
         assert!(ok.confidence < 0.7);
-        // ...but an imbalance is still caught language-agnostically.
         let bad = sim.predict_edit(Path::new("notes.txt"), "+oops (unclosed\n", &snap);
         assert_eq!(bad.predicted_outcome, PredictedOutcome::TypeErr);
     }
-
     #[test]
     fn empty_edit_is_unknown() {
         let sim = StaticProjectSimulator::new();
@@ -466,7 +452,6 @@ mod tests {
         let res = sim.predict_edit(Path::new("src/lib.rs"), "+\n", &snap);
         assert_eq!(res.predicted_outcome, PredictedOutcome::Unknown);
     }
-
     #[test]
     fn tier2_seam_returns_unknown() {
         let model = LearnedForwardModel::default();

@@ -717,7 +717,6 @@ mod tests {
     use hide_core::permission::{PermissionPolicy, StaticPermissionEngine};
     use hide_core::persistence::InMemoryBlobStore;
     use hide_core::tool::{ToolCall, ToolDispatcher, ToolRegistry};
-
     fn dispatcher(reg: Arc<ToolRegistry>) -> ToolDispatcher {
         ToolDispatcher::new(
             reg,
@@ -728,7 +727,6 @@ mod tests {
             })),
         )
     }
-
     fn tmp(name: &str) -> PathBuf {
         use std::sync::atomic::{AtomicU64, Ordering};
         static N: AtomicU64 = AtomicU64::new(0);
@@ -742,7 +740,6 @@ mod tests {
         std::fs::create_dir_all(&dir).unwrap();
         dir
     }
-
     #[tokio::test]
     async fn read_supports_line_range() {
         let dir = tmp("range");
@@ -761,7 +758,6 @@ mod tests {
         assert_eq!(r.structured_content.unwrap()["content"], "b\nc");
         let _ = std::fs::remove_dir_all(dir);
     }
-
     #[tokio::test]
     async fn read_over_cap_spills_to_blob() {
         let dir = tmp("spill");
@@ -772,7 +768,6 @@ mod tests {
         let mut tool = FsReadTool::with_config(FsConfig {
             blobs: Some(blobs.clone()),
         });
-        // shrink the cap so 20k spills
         tool.spec.output_cap_bytes = 1000;
         reg.register(tool);
         let d = dispatcher(reg);
@@ -789,7 +784,6 @@ mod tests {
         assert_eq!(sc["bytes"], 20_000);
         let _ = std::fs::remove_dir_all(dir);
     }
-
     #[tokio::test]
     async fn read_binary_falls_back_to_base64() {
         let dir = tmp("bin");
@@ -808,7 +802,6 @@ mod tests {
         assert_eq!(r.structured_content.unwrap()["encoding"], "base64");
         let _ = std::fs::remove_dir_all(dir);
     }
-
     #[tokio::test]
     async fn stat_returns_blake3_hash() {
         let dir = tmp("stat");
@@ -830,7 +823,6 @@ mod tests {
         assert_eq!(sc["blob_hash"], expected);
         let _ = std::fs::remove_dir_all(dir);
     }
-
     #[tokio::test]
     async fn glob_matches_and_respects_gitignore() {
         let dir = tmp("glob");
@@ -858,7 +850,6 @@ mod tests {
         assert!(!matches.iter().any(|m| m.ends_with("ignored.rs")));
         let _ = std::fs::remove_dir_all(dir);
     }
-
     #[tokio::test]
     async fn write_create_only_conflicts() {
         let dir = tmp("conflict");

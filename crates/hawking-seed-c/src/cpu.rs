@@ -117,10 +117,8 @@ pub fn argmax(xs: &[f32]) -> u32 {
 mod tests {
     use super::*;
     use crate::quant::f32_to_f16_bits;
-
     #[test]
     fn gemv_quant_matches_dense_for_q8_0() {
-        // 3-row x 32-col Q8_0 weight, d=1; direct-quant gemv must equal a dense reference.
         let (rows, cols) = (3usize, 32usize);
         let mut bytes = vec![0u8; rows * 34];
         let mut dense = vec![0f32; rows * cols];

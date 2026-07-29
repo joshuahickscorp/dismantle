@@ -766,19 +766,16 @@ mod tests {
     use crate::ast::*;
     use crate::handles::{DenyAllHost, FnHost};
     use crate::value::map_of;
-
     fn run_pure(root: Expr, limits: Limits) -> Result<RunOutput> {
         let prog = Program::new(root);
         run(&prog, &DenyAllHost, &HandleGrants::none(), limits)
     }
-
     #[test]
     fn literals_and_arithmetic() {
         let e = Expr::bin(BinOp::Add, Expr::lit(2i64), Expr::lit(3i64));
         let out = run_pure(e, Limits::unbounded()).unwrap();
         assert_eq!(out.value, Value::Int(5));
     }
-
     #[test]
     fn filter_rank_over_list() {
         let rows = Expr::lit(Value::List(vec![
@@ -808,14 +805,12 @@ mod tests {
         assert_eq!(list[0].get_path(&["n".into()]), Some(&Value::Int(3)));
         assert_eq!(list[1].get_path(&["n".into()]), Some(&Value::Int(2)));
     }
-
     #[test]
     fn ungranted_handle_is_denied() {
         let e = Expr::handle(HandleName::FileRead, Expr::lit("x"));
         let err = run_pure(e, Limits::unbounded()).unwrap_err();
         assert_eq!(err, RuntimeError::HandleNotGranted("file.read".into()));
     }
-
     #[test]
     fn granted_handle_is_called() {
         let host = FnHost::new(|h, _a, _t| {
@@ -833,7 +828,6 @@ mod tests {
         assert_eq!(out.value, Value::Str("hello".into()));
         assert_eq!(out.usage.tool_calls, 1);
     }
-
     #[test]
     fn reduce_sums() {
         let rows = Expr::lit(Value::List(vec![
@@ -851,7 +845,6 @@ mod tests {
         let out = run_pure(prog, Limits::unbounded()).unwrap();
         assert_eq!(out.value, Value::Int(7));
     }
-
     #[test]
     fn dedup_and_paginate() {
         let rows = Expr::lit(Value::List(vec![
@@ -873,7 +866,6 @@ mod tests {
         let out = run_pure(page, Limits::unbounded()).unwrap();
         assert_eq!(out.value, Value::List(vec![Value::Int(3)]));
     }
-
     #[test]
     fn schema_validate_rejects_bad_shape() {
         let bad = Expr::lit(map_of([("n", Value::Str("x".into()))]));
@@ -890,7 +882,6 @@ mod tests {
         let err = run_pure(prog, Limits::unbounded()).unwrap_err();
         assert!(matches!(err, RuntimeError::Schema(_)));
     }
-
     #[test]
     fn sample_is_seed_deterministic() {
         let rows: Vec<Value> = (0..20).map(Value::Int).collect();
@@ -904,10 +895,8 @@ mod tests {
         assert_eq!(a.value, b.value);
         assert_eq!(a.value.as_list().unwrap().len(), 5);
     }
-
     #[test]
     fn retry_recovers_from_flaky_handle() {
-        // Fails on attempts 0 and 1, succeeds on attempt 2.
         let host = FnHost::new(|_h, _a, attempt| {
             if attempt < 2 {
                 Err(crate::error::HandleError::retryable("git.log", "transient"))

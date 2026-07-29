@@ -472,7 +472,6 @@ pub fn strip_html_comments(content: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn strips_block_comment_but_keeps_fenced() {
         let doc = "before\n<!-- secret -->\nafter\n```\n<!-- kept in code -->\n```\n";
@@ -482,7 +481,6 @@ mod tests {
         assert!(out.contains("after"));
         assert!(out.contains("<!-- kept in code -->"));
     }
-
     #[test]
     fn strips_multiline_comment() {
         let doc = "a\n<!-- line1\nline2 -->b\nc\n";
@@ -493,19 +491,16 @@ mod tests {
         assert!(out.contains('b'));
         assert!(out.contains('c'));
     }
-
     #[test]
     fn scan_skips_inline_backtick() {
         let tokens = scan_line_imports("see @real/file.md but not `@fake/file.md`");
         assert_eq!(tokens, vec!["real/file.md".to_string()]);
     }
-
     #[test]
     fn scan_ignores_mid_word_at() {
         let tokens = scan_line_imports("email me@example.com is not an import");
         assert!(tokens.is_empty());
     }
-
     #[test]
     fn fence_marker_detects_backticks_and_tildes() {
         assert_eq!(fence_marker("```rust"), Some("```".to_string()));

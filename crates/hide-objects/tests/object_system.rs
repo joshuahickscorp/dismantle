@@ -1,20 +1,15 @@
-//! Integration tests for the YOU object store (Y3).
-
 use hide_objects::*;
 use std::io::Write;
 use tempfile::tempdir;
-
 fn perms(owner: &str) -> ObjectPermissions {
     ObjectPermissions::owner_only(owner, vec![Surface::You, Surface::Chat])
 }
-
 fn reader(owner: &str) -> Reader {
     Reader {
         principal: owner.into(),
         surface: Surface::You,
     }
 }
-
 fn ingest_and_finish(
     store: &ObjectStore,
     bytes: &[u8],
@@ -41,20 +36,13 @@ fn ingest_and_finish(
     assert_eq!(st, JobStatus::Succeeded, "dead={:?}", store.dead_letter());
     store.hash_for_job(&job).expect("hash after success")
 }
-
-// ---------------------------------------------------------------------------
-// 1. Content hash is identity — both directions
-// ---------------------------------------------------------------------------
-
 #[test]
 fn dedup_same_bytes_one_object_two_refs() {
     let dir = tempdir().unwrap();
     let store = ObjectStore::open(dir.path(), StorageBudget::test_small()).unwrap();
     let body = b"identical-payload-for-dedup";
-
     let h1 = ingest_and_finish(&store, body, "text/plain", "a.txt");
     let h2 = ingest_and_finish(&store, body, "text/plain", "b.txt");
-
     assert_eq!(h1, h2, "same bytes must share content hash identity");
     assert_eq!(store.object_count(), 1, "one object record");
     assert_eq!(store.ref_count(), 2, "two references");
@@ -64,31 +52,20 @@ fn dedup_same_bytes_one_object_two_refs() {
     assert!(labels.contains(&"a.txt".into()));
     assert!(labels.contains(&"b.txt".into()));
 }
-
 #[test]
 fn distinct_bytes_distinct_objects() {
     let dir = tempdir().unwrap();
     let store = ObjectStore::open(dir.path(), StorageBudget::test_small()).unwrap();
-
     let h1 = ingest_and_finish(&store, b"alpha-bytes", "text/plain", "a.txt");
     let h2 = ingest_and_finish(&store, b"beta-bytes!!", "text/plain", "b.txt");
-
     assert_ne!(h1, h2, "different bytes must not collide");
     assert_eq!(store.object_count(), 2);
     assert_eq!(store.ref_count(), 2);
 }
-
-// ---------------------------------------------------------------------------
-// 2. Incremental processing — large fixture, bounded buffer
-// ---------------------------------------------------------------------------
-
 #[test]
 fn large_synthetic_fixture_streams_without_full_ram() {
     let dir = tempdir().unwrap();
     let store = ObjectStore::open(dir.path(), StorageBudget::test_small()).unwrap();
-
-    // ~8 MiB patterned "video" — large-ish relative to CHUNK_SIZE, not a real
-    // 2 GB file (LIGHT_ONLY), but enough to prove multi-chunk streaming.
     let size = 8 * 1024 * 1024;
     let path = dir.path().join("synthetic_video.bin");
     {
@@ -107,7 +84,6 @@ fn large_synthetic_fixture_streams_without_full_ram() {
             written += take;
         }
     }
-
     let job = store
         .enqueue_path(
             &path,
@@ -122,35 +98,21 @@ fn large_synthetic_fixture_streams_without_full_ram() {
             Priority::HIGH,
         )
         .unwrap();
-
     let (_id, st) = store.process_one().unwrap();
     assert_eq!(st, JobStatus::Succeeded);
-
     let hash = store.hash_for_job(&job).unwrap();
     let rec = store.get_record(&hash, &reader("alice")).unwrap();
     assert_eq!(rec.size_bytes, size as u64);
     assert_eq!(rec.kind, ObjectKind::Video);
     assert_eq!(rec.status, ObjectStatus::Ready);
-
-    // Every streaming stage must report peak_buffer <= CHUNK_SIZE.
     for stage in [StageName::Receive, StageName::Persist] {
         let s = rec.stage(stage).expect("stage present");
-        assert!(
-            s.peak_buffer_bytes <= CHUNK_SIZE,
-            "{:?} peak {} exceeds CHUNK_SIZE {}",
-            stage,
-            s.peak_buffer_bytes,
-            CHUNK_SIZE
-        );
+        assert!(s.peak_buffer_bytes <= CHUNK_SIZE);
         assert_eq!(s.status, StageStatus::Complete);
     }
-
-    // Transcript from FakeAsrEngine (honestly named).
     let tr = rec.derivative(DerivativeKind::Transcript).expect("transcript");
     assert!(tr.produced_by.contains("FakeAsrEngine"));
     assert!(tr.inline_text.as_ref().unwrap().contains("FakeAsrEngine"));
-
-    // Compile view works without raw access.
     let view = store
         .compile_view(
             &hash,
@@ -163,22 +125,13 @@ fn large_synthetic_fixture_streams_without_full_ram() {
         .unwrap();
     assert!(!CompileObjectView::exposes_raw_bytes());
     assert!(view.try_raw_bytes().is_err());
-    assert!(view
-        .derivatives
-        .iter()
-        .any(|d| d.kind == DerivativeKind::Transcript));
+ assert!(view .derivatives .iter() .any(|d| d.kind == DerivativeKind::Transcript));
 }
-
-// ---------------------------------------------------------------------------
-// 3. Derivative-only type boundary
-// ---------------------------------------------------------------------------
-
 #[test]
 fn compile_path_cannot_reach_raw_bytes() {
     let dir = tempdir().unwrap();
     let store = ObjectStore::open(dir.path(), StorageBudget::test_small()).unwrap();
     let hash = ingest_and_finish(&store, b"secret-body-bytes", "text/plain", "s.txt");
-
     let view = store
         .compile_view(
             &hash,
@@ -187,26 +140,16 @@ fn compile_path_cannot_reach_raw_bytes() {
             None,
         )
         .unwrap();
-
     assert!(!CompileObjectView::exposes_raw_bytes());
-    assert!(matches!(
-        view.try_raw_bytes(),
-        Err(ObjectError::RawBytesForbidden)
-    ));
-    // Derivatives present; raw body string must not appear as a required field path.
+ assert!(matches!( view.try_raw_bytes(), Err(ObjectError::RawBytesForbidden) ));
     assert!(view.derivatives.iter().any(|d| d.text.is_some()));
     let json = serde_json::to_string(&view).unwrap();
-    // Text extract may include the body for text/* — that is a *derivative*,
-    // not raw access. Boundary is: no API on CompileObjectView yields Vec<u8>
-    // body. Document that text derivative is intentional for text files.
     assert!(json.contains("text_extract") || json.contains("summary"));
 }
-
 #[test]
 fn raw_bytes_require_cap_and_allow_export() {
     let dir = tempdir().unwrap();
     let store = ObjectStore::open(dir.path(), StorageBudget::test_small()).unwrap();
-
     let mut p = perms("alice");
     p.allow_export = true;
     let job = store
@@ -225,23 +168,16 @@ fn raw_bytes_require_cap_and_allow_export() {
         .unwrap();
     store.process_one().unwrap();
     let hash = store.hash_for_job(&job).unwrap();
-
     let cap = RawBytesCap::mint();
     let bytes = store
         .raw_bytes(&hash, &reader("alice"), &cap)
         .unwrap();
     assert_eq!(bytes, b"exportable");
 }
-
-// ---------------------------------------------------------------------------
-// 4. Queue semantics — priority, visible failure
-// ---------------------------------------------------------------------------
-
 #[test]
 fn queue_priority_order() {
     let dir = tempdir().unwrap();
     let store = ObjectStore::open(dir.path(), StorageBudget::test_small()).unwrap();
-
     let low = store
         .enqueue_bytes(
             b"low",
@@ -270,7 +206,6 @@ fn queue_priority_order() {
             Priority::CRITICAL,
         )
         .unwrap();
-
     let (first, st) = store.process_one().unwrap();
     assert_eq!(st, JobStatus::Succeeded);
     assert_eq!(first, high, "critical priority must run before low");
@@ -278,11 +213,8 @@ fn queue_priority_order() {
     assert_eq!(st, JobStatus::Succeeded);
     assert_eq!(second, low);
 }
-
 #[test]
 fn failed_stage_retries_then_dead_letters_visibly() {
-    // Exhaust local budget at admission so the job fails visibly (dead letter),
-    // never silently dropped.
     let dir = tempdir().unwrap();
     let budget = StorageBudget {
         max_local_bytes: 20,
@@ -291,12 +223,8 @@ fn failed_stage_retries_then_dead_letters_visibly() {
         policy_note: "tiny".into(),
     };
     let store = ObjectStore::open(dir.path(), budget).unwrap();
-
-    // First object uses 15 bytes.
     let _ = ingest_and_finish(&store, b"fifteen-bytes!!", "text/plain", "small.txt");
     assert_eq!(store.used_local_bytes(), 15);
-
-    // Second unique body needs 30 more bytes → budget exceeded on admission.
     let job = store
         .enqueue_bytes(
             b"thirty-bytes-of-payload-here!!",
@@ -311,8 +239,6 @@ fn failed_stage_retries_then_dead_letters_visibly() {
             Priority::NORMAL,
         )
         .unwrap();
-
-    // Default max_attempts = 3 → RetryWait, RetryWait, FailedVisible.
     let mut saw_failed = false;
     for _ in 0..8 {
         match store.process_one() {
@@ -348,32 +274,21 @@ fn failed_stage_retries_then_dead_letters_visibly() {
             .as_ref()
             .is_some());
 }
-
-// ---------------------------------------------------------------------------
-// 5. Retention + permissions at read time
-// ---------------------------------------------------------------------------
-
 #[test]
 fn permissions_honoured_at_read() {
     let dir = tempdir().unwrap();
     let store = ObjectStore::open(dir.path(), StorageBudget::test_small()).unwrap();
     let hash = ingest_and_finish(&store, b"private", "text/plain", "p.txt");
-
     let bob = Reader {
         principal: "bob".into(),
         surface: Surface::You,
     };
-    assert!(matches!(
-        store.get_record(&hash, &bob),
-        Err(ObjectError::PermissionDenied { .. })
-    ));
-
+ assert!(matches!( store.get_record(&hash, &bob), Err(ObjectError::PermissionDenied { .. }) ));
     let alice_chat = Reader {
         principal: "alice".into(),
         surface: Surface::Chat,
     };
     assert!(store.get_record(&hash, &alice_chat).is_ok());
-
     let alice_ide = Reader {
         principal: "alice".into(),
         surface: Surface::Ide,
@@ -383,13 +298,11 @@ fn permissions_honoured_at_read() {
         Err(ObjectError::PermissionDenied { .. })
     ));
 }
-
 #[test]
 fn retention_ttl_honoured_at_read() {
     let dir = tempdir().unwrap();
     let store = ObjectStore::open(dir.path(), StorageBudget::test_small()).unwrap();
     store.set_clock_ms(Some(1_000));
-
     let job = store
         .enqueue_bytes(
             b"ephemeral",
@@ -406,16 +319,13 @@ fn retention_ttl_honoured_at_read() {
         .unwrap();
     store.process_one().unwrap();
     let hash = store.hash_for_job(&job).unwrap();
-
     assert!(store.get_record(&hash, &reader("alice")).is_ok());
-
     store.set_clock_ms(Some(5_000));
     assert!(matches!(
         store.get_record(&hash, &reader("alice")),
         Err(ObjectError::RetentionDenied { .. })
     ));
 }
-
 #[test]
 fn image_gets_fake_ocr_and_thumbnail() {
     let dir = tempdir().unwrap();
@@ -428,7 +338,6 @@ fn image_gets_fake_ocr_and_thumbnail() {
     let thumb = rec.derivative(DerivativeKind::Thumbnail).unwrap();
     assert_eq!(thumb.produced_by, "FakeThumbnailer");
 }
-
 #[test]
 fn budget_statement_is_honest() {
     assert!(BOUND_STATEMENT.contains("finite") || BOUND_STATEMENT.contains("bounded"));

@@ -184,7 +184,6 @@ impl Provider for ValidationProvider {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     fn suite() -> ValidationManifest {
         ValidationManifest::new("nucleus-core")
             .add(ValidationCase {
@@ -210,16 +209,13 @@ mod tests {
                 failure_policy: FailurePolicy::SkipOnAbsent,
             })
     }
-
     #[test]
     fn one_harness_runs_property_and_skips_absent_fixture() {
-        // forge present, gpt-oss pack absent -> property passes, F2 skips (SkipOnAbsent), suite green.
         let res = suite().run(&["packs-nucleus-forge".into()], &|c| Ok(matches!(c.kind, TestKind::Property)));
         assert_eq!(res.passed, 1);
         assert_eq!(res.skipped, 1);
         assert!(res.green(), "green: absent optional fixture skips, not fails");
     }
-
     #[test]
     fn fail_closed_missing_pack_fails() {
         let m = ValidationManifest::new("s").add(ValidationCase {

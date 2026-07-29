@@ -202,17 +202,9 @@ pub fn tree_draft_k(budget: Budget, width: usize) -> usize {
 mod tests {
     use super::*;
     use crate::verifier::TargetResult;
-
-    // ------------------------------------------------------------------
-    // Minimal mock target for tests — no Metal, no model.
-    // `preds` is the canned argmax sequence returned from
-    // forward_tokens_verify (first n elements) or forward_token_greedy
-    // (element 0).
-    // ------------------------------------------------------------------
     struct MockTarget {
         preds: Vec<u32>,
     }
-
     impl ExactTarget for MockTarget {
         fn forward_tokens_verify(
             &mut self,
@@ -222,34 +214,16 @@ mod tests {
             let n = tokens.len();
             Ok((self.preds[..n].to_vec(), vec![Vec::new(); n]))
         }
-
         fn forward_token_greedy(&mut self, _token: u32, _pos: usize) -> TargetResult<u32> {
             Ok(self.preds[0])
         }
     }
-
-    // ------------------------------------------------------------------
-    // Test 1: two-branch tree builds correct ancestor masks.
-    //
-    // Tree layout (node index in parens):
-    //   root(0, tok=100)
-    //     left(1, tok=10)
-    //       left2(2, tok=11)
-    //     right(3, tok=20)
-    //
-    // Expected ancestor masks:
-    //   masks[0] = 0b0001  (only itself)
-    //   masks[1] = 0b0011  (root + self)
-    //   masks[2] = 0b0111  (root + left + self)
-    //   masks[3] = 0b1001  (root + self)
-    // ------------------------------------------------------------------
     #[test]
     fn two_branch_tree_builds_correct_ancestor_masks() {
         let mut tree = TokenTreeBuilder::new(100);
         let left = tree.add_child(0, 10);
         let _left2 = tree.add_child(left, 11);
         let _right = tree.add_child(0, 20);
-
         let masks = tree.ancestor_masks();
         assert_eq!(masks.len(), 4);
         assert_eq!(masks[0], 0b0001, "root mask");
@@ -257,114 +231,56 @@ mod tests {
         assert_eq!(masks[2], 0b0111, "left2 mask");
         assert_eq!(masks[3], 0b1001, "right mask");
     }
-
-    // ------------------------------------------------------------------
-    // Test 2: position_ids equal the node depth.
-    // ------------------------------------------------------------------
     #[test]
     fn position_ids_equal_depth() {
         let mut tree = TokenTreeBuilder::new(1);
         let a = tree.add_child(0, 2);
         let b = tree.add_child(a, 3);
         let _c = tree.add_child(0, 4); // second branch
-
         let pos = tree.position_ids();
         assert_eq!(pos[0], 0, "root depth");
         assert_eq!(pos[a], 1);
         assert_eq!(pos[b], 2);
-        // The second branch child of root is also depth 1.
         assert_eq!(pos[3], 1);
     }
-
-    // ------------------------------------------------------------------
-    // Test 3: leaves_are_correct.
-    //
-    //   root(0) → a(1) → b(2)
-    //           → c(3)
-    //
-    // Leaves = {2, 3} (nodes with no children).
-    // ------------------------------------------------------------------
     #[test]
     fn leaves_are_correct() {
         let mut tree = TokenTreeBuilder::new(0);
         let a = tree.add_child(0, 1);
         let _b = tree.add_child(a, 2);
         let _c = tree.add_child(0, 3);
-
         let mut leaves = tree.leaves();
         leaves.sort();
         assert_eq!(leaves, vec![2, 3]);
     }
-
-    // ------------------------------------------------------------------
-    // Test 4: cpu_fallback_accepts_matching_branch.
-    //
-    // Tree: root(99) → left(10) → left2(20)
-    //                → right(50)
-    //
-    // MockTarget preds = [10, 99]: forward_tokens_verify returns the first
-    // n preds, so for a 2-token verify call it returns [10, 99].
-    //
-    // Left-branch path (root=99, draft=[10,20]):
-    //   vtoks = [99, 10] at positions [pos, pos+1]
-    //   preds = [10, 99] → draft[0]=10 matches preds[0]=10  (accepted)
-    //                     → draft[1]=20 ≠ preds[1]=99        (rejected, correction=99)
-    //   score = 1 accepted + 1 correction = 2
-    //
-    // Right-branch path (root=99, draft=[50]):
-    //   vtoks = [99] at [pos]  → preds = [10]
-    //   draft[0]=50 ≠ preds[0]=10  (rejected immediately, correction=10)
-    //   score = 0 accepted + 1 correction = 1
-    //
-    // Best = left branch (score 2): accepted=[10], correction=Some(99).
-    // ------------------------------------------------------------------
     #[test]
     fn cpu_fallback_accepts_matching_branch() {
         let mut tree = TokenTreeBuilder::new(99);
         let left = tree.add_child(0, 10);
         let _left2 = tree.add_child(left, 20);
         let _right = tree.add_child(0, 50);
-
         let mut target = MockTarget {
             preds: vec![10, 99],
         };
         let verifier = Verifier::default();
         let outcome = verify_tree_cpu(&tree, &verifier, &mut target, 99, 5).unwrap();
-
         assert_eq!(outcome.accepted, vec![10], "left branch token accepted");
-        assert_eq!(
-            outcome.correction,
-            Some(99),
-            "correction from second preds slot"
-        );
+ assert_eq!( outcome.correction, Some(99), "correction from second preds slot" );
     }
-
-    // ------------------------------------------------------------------
-    // Test 5: path_from_root_is_correct.
-    //
-    // root(tok=1) → a(tok=2) → b(tok=3)
-    // path from b = [1, 2, 3]
-    // ------------------------------------------------------------------
     #[test]
     fn path_from_root_is_correct() {
         let mut tree = TokenTreeBuilder::new(1);
         let a = tree.add_child(0, 2);
         let b = tree.add_child(a, 3);
-
         assert_eq!(tree.path_from_root(0), vec![1]);
         assert_eq!(tree.path_from_root(a), vec![1, 2]);
         assert_eq!(tree.path_from_root(b), vec![1, 2, 3]);
     }
-
-    // ------------------------------------------------------------------
-    // Test 6: to_proposal produces the TokenTree variant with correct fields.
-    // ------------------------------------------------------------------
     #[test]
     fn to_proposal_produces_token_tree_variant() {
         let mut tree = TokenTreeBuilder::new(7);
         let a = tree.add_child(0, 8);
         let _b = tree.add_child(a, 9);
-
         let proposal = tree.to_proposal();
         match proposal {
             Proposal::TokenTree {
@@ -374,7 +290,6 @@ mod tests {
             } => {
                 assert_eq!(nodes, vec![7, 8, 9]);
                 assert_eq!(position_ids, vec![0, 1, 2]);
-                // masks[0]=0b001, masks[1]=0b011, masks[2]=0b111
                 assert_eq!(ancestor_mask[0], 0b001);
                 assert_eq!(ancestor_mask[1], 0b011);
                 assert_eq!(ancestor_mask[2], 0b111);
@@ -382,24 +297,14 @@ mod tests {
             _ => panic!("expected Proposal::TokenTree"),
         }
     }
-
-    // ------------------------------------------------------------------
-    // Extra: build_line_as_tree creates a correct single-branch tree.
-    // ------------------------------------------------------------------
     #[test]
     fn build_line_as_tree_is_single_branch() {
         let tree = build_line_as_tree(&[1, 2, 3, 4]);
         assert_eq!(tree.len(), 4);
-        // Only the last node is a leaf.
         assert_eq!(tree.leaves(), vec![3]);
         assert_eq!(tree.path_from_root(3), vec![1, 2, 3, 4]);
-        // All position ids should equal depth == index (linear chain).
         assert_eq!(tree.position_ids(), vec![0, 1, 2, 3]);
     }
-
-    // ------------------------------------------------------------------
-    // Extra: tree_draft_k respects minimum-1 rule and division.
-    // ------------------------------------------------------------------
     #[test]
     fn tree_draft_k_basic() {
         let budget = Budget::line(6);

@@ -183,10 +183,8 @@ pub fn embed_row_f16(dtype: GgmlType, bytes: &[u8], token: usize, hidden: usize,
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn row_dequant_matches_whole_tensor() {
-        // build a 4-row x 32-col Q8_0 tensor (each row = 1 block); row dequant must match whole dequant
         let (rows, cols) = (4usize, 32usize);
         let mut bytes = vec![0u8; rows * 34];
         for r in 0..rows {
@@ -205,10 +203,8 @@ mod tests {
             assert_eq!(&row[..], &whole[r * cols..(r + 1) * cols]);
         }
     }
-
     #[test]
     fn q8_0_roundtrip_simple() {
-        // block: d = 1.0 (f16), qs = 0,1,2,...  -> y = 0,1,2,...
         let mut bytes = vec![0u8; 34];
         let d = f32_to_f16_bits(1.0).to_le_bytes();
         bytes[0] = d[0];
@@ -222,10 +218,8 @@ mod tests {
             assert_eq!(out[i], i as f32);
         }
     }
-
     #[test]
     fn q5_0_center_is_zero() {
-        // d=1, all nibbles 0 and high bits so quant = 0 -> value should be -16 (0 - 16)
         let mut bytes = vec![0u8; 22];
         let d = f32_to_f16_bits(1.0).to_le_bytes();
         bytes[0] = d[0];
@@ -234,7 +228,6 @@ mod tests {
         dequant_q5_0(&bytes, &mut out);
         assert_eq!(out[0], -16.0);
     }
-
     #[test]
     fn f16_primitive_roundtrips_scales() {
         for x in [0.0f32, 1.0, -2.5, 0.015625, 100.0] {

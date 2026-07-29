@@ -459,10 +459,8 @@ fn swiglu(h: &[f32], gate: &[f32], up: &[f32], down: &[f32], hidden: usize, ff: 
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn rms_norm_unit_vector_is_unit() {
-        // x = [1, 1, 1, 1] → ms = 1 → scale = 1 → result = weight elementwise.
         let x = vec![1.0_f32; 4];
         let w = vec![2.0_f32; 4];
         let y = rms_norm(&x, &w, RMS_EPS);
@@ -470,10 +468,8 @@ mod tests {
             assert!((yi - 2.0).abs() < 1e-5, "expected 2.0, got {yi}");
         }
     }
-
     #[test]
     fn matmul_identity_is_identity() {
-        // W = I, x = [1,2,3] → y = [1,2,3].
         let w = vec![
             1.0, 0.0, 0.0, //
             0.0, 1.0, 0.0, //
@@ -483,10 +479,8 @@ mod tests {
         let y = matmul_no_bias(&w, &x, 3, 3);
         assert_eq!(y, vec![1.0, 2.0, 3.0]);
     }
-
     #[test]
     fn swiglu_zero_input_is_zero() {
-        // h = 0 → gate(0) = 0 → silu(0) = 0 → 0 * up(0) = 0 → down(0) = 0.
         let h = vec![0.0_f32; 4];
         let gate = vec![1.0_f32; 8 * 4]; // ff=8
         let up = vec![1.0_f32; 8 * 4];

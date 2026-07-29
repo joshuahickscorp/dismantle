@@ -814,7 +814,6 @@ impl XorShift64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn mock_head_propose_is_deterministic() {
         let mut h1 = Eagle5Head::mock(42, 64, 1000);
@@ -824,7 +823,6 @@ mod tests {
         assert_eq!(p1, p2, "same seed must reproduce draft ids");
         assert_eq!(p1.len(), 4);
     }
-
     #[test]
     fn mock_head_propose_respects_k() {
         let mut h = Eagle5Head::mock(1, 32, 64);
@@ -832,7 +830,6 @@ mod tests {
         assert_eq!(h.propose(0, 1).len(), 1);
         assert_eq!(h.propose(0, 8).len(), 8);
     }
-
     #[test]
     fn mock_head_propose_returns_in_vocab() {
         let mut h = Eagle5Head::mock(99, 16, 50);
@@ -841,23 +838,15 @@ mod tests {
             assert!((d as usize) < 50, "draft id {d} out of vocab");
         }
     }
-
     #[test]
     fn mock_head_note_token_seeds_next_propose() {
         let mut h = Eagle5Head::mock(7, 32, 100);
         let from_default = h.propose(5, 1);
-        // Note a different token then propose 1 — should differ from
-        // the from_default proposal because the head's prev_token is
-        // now the noted id, not 5.
         h.reset();
         h.note_token(11);
         let from_noted = h.propose(5, 1);
-        assert_ne!(
-            from_default, from_noted,
-            "note_token must seed next propose"
-        );
+ assert_ne!( from_default, from_noted, "note_token must seed next propose" );
     }
-
     #[test]
     fn mock_head_reset_clears_state() {
         let mut h = Eagle5Head::mock(3, 32, 100);
@@ -865,19 +854,14 @@ mod tests {
         let after_note = h.propose(0, 1);
         h.reset();
         let after_reset = h.propose(0, 1);
-        // After reset, propose(prev) should use prev=0 not the noted 42.
-        // We don't assert equality with a precomputed value (cost: extra
-        // fixture) — just that reset changes the result.
         assert_ne!(after_note, after_reset, "reset must clear last_token");
     }
-
     #[test]
     fn mock_head_vocab_and_hidden_match_ctor() {
         let h = Eagle5Head::mock(0, 128, 5000);
         assert_eq!(h.vocab(), 5000);
         assert_eq!(h.hidden(), 128);
     }
-
     #[test]
     fn trained_loader_rejects_nonexistent_file() {
         let result = Eagle5Head::load_from_safetensors(
@@ -885,13 +869,8 @@ mod tests {
             128,
             5000,
         );
-        // io::NotFound bubbles up as Error::Io, not Unimplemented anymore.
         assert!(matches!(result, Err(Error::Io(_))));
     }
-
-    /// Builds a tiny synthetic Eagle6 safetensors file in a temp dir and
-    /// asserts the loader reads all tensors with the expected shapes
-    /// and the metadata-validation guards fire on mismatches.
     #[test]
     fn trained_loader_reads_synthetic_head() {
         use std::io::Write;
@@ -901,9 +880,6 @@ mod tests {
         let ff_mult = 2.0_f32;
         let ff_dim = (hidden as f32 * ff_mult) as usize;
         let num_blocks = 1;
-
-        // Build the safetensors header JSON + concatenated tensor bytes.
-        // Layout order matches what the loader expects to find by name.
         let mut tensor_bytes: Vec<u8> = Vec::new();
         let mut entries: Vec<(String, &'static str, Vec<usize>, usize, usize)> = Vec::new();
         let push_f32 =
@@ -990,9 +966,6 @@ mod tests {
             &mut entries,
             &mut tensor_bytes,
         );
-
-        // Construct the JSON header. Use a manual builder so the field
-        // order is stable and the test doesn't pull serde_json::json! in.
         let mut header = String::from("{");
         header.push_str(&format!(
             "\"__metadata__\":{{\"hidden_dim\":\"{hidden}\",\"vocab_size\":\"{vocab}\",\"n_heads\":\"{n_heads}\",\"ff_mult\":\"{ff_mult}\",\"num_blocks\":\"{num_blocks}\"}}"
@@ -1010,7 +983,6 @@ mod tests {
         header.push('}');
         let header_bytes = header.as_bytes();
         let header_len = header_bytes.len() as u64;
-
         let dir = std::env::temp_dir().join(format!("eagle5_test_{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("synthetic.safetensors");
@@ -1019,29 +991,19 @@ mod tests {
         f.write_all(header_bytes).unwrap();
         f.write_all(&tensor_bytes).unwrap();
         drop(f);
-
-        // Happy path: load + dispatch.
         let head = Eagle5Head::load_from_safetensors(&path, hidden, vocab).unwrap();
         assert_eq!(head.hidden(), hidden);
         assert_eq!(head.vocab(), vocab);
-        // propose() should not crash for the Trained variant; result is
-        // a deterministic argmax over the synthetic weights.
         let mut h = head;
         let drafts = h.propose(0, 3);
         assert_eq!(drafts.len(), 3);
         for d in &drafts {
             assert!(((*d) as usize) < vocab);
         }
-
-        // Mismatched hidden/vocab must fail loudly.
         let err_hidden = Eagle5Head::load_from_safetensors(&path, hidden + 1, vocab);
         assert!(matches!(err_hidden, Err(Error::Model(_))));
         let err_vocab = Eagle5Head::load_from_safetensors(&path, hidden, vocab + 1);
         assert!(matches!(err_vocab, Err(Error::Model(_))));
-
-        // Legacy Colab checkpoints before May 2026 omitted __metadata__.
-        // The loader should infer hidden/vocab/ff shape metadata from tensor
-        // shapes while still validating against the verifier dimensions.
         let mut legacy_header = String::from("{");
         for (idx, (name, dtype, shape, start, end)) in entries.iter().enumerate() {
             if idx > 0 {
@@ -1067,7 +1029,6 @@ mod tests {
         let legacy = Eagle5Head::load_from_safetensors(&legacy_path, hidden, vocab).unwrap();
         assert_eq!(legacy.hidden(), hidden);
         assert_eq!(legacy.vocab(), vocab);
-
         let _ = std::fs::remove_file(&path);
         let _ = std::fs::remove_file(&legacy_path);
         let _ = std::fs::remove_dir(&dir);

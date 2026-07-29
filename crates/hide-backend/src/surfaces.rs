@@ -306,13 +306,11 @@ mod tests {
     use hide_core::event::InMemoryEventLog;
     use hide_core::ids::with_deterministic_ids;
     use std::sync::Arc;
-
     fn service() -> SurfaceGraphService {
         let events: DynEventLog = Arc::new(InMemoryEventLog::new());
         let ui = Arc::new(UiEventBus::default());
         SurfaceGraphService::for_session(&SessionId::from("ses_test"), events, ui)
     }
-
     #[test]
     fn lenses_share_primary_session() {
         with_deterministic_ids(1, || {
@@ -323,18 +321,10 @@ mod tests {
             assert!(v.lenses.contains_key("you"));
             assert!(v.lenses.contains_key("chat"));
             assert!(v.lenses.contains_key("ide"));
-            // YOU holds personal connectors; CHAT does not.
-            assert!(v.lenses["you"]
-                .connectors
-                .iter()
-                .any(|c| c == "gmail"));
-            assert!(!v.lenses["chat"]
-                .connectors
-                .iter()
-                .any(|c| c == "gmail"));
+ assert!(v.lenses["you"] .connectors .iter() .any(|c| c == "gmail"));
+ assert!(!v.lenses["chat"] .connectors .iter() .any(|c| c == "gmail"));
         });
     }
-
     #[tokio::test]
     async fn handoff_does_not_widen_chat_capability() {
         let s = with_deterministic_ids(2, service);
@@ -360,16 +350,9 @@ mod tests {
             .expect("create");
         assert!(capsule.try_extract_capability().is_err());
         let view = s.handoff_receive(&capsule.id).await.expect("receive");
-        assert!(!view.lenses["chat"]
-            .connectors
-            .iter()
-            .any(|c| c == "gmail"));
-        assert!(view.lenses["you"]
-            .connectors
-            .iter()
-            .any(|c| c == "gmail"));
+ assert!(!view.lenses["chat"] .connectors .iter() .any(|c| c == "gmail"));
+ assert!(view.lenses["you"] .connectors .iter() .any(|c| c == "gmail"));
         assert_eq!(view.inbox["chat"].len(), 1);
-        // Same session after handoff.
         assert_eq!(view.session_id, "ses_test");
     }
 }

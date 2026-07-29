@@ -303,33 +303,25 @@ pub fn resolve(
 mod tests {
     use super::*;
     use serde_json::json;
-
     fn raw(json: Json) -> RawSettings {
         parse_value(json)
     }
-
     #[test]
     fn permissions_merge_and_deny_wins() {
         let user = raw(json!({"permissions": {"allow": ["Bash(git status)"]}}));
         let project = raw(json!({"permissions": {"deny": ["Bash(git status)"]}}));
         let empty = RawSettings::default();
         let resolved = resolve(&user, &project, &empty, &empty, &empty).unwrap();
-        // Present in both allow and deny after merge; deny must win.
         assert_eq!(resolved.decide("Bash(git status)"), Decision::Deny);
     }
-
     #[test]
     fn scalar_precedence_managed_over_user() {
         let user = raw(json!({"model": "user-model"}));
         let managed = raw(json!({"model": "managed-model"}));
         let empty = RawSettings::default();
         let resolved = resolve(&user, &empty, &empty, &empty, &managed).unwrap();
-        assert_eq!(
-            resolved.values.get("model").and_then(|v| v.as_str()),
-            Some("managed-model")
-        );
+ assert_eq!( resolved.values.get("model").and_then(|v| v.as_str()), Some("managed-model") );
     }
-
     #[test]
     fn instruction_layers_read_last_wins_managed_highest() {
         let local = raw(json!({"instructions": "local"}));
@@ -338,13 +330,9 @@ mod tests {
         let managed = raw(json!({"instructions": "managed"}));
         let resolved = resolve(&user, &project, &local, &RawSettings::default(), &managed).unwrap();
         let order: Vec<Scope> = resolved.instruction_layers.iter().map(|(s, _)| *s).collect();
-        assert_eq!(
-            order,
-            vec![Scope::Local, Scope::Project, Scope::User, Scope::Managed]
-        );
+ assert_eq!( order, vec![Scope::Local, Scope::Project, Scope::User, Scope::Managed] );
         assert_eq!(resolved.effective_instructions(), Some("managed"));
     }
-
     #[test]
     fn glob_permission_matches() {
         let project = raw(json!({"permissions": {"allow": ["Bash(git *)"]}}));

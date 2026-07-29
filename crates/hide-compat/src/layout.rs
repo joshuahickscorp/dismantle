@@ -117,33 +117,20 @@ fn find_repo_root(start: &Path) -> Option<PathBuf> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn chain_is_root_first_and_inclusive() {
         let layout = Layout::new("/repo", "/repo/a/b", "/home/u");
         let chain = layout.dir_chain_root_first();
-        assert_eq!(
-            chain,
-            vec![
-                PathBuf::from("/repo"),
-                PathBuf::from("/repo/a"),
-                PathBuf::from("/repo/a/b"),
-            ]
-        );
+        assert_eq!(chain, vec![ PathBuf::from("/repo"), PathBuf::from("/repo/a"), PathBuf::from("/repo/a/b"), ]);
     }
-
     #[test]
     fn chain_when_cwd_equals_root() {
         let layout = Layout::new("/repo", "/repo", "/home/u");
         assert_eq!(layout.dir_chain_root_first(), vec![PathBuf::from("/repo")]);
     }
-
     #[test]
     fn chain_when_cwd_outside_root() {
         let layout = Layout::new("/repo", "/elsewhere/x", "/home/u");
-        assert_eq!(
-            layout.dir_chain_root_first(),
-            vec![PathBuf::from("/elsewhere/x")]
-        );
+ assert_eq!( layout.dir_chain_root_first(), vec![PathBuf::from("/elsewhere/x")] );
     }
 }

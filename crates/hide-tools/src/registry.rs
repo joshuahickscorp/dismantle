@@ -71,7 +71,6 @@ pub fn register_builtin_tools_with(registry: &ToolRegistry, shell_config: ShellC
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn registers_full_catalog() {
         let registry = ToolRegistry::default();

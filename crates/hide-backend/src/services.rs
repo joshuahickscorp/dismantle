@@ -1928,17 +1928,14 @@ mod tests {
     use hide_core::event::NewEvent;
     use hide_core::ids::now_ms;
     use hide_personalize::{PersonalizationRecord, TaskClass};
-
     #[tokio::test]
     async fn open_workspace_wires_durable_stores() {
         let dir = std::env::temp_dir().join(format!("hide_backend_{}", now_ms()));
         let services = BackendServices::open_workspace(&dir).unwrap();
         let layout = services.layout();
-
         assert!(layout.hide_dir.exists());
         assert!(layout.event_log.exists());
         assert!(!services.role_registry.all().is_empty());
-
         let session = services.session();
         services
             .event_log
@@ -1956,35 +1953,17 @@ mod tests {
             .unwrap();
         assert_eq!(events.len(), 1);
         let integrity = services.event_integrity.verify_chain(&events).unwrap();
-        // KNOWN SPLIT-BRAIN (see WP-6): the event log now chains with blake3
-        // (hide-core), but hide-security's `EventChainAuditor` still recomputes
-        // SHA-256, so cross-crate verification mismatches until WP-6 aligns the
-        // auditor on blake3. The verifier still runs and reports a structured
-        // result; we assert it ran rather than that the two hashes agree.
         assert_eq!(integrity.checked_events, 1);
-
         let blob = services
             .blob_store
             .put(b"backend blob".to_vec(), Some("text/plain".to_string()))
             .unwrap();
-        assert_eq!(
-            services.blob_store.get(&blob).unwrap().unwrap(),
-            b"backend blob"
-        );
-
+ assert_eq!( services.blob_store.get(&blob).unwrap().unwrap(), b"backend blob" );
         services
             .projection_store
             .put_projection(&session, 1, serde_json::json!({ "view": "timeline" }))
             .unwrap();
-        assert_eq!(
-            services
-                .projection_store
-                .latest_projection(&session)
-                .unwrap()
-                .unwrap()
-                .1["view"],
-            "timeline"
-        );
+        assert_eq!(services .projection_store .latest_projection(&session) .unwrap() .unwrap() .1["view"], "timeline");
         services
             .key_value_store
             .put(
@@ -1993,15 +1972,7 @@ mod tests {
                 serde_json::json!({ "open": true }),
             )
             .unwrap();
-        assert_eq!(
-            services
-                .key_value_store
-                .get("sessions", session.as_str())
-                .unwrap()
-                .unwrap()["open"],
-            true
-        );
-
+        assert_eq!(services .key_value_store .get("sessions", session.as_str()) .unwrap() .unwrap()["open"], true);
         services
             .personalization_store
             .append(&PersonalizationRecord::accepted(
@@ -2011,31 +1982,25 @@ mod tests {
             ))
             .unwrap();
         assert_eq!(services.personalization_store.load_all().unwrap().len(), 1);
-
         let mut run = ResearchRun::new("backend research");
         run.state = ResearchState::Complete;
         services.research_ledger.append_run(&run).unwrap();
         assert_eq!(services.research_ledger.load_runs().unwrap().len(), 1);
-
         let reopened = BackendServices::open_workspace(&dir).unwrap();
         assert_eq!(reopened.personalization_store.load_all().unwrap().len(), 1);
         assert_eq!(reopened.research_ledger.load_runs().unwrap().len(), 1);
         let _ = std::fs::remove_dir_all(dir);
     }
-
     #[tokio::test]
     async fn session_is_stable_across_calls_and_reopen() {
         let dir = std::env::temp_dir().join(format!("hide_session_reg_{}", now_ms()));
         let services = BackendServices::open_workspace(&dir).unwrap();
         let a = services.session();
         let b = services.session();
-        // Stable within a host (open-or-create, not fresh-per-call).
         assert_eq!(a, b);
-        // A named session differs from the default but is itself stable.
         let named = services.session_named("review-tab");
         assert_ne!(named, a);
         assert_eq!(named, services.session_named("review-tab"));
-        // Durable: reopening the workspace recovers the same default session id.
         let reopened = BackendServices::open_workspace(&dir).unwrap();
         assert_eq!(reopened.session(), a);
         let _ = std::fs::remove_dir_all(dir);

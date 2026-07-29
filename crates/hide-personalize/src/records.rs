@@ -216,7 +216,6 @@ pub enum Outcome {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn hash32_hex_roundtrip() {
         let h = Hash32::of("hello");
@@ -225,7 +224,6 @@ mod tests {
         assert_eq!(Hash32::from_hex(&hex), Some(h));
         assert_eq!(Hash32::from_hex("nothex"), None);
     }
-
     #[test]
     fn fingerprint_is_order_independent() {
         let a = Hash32::fingerprint_files([("a.rs", 10), ("b.rs", 20)]);
@@ -234,35 +232,17 @@ mod tests {
         let c = Hash32::fingerprint_files([("a.rs", 11), ("b.rs", 20)]);
         assert_ne!(a, c);
     }
-
     #[test]
     fn all_four_outcome_ctors_exist() {
         let p = "system+user";
-        assert_eq!(
-            PersonalizationRecord::accepted(TaskClass::EditCode, p, "d").outcome,
-            Outcome::Accepted
-        );
-        assert_eq!(
-            PersonalizationRecord::modified(TaskClass::Refactor, p, "a", "b", 3).outcome,
-            Outcome::Modified {
-                edit_distance_chars: 3
-            }
-        );
-        assert_eq!(
-            PersonalizationRecord::rejected(TaskClass::WriteTest, p, "d", Some("nope".into()))
-                .outcome,
-            Outcome::Rejected
-        );
-        assert_eq!(
-            PersonalizationRecord::abandoned(TaskClass::Diagnose, p, "d").outcome,
-            Outcome::Abandoned
-        );
-        // prompt_hash is the same for the same prompt (DPO pairing depends on it).
+        assert_eq!(PersonalizationRecord::accepted(TaskClass::EditCode, p, "d").outcome, Outcome::Accepted);
+        assert_eq!(PersonalizationRecord::modified(TaskClass::Refactor, p, "a", "b", 3).outcome, Outcome::Modified { edit_distance_chars: 3 });
+        assert_eq!(PersonalizationRecord::rejected(TaskClass::WriteTest, p, "d", Some("nope".into())) .outcome, Outcome::Rejected);
+        assert_eq!(PersonalizationRecord::abandoned(TaskClass::Diagnose, p, "d").outcome, Outcome::Abandoned);
         let r1 = PersonalizationRecord::accepted(TaskClass::EditCode, p, "x");
         let r2 = PersonalizationRecord::rejected(TaskClass::EditCode, p, "y", None);
         assert_eq!(r1.prompt_hash, r2.prompt_hash);
     }
-
     #[test]
     fn record_serde_roundtrips_with_hex_hashes() {
         let rec =

@@ -269,7 +269,6 @@ fn normalize_args(src: Option<&Value>) -> Value {
 mod tests {
     use super::*;
     use serde_json::json;
-
     #[test]
     fn parses_single_hermes_block_amid_prose() {
         let text = "I'll read the config first.\n\
@@ -280,7 +279,6 @@ mod tests {
         assert_eq!(calls[0].name, "fs.read");
         assert_eq!(calls[0].arguments, json!({ "path": "a.txt" }));
     }
-
     #[test]
     fn parses_multiple_parallel_hermes_blocks() {
         let text = "<tool_call>{\"name\":\"fs.read\",\"arguments\":{\"path\":\"a\"}}</tool_call>\
@@ -290,7 +288,6 @@ mod tests {
         assert_eq!(calls[0].arguments, json!({ "path": "a" }));
         assert_eq!(calls[1].arguments, json!({ "path": "b" }));
     }
-
     #[test]
     fn parses_openai_tool_calls_array_with_string_arguments() {
         let text = r#"{"tool_calls":[{"id":"call_1","type":"function",
@@ -301,7 +298,6 @@ mod tests {
         assert_eq!(calls[0].id.as_deref(), Some("call_1"));
         assert_eq!(calls[0].arguments, json!({ "argv": ["ls"] }));
     }
-
     #[test]
     fn parses_fenced_json_block() {
         let text = "Here is the call:\n```json\n{\"name\":\"git.status\",\"args\":{}}\n```\n";
@@ -310,7 +306,6 @@ mod tests {
         assert_eq!(calls[0].name, "git.status");
         assert_eq!(calls[0].arguments, json!({}));
     }
-
     #[test]
     fn parses_bare_json_object_with_tool_key() {
         let calls = parse_tool_calls("{\"tool\":\"fs.list\",\"args\":{\"path\":\".\"}}");
@@ -318,14 +313,12 @@ mod tests {
         assert_eq!(calls[0].name, "fs.list");
         assert_eq!(calls[0].arguments, json!({ "path": "." }));
     }
-
     #[test]
     fn missing_arguments_become_empty_object() {
         let calls = parse_tool_calls("<tool_call>{\"name\":\"git.status\"}</tool_call>");
         assert_eq!(calls.len(), 1);
         assert_eq!(calls[0].arguments, json!({}));
     }
-
     #[test]
     fn non_json_string_arguments_are_wrapped_not_dropped() {
         let calls = parse_tool_calls(
@@ -334,23 +327,19 @@ mod tests {
         assert_eq!(calls.len(), 1);
         assert_eq!(calls[0].arguments, json!({ "input": "ls -la" }));
     }
-
     #[test]
     fn plain_text_turn_yields_no_calls() {
         assert!(parse_tool_calls("Just thinking out loud, no tools yet.").is_empty());
         assert!(!has_tool_call("Just thinking out loud, no tools yet."));
     }
-
     #[test]
     fn malformed_block_is_skipped_not_fatal() {
-        // First block is broken JSON, second is valid: we recover the valid one.
         let text = "<tool_call>{name: broken}</tool_call>\
             <tool_call>{\"name\":\"fs.read\",\"arguments\":{\"path\":\"ok\"}}</tool_call>";
         let calls = parse_tool_calls(text);
         assert_eq!(calls.len(), 1);
         assert_eq!(calls[0].arguments, json!({ "path": "ok" }));
     }
-
     #[test]
     fn brace_inside_string_does_not_truncate_span() {
         let text = "call: {\"name\":\"fs.write\",\"arguments\":{\"content\":\"a } b\"}}";

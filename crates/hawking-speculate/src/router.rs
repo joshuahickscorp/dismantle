@@ -405,12 +405,8 @@ impl ProposalRouter {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn weak_accept_no_spec() {
-        // Recent accepted-prefix collapses to ~1 → no B clears the verify-cost
-        // payoff floor → NoSpec. This is the cure for the net-negative short-draft
-        // case: the router declines to spec when it won't pay.
         let mut r = ProposalRouter::new(16, 0.35, 1.0);
         for _ in 0..50 {
             r.record(
@@ -429,11 +425,8 @@ mod tests {
         });
         assert_eq!(plan, RouterPlan::NoSpec);
     }
-
     #[test]
     fn strong_accept_specs_long() {
-        // Recent accepted-prefix is long (~6) → spec with a large B that clears
-        // the verify-cost curve (payoff > floor).
         let mut r = ProposalRouter::new(16, 0.35, 1.0);
         for _ in 0..50 {
             r.record(
@@ -458,19 +451,14 @@ mod tests {
             other => panic!("expected long Spec, got {other:?}"),
         }
     }
-
     #[test]
     fn gated_neural_slot_denied_without_go() {
         let mut r = ProposalRouter::new(16, 0.35, 1.0);
         let denied = r.enable_neural_slot(ProposerId::Eagle5, 16, 0.35, true, false, "NO-GO");
-        assert!(
-            denied.is_err(),
-            "hidden slot must be refused without an oracle GO"
-        );
+ assert!( denied.is_err(), "hidden slot must be refused without an oracle GO" );
         let ok = r.enable_neural_slot(ProposerId::Eagle5, 16, 0.35, true, false, "GO");
         assert!(ok.is_ok());
     }
-
     #[test]
     fn measured_wall_clock_overhead_can_kill_a_high_accept_slot() {
         let mut r = ProposalRouter::new(16, 0.35, 1.0);
@@ -486,16 +474,8 @@ mod tests {
                 },
             );
         }
-        assert_eq!(
-            r.plan(&RouterCtx {
-                target_ns_per_token: 100.0,
-                context_confidence: 1.0,
-                hidden_available: false,
-            }),
-            RouterPlan::NoSpec
-        );
+        assert_eq!(r.plan(&RouterCtx { target_ns_per_token: 100.0, context_confidence: 1.0, hidden_available: false, }), RouterPlan::NoSpec);
     }
-
     #[test]
     fn measured_verifier_curve_is_injectable() {
         let mut r = ProposalRouter::new(16, 0.35, 1.0);

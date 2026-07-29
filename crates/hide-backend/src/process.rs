@@ -601,12 +601,9 @@ fn bubblewrap(bwrap: &str, argv: &[String], config: &ShellConfig) -> Command {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     fn macos_sandbox_available() -> bool {
         cfg!(target_os = "macos") && std::path::Path::new("/usr/bin/sandbox-exec").exists()
     }
-
-    /// A workspace-rooted config so the sandbox profile canonicalizes a real dir.
     fn config() -> ShellConfig {
         let dir = std::env::temp_dir();
         ShellConfig {
@@ -614,11 +611,8 @@ mod tests {
             ..Default::default()
         }
     }
-
     #[tokio::test]
     async fn fail_closed_when_no_sandbox_and_no_optout() {
-        // With no OS sandbox and no opt-out, confine refuses; a start records a
-        // Failed process rather than running unconfined.
         if macos_sandbox_available() {
             return; // this host has a sandbox; the refusal path is not reachable
         }
@@ -628,11 +622,8 @@ mod tests {
         assert_eq!(state.status, "failed");
         assert!(!state.sandboxed);
     }
-
     #[tokio::test]
     async fn disable_sandbox_runs_bare_and_captures_output() {
-        // The opt-out path is portable (no sandbox binary needed), so it exercises
-        // spawn + streaming + capture on any host.
         let cfg = ShellConfig {
             disable_sandbox: true,
             ..Default::default()
@@ -642,7 +633,6 @@ mod tests {
             StartSpec::command(vec!["printf".to_string(), "hi".to_string()], None),
             &cfg,
         );
-        // Wait for exit.
         for _ in 0..50 {
             if !sup.is_alive(&id) {
                 break;
@@ -655,11 +645,8 @@ mod tests {
         assert!(!state.sandboxed);
         assert!(sup.captured(&id).unwrap().iter().any(|l| l.contains("hi")));
     }
-
     #[tokio::test]
     async fn interactive_stdin_echo_roundtrips() {
-        // pty_input: write a line to an interactive process's stdin and see it
-        // echoed back on the buffered output. Uses the portable opt-out path.
         let cfg = ShellConfig {
             disable_sandbox: true,
             ..Default::default()

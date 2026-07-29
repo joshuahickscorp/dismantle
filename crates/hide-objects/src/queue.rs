@@ -248,7 +248,6 @@ impl IngestQueue {
 mod tests {
     use super::*;
     use crate::permissions::{ObjectPermissions, Surface};
-
     fn job(pri: Priority, seq: u64) -> IngestJob {
         IngestJob::new(
             pri,
@@ -264,7 +263,6 @@ mod tests {
             0,
         )
     }
-
     #[test]
     fn higher_priority_first() {
         let mut q = IngestQueue::new();
@@ -279,7 +277,6 @@ mod tests {
         let second = q.pop_ready().unwrap();
         assert_eq!(second.id, low_id);
     }
-
     #[test]
     fn exhausted_retries_go_to_dead_letter_not_dropped() {
         let mut q = IngestQueue::new();

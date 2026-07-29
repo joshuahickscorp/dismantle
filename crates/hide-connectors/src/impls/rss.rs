@@ -258,7 +258,6 @@ impl ConnectorRead for RssConnector {
 #[cfg(test)]
 mod parse_tests {
     use super::*;
-
     #[test]
     fn parses_minimal_rss() {
         let xml = r#"<?xml version="1.0"?>

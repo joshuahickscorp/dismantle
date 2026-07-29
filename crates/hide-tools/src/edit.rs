@@ -695,7 +695,6 @@ fn simulate_effect(args: &Value) -> Option<EffectSet> {
 mod tests {
     use super::*;
     use std::path::PathBuf;
-
     fn ctx() -> ToolCtx {
         ToolCtx {
             grant_id: None,
@@ -703,7 +702,6 @@ mod tests {
             output_cap_bytes: 1 << 20,
         }
     }
-
     fn tmp(name: &str) -> PathBuf {
         use std::sync::atomic::{AtomicU64, Ordering};
         static N: AtomicU64 = AtomicU64::new(0);
@@ -717,7 +715,6 @@ mod tests {
         std::fs::create_dir_all(&dir).unwrap();
         dir
     }
-
     #[tokio::test]
     async fn search_replace_exact() {
         let dir = tmp("sr");
@@ -734,20 +731,15 @@ mod tests {
             )
             .await;
         assert!(r.ok);
-        assert!(std::fs::read_to_string(&file)
-            .unwrap()
-            .contains("let x = 2;"));
+ assert!(std::fs::read_to_string(&file) .unwrap() .contains("let x = 2;"));
         let _ = std::fs::remove_dir_all(dir);
     }
-
     #[tokio::test]
     async fn search_replace_whitespace_fallback() {
         let dir = tmp("ws");
         let file = dir.join("f.rs");
-        // File uses tabs + trailing spaces; search uses plain single spaces.
         std::fs::write(&file, "fn  main() {\n\tlet  x   =  1;   \n}\n").unwrap();
         let tool = SearchReplaceTool::default();
-        // search differs only in run-length of whitespace (collapses identically).
         let r = tool
             .call(
                 json!({
@@ -757,17 +749,10 @@ mod tests {
                 ctx(),
             )
             .await;
-        assert!(
-            r.ok,
-            "whitespace-normalized match should succeed: {:?}",
-            r.error
-        );
-        assert!(std::fs::read_to_string(&file)
-            .unwrap()
-            .contains("let x = 2;"));
+ assert!( r.ok, "whitespace-normalized match should succeed: {:?}", r.error );
+ assert!(std::fs::read_to_string(&file) .unwrap() .contains("let x = 2;"));
         let _ = std::fs::remove_dir_all(dir);
     }
-
     #[tokio::test]
     async fn search_replace_conflict_on_no_match() {
         let dir = tmp("conf");
@@ -787,7 +772,6 @@ mod tests {
         assert_eq!(r.error.unwrap().code, "CONFLICT");
         let _ = std::fs::remove_dir_all(dir);
     }
-
     #[tokio::test]
     async fn base_hash_mismatch_is_conflict() {
         let dir = tmp("bh");
@@ -807,7 +791,6 @@ mod tests {
         assert_eq!(r.error.unwrap().code, "CONFLICT");
         let _ = std::fs::remove_dir_all(dir);
     }
-
     #[tokio::test]
     async fn apply_patch_unified_diff() {
         let dir = tmp("patch");
@@ -827,12 +810,8 @@ mod tests {
         assert_eq!(got, "line1\nline2-edited\nline3\n");
         let _ = std::fs::remove_dir_all(dir);
     }
-
     #[tokio::test]
     async fn apply_patch_out_of_order_hunk_is_conflict_not_panic() {
-        // Hunks in the wrong order: edit "b" before "target", but "target" is earlier
-        // in the file, so `locate` wraps backward and returns anchor < cursor. That
-        // used to panic on orig_lines[cursor..anchor]; now it is an honest CONFLICT.
         let dir = tmp("ooo");
         let file = dir.join("f.txt");
         std::fs::write(&file, "target\na\nb\n").unwrap();
@@ -849,12 +828,8 @@ mod tests {
         assert_eq!(std::fs::read_to_string(&file).unwrap(), "target\na\nb\n");
         let _ = std::fs::remove_dir_all(dir);
     }
-
     #[tokio::test]
     async fn apply_patch_mismatched_removal_is_conflict_not_corruption() {
-        // A stray blank hunk line desyncs the cursor so the '-' removal no longer
-        // matches the file. Instead of silently deleting the wrong line (was: writes
-        // "a\nA\n"), the applier now returns CONFLICT and writes nothing.
         let dir = tmp("mism");
         let file = dir.join("f.txt");
         std::fs::write(&file, "a\nb\n").unwrap();
@@ -871,12 +846,8 @@ mod tests {
         assert_eq!(std::fs::read_to_string(&file).unwrap(), "a\nb\n");
         let _ = std::fs::remove_dir_all(dir);
     }
-
     #[tokio::test]
     async fn apply_patch_blank_context_desync_is_conflict_not_corruption() {
-        // Blank context line with no matching blank in the file and no '-' line to
-        // trip the removal guard: must CONFLICT, not duplicate a line (was: wrote
-        // "a\nb\nX\nb\n").
         let dir = tmp("blankdesync");
         let file = dir.join("f.txt");
         std::fs::write(&file, "a\nb\n").unwrap();
@@ -893,11 +864,8 @@ mod tests {
         assert_eq!(std::fs::read_to_string(&file).unwrap(), "a\nb\n");
         let _ = std::fs::remove_dir_all(dir);
     }
-
     #[tokio::test]
     async fn apply_patch_all_blank_hunk_is_conflict_not_silent_ok() {
-        // A hunk body of only blank lines strips to empty; it must CONFLICT, not
-        // report a successful no-op apply (regression guard for the trailing strip).
         let dir = tmp("allblank");
         let file = dir.join("f.txt");
         std::fs::write(&file, "a\nb\nc\n").unwrap();
@@ -913,12 +881,8 @@ mod tests {
         assert_eq!(std::fs::read_to_string(&file).unwrap(), "a\nb\nc\n");
         let _ = std::fs::remove_dir_all(dir);
     }
-
     #[tokio::test]
     async fn apply_patch_tolerates_trailing_blank_in_patch_body() {
-        // A patch string ending in a blank line ("...\n\n") must still apply: the
-        // trailing "" is a patch terminator, not a required blank context line
-        // (regression guard for the old_seq empty-line change).
         let dir = tmp("trailblank");
         let file = dir.join("f.txt");
         std::fs::write(&file, "a\nb\nc\n").unwrap();
@@ -934,11 +898,8 @@ mod tests {
         assert_eq!(std::fs::read_to_string(&file).unwrap(), "a\nB\nc\n");
         let _ = std::fs::remove_dir_all(dir);
     }
-
     #[tokio::test]
     async fn apply_patch_stripped_blank_context_still_applies() {
-        // A valid diff whose blank context line was stripped to "" must still apply
-        // when the file genuinely has that interior blank line (was over-rejected).
         let dir = tmp("stripblank");
         let file = dir.join("f.txt");
         std::fs::write(&file, "a\n\nc\n").unwrap();
@@ -954,7 +915,6 @@ mod tests {
         assert_eq!(std::fs::read_to_string(&file).unwrap(), "a\n\nC\n");
         let _ = std::fs::remove_dir_all(dir);
     }
-
     #[tokio::test]
     async fn write_file_create_only_conflict() {
         let dir = tmp("wf");

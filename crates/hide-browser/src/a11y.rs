@@ -122,7 +122,6 @@ pub fn is_interactive_role(role: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn walk_and_role_queries() {
         let tree = AccessibilityTree::new(
@@ -133,13 +132,8 @@ mod tests {
         assert!(tree.has_role("button"));
         assert!(!tree.has_role("slider"));
         assert_eq!(tree.nodes_with_role("button").len(), 1);
-        assert_eq!(
-            tree.find(&AccessibilityNodeId::from("ax-btn"))
-                .and_then(|n| n.name.clone()),
-            Some("Add to cart".into())
-        );
+        assert_eq!(tree.find(&AccessibilityNodeId::from("ax-btn")) .and_then(|n| n.name.clone()), Some("Add to cart".into()));
     }
-
     #[test]
     fn interactive_role_classification() {
         assert!(is_interactive_role("button"));

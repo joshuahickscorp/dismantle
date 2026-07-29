@@ -379,7 +379,6 @@ impl AdapterGateReport {
 mod tests {
     use super::*;
     use hawking_index::InMemoryCodeIndex;
-
     #[test]
     fn regex_oracle_matches() {
         let case = EvalCase {
@@ -393,7 +392,6 @@ mod tests {
         assert!(run_eval(&case, "pub fn helper() {}").passed);
         assert!(!run_eval(&case, "no functions here").passed);
     }
-
     #[test]
     fn golden_diff_oracle_compares_blake3() {
         let produced = "+added line\n";
@@ -408,10 +406,8 @@ mod tests {
         assert!(run_eval(&case, produced).passed);
         assert!(!run_eval(&case, "different").passed);
     }
-
     #[test]
     fn command_oracle_runs_real_process() {
-        // `true` exits 0; `false` exits 1 — real subprocess execution.
         let ok = EvalCase {
             id: "ok".into(),
             task: "t".into(),
@@ -423,7 +419,6 @@ mod tests {
             metadata: BTreeMap::new(),
         };
         assert!(run_eval(&ok, "").passed);
-
         let bad = EvalCase {
             id: "bad".into(),
             task: "t".into(),
@@ -436,11 +431,9 @@ mod tests {
         };
         assert!(!run_eval(&bad, "").passed);
     }
-
     #[tokio::test]
     async fn miner_flags_untested_function() {
         let index = InMemoryCodeIndex::default();
-        // `helper` is defined in src/ and referenced from a test file → linked.
         index.add_text_file(
             "src/lib.rs",
             "pub fn helper() {}\npub fn lonely() {}\n",
@@ -451,14 +444,11 @@ mod tests {
             "fn check() { helper(); }\n",
             Some("h2".into()),
         );
-
         let miner = EvalMiner::with_defaults();
         let candidates = miner
             .mine(&index, &["helper".into(), "lonely".into()])
             .await
             .unwrap();
-
-        // `helper` has test linkage → no candidate; `lonely` does not → candidate.
         let names: Vec<&str> = candidates
             .iter()
             .map(|c| c.task_description.as_str())
@@ -466,48 +456,38 @@ mod tests {
         assert!(names.iter().any(|d| d.contains("lonely")));
         assert!(!names.iter().any(|d| d.contains("helper")));
     }
-
     #[tokio::test]
     async fn miner_auto_adds_untested_load_bearing_function() {
         let index = InMemoryCodeIndex::default();
-        // `compute` is defined in one source file...
         index.add_text_file(
             "src/math.rs",
             "pub fn compute(x: i32) -> i32 { x + 1 }\n",
             Some("m".into()),
         );
-        // ...and *used* from another (non-test) source file — load-bearing.
         index.add_text_file(
             "src/app.rs",
             "use crate::math::compute;\npub fn run() -> i32 { compute(41) }\n",
             Some("a".into()),
         );
-
         let miner = EvalMiner::with_defaults();
         let candidates = miner.mine(&index, &["compute".into()]).await.unwrap();
-
         let compute = candidates
             .iter()
             .find(|c| c.task_description.contains("compute"))
             .expect("compute should be a candidate (untested)");
-        // Referenced from non-test source → 0.97 ≥ 0.95 gate → AutoAdded.
         assert_eq!(compute.confidence, 0.97);
         assert_eq!(compute.status, CandidateStatus::AutoAdded);
     }
-
     #[tokio::test]
     async fn miner_defers_untested_unreferenced_function() {
         let index = InMemoryCodeIndex::default();
-        // Defined but referenced nowhere (possibly dead code) → human review.
         index.add_text_file(
             "src/orphan.rs",
             "pub fn orphan() -> i32 { 0 }\n",
             Some("o".into()),
         );
-
         let miner = EvalMiner::with_defaults();
         let candidates = miner.mine(&index, &["orphan".into()]).await.unwrap();
-
         let orphan = candidates
             .iter()
             .find(|c| c.task_description.contains("orphan"))

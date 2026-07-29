@@ -159,13 +159,11 @@ impl Machine {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     fn scratch(tag: &str) -> PathBuf {
         let d = std::env::temp_dir().join(format!("seedb-state-{}-{}", tag, std::process::id()));
         let _ = std::fs::remove_dir_all(&d);
         d
     }
-
     #[test]
     fn happy_path_and_crash_resume() {
         let root = scratch("hp");
@@ -176,12 +174,10 @@ mod tests {
             }
             assert_eq!(m.state, State::Running);
         }
-        // re-open (crash/resume): replay + verify seals, land back in Running
         let m2 = Machine::open(&root).unwrap();
         assert_eq!(m2.state, State::Running);
         assert!(m2.log.iter().all(|r| r.verify().is_ok()));
     }
-
     #[test]
     fn drain_then_seal() {
         let root = scratch("dr");
@@ -191,7 +187,6 @@ mod tests {
         }
         assert_eq!(m.state, State::Sealed);
     }
-
     #[test]
     fn unknown_transition_rejected() {
         let root = scratch("bad");

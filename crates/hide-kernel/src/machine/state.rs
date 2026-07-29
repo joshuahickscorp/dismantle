@@ -213,7 +213,6 @@ impl AgentState {
 mod lesson_tests {
     use super::*;
     use hide_core::ids::{RunId, SessionId, StepId};
-
     fn lesson(n: usize) -> Lesson {
         Lesson {
             text: format!("L{n}"),
@@ -222,7 +221,6 @@ mod lesson_tests {
             ts: 0,
         }
     }
-
     #[test]
     fn push_lesson_is_bounded_and_evicts_oldest() {
         let mut s = AgentState::new(SessionId::new(), RunId::new(), "obj".to_string());
@@ -230,15 +228,10 @@ mod lesson_tests {
             s.push_lesson(lesson(i));
         }
         assert_eq!(s.lessons.len(), MAX_LESSONS);
-        // The two oldest were evicted; the newest is retained.
         assert_eq!(s.lessons.first().unwrap().text, "L2");
-        assert_eq!(
-            s.lessons.last().unwrap().text,
-            format!("L{}", MAX_LESSONS + 1)
-        );
+ assert_eq!( s.lessons.last().unwrap().text, format!("L{}", MAX_LESSONS + 1) );
         assert_eq!(s.lessons[0].phase, Phase::Repair);
     }
-
     fn paused_with_pending() -> AgentState {
         let mut s = AgentState::new(SessionId::new(), RunId::new(), "obj".to_string());
         s.phase = Phase::Paused;
@@ -249,7 +242,6 @@ mod lesson_tests {
         });
         s
     }
-
     #[test]
     fn approve_pending_effect_clears_the_request_and_keeps_the_cursor() {
         let mut s = paused_with_pending();
@@ -258,11 +250,9 @@ mod lesson_tests {
         let returned = s.approve_pending_effect();
         assert!(returned.is_some(), "the approved request is returned");
         assert!(s.pending_approval.is_none(), "approval is cleared (resume)");
-        // The cursor is left intact so the driver's do_paused -> Act runs THIS step.
         assert_eq!(s.cursor, Some(cursor));
         assert!(s.approve_pending_effect().is_none(), "idempotent when none pending");
     }
-
     #[test]
     fn deny_pending_effect_skips_the_step_and_reselects() {
         let mut s = paused_with_pending();

@@ -80,7 +80,6 @@ pub fn seed_event_to_canonical(
 mod tests {
     use super::*;
     use hide_core::ids::with_deterministic_ids;
-
     #[test]
     fn seed_transition_is_model_lifecycle() {
         with_deterministic_ids(40, || {

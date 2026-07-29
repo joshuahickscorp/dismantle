@@ -657,13 +657,9 @@ impl OperationPlan {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     fn dims() -> Dims {
         Dims { hidden: 2048, vocab: 151936, n_layers: 4 }
     }
-
-    /// A Qwen3-style MoE layer: rms-norm, GQA with qk-norm, softmax router (top-8 of 128), experts,
-    /// weighted combine.
     fn qwen3_moe_ops() -> Vec<Op> {
         vec![
             Op::Embed { vocab: 151936, hidden: 2048 },
@@ -686,11 +682,9 @@ mod tests {
             Op::Sample { vocab: 151936 },
         ]
     }
-
     fn qwen3_moe_plan() -> OperationPlan {
         OperationPlan::new("qwen3-moe", PlanProfile::TextCoreMoe, dims(), qwen3_moe_ops()).declaring_own_roles()
     }
-
     #[test]
     fn legal_qwen3_moe_plan_validates() {
         let p = qwen3_moe_plan();
@@ -699,7 +693,6 @@ mod tests {
         assert!(p.provisional_families().is_empty());
         assert!(p.families().contains(&"router"));
     }
-
     #[test]
     fn unknown_op_for_profile_is_rejected() {
         let mut p = qwen3_moe_plan();
@@ -707,16 +700,13 @@ mod tests {
         let e = p.validate().unwrap_err().to_string();
         assert!(e.contains("router") && e.contains("Moe"), "{e}");
     }
-
     #[test]
     fn shape_relation_violation_is_rejected() {
         let mut ops = qwen3_moe_ops();
-        // n_heads*head_dim (16*64) != hidden (2048)
         ops[7] = Op::GQA { n_heads: 16, n_kv_heads: 4, head_dim: 64, sliding_window: None };
         let p = OperationPlan::new("qwen3-moe", PlanProfile::TextCoreMoe, dims(), ops).declaring_own_roles();
         assert!(p.validate().unwrap_err().to_string().contains("gqa"));
     }
-
     #[test]
     fn mla_rank_must_compress() {
         let d = dims();
@@ -726,28 +716,23 @@ mod tests {
         good.check_shapes(&d).unwrap();
         assert!(good.roles().contains(&TensorRole::QDown));
     }
-
     #[test]
     fn undeclared_tensor_role_is_rejected() {
         let p = OperationPlan::new("qwen3-moe", PlanProfile::TextCoreMoe, dims(), qwen3_moe_ops())
             .with_roles([TensorRole::TokenEmbd, TensorRole::NormWeight]);
         assert!(p.validate().unwrap_err().to_string().contains("undeclared tensor role"));
     }
-
     #[test]
     fn text_core_cannot_carry_vision() {
         let p = qwen3_moe_plan().with_vision(vec![VisionOp::VisionProjector { in_dim: 1280, out_dim: 2048, merge_size: 2 }]);
         assert!(p.validate().unwrap_err().to_string().contains("text-core"));
-        // and the type-level half: Vec<Op> has no vision variant, so ops can never hold one.
         assert!(!p.families()[..p.ops.len()].contains(&"vision_projector"));
     }
-
     #[test]
     fn multimodal_profile_requires_vision_ops() {
         let mut p = qwen3_moe_plan();
         p.profile = PlanProfile::TextVision;
         assert!(p.validate().unwrap_err().to_string().contains("no vision ops"));
-
         let ok = p
             .clone()
             .with_vision(vec![
@@ -756,24 +741,20 @@ mod tests {
             ])
             .declaring_own_roles();
         ok.validate().unwrap();
-        // a projector that does not land in the text hidden size is illegal
         let bad = p.with_vision(vec![VisionOp::VisionProjector { in_dim: 1280, out_dim: 999, merge_size: 2 }]).declaring_own_roles();
         assert!(bad.validate().is_err());
     }
-
     #[test]
     fn experts_must_follow_a_matching_router() {
         let mut ops = qwen3_moe_ops();
         ops.remove(11); // drop the router
         let p = OperationPlan::new("x", PlanProfile::TextCoreMoe, dims(), ops).declaring_own_roles();
         assert!(p.validate().unwrap_err().to_string().contains("without a preceding router"));
-
         let mut ops = qwen3_moe_ops();
         ops[12] = Op::Experts { n_experts: 128, top_k: 4, intermediate: 768, act: ActKind::SiluGated };
         let p = OperationPlan::new("x", PlanProfile::TextCoreMoe, dims(), ops).declaring_own_roles();
         assert!(p.validate().unwrap_err().to_string().contains("router top_k"));
     }
-
     #[test]
     fn provisional_families_are_surfaced() {
         let op = Op::KimiDeltaAttention { n_heads: 16, head_dim: 128, conv_kernel: 4, short_conv: 4 };
@@ -784,7 +765,6 @@ mod tests {
         p.validate().unwrap();
         assert_eq!(p.provisional_families(), vec!["kimi_delta_attention"]);
     }
-
     #[test]
     fn plan_round_trips_as_json_for_a_launch_packet() {
         let p = qwen3_moe_plan();
@@ -794,10 +774,8 @@ mod tests {
         back.validate().unwrap();
         assert!(json.contains("\"router\""));
     }
-
     #[test]
     fn every_declared_family_is_reachable() {
-        // 28 text-core families + 2 vision = the 30 the IR is allowed to have.
         let all: Vec<&'static str> = vec![
             Op::Embed { vocab: 1, hidden: 1 }.family(),
             Op::FinalProjection { vocab: 1, hidden: 1, tied: true }.family(),

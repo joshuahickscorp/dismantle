@@ -156,7 +156,6 @@ mod tests {
     use hide_core::event::InMemoryEventLog;
     use hide_core::ids::SessionId;
     use std::sync::Arc;
-
     #[tokio::test]
     async fn subagent_runs_and_rolls_budget_up() {
         let log = Arc::new(InMemoryEventLog::new());

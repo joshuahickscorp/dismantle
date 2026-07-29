@@ -401,7 +401,6 @@ mod tests {
     use super::*;
     use hide_core::event::{Event, EventSource, NewEvent};
     use hide_core::ids::SessionId;
-
     fn embed_chain(genesis: &[u8], events: &mut [Event]) {
         let mut prev = genesis.to_vec();
         for e in events.iter_mut() {
@@ -410,7 +409,6 @@ mod tests {
             prev = h;
         }
     }
-
     fn ev(seq: u64, session: &SessionId, kind: &str, n: i64) -> Event {
         Event::new(
             seq,
@@ -422,7 +420,6 @@ mod tests {
             ),
         )
     }
-
     #[test]
     fn verifies_embedded_blake3_chain() {
         let session = SessionId::new();
@@ -435,7 +432,6 @@ mod tests {
         assert!(report.ok, "{:?}", report.error);
         assert!(report.chain_root.is_some());
     }
-
     #[test]
     fn rejects_tampered_chain() {
         let session = SessionId::new();
@@ -446,12 +442,8 @@ mod tests {
         assert!(!report.ok);
         assert!(report.error.unwrap().contains("hash mismatch"));
     }
-
     #[test]
     fn matches_hide_core_chain_construction() {
-        // The security verifier must agree with hide_core's on-append chain over
-        // the all-zero genesis. We can at least assert internal consistency:
-        // recomputing a freshly-embedded chain verifies.
         let session = SessionId::new();
         let mut events = [
             ev(1, &session, "a", 1),
@@ -461,7 +453,6 @@ mod tests {
         embed_chain(&[0u8; CHAIN_HASH_LEN], &mut events);
         assert!(verify_event_chain(&events).ok);
     }
-
     #[test]
     fn genesis_salt_changes_root() {
         let session = SessionId::new();
@@ -472,71 +463,57 @@ mod tests {
             .unwrap();
         assert_ne!(zero, salted, "salt must perturb the root");
     }
-
     #[test]
     fn anchor_signs_and_verifies_against_chain() {
         let session = SessionId::new();
         let genesis = [9u8; CHAIN_HASH_LEN];
         let mut events = [ev(1, &session, "a", 1), ev(2, &session, "b", 2)];
         embed_chain(&genesis, &mut events);
-
         let signer = AnchorSigner::from_key([3u8; CHAIN_HASH_LEN], "test-signer");
         let tip = compute_event_chain_salted(&genesis, &events)
             .chain_root
             .unwrap();
         let anchor = signer.anchor(2, tip);
-
         let v = verify_with_anchors(&genesis, &events, std::slice::from_ref(&anchor), &signer);
         assert!(v.ok, "{}", v.detail);
         assert!(v.anchors_checked[0].signature_ok);
         assert!(v.anchors_checked[0].root_matches_chain);
         assert!(v.alarm.is_none());
-
-        // The anchor event builds with the right kind.
         let new = anchor.to_event(session);
         assert_eq!(new.kind, "security.anchor");
     }
-
     #[test]
     fn forged_anchor_signature_raises_sig_fail() {
         let session = SessionId::new();
         let genesis = [1u8; CHAIN_HASH_LEN];
         let mut events = [ev(1, &session, "a", 1)];
         embed_chain(&genesis, &mut events);
-
         let real = AnchorSigner::from_key([4u8; CHAIN_HASH_LEN], "real");
         let tip = compute_event_chain_salted(&genesis, &events)
             .chain_root
             .unwrap();
         let mut anchor = real.anchor(1, tip);
         anchor.signature = "deadbeef".to_string(); // forged
-
         let v = verify_with_anchors(&genesis, &events, std::slice::from_ref(&anchor), &real);
         assert!(!v.ok);
         assert_eq!(v.alarm, Some(IntegrityAlarmKind::SigFail));
     }
-
     #[test]
     fn anchor_over_tampered_history_raises_chain_break() {
         let session = SessionId::new();
         let genesis = [2u8; CHAIN_HASH_LEN];
         let mut events = [ev(1, &session, "a", 1), ev(2, &session, "b", 2)];
         embed_chain(&genesis, &mut events);
-
         let signer = AnchorSigner::from_key([5u8; CHAIN_HASH_LEN], "s");
         let tip = compute_event_chain_salted(&genesis, &events)
             .chain_root
             .unwrap();
         let anchor = signer.anchor(2, tip);
-
-        // Tamper a past event WITHOUT re-embedding hashes: verify_event_chain
-        // catches the embedded-hash mismatch first → chain_break.
         events[0].payload = serde_json::json!({ "n": 999 });
         let v = verify_with_anchors(&genesis, &events, std::slice::from_ref(&anchor), &signer);
         assert!(!v.ok);
         assert_eq!(v.alarm, Some(IntegrityAlarmKind::ChainBreak));
     }
-
     #[test]
     fn integrity_alarm_event_shape() {
         let session = SessionId::new();

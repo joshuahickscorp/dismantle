@@ -109,7 +109,6 @@ mod tests {
     use super::*;
     use crate::proposal::{Budget, Ctx, HiddenTap, Telemetry};
     use crate::router::{ProposalRouter, ProposerId};
-
     fn ctx_no_hidden<'a>(tokens: &'a [u32]) -> Ctx<'a> {
         Ctx {
             tokens,
@@ -117,8 +116,6 @@ mod tests {
             hidden: None,
         }
     }
-
-    /// Basic smoke test: mock head wraps, propose returns the expected length.
     #[test]
     fn adapter_wraps_mock_head() {
         let head = Eagle5Head::mock(42, 64, 256);
@@ -132,26 +129,15 @@ mod tests {
             other => panic!("expected TokenLine, got {:?}", other.draft_len()),
         }
     }
-
-    /// requires_hidden must be true — the router uses this to gate scheduling.
     #[test]
     fn requires_hidden_is_true() {
         let head = Eagle5Head::mock(1, 32, 64);
         let proposer = EagleProposer::new(head);
-        assert!(
-            proposer.requires_hidden(),
-            "EagleProposer must advertise requires_hidden=true"
-        );
+ assert!( proposer.requires_hidden(), "EagleProposer must advertise requires_hidden=true" );
     }
-
-    /// The kill-ledger rule encoded structurally: enable_neural_slot refuses
-    /// any hidden slot whose oracle verdict is not "GO".
-    ///
-    /// τ=0.877 < 2.5 gate → verdict is always "NO-GO" for this head.
     #[test]
     fn enable_neural_slot_refuses_without_go() {
         let mut router = ProposalRouter::new(16, 0.35, 1.0);
-        // Attempting to register Eagle5 with "NO-GO" must return Err.
         let result = router.enable_neural_slot(
             ProposerId::Eagle5,
             16,
@@ -160,14 +146,8 @@ mod tests {
             false, // requires_text_bridge
             "NO-GO",
         );
-        assert!(
-            result.is_err(),
-            "enable_neural_slot must refuse hidden slot with verdict=NO-GO"
-        );
+ assert!( result.is_err(), "enable_neural_slot must refuse hidden slot with verdict=NO-GO" );
     }
-
-    /// When a HiddenTap is present, propose delegates to propose_rollout_chained.
-    /// Mock head ignores residual/intermediate contents, so zero-length slices work.
     #[test]
     fn propose_with_hidden_tap_uses_rollout() {
         let head = Eagle5Head::mock(7, 32, 128);

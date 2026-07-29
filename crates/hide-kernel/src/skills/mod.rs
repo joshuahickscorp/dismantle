@@ -190,7 +190,6 @@ fn lexical_overlap(query: &str, text: &str) -> f32 {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn capture_reinforces_and_retrieve_ranks() {
         let mut store = SkillStore::new();
@@ -204,7 +203,6 @@ mod tests {
             "register in router.rs::build",
             "route",
         ));
-        // Reinforced: success_count went 1 → 2.
         let got = store.retrieve(&SkillQuery {
             text: "add a route".to_string(),
             top_k: 5,
@@ -212,7 +210,6 @@ mod tests {
         assert_eq!(got.len(), 1);
         assert_eq!(got[0].skill.success_count, 2);
     }
-
     #[test]
     fn decay_forgets_failing_skill() {
         let mut store = SkillStore::new();

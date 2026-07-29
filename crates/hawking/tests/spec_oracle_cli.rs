@@ -1,11 +1,5 @@
-//! Track 6 CLI surface for the spec replay-oracle. Pure CPU: `--help` needs no
-//! model; the full run mmaps the GGUF tokenizer + replays an n-gram draft (no
-//! Metal, no forward). Shells out to the built binary because the `hawking`
-//! crate is bin-only.
 use std::process::Command;
-
 const BIN: &str = env!("CARGO_BIN_EXE_hawking");
-
 #[test]
 fn spec_oracle_help_lists_flags() {
     let out = Command::new(BIN)
@@ -24,11 +18,8 @@ fn spec_oracle_help_lists_flags() {
         assert!(s.contains(flag), "help missing {flag}:\n{s}");
     }
 }
-
 #[test]
 fn spec_oracle_runs_on_real_model_when_present() {
-    // CPU-only end-to-end (gguf mmap -> tokenizer -> encode -> replay_grid).
-    // Skipped (passes) when the model isn't checked out, so CI stays green.
     let model = concat!(
         env!("CARGO_MANIFEST_DIR"),
         "/../../models/Qwen2.5-3B-Instruct-Q4_K_M.gguf"
@@ -61,11 +52,7 @@ fn spec_oracle_runs_on_real_model_when_present() {
         ])
         .output()
         .expect("run spec-oracle on real model");
-    assert!(
-        out.status.success(),
-        "stderr:\n{}",
-        String::from_utf8_lossy(&out.stderr)
-    );
+ assert!( out.status.success(), "stderr:\n{}", String::from_utf8_lossy(&out.stderr) );
     let s = String::from_utf8_lossy(&out.stdout);
     assert!(s.contains("\"verdict\""), "json must carry a verdict:\n{s}");
     assert!(s.contains("\"per_k\""), "json must carry per_k rows:\n{s}");

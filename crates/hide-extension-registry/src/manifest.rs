@@ -402,17 +402,14 @@ impl CapabilityManifest {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn filesystem_prefix_coverage() {
         let held = Scope::Filesystem("src".to_string());
         assert!(held.covers(&Scope::Filesystem("src/lib.rs".to_string())));
         assert!(held.covers(&Scope::Filesystem("src".to_string())));
         assert!(!held.covers(&Scope::Filesystem("tests".to_string())));
-        // A sibling that merely shares a prefix string is not covered.
         assert!(!held.covers(&Scope::Filesystem("srcextra".to_string())));
     }
-
     #[test]
     fn network_wildcard_coverage() {
         let any = Scope::Network("*".to_string());
@@ -421,7 +418,6 @@ mod tests {
         assert!(one.covers(&Scope::Network("example.com".to_string())));
         assert!(!one.covers(&Scope::Network("evil.com".to_string())));
     }
-
     #[test]
     fn implied_effects_from_policies_and_scopes() {
         let mut m = CapabilityManifest::new("x", "1.0.0", CapabilityKind::Tool, "p");
@@ -431,27 +427,19 @@ mod tests {
         let implied = m.implied_effects();
         assert!(implied.contains(&Effect::Network));
         assert!(implied.contains(&Effect::SecretAccess));
-        // De-dup: Network is implied by both policy and scope but appears once.
-        assert_eq!(
-            implied.iter().filter(|e| **e == Effect::Network).count(),
-            1
-        );
+ assert_eq!( implied.iter().filter(|e| **e == Effect::Network).count(), 1 );
     }
-
     #[test]
     fn undeclared_effects_detected() {
         let mut m = CapabilityManifest::new("x", "1.0.0", CapabilityKind::Tool, "p");
         m.network = NetworkPolicy::Any;
-        // effects still only Read, so Network is undeclared.
         assert_eq!(m.undeclared_effects(), vec![Effect::Network]);
         m.effects.push(Effect::Network);
         assert!(m.undeclared_effects().is_empty());
     }
-
     #[test]
     fn role_offering() {
         let mut m = CapabilityManifest::new("x", "1.0.0", CapabilityKind::Tool, "p");
-        // No role scope: offered to any role.
         assert!(m.offered_to_role("reviewer"));
         m.scopes = vec![Scope::Role("admin".to_string())];
         assert!(m.offered_to_role("admin"));

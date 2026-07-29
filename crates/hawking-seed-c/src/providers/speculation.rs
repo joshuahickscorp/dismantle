@@ -129,7 +129,6 @@ impl<S: Speculator> Provider for SpeculationProviderImpl<S> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn prompt_lookup_proposes_and_target_verifies() {
         let spec = PromptLookup::new(2);

@@ -228,15 +228,12 @@ pub fn project_process_output(
 mod tests {
     use super::*;
     use hide_core::persistence::InMemoryBlobStore;
-
     #[test]
     fn safe_prefix_respects_char_boundaries() {
         let s = "héllo"; // é is 2 bytes
-                         // cutting at byte 2 would split é → must back off to 1
         assert_eq!(safe_prefix(s, 2), "h");
         assert_eq!(safe_prefix(s, 100), s);
     }
-
     #[test]
     fn maybe_spill_writes_to_cas_over_cap() {
         let store: Arc<dyn BlobStore> = Arc::new(InMemoryBlobStore::default());
@@ -249,7 +246,6 @@ mod tests {
         assert_eq!(recovered.len(), 10_000);
         assert!(spill.head.len() <= SPILL_PREVIEW_BYTES);
     }
-
     #[test]
     fn under_cap_stays_inline() {
         let spill = maybe_spill("short".to_string(), 1_000, None);
@@ -257,7 +253,6 @@ mod tests {
         assert!(spill.bytes_ref.is_none());
         assert_eq!(spill.head, "short");
     }
-
     #[test]
     fn exec_nonzero_is_ok_true() {
         let r = project_process_output(1, "out".into(), "boom".into(), 4096, None);

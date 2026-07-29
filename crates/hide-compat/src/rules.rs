@@ -118,7 +118,6 @@ fn build_glob_set(patterns: &[String]) -> Result<GlobSet, globset::Error> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn unscoped_rule_loads_at_launch_and_always_applies() {
         let rule = Rule {
@@ -131,7 +130,6 @@ mod tests {
         assert!(rule.loads_at_launch());
         assert!(rule.applies_to(Path::new("/repo/anything.txt"), Path::new("/repo")));
     }
-
     #[test]
     fn scoped_rule_gates_on_glob() {
         let set = build_glob_set(&["**/*.rs".to_string()]).unwrap();

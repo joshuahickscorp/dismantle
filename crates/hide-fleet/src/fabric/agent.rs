@@ -334,25 +334,18 @@ mod tests {
     use crate::fabric::placement::{
         ModelSection, PlacementRequest, PlacementSimulator, WorkloadClass,
     };
-
     const GIB: u64 = 1024 * 1024 * 1024;
-
     #[test]
     fn agent_registers_real_capabilities() {
         let agent = FabricAgent::new(AgentConfig::new("agent-a", "127.0.0.1:0"));
         let caps = agent.capabilities();
         assert_eq!(caps.node_id.as_str(), "agent-a");
         assert!(caps.total_memory_bytes > 0);
-        assert_ne!(
-            caps.total_memory_bytes,
-            crate::fabric::node::FIXED_FAKE_MEMORY_BYTES
-        );
+ assert_ne!( caps.total_memory_bytes, crate::fabric::node::FIXED_FAKE_MEMORY_BYTES );
     }
-
     #[test]
     fn agent_accepts_assignment_and_proves_hashes() {
         let nodes = SimulatedNodeSet::homogeneous_pair_sim("sim-agent-v1", 64 * GIB, 8).nodes;
-        // Override node ids to match agents we create... use sim nodes as placement targets.
         let sections = vec![
             ModelSection::content_addressed("s0", 0, 2, 4 * GIB, b"s0"),
             ModelSection::content_addressed("s1", 2, 4, 4 * GIB, b"s1"),
@@ -367,7 +360,6 @@ mod tests {
         let plan = PlacementSimulator::new().place(&req).unwrap();
         let target = plan.section_placements[0].node_id.clone();
         let agent = FabricAgent::new(AgentConfig::new(target.as_str(), "127.0.0.1:0"));
-        // Patch agent node id already matches target.
         let resp = agent.handle(AgentRequest::Assign {
             assignment: PlacementAssignment {
                 plan_id: plan.plan_id.clone(),

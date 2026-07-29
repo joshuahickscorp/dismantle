@@ -327,7 +327,6 @@ mod tests {
     use super::*;
     use crate::evidence::EvidenceTier;
     use serde_json::json;
-
     #[test]
     fn three_lenses_share_one_session_id() {
         let g = SurfaceGraph::open("ses_shared");
@@ -335,24 +334,10 @@ mod tests {
         for s in Surface::all() {
             assert_eq!(g.lens(s).unwrap().session_id, "ses_shared");
         }
-        // Capabilities differ by surface defaults.
-        assert!(g
-            .lens(Surface::You)
-            .unwrap()
-            .capability()
-            .allows_connector("gmail"));
-        assert!(!g
-            .lens(Surface::Chat)
-            .unwrap()
-            .capability()
-            .allows_connector("gmail"));
-        assert!(!g
-            .lens(Surface::Ide)
-            .unwrap()
-            .capability()
-            .allows_connector("gmail"));
+ assert!(g .lens(Surface::You) .unwrap() .capability() .allows_connector("gmail"));
+ assert!(!g .lens(Surface::Chat) .unwrap() .capability() .allows_connector("gmail"));
+ assert!(!g .lens(Surface::Ide) .unwrap() .capability() .allows_connector("gmail"));
     }
-
     #[test]
     fn switch_does_not_change_session_or_capability() {
         let mut g = SurfaceGraph::open("ses_1");
@@ -361,16 +346,9 @@ mod tests {
         g.switch(Surface::You);
         assert_eq!(g.active(), Surface::You);
         assert_eq!(g.session_id(), "ses_1");
-        assert_eq!(
-            g.lens(Surface::Chat).unwrap().capability().snapshot(),
-            before_chat
-        );
-        assert_eq!(
-            g.lens(Surface::You).unwrap().capability().snapshot(),
-            before_you
-        );
+ assert_eq!( g.lens(Surface::Chat).unwrap().capability().snapshot(), before_chat );
+ assert_eq!( g.lens(Surface::You).unwrap().capability().snapshot(), before_you );
     }
-
     #[test]
     fn handoff_claim_never_grants_creator_capability_on_shared_session() {
         let mut g = SurfaceGraph::open("ses_shared");
@@ -395,29 +373,16 @@ mod tests {
             .expect("create");
         assert_eq!(capsule.origin_session, "ses_shared");
         assert!(capsule.try_extract_capability().is_err());
-
         let received = g.receive_handoff(&capsule.id).expect("receive");
         assert!(received.capability_unchanged());
         assert!(!received.opened.grants_capability());
-        // CHAT still cannot use gmail.
-        assert!(g
-            .lens(Surface::Chat)
-            .unwrap()
-            .require_connector("gmail")
-            .is_err());
-        // YOU still can (its own lens was never stripped).
-        assert!(g
-            .lens(Surface::You)
-            .unwrap()
-            .require_connector("gmail")
-            .is_ok());
+ assert!(g .lens(Surface::Chat) .unwrap() .require_connector("gmail") .is_err());
+ assert!(g .lens(Surface::You) .unwrap() .require_connector("gmail") .is_ok());
         assert_eq!(g.inbox_for(Surface::Chat).len(), 1);
     }
-
     #[test]
     fn cannot_seal_handoff_from_wrong_active_surface() {
         let mut g = SurfaceGraph::open("ses_x");
-        // Active is Chat by default; YOU→CHAT requires YOU active.
         let err = g
             .create_handoff(
                 HandoffKind::YouToChat,
@@ -428,9 +393,6 @@ mod tests {
                 "user",
             )
             .unwrap_err();
-        assert!(
-            err.to_string().contains("active surface"),
-            "wrong origin refused: {err}"
-        );
+ assert!( err.to_string().contains("active surface"), "wrong origin refused: {err}" );
     }
 }

@@ -564,7 +564,6 @@ pub async fn register_mcp_servers(
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn bridge_maps_annotations_as_untrusted() {
         let tool = McpTool {
@@ -582,12 +581,9 @@ mod tests {
         };
         let spec = mcp_tool_to_hide_spec("acme", tool);
         assert_eq!(spec.name, "mcp:acme/deploy");
-        // server's annotations are carried...
         assert!(spec.annotations.read_only);
-        // ...but the capability is only the bridged-call cap (not relaxed).
         assert_eq!(spec.capabilities_required, vec!["mcp.call".to_string()]);
     }
-
     #[test]
     fn mcp_result_iserror_maps_to_not_ok() {
         let v = json!({ "isError": true, "content": [{"type":"text","text":"boom"}] });
@@ -596,7 +592,6 @@ mod tests {
         assert_eq!(r.status, ToolStatus::ToolError);
         assert!(matches!(&r.content[0], ToolContent::Text { text } if text == "boom"));
     }
-
     #[test]
     fn mcp_result_success_maps_to_ok() {
         let v = json!({ "structuredContent": {"x":1}, "content": [{"type":"text","text":"ok"}] });
@@ -604,25 +599,20 @@ mod tests {
         assert!(r.ok);
         assert_eq!(r.structured_content.unwrap()["x"], 1);
     }
-
     #[test]
     fn parse_http_plain_json() {
         let body = r#"{"jsonrpc":"2.0","id":7,"result":{"ok":true}}"#;
         let v = parse_http_jsonrpc(body, 7).unwrap();
         assert_eq!(v["result"]["ok"], true);
     }
-
     #[test]
     fn parse_http_sse_picks_matching_id() {
         let body = "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":3,\"result\":{\"v\":1}}\n\ndata: [DONE]\n";
         let v = parse_http_jsonrpc(body, 3).unwrap();
         assert_eq!(v["result"]["v"], 1);
     }
-
     #[tokio::test]
     async fn stdio_client_lists_and_calls_tools_against_a_fake_server() {
-        // A tiny Python JSON-RPC server that implements initialize/tools/list/
-        // tools/call over stdio. Skips if python3 is unavailable.
         if which_python().is_none() {
             eprintln!("python3 not found; skipping stdio MCP integration test");
             return;
@@ -648,7 +638,6 @@ mod tests {
         assert!(result.ok);
         assert_eq!(result.structured_content.unwrap()["echoed"], "hi");
     }
-
     #[tokio::test]
     async fn register_mcp_servers_registers_tools_and_survives_a_bad_server() {
         if which_python().is_none() {
@@ -664,8 +653,6 @@ mod tests {
             },
             trust: "third-party".into(),
         };
-        // A server that cannot even launch: it must be recorded as an error, not
-        // panic or abort the good one.
         let bad = McpServerDescriptor {
             id: "bad".into(),
             transport: McpTransport::Stdio {
@@ -676,24 +663,14 @@ mod tests {
         };
         let registry = hide_core::tool::ToolRegistry::default();
         let results = register_mcp_servers(&[good, bad], &registry).await;
-
         assert_eq!(results.len(), 2);
         let good_r = results.iter().find(|r| r.server_id == "good").unwrap();
-        assert!(
-            good_r.error.is_none(),
-            "good server errored: {:?}",
-            good_r.error
-        );
+ assert!( good_r.error.is_none(), "good server errored: {:?}", good_r.error );
         assert!(good_r.tools.contains(&"mcp:good/echo".to_string()));
         let bad_r = results.iter().find(|r| r.server_id == "bad").unwrap();
-        assert!(
-            bad_r.error.is_some(),
-            "bad server should have recorded an error"
-        );
-        // The registry actually holds the good server's proxy tool, dispatchable.
+ assert!( bad_r.error.is_some(), "bad server should have recorded an error" );
         assert!(registry.get("mcp:good/echo").is_some());
     }
-
     #[tokio::test]
     async fn register_mcp_servers_rejects_duplicate_ids() {
         if which_python().is_none() {
@@ -712,16 +689,9 @@ mod tests {
         let registry = hide_core::tool::ToolRegistry::default();
         let results = register_mcp_servers(&[mk("dup"), mk("dup")], &registry).await;
         assert_eq!(results.len(), 2);
-        // The first registers; the second is refused as a duplicate, not silently
-        // clobbering the first's tools.
         assert!(results[0].error.is_none());
-        assert!(results[1]
-            .error
-            .as_deref()
-            .unwrap_or("")
-            .contains("duplicate"));
+ assert!(results[1] .error .as_deref() .unwrap_or("") .contains("duplicate"));
     }
-
     #[tokio::test]
     async fn http_client_lists_and_calls_tools_against_an_inprocess_server() {
         use axum::{
@@ -733,12 +703,8 @@ mod tests {
         };
         use std::sync::atomic::{AtomicBool, Ordering as AtomicOrdering};
         use std::sync::Arc as StdArc;
-
-        // Tracks that the client echoed back the server-assigned session id on the
-        // second request — the Streamable-HTTP session leg, end to end.
         let saw_session_id = StdArc::new(AtomicBool::new(false));
         let saw = saw_session_id.clone();
-
         async fn rpc(
             saw: StdArc<AtomicBool>,
             headers: HeaderMap,
@@ -746,7 +712,6 @@ mod tests {
         ) -> Response {
             let id = req.get("id").cloned().unwrap_or(Value::Null);
             let method = req.get("method").and_then(|m| m.as_str()).unwrap_or("");
-            // Any request carrying a session id proves the header round-tripped.
             if headers.contains_key("mcp-session-id") {
                 saw.store(true, AtomicOrdering::SeqCst);
             }
@@ -760,7 +725,6 @@ mod tests {
                     }
                 }),
                 "notifications/initialized" => {
-                    // Notification: no body expected. Return 202-ish empty 200.
                     return AxumJson(json!({})).into_response();
                 }
                 "tools/list" => json!({
@@ -792,16 +756,12 @@ mod tests {
                     "error": { "code": -32601, "message": "method not found" }
                 }),
             };
-            // Always assign a session id so the client must echo it back next time.
             ([("MCP-Session-Id", "sess-abc123")], AxumJson(body)).into_response()
         }
-
         let app = Router::new().route(
             "/mcp",
             post(move |headers, body| rpc(saw.clone(), headers, body)),
         );
-
-        // Bind an ephemeral port and serve in the background.
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
             .await
             .expect("bind");
@@ -809,7 +769,6 @@ mod tests {
         let server = tokio::spawn(async move {
             axum::serve(listener, app).await.unwrap();
         });
-
         let desc = McpServerDescriptor {
             id: "fakehttp".into(),
             transport: McpTransport::StreamableHttp {
@@ -817,30 +776,19 @@ mod tests {
             },
             trust: "third-party".into(),
         };
-
-        // connect() runs initialize + the initialized notification.
         let client = McpClient::connect(&desc).await.expect("connect");
         let specs = client.list_tools().await.expect("list");
         assert_eq!(specs.len(), 1);
         assert_eq!(specs[0].name, "mcp:fakehttp/echo");
-
         let result = client
             .call_tool("echo", json!({ "msg": "hi-http" }))
             .await
             .expect("call");
         assert!(result.ok);
         assert_eq!(result.structured_content.unwrap()["echoed"], "hi-http");
-
-        // The session id assigned on the initialize response must have been carried
-        // on a subsequent request (the Streamable-HTTP session leg).
-        assert!(
-            saw_session_id.load(AtomicOrdering::SeqCst),
-            "client must echo MCP-Session-Id on later requests"
-        );
-
+        assert!(saw_session_id.load(AtomicOrdering::SeqCst));
         server.abort();
     }
-
     fn which_python() -> Option<String> {
         for cand in ["python3", "python"] {
             if std::process::Command::new(cand)
@@ -854,7 +802,6 @@ mod tests {
         }
         None
     }
-
     const FAKE_SERVER: &str = r#"
 import sys, json
 def send(obj):

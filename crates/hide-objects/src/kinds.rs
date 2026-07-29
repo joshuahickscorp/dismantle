@@ -188,7 +188,6 @@ pub fn mime_from_filename(name: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn mime_maps_to_kinds() {
         assert_eq!(ObjectKind::from_mime("image/png"), ObjectKind::Image);

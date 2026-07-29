@@ -125,20 +125,17 @@ fn call_hash(call: &ToolCall) -> String {
 mod tests {
     use super::*;
     use serde_json::json;
-
     #[test]
     fn lint_catches_unknown_tool_and_bad_args() {
         let known = vec!["fs.read".to_string()];
         let call = ToolCall::new("nope.tool", json!({}));
         let issues = lint_tool_call(&call, &known, None);
         assert!(issues.contains(&LintIssue::UnknownTool("nope.tool".to_string())));
-
         let mut bad = ToolCall::new("fs.read", json!([1, 2, 3]));
         bad.args = json!([1, 2, 3]);
         let issues = lint_tool_call(&bad, &known, None);
         assert!(issues.contains(&LintIssue::ArgsNotObject));
     }
-
     #[test]
     fn idempotency_dedups_identical_call() {
         let mut ledger = IdempotencyLedger::new();

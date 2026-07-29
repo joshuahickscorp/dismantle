@@ -164,19 +164,16 @@ async fn generate_once(runtime: &KernelRuntimeClient, prompt: &str) -> Result<St
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn pick_tier_defaults_to_react_at_breadth_one() {
         assert_eq!(pick_tier(0.99, true, 1), SearchTier::React);
     }
-
     #[test]
     fn pick_tier_escalates_with_oracle_and_breadth() {
         assert_eq!(pick_tier(0.6, true, 4), SearchTier::BestOfN);
         assert_eq!(pick_tier(0.9, true, 4), SearchTier::TreeOfThoughts);
         assert_eq!(pick_tier(0.6, false, 4), SearchTier::React);
     }
-
     #[test]
     fn candidate_rank_prefers_oracle_pass() {
         use crate::verify::oracle::OracleClass;

@@ -650,10 +650,14 @@ def _host_health() -> dict:
     swap_text = _run(["/usr/sbin/sysctl", "-n", "vm.swapusage"])
     thermal = _run(["/usr/bin/pmset", "-g", "therm"])
     try:
-        sys.path.insert(0, str(Path(__file__).resolve().parent))
-        from emergency_detached_campaign import parse_swap_used
+        from decimal import ROUND_CEILING, Decimal, InvalidOperation
 
-        swap_used = parse_swap_used(swap_text)
+        match = re.search(r"used\s*=\s*([0-9]+(?:\.[0-9]+)?)\s*([BKMGTPE])", swap_text, re.I)
+        if match is None:
+            raise ValueError("vm.swapusage omitted used bytes")
+        mult = {"B": 1, "K": 1024, "M": 1024**2, "G": 1024**3, "T": 1024**4, "P": 1024**5, "E": 1024**6}
+        value = Decimal(match.group(1)) * mult[match.group(2).upper()]
+        swap_used = int(value.to_integral_value(rounding=ROUND_CEILING))
     except Exception:  # noqa: BLE001 - a status writer never fails on a parse
         swap_used = None
     usage = shutil.disk_usage(str(SOURCE_ROOT if SOURCE_ROOT.exists() else ROOT))

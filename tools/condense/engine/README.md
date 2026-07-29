@@ -40,3 +40,12 @@ Git history and tag `pre-controller-retirement-20260728` hold the old bodies.
 Modules still imported by tests or live readers were restored to
 `tools/condense/<module>.py` (relocation, not condensation). See
 `docs/ARCHIVE_INDEX_2.md` §F1 and `engine/fixtures/f1_retirement_receipt.json`.
+
+## H1 retirement
+
+Lane H1 deleted remaining campaign controller shells under `tools/condense/` and expressed
+them as specs (including new `succession`, `eco`, `mechanics`, `tg` families). Kimi K2.6
+controllers are deleted as DOES-NOT-FIT; sealing invariants remain in `seal_integrity.py`.
+Live GLM52 readers (`glm52_parity`, `glm52_contract`, `glm52_source_fetch`,
+`glm52_teacher_capture`, `glm52_xet_autotune`) and algorithmic libraries stay as modules.
+

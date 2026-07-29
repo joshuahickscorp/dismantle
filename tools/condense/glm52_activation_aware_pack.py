@@ -1444,7 +1444,12 @@ def ensure_shard(
         # an explicit --disk-floor-gib, which is backwards: a flag the operator typed should win
         # over a variable they cannot see.
         os.environ["GLM52_PILOT_DISK_FLOOR_BYTES"] = str(floor)
-        from glm52_rehydrate_window import rehydrate  # local import, after the env is set
+        try:
+            from glm52_rehydrate_window import rehydrate  # optional; retired into engine specs
+        except ImportError as exc:
+            raise PackError(
+                'glm52_rehydrate_window was retired; pass resident shards or restore from git history'
+            ) from exc
         rc = rehydrate([n])
         if rc != 0 or not path.exists():
             raise PackError(f"rehydrate of shard {n} failed with rc={rc}")

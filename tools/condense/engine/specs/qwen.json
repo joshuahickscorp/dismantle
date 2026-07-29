@@ -67,22 +67,26 @@
   "metadata": {
     "retired_controllers_deleted": [
       "qwen35_moe_adapter",
-      "qwen_adaptive_k",
-      "qwen_function_aware_codec",
-      "qwen_structural_plan",
-      "qwen_subhalfbit_search"
-    ],
-    "controllers_restored_as_live": [
       "qwen3_moe_adapter",
+      "qwen_adaptive_k",
       "qwen_bpw_budget",
       "qwen_correction_wave",
       "qwen_download_worker",
-      "qwen_real_forward"
+      "qwen_function_aware_codec",
+      "qwen_real_forward",
+      "qwen_structural_plan",
+      "qwen_subhalfbit_search"
     ],
+    "controllers_restored_as_live": [],
     "retired_controllers": [
       "qwen35_moe_adapter",
+      "qwen3_moe_adapter",
       "qwen_adaptive_k",
+      "qwen_bpw_budget",
+      "qwen_correction_wave",
+      "qwen_download_worker",
       "qwen_function_aware_codec",
+      "qwen_real_forward",
       "qwen_structural_plan",
       "qwen_subhalfbit_search"
     ]

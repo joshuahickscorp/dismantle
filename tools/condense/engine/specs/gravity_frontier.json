@@ -77,10 +77,17 @@
   "metadata": {
     "retired_controllers": [
       "doctor_campaign_supervisor",
+      "emergency_detached_campaign",
+      "gravity_execution_adapter",
+      "gravity_forge_run",
+      "gravity_frontier_correction_wave",
       "gravity_frontier_g4_controller",
+      "gravity_global_allocator",
+      "gravity_llama_reference",
+      "gravity_metal_lab_a",
+      "overnight_supervisor",
       "seal_120b_conclusion",
-      "storage_stripdown_controller",
-      "emergency_detached_campaign"
+      "storage_stripdown_controller"
     ],
     "retired_controllers_deleted": [
       "codebase_census",
@@ -91,6 +98,7 @@
       "doctor_causal_harness",
       "doctor_gen3",
       "doctor_treatment_abi",
+      "emergency_detached_campaign",
       "forge_actaware_experiment",
       "forge_controller_integration",
       "forge_f2_fixture",
@@ -100,8 +108,15 @@
       "gravity_breakthrough_baseline",
       "gravity_container_freeze",
       "gravity_decode",
+      "gravity_execution_adapter",
+      "gravity_forge_run",
+      "gravity_frontier_correction_wave",
+      "gravity_frontier_g4_controller",
       "gravity_functional_metal",
+      "gravity_global_allocator",
       "gravity_lab_lease",
+      "gravity_llama_reference",
+      "gravity_metal_lab_a",
       "gravity_pq_fixture",
       "gravity_profiler_acceptance",
       "gravity_runtime",
@@ -111,8 +126,10 @@
       "hawking_tps_budget",
       "mech_fidelity_c",
       "mech_fidelity_d",
+      "overnight_supervisor",
       "resident_first_ladder",
       "safetensors_to_gravity",
+      "seal_120b_conclusion",
       "storage_stripdown",
       "storage_stripdown_controller",
       "succ_eta",
@@ -123,22 +140,13 @@
       "doctor_v5_gptoss_mxfp4",
       "doctor_v5_telegram_rung_notifier",
       "gravity_bench_lab",
-      "gravity_execution_adapter",
       "gravity_flop_ledger",
-      "gravity_forge_run",
-      "gravity_frontier_correction_wave",
-      "gravity_frontier_g4_controller",
       "gravity_functional_codec",
-      "gravity_global_allocator",
       "gravity_kernel_select",
-      "gravity_llama_reference",
       "gravity_metal",
-      "gravity_metal_lab_a",
       "gravity_metal_lab_b",
       "gravity_moe_layer",
-      "gravity_real_fixtures",
-      "overnight_supervisor",
-      "seal_120b_conclusion"
+      "gravity_real_fixtures"
     ]
   }
 }

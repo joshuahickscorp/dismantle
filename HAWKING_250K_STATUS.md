@@ -167,6 +167,27 @@ what `perfgate.py --paired` exists for: interleaved ABAB sampling with a sign te
 contamination cancels. **Core B's performance gate must use the paired mode**, and any
 absolute number quoted from this baseline carries its load conditions with it.
 
+## The campaign's own records count, and they are not free
+
+`tools/loc/hawking_loc.py` counts markdown as source, so every document this campaign writes
+is spent from the same 183,505-line budget it is trying to close. Current markdown mass:
+
+```
+root *.md          46 files     7,047 lines
+docs/**/*.md       29 files     9,999 lines
+all markdown                   24,401 lines
+```
+
+This is not an argument for excluding them — the no-gaming rule cuts both ways and moving
+records out of the tree would be relocation, credit zero. It is an argument for
+**consolidating at the end**: much of the root markdown is superseded campaign history from
+prior arcs, and the behaviour-coverage analysis independently puts 21,577 LOC of `shared`
+(overwhelmingly root markdown) in the reachable-from-no-behaviour bucket. Lane
+`recomp-p5-tests-docs` owns exactly this surface.
+
+Recorded here so the final accounting does not quietly credit the rebuild for lines the
+rebuild's own paperwork added.
+
 ## Instruments this campaign added
 
 ```

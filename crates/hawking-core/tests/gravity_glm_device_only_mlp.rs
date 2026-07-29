@@ -1,155 +1,77 @@
 //! Device-only MLP acceptance — Numeric Parity V2.1 with a real f64 reference.
-//!
-//! ## What this harness measures
-//!
-//! Candidate flag `HAWKING_GLM_GPU_DEVICE_ONLY_MLP` (default **off**) keeps
-//! ordinary three-batch MLP SiLU on device so gate/up never download and
-//! activations are not re-uploaded. This file:
-//!
-//! 1. Builds an independent **f64** fixture forward (not a host/device lift).
-//! 2. Scores host f32 and, when Metal is present, resident baseline (flag off)
-//!    and candidate (flag on) against that same f64 authority under
-//!    [`Bounds::full_forward_logits`].
-//! 3. Reports waits (`forward_resident_counted`), physical command buffers and
-//!    MLP transfer counters (`cost_ledger`), and warm p50/p95 wall clock.
-//! 4. Enforces non-negotiable physics (zero MLP transfers on candidate; no
-//!    wait/CB regression; CB counts must differ; causal poison works).
-//! 5. Emits a wall-clock promotion verdict — improve both p50 and p95 only with
-//!    hard gates green and transfers at zero. Tie/regress → negative, flag stays off.
-//!
-//! Prior rejections compared device to **host** (circular). Against true f64 the
-//! host itself shows `max_meaningful_rel ≈ 1.7e-2`; that field is diagnostic
-//! for full multi-layer forward, not a hard gate.
-//!
-//! When Metal is absent (`MTLCreateSystemDefaultDevice` null), device legs are
-//! **unmeasured** — never fabricated, never greened by silence.
-//!
-//! ```text
-//! cargo test -p hawking-core --test gravity_glm_device_only_mlp -- --nocapture
-//! ```
-
-use std::path::PathBuf;
-
-use hawking_core::gravity::{pq_matvec_f64_authority, widen_native, GravityWeights};
-use hawking_core::gravity_glm::{GlmArch, GravityGlm, WeightAccess};
-use hawking_core::numeric_parity::{
-    format_score_line, layernorm_f64, matvec_dense_f64_authority, rmsnorm_f64, score_against_f64,
-    score_pair, silu_mul_f64_authority, Bounds, SCHEMA,
-};
-
-#[cfg(target_os = "macos")]
-use std::sync::Mutex;
-#[cfg(target_os = "macos")]
-use std::time::Instant;
-
 #[cfg(target_os = "macos")]
 use hawking_core::cost_ledger::{self, TokenCostReport};
+use hawking_core::gravity::{pq_matvec_f64_authority, widen_native, GravityWeights};
 #[cfg(target_os = "macos")]
 use hawking_core::gravity_glm::gpu::GravityGlmGpu;
+use hawking_core::gravity_glm::{GlmArch, GravityGlm, WeightAccess};
 #[cfg(target_os = "macos")]
 use hawking_core::gravity_glm_resident::{
-    device_only_mlp_fallbacks, device_only_mlp_hits, reset_device_only_mlp_probe,
-    GPU_DEVICE_ONLY_MLP_ENV, GPU_DEVICE_ONLY_MLP_POISON_ENV,
+    device_only_mlp_fallbacks, device_only_mlp_hits, reset_device_only_mlp_probe, GPU_DEVICE_ONLY_MLP_ENV, GPU_DEVICE_ONLY_MLP_POISON_ENV,
 };
 #[cfg(target_os = "macos")]
 use hawking_core::metal::MetalContext;
 #[cfg(target_os = "macos")]
 use hawking_core::numeric_parity::BackendScore;
-
+use hawking_core::numeric_parity::{
+    format_score_line, layernorm_f64, matvec_dense_f64_authority, rmsnorm_f64, score_against_f64, score_pair, silu_mul_f64_authority,
+    Bounds, SCHEMA,
+};
+use std::path::PathBuf;
+#[cfg(target_os = "macos")]
+use std::sync::Mutex;
+#[cfg(target_os = "macos")]
+use std::time::Instant;
 /// Serializes process-global env mutation for device-only MLP flags.
 #[cfg(target_os = "macos")]
 static DEVICE_ONLY_ENV_LOCK: Mutex<()> = Mutex::new(());
-
 fn fixtures_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/gravity_glm")
 }
-
 fn prompt() -> Vec<u32> {
     #[derive(serde::Deserialize)]
     struct Ref {
         tokens: Vec<u32>,
     }
-    let r: Ref = serde_json::from_slice(
-        &std::fs::read(fixtures_dir().join("ref_glm.json")).expect("ref_glm"),
-    )
-    .expect("parse");
+    let r: Ref = serde_json::from_slice(&std::fs::read(fixtures_dir().join("ref_glm.json")).expect("ref_glm")).expect("parse");
     r.tokens
 }
-
-// ── f64 weight access ──────────────────────────────────────────────────────
-
 /// Decode one tensor into f64-accumulating matvec / row / dense helpers.
-///
-/// Lazy `GravityWeights` keeps raw payloads so dense and PQ authorities can
-/// be formed without baking the host f32 matvec into the reference.
 struct F64Weights {
     inner: GravityWeights,
 }
-
 impl F64Weights {
     fn open() -> Self {
         let inner = GravityWeights::open_dir(&fixtures_dir(), true).expect("open fixture dir");
         Self { inner }
     }
-
     fn dense_f64(&self, name: &str) -> Vec<f64> {
-        self.inner
-            .dense(name)
-            .unwrap_or_else(|e| panic!("dense {name}: {e}"))
-            .into_iter()
-            .map(|v| v as f64)
-            .collect()
+        self.inner.dense(name).unwrap_or_else(|e| panic!("dense {name}: {e}")).into_iter().map(|v| v as f64).collect()
     }
-
     fn row_f64(&self, name: &str, index: usize, cols: usize) -> Vec<f64> {
-        // Embeddings may be PQ: use the public f32 row then promote (exact
-        // for finite f32 storage / PQ decode).
-        self.inner
-            .row(name, index, cols)
-            .unwrap_or_else(|e| panic!("row {name}: {e}"))
-            .into_iter()
-            .map(|v| v as f64)
-            .collect()
+        self.inner.row(name, index, cols).unwrap_or_else(|e| panic!("row {name}: {e}")).into_iter().map(|v| v as f64).collect()
     }
-
     fn matvec_f64(&self, name: &str, x: &[f64]) -> Vec<f64> {
-        let (codec, blob, shape) = self
-            .inner
-            .raw_payload_with_shape(name)
-            .unwrap_or_else(|e| panic!("raw_payload {name}: {e}"));
+        let (codec, blob, shape) = self.inner.raw_payload_with_shape(name).unwrap_or_else(|e| panic!("raw_payload {name}: {e}"));
         if codec == "gravity-pq" {
-            // PQ codebooks are f16→f32; products and sum run in f64. Cast
-            // activations to f32 for the public PQ authority entry point —
-            // intermediate f64 bits beyond f32 are not representable in the
-            // stored codebooks' multiply path either once narrowed for the
-            // host/device f32 backends. Documented limitation: PQ steps see
-            // f32-narrowed activations; dense steps keep full f64 x.
             let x32: Vec<f32> = x.iter().map(|&v| v as f32).collect();
-            return pq_matvec_f64_authority(&blob, &x32)
-                .unwrap_or_else(|e| panic!("pq f64 {name}: {e}"));
+            return pq_matvec_f64_authority(&blob, &x32).unwrap_or_else(|e| panic!("pq f64 {name}: {e}"));
         }
         if codec.starts_with("native.") {
             let cols = if shape.len() == 2 {
                 shape[1] as usize
             } else if shape.len() == 1 {
-                // 1-D should not go through matvec
                 panic!("matvec on 1-D tensor {name}");
             } else {
                 x.len()
             };
             let w = widen_native(&codec, &blob).unwrap_or_else(|e| panic!("widen {name}: {e}"));
-            return matvec_dense_f64_authority(&w, cols, x)
-                .unwrap_or_else(|e| panic!("dense f64 {name}: {e}"));
+            return matvec_dense_f64_authority(&w, cols, x).unwrap_or_else(|e| panic!("dense f64 {name}: {e}"));
         }
         panic!("unsupported codec {codec:?} for {name}");
     }
 }
-
-// ── f64 leaf ops mirroring gravity_glm host ────────────────────────────────
-
 fn rope_cos_sin_f64(arch: &GlmArch, pos: usize) -> (Vec<f64>, Vec<f64>) {
-    // Host builds inv_freq/theta in f32 then casts; match that source of
-    // truth so the authority does not invent a different RoPE schedule.
     let rot = arch.qk_rope_head_dim;
     let half = rot / 2;
     let mut cos = vec![0f64; half];
@@ -162,7 +84,6 @@ fn rope_cos_sin_f64(arch: &GlmArch, pos: usize) -> (Vec<f64>, Vec<f64>) {
     }
     (cos, sin)
 }
-
 /// Match host `rope_interleaved`: rotate adjacent pairs, then **concatenate**
 /// the first- and second-half results (not re-interleave).
 fn rope_interleaved_f64(v: &[f64], cos: &[f64], sin: &[f64]) -> Vec<f64> {
@@ -178,32 +99,22 @@ fn rope_interleaved_f64(v: &[f64], cos: &[f64], sin: &[f64]) -> Vec<f64> {
     }
     out
 }
-
 fn topk_desc_f64(values: &[f64], k: usize) -> Vec<usize> {
     if values.is_empty() || k == 0 {
         return Vec::new();
     }
     let k = k.min(values.len());
     let mut idx: Vec<usize> = (0..values.len()).collect();
-    idx.sort_by(|&a, &b| {
-        values[b]
-            .partial_cmp(&values[a])
-            .unwrap_or(std::cmp::Ordering::Equal)
-            .then_with(|| a.cmp(&b))
-    });
+    idx.sort_by(|&a, &b| values[b].partial_cmp(&values[a]).unwrap_or(std::cmp::Ordering::Equal).then_with(|| a.cmp(&b)));
     idx.truncate(k);
     idx
 }
-
-// ── f64 caches & forward ───────────────────────────────────────────────────
-
 #[derive(Default)]
 struct LayerCacheF64 {
     keys: Vec<f64>,
     values: Vec<f64>,
     index_keys: Vec<f64>,
 }
-
 fn indexer_topk_f64(
     w: &F64Weights,
     arch: &GlmArch,
@@ -217,23 +128,15 @@ fn indexer_topk_f64(
 ) -> Vec<usize> {
     let (ih, idim, rot) = (arch.index_n_heads, arch.index_head_dim, arch.qk_rope_head_dim);
     let idx = format!("{prefix}.indexer");
-
     let q = w.matvec_f64(&format!("{idx}.wq_b.weight"), q_resid);
     assert_eq!(q.len(), ih * idim);
     let k_raw = w.matvec_f64(&format!("{idx}.wk.weight"), hidden);
-    let k = layernorm_f64(
-        &k_raw,
-        &w.dense_f64(&format!("{idx}.k_norm.weight")),
-        &w.dense_f64(&format!("{idx}.k_norm.bias")),
-        1e-6,
-    )
-    .expect("k_norm");
-
+    let k = layernorm_f64(&k_raw, &w.dense_f64(&format!("{idx}.k_norm.weight")), &w.dense_f64(&format!("{idx}.k_norm.bias")), 1e-6)
+        .expect("k_norm");
     let mut k_full = rope_interleaved_f64(&k[..rot], cos, sin);
     k_full.extend_from_slice(&k[rot..]);
     cache.index_keys.extend_from_slice(&k_full);
     let n_keys = cache.index_keys.len() / idim;
-
     let mut q_full = vec![0f64; ih * idim];
     for h in 0..ih {
         let src = &q[h * idim..(h + 1) * idim];
@@ -241,7 +144,6 @@ fn indexer_topk_f64(
         q_full[h * idim..h * idim + rot].copy_from_slice(&rotated);
         q_full[h * idim + rot..(h + 1) * idim].copy_from_slice(&src[rot..]);
     }
-
     let head_scale = (ih as f64).powf(-0.5);
     let mut head_weights = w.matvec_f64(&format!("{idx}.weights_proj.weight"), hidden);
     for hw in head_weights.iter_mut() {
@@ -266,35 +168,21 @@ fn indexer_topk_f64(
     }
     topk_desc_f64(&index_scores, arch.index_topk.min(n_keys))
 }
-
-fn router_f64(
-    w: &F64Weights,
-    arch: &GlmArch,
-    prefix: &str,
-    hidden: &[f64],
-) -> (Vec<usize>, Vec<f64>) {
+fn router_f64(w: &F64Weights, arch: &GlmArch, prefix: &str, hidden: &[f64]) -> (Vec<usize>, Vec<f64>) {
     let logits = w.matvec_f64(&format!("{prefix}.gate.weight"), hidden);
-    let scores: Vec<f64> = logits
-        .iter()
-        .map(|l| 1.0 / (1.0 + (-l).exp()))
-        .collect();
+    let scores: Vec<f64> = logits.iter().map(|l| 1.0 / (1.0 + (-l).exp())).collect();
     let bias = w.dense_f64(&format!("{prefix}.gate.e_score_correction_bias"));
     assert_eq!(bias.len(), arch.n_routed_experts);
     assert_eq!(scores.len(), arch.n_routed_experts);
     let corrected: Vec<f64> = scores.iter().zip(&bias).map(|(s, b)| s + b).collect();
-
     let per_group = arch.n_routed_experts / arch.n_group;
     let group_scores: Vec<f64> = (0..arch.n_group)
         .map(|g| {
             let slice = &corrected[g * per_group..(g + 1) * per_group];
-            topk_desc_f64(slice, 2.min(per_group))
-                .iter()
-                .map(|&i| slice[i])
-                .sum()
+            topk_desc_f64(slice, 2.min(per_group)).iter().map(|&i| slice[i]).sum()
         })
         .collect();
     let chosen = topk_desc_f64(&group_scores, arch.topk_group);
-
     let mut choice = vec![f64::NEG_INFINITY; arch.n_routed_experts];
     for &g in &chosen {
         for e in g * per_group..(g + 1) * per_group {
@@ -314,30 +202,18 @@ fn router_f64(
     }
     (indices, weights_out)
 }
-
 fn dense_mlp_f64(w: &F64Weights, prefix: &str, x: &[f64]) -> Vec<f64> {
     let gate = w.matvec_f64(&format!("{prefix}.gate_proj.weight"), x);
     let up = w.matvec_f64(&format!("{prefix}.up_proj.weight"), x);
     let act = silu_mul_f64_authority(&gate, &up).expect("silu");
     w.matvec_f64(&format!("{prefix}.down_proj.weight"), &act)
 }
-
-fn routed_moe_f64(
-    w: &F64Weights,
-    arch: &GlmArch,
-    prefix: &str,
-    x: &[f64],
-) -> (Vec<f64>, Vec<usize>) {
+fn routed_moe_f64(w: &F64Weights, arch: &GlmArch, prefix: &str, x: &[f64]) -> (Vec<f64>, Vec<usize>) {
     let (indices, moe_weights) = router_f64(w, arch, prefix, x);
     let mut order: Vec<usize> = (0..indices.len()).collect();
     order.sort_by_key(|&s| indices[s]);
-
-    let outs: Vec<Vec<f64>> = order
-        .iter()
-        .map(|&slot| dense_mlp_f64(w, &format!("{prefix}.experts.{}", indices[slot]), x))
-        .collect();
+    let outs: Vec<Vec<f64>> = order.iter().map(|&slot| dense_mlp_f64(w, &format!("{prefix}.experts.{}", indices[slot]), x)).collect();
     let shared = dense_mlp_f64(w, &format!("{prefix}.shared_experts"), x);
-
     let mut routed = vec![0f64; x.len()];
     for (out, &slot) in outs.iter().zip(&order) {
         for (r, o) in routed.iter_mut().zip(out) {
@@ -349,7 +225,6 @@ fn routed_moe_f64(
     }
     (routed, indices)
 }
-
 /// Full fixture forward in f64. This is the V2.1 authority for both host and
 /// device f32 arms — **not** an f64 lift of either arm's logits.
 fn forward_f64(w: &F64Weights, arch: &GlmArch, tokens: &[u32]) -> (Vec<f64>, Vec<Vec<usize>>) {
@@ -358,7 +233,6 @@ fn forward_f64(w: &F64Weights, arch: &GlmArch, tokens: &[u32]) -> (Vec<f64>, Vec
     let mut caches: Vec<LayerCacheF64> = (0..arch.n_layers).map(|_| LayerCacheF64::default()).collect();
     let mut logits = Vec::new();
     let mut expert_choices: Vec<Vec<usize>> = Vec::new();
-
     for (i, &token) in tokens.iter().enumerate() {
         let pos = i;
         assert!((token as usize) < arch.vocab_size);
@@ -366,27 +240,14 @@ fn forward_f64(w: &F64Weights, arch: &GlmArch, tokens: &[u32]) -> (Vec<f64>, Vec
         let (cos, sin) = rope_cos_sin_f64(arch, pos);
         let mut shared_topk: Option<Vec<usize>> = None;
         expert_choices.clear();
-
         for layer in 0..arch.n_layers {
             let p = format!("model.layers.{layer}");
             let attn_p = format!("{p}.self_attn");
-
-            let h = rmsnorm_f64(
-                &x,
-                &w.dense_f64(&format!("{p}.input_layernorm.weight")),
-                arch.rms_norm_eps as f64,
-            )
-            .expect("input_ln");
-
+            let h = rmsnorm_f64(&x, &w.dense_f64(&format!("{p}.input_layernorm.weight")), arch.rms_norm_eps as f64).expect("input_ln");
             let q_a = w.matvec_f64(&format!("{attn_p}.q_a_proj.weight"), &h);
-            let q_resid = rmsnorm_f64(
-                &q_a,
-                &w.dense_f64(&format!("{attn_p}.q_a_layernorm.weight")),
-                arch.rms_norm_eps as f64,
-            )
-            .expect("q_a_ln");
+            let q_resid =
+                rmsnorm_f64(&q_a, &w.dense_f64(&format!("{attn_p}.q_a_layernorm.weight")), arch.rms_norm_eps as f64).expect("q_a_ln");
             let q = w.matvec_f64(&format!("{attn_p}.q_b_proj.weight"), &q_resid);
-
             let compressed = w.matvec_f64(&format!("{attn_p}.kv_a_proj_with_mqa.weight"), &h);
             let k_latent = rmsnorm_f64(
                 &compressed[..arch.kv_lora_rank],
@@ -396,7 +257,6 @@ fn forward_f64(w: &F64Weights, arch: &GlmArch, tokens: &[u32]) -> (Vec<f64>, Vec
             .expect("kv_a_ln");
             let k_rot = rope_interleaved_f64(&compressed[arch.kv_lora_rank..], &cos, &sin);
             let kv = w.matvec_f64(&format!("{attn_p}.kv_b_proj.weight"), &k_latent);
-
             {
                 let per_head_kv = arch.qk_nope_head_dim + arch.v_head_dim;
                 let cache = &mut caches[layer];
@@ -407,41 +267,22 @@ fn forward_f64(w: &F64Weights, arch: &GlmArch, tokens: &[u32]) -> (Vec<f64>, Vec
                     cache.values.extend_from_slice(&src[arch.qk_nope_head_dim..]);
                 }
             }
-
             let mut queries = vec![0f64; arch.n_heads * qk_dim];
             for head in 0..arch.n_heads {
                 let src = &q[head * qk_dim..(head + 1) * qk_dim];
                 let dst = &mut queries[head * qk_dim..(head + 1) * qk_dim];
                 dst[..arch.qk_nope_head_dim].copy_from_slice(&src[..arch.qk_nope_head_dim]);
-                dst[arch.qk_nope_head_dim..].copy_from_slice(&rope_interleaved_f64(
-                    &src[arch.qk_nope_head_dim..],
-                    &cos,
-                    &sin,
-                ));
+                dst[arch.qk_nope_head_dim..].copy_from_slice(&rope_interleaved_f64(&src[arch.qk_nope_head_dim..], &cos, &sin));
             }
-
             let topk = match arch.indexer_types[layer].as_str() {
                 "full" => {
-                    let t = indexer_topk_f64(
-                        w,
-                        arch,
-                        &attn_p,
-                        &h,
-                        &q_resid,
-                        &mut caches[layer],
-                        pos,
-                        &cos,
-                        &sin,
-                    );
+                    let t = indexer_topk_f64(w, arch, &attn_p, &h, &q_resid, &mut caches[layer], pos, &cos, &sin);
                     shared_topk = Some(t.clone());
                     t
                 }
-                "shared" => shared_topk
-                    .clone()
-                    .expect("shared index without prior full layer"),
+                "shared" => shared_topk.clone().expect("shared index without prior full layer"),
                 other => panic!("unknown indexer type {other}"),
             };
-
             let cache = &caches[layer];
             let n_keys = cache.keys.len() / (arch.n_heads * qk_dim);
             let mut allow = vec![false; n_keys];
@@ -450,7 +291,6 @@ fn forward_f64(w: &F64Weights, arch: &GlmArch, tokens: &[u32]) -> (Vec<f64>, Vec
                     allow[t] = true;
                 }
             }
-
             let scale = (qk_dim as f64).powf(-0.5);
             let mut context = vec![0f64; arch.n_heads * arch.v_head_dim];
             let mut scores = vec![f64::NEG_INFINITY; n_keys];
@@ -463,21 +303,13 @@ fn forward_f64(w: &F64Weights, arch: &GlmArch, tokens: &[u32]) -> (Vec<f64>, Vec
                         continue;
                     }
                     let off = (t * arch.n_heads + head) * qk_dim;
-                    let dot: f64 = qh
-                        .iter()
-                        .zip(&cache.keys[off..off + qk_dim])
-                        .map(|(a, b)| a * b)
-                        .sum();
+                    let dot: f64 = qh.iter().zip(&cache.keys[off..off + qk_dim]).map(|(a, b)| a * b).sum();
                     scores[t] = dot * scale;
                     best = best.max(scores[t]);
                 }
                 let mut total = 0f64;
                 for s in scores.iter_mut() {
-                    *s = if s.is_finite() {
-                        (*s - best).exp()
-                    } else {
-                        0.0
-                    };
+                    *s = if s.is_finite() { (*s - best).exp() } else { 0.0 };
                     total += *s;
                 }
                 let out = &mut context[head * arch.v_head_dim..(head + 1) * arch.v_head_dim];
@@ -487,26 +319,17 @@ fn forward_f64(w: &F64Weights, arch: &GlmArch, tokens: &[u32]) -> (Vec<f64>, Vec
                     }
                     let ww = prob / total;
                     let off = (t * arch.n_heads + head) * arch.v_head_dim;
-                    for (o, v) in out
-                        .iter_mut()
-                        .zip(&cache.values[off..off + arch.v_head_dim])
-                    {
+                    for (o, v) in out.iter_mut().zip(&cache.values[off..off + arch.v_head_dim]) {
                         *o += ww * v;
                     }
                 }
             }
-
             let attn_out = w.matvec_f64(&format!("{attn_p}.o_proj.weight"), &context);
             for (xv, o) in x.iter_mut().zip(&attn_out) {
                 *xv += o;
             }
-
-            let h2 = rmsnorm_f64(
-                &x,
-                &w.dense_f64(&format!("{p}.post_attention_layernorm.weight")),
-                arch.rms_norm_eps as f64,
-            )
-            .expect("post_attn_ln");
+            let h2 = rmsnorm_f64(&x, &w.dense_f64(&format!("{p}.post_attention_layernorm.weight")), arch.rms_norm_eps as f64)
+                .expect("post_attn_ln");
             let mlp_out = match arch.mlp_layer_types[layer].as_str() {
                 "dense" => dense_mlp_f64(w, &format!("{p}.mlp"), &h2),
                 "sparse" => {
@@ -521,24 +344,14 @@ fn forward_f64(w: &F64Weights, arch: &GlmArch, tokens: &[u32]) -> (Vec<f64>, Vec
             }
             let _ = topk;
         }
-
-        let final_hidden = rmsnorm_f64(
-            &x,
-            &w.dense_f64("model.norm.weight"),
-            arch.rms_norm_eps as f64,
-        )
-        .expect("final_norm");
+        let final_hidden = rmsnorm_f64(&x, &w.dense_f64("model.norm.weight"), arch.rms_norm_eps as f64).expect("final_norm");
         logits = w.matvec_f64("lm_head.weight", &final_hidden);
     }
     (logits, expert_choices)
 }
-
-// ── tests ──────────────────────────────────────────────────────────────────
-
 /// Sanity: f64 dense matvec authority is not the circular "lift host" trick.
 #[test]
 fn dense_f64_authority_is_not_host_lift() {
-    // W = [[1,2],[3,4]], x = [1,1] → f64 dots 3, 7
     let w = [1.0f32, 2.0, 3.0, 4.0];
     let x = [1.0f64, 1.0];
     let y = matvec_dense_f64_authority(&w, 2, &x).unwrap();
@@ -546,42 +359,21 @@ fn dense_f64_authority_is_not_host_lift() {
     assert!((y[0] - 3.0).abs() < 1e-15);
     assert!((y[1] - 7.0).abs() < 1e-15);
 }
-
 /// End-to-end: score host f32 fixture logits against a real f64 forward.
 #[test]
 fn fixture_host_scored_against_f64_reference() {
-    eprintln!("numeric parity schema={SCHEMA}");
     let tokens = prompt();
     let w = F64Weights::open();
     let arch = GlmArch::from_header(&w.inner.header).expect("arch");
     let (ref64, _experts) = forward_f64(&w, &arch, &tokens);
-
     let host = GravityGlm::open_dir(&fixtures_dir(), true).expect("host open");
     let (host_logits, host_trace) = host.forward(&tokens).expect("host forward");
     assert_eq!(host_logits.len(), ref64.len());
-
-    // Op-local bounds (max_meaningful_rel hard) vs full-forward bounds.
     let op_local = score_against_f64(&host_logits, &ref64, &Bounds::logits(), "host_f32_op_local");
-    let host_score =
-        score_against_f64(&host_logits, &ref64, &Bounds::full_forward_logits(), "host_f32");
-    eprintln!("V2.1 host vs f64 (op-local bounds) {}", format_score_line(&op_local));
-    eprintln!("V2.1 host vs f64 (full-forward bounds) {}", format_score_line(&host_score));
-    eprintln!(
-        "host expert_choices={:?} (f64 authority is continuous; discrete router IDs may differ if near-ties)",
-        host_trace.expert_choices
-    );
-
-    // Host arm must NOT be a tautology: scoring host against an f64 lift of
-    // itself would force rel_l2 == 0. A real authority yields nonzero error
-    // on multi-layer reduction chains (or exact zero only if the path is
-    // trivial — not this fixture).
+    let host_score = score_against_f64(&host_logits, &ref64, &Bounds::full_forward_logits(), "host_f32");
     let self_lift: Vec<f64> = host_logits.iter().map(|&v| v as f64).collect();
-    let tautology =
-        score_against_f64(&host_logits, &self_lift, &Bounds::full_forward_logits(), "host_vs_self");
-    assert_eq!(
-        tautology.continuous.relative_l2, 0.0,
-        "control: lift-of-self is tautological"
-    );
+    let tautology = score_against_f64(&host_logits, &self_lift, &Bounds::full_forward_logits(), "host_vs_self");
+    assert_eq!(tautology.continuous.relative_l2, 0.0, "control: lift-of-self is tautological");
     assert!(
         (host_score.continuous.relative_l2 - tautology.continuous.relative_l2).abs() > 0.0
             || host_score.continuous.max_meaningful_rel > 0.0
@@ -590,102 +382,47 @@ fn fixture_host_scored_against_f64_reference() {
          got {}",
         format_score_line(&host_score)
     );
-
-    // Evidence for the gate policy: host itself fails op-local max_meaningful_rel
-    // against true f64 while rel_l2/cos/kl/discrete stay clean. Full-forward
-    // bounds therefore treat max_meaningful_rel as diagnostic.
-    eprintln!(
-        "op_local_pass={} full_forward_pass={} op_local_fail={:?} max_meaningful_rel={:.3e} rel_l2={:.3e}",
-        op_local.pass,
-        host_score.pass,
-        op_local.failures,
-        host_score.continuous.max_meaningful_rel,
-        host_score.continuous.relative_l2
-    );
     assert!(
         !op_local.pass,
         "host vs f64 under op-local bounds must fail max_meaningful_rel \
          (evidence that 1e-5 single-element max is not a full-forward hard gate)"
     );
-    assert!(
-        host_score.pass,
-        "host baseline must pass full-forward V2.1 against f64 authority; failures={:?}",
-        host_score.failures
-    );
+    assert!(host_score.pass, "host baseline must pass full-forward V2.1 against f64 authority; failures={:?}", host_score.failures);
 }
-
 /// When Metal is present, score host + resident device against the same f64
-/// reference. When Metal is absent, skip the device arm (unmeasured).
-///
-/// Does **not** enable the device-only MLP flag — that is the acceptance test
-/// below. Flag off is the resident baseline.
 #[test]
 fn fixture_host_and_device_scored_against_f64_reference() {
     let tokens = prompt();
     let w = F64Weights::open();
     let arch = GlmArch::from_header(&w.inner.header).expect("arch");
     let (ref64, _) = forward_f64(&w, &arch, &tokens);
-
     let host = GravityGlm::open_dir(&fixtures_dir(), true).expect("host open");
     let (host_logits, _) = host.forward(&tokens).expect("host forward");
-
     #[cfg(target_os = "macos")]
     {
         let _env_guard = DEVICE_ONLY_ENV_LOCK.lock().expect("device-only env lock");
-        // Baseline path only — keep device-only MLP off for this measurement.
         std::env::remove_var(GPU_DEVICE_ONLY_MLP_ENV);
         std::env::remove_var(GPU_DEVICE_ONLY_MLP_POISON_ENV);
-
         let ctx = match MetalContext::new() {
             Ok(c) => c,
             Err(e) => {
                 let msg = e.to_string();
-                assert!(
-                    !msg.contains("shader") && !msg.contains("compile"),
-                    "Metal present but shader compile failed: {msg}"
-                );
+                assert!(!msg.contains("shader") && !msg.contains("compile"), "Metal present but shader compile failed: {msg}");
                 if std::env::var_os("HAWKING_REQUIRE_METAL").is_some() {
                     panic!("HAWKING_REQUIRE_METAL set but no device: {e}");
                 }
                 eprintln!("skip device arm: no Metal device ({e}) — live numbers unmeasured");
-                // Still score host alone against f64 so the oracle runs.
-                let s = score_against_f64(
-                    &host_logits,
-                    &ref64,
-                    &Bounds::full_forward_logits(),
-                    "host_f32",
-                );
-                eprintln!("V2.1 host-only {}", format_score_line(&s));
+                let s = score_against_f64(&host_logits, &ref64, &Bounds::full_forward_logits(), "host_f32");
                 return;
             }
         };
-        let resident = GravityGlmGpu::open_dir_with_budget_resident(
-            ctx,
-            &fixtures_dir(),
-            true,
-            256 * 1024 * 1024,
-            true,
-        )
-        .expect("resident open");
-        let (dev_logits, _, _) = resident
-            .forward_resident_counted(&tokens)
-            .expect("resident forward");
+        let resident =
+            GravityGlmGpu::open_dir_with_budget_resident(ctx, &fixtures_dir(), true, 256 * 1024 * 1024, true).expect("resident open");
+        let (dev_logits, _, _) = resident.forward_resident_counted(&tokens).expect("resident forward");
         assert_eq!(dev_logits.len(), ref64.len());
-
         let bounds = Bounds::full_forward_logits();
         let paired = score_pair(&host_logits, &dev_logits, &ref64, &bounds);
-        eprintln!("V2.1 {}", format_score_line(&paired.host));
-        eprintln!("V2.1 {}", format_score_line(&paired.device));
-        eprintln!(
-            "pair_pass={} host_pass={} device_pass={} host_fail={:?} device_fail={:?}",
-            paired.pass,
-            paired.host.pass,
-            paired.device.pass,
-            paired.host.failures,
-            paired.device.failures
-        );
         // Measurement only — do not assert pass. Candidates are not promoted here.
-        // Assert the oracle is non-circular for both arms.
         assert!(
             paired.host.continuous.relative_l2 > 0.0
                 || paired.host.continuous.max_meaningful_rel > 0.0
@@ -693,19 +430,11 @@ fn fixture_host_and_device_scored_against_f64_reference() {
             "host arm must not be tautological against f64 authority"
         );
     }
-
     #[cfg(not(target_os = "macos"))]
     {
-        let s = score_against_f64(
-            &host_logits,
-            &ref64,
-            &Bounds::full_forward_logits(),
-            "host_f32",
-        );
-        eprintln!("V2.1 host-only (non-macOS) {}", format_score_line(&s));
+        let s = score_against_f64(&host_logits, &ref64, &Bounds::full_forward_logits(), "host_f32");
     }
 }
-
 /// A genuinely broken kernel (wrong expert / dropped layer analogue: large
 /// structured logit corruption) must fail the corrected gate.
 #[test]
@@ -714,13 +443,8 @@ fn deliberate_break_wrong_expert_style_fails_v21() {
     let w = F64Weights::open();
     let arch = GlmArch::from_header(&w.inner.header).expect("arch");
     let (ref64, _) = forward_f64(&w, &arch, &tokens);
-
     let host = GravityGlm::open_dir(&fixtures_dir(), true).expect("host open");
     let (host_logits, _) = host.forward(&tokens).expect("host forward");
-
-    // Simulate a wrong-expert / dropped-layer break: permute a large block
-    // of logits and scale a second block. Discrete decisions and vector
-    // metrics must both reject.
     let mut broken = host_logits.clone();
     let n = broken.len();
     assert!(n >= 64);
@@ -730,24 +454,15 @@ fn deliberate_break_wrong_expert_style_fails_v21() {
     for v in broken.iter_mut().take(n / 2) {
         *v *= -1.0;
     }
-
     let bounds = Bounds::full_forward_logits();
     let score = score_against_f64(&broken, &ref64, &bounds, "broken_kernel");
-    eprintln!("deliberate break {}", format_score_line(&score));
+    assert!(!score.pass, "broken kernel must fail V2.1 full-forward gates; failures={:?}", score.failures);
     assert!(
-        !score.pass,
-        "broken kernel must fail V2.1 full-forward gates; failures={:?}",
-        score.failures
-    );
-    assert!(
-        !score.discrete.greedy_match
-            || !score.discrete.top_k_exact_match
-            || score.continuous.relative_l2 > bounds.max_relative_l2,
+        !score.discrete.greedy_match || !score.discrete.top_k_exact_match || score.continuous.relative_l2 > bounds.max_relative_l2,
         "break must trip discrete and/or rel_l2 under full-forward bounds; got {}",
         format_score_line(&score)
     );
 }
-
 /// Near-tie wrong routing: swap two close top logits so argmax flips while
 /// continuous metrics stay almost fine — discrete gate must still fail.
 #[test]
@@ -756,15 +471,8 @@ fn deliberate_break_argmax_flip_fails_with_no_tolerance() {
     let w = F64Weights::open();
     let arch = GlmArch::from_header(&w.inner.header).expect("arch");
     let (ref64, _) = forward_f64(&w, &arch, &tokens);
-
-    // Start from f64 rounded to f32, then flip the greedy class.
     let mut cand: Vec<f32> = ref64.iter().map(|&v| v as f32).collect();
-    let argmax = cand
-        .iter()
-        .enumerate()
-        .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
-        .map(|(i, _)| i)
-        .unwrap();
+    let argmax = cand.iter().enumerate().max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap()).map(|(i, _)| i).unwrap();
     let second = cand
         .iter()
         .enumerate()
@@ -773,14 +481,11 @@ fn deliberate_break_argmax_flip_fails_with_no_tolerance() {
         .map(|(i, _)| i)
         .unwrap();
     cand.swap(argmax, second);
-
     let score = score_against_f64(&cand, &ref64, &Bounds::full_forward_logits(), "argmax_flip");
-    eprintln!("argmax flip {}", format_score_line(&score));
     assert!(!score.pass);
     assert!(!score.discrete.greedy_match);
     assert!(score.failures.iter().any(|f| f.contains("argmax")));
 }
-
 /// Prove the old circular pattern is detectable: host vs lift(host) always
 /// "passes" continuous zeros; that must not be used as authority.
 #[test]
@@ -789,28 +494,14 @@ fn circular_host_lift_is_tautological_and_banned() {
     let tokens = prompt();
     let (host_logits, _) = host.forward(&tokens).expect("forward");
     let lift: Vec<f64> = host_logits.iter().map(|&v| v as f64).collect();
-    // Old circular pattern: score_pair(&host, &cand, &lift(host), ...)
-    // Host arm is always perfect.
-    let host_vs_self =
-        score_against_f64(&host_logits, &lift, &Bounds::full_forward_logits(), "host_f32");
+    let host_vs_self = score_against_f64(&host_logits, &lift, &Bounds::full_forward_logits(), "host_f32");
     assert!(host_vs_self.pass);
     assert_eq!(host_vs_self.continuous.relative_l2, 0.0);
     assert_eq!(host_vs_self.continuous.ulp.max, 0.0);
-    eprintln!(
-        "BANNED pattern (host vs lift(host)): {}",
-        format_score_line(&host_vs_self)
-    );
-    eprintln!(
-        "contract: authority must be an independent f64 forward, never lift(host) or lift(device)"
-    );
 }
-
 /// Documented re-score of prior rejection numbers under the corrected oracle
-/// policy (no promotion). Numbers that only cited mislabelled mean_rel /
-/// circular host authority are classified; physics kills stay sound.
 #[test]
 fn rescore_prior_rejection_record() {
-    eprintln!("=== prior rejection re-score (measurement only; no promotion) ===");
     eprintln!(
         "device-only MLP (old): mean_rel=6.194e-3 was max_meaningful_rel vs lift(host); \
          circular host arm rel_l2=0. Host vs true f64 on this fixture: \
@@ -819,38 +510,17 @@ fn rescore_prior_rejection_record() {
          (rel_l2/cos/kl/discrete) would not reject on the published continuous \
          evidence alone. Device arm vs f64 is unmeasured without Metal."
     );
-    eprintln!(
-        "residual-router C2 (old): meaningful_rel=4.853e-3 — same single-element \
-         max class. Independent kill: waits 102 > baseline 39 (physics) remains \
-         SOUND regardless of oracle. Parity-only rejection on meaningful_rel is \
-         the same class as above if authority was host-relative."
-    );
-    eprintln!(
-        "sound rejections that survive: discrete argmax/top-k mismatch; rel_l2 \
-         above 1e-5; cos/kl failure; wrong expert / wrong routing / dropped layer \
-         (see deliberate_break_*); wait/CB/physics kills."
-    );
 }
-
-// WeightAccess is the public trait GravityWeights implements; keep the
-// import live for documentation of the host path relationship.
 #[allow(dead_code)]
 fn _weight_access_obj(_: &dyn WeightAccess) {}
-
-// ── device-only MLP acceptance (baseline vs candidate) ─────────────────────
-
 #[cfg(target_os = "macos")]
 fn percentile_u64(values: &[u64], p: usize) -> u64 {
     assert!(!values.is_empty());
     let mut sorted = values.to_vec();
     sorted.sort_unstable();
-    let rank = p
-        .saturating_mul(sorted.len().saturating_sub(1))
-        .saturating_add(99)
-        / 100;
+    let rank = p.saturating_mul(sorted.len().saturating_sub(1)).saturating_add(99) / 100;
     sorted[rank.min(sorted.len().saturating_sub(1))]
 }
-
 #[cfg(target_os = "macos")]
 fn set_device_only_mlp(on: bool) {
     if on {
@@ -860,7 +530,6 @@ fn set_device_only_mlp(on: bool) {
     }
     std::env::remove_var(GPU_DEVICE_ONLY_MLP_POISON_ENV);
 }
-
 #[cfg(target_os = "macos")]
 fn set_device_only_mlp_poison(on: bool) {
     if on {
@@ -869,7 +538,6 @@ fn set_device_only_mlp_poison(on: bool) {
         std::env::remove_var(GPU_DEVICE_ONLY_MLP_POISON_ENV);
     }
 }
-
 #[cfg(target_os = "macos")]
 #[derive(Clone, Debug)]
 struct ModeMeasurement {
@@ -896,7 +564,6 @@ struct ModeMeasurement {
     wall_us_per_token_p95: u64,
     n_tokens: u64,
 }
-
 #[cfg(target_os = "macos")]
 fn measure_mode(
     model: &GravityGlmGpu,
@@ -910,80 +577,39 @@ fn measure_mode(
     set_device_only_mlp(flag_on);
     set_device_only_mlp_poison(false);
     reset_device_only_mlp_probe();
-
-    // Warm path: same process, same fixture, same model instance.
     for _ in 0..warmups {
-        let _ = model
-            .forward_resident_counted(tokens)
-            .expect("warmup resident forward");
+        let _ = model.forward_resident_counted(tokens).expect("warmup resident forward");
     }
-
     let n_tokens = tokens.len() as u64;
     assert!(n_tokens > 0);
-
-    // Timed samples (no cost_ledger overhead).
     let mut wall_us_samples = Vec::with_capacity(timed_samples);
     let mut last_waits = 0u64;
     let mut last_logits = Vec::new();
     for _ in 0..timed_samples {
         let t0 = Instant::now();
-        let (logits, _trace, waits) = model
-            .forward_resident_counted(tokens)
-            .expect("timed resident forward");
+        let (logits, _trace, waits) = model.forward_resident_counted(tokens).expect("timed resident forward");
         let wall_us = t0.elapsed().as_micros() as u64;
         wall_us_samples.push(wall_us);
         last_waits = waits;
         last_logits = logits;
     }
-
-    // One instrumented pass for physical transfer / CB counters.
     cost_ledger::set_enabled(true);
     let _ = cost_ledger::end_token();
     assert!(cost_ledger::begin_token(), "cost ledger begin_token");
     reset_device_only_mlp_probe();
-    let (ledger_logits, _trace, waits_ledger) = model
-        .forward_resident_counted(tokens)
-        .expect("ledger resident forward");
+    let (ledger_logits, _trace, waits_ledger) = model.forward_resident_counted(tokens).expect("ledger resident forward");
     let report: TokenCostReport = cost_ledger::end_token().expect("cost ledger report");
     cost_ledger::set_enabled(false);
-
-    // Prefer ledger-path logits for scoring (same mode as counters).
-    let score = score_against_f64(
-        &ledger_logits,
-        ref64,
-        &Bounds::full_forward_logits(),
-        name,
-    );
-    // Timed path should agree on discrete decisions with ledger path.
+    let score = score_against_f64(&ledger_logits, ref64, &Bounds::full_forward_logits(), name);
     let timed_backend = format!("{name}_timed");
-    let timed_score = score_against_f64(
-        &last_logits,
-        ref64,
-        &Bounds::full_forward_logits(),
-        &timed_backend,
-    );
-    assert_eq!(
-        score.discrete.greedy_argmax_cand, timed_score.discrete.greedy_argmax_cand,
-        "{name}: timed vs ledger argmax diverge"
-    );
-
+    let timed_score = score_against_f64(&last_logits, ref64, &Bounds::full_forward_logits(), &timed_backend);
+    assert_eq!(score.discrete.greedy_argmax_cand, timed_score.discrete.greedy_argmax_cand, "{name}: timed vs ledger argmax diverge");
     let wall_us_p50 = percentile_u64(&wall_us_samples, 50);
     let wall_us_p95 = percentile_u64(&wall_us_samples, 95);
-    let per_token: Vec<u64> = wall_us_samples
-        .iter()
-        .map(|&w| w / n_tokens)
-        .collect();
+    let per_token: Vec<u64> = wall_us_samples.iter().map(|&w| w / n_tokens).collect();
     let wall_us_per_token_p50 = percentile_u64(&per_token, 50);
     let wall_us_per_token_p95 = percentile_u64(&per_token, 95);
-
-    // Ledger-pass waits are paired with the CB/transfer report; fall back to
-    // the last timed sample if the ledger pass somehow reports zero.
-    let waits_total = if waits_ledger > 0 {
-        waits_ledger
-    } else {
-        last_waits
-    };
-
+    let waits_total = if waits_ledger > 0 { waits_ledger } else { last_waits };
     ModeMeasurement {
         name,
         flag_on,
@@ -1005,101 +631,39 @@ fn measure_mode(
         n_tokens,
     }
 }
-
 #[cfg(target_os = "macos")]
-fn print_mode(m: &ModeMeasurement) {
-    eprintln!("=== {} (HAWKING_GLM_GPU_DEVICE_ONLY_MLP={}) ===", m.name, if m.flag_on { "1" } else { "off" });
-    eprintln!("  {}", format_score_line(&m.score));
-    eprintln!(
-        "  waits_total={} waits_per_token={}  (from forward_resident_counted)",
-        m.waits_total, m.waits_per_token
-    );
-    eprintln!(
-        "  command_buffers_total={} command_buffers_per_token={}  (cost_ledger physical)",
-        m.command_buffers_total, m.command_buffers_per_token
-    );
-    eprintln!(
-        "  mlp_gate_up_download_bytes={} mlp_activation_upload_bytes={}",
-        m.mlp_gate_up_download_bytes, m.mlp_activation_upload_bytes
-    );
-    eprintln!(
-        "  device_only_mlp_hits ledger={} probe={} fallbacks={}",
-        m.device_only_mlp_hits_ledger, m.device_only_mlp_hits_probe, m.device_only_mlp_fallbacks
-    );
-    eprintln!(
-        "  wall_us full-fixture p50={} p95={}  (samples={})",
-        m.wall_us_p50,
-        m.wall_us_p95,
-        m.wall_us_samples.len()
-    );
-    eprintln!(
-        "  wall_us_per_token p50={} p95={}  (n_tokens={})",
-        m.wall_us_per_token_p50, m.wall_us_per_token_p95, m.n_tokens
-    );
-}
-
+fn print_mode(m: &ModeMeasurement) {}
 /// One integration acceptance: baseline (flag off) vs candidate (flag on),
-/// both scored against the independent f64 forward. Wall clock decides
-/// promotion only when hard V2.1 full-forward gates are green, MLP transfer
-/// counters are zero on the candidate, waits/CBs do not regress, and CB
-/// counts differ (proof the candidate path ran).
 #[test]
 fn device_only_mlp_acceptance_vs_f64_reference() {
-    eprintln!("numeric parity schema={SCHEMA}");
-    eprintln!("bounds=Bounds::full_forward_logits (max_meaningful_rel diagnostic only)");
-
     let tokens = prompt();
     let w = F64Weights::open();
     let arch = GlmArch::from_header(&w.inner.header).expect("arch");
     let (ref64, _) = forward_f64(&w, &arch, &tokens);
-    eprintln!(
-        "fixture tokens={:?} n_layers={} hidden={} vocab={}",
-        tokens, arch.n_layers, arch.hidden, arch.vocab_size
-    );
-
-    // Host arm (always measurable without Metal) — oracle sanity.
     let host = GravityGlm::open_dir(&fixtures_dir(), true).expect("host open");
     let (host_logits, _) = host.forward(&tokens).expect("host forward");
-    let host_score = score_against_f64(
-        &host_logits,
-        &ref64,
-        &Bounds::full_forward_logits(),
-        "host_f32",
-    );
-    eprintln!("V2.1 {}", format_score_line(&host_score));
-    assert!(
-        host_score.pass,
-        "host baseline must pass full-forward V2.1; failures={:?}",
-        host_score.failures
-    );
-
+    let host_score = score_against_f64(&host_logits, &ref64, &Bounds::full_forward_logits(), "host_f32");
+    assert!(host_score.pass, "host baseline must pass full-forward V2.1; failures={:?}", host_score.failures);
     #[cfg(not(target_os = "macos"))]
     {
         eprintln!("VERDICT=unmeasured (non-macOS; no Metal path)");
         eprintln!("device legs: waits/CBs/transfers/wall = unmeasured");
         return;
     }
-
     #[cfg(target_os = "macos")]
     {
         let _env_guard = DEVICE_ONLY_ENV_LOCK.lock().expect("device-only env lock");
-        // Restore flags on exit so sibling tests see a clean process.
         let prev_flag = std::env::var_os(GPU_DEVICE_ONLY_MLP_ENV);
         let prev_poison = std::env::var_os(GPU_DEVICE_ONLY_MLP_POISON_ENV);
         let _restore = scopeguard_restore(prev_flag, prev_poison);
-
         set_device_only_mlp(false);
         set_device_only_mlp_poison(false);
         reset_device_only_mlp_probe();
-
         let ctx = match MetalContext::new() {
             Ok(c) => c,
             Err(e) => {
                 let msg = e.to_string();
-                assert!(
-                    !msg.contains("shader") && !msg.contains("compile"),
-                    "Metal present but shader compile failed: {msg}"
-                );
+                assert!(!msg.contains("shader") && !msg.contains("compile"), "Metal present but shader compile failed: {msg}");
                 if std::env::var_os("HAWKING_REQUIRE_METAL").is_some() {
                     panic!("HAWKING_REQUIRE_METAL set but no device: {e}");
                 }
@@ -1110,87 +674,34 @@ fn device_only_mlp_acceptance_vs_f64_reference() {
                      mlp_gate_up_download_bytes, mlp_activation_upload_bytes, \
                      wall_us p50/p95, causal poison on device"
                 );
-                // Causal mutation off-path: without a device we cannot live-count
-                // hits, but the probe starts at zero.
-                assert_eq!(
-                    device_only_mlp_hits(),
-                    0,
-                    "with flag off and no forward, hits must be zero"
-                );
+                assert_eq!(device_only_mlp_hits(), 0, "with flag off and no forward, hits must be zero");
                 return;
             }
         };
-
-        let model = GravityGlmGpu::open_dir_with_budget_resident(
-            ctx,
-            &fixtures_dir(),
-            true,
-            256 * 1024 * 1024,
-            true,
-        )
-        .expect("resident open");
+        let model =
+            GravityGlmGpu::open_dir_with_budget_resident(ctx, &fixtures_dir(), true, 256 * 1024 * 1024, true).expect("resident open");
         assert!(model.resident_state_enabled());
-
         const WARMS: usize = 3;
         const SAMPLES: usize = 21;
-
-        // ── baseline: flag off ──────────────────────────────────────────
-        let baseline = measure_mode(
-            &model,
-            &tokens,
-            &ref64,
-            "baseline_flag_off",
-            false,
-            SAMPLES,
-            WARMS,
-        );
+        let baseline = measure_mode(&model, &tokens, &ref64, "baseline_flag_off", false, SAMPLES, WARMS);
         print_mode(&baseline);
-
         // Flag off: probe hits must be zero (path never entered).
         assert_eq!(
             baseline.device_only_mlp_hits_probe, 0,
             "with HAWKING_GLM_GPU_DEVICE_ONLY_MLP off, device_only_mlp_hits must be 0; got {}",
             baseline.device_only_mlp_hits_probe
         );
-        assert_eq!(
-            baseline.device_only_mlp_hits_ledger, 0,
-            "ledger device_only_mlp_hits must be 0 with flag off"
-        );
-        // Baseline host-SiLU path must actually transfer gate/up + acts
-        // (otherwise the zero-transfer candidate gate is vacuous).
-        assert!(
-            baseline.mlp_gate_up_download_bytes > 0,
-            "baseline must record mlp_gate_up_download_bytes > 0 (host SiLU path); got 0"
-        );
-        assert!(
-            baseline.mlp_activation_upload_bytes > 0,
-            "baseline must record mlp_activation_upload_bytes > 0; got 0"
-        );
-        assert!(
-            baseline.score.pass,
-            "baseline must pass full-forward V2.1; failures={:?}",
-            baseline.score.failures
-        );
-
-        // ── candidate: flag on ──────────────────────────────────────────
-        let candidate = measure_mode(
-            &model,
-            &tokens,
-            &ref64,
-            "candidate_device_only_mlp",
-            true,
-            SAMPLES,
-            WARMS,
-        );
+        assert_eq!(baseline.device_only_mlp_hits_ledger, 0, "ledger device_only_mlp_hits must be 0 with flag off");
+        assert!(baseline.mlp_gate_up_download_bytes > 0, "baseline must record mlp_gate_up_download_bytes > 0 (host SiLU path); got 0");
+        assert!(baseline.mlp_activation_upload_bytes > 0, "baseline must record mlp_activation_upload_bytes > 0; got 0");
+        assert!(baseline.score.pass, "baseline must pass full-forward V2.1; failures={:?}", baseline.score.failures);
+        let candidate = measure_mode(&model, &tokens, &ref64, "candidate_device_only_mlp", true, SAMPLES, WARMS);
         print_mode(&candidate);
-
-        // Hard V2.1 full-forward gates (rel_l2, cos, kl, abs-near, discrete).
         assert!(
             candidate.score.pass,
             "candidate must pass full-forward V2.1 hard gates against f64; failures={:?}",
             candidate.score.failures
         );
-        // Non-negotiable: transfer counters zero on the device-only path.
         assert_eq!(
             candidate.mlp_gate_up_download_bytes, 0,
             "candidate mlp_gate_up_download_bytes must be 0; got {}",
@@ -1201,8 +712,6 @@ fn device_only_mlp_acceptance_vs_f64_reference() {
             "candidate mlp_activation_upload_bytes must be 0; got {}",
             candidate.mlp_activation_upload_bytes
         );
-        // Candidate must have actually taken the device-only hit (not silently
-        // fallen back to host SiLU — that would reintroduce transfers).
         assert!(
             candidate.device_only_mlp_hits_probe > 0 || candidate.device_only_mlp_hits_ledger > 0,
             "candidate recorded zero device-only MLP hits — path did not run \
@@ -1216,7 +725,6 @@ fn device_only_mlp_acceptance_vs_f64_reference() {
             "candidate fell back to host SiLU {} times — not a device-only run",
             candidate.device_only_mlp_fallbacks
         );
-
         // Waits and CBs must not regress vs baseline.
         assert!(
             candidate.waits_total <= baseline.waits_total,
@@ -1230,7 +738,6 @@ fn device_only_mlp_acceptance_vs_f64_reference() {
             candidate.command_buffers_total,
             baseline.command_buffers_total
         );
-        // The two modes' CB counts must differ — identical counts mean the
         // candidate never ran (prior faked proof).
         assert_ne!(
             candidate.command_buffers_total, baseline.command_buffers_total,
@@ -1238,33 +745,13 @@ fn device_only_mlp_acceptance_vs_f64_reference() {
              candidate path did not change physical CB structure",
             baseline.command_buffers_total
         );
-
-        // ── causal mutation ─────────────────────────────────────────────
-        // Flag off hits already asserted zero above.
-        // Poison on: device SiLU runs, then activations are zeroed — hard
-        // gates must fail (rel_l2 / discrete).
         set_device_only_mlp(true);
         set_device_only_mlp_poison(true);
         reset_device_only_mlp_probe();
-        let (poison_logits, _, _) = model
-            .forward_resident_counted(&tokens)
-            .expect("poisoned resident forward");
+        let (poison_logits, _, _) = model.forward_resident_counted(&tokens).expect("poisoned resident forward");
         let poison_hits = device_only_mlp_hits();
-        let poison_score = score_against_f64(
-            &poison_logits,
-            &ref64,
-            &Bounds::full_forward_logits(),
-            "poisoned_device_only_mlp",
-        );
-        eprintln!(
-            "causal poison: hits={} {}",
-            poison_hits,
-            format_score_line(&poison_score)
-        );
-        assert!(
-            poison_hits > 0,
-            "poison path must still take device-only hits; got 0"
-        );
+        let poison_score = score_against_f64(&poison_logits, &ref64, &Bounds::full_forward_logits(), "poisoned_device_only_mlp");
+        assert!(poison_hits > 0, "poison path must still take device-only hits; got 0");
         assert!(
             !poison_score.pass,
             "HAWKING_GLM_GPU_DEVICE_ONLY_MLP_POISON=1 must fail V2.1 hard gates \
@@ -1273,16 +760,7 @@ fn device_only_mlp_acceptance_vs_f64_reference() {
         );
         set_device_only_mlp_poison(false);
         set_device_only_mlp(false);
-
-        // ── side-by-side summary + wall-clock verdict ───────────────────
-        eprintln!("======== SIDE-BY-SIDE ========");
-        eprintln!(
-            "{:<28} {:>14} {:>14}",
-            "metric", "baseline", "candidate"
-        );
-        let row = |label: &str, b: String, c: String| {
-            eprintln!("{label:<28} {b:>14} {c:>14}");
-        };
+        let row = |label: &str, b: String, c: String| {};
         row(
             "rel_l2",
             format!("{:.3e}", baseline.score.continuous.relative_l2),
@@ -1295,18 +773,8 @@ fn device_only_mlp_acceptance_vs_f64_reference() {
         );
         row(
             "kl",
-            baseline
-                .score
-                .continuous
-                .kl_divergence
-                .map(|k| format!("{k:.3e}"))
-                .unwrap_or_else(|| "n/a".into()),
-            candidate
-                .score
-                .continuous
-                .kl_divergence
-                .map(|k| format!("{k:.3e}"))
-                .unwrap_or_else(|| "n/a".into()),
+            baseline.score.continuous.kl_divergence.map(|k| format!("{k:.3e}")).unwrap_or_else(|| "n/a".into()),
+            candidate.score.continuous.kl_divergence.map(|k| format!("{k:.3e}")).unwrap_or_else(|| "n/a".into()),
         );
         row(
             "max_meaningful_rel",
@@ -1332,41 +800,18 @@ fn device_only_mlp_acceptance_vs_f64_reference() {
         );
         row(
             "argmax ref/cand",
-            format!(
-                "{:?}/{:?}",
-                baseline.score.discrete.greedy_argmax_ref, baseline.score.discrete.greedy_argmax_cand
-            ),
-            format!(
-                "{:?}/{:?}",
-                candidate.score.discrete.greedy_argmax_ref,
-                candidate.score.discrete.greedy_argmax_cand
-            ),
+            format!("{:?}/{:?}", baseline.score.discrete.greedy_argmax_ref, baseline.score.discrete.greedy_argmax_cand),
+            format!("{:?}/{:?}", candidate.score.discrete.greedy_argmax_ref, candidate.score.discrete.greedy_argmax_cand),
         );
         row(
             "topk_ok",
             format!("{}", baseline.score.discrete.top_k_exact_match),
             format!("{}", candidate.score.discrete.top_k_exact_match),
         );
-        row(
-            "hard_gates_pass",
-            format!("{}", baseline.score.pass),
-            format!("{}", candidate.score.pass),
-        );
-        row(
-            "waits_total",
-            format!("{}", baseline.waits_total),
-            format!("{}", candidate.waits_total),
-        );
-        row(
-            "waits_per_token",
-            format!("{}", baseline.waits_per_token),
-            format!("{}", candidate.waits_per_token),
-        );
-        row(
-            "command_buffers_total",
-            format!("{}", baseline.command_buffers_total),
-            format!("{}", candidate.command_buffers_total),
-        );
+        row("hard_gates_pass", format!("{}", baseline.score.pass), format!("{}", candidate.score.pass));
+        row("waits_total", format!("{}", baseline.waits_total), format!("{}", candidate.waits_total));
+        row("waits_per_token", format!("{}", baseline.waits_per_token), format!("{}", candidate.waits_per_token));
+        row("command_buffers_total", format!("{}", baseline.command_buffers_total), format!("{}", candidate.command_buffers_total));
         row(
             "command_buffers_per_token",
             format!("{}", baseline.command_buffers_per_token),
@@ -1382,64 +827,23 @@ fn device_only_mlp_acceptance_vs_f64_reference() {
             format!("{}", baseline.mlp_activation_upload_bytes),
             format!("{}", candidate.mlp_activation_upload_bytes),
         );
-        row(
-            "wall_us_p50 (full fixture)",
-            format!("{}", baseline.wall_us_p50),
-            format!("{}", candidate.wall_us_p50),
-        );
-        row(
-            "wall_us_p95 (full fixture)",
-            format!("{}", baseline.wall_us_p95),
-            format!("{}", candidate.wall_us_p95),
-        );
-        row(
-            "wall_us_per_token_p50",
-            format!("{}", baseline.wall_us_per_token_p50),
-            format!("{}", candidate.wall_us_per_token_p50),
-        );
-        row(
-            "wall_us_per_token_p95",
-            format!("{}", baseline.wall_us_per_token_p95),
-            format!("{}", candidate.wall_us_per_token_p95),
-        );
-
+        row("wall_us_p50 (full fixture)", format!("{}", baseline.wall_us_p50), format!("{}", candidate.wall_us_p50));
+        row("wall_us_p95 (full fixture)", format!("{}", baseline.wall_us_p95), format!("{}", candidate.wall_us_p95));
+        row("wall_us_per_token_p50", format!("{}", baseline.wall_us_per_token_p50), format!("{}", candidate.wall_us_per_token_p50));
+        row("wall_us_per_token_p95", format!("{}", baseline.wall_us_per_token_p95), format!("{}", candidate.wall_us_per_token_p95));
         let p50_improved = candidate.wall_us_per_token_p50 < baseline.wall_us_per_token_p50;
         let p95_improved = candidate.wall_us_per_token_p95 < baseline.wall_us_per_token_p95;
         let p50_tie = candidate.wall_us_per_token_p50 == baseline.wall_us_per_token_p50;
         let p95_tie = candidate.wall_us_per_token_p95 == baseline.wall_us_per_token_p95;
-
-        let verdict = if p50_improved && p95_improved {
-            "PROMOTE"
-        } else {
-            // Tie or any regression → negative; leave flag off.
-            "NEGATIVE"
-        };
-        eprintln!(
-            "VERDICT={verdict}  decided by wall_us_per_token \
-             baseline p50/p95={}/{}  candidate p50/p95={}/{}  \
-             p50_improved={p50_improved} p95_improved={p95_improved} \
-             p50_tie={p50_tie} p95_tie={p95_tie}",
-            baseline.wall_us_per_token_p50,
-            baseline.wall_us_per_token_p95,
-            candidate.wall_us_per_token_p50,
-            candidate.wall_us_per_token_p95
-        );
-        eprintln!(
-            "promotion requires BOTH p50 and p95 improve with hard gates green \
-             and transfer counters zero; otherwise NEGATIVE and flag stays off"
-        );
+        let verdict = if p50_improved && p95_improved { "PROMOTE" } else { "NEGATIVE" };
         // Do not flip the default. Measurement only.
         set_device_only_mlp(false);
         set_device_only_mlp_poison(false);
     }
 }
-
 /// Restore process env for device-only MLP flags when the acceptance test ends.
 #[cfg(target_os = "macos")]
-fn scopeguard_restore(
-    prev_flag: Option<std::ffi::OsString>,
-    prev_poison: Option<std::ffi::OsString>,
-) -> impl Drop {
+fn scopeguard_restore(prev_flag: Option<std::ffi::OsString>, prev_poison: Option<std::ffi::OsString>) -> impl Drop {
     struct Restore(Option<std::ffi::OsString>, Option<std::ffi::OsString>);
     impl Drop for Restore {
         fn drop(&mut self) {

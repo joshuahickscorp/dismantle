@@ -2,14 +2,14 @@ import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("../../ipc", () => ({
+vi.mock("../ipc", () => ({
   TRANSPORT_KIND: "live",
   sendIntent: async () => ({ accepted: true, event_seq: 1, message: null }),
   subscribeUi: () => () => {},
   callConnector: async () => null,
 }));
 
-import { COMMANDS } from "../../store";
+import { COMMANDS } from "../store";
 import { MOCK_DIFF, MOCK_FILE_BODY, MOCK_TREE, mockOnly } from './ide_types';
 
 const here = fileURLToPath(new URL(".", import.meta.url));
@@ -36,8 +36,8 @@ describe("mock fixtures on a live transport", () => {
 
   it("is the ONLY way the file surfaces reach a fixture", () => {
     for (const [file, name] of [
-      ["Explorer.tsx", "MOCK_TREE"],
-      ["Editor.tsx", "MOCK_FILE_BODY"],
+      ["ide_Explorer.tsx", "MOCK_TREE"],
+      ["ide_Editor.tsx", "MOCK_FILE_BODY"],
     ] as const) {
       const uses = read(file)
         .split("\n")
@@ -48,13 +48,13 @@ describe("mock fixtures on a live transport", () => {
   });
 
   it("never opens a fixture path as the boot tab", () => {
-    const app = read("../../App.tsx");
+    const app = read("../App.tsx");
     expect(app).toContain('TRANSPORT_KIND === "mock" ? "crates/pool/src/guard.rs" : null');
     expect(app).toContain("INITIAL_FILE ? [INITIAL_FILE] : []");
   });
 
   it("never mounts an editable buffer over a body that did not load", () => {
-    const src = read("Editor.tsx");
+    const src = read("ide_Editor.tsx");
     expect(src).not.toContain("host streams this buffer as projection_patch");
     expect(src).toContain("if (loadError || !body)");
   });
@@ -84,13 +84,13 @@ describe("retired custom names", () => {
 
 describe("the home diff panel", () => {
   it("dispatches no whole-diff intent of its own", () => {
-    const home = read("../home/Home.tsx");
+    const home = read("./home_Home.tsx");
     expect(home).not.toContain("intent.acceptDiff");
     expect(home).not.toContain("intent.rejectDiff");
   });
 
   it("binds the hunk-addressed callback, so one hunk decided is one hunk decided", () => {
-    expect(read("../home/ChatPanel.tsx")).toContain("onStatus={onDiffStatus}");
-    expect(read("HunkReview.tsx")).not.toContain("legacyOnAct");
+    expect(read("./home_ChatPanel.tsx")).toContain("onStatus={onDiffStatus}");
+    expect(read("ide_HunkReview.tsx")).not.toContain("legacyOnAct");
   });
 });

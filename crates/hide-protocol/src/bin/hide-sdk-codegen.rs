@@ -3,11 +3,12 @@
 //!
 //! Writes these files under the crate:
 //!
-//! - `generated/protocol.schema.json` - the protocol JSON Schema bundle;
-//! - `generated/protocol.d.ts` - the generated frontend TypeScript types;
-//! - `generated/command_catalog.json` - the serialized ONE command registry;
-//! - `generated/commands.d.ts` - the CommandSpec type plus the catalog array;
-//! - `fixtures/events.json` - the canonical event fixtures.
+//! - `generated/protocol.schema.json` - the protocol JSON Schema bundle (data);
+//! - `goldens/protocol.d.ts` - protocol TypeScript types (counted source);
+//! - `generated/command_catalog.json` - the serialized ONE command registry (data);
+//! - `goldens/commands.d.ts` - CommandSpec types (counted source);
+//! - `fixtures/events.json` - the canonical event fixtures;
+//! - `app/src/generated/command_catalog.json` - FE mirror (sole writer for this path).
 //!
 //! The golden-file tests regenerate these in memory and compare against the
 //! committed copies, so a protocol change that would break the frontend fails
@@ -21,6 +22,11 @@
 //! `hawking-adapters-codegen` (`cargo run -p hawking-adapters --bin
 //! hawking-adapters-codegen`), which reuses the same golden/drift pattern as
 //! this binary. Protocol wire types stay here; family/event goldens stay there.
+//!
+//! # One writer per output
+//!
+//! This binary is the sole writer of both protocol and app `command_catalog.json`
+//! mirrors. The app scripts must not also write the FE catalog.
 
 use std::fs;
 use std::path::PathBuf;
@@ -28,33 +34,42 @@ use std::path::PathBuf;
 use anyhow::{Context, Result};
 
 fn main() -> Result<()> {
-    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let goldens = root.join("generated");
-    let fixtures = root.join("fixtures");
-    fs::create_dir_all(&goldens).context("create goldens dir")?;
+    let crate_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let workspace = crate_root
+        .parent()
+        .and_then(|p| p.parent())
+        .map(PathBuf::from)
+        .context("resolve workspace root from crate dir")?;
+    let goldens_data = crate_root.join("generated");
+    let goldens_source = crate_root.join("goldens");
+    let fixtures = crate_root.join("fixtures");
+    let app_generated = workspace.join("app/src/generated");
+    fs::create_dir_all(&goldens_data).context("create generated dir")?;
+    fs::create_dir_all(&goldens_source).context("create goldens dir")?;
     fs::create_dir_all(&fixtures).context("create fixtures dir")?;
+    fs::create_dir_all(&app_generated).context("create app generated dir")?;
 
-    let artifacts: [(PathBuf, String); 5] = [
+    let catalog_json = hide_protocol::sdk::command::command_catalog_json();
+    let artifacts: [(PathBuf, String); 6] = [
         (
-            goldens.join("protocol.schema.json"),
+            goldens_data.join("protocol.schema.json"),
             hide_protocol::sdk::schema::protocol_schema_json(),
         ),
         (
-            goldens.join("protocol.d.ts"),
+            goldens_source.join("protocol.d.ts"),
             hide_protocol::sdk::ts::protocol_typescript(),
         ),
+        (goldens_data.join("command_catalog.json"), catalog_json.clone()),
         (
-            goldens.join("command_catalog.json"),
-            hide_protocol::sdk::command::command_catalog_json(),
-        ),
-        (
-            goldens.join("commands.d.ts"),
+            goldens_source.join("commands.d.ts"),
             hide_protocol::sdk::command::command_typescript(),
         ),
         (
             fixtures.join("events.json"),
             hide_protocol::sdk::fixtures::events_json(),
         ),
+        // Sole writer of the FE command catalog mirror.
+        (app_generated.join("command_catalog.json"), catalog_json),
     ];
 
     for (path, contents) in &artifacts {
@@ -63,4 +78,3 @@ fn main() -> Result<()> {
     }
     Ok(())
 }
-

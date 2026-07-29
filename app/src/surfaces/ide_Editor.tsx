@@ -22,14 +22,14 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { DiffEditor, Editor as MonacoEditor, type Monaco } from "@monaco-editor/react";
 import type { editor as MEditor } from "monaco-editor";
-import { callConnector } from "../../ipc";
-import { runCommand, useStore } from "../../store";
+import { callConnector } from "../ipc";
+import { runCommand, useStore } from "../store";
 import { HIDE_EDITOR_OPTIONS, HIDE_THEME, configureMonacoLoader, registerHideTheme } from './ide_monacoTheme';
 import { HunkReview, diffActionSpec, runDiffAction, type DiffActionId } from './ide_HunkReview';
 import { CodeActions, sourceRef, type SourceRef } from './ide_CodeActions';
-import { Radiate } from "../../shell/Radiate";
+import { Radiate } from "../shell/Radiate";
 import { applyHunkStatus, MOCK_FILE_BODY, mockOnly, type DiffDoc } from './ide_types';
-import { ackState, heldNote } from "../../wire";
+import { ackState, heldNote } from "../wire";
 
 // Point the loader at bundled monaco once (air-gap: no CDN fetch).
 configureMonacoLoader();

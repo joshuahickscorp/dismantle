@@ -23,10 +23,10 @@
   never by color alone.
 */
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import type { ToolEvent } from "../../store";
-import { runCommand, useStore } from "../../store";
-import type { IntentAck } from "../../wire";
-import { Icon } from "../../shell/icons";
+import type { ToolEvent } from "../store";
+import { runCommand, useStore } from "../store";
+import type { IntentAck } from "../wire";
+import { Icon } from "../shell/icons";
 import { blockLabel, ctlStyle, type DiffChip } from './chat_parts';
 
 /* ---- The plan projection, as the host emits it ------------------------------------------------

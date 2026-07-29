@@ -31,8 +31,8 @@ import { useEffect, useRef, useState } from "react";
 import { Terminal as Xterm } from "@xterm/xterm";
 import type { ITheme } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
-import { runCommand, useStore, type ToolEvent } from "../../store";
-import { ackState, heldNote } from "../../wire";
+import { runCommand, useStore, type ToolEvent } from "../store";
+import { ackState, heldNote } from "../wire";
 import { MONO_FONT } from './ide_types';
 
 // The v3 xterm theme: every color a theme.css token value (xterm needs literal hex). Grayscale

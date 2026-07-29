@@ -7,8 +7,8 @@
 import { useEffect, useLayoutEffect, useMemo, useReducer, useRef } from "react";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
-import { runCommand, useStore } from "../../store";
-import { Display } from "../../ui";
+import { runCommand, useStore } from "../store";
+import { Display } from "../ui";
 import type { DiffChip, DiffChipPatch } from './chat_parts';
 import { DiffChipRow, InlineGate, PlanCard, ToolChipRow, type PlanProjection } from './chat_structure';
 

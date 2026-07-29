@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import { describe, it, expect } from "vitest";
-import { commandById } from "../../store";
+import { commandById } from "../store";
 import {
   ENVIRONMENT_NOTE,
   GOAL_HINT,
@@ -22,14 +22,14 @@ import {
   worktreeNotice,
   type JobView,
 } from './home_actions';
-import { MODEL_ID_UNKNOWN, modelSwitchNote, modelId } from "../../shell/ModelChooser";
-import { readSrc } from "../../test_fixtures";
+import { MODEL_ID_UNKNOWN, modelSwitchNote, modelId } from "../shell/ModelChooser";
+import { readSrc } from "../test_fixtures";
 
 const read = (rel: string) => readSrc(__dirname, rel);
-const HOME = read("Home.tsx");
-const COMPOSER = read("HomeComposer.tsx");
-const SIDEBAR = read(join("..", "..", "shell", "SideBar.tsx"));
-const SETTINGS = read(join("..", "Settings.tsx"));
+const HOME = read("home_Home.tsx");
+const COMPOSER = read("home_HomeComposer.tsx");
+const SIDEBAR = read(join("..", "shell", "SideBar.tsx"));
+const SETTINGS = read("Settings.tsx");
 const SES = "ses_test000000000000000000";
 
 describe("A. goals ride the existing composer", () => {
@@ -302,8 +302,8 @@ describe("E. environment and the workspace graph read", () => {
 describe("F. duplicate and mock cleanup", () => {
   it("the three switch_model copies are gone", () => {
     for (const [name, src] of [
-      ["Home.tsx", HOME],
-      ["HomeComposer.tsx", COMPOSER],
+      ["home_Home.tsx", HOME],
+      ["home_HomeComposer.tsx", COMPOSER],
       ["SideBar.tsx", SIDEBAR],
       ["Settings.tsx", SETTINGS],
     ] as const) {
@@ -315,7 +315,7 @@ describe("F. duplicate and mock cleanup", () => {
   it("one chooser component is the single place that choice is presented", () => {
     expect(SIDEBAR).toContain('from "./ModelChooser"');
     expect(SETTINGS).toContain('from "../shell/ModelChooser"');
-    expect(COMPOSER).toContain('from "../../shell/ModelChooser"');
+    expect(COMPOSER).toContain('from "../shell/ModelChooser"');
     expect(SIDEBAR).toContain("<ModelChooser");
     expect(SETTINGS).toContain("<ModelChooser");
   });
@@ -380,7 +380,7 @@ describe("F. a refused command surfaces the refusal, never a success notice", ()
   });
 
   it("the fleet keep-best control, which promised to discard the other branches, is retired", () => {
-    const fleet = read(join("..", "fleet", "FleetView.tsx"));
+    const fleet = read("fleet_FleetView.tsx");
     expect(fleet).not.toContain("branch__keep");
     expect(fleet).not.toContain("keep best");
     expect(fleet).toContain('runCommand("cancel_run"'); // stop is real and stays, through the spine

@@ -10,13 +10,13 @@
   beside the conversation it reports on, and it costs one tab in a switcher that already exists rather
   than a new permanent control.
 */
-import { ContextStack } from "../ContextStack";
-import { Terminal } from "../ide/Terminal";
-import { HunkReview } from "../ide/HunkReview";
-import type { DiffDoc, HunkStatus } from "../ide/types";
-import { Icon } from "../../shell/icons";
+import { ContextStack } from "./ContextStack";
+import { Terminal } from "./ide_Terminal";
+import { HunkReview } from "./ide_HunkReview";
+import type { DiffDoc, HunkStatus } from "./ide_types";
+import { Icon } from "../shell/icons";
 import { Preview } from './home_Preview';
-import { useStore } from "../../store";
+import { useStore } from "../store";
 
 export type ChatPanelKind = "terminal" | "diff" | "preview" | "tools" | "artifacts" | "context";
 

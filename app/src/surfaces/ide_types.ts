@@ -5,7 +5,7 @@
   Kept local to the surface (HARD RULE: no edits to the shared store/wire), parsed defensively
   so a partial host patch never throws. When the mock is the transport, MOCK_DIFF stands in.
 */
-import { TRANSPORT_KIND } from "../../ipc";
+import { TRANSPORT_KIND } from "../ipc";
 
 // One reviewable hunk: a contiguous run of -/+ lines, reviewed as a unit (j/k to move, a/r to act).
 export type HunkStatus = "pending" | "accepted" | "rejected" | "applied";

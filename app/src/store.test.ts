@@ -544,7 +544,8 @@ describe("held acks are never read as done", () => {
     for (const file of files) {
       const src = readFileSync(file, "utf8");
       const dispatches = heldCapable.filter((id) => src.includes(`"${id}"`));
-      if (!dispatches.length || /\/(wire|store|ipc)\.ts$/.test(file)) continue;
+      // wire_types.ts is pure Intent/UiEvent type projection (no dispatch UI).
+      if (!dispatches.length || /\/(wire|wire_types|store|ipc)\.ts$/.test(file)) continue;
       checked++;
       expect(READS_STATE.test(src), `${file} dispatches ${dispatches.join(", ")} without reading the held state`).toBe(
         true,

@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { sent } = vi.hoisted(() => ({ sent: [] as any[] }));
-vi.mock("../../ipc", () => ({
+vi.mock("../ipc", () => ({
   sendIntent: async (i: any) => {
     sent.push(i);
     return { accepted: true, event_seq: 1, message: null };
@@ -46,7 +46,7 @@ import {
   sourceRef,
   symbolOf,
 } from './ide_CodeActions';
-import { commandById } from "../../store";
+import { commandById } from "../store";
 import type { DiffDoc, Hunk } from './ide_types';
 
 const HUNK: Hunk = {
@@ -316,7 +316,7 @@ describe("retired controls stay retired", () => {
   const read = (p: string) => readFileSync(join(__dirname, p), "utf8");
 
   it("no longer dispatches the log-only inline_edit, and no longer advertises fork and try 3", () => {
-    const src = read("CodeActions.tsx");
+    const src = read("ide_CodeActions.tsx");
     expect(src).not.toContain('intent.custom("inline_edit"');
     expect(src).not.toContain('intent.custom("fleet_run"');
     const body = src.slice(src.indexOf("\nimport "));
@@ -324,13 +324,13 @@ describe("retired controls stay retired", () => {
   });
 
   it("lets the keyboard walk the references list, not just the action buttons", () => {
-    const src = read("CodeActions.tsx");
+    const src = read("ide_CodeActions.tsx");
     expect(src).toContain('querySelectorAll<HTMLButtonElement>(".codeactions__btn, .search-hit")');
     expect(src).toContain("if (next >= SEL_ACTIONS.length) setHitSel(next - SEL_ACTIONS.length)");
   });
 
   it("keeps the diff bar at two controls in both phases", () => {
-    const src = read("Editor.tsx");
+    const src = read("ide_Editor.tsx");
     expect(src.match(/<button className="diffbar__btn/g)?.length).toBe(4); // two phases, two each
   });
 });
@@ -360,13 +360,13 @@ describe("the review keys are scoped, and Escape is never destructive", () => {
   });
 
   it("binds the window listener behind that check, not behind a tag name alone", () => {
-    const src = read("HunkReview.tsx");
+    const src = read("ide_HunkReview.tsx");
     expect(src).toContain("reviewKeysActive(!!surface?.contains(document.activeElement)");
     expect(src).not.toContain('el.tagName === "INPUT" || el.tagName === "TEXTAREA"');
   });
 
   it("binds NO bare key to a whole-diff verb, and traps focus with none of them", () => {
-    const src = read("Editor.tsx");
+    const src = read("ide_Editor.tsx");
     expect(src).not.toMatch(/"Escape"[\s\S]{0,120}revert_all/);
     expect(src).not.toContain('runWhole("revert_all")\n');
     expect(src).not.toMatch(/"Tab"/);
@@ -378,12 +378,12 @@ describe("the review keys are scoped, and Escape is never destructive", () => {
   });
 
   it("leaves Tab to the browser everywhere in the region, so focus can get out", () => {
-    expect(read("Editor.tsx")).not.toContain("preventDefault()");
-    expect(read("HunkReview.tsx")).not.toMatch(/case "Tab"/);
+    expect(read("ide_Editor.tsx")).not.toContain("preventDefault()");
+    expect(read("ide_HunkReview.tsx")).not.toMatch(/case "Tab"/);
   });
 
   it("re-audit: every bare key still bound in the region acts on ONE hunk, or on nothing", () => {
-    const src = read("HunkReview.tsx");
+    const src = read("ide_HunkReview.tsx");
     for (const [key, call] of [
       ["a", "act(sel, \"accept\")"],
       ["r", "act(sel, \"reject\")"],
@@ -398,7 +398,7 @@ describe("the editor save is a command, not a private write", () => {
   const read = (p: string) => readFileSync(join(__dirname, p), "utf8");
 
   it("dispatches the catalog command and sends the base_hash the concurrency guard needs", () => {
-    const src = read("Editor.tsx");
+    const src = read("ide_Editor.tsx");
     expect(src).toContain('runCommand("save_file"');
     expect(src).toContain("base_hash: body.hash ?? null");
     expect(src).not.toContain('callConnector("fs", "write_file"');
@@ -407,7 +407,7 @@ describe("the editor save is a command, not a private write", () => {
   });
 
   it("surfaces the host's own reason for a refused or held save", () => {
-    const src = read("Editor.tsx");
+    const src = read("ide_Editor.tsx");
     expect(src).toContain("ack.message ?? `save refused ${openPath}`");
     expect(src).not.toContain("`save failed ${openPath}`");
   });

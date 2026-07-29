@@ -26,14 +26,14 @@
      (`switch_profile`), both custom names with no host arm and no capability behind them.
 */
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { runCommand, useStore } from "../../store";
-import { Icon } from "../../shell/icons";
-import { modelSwitchNote, modelId } from "../../shell/ModelChooser";
-import { Radiate } from "../../shell/Radiate";
-import { branchLabel } from "../../shell/StatusBar";
-import { pickWorkspaceFolder } from "../../shell/onboarding";
-import { useActions } from "../contextstack/state";
-import { runChatAction } from "../chat/actions";
+import { runCommand, useStore } from "../store";
+import { Icon } from "../shell/icons";
+import { modelSwitchNote, modelId } from "../shell/ModelChooser";
+import { Radiate } from "../shell/Radiate";
+import { branchLabel } from "../shell/StatusBar";
+import { pickWorkspaceFolder } from "../shell/onboarding";
+import { useActions } from "./contextstack_state";
+import { runChatAction } from "./chat_actions";
 import {
   GOAL_HINT,
   TRUST_MEANING,

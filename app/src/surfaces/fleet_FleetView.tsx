@@ -12,8 +12,8 @@
   background job, offered in Home's Background rail), not a keep-one-discard-the-rest, so there was
   nothing honest to re-point this at. `stop` stays: cancel_run is real.
 */
-import { noticeFailure, runCommand, useStore, type FleetRun } from "../../store";
-import { Radiate } from "../../shell/Radiate";
+import { noticeFailure, runCommand, useStore, type FleetRun } from "../store";
+import { Radiate } from "../shell/Radiate";
 
 const STATE: Record<FleetRun["state"], { label: string; color: string }> = {
   active: { label: "radiating", color: "var(--light)" },

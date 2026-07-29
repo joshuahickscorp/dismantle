@@ -254,7 +254,7 @@ export type Method = "workspace/create" | "workspace/open" | "workspace/close" |
 
 /**
  * The model policy an agent runs under.
- * 
+ *
  * DEFERRED_MODEL_REQUIRED: this only names a policy; binding a policy to an actual model and honoring `allow_fallback` at inference time is the job of a model-bearing runtime and is not implemented or claimed here.
  */
 export interface ModelPolicy {
@@ -412,7 +412,7 @@ export interface ShellStream {
 
 /**
  * A pointer to a state capsule held by `hide-state`. This is only a reference: it names the capsule and pins its digest and identity binding so a reader can locate and verify the bytes.
- * 
+ *
  * DEFERRED_MODEL_REQUIRED: the live production of capsule bytes from a running engine, and their rebind into a runtime, is not implemented here and cannot be claimed. `hide-state` defines the byte schema; a model-bearing runtime fills it. This struct only carries the address and the integrity pins.
  */
 export interface StateCapsuleRef {
@@ -512,4 +512,3 @@ export interface VerificationRequest {
   request_id: string;
   target?: string | null;
 }
-

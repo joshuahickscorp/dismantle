@@ -18,10 +18,10 @@
                                HomeComposer mic is retired rather than kept as a recorder that
                                discards its own recording.
 */
-import type { BlobRef, IntentAck } from "../../wire";
-import { ackState } from "../../wire";
-import type { RunPhase } from "../../store";
-import type { CommandPlan } from "../contextstack/state";
+import type { BlobRef, IntentAck } from "../wire";
+import { ackState } from "../wire";
+import type { RunPhase } from "../store";
+import type { CommandPlan } from "./contextstack_state";
 
 /* ---- A. Goals ---------------------------------------------------------------------------------
    The durable goal domain (host goal_* over the KV store) is the ONE goal authority (decision

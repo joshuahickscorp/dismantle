@@ -9,7 +9,7 @@ fn json_schema_golden_is_stable() {
 #[test]
 fn typescript_golden_is_stable() {
     let generated = hide_protocol::sdk::ts::protocol_typescript();
-    let golden = include_str!("../generated/protocol.d.ts");
+    let golden = include_str!("../goldens/protocol.d.ts");
     assert_eq!(generated, golden, "generated TypeScript drifted; {REGEN}");
 }
 #[test]
@@ -21,7 +21,7 @@ fn command_catalog_json_golden_is_stable() {
 #[test]
 fn command_typescript_golden_is_stable() {
     let generated = hide_protocol::sdk::command::command_typescript();
-    let golden = include_str!("../generated/commands.d.ts");
+    let golden = include_str!("../goldens/commands.d.ts");
     assert_eq!(generated, golden, "command TypeScript drifted; {REGEN}");
 }
 #[test]

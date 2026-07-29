@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { sent } = vi.hoisted(() => ({ sent: [] as any[] }));
-vi.mock("../../ipc", () => ({
+vi.mock("../ipc", () => ({
   sendIntent: async (i: any) => {
     sent.push(i);
     return { accepted: true, event_seq: 1, message: null };
@@ -15,7 +15,7 @@ vi.mock("../../ipc", () => ({
   TRANSPORT_KIND: "mock",
 }));
 
-import { COMMANDS, useStore, type ToolEvent } from "../../store";
+import { COMMANDS, useStore, type ToolEvent } from "../store";
 import {
   foldProcesses,
   interruptProcess,
@@ -26,7 +26,7 @@ import {
   TerminalStateBar,
 } from './ide_Terminal';
 
-const SRC = readFileSync(join(__dirname, "Terminal.tsx"), "utf8");
+const SRC = readFileSync(join(__dirname, "ide_Terminal.tsx"), "utf8");
 
 const apply = (kind: any, seq = 1) =>
   (useStore.getState().apply as any)({ seq, session_id: "ses_term", kind });

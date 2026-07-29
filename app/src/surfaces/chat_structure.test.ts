@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { sent } = vi.hoisted(() => ({ sent: [] as any[] }));
-vi.mock("../../ipc", () => ({
+vi.mock("../ipc", () => ({
   sendIntent: async (i: any) => {
     sent.push(i);
     return { accepted: true, event_seq: 1, message: null };
@@ -29,7 +29,7 @@ import {
   type PlanProjection,
   type PlanProjectionStep,
 } from './chat_structure';
-import { commandById } from "../../store";
+import { commandById } from "../store";
 
 const SESSION = "ses_plan_test";
 
@@ -257,7 +257,7 @@ describe("DiffChipRow keeps exactly one control", () => {
   });
 
   it("has no accept/reject handler left in the source", () => {
-    const s = src("structure.tsx");
+    const s = src("chat_structure.tsx");
     expect(s).not.toContain("onAccept");
     expect(s).not.toContain("onReject");
   });
@@ -265,7 +265,7 @@ describe("DiffChipRow keeps exactly one control", () => {
 
 describe("the inline gate uses the ONE store handler pair", () => {
   it("Conversation takes approveGate and denyGate from the store, not a second inline copy", () => {
-    const s = src("Conversation.tsx");
+    const s = src("chat_Conversation.tsx");
     expect(s).toContain("useStore((s) => s.approveGate)");
     expect(s).toContain("useStore((s) => s.denyGate)");
     expect(s).not.toContain("approve_gate");
@@ -274,7 +274,7 @@ describe("the inline gate uses the ONE store handler pair", () => {
 });
 
 describe("the per-step menu keeps its focus contract", () => {
-  const s = src("structure.tsx");
+  const s = src("chat_structure.tsx");
 
   it("moves focus into the menu on open, so its Escape handler can fire", () => {
     expect(s).toContain('querySelector<HTMLButtonElement>(".hc__addmenu__item:not([disabled])")?.focus()');

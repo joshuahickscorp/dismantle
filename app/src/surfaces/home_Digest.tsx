@@ -6,7 +6,7 @@
   heatmap window (7d / 30d / all), it is not a spend meter. One volume, generous air, no color.
 */
 import { useMemo, useState } from "react";
-import type { HomeDigest } from "../../store";
+import type { HomeDigest } from "../store";
 import { fmtCount, fmtDays, fmtHour, heatColumns } from './home_metrics';
 
 type Range = "all" | "30d" | "7d";

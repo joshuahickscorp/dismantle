@@ -173,7 +173,7 @@ fn schema_migrations_cover_new_surfaces() {
 fn sdk_types_cover_required_domains() {
     let ts = generate_all()
         .into_iter()
-        .find(|a| a.relative_path == "generated/sdk_types.d.ts")
+        .find(|a| a.relative_path == "goldens/sdk_types.d.ts")
         .expect("sdk_types")
         .contents;
     for needle in [

@@ -13,8 +13,8 @@
      command a control means without a transport; runPlan is the one dispatch through the spine.
 */
 import { useCallback, useState } from "react";
-import { runCommand, type CommandArgs, type ContextManifest } from "../../store";
-import { heldNote } from "../../wire";
+import { runCommand, type CommandArgs, type ContextManifest } from "../store";
+import { heldNote } from "../wire";
 
 export type SteerKind = "pin" | "mute" | "evict";
 

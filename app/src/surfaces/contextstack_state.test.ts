@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { sent } = vi.hoisted(() => ({ sent: [] as any[] }));
-vi.mock("../../ipc", () => ({
+vi.mock("../ipc", () => ({
   sendIntent: async (i: any) => {
     sent.push(i);
     return { accepted: true, event_seq: 1, message: null };
@@ -13,7 +13,7 @@ vi.mock("../../ipc", () => ({
   TRANSPORT_KIND: "mock",
 }));
 
-import { COMMANDS } from "../../store";
+import { COMMANDS } from "../store";
 import {
   asReceipt,
   excludedSources,
@@ -320,27 +320,27 @@ describe("dispatch goes through the one spine", () => {
 });
 
 describe("the panel is MOUNTED", () => {
-  const panel = readFileSync(join(__dirname, "../home/ChatPanel.tsx"), "utf8");
+  const panel = readFileSync(join(__dirname, "./home_ChatPanel.tsx"), "utf8");
 
   it("renders as a face of the conversation side panel", () => {
-    expect(panel).toContain('import { ContextStack } from "../ContextStack"');
+    expect(panel).toContain('import { ContextStack } from "./ContextStack"');
     expect(panel).toContain('{panel === "context" ? <ContextStack /> : null}');
   });
 
   it("the panel bar and the palette both reach that face", () => {
-    expect(readFileSync(join(__dirname, "../home/Home.tsx"), "utf8")).toContain('kind: "context"');
-    expect(readFileSync(join(__dirname, "../../store.ts"), "utf8")).toContain('id: "panel.context"');
-    expect(readFileSync(join(__dirname, "../../App.tsx"), "utf8")).toContain('"panel.context":');
+    expect(readFileSync(join(__dirname, "./home_Home.tsx"), "utf8")).toContain('kind: "context"');
+    expect(readFileSync(join(__dirname, "../store.ts"), "utf8")).toContain('id: "panel.context"');
+    expect(readFileSync(join(__dirname, "../App.tsx"), "utf8")).toContain('"panel.context":');
   });
 
   it("reads the host's published manifest, never the connector write route", () => {
-    const src = readFileSync(join(__dirname, "../ContextStack.tsx"), "utf8");
+    const src = readFileSync(join(__dirname, "./ContextStack.tsx"), "utf8");
     expect(src).not.toContain("callConnector");
   });
 });
 
 describe("retired controls are gone", () => {
-  const src = readFileSync(join(__dirname, "../ContextStack.tsx"), "utf8");
+  const src = readFileSync(join(__dirname, "./ContextStack.tsx"), "utf8");
   const code = src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 
   it("drops the fake Skills store: no save-skill button, no hardcoded skill rows", () => {

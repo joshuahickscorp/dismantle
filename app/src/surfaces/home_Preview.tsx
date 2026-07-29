@@ -4,7 +4,7 @@
   no chrome beyond what you need to see the work. Empty until you point it at a server.
 */
 import { useState } from "react";
-import { Icon } from "../../shell/icons";
+import { Icon } from "../shell/icons";
 
 // Prepend a scheme if the user typed a bare host:port. Local dev servers only, so http is the default.
 function normalize(raw: string): string {

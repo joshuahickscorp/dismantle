@@ -79,4 +79,3 @@ Generated from `hawking-adapters` — do not hand-edit.
 - mamba2 not in shipping load_engine
 - not PRODUCTION
 - family spans RWKV (executes) and Mamba2 (declared pack only)
-

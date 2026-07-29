@@ -29,9 +29,9 @@
                            hide-protocol records a protected scope), so no control claims one.
 */
 import { useEffect, useRef, useState } from "react";
-import { runCommand, useStore } from "../../store";
-import { ackState, heldNote, type IntentAck } from "../../wire";
-import { HitRow, runHitAction, searchAll, type SearchHit } from "../../ui";
+import { runCommand, useStore } from "../store";
+import { ackState, heldNote, type IntentAck } from "../wire";
+import { HitRow, runHitAction, searchAll, type SearchHit } from "../ui";
 
 /* ---- The stable source reference --------------------------------------------------------------- */
 

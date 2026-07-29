@@ -13,8 +13,8 @@
   labelled fallback when the index answers nothing.
 */
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent } from "react";
-import { callConnector } from "../../ipc";
-import { flattenVisible, treeKeyTarget, type TreeKey } from "../../shell/a11y";
+import { callConnector } from "../ipc";
+import { flattenVisible, treeKeyTarget, type TreeKey } from "../shell/a11y";
 import {
   HIT_ACTION_HINT,
   HitRow,
@@ -26,8 +26,8 @@ import {
   setSearchOrigin,
   type HitAction,
   type SearchHit,
-} from "../../ui";
-import { runCommand, useStore } from "../../store";
+} from "../ui";
+import { runCommand, useStore } from "../store";
 import { MOCK_TREE, mockOnly, type FileNode } from './ide_types';
 
 const TREE_KEYS = new Set(["ArrowDown", "ArrowUp", "ArrowRight", "ArrowLeft", "Home", "End"]);

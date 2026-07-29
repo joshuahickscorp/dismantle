@@ -9,16 +9,16 @@
   context.
 */
 import { useEffect, useMemo, useState } from "react";
-import { TRANSPORT_KIND } from "../../ipc";
-import { boundShortcuts, hasSessionActivity, noticeFailure, runCommand, useStore } from "../../store";
-import { keyLabel } from "../chat/actions";
-import { Icon, type IconName } from "../../shell/icons";
-import { LogoH } from "../../shell/Mark";
-import { readDiagnostics } from "../../shell/StatusBar";
-import { FleetView } from "../fleet/FleetView";
-import { Conversation } from "../chat/Conversation";
-import { useActions } from "../contextstack/state";
-import { MOCK_DIFF, applyHunkStatus, parseDiff, type DiffDoc, type HunkStatus } from "../ide/types";
+import { TRANSPORT_KIND } from "../ipc";
+import { boundShortcuts, hasSessionActivity, noticeFailure, runCommand, useStore } from "../store";
+import { keyLabel } from "./chat_actions";
+import { Icon, type IconName } from "../shell/icons";
+import { LogoH } from "../shell/Mark";
+import { readDiagnostics } from "../shell/StatusBar";
+import { FleetView } from "./fleet_FleetView";
+import { Conversation } from "./chat_Conversation";
+import { useActions } from "./contextstack_state";
+import { MOCK_DIFF, applyHunkStatus, parseDiff, type DiffDoc, type HunkStatus } from "./ide_types";
 import { ChatPanel, type ChatPanelKind } from './home_ChatPanel';
 import { Digest } from './home_Digest';
 import { HomeComposer, type PermMode } from './home_HomeComposer';

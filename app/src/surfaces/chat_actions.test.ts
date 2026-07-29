@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { sent } = vi.hoisted(() => ({ sent: [] as any[] }));
-vi.mock("../../ipc", () => ({
+vi.mock("../ipc", () => ({
   sendIntent: async (i: any) => {
     sent.push(i);
     return { accepted: true, event_seq: 1, message: null };
@@ -13,7 +13,7 @@ vi.mock("../../ipc", () => ({
   TRANSPORT_KIND: "mock",
 }));
 
-import { COMMANDS, useStore } from "../../store";
+import { COMMANDS, useStore } from "../store";
 import {
   actionBlockedReason,
   actionEnabled,
@@ -198,10 +198,10 @@ describe("availability", () => {
 
 describe("retired controls are gone", () => {
   const read = (p: string) => readFileSync(join(__dirname, p), "utf8");
-  const chat = read("../Chat.tsx");
-  const steerbar = read("./SteerBar.tsx");
-  const pane = read("../../shell/ChatPane.tsx");
-  const float = read("../../shell/FloatingChat.tsx");
+  const chat = read("Chat.tsx");
+  const steerbar = read("./chat_SteerBar.tsx");
+  const pane = read("../shell/ChatPane.tsx");
+  const float = read("../shell/FloatingChat.tsx");
   const code = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 
   it("drops the dead Attach button and the mock voice mic from the chat composer", () => {

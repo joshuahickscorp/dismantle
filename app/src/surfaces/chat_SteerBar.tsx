@@ -6,7 +6,7 @@
   from steer.redirect to the composer), so the second input is retired: one text box, one meaning.
   What stays is the honest run state plus the lifecycle verbs that have no other home here.
 */
-import type { RunPhase } from "../../store";
+import type { RunPhase } from "../store";
 import { ctlStyle } from './chat_parts';
 
 export function SteerBar({

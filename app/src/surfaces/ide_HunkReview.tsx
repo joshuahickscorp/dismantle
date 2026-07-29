@@ -45,8 +45,8 @@
                                              was one action under two ids.
 */
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent } from "react";
-import { runCommand, useStore } from "../../store";
-import { ackState, heldNote, type IntentAck } from "../../wire";
+import { runCommand, useStore } from "../store";
+import { ackState, heldNote, type IntentAck } from "../wire";
 import type { DiffDoc, Hunk, HunkStatus } from './ide_types';
 
 export type HunkAction = "accept" | "reject";

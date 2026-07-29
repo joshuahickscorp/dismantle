@@ -29,9 +29,9 @@
   arm (spawn_merge_side_chat) with no dispatch site anywhere in the app, meaning a side chat could
   be started and never folded back.
 */
-import { runCommand, useStore } from "../../store";
-import type { RunPhase } from "../../store";
-import type { IntentAck } from "../../wire";
+import { runCommand, useStore } from "../store";
+import type { RunPhase } from "../store";
+import type { IntentAck } from "../wire";
 
 /** Phases where a turn is in flight, so the composer steers instead of starting. */
 const STEERABLE = new Set<RunPhase>(["planning", "executing", "paused", "awaiting"]);

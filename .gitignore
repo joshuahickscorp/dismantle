@@ -126,3 +126,4 @@ docs/plans/hide_build_handoff_*.md
 
 # sovereignty spine bytecode
 tools/sovereignty/__pycache__/
+.serena/

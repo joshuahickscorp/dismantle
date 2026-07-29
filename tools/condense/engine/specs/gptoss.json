@@ -67,11 +67,19 @@
   "notes": "gravity_frontier_g4_controller retired; engine owns lease/checkpoint/resume. Lane F1 removed archive bodies; reproduction/reopen live on this spec.",
   "metadata": {
     "retired_controllers": [
+      "doctor_campaign_supervisor",
+      "doctor_v5_telegram_rung_notifier",
+      "gptoss_gravity_run",
       "gravity_frontier_g4_controller",
-      "gptoss_gravity_run"
+      "source_release_readiness",
+      "vulture_harvest"
     ],
     "retired_controllers_deleted": [
-      "gptoss_gravity_run"
+      "doctor_campaign_supervisor",
+      "doctor_v5_telegram_rung_notifier",
+      "gptoss_gravity_run",
+      "source_release_readiness",
+      "vulture_harvest"
     ],
     "controllers_restored_as_live": [
       "gptoss_block",

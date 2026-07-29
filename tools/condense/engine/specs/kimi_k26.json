@@ -76,22 +76,22 @@
       ]
     }
   ],
-  "notes": "Bespoke controllers deleted (git history + engine spec). Crash/resume and lease semantics live in engine.lease + engine.checkpoint. Lane F1 removed archive bodies; reproduction/reopen live on this spec.",
+  "notes": "Kimi K2.6 sealed DOES-NOT-FIT. Controllers deleted (lane H1); specification, fixture, receipt pointer, reproduction and reopen retained. Sealing invariants live in engine.seal_integrity.",
   "metadata": {
     "retired_controllers": [
+      "kimi_k26_download_supervisor",
       "kimi_k26_phase2_recovery",
       "kimi_k26_phase2_release",
-      "kimi_k26_download_supervisor",
       "kimi_k26_release_cycle",
       "kimi_k26_stale_download_cleanup"
     ],
-    "retired_controllers_deleted": [],
-    "controllers_restored_as_live": [
+    "retired_controllers_deleted": [
       "kimi_k26_download_supervisor",
       "kimi_k26_phase2_recovery",
       "kimi_k26_phase2_release",
       "kimi_k26_release_cycle",
       "kimi_k26_stale_download_cleanup"
-    ]
+    ],
+    "controllers_restored_as_live": []
   }
 }

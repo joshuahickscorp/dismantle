@@ -1262,3 +1262,99 @@ git show 655f77c5d927c203aa5c5a85b0e448913d22a88a:<path>
 `tools/strand/archive/strand_eval_scripts_dup/` and were not referenced by any
 live module, spec, or shell entrypoint after the unstub. Live eval entrypoints
 remain `tools/strand/tools/strand_eval/cli.py` and `tools/strand/scripts/strand_eval/cli.py`.
+
+
+## H1 — campaign controller → engine specs (2026-07-29)
+Lane H1 converted remaining campaign controller shells into engine specs and **deleted** the controller bodies (not archived). **85 modules / 66,442 lines** eliminated. Each deletion keeps specification, fixture, receipt pointer, reproduction command and reopen condition. Restore with `git show HEAD~0:tools/condense/<module>.py` from the pre-H1 tree (or the parent of the H1 commit).
+
+New specs: `succession`, `eco`, `mechanics`, `tg`. Updated: `kimi_k26`, `glm52`, `gravity_frontier`, `qwen`, `gptoss`. Engine operator added: `host_metrics.parse_swap_used` (inlined former emergency-controller helper used by `glm52_source_fetch`).
+
+| path | lines | replaced_by_spec |
+|---|---:|---|
+| `tools/condense/kimi_k26_phase2_recovery.py` | 3420 | `engine/specs/kimi_k26.json` |
+| `tools/condense/glm52_worker.py` | 3307 | `engine/specs/glm52.json` |
+| `tools/condense/glm52_window_execution.py` | 3137 | `engine/specs/glm52.json` |
+| `tools/condense/kimi_k26_phase2_release.py` | 3109 | `engine/specs/kimi_k26.json` |
+| `tools/condense/glm52_notifications.py` | 2982 | `engine/specs/glm52.json` |
+| `tools/condense/kimi_k26_download_supervisor.py` | 2771 | `engine/specs/kimi_k26.json` |
+| `tools/condense/glm52_basis_pilot.py` | 2339 | `engine/specs/glm52.json` |
+| `tools/condense/kimi_k26_release_cycle.py` | 2270 | `engine/specs/kimi_k26.json` |
+| `tools/condense/glm52_xet_window_fetch.py` | 2141 | `engine/specs/glm52.json` |
+| `tools/condense/emergency_detached_campaign.py` | 1820 | `engine/specs/gravity_frontier.json` |
+| `tools/condense/glm52_xet_live_driver.py` | 1657 | `engine/specs/glm52.json` |
+| `tools/condense/glm52_route_population_census.py` | 1631 | `engine/specs/glm52.json` |
+| `tools/condense/mech_run_all.py` | 1418 | `engine/specs/mechanics.json` |
+| `tools/condense/vulture_harvest.py` | 1329 | `engine/specs/gptoss.json` |
+| `tools/condense/glm52_campaign_contract.py` | 1239 | `engine/specs/glm52.json` |
+| `tools/condense/glm52_pilot_source_release.py` | 1211 | `engine/specs/glm52.json` |
+| `tools/condense/kimi_k26_stale_download_cleanup.py` | 1111 | `engine/specs/kimi_k26.json` |
+| `tools/condense/doctor_v5_telegram_rung_notifier.py` | 1085 | `engine/specs/gptoss.json` |
+| `tools/condense/succ_gravity.py` | 1073 | `engine/specs/succession.json` |
+| `tools/condense/succ_press.py` | 1011 | `engine/specs/succession.json` |
+| `tools/condense/gravity_metal_lab_a.py` | 934 | `engine/specs/gravity_frontier.json` |
+| `tools/condense/mech_measure.py` | 928 | `engine/specs/mechanics.json` |
+| `tools/condense/succ_gc.py` | 895 | `engine/specs/succession.json` |
+| `tools/condense/seal_120b_conclusion.py` | 857 | `engine/specs/gravity_frontier.json` |
+| `tools/condense/overnight_supervisor.py` | 777 | `engine/specs/gravity_frontier.json` |
+| `tools/condense/succ_twin.py` | 769 | `engine/specs/succession.json` |
+| `tools/condense/succ_transition.py` | 711 | `engine/specs/succession.json` |
+| `tools/condense/succ_watchdog.py` | 698 | `engine/specs/succession.json` |
+| `tools/condense/glm52_schedule_freeze.py` | 692 | `engine/specs/glm52.json` |
+| `tools/condense/gravity_global_allocator.py` | 688 | `engine/specs/gravity_frontier.json` |
+| `tools/condense/source_release_readiness.py` | 644 | `engine/specs/gptoss.json` |
+| `tools/condense/qwen_real_forward.py` | 618 | `engine/specs/qwen.json` |
+| `tools/condense/succ_telegram.py` | 618 | `engine/specs/succession.json` |
+| `tools/condense/eco_planner.py` | 614 | `engine/specs/eco.json` |
+| `tools/condense/succ_gravity_policy.py` | 558 | `engine/specs/succession.json` |
+| `tools/condense/qwen3_moe_adapter.py` | 545 | `engine/specs/qwen.json` |
+| `tools/condense/glm52_external_baselines.py` | 534 | `engine/specs/glm52.json` |
+| `tools/condense/qwen_correction_wave.py` | 533 | `engine/specs/qwen.json` |
+| `tools/condense/succ_admission.py` | 527 | `engine/specs/succession.json` |
+| `tools/condense/test_activation_aware_roundtrip.py` | 525 | `engine/specs/glm52.json` |
+| `tools/condense/glm52_resource_policy.py` | 494 | `engine/specs/glm52.json` |
+| `tools/condense/gravity_frontier_correction_wave.py` | 483 | `engine/specs/gravity_frontier.json` |
+| `tools/condense/succ_cli.py` | 482 | `engine/specs/succession.json` |
+| `tools/condense/gravity_execution_adapter.py` | 448 | `engine/specs/gravity_frontier.json` |
+| `tools/condense/eco_import.py` | 401 | `engine/specs/eco.json` |
+| `tools/condense/succ_harvest.py` | 386 | `engine/specs/succession.json` |
+| `tools/condense/succ_frontier.py` | 381 | `engine/specs/succession.json` |
+| `tools/condense/glm52_compact_mla_fixture.py` | 378 | `engine/specs/glm52.json` |
+| `tools/condense/studio_manifest.py` | 375 | `engine/specs/glm52.json` |
+| `tools/condense/glm52_activation_aware_assemble.py` | 368 | `engine/specs/glm52.json` |
+| `tools/condense/eco_activation.py` | 362 | `engine/specs/eco.json` |
+| `tools/condense/glm52_capability_gate.py` | 361 | `engine/specs/glm52.json` |
+| `tools/condense/glm52_runtime_parity_gate.py` | 347 | `engine/specs/glm52.json` |
+| `tools/condense/gravity_frontier_g4_controller.py` | 340 | `engine/specs/gravity_frontier.json` |
+| `tools/condense/tg_k11_synthetic_schedule.py` | 311 | `engine/specs/tg.json` |
+| `tools/condense/succ_gravity_receipts.py` | 308 | `engine/specs/succession.json` |
+| `tools/condense/eco_pipeline.py` | 299 | `engine/specs/eco.json` |
+| `tools/condense/succ_queue.py` | 298 | `engine/specs/succession.json` |
+| `tools/condense/glm52_long_context_gate.py` | 292 | `engine/specs/glm52.json` |
+| `tools/condense/doctor_campaign_supervisor.py` | 289 | `engine/specs/gravity_frontier.json` |
+| `tools/condense/glm52_runtime_speed_gate.py` | 286 | `engine/specs/glm52.json` |
+| `tools/condense/tg_active_byte_budget.py` | 281 | `engine/specs/tg.json` |
+| `tools/condense/eco_passport.py` | 278 | `engine/specs/eco.json` |
+| `tools/condense/succ_engine.py` | 257 | `engine/specs/succession.json` |
+| `tools/condense/glm52_gravity_fixture.py` | 241 | `engine/specs/glm52.json` |
+| `tools/condense/succ_watch.py` | 241 | `engine/specs/succession.json` |
+| `tools/condense/eco_admission.py` | 237 | `engine/specs/eco.json` |
+| `tools/condense/glm52_activation_aware_source.py` | 232 | `engine/specs/glm52.json` |
+| `tools/condense/succ_audit.py` | 232 | `engine/specs/succession.json` |
+| `tools/condense/eco_status.py` | 231 | `engine/specs/eco.json` |
+| `tools/condense/succ_retire.py` | 231 | `engine/specs/succession.json` |
+| `tools/condense/succ_calibrate.py` | 229 | `engine/specs/succession.json` |
+| `tools/condense/eco_cli.py` | 227 | `engine/specs/eco.json` |
+| `tools/condense/tg_k11_reconcile.py` | 226 | `engine/specs/tg.json` |
+| `tools/condense/succ_state.py` | 222 | `engine/specs/succession.json` |
+| `tools/condense/gravity_forge_run.py` | 211 | `engine/specs/gravity_frontier.json` |
+| `tools/condense/glm52_gravity_source.py` | 190 | `engine/specs/glm52.json` |
+| `tools/condense/glm52_rehydrate_window.py` | 190 | `engine/specs/glm52.json` |
+| `tools/condense/gravity_llama_reference.py` | 187 | `engine/specs/gravity_frontier.json` |
+| `tools/condense/qwen_bpw_budget.py` | 186 | `engine/specs/qwen.json` |
+| `tools/condense/succ_events.py` | 186 | `engine/specs/succession.json` |
+| `tools/condense/glm52_composition_gate.py` | 165 | `engine/specs/glm52.json` |
+| `tools/condense/size_frontier.py` | 132 | `engine/specs/glm52.json` |
+| `tools/condense/glm52_flagship_oracle.py` | 118 | `engine/specs/glm52.json` |
+| `tools/condense/qwen_download_worker.py` | 97 | `engine/specs/qwen.json` |
+
+**H1 summary:** eliminated 66,442 lines across 85 modules; relocated 0; non-engine modules 111,424 → under 45k target.

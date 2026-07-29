@@ -1094,6 +1094,14 @@ def main(argv: list[str] | None = None) -> int:
     )
     fn_out.write_text(functions_json + "\n", encoding="utf-8")
     print(f"wrote {fn_out} ({fn_out.stat().st_size} bytes)", flush=True)
+
+    # The before/after diff control reads a payload with the same `levels` shape as the one
+    # inlined above. Without emitting it standalone there is nothing for a later rung's
+    # viewer to load, so the comparison the campaign grades rungs by could not be run.
+    payload_out = out.with_name("HAWKING_GRAPH_PAYLOAD.json")
+    payload_out.write_text(payload_json + "\n", encoding="utf-8")
+    print(f"wrote {payload_out} ({payload_out.stat().st_size} bytes)"
+          f" -- load this in a later viewer's before/after diff", flush=True)
     return 0
 
 

@@ -1,0 +1,20 @@
+{
+  "schema": "hawking.lab.experiment.v1",
+  "id": "hawking_after_ema",
+  "title": "training:hawking_after_ema.sh",
+  "artifact_dir": "artifacts/runs/hawking_after_ema",
+  "pause_flag": "artifacts/runs/PAUSE",
+  "resume_flag": "artifacts/runs/RESUME",
+  "meta": {
+    "source_entrypoint": "tools/training/hawking_after_ema.sh",
+    "framework_retired": "training_shell_harness"
+  },
+  "stages": [
+    {
+      "id": "body",
+      "shell": "if [ -n \"${LAB_HARNESS_ARGS:-}\" ]; then eval \"bash tools/training/archive/hawking_after_ema.sh $LAB_HARNESS_ARGS\"; else bash tools/training/archive/hawking_after_ema.sh; fi",
+      "on_fail": "abort",
+      "skip_if_done": false
+    }
+  ]
+}

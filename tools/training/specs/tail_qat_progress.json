@@ -1,0 +1,20 @@
+{
+  "schema": "hawking.lab.experiment.v1",
+  "id": "tail_qat_progress",
+  "title": "training:tail_qat_progress.sh",
+  "artifact_dir": "artifacts/runs/tail_qat_progress",
+  "pause_flag": "artifacts/runs/PAUSE",
+  "resume_flag": "artifacts/runs/RESUME",
+  "meta": {
+    "source_entrypoint": "tools/training/tail_qat_progress.sh",
+    "framework_retired": "training_shell_harness"
+  },
+  "stages": [
+    {
+      "id": "body",
+      "shell": "if [ -n \"${LAB_HARNESS_ARGS:-}\" ]; then eval \"bash tools/training/archive/tail_qat_progress.sh $LAB_HARNESS_ARGS\"; else bash tools/training/archive/tail_qat_progress.sh; fi",
+      "on_fail": "abort",
+      "skip_if_done": false
+    }
+  ]
+}

@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
-# Resume a paused pipeline. See tools/bench/pause_bench.sh.
+# Thin laboratory-harness front-end. Body: tools/bench/archive/resume_bench.sh
+# Spec: tools/bench/specs/resume_bench.json
 set -euo pipefail
-cd "$(dirname "$0")/../.."
-touch artifacts/runs/RESUME
-echo "resume signal sent."
-echo "(pipeline checks every 10s; will clear PAUSE + RESUME and continue.)"
+ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+export LAB_HARNESS_ARGS="${LAB_HARNESS_ARGS-$*}"
+export PYTHONPATH="$ROOT/tools/foundry${PYTHONPATH:+:$PYTHONPATH}"
+# Preserve pause/resume lease paths used by historical pipelines.
+mkdir -p "$ROOT/artifacts/runs"
+exec python3.12 -m lab_harness run "$ROOT/tools/bench/specs/resume_bench.json"

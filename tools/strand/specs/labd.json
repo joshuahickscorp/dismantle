@@ -1,0 +1,20 @@
+{
+  "schema": "hawking.lab.experiment.v1",
+  "id": "labd",
+  "title": "strand:labd.sh",
+  "artifact_dir": "artifacts/runs/labd",
+  "pause_flag": "artifacts/runs/PAUSE",
+  "resume_flag": "artifacts/runs/RESUME",
+  "meta": {
+    "source_entrypoint": "tools/strand/scripts/labd.sh",
+    "framework_retired": "strand_shell_harness"
+  },
+  "stages": [
+    {
+      "id": "body",
+      "shell": "if [ -n \"${LAB_HARNESS_ARGS:-}\" ]; then eval \"bash tools/strand/archive/labd.sh $LAB_HARNESS_ARGS\"; else bash tools/strand/archive/labd.sh; fi",
+      "on_fail": "abort",
+      "skip_if_done": false
+    }
+  ]
+}

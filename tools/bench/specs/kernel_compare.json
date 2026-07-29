@@ -1,0 +1,20 @@
+{
+  "schema": "hawking.lab.experiment.v1",
+  "id": "kernel_compare",
+  "title": "bench:kernel_compare.sh",
+  "artifact_dir": "artifacts/runs/kernel_compare",
+  "pause_flag": "artifacts/runs/PAUSE",
+  "resume_flag": "artifacts/runs/RESUME",
+  "meta": {
+    "source_entrypoint": "tools/bench/kernel_compare.sh",
+    "framework_retired": "bench_shell_harness"
+  },
+  "stages": [
+    {
+      "id": "body",
+      "shell": "if [ -n \"${LAB_HARNESS_ARGS:-}\" ]; then eval \"bash tools/bench/archive/kernel_compare.sh $LAB_HARNESS_ARGS\"; else bash tools/bench/archive/kernel_compare.sh; fi",
+      "on_fail": "abort",
+      "skip_if_done": false
+    }
+  ]
+}

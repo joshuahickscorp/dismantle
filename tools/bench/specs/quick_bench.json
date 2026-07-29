@@ -1,0 +1,20 @@
+{
+  "schema": "hawking.lab.experiment.v1",
+  "id": "quick_bench",
+  "title": "bench:quick_bench.sh",
+  "artifact_dir": "artifacts/runs/quick_bench",
+  "pause_flag": "artifacts/runs/PAUSE",
+  "resume_flag": "artifacts/runs/RESUME",
+  "meta": {
+    "source_entrypoint": "tools/bench/quick_bench.sh",
+    "framework_retired": "bench_shell_harness"
+  },
+  "stages": [
+    {
+      "id": "body",
+      "shell": "if [ -n \"${LAB_HARNESS_ARGS:-}\" ]; then eval \"bash tools/bench/archive/quick_bench.sh $LAB_HARNESS_ARGS\"; else bash tools/bench/archive/quick_bench.sh; fi",
+      "on_fail": "abort",
+      "skip_if_done": false
+    }
+  ]
+}

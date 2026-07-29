@@ -1191,7 +1191,7 @@
     {
       "cases": 6,
       "file": "crates/hawking-core/tests/phase1_kernel_parity.rs",
-      "ignored": 2,
+      "ignored": 0,
       "lang": "rust"
     },
     {
@@ -1203,7 +1203,7 @@
     {
       "cases": 6,
       "file": "crates/hawking-core/tests/tq_trellis_parity.rs",
-      "ignored": 3,
+      "ignored": 1,
       "lang": "rust"
     },
     {
@@ -2088,7 +2088,7 @@
     {
       "cases": 3,
       "file": "crates/hawking-core/tests/eagle5_trained_head_load.rs",
-      "ignored": 4,
+      "ignored": 3,
       "lang": "rust"
     },
     {
@@ -2154,7 +2154,7 @@
     {
       "cases": 3,
       "file": "crates/hawking-core/tests/prefill_slot_into_multiseq_parity.rs",
-      "ignored": 4,
+      "ignored": 3,
       "lang": "rust"
     },
     {
@@ -2184,19 +2184,19 @@
     {
       "cases": 3,
       "file": "crates/hawking-core/tests/rwkv7_tq_bench.rs",
-      "ignored": 4,
-      "lang": "rust"
-    },
-    {
-      "cases": 3,
-      "file": "crates/hawking-core/tests/rwkv7_tq_loader.rs",
       "ignored": 3,
       "lang": "rust"
     },
     {
       "cases": 3,
+      "file": "crates/hawking-core/tests/rwkv7_tq_loader.rs",
+      "ignored": 2,
+      "lang": "rust"
+    },
+    {
+      "cases": 3,
       "file": "crates/hawking-core/tests/rwkv7_tq_parity.rs",
-      "ignored": 4,
+      "ignored": 3,
       "lang": "rust"
     },
     {
@@ -2616,7 +2616,7 @@
     {
       "cases": 2,
       "file": "crates/hawking-core/tests/eagle5_forward_parity.rs",
-      "ignored": 3,
+      "ignored": 2,
       "lang": "rust"
     },
     {
@@ -2652,7 +2652,7 @@
     {
       "cases": 2,
       "file": "crates/hawking-core/tests/multiseq_q4k_lmhead_parity.rs",
-      "ignored": 3,
+      "ignored": 2,
       "lang": "rust"
     },
     {
@@ -2688,7 +2688,7 @@
     {
       "cases": 2,
       "file": "crates/hawking-core/tests/qkv_concurrent_parity.rs",
-      "ignored": 3,
+      "ignored": 2,
       "lang": "rust"
     },
     {
@@ -2718,7 +2718,7 @@
     {
       "cases": 2,
       "file": "crates/hawking-core/tests/rwkv7_prefill_slot_multiseq_parity.rs",
-      "ignored": 3,
+      "ignored": 2,
       "lang": "rust"
     },
     {
@@ -2790,7 +2790,7 @@
     {
       "cases": 2,
       "file": "crates/hawking-core/tests/w4a8_qwen3b_quality_gate.rs",
-      "ignored": 3,
+      "ignored": 2,
       "lang": "rust"
     },
     {
@@ -3176,7 +3176,7 @@
     {
       "cases": 1,
       "file": "crates/hawking-core/tests/multiseq_aggregate_bench.rs",
-      "ignored": 2,
+      "ignored": 1,
       "lang": "rust"
     },
     {
@@ -3188,7 +3188,7 @@
     {
       "cases": 1,
       "file": "crates/hawking-core/tests/multiseq_single_tcb_tail_parity.rs",
-      "ignored": 2,
+      "ignored": 1,
       "lang": "rust"
     },
     {
@@ -3224,7 +3224,7 @@
     {
       "cases": 1,
       "file": "crates/hawking-core/tests/q3k_bytecut_bench.rs",
-      "ignored": 2,
+      "ignored": 1,
       "lang": "rust"
     },
     {
@@ -3248,7 +3248,7 @@
     {
       "cases": 1,
       "file": "crates/hawking-core/tests/q4k_predec_f16s_bench.rs",
-      "ignored": 2,
+      "ignored": 1,
       "lang": "rust"
     },
     {
@@ -3290,7 +3290,7 @@
     {
       "cases": 1,
       "file": "crates/hawking-core/tests/qwen_tq_serve_parity.rs",
-      "ignored": 2,
+      "ignored": 1,
       "lang": "rust"
     },
     {
@@ -3362,13 +3362,13 @@
     {
       "cases": 1,
       "file": "crates/hawking-core/tests/w4a8_activation_distribution.rs",
-      "ignored": 2,
+      "ignored": 1,
       "lang": "rust"
     },
     {
       "cases": 1,
       "file": "crates/hawking-core/tests/w4a8_per_channel_calibrate.rs",
-      "ignored": 2,
+      "ignored": 1,
       "lang": "rust"
     },
     {
@@ -3584,9 +3584,9 @@
       "skipped_markers": 0
     }
   ],
-  "commit": "9d2fcf5f070ec722ac96faafc3c203d4ebcf4b2e",
+  "commit": "32a1bb0d0f723bc06f73d50538353f4df9c1bd2f",
   "files": 578,
-  "ignored_rust": 76,
+  "ignored_rust": 55,
   "logical_cases": 3891,
   "parametrised_expansion": 693,
   "schema": "hawking.logical_test_inventory.v1",

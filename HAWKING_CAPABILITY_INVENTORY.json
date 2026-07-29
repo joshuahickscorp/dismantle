@@ -1,7 +1,7 @@
 {
-  "commit": "9d2fcf5f070ec722ac96faafc3c203d4ebcf4b2e",
+  "commit": "32a1bb0d0f723bc06f73d50538353f4df9c1bd2f",
   "counts": {
-    "python_entrypoints": 400,
+    "python_entrypoints": 401,
     "rust_binaries": 19,
     "shell_entrypoints": 266
   },
@@ -291,6 +291,7 @@
     "tools/foundry/tests/test_subbit_closure.py",
     "tools/glm52_gravity.py",
     "tools/headbank/pull.py",
+    "tools/loc/hawking_inventory.py",
     "tools/loc/hawking_loc.py",
     "tools/odyssey/apparatus.py",
     "tools/odyssey/cli.py",
@@ -425,7 +426,7 @@
     "tools/training/test_rwkv7_chunked.py",
     "tools/you/graph.py"
   ],
-  "python_entrypoints": 400,
+  "python_entrypoints": 401,
   "rust_binaries": [
     {
       "kind": "rust_bin",

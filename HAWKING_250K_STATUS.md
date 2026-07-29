@@ -48,6 +48,7 @@ symbols +2.8%.
 | `REBUILD_PERFORMANCE_BASELINE.json` | 19 harvested historical metrics |
 | `tools/verify/blackbox.py` | 86/86 passing, exit 0 |
 | `tools/verify/perfgate.py` | 11 measurable metrics unsandboxed, refusals proven |
+| `REBUILD_PERFORMANCE_BASELINE_MEASURED.json` | the real capture, **base TPS included** |
 | `tests/fixtures/hide_workspace_v1/` | a real durable workspace the rebuild must read back |
 | `tests/fixtures/generation_golden_v1/` | a model-free bit-exact greedy-argmax golden |
 
@@ -126,6 +127,32 @@ gate did not.
 Not started, deliberately: Core B device and runtime, which holds the protected performance
 and numerical contracts and is where a wrong boundary is expensive rather than merely
 wasteful.
+
+## The performance gate is now armed, with one caveat
+
+The protected metric that matters most is captured:
+
+```
+base_tps.llama1b_decode_tps        median 130.4 tok/s      spread 122.6 .. 136.2
+build.cargo_check_s                       0.370 s                0.335 .. 0.409
+build.cargo_build_warm_s                   88.1 s                79.1  .. 94.5
+startup.help_s                          0.00866 s              0.00786 .. 0.01088
+transform.shard_write_verify_B/s       1.045e+08            9.90e+07 .. 1.60e+08
+transform.pack_indices_B/s             4.387e+07            3.30e+07 .. 4.75e+07
+numeric_parity.gravity_verify_s         0.0668 s               0.0580 .. 0.0735
+kernel.bench_q4k_shapes_us             7.496e+05            6.10e+05 .. 8.60e+05
+```
+
+Two metrics stay unavailable and are recorded as such rather than faked: accelerated TPS and
+`doctor` both need a GGUF that is not on disk. `glm52_math_preserve_tps` is skipped —
+the artifact *is* present, so this one is a capture-cost decision, not an absence.
+
+**The caveat is the spread.** Base TPS varies 122.6–136.2, about ±5%, because this capture
+ran with five Grok lanes holding most of 28 cores. A gate that has to resolve 2% cannot be
+decided by comparing two single captures taken hours apart under different load. That is
+what `perfgate.py --paired` exists for: interleaved ABAB sampling with a sign test, so
+contamination cancels. **Core B's performance gate must use the paired mode**, and any
+absolute number quoted from this baseline carries its load conditions with it.
 
 ## Instruments this campaign added
 

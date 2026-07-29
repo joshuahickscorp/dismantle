@@ -1,6 +1,5 @@
 
 
-// --- inlined search/strategy.rs ---
 pub mod strategy {
 //! Search & sampling-scale strategies (bible ch.02 §4.8) — where free local
 //! compute becomes reliability (K4).

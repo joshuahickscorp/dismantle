@@ -170,7 +170,6 @@ mod tests {
     }
 }
 
-// --- inlined verify/deterministic.rs ---
 pub mod deterministic {
 //! The deterministic oracle suite (bible ch.02 §4.6.2) — the reliability engine.
 //!
@@ -659,7 +658,6 @@ error[E0308]: mismatched types
 }
 
 
-// --- inlined verify/gate.rs ---
 pub mod gate {
 //! The Verification Gate (bible ch.02 §4.6.4).
 //!
@@ -798,7 +796,6 @@ mod tests {
 }
 
 
-// --- inlined verify/oracle.rs ---
 pub mod oracle {
 //! The verifier interface (bible ch.02 Appendix A.2).
 //!
@@ -974,7 +971,6 @@ pub trait Oracle: Send + Sync {
 }
 
 
-// --- inlined verify/probabilistic.rs ---
 pub mod probabilistic {
 //! Probabilistic oracles — fallback & tie-break only (bible ch.02 §4.6.3).
 //!

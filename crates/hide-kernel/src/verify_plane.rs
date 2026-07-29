@@ -41,7 +41,6 @@ pub use review::{all_profiles, profile_for, ReviewRole, ReviewRoleProfile};
 pub use static_analysis::{StaticAnalysisOracle, DEFAULT_LONG_FUNCTION_THRESHOLD};
 pub use tier::VerificationTier;
 
-// --- inlined verify_plane/error.rs ---
 pub mod error {
 //! Errors for the verification plane. Only the filesystem-facing paths (a walked
 //! directory scan) can fail; the in-memory analysis over source strings is
@@ -68,7 +67,6 @@ pub type Result<T> = std::result::Result<T, VerifyError>;
 }
 
 
-// --- inlined verify_plane/finding.rs ---
 pub mod finding {
 //! Typed findings produced by deterministic checks.
 //!
@@ -137,7 +135,6 @@ impl Finding {
 }
 
 
-// --- inlined verify_plane/gate.rs ---
 pub mod gate {
 //! The verification gate: the authority rule, encoded (Bible Book IX, sec 28-29).
 //!
@@ -238,7 +235,6 @@ pub const fn probabilistic_can_override_deterministic() -> bool {
 }
 
 
-// --- inlined verify_plane/oracle.rs ---
 pub mod oracle {
 //! The oracle interface (Bible Book IX, sec 28).
 //!
@@ -386,7 +382,6 @@ pub trait Oracle {
 }
 
 
-// --- inlined verify_plane/receipt.rs ---
 pub mod receipt {
 //! The verification receipt (Bible Book IX, sec 29).
 //!
@@ -494,7 +489,6 @@ where
 }
 
 
-// --- inlined verify_plane/rereview.rs ---
 pub mod rereview {
 //! The re-review dependency model (Bible Book IX, sec 29).
 //!
@@ -556,7 +550,6 @@ pub fn invalidated_ids(receipts: &[VerificationReceipt], changed: &[String]) -> 
 }
 
 
-// --- inlined verify_plane/review.rs ---
 pub mod review {
 //! Tier4 review-role profiles (Bible Book IX, sec 28).
 //!
@@ -694,7 +687,6 @@ fn schema_slug(role: ReviewRole) -> &'static str {
 }
 
 
-// --- inlined verify_plane/static_analysis.rs ---
 pub mod static_analysis {
 //! A real, deterministic static-analysis oracle over Rust source text.
 //!
@@ -1173,7 +1165,6 @@ fn mask_comments_and_strings(source: &str) -> String {
 }
 
 
-// --- inlined verify_plane/tier.rs ---
 pub mod tier {
 //! Verification tiers (Bible Book IX, sec 28).
 //!

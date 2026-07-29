@@ -29,7 +29,6 @@
 //! [`client::MockTransport`] for the deterministic stand-in used in tests.
 
 
-// --- inlined sdk/client.rs ---
 pub mod client {
 //! A thin async client over a [`Transport`].
 //!
@@ -295,7 +294,6 @@ impl Transport for MockTransport {
 }
 
 
-// --- inlined sdk/command.rs ---
 pub mod command {
 //! Project the ONE command registry from `hide-protocol` into the artifacts the
 //! frontend consumes: the serialized catalog (`command_catalog.json`) and the
@@ -347,7 +345,6 @@ pub fn command_typescript() -> String {
 }
 
 
-// --- inlined sdk/fixtures.rs ---
 pub mod fixtures {
 //! Canonical event fixtures.
 //!
@@ -561,7 +558,6 @@ pub fn events_json() -> String {
 }
 
 
-// --- inlined sdk/schema.rs ---
 pub mod schema {
 //! Schema export: emit the protocol JSON Schema from the ONE source.
 //!
@@ -709,7 +705,6 @@ pub fn protocol_schema_json() -> String {
 }
 
 
-// --- inlined sdk/ts.rs ---
 pub mod ts {
 //! Deterministic JSON-Schema-to-TypeScript emitter.
 //!

@@ -101,7 +101,6 @@ pub use supervisor::{
 };
 pub use ui_bus::UiEventBus;
 
-// --- Track S absorbed authorities ---
 pub mod lenses;
 pub mod personalize;
 pub mod connector_abi;

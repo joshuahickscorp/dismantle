@@ -78,7 +78,7 @@
       "cases": 33,
       "file": "tools/condense/tests/test_kimi_k26_release_cycle.py",
       "lang": "python",
-      "parametrised_cases": 18,
+      "parametrised_cases": 0,
       "skipped_markers": 0
     },
     {
@@ -197,7 +197,7 @@
       "cases": 23,
       "file": "tools/condense/tests/test_kimi_k26_phase2_recovery.py",
       "lang": "python",
-      "parametrised_cases": 7,
+      "parametrised_cases": 0,
       "skipped_markers": 0
     },
     {
@@ -225,8 +225,8 @@
       "cases": 22,
       "file": "tools/condense/tests/test_gravity_execution_adapter.py",
       "lang": "python",
-      "parametrised_cases": 11,
-      "skipped_markers": 1
+      "parametrised_cases": 0,
+      "skipped_markers": 0
     },
     {
       "cases": 22,
@@ -239,7 +239,7 @@
       "cases": 22,
       "file": "tools/condense/tests/test_kimi_k26_download_supervisor.py",
       "lang": "python",
-      "parametrised_cases": 16,
+      "parametrised_cases": 0,
       "skipped_markers": 0
     },
     {
@@ -281,7 +281,7 @@
       "cases": 20,
       "file": "tools/condense/tests/test_gravity_global_allocator.py",
       "lang": "python",
-      "parametrised_cases": 11,
+      "parametrised_cases": 0,
       "skipped_markers": 0
     },
     {
@@ -301,14 +301,14 @@
       "cases": 19,
       "file": "tools/condense/tests/test_glm52_notifications.py",
       "lang": "python",
-      "parametrised_cases": 12,
+      "parametrised_cases": 0,
       "skipped_markers": 0
     },
     {
       "cases": 19,
       "file": "tools/condense/tests/test_glm52_xet_window_fetch.py",
       "lang": "python",
-      "parametrised_cases": 83,
+      "parametrised_cases": 0,
       "skipped_markers": 0
     },
     {
@@ -341,7 +341,7 @@
       "cases": 18,
       "file": "tools/condense/tests/test_glm52_window_execution.py",
       "lang": "python",
-      "parametrised_cases": 2,
+      "parametrised_cases": 0,
       "skipped_markers": 0
     },
     {
@@ -395,7 +395,7 @@
       "cases": 16,
       "file": "tools/condense/tests/test_glm52_xet_live_driver.py",
       "lang": "python",
-      "parametrised_cases": 9,
+      "parametrised_cases": 0,
       "skipped_markers": 0
     },
     {
@@ -410,7 +410,7 @@
       "file": "tools/condense/tests/test_qwen3_moe_adapter.py",
       "lang": "python",
       "parametrised_cases": 0,
-      "skipped_markers": 1
+      "skipped_markers": 0
     },
     {
       "cases": 16,
@@ -455,7 +455,7 @@
       "cases": 15,
       "file": "tools/condense/tests/test_glm52_campaign_contract.py",
       "lang": "python",
-      "parametrised_cases": 16,
+      "parametrised_cases": 0,
       "skipped_markers": 0
     },
     {
@@ -506,7 +506,7 @@
       "file": "tools/condense/tests/test_qwen_real_forward.py",
       "lang": "python",
       "parametrised_cases": 0,
-      "skipped_markers": 2
+      "skipped_markers": 0
     },
     {
       "cases": 13,
@@ -547,7 +547,7 @@
       "file": "tools/condense/tests/test_mech_measure.py",
       "lang": "python",
       "parametrised_cases": 0,
-      "skipped_markers": 2
+      "skipped_markers": 0
     },
     {
       "cases": 13,
@@ -794,6 +794,13 @@
     },
     {
       "cases": 10,
+      "file": "tools/condense/tests/test_activation_aware_roundtrip.py",
+      "lang": "python",
+      "parametrised_cases": 0,
+      "skipped_markers": 0
+    },
+    {
+      "cases": 10,
       "file": "tools/condense/tests/test_eco_pipeline.py",
       "lang": "python",
       "parametrised_cases": 0,
@@ -810,7 +817,7 @@
       "cases": 10,
       "file": "tools/condense/tests/test_qwen_correction_wave.py",
       "lang": "python",
-      "parametrised_cases": 5,
+      "parametrised_cases": 0,
       "skipped_markers": 0
     },
     {
@@ -913,7 +920,7 @@
       "cases": 9,
       "file": "tools/condense/tests/test_tg_active_byte_budget.py",
       "lang": "python",
-      "parametrised_cases": 31,
+      "parametrised_cases": 0,
       "skipped_markers": 0
     },
     {
@@ -1044,7 +1051,7 @@
       "cases": 8,
       "file": "tools/condense/tests/test_tg_k11_schedule_reconcile.py",
       "lang": "python",
-      "parametrised_cases": 1,
+      "parametrised_cases": 0,
       "skipped_markers": 0
     },
     {
@@ -1563,20 +1570,6 @@
       "file": "crates/hide-state/tests/store_roundtrip.rs",
       "ignored": 0,
       "lang": "rust"
-    },
-    {
-      "cases": 5,
-      "file": "tools/condense/test_activation_aware_roundtrip.py",
-      "lang": "python",
-      "parametrised_cases": 0,
-      "skipped_markers": 0
-    },
-    {
-      "cases": 5,
-      "file": "tools/condense/tests/test_activation_aware_roundtrip.py",
-      "lang": "python",
-      "parametrised_cases": 0,
-      "skipped_markers": 0
     },
     {
       "cases": 5,
@@ -3598,11 +3591,11 @@
       "skipped_markers": 0
     }
   ],
-  "commit": "546ccca67c0d816eb5fb2db8bef97733a4734c4b",
-  "files": 580,
+  "commit": "d10e0efb1c58933152836b8aadea2be26cafa332",
+  "files": 579,
   "ignored_rust": 54,
   "logical_cases": 3925,
-  "parametrised_expansion": 693,
+  "parametrised_expansion": 471,
   "schema": "hawking.logical_test_inventory.v1",
-  "skipped_python_markers": 16
+  "skipped_python_markers": 10
 }

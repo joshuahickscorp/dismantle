@@ -1,9 +1,9 @@
 //! L3.1 (b) — per-user n-gram draft, grown online from the emitted stream.
 //!
-//! The live speculation mechanism on code is the **n-gram / PLD / SAM draft**
-//! (τ≈1.43 generic, `reports/oracle/spec_accept.json`), *not* a trained head
-//! (EAGLE-3 is NO-GO, τ=0.877 net-negative — `docs/dead_levers.md`). The
-//! offline warm-start oracle (`reports/oracle/spec_accept_warmstart.json`)
+//! The live speculation mechanism on code is the **user-ngram draft**
+//! (τ≈1.43 generic, `reports/oracle/spec_accept.json`). Trained-head research
+//! paths are product-released under BC-ACCEL-009 (see `docs/dead_levers.md`).
+//! The offline warm-start oracle (`reports/oracle/spec_accept_warmstart.json`)
 //! cleared GO: seeding a per-user n-gram index from the user's own prior
 //! tokens lifts the recomputed-suffix draft to τ≈3.40 (+0.888 over a cold
 //! index), **additive to the shipped prefix cache**.
@@ -142,10 +142,9 @@ impl UserNgramDraft {
     }
 
     /// Propose up to `k` draft continuation tokens for the context whose last
-    /// two tokens are `ctx` (`[.., prev, cur]`, oldest first). Analogous to
-    /// `Eagle5Head::propose_rollout_chained(start, …, k)` — returns a `Vec<u32>`
-    /// the propose→verify loop checks; the verifier emits, so any of these may
-    /// be wrong without affecting output.
+    /// two tokens are `ctx` (`[.., prev, cur]`, oldest first). Returns a
+    /// `Vec<u32>` the propose→verify loop checks; the verifier emits, so any
+    /// of these may be wrong without affecting output.
     ///
     /// Chains greedily: predict `cur`'s best successor `s0`, then `(cur, s0)`'s
     /// best, etc. Stops early when a step has no recorded successor (drafting
@@ -206,7 +205,7 @@ fn argmax_count(m: &HashMap<u32, u32>) -> Option<u32> {
         .map(|(&id, _)| id)
 }
 
-// ---- Event Horizon: the live, lossless, tokenizer-native BASE proposer ----
+// ---- User-ngram: the live, lossless, tokenizer-native BASE proposer ----
 use crate::proposal::{Budget, Ctx, Proposal, Proposer, Telemetry};
 
 /// Default-on, lossless, tokenizer-native base proposer: a thin [`Proposer`]

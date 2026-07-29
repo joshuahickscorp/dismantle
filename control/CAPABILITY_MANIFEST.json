@@ -1044,8 +1044,8 @@
         "receipt": "control/C-HIST-R1-ledger.json",
         "f1_identity_receipt": "control/C-HIST-R1-f1-identity-receipt.json",
         "future_merge_by_id": {
-          "BRT3": "BC-ACCEL-009 \u2014 training EAGLE/EH entrypoints released here; merge BRT3 release semantics by ID without re-importing BRT3 candidate tree",
-          "BRT5": "BC-BRIDGE-012 \u2014 no seed-c subject deleted here; preserve merge-by-ID prescription for BRT5"
+          "BRT3": "BC-ACCEL-009 — training EAGLE/EH entrypoints released here; merge BRT3 release semantics by ID without re-importing BRT3 candidate tree",
+          "BRT5": "BC-BRIDGE-012 — no seed-c subject deleted here; preserve merge-by-ID prescription for BRT5"
         }
       },
       "also_invocable_as": []
@@ -1090,8 +1090,8 @@
         "receipt": "control/C-HIST-R1-ledger.json",
         "f1_identity_receipt": "control/C-HIST-R1-f1-identity-receipt.json",
         "future_merge_by_id": {
-          "BRT3": "BC-ACCEL-009 \u2014 training EAGLE/EH entrypoints released here; merge BRT3 release semantics by ID without re-importing BRT3 candidate tree",
-          "BRT5": "BC-BRIDGE-012 \u2014 no seed-c subject deleted here; preserve merge-by-ID prescription for BRT5"
+          "BRT3": "BC-ACCEL-009 — training EAGLE/EH entrypoints released here; merge BRT3 release semantics by ID without re-importing BRT3 candidate tree",
+          "BRT5": "BC-BRIDGE-012 — no seed-c subject deleted here; preserve merge-by-ID prescription for BRT5"
         }
       },
       "also_invocable_as": []
@@ -1124,11 +1124,37 @@
         "receipt": "control/C-HIST-R1-ledger.json",
         "f1_identity_receipt": "control/C-HIST-R1-f1-identity-receipt.json",
         "future_merge_by_id": {
-          "BRT3": "BC-ACCEL-009 \u2014 training EAGLE/EH entrypoints released here; merge BRT3 release semantics by ID without re-importing BRT3 candidate tree",
-          "BRT5": "BC-BRIDGE-012 \u2014 no seed-c subject deleted here; preserve merge-by-ID prescription for BRT5"
+          "BRT3": "BC-ACCEL-009 — training EAGLE/EH entrypoints released here; merge BRT3 release semantics by ID without re-importing BRT3 candidate tree",
+          "BRT5": "BC-BRIDGE-012 — no seed-c subject deleted here; preserve merge-by-ID prescription for BRT5"
         }
       },
       "also_invocable_as": []
+    },
+    {
+      "retired_entrypoint": "runtime:eagle5_event_horizon",
+      "disposition": "released",
+      "product_decision": "BC-ACCEL-009",
+      "invocation": null,
+      "surface": "EAGLE5 trained-head + Event Horizon proposal-market runtime and CLI",
+      "released_paths": [
+        "crates/hawking-speculate/src/eagle5.rs",
+        "crates/hawking-speculate/src/eagle5_forward.rs",
+        "crates/hawking-speculate/src/eagle_proposer.rs",
+        "crates/hawking-speculate/src/retrieval.rs",
+        "crates/hawking-speculate/src/suffix_array.rs",
+        "crates/hawking-speculate/src/suffix_automaton.rs",
+        "crates/hawking-speculate/src/replay_oracle.rs",
+        "crates/hawking-speculate/src/tree.rs",
+        "crates/hawking-speculate/src/parallel_draft.rs",
+        "crates/hawking-speculate/src/safetensors_io.rs",
+        "crates/hawking-core/tests/qwen_eagle5_speculate.rs",
+        "crates/hawking-core/tests/eagle5_forward_parity.rs",
+        "crates/hawking-core/tests/eagle5_spec_parity.rs",
+        "crates/hawking-core/tests/eagle5_trained_head_load.rs",
+        "crates/hawking-core/tests/event_horizon_parity_prop.rs",
+        "crates/hawking/tests/spec_oracle_cli.rs"
+      ],
+      "evidence": "B-RT3 product release under BC-ACCEL-009: EAGLE5/Event Horizon runtime and CLI surface deleted with no invocable inputs, outputs, side effects, or mock fallback. Receipts: control/BRT3-report.md, control/BRT3-ledger.json, REBUILD_BEHAVIOUR_CONSTITUTION.json::BC-ACCEL-009. Live docs (docs/env_flags.md Spec-decode) retain user-draft/ExactShared only; former EH/EAGLE env names are historical archaeology. Rollback: restore the released_paths modules/tests/fixtures and reverse consumer edits in qwen_dense.rs, deepseek_v2.rs, engine.rs, main.rs, hawking-speculate lib/proposal/router/user_ngram from base eada2080e0110a60a28292907490252246bee009. Training entrypoints under tools/training/** are not claimed released here (pending Core C / C-HIST-R1)."
     }
   ]
 }

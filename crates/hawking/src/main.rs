@@ -295,23 +295,14 @@ enum Cmd {
         /// MoE expert weights are re-quantized per-layer at load time.
         #[arg(long)]
         quant_tier_map_path: Option<PathBuf>,
-        /// Path to a trained Eagle5 v2 head checkpoint (safetensors).
-        /// Only meaningful when `--speculate eagle5` (or
-        /// `HAWKING_SPEC_DECODE=eagle5`) is set. When omitted, a
-        /// deterministic mock head is constructed — useful for
-        /// validating the spec-decode runtime path while the trained
-        /// checkpoint is being produced.
-        #[arg(long)]
-        eagle5_head: Option<PathBuf>,
-        /// Write per-cycle Eagle5 accept/reject records as JSONL. Also
-        /// available through HAWKING_QWEN_EAGLE5_ACCEPT_TRACE.
-        #[arg(long)]
-        eagle5_accept_trace: Option<PathBuf>,
+        // Historical BC-GENERATION-017 surface (released product path, not live CLI):
+        // legacy identifiers eagle5_head / --eagle5-head / speculate eagle5 / HAWKING_SPEC_DECODE=eagle5
+        // were removed with the EAGLE5/Event Horizon research release (BC-ACCEL-009 / B-RT3).
         /// Capture corpus mode: path to a newline-delimited prompts file.
         /// When set, the model is loaded ONCE and every prompt is decoded
         /// in sequence into the same process — the efficient path for
         /// building a quantized-residual capture corpus (set
-        /// HAWKING_QWEN_CAPTURE_CORPUS_PATH + HAWKING_QWEN_EAGLE5_CAPTURE=1).
+        /// HAWKING_QWEN_CAPTURE_CORPUS_PATH).
         /// Overrides --prompt when present.
         #[arg(long)]
         prompts_file: Option<PathBuf>,
@@ -658,35 +649,6 @@ enum Cmd {
         #[arg(long, default_value_t = 1, value_name = "N")]
         concurrency: usize,
     },
-    /// Track 6: offline spec replay-oracle (pure CPU — no Metal, no model
-    /// forward). Tokenizes a text corpus with the model's OWN tokenizer
-    /// (GGUF-embedded vocab, or a sibling tokenizer.json), then replays the
-    /// ids through the shipped n-gram user-draft to measure acceptance.
-    /// Prints the GO/MARGINAL/NO-GO tau verdict + per-k tau /
-    /// mean_accepted_len / hit_rate / accept_hist / governor_propose_frac.
-    ///
-    ///   hawking spec-oracle --corpus prompts.txt \
-    ///       --tokenizer-from model.gguf --k 4,7 --warm-frac 0.5 [--json]
-    SpecOracle {
-        /// UTF-8 text file to score (the whole file is one corpus).
-        #[arg(long)]
-        corpus: PathBuf,
-        /// GGUF whose embedded tokenizer (or sibling tokenizer.json) encodes
-        /// the corpus — the SAME tokenizer `generate` uses. CPU-only load
-        /// (mmap + metadata parse); the Metal engine is never constructed.
-        #[arg(long)]
-        tokenizer_from: PathBuf,
-        /// Comma-separated lookahead caps to sweep, e.g. `4,7`. Default `4,7`.
-        #[arg(long, default_value = "4,7", value_name = "K_LIST")]
-        k: String,
-        /// Fraction of the corpus (leading prefix) used to warm-start the
-        /// n-gram index before scoring begins; the remainder is scored.
-        #[arg(long, default_value_t = 0.5, value_name = "FRAC")]
-        warm_frac: f64,
-        /// Emit the report as JSON instead of the human-readable table.
-        #[arg(long, default_value_t = false)]
-        json: bool,
-    },
 }
 
 fn main() -> Result<()> {
@@ -931,8 +893,6 @@ fn main() -> Result<()> {
             memory_limit_mb,
             vocab_prune_path,
             quant_tier_map_path,
-            eagle5_head,
-            eagle5_accept_trace,
             prompts_file,
             user_draft,
             user_draft_propose_first,
@@ -965,8 +925,6 @@ fn main() -> Result<()> {
             memory_limit_mb,
             vocab_prune_path,
             quant_tier_map_path,
-            eagle5_head,
-            eagle5_accept_trace,
             prompts_file,
             user_draft,
             user_draft_propose_first,
@@ -1112,13 +1070,6 @@ fn main() -> Result<()> {
             max_context,
             concurrency,
         } => fit_main(weights, intent, max_context, concurrency),
-        Cmd::SpecOracle {
-            corpus,
-            tokenizer_from,
-            k,
-            warm_frac,
-            json,
-        } => spec_oracle_main(corpus, tokenizer_from, k, warm_frac, json),
     }
 }
 
@@ -3006,8 +2957,6 @@ fn generate_main(
     memory_limit_mb: Option<usize>,
     vocab_prune_path: Option<PathBuf>,
     quant_tier_map_path: Option<PathBuf>,
-    eagle5_head: Option<PathBuf>,
-    eagle5_accept_trace: Option<PathBuf>,
     prompts_file: Option<PathBuf>,
     user_draft: bool,
     user_draft_propose_first: bool,
@@ -3053,9 +3002,6 @@ fn generate_main(
     }
 
     let speculate_mode = SpeculateMode::from_cli(speculate.as_deref(), false)?;
-    if let Some(path) = eagle5_accept_trace.as_ref() {
-        std::env::set_var("HAWKING_QWEN_EAGLE5_ACCEPT_TRACE", path);
-    }
     // L3.1 §2.1b — expose the user-ngram draft (and its propose-first variant)
     // on the CLI by setting the env the core reads via `env_on`. Without this
     // wiring the draft is unreachable from `hawking generate` (the gap
@@ -3149,7 +3095,6 @@ fn generate_main(
         memory_limit_mb,
         vocab_prune_path,
         quant_tier_map_path,
-        eagle5_head_path: eagle5_head,
         // CLI force-cpu is via the HAWKING_FORCE_CPU env var (checked at load);
         // the config field is the programmatic knob (tests / embedders).
         force_cpu: false,
@@ -4104,24 +4049,6 @@ mod profile_rank_tests {
     }
 }
 
-fn spec_oracle_parse_k_list(s: &str) -> Result<Vec<usize>> {
-    let mut ks = Vec::new();
-    for part in s.split(',') {
-        let t = part.trim();
-        if t.is_empty() {
-            continue;
-        }
-        let v: usize = t
-            .parse()
-            .map_err(|_| anyhow::anyhow!("invalid --k entry {t:?} (want a comma list like 4,7)"))?;
-        ks.push(v);
-    }
-    if ks.is_empty() {
-        return Err(anyhow::anyhow!("--k produced no values (got {s:?})"));
-    }
-    Ok(ks)
-}
-
 fn tokenizer_from_model_path(tokenizer_from: &Path) -> Result<hawking_core::tokenizer::Tokenizer> {
     use hawking_core::gguf::GgufFile;
     use hawking_core::tokenizer::Tokenizer;
@@ -4188,134 +4115,4 @@ fn tokenize_main(
         }
     }
     Ok(())
-}
-
-/// CPU-only spec replay-oracle handler. Mirrors the `generate` tokenizer path
-/// (sibling tokenizer.json preferred, else GGUF-embedded vocab) WITHOUT
-/// constructing the Metal engine, encodes the corpus, and replays through the
-/// shipped `replay_grid`.
-fn spec_oracle_main(
-    corpus: PathBuf,
-    tokenizer_from: PathBuf,
-    k: String,
-    warm_frac: f64,
-    json: bool,
-) -> Result<()> {
-    use hawking_speculate::replay_oracle::replay_grid;
-
-    let text = std::fs::read_to_string(&corpus)
-        .map_err(|e| anyhow::anyhow!("read corpus {}: {e}", corpus.display()))?;
-
-    let tokenizer = tokenizer_from_model_path(&tokenizer_from)?;
-
-    let ids: Vec<u32> = tokenizer
-        .encode(&text, true)
-        .map_err(|e| anyhow::anyhow!("encode corpus: {e}"))?;
-    let ks = spec_oracle_parse_k_list(&k)?;
-    let warm = ((ids.len() as f64) * warm_frac.clamp(0.0, 1.0)).floor() as usize;
-    let report = replay_grid(&ids, &ks, warm);
-
-    if json {
-        let mut s = String::new();
-        s.push_str("{\n");
-        s.push_str(&format!("  \"verdict\": \"{}\",\n", report.verdict()));
-        s.push_str(&format!("  \"corpus_tokens\": {},\n", ids.len()));
-        s.push_str(&format!("  \"scored_tokens\": {},\n", report.scored_tokens));
-        s.push_str(&format!(
-            "  \"warm_start_tokens\": {},\n",
-            report.warm_start_tokens
-        ));
-        s.push_str(&format!(
-            "  \"best_k\": {},\n",
-            report.best().map(|b| b.k as i64).unwrap_or(-1)
-        ));
-        s.push_str("  \"per_k\": [\n");
-        for (i, r) in report.per_k.iter().enumerate() {
-            let comma = if i + 1 < report.per_k.len() { "," } else { "" };
-            s.push_str(&format!(
-                "    {{\"k\": {}, \"forward_cycles\": {}, \"tokens_emitted\": {}, \
-                 \"tau\": {:.6}, \"mean_accepted_len\": {:.6}, \"hit_rate\": {:.6}, \
-                 \"proposal_coverage\": {:.6}, \"draft_accept_frac\": {:.6}, \
-                 \"governor_propose_frac\": {:.6}, \"accept_hist\": {:?}}}{}\n",
-                r.k,
-                r.forward_cycles,
-                r.tokens_emitted,
-                r.tau,
-                r.mean_accepted_len,
-                r.hit_rate,
-                r.proposal_coverage,
-                r.draft_accept_frac,
-                r.governor_propose_frac,
-                r.accept_hist,
-                comma
-            ));
-        }
-        s.push_str("  ]\n}");
-        println!("{s}");
-    } else {
-        println!(
-            "spec-oracle: verdict={} corpus_tokens={} scored={} warm_start={}",
-            report.verdict(),
-            ids.len(),
-            report.scored_tokens,
-            report.warm_start_tokens
-        );
-        println!(
-            "  {:>3}  {:>7}  {:>7}  {:>6}  {:>6}  {:>6}  accept_hist",
-            "k", "tau", "mal", "hit", "cov", "gov"
-        );
-        for r in &report.per_k {
-            println!(
-                "  {:>3}  {:>7.3}  {:>7.3}  {:>6.3}  {:>6.3}  {:>6.3}  {:?}",
-                r.k,
-                r.tau,
-                r.mean_accepted_len,
-                r.hit_rate,
-                r.proposal_coverage,
-                r.governor_propose_frac,
-                r.accept_hist
-            );
-        }
-        if let Some(b) = report.best() {
-            println!(
-                "  best k={} tau={:.3} ({}) — bands GO>=2.5 MARGINAL>=1.6",
-                b.k,
-                b.tau,
-                report.verdict()
-            );
-        }
-    }
-    Ok(())
-}
-
-#[cfg(test)]
-mod spec_oracle_tests {
-    use super::*;
-    #[test]
-    fn parse_k_list_handles_comma_and_whitespace() {
-        assert_eq!(spec_oracle_parse_k_list("4,7").unwrap(), vec![4, 7]);
- assert_eq!( spec_oracle_parse_k_list(" 4 , 7 ,8").unwrap(), vec![4, 7, 8] );
-        assert!(spec_oracle_parse_k_list("").is_err());
-        assert!(spec_oracle_parse_k_list("4,x").is_err());
-    }
-    #[test]
-    fn synthetic_ids_flow_through_replay_grid() {
-        use hawking_speculate::replay_oracle::replay_grid;
-        let mut ids: Vec<u32> = Vec::new();
-        for _ in 0..200 {
-            ids.extend_from_slice(&[10, 11, 12, 13, 14, 15, 16, 17]);
-        }
-        let ks = spec_oracle_parse_k_list("4,7").unwrap();
-        let warm = ((ids.len() as f64) * 0.5_f64).floor() as usize;
-        let report = replay_grid(&ids, &ks, warm);
-        assert_eq!(report.per_k.len(), 2);
-        assert_eq!(report.warm_start_tokens, warm);
-        assert_eq!(report.scored_tokens, ids.len() - warm);
-        let best = report.best().expect("non-empty grid");
- assert!( best.tau > 1.05, "repetitive corpus must beat plain decode (tau {})", best.tau );
- assert_eq!( report.verdict(), "GO", "repetitive stream should clear the GO band" );
-        for r in &report.per_k {
-            assert_eq!(r.tokens_emitted as usize, report.scored_tokens);
-        }
-    }
 }

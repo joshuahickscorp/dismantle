@@ -1,5 +1,4 @@
-//! Event Horizon Phase 8 — contextual-bandit router policy.
-//! UCB1 arm selection over router proposer slots.
+//! Contextual-bandit router policy (UCB1 arm selection over proposer slots).
 //! Additive: plan_bandit() is an alternate alongside the existing plan().
 //!
 //! Deliberately imports nothing from router.rs or governor.rs to avoid

@@ -1,4 +1,4 @@
-//! Event Horizon Phase 7 — cross-tokenizer proposer scaffold (GATED, DISABLED).
+//! Cross-tokenizer proposer scaffold (GATED, DISABLED).
 //! requires_text_bridge()=true → enable_neural_slot refuses without GO.
 //! Default: NO-GO (0.58-0.70× slowdown on Apple Silicon, ref 2604.16368).
 

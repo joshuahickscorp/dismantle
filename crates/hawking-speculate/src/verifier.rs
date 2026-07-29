@@ -1,6 +1,6 @@
-//! Event Horizon — the exact target verifier. Every token returned is an argmax
-//! of the target model; worst case a proposer is wrong and we fall back to one
-//! greedy token. Output is bit-identical to plain greedy (Phase 0, temp==0).
+//! Exact target verifier for user-draft / ExactShared. Every token returned is
+//! an argmax of the target model; worst case a proposer is wrong and we fall
+//! back to one greedy token. Output is bit-identical to plain greedy (temp==0).
 //! Adds NO model math — wraps forward_tokens_verify + forward_token_greedy_tcb.
 //! KV bookkeeping stays with the caller (returns the position math via next_seq_len).
 
@@ -56,7 +56,7 @@ pub struct VerifyOutcome {
     /// reject  ⇒ bonus_pos + accepted.len() + 1 (correction slot)
     /// accept  ⇒ bonus_pos + draft.len()
     pub next_seq_len: usize,
-    /// Per-position residuals (EAGLE hidden tap). Empty unless want_residuals,
+    /// Per-position residuals (hidden tap). Empty unless want_residuals,
     /// so the n-gram base pays zero copy cost.
     pub residuals: Vec<Vec<f32>>,
 }

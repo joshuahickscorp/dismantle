@@ -157,7 +157,7 @@ impl TargetVerification {
     /// target id is promoted; stop at the first mismatch. Returns the verified
     /// prefix and the target's correction token at the divergence (if any).
     ///
-    /// This is the structural accept rule used by Event Horizon / ExactShared.
+    /// This is the structural accept rule used by user-draft / ExactShared.
     pub fn promote_matching_prefix(
         &self,
         drafts: &[DraftTokenId],

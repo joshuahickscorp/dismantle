@@ -1229,12 +1229,6 @@ dependencies = [
 name = "hawking-speculate"
 version = "0.2.2"
 dependencies = [
- "half",
- "memmap2",
- "rand 0.8.6",
- "rand_pcg 0.3.1",
- "serde",
- "serde_json",
  "sha2",
  "thiserror 2.0.18",
 ]

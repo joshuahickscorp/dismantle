@@ -5,21 +5,36 @@ instruments, never estimated, unless it is explicitly labelled an estimate.
 
 ## Where the number is
 
+Measured at `rebuild-250k-phase3-green`.
+
 ```
-                          campaign start        now
-LOC (authority)                 430,633     see below
-LOC (gated, + unearned
-     generated reclassified)    433,505
-directories                         131
-source files                      1,196
-crates                               20
-public symbols                    9,508
-functions                        14,642
-files over 1500 lines                26
+                          campaign start        now       delta
+LOC (gated)                     433,505    436,427     +2,922
+directories                         131        135         +4
+source files                      1,196      1,193         -3
+crates                               20         20          0
+public symbols                    9,508      9,419        -89
+functions                        14,642     14,479       -163
 
 targets at 250k:  <=60 dirs, <=450 files, <=12 crates, <=4,000 symbols, <=7,500 functions
-distance to primary:            183,505
+distance to primary:            186,427
 ```
+
+**The number is up, not down, and it is worth saying why rather than burying it.**
+
+S3 removed 15,468 lines from HIDE. Against that, this campaign has so far *added* roughly
+18,400: the graph extractor and analyses (8,381), the viewer generator, the performance gate
+(783), the rung gate, the generation audit, the capability manifest, the behaviour-map
+binder, the black-box runner — plus about 7,000 lines of campaign records in markdown, which
+the LOC authority counts as source like anything else.
+
+Most of that is mandated. The campaign's required endpoint explicitly lists "semantic graph
+and interactive viewer" as a deliverable, and the gates exist because this repository has
+three recorded instances of a reduction reported as capability-preserving while a real
+consumer broke. None of it is waste. All of it is spent from the same 186,427 lines that
+still have to come out.
+
+The apparatus is now built and its cost is paid once. Everything from here is subtraction.
 
 ## Phase 1 — complete
 

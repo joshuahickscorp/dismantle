@@ -1,0 +1,20 @@
+{
+  "schema": "hawking.lab.experiment.v1",
+  "id": "05_lowrank_rank16_judge",
+  "title": "strand:05-lowrank-rank16-judge.sh",
+  "artifact_dir": "artifacts/runs/05-lowrank-rank16-judge",
+  "pause_flag": "artifacts/runs/PAUSE",
+  "resume_flag": "artifacts/runs/RESUME",
+  "meta": {
+    "source_entrypoint": "tools/strand/scripts/gates/05-lowrank-rank16-judge.sh",
+    "framework_retired": "strand_shell_harness"
+  },
+  "stages": [
+    {
+      "id": "body",
+      "shell": "if [ -n \"${LAB_HARNESS_ARGS:-}\" ]; then eval \"bash tools/strand/archive/05-lowrank-rank16-judge.sh $LAB_HARNESS_ARGS\"; else bash tools/strand/archive/05-lowrank-rank16-judge.sh; fi",
+      "on_fail": "abort",
+      "skip_if_done": false
+    }
+  ]
+}

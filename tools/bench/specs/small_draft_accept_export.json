@@ -1,0 +1,20 @@
+{
+  "schema": "hawking.lab.experiment.v1",
+  "id": "small_draft_accept_export",
+  "title": "bench:small_draft_accept_export.sh",
+  "artifact_dir": "artifacts/runs/small_draft_accept_export",
+  "pause_flag": "artifacts/runs/PAUSE",
+  "resume_flag": "artifacts/runs/RESUME",
+  "meta": {
+    "source_entrypoint": "tools/bench/small_draft_accept_export.sh",
+    "framework_retired": "bench_shell_harness"
+  },
+  "stages": [
+    {
+      "id": "body",
+      "shell": "if [ -n \"${LAB_HARNESS_ARGS:-}\" ]; then eval \"bash tools/bench/archive/small_draft_accept_export.sh $LAB_HARNESS_ARGS\"; else bash tools/bench/archive/small_draft_accept_export.sh; fi",
+      "on_fail": "abort",
+      "skip_if_done": false
+    }
+  ]
+}

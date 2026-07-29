@@ -1,0 +1,20 @@
+{
+  "schema": "hawking.lab.experiment.v1",
+  "id": "corpus_monitor",
+  "title": "training:corpus_monitor.sh",
+  "artifact_dir": "artifacts/runs/corpus_monitor",
+  "pause_flag": "artifacts/runs/PAUSE",
+  "resume_flag": "artifacts/runs/RESUME",
+  "meta": {
+    "source_entrypoint": "tools/training/corpus_monitor.sh",
+    "framework_retired": "training_shell_harness"
+  },
+  "stages": [
+    {
+      "id": "body",
+      "shell": "if [ -n \"${LAB_HARNESS_ARGS:-}\" ]; then eval \"bash tools/training/archive/corpus_monitor.sh $LAB_HARNESS_ARGS\"; else bash tools/training/archive/corpus_monitor.sh; fi",
+      "on_fail": "abort",
+      "skip_if_done": false
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "schema": "hawking.lab.experiment.v1",
+  "id": "mlx_ab",
+  "title": "bench:mlx_ab.sh",
+  "artifact_dir": "artifacts/runs/mlx_ab",
+  "pause_flag": "artifacts/runs/PAUSE",
+  "resume_flag": "artifacts/runs/RESUME",
+  "meta": {
+    "source_entrypoint": "tools/bench/mlx_ab.sh",
+    "framework_retired": "bench_shell_harness"
+  },
+  "stages": [
+    {
+      "id": "body",
+      "shell": "if [ -n \"${LAB_HARNESS_ARGS:-}\" ]; then eval \"bash tools/bench/archive/mlx_ab.sh $LAB_HARNESS_ARGS\"; else bash tools/bench/archive/mlx_ab.sh; fi",
+      "on_fail": "abort",
+      "skip_if_done": false
+    }
+  ]
+}

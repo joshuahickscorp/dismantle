@@ -1,0 +1,20 @@
+{
+  "schema": "hawking.lab.experiment.v1",
+  "id": "post_pipeline_trigger",
+  "title": "training:post_pipeline_trigger.sh",
+  "artifact_dir": "artifacts/runs/overnight",
+  "pause_flag": "artifacts/runs/PAUSE",
+  "resume_flag": "artifacts/runs/RESUME",
+  "meta": {
+    "source_entrypoint": "tools/training/post_pipeline_trigger.sh",
+    "framework_retired": "training_shell_harness"
+  },
+  "stages": [
+    {
+      "id": "body",
+      "shell": "if [ -n \"${LAB_HARNESS_ARGS:-}\" ]; then eval \"bash tools/training/archive/post_pipeline_trigger.sh $LAB_HARNESS_ARGS\"; else bash tools/training/archive/post_pipeline_trigger.sh; fi",
+      "on_fail": "abort",
+      "skip_if_done": false
+    }
+  ]
+}

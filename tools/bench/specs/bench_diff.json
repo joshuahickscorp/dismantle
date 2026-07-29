@@ -1,0 +1,20 @@
+{
+  "schema": "hawking.lab.experiment.v1",
+  "id": "bench_diff",
+  "title": "bench:bench_diff.sh",
+  "artifact_dir": "artifacts/runs/bench_diff",
+  "pause_flag": "artifacts/runs/PAUSE",
+  "resume_flag": "artifacts/runs/RESUME",
+  "meta": {
+    "source_entrypoint": "tools/bench/bench_diff.sh",
+    "framework_retired": "bench_shell_harness"
+  },
+  "stages": [
+    {
+      "id": "body",
+      "shell": "if [ -n \"${LAB_HARNESS_ARGS:-}\" ]; then eval \"bash tools/bench/archive/bench_diff.sh $LAB_HARNESS_ARGS\"; else bash tools/bench/archive/bench_diff.sh; fi",
+      "on_fail": "abort",
+      "skip_if_done": false
+    }
+  ]
+}

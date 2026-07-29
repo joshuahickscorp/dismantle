@@ -54,6 +54,18 @@
     "constraint": "Hawking + HIDE + shared contracts after the split may not exceed the combined total before it."
   },
 
+  "capability_equivalence_for_spec_driven_designs": {
+    "the_conflict": "tools/loc/hawking_inventory.py measures capability as entrypoints -- Python `__main__` blocks, argparse surfaces, Rust binaries, shell scripts. Campaign section 7.2 asks for the opposite shape: replace repetitive controllers with typed specs run by one engine. A spec-driven laboratory therefore fails the capability gate BY CONSTRUCTION, because 77 modules with `__main__` become 77 rows in a spec table and one engine, and the counter sees 76 capabilities disappear.",
+    "the_wrong_fixes": [
+      "generating a thin `__main__` shim per spec -- that is 77 files of pass-through wrapper, forbidden by section 7.4 and pointless",
+      "editing tools/loc/hawking_inventory.py -- it is frozen measurement authority, and a campaign that adjusts its own scale mid-descent has measured nothing",
+      "waiving the capability gate for the laboratory -- the gate exists because a prior arc deleted a live 220-line entrypoint and reported capability preserved"
+    ],
+    "the_rule": "An entrypoint may be replaced by a spec IF AND ONLY IF the spec is invocable and the invocation is proven, not asserted. Concretely: every retired entrypoint must appear in control/CAPABILITY_MANIFEST.json with the exact command that now invokes it, and tools/verify/capability_manifest.py must RUN each command in a dry-run or --help mode and report exit status per entry. An entry that cannot be invoked is a lost capability regardless of what the spec table says.",
+    "gating": "The inventory --gate `caps` half will still show the drop; that is expected and is not overridden. The rung receipt must carry BOTH: the raw inventory delta, and the capability manifest result showing every retired entrypoint invocable. A rung closes only if the manifest accounts for every one of them. Unaccounted entrypoints are lost capability, full stop.",
+    "same_rule_for_tests": "A test file replaced by a table-driven case does not lose its assertions if the table is enumerated and each row runs. The count in hawking_inventory.py may legitimately fall when N hand-written test functions become one parametrised sweep -- but only when the sweep's cardinality is recorded and it actually executes N cases. A rung that shows assertions falling must name, per lost assertion, either the row that now covers it or the deleted subject it went with."
+  },
+
   "rung_receipt": {
     "required_fields": [
       "rung", "commit", "loc_before", "loc_after",

@@ -16870,7 +16870,7 @@
       "dspark_markov_rank": 256
     },
     "local_idx_meta": {
-      "path": "/Users/scammermike/.claude-grok/worktrees/gauntlet-a-20260726-235820/models/deepseek-v4-flash-dspark/model.safetensors.index.json",
+      "path": "/Users/scammermike/.lanes/worktrees/gauntlet-a-20260726-235820/models/deepseek-v4-flash-dspark/model.safetensors.index.json",
       "tensor_count": 72317,
       "metadata": {
         "total_size": 166878536440

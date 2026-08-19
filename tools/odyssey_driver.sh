@@ -21,5 +21,16 @@ ts="$(date '+%Y-%m-%dT%H:%M:%S%z')"
   echo "repo=$ROOT py=$PY"
   ODYSSEY_HEADROOM_ADMIT=1 "$PY" tools/odyssey_ctl.py cycle --go --max-lanes 2
   echo "-- cycle rc=$? --"
+  # Commit DATA progress only (receipts/completions/state/packets/matrix). NEVER tools/ code
+  # (code-editing lanes land in REVIEW_QUEUE for human review, uncommitted).
+  git add -- receipts/odyssey-i \
+    workspace/campaign/odyssey/ODYSSEY_COMPLETIONS.json \
+    workspace/campaign/odyssey/ODYSSEY_STATE.json \
+    workspace/campaign/odyssey/RUN_LOG.jsonl \
+    workspace/campaign/odyssey/TRANSFER_MATRIX.json \
+    workspace/campaign/odyssey/GRAVITY_RULEBASE.json \
+    workspace/campaign/odyssey/NEGATIVE_SCIENCE.json \
+    workspace/campaign/odyssey/patients >/dev/null 2>&1 || true
+  git commit -q -m "odyssey-i driver: autonomous cycle $ts" >/dev/null 2>&1 && echo "-- committed data --" || echo "-- nothing to commit --"
   echo "== tick done $ts =="
 } >>"$LOG" 2>&1

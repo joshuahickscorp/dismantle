@@ -392,36 +392,6 @@
       "started": "2026-08-19T19:08:23Z",
       "contract": "workspace/campaign/odyssey/contracts/auto/o001_gravity-hybrid.md",
       "harvest_reason": "DATA-ONLY"
-    },
-    {
-      "id": "AUTO-O003-gravity-moe",
-      "oxx": "O003",
-      "title": "modest gravity q3-g32-experts (SPECIMEN)",
-      "status": "RUNNING",
-      "info": 8.0,
-      "wall_cost": 2.0,
-      "gpu_cost": 1.0,
-      "opus_cost": 0.0,
-      "kind": "gravity",
-      "template": "gravity-moe",
-      "task": "odyssey-o003-gravity-moe-20260819-152355",
-      "started": "2026-08-19T19:24:20Z",
-      "contract": "workspace/campaign/odyssey/contracts/auto/o003_gravity-moe.md"
-    },
-    {
-      "id": "AUTO-O004-external-science-dense",
-      "oxx": "O004",
-      "title": "baseline TPS + fast-doctor",
-      "status": "RUNNING",
-      "info": 8.0,
-      "wall_cost": 2.0,
-      "gpu_cost": 1.0,
-      "opus_cost": 0.0,
-      "kind": "architecture-first",
-      "template": "external-science-dense",
-      "task": "odyssey-o004-external-science-dense-20260819-152422",
-      "started": "2026-08-19T19:24:43Z",
-      "contract": "workspace/campaign/odyssey/contracts/auto/o004_external-science-dense.md"
     }
   ],
   "history": [],
@@ -442,6 +412,6 @@
     "grok_lanes_bootstrap": 3,
     "gpu_seconds": 0,
     "gpu_owner": "none",
-    "_evidence": "INFERRED (ODYSSEY.md §72 session bootstrap)"
+    "_evidence": "INFERRED (ODYSSEY.md \u00a772 session bootstrap)"
   }
 }

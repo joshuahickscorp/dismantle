@@ -15,5 +15,7 @@
 	<false/>
 	<key>ProcessType</key>
 	<string>Background</string>
+	<key>AbandonProcessGroup</key>
+	<true/>
 </dict>
 </plist>

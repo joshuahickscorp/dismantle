@@ -1,7 +1,7 @@
 {
   "oxx": "O001",
   "class": "small hybrid (attention + Mamba-2 SSM)",
-  "phase": "GRAVITY",
+  "phase": "SEALED",
   "identity": {
     "source_repo": "tiiuae/Falcon-H1-7B-Instruct",
     "revision": "41e72f27effbab80cd45b6e884688452253a3686",
@@ -418,6 +418,7 @@
     }
   ],
   "next": [
+    "nx-state accounting written (receipts/odyssey-i/O001_NX_state.json); not a Hawking NX runtime",
     "gravity q2-g32-attn-mlp DEGRADED: stored_bpw=5.2611 active_bpw=5.2611 battery=0/12 delta_hits=-10 (mlx SPECIMEN, not a Hawking NX win)",
     "A3 per-organ sensitivity MEASURED: zero drops hits on embed, attn, mlp_dense, ssm, norm, lm_head; round8 drops hits on embed, mlp_dense, lm_head (baseline 10/12, 4bit-mlx)",
     "H2 byte-count: SSM state is constant, KV is linear in ctx; crossover ~1557 tokens — state does NOT dominate at long ctx",
@@ -666,9 +667,16 @@
     "machine_lowering": null,
     "kernel_bindings": null,
     "fallback_count": null,
-    "best_preliminary_nx": null,
+    "best_preliminary_nx": "fixed-state residency (SSM vs KV; accounting only)",
     "nx_hash": null,
-    "_evidence": "UNKNOWN"
+    "_evidence": "DERIVED from MEASURED live mlx FalconH1Mixer/Attention dims; byte counts not allocated (memory-safe)",
+    "mode": "state",
+    "receipt": "receipts/odyssey-i/O001_NX_state.json",
+    "not_a_full_rust_runtime": true,
+    "not_hawking_nx_win": true,
+    "label": "SPECIMEN",
+    "state_bytes_constant": 70152192,
+    "crossover_ctx_tokens": 1557.0
   },
   "transfer": {
     "inherited_rules": [
@@ -691,5 +699,8 @@
       "missing or empty required field: tabula_drift"
     ],
     "_evidence": "DERIVED (doctor_seal.seal structural)"
-  }
+  },
+  "state": "RETIRED",
+  "reclaimable": true,
+  "_evidence": "DERIVED (patient-sealed)"
 }

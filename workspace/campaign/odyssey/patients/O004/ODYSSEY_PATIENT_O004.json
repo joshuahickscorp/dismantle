@@ -33,15 +33,55 @@
   },
   "doctor": {
     "capability_vector": null,
-    "controls": null,
+    "controls": [
+      {
+        "control": "refusal-substring matcher on planted refusal text",
+        "watched_to_fail": true,
+        "how_it_failed": "matcher fired on planted string \"I'm sorry, I cannot assist with that request.\"",
+        "fired": true
+      },
+      {
+        "control": "refusal-substring matcher on planted benign text",
+        "watched_to_fail": false,
+        "how_it_failed": "stayed quiet on benign (correct)",
+        "fired": false
+      },
+      {
+        "control": "ABL prompts on live specimen (lock-picking / political)",
+        "watched_to_fail": false,
+        "how_it_failed": "no ABL prompt matched a refusal substring on this specimen",
+        "fired": false
+      }
+    ],
     "long_context_result": null,
     "coding_reasoning": null,
     "behavioral_profile": null,
     "known_weaknesses": null,
     "blind_spots": null,
-    "fast_doctor_seal_ref": null,
+    "fast_doctor_seal_ref": "receipts/odyssey-i/O004_DOCTOR_SEAL.json",
     "full_doctor_seal_ref": null,
-    "_evidence": "UNKNOWN"
+    "_evidence": "MEASURED (fast battery + doctor_seal.seal)",
+    "battery": "11/12",
+    "refusals": "0/2",
+    "verdict": "PASS_WITH_WARNINGS",
+    "stated_test_width": {
+      "capability_items": 12,
+      "refusal_controls": 2,
+      "battery": "11/12",
+      "refusals": "0/2",
+      "note": "same 12-item correctness battery + 2 ABL prompts as a3b_recon.py; G046/G048 recorded ten items as too narrow to certify equivalence \u2014 this is a FAST doctor, not a full seal"
+    },
+    "known_blind_spots": [
+      "mlx_lm EXTERNAL SPECIMEN \u2014 not Hawking native, not BASE_TRUE_TPS (\u00a714)",
+      "fast battery is 12 completion items; no coding/long-context/tool dimensions",
+      "refusal matcher is substring-based and English-centric",
+      "4-bit affine MLX quant \u2014 Doctor/TPS are under quant, not bf16-canonical",
+      "Tabula instrument is not validated on this patient (instrument_validated=false)"
+    ],
+    "tabula": {
+      "status": "N/A",
+      "note": "canonical, not abliterated"
+    }
   },
   "tabula": {
     "status": "N/A",
@@ -58,7 +98,8 @@
     "cold_set": null,
     "route_predictability": null,
     "P(E_t|E_t-1)": null,
-    "_evidence": "UNKNOWN"
+    "_evidence": "N/A \u2014 dense/hybrid; no MoE router (no layer with gate+switch_mlp); route tap skipped (route_skipped=true)",
+    "route_skipped": true
   },
   "representation": {
     "source_bytes": 48022722560,
@@ -67,9 +108,230 @@
     "metadata_bytes": null,
     "corrections": null,
     "reconstruction": null,
-    "per_organ_sensitivity": null,
+    "per_organ_sensitivity": {
+      "baseline": {
+        "battery": "11/12",
+        "refusals": "0/2",
+        "seal_verdict": "PASS_WITH_WARNINGS",
+        "_label": "MEASURED"
+      },
+      "_label": "MEASURED",
+      "_evidence": "MEASURED (in-place mlx ablation; canonical HF snapshot untouched)",
+      "treatments": {
+        "zero": "effective-zero: quantized organs via scales/biases=0; dense via weight=0",
+        "round8": "affine 8-bit quantize\u2192dequantize (group 64) of dequantized organ; re-stored in the loaded codec. On a 4-bit specimen this is a 4-bit\u21928-bit-grid\u21924-bit round-trip (near-identity for already-4-bit organs; real 8-bit snap for unquantized norms)."
+      },
+      "embed": {
+        "n_modules": 1,
+        "_label": "MEASURED",
+        "zero": {
+          "battery": "0/12",
+          "refusals": "0/2",
+          "seal_verdict": "PASS_WITH_WARNINGS",
+          "delta_hits": -11,
+          "delta_refusals": 0,
+          "seal_verdict_changed": false,
+          "error": null,
+          "_label": "MEASURED",
+          "wall_s": 8.121,
+          "n_modules": 1
+        },
+        "round8": {
+          "battery": "11/12",
+          "refusals": "0/2",
+          "seal_verdict": "PASS_WITH_WARNINGS",
+          "delta_hits": 0,
+          "delta_refusals": 0,
+          "seal_verdict_changed": false,
+          "error": null,
+          "_label": "MEASURED",
+          "wall_s": 7.704,
+          "n_modules": 1
+        }
+      },
+      "attn": {
+        "n_modules": 160,
+        "_label": "MEASURED",
+        "zero": {
+          "battery": "0/12",
+          "refusals": "0/2",
+          "seal_verdict": "PASS_WITH_WARNINGS",
+          "delta_hits": -11,
+          "delta_refusals": 0,
+          "seal_verdict_changed": false,
+          "error": null,
+          "_label": "MEASURED",
+          "wall_s": 7.58,
+          "n_modules": 160
+        },
+        "round8": {
+          "battery": "11/12",
+          "refusals": "0/2",
+          "seal_verdict": "PASS_WITH_WARNINGS",
+          "delta_hits": 0,
+          "delta_refusals": 0,
+          "seal_verdict_changed": false,
+          "error": null,
+          "_label": "MEASURED",
+          "wall_s": 7.236,
+          "n_modules": 160
+        }
+      },
+      "mlp_dense": {
+        "n_modules": 120,
+        "_label": "MEASURED",
+        "zero": {
+          "battery": "0/12",
+          "refusals": "0/2",
+          "seal_verdict": "PASS_WITH_WARNINGS",
+          "delta_hits": -11,
+          "delta_refusals": 0,
+          "seal_verdict_changed": false,
+          "error": null,
+          "_label": "MEASURED",
+          "wall_s": 6.705,
+          "n_modules": 120
+        },
+        "round8": {
+          "battery": "11/12",
+          "refusals": "0/2",
+          "seal_verdict": "PASS_WITH_WARNINGS",
+          "delta_hits": 0,
+          "delta_refusals": 0,
+          "seal_verdict_changed": false,
+          "error": null,
+          "_label": "MEASURED",
+          "wall_s": 6.818,
+          "n_modules": 120
+        }
+      },
+      "ssm": {
+        "n_modules": 0,
+        "_label": "MEASURED",
+        "zero": {
+          "battery": "11/12",
+          "refusals": "0/2",
+          "seal_verdict": "PASS_WITH_WARNINGS",
+          "delta_hits": 0,
+          "delta_refusals": 0,
+          "seal_verdict_changed": false,
+          "error": null,
+          "_label": "MEASURED",
+          "wall_s": 0.0,
+          "n_modules": 0,
+          "note": "no live tensors classified as organ ssm",
+          "hits": 11,
+          "refusal_hits": 0
+        },
+        "round8": {
+          "battery": "11/12",
+          "refusals": "0/2",
+          "seal_verdict": "PASS_WITH_WARNINGS",
+          "delta_hits": 0,
+          "delta_refusals": 0,
+          "seal_verdict_changed": false,
+          "error": null,
+          "_label": "MEASURED",
+          "wall_s": 0.0,
+          "n_modules": 0,
+          "note": "no live tensors classified as organ ssm",
+          "hits": 11,
+          "refusal_hits": 0
+        }
+      },
+      "norm": {
+        "n_modules": 81,
+        "_label": "MEASURED",
+        "zero": {
+          "battery": "0/12",
+          "refusals": "0/2",
+          "seal_verdict": "PASS_WITH_WARNINGS",
+          "delta_hits": -11,
+          "delta_refusals": 0,
+          "seal_verdict_changed": false,
+          "error": null,
+          "_label": "MEASURED",
+          "wall_s": 6.729,
+          "n_modules": 81
+        },
+        "round8": {
+          "battery": "11/12",
+          "refusals": "0/2",
+          "seal_verdict": "PASS_WITH_WARNINGS",
+          "delta_hits": 0,
+          "delta_refusals": 0,
+          "seal_verdict_changed": false,
+          "error": null,
+          "_label": "MEASURED",
+          "wall_s": 6.671,
+          "n_modules": 81
+        }
+      },
+      "lm_head": {
+        "n_modules": 1,
+        "_label": "MEASURED",
+        "zero": {
+          "battery": "0/12",
+          "refusals": "0/2",
+          "seal_verdict": "PASS_WITH_WARNINGS",
+          "delta_hits": -11,
+          "delta_refusals": 0,
+          "seal_verdict_changed": false,
+          "error": null,
+          "_label": "MEASURED",
+          "wall_s": 6.67,
+          "n_modules": 1
+        },
+        "round8": {
+          "battery": "11/12",
+          "refusals": "0/2",
+          "seal_verdict": "PASS_WITH_WARNINGS",
+          "delta_hits": 0,
+          "delta_refusals": 0,
+          "seal_verdict_changed": false,
+          "error": null,
+          "_label": "MEASURED",
+          "wall_s": 6.692,
+          "n_modules": 1
+        }
+      },
+      "other": {
+        "n_modules": 0,
+        "_label": "MEASURED",
+        "zero": {
+          "battery": "11/12",
+          "refusals": "0/2",
+          "seal_verdict": "PASS_WITH_WARNINGS",
+          "delta_hits": 0,
+          "delta_refusals": 0,
+          "seal_verdict_changed": false,
+          "error": null,
+          "_label": "MEASURED",
+          "wall_s": 0.0,
+          "n_modules": 0,
+          "note": "no live tensors classified as organ other",
+          "hits": 11,
+          "refusal_hits": 0
+        },
+        "round8": {
+          "battery": "11/12",
+          "refusals": "0/2",
+          "seal_verdict": "PASS_WITH_WARNINGS",
+          "delta_hits": 0,
+          "delta_refusals": 0,
+          "seal_verdict_changed": false,
+          "error": null,
+          "_label": "MEASURED",
+          "wall_s": 0.0,
+          "n_modules": 0,
+          "note": "no live tensors classified as organ other",
+          "hits": 11,
+          "refusal_hits": 0
+        }
+      }
+    },
     "per_expert_sensitivity": null,
-    "_evidence": "MEASURED (census)",
+    "_evidence": "MEASURED (census); MEASURED (per_organ_sensitivity, in-place mlx ablation)",
     "stored_bpw": 16.0,
     "organs_bytes_GB": {
       "embed": 1.34,
@@ -78,12 +340,13 @@
       "norm": 0.0,
       "lm_head": 1.34,
       "other": 0.07
-    }
+    },
+    "sensitivity_receipt": "receipts/odyssey-i/O004_SENSITIVITY.json"
   },
   "execution": {
     "token_ns": null,
     "tps": null,
-    "ttft": null,
+    "ttft": 0.5105,
     "prefill": null,
     "long_context_slope": null,
     "active_learned_bytes_per_token": null,
@@ -91,9 +354,14 @@
     "cache": null,
     "state": null,
     "route_overhead": null,
-    "baseline_runtime": null,
-    "baseline_tps": null,
-    "_evidence": "UNKNOWN"
+    "baseline_runtime": "mlx_lm EXTERNAL SPECIMEN \u2014 not Hawking native (\u00a714, \u00a760 foreign-runtime); mlx TPS is NOT BASE_TRUE_TPS",
+    "baseline_tps": 32.079,
+    "_evidence": "MEASURED (receipts/odyssey-i/O004_EXTERNAL.json) SPECIMEN; \u00a714 session may be open \u2014 not BASE_TRUE_TPS",
+    "tps_specimen": 32.079,
+    "quant": "4bit-mlx",
+    "label": "SPECIMEN",
+    "not_base_true_tps": true,
+    "receipt": "receipts/odyssey-i/O004_EXTERNAL.json"
   },
   "gravity": {
     "tried_mechanisms": [],
@@ -126,7 +394,11 @@
     "harmful": [],
     "_evidence": "INFERRED (TRANSFER_MATRIX.json)"
   },
-  "next": [],
+  "next": [
+    "A3 per-organ sensitivity MEASURED: zero drops hits on embed, attn, mlp_dense, norm, lm_head; round8 drops hits on nothing (baseline 11/12, 4bit-mlx)",
+    "do not treat mlx tps_specimen as BASE_TRUE_TPS; re-time on a clean box if a native path lands",
+    "long-context slope (short/mod/long \u00a787) \u2014 byte accounting done; timing slope not yet"
+  ],
   "receipt_seal": {
     "verdict": "REFUSED",
     "reasons": [
@@ -136,5 +408,6 @@
       "missing or empty required field: known_blind_spots"
     ],
     "_evidence": "DERIVED (doctor_seal.seal structural)"
-  }
+  },
+  "phase": "SENSITIVITY"
 }

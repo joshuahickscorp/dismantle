@@ -13,6 +13,7 @@ ascent state or tools/odyssey/ (training-data Odyssey).
     python3 tools/odyssey_ctl.py harvest --dry-run
     python3 tools/odyssey_ctl.py packet O005
     python3 tools/odyssey_ctl.py admit <slug> <est_gib>
+    python3 tools/odyssey_ctl.py completions --rebuild
     python3 tools/odyssey_ctl.py run --dry-run
     python3 tools/odyssey_ctl.py run --go [--max-lanes N]
     bash tools/odyssey_driver.sh
@@ -20,6 +21,7 @@ ascent state or tools/odyssey/ (training-data Odyssey).
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -39,6 +41,7 @@ import worker_gate  # noqa: E402
 
 ODYSSEY = REPO / "workspace" / "campaign" / "odyssey"
 STATE = ODYSSEY / "ODYSSEY_STATE.json"
+COMPLETIONS = ODYSSEY / "ODYSSEY_COMPLETIONS.json"
 LEDGER = ODYSSEY / "ODYSSEY.md"
 SCHEMA_PATH = ODYSSEY / "patient_packet_schema.json"
 PATIENTS_DIR = ODYSSEY / "patients"
@@ -68,6 +71,7 @@ DEFAULT_MAX_LANES = 2
 SCHEMA = "hawking.odyssey.controller.v1"
 RUN_LOG_SCHEMA = "hawking.odyssey.run_log.v1"
 HARVEST_SCHEMA = "hawking.odyssey.harvest.v2"
+COMPLETION_SCHEMA = "hawking.odyssey.completions.v1"
 
 PHASES = (
     "INGEST", "BASELINE", "CENSUS", "ROUTEMAP", "SENSITIVITY",
@@ -83,10 +87,39 @@ TEMPLATES = (
 )
 # Templates known to edit tools/odyssey_patient_runner.py. One-at-a-time.
 # RUN-only (external-science-moe / transfer-control) may fill to max-lanes.
+# Kept for --self-check assertion #10; the launcher serializes on write_set.
 CODE_EDIT_TEMPLATES = frozenset({
     "sensitivity-map",
     "external-science-dense",
 })
+# Honest write_set: these templates may edit the shared runner. transfer-control
+# is RUN-only (packet + receipts + TRANSFER_MATRIX) and is parallel-safe with
+# a runner-writing lane.
+RUNNER_WRITE_TEMPLATES = frozenset({
+    "external-science-moe",
+    "external-science-dense",
+    "sensitivity-map",
+})
+RUNNER_REL = "tools/odyssey_patient_runner.py"
+TRANSFER_REL = "workspace/campaign/odyssey/TRANSFER_MATRIX.json"
+TEMPLATE_MECHANISM = {
+    "external-science-moe": "external-science",
+    "external-science-dense": "external-science",
+    "sensitivity-map": "sensitivity-map",
+    "transfer-control": "transfer-control",
+}
+TERMINAL_COMPLETION = frozenset({
+    "VERIFIED", "REFUTED", "SUPERSEDED", "ARCHIVED",
+})
+# Explicit receipt → completion map. Not a glob: O005_SENSITIVITY.json may
+# exist on disk without being sealed science (stays PENDING).
+COMPLETION_BACKFILL = (
+    ("O001", "external-science", "O001_EXTERNAL.json"),
+    ("O001", "sensitivity-map", "O001_SENSITIVITY.json"),
+    ("O003", "external-science", "O003_EXTERNAL.json"),
+    ("O005", "external-science", "O005_EXTERNAL.json"),
+    ("O005", "route-map", "O005_EXTERNAL.json"),
+)
 
 STATES = (
     "READY", "RUNNING", "BLOCKED", "LANDED",
@@ -217,6 +250,378 @@ def write_json(path: Path, obj) -> None:
 
 def read_json(path: Path):
     return json.loads(path.read_text())
+
+
+# ---------------------------------------------------------------------------
+# completion index — workflow state (what science is sealed). Not a packet.
+# Flow: experiment → receipt → verification → completion index → packet → scheduler.
+# ---------------------------------------------------------------------------
+
+def git_head(repo: Path | None = None) -> str:
+    r = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=str(repo or REPO), capture_output=True, text=True,
+    )
+    return (r.stdout or "").strip() if r.returncode == 0 else ""
+
+
+def file_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as fh:
+        for chunk in iter(lambda: fh.read(65536), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def receipt_stamp(path: Path) -> str:
+    """Historical timestamp for a receipt. Never wall-clock now."""
+    try:
+        rel = str(path.resolve().relative_to(REPO.resolve()))
+    except ValueError:
+        rel = str(path)
+    r = subprocess.run(
+        ["git", "log", "-1", "--format=%cI", "--", rel],
+        cwd=str(REPO), capture_output=True, text=True,
+    )
+    iso = (r.stdout or "").strip()
+    if iso:
+        if iso.endswith("+00:00"):
+            iso = iso[:-6] + "Z"
+        return iso
+    ts = path.stat().st_mtime
+    return datetime.fromtimestamp(ts, timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def empty_completions() -> dict:
+    return {
+        "schema": COMPLETION_SCHEMA,
+        "entries": [],
+        "_evidence": "DERIVED (completion index)",
+    }
+
+
+def load_completions(path: Path | None = None) -> dict:
+    dest = Path(path) if path else COMPLETIONS
+    if not dest.is_file():
+        return empty_completions()
+    try:
+        doc = read_json(dest)
+    except (OSError, json.JSONDecodeError):
+        return empty_completions()
+    if isinstance(doc, list):
+        return {
+            "schema": COMPLETION_SCHEMA,
+            "entries": doc,
+            "_evidence": "DERIVED (completion index)",
+        }
+    if not isinstance(doc, dict):
+        return empty_completions()
+    doc.setdefault("schema", COMPLETION_SCHEMA)
+    doc.setdefault("entries", [])
+    return doc
+
+
+def save_completions(doc: dict, path: Path | None = None) -> Path:
+    dest = Path(path) if path else COMPLETIONS
+    if isinstance(doc, list):
+        doc = {
+            "schema": COMPLETION_SCHEMA,
+            "entries": doc,
+            "_evidence": "DERIVED (completion index)",
+        }
+    write_json(dest, doc)
+    return dest
+
+
+def mechanism_for_template(template: str) -> str:
+    if not template:
+        return ""
+    if template in TEMPLATE_MECHANISM:
+        return TEMPLATE_MECHANISM[template]
+    if template.startswith("external-science"):
+        return "external-science"
+    if template.startswith("gravity-") or template.startswith("nx-"):
+        return template
+    return template
+
+
+def packet_rel(oxx: str) -> str:
+    return f"workspace/campaign/odyssey/patients/{oxx}/ODYSSEY_PATIENT_{oxx}.json"
+
+
+def write_scope(ob: dict) -> dict:
+    """Files this obligation may edit + exclusive resources. Honest per template."""
+    oxx = ob.get("oxx") or ob.get("patient_id") or ""
+    template = ob.get("template") or ""
+    if "write_set" in ob:
+        return {
+            "write_set": list(ob.get("write_set") or []),
+            "exclusive_resources": list(ob.get("exclusive_resources") or []),
+        }
+    packet = packet_rel(oxx) if oxx else ""
+    if template == "sensitivity-map":
+        writes = [RUNNER_REL, packet, f"receipts/odyssey-i/{oxx}_SENSITIVITY.json"]
+    elif template in {"external-science-moe", "external-science-dense"}:
+        writes = [RUNNER_REL, packet, f"receipts/odyssey-i/{oxx}_EXTERNAL.json"]
+    elif template == "transfer-control":
+        writes = [
+            packet,
+            f"receipts/odyssey-i/{oxx}_EXTERNAL.json",
+            f"receipts/odyssey-i/{oxx}_TRANSFER.json",
+            TRANSFER_REL,
+        ]
+    else:
+        writes = [packet] if packet else []
+    writes = [p for p in writes if p]
+    return {
+        "write_set": writes,
+        "exclusive_resources": list(ob.get("exclusive_resources") or []),
+    }
+
+
+def scopes_conflict(a: dict, b: dict) -> bool:
+    wa = set(a.get("write_set") or [])
+    wb = set(b.get("write_set") or [])
+    if wa & wb:
+        return True
+    ea = set(a.get("exclusive_resources") or [])
+    eb = set(b.get("exclusive_resources") or [])
+    return bool(ea & eb)
+
+
+def scope_conflict_reason(scope: dict, occupied: list[dict]) -> str | None:
+    for other in occupied:
+        if not scopes_conflict(scope, other):
+            continue
+        files = sorted(set(scope.get("write_set") or []) & set(other.get("write_set") or []))
+        excl = sorted(
+            set(scope.get("exclusive_resources") or [])
+            & set(other.get("exclusive_resources") or [])
+        )
+        if files:
+            return ",".join(files)
+        if excl:
+            return "exclusive:" + ",".join(excl)
+        return "collision"
+    return None
+
+
+def reopen_if_satisfied(entry: dict, *, source_revision: str | None = None) -> bool:
+    pred = entry.get("reopen_if") if entry else None
+    if pred is None:
+        return False
+    text = str(pred).strip()
+    if not text or text.lower() == "null":
+        return False
+    low = text.lower()
+    if low in {"true", "1", "yes"}:
+        return True
+    if low in {"false", "0", "no"}:
+        return False
+    m = re.fullmatch(r"source_revision\s*(==|!=)\s*(.+)", text)
+    if not m:
+        return False
+    op = m.group(1)
+    rev = m.group(2).strip().strip("<>\"'")
+    cur = source_revision if source_revision is not None else git_head()
+    if op == "!=":
+        return cur != rev
+    return cur == rev
+
+
+def current_completion(patient_id: str, mechanism_id: str,
+                       entries: list | None = None) -> dict | None:
+    if entries is None:
+        entries = load_completions().get("entries") or []
+    hits = [
+        e for e in entries
+        if e.get("patient_id") == patient_id and e.get("mechanism_id") == mechanism_id
+    ]
+    if not hits:
+        return None
+    superseded = {e.get("supersedes") for e in hits if e.get("supersedes")}
+    live = [e for e in hits if e.get("obligation_id") not in superseded]
+    pool = live or hits
+    pool.sort(key=lambda e: str(e.get("completed_at") or ""))
+    return pool[-1]
+
+
+def science_is_done(patient_id: str, mechanism_id: str,
+                    entries: list | None = None, *,
+                    source_revision: str | None = None) -> bool:
+    """Terminal completion blocks relaunch unless reopen_if is mechanically true."""
+    entry = current_completion(patient_id, mechanism_id, entries)
+    if not entry:
+        return False
+    if entry.get("status") not in TERMINAL_COMPLETION:
+        return False
+    if reopen_if_satisfied(entry, source_revision=source_revision):
+        return False
+    return True
+
+
+def selection_verdict(patient_id: str, mechanism_id: str,
+                      entries: list | None = None, *,
+                      source_revision: str | None = None) -> str:
+    if science_is_done(
+        patient_id, mechanism_id, entries, source_revision=source_revision,
+    ):
+        return "REFUSE"
+    return "LAUNCH"
+
+
+def _completions_entries(completions) -> list:
+    if completions is not None:
+        if isinstance(completions, dict):
+            return list(completions.get("entries") or [])
+        return list(completions)
+    if not COMPLETIONS.is_file():
+        return list((rebuild_completions(persist=True).get("entries") or []))
+    return list(load_completions().get("entries") or [])
+
+
+def complete(*, obligation_id: str, patient_id: str, mechanism_id: str,
+             status: str, completed_at: str,
+             receipt_ref: str | None = None, receipt_sha256: str | None = None,
+             source_revision: str | None = None, supersedes=None,
+             reopen_if=None, index: dict | None = None,
+             persist: bool = True, path: Path | None = None) -> dict:
+    """Write a terminal completion. `completed_at` is required (never Date.now)."""
+    if not completed_at:
+        raise ValueError("completed_at must be passed in (do not use wall clock here)")
+    if status not in TERMINAL_COMPLETION:
+        raise ValueError(
+            f"status must be terminal {sorted(TERMINAL_COMPLETION)}, got {status}"
+        )
+    doc = index if index is not None else load_completions(path)
+    entries = doc.setdefault("entries", [])
+    row = {
+        "obligation_id": obligation_id,
+        "patient_id": patient_id,
+        "mechanism_id": mechanism_id,
+        "status": status,
+        "receipt_ref": receipt_ref,
+        "receipt_sha256": receipt_sha256,
+        "source_revision": (
+            source_revision if source_revision is not None else git_head()
+        ),
+        "completed_at": completed_at,
+        "supersedes": supersedes,
+        "reopen_if": reopen_if,
+    }
+    match_i = None
+    for i, existing in enumerate(entries):
+        if existing.get("patient_id") != patient_id:
+            continue
+        if existing.get("mechanism_id") != mechanism_id:
+            continue
+        if existing.get("receipt_sha256") != receipt_sha256:
+            continue
+        if existing.get("status") != status:
+            continue
+        if obligation_id and existing.get("obligation_id") not in {None, obligation_id}:
+            continue
+        match_i = i
+        break
+    if match_i is not None:
+        merged = dict(entries[match_i])
+        merged.update(row)
+        entries[match_i] = merged
+        row = merged
+    else:
+        for i, existing in enumerate(entries):
+            if existing.get("patient_id") != patient_id:
+                continue
+            if existing.get("mechanism_id") != mechanism_id:
+                continue
+            if existing.get("status") == "SUPERSEDED":
+                continue
+            if not row.get("supersedes"):
+                row["supersedes"] = existing.get("obligation_id")
+            old = dict(existing)
+            old["status"] = "SUPERSEDED"
+            entries[i] = old
+        entries.append(row)
+    doc["schema"] = COMPLETION_SCHEMA
+    doc["_evidence"] = "DERIVED (completion index)"
+    if persist:
+        save_completions(doc, path)
+    return row
+
+
+def rebuild_completions(*, completed_at: str | None = None,
+                        path: Path | None = None,
+                        receipt_dir: Path | None = None,
+                        persist: bool = True) -> dict:
+    """Idempotent VERIFIED backfill from the explicit receipt map."""
+    rec_dir = Path(receipt_dir) if receipt_dir else RECEIPT_DIR
+    dest = Path(path) if path else COMPLETIONS
+    doc = load_completions(dest) if dest.is_file() else empty_completions()
+    backfill_keys = {(p, m) for p, m, _ in COMPLETION_BACKFILL}
+    kept = [
+        e for e in (doc.get("entries") or [])
+        if (e.get("patient_id"), e.get("mechanism_id")) not in backfill_keys
+    ]
+    doc["entries"] = kept
+    head = git_head()
+    for patient_id, mechanism_id, fname in COMPLETION_BACKFILL:
+        rec_path = rec_dir / fname
+        if not rec_path.is_file():
+            continue
+        stamp = completed_at or receipt_stamp(rec_path)
+        try:
+            rel = str(rec_path.resolve().relative_to(REPO.resolve()))
+        except ValueError:
+            rel = f"receipts/odyssey-i/{fname}"
+        complete(
+            obligation_id=f"{patient_id}:{mechanism_id}",
+            patient_id=patient_id,
+            mechanism_id=mechanism_id,
+            status="VERIFIED",
+            completed_at=stamp,
+            receipt_ref=rel.replace("\\", "/"),
+            receipt_sha256=file_sha256(rec_path),
+            source_revision=head,
+            supersedes=None,
+            reopen_if=None,
+            index=doc,
+            persist=False,
+            path=dest,
+        )
+    doc["_evidence"] = "DERIVED (receipts/odyssey-i backfill)"
+    if persist:
+        save_completions(doc, dest)
+    return doc
+
+
+def parse_science_task(name: str) -> tuple[str, str] | None:
+    m = re.match(
+        r"^odyssey-o(\d{3})-("
+        r"external-science-moe|external-science-dense|"
+        r"sensitivity-map|transfer-control"
+        r")(?:-\d{8}-\d{6})?$",
+        name or "",
+        re.I,
+    )
+    if not m:
+        return None
+    return f"O{m.group(1)}", m.group(2).lower()
+
+
+def science_done_for_template(oxx: str, template: str,
+                              entries: list | None = None, *,
+                              source_revision: str | None = None) -> bool:
+    mech = mechanism_for_template(template)
+    if mech and science_is_done(
+        oxx, mech, entries, source_revision=source_revision,
+    ):
+        return True
+    # moe also produces a route-map; a sealed route-map still blocks relaunch
+    if template == "external-science-moe" and science_is_done(
+        oxx, "route-map", entries, source_revision=source_revision,
+    ):
+        return True
+    return False
 
 
 def machine_snapshot() -> dict:
@@ -1191,6 +1596,56 @@ def planned_action(classification: str | None, reason: str) -> str:
     return f"REFUTE ({reason or 'unclassified'})"
 
 
+def _complete_harvested_lane(task_name: str, oxx: str | None, work: dict | None,
+                             *, completed_at: str | None = None) -> None:
+    """Record a VERIFIED harvest in the completion index. No-op if undetermined."""
+    if not oxx:
+        return
+    tmpl = (work or {}).get("template")
+    parsed = parse_science_task(task_name) or parse_science_task(
+        re.sub(r"-\d{8}-\d{6}$", "", task_name)
+    )
+    if not tmpl and parsed:
+        oxx = oxx or parsed[0]
+        tmpl = parsed[1]
+    if not tmpl:
+        return
+    mech = mechanism_for_template(tmpl)
+    if not mech:
+        return
+    rec_name = {
+        "external-science": f"{oxx}_EXTERNAL.json",
+        "sensitivity-map": f"{oxx}_SENSITIVITY.json",
+        "transfer-control": f"{oxx}_TRANSFER.json",
+        "route-map": f"{oxx}_EXTERNAL.json",
+    }.get(mech)
+    rec_path = RECEIPT_DIR / rec_name if rec_name else None
+    stamp = completed_at or os.environ.get("ODYSSEY_COMPLETED_AT")
+    if not stamp:
+        if rec_path is not None and rec_path.is_file():
+            stamp = receipt_stamp(rec_path)
+        else:
+            stamp = utc_now()
+    sha = file_sha256(rec_path) if rec_path is not None and rec_path.is_file() else None
+    ref = f"receipts/odyssey-i/{rec_name}" if rec_name else None
+    mechs = [mech]
+    if tmpl == "external-science-moe" and "route-map" not in mechs:
+        mechs.append("route-map")
+    head = git_head()
+    for mechanism_id in mechs:
+        complete(
+            obligation_id=f"{oxx}:{mechanism_id}",
+            patient_id=oxx,
+            mechanism_id=mechanism_id,
+            status="VERIFIED",
+            completed_at=stamp,
+            receipt_ref=ref,
+            receipt_sha256=sha,
+            source_revision=head,
+            persist=True,
+        )
+
+
 def harvest_lanes(*, tasks_root: Path | None = None,
                   receipt_dir: Path | None = None,
                   escalate_path: Path | None = None,
@@ -1316,6 +1771,10 @@ def harvest_lanes(*, tasks_root: Path | None = None,
             _mark_lane(st, d.name, "VERIFIED", oxx=oxx, harvest_reason="DATA-ONLY")
             row["verdict"] = "VERIFIED"
             rec_verdict = "VERIFIED"
+            if do_persist:
+                _complete_harvested_lane(
+                    d.name, oxx, _work_for_task(st, d.name),
+                )
         rec = {
             "schema": HARVEST_SCHEMA,
             "task": d.name,
@@ -1531,7 +1990,11 @@ def _seed_by_id() -> dict[str, dict]:
 
 def template_for_work(work: dict, meta: dict, pkt: dict | None,
                       census: dict | None) -> str | None:
-    """Map a work item onto one of the four run templates, or None (skip)."""
+    """Map a work item onto one of the four run templates, or None (skip).
+
+    Done-ness is NOT inferred from packet fields. Completions is the only
+    source; the caller filters with science_done_for_template().
+    """
     oxx = work.get("oxx")
     if not oxx:
         return None
@@ -1546,7 +2009,7 @@ def template_for_work(work: dict, meta: dict, pkt: dict | None,
     arch = arch_kind(oxx, pkt, census)
     census_ok = census is not None
     if kind == "router-sensitivity":
-        if arch != "moe" or has_routing(pkt):
+        if arch != "moe":
             return None
         tmpl = "external-science-moe"
         return tmpl if prereq_ok(tmpl, meta, pkt, census_ok) else None
@@ -1555,13 +2018,9 @@ def template_for_work(work: dict, meta: dict, pkt: dict | None,
         return tmpl if prereq_ok(tmpl, meta, pkt, census_ok) else None
     if kind == "architecture-first":
         if arch in {"dense", "hybrid"}:
-            if has_baseline(pkt) and not needs_ssm_accounting(pkt, arch):
-                return None
             tmpl = "external-science-dense"
             return tmpl if prereq_ok(tmpl, meta, pkt, census_ok) else None
         if arch == "moe":
-            if has_routing(pkt) and has_baseline(pkt):
-                return None
             tmpl = "external-science-moe"
             return tmpl if prereq_ok(tmpl, meta, pkt, census_ok) else None
     return None
@@ -1580,6 +2039,7 @@ def _ob_record(work: dict, template: str, *, source: str) -> dict:
         "opus_cost": float(work.get("opus_cost") or 0),
         "kind": work.get("kind") or template,
         "template": template,
+        "mechanism_id": mechanism_for_template(template),
         "model_loading": True,
         "timing": False,
         "download": False,
@@ -1587,14 +2047,22 @@ def _ob_record(work: dict, template: str, *, source: str) -> dict:
         "reference": TRANSFER_REF.get(oxx),
         "_evidence": "HYPOTHESIS (§22 ranking; READY if on_disk + phase prereqs)",
     }
+    scope = write_scope({"oxx": oxx, "template": template})
+    rec["write_set"] = scope["write_set"]
+    rec["exclusive_resources"] = scope["exclusive_resources"]
     if template == "transfer-control":
         rec["reference"] = work.get("reference") or TRANSFER_REF.get(oxx, "O005")
     return rec
 
 
 def synthesize_for_patient(oxx: str, meta: dict, pkt: dict | None,
-                           census: dict | None, covered: set[tuple]) -> list[dict]:
-    """Fill gaps the seed queue does not name: on-disk patients still missing science."""
+                           census: dict | None, covered: set[tuple],
+                           entries: list | None = None) -> list[dict]:
+    """Fill gaps the seed queue does not name: on-disk patients still missing science.
+
+    Completions is the only done-check. Packet fields are prerequisites
+    (e.g. sensitivity needs a baseline), never completion markers.
+    """
     if not patient_on_disk(meta) or meta.get("state") == "BLOCKED":
         return []
     if census is None:
@@ -1605,6 +2073,8 @@ def synthesize_for_patient(oxx: str, meta: dict, pkt: dict | None,
     def add(template, info, wall, gpu, title, kind):
         if (oxx, template) in covered:
             return
+        if science_done_for_template(oxx, template, entries):
+            return
         if not prereq_ok(template, meta, pkt, True):
             return
         out.append(_ob_record({
@@ -1613,38 +2083,47 @@ def synthesize_for_patient(oxx: str, meta: dict, pkt: dict | None,
             "wall_cost": wall, "gpu_cost": gpu, "opus_cost": 0, "kind": kind,
         }, template, source="synthesized"))
 
-    if arch == "moe" and not has_routing(pkt):
+    if arch == "moe":
         ref = TRANSFER_REF.get(oxx)
-        ref_pkt = load_packet(ref) if ref else None
-        if ref and has_routing(ref_pkt):
+        if (
+            ref
+            and science_is_done(ref, "external-science", entries)
+            and not science_is_done(oxx, "transfer-control", entries)
+        ):
             add("transfer-control", 9, 2, 1,
                 f"transfer control vs {ref} (route/representation delta)",
                 "transfer-control")
-        else:
+        elif not science_done_for_template(oxx, "external-science-moe", entries):
             add("external-science-moe", 10, 2, 1,
                 "route/state map + baseline + fast-doctor (external)",
                 "router-sensitivity")
-    if arch in {"dense", "hybrid"} and (
-        not has_baseline(pkt) or needs_ssm_accounting(pkt, arch)
+    if arch in {"dense", "hybrid"} and not science_is_done(
+        oxx, "external-science", entries,
     ):
         wall, gpu = (1, 0) if arch == "hybrid" else (2, 1)
         add("external-science-dense", 8, wall, gpu,
             "baseline TPS + fast-doctor"
             + (" + SSM-state-vs-KV" if arch == "hybrid" else ""),
             "architecture-first")
-    if has_baseline(pkt) and missing_sensitivity(pkt):
+    if has_baseline(pkt) and not science_is_done(oxx, "sensitivity-map", entries):
         add("sensitivity-map", 10, 2, 1,
             "per-organ / per-expert Doctor sensitivity",
             "representation-discriminator")
     return out
 
 
-def select_ready_obligations(state: dict | None = None) -> list[dict]:
-    """READY science work, ranked by existing value(). Acquisition is not a template."""
+def select_ready_obligations(state: dict | None = None,
+                             completions=None) -> list[dict]:
+    """READY science work, ranked by existing value(). Acquisition is not a template.
+
+    Completions is the only done-check: a terminal (patient, mechanism) with
+    reopen_if not satisfied is never selected.
+    """
     st = state if state is not None else ensure_state()
     patients = {p["oxx"]: p for p in st.get("patients") or []}
     cache_pkt: dict[str, dict | None] = {}
     cache_cen: dict[str, dict | None] = {}
+    entries = _completions_entries(completions)
 
     def pkt_of(oxx: str):
         if oxx not in cache_pkt:
@@ -1660,6 +2139,11 @@ def select_ready_obligations(state: dict | None = None) -> list[dict]:
     seen_ids = set()
     covered: set[tuple] = set()
     seeds = _seed_by_id()
+    flying = {
+        (w.get("oxx"), w.get("template"))
+        for w in st.get("work") or []
+        if w.get("status") in {"RUNNING", "REVIEW"} and w.get("oxx") and w.get("template")
+    }
 
     def consider(work: dict, source: str) -> None:
         wid = work.get("id")
@@ -1671,6 +2155,10 @@ def select_ready_obligations(state: dict | None = None) -> list[dict]:
         meta = patients.get(oxx) or patient_meta(oxx, st)
         tmpl = template_for_work(work, meta, pkt_of(oxx), cen_of(oxx))
         if not tmpl:
+            return
+        if science_done_for_template(oxx, tmpl, entries):
+            return
+        if (oxx, tmpl) in flying:
             return
         seen_ids.add(wid)
         covered.add((oxx, tmpl))
@@ -1705,7 +2193,7 @@ def select_ready_obligations(state: dict | None = None) -> list[dict]:
                     "opus_cost": 0, "kind": "representation-discriminator",
                 }, "packet-next")
         selected.extend(synthesize_for_patient(
-            oxx, p, pkt, cen_of(oxx), covered,
+            oxx, p, pkt, cen_of(oxx), covered, entries=entries,
         ))
         for rec in selected:
             covered.add((rec["oxx"], rec["template"]))
@@ -1713,6 +2201,10 @@ def select_ready_obligations(state: dict | None = None) -> list[dict]:
     # de-dupe by (oxx, template), keep highest value
     best: dict[tuple, dict] = {}
     for rec in selected:
+        if science_done_for_template(rec["oxx"], rec["template"], entries):
+            continue
+        if (rec["oxx"], rec["template"]) in flying:
+            continue
         key = (rec["oxx"], rec["template"])
         prev = best.get(key)
         if prev is None or value(rec) > value(prev):
@@ -2134,7 +2626,8 @@ def evaluate_gates(ob: dict, *, go: bool, running_n: int, cap: int,
                    snap: dict, worker: dict | None,
                    lint_ok: bool, lint_msg: str,
                    disk_after_reclaim: float | None = None,
-                   code_edit_busy: bool = False) -> dict:
+                   code_edit_busy: bool = False,
+                   scope_conflict: str | None = None) -> dict:
     """Return a gate bundle + verdict/skip_reason. Does not launch."""
     disk = float(snap.get("disk_free_gib") or 0.0)
     clean_ok = bool(snap.get("clean_box_ok"))
@@ -2149,6 +2642,8 @@ def evaluate_gates(ob: dict, *, go: bool, running_n: int, cap: int,
             "code-edit serial: template edits tools/odyssey_patient_runner.py "
             "while another lane is RUNNING"
         )
+    elif scope_conflict:
+        reasons.append(f"write-scope collision: {scope_conflict}")
     elif not lint_ok:
         reasons.append(f"SG-rejected: {lint_msg}")
     elif ob.get("model_loading") and worker_decision == "REFUSE":
@@ -2203,15 +2698,48 @@ def evaluate_gates(ob: dict, *, go: bool, running_n: int, cap: int,
     }
 
 
+def _running_scopes(state: dict, running_ids: set[str]) -> list[dict]:
+    """write_set/exclusive_resources of currently RUNNING science lanes."""
+    scopes = []
+    seen = set()
+    for w in state.get("work") or []:
+        if w.get("status") != "RUNNING":
+            continue
+        oxx, tmpl = w.get("oxx"), w.get("template")
+        if not oxx or not tmpl:
+            parsed = parse_science_task(str(w.get("task") or ""))
+            if parsed:
+                oxx, tmpl = parsed
+        if not oxx or not tmpl:
+            continue
+        key = (oxx, tmpl)
+        if key in seen:
+            continue
+        seen.add(key)
+        scopes.append(write_scope(w if w.get("template") else {"oxx": oxx, "template": tmpl}))
+    for name in running_ids:
+        parsed = parse_science_task(name) or parse_science_task(
+            re.sub(r"-\d{8}-\d{6}$", "", name)
+        )
+        if not parsed:
+            continue
+        if parsed in seen:
+            continue
+        seen.add(parsed)
+        scopes.append(write_scope({"oxx": parsed[0], "template": parsed[1]}))
+    return scopes
+
+
 def run_loop(*, go: bool, max_lanes: int,
              state: dict | None = None,
              observe_fn=None, gate_fn=None, snapshot_fn=None,
              launch_fn=None, lint_fn=None, reclaim_fn=None,
              log_path: Path | None = None, auto_dir: Path | None = None,
-             persist: bool = True, consider_limit: int | None = None) -> list[dict]:
+             persist: bool = True, consider_limit: int | None = None,
+             completions=None) -> list[dict]:
     """Select, render, gate; launch only when go=True. Idempotent. Never blocks."""
     st = state if state is not None else ensure_state()
-    ranked = select_ready_obligations(st)
+    ranked = select_ready_obligations(st, completions=completions)
     cap = min(max(int(max_lanes), 0), HARD_LANE_CAP)
     running_ids = odyssey_running_ids(st)
     running_n = len(running_ids)
@@ -2232,15 +2760,13 @@ def run_loop(*, go: bool, max_lanes: int,
     worker_cache = None
     rows = []
     launched = 0
-    occupied = 0  # launches this tick (real or planned) for code-edit serial
+    occupied = 0  # concurrent admits this tick (real or planned)
     limit = consider_limit if consider_limit is not None else max(cap, DEFAULT_MAX_LANES, 8)
     slots = 0 if not go else max(0, cap - running_n)
+    occupied_scopes = _running_scopes(st, running_ids)
 
     for ob in ranked:
         if go and launched >= slots:
-            break
-        if not go and len(rows) >= (cap if cap > 0 else 0):
-            # max-lanes 0 → empty plan; otherwise top N
             break
         if not go and cap == 0:
             break
@@ -2250,6 +2776,13 @@ def run_loop(*, go: bool, max_lanes: int,
         already = None
         for w in st.get("work") or []:
             if w.get("id") == ob["id"] and w.get("status") == "RUNNING":
+                already = w.get("task") or w.get("id")
+                break
+            if (
+                w.get("status") == "RUNNING"
+                and w.get("oxx") == ob.get("oxx")
+                and w.get("template") == ob.get("template")
+            ):
                 already = w.get("task") or w.get("id")
                 break
         dest = render_contract(ob, auto_dir=auto_dir)
@@ -2265,11 +2798,17 @@ def run_loop(*, go: bool, max_lanes: int,
                 worker_cache = call_worker_gate(observe_fn, gate_fn)
             worker = worker_cache
 
+        scope = write_scope(ob)
+        conflict = scope_conflict_reason(scope, occupied_scopes)
+        # cap for dry-run listing is informational; collision still evaluated
+        # against actually-occupied concurrent slots
+        running_for_cap = running_n + launched
         gates = evaluate_gates(
-            ob, go=go, running_n=running_n + launched, cap=cap,
+            ob, go=go, running_n=running_for_cap, cap=cap if go else max(cap, limit),
             snap=snap, worker=worker, lint_ok=lint_ok, lint_msg=lint_msg,
             disk_after_reclaim=disk_after,
-            code_edit_busy=(running_n + occupied) > 0,
+            code_edit_busy=False,
+            scope_conflict=conflict,
         )
         if already and go:
             gates["verdict"] = "SKIP"
@@ -2281,6 +2820,9 @@ def run_loop(*, go: bool, max_lanes: int,
             "oxx": ob["oxx"],
             "title": ob["title"],
             "template": ob["template"],
+            "mechanism_id": ob.get("mechanism_id") or mechanism_for_template(ob["template"]),
+            "write_set": scope["write_set"],
+            "exclusive_resources": scope["exclusive_resources"],
             "proxy": round(value(ob), 2),
             "contract": rel,
             "verdict": gates["verdict"],
@@ -2295,6 +2837,7 @@ def run_loop(*, go: bool, max_lanes: int,
             "_evidence": "DERIVED (§18 run-loop decision)",
         }
 
+        admitted = False
         if go and gates["verdict"] == "LAUNCH":
             slug = f"odyssey-{ob['oxx'].lower()}-{ob['template']}"
             fn = launch_fn or default_launch
@@ -2316,16 +2859,19 @@ def run_loop(*, go: bool, max_lanes: int,
                     _mark_running(st, ob, task_id, rel, started)
                 launched += 1
                 occupied += 1
+                admitted = True
                 running_n_display = running_n + launched
                 gates["running"] = running_n_display
 
         if not go and gates["verdict"] == "DRY-RUN" and not gates.get("skip_reason"):
             occupied += 1
+            admitted = True
+
+        if admitted:
+            occupied_scopes.append(scope)
 
         append_run_log(row, path=log_path)
         rows.append(row)
-        if not go and cap > 0 and len(rows) >= cap:
-            break
 
     if persist and go and launched:
         save_state(st)
@@ -2611,6 +3157,34 @@ def cmd_harvest(*, dry_run: bool = False) -> int:
 def cmd_packet(oxx: str) -> int:
     dest = write_packet(oxx)
     print(f"wrote {dest.relative_to(REPO)}  valid")
+    return 0
+
+
+def cmd_completions(*, rebuild: bool = False, completed_at: str | None = None) -> int:
+    stamp = completed_at or os.environ.get("ODYSSEY_COMPLETED_AT") or None
+    if rebuild:
+        doc = rebuild_completions(completed_at=stamp)
+        entries = doc.get("entries") or []
+        print(f"ODYSSEY COMPLETIONS  rebuilt  n={len(entries)}  path={COMPLETIONS}")
+        for e in entries:
+            sha = (e.get("receipt_sha256") or "")[:12]
+            print(
+                f"  {e.get('patient_id')}  {e.get('mechanism_id')}  "
+                f"{e.get('status')}  receipt={e.get('receipt_ref')}  "
+                f"sha256={sha}  at={e.get('completed_at')}"
+            )
+        return 0
+    doc = load_completions()
+    entries = doc.get("entries") or []
+    print(f"ODYSSEY COMPLETIONS  n={len(entries)}  path={COMPLETIONS}")
+    if not entries:
+        print("  (empty — run `completions --rebuild` to backfill from receipts)")
+        return 0
+    for e in entries:
+        print(
+            f"  {e.get('patient_id')}  {e.get('mechanism_id')}  {e.get('status')}  "
+            f"reopen_if={e.get('reopen_if')!r}  receipt={e.get('receipt_ref')}"
+        )
     return 0
 
 
@@ -3029,6 +3603,150 @@ def _self_check() -> int:
     )
     assert g_runonly["verdict"] == "LAUNCH", g_runonly
 
+    # 11. completion index rebuild + A-F idempotence battery + write-scope
+    try:
+        complete(
+            obligation_id="x", patient_id="O001", mechanism_id="x",
+            status="VERIFIED", completed_at="", persist=False,
+        )
+        raise AssertionError("complete() must require completed_at")
+    except ValueError:
+        pass
+
+    with tempfile.TemporaryDirectory() as td:
+        td = Path(td)
+        idx_path = td / "ODYSSEY_COMPLETIONS.json"
+        recs = td / "recs"
+        recs.mkdir()
+        # rebuild from the real receipt dir into a temp index
+        rebuilt = rebuild_completions(
+            path=idx_path, receipt_dir=RECEIPT_DIR, persist=True,
+        )
+        keys = {
+            (e["patient_id"], e["mechanism_id"])
+            for e in rebuilt.get("entries") or []
+            if e.get("status") == "VERIFIED"
+        }
+        assert ("O001", "external-science") in keys, keys
+        assert ("O001", "sensitivity-map") in keys, keys
+        assert ("O003", "external-science") in keys, keys
+        assert ("O005", "external-science") in keys, keys
+        assert ("O005", "route-map") in keys, keys
+        assert ("O005", "sensitivity-map") not in keys, keys
+        for e in rebuilt.get("entries") or []:
+            assert e.get("receipt_sha256"), e
+            assert e.get("source_revision"), e
+            assert e.get("completed_at"), e
+            assert e.get("status") == "VERIFIED"
+        rebuilt2 = rebuild_completions(
+            path=idx_path, receipt_dir=RECEIPT_DIR, persist=True,
+        )
+        sig = lambda d: {
+            (e["patient_id"], e["mechanism_id"], e.get("receipt_sha256"), e.get("status"))
+            for e in (d.get("entries") or [])
+        }
+        assert sig(rebuilt) == sig(rebuilt2), "rebuild is not idempotent"
+
+    # persist the canonical index from real receipts (scheduler source of truth)
+    live = rebuild_completions(persist=True)
+    live_keys = {
+        (e["patient_id"], e["mechanism_id"])
+        for e in live.get("entries") or []
+        if e.get("status") == "VERIFIED"
+    }
+    assert ("O005", "sensitivity-map") not in live_keys
+    ranked_live = select_ready_obligations(st2)
+    live_pair = {(r["oxx"], r["template"]) for r in ranked_live}
+    assert ("O001", "external-science-dense") not in live_pair, live_pair
+    assert ("O001", "sensitivity-map") not in live_pair, live_pair
+    assert ("O003", "external-science-moe") not in live_pair, live_pair
+    assert any(
+        r["oxx"] == "O005" and r["template"] == "sensitivity-map" for r in ranked_live
+    ), live_pair
+    assert any(
+        r["oxx"] == "O004" and r["template"] == "external-science-dense" for r in ranked_live
+    ), live_pair
+    assert any(
+        r["oxx"] == "O006" and r["template"] == "transfer-control" for r in ranked_live
+    ), live_pair
+
+    # A-F: synthetic completions + queue. Watch fail AND pass.
+    af_entries = [
+        {"obligation_id": "A", "patient_id": "PA", "mechanism_id": "mech",
+         "status": "VERIFIED", "reopen_if": None, "completed_at": "t0"},
+        {"obligation_id": "B", "patient_id": "PB", "mechanism_id": "mech",
+         "status": "REFUTED", "reopen_if": None, "completed_at": "t0"},
+        {"obligation_id": "C", "patient_id": "PC", "mechanism_id": "mech",
+         "status": "SUPERSEDED", "reopen_if": None, "completed_at": "t0"},
+        # D pending: no entry
+        {"obligation_id": "E", "patient_id": "PE", "mechanism_id": "mech",
+         "status": "VERIFIED", "reopen_if": "true", "completed_at": "t0"},
+        # F: same patient as A, different mechanism — no entry
+    ]
+    af_queue = [
+        ("A", "PA", "mech"),
+        ("B", "PB", "mech"),
+        ("C", "PC", "mech"),
+        ("D", "PD", "mech"),
+        ("E", "PE", "mech"),
+        ("F", "PA", "other"),
+    ]
+    af_got = {
+        label: selection_verdict(pid, mech, af_entries)
+        for label, pid, mech in af_queue
+    }
+    assert af_got["A"] == "REFUSE", af_got
+    assert af_got["B"] == "REFUSE", af_got
+    assert af_got["C"] == "REFUSE", af_got
+    assert af_got["D"] == "LAUNCH", af_got
+    assert af_got["E"] == "LAUNCH", af_got
+    assert af_got["F"] == "LAUNCH", af_got
+    # reopen_if source_revision != <other> is mechanically TRUE; == HEAD is FALSE
+    head = git_head()
+    assert selection_verdict(
+        "PE2", "mech",
+        [{"obligation_id": "E2", "patient_id": "PE2", "mechanism_id": "mech",
+          "status": "VERIFIED", "reopen_if": "source_revision != deadbeef",
+          "completed_at": "t0"}],
+        source_revision=head,
+    ) == "LAUNCH"
+    assert selection_verdict(
+        "PA2", "mech",
+        [{"obligation_id": "A2", "patient_id": "PA2", "mechanism_id": "mech",
+          "status": "VERIFIED", "reopen_if": f"source_revision != {head}",
+          "completed_at": "t0"}],
+        source_revision=head,
+    ) == "REFUSE"
+
+    # write-scope: intersecting write_sets never both admitted
+    sens = {"oxx": "O005", "template": "sensitivity-map"}
+    dense = {"oxx": "O001", "template": "external-science-dense"}
+    moe = {"oxx": "O003", "template": "external-science-moe"}
+    xfer = {"oxx": "O006", "template": "transfer-control"}
+    assert scopes_conflict(write_scope(sens), write_scope(dense)), "runner should collide"
+    assert scopes_conflict(write_scope(sens), write_scope(moe)), "runner should collide"
+    assert not scopes_conflict(write_scope(sens), write_scope(xfer)), write_scope(xfer)
+    assert not scopes_conflict(write_scope(dense), write_scope(xfer))
+    admitted, occupied = [], []
+    for ob in (sens, dense, moe, xfer):
+        sc = write_scope(ob)
+        if scope_conflict_reason(sc, occupied):
+            continue
+        admitted.append((ob["oxx"], ob["template"]))
+        occupied.append(sc)
+    assert ("O005", "sensitivity-map") in admitted
+    assert ("O001", "external-science-dense") not in admitted
+    assert ("O003", "external-science-moe") not in admitted
+    assert ("O006", "transfer-control") in admitted
+    g_collide = evaluate_gates(
+        {"template": "sensitivity-map", "model_loading": False,
+         "timing": False, "download": False},
+        go=True, running_n=1, cap=2, snap=fat_snap, worker=None,
+        lint_ok=True, lint_msg="", scope_conflict=RUNNER_REL,
+    )
+    assert g_collide["verdict"] == "SKIP", g_collide
+    assert "write-scope collision" in (g_collide.get("skip_reason") or ""), g_collide
+
     print("self-check ok")
     return 0
 
@@ -3056,6 +3774,11 @@ def main(argv=None) -> int:
                        help="actually launch grok-run lanes; required to spawn")
     p_run.add_argument("--max-lanes", type=int, default=DEFAULT_MAX_LANES,
                        help="concurrent odyssey lane cap (default 2, hard cap 3)")
+    p_comp = sp.add_parser("completions")
+    p_comp.add_argument("--rebuild", action="store_true",
+                        help="idempotent VERIFIED backfill from receipts/odyssey-i")
+    p_comp.add_argument("--completed-at", default=None,
+                        help="ISO timestamp passed into complete(); default: receipt git/mtime")
     args = ap.parse_args(argv)
     if args.self_check or args.cmd in {"self-check", "selfcheck"}:
         return _self_check()
@@ -3071,6 +3794,11 @@ def main(argv=None) -> int:
         return cmd_packet(args.oxx)
     if args.cmd == "admit":
         return cmd_admit(args.slug, args.est_gib)
+    if args.cmd == "completions":
+        return cmd_completions(
+            rebuild=bool(getattr(args, "rebuild", False)),
+            completed_at=getattr(args, "completed_at", None),
+        )
     if args.cmd == "run":
         go = bool(args.go) and not bool(args.dry_run)
         return cmd_run(go=go, max_lanes=args.max_lanes)

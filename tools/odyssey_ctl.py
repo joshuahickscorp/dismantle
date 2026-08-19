@@ -81,6 +81,10 @@ HF_HUB = Path.home() / ".cache" / "huggingface" / "hub"
 DISK_FLOOR_GIB = 15.0
 DISK_WARN_GIB = 40.0
 DISK_RUN_GIB = 45.0
+# Disk-aware model-lane throttle: never launch a NEW model lane that would push
+# free disk below this floor, budgeting ~one 4-bit body per new gravity spec.
+DISK_MIN_FLOOR = 18.0
+TYPICAL_SPEC_GIB = 12.0
 # Memgate (swap<=30 GiB) is the real multi-model bound. This cap is only a
 # safety rail so a stuck driver cannot spawn unbounded grok-run processes.
 HARD_LANE_CAP = 8
@@ -5043,6 +5047,15 @@ def run_loop(*, go: bool, max_lanes: int, grok_lanes: int = 0,
     model_launched = 0
     grok_slots = 0 if not go else max(0, grok_cap - running_grok_n)
     model_slots = 0 if not go else max(0, model_cap - running_model_n)
+    # Disk-aware throttle on NEW model lanes: each new gravity spec materializes
+    # ~one 4-bit body (~5-16 GiB) to the mlx cache. memgate governs RAM/swap but
+    # not disk; without this, N parallel new-spec writes fill the disk between
+    # per-tick evictions (in-flight specs cannot be evicted). Cap new launches to
+    # what fits above DISK_MIN_FLOOR; running lanes finish, evict, and free slots
+    # next tick. No deadlock: running lanes always terminate.
+    if go and model_slots > 0:
+        headroom_lanes = int(max(0.0, disk - DISK_MIN_FLOOR) / TYPICAL_SPEC_GIB)
+        model_slots = min(model_slots, headroom_lanes)
 
     for ob in ranked:
         if go and grok_launched >= grok_slots and model_launched >= model_slots:
@@ -7341,6 +7354,11 @@ def _self_check() -> int:
         refused = retire_patient("O005", dry_run=True, persist=False, state=dict(st2))
         assert refused.get("verdict") == "REFUSE", refused
         assert "not retire-eligible" in (refused.get("reason") or ""), refused
+    elif ladder_rungs_remain("O005"):
+        # required done but descent ladder not exhausted -> gate holds it open
+        assert not retire_eligible("O005", st2)
+        refused5 = retire_patient("O005", dry_run=True, persist=False, state=dict(st2))
+        assert refused5.get("verdict") == "REFUSE", refused5
     else:
         assert retire_eligible("O005", st2)
         would = retire_patient("O005", dry_run=True, persist=False, state=dict(st2))

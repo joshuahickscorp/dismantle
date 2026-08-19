@@ -62,11 +62,12 @@
       "source": "mistralai/Mistral-Small-3.1-24B-Instruct-2503",
       "gate": "open (token satisfied)",
       "ledger": "on-disk",
-      "state": "READY",
-      "phase": "",
+      "state": "RETIRED",
+      "phase": "SEALED",
       "on_disk": true,
       "blocked_reason": null,
-      "_evidence": "VERIFIED (ODYSSEY.md patient table)"
+      "_evidence": "DERIVED (patient-sealed)",
+      "reclaimable": true
     },
     {
       "oxx": "O005",
@@ -792,9 +793,9 @@
       "template": "nx-gather-moe",
       "mechanism": "nx-gather-moe",
       "mechanism_id": "nx-gather-moe",
-      "pid": 70988,
-      "started": "2026-08-19T23:25:43Z",
-      "started_epoch": 1787181943.2030962,
+      "pid": 71966,
+      "started": "2026-08-19T23:40:46Z",
+      "started_epoch": 1787182846.84715,
       "receipt_path": "receipts/odyssey-i/O006_NX_gather.json",
       "timeout_s": 1800,
       "argv": [
@@ -813,7 +814,7 @@
         "--nx-gather"
       ],
       "log": "/Users/scammermike/Downloads/hawking/workspace/campaign/odyssey/lanes/O006-nx-gather-moe.log",
-      "task": "pid:70988",
+      "task": "pid:71966",
       "retries": 0,
       "fail_reason": "exited-no-receipt"
     },
@@ -860,7 +861,7 @@
       "id": "AUTO-O004-nx-dense",
       "oxx": "O004",
       "title": "NX dense floor (full-weight-sweep bytes/token)",
-      "status": "RUNNING",
+      "status": "VERIFIED",
       "info": 7.0,
       "wall_cost": 2.0,
       "gpu_cost": 1.0,

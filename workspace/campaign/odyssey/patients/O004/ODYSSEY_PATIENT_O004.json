@@ -490,9 +490,16 @@
     "machine_lowering": null,
     "kernel_bindings": null,
     "fallback_count": null,
-    "best_preliminary_nx": null,
+    "best_preliminary_nx": "dense full-weight-sweep floor (no sparsity lever)",
     "nx_hash": null,
-    "_evidence": "UNKNOWN"
+    "_evidence": "MEASURED (census) — header-only, no weight load",
+    "mode": "dense",
+    "receipt": "receipts/odyssey-i/O004_NX_dense.json",
+    "not_a_full_rust_runtime": true,
+    "not_hawking_nx_win": true,
+    "label": "SPECIMEN",
+    "full_weight_sweep_bytes_per_token": 48022722560,
+    "sparsity_lever": false
   },
   "transfer": {
     "inherited_rules": [
@@ -510,6 +517,7 @@
     "_evidence": "INFERRED (TRANSFER_MATRIX.json)"
   },
   "next": [
+    "nx-dense accounting written (receipts/odyssey-i/O004_NX_dense.json); not a Hawking NX runtime",
     "gravity q4-g64 CANDIDATE_PASS: stored_bpw=4.4179 active_bpw=4.4179 battery=11/12 delta_hits=0 (mlx SPECIMEN, not a Hawking NX win)",
     "A3 per-organ sensitivity MEASURED: zero drops hits on embed, attn, mlp_dense, norm, lm_head; round8 drops hits on nothing (baseline 11/12, 4bit-mlx)",
     "do not treat mlx tps_specimen as BASE_TRUE_TPS; re-time on a clean box if a native path lands",
@@ -525,5 +533,8 @@
     ],
     "_evidence": "DERIVED (doctor_seal.seal structural)"
   },
-  "phase": "GRAVITY"
+  "phase": "SEALED",
+  "state": "RETIRED",
+  "reclaimable": true,
+  "_evidence": "DERIVED (patient-sealed)"
 }

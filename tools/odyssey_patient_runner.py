@@ -112,7 +112,15 @@ QUANT_DIR_BY_OXX = {
     "O005": DEFAULT_4BIT,
     "O001": Path.home() / ".cache/mlx/odyssey/O001-Falcon-H1-7B-Instruct-4bit",
     "O003": Path.home() / ".cache/mlx/odyssey/O003-Kimi-VL-A3B-Instruct-4bit",
+    "O006": Path.home() / ".cache/mlx/odyssey/O006-Qwen3-VL-30B-A3B-Instruct-4bit",
 }
+# Sibling transfer-control (§41): run O00X then diff route/representation vs named reference.
+SIBLING_REFERENCE = {"O006": "O005"}
+TRANSFER_MATRIX_PATH = ROOT / "workspace/campaign/odyssey/TRANSFER_MATRIX.json"
+GRAVITY_RULEBASE_PATH = ROOT / "workspace/campaign/odyssey/GRAVITY_RULEBASE.json"
+# Contract vocab uses RETUNED; TRANSFER_MATRIX.json statuses use TRANSFERRED_RETUNED.
+TRANSFER_CELL_TO_MATRIX = {"RETUNED": "TRANSFERRED_RETUNED"}
+MATRIX_TO_TRANSFER_CELL = {"TRANSFERRED_RETUNED": "RETUNED"}
 # H2 discriminator uses 4k and 64k; short is below the state/KV crossover.
 SSM_CTXS = (("short", 512), ("moderate", 4096), ("long", 65536))
 CACHE_ELEM_BYTES = 2  # bf16 activations in mlx cache, independent of weight quant
@@ -775,6 +783,85 @@ def ensure_kimi_vl_sanitize_patch() -> None:
     log("patched mlx_lm.kimi_vl.Model.sanitize (MLA kv_b_proj -> embed_q/unembed_out)")
 
 
+def ensure_qwen3_vl_moe_patch() -> None:
+    """mlx_lm.qwen3_vl_moe is the language-MoE wrapper (visual dropped), but:
+
+    1. HF Qwen3-VL-MoE stores text under `model.language_model.*` and vision
+       under `model.visual.*`, with `lm_head.weight` at the top level. The
+       stock sanitize expects `language_model.model.*` + top-level `visual`.
+    2. `text_config` omits `tie_word_embeddings` (it lives on the outer
+       config), so `qwen3_moe.ModelArgs.from_dict(text_config)` TypeErrors.
+
+    Patch both so convert/load tap the language-MoE router and skip the
+    vision tower. Idempotent.
+    """
+    from mlx_lm.models import qwen3_moe, qwen3_vl_moe
+
+    if getattr(qwen3_vl_moe.Model.sanitize, "_odyssey_vl_moe", False):
+        return
+
+    def __init__(self, args):
+        nn.Module.__init__(self)
+        self.args = args
+        self.model_type = args.model_type
+        tc = dict(args.text_config)
+        tc.setdefault("tie_word_embeddings", False)
+        self.language_model = qwen3_moe.Model(
+            qwen3_moe.ModelArgs.from_dict(tc)
+        )
+
+    def sanitize(self, weights):
+        n_in = len(weights)
+        cleaned = {}
+        n_vis = 0
+        n_hf = 0
+        for k, v in weights.items():
+            parts = k.split(".")
+            if "visual" in parts or k.startswith("vision_tower"):
+                n_vis += 1
+                continue
+            if k.startswith("model.language_model."):
+                n_hf += 1
+                k = "language_model.model." + k[len("model.language_model.") :]
+            elif k.startswith("lm_head."):
+                k = "language_model." + k
+            cleaned[k] = v
+        weights = cleaned
+        n_split = 0
+        n_layers = int(self.language_model.args.num_hidden_layers)
+        for li in range(n_layers):
+            prefix = f"language_model.model.layers.{li}.mlp"
+            gate_up_key = f"{prefix}.experts.gate_up_proj"
+            if gate_up_key not in weights:
+                continue
+            gate_up = weights.pop(gate_up_key)
+            mid = int(gate_up.shape[-1]) // 2
+            weights[f"{prefix}.switch_mlp.gate_proj.weight"] = gate_up[
+                ..., :mid
+            ].swapaxes(-2, -1)
+            weights[f"{prefix}.switch_mlp.up_proj.weight"] = gate_up[
+                ..., mid:
+            ].swapaxes(-2, -1)
+            weights[f"{prefix}.switch_mlp.down_proj.weight"] = weights.pop(
+                f"{prefix}.experts.down_proj"
+            ).swapaxes(-2, -1)
+            n_split += 1
+        log(
+            f"qwen3_vl_moe sanitize: in={n_in} visual_dropped={n_vis} "
+            f"hf_remapped={n_hf} expert_layers_split={n_split} out={len(weights)}"
+        )
+        return weights
+
+    __init__._odyssey_vl_moe = True  # type: ignore[attr-defined]
+    sanitize._odyssey_vl_moe = True  # type: ignore[attr-defined]
+    qwen3_vl_moe.Model.__init__ = __init__
+    qwen3_vl_moe.Model.sanitize = sanitize
+    log(
+        "patched mlx_lm.qwen3_vl_moe (HF model.language_model prefix + drop visual "
+        "+ inject tie_word_embeddings); language-MoE router only"
+    )
+
+
 def convert_4bit(hf_path: Path, dest: Path) -> Path:
     if (dest / "config.json").exists() and any(dest.glob("*.safetensors")):
         log(f"reusing 4-bit mlx at {dest}")
@@ -786,7 +873,8 @@ def convert_4bit(hf_path: Path, dest: Path) -> Path:
         subprocess.run(["rm", "-rf", str(dest)], check=True)
     dest.parent.mkdir(parents=True, exist_ok=True)
     log(f"mlx_lm.convert -q 4bit: {hf_path} -> {dest}")
-    if hf_model_type(hf_path) == "kimi_vl":
+    mt = hf_model_type(hf_path)
+    if mt == "kimi_vl":
         # In-process so the MLA kv_b_proj sanitize patch is visible.
         ensure_tiktoken_local_read()
         ensure_kimi_vl_sanitize_patch()
@@ -797,6 +885,19 @@ def convert_4bit(hf_path: Path, dest: Path) -> Path:
             mlx_path=str(dest),
             quantize=True,
             q_bits=4,
+            trust_remote_code=True,
+        )
+    elif mt == "qwen3_vl_moe":
+        # In-process so the HF-prefix + drop-visual sanitize patch is visible.
+        ensure_qwen3_vl_moe_patch()
+        from mlx_lm.convert import convert as mlx_convert
+
+        mlx_convert(
+            hf_path=str(hf_path),
+            mlx_path=str(dest),
+            quantize=True,
+            q_bits=4,
+            q_group_size=64,
             trust_remote_code=True,
         )
     else:
@@ -2904,6 +3005,431 @@ def write_doctor_seal(
     return verdict, doc
 
 
+def _organs_gb_from_census(census: dict) -> dict:
+    raw = census.get("organs_bytes") or {}
+    return {k: round(float(v) / 1e9, 2) for k, v in raw.items()}
+
+
+def load_patient_representation(oxx: str) -> dict:
+    """Census organs_bytes_GB + stored_bpw (MEASURED, no weight load)."""
+    census_path = ROOT / f"workspace/campaign/odyssey/patients/{oxx}/census.json"
+    packet_path = ROOT / f"workspace/campaign/odyssey/patients/{oxx}/ODYSSEY_PATIENT_{oxx}.json"
+    organs: dict = {}
+    bpw = None
+    census: dict = {}
+    if census_path.exists():
+        census = json.loads(census_path.read_text())
+        organs = _organs_gb_from_census(census)
+        bpw = census.get("stored_bpw")
+    if packet_path.exists():
+        pkt = json.loads(packet_path.read_text())
+        rep = pkt.get("representation") or {}
+        if not organs:
+            organs = dict(rep.get("organs_bytes_GB") or {})
+        if bpw is None:
+            bpw = rep.get("stored_bpw")
+    return {
+        "organs_bytes_GB": organs,
+        "stored_bpw": bpw,
+        "census": census,
+        "_evidence": "MEASURED (census headers)",
+    }
+
+
+def load_gravity_rule_ids() -> list[str]:
+    """Rule ids from TRANSFER_MATRIX rows, falling back to GRAVITY_RULEBASE."""
+    ids: list[str] = []
+    if TRANSFER_MATRIX_PATH.exists():
+        grid = json.loads(TRANSFER_MATRIX_PATH.read_text())
+        ids = [r["rule"] for r in grid.get("rows") or [] if r.get("rule")]
+    if ids:
+        return ids
+    if GRAVITY_RULEBASE_PATH.exists():
+        rb = json.loads(GRAVITY_RULEBASE_PATH.read_text())
+        ids = [r["id"] for r in rb.get("rules") or [] if r.get("id")]
+    if not ids:
+        raise SystemExit("no GRAVITY_RULEBASE rule ids found (TRANSFER_MATRIX/GRAVITY_RULEBASE missing)")
+    return ids
+
+
+def _frac_hits(s: str | None) -> int:
+    if not s or "/" not in str(s):
+        return 0
+    return parse_frac(str(s))[0]
+
+
+def classify_transfer_cells(
+    *,
+    route: dict,
+    ref_route: dict,
+    doctor: dict,
+    ref_doctor: dict,
+) -> tuple[dict[str, str], dict[str, str]]:
+    """Map each GRAVITY_RULEBASE rule to a transfer-control status.
+
+    Contract vocab: TRANSFERRED_UNCHANGED / RETUNED / ARCHITECTURE_SPECIFIC /
+    PATIENT_SPECIFIC / FAILED / HARMFUL / NOT_TESTED.
+    Classification is from MEASURED route+doctor on this specimen vs the
+    named reference — no codec was applied, so HARMFUL is not claimed.
+    """
+    cells: dict[str, str] = {}
+    notes: dict[str, str] = {}
+    rule_ids = load_gravity_rule_ids()
+
+    top_k = int(route.get("top_k") or 0)
+    n_exp = int(route.get("experts") or 0)
+    n_moe = int(route.get("moe_layers") or 0)
+    ref_k = int(ref_route.get("top_k") or 0)
+    ref_e = int(ref_route.get("experts") or 0)
+    ref_m = int(ref_route.get("moe_layers") or 0)
+    cold = int(route.get("cold_experts") or 0)
+    ref_cold = int(ref_route.get("cold_experts") or 0)
+    uniform = bool(route.get("uniform_routing"))
+    ref_uniform = bool(ref_route.get("uniform_routing"))
+    ent = float(route.get("entropy_avg") or 0.0)
+    ent_max = float(route.get("entropy_max") or 0.0)
+    ref_ent = float(ref_route.get("entropy_avg") or 0.0)
+    top16 = int(route.get("top16_mass_pct") or 0)
+    ref_top16 = int(ref_route.get("top16_mass_pct") or 0)
+    trans = float(route.get("transition_stability") or 0.0)
+    ref_trans = float(ref_route.get("transition_stability") or 0.0)
+    p_e = float(route.get("p_e_t_given_e_t_minus_1") or 0.0)
+    same_sparse = top_k == ref_k and n_exp == ref_e and n_moe == ref_m and top_k > 0
+    peaked = (not uniform) or top16 >= 30 or (ent_max > 0 and ent < 0.85 * ent_max)
+
+    for rid in rule_ids:
+        if rid == "R-sparse-active-expert-gather":
+            if same_sparse:
+                cells[rid] = "TRANSFERRED_UNCHANGED"
+                notes[rid] = (
+                    f"language-MoE sparse path {top_k}/{n_exp} over {n_moe} layers "
+                    f"matches reference ({ref_k}/{ref_e} x {ref_m}); MoE-universal gather still applies. "
+                    "Vision tower is not on the active expert path."
+                )
+            elif top_k > 0 and n_exp > 0:
+                cells[rid] = "RETUNED"
+                notes[rid] = (
+                    f"still a sparse expert path but dims differ: "
+                    f"{top_k}/{n_exp} x {n_moe} vs ref {ref_k}/{ref_e} x {ref_m}"
+                )
+            else:
+                cells[rid] = "ARCHITECTURE_SPECIFIC"
+                notes[rid] = "no language-MoE sparse path measured on this specimen"
+        elif rid == "R-uniform-routing-no-cold-compress":
+            if cold == 0 and uniform:
+                cells[rid] = "TRANSFERRED_UNCHANGED"
+                notes[rid] = (
+                    f"uniform routing holds: entropy {ent:.2f}/{ent_max:.2f}, cold=0, "
+                    f"top16={top16}% (ref {ref_ent:.2f}, cold={ref_cold}, top16={ref_top16}%). "
+                    "cold-expert compression does NOT apply."
+                )
+            elif cold == 0:
+                cells[rid] = "RETUNED"
+                notes[rid] = (
+                    f"0 cold experts like the reference, but routing is not uniform-by-threshold "
+                    f"(entropy {ent:.2f}/{ent_max:.2f}, top16={top16}%, uniform={uniform}). "
+                    "no-cold-compress still holds; popularity-skew thresholds would retune."
+                )
+            else:
+                # Applying the O005 "no cold-compress" then-clause here would be wrong.
+                cells[rid] = "FAILED"
+                notes[rid] = (
+                    f"{cold} never-routed experts (ref {ref_cold}); uniform-routing then-clause "
+                    "does not transfer — cold-expert compression may apply."
+                )
+        elif rid == "R-protect-router-if-sensitive":
+            cells[rid] = "NOT_TESTED"
+            notes[rid] = (
+                "router sensitivity not ablated on this run (no --sensitivity). "
+                "Router organ is 0.03 GB on both siblings (census) but Doctor-sensitivity is UNKNOWN."
+            )
+        elif rid == "R-heterogeneous-expert-allocate":
+            cells[rid] = "NOT_TESTED"
+            notes[rid] = "per-expert Doctor sensitivity not measured on this run (no --sensitivity)"
+        elif rid == "R-predictable-route-prefetch":
+            # O005 specimen was ~0.41 overlap, not peaked. Prefetch conditions require a peaked P(E_t|E_{t-1}).
+            if trans >= 0.6 and p_e >= 0.6:
+                cells[rid] = "RETUNED" if ref_trans < 0.6 else "TRANSFERRED_UNCHANGED"
+                notes[rid] = (
+                    f"transitions more peaked than a memoryless baseline "
+                    f"(stability={trans:.3f}, P(E_t|E_t-1)={p_e:.3f}; ref {ref_trans:.3f}). "
+                    "prefetch is a candidate; thresholds vs O005 would retune."
+                    if ref_trans < 0.6
+                    else f"transition stability {trans:.3f} matches a peaked reference {ref_trans:.3f}"
+                )
+            else:
+                cells[rid] = "PATIENT_SPECIFIC"
+                notes[rid] = (
+                    f"transitions not peaked enough to prefetch "
+                    f"(stability={trans:.3f}, P(E_t|E_t-1)={p_e:.3f}; ref {ref_trans:.3f}). "
+                    "same negative as the O005 specimen — rule conditions not met."
+                )
+        elif rid == "R-organ-inversion":
+            cells[rid] = "NOT_TESTED"
+            notes[rid] = "gate vs down Doctor-sensitivity not measured on this run"
+        elif rid == "R-routing-frequency-alloc":
+            if (not peaked) and cold == 0 and uniform:
+                cells[rid] = "PATIENT_SPECIFIC"
+                notes[rid] = (
+                    f"routing near-uniform (entropy {ent:.2f}/{ent_max:.2f}, top16={top16}%, "
+                    f"cold=0) so frequency allocation is N/A — same negative as O005 "
+                    f"(ref entropy {ref_ent:.2f}, top16={ref_top16}%, uniform={ref_uniform})."
+                )
+            else:
+                cells[rid] = "RETUNED"
+                notes[rid] = (
+                    f"routing is not near-uniform (entropy {ent:.2f}/{ent_max:.2f}, "
+                    f"top16={top16}%, cold={cold}, uniform={uniform}); frequency allocation "
+                    "may apply, but calibration corpus is the short specimen — retune vs O005 negative."
+                )
+        elif rid == "R-layer0-different-source":
+            cells[rid] = "NOT_TESTED"
+            notes[rid] = (
+                "per-layer route entropy is recorded but Shannon-gap / non-Gaussianity of "
+                "the source is not measured (needs A3-style layer statistics, not a route tap)"
+            )
+        elif rid == "R-affine-grouped-q2-if-native-kernel":
+            cells[rid] = "NOT_TESTED"
+            notes[rid] = (
+                "no Doctor-valid q2 and no native Hawking kernel on this specimen "
+                "(mlx 4-bit is a foreign-runtime SPECIMEN, §60)"
+            )
+        else:
+            cells[rid] = "NOT_TESTED"
+            notes[rid] = "no transfer discriminator on this run"
+    return cells, notes
+
+
+def merge_transfer_matrix(oxx: str, cells: dict[str, str], notes: dict[str, str]) -> dict:
+    """Write O00X cells into TRANSFER_MATRIX.json; do not blank other patients."""
+    if not TRANSFER_MATRIX_PATH.exists():
+        raise SystemExit(f"TRANSFER_MATRIX missing: {TRANSFER_MATRIX_PATH}")
+    grid = json.loads(TRANSFER_MATRIX_PATH.read_text())
+    n_set = 0
+    for row in grid.get("rows") or []:
+        rid = row.get("rule")
+        if rid not in cells:
+            continue
+        contract_status = cells[rid]
+        matrix_status = TRANSFER_CELL_TO_MATRIX.get(contract_status, contract_status)
+        row.setdefault("cells", {})
+        row["cells"][oxx] = matrix_status
+        n_set += 1
+        note = notes.get(rid)
+        if note:
+            row[f"_{oxx}_note"] = note
+    TRANSFER_MATRIX_PATH.write_text(json.dumps(grid, indent=2) + "\n")
+    log(f"merged {n_set} {oxx} cells into {TRANSFER_MATRIX_PATH}")
+    return grid
+
+
+def write_transfer_control(
+    *,
+    oxx: str,
+    reference: str,
+    receipt: dict,
+    packet_path: Path,
+) -> dict:
+    """Diff route/representation/doctor vs the named reference; write TRANSFER receipt."""
+    ref_ext = ROOT / f"receipts/odyssey-i/{reference}_EXTERNAL.json"
+    if not ref_ext.exists():
+        raise SystemExit(f"reference receipt missing: {ref_ext}")
+    ref_receipt = json.loads(ref_ext.read_text())
+    route = receipt.get("route") or {}
+    ref_route = ref_receipt.get("route") or {}
+    doctor = receipt.get("doctor") or {}
+    ref_doctor = ref_receipt.get("doctor") or {}
+    self_rep = load_patient_representation(oxx)
+    ref_rep = load_patient_representation(reference)
+    organs = self_rep["organs_bytes_GB"]
+    ref_organs = ref_rep["organs_bytes_GB"]
+    keys = sorted(set(organs) | set(ref_organs))
+    organs_delta = {
+        k: round(float(organs.get(k) or 0) - float(ref_organs.get(k) or 0), 4) for k in keys
+    }
+    bpw = self_rep.get("stored_bpw")
+    ref_bpw = ref_rep.get("stored_bpw")
+    bpw_delta = None
+    if bpw is not None and ref_bpw is not None:
+        bpw_delta = round(float(bpw) - float(ref_bpw), 4)
+
+    def _rdiff(key: str) -> float | int | None:
+        a, b = route.get(key), ref_route.get(key)
+        if a is None or b is None:
+            return None
+        if isinstance(a, (int, float)) and isinstance(b, (int, float)):
+            if isinstance(a, float) or isinstance(b, float):
+                return round(float(a) - float(b), 4)
+            return int(a) - int(b)
+        return None
+
+    battery_delta = _frac_hits(doctor.get("battery")) - _frac_hits(ref_doctor.get("battery"))
+    refusals_delta = _frac_hits(doctor.get("refusals")) - _frac_hits(ref_doctor.get("refusals"))
+    cells, notes = classify_transfer_cells(
+        route=route, ref_route=ref_route, doctor=doctor, ref_doctor=ref_doctor
+    )
+    merge_transfer_matrix(oxx, cells, notes)
+
+    unchanged = [r for r, s in cells.items() if s == "TRANSFERRED_UNCHANGED"]
+    retuned = [r for r, s in cells.items() if s == "RETUNED"]
+    failed = [r for r, s in cells.items() if s == "FAILED"]
+    harmful = [r for r, s in cells.items() if s == "HARMFUL"]
+    patient_specific = [r for r, s in cells.items() if s == "PATIENT_SPECIFIC"]
+    arch_specific = [r for r, s in cells.items() if s == "ARCHITECTURE_SPECIFIC"]
+    not_tested = [r for r, s in cells.items() if s == "NOT_TESTED"]
+    inherited = [
+        r for r, s in cells.items() if s not in ("NOT_TESTED", "ARCHITECTURE_SPECIFIC")
+    ]
+
+    transfer = {
+        "schema": "odyssey.patient.transfer_control.v1",
+        "oxx": oxx,
+        "reference": reference,
+        "section": "§41",
+        "delta": {
+            "route": {
+                "entropy_avg": _rdiff("entropy_avg"),
+                "entropy_max": _rdiff("entropy_max"),
+                "cold_experts": _rdiff("cold_experts"),
+                "top16_mass_pct": _rdiff("top16_mass_pct"),
+                "most_popular_share": _rdiff("most_popular_share"),
+                "transition_stability": _rdiff("transition_stability"),
+                "adjacent_token_overlap": _rdiff("adjacent_token_overlap"),
+                "p_e_t_given_e_t_minus_1": _rdiff("p_e_t_given_e_t_minus_1"),
+                "tokens_observed": _rdiff("tokens_observed"),
+            },
+            "representation": {
+                "stored_bpw": bpw_delta,
+                "organs_bytes_GB": organs_delta,
+            },
+            "doctor": {
+                "battery": doctor.get("battery"),
+                "reference_battery": ref_doctor.get("battery"),
+                "battery_hits": battery_delta,
+                "refusals": doctor.get("refusals"),
+                "reference_refusals": ref_doctor.get("refusals"),
+                "refusals_hits": refusals_delta,
+            },
+            "_label": "DERIVED (this specimen MEASURED minus reference MEASURED)",
+        },
+        "measured": {
+            "route": {
+                "entropy_avg": route.get("entropy_avg"),
+                "entropy_max": route.get("entropy_max"),
+                "cold_experts": route.get("cold_experts"),
+                "top16_mass_pct": route.get("top16_mass_pct"),
+                "most_popular_share": route.get("most_popular_share"),
+                "transition_stability": route.get("transition_stability"),
+                "p_e_t_given_e_t_minus_1": route.get("p_e_t_given_e_t_minus_1"),
+                "uniform_routing": route.get("uniform_routing"),
+                "hot_cold_verdict": route.get("hot_cold_verdict"),
+                "moe_layers": route.get("moe_layers"),
+                "experts": route.get("experts"),
+                "top_k": route.get("top_k"),
+                "tokens_observed": route.get("tokens_observed"),
+            },
+            "representation": {
+                "stored_bpw": bpw,
+                "organs_bytes_GB": organs,
+            },
+            "doctor": {
+                "battery": doctor.get("battery"),
+                "refusals": doctor.get("refusals"),
+            },
+            "_label": "MEASURED",
+        },
+        "reference_measured": {
+            "route": {
+                "entropy_avg": ref_route.get("entropy_avg"),
+                "entropy_max": ref_route.get("entropy_max"),
+                "cold_experts": ref_route.get("cold_experts"),
+                "top16_mass_pct": ref_route.get("top16_mass_pct"),
+                "most_popular_share": ref_route.get("most_popular_share"),
+                "transition_stability": ref_route.get("transition_stability"),
+                "p_e_t_given_e_t_minus_1": ref_route.get("p_e_t_given_e_t_minus_1"),
+                "uniform_routing": ref_route.get("uniform_routing"),
+                "hot_cold_verdict": ref_route.get("hot_cold_verdict"),
+                "moe_layers": ref_route.get("moe_layers"),
+                "experts": ref_route.get("experts"),
+                "top_k": ref_route.get("top_k"),
+                "tokens_observed": ref_route.get("tokens_observed"),
+            },
+            "representation": {
+                "stored_bpw": ref_bpw,
+                "organs_bytes_GB": ref_organs,
+            },
+            "doctor": {
+                "battery": ref_doctor.get("battery"),
+                "refusals": ref_doctor.get("refusals"),
+            },
+            "receipt": str(ref_ext.relative_to(ROOT)),
+            "_label": "MEASURED (reference receipt + census)",
+        },
+        "transfer_cells": cells,
+        "transfer_cell_notes": notes,
+        "matrix_status_alias": dict(TRANSFER_CELL_TO_MATRIX),
+        "inherited_rules": inherited,
+        "unchanged": unchanged,
+        "retuned": retuned,
+        "failed": failed,
+        "harmful": harmful,
+        "patient_specific": patient_specific,
+        "architecture_specific": arch_specific,
+        "not_tested": not_tested,
+        "vision_tower_skipped": True,
+        "language_moe_only": True,
+        "commit": git_head(),
+        "_evidence": (
+            f"MEASURED route/doctor ({oxx}_EXTERNAL vs {reference}_EXTERNAL); "
+            "MEASURED organs/stored_bpw (census); DERIVED cells"
+        ),
+    }
+    out_path = ROOT / f"receipts/odyssey-i/{oxx}_TRANSFER.json"
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(transfer, indent=2) + "\n")
+    log(f"wrote {out_path}")
+
+    if packet_path.exists():
+        pkt = json.loads(packet_path.read_text())
+        pkt["transfer"] = {
+            "reference": reference,
+            "receipt": str(out_path.relative_to(ROOT)),
+            "inherited_rules": inherited,
+            "unchanged": unchanged,
+            "retuned": retuned,
+            "failed": failed,
+            "harmful": harmful,
+            "patient_specific": patient_specific,
+            "architecture_specific": arch_specific,
+            "not_tested": not_tested,
+            "cells": cells,
+            "delta": transfer["delta"],
+            "_evidence": transfer["_evidence"],
+        }
+        nxt = list(pkt.get("next") or [])
+        line = (
+            f"transfer-control vs {reference} MEASURED "
+            f"(unchanged={len(unchanged)} retuned={len(retuned)} "
+            f"patient_specific={len(patient_specific)} failed={len(failed)}; "
+            f"{out_path.relative_to(ROOT)})"
+        )
+        nxt = [line] + [x for x in nxt if "transfer-control" not in str(x).lower()]
+        pkt["next"] = nxt
+        packet_path.write_text(json.dumps(pkt, indent=2) + "\n")
+        log(f"updated packet transfer {packet_path}")
+
+    non_nt = [s for s in cells.values() if s != "NOT_TESTED"]
+    if not non_nt:
+        raise SystemExit(f"{oxx} transfer_cells are all NOT_TESTED")
+    if transfer.get("reference") != reference:
+        raise SystemExit("transfer receipt missing reference")
+    if not transfer.get("delta") or not transfer.get("transfer_cells"):
+        raise SystemExit("transfer receipt missing delta/transfer_cells")
+    if not out_path.exists():
+        raise SystemExit(f"transfer receipt not written: {out_path}")
+    return transfer
+
+
 def update_packet(packet_path: Path, receipt: dict) -> None:
     if not packet_path.exists():
         log(f"packet missing at {packet_path}; not writing")
@@ -3113,6 +3639,8 @@ def validate_packet(
     route_skipped: bool = False,
     sensitivity: bool = False,
     organs: list[str] | None = None,
+    transfer: bool = False,
+    oxx: str | None = None,
 ) -> None:
     pkt = json.loads(packet_path.read_text())
     for k in ("identity", "architecture", "representation", "execution", "routing", "doctor"):
@@ -3144,6 +3672,19 @@ def validate_packet(
                 raise SystemExit(f"packet per_organ_sensitivity missing organ {o}")
             if pos[o] is None:
                 raise SystemExit(f"packet per_organ_sensitivity.{o} is null")
+    if transfer:
+        tr = pkt.get("transfer") or {}
+        if not tr.get("reference"):
+            raise SystemExit("packet transfer.reference empty")
+        cells = tr.get("cells") or {}
+        if not cells:
+            raise SystemExit("packet transfer.cells empty")
+        if all(v == "NOT_TESTED" for v in cells.values()):
+            raise SystemExit("packet transfer cells all NOT_TESTED")
+        if oxx:
+            tpath = ROOT / f"receipts/odyssey-i/{oxx}_TRANSFER.json"
+            if not tpath.exists():
+                raise SystemExit(f"transfer receipt missing: {tpath}")
 
 
 def maybe_machine_note() -> dict:
@@ -3306,6 +3847,14 @@ def main() -> int:
                 "multi_modal_projector; language-MoE router only (DeepSeek-V3 sigmoid/"
                 "noaux_tc, 6/64 + 2 shared)."
             )
+        elif args.oxx == "O006":
+            fidelity = (
+                "4-bit affine MLX quantization (group 64; qwen3_moe.quant_predicate keeps "
+                "router gates at 8-bit). Battery/route/TPS are SPECIMEN under quant — not "
+                "bf16-canonical Doctor. Canonical HF snapshot was not modified or deleted. "
+                "mlx_lm.qwen3_vl_moe.sanitize drops model.visual (vision tower); language-MoE "
+                "router only (Qwen3-MoE softmax -> top-8 -> renorm, 8/128, no shared)."
+            )
         else:
             fidelity = (
                 "4-bit affine MLX quantization (group 64). Battery/TPS are SPECIMEN under "
@@ -3324,6 +3873,11 @@ def main() -> int:
     if hf_model_type(load_path) == "kimi_vl" or hf_model_type(weights) == "kimi_vl":
         ensure_tiktoken_local_read()
         ensure_kimi_vl_sanitize_patch()
+    if (
+        hf_model_type(load_path) == "qwen3_vl_moe"
+        or hf_model_type(weights) == "qwen3_vl_moe"
+    ):
+        ensure_qwen3_vl_moe_patch()
     log(f"loading {quant} from {load_path} ...")
     t_load = time.perf_counter()
     model, tok = load(str(load_path), tokenizer_config={"trust_remote_code": True})
@@ -3672,6 +4226,29 @@ def main() -> int:
     if not args.skip_packet:
         update_packet(packet_path, receipt)
         validate_packet(packet_path, route_skipped=skip_route)
+
+    ref_oxx = SIBLING_REFERENCE.get(args.oxx)
+    if ref_oxx and not skip_route:
+        transfer = write_transfer_control(
+            oxx=args.oxx,
+            reference=ref_oxx,
+            receipt=receipt,
+            packet_path=packet_path,
+        )
+        receipt["transfer_ref"] = f"receipts/odyssey-i/{args.oxx}_TRANSFER.json"
+        receipt["transfer_reference"] = ref_oxx
+        # Re-write EXTERNAL so the transfer pointer is on the specimen receipt.
+        out_path.write_text(json.dumps(receipt, indent=2) + "\n")
+        if not args.skip_packet:
+            validate_packet(
+                packet_path, route_skipped=skip_route, transfer=True, oxx=args.oxx
+            )
+        log(
+            f"{args.oxx} transfer vs {ref_oxx}: "
+            f"unchanged={len(transfer['unchanged'])} retuned={len(transfer['retuned'])} "
+            f"patient_specific={len(transfer['patient_specific'])} "
+            f"failed={len(transfer['failed'])} not_tested={len(transfer['not_tested'])}"
+        )
 
     # Acceptance shape.
     assert receipt["doctor"]["battery"]

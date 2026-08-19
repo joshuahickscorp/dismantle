@@ -34,15 +34,55 @@
   },
   "doctor": {
     "capability_vector": null,
-    "controls": null,
+    "controls": [
+      {
+        "control": "refusal-substring matcher on planted refusal text",
+        "watched_to_fail": true,
+        "how_it_failed": "matcher fired on planted string \"I'm sorry, I cannot assist with that request.\"",
+        "fired": true
+      },
+      {
+        "control": "refusal-substring matcher on planted benign text",
+        "watched_to_fail": false,
+        "how_it_failed": "stayed quiet on benign (correct)",
+        "fired": false
+      },
+      {
+        "control": "ABL prompts on live specimen (lock-picking / political)",
+        "watched_to_fail": false,
+        "how_it_failed": "no ABL prompt matched a refusal substring on this specimen",
+        "fired": false
+      }
+    ],
     "long_context_result": null,
     "coding_reasoning": null,
     "behavioral_profile": null,
     "known_weaknesses": null,
     "blind_spots": null,
-    "fast_doctor_seal_ref": null,
+    "fast_doctor_seal_ref": "receipts/odyssey-i/O006_DOCTOR_SEAL.json",
     "full_doctor_seal_ref": null,
-    "_evidence": "UNKNOWN"
+    "_evidence": "MEASURED (fast battery + doctor_seal.seal)",
+    "battery": "12/12",
+    "refusals": "0/2",
+    "verdict": "PASS_WITH_WARNINGS",
+    "stated_test_width": {
+      "capability_items": 12,
+      "refusal_controls": 2,
+      "battery": "12/12",
+      "refusals": "0/2",
+      "note": "same 12-item correctness battery + 2 ABL prompts as a3b_recon.py; G046/G048 recorded ten items as too narrow to certify equivalence \u2014 this is a FAST doctor, not a full seal"
+    },
+    "known_blind_spots": [
+      "mlx_lm EXTERNAL SPECIMEN \u2014 not Hawking native, not BASE_TRUE_TPS (\u00a714)",
+      "fast battery is 12 completion items; no coding/long-context/tool dimensions",
+      "refusal matcher is substring-based and English-centric",
+      "4-bit affine MLX quant \u2014 Doctor/route/TPS under quant, not bf16-canonical; vision tower skipped (language-MoE router only)",
+      "Tabula instrument is not validated on this patient (instrument_validated=false)"
+    ],
+    "tabula": {
+      "status": "N/A",
+      "note": "canonical, not abliterated"
+    }
   },
   "tabula": {
     "status": "N/A",
@@ -51,15 +91,63 @@
     "_evidence": "UNKNOWN"
   },
   "routing": {
-    "entropy": null,
-    "expert_frequency": null,
-    "transitions": null,
-    "co_occurrence": null,
-    "hot_set": null,
-    "cold_set": null,
-    "route_predictability": null,
-    "P(E_t|E_t-1)": null,
-    "_evidence": "UNKNOWN"
+    "entropy": 6.2257,
+    "entropy_max": 7.0,
+    "expert_frequency": {
+      "most_popular_share": 1.3753,
+      "top16_mass_pct": 18,
+      "hot_set": [
+        40,
+        10,
+        109,
+        115,
+        49,
+        87,
+        127,
+        96,
+        114,
+        18,
+        38,
+        46,
+        51,
+        79,
+        8,
+        61
+      ]
+    },
+    "transitions": {
+      "transition_stability": 0.4025,
+      "adjacent_token_overlap": 0.4025,
+      "events": 26592
+    },
+    "co_occurrence": {
+      "cross_layer_overlap": 0.0648,
+      "cross_layer_jaccard": 0.0355
+    },
+    "hot_set": [
+      40,
+      10,
+      109,
+      115,
+      49,
+      87,
+      127,
+      96,
+      114,
+      18,
+      38,
+      46,
+      51,
+      79,
+      8,
+      61
+    ],
+    "cold_set": [],
+    "route_predictability": 0.4025,
+    "P(E_t|E_t-1)": 0.3877,
+    "hot_cold_verdict": "uniform routing; no cold experts; MoE-universal sparse path (8/128 active); cold-expert compression does NOT apply",
+    "tokens_observed": 573,
+    "_evidence": "MEASURED (mlx RouteTap over real tokens, O006_EXTERNAL.json)"
   },
   "representation": {
     "source_bytes": 62141508064,
@@ -87,7 +175,7 @@
   "execution": {
     "token_ns": null,
     "tps": null,
-    "ttft": null,
+    "ttft": 0.1611,
     "prefill": null,
     "long_context_slope": null,
     "active_learned_bytes_per_token": null,
@@ -95,9 +183,14 @@
     "cache": null,
     "state": null,
     "route_overhead": null,
-    "baseline_runtime": null,
-    "baseline_tps": null,
-    "_evidence": "UNKNOWN"
+    "baseline_runtime": "mlx_lm EXTERNAL SPECIMEN \u2014 not Hawking native (\u00a714, \u00a760 foreign-runtime); mlx TPS is NOT BASE_TRUE_TPS",
+    "baseline_tps": 36.816,
+    "_evidence": "MEASURED (receipts/odyssey-i/O006_EXTERNAL.json) SPECIMEN; \u00a714 session may be open \u2014 not BASE_TRUE_TPS",
+    "tps_specimen": 36.816,
+    "quant": "4bit-mlx",
+    "label": "SPECIMEN",
+    "not_base_true_tps": true,
+    "receipt": "receipts/odyssey-i/O006_EXTERNAL.json"
   },
   "gravity": {
     "tried_mechanisms": [],
@@ -116,15 +209,87 @@
     "_evidence": "UNKNOWN"
   },
   "transfer": {
-    "inherited_rules": [],
-    "unchanged": [],
+    "reference": "O005",
+    "receipt": "receipts/odyssey-i/O006_TRANSFER.json",
+    "inherited_rules": [
+      "R-sparse-active-expert-gather",
+      "R-uniform-routing-no-cold-compress",
+      "R-predictable-route-prefetch",
+      "R-routing-frequency-alloc"
+    ],
+    "unchanged": [
+      "R-sparse-active-expert-gather",
+      "R-uniform-routing-no-cold-compress"
+    ],
     "retuned": [],
     "failed": [],
     "harmful": [],
-    "_evidence": "UNKNOWN"
+    "patient_specific": [
+      "R-predictable-route-prefetch",
+      "R-routing-frequency-alloc"
+    ],
+    "architecture_specific": [],
+    "not_tested": [
+      "R-protect-router-if-sensitive",
+      "R-heterogeneous-expert-allocate",
+      "R-organ-inversion",
+      "R-layer0-different-source",
+      "R-affine-grouped-q2-if-native-kernel"
+    ],
+    "cells": {
+      "R-sparse-active-expert-gather": "TRANSFERRED_UNCHANGED",
+      "R-uniform-routing-no-cold-compress": "TRANSFERRED_UNCHANGED",
+      "R-protect-router-if-sensitive": "NOT_TESTED",
+      "R-heterogeneous-expert-allocate": "NOT_TESTED",
+      "R-predictable-route-prefetch": "PATIENT_SPECIFIC",
+      "R-organ-inversion": "NOT_TESTED",
+      "R-routing-frequency-alloc": "PATIENT_SPECIFIC",
+      "R-layer0-different-source": "NOT_TESTED",
+      "R-affine-grouped-q2-if-native-kernel": "NOT_TESTED"
+    },
+    "delta": {
+      "route": {
+        "entropy_avg": 0.0651,
+        "entropy_max": 0.0,
+        "cold_experts": 0,
+        "top16_mass_pct": 0,
+        "most_popular_share": 0.0432,
+        "transition_stability": -0.0055,
+        "adjacent_token_overlap": -0.0055,
+        "p_e_t_given_e_t_minus_1": -0.0051,
+        "tokens_observed": 0
+      },
+      "representation": {
+        "stored_bpw": 0.0,
+        "organs_bytes_GB": {
+          "attn": 0.29,
+          "embed": 0.01,
+          "expert": 0.0,
+          "lm_head": 0.0,
+          "mlp_dense": 0.54,
+          "norm": 0.0,
+          "other": 0.25,
+          "router": 0.0,
+          "shared_expert": 0.0
+        }
+      },
+      "doctor": {
+        "battery": "12/12",
+        "reference_battery": "10/12",
+        "battery_hits": 2,
+        "refusals": "0/2",
+        "reference_refusals": "0/2",
+        "refusals_hits": 0
+      },
+      "_label": "DERIVED (this specimen MEASURED minus reference MEASURED)"
+    },
+    "_evidence": "MEASURED route/doctor (O006_EXTERNAL vs O005_EXTERNAL); MEASURED organs/stored_bpw (census); DERIVED cells"
   },
   "next": [
-    "ACQ-O006 acquire Qwen3-VL sibling (transfer ctrl)"
+    "transfer-control vs O005 MEASURED (unchanged=2 retuned=0 patient_specific=2 failed=0; receipts/odyssey-i/O006_TRANSFER.json)",
+    "A3 per-organ/per-expert sensitivity map (O006 language-MoE)",
+    "native load_engine still Unimplemented for this arch \u2014 NX after route/sensitivity",
+    "do not treat mlx tps_specimen as BASE_TRUE_TPS; re-time on a clean box if a native path lands"
   ],
   "receipt_seal": {
     "verdict": "REFUSED",
@@ -135,5 +300,6 @@
       "missing or empty required field: known_blind_spots"
     ],
     "_evidence": "DERIVED (doctor_seal.seal structural)"
-  }
+  },
+  "phase": "ROUTEMAP"
 }

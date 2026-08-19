@@ -37,7 +37,7 @@
     },
     "rope_theta": 100000000000.0,
     "context": 262144,
-    "mu_p": "non-1 multipliers (embedding/ssm/attention_out/...) \u2014 init/scale assumptions differ from Qwen",
+    "mu_p": "non-1 multipliers (embedding/ssm/attention_out/...) — init/scale assumptions differ from Qwen",
     "modality": "text (18 langs)",
     "census_ref": "patients/O001/census.json",
     "_evidence": "MEASURED (census) + VERIFIED (config.json, Falcon-H1 paper)",
@@ -72,10 +72,9 @@
       "embed": 0.8,
       "attn": 0.97,
       "mlp_dense": 9.97,
-      "ssm": 2.64,
       "norm": 0.0,
       "lm_head": 0.8,
-      "other": 0.0
+      "other": 2.64
     },
     "note": "A5: ssm organ bucket added; census 'other' was Mamba tensors. Mamba-2 tensors (in_proj/out_proj/conv1d/A_log/D/dt_bias/norm) rebucketed from census 'other' (+ mamba.norm from 'norm') into organ ssm.",
     "_evidence": "MEASURED (census) + MEASURED (safetensors headers, ssm rebucket); MEASURED (per_organ_sensitivity, in-place mlx ablation)",
@@ -95,7 +94,7 @@
       "_evidence": "MEASURED (in-place mlx ablation; canonical HF snapshot untouched)",
       "treatments": {
         "zero": "effective-zero: quantized organs via scales/biases=0; dense via weight=0",
-        "round8": "affine 8-bit quantize\u2192dequantize (group 64) of dequantized organ; re-stored in the loaded codec. On a 4-bit specimen this is a 4-bit\u21928-bit-grid\u21924-bit round-trip (near-identity for already-4-bit organs; real 8-bit snap for unquantized norms)."
+        "round8": "affine 8-bit quantize→dequantize (group 64) of dequantized organ; re-stored in the loaded codec. On a 4-bit specimen this is a 4-bit→8-bit-grid→4-bit round-trip (near-identity for already-4-bit organs; real 8-bit snap for unquantized norms)."
       },
       "embed": {
         "n_modules": 1,
@@ -336,9 +335,9 @@
     "sensitivity_receipt": "receipts/odyssey-i/O001_SENSITIVITY.json"
   },
   "execution": {
-    "baseline_runtime": "mlx_lm EXTERNAL SPECIMEN \u2014 not Hawking native (\u00a714, \u00a760 foreign-runtime); mlx TPS is NOT BASE_TRUE_TPS",
+    "baseline_runtime": "mlx_lm EXTERNAL SPECIMEN — not Hawking native (§14, §60 foreign-runtime); mlx TPS is NOT BASE_TRUE_TPS",
     "baseline_tps": 83.515,
-    "_evidence": "MEASURED (receipts/odyssey-i/O001_EXTERNAL.json) SPECIMEN; \u00a714 session may be open \u2014 not BASE_TRUE_TPS",
+    "_evidence": "MEASURED (receipts/odyssey-i/O001_EXTERNAL.json) SPECIMEN; §14 session may be open — not BASE_TRUE_TPS",
     "token_ns": null,
     "tps": null,
     "ttft": 0.1409,
@@ -391,9 +390,9 @@
     "receipt": "receipts/odyssey-i/O001_EXTERNAL.json"
   },
   "gravity_relevant_novelty": [
-    "parallel hybrid mixer (SSM || attn) in ALL 44 layers \u2014 not interleaved, not MoE (\u00a736 first transformer break)",
+    "parallel hybrid mixer (SSM || attn) in ALL 44 layers — not interleaved, not MoE (§36 first transformer break)",
     "d_state=256 Mamba-2 recurrence + doc-boundary state reset: new STATE tensor, not a KV cache",
-    "RoPE theta=1e11 + muP scale vector \u2014 Qwen positional/init assumptions wrong"
+    "RoPE theta=1e11 + muP scale vector — Qwen positional/init assumptions wrong"
   ],
   "compiler_hypotheses": [
     {
@@ -420,9 +419,9 @@
   ],
   "next": [
     "A3 per-organ sensitivity MEASURED: zero drops hits on embed, attn, mlp_dense, ssm, norm, lm_head; round8 drops hits on embed, mlp_dense, lm_head (baseline 10/12, 4bit-mlx)",
-    "H2 byte-count: SSM state is constant, KV is linear in ctx; crossover ~1557 tokens \u2014 state does NOT dominate at long ctx",
+    "H2 byte-count: SSM state is constant, KV is linear in ctx; crossover ~1557 tokens — state does NOT dominate at long ctx",
     "do not treat mlx tps_specimen as BASE_TRUE_TPS; re-time on a clean box if a native path lands",
-    "long-context slope (short/mod/long \u00a787) \u2014 byte accounting done; timing slope not yet"
+    "long-context slope (short/mod/long §87) — byte accounting done; timing slope not yet"
   ],
   "doctor": {
     "capability_vector": null,
@@ -462,13 +461,13 @@
       "refusal_controls": 2,
       "battery": "10/12",
       "refusals": "0/2",
-      "note": "same 12-item correctness battery + 2 ABL prompts as a3b_recon.py; G046/G048 recorded ten items as too narrow to certify equivalence \u2014 this is a FAST doctor, not a full seal"
+      "note": "same 12-item correctness battery + 2 ABL prompts as a3b_recon.py; G046/G048 recorded ten items as too narrow to certify equivalence — this is a FAST doctor, not a full seal"
     },
     "known_blind_spots": [
-      "mlx_lm EXTERNAL SPECIMEN \u2014 not Hawking native, not BASE_TRUE_TPS (\u00a714)",
+      "mlx_lm EXTERNAL SPECIMEN — not Hawking native, not BASE_TRUE_TPS (§14)",
       "fast battery is 12 completion items; no coding/long-context/tool dimensions",
       "refusal matcher is substring-based and English-centric",
-      "4-bit affine MLX quant \u2014 Doctor/TPS are under quant, not bf16-canonical",
+      "4-bit affine MLX quant — Doctor/TPS are under quant, not bf16-canonical",
       "Tabula instrument is not validated on this patient (instrument_validated=false)"
     ],
     "tabula": {
@@ -491,7 +490,7 @@
     "cold_set": null,
     "route_predictability": null,
     "P(E_t|E_t-1)": null,
-    "_evidence": "N/A \u2014 dense/hybrid; no MoE router (no layer with gate+switch_mlp); route tap skipped (route_skipped=true)",
+    "_evidence": "UNKNOWN (N/A — dense/hybrid; no MoE router (no layer with gate+switch_mlp); route tap skipped (route_skipped=true))",
     "route_skipped": true
   },
   "gravity": {
@@ -528,10 +527,7 @@
   "receipt_seal": {
     "verdict": "REFUSED",
     "reasons": [
-      "missing or empty required field: tabula_drift",
-      "missing or empty required field: observed_controls",
-      "missing or empty required field: stated_test_width",
-      "missing or empty required field: known_blind_spots"
+      "missing or empty required field: tabula_drift"
     ],
     "_evidence": "DERIVED (doctor_seal.seal structural)"
   }

@@ -211,12 +211,17 @@
       "id": "A3",
       "oxx": "O005",
       "title": "per-organ/per-expert sensitivity map",
-      "status": "READY",
+      "status": "REVIEW",
       "info": 10,
       "wall_cost": 2,
       "gpu_cost": 1,
       "opus_cost": 0,
-      "kind": "representation-discriminator"
+      "kind": "representation-discriminator",
+      "task": "odyssey-o005-sensitivity-map-20260819-015644",
+      "started": "2026-08-19T17:52:05Z",
+      "contract": "workspace/campaign/odyssey/contracts/auto/o005_sensitivity-map.md",
+      "template": "sensitivity-map",
+      "harvest_reason": "CODE"
     },
     {
       "id": "A5",
@@ -341,12 +346,14 @@
     }
   ],
   "history": [],
-  "harvested": [],
+  "harvested": [
+    "odyssey-o005-sensitivity-map-20260819-015644"
+  ],
   "metrics": {
     "opus_calls": 1,
     "grok_lanes_bootstrap": 3,
     "gpu_seconds": 0,
     "gpu_owner": "none",
-    "_evidence": "INFERRED (ODYSSEY.md \u00a772 session bootstrap)"
+    "_evidence": "INFERRED (ODYSSEY.md §72 session bootstrap)"
   }
 }

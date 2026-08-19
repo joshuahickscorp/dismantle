@@ -4636,6 +4636,86 @@ def _running_model_gib(
     return total
 
 
+MLX_ODYSSEY_CACHE = Path.home() / ".cache" / "mlx" / "odyssey"
+
+
+def _inflight_gravity_cache_dirs(
+    state: dict, now_epoch: float | None = None, pid_alive_fn=None,
+) -> set[str]:
+    """Absolute cache dirs a RUNNING lane is reading (must not be evicted)."""
+    now = float(now_epoch) if now_epoch is not None else time.time()
+    keep: set[str] = set()
+    for w in state.get("work") or []:
+        if not _lane_still_running(w, now, pid_alive_fn=pid_alive_fn):
+            continue
+        argv = w.get("argv") or []
+        if "--gravity" in argv:
+            try:
+                spec = argv[argv.index("--gravity") + 1]
+            except (ValueError, IndexError):
+                continue
+            keep.add(str(MLX_ODYSSEY_CACHE / f"{w.get('oxx')}-gravity-{spec}"))
+    return keep
+
+
+def evict_gravity_caches(
+    target_free_gib: float,
+    *,
+    state: dict,
+    now_epoch: float | None = None,
+    pid_alive_fn=None,
+) -> float:
+    """LRU-evict cold `*-gravity-*` spec caches until free disk >= target.
+
+    Never removes a base `*-4bit` parent (reused constantly) or a spec an
+    in-flight lane is reading. Returns GiB freed. Coldest (oldest atime) first.
+    """
+    if not MLX_ODYSSEY_CACHE.is_dir():
+        return 0.0
+    keep = _inflight_gravity_cache_dirs(state, now_epoch, pid_alive_fn)
+    specs = []
+    for d in MLX_ODYSSEY_CACHE.iterdir():
+        if not d.is_dir() or "-gravity-" not in d.name:
+            continue
+        if str(d) in keep:
+            continue
+        try:
+            atime = d.stat().st_atime
+        except OSError:
+            continue
+        specs.append((atime, d))
+    specs.sort()  # coldest first
+    freed = 0.0
+    for _atime, d in specs:
+        if float(machine_snapshot().get("disk_free_gib") or 0.0) >= target_free_gib:
+            break
+        try:
+            sz = sum(f.stat().st_size for f in d.rglob("*") if f.is_file())
+        except OSError:
+            sz = 0
+        shutil.rmtree(d, ignore_errors=True)
+        freed += sz / (1024 ** 3)
+    return freed
+
+
+def _running_model_lane_count(
+    state: dict,
+    now_epoch: float | None = None,
+    pid_alive_fn=None,
+) -> int:
+    """Distinct RUNNING model lanes (subprocess). Grok/novelty lanes excluded."""
+    seen: set[tuple] = set()
+    now = float(now_epoch) if now_epoch is not None else time.time()
+    for w in state.get("work") or []:
+        if not _lane_still_running(w, now, pid_alive_fn=pid_alive_fn):
+            continue
+        tmpl = w.get("template") or ""
+        if not _template_loads_model(tmpl, w):
+            continue
+        seen.add((w.get("oxx"), tmpl))
+    return len(seen)
+
+
 def _headroom_override_note() -> str | None:
     if os.environ.get("ODYSSEY_HEADROOM_ADMIT") != "1":
         return None
@@ -4819,6 +4899,13 @@ def run_loop(*, go: bool, max_lanes: int,
             ["bash", str(RECLAIM)], cwd=str(REPO), check=False,
         ))
         fn()
+        # reclaim_safe.sh does not touch the mlx gravity-spec cache, which grows
+        # unbounded under parallel descent (one ~4-16 GiB quantized model per
+        # spec). Evict the coldest cold specs — never a base 4-bit parent, never
+        # a spec an in-flight lane is reading — to keep concurrent model
+        # experiments from filling the disk.
+        evict_gravity_caches(DISK_RUN_GIB, state=st, now_epoch=now,
+                             pid_alive_fn=pid_alive_fn)
         reclaimed = True
         snap = (snapshot_fn or machine_snapshot)()
         disk_after = float(snap.get("disk_free_gib") or 0.0)
@@ -4829,14 +4916,30 @@ def run_loop(*, go: bool, max_lanes: int,
     launched = 0
     occupied = 0  # concurrent admits this tick (real or planned)
     limit = consider_limit if consider_limit is not None else max(cap, DEFAULT_MAX_LANES, 8)
-    slots = 0 if not go else max(0, cap - running_n)
     occupied_scopes = _running_scopes(st, running_ids)
     in_flight_gib = _running_model_gib(st, now_epoch=now, pid_alive_fn=pid_alive_fn)
+    # Concurrency is decoupled by lane kind. Grok/novelty lanes are external
+    # reasoning that does NO GPU/model work, so they must not consume the
+    # model-experiment budget — they stay bounded by max_lanes (`cap`). Model
+    # subprocess lanes are the whole point of memgate: admit as many concurrent
+    # small-model experiments as swap<SWAP_MAX allows, under HARD_LANE_CAP. Two
+    # grok lanes were starving all six on-disk models behind cap=2.
+    running_model_n = _running_model_lane_count(st, now, pid_alive_fn)
+    running_grok_n = max(0, running_n - running_model_n)
+    grok_cap = cap
+    # max_lanes==0 is the operator's full-stop pause: it must halt model lanes
+    # too. Any positive max_lanes opens the model budget to HARD_LANE_CAP, with
+    # memgate (cumulative swap<SWAP_MAX) as the real limiter under it.
+    model_cap = 0 if cap == 0 else HARD_LANE_CAP
+    grok_launched = 0
+    model_launched = 0
+    grok_slots = 0 if not go else max(0, grok_cap - running_grok_n)
+    model_slots = 0 if not go else max(0, model_cap - running_model_n)
 
     for ob in ranked:
-        if go and launched >= slots:
+        if go and grok_launched >= grok_slots and model_launched >= model_slots:
             break
-        if not go and cap == 0:
+        if not go and cap == 0 and model_cap == 0:
             break
         if len(rows) >= limit:
             break
@@ -4889,11 +4992,17 @@ def run_loop(*, go: bool, max_lanes: int,
 
         scope = write_scope(ob)
         conflict = scope_conflict_reason(scope, occupied_scopes)
-        # cap for dry-run listing is informational; collision still evaluated
-        # against actually-occupied concurrent slots
-        running_for_cap = running_n + launched
+        # cap is per-kind: model subprocesses gated by HARD_LANE_CAP (memgate is
+        # the real limiter under it), grok/novelty by max_lanes. dry-run listing
+        # is informational; collision still evaluated against occupied slots.
+        if det:
+            kind_cap = model_cap if go else max(model_cap, limit)
+            kind_running = running_model_n + model_launched
+        else:
+            kind_cap = grok_cap if go else max(grok_cap, limit)
+            kind_running = running_grok_n + grok_launched
         gates = evaluate_gates(
-            ob, go=go, running_n=running_for_cap, cap=cap if go else max(cap, limit),
+            ob, go=go, running_n=kind_running, cap=kind_cap,
             snap=snap, worker=worker, lint_ok=lint_ok, lint_msg=lint_msg,
             disk_after_reclaim=disk_after,
             code_edit_busy=False,
@@ -4946,6 +5055,7 @@ def run_loop(*, go: bool, max_lanes: int,
                     row["task_id"] = f"pid:{launched_row['pid']}"
                     row["pid"] = launched_row["pid"]
                     launched += 1
+                    model_launched += 1
                     occupied += 1
                     admitted = True
                     gates["running"] = running_n + launched
@@ -4986,6 +5096,7 @@ def run_loop(*, go: bool, max_lanes: int,
                     if persist:
                         _mark_running(st, ob, task_id, rel, started)
                     launched += 1
+                    grok_launched += 1
                     occupied += 1
                     admitted = True
                     running_n_display = running_n + launched
@@ -4999,6 +5110,10 @@ def run_loop(*, go: bool, max_lanes: int,
 
         if not go and gates["verdict"] == "DRY-RUN" and not gates.get("skip_reason"):
             occupied += 1
+            if det:
+                model_launched += 1
+            else:
+                grok_launched += 1
             admitted = True
 
         if admitted:
@@ -6583,10 +6698,22 @@ def _self_check() -> int:
                 launch_fn=no_launch, persist=False, log_path=logp,
                 reclaim_fn=lambda: None,
             )
-            assert launches == [], "REFUSE still launched"
+            # Under a model-memory REFUSE the safety invariant is that NO model
+            # lane launches — memgate/worker gate is the boundary. Grok/novelty
+            # lanes load no model, so they are orthogonal to the memory gate and
+            # may still launch; anything that launched here must be grok-kind.
+            model_rows = [
+                r for r in rows_r
+                if _template_loads_model(r.get("template") or "", r)
+            ]
+            launched_rows = [r for r in rows_r if r["verdict"] == "LAUNCH"]
             assert rows_r, "injected REFUSE produced no decisions"
-            assert all(r["verdict"] == "SKIP" for r in rows_r), rows_r
-            assert any("REFUSE" in (r.get("skip_reason") or "") for r in rows_r), rows_r
+            assert model_rows, "injected REFUSE exercised no model lane"
+            assert all(r["verdict"] == "SKIP" for r in model_rows), model_rows
+            assert all(r["kind"] == "grok" for r in launched_rows), launched_rows
+            assert any(
+                "REFUSE" in (r.get("skip_reason") or "") for r in model_rows
+            ), model_rows
             assert logp.is_file() and logp.read_text().strip()
     finally:
         mod.live_odyssey_lanes = _orig_live
@@ -7293,6 +7420,36 @@ def _self_check() -> int:
     assert "--gravity" in grav_argv
     assert "q3-g32-experts" in grav_argv
     assert any("GRAVITY" in str(a) for a in grav_argv)
+
+    # gravity-cache eviction: never remove a base 4-bit parent or an in-flight
+    # spec; evict cold specs. target huge so free-disk never satisfies -> evicts
+    # everything evictable.
+    _orig_cache = mod.MLX_ODYSSEY_CACHE
+    with tempfile.TemporaryDirectory() as tdc:
+        tdc = Path(tdc)
+        base = tdc / "O001-Falcon-H1-7B-Instruct-4bit"
+        hot = tdc / "O003-gravity-q2-g32-experts"
+        cold = tdc / "O001-gravity-q4-g64-attn-mlp"
+        for d in (base, hot, cold):
+            d.mkdir()
+            (d / "w.bin").write_bytes(b"x" * 1024)
+        mod.MLX_ODYSSEY_CACHE = tdc
+        try:
+            evict_state = {"work": [{
+                "oxx": "O003", "status": "RUNNING",
+                "kind": "subprocess", "pid": os.getpid(),
+                "started_epoch": time.time(),
+                "argv": ["py", "--oxx", "O003", "--gravity", "q2-g32-experts"],
+            }]}
+            evict_gravity_caches(
+                10 ** 9, state=evict_state, now_epoch=time.time(),
+                pid_alive_fn=lambda _p: True,
+            )
+            assert base.is_dir(), "evicted a base 4-bit parent"
+            assert hot.is_dir(), "evicted an in-flight gravity spec"
+            assert not cold.is_dir(), "cold gravity spec not evicted"
+        finally:
+            mod.MLX_ODYSSEY_CACHE = _orig_cache
 
     # dry-run run_loop plans subprocess, not grok
     with tempfile.TemporaryDirectory() as td_det:

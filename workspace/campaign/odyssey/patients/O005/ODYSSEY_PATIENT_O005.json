@@ -1,0 +1,67 @@
+{
+  "oxx": "O005",
+  "class": "small-active MoE",
+  "phase": "CENSUS",
+  "identity": {
+    "source_repo": "Qwen/Qwen3-30B-A3B",
+    "revision": "ad44e777bcd18fa416d9da3bd8f70d33ebb85d39",
+    "revision_date": "2025-07-26",
+    "tokenizer": "Qwen2Tokenizer (BBPE)",
+    "source_precision": "bf16",
+    "source_type": "official first-party high-fidelity",
+    "license": "Apache-2.0",
+    "model_family": "Qwen3-MoE",
+    "on_disk": "~/.cache/huggingface/hub/models--Qwen--Qwen3-30B-A3B/snapshots/ad44e777bcd18fa416d9da3bd8f70d33ebb85d39",
+    "_evidence": "VERIFIED (HF API + local config.json), 16/16 safetensors on disk"
+  },
+  "architecture": {
+    "kind": "moe",
+    "arch": "Qwen3MoeForCausalLM",
+    "total_params": 30532122624,
+    "active_params_per_token": 3353303040,
+    "active_pct": 11.0,
+    "layers": 48,
+    "all_layers_moe": true,
+    "hidden_size": 2048,
+    "attention": "GQA 32Q/4KV head_dim128 + QK-norm, no bias",
+    "experts": 128,
+    "experts_per_tok": 8,
+    "shared_experts": 0,
+    "router": "softmax -> top-8 -> renorm (norm_topk_prob=true), aux_coef 0.001",
+    "expert_intermediate_size": 768,
+    "dense_intermediate_size": 6144,
+    "context": "32768 native (config max_pos 40960); 131072 via static YaRN (short-ctx harm; leave null)",
+    "rope_theta": 1000000.0,
+    "modality": "text",
+    "special": "unified thinking/non-thinking via chat template (enable_thinking)",
+    "census_ref": "patients/O005/census.json",
+    "_evidence": "MEASURED (census) + VERIFIED (config.json, HF card, transformers modeling)"
+  },
+  "representation": {
+    "source_bytes": 61064245248,
+    "stored_bpw": 16.0,
+    "organs_bytes_GB": {"embed":0.62,"attn":1.81,"router":0.03,"expert":57.98,"norm":0.00,"lm_head":0.62},
+    "active_bytes_per_token_bf16": 6706606080,
+    "lever": "experts = 95% of stored body but only 11% touched/token; representation science is EXPERT-side (per-expert codec, group size, cache, gather) not global.",
+    "_evidence": "MEASURED (census)"
+  },
+  "execution": {
+    "baseline_runtime": "TODO: MLX-LM (official supported) or transformers>=4.51",
+    "baseline_tps": "UNKNOWN (prior modified-A3B recon showed ~29.3 TPS external; canonical baseline pending)",
+    "_evidence": "UNKNOWN"
+  },
+  "routing": { "_evidence": "UNKNOWN - obligation A1 (instrument router: freq, entropy, P(E_t|E_t-1), co-occurrence)" },
+  "doctor": { "fast_doctor_seal_ref": null, "_evidence": "UNKNOWN - baseline pending" },
+  "gravity": { "tried_mechanisms": [], "wins": [], "kills": [] },
+  "compiler_hypotheses": [
+    {"id":"H1","h":"Expert I/O not matmul dominates decode (8x768 SwiGLU vs 2048 dense)","discriminator":"Instruments: memcpy vs GEMM share on 1-token decode","win":"grouped-GEMM / packed expert cache","doctor_risk":"wrong grouping -> 128 serial GEMMs","_prior":"[[hawking_ascension_v4_results_2026_08_15]] Q80 was dispatch-bound not bandwidth"},
+    {"id":"H2","h":"softmax+renorm != sigmoid; dropping renorm shifts mix","discriminator":"layer-0 router weights w/ vs w/o norm_topk_prob vs HF ref","win":"bitwise-close to transformers","doctor_risk":"quality drift blamed on quant"},
+    {"id":"H3","h":"enable_thinking=False is a template change not a weight change","discriminator":"same weights, two templates; first tokens <think> vs not","win":"large latency cut on chat","doctor_risk":"always-think serving OOMs 32k"}
+  ],
+  "next": [
+    "A1 route/state map (instrument router)",
+    "A2 canonical baseline TPS (pick runtime)",
+    "A3 per-organ/per-expert sensitivity map",
+    "first decode-step assertion: router softmax->top8->renorm, no shared, 48/48 MoE"
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "oxx": "O001",
+  "class": "small hybrid (attention + Mamba-2 SSM)",
+  "phase": "CENSUS",
+  "identity": {
+    "source_repo": "tiiuae/Falcon-H1-7B-Instruct",
+    "revision": "41e72f27effbab80cd45b6e884688452253a3686",
+    "revision_date": "2025-07-31",
+    "tokenizer": "Falcon-H1-131k BPE",
+    "source_precision": "bf16",
+    "source_type": "official first-party high-fidelity",
+    "license": "Falcon-LLM License (other)",
+    "model_family": "Falcon-H1 (hybrid)",
+    "on_disk": "~/.cache/huggingface/hub/models--tiiuae--Falcon-H1-7B-Instruct",
+    "_evidence": "VERIFIED (HF API + local config.json), 4/4 safetensors on disk"
+  },
+  "architecture": {
+    "kind": "hybrid",
+    "arch": "FalconH1ForCausalLM",
+    "mixer": "PARALLEL Attention || Mamba-2 SSM per layer (SA_M), then MLP; every layer (attn_layer_indices=null)",
+    "total_params": 7585654880,
+    "layers": 44,
+    "hidden_size": 3072,
+    "mlp_intermediate": 12288,
+    "attention": "GQA 12Q/2KV head_dim128",
+    "ssm": {"type":"mamba2","heads":24,"d_head":128,"d_state":256,"d_ssm":3072,"expand":2,"n_groups":1,"conv":4,"chunk":256},
+    "rope_theta": 100000000000.0,
+    "context": 262144,
+    "mu_p": "non-1 multipliers (embedding/ssm/attention_out/...) — init/scale assumptions differ from Qwen",
+    "modality": "text (18 langs)",
+    "census_ref": "patients/O001/census.json",
+    "_evidence": "MEASURED (census) + VERIFIED (config.json, Falcon-H1 paper)"
+  },
+  "representation": {
+    "source_bytes": 15171309760,
+    "stored_bpw": 16.0,
+    "organs_bytes_GB": {"embed":0.80,"attn":0.97,"mlp_dense":9.97,"ssm_bucketed_as_other":2.64,"lm_head":0.80},
+    "note": "census organ classifier buckets Mamba tensors (in_proj/out_proj/conv1d/A_log/D/dt_bias) as 'other'=2.64GB — obligation A5 adds an ssm bucket.",
+    "_evidence": "MEASURED (census)"
+  },
+  "execution": {
+    "baseline_runtime": "official MLX-LM (native) or Falcon-H1 GGUF (llama.cpp); temp 0.1 required",
+    "baseline_tps": "UNKNOWN",
+    "_evidence": "UNKNOWN"
+  },
+  "gravity_relevant_novelty": [
+    "parallel hybrid mixer (SSM || attn) in ALL 44 layers — not interleaved, not MoE (§36 first transformer break)",
+    "d_state=256 Mamba-2 recurrence + doc-boundary state reset: new STATE tensor, not a KV cache",
+    "RoPE theta=1e11 + muP scale vector — Qwen positional/init assumptions wrong"
+  ],
+  "compiler_hypotheses": [
+    {"id":"H1","h":"prefill beats a 7B transformer once seq>=8-16k (SSM linear)","discriminator":"time-to-first @2k vs 32k vs Qwen3-8B","win":"paper up to 4x prefill/8x decode at long ctx","doctor_risk":"short-ctx may lose to mature attn kernels"},
+    {"id":"H2","h":"SSM state (24x128x256) dominates KV (2x128) at long ctx","discriminator":"byte-count state vs KV at 4k and 64k","win":"KV flat, state constant/layer","doctor_risk":"wrong d_state packing -> silent drift"},
+    {"id":"H3","h":"temp>0.1 is a quality bug not a compile bug","discriminator":"20-prompt IFEval-style at 0.1 vs 0.7","win":"avoid false 'compiler regresses quality'","doctor_risk":"low"}
+  ],
+  "next": ["A5 ssm organ bucket + state-vs-KV byte accounting", "baseline TPS via MLX-LM temp0.1", "long-context slope (short/mod/long §87)"]
+}

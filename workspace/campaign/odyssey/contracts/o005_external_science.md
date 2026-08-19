@@ -46,3 +46,10 @@ python3 tools/odyssey_patient_runner.py --oxx O005 --weights ~/.cache/huggingfac
 python3 -c "import json;d=json.load(open('receipts/odyssey-i/O005_EXTERNAL.json'));assert d['route']['entropy_avg']>0 and 0<=d['route']['entropy_max']<=7.001 and d['doctor']['battery'];print('O005 external ok:',d['tps_specimen'],'tps',d['route']['entropy_avg'],'bits')"
 ```
 Report the receipt, the delta vs abliterated, and any REFUSE/quant fallback that fired.
+
+## SCOPE
+WRITE tools/odyssey_patient_runner.py
+WRITE receipts/odyssey-i/
+WRITE workspace/campaign/odyssey/patients/O005/
+READ workspace/campaign/odyssey/a3b_recon.py, tools/worker_gate.py, tools/doctor_seal.py, receipts/ascent-2026-08-18/A3B_RECON.json
+VERIFY receipts/odyssey-i/O005_EXTERNAL.json by running the runner then testing its fields — must pass, exit 0.

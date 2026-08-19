@@ -53,3 +53,10 @@ python3 tools/odyssey_ctl.py packet O005 && \
 python3 -c "import json;[json.load(open(f)) for f in ['workspace/campaign/odyssey/GRAVITY_RULEBASE.json','workspace/campaign/odyssey/TRANSFER_MATRIX.json','workspace/campaign/odyssey/NEGATIVE_SCIENCE.json']];print('frontier ok')"
 ```
 Report the diff and the VERIFY output.
+
+## SCOPE
+WRITE tools/odyssey_ctl.py
+WRITE workspace/campaign/odyssey/
+WRITE receipts/odyssey-i/
+READ h_odyssey.md, tools/worker_gate.py, tools/doctor_seal.py, tools/ascent_controller.py, tools/foundry/, receipts/ascent-2026-08-18/A3B_RECON.json
+VERIFY tools/odyssey_ctl.py by running `python3 tools/odyssey_ctl.py --self-check` — tests must pass, exit 0.

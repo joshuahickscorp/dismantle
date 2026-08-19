@@ -343,6 +343,21 @@
       "gpu_cost": 0,
       "opus_cost": 0,
       "kind": "acquisition"
+    },
+    {
+      "id": "NEXT-O003-SENS",
+      "oxx": "O003",
+      "title": "A3 per-organ/per-expert sensitivity map (O003 language-MoE)",
+      "status": "RUNNING",
+      "info": 10.0,
+      "wall_cost": 2.0,
+      "gpu_cost": 1.0,
+      "opus_cost": 0.0,
+      "kind": "representation-discriminator",
+      "template": "sensitivity-map",
+      "task": "odyssey-o003-sensitivity-map-20260819-144202",
+      "started": "2026-08-19T18:42:07Z",
+      "contract": "workspace/campaign/odyssey/contracts/auto/o003_sensitivity-map.md"
     }
   ],
   "history": [],

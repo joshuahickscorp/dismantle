@@ -8,7 +8,19 @@
       "status": "VERIFIED",
       "receipt_ref": "receipts/odyssey-i/O001_EXTERNAL.json",
       "receipt_sha256": "307aa96f355b6b7ccdb33bc997d4d144f5b6e4b79985c7eae51dd64cc2342a87",
-      "source_revision": "25c136067af5807a5befdbf2aa4c7cf5c4cfe3d1",
+      "source_revision": "6cc2402d012fc578650db2fac03facf394de81d5",
+      "completed_at": "2026-08-19T02:25:11-04:00",
+      "supersedes": null,
+      "reopen_if": null
+    },
+    {
+      "obligation_id": "O001:ssm-accounting",
+      "patient_id": "O001",
+      "mechanism_id": "ssm-accounting",
+      "status": "VERIFIED",
+      "receipt_ref": "receipts/odyssey-i/O001_EXTERNAL.json",
+      "receipt_sha256": "307aa96f355b6b7ccdb33bc997d4d144f5b6e4b79985c7eae51dd64cc2342a87",
+      "source_revision": "6cc2402d012fc578650db2fac03facf394de81d5",
       "completed_at": "2026-08-19T02:25:11-04:00",
       "supersedes": null,
       "reopen_if": null
@@ -20,7 +32,7 @@
       "status": "VERIFIED",
       "receipt_ref": "receipts/odyssey-i/O001_SENSITIVITY.json",
       "receipt_sha256": "4d7e5db270e6f30029c90124b9c378a498bcabee9e178524cb12958e339038ef",
-      "source_revision": "25c136067af5807a5befdbf2aa4c7cf5c4cfe3d1",
+      "source_revision": "6cc2402d012fc578650db2fac03facf394de81d5",
       "completed_at": "2026-08-19T02:49:27-04:00",
       "supersedes": null,
       "reopen_if": null
@@ -32,7 +44,19 @@
       "status": "VERIFIED",
       "receipt_ref": "receipts/odyssey-i/O003_EXTERNAL.json",
       "receipt_sha256": "fb35d7c6579a2146030ae44a0aa35fe2361067991c923a2a1defad02c63eedb0",
-      "source_revision": "25c136067af5807a5befdbf2aa4c7cf5c4cfe3d1",
+      "source_revision": "6cc2402d012fc578650db2fac03facf394de81d5",
+      "completed_at": "2026-08-19T03:25:01-04:00",
+      "supersedes": null,
+      "reopen_if": null
+    },
+    {
+      "obligation_id": "O003:route-map",
+      "patient_id": "O003",
+      "mechanism_id": "route-map",
+      "status": "VERIFIED",
+      "receipt_ref": "receipts/odyssey-i/O003_EXTERNAL.json",
+      "receipt_sha256": "fb35d7c6579a2146030ae44a0aa35fe2361067991c923a2a1defad02c63eedb0",
+      "source_revision": "6cc2402d012fc578650db2fac03facf394de81d5",
       "completed_at": "2026-08-19T03:25:01-04:00",
       "supersedes": null,
       "reopen_if": null
@@ -44,7 +68,7 @@
       "status": "VERIFIED",
       "receipt_ref": "receipts/odyssey-i/O005_EXTERNAL.json",
       "receipt_sha256": "b026e4046b12b8c41437145aae3def57f2d1b3af00d375d577e095768ff9aeb6",
-      "source_revision": "25c136067af5807a5befdbf2aa4c7cf5c4cfe3d1",
+      "source_revision": "6cc2402d012fc578650db2fac03facf394de81d5",
       "completed_at": "2026-08-19T01:08:47-04:00",
       "supersedes": null,
       "reopen_if": null
@@ -56,7 +80,7 @@
       "status": "VERIFIED",
       "receipt_ref": "receipts/odyssey-i/O005_EXTERNAL.json",
       "receipt_sha256": "b026e4046b12b8c41437145aae3def57f2d1b3af00d375d577e095768ff9aeb6",
-      "source_revision": "25c136067af5807a5befdbf2aa4c7cf5c4cfe3d1",
+      "source_revision": "6cc2402d012fc578650db2fac03facf394de81d5",
       "completed_at": "2026-08-19T01:08:47-04:00",
       "supersedes": null,
       "reopen_if": null

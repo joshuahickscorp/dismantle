@@ -1,0 +1,42 @@
+# DELEGATION — O006 MODEST GRAVITY (q3-g32-experts; gate profile: MLX/Metal)
+
+Patient O006 = `Qwen/Qwen3-VL-30B-A3B-Instruct` (moe; Qwen3VLMoeForConditionalGeneration),
+on disk at `/Users/scammermike/.cache/huggingface/hub/models--Qwen--Qwen3-VL-30B-A3B-Instruct/snapshots/9c4b90e1e4ba969fd3b5378b57d966d725f1b86c`. Repo: `/Users/scammermike/Downloads/hawking`.
+One bounded Gravity candidate (steer S002). SPECIMEN-labelled mlx quant; this
+is NOT a Hawking NX win (§15).
+
+Experts → 3-bit group32; attention/router → 4-bit group64; norms full (`q3-g32-experts`).
+
+## Read first
+READ tools/odyssey_patient_runner.py
+READ tools/worker_gate.py
+READ tools/doctor_seal.py
+READ workspace/campaign/odyssey/patients/O006/census.json
+READ workspace/campaign/odyssey/patients/O006/ODYSSEY_PATIENT_O006.json
+READ receipts/odyssey-i/O006_EXTERNAL.json
+
+Call worker_gate.observe()/gate() before load. Abort on REFUSE.
+
+## BUILD
+Reuse tools/odyssey_patient_runner.py `--gravity q3-g32-experts`. One candidate, do not sweep.
+Reload the quantized model, run the SAME fast-Doctor battery + refusal controls.
+Measure stored_bytes, stored_bpw (bytes*8/params), active_bytes_per_token + active_bpw
+(census active-param split for MoE) and battery/refusal DELTA vs receipts/odyssey-i/O006_EXTERNAL.json.
+Write receipts/odyssey-i/O006_GRAVITY_q3-g32-experts.json (schema odyssey.patient.gravity.v1): spec, stored/active bpw, battery,
+delta_hits, doctor_seal, SPECIMEN + quant caveat, verdict CANDIDATE_PASS if
+delta_hits>=-1 else DEGRADED. Refresh workspace/campaign/odyssey/patients/O006/ODYSSEY_PATIENT_O006.json gravity.wins/kills.
+Do not delete canonical weights.
+
+## ACCEPTANCE
+- receipts/odyssey-i/O006_GRAVITY_q3-g32-experts.json exists with stored_bpw < 16, active_bpw, battery, delta vs baseline,
+  SPECIMEN label. Must pass, exit 0.
+- workspace/campaign/odyssey/patients/O006/ODYSSEY_PATIENT_O006.json still schema-valid.
+
+## SCOPE
+WRITE tools/odyssey_patient_runner.py
+WRITE receipts/odyssey-i/
+WRITE workspace/campaign/odyssey/patients/O006/
+READ tools/odyssey_patient_runner.py, tools/worker_gate.py, tools/doctor_seal.py, workspace/campaign/odyssey/patients/O006/census.json, workspace/campaign/odyssey/patients/O006/ODYSSEY_PATIENT_O006.json, receipts/odyssey-i/O006_EXTERNAL.json
+VERIFY tools/odyssey_patient_runner.py by running the unfenced command below; must pass, exit 0.
+python3 tools/odyssey_patient_runner.py --oxx O006 --weights /Users/scammermike/.cache/huggingface/hub/models--Qwen--Qwen3-VL-30B-A3B-Instruct/snapshots/9c4b90e1e4ba969fd3b5378b57d966d725f1b86c --runtime mlx --out receipts/odyssey-i/O006_GRAVITY_q3-g32-experts.json --packet workspace/campaign/odyssey/patients/O006/ODYSSEY_PATIENT_O006.json --gravity q3-g32-experts
+Do not touch Genesis state or tools/odyssey/.

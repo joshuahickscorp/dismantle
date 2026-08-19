@@ -16,6 +16,10 @@ ascent state or tools/odyssey/ (training-data Odyssey).
     python3 tools/odyssey_ctl.py completions --rebuild
     python3 tools/odyssey_ctl.py run --dry-run
     python3 tools/odyssey_ctl.py run --go [--max-lanes N]
+    python3 tools/odyssey_ctl.py cycle --dry-run
+    python3 tools/odyssey_ctl.py cycle --go [--max-lanes N]
+    python3 tools/odyssey_ctl.py retire <OXX>
+    python3 tools/odyssey_ctl.py acquire-next [--go]
     bash tools/odyssey_driver.sh
 """
 from __future__ import annotations
@@ -57,11 +61,14 @@ REVIEW_QUEUE = ODYSSEY / "REVIEW_QUEUE.jsonl"
 RECLAIM = TOOLS / "reclaim_safe.sh"
 AUTO_DIR = ODYSSEY / "contracts" / "auto"
 RUN_LOG = ODYSSEY / "RUN_LOG.jsonl"
+DOWNLOADS = ODYSSEY / "downloads"
 GROK_BIN = Path.home() / ".claude-grok" / "bin" / "grok-run"
 LINT_JS = Path.home() / ".claude-grok" / "v2" / "lint.mjs"
 NODE_BIN = Path("/opt/homebrew/bin/node")
 HAWKING_REPO = Path("/Users/scammermike/Downloads/hawking")
 PREFERRED_PY = "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3"
+HF_BIN = Path("/Library/Frameworks/Python.framework/Versions/3.12/bin/hf")
+HF_HUB = Path.home() / ".cache" / "huggingface" / "hub"
 
 DISK_FLOOR_GIB = 15.0
 DISK_WARN_GIB = 40.0
@@ -72,10 +79,14 @@ SCHEMA = "hawking.odyssey.controller.v1"
 RUN_LOG_SCHEMA = "hawking.odyssey.run_log.v1"
 HARVEST_SCHEMA = "hawking.odyssey.harvest.v2"
 COMPLETION_SCHEMA = "hawking.odyssey.completions.v1"
+SEAL_SCHEMA = "hawking.odyssey.patient_seal.v1"
+CYCLE_SCHEMA = "hawking.odyssey.cycle.v1"
+ACQUIRE_SCHEMA = "hawking.odyssey.acquire.v1"
 
 PHASES = (
     "INGEST", "BASELINE", "CENSUS", "ROUTEMAP", "SENSITIVITY",
     "GRAVITY", "NX", "KERNEL", "DOCTOR", "PACKET", "TRANSFER", "SEAL",
+    "SEALED",
 )
 PHASE_INDEX = {name: i for i, name in enumerate(PHASES)}
 TRANSFER_REF = {"O006": "O005"}
@@ -84,6 +95,12 @@ TEMPLATES = (
     "external-science-dense",
     "sensitivity-map",
     "transfer-control",
+    "gravity-moe",
+    "gravity-dense",
+    "gravity-hybrid",
+    "nx-gather-moe",
+    "nx-state-hybrid",
+    "nx-dense",
 )
 # Templates known to edit tools/odyssey_patient_runner.py. One-at-a-time.
 # RUN-only (external-science-moe / transfer-control) may fill to max-lanes.
@@ -91,6 +108,12 @@ TEMPLATES = (
 CODE_EDIT_TEMPLATES = frozenset({
     "sensitivity-map",
     "external-science-dense",
+    "gravity-moe",
+    "gravity-dense",
+    "gravity-hybrid",
+    "nx-gather-moe",
+    "nx-state-hybrid",
+    "nx-dense",
 })
 # Honest write_set: these templates may edit the shared runner. transfer-control
 # is RUN-only (packet + receipts + TRANSFER_MATRIX) and is parallel-safe with
@@ -99,6 +122,12 @@ RUNNER_WRITE_TEMPLATES = frozenset({
     "external-science-moe",
     "external-science-dense",
     "sensitivity-map",
+    "gravity-moe",
+    "gravity-dense",
+    "gravity-hybrid",
+    "nx-gather-moe",
+    "nx-state-hybrid",
+    "nx-dense",
 })
 RUNNER_REL = "tools/odyssey_patient_runner.py"
 TRANSFER_REL = "workspace/campaign/odyssey/TRANSFER_MATRIX.json"
@@ -107,6 +136,52 @@ TEMPLATE_MECHANISM = {
     "external-science-dense": "external-science",
     "sensitivity-map": "sensitivity-map",
     "transfer-control": "transfer-control",
+    "gravity-moe": "gravity-moe",
+    "gravity-dense": "gravity-dense",
+    "gravity-hybrid": "gravity-hybrid",
+    "nx-gather-moe": "nx-gather-moe",
+    "nx-state-hybrid": "nx-state-hybrid",
+    "nx-dense": "nx-dense",
+}
+# Agreed runner flags (parallel lane owns the runner; these names are the contract).
+GRAVITY_SPEC = {
+    "gravity-moe": "q3-g32-experts",
+    "gravity-dense": "q4-g64",
+    "gravity-hybrid": "q4-g64-attn-mlp",
+}
+NX_FLAG = {
+    "nx-gather-moe": "--nx-gather",
+    "nx-state-hybrid": "--nx-state",
+    "nx-dense": "--nx-dense",
+}
+GRAVITY_RECEIPT = {
+    "gravity-moe": "{oxx}_GRAVITY_q3-g32-experts.json",
+    "gravity-dense": "{oxx}_GRAVITY_q4-g64.json",
+    "gravity-hybrid": "{oxx}_GRAVITY_q4-g64-attn-mlp.json",
+}
+NX_RECEIPT = {
+    "nx-gather-moe": "{oxx}_NX_gather.json",
+    "nx-state-hybrid": "{oxx}_NX_state.json",
+    "nx-dense": "{oxx}_NX_dense.json",
+}
+# Bounded required set per class (steer S002 — do not over-deepen).
+REQUIRED_MOE = (
+    "external-science", "route-map", "sensitivity-map",
+    "gravity-moe", "nx-gather-moe",
+)
+REQUIRED_DENSE = (
+    "external-science", "sensitivity-map", "gravity-dense", "nx-dense",
+)
+REQUIRED_HYBRID = (
+    "external-science", "ssm-accounting", "sensitivity-map",
+    "gravity-hybrid", "nx-state-hybrid",
+)
+RETIRE_TERMINAL = frozenset({"VERIFIED", "REFUTED"})
+# Conservative download estimates (GiB). Overridden by census/hf used_storage.
+PATIENT_EST_GIB = {
+    "O000": 3.0, "O001": 16.0, "O002": 9.0, "O003": 32.0, "O004": 48.0,
+    "O005": 61.0, "O006": 62.0, "O007": 100.0, "O008": 55.0, "O009": 145.0,
+    "O010": 220.0, "O011": 0.0, "O012": 720.0, "O013": 80.0,
 }
 TERMINAL_COMPLETION = frozenset({
     "VERIFIED", "REFUTED", "SUPERSEDED", "ARCHIVED",
@@ -115,8 +190,10 @@ TERMINAL_COMPLETION = frozenset({
 # exist on disk without being sealed science (stays PENDING).
 COMPLETION_BACKFILL = (
     ("O001", "external-science", "O001_EXTERNAL.json"),
+    ("O001", "ssm-accounting", "O001_EXTERNAL.json"),
     ("O001", "sensitivity-map", "O001_SENSITIVITY.json"),
     ("O003", "external-science", "O003_EXTERNAL.json"),
+    ("O003", "route-map", "O003_EXTERNAL.json"),
     ("O005", "external-science", "O005_EXTERNAL.json"),
     ("O005", "route-map", "O005_EXTERNAL.json"),
 )
@@ -124,6 +201,7 @@ COMPLETION_BACKFILL = (
 STATES = (
     "READY", "RUNNING", "BLOCKED", "LANDED",
     "VERIFYING", "VERIFIED", "REVIEW", "REFUTED", "ARCHIVED",
+    "RETIRED", "ACQUIRING",
 )
 EVIDENCE = (
     "VERIFIED", "MEASURED", "DERIVED", "INFERRED",
@@ -370,6 +448,16 @@ def write_scope(ob: dict) -> dict:
             f"receipts/odyssey-i/{oxx}_TRANSFER.json",
             TRANSFER_REL,
         ]
+    elif template in GRAVITY_SPEC:
+        writes = [
+            RUNNER_REL, packet,
+            f"receipts/odyssey-i/{GRAVITY_RECEIPT[template].format(oxx=oxx)}",
+        ]
+    elif template in NX_FLAG:
+        writes = [
+            RUNNER_REL, packet,
+            f"receipts/odyssey-i/{NX_RECEIPT[template].format(oxx=oxx)}",
+        ]
     else:
         writes = [packet] if packet else []
     writes = [p for p in writes if p]
@@ -598,7 +686,9 @@ def parse_science_task(name: str) -> tuple[str, str] | None:
     m = re.match(
         r"^odyssey-o(\d{3})-("
         r"external-science-moe|external-science-dense|"
-        r"sensitivity-map|transfer-control"
+        r"sensitivity-map|transfer-control|"
+        r"gravity-moe|gravity-dense|gravity-hybrid|"
+        r"nx-gather-moe|nx-state-hybrid|nx-dense"
         r")(?:-\d{8}-\d{6})?$",
         name or "",
         re.I,
@@ -952,7 +1042,14 @@ def apply_census(pkt: dict, census: dict) -> None:
     rep["best_stored_bpw_eq"] = census.get("stored_bpw")
     rep["stored_bpw"] = census.get("stored_bpw")
     obytes = census.get("organs_bytes") or {}
-    rep["organs_bytes_GB"] = {k: round(v / 1e9, 2) for k, v in obytes.items() if v}
+    organs_gb = {k: round(v / 1e9, 2) for k, v in obytes.items() if v}
+    prev_organs = rep.get("organs_bytes_GB")
+    if isinstance(prev_organs, dict) and prev_organs.get("ssm") and "ssm" not in organs_gb:
+        organs_gb["ssm"] = prev_organs["ssm"]
+        if "other" in organs_gb and prev_organs.get("other") is not None:
+            organs_gb["other"] = prev_organs["other"]
+    if organs_gb:
+        rep["organs_bytes_GB"] = organs_gb
     if census.get("active_bytes_per_token"):
         rep["active_bytes_per_token_bf16"] = census["active_bytes_per_token"]
     _stamp(rep, "MEASURED (census)")
@@ -1618,6 +1715,14 @@ def _complete_harvested_lane(task_name: str, oxx: str | None, work: dict | None,
         "sensitivity-map": f"{oxx}_SENSITIVITY.json",
         "transfer-control": f"{oxx}_TRANSFER.json",
         "route-map": f"{oxx}_EXTERNAL.json",
+        "ssm-accounting": f"{oxx}_EXTERNAL.json",
+        "gravity-moe": f"{oxx}_GRAVITY_q3-g32-experts.json",
+        "gravity-dense": f"{oxx}_GRAVITY_q4-g64.json",
+        "gravity-hybrid": f"{oxx}_GRAVITY_q4-g64-attn-mlp.json",
+        "nx-gather-moe": f"{oxx}_NX_gather.json",
+        "nx-state-hybrid": f"{oxx}_NX_state.json",
+        "nx-dense": f"{oxx}_NX_dense.json",
+        "patient-sealed": f"{oxx}_PATIENT_SEAL.json",
     }.get(mech)
     rec_path = RECEIPT_DIR / rec_name if rec_name else None
     stamp = completed_at or os.environ.get("ODYSSEY_COMPLETED_AT")
@@ -1631,6 +1736,10 @@ def _complete_harvested_lane(task_name: str, oxx: str | None, work: dict | None,
     mechs = [mech]
     if tmpl == "external-science-moe" and "route-map" not in mechs:
         mechs.append("route-map")
+    if tmpl == "external-science-dense":
+        kind = arch_kind(oxx, load_packet(oxx), load_census(oxx))
+        if kind == "hybrid" and "ssm-accounting" not in mechs:
+            mechs.append("ssm-accounting")
     head = git_head()
     for mechanism_id in mechs:
         complete(
@@ -1927,13 +2036,15 @@ def prereq_ok(template: str, meta: dict, pkt: dict | None, census_exists: bool) 
     """Obligation is READY when the patient is on disk and phase prereqs hold."""
     if not patient_on_disk(meta):
         return False
-    if meta.get("state") == "BLOCKED":
+    if meta.get("state") in {"BLOCKED", "RETIRED", "ACQUIRING"}:
         return False
     rank = phase_rank(meta, census_exists)
     if template in {"external-science-moe", "external-science-dense", "transfer-control"}:
         return census_exists or rank >= PHASE_INDEX["CENSUS"]
     if template == "sensitivity-map":
         return census_exists and has_baseline(pkt)
+    if template in GRAVITY_SPEC or template in NX_FLAG:
+        return census_exists
     return False
 
 
@@ -2063,7 +2174,9 @@ def synthesize_for_patient(oxx: str, meta: dict, pkt: dict | None,
     Completions is the only done-check. Packet fields are prerequisites
     (e.g. sensitivity needs a baseline), never completion markers.
     """
-    if not patient_on_disk(meta) or meta.get("state") == "BLOCKED":
+    if not patient_on_disk(meta) or meta.get("state") in {
+        "BLOCKED", "RETIRED", "ACQUIRING",
+    }:
         return []
     if census is None:
         return []
@@ -2109,6 +2222,27 @@ def synthesize_for_patient(oxx: str, meta: dict, pkt: dict | None,
         add("sensitivity-map", 10, 2, 1,
             "per-organ / per-expert Doctor sensitivity",
             "representation-discriminator")
+    if arch == "moe":
+        add("gravity-moe", 8, 2, 1,
+            "modest gravity q3-g32-experts (SPECIMEN)",
+            "gravity")
+        add("nx-gather-moe", 7, 2, 1,
+            "NX gather accounting (selected-expert bytes/token)",
+            "nx")
+    elif arch == "hybrid":
+        add("gravity-hybrid", 8, 2, 1,
+            "modest gravity q4-g64-attn-mlp (protect SSM/norm, SPECIMEN)",
+            "gravity")
+        add("nx-state-hybrid", 7, 2, 1,
+            "NX state accounting (SSM-vs-KV residency)",
+            "nx")
+    else:
+        add("gravity-dense", 8, 2, 1,
+            "modest gravity q4-g64 (SPECIMEN)",
+            "gravity")
+        add("nx-dense", 7, 2, 1,
+            "NX dense floor (full-weight-sweep bytes/token)",
+            "nx")
     return out
 
 
@@ -2502,6 +2636,147 @@ Merge those cells into workspace/campaign/odyssey/TRANSFER_MATRIX.json for {oxx}
     return body
 
 
+def render_gravity(f: dict, template: str) -> str:
+    oxx = f["oxx"]
+    spec = GRAVITY_SPEC[template]
+    receipt = f"receipts/odyssey-i/{GRAVITY_RECEIPT[template].format(oxx=oxx)}"
+    extra = f"--gravity {spec}"
+    if template != "gravity-moe":
+        extra = f"--skip-route --gravity {spec}"
+    verify = (
+        f"python3 tools/odyssey_patient_runner.py --oxx {oxx} "
+        f"--weights {f['weights'] or '<weights>'} --runtime mlx "
+        f"--out {receipt} --packet {f['packet_rel']} {extra}"
+    )
+    protect = ""
+    if template == "gravity-hybrid":
+        protect = (
+            "Protect SSM/conv/norm at full precision; quantize attn+MLP only "
+            "(`q4-g64-attn-mlp`)."
+        )
+    elif template == "gravity-moe":
+        protect = (
+            "Experts → 3-bit group32; attention/router → 4-bit group64; norms full "
+            "(`q3-g32-experts`)."
+        )
+    else:
+        protect = "Uniform 4-bit group64 (`q4-g64`)."
+    body = f"""# DELEGATION — {oxx} MODEST GRAVITY ({spec}; gate profile: MLX/Metal)
+
+Patient {oxx} = `{f['source'] or f['model']}` ({f['kind']}; {f['arch_name']}),
+on disk at `{f['weights']}`. Repo: `/Users/scammermike/Downloads/hawking`.
+One bounded Gravity candidate (steer S002). SPECIMEN-labelled mlx quant; this
+is NOT a Hawking NX win (§15).
+
+{protect}
+
+## Read first
+READ tools/odyssey_patient_runner.py
+READ tools/worker_gate.py
+READ tools/doctor_seal.py
+READ {f['census_rel']}
+READ {f['packet_rel']}
+READ {f['receipt_rel']}
+
+Call worker_gate.observe()/gate() before load. Abort on REFUSE.
+
+## BUILD
+Reuse tools/odyssey_patient_runner.py `--gravity {spec}`. One candidate, do not sweep.
+Reload the quantized model, run the SAME fast-Doctor battery + refusal controls.
+Measure stored_bytes, stored_bpw (bytes*8/params), active_bytes_per_token + active_bpw
+(census active-param split for MoE) and battery/refusal DELTA vs {f['receipt_rel']}.
+Write {receipt} (schema odyssey.patient.gravity.v1): spec, stored/active bpw, battery,
+delta_hits, doctor_seal, SPECIMEN + quant caveat, verdict CANDIDATE_PASS if
+delta_hits>=-1 else DEGRADED. Refresh {f['packet_rel']} gravity.wins/kills.
+Do not delete canonical weights.
+
+## ACCEPTANCE
+- {receipt} exists with stored_bpw < 16, active_bpw, battery, delta vs baseline,
+  SPECIMEN label. Must pass, exit 0.
+- {f['packet_rel']} still schema-valid.
+
+{_scope_block(
+    ["tools/odyssey_patient_runner.py", "receipts/odyssey-i/",
+     f"workspace/campaign/odyssey/patients/{oxx}/"],
+    ["tools/odyssey_patient_runner.py", "tools/worker_gate.py", "tools/doctor_seal.py",
+     f['census_rel'], f['packet_rel'], f['receipt_rel']],
+    "tools/odyssey_patient_runner.py",
+    verify,
+)}
+"""
+    return body
+
+
+def render_nx(f: dict, template: str) -> str:
+    oxx = f["oxx"]
+    flag = NX_FLAG[template]
+    receipt = f"receipts/odyssey-i/{NX_RECEIPT[template].format(oxx=oxx)}"
+    extra = flag
+    if template != "nx-gather-moe":
+        extra = f"--skip-route {flag}"
+    verify = (
+        f"python3 tools/odyssey_patient_runner.py --oxx {oxx} "
+        f"--weights {f['weights'] or '<weights>'} --runtime mlx "
+        f"--out {receipt} --packet {f['packet_rel']} {extra}"
+    )
+    if template == "nx-gather-moe":
+        build = (
+            "MoE `--nx-gather`: from the router over N tokens, compute THEORETICAL "
+            "selected-expert bytes/token = topk/n_experts × expert_body_bytes; contrast "
+            "with full-expert-body bytes and the dense-MLP-equivalent; report the ratio "
+            "(the NX opportunity). Note whether mlx actually gathers or densely computes."
+        )
+        schema = "odyssey.patient.nx.v1"
+    elif template == "nx-state-hybrid":
+        build = (
+            "Hybrid `--nx-state`: reuse SSM-vs-KV accounting already on the packet/"
+            "external receipt; frame fixed-state residency as the NX lever. Emit "
+            "state_bytes vs kv_bytes across ctx."
+        )
+        schema = "odyssey.patient.nx.v1"
+    else:
+        build = (
+            "Dense `--nx-dense`: report full-weight-sweep bytes/token as the dense NX "
+            "floor and note there is no sparsity lever."
+        )
+        schema = "odyssey.patient.nx.v1"
+    body = f"""# DELEGATION — {oxx} NX ACCOUNTING ({flag}; gate profile: MLX/Metal)
+
+Patient {oxx} = `{f['source'] or f['model']}` ({f['kind']}; {f['arch_name']}),
+on disk at `{f['weights']}`. Repo: `/Users/scammermike/Downloads/hawking`.
+Bounded NX/execution attempt (steer S002). ACCOUNTING + minimal-primitive-design,
+not a full Rust runtime (§14). Label DERIVED/MEASURED.
+
+## Read first
+READ tools/odyssey_patient_runner.py
+READ tools/worker_gate.py
+READ {f['census_rel']}
+READ {f['packet_rel']}
+
+Call worker_gate.observe()/gate() before load. Abort on REFUSE.
+
+## BUILD
+Reuse tools/odyssey_patient_runner.py {flag}. {build}
+Write {receipt} (schema {schema}) and refresh {f['packet_rel']} nx.
+Do not delete canonical weights. Never call this a Hawking NX win.
+
+## ACCEPTANCE
+- {receipt} exists with the theoretical-vs-measured (or state-vs-KV / dense-floor)
+  accounting and §18 labels. Must pass, exit 0.
+- {f['packet_rel']} still schema-valid.
+
+{_scope_block(
+    ["tools/odyssey_patient_runner.py", "receipts/odyssey-i/",
+     f"workspace/campaign/odyssey/patients/{oxx}/"],
+    ["tools/odyssey_patient_runner.py", "tools/worker_gate.py",
+     f['census_rel'], f['packet_rel']],
+    "tools/odyssey_patient_runner.py",
+    verify,
+)}
+"""
+    return body
+
+
 RENDERERS = {
     "external-science-moe": lambda f, ob: render_external_science_moe(f),
     "external-science-dense": lambda f, ob: render_external_science_dense(f),
@@ -2509,6 +2784,12 @@ RENDERERS = {
     "transfer-control": lambda f, ob: render_transfer_control(
         f, ob.get("reference") or TRANSFER_REF.get(ob["oxx"], "O005"),
     ),
+    "gravity-moe": lambda f, ob: render_gravity(f, "gravity-moe"),
+    "gravity-dense": lambda f, ob: render_gravity(f, "gravity-dense"),
+    "gravity-hybrid": lambda f, ob: render_gravity(f, "gravity-hybrid"),
+    "nx-gather-moe": lambda f, ob: render_nx(f, "nx-gather-moe"),
+    "nx-state-hybrid": lambda f, ob: render_nx(f, "nx-state-hybrid"),
+    "nx-dense": lambda f, ob: render_nx(f, "nx-dense"),
 }
 
 
@@ -2910,6 +3191,8 @@ def print_run_plan(rows: list[dict], *, go: bool, max_lanes: int,
             f"disk={g.get('disk_free_gib')}{' <45 would-reclaim' if g.get('would_reclaim') else ''}  "
             f"clean_box={g.get('clean_box_ok')}  sg={g.get('sg')}"
         )
+        if r.get("write_set"):
+            print(f"     write_set: {', '.join(r['write_set'])}")
         if r.get("skip_reason"):
             print(f"     skip: {r['skip_reason']}")
         if r.get("task_id"):
@@ -2926,6 +3209,833 @@ def cmd_run(*, go: bool, max_lanes: int, **hooks) -> int:
     if go:
         print()
         cmd_status()
+    return 0
+
+
+# ---------------------------------------------------------------------------
+# patient class → required obligation set + retirement (steer S002)
+# ---------------------------------------------------------------------------
+
+def _family_key(text: str) -> str:
+    s = re.sub(r"[^a-z0-9]+", "", (text or "").lower())
+    for tok in ("instruct", "chat", "it", "vl"):
+        s = s.replace(tok, "")
+    return s
+
+
+def reference_sibling(oxx: str, state: dict | None = None) -> str | None:
+    """Named transfer *reference* for this patient (the sibling, not the original).
+
+    O006 (class 'sibling' / TRANSFER_REF key) → O005. O005 itself has no reference.
+    """
+    if oxx in TRANSFER_REF:
+        return TRANSFER_REF[oxx]
+    st = state if state is not None else ensure_state()
+    meta = patient_meta(oxx, st)
+    klass = (meta.get("class") or "").lower()
+    ledger = (meta.get("ledger") or "").lower()
+    note = f"{klass} {ledger}"
+    is_sib = (
+        "sibling" in note
+        or "transfer ctrl" in note
+        or re.search(r"\breference\b", note)
+    )
+    if not is_sib and LEDGER.is_file():
+        for line in LEDGER.read_text().splitlines():
+            if not re.search(rf"\b{re.escape(oxx)}\b", line):
+                continue
+            if re.search(r"\b(sibling|transfer ctrl)\b", line, re.I):
+                is_sib = True
+                break
+    if not is_sib:
+        return None
+    src = meta.get("source") or meta.get("model") or ""
+    key = _family_key(src.split("/")[-1] if "/" in src else src)
+    for p in st.get("patients") or []:
+        other = p.get("oxx")
+        if not other or other == oxx:
+            continue
+        # the reference is the non-sibling family member
+        oklass = (p.get("class") or "").lower()
+        if "sibling" in oklass:
+            continue
+        osrc = p.get("source") or p.get("model") or ""
+        okey = _family_key(osrc.split("/")[-1] if "/" in osrc else osrc)
+        if key and okey and (key in okey or okey in key):
+            return other
+    return None
+
+
+def patient_arch_kind(oxx: str, state: dict | None = None) -> str:
+    return arch_kind(oxx, load_packet(oxx), load_census(oxx))
+
+
+def required_mechanisms(oxx: str, state: dict | None = None) -> list[str]:
+    """Bounded required set for this patient's class. Do not over-deepen."""
+    kind = patient_arch_kind(oxx, state)
+    if kind == "moe":
+        req = list(REQUIRED_MOE)
+        if reference_sibling(oxx, state):
+            req.append("transfer-control")
+        return req
+    if kind == "hybrid":
+        return list(REQUIRED_HYBRID)
+    return list(REQUIRED_DENSE)
+
+
+def mechanism_retire_done(patient_id: str, mechanism_id: str,
+                          entries: list | None = None, *,
+                          source_revision: str | None = None) -> bool:
+    entry = current_completion(patient_id, mechanism_id, entries)
+    if not entry:
+        return False
+    if entry.get("status") not in RETIRE_TERMINAL:
+        return False
+    if reopen_if_satisfied(entry, source_revision=source_revision):
+        return False
+    return True
+
+
+def missing_required(oxx: str, state: dict | None = None,
+                     entries: list | None = None) -> list[str]:
+    pool = entries if entries is not None else _completions_entries(None)
+    return [
+        m for m in required_mechanisms(oxx, state)
+        if not mechanism_retire_done(oxx, m, pool)
+    ]
+
+
+def retire_eligible(oxx: str, state: dict | None = None,
+                    entries: list | None = None) -> bool:
+    """True iff every required mechanism has a VERIFIED/REFUTED completion."""
+    st = state if state is not None else ensure_state()
+    meta = patient_meta(oxx, st)
+    if meta.get("state") == "RETIRED":
+        return False
+    if science_is_done(oxx, "patient-sealed", entries):
+        return False
+    miss = missing_required(oxx, st, entries)
+    return not miss
+
+
+def _patient_row(state: dict, oxx: str) -> dict | None:
+    for p in state.setdefault("patients", []):
+        if p.get("oxx") == oxx:
+            return p
+    return None
+
+
+def retire_patient(oxx: str, *, dry_run: bool = False, persist: bool = True,
+                   state: dict | None = None, index: dict | None = None,
+                   completed_at: str | None = None,
+                   receipt_dir: Path | None = None) -> dict:
+    """Seal a retire-eligible patient. Does NOT delete weights."""
+    oxx = norm_oxx(oxx)
+    st = state if state is not None else ensure_state()
+    entries = (index.get("entries") if isinstance(index, dict) else index)
+    if entries is None:
+        entries = _completions_entries(index)
+    meta = patient_meta(oxx, st)
+    if meta.get("state") == "RETIRED" or science_is_done(oxx, "patient-sealed", entries):
+        return {
+            "schema": SEAL_SCHEMA,
+            "oxx": oxx,
+            "verdict": "SKIP",
+            "reason": "already RETIRED",
+            "_evidence": "DERIVED (patient-sealed)",
+        }
+    miss = missing_required(oxx, st, entries)
+    if miss:
+        return {
+            "schema": SEAL_SCHEMA,
+            "oxx": oxx,
+            "verdict": "REFUSE",
+            "reason": "not retire-eligible; missing: " + ",".join(miss),
+            "missing": miss,
+            "_evidence": "DERIVED (required-obligation set)",
+        }
+    req = required_mechanisms(oxx, st)
+    refs = []
+    for m in req:
+        ent = current_completion(oxx, m, entries)
+        if ent and ent.get("receipt_ref"):
+            refs.append(ent["receipt_ref"])
+    head = git_head()
+    stamp = (
+        completed_at
+        or os.environ.get("ODYSSEY_COMPLETED_AT")
+        or utc_now()
+    )
+    out_dir = Path(receipt_dir) if receipt_dir else RECEIPT_DIR
+    dest = out_dir / f"{oxx}_PATIENT_SEAL.json"
+    try:
+        rec_rel = str(dest.resolve().relative_to(REPO.resolve())).replace("\\", "/")
+    except ValueError:
+        rec_rel = f"receipts/odyssey-i/{oxx}_PATIENT_SEAL.json"
+    seal = {
+        "schema": SEAL_SCHEMA,
+        "oxx": oxx,
+        "status": "VERIFIED",
+        "phase": "SEALED",
+        "state": "RETIRED",
+        "sealed_mechanisms": req,
+        "receipt_refs": refs,
+        "source_revision": head,
+        "reclaimable": True,
+        "completed_at": stamp,
+        "weights_deleted": False,
+        "_evidence": "DERIVED (patient-sealed from terminal completions)",
+    }
+    if dry_run:
+        return {
+            "schema": SEAL_SCHEMA,
+            "oxx": oxx,
+            "verdict": "DRY-RUN",
+            "reason": "would retire",
+            "receipt": rec_rel,
+            "seal": seal,
+            "_evidence": "DERIVED (retire dry-run)",
+        }
+    write_json(dest, seal)
+    complete(
+        obligation_id=f"{oxx}:patient-sealed",
+        patient_id=oxx,
+        mechanism_id="patient-sealed",
+        status="VERIFIED",
+        completed_at=stamp,
+        receipt_ref=rec_rel,
+        receipt_sha256=file_sha256(dest),
+        source_revision=head,
+        index=index,
+        persist=persist,
+    )
+    row = _patient_row(st, oxx)
+    if row is not None:
+        row["state"] = "RETIRED"
+        row["phase"] = "SEALED"
+        row["reclaimable"] = True
+        row["_evidence"] = "DERIVED (patient-sealed)"
+    pkt = load_packet(oxx)
+    if pkt is None:
+        pkt = assemble_packet(oxx, st)
+    pkt["phase"] = "SEALED"
+    pkt["state"] = "RETIRED"
+    pkt["reclaimable"] = True
+    if evidence_class(pkt.get("_evidence")) is None:
+        pkt["_evidence"] = "DERIVED (patient-sealed)"
+    dest_pkt = packet_path(oxx)
+    dest_pkt.parent.mkdir(parents=True, exist_ok=True)
+    write_json(dest_pkt, pkt)
+    if persist:
+        save_state(st)
+    return {
+        "schema": SEAL_SCHEMA,
+        "oxx": oxx,
+        "verdict": "VERIFIED",
+        "reason": "sealed",
+        "receipt": rec_rel,
+        "reclaimable": True,
+        "_evidence": "DERIVED (patient-sealed)",
+    }
+
+
+def cmd_retire(oxx: str) -> int:
+    rec = retire_patient(oxx)
+    ev = rec.get("_evidence") or "DERIVED"
+    if rec.get("verdict") == "REFUSE":
+        print(f"REFUSE  retire {oxx}  {rec.get('reason')}  _evidence={ev}")
+        return 1
+    if rec.get("verdict") == "SKIP":
+        print(f"SKIP  retire {oxx}  {rec.get('reason')}  _evidence={ev}")
+        return 0
+    print(
+        f"VERIFIED  retire {oxx}  sealed  receipt={rec.get('receipt')}  "
+        f"reclaimable=true  _evidence={ev}"
+    )
+    return 0
+
+
+# ---------------------------------------------------------------------------
+# next-patient acquisition
+# ---------------------------------------------------------------------------
+
+def hf_executable() -> str:
+    if HF_BIN.is_file():
+        return str(HF_BIN)
+    return "hf"
+
+
+def hf_model_info(repo: str, *, timeout: int = 45) -> tuple[bool, dict | None, str]:
+    """Attempt `hf models info`. Success ⇒ token+license is enough to see metadata."""
+    if not repo or "/" not in repo or repo.lower().startswith("reconstruct"):
+        return False, None, "not an hf repo"
+    try:
+        r = subprocess.run(
+            [hf_executable(), "models", "info", repo, "--format", "json"],
+            capture_output=True, text=True, timeout=timeout,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return False, None, f"hf metadata failed: {exc}"
+    if r.returncode != 0:
+        err = ((r.stderr or "") + (r.stdout or "")).strip()[-400:]
+        return False, None, err or "hf metadata failed"
+    try:
+        info = json.loads(r.stdout or "{}")
+    except json.JSONDecodeError:
+        return True, None, "hf metadata ok (non-json)"
+    return True, info if isinstance(info, dict) else None, "ok"
+
+
+def hf_cache_snapshot(repo: str) -> Path | None:
+    if not repo or "/" not in repo:
+        return None
+    slug = "models--" + repo.replace("/", "--")
+    snaps = HF_HUB / slug / "snapshots"
+    if not snaps.is_dir():
+        return None
+    hub = HF_HUB / slug
+    if any(hub.rglob("*.incomplete")):
+        return None
+    ranked = sorted(
+        (p for p in snaps.iterdir() if p.is_dir()),
+        key=lambda p: p.stat().st_mtime,
+        reverse=True,
+    )
+    for snap in ranked:
+        if not (snap / "config.json").is_file():
+            continue
+        if list(snap.glob("*.safetensors")) or list(snap.glob("*.bin")):
+            return snap
+    return None
+
+
+def patient_est_gib(oxx: str, meta: dict | None = None,
+                    info: dict | None = None) -> float:
+    if info and info.get("used_storage"):
+        try:
+            return float(info["used_storage"]) / 1024**3
+        except (TypeError, ValueError):
+            pass
+    census = load_census(oxx)
+    if census and census.get("total_bytes"):
+        return float(census["total_bytes"]) / 1024**3
+    return float(PATIENT_EST_GIB.get(oxx, 50.0))
+
+
+def _hf_gated(meta: dict) -> bool:
+    gate = str(meta.get("gate") or "")
+    return "HF-gated" in gate or "HF-gated" in str(meta.get("blocked_reason") or "")
+
+
+def _downloadable_repo(meta: dict) -> str:
+    src = strip_md(meta.get("source") or "")
+    if not src or "/" not in src or src.lower().startswith("reconstruct"):
+        return ""
+    if src.startswith("http"):
+        return ""
+    return src
+
+
+def _pid_alive(pid) -> bool:
+    try:
+        os.kill(int(pid), 0)
+        return True
+    except (OSError, TypeError, ValueError):
+        return False
+
+
+def weights_dir_for_reclaim(oxx: str) -> Path | None:
+    census = load_census(oxx)
+    if census and census.get("model_dir"):
+        p = Path(census["model_dir"])
+        if p.is_dir():
+            return p
+    pkt = load_packet(oxx) or {}
+    on_disk = (pkt.get("identity") or {}).get("on_disk")
+    if on_disk:
+        p = Path(os.path.expanduser(str(on_disk)))
+        if p.is_dir():
+            return p
+    meta = patient_meta(oxx)
+    snap = hf_cache_snapshot(_downloadable_repo(meta))
+    return snap
+
+
+def reclaim_retired_weights(oxx: str, *, dry_run: bool = False,
+                            persist: bool = True,
+                            state: dict | None = None) -> dict:
+    """Delete RETIRED patient weights. Record provenance. Separate from retire()."""
+    st = state if state is not None else ensure_state()
+    meta = patient_meta(oxx, st)
+    if meta.get("state") != "RETIRED" and not meta.get("reclaimable"):
+        return {
+            "verdict": "REFUSE",
+            "oxx": oxx,
+            "reason": "not RETIRED/reclaimable",
+            "_evidence": "DERIVED (reclaim gate)",
+        }
+    path = weights_dir_for_reclaim(oxx)
+    if path is None or not path.exists():
+        return {
+            "verdict": "SKIP",
+            "oxx": oxx,
+            "reason": "no on-disk weights to reclaim",
+            "_evidence": "MEASURED (weights missing)",
+        }
+    size = 0
+    if path.is_dir():
+        for f in path.rglob("*"):
+            if f.is_file():
+                try:
+                    size += f.stat().st_size
+                except OSError:
+                    pass
+    rec = {
+        "schema": ACQUIRE_SCHEMA,
+        "oxx": oxx,
+        "action": "reclaim-weights",
+        "path": str(path),
+        "bytes": size,
+        "at": utc_now(),
+        "source_revision": git_head(),
+        "dry_run": dry_run,
+        "_evidence": "MEASURED (reclaim of RETIRED patient weights)",
+    }
+    dest = RECEIPT_DIR / f"{oxx}_WEIGHTS_RECLAIM.json"
+    if dry_run:
+        rec["verdict"] = "DRY-RUN"
+        return rec
+    if path.is_dir():
+        shutil.rmtree(path, ignore_errors=True)
+    elif path.is_file():
+        path.unlink(missing_ok=True)
+    write_json(dest, rec)
+    row = _patient_row(st, oxx)
+    if row is not None:
+        row["on_disk"] = False
+        row["ledger"] = "reclaimed"
+        row["reclaim_ref"] = f"receipts/odyssey-i/{oxx}_WEIGHTS_RECLAIM.json"
+    st.setdefault("reclaim_log", []).append({
+        "oxx": oxx, "path": str(path), "bytes": size, "at": rec["at"],
+        "_evidence": rec["_evidence"],
+    })
+    if persist:
+        save_state(st)
+    rec["verdict"] = "VERIFIED"
+    rec["receipt"] = str(dest)
+    return rec
+
+
+def run_patient_census(oxx: str, model_dir: str) -> tuple[bool, str]:
+    dest = census_path(oxx)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    py = PREFERRED_PY if Path(PREFERRED_PY).is_file() else sys.executable
+    r = subprocess.run(
+        [py, str(TOOLS / "odyssey_census.py"), str(model_dir), "--out", str(dest)],
+        capture_output=True, text=True,
+    )
+    if r.returncode != 0:
+        return False, ((r.stderr or "") + (r.stdout or ""))[-400:]
+    return dest.is_file(), str(dest)
+
+
+def finalize_acquisitions(state: dict, *, dry_run: bool = False,
+                          persist: bool = True) -> list[dict]:
+    """If an ACQUIRING download landed, census + seed packet + mark on-disk."""
+    rows = []
+    for p in state.get("patients") or []:
+        if p.get("state") != "ACQUIRING":
+            continue
+        oxx = p.get("oxx")
+        repo = _downloadable_repo(p)
+        snap = hf_cache_snapshot(repo) if repo else None
+        rec = {
+            "oxx": oxx, "repo": repo, "snapshot": str(snap) if snap else None,
+            "verdict": "WAIT",
+            "_evidence": "MEASURED (hf cache)",
+        }
+        if snap is None:
+            pid = p.get("acquire_pid")
+            if pid and not _pid_alive(pid):
+                rec["verdict"] = "STALE"
+                rec["reason"] = f"download pid {pid} dead and snapshot incomplete"
+            rows.append(rec)
+            continue
+        if dry_run:
+            rec["verdict"] = "DRY-RUN"
+            rec["reason"] = "would census + seed packet"
+            rows.append(rec)
+            continue
+        ok, note = run_patient_census(oxx, str(snap))
+        if not ok:
+            rec["verdict"] = "WAIT"
+            rec["reason"] = f"census failed: {note}"
+            rows.append(rec)
+            continue
+        try:
+            write_packet(oxx, state)
+        except SystemExit as exc:
+            rec["verdict"] = "WAIT"
+            rec["reason"] = f"packet seed failed: {exc}"
+            rows.append(rec)
+            continue
+        p["on_disk"] = True
+        p["state"] = "READY"
+        p["ledger"] = "on-disk"
+        p["phase"] = "CENSUS"
+        p["blocked_reason"] = None
+        p["_evidence"] = "MEASURED (hf snapshot + census)"
+        rec["verdict"] = "READY"
+        rec["reason"] = "on-disk; obligations registered via synthesis"
+        rows.append(rec)
+    if persist and any(r.get("verdict") == "READY" for r in rows) and not dry_run:
+        save_state(state)
+    return rows
+
+
+def pick_acquire_candidate(state: dict, *,
+                           hf_info_fn=None,
+                           mutate: bool = True) -> tuple[dict | None, dict]:
+    """Lowest-numbered ladder patient not on disk, not RETIRED, not blocked.
+
+    HF-gated patients are probed via hf metadata; failure marks BLOCKED and skips.
+    """
+    info_fn = hf_info_fn or hf_model_info
+    skipped = []
+    mutated = False
+    for p in state.get("patients") or []:
+        oxx = p.get("oxx")
+        if not oxx:
+            continue
+        if p.get("state") == "RETIRED":
+            skipped.append((oxx, "RETIRED"))
+            continue
+        if p.get("state") == "ACQUIRING":
+            skipped.append((oxx, "already ACQUIRING"))
+            continue
+        if patient_on_disk(p) or p.get("on_disk"):
+            skipped.append((oxx, "on-disk"))
+            continue
+        repo = _downloadable_repo(p)
+        gated = _hf_gated(p) or p.get("state") == "BLOCKED"
+        if gated:
+            if not repo:
+                if mutate:
+                    p["state"] = "BLOCKED"
+                    p["blocked_reason"] = p.get("blocked_reason") or "HF-gated / no repo"
+                    mutated = True
+                skipped.append((oxx, "HF-gated, no repo"))
+                continue
+            ok, info, why = info_fn(repo)
+            if not ok:
+                if mutate:
+                    p["state"] = "BLOCKED"
+                    p["blocked_reason"] = f"HF-gated / hf metadata failed: {why}"
+                    p["_evidence"] = "INFERRED (hf metadata)"
+                    mutated = True
+                skipped.append((oxx, f"HF-gated blocked: {why}"))
+                continue
+            return p, {"skipped": skipped, "mutated": mutated, "hf_info": info}
+        if p.get("state") == "BLOCKED":
+            skipped.append((oxx, "BLOCKED"))
+            continue
+        if not repo:
+            skipped.append((oxx, "no downloadable hf repo"))
+            continue
+        return p, {"skipped": skipped, "mutated": mutated, "hf_info": None}
+    return None, {"skipped": skipped, "mutated": mutated, "hf_info": None}
+
+
+def start_hf_download(repo: str, log_path: Path) -> tuple[int | None, str]:
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    fh = log_path.open("w")
+    env = dict(os.environ)
+    env.setdefault("HF_HUB_ENABLE_HF_TRANSFER", "1")
+    try:
+        proc = subprocess.Popen(
+            [hf_executable(), "download", repo],
+            stdout=fh, stderr=subprocess.STDOUT,
+            cwd=str(REPO), env=env, start_new_session=True,
+        )
+    except OSError as exc:
+        fh.close()
+        return None, str(exc)
+    return proc.pid, str(log_path)
+
+
+def acquire_next(*, go: bool = False, dry_run: bool | None = None,
+                 state: dict | None = None, persist: bool = True,
+                 snapshot_fn=None, hf_info_fn=None, download_fn=None,
+                 reclaim_fn=None, log_path: Path | None = None) -> dict:
+    """Pick + (optionally) start the next ladder patient download.
+
+    Never blocks the caller on a long download. Marks ACQUIRING and returns.
+    """
+    st = state if state is not None else ensure_state()
+    planning = (not go) if dry_run is None else bool(dry_run)
+    finalize_acquisitions(st, dry_run=planning, persist=persist and not planning)
+    snap = (snapshot_fn or machine_snapshot)()
+    disk = float(snap.get("disk_free_gib") or 0.0)
+    cand, meta = pick_acquire_candidate(
+        st, hf_info_fn=hf_info_fn, mutate=not planning,
+    )
+    if persist and meta.get("mutated") and not planning:
+        save_state(st)
+    if cand is None:
+        rec = {
+            "schema": ACQUIRE_SCHEMA,
+            "verdict": "REFUSE",
+            "reason": "no eligible patient (all on-disk, RETIRED, ACQUIRING, or blocked)",
+            "skipped": meta.get("skipped"),
+            "disk_free_gib": disk,
+            "_evidence": "DERIVED (acquire-next)",
+        }
+        append_run_log({**rec, "command": "acquire-next"}, path=log_path)
+        return rec
+    oxx = cand["oxx"]
+    repo = _downloadable_repo(cand)
+    est = cand.get("est_gib_hf") or patient_est_gib(oxx, cand, meta.get("hf_info"))
+    need = est + DISK_RUN_GIB
+    reclaimed = []
+    if disk < need:
+        for p in list(st.get("patients") or []):
+            if p.get("state") != "RETIRED":
+                continue
+            if not (p.get("on_disk") or p.get("reclaimable")):
+                continue
+            fn = reclaim_fn or (
+                lambda o, **kw: reclaim_retired_weights(
+                    o, dry_run=planning, persist=persist and not planning, state=st,
+                )
+            )
+            rec_r = fn(p.get("oxx"), dry_run=planning, persist=persist and not planning)
+            reclaimed.append(rec_r)
+            if not planning and rec_r.get("verdict") == "VERIFIED":
+                snap = (snapshot_fn or machine_snapshot)()
+                disk = float(snap.get("disk_free_gib") or 0.0)
+                if disk >= need:
+                    break
+        if disk < need:
+            rec = {
+                "schema": ACQUIRE_SCHEMA,
+                "verdict": "REFUSE",
+                "reason": (
+                    f"disk-hold: free {disk:.1f} GiB < est {est:.1f} + "
+                    f"floor {DISK_RUN_GIB:.0f}"
+                ),
+                "oxx": oxx,
+                "repo": repo,
+                "est_gib": round(est, 2),
+                "need_gib": round(need, 2),
+                "disk_free_gib": disk,
+                "reclaimed": reclaimed,
+                "_evidence": "MEASURED (disk) + DERIVED (disk-hold)",
+            }
+            append_run_log({**rec, "command": "acquire-next"}, path=log_path)
+            return rec
+    rec = {
+        "schema": ACQUIRE_SCHEMA,
+        "oxx": oxx,
+        "repo": repo,
+        "est_gib": round(est, 2),
+        "need_gib": round(need, 2),
+        "disk_free_gib": disk,
+        "reclaimed": reclaimed,
+        "_evidence": "HYPOTHESIS (acquire plan) + MEASURED (disk)",
+    }
+    if planning:
+        rec["verdict"] = "DRY-RUN"
+        rec["reason"] = f"would acquire {oxx} ({repo})"
+        append_run_log({**rec, "command": "acquire-next"}, path=log_path)
+        return rec
+    logf = DOWNLOADS / f"{oxx}_{(repo or 'repo').replace('/', '_')}.log"
+    fn = download_fn or start_hf_download
+    pid, note = fn(repo, logf)
+    if not pid:
+        rec["verdict"] = "REFUSE"
+        rec["reason"] = f"hf download failed to start: {note}"
+        append_run_log({**rec, "command": "acquire-next"}, path=log_path)
+        return rec
+    cand["state"] = "ACQUIRING"
+    cand["ledger"] = "acquiring"
+    cand["acquire_pid"] = pid
+    cand["acquire_log"] = str(logf)
+    cand["acquire_started"] = utc_now()
+    cand["_evidence"] = "MEASURED (hf download launched)"
+    st.setdefault("acquisitions", []).append({
+        "oxx": oxx, "repo": repo, "pid": pid, "log": str(logf),
+        "started": cand["acquire_started"],
+        "_evidence": cand["_evidence"],
+    })
+    if persist:
+        save_state(st)
+    rec["verdict"] = "ACQUIRING"
+    rec["reason"] = f"download started pid={pid}; cycle will pick up when on-disk"
+    rec["pid"] = pid
+    rec["log"] = str(logf)
+    append_run_log({**rec, "command": "acquire-next"}, path=log_path)
+    return rec
+
+
+def cmd_acquire_next(*, go: bool = False) -> int:
+    rec = acquire_next(go=go)
+    ev = rec.get("_evidence") or "DERIVED"
+    verdict = rec.get("verdict") or "REFUSE"
+    reason = rec.get("reason") or ""
+    print(f"{verdict}  acquire-next  {reason}  _evidence={ev}")
+    if rec.get("oxx"):
+        print(
+            f"  oxx={rec.get('oxx')} repo={rec.get('repo')}  "
+            f"est={rec.get('est_gib')}GiB need={rec.get('need_gib')}GiB  "
+            f"disk={rec.get('disk_free_gib')}GiB"
+        )
+    return 0 if verdict in {"ACQUIRING", "DRY-RUN", "SKIP"} else 1
+
+
+# ---------------------------------------------------------------------------
+# cycle — one unattended tick: harvest → complete → retire → acquire → admit
+# ---------------------------------------------------------------------------
+
+def cycle_tick(*, go: bool, max_lanes: int,
+               state: dict | None = None, persist: bool = True,
+               **hooks) -> dict:
+    """One driver tick. Idempotent, event-safe, no model calls in the controller."""
+    st = state if state is not None else ensure_state()
+    harvest_hooks = {
+        k: hooks[k] for k in (
+            "tasks_root", "receipt_dir", "worktrees_root", "dest_root",
+            "review_queue", "cleanup_fn",
+        ) if k in hooks
+    }
+    harvest_rows = harvest_lanes(
+        dry_run=not go, state=st, persist=persist and go, **harvest_hooks,
+    )
+    completions = rebuild_completions(persist=persist)
+    entries = list(completions.get("entries") or [])
+
+    eligible = []
+    missing_map = {}
+    for p in st.get("patients") or []:
+        oxx = p.get("oxx")
+        if not oxx or p.get("state") in {"RETIRED", "BLOCKED"}:
+            continue
+        if not (patient_on_disk(p) or p.get("on_disk")):
+            continue
+        miss = missing_required(oxx, st, entries)
+        missing_map[oxx] = miss
+        if not miss:
+            eligible.append(oxx)
+
+    retired = []
+    for oxx in eligible:
+        rec = retire_patient(
+            oxx, dry_run=not go, persist=persist and go, state=st,
+            index=completions,
+        )
+        retired.append(rec)
+        if rec.get("verdict") == "VERIFIED":
+            entries = list((completions.get("entries") or entries))
+
+    finalized = finalize_acquisitions(st, dry_run=not go, persist=persist and go)
+
+    ranked = select_ready_obligations(st, completions=completions)
+    acquire_row = None
+    if not ranked:
+        acquire_row = acquire_next(
+            go=go, dry_run=not go, state=st, persist=persist and go,
+            snapshot_fn=hooks.get("snapshot_fn"),
+            hf_info_fn=hooks.get("hf_info_fn"),
+            download_fn=hooks.get("download_fn"),
+            reclaim_fn=hooks.get("reclaim_fn"),
+            log_path=hooks.get("log_path"),
+        )
+        ranked = select_ready_obligations(st, completions=completions)
+
+    run_hooks = {
+        k: hooks[k] for k in (
+            "observe_fn", "gate_fn", "snapshot_fn", "launch_fn",
+            "lint_fn", "reclaim_fn", "log_path", "auto_dir",
+        ) if k in hooks
+    }
+    rows = run_loop(
+        go=go, max_lanes=max_lanes, state=st, persist=persist,
+        completions=completions, consider_limit=24, **run_hooks,
+    )
+    return {
+        "schema": CYCLE_SCHEMA,
+        "go": go,
+        "harvest": harvest_rows,
+        "retire_eligible": eligible,
+        "missing": missing_map,
+        "retired": retired,
+        "finalized": finalized,
+        "acquire": acquire_row,
+        "ready": ranked,
+        "admitted": rows,
+        "_evidence": "DERIVED (cycle tick)",
+    }
+
+
+def _retire_none_reason(missing_map: dict) -> str:
+    if not missing_map:
+        return "(none)"
+    need_gn = True
+    for miss in missing_map.values():
+        if not any(m.startswith("gravity-") or m.startswith("nx-") for m in miss):
+            need_gn = False
+            break
+    if need_gn:
+        return "(none — all need gravity/nx)"
+    return "(none)"
+
+
+def print_cycle(plan: dict, *, go: bool, max_lanes: int,
+                snap: dict, running_n: int) -> None:
+    mode = "GO" if go else "dry-run"
+    disk = snap.get("disk_free_gib")
+    eligible = plan.get("retire_eligible") or []
+    acquire = plan.get("acquire")
+    ready = plan.get("ready") or []
+    harvest = plan.get("harvest") or []
+    acq_s = "skipped (ready frontier non-empty)"
+    if acquire:
+        acq_s = f"{acquire.get('verdict')}: {acquire.get('reason')}"
+    print(
+        f"ODYSSEY-I  {mode}  on-disk-ready={len(plan.get('missing') or {})}  "
+        f"running={running_n}  ready={len(ready)}  retire-eligible={len(eligible)}  "
+        f"disk={disk}GiB  _evidence=DERIVED (§97)"
+    )
+    print(
+        f"ODYSSEY CYCLE  {mode}  max_lanes={max_lanes}  harvest={len(harvest)}  "
+        f"retire-eligible={len(eligible)}  acquire={acq_s}  ready={len(ready)}  "
+        f"disk={disk}GiB"
+    )
+    if not go:
+        print("launch NOTHING (dry-run is the default; pass --go to spawn)")
+    if eligible:
+        print("RETIRE-ELIGIBLE: " + ",".join(eligible))
+    else:
+        print("RETIRE-ELIGIBLE: " + _retire_none_reason(plan.get("missing") or {}))
+    for oxx, miss in (plan.get("missing") or {}).items():
+        if miss:
+            print(f"  {oxx} missing: {','.join(miss)}")
+    if acquire:
+        print(
+            f"ACQUIRE: {acquire.get('verdict')}  {acquire.get('reason')}  "
+            f"_evidence={acquire.get('_evidence')}"
+        )
+    print_run_plan(
+        plan.get("admitted") or [], go=go, max_lanes=max_lanes,
+        snap=snap, running_n=running_n,
+    )
+
+
+def cmd_cycle(*, go: bool, max_lanes: int, **hooks) -> int:
+    st = hooks.pop("state", None) or ensure_state()
+    snap = (hooks.get("snapshot_fn") or machine_snapshot)()
+    running_n = len(odyssey_running_ids(st))
+    plan = cycle_tick(go=go, max_lanes=max_lanes, state=st, **hooks)
+    print_cycle(plan, go=go, max_lanes=max_lanes, snap=snap, running_n=running_n)
     return 0
 
 
@@ -3356,6 +4466,10 @@ def _self_check() -> int:
         {"id": "T-XFER", "oxx": "O006", "template": "transfer-control",
          "title": "t", "info": 1, "wall_cost": 1, "gpu_cost": 0, "opus_cost": 0,
          "reference": "O005"},
+        {"id": "T-GRAV", "oxx": "O005", "template": "gravity-moe",
+         "title": "t", "info": 1, "wall_cost": 1, "gpu_cost": 0, "opus_cost": 0},
+        {"id": "T-NX", "oxx": "O001", "template": "nx-state-hybrid",
+         "title": "t", "info": 1, "wall_cost": 1, "gpu_cost": 0, "opus_cost": 0},
     ]
     for ob in samples:
         dest = render_contract(ob)
@@ -3746,6 +4860,85 @@ def _self_check() -> int:
     )
     assert g_collide["verdict"] == "SKIP", g_collide
     assert "write-scope collision" in (g_collide.get("skip_reason") or ""), g_collide
+    grav = {"oxx": "O005", "template": "gravity-moe"}
+    nxh = {"oxx": "O001", "template": "nx-state-hybrid"}
+    assert scopes_conflict(write_scope(sens), write_scope(grav)), "gravity writes runner"
+    assert scopes_conflict(write_scope(grav), write_scope(nxh)), "nx writes runner"
+
+    # 12. retire-eligible (all required VERIFIED vs one missing) + cycle dry-run
+    #     + retire/acquire-next refuse when preconditions fail.
+    o001_req = required_mechanisms("O001", st2)
+    assert "external-science" in o001_req and "ssm-accounting" in o001_req
+    assert "gravity-hybrid" in o001_req and "nx-state-hybrid" in o001_req
+    o005_req = required_mechanisms("O005", st2)
+    assert "gravity-moe" in o005_req and "nx-gather-moe" in o005_req
+    assert "transfer-control" not in o005_req
+    o006_req = required_mechanisms("O006", st2)
+    assert "transfer-control" in o006_req, o006_req
+    o004_req = required_mechanisms("O004", st2)
+    assert "gravity-dense" in o004_req and "nx-dense" in o004_req
+    full_o001 = [
+        {"obligation_id": f"t:{m}", "patient_id": "O001", "mechanism_id": m,
+         "status": "VERIFIED", "reopen_if": None, "completed_at": "t0"}
+        for m in o001_req
+    ]
+    assert retire_eligible("O001", st2, full_o001), o001_req
+    assert not retire_eligible("O001", st2, full_o001[:-1]), full_o001[:-1]
+    assert not retire_eligible("O005", st2), missing_required("O005", st2)
+
+    refused = retire_patient("O005", dry_run=True, persist=False, state=dict(st2))
+    assert refused.get("verdict") == "REFUSE", refused
+    assert "not retire-eligible" in (refused.get("reason") or ""), refused
+
+    acq_hold = acquire_next(
+        go=False, persist=False, state=dict(st2),
+        snapshot_fn=lambda: {
+            "disk_free_gib": 1.0, "clean_box_ok": True, "clean_box_reason": "ok",
+        },
+        hf_info_fn=lambda _repo: (True, {"used_storage": 3 * 1024**3}, "ok"),
+    )
+    assert acq_hold.get("verdict") == "REFUSE", acq_hold
+    assert "disk-hold" in (acq_hold.get("reason") or ""), acq_hold
+
+    frozen = {
+        "schema": SCHEMA,
+        "patients": [
+            dict(p, on_disk=True, state="RETIRED", reclaimable=False)
+            for p in (st2.get("patients") or [])
+        ],
+        "work": [], "history": [], "harvested": [], "metrics": {},
+    }
+    acq_none = acquire_next(
+        go=False, persist=False, state=frozen,
+        snapshot_fn=lambda: dict(fat_snap),
+        hf_info_fn=lambda _repo: (True, {}, "ok"),
+    )
+    assert acq_none.get("verdict") == "REFUSE", acq_none
+    assert "no eligible" in (acq_none.get("reason") or ""), acq_none
+
+    launches.clear()
+    with tempfile.TemporaryDirectory() as td_c:
+        td_c = Path(td_c)
+        cplan = cycle_tick(
+            go=False, max_lanes=2, state=dict(st2), persist=False,
+            observe_fn=lambda: permit_obs, gate_fn=worker_gate.gate,
+            snapshot_fn=lambda: dict(fat_snap),
+            launch_fn=no_launch, reclaim_fn=lambda *a, **k: None,
+            log_path=td_c / "RUN_LOG.jsonl",
+            auto_dir=td_c / "auto",
+        )
+    assert launches == [], launches
+    assert not (cplan.get("retire_eligible") or []), cplan.get("retire_eligible")
+    ready_pair = {(r["oxx"], r["template"]) for r in (cplan.get("ready") or [])}
+    assert ("O005", "sensitivity-map") in ready_pair, ready_pair
+    assert ("O006", "transfer-control") in ready_pair, ready_pair
+    assert ("O004", "external-science-dense") in ready_pair, ready_pair
+    assert ("O003", "sensitivity-map") in ready_pair, ready_pair
+    assert any(t.startswith("gravity-") or t.startswith("nx-") for _, t in ready_pair), ready_pair
+    admitted = cplan.get("admitted") or []
+    assert admitted, "cycle dry-run rendered no plan"
+    assert all(r.get("verdict") != "LAUNCH" for r in admitted), admitted
+    assert all(r.get("task_id") in (None, "") for r in admitted)
 
     print("self-check ok")
     return 0
@@ -3779,6 +4972,20 @@ def main(argv=None) -> int:
                         help="idempotent VERIFIED backfill from receipts/odyssey-i")
     p_comp.add_argument("--completed-at", default=None,
                         help="ISO timestamp passed into complete(); default: receipt git/mtime")
+    p_cy = sp.add_parser("cycle")
+    p_cy.add_argument("--dry-run", action="store_true",
+                      help="plan only (default when --go is absent)")
+    p_cy.add_argument("--go", action="store_true",
+                      help="harvest/retire/acquire/launch for real")
+    p_cy.add_argument("--max-lanes", type=int, default=DEFAULT_MAX_LANES,
+                      help="concurrent odyssey lane cap (default 2, hard cap 3)")
+    p_ret = sp.add_parser("retire")
+    p_ret.add_argument("oxx")
+    p_acq = sp.add_parser("acquire-next")
+    p_acq.add_argument("--dry-run", action="store_true",
+                       help="plan only (default when --go is absent)")
+    p_acq.add_argument("--go", action="store_true",
+                       help="start hf download in the background")
     args = ap.parse_args(argv)
     if args.self_check or args.cmd in {"self-check", "selfcheck"}:
         return _self_check()
@@ -3802,6 +5009,14 @@ def main(argv=None) -> int:
     if args.cmd == "run":
         go = bool(args.go) and not bool(args.dry_run)
         return cmd_run(go=go, max_lanes=args.max_lanes)
+    if args.cmd == "cycle":
+        go = bool(args.go) and not bool(args.dry_run)
+        return cmd_cycle(go=go, max_lanes=args.max_lanes)
+    if args.cmd == "retire":
+        return cmd_retire(args.oxx)
+    if args.cmd == "acquire-next":
+        go = bool(args.go) and not bool(args.dry_run)
+        return cmd_acquire_next(go=go)
     ap.print_help()
     return 2
 

@@ -17,6 +17,14 @@ Mamba) and SSM-state-vs-KV byte counts across short/moderate/long ctx.
 and 8-bit-round each organ, re-run the same battery + refusal controls,
 record capability delta. MoE also ablates one hot and one random expert.
 Canonical HF weights are never modified.
+
+`--gravity <spec>` builds one MODEST mlx mix (not a sweep) with a per-module
+quant_predicate, reloads it, grades the same fast-Doctor battery against
+`<OXX>_EXTERNAL.json`, and writes `odyssey.patient.gravity.v1` (SPECIMEN;
+never a Hawking NX win). Specs: `q3-g32-experts`, `q4-g64`, `q4-g64-attn-mlp`.
+
+`--nx-gather` / `--nx-state` / `--nx-dense` emit `odyssey.patient.nx.v1`
+accounting (+ a minimal primitive-design note). Not a Rust runtime (§14).
 """
 from __future__ import annotations
 
@@ -122,6 +130,10 @@ SENSITIVITY_ORGANS_DENSE = (
 ROUND8_GROUP = 64
 ROUND8_BITS = 8
 EXPERT_RNG_SEED = 0xA3
+GRAVITY_SCHEMA = "odyssey.patient.gravity.v1"
+NX_SCHEMA = "odyssey.patient.nx.v1"
+GRAVITY_SPECS = ("q3-g32-experts", "q4-g64", "q4-g64-attn-mlp")
+NX_GATHER_TOKENS = 32
 
 
 def log(msg: str) -> None:
@@ -1161,21 +1173,7 @@ def make_seal_candidate(
             "mlx_lm EXTERNAL SPECIMEN — not Hawking native, not BASE_TRUE_TPS (§14)",
             "fast battery is 12 completion items; no coding/long-context/tool dimensions",
             "refusal matcher is substring-based and English-centric",
-            (
-                (
-                    "4-bit affine MLX quant (router gates 8-bit) — Doctor/route are under quant, "
-                    "not bf16-canonical"
-                    if oxx == "O005"
-                    else (
-                        "4-bit affine MLX quant — Doctor/route/TPS under quant, not bf16-canonical; "
-                        "vision tower skipped (language-MoE router only)"
-                        if oxx == "O003"
-                        else "4-bit affine MLX quant — Doctor/TPS are under quant, not bf16-canonical"
-                    )
-                )
-                if quant.startswith("4bit")
-                else "bf16 load; no quant caveat on this run"
-            ),
+            _quant_blind_spot(quant, oxx),
             "Tabula instrument is not validated on this patient (instrument_validated=false)",
         ],
         "battery_items": battery_items,
@@ -1663,6 +1661,1110 @@ def run_sensitivity_mode(
     return 0
 
 
+def gravity_dest(oxx: str, spec: str, quant_dir: Path | None) -> Path:
+    dedicated = Path.home() / ".cache/mlx/odyssey" / f"{oxx}-gravity-{spec}"
+    if quant_dir is None:
+        return dedicated
+    # Never clobber the 4-bit specimen cache used by external-science.
+    if quant_dir.resolve() == default_quant_dir(oxx).resolve():
+        return dedicated
+    return quant_dir
+
+
+def _quant_blind_spot(quant: str, oxx: str) -> str:
+    q = (quant or "").lower()
+    if q.startswith("mlx-q") or "g32" in q or q.startswith("q3") or q.startswith("q4"):
+        return (
+            f"mlx gravity spec {quant} — Doctor is a SPECIMEN under this mix; "
+            "not bf16-canonical, not a Hawking NX win (§15). Canonical HF snapshot untouched."
+        )
+    if q.startswith("4bit"):
+        if oxx == "O005":
+            return (
+                "4-bit affine MLX quant (router gates 8-bit) — Doctor/route are under quant, "
+                "not bf16-canonical"
+            )
+        if oxx == "O003":
+            return (
+                "4-bit affine MLX quant — Doctor/route/TPS under quant, not bf16-canonical; "
+                "vision tower skipped (language-MoE router only)"
+            )
+        return "4-bit affine MLX quant — Doctor/TPS are under quant, not bf16-canonical"
+    return "bf16 load; no quant caveat on this run"
+
+
+def gravity_quant_predicate(spec: str):
+    """Per-module mlx quant_predicate realizing one MODEST mix. Not a sweep."""
+    if spec not in GRAVITY_SPECS:
+        raise ValueError(f"unknown gravity spec {spec!r}; expected one of {GRAVITY_SPECS}")
+
+    def is_norm(path: str) -> bool:
+        return "norm" in path.lower()
+
+    def is_expert(path: str) -> bool:
+        n = path.lower()
+        return "switch_mlp" in n or ".experts." in n or n.endswith(".experts")
+
+    def is_router(path: str) -> bool:
+        n = path.lower()
+        if "gate_proj" in n:
+            return False
+        return (
+            n.endswith(".gate")
+            or n.endswith("mlp.gate")
+            or (".gate." in n and "proj" not in n)
+        )
+
+    def is_attn(path: str) -> bool:
+        n = path.lower()
+        return any(
+            x in n
+            for x in ("q_proj", "k_proj", "v_proj", "o_proj", "qkv", "self_attn")
+        )
+
+    def is_ssm(path: str) -> bool:
+        n = path.lower()
+        return "mamba" in n or "conv1d" in n or n.endswith(".conv") or ".conv." in n
+
+    def is_mlp(path: str) -> bool:
+        n = path.lower()
+        if is_expert(path) or is_router(path) or is_ssm(path) or is_norm(path):
+            return False
+        return any(
+            x in n for x in ("up_proj", "down_proj", "gate_proj", "feed_forward", ".mlp")
+        )
+
+    def pred(path: str, module) -> bool | dict:  # noqa: ARG001 — mlx predicate signature
+        n = path or ""
+        if is_norm(n) or is_ssm(n):
+            return False
+        if spec == "q3-g32-experts":
+            if is_expert(n):
+                return {"group_size": 32, "bits": 3, "mode": "affine"}
+            return {"group_size": 64, "bits": 4, "mode": "affine"}
+        if spec == "q4-g64":
+            return {"group_size": 64, "bits": 4, "mode": "affine"}
+        # q4-g64-attn-mlp: attn+mlp (+embed/lm_head) 4-bit; SSM/conv/norm full.
+        if is_attn(n) or is_mlp(n) or "embed" in n.lower() or "lm_head" in n.lower():
+            return {"group_size": 64, "bits": 4, "mode": "affine"}
+        return False
+
+    pred.spec = spec  # type: ignore[attr-defined]
+    return pred
+
+
+def gravity_spec_note(spec: str) -> str:
+    return {
+        "q3-g32-experts": (
+            "MoE mix: experts→3-bit group32; attention/router/embed/lm_head→4-bit group64; "
+            "norms full (no to_quantized / predicate False)"
+        ),
+        "q4-g64": "uniform 4-bit group64 (norms stay full — RMSNorm has no to_quantized)",
+        "q4-g64-attn-mlp": (
+            "hybrid mix: attn+mlp (+embed/lm_head)→4-bit group64; SSM/conv/norm full"
+        ),
+    }[spec]
+
+
+def load_census(oxx: str, weights: Path | None = None) -> dict:
+    p = ROOT / f"workspace/campaign/odyssey/patients/{oxx}/census.json"
+    if p.exists():
+        doc = json.loads(p.read_text())
+        doc["_census_source"] = str(p)
+        return doc
+    if weights is not None:
+        from tools.odyssey_census import census as run_census
+
+        doc = run_census(str(weights))
+        doc["_census_source"] = f"live census({weights})"
+        return doc
+    raise SystemExit(f"census missing: {p}")
+
+
+def load_external_baseline(oxx: str) -> dict | None:
+    p = ROOT / f"receipts/odyssey-i/{oxx}_EXTERNAL.json"
+    if p.exists():
+        d = json.loads(p.read_text())
+        doc = d.get("doctor") or {}
+        return {
+            "source": str(p.relative_to(ROOT)),
+            "battery": doc.get("battery"),
+            "refusals": doc.get("refusals"),
+            "tps_specimen": d.get("tps_specimen"),
+            "quant": d.get("quant"),
+            "_label": "MEASURED (prior external specimen)",
+        }
+    pkt = default_packet_path(oxx)
+    if pkt.exists():
+        d = json.loads(pkt.read_text())
+        doc = d.get("doctor") or {}
+        exe = d.get("execution") or {}
+        return {
+            "source": str(pkt.relative_to(ROOT)),
+            "battery": doc.get("battery"),
+            "refusals": doc.get("refusals"),
+            "tps_specimen": exe.get("tps_specimen") or exe.get("baseline_tps"),
+            "quant": exe.get("quant"),
+            "_label": "MEASURED (packet doctor; EXTERNAL receipt missing)",
+        }
+    return None
+
+
+def measure_dir_tensor_bytes(path: Path) -> dict:
+    """Header-only stored bytes of an mlx/HF safetensors dir. MEASURED."""
+    from tools.odyssey_census import _DT, _prod, _shard_set, read_safetensors_header
+
+    total_b = 0
+    n_tensors = 0
+    dtypes: dict[str, int] = {}
+    for shard in _shard_set(path):
+        for _name, meta in read_safetensors_header(shard).items():
+            shp = meta["shape"]
+            dt = meta["dtype"]
+            p = _prod(shp) if shp else 0
+            b = _DT.get(dt, 2) * p
+            total_b += b
+            n_tensors += 1
+            dtypes[dt] = dtypes.get(dt, 0) + 1
+    return {
+        "stored_bytes": int(total_b),
+        "tensor_count": n_tensors,
+        "dtypes": dtypes,
+        "_label": "MEASURED (safetensors headers, no weight load)",
+    }
+
+
+def measure_live_organ_bytes(model, *, moe: bool) -> tuple[int, dict]:
+    """Sum mx.array.nbytes of live parameters, bucketed by organ_of. MEASURED."""
+    organs: dict[str, int] = {}
+    total = 0
+    for path, val in tree_flatten(model.parameters()):
+        if not isinstance(val, mx.array):
+            continue
+        b = int(val.nbytes)
+        total += b
+        k = organ_of(path, moe=moe)
+        organs[k] = organs.get(k, 0) + b
+    return total, organs
+
+
+def moe_frac(census: dict, live: dict | None = None) -> tuple[int, int, float]:
+    cfg = census.get("config") or {}
+    n_exp = int(
+        (live or {}).get("num_experts")
+        or cfg.get("num_experts")
+        or cfg.get("n_routed_experts")
+        or 0
+    )
+    top_k = int(
+        (live or {}).get("top_k")
+        or cfg.get("num_experts_per_tok")
+        or cfg.get("moe_topk")
+        or 0
+    )
+    frac = (top_k / n_exp) if n_exp else 0.0
+    return top_k, n_exp, frac
+
+
+def active_bytes_from_organs(
+    organs_bytes: dict, total_bytes: int, census: dict, live: dict | None = None
+) -> tuple[int, int]:
+    """Census active-param split applied to MEASURED organ bytes."""
+    params = int(census.get("total_params") or 0)
+    active_params = census.get("active_params_per_token")
+    if not census.get("is_moe"):
+        return int(total_bytes), int(active_params or params or 0)
+    _top_k, n_exp, frac = moe_frac(census, live)
+    expert_b = int(organs_bytes.get("expert") or 0)
+    if n_exp and expert_b:
+        active_b = (int(total_bytes) - expert_b) + frac * expert_b
+    else:
+        active_b = int(total_bytes)
+    return int(round(active_b)), int(active_params or params or 0)
+
+
+def convert_gravity(hf_path: Path, dest: Path, spec: str) -> Path:
+    """mlx_lm.convert with a per-module quant_predicate. Never touches hf_path."""
+    if (dest / "config.json").exists() and any(dest.glob("*.safetensors")):
+        log(f"reusing gravity {spec} mlx at {dest}")
+        return dest
+    if dest.exists():
+        log(f"removing incomplete gravity dest {dest}")
+        subprocess.run(["rm", "-rf", str(dest)], check=True)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    log(f"mlx_lm.convert gravity spec={spec}: {hf_path} -> {dest}")
+    if hf_model_type(hf_path) == "kimi_vl":
+        ensure_tiktoken_local_read()
+        ensure_kimi_vl_sanitize_patch()
+    from mlx_lm.convert import convert as mlx_convert
+
+    mlx_convert(
+        hf_path=str(hf_path),
+        mlx_path=str(dest),
+        quantize=True,
+        q_bits=4,
+        q_group_size=64,
+        quant_predicate=gravity_quant_predicate(spec),
+        trust_remote_code=True,
+    )
+    if not (dest / "config.json").exists() or not any(dest.glob("*.safetensors")):
+        raise RuntimeError(f"gravity convert produced no weights at {dest}")
+    return dest
+
+
+def inspect_switch_mlp_path(model=None) -> dict:
+    """Whether mlx SwitchGLU gathers selected experts or densely computes all."""
+    src_parts: list[str] = []
+    live_cls = None
+    live_proj = None
+    try:
+        from mlx_lm.models import switch_layers as sl
+
+        for cls in (
+            getattr(sl, "SwitchGLU", None),
+            getattr(sl, "SwitchLinear", None),
+            getattr(sl, "QuantizedSwitchLinear", None),
+            getattr(sl, "SwitchMLP", None),
+        ):
+            if cls is None:
+                continue
+            try:
+                src_parts.append(inspect.getsource(cls))
+            except (OSError, TypeError):
+                continue
+    except Exception as e:  # noqa: BLE001 — inspect is best-effort
+        src_parts.append(f"# import failed: {type(e).__name__}: {e}")
+
+    if model is not None:
+        lm = unwrap_lm(model)
+        layers = getattr(lm, "layers", None) or []
+        for layer in layers:
+            mlp = getattr(layer, "mlp", None)
+            if not is_moe_block(mlp):
+                continue
+            sw = getattr(mlp, "switch_mlp", None)
+            if sw is None:
+                continue
+            live_cls = type(sw).__name__
+            up = getattr(sw, "up_proj", None)
+            live_proj = type(up).__name__ if up is not None else None
+            for obj in (sw, up):
+                if obj is None:
+                    continue
+                try:
+                    src_parts.append(inspect.getsource(type(obj)))
+                except (OSError, TypeError):
+                    pass
+            break
+
+    src = "\n".join(src_parts)
+    has_qmm = "gather_qmm" in src
+    has_mm = "gather_mm" in src
+    gathers = has_qmm or has_mm
+    primitive = (
+        "mx.gather_qmm"
+        if has_qmm
+        else ("mx.gather_mm" if has_mm else None)
+    )
+    return {
+        "switch_mlp_class": live_cls,
+        "proj_class": live_proj,
+        "mlx_gathers_selected_experts": bool(gathers),
+        "mlx_densely_computes_all_experts": (False if gathers else None),
+        "primitive": primitive,
+        "full_expert_body_resident": True,
+        "source_has_gather_qmm": has_qmm,
+        "source_has_gather_mm": has_mm,
+        "note": (
+            "mlx SwitchGLU/SwitchLinear indexes selected experts via gather_mm/"
+            "gather_qmm (a gather compute). The FULL expert body stays resident "
+            "in the weight tree. The NX lever is reducing MOVEMENT/RESIDENCY to "
+            "selected-expert bytes — mlx does not drop unselected experts from RAM."
+            if gathers
+            else (
+                "switch_mlp source did not show gather_mm/gather_qmm; "
+                "treat mlx execution as UNKNOWN for gather vs dense."
+            )
+        ),
+        "_label": "MEASURED (live class if loaded) + INFERRED (source inspect)",
+        "_section": "§13",
+    }
+
+
+def dense_mlp_equivalent_bytes(census: dict) -> dict:
+    cfg = census.get("config") or {}
+    hidden = int(cfg.get("hidden_size") or 0)
+    inter = int(cfg.get("intermediate_size") or 0)
+    n_layers = int(cfg.get("num_hidden_layers") or 0)
+    params = n_layers * 3 * hidden * inter if hidden and inter and n_layers else 0
+    bytes_bf16 = params * 2
+    organ = int((census.get("organs_bytes") or {}).get("mlp_dense") or 0)
+    used = organ if organ > 0 else bytes_bf16
+    return {
+        "formula": "n_layers * 3 * hidden * intermediate_size * 2 (bf16 SwiGLU)",
+        "n_layers": n_layers,
+        "hidden_size": hidden,
+        "intermediate_size": inter,
+        "params": params,
+        "bytes_bf16": bytes_bf16,
+        "census_mlp_dense_bytes": organ,
+        "used_bytes": used,
+        "_label": "DERIVED from MEASURED census config",
+        "_section": "§18",
+    }
+
+
+def _fidelity_4bit(oxx: str) -> str:
+    if oxx == "O005":
+        return (
+            "4-bit affine MLX quantization (group 64; qwen3_moe.quant_predicate keeps "
+            "router gates at 8-bit). Battery/route/TPS are SPECIMEN under quant — not "
+            "bf16-canonical Doctor. Canonical HF snapshot was not modified or deleted."
+        )
+    if oxx == "O003":
+        return (
+            "4-bit affine MLX quantization (group 64). Battery/route/TPS are SPECIMEN "
+            "under quant — not bf16-canonical Doctor. Canonical HF snapshot was not "
+            "modified or deleted. mlx_lm.kimi_vl.sanitize drops vision_tower + "
+            "multi_modal_projector; language-MoE router only (DeepSeek-V3 sigmoid/"
+            "noaux_tc, 6/64 + 2 shared)."
+        )
+    return (
+        "4-bit affine MLX quantization (group 64). Battery/TPS are SPECIMEN under "
+        "quant — not bf16-canonical Doctor. Canonical HF snapshot was not modified "
+        "or deleted. SSM-vs-KV byte counts are architecture formulas (bf16 cache "
+        "elem), independent of weight quant."
+    )
+
+
+def admit_and_load(oxx: str, weights: Path, quant_dir: Path, g: dict):
+    """Same 4-bit fallback as the external-science path. Never deletes canonical HF."""
+    quant = "bf16"
+    load_path = weights
+    fidelity = None
+    if g["decision"] == "REFUSE":
+        log("REFUSE: will NOT load bf16; converting/loading 4-bit mlx")
+        load_path = convert_4bit(weights, quant_dir)
+        quant = "4bit-mlx"
+        fidelity = _fidelity_4bit(oxx)
+    else:
+        log("PERMIT: loading bf16")
+    if hf_model_type(load_path) == "kimi_vl" or hf_model_type(weights) == "kimi_vl":
+        ensure_tiktoken_local_read()
+        ensure_kimi_vl_sanitize_patch()
+    log(f"loading {quant} from {load_path} ...")
+    t_load = time.perf_counter()
+    model, tok = load(str(load_path), tokenizer_config={"trust_remote_code": True})
+    log(f"loaded in {time.perf_counter() - t_load:.1f}s")
+    return model, tok, quant, load_path, fidelity
+
+
+def _gate_block(g: dict, obs: dict) -> dict:
+    return {
+        "decision": g["decision"],
+        "note": g["note"],
+        "reasons": g.get("reasons"),
+        "current_wired_gb": g.get("current_wired_gb"),
+        "projected_headroom_gb": g.get("projected_headroom_gb"),
+        "observed": {
+            k: (round(v, 3) if isinstance(v, float) else v) for k, v in obs.items()
+        },
+    }
+
+
+def _rel_out(path: Path) -> str:
+    try:
+        return str(path.relative_to(ROOT))
+    except ValueError:
+        return str(path)
+
+
+def update_packet_gravity(packet_path: Path, receipt: dict) -> None:
+    if not packet_path.exists():
+        log(f"packet missing at {packet_path}; not writing")
+        return
+    pkt = json.loads(packet_path.read_text())
+    g = pkt.setdefault("gravity", {})
+    spec = receipt["spec"]
+    entry = {
+        "spec": spec,
+        "stored_bpw": receipt["stored_bpw"],
+        "active_bpw": receipt["active_bpw"],
+        "stored_bytes": receipt["stored_bytes"],
+        "active_bytes_per_token": receipt["active_bytes_per_token"],
+        "battery": receipt["battery"],
+        "delta_hits": receipt["delta_hits"],
+        "verdict": receipt["verdict"],
+        "receipt": _rel_out(Path(receipt["out"])),
+        "label": "SPECIMEN",
+        "not_hawking_nx_win": True,
+        "_evidence": "MEASURED (mlx gravity specimen; §15)",
+        "_label": "SPECIMEN",
+    }
+
+    def _upsert(lst, item):
+        out = [
+            x
+            for x in (lst or [])
+            if not (isinstance(x, dict) and x.get("spec") == item["spec"])
+        ]
+        out.append(item)
+        return out
+
+    tried = list(g.get("tried_mechanisms") or [])
+    if spec not in tried:
+        tried.append(spec)
+    g["tried_mechanisms"] = tried
+    g["last"] = entry
+    if receipt["verdict"] == "CANDIDATE_PASS":
+        g["wins"] = _upsert(g.get("wins"), entry)
+        g["kills"] = [
+            x
+            for x in (g.get("kills") or [])
+            if not (isinstance(x, dict) and x.get("spec") == spec)
+        ]
+    else:
+        g["kills"] = _upsert(g.get("kills"), entry)
+        g["wins"] = [
+            x
+            for x in (g.get("wins") or [])
+            if not (isinstance(x, dict) and x.get("spec") == spec)
+        ]
+    pkt["phase"] = "GRAVITY"
+    pkt.setdefault("representation", {})
+    pkt["representation"]["best_stored_bpw_eq"] = receipt["stored_bpw"]
+    pkt["representation"]["active_bpw_eq"] = receipt["active_bpw"]
+    extra = f"MEASURED (gravity {spec} stored_bpw={receipt['stored_bpw']})"
+    ev = pkt["representation"].get("_evidence") or ""
+    if extra not in ev:
+        pkt["representation"]["_evidence"] = f"{ev}; {extra}" if ev else extra
+    nxt = list(pkt.get("next") or [])
+    line = (
+        f"gravity {spec} {receipt['verdict']}: stored_bpw={receipt['stored_bpw']} "
+        f"active_bpw={receipt['active_bpw']} battery={receipt['battery']} "
+        f"delta_hits={receipt['delta_hits']} (mlx SPECIMEN, not a Hawking NX win)"
+    )
+    nxt = [line] + [x for x in nxt if "gravity" not in str(x).lower()]
+    pkt["next"] = nxt
+    packet_path.write_text(json.dumps(pkt, indent=2) + "\n")
+    log(f"updated packet gravity {packet_path}")
+
+
+def update_packet_nx(packet_path: Path, receipt: dict) -> None:
+    if not packet_path.exists():
+        log(f"packet missing at {packet_path}; not writing")
+        return
+    pkt = json.loads(packet_path.read_text())
+    nx = pkt.setdefault("nx", {})
+    mode = receipt.get("mode")
+    nx["mode"] = mode
+    nx["receipt"] = _rel_out(Path(receipt["out"]))
+    nx["not_a_full_rust_runtime"] = True
+    nx["not_hawking_nx_win"] = True
+    nx["label"] = "SPECIMEN"
+    nx["_evidence"] = receipt.get("_evidence") or "DERIVED (nx accounting)"
+    if mode == "gather":
+        nx["best_preliminary_nx"] = "active-expert-gather (accounting only; not a Rust runtime)"
+        nx["selected_bytes_per_token"] = receipt.get("selected_expert_bytes_per_token")
+        nx["full_expert_body_bytes"] = receipt.get("full_expert_body_bytes")
+        nx["ratio_selected_over_full"] = receipt.get("ratio_selected_over_full")
+        nx["mlx_gathers"] = (receipt.get("mlx_execution") or {}).get(
+            "mlx_gathers_selected_experts"
+        )
+    elif mode == "state":
+        nx["best_preliminary_nx"] = "fixed-state residency (SSM vs KV; accounting only)"
+        acc = receipt.get("ssm_accounting") or {}
+        nx["state_bytes_constant"] = (acc.get("ssm") or {}).get("state_bytes_total")
+        nx["crossover_ctx_tokens"] = acc.get("crossover_ctx_tokens")
+    elif mode == "dense":
+        nx["best_preliminary_nx"] = "dense full-weight-sweep floor (no sparsity lever)"
+        nx["full_weight_sweep_bytes_per_token"] = receipt.get(
+            "full_weight_sweep_bytes_per_token"
+        )
+        nx["sparsity_lever"] = False
+    pkt["nx"] = nx
+    pkt["phase"] = "NX"
+    nxt = list(pkt.get("next") or [])
+    line = f"nx-{mode} accounting written ({nx.get('receipt')}); not a Hawking NX runtime"
+    nxt = [line] + [x for x in nxt if "nx-" not in str(x).lower()]
+    pkt["next"] = nxt
+    packet_path.write_text(json.dumps(pkt, indent=2) + "\n")
+    log(f"updated packet nx {packet_path}")
+
+
+def run_gravity_mode(
+    *,
+    args,
+    weights: Path,
+    out_path: Path,
+    packet_path: Path,
+    dest: Path,
+    obs: dict,
+    g: dict,
+    n_src: int,
+) -> int:
+    spec = args.gravity
+    census = load_census(args.oxx, weights)
+    dest = convert_gravity(weights, dest, spec)
+    n_src_after = len(list(weights.glob("model-*.safetensors")))
+    if n_src_after < 1:
+        n_src_after = len(list(weights.glob("*.safetensors")))
+    if n_src_after < 1:
+        raise SystemExit(f"canonical weights missing after gravity convert? {weights}")
+
+    if hf_model_type(dest) == "kimi_vl" or hf_model_type(weights) == "kimi_vl":
+        ensure_tiktoken_local_read()
+        ensure_kimi_vl_sanitize_patch()
+    log(f"loading gravity {spec} from {dest} ...")
+    t_load = time.perf_counter()
+    model, tok = load(str(dest), tokenizer_config={"trust_remote_code": True})
+    log(f"loaded in {time.perf_counter() - t_load:.1f}s")
+
+    moe = bool(census.get("is_moe"))
+    lm = unwrap_lm(model)
+    layers = getattr(lm, "layers", None) or []
+    cfg_live = inspect_router(layers) if layers else {"live": None, "moe_layer_indices": []}
+    live = cfg_live.get("live")
+    live_total, organs_b = measure_live_organ_bytes(model, moe=moe)
+    disk = measure_dir_tensor_bytes(dest)
+    stored_bytes = int(disk["stored_bytes"])
+    params = int(census.get("total_params") or 0)
+    if params <= 0:
+        raise SystemExit("census total_params missing; cannot compute stored_bpw")
+    stored_bpw = stored_bytes * 8 / params
+    active_bytes, active_params = active_bytes_from_organs(
+        organs_b, live_total, census, live
+    )
+    # Prefer on-disk stored_bytes for the artifact; organ split from live nbytes.
+    # Re-scale organ bytes to disk total if they differ (lazy vs packed).
+    if live_total > 0 and live_total != stored_bytes:
+        scale = stored_bytes / live_total
+        organs_b = {k: int(round(v * scale)) for k, v in organs_b.items()}
+        active_bytes, active_params = active_bytes_from_organs(
+            organs_b, stored_bytes, census, live
+        )
+    active_bpw = (active_bytes * 8 / active_params) if active_params else None
+
+    quant_name = f"mlx-{spec}"
+    log("gravity fast-Doctor battery")
+    doc = run_fast_doctor(model, tok)
+    doc = seal_fast_doctor(doc, quant_name, args.oxx)
+    log(
+        f"  battery={doc['battery']} refusals={doc['refusals']} "
+        f"seal={doc['seal_verdict']} wall={doc['wall_s']}s"
+    )
+
+    baseline = load_external_baseline(args.oxx)
+    delta_hits = None
+    delta_refusals = None
+    if baseline and baseline.get("battery"):
+        bh, _ = parse_frac(baseline["battery"])
+        delta_hits = int(doc["hits"] - bh)
+        if baseline.get("refusals"):
+            br, _ = parse_frac(baseline["refusals"])
+            delta_refusals = int(doc["refusal_hits"] - br)
+    if delta_hits is None:
+        verdict = "UNGRADED"
+    elif delta_hits >= -1:
+        verdict = "CANDIDATE_PASS"
+    else:
+        verdict = "DEGRADED"
+
+    machine = maybe_machine_note()
+    fidelity = (
+        f"{gravity_spec_note(spec)}. Battery is SPECIMEN under this mlx mix — not "
+        "bf16-canonical Doctor, not a Hawking NX win (§15). Canonical HF snapshot "
+        "was not modified or deleted."
+    )
+    receipt = {
+        "schema": GRAVITY_SCHEMA,
+        "oxx": args.oxx,
+        "spec": spec,
+        "runtime": "mlx",
+        "runtime_label": "mlx_lm EXTERNAL SPECIMEN — not Hawking native",
+        "label": "SPECIMEN",
+        "not_hawking_nx_win": True,
+        "not_base_true_tps": True,
+        "quant": quant_name,
+        "quant_fidelity_caveat": fidelity,
+        "predicate": gravity_spec_note(spec),
+        "weights_canonical": str(weights),
+        "weights_loaded": str(dest),
+        "canonical_snapshot_intact": n_src_after or n_src,
+        "stored_bytes": stored_bytes,
+        "stored_bpw": round(stored_bpw, 4),
+        "active_bytes_per_token": int(active_bytes),
+        "active_bpw": round(active_bpw, 4) if active_bpw is not None else None,
+        "params": params,
+        "active_params_per_token": active_params,
+        "organs_bytes_quantized": organs_b,
+        "disk_tensors": disk,
+        "live_nbytes": live_total,
+        "battery": doc["battery"],
+        "refusals": doc["refusals"],
+        "delta_hits": delta_hits,
+        "delta_refusals": delta_refusals,
+        "baseline": baseline,
+        "verdict": verdict,
+        "doctor": {
+            "battery": doc["battery"],
+            "refusals": doc["refusals"],
+            "hits": doc["hits"],
+            "refusal_hits": doc["refusal_hits"],
+            "seal_verdict": doc.get("seal_verdict"),
+            "seal_reasons": doc.get("seal_reasons"),
+            "controls": doc.get("controls"),
+            "stated_test_width": doc.get("stated_test_width"),
+            "known_blind_spots": doc.get("known_blind_spots"),
+            "items": doc.get("items"),
+            "refusal_items": doc.get("refusal_items"),
+            "planted_refusal_fired": doc.get("planted_fired"),
+            "planted_benign_quiet": doc.get("planted_quiet"),
+            "wall_s": doc.get("wall_s"),
+            "error": doc.get("error"),
+            "_label": "MEASURED",
+        },
+        "gate": _gate_block(g, obs),
+        "contamination": {
+            "section": "§14",
+            "note": (
+                "mlx gravity SPECIMEN. Not BASE_TRUE_TPS. Not a Hawking NX win (§15). "
+                "One candidate spec, not a sweep. Canonical HF snapshot untouched."
+            ),
+            "clean_box": machine,
+            "_label": "MEASURED machine note + DERIVED contamination flag",
+        },
+        "labels": {
+            "stored_bytes": "MEASURED",
+            "stored_bpw": "DERIVED (MEASURED bytes * 8 / census params)",
+            "active_bytes_per_token": (
+                "DERIVED (census active-param split × MEASURED organ bytes)"
+            ),
+            "active_bpw": "DERIVED",
+            "battery": "MEASURED",
+            "delta_hits": "DERIVED (this MEASURED minus EXTERNAL MEASURED)",
+            "verdict": "DERIVED",
+        },
+        "commit": git_head(),
+        "python": sys.executable,
+        "out": str(out_path),
+        "_label": "MEASURED specimen under mlx quant — not a Hawking NX win (§15)",
+        "_section": "§19",
+    }
+
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(receipt, indent=2) + "\n")
+    log(f"wrote {out_path}")
+    if not args.skip_packet:
+        update_packet_gravity(packet_path, receipt)
+
+    if receipt["stored_bpw"] >= 16:
+        raise SystemExit(
+            f"gravity stored_bpw={receipt['stored_bpw']} >= 16 — mix did not compress"
+        )
+    if receipt.get("active_bpw") is None:
+        raise SystemExit("gravity receipt missing active_bpw")
+    if not receipt.get("battery"):
+        raise SystemExit("gravity receipt missing battery")
+    if "delta_hits" not in receipt:
+        raise SystemExit("gravity receipt missing delta_hits")
+    log(
+        f"{args.oxx} gravity {spec} ok: stored_bpw={receipt['stored_bpw']} "
+        f"active_bpw={receipt['active_bpw']} battery={receipt['battery']} "
+        f"delta_hits={receipt['delta_hits']} verdict={verdict} SPECIMEN"
+    )
+    return 0
+
+
+def run_nx_gather_mode(
+    *,
+    args,
+    weights: Path,
+    out_path: Path,
+    packet_path: Path,
+    quant_dir: Path,
+    obs: dict,
+    g: dict,
+    n_src: int,
+) -> int:
+    census = load_census(args.oxx, weights)
+    if not census.get("is_moe"):
+        receipt = {
+            "schema": NX_SCHEMA,
+            "oxx": args.oxx,
+            "mode": "gather",
+            "skipped": True,
+            "reason": "not MoE; --nx-gather is MoE-only",
+            "runtime": "mlx",
+            "label": "SPECIMEN",
+            "not_hawking_nx_win": True,
+            "not_a_full_rust_runtime": True,
+            "verdict": "SKIPPED",
+            "commit": git_head(),
+            "python": sys.executable,
+            "out": str(out_path),
+            "_label": "N/A",
+            "_section": "§13",
+        }
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(json.dumps(receipt, indent=2) + "\n")
+        log(f"wrote {out_path} (skipped, not MoE)")
+        return 0
+
+    model, tok, quant, load_path, fidelity = admit_and_load(
+        args.oxx, weights, quant_dir, g
+    )
+    n_src_after = len(list(weights.glob("model-*.safetensors"))) or n_src
+    lm = unwrap_lm(model)
+    layers = lm.layers
+    cfg = inspect_router(layers)
+    live = cfg.get("live")
+    moe_idx = cfg.get("moe_layer_indices") or []
+    mlx_exec = inspect_switch_mlp_path(model)
+
+    top_k, n_exp, frac = moe_frac(census, live)
+    expert_body = int((census.get("organs_bytes") or {}).get("expert") or 0)
+    shared_body = int((census.get("organs_bytes") or {}).get("shared_expert") or 0)
+    selected = frac * expert_body + shared_body
+    full = expert_body + shared_body
+    dense_eq = dense_mlp_equivalent_bytes(census)
+    dense_bytes = int(dense_eq["used_bytes"])
+    ratio_full = (selected / full) if full else None
+    ratio_dense = (selected / dense_bytes) if dense_bytes else None
+
+    tokens_observed = 0
+    rec_summary = None
+    if moe_idx and live and top_k > 0 and n_exp > 0:
+        rec = RouteRecorder(cfg["n_layers"], n_exp, top_k, moe_idx)
+        wrapped = 0
+        for i, layer in enumerate(layers):
+            mlp = getattr(layer, "mlp", None)
+            if is_moe_block(mlp):
+                layer.mlp = RouteTap(mlp, i, rec)
+                wrapped += 1
+        need = NX_GATHER_TOKENS
+        if args.route_tokens and 0 < args.route_tokens < need:
+            need = int(args.route_tokens)
+        log(f"nx-gather route tap {wrapped} MoE layers, need {need} tokens")
+        while rec.tokens_observed() < need:
+            take = min(max(need - rec.tokens_observed(), 8), 32)
+            run_generate(model, tok, ROUTE_FILL, take)
+            rec.break_sequence()
+            if take < 8:
+                break
+        rec_summary = rec.summarize()
+        tokens_observed = rec.tokens_observed()
+        log(
+            f"nx-gather tokens={tokens_observed} entropy={rec_summary.get('entropy_avg')} "
+            f"top_k={rec_summary.get('top_k')} experts={rec_summary.get('experts')}"
+        )
+
+    live_total, organs_b = measure_live_organ_bytes(model, moe=True)
+    specimen_expert = int(organs_b.get("expert") or 0)
+    specimen_selected = frac * specimen_expert + int(organs_b.get("shared_expert") or 0)
+
+    primitive = {
+        "name": "R-sparse-active-expert-gather",
+        "intent": (
+            "Move only top-k (plus shared) expert bodies per token; keep the full "
+            "expert file as the stored body. Accounting + design note, not a runtime."
+        ),
+        "selected_expert_bytes_per_token": int(round(selected)),
+        "full_expert_body_bytes": int(full),
+        "ratio_selected_over_full": round(ratio_full, 6) if ratio_full is not None else None,
+        "dense_mlp_equivalent_bytes": dense_bytes,
+        "ratio_selected_over_dense_mlp": (
+            round(ratio_dense, 6) if ratio_dense is not None else None
+        ),
+        "mlx_status": mlx_exec.get("note"),
+        "hawking_nx_gap": (
+            "Resident set is still the full expert body. NX would stage only "
+            "selected-expert bytes into the working set (packed expert cache / "
+            "grouped-GEMM). Not implemented here."
+        ),
+        "not_a_runtime": True,
+        "_label": "DERIVED (census bytes) + INFERRED (design)",
+        "_section": "§13",
+    }
+
+    machine = maybe_machine_note()
+    receipt = {
+        "schema": NX_SCHEMA,
+        "oxx": args.oxx,
+        "mode": "gather",
+        "runtime": "mlx",
+        "runtime_label": "mlx_lm EXTERNAL SPECIMEN — not Hawking native",
+        "label": "SPECIMEN",
+        "not_hawking_nx_win": True,
+        "not_a_full_rust_runtime": True,
+        "quant": quant,
+        "quant_fidelity_caveat": fidelity,
+        "weights_canonical": str(weights),
+        "weights_loaded": str(load_path),
+        "canonical_snapshot_intact": n_src_after,
+        "topk": top_k,
+        "n_experts": n_exp,
+        "frac_topk_over_n": round(frac, 8) if n_exp else None,
+        "tokens_observed": tokens_observed,
+        "full_expert_body_bytes": int(full),
+        "selected_expert_bytes_per_token": int(round(selected)),
+        "shared_expert_bytes": shared_body,
+        "ratio_selected_over_full": round(ratio_full, 6) if ratio_full is not None else None,
+        "dense_mlp_equivalent": dense_eq,
+        "ratio_selected_over_dense_mlp": (
+            round(ratio_dense, 6) if ratio_dense is not None else None
+        ),
+        "formula": "selected = topk/n_experts * expert_body_bytes + shared_expert_bytes",
+        "census_expert_body_bytes": expert_body,
+        "specimen_expert_bytes": specimen_expert,
+        "specimen_selected_bytes_per_token": int(round(specimen_selected)),
+        "specimen_live_nbytes": live_total,
+        "mlx_execution": mlx_exec,
+        "route": rec_summary,
+        "primitive_design_attempt": primitive,
+        "verdict": "ACCOUNTING_ONLY",
+        "gate": _gate_block(g, obs),
+        "contamination": {
+            "section": "§14",
+            "note": (
+                "NX gather is ACCOUNTING + a minimal primitive-design attempt. "
+                "Not a Hawking NX runtime, not BASE_TRUE_TPS."
+            ),
+            "clean_box": machine,
+            "_label": "MEASURED machine note + DERIVED contamination flag",
+        },
+        "labels": {
+            "full_expert_body_bytes": "MEASURED (census safetensors headers, bf16)",
+            "selected_expert_bytes_per_token": "DERIVED (topk/n_experts × MEASURED expert bytes)",
+            "ratio_selected_over_full": "DERIVED",
+            "dense_mlp_equivalent": "DERIVED from MEASURED census config",
+            "tokens_observed": "MEASURED" if tokens_observed else "N/A",
+            "mlx_execution": mlx_exec.get("_label"),
+        },
+        "commit": git_head(),
+        "python": sys.executable,
+        "out": str(out_path),
+        "_evidence": (
+            "DERIVED from MEASURED census organ bytes + MEASURED live switch_mlp inspect"
+        ),
+        "_label": "DERIVED accounting — not a Hawking NX win (§15)",
+        "_section": "§20",
+    }
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(receipt, indent=2) + "\n")
+    log(f"wrote {out_path}")
+    if not args.skip_packet:
+        update_packet_nx(packet_path, receipt)
+    if receipt.get("ratio_selected_over_full") is None:
+        raise SystemExit("nx-gather receipt missing ratio_selected_over_full")
+    log(
+        f"{args.oxx} nx-gather ok: selected/full={receipt['ratio_selected_over_full']} "
+        f"selected={receipt['selected_expert_bytes_per_token']} "
+        f"full={receipt['full_expert_body_bytes']} mlx_gather="
+        f"{mlx_exec.get('mlx_gathers_selected_experts')}"
+    )
+    return 0
+
+
+def run_nx_state_mode(
+    *,
+    args,
+    weights: Path,
+    out_path: Path,
+    packet_path: Path,
+    quant_dir: Path,
+    obs: dict,
+    g: dict,
+    n_src: int,
+) -> int:
+    model, tok, quant, load_path, fidelity = admit_and_load(
+        args.oxx, weights, quant_dir, g
+    )
+    del tok  # unused; load is for live mixer dims
+    n_src_after = len(list(weights.glob("model-*.safetensors"))) or n_src
+    lm = unwrap_lm(model)
+    n_layers = len(getattr(lm, "layers", []) or [])
+    organs = measure_ssm_organs(weights)
+    acc = ssm_vs_kv_accounting(model, n_layers)
+    if acc is None:
+        receipt = {
+            "schema": NX_SCHEMA,
+            "oxx": args.oxx,
+            "mode": "state",
+            "skipped": True,
+            "reason": "no mamba mixer on live module; --nx-state is hybrid-only",
+            "runtime": "mlx",
+            "label": "SPECIMEN",
+            "not_hawking_nx_win": True,
+            "not_a_full_rust_runtime": True,
+            "quant": quant,
+            "weights_canonical": str(weights),
+            "weights_loaded": str(load_path),
+            "canonical_snapshot_intact": n_src_after,
+            "verdict": "SKIPPED",
+            "commit": git_head(),
+            "python": sys.executable,
+            "out": str(out_path),
+            "_label": "N/A",
+            "_section": "§20",
+        }
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(json.dumps(receipt, indent=2) + "\n")
+        log(f"wrote {out_path} (skipped, no SSM)")
+        return 0
+
+    machine = maybe_machine_note()
+    state_bytes = acc["ssm"]["state_bytes_total"]
+    kv_per = acc["kv"]["bytes_per_token"]
+    receipt = {
+        "schema": NX_SCHEMA,
+        "oxx": args.oxx,
+        "mode": "state",
+        "runtime": "mlx",
+        "runtime_label": "mlx_lm EXTERNAL SPECIMEN — not Hawking native",
+        "label": "SPECIMEN",
+        "not_hawking_nx_win": True,
+        "not_a_full_rust_runtime": True,
+        "quant": quant,
+        "quant_fidelity_caveat": fidelity,
+        "weights_canonical": str(weights),
+        "weights_loaded": str(load_path),
+        "canonical_snapshot_intact": n_src_after,
+        "lever": "fixed SSM recurrent-state residency vs linear KV",
+        "state_bytes_constant": state_bytes,
+        "kv_bytes_per_token": kv_per,
+        "crossover_ctx_tokens": acc.get("crossover_ctx_tokens"),
+        "ssm_accounting": acc,
+        "ssm_organs": organs if organs.get("ssm_bytes") else None,
+        "primitive_design_attempt": {
+            "name": "R-fixed-state-residency",
+            "intent": (
+                "SSM state is O(1) in ctx; KV is O(ctx). The NX lever is keeping "
+                "the recurrent state resident and not materializing a growing KV "
+                "past the crossover. Accounting only — not a runtime."
+            ),
+            "state_bytes_constant": state_bytes,
+            "kv_bytes_per_token": kv_per,
+            "crossover_ctx_tokens": acc.get("crossover_ctx_tokens"),
+            "not_a_runtime": True,
+            "_label": "DERIVED from MEASURED live mixer dims",
+            "_section": "§13",
+        },
+        "verdict": "ACCOUNTING_ONLY",
+        "gate": _gate_block(g, obs),
+        "contamination": {
+            "section": "§14",
+            "note": (
+                "NX state is ACCOUNTING of fixed-state vs KV. Byte counts are not "
+                "allocated. Not a Hawking NX runtime, not BASE_TRUE_TPS."
+            ),
+            "clean_box": machine,
+            "_label": "MEASURED machine note + DERIVED contamination flag",
+        },
+        "labels": {
+            "state_bytes_constant": "DERIVED from MEASURED live mlx mixer dims",
+            "kv_bytes_per_token": "DERIVED",
+            "crossover_ctx_tokens": "DERIVED",
+        },
+        "commit": git_head(),
+        "python": sys.executable,
+        "out": str(out_path),
+        "_evidence": acc.get("_evidence"),
+        "_label": "DERIVED accounting — not a Hawking NX win (§15)",
+        "_section": "§20",
+    }
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(receipt, indent=2) + "\n")
+    log(f"wrote {out_path}")
+    if not args.skip_packet:
+        update_packet_nx(packet_path, receipt)
+    log(
+        f"{args.oxx} nx-state ok: state={state_bytes}B kv/tok={kv_per} "
+        f"crossover~{acc.get('crossover_ctx_tokens')}"
+    )
+    return 0
+
+
+def run_nx_dense_mode(
+    *,
+    args,
+    weights: Path,
+    out_path: Path,
+    packet_path: Path,
+    obs: dict,
+    g: dict,
+    n_src: int,
+) -> int:
+    census = load_census(args.oxx, weights)
+    stored = int(census.get("total_bytes") or 0)
+    params = int(census.get("total_params") or 0)
+    stored_bpw = census.get("stored_bpw")
+    if stored_bpw is None and params:
+        stored_bpw = stored * 8 / params
+    machine = maybe_machine_note()
+    n_src_after = len(list(weights.glob("model-*.safetensors"))) or n_src
+    receipt = {
+        "schema": NX_SCHEMA,
+        "oxx": args.oxx,
+        "mode": "dense",
+        "runtime": "mlx",
+        "runtime_label": "mlx_lm EXTERNAL SPECIMEN — not Hawking native",
+        "label": "SPECIMEN",
+        "not_hawking_nx_win": True,
+        "not_a_full_rust_runtime": True,
+        "weights_canonical": str(weights),
+        "canonical_snapshot_intact": n_src_after,
+        "full_weight_sweep_bytes_per_token": stored,
+        "stored_bpw": stored_bpw,
+        "params": params,
+        "sparsity_lever": False,
+        "note": (
+            "dense: every weight is touched per token. NX floor = full stored body. "
+            "No expert-gather and no fixed-state lever."
+        ),
+        "organs_bytes": census.get("organs_bytes"),
+        "primitive_design_attempt": {
+            "name": "R-dense-full-sweep",
+            "intent": "Report the dense NX floor. No sparsity to exploit.",
+            "full_weight_sweep_bytes_per_token": stored,
+            "sparsity_lever": False,
+            "not_a_runtime": True,
+            "_label": "DERIVED from MEASURED census",
+            "_section": "§13",
+        },
+        "verdict": "ACCOUNTING_ONLY",
+        "gate": _gate_block(g, obs),
+        "contamination": {
+            "section": "§14",
+            "note": (
+                "NX dense is ACCOUNTING of the full-weight sweep. No model load. "
+                "Not a Hawking NX runtime, not BASE_TRUE_TPS."
+            ),
+            "clean_box": machine,
+            "_label": "MEASURED machine note + DERIVED contamination flag",
+        },
+        "labels": {
+            "full_weight_sweep_bytes_per_token": "MEASURED (census safetensors headers)",
+            "stored_bpw": "DERIVED",
+        },
+        "commit": git_head(),
+        "python": sys.executable,
+        "out": str(out_path),
+        "_evidence": "MEASURED (census) — header-only, no weight load",
+        "_label": "DERIVED accounting — not a Hawking NX win (§15)",
+        "_section": "§20",
+    }
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(receipt, indent=2) + "\n")
+    log(f"wrote {out_path}")
+    if not args.skip_packet:
+        update_packet_nx(packet_path, receipt)
+    log(
+        f"{args.oxx} nx-dense ok: sweep={stored}B stored_bpw={stored_bpw} "
+        "no sparsity lever"
+    )
+    return 0
+
 def parse_frac(s: str) -> tuple[int, int]:
     a, b = s.split("/")
     return int(a), int(b)
@@ -2080,7 +3182,40 @@ def main() -> int:
             "(and a hot + random expert if MoE); write per_organ_sensitivity."
         ),
     )
+    ap.add_argument(
+        "--gravity",
+        default=None,
+        choices=list(GRAVITY_SPECS),
+        help=(
+            "Build one MODEST mlx candidate mix and grade the fast-Doctor battery. "
+            "q3-g32-experts / q4-g64 / q4-g64-attn-mlp. Not a sweep."
+        ),
+    )
+    ap.add_argument(
+        "--nx-gather",
+        action="store_true",
+        help="MoE: theoretical selected-expert bytes/token vs full body (accounting).",
+    )
+    ap.add_argument(
+        "--nx-state",
+        action="store_true",
+        help="Hybrid: frame fixed SSM-state residency as the NX lever (accounting).",
+    )
+    ap.add_argument(
+        "--nx-dense",
+        action="store_true",
+        help="Dense: full-weight-sweep bytes/token as the NX floor (accounting).",
+    )
     args = ap.parse_args()
+    n_special = sum(
+        bool(x) for x in (args.gravity, args.nx_gather, args.nx_state, args.nx_dense)
+    )
+    if n_special > 1:
+        raise SystemExit(
+            "use only one of --gravity / --nx-gather / --nx-state / --nx-dense"
+        )
+    if args.sensitivity and n_special:
+        raise SystemExit("--sensitivity cannot combine with --gravity / --nx-*")
 
     weights = expand(args.weights)
     out_path = expand(args.out)
@@ -2098,6 +3233,57 @@ def main() -> int:
         f"GATE {g['decision']} wired={g['current_wired_gb']}G "
         f"headroom={g['projected_headroom_gb']}G reserve={g['reserve_gb']}G — {g['note'][:180]}"
     )
+
+    n_src = len(list(weights.glob("model-*.safetensors")))
+    if n_src < 1:
+        n_src = len(list(weights.glob("*.safetensors")))
+    if n_src < 1:
+        raise SystemExit(f"canonical weights missing: {weights}")
+
+    if args.gravity:
+        dest = gravity_dest(args.oxx, args.gravity, quant_dir)
+        return run_gravity_mode(
+            args=args,
+            weights=weights,
+            out_path=out_path,
+            packet_path=packet_path,
+            dest=dest,
+            obs=obs,
+            g=g,
+            n_src=n_src,
+        )
+    if args.nx_gather:
+        return run_nx_gather_mode(
+            args=args,
+            weights=weights,
+            out_path=out_path,
+            packet_path=packet_path,
+            quant_dir=quant_dir,
+            obs=obs,
+            g=g,
+            n_src=n_src,
+        )
+    if args.nx_state:
+        return run_nx_state_mode(
+            args=args,
+            weights=weights,
+            out_path=out_path,
+            packet_path=packet_path,
+            quant_dir=quant_dir,
+            obs=obs,
+            g=g,
+            n_src=n_src,
+        )
+    if args.nx_dense:
+        return run_nx_dense_mode(
+            args=args,
+            weights=weights,
+            out_path=out_path,
+            packet_path=packet_path,
+            obs=obs,
+            g=g,
+            n_src=n_src,
+        )
 
     quant = "bf16"
     load_path = weights

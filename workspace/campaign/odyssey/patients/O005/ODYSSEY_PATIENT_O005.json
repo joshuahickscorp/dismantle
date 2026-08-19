@@ -1,7 +1,7 @@
 {
   "oxx": "O005",
   "class": "small-active MoE",
-  "phase": "ROUTEMAP",
+  "phase": "GRAVITY",
   "identity": {
     "source_repo": "Qwen/Qwen3-30B-A3B",
     "revision": "ad44e777bcd18fa416d9da3bd8f70d33ebb85d39",
@@ -54,9 +54,9 @@
     },
     "active_bytes_per_token_bf16": 6706065408,
     "lever": "experts = 95% of stored body but only 11% touched/token; representation science is EXPERT-side (per-expert codec, group size, cache, gather) not global.",
-    "_evidence": "MEASURED (census)",
+    "_evidence": "MEASURED (census); MEASURED (gravity q3-g32-experts stored_bpw=4.0253)",
     "best_stored_bpw_eq": 16.0,
-    "active_bpw_eq": null,
+    "active_bpw_eq": 4.2305,
     "metadata_bytes": null,
     "corrections": null,
     "reconstruction": null,
@@ -196,15 +196,48 @@
     "blind_spots": null
   },
   "gravity": {
-    "tried_mechanisms": [],
-    "wins": [],
+    "tried_mechanisms": [
+      "q3-g32-experts"
+    ],
+    "wins": [
+      {
+        "spec": "q3-g32-experts",
+        "stored_bpw": 4.0253,
+        "active_bpw": 4.2305,
+        "stored_bytes": 15362682880,
+        "active_bytes_per_token": 1773137920,
+        "battery": "10/12",
+        "delta_hits": 0,
+        "verdict": "CANDIDATE_PASS",
+        "receipt": "receipts/odyssey-i/O005_GRAVITY_q3-g32-experts.json",
+        "label": "SPECIMEN",
+        "not_hawking_nx_win": true,
+        "_evidence": "MEASURED (mlx gravity specimen; §15)",
+        "_label": "SPECIMEN"
+      }
+    ],
     "kills": [],
     "architecture_specific_findings": [
       "uniform_routing: A3B-SPECIFIC / MOE-SPECIFIC -- entropy 6.09/7.00, no cold experts -> cold-expert compression (S042 §10) does NOT apply to A3B; per-expert uniform codec is fine, no popularity skew to exploit.",
       "sparse_active_path: MOE-UNIVERSAL -- 8/128 experts/token ~= 3.6GB active-expert bytes/token vs dense 11.7GB (3.2x less). The lever is a native EXPERT-GATHER that MOVES only active experts, not all 128. mlx does not exploit it (29.3 TPS ~= dense).",
       "tps_caveat: 29.3 is the mlx SPECIMEN; whether the 3.2x active-byte reduction becomes TPS depends on our runtime (Qwen3.8 finding: we are kernel-bound, not bandwidth-bound -- so a native MoE kernel must be efficient, not just move fewer bytes)."
     ],
-    "_evidence": "INFERRED (A3B_RECON CLASSIFICATION)"
+    "_evidence": "INFERRED (A3B_RECON CLASSIFICATION)",
+    "last": {
+      "spec": "q3-g32-experts",
+      "stored_bpw": 4.0253,
+      "active_bpw": 4.2305,
+      "stored_bytes": 15362682880,
+      "active_bytes_per_token": 1773137920,
+      "battery": "10/12",
+      "delta_hits": 0,
+      "verdict": "CANDIDATE_PASS",
+      "receipt": "receipts/odyssey-i/O005_GRAVITY_q3-g32-experts.json",
+      "label": "SPECIMEN",
+      "not_hawking_nx_win": true,
+      "_evidence": "MEASURED (mlx gravity specimen; §15)",
+      "_label": "SPECIMEN"
+    }
   },
   "compiler_hypotheses": [
     {
@@ -231,6 +264,8 @@
     }
   ],
   "next": [
+    "gravity q3-g32-experts CANDIDATE_PASS: stored_bpw=4.0253 active_bpw=4.2305 battery=10/12 delta_hits=0 (mlx SPECIMEN, not a Hawking NX win)",
+    "nx-gather accounting written (receipts/odyssey-i/O005_NX_gather.json); not a Hawking NX runtime",
     "A3 per-organ/per-expert sensitivity map (experts = 95% of body, 11% active/token)",
     "native qwen3moe in load_engine still Unimplemented — NX after route/sensitivity",
     "do not treat mlx tps_specimen as BASE_TRUE_TPS; re-time on a clean box if a native path lands"
@@ -246,9 +281,18 @@
     "machine_lowering": null,
     "kernel_bindings": null,
     "fallback_count": null,
-    "best_preliminary_nx": null,
+    "best_preliminary_nx": "active-expert-gather (accounting only; not a Rust runtime)",
     "nx_hash": null,
-    "_evidence": "UNKNOWN"
+    "_evidence": "DERIVED from MEASURED census organ bytes + MEASURED live switch_mlp inspect",
+    "mode": "gather",
+    "receipt": "receipts/odyssey-i/O005_NX_gather.json",
+    "not_a_full_rust_runtime": true,
+    "not_hawking_nx_win": true,
+    "label": "SPECIMEN",
+    "selected_bytes_per_token": 3623878656,
+    "full_expert_body_bytes": 57982058496,
+    "ratio_selected_over_full": 0.0625,
+    "mlx_gathers": true
   },
   "transfer": {
     "inherited_rules": [

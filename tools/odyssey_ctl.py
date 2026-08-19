@@ -196,6 +196,11 @@ COMPLETION_BACKFILL = (
     ("O003", "route-map", "O003_EXTERNAL.json"),
     ("O005", "external-science", "O005_EXTERNAL.json"),
     ("O005", "route-map", "O005_EXTERNAL.json"),
+    ("O005", "gravity-moe", "O005_GRAVITY_q3-g32-experts.json"),
+    ("O005", "nx-gather-moe", "O005_NX_gather.json"),
+    ("O006", "external-science", "O006_EXTERNAL.json"),
+    ("O006", "route-map", "O006_EXTERNAL.json"),
+    ("O006", "transfer-control", "O006_TRANSFER.json"),
 )
 
 STATES = (
@@ -4780,8 +4785,11 @@ def _self_check() -> int:
     assert any(
         r["oxx"] == "O004" and r["template"] == "external-science-dense" for r in ranked_live
     ), live_pair
+    # O006 transfer-control is now SEALED (completions) -> must be refused (replay-proof).
+    assert ("O006", "transfer-control") not in live_pair, live_pair
+    # a genuinely-pending O006 obligation is still selectable.
     assert any(
-        r["oxx"] == "O006" and r["template"] == "transfer-control" for r in ranked_live
+        r["oxx"] == "O006" and r["template"] == "sensitivity-map" for r in ranked_live
     ), live_pair
 
     # A-F: synthetic completions + queue. Watch fail AND pass.

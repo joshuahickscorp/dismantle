@@ -68,7 +68,15 @@
       "budget": "track opus_escalations/reason/resolution/became_code per patient; same class twice -> encode to software; three times -> orchestration defect; target OPUS_ESCALATIONS -> 0"
     },
     "predeclared_manifest": "canonical source + Doctor bar + stored/active/TPS pressure targets + search class + kernel effort + info budget PER PATIENT; orchestrator never asks Claude 'what target/which repo'",
-    "receipts_are_machine_memory": "next patient needs no old chat; chat=dev-history, receipts+rulebase+packet+transfer-matrix+provenance = machine memory"
+    "receipts_are_machine_memory": "next patient needs no old chat; chat=dev-history, receipts+rulebase+packet+transfer-matrix+provenance = machine memory",
+    "memory": {
+      "swap_max_gib": 30,
+      "physical_ram_gib": 96,
+      "reserve_gib": 12,
+      "multi_model": true,
+      "clean_room_only_for": "protected_timing (TPS/TOKEN_NS); ordinary SPECIMEN experiments run concurrently",
+      "rule": "admit MULTIPLE concurrent model experiments while projected swap <= 30 GiB; serialize only same-write_set lanes and protected-timing (clean_room) lanes. tools/odyssey_memgate.py enforces."
+    }
   },
 
   "escalation_order_on_stall": ["deterministic_search","rule_transfer","grok_novelty_fanout","grok_adversarial_review","opus (only if genuinely necessary)"],

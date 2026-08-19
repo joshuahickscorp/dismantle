@@ -10,10 +10,12 @@ ascent state or tools/odyssey/ (training-data Odyssey).
     python3 tools/odyssey_ctl.py queue
     python3 tools/odyssey_ctl.py value
     python3 tools/odyssey_ctl.py harvest
+    python3 tools/odyssey_ctl.py harvest --dry-run
     python3 tools/odyssey_ctl.py packet O005
     python3 tools/odyssey_ctl.py admit <slug> <est_gib>
     python3 tools/odyssey_ctl.py run --dry-run
     python3 tools/odyssey_ctl.py run --go [--max-lanes N]
+    bash tools/odyssey_driver.sh
 """
 from __future__ import annotations
 
@@ -21,6 +23,7 @@ import argparse
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -46,6 +49,8 @@ TRANSFER = ODYSSEY / "TRANSFER_MATRIX.json"
 NEGATIVE = ODYSSEY / "NEGATIVE_SCIENCE.json"
 A3B_RECON = REPO / "receipts" / "ascent-2026-08-18" / "A3B_RECON.json"
 GROK_TASKS = Path.home() / ".claude-grok" / "tasks"
+GROK_WORKTREES = Path.home() / ".claude-grok" / "worktrees"
+REVIEW_QUEUE = ODYSSEY / "REVIEW_QUEUE.jsonl"
 RECLAIM = TOOLS / "reclaim_safe.sh"
 AUTO_DIR = ODYSSEY / "contracts" / "auto"
 RUN_LOG = ODYSSEY / "RUN_LOG.jsonl"
@@ -62,6 +67,7 @@ HARD_LANE_CAP = 3
 DEFAULT_MAX_LANES = 2
 SCHEMA = "hawking.odyssey.controller.v1"
 RUN_LOG_SCHEMA = "hawking.odyssey.run_log.v1"
+HARVEST_SCHEMA = "hawking.odyssey.harvest.v2"
 
 PHASES = (
     "INGEST", "BASELINE", "CENSUS", "ROUTEMAP", "SENSITIVITY",
@@ -75,10 +81,16 @@ TEMPLATES = (
     "sensitivity-map",
     "transfer-control",
 )
+# Templates known to edit tools/odyssey_patient_runner.py. One-at-a-time.
+# RUN-only (external-science-moe / transfer-control) may fill to max-lanes.
+CODE_EDIT_TEMPLATES = frozenset({
+    "sensitivity-map",
+    "external-science-dense",
+})
 
 STATES = (
     "READY", "RUNNING", "BLOCKED", "LANDED",
-    "VERIFYING", "VERIFIED", "REFUTED", "ARCHIVED",
+    "VERIFYING", "VERIFIED", "REVIEW", "REFUTED", "ARCHIVED",
 )
 EVIDENCE = (
     "VERIFIED", "MEASURED", "DERIVED", "INFERRED",
@@ -709,6 +721,15 @@ def assemble_packet(oxx: str, state: dict | None = None) -> dict:
             pass
     apply_transfer(pkt)
     apply_receipts(pkt, oxx)
+    # §18: every section needs a recognised evidence class. Preserve notes
+    # like "N/A — dense/hybrid" by wrapping them, do not invent a stronger class.
+    for sec in PACKET_SECTIONS:
+        val = pkt.get(sec)
+        if not isinstance(val, dict):
+            continue
+        if evidence_class(val.get("_evidence")) is None:
+            prev = val.get("_evidence")
+            val["_evidence"] = f"UNKNOWN ({prev})" if prev else "UNKNOWN"
     if not pkt.get("next"):
         st = state or ensure_state()
         pkt["next"] = [
@@ -810,8 +831,23 @@ def _task_status(task_dir: Path) -> str:
 
 
 def harvest(*, tasks_root: Path | None = None, receipt_dir: Path | None = None,
-            escalate_path: Path | None = None, state: dict | None = None) -> list[dict]:
-    """Scan completed odyssey-* grok lanes. Reject reports with no structured result."""
+            escalate_path: Path | None = None, state: dict | None = None,
+            classify: bool = False, dry_run: bool = False,
+            worktrees_root: Path | None = None, dest_root: Path | None = None,
+            review_queue: Path | None = None, cleanup_fn=None,
+            persist: bool | None = None) -> list[dict]:
+    """Scan completed odyssey-* grok lanes. Reject reports with no structured result.
+
+    classify/dry_run: hardened lane harvest (DATA-ONLY vs CODE). Default stays
+    the original report harvester so --self-check fixtures keep working.
+    """
+    if classify or dry_run:
+        return harvest_lanes(
+            tasks_root=tasks_root, receipt_dir=receipt_dir,
+            escalate_path=escalate_path, state=state, dry_run=dry_run,
+            worktrees_root=worktrees_root, dest_root=dest_root,
+            review_queue=review_queue, cleanup_fn=cleanup_fn, persist=persist,
+        )
     root = Path(tasks_root) if tasks_root else GROK_TASKS
     out_dir = Path(receipt_dir) if receipt_dir else RECEIPT_DIR
     esc_path = Path(escalate_path) if escalate_path else ESCALATIONS
@@ -897,6 +933,420 @@ def harvest(*, tasks_root: Path | None = None, receipt_dir: Path | None = None,
             already.add(d.name)
     st["harvested"] = sorted(already)
     if receipt_dir is None and escalate_path is None and tasks_root is None:
+        save_state(st)
+    return rows
+
+
+# ---------------------------------------------------------------------------
+# hardened harvest — classify DATA-ONLY vs CODE, merge or queue, never
+# auto-merge tools/*.py. Cleanup only after a DATA-ONLY copy succeeds.
+# ---------------------------------------------------------------------------
+
+DATA_RECEIPT_PREFIX = "receipts/"
+DATA_PACKET_PREFIX = "workspace/campaign/odyssey/patients/"
+DIFF_PLUS_RE = re.compile(r"^\+\+\+ b/(.+?)(?:\t|$)")
+
+
+def norm_rel(path: str) -> str:
+    p = (path or "").replace("\\", "/").strip().strip('"')
+    while p.startswith("./"):
+        p = p[2:]
+    return p
+
+
+def is_data_path(path: str) -> bool:
+    """DATA-ONLY: receipts/** or workspace/campaign/odyssey/patients/*/*.json."""
+    p = norm_rel(path)
+    if p.startswith(DATA_RECEIPT_PREFIX):
+        return True
+    if p.startswith(DATA_PACKET_PREFIX) and p.endswith(".json"):
+        rest = p[len(DATA_PACKET_PREFIX):]
+        return "/" in rest and not rest.endswith("/")
+    return False
+
+
+def classify_paths(paths: list[str]) -> str:
+    cleaned = []
+    for raw in paths:
+        p = norm_rel(raw)
+        if not p or p == "/dev/null":
+            continue
+        cleaned.append(p)
+    if not cleaned:
+        return "DATA-ONLY"
+    if all(is_data_path(p) for p in cleaned):
+        return "DATA-ONLY"
+    return "CODE"
+
+
+def parse_diff_paths(text: str) -> list[str]:
+    out = []
+    for line in (text or "").splitlines():
+        m = DIFF_PLUS_RE.match(line)
+        if not m:
+            if line.startswith("+++ "):
+                rest = line[4:]
+                if rest.startswith("b/"):
+                    rest = rest[2:]
+                rest = rest.split("\t", 1)[0].strip()
+                if rest and rest != "/dev/null":
+                    out.append(norm_rel(rest))
+            continue
+        p = norm_rel(m.group(1))
+        if p and p != "/dev/null":
+            out.append(p)
+    return out
+
+
+def parse_porcelain(text: str) -> list[str]:
+    out = []
+    for raw in (text or "").splitlines():
+        line = raw.rstrip("\n")
+        if not line.strip():
+            continue
+        if " -> " in line:
+            out.append(norm_rel(line.split(" -> ", 1)[1].strip().strip('"')))
+            continue
+        path = line[3:] if len(line) >= 3 else line
+        path = path.strip().strip('"')
+        if path:
+            out.append(norm_rel(path))
+    return out
+
+
+def worktree_porcelain_paths(worktree: Path | None) -> list[str]:
+    if worktree is None or not worktree.is_dir():
+        return []
+    r = subprocess.run(
+        ["git", "-C", str(worktree), "status", "--porcelain"],
+        capture_output=True, text=True,
+    )
+    if r.returncode != 0:
+        return []
+    return parse_porcelain(r.stdout or "")
+
+
+def resolve_worktree(task_dir: Path, worktrees_root: Path | None = None) -> Path | None:
+    meta = task_dir / "metadata.json"
+    if meta.is_file():
+        try:
+            doc = read_json(meta)
+        except (OSError, json.JSONDecodeError):
+            doc = {}
+        wd = doc.get("workdir") or doc.get("worktree")
+        if wd:
+            p = Path(wd)
+            if p.is_dir():
+                return p
+    root = Path(worktrees_root) if worktrees_root else GROK_WORKTREES
+    cand = root / task_dir.name
+    return cand if cand.is_dir() else None
+
+
+def lane_file_list(task_dir: Path, worktree: Path | None) -> list[str]:
+    paths: list[str] = []
+    seen: set[str] = set()
+    patch = task_dir / "diff.patch"
+    if patch.is_file():
+        try:
+            paths.extend(parse_diff_paths(patch.read_text(errors="replace")))
+        except OSError:
+            pass
+    paths.extend(worktree_porcelain_paths(worktree))
+    out = []
+    for p in paths:
+        n = norm_rel(p)
+        if not n or n == "/dev/null" or n in seen:
+            continue
+        seen.add(n)
+        out.append(n)
+    return out
+
+
+def _work_for_task(state: dict, task_name: str) -> dict | None:
+    for w in state.get("work") or []:
+        if w.get("task") == task_name:
+            return w
+    slug = re.sub(r"-\d{8}-\d{6}$", "", task_name)
+    for w in state.get("work") or []:
+        t = str(w.get("task") or "")
+        if not t:
+            continue
+        if t == slug or task_name.startswith(t) or t.startswith(slug):
+            return w
+    return None
+
+
+def _recorded_running(state: dict, task_name: str) -> bool:
+    w = _work_for_task(state, task_name)
+    return bool(w and w.get("status") == "RUNNING")
+
+
+def _review_queue_has(path: Path | None, task_name: str) -> bool:
+    if path is None or not path.is_file():
+        return False
+    try:
+        lines = path.read_text().splitlines()
+    except OSError:
+        return False
+    for line in lines:
+        if not line.strip():
+            continue
+        try:
+            if json.loads(line).get("task") == task_name:
+                return True
+        except json.JSONDecodeError:
+            continue
+    return False
+
+
+def _lane_already_resolved(state: dict, task_name: str,
+                           receipt_dir: Path, review_path: Path | None) -> str | None:
+    rec = receipt_dir / f"harvest_{task_name}.json"
+    if rec.is_file():
+        return "already harvested"
+    w = _work_for_task(state, task_name)
+    if w and w.get("status") in ("VERIFIED", "REVIEW", "REFUTED"):
+        return f"already {w['status']}"
+    if _review_queue_has(review_path, task_name):
+        return "already in REVIEW_QUEUE"
+    return None
+
+
+def _mark_lane(state: dict, task_name: str, status: str, **extra) -> dict | None:
+    w = _work_for_task(state, task_name)
+    if w is None:
+        return None
+    w["status"] = status
+    w["task"] = task_name
+    for key, val in extra.items():
+        if val is not None:
+            w[key] = val
+    harvested = list(state.get("harvested") or [])
+    if task_name not in harvested:
+        harvested.append(task_name)
+    state["harvested"] = harvested
+    return w
+
+
+def append_review_queue(path: Path, row: dict) -> bool:
+    if _review_queue_has(path, row.get("task")):
+        return False
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a") as fh:
+        fh.write(json.dumps(row, ensure_ascii=False) + "\n")
+    return True
+
+
+def default_cleanup(task_id: str) -> tuple[bool, str]:
+    if not GROK_BIN.is_file():
+        return False, "grok-run missing"
+    r = subprocess.run(
+        [str(GROK_BIN), "cleanup", "--id", task_id],
+        capture_output=True, text=True,
+    )
+    out = ((r.stdout or "") + (r.stderr or "")).strip()
+    return r.returncode == 0, out[-400:]
+
+
+def _path_exists(root: Path | None, rel: str) -> bool:
+    return bool(root and (root / rel).is_file())
+
+
+def copy_data_files(worktree: Path | None, dest_root: Path,
+                    files: list[str]) -> tuple[list[str], list[str]]:
+    copied, missing = [], []
+    for rel in files:
+        if not is_data_path(rel):
+            continue
+        src = (worktree / rel) if worktree is not None else None
+        if src is None or not src.is_file():
+            missing.append(rel)
+            continue
+        dest = dest_root / rel
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, dest)
+        copied.append(rel)
+    return copied, missing
+
+
+def _receipt_present(files: list[str], worktree: Path | None,
+                     dest_root: Path | None) -> bool:
+    for rel in files:
+        n = norm_rel(rel)
+        if not n.startswith(DATA_RECEIPT_PREFIX):
+            continue
+        if _path_exists(worktree, n) or _path_exists(dest_root, n):
+            return True
+    return False
+
+
+def planned_action(classification: str | None, reason: str) -> str:
+    if reason.startswith("malformed"):
+        return f"REFUTE ({reason})"
+    if classification == "CODE":
+        return "REVIEW (do not merge, do not cleanup)"
+    if classification == "DATA-ONLY":
+        return "MERGE+CLEANUP (copy data, mark VERIFIED, grok-run cleanup)"
+    return f"REFUTE ({reason or 'unclassified'})"
+
+
+def harvest_lanes(*, tasks_root: Path | None = None,
+                  receipt_dir: Path | None = None,
+                  escalate_path: Path | None = None,
+                  state: dict | None = None, dry_run: bool = False,
+                  worktrees_root: Path | None = None,
+                  dest_root: Path | None = None,
+                  review_queue: Path | None = None,
+                  cleanup_fn=None, persist: bool | None = None) -> list[dict]:
+    """Classify finished odyssey-* lanes and (unless dry-run) reap DATA-ONLY.
+
+    Apply only when status==done AND the lane is recorded RUNNING in state.
+    Dry-run classifies every finished lane and changes nothing.
+    """
+    del escalate_path  # reserved; report harvest already nominates
+    root = Path(tasks_root) if tasks_root else GROK_TASKS
+    out_dir = Path(receipt_dir) if receipt_dir else RECEIPT_DIR
+    dest = Path(dest_root) if dest_root else REPO
+    qpath = Path(review_queue) if review_queue else REVIEW_QUEUE
+    st = state if state is not None else ensure_state()
+    do_persist = persist if persist is not None else (
+        tasks_root is None and receipt_dir is None
+        and dest_root is None and review_queue is None
+        and not dry_run
+    )
+    cleaner = cleanup_fn or default_cleanup
+    rows: list[dict] = []
+    mutated = False
+    if not root.is_dir():
+        return rows
+
+    for d in sorted(p for p in root.iterdir() if p.is_dir() and p.name.startswith("odyssey-")):
+        stat = _task_status(d)
+        if stat != "done":
+            continue
+        wt = resolve_worktree(d, worktrees_root)
+        files = lane_file_list(d, wt)
+        report = d / "grok-report.md"
+        oxx = None
+        parsed = None
+        reason = ""
+        classification = classify_paths(files)
+        if not report.is_file():
+            reason = "malformed: no grok-report.md"
+        else:
+            try:
+                text = report.read_text(errors="replace")
+            except OSError as exc:
+                text = ""
+                reason = f"malformed: unreadable report ({exc})"
+            if text:
+                parsed = parse_report(text)
+                oxx = oxx_from_task(d.name, parsed)
+                slug_m = SLUG_OXX_RE.search(d.name)
+                if slug_m:
+                    oxx = f"O{slug_m.group(1)}"
+                if classification == "DATA-ONLY" and not _receipt_present(files, wt, dest):
+                    if any(norm_rel(p).startswith(DATA_RECEIPT_PREFIX) for p in files):
+                        reason = "malformed: no receipt"
+                    else:
+                        reason = "malformed: no receipt"
+                elif classification == "DATA-ONLY" and parsed and not parsed.get("ok"):
+                    # report present but no structured result and no usable receipt
+                    if not _receipt_present(files, wt, dest):
+                        reason = "malformed: no structured result"
+        action = planned_action(classification, reason)
+        already = _lane_already_resolved(st, d.name, out_dir, qpath)
+        in_scope = _recorded_running(st, d.name)
+        row = {
+            "schema": HARVEST_SCHEMA,
+            "task": d.name,
+            "slug": re.sub(r"-\d{8}-\d{6}$", "", d.name),
+            "task_status": stat,
+            "classification": classification,
+            "action": action,
+            "reason": reason or (already or ("ok" if classification else "unclassified")),
+            "files": files,
+            "oxx": oxx,
+            "worktree": str(wt) if wt else None,
+            "report": str(report) if report.is_file() else None,
+            "in_scope": in_scope,
+            "applied": False,
+            "cleanup": False,
+            "copied": [],
+            "verdict": None,
+            "dry_run": dry_run,
+            "_evidence": "DERIVED (harvester classification)",
+        }
+        if already:
+            row["reason"] = already
+            row["verdict"] = "SKIP"
+            rows.append(row)
+            continue
+
+        if dry_run or not in_scope:
+            if not in_scope and not dry_run:
+                row["reason"] = (reason + "; " if reason else "") + "not RUNNING in state"
+            rows.append(row)
+            continue
+
+        # ---- apply ----
+        if reason.startswith("malformed"):
+            _mark_lane(st, d.name, "REFUTED", oxx=oxx, harvest_reason=reason)
+            row["verdict"] = "REFUTED"
+            rec_verdict = "REFUTED"
+        elif classification == "CODE":
+            append_review_queue(qpath, {
+                "task": d.name,
+                "files": files,
+                "report": str(report) if report.is_file() else None,
+                "worktree": str(wt) if wt else None,
+            })
+            _mark_lane(st, d.name, "REVIEW", oxx=oxx, harvest_reason="CODE")
+            row["verdict"] = "REVIEW"
+            rec_verdict = "REVIEW"
+        else:
+            copied, _missing = copy_data_files(wt, dest, files)
+            row["copied"] = copied
+            # packet-field changes ride along: DATA-ONLY packets are copied verbatim
+            ok, msg = cleaner(d.name)
+            row["cleanup"] = bool(ok)
+            if not ok:
+                row["cleanup_note"] = msg
+            _mark_lane(st, d.name, "VERIFIED", oxx=oxx, harvest_reason="DATA-ONLY")
+            row["verdict"] = "VERIFIED"
+            rec_verdict = "VERIFIED"
+        rec = {
+            "schema": HARVEST_SCHEMA,
+            "task": d.name,
+            "slug": row["slug"],
+            "classification": classification,
+            "action": action,
+            "verdict": rec_verdict,
+            "reason": reason or row["reason"],
+            "files": files,
+            "copied": row["copied"],
+            "oxx": oxx,
+            "worktree": row["worktree"],
+            "report": row["report"],
+            "cleanup": row["cleanup"],
+            "command": "harvest",
+            "inputs": {"task_dir": str(d), "worktree": row["worktree"]},
+            "outputs": {"copied": row["copied"], "verdict": rec_verdict},
+            "controls": ["never auto-merge CODE", "cleanup only DATA-ONLY"],
+            "assumptions": [
+                "DATA-ONLY = receipts/ or workspace/campaign/odyssey/patients/*/*.json",
+                "CODE = any tools/ path, *.py, or other non-data path",
+            ],
+            "reopen_if": "worktree still holds uncopied data files",
+            "_evidence": "DERIVED (harvester classification)",
+        }
+        write_json(out_dir / f"harvest_{d.name}.json", rec)
+        row["applied"] = True
+        mutated = True
+        rows.append(row)
+
+    if do_persist and mutated and not dry_run:
         save_state(st)
     return rows
 
@@ -1683,7 +2133,8 @@ def _sys_free_ram_pct():
 def evaluate_gates(ob: dict, *, go: bool, running_n: int, cap: int,
                    snap: dict, worker: dict | None,
                    lint_ok: bool, lint_msg: str,
-                   disk_after_reclaim: float | None = None) -> dict:
+                   disk_after_reclaim: float | None = None,
+                   code_edit_busy: bool = False) -> dict:
     """Return a gate bundle + verdict/skip_reason. Does not launch."""
     disk = float(snap.get("disk_free_gib") or 0.0)
     clean_ok = bool(snap.get("clean_box_ok"))
@@ -1693,6 +2144,11 @@ def evaluate_gates(ob: dict, *, go: bool, running_n: int, cap: int,
     worker_override = None
     if cap <= 0 or running_n >= cap:
         reasons.append(f"max-lanes cap {cap} (running={running_n})")
+    elif ob.get("template") in CODE_EDIT_TEMPLATES and code_edit_busy:
+        reasons.append(
+            "code-edit serial: template edits tools/odyssey_patient_runner.py "
+            "while another lane is RUNNING"
+        )
     elif not lint_ok:
         reasons.append(f"SG-rejected: {lint_msg}")
     elif ob.get("model_loading") and worker_decision == "REFUSE":
@@ -1776,6 +2232,7 @@ def run_loop(*, go: bool, max_lanes: int,
     worker_cache = None
     rows = []
     launched = 0
+    occupied = 0  # launches this tick (real or planned) for code-edit serial
     limit = consider_limit if consider_limit is not None else max(cap, DEFAULT_MAX_LANES, 8)
     slots = 0 if not go else max(0, cap - running_n)
 
@@ -1812,6 +2269,7 @@ def run_loop(*, go: bool, max_lanes: int,
             ob, go=go, running_n=running_n + launched, cap=cap,
             snap=snap, worker=worker, lint_ok=lint_ok, lint_msg=lint_msg,
             disk_after_reclaim=disk_after,
+            code_edit_busy=(running_n + occupied) > 0,
         )
         if already and go:
             gates["verdict"] = "SKIP"
@@ -1857,8 +2315,12 @@ def run_loop(*, go: bool, max_lanes: int,
                 if persist:
                     _mark_running(st, ob, task_id, rel, started)
                 launched += 1
+                occupied += 1
                 running_n_display = running_n + launched
                 gates["running"] = running_n_display
+
+        if not go and gates["verdict"] == "DRY-RUN" and not gates.get("skip_reason"):
+            occupied += 1
 
         append_run_log(row, path=log_path)
         rows.append(row)
@@ -2111,16 +2573,38 @@ def cmd_value() -> int:
     return 0
 
 
-def cmd_harvest() -> int:
-    rows = harvest()
+def cmd_harvest(*, dry_run: bool = False) -> int:
+    rows = harvest_lanes(dry_run=dry_run)
+    mode = "dry-run" if dry_run else "apply"
     if not rows:
-        print("harvest: no completed odyssey-* tasks")
+        print(f"harvest ({mode}): no finished odyssey-* lanes")
         return 0
-    acc = sum(1 for r in rows if r["verdict"] == "ACCEPTED")
-    rej = sum(1 for r in rows if r["verdict"] == "REJECTED")
-    print(f"harvest: {acc} accepted, {rej} rejected")
+    print(f"HARVEST  mode={mode}  finished={len(rows)}")
     for r in rows:
-        print(f"  {r['verdict']:<8} {r['task']:<42} {r.get('oxx') or '—':<5} {r['reason']}")
+        files = ", ".join(r.get("files") or []) or "—"
+        scope = "RUNNING" if r.get("in_scope") else "not-RUNNING"
+        if r.get("applied"):
+            apply = "applied"
+        elif dry_run and r.get("in_scope"):
+            apply = "would-apply"
+        elif dry_run:
+            apply = "would-skip-apply"
+        else:
+            apply = "skip-apply"
+        print(f"  {r['task']}")
+        print(
+            f"    class={r.get('classification') or '—'}  "
+            f"action={r.get('action')}  {scope}  {apply}"
+        )
+        print(f"    files={files}")
+        print(
+            f"    worktree={r.get('worktree') or 'missing'}  "
+            f"report={'yes' if r.get('report') else 'no'}  "
+            f"oxx={r.get('oxx') or '—'}  cleanup={r.get('cleanup')}"
+        )
+        if r.get("reason"):
+            print(f"    reason={r['reason']}")
+        print(f"    _evidence={r.get('_evidence')}")
     return 0
 
 
@@ -2375,6 +2859,176 @@ def _self_check() -> int:
     assert "--background" in argv
     assert "SG_OFF" not in argv
 
+    # 9. harden harvest: DATA-ONLY fake lane harvests + would-cleanup;
+    #    CODE fake lane goes to REVIEW_QUEUE and is NOT merged.
+    with tempfile.TemporaryDirectory() as td:
+        td = Path(td)
+        tasks = td / "tasks"
+        trees = td / "worktrees"
+        dest = td / "dest"
+        recs = td / "recs"
+        qpath = td / "REVIEW_QUEUE.jsonl"
+        fake_state = {
+            "schema": SCHEMA,
+            "patients": list(st2.get("patients") or []),
+            "work": [
+                {"id": "H-DATA", "oxx": "O001", "title": "data lane",
+                 "status": "RUNNING",
+                 "task": "odyssey-o001-data-fake",
+                 "template": "external-science-moe",
+                 "info": 1, "wall_cost": 1, "gpu_cost": 0, "opus_cost": 0},
+                {"id": "H-CODE", "oxx": "O005", "title": "code lane",
+                 "status": "RUNNING",
+                 "task": "odyssey-o005-code-fake",
+                 "template": "sensitivity-map",
+                 "info": 1, "wall_cost": 1, "gpu_cost": 0, "opus_cost": 0},
+                {"id": "H-MAL", "oxx": "O003", "title": "malformed lane",
+                 "status": "RUNNING",
+                 "task": "odyssey-o003-malformed-fake",
+                 "template": "transfer-control",
+                 "info": 1, "wall_cost": 1, "gpu_cost": 0, "opus_cost": 0},
+            ],
+            "history": [], "harvested": [], "metrics": {},
+        }
+        cleaned: list[str] = []
+
+        def fake_cleanup(task_id: str):
+            cleaned.append(task_id)
+            return True, "ok"
+
+        def _mk_lane(name: str, report: str, file_map: dict[str, str],
+                     patch_files: list[str] | None = None) -> Path:
+            tdir = tasks / name
+            tdir.mkdir(parents=True)
+            (tdir / "status").write_text("done\n")
+            if report is not None:
+                (tdir / "grok-report.md").write_text(report)
+            wt = trees / name
+            wt.mkdir(parents=True)
+            (tdir / "metadata.json").write_text(json.dumps({"workdir": str(wt)}))
+            listed = patch_files if patch_files is not None else list(file_map)
+            patch_lines = []
+            for rel, body in file_map.items():
+                p = wt / rel
+                p.parent.mkdir(parents=True, exist_ok=True)
+                p.write_text(body)
+            for rel in listed:
+                patch_lines.append(f"diff --git a/{rel} b/{rel}")
+                patch_lines.append(f"+++ b/{rel}")
+            (tdir / "diff.patch").write_text("\n".join(patch_lines) + "\n")
+            return tdir
+
+        data_body = json.dumps({
+            "oxx": "O001", "finding": "data-only fixture",
+            "evidence": "MEASURED",
+        })
+        _mk_lane(
+            "odyssey-o001-data-fake",
+            "**Completion report**\n\n```json\n" + data_body + "\n```\n",
+            {
+                "receipts/odyssey-i/O001_FAKE.json": data_body + "\n",
+                "workspace/campaign/odyssey/patients/O001/ODYSSEY_PATIENT_O001.json":
+                    json.dumps({"oxx": "O001", "identity": {"_evidence": "MEASURED"}}) + "\n",
+            },
+        )
+        code_marker = "CODE_FAKE_MARKER_DO_NOT_MERGE\n"
+        _mk_lane(
+            "odyssey-o005-code-fake",
+            "**Completion report**\n\nRESULT: code fixture\n",
+            {
+                "tools/odyssey_patient_runner.py": code_marker,
+                "receipts/odyssey-i/O005_FAKE.json": '{"oxx":"O005"}\n',
+            },
+        )
+        mal = tasks / "odyssey-o003-malformed-fake"
+        mal.mkdir(parents=True)
+        (mal / "status").write_text("done\n")
+        (mal / "metadata.json").write_text(json.dumps({
+            "workdir": str(trees / "odyssey-o003-malformed-fake"),
+        }))
+        (trees / "odyssey-o003-malformed-fake").mkdir(parents=True)
+
+        dry_rows = harvest_lanes(
+            tasks_root=tasks, receipt_dir=recs, state=dict(fake_state),
+            dry_run=True, worktrees_root=trees, dest_root=dest,
+            review_queue=qpath, cleanup_fn=fake_cleanup, persist=False,
+        )
+        dry_by = {r["task"]: r for r in dry_rows}
+        assert dry_by["odyssey-o001-data-fake"]["classification"] == "DATA-ONLY"
+        assert "MERGE+CLEANUP" in dry_by["odyssey-o001-data-fake"]["action"]
+        assert dry_by["odyssey-o005-code-fake"]["classification"] == "CODE"
+        assert "REVIEW" in dry_by["odyssey-o005-code-fake"]["action"]
+        assert not dry_by["odyssey-o001-data-fake"]["applied"]
+        assert cleaned == []
+        assert not (dest / "receipts" / "odyssey-i" / "O001_FAKE.json").exists()
+        assert not qpath.exists()
+
+        rows_h = harvest_lanes(
+            tasks_root=tasks, receipt_dir=recs, state=fake_state,
+            dry_run=False, worktrees_root=trees, dest_root=dest,
+            review_queue=qpath, cleanup_fn=fake_cleanup, persist=False,
+        )
+        by_h = {r["task"]: r for r in rows_h}
+        data_row = by_h["odyssey-o001-data-fake"]
+        code_row = by_h["odyssey-o005-code-fake"]
+        mal_row = by_h["odyssey-o003-malformed-fake"]
+        assert data_row["classification"] == "DATA-ONLY"
+        assert data_row["applied"] and data_row["verdict"] == "VERIFIED"
+        assert data_row["cleanup"] is True
+        assert "odyssey-o001-data-fake" in cleaned
+        dest_receipt = dest / "receipts" / "odyssey-i" / "O001_FAKE.json"
+        assert dest_receipt.is_file(), dest_receipt
+        assert "data-only fixture" in dest_receipt.read_text()
+        dest_pkt = dest / "workspace" / "campaign" / "odyssey" / "patients" / "O001" / "ODYSSEY_PATIENT_O001.json"
+        assert dest_pkt.is_file()
+        assert (recs / "harvest_odyssey-o001-data-fake.json").is_file()
+        assert _work_for_task(fake_state, "odyssey-o001-data-fake")["status"] == "VERIFIED"
+
+        assert code_row["classification"] == "CODE"
+        assert code_row["applied"] and code_row["verdict"] == "REVIEW"
+        assert "odyssey-o005-code-fake" not in cleaned
+        dest_code = dest / "tools" / "odyssey_patient_runner.py"
+        assert not dest_code.exists(), "CODE lane must not merge tools/*.py"
+        assert qpath.is_file()
+        qrows = [json.loads(x) for x in qpath.read_text().splitlines() if x.strip()]
+        assert any(q["task"] == "odyssey-o005-code-fake" for q in qrows), qrows
+        assert _work_for_task(fake_state, "odyssey-o005-code-fake")["status"] == "REVIEW"
+        assert (recs / "harvest_odyssey-o005-code-fake.json").is_file()
+
+        assert mal_row["verdict"] == "REFUTED"
+        assert "malformed" in (mal_row.get("reason") or "")
+        assert "odyssey-o003-malformed-fake" not in cleaned
+        assert _work_for_task(fake_state, "odyssey-o003-malformed-fake")["status"] == "REFUTED"
+
+        # idempotent re-run: no second cleanup, no second queue line
+        n_q = len(qpath.read_text().splitlines())
+        cleaned.clear()
+        rows_h2 = harvest_lanes(
+            tasks_root=tasks, receipt_dir=recs, state=fake_state,
+            dry_run=False, worktrees_root=trees, dest_root=dest,
+            review_queue=qpath, cleanup_fn=fake_cleanup, persist=False,
+        )
+        assert cleaned == []
+        assert len(qpath.read_text().splitlines()) == n_q
+        assert all(r.get("verdict") == "SKIP" for r in rows_h2), rows_h2
+
+    # 10. code-edit serial: skip sensitivity/dense while any lane is RUNNING
+    g_serial = evaluate_gates(
+        {"template": "sensitivity-map", "model_loading": False,
+         "timing": False, "download": False},
+        go=True, running_n=1, cap=2, snap=fat_snap, worker=None,
+        lint_ok=True, lint_msg="", code_edit_busy=True,
+    )
+    assert g_serial["verdict"] == "SKIP", g_serial
+    assert "code-edit serial" in (g_serial.get("skip_reason") or ""), g_serial
+    g_runonly = evaluate_gates(
+        {"template": "external-science-moe", "model_loading": False,
+         "timing": False, "download": False},
+        go=True, running_n=1, cap=2, snap=fat_snap, worker=None,
+        lint_ok=True, lint_msg="", code_edit_busy=True,
+    )
+    assert g_runonly["verdict"] == "LAUNCH", g_runonly
+
     print("self-check ok")
     return 0
 
@@ -2387,7 +3041,9 @@ def main(argv=None) -> int:
     sp.add_parser("status")
     sp.add_parser("queue")
     sp.add_parser("value")
-    sp.add_parser("harvest")
+    p_hv = sp.add_parser("harvest")
+    p_hv.add_argument("--dry-run", action="store_true",
+                      help="classify finished lanes and print planned action; change nothing")
     p_pkt = sp.add_parser("packet")
     p_pkt.add_argument("oxx")
     p_ad = sp.add_parser("admit")
@@ -2410,7 +3066,7 @@ def main(argv=None) -> int:
     if args.cmd == "value":
         return cmd_value()
     if args.cmd == "harvest":
-        return cmd_harvest()
+        return cmd_harvest(dry_run=bool(getattr(args, "dry_run", False)))
     if args.cmd == "packet":
         return cmd_packet(args.oxx)
     if args.cmd == "admit":

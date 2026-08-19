@@ -73,11 +73,12 @@
       "source": "Qwen/Qwen3-30B-A3B",
       "gate": "open",
       "ledger": "on-disk",
-      "state": "READY",
-      "phase": "CENSUS",
+      "state": "RETIRED",
+      "phase": "SEALED",
       "on_disk": true,
       "blocked_reason": null,
-      "_evidence": "VERIFIED (ODYSSEY.md patient table)"
+      "_evidence": "DERIVED (patient-sealed)",
+      "reclaimable": true
     },
     {
       "oxx": "O006",
@@ -359,6 +360,36 @@
       "started": "2026-08-19T18:42:07Z",
       "contract": "workspace/campaign/odyssey/contracts/auto/o003_sensitivity-map.md",
       "harvest_reason": "DATA-ONLY"
+    },
+    {
+      "id": "NEXT-O006-SENS",
+      "oxx": "O006",
+      "title": "A3 per-organ/per-expert sensitivity map (O006 language-MoE)",
+      "status": "RUNNING",
+      "info": 10.0,
+      "wall_cost": 2.0,
+      "gpu_cost": 1.0,
+      "opus_cost": 0.0,
+      "kind": "representation-discriminator",
+      "template": "sensitivity-map",
+      "task": "odyssey-o006-sensitivity-map-20260819-150812",
+      "started": "2026-08-19T19:08:17Z",
+      "contract": "workspace/campaign/odyssey/contracts/auto/o006_sensitivity-map.md"
+    },
+    {
+      "id": "AUTO-O001-gravity-hybrid",
+      "oxx": "O001",
+      "title": "modest gravity q4-g64-attn-mlp (protect SSM/norm, SPECIMEN)",
+      "status": "RUNNING",
+      "info": 8.0,
+      "wall_cost": 2.0,
+      "gpu_cost": 1.0,
+      "opus_cost": 0.0,
+      "kind": "gravity",
+      "template": "gravity-hybrid",
+      "task": "odyssey-o001-gravity-hybrid-20260819-150817",
+      "started": "2026-08-19T19:08:23Z",
+      "contract": "workspace/campaign/odyssey/contracts/auto/o001_gravity-hybrid.md"
     }
   ],
   "history": [],

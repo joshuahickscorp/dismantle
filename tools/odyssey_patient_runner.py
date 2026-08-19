@@ -18,10 +18,11 @@ and 8-bit-round each organ, re-run the same battery + refusal controls,
 record capability delta. MoE also ablates one hot and one random expert.
 Canonical HF weights are never modified.
 
-`--gravity <spec>` builds one MODEST mlx mix (not a sweep) with a per-module
-quant_predicate, reloads it, grades the same fast-Doctor battery against
+`--gravity <spec>` builds one MODEST or AGGRESSIVE mlx mix (not a sweep) with a
+per-module quant_predicate, reloads it, grades the same fast-Doctor battery against
 `<OXX>_EXTERNAL.json`, and writes `odyssey.patient.gravity.v1` (SPECIMEN;
-never a Hawking NX win). Specs: `q3-g32-experts`, `q4-g64`, `q4-g64-attn-mlp`.
+never a Hawking NX win). Specs: `q3-g32-experts`, `q4-g64`, `q4-g64-attn-mlp`,
+`q2-g32-experts`, `mixed-q2q3-experts`, `q2-g64`, `q2-g64-attn-mlp`.
 
 `--nx-gather` / `--nx-state` / `--nx-dense` emit `odyssey.patient.nx.v1`
 accounting (+ a minimal primitive-design note). Not a Rust runtime (§14).
@@ -75,6 +76,13 @@ if str(ROOT) not in sys.path:
 from tools.doctor_seal import seal as doctor_seal  # noqa: E402
 from tools.worker_gate import gate as memory_gate  # noqa: E402
 from tools.worker_gate import observe as memory_observe  # noqa: E402
+from tools.odyssey_ctl import (  # noqa: E402
+    classify_gravity_spec,
+    gravity_pass_threshold,
+    load_odyssey_policy,
+    localize_gravity_failure,
+    select_protected_components,
+)
 
 # Same battery / refusal controls as a3b_recon.py so canonical vs abliterated is comparable.
 BATTERY = [
@@ -140,8 +148,17 @@ ROUND8_BITS = 8
 EXPERT_RNG_SEED = 0xA3
 GRAVITY_SCHEMA = "odyssey.patient.gravity.v1"
 NX_SCHEMA = "odyssey.patient.nx.v1"
-GRAVITY_SPECS = ("q3-g32-experts", "q4-g64", "q4-g64-attn-mlp")
+GRAVITY_SPECS = (
+    "q3-g32-experts",
+    "q4-g64",
+    "q4-g64-attn-mlp",
+    "q2-g32-experts",
+    "mixed-q2q3-experts",
+    "q2-g64",
+    "q2-g64-attn-mlp",
+)
 NX_GATHER_TOKENS = 32
+POLICY_PATH = ROOT / "workspace/campaign/odyssey/ODYSSEY_POLICY.json"
 
 
 def log(msg: str) -> None:
@@ -1794,10 +1811,12 @@ def _quant_blind_spot(quant: str, oxx: str) -> str:
     return "bf16 load; no quant caveat on this run"
 
 
-def gravity_quant_predicate(spec: str):
-    """Per-module mlx quant_predicate realizing one MODEST mix. Not a sweep."""
+def gravity_quant_predicate(spec: str, protected: list[str] | None = None):
+    """Per-module mlx quant_predicate realizing one MODEST or AGGRESSIVE mix. Not a sweep."""
     if spec not in GRAVITY_SPECS:
         raise ValueError(f"unknown gravity spec {spec!r}; expected one of {GRAVITY_SPECS}")
+    protected_set = {p.lower() for p in (protected or [])}
+    moe = spec.endswith("experts")
 
     def is_norm(path: str) -> bool:
         return "norm" in path.lower()
@@ -1835,7 +1854,7 @@ def gravity_quant_predicate(spec: str):
             x in n for x in ("up_proj", "down_proj", "gate_proj", "feed_forward", ".mlp")
         )
 
-    def pred(path: str, module) -> bool | dict:  # noqa: ARG001 — mlx predicate signature
+    def pred(path: str, module, *_args) -> bool | dict:  # noqa: ARG001 — mlx predicate signature
         n = path or ""
         if is_norm(n) or is_ssm(n):
             return False
@@ -1845,17 +1864,34 @@ def gravity_quant_predicate(spec: str):
             return {"group_size": 64, "bits": 4, "mode": "affine"}
         if spec == "q4-g64":
             return {"group_size": 64, "bits": 4, "mode": "affine"}
-        # q4-g64-attn-mlp: attn+mlp (+embed/lm_head) 4-bit; SSM/conv/norm full.
-        if is_attn(n) or is_mlp(n) or "embed" in n.lower() or "lm_head" in n.lower():
+        if spec == "q4-g64-attn-mlp":
+            if is_attn(n) or is_mlp(n) or "embed" in n.lower() or "lm_head" in n.lower():
+                return {"group_size": 64, "bits": 4, "mode": "affine"}
+            return False
+        if spec == "q2-g32-experts":
+            if is_expert(n):
+                return {"group_size": 32, "bits": 2, "mode": "affine"}
             return {"group_size": 64, "bits": 4, "mode": "affine"}
+        if spec == "q2-g64":
+            return {"group_size": 64, "bits": 2, "mode": "affine"}
+        if spec == "q2-g64-attn-mlp":
+            if is_attn(n) or is_mlp(n) or "embed" in n.lower() or "lm_head" in n.lower():
+                return {"group_size": 64, "bits": 2, "mode": "affine"}
+            return False
+        if spec == "mixed-q2q3-experts":
+            organ = organ_of(n, moe=moe)
+            if organ in protected_set:
+                return {"group_size": 32, "bits": 3, "mode": "affine"}
+            return {"group_size": 32, "bits": 2, "mode": "affine"}
         return False
 
     pred.spec = spec  # type: ignore[attr-defined]
+    pred.protected = list(protected or [])  # type: ignore[attr-defined]
     return pred
 
 
-def gravity_spec_note(spec: str) -> str:
-    return {
+def gravity_spec_note(spec: str, protected: list[str] | None = None) -> str:
+    notes = {
         "q3-g32-experts": (
             "MoE mix: experts→3-bit group32; attention/router/embed/lm_head→4-bit group64; "
             "norms full (no to_quantized / predicate False)"
@@ -1864,7 +1900,115 @@ def gravity_spec_note(spec: str) -> str:
         "q4-g64-attn-mlp": (
             "hybrid mix: attn+mlp (+embed/lm_head)→4-bit group64; SSM/conv/norm full"
         ),
-    }[spec]
+        "q2-g32-experts": (
+            "AGGRESSIVE MoE mix: experts→2-bit group32; attention/router/embed/lm_head→4-bit "
+            "group64; norms full. candidate_class=AGGRESSIVE_QUANT."
+        ),
+        "mixed-q2q3-experts": (
+            "STRUCTURAL sensitivity-driven mix: q2-g32 base, promote worst-sensitivity "
+            f"organs {protected or []} to q3-g32; norms full. candidate_class=STRUCTURAL_GRAVITY."
+        ),
+        "q2-g64": "AGGRESSIVE uniform 2-bit group64 (norms stay full). candidate_class=AGGRESSIVE_QUANT.",
+        "q2-g64-attn-mlp": (
+            "AGGRESSIVE hybrid mix: attn+mlp (+embed/lm_head)→2-bit group64; SSM/conv/norm full. "
+            "candidate_class=AGGRESSIVE_QUANT."
+        ),
+    }
+    if spec not in notes:
+        raise KeyError(f"unknown gravity spec {spec!r}")
+    return notes[spec]
+
+
+def gravity_convert_defaults(spec: str) -> tuple[int, int]:
+    meta = (load_odyssey_policy().get("gravity_specs") or {}).get(spec) or {}
+    group = int(meta.get("group_size") or (32 if "g32" in spec else 64))
+    bits = meta.get("nominal_bits")
+    if bits is None:
+        bits = 2 if spec.startswith("q2") or spec.startswith("mixed") else (3 if "q3" in spec else 4)
+    return group, int(bits)
+
+
+def load_per_organ_sensitivity(oxx: str, packet_path: Path | None = None) -> dict:
+    """Reuse the patient's representation.per_organ_sensitivity (packet, else receipt)."""
+    candidates = []
+    if packet_path is not None:
+        candidates.append(Path(packet_path))
+    candidates.append(ROOT / f"workspace/campaign/odyssey/patients/{oxx}/ODYSSEY_PATIENT_{oxx}.json")
+    for p in candidates:
+        if not p.is_file():
+            continue
+        try:
+            pkt = json.loads(p.read_text())
+        except (OSError, json.JSONDecodeError):
+            continue
+        pos = (pkt.get("representation") or {}).get("per_organ_sensitivity")
+        if isinstance(pos, dict) and pos:
+            return pos
+    rec_p = ROOT / f"receipts/odyssey-i/{oxx}_SENSITIVITY.json"
+    if rec_p.is_file():
+        try:
+            rec = json.loads(rec_p.read_text())
+        except (OSError, json.JSONDecodeError):
+            rec = {}
+        pos = rec.get("per_organ_sensitivity")
+        if isinstance(pos, dict) and pos:
+            return pos
+    return {}
+
+
+def measure_complete_accounting(model, dest: Path, params: int, *, moe: bool) -> dict:
+    """Complete bpw: payload+scales+biases+metadata+headers. No fake density."""
+    payload = scales = biases = metadata = 0
+    for path, val in tree_flatten(model.parameters()):
+        if not isinstance(val, mx.array):
+            continue
+        b = int(val.nbytes)
+        leaf = (path.rsplit(".", 1)[-1] if path else "").lower()
+        if leaf in {"scales", "scale"}:
+            scales += b
+        elif leaf in {"biases", "bias"}:
+            biases += b
+        elif leaf in {"table", "tables", "offsets", "offset", "lut", "g_idx"}:
+            metadata += b
+        else:
+            payload += b
+    live_total = payload + scales + biases + metadata
+    disk = measure_dir_tensor_bytes(dest)
+    tensor_bytes = int(disk.get("stored_bytes") or 0)
+    repr_bytes = 0
+    for p in dest.glob("*.safetensors"):
+        try:
+            repr_bytes += p.stat().st_size
+        except OSError:
+            continue
+    for extra in ("config.json", "model.safetensors.index.json"):
+        ep = dest / extra
+        if ep.is_file():
+            try:
+                repr_bytes += ep.stat().st_size
+            except OSError:
+                pass
+    header_bytes = max(0, repr_bytes - tensor_bytes) if repr_bytes else 0
+    complete_bytes = (tensor_bytes or live_total) + header_bytes
+    complete_bpw = (complete_bytes * 8 / params) if params else None
+    live_bpw = (live_total * 8 / params) if params else None
+    policy_acc = (load_odyssey_policy().get("accounting_gates") or {}).get("no_fake_density")
+    return {
+        "payload_bytes": int(payload),
+        "scales_bytes": int(scales),
+        "biases_bytes": int(biases),
+        "metadata_bytes": int(metadata),
+        "header_bytes": int(header_bytes),
+        "live_bytes": int(live_total),
+        "disk_tensor_bytes": int(tensor_bytes),
+        "complete_bytes": int(complete_bytes),
+        "complete_bpw": round(complete_bpw, 4) if complete_bpw is not None else None,
+        "live_bpw": round(live_bpw, 4) if live_bpw is not None else None,
+        "disk_tensors": disk,
+        "no_fake_density": policy_acc,
+        "_label": "MEASURED (live nbytes + safetensors headers)",
+        "_evidence": "MEASURED (complete_bpw = payload+scales+biases+metadata+headers)",
+    }
 
 
 def load_census(oxx: str, weights: Path | None = None) -> dict:
@@ -1984,11 +2128,26 @@ def active_bytes_from_organs(
     return int(round(active_b)), int(active_params or params or 0)
 
 
-def convert_gravity(hf_path: Path, dest: Path, spec: str) -> Path:
+def convert_gravity(hf_path: Path, dest: Path, spec: str,
+                    protected: list[str] | None = None) -> Path:
     """mlx_lm.convert with a per-module quant_predicate. Never touches hf_path."""
+    prot = list(protected or [])
+    mix_marker = dest / "odyssey_gravity_mix.json"
     if (dest / "config.json").exists() and any(dest.glob("*.safetensors")):
-        log(f"reusing gravity {spec} mlx at {dest}")
-        return dest
+        if spec != "mixed-q2q3-experts":
+            log(f"reusing gravity {spec} mlx at {dest}")
+            return dest
+        prev = None
+        if mix_marker.is_file():
+            try:
+                prev = json.loads(mix_marker.read_text()).get("protected")
+            except (OSError, json.JSONDecodeError):
+                prev = None
+        if prev == prot:
+            log(f"reusing gravity {spec} mlx at {dest} protected={prot}")
+            return dest
+        log(f"protected set changed ({prev} -> {prot}); reconverting {dest}")
+        subprocess.run(["rm", "-rf", str(dest)], check=True)
     if dest.exists():
         log(f"removing incomplete gravity dest {dest}")
         subprocess.run(["rm", "-rf", str(dest)], check=True)
@@ -1997,19 +2156,23 @@ def convert_gravity(hf_path: Path, dest: Path, spec: str) -> Path:
     if hf_model_type(hf_path) == "kimi_vl":
         ensure_tiktoken_local_read()
         ensure_kimi_vl_sanitize_patch()
+    if hf_model_type(hf_path) == "qwen3_vl_moe":
+        ensure_qwen3_vl_moe_patch()
     from mlx_lm.convert import convert as mlx_convert
 
+    q_group, q_bits = gravity_convert_defaults(spec)
     mlx_convert(
         hf_path=str(hf_path),
         mlx_path=str(dest),
         quantize=True,
-        q_bits=4,
-        q_group_size=64,
-        quant_predicate=gravity_quant_predicate(spec),
+        q_bits=q_bits,
+        q_group_size=q_group,
+        quant_predicate=gravity_quant_predicate(spec, protected=prot),
         trust_remote_code=True,
     )
     if not (dest / "config.json").exists() or not any(dest.glob("*.safetensors")):
         raise RuntimeError(f"gravity convert produced no weights at {dest}")
+    mix_marker.write_text(json.dumps({"spec": spec, "protected": prot}, indent=2) + "\n")
     return dest
 
 
@@ -2190,12 +2353,18 @@ def update_packet_gravity(packet_path: Path, receipt: dict) -> None:
     entry = {
         "spec": spec,
         "stored_bpw": receipt["stored_bpw"],
+        "complete_bpw": receipt.get("complete_bpw"),
+        "nominal_bits": receipt.get("nominal_bits"),
         "active_bpw": receipt["active_bpw"],
         "stored_bytes": receipt["stored_bytes"],
         "active_bytes_per_token": receipt["active_bytes_per_token"],
         "battery": receipt["battery"],
         "delta_hits": receipt["delta_hits"],
         "verdict": receipt["verdict"],
+        "candidate_class": receipt.get("candidate_class"),
+        "conventionality": receipt.get("conventionality"),
+        "protected_components": receipt.get("protected_components"),
+        "failure_localization": receipt.get("failure_localization"),
         "receipt": _rel_out(Path(receipt["out"])),
         "label": "SPECIMEN",
         "not_hawking_nx_win": True,
@@ -2217,6 +2386,10 @@ def update_packet_gravity(packet_path: Path, receipt: dict) -> None:
         tried.append(spec)
     g["tried_mechanisms"] = tried
     g["last"] = entry
+    if receipt.get("candidate_class"):
+        g["candidate_class"] = receipt["candidate_class"]
+    if receipt.get("conventionality"):
+        g["conventionality"] = receipt["conventionality"]
     if receipt["verdict"] == "CANDIDATE_PASS":
         g["wins"] = _upsert(g.get("wins"), entry)
         g["kills"] = [
@@ -2306,7 +2479,11 @@ def run_gravity_mode(
 ) -> int:
     spec = args.gravity
     census = load_census(args.oxx, weights)
-    dest = convert_gravity(weights, dest, spec)
+    pos = load_per_organ_sensitivity(args.oxx, packet_path)
+    protected = select_protected_components(spec, pos)
+    if spec == "q2-g64-attn-mlp":
+        protected = ["ssm", "norm"]
+    dest = convert_gravity(weights, dest, spec, protected=protected)
     n_src_after = len(list(weights.glob("model-*.safetensors")))
     if n_src_after < 1:
         n_src_after = len(list(weights.glob("*.safetensors")))
@@ -2316,6 +2493,8 @@ def run_gravity_mode(
     if hf_model_type(dest) == "kimi_vl" or hf_model_type(weights) == "kimi_vl":
         ensure_tiktoken_local_read()
         ensure_kimi_vl_sanitize_patch()
+    if hf_model_type(dest) == "qwen3_vl_moe" or hf_model_type(weights) == "qwen3_vl_moe":
+        ensure_qwen3_vl_moe_patch()
     log(f"loading gravity {spec} from {dest} ...")
     t_load = time.perf_counter()
     model, tok = load(str(dest), tokenizer_config={"trust_remote_code": True})
@@ -2364,16 +2543,28 @@ def run_gravity_mode(
         if baseline.get("refusals"):
             br, _ = parse_frac(baseline["refusals"])
             delta_refusals = int(doc["refusal_hits"] - br)
+    pass_min = gravity_pass_threshold()
     if delta_hits is None:
         verdict = "UNGRADED"
-    elif delta_hits >= -1:
+    elif delta_hits >= pass_min:
         verdict = "CANDIDATE_PASS"
     else:
         verdict = "DEGRADED"
 
+    tagged = classify_gravity_spec(spec)
+    failure_loc = localize_gravity_failure(delta_hits, pos, threshold=pass_min)
+    accounting = measure_complete_accounting(model, dest, params, moe=moe)
+    complete_bpw = accounting.get("complete_bpw")
+    if complete_bpw is None:
+        complete_bpw = round(stored_bpw, 4)
+    nominal_bits = tagged.get("nominal_bits")
+    if nominal_bits is None and spec.startswith("mixed"):
+        # sensitivity-driven mix: q2 base / q3 protected; report both.
+        nominal_bits = {"base": 2, "protected": 3, "protected_components": protected}
+
     machine = maybe_machine_note()
     fidelity = (
-        f"{gravity_spec_note(spec)}. Battery is SPECIMEN under this mlx mix — not "
+        f"{gravity_spec_note(spec, protected)}. Battery is SPECIMEN under this mlx mix — not "
         "bf16-canonical Doctor, not a Hawking NX win (§15). Canonical HF snapshot "
         "was not modified or deleted."
     )
@@ -2388,7 +2579,15 @@ def run_gravity_mode(
         "not_base_true_tps": True,
         "quant": quant_name,
         "quant_fidelity_caveat": fidelity,
-        "predicate": gravity_spec_note(spec),
+        "predicate": gravity_spec_note(spec, protected),
+        "candidate_class": tagged["candidate_class"],
+        "conventionality": tagged["conventionality"],
+        "conventionality_mechanism": tagged.get("mechanism"),
+        "nominal_bits": nominal_bits,
+        "complete_bpw": complete_bpw,
+        "accounting": accounting,
+        "protected_components": protected,
+        "failure_localization": failure_loc,
         "weights_canonical": str(weights),
         "weights_loaded": str(dest),
         "canonical_snapshot_intact": n_src_after or n_src,
@@ -2438,6 +2637,9 @@ def run_gravity_mode(
         "labels": {
             "stored_bytes": "MEASURED",
             "stored_bpw": "DERIVED (MEASURED bytes * 8 / census params)",
+            "complete_bpw": "MEASURED (payload+scales+biases+metadata+headers) * 8 / params",
+            "nominal_bits": "DERIVED (ODYSSEY_POLICY.gravity_specs)",
+            "candidate_class": "DERIVED (ODYSSEY_POLICY.gravity_specs; deterministic)",
             "active_bytes_per_token": (
                 "DERIVED (census active-param split × MEASURED organ bytes)"
             ),
@@ -2445,6 +2647,7 @@ def run_gravity_mode(
             "battery": "MEASURED",
             "delta_hits": "DERIVED (this MEASURED minus EXTERNAL MEASURED)",
             "verdict": "DERIVED",
+            "failure_localization": "DERIVED (rank organs by MEASURED sensitivity delta)",
         },
         "commit": git_head(),
         "python": sys.executable,
@@ -2469,10 +2672,18 @@ def run_gravity_mode(
         raise SystemExit("gravity receipt missing battery")
     if "delta_hits" not in receipt:
         raise SystemExit("gravity receipt missing delta_hits")
+    if receipt.get("complete_bpw") is None:
+        raise SystemExit("gravity receipt missing complete_bpw")
+    if not receipt.get("candidate_class"):
+        raise SystemExit("gravity receipt missing candidate_class")
+    if verdict == "DEGRADED" and not (receipt.get("failure_localization") or {}).get("most_likely_component"):
+        raise SystemExit("gravity DEGRADED receipt missing failure_localization organ")
     log(
         f"{args.oxx} gravity {spec} ok: stored_bpw={receipt['stored_bpw']} "
+        f"complete_bpw={receipt['complete_bpw']} nominal_bits={receipt['nominal_bits']} "
         f"active_bpw={receipt['active_bpw']} battery={receipt['battery']} "
-        f"delta_hits={receipt['delta_hits']} verdict={verdict} SPECIMEN"
+        f"delta_hits={receipt['delta_hits']} verdict={verdict} "
+        f"class={receipt['candidate_class']} SPECIMEN"
     )
     return 0
 
@@ -3728,8 +3939,9 @@ def main() -> int:
         default=None,
         choices=list(GRAVITY_SPECS),
         help=(
-            "Build one MODEST mlx candidate mix and grade the fast-Doctor battery. "
-            "q3-g32-experts / q4-g64 / q4-g64-attn-mlp. Not a sweep."
+            "Build one MODEST or AGGRESSIVE mlx candidate mix and grade the fast-Doctor "
+            "battery. q3-g32-experts / q4-g64 / q4-g64-attn-mlp / q2-g32-experts / "
+            "mixed-q2q3-experts / q2-g64 / q2-g64-attn-mlp. Not a sweep."
         ),
     )
     ap.add_argument(

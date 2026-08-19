@@ -2,7 +2,7 @@
 
 Patient O005 = `Qwen/Qwen3-30B-A3B` (moe; Qwen3MoeForCausalLM),
 on disk at `/Users/scammermike/.cache/huggingface/hub/models--Qwen--Qwen3-30B-A3B/snapshots/ad44e777bcd18fa416d9da3bd8f70d33ebb85d39`. Repo: `/Users/scammermike/Downloads/hawking`.
-One bounded Gravity candidate (steer S002). SPECIMEN-labelled mlx quant; this
+One bounded Gravity candidate (steer S004 anti-complacency). SPECIMEN-labelled mlx quant; this
 is NOT a Hawking NX win (§15).
 
 Experts → 3-bit group32; attention/router → 4-bit group64; norms full (`q3-g32-experts`).
@@ -21,16 +21,19 @@ Call worker_gate.observe()/gate() before load. Abort on REFUSE.
 The runner ALREADY has this mode — RUN it, do NOT modify tools/odyssey_patient_runner.py.
 Reuse tools/odyssey_patient_runner.py `--gravity q3-g32-experts`. One candidate, do not sweep.
 Reload the quantized model, run the SAME fast-Doctor battery + refusal controls.
-Measure stored_bytes, stored_bpw (bytes*8/params), active_bytes_per_token + active_bpw
+Measure stored_bytes, stored_bpw (bytes*8/params), complete_bpw (payload+scales+biases+
+metadata+headers), nominal_bits, active_bytes_per_token + active_bpw
 (census active-param split for MoE) and battery/refusal DELTA vs receipts/odyssey-i/O005_EXTERNAL.json.
-Write receipts/odyssey-i/O005_GRAVITY_q3-g32-experts.json (schema odyssey.patient.gravity.v1): spec, stored/active bpw, battery,
-delta_hits, doctor_seal, SPECIMEN + quant caveat, verdict CANDIDATE_PASS if
-delta_hits>=-1 else DEGRADED. Refresh workspace/campaign/odyssey/patients/O005/ODYSSEY_PATIENT_O005.json gravity.wins/kills.
+Write receipts/odyssey-i/O005_GRAVITY_q3-g32-experts.json (schema odyssey.patient.gravity.v1): spec, stored/active bpw, complete_bpw,
+nominal_bits, candidate_class, conventionality, battery, delta_hits, doctor_seal,
+SPECIMEN + quant caveat, verdict CANDIDATE_PASS if delta_hits>=-1 else DEGRADED
+(and failure_localization naming the responsible organ — do not globally retreat).
+Refresh workspace/campaign/odyssey/patients/O005/ODYSSEY_PATIENT_O005.json gravity.wins/kills + candidate_class/conventionality.
 Do not delete canonical weights.
 
 ## ACCEPTANCE
-- receipts/odyssey-i/O005_GRAVITY_q3-g32-experts.json exists with stored_bpw < 16, active_bpw, battery, delta vs baseline,
-  SPECIMEN label. Must pass, exit 0.
+- receipts/odyssey-i/O005_GRAVITY_q3-g32-experts.json exists with stored_bpw < 16, complete_bpw, nominal_bits, candidate_class,
+  active_bpw, battery, delta vs baseline, SPECIMEN label. Must pass, exit 0.
 - workspace/campaign/odyssey/patients/O005/ODYSSEY_PATIENT_O005.json still schema-valid.
 
 ## SCOPE

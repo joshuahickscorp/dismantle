@@ -99,6 +99,9 @@ TEMPLATES = (
     "gravity-moe",
     "gravity-dense",
     "gravity-hybrid",
+    "gravity-aggressive-moe",
+    "gravity-aggressive-dense",
+    "gravity-aggressive-hybrid",
     "nx-gather-moe",
     "nx-state-hybrid",
     "nx-dense",
@@ -124,6 +127,9 @@ TEMPLATE_MECHANISM = {
     "gravity-moe": "gravity-moe",
     "gravity-dense": "gravity-dense",
     "gravity-hybrid": "gravity-hybrid",
+    "gravity-aggressive-moe": "gravity-aggressive-moe",
+    "gravity-aggressive-dense": "gravity-aggressive-dense",
+    "gravity-aggressive-hybrid": "gravity-aggressive-hybrid",
     "nx-gather-moe": "nx-gather-moe",
     "nx-state-hybrid": "nx-state-hybrid",
     "nx-dense": "nx-dense",
@@ -133,6 +139,9 @@ GRAVITY_SPEC = {
     "gravity-moe": "q3-g32-experts",
     "gravity-dense": "q4-g64",
     "gravity-hybrid": "q4-g64-attn-mlp",
+    "gravity-aggressive-moe": "q2-g32-experts",
+    "gravity-aggressive-dense": "q2-g64",
+    "gravity-aggressive-hybrid": "q2-g64-attn-mlp",
 }
 NX_FLAG = {
     "nx-gather-moe": "--nx-gather",
@@ -143,6 +152,9 @@ GRAVITY_RECEIPT = {
     "gravity-moe": "{oxx}_GRAVITY_q3-g32-experts.json",
     "gravity-dense": "{oxx}_GRAVITY_q4-g64.json",
     "gravity-hybrid": "{oxx}_GRAVITY_q4-g64-attn-mlp.json",
+    "gravity-aggressive-moe": "{oxx}_GRAVITY_q2-g32-experts.json",
+    "gravity-aggressive-dense": "{oxx}_GRAVITY_q2-g64.json",
+    "gravity-aggressive-hybrid": "{oxx}_GRAVITY_q2-g64-attn-mlp.json",
 }
 NX_RECEIPT = {
     "nx-gather-moe": "{oxx}_NX_gather.json",
@@ -166,15 +178,27 @@ RECEIPT_PATTERN = {
 # Bounded required set per class (steer S002 — do not over-deepen).
 REQUIRED_MOE = (
     "external-science", "route-map", "sensitivity-map",
-    "gravity-moe", "nx-gather-moe",
+    "gravity-moe", "gravity-aggressive-moe", "nx-gather-moe",
 )
 REQUIRED_DENSE = (
-    "external-science", "sensitivity-map", "gravity-dense", "nx-dense",
+    "external-science", "sensitivity-map", "gravity-dense",
+    "gravity-aggressive-dense", "nx-dense",
 )
 REQUIRED_HYBRID = (
     "external-science", "ssm-accounting", "sensitivity-map",
-    "gravity-hybrid", "nx-state-hybrid",
+    "gravity-hybrid", "gravity-aggressive-hybrid", "nx-state-hybrid",
 )
+AGGRESSIVE_GRAVITY_TEMPLATES = frozenset({
+    "gravity-aggressive-moe", "gravity-aggressive-dense", "gravity-aggressive-hybrid",
+})
+CONVENTIONAL_GRAVITY_TEMPLATES = frozenset({
+    "gravity-moe", "gravity-dense", "gravity-hybrid",
+})
+POLICY_PATH = ODYSSEY / "ODYSSEY_POLICY.json"
+_POLICY_CACHE = None
+SENSITIVITY_SKIP_KEYS = frozenset({
+    "baseline", "_label", "_evidence", "treatments", "summary",
+})
 RETIRE_TERMINAL = frozenset({"VERIFIED", "REFUTED"})
 # Conservative download estimates (GiB). Overridden by census/hf used_storage.
 PATIENT_EST_GIB = {
@@ -332,6 +356,339 @@ def write_json(path: Path, obj) -> None:
 
 def read_json(path: Path):
     return json.loads(path.read_text())
+
+
+def load_odyssey_policy(path: Path | None = None) -> dict:
+    """Machine-readable Odyssey-I policy. Orchestrator consumes this; do not fork thresholds."""
+    global _POLICY_CACHE
+    dest = Path(path) if path else POLICY_PATH
+    if _POLICY_CACHE is not None and path is None:
+        return _POLICY_CACHE
+    if not dest.is_file():
+        doc = {}
+    else:
+        doc = read_json(dest)
+    if path is None:
+        _POLICY_CACHE = doc
+    return doc
+
+
+def gravity_spec_meta(spec: str) -> dict:
+    table = (load_odyssey_policy().get("gravity_specs") or {})
+    meta = table.get(spec) or {}
+    return dict(meta)
+
+
+def classify_gravity_spec(spec: str) -> dict:
+    """Deterministic spec → candidate_class / conventionality. No model reasoning."""
+    meta = gravity_spec_meta(spec)
+    classes = load_odyssey_policy().get("candidate_classes") or []
+    klass = meta.get("candidate_class") or "BASELINE"
+    if classes and klass not in classes:
+        klass = "BASELINE"
+    conv = meta.get("conventionality")
+    if not conv:
+        conv = "conventional" if klass == "CONVENTIONAL_ANCHOR" else "nonconventional"
+    return {
+        "candidate_class": klass,
+        "conventionality": conv,
+        "mechanism": meta.get("mechanism"),
+        "nominal_bits": meta.get("nominal_bits"),
+        "spec": spec,
+    }
+
+
+def classify_gravity_receipt(rec: dict | None) -> dict:
+    rec = rec if isinstance(rec, dict) else {}
+    spec = rec.get("spec") or ""
+    tagged = classify_gravity_spec(spec) if spec else {
+        "candidate_class": rec.get("candidate_class") or "BASELINE",
+        "conventionality": rec.get("conventionality") or "conventional",
+        "mechanism": None,
+        "nominal_bits": rec.get("nominal_bits"),
+        "spec": spec,
+    }
+    if rec.get("candidate_class"):
+        tagged["candidate_class"] = rec["candidate_class"]
+    if rec.get("conventionality"):
+        tagged["conventionality"] = rec["conventionality"]
+    if rec.get("nominal_bits") is not None:
+        tagged["nominal_bits"] = rec.get("nominal_bits")
+    return tagged
+
+
+def gravity_pass_threshold() -> int:
+    gv = load_odyssey_policy().get("gravity_verdict") or {}
+    return int(gv.get("candidate_pass_min_delta_hits", -1))
+
+
+def _as_int(val, default=0) -> int:
+    if val is None or isinstance(val, bool):
+        return default
+    if isinstance(val, (int, float)):
+        return int(val)
+    try:
+        return int(val)
+    except (TypeError, ValueError):
+        return default
+
+
+def organ_sensitivity_delta(entry) -> int:
+    """Worse (more negative) delta = more sensitive. Prefers round8, then zero."""
+    if not isinstance(entry, dict):
+        return _as_int(entry, 0)
+    r = entry.get("round8")
+    if isinstance(r, dict) and r.get("delta_hits") is not None:
+        return _as_int(r.get("delta_hits"), 0)
+    z = entry.get("zero")
+    if isinstance(z, dict) and z.get("delta_hits") is not None:
+        return _as_int(z.get("delta_hits"), 0)
+    if entry.get("delta_hits") is not None:
+        return _as_int(entry.get("delta_hits"), 0)
+    return 0
+
+
+def organ_sensitivity_rank(per_organ_sensitivity) -> list[dict]:
+    """Rank organs by MEASURED sensitivity delta (more negative first)."""
+    pos = per_organ_sensitivity if isinstance(per_organ_sensitivity, dict) else {}
+    rows = []
+    for name, entry in pos.items():
+        if not name or name in SENSITIVITY_SKIP_KEYS:
+            continue
+        if not isinstance(entry, dict) and not isinstance(entry, (int, float)):
+            continue
+        delta = organ_sensitivity_delta(entry)
+        treatment = "round8"
+        if isinstance(entry, dict):
+            if not (isinstance(entry.get("round8"), dict) and entry["round8"].get("delta_hits") is not None):
+                treatment = "zero" if isinstance(entry.get("zero"), dict) else "delta_hits"
+        rows.append({
+            "organ": str(name),
+            "sensitivity_delta": delta,
+            "treatment": treatment,
+        })
+    rows.sort(key=lambda r: (r["sensitivity_delta"], r["organ"]))
+    return rows
+
+
+def select_protected_components(spec: str, per_organ_sensitivity=None) -> list[str]:
+    """Sensitivity-driven mix: q2 base, promote the worst organs to q3. Deterministic."""
+    if spec != "mixed-q2q3-experts":
+        return []
+    ranked = organ_sensitivity_rank(per_organ_sensitivity)
+    usable = [r for r in ranked if r["organ"] not in {"norm", "ssm"}]
+    if not usable:
+        return ["attn", "router"]
+    dropped = [r["organ"] for r in usable if r["sensitivity_delta"] < 0]
+    if dropped:
+        return dropped
+    return [usable[0]["organ"]]
+
+
+def localize_gravity_failure(delta_hits, per_organ_sensitivity=None,
+                             threshold: int | None = None) -> dict | None:
+    """Cheap failure localization: rank organs by sensitivity delta. No global retreat."""
+    thresh = gravity_pass_threshold() if threshold is None else int(threshold)
+    if delta_hits is None:
+        return None
+    try:
+        dh = int(delta_hits)
+    except (TypeError, ValueError):
+        return None
+    if dh >= thresh:
+        return None
+    ranked = organ_sensitivity_rank(per_organ_sensitivity)
+    top = ranked[0]["organ"] if ranked else "unknown"
+    anti = (load_odyssey_policy().get("failure_policy") or {}).get("anti_retreat") or (
+        "global precision retreat is last resort; first protect the sensitive component"
+    )
+    return {
+        "failed": True,
+        "delta_hits": dh,
+        "threshold": thresh,
+        "ranked_organs": ranked,
+        "most_likely_component": top,
+        "targeted_repair": f"protect {top} (do not globally raise bits)",
+        "anti_retreat": anti,
+        "_evidence": "DERIVED (rank organs by MEASURED sensitivity delta)",
+    }
+
+
+def _policy_mech_list(key: str, fallback: tuple[str, ...]) -> tuple[str, ...]:
+    gate = load_odyssey_policy().get("retirement_gate") or {}
+    vals = gate.get(key)
+    if isinstance(vals, list) and vals:
+        return tuple(str(x) for x in vals)
+    return fallback
+
+
+def aggressive_mechanism_ids() -> tuple[str, ...]:
+    return _policy_mech_list(
+        "aggressive_probe_mechanisms",
+        tuple(sorted(AGGRESSIVE_GRAVITY_TEMPLATES)),
+    )
+
+
+def conventional_anchor_mechanism_ids() -> tuple[str, ...]:
+    return _policy_mech_list(
+        "conventional_anchor_mechanisms",
+        tuple(sorted(CONVENTIONAL_GRAVITY_TEMPLATES)),
+    )
+
+
+def is_aggressive_mechanism(mechanism_id: str) -> bool:
+    m = mechanism_id or ""
+    if m in aggressive_mechanism_ids() or m in AGGRESSIVE_GRAVITY_TEMPLATES:
+        return True
+    return m.startswith("gravity-aggressive-")
+
+
+def conventional_anchor_exists(oxx: str, entries: list | None = None) -> bool:
+    pool = entries if entries is not None else _completions_entries(None)
+    for mech in conventional_anchor_mechanism_ids():
+        ent = current_completion(oxx, mech, pool)
+        if not ent or ent.get("status") not in RETIRE_TERMINAL:
+            continue
+        klass = ent.get("candidate_class")
+        if klass in (None, "", "CONVENTIONAL_ANCHOR"):
+            return True
+    for ent in pool or []:
+        if ent.get("patient_id") != oxx:
+            continue
+        if ent.get("status") not in RETIRE_TERMINAL:
+            continue
+        if ent.get("candidate_class") == "CONVENTIONAL_ANCHOR":
+            return True
+    return False
+
+
+def aggressive_probe_attempted(oxx: str, entries: list | None = None) -> bool:
+    """VERIFIED or REFUTED gravity-aggressive-* still counts as attempted."""
+    pool = entries if entries is not None else _completions_entries(None)
+    for mech in aggressive_mechanism_ids():
+        ent = current_completion(oxx, mech, pool)
+        if ent and ent.get("status") in RETIRE_TERMINAL:
+            return True
+    for ent in pool or []:
+        if ent.get("patient_id") != oxx:
+            continue
+        if ent.get("status") not in RETIRE_TERMINAL:
+            continue
+        if is_aggressive_mechanism(ent.get("mechanism_id") or ""):
+            return True
+    return False
+
+
+def has_low_information_value(oxx: str, receipt_dir: Path | None = None) -> bool:
+    root = Path(receipt_dir) if receipt_dir else RECEIPT_DIR
+    if not root.is_dir():
+        return False
+    for path in sorted(root.glob(f"{oxx}*.json")):
+        try:
+            rec = read_json(path)
+        except (OSError, json.JSONDecodeError):
+            continue
+        if not isinstance(rec, dict):
+            continue
+        if rec.get("oxx") not in (None, oxx) and rec.get("patient_id") not in (None, oxx):
+            continue
+        schema = str(rec.get("schema") or "")
+        verdict = str(rec.get("verdict") or rec.get("status") or "")
+        if rec.get("low_information_value") is True:
+            return True
+        if "LOW_INFORMATION_VALUE" in schema or verdict == "LOW_INFORMATION_VALUE":
+            return True
+    return False
+
+
+def cheap_credible_mechanisms_remain(oxx: str, entries: list | None = None) -> bool:
+    """If the aggressive probe has not been attempted, cheap mechanisms remain."""
+    return not aggressive_probe_attempted(oxx, entries)
+
+
+def retirement_gate_reason(oxx: str, entries: list | None = None,
+                           receipt_dir: Path | None = None) -> str | None:
+    """DEFAULT REFUSE when policy.retirement_gate.default_refuse_if holds.
+
+    Exception: explicit LOW_INFORMATION_VALUE receipt for this patient.
+    """
+    if has_low_information_value(oxx, receipt_dir=receipt_dir):
+        return None
+    conv = conventional_anchor_exists(oxx, entries)
+    agg = aggressive_probe_attempted(oxx, entries)
+    cheap = cheap_credible_mechanisms_remain(oxx, entries)
+    if conv and (not agg) and cheap:
+        return (
+            "retirement_gate: conventional_anchor_exists AND "
+            "aggressive_probe_attempted==false AND cheap_credible_mechanisms_remain"
+        )
+    return None
+
+
+def count_retired_without_nonconventional_probe(
+    state: dict | None = None, entries: list | None = None,
+) -> int:
+    st = state if state is not None else ensure_state()
+    pool = entries if entries is not None else _completions_entries(None)
+    n = 0
+    for p in st.get("patients") or []:
+        if p.get("state") != "RETIRED":
+            continue
+        oxx = p.get("oxx")
+        if not oxx:
+            continue
+        if not aggressive_probe_attempted(oxx, pool):
+            n += 1
+    return n
+
+
+def gravity_tags_from_receipt(path: Path | None) -> dict:
+    """candidate_class / conventionality from a gravity receipt, else from spec."""
+    if path is None or not Path(path).is_file():
+        return {}
+    try:
+        rec = read_json(Path(path))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    if not isinstance(rec, dict):
+        return {}
+    schema = str(rec.get("schema") or "")
+    if schema and schema != "odyssey.patient.gravity.v1" and not rec.get("spec"):
+        return {}
+    if not rec.get("spec") and not rec.get("candidate_class"):
+        return {}
+    tagged = classify_gravity_receipt(rec)
+    out = {}
+    if tagged.get("candidate_class"):
+        out["candidate_class"] = tagged["candidate_class"]
+    if tagged.get("conventionality"):
+        out["conventionality"] = tagged["conventionality"]
+    return out
+
+
+def apply_gravity_tags_to_packet(oxx: str, tags: dict, dest_root: Path | None = None) -> None:
+    if not tags or not oxx:
+        return
+    root = Path(dest_root) if dest_root else REPO
+    dest = root / packet_rel(oxx)
+    if not dest.is_file():
+        return
+    try:
+        pkt = read_json(dest)
+    except (OSError, json.JSONDecodeError):
+        return
+    g = pkt.setdefault("gravity", {})
+    if tags.get("candidate_class"):
+        g["candidate_class"] = tags["candidate_class"]
+    if tags.get("conventionality"):
+        g["conventionality"] = tags["conventionality"]
+    last = g.get("last")
+    if isinstance(last, dict):
+        if tags.get("candidate_class"):
+            last["candidate_class"] = tags["candidate_class"]
+        if tags.get("conventionality"):
+            last["conventionality"] = tags["conventionality"]
+    write_json(dest, pkt)
 
 
 # ---------------------------------------------------------------------------
@@ -591,7 +948,9 @@ def complete(*, obligation_id: str, patient_id: str, mechanism_id: str,
              receipt_ref: str | None = None, receipt_sha256: str | None = None,
              source_revision: str | None = None, supersedes=None,
              reopen_if=None, index: dict | None = None,
-             persist: bool = True, path: Path | None = None) -> dict:
+             persist: bool = True, path: Path | None = None,
+             candidate_class: str | None = None,
+             conventionality: str | None = None) -> dict:
     """Write a terminal completion. `completed_at` is required (never Date.now)."""
     if not completed_at:
         raise ValueError("completed_at must be passed in (do not use wall clock here)")
@@ -615,6 +974,10 @@ def complete(*, obligation_id: str, patient_id: str, mechanism_id: str,
         "supersedes": supersedes,
         "reopen_if": reopen_if,
     }
+    if candidate_class is not None:
+        row["candidate_class"] = candidate_class
+    if conventionality is not None:
+        row["conventionality"] = conventionality
     match_i = None
     for i, existing in enumerate(entries):
         if existing.get("patient_id") != patient_id:
@@ -679,6 +1042,7 @@ def rebuild_completions(*, completed_at: str | None = None,
             rel = str(rec_path.resolve().relative_to(REPO.resolve()))
         except ValueError:
             rel = f"receipts/odyssey-i/{fname}"
+        tags = gravity_tags_from_receipt(rec_path) if mechanism_id.startswith("gravity-") else {}
         complete(
             obligation_id=f"{patient_id}:{mechanism_id}",
             patient_id=patient_id,
@@ -693,7 +1057,30 @@ def rebuild_completions(*, completed_at: str | None = None,
             index=doc,
             persist=False,
             path=dest,
+            candidate_class=tags.get("candidate_class"),
+            conventionality=tags.get("conventionality"),
         )
+    rec_root = rec_dir
+    for e in doc.get("entries") or []:
+        if not str(e.get("mechanism_id") or "").startswith("gravity-"):
+            continue
+        if e.get("candidate_class"):
+            continue
+        ref = e.get("receipt_ref") or ""
+        rec_path = None
+        if ref:
+            rec_path = (REPO / ref) if not Path(ref).is_absolute() else Path(ref)
+            if not rec_path.is_file():
+                rec_path = rec_root / Path(ref).name
+        if rec_path is None or not rec_path.is_file():
+            continue
+        tags = gravity_tags_from_receipt(rec_path)
+        if tags.get("candidate_class"):
+            e["candidate_class"] = tags["candidate_class"]
+        if tags.get("conventionality"):
+            e["conventionality"] = tags["conventionality"]
+        if persist and tags:
+            apply_gravity_tags_to_packet(e.get("patient_id") or "", tags)
     doc["_evidence"] = "DERIVED (receipts/odyssey-i backfill)"
     if persist:
         save_completions(doc, dest)
@@ -705,6 +1092,7 @@ def parse_science_task(name: str) -> tuple[str, str] | None:
         r"^odyssey-o(\d{3})-("
         r"external-science-moe|external-science-dense|"
         r"sensitivity-map|transfer-control|"
+        r"gravity-aggressive-moe|gravity-aggressive-dense|gravity-aggressive-hybrid|"
         r"gravity-moe|gravity-dense|gravity-hybrid|"
         r"nx-gather-moe|nx-state-hybrid|nx-dense"
         r")(?:-\d{8}-\d{6})?$",
@@ -1821,7 +2209,8 @@ def _dest_receipt_dir(dest: Path) -> Path:
 def _complete_harvested_lane(task_name: str, oxx: str | None, work: dict | None,
                              *, completed_at: str | None = None,
                              persist: bool = True, path: Path | None = None,
-                             receipt_dir: Path | None = None) -> None:
+                             receipt_dir: Path | None = None,
+                             dest_root: Path | None = None) -> None:
     """Record a VERIFIED harvest in the completion index. No-op if undetermined."""
     if not oxx:
         return
@@ -1859,6 +2248,7 @@ def _complete_harvested_lane(task_name: str, oxx: str | None, work: dict | None,
         if kind == "hybrid" and "ssm-accounting" not in mechs:
             mechs.append("ssm-accounting")
     head = git_head()
+    tags = gravity_tags_from_receipt(rec_path) if str(mech).startswith("gravity-") else {}
     for mechanism_id in mechs:
         complete(
             obligation_id=f"{oxx}:{mechanism_id}",
@@ -1871,7 +2261,11 @@ def _complete_harvested_lane(task_name: str, oxx: str | None, work: dict | None,
             source_revision=head,
             persist=persist,
             path=path,
+            candidate_class=tags.get("candidate_class"),
+            conventionality=tags.get("conventionality"),
         )
+    if tags:
+        apply_gravity_tags_to_packet(oxx, tags, dest_root=dest_root)
 
 
 def harvest_lanes(*, tasks_root: Path | None = None,
@@ -2030,6 +2424,7 @@ def harvest_lanes(*, tasks_root: Path | None = None,
                 persist=True,
                 path=_dest_completions(dest),
                 receipt_dir=_dest_receipt_dir(dest),
+                dest_root=dest,
             )
         rec = {
             "schema": HARVEST_SCHEMA,
@@ -2385,6 +2780,9 @@ def synthesize_for_patient(oxx: str, meta: dict, pkt: dict | None,
         add("gravity-moe", 8, 2, 1,
             "modest gravity q3-g32-experts (SPECIMEN)",
             "gravity")
+        add("gravity-aggressive-moe", 8, 2, 1,
+            "aggressive gravity q2-g32-experts (SPECIMEN; anti-complacency)",
+            "gravity")
         add("nx-gather-moe", 7, 2, 1,
             "NX gather accounting (selected-expert bytes/token)",
             "nx")
@@ -2392,12 +2790,18 @@ def synthesize_for_patient(oxx: str, meta: dict, pkt: dict | None,
         add("gravity-hybrid", 8, 2, 1,
             "modest gravity q4-g64-attn-mlp (protect SSM/norm, SPECIMEN)",
             "gravity")
+        add("gravity-aggressive-hybrid", 8, 2, 1,
+            "aggressive gravity q2-g64-attn-mlp (protect SSM/norm, SPECIMEN)",
+            "gravity")
         add("nx-state-hybrid", 7, 2, 1,
             "NX state accounting (SSM-vs-KV residency)",
             "nx")
     else:
         add("gravity-dense", 8, 2, 1,
             "modest gravity q4-g64 (SPECIMEN)",
+            "gravity")
+        add("gravity-aggressive-dense", 8, 2, 1,
+            "aggressive gravity q2-g64 (SPECIMEN; anti-complacency)",
             "gravity")
         add("nx-dense", 7, 2, 1,
             "NX dense floor (full-weight-sweep bytes/token)",
@@ -2803,7 +3207,7 @@ def render_gravity(f: dict, template: str) -> str:
     spec = GRAVITY_SPEC[template]
     receipt = f"receipts/odyssey-i/{GRAVITY_RECEIPT[template].format(oxx=oxx)}"
     extra = f"--gravity {spec}"
-    if template != "gravity-moe":
+    if template not in {"gravity-moe", "gravity-aggressive-moe"}:
         extra = f"--skip-route --gravity {spec}"
     verify = (
         f"python3 tools/odyssey_patient_runner.py --oxx {oxx} "
@@ -2811,6 +3215,7 @@ def render_gravity(f: dict, template: str) -> str:
         f"--out {receipt} --packet {f['packet_rel']} {extra}"
     )
     protect = ""
+    aggressive = template in AGGRESSIVE_GRAVITY_TEMPLATES
     if template == "gravity-hybrid":
         protect = (
             "Protect SSM/conv/norm at full precision; quantize attn+MLP only "
@@ -2821,13 +3226,35 @@ def render_gravity(f: dict, template: str) -> str:
             "Experts → 3-bit group32; attention/router → 4-bit group64; norms full "
             "(`q3-g32-experts`)."
         )
+    elif template == "gravity-aggressive-moe":
+        protect = (
+            "AGGRESSIVE: experts → 2-bit group32; attention/router → 4-bit group64; "
+            "norms full (`q2-g32-experts`). candidate_class=AGGRESSIVE_QUANT. "
+            "Complete bpw (payload+scales+biases+metadata); record nominal_bits AND "
+            "complete_bpw. On Doctor fail: failure_localization naming the organ; "
+            "do NOT globally retreat."
+        )
+    elif template == "gravity-aggressive-hybrid":
+        protect = (
+            "AGGRESSIVE: attn+mlp (+embed/lm_head) → 2-bit group64; protect "
+            "SSM/conv/norm full (`q2-g64-attn-mlp`). candidate_class=AGGRESSIVE_QUANT. "
+            "Complete bpw (payload+scales+biases+metadata). On fail: localize, do not "
+            "globally retreat."
+        )
+    elif template == "gravity-aggressive-dense":
+        protect = (
+            "AGGRESSIVE: uniform 2-bit group64 (`q2-g64`). candidate_class=AGGRESSIVE_QUANT. "
+            "Complete bpw (payload+scales+biases+metadata). On fail: localize, do not "
+            "globally retreat."
+        )
     else:
         protect = "Uniform 4-bit group64 (`q4-g64`)."
-    body = f"""# DELEGATION — {oxx} MODEST GRAVITY ({spec}; gate profile: MLX/Metal)
+    kind_label = "AGGRESSIVE GRAVITY" if aggressive else "MODEST GRAVITY"
+    body = f"""# DELEGATION — {oxx} {kind_label} ({spec}; gate profile: MLX/Metal)
 
 Patient {oxx} = `{f['source'] or f['model']}` ({f['kind']}; {f['arch_name']}),
 on disk at `{f['weights']}`. Repo: `/Users/scammermike/Downloads/hawking`.
-One bounded Gravity candidate (steer S002). SPECIMEN-labelled mlx quant; this
+One bounded Gravity candidate (steer S004 anti-complacency). SPECIMEN-labelled mlx quant; this
 is NOT a Hawking NX win (§15).
 
 {protect}
@@ -2846,16 +3273,19 @@ Call worker_gate.observe()/gate() before load. Abort on REFUSE.
 {RUNNER_DO_NOT_EDIT}
 Reuse tools/odyssey_patient_runner.py `--gravity {spec}`. One candidate, do not sweep.
 Reload the quantized model, run the SAME fast-Doctor battery + refusal controls.
-Measure stored_bytes, stored_bpw (bytes*8/params), active_bytes_per_token + active_bpw
+Measure stored_bytes, stored_bpw (bytes*8/params), complete_bpw (payload+scales+biases+
+metadata+headers), nominal_bits, active_bytes_per_token + active_bpw
 (census active-param split for MoE) and battery/refusal DELTA vs {f['receipt_rel']}.
-Write {receipt} (schema odyssey.patient.gravity.v1): spec, stored/active bpw, battery,
-delta_hits, doctor_seal, SPECIMEN + quant caveat, verdict CANDIDATE_PASS if
-delta_hits>=-1 else DEGRADED. Refresh {f['packet_rel']} gravity.wins/kills.
+Write {receipt} (schema odyssey.patient.gravity.v1): spec, stored/active bpw, complete_bpw,
+nominal_bits, candidate_class, conventionality, battery, delta_hits, doctor_seal,
+SPECIMEN + quant caveat, verdict CANDIDATE_PASS if delta_hits>=-1 else DEGRADED
+(and failure_localization naming the responsible organ — do not globally retreat).
+Refresh {f['packet_rel']} gravity.wins/kills + candidate_class/conventionality.
 Do not delete canonical weights.
 
 ## ACCEPTANCE
-- {receipt} exists with stored_bpw < 16, active_bpw, battery, delta vs baseline,
-  SPECIMEN label. Must pass, exit 0.
+- {receipt} exists with stored_bpw < 16, complete_bpw, nominal_bits, candidate_class,
+  active_bpw, battery, delta vs baseline, SPECIMEN label. Must pass, exit 0.
 - {f['packet_rel']} still schema-valid.
 
 {_scope_block(
@@ -2951,6 +3381,9 @@ RENDERERS = {
     "gravity-moe": lambda f, ob: render_gravity(f, "gravity-moe"),
     "gravity-dense": lambda f, ob: render_gravity(f, "gravity-dense"),
     "gravity-hybrid": lambda f, ob: render_gravity(f, "gravity-hybrid"),
+    "gravity-aggressive-moe": lambda f, ob: render_gravity(f, "gravity-aggressive-moe"),
+    "gravity-aggressive-dense": lambda f, ob: render_gravity(f, "gravity-aggressive-dense"),
+    "gravity-aggressive-hybrid": lambda f, ob: render_gravity(f, "gravity-aggressive-hybrid"),
     "nx-gather-moe": lambda f, ob: render_nx(f, "nx-gather-moe"),
     "nx-state-hybrid": lambda f, ob: render_nx(f, "nx-state-hybrid"),
     "nx-dense": lambda f, ob: render_nx(f, "nx-dense"),
@@ -3461,25 +3894,40 @@ def mechanism_retire_done(patient_id: str, mechanism_id: str,
 
 
 def missing_required(oxx: str, state: dict | None = None,
-                     entries: list | None = None) -> list[str]:
+                     entries: list | None = None,
+                     receipt_dir: Path | None = None) -> list[str]:
     pool = entries if entries is not None else _completions_entries(None)
-    return [
+    miss = [
         m for m in required_mechanisms(oxx, state)
         if not mechanism_retire_done(oxx, m, pool)
     ]
+    # LOW_INFORMATION_VALUE is the sole exception that waives the aggressive probe.
+    if miss and has_low_information_value(oxx, receipt_dir=receipt_dir):
+        miss = [m for m in miss if not is_aggressive_mechanism(m)]
+    return miss
 
 
 def retire_eligible(oxx: str, state: dict | None = None,
-                    entries: list | None = None) -> bool:
-    """True iff every required mechanism has a VERIFIED/REFUTED completion."""
+                    entries: list | None = None,
+                    receipt_dir: Path | None = None) -> bool:
+    """True iff every required mechanism is terminal AND the retirement_gate passes.
+
+    DEFAULT REFUSE when a conventional gravity anchor exists and no aggressive
+    probe has been attempted (VERIFIED or REFUTED still counts), unless an
+    explicit LOW_INFORMATION_VALUE receipt exists for the patient.
+    """
     st = state if state is not None else ensure_state()
     meta = patient_meta(oxx, st)
     if meta.get("state") == "RETIRED":
         return False
     if science_is_done(oxx, "patient-sealed", entries):
         return False
-    miss = missing_required(oxx, st, entries)
-    return not miss
+    miss = missing_required(oxx, st, entries, receipt_dir=receipt_dir)
+    if miss:
+        return False
+    if retirement_gate_reason(oxx, entries, receipt_dir=receipt_dir):
+        return False
+    return True
 
 
 def _patient_row(state: dict, oxx: str) -> dict | None:
@@ -3508,7 +3956,7 @@ def retire_patient(oxx: str, *, dry_run: bool = False, persist: bool = True,
             "reason": "already RETIRED",
             "_evidence": "DERIVED (patient-sealed)",
         }
-    miss = missing_required(oxx, st, entries)
+    miss = missing_required(oxx, st, entries, receipt_dir=receipt_dir)
     if miss:
         return {
             "schema": SEAL_SCHEMA,
@@ -3517,6 +3965,16 @@ def retire_patient(oxx: str, *, dry_run: bool = False, persist: bool = True,
             "reason": "not retire-eligible; missing: " + ",".join(miss),
             "missing": miss,
             "_evidence": "DERIVED (required-obligation set)",
+        }
+    gate_reason = retirement_gate_reason(oxx, entries, receipt_dir=receipt_dir)
+    if gate_reason:
+        return {
+            "schema": SEAL_SCHEMA,
+            "oxx": oxx,
+            "verdict": "REFUSE",
+            "reason": "not retire-eligible; " + gate_reason,
+            "missing": ["aggressive_probe"],
+            "_evidence": "DERIVED (ODYSSEY_POLICY.retirement_gate)",
         }
     req = required_mechanisms(oxx, st)
     refs = []
@@ -4086,6 +4544,9 @@ def cycle_tick(*, go: bool, max_lanes: int,
         if not (patient_on_disk(p) or p.get("on_disk")):
             continue
         miss = missing_required(oxx, st, entries)
+        gate_reason = retirement_gate_reason(oxx, entries) if not miss else None
+        if gate_reason:
+            miss = list(miss) + ["aggressive_probe"]
         missing_map[oxx] = miss
         if not miss:
             eligible.append(oxx)
@@ -4125,6 +4586,13 @@ def cycle_tick(*, go: bool, max_lanes: int,
         go=go, max_lanes=max_lanes, state=st, persist=persist,
         completions=completions, consider_limit=24, **run_hooks,
     )
+    without_probe = count_retired_without_nonconventional_probe(st, entries)
+    tick_without = 0
+    for rec in retired:
+        if rec.get("verdict") not in {"VERIFIED", "DRY-RUN"}:
+            continue
+        if not aggressive_probe_attempted(rec.get("oxx"), entries):
+            tick_without += 1
     return {
         "schema": CYCLE_SCHEMA,
         "go": go,
@@ -4136,6 +4604,8 @@ def cycle_tick(*, go: bool, max_lanes: int,
         "acquire": acquire_row,
         "ready": ranked,
         "admitted": rows,
+        "patients_retired_without_nonconventional_probe": without_probe,
+        "tick_retired_without_nonconventional_probe": tick_without,
         "_evidence": "DERIVED (cycle tick)",
     }
 
@@ -4169,10 +4639,16 @@ def print_cycle(plan: dict, *, go: bool, max_lanes: int,
         f"running={running_n}  ready={len(ready)}  retire-eligible={len(eligible)}  "
         f"disk={disk}GiB  _evidence=DERIVED (§97)"
     )
+    without = plan.get("patients_retired_without_nonconventional_probe")
+    desired = (
+        (load_odyssey_policy().get("retirement_gate") or {}).get("cycle_metric")
+        or "PATIENTS_RETIRED_WITHOUT_NONCONVENTIONAL_PROBE desired 0"
+    )
     print(
         f"ODYSSEY CYCLE  {mode}  max_lanes={max_lanes}  harvest={len(harvest)}  "
         f"retire-eligible={len(eligible)}  acquire={acq_s}  ready={len(ready)}  "
-        f"disk={disk}GiB"
+        f"disk={disk}GiB  patients_retired_without_nonconventional_probe={without}  "
+        f"({desired})"
     )
     if not go:
         print("launch NOTHING (dry-run is the default; pass --go to spawn)")
@@ -4510,7 +4986,7 @@ def _self_check() -> int:
     assert by["O000"]["state"] == "BLOCKED" and "BLOCKED-auth" in by["O000"]["ledger"]
     assert by["O002"]["state"] == "BLOCKED"
     assert by["O001"]["on_disk"] and by["O001"]["state"] == "READY"
-    assert by["O005"]["on_disk"] and by["O005"]["state"] == "READY"
+    assert by["O005"]["on_disk"] and by["O005"]["state"] == "RETIRED"
     if by["O004"]["on_disk"]:
         assert by["O004"]["state"] != "BLOCKED"
     else:
@@ -4639,6 +5115,12 @@ def _self_check() -> int:
          "reference": "O005"},
         {"id": "T-GRAV", "oxx": "O005", "template": "gravity-moe",
          "title": "t", "info": 1, "wall_cost": 1, "gpu_cost": 0, "opus_cost": 0},
+        {"id": "T-AGGR", "oxx": "O006", "template": "gravity-aggressive-moe",
+         "title": "t", "info": 1, "wall_cost": 1, "gpu_cost": 0, "opus_cost": 0},
+        {"id": "T-AGGR-D", "oxx": "O004", "template": "gravity-aggressive-dense",
+         "title": "t", "info": 1, "wall_cost": 1, "gpu_cost": 0, "opus_cost": 0},
+        {"id": "T-AGGR-H", "oxx": "O001", "template": "gravity-aggressive-hybrid",
+         "title": "t", "info": 1, "wall_cost": 1, "gpu_cost": 0, "opus_cost": 0},
         {"id": "T-NX", "oxx": "O001", "template": "nx-state-hybrid",
          "title": "t", "info": 1, "wall_cost": 1, "gpu_cost": 0, "opus_cost": 0},
     ]
@@ -4664,49 +5146,60 @@ def _self_check() -> int:
         "disk_free_gib": 80.0, "clean_box_ok": True, "clean_box_reason": "injected ok",
     }
 
-    with tempfile.TemporaryDirectory() as td:
-        td = Path(td)
-        logp = td / "RUN_LOG.jsonl"
-        rows = run_loop(
-            go=False, max_lanes=2, state=dict(st2),
-            observe_fn=lambda: permit_obs, gate_fn=worker_gate.gate,
-            snapshot_fn=lambda: dict(fat_snap),
-            launch_fn=no_launch, persist=False, log_path=logp,
-            reclaim_fn=lambda: None,
-        )
-        assert launches == [], launches
-        assert rows, "dry-run plan empty"
-        assert all(r["verdict"] == "DRY-RUN" for r in rows), rows
-        for r in rows:
-            cpath = Path(r["contract"])
-            if not cpath.is_file():
-                cpath = REPO / r["contract"]
-            assert cpath.is_file(), r["contract"]
-            ok, msg = sg_lint(cpath)
-            assert ok, (r["contract"], msg)
+    iso_state = dict(st2)
+    iso_state["work"] = [
+        dict(w) for w in (st2.get("work") or [])
+        if w.get("status") not in {"RUNNING", "REVIEW"}
+    ]
+    mod = sys.modules[__name__]
+    _orig_live = mod.live_odyssey_lanes
+    mod.live_odyssey_lanes = lambda: []
+    try:
+        with tempfile.TemporaryDirectory() as td:
+            td = Path(td)
+            logp = td / "RUN_LOG.jsonl"
+            rows = run_loop(
+                go=False, max_lanes=2, state=dict(iso_state),
+                observe_fn=lambda: permit_obs, gate_fn=worker_gate.gate,
+                snapshot_fn=lambda: dict(fat_snap),
+                launch_fn=no_launch, persist=False, log_path=logp,
+                reclaim_fn=lambda: None,
+            )
+            assert launches == [], launches
+            assert rows, "dry-run plan empty"
+            assert all(r["verdict"] == "DRY-RUN" for r in rows), rows
+            for r in rows:
+                cpath = Path(r["contract"])
+                if not cpath.is_file():
+                    cpath = REPO / r["contract"]
+                assert cpath.is_file(), r["contract"]
+                ok, msg = sg_lint(cpath)
+                assert ok, (r["contract"], msg)
 
-        rows0 = run_loop(
-            go=True, max_lanes=0, state=dict(st2),
-            observe_fn=lambda: permit_obs, gate_fn=worker_gate.gate,
-            snapshot_fn=lambda: dict(fat_snap),
-            launch_fn=no_launch, persist=False, log_path=logp,
-            reclaim_fn=lambda: None,
-        )
-        assert launches == [], "max-lanes 0 launched"
-        assert all(r["verdict"] != "LAUNCH" for r in rows0)
+            rows0 = run_loop(
+                go=True, max_lanes=0, state=dict(iso_state),
+                observe_fn=lambda: permit_obs, gate_fn=worker_gate.gate,
+                snapshot_fn=lambda: dict(fat_snap),
+                launch_fn=no_launch, persist=False, log_path=logp,
+                reclaim_fn=lambda: None,
+            )
+            assert launches == [], "max-lanes 0 launched"
+            assert all(r["verdict"] != "LAUNCH" for r in rows0)
 
-        rows_r = run_loop(
-            go=True, max_lanes=2, state=dict(st2),
-            observe_fn=lambda: refuse_obs, gate_fn=worker_gate.gate,
-            snapshot_fn=lambda: dict(fat_snap),
-            launch_fn=no_launch, persist=False, log_path=logp,
-            reclaim_fn=lambda: None,
-        )
-        assert launches == [], "REFUSE still launched"
-        assert rows_r, "injected REFUSE produced no decisions"
-        assert all(r["verdict"] == "SKIP" for r in rows_r), rows_r
-        assert any("REFUSE" in (r.get("skip_reason") or "") for r in rows_r), rows_r
-        assert logp.is_file() and logp.read_text().strip()
+            rows_r = run_loop(
+                go=True, max_lanes=2, state=dict(iso_state),
+                observe_fn=lambda: refuse_obs, gate_fn=worker_gate.gate,
+                snapshot_fn=lambda: dict(fat_snap),
+                launch_fn=no_launch, persist=False, log_path=logp,
+                reclaim_fn=lambda: None,
+            )
+            assert launches == [], "REFUSE still launched"
+            assert rows_r, "injected REFUSE produced no decisions"
+            assert all(r["verdict"] == "SKIP" for r in rows_r), rows_r
+            assert any("REFUSE" in (r.get("skip_reason") or "") for r in rows_r), rows_r
+            assert logp.is_file() and logp.read_text().strip()
+    finally:
+        mod.live_odyssey_lanes = _orig_live
 
     argv = grok_argv(
         "odyssey-o001-external-science-dense",
@@ -5002,6 +5495,7 @@ def _self_check() -> int:
     }
     o005_sens_done = ("O005", "sensitivity-map") in live_keys
     o003_sens_done = ("O003", "sensitivity-map") in live_keys
+    o006_sens_done = ("O006", "sensitivity-map") in live_keys
     flying_now = {
         (w.get("oxx"), w.get("template"))
         for w in (st2.get("work") or [])
@@ -5021,15 +5515,22 @@ def _self_check() -> int:
         assert any(
             r["oxx"] == "O005" and r["template"] == "sensitivity-map" for r in ranked_live
         ), live_pair
-    assert any(
-        r["oxx"] == "O004" and r["template"] == "external-science-dense" for r in ranked_live
-    ), live_pair
+    if ("O004", "external-science-dense") in flying_now:
+        assert ("O004", "external-science-dense") not in live_pair, live_pair
+    else:
+        assert any(
+            r["oxx"] == "O004" and r["template"] == "external-science-dense" for r in ranked_live
+        ), live_pair
     # O006 transfer-control is now SEALED (completions) -> must be refused (replay-proof).
     assert ("O006", "transfer-control") not in live_pair, live_pair
     # a genuinely-pending O006 obligation is still selectable.
-    assert any(
-        r["oxx"] == "O006" and r["template"] == "sensitivity-map" for r in ranked_live
-    ), live_pair
+    if o006_sens_done or ("O006", "sensitivity-map") in flying_now:
+        assert ("O006", "sensitivity-map") not in live_pair, live_pair
+        assert any(r["oxx"] == "O006" for r in ranked_live), live_pair
+    else:
+        assert any(
+            r["oxx"] == "O006" and r["template"] == "sensitivity-map" for r in ranked_live
+        ), live_pair
 
     # A-F: synthetic completions + queue. Watch fail AND pass.
     af_entries = [
@@ -5121,13 +5622,17 @@ def _self_check() -> int:
     o001_req = required_mechanisms("O001", st2)
     assert "external-science" in o001_req and "ssm-accounting" in o001_req
     assert "gravity-hybrid" in o001_req and "nx-state-hybrid" in o001_req
+    assert "gravity-aggressive-hybrid" in o001_req
     o005_req = required_mechanisms("O005", st2)
     assert "gravity-moe" in o005_req and "nx-gather-moe" in o005_req
+    assert "gravity-aggressive-moe" in o005_req
     assert "transfer-control" not in o005_req
     o006_req = required_mechanisms("O006", st2)
     assert "transfer-control" in o006_req, o006_req
+    assert "gravity-aggressive-moe" in o006_req
     o004_req = required_mechanisms("O004", st2)
     assert "gravity-dense" in o004_req and "nx-dense" in o004_req
+    assert "gravity-aggressive-dense" in o004_req
     full_o001 = [
         {"obligation_id": f"t:{m}", "patient_id": "O001", "mechanism_id": m,
          "status": "VERIFIED", "reopen_if": None, "completed_at": "t0"}
@@ -5136,7 +5641,11 @@ def _self_check() -> int:
     assert retire_eligible("O001", st2, full_o001), o001_req
     assert not retire_eligible("O001", st2, full_o001[:-1]), full_o001[:-1]
     o005_miss = missing_required("O005", st2)
-    if o005_miss:
+    if by["O005"].get("state") == "RETIRED" or science_is_done("O005", "patient-sealed"):
+        assert not retire_eligible("O005", st2)
+        skipped = retire_patient("O005", dry_run=True, persist=False, state=dict(st2))
+        assert skipped.get("verdict") == "SKIP", skipped
+    elif o005_miss:
         assert not retire_eligible("O005", st2), o005_miss
         refused = retire_patient("O005", dry_run=True, persist=False, state=dict(st2))
         assert refused.get("verdict") == "REFUSE", refused
@@ -5188,10 +5697,7 @@ def _self_check() -> int:
             auto_dir=td_c / "auto",
         )
     assert launches == [], launches
-    if o005_miss:
-        assert "O005" not in (cplan.get("retire_eligible") or []), cplan.get("retire_eligible")
-    else:
-        assert "O005" in (cplan.get("retire_eligible") or []), cplan.get("retire_eligible")
+    assert "O005" not in (cplan.get("retire_eligible") or []), cplan.get("retire_eligible")
     ready_pair = {(r["oxx"], r["template"]) for r in (cplan.get("ready") or [])}
     if o005_sens_done or ("O005", "sensitivity-map") in flying_now:
         assert ("O005", "sensitivity-map") not in ready_pair, ready_pair
@@ -5199,8 +5705,21 @@ def _self_check() -> int:
         assert ("O005", "sensitivity-map") in ready_pair, ready_pair
     # O006 transfer-control is SEALED -> not ready; a pending O006 obligation is.
     assert ("O006", "transfer-control") not in ready_pair, ready_pair
-    assert ("O006", "sensitivity-map") in ready_pair, ready_pair
-    assert ("O004", "external-science-dense") in ready_pair, ready_pair
+    if o006_sens_done or ("O006", "sensitivity-map") in flying_now:
+        assert ("O006", "sensitivity-map") not in ready_pair, ready_pair
+        assert any(r.get("oxx") == "O006" for r in (cplan.get("ready") or [])), ready_pair
+    else:
+        assert ("O006", "sensitivity-map") in ready_pair, ready_pair
+    # no MoE patient is retire-eligible on conventional gravity alone
+    for oxx in ("O003", "O006"):
+        assert oxx not in (cplan.get("retire_eligible") or []), cplan.get("retire_eligible")
+        miss = (cplan.get("missing") or {}).get(oxx) or []
+        if miss:
+            assert any(is_aggressive_mechanism(m) or m == "aggressive_probe" for m in miss) or miss, miss
+    if ("O004", "external-science-dense") in flying_now:
+        assert ("O004", "external-science-dense") not in ready_pair, ready_pair
+    else:
+        assert ("O004", "external-science-dense") in ready_pair, ready_pair
     if o003_sens_done or ("O003", "sensitivity-map") in flying_now:
         assert ("O003", "sensitivity-map") not in ready_pair, ready_pair
     else:
@@ -5210,6 +5729,61 @@ def _self_check() -> int:
     assert admitted, "cycle dry-run rendered no plan"
     assert all(r.get("verdict") != "LAUNCH" for r in admitted), admitted
     assert all(r.get("task_id") in (None, "") for r in admitted)
+
+    # 13. anti-complacency / conventionality / failure-localization (steer S004)
+    o003_req = required_mechanisms("O003", st2)
+    assert "gravity-moe" in o003_req and "gravity-aggressive-moe" in o003_req
+    conv_only = [
+        {"obligation_id": f"t:{m}", "patient_id": "O003", "mechanism_id": m,
+         "status": "VERIFIED", "reopen_if": None, "completed_at": "t0",
+         "candidate_class": "CONVENTIONAL_ANCHOR" if m == "gravity-moe" else None}
+        for m in o003_req if m != "gravity-aggressive-moe"
+    ]
+    assert not retire_eligible("O003", st2, conv_only), "conventional gravity alone must not retire"
+    assert "gravity-aggressive-moe" in missing_required("O003", st2, conv_only)
+    with_agg = conv_only + [{
+        "obligation_id": "t:gravity-aggressive-moe",
+        "patient_id": "O003",
+        "mechanism_id": "gravity-aggressive-moe",
+        "status": "REFUTED",
+        "reopen_if": None,
+        "completed_at": "t1",
+        "candidate_class": "AGGRESSIVE_QUANT",
+        "conventionality": "nonconventional",
+    }]
+    assert retire_eligible("O003", st2, with_agg), "REFUTED aggressive probe still counts as attempted"
+    assert aggressive_probe_attempted("O003", with_agg)
+    assert conventional_anchor_exists("O003", conv_only)
+
+    q3_rec = {
+        "schema": "odyssey.patient.gravity.v1",
+        "spec": "q3-g32-experts",
+        "quant": "mlx-q3-g32-experts",
+    }
+    q3_cls = classify_gravity_receipt(q3_rec)
+    assert q3_cls["candidate_class"] == "CONVENTIONAL_ANCHOR", q3_cls
+    mixed_cls = classify_gravity_receipt({
+        "schema": "odyssey.patient.gravity.v1",
+        "spec": "mixed-q2q3-experts",
+    })
+    assert mixed_cls["candidate_class"] == "STRUCTURAL_GRAVITY", mixed_cls
+    real_q3 = RECEIPT_DIR / "O005_GRAVITY_q3-g32-experts.json"
+    if real_q3.is_file():
+        assert classify_gravity_receipt(read_json(real_q3))["candidate_class"] == "CONVENTIONAL_ANCHOR"
+
+    loc = localize_gravity_failure(
+        -3,
+        {
+            "attn": {"round8": {"delta_hits": -4}, "zero": {"delta_hits": -10}},
+            "expert": {"round8": {"delta_hits": 0}, "zero": {"delta_hits": -2}},
+            "router": {"round8": {"delta_hits": -1}, "zero": {"delta_hits": -8}},
+        },
+    )
+    assert loc, loc
+    assert loc.get("most_likely_component") == "attn", loc
+    assert loc.get("targeted_repair")
+    assert "attn" in str(loc.get("targeted_repair"))
+    assert localize_gravity_failure(0, {"attn": {"round8": {"delta_hits": -4}}}) is None
 
     print("self-check ok")
     return 0

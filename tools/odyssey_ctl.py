@@ -4871,7 +4871,7 @@ def _running_scopes(state: dict, running_ids: set[str]) -> list[dict]:
     return scopes
 
 
-def run_loop(*, go: bool, max_lanes: int,
+def run_loop(*, go: bool, max_lanes: int, grok_lanes: int = 0,
              state: dict | None = None,
              observe_fn=None, gate_fn=None, snapshot_fn=None,
              launch_fn=None, lint_fn=None, reclaim_fn=None,
@@ -4879,7 +4879,13 @@ def run_loop(*, go: bool, max_lanes: int,
              persist: bool = True, consider_limit: int | None = None,
              completions=None, spawn_fn=None, now_epoch: float | None = None,
              pid_alive_fn=None, kill_fn=None) -> list[dict]:
-    """Select, render, gate; launch only when go=True. Idempotent. Never blocks."""
+    """Select, render, gate; launch only when go=True. Idempotent. Never blocks.
+
+    max_lanes = MODEL subprocess concurrency ceiling (memgate is the real
+    limiter under it). grok_lanes = grok/novelty ceiling, DEFAULT 0: the
+    autonomous odyssey loop runs deterministic model science only, no grok.
+    Grok novelty is opt-in scaffolding (grok_lanes>0), dispatched deliberately.
+    """
     st = state if state is not None else ensure_state()
     now = float(now_epoch) if now_epoch is not None else time.time()
     reap_lanes(
@@ -4926,11 +4932,12 @@ def run_loop(*, go: bool, max_lanes: int,
     # grok lanes were starving all six on-disk models behind cap=2.
     running_model_n = _running_model_lane_count(st, now, pid_alive_fn)
     running_grok_n = max(0, running_n - running_model_n)
-    grok_cap = cap
-    # max_lanes==0 is the operator's full-stop pause: it must halt model lanes
-    # too. Any positive max_lanes opens the model budget to HARD_LANE_CAP, with
-    # memgate (cumulative swap<SWAP_MAX) as the real limiter under it.
-    model_cap = 0 if cap == 0 else HARD_LANE_CAP
+    # max_lanes is the MODEL concurrency ceiling; memgate (cumulative
+    # swap<SWAP_MAX) is the real limiter under it. grok_lanes is the grok/novelty
+    # ceiling, default 0 so the autonomous loop spends no grok usage — grok
+    # novelty is deliberate scaffolding, not an every-tick reflex.
+    model_cap = cap
+    grok_cap = min(max(int(grok_lanes), 0), HARD_LANE_CAP)
     grok_launched = 0
     model_launched = 0
     grok_slots = 0 if not go else max(0, grok_cap - running_grok_n)
@@ -4939,10 +4946,16 @@ def run_loop(*, go: bool, max_lanes: int,
     for ob in ranked:
         if go and grok_launched >= grok_slots and model_launched >= model_slots:
             break
-        if not go and cap == 0 and model_cap == 0:
+        if not go and model_cap == 0 and grok_cap == 0:
             break
         if len(rows) >= limit:
             break
+
+        # grok disabled (grok_cap==0, the autonomous default): don't even
+        # consider grok/novelty obligations — they cannot launch and would only
+        # crowd the plan and the consider window ahead of real model science.
+        if grok_cap == 0 and not is_deterministic_obligation(ob):
+            continue
 
         already = None
         for w in st.get("work") or []:
@@ -5188,11 +5201,12 @@ def print_run_plan(rows: list[dict], *, go: bool, max_lanes: int,
         print(f"     _evidence={r.get('_evidence')}")
 
 
-def cmd_run(*, go: bool, max_lanes: int, **hooks) -> int:
+def cmd_run(*, go: bool, max_lanes: int, grok_lanes: int = 0, **hooks) -> int:
     st = hooks.pop("state", None) or ensure_state()
     snap = (hooks.get("snapshot_fn") or machine_snapshot)()
     hooks.setdefault("persist", go)
-    rows = run_loop(go=go, max_lanes=max_lanes, state=st, **hooks)
+    rows = run_loop(go=go, max_lanes=max_lanes, grok_lanes=grok_lanes,
+                    state=st, **hooks)
     running_n = len(odyssey_running_ids(st))
     print_run_plan(rows, go=go, max_lanes=max_lanes, snap=snap, running_n=running_n)
     if go:
@@ -5970,7 +5984,7 @@ def cmd_acquire_next(*, go: bool = False) -> int:
 # cycle — one unattended tick: reap → harvest → complete → retire → acquire → admit
 # ---------------------------------------------------------------------------
 
-def cycle_tick(*, go: bool, max_lanes: int,
+def cycle_tick(*, go: bool, max_lanes: int, grok_lanes: int = 0,
                state: dict | None = None, persist: bool = True,
                **hooks) -> dict:
     """One driver tick. Idempotent, event-safe, no model calls in the controller."""
@@ -6045,8 +6059,8 @@ def cycle_tick(*, go: bool, max_lanes: int,
     }
     run_hooks.setdefault("now_epoch", now)
     rows = run_loop(
-        go=go, max_lanes=max_lanes, state=st, persist=persist,
-        completions=completions, consider_limit=24, **run_hooks,
+        go=go, max_lanes=max_lanes, grok_lanes=grok_lanes, state=st,
+        persist=persist, completions=completions, consider_limit=24, **run_hooks,
     )
     without_probe = count_retired_without_nonconventional_probe(st, entries)
     tick_without = 0
@@ -6133,11 +6147,12 @@ def print_cycle(plan: dict, *, go: bool, max_lanes: int,
     )
 
 
-def cmd_cycle(*, go: bool, max_lanes: int, **hooks) -> int:
+def cmd_cycle(*, go: bool, max_lanes: int, grok_lanes: int = 0, **hooks) -> int:
     st = hooks.pop("state", None) or ensure_state()
     snap = (hooks.get("snapshot_fn") or machine_snapshot)()
     hooks.setdefault("persist", go)
-    plan = cycle_tick(go=go, max_lanes=max_lanes, state=st, **hooks)
+    plan = cycle_tick(go=go, max_lanes=max_lanes, grok_lanes=grok_lanes,
+                      state=st, **hooks)
     running_n = len(odyssey_running_ids(st))
     print_cycle(plan, go=go, max_lanes=max_lanes, snap=snap, running_n=running_n)
     return 0
@@ -6490,7 +6505,12 @@ def _self_check() -> int:
     by = {p["oxx"]: p for p in st2["patients"]}
     assert by["O000"]["state"] == "BLOCKED" and "BLOCKED-auth" in by["O000"]["ledger"]
     assert by["O002"]["state"] == "BLOCKED"
-    assert by["O001"]["on_disk"] and by["O001"]["state"] == "READY"
+    # O001 is a live on-disk patient; it advances READY -> RUNNING -> RETIRED as
+    # the autonomous loop works it (retired on a deterministic aggressive probe,
+    # no grok required). The invariant is on-disk and not blocked/errored.
+    assert by["O001"]["on_disk"] and by["O001"]["state"] in {
+        "READY", "RUNNING", "RETIRED",
+    }, by["O001"]["state"]
     assert by["O005"]["on_disk"] and by["O005"]["state"] == "RETIRED"
     if by["O004"]["on_disk"]:
         assert by["O004"]["state"] != "BLOCKED"
@@ -6702,21 +6722,36 @@ def _self_check() -> int:
             # lane launches — memgate/worker gate is the boundary. Grok/novelty
             # lanes load no model, so they are orthogonal to the memory gate and
             # may still launch; anything that launched here must be grok-kind.
+            # (Which model lanes are in the live frontier drifts as patients
+            # retire, so the frontier-independent proof is the direct
+            # launch_deterministic check below, not this one.)
             model_rows = [
                 r for r in rows_r
                 if _template_loads_model(r.get("template") or "", r)
             ]
             launched_rows = [r for r in rows_r if r["verdict"] == "LAUNCH"]
             assert rows_r, "injected REFUSE produced no decisions"
-            assert model_rows, "injected REFUSE exercised no model lane"
             assert all(r["verdict"] == "SKIP" for r in model_rows), model_rows
             assert all(r["kind"] == "grok" for r in launched_rows), launched_rows
-            assert any(
-                "REFUSE" in (r.get("skip_reason") or "") for r in model_rows
-            ), model_rows
             assert logp.is_file() and logp.read_text().strip()
     finally:
         mod.live_odyssey_lanes = _orig_live
+
+    # Frontier-independent safety proof: memgate REFUSE (huge in_flight ->
+    # projected swap over SWAP_MAX) makes launch_deterministic SKIP without ever
+    # spawning. This is the boundary that keeps concurrent model lanes off swap.
+    spawned: list = []
+    refuse_row = launch_deterministic(
+        {"id": "REF", "oxx": "O001", "template": "gravity-aggressive-hybrid",
+         "title": "t", "gravity_spec": "q2-g32-attn-mlp",
+         "model_loading": True, "timing": False, "download": False},
+        now_epoch=time.time(), in_flight_gib=10_000.0,
+        state={"work": []}, persist=False, spawn=True,
+        spawn_fn=lambda *a, **k: (spawned.append(a) or 424242),
+    )
+    assert refuse_row["verdict"] == "SKIP", refuse_row
+    assert refuse_row.get("pid") is None, refuse_row
+    assert spawned == [], "memgate REFUSE still spawned a model subprocess"
 
     argv = grok_argv(
         "odyssey-o001-external-science-dense",
@@ -7051,7 +7086,12 @@ def _self_check() -> int:
         assert any(
             r["oxx"] == "O005" and r["template"] == "sensitivity-map" for r in ranked_live
         ), live_pair
-    if ("O004", "external-science-dense") in flying_now:
+    o004_ext_done = science_is_done(
+        "O004", mechanism_for_template("external-science-dense"),
+        live.get("entries") or [],
+    )
+    if o004_ext_done or ("O004", "external-science-dense") in flying_now:
+        # sealed (replay-proof) or in flight -> must not be re-selected
         assert ("O004", "external-science-dense") not in live_pair, live_pair
     else:
         assert any(
@@ -7174,8 +7214,12 @@ def _self_check() -> int:
          "status": "VERIFIED", "reopen_if": None, "completed_at": "t0"}
         for m in o001_req
     ]
-    assert retire_eligible("O001", st2, full_o001), o001_req
-    assert not retire_eligible("O001", st2, full_o001[:-1]), full_o001[:-1]
+    if by["O001"].get("state") == "RETIRED":
+        # already retired -> not re-eligible (guard holds regardless of a full set)
+        assert not retire_eligible("O001", st2, full_o001)
+    else:
+        assert retire_eligible("O001", st2, full_o001), o001_req
+        assert not retire_eligible("O001", st2, full_o001[:-1]), full_o001[:-1]
     o005_miss = missing_required("O005", st2)
     if by["O005"].get("state") == "RETIRED" or science_is_done("O005", "patient-sealed"):
         assert not retire_eligible("O005", st2)
@@ -7252,7 +7296,8 @@ def _self_check() -> int:
         miss = (cplan.get("missing") or {}).get(oxx) or []
         if miss:
             assert any(is_aggressive_mechanism(m) or m == "aggressive_probe" for m in miss) or miss, miss
-    if ("O004", "external-science-dense") in flying_now:
+    if o004_ext_done or ("O004", "external-science-dense") in flying_now:
+        # sealed (replay-proof) or in flight -> not re-planned
         assert ("O004", "external-science-dense") not in ready_pair, ready_pair
     else:
         assert ("O004", "external-science-dense") in ready_pair, ready_pair
@@ -7626,7 +7671,9 @@ def main(argv=None) -> int:
     p_run.add_argument("--go", action="store_true",
                        help="actually launch grok-run lanes; required to spawn")
     p_run.add_argument("--max-lanes", type=int, default=DEFAULT_MAX_LANES,
-                       help="concurrent odyssey lane cap (default 2, hard cap 8; memgate bounds models)")
+                       help="MODEL subprocess concurrency ceiling (hard cap 8; memgate is the real limiter)")
+    p_run.add_argument("--grok-lanes", type=int, default=0,
+                       help="grok/novelty ceiling (default 0: autonomous loop spends no grok usage)")
     p_comp = sp.add_parser("completions")
     p_comp.add_argument("--rebuild", action="store_true",
                         help="idempotent VERIFIED backfill from receipts/odyssey-i")
@@ -7638,7 +7685,9 @@ def main(argv=None) -> int:
     p_cy.add_argument("--go", action="store_true",
                       help="harvest/retire/acquire/launch for real")
     p_cy.add_argument("--max-lanes", type=int, default=DEFAULT_MAX_LANES,
-                      help="concurrent odyssey lane cap (default 2, hard cap 8; memgate bounds models)")
+                      help="MODEL subprocess concurrency ceiling (hard cap 8; memgate is the real limiter)")
+    p_cy.add_argument("--grok-lanes", type=int, default=0,
+                      help="grok/novelty ceiling (default 0: autonomous loop spends no grok usage)")
     p_ret = sp.add_parser("retire")
     p_ret.add_argument("oxx")
     p_acq = sp.add_parser("acquire-next")
@@ -7669,10 +7718,10 @@ def main(argv=None) -> int:
         )
     if args.cmd == "run":
         go = bool(args.go) and not bool(args.dry_run)
-        return cmd_run(go=go, max_lanes=args.max_lanes)
+        return cmd_run(go=go, max_lanes=args.max_lanes, grok_lanes=args.grok_lanes)
     if args.cmd == "cycle":
         go = bool(args.go) and not bool(args.dry_run)
-        return cmd_cycle(go=go, max_lanes=args.max_lanes)
+        return cmd_cycle(go=go, max_lanes=args.max_lanes, grok_lanes=args.grok_lanes)
     if args.cmd == "retire":
         return cmd_retire(args.oxx)
     if args.cmd == "acquire-next":

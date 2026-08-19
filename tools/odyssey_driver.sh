@@ -24,7 +24,11 @@ ts="$(date '+%Y-%m-%dT%H:%M:%S%z')"
 {
   echo "== odyssey driver tick $ts =="
   echo "repo=$ROOT py=$PY"
-  ODYSSEY_HEADROOM_ADMIT=1 "$PY" tools/odyssey_ctl.py cycle --go --max-lanes 2
+  # --max-lanes = MODEL concurrency ceiling (memgate is the real limiter under it);
+  # --grok-lanes 0 = NO grok in the autonomous loop (deterministic science only,
+  # zero grok usage). Grok novelty is deliberate, watched scaffolding, dispatched
+  # by hand — never an every-tick reflex.
+  ODYSSEY_HEADROOM_ADMIT=1 "$PY" tools/odyssey_ctl.py cycle --go --max-lanes 6 --grok-lanes 0
   echo "-- cycle rc=$? --"
   # Commit DATA progress only (receipts/completions/state/packets/matrix). NEVER tools/ code
   # (code-editing lanes land in REVIEW_QUEUE for human review, uncommitted).

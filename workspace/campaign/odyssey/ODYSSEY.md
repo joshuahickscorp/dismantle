@@ -7,6 +7,29 @@ future steers read. A steer maps to a section below (doctrine / architecture / t
 Last canonized: 2026-08-19.
 
 ---
+## 0. GATES — THE GOAL (G-series)
+The campaign is tracked as advancing G1 → G7. Simple sequential nomenclature; future steers
+reference G-numbers (`applies-to: G2`). Internal machine ids (O000-O013 patients, mechanism-ids)
+stay as implementation detail under these gates. Status: DONE / ACTIVE / PENDING.
+
+- **G1 — AUTONOMY.** Replay-proof completion index + write-scope serialization + hardened harvest
+  + launchd driver; first autonomous seal→retire proven. **DONE** (O005 retired unattended).
+- **G2 — SUPER-DETACHMENT MACHINE.** memgate (multi-model, swap≤30GiB) + candidate-search-as-data
+  + predeclared manifest + cost-model/detachment-metrics + novelty engine + anti-complacency
+  retirement gate, all wired into the loop. **ACTIVE** (fan-out building; then one integration pass).
+- **G3 — CYCLE 1 SEALED.** Each of O001/O003/O004/O005/O006: anchor → aggressive probe → frontier
+  localized → NX attempt → packet-shows-frontier → retire. **ACTIVE** (O005 done; rest running).
+- **G4 — COHORT 2.** Acquire the next storage-fitting cohort (O007+ by info-value/GB under disk+swap),
+  overlapping download with compute. **PENDING** (on Cycle-1 empty).
+- **G5 — ORCHESTRATOR v2.** Distill the Cycle-1 trace into deterministic code (swgrok); prove
+  Claude-free-patient, Grok-only-novelty, Opus=0 patient + cohort, anti-complacency/conventionality/
+  localization/anti-dogma tests. **PENDING** (post-Cycle-1).
+- **G6 — DSV4F REPLAY (O011).** Mandatory compiler-evolution control vs old Gravity. **PENDING.**
+- **G7 — ODYSSEY-I SUCCESS.** Bible §76: ladder substantially complete · packets · real NXs · rulebase
+  · transfer matrix · negatives · machine genome improved · streamed-large science · Opus cost ≪ naive.
+  Hands to Odyssey-II (DSV4F deep replay → super-kernel → genesis tournament). **PENDING.**
+
+---
 ## 1. MISSION (prime directive)
 Odyssey-I perfects **HAWKING**, not the models. It is an information + compiler-learning campaign,
 NOT a quantization benchmark. Every patient is a teacher; every patient must leave the compiler more

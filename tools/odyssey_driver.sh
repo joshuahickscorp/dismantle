@@ -7,6 +7,11 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
+# launchd runs with a minimal environment: restore HOME + a full PATH so grok-run
+# can find `grok`, and git/date/python3 resolve.
+export HOME="${HOME:-/Users/scammermike}"
+export PATH="$HOME/.grok/bin:$HOME/.claude-grok/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+
 PY="${ODYSSEY_PYTHON:-/Library/Frameworks/Python.framework/Versions/3.12/bin/python3}"
 if [ ! -x "$PY" ]; then
   PY=python3

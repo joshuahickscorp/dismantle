@@ -19,9 +19,7 @@ ts="$(date '+%Y-%m-%dT%H:%M:%S%z')"
 {
   echo "== odyssey driver tick $ts =="
   echo "repo=$ROOT py=$PY"
-  "$PY" tools/odyssey_ctl.py harvest
-  echo "-- harvest rc=$? --"
-  ODYSSEY_HEADROOM_ADMIT=1 "$PY" tools/odyssey_ctl.py run --go --max-lanes 2
-  echo "-- run rc=$? --"
+  ODYSSEY_HEADROOM_ADMIT=1 "$PY" tools/odyssey_ctl.py cycle --go --max-lanes 2
+  echo "-- cycle rc=$? --"
   echo "== tick done $ts =="
 } >>"$LOG" 2>&1

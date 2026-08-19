@@ -57,7 +57,19 @@
       "matryoshka tiers T0..T3"
     ],
     "search_space_is_data": true,
-    "rule": "after an anchor passes, AUTOMATICALLY attempt at least one credible nonconventional probe; do not assume failed-global-q2 implies every component needs q3 \u2014 search allocation."
+    "rule": "after an anchor passes, AUTOMATICALLY attempt at least one credible nonconventional probe; do not assume failed-global-q2 implies every component needs q3 \u2014 search allocation.",
+    "per_component_extreme": {
+      "target": "TOTAL complete_bpw sub-1 / sub-0.2 via HETEROGENEOUS per-component budgets",
+      "component_floors_bpw": [1.0, 0.5, 0.25, 0.1, 0.05, 0.02, 0.01],
+      "note": "the per-component (organ/expert/channel/layer) floor may go to 1/10 (0.1) or 1/100 (0.01) BPW \u2014 or effectively 0 for a component that reduces to a shared codebook index / low-rank factor / dropped-to-constant + sparse correction / pruned-with-repair. Total = weighted roll-up of per-component budgets. A few protected components may stay high; most may collapse near-zero.",
+      "reach_mechanisms": "structural/shared-basis (shared base + delta), latent/generated/procedural, base+correction, prune-to-zero+repair, shared-index/codebook, cross-expert low-rank \u2014 NOT naive per-weight bit reduction (that floors at ~1-2)."
+    },
+    "opportunistic_descent": {
+      "policy": "PUSH EVERY COMPONENT to its floor \u2014 be OPPORTUNISTIC about potential, do not leave a component at a conservative budget if it might tolerate far less. The system is SMART ENOUGH TO STOP: Doctor + false-win gates catch a component that actually breaks, so descend aggressively.",
+      "algorithm": "per component, sensitivity-guided descent (start from sensitivity rank; binary-search / geometric descent the bit budget down toward 0.01) until Doctor/held-out breaks, then step back one + try a repair (correction/protect) at that boundary; keep the lowest Doctor-holding budget. Cheap discriminators first; full Doctor only near the boundary.",
+      "stop": "component floor reached (Doctor holds at lowest tried) OR breakage not repairable cheaply OR expected further gain < cost. Localize + record the boundary either way (failure IS data).",
+      "guardrails": "complete accounting (correction/codebook/repair bytes counted), activation-aware only, Doctor authority, native execution (a component that must expand to dense before compute is not a real sub-0.1 win)."
+    }
   },
   "target_pressure_zones_bpw": {
     "reachable_or_explained": 3.0,

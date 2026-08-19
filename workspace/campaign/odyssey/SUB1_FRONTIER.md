@@ -57,3 +57,14 @@ would kill it) · execution_path (native? decode/reconstruction cost/token + ker
 (archs/organs/patients it fits — MoE-expert vs dense vs hybrid-state) · confidence + why · transfer
 (does it generalize across the cohort?). Cite prior art where relevant (QTIP/AQLM/QuIP#/BitNet/1-bit
 PTQ/product-quantization/hypernetworks). Be terse; tables over prose. Mark UNKNOWN, never guess a number.
+
+## AMENDMENT (2026-08-19): PER-COMPONENT EXTREME + OPPORTUNISTIC DESCENT
+Target is TOTAL complete_bpw sub-1 / sub-0.2 via HETEROGENEOUS per-component budgets. A single
+component (organ/expert/channel/layer) floor may go to **1/10 (0.1)** or **1/100 (0.01) BPW** — or
+effectively ~0 for a component that collapses to a shared codebook index / low-rank factor /
+dropped-to-constant + sparse correction / pruned-with-repair. A few protected components stay high;
+MOST may collapse near-zero → the TOTAL falls far below 1. PUSH EVERY COMPONENT; be OPPORTUNISTIC
+about potential (don't leave a component conservative if it might tolerate far less). The system is
+SMART ENOUGH TO STOP — Doctor + false-win gates catch a component that actually breaks, so descend
+aggressively (sensitivity-guided binary/geometric descent to the boundary, then repair). Complete
+accounting always; a component that expands to dense before compute is not a real sub-0.1 win.

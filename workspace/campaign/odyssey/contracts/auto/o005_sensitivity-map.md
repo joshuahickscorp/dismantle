@@ -17,8 +17,8 @@ READ workspace/campaign/odyssey/patients/O005/ODYSSEY_PATIENT_O005.json
 Call worker_gate.observe()/gate() before load. Abort on REFUSE.
 
 ## BUILD
-Reuse tools/odyssey_patient_runner.py. If it has no organ-ablation path, add a
-`--sensitivity` mode that, after the fast battery baseline:
+The runner ALREADY has this mode — RUN it, do NOT modify tools/odyssey_patient_runner.py.
+Reuse tools/odyssey_patient_runner.py `--sensitivity`. After the fast battery baseline:
 1. For each organ in {embed, attn, router, expert, norm, lm_head}, zero (and separately round-to-zero-bpw / 8-bit round) that organ.
 2. Re-run the same fast battery + refusal controls.
 3. Record capability delta vs the unablated battery (hits, refusals, seal verdict).
@@ -37,10 +37,9 @@ re-admit via worker_gate each time.
 - workspace/campaign/odyssey/patients/O005/ODYSSEY_PATIENT_O005.json representation.per_organ_sensitivity is non-null and schema-valid.
 
 ## SCOPE
-WRITE tools/odyssey_patient_runner.py
 WRITE receipts/odyssey-i/
 WRITE workspace/campaign/odyssey/patients/O005/
 READ tools/odyssey_patient_runner.py, tools/worker_gate.py, tools/doctor_seal.py, workspace/campaign/odyssey/patients/O005/census.json, workspace/campaign/odyssey/patients/O005/ODYSSEY_PATIENT_O005.json
-VERIFY tools/odyssey_patient_runner.py by running the unfenced command below; must pass, exit 0.
+VERIFY receipts/odyssey-i/O005_SENSITIVITY.json by running the unfenced command below; must pass, exit 0.
 python3 tools/odyssey_patient_runner.py --oxx O005 --weights /Users/scammermike/.cache/huggingface/hub/models--Qwen--Qwen3-30B-A3B/snapshots/ad44e777bcd18fa416d9da3bd8f70d33ebb85d39 --runtime mlx --route-tokens 0 --out receipts/odyssey-i/O005_SENSITIVITY.json --packet workspace/campaign/odyssey/patients/O005/ODYSSEY_PATIENT_O005.json --sensitivity
 Do not touch Genesis state or tools/odyssey/.

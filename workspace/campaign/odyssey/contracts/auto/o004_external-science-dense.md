@@ -4,10 +4,10 @@ Patient O004 = `mistralai/Mistral-Small-3.1-24B-Instruct-2503` (dense; Mistral3F
 on disk at `/Users/scammermike/.cache/huggingface/hub/models--mistralai--Mistral-Small-3.1-24B-Instruct-2503/snapshots/68faf511d618ef198fef186659617cfd2eb8e33a`. Repo: `/Users/scammermike/Downloads/hawking`.
 Baseline TPS + fast-Doctor. NO route map.
 
-This is a DENSE/HYBRID path. There is no MoE router. The runner must skip the
-route tap (`--route-tokens 0` and `--skip-route`). If tools/odyssey_patient_runner.py
-has no skip for non-MoE, add `--skip-route` that no-ops RouteRecorder when no layer
-has gate+switch_mlp, and write a `route_skipped=true` field instead of failing.
+This is a DENSE/HYBRID path. There is no MoE router. The runner already skips
+the route tap via `--route-tokens 0` and `--skip-route` (no-ops RouteRecorder
+when no layer has gate+switch_mlp, writes `route_skipped=true` instead of
+failing). Do not reimplement that flag.
 
 SPECIMEN labels everywhere; mlx TPS is NOT BASE_TRUE_TPS (§14, §60 foreign-runtime).
 
@@ -24,7 +24,8 @@ Call worker_gate.observe()/gate() before load. Abort on REFUSE; 4-bit fallback i
 and must be labelled.
 
 ## BUILD
-Reuse tools/odyssey_patient_runner.py. 
+The runner ALREADY has this mode — RUN it, do NOT modify tools/odyssey_patient_runner.py.
+Reuse tools/odyssey_patient_runner.py `--skip-route`. 
 Keep the model loaded once (one load, memory-safe). Do not delete the canonical weights.
 
 Outputs:
@@ -36,10 +37,9 @@ Outputs:
 - workspace/campaign/odyssey/patients/O004/ODYSSEY_PATIENT_O004.json still schema-valid.
 
 ## SCOPE
-WRITE tools/odyssey_patient_runner.py
 WRITE receipts/odyssey-i/
 WRITE workspace/campaign/odyssey/patients/O004/
 READ tools/odyssey_patient_runner.py, tools/worker_gate.py, workspace/campaign/odyssey/patients/O004/census.json, workspace/campaign/odyssey/patients/O004/ODYSSEY_PATIENT_O004.json
-VERIFY tools/odyssey_patient_runner.py by running the unfenced command below; must pass, exit 0.
+VERIFY receipts/odyssey-i/O004_EXTERNAL.json by running the unfenced command below; must pass, exit 0.
 python3 tools/odyssey_patient_runner.py --oxx O004 --weights /Users/scammermike/.cache/huggingface/hub/models--mistralai--Mistral-Small-3.1-24B-Instruct-2503/snapshots/68faf511d618ef198fef186659617cfd2eb8e33a --runtime mlx --route-tokens 0 --out receipts/odyssey-i/O004_EXTERNAL.json --packet workspace/campaign/odyssey/patients/O004/ODYSSEY_PATIENT_O004.json --skip-route
 Do not touch Genesis state or tools/odyssey/.

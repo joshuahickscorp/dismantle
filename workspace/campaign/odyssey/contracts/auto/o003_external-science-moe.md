@@ -21,6 +21,7 @@ Call worker_gate.observe()/gate() before load (the runner already does this). Ab
 If REFUSE, convert to 4-bit mlx and LABEL `quant=4bit-mlx`; prefer bf16 if admitted.
 
 ## BUILD
+The runner ALREADY has this mode — RUN it, do NOT modify tools/odyssey_patient_runner.py.
 Reuse tools/odyssey_patient_runner.py. Do not start from scratch.
 If this patient is multimodal, tap the language-MoE router (skip the vision tower).
 If the runner assumes Qwen3-MoE config assertions, keep them as recorded pass/fail —
@@ -35,10 +36,9 @@ Outputs:
 - workspace/campaign/odyssey/patients/O003/ODYSSEY_PATIENT_O003.json still schema-valid after the refresh.
 
 ## SCOPE
-WRITE tools/odyssey_patient_runner.py
 WRITE receipts/odyssey-i/
 WRITE workspace/campaign/odyssey/patients/O003/
 READ tools/odyssey_patient_runner.py, tools/worker_gate.py, workspace/campaign/odyssey/patients/O003/census.json, workspace/campaign/odyssey/patients/O003/ODYSSEY_PATIENT_O003.json
-VERIFY tools/odyssey_patient_runner.py by running the unfenced command below; must pass, exit 0.
+VERIFY receipts/odyssey-i/O003_EXTERNAL.json by running the unfenced command below; must pass, exit 0.
 python3 tools/odyssey_patient_runner.py --oxx O003 --weights /Users/scammermike/.cache/huggingface/hub/models--moonshotai--Kimi-VL-A3B-Instruct/snapshots/398eede0903cd983a2bfa0cc634e9ac1d843f375 --runtime mlx --route-tokens 512 --out receipts/odyssey-i/O003_EXTERNAL.json --packet workspace/campaign/odyssey/patients/O003/ODYSSEY_PATIENT_O003.json
 Do not touch Genesis state or tools/odyssey/.

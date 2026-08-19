@@ -348,7 +348,7 @@
       "id": "NEXT-O003-SENS",
       "oxx": "O003",
       "title": "A3 per-organ/per-expert sensitivity map (O003 language-MoE)",
-      "status": "RUNNING",
+      "status": "VERIFIED",
       "info": 10.0,
       "wall_cost": 2.0,
       "gpu_cost": 1.0,
@@ -357,12 +357,20 @@
       "template": "sensitivity-map",
       "task": "odyssey-o003-sensitivity-map-20260819-144202",
       "started": "2026-08-19T18:42:07Z",
-      "contract": "workspace/campaign/odyssey/contracts/auto/o003_sensitivity-map.md"
+      "contract": "workspace/campaign/odyssey/contracts/auto/o003_sensitivity-map.md",
+      "harvest_reason": "DATA-ONLY"
     }
   ],
   "history": [],
   "harvested": [
-    "odyssey-o005-sensitivity-map-20260819-015644"
+    "odyssey-o005-sensitivity-map-20260819-015644",
+    "odyssey-o001-external-science-dense-20260819-015556",
+    "odyssey-o001-external-science-dense-20260819-030732",
+    "odyssey-o001-sensitivity-map-20260819-022549",
+    "odyssey-o003-external-science-moe-20260819-030737",
+    "odyssey-o003-sensitivity-map-20260819-144202",
+    "odyssey-o005-sensitivity-map-20260819-135200",
+    "odyssey-o006-transfer-control-20260819-131420"
   ],
   "metrics": {
     "opus_calls": 1,

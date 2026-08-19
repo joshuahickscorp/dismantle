@@ -25,6 +25,7 @@ ascent state or tools/odyssey/ (training-data Odyssey).
 from __future__ import annotations
 
 import argparse
+import fnmatch
 import hashlib
 import json
 import os
@@ -102,34 +103,18 @@ TEMPLATES = (
     "nx-state-hybrid",
     "nx-dense",
 )
-# Templates known to edit tools/odyssey_patient_runner.py. One-at-a-time.
-# RUN-only (external-science-moe / transfer-control) may fill to max-lanes.
-# Kept for --self-check assertion #10; the launcher serializes on write_set.
-CODE_EDIT_TEMPLATES = frozenset({
-    "sensitivity-map",
-    "external-science-dense",
-    "gravity-moe",
-    "gravity-dense",
-    "gravity-hybrid",
-    "nx-gather-moe",
-    "nx-state-hybrid",
-    "nx-dense",
-})
-# Honest write_set: these templates may edit the shared runner. transfer-control
-# is RUN-only (packet + receipts + TRANSFER_MATRIX) and is parallel-safe with
-# a runner-writing lane.
-RUNNER_WRITE_TEMPLATES = frozenset({
-    "external-science-moe",
-    "external-science-dense",
-    "sensitivity-map",
-    "gravity-moe",
-    "gravity-dense",
-    "gravity-hybrid",
-    "nx-gather-moe",
-    "nx-state-hybrid",
-    "nx-dense",
-})
+# Every current template is DATA-PRODUCING: it RUNS the existing runner and
+# delivers a receipt + packet fields. Incidental tools/*.py diffs are noise.
+# Empty: no template claims the runner, so lanes are parallel-safe.
+# Kept so evaluate_gates still has a serial hook if a future template needs it.
+CODE_EDIT_TEMPLATES = frozenset()
+RUNNER_WRITE_TEMPLATES = frozenset()
+DATA_PRODUCING_TEMPLATES = frozenset(TEMPLATES)
 RUNNER_REL = "tools/odyssey_patient_runner.py"
+RUNNER_DO_NOT_EDIT = (
+    "The runner ALREADY has this mode — RUN it, do NOT modify "
+    "tools/odyssey_patient_runner.py."
+)
 TRANSFER_REL = "workspace/campaign/odyssey/TRANSFER_MATRIX.json"
 TEMPLATE_MECHANISM = {
     "external-science-moe": "external-science",
@@ -163,6 +148,20 @@ NX_RECEIPT = {
     "nx-gather-moe": "{oxx}_NX_gather.json",
     "nx-state-hybrid": "{oxx}_NX_state.json",
     "nx-dense": "{oxx}_NX_dense.json",
+}
+# Mechanism/template → expected receipts/odyssey-i/<OXX>_*.json leaf.
+# Harvest classifies by this, not by whether the lane also touched tools/*.py.
+RECEIPT_PATTERN = {
+    "external-science": "{oxx}_EXTERNAL.json",
+    "external-science-moe": "{oxx}_EXTERNAL.json",
+    "external-science-dense": "{oxx}_EXTERNAL.json",
+    "route-map": "{oxx}_EXTERNAL.json",
+    "ssm-accounting": "{oxx}_EXTERNAL.json",
+    "sensitivity-map": "{oxx}_SENSITIVITY.json",
+    "transfer-control": "{oxx}_TRANSFER.json",
+    **GRAVITY_RECEIPT,
+    **NX_RECEIPT,
+    "patient-sealed": "{oxx}_PATIENT_SEAL.json",
 }
 # Bounded required set per class (steer S002 — do not over-deepen).
 REQUIRED_MOE = (
@@ -432,8 +431,29 @@ def packet_rel(oxx: str) -> str:
     return f"workspace/campaign/odyssey/patients/{oxx}/ODYSSEY_PATIENT_{oxx}.json"
 
 
+def receipt_filename(oxx: str, template_or_mech: str) -> str | None:
+    """Leaf name of the expected receipts/odyssey-i receipt for a template."""
+    if not oxx or not template_or_mech:
+        return None
+    pat = RECEIPT_PATTERN.get(template_or_mech)
+    if not pat:
+        pat = RECEIPT_PATTERN.get(mechanism_for_template(template_or_mech))
+    if not pat:
+        return None
+    return pat.format(oxx=oxx)
+
+
+def expected_receipt_rel(oxx: str, template: str) -> str | None:
+    name = receipt_filename(oxx, template)
+    return f"receipts/odyssey-i/{name}" if name else None
+
+
 def write_scope(ob: dict) -> dict:
-    """Files this obligation may edit + exclusive resources. Honest per template."""
+    """Files this obligation may edit + exclusive resources. Honest per template.
+
+    Data-producing templates RUN the existing runner; they do not claim it.
+    Same-patient packet still serializes; different patients run in parallel.
+    """
     oxx = ob.get("oxx") or ob.get("patient_id") or ""
     template = ob.get("template") or ""
     if "write_set" in ob:
@@ -442,27 +462,20 @@ def write_scope(ob: dict) -> dict:
             "exclusive_resources": list(ob.get("exclusive_resources") or []),
         }
     packet = packet_rel(oxx) if oxx else ""
+    rec = expected_receipt_rel(oxx, template)
     if template == "sensitivity-map":
-        writes = [RUNNER_REL, packet, f"receipts/odyssey-i/{oxx}_SENSITIVITY.json"]
+        writes = [packet, rec]
     elif template in {"external-science-moe", "external-science-dense"}:
-        writes = [RUNNER_REL, packet, f"receipts/odyssey-i/{oxx}_EXTERNAL.json"]
+        writes = [packet, rec]
     elif template == "transfer-control":
         writes = [
             packet,
             f"receipts/odyssey-i/{oxx}_EXTERNAL.json",
-            f"receipts/odyssey-i/{oxx}_TRANSFER.json",
+            rec,
             TRANSFER_REL,
         ]
-    elif template in GRAVITY_SPEC:
-        writes = [
-            RUNNER_REL, packet,
-            f"receipts/odyssey-i/{GRAVITY_RECEIPT[template].format(oxx=oxx)}",
-        ]
-    elif template in NX_FLAG:
-        writes = [
-            RUNNER_REL, packet,
-            f"receipts/odyssey-i/{NX_RECEIPT[template].format(oxx=oxx)}",
-        ]
+    elif template in GRAVITY_SPEC or template in NX_FLAG:
+        writes = [packet, rec]
     else:
         writes = [packet] if packet else []
     writes = [p for p in writes if p]
@@ -1445,8 +1458,9 @@ def harvest(*, tasks_root: Path | None = None, receipt_dir: Path | None = None,
 
 
 # ---------------------------------------------------------------------------
-# hardened harvest — classify DATA-ONLY vs CODE, merge or queue, never
-# auto-merge tools/*.py. Cleanup only after a DATA-ONLY copy succeeds.
+# hardened harvest — classify by template + RECEIPT_PATTERN, not by
+# tools/*.py inspection. Known data-producing + matching receipt is
+# DATA-ONLY (drop runner diffs). Cleanup only after a DATA-ONLY copy succeeds.
 # ---------------------------------------------------------------------------
 
 DATA_RECEIPT_PREFIX = "receipts/"
@@ -1484,6 +1498,89 @@ def classify_paths(paths: list[str]) -> str:
     if all(is_data_path(p) for p in cleaned):
         return "DATA-ONLY"
     return "CODE"
+
+
+def is_expected_receipt(rel: str, oxx: str, template: str) -> bool:
+    """True if rel is receipts/odyssey-i/<OXX>_*.json matching RECEIPT_PATTERN."""
+    n = norm_rel(rel)
+    want = expected_receipt_rel(oxx, template)
+    if want and n == want:
+        return True
+    if not n.startswith(DATA_RECEIPT_PREFIX) or not n.endswith(".json"):
+        return False
+    pat = RECEIPT_PATTERN.get(template) or RECEIPT_PATTERN.get(
+        mechanism_for_template(template or "")
+    )
+    if not pat or not oxx:
+        return False
+    leaf = n.rsplit("/", 1)[-1]
+    return fnmatch.fnmatch(leaf, pat.format(oxx=oxx))
+
+
+def lane_matching_receipts(files: list[str], worktree: Path | None,
+                           dest_root: Path | None, oxx: str,
+                           template: str) -> list[str]:
+    """Receipts this data-producing lane produced (listed in the diff or on disk)."""
+    want = expected_receipt_rel(oxx, template)
+    listed = {norm_rel(p) for p in files if norm_rel(p)}
+    found: list[str] = []
+    seen: set[str] = set()
+    candidates = list(files)
+    if want:
+        candidates.append(want)
+    for raw in candidates:
+        n = norm_rel(raw)
+        if not n or n in seen or n == "/dev/null":
+            continue
+        if not is_expected_receipt(n, oxx, template):
+            continue
+        on_disk = _path_exists(worktree, n) or _path_exists(dest_root, n)
+        if n in listed or on_disk:
+            seen.add(n)
+            found.append(n)
+    return found
+
+
+def resolve_lane_identity(task_name: str, state: dict | None,
+                          parsed: dict | None = None) -> tuple[str | None, str | None]:
+    """(oxx, template) from the task slug first, then the work item."""
+    parsed_task = parse_science_task(task_name) or parse_science_task(
+        re.sub(r"-\d{8}-\d{6}$", "", task_name)
+    )
+    oxx = tmpl = None
+    if parsed_task:
+        oxx, tmpl = parsed_task
+    w = _work_for_task(state, task_name) if state is not None else None
+    if w:
+        oxx = oxx or w.get("oxx")
+        tmpl = tmpl or w.get("template")
+    if parsed and parsed.get("oxx"):
+        oxx = oxx or parsed.get("oxx")
+    if not oxx:
+        m = SLUG_OXX_RE.search(task_name or "")
+        if m:
+            oxx = f"O{m.group(1)}"
+    return oxx, tmpl
+
+
+def classify_lane(files: list[str], *, oxx: str | None = None,
+                  template: str | None = None, worktree: Path | None = None,
+                  dest_root: Path | None = None) -> tuple[str, list[str]]:
+    """Classify by template + expected receipt, not by tools/*.py inspection.
+
+    Known data-producing template + matching receipt → DATA-ONLY (runner
+    diffs are noise). Known template with no receipt, or unknown template
+    with a non-data path → CODE (REVIEW). Unknown template with only data
+    paths → DATA-ONLY (legacy path-based).
+    """
+    if template in DATA_PRODUCING_TEMPLATES and oxx:
+        matching = lane_matching_receipts(
+            files, worktree, dest_root, oxx, template,
+        )
+        if matching:
+            return "DATA-ONLY", matching
+        return "CODE", []
+    return classify_paths(files), []
 
 
 def parse_diff_paths(text: str) -> list[str]:
@@ -1571,15 +1668,21 @@ def lane_file_list(task_dir: Path, worktree: Path | None) -> list[str]:
 
 
 def _work_for_task(state: dict, task_name: str) -> dict | None:
-    for w in state.get("work") or []:
+    """Match a work item to a task. Timestamped names match exactly so two
+    odyssey-o005-sensitivity-map-<ts> lanes do not steal each other's row."""
+    works = state.get("work") or []
+    for w in works:
         if w.get("task") == task_name:
             return w
     slug = re.sub(r"-\d{8}-\d{6}$", "", task_name)
-    for w in state.get("work") or []:
+    if slug != task_name:
+        return None
+    for w in works:
         t = str(w.get("task") or "")
         if not t:
             continue
-        if t == slug or task_name.startswith(t) or t.startswith(slug):
+        t_slug = re.sub(r"-\d{8}-\d{6}$", "", t)
+        if t == task_name or t_slug == slug:
             return w
     return None
 
@@ -1622,13 +1725,12 @@ def _lane_already_resolved(state: dict, task_name: str,
 
 def _mark_lane(state: dict, task_name: str, status: str, **extra) -> dict | None:
     w = _work_for_task(state, task_name)
-    if w is None:
-        return None
-    w["status"] = status
-    w["task"] = task_name
-    for key, val in extra.items():
-        if val is not None:
-            w[key] = val
+    if w is not None:
+        w["status"] = status
+        w["task"] = task_name
+        for key, val in extra.items():
+            if val is not None:
+                w[key] = val
     harvested = list(state.get("harvested") or [])
     if task_name not in harvested:
         harvested.append(task_name)
@@ -1694,12 +1796,32 @@ def planned_action(classification: str | None, reason: str) -> str:
     if classification == "CODE":
         return "REVIEW (do not merge, do not cleanup)"
     if classification == "DATA-ONLY":
-        return "MERGE+CLEANUP (copy data, mark VERIFIED, grok-run cleanup)"
+        return "MERGE+COMPLETE (copy data, drop tools/, mark VERIFIED, complete, grok-run cleanup)"
     return f"REFUTE ({reason or 'unclassified'})"
 
 
+def _dest_completions(dest: Path) -> Path:
+    try:
+        if dest.resolve() == REPO.resolve():
+            return COMPLETIONS
+    except OSError:
+        pass
+    return dest / "workspace" / "campaign" / "odyssey" / "ODYSSEY_COMPLETIONS.json"
+
+
+def _dest_receipt_dir(dest: Path) -> Path:
+    try:
+        if dest.resolve() == REPO.resolve():
+            return RECEIPT_DIR
+    except OSError:
+        pass
+    return dest / "receipts" / "odyssey-i"
+
+
 def _complete_harvested_lane(task_name: str, oxx: str | None, work: dict | None,
-                             *, completed_at: str | None = None) -> None:
+                             *, completed_at: str | None = None,
+                             persist: bool = True, path: Path | None = None,
+                             receipt_dir: Path | None = None) -> None:
     """Record a VERIFIED harvest in the completion index. No-op if undetermined."""
     if not oxx:
         return
@@ -1715,28 +1837,19 @@ def _complete_harvested_lane(task_name: str, oxx: str | None, work: dict | None,
     mech = mechanism_for_template(tmpl)
     if not mech:
         return
-    rec_name = {
-        "external-science": f"{oxx}_EXTERNAL.json",
-        "sensitivity-map": f"{oxx}_SENSITIVITY.json",
-        "transfer-control": f"{oxx}_TRANSFER.json",
-        "route-map": f"{oxx}_EXTERNAL.json",
-        "ssm-accounting": f"{oxx}_EXTERNAL.json",
-        "gravity-moe": f"{oxx}_GRAVITY_q3-g32-experts.json",
-        "gravity-dense": f"{oxx}_GRAVITY_q4-g64.json",
-        "gravity-hybrid": f"{oxx}_GRAVITY_q4-g64-attn-mlp.json",
-        "nx-gather-moe": f"{oxx}_NX_gather.json",
-        "nx-state-hybrid": f"{oxx}_NX_state.json",
-        "nx-dense": f"{oxx}_NX_dense.json",
-        "patient-sealed": f"{oxx}_PATIENT_SEAL.json",
-    }.get(mech)
-    rec_path = RECEIPT_DIR / rec_name if rec_name else None
+    rec_name = receipt_filename(oxx, mech) or receipt_filename(oxx, tmpl)
+    rec_root = Path(receipt_dir) if receipt_dir else RECEIPT_DIR
+    rec_path = rec_root / rec_name if rec_name else None
+    if rec_path is not None and not rec_path.is_file() and rec_name:
+        fallback = RECEIPT_DIR / rec_name
+        if fallback.is_file():
+            rec_path = fallback
+    if rec_path is None or not rec_path.is_file():
+        return
     stamp = completed_at or os.environ.get("ODYSSEY_COMPLETED_AT")
     if not stamp:
-        if rec_path is not None and rec_path.is_file():
-            stamp = receipt_stamp(rec_path)
-        else:
-            stamp = utc_now()
-    sha = file_sha256(rec_path) if rec_path is not None and rec_path.is_file() else None
+        stamp = receipt_stamp(rec_path)
+    sha = file_sha256(rec_path)
     ref = f"receipts/odyssey-i/{rec_name}" if rec_name else None
     mechs = [mech]
     if tmpl == "external-science-moe" and "route-map" not in mechs:
@@ -1756,7 +1869,8 @@ def _complete_harvested_lane(task_name: str, oxx: str | None, work: dict | None,
             receipt_ref=ref,
             receipt_sha256=sha,
             source_revision=head,
-            persist=True,
+            persist=persist,
+            path=path,
         )
 
 
@@ -1770,7 +1884,12 @@ def harvest_lanes(*, tasks_root: Path | None = None,
                   cleanup_fn=None, persist: bool | None = None) -> list[dict]:
     """Classify finished odyssey-* lanes and (unless dry-run) reap DATA-ONLY.
 
-    Apply only when status==done AND the lane is recorded RUNNING in state.
+    Classification is by template + expected receipt, not by tools/*.py diffs.
+    Known data-producing template with a matching receipt is DATA-ONLY even
+    if the lane also tweaked the runner: copy receipts + packet, drop tools/,
+    write the completion, cleanup. CODE → REVIEW only for unknown templates
+    or known templates that produced no valid receipt. Malformed (no report)
+    → REFUTED. DATA-ONLY apply does not require the work item to be RUNNING.
     Dry-run classifies every finished lane and changes nothing.
     """
     del escalate_path  # reserved; report harvest already nominates
@@ -1797,12 +1916,15 @@ def harvest_lanes(*, tasks_root: Path | None = None,
         wt = resolve_worktree(d, worktrees_root)
         files = lane_file_list(d, wt)
         report = d / "grok-report.md"
-        oxx = None
         parsed = None
         reason = ""
-        classification = classify_paths(files)
+        oxx, tmpl = resolve_lane_identity(d.name, st)
+        matching_receipts: list[str] = []
         if not report.is_file():
             reason = "malformed: no grok-report.md"
+            classification, matching_receipts = classify_lane(
+                files, oxx=oxx, template=tmpl, worktree=wt, dest_root=dest,
+            )
         else:
             try:
                 text = report.read_text(errors="replace")
@@ -1811,22 +1933,34 @@ def harvest_lanes(*, tasks_root: Path | None = None,
                 reason = f"malformed: unreadable report ({exc})"
             if text:
                 parsed = parse_report(text)
-                oxx = oxx_from_task(d.name, parsed)
+                oxx2 = oxx_from_task(d.name, parsed)
+                if oxx2:
+                    oxx = oxx2
                 slug_m = SLUG_OXX_RE.search(d.name)
                 if slug_m:
                     oxx = f"O{slug_m.group(1)}"
-                if classification == "DATA-ONLY" and not _receipt_present(files, wt, dest):
-                    if any(norm_rel(p).startswith(DATA_RECEIPT_PREFIX) for p in files):
-                        reason = "malformed: no receipt"
-                    else:
-                        reason = "malformed: no receipt"
-                elif classification == "DATA-ONLY" and parsed and not parsed.get("ok"):
-                    # report present but no structured result and no usable receipt
-                    if not _receipt_present(files, wt, dest):
-                        reason = "malformed: no structured result"
+                oxx, tmpl = resolve_lane_identity(d.name, st, parsed)
+                if slug_m:
+                    oxx = f"O{slug_m.group(1)}"
+            classification, matching_receipts = classify_lane(
+                files, oxx=oxx, template=tmpl, worktree=wt, dest_root=dest,
+            )
+            if tmpl in DATA_PRODUCING_TEMPLATES:
+                # known template + no expected receipt stays CODE (REVIEW),
+                # not malformed — that is the infra/broken-lane signal.
+                pass
+            elif classification == "DATA-ONLY" and not _receipt_present(files, wt, dest):
+                reason = "malformed: no receipt"
+            elif classification == "DATA-ONLY" and parsed and not parsed.get("ok"):
+                if not _receipt_present(files, wt, dest):
+                    reason = "malformed: no structured result"
         action = planned_action(classification, reason)
         already = _lane_already_resolved(st, d.name, out_dir, qpath)
         in_scope = _recorded_running(st, d.name)
+        data_apply = (
+            classification == "DATA-ONLY"
+            and not reason.startswith("malformed")
+        )
         row = {
             "schema": HARVEST_SCHEMA,
             "task": d.name,
@@ -1836,6 +1970,8 @@ def harvest_lanes(*, tasks_root: Path | None = None,
             "action": action,
             "reason": reason or (already or ("ok" if classification else "unclassified")),
             "files": files,
+            "matching_receipts": matching_receipts,
+            "template": tmpl,
             "oxx": oxx,
             "worktree": str(wt) if wt else None,
             "report": str(report) if report.is_file() else None,
@@ -1843,6 +1979,7 @@ def harvest_lanes(*, tasks_root: Path | None = None,
             "applied": False,
             "cleanup": False,
             "copied": [],
+            "dropped": [],
             "verdict": None,
             "dry_run": dry_run,
             "_evidence": "DERIVED (harvester classification)",
@@ -1853,13 +1990,16 @@ def harvest_lanes(*, tasks_root: Path | None = None,
             rows.append(row)
             continue
 
-        if dry_run or not in_scope:
-            if not in_scope and not dry_run:
+        apply_ok = in_scope or data_apply
+        if dry_run or not apply_ok:
+            if not apply_ok and not dry_run:
                 row["reason"] = (reason + "; " if reason else "") + "not RUNNING in state"
             rows.append(row)
             continue
 
         # ---- apply ----
+        dropped = [p for p in files if not is_data_path(p)]
+        row["dropped"] = dropped
         if reason.startswith("malformed"):
             _mark_lane(st, d.name, "REFUTED", oxx=oxx, harvest_reason=reason)
             row["verdict"] = "REFUTED"
@@ -1877,7 +2017,7 @@ def harvest_lanes(*, tasks_root: Path | None = None,
         else:
             copied, _missing = copy_data_files(wt, dest, files)
             row["copied"] = copied
-            # packet-field changes ride along: DATA-ONLY packets are copied verbatim
+            # packet-field changes ride along; tools/ diffs are dropped
             ok, msg = cleaner(d.name)
             row["cleanup"] = bool(ok)
             if not ok:
@@ -1885,10 +2025,12 @@ def harvest_lanes(*, tasks_root: Path | None = None,
             _mark_lane(st, d.name, "VERIFIED", oxx=oxx, harvest_reason="DATA-ONLY")
             row["verdict"] = "VERIFIED"
             rec_verdict = "VERIFIED"
-            if do_persist:
-                _complete_harvested_lane(
-                    d.name, oxx, _work_for_task(st, d.name),
-                )
+            _complete_harvested_lane(
+                d.name, oxx, _work_for_task(st, d.name) or {"template": tmpl},
+                persist=True,
+                path=_dest_completions(dest),
+                receipt_dir=_dest_receipt_dir(dest),
+            )
         rec = {
             "schema": HARVEST_SCHEMA,
             "task": d.name,
@@ -1899,17 +2041,29 @@ def harvest_lanes(*, tasks_root: Path | None = None,
             "reason": reason or row["reason"],
             "files": files,
             "copied": row["copied"],
+            "dropped": row["dropped"],
+            "matching_receipts": matching_receipts,
+            "template": tmpl,
             "oxx": oxx,
             "worktree": row["worktree"],
             "report": row["report"],
             "cleanup": row["cleanup"],
             "command": "harvest",
             "inputs": {"task_dir": str(d), "worktree": row["worktree"]},
-            "outputs": {"copied": row["copied"], "verdict": rec_verdict},
-            "controls": ["never auto-merge CODE", "cleanup only DATA-ONLY"],
+            "outputs": {
+                "copied": row["copied"],
+                "dropped": row["dropped"],
+                "verdict": rec_verdict,
+            },
+            "controls": [
+                "never auto-merge CODE",
+                "cleanup only DATA-ONLY",
+                "drop tools/ diffs on known data-producing templates",
+            ],
             "assumptions": [
-                "DATA-ONLY = receipts/ or workspace/campaign/odyssey/patients/*/*.json",
-                "CODE = any tools/ path, *.py, or other non-data path",
+                "DATA-ONLY = known data-producing template + matching RECEIPT_PATTERN",
+                "tools/*.py diffs on those templates are noise, not a deliverable",
+                "CODE = unknown template with a non-data path, or known template with no receipt",
             ],
             "reopen_if": "worktree still holds uncopied data files",
             "_evidence": "DERIVED (harvester classification)",
@@ -2442,6 +2596,7 @@ Call worker_gate.observe()/gate() before load (the runner already does this). Ab
 If REFUSE, convert to 4-bit mlx and LABEL `quant=4bit-mlx`; prefer bf16 if admitted.
 
 ## BUILD
+{RUNNER_DO_NOT_EDIT}
 Reuse tools/odyssey_patient_runner.py. Do not start from scratch.
 If this patient is multimodal, tap the language-MoE router (skip the vision tower).
 If the runner assumes Qwen3-MoE config assertions, keep them as recorded pass/fail —
@@ -2456,9 +2611,9 @@ Outputs:
 - {f['packet_rel']} still schema-valid after the refresh.
 
 {_scope_block(
-    ["tools/odyssey_patient_runner.py", "receipts/odyssey-i/", f"workspace/campaign/odyssey/patients/{oxx}/"],
+    ["receipts/odyssey-i/", f"workspace/campaign/odyssey/patients/{oxx}/"],
     ["tools/odyssey_patient_runner.py", "tools/worker_gate.py", f['census_rel'], f['packet_rel']],
-    "tools/odyssey_patient_runner.py",
+    f['receipt_rel'],
     verify,
 )}
 """
@@ -2484,10 +2639,10 @@ Patient {oxx} = `{f['source'] or f['model']}` ({f['kind']}; {f['arch_name']}),
 on disk at `{f['weights']}`. Repo: `/Users/scammermike/Downloads/hawking`.
 Baseline TPS + fast-Doctor{(' + SSM-state-vs-KV' if hybrid else '')}. NO route map.
 
-This is a DENSE/HYBRID path. There is no MoE router. The runner must skip the
-route tap (`--route-tokens 0` and `--skip-route`). If tools/odyssey_patient_runner.py
-has no skip for non-MoE, add `--skip-route` that no-ops RouteRecorder when no layer
-has gate+switch_mlp, and write a `route_skipped=true` field instead of failing.
+This is a DENSE/HYBRID path. There is no MoE router. The runner already skips
+the route tap via `--route-tokens 0` and `--skip-route` (no-ops RouteRecorder
+when no layer has gate+switch_mlp, writes `route_skipped=true` instead of
+failing). Do not reimplement that flag.
 
 SPECIMEN labels everywhere; mlx TPS is NOT BASE_TRUE_TPS (§14, §60 foreign-runtime).
 
@@ -2504,7 +2659,8 @@ Call worker_gate.observe()/gate() before load. Abort on REFUSE; 4-bit fallback i
 and must be labelled.
 
 ## BUILD
-Reuse tools/odyssey_patient_runner.py. {ssm}
+{RUNNER_DO_NOT_EDIT}
+Reuse tools/odyssey_patient_runner.py `--skip-route`. {ssm}
 Keep the model loaded once (one load, memory-safe). Do not delete the canonical weights.
 
 Outputs:
@@ -2516,9 +2672,9 @@ Outputs:
 - {f['packet_rel']} still schema-valid.
 
 {_scope_block(
-    ["tools/odyssey_patient_runner.py", "receipts/odyssey-i/", f"workspace/campaign/odyssey/patients/{oxx}/"],
+    ["receipts/odyssey-i/", f"workspace/campaign/odyssey/patients/{oxx}/"],
     ["tools/odyssey_patient_runner.py", "tools/worker_gate.py", f['census_rel'], f['packet_rel']],
-    "tools/odyssey_patient_runner.py",
+    f['receipt_rel'],
     verify,
 )}
 """
@@ -2554,8 +2710,8 @@ READ {f['packet_rel']}
 Call worker_gate.observe()/gate() before load. Abort on REFUSE.
 
 ## BUILD
-Reuse tools/odyssey_patient_runner.py. If it has no organ-ablation path, add a
-`--sensitivity` mode that, after the fast battery baseline:
+{RUNNER_DO_NOT_EDIT}
+Reuse tools/odyssey_patient_runner.py `--sensitivity`. After the fast battery baseline:
 1. For each organ in {{{organ_list}}}, zero (and separately round-to-zero-bpw / 8-bit round) that organ.
 2. Re-run the same fast battery + refusal controls.
 3. Record capability delta vs the unablated battery (hits, refusals, seal verdict).
@@ -2574,9 +2730,9 @@ re-admit via worker_gate each time.
 - {f['packet_rel']} representation.per_organ_sensitivity is non-null and schema-valid.
 
 {_scope_block(
-    ["tools/odyssey_patient_runner.py", "receipts/odyssey-i/", f"workspace/campaign/odyssey/patients/{oxx}/"],
+    ["receipts/odyssey-i/", f"workspace/campaign/odyssey/patients/{oxx}/"],
     ["tools/odyssey_patient_runner.py", "tools/worker_gate.py", "tools/doctor_seal.py", f['census_rel'], f['packet_rel']],
-    "tools/odyssey_patient_runner.py",
+    receipt,
     verify,
 )}
 """
@@ -2610,6 +2766,7 @@ READ workspace/campaign/odyssey/TRANSFER_MATRIX.json
 Call worker_gate.observe()/gate() before load. Abort on REFUSE.
 
 ## BUILD
+{RUNNER_DO_NOT_EDIT}
 Reuse tools/odyssey_patient_runner.py on {oxx} (route map + baseline + fast-Doctor).
 If {oxx} is multimodal, tap the language-MoE router; skip the vision tower.
 Then diff against {reference}:
@@ -2628,13 +2785,13 @@ Merge those cells into workspace/campaign/odyssey/TRANSFER_MATRIX.json for {oxx}
 - workspace/campaign/odyssey/TRANSFER_MATRIX.json has non-NOT_TESTED cells for {oxx}.
 
 {_scope_block(
-    ["tools/odyssey_patient_runner.py", "receipts/odyssey-i/",
+    ["receipts/odyssey-i/",
      f"workspace/campaign/odyssey/patients/{oxx}/",
      "workspace/campaign/odyssey/TRANSFER_MATRIX.json"],
     ["tools/odyssey_patient_runner.py", "tools/worker_gate.py",
      f['census_rel'], f['packet_rel'], ref['census_rel'], ref['packet_rel'],
      "workspace/campaign/odyssey/TRANSFER_MATRIX.json"],
-    "tools/odyssey_patient_runner.py",
+    receipt,
     verify,
 )}
 """
@@ -2686,6 +2843,7 @@ READ {f['receipt_rel']}
 Call worker_gate.observe()/gate() before load. Abort on REFUSE.
 
 ## BUILD
+{RUNNER_DO_NOT_EDIT}
 Reuse tools/odyssey_patient_runner.py `--gravity {spec}`. One candidate, do not sweep.
 Reload the quantized model, run the SAME fast-Doctor battery + refusal controls.
 Measure stored_bytes, stored_bpw (bytes*8/params), active_bytes_per_token + active_bpw
@@ -2701,11 +2859,11 @@ Do not delete canonical weights.
 - {f['packet_rel']} still schema-valid.
 
 {_scope_block(
-    ["tools/odyssey_patient_runner.py", "receipts/odyssey-i/",
+    ["receipts/odyssey-i/",
      f"workspace/campaign/odyssey/patients/{oxx}/"],
     ["tools/odyssey_patient_runner.py", "tools/worker_gate.py", "tools/doctor_seal.py",
      f['census_rel'], f['packet_rel'], f['receipt_rel']],
-    "tools/odyssey_patient_runner.py",
+    receipt,
     verify,
 )}
 """
@@ -2761,6 +2919,7 @@ READ {f['packet_rel']}
 Call worker_gate.observe()/gate() before load. Abort on REFUSE.
 
 ## BUILD
+{RUNNER_DO_NOT_EDIT}
 Reuse tools/odyssey_patient_runner.py {flag}. {build}
 Write {receipt} (schema {schema}) and refresh {f['packet_rel']} nx.
 Do not delete canonical weights. Never call this a Hawking NX win.
@@ -2771,11 +2930,11 @@ Do not delete canonical weights. Never call this a Hawking NX win.
 - {f['packet_rel']} still schema-valid.
 
 {_scope_block(
-    ["tools/odyssey_patient_runner.py", "receipts/odyssey-i/",
+    ["receipts/odyssey-i/",
      f"workspace/campaign/odyssey/patients/{oxx}/"],
     ["tools/odyssey_patient_runner.py", "tools/worker_gate.py",
      f['census_rel'], f['packet_rel']],
-    "tools/odyssey_patient_runner.py",
+    receipt,
     verify,
 )}
 """
@@ -4246,7 +4405,14 @@ def cmd_harvest(*, dry_run: bool = False) -> int:
         scope = "RUNNING" if r.get("in_scope") else "not-RUNNING"
         if r.get("applied"):
             apply = "applied"
-        elif dry_run and r.get("in_scope"):
+        elif dry_run and (
+            r.get("in_scope")
+            or (
+                r.get("classification") == "DATA-ONLY"
+                and str(r.get("action") or "").startswith("MERGE")
+                and r.get("verdict") != "SKIP"
+            )
+        ):
             apply = "would-apply"
         elif dry_run:
             apply = "would-skip-apply"
@@ -4553,7 +4719,8 @@ def _self_check() -> int:
     assert "SG_OFF" not in argv
 
     # 9. harden harvest: DATA-ONLY fake lane harvests + would-cleanup;
-    #    CODE fake lane goes to REVIEW_QUEUE and is NOT merged.
+    #    data-producing + tools/*.py tweak + valid receipt is still DATA-ONLY
+    #    (drop the code, auto-complete); non-template or no-receipt → REVIEW.
     with tempfile.TemporaryDirectory() as td:
         td = Path(td)
         tasks = td / "tasks"
@@ -4579,6 +4746,15 @@ def _self_check() -> int:
                  "status": "RUNNING",
                  "task": "odyssey-o003-malformed-fake",
                  "template": "transfer-control",
+                 "info": 1, "wall_cost": 1, "gpu_cost": 0, "opus_cost": 0},
+                {"id": "H-TWEAK", "oxx": "O005", "title": "data+runner tweak",
+                 "status": "RUNNING",
+                 "task": "odyssey-o005-sensitivity-map-20260819-000001",
+                 "template": "sensitivity-map",
+                 "info": 1, "wall_cost": 1, "gpu_cost": 0, "opus_cost": 0},
+                {"id": "H-UNK", "oxx": "O009", "title": "unknown template",
+                 "status": "RUNNING",
+                 "task": "odyssey-o009-custom-hack",
                  "info": 1, "wall_cost": 1, "gpu_cost": 0, "opus_cost": 0},
             ],
             "history": [], "harvested": [], "metrics": {},
@@ -4619,7 +4795,7 @@ def _self_check() -> int:
             "odyssey-o001-data-fake",
             "**Completion report**\n\n```json\n" + data_body + "\n```\n",
             {
-                "receipts/odyssey-i/O001_FAKE.json": data_body + "\n",
+                "receipts/odyssey-i/O001_EXTERNAL.json": data_body + "\n",
                 "workspace/campaign/odyssey/patients/O001/ODYSSEY_PATIENT_O001.json":
                     json.dumps({"oxx": "O001", "identity": {"_evidence": "MEASURED"}}) + "\n",
             },
@@ -4632,6 +4808,27 @@ def _self_check() -> int:
                 "tools/odyssey_patient_runner.py": code_marker,
                 "receipts/odyssey-i/O005_FAKE.json": '{"oxx":"O005"}\n',
             },
+        )
+        tweak_body = json.dumps({
+            "oxx": "O005", "finding": "sensitivity with runner tweak",
+            "evidence": "MEASURED", "per_organ_sensitivity": {"embed": 0.1},
+        })
+        _mk_lane(
+            "odyssey-o005-sensitivity-map-20260819-000001",
+            "**Completion report**\n\n```json\n" + tweak_body + "\n```\n",
+            {
+                "tools/odyssey_patient_runner.py": code_marker,
+                "receipts/odyssey-i/O005_SENSITIVITY.json": tweak_body + "\n",
+                "workspace/campaign/odyssey/patients/O005/ODYSSEY_PATIENT_O005.json":
+                    json.dumps({"oxx": "O005", "representation": {
+                        "per_organ_sensitivity": {"embed": 0.1},
+                    }}) + "\n",
+            },
+        )
+        _mk_lane(
+            "odyssey-o009-custom-hack",
+            "**Completion report**\n\nRESULT: unknown template fixture\n",
+            {"tools/odyssey_patient_runner.py": code_marker},
         )
         mal = tasks / "odyssey-o003-malformed-fake"
         mal.mkdir(parents=True)
@@ -4648,12 +4845,17 @@ def _self_check() -> int:
         )
         dry_by = {r["task"]: r for r in dry_rows}
         assert dry_by["odyssey-o001-data-fake"]["classification"] == "DATA-ONLY"
-        assert "MERGE+CLEANUP" in dry_by["odyssey-o001-data-fake"]["action"]
+        assert "MERGE+COMPLETE" in dry_by["odyssey-o001-data-fake"]["action"]
         assert dry_by["odyssey-o005-code-fake"]["classification"] == "CODE"
         assert "REVIEW" in dry_by["odyssey-o005-code-fake"]["action"]
+        tweak_name = "odyssey-o005-sensitivity-map-20260819-000001"
+        assert dry_by[tweak_name]["classification"] == "DATA-ONLY", dry_by[tweak_name]
+        assert "MERGE+COMPLETE" in dry_by[tweak_name]["action"]
+        assert dry_by["odyssey-o009-custom-hack"]["classification"] == "CODE"
+        assert "REVIEW" in dry_by["odyssey-o009-custom-hack"]["action"]
         assert not dry_by["odyssey-o001-data-fake"]["applied"]
         assert cleaned == []
-        assert not (dest / "receipts" / "odyssey-i" / "O001_FAKE.json").exists()
+        assert not (dest / "receipts" / "odyssey-i" / "O001_EXTERNAL.json").exists()
         assert not qpath.exists()
 
         rows_h = harvest_lanes(
@@ -4665,11 +4867,13 @@ def _self_check() -> int:
         data_row = by_h["odyssey-o001-data-fake"]
         code_row = by_h["odyssey-o005-code-fake"]
         mal_row = by_h["odyssey-o003-malformed-fake"]
+        tweak_row = by_h[tweak_name]
+        unk_row = by_h["odyssey-o009-custom-hack"]
         assert data_row["classification"] == "DATA-ONLY"
         assert data_row["applied"] and data_row["verdict"] == "VERIFIED"
         assert data_row["cleanup"] is True
         assert "odyssey-o001-data-fake" in cleaned
-        dest_receipt = dest / "receipts" / "odyssey-i" / "O001_FAKE.json"
+        dest_receipt = dest / "receipts" / "odyssey-i" / "O001_EXTERNAL.json"
         assert dest_receipt.is_file(), dest_receipt
         assert "data-only fixture" in dest_receipt.read_text()
         dest_pkt = dest / "workspace" / "campaign" / "odyssey" / "patients" / "O001" / "ODYSSEY_PATIENT_O001.json"
@@ -4688,6 +4892,30 @@ def _self_check() -> int:
         assert _work_for_task(fake_state, "odyssey-o005-code-fake")["status"] == "REVIEW"
         assert (recs / "harvest_odyssey-o005-code-fake.json").is_file()
 
+        assert tweak_row["classification"] == "DATA-ONLY"
+        assert tweak_row["applied"] and tweak_row["verdict"] == "VERIFIED"
+        assert tweak_name in cleaned
+        assert RUNNER_REL in (tweak_row.get("dropped") or []), tweak_row.get("dropped")
+        dest_sens = dest / "receipts" / "odyssey-i" / "O005_SENSITIVITY.json"
+        assert dest_sens.is_file(), dest_sens
+        assert not dest_code.exists(), "DATA-ONLY must drop tools/*.py even with a runner tweak"
+        dest_comp = dest / "workspace" / "campaign" / "odyssey" / "ODYSSEY_COMPLETIONS.json"
+        assert dest_comp.is_file(), dest_comp
+        ckeys = {
+            (e["patient_id"], e["mechanism_id"])
+            for e in (read_json(dest_comp).get("entries") or [])
+            if e.get("status") == "VERIFIED"
+        }
+        assert ("O005", "sensitivity-map") in ckeys, ckeys
+        assert ("O001", "external-science") in ckeys, ckeys
+        assert _work_for_task(fake_state, tweak_name)["status"] == "VERIFIED"
+
+        assert unk_row["classification"] == "CODE"
+        assert unk_row["applied"] and unk_row["verdict"] == "REVIEW"
+        assert "odyssey-o009-custom-hack" not in cleaned
+        qrows = [json.loads(x) for x in qpath.read_text().splitlines() if x.strip()]
+        assert any(q["task"] == "odyssey-o009-custom-hack" for q in qrows), qrows
+
         assert mal_row["verdict"] == "REFUTED"
         assert "malformed" in (mal_row.get("reason") or "")
         assert "odyssey-o003-malformed-fake" not in cleaned
@@ -4705,15 +4933,14 @@ def _self_check() -> int:
         assert len(qpath.read_text().splitlines()) == n_q
         assert all(r.get("verdict") == "SKIP" for r in rows_h2), rows_h2
 
-    # 10. code-edit serial: skip sensitivity/dense while any lane is RUNNING
+    # 10. data-producing templates are RUN-only: code_edit_busy does not serialize
     g_serial = evaluate_gates(
         {"template": "sensitivity-map", "model_loading": False,
          "timing": False, "download": False},
         go=True, running_n=1, cap=2, snap=fat_snap, worker=None,
         lint_ok=True, lint_msg="", code_edit_busy=True,
     )
-    assert g_serial["verdict"] == "SKIP", g_serial
-    assert "code-edit serial" in (g_serial.get("skip_reason") or ""), g_serial
+    assert g_serial["verdict"] == "LAUNCH", g_serial
     g_runonly = evaluate_gates(
         {"template": "external-science-moe", "model_loading": False,
          "timing": False, "download": False},
@@ -4773,15 +5000,27 @@ def _self_check() -> int:
         for e in live.get("entries") or []
         if e.get("status") == "VERIFIED"
     }
-    assert ("O005", "sensitivity-map") not in live_keys
+    o005_sens_done = ("O005", "sensitivity-map") in live_keys
+    o003_sens_done = ("O003", "sensitivity-map") in live_keys
+    flying_now = {
+        (w.get("oxx"), w.get("template"))
+        for w in (st2.get("work") or [])
+        if w.get("status") in {"RUNNING", "REVIEW"}
+        and w.get("oxx") and w.get("template")
+    }
+    if o005_sens_done:
+        assert (RECEIPT_DIR / "O005_SENSITIVITY.json").is_file()
     ranked_live = select_ready_obligations(st2)
     live_pair = {(r["oxx"], r["template"]) for r in ranked_live}
     assert ("O001", "external-science-dense") not in live_pair, live_pair
     assert ("O001", "sensitivity-map") not in live_pair, live_pair
     assert ("O003", "external-science-moe") not in live_pair, live_pair
-    assert any(
-        r["oxx"] == "O005" and r["template"] == "sensitivity-map" for r in ranked_live
-    ), live_pair
+    if o005_sens_done or ("O005", "sensitivity-map") in flying_now:
+        assert ("O005", "sensitivity-map") not in live_pair, live_pair
+    else:
+        assert any(
+            r["oxx"] == "O005" and r["template"] == "sensitivity-map" for r in ranked_live
+        ), live_pair
     assert any(
         r["oxx"] == "O004" and r["template"] == "external-science-dense" for r in ranked_live
     ), live_pair
@@ -4840,15 +5079,23 @@ def _self_check() -> int:
         source_revision=head,
     ) == "REFUSE"
 
-    # write-scope: intersecting write_sets never both admitted
+    # write-scope: data-producing templates no longer claim the runner.
+    # Different patients run in parallel; same-patient packet still serializes.
     sens = {"oxx": "O005", "template": "sensitivity-map"}
     dense = {"oxx": "O001", "template": "external-science-dense"}
     moe = {"oxx": "O003", "template": "external-science-moe"}
     xfer = {"oxx": "O006", "template": "transfer-control"}
-    assert scopes_conflict(write_scope(sens), write_scope(dense)), "runner should collide"
-    assert scopes_conflict(write_scope(sens), write_scope(moe)), "runner should collide"
+    grav = {"oxx": "O005", "template": "gravity-moe"}
+    nxh = {"oxx": "O001", "template": "nx-state-hybrid"}
+    assert RUNNER_REL not in write_scope(sens)["write_set"], write_scope(sens)
+    assert RUNNER_REL not in write_scope(grav)["write_set"], write_scope(grav)
+    assert RUNNER_REL not in write_scope(dense)["write_set"], write_scope(dense)
+    assert not scopes_conflict(write_scope(sens), write_scope(dense))
+    assert not scopes_conflict(write_scope(sens), write_scope(moe))
     assert not scopes_conflict(write_scope(sens), write_scope(xfer)), write_scope(xfer)
     assert not scopes_conflict(write_scope(dense), write_scope(xfer))
+    assert not scopes_conflict(write_scope(grav), write_scope(nxh))
+    assert scopes_conflict(write_scope(sens), write_scope(grav)), "same-patient packet"
     admitted, occupied = [], []
     for ob in (sens, dense, moe, xfer):
         sc = write_scope(ob)
@@ -4857,8 +5104,8 @@ def _self_check() -> int:
         admitted.append((ob["oxx"], ob["template"]))
         occupied.append(sc)
     assert ("O005", "sensitivity-map") in admitted
-    assert ("O001", "external-science-dense") not in admitted
-    assert ("O003", "external-science-moe") not in admitted
+    assert ("O001", "external-science-dense") in admitted
+    assert ("O003", "external-science-moe") in admitted
     assert ("O006", "transfer-control") in admitted
     g_collide = evaluate_gates(
         {"template": "sensitivity-map", "model_loading": False,
@@ -4868,10 +5115,6 @@ def _self_check() -> int:
     )
     assert g_collide["verdict"] == "SKIP", g_collide
     assert "write-scope collision" in (g_collide.get("skip_reason") or ""), g_collide
-    grav = {"oxx": "O005", "template": "gravity-moe"}
-    nxh = {"oxx": "O001", "template": "nx-state-hybrid"}
-    assert scopes_conflict(write_scope(sens), write_scope(grav)), "gravity writes runner"
-    assert scopes_conflict(write_scope(grav), write_scope(nxh)), "nx writes runner"
 
     # 12. retire-eligible (all required VERIFIED vs one missing) + cycle dry-run
     #     + retire/acquire-next refuse when preconditions fail.
@@ -4892,9 +5135,18 @@ def _self_check() -> int:
     ]
     assert retire_eligible("O001", st2, full_o001), o001_req
     assert not retire_eligible("O001", st2, full_o001[:-1]), full_o001[:-1]
-    assert not retire_eligible("O005", st2), missing_required("O005", st2)
-
-    refused = retire_patient("O005", dry_run=True, persist=False, state=dict(st2))
+    o005_miss = missing_required("O005", st2)
+    if o005_miss:
+        assert not retire_eligible("O005", st2), o005_miss
+        refused = retire_patient("O005", dry_run=True, persist=False, state=dict(st2))
+        assert refused.get("verdict") == "REFUSE", refused
+        assert "not retire-eligible" in (refused.get("reason") or ""), refused
+    else:
+        assert retire_eligible("O005", st2)
+        would = retire_patient("O005", dry_run=True, persist=False, state=dict(st2))
+        assert would.get("verdict") == "DRY-RUN", would
+        assert "would retire" in (would.get("reason") or ""), would
+    refused = retire_patient("O004", dry_run=True, persist=False, state=dict(st2))
     assert refused.get("verdict") == "REFUSE", refused
     assert "not retire-eligible" in (refused.get("reason") or ""), refused
 
@@ -4936,14 +5188,23 @@ def _self_check() -> int:
             auto_dir=td_c / "auto",
         )
     assert launches == [], launches
-    assert not (cplan.get("retire_eligible") or []), cplan.get("retire_eligible")
+    if o005_miss:
+        assert "O005" not in (cplan.get("retire_eligible") or []), cplan.get("retire_eligible")
+    else:
+        assert "O005" in (cplan.get("retire_eligible") or []), cplan.get("retire_eligible")
     ready_pair = {(r["oxx"], r["template"]) for r in (cplan.get("ready") or [])}
-    assert ("O005", "sensitivity-map") in ready_pair, ready_pair
+    if o005_sens_done or ("O005", "sensitivity-map") in flying_now:
+        assert ("O005", "sensitivity-map") not in ready_pair, ready_pair
+    else:
+        assert ("O005", "sensitivity-map") in ready_pair, ready_pair
     # O006 transfer-control is SEALED -> not ready; a pending O006 obligation is.
     assert ("O006", "transfer-control") not in ready_pair, ready_pair
     assert ("O006", "sensitivity-map") in ready_pair, ready_pair
     assert ("O004", "external-science-dense") in ready_pair, ready_pair
-    assert ("O003", "sensitivity-map") in ready_pair, ready_pair
+    if o003_sens_done or ("O003", "sensitivity-map") in flying_now:
+        assert ("O003", "sensitivity-map") not in ready_pair, ready_pair
+    else:
+        assert ("O003", "sensitivity-map") in ready_pair, ready_pair
     assert any(t.startswith("gravity-") or t.startswith("nx-") for _, t in ready_pair), ready_pair
     admitted = cplan.get("admitted") or []
     assert admitted, "cycle dry-run rendered no plan"

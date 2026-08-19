@@ -20,6 +20,7 @@ READ workspace/campaign/odyssey/TRANSFER_MATRIX.json
 Call worker_gate.observe()/gate() before load. Abort on REFUSE.
 
 ## BUILD
+The runner ALREADY has this mode — RUN it, do NOT modify tools/odyssey_patient_runner.py.
 Reuse tools/odyssey_patient_runner.py on O006 (route map + baseline + fast-Doctor).
 If O006 is multimodal, tap the language-MoE router; skip the vision tower.
 Then diff against O005:
@@ -38,11 +39,10 @@ Merge those cells into workspace/campaign/odyssey/TRANSFER_MATRIX.json for O006
 - workspace/campaign/odyssey/TRANSFER_MATRIX.json has non-NOT_TESTED cells for O006.
 
 ## SCOPE
-WRITE tools/odyssey_patient_runner.py
 WRITE receipts/odyssey-i/
 WRITE workspace/campaign/odyssey/patients/O006/
 WRITE workspace/campaign/odyssey/TRANSFER_MATRIX.json
 READ tools/odyssey_patient_runner.py, tools/worker_gate.py, workspace/campaign/odyssey/patients/O006/census.json, workspace/campaign/odyssey/patients/O006/ODYSSEY_PATIENT_O006.json, workspace/campaign/odyssey/patients/O005/census.json, workspace/campaign/odyssey/patients/O005/ODYSSEY_PATIENT_O005.json, workspace/campaign/odyssey/TRANSFER_MATRIX.json
-VERIFY tools/odyssey_patient_runner.py by running the unfenced command below; must pass, exit 0.
+VERIFY receipts/odyssey-i/O006_TRANSFER.json by running the unfenced command below; must pass, exit 0.
 python3 tools/odyssey_patient_runner.py --oxx O006 --weights /Users/scammermike/.cache/huggingface/hub/models--Qwen--Qwen3-VL-30B-A3B-Instruct/snapshots/9c4b90e1e4ba969fd3b5378b57d966d725f1b86c --runtime mlx --route-tokens 512 --out receipts/odyssey-i/O006_EXTERNAL.json --packet workspace/campaign/odyssey/patients/O006/ODYSSEY_PATIENT_O006.json
 Do not touch Genesis state or tools/odyssey/.

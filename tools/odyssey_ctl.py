@@ -20,6 +20,7 @@ ascent state or tools/odyssey/ (training-data Odyssey).
     python3 tools/odyssey_ctl.py cycle --go [--max-lanes N]
     python3 tools/odyssey_ctl.py retire <OXX>
     python3 tools/odyssey_ctl.py acquire-next [--go]
+    python3 tools/odyssey_ctl.py economics
     bash tools/odyssey_driver.sh
 """
 from __future__ import annotations
@@ -43,6 +44,10 @@ sys.path.insert(0, str(TOOLS))
 
 import doctor_seal  # noqa: E402
 import worker_gate  # noqa: E402
+import odyssey_candgen as candgen  # noqa: E402
+import odyssey_costmodel as costmodel  # noqa: E402
+import odyssey_memgate as memgate  # noqa: E402
+import odyssey_novelty as novelty  # noqa: E402
 
 ODYSSEY = REPO / "workspace" / "campaign" / "odyssey"
 STATE = ODYSSEY / "ODYSSEY_STATE.json"
@@ -74,7 +79,9 @@ HF_HUB = Path.home() / ".cache" / "huggingface" / "hub"
 DISK_FLOOR_GIB = 15.0
 DISK_WARN_GIB = 40.0
 DISK_RUN_GIB = 45.0
-HARD_LANE_CAP = 3
+# Memgate (swap<=30 GiB) is the real multi-model bound. This cap is only a
+# safety rail so a stuck driver cannot spawn unbounded grok-run processes.
+HARD_LANE_CAP = 8
 DEFAULT_MAX_LANES = 2
 SCHEMA = "hawking.odyssey.controller.v1"
 RUN_LOG_SCHEMA = "hawking.odyssey.run_log.v1"
@@ -91,6 +98,7 @@ PHASES = (
 )
 PHASE_INDEX = {name: i for i, name in enumerate(PHASES)}
 TRANSFER_REF = {"O006": "O005"}
+NOVELTY_TEMPLATES = tuple(f"novelty-{lane}" for lane in novelty.LANES)
 TEMPLATES = (
     "external-science-moe",
     "external-science-dense",
@@ -105,7 +113,7 @@ TEMPLATES = (
     "nx-gather-moe",
     "nx-state-hybrid",
     "nx-dense",
-)
+) + NOVELTY_TEMPLATES
 # Every current template is DATA-PRODUCING: it RUNS the existing runner and
 # delivers a receipt + packet fields. Incidental tools/*.py diffs are noise.
 # Empty: no template claims the runner, so lanes are parallel-safe.
@@ -133,6 +141,7 @@ TEMPLATE_MECHANISM = {
     "nx-gather-moe": "nx-gather-moe",
     "nx-state-hybrid": "nx-state-hybrid",
     "nx-dense": "nx-dense",
+    **{t: t for t in NOVELTY_TEMPLATES},
 }
 # Agreed runner flags (parallel lane owns the runner; these names are the contract).
 GRAVITY_SPEC = {
@@ -173,6 +182,7 @@ RECEIPT_PATTERN = {
     "transfer-control": "{oxx}_TRANSFER.json",
     **GRAVITY_RECEIPT,
     **NX_RECEIPT,
+    **{f"novelty-{lane}": "{oxx}_NOVELTY_" + lane + ".json" for lane in novelty.LANES},
     "patient-sealed": "{oxx}_PATIENT_SEAL.json",
 }
 # Bounded required set per class (steer S002 — do not over-deepen).
@@ -195,7 +205,10 @@ CONVENTIONAL_GRAVITY_TEMPLATES = frozenset({
     "gravity-moe", "gravity-dense", "gravity-hybrid",
 })
 POLICY_PATH = ODYSSEY / "ODYSSEY_POLICY.json"
+MANIFEST_PATH = ODYSSEY / "ODYSSEY_MANIFEST.json"
 _POLICY_CACHE = None
+_MANIFEST_CACHE = None
+_MANIFEST_BY_OXX = None
 SENSITIVITY_SKIP_KEYS = frozenset({
     "baseline", "_label", "_evidence", "treatments", "summary",
 })
@@ -373,27 +386,183 @@ def load_odyssey_policy(path: Path | None = None) -> dict:
     return doc
 
 
+def load_odyssey_manifest(path: Path | None = None) -> list:
+    """Predeclared patient ladder (canonical_source / targets / search_class)."""
+    global _MANIFEST_CACHE, _MANIFEST_BY_OXX
+    dest = Path(path) if path else MANIFEST_PATH
+    if _MANIFEST_CACHE is not None and path is None:
+        return _MANIFEST_CACHE
+    rows: list = []
+    if dest.is_file():
+        try:
+            data = read_json(dest)
+        except (OSError, json.JSONDecodeError):
+            data = None
+        if isinstance(data, list):
+            rows = [e for e in data if isinstance(e, dict)]
+        elif isinstance(data, dict):
+            for key in ("patients", "entries", "manifest"):
+                if isinstance(data.get(key), list):
+                    rows = [e for e in data[key] if isinstance(e, dict)]
+                    break
+    if path is None:
+        _MANIFEST_CACHE = rows
+        _MANIFEST_BY_OXX = {
+            str(e.get("oxx") or ""): e for e in rows if e.get("oxx")
+        }
+    return rows
+
+
+def manifest_entry(oxx: str) -> dict:
+    oxx = norm_oxx(oxx) if oxx else ""
+    if not oxx:
+        return {}
+    load_odyssey_manifest()
+    by = _MANIFEST_BY_OXX or {}
+    return dict(by.get(oxx) or {})
+
+
+def overlay_manifest(meta: dict | None, oxx: str | None = None) -> dict:
+    """Copy of a patient record with manifest source/targets overlaid."""
+    rec = dict(meta or {})
+    oid = oxx or rec.get("oxx") or ""
+    man = manifest_entry(oid)
+    if not man:
+        return rec
+    rec["canonical_source"] = man.get("canonical_source") or rec.get("canonical_source")
+    if man.get("canonical_source"):
+        rec["source"] = man["canonical_source"]
+    if man.get("gated") is not None:
+        rec["gated"] = bool(man.get("gated"))
+    if man.get("gated_reason"):
+        rec["gated_reason"] = man["gated_reason"]
+    for key in (
+        "est_source_gib", "est_4bit_gib", "doctor_bar",
+        "stored_bpw_pressure", "active_bpw_pressure", "tps_pressure_rel",
+        "search_class", "kernel_effort", "info_budget", "arch_objective",
+        "reference_sibling", "canonical_revision", "source_precision",
+        "reopen_if",
+    ):
+        if man.get(key) is not None:
+            rec[key] = man[key]
+    return rec
+
+
 def gravity_spec_meta(spec: str) -> dict:
     table = (load_odyssey_policy().get("gravity_specs") or {})
     meta = table.get(spec) or {}
     return dict(meta)
 
 
+def parse_gravity_grammar(spec: str) -> dict | None:
+    """Parse a runner --gravity spec. Prefers candgen; falls back to the published grammar."""
+    raw = str(spec or "").strip()
+    if not raw:
+        return None
+    try:
+        return candgen.parse_spec(raw)
+    except (ValueError, TypeError):
+        pass
+    base, *rest = raw.split("+", 1)
+    suffixes = "+" + rest[0] if rest else ""
+    has_corr = bool(re.search(r"\+(correction|c\d)", suffixes, re.I))
+    m = re.fullmatch(r"q(\d+)-g(\d+)(?:-(experts|attn-mlp))?", base, re.I)
+    if m:
+        return {
+            "form": "uniform",
+            "bits": int(m.group(1)),
+            "group": int(m.group(2)),
+            "target": (m.group(3) or "").lower() or None,
+            "correction_budget": 0.02 if has_corr else 0.0,
+            "correction_token": has_corr,
+        }
+    m = re.fullmatch(r"mixed-q(\d+)q(\d+)(?:-(experts|attn-mlp))?", base, re.I)
+    if m:
+        return {
+            "form": "mixed",
+            "mixed_lo": int(m.group(1)),
+            "mixed_hi": int(m.group(2)),
+            "bits": int(m.group(1)),
+            "group": 32,
+            "target": (m.group(3) or "").lower() or None,
+            "correction_budget": 0.02 if has_corr else 0.0,
+            "correction_token": has_corr,
+        }
+    if base.lower().startswith("tiers-") or "tier" in raw.lower():
+        return {
+            "form": "tiers",
+            "bits": 1,
+            "correction_budget": 0.02 if has_corr else 0.0,
+            "correction_token": has_corr,
+        }
+    m = re.fullmatch(r"scale-joint-q(\d+)-g(\d+)(?:-(experts|attn-mlp))?", base, re.I)
+    if m:
+        return {
+            "form": "scale_joint",
+            "bits": int(m.group(1)),
+            "group": int(m.group(2)),
+            "target": (m.group(3) or "").lower() or None,
+            "correction_budget": 0.02 if has_corr else 0.0,
+            "correction_token": has_corr,
+        }
+    return None
+
+
 def classify_gravity_spec(spec: str) -> dict:
-    """Deterministic spec → candidate_class / conventionality. No model reasoning."""
+    """Grammar-based spec → candidate_class. policy.gravity_specs is an exact-key override.
+
+    q>=3 affine → CONVENTIONAL_ANCHOR; q<=2 affine → AGGRESSIVE_QUANT;
+    mixed / +correction / tiers / scale-joint → STRUCTURAL_GRAVITY.
+    No per-candidate model reasoning.
+    """
+    spec = str(spec or "")
     meta = gravity_spec_meta(spec)
     classes = load_odyssey_policy().get("candidate_classes") or []
-    klass = meta.get("candidate_class") or "BASELINE"
+    parsed = parse_gravity_grammar(spec)
+    klass = None
+    conv = None
+    bits = None
+    mech = None
+    if meta.get("candidate_class"):
+        klass = meta["candidate_class"]
+        conv = meta.get("conventionality")
+        bits = meta.get("nominal_bits")
+        mech = meta.get("mechanism")
+    elif parsed:
+        form = parsed.get("form")
+        corr = bool(parsed.get("correction_token")) or float(
+            parsed.get("correction_budget") or 0
+        ) > 0
+        bits = parsed.get("bits")
+        if form in {"mixed", "tiers", "scale_joint"} or corr:
+            klass = "STRUCTURAL_GRAVITY"
+            if form == "mixed":
+                mech = "per-organ/layer/expert/sensitivity-driven bit allocation"
+            elif form == "tiers":
+                mech = "matryoshka-tiers"
+            elif form == "scale_joint":
+                mech = "scale-codec-joint"
+            else:
+                mech = "base+correction"
+        elif bits is not None and int(bits) <= 2:
+            klass = "AGGRESSIVE_QUANT"
+            mech = "affine-quant"
+        elif bits is not None and int(bits) >= 3:
+            klass = "CONVENTIONAL_ANCHOR"
+            mech = "affine-quant"
+    if not klass:
+        klass = "BASELINE"
     if classes and klass not in classes:
         klass = "BASELINE"
-    conv = meta.get("conventionality")
     if not conv:
         conv = "conventional" if klass == "CONVENTIONAL_ANCHOR" else "nonconventional"
+    if bits is None and parsed and parsed.get("bits") is not None:
+        bits = parsed.get("bits")
     return {
         "candidate_class": klass,
         "conventionality": conv,
-        "mechanism": meta.get("mechanism"),
-        "nominal_bits": meta.get("nominal_bits"),
+        "mechanism": mech or meta.get("mechanism"),
+        "nominal_bits": bits if bits is not None else meta.get("nominal_bits"),
         "spec": spec,
     }
 
@@ -472,8 +641,10 @@ def organ_sensitivity_rank(per_organ_sensitivity) -> list[dict]:
 
 
 def select_protected_components(spec: str, per_organ_sensitivity=None) -> list[str]:
-    """Sensitivity-driven mix: q2 base, promote the worst organs to q3. Deterministic."""
-    if spec != "mixed-q2q3-experts":
+    """Sensitivity-driven mix: low-bit base, promote the worst organs. Deterministic."""
+    parsed = parse_gravity_grammar(spec or "")
+    is_mixed = (parsed or {}).get("form") == "mixed" or str(spec or "").startswith("mixed-")
+    if not is_mixed:
         return []
     ranked = organ_sensitivity_rank(per_organ_sensitivity)
     usable = [r for r in ranked if r["organ"] not in {"norm", "ssm"}]
@@ -788,20 +959,27 @@ def packet_rel(oxx: str) -> str:
     return f"workspace/campaign/odyssey/patients/{oxx}/ODYSSEY_PATIENT_{oxx}.json"
 
 
-def receipt_filename(oxx: str, template_or_mech: str) -> str | None:
+def receipt_filename(oxx: str, template_or_mech: str, spec: str | None = None) -> str | None:
     """Leaf name of the expected receipts/odyssey-i receipt for a template."""
     if not oxx or not template_or_mech:
         return None
-    pat = RECEIPT_PATTERN.get(template_or_mech)
+    tmpl = template_or_mech
+    if spec and (
+        tmpl in GRAVITY_SPEC
+        or tmpl.startswith("gravity-")
+        or tmpl in GRAVITY_RECEIPT
+    ):
+        return f"{oxx}_GRAVITY_{spec}.json"
+    pat = RECEIPT_PATTERN.get(tmpl)
     if not pat:
-        pat = RECEIPT_PATTERN.get(mechanism_for_template(template_or_mech))
+        pat = RECEIPT_PATTERN.get(mechanism_for_template(tmpl))
     if not pat:
         return None
     return pat.format(oxx=oxx)
 
 
-def expected_receipt_rel(oxx: str, template: str) -> str | None:
-    name = receipt_filename(oxx, template)
+def expected_receipt_rel(oxx: str, template: str, spec: str | None = None) -> str | None:
+    name = receipt_filename(oxx, template, spec=spec)
     return f"receipts/odyssey-i/{name}" if name else None
 
 
@@ -809,36 +987,50 @@ def write_scope(ob: dict) -> dict:
     """Files this obligation may edit + exclusive resources. Honest per template.
 
     Data-producing templates RUN the existing runner; they do not claim it.
-    Same-patient packet still serializes; different patients run in parallel.
+    write_set is {patient packet, that patient's receipts} only. The runner
+    is claimed solely by RUNNER_WRITE_TEMPLATES (empty: no current template
+    builds the runner). Different patients → disjoint → parallel.
     """
     oxx = ob.get("oxx") or ob.get("patient_id") or ""
     template = ob.get("template") or ""
     if "write_set" in ob:
+        excl = list(ob.get("exclusive_resources") or [])
+        if ob.get("timing") and "protected-timing" not in excl:
+            excl.append("protected-timing")
         return {
             "write_set": list(ob.get("write_set") or []),
-            "exclusive_resources": list(ob.get("exclusive_resources") or []),
+            "exclusive_resources": excl,
         }
     packet = packet_rel(oxx) if oxx else ""
-    rec = expected_receipt_rel(oxx, template)
-    if template == "sensitivity-map":
-        writes = [packet, rec]
-    elif template in {"external-science-moe", "external-science-dense"}:
-        writes = [packet, rec]
+    spec = ob.get("gravity_spec")
+    rec = expected_receipt_rel(oxx, template, spec=spec)
+    writes: list[str] = []
+    if template in RUNNER_WRITE_TEMPLATES or template in CODE_EDIT_TEMPLATES:
+        writes = [RUNNER_REL, packet, rec]
+    elif template.startswith("novelty-"):
+        writes = [rec] if rec else []
     elif template == "transfer-control":
         writes = [
             packet,
             f"receipts/odyssey-i/{oxx}_EXTERNAL.json",
             rec,
-            TRANSFER_REL,
         ]
-    elif template in GRAVITY_SPEC or template in NX_FLAG:
+    elif template in {
+        "external-science-moe", "external-science-dense", "route-map",
+        "sensitivity-map",
+    } or template in GRAVITY_SPEC or template in NX_FLAG or template in DATA_PRODUCING_TEMPLATES:
         writes = [packet, rec]
     else:
         writes = [packet] if packet else []
     writes = [p for p in writes if p]
+    if template not in RUNNER_WRITE_TEMPLATES:
+        writes = [p for p in writes if p != RUNNER_REL]
+    excl = list(ob.get("exclusive_resources") or [])
+    if ob.get("timing") and "protected-timing" not in excl:
+        excl.append("protected-timing")
     return {
         "write_set": writes,
-        "exclusive_resources": list(ob.get("exclusive_resources") or []),
+        "exclusive_resources": excl,
     }
 
 
@@ -1094,7 +1286,9 @@ def parse_science_task(name: str) -> tuple[str, str] | None:
         r"sensitivity-map|transfer-control|"
         r"gravity-aggressive-moe|gravity-aggressive-dense|gravity-aggressive-hybrid|"
         r"gravity-moe|gravity-dense|gravity-hybrid|"
-        r"nx-gather-moe|nx-state-hybrid|nx-dense"
+        r"nx-gather-moe|nx-state-hybrid|nx-dense|"
+        r"novelty-representation|novelty-numerical|novelty-arch|novelty-kernel|"
+        r"novelty-adversarial-falsifier|novelty-compression"
         r")(?:-\d{8}-\d{6})?$",
         name or "",
         re.I,
@@ -1386,7 +1580,11 @@ def patient_meta(oxx: str, state: dict | None = None) -> dict:
     st = state or ensure_state()
     for p in st.get("patients") or []:
         if p.get("oxx") == oxx:
-            return p
+            return overlay_manifest(p, oxx)
+    man = manifest_entry(oxx)
+    if man:
+        return overlay_manifest({"oxx": oxx, "source": "", "class": man.get("class") or "",
+                                 "phase": "", "model": man.get("model") or oxx}, oxx)
     return {"oxx": oxx, "source": "", "class": "", "phase": "", "model": oxx}
 
 
@@ -1826,6 +2024,14 @@ def harvest(*, tasks_root: Path | None = None, receipt_dir: Path | None = None,
                                 "evidence": parsed["evidence"],
                                 "_evidence": "INFERRED (harvester nomination, bible §9/§12)",
                             }) + "\n")
+                    if receipt_dir is None:
+                        record_ctl_event(
+                            rec["oxx"], "grok", 0.0,
+                            grok_lane=d.name,
+                            opus=bool(trig),
+                            extra={"verdict": rec["verdict"], "harvest": "report"},
+                            persist=True,
+                        )
         dest = out_dir / f"{d.name}.json"
         write_json(dest, rec)
         rows.append({"task": d.name, "verdict": rec["verdict"],
@@ -1896,12 +2102,26 @@ def is_expected_receipt(rel: str, oxx: str, template: str) -> bool:
         return True
     if not n.startswith(DATA_RECEIPT_PREFIX) or not n.endswith(".json"):
         return False
+    if not oxx:
+        return False
+    leaf = n.rsplit("/", 1)[-1]
+    if template in AGGRESSIVE_GRAVITY_TEMPLATES:
+        prefix = f"{oxx}_GRAVITY_"
+        if leaf.startswith(prefix) and leaf.endswith(".json"):
+            spec = leaf[len(prefix):-5]
+            klass = classify_gravity_spec(spec).get("candidate_class")
+            return klass in {
+                "AGGRESSIVE_QUANT", "STRUCTURAL_GRAVITY", "FRONTIER", "ACTIVE_NX",
+            }
+        return False
+    if template and template.startswith("novelty-"):
+        lane = template.split("novelty-", 1)[-1]
+        return leaf == f"{oxx}_NOVELTY_{lane}.json"
     pat = RECEIPT_PATTERN.get(template) or RECEIPT_PATTERN.get(
         mechanism_for_template(template or "")
     )
-    if not pat or not oxx:
+    if not pat:
         return False
-    leaf = n.rsplit("/", 1)[-1]
     return fnmatch.fnmatch(leaf, pat.format(oxx=oxx))
 
 
@@ -2467,6 +2687,17 @@ def harvest_lanes(*, tasks_root: Path | None = None,
         row["applied"] = True
         mutated = True
         rows.append(row)
+        record_ctl_event(
+            oxx, "grok" if rec_verdict == "VERIFIED" else "harvest",
+            0.0, grok_lane=d.name,
+            opus=rec_verdict == "REVIEW",
+            extra={
+                "verdict": rec_verdict,
+                "template": tmpl,
+                "classification": classification,
+            },
+            persist=do_persist,
+        )
 
     if do_persist and mutated and not dry_run:
         save_state(st)
@@ -2599,6 +2830,8 @@ def prereq_ok(template: str, meta: dict, pkt: dict | None, census_exists: bool) 
         return census_exists and has_baseline(pkt)
     if template in GRAVITY_SPEC or template in NX_FLAG:
         return census_exists
+    if template.startswith("novelty-"):
+        return census_exists
     return False
 
 
@@ -2635,6 +2868,23 @@ def append_run_log(row: dict, path: Path | None = None) -> None:
     dest.parent.mkdir(parents=True, exist_ok=True)
     with dest.open("a") as fh:
         fh.write(json.dumps(row, ensure_ascii=False) + "\n")
+
+
+def record_ctl_event(patient, event, wall_s=0.0, *, grok_lane=None,
+                     opus=False, extra=None, persist=True):
+    """Append a compile-economics event. Never raises into the loop."""
+    if not persist:
+        return None
+    oxx = patient or ""
+    if not oxx:
+        return None
+    try:
+        return costmodel.record(
+            oxx, event, float(wall_s or 0.0),
+            grok_lane=grok_lane, opus=bool(opus), extra=extra or {},
+        )
+    except Exception:
+        return None
 
 
 def parse_active_obligations() -> list[tuple[str, str]]:
@@ -2691,8 +2941,187 @@ def template_for_work(work: dict, meta: dict, pkt: dict | None,
     return None
 
 
+def _tried_gravity_specs(oxx: str, pkt: dict | None = None) -> set[str]:
+    tried: set[str] = set()
+    blob = pkt if pkt is not None else load_packet(oxx)
+    grav = (blob or {}).get("gravity") or {}
+    for key in ("wins", "kills"):
+        for item in grav.get(key) or []:
+            if isinstance(item, dict) and item.get("spec"):
+                tried.add(str(item["spec"]))
+            elif isinstance(item, str) and item:
+                tried.add(item)
+    last = grav.get("last")
+    if isinstance(last, dict) and last.get("spec"):
+        tried.add(str(last["spec"]))
+    if RECEIPT_DIR.is_dir():
+        prefix = f"{oxx}_GRAVITY_"
+        for path in RECEIPT_DIR.glob(f"{prefix}*.json"):
+            spec = path.name[len(prefix):-5]
+            if spec:
+                tried.add(spec)
+    return tried
+
+
+def pick_aggressive_spec(oxx: str, template: str,
+                         census: dict | None = None,
+                         pkt: dict | None = None) -> str:
+    """Next-highest-EV aggressive/structural spec from candgen. Fallback: table."""
+    default = GRAVITY_SPEC.get(template) or "q2-g32-experts"
+    klass = "moe" if "moe" in template else (
+        "hybrid" if "hybrid" in template else "dense"
+    )
+    census_d = census if census is not None else load_census(oxx) or {}
+    pkt_d = pkt if pkt is not None else load_packet(oxx) or {}
+    sens = ((pkt_d.get("representation") or {}).get("per_organ_sensitivity")
+            if isinstance(pkt_d, dict) else None)
+    policy = load_odyssey_policy()
+    try:
+        cands = candgen.generate(klass, census_d or {}, sens, policy)
+    except (TypeError, ValueError, OSError, json.JSONDecodeError):
+        return default
+    tried = _tried_gravity_specs(oxx, pkt_d)
+    for cand in cands:
+        spec = cand.get("spec") if isinstance(cand, dict) else None
+        if not spec or spec in tried:
+            continue
+        tagged = classify_gravity_spec(str(spec))
+        klass_c = cand.get("candidate_class") or tagged.get("candidate_class")
+        if klass_c in {None, "", "CONVENTIONAL_ANCHOR", "BASELINE"}:
+            continue
+        return str(spec)
+    return default
+
+
+def _families_tried(oxx: str, pkt: dict | None, entries: list | None) -> list:
+    tried: list = []
+    grav = (pkt or {}).get("gravity") or {}
+    for key in ("wins", "kills"):
+        for item in grav.get(key) or []:
+            tried.append(item)
+    last = grav.get("last")
+    if isinstance(last, dict):
+        tried.append(last)
+    for e in entries or []:
+        if e.get("patient_id") != oxx:
+            continue
+        mech = str(e.get("mechanism_id") or "")
+        if mech.startswith("gravity") or is_aggressive_mechanism(mech):
+            tried.append(e)
+    return tried
+
+
+def _patient_best_class(oxx: str, pkt: dict | None, entries: list | None) -> str:
+    grav = (pkt or {}).get("gravity") or {}
+    if grav.get("candidate_class"):
+        return str(grav["candidate_class"])
+    last = grav.get("last") if isinstance(grav.get("last"), dict) else {}
+    if last.get("candidate_class"):
+        return str(last["candidate_class"])
+    for e in reversed(list(entries or [])):
+        if e.get("patient_id") == oxx and e.get("candidate_class"):
+            return str(e["candidate_class"])
+    if conventional_anchor_exists(oxx, entries):
+        return "CONVENTIONAL_ANCHOR"
+    return ""
+
+
+def _patient_target_delta(oxx: str, pkt: dict | None):
+    man = manifest_entry(oxx)
+    pressure = None
+    raw_p = man.get("stored_bpw_pressure")
+    try:
+        if raw_p is not None and raw_p != "UNKNOWN":
+            pressure = float(raw_p)
+    except (TypeError, ValueError):
+        pressure = None
+    if pressure is None:
+        zones = load_odyssey_policy().get("target_pressure_zones_bpw") or {}
+        try:
+            pressure = float(zones.get("pressure") or 2.5)
+        except (TypeError, ValueError):
+            pressure = 2.5
+    stored = None
+    grav = (pkt or {}).get("gravity") or {}
+    last = grav.get("last") if isinstance(grav.get("last"), dict) else {}
+    for src in (last, (pkt or {}).get("representation") or {}):
+        if not isinstance(src, dict):
+            continue
+        for key in ("complete_bpw", "stored_bpw", "best_stored_bpw_eq"):
+            if src.get(key) is None:
+                continue
+            try:
+                stored = float(src[key])
+                break
+            except (TypeError, ValueError):
+                continue
+        if stored is not None:
+            break
+    if stored is None:
+        return None
+    return stored - float(pressure)
+
+
+def should_novelty_escalate(oxx: str, pkt: dict | None,
+                            entries: list | None,
+                            state: dict | None = None) -> bool:
+    if not aggressive_probe_attempted(oxx, entries):
+        return False
+    tried = _families_tried(oxx, pkt, entries)
+    xfer_done = science_is_done(oxx, "transfer-control", entries) or not reference_sibling(
+        oxx, state
+    )
+    patient = {
+        "oxx": oxx,
+        "deterministic_search": True,
+        "deterministic_exhausted": True,
+        "rule_transfer": xfer_done,
+        "stages_completed": ["deterministic_search"] + (
+            ["rule_transfer"] if xfer_done else []
+        ),
+    }
+    return novelty.should_escalate(
+        patient,
+        _patient_best_class(oxx, pkt, entries),
+        _patient_target_delta(oxx, pkt),
+        tried,
+        load_odyssey_policy(),
+    )
+
+
+def _frontier_novelty_packet(oxx: str) -> dict:
+    pkt = load_packet(oxx) or {}
+    recs: list = []
+    if RECEIPT_DIR.is_dir():
+        for path in sorted(RECEIPT_DIR.glob(f"{oxx}_*.json")):
+            try:
+                recs.append(read_json(path))
+            except (OSError, json.JSONDecodeError):
+                continue
+    xfer_done = science_is_done(oxx, "transfer-control") or not reference_sibling(oxx)
+    patient = {
+        "oxx": oxx,
+        "kind": arch_kind(oxx, pkt, load_census(oxx)),
+        "deterministic_search": True,
+        "rule_transfer": xfer_done,
+        "stages_completed": ["deterministic_search"] + (
+            ["rule_transfer"] if xfer_done else []
+        ),
+    }
+    return novelty.build_packet(
+        patient,
+        pkt,
+        recs,
+        RULEBASE if RULEBASE.is_file() else {},
+        TRANSFER if TRANSFER.is_file() else {},
+        NEGATIVE if NEGATIVE.is_file() else {},
+        load_odyssey_policy(),
+    )
+
+
 def _ob_record(work: dict, template: str, *, source: str) -> dict:
     oxx = work["oxx"]
+    man = manifest_entry(oxx)
     rec = {
         "id": work.get("id") or f"AUTO-{oxx}-{template}",
         "oxx": oxx,
@@ -2705,18 +3134,33 @@ def _ob_record(work: dict, template: str, *, source: str) -> dict:
         "kind": work.get("kind") or template,
         "template": template,
         "mechanism_id": mechanism_for_template(template),
-        "model_loading": True,
+        "model_loading": not str(template).startswith("novelty-"),
         "timing": False,
         "download": False,
         "source": source,
-        "reference": TRANSFER_REF.get(oxx),
+        "reference": man.get("reference_sibling") or TRANSFER_REF.get(oxx),
+        "search_class": man.get("search_class"),
+        "info_budget": man.get("info_budget"),
+        "arch_objective": man.get("arch_objective"),
+        "stored_bpw_pressure": man.get("stored_bpw_pressure"),
+        "active_bpw_pressure": man.get("active_bpw_pressure"),
         "_evidence": "HYPOTHESIS (§22 ranking; READY if on_disk + phase prereqs)",
     }
-    scope = write_scope({"oxx": oxx, "template": template})
+    if template in AGGRESSIVE_GRAVITY_TEMPLATES:
+        rec["gravity_spec"] = work.get("gravity_spec") or pick_aggressive_spec(oxx, template)
+        if rec["gravity_spec"] and rec["gravity_spec"] not in (rec.get("title") or ""):
+            rec["title"] = f"{rec['title']} [{rec['gravity_spec']}]"
+    elif template in GRAVITY_SPEC:
+        rec["gravity_spec"] = GRAVITY_SPEC[template]
+    scope = write_scope(rec)
     rec["write_set"] = scope["write_set"]
     rec["exclusive_resources"] = scope["exclusive_resources"]
     if template == "transfer-control":
-        rec["reference"] = work.get("reference") or TRANSFER_REF.get(oxx, "O005")
+        rec["reference"] = (
+            work.get("reference")
+            or man.get("reference_sibling")
+            or TRANSFER_REF.get(oxx, "O005")
+        )
     return rec
 
 
@@ -2737,18 +3181,21 @@ def synthesize_for_patient(oxx: str, meta: dict, pkt: dict | None,
     arch = arch_kind(oxx, pkt, census)
     out = []
 
-    def add(template, info, wall, gpu, title, kind):
+    def add(template, info, wall, gpu, title, kind, gravity_spec=None):
         if (oxx, template) in covered:
             return
         if science_done_for_template(oxx, template, entries):
             return
         if not prereq_ok(template, meta, pkt, True):
             return
-        out.append(_ob_record({
+        work = {
             "id": f"AUTO-{oxx}-{template}",
             "oxx": oxx, "title": title, "info": info,
             "wall_cost": wall, "gpu_cost": gpu, "opus_cost": 0, "kind": kind,
-        }, template, source="synthesized"))
+        }
+        if gravity_spec:
+            work["gravity_spec"] = gravity_spec
+        out.append(_ob_record(work, template, source="synthesized"))
 
     if arch == "moe":
         ref = TRANSFER_REF.get(oxx)
@@ -2780,9 +3227,10 @@ def synthesize_for_patient(oxx: str, meta: dict, pkt: dict | None,
         add("gravity-moe", 8, 2, 1,
             "modest gravity q3-g32-experts (SPECIMEN)",
             "gravity")
+        agg = pick_aggressive_spec(oxx, "gravity-aggressive-moe", census, pkt)
         add("gravity-aggressive-moe", 8, 2, 1,
-            "aggressive gravity q2-g32-experts (SPECIMEN; anti-complacency)",
-            "gravity")
+            f"aggressive gravity {agg} (SPECIMEN; anti-complacency)",
+            "gravity", gravity_spec=agg)
         add("nx-gather-moe", 7, 2, 1,
             "NX gather accounting (selected-expert bytes/token)",
             "nx")
@@ -2790,9 +3238,10 @@ def synthesize_for_patient(oxx: str, meta: dict, pkt: dict | None,
         add("gravity-hybrid", 8, 2, 1,
             "modest gravity q4-g64-attn-mlp (protect SSM/norm, SPECIMEN)",
             "gravity")
+        agg = pick_aggressive_spec(oxx, "gravity-aggressive-hybrid", census, pkt)
         add("gravity-aggressive-hybrid", 8, 2, 1,
-            "aggressive gravity q2-g64-attn-mlp (protect SSM/norm, SPECIMEN)",
-            "gravity")
+            f"aggressive gravity {agg} (protect SSM/norm, SPECIMEN)",
+            "gravity", gravity_spec=agg)
         add("nx-state-hybrid", 7, 2, 1,
             "NX state accounting (SSM-vs-KV residency)",
             "nx")
@@ -2800,12 +3249,18 @@ def synthesize_for_patient(oxx: str, meta: dict, pkt: dict | None,
         add("gravity-dense", 8, 2, 1,
             "modest gravity q4-g64 (SPECIMEN)",
             "gravity")
+        agg = pick_aggressive_spec(oxx, "gravity-aggressive-dense", census, pkt)
         add("gravity-aggressive-dense", 8, 2, 1,
-            "aggressive gravity q2-g64 (SPECIMEN; anti-complacency)",
-            "gravity")
+            f"aggressive gravity {agg} (SPECIMEN; anti-complacency)",
+            "gravity", gravity_spec=agg)
         add("nx-dense", 7, 2, 1,
             "NX dense floor (full-weight-sweep bytes/token)",
             "nx")
+    if should_novelty_escalate(oxx, pkt, entries):
+        for lane in novelty.LANES:
+            add(f"novelty-{lane}", 9, 1, 0,
+                f"frontier novelty / {lane} (Grok; nonconventional)",
+                "novelty")
     return out
 
 
@@ -2938,6 +3393,13 @@ def _patient_facts(oxx: str) -> dict:
     weights = weights_dir(oxx, pkt, census)
     ident = pkt.get("identity") or {}
     arch = pkt.get("architecture") or {}
+    man = manifest_entry(oxx)
+    source = (
+        man.get("canonical_source")
+        or ident.get("source_repo")
+        or meta.get("source")
+        or ""
+    )
     return {
         "oxx": oxx,
         "meta": meta,
@@ -2945,8 +3407,9 @@ def _patient_facts(oxx: str) -> dict:
         "census": census,
         "kind": kind,
         "weights": weights,
-        "model": meta.get("model") or ident.get("source_repo") or oxx,
-        "source": ident.get("source_repo") or meta.get("source") or "",
+        "model": meta.get("model") or ident.get("source_repo") or man.get("model") or oxx,
+        "source": source,
+        "canonical_source": man.get("canonical_source") or source,
         "arch_name": arch.get("arch") or census.get("arch") or "",
         "layers": arch.get("layers") or (census.get("config") or {}).get("num_hidden_layers"),
         "experts": arch.get("experts") or (census.get("config") or {}).get("num_experts"),
@@ -2957,6 +3420,13 @@ def _patient_facts(oxx: str) -> dict:
         "packet_rel": f"workspace/campaign/odyssey/patients/{oxx}/ODYSSEY_PATIENT_{oxx}.json",
         "census_rel": f"workspace/campaign/odyssey/patients/{oxx}/census.json",
         "receipt_rel": f"receipts/odyssey-i/{oxx}_EXTERNAL.json",
+        "search_class": man.get("search_class"),
+        "info_budget": man.get("info_budget"),
+        "arch_objective": man.get("arch_objective"),
+        "stored_bpw_pressure": man.get("stored_bpw_pressure"),
+        "active_bpw_pressure": man.get("active_bpw_pressure"),
+        "doctor_bar": man.get("doctor_bar"),
+        "reference_sibling": man.get("reference_sibling") or TRANSFER_REF.get(oxx),
     }
 
 
@@ -3202,10 +3672,12 @@ Merge those cells into workspace/campaign/odyssey/TRANSFER_MATRIX.json for {oxx}
     return body
 
 
-def render_gravity(f: dict, template: str) -> str:
+def render_gravity(f: dict, template: str, spec: str | None = None) -> str:
     oxx = f["oxx"]
-    spec = GRAVITY_SPEC[template]
-    receipt = f"receipts/odyssey-i/{GRAVITY_RECEIPT[template].format(oxx=oxx)}"
+    if template in AGGRESSIVE_GRAVITY_TEMPLATES:
+        spec = spec or pick_aggressive_spec(oxx, template, f.get("census"), f.get("pkt"))
+    spec = spec or GRAVITY_SPEC.get(template) or "q4-g64"
+    receipt = f"receipts/odyssey-i/{oxx}_GRAVITY_{spec}.json"
     extra = f"--gravity {spec}"
     if template not in {"gravity-moe", "gravity-aggressive-moe"}:
         extra = f"--skip-route --gravity {spec}"
@@ -3228,22 +3700,22 @@ def render_gravity(f: dict, template: str) -> str:
         )
     elif template == "gravity-aggressive-moe":
         protect = (
-            "AGGRESSIVE: experts → 2-bit group32; attention/router → 4-bit group64; "
-            "norms full (`q2-g32-experts`). candidate_class=AGGRESSIVE_QUANT. "
+            f"AGGRESSIVE candgen spec `{spec}` (experts low-bit; attention/router "
+            "protected; norms full). candidate_class from grammar. "
             "Complete bpw (payload+scales+biases+metadata); record nominal_bits AND "
             "complete_bpw. On Doctor fail: failure_localization naming the organ; "
             "do NOT globally retreat."
         )
     elif template == "gravity-aggressive-hybrid":
         protect = (
-            "AGGRESSIVE: attn+mlp (+embed/lm_head) → 2-bit group64; protect "
-            "SSM/conv/norm full (`q2-g64-attn-mlp`). candidate_class=AGGRESSIVE_QUANT. "
+            f"AGGRESSIVE candgen spec `{spec}`: attn+mlp (+embed/lm_head); protect "
+            "SSM/conv/norm full. candidate_class from grammar. "
             "Complete bpw (payload+scales+biases+metadata). On fail: localize, do not "
             "globally retreat."
         )
     elif template == "gravity-aggressive-dense":
         protect = (
-            "AGGRESSIVE: uniform 2-bit group64 (`q2-g64`). candidate_class=AGGRESSIVE_QUANT. "
+            f"AGGRESSIVE candgen spec `{spec}`. candidate_class from grammar. "
             "Complete bpw (payload+scales+biases+metadata). On fail: localize, do not "
             "globally retreat."
         )
@@ -3378,16 +3850,38 @@ RENDERERS = {
     "transfer-control": lambda f, ob: render_transfer_control(
         f, ob.get("reference") or TRANSFER_REF.get(ob["oxx"], "O005"),
     ),
-    "gravity-moe": lambda f, ob: render_gravity(f, "gravity-moe"),
-    "gravity-dense": lambda f, ob: render_gravity(f, "gravity-dense"),
-    "gravity-hybrid": lambda f, ob: render_gravity(f, "gravity-hybrid"),
-    "gravity-aggressive-moe": lambda f, ob: render_gravity(f, "gravity-aggressive-moe"),
-    "gravity-aggressive-dense": lambda f, ob: render_gravity(f, "gravity-aggressive-dense"),
-    "gravity-aggressive-hybrid": lambda f, ob: render_gravity(f, "gravity-aggressive-hybrid"),
+    "gravity-moe": lambda f, ob: render_gravity(f, "gravity-moe", ob.get("gravity_spec")),
+    "gravity-dense": lambda f, ob: render_gravity(f, "gravity-dense", ob.get("gravity_spec")),
+    "gravity-hybrid": lambda f, ob: render_gravity(f, "gravity-hybrid", ob.get("gravity_spec")),
+    "gravity-aggressive-moe": lambda f, ob: render_gravity(
+        f, "gravity-aggressive-moe", ob.get("gravity_spec"),
+    ),
+    "gravity-aggressive-dense": lambda f, ob: render_gravity(
+        f, "gravity-aggressive-dense", ob.get("gravity_spec"),
+    ),
+    "gravity-aggressive-hybrid": lambda f, ob: render_gravity(
+        f, "gravity-aggressive-hybrid", ob.get("gravity_spec"),
+    ),
     "nx-gather-moe": lambda f, ob: render_nx(f, "nx-gather-moe"),
     "nx-state-hybrid": lambda f, ob: render_nx(f, "nx-state-hybrid"),
     "nx-dense": lambda f, ob: render_nx(f, "nx-dense"),
 }
+
+
+def render_novelty_lane(f: dict, ob: dict) -> str:
+    oxx = f["oxx"]
+    lane = (ob.get("template") or "").removeprefix("novelty-")
+    packet = _frontier_novelty_packet(oxx)
+    dest_dir = f.get("_auto_dir")
+    novelty.render_lane_contracts(packet, auto_dir=dest_dir)
+    path = Path(dest_dir or AUTO_DIR) / f"{oxx.lower()}_novelty-{lane}.md"
+    if path.is_file():
+        return path.read_text()
+    return novelty._lane_contract_text(packet, lane)  # noqa: SLF001 — module API
+
+
+for _nov in NOVELTY_TEMPLATES:
+    RENDERERS[_nov] = lambda f, ob, _t=_nov: render_novelty_lane(f, ob)
 
 
 def render_contract(ob: dict, auto_dir: Path | None = None) -> Path:
@@ -3395,6 +3889,7 @@ def render_contract(ob: dict, auto_dir: Path | None = None) -> Path:
     if template not in RENDERERS:
         raise ValueError(f"unknown template {template}")
     facts = _patient_facts(ob["oxx"])
+    facts["_auto_dir"] = auto_dir or AUTO_DIR
     text = RENDERERS[template](facts, ob)
     dest = auto_contract_path(ob["oxx"], template, auto_dir)
     dest.parent.mkdir(parents=True, exist_ok=True)
@@ -3500,6 +3995,98 @@ def _sys_free_ram_pct():
         return None
 
 
+def obligation_est_gib(ob: dict) -> float:
+    """Resident model estimate for memgate. 4-bit footprint; default 16 GiB."""
+    oxx = ob.get("oxx") or ""
+    man = manifest_entry(oxx)
+    v = man.get("est_4bit_gib")
+    if isinstance(v, (int, float)) and not isinstance(v, bool) and v > 0:
+        return float(v)
+    return float(getattr(memgate, "DEFAULT_EST_GIB", 16.0))
+
+
+def _template_loads_model(template: str, ob: dict | None = None) -> bool:
+    if ob is not None and ob.get("model_loading") is False:
+        return False
+    t = template or ((ob or {}).get("template") or "")
+    if not t or str(t).startswith("novelty-"):
+        return False
+    if ob is not None and ob.get("model_loading") is True:
+        return True
+    return (
+        t in DATA_PRODUCING_TEMPLATES
+        or t in GRAVITY_SPEC
+        or t in NX_FLAG
+        or t in {
+            "external-science-moe", "external-science-dense",
+            "sensitivity-map", "transfer-control", "route-map",
+        }
+    )
+
+
+def _running_model_gib(state: dict) -> float:
+    total = 0.0
+    seen: set[tuple] = set()
+    for w in state.get("work") or []:
+        if w.get("status") != "RUNNING":
+            continue
+        tmpl = w.get("template") or ""
+        if not _template_loads_model(tmpl, w):
+            continue
+        key = (w.get("oxx"), tmpl)
+        if key in seen:
+            continue
+        seen.add(key)
+        total += obligation_est_gib(w)
+    return total
+
+
+def _headroom_override_note() -> str | None:
+    if os.environ.get("ODYSSEY_HEADROOM_ADMIT") != "1":
+        return None
+    free = _sys_free_ram_pct()
+    if free is not None and free >= 70:
+        return f"free RAM {free}%"
+    return None
+
+
+def memgate_admit_lane(ob: dict, in_flight_gib: float) -> dict:
+    """Primary model-lane admission. HEADROOM_ADMIT is an opt-in fallback."""
+    if not _template_loads_model(ob.get("template") or "", ob):
+        return {
+            "decision": "n/a",
+            "note": "not a model lane",
+            "projected_swap_gib": None,
+            "est_gib": 0.0,
+            "in_flight_gib": float(in_flight_gib or 0.0),
+            "clean_room": False,
+        }
+    est = obligation_est_gib(ob)
+    clean = bool(ob.get("timing"))
+    try:
+        verdict = memgate.admit(est, in_flight_gib=in_flight_gib, clean_room=clean)
+    except Exception as exc:
+        verdict = {
+            "decision": "REFUSE",
+            "note": f"memgate failed: {exc}",
+            "projected_swap_gib": None,
+        }
+    out = dict(verdict)
+    out["est_gib"] = est
+    out["in_flight_gib"] = float(in_flight_gib or 0.0)
+    out["clean_room"] = clean
+    if out.get("decision") == "REFUSE" and not clean:
+        note = _headroom_override_note()
+        if note:
+            out["decision"] = "GO"
+            out["headroom_fallback"] = True
+            out["note"] = (
+                f"memgate REFUSE overridden (opt-in HEADROOM_ADMIT): {note}; "
+                f"{out.get('note') or ''}"
+            )
+    return out
+
+
 def evaluate_gates(ob: dict, *, go: bool, running_n: int, cap: int,
                    snap: dict, worker: dict | None,
                    lint_ok: bool, lint_msg: str,
@@ -3525,19 +4112,20 @@ def evaluate_gates(ob: dict, *, go: bool, running_n: int, cap: int,
     elif not lint_ok:
         reasons.append(f"SG-rejected: {lint_msg}")
     elif ob.get("model_loading") and worker_decision == "REFUSE":
-        # §15 headroom retune (OPT-IN via ODYSSEY_HEADROOM_ADMIT=1): worker_gate
-        # REFUSEs on any stale swap/compressor, but on this box a lane runs fine at
-        # high free RAM (proven: O005 regen ran under identical swap). Safe because
-        # the runner independently re-gates the real load and falls back to 4-bit
-        # under pressure -- this override permits only the LAUNCH, never a blind bf16
-        # load. Default stays strict (REFUSE -> skip); opt-in admits at high free RAM.
+        # Prefer memgate. ODYSSEY_HEADROOM_ADMIT=1 is an opt-in fallback for
+        # stale-swap REFUSE (worker_gate or memgate swap formula). Never override
+        # clean_room / protected-timing exclusivity.
+        _note = str((worker or {}).get("note") or "")
+        _clean = bool(ob.get("timing")) or "clean_room" in _note
         _free = _sys_free_ram_pct() if os.environ.get("ODYSSEY_HEADROOM_ADMIT") == "1" else None
-        if _free is not None and _free >= 70:
-            worker_override = (f"worker_gate REFUSE overridden (opt-in): free RAM "
-                               f"{_free}% (stale swap); runner self-gates load to 4-bit")
+        if (not _clean) and _free is not None and _free >= 70:
+            worker_override = (
+                f"model-gate REFUSE overridden (opt-in): free RAM {_free}% "
+                f"(stale swap); runner self-gates load to 4-bit; prefer memgate"
+            )
         else:
             reasons.append(
-                f"worker_gate REFUSE: {(worker or {}).get('note') or 'REFUSE'}"
+                f"model-gate REFUSE: {_note or 'REFUSE'}"
             )
     elif ob.get("download") and disk < DISK_RUN_GIB and (
         disk_after_reclaim is None or disk_after_reclaim < DISK_RUN_GIB
@@ -3642,6 +4230,7 @@ def run_loop(*, go: bool, max_lanes: int,
     limit = consider_limit if consider_limit is not None else max(cap, DEFAULT_MAX_LANES, 8)
     slots = 0 if not go else max(0, cap - running_n)
     occupied_scopes = _running_scopes(st, running_ids)
+    in_flight_gib = _running_model_gib(st)
 
     for ob in ranked:
         if go and launched >= slots:
@@ -3671,7 +4260,23 @@ def run_loop(*, go: bool, max_lanes: int,
         lint_ok, lint_msg = (lint_fn or sg_lint)(dest)
 
         worker = None
-        if ob.get("model_loading"):
+        mg = memgate_admit_lane(ob, in_flight_gib)
+        if _template_loads_model(ob.get("template") or "", ob):
+            if mg.get("decision") == "REFUSE":
+                worker = {
+                    "decision": "REFUSE",
+                    "note": mg.get("note") or "memgate REFUSE",
+                    "projected_swap_gib": mg.get("projected_swap_gib"),
+                }
+            else:
+                if worker_cache is None:
+                    worker_cache = call_worker_gate(observe_fn, gate_fn)
+                worker = dict(worker_cache)
+                worker["memgate"] = mg.get("decision")
+                worker["projected_swap_gib"] = mg.get("projected_swap_gib")
+                if mg.get("headroom_fallback"):
+                    worker["worker_override"] = mg.get("note")
+        elif ob.get("model_loading"):
             if worker_cache is None:
                 worker_cache = call_worker_gate(observe_fn, gate_fn)
             worker = worker_cache
@@ -3710,6 +4315,9 @@ def run_loop(*, go: bool, max_lanes: int,
             "model_loading": ob["model_loading"],
             "timing": ob["timing"],
             "download": ob["download"],
+            "est_gib": mg.get("est_gib"),
+            "in_flight_gib": mg.get("in_flight_gib"),
+            "memgate": mg.get("decision"),
             "reclaimed": reclaimed,
             "go": go,
             "_evidence": "DERIVED (§18 run-loop decision)",
@@ -3740,6 +4348,12 @@ def run_loop(*, go: bool, max_lanes: int,
                 admitted = True
                 running_n_display = running_n + launched
                 gates["running"] = running_n_display
+                record_ctl_event(
+                    ob.get("oxx"), "grok", 0.0,
+                    grok_lane=task_id,
+                    extra={"template": ob.get("template"), "verdict": "LAUNCH"},
+                    persist=persist,
+                )
 
         if not go and gates["verdict"] == "DRY-RUN" and not gates.get("skip_reason"):
             occupied += 1
@@ -3747,8 +4361,11 @@ def run_loop(*, go: bool, max_lanes: int,
 
         if admitted:
             occupied_scopes.append(scope)
+            if _template_loads_model(ob.get("template") or "", ob):
+                in_flight_gib += float(mg.get("est_gib") or obligation_est_gib(ob))
 
-        append_run_log(row, path=log_path)
+        if go or log_path is not None:
+            append_run_log(row, path=log_path)
         rows.append(row)
 
     if persist and go and launched:
@@ -3782,6 +4399,12 @@ def print_run_plan(rows: list[dict], *, go: bool, max_lanes: int,
             f"     model-loading: {'yes' if r.get('model_loading') else 'no'}  "
             f"timing: {'yes' if r.get('timing') else 'no'}  "
             f"download: {'yes' if r.get('download') else 'no'}"
+            + (
+                f"  memgate={r.get('memgate')} est={r.get('est_gib')}GiB "
+                f"in_flight={r.get('in_flight_gib')}GiB"
+                if r.get("memgate") not in (None, "n/a")
+                else ""
+            )
         )
         print(
             f"     gates: worker={g.get('worker')}  "
@@ -3801,6 +4424,7 @@ def cmd_run(*, go: bool, max_lanes: int, **hooks) -> int:
     st = hooks.pop("state", None) or ensure_state()
     snap = (hooks.get("snapshot_fn") or machine_snapshot)()
     running_n = len(odyssey_running_ids(st))
+    hooks.setdefault("persist", go)
     rows = run_loop(go=go, max_lanes=max_lanes, state=st, **hooks)
     print_run_plan(rows, go=go, max_lanes=max_lanes, snap=snap, running_n=running_n)
     if go:
@@ -3823,8 +4447,11 @@ def _family_key(text: str) -> str:
 def reference_sibling(oxx: str, state: dict | None = None) -> str | None:
     """Named transfer *reference* for this patient (the sibling, not the original).
 
-    O006 (class 'sibling' / TRANSFER_REF key) → O005. O005 itself has no reference.
+    Manifest.reference_sibling is authority; TRANSFER_REF / ledger text are fallback.
     """
+    man = manifest_entry(oxx)
+    if man.get("reference_sibling"):
+        return str(man["reference_sibling"])
     if oxx in TRANSFER_REF:
         return TRANSFER_REF[oxx]
     st = state if state is not None else ensure_state()
@@ -4050,6 +4677,7 @@ def retire_patient(oxx: str, *, dry_run: bool = False, persist: bool = True,
     write_json(dest_pkt, pkt)
     if persist:
         save_state(st)
+    record_ctl_event(oxx, "retirement", 0.0, persist=persist)
     return {
         "schema": SEAL_SCHEMA,
         "oxx": oxx,
@@ -4141,21 +4769,48 @@ def patient_est_gib(oxx: str, meta: dict | None = None,
     census = load_census(oxx)
     if census and census.get("total_bytes"):
         return float(census["total_bytes"]) / 1024**3
+    man = overlay_manifest(meta, oxx) if meta or oxx else manifest_entry(oxx)
+    for key in ("est_source_gib", "est_gib_hf"):
+        v = (man or {}).get(key)
+        if isinstance(v, (int, float)) and not isinstance(v, bool) and v > 0:
+            return float(v)
     return float(PATIENT_EST_GIB.get(oxx, 50.0))
 
 
 def _hf_gated(meta: dict) -> bool:
+    if meta.get("gated") is True:
+        return True
     gate = str(meta.get("gate") or "")
     return "HF-gated" in gate or "HF-gated" in str(meta.get("blocked_reason") or "")
 
 
 def _downloadable_repo(meta: dict) -> str:
-    src = strip_md(meta.get("source") or "")
+    src = strip_md(
+        meta.get("canonical_source") or meta.get("source") or ""
+    )
     if not src or "/" not in src or src.lower().startswith("reconstruct"):
         return ""
     if src.startswith("http"):
         return ""
     return src
+
+
+def _manifest_acquire_fields(oxx: str, meta: dict | None = None) -> dict:
+    man = overlay_manifest(meta, oxx)
+    return {
+        "canonical_source": man.get("canonical_source") or _downloadable_repo(man),
+        "est_source_gib": man.get("est_source_gib"),
+        "est_4bit_gib": man.get("est_4bit_gib"),
+        "gated": man.get("gated"),
+        "reference_sibling": man.get("reference_sibling"),
+        "search_class": man.get("search_class"),
+        "info_budget": man.get("info_budget"),
+        "arch_objective": man.get("arch_objective"),
+        "stored_bpw_pressure": man.get("stored_bpw_pressure"),
+        "active_bpw_pressure": man.get("active_bpw_pressure"),
+        "doctor_bar": man.get("doctor_bar"),
+        "kernel_effort": man.get("kernel_effort"),
+    }
 
 
 def _pid_alive(pid) -> bool:
@@ -4329,6 +4984,23 @@ def pick_acquire_candidate(state: dict, *,
         oxx = p.get("oxx")
         if not oxx:
             continue
+        man = manifest_entry(oxx)
+        if man:
+            if man.get("canonical_source"):
+                p["canonical_source"] = man["canonical_source"]
+                p["source"] = man["canonical_source"]
+            if man.get("gated") is not None:
+                p["gated"] = bool(man["gated"])
+            if man.get("est_source_gib") is not None:
+                p["est_source_gib"] = man["est_source_gib"]
+                p["est_gib_hf"] = man["est_source_gib"]
+            for key in (
+                "search_class", "info_budget", "arch_objective",
+                "reference_sibling", "stored_bpw_pressure", "active_bpw_pressure",
+                "doctor_bar", "kernel_effort", "est_4bit_gib",
+            ):
+                if man.get(key) is not None:
+                    p[key] = man[key]
         if p.get("state") == "RETIRED":
             skipped.append((oxx, "RETIRED"))
             continue
@@ -4418,6 +5090,7 @@ def acquire_next(*, go: bool = False, dry_run: bool | None = None,
     repo = _downloadable_repo(cand)
     est = cand.get("est_gib_hf") or patient_est_gib(oxx, cand, meta.get("hf_info"))
     need = est + DISK_RUN_GIB
+    man_fields = _manifest_acquire_fields(oxx, cand)
     reclaimed = []
     if disk < need:
         for p in list(st.get("patients") or []):
@@ -4451,6 +5124,7 @@ def acquire_next(*, go: bool = False, dry_run: bool | None = None,
                 "need_gib": round(need, 2),
                 "disk_free_gib": disk,
                 "reclaimed": reclaimed,
+                **man_fields,
                 "_evidence": "MEASURED (disk) + DERIVED (disk-hold)",
             }
             append_run_log({**rec, "command": "acquire-next"}, path=log_path)
@@ -4463,6 +5137,7 @@ def acquire_next(*, go: bool = False, dry_run: bool | None = None,
         "need_gib": round(need, 2),
         "disk_free_gib": disk,
         "reclaimed": reclaimed,
+        **man_fields,
         "_evidence": "HYPOTHESIS (acquire plan) + MEASURED (disk)",
     }
     if planning:
@@ -4496,6 +5171,7 @@ def acquire_next(*, go: bool = False, dry_run: bool | None = None,
     rec["pid"] = pid
     rec["log"] = str(logf)
     append_run_log({**rec, "command": "acquire-next"}, path=log_path)
+    record_ctl_event(oxx, "acquisition", 0.0, persist=persist)
     return rec
 
 
@@ -4511,6 +5187,14 @@ def cmd_acquire_next(*, go: bool = False) -> int:
             f"est={rec.get('est_gib')}GiB need={rec.get('need_gib')}GiB  "
             f"disk={rec.get('disk_free_gib')}GiB"
         )
+        if rec.get("canonical_source"):
+            print(
+                f"  manifest: source={rec.get('canonical_source')}  "
+                f"search_class={rec.get('search_class')}  "
+                f"info_budget={rec.get('info_budget')}  "
+                f"arch_objective={rec.get('arch_objective')}  "
+                f"gated={rec.get('gated')}"
+            )
     return 0 if verdict in {"ACQUIRING", "DRY-RUN", "SKIP"} else 1
 
 
@@ -4674,6 +5358,7 @@ def cmd_cycle(*, go: bool, max_lanes: int, **hooks) -> int:
     st = hooks.pop("state", None) or ensure_state()
     snap = (hooks.get("snapshot_fn") or machine_snapshot)()
     running_n = len(odyssey_running_ids(st))
+    hooks.setdefault("persist", go)
     plan = cycle_tick(go=go, max_lanes=max_lanes, state=st, **hooks)
     print_cycle(plan, go=go, max_lanes=max_lanes, snap=snap, running_n=running_n)
     return 0
@@ -4945,18 +5630,54 @@ def cmd_completions(*, rebuild: bool = False, completed_at: str | None = None) -
     return 0
 
 
+def cmd_economics() -> int:
+    """Print costmodel.derive() per patient + detachment_metrics()."""
+    patients: list[str] = []
+    if STATE.is_file():
+        try:
+            for p in (read_json(STATE).get("patients") or []):
+                if p.get("oxx"):
+                    patients.append(p["oxx"])
+        except (OSError, json.JSONDecodeError):
+            patients = []
+    if not patients:
+        patients = [e.get("oxx") for e in load_odyssey_manifest() if e.get("oxx")]
+    derived = {}
+    for oxx in patients:
+        try:
+            derived[oxx] = costmodel.derive(oxx)
+        except Exception as exc:
+            derived[oxx] = {"patient": oxx, "error": str(exc)}
+    payload = {
+        "schema": "hawking.odyssey.ctl.economics.v1",
+        "detachment_metrics": costmodel.detachment_metrics(),
+        "derive": derived,
+        "_evidence": "DERIVED (odyssey_costmodel)",
+    }
+    json.dump(payload, sys.stdout, indent=2, default=str)
+    sys.stdout.write("\n")
+    return 0
+
+
 def cmd_admit(slug: str, est_gib: float) -> int:
-    """Call worker_gate before any model-loading worker. Abort on REFUSE."""
+    """Memgate (preferred) + worker_gate. Abort on REFUSE."""
+    mg = memgate.admit(est_gib, in_flight_gib=0.0, clean_room=False)
     try:
         obs = worker_gate.observe()
         g = worker_gate.gate(obs)
     except Exception as exc:
-        print(f"REFUSE  slug={slug} est_gib={est_gib}  worker_gate failed: {exc}")
-        return 1
+        g = {"decision": "REFUSE", "note": f"worker_gate failed: {exc}"}
     snap = machine_snapshot()
     disk = snap.get("disk_free_gib")
-    decision = "GO" if g.get("decision") == "PERMIT" else "REFUSE"
-    notes = [g.get("note") or ""]
+    decision = "GO" if mg.get("decision") == "GO" else "REFUSE"
+    notes = [mg.get("note") or "", g.get("note") or ""]
+    if g.get("decision") == "REFUSE" and decision == "GO":
+        override = _headroom_override_note()
+        if not override:
+            decision = "REFUSE"
+            notes.append(g.get("note") or "worker_gate REFUSE")
+        else:
+            notes.append(f"worker_gate REFUSE overridden ({override})")
     if disk is not None and disk < DISK_FLOOR_GIB:
         decision = "REFUSE"
         notes.append(f"disk {disk} GiB below floor {DISK_FLOOR_GIB}")
@@ -4968,8 +5689,11 @@ def cmd_admit(slug: str, est_gib: float) -> int:
         )
     note = "; ".join(n for n in notes if n)
     print(f"{decision}  slug={slug} est_gib={est_gib}  {note}")
-    print(f"  gate={g.get('decision')} wired={g.get('current_wired_gb')} "
-          f"headroom={g.get('projected_headroom_gb')}  _evidence=MEASURED (worker_gate)")
+    print(
+        f"  memgate={mg.get('decision')} projected_swap={mg.get('projected_swap_gib')}  "
+        f"gate={g.get('decision')} wired={g.get('current_wired_gb')} "
+        f"headroom={g.get('projected_headroom_gb')}  _evidence=MEASURED (memgate+worker_gate)"
+    )
     return 0 if decision == "GO" else 1
 
 
@@ -5785,6 +6509,75 @@ def _self_check() -> int:
     assert "attn" in str(loc.get("targeted_repair"))
     assert localize_gravity_failure(0, {"attn": {"round8": {"delta_hits": -4}}}) is None
 
+    # 14. G2 integration: memgate multi-model, grammar classify, write_set, manifest.
+    low_snap = {
+        "free_ram_gib": 48.0, "wired_gib": 8.0, "compressor_gib": 0.25,
+        "swap_used_gib": 0.25, "swap_total_gib": 2.0, "cpu_load": 1.2,
+    }
+    with memgate.using_snapshot(low_snap):
+        g0 = memgate.admit(16, 0)
+        g1 = memgate.admit(16, 16.0)
+        assert g0["decision"] == "GO" and g1["decision"] == "GO", (g0, g1)
+        inflight = 0.0
+        admitted_m = []
+        occupied_m = []
+        for ob_m in (
+            {"oxx": "O001", "template": "external-science-dense",
+             "model_loading": True, "timing": False},
+            {"oxx": "O003", "template": "external-science-moe",
+             "model_loading": True, "timing": False},
+            {"oxx": "O004", "template": "gravity-dense",
+             "model_loading": True, "timing": False},
+        ):
+            sc = write_scope(ob_m)
+            if scope_conflict_reason(sc, occupied_m):
+                continue
+            v = memgate_admit_lane(ob_m, inflight)
+            if v.get("decision") != "GO":
+                continue
+            admitted_m.append(ob_m["oxx"])
+            occupied_m.append(sc)
+            inflight += float(v.get("est_gib") or obligation_est_gib(ob_m))
+        assert len(admitted_m) >= 2, admitted_m
+        assert len(set(admitted_m)) == len(admitted_m), admitted_m
+
+    for tmpl, oxx in (
+        ("sensitivity-map", "O005"),
+        ("gravity-aggressive-moe", "O003"),
+        ("nx-gather-moe", "O006"),
+        ("external-science-dense", "O001"),
+        ("route-map", "O003"),
+        ("transfer-control", "O006"),
+        ("novelty-representation", "O005"),
+    ):
+        ws = write_scope({"oxx": oxx, "template": tmpl})
+        assert RUNNER_REL not in ws["write_set"], (tmpl, ws)
+
+    gram_q4 = classify_gravity_spec("q4-g128")
+    assert gram_q4["candidate_class"] == "CONVENTIONAL_ANCHOR", gram_q4
+    gram_q1 = classify_gravity_spec("q1-g32-experts")
+    assert gram_q1["candidate_class"] == "AGGRESSIVE_QUANT", gram_q1
+    gram_corr = classify_gravity_spec("q2-g32-experts+correction")
+    assert gram_corr["candidate_class"] == "STRUCTURAL_GRAVITY", gram_corr
+    gram_tier = classify_gravity_spec("tiers-t0t1-experts")
+    assert gram_tier["candidate_class"] == "STRUCTURAL_GRAVITY", gram_tier
+    gram_mixed = classify_gravity_spec("mixed-q1q3-experts")
+    assert gram_mixed["candidate_class"] == "STRUCTURAL_GRAVITY", gram_mixed
+    assert classify_gravity_spec("q3-g32-experts")["candidate_class"] == "CONVENTIONAL_ANCHOR"
+
+    man7 = manifest_entry("O007")
+    assert man7.get("canonical_source") == "moonshotai/Kimi-Linear-48B-A3B-Instruct", man7
+    assert acq_hold.get("oxx")
+    hold_man = manifest_entry(acq_hold["oxx"])
+    assert acq_hold.get("canonical_source") == hold_man.get("canonical_source"), acq_hold
+    assert acq_hold.get("arch_objective") == hold_man.get("arch_objective"), acq_hold
+    assert acq_hold.get("search_class") == hold_man.get("search_class"), acq_hold
+    assert "info_budget" in acq_hold, acq_hold
+
+    spec_moe = pick_aggressive_spec("O003", "gravity-aggressive-moe")
+    assert spec_moe, spec_moe
+    assert classify_gravity_spec(spec_moe)["candidate_class"] != "CONVENTIONAL_ANCHOR", spec_moe
+
     print("self-check ok")
     return 0
 
@@ -5811,7 +6604,7 @@ def main(argv=None) -> int:
     p_run.add_argument("--go", action="store_true",
                        help="actually launch grok-run lanes; required to spawn")
     p_run.add_argument("--max-lanes", type=int, default=DEFAULT_MAX_LANES,
-                       help="concurrent odyssey lane cap (default 2, hard cap 3)")
+                       help="concurrent odyssey lane cap (default 2, hard cap 8; memgate bounds models)")
     p_comp = sp.add_parser("completions")
     p_comp.add_argument("--rebuild", action="store_true",
                         help="idempotent VERIFIED backfill from receipts/odyssey-i")
@@ -5823,7 +6616,7 @@ def main(argv=None) -> int:
     p_cy.add_argument("--go", action="store_true",
                       help="harvest/retire/acquire/launch for real")
     p_cy.add_argument("--max-lanes", type=int, default=DEFAULT_MAX_LANES,
-                      help="concurrent odyssey lane cap (default 2, hard cap 3)")
+                      help="concurrent odyssey lane cap (default 2, hard cap 8; memgate bounds models)")
     p_ret = sp.add_parser("retire")
     p_ret.add_argument("oxx")
     p_acq = sp.add_parser("acquire-next")
@@ -5831,6 +6624,7 @@ def main(argv=None) -> int:
                        help="plan only (default when --go is absent)")
     p_acq.add_argument("--go", action="store_true",
                        help="start hf download in the background")
+    sp.add_parser("economics")
     args = ap.parse_args(argv)
     if args.self_check or args.cmd in {"self-check", "selfcheck"}:
         return _self_check()
@@ -5862,6 +6656,8 @@ def main(argv=None) -> int:
     if args.cmd == "acquire-next":
         go = bool(args.go) and not bool(args.dry_run)
         return cmd_acquire_next(go=go)
+    if args.cmd == "economics":
+        return cmd_economics()
     ap.print_help()
     return 2
 

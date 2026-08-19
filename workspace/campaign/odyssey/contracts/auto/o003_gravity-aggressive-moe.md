@@ -5,7 +5,7 @@ on disk at `/Users/scammermike/.cache/huggingface/hub/models--moonshotai--Kimi-V
 One bounded Gravity candidate (steer S004 anti-complacency). SPECIMEN-labelled mlx quant; this
 is NOT a Hawking NX win (§15).
 
-AGGRESSIVE: experts → 2-bit group32; attention/router → 4-bit group64; norms full (`q2-g32-experts`). candidate_class=AGGRESSIVE_QUANT. Complete bpw (payload+scales+biases+metadata); record nominal_bits AND complete_bpw. On Doctor fail: failure_localization naming the organ; do NOT globally retreat.
+AGGRESSIVE candgen spec `q2-g32-experts` (experts low-bit; attention/router protected; norms full). candidate_class from grammar. Complete bpw (payload+scales+biases+metadata); record nominal_bits AND complete_bpw. On Doctor fail: failure_localization naming the organ; do NOT globally retreat.
 
 ## Read first
 READ tools/odyssey_patient_runner.py

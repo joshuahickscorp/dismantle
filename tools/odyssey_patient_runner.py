@@ -21,8 +21,9 @@ Canonical HF weights are never modified.
 `--gravity <spec>` builds one MODEST or AGGRESSIVE mlx mix (not a sweep) with a
 per-module quant_predicate, reloads it, grades the same fast-Doctor battery against
 `<OXX>_EXTERNAL.json`, and writes `odyssey.patient.gravity.v1` (SPECIMEN;
-never a Hawking NX win). Specs: `q3-g32-experts`, `q4-g64`, `q4-g64-attn-mlp`,
-`q2-g32-experts`, `mixed-q2q3-experts`, `q2-g64`, `q2-g64-attn-mlp`.
+never a Hawking NX win). Specs follow the candgen grammar: `q<b>-g<g>[-experts|-attn-mlp]`,
+`mixed-qLqH[-experts]`, `tiers-t0t1…`, `scale-joint-q<b>-g<g>…`, optional
+`+correction` / `+cN` / `+rN` / `+meta-*`. Named table specs still work.
 
 `--nx-gather` / `--nx-state` / `--nx-dense` emit `odyssey.patient.nx.v1`
 accounting (+ a minimal primitive-design note). Not a Rust runtime (§14).
@@ -81,8 +82,10 @@ from tools.odyssey_ctl import (  # noqa: E402
     gravity_pass_threshold,
     load_odyssey_policy,
     localize_gravity_failure,
+    parse_gravity_grammar,
     select_protected_components,
 )
+from tools.odyssey_candgen import spec_valid as candgen_spec_valid  # noqa: E402
 
 # Same battery / refusal controls as a3b_recon.py so canonical vs abliterated is comparable.
 BATTERY = [
@@ -157,6 +160,20 @@ GRAVITY_SPECS = (
     "q2-g64",
     "q2-g64-attn-mlp",
 )
+
+
+def gravity_spec_accepted(spec: str) -> bool:
+    """Named table specs plus the candgen / q<b>-g<g>[-experts] grammar."""
+    if not spec:
+        return False
+    if spec in GRAVITY_SPECS:
+        return True
+    try:
+        if candgen_spec_valid(spec):
+            return True
+    except Exception:
+        pass
+    return parse_gravity_grammar(spec) is not None
 NX_GATHER_TOKENS = 32
 POLICY_PATH = ROOT / "workspace/campaign/odyssey/ODYSSEY_POLICY.json"
 
@@ -1813,10 +1830,14 @@ def _quant_blind_spot(quant: str, oxx: str) -> str:
 
 def gravity_quant_predicate(spec: str, protected: list[str] | None = None):
     """Per-module mlx quant_predicate realizing one MODEST or AGGRESSIVE mix. Not a sweep."""
-    if spec not in GRAVITY_SPECS:
-        raise ValueError(f"unknown gravity spec {spec!r}; expected one of {GRAVITY_SPECS}")
+    if not gravity_spec_accepted(spec):
+        raise ValueError(
+            f"unknown gravity spec {spec!r}; expected a named spec or "
+            "q<b>-g<g>[-experts|-attn-mlp] / mixed-qLqH / tiers / scale-joint"
+        )
     protected_set = {p.lower() for p in (protected or [])}
-    moe = spec.endswith("experts")
+    parsed = parse_gravity_grammar(spec) or {}
+    moe = spec.endswith("experts") or parsed.get("target") == "experts"
 
     def is_norm(path: str) -> bool:
         return "norm" in path.lower()
@@ -1878,12 +1899,35 @@ def gravity_quant_predicate(spec: str, protected: list[str] | None = None):
             if is_attn(n) or is_mlp(n) or "embed" in n.lower() or "lm_head" in n.lower():
                 return {"group_size": 64, "bits": 2, "mode": "affine"}
             return False
-        if spec == "mixed-q2q3-experts":
+        if spec == "mixed-q2q3-experts" or parsed.get("form") == "mixed":
             organ = organ_of(n, moe=moe)
+            lo = int(parsed.get("mixed_lo") or parsed.get("bits") or 2)
+            hi = int(parsed.get("mixed_hi") or max(lo + 1, 3))
+            group = int(parsed.get("group") or 32)
             if organ in protected_set:
-                return {"group_size": 32, "bits": 3, "mode": "affine"}
-            return {"group_size": 32, "bits": 2, "mode": "affine"}
-        return False
+                return {"group_size": group, "bits": hi, "mode": "affine"}
+            return {"group_size": group, "bits": lo, "mode": "affine"}
+        # Generic q<b>-g<g>[-experts|-attn-mlp] / tiers / scale-joint.
+        bits = parsed.get("bits")
+        group = parsed.get("group")
+        target = parsed.get("target")
+        form = parsed.get("form")
+        if bits is None and form == "tiers":
+            bits = 1
+        if bits is None:
+            bits = 4
+        if group is None:
+            group = 32 if target == "experts" or form == "mixed" else 64
+        bits, group = int(bits), int(group)
+        if target == "experts":
+            if is_expert(n):
+                return {"group_size": group, "bits": bits, "mode": "affine"}
+            return {"group_size": 64, "bits": 4, "mode": "affine"}
+        if target == "attn-mlp":
+            if is_attn(n) or is_mlp(n) or "embed" in n.lower() or "lm_head" in n.lower():
+                return {"group_size": group, "bits": bits, "mode": "affine"}
+            return False
+        return {"group_size": group, "bits": bits, "mode": "affine"}
 
     pred.spec = spec  # type: ignore[attr-defined]
     pred.protected = list(protected or [])  # type: ignore[attr-defined]
@@ -1914,18 +1958,35 @@ def gravity_spec_note(spec: str, protected: list[str] | None = None) -> str:
             "candidate_class=AGGRESSIVE_QUANT."
         ),
     }
-    if spec not in notes:
-        raise KeyError(f"unknown gravity spec {spec!r}")
-    return notes[spec]
+    if spec in notes:
+        return notes[spec]
+    tagged = classify_gravity_spec(spec)
+    parsed = parse_gravity_grammar(spec) or {}
+    klass = tagged.get("candidate_class") or "BASELINE"
+    return (
+        f"{klass} mlx mix spec={spec} form={parsed.get('form')} "
+        f"bits={parsed.get('bits')} group={parsed.get('group')} "
+        f"target={parsed.get('target')} protected={protected or []}. "
+        "SPECIMEN; not a Hawking NX win."
+    )
 
 
 def gravity_convert_defaults(spec: str) -> tuple[int, int]:
     meta = (load_odyssey_policy().get("gravity_specs") or {}).get(spec) or {}
-    group = int(meta.get("group_size") or (32 if "g32" in spec else 64))
+    parsed = parse_gravity_grammar(spec) or {}
+    group = meta.get("group_size")
+    if group is None:
+        group = parsed.get("group")
+    if group is None:
+        group = 32 if "g32" in spec or parsed.get("form") == "mixed" else 64
     bits = meta.get("nominal_bits")
     if bits is None:
-        bits = 2 if spec.startswith("q2") or spec.startswith("mixed") else (3 if "q3" in spec else 4)
-    return group, int(bits)
+        bits = parsed.get("bits") or parsed.get("mixed_lo")
+    if bits is None:
+        bits = 2 if spec.startswith("q2") or spec.startswith("mixed") else (
+            1 if str(parsed.get("form")) == "tiers" else (3 if "q3" in spec else 4)
+        )
+    return int(group), int(bits)
 
 
 def load_per_organ_sensitivity(oxx: str, packet_path: Path | None = None) -> dict:
@@ -2134,7 +2195,7 @@ def convert_gravity(hf_path: Path, dest: Path, spec: str,
     prot = list(protected or [])
     mix_marker = dest / "odyssey_gravity_mix.json"
     if (dest / "config.json").exists() and any(dest.glob("*.safetensors")):
-        if spec != "mixed-q2q3-experts":
+        if not str(spec).startswith("mixed-"):
             log(f"reusing gravity {spec} mlx at {dest}")
             return dest
         prev = None
@@ -2481,7 +2542,8 @@ def run_gravity_mode(
     census = load_census(args.oxx, weights)
     pos = load_per_organ_sensitivity(args.oxx, packet_path)
     protected = select_protected_components(spec, pos)
-    if spec == "q2-g64-attn-mlp":
+    parsed = parse_gravity_grammar(spec) or {}
+    if spec.endswith("-attn-mlp") or parsed.get("target") == "attn-mlp":
         protected = ["ssm", "norm"]
     dest = convert_gravity(weights, dest, spec, protected=protected)
     n_src_after = len(list(weights.glob("model-*.safetensors")))
@@ -3937,11 +3999,12 @@ def main() -> int:
     ap.add_argument(
         "--gravity",
         default=None,
-        choices=list(GRAVITY_SPECS),
+        metavar="SPEC",
         help=(
             "Build one MODEST or AGGRESSIVE mlx candidate mix and grade the fast-Doctor "
-            "battery. q3-g32-experts / q4-g64 / q4-g64-attn-mlp / q2-g32-experts / "
-            "mixed-q2q3-experts / q2-g64 / q2-g64-attn-mlp. Not a sweep."
+            "battery. Grammar: q<b>-g<g>[-experts|-attn-mlp] | mixed-qLqH[-experts] | "
+            "tiers-t0t1… | scale-joint-q<b>-g<g>… with optional +correction/+cN/+rN/+meta-*. "
+            "Not a sweep. Grid specs need not be pre-listed."
         ),
     )
     ap.add_argument(
@@ -3960,6 +4023,11 @@ def main() -> int:
         help="Dense: full-weight-sweep bytes/token as the NX floor (accounting).",
     )
     args = ap.parse_args()
+    if args.gravity and not gravity_spec_accepted(args.gravity):
+        raise SystemExit(
+            f"unknown gravity spec {args.gravity!r}; "
+            "expected q<b>-g<g>[-experts|-attn-mlp] / mixed-qLqH / tiers / scale-joint"
+        )
     n_special = sum(
         bool(x) for x in (args.gravity, args.nx_gather, args.nx_state, args.nx_dense)
     )

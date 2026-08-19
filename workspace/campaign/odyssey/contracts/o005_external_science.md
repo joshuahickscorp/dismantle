@@ -52,4 +52,4 @@ WRITE tools/odyssey_patient_runner.py
 WRITE receipts/odyssey-i/
 WRITE workspace/campaign/odyssey/patients/O005/
 READ workspace/campaign/odyssey/a3b_recon.py, tools/worker_gate.py, tools/doctor_seal.py, receipts/ascent-2026-08-18/A3B_RECON.json
-VERIFY receipts/odyssey-i/O005_EXTERNAL.json by running the runner then testing its fields — must pass, exit 0.
+VERIFY tools/odyssey_patient_runner.py by running it on O005 then testing the receipts/odyssey-i/O005_EXTERNAL.json fields — must pass, exit 0.

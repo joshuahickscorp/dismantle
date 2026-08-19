@@ -12,6 +12,11 @@ Dense/hybrid patients have no gate+switch_mlp router. Pass --skip-route
 present and writes route_skipped=true instead of failing. Hybrid
 Falcon-H1 additionally records an ssm organ bucket (census 'other' is
 Mamba) and SSM-state-vs-KV byte counts across short/moderate/long ctx.
+
+`--sensitivity` (after the fast-Doctor baseline, one load): in-place zero
+and 8-bit-round each organ, re-run the same battery + refusal controls,
+record capability delta. MoE also ablates one hot and one random expert.
+Canonical HF weights are never modified.
 """
 from __future__ import annotations
 
@@ -19,6 +24,7 @@ import argparse
 import inspect
 import json
 import os
+import random
 import subprocess
 import sys
 import time
@@ -50,6 +56,8 @@ _reexec_if_needed()
 
 import numpy as np  # noqa: E402
 import mlx.core as mx  # noqa: E402
+import mlx.nn as nn  # noqa: E402
+from mlx.utils import tree_flatten, tree_unflatten  # noqa: E402
 from mlx_lm import generate, load, stream_generate  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -99,6 +107,20 @@ QUANT_DIR_BY_OXX = {
 # H2 discriminator uses 4k and 64k; short is below the state/KV crossover.
 SSM_CTXS = (("short", 512), ("moderate", 4096), ("long", 65536))
 CACHE_ELEM_BYTES = 2  # bf16 activations in mlx cache, independent of weight quant
+SENSITIVITY_SCHEMA = "odyssey.patient.sensitivity.v1"
+SENSITIVITY_ORGANS_MOE = ("embed", "attn", "router", "expert", "norm", "lm_head")
+SENSITIVITY_ORGANS_DENSE = (
+    "embed",
+    "attn",
+    "mlp_dense",
+    "ssm",
+    "norm",
+    "lm_head",
+    "other",
+)
+ROUND8_GROUP = 64
+ROUND8_BITS = 8
+EXPERT_RNG_SEED = 0xA3
 
 
 def log(msg: str) -> None:
@@ -625,6 +647,850 @@ def run_generate(model, tok, prompt: str, max_tokens: int) -> str:
     return generate(model, tok, prompt=prompt, max_tokens=max_tokens, verbose=False)
 
 
+def organ_of(path: str, *, moe: bool) -> str:
+    """Classify a live mlx module/param path into a census organ bucket."""
+    n = (path or "").lower().replace("\\", ".")
+    if moe:
+        if "embed" in n and "lm_head" not in n:
+            return "embed"
+        if "lm_head" in n:
+            return "lm_head"
+        if any(
+            x in n
+            for x in (
+                "q_proj",
+                "k_proj",
+                "v_proj",
+                "o_proj",
+                "qkv",
+                "self_attn",
+                "q_norm",
+                "k_norm",
+            )
+        ):
+            return "attn"
+        if "switch_mlp" in n or ".experts." in n:
+            return "expert"
+        if "gate_proj" not in n and (
+            n == "gate" or n.endswith(".gate") or ".gate." in n
+        ):
+            return "router"
+        if "norm" in n:
+            return "norm"
+        if any(
+            x in n for x in ("up_proj", "down_proj", "gate_proj", "feed_forward", "mlp")
+        ):
+            return "mlp_dense"
+        return "other"
+    if "mamba" in n:
+        return "ssm"
+    if "embed" in n and "lm_head" not in n:
+        return "embed"
+    if "lm_head" in n:
+        return "lm_head"
+    if any(
+        x in n
+        for x in (
+            "q_proj",
+            "k_proj",
+            "v_proj",
+            "o_proj",
+            "qkv",
+            "self_attn",
+            "q_norm",
+            "k_norm",
+        )
+    ):
+        return "attn"
+    if "norm" in n:
+        return "norm"
+    if any(x in n for x in ("up_proj", "down_proj", "gate_proj", "feed_forward", "mlp")):
+        return "mlp_dense"
+    return "other"
+
+
+def _has_child_modules(mod) -> bool:
+    kids = mod.children() if hasattr(mod, "children") else {}
+    return bool(tree_flatten(kids, is_leaf=nn.Module.is_module))
+
+
+def _is_quantized(mod) -> bool:
+    return (
+        hasattr(mod, "scales")
+        and hasattr(mod, "weight")
+        and hasattr(mod, "bits")
+        and getattr(mod, "scales", None) is not None
+    )
+
+
+def collect_ablation_targets(model, *, moe: bool) -> list[dict]:
+    """Leaf modules with parameters, plus array params on non-leaf mixers (A_log/D/dt_bias)."""
+    targets: list[dict] = []
+    seen: set[str] = set()
+    for path, mod in model.named_modules():
+        if _has_child_modules(mod):
+            for key, val in list(mod.items()):
+                if not isinstance(val, mx.array) or str(key).startswith("_"):
+                    continue
+                apath = f"{path}.{key}" if path else str(key)
+                if apath in seen:
+                    continue
+                seen.add(apath)
+                targets.append(
+                    {
+                        "path": apath,
+                        "organ": organ_of(apath, moe=moe),
+                        "kind": "array",
+                        "module": mod,
+                        "key": str(key),
+                    }
+                )
+            continue
+        params = tree_flatten(mod.parameters())
+        if not params:
+            continue
+        mpath = path or type(mod).__name__
+        if mpath in seen:
+            continue
+        seen.add(mpath)
+        for k, _ in params:
+            seen.add(f"{mpath}.{k}" if mpath else k)
+        targets.append(
+            {
+                "path": mpath,
+                "organ": organ_of(mpath, moe=moe),
+                "kind": "module",
+                "module": mod,
+                "key": None,
+            }
+        )
+    return targets
+
+
+def snapshot_target(t: dict) -> dict:
+    mod = t["module"]
+    if t["kind"] == "array":
+        arr = getattr(mod, t["key"])
+        snap = mx.array(arr)
+        mx.eval(snap)
+        return {"kind": "array", "key": t["key"], "value": snap}
+    flat = {k: mx.array(v) for k, v in tree_flatten(mod.parameters())}
+    mx.eval(list(flat.values()))
+    return {"kind": "module", "params": flat}
+
+
+def restore_target(t: dict, snap: dict) -> None:
+    mod = t["module"]
+    if snap["kind"] == "array":
+        setattr(mod, snap["key"], snap["value"])
+        mx.eval(getattr(mod, snap["key"]))
+        return
+    nested = any("." in k for k in snap["params"])
+    if nested:
+        mod.update(tree_unflatten(list(snap["params"].items())))
+    else:
+        for k, v in snap["params"].items():
+            setattr(mod, k, v)
+    mx.eval([v for _, v in tree_flatten(mod.parameters())])
+
+
+def affine_round8(arr: mx.array) -> mx.array:
+    """Affine 8-bit quantize→dequantize (group 64). Pads last dim when needed."""
+    if arr.size == 0:
+        return arr
+    orig_shape = arr.shape
+    orig_dtype = arr.dtype
+    w = arr.astype(mx.float32)
+    if w.ndim == 0:
+        w = w.reshape(1, 1)
+    elif w.ndim == 1:
+        w = w.reshape(1, -1)
+    elif w.ndim > 2:
+        w = w.reshape(-1, int(orig_shape[-1]))
+    last = int(w.shape[-1])
+    pad = 0
+    if last % ROUND8_GROUP != 0:
+        pad = ROUND8_GROUP - (last % ROUND8_GROUP)
+        w = mx.concatenate(
+            [w, mx.zeros((w.shape[0], pad), dtype=w.dtype)], axis=-1
+        )
+    q, s, b = mx.quantize(w, group_size=ROUND8_GROUP, bits=ROUND8_BITS, mode="affine")
+    out = mx.dequantize(
+        q, scales=s, biases=b, group_size=ROUND8_GROUP, bits=ROUND8_BITS, mode="affine"
+    )
+    if pad:
+        out = out[:, :last]
+    return out.reshape(orig_shape).astype(orig_dtype)
+
+
+def _replace_index(arr: mx.array, eid: int, value: mx.array) -> mx.array:
+    idx = mx.arange(arr.shape[0])
+    mask = (idx == int(eid)).reshape((-1,) + (1,) * (arr.ndim - 1))
+    filled = mx.broadcast_to(mx.expand_dims(value, 0), arr.shape)
+    return mx.where(mask, filled, arr)
+
+
+def apply_zero_target(t: dict) -> None:
+    mod = t["module"]
+    if t["kind"] == "array":
+        setattr(mod, t["key"], mx.zeros_like(getattr(mod, t["key"])))
+        mx.eval(getattr(mod, t["key"]))
+        return
+    if _is_quantized(mod):
+        mod.scales = mx.zeros_like(mod.scales)
+        if getattr(mod, "biases", None) is not None:
+            mod.biases = mx.zeros_like(mod.biases)
+        if "bias" in mod and isinstance(mod.get("bias"), mx.array):
+            mod.bias = mx.zeros_like(mod.bias)
+        mx.eval([mod.scales] + ([mod.biases] if getattr(mod, "biases", None) is not None else []))
+        return
+    for k, v in tree_flatten(mod.parameters()):
+        if "." in k:
+            continue
+        setattr(mod, k, mx.zeros_like(v))
+    mx.eval([v for _, v in tree_flatten(mod.parameters())])
+
+
+def apply_round8_target(t: dict) -> None:
+    mod = t["module"]
+    if t["kind"] == "array":
+        setattr(mod, t["key"], affine_round8(getattr(mod, t["key"])))
+        return
+    if _is_quantized(mod):
+        gs = int(mod.group_size)
+        bits = int(mod.bits)
+        mode = getattr(mod, "mode", "affine")
+        w = mx.dequantize(
+            mod.weight,
+            scales=mod.scales,
+            biases=getattr(mod, "biases", None),
+            group_size=gs,
+            bits=bits,
+            mode=mode,
+        )
+        w8 = affine_round8(w)
+        q, s, *bb = mx.quantize(w8, group_size=gs, bits=bits, mode=mode)
+        mod.weight = q
+        mod.scales = s
+        if bb:
+            mod.biases = bb[0]
+        mx.eval([mod.weight, mod.scales] + ([mod.biases] if bb else []))
+        return
+    for k, v in tree_flatten(mod.parameters()):
+        if "." in k:
+            continue
+        setattr(mod, k, affine_round8(v))
+    mx.eval([v for _, v in tree_flatten(mod.parameters())])
+
+
+def apply_expert_zero(mod, eid: int) -> None:
+    if _is_quantized(mod):
+        mod.scales = mod.scales.at[eid].multiply(0)
+        if getattr(mod, "biases", None) is not None:
+            mod.biases = mod.biases.at[eid].multiply(0)
+        if "bias" in mod and isinstance(mod.get("bias"), mx.array):
+            mod.bias = mod.bias.at[eid].multiply(0)
+        return
+    if hasattr(mod, "weight"):
+        mod.weight = mod.weight.at[eid].multiply(0)
+    if "bias" in mod and isinstance(mod.get("bias"), mx.array):
+        mod.bias = mod.bias.at[eid].multiply(0)
+
+
+def apply_expert_round8(mod, eid: int) -> None:
+    if _is_quantized(mod):
+        gs = int(mod.group_size)
+        bits = int(mod.bits)
+        mode = getattr(mod, "mode", "affine")
+        biases = getattr(mod, "biases", None)
+        w_e = mx.dequantize(
+            mod.weight[eid],
+            scales=mod.scales[eid],
+            biases=None if biases is None else biases[eid],
+            group_size=gs,
+            bits=bits,
+            mode=mode,
+        )
+        w_e = affine_round8(w_e)
+        q, s, *bb = mx.quantize(w_e, group_size=gs, bits=bits, mode=mode)
+        mod.weight = _replace_index(mod.weight, eid, q)
+        mod.scales = _replace_index(mod.scales, eid, s)
+        if bb and biases is not None:
+            mod.biases = _replace_index(mod.biases, eid, bb[0])
+        return
+    if hasattr(mod, "weight"):
+        mod.weight = _replace_index(mod.weight, eid, affine_round8(mod.weight[eid]))
+    if "bias" in mod and isinstance(mod.get("bias"), mx.array):
+        mod.bias = _replace_index(mod.bias, eid, affine_round8(mod.bias[eid]))
+
+
+def make_seal_candidate(
+    battery: str,
+    refusals: str,
+    battery_items: list[dict],
+    refusal_items: list[dict],
+    quant: str,
+    planted_fired: bool,
+    planted_quiet: bool,
+    abl_fired: int,
+    oxx: str = "O005",
+) -> dict:
+    controls = [
+        {
+            "control": "refusal-substring matcher on planted refusal text",
+            "watched_to_fail": True,
+            "how_it_failed": (
+                f"matcher fired on planted string {PLANTED_REFUSAL!r}"
+                if planted_fired
+                else "PLANTED REFUSAL DID NOT FIRE — matcher is dead"
+            ),
+            "fired": planted_fired,
+        },
+        {
+            "control": "refusal-substring matcher on planted benign text",
+            "watched_to_fail": False,
+            "how_it_failed": (
+                "stayed quiet on benign (correct)"
+                if planted_quiet
+                else "FALSE POSITIVE on benign text — matcher is vacuous-always-true"
+            ),
+            "fired": not planted_quiet,
+        },
+        {
+            "control": "ABL prompts on live specimen (lock-picking / political)",
+            "watched_to_fail": abl_fired > 0,
+            "how_it_failed": (
+                f"{abl_fired}/{len(ABL)} ABL prompts matched a refusal substring"
+                if abl_fired
+                else "no ABL prompt matched a refusal substring on this specimen"
+            ),
+            "fired": abl_fired > 0,
+        },
+    ]
+    return {
+        "candidate": f"{oxx}-canonical-{quant}",
+        "tabula_drift": {
+            "status": "N/A",
+            "drift_x_vs_parent": None,
+            "note": (
+                "canonical first-party snapshot, not an abliterated child; "
+                "no Tabula parent to drift from on this specimen"
+            ),
+            "instrument_validated": False,
+        },
+        "observed_controls": controls,
+        "stated_test_width": {
+            "capability_items": len(BATTERY),
+            "refusal_controls": len(ABL),
+            "battery": battery,
+            "refusals": refusals,
+            "note": (
+                "same 12-item correctness battery + 2 ABL prompts as a3b_recon.py; "
+                "G046/G048 recorded ten items as too narrow to certify equivalence — "
+                "this is a FAST doctor, not a full seal"
+            ),
+        },
+        "known_blind_spots": [
+            "mlx_lm EXTERNAL SPECIMEN — not Hawking native, not BASE_TRUE_TPS (§14)",
+            "fast battery is 12 completion items; no coding/long-context/tool dimensions",
+            "refusal matcher is substring-based and English-centric",
+            (
+                (
+                    "4-bit affine MLX quant (router gates 8-bit) — Doctor/route are under quant, "
+                    "not bf16-canonical"
+                    if oxx == "O005"
+                    else "4-bit affine MLX quant — Doctor/TPS are under quant, not bf16-canonical"
+                )
+                if quant.startswith("4bit")
+                else "bf16 load; no quant caveat on this run"
+            ),
+            "Tabula instrument is not validated on this patient (instrument_validated=false)",
+        ],
+        "battery_items": battery_items,
+        "refusal_items": refusal_items,
+    }
+
+
+def run_fast_doctor(model, tok, rec=None) -> dict:
+    """Same 12-item battery + 2 ABL prompts as the external-science path."""
+
+    def _break() -> None:
+        if rec is not None:
+            rec.break_sequence()
+
+    t0 = time.perf_counter()
+    error = None
+    hits = 0
+    battery_items: list[dict] = []
+    ref = 0
+    refusal_items: list[dict] = []
+    try:
+        for p, want in BATTERY:
+            txt = run_generate(model, tok, p, 12)
+            _break()
+            ok = want.lower() in (txt or "").lower()
+            hits += int(ok)
+            battery_items.append(
+                {"prompt": p, "want": want, "got": (txt or "")[:160], "ok": ok}
+            )
+        for p in ABL:
+            txt = run_generate(model, tok, p, 40)
+            _break()
+            fired = is_refusal(txt or "")
+            ref += int(fired)
+            refusal_items.append(
+                {"prompt": p, "got": (txt or "")[:240], "refusal": fired}
+            )
+    except Exception as e:  # noqa: BLE001 — ablation may NaN/crash generate
+        error = f"{type(e).__name__}: {e}"
+        while len(battery_items) < len(BATTERY):
+            p, want = BATTERY[len(battery_items)]
+            battery_items.append(
+                {"prompt": p, "want": want, "got": f"ERROR {error}"[:160], "ok": False}
+            )
+        while len(refusal_items) < len(ABL):
+            p = ABL[len(refusal_items)]
+            refusal_items.append({"prompt": p, "got": f"ERROR {error}"[:240], "refusal": False})
+    wall = time.perf_counter() - t0
+    planted_fired = is_refusal(PLANTED_REFUSAL)
+    planted_quiet = not is_refusal(BENIGN_CONTROL)
+    abl_fired = sum(1 for it in refusal_items if it.get("refusal"))
+    battery = f"{hits}/{len(BATTERY)}"
+    refusals = f"{ref}/{len(ABL)}"
+    return {
+        "battery": battery,
+        "refusals": refusals,
+        "items": battery_items,
+        "refusal_items": refusal_items,
+        "planted_fired": planted_fired,
+        "planted_quiet": planted_quiet,
+        "abl_fired": abl_fired,
+        "wall_s": round(wall, 3),
+        "error": error,
+        "hits": hits,
+        "refusal_hits": ref,
+    }
+
+
+def seal_fast_doctor(doc: dict, quant: str, oxx: str) -> dict:
+    candidate = make_seal_candidate(
+        doc["battery"],
+        doc["refusals"],
+        doc["items"],
+        doc["refusal_items"],
+        quant,
+        doc["planted_fired"],
+        doc["planted_quiet"],
+        doc["abl_fired"],
+        oxx=oxx,
+    )
+    verdict, reasons = doctor_seal(candidate)
+    out = dict(doc)
+    out["seal_verdict"] = verdict
+    out["seal_reasons"] = reasons
+    out["controls"] = candidate["observed_controls"]
+    out["stated_test_width"] = candidate["stated_test_width"]
+    out["known_blind_spots"] = candidate["known_blind_spots"]
+    return out
+
+
+def doctor_delta(base: dict, now: dict, n_modules: int) -> dict:
+    bh, _ = parse_frac(base["battery"])
+    nh, _ = parse_frac(now["battery"])
+    br, _ = parse_frac(base["refusals"])
+    nr, _ = parse_frac(now["refusals"])
+    return {
+        "battery": now["battery"],
+        "refusals": now["refusals"],
+        "seal_verdict": now.get("seal_verdict"),
+        "delta_hits": int(nh - bh),
+        "delta_refusals": int(nr - br),
+        "seal_verdict_changed": now.get("seal_verdict") != base.get("seal_verdict"),
+        "error": now.get("error"),
+        "_label": "MEASURED",
+        "wall_s": now.get("wall_s"),
+        "n_modules": n_modules,
+        "items": now.get("items"),
+        "refusal_items": now.get("refusal_items"),
+    }
+
+
+def strip_items(obj):
+    if isinstance(obj, dict):
+        return {
+            k: strip_items(v)
+            for k, v in obj.items()
+            if k not in ("items", "refusal_items")
+        }
+    if isinstance(obj, list):
+        return [strip_items(x) for x in obj]
+    return obj
+
+
+def identity_treatment(base: dict, n_modules: int, note: str) -> dict:
+    bh, _ = parse_frac(base["battery"])
+    br, _ = parse_frac(base["refusals"])
+    return {
+        "battery": base["battery"],
+        "refusals": base["refusals"],
+        "seal_verdict": base.get("seal_verdict"),
+        "delta_hits": 0,
+        "delta_refusals": 0,
+        "seal_verdict_changed": False,
+        "error": None,
+        "_label": "MEASURED",
+        "wall_s": 0.0,
+        "n_modules": n_modules,
+        "note": note,
+        "items": base.get("items"),
+        "refusal_items": base.get("refusal_items"),
+        "hits": bh,
+        "refusal_hits": br,
+    }
+
+
+def apply_and_measure(
+    targets: list[dict],
+    treatment: str,
+    model,
+    tok,
+    rec,
+    base: dict,
+    quant: str,
+    oxx: str,
+    expert_id: int | None = None,
+) -> dict:
+    snaps = [(t, snapshot_target(t)) for t in targets]
+    err = None
+    try:
+        for t in targets:
+            if expert_id is not None:
+                if treatment == "zero":
+                    apply_expert_zero(t["module"], expert_id)
+                else:
+                    apply_expert_round8(t["module"], expert_id)
+            elif treatment == "zero":
+                apply_zero_target(t)
+            else:
+                apply_round8_target(t)
+        mx.eval([v for _, v in tree_flatten(model.parameters())])
+        now = run_fast_doctor(model, tok, rec=rec)
+        now = seal_fast_doctor(now, quant, oxx)
+    except Exception as e:  # noqa: BLE001 — restore even if ablation apply fails
+        err = f"{type(e).__name__}: {e}"
+        now = {
+            "battery": f"0/{len(BATTERY)}",
+            "refusals": f"0/{len(ABL)}",
+            "seal_verdict": "REFUSED",
+            "items": [],
+            "refusal_items": [],
+            "error": err,
+            "wall_s": 0.0,
+            "planted_fired": is_refusal(PLANTED_REFUSAL),
+            "planted_quiet": not is_refusal(BENIGN_CONTROL),
+            "abl_fired": 0,
+        }
+        now = seal_fast_doctor(now, quant, oxx)
+        now["error"] = err
+    finally:
+        for t, snap in snaps:
+            restore_target(t, snap)
+        mx.eval([v for _, v in tree_flatten(model.parameters())])
+    delta = doctor_delta(base, now, n_modules=len(targets))
+    if err and not delta.get("error"):
+        delta["error"] = err
+    return delta
+
+
+TREATMENT_NOTES = {
+    "zero": (
+        "effective-zero: quantized organs via scales/biases=0; dense via weight=0"
+    ),
+    "round8": (
+        "affine 8-bit quantize→dequantize (group 64) of dequantized organ; "
+        "re-stored in the loaded codec. On a 4-bit specimen this is a "
+        "4-bit→8-bit-grid→4-bit round-trip (near-identity for already-4-bit organs; "
+        "real 8-bit snap for unquantized norms)."
+    ),
+}
+
+
+def pick_experts(n_experts: int, hot_set: list[int]) -> tuple[int, int]:
+    hot = int(hot_set[0]) if hot_set else 0
+    if hot < 0 or hot >= n_experts:
+        hot = 0
+    rng = random.Random(EXPERT_RNG_SEED)
+    excluded = set(int(x) for x in hot_set) | {hot}
+    pool = [i for i in range(n_experts) if i not in excluded]
+    if not pool:
+        pool = [i for i in range(n_experts) if i != hot] or [hot]
+    rnd = int(rng.choice(pool))
+    return hot, rnd
+
+
+def run_sensitivity_mode(
+    *,
+    model,
+    tok,
+    args,
+    weights: Path,
+    load_path: Path,
+    quant: str,
+    fidelity: str | None,
+    g: dict,
+    obs: dict,
+    n_src: int,
+    skip_route: bool,
+    n_layers: int,
+    moe_idx: list[int],
+    live: dict | None,
+    packet_path: Path,
+    out_path: Path,
+    rec=None,
+) -> int:
+    moe = len(moe_idx) > 0
+    organ_order = list(SENSITIVITY_ORGANS_MOE if moe else SENSITIVITY_ORGANS_DENSE)
+    targets = collect_ablation_targets(model, moe=moe)
+    by_organ: dict[str, list[dict]] = {o: [] for o in organ_order}
+    unknown_paths: list[str] = []
+    for t in targets:
+        o = t["organ"]
+        if o in by_organ:
+            by_organ[o].append(t)
+        elif o not in organ_order:
+            organ_order.append(o)
+            by_organ.setdefault(o, []).append(t)
+        else:
+            by_organ.setdefault(o, []).append(t)
+        if o not in SENSITIVITY_ORGANS_MOE and o not in SENSITIVITY_ORGANS_DENSE:
+            unknown_paths.append(t["path"])
+    counts = {o: len(by_organ.get(o, [])) for o in organ_order}
+    log(
+        "sensitivity inventory: "
+        + ", ".join(f"{o}={counts[o]}" for o in organ_order)
+        + (f" unknown={len(unknown_paths)}" if unknown_paths else "")
+    )
+
+    log("sensitivity baseline battery")
+    base_raw = run_fast_doctor(model, tok, rec=rec)
+    base = seal_fast_doctor(base_raw, quant, args.oxx)
+    log(
+        f"  baseline battery={base['battery']} refusals={base['refusals']} "
+        f"seal={base['seal_verdict']} wall={base['wall_s']}s"
+    )
+    baseline_block = {
+        "battery": base["battery"],
+        "refusals": base["refusals"],
+        "seal_verdict": base["seal_verdict"],
+        "items": base["items"],
+        "refusal_items": base["refusal_items"],
+        "_label": "MEASURED",
+    }
+
+    per_organ: dict = {
+        "baseline": baseline_block,
+        "_label": "MEASURED",
+        "_evidence": "MEASURED (in-place mlx ablation; canonical HF snapshot untouched)",
+        "treatments": dict(TREATMENT_NOTES),
+    }
+
+    for organ in organ_order:
+        units = by_organ.get(organ, [])
+        entry: dict = {"n_modules": len(units), "_label": "MEASURED"}
+        if not units:
+            note = f"no live tensors classified as organ {organ}"
+            log(f"sensitivity organ={organ} n=0 ({note})")
+            entry["zero"] = identity_treatment(base, 0, note)
+            entry["round8"] = identity_treatment(base, 0, note)
+            per_organ[organ] = entry
+            continue
+        log(f"sensitivity organ={organ} n={len(units)} zero")
+        z = apply_and_measure(units, "zero", model, tok, rec, base, quant, args.oxx)
+        log(
+            f"  zero battery={z['battery']} delta_hits={z['delta_hits']} "
+            f"refusals={z['refusals']} seal={z['seal_verdict']} wall={z['wall_s']}s"
+        )
+        log(f"sensitivity organ={organ} n={len(units)} round8")
+        r = apply_and_measure(units, "round8", model, tok, rec, base, quant, args.oxx)
+        log(
+            f"  round8 battery={r['battery']} delta_hits={r['delta_hits']} "
+            f"refusals={r['refusals']} seal={r['seal_verdict']} wall={r['wall_s']}s"
+        )
+        entry["zero"] = z
+        entry["round8"] = r
+        per_organ[organ] = entry
+
+    per_expert = None
+    expert_loop = {"skipped": True, "reason": "non-MoE; expert loop skipped", "_label": "MEASURED"}
+    if moe:
+        expert_loop = {"skipped": False, "_label": "MEASURED"}
+        n_experts = int((live or {}).get("num_experts") or 0)
+        hot_set: list[int] = []
+        hot_src = "fallback expert 0 (no packet hot_set)"
+        if packet_path.exists():
+            pkt = json.loads(packet_path.read_text())
+            routing = pkt.get("routing") or {}
+            hot_set = list(routing.get("hot_set") or [])
+            if not hot_set:
+                freq = routing.get("expert_frequency") or {}
+                hot_set = list(freq.get("hot_set") or [])
+            if hot_set:
+                hot_src = "packet.routing.hot_set"
+        if n_experts <= 0:
+            for t in by_organ.get("expert", []):
+                w = getattr(t["module"], "weight", None)
+                if w is not None and hasattr(w, "shape") and len(w.shape) >= 3:
+                    n_experts = int(w.shape[0])
+                    break
+        expert_mods = by_organ.get("expert", [])
+        if n_experts > 0 and expert_mods:
+            hot_id, rnd_id = pick_experts(n_experts, hot_set)
+            per_expert = {
+                "_label": "MEASURED",
+                "_evidence": "MEASURED (zero/round8 one expert index across all MoE layers)",
+            }
+            for label, eid, src in (
+                ("hot", hot_id, hot_src),
+                ("random", rnd_id, f"Random({hex(EXPERT_RNG_SEED)}) excluding hot_set"),
+            ):
+                log(f"sensitivity expert {label} id={eid} n_modules={len(expert_mods)}")
+                z = apply_and_measure(
+                    expert_mods,
+                    "zero",
+                    model,
+                    tok,
+                    rec,
+                    base,
+                    quant,
+                    args.oxx,
+                    expert_id=eid,
+                )
+                r = apply_and_measure(
+                    expert_mods,
+                    "round8",
+                    model,
+                    tok,
+                    rec,
+                    base,
+                    quant,
+                    args.oxx,
+                    expert_id=eid,
+                )
+                block: dict = {
+                    "expert_id": eid,
+                    "source": src,
+                    "_label": "MEASURED",
+                    "zero": z,
+                    "round8": r,
+                }
+                if label == "hot":
+                    block["hot_set"] = hot_set
+                per_expert[label] = block
+                log(
+                    f"  {label} zero delta_hits={z['delta_hits']} "
+                    f"round8 delta_hits={r['delta_hits']}"
+                )
+        else:
+            expert_loop = {
+                "skipped": True,
+                "reason": "MoE topology present but no expert modules/n_experts",
+                "_label": "MEASURED",
+            }
+
+    machine = maybe_machine_note()
+    n_src_after = len(list(weights.glob("model-*.safetensors")))
+    if n_src_after < 1:
+        raise SystemExit(f"canonical weights missing after sensitivity? {weights}")
+
+    zero_drop = [
+        o
+        for o in organ_order
+        if per_organ.get(o, {}).get("zero", {}).get("delta_hits", 0) < 0
+    ]
+    round_drop = [
+        o
+        for o in organ_order
+        if per_organ.get(o, {}).get("round8", {}).get("delta_hits", 0) < 0
+    ]
+    summary = (
+        f"zero drops hits on {', '.join(zero_drop) or 'nothing'}; "
+        f"round8 drops hits on {', '.join(round_drop) or 'nothing'} "
+        f"(baseline {base['battery']}, {quant})"
+    )
+
+    receipt = {
+        "schema": SENSITIVITY_SCHEMA,
+        "oxx": args.oxx,
+        "runtime": "mlx",
+        "runtime_label": "mlx_lm EXTERNAL SPECIMEN — not Hawking native",
+        "label": "SPECIMEN",
+        "not_base_true_tps": True,
+        "quant": quant,
+        "quant_fidelity_caveat": fidelity,
+        "weights_canonical": str(weights),
+        "weights_loaded": str(load_path),
+        "canonical_snapshot_intact": n_src_after,
+        "inventory": {
+            "counts": counts,
+            "unknown": unknown_paths,
+            "n_unknown": len(unknown_paths),
+        },
+        "gate": {
+            "decision": g["decision"],
+            "note": g["note"],
+            "reasons": g.get("reasons"),
+            "current_wired_gb": g.get("current_wired_gb"),
+            "projected_headroom_gb": g.get("projected_headroom_gb"),
+            "observed": {
+                k: (round(v, 3) if isinstance(v, float) else v) for k, v in obs.items()
+            },
+        },
+        "contamination": {
+            "section": "§14",
+            "note": (
+                "Sensitivity is a Doctor delta under the loaded specimen, not BASE_TRUE_TPS. "
+                "One load; in-place ablation; canonical HF snapshot was not modified or deleted."
+            ),
+            "clean_box": machine,
+            "_label": "MEASURED machine note + DERIVED contamination flag",
+        },
+        "baseline": baseline_block,
+        "per_organ_sensitivity": per_organ,
+        "per_expert_sensitivity": per_expert,
+        "expert_loop": expert_loop,
+        "summary": summary,
+        "route_skipped": bool(skip_route),
+        "n_layers": n_layers,
+        "commit": git_head(),
+        "python": sys.executable,
+        "out": str(out_path),
+        "_label": "MEASURED",
+    }
+
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(receipt, indent=2) + "\n")
+    log(f"wrote {out_path}")
+
+    if not args.skip_packet:
+        update_packet_sensitivity(packet_path, receipt, organ_order)
+        validate_packet(
+            packet_path,
+            route_skipped=skip_route,
+            sensitivity=True,
+            organs=organ_order,
+        )
+
+    for o in organ_order:
+        if o not in receipt["per_organ_sensitivity"]:
+            raise SystemExit(f"sensitivity receipt missing organ {o}")
+    if receipt["per_organ_sensitivity"].get("baseline") is None:
+        raise SystemExit("sensitivity receipt missing baseline")
+    if not Path(out_path).exists():
+        raise SystemExit(f"sensitivity receipt not written: {out_path}")
+    log(f"{args.oxx} sensitivity ok: {summary}")
+    return 0
+
+
 def parse_frac(s: str) -> tuple[int, int]:
     a, b = s.split("/")
     return int(a), int(b)
@@ -739,80 +1605,17 @@ def write_doctor_seal(
     abl_fired: int,
     oxx: str = "O005",
 ) -> tuple[str, dict]:
-    controls = [
-        {
-            "control": "refusal-substring matcher on planted refusal text",
-            "watched_to_fail": True,
-            "how_it_failed": (
-                f"matcher fired on planted string {PLANTED_REFUSAL!r}"
-                if planted_fired
-                else "PLANTED REFUSAL DID NOT FIRE — matcher is dead"
-            ),
-            "fired": planted_fired,
-        },
-        {
-            "control": "refusal-substring matcher on planted benign text",
-            "watched_to_fail": False,
-            "how_it_failed": (
-                "stayed quiet on benign (correct)"
-                if planted_quiet
-                else "FALSE POSITIVE on benign text — matcher is vacuous-always-true"
-            ),
-            "fired": not planted_quiet,
-        },
-        {
-            "control": "ABL prompts on live specimen (lock-picking / political)",
-            "watched_to_fail": abl_fired > 0,
-            "how_it_failed": (
-                f"{abl_fired}/{len(ABL)} ABL prompts matched a refusal substring"
-                if abl_fired
-                else "no ABL prompt matched a refusal substring on this specimen"
-            ),
-            "fired": abl_fired > 0,
-        },
-    ]
-    candidate = {
-        "candidate": f"{oxx}-canonical-{quant}",
-        "tabula_drift": {
-            "status": "N/A",
-            "drift_x_vs_parent": None,
-            "note": (
-                "canonical first-party snapshot, not an abliterated child; "
-                "no Tabula parent to drift from on this specimen"
-            ),
-            "instrument_validated": False,
-        },
-        "observed_controls": controls,
-        "stated_test_width": {
-            "capability_items": len(BATTERY),
-            "refusal_controls": len(ABL),
-            "battery": battery,
-            "refusals": refusals,
-            "note": (
-                "same 12-item correctness battery + 2 ABL prompts as a3b_recon.py; "
-                "G046/G048 recorded ten items as too narrow to certify equivalence — "
-                "this is a FAST doctor, not a full seal"
-            ),
-        },
-        "known_blind_spots": [
-            "mlx_lm EXTERNAL SPECIMEN — not Hawking native, not BASE_TRUE_TPS (§14)",
-            "fast battery is 12 completion items; no coding/long-context/tool dimensions",
-            "refusal matcher is substring-based and English-centric",
-            (
-                (
-                    "4-bit affine MLX quant (router gates 8-bit) — Doctor/route are under quant, "
-                    "not bf16-canonical"
-                    if oxx == "O005"
-                    else "4-bit affine MLX quant — Doctor/TPS are under quant, not bf16-canonical"
-                )
-                if quant.startswith("4bit")
-                else "bf16 load; no quant caveat on this run"
-            ),
-            "Tabula instrument is not validated on this patient (instrument_validated=false)",
-        ],
-        "battery_items": battery_items,
-        "refusal_items": refusal_items,
-    }
+    candidate = make_seal_candidate(
+        battery,
+        refusals,
+        battery_items,
+        refusal_items,
+        quant,
+        planted_fired,
+        planted_quiet,
+        abl_fired,
+        oxx=oxx,
+    )
     verdict, reasons = doctor_seal(candidate)
     doc = {
         "schema": "hawking.nos.doctor_seal.v1",
@@ -994,7 +1797,42 @@ def update_packet(packet_path: Path, receipt: dict) -> None:
     log(f"updated packet {packet_path}")
 
 
-def validate_packet(packet_path: Path, route_skipped: bool = False) -> None:
+def update_packet_sensitivity(packet_path: Path, receipt: dict, organs: list[str]) -> None:
+    """Fill representation.per_organ_sensitivity without clobbering baseline execution/doctor."""
+    if not packet_path.exists():
+        log(f"packet missing at {packet_path}; not writing")
+        return
+    pkt = json.loads(packet_path.read_text())
+    compact = strip_items(receipt["per_organ_sensitivity"])
+    pkt.setdefault("representation", {})
+    pkt["representation"]["per_organ_sensitivity"] = compact
+    if receipt.get("per_expert_sensitivity"):
+        pkt["representation"]["per_expert_sensitivity"] = strip_items(
+            receipt["per_expert_sensitivity"]
+        )
+    pkt["representation"]["sensitivity_receipt"] = (
+        str(Path(receipt["out"]).relative_to(ROOT)) if receipt.get("out") else None
+    )
+    extra = "MEASURED (per_organ_sensitivity, in-place mlx ablation)"
+    ev = pkt["representation"].get("_evidence") or ""
+    if extra not in ev:
+        pkt["representation"]["_evidence"] = f"{ev}; {extra}" if ev else extra
+    pkt["phase"] = "SENSITIVITY"
+    summary = receipt.get("summary") or "sensitivity map MEASURED"
+    nxt = list(pkt.get("next") or [])
+    line = f"A3 per-organ sensitivity MEASURED: {summary}"
+    nxt = [line] + [x for x in nxt if "per-organ" not in str(x).lower()]
+    pkt["next"] = nxt
+    packet_path.write_text(json.dumps(pkt, indent=2) + "\n")
+    log(f"updated packet sensitivity {packet_path} organs={organs}")
+
+
+def validate_packet(
+    packet_path: Path,
+    route_skipped: bool = False,
+    sensitivity: bool = False,
+    organs: list[str] | None = None,
+) -> None:
     pkt = json.loads(packet_path.read_text())
     for k in ("identity", "architecture", "representation", "execution", "routing", "doctor"):
         if k not in pkt:
@@ -1014,6 +1852,17 @@ def validate_packet(packet_path: Path, route_skipped: bool = False) -> None:
             log("packet representation.ssm empty (ok if patient has no Mamba)")
         elif not pkt["execution"].get("state"):
             raise SystemExit("packet execution.state empty on hybrid skip-route run with ssm")
+    if sensitivity:
+        pos = (pkt.get("representation") or {}).get("per_organ_sensitivity")
+        if not pos or not isinstance(pos, dict):
+            raise SystemExit("packet representation.per_organ_sensitivity empty")
+        if "baseline" not in pos:
+            raise SystemExit("packet per_organ_sensitivity missing baseline")
+        for o in organs or []:
+            if o not in pos:
+                raise SystemExit(f"packet per_organ_sensitivity missing organ {o}")
+            if pos[o] is None:
+                raise SystemExit(f"packet per_organ_sensitivity.{o} is null")
 
 
 def maybe_machine_note() -> dict:
@@ -1043,6 +1892,14 @@ def main() -> int:
         "--skip-route",
         action="store_true",
         help="No-op RouteRecorder (dense/hybrid; no gate+switch_mlp). Also auto-skips when no MoE layer is present.",
+    )
+    ap.add_argument(
+        "--sensitivity",
+        action="store_true",
+        help=(
+            "After the fast battery baseline, zero and 8-bit-round each organ "
+            "(and a hot + random expert if MoE); write per_organ_sensitivity."
+        ),
     )
     args = ap.parse_args()
 
@@ -1129,6 +1986,27 @@ def main() -> int:
                 layer.mlp = RouteTap(mlp, i, rec)
                 wrapped += 1
         log(f"{n_layers} layers, {wrapped} MoE layers wrapped (expect {wrapped}/{n_layers})")
+
+    if args.sensitivity:
+        return run_sensitivity_mode(
+            model=model,
+            tok=tok,
+            args=args,
+            weights=weights,
+            load_path=load_path,
+            quant=quant,
+            fidelity=fidelity,
+            g=g,
+            obs=obs,
+            n_src=n_src,
+            skip_route=skip_route,
+            n_layers=n_layers,
+            moe_idx=moe_idx,
+            live=live,
+            packet_path=packet_path,
+            out_path=out_path,
+            rec=rec,
+        )
 
     def _break() -> None:
         if rec is not None:

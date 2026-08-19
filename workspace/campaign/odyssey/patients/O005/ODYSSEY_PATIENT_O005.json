@@ -71,7 +71,7 @@
       "_evidence": "MEASURED (in-place mlx ablation; canonical HF snapshot untouched)",
       "treatments": {
         "zero": "effective-zero: quantized organs via scales/biases=0; dense via weight=0",
-        "round8": "affine 8-bit quantize→dequantize (group 64) of dequantized organ; re-stored in the loaded codec. On a 4-bit specimen this is a 4-bit→8-bit-grid→4-bit round-trip (near-identity for already-4-bit organs; real 8-bit snap for unquantized norms)."
+        "round8": "affine 8-bit quantize\u2192dequantize (group 64) of dequantized organ; re-stored in the loaded codec. On a 4-bit specimen this is a 4-bit\u21928-bit-grid\u21924-bit round-trip (near-identity for already-4-bit organs; real 8-bit snap for unquantized norms)."
       },
       "embed": {
         "n_modules": 1,
@@ -325,7 +325,7 @@
     "sensitivity_receipt": "receipts/odyssey-i/O005_SENSITIVITY.json"
   },
   "execution": {
-    "baseline_runtime": "mlx_lm EXTERNAL SPECIMEN — not Hawking native (load_engine Unimplemented for qwen3moe)",
+    "baseline_runtime": "mlx_lm EXTERNAL SPECIMEN \u2014 not Hawking native (load_engine Unimplemented for qwen3moe)",
     "baseline_tps": 35.391,
     "tps_specimen": 35.391,
     "ttft": 0.1642,
@@ -334,7 +334,7 @@
     "label": "SPECIMEN",
     "not_base_true_tps": true,
     "receipt": "receipts/odyssey-i/O005_EXTERNAL.json",
-    "_evidence": "MEASURED (receipts/odyssey-i/O005_EXTERNAL.json) SPECIMEN; §14 session may be open — not BASE_TRUE_TPS",
+    "_evidence": "MEASURED (receipts/odyssey-i/O005_EXTERNAL.json) SPECIMEN; \u00a714 session may be open \u2014 not BASE_TRUE_TPS",
     "tps": null,
     "prefill": null,
     "long_context_slope": null,
@@ -435,13 +435,13 @@
       "refusal_controls": 2,
       "battery": "10/12",
       "refusals": "0/2",
-      "note": "same 12-item correctness battery + 2 ABL prompts as a3b_recon.py; G046/G048 recorded ten items as too narrow to certify equivalence — this is a FAST doctor, not a full seal"
+      "note": "same 12-item correctness battery + 2 ABL prompts as a3b_recon.py; G046/G048 recorded ten items as too narrow to certify equivalence \u2014 this is a FAST doctor, not a full seal"
     },
     "known_blind_spots": [
-      "mlx_lm EXTERNAL SPECIMEN — not Hawking native, not BASE_TRUE_TPS (§14)",
+      "mlx_lm EXTERNAL SPECIMEN \u2014 not Hawking native, not BASE_TRUE_TPS (\u00a714)",
       "fast battery is 12 completion items; no coding/long-context/tool dimensions",
       "refusal matcher is substring-based and English-centric",
-      "4-bit affine MLX quant (router gates 8-bit) — Doctor/route are under quant, not bf16-canonical",
+      "4-bit affine MLX quant (router gates 8-bit) \u2014 Doctor/route are under quant, not bf16-canonical",
       "Tabula instrument is not validated on this patient (instrument_validated=false)"
     ],
     "tabula": {
@@ -473,13 +473,13 @@
         "receipt": "receipts/odyssey-i/O005_GRAVITY_q3-g32-experts.json",
         "label": "SPECIMEN",
         "not_hawking_nx_win": true,
-        "_evidence": "MEASURED (mlx gravity specimen; §15)",
+        "_evidence": "MEASURED (mlx gravity specimen; \u00a715)",
         "_label": "SPECIMEN"
       }
     ],
     "kills": [],
     "architecture_specific_findings": [
-      "uniform_routing: A3B-SPECIFIC / MOE-SPECIFIC -- entropy 6.09/7.00, no cold experts -> cold-expert compression (S042 §10) does NOT apply to A3B; per-expert uniform codec is fine, no popularity skew to exploit.",
+      "uniform_routing: A3B-SPECIFIC / MOE-SPECIFIC -- entropy 6.09/7.00, no cold experts -> cold-expert compression (S042 \u00a710) does NOT apply to A3B; per-expert uniform codec is fine, no popularity skew to exploit.",
       "sparse_active_path: MOE-UNIVERSAL -- 8/128 experts/token ~= 3.6GB active-expert bytes/token vs dense 11.7GB (3.2x less). The lever is a native EXPERT-GATHER that MOVES only active experts, not all 128. mlx does not exploit it (29.3 TPS ~= dense).",
       "tps_caveat: 29.3 is the mlx SPECIMEN; whether the 3.2x active-byte reduction becomes TPS depends on our runtime (Qwen3.8 finding: we are kernel-bound, not bandwidth-bound -- so a native MoE kernel must be efficient, not just move fewer bytes)."
     ],
@@ -496,9 +496,12 @@
       "receipt": "receipts/odyssey-i/O005_GRAVITY_q3-g32-experts.json",
       "label": "SPECIMEN",
       "not_hawking_nx_win": true,
-      "_evidence": "MEASURED (mlx gravity specimen; §15)",
+      "_evidence": "MEASURED (mlx gravity specimen; \u00a715)",
       "_label": "SPECIMEN"
-    }
+    },
+    "candidate_class": "CONVENTIONAL_ANCHOR",
+    "conventionality": "conventional (mlx affine q3 per-group experts; no structural/correction/tier/native-NX mechanism)",
+    "anti_complacency_note": "S004: q3 4.03 stored/4.23 active is an ANCHOR not a frontier; aggressive q2/mixed/base+correction probes DEFERRED (O005 retired in Cycle 1). Reopen-eligible if a later patient yields a transferable sub-3 structural mechanism. 16x selected/full (nx-gather) finding preserved."
   },
   "compiler_hypotheses": [
     {
@@ -528,7 +531,7 @@
     "A3 per-organ sensitivity MEASURED: zero drops hits on embed, attn, router, expert, norm, lm_head; round8 drops hits on nothing (baseline 10/12, 4bit-mlx)",
     "gravity q3-g32-experts CANDIDATE_PASS: stored_bpw=4.0253 active_bpw=4.2305 battery=10/12 delta_hits=0 (mlx SPECIMEN, not a Hawking NX win)",
     "nx-gather accounting written (receipts/odyssey-i/O005_NX_gather.json); not a Hawking NX runtime",
-    "native qwen3moe in load_engine still Unimplemented — NX after route/sensitivity",
+    "native qwen3moe in load_engine still Unimplemented \u2014 NX after route/sensitivity",
     "do not treat mlx tps_specimen as BASE_TRUE_TPS; re-time on a clean box if a native path lands"
   ],
   "tabula": {

@@ -16,7 +16,8 @@ stay as implementation detail under these gates. Status: DONE / ACTIVE / PENDING
   + launchd driver; first autonomous seal→retire proven. **DONE** (O005 retired unattended).
 - **G2 — SUPER-DETACHMENT MACHINE.** memgate (multi-model, swap≤30GiB) + candidate-search-as-data
   + predeclared manifest + cost-model/detachment-metrics + novelty engine + anti-complacency
-  retirement gate, all wired into the loop. **ACTIVE** (fan-out building; then one integration pass).
+  retirement gate, all wired into the loop. **DONE** (6-lane fan-out + integration merged; multi-model
+  admission proven — 2 concurrent disjoint-patient lanes under swap≤30; driver re-enabled on full machine).
 - **G3 — CYCLE 1 SEALED.** Each of O001/O003/O004/O005/O006: anchor → aggressive probe → frontier
   localized → NX attempt → packet-shows-frontier → retire. **ACTIVE** (O005 done; rest running).
 - **G4 — COHORT 2.** Acquire the next storage-fitting cohort (O007+ by info-value/GB under disk+swap),

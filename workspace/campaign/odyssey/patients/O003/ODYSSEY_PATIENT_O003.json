@@ -151,8 +151,8 @@
   },
   "representation": {
     "source_bytes": 32815315552,
-    "best_stored_bpw_eq": 16.0,
-    "active_bpw_eq": null,
+    "best_stored_bpw_eq": 3.0637,
+    "active_bpw_eq": 3.3111,
     "metadata_bytes": null,
     "corrections": null,
     "reconstruction": null,
@@ -508,7 +508,7 @@
         }
       }
     },
-    "_evidence": "MEASURED (census); MEASURED (per_organ_sensitivity, in-place mlx ablation)",
+    "_evidence": "MEASURED (census); MEASURED (per_organ_sensitivity, in-place mlx ablation); MEASURED (gravity q2-g32-experts stored_bpw=3.0637)",
     "stored_bpw": 16.0,
     "organs_bytes_GB": {
       "embed": 0.68,
@@ -545,11 +545,58 @@
     "receipt": "receipts/odyssey-i/O003_EXTERNAL.json"
   },
   "gravity": {
-    "tried_mechanisms": [],
-    "wins": [],
+    "tried_mechanisms": [
+      "q2-g32-experts"
+    ],
+    "wins": [
+      {
+        "spec": "q2-g32-experts",
+        "stored_bpw": 3.0637,
+        "complete_bpw": 3.0639,
+        "nominal_bits": 2,
+        "active_bpw": 3.3111,
+        "stored_bytes": 6283610368,
+        "active_bytes_per_token": 1391610112,
+        "battery": "11/12",
+        "delta_hits": -1,
+        "verdict": "CANDIDATE_PASS",
+        "candidate_class": "AGGRESSIVE_QUANT",
+        "conventionality": "nonconventional",
+        "protected_components": [],
+        "failure_localization": null,
+        "receipt": "receipts/odyssey-i/O003_GRAVITY_q2-g32-experts.json",
+        "label": "SPECIMEN",
+        "not_hawking_nx_win": true,
+        "_evidence": "MEASURED (mlx gravity specimen; \u00a715)",
+        "_label": "SPECIMEN"
+      }
+    ],
     "kills": [],
     "architecture_specific_findings": [],
-    "_evidence": "UNKNOWN"
+    "_evidence": "UNKNOWN",
+    "last": {
+      "spec": "q2-g32-experts",
+      "stored_bpw": 3.0637,
+      "complete_bpw": 3.0639,
+      "nominal_bits": 2,
+      "active_bpw": 3.3111,
+      "stored_bytes": 6283610368,
+      "active_bytes_per_token": 1391610112,
+      "battery": "11/12",
+      "delta_hits": -1,
+      "verdict": "CANDIDATE_PASS",
+      "candidate_class": "AGGRESSIVE_QUANT",
+      "conventionality": "nonconventional",
+      "protected_components": [],
+      "failure_localization": null,
+      "receipt": "receipts/odyssey-i/O003_GRAVITY_q2-g32-experts.json",
+      "label": "SPECIMEN",
+      "not_hawking_nx_win": true,
+      "_evidence": "MEASURED (mlx gravity specimen; \u00a715)",
+      "_label": "SPECIMEN"
+    },
+    "candidate_class": "AGGRESSIVE_QUANT",
+    "conventionality": "nonconventional"
   },
   "nx": {
     "primitive_set": null,
@@ -569,6 +616,7 @@
     "_evidence": "UNKNOWN"
   },
   "next": [
+    "gravity q2-g32-experts CANDIDATE_PASS: stored_bpw=3.0637 active_bpw=3.3111 battery=11/12 delta_hits=-1 (mlx SPECIMEN, not a Hawking NX win)",
     "A3 per-organ sensitivity MEASURED: zero drops hits on embed, attn, router, expert, shared_expert, mlp_dense, norm, lm_head; round8 drops hits on embed, attn, expert, shared_expert (baseline 12/12, 4bit-mlx)",
     "native load_engine still Unimplemented for this arch \u2014 NX after route/sensitivity",
     "do not treat mlx tps_specimen as BASE_TRUE_TPS; re-time on a clean box if a native path lands"
@@ -583,5 +631,5 @@
     ],
     "_evidence": "DERIVED (doctor_seal.seal structural)"
   },
-  "phase": "SENSITIVITY"
+  "phase": "GRAVITY"
 }

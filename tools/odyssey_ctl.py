@@ -181,6 +181,32 @@ NX_FLAG = {
     "nx-state-hybrid": "--nx-state",
     "nx-dense": "--nx-dense",
 }
+# Aggressive descent LADDER: many gravity specs per patient beyond the single
+# canonical aggressive probe, so the deterministic well is deep enough to keep
+# the box working and to MAP the sub-frontier (S004 anti-complacency: don't stop
+# at the first aggressive point). Each rung is its own per-spec mechanism
+# (independent completion) and its own receipt; rungs serialize per patient on
+# the packet lock. All specs are runner-grammar-valid. The runner reuses the
+# per-spec quant cache, so a repeated rung is seconds; a new one is a real run.
+GRAVITY_LADDER = {
+    "moe": [
+        "q3-g32-experts", "q2-g32-experts", "q2-g64-experts",
+        "mixed-q2q3-experts", "q2-g128-experts",
+    ],
+    "dense": [
+        "q4-g64", "q3-g64", "q2-g64", "q2-g32",
+        "q4-g64-attn-mlp", "q2-g64-attn-mlp", "mixed-q2q3",
+    ],
+    "hybrid": [
+        "q4-g64-attn-mlp", "q3-g32-attn-mlp",
+        "q2-g64-attn-mlp", "mixed-q2q3-attn-mlp",
+    ],
+}
+GRAVITY_LADDER_TEMPLATE = {
+    "moe": "gravity-aggressive-moe",
+    "dense": "gravity-aggressive-dense",
+    "hybrid": "gravity-aggressive-hybrid",
+}
 GRAVITY_RECEIPT = {
     "gravity-moe": "{oxx}_GRAVITY_q3-g32-experts.json",
     "gravity-dense": "{oxx}_GRAVITY_q4-g64.json",
@@ -735,7 +761,13 @@ def is_aggressive_mechanism(mechanism_id: str) -> bool:
     m = mechanism_id or ""
     if m in aggressive_mechanism_ids() or m in AGGRESSIVE_GRAVITY_TEMPLATES:
         return True
-    return m.startswith("gravity-aggressive-")
+    if m.startswith("gravity-aggressive-"):
+        return True
+    # ladder rungs: a per-spec gravity mechanism at <=2 bits or a mixed codec is
+    # an aggressive probe (satisfies anti-complacency the same as the canonical).
+    return m.startswith("gravity-") and (
+        "q2" in m or "q1" in m or "mixed" in m
+    )
 
 
 def conventional_anchor_exists(oxx: str, entries: list | None = None) -> bool:
@@ -801,6 +833,31 @@ def cheap_credible_mechanisms_remain(oxx: str, entries: list | None = None) -> b
     return not aggressive_probe_attempted(oxx, entries)
 
 
+def ladder_rungs_remain(oxx: str, entries: list | None = None) -> list[str]:
+    """Descent-ladder rungs for this patient not yet terminal (VERIFIED/REFUTED).
+
+    A REFUTED rung counts as descended (frontier located), so a rung that keeps
+    failing does not block forever. The ladder is bounded, so this delays
+    retirement by a bounded amount — the point is to descend the sub-frontier
+    before sealing, not to keep a patient open indefinitely.
+    """
+    arch = patient_arch_kind(oxx)
+    pool = entries if entries is not None else _completions_entries(None)
+    ladder_tmpl = GRAVITY_LADDER_TEMPLATE.get(arch)
+    # the canonical aggressive spec is sealed under the gravity-aggressive-*
+    # mechanism (a required mechanism), NOT gravity-<spec>; skip it here or it
+    # would show as forever-remaining and the patient could never retire.
+    picked = pick_aggressive_spec(oxx, ladder_tmpl) if ladder_tmpl else None
+    remaining = []
+    for spec in GRAVITY_LADDER.get(arch, []):
+        if spec == picked:
+            continue
+        mech = f"gravity-{spec}"
+        if not mechanism_retire_done(oxx, mech, pool):
+            remaining.append(mech)
+    return remaining
+
+
 def retirement_gate_reason(oxx: str, entries: list | None = None,
                            receipt_dir: Path | None = None) -> str | None:
     """DEFAULT REFUSE when policy.retirement_gate.default_refuse_if holds.
@@ -816,6 +873,15 @@ def retirement_gate_reason(oxx: str, entries: list | None = None,
         return (
             "retirement_gate: conventional_anchor_exists AND "
             "aggressive_probe_attempted==false AND cheap_credible_mechanisms_remain"
+        )
+    # Anti-complacency: descend the full aggressive ladder before sealing. One
+    # aggressive probe is not the frontier — keep the patient (and the box)
+    # working through every rung until each is terminal.
+    rem = ladder_rungs_remain(oxx, entries)
+    if rem:
+        return (
+            f"retirement_gate: descent ladder not exhausted "
+            f"({len(rem)} rungs remain: {', '.join(r.split('gravity-')[-1] for r in rem[:4])})"
         )
     return None
 
@@ -3290,6 +3356,28 @@ def synthesize_for_patient(oxx: str, meta: dict, pkt: dict | None,
         add("nx-dense", 7, 2, 1,
             "NX dense floor (full-weight-sweep bytes/token)",
             "nx")
+    # Aggressive descent ladder: deep, per-spec deterministic work so the box
+    # keeps running and the sub-frontier is mapped. Skips the single canonical
+    # aggressive spec (already added above) and any rung already sealed.
+    ladder_tmpl = GRAVITY_LADDER_TEMPLATE.get(arch)
+    if ladder_tmpl and prereq_ok(ladder_tmpl, meta, pkt, True):
+        picked = pick_aggressive_spec(oxx, ladder_tmpl, census, pkt)
+        for spec in GRAVITY_LADDER.get(arch, []):
+            if spec == picked:
+                continue  # canonical aggressive obligation covers this spec
+            mech = f"gravity-{spec}"
+            if science_is_done(oxx, mech, entries):
+                continue
+            rec = _ob_record({
+                "id": f"AUTO-{oxx}-gravity-{spec}",
+                "oxx": oxx,
+                "title": f"gravity descent {spec} (SPECIMEN; ladder)",
+                "info": 6, "wall_cost": 2, "gpu_cost": 1, "opus_cost": 0,
+                "kind": "gravity", "gravity_spec": spec,
+            }, ladder_tmpl, source="ladder")
+            rec["mechanism_id"] = mech
+            rec["mechanism"] = mech
+            out.append(rec)
     if should_novelty_escalate(oxx, pkt, entries):
         for lane in novelty.LANES:
             add(f"novelty-{lane}", 9, 1, 0,
@@ -3384,14 +3472,27 @@ def select_ready_obligations(state: dict | None = None,
         for rec in selected:
             covered.add((rec["oxx"], rec["template"]))
 
-    # de-dupe by (oxx, template), keep highest value
+    # de-dupe by (oxx, mechanism_id), keep highest value. Keying on mechanism
+    # (not template) is what lets many descent-ladder rungs — all sharing one
+    # gravity-aggressive-* template but each its own per-spec mechanism —
+    # coexist instead of collapsing to a single obligation.
+    def _rec_done(rec: dict) -> bool:
+        mech = rec.get("mechanism_id")
+        tmpl = rec.get("template") or ""
+        if mech and mech != mechanism_for_template(tmpl):
+            # per-spec (ladder) mechanism: check it directly, NOT the template's
+            return science_is_done(rec["oxx"], mech, entries)
+        return science_done_for_template(rec["oxx"], tmpl, entries)
+
     best: dict[tuple, dict] = {}
     for rec in selected:
-        if science_done_for_template(rec["oxx"], rec["template"], entries):
+        if _rec_done(rec):
             continue
+        # flying is per-patient/template: a rung in flight holds the packet lock,
+        # so no sibling rung of the same template is selected until it completes.
         if (rec["oxx"], rec["template"]) in flying:
             continue
-        key = (rec["oxx"], rec["template"])
+        key = (rec["oxx"], rec.get("mechanism_id") or rec["template"])
         prev = best.get(key)
         if prev is None or value(rec) > value(prev):
             best[key] = rec
@@ -6511,7 +6612,10 @@ def _self_check() -> int:
     assert by["O001"]["on_disk"] and by["O001"]["state"] in {
         "READY", "RUNNING", "RETIRED",
     }, by["O001"]["state"]
-    assert by["O005"]["on_disk"] and by["O005"]["state"] == "RETIRED"
+    # O005 is on-disk; RETIRED or reopened (READY/RUNNING) for the descent ladder.
+    assert by["O005"]["on_disk"] and by["O005"]["state"] in {
+        "READY", "RUNNING", "RETIRED",
+    }, by["O005"]["state"]
     if by["O004"]["on_disk"]:
         assert by["O004"]["state"] != "BLOCKED"
     else:
@@ -7209,16 +7313,23 @@ def _self_check() -> int:
     o004_req = required_mechanisms("O004", st2)
     assert "gravity-dense" in o004_req and "nx-dense" in o004_req
     assert "gravity-aggressive-dense" in o004_req
+    # eligible now requires the full descent ladder too (anti-complacency gate),
+    # so the "all done" set is required mechanisms PLUS every ladder rung.
+    o001_ladder = [
+        f"gravity-{s}"
+        for s in GRAVITY_LADDER.get(patient_arch_kind("O001", st2), [])
+    ]
     full_o001 = [
         {"obligation_id": f"t:{m}", "patient_id": "O001", "mechanism_id": m,
          "status": "VERIFIED", "reopen_if": None, "completed_at": "t0"}
-        for m in o001_req
+        for m in (o001_req + o001_ladder)
     ]
     if by["O001"].get("state") == "RETIRED":
         # already retired -> not re-eligible (guard holds regardless of a full set)
         assert not retire_eligible("O001", st2, full_o001)
     else:
         assert retire_eligible("O001", st2, full_o001), o001_req
+        # dropping any rung (last ladder rung here) -> ladder not exhausted -> refuse
         assert not retire_eligible("O001", st2, full_o001[:-1]), full_o001[:-1]
     o005_miss = missing_required("O005", st2)
     if by["O005"].get("state") == "RETIRED" or science_is_done("O005", "patient-sealed"):
@@ -7322,7 +7433,15 @@ def _self_check() -> int:
     ]
     assert not retire_eligible("O003", st2, conv_only), "conventional gravity alone must not retire"
     assert "gravity-aggressive-moe" in missing_required("O003", st2, conv_only)
-    with_agg = conv_only + [{
+    # descend the full ladder (terminal) so this isolates the REFUTED-aggressive
+    # check from the separate ladder-exhaustion gate.
+    o003_ladder_done = [
+        {"obligation_id": f"t:gravity-{s}", "patient_id": "O003",
+         "mechanism_id": f"gravity-{s}", "status": "VERIFIED",
+         "reopen_if": None, "completed_at": "t1"}
+        for s in GRAVITY_LADDER.get(patient_arch_kind("O003", st2), [])
+    ]
+    with_agg = conv_only + o003_ladder_done + [{
         "obligation_id": "t:gravity-aggressive-moe",
         "patient_id": "O003",
         "mechanism_id": "gravity-aggressive-moe",

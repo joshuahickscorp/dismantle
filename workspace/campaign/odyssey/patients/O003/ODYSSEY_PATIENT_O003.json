@@ -1,0 +1,140 @@
+{
+  "oxx": "O003",
+  "class": "small multimodal MoE",
+  "identity": {
+    "source_repo": "moonshotai/Kimi-VL-A3B-Instruct",
+    "revision": null,
+    "content_hashes": null,
+    "tokenizer": null,
+    "source_precision": null,
+    "source_type": null,
+    "license": null,
+    "model_family": null,
+    "_evidence": "UNKNOWN"
+  },
+  "architecture": {
+    "total_params": 16407657776,
+    "active_params": 3362323760,
+    "kind": "moe",
+    "layers": 27,
+    "attention": null,
+    "state_ssm": null,
+    "moe_topology": null,
+    "experts": 64,
+    "experts_per_tok": 6,
+    "shared_experts": 2,
+    "modality": null,
+    "context": null,
+    "census_ref": "patients/O003/census.json",
+    "_evidence": "MEASURED (census)",
+    "arch": "KimiVLForConditionalGeneration",
+    "active_params_per_token": 3362323760,
+    "active_pct": 20.5,
+    "hidden_size": 2048
+  },
+  "doctor": {
+    "capability_vector": null,
+    "controls": null,
+    "long_context_result": null,
+    "coding_reasoning": null,
+    "behavioral_profile": null,
+    "known_weaknesses": null,
+    "blind_spots": null,
+    "fast_doctor_seal_ref": null,
+    "full_doctor_seal_ref": null,
+    "_evidence": "UNKNOWN"
+  },
+  "tabula": {
+    "status": "N/A",
+    "behavioral_identity": null,
+    "drift_monitor": null,
+    "_evidence": "UNKNOWN"
+  },
+  "routing": {
+    "entropy": null,
+    "expert_frequency": null,
+    "transitions": null,
+    "co_occurrence": null,
+    "hot_set": null,
+    "cold_set": null,
+    "route_predictability": null,
+    "P(E_t|E_t-1)": null,
+    "_evidence": "UNKNOWN"
+  },
+  "representation": {
+    "source_bytes": 32815315552,
+    "best_stored_bpw_eq": 16.0,
+    "active_bpw_eq": null,
+    "metadata_bytes": null,
+    "corrections": null,
+    "reconstruction": null,
+    "per_organ_sensitivity": null,
+    "per_expert_sensitivity": null,
+    "_evidence": "MEASURED (census)",
+    "stored_bpw": 16.0,
+    "organs_bytes_GB": {
+      "embed": 0.68,
+      "attn": 0.96,
+      "router": 0.01,
+      "expert": 28.79,
+      "shared_expert": 0.9,
+      "mlp_dense": 0.67,
+      "norm": 0.0,
+      "lm_head": 0.67,
+      "other": 0.13
+    },
+    "active_bytes_per_token_bf16": 6724647520
+  },
+  "execution": {
+    "token_ns": null,
+    "tps": null,
+    "ttft": null,
+    "prefill": null,
+    "long_context_slope": null,
+    "active_learned_bytes_per_token": null,
+    "dram_per_token": null,
+    "cache": null,
+    "state": null,
+    "route_overhead": null,
+    "baseline_runtime": null,
+    "baseline_tps": null,
+    "_evidence": "UNKNOWN"
+  },
+  "gravity": {
+    "tried_mechanisms": [],
+    "wins": [],
+    "kills": [],
+    "architecture_specific_findings": [],
+    "_evidence": "UNKNOWN"
+  },
+  "nx": {
+    "primitive_set": null,
+    "machine_lowering": null,
+    "kernel_bindings": null,
+    "fallback_count": null,
+    "best_preliminary_nx": null,
+    "nx_hash": null,
+    "_evidence": "UNKNOWN"
+  },
+  "transfer": {
+    "inherited_rules": [],
+    "unchanged": [],
+    "retuned": [],
+    "failed": [],
+    "harmful": [],
+    "_evidence": "UNKNOWN"
+  },
+  "next": [
+    "ACQ-O003 acquire Kimi-VL-A3B"
+  ],
+  "receipt_seal": {
+    "verdict": "REFUSED",
+    "reasons": [
+      "missing or empty required field: tabula_drift",
+      "missing or empty required field: observed_controls",
+      "missing or empty required field: stated_test_width",
+      "missing or empty required field: known_blind_spots"
+    ],
+    "_evidence": "DERIVED (doctor_seal.seal structural)"
+  }
+}

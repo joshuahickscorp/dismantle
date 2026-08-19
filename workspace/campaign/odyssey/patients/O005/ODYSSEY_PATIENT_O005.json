@@ -12,13 +12,14 @@
     "license": "Apache-2.0",
     "model_family": "Qwen3-MoE",
     "on_disk": "~/.cache/huggingface/hub/models--Qwen--Qwen3-30B-A3B/snapshots/ad44e777bcd18fa416d9da3bd8f70d33ebb85d39",
-    "_evidence": "VERIFIED (HF API + local config.json), 16/16 safetensors on disk"
+    "_evidence": "VERIFIED (HF API + local config.json), 16/16 safetensors on disk",
+    "content_hashes": null
   },
   "architecture": {
     "kind": "moe",
     "arch": "Qwen3MoeForCausalLM",
     "total_params": 30532122624,
-    "active_params_per_token": 3353303040,
+    "active_params_per_token": 3353032704,
     "active_pct": 11.0,
     "layers": 48,
     "all_layers_moe": true,
@@ -35,7 +36,10 @@
     "modality": "text",
     "special": "unified thinking/non-thinking via chat template (enable_thinking)",
     "census_ref": "patients/O005/census.json",
-    "_evidence": "MEASURED (census) + VERIFIED (config.json, HF card, transformers modeling)"
+    "_evidence": "MEASURED (census) + VERIFIED (config.json, HF card, transformers modeling)",
+    "active_params": 3353032704,
+    "state_ssm": null,
+    "moe_topology": null
   },
   "representation": {
     "source_bytes": 61064245248,
@@ -48,12 +52,19 @@
       "norm": 0.0,
       "lm_head": 0.62
     },
-    "active_bytes_per_token_bf16": 6706606080,
+    "active_bytes_per_token_bf16": 6706065408,
     "lever": "experts = 95% of stored body but only 11% touched/token; representation science is EXPERT-side (per-expert codec, group size, cache, gather) not global.",
-    "_evidence": "MEASURED (census)"
+    "_evidence": "MEASURED (census)",
+    "best_stored_bpw_eq": 16.0,
+    "active_bpw_eq": null,
+    "metadata_bytes": null,
+    "corrections": null,
+    "reconstruction": null,
+    "per_organ_sensitivity": null,
+    "per_expert_sensitivity": null
   },
   "execution": {
-    "baseline_runtime": "mlx_lm EXTERNAL SPECIMEN \u2014 not Hawking native (load_engine Unimplemented for qwen3moe)",
+    "baseline_runtime": "mlx_lm EXTERNAL SPECIMEN — not Hawking native (load_engine Unimplemented for qwen3moe)",
     "baseline_tps": 35.391,
     "tps_specimen": 35.391,
     "ttft": 0.1642,
@@ -62,7 +73,16 @@
     "label": "SPECIMEN",
     "not_base_true_tps": true,
     "receipt": "receipts/odyssey-i/O005_EXTERNAL.json",
-    "_evidence": "MEASURED (receipts/odyssey-i/O005_EXTERNAL.json) SPECIMEN; \u00a714 session may be open \u2014 not BASE_TRUE_TPS"
+    "_evidence": "MEASURED (receipts/odyssey-i/O005_EXTERNAL.json) SPECIMEN; §14 session may be open — not BASE_TRUE_TPS",
+    "tps": null,
+    "prefill": null,
+    "long_context_slope": null,
+    "active_learned_bytes_per_token": null,
+    "dram_per_token": null,
+    "cache": null,
+    "state": null,
+    "route_overhead": null,
+    "tps_specimen_mlx": 29.3
   },
   "routing": {
     "entropy": 6.1606,
@@ -154,25 +174,37 @@
       "refusal_controls": 2,
       "battery": "10/12",
       "refusals": "0/2",
-      "note": "same 12-item correctness battery + 2 ABL prompts as a3b_recon.py; G046/G048 recorded ten items as too narrow to certify equivalence \u2014 this is a FAST doctor, not a full seal"
+      "note": "same 12-item correctness battery + 2 ABL prompts as a3b_recon.py; G046/G048 recorded ten items as too narrow to certify equivalence — this is a FAST doctor, not a full seal"
     },
     "known_blind_spots": [
-      "mlx_lm EXTERNAL SPECIMEN \u2014 not Hawking native, not BASE_TRUE_TPS (\u00a714)",
+      "mlx_lm EXTERNAL SPECIMEN — not Hawking native, not BASE_TRUE_TPS (§14)",
       "fast battery is 12 completion items; no coding/long-context/tool dimensions",
       "refusal matcher is substring-based and English-centric",
-      "4-bit affine MLX quant (router gates 8-bit) \u2014 Doctor/route are under quant, not bf16-canonical",
+      "4-bit affine MLX quant (router gates 8-bit) — Doctor/route are under quant, not bf16-canonical",
       "Tabula instrument is not validated on this patient (instrument_validated=false)"
     ],
     "tabula": {
       "status": "N/A",
       "note": "canonical, not abliterated"
     },
-    "_evidence": "MEASURED (fast battery + doctor_seal.seal)"
+    "_evidence": "MEASURED (fast battery + doctor_seal.seal)",
+    "capability_vector": null,
+    "long_context_result": null,
+    "coding_reasoning": null,
+    "behavioral_profile": null,
+    "known_weaknesses": null,
+    "blind_spots": null
   },
   "gravity": {
     "tried_mechanisms": [],
     "wins": [],
-    "kills": []
+    "kills": [],
+    "architecture_specific_findings": [
+      "uniform_routing: A3B-SPECIFIC / MOE-SPECIFIC -- entropy 6.09/7.00, no cold experts -> cold-expert compression (S042 §10) does NOT apply to A3B; per-expert uniform codec is fine, no popularity skew to exploit.",
+      "sparse_active_path: MOE-UNIVERSAL -- 8/128 experts/token ~= 3.6GB active-expert bytes/token vs dense 11.7GB (3.2x less). The lever is a native EXPERT-GATHER that MOVES only active experts, not all 128. mlx does not exploit it (29.3 TPS ~= dense).",
+      "tps_caveat: 29.3 is the mlx SPECIMEN; whether the 3.2x active-byte reduction becomes TPS depends on our runtime (Qwen3.8 finding: we are kernel-bound, not bandwidth-bound -- so a native MoE kernel must be efficient, not just move fewer bytes)."
+    ],
+    "_evidence": "INFERRED (A3B_RECON CLASSIFICATION)"
   },
   "compiler_hypotheses": [
     {
@@ -200,7 +232,43 @@
   ],
   "next": [
     "A3 per-organ/per-expert sensitivity map (experts = 95% of body, 11% active/token)",
-    "native qwen3moe in load_engine still Unimplemented \u2014 NX after route/sensitivity",
+    "native qwen3moe in load_engine still Unimplemented — NX after route/sensitivity",
     "do not treat mlx tps_specimen as BASE_TRUE_TPS; re-time on a clean box if a native path lands"
-  ]
+  ],
+  "tabula": {
+    "status": "N/A",
+    "behavioral_identity": null,
+    "drift_monitor": null,
+    "_evidence": "UNKNOWN"
+  },
+  "nx": {
+    "primitive_set": null,
+    "machine_lowering": null,
+    "kernel_bindings": null,
+    "fallback_count": null,
+    "best_preliminary_nx": null,
+    "nx_hash": null,
+    "_evidence": "UNKNOWN"
+  },
+  "transfer": {
+    "inherited_rules": [
+      "R-sparse-active-expert-gather",
+      "R-uniform-routing-no-cold-compress",
+      "R-routing-frequency-alloc"
+    ],
+    "unchanged": [
+      "R-sparse-active-expert-gather"
+    ],
+    "retuned": [],
+    "failed": [],
+    "harmful": [],
+    "_evidence": "INFERRED (TRANSFER_MATRIX.json)"
+  },
+  "receipt_seal": {
+    "verdict": "REFUSED",
+    "reasons": [
+      "missing or empty required field: tabula_drift"
+    ],
+    "_evidence": "DERIVED (doctor_seal.seal structural)"
+  }
 }

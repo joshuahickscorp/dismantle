@@ -1666,6 +1666,20 @@ def _mark_running(state: dict, ob: dict, task_id: str, contract: str,
         })
 
 
+def _sys_free_ram_pct():
+    """System-wide free RAM %, via macOS `memory_pressure`. None if unavailable.
+    Used to override worker_gate's over-strict stale-swap REFUSE (reuse_surface
+    flagged its coefficients as needing retune)."""
+    try:
+        import subprocess, re as _re
+        out = subprocess.run(["memory_pressure"], capture_output=True,
+                             text=True, timeout=5).stdout
+        m = _re.search(r"free percentage:\s*(\d+)%", out)
+        return int(m.group(1)) if m else None
+    except Exception:
+        return None
+
+
 def evaluate_gates(ob: dict, *, go: bool, running_n: int, cap: int,
                    snap: dict, worker: dict | None,
                    lint_ok: bool, lint_msg: str,
@@ -1676,14 +1690,26 @@ def evaluate_gates(ob: dict, *, go: bool, running_n: int, cap: int,
     clean_why = snap.get("clean_box_reason") or ""
     worker_decision = (worker or {}).get("decision") if ob.get("model_loading") else "n/a"
     reasons = []
+    worker_override = None
     if cap <= 0 or running_n >= cap:
         reasons.append(f"max-lanes cap {cap} (running={running_n})")
     elif not lint_ok:
         reasons.append(f"SG-rejected: {lint_msg}")
     elif ob.get("model_loading") and worker_decision == "REFUSE":
-        reasons.append(
-            f"worker_gate REFUSE: {(worker or {}).get('note') or 'REFUSE'}"
-        )
+        # §15 headroom retune (OPT-IN via ODYSSEY_HEADROOM_ADMIT=1): worker_gate
+        # REFUSEs on any stale swap/compressor, but on this box a lane runs fine at
+        # high free RAM (proven: O005 regen ran under identical swap). Safe because
+        # the runner independently re-gates the real load and falls back to 4-bit
+        # under pressure -- this override permits only the LAUNCH, never a blind bf16
+        # load. Default stays strict (REFUSE -> skip); opt-in admits at high free RAM.
+        _free = _sys_free_ram_pct() if os.environ.get("ODYSSEY_HEADROOM_ADMIT") == "1" else None
+        if _free is not None and _free >= 70:
+            worker_override = (f"worker_gate REFUSE overridden (opt-in): free RAM "
+                               f"{_free}% (stale swap); runner self-gates load to 4-bit")
+        else:
+            reasons.append(
+                f"worker_gate REFUSE: {(worker or {}).get('note') or 'REFUSE'}"
+            )
     elif ob.get("download") and disk < DISK_RUN_GIB and (
         disk_after_reclaim is None or disk_after_reclaim < DISK_RUN_GIB
     ):
@@ -1704,6 +1730,7 @@ def evaluate_gates(ob: dict, *, go: bool, running_n: int, cap: int,
         "skip_reason": skip_reason,
         "worker": worker_decision,
         "worker_note": (worker or {}).get("note"),
+        "worker_override": worker_override,
         "disk_free_gib": disk,
         "disk_floor_run": DISK_RUN_GIB,
         "would_reclaim": disk < DISK_RUN_GIB,

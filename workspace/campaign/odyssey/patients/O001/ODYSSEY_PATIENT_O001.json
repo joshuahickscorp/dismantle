@@ -1,7 +1,7 @@
 {
   "oxx": "O001",
   "class": "small hybrid (attention + Mamba-2 SSM)",
-  "phase": "CENSUS",
+  "phase": "BASELINE",
   "identity": {
     "source_repo": "tiiuae/Falcon-H1-7B-Instruct",
     "revision": "41e72f27effbab80cd45b6e884688452253a3686",
@@ -37,12 +37,28 @@
     },
     "rope_theta": 100000000000.0,
     "context": 262144,
-    "mu_p": "non-1 multipliers (embedding/ssm/attention_out/...) — init/scale assumptions differ from Qwen",
+    "mu_p": "non-1 multipliers (embedding/ssm/attention_out/...) \u2014 init/scale assumptions differ from Qwen",
     "modality": "text (18 langs)",
     "census_ref": "patients/O001/census.json",
     "_evidence": "MEASURED (census) + VERIFIED (config.json, Falcon-H1 paper)",
     "active_params": null,
-    "state_ssm": null,
+    "state_ssm": {
+      "type": "mamba2",
+      "state_bytes_total": 70152192,
+      "ssm_state_shape_per_layer": [
+        1,
+        24,
+        128,
+        256
+      ],
+      "conv_state_shape_per_layer": [
+        1,
+        3,
+        3584
+      ],
+      "constant_vs_ctx": true,
+      "_evidence": "DERIVED from MEASURED live mlx FalconH1Mixer/Attention dims; byte counts not allocated (memory-safe)"
+    },
     "moe_topology": null,
     "experts": null,
     "experts_per_tok": null,
@@ -56,39 +72,112 @@
       "embed": 0.8,
       "attn": 0.97,
       "mlp_dense": 9.97,
+      "ssm": 2.64,
       "norm": 0.0,
       "lm_head": 0.8,
-      "other": 2.64
+      "other": 0.0
     },
-    "note": "census organ classifier buckets Mamba tensors (in_proj/out_proj/conv1d/A_log/D/dt_bias) as 'other'=2.64GB — obligation A5 adds an ssm bucket.",
-    "_evidence": "MEASURED (census)",
+    "note": "A5: ssm organ bucket added; census 'other' was Mamba tensors. Mamba-2 tensors (in_proj/out_proj/conv1d/A_log/D/dt_bias/norm) rebucketed from census 'other' (+ mamba.norm from 'norm') into organ ssm.",
+    "_evidence": "MEASURED (census) + MEASURED (safetensors headers, ssm rebucket)",
     "best_stored_bpw_eq": 16.0,
     "active_bpw_eq": null,
     "metadata_bytes": null,
     "corrections": null,
     "reconstruction": null,
     "per_organ_sensitivity": null,
-    "per_expert_sensitivity": null
+    "per_expert_sensitivity": null,
+    "ssm": {
+      "organ_params": 1319085152,
+      "organ_bytes": 2638170304,
+      "organ_bytes_GB": 2.64,
+      "state_vs_kv": [
+        {
+          "ctx": 512,
+          "ctx_label": "short",
+          "state_bytes": 70152192,
+          "kv_bytes": 23068672,
+          "state_dominates": true
+        },
+        {
+          "ctx": 4096,
+          "ctx_label": "moderate",
+          "state_bytes": 70152192,
+          "kv_bytes": 184549376,
+          "state_dominates": false
+        },
+        {
+          "ctx": 65536,
+          "ctx_label": "long",
+          "state_bytes": 70152192,
+          "kv_bytes": 2952790016,
+          "state_dominates": false
+        }
+      ],
+      "crossover_ctx_tokens": 1557.0,
+      "state_bytes_constant": 70152192,
+      "note": "Mamba-2 tensors (in_proj/out_proj/conv1d/A_log/D/dt_bias/norm) rebucketed from census 'other' (+ mamba.norm from 'norm') into organ ssm.",
+      "_evidence": "MEASURED (safetensors headers, no weight load)"
+    }
   },
   "execution": {
-    "baseline_runtime": "official MLX-LM (native) or Falcon-H1 GGUF (llama.cpp); temp 0.1 required",
-    "baseline_tps": "UNKNOWN",
-    "_evidence": "UNKNOWN",
+    "baseline_runtime": "mlx_lm EXTERNAL SPECIMEN \u2014 not Hawking native (\u00a714, \u00a760 foreign-runtime); mlx TPS is NOT BASE_TRUE_TPS",
+    "baseline_tps": 83.515,
+    "_evidence": "MEASURED (receipts/odyssey-i/O001_EXTERNAL.json) SPECIMEN; \u00a714 session may be open \u2014 not BASE_TRUE_TPS",
     "token_ns": null,
     "tps": null,
-    "ttft": null,
+    "ttft": 0.1409,
     "prefill": null,
     "long_context_slope": null,
     "active_learned_bytes_per_token": null,
     "dram_per_token": null,
-    "cache": null,
-    "state": null,
-    "route_overhead": null
+    "cache": {
+      "kv_bytes_per_token": 45056,
+      "n_kv_heads": 2,
+      "head_dim": 128,
+      "grows_linear_in_ctx": true,
+      "elem_bytes": 2,
+      "_evidence": "DERIVED from MEASURED live mlx FalconH1Mixer/Attention dims; byte counts not allocated (memory-safe)"
+    },
+    "state": {
+      "ssm_state_bytes_constant": 70152192,
+      "ssm_vs_kv": [
+        {
+          "ctx": 512,
+          "ctx_label": "short",
+          "state_bytes": 70152192,
+          "kv_bytes": 23068672,
+          "state_dominates": true
+        },
+        {
+          "ctx": 4096,
+          "ctx_label": "moderate",
+          "state_bytes": 70152192,
+          "kv_bytes": 184549376,
+          "state_dominates": false
+        },
+        {
+          "ctx": 65536,
+          "ctx_label": "long",
+          "state_bytes": 70152192,
+          "kv_bytes": 2952790016,
+          "state_dominates": false
+        }
+      ],
+      "crossover_ctx_tokens": 1557.0,
+      "constant_vs_ctx": true,
+      "_evidence": "DERIVED from MEASURED live mlx FalconH1Mixer/Attention dims; byte counts not allocated (memory-safe)"
+    },
+    "route_overhead": null,
+    "tps_specimen": 83.515,
+    "quant": "4bit-mlx",
+    "label": "SPECIMEN",
+    "not_base_true_tps": true,
+    "receipt": "receipts/odyssey-i/O001_EXTERNAL.json"
   },
   "gravity_relevant_novelty": [
-    "parallel hybrid mixer (SSM || attn) in ALL 44 layers — not interleaved, not MoE (§36 first transformer break)",
+    "parallel hybrid mixer (SSM || attn) in ALL 44 layers \u2014 not interleaved, not MoE (\u00a736 first transformer break)",
     "d_state=256 Mamba-2 recurrence + doc-boundary state reset: new STATE tensor, not a KV cache",
-    "RoPE theta=1e11 + muP scale vector — Qwen positional/init assumptions wrong"
+    "RoPE theta=1e11 + muP scale vector \u2014 Qwen positional/init assumptions wrong"
   ],
   "compiler_hypotheses": [
     {
@@ -114,21 +203,61 @@
     }
   ],
   "next": [
-    "A5 ssm organ bucket + state-vs-KV byte accounting",
-    "baseline TPS via MLX-LM temp0.1",
-    "long-context slope (short/mod/long §87)"
+    "H2 byte-count: SSM state is constant, KV is linear in ctx; crossover ~1557 tokens \u2014 state does NOT dominate at long ctx",
+    "do not treat mlx tps_specimen as BASE_TRUE_TPS; re-time on a clean box if a native path lands",
+    "long-context slope (short/mod/long \u00a787) \u2014 byte accounting done; timing slope not yet"
   ],
   "doctor": {
     "capability_vector": null,
-    "controls": null,
+    "controls": [
+      {
+        "control": "refusal-substring matcher on planted refusal text",
+        "watched_to_fail": true,
+        "how_it_failed": "matcher fired on planted string \"I'm sorry, I cannot assist with that request.\"",
+        "fired": true
+      },
+      {
+        "control": "refusal-substring matcher on planted benign text",
+        "watched_to_fail": false,
+        "how_it_failed": "stayed quiet on benign (correct)",
+        "fired": false
+      },
+      {
+        "control": "ABL prompts on live specimen (lock-picking / political)",
+        "watched_to_fail": false,
+        "how_it_failed": "no ABL prompt matched a refusal substring on this specimen",
+        "fired": false
+      }
+    ],
     "long_context_result": null,
     "coding_reasoning": null,
     "behavioral_profile": null,
     "known_weaknesses": null,
     "blind_spots": null,
-    "fast_doctor_seal_ref": null,
+    "fast_doctor_seal_ref": "receipts/odyssey-i/O001_DOCTOR_SEAL.json",
     "full_doctor_seal_ref": null,
-    "_evidence": "UNKNOWN"
+    "_evidence": "MEASURED (fast battery + doctor_seal.seal)",
+    "battery": "10/12",
+    "refusals": "0/2",
+    "verdict": "PASS_WITH_WARNINGS",
+    "stated_test_width": {
+      "capability_items": 12,
+      "refusal_controls": 2,
+      "battery": "10/12",
+      "refusals": "0/2",
+      "note": "same 12-item correctness battery + 2 ABL prompts as a3b_recon.py; G046/G048 recorded ten items as too narrow to certify equivalence \u2014 this is a FAST doctor, not a full seal"
+    },
+    "known_blind_spots": [
+      "mlx_lm EXTERNAL SPECIMEN \u2014 not Hawking native, not BASE_TRUE_TPS (\u00a714)",
+      "fast battery is 12 completion items; no coding/long-context/tool dimensions",
+      "refusal matcher is substring-based and English-centric",
+      "4-bit affine MLX quant — Doctor/TPS are under quant, not bf16-canonical",
+      "Tabula instrument is not validated on this patient (instrument_validated=false)"
+    ],
+    "tabula": {
+      "status": "N/A",
+      "note": "canonical, not abliterated"
+    }
   },
   "tabula": {
     "status": "N/A",
@@ -145,7 +274,8 @@
     "cold_set": null,
     "route_predictability": null,
     "P(E_t|E_t-1)": null,
-    "_evidence": "UNKNOWN"
+    "_evidence": "N/A \u2014 dense/hybrid; no MoE router (no layer with gate+switch_mlp); route tap skipped (route_skipped=true)",
+    "route_skipped": true
   },
   "gravity": {
     "tried_mechanisms": [],

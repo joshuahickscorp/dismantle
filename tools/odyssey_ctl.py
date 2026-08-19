@@ -12,6 +12,8 @@ ascent state or tools/odyssey/ (training-data Odyssey).
     python3 tools/odyssey_ctl.py harvest
     python3 tools/odyssey_ctl.py packet O005
     python3 tools/odyssey_ctl.py admit <slug> <est_gib>
+    python3 tools/odyssey_ctl.py run --dry-run
+    python3 tools/odyssey_ctl.py run --go [--max-lanes N]
 """
 from __future__ import annotations
 
@@ -22,6 +24,7 @@ import re
 import subprocess
 import sys
 import tempfile
+from datetime import datetime, timezone
 from pathlib import Path
 
 TOOLS = Path(__file__).resolve().parent
@@ -44,10 +47,34 @@ NEGATIVE = ODYSSEY / "NEGATIVE_SCIENCE.json"
 A3B_RECON = REPO / "receipts" / "ascent-2026-08-18" / "A3B_RECON.json"
 GROK_TASKS = Path.home() / ".claude-grok" / "tasks"
 RECLAIM = TOOLS / "reclaim_safe.sh"
+AUTO_DIR = ODYSSEY / "contracts" / "auto"
+RUN_LOG = ODYSSEY / "RUN_LOG.jsonl"
+GROK_BIN = Path.home() / ".claude-grok" / "bin" / "grok-run"
+LINT_JS = Path.home() / ".claude-grok" / "v2" / "lint.mjs"
+NODE_BIN = Path("/opt/homebrew/bin/node")
+HAWKING_REPO = Path("/Users/scammermike/Downloads/hawking")
+PREFERRED_PY = "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3"
 
 DISK_FLOOR_GIB = 15.0
 DISK_WARN_GIB = 40.0
+DISK_RUN_GIB = 45.0
+HARD_LANE_CAP = 3
+DEFAULT_MAX_LANES = 2
 SCHEMA = "hawking.odyssey.controller.v1"
+RUN_LOG_SCHEMA = "hawking.odyssey.run_log.v1"
+
+PHASES = (
+    "INGEST", "BASELINE", "CENSUS", "ROUTEMAP", "SENSITIVITY",
+    "GRAVITY", "NX", "KERNEL", "DOCTOR", "PACKET", "TRANSFER", "SEAL",
+)
+PHASE_INDEX = {name: i for i, name in enumerate(PHASES)}
+TRANSFER_REF = {"O006": "O005"}
+TEMPLATES = (
+    "external-science-moe",
+    "external-science-dense",
+    "sensitivity-map",
+    "transfer-control",
+)
 
 STATES = (
     "READY", "RUNNING", "BLOCKED", "LANDED",
@@ -875,6 +902,999 @@ def harvest(*, tasks_root: Path | None = None, receipt_dir: Path | None = None,
 
 
 # ---------------------------------------------------------------------------
+# run loop (§21/§22) — select, render, gate, maybe launch; harvest reaps
+# ---------------------------------------------------------------------------
+
+ACTIVE_OB_RE = re.compile(
+    r"^\s*[-*]\s+\*\*(A\d+|ACQ-O\d{3})\*\*\s+(O\d{3})\b",
+    re.M,
+)
+
+
+def utc_now() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def launch_repo() -> Path:
+    if HAWKING_REPO.is_dir() and (HAWKING_REPO / ".git").exists():
+        return HAWKING_REPO
+    return REPO
+
+
+def patient_on_disk(meta: dict) -> bool:
+    if meta.get("on_disk"):
+        return True
+    return str(meta.get("ledger") or "").lower().startswith("on-disk")
+
+
+def arch_kind(oxx: str, pkt: dict | None, census: dict | None) -> str:
+    if census and census.get("is_moe"):
+        return "moe"
+    kind = str(((pkt or {}).get("architecture") or {}).get("kind") or "").lower()
+    if kind in {"moe", "dense", "hybrid"}:
+        return kind
+    if oxx in MOE_PATIENTS:
+        return "moe"
+    klass = str(((pkt or {}).get("class") or "")).lower()
+    if "hybrid" in klass or "mamba" in klass:
+        return "hybrid"
+    if "moe" in klass:
+        return "moe"
+    return "dense"
+
+
+def has_census(oxx: str) -> bool:
+    return census_path(oxx).is_file()
+
+
+def load_census(oxx: str) -> dict | None:
+    p = census_path(oxx)
+    if not p.is_file():
+        return None
+    try:
+        return read_json(p)
+    except (OSError, json.JSONDecodeError):
+        return None
+
+
+def _unknownish(val) -> bool:
+    if val is None or val == "":
+        return True
+    if isinstance(val, str) and val.upper().startswith("UNKNOWN"):
+        return True
+    return False
+
+
+def has_routing(pkt: dict | None) -> bool:
+    r = (pkt or {}).get("routing") or {}
+    if _unknownish(r.get("entropy")):
+        return False
+    ev = evidence_class(r.get("_evidence"))
+    return ev not in (None, "UNKNOWN")
+
+
+def has_baseline(pkt: dict | None) -> bool:
+    ex = (pkt or {}).get("execution") or {}
+    tps = ex.get("baseline_tps")
+    if _unknownish(tps):
+        tps = ex.get("tps_specimen") or ex.get("tps")
+    if _unknownish(tps):
+        return False
+    ev = evidence_class(ex.get("_evidence"))
+    if ev in (None, "UNKNOWN") and _unknownish(ex.get("baseline_tps")):
+        # specimen tps still counts as a baseline for sensitivity gating
+        return not _unknownish(ex.get("tps_specimen"))
+    return True
+
+
+def missing_sensitivity(pkt: dict | None) -> bool:
+    rep = (pkt or {}).get("representation") or {}
+    return rep.get("per_organ_sensitivity") in (None, "", {}, [])
+
+
+def needs_ssm_accounting(pkt: dict | None, kind: str) -> bool:
+    if kind != "hybrid":
+        return False
+    rep = (pkt or {}).get("representation") or {}
+    organs = rep.get("organs_bytes_GB") or {}
+    if "ssm" in organs:
+        return False
+    return True
+
+
+def phase_rank(meta: dict, census_exists: bool) -> int:
+    raw = norm_phase(meta.get("phase") or "")
+    key = raw.upper().replace("✓", "").strip()
+    if key in PHASE_INDEX:
+        return PHASE_INDEX[key]
+    if census_exists:
+        return PHASE_INDEX["CENSUS"]
+    if patient_on_disk(meta):
+        return PHASE_INDEX["INGEST"]
+    return -1
+
+
+def prereq_ok(template: str, meta: dict, pkt: dict | None, census_exists: bool) -> bool:
+    """Obligation is READY when the patient is on disk and phase prereqs hold."""
+    if not patient_on_disk(meta):
+        return False
+    if meta.get("state") == "BLOCKED":
+        return False
+    rank = phase_rank(meta, census_exists)
+    if template in {"external-science-moe", "external-science-dense", "transfer-control"}:
+        return census_exists or rank >= PHASE_INDEX["CENSUS"]
+    if template == "sensitivity-map":
+        return census_exists and has_baseline(pkt)
+    return False
+
+
+def weights_dir(oxx: str, pkt: dict | None, census: dict | None) -> str:
+    if census and census.get("model_dir"):
+        return str(census["model_dir"])
+    ident = (pkt or {}).get("identity") or {}
+    on_disk = ident.get("on_disk")
+    if on_disk:
+        return str(on_disk)
+    return ""
+
+
+def sg_lint(contract: Path, repo: Path | None = None) -> tuple[bool, str]:
+    """Dry-check ~/.claude-grok/v2/lint.mjs. Never sets SG_OFF."""
+    lint = LINT_JS
+    if not lint.is_file():
+        return False, "ERROR LINT_MISSING: ~/.claude-grok/v2/lint.mjs not found"
+    node = str(NODE_BIN) if NODE_BIN.is_file() else "node"
+    r = subprocess.run(
+        [node, str(lint), str(contract), str(repo or REPO)],
+        capture_output=True, text=True,
+    )
+    out = ((r.stdout or "") + (r.stderr or "")).strip()
+    if r.returncode not in (0, None) and out.startswith("ERROR"):
+        return False, out
+    if out.startswith("ERROR"):
+        return False, out
+    return True, out
+
+
+def append_run_log(row: dict, path: Path | None = None) -> None:
+    dest = Path(path) if path else RUN_LOG
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    with dest.open("a") as fh:
+        fh.write(json.dumps(row, ensure_ascii=False) + "\n")
+
+
+def parse_active_obligations() -> list[tuple[str, str]]:
+    if not LEDGER.is_file():
+        return []
+    text = LEDGER.read_text()
+    idx = text.lower().find("## active obligations")
+    chunk = text[idx:] if idx >= 0 else text
+    stop = chunk.find("\n## ", 3)
+    if stop > 0:
+        chunk = chunk[:stop]
+    return [(m.group(1), m.group(2)) for m in ACTIVE_OB_RE.finditer(chunk)]
+
+
+def _seed_by_id() -> dict[str, dict]:
+    return {w["id"]: dict(w) for w in SEED_WORK}
+
+
+def template_for_work(work: dict, meta: dict, pkt: dict | None,
+                      census: dict | None) -> str | None:
+    """Map a work item onto one of the four run templates, or None (skip)."""
+    oxx = work.get("oxx")
+    if not oxx:
+        return None
+    if work.get("status") not in (None, "READY"):
+        return None
+    kind = work.get("kind") or ""
+    if kind in {"acquisition", "false-win-discovery"}:
+        return None
+    if work.get("template") in TEMPLATES:
+        tmpl = work["template"]
+        return tmpl if prereq_ok(tmpl, meta, pkt, census is not None) else None
+    arch = arch_kind(oxx, pkt, census)
+    census_ok = census is not None
+    if kind == "router-sensitivity":
+        if arch != "moe" or has_routing(pkt):
+            return None
+        tmpl = "external-science-moe"
+        return tmpl if prereq_ok(tmpl, meta, pkt, census_ok) else None
+    if kind == "representation-discriminator":
+        tmpl = "sensitivity-map"
+        return tmpl if prereq_ok(tmpl, meta, pkt, census_ok) else None
+    if kind == "architecture-first":
+        if arch in {"dense", "hybrid"}:
+            if has_baseline(pkt) and not needs_ssm_accounting(pkt, arch):
+                return None
+            tmpl = "external-science-dense"
+            return tmpl if prereq_ok(tmpl, meta, pkt, census_ok) else None
+        if arch == "moe":
+            if has_routing(pkt) and has_baseline(pkt):
+                return None
+            tmpl = "external-science-moe"
+            return tmpl if prereq_ok(tmpl, meta, pkt, census_ok) else None
+    return None
+
+
+def _ob_record(work: dict, template: str, *, source: str) -> dict:
+    oxx = work["oxx"]
+    rec = {
+        "id": work.get("id") or f"AUTO-{oxx}-{template}",
+        "oxx": oxx,
+        "title": work.get("title") or template,
+        "status": "READY",
+        "info": float(work.get("info") or 0),
+        "wall_cost": float(work.get("wall_cost") or 0),
+        "gpu_cost": float(work.get("gpu_cost") or 0),
+        "opus_cost": float(work.get("opus_cost") or 0),
+        "kind": work.get("kind") or template,
+        "template": template,
+        "model_loading": True,
+        "timing": False,
+        "download": False,
+        "source": source,
+        "reference": TRANSFER_REF.get(oxx),
+        "_evidence": "HYPOTHESIS (§22 ranking; READY if on_disk + phase prereqs)",
+    }
+    if template == "transfer-control":
+        rec["reference"] = work.get("reference") or TRANSFER_REF.get(oxx, "O005")
+    return rec
+
+
+def synthesize_for_patient(oxx: str, meta: dict, pkt: dict | None,
+                           census: dict | None, covered: set[tuple]) -> list[dict]:
+    """Fill gaps the seed queue does not name: on-disk patients still missing science."""
+    if not patient_on_disk(meta) or meta.get("state") == "BLOCKED":
+        return []
+    if census is None:
+        return []
+    arch = arch_kind(oxx, pkt, census)
+    out = []
+
+    def add(template, info, wall, gpu, title, kind):
+        if (oxx, template) in covered:
+            return
+        if not prereq_ok(template, meta, pkt, True):
+            return
+        out.append(_ob_record({
+            "id": f"AUTO-{oxx}-{template}",
+            "oxx": oxx, "title": title, "info": info,
+            "wall_cost": wall, "gpu_cost": gpu, "opus_cost": 0, "kind": kind,
+        }, template, source="synthesized"))
+
+    if arch == "moe" and not has_routing(pkt):
+        ref = TRANSFER_REF.get(oxx)
+        ref_pkt = load_packet(ref) if ref else None
+        if ref and has_routing(ref_pkt):
+            add("transfer-control", 9, 2, 1,
+                f"transfer control vs {ref} (route/representation delta)",
+                "transfer-control")
+        else:
+            add("external-science-moe", 10, 2, 1,
+                "route/state map + baseline + fast-doctor (external)",
+                "router-sensitivity")
+    if arch in {"dense", "hybrid"} and (
+        not has_baseline(pkt) or needs_ssm_accounting(pkt, arch)
+    ):
+        wall, gpu = (1, 0) if arch == "hybrid" else (2, 1)
+        add("external-science-dense", 8, wall, gpu,
+            "baseline TPS + fast-doctor"
+            + (" + SSM-state-vs-KV" if arch == "hybrid" else ""),
+            "architecture-first")
+    if has_baseline(pkt) and missing_sensitivity(pkt):
+        add("sensitivity-map", 10, 2, 1,
+            "per-organ / per-expert Doctor sensitivity",
+            "representation-discriminator")
+    return out
+
+
+def select_ready_obligations(state: dict | None = None) -> list[dict]:
+    """READY science work, ranked by existing value(). Acquisition is not a template."""
+    st = state if state is not None else ensure_state()
+    patients = {p["oxx"]: p for p in st.get("patients") or []}
+    cache_pkt: dict[str, dict | None] = {}
+    cache_cen: dict[str, dict | None] = {}
+
+    def pkt_of(oxx: str):
+        if oxx not in cache_pkt:
+            cache_pkt[oxx] = load_packet(oxx)
+        return cache_pkt[oxx]
+
+    def cen_of(oxx: str):
+        if oxx not in cache_cen:
+            cache_cen[oxx] = load_census(oxx)
+        return cache_cen[oxx]
+
+    selected = []
+    seen_ids = set()
+    covered: set[tuple] = set()
+    seeds = _seed_by_id()
+
+    def consider(work: dict, source: str) -> None:
+        wid = work.get("id")
+        if not wid or wid in seen_ids or wid == "A6":
+            return
+        if work.get("status") not in (None, "READY"):
+            return
+        oxx = work.get("oxx")
+        meta = patients.get(oxx) or patient_meta(oxx, st)
+        tmpl = template_for_work(work, meta, pkt_of(oxx), cen_of(oxx))
+        if not tmpl:
+            return
+        seen_ids.add(wid)
+        covered.add((oxx, tmpl))
+        selected.append(_ob_record(work, tmpl, source=source))
+
+    for w in st.get("work") or []:
+        consider(w, "state")
+    for oid, oxx in parse_active_obligations():
+        if oid in seen_ids:
+            continue
+        base = seeds.get(oid) or {
+            "id": oid, "oxx": oxx, "title": oid, "status": "READY",
+            "info": 5, "wall_cost": 2, "gpu_cost": 1, "opus_cost": 0,
+            "kind": "architecture-first",
+        }
+        consider(base, "ledger")
+    for p in st.get("patients") or []:
+        oxx = p.get("oxx")
+        if not oxx:
+            continue
+        pkt = pkt_of(oxx)
+        nxt = (pkt or {}).get("next") or []
+        if isinstance(nxt, str):
+            nxt = [nxt]
+        for line in nxt:
+            text = str(line)
+            # packet-next is advisory; synthesis below covers the science
+            if "sensitivity" in text.lower() and (oxx, "sensitivity-map") not in covered:
+                consider({
+                    "id": f"NEXT-{oxx}-SENS", "oxx": oxx, "title": text[:80],
+                    "status": "READY", "info": 10, "wall_cost": 2, "gpu_cost": 1,
+                    "opus_cost": 0, "kind": "representation-discriminator",
+                }, "packet-next")
+        selected.extend(synthesize_for_patient(
+            oxx, p, pkt, cen_of(oxx), covered,
+        ))
+        for rec in selected:
+            covered.add((rec["oxx"], rec["template"]))
+
+    # de-dupe by (oxx, template), keep highest value
+    best: dict[tuple, dict] = {}
+    for rec in selected:
+        key = (rec["oxx"], rec["template"])
+        prev = best.get(key)
+        if prev is None or value(rec) > value(prev):
+            best[key] = rec
+    out = list(best.values())
+    out.sort(key=lambda w: (-value(w), 0 if w.get("source") == "state" else 1, w["oxx"], w["id"]))
+    return out
+
+
+def auto_contract_path(oxx: str, template: str, auto_dir: Path | None = None) -> Path:
+    return (auto_dir or AUTO_DIR) / f"{oxx.lower()}_{template}.md"
+
+
+def _scope_block(writes: list[str], reads: list[str], verify_path: str,
+                 verify_cmd: str) -> str:
+    lines = ["## SCOPE"]
+    for w in writes:
+        lines.append(f"WRITE {w}")
+    lines.append("READ " + ", ".join(reads))
+    lines.append(
+        f"VERIFY {verify_path} by running the unfenced command below; "
+        "must pass, exit 0."
+    )
+    lines.append(verify_cmd)
+    lines.append("Do not touch Genesis state or tools/odyssey/.")
+    return "\n".join(lines)
+
+
+def _patient_facts(oxx: str) -> dict:
+    meta = patient_meta(oxx)
+    pkt = load_packet(oxx) or {}
+    census = load_census(oxx) or {}
+    kind = arch_kind(oxx, pkt, census)
+    weights = weights_dir(oxx, pkt, census)
+    ident = pkt.get("identity") or {}
+    arch = pkt.get("architecture") or {}
+    return {
+        "oxx": oxx,
+        "meta": meta,
+        "pkt": pkt,
+        "census": census,
+        "kind": kind,
+        "weights": weights,
+        "model": meta.get("model") or ident.get("source_repo") or oxx,
+        "source": ident.get("source_repo") or meta.get("source") or "",
+        "arch_name": arch.get("arch") or census.get("arch") or "",
+        "layers": arch.get("layers") or (census.get("config") or {}).get("num_hidden_layers"),
+        "experts": arch.get("experts") or (census.get("config") or {}).get("num_experts"),
+        "experts_per_tok": arch.get("experts_per_tok") or (census.get("config") or {}).get("num_experts_per_tok"),
+        "total_params": arch.get("total_params") or census.get("total_params"),
+        "organs": (pkt.get("representation") or {}).get("organs_bytes_GB")
+                  or {k: round(v / 1e9, 2) for k, v in (census.get("organs_bytes") or {}).items() if v},
+        "packet_rel": f"workspace/campaign/odyssey/patients/{oxx}/ODYSSEY_PATIENT_{oxx}.json",
+        "census_rel": f"workspace/campaign/odyssey/patients/{oxx}/census.json",
+        "receipt_rel": f"receipts/odyssey-i/{oxx}_EXTERNAL.json",
+    }
+
+
+def _runner_cmd(oxx: str, weights: str, receipt: str, packet: str,
+                route_tokens: int, extra: str = "") -> str:
+    w = weights or f"<weights-from-{oxx}-census>"
+    cmd = (
+        f"python3 tools/odyssey_patient_runner.py --oxx {oxx} "
+        f"--weights {w} --runtime mlx --route-tokens {route_tokens} "
+        f"--out {receipt} --packet {packet}"
+    )
+    if extra:
+        cmd += " " + extra
+    return cmd
+
+
+def render_external_science_moe(f: dict) -> str:
+    oxx = f["oxx"]
+    organs = ", ".join(f"{k}={v}GB" for k, v in (f["organs"] or {}).items())
+    verify = _runner_cmd(oxx, f["weights"], f["receipt_rel"], f["packet_rel"], 512)
+    body = f"""# DELEGATION — {oxx} EXTERNAL SCIENCE (MoE; gate profile: MLX/Metal)
+
+Patient {oxx} = `{f['source'] or f['model']}` ({f['kind']}; {f['arch_name']}),
+on disk at `{f['weights']}`. Repo: `/Users/scammermike/Downloads/hawking`.
+This is the O005-style runner: route map + baseline TPS + fast-Doctor.
+
+Native Hawking `load_engine` is not the path. Use `tools/odyssey_patient_runner.py`
+(mlx_lm EXTERNAL SPECIMEN). SPECIMEN labels everywhere; this is NOT BASE_TRUE_TPS (§14).
+
+Census (MEASURED): layers={f['layers']} experts={f['experts']} topk={f['experts_per_tok']}
+total_params={f['total_params']} organs: {organs or 'see census.json'}.
+
+## Read first
+READ tools/odyssey_patient_runner.py
+READ tools/worker_gate.py
+READ {f['census_rel']}
+READ {f['packet_rel']}
+READ workspace/campaign/odyssey/contracts/o005_external_science.md
+
+Call worker_gate.observe()/gate() before load (the runner already does this). Abort on REFUSE.
+If REFUSE, convert to 4-bit mlx and LABEL `quant=4bit-mlx`; prefer bf16 if admitted.
+
+## BUILD
+Reuse tools/odyssey_patient_runner.py. Do not start from scratch.
+If this patient is multimodal, tap the language-MoE router (skip the vision tower).
+If the runner assumes Qwen3-MoE config assertions, keep them as recorded pass/fail —
+do not fail the receipt solely because a Qwen-specific assertion is N/A; label N/A.
+
+Outputs:
+- {f['receipt_rel']} with quant, tps_specimen, ttft, route{{entropy_avg,entropy_max,cold_experts,top16_mass_pct,most_popular_share,transition_stability}}, doctor{{battery,refusals,seal_ref}}.
+- Refresh {f['packet_rel']} routing + execution + doctor from the receipt (schema-valid).
+
+## ACCEPTANCE
+- {f['receipt_rel']} exists with route.entropy_avg>0 and doctor.battery. Must pass, exit 0.
+- {f['packet_rel']} still schema-valid after the refresh.
+
+{_scope_block(
+    ["tools/odyssey_patient_runner.py", "receipts/odyssey-i/", f"workspace/campaign/odyssey/patients/{oxx}/"],
+    ["tools/odyssey_patient_runner.py", "tools/worker_gate.py", f['census_rel'], f['packet_rel']],
+    "tools/odyssey_patient_runner.py",
+    verify,
+)}
+"""
+    return body
+
+
+def render_external_science_dense(f: dict) -> str:
+    oxx = f["oxx"]
+    hybrid = f["kind"] == "hybrid"
+    organs = ", ".join(f"{k}={v}GB" for k, v in (f["organs"] or {}).items())
+    verify = _runner_cmd(oxx, f["weights"], f["receipt_rel"], f["packet_rel"], 0, extra="--skip-route")
+    ssm = ""
+    if hybrid:
+        ssm = (
+            "Also measure hybrid SSM-state-vs-KV byte accounting across ctx "
+            "(short / moderate / long). Census currently buckets Mamba tensors as "
+            "`other`; write an `ssm` organ bucket and state-vs-KV bytes into the packet "
+            "representation + execution. No route map."
+        )
+    body = f"""# DELEGATION — {oxx} EXTERNAL SCIENCE (dense/hybrid; gate profile: MLX/Metal)
+
+Patient {oxx} = `{f['source'] or f['model']}` ({f['kind']}; {f['arch_name']}),
+on disk at `{f['weights']}`. Repo: `/Users/scammermike/Downloads/hawking`.
+Baseline TPS + fast-Doctor{(' + SSM-state-vs-KV' if hybrid else '')}. NO route map.
+
+This is a DENSE/HYBRID path. There is no MoE router. The runner must skip the
+route tap (`--route-tokens 0` and `--skip-route`). If tools/odyssey_patient_runner.py
+has no skip for non-MoE, add `--skip-route` that no-ops RouteRecorder when no layer
+has gate+switch_mlp, and write a `route_skipped=true` field instead of failing.
+
+SPECIMEN labels everywhere; mlx TPS is NOT BASE_TRUE_TPS (§14, §60 foreign-runtime).
+
+Census (MEASURED): layers={f['layers']} total_params={f['total_params']}
+organs: {organs or 'see census.json'}.
+
+## Read first
+READ tools/odyssey_patient_runner.py
+READ tools/worker_gate.py
+READ {f['census_rel']}
+READ {f['packet_rel']}
+
+Call worker_gate.observe()/gate() before load. Abort on REFUSE; 4-bit fallback is allowed
+and must be labelled.
+
+## BUILD
+Reuse tools/odyssey_patient_runner.py. {ssm}
+Keep the model loaded once (one load, memory-safe). Do not delete the canonical weights.
+
+Outputs:
+- {f['receipt_rel']} with quant, tps_specimen, ttft, doctor{{battery,refusals,seal_ref}}, route_skipped=true{', ssm_vs_kv{{ctx,state_bytes,kv_bytes}}' if hybrid else ''}.
+- Refresh {f['packet_rel']} execution + doctor{(' + representation.ssm' if hybrid else '')}.
+
+## ACCEPTANCE
+- {f['receipt_rel']} exists with tps_specimen, ttft, doctor.battery, route_skipped true. Must pass, exit 0.
+- {f['packet_rel']} still schema-valid.
+
+{_scope_block(
+    ["tools/odyssey_patient_runner.py", "receipts/odyssey-i/", f"workspace/campaign/odyssey/patients/{oxx}/"],
+    ["tools/odyssey_patient_runner.py", "tools/worker_gate.py", f['census_rel'], f['packet_rel']],
+    "tools/odyssey_patient_runner.py",
+    verify,
+)}
+"""
+    return body
+
+
+def render_sensitivity_map(f: dict) -> str:
+    oxx = f["oxx"]
+    organs = list((f["organs"] or {}).keys()) or ["embed", "attn", "mlp_dense", "lm_head"]
+    organ_list = ", ".join(organs)
+    receipt = f"receipts/odyssey-i/{oxx}_SENSITIVITY.json"
+    verify = (
+        f"python3 tools/odyssey_patient_runner.py --oxx {oxx} "
+        f"--weights {f['weights'] or '<weights>'} --runtime mlx --route-tokens 0 "
+        f"--out {receipt} --packet {f['packet_rel']} --sensitivity"
+    )
+    body = f"""# DELEGATION — {oxx} PER-ORGAN / PER-EXPERT SENSITIVITY (§17)
+
+Patient {oxx} = `{f['source'] or f['model']}` ({f['kind']}; {f['arch_name']}),
+on disk at `{f['weights']}`. Repo: `/Users/scammermike/Downloads/hawking`.
+A baseline already exists on this patient. Measure Doctor capability delta when
+each organ (and each expert, if MoE) is zeroed or rounded.
+
+Organs from census (MEASURED): {organ_list}.
+
+## Read first
+READ tools/odyssey_patient_runner.py
+READ tools/worker_gate.py
+READ tools/doctor_seal.py
+READ {f['census_rel']}
+READ {f['packet_rel']}
+
+Call worker_gate.observe()/gate() before load. Abort on REFUSE.
+
+## BUILD
+Reuse tools/odyssey_patient_runner.py. If it has no organ-ablation path, add a
+`--sensitivity` mode that, after the fast battery baseline:
+1. For each organ in {{{organ_list}}}, zero (and separately round-to-zero-bpw / 8-bit round) that organ.
+2. Re-run the same fast battery + refusal controls.
+3. Record capability delta vs the unablated battery (hits, refusals, seal verdict).
+For MoE patients, also ablate a hot expert and a random expert and record per-expert delta.
+Non-MoE: skip the expert loop; skip the route tap (`--skip-route` / `--route-tokens 0`).
+
+Write {receipt} and fill representation.per_organ_sensitivity (and
+per_expert_sensitivity when MoE) on {f['packet_rel']}. Label every delta MEASURED.
+
+Do not delete canonical weights. Keep one load if possible; if reload is required,
+re-admit via worker_gate each time.
+
+## ACCEPTANCE
+- {receipt} exists with per_organ_sensitivity entries for each named organ and a
+  baseline battery. Must pass, exit 0.
+- {f['packet_rel']} representation.per_organ_sensitivity is non-null and schema-valid.
+
+{_scope_block(
+    ["tools/odyssey_patient_runner.py", "receipts/odyssey-i/", f"workspace/campaign/odyssey/patients/{oxx}/"],
+    ["tools/odyssey_patient_runner.py", "tools/worker_gate.py", "tools/doctor_seal.py", f['census_rel'], f['packet_rel']],
+    "tools/odyssey_patient_runner.py",
+    verify,
+)}
+"""
+    return body
+
+
+def render_transfer_control(f: dict, reference: str) -> str:
+    oxx = f["oxx"]
+    ref = _patient_facts(reference)
+    receipt = f"receipts/odyssey-i/{oxx}_TRANSFER.json"
+    verify = _runner_cmd(oxx, f["weights"], f["receipt_rel"], f["packet_rel"], 512)
+    body = f"""# DELEGATION — {oxx} TRANSFER CONTROL vs {reference} (§41)
+
+Patient {oxx} = `{f['source'] or f['model']}` ({f['kind']}; {f['arch_name']}),
+on disk at `{f['weights']}`. Reference {reference} = `{ref['source'] or ref['model']}`
+({ref['kind']}; {ref['arch_name']}). Repo: `/Users/scammermike/Downloads/hawking`.
+
+Run the O005-style runner on the sibling, then diff route/representation against
+the named reference and write a transfer-matrix delta.
+
+## Read first
+READ tools/odyssey_patient_runner.py
+READ tools/worker_gate.py
+READ {f['census_rel']}
+READ {f['packet_rel']}
+READ {ref['census_rel']}
+READ {ref['packet_rel']}
+READ receipts/odyssey-i/{reference}_EXTERNAL.json
+READ workspace/campaign/odyssey/TRANSFER_MATRIX.json
+
+Call worker_gate.observe()/gate() before load. Abort on REFUSE.
+
+## BUILD
+Reuse tools/odyssey_patient_runner.py on {oxx} (route map + baseline + fast-Doctor).
+If {oxx} is multimodal, tap the language-MoE router; skip the vision tower.
+Then diff against {reference}:
+- route entropy / cold-expert count / top16 mass / transition stability
+- organs_bytes_GB and stored_bpw
+- doctor battery delta
+Write {receipt} with `reference={reference}`, `delta`, and a `transfer_cells` block
+mapping each GRAVITY_RULEBASE rule id to one of TRANSFERRED_UNCHANGED / RETUNED /
+ARCHITECTURE_SPECIFIC / PATIENT_SPECIFIC / FAILED / HARMFUL / NOT_TESTED.
+Merge those cells into workspace/campaign/odyssey/TRANSFER_MATRIX.json for {oxx}
+(do not blank other patients). Refresh {f['packet_rel']} transfer + routing + execution.
+
+## ACCEPTANCE
+- {f['receipt_rel']} exists (sibling external science) AND {receipt} exists with
+  reference, delta, transfer_cells. Must pass, exit 0.
+- workspace/campaign/odyssey/TRANSFER_MATRIX.json has non-NOT_TESTED cells for {oxx}.
+
+{_scope_block(
+    ["tools/odyssey_patient_runner.py", "receipts/odyssey-i/",
+     f"workspace/campaign/odyssey/patients/{oxx}/",
+     "workspace/campaign/odyssey/TRANSFER_MATRIX.json"],
+    ["tools/odyssey_patient_runner.py", "tools/worker_gate.py",
+     f['census_rel'], f['packet_rel'], ref['census_rel'], ref['packet_rel'],
+     "workspace/campaign/odyssey/TRANSFER_MATRIX.json"],
+    "tools/odyssey_patient_runner.py",
+    verify,
+)}
+"""
+    return body
+
+
+RENDERERS = {
+    "external-science-moe": lambda f, ob: render_external_science_moe(f),
+    "external-science-dense": lambda f, ob: render_external_science_dense(f),
+    "sensitivity-map": lambda f, ob: render_sensitivity_map(f),
+    "transfer-control": lambda f, ob: render_transfer_control(
+        f, ob.get("reference") or TRANSFER_REF.get(ob["oxx"], "O005"),
+    ),
+}
+
+
+def render_contract(ob: dict, auto_dir: Path | None = None) -> Path:
+    template = ob["template"]
+    if template not in RENDERERS:
+        raise ValueError(f"unknown template {template}")
+    facts = _patient_facts(ob["oxx"])
+    text = RENDERERS[template](facts, ob)
+    dest = auto_contract_path(ob["oxx"], template, auto_dir)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_text(text)
+    return dest
+
+
+def call_worker_gate(observe_fn=None, gate_fn=None) -> dict:
+    obs_fn = observe_fn or worker_gate.observe
+    g_fn = gate_fn or worker_gate.gate
+    try:
+        obs = obs_fn()
+        g = g_fn(obs)
+        g = dict(g)
+        g.setdefault("decision", "REFUSE")
+        return g
+    except Exception as exc:
+        return {
+            "decision": "REFUSE",
+            "note": f"worker_gate failed: {exc}",
+            "reasons": [str(exc)],
+            "_evidence": "INFERRED (observe/gate raised)",
+        }
+
+
+SCIENCE_TASK_RE = re.compile(r"^odyssey-o\d{3}-", re.I)
+
+
+def odyssey_running_ids(state: dict) -> set[str]:
+    """Concurrent science lanes: live odyssey-oNNN-* tasks + work marked RUNNING.
+
+    The controller itself may run as odyssey-autonomous-loop-*; that is not a
+    patient science lane and must not consume --max-lanes.
+    """
+    ids = {name for name in live_odyssey_lanes() if SCIENCE_TASK_RE.match(name)}
+    for w in state.get("work") or []:
+        if w.get("status") == "RUNNING":
+            ids.add(str(w.get("task") or w.get("id")))
+    return ids
+
+
+def grok_argv(task: str, contract: Path, *, model_loading: bool,
+              repo: Path | None = None) -> list[str]:
+    cmd = [
+        str(GROK_BIN), "delegate",
+        "--task", task,
+        "--contract", str(contract),
+        "--repo", str(repo or launch_repo()),
+        "--background",
+    ]
+    if model_loading:
+        cmd.extend(["--profile", "gate"])
+    return cmd
+
+
+def default_launch(task: str, contract: Path, *, model_loading: bool,
+                   repo: Path | None = None) -> tuple[int, str, str]:
+    cmd = grok_argv(task, contract, model_loading=model_loading, repo=repo)
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    stdout, stderr = r.stdout or "", r.stderr or ""
+    task_id = None
+    for line in stdout.splitlines()[::-1]:
+        t = line.strip()
+        if t.startswith("odyssey-") or t.startswith(task):
+            task_id = t
+            break
+    return r.returncode, task_id or "", (stdout + "\n" + stderr).strip()
+
+
+def _mark_running(state: dict, ob: dict, task_id: str, contract: str,
+                  started: str) -> None:
+    found = False
+    for w in state.setdefault("work", []):
+        if w.get("id") == ob["id"]:
+            w["status"] = "RUNNING"
+            w["task"] = task_id
+            w["started"] = started
+            w["contract"] = contract
+            w["template"] = ob["template"]
+            found = True
+            break
+    if not found:
+        state["work"].append({
+            "id": ob["id"], "oxx": ob["oxx"], "title": ob["title"],
+            "status": "RUNNING", "info": ob["info"], "wall_cost": ob["wall_cost"],
+            "gpu_cost": ob["gpu_cost"], "opus_cost": ob["opus_cost"],
+            "kind": ob.get("kind"), "template": ob["template"],
+            "task": task_id, "started": started, "contract": contract,
+        })
+
+
+def evaluate_gates(ob: dict, *, go: bool, running_n: int, cap: int,
+                   snap: dict, worker: dict | None,
+                   lint_ok: bool, lint_msg: str,
+                   disk_after_reclaim: float | None = None) -> dict:
+    """Return a gate bundle + verdict/skip_reason. Does not launch."""
+    disk = float(snap.get("disk_free_gib") or 0.0)
+    clean_ok = bool(snap.get("clean_box_ok"))
+    clean_why = snap.get("clean_box_reason") or ""
+    worker_decision = (worker or {}).get("decision") if ob.get("model_loading") else "n/a"
+    reasons = []
+    if cap <= 0 or running_n >= cap:
+        reasons.append(f"max-lanes cap {cap} (running={running_n})")
+    elif not lint_ok:
+        reasons.append(f"SG-rejected: {lint_msg}")
+    elif ob.get("model_loading") and worker_decision == "REFUSE":
+        reasons.append(
+            f"worker_gate REFUSE: {(worker or {}).get('note') or 'REFUSE'}"
+        )
+    elif ob.get("download") and disk < DISK_RUN_GIB and (
+        disk_after_reclaim is None or disk_after_reclaim < DISK_RUN_GIB
+    ):
+        d = disk_after_reclaim if disk_after_reclaim is not None else disk
+        reasons.append(
+            f"disk {d:.1f} GiB < {DISK_RUN_GIB} after reclaim; download-implying"
+        )
+    elif ob.get("timing") and not clean_ok:
+        reasons.append(f"clean_box_ok false (§14 protected-GPU): {clean_why}")
+    if go:
+        verdict = "SKIP" if reasons else "LAUNCH"
+        skip_reason = "; ".join(reasons) if reasons else None
+    else:
+        verdict = "DRY-RUN"
+        skip_reason = ("would skip: " + "; ".join(reasons)) if reasons else None
+    return {
+        "verdict": verdict,
+        "skip_reason": skip_reason,
+        "worker": worker_decision,
+        "worker_note": (worker or {}).get("note"),
+        "disk_free_gib": disk,
+        "disk_floor_run": DISK_RUN_GIB,
+        "would_reclaim": disk < DISK_RUN_GIB,
+        "clean_box_ok": clean_ok,
+        "clean_box_reason": clean_why,
+        "sg": "ok" if lint_ok else "ERROR",
+        "sg_msg": lint_msg,
+        "model_loading": bool(ob.get("model_loading")),
+        "timing": bool(ob.get("timing")),
+        "download": bool(ob.get("download")),
+        "running": running_n,
+        "cap": cap,
+        "_evidence": "MEASURED (gates) + DERIVED (verdict)" if worker else "DERIVED (verdict)",
+    }
+
+
+def run_loop(*, go: bool, max_lanes: int,
+             state: dict | None = None,
+             observe_fn=None, gate_fn=None, snapshot_fn=None,
+             launch_fn=None, lint_fn=None, reclaim_fn=None,
+             log_path: Path | None = None, auto_dir: Path | None = None,
+             persist: bool = True, consider_limit: int | None = None) -> list[dict]:
+    """Select, render, gate; launch only when go=True. Idempotent. Never blocks."""
+    st = state if state is not None else ensure_state()
+    ranked = select_ready_obligations(st)
+    cap = min(max(int(max_lanes), 0), HARD_LANE_CAP)
+    running_ids = odyssey_running_ids(st)
+    running_n = len(running_ids)
+    snap = (snapshot_fn or machine_snapshot)()
+    disk = float(snap.get("disk_free_gib") or 0.0)
+    reclaimed = False
+    disk_after = None
+    if go and disk < DISK_RUN_GIB and cap > 0:
+        fn = reclaim_fn or (lambda: subprocess.run(
+            ["bash", str(RECLAIM)], cwd=str(REPO), check=False,
+        ))
+        fn()
+        reclaimed = True
+        snap = (snapshot_fn or machine_snapshot)()
+        disk_after = float(snap.get("disk_free_gib") or 0.0)
+        disk = disk_after
+
+    worker_cache = None
+    rows = []
+    launched = 0
+    limit = consider_limit if consider_limit is not None else max(cap, DEFAULT_MAX_LANES, 8)
+    slots = 0 if not go else max(0, cap - running_n)
+
+    for ob in ranked:
+        if go and launched >= slots:
+            break
+        if not go and len(rows) >= (cap if cap > 0 else 0):
+            # max-lanes 0 → empty plan; otherwise top N
+            break
+        if not go and cap == 0:
+            break
+        if len(rows) >= limit:
+            break
+
+        already = None
+        for w in st.get("work") or []:
+            if w.get("id") == ob["id"] and w.get("status") == "RUNNING":
+                already = w.get("task") or w.get("id")
+                break
+        dest = render_contract(ob, auto_dir=auto_dir)
+        try:
+            rel = str(dest.relative_to(REPO))
+        except ValueError:
+            rel = str(dest)
+        lint_ok, lint_msg = (lint_fn or sg_lint)(dest)
+
+        worker = None
+        if ob.get("model_loading"):
+            if worker_cache is None:
+                worker_cache = call_worker_gate(observe_fn, gate_fn)
+            worker = worker_cache
+
+        gates = evaluate_gates(
+            ob, go=go, running_n=running_n + launched, cap=cap,
+            snap=snap, worker=worker, lint_ok=lint_ok, lint_msg=lint_msg,
+            disk_after_reclaim=disk_after,
+        )
+        if already and go:
+            gates["verdict"] = "SKIP"
+            gates["skip_reason"] = f"already RUNNING ({already})"
+
+        row = {
+            "schema": RUN_LOG_SCHEMA,
+            "obligation": ob["id"],
+            "oxx": ob["oxx"],
+            "title": ob["title"],
+            "template": ob["template"],
+            "proxy": round(value(ob), 2),
+            "contract": rel,
+            "verdict": gates["verdict"],
+            "skip_reason": gates["skip_reason"],
+            "task_id": None,
+            "gates": gates,
+            "model_loading": ob["model_loading"],
+            "timing": ob["timing"],
+            "download": ob["download"],
+            "reclaimed": reclaimed,
+            "go": go,
+            "_evidence": "DERIVED (§18 run-loop decision)",
+        }
+
+        if go and gates["verdict"] == "LAUNCH":
+            slug = f"odyssey-{ob['oxx'].lower()}-{ob['template']}"
+            fn = launch_fn or default_launch
+            try:
+                rc, task_id, output = fn(
+                    slug, dest, model_loading=ob["model_loading"],
+                )
+            except TypeError:
+                rc, task_id, output = fn(slug, dest)
+            if rc != 0 or not task_id:
+                row["verdict"] = "SKIP"
+                row["skip_reason"] = f"grok-run failed rc={rc} {output[-400:]}"
+                gates["verdict"] = "SKIP"
+                gates["skip_reason"] = row["skip_reason"]
+            else:
+                started = utc_now()
+                row["task_id"] = task_id
+                if persist:
+                    _mark_running(st, ob, task_id, rel, started)
+                launched += 1
+                running_n_display = running_n + launched
+                gates["running"] = running_n_display
+
+        append_run_log(row, path=log_path)
+        rows.append(row)
+        if not go and cap > 0 and len(rows) >= cap:
+            break
+
+    if persist and go and launched:
+        save_state(st)
+    return rows
+
+
+def print_run_plan(rows: list[dict], *, go: bool, max_lanes: int,
+                   snap: dict, running_n: int) -> None:
+    mode = "GO" if go else "dry-run"
+    disk = snap.get("disk_free_gib")
+    print(
+        f"ODYSSEY RUN  {mode}  max_lanes={max_lanes}  hard_cap={HARD_LANE_CAP}  "
+        f"running={running_n}  disk={disk}GiB"
+    )
+    if not go:
+        print("launch NOTHING (dry-run is the default; pass --go to spawn)")
+    if not rows:
+        print("PLAN: (empty)")
+        return
+    print("PLAN:")
+    for i, r in enumerate(rows, 1):
+        g = r.get("gates") or {}
+        print(
+            f"  {i}. {r['obligation']}  {r['oxx']}  {r['template']}  "
+            f"proxy={r['proxy']:.1f}  verdict={r['verdict']}"
+        )
+        print(f"     title: {r.get('title')}")
+        print(f"     contract: {r['contract']}")
+        print(
+            f"     model-loading: {'yes' if r.get('model_loading') else 'no'}  "
+            f"timing: {'yes' if r.get('timing') else 'no'}  "
+            f"download: {'yes' if r.get('download') else 'no'}"
+        )
+        print(
+            f"     gates: worker={g.get('worker')}  "
+            f"disk={g.get('disk_free_gib')}{' <45 would-reclaim' if g.get('would_reclaim') else ''}  "
+            f"clean_box={g.get('clean_box_ok')}  sg={g.get('sg')}"
+        )
+        if r.get("skip_reason"):
+            print(f"     skip: {r['skip_reason']}")
+        if r.get("task_id"):
+            print(f"     task: {r['task_id']}")
+        print(f"     _evidence={r.get('_evidence')}")
+
+
+def cmd_run(*, go: bool, max_lanes: int, **hooks) -> int:
+    st = hooks.pop("state", None) or ensure_state()
+    snap = (hooks.get("snapshot_fn") or machine_snapshot)()
+    running_n = len(odyssey_running_ids(st))
+    rows = run_loop(go=go, max_lanes=max_lanes, state=st, **hooks)
+    print_run_plan(rows, go=go, max_lanes=max_lanes, snap=snap, running_n=running_n)
+    if go:
+        print()
+        cmd_status()
+    return 0
+
+
+# ---------------------------------------------------------------------------
 # commands
 # ---------------------------------------------------------------------------
 
@@ -1123,10 +2143,14 @@ def _self_check() -> int:
     by = {p["oxx"]: p for p in st2["patients"]}
     assert by["O000"]["state"] == "BLOCKED" and "BLOCKED-auth" in by["O000"]["ledger"]
     assert by["O002"]["state"] == "BLOCKED"
-    assert by["O004"]["state"] == "BLOCKED"
     assert by["O001"]["on_disk"] and by["O001"]["state"] == "READY"
     assert by["O005"]["on_disk"] and by["O005"]["state"] == "READY"
-    assert str(by["O003"]["ledger"]).lower().startswith("queued")
+    if by["O004"]["on_disk"]:
+        assert by["O004"]["state"] != "BLOCKED"
+    else:
+        assert by["O004"]["state"] == "BLOCKED"
+    if not by["O003"]["on_disk"]:
+        assert str(by["O003"]["ledger"]).lower().startswith("queued")
     save_state(st2)
     assert read_json(STATE) == st2, "state did not round-trip"
 
@@ -1228,6 +2252,102 @@ def _self_check() -> int:
     for i in range(14):
         assert f"O{i:03d}" in cells0, f"missing O{i:03d}"
 
+    # 8. run-loop: select, render an SG-valid contract, honor max-lanes=0 and
+    #    injected worker_gate REFUSE (no launch).
+    selected = select_ready_obligations(st2)
+    assert selected, "run loop selected no READY obligations"
+    assert all(s["template"] in TEMPLATES for s in selected), selected
+    assert all(patient_on_disk(patient_meta(s["oxx"], st2)) for s in selected)
+
+    samples = [
+        {"id": "T-MOE", "oxx": "O003", "template": "external-science-moe",
+         "title": "t", "info": 1, "wall_cost": 1, "gpu_cost": 0, "opus_cost": 0},
+        {"id": "T-DENSE", "oxx": "O001", "template": "external-science-dense",
+         "title": "t", "info": 1, "wall_cost": 1, "gpu_cost": 0, "opus_cost": 0},
+        {"id": "T-DENSE-O004", "oxx": "O004", "template": "external-science-dense",
+         "title": "t", "info": 1, "wall_cost": 1, "gpu_cost": 0, "opus_cost": 0},
+        {"id": "T-SENS", "oxx": "O005", "template": "sensitivity-map",
+         "title": "t", "info": 1, "wall_cost": 1, "gpu_cost": 0, "opus_cost": 0},
+        {"id": "T-XFER", "oxx": "O006", "template": "transfer-control",
+         "title": "t", "info": 1, "wall_cost": 1, "gpu_cost": 0, "opus_cost": 0,
+         "reference": "O005"},
+    ]
+    for ob in samples:
+        dest = render_contract(ob)
+        assert dest.is_file(), dest
+        ok, msg = sg_lint(dest)
+        assert ok, (ob["template"], dest, msg)
+
+    launches: list = []
+
+    def no_launch(*_a, **_k):
+        launches.append((_a, _k))
+        return (0, "should-not-launch", "")
+
+    permit_obs = {
+        "total_gb": 100.0, "wired_gb": 4.63, "free_gb": 50.0, "inactive_gb": 10.0,
+        "compressed_gb": 0.05, "swap_used_mb": 0.0, "workers_resident": 0,
+        "worker_rss_total_gb": 0.0,
+    }
+    refuse_obs = dict(permit_obs, swap_used_mb=512.0)
+    fat_snap = {
+        "disk_free_gib": 80.0, "clean_box_ok": True, "clean_box_reason": "injected ok",
+    }
+
+    with tempfile.TemporaryDirectory() as td:
+        td = Path(td)
+        logp = td / "RUN_LOG.jsonl"
+        rows = run_loop(
+            go=False, max_lanes=2, state=dict(st2),
+            observe_fn=lambda: permit_obs, gate_fn=worker_gate.gate,
+            snapshot_fn=lambda: dict(fat_snap),
+            launch_fn=no_launch, persist=False, log_path=logp,
+            reclaim_fn=lambda: None,
+        )
+        assert launches == [], launches
+        assert rows, "dry-run plan empty"
+        assert all(r["verdict"] == "DRY-RUN" for r in rows), rows
+        for r in rows:
+            cpath = Path(r["contract"])
+            if not cpath.is_file():
+                cpath = REPO / r["contract"]
+            assert cpath.is_file(), r["contract"]
+            ok, msg = sg_lint(cpath)
+            assert ok, (r["contract"], msg)
+
+        rows0 = run_loop(
+            go=True, max_lanes=0, state=dict(st2),
+            observe_fn=lambda: permit_obs, gate_fn=worker_gate.gate,
+            snapshot_fn=lambda: dict(fat_snap),
+            launch_fn=no_launch, persist=False, log_path=logp,
+            reclaim_fn=lambda: None,
+        )
+        assert launches == [], "max-lanes 0 launched"
+        assert all(r["verdict"] != "LAUNCH" for r in rows0)
+
+        rows_r = run_loop(
+            go=True, max_lanes=2, state=dict(st2),
+            observe_fn=lambda: refuse_obs, gate_fn=worker_gate.gate,
+            snapshot_fn=lambda: dict(fat_snap),
+            launch_fn=no_launch, persist=False, log_path=logp,
+            reclaim_fn=lambda: None,
+        )
+        assert launches == [], "REFUSE still launched"
+        assert rows_r, "injected REFUSE produced no decisions"
+        assert all(r["verdict"] == "SKIP" for r in rows_r), rows_r
+        assert any("REFUSE" in (r.get("skip_reason") or "") for r in rows_r), rows_r
+        assert logp.is_file() and logp.read_text().strip()
+
+    argv = grok_argv(
+        "odyssey-o001-external-science-dense",
+        AUTO_DIR / "o001_external-science-dense.md",
+        model_loading=True,
+    )
+    assert argv[:2] == [str(GROK_BIN), "delegate"]
+    assert "--profile" in argv and argv[argv.index("--profile") + 1] == "gate"
+    assert "--background" in argv
+    assert "SG_OFF" not in argv
+
     print("self-check ok")
     return 0
 
@@ -1246,6 +2366,13 @@ def main(argv=None) -> int:
     p_ad = sp.add_parser("admit")
     p_ad.add_argument("slug")
     p_ad.add_argument("est_gib", type=float)
+    p_run = sp.add_parser("run")
+    p_run.add_argument("--dry-run", action="store_true",
+                       help="plan and render only (default when --go is absent)")
+    p_run.add_argument("--go", action="store_true",
+                       help="actually launch grok-run lanes; required to spawn")
+    p_run.add_argument("--max-lanes", type=int, default=DEFAULT_MAX_LANES,
+                       help="concurrent odyssey lane cap (default 2, hard cap 3)")
     args = ap.parse_args(argv)
     if args.self_check or args.cmd in {"self-check", "selfcheck"}:
         return _self_check()
@@ -1261,6 +2388,9 @@ def main(argv=None) -> int:
         return cmd_packet(args.oxx)
     if args.cmd == "admit":
         return cmd_admit(args.slug, args.est_gib)
+    if args.cmd == "run":
+        go = bool(args.go) and not bool(args.dry_run)
+        return cmd_run(go=go, max_lanes=args.max_lanes)
     ap.print_help()
     return 2
 

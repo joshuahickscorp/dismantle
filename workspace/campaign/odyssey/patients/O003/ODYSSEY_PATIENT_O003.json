@@ -703,9 +703,18 @@
     "machine_lowering": null,
     "kernel_bindings": null,
     "fallback_count": null,
-    "best_preliminary_nx": null,
+    "best_preliminary_nx": "active-expert-gather (accounting only; not a Rust runtime)",
     "nx_hash": null,
-    "_evidence": "UNKNOWN"
+    "_evidence": "DERIVED from MEASURED census organ bytes + MEASURED live switch_mlp inspect",
+    "mode": "gather",
+    "receipt": "receipts/odyssey-i/O003_NX_gather.json",
+    "not_a_full_rust_runtime": true,
+    "not_hawking_nx_win": true,
+    "label": "SPECIMEN",
+    "selected_bytes_per_token": 3598712832,
+    "full_expert_body_bytes": 29689380864,
+    "ratio_selected_over_full": 0.121212,
+    "mlx_gathers": true
   },
   "transfer": {
     "inherited_rules": [],
@@ -716,6 +725,7 @@
     "_evidence": "UNKNOWN"
   },
   "next": [
+    "nx-gather accounting written (receipts/odyssey-i/O003_NX_gather.json); not a Hawking NX runtime",
     "gravity q3-g32-experts CANDIDATE_PASS: stored_bpw=3.9411 active_bpw=3.7124 battery=11/12 delta_hits=-1 (mlx SPECIMEN, not a Hawking NX win)",
     "A3 per-organ sensitivity MEASURED: zero drops hits on embed, attn, router, expert, shared_expert, mlp_dense, norm, lm_head; round8 drops hits on embed, attn, expert, shared_expert (baseline 12/12, 4bit-mlx)",
     "native load_engine still Unimplemented for this arch — NX after route/sensitivity",
@@ -731,5 +741,8 @@
     ],
     "_evidence": "DERIVED (doctor_seal.seal structural)"
   },
-  "phase": "GRAVITY"
+  "phase": "SEALED",
+  "state": "RETIRED",
+  "reclaimable": true,
+  "_evidence": "DERIVED (patient-sealed)"
 }

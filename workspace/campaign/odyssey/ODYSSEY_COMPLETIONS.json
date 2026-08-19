@@ -206,13 +206,39 @@
       "reopen_if": null
     },
     {
+      "obligation_id": "AUTO-O004-gravity-aggressive-dense",
+      "patient_id": "O004",
+      "mechanism_id": "gravity-aggressive-dense",
+      "status": "VERIFIED",
+      "receipt_ref": "receipts/odyssey-i/O004_GRAVITY_q2-g32.json",
+      "receipt_sha256": "1a35dfe617cd34ba83ee7411c6abc323d1969e6968c6753c9a1efda2eaedd7d4",
+      "source_revision": "c4a5d1231a60ad8080aa21dfdf580e9abf7a40b0",
+      "completed_at": "2026-08-19T23:09:34Z",
+      "supersedes": null,
+      "reopen_if": null,
+      "candidate_class": "AGGRESSIVE_QUANT",
+      "conventionality": "nonconventional"
+    },
+    {
+      "obligation_id": "AUTO-O003-nx-gather-moe",
+      "patient_id": "O003",
+      "mechanism_id": "nx-gather-moe",
+      "status": "VERIFIED",
+      "receipt_ref": "receipts/odyssey-i/O003_NX_gather.json",
+      "receipt_sha256": "890de52f51f6204442c8f653f218e08de0e061350134f03073164fa995a5771a",
+      "source_revision": "c4a5d1231a60ad8080aa21dfdf580e9abf7a40b0",
+      "completed_at": "2026-08-19T23:09:34Z",
+      "supersedes": null,
+      "reopen_if": null
+    },
+    {
       "obligation_id": "O001:external-science",
       "patient_id": "O001",
       "mechanism_id": "external-science",
       "status": "VERIFIED",
       "receipt_ref": "receipts/odyssey-i/O001_EXTERNAL.json",
       "receipt_sha256": "307aa96f355b6b7ccdb33bc997d4d144f5b6e4b79985c7eae51dd64cc2342a87",
-      "source_revision": "0114b5bc67aa55cee5e2f3c62aba2c7fb5f962bb",
+      "source_revision": "c4a5d1231a60ad8080aa21dfdf580e9abf7a40b0",
       "completed_at": "2026-08-19T02:25:11-04:00",
       "supersedes": null,
       "reopen_if": null
@@ -224,7 +250,7 @@
       "status": "VERIFIED",
       "receipt_ref": "receipts/odyssey-i/O001_EXTERNAL.json",
       "receipt_sha256": "307aa96f355b6b7ccdb33bc997d4d144f5b6e4b79985c7eae51dd64cc2342a87",
-      "source_revision": "0114b5bc67aa55cee5e2f3c62aba2c7fb5f962bb",
+      "source_revision": "c4a5d1231a60ad8080aa21dfdf580e9abf7a40b0",
       "completed_at": "2026-08-19T02:25:11-04:00",
       "supersedes": null,
       "reopen_if": null
@@ -236,7 +262,7 @@
       "status": "VERIFIED",
       "receipt_ref": "receipts/odyssey-i/O001_SENSITIVITY.json",
       "receipt_sha256": "4d7e5db270e6f30029c90124b9c378a498bcabee9e178524cb12958e339038ef",
-      "source_revision": "0114b5bc67aa55cee5e2f3c62aba2c7fb5f962bb",
+      "source_revision": "c4a5d1231a60ad8080aa21dfdf580e9abf7a40b0",
       "completed_at": "2026-08-19T02:49:27-04:00",
       "supersedes": null,
       "reopen_if": null
@@ -248,7 +274,7 @@
       "status": "VERIFIED",
       "receipt_ref": "receipts/odyssey-i/O003_EXTERNAL.json",
       "receipt_sha256": "fb35d7c6579a2146030ae44a0aa35fe2361067991c923a2a1defad02c63eedb0",
-      "source_revision": "0114b5bc67aa55cee5e2f3c62aba2c7fb5f962bb",
+      "source_revision": "c4a5d1231a60ad8080aa21dfdf580e9abf7a40b0",
       "completed_at": "2026-08-19T03:25:01-04:00",
       "supersedes": null,
       "reopen_if": null
@@ -260,7 +286,7 @@
       "status": "VERIFIED",
       "receipt_ref": "receipts/odyssey-i/O003_EXTERNAL.json",
       "receipt_sha256": "fb35d7c6579a2146030ae44a0aa35fe2361067991c923a2a1defad02c63eedb0",
-      "source_revision": "0114b5bc67aa55cee5e2f3c62aba2c7fb5f962bb",
+      "source_revision": "c4a5d1231a60ad8080aa21dfdf580e9abf7a40b0",
       "completed_at": "2026-08-19T03:25:01-04:00",
       "supersedes": null,
       "reopen_if": null
@@ -272,7 +298,7 @@
       "status": "VERIFIED",
       "receipt_ref": "receipts/odyssey-i/O005_EXTERNAL.json",
       "receipt_sha256": "b026e4046b12b8c41437145aae3def57f2d1b3af00d375d577e095768ff9aeb6",
-      "source_revision": "0114b5bc67aa55cee5e2f3c62aba2c7fb5f962bb",
+      "source_revision": "c4a5d1231a60ad8080aa21dfdf580e9abf7a40b0",
       "completed_at": "2026-08-19T01:08:47-04:00",
       "supersedes": null,
       "reopen_if": null
@@ -284,7 +310,7 @@
       "status": "VERIFIED",
       "receipt_ref": "receipts/odyssey-i/O005_EXTERNAL.json",
       "receipt_sha256": "b026e4046b12b8c41437145aae3def57f2d1b3af00d375d577e095768ff9aeb6",
-      "source_revision": "0114b5bc67aa55cee5e2f3c62aba2c7fb5f962bb",
+      "source_revision": "c4a5d1231a60ad8080aa21dfdf580e9abf7a40b0",
       "completed_at": "2026-08-19T01:08:47-04:00",
       "supersedes": null,
       "reopen_if": null
@@ -296,7 +322,7 @@
       "status": "VERIFIED",
       "receipt_ref": "receipts/odyssey-i/O005_GRAVITY_q3-g32-experts.json",
       "receipt_sha256": "aca8dc0c271a35661b75d028c91a30f6b44b968ac165659d50e916f322352a38",
-      "source_revision": "0114b5bc67aa55cee5e2f3c62aba2c7fb5f962bb",
+      "source_revision": "c4a5d1231a60ad8080aa21dfdf580e9abf7a40b0",
       "completed_at": "2026-08-19T13:44:31-04:00",
       "supersedes": null,
       "reopen_if": null,
@@ -310,7 +336,7 @@
       "status": "VERIFIED",
       "receipt_ref": "receipts/odyssey-i/O005_NX_gather.json",
       "receipt_sha256": "306503ab27683628bcbfb4387e38b3f546d3d444f0da058112d24b8586e5c6cd",
-      "source_revision": "0114b5bc67aa55cee5e2f3c62aba2c7fb5f962bb",
+      "source_revision": "c4a5d1231a60ad8080aa21dfdf580e9abf7a40b0",
       "completed_at": "2026-08-19T13:44:31-04:00",
       "supersedes": null,
       "reopen_if": null
@@ -322,7 +348,7 @@
       "status": "VERIFIED",
       "receipt_ref": "receipts/odyssey-i/O006_EXTERNAL.json",
       "receipt_sha256": "310a73ead1cd1bcae5b43ba136c3b6b1bb7b8db7913c1b60a2a050a710379da9",
-      "source_revision": "0114b5bc67aa55cee5e2f3c62aba2c7fb5f962bb",
+      "source_revision": "c4a5d1231a60ad8080aa21dfdf580e9abf7a40b0",
       "completed_at": "2026-08-19T13:46:17-04:00",
       "supersedes": null,
       "reopen_if": null
@@ -334,7 +360,7 @@
       "status": "VERIFIED",
       "receipt_ref": "receipts/odyssey-i/O006_EXTERNAL.json",
       "receipt_sha256": "310a73ead1cd1bcae5b43ba136c3b6b1bb7b8db7913c1b60a2a050a710379da9",
-      "source_revision": "0114b5bc67aa55cee5e2f3c62aba2c7fb5f962bb",
+      "source_revision": "c4a5d1231a60ad8080aa21dfdf580e9abf7a40b0",
       "completed_at": "2026-08-19T13:46:17-04:00",
       "supersedes": null,
       "reopen_if": null
@@ -346,11 +372,23 @@
       "status": "VERIFIED",
       "receipt_ref": "receipts/odyssey-i/O006_TRANSFER.json",
       "receipt_sha256": "0e41f6a50091b2c802b67f0d1c50d84920715c05c0327fd1ef54c9a7a3c385a3",
-      "source_revision": "0114b5bc67aa55cee5e2f3c62aba2c7fb5f962bb",
+      "source_revision": "c4a5d1231a60ad8080aa21dfdf580e9abf7a40b0",
       "completed_at": "2026-08-19T13:46:17-04:00",
+      "supersedes": null,
+      "reopen_if": null
+    },
+    {
+      "obligation_id": "O003:patient-sealed",
+      "patient_id": "O003",
+      "mechanism_id": "patient-sealed",
+      "status": "VERIFIED",
+      "receipt_ref": "receipts/odyssey-i/O003_PATIENT_SEAL.json",
+      "receipt_sha256": "81a111a31f9348d94e112d87f31d829176bce34d7dac6299fa1a1a8a10803ebf",
+      "source_revision": "c4a5d1231a60ad8080aa21dfdf580e9abf7a40b0",
+      "completed_at": "2026-08-19T23:09:35Z",
       "supersedes": null,
       "reopen_if": null
     }
   ],
-  "_evidence": "DERIVED (receipts/odyssey-i backfill)"
+  "_evidence": "DERIVED (completion index)"
 }

@@ -392,6 +392,36 @@
       "started": "2026-08-19T19:08:23Z",
       "contract": "workspace/campaign/odyssey/contracts/auto/o001_gravity-hybrid.md",
       "harvest_reason": "DATA-ONLY"
+    },
+    {
+      "id": "AUTO-O001-gravity-aggressive-hybrid",
+      "oxx": "O001",
+      "title": "aggressive gravity q2-g32-attn-mlp (protect SSM/norm, SPECIMEN)",
+      "status": "RUNNING",
+      "info": 8.0,
+      "wall_cost": 2.0,
+      "gpu_cost": 1.0,
+      "opus_cost": 0.0,
+      "kind": "gravity",
+      "template": "gravity-aggressive-hybrid",
+      "task": "odyssey-o001-gravity-aggressive-hybrid-20260819-175054",
+      "started": "2026-08-19T21:51:13Z",
+      "contract": "workspace/campaign/odyssey/contracts/auto/o001_gravity-aggressive-hybrid.md"
+    },
+    {
+      "id": "AUTO-O003-gravity-aggressive-moe",
+      "oxx": "O003",
+      "title": "aggressive gravity q2-g32-experts (SPECIMEN; anti-complacency)",
+      "status": "RUNNING",
+      "info": 8.0,
+      "wall_cost": 2.0,
+      "gpu_cost": 1.0,
+      "opus_cost": 0.0,
+      "kind": "gravity",
+      "template": "gravity-aggressive-moe",
+      "task": "odyssey-o003-gravity-aggressive-moe-20260819-175115",
+      "started": "2026-08-19T21:51:31Z",
+      "contract": "workspace/campaign/odyssey/contracts/auto/o003_gravity-aggressive-moe.md"
     }
   ],
   "history": [],
@@ -412,6 +442,6 @@
     "grok_lanes_bootstrap": 3,
     "gpu_seconds": 0,
     "gpu_owner": "none",
-    "_evidence": "INFERRED (ODYSSEY.md \u00a772 session bootstrap)"
+    "_evidence": "INFERRED (ODYSSEY.md §72 session bootstrap)"
   }
 }

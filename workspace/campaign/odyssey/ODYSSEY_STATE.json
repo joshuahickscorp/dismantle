@@ -365,7 +365,7 @@
       "id": "NEXT-O006-SENS",
       "oxx": "O006",
       "title": "A3 per-organ/per-expert sensitivity map (O006 language-MoE)",
-      "status": "RUNNING",
+      "status": "VERIFIED",
       "info": 10.0,
       "wall_cost": 2.0,
       "gpu_cost": 1.0,
@@ -374,13 +374,14 @@
       "template": "sensitivity-map",
       "task": "odyssey-o006-sensitivity-map-20260819-150812",
       "started": "2026-08-19T19:08:17Z",
-      "contract": "workspace/campaign/odyssey/contracts/auto/o006_sensitivity-map.md"
+      "contract": "workspace/campaign/odyssey/contracts/auto/o006_sensitivity-map.md",
+      "harvest_reason": "DATA-ONLY"
     },
     {
       "id": "AUTO-O001-gravity-hybrid",
       "oxx": "O001",
       "title": "modest gravity q4-g64-attn-mlp (protect SSM/norm, SPECIMEN)",
-      "status": "RUNNING",
+      "status": "VERIFIED",
       "info": 8.0,
       "wall_cost": 2.0,
       "gpu_cost": 1.0,
@@ -389,7 +390,38 @@
       "template": "gravity-hybrid",
       "task": "odyssey-o001-gravity-hybrid-20260819-150817",
       "started": "2026-08-19T19:08:23Z",
-      "contract": "workspace/campaign/odyssey/contracts/auto/o001_gravity-hybrid.md"
+      "contract": "workspace/campaign/odyssey/contracts/auto/o001_gravity-hybrid.md",
+      "harvest_reason": "DATA-ONLY"
+    },
+    {
+      "id": "AUTO-O003-gravity-moe",
+      "oxx": "O003",
+      "title": "modest gravity q3-g32-experts (SPECIMEN)",
+      "status": "RUNNING",
+      "info": 8.0,
+      "wall_cost": 2.0,
+      "gpu_cost": 1.0,
+      "opus_cost": 0.0,
+      "kind": "gravity",
+      "template": "gravity-moe",
+      "task": "odyssey-o003-gravity-moe-20260819-152355",
+      "started": "2026-08-19T19:24:20Z",
+      "contract": "workspace/campaign/odyssey/contracts/auto/o003_gravity-moe.md"
+    },
+    {
+      "id": "AUTO-O004-external-science-dense",
+      "oxx": "O004",
+      "title": "baseline TPS + fast-doctor",
+      "status": "RUNNING",
+      "info": 8.0,
+      "wall_cost": 2.0,
+      "gpu_cost": 1.0,
+      "opus_cost": 0.0,
+      "kind": "architecture-first",
+      "template": "external-science-dense",
+      "task": "odyssey-o004-external-science-dense-20260819-152422",
+      "started": "2026-08-19T19:24:43Z",
+      "contract": "workspace/campaign/odyssey/contracts/auto/o004_external-science-dense.md"
     }
   ],
   "history": [],
@@ -401,7 +433,9 @@
     "odyssey-o003-external-science-moe-20260819-030737",
     "odyssey-o003-sensitivity-map-20260819-144202",
     "odyssey-o005-sensitivity-map-20260819-135200",
-    "odyssey-o006-transfer-control-20260819-131420"
+    "odyssey-o006-transfer-control-20260819-131420",
+    "odyssey-o001-gravity-hybrid-20260819-150817",
+    "odyssey-o006-sensitivity-map-20260819-150812"
   ],
   "metrics": {
     "opus_calls": 1,

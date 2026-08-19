@@ -156,9 +156,337 @@
     "metadata_bytes": null,
     "corrections": null,
     "reconstruction": null,
-    "per_organ_sensitivity": null,
-    "per_expert_sensitivity": null,
-    "_evidence": "MEASURED (census)",
+    "per_organ_sensitivity": {
+      "baseline": {
+        "battery": "12/12",
+        "refusals": "0/2",
+        "seal_verdict": "PASS_WITH_WARNINGS",
+        "_label": "MEASURED"
+      },
+      "_label": "MEASURED",
+      "_evidence": "MEASURED (in-place mlx ablation; canonical HF snapshot untouched)",
+      "treatments": {
+        "zero": "effective-zero: quantized organs via scales/biases=0; dense via weight=0",
+        "round8": "affine 8-bit quantize\u2192dequantize (group 64) of dequantized organ; re-stored in the loaded codec. On a 4-bit specimen this is a 4-bit\u21928-bit-grid\u21924-bit round-trip (near-identity for already-4-bit organs; real 8-bit snap for unquantized norms)."
+      },
+      "embed": {
+        "n_modules": 1,
+        "_label": "MEASURED",
+        "zero": {
+          "battery": "0/12",
+          "refusals": "0/2",
+          "seal_verdict": "PASS_WITH_WARNINGS",
+          "delta_hits": -12,
+          "delta_refusals": 0,
+          "seal_verdict_changed": false,
+          "error": null,
+          "_label": "MEASURED",
+          "wall_s": 3.563,
+          "n_modules": 1
+        },
+        "round8": {
+          "battery": "12/12",
+          "refusals": "0/2",
+          "seal_verdict": "PASS_WITH_WARNINGS",
+          "delta_hits": 0,
+          "delta_refusals": 0,
+          "seal_verdict_changed": false,
+          "error": null,
+          "_label": "MEASURED",
+          "wall_s": 3.598,
+          "n_modules": 1
+        }
+      },
+      "attn": {
+        "n_modules": 288,
+        "_label": "MEASURED",
+        "zero": {
+          "battery": "0/12",
+          "refusals": "0/2",
+          "seal_verdict": "PASS_WITH_WARNINGS",
+          "delta_hits": -12,
+          "delta_refusals": 0,
+          "seal_verdict_changed": false,
+          "error": null,
+          "_label": "MEASURED",
+          "wall_s": 3.536,
+          "n_modules": 288
+        },
+        "round8": {
+          "battery": "12/12",
+          "refusals": "0/2",
+          "seal_verdict": "PASS_WITH_WARNINGS",
+          "delta_hits": 0,
+          "delta_refusals": 0,
+          "seal_verdict_changed": false,
+          "error": null,
+          "_label": "MEASURED",
+          "wall_s": 3.562,
+          "n_modules": 288
+        }
+      },
+      "router": {
+        "n_modules": 48,
+        "_label": "MEASURED",
+        "zero": {
+          "battery": "0/12",
+          "refusals": "0/2",
+          "seal_verdict": "PASS_WITH_WARNINGS",
+          "delta_hits": -12,
+          "delta_refusals": 0,
+          "seal_verdict_changed": false,
+          "error": null,
+          "_label": "MEASURED",
+          "wall_s": 3.528,
+          "n_modules": 48
+        },
+        "round8": {
+          "battery": "12/12",
+          "refusals": "0/2",
+          "seal_verdict": "PASS_WITH_WARNINGS",
+          "delta_hits": 0,
+          "delta_refusals": 0,
+          "seal_verdict_changed": false,
+          "error": null,
+          "_label": "MEASURED",
+          "wall_s": 3.518,
+          "n_modules": 48
+        }
+      },
+      "expert": {
+        "n_modules": 144,
+        "_label": "MEASURED",
+        "zero": {
+          "battery": "0/12",
+          "refusals": "0/2",
+          "seal_verdict": "PASS_WITH_WARNINGS",
+          "delta_hits": -12,
+          "delta_refusals": 0,
+          "seal_verdict_changed": false,
+          "error": null,
+          "_label": "MEASURED",
+          "wall_s": 3.533,
+          "n_modules": 144
+        },
+        "round8": {
+          "battery": "12/12",
+          "refusals": "0/2",
+          "seal_verdict": "PASS_WITH_WARNINGS",
+          "delta_hits": 0,
+          "delta_refusals": 0,
+          "seal_verdict_changed": false,
+          "error": null,
+          "_label": "MEASURED",
+          "wall_s": 3.759,
+          "n_modules": 144
+        }
+      },
+      "mlp_dense": {
+        "n_modules": 0,
+        "_label": "MEASURED",
+        "zero": {
+          "battery": "12/12",
+          "refusals": "0/2",
+          "seal_verdict": "PASS_WITH_WARNINGS",
+          "delta_hits": 0,
+          "delta_refusals": 0,
+          "seal_verdict_changed": false,
+          "error": null,
+          "_label": "MEASURED",
+          "wall_s": 0.0,
+          "n_modules": 0,
+          "note": "no live tensors classified as organ mlp_dense (census mlp_dense=267890544 params is vision-side; mlx_lm.qwen3_vl_moe.sanitize drops model.visual; language-MoE specimen)",
+          "hits": 12,
+          "refusal_hits": 0
+        },
+        "round8": {
+          "battery": "12/12",
+          "refusals": "0/2",
+          "seal_verdict": "PASS_WITH_WARNINGS",
+          "delta_hits": 0,
+          "delta_refusals": 0,
+          "seal_verdict_changed": false,
+          "error": null,
+          "_label": "MEASURED",
+          "wall_s": 0.0,
+          "n_modules": 0,
+          "note": "no live tensors classified as organ mlp_dense (census mlp_dense=267890544 params is vision-side; mlx_lm.qwen3_vl_moe.sanitize drops model.visual; language-MoE specimen)",
+          "hits": 12,
+          "refusal_hits": 0
+        }
+      },
+      "norm": {
+        "n_modules": 97,
+        "_label": "MEASURED",
+        "zero": {
+          "battery": "0/12",
+          "refusals": "0/2",
+          "seal_verdict": "PASS_WITH_WARNINGS",
+          "delta_hits": -12,
+          "delta_refusals": 0,
+          "seal_verdict_changed": false,
+          "error": null,
+          "_label": "MEASURED",
+          "wall_s": 3.64,
+          "n_modules": 97
+        },
+        "round8": {
+          "battery": "12/12",
+          "refusals": "0/2",
+          "seal_verdict": "PASS_WITH_WARNINGS",
+          "delta_hits": 0,
+          "delta_refusals": 0,
+          "seal_verdict_changed": false,
+          "error": null,
+          "_label": "MEASURED",
+          "wall_s": 3.624,
+          "n_modules": 97
+        }
+      },
+      "lm_head": {
+        "n_modules": 1,
+        "_label": "MEASURED",
+        "zero": {
+          "battery": "0/12",
+          "refusals": "0/2",
+          "seal_verdict": "PASS_WITH_WARNINGS",
+          "delta_hits": -12,
+          "delta_refusals": 0,
+          "seal_verdict_changed": false,
+          "error": null,
+          "_label": "MEASURED",
+          "wall_s": 3.524,
+          "n_modules": 1
+        },
+        "round8": {
+          "battery": "12/12",
+          "refusals": "0/2",
+          "seal_verdict": "PASS_WITH_WARNINGS",
+          "delta_hits": 0,
+          "delta_refusals": 0,
+          "seal_verdict_changed": false,
+          "error": null,
+          "_label": "MEASURED",
+          "wall_s": 3.525,
+          "n_modules": 1
+        }
+      },
+      "other": {
+        "n_modules": 0,
+        "_label": "MEASURED",
+        "zero": {
+          "battery": "12/12",
+          "refusals": "0/2",
+          "seal_verdict": "PASS_WITH_WARNINGS",
+          "delta_hits": 0,
+          "delta_refusals": 0,
+          "seal_verdict_changed": false,
+          "error": null,
+          "_label": "MEASURED",
+          "wall_s": 0.0,
+          "n_modules": 0,
+          "note": "no live tensors classified as organ other (census other=122710016 params is vision-side; mlx_lm.qwen3_vl_moe.sanitize drops model.visual; language-MoE specimen)",
+          "hits": 12,
+          "refusal_hits": 0
+        },
+        "round8": {
+          "battery": "12/12",
+          "refusals": "0/2",
+          "seal_verdict": "PASS_WITH_WARNINGS",
+          "delta_hits": 0,
+          "delta_refusals": 0,
+          "seal_verdict_changed": false,
+          "error": null,
+          "_label": "MEASURED",
+          "wall_s": 0.0,
+          "n_modules": 0,
+          "note": "no live tensors classified as organ other (census other=122710016 params is vision-side; mlx_lm.qwen3_vl_moe.sanitize drops model.visual; language-MoE specimen)",
+          "hits": 12,
+          "refusal_hits": 0
+        }
+      }
+    },
+    "per_expert_sensitivity": {
+      "_label": "MEASURED",
+      "_evidence": "MEASURED (zero/round8 one expert index across all MoE layers)",
+      "hot": {
+        "expert_id": 40,
+        "source": "packet.routing.hot_set",
+        "_label": "MEASURED",
+        "zero": {
+          "battery": "12/12",
+          "refusals": "0/2",
+          "seal_verdict": "PASS_WITH_WARNINGS",
+          "delta_hits": 0,
+          "delta_refusals": 0,
+          "seal_verdict_changed": false,
+          "error": null,
+          "_label": "MEASURED",
+          "wall_s": 3.522,
+          "n_modules": 144
+        },
+        "round8": {
+          "battery": "12/12",
+          "refusals": "0/2",
+          "seal_verdict": "PASS_WITH_WARNINGS",
+          "delta_hits": 0,
+          "delta_refusals": 0,
+          "seal_verdict_changed": false,
+          "error": null,
+          "_label": "MEASURED",
+          "wall_s": 3.547,
+          "n_modules": 144
+        },
+        "hot_set": [
+          40,
+          10,
+          109,
+          115,
+          49,
+          87,
+          127,
+          96,
+          114,
+          18,
+          38,
+          46,
+          51,
+          79,
+          8,
+          61
+        ]
+      },
+      "random": {
+        "expert_id": 78,
+        "source": "Random(0xa3) excluding hot_set",
+        "_label": "MEASURED",
+        "zero": {
+          "battery": "12/12",
+          "refusals": "0/2",
+          "seal_verdict": "PASS_WITH_WARNINGS",
+          "delta_hits": 0,
+          "delta_refusals": 0,
+          "seal_verdict_changed": false,
+          "error": null,
+          "_label": "MEASURED",
+          "wall_s": 3.529,
+          "n_modules": 144
+        },
+        "round8": {
+          "battery": "12/12",
+          "refusals": "0/2",
+          "seal_verdict": "PASS_WITH_WARNINGS",
+          "delta_hits": 0,
+          "delta_refusals": 0,
+          "seal_verdict_changed": false,
+          "error": null,
+          "_label": "MEASURED",
+          "wall_s": 3.528,
+          "n_modules": 144
+        }
+      }
+    },
+    "_evidence": "MEASURED (census); MEASURED (per_organ_sensitivity, in-place mlx ablation)",
     "stored_bpw": 16.0,
     "organs_bytes_GB": {
       "embed": 0.63,
@@ -170,7 +498,8 @@
       "lm_head": 0.62,
       "other": 0.25
     },
-    "active_bytes_per_token_bf16": 7783328224
+    "active_bytes_per_token_bf16": 7783328224,
+    "sensitivity_receipt": "receipts/odyssey-i/O006_SENSITIVITY.json"
   },
   "execution": {
     "token_ns": null,
@@ -286,8 +615,8 @@
     "_evidence": "MEASURED route/doctor (O006_EXTERNAL vs O005_EXTERNAL); MEASURED organs/stored_bpw (census); DERIVED cells"
   },
   "next": [
+    "A3 per-organ sensitivity MEASURED: zero drops hits on embed, attn, router, expert, norm, lm_head; round8 drops hits on nothing (baseline 12/12, 4bit-mlx)",
     "transfer-control vs O005 MEASURED (unchanged=2 retuned=0 patient_specific=2 failed=0; receipts/odyssey-i/O006_TRANSFER.json)",
-    "A3 per-organ/per-expert sensitivity map (O006 language-MoE)",
     "native load_engine still Unimplemented for this arch \u2014 NX after route/sensitivity",
     "do not treat mlx tps_specimen as BASE_TRUE_TPS; re-time on a clean box if a native path lands"
   ],
@@ -301,5 +630,5 @@
     ],
     "_evidence": "DERIVED (doctor_seal.seal structural)"
   },
-  "phase": "ROUTEMAP"
+  "phase": "SENSITIVITY"
 }

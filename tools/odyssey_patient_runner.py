@@ -103,6 +103,7 @@ DEFAULT_4BIT = Path.home() / ".cache/mlx/odyssey/O005-Qwen3-30B-A3B-4bit"
 QUANT_DIR_BY_OXX = {
     "O005": DEFAULT_4BIT,
     "O001": Path.home() / ".cache/mlx/odyssey/O001-Falcon-H1-7B-Instruct-4bit",
+    "O003": Path.home() / ".cache/mlx/odyssey/O003-Kimi-VL-A3B-Instruct-4bit",
 }
 # H2 discriminator uses 4k and 64k; short is below the state/KV crossover.
 SSM_CTXS = (("short", 512), ("moderate", 4096), ("long", 65536))
@@ -150,6 +151,76 @@ def unwrap_lm(model):
 
 def is_moe_block(mlp) -> bool:
     return mlp is not None and hasattr(mlp, "gate") and hasattr(mlp, "switch_mlp")
+
+
+def _has_shared_expert(mlp) -> bool:
+    return any(hasattr(mlp, a) for a in ("shared_expert", "shared_mlp", "shared_experts"))
+
+
+def _is_deepseek_gate(gate) -> bool:
+    """MoEGate (DeepSeek-V3 / Kimi-VL language): gate(x) -> (inds, scores)."""
+    return gate is not None and (
+        hasattr(gate, "n_routed_experts")
+        or hasattr(gate, "e_score_correction_bias")
+        or type(gate).__name__ == "MoEGate"
+    )
+
+
+def moe_live_attrs(mlp) -> dict | None:
+    """Live router dims for Qwen3-MoE (Linear gate) and DeepSeek-V3 (MoEGate)."""
+    if not is_moe_block(mlp):
+        return None
+    gate = mlp.gate
+    if _is_deepseek_gate(gate):
+        top_k = int(getattr(gate, "top_k", getattr(mlp, "num_experts_per_tok", -1)))
+        n_exp = int(getattr(gate, "n_routed_experts", -1))
+        if n_exp < 0:
+            sw = getattr(mlp, "switch_mlp", None)
+            gp = getattr(sw, "gate_proj", None) if sw is not None else None
+            w = getattr(gp, "weight", None) if gp is not None else None
+            if w is not None and hasattr(w, "shape") and len(w.shape) >= 3:
+                n_exp = int(w.shape[0])
+        norm = bool(getattr(gate, "norm_topk_prob", False))
+        cfg = getattr(mlp, "config", None)
+        n_shared = getattr(cfg, "n_shared_experts", None) if cfg is not None else None
+        scoring = getattr(cfg, "scoring_func", "sigmoid") if cfg is not None else "sigmoid"
+        topk_method = getattr(cfg, "topk_method", "noaux_tc") if cfg is not None else "noaux_tc"
+        return {
+            "top_k": top_k,
+            "norm_topk_prob": norm,
+            "num_experts": n_exp,
+            "has_gate": True,
+            "has_switch_mlp": True,
+            "has_shared": _has_shared_expert(mlp),
+            "n_shared_experts": n_shared,
+            "scoring_func": scoring,
+            "topk_method": topk_method,
+            "router_style": "deepseek_v3",
+            "router_path": (
+                f"{scoring} -> {topk_method} top-{top_k} -> "
+                f"{'renormalize' if norm else 'no-renorm'}"
+            ),
+        }
+    top_k = int(getattr(mlp, "top_k", -1))
+    n_exp = int(getattr(mlp, "num_experts", -1))
+    norm = bool(getattr(mlp, "norm_topk_prob", False))
+    return {
+        "top_k": top_k,
+        "norm_topk_prob": norm,
+        "num_experts": n_exp,
+        "has_gate": True,
+        "has_switch_mlp": True,
+        "has_shared": _has_shared_expert(mlp),
+        "n_shared_experts": None,
+        "scoring_func": "softmax",
+        "topk_method": "softmax_argpartition",
+        "router_style": "qwen3_moe",
+        "router_path": (
+            "softmax -> top-8 -> renormalize (norm_topk_prob=true)"
+            if top_k == 8 and norm
+            else f"softmax -> top-{top_k} -> {'renormalize' if norm else 'no-renorm'}"
+        ),
+    }
 
 
 def default_quant_dir(oxx: str) -> Path:
@@ -516,6 +587,8 @@ class RouteRecorder:
 
 
 class RouteTap:
+    """Tap Qwen3 Linear-gate or DeepSeek MoEGate; language-MoE only (vision skipped)."""
+
     def __init__(self, orig, layer_i: int, rec: RouteRecorder):
         self.orig = orig
         self.layer_i = layer_i
@@ -523,11 +596,17 @@ class RouteTap:
 
     def __call__(self, x, *a, **k):
         g = self.orig.gate(x)
-        g = mx.softmax(g, axis=-1, precise=True)
-        kth = -int(self.orig.top_k)
-        inds = mx.argpartition(g, kth=kth, axis=-1)[..., kth:]
+        if isinstance(g, (tuple, list)):
+            # DeepSeek / Kimi-VL language MoEGate: (inds, scores)
+            inds = g[0]
+        else:
+            # Qwen3-MoE: Linear logits
+            g = mx.softmax(g, axis=-1, precise=True)
+            kth = -int(self.orig.top_k)
+            inds = mx.argpartition(g, kth=kth, axis=-1)[..., kth:]
         mx.eval(inds)
-        ii = np.array(inds).reshape(-1, int(self.orig.top_k))
+        top_k = int(self.rec.top_k)
+        ii = np.array(inds).reshape(-1, top_k)
         self.rec.on_inds(self.layer_i, ii)
         return self.orig(x, *a, **k)
 
@@ -541,16 +620,14 @@ def inspect_router(layers) -> dict:
         mlp = getattr(layer, "mlp", None)
         if is_moe_block(mlp):
             moe.append(i)
-            if hasattr(mlp, "shared_expert") or hasattr(mlp, "shared_mlp"):
+            if _has_shared_expert(mlp):
                 shared.append(i)
             if not src:
                 try:
                     src = inspect.getsource(type(mlp))
                 except (OSError, TypeError):
                     src = ""
-        elif mlp is not None and (
-            hasattr(mlp, "shared_expert") or hasattr(mlp, "shared_mlp")
-        ):
+        elif mlp is not None and _has_shared_expert(mlp):
             shared.append(i)
     source_ok = (
         "softmax" in src
@@ -560,17 +637,9 @@ def inspect_router(layers) -> dict:
     ) or (
         "softmax" in src and "norm_topk_prob" in src and "top_k" in src
     )
-    live = None
-    if moe:
-        b = layers[moe[0]].mlp
-        live = {
-            "top_k": int(getattr(b, "top_k", -1)),
-            "norm_topk_prob": bool(getattr(b, "norm_topk_prob", False)),
-            "num_experts": int(getattr(b, "num_experts", -1)),
-            "has_gate": hasattr(b, "gate"),
-            "has_switch_mlp": hasattr(b, "switch_mlp"),
-            "has_shared": hasattr(b, "shared_expert") or hasattr(b, "shared_mlp"),
-        }
+    live = moe_live_attrs(layers[moe[0]].mlp) if moe else None
+    is_qwen = bool(live) and live.get("router_style") == "qwen3_moe"
+    if moe and is_qwen:
         router_ok = (
             live["top_k"] == 8
             and live["norm_topk_prob"] is True
@@ -580,19 +649,30 @@ def inspect_router(layers) -> dict:
             and len(shared) == 0
             and source_ok
         )
+        path = live["router_path"] if router_ok else "UNVERIFIED"
+    elif moe:
+        # DeepSeek-V3 / Kimi-VL language MoE — Qwen3-MoE assertions are N/A.
+        router_ok = "N/A"
+        path = live["router_path"] if live else "UNVERIFIED"
     else:
         router_ok = False
+        path = "UNVERIFIED"
     return {
-        "router_ok": bool(router_ok),
+        "router_ok": router_ok,
         "moe_layer_indices": moe,
         "moe_layers": f"{len(moe)}/{len(layers)}",
         "n_layers": len(layers),
         "n_moe": len(moe),
         "shared_expert_layers": shared,
         "no_shared": len(shared) == 0,
-        "source_has_softmax_topk_renorm": source_ok,
+        "source_has_softmax_topk_renorm": source_ok if is_qwen else "N/A",
         "live": live,
-        "path": "softmax -> top-8 -> renormalize (norm_topk_prob=true)" if router_ok else "UNVERIFIED",
+        "path": path,
+        "qwen3_moe_assertions": (
+            "recorded"
+            if is_qwen
+            else "N/A — not Qwen3-MoE (language-MoE is DeepSeek-V3 / Kimi-VL style)"
+        ),
     }
 
 
@@ -613,6 +693,76 @@ def thinking_templates(tok) -> tuple[str | None, str | None, str]:
         return None, None, f"chat_template failed: {type(e).__name__}: {e}"
 
 
+def hf_model_type(path: Path) -> str | None:
+    cfg = path / "config.json"
+    if not cfg.exists():
+        return None
+    try:
+        return json.loads(cfg.read_text()).get("model_type")
+    except (OSError, json.JSONDecodeError):
+        return None
+
+
+def ensure_tiktoken_local_read() -> None:
+    """tiktoken.read_file requires blobfile for local paths. Moonshot tiktoken.model
+    is on disk; open() is enough and avoids a convert-time ImportError.
+    """
+    try:
+        import tiktoken.load as tkl
+    except ImportError:
+        return
+    if getattr(tkl.read_file, "_odyssey_local", False):
+        return
+    orig = tkl.read_file
+
+    def read_file(blobpath: str) -> bytes:
+        if not str(blobpath).startswith(("http://", "https://")):
+            with open(blobpath, "rb") as f:
+                return f.read()
+        return orig(blobpath)
+
+    read_file._odyssey_local = True  # type: ignore[attr-defined]
+    tkl.read_file = read_file
+    log("patched tiktoken.load.read_file for local tiktoken.model (no blobfile)")
+
+
+def ensure_kimi_vl_sanitize_patch() -> None:
+    """mlx_lm.kimi_vl.sanitize stacks experts and drops the vision tower, but
+    does not split MLA kv_b_proj -> embed_q / unembed_out (deepseek_v3 does).
+    Without this, load_weights fails with 27 leftover kv_b_proj tensors.
+    """
+    from mlx_lm.models import kimi_vl
+
+    if getattr(kimi_vl.Model.sanitize, "_odyssey_kv_split", False):
+        return
+    orig = kimi_vl.Model.sanitize
+
+    def sanitize(self, weights):
+        weights = orig(self, weights)
+        tc = self.args.text_config
+        n_layers = int(tc.num_hidden_layers)
+        n_heads = int(tc.num_attention_heads)
+        nope = int(tc.qk_nope_head_dim)
+        v_dim = int(tc.v_head_dim)
+        head_dim = nope + v_dim
+        for li in range(n_layers):
+            prefix = f"language_model.model.layers.{li}.self_attn"
+            key = f"{prefix}.kv_b_proj.weight"
+            if key not in weights:
+                continue
+            v = weights.pop(key)
+            v = v.reshape(n_heads, head_dim, -1)
+            weights[f"{prefix}.embed_q.weight"] = mx.contiguous(
+                v[:, :nope, :].swapaxes(-1, -2)
+            )
+            weights[f"{prefix}.unembed_out.weight"] = mx.contiguous(v[:, nope:, :])
+        return weights
+
+    sanitize._odyssey_kv_split = True  # type: ignore[attr-defined]
+    kimi_vl.Model.sanitize = sanitize
+    log("patched mlx_lm.kimi_vl.Model.sanitize (MLA kv_b_proj -> embed_q/unembed_out)")
+
+
 def convert_4bit(hf_path: Path, dest: Path) -> Path:
     if (dest / "config.json").exists() and any(dest.glob("*.safetensors")):
         log(f"reusing 4-bit mlx at {dest}")
@@ -624,20 +774,35 @@ def convert_4bit(hf_path: Path, dest: Path) -> Path:
         subprocess.run(["rm", "-rf", str(dest)], check=True)
     dest.parent.mkdir(parents=True, exist_ok=True)
     log(f"mlx_lm.convert -q 4bit: {hf_path} -> {dest}")
-    cmd = [
-        sys.executable,
-        "-m",
-        "mlx_lm",
-        "convert",
-        "--hf-path",
-        str(hf_path),
-        "--mlx-path",
-        str(dest),
-        "-q",
-        "--q-bits",
-        "4",
-    ]
-    subprocess.run(cmd, check=True)
+    if hf_model_type(hf_path) == "kimi_vl":
+        # In-process so the MLA kv_b_proj sanitize patch is visible.
+        ensure_tiktoken_local_read()
+        ensure_kimi_vl_sanitize_patch()
+        from mlx_lm.convert import convert as mlx_convert
+
+        mlx_convert(
+            hf_path=str(hf_path),
+            mlx_path=str(dest),
+            quantize=True,
+            q_bits=4,
+            trust_remote_code=True,
+        )
+    else:
+        cmd = [
+            sys.executable,
+            "-m",
+            "mlx_lm",
+            "convert",
+            "--hf-path",
+            str(hf_path),
+            "--mlx-path",
+            str(dest),
+            "-q",
+            "--q-bits",
+            "4",
+            "--trust-remote-code",
+        ]
+        subprocess.run(cmd, check=True)
     if not (dest / "config.json").exists():
         raise RuntimeError(f"4-bit convert produced no config at {dest}")
     return dest
@@ -669,6 +834,8 @@ def organ_of(path: str, *, moe: bool) -> str:
             )
         ):
             return "attn"
+        if "shared_expert" in n:
+            return "shared_expert"
         if "switch_mlp" in n or ".experts." in n:
             return "expert"
         if "gate_proj" not in n and (
@@ -999,7 +1166,12 @@ def make_seal_candidate(
                     "4-bit affine MLX quant (router gates 8-bit) — Doctor/route are under quant, "
                     "not bf16-canonical"
                     if oxx == "O005"
-                    else "4-bit affine MLX quant — Doctor/TPS are under quant, not bf16-canonical"
+                    else (
+                        "4-bit affine MLX quant — Doctor/route/TPS under quant, not bf16-canonical; "
+                        "vision tower skipped (language-MoE router only)"
+                        if oxx == "O003"
+                        else "4-bit affine MLX quant — Doctor/TPS are under quant, not bf16-canonical"
+                    )
                 )
                 if quant.startswith("4bit")
                 else "bf16 load; no quant caveat on this run"
@@ -1719,11 +1891,18 @@ def update_packet(packet_path: Path, receipt: dict) -> None:
             "tokens_observed": route["tokens_observed"],
             "_evidence": f"MEASURED (mlx RouteTap over real tokens, {oxx}_EXTERNAL.json)",
         }
-        nxt = [
-            "A3 per-organ/per-expert sensitivity map (experts = 95% of body, 11% active/token)",
-            "native qwen3moe in load_engine still Unimplemented — NX after route/sensitivity",
-            "do not treat mlx tps_specimen as BASE_TRUE_TPS; re-time on a clean box if a native path lands",
-        ]
+        if oxx == "O005":
+            nxt = [
+                "A3 per-organ/per-expert sensitivity map (experts = 95% of body, 11% active/token)",
+                "native qwen3moe in load_engine still Unimplemented — NX after route/sensitivity",
+                "do not treat mlx tps_specimen as BASE_TRUE_TPS; re-time on a clean box if a native path lands",
+            ]
+        else:
+            nxt = [
+                f"A3 per-organ/per-expert sensitivity map ({oxx} language-MoE)",
+                "native load_engine still Unimplemented for this arch — NX after route/sensitivity",
+                "do not treat mlx tps_specimen as BASE_TRUE_TPS; re-time on a clean box if a native path lands",
+            ]
     pkt["doctor"] = {
         **{k: v for k, v in (pkt.get("doctor") or {}).items()},
         "fast_doctor_seal_ref": doctor["seal_ref"],
@@ -1933,6 +2112,14 @@ def main() -> int:
                 "router gates at 8-bit). Battery/route/TPS are SPECIMEN under quant — not "
                 "bf16-canonical Doctor. Canonical HF snapshot was not modified or deleted."
             )
+        elif args.oxx == "O003":
+            fidelity = (
+                "4-bit affine MLX quantization (group 64). Battery/route/TPS are SPECIMEN "
+                "under quant — not bf16-canonical Doctor. Canonical HF snapshot was not "
+                "modified or deleted. mlx_lm.kimi_vl.sanitize drops vision_tower + "
+                "multi_modal_projector; language-MoE router only (DeepSeek-V3 sigmoid/"
+                "noaux_tc, 6/64 + 2 shared)."
+            )
         else:
             fidelity = (
                 "4-bit affine MLX quantization (group 64). Battery/TPS are SPECIMEN under "
@@ -1948,9 +2135,12 @@ def main() -> int:
     if n_src < 1:
         raise SystemExit(f"canonical weights missing after convert? {weights}")
 
+    if hf_model_type(load_path) == "kimi_vl" or hf_model_type(weights) == "kimi_vl":
+        ensure_tiktoken_local_read()
+        ensure_kimi_vl_sanitize_patch()
     log(f"loading {quant} from {load_path} ...")
     t_load = time.perf_counter()
-    model, tok = load(str(load_path))
+    model, tok = load(str(load_path), tokenizer_config={"trust_remote_code": True})
     log(f"loaded in {time.perf_counter() - t_load:.1f}s")
 
     lm = unwrap_lm(model)
@@ -1976,16 +2166,25 @@ def main() -> int:
             "RouteRecorder no-op; route_skipped=true"
         )
     else:
-        live = live or {"top_k": 8, "num_experts": 128}
-        n_experts = int(live.get("num_experts") or 128)
-        top_k = int(live.get("top_k") or 8)
+        live = live or {}
+        n_experts = int(live.get("num_experts") or 0)
+        top_k = int(live.get("top_k") or 0)
+        if n_experts <= 0 or top_k <= 0:
+            raise SystemExit(
+                f"MoE live attrs missing num_experts/top_k: {live!r} "
+                "(cannot tap language-MoE router)"
+            )
         rec = RouteRecorder(n_layers, n_experts, top_k, moe_idx)
         for i, layer in enumerate(layers):
             mlp = getattr(layer, "mlp", None)
             if is_moe_block(mlp):
                 layer.mlp = RouteTap(mlp, i, rec)
                 wrapped += 1
-        log(f"{n_layers} layers, {wrapped} MoE layers wrapped (expect {wrapped}/{n_layers})")
+        log(
+            f"{n_layers} layers, {wrapped} MoE layers wrapped "
+            f"(style={live.get('router_style')} {top_k}/{n_experts}; "
+            f"vision skipped if multimodal)"
+        )
 
     if args.sensitivity:
         return run_sensitivity_mode(
@@ -2157,16 +2356,34 @@ def main() -> int:
     log(f"doctor_seal {verdict} -> {seal_path}")
 
     machine = maybe_machine_note()
+    is_qwen_moe = bool(live) and live.get("router_style") == "qwen3_moe"
+    qwen_na = (
+        None
+        if is_qwen_moe
+        else "N/A — Qwen3-MoE assertion; this patient is not Qwen3-MoE"
+    )
     config_assertions = {
-        "router_ok": cfg["router_ok"],
+        "router_ok": cfg["router_ok"] if is_qwen_moe else "N/A",
         "moe_layers": cfg["moe_layers"],
-        "thinking_template_ok": bool(thinking_ok) if t_on is not None else None,
+        "thinking_template_ok": (
+            bool(thinking_ok) if (t_on is not None and is_qwen_moe) else "N/A"
+        ),
         "thinking_status": think_status,
-        "no_shared_expert": cfg["no_shared"],
+        "no_shared_expert": cfg["no_shared"] if is_qwen_moe else "N/A",
         "n_layers": n_layers,
         "n_moe": cfg["n_moe"],
         "router_path": cfg["path"],
         "route_skipped": skip_route,
+        "qwen3_moe_assertions": cfg.get("qwen3_moe_assertions"),
+        "family": (
+            "qwen3_moe"
+            if is_qwen_moe
+            else (live or {}).get("router_style") or getattr(model, "model_type", None)
+        ),
+        "vision_tower_skipped": bool(
+            getattr(model, "model_type", None) == "kimi_vl"
+            or hasattr(model, "language_model")
+        ),
         "thinking": {
             "templates_differ": templates_differ,
             "empty_think_block_when_false": empty_off,
@@ -2178,6 +2395,7 @@ def main() -> int:
             "status": think_status,
         },
         "live_block": live,
+        "qwen3_na_note": qwen_na,
     }
 
     doctor = {
@@ -2195,7 +2413,19 @@ def main() -> int:
         "refusal_items": refusal_items,
     }
 
-    vs = None if skip_route else ground_vs_abliterated(route, doctor, round(tps, 3))
+    if skip_route:
+        vs = None
+    elif args.oxx == "O005":
+        vs = ground_vs_abliterated(route, doctor, round(tps, 3))
+    else:
+        vs = {
+            "applicable": False,
+            "label": "N/A",
+            "note": (
+                "O005-only Qwen3-30B-A3B vs abliterated ground; "
+                f"not applicable to {args.oxx}"
+            ),
+        }
     ssm_vs_kv_rows = (ssm_accounting or {}).get("rows") if ssm_accounting else None
 
     receipt = {
@@ -2270,7 +2500,9 @@ def main() -> int:
         )
     else:
         assert receipt["route"]["entropy_avg"] > 0
-        assert 0 <= receipt["route"]["entropy_max"] <= 7.001
+        n_exp = int(receipt["route"].get("experts") or 0)
+        ent_cap = max(7.001, (float(np.log2(n_exp)) + 0.001) if n_exp > 1 else 7.001)
+        assert 0 <= receipt["route"]["entropy_max"] <= ent_cap
         log(
             f"{args.oxx} external ok: {receipt['tps_specimen']} tps "
             f"{receipt['route']['entropy_avg']} bits quant={quant}"
@@ -2279,4 +2511,10 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    rc = main()
+    # MLX/Metal often SIGSEGV in atexit after a successful specimen (exit 139
+    # with artifacts already written). Hard-exit so the process status matches
+    # the science; skip destructor teardown.
+    if rc == 0:
+        os._exit(0)
+    sys.exit(rc)

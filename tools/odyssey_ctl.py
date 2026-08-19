@@ -32,9 +32,11 @@ import json
 import os
 import re
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -102,6 +104,7 @@ NOVELTY_TEMPLATES = tuple(f"novelty-{lane}" for lane in novelty.LANES)
 TEMPLATES = (
     "external-science-moe",
     "external-science-dense",
+    "route-map",
     "sensitivity-map",
     "transfer-control",
     "gravity-moe",
@@ -114,6 +117,26 @@ TEMPLATES = (
     "nx-state-hybrid",
     "nx-dense",
 ) + NOVELTY_TEMPLATES
+# Known runner invocations. No novelty, no code change — the orchestrator
+# execs tools/odyssey_patient_runner.py itself (S004 §52/§55).
+DETERMINISTIC_TEMPLATES = frozenset({
+    "external-science-moe",
+    "external-science-dense",
+    "route-map",
+    "sensitivity-map",
+    "gravity-moe",
+    "gravity-dense",
+    "gravity-hybrid",
+    "gravity-aggressive-moe",
+    "gravity-aggressive-dense",
+    "gravity-aggressive-hybrid",
+    "nx-gather-moe",
+    "nx-state-hybrid",
+    "nx-dense",
+    "transfer-control",
+})
+DEFAULT_LANE_TIMEOUT_MIN = 30
+LANES_DIR = ODYSSEY / "lanes"
 # Every current template is DATA-PRODUCING: it RUNS the existing runner and
 # delivers a receipt + packet fields. Incidental tools/*.py diffs are noise.
 # Empty: no template claims the runner, so lanes are parallel-safe.
@@ -130,6 +153,7 @@ TRANSFER_REL = "workspace/campaign/odyssey/TRANSFER_MATRIX.json"
 TEMPLATE_MECHANISM = {
     "external-science-moe": "external-science",
     "external-science-dense": "external-science",
+    "route-map": "route-map",
     "sensitivity-map": "sensitivity-map",
     "transfer-control": "transfer-control",
     "gravity-moe": "gravity-moe",
@@ -1218,14 +1242,21 @@ def rebuild_completions(*, completed_at: str | None = None,
     rec_dir = Path(receipt_dir) if receipt_dir else RECEIPT_DIR
     dest = Path(path) if path else COMPLETIONS
     doc = load_completions(dest) if dest.is_file() else empty_completions()
+    have_backfill_files = any(
+        (rec_dir / fname).is_file() for _, _, fname in COMPLETION_BACKFILL
+    )
     backfill_keys = {(p, m) for p, m, _ in COMPLETION_BACKFILL}
-    kept = [
-        e for e in (doc.get("entries") or [])
-        if (e.get("patient_id"), e.get("mechanism_id")) not in backfill_keys
-    ]
-    doc["entries"] = kept
+    # Sparse worktrees omit receipts/; do not strip sealed backfill entries.
+    if have_backfill_files:
+        kept = [
+            e for e in (doc.get("entries") or [])
+            if (e.get("patient_id"), e.get("mechanism_id")) not in backfill_keys
+        ]
+        doc["entries"] = kept
     head = git_head()
     for patient_id, mechanism_id, fname in COMPLETION_BACKFILL:
+        if not have_backfill_files:
+            break
         rec_path = rec_dir / fname
         if not rec_path.is_file():
             continue
@@ -1282,7 +1313,7 @@ def rebuild_completions(*, completed_at: str | None = None,
 def parse_science_task(name: str) -> tuple[str, str] | None:
     m = re.match(
         r"^odyssey-o(\d{3})-("
-        r"external-science-moe|external-science-dense|"
+        r"external-science-moe|external-science-dense|route-map|"
         r"sensitivity-map|transfer-control|"
         r"gravity-aggressive-moe|gravity-aggressive-dense|gravity-aggressive-hybrid|"
         r"gravity-moe|gravity-dense|gravity-hybrid|"
@@ -2824,7 +2855,10 @@ def prereq_ok(template: str, meta: dict, pkt: dict | None, census_exists: bool) 
     if meta.get("state") in {"BLOCKED", "RETIRED", "ACQUIRING"}:
         return False
     rank = phase_rank(meta, census_exists)
-    if template in {"external-science-moe", "external-science-dense", "transfer-control"}:
+    if template in {
+        "external-science-moe", "external-science-dense", "route-map",
+        "transfer-control",
+    }:
         return census_exists or rank >= PHASE_INDEX["CENSUS"]
     if template == "sensitivity-map":
         return census_exists and has_baseline(pkt)
@@ -3846,6 +3880,7 @@ Do not delete canonical weights. Never call this a Hawking NX win.
 RENDERERS = {
     "external-science-moe": lambda f, ob: render_external_science_moe(f),
     "external-science-dense": lambda f, ob: render_external_science_dense(f),
+    "route-map": lambda f, ob: render_external_science_moe(f),
     "sensitivity-map": lambda f, ob: render_sensitivity_map(f),
     "transfer-control": lambda f, ob: render_transfer_control(
         f, ob.get("reference") or TRANSFER_REF.get(ob["oxx"], "O005"),
@@ -3918,16 +3953,40 @@ def call_worker_gate(observe_fn=None, gate_fn=None) -> dict:
 SCIENCE_TASK_RE = re.compile(r"^odyssey-o\d{3}-", re.I)
 
 
-def odyssey_running_ids(state: dict) -> set[str]:
-    """Concurrent science lanes: live odyssey-oNNN-* tasks + work marked RUNNING.
+def _lane_still_running(w: dict, now_epoch: float, pid_alive_fn=None) -> bool:
+    """RUNNING and (subprocess PID live | grok status) within timeout."""
+    if w.get("status") != "RUNNING":
+        return False
+    timeout_s = float(w.get("timeout_s") or lane_timeout_s())
+    started = _started_epoch(w)
+    if started is not None and (float(now_epoch) - float(started)) > timeout_s:
+        return False
+    if w.get("kind") == "subprocess":
+        alive_fn = pid_alive_fn or _pid_alive
+        return bool(w.get("pid")) and bool(alive_fn(w.get("pid")))
+    return True
 
+
+def odyssey_running_ids(
+    state: dict,
+    now_epoch: float | None = None,
+    pid_alive_fn=None,
+) -> set[str]:
+    """Concurrent science lanes: live subprocess PIDs + live grok-novelty.
+
+    Age-capped. Dead subprocess PIDs do not consume --max-lanes.
     The controller itself may run as odyssey-autonomous-loop-*; that is not a
     patient science lane and must not consume --max-lanes.
     """
-    ids = {name for name in live_odyssey_lanes() if SCIENCE_TASK_RE.match(name)}
+    now = float(now_epoch) if now_epoch is not None else time.time()
+    ids: set[str] = set()
+    for name in live_odyssey_lanes():
+        if SCIENCE_TASK_RE.match(name):
+            ids.add(name)
     for w in state.get("work") or []:
-        if w.get("status") == "RUNNING":
-            ids.add(str(w.get("task") or w.get("id")))
+        if not _lane_still_running(w, now, pid_alive_fn=pid_alive_fn):
+            continue
+        ids.add(str(w.get("task") or w.get("id") or w.get("pid")))
     return ids
 
 
@@ -3981,6 +4040,537 @@ def _mark_running(state: dict, ob: dict, task_id: str, contract: str,
         })
 
 
+def is_deterministic_obligation(ob: dict | str) -> bool:
+    """True iff this obligation is a known runner invocation (not Grok)."""
+    if isinstance(ob, str):
+        template = ob
+        code_building = False
+    else:
+        template = (ob or {}).get("template") or ""
+        code_building = bool(
+            (ob or {}).get("code_building")
+            or (ob or {}).get("kind") in {"code", "code-building"}
+        )
+    if code_building:
+        return False
+    if template in CODE_EDIT_TEMPLATES or template in RUNNER_WRITE_TEMPLATES:
+        return False
+    if str(template).startswith("novelty-"):
+        return False
+    return template in DETERMINISTIC_TEMPLATES
+
+
+def lane_timeout_min() -> float:
+    pol = load_odyssey_policy()
+    det = pol.get("detachment") if isinstance(pol.get("detachment"), dict) else {}
+    mem = det.get("memory") if isinstance(det.get("memory"), dict) else {}
+    for src in (pol, det, mem):
+        if not isinstance(src, dict):
+            continue
+        val = src.get("lane_timeout_min")
+        if isinstance(val, bool):
+            continue
+        if isinstance(val, (int, float)) and val > 0:
+            return float(val)
+        if isinstance(val, str):
+            try:
+                n = float(val.strip())
+            except ValueError:
+                continue
+            if n > 0:
+                return n
+    return float(DEFAULT_LANE_TIMEOUT_MIN)
+
+
+def lane_timeout_s() -> int:
+    return int(lane_timeout_min() * 60)
+
+
+def epoch_iso(epoch: float) -> str:
+    return datetime.fromtimestamp(float(epoch), timezone.utc).strftime(
+        "%Y-%m-%dT%H:%M:%SZ"
+    )
+
+
+def _started_epoch(w: dict) -> float | None:
+    if w.get("started_epoch") is not None:
+        try:
+            return float(w["started_epoch"])
+        except (TypeError, ValueError):
+            pass
+    started = w.get("started")
+    if not started:
+        return None
+    text = str(started).strip()
+    if not text:
+        return None
+    try:
+        return datetime.fromisoformat(text.replace("Z", "+00:00")).timestamp()
+    except ValueError:
+        return None
+
+
+def resolve_patient_weights(oxx: str, pkt: dict | None = None,
+                            census: dict | None = None) -> str:
+    """HF snapshot / census model_dir for --weights. Empty if unknown."""
+    census_d = census if census is not None else load_census(oxx)
+    pkt_d = pkt if pkt is not None else load_packet(oxx)
+    w = weights_dir(oxx, pkt_d, census_d)
+    if w:
+        p = Path(os.path.expanduser(str(w)))
+        if p.exists():
+            return str(p)
+    man = manifest_entry(oxx)
+    src = (man.get("canonical_source") or "") if man else ""
+    snap = hf_cache_snapshot(src)
+    if snap is not None:
+        return str(snap)
+    ident = (pkt_d or {}).get("identity") or {}
+    on_disk = ident.get("on_disk")
+    if on_disk:
+        p = Path(os.path.expanduser(str(on_disk)))
+        if p.is_dir():
+            return str(p)
+    return w or ""
+
+
+def runner_argv(ob: dict, *, weights: str | None = None,
+                out: str | None = None) -> list[str]:
+    """Resolve the patient-runner argv for a deterministic template."""
+    oxx = ob.get("oxx") or ob.get("patient_id") or ""
+    template = ob.get("template") or ""
+    spec = ob.get("gravity_spec")
+    w = weights if weights is not None else resolve_patient_weights(oxx)
+    rec_rel = expected_receipt_rel(oxx, template, spec=spec)
+    if not rec_rel:
+        rec_rel = f"receipts/odyssey-i/{oxx}_{template}.json"
+    out_path = out if out is not None else rec_rel
+    packet = packet_rel(oxx)
+    argv = [
+        PREFERRED_PY,
+        RUNNER_REL,
+        "--oxx", oxx,
+        "--weights", w or f"<weights-from-{oxx}-census>",
+        "--runtime", "mlx",
+        "--out", out_path,
+        "--packet", packet,
+    ]
+    if template == "sensitivity-map":
+        argv.extend(["--route-tokens", "0", "--sensitivity"])
+        kind = arch_kind(oxx, load_packet(oxx), load_census(oxx))
+        if kind != "moe":
+            argv.append("--skip-route")
+    elif template in GRAVITY_SPEC or str(template).startswith("gravity-"):
+        gspec = spec or GRAVITY_SPEC.get(template) or "q4-g64"
+        argv.extend(["--gravity", gspec])
+        if template not in {"gravity-moe", "gravity-aggressive-moe"}:
+            argv.append("--skip-route")
+    elif template in NX_FLAG:
+        argv.append(NX_FLAG[template])
+        if template != "nx-gather-moe":
+            argv.append("--skip-route")
+    elif template == "external-science-dense":
+        argv.extend(["--route-tokens", "0", "--skip-route"])
+    elif template in {
+        "external-science-moe", "route-map", "transfer-control",
+    }:
+        argv.extend(["--route-tokens", "512"])
+    return argv
+
+
+def lane_log_path(oxx: str, mechanism: str) -> Path:
+    mech = (mechanism or "lane").replace("/", "-")
+    return LANES_DIR / f"{oxx}-{mech}.log"
+
+
+def default_spawn_runner(argv: list[str], log_path: Path, cwd: Path) -> int:
+    """Detached setsid spawn; stdout/err append to log_path. Returns PID."""
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    log_f = open(log_path, "ab")
+    try:
+        env = os.environ.copy()
+        env["PYTHONUNBUFFERED"] = "1"
+        proc = subprocess.Popen(
+            argv,
+            stdout=log_f,
+            stderr=subprocess.STDOUT,
+            cwd=str(cwd),
+            start_new_session=True,
+            close_fds=True,
+            env=env,
+        )
+    finally:
+        log_f.close()
+    return int(proc.pid)
+
+
+def kill_process_group(pid, *, kill_fn=None, sig=None) -> bool:
+    if kill_fn is not None:
+        kill_fn(pid)
+        return True
+    try:
+        ipid = int(pid)
+    except (TypeError, ValueError):
+        return False
+    sig = signal.SIGTERM if sig is None else sig
+    try:
+        os.killpg(ipid, sig)
+        return True
+    except (OSError, ProcessLookupError, PermissionError):
+        try:
+            os.kill(ipid, sig)
+            return True
+        except (OSError, ProcessLookupError, PermissionError):
+            return False
+
+
+def _receipt_path_obj(rec_path) -> Path | None:
+    if not rec_path:
+        return None
+    p = Path(rec_path)
+    if p.is_file():
+        return p
+    if not p.is_absolute():
+        alt = REPO / rec_path
+        if alt.is_file():
+            return alt
+    return p
+
+
+def _complete_subprocess_work(w: dict, *, now_epoch: float, persist: bool,
+                              status: str) -> None:
+    oxx = w.get("oxx") or ""
+    tmpl = w.get("template") or ""
+    mech = (
+        w.get("mechanism")
+        or w.get("mechanism_id")
+        or mechanism_for_template(tmpl)
+    )
+    if not oxx or not mech:
+        return
+    rec = _receipt_path_obj(w.get("receipt_path"))
+    sha = None
+    ref = None
+    if rec is not None and rec.is_file():
+        sha = file_sha256(rec)
+        try:
+            ref = str(rec.resolve().relative_to(REPO.resolve())).replace("\\", "/")
+        except ValueError:
+            name = rec.name
+            ref = name if name.startswith("receipts/") else f"receipts/odyssey-i/{name}"
+    stamp = epoch_iso(now_epoch)
+    tags = {}
+    if str(mech).startswith("gravity-") and rec is not None:
+        tags = gravity_tags_from_receipt(rec)
+    mechs = [mech]
+    if tmpl == "external-science-moe" and "route-map" not in mechs:
+        mechs.append("route-map")
+    if tmpl == "external-science-dense":
+        kind = arch_kind(oxx, load_packet(oxx), load_census(oxx))
+        if kind == "hybrid" and "ssm-accounting" not in mechs:
+            mechs.append("ssm-accounting")
+    for mechanism_id in mechs:
+        grav = str(mechanism_id).startswith("gravity-")
+        complete(
+            obligation_id=str(w.get("id") or f"{oxx}:{mechanism_id}"),
+            patient_id=oxx,
+            mechanism_id=mechanism_id,
+            status=status,
+            completed_at=stamp,
+            receipt_ref=ref,
+            receipt_sha256=sha,
+            persist=persist,
+            candidate_class=tags.get("candidate_class") if grav else None,
+            conventionality=tags.get("conventionality") if grav else None,
+        )
+    if tags and status == "VERIFIED":
+        apply_gravity_tags_to_packet(oxx, tags)
+
+
+def _mark_subprocess_running(state: dict, ob: dict, *, pid: int,
+                             now_epoch: float, receipt_path: str,
+                             timeout_s: int, argv: list[str],
+                             log_path: str) -> dict:
+    mech = (
+        ob.get("mechanism")
+        or ob.get("mechanism_id")
+        or mechanism_for_template(ob.get("template") or "")
+    )
+    started = epoch_iso(now_epoch)
+    entry = {
+        "id": ob.get("id"),
+        "oxx": ob.get("oxx"),
+        "title": ob.get("title"),
+        "status": "RUNNING",
+        "info": ob.get("info"),
+        "wall_cost": ob.get("wall_cost"),
+        "gpu_cost": ob.get("gpu_cost"),
+        "opus_cost": ob.get("opus_cost"),
+        "kind": "subprocess",
+        "template": ob.get("template"),
+        "mechanism": mech,
+        "mechanism_id": mech,
+        "pid": int(pid),
+        "started": started,
+        "started_epoch": float(now_epoch),
+        "receipt_path": receipt_path,
+        "timeout_s": int(timeout_s),
+        "argv": list(argv),
+        "log": log_path,
+        "task": f"pid:{pid}",
+        "retries": int(ob.get("retries") or 0),
+    }
+    found = False
+    for w in state.setdefault("work", []):
+        if w.get("id") == ob.get("id") or (
+            w.get("oxx") == ob.get("oxx")
+            and w.get("template") == ob.get("template")
+            and w.get("status") in {None, "READY", "FAILED", "RUNNING"}
+        ):
+            w.update(entry)
+            found = True
+            return w
+    if not found:
+        state["work"].append(entry)
+    return entry
+
+
+def launch_deterministic(
+    oblig: dict,
+    *,
+    now_epoch: float | None = None,
+    in_flight_gib: float = 0.0,
+    state: dict | None = None,
+    persist: bool = True,
+    spawn: bool = True,
+    spawn_fn=None,
+    cwd: Path | None = None,
+) -> dict:
+    """Memgate + detached runner spawn. Caller may pass wall time in."""
+    if now_epoch is None:
+        now_epoch = time.time()
+    oxx = oblig.get("oxx") or ""
+    template = oblig.get("template") or ""
+    spec = oblig.get("gravity_spec")
+    argv = runner_argv(oblig)
+    rec_rel = expected_receipt_rel(oxx, template, spec=spec) or (
+        f"receipts/odyssey-i/{oxx}_{template}.json"
+    )
+    timeout = int(oblig.get("timeout_s") or lane_timeout_s())
+    mech = (
+        oblig.get("mechanism")
+        or oblig.get("mechanism_id")
+        or mechanism_for_template(template)
+    )
+    logp = lane_log_path(oxx, mech)
+    row = {
+        "verdict": "DRY-RUN",
+        "kind": "subprocess",
+        "argv": argv,
+        "receipt_path": rec_rel,
+        "timeout_s": timeout,
+        "oxx": oxx,
+        "template": template,
+        "mechanism": mech,
+        "log": str(logp),
+        "pid": None,
+        "skip_reason": None,
+    }
+    mg = memgate_admit_lane(oblig, in_flight_gib)
+    row["memgate"] = mg.get("decision")
+    row["est_gib"] = mg.get("est_gib")
+    row["in_flight_gib"] = mg.get("in_flight_gib")
+    if mg.get("decision") == "REFUSE":
+        row["verdict"] = "SKIP"
+        row["skip_reason"] = mg.get("note") or "memgate REFUSE"
+        return row
+    if not spawn:
+        row["verdict"] = "DRY-RUN"
+        return row
+    weights = None
+    try:
+        wi = argv.index("--weights")
+        weights = argv[wi + 1] if wi + 1 < len(argv) else None
+    except ValueError:
+        weights = None
+    if weights and str(weights).startswith("<"):
+        row["verdict"] = "SKIP"
+        row["skip_reason"] = "weights not resolved"
+        return row
+    if weights and not Path(os.path.expanduser(str(weights))).exists():
+        row["verdict"] = "SKIP"
+        row["skip_reason"] = f"weights not found: {weights}"
+        return row
+    dest_cwd = Path(cwd) if cwd is not None else REPO
+    spawner = spawn_fn or default_spawn_runner
+    try:
+        pid = spawner(argv, logp, dest_cwd)
+    except (OSError, TypeError, ValueError) as exc:
+        row["verdict"] = "SKIP"
+        row["skip_reason"] = f"spawn failed: {exc}"
+        return row
+    row["pid"] = int(pid)
+    row["verdict"] = "LAUNCH"
+    st = state if state is not None else ensure_state()
+    _mark_subprocess_running(
+        st, oblig, pid=int(pid), now_epoch=float(now_epoch),
+        receipt_path=rec_rel, timeout_s=timeout, argv=argv, log_path=str(logp),
+    )
+    if persist:
+        save_state(st)
+    return row
+
+
+def reap_lanes(
+    now_epoch: float,
+    *,
+    state: dict | None = None,
+    persist: bool = True,
+    dry_run: bool = False,
+    pid_alive_fn=None,
+    kill_fn=None,
+) -> list[dict]:
+    """Self-heal RUNNING subprocess lanes. Call at the top of every tick.
+
+    PID alive & age<timeout → still RUNNING (counts toward cap).
+    PID dead & receipt exists → complete() VERIFIED.
+    PID dead & no receipt → FAILED, retry once, else REFUTED.
+    PID alive & age>timeout → kill process group, FAILED (retry once).
+    """
+    st = state if state is not None else ensure_state()
+    alive_fn = pid_alive_fn or _pid_alive
+    default_timeout = float(lane_timeout_s())
+    rows: list[dict] = []
+    mutated = False
+
+    def receipt_exists(w: dict) -> bool:
+        rec = _receipt_path_obj(w.get("receipt_path"))
+        return bool(rec is not None and rec.is_file())
+
+    def fail_or_retry(w: dict, reason: str) -> str:
+        retries = int(w.get("retries") or 0)
+        w["fail_reason"] = reason
+        if retries < 1:
+            w["retries"] = retries + 1
+            w["status"] = "READY"
+            w["pid"] = None
+            w["task"] = None
+            return "retry"
+        w["status"] = "REFUTED"
+        w["pid"] = None
+        if not dry_run:
+            _complete_subprocess_work(
+                w, now_epoch=float(now_epoch), persist=persist, status="REFUTED",
+            )
+        return "refute"
+
+    for w in list(st.get("work") or []):
+        kind = w.get("kind")
+        status = w.get("status")
+        if kind != "subprocess":
+            continue
+        if status not in {"RUNNING", "FAILED"}:
+            continue
+        pid = w.get("pid")
+        started = _started_epoch(w)
+        timeout_s = float(w.get("timeout_s") or default_timeout)
+        age = (
+            float(now_epoch) - float(started)
+            if started is not None
+            else 0.0
+        )
+        is_alive = bool(pid) and bool(alive_fn(pid))
+        has_receipt = receipt_exists(w)
+        action = None
+        note = None
+        if dry_run:
+            retries = int(w.get("retries") or 0)
+            if status == "FAILED":
+                if is_alive:
+                    action = "kill-zombie"
+                elif has_receipt:
+                    action = "verified"
+                else:
+                    action = "retry" if retries < 1 else "refute"
+            elif is_alive and age <= timeout_s:
+                action = "keep"
+            elif (not is_alive) and has_receipt:
+                action = "verified"
+            elif is_alive and age > timeout_s:
+                action = "timeout"
+            else:
+                action = "retry" if retries < 1 else "refute"
+            rows.append({
+                "id": w.get("id"), "oxx": w.get("oxx"),
+                "template": w.get("template"), "pid": pid,
+                "action": action, "status": status, "dry_run": True,
+                "retries": retries,
+            })
+            continue
+
+        if status == "FAILED":
+            if is_alive:
+                if not dry_run:
+                    kill_process_group(pid, kill_fn=kill_fn, sig=signal.SIGKILL)
+                action = "kill-zombie"
+                note = "FAILED pid still alive; SIGKILL"
+            elif has_receipt:
+                w["status"] = "VERIFIED"
+                action = "verified"
+                if not dry_run:
+                    _complete_subprocess_work(
+                        w, now_epoch=float(now_epoch), persist=persist,
+                        status="VERIFIED",
+                    )
+                mutated = True
+            else:
+                action = fail_or_retry(w, w.get("fail_reason") or "exited-no-receipt")
+                mutated = True
+            rows.append({
+                "id": w.get("id"), "oxx": w.get("oxx"),
+                "template": w.get("template"), "pid": pid,
+                "action": action, "status": w.get("status"), "note": note,
+            })
+            continue
+
+        # RUNNING
+        if is_alive and age <= timeout_s:
+            action = "keep"
+        elif (not is_alive) and has_receipt:
+            w["status"] = "VERIFIED"
+            action = "verified"
+            if not dry_run:
+                _complete_subprocess_work(
+                    w, now_epoch=float(now_epoch), persist=persist,
+                    status="VERIFIED",
+                )
+            mutated = True
+        elif is_alive and age > timeout_s:
+            if not dry_run:
+                kill_process_group(pid, kill_fn=kill_fn)
+            w["status"] = "FAILED"
+            w["fail_reason"] = "timeout"
+            mutated = True
+            action = "timeout"
+            # Retry is the next tick: FAILED + dead PID → fail_or_retry.
+        else:
+            # dead, no receipt
+            w["status"] = "FAILED"
+            mutated = True
+            action = fail_or_retry(w, "exited-no-receipt")
+
+        rows.append({
+            "id": w.get("id"), "oxx": w.get("oxx"),
+            "template": w.get("template"), "pid": pid,
+            "action": action, "status": w.get("status"),
+            "retries": w.get("retries"), "note": note,
+        })
+
+    if persist and mutated and not dry_run:
+        save_state(st)
+    return rows
+
+
 def _sys_free_ram_pct():
     """System-wide free RAM %, via macOS `memory_pressure`. None if unavailable.
     Used to override worker_gate's over-strict stale-swap REFUSE (reuse_surface
@@ -4024,11 +4614,16 @@ def _template_loads_model(template: str, ob: dict | None = None) -> bool:
     )
 
 
-def _running_model_gib(state: dict) -> float:
+def _running_model_gib(
+    state: dict,
+    now_epoch: float | None = None,
+    pid_alive_fn=None,
+) -> float:
     total = 0.0
     seen: set[tuple] = set()
+    now = float(now_epoch) if now_epoch is not None else time.time()
     for w in state.get("work") or []:
-        if w.get("status") != "RUNNING":
+        if not _lane_still_running(w, now, pid_alive_fn=pid_alive_fn):
             continue
         tmpl = w.get("template") or ""
         if not _template_loads_model(tmpl, w):
@@ -4202,12 +4797,18 @@ def run_loop(*, go: bool, max_lanes: int,
              launch_fn=None, lint_fn=None, reclaim_fn=None,
              log_path: Path | None = None, auto_dir: Path | None = None,
              persist: bool = True, consider_limit: int | None = None,
-             completions=None) -> list[dict]:
+             completions=None, spawn_fn=None, now_epoch: float | None = None,
+             pid_alive_fn=None, kill_fn=None) -> list[dict]:
     """Select, render, gate; launch only when go=True. Idempotent. Never blocks."""
     st = state if state is not None else ensure_state()
+    now = float(now_epoch) if now_epoch is not None else time.time()
+    reap_lanes(
+        now, state=st, persist=persist and go, dry_run=not go,
+        pid_alive_fn=pid_alive_fn, kill_fn=kill_fn,
+    )
     ranked = select_ready_obligations(st, completions=completions)
     cap = min(max(int(max_lanes), 0), HARD_LANE_CAP)
-    running_ids = odyssey_running_ids(st)
+    running_ids = odyssey_running_ids(st, now_epoch=now, pid_alive_fn=pid_alive_fn)
     running_n = len(running_ids)
     snap = (snapshot_fn or machine_snapshot)()
     disk = float(snap.get("disk_free_gib") or 0.0)
@@ -4230,7 +4831,7 @@ def run_loop(*, go: bool, max_lanes: int,
     limit = consider_limit if consider_limit is not None else max(cap, DEFAULT_MAX_LANES, 8)
     slots = 0 if not go else max(0, cap - running_n)
     occupied_scopes = _running_scopes(st, running_ids)
-    in_flight_gib = _running_model_gib(st)
+    in_flight_gib = _running_model_gib(st, now_epoch=now, pid_alive_fn=pid_alive_fn)
 
     for ob in ranked:
         if go and launched >= slots:
@@ -4257,7 +4858,12 @@ def run_loop(*, go: bool, max_lanes: int,
             rel = str(dest.relative_to(REPO))
         except ValueError:
             rel = str(dest)
-        lint_ok, lint_msg = (lint_fn or sg_lint)(dest)
+        det = is_deterministic_obligation(ob)
+        planned_argv = runner_argv(ob) if det else None
+        if det:
+            lint_ok, lint_msg = True, "n/a (subprocess)"
+        else:
+            lint_ok, lint_msg = (lint_fn or sg_lint)(dest)
 
         worker = None
         mg = memgate_admit_lane(ob, in_flight_gib)
@@ -4320,40 +4926,76 @@ def run_loop(*, go: bool, max_lanes: int,
             "memgate": mg.get("decision"),
             "reclaimed": reclaimed,
             "go": go,
+            "kind": "subprocess" if det else "grok",
+            "launch": "subprocess" if det else "grok-delegate",
+            "argv": planned_argv,
             "_evidence": "DERIVED (§18 run-loop decision)",
         }
 
         admitted = False
         if go and gates["verdict"] == "LAUNCH":
-            slug = f"odyssey-{ob['oxx'].lower()}-{ob['template']}"
-            fn = launch_fn or default_launch
-            try:
-                rc, task_id, output = fn(
-                    slug, dest, model_loading=ob["model_loading"],
+            if det:
+                launched_row = launch_deterministic(
+                    ob, now_epoch=now, in_flight_gib=in_flight_gib,
+                    state=st, persist=persist, spawn=True, spawn_fn=spawn_fn,
                 )
-            except TypeError:
-                rc, task_id, output = fn(slug, dest)
-            if rc != 0 or not task_id:
-                row["verdict"] = "SKIP"
-                row["skip_reason"] = f"grok-run failed rc={rc} {output[-400:]}"
-                gates["verdict"] = "SKIP"
-                gates["skip_reason"] = row["skip_reason"]
+                row["argv"] = launched_row.get("argv") or planned_argv
+                row["kind"] = "subprocess"
+                row["launch"] = "subprocess"
+                if launched_row.get("pid") and launched_row.get("verdict") == "LAUNCH":
+                    row["task_id"] = f"pid:{launched_row['pid']}"
+                    row["pid"] = launched_row["pid"]
+                    launched += 1
+                    occupied += 1
+                    admitted = True
+                    gates["running"] = running_n + launched
+                    record_ctl_event(
+                        ob.get("oxx"), "cpu", 0.0,
+                        extra={
+                            "template": ob.get("template"),
+                            "verdict": "LAUNCH",
+                            "kind": "subprocess",
+                            "pid": launched_row["pid"],
+                        },
+                        persist=persist,
+                    )
+                else:
+                    row["verdict"] = "SKIP"
+                    row["skip_reason"] = (
+                        launched_row.get("skip_reason") or "subprocess spawn failed"
+                    )
+                    gates["verdict"] = "SKIP"
+                    gates["skip_reason"] = row["skip_reason"]
             else:
-                started = utc_now()
-                row["task_id"] = task_id
-                if persist:
-                    _mark_running(st, ob, task_id, rel, started)
-                launched += 1
-                occupied += 1
-                admitted = True
-                running_n_display = running_n + launched
-                gates["running"] = running_n_display
-                record_ctl_event(
-                    ob.get("oxx"), "grok", 0.0,
-                    grok_lane=task_id,
-                    extra={"template": ob.get("template"), "verdict": "LAUNCH"},
-                    persist=persist,
-                )
+                slug = f"odyssey-{ob['oxx'].lower()}-{ob['template']}"
+                fn = launch_fn or default_launch
+                try:
+                    rc, task_id, output = fn(
+                        slug, dest, model_loading=ob["model_loading"],
+                    )
+                except TypeError:
+                    rc, task_id, output = fn(slug, dest)
+                if rc != 0 or not task_id:
+                    row["verdict"] = "SKIP"
+                    row["skip_reason"] = f"grok-run failed rc={rc} {output[-400:]}"
+                    gates["verdict"] = "SKIP"
+                    gates["skip_reason"] = row["skip_reason"]
+                else:
+                    started = utc_now()
+                    row["task_id"] = task_id
+                    if persist:
+                        _mark_running(st, ob, task_id, rel, started)
+                    launched += 1
+                    occupied += 1
+                    admitted = True
+                    running_n_display = running_n + launched
+                    gates["running"] = running_n_display
+                    record_ctl_event(
+                        ob.get("oxx"), "grok", 0.0,
+                        grok_lane=task_id,
+                        extra={"template": ob.get("template"), "verdict": "LAUNCH"},
+                        persist=persist,
+                    )
 
         if not go and gates["verdict"] == "DRY-RUN" and not gates.get("skip_reason"):
             occupied += 1
@@ -4411,21 +5053,32 @@ def print_run_plan(rows: list[dict], *, go: bool, max_lanes: int,
             f"disk={g.get('disk_free_gib')}{' <45 would-reclaim' if g.get('would_reclaim') else ''}  "
             f"clean_box={g.get('clean_box_ok')}  sg={g.get('sg')}"
         )
+        if r.get("kind") or r.get("launch"):
+            print(
+                f"     launch: {r.get('launch') or r.get('kind')}  "
+                f"kind={r.get('kind') or '—'}"
+            )
+        if r.get("argv"):
+            argv = r["argv"]
+            printed = " ".join(str(a) for a in argv) if isinstance(argv, list) else str(argv)
+            print(f"     argv: {printed}")
         if r.get("write_set"):
             print(f"     write_set: {', '.join(r['write_set'])}")
         if r.get("skip_reason"):
             print(f"     skip: {r['skip_reason']}")
         if r.get("task_id"):
             print(f"     task: {r['task_id']}")
+        if r.get("pid"):
+            print(f"     pid: {r['pid']}")
         print(f"     _evidence={r.get('_evidence')}")
 
 
 def cmd_run(*, go: bool, max_lanes: int, **hooks) -> int:
     st = hooks.pop("state", None) or ensure_state()
     snap = (hooks.get("snapshot_fn") or machine_snapshot)()
-    running_n = len(odyssey_running_ids(st))
     hooks.setdefault("persist", go)
     rows = run_loop(go=go, max_lanes=max_lanes, state=st, **hooks)
+    running_n = len(odyssey_running_ids(st))
     print_run_plan(rows, go=go, max_lanes=max_lanes, snap=snap, running_n=running_n)
     if go:
         print()
@@ -5199,7 +5852,7 @@ def cmd_acquire_next(*, go: bool = False) -> int:
 
 
 # ---------------------------------------------------------------------------
-# cycle — one unattended tick: harvest → complete → retire → acquire → admit
+# cycle — one unattended tick: reap → harvest → complete → retire → acquire → admit
 # ---------------------------------------------------------------------------
 
 def cycle_tick(*, go: bool, max_lanes: int,
@@ -5207,6 +5860,14 @@ def cycle_tick(*, go: bool, max_lanes: int,
                **hooks) -> dict:
     """One driver tick. Idempotent, event-safe, no model calls in the controller."""
     st = state if state is not None else ensure_state()
+    now = hooks.get("now_epoch")
+    if now is None:
+        now = time.time()
+    reap_rows = reap_lanes(
+        float(now), state=st, persist=persist and go, dry_run=not go,
+        pid_alive_fn=hooks.get("pid_alive_fn"),
+        kill_fn=hooks.get("kill_fn"),
+    )
     harvest_hooks = {
         k: hooks[k] for k in (
             "tasks_root", "receipt_dir", "worktrees_root", "dest_root",
@@ -5264,8 +5925,10 @@ def cycle_tick(*, go: bool, max_lanes: int,
         k: hooks[k] for k in (
             "observe_fn", "gate_fn", "snapshot_fn", "launch_fn",
             "lint_fn", "reclaim_fn", "log_path", "auto_dir",
+            "spawn_fn", "now_epoch", "pid_alive_fn", "kill_fn",
         ) if k in hooks
     }
+    run_hooks.setdefault("now_epoch", now)
     rows = run_loop(
         go=go, max_lanes=max_lanes, state=st, persist=persist,
         completions=completions, consider_limit=24, **run_hooks,
@@ -5288,6 +5951,7 @@ def cycle_tick(*, go: bool, max_lanes: int,
         "acquire": acquire_row,
         "ready": ranked,
         "admitted": rows,
+        "reap": reap_rows,
         "patients_retired_without_nonconventional_probe": without_probe,
         "tick_retired_without_nonconventional_probe": tick_without,
         "_evidence": "DERIVED (cycle tick)",
@@ -5357,9 +6021,9 @@ def print_cycle(plan: dict, *, go: bool, max_lanes: int,
 def cmd_cycle(*, go: bool, max_lanes: int, **hooks) -> int:
     st = hooks.pop("state", None) or ensure_state()
     snap = (hooks.get("snapshot_fn") or machine_snapshot)()
-    running_n = len(odyssey_running_ids(st))
     hooks.setdefault("persist", go)
     plan = cycle_tick(go=go, max_lanes=max_lanes, state=st, **hooks)
+    running_n = len(odyssey_running_ids(st))
     print_cycle(plan, go=go, max_lanes=max_lanes, snap=snap, running_n=running_n)
     return 0
 
@@ -5555,7 +6219,9 @@ def cmd_value() -> int:
 
 
 def cmd_harvest(*, dry_run: bool = False) -> int:
-    rows = harvest_lanes(dry_run=dry_run)
+    st = ensure_state()
+    reap_lanes(time.time(), state=st, persist=not dry_run, dry_run=dry_run)
+    rows = harvest_lanes(dry_run=dry_run, state=st)
     mode = "dry-run" if dry_run else "apply"
     if not rows:
         print(f"harvest ({mode}): no finished odyssey-* lanes")
@@ -6182,8 +6848,14 @@ def _self_check() -> int:
         recs = td / "recs"
         recs.mkdir()
         # rebuild from the real receipt dir into a temp index
+        rec_src = RECEIPT_DIR
+        alt_recs = HAWKING_REPO / "receipts" / "odyssey-i"
+        if not (RECEIPT_DIR / "O001_EXTERNAL.json").is_file() and (
+            alt_recs / "O001_EXTERNAL.json"
+        ).is_file():
+            rec_src = alt_recs
         rebuilt = rebuild_completions(
-            path=idx_path, receipt_dir=RECEIPT_DIR, persist=True,
+            path=idx_path, receipt_dir=rec_src, persist=True,
         )
         keys = {
             (e["patient_id"], e["mechanism_id"])
@@ -6202,7 +6874,7 @@ def _self_check() -> int:
             assert e.get("completed_at"), e
             assert e.get("status") == "VERIFIED"
         rebuilt2 = rebuild_completions(
-            path=idx_path, receipt_dir=RECEIPT_DIR, persist=True,
+            path=idx_path, receipt_dir=rec_src, persist=True,
         )
         sig = lambda d: {
             (e["patient_id"], e["mechanism_id"], e.get("receipt_sha256"), e.get("status"))
@@ -6211,7 +6883,17 @@ def _self_check() -> int:
         assert sig(rebuilt) == sig(rebuilt2), "rebuild is not idempotent"
 
     # persist the canonical index from real receipts (scheduler source of truth)
-    live = rebuild_completions(persist=True)
+    # Sparse worktrees may omit receipts/; never strip the live index then.
+    rec_live = RECEIPT_DIR
+    alt_recs = HAWKING_REPO / "receipts" / "odyssey-i"
+    if not (RECEIPT_DIR / "O001_EXTERNAL.json").is_file() and (
+        alt_recs / "O001_EXTERNAL.json"
+    ).is_file():
+        rec_live = alt_recs
+    if rec_live.resolve() == RECEIPT_DIR.resolve():
+        live = rebuild_completions(persist=True)
+    else:
+        live = load_completions()
     live_keys = {
         (e["patient_id"], e["mechanism_id"])
         for e in live.get("entries") or []
@@ -6227,7 +6909,10 @@ def _self_check() -> int:
         and w.get("oxx") and w.get("template")
     }
     if o005_sens_done:
-        assert (RECEIPT_DIR / "O005_SENSITIVITY.json").is_file()
+        assert (
+            (RECEIPT_DIR / "O005_SENSITIVITY.json").is_file()
+            or (rec_live / "O005_SENSITIVITY.json").is_file()
+        )
     ranked_live = select_ready_obligations(st2)
     live_pair = {(r["oxx"], r["template"]) for r in ranked_live}
     assert ("O001", "external-science-dense") not in live_pair, live_pair
@@ -6577,6 +7262,186 @@ def _self_check() -> int:
     spec_moe = pick_aggressive_spec("O003", "gravity-aggressive-moe")
     assert spec_moe, spec_moe
     assert classify_gravity_spec(spec_moe)["candidate_class"] != "CONVENTIONAL_ANCHOR", spec_moe
+
+    # 15. deterministic direct execution: plan subprocess, reap, timeout, cap
+    assert is_deterministic_obligation("gravity-moe")
+    assert is_deterministic_obligation({
+        "template": "external-science-dense", "oxx": "O001",
+    })
+    assert not is_deterministic_obligation("novelty-arch")
+    assert not is_deterministic_obligation({
+        "template": "gravity-moe", "code_building": True,
+    })
+    det_ob = {
+        "id": "T-DET", "oxx": "O001", "template": "external-science-dense",
+        "title": "t", "info": 1, "wall_cost": 1, "gpu_cost": 0, "opus_cost": 0,
+        "model_loading": True, "timing": False, "download": False,
+    }
+    argv_det = runner_argv(det_ob)
+    joined = " ".join(argv_det)
+    assert argv_det[0] == PREFERRED_PY, argv_det
+    assert RUNNER_REL in argv_det, argv_det
+    assert "grok-run" not in joined and "delegate" not in joined
+    assert "--oxx" in argv_det and "O001" in argv_det
+    assert "--weights" in argv_det
+    assert "--out" in argv_det
+    assert any("EXTERNAL.json" in str(a) for a in argv_det), argv_det
+    grav_argv = runner_argv({
+        "oxx": "O003", "template": "gravity-moe",
+        "gravity_spec": "q3-g32-experts",
+    })
+    assert "--gravity" in grav_argv
+    assert "q3-g32-experts" in grav_argv
+    assert any("GRAVITY" in str(a) for a in grav_argv)
+
+    # dry-run run_loop plans subprocess, not grok
+    with tempfile.TemporaryDirectory() as td_det:
+        td_det = Path(td_det)
+        plan_rows = run_loop(
+            go=False, max_lanes=2, state=dict(iso_state),
+            observe_fn=lambda: permit_obs, gate_fn=worker_gate.gate,
+            snapshot_fn=lambda: dict(fat_snap),
+            launch_fn=no_launch, persist=False, log_path=td_det / "RUN_LOG.jsonl",
+            reclaim_fn=lambda: None,
+        )
+        assert plan_rows, "deterministic dry-run plan empty"
+        det_rows = [
+            r for r in plan_rows
+            if r.get("template") in DETERMINISTIC_TEMPLATES
+        ]
+        assert det_rows, [r.get("template") for r in plan_rows]
+        for r in det_rows:
+            assert r.get("kind") == "subprocess", r
+            assert r.get("launch") == "subprocess", r
+            assert r.get("argv"), r
+            argv_s = " ".join(str(a) for a in r["argv"])
+            assert RUNNER_REL in argv_s or "odyssey_patient_runner.py" in argv_s
+            assert "grok-run" not in argv_s
+            assert "--oxx" in r["argv"]
+            assert "--out" in r["argv"]
+
+    with tempfile.TemporaryDirectory() as td:
+        td = Path(td)
+        rec = td / "O001_EXTERNAL.json"
+        rec.write_text(json.dumps({"oxx": "O001", "schema": "fixture"}) + "\n")
+        fake_st = {
+            "schema": SCHEMA,
+            "work": [{
+                "id": "R1", "oxx": "O001",
+                "template": "external-science-dense",
+                "mechanism": "external-science",
+                "kind": "subprocess",
+                "pid": 999991, "started_epoch": 1000.0, "timeout_s": 1800,
+                "receipt_path": str(rec), "status": "RUNNING", "retries": 0,
+            }],
+            "patients": [], "history": [], "harvested": [], "metrics": {},
+        }
+        reap_ok = reap_lanes(
+            2000.0, state=fake_st, persist=False,
+            pid_alive_fn=lambda _p: False,
+        )
+        assert fake_st["work"][0]["status"] == "VERIFIED", (fake_st["work"][0], reap_ok)
+        assert any(r.get("action") == "verified" for r in reap_ok), reap_ok
+
+        fake_st2 = {
+            "schema": SCHEMA,
+            "work": [{
+                "id": "R2", "oxx": "O004", "template": "nx-dense",
+                "mechanism": "nx-dense", "kind": "subprocess",
+                "pid": 999992, "started_epoch": 1.0, "timeout_s": 1800,
+                "receipt_path": str(td / "missing.json"),
+                "status": "RUNNING", "retries": 0,
+            }],
+            "patients": [], "history": [], "harvested": [], "metrics": {},
+        }
+        reap_retry = reap_lanes(
+            10.0, state=fake_st2, persist=False,
+            pid_alive_fn=lambda _p: False,
+        )
+        assert fake_st2["work"][0]["status"] == "READY", fake_st2["work"][0]
+        assert fake_st2["work"][0]["retries"] == 1, fake_st2["work"][0]
+        assert any(r.get("action") == "retry" for r in reap_retry), reap_retry
+        fake_st2["work"][0]["status"] = "RUNNING"
+        fake_st2["work"][0]["pid"] = 999992
+        fake_st2["work"][0]["kind"] = "subprocess"
+        reap_ref = reap_lanes(
+            20.0, state=fake_st2, persist=False,
+            pid_alive_fn=lambda _p: False,
+        )
+        assert fake_st2["work"][0]["status"] == "REFUTED", fake_st2["work"][0]
+        assert any(r.get("action") == "refute" for r in reap_ref), reap_ref
+
+        killed: list = []
+        fake_st3 = {
+            "schema": SCHEMA,
+            "work": [{
+                "id": "R3", "oxx": "O003", "template": "gravity-moe",
+                "mechanism": "gravity-moe", "kind": "subprocess",
+                "pid": 999993, "started_epoch": 0.0, "timeout_s": 10,
+                "receipt_path": str(td / "nope.json"),
+                "status": "RUNNING", "retries": 0,
+            }],
+            "patients": [], "history": [], "harvested": [], "metrics": {},
+        }
+        reap_to = reap_lanes(
+            100.0, state=fake_st3, persist=False,
+            pid_alive_fn=lambda _p: True,
+            kill_fn=lambda p: killed.append(p),
+        )
+        assert killed == [999993], killed
+        assert fake_st3["work"][0]["status"] == "FAILED", fake_st3["work"][0]
+        assert any(r.get("action") == "timeout" for r in reap_to), reap_to
+
+        live_pids = {999001, 999002}
+        cap_st = {
+            "schema": SCHEMA,
+            "work": [
+                {
+                    "status": "RUNNING", "kind": "subprocess", "pid": 999001,
+                    "started_epoch": 50, "timeout_s": 100, "id": "a",
+                    "template": "nx-dense", "oxx": "O004", "task": "pid:999001",
+                },
+                {
+                    "status": "RUNNING", "kind": "subprocess", "pid": 999002,
+                    "started_epoch": 50, "timeout_s": 100, "id": "b",
+                    "template": "gravity-dense", "oxx": "O001", "task": "pid:999002",
+                },
+                {
+                    "status": "RUNNING", "kind": "subprocess", "pid": 999003,
+                    "started_epoch": 50, "timeout_s": 100, "id": "c",
+                    "template": "nx-gather-moe", "oxx": "O003", "task": "pid:999003",
+                },
+                {
+                    "status": "RUNNING", "kind": "grok",
+                    "task": "odyssey-o005-novelty-arch", "id": "d",
+                    "template": "novelty-arch", "oxx": "O005",
+                    "started_epoch": 50, "timeout_s": 100,
+                },
+                {
+                    "status": "RUNNING", "kind": "subprocess", "pid": 999004,
+                    "started_epoch": 0, "timeout_s": 10, "id": "e",
+                    "template": "sensitivity-map", "oxx": "O006",
+                    "task": "pid:999004",
+                },
+            ],
+        }
+        _orig_live2 = mod.live_odyssey_lanes
+        mod.live_odyssey_lanes = lambda: []
+        try:
+            ids_cap = odyssey_running_ids(
+                cap_st, now_epoch=60.0,
+                pid_alive_fn=lambda p: p in live_pids,
+            )
+        finally:
+            mod.live_odyssey_lanes = _orig_live2
+        # live PIDs 999001/999002 + live grok novelty; dead 999003 and
+        # over-timeout 999004 (even if we marked it live) excluded.
+        assert "pid:999001" in ids_cap, ids_cap
+        assert "pid:999002" in ids_cap, ids_cap
+        assert "pid:999003" not in ids_cap, ids_cap
+        assert "pid:999004" not in ids_cap, ids_cap
+        assert "odyssey-o005-novelty-arch" in ids_cap, ids_cap
+        assert len(ids_cap) == 3, ids_cap
 
     print("self-check ok")
     return 0

@@ -32,10 +32,36 @@ def read_safetensors_header(path: str) -> dict:
     hdr.pop("__metadata__", None)
     return hdr
 
+def _shard_set(d: Path) -> list:
+    """Authoritative safetensors set — avoid double-counting repos that ship BOTH a
+    consolidated single file AND sharded weights. Prefer the index weight_map."""
+    idx = sorted(glob.glob(str(d / "*.safetensors.index.json")))
+    if idx:
+        wm = json.loads(Path(idx[0]).read_text()).get("weight_map", {})
+        files = sorted({str(d / f) for f in wm.values()})
+        if files:
+            return files
+    allst = sorted(glob.glob(str(d / "*.safetensors")))
+    sharded = [s for s in allst if re.search(r"-\d{5}-of-\d{5}\.safetensors$", s)]
+    if sharded:  # drop consolidated/single-file duplicates when shards exist
+        return sharded
+    return allst
+
+def _flat_cfg(cfg: dict) -> dict:
+    """Multimodal configs nest the LM under text_config/llm_config/language_config —
+    surface those keys for the arch summary without losing the top level."""
+    out = dict(cfg)
+    for k in ("text_config","llm_config","language_config"):
+        sub = cfg.get(k)
+        if isinstance(sub, dict):
+            for kk, vv in sub.items():
+                out.setdefault(kk, vv)
+    return out
+
 def census(model_dir: str) -> dict:
     d = Path(model_dir)
-    cfg = json.loads((d / "config.json").read_text())
-    shards = sorted(glob.glob(str(d / "*.safetensors")))
+    cfg = _flat_cfg(json.loads((d / "config.json").read_text()))
+    shards = _shard_set(d)
     if not shards:
         raise SystemExit(f"no safetensors in {model_dir}")
 

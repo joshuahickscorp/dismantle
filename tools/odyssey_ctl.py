@@ -4939,7 +4939,9 @@ def _self_check() -> int:
     assert not (cplan.get("retire_eligible") or []), cplan.get("retire_eligible")
     ready_pair = {(r["oxx"], r["template"]) for r in (cplan.get("ready") or [])}
     assert ("O005", "sensitivity-map") in ready_pair, ready_pair
-    assert ("O006", "transfer-control") in ready_pair, ready_pair
+    # O006 transfer-control is SEALED -> not ready; a pending O006 obligation is.
+    assert ("O006", "transfer-control") not in ready_pair, ready_pair
+    assert ("O006", "sensitivity-map") in ready_pair, ready_pair
     assert ("O004", "external-science-dense") in ready_pair, ready_pair
     assert ("O003", "sensitivity-map") in ready_pair, ready_pair
     assert any(t.startswith("gravity-") or t.startswith("nx-") for _, t in ready_pair), ready_pair

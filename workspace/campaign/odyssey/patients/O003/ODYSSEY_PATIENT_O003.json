@@ -508,7 +508,7 @@
         }
       }
     },
-    "_evidence": "MEASURED (census); MEASURED (per_organ_sensitivity, in-place mlx ablation); MEASURED (gravity q2-g32-experts stored_bpw=3.0637); MEASURED (gravity q2-g64-experts stored_bpw=2.6251); MEASURED (gravity q3-g32-experts stored_bpw=3.9411)",
+    "_evidence": "MEASURED (census); MEASURED (per_organ_sensitivity, in-place mlx ablation); MEASURED (gravity q2-g32-experts stored_bpw=3.0637); MEASURED (gravity q2-g64-experts stored_bpw=2.6251); MEASURED (gravity q3-g32-experts stored_bpw=3.9411); MEASURED (gravity mixed-q2q3-experts stored_bpw=3.8688)",
     "stored_bpw": 16.0,
     "organs_bytes_GB": {
       "embed": 0.68,
@@ -548,9 +548,36 @@
     "tried_mechanisms": [
       "q2-g32-experts",
       "q2-g64-experts",
-      "q3-g32-experts"
+      "q3-g32-experts",
+      "mixed-q2q3-experts"
     ],
     "wins": [
+      {
+        "spec": "mixed-q2q3-experts",
+        "stored_bpw": 3.8688,
+        "complete_bpw": 3.869,
+        "nominal_bits": 2,
+        "active_bpw": 3.3598,
+        "stored_bytes": 7934765312,
+        "active_bytes_per_token": 1412098304,
+        "battery": "11/12",
+        "delta_hits": -1,
+        "verdict": "CANDIDATE_PASS",
+        "candidate_class": "STRUCTURAL_GRAVITY",
+        "conventionality": "nonconventional",
+        "protected_components": [
+          "attn",
+          "embed",
+          "expert",
+          "shared_expert"
+        ],
+        "failure_localization": null,
+        "receipt": "receipts/odyssey-i/O003_GRAVITY_mixed-q2q3-experts.json",
+        "label": "SPECIMEN",
+        "not_hawking_nx_win": true,
+        "_evidence": "MEASURED (mlx gravity specimen; §15)",
+        "_label": "SPECIMEN"
+      },
       {
         "spec": "q2-g32-experts",
         "stored_bpw": 3.0637,
@@ -725,8 +752,8 @@
     "_evidence": "UNKNOWN"
   },
   "next": [
-    "nx-gather accounting written (receipts/odyssey-i/O003_NX_gather.json); not a Hawking NX runtime",
     "gravity q3-g32-experts CANDIDATE_PASS: stored_bpw=3.9411 active_bpw=3.7124 battery=11/12 delta_hits=-1 (mlx SPECIMEN, not a Hawking NX win)",
+    "nx-gather accounting written (receipts/odyssey-i/O003_NX_gather.json); not a Hawking NX runtime",
     "A3 per-organ sensitivity MEASURED: zero drops hits on embed, attn, router, expert, shared_expert, mlp_dense, norm, lm_head; round8 drops hits on embed, attn, expert, shared_expert (baseline 12/12, 4bit-mlx)",
     "native load_engine still Unimplemented for this arch — NX after route/sensitivity",
     "do not treat mlx tps_specimen as BASE_TRUE_TPS; re-time on a clean box if a native path lands"

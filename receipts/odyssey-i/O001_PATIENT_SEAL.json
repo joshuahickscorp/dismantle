@@ -20,9 +20,9 @@
     "receipts/odyssey-i/O001_GRAVITY_q2-g32-attn-mlp.json",
     "receipts/odyssey-i/O001_NX_state.json"
   ],
-  "source_revision": "fa71c47b044dd47722706dda1de10d6dcf4613f2",
+  "source_revision": "c090aad05d83bb461c79d8f4f5f587b05b95299d",
   "reclaimable": true,
-  "completed_at": "2026-08-19T22:51:35Z",
+  "completed_at": "2026-08-19T23:53:16Z",
   "weights_deleted": false,
   "_evidence": "DERIVED (patient-sealed from terminal completions)"
 }

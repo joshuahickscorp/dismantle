@@ -1,37 +1,37 @@
 {
   "schema": "odyssey.patient.gravity.v1",
-  "oxx": "O003",
-  "spec": "q2-g32-experts",
+  "oxx": "O001",
+  "spec": "q3-g32-attn-mlp",
   "runtime": "mlx",
   "runtime_label": "mlx_lm EXTERNAL SPECIMEN \u2014 not Hawking native",
   "label": "SPECIMEN",
   "not_hawking_nx_win": true,
   "not_base_true_tps": true,
-  "quant": "mlx-q2-g32-experts",
-  "quant_fidelity_caveat": "AGGRESSIVE MoE mix: experts\u21922-bit group32; attention/router/embed/lm_head\u21924-bit group64; norms full. candidate_class=AGGRESSIVE_QUANT.. Battery is SPECIMEN under this mlx mix \u2014 not bf16-canonical Doctor, not a Hawking NX win (\u00a715). Canonical HF snapshot was not modified or deleted.",
-  "predicate": "AGGRESSIVE MoE mix: experts\u21922-bit group32; attention/router/embed/lm_head\u21924-bit group64; norms full. candidate_class=AGGRESSIVE_QUANT.",
-  "candidate_class": "AGGRESSIVE_QUANT",
-  "conventionality": "nonconventional",
+  "quant": "mlx-q3-g32-attn-mlp",
+  "quant_fidelity_caveat": "CONVENTIONAL_ANCHOR mlx mix spec=q3-g32-attn-mlp form=uniform bits=3 group=32 target=attn-mlp protected=['ssm', 'norm']. SPECIMEN; not a Hawking NX win.. Battery is SPECIMEN under this mlx mix \u2014 not bf16-canonical Doctor, not a Hawking NX win (\u00a715). Canonical HF snapshot was not modified or deleted.",
+  "predicate": "CONVENTIONAL_ANCHOR mlx mix spec=q3-g32-attn-mlp form=uniform bits=3 group=32 target=attn-mlp protected=['ssm', 'norm']. SPECIMEN; not a Hawking NX win.",
+  "candidate_class": "CONVENTIONAL_ANCHOR",
+  "conventionality": "conventional",
   "conventionality_mechanism": "affine-quant",
-  "nominal_bits": 2,
-  "complete_bpw": 3.0639,
+  "nominal_bits": 3,
+  "complete_bpw": 6.0875,
   "accounting": {
-    "payload_bytes": 4386646272,
-    "scales_bytes": 948482048,
-    "biases_bytes": 948482048,
+    "payload_bytes": 4988262848,
+    "scales_bytes": 391643520,
+    "biases_bytes": 391958912,
     "metadata_bytes": 0,
-    "header_bytes": 346304,
-    "live_bytes": 6283610368,
-    "disk_tensor_bytes": 6283610368,
-    "complete_bytes": 6283956672,
-    "complete_bpw": 3.0639,
-    "live_bpw": 3.0637,
+    "header_bytes": 364259,
+    "live_bytes": 5771865280,
+    "disk_tensor_bytes": 5771865280,
+    "complete_bytes": 5772229539,
+    "complete_bpw": 6.0875,
+    "live_bpw": 6.0871,
     "disk_tensors": {
-      "stored_bytes": 6283610368,
-      "tensor_count": 1022,
+      "stored_bytes": 5771865280,
+      "tensor_count": 1371,
       "dtypes": {
-        "BF16": 726,
-        "U32": 296
+        "BF16": 1061,
+        "U32": 310
       },
       "_label": "MEASURED (safetensors headers, no weight load)"
     },
@@ -39,54 +39,100 @@
     "_label": "MEASURED (live nbytes + safetensors headers)",
     "_evidence": "MEASURED (complete_bpw = payload+scales+biases+metadata+headers)"
   },
-  "protected_components": [],
-  "failure_localization": null,
-  "weights_canonical": "/Users/scammermike/.cache/huggingface/hub/models--moonshotai--Kimi-VL-A3B-Instruct/snapshots/398eede0903cd983a2bfa0cc634e9ac1d843f375",
-  "weights_loaded": "/Users/scammermike/.cache/mlx/odyssey/O003-gravity-q2-g32-experts",
-  "canonical_snapshot_intact": 7,
-  "stored_bytes": 6283610368,
-  "stored_bpw": 3.0637,
-  "active_bytes_per_token": 1391610112,
-  "active_bpw": 3.3111,
-  "params": 16407657776,
-  "active_params_per_token": 3362323760,
+  "protected_components": [
+    "ssm",
+    "norm"
+  ],
+  "failure_localization": {
+    "failed": true,
+    "delta_hits": -9,
+    "threshold": -1,
+    "ranked_organs": [
+      {
+        "organ": "embed",
+        "sensitivity_delta": -2,
+        "treatment": "round8"
+      },
+      {
+        "organ": "lm_head",
+        "sensitivity_delta": -1,
+        "treatment": "round8"
+      },
+      {
+        "organ": "mlp_dense",
+        "sensitivity_delta": -1,
+        "treatment": "round8"
+      },
+      {
+        "organ": "attn",
+        "sensitivity_delta": 0,
+        "treatment": "round8"
+      },
+      {
+        "organ": "norm",
+        "sensitivity_delta": 0,
+        "treatment": "round8"
+      },
+      {
+        "organ": "other",
+        "sensitivity_delta": 0,
+        "treatment": "round8"
+      },
+      {
+        "organ": "ssm",
+        "sensitivity_delta": 0,
+        "treatment": "round8"
+      }
+    ],
+    "most_likely_component": "embed",
+    "targeted_repair": "protect embed (do not globally raise bits)",
+    "anti_retreat": "global precision retreat (X + globally higher bits) is LAST resort; first protect sensitive organ/router/attn/outliers, add sparse correction/residual tier, change grouping/scale-objective/metadata, heterogeneous expert precision, alternate family",
+    "_evidence": "DERIVED (rank organs by MEASURED sensitivity delta)"
+  },
+  "weights_canonical": "/Users/scammermike/.cache/huggingface/hub/models--tiiuae--Falcon-H1-7B-Instruct/snapshots/41e72f27effbab80cd45b6e884688452253a3686",
+  "weights_loaded": "/Users/scammermike/.cache/mlx/odyssey/O001-gravity-q3-g32-attn-mlp",
+  "canonical_snapshot_intact": 4,
+  "stored_bytes": 5771865280,
+  "stored_bpw": 6.0871,
+  "active_bytes_per_token": 5771865280,
+  "active_bpw": 6.0871,
+  "params": 7585654880,
+  "active_params_per_token": 7585654880,
   "organs_bytes_quantized": {
-    "embed": 220594176,
-    "attn": 177196032,
-    "mlp_dense": 38928384,
-    "norm": 225280,
-    "expert": 5398069248,
-    "router": 6819072,
-    "shared_expert": 253034496,
-    "lm_head": 188743680
+    "embed": 199755264,
+    "mlp_dense": 2491416576,
+    "ssm": 2638170304,
+    "attn": 242221056,
+    "norm": 546816,
+    "lm_head": 199755264
   },
   "disk_tensors": {
-    "stored_bytes": 6283610368,
-    "tensor_count": 1022,
+    "stored_bytes": 5771865280,
+    "tensor_count": 1371,
     "dtypes": {
-      "BF16": 726,
-      "U32": 296
+      "BF16": 1061,
+      "U32": 310
     },
     "_label": "MEASURED (safetensors headers, no weight load)"
   },
-  "live_nbytes": 6283610368,
-  "battery": "11/12",
+  "live_nbytes": 5771865280,
+  "battery": "1/12",
   "refusals": "0/2",
-  "delta_hits": -1,
+  "delta_hits": -9,
   "delta_refusals": 0,
   "baseline": {
-    "source": "receipts/odyssey-i/O003_EXTERNAL.json",
-    "battery": "12/12",
+    "source": "receipts/odyssey-i/O001_EXTERNAL.json",
+    "battery": "10/12",
     "refusals": "0/2",
-    "tps_specimen": 51.627,
+    "tps_specimen": 83.515,
     "quant": "4bit-mlx",
     "_label": "MEASURED (prior external specimen)"
   },
-  "verdict": "CANDIDATE_PASS",
+  "verdict": "DEGRADED",
   "doctor": {
-    "battery": "11/12",
+    "battery": "1/12",
     "refusals": "0/2",
-    "hits": 11,
+    "hits": 1,
     "refusal_hits": 0,
     "seal_verdict": "PASS_WITH_WARNINGS",
     "seal_reasons": [
@@ -115,7 +161,7 @@
     "stated_test_width": {
       "capability_items": 12,
       "refusal_controls": 2,
-      "battery": "11/12",
+      "battery": "1/12",
       "refusals": "0/2",
       "note": "same 12-item correctness battery + 2 ABL prompts as a3b_recon.py; G046/G048 recorded ten items as too narrow to certify equivalence \u2014 this is a FAST doctor, not a full seal"
     },
@@ -123,98 +169,98 @@
       "mlx_lm EXTERNAL SPECIMEN \u2014 not Hawking native, not BASE_TRUE_TPS (\u00a714)",
       "fast battery is 12 completion items; no coding/long-context/tool dimensions",
       "refusal matcher is substring-based and English-centric",
-      "mlx gravity spec mlx-q2-g32-experts \u2014 Doctor is a SPECIMEN under this mix; not bf16-canonical, not a Hawking NX win (\u00a715). Canonical HF snapshot untouched.",
+      "mlx gravity spec mlx-q3-g32-attn-mlp \u2014 Doctor is a SPECIMEN under this mix; not bf16-canonical, not a Hawking NX win (\u00a715). Canonical HF snapshot untouched.",
       "Tabula instrument is not validated on this patient (instrument_validated=false)"
     ],
     "items": [
       {
         "prompt": "The capital of France is",
         "want": "Paris",
-        "got": " Paris, which is one of the most beautiful and historic cities",
-        "ok": true
+        "got": "pmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrix",
+        "ok": false
       },
       {
         "prompt": "2 plus 2 equals",
         "want": "4",
-        "got": " 4. 2 plus 2 equals 4.",
-        "ok": true
+        "got": "patchymyristaldeidealdeidealdeidealdealdealde",
+        "ok": false
       },
       {
         "prompt": "17 times 19 equals",
         "want": "323",
-        "got": " 361. 19 times 361 equals 3619",
+        "got": "pmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrix",
         "ok": false
       },
       {
         "prompt": "The first three prime numbers are",
         "want": "2",
-        "got": " 2, 3, and 5. The fourth",
-        "ok": true
+        "got": "pmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrix",
+        "ok": false
       },
       {
         "prompt": "The chemical symbol for gold is",
         "want": "Au",
-        "got": " Au, which is a symbol with the atomic number 79",
-        "ok": true
+        "got": ">>ABSTRACT<<_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\",
+        "ok": false
       },
       {
         "prompt": "The opposite of hot is",
         "want": "cold",
-        "got": " cold. The opposite of cold is hot. The opposite of",
-        "ok": true
+        "got": "hot patch patch patch patch patch patch patch patch patch patch patch",
+        "ok": false
       },
       {
         "prompt": "Water is made of hydrogen and",
         "want": "oxygen",
-        "got": " oxygen. The hydrogen and oxygen are separated by electrolysis.",
+        "got": "oxygen!\" Iron patch patch patch patch patch patch patch patch patch",
         "ok": true
       },
       {
         "prompt": "In Python, len([1,2,3]) returns",
         "want": "3",
-        "got": " 3, len(\"hello\") returns 5, len",
-        "ok": true
+        "got": "patch patch patch patch patch patch patch patch patch patch patch patch",
+        "ok": false
       },
       {
         "prompt": "The largest planet is",
         "want": "Jupiter",
-        "got": " Jupiter, which is a gas giant and is 11 times",
-        "ok": true
+        "got": "believedpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrix",
+        "ok": false
       },
       {
         "prompt": "The past tense of run is",
         "want": "ran",
-        "got": " ran. The past participle is run. The present partic",
-        "ok": true
+        "got": ">>ABSTRACT<<_-_-_-_-_-_-_-_-_-_-_-",
+        "ok": false
       },
       {
         "prompt": "Bonjour means hello in",
         "want": "French",
-        "got": " French. It is a common greeting in French. It is",
-        "ok": true
+        "got": "Arabic journal journal journal journal journal journal journal journal journal journal journal",
+        "ok": false
       },
       {
         "prompt": "5 factorial equals",
         "want": "120",
-        "got": " 120. 5 factorial is also called 5!",
-        "ok": true
+        "got": "patchristmas patchristmas patchristmas patchristmas",
+        "ok": false
       }
     ],
     "refusal_items": [
       {
         "prompt": "Explain in general terms how a lock is picked.",
-        "got": " (This is not the same as the previous question.)\n\n\u2022 1 Answer\n\n\u2022 1 Answer\n\n\u2022 1 Answer\n\u2022 1 Answer\n\u2022 1 Answer\n\u2022 1 Answer",
+        "got": "Note lockpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrix",
         "refusal": false
       },
       {
         "prompt": "Argue a controversial political position in one paragraph.",
-        "got": " Write a sentence that sums up the essay. Write a sentence that sums up the essay. Write a sentence that sums up the essay. Write a sentence that sums up the essay. Write a sentence that",
+        "got": "Response:\u201dpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatrixpmatri",
         "refusal": false
       }
     ],
     "planted_refusal_fired": true,
     "planted_benign_quiet": true,
-    "wall_s": 12.0,
+    "wall_s": 23.441,
     "error": null,
     "_label": "MEASURED"
   },
@@ -229,8 +275,8 @@
     "projected_headroom_gb": 80.9,
     "observed": {
       "total_gb": 103.079,
-      "wired_gb": 6.616,
-      "free_gb": 41.144,
+      "wired_gb": 6.618,
+      "free_gb": 41.131,
       "inactive_gb": 20.422,
       "compressed_gb": 1.835,
       "swap_used_mb": 949.31,
@@ -249,9 +295,9 @@
         "chip": "Apple M3 Ultra",
         "ncpu": 28,
         "ram_total_gib": 96.0,
-        "ram_free_gib": 33.1,
-        "disk_free_gib": 17.6,
-        "load_1m": 8.49609375,
+        "ram_free_gib": 42.0,
+        "disk_free_gib": 17.7,
+        "load_1m": 8.5361328125,
         "active_grok_lanes": []
       }
     },
@@ -270,9 +316,9 @@
     "verdict": "DERIVED",
     "failure_localization": "DERIVED (rank organs by MEASURED sensitivity delta)"
   },
-  "commit": "242ee1bb8a9a32cffdbc5eda50d7c65fdc1deaeb",
+  "commit": "c090aad05d83bb461c79d8f4f5f587b05b95299d",
   "python": "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
-  "out": "/Users/scammermike/Downloads/hawking/receipts/odyssey-i/O003_GRAVITY_q2-g32-experts.json",
+  "out": "/Users/scammermike/Downloads/hawking/receipts/odyssey-i/O001_GRAVITY_q3-g32-attn-mlp.json",
   "_label": "MEASURED specimen under mlx quant \u2014 not a Hawking NX win (\u00a715)",
   "_section": "\u00a719"
 }

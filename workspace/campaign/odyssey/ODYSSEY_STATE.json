@@ -431,6 +431,36 @@
       "log": "/Users/scammermike/Downloads/hawking/workspace/campaign/odyssey/lanes/O001-gravity-aggressive-hybrid.log",
       "task": "pid:73782",
       "retries": 0
+    },
+    {
+      "id": "AUTO-O001-novelty-adversarial-falsifier",
+      "oxx": "O001",
+      "title": "frontier novelty / adversarial-falsifier (Grok; nonconventional)",
+      "status": "RUNNING",
+      "info": 9.0,
+      "wall_cost": 1.0,
+      "gpu_cost": 0.0,
+      "opus_cost": 0.0,
+      "kind": "novelty",
+      "template": "novelty-adversarial-falsifier",
+      "task": "odyssey-o001-novelty-adversarial-falsifier-20260819-183202",
+      "started": "2026-08-19T22:32:21Z",
+      "contract": "workspace/campaign/odyssey/contracts/auto/o001_novelty-adversarial-falsifier.md"
+    },
+    {
+      "id": "AUTO-O001-novelty-arch",
+      "oxx": "O001",
+      "title": "frontier novelty / arch (Grok; nonconventional)",
+      "status": "RUNNING",
+      "info": 9.0,
+      "wall_cost": 1.0,
+      "gpu_cost": 0.0,
+      "opus_cost": 0.0,
+      "kind": "novelty",
+      "template": "novelty-arch",
+      "task": "odyssey-o001-novelty-arch-20260819-183223",
+      "started": "2026-08-19T22:32:43Z",
+      "contract": "workspace/campaign/odyssey/contracts/auto/o001_novelty-arch.md"
     }
   ],
   "history": [],
@@ -451,6 +481,6 @@
     "grok_lanes_bootstrap": 3,
     "gpu_seconds": 0,
     "gpu_owner": "none",
-    "_evidence": "INFERRED (ODYSSEY.md \u00a772 session bootstrap)"
+    "_evidence": "INFERRED (ODYSSEY.md §72 session bootstrap)"
   }
 }

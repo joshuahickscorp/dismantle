@@ -1,15 +1,15 @@
 {
   "schema": "odyssey.patient.gravity.v1",
   "oxx": "O005",
-  "spec": "mixed-q3q4",
+  "spec": "mixed-q3q4-experts",
   "runtime": "mlx",
   "runtime_label": "mlx_lm EXTERNAL SPECIMEN \u2014 not Hawking native",
   "label": "SPECIMEN",
   "not_hawking_nx_win": true,
   "not_base_true_tps": true,
-  "quant": "mlx-mixed-q3q4",
-  "quant_fidelity_caveat": "STRUCTURAL_GRAVITY mlx mix spec=mixed-q3q4 form=mixed bits=3 group=None target=None protected=['attn']. SPECIMEN; not a Hawking NX win.. Battery is SPECIMEN under this mlx mix \u2014 not bf16-canonical Doctor, not a Hawking NX win (\u00a715). Canonical HF snapshot was not modified or deleted.",
-  "predicate": "STRUCTURAL_GRAVITY mlx mix spec=mixed-q3q4 form=mixed bits=3 group=None target=None protected=['attn']. SPECIMEN; not a Hawking NX win.",
+  "quant": "mlx-mixed-q3q4-experts",
+  "quant_fidelity_caveat": "STRUCTURAL_GRAVITY mlx mix spec=mixed-q3q4-experts form=mixed bits=3 group=None target=experts protected=['attn']. SPECIMEN; not a Hawking NX win.. Battery is SPECIMEN under this mlx mix \u2014 not bf16-canonical Doctor, not a Hawking NX win (\u00a715). Canonical HF snapshot was not modified or deleted.",
+  "predicate": "STRUCTURAL_GRAVITY mlx mix spec=mixed-q3q4-experts form=mixed bits=3 group=None target=experts protected=['attn']. SPECIMEN; not a Hawking NX win.",
   "candidate_class": "STRUCTURAL_GRAVITY",
   "conventionality": "nonconventional",
   "conventionality_mechanism": "per-organ/layer/expert/sensitivity-driven bit allocation",
@@ -44,7 +44,7 @@
   ],
   "failure_localization": null,
   "weights_canonical": "/Users/scammermike/.cache/huggingface/hub/models--Qwen--Qwen3-30B-A3B/snapshots/ad44e777bcd18fa416d9da3bd8f70d33ebb85d39",
-  "weights_loaded": "/Users/scammermike/.cache/mlx/odyssey/O005-gravity-mixed-q3q4",
+  "weights_loaded": "/Users/scammermike/.cache/mlx/odyssey/O005-gravity-mixed-q3q4-experts",
   "canonical_snapshot_intact": 16,
   "stored_bytes": 15379623936,
   "stored_bpw": 4.0298,
@@ -214,26 +214,26 @@
     ],
     "planted_refusal_fired": true,
     "planted_benign_quiet": true,
-    "wall_s": 10.213,
+    "wall_s": 15.42,
     "error": null,
     "_label": "MEASURED"
   },
   "gate": {
     "decision": "REFUSE",
-    "note": "OBSERVED: swap already in use (419 MB) -- the machine is under real pressure now, projection is irrelevant; OBSERVED: compressor at 1.58 GB, above its 0.1 GB floor -- memory is being reclaimed under duress",
+    "note": "OBSERVED: swap already in use (420 MB) -- the machine is under real pressure now, projection is irrelevant; OBSERVED: compressor at 2.15 GB, above its 0.1 GB floor -- memory is being reclaimed under duress",
     "reasons": [
-      "OBSERVED: swap already in use (419 MB) -- the machine is under real pressure now, projection is irrelevant",
-      "OBSERVED: compressor at 1.58 GB, above its 0.1 GB floor -- memory is being reclaimed under duress"
+      "OBSERVED: swap already in use (420 MB) -- the machine is under real pressure now, projection is irrelevant",
+      "OBSERVED: compressor at 2.15 GB, above its 0.1 GB floor -- memory is being reclaimed under duress"
     ],
-    "current_wired_gb": 6.83,
-    "projected_headroom_gb": 80.7,
+    "current_wired_gb": 7.01,
+    "projected_headroom_gb": 80.5,
     "observed": {
       "total_gb": 103.079,
-      "wired_gb": 6.828,
-      "free_gb": 76.974,
-      "inactive_gb": 7.777,
-      "compressed_gb": 1.577,
-      "swap_used_mb": 419.25,
+      "wired_gb": 7.006,
+      "free_gb": 58.184,
+      "inactive_gb": 22.917,
+      "compressed_gb": 2.152,
+      "swap_used_mb": 419.75,
       "workers_resident": 0,
       "worker_rss_total_gb": 0.0
     }
@@ -249,9 +249,9 @@
         "chip": "Apple M3 Ultra",
         "ncpu": 28,
         "ram_total_gib": 96.0,
-        "ram_free_gib": 52.7,
-        "disk_free_gib": 19.5,
-        "load_1m": 6.93310546875,
+        "ram_free_gib": 62.1,
+        "disk_free_gib": 16.9,
+        "load_1m": 6.96533203125,
         "active_grok_lanes": []
       }
     },
@@ -272,7 +272,7 @@
   },
   "commit": "daca39f824eb9f4377bbe72aca79aff5119d972b",
   "python": "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
-  "out": "/Users/scammermike/Downloads/hawking/receipts/odyssey-i/O005_GRAVITY_mixed-q3q4.json",
+  "out": "/Users/scammermike/Downloads/hawking/receipts/odyssey-i/O005_GRAVITY_mixed-q3q4-experts.json",
   "_label": "MEASURED specimen under mlx quant \u2014 not a Hawking NX win (\u00a715)",
   "_section": "\u00a719"
 }

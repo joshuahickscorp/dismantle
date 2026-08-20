@@ -331,7 +331,7 @@
       }
     },
     "per_expert_sensitivity": null,
-    "_evidence": "MEASURED (census); MEASURED (per_organ_sensitivity, in-place mlx ablation); MEASURED (gravity q2-g32 stored_bpw=2.9454); MEASURED (gravity q4-g64 stored_bpw=4.4179); MEASURED (gravity mixed-q2q3 stored_bpw=3.0327); MEASURED (gravity q2-g64-attn-mlp stored_bpw=2.4545); MEASURED (gravity q3-g64 stored_bpw=3.4362); MEASURED (gravity mixed-q2q3-attn-mlp stored_bpw=2.9454); MEASURED (gravity mixed-q2q4 stored_bpw=3.1201); MEASURED (gravity mixed-q2q4-attn-mlp stored_bpw=2.9454); MEASURED (gravity mixed-q3q4 stored_bpw=4.0144); MEASURED (gravity mixed-q3q4-attn-mlp stored_bpw=3.9271); MEASURED (gravity q2-g128 stored_bpw=2.2091)",
+    "_evidence": "MEASURED (census); MEASURED (per_organ_sensitivity, in-place mlx ablation); MEASURED (gravity q2-g32 stored_bpw=2.9454); MEASURED (gravity q4-g64 stored_bpw=4.4179); MEASURED (gravity mixed-q2q3 stored_bpw=3.0327); MEASURED (gravity q2-g64-attn-mlp stored_bpw=2.4545); MEASURED (gravity q3-g64 stored_bpw=3.4362); MEASURED (gravity mixed-q2q3-attn-mlp stored_bpw=2.9454); MEASURED (gravity mixed-q2q4 stored_bpw=3.1201); MEASURED (gravity mixed-q2q4-attn-mlp stored_bpw=2.9454); MEASURED (gravity mixed-q3q4 stored_bpw=4.0144); MEASURED (gravity mixed-q3q4-attn-mlp stored_bpw=3.9271); MEASURED (gravity q2-g128 stored_bpw=2.2091); MEASURED (gravity q2-g128-attn-mlp stored_bpw=2.2091)",
     "stored_bpw": 16.0,
     "organs_bytes_GB": {
       "embed": 1.34,
@@ -375,7 +375,8 @@
       "mixed-q2q4-attn-mlp",
       "mixed-q3q4",
       "mixed-q3q4-attn-mlp",
-      "q2-g128"
+      "q2-g128",
+      "q2-g128-attn-mlp"
     ],
     "wins": [
       {
@@ -1033,12 +1034,81 @@
         "not_hawking_nx_win": true,
         "_evidence": "MEASURED (mlx gravity specimen; §15)",
         "_label": "SPECIMEN"
+      },
+      {
+        "spec": "q2-g128-attn-mlp",
+        "stored_bpw": 2.2091,
+        "complete_bpw": 2.2092,
+        "nominal_bits": 2,
+        "active_bpw": 2.2091,
+        "stored_bytes": 6630451200,
+        "active_bytes_per_token": 6630451200,
+        "battery": "2/12",
+        "delta_hits": -9,
+        "verdict": "DEGRADED",
+        "candidate_class": "AGGRESSIVE_QUANT",
+        "conventionality": "nonconventional",
+        "protected_components": [
+          "ssm",
+          "norm"
+        ],
+        "failure_localization": {
+          "failed": true,
+          "delta_hits": -9,
+          "threshold": -1,
+          "ranked_organs": [
+            {
+              "organ": "attn",
+              "sensitivity_delta": 0,
+              "treatment": "round8"
+            },
+            {
+              "organ": "embed",
+              "sensitivity_delta": 0,
+              "treatment": "round8"
+            },
+            {
+              "organ": "lm_head",
+              "sensitivity_delta": 0,
+              "treatment": "round8"
+            },
+            {
+              "organ": "mlp_dense",
+              "sensitivity_delta": 0,
+              "treatment": "round8"
+            },
+            {
+              "organ": "norm",
+              "sensitivity_delta": 0,
+              "treatment": "round8"
+            },
+            {
+              "organ": "other",
+              "sensitivity_delta": 0,
+              "treatment": "round8"
+            },
+            {
+              "organ": "ssm",
+              "sensitivity_delta": 0,
+              "treatment": "round8"
+            }
+          ],
+          "most_likely_component": "attn",
+          "targeted_repair": "protect attn (do not globally raise bits)",
+          "anti_retreat": "global precision retreat (X + globally higher bits) is LAST resort; first protect sensitive organ/router/attn/outliers, add sparse correction/residual tier, change grouping/scale-objective/metadata, heterogeneous expert precision, alternate family",
+          "_evidence": "DERIVED (rank organs by MEASURED sensitivity delta)"
+        },
+        "receipt": "receipts/odyssey-i/O004_GRAVITY_q2-g128-attn-mlp.json",
+        "label": "SPECIMEN",
+        "not_hawking_nx_win": true,
+        "_evidence": "MEASURED (mlx gravity specimen; §15)",
+        "_label": "SPECIMEN"
       }
     ],
     "architecture_specific_findings": [],
     "_evidence": "UNKNOWN",
     "last": {
-      "spec": "q2-g128",
+      "spec": "q2-g128-attn-mlp",
       "stored_bpw": 2.2091,
       "complete_bpw": 2.2092,
       "nominal_bits": 2,
@@ -1050,7 +1120,10 @@
       "verdict": "DEGRADED",
       "candidate_class": "AGGRESSIVE_QUANT",
       "conventionality": "nonconventional",
-      "protected_components": [],
+      "protected_components": [
+        "ssm",
+        "norm"
+      ],
       "failure_localization": {
         "failed": true,
         "delta_hits": -9,
@@ -1097,7 +1170,7 @@
         "anti_retreat": "global precision retreat (X + globally higher bits) is LAST resort; first protect sensitive organ/router/attn/outliers, add sparse correction/residual tier, change grouping/scale-objective/metadata, heterogeneous expert precision, alternate family",
         "_evidence": "DERIVED (rank organs by MEASURED sensitivity delta)"
       },
-      "receipt": "receipts/odyssey-i/O004_GRAVITY_q2-g128.json",
+      "receipt": "receipts/odyssey-i/O004_GRAVITY_q2-g128-attn-mlp.json",
       "label": "SPECIMEN",
       "not_hawking_nx_win": true,
       "_evidence": "MEASURED (mlx gravity specimen; §15)",
@@ -1138,7 +1211,7 @@
     "_evidence": "INFERRED (TRANSFER_MATRIX.json)"
   },
   "next": [
-    "gravity q2-g128 DEGRADED: stored_bpw=2.2091 active_bpw=2.2091 battery=2/12 delta_hits=-9 (mlx SPECIMEN, not a Hawking NX win)",
+    "gravity q2-g128-attn-mlp DEGRADED: stored_bpw=2.2091 active_bpw=2.2091 battery=2/12 delta_hits=-9 (mlx SPECIMEN, not a Hawking NX win)",
     "nx-dense accounting written (receipts/odyssey-i/O004_NX_dense.json); not a Hawking NX runtime",
     "A3 per-organ sensitivity MEASURED: zero drops hits on embed, attn, mlp_dense, norm, lm_head; round8 drops hits on nothing (baseline 11/12, 4bit-mlx)",
     "do not treat mlx tps_specimen as BASE_TRUE_TPS; re-time on a clean box if a native path lands",

@@ -201,35 +201,36 @@ NX_FLAG = {
 # interesting sub-2-bit / mixed science and frontier boundary run before the
 # conventional anchors. ~30 rungs/patient maps the BPW-vs-Doctor surface finely
 # and keeps the box saturated. Cold spec caches are evicted; disk is throttled.
+# mlx quantize supports group sizes 32/64/128 ONLY (g16 is rejected at runtime).
 GRAVITY_LADDER = {
     "moe": [
-        "q2-g16-experts", "q2-g32-experts", "q2-g64-experts", "q2-g128-experts",
-        "q2-g16", "q2-g32", "q2-g64", "q2-g128",
+        "q2-g32-experts", "q2-g64-experts", "q2-g128-experts",
+        "q2-g32", "q2-g64", "q2-g128",
         "mixed-q2q3-experts", "mixed-q2q4-experts", "mixed-q2q3", "mixed-q2q4",
-        "q3-g16-experts", "q3-g32-experts", "q3-g64-experts", "q3-g128-experts",
-        "q3-g16", "q3-g32", "q3-g64", "q3-g128", "mixed-q3q4-experts", "mixed-q3q4",
-        "q4-g16-experts", "q4-g32-experts", "q4-g64-experts", "q4-g128-experts",
-        "q4-g16", "q4-g32", "q4-g64", "q4-g128",
+        "q3-g32-experts", "q3-g64-experts", "q3-g128-experts",
+        "q3-g32", "q3-g64", "q3-g128", "mixed-q3q4-experts", "mixed-q3q4",
+        "q4-g32-experts", "q4-g64-experts", "q4-g128-experts",
+        "q4-g32", "q4-g64", "q4-g128",
     ],
     "dense": [
-        "q2-g16", "q2-g32", "q2-g64", "q2-g128",
-        "q2-g16-attn-mlp", "q2-g32-attn-mlp", "q2-g64-attn-mlp", "q2-g128-attn-mlp",
+        "q2-g32", "q2-g64", "q2-g128",
+        "q2-g32-attn-mlp", "q2-g64-attn-mlp", "q2-g128-attn-mlp",
         "mixed-q2q3", "mixed-q2q4", "mixed-q2q3-attn-mlp", "mixed-q2q4-attn-mlp",
-        "q3-g16", "q3-g32", "q3-g64", "q3-g128",
-        "q3-g16-attn-mlp", "q3-g32-attn-mlp", "q3-g64-attn-mlp", "q3-g128-attn-mlp",
+        "q3-g32", "q3-g64", "q3-g128",
+        "q3-g32-attn-mlp", "q3-g64-attn-mlp", "q3-g128-attn-mlp",
         "mixed-q3q4", "mixed-q3q4-attn-mlp",
-        "q4-g16", "q4-g32", "q4-g64", "q4-g128",
-        "q4-g16-attn-mlp", "q4-g32-attn-mlp", "q4-g64-attn-mlp", "q4-g128-attn-mlp",
+        "q4-g32", "q4-g64", "q4-g128",
+        "q4-g32-attn-mlp", "q4-g64-attn-mlp", "q4-g128-attn-mlp",
     ],
     "hybrid": [
-        "q2-g16", "q2-g32", "q2-g64", "q2-g128",
-        "q2-g16-attn-mlp", "q2-g32-attn-mlp", "q2-g64-attn-mlp", "q2-g128-attn-mlp",
+        "q2-g32", "q2-g64", "q2-g128",
+        "q2-g32-attn-mlp", "q2-g64-attn-mlp", "q2-g128-attn-mlp",
         "mixed-q2q3", "mixed-q2q4", "mixed-q2q3-attn-mlp", "mixed-q2q4-attn-mlp",
-        "q3-g16", "q3-g32", "q3-g64", "q3-g128",
-        "q3-g16-attn-mlp", "q3-g32-attn-mlp", "q3-g64-attn-mlp", "q3-g128-attn-mlp",
+        "q3-g32", "q3-g64", "q3-g128",
+        "q3-g32-attn-mlp", "q3-g64-attn-mlp", "q3-g128-attn-mlp",
         "mixed-q3q4", "mixed-q3q4-attn-mlp",
-        "q4-g16", "q4-g32", "q4-g64", "q4-g128",
-        "q4-g16-attn-mlp", "q4-g32-attn-mlp", "q4-g64-attn-mlp", "q4-g128-attn-mlp",
+        "q4-g32", "q4-g64", "q4-g128",
+        "q4-g32-attn-mlp", "q4-g64-attn-mlp", "q4-g128-attn-mlp",
     ],
 }
 GRAVITY_LADDER_TEMPLATE = {

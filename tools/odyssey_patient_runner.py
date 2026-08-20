@@ -34,6 +34,7 @@ import argparse
 import inspect
 import json
 import os
+import shutil
 import random
 import subprocess
 import sys
@@ -2027,23 +2028,10 @@ def load_per_organ_sensitivity(oxx: str, packet_path: Path | None = None) -> dic
     return {}
 
 
-def measure_complete_accounting(model, dest: Path, params: int, *, moe: bool) -> dict:
-    """Complete bpw: payload+scales+biases+metadata+headers. No fake density."""
-    payload = scales = biases = metadata = 0
-    for path, val in tree_flatten(model.parameters()):
-        if not isinstance(val, mx.array):
-            continue
-        b = int(val.nbytes)
-        leaf = (path.rsplit(".", 1)[-1] if path else "").lower()
-        if leaf in {"scales", "scale"}:
-            scales += b
-        elif leaf in {"biases", "bias"}:
-            biases += b
-        elif leaf in {"table", "tables", "offsets", "offset", "lut", "g_idx"}:
-            metadata += b
-        else:
-            payload += b
-    live_total = payload + scales + biases + metadata
+def measure_dest_disk_bytes(dest: Path) -> dict:
+    """Capture the on-disk spec-cache byte figures so the cache can be deleted
+    before the (long) Doctor battery — freeing ~12 GiB and letting many more
+    lanes run concurrently without filling the disk."""
     disk = measure_dir_tensor_bytes(dest)
     tensor_bytes = int(disk.get("stored_bytes") or 0)
     repr_bytes = 0
@@ -2059,6 +2047,35 @@ def measure_complete_accounting(model, dest: Path, params: int, *, moe: bool) ->
                 repr_bytes += ep.stat().st_size
             except OSError:
                 pass
+    return {"tensor_bytes": tensor_bytes, "repr_bytes": repr_bytes}
+
+
+def measure_complete_accounting(model, dest: Path, params: int, *, moe: bool,
+                                disk_info: dict | None = None) -> dict:
+    """Complete bpw: payload+scales+biases+metadata+headers. No fake density.
+
+    disk_info (tensor_bytes/repr_bytes captured before the cache was deleted)
+    lets this run without dest present on disk.
+    """
+    payload = scales = biases = metadata = 0
+    for path, val in tree_flatten(model.parameters()):
+        if not isinstance(val, mx.array):
+            continue
+        b = int(val.nbytes)
+        leaf = (path.rsplit(".", 1)[-1] if path else "").lower()
+        if leaf in {"scales", "scale"}:
+            scales += b
+        elif leaf in {"biases", "bias"}:
+            biases += b
+        elif leaf in {"table", "tables", "offsets", "offset", "lut", "g_idx"}:
+            metadata += b
+        else:
+            payload += b
+    live_total = payload + scales + biases + metadata
+    if disk_info is None:
+        disk_info = measure_dest_disk_bytes(dest)
+    tensor_bytes = int(disk_info.get("tensor_bytes") or 0)
+    repr_bytes = int(disk_info.get("repr_bytes") or 0)
     header_bytes = max(0, repr_bytes - tensor_bytes) if repr_bytes else 0
     complete_bytes = (tensor_bytes or live_total) + header_bytes
     complete_bpw = (complete_bytes * 8 / params) if params else None
@@ -2075,7 +2092,7 @@ def measure_complete_accounting(model, dest: Path, params: int, *, moe: bool) ->
         "complete_bytes": int(complete_bytes),
         "complete_bpw": round(complete_bpw, 4) if complete_bpw is not None else None,
         "live_bpw": round(live_bpw, 4) if live_bpw is not None else None,
-        "disk_tensors": disk,
+        "disk_tensors": {"tensor_bytes": int(tensor_bytes), "repr_bytes": int(repr_bytes)},
         "no_fake_density": policy_acc,
         "_label": "MEASURED (live nbytes + safetensors headers)",
         "_evidence": "MEASURED (complete_bpw = payload+scales+biases+metadata+headers)",
@@ -2578,12 +2595,25 @@ def run_gravity_mode(
     cfg_live = inspect_router(layers) if layers else {"live": None, "moe_layer_indices": []}
     live = cfg_live.get("live")
     live_total, organs_b = measure_live_organ_bytes(model, moe=moe)
-    disk = measure_dir_tensor_bytes(dest)
-    stored_bytes = int(disk["stored_bytes"])
+    disk_info = measure_dest_disk_bytes(dest)
+    stored_bytes = int(disk_info["tensor_bytes"])
     params = int(census.get("total_params") or 0)
     if params <= 0:
         raise SystemExit("census total_params missing; cannot compute stored_bpw")
     stored_bpw = stored_bytes * 8 / params
+    # Free the ~12 GiB spec cache NOW — but first FORCE every weight fully into
+    # RAM (mx.eval), because mlx memory-maps the safetensors lazily; deleting the
+    # files before materialization would crash the forward pass. After eval the
+    # arrays live in unified memory, so the Doctor battery + complete-accounting
+    # run from RAM plus the captured disk figures. This is what stops parallel
+    # lanes from filling the disk — concurrency becomes RAM-bound, not disk-bound.
+    if os.environ.get("ODYSSEY_KEEP_SPEC_CACHE") != "1":
+        try:
+            mx.eval(model.parameters())
+            shutil.rmtree(dest, ignore_errors=True)
+            log(f"freed spec cache {dest} ({stored_bytes/1e9:.1f}GB) — Doctor runs from RAM")
+        except (OSError, Exception) as exc:  # noqa: BLE001 — deletion must never break the run
+            log(f"spec-cache free skipped: {exc}")
     active_bytes, active_params = active_bytes_from_organs(
         organs_b, live_total, census, live
     )
@@ -2625,7 +2655,8 @@ def run_gravity_mode(
 
     tagged = classify_gravity_spec(spec)
     failure_loc = localize_gravity_failure(delta_hits, pos, threshold=pass_min)
-    accounting = measure_complete_accounting(model, dest, params, moe=moe)
+    accounting = measure_complete_accounting(model, dest, params, moe=moe,
+                                             disk_info=disk_info)
     complete_bpw = accounting.get("complete_bpw")
     if complete_bpw is None:
         complete_bpw = round(stored_bpw, 4)
@@ -2670,7 +2701,7 @@ def run_gravity_mode(
         "params": params,
         "active_params_per_token": active_params,
         "organs_bytes_quantized": organs_b,
-        "disk_tensors": disk,
+        "disk_tensors": disk_info,
         "live_nbytes": live_total,
         "battery": doc["battery"],
         "refusals": doc["refusals"],

@@ -182,6 +182,16 @@ def log(msg: str) -> None:
     print(msg, flush=True)
 
 
+def atomic_write_text(path: Path, text: str) -> None:
+    """Write via a unique temp file + os.replace so a concurrent reader never
+    sees a partial file. Ladder rungs of one patient update the same packet
+    concurrently; last-write-wins is fine (receipts are the source of truth) but
+    a torn read would corrupt the JSON — os.replace makes the swap atomic."""
+    tmp = path.with_suffix(path.suffix + f".tmp.{os.getpid()}")
+    tmp.write_text(text)
+    os.replace(tmp, path)
+
+
 def expand(p: str | Path) -> Path:
     return Path(os.path.expanduser(str(p))).resolve()
 
@@ -1773,7 +1783,7 @@ def run_sensitivity_mode(
     }
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(json.dumps(receipt, indent=2) + "\n")
+    atomic_write_text(out_path, json.dumps(receipt, indent=2) + "\n")
     log(f"wrote {out_path}")
 
     if not args.skip_packet:
@@ -2233,7 +2243,7 @@ def convert_gravity(hf_path: Path, dest: Path, spec: str,
     )
     if not (dest / "config.json").exists() or not any(dest.glob("*.safetensors")):
         raise RuntimeError(f"gravity convert produced no weights at {dest}")
-    mix_marker.write_text(json.dumps({"spec": spec, "protected": prot}, indent=2) + "\n")
+    atomic_write_text(mix_marker, json.dumps({"spec": spec, "protected": prot}, indent=2) + "\n")
     return dest
 
 
@@ -2481,7 +2491,7 @@ def update_packet_gravity(packet_path: Path, receipt: dict) -> None:
     )
     nxt = [line] + [x for x in nxt if "gravity" not in str(x).lower()]
     pkt["next"] = nxt
-    packet_path.write_text(json.dumps(pkt, indent=2) + "\n")
+    atomic_write_text(packet_path, json.dumps(pkt, indent=2) + "\n")
     log(f"updated packet gravity {packet_path}")
 
 
@@ -2523,7 +2533,7 @@ def update_packet_nx(packet_path: Path, receipt: dict) -> None:
     line = f"nx-{mode} accounting written ({nx.get('receipt')}); not a Hawking NX runtime"
     nxt = [line] + [x for x in nxt if "nx-" not in str(x).lower()]
     pkt["next"] = nxt
-    packet_path.write_text(json.dumps(pkt, indent=2) + "\n")
+    atomic_write_text(packet_path, json.dumps(pkt, indent=2) + "\n")
     log(f"updated packet nx {packet_path}")
 
 
@@ -2719,7 +2729,7 @@ def run_gravity_mode(
     }
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(json.dumps(receipt, indent=2) + "\n")
+    atomic_write_text(out_path, json.dumps(receipt, indent=2) + "\n")
     log(f"wrote {out_path}")
     if not args.skip_packet:
         update_packet_gravity(packet_path, receipt)
@@ -2781,7 +2791,7 @@ def run_nx_gather_mode(
             "_section": "§13",
         }
         out_path.parent.mkdir(parents=True, exist_ok=True)
-        out_path.write_text(json.dumps(receipt, indent=2) + "\n")
+        atomic_write_text(out_path, json.dumps(receipt, indent=2) + "\n")
         log(f"wrote {out_path} (skipped, not MoE)")
         return 0
 
@@ -2925,7 +2935,7 @@ def run_nx_gather_mode(
         "_section": "§20",
     }
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(json.dumps(receipt, indent=2) + "\n")
+    atomic_write_text(out_path, json.dumps(receipt, indent=2) + "\n")
     log(f"wrote {out_path}")
     if not args.skip_packet:
         update_packet_nx(packet_path, receipt)
@@ -2983,7 +2993,7 @@ def run_nx_state_mode(
             "_section": "§20",
         }
         out_path.parent.mkdir(parents=True, exist_ok=True)
-        out_path.write_text(json.dumps(receipt, indent=2) + "\n")
+        atomic_write_text(out_path, json.dumps(receipt, indent=2) + "\n")
         log(f"wrote {out_path} (skipped, no SSM)")
         return 0
 
@@ -3048,7 +3058,7 @@ def run_nx_state_mode(
         "_section": "§20",
     }
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(json.dumps(receipt, indent=2) + "\n")
+    atomic_write_text(out_path, json.dumps(receipt, indent=2) + "\n")
     log(f"wrote {out_path}")
     if not args.skip_packet:
         update_packet_nx(packet_path, receipt)
@@ -3129,7 +3139,7 @@ def run_nx_dense_mode(
         "_section": "§20",
     }
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(json.dumps(receipt, indent=2) + "\n")
+    atomic_write_text(out_path, json.dumps(receipt, indent=2) + "\n")
     log(f"wrote {out_path}")
     if not args.skip_packet:
         update_packet_nx(packet_path, receipt)
@@ -3274,7 +3284,7 @@ def write_doctor_seal(
         "commit": git_head(),
     }
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(json.dumps(doc, indent=2) + "\n")
+    atomic_write_text(out_path, json.dumps(doc, indent=2) + "\n")
     return verdict, doc
 
 
@@ -3491,7 +3501,7 @@ def merge_transfer_matrix(oxx: str, cells: dict[str, str], notes: dict[str, str]
         note = notes.get(rid)
         if note:
             row[f"_{oxx}_note"] = note
-    TRANSFER_MATRIX_PATH.write_text(json.dumps(grid, indent=2) + "\n")
+    atomic_write_text(TRANSFER_MATRIX_PATH, json.dumps(grid, indent=2) + "\n")
     log(f"merged {n_set} {oxx} cells into {TRANSFER_MATRIX_PATH}")
     return grid
 
@@ -3659,7 +3669,7 @@ def write_transfer_control(
     }
     out_path = ROOT / f"receipts/odyssey-i/{oxx}_TRANSFER.json"
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(json.dumps(transfer, indent=2) + "\n")
+    atomic_write_text(out_path, json.dumps(transfer, indent=2) + "\n")
     log(f"wrote {out_path}")
 
     if packet_path.exists():
@@ -3688,7 +3698,7 @@ def write_transfer_control(
         )
         nxt = [line] + [x for x in nxt if "transfer-control" not in str(x).lower()]
         pkt["next"] = nxt
-        packet_path.write_text(json.dumps(pkt, indent=2) + "\n")
+        atomic_write_text(packet_path, json.dumps(pkt, indent=2) + "\n")
         log(f"updated packet transfer {packet_path}")
 
     non_nt = [s for s in cells.values() if s != "NOT_TESTED"]
@@ -3873,7 +3883,7 @@ def update_packet(packet_path: Path, receipt: dict) -> None:
             "_evidence": acc["_evidence"],
         }
     pkt["next"] = nxt
-    packet_path.write_text(json.dumps(pkt, indent=2) + "\n")
+    atomic_write_text(packet_path, json.dumps(pkt, indent=2) + "\n")
     log(f"updated packet {packet_path}")
 
 
@@ -3903,7 +3913,7 @@ def update_packet_sensitivity(packet_path: Path, receipt: dict, organs: list[str
     line = f"A3 per-organ sensitivity MEASURED: {summary}"
     nxt = [line] + [x for x in nxt if "per-organ" not in str(x).lower()]
     pkt["next"] = nxt
-    packet_path.write_text(json.dumps(pkt, indent=2) + "\n")
+    atomic_write_text(packet_path, json.dumps(pkt, indent=2) + "\n")
     log(f"updated packet sensitivity {packet_path} organs={organs}")
 
 
@@ -4500,7 +4510,7 @@ def main() -> int:
     }
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(json.dumps(receipt, indent=2) + "\n")
+    atomic_write_text(out_path, json.dumps(receipt, indent=2) + "\n")
     log(f"wrote {out_path}")
 
     if not args.skip_packet:
@@ -4518,7 +4528,7 @@ def main() -> int:
         receipt["transfer_ref"] = f"receipts/odyssey-i/{args.oxx}_TRANSFER.json"
         receipt["transfer_reference"] = ref_oxx
         # Re-write EXTERNAL so the transfer pointer is on the specimen receipt.
-        out_path.write_text(json.dumps(receipt, indent=2) + "\n")
+        atomic_write_text(out_path, json.dumps(receipt, indent=2) + "\n")
         if not args.skip_packet:
             validate_packet(
                 packet_path, route_skipped=skip_route, transfer=True, oxx=args.oxx

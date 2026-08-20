@@ -20,8 +20,8 @@
       "class": "small hybrid attn+Mamba",
       "source": "tiiuae/Falcon-H1-7B-Instruct",
       "gate": "open",
-      "ledger": "on-disk (reopened for aggressive descent ladder)",
-      "state": "RETIRED",
+      "ledger": "on-disk (deep descent ladder)",
+      "state": "READY",
       "phase": "SEALED",
       "on_disk": true,
       "blocked_reason": null,
@@ -47,8 +47,8 @@
       "class": "small multimodal MoE",
       "source": "moonshotai/Kimi-VL-A3B-Instruct",
       "gate": "open",
-      "ledger": "on-disk (reopened for aggressive descent ladder)",
-      "state": "RETIRED",
+      "ledger": "on-disk (deep descent ladder)",
+      "state": "READY",
       "phase": "SEALED",
       "on_disk": true,
       "blocked_reason": null,
@@ -1608,6 +1608,6 @@
     "grok_lanes_bootstrap": 3,
     "gpu_seconds": 0,
     "gpu_owner": "none",
-    "_evidence": "INFERRED (ODYSSEY.md §72 session bootstrap)"
+    "_evidence": "INFERRED (ODYSSEY.md \u00a772 session bootstrap)"
   }
 }

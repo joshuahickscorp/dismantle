@@ -83,11 +83,11 @@ DISK_WARN_GIB = 40.0
 DISK_RUN_GIB = 45.0
 # Disk-aware model-lane throttle: never launch a NEW model lane that would push
 # free disk below this floor, budgeting ~one 4-bit body per new gravity spec.
-DISK_MIN_FLOOR = 18.0
+DISK_MIN_FLOOR = 15.0
 TYPICAL_SPEC_GIB = 12.0
 # Memgate (swap<=30 GiB) is the real multi-model bound. This cap is only a
 # safety rail so a stuck driver cannot spawn unbounded grok-run processes.
-HARD_LANE_CAP = 8
+HARD_LANE_CAP = 14
 DEFAULT_MAX_LANES = 2
 SCHEMA = "hawking.odyssey.controller.v1"
 RUN_LOG_SCHEMA = "hawking.odyssey.run_log.v1"
@@ -192,18 +192,40 @@ NX_FLAG = {
 # (independent completion) and its own receipt; rungs serialize per patient on
 # the packet lock. All specs are runner-grammar-valid. The runner reuses the
 # per-spec quant cache, so a repeated rung is seconds; a new one is a real run.
+# Deep ladders: the full (bits x group x organ-target x mixed) grid the runner
+# grammar accepts, ordered aggressive-first (q2 -> mixed -> q3 -> q4) so the
+# interesting sub-2-bit / mixed science and frontier boundary run before the
+# conventional anchors. ~30 rungs/patient maps the BPW-vs-Doctor surface finely
+# and keeps the box saturated. Cold spec caches are evicted; disk is throttled.
 GRAVITY_LADDER = {
     "moe": [
-        "q3-g32-experts", "q2-g32-experts", "q2-g64-experts",
-        "mixed-q2q3-experts", "q2-g128-experts",
+        "q2-g16-experts", "q2-g32-experts", "q2-g64-experts", "q2-g128-experts",
+        "q2-g16", "q2-g32", "q2-g64", "q2-g128",
+        "mixed-q2q3-experts", "mixed-q2q4-experts", "mixed-q2q3", "mixed-q2q4",
+        "q3-g16-experts", "q3-g32-experts", "q3-g64-experts", "q3-g128-experts",
+        "q3-g16", "q3-g32", "q3-g64", "q3-g128", "mixed-q3q4-experts", "mixed-q3q4",
+        "q4-g16-experts", "q4-g32-experts", "q4-g64-experts", "q4-g128-experts",
+        "q4-g16", "q4-g32", "q4-g64", "q4-g128",
     ],
     "dense": [
-        "q4-g64", "q3-g64", "q2-g64", "q2-g32",
-        "q4-g64-attn-mlp", "q2-g64-attn-mlp", "mixed-q2q3",
+        "q2-g16", "q2-g32", "q2-g64", "q2-g128",
+        "q2-g16-attn-mlp", "q2-g32-attn-mlp", "q2-g64-attn-mlp", "q2-g128-attn-mlp",
+        "mixed-q2q3", "mixed-q2q4", "mixed-q2q3-attn-mlp", "mixed-q2q4-attn-mlp",
+        "q3-g16", "q3-g32", "q3-g64", "q3-g128",
+        "q3-g16-attn-mlp", "q3-g32-attn-mlp", "q3-g64-attn-mlp", "q3-g128-attn-mlp",
+        "mixed-q3q4", "mixed-q3q4-attn-mlp",
+        "q4-g16", "q4-g32", "q4-g64", "q4-g128",
+        "q4-g16-attn-mlp", "q4-g32-attn-mlp", "q4-g64-attn-mlp", "q4-g128-attn-mlp",
     ],
     "hybrid": [
-        "q4-g64-attn-mlp", "q3-g32-attn-mlp",
-        "q2-g64-attn-mlp", "mixed-q2q3-attn-mlp",
+        "q2-g16", "q2-g32", "q2-g64", "q2-g128",
+        "q2-g16-attn-mlp", "q2-g32-attn-mlp", "q2-g64-attn-mlp", "q2-g128-attn-mlp",
+        "mixed-q2q3", "mixed-q2q4", "mixed-q2q3-attn-mlp", "mixed-q2q4-attn-mlp",
+        "q3-g16", "q3-g32", "q3-g64", "q3-g128",
+        "q3-g16-attn-mlp", "q3-g32-attn-mlp", "q3-g64-attn-mlp", "q3-g128-attn-mlp",
+        "mixed-q3q4", "mixed-q3q4-attn-mlp",
+        "q4-g16", "q4-g32", "q4-g64", "q4-g128",
+        "q4-g16-attn-mlp", "q4-g32-attn-mlp", "q4-g64-attn-mlp", "q4-g128-attn-mlp",
     ],
 }
 GRAVITY_LADDER_TEMPLATE = {
@@ -1087,6 +1109,14 @@ def write_scope(ob: dict) -> dict:
     """
     oxx = ob.get("oxx") or ob.get("patient_id") or ""
     template = ob.get("template") or ""
+    # Descent-ladder rungs write ONLY their per-spec receipt, not the shared
+    # patient packet, so many rungs of the same patient run concurrently instead
+    # of serializing on the packet lock. The packet is a derived human summary;
+    # completions are receipt-driven and rebuild_completions recovers any packet
+    # update lost to a concurrent write. This is what lets the box saturate.
+    if ob.get("ladder"):
+        rec = expected_receipt_rel(oxx, template, spec=ob.get("gravity_spec"))
+        return {"write_set": [rec] if rec else [], "exclusive_resources": []}
     if "write_set" in ob:
         excl = list(ob.get("exclusive_resources") or [])
         if ob.get("timing") and "protected-timing" not in excl:
@@ -3381,6 +3411,11 @@ def synthesize_for_patient(oxx: str, meta: dict, pkt: dict | None,
             }, ladder_tmpl, source="ladder")
             rec["mechanism_id"] = mech
             rec["mechanism"] = mech
+            # receipt-only scope so same-patient rungs run concurrently
+            rec["ladder"] = True
+            scope = write_scope(rec)
+            rec["write_set"] = scope["write_set"]
+            rec["exclusive_resources"] = scope["exclusive_resources"]
             out.append(rec)
     if should_novelty_escalate(oxx, pkt, entries):
         for lane in novelty.LANES:
@@ -4733,7 +4768,12 @@ def _running_model_gib(
         tmpl = w.get("template") or ""
         if not _template_loads_model(tmpl, w):
             continue
-        key = (w.get("oxx"), tmpl)
+        # Per-LANE identity, not (oxx, template): multiple ladder rungs of the
+        # same patient share a template but each is its own resident model, so
+        # each must count toward RAM or memgate under-counts and over-admits.
+        key = w.get("pid") or w.get("task") or w.get("id") or (
+            w.get("oxx"), w.get("mechanism_id") or tmpl,
+        )
         if key in seen:
             continue
         seen.add(key)
@@ -4817,7 +4857,10 @@ def _running_model_lane_count(
         tmpl = w.get("template") or ""
         if not _template_loads_model(tmpl, w):
             continue
-        seen.add((w.get("oxx"), tmpl))
+        # per-lane, not (oxx, template): concurrent same-patient rungs each count
+        seen.add(w.get("pid") or w.get("task") or w.get("id") or (
+            w.get("oxx"), w.get("mechanism_id") or tmpl,
+        ))
     return len(seen)
 
 
@@ -7441,7 +7484,14 @@ def _self_check() -> int:
     assert all(r.get("task_id") in (None, "") for r in admitted)
 
     # 13. anti-complacency / conventionality / failure-localization (steer S004)
-    o003_req = required_mechanisms("O003", st2)
+    # Use an O003-active state copy: O003 may be RETIRED in live state (it can
+    # descend its ladder and re-seal), which would short-circuit retire_eligible
+    # via the RETIRED guard and mask the gate logic these assertions exercise.
+    st2_o003 = json.loads(json.dumps(st2))
+    for _p in st2_o003.get("patients") or []:
+        if _p.get("oxx") == "O003":
+            _p["state"] = "READY"
+    o003_req = required_mechanisms("O003", st2_o003)
     assert "gravity-moe" in o003_req and "gravity-aggressive-moe" in o003_req
     conv_only = [
         {"obligation_id": f"t:{m}", "patient_id": "O003", "mechanism_id": m,
@@ -7449,15 +7499,15 @@ def _self_check() -> int:
          "candidate_class": "CONVENTIONAL_ANCHOR" if m == "gravity-moe" else None}
         for m in o003_req if m != "gravity-aggressive-moe"
     ]
-    assert not retire_eligible("O003", st2, conv_only), "conventional gravity alone must not retire"
-    assert "gravity-aggressive-moe" in missing_required("O003", st2, conv_only)
+    assert not retire_eligible("O003", st2_o003, conv_only), "conventional gravity alone must not retire"
+    assert "gravity-aggressive-moe" in missing_required("O003", st2_o003, conv_only)
     # descend the full ladder (terminal) so this isolates the REFUTED-aggressive
     # check from the separate ladder-exhaustion gate.
     o003_ladder_done = [
         {"obligation_id": f"t:gravity-{s}", "patient_id": "O003",
          "mechanism_id": f"gravity-{s}", "status": "VERIFIED",
          "reopen_if": None, "completed_at": "t1"}
-        for s in GRAVITY_LADDER.get(patient_arch_kind("O003", st2), [])
+        for s in GRAVITY_LADDER.get(patient_arch_kind("O003", st2_o003), [])
     ]
     with_agg = conv_only + o003_ladder_done + [{
         "obligation_id": "t:gravity-aggressive-moe",
@@ -7469,7 +7519,7 @@ def _self_check() -> int:
         "candidate_class": "AGGRESSIVE_QUANT",
         "conventionality": "nonconventional",
     }]
-    assert retire_eligible("O003", st2, with_agg), "REFUTED aggressive probe still counts as attempted"
+    assert retire_eligible("O003", st2_o003, with_agg), "REFUTED aggressive probe still counts as attempted"
     assert aggressive_probe_attempted("O003", with_agg)
     assert conventional_anchor_exists("O003", conv_only)
 

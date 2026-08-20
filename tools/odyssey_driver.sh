@@ -60,7 +60,7 @@ while true; do
     echo "== tick $tick $ts =="
     # --max-lanes = MODEL concurrency ceiling (memgate is the real limiter);
     # --grok-lanes 0 = NO grok in the loop (deterministic science only).
-    ODYSSEY_HEADROOM_ADMIT=1 "$PY" tools/odyssey_ctl.py cycle --go --max-lanes 6 --grok-lanes 0
+    ODYSSEY_HEADROOM_ADMIT=1 "$PY" tools/odyssey_ctl.py cycle --go --max-lanes 12 --grok-lanes 0
     echo "-- cycle rc=$? --"
   } >>"$LOG" 2>&1
   if [ $((tick % COMMIT_EVERY)) -eq 0 ]; then

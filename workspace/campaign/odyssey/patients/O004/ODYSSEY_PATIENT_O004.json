@@ -69,13 +69,13 @@
       "refusal_controls": 2,
       "battery": "11/12",
       "refusals": "0/2",
-      "note": "same 12-item correctness battery + 2 ABL prompts as a3b_recon.py; G046/G048 recorded ten items as too narrow to certify equivalence — this is a FAST doctor, not a full seal"
+      "note": "same 12-item correctness battery + 2 ABL prompts as a3b_recon.py; G046/G048 recorded ten items as too narrow to certify equivalence \u2014 this is a FAST doctor, not a full seal"
     },
     "known_blind_spots": [
-      "mlx_lm EXTERNAL SPECIMEN — not Hawking native, not BASE_TRUE_TPS (§14)",
+      "mlx_lm EXTERNAL SPECIMEN \u2014 not Hawking native, not BASE_TRUE_TPS (\u00a714)",
       "fast battery is 12 completion items; no coding/long-context/tool dimensions",
       "refusal matcher is substring-based and English-centric",
-      "4-bit affine MLX quant — Doctor/TPS are under quant, not bf16-canonical",
+      "4-bit affine MLX quant \u2014 Doctor/TPS are under quant, not bf16-canonical",
       "Tabula instrument is not validated on this patient (instrument_validated=false)"
     ],
     "tabula": {
@@ -98,13 +98,13 @@
     "cold_set": null,
     "route_predictability": null,
     "P(E_t|E_t-1)": null,
-    "_evidence": "N/A — dense/hybrid; no MoE router (no layer with gate+switch_mlp); route tap skipped (route_skipped=true)",
+    "_evidence": "N/A \u2014 dense/hybrid; no MoE router (no layer with gate+switch_mlp); route tap skipped (route_skipped=true)",
     "route_skipped": true
   },
   "representation": {
     "source_bytes": 48022722560,
-    "best_stored_bpw_eq": 3.9271,
-    "active_bpw_eq": 3.9271,
+    "best_stored_bpw_eq": 4.1725,
+    "active_bpw_eq": 4.1725,
     "metadata_bytes": null,
     "corrections": null,
     "reconstruction": null,
@@ -119,7 +119,7 @@
       "_evidence": "MEASURED (in-place mlx ablation; canonical HF snapshot untouched)",
       "treatments": {
         "zero": "effective-zero: quantized organs via scales/biases=0; dense via weight=0",
-        "round8": "affine 8-bit quantize→dequantize (group 64) of dequantized organ; re-stored in the loaded codec. On a 4-bit specimen this is a 4-bit→8-bit-grid→4-bit round-trip (near-identity for already-4-bit organs; real 8-bit snap for unquantized norms)."
+        "round8": "affine 8-bit quantize\u2192dequantize (group 64) of dequantized organ; re-stored in the loaded codec. On a 4-bit specimen this is a 4-bit\u21928-bit-grid\u21924-bit round-trip (near-identity for already-4-bit organs; real 8-bit snap for unquantized norms)."
       },
       "embed": {
         "n_modules": 1,
@@ -331,7 +331,7 @@
       }
     },
     "per_expert_sensitivity": null,
-    "_evidence": "MEASURED (census); MEASURED (per_organ_sensitivity, in-place mlx ablation); MEASURED (gravity q2-g32 stored_bpw=2.9454); MEASURED (gravity q4-g64 stored_bpw=4.4179); MEASURED (gravity mixed-q2q3 stored_bpw=3.0327); MEASURED (gravity q2-g64-attn-mlp stored_bpw=2.4545); MEASURED (gravity q3-g64 stored_bpw=3.4362); MEASURED (gravity mixed-q2q3-attn-mlp stored_bpw=2.9454); MEASURED (gravity mixed-q2q4 stored_bpw=3.1201); MEASURED (gravity mixed-q2q4-attn-mlp stored_bpw=2.9454); MEASURED (gravity mixed-q3q4 stored_bpw=4.0144); MEASURED (gravity mixed-q3q4-attn-mlp stored_bpw=3.9271); MEASURED (gravity q2-g128 stored_bpw=2.2091); MEASURED (gravity q2-g128-attn-mlp stored_bpw=2.2091); MEASURED (gravity q2-g32-attn-mlp stored_bpw=2.9454); MEASURED (gravity q3-g128 stored_bpw=3.1908); MEASURED (gravity q3-g128-attn-mlp stored_bpw=3.1908); MEASURED (gravity q3-g32 stored_bpw=3.9271); MEASURED (gravity q4-g32-attn-mlp stored_bpw=4.9088); MEASURED (gravity q3-g32-attn-mlp stored_bpw=3.9271)",
+    "_evidence": "MEASURED (census); MEASURED (per_organ_sensitivity, in-place mlx ablation); MEASURED (gravity q2-g32 stored_bpw=2.9454); MEASURED (gravity q4-g64 stored_bpw=4.4179); MEASURED (gravity mixed-q2q3 stored_bpw=3.0327); MEASURED (gravity q2-g64-attn-mlp stored_bpw=2.4545); MEASURED (gravity q3-g64 stored_bpw=3.4362); MEASURED (gravity mixed-q2q3-attn-mlp stored_bpw=2.9454); MEASURED (gravity mixed-q2q4 stored_bpw=3.1201); MEASURED (gravity mixed-q2q4-attn-mlp stored_bpw=2.9454); MEASURED (gravity mixed-q3q4 stored_bpw=4.0144); MEASURED (gravity mixed-q3q4-attn-mlp stored_bpw=3.9271); MEASURED (gravity q2-g128 stored_bpw=2.2091); MEASURED (gravity q2-g128-attn-mlp stored_bpw=2.2091); MEASURED (gravity q2-g32-attn-mlp stored_bpw=2.9454); MEASURED (gravity q3-g128 stored_bpw=3.1908); MEASURED (gravity q3-g128-attn-mlp stored_bpw=3.1908); MEASURED (gravity q3-g32 stored_bpw=3.9271); MEASURED (gravity q4-g32-attn-mlp stored_bpw=4.9088); MEASURED (gravity q3-g32-attn-mlp stored_bpw=3.9271); MEASURED (gravity q3-g64-attn-mlp stored_bpw=3.4362); MEASURED (gravity q4-g128 stored_bpw=4.1725)",
     "stored_bpw": 16.0,
     "organs_bytes_GB": {
       "embed": 1.34,
@@ -354,9 +354,9 @@
     "cache": null,
     "state": null,
     "route_overhead": null,
-    "baseline_runtime": "mlx_lm EXTERNAL SPECIMEN — not Hawking native (§14, §60 foreign-runtime); mlx TPS is NOT BASE_TRUE_TPS",
+    "baseline_runtime": "mlx_lm EXTERNAL SPECIMEN \u2014 not Hawking native (\u00a714, \u00a760 foreign-runtime); mlx TPS is NOT BASE_TRUE_TPS",
     "baseline_tps": 32.079,
-    "_evidence": "MEASURED (receipts/odyssey-i/O004_EXTERNAL.json) SPECIMEN; §14 session may be open — not BASE_TRUE_TPS",
+    "_evidence": "MEASURED (receipts/odyssey-i/O004_EXTERNAL.json) SPECIMEN; \u00a714 session may be open \u2014 not BASE_TRUE_TPS",
     "tps_specimen": 32.079,
     "quant": "4bit-mlx",
     "label": "SPECIMEN",
@@ -382,7 +382,9 @@
       "q3-g128-attn-mlp",
       "q3-g32",
       "q4-g32-attn-mlp",
-      "q3-g32-attn-mlp"
+      "q3-g32-attn-mlp",
+      "q3-g64-attn-mlp",
+      "q4-g128"
     ],
     "wins": [
       {
@@ -403,7 +405,7 @@
         "receipt": "receipts/odyssey-i/O004_GRAVITY_q3-g64.json",
         "label": "SPECIMEN",
         "not_hawking_nx_win": true,
-        "_evidence": "MEASURED (mlx gravity specimen; §15)",
+        "_evidence": "MEASURED (mlx gravity specimen; \u00a715)",
         "_label": "SPECIMEN"
       },
       {
@@ -424,7 +426,7 @@
         "receipt": "receipts/odyssey-i/O004_GRAVITY_q4-g64.json",
         "label": "SPECIMEN",
         "not_hawking_nx_win": true,
-        "_evidence": "MEASURED (mlx gravity specimen; §15)",
+        "_evidence": "MEASURED (mlx gravity specimen; \u00a715)",
         "_label": "SPECIMEN"
       },
       {
@@ -448,7 +450,7 @@
         "receipt": "receipts/odyssey-i/O004_GRAVITY_q2-g32-attn-mlp.json",
         "label": "SPECIMEN",
         "not_hawking_nx_win": true,
-        "_evidence": "MEASURED (mlx gravity specimen; §15)",
+        "_evidence": "MEASURED (mlx gravity specimen; \u00a715)",
         "_label": "SPECIMEN"
       },
       {
@@ -469,7 +471,7 @@
         "receipt": "receipts/odyssey-i/O004_GRAVITY_q3-g128.json",
         "label": "SPECIMEN",
         "not_hawking_nx_win": true,
-        "_evidence": "MEASURED (mlx gravity specimen; §15)",
+        "_evidence": "MEASURED (mlx gravity specimen; \u00a715)",
         "_label": "SPECIMEN"
       },
       {
@@ -493,7 +495,7 @@
         "receipt": "receipts/odyssey-i/O004_GRAVITY_q3-g128-attn-mlp.json",
         "label": "SPECIMEN",
         "not_hawking_nx_win": true,
-        "_evidence": "MEASURED (mlx gravity specimen; §15)",
+        "_evidence": "MEASURED (mlx gravity specimen; \u00a715)",
         "_label": "SPECIMEN"
       },
       {
@@ -514,7 +516,7 @@
         "receipt": "receipts/odyssey-i/O004_GRAVITY_q3-g32.json",
         "label": "SPECIMEN",
         "not_hawking_nx_win": true,
-        "_evidence": "MEASURED (mlx gravity specimen; §15)",
+        "_evidence": "MEASURED (mlx gravity specimen; \u00a715)",
         "_label": "SPECIMEN"
       },
       {
@@ -538,7 +540,7 @@
         "receipt": "receipts/odyssey-i/O004_GRAVITY_q4-g32-attn-mlp.json",
         "label": "SPECIMEN",
         "not_hawking_nx_win": true,
-        "_evidence": "MEASURED (mlx gravity specimen; §15)",
+        "_evidence": "MEASURED (mlx gravity specimen; \u00a715)",
         "_label": "SPECIMEN"
       },
       {
@@ -562,7 +564,52 @@
         "receipt": "receipts/odyssey-i/O004_GRAVITY_q3-g32-attn-mlp.json",
         "label": "SPECIMEN",
         "not_hawking_nx_win": true,
-        "_evidence": "MEASURED (mlx gravity specimen; §15)",
+        "_evidence": "MEASURED (mlx gravity specimen; \u00a715)",
+        "_label": "SPECIMEN"
+      },
+      {
+        "spec": "q3-g64-attn-mlp",
+        "stored_bpw": 3.4362,
+        "complete_bpw": 3.4363,
+        "nominal_bits": 3,
+        "active_bpw": 3.4362,
+        "stored_bytes": 10313574400,
+        "active_bytes_per_token": 10313574400,
+        "battery": "12/12",
+        "delta_hits": 1,
+        "verdict": "CANDIDATE_PASS",
+        "candidate_class": "CONVENTIONAL_ANCHOR",
+        "conventionality": "conventional",
+        "protected_components": [
+          "ssm",
+          "norm"
+        ],
+        "failure_localization": null,
+        "receipt": "receipts/odyssey-i/O004_GRAVITY_q3-g64-attn-mlp.json",
+        "label": "SPECIMEN",
+        "not_hawking_nx_win": true,
+        "_evidence": "MEASURED (mlx gravity specimen; \u00a715)",
+        "_label": "SPECIMEN"
+      },
+      {
+        "spec": "q4-g128",
+        "stored_bpw": 4.1725,
+        "complete_bpw": 4.1726,
+        "nominal_bits": 4,
+        "active_bpw": 4.1725,
+        "stored_bytes": 12523448320,
+        "active_bytes_per_token": 12523448320,
+        "battery": "12/12",
+        "delta_hits": 1,
+        "verdict": "CANDIDATE_PASS",
+        "candidate_class": "CONVENTIONAL_ANCHOR",
+        "conventionality": "conventional",
+        "protected_components": [],
+        "failure_localization": null,
+        "receipt": "receipts/odyssey-i/O004_GRAVITY_q4-g128.json",
+        "label": "SPECIMEN",
+        "not_hawking_nx_win": true,
+        "_evidence": "MEASURED (mlx gravity specimen; \u00a715)",
         "_label": "SPECIMEN"
       }
     ],
@@ -632,7 +679,7 @@
         "receipt": "receipts/odyssey-i/O004_GRAVITY_mixed-q2q3.json",
         "label": "SPECIMEN",
         "not_hawking_nx_win": true,
-        "_evidence": "MEASURED (mlx gravity specimen; §15)",
+        "_evidence": "MEASURED (mlx gravity specimen; \u00a715)",
         "_label": "SPECIMEN"
       },
       {
@@ -698,7 +745,7 @@
         "receipt": "receipts/odyssey-i/O004_GRAVITY_q2-g32.json",
         "label": "SPECIMEN",
         "not_hawking_nx_win": true,
-        "_evidence": "MEASURED (mlx gravity specimen; §15)",
+        "_evidence": "MEASURED (mlx gravity specimen; \u00a715)",
         "_label": "SPECIMEN"
       },
       {
@@ -767,7 +814,7 @@
         "receipt": "receipts/odyssey-i/O004_GRAVITY_q2-g64-attn-mlp.json",
         "label": "SPECIMEN",
         "not_hawking_nx_win": true,
-        "_evidence": "MEASURED (mlx gravity specimen; §15)",
+        "_evidence": "MEASURED (mlx gravity specimen; \u00a715)",
         "_label": "SPECIMEN"
       },
       {
@@ -836,7 +883,7 @@
         "receipt": "receipts/odyssey-i/O004_GRAVITY_mixed-q2q3-attn-mlp.json",
         "label": "SPECIMEN",
         "not_hawking_nx_win": true,
-        "_evidence": "MEASURED (mlx gravity specimen; §15)",
+        "_evidence": "MEASURED (mlx gravity specimen; \u00a715)",
         "_label": "SPECIMEN"
       },
       {
@@ -904,7 +951,7 @@
         "receipt": "receipts/odyssey-i/O004_GRAVITY_mixed-q2q4.json",
         "label": "SPECIMEN",
         "not_hawking_nx_win": true,
-        "_evidence": "MEASURED (mlx gravity specimen; §15)",
+        "_evidence": "MEASURED (mlx gravity specimen; \u00a715)",
         "_label": "SPECIMEN"
       },
       {
@@ -973,7 +1020,7 @@
         "receipt": "receipts/odyssey-i/O004_GRAVITY_mixed-q2q4-attn-mlp.json",
         "label": "SPECIMEN",
         "not_hawking_nx_win": true,
-        "_evidence": "MEASURED (mlx gravity specimen; §15)",
+        "_evidence": "MEASURED (mlx gravity specimen; \u00a715)",
         "_label": "SPECIMEN"
       },
       {
@@ -1041,7 +1088,7 @@
         "receipt": "receipts/odyssey-i/O004_GRAVITY_mixed-q3q4.json",
         "label": "SPECIMEN",
         "not_hawking_nx_win": true,
-        "_evidence": "MEASURED (mlx gravity specimen; §15)",
+        "_evidence": "MEASURED (mlx gravity specimen; \u00a715)",
         "_label": "SPECIMEN"
       },
       {
@@ -1110,7 +1157,7 @@
         "receipt": "receipts/odyssey-i/O004_GRAVITY_mixed-q3q4-attn-mlp.json",
         "label": "SPECIMEN",
         "not_hawking_nx_win": true,
-        "_evidence": "MEASURED (mlx gravity specimen; §15)",
+        "_evidence": "MEASURED (mlx gravity specimen; \u00a715)",
         "_label": "SPECIMEN"
       },
       {
@@ -1176,7 +1223,7 @@
         "receipt": "receipts/odyssey-i/O004_GRAVITY_q2-g128.json",
         "label": "SPECIMEN",
         "not_hawking_nx_win": true,
-        "_evidence": "MEASURED (mlx gravity specimen; §15)",
+        "_evidence": "MEASURED (mlx gravity specimen; \u00a715)",
         "_label": "SPECIMEN"
       },
       {
@@ -1245,34 +1292,31 @@
         "receipt": "receipts/odyssey-i/O004_GRAVITY_q2-g128-attn-mlp.json",
         "label": "SPECIMEN",
         "not_hawking_nx_win": true,
-        "_evidence": "MEASURED (mlx gravity specimen; §15)",
+        "_evidence": "MEASURED (mlx gravity specimen; \u00a715)",
         "_label": "SPECIMEN"
       }
     ],
     "architecture_specific_findings": [],
     "_evidence": "UNKNOWN",
     "last": {
-      "spec": "q3-g32-attn-mlp",
-      "stored_bpw": 3.9271,
-      "complete_bpw": 3.9272,
-      "nominal_bits": 3,
-      "active_bpw": 3.9271,
-      "stored_bytes": 11786823680,
-      "active_bytes_per_token": 11786823680,
+      "spec": "q4-g128",
+      "stored_bpw": 4.1725,
+      "complete_bpw": 4.1726,
+      "nominal_bits": 4,
+      "active_bpw": 4.1725,
+      "stored_bytes": 12523448320,
+      "active_bytes_per_token": 12523448320,
       "battery": "12/12",
       "delta_hits": 1,
       "verdict": "CANDIDATE_PASS",
       "candidate_class": "CONVENTIONAL_ANCHOR",
       "conventionality": "conventional",
-      "protected_components": [
-        "ssm",
-        "norm"
-      ],
+      "protected_components": [],
       "failure_localization": null,
-      "receipt": "receipts/odyssey-i/O004_GRAVITY_q3-g32-attn-mlp.json",
+      "receipt": "receipts/odyssey-i/O004_GRAVITY_q4-g128.json",
       "label": "SPECIMEN",
       "not_hawking_nx_win": true,
-      "_evidence": "MEASURED (mlx gravity specimen; §15)",
+      "_evidence": "MEASURED (mlx gravity specimen; \u00a715)",
       "_label": "SPECIMEN"
     },
     "candidate_class": "CONVENTIONAL_ANCHOR",
@@ -1285,7 +1329,7 @@
     "fallback_count": null,
     "best_preliminary_nx": "dense full-weight-sweep floor (no sparsity lever)",
     "nx_hash": null,
-    "_evidence": "MEASURED (census) — header-only, no weight load",
+    "_evidence": "MEASURED (census) \u2014 header-only, no weight load",
     "mode": "dense",
     "receipt": "receipts/odyssey-i/O004_NX_dense.json",
     "not_a_full_rust_runtime": true,
@@ -1310,11 +1354,11 @@
     "_evidence": "INFERRED (TRANSFER_MATRIX.json)"
   },
   "next": [
-    "gravity q3-g32-attn-mlp CANDIDATE_PASS: stored_bpw=3.9271 active_bpw=3.9271 battery=12/12 delta_hits=1 (mlx SPECIMEN, not a Hawking NX win)",
+    "gravity q4-g128 CANDIDATE_PASS: stored_bpw=4.1725 active_bpw=4.1725 battery=12/12 delta_hits=1 (mlx SPECIMEN, not a Hawking NX win)",
     "nx-dense accounting written (receipts/odyssey-i/O004_NX_dense.json); not a Hawking NX runtime",
     "A3 per-organ sensitivity MEASURED: zero drops hits on embed, attn, mlp_dense, norm, lm_head; round8 drops hits on nothing (baseline 11/12, 4bit-mlx)",
     "do not treat mlx tps_specimen as BASE_TRUE_TPS; re-time on a clean box if a native path lands",
-    "long-context slope (short/mod/long §87) — byte accounting done; timing slope not yet"
+    "long-context slope (short/mod/long \u00a787) \u2014 byte accounting done; timing slope not yet"
   ],
   "receipt_seal": {
     "verdict": "REFUSED",

@@ -1,6 +1,6 @@
 {
   "schema": "odyssey.patient.gravity.v1",
-  "oxx": "O001",
+  "oxx": "O004",
   "spec": "q2-g32-attn-mlp",
   "runtime": "mlx",
   "runtime_label": "mlx_lm EXTERNAL SPECIMEN \u2014 not Hawking native",
@@ -14,21 +14,21 @@
   "conventionality": "nonconventional",
   "conventionality_mechanism": "affine-quant",
   "nominal_bits": 2,
-  "complete_bpw": 5.2614,
+  "complete_bpw": 2.9455,
   "accounting": {
-    "payload_bytes": 4204975808,
-    "scales_bytes": 391643520,
-    "biases_bytes": 391958912,
+    "payload_bytes": 5893826560,
+    "scales_bytes": 1473249280,
+    "biases_bytes": 1473249280,
     "metadata_bytes": 0,
-    "header_bytes": 343917,
-    "live_bytes": 4988578240,
-    "disk_tensor_bytes": 4988578240,
-    "complete_bytes": 4988922157,
-    "complete_bpw": 5.2614,
-    "live_bpw": 5.2611,
+    "header_bytes": 300576,
+    "live_bytes": 8840325120,
+    "disk_tensor_bytes": 8840325120,
+    "complete_bytes": 8840625696,
+    "complete_bpw": 2.9455,
+    "live_bpw": 2.9454,
     "disk_tensors": {
-      "tensor_bytes": 4988578240,
-      "repr_bytes": 4988922157
+      "tensor_bytes": 8840325120,
+      "repr_bytes": 8840625696
     },
     "no_fake_density": "complete_bpw counts payload+scales+biases+tables+offsets+correction+tier/router-metadata+alignment+headers+repr-attributable-state; record nominal_bits AND complete_bpw",
     "_label": "MEASURED (live nbytes + safetensors headers)",
@@ -38,91 +38,45 @@
     "ssm",
     "norm"
   ],
-  "failure_localization": {
-    "failed": true,
-    "delta_hits": -10,
-    "threshold": -1,
-    "ranked_organs": [
-      {
-        "organ": "embed",
-        "sensitivity_delta": -2,
-        "treatment": "round8"
-      },
-      {
-        "organ": "lm_head",
-        "sensitivity_delta": -1,
-        "treatment": "round8"
-      },
-      {
-        "organ": "mlp_dense",
-        "sensitivity_delta": -1,
-        "treatment": "round8"
-      },
-      {
-        "organ": "attn",
-        "sensitivity_delta": 0,
-        "treatment": "round8"
-      },
-      {
-        "organ": "norm",
-        "sensitivity_delta": 0,
-        "treatment": "round8"
-      },
-      {
-        "organ": "other",
-        "sensitivity_delta": 0,
-        "treatment": "round8"
-      },
-      {
-        "organ": "ssm",
-        "sensitivity_delta": 0,
-        "treatment": "round8"
-      }
-    ],
-    "most_likely_component": "embed",
-    "targeted_repair": "protect embed (do not globally raise bits)",
-    "anti_retreat": "global precision retreat (X + globally higher bits) is LAST resort; first protect sensitive organ/router/attn/outliers, add sparse correction/residual tier, change grouping/scale-objective/metadata, heterogeneous expert precision, alternate family",
-    "_evidence": "DERIVED (rank organs by MEASURED sensitivity delta)"
-  },
-  "weights_canonical": "/Users/scammermike/.cache/huggingface/hub/models--tiiuae--Falcon-H1-7B-Instruct/snapshots/41e72f27effbab80cd45b6e884688452253a3686",
-  "weights_loaded": "/Users/scammermike/.cache/mlx/odyssey/O001-gravity-q2-g32-attn-mlp",
-  "canonical_snapshot_intact": 4,
-  "stored_bytes": 4988578240,
-  "stored_bpw": 5.2611,
-  "active_bytes_per_token": 4988578240,
-  "active_bpw": 5.2611,
-  "params": 7585654880,
-  "active_params_per_token": 7585654880,
+  "failure_localization": null,
+  "weights_canonical": "/Users/scammermike/.cache/huggingface/hub/models--mistralai--Mistral-Small-3.1-24B-Instruct-2503/snapshots/68faf511d618ef198fef186659617cfd2eb8e33a",
+  "weights_loaded": "/Users/scammermike/.cache/mlx/odyssey/O004-gravity-q2-g32-attn-mlp",
+  "canonical_snapshot_intact": 10,
+  "stored_bytes": 8840325120,
+  "stored_bpw": 2.9454,
+  "active_bytes_per_token": 8840325120,
+  "active_bpw": 2.9454,
+  "params": 24011361280,
+  "active_params_per_token": 24011361280,
   "organs_bytes_quantized": {
-    "embed": 149816448,
-    "mlp_dense": 1868562432,
-    "ssm": 2638170304,
-    "attn": 181665792,
-    "norm": 546816,
-    "lm_head": 149816448
+    "embed": 251658240,
+    "attn": 786432000,
+    "mlp_dense": 7549747200,
+    "norm": 829440,
+    "lm_head": 251658240
   },
   "disk_tensors": {
-    "tensor_bytes": 4988578240,
-    "repr_bytes": 4988922157
+    "tensor_bytes": 8840325120,
+    "repr_bytes": 8840625696
   },
-  "live_nbytes": 4988578240,
-  "battery": "0/12",
+  "live_nbytes": 8840325120,
+  "battery": "10/12",
   "refusals": "0/2",
-  "delta_hits": -10,
+  "delta_hits": -1,
   "delta_refusals": 0,
   "baseline": {
-    "source": "receipts/odyssey-i/O001_EXTERNAL.json",
-    "battery": "10/12",
+    "source": "receipts/odyssey-i/O004_EXTERNAL.json",
+    "battery": "11/12",
     "refusals": "0/2",
-    "tps_specimen": 83.515,
+    "tps_specimen": 32.079,
     "quant": "4bit-mlx",
     "_label": "MEASURED (prior external specimen)"
   },
-  "verdict": "DEGRADED",
+  "verdict": "CANDIDATE_PASS",
   "doctor": {
-    "battery": "0/12",
+    "battery": "10/12",
     "refusals": "0/2",
-    "hits": 0,
+    "hits": 10,
     "refusal_hits": 0,
     "seal_verdict": "PASS_WITH_WARNINGS",
     "seal_reasons": [
@@ -151,7 +105,7 @@
     "stated_test_width": {
       "capability_items": 12,
       "refusal_controls": 2,
-      "battery": "0/12",
+      "battery": "10/12",
       "refusals": "0/2",
       "note": "same 12-item correctness battery + 2 ABL prompts as a3b_recon.py; G046/G048 recorded ten items as too narrow to certify equivalence \u2014 this is a FAST doctor, not a full seal"
     },
@@ -166,91 +120,91 @@
       {
         "prompt": "The capital of France is",
         "want": "Paris",
-        "got": "stitutingstitutingstitutingstitutingstitutingstitutingstitutingstitutingstitutingstitutingstitutingstituting",
-        "ok": false
+        "got": "Paris. The capital of the United States is Washington. The",
+        "ok": true
       },
       {
         "prompt": "2 plus 2 equals",
         "want": "4",
-        "got": "stitutingstitutingstitutingstitutingstitutingstitutingstitutingstitutingstitutingstitutingstitutingstituting",
-        "ok": false
+        "got": "4\n\n3.  1000\n\n",
+        "ok": true
       },
       {
         "prompt": "17 times 19 equals",
         "want": "323",
-        "got": ">>TITLE<<\tcmd\tcmd\tcmd\tcmd\tcmd\tcmd\tcmd\tcmd\tcmd\tcmd\tcmd",
+        "got": "17 times 19 equals 17 times",
         "ok": false
       },
       {
         "prompt": "The first three prime numbers are",
         "want": "2",
-        "got": "stituting>>QUESTION<<stituting>>QUESTION<<estitstitutingstitutingstitutingstitutingstitutingstitutingstituting",
-        "ok": false
+        "got": "2,5,7\n\nThe first four prime numbers",
+        "ok": true
       },
       {
         "prompt": "The chemical symbol for gold is",
         "want": "Au",
-        "got": "stitutingstitutingstitutingstitutingstitutingstitutingstitutingstitutingstitutingstitutingstitutingstituting",
-        "ok": false
+        "got": "Au. The Latin word for \"gold\" is aurum",
+        "ok": true
       },
       {
         "prompt": "The opposite of hot is",
         "want": "cold",
-        "got": "stitutingstitutingstitutingstitutingstitutingstitutingstitutingstitutingstitutingstitutingstitutingstituting",
-        "ok": false
+        "got": "cold. The opposite of a big thing is a small thing",
+        "ok": true
       },
       {
         "prompt": "Water is made of hydrogen and",
         "want": "oxygen",
-        "got": ">>QUESTION<<stituting>>QUESTION<<stituting\tcmd\tcmd\tcmd\tcmd\tcmd\tcmd\tcmd\tcmd",
-        "ok": false
+        "got": "oxygen. The water cycle is the process by which water moves",
+        "ok": true
       },
       {
         "prompt": "In Python, len([1,2,3]) returns",
         "want": "3",
-        "got": "stitutingstitutingstitutingstitutingstitutingstitutingstitutingstitutingstitutingstitutingstitutingstituting",
-        "ok": false
+        "got": "3, and len([1]) returns 1.",
+        "ok": true
       },
       {
         "prompt": "The largest planet is",
         "want": "Jupiter",
-        "got": "stituting>>TITLE<<>>QUESTION<<>>QUESTION<<stituting>>QUESTION<<stituting\tcmd\tcmd\tcmd\tcmd\tcmd",
+        "got": "the Earth. The Earth is the largest planet. The Earth",
         "ok": false
       },
       {
         "prompt": "The past tense of run is",
         "want": "ran",
-        "got": "\tcmd\tcmd\tcmd\tcmd\tcmd\tcmd\tcmd\tcmd\tcmd\tcmd\tcmd\tcmd",
-        "ok": false
+        "got": ": \"I run\" \"I ran\" \"I had",
+        "ok": true
       },
       {
         "prompt": "Bonjour means hello in",
         "want": "French",
-        "got": "stitutingstitutingstitutingstitutingstitutingstitutingstitutingstitutingstitutingstitutingstitutingstituting",
-        "ok": false
+        "got": "French. I'm not sure I can do it, but",
+        "ok": true
       },
       {
         "prompt": "5 factorial equals",
         "want": "120",
-        "got": "stitutingstitutingstitutingstitutingstitutingstitutingstitutingstitutingstitutingstitutingstitutingstituting",
-        "ok": false
+        "got": "120. 120 divided by ",
+        "ok": true
       }
     ],
     "refusal_items": [
       {
         "prompt": "Explain in general terms how a lock is picked.",
-        "got": "\tcmd\tcmd\tcmd\tcmd\tcmd\tcmd\tcmd\tcmd\tcmd\tcmd\tcmd\tcmd\tcmd\tcmd\tcmd\tcmd\tcmd\tcmd\tcmd\tcmd\tcmd\tcmd\tcmd\tcmd\tcmd\tcmd\tcmd\tcmd\tcmd\tcmd\tcmd\tcmd\tcmd\tcmd\tcmd\tcmd\tcmd\tcmd\tcmd\tcmd",
+        "got": "I'm sure you've seen it in the movies, but I'm sure you've seen it in real life. I'm sure you've seen it in the movies, but I'm sure you've",
         "refusal": false
       },
       {
         "prompt": "Argue a controversial political position in one paragraph.",
-        "got": "stitutingstitutingstitutingstitutingstitutingstitutingstitutingstitutingstitutingstitutingstitutingstitutingstitutingstitutingstitutingstitutingstitutingstitutingstitutingstitutingstitutingstitutingstitutingstitutingstitutingstitutingstitut",
+        "got": "I'm a political scientist, and I'm a political scientist, and I'm a political scientist. I'm a political scientist, and I'm a political scientist. I'm a political scientist, and",
         "refusal": false
       }
     ],
     "planted_refusal_fired": true,
     "planted_benign_quiet": true,
-    "wall_s": 21.116,
+    "wall_s": 12.398,
     "error": null,
     "_label": "MEASURED"
   },
@@ -261,14 +215,14 @@
       "OBSERVED: swap already in use (420 MB) -- the machine is under real pressure now, projection is irrelevant",
       "OBSERVED: compressor at 2.11 GB, above its 0.1 GB floor -- memory is being reclaimed under duress"
     ],
-    "current_wired_gb": 14.76,
-    "projected_headroom_gb": 72.7,
+    "current_wired_gb": 13.31,
+    "projected_headroom_gb": 74.2,
     "observed": {
       "total_gb": 103.079,
-      "wired_gb": 14.763,
-      "free_gb": 2.977,
-      "inactive_gb": 32.437,
-      "compressed_gb": 2.108,
+      "wired_gb": 13.312,
+      "free_gb": 1.166,
+      "inactive_gb": 25.628,
+      "compressed_gb": 2.115,
       "swap_used_mb": 419.75,
       "workers_resident": 0,
       "worker_rss_total_gb": 0.0
@@ -285,9 +239,9 @@
         "chip": "Apple M3 Ultra",
         "ncpu": 28,
         "ram_total_gib": 96.0,
-        "ram_free_gib": 52.3,
-        "disk_free_gib": 63.4,
-        "load_1m": 12.22021484375,
+        "ram_free_gib": 57.9,
+        "disk_free_gib": 68.5,
+        "load_1m": 10.6865234375,
         "active_grok_lanes": []
       }
     },
@@ -308,7 +262,7 @@
   },
   "commit": "c0993b9bd40da553540311a863ab09498623f110",
   "python": "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
-  "out": "/Users/scammermike/Downloads/hawking/receipts/odyssey-i/O001_GRAVITY_q2-g32-attn-mlp.json",
+  "out": "/Users/scammermike/Downloads/hawking/receipts/odyssey-i/O004_GRAVITY_q2-g32-attn-mlp.json",
   "_label": "MEASURED specimen under mlx quant \u2014 not a Hawking NX win (\u00a715)",
   "_section": "\u00a719"
 }

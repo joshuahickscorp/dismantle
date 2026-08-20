@@ -54,9 +54,9 @@
     },
     "active_bytes_per_token_bf16": 6706065408,
     "lever": "experts = 95% of stored body but only 11% touched/token; representation science is EXPERT-side (per-expert codec, group size, cache, gather) not global.",
-    "_evidence": "MEASURED (census); MEASURED (gravity q3-g32-experts stored_bpw=4.0253); MEASURED (per_organ_sensitivity, in-place mlx ablation); MEASURED (gravity q2-g32-experts stored_bpw=3.0758); MEASURED (gravity mixed-q2q3-experts stored_bpw=3.0298); MEASURED (gravity q2-g128-experts stored_bpw=2.3636); MEASURED (gravity mixed-q2q3 stored_bpw=3.0298); MEASURED (gravity mixed-q2q4 stored_bpw=3.0594); MEASURED (gravity mixed-q2q4-experts stored_bpw=3.0594); MEASURED (gravity mixed-q3q4 stored_bpw=4.0298); MEASURED (gravity mixed-q3q4-experts stored_bpw=4.0298)",
-    "best_stored_bpw_eq": 4.0298,
-    "active_bpw_eq": 4.2709,
+    "_evidence": "MEASURED (census); MEASURED (gravity q3-g32-experts stored_bpw=4.0253); MEASURED (per_organ_sensitivity, in-place mlx ablation); MEASURED (gravity q2-g32-experts stored_bpw=3.0758); MEASURED (gravity mixed-q2q3-experts stored_bpw=3.0298); MEASURED (gravity q2-g128-experts stored_bpw=2.3636); MEASURED (gravity mixed-q2q3 stored_bpw=3.0298); MEASURED (gravity mixed-q2q4 stored_bpw=3.0594); MEASURED (gravity mixed-q2q4-experts stored_bpw=3.0594); MEASURED (gravity mixed-q3q4 stored_bpw=4.0298); MEASURED (gravity mixed-q3q4-experts stored_bpw=4.0298); MEASURED (gravity q2-g128 stored_bpw=2.2501); MEASURED (gravity q2-g32 stored_bpw=3.0001); MEASURED (gravity q2-g64 stored_bpw=2.5001)",
+    "best_stored_bpw_eq": 2.5001,
+    "active_bpw_eq": 2.5008,
     "metadata_bytes": null,
     "corrections": null,
     "reconstruction": null,
@@ -466,7 +466,10 @@
       "mixed-q2q4",
       "mixed-q2q4-experts",
       "mixed-q3q4",
-      "mixed-q3q4-experts"
+      "mixed-q3q4-experts",
+      "q2-g128",
+      "q2-g32",
+      "q2-g64"
     ],
     "wins": [
       {
@@ -831,6 +834,189 @@
         "not_hawking_nx_win": true,
         "_evidence": "MEASURED (mlx gravity specimen; §15)",
         "_label": "SPECIMEN"
+      },
+      {
+        "spec": "q2-g128",
+        "stored_bpw": 2.2501,
+        "complete_bpw": 2.2502,
+        "nominal_bits": 2,
+        "active_bpw": 2.2509,
+        "stored_bytes": 8587522048,
+        "active_bytes_per_token": 943403008,
+        "battery": "0/12",
+        "delta_hits": -10,
+        "verdict": "DEGRADED",
+        "candidate_class": "AGGRESSIVE_QUANT",
+        "conventionality": "nonconventional",
+        "protected_components": [],
+        "failure_localization": {
+          "failed": true,
+          "delta_hits": -10,
+          "threshold": -1,
+          "ranked_organs": [
+            {
+              "organ": "attn",
+              "sensitivity_delta": 0,
+              "treatment": "round8"
+            },
+            {
+              "organ": "embed",
+              "sensitivity_delta": 0,
+              "treatment": "round8"
+            },
+            {
+              "organ": "lm_head",
+              "sensitivity_delta": 0,
+              "treatment": "round8"
+            },
+            {
+              "organ": "norm",
+              "sensitivity_delta": 0,
+              "treatment": "round8"
+            },
+            {
+              "organ": "router",
+              "sensitivity_delta": 0,
+              "treatment": "round8"
+            },
+            {
+              "organ": "expert",
+              "sensitivity_delta": 1,
+              "treatment": "round8"
+            }
+          ],
+          "most_likely_component": "attn",
+          "targeted_repair": "protect attn (do not globally raise bits)",
+          "anti_retreat": "global precision retreat (X + globally higher bits) is LAST resort; first protect sensitive organ/router/attn/outliers, add sparse correction/residual tier, change grouping/scale-objective/metadata, heterogeneous expert precision, alternate family",
+          "_evidence": "DERIVED (rank organs by MEASURED sensitivity delta)"
+        },
+        "receipt": "receipts/odyssey-i/O005_GRAVITY_q2-g128.json",
+        "label": "SPECIMEN",
+        "not_hawking_nx_win": true,
+        "_evidence": "MEASURED (mlx gravity specimen; §15)",
+        "_label": "SPECIMEN"
+      },
+      {
+        "spec": "q2-g32",
+        "stored_bpw": 3.0001,
+        "complete_bpw": 3.0002,
+        "nominal_bits": 2,
+        "active_bpw": 3.0008,
+        "stored_bytes": 11449888768,
+        "active_bytes_per_token": 1257730048,
+        "battery": "0/12",
+        "delta_hits": -10,
+        "verdict": "DEGRADED",
+        "candidate_class": "AGGRESSIVE_QUANT",
+        "conventionality": "nonconventional",
+        "protected_components": [],
+        "failure_localization": {
+          "failed": true,
+          "delta_hits": -10,
+          "threshold": -1,
+          "ranked_organs": [
+            {
+              "organ": "attn",
+              "sensitivity_delta": 0,
+              "treatment": "round8"
+            },
+            {
+              "organ": "embed",
+              "sensitivity_delta": 0,
+              "treatment": "round8"
+            },
+            {
+              "organ": "lm_head",
+              "sensitivity_delta": 0,
+              "treatment": "round8"
+            },
+            {
+              "organ": "norm",
+              "sensitivity_delta": 0,
+              "treatment": "round8"
+            },
+            {
+              "organ": "router",
+              "sensitivity_delta": 0,
+              "treatment": "round8"
+            },
+            {
+              "organ": "expert",
+              "sensitivity_delta": 1,
+              "treatment": "round8"
+            }
+          ],
+          "most_likely_component": "attn",
+          "targeted_repair": "protect attn (do not globally raise bits)",
+          "anti_retreat": "global precision retreat (X + globally higher bits) is LAST resort; first protect sensitive organ/router/attn/outliers, add sparse correction/residual tier, change grouping/scale-objective/metadata, heterogeneous expert precision, alternate family",
+          "_evidence": "DERIVED (rank organs by MEASURED sensitivity delta)"
+        },
+        "receipt": "receipts/odyssey-i/O005_GRAVITY_q2-g32.json",
+        "label": "SPECIMEN",
+        "not_hawking_nx_win": true,
+        "_evidence": "MEASURED (mlx gravity specimen; §15)",
+        "_label": "SPECIMEN"
+      },
+      {
+        "spec": "q2-g64",
+        "stored_bpw": 2.5001,
+        "complete_bpw": 2.5002,
+        "nominal_bits": 2,
+        "active_bpw": 2.5008,
+        "stored_bytes": 9541644288,
+        "active_bytes_per_token": 1048178688,
+        "battery": "0/12",
+        "delta_hits": -10,
+        "verdict": "DEGRADED",
+        "candidate_class": "AGGRESSIVE_QUANT",
+        "conventionality": "nonconventional",
+        "protected_components": [],
+        "failure_localization": {
+          "failed": true,
+          "delta_hits": -10,
+          "threshold": -1,
+          "ranked_organs": [
+            {
+              "organ": "attn",
+              "sensitivity_delta": 0,
+              "treatment": "round8"
+            },
+            {
+              "organ": "embed",
+              "sensitivity_delta": 0,
+              "treatment": "round8"
+            },
+            {
+              "organ": "lm_head",
+              "sensitivity_delta": 0,
+              "treatment": "round8"
+            },
+            {
+              "organ": "norm",
+              "sensitivity_delta": 0,
+              "treatment": "round8"
+            },
+            {
+              "organ": "router",
+              "sensitivity_delta": 0,
+              "treatment": "round8"
+            },
+            {
+              "organ": "expert",
+              "sensitivity_delta": 1,
+              "treatment": "round8"
+            }
+          ],
+          "most_likely_component": "attn",
+          "targeted_repair": "protect attn (do not globally raise bits)",
+          "anti_retreat": "global precision retreat (X + globally higher bits) is LAST resort; first protect sensitive organ/router/attn/outliers, add sparse correction/residual tier, change grouping/scale-objective/metadata, heterogeneous expert precision, alternate family",
+          "_evidence": "DERIVED (rank organs by MEASURED sensitivity delta)"
+        },
+        "receipt": "receipts/odyssey-i/O005_GRAVITY_q2-g64.json",
+        "label": "SPECIMEN",
+        "not_hawking_nx_win": true,
+        "_evidence": "MEASURED (mlx gravity specimen; §15)",
+        "_label": "SPECIMEN"
       }
     ],
     "architecture_specific_findings": [
@@ -840,29 +1026,67 @@
     ],
     "_evidence": "INFERRED (A3B_RECON CLASSIFICATION)",
     "last": {
-      "spec": "mixed-q3q4-experts",
-      "stored_bpw": 4.0298,
-      "complete_bpw": 4.0299,
-      "nominal_bits": 3,
-      "active_bpw": 4.2709,
-      "stored_bytes": 15379623936,
-      "active_bytes_per_token": 1790078976,
-      "battery": "11/12",
-      "delta_hits": 1,
-      "verdict": "CANDIDATE_PASS",
-      "candidate_class": "STRUCTURAL_GRAVITY",
+      "spec": "q2-g64",
+      "stored_bpw": 2.5001,
+      "complete_bpw": 2.5002,
+      "nominal_bits": 2,
+      "active_bpw": 2.5008,
+      "stored_bytes": 9541644288,
+      "active_bytes_per_token": 1048178688,
+      "battery": "0/12",
+      "delta_hits": -10,
+      "verdict": "DEGRADED",
+      "candidate_class": "AGGRESSIVE_QUANT",
       "conventionality": "nonconventional",
-      "protected_components": [
-        "attn"
-      ],
-      "failure_localization": null,
-      "receipt": "receipts/odyssey-i/O005_GRAVITY_mixed-q3q4-experts.json",
+      "protected_components": [],
+      "failure_localization": {
+        "failed": true,
+        "delta_hits": -10,
+        "threshold": -1,
+        "ranked_organs": [
+          {
+            "organ": "attn",
+            "sensitivity_delta": 0,
+            "treatment": "round8"
+          },
+          {
+            "organ": "embed",
+            "sensitivity_delta": 0,
+            "treatment": "round8"
+          },
+          {
+            "organ": "lm_head",
+            "sensitivity_delta": 0,
+            "treatment": "round8"
+          },
+          {
+            "organ": "norm",
+            "sensitivity_delta": 0,
+            "treatment": "round8"
+          },
+          {
+            "organ": "router",
+            "sensitivity_delta": 0,
+            "treatment": "round8"
+          },
+          {
+            "organ": "expert",
+            "sensitivity_delta": 1,
+            "treatment": "round8"
+          }
+        ],
+        "most_likely_component": "attn",
+        "targeted_repair": "protect attn (do not globally raise bits)",
+        "anti_retreat": "global precision retreat (X + globally higher bits) is LAST resort; first protect sensitive organ/router/attn/outliers, add sparse correction/residual tier, change grouping/scale-objective/metadata, heterogeneous expert precision, alternate family",
+        "_evidence": "DERIVED (rank organs by MEASURED sensitivity delta)"
+      },
+      "receipt": "receipts/odyssey-i/O005_GRAVITY_q2-g64.json",
       "label": "SPECIMEN",
       "not_hawking_nx_win": true,
       "_evidence": "MEASURED (mlx gravity specimen; §15)",
       "_label": "SPECIMEN"
     },
-    "candidate_class": "STRUCTURAL_GRAVITY",
+    "candidate_class": "AGGRESSIVE_QUANT",
     "conventionality": "nonconventional",
     "anti_complacency_note": "S004: q3 4.03 stored/4.23 active is an ANCHOR not a frontier; aggressive q2/mixed/base+correction probes DEFERRED (O005 retired in Cycle 1). Reopen-eligible if a later patient yields a transferable sub-3 structural mechanism. 16x selected/full (nx-gather) finding preserved."
   },
@@ -891,7 +1115,7 @@
     }
   ],
   "next": [
-    "gravity mixed-q3q4-experts CANDIDATE_PASS: stored_bpw=4.0298 active_bpw=4.2709 battery=11/12 delta_hits=1 (mlx SPECIMEN, not a Hawking NX win)",
+    "gravity q2-g64 DEGRADED: stored_bpw=2.5001 active_bpw=2.5008 battery=0/12 delta_hits=-10 (mlx SPECIMEN, not a Hawking NX win)",
     "A3 per-organ sensitivity MEASURED: zero drops hits on embed, attn, router, expert, norm, lm_head; round8 drops hits on nothing (baseline 10/12, 4bit-mlx)",
     "nx-gather accounting written (receipts/odyssey-i/O005_NX_gather.json); not a Hawking NX runtime",
     "native qwen3moe in load_engine still Unimplemented — NX after route/sensitivity",

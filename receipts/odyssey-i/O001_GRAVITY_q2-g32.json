@@ -1,15 +1,15 @@
 {
   "schema": "odyssey.patient.gravity.v1",
   "oxx": "O001",
-  "spec": "q2-g32-attn-mlp",
+  "spec": "q2-g32",
   "runtime": "mlx",
   "runtime_label": "mlx_lm EXTERNAL SPECIMEN \u2014 not Hawking native",
   "label": "SPECIMEN",
   "not_hawking_nx_win": true,
   "not_base_true_tps": true,
-  "quant": "mlx-q2-g32-attn-mlp",
-  "quant_fidelity_caveat": "AGGRESSIVE_QUANT mlx mix spec=q2-g32-attn-mlp form=uniform bits=2 group=32 target=attn-mlp protected=['ssm', 'norm']. SPECIMEN; not a Hawking NX win.. Battery is SPECIMEN under this mlx mix \u2014 not bf16-canonical Doctor, not a Hawking NX win (\u00a715). Canonical HF snapshot was not modified or deleted.",
-  "predicate": "AGGRESSIVE_QUANT mlx mix spec=q2-g32-attn-mlp form=uniform bits=2 group=32 target=attn-mlp protected=['ssm', 'norm']. SPECIMEN; not a Hawking NX win.",
+  "quant": "mlx-q2-g32",
+  "quant_fidelity_caveat": "AGGRESSIVE_QUANT mlx mix spec=q2-g32 form=uniform bits=2 group=32 target=None protected=[]. SPECIMEN; not a Hawking NX win.. Battery is SPECIMEN under this mlx mix \u2014 not bf16-canonical Doctor, not a Hawking NX win (\u00a715). Canonical HF snapshot was not modified or deleted.",
+  "predicate": "AGGRESSIVE_QUANT mlx mix spec=q2-g32 form=uniform bits=2 group=32 target=None protected=[]. SPECIMEN; not a Hawking NX win.",
   "candidate_class": "AGGRESSIVE_QUANT",
   "conventionality": "nonconventional",
   "conventionality_mechanism": "affine-quant",
@@ -34,10 +34,7 @@
     "_label": "MEASURED (live nbytes + safetensors headers)",
     "_evidence": "MEASURED (complete_bpw = payload+scales+biases+metadata+headers)"
   },
-  "protected_components": [
-    "ssm",
-    "norm"
-  ],
+  "protected_components": [],
   "failure_localization": {
     "failed": true,
     "delta_hits": -10,
@@ -85,7 +82,7 @@
     "_evidence": "DERIVED (rank organs by MEASURED sensitivity delta)"
   },
   "weights_canonical": "/Users/scammermike/.cache/huggingface/hub/models--tiiuae--Falcon-H1-7B-Instruct/snapshots/41e72f27effbab80cd45b6e884688452253a3686",
-  "weights_loaded": "/Users/scammermike/.cache/mlx/odyssey/O001-gravity-q2-g32-attn-mlp",
+  "weights_loaded": "/Users/scammermike/.cache/mlx/odyssey/O001-gravity-q2-g32",
   "canonical_snapshot_intact": 4,
   "stored_bytes": 4988578240,
   "stored_bpw": 5.2611,
@@ -159,7 +156,7 @@
       "mlx_lm EXTERNAL SPECIMEN \u2014 not Hawking native, not BASE_TRUE_TPS (\u00a714)",
       "fast battery is 12 completion items; no coding/long-context/tool dimensions",
       "refusal matcher is substring-based and English-centric",
-      "mlx gravity spec mlx-q2-g32-attn-mlp \u2014 Doctor is a SPECIMEN under this mix; not bf16-canonical, not a Hawking NX win (\u00a715). Canonical HF snapshot untouched.",
+      "mlx gravity spec mlx-q2-g32 \u2014 Doctor is a SPECIMEN under this mix; not bf16-canonical, not a Hawking NX win (\u00a715). Canonical HF snapshot untouched.",
       "Tabula instrument is not validated on this patient (instrument_validated=false)"
     ],
     "items": [
@@ -250,25 +247,25 @@
     ],
     "planted_refusal_fired": true,
     "planted_benign_quiet": true,
-    "wall_s": 21.116,
+    "wall_s": 22.899,
     "error": null,
     "_label": "MEASURED"
   },
   "gate": {
     "decision": "REFUSE",
-    "note": "OBSERVED: swap already in use (420 MB) -- the machine is under real pressure now, projection is irrelevant; OBSERVED: compressor at 2.11 GB, above its 0.1 GB floor -- memory is being reclaimed under duress",
+    "note": "OBSERVED: swap already in use (420 MB) -- the machine is under real pressure now, projection is irrelevant; OBSERVED: compressor at 2.12 GB, above its 0.1 GB floor -- memory is being reclaimed under duress",
     "reasons": [
       "OBSERVED: swap already in use (420 MB) -- the machine is under real pressure now, projection is irrelevant",
-      "OBSERVED: compressor at 2.11 GB, above its 0.1 GB floor -- memory is being reclaimed under duress"
+      "OBSERVED: compressor at 2.12 GB, above its 0.1 GB floor -- memory is being reclaimed under duress"
     ],
-    "current_wired_gb": 14.76,
-    "projected_headroom_gb": 72.7,
+    "current_wired_gb": 6.57,
+    "projected_headroom_gb": 80.9,
     "observed": {
       "total_gb": 103.079,
-      "wired_gb": 14.763,
-      "free_gb": 2.977,
-      "inactive_gb": 32.437,
-      "compressed_gb": 2.108,
+      "wired_gb": 6.569,
+      "free_gb": 50.318,
+      "inactive_gb": 21.547,
+      "compressed_gb": 2.116,
       "swap_used_mb": 419.75,
       "workers_resident": 0,
       "worker_rss_total_gb": 0.0
@@ -285,9 +282,9 @@
         "chip": "Apple M3 Ultra",
         "ncpu": 28,
         "ram_total_gib": 96.0,
-        "ram_free_gib": 52.3,
-        "disk_free_gib": 63.4,
-        "load_1m": 12.22021484375,
+        "ram_free_gib": 41.3,
+        "disk_free_gib": 60.4,
+        "load_1m": 11.04296875,
         "active_grok_lanes": []
       }
     },
@@ -308,7 +305,7 @@
   },
   "commit": "c0993b9bd40da553540311a863ab09498623f110",
   "python": "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
-  "out": "/Users/scammermike/Downloads/hawking/receipts/odyssey-i/O001_GRAVITY_q2-g32-attn-mlp.json",
+  "out": "/Users/scammermike/Downloads/hawking/receipts/odyssey-i/O001_GRAVITY_q2-g32.json",
   "_label": "MEASURED specimen under mlx quant \u2014 not a Hawking NX win (\u00a715)",
   "_section": "\u00a719"
 }

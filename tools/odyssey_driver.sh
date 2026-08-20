@@ -51,7 +51,7 @@ commit_data() {
     && echo "-- committed data --" || true
 }
 
-echo "== odyssey RESIDENT up $(date '+%FT%T%z') pid=$$ tick=${TICK_SECS}s ==" >>"$LOG"
+echo "== odyssey RESIDENT up $(date '+%FT%T%z') pid=$$ window=${WINDOW_SECS}s inner=${INNER_SLEEP}s ==" >>"$LOG"
 tick=0
 while true; do
   tick=$((tick+1))

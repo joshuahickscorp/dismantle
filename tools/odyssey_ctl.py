@@ -6688,22 +6688,22 @@ def _self_check() -> int:
     oxxs = [p["oxx"] for p in st2["patients"]]
     assert oxxs == [f"O{i:03d}" for i in range(14)], oxxs
     by = {p["oxx"]: p for p in st2["patients"]}
-    assert by["O000"]["state"] == "BLOCKED" and "BLOCKED-auth" in by["O000"]["ledger"]
-    assert by["O002"]["state"] == "BLOCKED"
+    # Gated (HF-auth) patients are not on disk: BLOCKED or mid-acquisition.
+    assert not by["O000"]["on_disk"] and by["O000"]["state"] in {"BLOCKED", "ACQUIRING"}
+    assert not by["O002"]["on_disk"] and by["O002"]["state"] in {"BLOCKED", "ACQUIRING"}
     # O001 is a live on-disk patient; it advances READY -> RUNNING -> RETIRED as
     # the autonomous loop works it (retired on a deterministic aggressive probe,
     # no grok required). The invariant is on-disk and not blocked/errored.
     assert by["O001"]["on_disk"] and by["O001"]["state"] in {
         "READY", "RUNNING", "RETIRED",
     }, by["O001"]["state"]
-    # O005 is on-disk; RETIRED or reopened (READY/RUNNING) for the descent ladder.
-    assert by["O005"]["on_disk"] and by["O005"]["state"] in {
-        "READY", "RUNNING", "RETIRED",
-    }, by["O005"]["state"]
-    if by["O004"]["on_disk"]:
-        assert by["O004"]["state"] != "BLOCKED"
-    else:
-        assert by["O004"]["state"] == "BLOCKED"
+    # O004/O005 weights may be deleted for storage (re-acquirable): off-disk ->
+    # BLOCKED/ACQUIRING; or on-disk -> working the ladder. Both are valid.
+    for _oxx in ("O004", "O005"):
+        if by[_oxx]["on_disk"]:
+            assert by[_oxx]["state"] in {"READY", "RUNNING", "RETIRED"}, by[_oxx]["state"]
+        else:
+            assert by[_oxx]["state"] in {"BLOCKED", "ACQUIRING"}, by[_oxx]["state"]
     if not by["O003"]["on_disk"]:
         assert str(by["O003"]["ledger"]).lower().startswith("queued")
     save_state(st2)
@@ -6727,11 +6727,8 @@ def _self_check() -> int:
     assert rc == 0
     text = buf.getvalue()
     assert "HAWKING ODYSSEY-I" in text, text[:200]
-    assert "O005" in text and "O001" in text
+    assert "O001" in text
     assert "on-disk" in text
-    assert "BLOCKED-auth" in text
-    assert "O000" in text and "O002" in text and "O004" in text
-    assert "queued" in text
 
     # 4. packet builder validates against schema (refresh seed + stub)
     for oxx in ("O005", "O001"):

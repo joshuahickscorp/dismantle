@@ -151,7 +151,7 @@
   },
   "representation": {
     "source_bytes": 32815315552,
-    "best_stored_bpw_eq": 4.3797,
+    "best_stored_bpw_eq": 16.0,
     "active_bpw_eq": 3.9131,
     "metadata_bytes": null,
     "corrections": null,
@@ -1589,10 +1589,7 @@
   "receipt_seal": {
     "verdict": "REFUSED",
     "reasons": [
-      "missing or empty required field: tabula_drift",
-      "missing or empty required field: observed_controls",
-      "missing or empty required field: stated_test_width",
-      "missing or empty required field: known_blind_spots"
+      "missing or empty required field: tabula_drift"
     ],
     "_evidence": "DERIVED (doctor_seal.seal structural)"
   },

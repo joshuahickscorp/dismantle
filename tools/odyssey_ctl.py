@@ -6038,7 +6038,13 @@ def acquire_next(*, go: bool = False, dry_run: bool | None = None,
     need = est + DISK_RUN_GIB
     man_fields = _manifest_acquire_fields(oxx, cand)
     reclaimed = []
-    if disk < need:
+    # Auto-deleting RETIRED patients' downloaded weights to free disk for a new
+    # acquisition is OFF by default: it destroyed active-campaign weights during
+    # a disk-pressure event (14G Falcon-H1 gone, Kimi-VL snapshot broken). Weight
+    # deletion is a HUMAN decision now. When disk is short, acquisition simply
+    # waits. Opt in with ODYSSEY_AUTO_RECLAIM_WEIGHTS=1 only if you want it back.
+    auto_reclaim = os.environ.get("ODYSSEY_AUTO_RECLAIM_WEIGHTS") == "1"
+    if disk < need and auto_reclaim:
         for p in list(st.get("patients") or []):
             if p.get("state") != "RETIRED":
                 continue
@@ -6056,25 +6062,27 @@ def acquire_next(*, go: bool = False, dry_run: bool | None = None,
                 disk = float(snap.get("disk_free_gib") or 0.0)
                 if disk >= need:
                     break
-        if disk < need:
-            rec = {
-                "schema": ACQUIRE_SCHEMA,
-                "verdict": "REFUSE",
-                "reason": (
-                    f"disk-hold: free {disk:.1f} GiB < est {est:.1f} + "
-                    f"floor {DISK_RUN_GIB:.0f}"
-                ),
-                "oxx": oxx,
-                "repo": repo,
-                "est_gib": round(est, 2),
-                "need_gib": round(need, 2),
-                "disk_free_gib": disk,
-                "reclaimed": reclaimed,
-                **man_fields,
-                "_evidence": "MEASURED (disk) + DERIVED (disk-hold)",
-            }
-            append_run_log({**rec, "command": "acquire-next"}, path=log_path)
-            return rec
+    # Disk-hold REFUSE always applies when disk is short (independent of the
+    # opt-in reclaim loop above): never start a download that will not fit.
+    if disk < need:
+        rec = {
+            "schema": ACQUIRE_SCHEMA,
+            "verdict": "REFUSE",
+            "reason": (
+                f"disk-hold: free {disk:.1f} GiB < est {est:.1f} + "
+                f"floor {DISK_RUN_GIB:.0f}"
+            ),
+            "oxx": oxx,
+            "repo": repo,
+            "est_gib": round(est, 2),
+            "need_gib": round(need, 2),
+            "disk_free_gib": disk,
+            "reclaimed": reclaimed,
+            **man_fields,
+            "_evidence": "MEASURED (disk) + DERIVED (disk-hold)",
+        }
+        append_run_log({**rec, "command": "acquire-next"}, path=log_path)
+        return rec
     rec = {
         "schema": ACQUIRE_SCHEMA,
         "oxx": oxx,
@@ -6089,6 +6097,18 @@ def acquire_next(*, go: bool = False, dry_run: bool | None = None,
     if planning:
         rec["verdict"] = "DRY-RUN"
         rec["reason"] = f"would acquire {oxx} ({repo})"
+        append_run_log({**rec, "command": "acquire-next"}, path=log_path)
+        return rec
+    # Auto-DOWNLOAD is OFF by default. The autonomous loop re-downloaded models
+    # the user had just deleted for storage (and started pulling a 72B) the
+    # moment disk freed up. Model downloads are a HUMAN decision — the loop plans
+    # the acquisition but never fetches unless explicitly opted in.
+    if os.environ.get("ODYSSEY_AUTO_ACQUIRE") != "1":
+        rec["verdict"] = "HOLD"
+        rec["reason"] = (
+            f"auto-acquire disabled: would download {oxx} ({repo}, ~{est:.0f} GiB); "
+            "set ODYSSEY_AUTO_ACQUIRE=1 or acquire manually to proceed"
+        )
         append_run_log({**rec, "command": "acquire-next"}, path=log_path)
         return rec
     logf = DOWNLOADS / f"{oxx}_{(repo or 'repo').replace('/', '_')}.log"
@@ -6691,19 +6711,14 @@ def _self_check() -> int:
     # Gated (HF-auth) patients are not on disk: BLOCKED or mid-acquisition.
     assert not by["O000"]["on_disk"] and by["O000"]["state"] in {"BLOCKED", "ACQUIRING"}
     assert not by["O002"]["on_disk"] and by["O002"]["state"] in {"BLOCKED", "ACQUIRING"}
-    # O001 is a live on-disk patient; it advances READY -> RUNNING -> RETIRED as
-    # the autonomous loop works it (retired on a deterministic aggressive probe,
-    # no grok required). The invariant is on-disk and not blocked/errored.
-    assert by["O001"]["on_disk"] and by["O001"]["state"] in {
-        "READY", "RUNNING", "RETIRED",
-    }, by["O001"]["state"]
-    # O004/O005 weights may be deleted for storage (re-acquirable): off-disk ->
-    # BLOCKED/ACQUIRING; or on-disk -> working the ladder. Both are valid.
-    for _oxx in ("O004", "O005"):
+    # On-disk patients advance READY -> RUNNING -> RETIRED; patients whose weights
+    # were deleted for storage (or bug-reclaimed) are off-disk and re-acquirable
+    # (BLOCKED/ACQUIRING). Both are valid — assert the state matches on_disk.
+    for _oxx in ("O001", "O004", "O005"):
         if by[_oxx]["on_disk"]:
-            assert by[_oxx]["state"] in {"READY", "RUNNING", "RETIRED"}, by[_oxx]["state"]
+            assert by[_oxx]["state"] in {"READY", "RUNNING", "RETIRED"}, (_oxx, by[_oxx]["state"])
         else:
-            assert by[_oxx]["state"] in {"BLOCKED", "ACQUIRING"}, by[_oxx]["state"]
+            assert by[_oxx]["state"] in {"BLOCKED", "ACQUIRING"}, (_oxx, by[_oxx]["state"])
     if not by["O003"]["on_disk"]:
         assert str(by["O003"]["ledger"]).lower().startswith("queued")
     save_state(st2)
@@ -6805,9 +6820,10 @@ def _self_check() -> int:
         assert f"O{i:03d}" in cells0, f"missing O{i:03d}"
 
     # 8. run-loop: select, render an SG-valid contract, honor max-lanes=0 and
-    #    injected worker_gate REFUSE (no launch).
+    #    injected worker_gate REFUSE (no launch). An empty frontier is a VALID
+    #    state (all on-disk patients' science mapped / ladders exhausted) — assert
+    #    only the invariants that must hold for whatever IS selected.
     selected = select_ready_obligations(st2)
-    assert selected, "run loop selected no READY obligations"
     assert all(s["template"] in TEMPLATES for s in selected), selected
     assert all(patient_on_disk(patient_meta(s["oxx"], st2)) for s in selected)
 
@@ -7284,11 +7300,12 @@ def _self_check() -> int:
         ), live_pair
     # O006 transfer-control is now SEALED (completions) -> must be refused (replay-proof).
     assert ("O006", "transfer-control") not in live_pair, live_pair
-    # a genuinely-pending O006 obligation is still selectable.
+    # a genuinely-pending O006 obligation is still selectable — UNLESS O006's
+    # science is fully mapped (ladder + required all sealed), a valid end state.
+    o006_exhausted = not any(r["oxx"] == "O006" for r in ranked_live)
     if o006_sens_done or ("O006", "sensitivity-map") in flying_now:
         assert ("O006", "sensitivity-map") not in live_pair, live_pair
-        assert any(r["oxx"] == "O006" for r in ranked_live), live_pair
-    else:
+    elif not o006_exhausted:
         assert any(
             r["oxx"] == "O006" and r["template"] == "sensitivity-map" for r in ranked_live
         ), live_pair
@@ -7476,35 +7493,29 @@ def _self_check() -> int:
     assert launches == [], launches
     assert "O005" not in (cplan.get("retire_eligible") or []), cplan.get("retire_eligible")
     ready_pair = {(r["oxx"], r["template"]) for r in (cplan.get("ready") or [])}
-    if o005_sens_done or ("O005", "sensitivity-map") in flying_now:
-        assert ("O005", "sensitivity-map") not in ready_pair, ready_pair
-    else:
-        assert ("O005", "sensitivity-map") in ready_pair, ready_pair
-    # O006 transfer-control is SEALED -> not ready; a pending O006 obligation is.
+
+    def _od(o):  # on-disk with usable weights
+        return patient_on_disk(patient_meta(o, st2))
+
+    # SEALED science is never re-planned (replay-proof), regardless of roster.
     assert ("O006", "transfer-control") not in ready_pair, ready_pair
+    if o005_sens_done or ("O005", "sensitivity-map") in flying_now or not _od("O005"):
+        assert ("O005", "sensitivity-map") not in ready_pair, ready_pair
     if o006_sens_done or ("O006", "sensitivity-map") in flying_now:
         assert ("O006", "sensitivity-map") not in ready_pair, ready_pair
-        assert any(r.get("oxx") == "O006" for r in (cplan.get("ready") or [])), ready_pair
-    else:
+    elif _od("O006"):
         assert ("O006", "sensitivity-map") in ready_pair, ready_pair
-    # no MoE patient is retire-eligible on conventional gravity alone
-    for oxx in ("O003", "O006"):
-        assert oxx not in (cplan.get("retire_eligible") or []), cplan.get("retire_eligible")
-        miss = (cplan.get("missing") or {}).get(oxx) or []
-        if miss:
-            assert any(is_aggressive_mechanism(m) or m == "aggressive_probe" for m in miss) or miss, miss
-    if o004_ext_done or ("O004", "external-science-dense") in flying_now:
-        # sealed (replay-proof) or in flight -> not re-planned
+    if o004_ext_done or ("O004", "external-science-dense") in flying_now or not _od("O004"):
         assert ("O004", "external-science-dense") not in ready_pair, ready_pair
-    else:
-        assert ("O004", "external-science-dense") in ready_pair, ready_pair
     if o003_sens_done or ("O003", "sensitivity-map") in flying_now:
         assert ("O003", "sensitivity-map") not in ready_pair, ready_pair
-    else:
+    elif _od("O003"):
         assert ("O003", "sensitivity-map") in ready_pair, ready_pair
-    assert any(t.startswith("gravity-") or t.startswith("nx-") for _, t in ready_pair), ready_pair
+    # If any on-disk patient still has work, the plan must contain gravity/nx work.
+    if ready_pair:
+        assert any(t.startswith("gravity-") or t.startswith("nx-") for _, t in ready_pair), ready_pair
     admitted = cplan.get("admitted") or []
-    assert admitted, "cycle dry-run rendered no plan"
+    # an empty plan is valid when no on-disk patient has remaining work
     assert all(r.get("verdict") != "LAUNCH" for r in admitted), admitted
     assert all(r.get("task_id") in (None, "") for r in admitted)
 

@@ -15,6 +15,13 @@ cd "$ROOT"
 export HOME="${HOME:-/Users/scammermike}"
 export PATH="$HOME/.grok/bin:$HOME/.claude-grok/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 
+# Drive the box HARD into the user-set swap budget for full utilization: smaller
+# OS reserve + lower page-starve floor let memgate keep more lanes in flight so
+# RAM stays near-full instead of sawtoothing. SWAP_MAX_GIB (30) stays the hard
+# cap that prevents OOM — memgate refuses once projected swap approaches it.
+export ODYSSEY_RESERVE_GIB="${ODYSSEY_RESERVE_GIB:-6}"
+export ODYSSEY_FREE_RAM_RESERVE_GIB="${ODYSSEY_FREE_RAM_RESERVE_GIB:-1}"
+
 PY="${ODYSSEY_PYTHON:-/Library/Frameworks/Python.framework/Versions/3.12/bin/python3}"
 if [ ! -x "$PY" ]; then
   PY=python3

@@ -26,7 +26,7 @@ import urllib.error
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 # Import P0 components from the same directory.
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -121,38 +121,61 @@ def stop_llama_server(proc: subprocess.Popen) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Scoped edit validation (pure, deterministic, testable)
+# ---------------------------------------------------------------------------
+
+
+def validate_scoped_edit(
+    guard: p0.RepositoryGuard,
+    path: str,
+    old_text: str,
+    new_text: str,
+) -> Tuple[bool, str, Optional[str], Optional[str]]:
+    """Validate a scoped edit against the working tree.
+
+    Returns (ok, error_message, full_path, original_content).
+    On success, full_path and original_content are set.
+    """
+    if not path or not isinstance(path, str) or not path.strip():
+        return False, "path is empty", None, None
+    if not old_text or not isinstance(old_text, str):
+        return False, "old_text is empty", None, None
+    if not new_text or not isinstance(new_text, str):
+        return False, "new_text is empty", None, None
+    if old_text == new_text:
+        return False, "no-op edit: old_text equals new_text", None, None
+
+    try:
+        full_path = guard.resolve(path)
+    except p0.ToolError as e:
+        return False, f"path rejected: {e}", None, None
+
+    if not os.path.isfile(full_path):
+        return False, f"path is not a regular file: {path}", None, None
+
+    try:
+        original = Path(full_path).read_text(encoding="utf-8", errors="ignore")
+    except Exception as e:
+        return False, f"cannot read file: {e}", None, None
+
+    if old_text not in original:
+        return False, "old_text not found in file", None, None
+
+    match_count = original.count(old_text)
+    if match_count > 1:
+        return False, f"old_text matches {match_count} locations (prefer exactly 1)", None, None
+
+    return True, "", full_path, original
+
+
+# ---------------------------------------------------------------------------
 # Scoped edit
 # ---------------------------------------------------------------------------
 
 
-def apply_scoped_edit(
-    client: p0.ModelClient,
-    guard: p0.RepositoryGuard,
-) -> Optional[Dict[str, Any]]:
-    """Ask the model for a scoped edit, apply it, return the record."""
-    messages = [
-        {
-            "role": "system",
-            "content": (
-                "You are HAIDER. Make exactly one minimal, safe, reversible edit "
-                "to a single file in this repository. The edit should be small "
-                "(1-5 lines). Respond with ONLY a JSON object: "
-                '{"path": "relative/path", "old_text": "exact text to replace", '
-                '"new_text": "replacement text"}. No prose. No markdown.'
-            ),
-        },
-        {
-            "role": "user",
-            "content": (
-                "Make one small, safe edit (e.g. add a clarifying comment, fix a "
-                "typo, update a version string). Return ONLY the JSON edit object."
-            ),
-        },
-    ]
-    content, _ = client.chat(messages)
+def _extract_edit_json(content: str) -> Optional[Dict[str, Any]]:
+    """Extract a JSON edit object from model output."""
     content = content.strip()
-
-    # Extract JSON from response (handle code fences or surrounding text).
     try:
         edit = json.loads(content)
     except json.JSONDecodeError:
@@ -163,46 +186,115 @@ def apply_scoped_edit(
             edit = json.loads(m.group())
         except json.JSONDecodeError:
             return None
-
     if not isinstance(edit, dict):
         return None
+    return edit
 
-    path = edit.get("path", "")
-    old_text = edit.get("old_text", "")
-    new_text = edit.get("new_text", "")
 
-    if not path or not new_text:
+def apply_scoped_edit(
+    client: p0.ModelClient,
+    guard: p0.RepositoryGuard,
+    executor: p0.ToolExecutor,
+    obs_result: Dict[str, Any],
+) -> Optional[Dict[str, Any]]:
+    """Ask the model for a scoped edit grounded in observed evidence.
+
+    Uses up to 2 attempts. On the second attempt, the actual file content
+    is provided so the model can produce an exact old_text.
+    """
+    obs_final = obs_result.get("final", "")
+    obs_stats = obs_result.get("stats", {})
+
+    system_prompt = (
+        "You are HAIDER. You have already inspected the repository and gathered evidence.\n"
+        "Based on that evidence, make exactly one minimal, safe, reversible edit "
+        "to a single file in this repository.\n"
+        "The edit must be small (1-5 lines changed).\n"
+        "Respond with ONLY a JSON object: "
+        '{"path": "relative/path", "old_text": "exact text to replace", '
+        '"new_text": "replacement text"}\n'
+        "old_text must be an exact substring of the current file content.\n"
+        "old_text must appear exactly once in the file.\n"
+        "No prose. No markdown. No code fences."
+    )
+
+    user_prompt = (
+        f"OBSERVATION EVIDENCE (from your inspection):\n"
+        f"{obs_final}\n\n"
+        f"Stats: {json.dumps(obs_stats)}\n\n"
+        "Propose one small, safe edit. Return ONLY the JSON edit object."
+    )
+
+    messages: List[Dict[str, str]] = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt},
+    ]
+
+    for attempt in range(2):
+        try:
+            content, _ = client.chat(messages)
+        except p0.ModelError:
+            return None
+
+        edit = _extract_edit_json(content)
+        if edit is None:
+            if attempt == 0:
+                messages.append({"role": "assistant", "content": content})
+                messages.append({"role": "user", "content": "Invalid response. Return ONLY the JSON edit object."})
+                continue
+            return None
+
+        path = edit.get("path", "")
+        old_text = edit.get("old_text", "")
+        new_text = edit.get("new_text", "")
+
+        ok, err, full_path, original = validate_scoped_edit(guard, path, old_text, new_text)
+        if ok:
+            updated = original.replace(old_text, new_text, 1)
+            old_sha = hashlib.sha256(original.encode()).hexdigest()
+            new_sha = hashlib.sha256(updated.encode()).hexdigest()
+            Path(full_path).write_text(updated, encoding="utf-8")
+            diff_lines = abs(len(updated.splitlines()) - len(original.splitlines()))
+            return {
+                "path": path,
+                "old_sha256": old_sha,
+                "new_sha256": new_sha,
+                "diff_lines": diff_lines,
+            }
+
+        # Validation failed. On first attempt, read the file and retry with content.
+        if attempt == 0:
+            messages.append({"role": "assistant", "content": content})
+            # Try to read the file to give the model exact content.
+            file_content = ""
+            if path:
+                try:
+                    fp = guard.resolve(path)
+                    if os.path.isfile(fp):
+                        file_content = Path(fp).read_text(encoding="utf-8", errors="ignore")[:4000]
+                except p0.ToolError:
+                    pass
+            retry_msg = (
+                f"Edit rejected: {err}\n"
+            )
+            if file_content:
+                retry_msg += (
+                    f"\nActual content of {path} (first 4000 chars):\n"
+                    f"{file_content}\n\n"
+                    "Propose the edit again with an exact old_text from the content above. "
+                    "Return ONLY the JSON edit object."
+                )
+            else:
+                retry_msg += (
+                    "\nChoose a different file or fix old_text. "
+                    "Return ONLY the JSON edit object."
+                )
+            messages.append({"role": "user", "content": retry_msg})
+            continue
+
         return None
 
-    try:
-        full_path = guard.resolve(path)
-    except p0.ToolError:
-        return None
-
-    if not os.path.isfile(full_path):
-        return None
-
-    original = Path(full_path).read_text(encoding="utf-8", errors="ignore")
-    if old_text and old_text not in original:
-        return None
-
-    updated = original.replace(old_text, new_text, 1) if old_text else new_text
-    if updated == original:
-        return None
-
-    old_sha = hashlib.sha256(original.encode()).hexdigest()
-    new_sha = hashlib.sha256(updated.encode()).hexdigest()
-
-    Path(full_path).write_text(updated, encoding="utf-8")
-
-    diff_lines = abs(len(updated.splitlines()) - len(original.splitlines()))
-
-    return {
-        "path": path,
-        "old_sha256": old_sha,
-        "new_sha256": new_sha,
-        "diff_lines": diff_lines,
-    }
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -357,9 +449,9 @@ def main() -> int:
             f"elapsed={obs_result['elapsed_s']}s"
         )
 
-        # 6. Edit phase.
+        # 6. Edit phase (grounded in observation evidence).
         print("[haider] edit phase...")
-        edit = apply_scoped_edit(client, guard)
+        edit = apply_scoped_edit(client, guard, executor, obs_result)
         if edit is None:
             print("[haider] FATAL: no valid edit produced", file=sys.stderr)
             return 1

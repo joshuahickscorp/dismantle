@@ -83,7 +83,7 @@ DISK_WARN_GIB = 40.0
 DISK_RUN_GIB = 45.0
 # Disk-aware model-lane throttle: never launch a NEW model lane that would push
 # free disk below this floor, budgeting ~one 4-bit body per new gravity spec.
-DISK_MIN_FLOOR = 15.0
+DISK_MIN_FLOOR = 10.0
 TYPICAL_SPEC_GIB = 12.0
 # Memgate (swap<=30 GiB) is the real multi-model bound. This cap is only a
 # safety rail so a stuck driver cannot spawn unbounded grok-run processes.
@@ -5048,22 +5048,25 @@ def run_loop(*, go: bool, max_lanes: int, grok_lanes: int = 0,
     disk = float(snap.get("disk_free_gib") or 0.0)
     reclaimed = False
     disk_after = None
-    if go and disk < DISK_RUN_GIB and cap > 0:
-        fn = reclaim_fn or (lambda: subprocess.run(
-            ["bash", str(RECLAIM)], cwd=str(REPO), check=False,
-        ))
-        fn()
-        # reclaim_safe.sh does not touch the mlx gravity-spec cache, which grows
-        # unbounded under parallel descent (one ~4-16 GiB quantized model per
-        # spec). Evict the coldest cold specs — never a base 4-bit parent, never
-        # a spec an in-flight lane is reading — to keep concurrent model
-        # experiments from filling the disk.
-        evict_gravity_caches(DISK_RUN_GIB, state=st, now_epoch=now,
-                             pid_alive_fn=pid_alive_fn)
-        reclaimed = True
-        snap = (snapshot_fn or machine_snapshot)()
-        disk_after = float(snap.get("disk_free_gib") or 0.0)
-        disk = disk_after
+    if go and cap > 0:
+        # Aggressively evict COLD (sealed, not-in-flight) gravity-spec caches
+        # EVERY tick — not only under 45G. A sealed spec's science is already in
+        # its receipt, so its ~12 GiB cache is pure reclaimable disk. Keeping
+        # disk high is what lets the disk throttle admit more concurrent lanes,
+        # so the box saturates instead of starving at ~2 new lanes/tick. Never
+        # touches a base 4-bit parent or an in-flight spec.
+        freed = evict_gravity_caches(9_999.0, state=st, now_epoch=now,
+                                     pid_alive_fn=pid_alive_fn)
+        if disk < DISK_RUN_GIB:
+            fn = reclaim_fn or (lambda: subprocess.run(
+                ["bash", str(RECLAIM)], cwd=str(REPO), check=False,
+            ))
+            fn()
+        if freed or disk < DISK_RUN_GIB:
+            reclaimed = True
+            snap = (snapshot_fn or machine_snapshot)()
+            disk_after = float(snap.get("disk_free_gib") or 0.0)
+            disk = disk_after
 
     worker_cache = None
     rows = []

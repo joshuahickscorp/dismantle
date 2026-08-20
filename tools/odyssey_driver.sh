@@ -23,8 +23,8 @@ fi
 LOG="$ROOT/workspace/campaign/odyssey/driver.log"
 mkdir -p "$(dirname "$LOG")"
 
-TICK_SECS="${ODYSSEY_TICK_SECS:-20}"     # cadence between reap+launch ticks
-COMMIT_EVERY="${ODYSSEY_COMMIT_EVERY:-15}"  # commit data every N ticks (~5 min)
+TICK_SECS="${ODYSSEY_TICK_SECS:-12}"     # cadence between reap+launch ticks
+COMMIT_EVERY="${ODYSSEY_COMMIT_EVERY:-25}"  # commit data every N ticks (~5 min)
 # Single-resident lock: if another resident holds it, exit (launchd KeepAlive keeps one).
 LOCK="$ROOT/workspace/campaign/odyssey/.resident.lock"
 if ! mkdir "$LOCK" 2>/dev/null; then

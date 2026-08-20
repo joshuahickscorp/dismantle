@@ -6310,10 +6310,31 @@ def print_cycle(plan: dict, *, go: bool, max_lanes: int,
     )
 
 
-def cmd_cycle(*, go: bool, max_lanes: int, grok_lanes: int = 0, **hooks) -> int:
+def cmd_cycle(*, go: bool, max_lanes: int, grok_lanes: int = 0,
+              loop_secs: float = 0.0, inner_sleep: float = 3.0,
+              **hooks) -> int:
+    hooks.setdefault("persist", go)
+    # Tight internal loop: reap + fill lanes every inner_sleep seconds inside ONE
+    # process for loop_secs, so lanes stay CONSTANTLY full — no per-tick Python
+    # startup, no 12s gap between waves. The resident relaunches on exit.
+    if go and loop_secs and loop_secs > 0:
+        start = time.time()
+        n = 0
+        while time.time() - start < loop_secs:
+            st = ensure_state()
+            snap = (hooks.get("snapshot_fn") or machine_snapshot)()
+            plan = cycle_tick(go=True, max_lanes=max_lanes,
+                              grok_lanes=grok_lanes, state=st, **hooks)
+            n += 1
+            running_n = len(odyssey_running_ids(st))
+            admitted = [r for r in (plan.get("admitted") or [])
+                        if r.get("verdict") == "LAUNCH"]
+            print(f"tick {n} running={running_n} launched={len(admitted)} "
+                  f"disk={snap.get('disk_free_gib')}GiB", flush=True)
+            time.sleep(max(0.5, float(inner_sleep)))
+        return 0
     st = hooks.pop("state", None) or ensure_state()
     snap = (hooks.get("snapshot_fn") or machine_snapshot)()
-    hooks.setdefault("persist", go)
     plan = cycle_tick(go=go, max_lanes=max_lanes, grok_lanes=grok_lanes,
                       state=st, **hooks)
     running_n = len(odyssey_running_ids(st))
@@ -7881,6 +7902,10 @@ def main(argv=None) -> int:
                       help="MODEL subprocess concurrency ceiling (hard cap 8; memgate is the real limiter)")
     p_cy.add_argument("--grok-lanes", type=int, default=0,
                       help="grok/novelty ceiling (default 0: autonomous loop spends no grok usage)")
+    p_cy.add_argument("--loop-secs", type=float, default=0.0,
+                      help="tight internal reap+fill loop for N seconds (constant uptime, no per-tick startup)")
+    p_cy.add_argument("--inner-sleep", type=float, default=3.0,
+                      help="seconds between iterations of the tight loop (default 3)")
     p_ret = sp.add_parser("retire")
     p_ret.add_argument("oxx")
     p_acq = sp.add_parser("acquire-next")
@@ -7914,7 +7939,8 @@ def main(argv=None) -> int:
         return cmd_run(go=go, max_lanes=args.max_lanes, grok_lanes=args.grok_lanes)
     if args.cmd == "cycle":
         go = bool(args.go) and not bool(args.dry_run)
-        return cmd_cycle(go=go, max_lanes=args.max_lanes, grok_lanes=args.grok_lanes)
+        return cmd_cycle(go=go, max_lanes=args.max_lanes, grok_lanes=args.grok_lanes,
+                         loop_secs=args.loop_secs, inner_sleep=args.inner_sleep)
     if args.cmd == "retire":
         return cmd_retire(args.oxx)
     if args.cmd == "acquire-next":

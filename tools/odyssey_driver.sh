@@ -23,8 +23,8 @@ fi
 LOG="$ROOT/workspace/campaign/odyssey/driver.log"
 mkdir -p "$(dirname "$LOG")"
 
-TICK_SECS="${ODYSSEY_TICK_SECS:-12}"     # cadence between reap+launch ticks
-COMMIT_EVERY="${ODYSSEY_COMMIT_EVERY:-25}"  # commit data every N ticks (~5 min)
+WINDOW_SECS="${ODYSSEY_WINDOW_SECS:-300}"  # tight-loop window per process (~5 min), commit after
+INNER_SLEEP="${ODYSSEY_INNER_SLEEP:-3}"    # seconds between reap+refill inside the tight loop
 # Single-resident lock: if another resident holds it, exit (launchd KeepAlive keeps one).
 LOCK="$ROOT/workspace/campaign/odyssey/.resident.lock"
 if ! mkdir "$LOCK" 2>/dev/null; then
@@ -57,14 +57,15 @@ while true; do
   tick=$((tick+1))
   ts="$(date '+%Y-%m-%dT%H:%M:%S%z')"
   {
-    echo "== tick $tick $ts =="
-    # --max-lanes = MODEL concurrency ceiling (memgate is the real limiter);
-    # --grok-lanes 0 = NO grok in the loop (deterministic science only).
-    ODYSSEY_HEADROOM_ADMIT=1 "$PY" tools/odyssey_ctl.py cycle --go --max-lanes 12 --grok-lanes 0
-    echo "-- cycle rc=$? --"
+    echo "== window $tick $ts (tight ${WINDOW_SECS}s loop) =="
+    # TIGHT internal loop: one process reaps + refills lanes every INNER_SLEEP
+    # for WINDOW_SECS, so lanes stay CONSTANTLY full (no per-tick startup, no
+    # gap between waves). --max-lanes = ceiling; memgate (RAM) + disk are the
+    # real limits. --grok-lanes 0 = deterministic science only.
+    ODYSSEY_HEADROOM_ADMIT=1 "$PY" tools/odyssey_ctl.py cycle --go \
+      --max-lanes 14 --grok-lanes 0 \
+      --loop-secs "$WINDOW_SECS" --inner-sleep "$INNER_SLEEP"
+    echo "-- window rc=$? --"
   } >>"$LOG" 2>&1
-  if [ $((tick % COMMIT_EVERY)) -eq 0 ]; then
-    commit_data >>"$LOG" 2>&1
-  fi
-  sleep "$TICK_SECS"
+  commit_data >>"$LOG" 2>&1
 done

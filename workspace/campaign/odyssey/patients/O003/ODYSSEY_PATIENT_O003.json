@@ -151,8 +151,8 @@
   },
   "representation": {
     "source_bytes": 32815315552,
-    "best_stored_bpw_eq": 3.9411,
-    "active_bpw_eq": 3.7124,
+    "best_stored_bpw_eq": 2.1916,
+    "active_bpw_eq": 1.965,
     "metadata_bytes": null,
     "corrections": null,
     "reconstruction": null,
@@ -508,7 +508,7 @@
         }
       }
     },
-    "_evidence": "MEASURED (census); MEASURED (per_organ_sensitivity, in-place mlx ablation); MEASURED (gravity q2-g32-experts stored_bpw=3.0637); MEASURED (gravity q2-g64-experts stored_bpw=2.6251); MEASURED (gravity q3-g32-experts stored_bpw=3.9411); MEASURED (gravity mixed-q2q3-experts stored_bpw=3.8688)",
+    "_evidence": "MEASURED (census); MEASURED (per_organ_sensitivity, in-place mlx ablation); MEASURED (gravity q2-g32-experts stored_bpw=3.0637); MEASURED (gravity q2-g64-experts stored_bpw=2.6251); MEASURED (gravity q3-g32-experts stored_bpw=3.9411); MEASURED (gravity mixed-q2q3-experts stored_bpw=3.8688); MEASURED (gravity mixed-q2q3 stored_bpw=2.9641); MEASURED (gravity mixed-q2q4 stored_bpw=3.0072); MEASURED (gravity mixed-q2q4-experts stored_bpw=4.8167); MEASURED (gravity mixed-q3q4 stored_bpw=3.9366); MEASURED (gravity mixed-q3q4-experts stored_bpw=4.8413); MEASURED (gravity q2-g128 stored_bpw=2.1916)",
     "stored_bpw": 16.0,
     "organs_bytes_GB": {
       "embed": 0.68,
@@ -549,7 +549,13 @@
       "q2-g32-experts",
       "q2-g64-experts",
       "q3-g32-experts",
-      "mixed-q2q3-experts"
+      "mixed-q2q3-experts",
+      "mixed-q2q3",
+      "mixed-q2q4",
+      "mixed-q2q4-experts",
+      "mixed-q3q4",
+      "mixed-q3q4-experts",
+      "q2-g128"
     ],
     "wins": [
       {
@@ -615,6 +621,84 @@
         "protected_components": [],
         "failure_localization": null,
         "receipt": "receipts/odyssey-i/O003_GRAVITY_q3-g32-experts.json",
+        "label": "SPECIMEN",
+        "not_hawking_nx_win": true,
+        "_evidence": "MEASURED (mlx gravity specimen; §15)",
+        "_label": "SPECIMEN"
+      },
+      {
+        "spec": "mixed-q2q4-experts",
+        "stored_bpw": 4.8167,
+        "complete_bpw": 4.8168,
+        "nominal_bits": 2,
+        "active_bpw": 4.1053,
+        "stored_bytes": 9878743296,
+        "active_bytes_per_token": 1725409536,
+        "battery": "11/12",
+        "delta_hits": -1,
+        "verdict": "CANDIDATE_PASS",
+        "candidate_class": "STRUCTURAL_GRAVITY",
+        "conventionality": "nonconventional",
+        "protected_components": [
+          "attn",
+          "embed",
+          "expert",
+          "shared_expert"
+        ],
+        "failure_localization": null,
+        "receipt": "receipts/odyssey-i/O003_GRAVITY_mixed-q2q4-experts.json",
+        "label": "SPECIMEN",
+        "not_hawking_nx_win": true,
+        "_evidence": "MEASURED (mlx gravity specimen; §15)",
+        "_label": "SPECIMEN"
+      },
+      {
+        "spec": "mixed-q3q4",
+        "stored_bpw": 3.9366,
+        "complete_bpw": 3.9367,
+        "nominal_bits": 3,
+        "active_bpw": 3.6905,
+        "stored_bytes": 8073750784,
+        "active_bytes_per_token": 1551083776,
+        "battery": "11/12",
+        "delta_hits": -1,
+        "verdict": "CANDIDATE_PASS",
+        "candidate_class": "STRUCTURAL_GRAVITY",
+        "conventionality": "nonconventional",
+        "protected_components": [
+          "attn",
+          "embed",
+          "expert",
+          "shared_expert"
+        ],
+        "failure_localization": null,
+        "receipt": "receipts/odyssey-i/O003_GRAVITY_mixed-q3q4.json",
+        "label": "SPECIMEN",
+        "not_hawking_nx_win": true,
+        "_evidence": "MEASURED (mlx gravity specimen; §15)",
+        "_label": "SPECIMEN"
+      },
+      {
+        "spec": "mixed-q3q4-experts",
+        "stored_bpw": 4.8413,
+        "complete_bpw": 4.8415,
+        "nominal_bits": 3,
+        "active_bpw": 4.2257,
+        "stored_bytes": 9929337088,
+        "active_bytes_per_token": 1776003328,
+        "battery": "11/12",
+        "delta_hits": -1,
+        "verdict": "CANDIDATE_PASS",
+        "candidate_class": "STRUCTURAL_GRAVITY",
+        "conventionality": "nonconventional",
+        "protected_components": [
+          "attn",
+          "embed",
+          "expert",
+          "shared_expert"
+        ],
+        "failure_localization": null,
+        "receipt": "receipts/odyssey-i/O003_GRAVITY_mixed-q3q4-experts.json",
         "label": "SPECIMEN",
         "not_hawking_nx_win": true,
         "_evidence": "MEASURED (mlx gravity specimen; §15)",
@@ -697,33 +781,326 @@
         "not_hawking_nx_win": true,
         "_evidence": "MEASURED (mlx gravity specimen; §15)",
         "_label": "SPECIMEN"
+      },
+      {
+        "spec": "mixed-q2q3",
+        "stored_bpw": 2.9641,
+        "complete_bpw": 2.9642,
+        "nominal_bits": 2,
+        "active_bpw": 2.8247,
+        "stored_bytes": 6079179008,
+        "active_bytes_per_token": 1187178752,
+        "battery": "9/12",
+        "delta_hits": -3,
+        "verdict": "DEGRADED",
+        "candidate_class": "STRUCTURAL_GRAVITY",
+        "conventionality": "nonconventional",
+        "protected_components": [
+          "attn",
+          "embed",
+          "expert",
+          "shared_expert"
+        ],
+        "failure_localization": {
+          "failed": true,
+          "delta_hits": -3,
+          "threshold": -1,
+          "ranked_organs": [
+            {
+              "organ": "attn",
+              "sensitivity_delta": -1,
+              "treatment": "round8"
+            },
+            {
+              "organ": "embed",
+              "sensitivity_delta": -1,
+              "treatment": "round8"
+            },
+            {
+              "organ": "expert",
+              "sensitivity_delta": -1,
+              "treatment": "round8"
+            },
+            {
+              "organ": "shared_expert",
+              "sensitivity_delta": -1,
+              "treatment": "round8"
+            },
+            {
+              "organ": "lm_head",
+              "sensitivity_delta": 0,
+              "treatment": "round8"
+            },
+            {
+              "organ": "mlp_dense",
+              "sensitivity_delta": 0,
+              "treatment": "round8"
+            },
+            {
+              "organ": "norm",
+              "sensitivity_delta": 0,
+              "treatment": "round8"
+            },
+            {
+              "organ": "other",
+              "sensitivity_delta": 0,
+              "treatment": "round8"
+            },
+            {
+              "organ": "router",
+              "sensitivity_delta": 0,
+              "treatment": "round8"
+            }
+          ],
+          "most_likely_component": "attn",
+          "targeted_repair": "protect attn (do not globally raise bits)",
+          "anti_retreat": "global precision retreat (X + globally higher bits) is LAST resort; first protect sensitive organ/router/attn/outliers, add sparse correction/residual tier, change grouping/scale-objective/metadata, heterogeneous expert precision, alternate family",
+          "_evidence": "DERIVED (rank organs by MEASURED sensitivity delta)"
+        },
+        "receipt": "receipts/odyssey-i/O003_GRAVITY_mixed-q2q3.json",
+        "label": "SPECIMEN",
+        "not_hawking_nx_win": true,
+        "_evidence": "MEASURED (mlx gravity specimen; §15)",
+        "_label": "SPECIMEN"
+      },
+      {
+        "spec": "mixed-q2q4",
+        "stored_bpw": 3.0072,
+        "complete_bpw": 3.0073,
+        "nominal_bits": 2,
+        "active_bpw": 3.035,
+        "stored_bytes": 6167570688,
+        "active_bytes_per_token": 1275570432,
+        "battery": "8/12",
+        "delta_hits": -4,
+        "verdict": "DEGRADED",
+        "candidate_class": "STRUCTURAL_GRAVITY",
+        "conventionality": "nonconventional",
+        "protected_components": [
+          "attn",
+          "embed",
+          "expert",
+          "shared_expert"
+        ],
+        "failure_localization": {
+          "failed": true,
+          "delta_hits": -4,
+          "threshold": -1,
+          "ranked_organs": [
+            {
+              "organ": "attn",
+              "sensitivity_delta": -1,
+              "treatment": "round8"
+            },
+            {
+              "organ": "embed",
+              "sensitivity_delta": -1,
+              "treatment": "round8"
+            },
+            {
+              "organ": "expert",
+              "sensitivity_delta": -1,
+              "treatment": "round8"
+            },
+            {
+              "organ": "shared_expert",
+              "sensitivity_delta": -1,
+              "treatment": "round8"
+            },
+            {
+              "organ": "lm_head",
+              "sensitivity_delta": 0,
+              "treatment": "round8"
+            },
+            {
+              "organ": "mlp_dense",
+              "sensitivity_delta": 0,
+              "treatment": "round8"
+            },
+            {
+              "organ": "norm",
+              "sensitivity_delta": 0,
+              "treatment": "round8"
+            },
+            {
+              "organ": "other",
+              "sensitivity_delta": 0,
+              "treatment": "round8"
+            },
+            {
+              "organ": "router",
+              "sensitivity_delta": 0,
+              "treatment": "round8"
+            }
+          ],
+          "most_likely_component": "attn",
+          "targeted_repair": "protect attn (do not globally raise bits)",
+          "anti_retreat": "global precision retreat (X + globally higher bits) is LAST resort; first protect sensitive organ/router/attn/outliers, add sparse correction/residual tier, change grouping/scale-objective/metadata, heterogeneous expert precision, alternate family",
+          "_evidence": "DERIVED (rank organs by MEASURED sensitivity delta)"
+        },
+        "receipt": "receipts/odyssey-i/O003_GRAVITY_mixed-q2q4.json",
+        "label": "SPECIMEN",
+        "not_hawking_nx_win": true,
+        "_evidence": "MEASURED (mlx gravity specimen; §15)",
+        "_label": "SPECIMEN"
+      },
+      {
+        "spec": "q2-g128",
+        "stored_bpw": 2.1916,
+        "complete_bpw": 2.1918,
+        "nominal_bits": 2,
+        "active_bpw": 1.965,
+        "stored_bytes": 4494858496,
+        "active_bytes_per_token": 825858304,
+        "battery": "1/12",
+        "delta_hits": -11,
+        "verdict": "DEGRADED",
+        "candidate_class": "AGGRESSIVE_QUANT",
+        "conventionality": "nonconventional",
+        "protected_components": [],
+        "failure_localization": {
+          "failed": true,
+          "delta_hits": -11,
+          "threshold": -1,
+          "ranked_organs": [
+            {
+              "organ": "attn",
+              "sensitivity_delta": -1,
+              "treatment": "round8"
+            },
+            {
+              "organ": "embed",
+              "sensitivity_delta": -1,
+              "treatment": "round8"
+            },
+            {
+              "organ": "expert",
+              "sensitivity_delta": -1,
+              "treatment": "round8"
+            },
+            {
+              "organ": "shared_expert",
+              "sensitivity_delta": -1,
+              "treatment": "round8"
+            },
+            {
+              "organ": "lm_head",
+              "sensitivity_delta": 0,
+              "treatment": "round8"
+            },
+            {
+              "organ": "mlp_dense",
+              "sensitivity_delta": 0,
+              "treatment": "round8"
+            },
+            {
+              "organ": "norm",
+              "sensitivity_delta": 0,
+              "treatment": "round8"
+            },
+            {
+              "organ": "other",
+              "sensitivity_delta": 0,
+              "treatment": "round8"
+            },
+            {
+              "organ": "router",
+              "sensitivity_delta": 0,
+              "treatment": "round8"
+            }
+          ],
+          "most_likely_component": "attn",
+          "targeted_repair": "protect attn (do not globally raise bits)",
+          "anti_retreat": "global precision retreat (X + globally higher bits) is LAST resort; first protect sensitive organ/router/attn/outliers, add sparse correction/residual tier, change grouping/scale-objective/metadata, heterogeneous expert precision, alternate family",
+          "_evidence": "DERIVED (rank organs by MEASURED sensitivity delta)"
+        },
+        "receipt": "receipts/odyssey-i/O003_GRAVITY_q2-g128.json",
+        "label": "SPECIMEN",
+        "not_hawking_nx_win": true,
+        "_evidence": "MEASURED (mlx gravity specimen; §15)",
+        "_label": "SPECIMEN"
       }
     ],
     "architecture_specific_findings": [],
     "_evidence": "UNKNOWN",
     "last": {
-      "spec": "q3-g32-experts",
-      "stored_bpw": 3.9411,
-      "complete_bpw": 3.9412,
-      "nominal_bits": 3,
-      "active_bpw": 3.7124,
-      "stored_bytes": 8082966784,
-      "active_bytes_per_token": 1560299776,
-      "battery": "11/12",
-      "delta_hits": -1,
-      "verdict": "CANDIDATE_PASS",
-      "candidate_class": "CONVENTIONAL_ANCHOR",
-      "conventionality": "conventional",
+      "spec": "q2-g128",
+      "stored_bpw": 2.1916,
+      "complete_bpw": 2.1918,
+      "nominal_bits": 2,
+      "active_bpw": 1.965,
+      "stored_bytes": 4494858496,
+      "active_bytes_per_token": 825858304,
+      "battery": "1/12",
+      "delta_hits": -11,
+      "verdict": "DEGRADED",
+      "candidate_class": "AGGRESSIVE_QUANT",
+      "conventionality": "nonconventional",
       "protected_components": [],
-      "failure_localization": null,
-      "receipt": "receipts/odyssey-i/O003_GRAVITY_q3-g32-experts.json",
+      "failure_localization": {
+        "failed": true,
+        "delta_hits": -11,
+        "threshold": -1,
+        "ranked_organs": [
+          {
+            "organ": "attn",
+            "sensitivity_delta": -1,
+            "treatment": "round8"
+          },
+          {
+            "organ": "embed",
+            "sensitivity_delta": -1,
+            "treatment": "round8"
+          },
+          {
+            "organ": "expert",
+            "sensitivity_delta": -1,
+            "treatment": "round8"
+          },
+          {
+            "organ": "shared_expert",
+            "sensitivity_delta": -1,
+            "treatment": "round8"
+          },
+          {
+            "organ": "lm_head",
+            "sensitivity_delta": 0,
+            "treatment": "round8"
+          },
+          {
+            "organ": "mlp_dense",
+            "sensitivity_delta": 0,
+            "treatment": "round8"
+          },
+          {
+            "organ": "norm",
+            "sensitivity_delta": 0,
+            "treatment": "round8"
+          },
+          {
+            "organ": "other",
+            "sensitivity_delta": 0,
+            "treatment": "round8"
+          },
+          {
+            "organ": "router",
+            "sensitivity_delta": 0,
+            "treatment": "round8"
+          }
+        ],
+        "most_likely_component": "attn",
+        "targeted_repair": "protect attn (do not globally raise bits)",
+        "anti_retreat": "global precision retreat (X + globally higher bits) is LAST resort; first protect sensitive organ/router/attn/outliers, add sparse correction/residual tier, change grouping/scale-objective/metadata, heterogeneous expert precision, alternate family",
+        "_evidence": "DERIVED (rank organs by MEASURED sensitivity delta)"
+      },
+      "receipt": "receipts/odyssey-i/O003_GRAVITY_q2-g128.json",
       "label": "SPECIMEN",
       "not_hawking_nx_win": true,
       "_evidence": "MEASURED (mlx gravity specimen; §15)",
       "_label": "SPECIMEN"
     },
-    "candidate_class": "CONVENTIONAL_ANCHOR",
-    "conventionality": "conventional"
+    "candidate_class": "AGGRESSIVE_QUANT",
+    "conventionality": "nonconventional"
   },
   "nx": {
     "primitive_set": null,
@@ -752,7 +1129,7 @@
     "_evidence": "UNKNOWN"
   },
   "next": [
-    "gravity q3-g32-experts CANDIDATE_PASS: stored_bpw=3.9411 active_bpw=3.7124 battery=11/12 delta_hits=-1 (mlx SPECIMEN, not a Hawking NX win)",
+    "gravity q2-g128 DEGRADED: stored_bpw=2.1916 active_bpw=1.965 battery=1/12 delta_hits=-11 (mlx SPECIMEN, not a Hawking NX win)",
     "nx-gather accounting written (receipts/odyssey-i/O003_NX_gather.json); not a Hawking NX runtime",
     "A3 per-organ sensitivity MEASURED: zero drops hits on embed, attn, router, expert, shared_expert, mlp_dense, norm, lm_head; round8 drops hits on embed, attn, expert, shared_expert (baseline 12/12, 4bit-mlx)",
     "native load_engine still Unimplemented for this arch — NX after route/sensitivity",
@@ -768,7 +1145,7 @@
     ],
     "_evidence": "DERIVED (doctor_seal.seal structural)"
   },
-  "phase": "SEALED",
+  "phase": "GRAVITY",
   "state": "RETIRED",
   "reclaimable": true,
   "_evidence": "DERIVED (patient-sealed)"

@@ -2400,7 +2400,7 @@
       "id": "AUTO-O001-gravity-q2-g16",
       "oxx": "O001",
       "title": "gravity descent q2-g16 (SPECIMEN; ladder)",
-      "status": "RUNNING",
+      "status": "READY",
       "info": 6.0,
       "wall_cost": 2.0,
       "gpu_cost": 1.0,
@@ -2409,9 +2409,9 @@
       "template": "gravity-aggressive-hybrid",
       "mechanism": "gravity-q2-g16",
       "mechanism_id": "gravity-q2-g16",
-      "pid": 57271,
-      "started": "2026-08-20T00:21:00Z",
-      "started_epoch": 1787185260.0060349,
+      "pid": null,
+      "started": "2026-08-20T00:21:05Z",
+      "started_epoch": 1787185265.6326752,
       "receipt_path": "receipts/odyssey-i/O001_GRAVITY_q2-g16.json",
       "timeout_s": 1800,
       "argv": [
@@ -2432,15 +2432,15 @@
         "--skip-route"
       ],
       "log": "/Users/scammermike/Downloads/hawking/workspace/campaign/odyssey/lanes/O001-gravity-q2-g16.log",
-      "task": "pid:57271",
-      "retries": 0,
+      "task": null,
+      "retries": 1,
       "fail_reason": "exited-no-receipt"
     },
     {
       "id": "AUTO-O003-gravity-q2-g16",
       "oxx": "O003",
       "title": "gravity descent q2-g16 (SPECIMEN; ladder)",
-      "status": "RUNNING",
+      "status": "READY",
       "info": 6.0,
       "wall_cost": 2.0,
       "gpu_cost": 1.0,
@@ -2449,9 +2449,9 @@
       "template": "gravity-aggressive-moe",
       "mechanism": "gravity-q2-g16",
       "mechanism_id": "gravity-q2-g16",
-      "pid": 57351,
-      "started": "2026-08-20T00:21:00Z",
-      "started_epoch": 1787185260.0060349,
+      "pid": null,
+      "started": "2026-08-20T00:21:05Z",
+      "started_epoch": 1787185265.6326752,
       "receipt_path": "receipts/odyssey-i/O003_GRAVITY_q2-g16.json",
       "timeout_s": 1800,
       "argv": [
@@ -2471,8 +2471,8 @@
         "q2-g16"
       ],
       "log": "/Users/scammermike/Downloads/hawking/workspace/campaign/odyssey/lanes/O003-gravity-q2-g16.log",
-      "task": "pid:57351",
-      "retries": 0,
+      "task": null,
+      "retries": 1,
       "fail_reason": "exited-no-receipt"
     },
     {

@@ -85,6 +85,10 @@ DISK_RUN_GIB = 45.0
 # free disk below this floor, budgeting ~one 4-bit body per new gravity spec.
 DISK_MIN_FLOOR = 10.0
 TYPICAL_SPEC_GIB = 12.0
+# Evict cold spec caches when free disk drops below the trigger, up to the
+# target. Only-when-low + bounded target keeps ticks fast (no per-tick full sweep).
+DISK_EVICT_TRIGGER = 45.0
+DISK_EVICT_TARGET = 65.0
 # Memgate (swap<=30 GiB) is the real multi-model bound. This cap is only a
 # safety rail so a stuck driver cannot spawn unbounded grok-run processes.
 HARD_LANE_CAP = 14
@@ -5048,25 +5052,24 @@ def run_loop(*, go: bool, max_lanes: int, grok_lanes: int = 0,
     disk = float(snap.get("disk_free_gib") or 0.0)
     reclaimed = False
     disk_after = None
-    if go and cap > 0:
-        # Aggressively evict COLD (sealed, not-in-flight) gravity-spec caches
-        # EVERY tick — not only under 45G. A sealed spec's science is already in
-        # its receipt, so its ~12 GiB cache is pure reclaimable disk. Keeping
-        # disk high is what lets the disk throttle admit more concurrent lanes,
-        # so the box saturates instead of starving at ~2 new lanes/tick. Never
-        # touches a base 4-bit parent or an in-flight spec.
-        freed = evict_gravity_caches(9_999.0, state=st, now_epoch=now,
+    if go and cap > 0 and disk < DISK_EVICT_TRIGGER:
+        # Evict COLD (sealed, not-in-flight) gravity-spec caches ONLY when disk
+        # is actually low, and only up to DISK_EVICT_TARGET — not everything
+        # every tick (that made each tick take ~90s of du/rmtree I/O, starving
+        # the box between waves). A sealed spec's science is in its receipt, so
+        # its cache is pure reclaimable disk. Keeping disk near the target lets
+        # the throttle admit more concurrent lanes without slow ticks.
+        freed = evict_gravity_caches(DISK_EVICT_TARGET, state=st, now_epoch=now,
                                      pid_alive_fn=pid_alive_fn)
         if disk < DISK_RUN_GIB:
             fn = reclaim_fn or (lambda: subprocess.run(
                 ["bash", str(RECLAIM)], cwd=str(REPO), check=False,
             ))
             fn()
-        if freed or disk < DISK_RUN_GIB:
-            reclaimed = True
-            snap = (snapshot_fn or machine_snapshot)()
-            disk_after = float(snap.get("disk_free_gib") or 0.0)
-            disk = disk_after
+        reclaimed = True
+        snap = (snapshot_fn or machine_snapshot)()
+        disk_after = float(snap.get("disk_free_gib") or 0.0)
+        disk = disk_after
 
     worker_cache = None
     rows = []

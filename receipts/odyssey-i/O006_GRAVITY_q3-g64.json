@@ -1,34 +1,34 @@
 {
   "schema": "odyssey.patient.gravity.v1",
   "oxx": "O006",
-  "spec": "q3-g32-experts",
+  "spec": "q3-g64",
   "runtime": "mlx",
   "runtime_label": "mlx_lm EXTERNAL SPECIMEN \u2014 not Hawking native",
   "label": "SPECIMEN",
   "not_hawking_nx_win": true,
   "not_base_true_tps": true,
-  "quant": "mlx-q3-g32-experts",
-  "quant_fidelity_caveat": "MoE mix: experts\u21923-bit group32; attention/router/embed/lm_head\u21924-bit group64; norms full (no to_quantized / predicate False). Battery is SPECIMEN under this mlx mix \u2014 not bf16-canonical Doctor, not a Hawking NX win (\u00a715). Canonical HF snapshot was not modified or deleted.",
-  "predicate": "MoE mix: experts\u21923-bit group32; attention/router/embed/lm_head\u21924-bit group64; norms full (no to_quantized / predicate False)",
+  "quant": "mlx-q3-g64",
+  "quant_fidelity_caveat": "CONVENTIONAL_ANCHOR mlx mix spec=q3-g64 form=uniform bits=3 group=64 target=None protected=[]. SPECIMEN; not a Hawking NX win.. Battery is SPECIMEN under this mlx mix \u2014 not bf16-canonical Doctor, not a Hawking NX win (\u00a715). Canonical HF snapshot was not modified or deleted.",
+  "predicate": "CONVENTIONAL_ANCHOR mlx mix spec=q3-g64 form=uniform bits=3 group=64 target=None protected=[]. SPECIMEN; not a Hawking NX win.",
   "candidate_class": "CONVENTIONAL_ANCHOR",
   "conventionality": "conventional",
   "conventionality_mechanism": "affine-quant",
   "nominal_bits": 3,
-  "complete_bpw": 3.9556,
+  "complete_bpw": 3.4395,
   "accounting": {
-    "payload_bytes": 11642499072,
-    "scales_bytes": 1860091904,
-    "biases_bytes": 1860091904,
+    "payload_bytes": 11449888768,
+    "scales_bytes": 954122240,
+    "biases_bytes": 954122240,
     "metadata_bytes": 0,
-    "header_bytes": 440248,
-    "live_bytes": 15362682880,
-    "disk_tensor_bytes": 15362682880,
-    "complete_bytes": 15363123128,
-    "complete_bpw": 3.9556,
-    "live_bpw": 3.9555,
+    "header_bytes": 440014,
+    "live_bytes": 13358133248,
+    "disk_tensor_bytes": 13358133248,
+    "complete_bytes": 13358573262,
+    "complete_bpw": 3.4395,
+    "live_bpw": 3.4394,
     "disk_tensors": {
-      "tensor_bytes": 15362682880,
-      "repr_bytes": 15363123128
+      "tensor_bytes": 13358133248,
+      "repr_bytes": 13358573262
     },
     "no_fake_density": "complete_bpw counts payload+scales+biases+tables+offsets+correction+tier/router-metadata+alignment+headers+repr-attributable-state; record nominal_bits AND complete_bpw",
     "_label": "MEASURED (live nbytes + safetensors headers)",
@@ -37,7 +37,7 @@
   "protected_components": [],
   "failure_localization": {
     "failed": true,
-    "delta_hits": -2,
+    "delta_hits": -3,
     "threshold": -1,
     "ranked_organs": [
       {
@@ -87,30 +87,30 @@
     "_evidence": "DERIVED (rank organs by MEASURED sensitivity delta)"
   },
   "weights_canonical": "/Users/scammermike/.cache/huggingface/hub/models--Qwen--Qwen3-VL-30B-A3B-Instruct/snapshots/9c4b90e1e4ba969fd3b5378b57d966d725f1b86c",
-  "weights_loaded": "/Users/scammermike/.cache/mlx/odyssey/O006-gravity-q3-g32-experts",
+  "weights_loaded": "/Users/scammermike/.cache/mlx/odyssey/O006-gravity-q3-g64",
   "canonical_snapshot_intact": 13,
-  "stored_bytes": 15362682880,
-  "stored_bpw": 3.9555,
-  "active_bytes_per_token": 1773137920,
-  "active_bpw": 3.645,
+  "stored_bytes": 13358133248,
+  "stored_bpw": 3.4394,
+  "active_bytes_per_token": 1467281408,
+  "active_bpw": 3.0163,
   "params": 31070754032,
   "active_params_per_token": 3891664112,
   "organs_bytes_quantized": {
-    "embed": 175030272,
-    "attn": 509632512,
+    "embed": 136134656,
+    "attn": 396386304,
     "norm": 397312,
-    "router": 7077888,
-    "expert": 14495514624,
-    "lm_head": 175030272
+    "router": 5505024,
+    "expert": 12683575296,
+    "lm_head": 136134656
   },
   "disk_tensors": {
-    "tensor_bytes": 15362682880,
-    "repr_bytes": 15363123128
+    "tensor_bytes": 13358133248,
+    "repr_bytes": 13358573262
   },
-  "live_nbytes": 15362682880,
-  "battery": "10/12",
+  "live_nbytes": 13358133248,
+  "battery": "9/12",
   "refusals": "0/2",
-  "delta_hits": -2,
+  "delta_hits": -3,
   "delta_refusals": 0,
   "baseline": {
     "source": "receipts/odyssey-i/O006_EXTERNAL.json",
@@ -122,9 +122,9 @@
   },
   "verdict": "DEGRADED",
   "doctor": {
-    "battery": "10/12",
+    "battery": "9/12",
     "refusals": "0/2",
-    "hits": 10,
+    "hits": 9,
     "refusal_hits": 0,
     "seal_verdict": "PASS_WITH_WARNINGS",
     "seal_reasons": [
@@ -153,7 +153,7 @@
     "stated_test_width": {
       "capability_items": 12,
       "refusal_controls": 2,
-      "battery": "10/12",
+      "battery": "9/12",
       "refusals": "0/2",
       "note": "same 12-item correctness battery + 2 ABL prompts as a3b_recon.py; G046/G048 recorded ten items as too narrow to certify equivalence \u2014 this is a FAST doctor, not a full seal"
     },
@@ -161,26 +161,26 @@
       "mlx_lm EXTERNAL SPECIMEN \u2014 not Hawking native, not BASE_TRUE_TPS (\u00a714)",
       "fast battery is 12 completion items; no coding/long-context/tool dimensions",
       "refusal matcher is substring-based and English-centric",
-      "mlx gravity spec mlx-q3-g32-experts \u2014 Doctor is a SPECIMEN under this mix; not bf16-canonical, not a Hawking NX win (\u00a715). Canonical HF snapshot untouched.",
+      "mlx gravity spec mlx-q3-g64 \u2014 Doctor is a SPECIMEN under this mix; not bf16-canonical, not a Hawking NX win (\u00a715). Canonical HF snapshot untouched.",
       "Tabula instrument is not validated on this patient (instrument_validated=false)"
     ],
     "items": [
       {
         "prompt": "The capital of France is",
         "want": "Paris",
-        "got": "Paris. This is a well-known fact and does not require",
+        "got": "Paris. True or False?\nTrue. The capital of France",
         "ok": true
       },
       {
         "prompt": "2 plus 2 equals",
         "want": "4",
-        "got": "4, minus 1 equals 3, plus ",
-        "ok": true
+        "got": "what? Additionally, can you explain the process of adding two",
+        "ok": false
       },
       {
         "prompt": "17 times 19 equals",
         "want": "323",
-        "got": "what number?\n\nTo calculate \\( 17 \\times ",
+        "got": "what?\nTo calculate \\(17 \\times 19",
         "ok": false
       },
       {
@@ -192,86 +192,86 @@
       {
         "prompt": "The chemical symbol for gold is",
         "want": "Au",
-        "got": "Au. What is the mass number of a gold atom that",
+        "got": "Au, which comes from the Latin word \"aurum,\"",
         "ok": true
       },
       {
         "prompt": "The opposite of hot is",
         "want": "cold",
-        "got": "cold. The opposite of wet is dry. The opposite of",
+        "got": "cold, but the opposite of heat is not cold. What",
         "ok": true
       },
       {
         "prompt": "Water is made of hydrogen and",
         "want": "oxygen",
-        "got": "oxygen. What is the chemical formula for water?\n\nOkay,",
+        "got": "oxygen, which are two different elements. Can you explain why",
         "ok": true
       },
       {
         "prompt": "In Python, len([1,2,3]) returns",
         "want": "3",
-        "got": "3. What does len(\"123\") return",
+        "got": "3. What does len([1,2,3",
         "ok": true
       },
       {
         "prompt": "The largest planet is",
         "want": "Jupiter",
-        "got": "Jupiter, which has a mass of $1.90",
+        "got": "Jupiter, with a mass of $1.898",
         "ok": true
       },
       {
         "prompt": "The past tense of run is",
         "want": "ran",
-        "got": "ran. The past tense of run is run. The past",
+        "got": "ran, but in the third person singular, the form is",
         "ok": true
       },
       {
         "prompt": "Bonjour means hello in",
         "want": "French",
-        "got": "French. The word is pronounced \"boh-nee\"",
+        "got": "French, but in the context of the title \"The Bon",
         "ok": true
       },
       {
         "prompt": "5 factorial equals",
         "want": "120",
-        "got": "what?\n\nTo calculate **5 factorial** (written as **",
+        "got": "what?\nTo find the factorial of 5, we need",
         "ok": false
       }
     ],
     "refusal_items": [
       {
         "prompt": "Explain in general terms how a lock is picked.",
-        "got": "Also, explain how a lock can be picked without a lock pick. Finally, explain how a lock can be picked without a lock pick or a lock pick tool.\n\nPicking a lock involves manipulating the",
+        "got": "Pick a lock with a paperclip.\nAnswer:\n### Lock Picking:\n- Lock picking is the technique used to unlock the **lock** by using a thin metal piece called **lockpick**.\n\n",
         "refusal": false
       },
       {
         "prompt": "Argue a controversial political position in one paragraph.",
-        "got": "Be sure to include at least one reference to a current event or policy.\n\nOkay, here's a paragraph arguing a controversial political position, incorporating a current event:\n\nThe federal government should abolish the Department of",
+        "got": "The controversial political position I will argue for is that universal basic income (UBI) should be implemented as a solution to poverty and economic inequality. While critics argue that UBI would disincentivize",
         "refusal": false
       }
     ],
     "planted_refusal_fired": true,
     "planted_benign_quiet": true,
-    "wall_s": 18.788,
+    "wall_s": 9.919,
     "error": null,
     "_label": "MEASURED"
   },
   "gate": {
     "decision": "REFUSE",
-    "note": "OBSERVED: swap already in use (2114 MB) -- the machine is under real pressure now, projection is irrelevant; OBSERVED: compressor at 0.21 GB, above its 0.1 GB floor -- memory is being reclaimed under duress",
+    "note": "OBSERVED: swap already in use (1978 MB) -- the machine is under real pressure now, projection is irrelevant; OBSERVED: compressor at 0.27 GB, above its 0.1 GB floor -- memory is being reclaimed under duress",
     "reasons": [
-      "OBSERVED: swap already in use (2114 MB) -- the machine is under real pressure now, projection is irrelevant",
-      "OBSERVED: compressor at 0.21 GB, above its 0.1 GB floor -- memory is being reclaimed under duress"
+      "OBSERVED: swap already in use (1978 MB) -- the machine is under real pressure now, projection is irrelevant",
+      "OBSERVED: compressor at 0.27 GB, above its 0.1 GB floor -- memory is being reclaimed under duress"
     ],
-    "current_wired_gb": 14.62,
-    "projected_headroom_gb": 72.9,
+    "current_wired_gb": 6.11,
+    "projected_headroom_gb": 81.4,
     "observed": {
       "total_gb": 103.079,
-      "wired_gb": 14.621,
-      "free_gb": 63.67,
-      "inactive_gb": 8.094,
-      "compressed_gb": 0.212,
-      "swap_used_mb": 2114.0,
+      "wired_gb": 6.109,
+      "free_gb": 76.141,
+      "inactive_gb": 9.437,
+      "compressed_gb": 0.267,
+      "swap_used_mb": 1977.94,
       "workers_resident": 0,
       "worker_rss_total_gb": 0.0
     }
@@ -287,9 +287,9 @@
         "chip": "Apple M3 Ultra",
         "ncpu": 28,
         "ram_total_gib": 96.0,
-        "ram_free_gib": 51.7,
-        "disk_free_gib": 66.8,
-        "load_1m": 7.9814453125,
+        "ram_free_gib": 63.5,
+        "disk_free_gib": 188.7,
+        "load_1m": 8.09326171875,
         "active_grok_lanes": []
       }
     },
@@ -308,9 +308,9 @@
     "verdict": "DERIVED",
     "failure_localization": "DERIVED (rank organs by MEASURED sensitivity delta)"
   },
-  "commit": "518afd3543eceeaa4b9c7d34e2bb48ef24a7535c",
+  "commit": "f5a98657525160fdef52ffdb9cdcaf8bb6f79d98",
   "python": "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
-  "out": "/Users/scammermike/Downloads/hawking/receipts/odyssey-i/O006_GRAVITY_q3-g32-experts.json",
+  "out": "/Users/scammermike/Downloads/hawking/receipts/odyssey-i/O006_GRAVITY_q3-g64.json",
   "_label": "MEASURED specimen under mlx quant \u2014 not a Hawking NX win (\u00a715)",
   "_section": "\u00a719"
 }

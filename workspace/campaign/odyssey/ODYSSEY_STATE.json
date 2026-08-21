@@ -800,9 +800,9 @@
       "template": "nx-gather-moe",
       "mechanism": "nx-gather-moe",
       "mechanism_id": "nx-gather-moe",
-      "pid": 10365,
-      "started": "2026-08-21T20:22:26Z",
-      "started_epoch": 1787343746.716685,
+      "pid": 12085,
+      "started": "2026-08-21T20:27:35Z",
+      "started_epoch": 1787344055.0190542,
       "receipt_path": "receipts/odyssey-i/O006_NX_gather.json",
       "timeout_s": 1800,
       "argv": [
@@ -821,7 +821,7 @@
         "--nx-gather"
       ],
       "log": "/Users/scammermike/Downloads/hawking/workspace/campaign/odyssey/lanes/O006-nx-gather-moe.log",
-      "task": "pid:10365",
+      "task": "pid:12085",
       "retries": 0,
       "fail_reason": "exited-no-receipt"
     },

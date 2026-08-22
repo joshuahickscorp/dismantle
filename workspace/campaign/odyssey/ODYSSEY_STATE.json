@@ -801,8 +801,8 @@
       "mechanism": "nx-gather-moe",
       "mechanism_id": "nx-gather-moe",
       "pid": null,
-      "started": "2026-08-22T18:11:09Z",
-      "started_epoch": 1787422269.3546188,
+      "started": "2026-08-22T18:16:40Z",
+      "started_epoch": 1787422600.235302,
       "receipt_path": "receipts/odyssey-i/O006_NX_gather.json",
       "timeout_s": 1800,
       "argv": [

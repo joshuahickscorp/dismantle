@@ -1,20 +1,10 @@
 {
-  "generated_at": "2026-08-23T23:03:47Z",
+  "generated_at": "2026-08-23T23:04:51Z",
   "running": [
     "g021root",
     "g027exec"
   ],
   "needs_harvest": [
-    {
-      "slug": "g012aff64",
-      "id": "g012aff64-20260823-182619",
-      "unharvested": [
-        "receipts/headless/AFFINE2_G64_LSFIT.json",
-        "tools/headless/affine2_g64_lsfit.py",
-        "tools/headless/test_affine2_g64_lsfit.py"
-      ],
-      "worktree_extras": 0
-    },
     {
       "slug": "g015handoff",
       "id": "g015handoff-20260823-183520",
@@ -30,9 +20,9 @@
     }
   ],
   "headroom": {
-    "load1": 18.486328125,
+    "load1": 11.41796875,
     "ncpu": 28,
-    "disk_gib": 391.4,
+    "disk_gib": 390.6,
     "room_for_more": true
   }
 }

@@ -1,0 +1,202 @@
+#!/usr/bin/env python3
+"""Watch the Grok lane fleet: what is running, what is finished and unharvested.
+
+Running this every turn is the point. A lane that finishes and is not harvested
+is worse than a lane that never ran -- it consumed the budget and produced
+nothing, and its worktree is one `cleanup` away from being gone.
+
+Three things it reports that a `grok-run status` does not:
+
+  1. **Finished but unharvested.** A lane whose receipts and harnesses are not
+     yet in this tree. That is the actionable queue.
+  2. **Untracked-only work.** `visionmcp/**` and some other paths are untracked,
+     so `git diff` never captures changes to them and `diff.patch` is EMPTY for
+     that work. One lane produced 218 lines that existed only inside its
+     worktree; cleanup would have destroyed it silently. This flags any lane
+     whose worktree holds files the patch does not mention.
+  3. **Headroom.** Whether there is capacity to launch more, from load and disk
+     rather than from optimism.
+
+    python3 tools/headless/lane_watch.py
+    python3 tools/headless/lane_watch.py --mine c1 c2 r1 f1     # prefix filter
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import re
+import subprocess
+import time
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+REPO = Path(__file__).resolve().parents[2]
+TASKS = Path.home() / ".claude-grok" / "tasks"
+WORKTREES = Path.home() / ".claude-grok" / "worktrees"
+
+# Paths a lane may legitimately write. Anything it produced here should be in
+# this tree once harvested.
+HARVEST_ROOTS = ("tools/headless/", "receipts/headless/")
+
+
+def _status(task: Path) -> str:
+    p = task / "status"
+    return p.read_text().strip() if p.is_file() else "unknown"
+
+
+def _telemetry(task: Path) -> Dict[str, Any]:
+    p = task / "telemetry.json"
+    if not p.is_file():
+        return {}
+    try:
+        return json.loads(p.read_text())
+    except Exception:
+        return {}
+
+
+def _patch_files(task: Path) -> List[str]:
+    p = task / "diff.patch"
+    if not p.is_file():
+        return []
+    out = []
+    for line in p.read_text(errors="replace").splitlines():
+        if line.startswith("+++ b/"):
+            out.append(line[6:])
+    return out
+
+
+def _unharvested(files: List[str]) -> List[str]:
+    """Files the lane wrote that are NOT yet present in this tree."""
+    missing = []
+    for f in files:
+        if not f.startswith(HARVEST_ROOTS):
+            continue
+        if not (REPO / f).exists():
+            missing.append(f)
+    return missing
+
+
+def _worktree_extras(task_id: str, patch_files: List[str]) -> Optional[int]:
+    """Count files in the worktree that the patch never mentions.
+
+    This is the F12 detector. `visionmcp/**` is untracked in this repository,
+    so `git diff` cannot see changes to it and they never reach `diff.patch`.
+    A lane can therefore report real work that exists ONLY in its worktree.
+    """
+    wt = WORKTREES / task_id
+    if not wt.is_dir():
+        return None
+    known = set(patch_files)
+    extras = 0
+    for root in ("visionmcp", "tools/headless", "receipts/headless"):
+        d = wt / root
+        if not d.is_dir():
+            continue
+        for f in d.rglob("*"):
+            if not f.is_file() or "__pycache__" in f.parts:
+                continue
+            rel = str(f.relative_to(wt))
+            if rel in known:
+                continue
+            # only count it if it differs from what we already have
+            mine = REPO / rel
+            try:
+                if mine.is_file() and mine.read_bytes() == f.read_bytes():
+                    continue
+            except OSError:
+                pass
+            extras += 1
+    return extras
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--mine", nargs="*", default=None,
+                    help="task-id prefixes to treat as this campaign's lanes")
+    args = ap.parse_args()
+
+    if not TASKS.is_dir():
+        print("no grok task directory")
+        return 1
+
+    rows: List[Dict[str, Any]] = []
+    for d in sorted(TASKS.iterdir()):
+        if not (d / "metadata.json").is_file():
+            continue
+        try:
+            meta = json.loads((d / "metadata.json").read_text())
+        except Exception:
+            continue
+        if meta.get("repo") != str(REPO):
+            continue
+        tid = d.name
+        if args.mine and not any(tid.startswith(p) for p in args.mine):
+            continue
+        st = _status(d)
+        tel = _telemetry(d)
+        pf = _patch_files(d)
+        rows.append({
+            "id": tid,
+            "slug": re.sub(r"-\d{8}-\d{6}$", "", tid),
+            "status": st,
+            "wall_s": round((tel.get("wall_ms") or 0) / 1000.0, 1),
+            "retries": tel.get("retries"),
+            "patch_files": len(pf),
+            "unharvested": _unharvested(pf),
+            "worktree_extras": _worktree_extras(tid, pf),
+        })
+
+    running = [r for r in rows if r["status"] == "running"]
+    done = [r for r in rows if r["status"] == "done"]
+    needs = [r for r in done if r["unharvested"] or (r["worktree_extras"] or 0) > 0]
+
+    print(f"lanes on this repo: {len(rows)}  running: {len(running)}  done: {len(done)}")
+    if running:
+        print("\nRUNNING")
+        for r in sorted(running, key=lambda x: x["slug"]):
+            print(f"  {r['slug']:<18} {r['wall_s']:>7.0f}s")
+
+    print(f"\nNEEDS HARVEST: {len(needs)}")
+    for r in sorted(needs, key=lambda x: x["slug"]):
+        extras = r["worktree_extras"]
+        flag = ""
+        if extras:
+            # This is the dangerous one: work that diff.patch cannot represent.
+            flag = f"  [!] {extras} worktree-only file(s) NOT in diff.patch"
+        print(f"  {r['slug']:<18} unharvested={len(r['unharvested'])}{flag}")
+        for f in r["unharvested"][:4]:
+            print(f"      - {f}")
+
+    # Headroom, measured rather than assumed.
+    try:
+        load1 = os.getloadavg()[0]
+    except OSError:
+        load1 = float("nan")
+    ncpu = os.cpu_count() or 1
+    df = subprocess.run(["df", "-k", "/"], capture_output=True, text=True)
+    avail_gib = 0.0
+    try:
+        avail_gib = int(df.stdout.strip().splitlines()[-1].split()[3]) / 1024 / 1024
+    except Exception:
+        pass
+    room = load1 < ncpu * 0.75 and avail_gib > 40
+    print(f"\nheadroom: load {load1:.2f}/{ncpu}  disk {avail_gib:.0f} GiB  "
+          f"-> {'ROOM FOR MORE' if room else 'HOLD'}")
+
+    out = REPO / "receipts/headless/LANE_WATCH.json"
+    out.write_text(json.dumps({
+        "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "running": [r["slug"] for r in running],
+        "needs_harvest": [
+            {"slug": r["slug"], "id": r["id"], "unharvested": r["unharvested"],
+             "worktree_extras": r["worktree_extras"]} for r in needs],
+        "headroom": {"load1": load1, "ncpu": ncpu, "disk_gib": round(avail_gib, 1),
+                     "room_for_more": room},
+    }, indent=2), encoding="utf-8")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -19,12 +19,12 @@ use super::qwen38_pack::{
 use super::qwen_complete_binary::{
     expand_rice_indices, mixed_gpu_layout, parse_uniform_q4_header, rice_q1_row_ptr,
     uniform_factor_value, BinaryGroupPacked, MixedGpuKind, RiceQ1Packed, UniformFactorPacked,
-    MAGIC_BINARY, MAGIC_HGRAVS01, MAGIC_RESIDUAL_COMPACT, MAGIC_UNIFORM, UNIFORM_Q4_GROUP_SIZE,
-    UNIFORM_Q4_GROUP_SIZE_128, uniform_q4_group_size_supported,
+    MAGIC_AFFINE, MAGIC_BINARY, MAGIC_HGRAVS01, MAGIC_RESIDUAL_COMPACT, MAGIC_UNIFORM,
+    UNIFORM_Q4_GROUP_SIZE, UNIFORM_Q4_GROUP_SIZE_128, uniform_q4_group_size_supported,
 };
 use crate::tokenizer::Tokenizer;
 use crate::{Error, Result};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -43,6 +43,13 @@ pub const QWEN38_MIXED_HGRAVS_GROUP: usize = 64;
 /// `HAWKING_QWEN38_RECON_FUSE=0` selects the G023 serial family names.
 pub fn qwen38_recon_fuse_enabled() -> bool {
     crate::env_opt_out("HAWKING_QWEN38_RECON_FUSE")
+}
+
+/// `true` only when `HAWKING_TRACE_DISPATCH=1`. Default off so
+/// `MetalContext` is built with `new_with_trace(false)` — the same
+/// constructor the decode path used before this lever existed.
+pub fn qwen38_trace_dispatch_enabled() -> bool {
+    crate::env_on("HAWKING_TRACE_DISPATCH")
 }
 
 fn mixed_error(message: impl Into<String>) -> Error {
@@ -71,6 +78,7 @@ pub enum MixedCatalogLane {
     Hq30Uq4,
     F32v2,
     HgravuVector,
+    Affine,
 }
 
 /// CPU census of a mixed catalog. Does not open Metal and does not expand
@@ -83,6 +91,7 @@ pub struct MixedCatalogCensus {
     pub residual: usize,
     pub hgravs: usize,
     pub uniform: usize,
+    pub affine: usize,
     pub q4: usize,
     pub f32: usize,
     pub refused: usize,
@@ -195,6 +204,16 @@ pub fn classify_qwen38_mixed_payload(
             }
             Ok(MixedCatalogLane::F32v2)
         }
+        5 => {
+            if payload.len() >= 8 && payload[..8] == MAGIC_AFFINE {
+                Ok(MixedCatalogLane::Affine)
+            } else {
+                Err(mixed_error(format!(
+                    "{name} codec 5 magic {:?} is not HGRAVF01; refusing silent fallback",
+                    payload.get(..8)
+                )))
+            }
+        }
         other => Err(mixed_error(format!(
             "{name} unknown mixed codec {other}; refusing silent fallback"
         ))),
@@ -210,6 +229,7 @@ pub enum MixedMlpNativeKind {
     Residual,
     Hgravs,
     Uniform,
+    AffineScaleBias,
 }
 
 pub fn mixed_mlp_native_kind_from_lane(lane: MixedCatalogLane) -> Option<MixedMlpNativeKind> {
@@ -218,6 +238,7 @@ pub fn mixed_mlp_native_kind_from_lane(lane: MixedCatalogLane) -> Option<MixedMl
         MixedCatalogLane::Packed(1) => Some(MixedMlpNativeKind::Residual),
         MixedCatalogLane::Packed(2) => Some(MixedMlpNativeKind::Hgravs),
         MixedCatalogLane::Packed(3) => Some(MixedMlpNativeKind::Uniform),
+        MixedCatalogLane::Affine => Some(MixedMlpNativeKind::AffineScaleBias),
         MixedCatalogLane::Packed(_)
         | MixedCatalogLane::Hq30Uq4
         | MixedCatalogLane::F32v2
@@ -229,15 +250,21 @@ fn mixed_mlp_role_allowed(suffix: &str, kind: MixedMlpNativeKind) -> bool {
     match suffix {
         "mlp.gate_proj.weight" => matches!(
             kind,
-            MixedMlpNativeKind::Binary | MixedMlpNativeKind::Uniform
+            MixedMlpNativeKind::Binary
+                | MixedMlpNativeKind::Uniform
+                | MixedMlpNativeKind::AffineScaleBias
         ),
         "mlp.up_proj.weight" => matches!(
             kind,
-            MixedMlpNativeKind::Residual | MixedMlpNativeKind::Uniform
+            MixedMlpNativeKind::Residual
+                | MixedMlpNativeKind::Uniform
+                | MixedMlpNativeKind::AffineScaleBias
         ),
         "mlp.down_proj.weight" => matches!(
             kind,
-            MixedMlpNativeKind::Hgravs | MixedMlpNativeKind::Uniform
+            MixedMlpNativeKind::Hgravs
+                | MixedMlpNativeKind::Uniform
+                | MixedMlpNativeKind::AffineScaleBias
         ),
         _ => false,
     }
@@ -262,7 +289,7 @@ pub fn assert_mixed_mlp_native_kinds(
                 Some(kind) if mixed_mlp_role_allowed(suffix, kind) => {}
                 Some(_) => {
                     return Err(mixed_error(format!(
-                        "{name} is not {label} or HGRAVU01; refusing reconstructed MLP"
+                        "{name} is not {label} or HGRAVU01 or HGRAVF01; refusing reconstructed MLP"
                     )))
                 }
                 None => {
@@ -309,7 +336,7 @@ pub fn assert_mixed_mlp_native_catalog(root: impl AsRef<Path>) -> Result<()> {
         if !is_mixed_mlp_gemv_name(&row.name) {
             continue;
         }
-        if row.codec > 3 {
+        if row.codec > 3 && row.codec != 5 {
             continue;
         }
         let prefix = read_catalog_prefix(row, 64)?;
@@ -357,6 +384,13 @@ pub fn census_qwen38_mixed_catalog(root: impl AsRef<Path>) -> Result<MixedCatalo
             Ok(MixedCatalogLane::HgravuVector) => {
                 census.f32 += 1;
             }
+            Ok(MixedCatalogLane::Affine) => match mixed_gpu_layout(5, &payload) {
+                Ok(_) => census.affine += 1,
+                Err(error) => {
+                    census.refused += 1;
+                    census.refusals.push(format!("{} affine: {error}", row.name));
+                }
+            },
             Err(error) => {
                 census.refused += 1;
                 census.refusals.push(format!("{error}"));
@@ -557,6 +591,24 @@ pub const QWEN38_HGRAVU01_Q3_GEO_TPR64: &str =
     "qwen_uniform_q3_group64_matvec_geo_tpr64_tg128";
 pub const QWEN38_HGRAVU01_Q4_GEO_TPR64: &str =
     "qwen_uniform_hgravu_q4_group64_matvec_geo_tpr64_tg128";
+pub const QWEN38_AFFINE_Q2_SERIAL: &str = "qwen_affine_q2_group32_matvec";
+pub const QWEN38_AFFINE_Q2_GEO_TPR64: &str = "qwen_affine_q2_group32_matvec_geo_tpr64_tg128";
+pub const QWEN38_HGRAFV_EMBED: &str = "qwen38_hgrafv_embedding_lookup";
+
+/// G0-class launch for Affine HGRAVF01 q2/g32. None selects the serial
+/// `qwen_affine_q2_group32_matvec`. Never falls through to HGRAVU01.
+pub fn qwen38_affine_q2_geo_tpr64_launch(
+    group_size: u32,
+    rows: u32,
+    cols: u32,
+) -> Option<(&'static str, (u32, u32, u32), (u32, u32, u32))> {
+    if !qwen38_recon_fuse_enabled() || group_size != 32 || cols % 32 != 0 {
+        return None;
+    }
+    let tg = 128u32;
+    let grid = rows.div_ceil(2).saturating_mul(tg).max(tg);
+    Some((QWEN38_AFFINE_Q2_GEO_TPR64, (grid, 1, 1), (tg, 1, 1)))
+}
 
 /// G0-class launch for Uniform HGRAVU01 bits 3/4. None leaves the
 /// incumbent simd / simd3 / uniform8 / serial path in `dispatch_factor`.
@@ -832,11 +884,22 @@ mod device {
         bound: u32,
     }
 
+    struct GpuAffine {
+        codes: PinnedBuffer,
+        scales: PinnedBuffer,
+        biases: PinnedBuffer,
+        rows: u32,
+        cols: u32,
+        group_size: u32,
+        bits: u32,
+    }
+
     enum MixedGpuWeight {
         Binary(GpuBinary),
         Residual(GpuResidual),
         Hgravs(GpuHgravs),
         Uniform(GpuUniform),
+        Affine(GpuAffine),
     }
 
     impl MixedGpuWeight {
@@ -857,6 +920,9 @@ mod device {
                         + body.right_scales.length()
                 }
                 Self::Uniform(body) => body.codes.length() + body.scales.length(),
+                Self::Affine(body) => {
+                    body.codes.length() + body.scales.length() + body.biases.length()
+                }
             }
         }
     }
@@ -888,7 +954,7 @@ mod device {
                 "qwen38-decode opening Metal + {} catalog tensors",
                 rows.len()
             );
-            let context = MetalContext::new()?;
+            let context = MetalContext::new_with_trace(qwen38_trace_dispatch_enabled())?;
             let mut q4 = HashMap::new();
             let mut f32s = HashMap::new();
             let tensors_dir = root.join("tensors");
@@ -956,7 +1022,7 @@ mod device {
                 "qwen38-decode opening mixed HQ38M20 + {} catalog tensors (no reconstruct-to-Q4)",
                 rows.len()
             );
-            let context = MetalContext::new()?;
+            let context = MetalContext::new_with_trace(qwen38_trace_dispatch_enabled())?;
             let mut q4 = HashMap::new();
             let mut f32s = HashMap::new();
             let mut mixed = HashMap::new();
@@ -1036,17 +1102,56 @@ mod device {
                         );
                         census.f32 += 1;
                     }
+                    MixedCatalogLane::Affine => {
+                        let layout = mixed_gpu_layout(5, &payload)?;
+                        let MixedGpuKind::Affine {
+                            scale_off,
+                            scale_bytes,
+                            bias_off,
+                            bias_bytes,
+                            code_off,
+                            code_bytes,
+                            group_size,
+                            bits,
+                        } = layout.kind
+                        else {
+                            return Err(mixed_error(format!(
+                                "{} codec 5 layout is not Affine",
+                                row.name
+                            )));
+                        };
+                        mixed.insert(
+                            row.name.clone(),
+                            MixedGpuWeight::Affine(GpuAffine {
+                                codes: context.new_buffer_with_bytes_checked(
+                                    &payload[code_off..code_off + code_bytes],
+                                )?,
+                                scales: context.new_buffer_with_bytes_checked(
+                                    &payload[scale_off..scale_off + scale_bytes],
+                                )?,
+                                biases: context.new_buffer_with_bytes_checked(
+                                    &payload[bias_off..bias_off + bias_bytes],
+                                )?,
+                                rows: layout.rows,
+                                cols: layout.cols,
+                                group_size,
+                                bits,
+                            }),
+                        );
+                        census.affine += 1;
+                    }
                 }
             }
             eprintln!(
                 "qwen38-decode mixed census: tensors={} binary={} residual={} \
-                 hgravs={} uniform={} q4={} f32={} refused=0 expanded_to_q4=0 \
+                 hgravs={} uniform={} affine={} q4={} f32={} refused=0 expanded_to_q4=0 \
                  expanded_to_float_gemv=0",
                 census.tensors,
                 census.binary,
                 census.residual,
                 census.hgravs,
                 census.uniform,
+                census.affine,
                 census.q4,
                 census.f32
             );
@@ -1246,12 +1351,15 @@ mod device {
     }
 
     pub struct Qwen38HybridDecodeSession {
-        #[allow(dead_code)]
         context: MetalContext,
         weights: Arc<Qwen38HybridWeights>,
         workspace: Qwen38HybridWorkspace,
         max_seq_len: usize,
         position: usize,
+        /// Distinct `dispatch_threads` labels harvested when
+        /// `HAWKING_TRACE_DISPATCH=1`. `None` on the default path so `step`
+        /// allocates nothing extra.
+        seen_kernels: Option<HashSet<String>>,
         pub fallbacks: u32,
         /// Default matches the shipped bring-up binding. Diagnostic lanes may
         /// retarget to another shipped kernel; they must not invent one.
@@ -1292,17 +1400,30 @@ mod device {
             zero_buffer(&workspace.rec_state);
             zero_buffer(&workspace.gqa_key);
             zero_buffer(&workspace.gqa_value);
-            Ok(Self {
+            let session = Self {
                 context: weights.context.clone(),
                 weights,
                 workspace,
                 max_seq_len,
                 position: 0,
+                seen_kernels: if qwen38_trace_dispatch_enabled() {
+                    Some(HashSet::new())
+                } else {
+                    None
+                },
                 fallbacks: 0,
                 matvec_kernel: Qwen38MatvecKernel::GeoTpr64Tg128,
                 concurrent_independent: false,
                 deltanet_vi_parallel: true,
-            })
+            };
+            // `MetalContext` clones share `Arc<DispatchTrace>`. If that ever
+            // becomes a fresh buffer, `drain_trace` on the session would miss
+            // every TCB sample recorded against the weight-load context.
+            assert!(
+                std::sync::Arc::ptr_eq(&session.context.trace, &session.weights.context.trace),
+                "qwen38 dispatch trace must survive MetalContext clone"
+            );
+            Ok(session)
         }
 
         pub fn share_weights(&self) -> Arc<Qwen38HybridWeights> {
@@ -1325,6 +1446,48 @@ mod device {
             Arc::ptr_eq(&self.weights, &other.weights)
         }
 
+        fn enable_dispatch_name_trace(tcb: &mut TokenCommandBuffer<'_>) {
+            if qwen38_trace_dispatch_enabled() {
+                // Requires TCB Off. Cpu/gpu timing modes refuse this opt-in
+                // and instead flush remapped names into `ctx.trace`.
+                let _ = tcb.enable_structural_kernel_trace();
+            }
+        }
+
+        fn harvest_dispatch_names(&mut self, names: Option<Vec<String>>) {
+            let Some(seen) = self.seen_kernels.as_mut() else {
+                return;
+            };
+            if let Some(names) = names {
+                seen.extend(names);
+            }
+        }
+
+        /// Distinct kernel names the runtime actually dispatched since the
+        /// last drain (or session open). Empty when
+        /// `HAWKING_TRACE_DISPATCH` is not `1`.
+        ///
+        /// Primary source is the TCB structural label list (the exact
+        /// `dispatch_threads` string, no `static_kernel_name` remap).
+        /// Also unions `MetalContext::drain_trace` so a
+        /// `HAWKING_TCB_TRACE=cpu` run still reports through the
+        /// `Arc<DispatchTrace>` that survives `weights.context.clone()`.
+        pub fn drain_dispatched_kernel_names(&mut self) -> Vec<String> {
+            let mut names: Vec<String> = self
+                .context
+                .drain_trace()
+                .into_iter()
+                .map(|sample| sample.kernel_name.to_string())
+                .filter(|name| name != "other" && !name.starts_with("tcb_"))
+                .collect();
+            if let Some(seen) = self.seen_kernels.as_mut() {
+                names.extend(seen.drain());
+            }
+            names.sort();
+            names.dedup();
+            names
+        }
+
 
 
         fn assert_mixed_mlp_native(mixed: &HashMap<String, MixedGpuWeight>) -> Result<()> {
@@ -1334,6 +1497,7 @@ mod device {
                     MixedGpuWeight::Residual(_) => MixedMlpNativeKind::Residual,
                     MixedGpuWeight::Hgravs(_) => MixedMlpNativeKind::Hgravs,
                     MixedGpuWeight::Uniform(_) => MixedMlpNativeKind::Uniform,
+                    MixedGpuWeight::Affine(_) => MixedMlpNativeKind::AffineScaleBias,
                 })
             })
         }
@@ -1503,6 +1667,9 @@ mod device {
                     bits: factor.bits,
                     bound: factor.bound,
                 })),
+                MixedGpuKind::Affine { .. } => Err(mixed_error(format!(
+                    "{name} HGRAVF01 is a MixedCatalogLane, not an upload_mixed codec"
+                ))),
             }
         }
 
@@ -1573,6 +1740,7 @@ mod device {
                 MixedGpuWeight::Residual(body) => self.dispatch_residual(tcb, body, input, output),
                 MixedGpuWeight::Hgravs(body) => self.dispatch_hgravs(tcb, body, input, output),
                 MixedGpuWeight::Uniform(body) => self.dispatch_uniform(tcb, body, input, output),
+                MixedGpuWeight::Affine(body) => self.dispatch_affine(tcb, body, input, output),
             }
         }
 
@@ -1653,6 +1821,51 @@ mod device {
             set_u32(enc, 6, group_size);
             set_u32(enc, 7, bits);
             set_u32(enc, 8, bound);
+        }
+
+        fn encode_affine_args(
+            &self,
+            enc: &metal::ComputeCommandEncoderRef,
+            body: &GpuAffine,
+            input: &PinnedBuffer,
+            output: &PinnedBuffer,
+        ) {
+            enc.set_buffer(0, Some(&body.codes), 0);
+            enc.set_buffer(1, Some(&body.scales), 0);
+            enc.set_buffer(2, Some(&body.biases), 0);
+            enc.set_buffer(3, Some(input), 0);
+            enc.set_buffer(4, Some(output), 0);
+            set_u32(enc, 5, body.rows);
+            set_u32(enc, 6, body.cols);
+            set_u32(enc, 7, body.group_size);
+        }
+
+        fn dispatch_affine(
+            &self,
+            tcb: &mut TokenCommandBuffer<'_>,
+            body: &GpuAffine,
+            input: &PinnedBuffer,
+            output: &PinnedBuffer,
+        ) -> Result<()> {
+            if body.bits != 2 || body.group_size != 32 {
+                return Err(mixed_error(format!(
+                    "HGRAVF01 dispatch refuses bits={} group_size={}",
+                    body.bits, body.group_size
+                )));
+            }
+            if let Some((name, grid, tg)) =
+                qwen38_affine_q2_geo_tpr64_launch(body.group_size, body.rows, body.cols)
+            {
+                return tcb.dispatch_threads(name, grid, tg, |enc| {
+                    self.encode_affine_args(enc, body, input, output)
+                });
+            }
+            tcb.dispatch_threads(
+                QWEN38_AFFINE_Q2_SERIAL,
+                (body.rows, 1, 1),
+                (256, 1, 1),
+                |enc| self.encode_affine_args(enc, body, input, output),
+            )
         }
 
         fn dispatch_binary(
@@ -3387,6 +3600,28 @@ mod device {
 
         fn encode_embed_mixed(&self, tcb: &mut TokenCommandBuffer<'_>, token: u32) -> Result<()> {
             const EMBED: &str = "language_model.model.embed_tokens.weight";
+            if let Some(MixedGpuWeight::Affine(weight)) = self.weights.mixed.get(EMBED) {
+                if weight.rows != QWEN38_VOCAB as u32 || weight.cols != QWEN38_HIDDEN as u32 {
+                    return Err(mixed_error("embed HGRAVF01 shape drifted"));
+                }
+                let hidden = QWEN38_HIDDEN as u32;
+                let vocab = QWEN38_VOCAB as u32;
+                return tcb.dispatch_threads(
+                    QWEN38_HGRAFV_EMBED,
+                    (hidden, 1, 1),
+                    (256, 1, 1),
+                    |encoder| {
+                        encoder.set_buffer(0, Some(&weight.codes), 0);
+                        encoder.set_buffer(1, Some(&weight.scales), 0);
+                        encoder.set_buffer(2, Some(&weight.biases), 0);
+                        encoder.set_buffer(3, Some(&self.workspace.hidden), 0);
+                        set_u32(encoder, 4, token);
+                        set_u32(encoder, 5, hidden);
+                        set_u32(encoder, 6, vocab);
+                        set_u32(encoder, 7, weight.group_size);
+                    },
+                );
+            }
             if let Some(MixedGpuWeight::Uniform(weight)) = self.weights.mixed.get(EMBED) {
                 if weight.rows != QWEN38_VOCAB as u32 || weight.cols != QWEN38_HIDDEN as u32 {
                     return Err(mixed_error("embed HGRAVU01 shape drifted"));
@@ -3434,7 +3669,7 @@ mod device {
                 );
             }
             Err(mixed_error(
-                "embed is neither HGRAVU01 nor HQ30UQ4; refusing silent fallback",
+                "embed is neither HGRAVF01 nor HGRAVU01 nor HQ30UQ4; refusing silent fallback",
             ))
         }
 
@@ -3866,11 +4101,14 @@ mod device {
             }
             let encode_t0 = Instant::now();
             let mut tcb = TokenCommandBuffer::new(&self.context);
+            Self::enable_dispatch_name_trace(&mut tcb);
             self.encode_embed(&mut tcb, token)?;
             self.encode_layers(&mut tcb)?;
             self.encode_terminal(&mut tcb)?;
+            let harvested = tcb.structural_kernel_names().map(|names| names.to_vec());
             let encode_ns = encode_t0.elapsed().as_nanos() as u64;
             let mut timing = tcb.commit_and_wait_timed()?;
+            self.harvest_dispatch_names(harvested);
             if timing.encode_ns == 0 {
                 timing.encode_ns = encode_ns;
             }
@@ -3891,12 +4129,15 @@ mod device {
             let wall = Instant::now();
             let encode_started = Instant::now();
             let mut tcb = TokenCommandBuffer::new(&self.context);
+            Self::enable_dispatch_name_trace(&mut tcb);
             self.encode_embed(&mut tcb, token)?;
             self.encode_layers(&mut tcb)?;
             self.encode_terminal(&mut tcb)?;
+            let harvested = tcb.structural_kernel_names().map(|names| names.to_vec());
             let encode_ns = encode_started.elapsed().as_nanos() as u64;
             let commit_started = Instant::now();
             let timing = tcb.commit_and_wait_timed()?;
+            self.harvest_dispatch_names(harvested);
             let commit_return_ns = commit_started.elapsed().as_nanos() as u64;
             let submit_plus_wait = timing.submit_ns.saturating_add(timing.wait_ns);
             let commit_epilogue_ns = commit_return_ns.saturating_sub(submit_plus_wait);
@@ -4403,14 +4644,39 @@ mod mixed_catalog_contract_tests {
     }
 
     #[test]
-    fn unknown_codec_5_still_refuses() {
-        let err = classify_qwen38_mixed_payload(5, b"xxxxxxxx", "tensor.x", &[1])
-            .expect_err("codec 5 must refuse");
+    fn unknown_codec_6_still_refuses() {
+        let err = classify_qwen38_mixed_payload(6, b"xxxxxxxx", "tensor.x", &[1])
+            .expect_err("codec 6 must refuse");
         let msg = format!("{err}");
         assert!(
-            msg.contains("unknown mixed codec 5"),
+            msg.contains("unknown mixed codec 6"),
             "refuse message was {msg}"
         );
+    }
+
+    #[test]
+    fn classify_codec_5_hgrafv01_is_affine() {
+        let packed = super::super::qwen_complete_binary::pack_affine_factor(
+            &super::super::qwen_complete_binary::deterministic_matrix(2, 32, 7),
+            2,
+            32,
+        )
+        .unwrap();
+        let payload = super::super::qwen_complete_binary::wrap_affine_factor(&packed).unwrap();
+        let lane = classify_qwen38_mixed_payload(5, &payload, "tensor.x", &[2, 32]).unwrap();
+        assert_eq!(lane, MixedCatalogLane::Affine);
+        assert_eq!(
+            mixed_mlp_native_kind_from_lane(lane),
+            Some(MixedMlpNativeKind::AffineScaleBias)
+        );
+    }
+
+    #[test]
+    fn classify_codec_5_wrong_magic_refuses() {
+        let err = classify_qwen38_mixed_payload(5, b"HGRAVU01xxxx", "tensor.x", &[1])
+            .expect_err("codec 5 wrong magic must refuse");
+        let msg = format!("{err}");
+        assert!(msg.contains("not HGRAVF01"), "refuse message was {msg}");
     }
 
     fn filled_mlp_kinds(kind: MixedMlpNativeKind) -> HashMap<String, MixedMlpNativeKind> {
@@ -4426,6 +4692,12 @@ mod mixed_catalog_contract_tests {
     #[test]
     fn mixed_mlp_uniform_is_admitted_on_every_role() {
         let kinds = filled_mlp_kinds(MixedMlpNativeKind::Uniform);
+        assert_mixed_mlp_native_kinds(|name| kinds.get(name).copied()).unwrap();
+    }
+
+    #[test]
+    fn mixed_mlp_affine_is_admitted_on_every_role() {
+        let kinds = filled_mlp_kinds(MixedMlpNativeKind::AffineScaleBias);
         assert_mixed_mlp_native_kinds(|name| kinds.get(name).copied()).unwrap();
     }
 
@@ -4609,7 +4881,7 @@ mod mixed_catalog_contract_tests {
     }
 
     #[test]
-    fn catalog_roundtrip_codec_4_census_and_codec_5_refuses() {
+    fn catalog_roundtrip_codec_4_census_and_codec_6_refuses() {
         let tmp = tempfile::tempdir().unwrap();
         let root = tmp.path();
         std::fs::create_dir(root.join("segments")).unwrap();
@@ -4630,10 +4902,36 @@ mod mixed_catalog_contract_tests {
         assert_eq!(census.expanded_to_q4, 0);
         assert_eq!(census.expanded_to_float_gemv, 0);
 
-        write_tiny_hq38m20(root, "tensor.x", 5, &payload);
+        write_tiny_hq38m20(root, "tensor.x", 6, &payload);
         let census = census_qwen38_mixed_catalog(root).unwrap();
         assert_eq!(census.refused, 1);
-        assert!(census.refusals.iter().any(|s| s.contains("unknown mixed codec 5")));
+        assert!(census.refusals.iter().any(|s| s.contains("unknown mixed codec 6")));
+    }
+
+    #[test]
+    fn catalog_roundtrip_codec_5_affine_census() {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path();
+        std::fs::create_dir(root.join("segments")).unwrap();
+        let packed = super::super::qwen_complete_binary::pack_affine_factor(
+            &super::super::qwen_complete_binary::deterministic_matrix(2, 32, 11),
+            2,
+            32,
+        )
+        .unwrap();
+        let payload = super::super::qwen_complete_binary::wrap_affine_factor(&packed).unwrap();
+        write_tiny_hq38m20(
+            root,
+            "language_model.model.layers.0.mlp.gate_proj.weight",
+            5,
+            &payload,
+        );
+        let census = census_qwen38_mixed_catalog(root).unwrap();
+        assert_eq!(census.tensors, 1);
+        assert_eq!(census.affine, 1);
+        assert_eq!(census.refused, 0);
+        assert_eq!(census.expanded_to_q4, 0);
+        assert_eq!(census.expanded_to_float_gemv, 0);
     }
 
     #[test]
@@ -4751,6 +5049,25 @@ mod mixed_catalog_contract_tests {
         assert!(qwen38_uniform_q4_geo_tpr64_launch(64, 5120, 160).is_none());
         assert!(crate::metal::SHADER_QWEN_UNIFORM_Q4
             .contains("kernel void qwen_uniform_q4_group128_matvec_geo_tpr64_tg128("));
+    }
+
+    #[test]
+    fn affine_q2_geo_tpr64_bind_is_group32_only() {
+        let on = qwen38_affine_q2_geo_tpr64_launch(32, 17408, 5120);
+        if qwen38_recon_fuse_enabled() {
+            let launch = on.expect("affine geo");
+            assert_eq!(launch.0, QWEN38_AFFINE_Q2_GEO_TPR64);
+            assert_eq!(launch.1, (17408u32.div_ceil(2) * 128, 1, 1));
+            assert_eq!(launch.2, (128, 1, 1));
+        } else {
+            assert!(on.is_none());
+        }
+        assert!(qwen38_affine_q2_geo_tpr64_launch(64, 17408, 5120).is_none());
+        assert!(qwen38_affine_q2_geo_tpr64_launch(32, 17408, 161).is_none());
+        assert!(crate::metal::SHADER_Q80_MIXED_DECODE
+            .contains("kernel void qwen_affine_q2_group32_matvec_geo_tpr64_tg128"));
+        assert!(crate::metal::SHADER_Q80_MIXED_DECODE
+            .contains("kernel void qwen_affine_q2_group32_matvec("));
     }
 
     #[cfg(target_os = "macos")]

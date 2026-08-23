@@ -363,10 +363,11 @@ kernel void qwen38_gated_delta_decode_vi(
 }
 
 // simd-reduced sibling of `qwen38_gated_delta_decode_vi`. Same launch
-// geometry, same state arithmetic, same memory traffic. The vi kernel spends
-// both of its 128-element reductions on thread 0 alone while the other 127
-// lanes wait at a barrier; this replaces each with a simdgroup tree plus a
-// 4-partial combine.
+// geometry, same state arithmetic. The recurrent element is loaded once
+// into a register, reused for decay and both reductions, and stored once.
+// The vi kernel spends both of its 128-element reductions on thread 0
+// alone while the other 127 lanes wait at a barrier; this replaces each
+// with a simdgroup tree plus a 4-partial combine.
 //
 // NOT bit-identical: a tree reduction does not associate the same way a
 // left-to-right serial loop does. Greedy token identity against the oracle is
@@ -401,8 +402,8 @@ kernel void qwen38_gated_delta_decode_vi_simd(
     const uint ki = tid;
     const uint index = state_base + ki * value_dim + vi;
 
-    const float decayed = state[index] * d;
-    state[index] = decayed;
+    float s = state[index];
+    const float decayed = s * d;
 
     float part = simd_sum(decayed * key[key_base + ki]);
     if (simd_lane == 0u) {
@@ -413,9 +414,9 @@ kernel void qwen38_gated_delta_decode_vi_simd(
     threadgroup_barrier(mem_flags::mem_threadgroup);
 
     const float delta = (value[value_base + vi] - kv_mem) * b;
-    state[index] += key[key_base + ki] * delta;
+    s = decayed + key[key_base + ki] * delta;
 
-    float out = simd_sum(state[index] * query[key_base + ki]);
+    float out = simd_sum(s * query[key_base + ki]);
     if (simd_lane == 0u) {
         scratch[simd_id] = out;
     }
@@ -423,6 +424,7 @@ kernel void qwen38_gated_delta_decode_vi_simd(
     if (tid == 0u) {
         output[value_base + vi] = scratch[0] + scratch[1] + scratch[2] + scratch[3];
     }
+    state[index] = s;
 }
 
 kernel void qwen38_attention_apply_sigmoid_gate(

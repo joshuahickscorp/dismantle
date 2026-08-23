@@ -8,13 +8,11 @@ import unittest
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[4]
-if str(REPO) not in sys.path:
-    sys.path.insert(0, str(REPO))
 
-from tools.haider.hcli.controller import Controller
-from tools.haider.hcli.mission import Mission
-from tools.haider.hcli.resources import MutationLock
-from tools.haider.hcli.workunit import WorkUnit, transition_status
+from hcli.controller import Controller
+from hcli.mission import Mission
+from hcli.resources import MutationLock
+from hcli.workunit import WorkUnit, transition_status
 
 
 def _wu(uid, **kwargs):

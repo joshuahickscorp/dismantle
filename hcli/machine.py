@@ -82,7 +82,9 @@ def _walk_parents(start: Path):
 
 
 def default_repo_root() -> Path:
-    return Path(__file__).resolve().parents[3]
+    from .paths import find_repo_root
+
+    return find_repo_root(Path(__file__))
 
 
 def swap_used_bytes() -> int:
@@ -140,7 +142,8 @@ def _metal_budget_module():
     global _METAL_MOD
     if _METAL_MOD is not None:
         return _METAL_MOD
-    path = Path(__file__).resolve().parents[2] / "headless" / "metal_budget.py"
+    from .paths import find_repo_root
+    path = find_repo_root(Path(__file__)) / "tools" / "headless" / "metal_budget.py"
     if not path.is_file():
         return None
     spec = importlib.util.spec_from_file_location("hcli_metal_budget", path)

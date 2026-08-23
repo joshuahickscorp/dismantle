@@ -8,17 +8,15 @@ import unittest
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[4]
-if str(REPO) not in sys.path:
-    sys.path.insert(0, str(REPO))
 
-from tools.haider.hcli.max_policy import (
+from hcli.max_policy import (
     grok_pool_snapshot,
     load_equilibrium,
     next_grok_rung,
     record_rung,
     run_grok_ramp,
 )
-from tools.haider.hcli.workunit import WorkUnit
+from hcli.workunit import WorkUnit
 
 
 def _wu(uid, **kwargs):

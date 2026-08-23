@@ -2776,8 +2776,13 @@ class Engine:
             value = os.environ.get(key)
             if value:
                 env[key] = value
-        extra = str(self.root / "tools" / "haider")
-        env["PYTHONPATH"] = str(self.root) + os.pathsep + extra
+        # Contained test subprocesses must see the same `hcli` this
+        # process loaded. The package parent is repo-root (editable) or
+        # site-packages (installed). Not a fossil-name sys.path hack.
+        import hcli as _hcli_pkg
+
+        container = str(Path(_hcli_pkg.__file__).resolve().parent.parent)
+        env["PYTHONPATH"] = container + os.pathsep + str(self.root)
         return env
 
     def _kill_process_group(self, proc: subprocess.Popen[Any]) -> None:

@@ -35,7 +35,6 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 REPO = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(REPO / "tools" / "haider"))
 
 from hcli.resources import ResourceLimits  # noqa: E402
 from hcli.scheduler import Scheduler  # noqa: E402

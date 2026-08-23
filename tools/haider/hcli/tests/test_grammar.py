@@ -9,10 +9,8 @@ from pathlib import Path
 from unittest.mock import patch
 
 REPO = Path(__file__).resolve().parents[4]
-if str(REPO) not in sys.path:
-    sys.path.insert(0, str(REPO))
 
-from tools.haider.hcli.cli import parse_haider_args, resolve_resident_runtime_limit
+from hcli.cli import parse_haider_args, resolve_resident_runtime_limit
 
 
 class TestGrammar(unittest.TestCase):

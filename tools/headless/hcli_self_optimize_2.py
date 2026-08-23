@@ -51,9 +51,9 @@ from typing import Any, Dict, List, Optional, Tuple
 
 REPO = Path(__file__).resolve().parents[2]
 SCRIPT = Path(__file__).resolve()
-HCLI_PARENT = REPO / "tools" / "haider"
-CONTROLLER_REL = Path("tools/haider/hcli/controller.py")
-RUNTIME_REL = Path("tools/haider/hcli/runtime.py")
+HCLI_PARENT = REPO
+CONTROLLER_REL = Path("hcli/controller.py")
+RUNTIME_REL = Path("hcli/runtime.py")
 RECEIPT_REL = Path("receipts/headless/HCLI_SELF_OPT_ITERATION_2_REMEASURED.json")
 MUTATION_TEST = "tools/headless/hcli_self_optimize_2.py"
 OFFERED_STREAMS = 2
@@ -1052,7 +1052,7 @@ def stage_bottleneck(state: Dict[str, Any], repo: Path, ws: Path) -> None:
     peak = sense.get("max_concurrent_model_calls")
     observed = sense.get("observed_max_gpu_decode")
     admitted = sense.get("unmeasured_admitted_n")
-    loc = resolve_loc(repo, "tools/haider/hcli/runtime.py:651-710")
+    loc = resolve_loc(repo, "hcli/runtime.py:651-710")
     agrees = (
         isinstance(peak, int)
         and peak >= 2
@@ -1071,7 +1071,7 @@ def stage_bottleneck(state: Dict[str, Any], repo: Path, ws: Path) -> None:
     )
     payload = {
         "name": named,
-        "location": "tools/haider/hcli/runtime.py:651-710",
+        "location": "hcli/runtime.py:651-710",
         "resolved": loc,
         "agrees_with_sense": agrees,
         "sense_max_concurrent_model_calls": peak,
@@ -1110,8 +1110,8 @@ def _hypotheses() -> List[Dict[str, Any]]:
                 "Raise admission via the measured high-water path: Controller "
                 "passes workspace and observed_overlap=load_observed_overlap"
             ),
-            "location": "tools/haider/hcli/controller.py:605-609",
-            "secondary_location": "tools/haider/hcli/runtime.py:651-671",
+            "location": "hcli/controller.py:605-609",
+            "secondary_location": "hcli/runtime.py:651-671",
             "change": (
                 "ensure_runtime_pool currently constructs RuntimePool without "
                 "workspace, so Engine._enter_model_call's store_observed_overlap"
@@ -1124,7 +1124,7 @@ def _hypotheses() -> List[Dict[str, Any]]:
         {
             "id": "H2_default_cap",
             "title": "Hard-code DEFAULT_OVERLAP_ADMIT_CAP = 2",
-            "location": "tools/haider/hcli/runtime.py:50",
+            "location": "hcli/runtime.py:50",
             "change": (
                 "Change the measured default of 1 to 2 so every unmeasured "
                 "pool admits two runtimes without a high-water file."
@@ -1133,7 +1133,7 @@ def _hypotheses() -> List[Dict[str, Any]]:
         {
             "id": "H3_process_second_server",
             "title": "Force PROCESS topology and spawn a second 27B llama-server",
-            "location": "tools/haider/hcli/runtime.py:1069-1072",
+            "location": "hcli/runtime.py:1069-1072",
             "change": (
                 "Set topology=process and requested_n=2 so two independent "
                 "llama-server processes decode at once."
@@ -1343,7 +1343,7 @@ def stage_mutate(state: Dict[str, Any], repo: Path, ws: Path) -> None:
             "must pass workspace, repo_root, and observed_overlap="
             "load_observed_overlap(workspace) into RuntimePool so a measured "
             "model-call overlap of 2 lifts admission. Edit "
-            "tools/haider/hcli/controller.py only. Do not spawn a second "
+            "hcli/controller.py only. Do not spawn a second "
             "llama-server and do not change DEFAULT_OVERLAP_ADMIT_CAP."
         )
     except Exception as exc:

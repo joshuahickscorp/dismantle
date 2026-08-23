@@ -7,10 +7,8 @@ import unittest
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[4]
-if str(REPO) not in sys.path:
-    sys.path.insert(0, str(REPO))
 
-from tools.haider.hcli.ledger import (
+from hcli.ledger import (
     DEFAULT_VERIFY_TIMEOUT,
     ENFORCEMENT_FAILURE,
     GOAL_MET,
@@ -553,7 +551,7 @@ class TestLedgerWatchdog(unittest.TestCase):
 
 class TestLedgerApplyConstraint(unittest.TestCase):
     def test_constraint_persists_to_same_path(self):
-        from tools.haider.hcli.steering import SteeringQueue
+        from hcli.steering import SteeringQueue
 
         path = _write(MIXED_MD)
         self.addCleanup(lambda: path.unlink(missing_ok=True))

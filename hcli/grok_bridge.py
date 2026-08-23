@@ -66,7 +66,7 @@ Mutation serialization (B3) — do not miss this
 ----------------------------------------------
 Directive law: there MUST NOT be two independent writers mutating the
 repository. ``delegate()`` is MUTATION-class work (see
-``tools/haider/hcli/resources.py``, ``ResourceClass.MUTATION``, cap 1,
+``hcli/resources.py``, ``ResourceClass.MUTATION``, cap 1,
 crash-safe ``MutationLock``).
 
 This module does **not** schedule and does **not** import ``resources``

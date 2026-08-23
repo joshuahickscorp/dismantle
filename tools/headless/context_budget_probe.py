@@ -33,9 +33,6 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-HCLI_PKG = REPO_ROOT / "tools" / "haider"
-if str(HCLI_PKG) not in sys.path:
-    sys.path.insert(0, str(HCLI_PKG))
 
 # llama.cpp allocates the KV cache per sequence and rounds the per-sequence
 # context up to this granularity. Verified against llama-server build 9430
@@ -101,14 +98,14 @@ def resolve_configured_ctx(n_parallel: int = 1) -> Dict[str, Any]:
         return {"ctx_size": int(env), "source": "env:HCLI_CTX_SIZE"}
     # Mirror of runtime.RuntimePool.__init__. Read the literal out of the live
     # source rather than restating it, so this probe cannot drift from it.
-    runtime_py = REPO_ROOT / "tools" / "haider" / "hcli" / "runtime.py"
+    runtime_py = REPO_ROOT / "hcli" / "runtime.py"
     for lineno, line in enumerate(runtime_py.read_text(encoding="utf-8").splitlines(), 1):
         if "HCLI_CTX_SIZE" in line and "environ" in line:
             digits = "".join(c for c in line.split('"')[-2] if c.isdigit())
             if digits:
                 return {
                     "ctx_size": int(digits),
-                    "source": f"tools/haider/hcli/runtime.py:{lineno} hardcoded default",
+                    "source": f"hcli/runtime.py:{lineno} hardcoded default",
                 }
     return {"ctx_size": None, "source": "not found in runtime.py"}
 

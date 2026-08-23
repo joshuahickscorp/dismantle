@@ -29,7 +29,6 @@ import traceback
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(REPO / "tools" / "haider"))
 
 from hcli.verifier_pipeline import (  # noqa: E402
     Obligation,
@@ -40,7 +39,7 @@ from hcli.verifier_pipeline import (  # noqa: E402
     verify,
 )
 
-MODULE_PATH = REPO / "tools" / "haider" / "hcli" / "verifier_pipeline.py"
+MODULE_PATH = Path(__import__("hcli.verifier_pipeline", fromlist=["x"]).__file__).resolve()
 
 
 class FakeCaller:

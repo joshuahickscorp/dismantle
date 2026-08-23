@@ -17,8 +17,6 @@ from unittest.mock import patch
 os.environ.setdefault("GROK_DRYRUN", "1")
 
 REPO = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(REPO / "tools" / "haider"))
-sys.path.insert(0, str(REPO))
 
 from hcli.app import App  # noqa: E402
 from hcli.commands import REQUIRED_COMMANDS  # noqa: E402

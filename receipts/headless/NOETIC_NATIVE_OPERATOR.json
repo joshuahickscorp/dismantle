@@ -1,8 +1,8 @@
 {
   "schema": "hawking.headless.noetic_native_operator.v1",
-  "generated_at": "2026-08-23T20:59:39Z",
-  "git_head": "05f3cda03ad9528264981f0e874f7c239ab5dc30",
-  "elapsed_s": 0.091,
+  "generated_at": "2026-08-23T21:09:32Z",
+  "git_head": "5127b3a9a2b8f94a7940d44f3ba3dbad0413b84f",
+  "elapsed_s": 0.057,
   "question": "Does the compressed structure EXECUTE DIRECTLY, or does it decompress to dense and call an ordinary matmul?",
   "answer": "The compressed structures that actually run EXECUTE DIRECTLY. Qwen3.8 uniform-q4 geo_tpr64 unpacks nibbles in registers and FMAs into y; peak temporary 3145728 B against parent lm_head 5085593600 B. Q80 HGRAVS01 is y=L@(R@x) with mid[160]. gravity_pq_matvec and binary_group likewise never write W. The reconstruct-then-matmul lowerings exist (decode_vector, L@R then gemv, UV f16 cache) and are labelled ORACLE: their peak temporary reaches parent-tensor shape. The 0.0485 bpw UV structure is 0.0485 active fused and 16.0 active if the dense form is cached \u2014 same structure, two regimes. Presenting the cache regime as native execution is the defect.",
   "convention": {
@@ -1497,8 +1497,8 @@
       ],
       "fused_peak_bytes": 8832,
       "oracle_peak_bytes": 4202496,
-      "fused_wall_s": 0.00015462499868590385,
-      "oracle_wall_s": 0.0008441670070169494,
+      "fused_wall_s": 5.791700095869601e-05,
+      "oracle_wall_s": 0.000618790989392437,
       "y_match_max_abs": 0.0003509521484375,
       "parent_f32_bytes": 4194304,
       "threadgroup_mid_bytes": 640,
@@ -1518,8 +1518,8 @@
       ],
       "fused_peak_bytes": 69680,
       "oracle_peak_bytes": 178327552,
-      "fused_wall_s": 8.145799802150577e-05,
-      "oracle_wall_s": 0.04897479199280497,
+      "fused_wall_s": 4.512499435804784e-05,
+      "oracle_wall_s": 0.033866832993226126,
       "y_match_max_abs": 0.2544708251953125,
       "parent_f16_bytes": 178257920,
       "parent_f32_bytes": 356515840,
@@ -1576,5 +1576,5 @@
     "every_path_has_side_by_side": true,
     "no_absent_written_as_zero": true
   },
-  "written_to": "/Users/scammermike/Downloads/hawking/receipts/headless/NOETIC_NATIVE_OPERATOR.json"
+  "written_to": "/Users/scammermike/Downloads/hawking/.worktrees/g026merge/receipts/headless/NOETIC_NATIVE_OPERATOR.json"
 }

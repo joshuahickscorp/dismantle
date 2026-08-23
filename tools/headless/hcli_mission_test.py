@@ -22,7 +22,6 @@ import traceback
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(REPO / "tools" / "haider"))
 
 FAILS: list[str] = []
 
@@ -258,7 +257,7 @@ def check_restart_resumes():
             "\n".join(
                 [
                     "import os, sys",
-                    f"sys.path.insert(0, {str(REPO / 'tools' / 'haider')!r})",
+                    
                     "from pathlib import Path",
                     "from hcli.mission import Mission",
                     "from hcli.workunit import WorkUnit",
@@ -286,9 +285,7 @@ def check_restart_resumes():
             encoding="utf-8",
         )
         env = os.environ.copy()
-        env["PYTHONPATH"] = str(REPO / "tools" / "haider") + os.pathsep + env.get(
-            "PYTHONPATH", ""
-        )
+        env["PYTHONPATH"] = env.get("PYTHONPATH", "")
         proc = subprocess.run(
             [sys.executable, str(script)],
             cwd=str(REPO),
@@ -422,7 +419,7 @@ def check_cancel_clean():
             "\n".join(
                 [
                     "import os, sys, subprocess, time",
-                    f"sys.path.insert(0, {str(REPO / 'tools' / 'haider')!r})",
+                    
                     "from pathlib import Path",
                     "from hcli.mission import Mission",
                     "from hcli.workunit import WorkUnit",
@@ -457,9 +454,7 @@ def check_cancel_clean():
             encoding="utf-8",
         )
         env = os.environ.copy()
-        env["PYTHONPATH"] = str(REPO / "tools" / "haider") + os.pathsep + env.get(
-            "PYTHONPATH", ""
-        )
+        env["PYTHONPATH"] = env.get("PYTHONPATH", "")
         proc = subprocess.Popen(
             [sys.executable, str(script)],
             cwd=str(REPO),

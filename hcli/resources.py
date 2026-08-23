@@ -53,8 +53,9 @@ def _cpu_count() -> int:
 
 
 def _default_repo_root() -> Path:
-    # tools/haider/hcli/resources.py -> repo root is parents[3]
-    return Path(__file__).resolve().parents[3]
+    from .paths import find_repo_root
+
+    return find_repo_root(Path(__file__))
 
 
 def _load_json(path: Path) -> Optional[Dict[str, Any]]:

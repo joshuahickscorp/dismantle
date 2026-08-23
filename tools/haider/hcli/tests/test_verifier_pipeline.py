@@ -7,10 +7,8 @@ import unittest
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[4]
-if str(REPO) not in sys.path:
-    sys.path.insert(0, str(REPO))
 
-from tools.haider.hcli.verifier_pipeline import (
+from hcli.verifier_pipeline import (
     AGENT_ROLES,
     Obligation,
     PlanError,
@@ -22,7 +20,9 @@ from tools.haider.hcli.verifier_pipeline import (
     verify,
 )
 
-MODULE = REPO / "tools" / "haider" / "hcli" / "verifier_pipeline.py"
+import hcli.verifier_pipeline as _vp
+
+MODULE = Path(_vp.__file__).resolve()
 
 
 class FakeCaller:

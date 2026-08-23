@@ -8,15 +8,13 @@ from pathlib import Path
 from unittest.mock import patch
 
 REPO = Path(__file__).resolve().parents[4]
-if str(REPO) not in sys.path:
-    sys.path.insert(0, str(REPO))
 
-from tools.haider.hcli.app import App
-from tools.haider.hcli.commands import REQUIRED_COMMANDS, CommandHandler
-from tools.haider.hcli.controller import Controller
-from tools.haider.hcli.events import EventBus
-from tools.haider.hcli.grok_bridge import GrokBridge, GrokRunHandle
-from tools.haider.hcli.tui import TUI
+from hcli.app import App
+from hcli.commands import REQUIRED_COMMANDS, CommandHandler
+from hcli.controller import Controller
+from hcli.events import EventBus
+from hcli.grok_bridge import GrokBridge, GrokRunHandle
+from hcli.tui import TUI
 
 
 class TestLiveIngressUnification(unittest.TestCase):

@@ -23,7 +23,6 @@ from pathlib import Path
 from typing import Any, Callable
 
 REPO = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(REPO / "tools" / "haider"))
 
 from hcli.grok_bridge import (  # noqa: E402
     GrokBridge,

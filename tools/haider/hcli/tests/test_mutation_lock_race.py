@@ -16,17 +16,15 @@ import unittest
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[4]
-if str(REPO) not in sys.path:
-    sys.path.insert(0, str(REPO))
 
-from tools.haider.hcli.resources import MutationLock, process_start_token
+from hcli.resources import MutationLock, process_start_token
 
 RACE_TRIALS = 80
 
 _RACER = r"""
 import os, sys, time
 sys.path.insert(0, sys.argv[1])
-from tools.haider.hcli.resources import MutationLock, process_start_token
+from hcli.resources import MutationLock, process_start_token
 
 workspace, unit_id, mode = sys.argv[2], sys.argv[3], sys.argv[4]
 if mode == "advisory":
@@ -61,7 +59,7 @@ _HOLDER = r"""
 import sys, time
 from pathlib import Path
 sys.path.insert(0, sys.argv[1])
-from tools.haider.hcli.resources import MutationLock
+from hcli.resources import MutationLock
 workspace = sys.argv[2]
 hold = sys.argv[3] == "hold"
 lock = MutationLock(workspace)

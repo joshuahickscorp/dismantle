@@ -417,7 +417,7 @@ def discover(repo: Path = REPO) -> Dict[str, Any]:
         if p not in git_receipts
     ]
 
-    haider_here = (repo / "tools" / "haider" / "hcli").is_dir()
+    haider_here = (repo / "hcli").is_dir() or (repo / "tools" / "haider" / "hcli").is_dir()
     receipts_here = (repo / "receipts" / "headless").is_dir()
     hcli_here = (repo / ".hcli").is_dir()
     haider_dot_here = (repo / ".haider").is_dir()
@@ -465,7 +465,7 @@ def discover(repo: Path = REPO) -> Dict[str, Any]:
                         primary_extra_harnesses.append(p.name)
         # dirty tracked files in the HCLI tree (live vs HEAD)
         diff = git_out(
-            ["diff", "--name-only", "HEAD", "--", "tools/haider/hcli"],
+            ["diff", "--name-only", "HEAD", "--", "hcli", "tools/haider/hcli"],
             cwd=primary,
         )
         primary_dirty = [ln for ln in diff.splitlines() if ln] if diff else []

@@ -24,7 +24,6 @@ import traceback
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(REPO / "tools" / "haider"))
 
 KNOWN_MODEL = (
     Path.home()
@@ -452,8 +451,7 @@ def check_no_orphans_abnormal_death():
                     "-c",
                     (
                         "import json, os, sys, time\n"
-                        f"sys.path.insert(0, {str(REPO / 'tools' / 'haider')!r})\n"
-                        "from hcli.runtime import RuntimePool\n"
+                                                "from hcli.runtime import RuntimePool\n"
                         f"os.environ['HCLI_RESIDENT_RUNTIME_LIMIT']='1'\n"
                         f"os.environ['HCLI_ACTIVE_DECODE_LIMIT']='1'\n"
                         f"os.environ['HCLI_CTX_SIZE']='2048'\n"

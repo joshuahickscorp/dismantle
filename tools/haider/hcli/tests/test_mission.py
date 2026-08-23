@@ -10,14 +10,12 @@ import unittest
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[4]
-if str(REPO) not in sys.path:
-    sys.path.insert(0, str(REPO))
 
-from tools.haider.hcli.controller import Controller
-from tools.haider.hcli.mission import Mission, MissionCorruptError
-from tools.haider.hcli.steering import SteeringQueue
-from tools.haider.hcli.workunit import WorkUnit
-from tools.haider.hcli.workspace import Workspace
+from hcli.controller import Controller
+from hcli.mission import Mission, MissionCorruptError
+from hcli.steering import SteeringQueue
+from hcli.workunit import WorkUnit
+from hcli.workspace import Workspace
 
 
 def _wu(uid, resource_class="LIGHT_CONTROL", **kwargs):
@@ -406,7 +404,7 @@ class TestMissionLoop(unittest.TestCase):
                 session_id=controller.session.id,
             )
             controller.mission = mission
-            from tools.haider.hcli import max_policy as mp
+            from hcli import max_policy as mp
             from unittest.mock import patch
 
             def isolated(workspace, mission=None, **kwargs):
@@ -417,7 +415,7 @@ class TestMissionLoop(unittest.TestCase):
                     is_live=lambda tid: tid == "live-grok-1",
                 )
 
-            with patch("tools.haider.hcli.controller.grok_pool_snapshot", isolated):
+            with patch("hcli.controller.grok_pool_snapshot", isolated):
                 snap = controller.status()
                 rendered = controller.handle_command("/status")
             self.assertIn("qwen", snap)

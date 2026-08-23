@@ -11,10 +11,8 @@ from pathlib import Path
 from unittest.mock import patch
 
 REPO = Path(__file__).resolve().parents[4]
-if str(REPO) not in sys.path:
-    sys.path.insert(0, str(REPO))
 
-from tools.haider.hcli.backends import (
+from hcli.backends import (
     CompletionResult,
     MlxServerBackend,
     SchemaViolation,
@@ -213,7 +211,7 @@ class TestMlxSupports(unittest.TestCase):
             model_path="/no-model", port=1, binary="mlx_lm.server"
         )
         with patch(
-            "tools.haider.hcli.backends.mlx_help_text", return_value=MLX_HELP
+            "hcli.backends.mlx_help_text", return_value=MLX_HELP
         ):
             self.assertFalse(backend.supports("response_format"))
             self.assertFalse(backend.supports("json_schema"))
@@ -234,7 +232,7 @@ class TestMlxSupports(unittest.TestCase):
             model_path="/no-model", port=1, binary="mlx_lm.server"
         )
         with patch(
-            "tools.haider.hcli.backends.mlx_help_text",
+            "hcli.backends.mlx_help_text",
             return_value="usage: mlx_lm.server [-h]",
         ):
             self.assertFalse(backend.supports("response_format"))
@@ -282,7 +280,7 @@ class TestMlxCompleteStripsUnsupportedFields(unittest.TestCase):
                 binary="mlx_lm.server",
             )
             with patch(
-                "tools.haider.hcli.backends.mlx_help_text", return_value=MLX_HELP
+                "hcli.backends.mlx_help_text", return_value=MLX_HELP
             ):
                 result = backend.complete(
                     {
@@ -327,7 +325,7 @@ class TestMlxCompleteStripsUnsupportedFields(unittest.TestCase):
             binary="mlx_lm.server",
         )
         with patch(
-            "tools.haider.hcli.backends.mlx_help_text", return_value=MLX_HELP
+            "hcli.backends.mlx_help_text", return_value=MLX_HELP
         ):
             backend.complete(
                 {
@@ -376,7 +374,7 @@ class TestStructuredOutputContract(unittest.TestCase):
             model_path="/no-model", port=1, binary="mlx_lm.server"
         )
         with patch(
-            "tools.haider.hcli.backends.mlx_help_text", return_value=MLX_HELP
+            "hcli.backends.mlx_help_text", return_value=MLX_HELP
         ):
             contract = make_structured_output_contract(backend, MINI_SCHEMA)
         self.assertIsNotNone(contract)
@@ -394,7 +392,7 @@ class TestStructuredOutputContract(unittest.TestCase):
             model_path="/no-model", port=1, binary="mlx_lm.server"
         )
         with patch(
-            "tools.haider.hcli.backends.mlx_help_text", return_value=MLX_HELP
+            "hcli.backends.mlx_help_text", return_value=MLX_HELP
         ):
             contract = make_structured_output_contract(backend, MINI_SCHEMA)
         with self.assertRaises(SchemaViolation) as malformed:
@@ -450,7 +448,7 @@ class TestStructuredOutputContract(unittest.TestCase):
             model_path="/no-model", port=1, binary="mlx_lm.server"
         )
         with patch(
-            "tools.haider.hcli.backends.mlx_help_text", return_value=MLX_HELP
+            "hcli.backends.mlx_help_text", return_value=MLX_HELP
         ):
             contract = make_structured_output_contract(backend, MINI_SCHEMA)
         payload = {
@@ -472,7 +470,7 @@ class TestStructuredOutputContract(unittest.TestCase):
             model_path="/no-model", port=1, binary="mlx_lm.server"
         )
         with patch(
-            "tools.haider.hcli.backends.mlx_help_text", return_value=MLX_HELP
+            "hcli.backends.mlx_help_text", return_value=MLX_HELP
         ):
             contract = make_structured_output_contract(
                 backend, MINI_SCHEMA, max_attempts=3
@@ -507,7 +505,7 @@ class TestStructuredOutputContract(unittest.TestCase):
             model_path="/no-model", port=1, binary="mlx_lm.server"
         )
         with patch(
-            "tools.haider.hcli.backends.mlx_help_text", return_value=MLX_HELP
+            "hcli.backends.mlx_help_text", return_value=MLX_HELP
         ):
             contract = make_structured_output_contract(
                 backend, MINI_SCHEMA, max_attempts=2

@@ -6,15 +6,13 @@ import unittest
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[4]
-if str(REPO) not in sys.path:
-    sys.path.insert(0, str(REPO))
 
-from tools.haider.hcli.goal import (
+from hcli.goal import (
     GoalCompiler,
     InvalidTransitionError,
     WorkUnitDAG,
 )
-from tools.haider.hcli.workunit import identify_ready, transition_status
+from hcli.workunit import identify_ready, transition_status
 
 
 class TestWorkUnitDAGWrapper(unittest.TestCase):

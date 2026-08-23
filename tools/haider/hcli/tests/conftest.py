@@ -12,7 +12,7 @@ def pytest_ignore_collect(collection_path, config):
     if name != "test_mission.py":
         return None
     try:
-        from tools.haider.hcli import mission  # noqa: F401
+        from hcli import mission  # noqa: F401
     except Exception:
         return True
     return False

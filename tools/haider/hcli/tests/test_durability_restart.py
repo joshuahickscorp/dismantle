@@ -15,15 +15,13 @@ import unittest
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[4]
-if str(REPO) not in sys.path:
-    sys.path.insert(0, str(REPO))
 
 
 _VERIFY_WRITER = r"""
 import sys
 from pathlib import Path
 sys.path.insert(0, sys.argv[1])
-from tools.haider.hcli.ledger import Ledger
+from hcli.ledger import Ledger
 goal = Path(sys.argv[2])
 led = Ledger.parse(goal)
 result = led.run_verify("G001")
@@ -42,7 +40,7 @@ import json
 import sys
 from pathlib import Path
 sys.path.insert(0, sys.argv[1])
-from tools.haider.hcli.ledger import Ledger
+from hcli.ledger import Ledger
 goal = Path(sys.argv[2])
 led = Ledger.parse(goal)
 ob = led.get("G001")
@@ -61,8 +59,8 @@ _SESSION_WRITER = r"""
 import sys
 from pathlib import Path
 sys.path.insert(0, sys.argv[1])
-from tools.haider.hcli.controller import Controller
-from tools.haider.hcli.events import EventBus
+from hcli.controller import Controller
+from hcli.events import EventBus
 ws = sys.argv[2]
 out = Path(sys.argv[3])
 c = Controller(workspace=ws, runtime_count=1, bus=EventBus())
@@ -76,8 +74,8 @@ _SESSION_READER = r"""
 import sys
 from pathlib import Path
 sys.path.insert(0, sys.argv[1])
-from tools.haider.hcli.controller import Controller
-from tools.haider.hcli.events import EventBus
+from hcli.controller import Controller
+from hcli.events import EventBus
 ws = sys.argv[2]
 sid = Path(sys.argv[3]).read_text(encoding="utf-8").strip()
 c = Controller(workspace=ws, runtime_count=1, bus=EventBus())

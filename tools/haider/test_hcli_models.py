@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tools.haider.hcli.models import (
+from hcli.models import (
     ModelInfo,
     discover_models,
     resolve_model,

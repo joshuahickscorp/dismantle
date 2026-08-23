@@ -14,14 +14,12 @@ import unittest
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[4]
-if str(REPO) not in sys.path:
-    sys.path.insert(0, str(REPO))
 
-from tools.haider.hcli import dag_store as dag_store_mod
-from tools.haider.hcli import workunit as workunit_mod
-from tools.haider.hcli.dag_store import DagStore
-from tools.haider.hcli.scheduler import Scheduler
-from tools.haider.hcli.workunit import WorkUnit, assign_ready, identify_ready, is_ready
+from hcli import dag_store as dag_store_mod
+from hcli import workunit as workunit_mod
+from hcli.dag_store import DagStore
+from hcli.scheduler import Scheduler
+from hcli.workunit import WorkUnit, assign_ready, identify_ready, is_ready
 
 
 def _wu(uid: str, **kwargs) -> WorkUnit:
@@ -261,9 +259,9 @@ class TestRepairCapSurvivesRestart(unittest.TestCase):
 
             script = (
                 "import json, sys\n"
-                f"sys.path.insert(0, {str(REPO)!r})\n"
-                "from tools.haider.hcli.dag_store import DagStore\n"
-                "from tools.haider.hcli import workunit as wm\n"
+                ""
+                "from hcli.dag_store import DagStore\n"
+                "from hcli import workunit as wm\n"
                 f"store = DagStore({tmp!r})\n"
                 "units = store.load(recover_running=False)\n"
                 "budget = wm.rebuild_repair_budget(units, store.last_meta.get('repair_budget'))\n"

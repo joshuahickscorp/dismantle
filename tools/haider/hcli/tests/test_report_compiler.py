@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tools.haider.hcli.report_compiler import (
+from hcli.report_compiler import (
     compile_backend_report,
     payload_dumps,
 )
@@ -148,7 +148,7 @@ class TestProvenanceAddressability(unittest.TestCase):
             self.assertNotIn("workspace", json.loads(payload_dumps(compact)))
 
     def test_compact_path_resolves_and_raw_is_readable(self):
-        from tools.haider.hcli.grok_bridge import GrokBridge
+        from hcli.grok_bridge import GrokBridge
 
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

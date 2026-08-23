@@ -3,7 +3,7 @@ from __future__ import annotations
 import unittest
 from unittest.mock import MagicMock
 
-from tools.haider.hcli.commands import CommandHandler
+from hcli.commands import CommandHandler
 
 
 class TestCommandHandler(unittest.TestCase):

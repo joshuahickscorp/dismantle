@@ -21,6 +21,7 @@ import uuid
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Union
 
+from .persist import atomic_write_json
 from .workunit import (
     IdentityConflict,
     WorkUnit,
@@ -51,27 +52,6 @@ GrokLiveness = Callable[[str], Any]
 
 class DagCorruptError(ValueError):
     """Raised when dag.json exists but is not a valid DAG document."""
-
-
-def atomic_write_json(path: Union[str, Path], obj: Any) -> None:
-    """Write JSON via a same-directory temp file and ``os.replace``."""
-    dest = Path(path)
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    payload = json.dumps(obj, indent=2, sort_keys=True)
-    tmp_name = f".{dest.name}.{os.getpid()}.{uuid.uuid4().hex}.tmp"
-    tmp_path = dest.parent / tmp_name
-    try:
-        with open(tmp_path, "w", encoding="utf-8") as handle:
-            handle.write(payload)
-            handle.flush()
-            os.fsync(handle.fileno())
-        os.replace(tmp_path, dest)
-    except Exception:
-        try:
-            tmp_path.unlink()
-        except OSError:
-            pass
-        raise
 
 
 def _unit_to_disk(wu: WorkUnit) -> Dict[str, Any]:

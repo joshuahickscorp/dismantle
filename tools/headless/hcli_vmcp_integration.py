@@ -32,7 +32,6 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(REPO_ROOT / "tools" / "haider"))
 sys.path.insert(0, str(REPO_ROOT / "visionmcp" / "src"))
 
 RESULTS: List[Dict[str, Any]] = []
@@ -143,13 +142,12 @@ def verify_capture(project_root: Path, capture_id: str) -> Dict[str, Any]:
 # it consults VMCP evidence rather than re-reading the file itself.
 _VERIFIER = r'''
 import hashlib, json, sys
-sys.path.insert(0, sys.argv[1])   # tools/haider
-sys.path.insert(0, sys.argv[2])   # visionmcp/src
+sys.path.insert(0, sys.argv[1])   # visionmcp/src
 from visionmcp.perception.bus import AdapterRegistry, CaptureBus
 from visionmcp.projects.store import ProjectStore
 from pathlib import Path
 
-project_root, capture_id, claimed_path = Path(sys.argv[3]), sys.argv[4], Path(sys.argv[5])
+project_root, capture_id, claimed_path = Path(sys.argv[2]), sys.argv[3], Path(sys.argv[4])
 bus = CaptureBus(ProjectStore.open(project_root), AdapterRegistry())
 
 record = bus.get(capture_id)
@@ -229,7 +227,7 @@ def main() -> int:
         verifier_py.write_text(_VERIFIER, encoding="utf-8")
         verifier_cmd = (
             f'{sys.executable} {verifier_py} '
-            f'{REPO_ROOT / "tools/haider"} {REPO_ROOT / "visionmcp/src"} '
+            f'{REPO_ROOT / "visionmcp/src"} '
             f'{project_root} {capture_id} {subject}'
         )
 
@@ -288,7 +286,7 @@ def main() -> int:
         twin_record = observe_file(project_root, twin)
         replay_cmd = (
             f'{sys.executable} {verifier_py} '
-            f'{REPO_ROOT / "tools/haider"} {REPO_ROOT / "visionmcp/src"} '
+            f'{REPO_ROOT / "visionmcp/src"} '
             f'{project_root} {twin_record.get("capture_id")} {subject}'
         )
         replay = subprocess.run(

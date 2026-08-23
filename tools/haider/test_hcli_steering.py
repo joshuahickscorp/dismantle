@@ -4,7 +4,7 @@ import os
 import tempfile
 import unittest
 
-from tools.haider.hcli.steering import SteeringQueue, SteerEvent
+from hcli.steering import SteeringQueue, SteerEvent
 
 
 class TestSteeringQueue(unittest.TestCase):

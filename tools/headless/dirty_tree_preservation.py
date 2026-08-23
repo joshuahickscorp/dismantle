@@ -60,6 +60,7 @@ GENERATED_WHY = (
 CAMPAIGN_PREFIXES = (
     "tools/headless/",
     "tools/haider/hcli/",
+    "hcli/",
     "receipts/headless/",
     ".hcli/",
 )

@@ -575,6 +575,7 @@ class ToolExecutor:
                 extra = {
                     "lines": len(lines),
                     "path": self.guard.relative(full),
+                    "truncated": truncated,
                 }
             elif name == "fs.list":
                 full = self.guard.resolve(args.get("path"))
@@ -667,6 +668,7 @@ class ToolExecutor:
         elapsed_ms = int((time.monotonic() - start) * 1000)
         stdout, trunc_out = truncate_text(stdout, self.max_output_chars, self.max_output_lines)
         stderr, trunc_err = truncate_text(stderr, self.max_output_chars, self.max_output_lines)
+        extra_trunc = bool(extra.get("truncated")) if isinstance(extra, dict) else False
         return make_observation(
             self.root,
             name,
@@ -675,7 +677,12 @@ class ToolExecutor:
             stdout,
             stderr,
             elapsed_ms,
-            truncated or trunc_out or trunc_err,
+            # Union of both signals on purpose. extra_trunc reads the flag
+            # back out of the structured `extra` dict, which fs.read populates;
+            # the local `truncated` also catches branches like fs.list that set
+            # it without writing it into `extra`. Taking either side alone drops
+            # one of those paths silently.
+            truncated or trunc_out or trunc_err or extra_trunc,
             ok,
             extra,
         )

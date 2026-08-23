@@ -20,12 +20,10 @@ import unittest
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[4]
-if str(REPO) not in sys.path:
-    sys.path.insert(0, str(REPO))
 
-from tools.haider.hcli.grok_bridge import GrokBridge, process_alive
-from tools.haider.hcli.mission import Mission
-from tools.haider.hcli.workunit import WorkUnit
+from hcli.grok_bridge import GrokBridge, process_alive
+from hcli.mission import Mission
+from hcli.workunit import WorkUnit
 
 
 TASK_ID = "consult-orphan-20260101-000000"
@@ -71,9 +69,9 @@ _PARENT_WRITER = r"""
 import json, os, sys, subprocess, threading, time
 from pathlib import Path
 sys.path.insert(0, sys.argv[1])
-from tools.haider.hcli.grok_bridge import GrokBridge
-from tools.haider.hcli.mission import Mission
-from tools.haider.hcli.workunit import WorkUnit
+from hcli.grok_bridge import GrokBridge
+from hcli.mission import Mission
+from hcli.workunit import WorkUnit
 
 ws = Path(sys.argv[2])
 pidfile = Path(sys.argv[3])

@@ -9,19 +9,17 @@ from pathlib import Path
 from unittest.mock import patch
 
 REPO = Path(__file__).resolve().parents[4]
-if str(REPO) not in sys.path:
-    sys.path.insert(0, str(REPO))
 
-from tools.haider.hcli.config import Config, coerce_bool, coerce_on_off
-from tools.haider.hcli.engine import (
+from hcli.config import Config, coerce_bool, coerce_on_off
+from hcli.engine import (
     Engine,
     EngineError,
     HCLI_RESULT_SCHEMA,
     _MAX_TOKENS_CEILING,
     _MAX_TOKENS_FLOOR,
 )
-from tools.haider.hcli.events import EventBus
-from tools.haider.hcli.workspace import Workspace
+from hcli.events import EventBus
+from hcli.workspace import Workspace
 
 
 def _engine(root: Path) -> Engine:

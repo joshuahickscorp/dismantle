@@ -4,10 +4,9 @@ import sys
 import unittest
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from tools.haider.hcli.events import EventBus
-from tools.haider.hcli.tui import TUI
+from hcli.events import EventBus
+from hcli.tui import TUI
 
 
 class TestTuiEvents(unittest.TestCase):

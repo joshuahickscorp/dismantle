@@ -8,13 +8,11 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 REPO = Path(__file__).resolve().parents[4]
-if str(REPO) not in sys.path:
-    sys.path.insert(0, str(REPO))
 
-from tools.haider.hcli.config import Config
-from tools.haider.hcli.controller import Controller
-from tools.haider.hcli.events import EventBus
-from tools.haider.hcli.models import ModelRegistry, discover_models
+from hcli.config import Config
+from hcli.controller import Controller
+from hcli.events import EventBus
+from hcli.models import ModelRegistry, discover_models
 
 
 class TestConfigPersist(unittest.TestCase):

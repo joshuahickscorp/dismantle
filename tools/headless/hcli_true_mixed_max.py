@@ -37,7 +37,6 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(REPO_ROOT / "tools" / "haider"))
 
 from hcli.config import Config          # noqa: E402
 from hcli.engine import Engine          # noqa: E402
@@ -63,7 +62,7 @@ def llama_port() -> Optional[int]:
 def _cpu_unit(uid: str, desc: str, command: str,
               deps: Optional[List[str]] = None) -> WorkUnit:
     # Anchored to the repo root: a CPU verifier runs with the MISSION workspace
-    # as cwd, and these checks import tools.haider.hcli.
+    # as cwd, and these checks import hcli.
     return WorkUnit(
         id=uid, role="validate", description=desc,
         dependencies=list(deps or []),
@@ -177,7 +176,7 @@ def build_units() -> List[WorkUnit]:
         f'{PY} -m pytest {REPO_ROOT / "tools/haider/hcli/tests"} -q'))
     units.append(_cpu_unit(
         "cpu.ctxauth", "the context authority still serves the long ingress",
-        f'{PY} -c "import sys; sys.path.insert(0, \'tools/haider\'); '
+        f'{PY} -c "import sys; '
         'from hcli.context_budget import per_seq_context; '
         'assert per_seq_context(32768, 3) == 11008, per_seq_context(32768, 3)"'))
     units.append(_cpu_unit(

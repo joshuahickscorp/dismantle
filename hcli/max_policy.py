@@ -15,7 +15,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Optional, Union
 
-from .dag_store import atomic_write_json
+from .persist import atomic_write_json
 
 
 GROK_LADDER = (1, 2, 4, 6, 8)

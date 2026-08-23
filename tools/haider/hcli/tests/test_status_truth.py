@@ -10,12 +10,10 @@ from pathlib import Path
 from unittest.mock import patch
 
 REPO = Path(__file__).resolve().parents[4]
-if str(REPO) not in sys.path:
-    sys.path.insert(0, str(REPO))
 
-from tools.haider.hcli.commands import format_status
-from tools.haider.hcli.controller import Controller, _http_json
-from tools.haider.hcli.resources import MutationLock
+from hcli.commands import format_status
+from hcli.controller import Controller, _http_json
+from hcli.resources import MutationLock
 
 
 class TestFormatStatus(unittest.TestCase):
@@ -144,7 +142,7 @@ class TestQwenProbe(unittest.TestCase):
                     ]
                 return None
 
-            with patch("tools.haider.hcli.controller._http_json", side_effect=fake_http):
+            with patch("hcli.controller._http_json", side_effect=fake_http):
                 snap = controller._qwen_pool_status()
             self.assertEqual(snap["health"], "ok")
             self.assertEqual(snap["resident"], 2)

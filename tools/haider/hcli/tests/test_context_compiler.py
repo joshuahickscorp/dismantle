@@ -14,17 +14,15 @@ import unittest
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[4]
-if str(REPO) not in sys.path:
-    sys.path.insert(0, str(REPO))
 
-from tools.haider.hcli.context_budget import (
+from hcli.context_budget import (
     PacketBudgetError,
     fit_or_refuse,
     resolve,
 )
-from tools.haider.hcli.engine import EngineError
-from tools.haider.hcli.executors import consult_worker, execute_workunit
-from tools.haider.hcli.goal import (
+from hcli.engine import EngineError
+from hcli.executors import consult_worker, execute_workunit
+from hcli.goal import (
     EvidenceIdentity,
     GoalCompiler,
     StaleEvidenceError,
@@ -35,7 +33,7 @@ from tools.haider.hcli.goal import (
     identity_for_path,
     refuse_goal_dump,
 )
-from tools.haider.hcli.workunit import WorkUnit, emit_repair
+from hcli.workunit import WorkUnit, emit_repair
 
 
 ROOT = "THIS IS THE GOVERNING ULTRAGOAL. " + ("keep-out-" * 30)

@@ -18,7 +18,6 @@ import traceback
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(REPO / "tools" / "haider"))
 
 from hcli.engine import Engine, EngineError  # noqa: E402
 from hcli.events import EventBus  # noqa: E402

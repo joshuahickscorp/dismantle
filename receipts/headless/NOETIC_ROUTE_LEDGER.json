@@ -124,12 +124,12 @@
         "sites": {
           "dispatch": {
             "excerpt": "\"qwen80_ba_to_decay_beta_f32\",",
-            "line": 3150,
+            "line": 3363,
             "path": "crates/hawking-core/src/model/qwen38_hybrid_decode.rs"
           },
           "gated_delta": {
             "excerpt": "fn encode_gated_delta(",
-            "line": 2005,
+            "line": 2218,
             "path": "crates/hawking-core/src/model/qwen38_hybrid_decode.rs"
           },
           "kernel": {
@@ -176,7 +176,7 @@
         "sites": {
           "encode_gqa": {
             "excerpt": "fn encode_gqa(&self, tcb: &mut TokenCommandBuffer<'_>, layer: usize) -> Result<()> {",
-            "line": 3218,
+            "line": 3431,
             "path": "crates/hawking-core/src/model/qwen38_hybrid_decode.rs"
           },
           "geometry": {
@@ -340,12 +340,12 @@
         "sites": {
           "dispatch": {
             "excerpt": "\"qwen38_attention_apply_sigmoid_gate\",",
-            "line": 3326,
+            "line": 3539,
             "path": "crates/hawking-core/src/model/qwen38_hybrid_decode.rs"
           },
           "kernel": {
             "excerpt": "kernel void qwen38_attention_apply_sigmoid_gate(",
-            "line": 428,
+            "line": 430,
             "path": "crates/hawking-core/shaders/qwen38_device_activations.metal"
           }
         }
@@ -394,44 +394,26 @@
   },
   "executions": {
     "llama_server": {
-      "decode_flags": "temperature=0 ignore_eos=true cache_prompt=false",
-      "dropped": false,
-      "health": {
-        "status": "ok"
-      },
-      "measured": true,
-      "model": "Huihui-Qwen3.8-27B-abliterated-Q5_K.gguf",
-      "n_predict": 32,
-      "n_slots": 2,
-      "note": "Resident llama-server. This is a real Qwen3.8 forward pass on this box.",
-      "port": 52484,
-      "slots_busy_at_start": [],
-      "value": {
-        "client_wall_s": 1.634,
-        "content_excerpt": "\n\nREADY\n\nWhat is theRouteLedger?\n\nTheRouteLedger is a fictional or internal syst",
-        "predicted_ms": 1309.359,
-        "predicted_n": 32,
-        "predicted_per_second": 24.439439450906896,
-        "prompt_ms": 323.906,
-        "prompt_n": 25,
-        "prompt_per_second": 77.18288639296586
-      }
+      "dropped": true,
+      "measured": false,
+      "reason": "llama-server :52484 health failed: URLError: <urlopen error [Errno 61] Connection refused>",
+      "value": null
     },
     "metal_selector_microbench": {
-      "compiled_production_kernels": false,
+      "compiled_production_kernels": true,
       "loaded_gravity_weights": false,
       "spawned_second_27b": false
     },
     "native_gravity_receipt": {
-      "bar": "FAIL",
+      "bar": "PASS",
       "dropped": false,
       "measured": true,
       "measurement_spread_pct": 0.2,
-      "median_complete_wall_ns": 30275333,
+      "median_complete_wall_ns": 30388625,
       "n_process_runs": 3,
       "note": "Prior native complete-wall on the gravity artifact. Not re-run: GPU occupancy is NOT free: a native run measured 3.986 tok/s with two model servers resident against 33.47 with one. This process will not load the gravity artifact.",
       "source": "receipts/headless/QWEN38_GRAVITY_NATIVE.json",
-      "value": 33.030189956952746
+      "value": 32.907049924108115
     }
   },
   "geometry": {
@@ -514,7 +496,7 @@
       },
       "ba_to_decay_dispatch": {
         "excerpt": "\"qwen80_ba_to_decay_beta_f32\",",
-        "line": 3150,
+        "line": 3363,
         "path": "crates/hawking-core/src/model/qwen38_hybrid_decode.rs"
       },
       "dense_refuse_moe": {
@@ -524,27 +506,27 @@
       },
       "encode_deltanet": {
         "excerpt": "fn encode_deltanet(",
-        "line": 3092,
+        "line": 3305,
         "path": "crates/hawking-core/src/model/qwen38_hybrid_decode.rs"
       },
       "encode_gqa": {
         "excerpt": "fn encode_gqa(&self, tcb: &mut TokenCommandBuffer<'_>, layer: usize) -> Result<()> {",
-        "line": 3218,
+        "line": 3431,
         "path": "crates/hawking-core/src/model/qwen38_hybrid_decode.rs"
       },
       "encode_layers_match": {
         "excerpt": "fn encode_layers(&self, tcb: &mut TokenCommandBuffer<'_>) -> Result<()> {",
-        "line": 3352,
+        "line": 3565,
         "path": "crates/hawking-core/src/model/qwen38_hybrid_decode.rs"
       },
       "encode_mixer": {
         "excerpt": "fn encode_mixer(&self, tcb: &mut TokenCommandBuffer<'_>, layer: usize) -> Result<()> {",
-        "line": 2051,
+        "line": 2264,
         "path": "crates/hawking-core/src/model/qwen38_hybrid_decode.rs"
       },
       "gated_delta_dispatch": {
         "excerpt": "fn encode_gated_delta(",
-        "line": 2005,
+        "line": 2218,
         "path": "crates/hawking-core/src/model/qwen38_hybrid_decode.rs"
       },
       "mha_group_size": {
@@ -579,21 +561,21 @@
       },
       "sigmoid_dispatch": {
         "excerpt": "\"qwen38_attention_apply_sigmoid_gate\",",
-        "line": 3326,
+        "line": 3539,
         "path": "crates/hawking-core/src/model/qwen38_hybrid_decode.rs"
       },
       "sigmoid_kernel": {
         "excerpt": "kernel void qwen38_attention_apply_sigmoid_gate(",
-        "line": 428,
+        "line": 430,
         "path": "crates/hawking-core/shaders/qwen38_device_activations.metal"
       }
     }
   },
-  "git": "2f670c2406d22e7eef50a3d6eff7daf954facc77",
+  "git": "0d0ff83f0631a9bb952817c7982e82bb8ae6da66",
   "kernel_binding": {
-    "anchor_note": "Anchor '38 dispatched against 554 declared' is the bindable-name literals in qwen38_hybrid_decode.rs (38) against kernel-void count in crates/hawking-core/shaders (554). Default-on unique production kernels are fewer; dispatches/token are 964.",
+    "anchor_note": "Anchor '38 dispatched against 554 declared' is the bindable-name literals in qwen38_hybrid_decode.rs (41) against kernel-void count in crates/hawking-core/shaders (561). Default-on unique production kernels are fewer; dispatches/token are 964.",
     "dispatch_identity": "1 embed + 64 layers \u00d7 15 + 3 terminal = 964",
-    "hybrid_decode_bindable_kernel_name_literals": 38,
+    "hybrid_decode_bindable_kernel_name_literals": 41,
     "hybrid_decode_bindable_names": [
       "q80_binary_group_csr_matvec_bytes",
       "q80_binary_group_csr_matvec_tg256",
@@ -612,6 +594,7 @@
       "qwen38_gated_delta_decode_vi_simd",
       "qwen38_gqa_qk_norm_rope_cache_f32",
       "qwen38_gqa_qk_norm_rope_cache_tg",
+      "qwen38_hgrafv_embedding_lookup",
       "qwen38_hgravu_embedding_lookup",
       "qwen38_qkvz_rearrange_conv_l2_f32",
       "qwen80_ba_to_decay_beta_f32",
@@ -620,6 +603,8 @@
       "qwen80_gated_delta_decode_tg",
       "qwen80_residual_rmsnorm_f32",
       "qwen80_residual_rmsnorm_tg",
+      "qwen_affine_q2_group32_matvec",
+      "qwen_affine_q2_group32_matvec_geo_tpr64_tg128",
       "qwen_uniform_hgravu_q4_group64_matvec_geo_tpr64_tg128",
       "qwen_uniform_q3_group64_matvec_geo_tpr64_tg128",
       "qwen_uniform_q4_embedding_lookup",
@@ -651,8 +636,12 @@
       "sample_argmax_f32"
     ],
     "production_dispatches_per_token": 964,
-    "shader_declared_kernel_voids": 554,
+    "shader_declared_kernel_voids": 561,
     "shader_files": [
+      {
+        "file": "affine2_group32_matvec.metal",
+        "kernel_void": 3
+      },
       {
         "file": "attn.metal",
         "kernel_void": 9
@@ -711,7 +700,7 @@
       },
       {
         "file": "q80_mixed_decode.metal",
-        "kernel_void": 38
+        "kernel_void": 42
       },
       {
         "file": "quant.metal",
@@ -828,7 +817,7 @@
       "note": "48 value heads \u00d7 48 DeltaNet layers; all heads still run",
       "site": {
         "excerpt": "\"qwen80_ba_to_decay_beta_f32\",",
-        "line": 3150,
+        "line": 3363,
         "path": "crates/hawking-core/src/model/qwen38_hybrid_decode.rs"
       },
       "value": 2304
@@ -840,7 +829,7 @@
       "note": "24 heads \u00d7 16 GQA layers; attention already computed",
       "site": {
         "excerpt": "\"qwen38_attention_apply_sigmoid_gate\",",
-        "line": 3326,
+        "line": 3539,
         "path": "crates/hawking-core/src/model/qwen38_hybrid_decode.rs"
       },
       "value": 384
@@ -956,38 +945,34 @@
       }
     }
   },
-  "recorded_at": "2026-08-23T18:33:28Z",
-  "repo": "/Users/scammermike/.claude-grok/worktrees/n4route-20260823-141513",
+  "recorded_at": "2026-08-23T20:09:49Z",
+  "repo": "/Users/scammermike/Downloads/hawking",
   "route_decisions_per_second": {
     "continuous_live": {
-      "decisions_per_token": 2688,
-      "dropped": false,
-      "measured": true,
-      "tokens_per_second": 24.439439450906896,
-      "unit": "1/s",
-      "value": 65693.21324403773
+      "dropped": true,
+      "measured": false,
+      "reason": "no measured tokens/s to multiply by",
+      "value": null
     },
     "continuous_native_receipt": {
       "decisions_per_token": 2688,
       "dropped": false,
       "measured": true,
-      "tokens_per_second": 33.030189956952746,
+      "tokens_per_second": 32.907049924108115,
       "unit": "1/s",
-      "value": 88785.15060428898
+      "value": 88454.1501960026
     },
     "discrete_live": {
-      "decisions_per_token": 0,
-      "dropped": false,
-      "measured": true,
-      "tokens_per_second": 24.439439450906896,
-      "unit": "1/s",
-      "value": 0.0
+      "dropped": true,
+      "measured": false,
+      "reason": "no measured tokens/s to multiply by",
+      "value": null
     },
     "discrete_native_receipt": {
       "decisions_per_token": 0,
       "dropped": false,
       "measured": true,
-      "tokens_per_second": 33.030189956952746,
+      "tokens_per_second": 32.907049924108115,
       "unit": "1/s",
       "value": 0.0
     }
@@ -1063,12 +1048,142 @@
   },
   "schema": "hawking.headless.noetic_route_ledger.v1",
   "selector_token_ns": {
-    "dropped": true,
-    "measured": false,
-    "needs_gate_profile": true,
-    "note": "MTLCreateSystemDefaultDevice() is nil in this sandbox. GPU timestamps for selector kernels need the unsandboxed gate profile. Not filled with zeros.",
-    "reason": "swift timer exit 2: {\"device\":\"\",\"unified_memory_bytes\":0,\"benches\":[],\"gpu_timestamp_authority\":\"\",\"error\":\"no metal device\"}",
-    "value": null
+    "benches": {
+      "ba_to_decay_1_layer": {
+        "dispatches": 1,
+        "gpu_ns_reps": [
+          14416.655176319182,
+          7875.001756474376,
+          9749.986929818988,
+          7499.998901039362,
+          10250.005288980901,
+          7750.0008046627045,
+          9041.657904163003
+        ],
+        "kernel": "qwen80_ba_to_decay_beta_f32",
+        "layers": 1,
+        "median_gpu_ns": 9041.657904163003,
+        "name": "ba_to_decay_1_layer",
+        "threads_per_dispatch": 48
+      },
+      "ba_to_decay_48_layers": {
+        "dispatches": 48,
+        "gpu_ns_reps": [
+          214166.6627721861,
+          275916.6673058644,
+          222749.99355431646,
+          285624.99210238457,
+          213208.33184290677,
+          284875.00094342977,
+          233916.66763927788
+        ],
+        "kernel": "qwen80_ba_to_decay_beta_f32",
+        "layers": 48,
+        "median_gpu_ns": 233916.66763927788,
+        "name": "ba_to_decay_48_layers",
+        "threads_per_dispatch": 48
+      },
+      "eight_value_1_dispatch": {
+        "dispatches": 1,
+        "gpu_ns_reps": [
+          6666.668923571706,
+          5624.9991757795215,
+          6999.995093792677,
+          5875.001079402864,
+          6666.654371656477,
+          5499.99822396785,
+          6875.008693896234
+        ],
+        "kernel": "eight_value_route",
+        "layers": 1,
+        "median_gpu_ns": 6666.654371656477,
+        "name": "eight_value_1_dispatch",
+        "threads_per_dispatch": 8
+      },
+      "eight_value_48_dispatches": {
+        "dispatches": 48,
+        "gpu_ns_reps": [
+          149666.6664024815,
+          160374.99881349504,
+          155291.66557826102,
+          162500.00044237822,
+          153375.00371970236,
+          164625.0020712614,
+          141708.32582749426
+        ],
+        "kernel": "eight_value_route",
+        "layers": 48,
+        "median_gpu_ns": 155291.66557826102,
+        "name": "eight_value_48_dispatches",
+        "threads_per_dispatch": 8
+      },
+      "selector_token_shaped": {
+        "dispatches": 64,
+        "gpu_ns_reps": [
+          267625.0005606562,
+          343833.3369558677,
+          264375.0049173832,
+          353458.33748579025,
+          267875.00246427953,
+          363583.32727104425,
+          259874.9997559935
+        ],
+        "kernel": "ba_to_decay_48 + sigmoid_16",
+        "layers": 64,
+        "median_gpu_ns": 267875.00246427953,
+        "name": "selector_token_shaped",
+        "threads_per_dispatch": 0
+      },
+      "sigmoid_gate_16_layers": {
+        "dispatches": 16,
+        "gpu_ns_reps": [
+          62624.996644444764,
+          76124.99757669866,
+          62999.99949987978,
+          75999.99662488699,
+          62999.99949987978,
+          76333.33734702319,
+          62958.33736658096
+        ],
+        "kernel": "qwen38_attention_apply_sigmoid_gate",
+        "layers": 16,
+        "median_gpu_ns": 62999.99949987978,
+        "name": "sigmoid_gate_16_layers",
+        "threads_per_dispatch": 6144
+      },
+      "sigmoid_gate_1_layer": {
+        "dispatches": 1,
+        "gpu_ns_reps": [
+          8583.33078213036,
+          6833.332008682191,
+          8874.994819052517,
+          6999.995093792677,
+          8958.333637565374,
+          7249.996997416019,
+          8749.993867240846
+        ],
+        "kernel": "qwen38_attention_apply_sigmoid_gate",
+        "layers": 1,
+        "median_gpu_ns": 8583.33078213036,
+        "name": "sigmoid_gate_1_layer",
+        "threads_per_dispatch": 6144
+      }
+    },
+    "device": "Apple M3 Ultra",
+    "dropped": false,
+    "gpu_timestamp_authority": "MTLCommandBuffer.gpuEndTime - gpuStartTime after waitUntilCompleted; never a CPU-wait proxy",
+    "kernels_compiled_from": [
+      "crates/hawking-core/shaders/qwen80_device_activations.metal",
+      "crates/hawking-core/shaders/qwen38_device_activations.metal"
+    ],
+    "launch_geometry": {
+      "ba_to_decay": "grid (48,1,1) tg (16,1,1) \u00d7 48 DeltaNet layers",
+      "sigmoid_gate": "grid (6144,1,1) tg (256,1,1) \u00d7 16 GQA layers"
+    },
+    "measured": true,
+    "note": "Isolated selector command buffer at production launch geometry. Not inside the production 964-dispatch token CB, so this is the selector's own GPU time, not its contribution to token wall (a small kernel's isolated ns overstates its in-token cost).",
+    "unit": "ns",
+    "value": 267875.00246427953
   },
   "self_check_fails": [],
   "what_i_watched_fail": [
@@ -1105,8 +1220,8 @@
       "what_happened": "favourable verdict=WORTH_IT; A_log-as-route verdict=NOT_WORTH_IT; eight-cheap-values verdict=NOT_WORTH_IT; sigmoid-gate rates dropped because parent_weights replaced = 0. distinguishes=True"
     },
     {
-      "what": "Metal selector microbench",
-      "what_happened": "swift timer exit 2: {\"device\":\"\",\"unified_memory_bytes\":0,\"benches\":[],\"gpu_timestamp_authority\":\"\",\"error\":\"no metal device\"}"
+      "what": "live llama decode",
+      "what_happened": "llama-server :52484 health failed: URLError: <urlopen error [Errno 61] Connection refused>"
     }
   ]
 }

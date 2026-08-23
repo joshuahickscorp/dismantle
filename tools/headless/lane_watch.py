@@ -78,6 +78,19 @@ def _unharvested(files: List[str]) -> List[str]:
     return missing
 
 
+_TRACKED: Optional[set] = None
+
+
+def _tracked_paths() -> set:
+    """Every path git tracks in this repo, cached."""
+    global _TRACKED
+    if _TRACKED is None:
+        r = subprocess.run(["git", "-C", str(REPO), "ls-files"],
+                           capture_output=True, text=True)
+        _TRACKED = set(r.stdout.splitlines()) if r.returncode == 0 else set()
+    return _TRACKED
+
+
 def _worktree_extras(task_id: str, patch_files: List[str]) -> Optional[int]:
     """Count files in the worktree that the patch never mentions.
 
@@ -90,6 +103,7 @@ def _worktree_extras(task_id: str, patch_files: List[str]) -> Optional[int]:
         return None
     known = set(patch_files)
     extras = 0
+    tracked = _tracked_paths()
     for root in ("visionmcp", "tools/headless", "receipts/headless"):
         d = wt / root
         if not d.is_dir():
@@ -100,14 +114,27 @@ def _worktree_extras(task_id: str, patch_files: List[str]) -> Optional[int]:
             rel = str(f.relative_to(wt))
             if rel in known:
                 continue
-            # only count it if it differs from what we already have
+            # `diff.patch` is blind ONLY where git does not track the path.
+            # For tracked files the patch is authoritative and a difference just
+            # means this tree moved ahead of a worktree cut from HEAD.
+            #
+            # Two wrong signals were tried first and both made the detector
+            # useless: "differs from mine" fired on every lane because the
+            # worktree holds older copies, and "newer mtime" fired on 169 files
+            # because checkout stamps everything fresh. Trackedness is the
+            # actual property that determines whether the patch could have
+            # carried the work.
+            if rel in tracked:
+                continue
             mine = REPO / rel
+            if not mine.is_file():
+                extras += 1
+                continue
             try:
-                if mine.is_file() and mine.read_bytes() == f.read_bytes():
-                    continue
+                if mine.read_bytes() != f.read_bytes():
+                    extras += 1
             except OSError:
                 pass
-            extras += 1
     return extras
 
 

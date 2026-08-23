@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-23T20:05:49Z",
+  "generated_at": "2026-08-23T20:08:10Z",
   "running": [
     "f1attnfloor",
     "f2densesubbit",
@@ -8,121 +8,16 @@
   ],
   "needs_harvest": [
     {
-      "slug": "c1sharedbasis",
-      "id": "c1sharedbasis-20260823-150550",
-      "unharvested": [],
-      "worktree_extras": 3
-    },
-    {
-      "slug": "c2tensorop",
-      "id": "c2tensorop-20260823-150556",
-      "unharvested": [],
-      "worktree_extras": 3
-    },
-    {
-      "slug": "c3lowranksparse",
-      "id": "c3lowranksparse-20260823-150603",
-      "unharvested": [],
-      "worktree_extras": 3
-    },
-    {
-      "slug": "c4codebook",
-      "id": "c4codebook-20260823-150610",
-      "unharvested": [],
-      "worktree_extras": 3
-    },
-    {
-      "slug": "c5structtransform",
-      "id": "c5structtransform-20260823-150616",
-      "unharvested": [],
-      "worktree_extras": 3
-    },
-    {
-      "slug": "d1deltanet",
-      "id": "d1deltanet-20260823-151638",
-      "unharvested": [],
-      "worktree_extras": 3
-    },
-    {
-      "slug": "d2gqa",
-      "id": "d2gqa-20260823-151644",
-      "unharvested": [],
-      "worktree_extras": 3
-    },
-    {
-      "slug": "d3mlxanatomy",
-      "id": "d3mlxanatomy-20260823-151650",
-      "unharvested": [],
-      "worktree_extras": 3
-    },
-    {
-      "slug": "d4traffic",
-      "id": "d4traffic-20260823-151656",
-      "unharvested": [],
-      "worktree_extras": 3
-    },
-    {
-      "slug": "r10start",
-      "id": "r10start-20260823-154312",
-      "unharvested": [
-        "receipts/headless/STARTUP_CENSUS.json",
-        "tools/headless/startup_census.py"
-      ],
-      "worktree_extras": 3
-    },
-    {
-      "slug": "r15nsplan",
-      "id": "r15nsplan-20260823-154318",
-      "unharvested": [
-        "receipts/headless/NAMESPACE_PLAN.json",
-        "tools/headless/namespace_plan.py"
-      ],
-      "worktree_extras": 3
-    },
-    {
-      "slug": "r1graph",
-      "id": "r1graph-20260823-154248",
-      "unharvested": [
-        "receipts/headless/CODE_GRAPH.json",
-        "tools/headless/code_graph.py"
-      ],
-      "worktree_extras": 3
-    },
-    {
-      "slug": "r2auth",
-      "id": "r2auth-20260823-154253",
-      "unharvested": [
-        "receipts/headless/AUTHORITY_CENSUS.json",
-        "tools/headless/authority_census.py"
-      ],
-      "worktree_extras": 3
-    },
-    {
-      "slug": "r3dead",
-      "id": "r3dead-20260823-154259",
-      "unharvested": [
-        "receipts/headless/DEAD_CODE_CENSUS.json",
-        "tools/headless/dead_code_census.py"
-      ],
-      "worktree_extras": 3
-    },
-    {
-      "slug": "x1perf",
-      "id": "x1perf-20260823-145049",
-      "unharvested": [],
-      "worktree_extras": 2
-    },
-    {
       "slug": "x2stale",
       "id": "x2stale-20260823-145054",
       "unharvested": [],
-      "worktree_extras": 2
+      "worktree_extras": 1
     }
   ],
   "headroom": {
-    "load1": 3.5908203125,
+    "load1": 5.25732421875,
     "ncpu": 28,
-    "disk_gib": 442.9,
+    "disk_gib": 435.4,
     "room_for_more": true
   }
 }

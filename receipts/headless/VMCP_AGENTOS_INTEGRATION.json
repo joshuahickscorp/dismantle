@@ -1,7 +1,7 @@
 {
   "gate": "VMCP_AGENTOS_INTEGRATION",
-  "generated_at": "2026-08-23T08:52:33Z",
-  "git_head": "2f670c2406d22e7eef50a3d6eff7daf954facc77",
+  "generated_at": "2026-08-23T20:08:34Z",
+  "git_head": "0d0ff83f0631a9bb952817c7982e82bb8ae6da66",
   "seam": {
     "acquire": "visionmcp.perception.bus.CaptureBus.observe",
     "verify": "CaptureBus.verify + the capture's recorded digest",
@@ -12,7 +12,7 @@
     {
       "name": "VMCP capture completed and is content-addressed",
       "ok": true,
-      "detail": "capture_id=fe959586eed25517 status=COMPLETE authority=OBSERVED"
+      "detail": "capture_id=244704dc03e7b8f2 status=COMPLETE authority=OBSERVED"
     },
     {
       "name": "VMCP verifies its own capture against the artifact store",
@@ -32,12 +32,12 @@
     {
       "name": "NEGATIVE CONTROL: the same WorkUnit is REFUSED once the evidence is stale",
       "ok": true,
-      "detail": "{'claim.file_unchanged': 'failed', 'claim.file_unchanged.repair.1': 'failed', 'claim.file_unchanged.repair.1.repair.1': 'failed'}"
+      "detail": "{'claim.file_unchanged': 'failed', 'claim.file_unchanged.repair.1': 'failed'}"
     },
     {
       "name": "REPLAY CONTROL: evidence about one file cannot support a claim about another with identical bytes",
       "ok": true,
-      "detail": "exit=6 SUBJECT_MISMATCH: evidence is about /private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/vmcp-integration-huas81sj/t"
+      "detail": "exit=6 SUBJECT_MISMATCH: evidence is about /private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/vmcp-integration-cewnz2yw/t"
     },
     {
       "name": "the core VMCP profile exposes no scheduler, queue or promotion",

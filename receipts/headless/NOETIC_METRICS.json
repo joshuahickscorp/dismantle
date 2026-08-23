@@ -1,7 +1,7 @@
 {
   "schema": "hawking.headless.noetic_metrics.v1",
-  "generated_at": "2026-08-23T18:48:04Z",
-  "commit": "10c2c5c1660b7ee51f108e84f307a10971c197a3",
+  "generated_at": "2026-08-23T20:09:45Z",
+  "commit": "0d0ff83f0631a9bb952817c7982e82bb8ae6da66",
   "artifact": {
     "name": "uniform-q4-v1",
     "path": "/Users/scammermike/models/qwen38-gravity-uniform-q4-v1",
@@ -546,37 +546,11 @@
   },
   "live_control_different_artifact": {
     "llama_server": {
-      "reachable": true,
-      "this_is_not_the_gravity_artifact": true,
-      "model": "Huihui-Qwen3.8-27B-abliterated-Q5_K.gguf",
-      "n_params": 27320697856,
-      "n_ctx": 16384,
-      "gguf_size_bytes": 19524706304,
-      "timings": {
-        "cache_n": 0,
-        "prompt_n": 21,
-        "prompt_ms": 324.639,
-        "prompt_per_token_ms": 15.459,
-        "prompt_per_second": 64.68723720809884,
-        "predicted_n": 48,
-        "predicted_ms": 1983.784,
-        "predicted_per_token_ms": 41.328833333333336,
-        "predicted_per_second": 24.19618264891742
-      },
-      "client_wall_s": 2.355,
-      "ttft_ms_approx": 324.639,
-      "prefill_tps": 64.68723720809884,
-      "decode_tps": 24.19618264891742,
-      "why_separate": "llama-server:52484 is Huihui-Qwen3.8-27B-abliterated-Q5_K.gguf (n_params=27320697856), not uniform-q4-v1 (26,895,998,464). Folding these timings into gravity fields is the same class of error as annualising a 12.4 s window into 1164 units/hour."
+      "reachable": false,
+      "error": "<urlopen error [Errno 61] Connection refused>"
     },
-    "pid": 59064,
-    "rss": {
-      "pid": 59064,
-      "rss_bytes": 4312039424,
-      "vsize_bytes": 534239559680,
-      "threads": 34,
-      "caveat": "CPU RSS via proc_pidinfo; mmap'd weights and MTLBuffers are not a 1:1 of this number. MACHINE_GENOME measured ~20.5 GiB RSS on a freshly admitted llama-server."
-    },
+    "pid": null,
+    "rss": null,
     "runtime_bytes": {
       "bytes": 18644144,
       "files": [
@@ -673,7 +647,7 @@
     {
       "what": "using llama-server:52484 as gravity time",
       "result": "REFUSED",
-      "why": "Server is Huihui-Qwen3.8-27B-abliterated-Q5_K.gguf at 24.19618264891742 tps, n_params=27320697856. Gravity native is 33.03 tps on 26,895,998,464 params. Mixing them is the 1164/hour failure."
+      "why": "Server is None at None tps, n_params=None. Gravity native is 33.03 tps on 26,895,998,464 params. Mixing them is the 1164/hour failure."
     },
     {
       "what": "G042 STATE_BPW as the state metric",

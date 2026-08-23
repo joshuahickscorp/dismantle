@@ -40,6 +40,7 @@ from .context_budget import (
 )
 from .events import Event, EventBus
 from .goal import GoalCompiler
+from .mutation import compile_python_file
 from .runtime import store_observed_overlap
 from .workspace import Workspace
 
@@ -2840,16 +2841,9 @@ class Engine:
         cached = getattr(self, "_pytest_importable_cached", None)
         if cached is not None:
             return bool(cached)
-        try:
-            proc = subprocess.run(
-                [sys.executable, "-c", "import pytest"],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                timeout=15,
-            )
-            cached = proc.returncode == 0
-        except Exception:
-            cached = False
+        import importlib.util
+
+        cached = importlib.util.find_spec("pytest") is not None
         self._pytest_importable_cached = cached
         return bool(cached)
 
@@ -3210,31 +3204,18 @@ class Engine:
                 )
                 continue
 
-            proc = subprocess.run(
-                [
-                    sys.executable,
-                    "-m",
-                    "py_compile",
-                    str(path),
-                ],
-                cwd=str(self.root),
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                timeout=120,
-            )
-
+            compiled = compile_python_file(path)
             record = {
                 "kind": "py_compile",
                 "path": rel,
-                "exit_code": proc.returncode,
-                "stdout": proc.stdout[-4000:],
-                "stderr": proc.stderr[-4000:],
+                "exit_code": compiled["exit_code"],
+                "stdout": compiled["stdout"][-4000:],
+                "stderr": compiled["stderr"][-4000:],
             }
 
             checks.append(record)
 
-            if proc.returncode != 0:
+            if compiled["exit_code"] != 0:
                 ok = False
 
         if ok:

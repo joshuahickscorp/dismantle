@@ -1,15 +1,15 @@
 {
-  "generated_at": "2026-08-23T22:32:58Z",
+  "generated_at": "2026-08-23T22:46:26Z",
   "running": [
     "g012aff64",
-    "g021selfopt",
-    "g030perf2"
+    "g015handoff",
+    "g021selfopt"
   ],
   "needs_harvest": [],
   "headroom": {
-    "load1": 5.3935546875,
+    "load1": 6.23681640625,
     "ncpu": 28,
-    "disk_gib": 402.1,
+    "disk_gib": 398.5,
     "room_for_more": true
   }
 }

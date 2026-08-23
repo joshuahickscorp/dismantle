@@ -5,9 +5,9 @@ import json
 import os
 import re
 import subprocess
-import sys
+import traceback
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 MAX_MUTATION_OPERATIONS = 20
 
@@ -176,12 +176,43 @@ def rollback_mutation(mutation_result: Dict[str, Any]) -> None:
         _restore_file(snap, full_path)
 
 
-def validate_python_syntax(path: str) -> bool:
+def compile_python_file(path: Union[str, Path]) -> Dict[str, Any]:
+    """In-process syntax check. Same parser as ``python -m py_compile``.
+
+    Does not write ``.pyc`` and does not spawn an interpreter. Isolation is
+    not required: the source is already on disk in this process's workspace.
+    """
+    target = Path(path)
     try:
-        r = subprocess.run([sys.executable, "-m", "py_compile", path], capture_output=True, timeout=10)
-        return r.returncode == 0
-    except Exception:
-        return False
+        source = target.read_bytes()
+    except OSError as exc:
+        return {
+            "ok": False,
+            "exit_code": 1,
+            "stdout": "",
+            "stderr": f"{exc}\n",
+        }
+    try:
+        compile(source, str(target), "exec")
+    except SyntaxError as exc:
+        return {
+            "ok": False,
+            "exit_code": 1,
+            "stdout": "",
+            "stderr": "".join(traceback.format_exception_only(type(exc), exc)),
+        }
+    except Exception as exc:
+        return {
+            "ok": False,
+            "exit_code": 1,
+            "stdout": "",
+            "stderr": f"{type(exc).__name__}: {exc}\n",
+        }
+    return {"ok": True, "exit_code": 0, "stdout": "", "stderr": ""}
+
+
+def validate_python_syntax(path: str) -> bool:
+    return bool(compile_python_file(path)["ok"])
 
 
 def discover_tests(paths: List[str]) -> List[str]:

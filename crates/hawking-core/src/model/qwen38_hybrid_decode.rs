@@ -20,7 +20,8 @@ use super::qwen_complete_binary::{
     expand_rice_indices, mixed_gpu_layout, parse_uniform_q4_header, rice_q1_row_ptr,
     uniform_factor_value, BinaryGroupPacked, MixedGpuKind, RiceQ1Packed, UniformFactorPacked,
     MAGIC_AFFINE, MAGIC_BINARY, MAGIC_HGRAVS01, MAGIC_RESIDUAL_COMPACT, MAGIC_UNIFORM,
-    UNIFORM_Q4_GROUP_SIZE, UNIFORM_Q4_GROUP_SIZE_128, uniform_q4_group_size_supported,
+    UNIFORM_Q4_GROUP_SIZE, UNIFORM_Q4_GROUP_SIZE_128, affine_group_size_supported,
+    uniform_q4_group_size_supported,
 };
 use crate::tokenizer::Tokenizer;
 use crate::{Error, Result};
@@ -595,14 +596,18 @@ pub const QWEN38_AFFINE_Q2_SERIAL: &str = "qwen_affine_q2_group32_matvec";
 pub const QWEN38_AFFINE_Q2_GEO_TPR64: &str = "qwen_affine_q2_group32_matvec_geo_tpr64_tg128";
 pub const QWEN38_HGRAFV_EMBED: &str = "qwen38_hgrafv_embedding_lookup";
 
-/// G0-class launch for Affine HGRAVF01 q2/g32. None selects the serial
-/// `qwen_affine_q2_group32_matvec`. Never falls through to HGRAVU01.
+/// G0-class launch for Affine HGRAVF01 q2 at group 32 or 64.
+/// None selects the serial `qwen_affine_q2_group32_matvec`.
+/// Never falls through to HGRAVU01. Kernel names keep the group32 family.
 pub fn qwen38_affine_q2_geo_tpr64_launch(
     group_size: u32,
     rows: u32,
     cols: u32,
 ) -> Option<(&'static str, (u32, u32, u32), (u32, u32, u32))> {
-    if !qwen38_recon_fuse_enabled() || group_size != 32 || cols % 32 != 0 {
+    if !qwen38_recon_fuse_enabled()
+        || !affine_group_size_supported(group_size as usize)
+        || cols % group_size != 0
+    {
         return None;
     }
     let tg = 128u32;
@@ -1156,6 +1161,24 @@ mod device {
                 census.f32
             );
             eprintln!("{}", qwen38_mixed_k_complete_bind_message());
+            if census.affine > 0 {
+                let group = mixed
+                    .values()
+                    .find_map(|weight| match weight {
+                        MixedGpuWeight::Affine(body) => Some(body.group_size),
+                        _ => None,
+                    })
+                    .unwrap_or(0);
+                let kernel = if qwen38_recon_fuse_enabled() {
+                    QWEN38_AFFINE_Q2_GEO_TPR64
+                } else {
+                    QWEN38_AFFINE_Q2_SERIAL
+                };
+                eprintln!(
+                    "qwen38-decode mixed bind: HGRAVF01 affine2 {kernel} group={group} \
+                     (scale+bias, 4 codes/byte)"
+                );
+            }
             Qwen38HybridDecodeSession::assert_mixed_mlp_native(&mixed)?;
             Ok(Self {
                 context,
@@ -1847,7 +1870,7 @@ mod device {
             input: &PinnedBuffer,
             output: &PinnedBuffer,
         ) -> Result<()> {
-            if body.bits != 2 || body.group_size != 32 {
+            if body.bits != 2 || !affine_group_size_supported(body.group_size as usize) {
                 return Err(mixed_error(format!(
                     "HGRAVF01 dispatch refuses bits={} group_size={}",
                     body.bits, body.group_size
@@ -5052,18 +5075,23 @@ mod mixed_catalog_contract_tests {
     }
 
     #[test]
-    fn affine_q2_geo_tpr64_bind_is_group32_only() {
-        let on = qwen38_affine_q2_geo_tpr64_launch(32, 17408, 5120);
+    fn affine_q2_geo_tpr64_bind_is_group32_or_64() {
+        let on32 = qwen38_affine_q2_geo_tpr64_launch(32, 17408, 5120);
+        let on64 = qwen38_affine_q2_geo_tpr64_launch(64, 17408, 5120);
         if qwen38_recon_fuse_enabled() {
-            let launch = on.expect("affine geo");
+            let launch = on32.expect("affine geo g32");
             assert_eq!(launch.0, QWEN38_AFFINE_Q2_GEO_TPR64);
             assert_eq!(launch.1, (17408u32.div_ceil(2) * 128, 1, 1));
             assert_eq!(launch.2, (128, 1, 1));
+            let launch64 = on64.expect("affine geo g64");
+            assert_eq!(launch64.0, QWEN38_AFFINE_Q2_GEO_TPR64);
         } else {
-            assert!(on.is_none());
+            assert!(on32.is_none());
+            assert!(on64.is_none());
         }
-        assert!(qwen38_affine_q2_geo_tpr64_launch(64, 17408, 5120).is_none());
+        assert!(qwen38_affine_q2_geo_tpr64_launch(16, 17408, 5120).is_none());
         assert!(qwen38_affine_q2_geo_tpr64_launch(32, 17408, 161).is_none());
+        assert!(qwen38_affine_q2_geo_tpr64_launch(64, 17408, 161).is_none());
         assert!(crate::metal::SHADER_Q80_MIXED_DECODE
             .contains("kernel void qwen_affine_q2_group32_matvec_geo_tpr64_tg128"));
         assert!(crate::metal::SHADER_Q80_MIXED_DECODE

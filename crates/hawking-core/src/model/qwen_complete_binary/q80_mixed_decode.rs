@@ -47,8 +47,30 @@ pub const SCHEMA_HGRAVS01: &str = "hawking.gravity.activation_weighted_svd_low_r
 pub const SCHEMA_UNIFORM: &str = "hawking.gravity.uniform_group.v1";
 pub const SCHEMA_AFFINE: &str = "hawking.gravity.affine_scale_bias.v1";
 pub const AFFINE_REPRESENTATION: &str = "affine_q2_group32_fp16_scale_bias";
+pub const AFFINE_REPRESENTATION_G64: &str = "affine_q2_group64_fp16_scale_bias";
 pub const AFFINE_BITS: u8 = 2;
 pub const AFFINE_GROUP_SIZE: usize = 32;
+pub const AFFINE_GROUP_SIZE_64: usize = 64;
+
+pub fn affine_group_size_supported(group_size: usize) -> bool {
+    matches!(group_size, AFFINE_GROUP_SIZE | AFFINE_GROUP_SIZE_64)
+}
+
+pub fn affine_representation(group_size: usize) -> &'static str {
+    match group_size {
+        AFFINE_GROUP_SIZE_64 => AFFINE_REPRESENTATION_G64,
+        _ => AFFINE_REPRESENTATION,
+    }
+}
+
+pub fn affine_code_bytes_per_group(group_size: usize) -> Result<usize> {
+    if !affine_group_size_supported(group_size) {
+        return Err(Error::Model(format!(
+            "HGRAVF01 group_size={group_size} is not 32 or 64"
+        )));
+    }
+    Ok(group_size / 4)
+}
 pub const HGRAVS01_REPRESENTATION_PACKED: &str = "activation_weighted_svd_low_rank_q";
 
 #[derive(Clone, Debug, PartialEq)]
@@ -85,7 +107,7 @@ pub struct UniformFactorPacked {
     pub codes: Vec<u8>,
 }
 
-/// Affine 2-bit group-32 pack: `w = q * scale + bias`, `q ∈ {0,1,2,3}`.
+/// Affine 2-bit pack: `w = q * scale + bias`, `q ∈ {0,1,2,3}`, group 32 or 64.
 /// No signed bound. Body is `fp16 scales || fp16 biases || LSB-first codes`.
 #[derive(Clone, Debug, PartialEq)]
 pub struct AffineFactorPacked {
@@ -631,13 +653,23 @@ pub fn uniform_factor_matvec_f32(packed: &UniformFactorPacked, input: &[f32]) ->
     Ok(output)
 }
 
-/// Textbook min/max affine pack for tests. Production catalogs copy MLX
-/// `scales`/`biases`/`weight` bytes (after bf16→f16) instead of re-quantizing.
+/// Textbook min/max affine pack for tests. Production catalogs fit scale
+/// and bias by least squares in the Python packer.
 pub fn pack_affine_factor(values: &[f32], rows: usize, cols: usize) -> Result<AffineFactorPacked> {
-    if rows == 0 || cols == 0 || cols % AFFINE_GROUP_SIZE != 0 {
-        return Err(Error::Model(
-            "affine factor requires positive geometry and cols % 32 == 0".into(),
-        ));
+    pack_affine_factor_group(values, rows, cols, AFFINE_GROUP_SIZE)
+}
+
+pub fn pack_affine_factor_group(
+    values: &[f32],
+    rows: usize,
+    cols: usize,
+    group_size: usize,
+) -> Result<AffineFactorPacked> {
+    if rows == 0 || cols == 0 || !affine_group_size_supported(group_size) || cols % group_size != 0
+    {
+        return Err(Error::Model(format!(
+            "affine factor requires positive geometry, group 32 or 64, cols % {group_size} == 0"
+        )));
     }
     if values.len() != rows * cols {
         return Err(Error::Model("affine factor length disagrees with shape".into()));
@@ -645,17 +677,17 @@ pub fn pack_affine_factor(values: &[f32], rows: usize, cols: usize) -> Result<Af
     if values.iter().any(|v| !v.is_finite()) {
         return Err(Error::Model("affine factor refuses non-finite values".into()));
     }
-    let groups_per_row = cols / AFFINE_GROUP_SIZE;
+    let groups_per_row = cols / group_size;
     let groups = rows
         .checked_mul(groups_per_row)
         .ok_or_else(|| Error::Model("affine group count overflows".into()))?;
     let mut scales_f16 = Vec::with_capacity(groups);
     let mut biases_f16 = Vec::with_capacity(groups);
-    let mut codes = Vec::with_capacity(groups * AFFINE_GROUP_SIZE);
+    let mut codes = Vec::with_capacity(groups * group_size);
     for row in 0..rows {
         for group in 0..groups_per_row {
-            let start = row * cols + group * AFFINE_GROUP_SIZE;
-            let slice = &values[start..start + AFFINE_GROUP_SIZE];
+            let start = row * cols + group * group_size;
+            let slice = &values[start..start + group_size];
             let min = slice.iter().copied().fold(f32::INFINITY, f32::min);
             let max = slice.iter().copied().fold(f32::NEG_INFINITY, f32::max);
             let scale = ((max - min) / 3.0).max(1e-7);
@@ -681,7 +713,7 @@ pub fn pack_affine_factor(values: &[f32], rows: usize, cols: usize) -> Result<Af
         rows,
         cols,
         bits: AFFINE_BITS,
-        group_size: AFFINE_GROUP_SIZE,
+        group_size,
         groups,
         scales_f16,
         biases_f16,
@@ -718,8 +750,11 @@ pub fn affine_factor_matvec_f32(packed: &AffineFactorPacked, input: &[f32]) -> R
 }
 
 pub fn wrap_affine_factor(packed: &AffineFactorPacked) -> Result<Vec<u8>> {
-    if packed.bits != AFFINE_BITS || packed.group_size != AFFINE_GROUP_SIZE {
-        return Err(Error::Model("HGRAVF01 is bits=2 group_size=32 only".into()));
+    if packed.bits != AFFINE_BITS || !affine_group_size_supported(packed.group_size) {
+        return Err(Error::Model(format!(
+            "HGRAVF01 is bits=2 group_size=32 or 64, got bits={} group_size={}",
+            packed.bits, packed.group_size
+        )));
     }
     let scale_bytes = packed.scales_f16.len() * 2;
     let bias_bytes = packed.biases_f16.len() * 2;
@@ -733,7 +768,7 @@ pub fn wrap_affine_factor(packed: &AffineFactorPacked) -> Result<Vec<u8>> {
     body.extend_from_slice(&packed.codes);
     let header = serde_json::json!({
         "schema": SCHEMA_AFFINE,
-        "representation": AFFINE_REPRESENTATION,
+        "representation": affine_representation(packed.group_size),
         "shape": [packed.rows, packed.cols],
         "elements": packed.rows * packed.cols,
         "bits": packed.bits,
@@ -742,7 +777,7 @@ pub fn wrap_affine_factor(packed: &AffineFactorPacked) -> Result<Vec<u8>> {
         "scale_bytes": scale_bytes,
         "bias_bytes": bias_bytes,
         "code_bytes": packed.codes.len(),
-        "source": "mlx_quantized_linear",
+        "source": "fitted_affine",
     });
     let header_bytes = serde_json::to_vec(&header)
         .map_err(|error| Error::Model(format!("HGRAVF01 header encode: {error}")))?;
@@ -1490,33 +1525,37 @@ pub fn mixed_gpu_layout(codec: u8, payload: &[u8]) -> Result<MixedGpuLayout> {
             let bits = u8::try_from(header_u64(&header, "bits", "HGRAVF01")?)
                 .map_err(|_| Error::Model("HGRAVF01 bits do not fit u8".into()))?;
             let group_size = header_usize(&header, "group_size", "HGRAVF01")?;
-            if bits != AFFINE_BITS || group_size != AFFINE_GROUP_SIZE {
+            if bits != AFFINE_BITS || !affine_group_size_supported(group_size) {
                 return Err(Error::Model(format!(
-                    "HGRAVF01 bits={bits} group_size={group_size} is not 2/32"
+                    "HGRAVF01 bits={bits} group_size={group_size} is not 2/32 or 2/64"
                 )));
             }
             let shape = header_shape(&header, "shape", "HGRAVF01")?;
             let elements = header_usize(&header, "elements", "HGRAVF01")?;
             let (rows, cols) = matrix_rows_cols(&shape, elements, "HGRAVF01")?;
-            if cols % AFFINE_GROUP_SIZE != 0 {
-                return Err(Error::Model(
-                    "HGRAVF01 kernel requires cols to be a multiple of 32".into(),
-                ));
+            if cols % group_size != 0 {
+                return Err(Error::Model(format!(
+                    "HGRAVF01 kernel requires cols to be a multiple of {group_size}"
+                )));
             }
-            let groups = rows * (cols / AFFINE_GROUP_SIZE);
+            let groups = rows * (cols / group_size);
             let header_groups = header_usize(&header, "groups", "HGRAVF01")?;
             if header_groups != groups {
                 return Err(Error::Model(format!(
-                    "HGRAVF01 groups {header_groups} != rows*(cols/32) {groups}"
+                    "HGRAVF01 groups {header_groups} != rows*(cols/{group_size}) {groups}"
                 )));
             }
             let scale_bytes = header_usize(&header, "scale_bytes", "HGRAVF01")?;
             let bias_bytes = header_usize(&header, "bias_bytes", "HGRAVF01")?;
             let code_bytes = header_usize(&header, "code_bytes", "HGRAVF01")?;
-            if scale_bytes != groups * 2 || bias_bytes != groups * 2 || code_bytes != groups * 8 {
+            let bytes_per_group = affine_code_bytes_per_group(group_size)?;
+            if scale_bytes != groups * 2
+                || bias_bytes != groups * 2
+                || code_bytes != groups * bytes_per_group
+            {
                 return Err(Error::Model(format!(
                     "HGRAVF01 ledger scales={scale_bytes} biases={bias_bytes} codes={code_bytes} \
-                     != groups={groups} * {{2,2,8}}"
+                     != groups={groups} * {{2,2,{bytes_per_group}}}"
                 )));
             }
             if body.len() != scale_bytes + bias_bytes + code_bytes {
@@ -1969,5 +2008,44 @@ mod tests {
         payload.truncate(payload.len() - 4);
         let err = mixed_gpu_layout(5, &payload).unwrap_err().to_string();
         assert!(err.contains("HGRAVF01"), "{err}");
+    }
+
+    #[test]
+    fn parse_affine_container_roundtrip_group64() {
+        let rows = 4;
+        let cols = 64;
+        let packed = pack_affine_factor_group(
+            &deterministic_matrix(rows, cols, 7),
+            rows,
+            cols,
+            AFFINE_GROUP_SIZE_64,
+        )
+        .unwrap();
+        assert_eq!(packed.group_size, 64);
+        assert_eq!(packed.groups, 4);
+        let payload = wrap_affine_factor(&packed).unwrap();
+        let parsed = parse_affine_container(&payload).unwrap();
+        assert_eq!(parsed, packed);
+        let layout = mixed_gpu_layout(5, &payload).unwrap();
+        match layout.kind {
+            MixedGpuKind::Affine {
+                bits,
+                group_size,
+                code_bytes,
+                ..
+            } => {
+                assert_eq!(bits, 2);
+                assert_eq!(group_size, 64);
+                assert_eq!(code_bytes, packed.groups * 16);
+            }
+            other => panic!("expected Affine layout, got {other:?}"),
+        }
+        let x = deterministic_input(cols);
+        let a = affine_factor_matvec_f32(&packed, &x).unwrap();
+        let b = MixedPackedTensor::from_codec_payload(5, &payload)
+            .unwrap()
+            .cpu_matvec(&x)
+            .unwrap();
+        assert_eq!(max_abs_error(&a, &b), 0.0);
     }
 }

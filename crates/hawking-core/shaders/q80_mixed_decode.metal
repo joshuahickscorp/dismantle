@@ -919,55 +919,27 @@ kernel void q80_hgravs01_factor_matvec_simd3(
 // groups_per_row is derived as cols/64. Caller must bind only when
 // group_size==64 and cols%64==0 (every Qwen3.8 Uniform GEMV K).
 
-// Per-group reassociation of (code - bound) * scale * x:
-//   sum_i (code_i - bound) * scale * x_i
-//     = scale * sum_i code_i * x_i  -  bound * scale * sum_i x_i
-// Inner 8-wide loop is int->float + one FMA per element. No per-element
-// scale-mul, no per-element bound-sub. Caller applies scale once per group
-// slice (`acc += scale * s`) and folds the bound term into a per-output bias.
 static inline float hgravu01_q3_unpack8(
     device const uchar* codes,
     uint byte0,
+    float scale,
+    int bound,
     device const float* x,
     uint col)
 {
     const uint b0 = uint(codes[byte0]);
     const uint b1 = uint(codes[byte0 + 1u]);
     const uint b2 = uint(codes[byte0 + 2u]);
-    float s = 0.0f;
-    s += float(int(b0 & 7u)) * x[col];
-    s += float(int((b0 >> 3u) & 7u)) * x[col + 1u];
-    s += float(int(((b0 >> 6u) | (b1 << 2u)) & 7u)) * x[col + 2u];
-    s += float(int((b1 >> 1u) & 7u)) * x[col + 3u];
-    s += float(int((b1 >> 4u) & 7u)) * x[col + 4u];
-    s += float(int(((b1 >> 7u) | (b2 << 1u)) & 7u)) * x[col + 5u];
-    s += float(int((b2 >> 2u) & 7u)) * x[col + 6u];
-    s += float(int((b2 >> 5u) & 7u)) * x[col + 7u];
-    return s;
-}
-
-// Same extract as unpack8. .x = sum code*x, .y = sum x, from one load of each x.
-// Used by the production kernel so the bound bias does not re-read x.
-static inline float2 hgravu01_q3_unpack8_bias(
-    device const uchar* codes,
-    uint byte0,
-    device const float* x,
-    uint col)
-{
-    const uint b0 = uint(codes[byte0]);
-    const uint b1 = uint(codes[byte0 + 1u]);
-    const uint b2 = uint(codes[byte0 + 2u]);
-    float2 r = float2(0.0f);
-    float xv;
-    xv = x[col];      r.x += float(int(b0 & 7u)) * xv;                         r.y += xv;
-    xv = x[col + 1u]; r.x += float(int((b0 >> 3u) & 7u)) * xv;                 r.y += xv;
-    xv = x[col + 2u]; r.x += float(int(((b0 >> 6u) | (b1 << 2u)) & 7u)) * xv; r.y += xv;
-    xv = x[col + 3u]; r.x += float(int((b1 >> 1u) & 7u)) * xv;                 r.y += xv;
-    xv = x[col + 4u]; r.x += float(int((b1 >> 4u) & 7u)) * xv;                 r.y += xv;
-    xv = x[col + 5u]; r.x += float(int(((b1 >> 7u) | (b2 << 1u)) & 7u)) * xv; r.y += xv;
-    xv = x[col + 6u]; r.x += float(int((b2 >> 2u) & 7u)) * xv;                 r.y += xv;
-    xv = x[col + 7u]; r.x += float(int((b2 >> 5u) & 7u)) * xv;                 r.y += xv;
-    return r;
+    float sum = 0.0f;
+    sum += float(int(b0 & 7u) - bound) * scale * x[col];
+    sum += float(int((b0 >> 3u) & 7u) - bound) * scale * x[col + 1u];
+    sum += float(int(((b0 >> 6u) | (b1 << 2u)) & 7u) - bound) * scale * x[col + 2u];
+    sum += float(int((b1 >> 1u) & 7u) - bound) * scale * x[col + 3u];
+    sum += float(int((b1 >> 4u) & 7u) - bound) * scale * x[col + 4u];
+    sum += float(int(((b1 >> 7u) | (b2 << 1u)) & 7u) - bound) * scale * x[col + 5u];
+    sum += float(int((b2 >> 2u) & 7u) - bound) * scale * x[col + 6u];
+    sum += float(int((b2 >> 5u) & 7u) - bound) * scale * x[col + 7u];
+    return sum;
 }
 
 static inline float hgravu01_q4_unpack8(
@@ -1008,7 +980,6 @@ kernel void qwen_uniform_q3_group64_matvec_geo_tpr64_tg128(
     const uint lane_in_row = split * 32u + simd_lane;
     const uint row = group_id * 2u + team;
     float acc = 0.0f;
-    float bacc = 0.0f;
     if (row < rows && bits == 3u && group_size == 64u && (cols & 63u) == 0u) {
         const uint groups_per_row = cols >> 6u;
         const int qbound = int(bound);
@@ -1018,59 +989,7 @@ kernel void qwen_uniform_q3_group64_matvec_geo_tpr64_tg128(
             const uint rgb = row * groups_per_row + group;
             const float scale = float(scales[rgb]);
             const uint byte0 = rgb * 24u + ((local * 3u) >> 3u);
-            const float2 d = hgravu01_q3_unpack8_bias(codes, byte0, input, col);
-            acc += scale * d.x;
-            bacc += scale * d.y;
-        }
-        // Bound term sum_g(scale_g * bound * sum(x_g)) is independent of
-        // codes. Fold it into a per-output bias and subtract at the store.
-        acc -= float(qbound) * bacc;
-    }
-    acc = simd_sum(acc);
-    if (simd_lane == 0u) {
-        red[simd_id] = acc;
-    }
-    threadgroup_barrier(mem_flags::mem_threadgroup);
-    if (split == 0u && simd_lane == 0u && row < rows) {
-        output[row] = red[team * kSplit] + red[team * kSplit + 1u];
-    }
-}
-
-// ALU-bench / lean consume: same geometry and codes as geo_tpr64, but the
-// inner 8-wide loop is only int->float + FMA and scale is applied once per
-// group slice. Bound is not applied here (fold into a host-side / prepass
-// bias). Arithmetic intensity is the 13.3 flop/byte path.
-kernel void qwen_uniform_q3_group64_matvec_geo_tpr64_tg128_scalehoist(
-    device const uchar* codes       [[buffer(0)]],
-    device const half* scales       [[buffer(1)]],
-    device const float* input       [[buffer(2)]],
-    device float* output            [[buffer(3)]],
-    constant uint& rows             [[buffer(4)]],
-    constant uint& cols             [[buffer(5)]],
-    constant uint& group_size       [[buffer(6)]],
-    constant uint& bits             [[buffer(7)]],
-    constant uint& bound            [[buffer(8)]],
-    uint group_id                    [[threadgroup_position_in_grid]],
-    uint simd_lane                   [[thread_index_in_simdgroup]],
-    uint simd_id                     [[simdgroup_index_in_threadgroup]])
-{
-    (void)bound;
-    threadgroup float red[4];
-    constexpr uint kSplit = 2u;
-    const uint team = simd_id / kSplit;
-    const uint split = simd_id % kSplit;
-    const uint lane_in_row = split * 32u + simd_lane;
-    const uint row = group_id * 2u + team;
-    float acc = 0.0f;
-    if (row < rows && bits == 3u && group_size == 64u && (cols & 63u) == 0u) {
-        const uint groups_per_row = cols >> 6u;
-        for (uint col = lane_in_row * 8u; col + 8u <= cols; col += 512u) {
-            const uint group = col >> 6u;
-            const uint local = col & 63u;
-            const uint rgb = row * groups_per_row + group;
-            const float scale = float(scales[rgb]);
-            const uint byte0 = rgb * 24u + ((local * 3u) >> 3u);
-            acc += scale * hgravu01_q3_unpack8(codes, byte0, input, col);
+            acc += hgravu01_q3_unpack8(codes, byte0, scale, qbound, input, col);
         }
     }
     acc = simd_sum(acc);
@@ -1130,8 +1049,14 @@ kernel void qwen_uniform_hgravu_q4_group64_matvec_geo_tpr64_tg128(
     }
 }
 
-// ── HGRAVF01 affine q2 group-32 (w = q * scale + bias, q in {0,1,2,3}) ──
+// ── HGRAVF01 affine q2 (w = q * scale + bias, q in {0,1,2,3}) ──
 // Same geo_tpr64 occupancy as HGRAVU01. Different reconstruction. No bound.
+// group_size is 32 or 64; 8-wide tiles sit inside one group either way.
+// Kernel names keep the group32 family; bind-time group_size selects 32/64.
+
+static inline bool affine_q2_group_ok(uint group_size, uint cols) {
+    return (group_size == 32u || group_size == 64u) && (cols % group_size) == 0u;
+}
 
 static inline float affine_q2_unpack8(
     uint packed16, float scale, float bias,
@@ -1159,18 +1084,19 @@ kernel void qwen_affine_q2_group32_matvec(
     constant uint& group_size       [[buffer(7)]],
     uint row                         [[thread_position_in_grid]])
 {
-    if (row >= rows || group_size != 32u || (cols & 31u) != 0u) {
+    if (row >= rows || !affine_q2_group_ok(group_size, cols)) {
         return;
     }
-    const uint groups_per_row = cols >> 5u;
+    const uint groups_per_row = cols / group_size;
+    const uint bytes_per_group = group_size >> 2u;
     float acc = 0.0f;
     for (uint col = 0u; col + 8u <= cols; col += 8u) {
-        const uint group = col >> 5u;
-        const uint local = col & 31u;
+        const uint group = col / group_size;
+        const uint local = col % group_size;
         const uint rgb = row * groups_per_row + group;
         const float scale = float(scales[rgb]);
         const float bias = float(biases[rgb]);
-        const uint byte0 = rgb * 8u + (local >> 2u);
+        const uint byte0 = rgb * bytes_per_group + (local >> 2u);
         const uint packed16 = uint(*((device const ushort*)(codes + byte0)));
         acc += affine_q2_unpack8(packed16, scale, bias, input, col);
     }
@@ -1198,15 +1124,16 @@ kernel void qwen_affine_q2_group32_matvec_geo_tpr64_tg128(
     const uint lane_in_row = split * 32u + simd_lane;
     const uint row = group_id * 2u + team;
     float acc = 0.0f;
-    if (row < rows && group_size == 32u && (cols & 31u) == 0u) {
-        const uint groups_per_row = cols >> 5u;
+    if (row < rows && affine_q2_group_ok(group_size, cols)) {
+        const uint groups_per_row = cols / group_size;
+        const uint bytes_per_group = group_size >> 2u;
         for (uint col = lane_in_row * 8u; col + 8u <= cols; col += 512u) {
-            const uint group = col >> 5u;
-            const uint local = col & 31u;
+            const uint group = col / group_size;
+            const uint local = col % group_size;
             const uint rgb = row * groups_per_row + group;
             const float scale = float(scales[rgb]);
             const float bias = float(biases[rgb]);
-            const uint byte0 = rgb * 8u + (local >> 2u);
+            const uint byte0 = rgb * bytes_per_group + (local >> 2u);
             const uint packed16 = uint(*((device const ushort*)(codes + byte0)));
             acc += affine_q2_unpack8(packed16, scale, bias, input, col);
         }
@@ -1233,16 +1160,17 @@ kernel void qwen38_hgrafv_embedding_lookup(
     constant uint& group_size     [[buffer(7)]],
     uint dim                       [[thread_position_in_grid]])
 {
-    if (dim >= hidden_size || token >= vocab || group_size != 32u || (hidden_size & 31u) != 0u) {
+    if (dim >= hidden_size || token >= vocab || !affine_q2_group_ok(group_size, hidden_size)) {
         return;
     }
-    const uint groups_per_row = hidden_size >> 5u;
-    const uint group = dim >> 5u;
-    const uint local = dim & 31u;
+    const uint groups_per_row = hidden_size / group_size;
+    const uint bytes_per_group = group_size >> 2u;
+    const uint group = dim / group_size;
+    const uint local = dim % group_size;
     const uint rgb = token * groups_per_row + group;
     const float scale = float(scales[rgb]);
     const float bias = float(biases[rgb]);
-    const uint byte = uint(codes[rgb * 8u + (local >> 2u)]);
+    const uint byte = uint(codes[rgb * bytes_per_group + (local >> 2u)]);
     const uint q = (byte >> (2u * (local & 3u))) & 3u;
     hidden[dim] = float(q) * scale + bias;
 }

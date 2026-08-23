@@ -1,9 +1,9 @@
 {
   "schema": "hawking.headless.noetic_ascension_handoff.v1",
-  "generated_at": "2026-08-23T23:05:30Z",
+  "generated_at": "2026-08-23T23:11:20Z",
   "builder": "tools/headless/noetic_ascension_handoff.py",
   "loop": "tools/headless/noetic_ascension_loop.py",
-  "git_head": "94fa1fade17d52eeb618b94a0076725adf2826a2",
+  "git_head": "9cd5cf949cd0530ef061ab98d06808a058eb61ac",
   "branch": "odyssey-i",
   "sparse": {
     "on": false,

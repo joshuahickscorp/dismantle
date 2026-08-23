@@ -1,28 +1,14 @@
 {
-  "generated_at": "2026-08-23T23:04:51Z",
+  "generated_at": "2026-08-23T23:10:02Z",
   "running": [
     "g021root",
     "g027exec"
   ],
-  "needs_harvest": [
-    {
-      "slug": "g015handoff",
-      "id": "g015handoff-20260823-183520",
-      "unharvested": [
-        "receipts/headless/NOETIC_ASCENSION_HANDOFF.json",
-        "receipts/headless/NOETIC_ASCENSION_LOOP.json",
-        "receipts/headless/NOETIC_ASCENSION_SCIENCE_UPDATE.json",
-        "tools/headless/noetic_ascension_handoff.py",
-        "tools/headless/noetic_ascension_loop.py",
-        "tools/headless/test_noetic_ascension_handoff.py"
-      ],
-      "worktree_extras": 0
-    }
-  ],
+  "needs_harvest": [],
   "headroom": {
-    "load1": 11.41796875,
+    "load1": 15.2275390625,
     "ncpu": 28,
-    "disk_gib": 390.6,
+    "disk_gib": 390.2,
     "room_for_more": true
   }
 }

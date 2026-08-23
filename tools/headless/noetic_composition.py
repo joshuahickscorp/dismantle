@@ -663,6 +663,10 @@ def load_teacher_layer(src: SourceBF16, cfg, layer_idx: int) -> nn.Module:
     return layer
 
 
+# Set by --whole-model-mlp-codec. None means the ordinary q4 student.
+WHOLE_MODEL_MLP_CODEC = None
+
+
 def load_student_layer(art: ArtifactQ4, cfg, layer_idx: int) -> nn.Module:
     layer = build_layer(cfg, layer_idx)
     cat_prefix = f"language_model.model.layers.{layer_idx}."
@@ -705,7 +709,14 @@ def load_student_layer(art: ArtifactQ4, cfg, layer_idx: int) -> nn.Module:
         "input_layernorm.weight",
         "post_attention_layernorm.weight",
     ):
-        sd[k] = torch.from_numpy(np.ascontiguousarray(art.load(cat_prefix + k)))
+        w = art.load(cat_prefix + k)
+        if WHOLE_MODEL_MLP_CODEC is not None and k.startswith("mlp."):
+            # Whole-model arm: the organ-local CANON in FRACTIONAL_BIT_CANON.json
+            # is a per-tensor function-space screen, and its own receipt says a
+            # local CANON is not a composed win. This applies the codec to EVERY
+            # MLP tensor of EVERY layer so the error has somewhere to accumulate.
+            w = WHOLE_MODEL_MLP_CODEC(w)
+        sd[k] = torch.from_numpy(np.ascontiguousarray(w))
     missing = layer.load_state_dict(sd, strict=False)
     if missing.missing_keys:
         raise RuntimeError(f"student L{layer_idx} missing {missing.missing_keys}")
@@ -829,9 +840,44 @@ def rmsnorm_delta(x: np.ndarray, w: np.ndarray, eps: float = 1e-6) -> np.ndarray
 
 
 @torch.no_grad()
+def _install_whole_model_codec() -> str | None:
+    """Optionally quantize EVERY layer's MLP with a named codec.
+
+    FRACTIONAL_BIT_CANON.json reaches CANON at 1.85 bpw on an organ-local
+    function-space screen and states outright that a local CANON is not a
+    composed win. This is how that gets tested: same codec, every MLP tensor,
+    every layer, then the full 64-layer loop with its argmax.
+    """
+    global WHOLE_MODEL_MLP_CODEC
+    name = os.environ.get("HAWKING_WHOLE_MODEL_MLP_CODEC")
+    if not name:
+        return None
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import fractional_bit_canon as fbc
+
+    if name.startswith("ternary_g"):
+        g = int(name.split("_g")[1])
+        # d=None is the MEAN-ABS scale, not the activation-aware one. That is
+        # deliberately the WEAKER arm: it needs no per-layer capture, and if the
+        # weaker codec survives composition the fitted one is not worse.
+        WHOLE_MODEL_MLP_CODEC = lambda w: fbc.codec_ternary(w, g=g, d=None)[0]
+    elif name.startswith("binary_g"):
+        g = int(name.split("_g")[1])
+        WHOLE_MODEL_MLP_CODEC = lambda w: requantize_absmax(w, 1, group=g)
+    elif name == "zeroed":
+        WHOLE_MODEL_MLP_CODEC = lambda w: np.zeros_like(w)
+    else:
+        raise SystemExit(f"unknown HAWKING_WHOLE_MODEL_MLP_CODEC={name!r}")
+    return name
+
+
 def main() -> int:
     if not TORCH_AVAILABLE:
         sys.exit("torch required: run this harness directly so it re-execs into ~/.grok-vision/bin/python")
+    whole_model = _install_whole_model_codec()
+    if whole_model:
+        print(f"WHOLE-MODEL ARM: every layer's mlp.{{gate,up,down}}_proj -> {whole_model}")
+        sys.stdout.flush()
 
     warnings.filterwarnings("ignore")
     torch.set_grad_enabled(False)

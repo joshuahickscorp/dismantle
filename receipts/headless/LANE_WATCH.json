@@ -1,21 +1,18 @@
 {
-  "generated_at": "2026-08-23T20:50:18Z",
+  "generated_at": "2026-08-23T20:54:42Z",
   "running": [
     "g005doctor",
     "g010closure",
+    "g011zpgate",
     "g024mlxgate",
-    "g026ns",
-    "g032frac"
+    "g026ns"
   ],
   "needs_harvest": [
     {
       "slug": "g009native",
       "id": "g009native-20260823-163311",
       "unharvested": [
-        "receipts/headless/NOETIC_NATIVE_OPERATOR.json",
-        "tools/headless/noetic_native_operator.py",
-        "tools/headless/pytest.ini",
-        "tools/headless/test_noetic_native_operator.py"
+        "tools/headless/pytest.ini"
       ],
       "worktree_extras": 5
     },
@@ -23,11 +20,7 @@
       "slug": "g011zeroparent",
       "id": "g011zeroparent-20260823-163311",
       "unharvested": [
-        "receipts/headless/NOETIC_ZERO_PARENT.json",
-        "tools/headless/noetic_openlog.c",
-        "tools/headless/noetic_zero_parent.py",
-        "tools/headless/pytest.ini",
-        "tools/headless/test_noetic_zero_parent.py"
+        "tools/headless/pytest.ini"
       ],
       "worktree_extras": 4
     },
@@ -35,26 +28,24 @@
       "slug": "g027entropy",
       "id": "g027entropy-20260823-162830",
       "unharvested": [
-        "receipts/headless/CODE_ENTROPY.json",
-        "tools/headless/code_entropy.py",
         "tools/headless/pytest.ini"
       ],
       "worktree_extras": 4
     },
     {
-      "slug": "g030perf",
-      "id": "g030perf-20260823-162830",
+      "slug": "g032frac",
+      "id": "g032frac-20260823-162830",
       "unharvested": [
-        "receipts/headless/CONTROL_PLANE_LATENCY.json",
-        "tools/headless/control_plane_latency.py"
+        "receipts/headless/FRACTIONAL_BIT_CANON.json",
+        "tools/headless/fractional_bit_canon.py"
       ],
       "worktree_extras": 0
     }
   ],
   "headroom": {
-    "load1": 8.17333984375,
+    "load1": 4.99951171875,
     "ncpu": 28,
-    "disk_gib": 433.2,
+    "disk_gib": 433.3,
     "room_for_more": true
   }
 }

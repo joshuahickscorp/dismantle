@@ -1,7 +1,7 @@
 {
   "schema": "hawking.headless.doctor_v2_prescription.v1",
-  "generated_at": "2026-08-23T21:23:49Z",
-  "git_head": "1cd3b4cb3fbe843701ee4e4467a7e0b22025892a",
+  "generated_at": "2026-08-23T21:40:48Z",
+  "git_head": "55f6e36e51d9e68c0ef415f14bf1f713dfe97ca9",
   "python": "/opt/homebrew/opt/python@3.14/bin/python3.14",
   "what_this_is": "Doctor v2 prescription: what physical computation each ORGAN should perform, ranked by expected verified gain per experiment cost. Not bits per tensor.",
   "question": "what physical computation should this ORGAN perform",
@@ -1888,6 +1888,6 @@
       "why": "live_27b_policy; occupancy is not free"
     }
   ],
-  "wall_s": 86.20829595800024,
+  "wall_s": 103.26254358299775,
   "written_to": "/Users/scammermike/Downloads/hawking/receipts/headless/DOCTOR_V2_PRESCRIPTION.json"
 }

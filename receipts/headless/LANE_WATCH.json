@@ -1,25 +1,25 @@
 {
-  "generated_at": "2026-08-23T21:33:22Z",
+  "generated_at": "2026-08-23T21:40:26Z",
   "running": [
     "g006gravity",
-    "g012exec",
-    "g028auth2",
-    "g031canon"
+    "g028auth2"
   ],
   "needs_harvest": [
     {
-      "slug": "g004ir",
-      "id": "g004ir-20260823-172007",
+      "slug": "g012exec",
+      "id": "g012exec-20260823-172006",
       "unharvested": [
-        "receipts/headless/NOETIC_IR.json"
+        "receipts/headless/FIRST_NOETIC_EXECUTABLE.json",
+        "tools/headless/first_noetic_executable.py",
+        "tools/headless/test_first_noetic_executable.py"
       ],
-      "worktree_extras": 2
+      "worktree_extras": 0
     }
   ],
   "headroom": {
-    "load1": 4.9970703125,
+    "load1": 6.52978515625,
     "ncpu": 28,
-    "disk_gib": 431.0,
+    "disk_gib": 430.3,
     "room_for_more": true
   }
 }

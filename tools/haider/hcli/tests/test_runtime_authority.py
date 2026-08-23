@@ -18,18 +18,16 @@ from pathlib import Path
 from unittest.mock import patch
 
 REPO = Path(__file__).resolve().parents[4]
-if str(REPO) not in sys.path:
-    sys.path.insert(0, str(REPO))
 
-from tools.haider.hcli.backends import CompletionResult
-from tools.haider.hcli.machine import (
+from hcli.backends import CompletionResult
+from hcli.machine import (
     GIB,
     MemGate,
     resolve_runtime_limits,
 )
-from tools.haider.hcli import machine as machine_mod
-from tools.haider.hcli.resources import pid_is_alive, process_start_token
-from tools.haider.hcli.runtime import RuntimePool
+from hcli import machine as machine_mod
+from hcli.resources import pid_is_alive, process_start_token
+from hcli.runtime import RuntimePool
 
 
 TOPOLOGY_KEYS = (
@@ -163,7 +161,7 @@ class FakeBackend:
         )
 
     def stop(self):
-        from tools.haider.hcli.backends import terminate_pid
+        from hcli.backends import terminate_pid
 
         report = {"pid": self.pid, "gone": True, "unreaped": []}
         if self.process is not None and self.process.poll() is None:

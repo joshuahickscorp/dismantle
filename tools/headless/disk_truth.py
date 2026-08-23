@@ -107,7 +107,7 @@ GENOME_TARGETS = {
 
 
 def main() -> int:
-    src = tree_hash(REPO / "tools/haider/hcli")
+    src = tree_hash(REPO / "hcli")
     installed_link = Path(os.path.expanduser("~/.local/share/hcli/current"))
     installed = tree_hash(installed_link / "hcli") if installed_link.exists() else {"present": False}
 

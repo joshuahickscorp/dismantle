@@ -28,7 +28,7 @@ from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 SCHEMA = "hawking.headless.startup_census.v1"
 REPO = Path(__file__).resolve().parents[2]
 RECEIPT = REPO / "receipts" / "headless" / "STARTUP_CENSUS.json"
-HCLI_GIT_PREFIX = "tools/haider/hcli"
+HCLI_GIT_PREFIX = "hcli"
 REPEATS = 5
 
 HEAVY = (
@@ -128,25 +128,26 @@ def sha256_bytes(data: bytes) -> str:
 def locate_hcli(repo: Path, extract_root: Path) -> Dict[str, Any]:
     """Prefer an on-disk package; otherwise extract HEAD via git archive.
 
-    A missing tools/haider in this worktree is not evidence the package does
-    not exist — this tree is a sparse checkout.
+    Canonical physical path is <repo>/hcli. The fossil tools/haider/hcli
+    tree is gone; a missing hcli/ is not evidence the package does not
+    exist in git — this tree may be a sparse checkout.
     """
-    on_disk = repo / "tools" / "haider"
-    marker = on_disk / "hcli" / "__main__.py"
+    on_disk = repo / "hcli"
+    marker = on_disk / "__main__.py"
     if marker.is_file():
         return {
             "mode": "on-disk",
-            "pythonpath": str(on_disk.resolve()),
-            "package": str((on_disk / "hcli").resolve()),
-            "reason": "tools/haider/hcli is materialized in this worktree",
+            "pythonpath": str(repo.resolve()),
+            "package": str(on_disk.resolve()),
+            "reason": "hcli/ is materialized in this worktree",
         }
 
     note_fail(
-        "tools/haider/hcli is not materialized in this sparse worktree; "
-        "census extracted HEAD:tools/haider/hcli via git archive into a temp dir"
+        "hcli/ is not materialized in this sparse worktree; "
+        "census extracted HEAD:hcli via git archive into a temp dir"
     )
     raw = subprocess.run(
-        ["git", "-C", str(repo), "archive", "HEAD", "tools/haider/hcli"],
+        ["git", "-C", str(repo), "archive", "HEAD", "hcli"],
         capture_output=True,
         check=False,
         timeout=120,
@@ -159,16 +160,16 @@ def locate_hcli(repo: Path, extract_root: Path) -> Dict[str, Any]:
         capture_output=True,
         check=True,
     )
-    pkg = extract_root / "tools" / "haider" / "hcli"
+    pkg = extract_root / "hcli"
     if not (pkg / "__main__.py").is_file():
         raise RuntimeError(f"git archive did not produce {pkg / '__main__.py'}")
-    pythonpath = extract_root / "tools" / "haider"
+    pythonpath = extract_root
     return {
         "mode": "git-archive-HEAD",
         "pythonpath": str(pythonpath),
         "package": str(pkg),
         "extract_root": str(extract_root),
-        "reason": "sparse checkout: tools/haider not on disk; content is HEAD",
+        "reason": "sparse checkout: hcli not on disk; content is HEAD",
     }
 
 
@@ -1128,7 +1129,7 @@ def main() -> int:
             "git_head": head,
             "repo": str(REPO),
             "sparse_checkout": {
-                "tools_haider_on_disk": (REPO / "tools" / "haider" / "hcli" / "__main__.py").is_file(),
+                "hcli_on_disk": (REPO / "hcli" / "__main__.py").is_file(),
                 "hcli_source_mode": located["mode"],
                 "hcli_pythonpath": pythonpath,
                 "hcli_package": located["package"],

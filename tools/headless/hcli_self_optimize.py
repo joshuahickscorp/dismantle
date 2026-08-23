@@ -32,9 +32,9 @@ from typing import Any, Dict, List, Optional, Tuple
 
 REPO = Path(__file__).resolve().parents[2]
 SCRIPT = Path(__file__).resolve()
-HCLI_PARENT = REPO / "tools" / "haider"
-ENGINE_REL = Path("tools/haider/hcli/engine.py")
-EXECUTORS_REL = Path("tools/haider/hcli/executors.py")
+HCLI_PARENT = REPO
+ENGINE_REL = Path("hcli/engine.py")
+EXECUTORS_REL = Path("hcli/executors.py")
 RECEIPT_REL = Path("receipts/headless/HCLI_SELF_OPT_ITERATION_1.json")
 LLAMA_PORT = 52484
 PROBE_DELAY_S = 0.35
@@ -583,7 +583,7 @@ def stage_bottleneck(state: Dict[str, Any], repo: Path, ws: Path) -> None:
     sense = state.get("sense") or {}
     peak = sense.get("max_concurrent_model_calls")
     observed = sense.get("observed_max_gpu_decode")
-    loc = resolve_loc(repo, "tools/haider/hcli/executors.py:277-299")
+    loc = resolve_loc(repo, "hcli/executors.py:277-299")
     agrees = peak == 1 and isinstance(observed, int) and observed >= 2
     named = (
         "execute_workunit holds a process-wide lock across Engine.execute, "
@@ -594,7 +594,7 @@ def stage_bottleneck(state: Dict[str, Any], repo: Path, ws: Path) -> None:
     )
     payload = {
         "name": named,
-        "location": "tools/haider/hcli/executors.py:277-299",
+        "location": "hcli/executors.py:277-299",
         "resolved": loc,
         "agrees_with_sense": agrees,
         "sense_max_concurrent_model_calls": peak,
@@ -625,7 +625,7 @@ def _hypotheses() -> List[Dict[str, Any]]:
         {
             "id": "H1_narrow_lock",
             "title": "Narrow the worker lock so it covers only the monkeypatch assignment, not the HTTP call",
-            "location": "tools/haider/hcli/executors.py:277-299",
+            "location": "hcli/executors.py:277-299",
             "change": (
                 "Keep the patch of _gather_evidence / compile, but release "
                 "_hcli_worker_lock before self.execute(prompt) / _call_model."
@@ -634,8 +634,8 @@ def _hypotheses() -> List[Dict[str, Any]]:
         {
             "id": "H2_pass_explicit",
             "title": "Pass evidence and compiled into Engine.execute so execute_workunit does not patch shared state",
-            "location": "tools/haider/hcli/engine.py:419-460",
-            "secondary_location": "tools/haider/hcli/executors.py:262-298",
+            "location": "hcli/engine.py:419-460",
+            "secondary_location": "hcli/executors.py:262-298",
             "change": (
                 "Add optional evidence= and compiled= kwargs to Engine.execute; "
                 "have execute_workunit call execute(prompt, evidence=..., compiled=...) "
@@ -645,7 +645,7 @@ def _hypotheses() -> List[Dict[str, Any]]:
         {
             "id": "H3_thread_local_patches",
             "title": "Keep the monkeypatch but store gather/compile on thread-local state",
-            "location": "tools/haider/hcli/executors.py:282-293",
+            "location": "hcli/executors.py:282-293",
             "change": (
                 "Replace instance attributes with threading.local() so two "
                 "workers can patch without a process lock."
@@ -654,7 +654,7 @@ def _hypotheses() -> List[Dict[str, Any]]:
         {
             "id": "H4_clone_engine",
             "title": "Clone Engine per WorkUnit so patches are private",
-            "location": "tools/haider/hcli/mission.py:679-704",
+            "location": "hcli/mission.py:679-704",
             "change": (
                 "Give each GPU_DECODE worker its own Engine (or a shallow copy) "
                 "so monkeypatches cannot clobber a sibling."
@@ -839,8 +839,8 @@ def stage_mutate(state: Dict[str, Any], repo: Path, ws: Path) -> None:
             "Apply the surviving self-opt mutation: pass evidence and "
             "compiled into Engine.execute so execute_workunit does not "
             "patch _gather_evidence or goal_compiler.compile on the shared "
-            "engine. Edit tools/haider/hcli/engine.py and "
-            "tools/haider/hcli/executors.py."
+            "engine. Edit hcli/engine.py and "
+            "hcli/executors.py."
         )
     except Exception as exc:
         payload["blocked"] = f"{type(exc).__name__}: {exc}"

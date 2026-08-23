@@ -24,20 +24,18 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(REPO_ROOT))
-sys.path.insert(0, str(REPO_ROOT / "tools" / "haider"))
 
-from tools.haider.hcli.dag_store import DagStore  # noqa: E402
-from tools.haider.hcli.engine import NoOpMutation  # noqa: E402
-from tools.haider.hcli.grok_bridge import (  # noqa: E402
+from hcli.dag_store import DagStore  # noqa: E402
+from hcli.engine import NoOpMutation  # noqa: E402
+from hcli.grok_bridge import (  # noqa: E402
     GrokContractError,
     GrokNotAvailable,
     GrokRunError,
     process_alive,
 )
-from tools.haider.hcli.mission import Mission  # noqa: E402
-from tools.haider.hcli.mutation import MutationError  # noqa: E402
-from tools.haider.hcli.resources import (  # noqa: E402
+from hcli.mission import Mission  # noqa: E402
+from hcli.mutation import MutationError  # noqa: E402
+from hcli.resources import (  # noqa: E402
     CIRCUIT_COOLING_SECONDS,
     CIRCUIT_FAILURE_THRESHOLD,
     FAILURE_KINDS,
@@ -50,12 +48,12 @@ from tools.haider.hcli.resources import (  # noqa: E402
     classify_failure,
     counts_toward_retry_budget,
 )
-from tools.haider.hcli.scheduler import (  # noqa: E402
+from hcli.scheduler import (  # noqa: E402
     MAX_REPAIR_DEPTH,
     MAX_REPAIRS_PER_ROOT,
     Scheduler,
 )
-from tools.haider.hcli.workunit import WorkUnit, assign_ready, is_ready  # noqa: E402
+from hcli.workunit import WorkUnit, assign_ready, is_ready  # noqa: E402
 
 GROK_RUN = os.environ.get("GROK_RUN") or str(
     Path.home() / ".claude-grok" / "bin" / "grok-run"
@@ -368,8 +366,8 @@ def probe_health_restart() -> Dict[str, Any]:
     with tempfile.TemporaryDirectory(prefix="repair-health-") as tmp:
         writer = (
             "import sys\n"
-            f"sys.path.insert(0, {str(REPO_ROOT)!r})\n"
-            "from tools.haider.hcli.resources import BackendHealth\n"
+            ""
+            "from hcli.resources import BackendHealth\n"
             f"h = BackendHealth({tmp!r}, failure_threshold=3, cooling_seconds=30.0)\n"
             "h.record_failure('grok', {'error': 'GrokNotAvailable'})\n"
             "h.record_failure('grok', {'error': 'GrokNotAvailable'})\n"
@@ -389,8 +387,8 @@ def probe_health_restart() -> Dict[str, Any]:
         path = Path(tmp) / ".hcli" / HEALTH_FILENAME
         reader_script = (
             "import sys, json\n"
-            f"sys.path.insert(0, {str(REPO_ROOT)!r})\n"
-            "from tools.haider.hcli.resources import BackendHealth\n"
+            ""
+            "from hcli.resources import BackendHealth\n"
             f"h = BackendHealth({tmp!r}, failure_threshold=3, cooling_seconds=30.0)\n"
             "print(json.dumps({name: h.snapshot(name) for name in "
             "('grok','cpu','qwen')}))\n"
@@ -658,7 +656,7 @@ def probe_cancel() -> Dict[str, Any]:
     slow = _cancel_mission(SlowChildEngine())
 
     # Grok path: wait() ignores cancel; launch_pid is not in mission.child_pids.
-    import tools.haider.hcli.executors as executors_mod
+    import hcli.executors as executors_mod
 
     fake = FakeGrokBridge()
     original_bridge = executors_mod.WorkUnitExecutor.grok_bridge
@@ -719,7 +717,7 @@ def probe_cancel() -> Dict[str, Any]:
         executors_mod.WorkUnitExecutor.grok_bridge = original_bridge  # type: ignore[method-assign]
 
     # Confirm GrokBridge really has no cancel.
-    import tools.haider.hcli.grok_bridge as gb
+    import hcli.grok_bridge as gb
 
     grok_obs["GrokBridge_has_cancel"] = hasattr(gb.GrokBridge, "cancel")
     grok_obs["GrokBridge_has_cleanup"] = hasattr(gb.GrokBridge, "cleanup")
@@ -831,7 +829,7 @@ import json, os, sys, time
 from pathlib import Path
 os.environ["GROK_RUN"] = {str(patched)!r}
 sys.path.insert(0, {str(REPO_ROOT)!r})
-from tools.haider.hcli.grok_bridge import GrokBridge
+from hcli.grok_bridge import GrokBridge
 ws = Path({tmp!r}) / "ws"
 ws.mkdir(parents=True, exist_ok=True)
 bridge = GrokBridge(ws)
@@ -911,7 +909,7 @@ time.sleep(180)
 import json, os, sys
 os.environ["GROK_RUN"] = {str(patched)!r}
 sys.path.insert(0, {str(REPO_ROOT)!r})
-from tools.haider.hcli.grok_bridge import GrokBridge
+from hcli.grok_bridge import GrokBridge
 from pathlib import Path
 bridge = GrokBridge(Path({tmp!r}) / "ws")
 print(json.dumps(bridge.status({task_id!r})))
@@ -999,8 +997,8 @@ print(json.dumps(bridge.status({task_id!r})))
 def _adoption_after_orphan(
     tmp: str, task_id: Optional[str], status: Dict[str, Any]
 ) -> Dict[str, Any]:
-    from tools.haider.hcli.mission import mission_state_path
-    from tools.haider.hcli.dag_store import atomic_write_json
+    from hcli.mission import mission_state_path
+    from hcli.dag_store import atomic_write_json
 
     ws = Path(tmp) / "adopt-ws"
     ws.mkdir(parents=True, exist_ok=True)
@@ -1056,7 +1054,7 @@ def _adoption_after_orphan(
     )
     # Patch GrokBridge.status so Scheduler.from_workspace (called by
     # Mission.from_workspace) sees the live status.
-    import tools.haider.hcli.grok_bridge as gb
+    import hcli.grok_bridge as gb
 
     original = gb.GrokBridge.status
 

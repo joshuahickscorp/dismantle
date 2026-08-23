@@ -7,12 +7,10 @@ import unittest
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[4]
-if str(REPO) not in sys.path:
-    sys.path.insert(0, str(REPO))
 
-from tools.haider.hcli.engine import Engine
-from tools.haider.hcli.events import EventBus
-from tools.haider.hcli.workspace import Workspace
+from hcli.engine import Engine
+from hcli.events import EventBus
+from hcli.workspace import Workspace
 
 
 class TestReceiptDiagnostics(unittest.TestCase):

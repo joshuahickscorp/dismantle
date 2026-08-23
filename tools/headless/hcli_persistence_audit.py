@@ -31,8 +31,7 @@ from typing import Any, Callable, Dict, List, Optional
 from unittest.mock import patch
 
 REPO = Path(__file__).resolve().parents[2]
-HAIDER = REPO / "tools" / "haider"
-sys.path.insert(0, str(HAIDER))
+HAIDER = REPO
 
 os.environ.setdefault("HCLI_DISABLE_SIGNAL_HOOKS", "1")
 
@@ -54,7 +53,7 @@ from hcli.steering import SteeringQueue  # noqa: E402
 from hcli.workunit import WorkUnit, identify_ready  # noqa: E402
 from hcli.workspace import Workspace  # noqa: E402
 
-HCLI_DIR = HAIDER / "hcli"
+HCLI_DIR = REPO / "hcli"
 RECEIPT_PATH = REPO / "receipts" / "headless" / "HCLI_PERSISTENCE_AUDIT.json"
 
 FAILS: List[str] = []
@@ -740,7 +739,7 @@ def demo_sigkill_between_dag_and_mission() -> None:
             "\n".join(
                 [
                     "import os, sys, signal",
-                    f"sys.path.insert(0, {str(HAIDER)!r})",
+                    
                     "from pathlib import Path",
                     "from hcli.mission import Mission",
                     "from hcli.workunit import WorkUnit",
@@ -767,7 +766,7 @@ def demo_sigkill_between_dag_and_mission() -> None:
             encoding="utf-8",
         )
         env = os.environ.copy()
-        env["PYTHONPATH"] = str(HAIDER) + os.pathsep + env.get("PYTHONPATH", "")
+        env["PYTHONPATH"] = env.get("PYTHONPATH", "")
         env["HCLI_DISABLE_SIGNAL_HOOKS"] = "1"
         proc = subprocess.run(
             [sys.executable, str(child)],
@@ -1136,7 +1135,7 @@ def demo_engine_receipt_after_mutation() -> None:
             "\n".join(
                 [
                     "import os, sys, signal",
-                    f"sys.path.insert(0, {str(HAIDER)!r})",
+                    
                     "from pathlib import Path",
                     "from hcli.engine import Engine",
                     "from hcli.events import EventBus",
@@ -1161,7 +1160,7 @@ def demo_engine_receipt_after_mutation() -> None:
             encoding="utf-8",
         )
         env = os.environ.copy()
-        env["PYTHONPATH"] = str(HAIDER) + os.pathsep + env.get("PYTHONPATH", "")
+        env["PYTHONPATH"] = env.get("PYTHONPATH", "")
         proc = subprocess.run(
             [sys.executable, str(child)],
             cwd=str(REPO),
@@ -1599,7 +1598,7 @@ def demo_runtime_ownership_after_spawn() -> None:
             "\n".join(
                 [
                     "import os, sys, signal",
-                    f"sys.path.insert(0, {str(HAIDER)!r})",
+                    
                     "from pathlib import Path",
                     f"sys.path.insert(0, {str(REPO / 'tools' / 'headless')!r})",
                     "os.environ['HCLI_DISABLE_SIGNAL_HOOKS'] = '1'",
@@ -1649,7 +1648,7 @@ def demo_runtime_ownership_after_spawn() -> None:
             encoding="utf-8",
         )
         env = os.environ.copy()
-        env["PYTHONPATH"] = str(HAIDER) + os.pathsep + env.get("PYTHONPATH", "")
+        env["PYTHONPATH"] = env.get("PYTHONPATH", "")
         env["HCLI_DISABLE_SIGNAL_HOOKS"] = "1"
         proc = subprocess.run(
             [sys.executable, str(child)],

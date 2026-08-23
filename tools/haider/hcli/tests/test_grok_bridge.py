@@ -12,10 +12,8 @@ from pathlib import Path
 from unittest.mock import patch
 
 REPO = Path(__file__).resolve().parents[4]
-if str(REPO) not in sys.path:
-    sys.path.insert(0, str(REPO))
 
-from tools.haider.hcli.grok_bridge import (  # noqa: E402
+from hcli.grok_bridge import (  # noqa: E402
     GrokBridge,
     GrokContractError,
     GrokNotAvailable,
@@ -134,7 +132,7 @@ class _BridgeTest(unittest.TestCase):
         self.root = Path(self.tmpdir.name)
         self.bridge = GrokBridge(self.root)
         self.which_patch = patch(
-            "tools.haider.hcli.grok_bridge.shutil.which",
+            "hcli.grok_bridge.shutil.which",
             return_value=FAKE_BIN,
         )
         self.which_patch.start()
@@ -154,7 +152,7 @@ class _BridgeTest(unittest.TestCase):
             return _completed(argv, stdout=stdout, stderr=stderr, returncode=returncode)
 
         return patch(
-            "tools.haider.hcli.grok_bridge.subprocess.run",
+            "hcli.grok_bridge.subprocess.run",
             side_effect=fake_run,
         )
 
@@ -167,9 +165,9 @@ class TestMissingContractDoesNotSpawn(_BridgeTest):
             spawned.append((a, k))
             raise AssertionError("subprocess spawned")
 
-        with patch("tools.haider.hcli.grok_bridge.subprocess.run", side_effect=boom):
+        with patch("hcli.grok_bridge.subprocess.run", side_effect=boom):
             with patch(
-                "tools.haider.hcli.grok_bridge.subprocess.Popen", side_effect=boom
+                "hcli.grok_bridge.subprocess.Popen", side_effect=boom
             ):
                 with self.assertRaises(GrokContractError):
                     self.bridge.delegate("t", "")
@@ -184,9 +182,9 @@ class TestMissingContractDoesNotSpawn(_BridgeTest):
             spawned.append((a, k))
             raise AssertionError("subprocess spawned")
 
-        with patch("tools.haider.hcli.grok_bridge.subprocess.run", side_effect=boom):
+        with patch("hcli.grok_bridge.subprocess.run", side_effect=boom):
             with patch(
-                "tools.haider.hcli.grok_bridge.subprocess.Popen", side_effect=boom
+                "hcli.grok_bridge.subprocess.Popen", side_effect=boom
             ):
                 with self.assertRaises(GrokContractError):
                     self.bridge.delegate("t", "   \n")
@@ -196,7 +194,7 @@ class TestMissingContractDoesNotSpawn(_BridgeTest):
 class TestGrokNotAvailable(_BridgeTest):
     def test_which_none_raises_specific_error(self):
         self.which_patch.stop()
-        with patch("tools.haider.hcli.grok_bridge.shutil.which", return_value=None):
+        with patch("hcli.grok_bridge.shutil.which", return_value=None):
             with self.assertRaises(GrokNotAvailable) as ctx:
                 self.bridge.delegate("t", VALID_CONTRACT, dry_run=True)
         self.assertIn("not on PATH", str(ctx.exception))
@@ -204,7 +202,7 @@ class TestGrokNotAvailable(_BridgeTest):
 
     def test_find_grok_run_none(self):
         self.which_patch.stop()
-        with patch("tools.haider.hcli.grok_bridge.shutil.which", return_value=None):
+        with patch("hcli.grok_bridge.shutil.which", return_value=None):
             with patch.dict(os.environ, {}, clear=False):
                 os.environ.pop("GROK_RUN", None)
                 with self.assertRaises(GrokNotAvailable):
@@ -324,7 +322,7 @@ class TestReceiptCompletenessAndSuccess(_BridgeTest):
                 return _completed(argv, stdout="status: done (exit 0)\n")
             return _completed(argv, stdout=launch_stdout)
 
-        with patch("tools.haider.hcli.grok_bridge.subprocess.run", side_effect=fake_run):
+        with patch("hcli.grok_bridge.subprocess.run", side_effect=fake_run):
             handle = self.bridge.consult("say ping", background=True, dry_run=False)
             launch_receipt = json.loads(Path(handle.receipt_path).read_text(encoding="utf-8"))
             self.assertEqual((launch_receipt.get("status") or {}).get("state"), "running")
@@ -370,7 +368,7 @@ class TestReceiptCompletenessAndSuccess(_BridgeTest):
                 return _completed(argv, stdout="status: done (exit 0)\n")
             return _completed(argv, stdout=launch_stdout)
 
-        with patch("tools.haider.hcli.grok_bridge.subprocess.run", side_effect=fake_run):
+        with patch("hcli.grok_bridge.subprocess.run", side_effect=fake_run):
             handle = self.bridge.consult("say ping", background=True, dry_run=False)
             self.bridge.status(handle.task_id)
         receipt = json.loads(Path(handle.receipt_path).read_text(encoding="utf-8"))
@@ -390,7 +388,7 @@ class TestReceiptCompletenessAndSuccess(_BridgeTest):
         self.assertFalse(got["successful"])
         self.assertFalse(got.get("successful"))
         # Raw grok-run state "done" with a nonzero exit is not success either.
-        from tools.haider.hcli.grok_bridge import grok_succeeded
+        from hcli.grok_bridge import grok_succeeded
 
         self.assertFalse(grok_succeeded({"state": "done", "exit_code": 1}))
         self.assertFalse(grok_succeeded(parsed))
@@ -466,7 +464,7 @@ class TestMutationLock(_BridgeTest):
                 argv, stdout=_dry_stdout("lock-20260101-000000")
             )
 
-        with patch("tools.haider.hcli.grok_bridge.subprocess.run", side_effect=fake_run):
+        with patch("hcli.grok_bridge.subprocess.run", side_effect=fake_run):
             self.bridge.delegate(
                 "lock", VALID_CONTRACT, dry_run=True, mutation_lock=lock
             )
@@ -503,7 +501,7 @@ class TestStatusParserIndependentOfSubprocess(unittest.TestCase):
             spawned.append(1)
             raise AssertionError("subprocess spawned")
 
-        with patch("tools.haider.hcli.grok_bridge.subprocess.run", side_effect=boom):
+        with patch("hcli.grok_bridge.subprocess.run", side_effect=boom):
             self.assertEqual(
                 parse_grok_status("status: running (exit -)")["state"],
                 "running",

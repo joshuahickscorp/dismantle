@@ -31,8 +31,7 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-HAIDER = REPO_ROOT / "tools" / "haider"
-sys.path.insert(0, str(HAIDER))
+HAIDER = REPO_ROOT
 
 TESTS = REPO_ROOT / "tools/haider/hcli/tests"
 
@@ -127,7 +126,7 @@ def main() -> int:
     # honest configuration for a self-improvement goal -- HCLI improving
     # Hawking operates in Hawking -- and it is also the only one where the
     # compiled verifiers actually run: the test files import
-    # `tools.haider.hcli...`, so pytest needs the repo root on sys.path, and a
+    # `hcli...`, so pytest needs the repo root on sys.path, and a
     # verifier launched with a temp cwd fails with ModuleNotFoundError no
     # matter how absolute its path is. A compiled verifier that is not portable
     # to the workspace it is scheduled into is a real defect; recorded as F4.

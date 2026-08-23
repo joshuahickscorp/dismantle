@@ -13,19 +13,17 @@ from pathlib import Path
 from unittest.mock import patch
 
 REPO = Path(__file__).resolve().parents[4]
-if str(REPO) not in sys.path:
-    sys.path.insert(0, str(REPO))
 
-from tools.haider.hcli.backends import CompletionResult, LlamaServerBackend
-from tools.haider.hcli.machine import (
+from hcli.backends import CompletionResult, LlamaServerBackend
+from hcli.machine import (
     GIB,
     MemGate,
     live_machine_identity,
     resolve_decode_topology,
     resolve_runtime_limits,
 )
-from tools.haider.hcli.resources import pid_is_alive, process_start_token
-from tools.haider.hcli.runtime import RuntimePool, allocate_port
+from hcli.resources import pid_is_alive, process_start_token
+from hcli.runtime import RuntimePool, allocate_port
 
 
 def _alive(pid: int) -> bool:
@@ -94,7 +92,7 @@ class FakeBackend:
         )
 
     def stop(self):
-        from tools.haider.hcli.backends import terminate_pid
+        from hcli.backends import terminate_pid
 
         report = {"pid": self.pid, "gone": True, "unreaped": []}
         if self.process is not None and self.process.poll() is None:
@@ -556,7 +554,7 @@ class TestPoolLifecycle(RuntimePoolTestCase):
         os.environ["HCLI_ACTIVE_DECODE_LIMIT"] = "2"
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            from tools.haider.hcli.runtime import store_observed_overlap
+            from hcli.runtime import store_observed_overlap
 
             store_observed_overlap(root, 2)
             pool = RuntimePool(

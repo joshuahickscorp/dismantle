@@ -38,7 +38,6 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(REPO_ROOT / "tools" / "haider"))
 
 import hcli.scheduler as scheduler_mod  # noqa: E402
 from hcli.mission import Mission  # noqa: E402

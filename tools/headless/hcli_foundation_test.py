@@ -16,7 +16,6 @@ import traceback
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(REPO / "tools" / "haider"))
 
 import hcli.cli  # noqa: E402
 from hcli.engine import Engine  # noqa: E402
@@ -32,7 +31,7 @@ KNOWN_MODEL = (
 )
 HCLI_BIN = Path.home() / ".local" / "bin" / "hcli"
 JHCLI_BIN = Path.home() / ".local" / "bin" / "jhcli"
-SOURCE_PARENT = REPO / "tools" / "haider"
+SOURCE_PARENT = REPO
 
 
 def _reject(argv):
@@ -152,7 +151,7 @@ def _try_real_install() -> None:
             "WARN install_shims could not write ~/.local "
             f"({type(exc).__name__}: {exc}). "
             "Create the shims with: "
-            "PYTHONPATH=tools/haider python3 -m hcli install-shims"
+            "python3 -m hcli install-shims"
         )
 
 

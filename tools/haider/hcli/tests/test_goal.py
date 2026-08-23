@@ -16,15 +16,13 @@ import urllib.request
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[4]
-if str(REPO) not in sys.path:
-    sys.path.insert(0, str(REPO))
 
-from tools.haider.hcli.engine import Engine, EngineError, _SYSTEM_PROMPT
-from tools.haider.hcli.events import EventBus
-from tools.haider.hcli.goal import GoalCompiler
-from tools.haider.hcli.mission import Mission
-from tools.haider.hcli.workunit import WorkUnit
-from tools.haider.hcli.workspace import Workspace
+from hcli.engine import Engine, EngineError, _SYSTEM_PROMPT
+from hcli.events import EventBus
+from hcli.goal import GoalCompiler
+from hcli.mission import Mission
+from hcli.workunit import WorkUnit
+from hcli.workspace import Workspace
 
 BANNED = [
     "THIS IS THE GOVERNING ULTRAGOAL.",
@@ -108,7 +106,7 @@ def _tokens_or_proxy(content: str):
 def _engine(root: Path) -> Engine:
     cfg_dir = root / "cfg"
     cfg_dir.mkdir(parents=True, exist_ok=True)
-    from tools.haider.hcli.config import Config
+    from hcli.config import Config
 
     runtime = type("Runtime", (), {})()
     runtime.index = 0
@@ -297,7 +295,7 @@ class TestWorkerPacketCompiler(unittest.TestCase):
             self.assertEqual(on_disk.get("goal"), root)
 
     def test_compile_worker_context_rejects_goal_header(self):
-        from tools.haider.hcli.goal import WorkerPacket, compile_worker_context
+        from hcli.goal import WorkerPacket, compile_worker_context
 
         wu = WorkUnit(id="u1", role="implementation", description="do the thing")
         compiled = {
@@ -329,8 +327,8 @@ class TestWorkerPacketCompiler(unittest.TestCase):
             )
 
     def test_knowledge_steers_are_excluded_constraints_kept(self):
-        from tools.haider.hcli.goal import compile_worker_context
-        from tools.haider.hcli.steering import SteerEvent
+        from hcli.goal import compile_worker_context
+        from hcli.steering import SteerEvent
 
         wu = WorkUnit(id="u1", role="work", description="edit foo.py")
         compiled = {
@@ -378,7 +376,7 @@ class TestWorkerPacketCompiler(unittest.TestCase):
         self.assertEqual(packet.evidence_paths, ("foo.py",))
 
     def test_over_cap_drops_neighborhood_before_constraints(self):
-        from tools.haider.hcli.goal import compile_worker_context
+        from hcli.goal import compile_worker_context
 
         wu = WorkUnit(
             id="child",
@@ -447,7 +445,7 @@ class TestWorkerPacketCompiler(unittest.TestCase):
             self.assertNotIn(root, ctx["prompt"])
 
     def test_execute_fallback_is_hard_error(self):
-        from tools.haider.hcli.executors import dispatch_workunit
+        from hcli.executors import dispatch_workunit
 
         class ExecuteOnly:
             def execute(self, prompt):
@@ -464,8 +462,8 @@ class TestWorkerPacketCompiler(unittest.TestCase):
         self.assertIn("execute_workunit", str(ctx.exception))
 
     def test_consult_uses_packet_prompt_not_root_goal(self):
-        from tools.haider.hcli.executors import consult_worker
-        from tools.haider.hcli.goal import compile_worker_context
+        from hcli.executors import consult_worker
+        from hcli.goal import compile_worker_context
 
         wu = WorkUnit(id="u1", role="work", description="edit foo.py")
         packet = compile_worker_context(

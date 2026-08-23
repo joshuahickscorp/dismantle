@@ -7,10 +7,8 @@ import unittest
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[4]
-if str(REPO) not in sys.path:
-    sys.path.insert(0, str(REPO))
 
-from tools.haider.hcli.models import (
+from hcli.models import (
     discover_models,
     resolve_model,
     selectable_models,

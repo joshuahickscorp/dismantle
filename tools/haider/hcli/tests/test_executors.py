@@ -7,19 +7,17 @@ from pathlib import Path
 from unittest.mock import patch
 
 REPO = Path(__file__).resolve().parents[4]
-if str(REPO) not in sys.path:
-    sys.path.insert(0, str(REPO))
 
-from tools.haider.hcli.executors import (
+from hcli.executors import (
     BACKEND_CPU,
     BACKEND_GROK,
     BACKEND_QWEN,
     WorkUnitExecutor,
     select_backend_name,
 )
-from tools.haider.hcli.grok_bridge import GrokRunHandle
-from tools.haider.hcli.resources import MutationLock
-from tools.haider.hcli.workunit import WorkUnit
+from hcli.grok_bridge import GrokRunHandle
+from hcli.resources import MutationLock
+from hcli.workunit import WorkUnit
 
 
 def _wu(uid, **kwargs):

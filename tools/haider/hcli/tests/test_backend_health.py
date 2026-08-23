@@ -23,16 +23,14 @@ import unittest
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[4]
-if str(REPO) not in sys.path:
-    sys.path.insert(0, str(REPO))
 
 from collections import Counter
 
-from tools.haider.hcli.engine import NoOpMutation
-from tools.haider.hcli.grok_bridge import GrokContractError, GrokNotAvailable, GrokRunError
-from tools.haider.hcli.mutation import MutationError
-from tools.haider.hcli.resources import ResourceLimits, can_admit
-import tools.haider.hcli.resources as resources_mod
+from hcli.engine import NoOpMutation
+from hcli.grok_bridge import GrokContractError, GrokNotAvailable, GrokRunError
+from hcli.mutation import MutationError
+from hcli.resources import ResourceLimits, can_admit
+import hcli.resources as resources_mod
 
 # New API is imported lazily so this module still *collects* against an
 # unmodified resources.py. A collection ImportError is not a behavioural
@@ -435,8 +433,8 @@ class TestHealthPersistence(HealthTest):
         with tempfile.TemporaryDirectory() as tmp:
             script = (
                 "import sys\n"
-                f"sys.path.insert(0, {str(REPO)!r})\n"
-                "from tools.haider.hcli.resources import BackendHealth\n"
+                ""
+                "from hcli.resources import BackendHealth\n"
                 f"h = BackendHealth({tmp!r}, failure_threshold=3, cooling_seconds=30.0)\n"
                 "h.record_failure('grok', {'error': 'GrokNotAvailable'})\n"
                 "h.record_failure('grok', {'error': 'GrokNotAvailable'})\n"
@@ -444,7 +442,7 @@ class TestHealthPersistence(HealthTest):
                 "print('wrote')\n"
             )
             env = os.environ.copy()
-            env["PYTHONPATH"] = str(REPO) + os.pathsep + env.get("PYTHONPATH", "")
+            env["PYTHONPATH"] = env.get("PYTHONPATH", "")
             proc = subprocess.run(
                 [sys.executable, "-c", script],
                 cwd=str(REPO),

@@ -16,11 +16,9 @@ from pathlib import Path
 from unittest.mock import patch
 
 REPO = Path(__file__).resolve().parents[4]
-if str(REPO) not in sys.path:
-    sys.path.insert(0, str(REPO))
 
-from tools.haider.hcli.config import Config
-from tools.haider.hcli.context_budget import (
+from hcli.config import Config
+from hcli.context_budget import (
     DEFAULT_FRAMING_RESERVE,
     DEFAULT_PER_SLOT_CTX,
     PacketBudgetError,
@@ -33,12 +31,12 @@ from tools.haider.hcli.context_budget import (
     resolve,
     solve_parallel,
 )
-from tools.haider.hcli.engine import (
+from hcli.engine import (
     ContextPreflightError,
     Engine,
     EventBus,
 )
-from tools.haider.hcli.workspace import Workspace
+from hcli.workspace import Workspace
 
 KNOWN_GGUF = Path(
     "/Users/scammermike/models/qwen3.8-27b-abliterated/"
@@ -300,7 +298,9 @@ class TestNoHttpOnPreflightFailure(unittest.TestCase):
 
 class TestSingleAuthorityGuard(unittest.TestCase):
     def test_single_authority_guard(self):
-        hcli_dir = Path(__file__).resolve().parents[1]
+        import hcli as hcli_pkg
+
+        hcli_dir = Path(hcli_pkg.__file__).resolve().parent
         modules = ("config.py", "backends.py", "engine.py", "runtime.py")
         env_default = re.compile(
             r"""HCLI_CTX_SIZE["']\s*,\s*["']?\d+["']?"""

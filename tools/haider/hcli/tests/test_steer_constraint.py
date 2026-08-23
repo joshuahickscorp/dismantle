@@ -6,11 +6,9 @@ import unittest
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[4]
-if str(REPO) not in sys.path:
-    sys.path.insert(0, str(REPO))
 
-from tools.haider.hcli.ledger import Ledger
-from tools.haider.hcli.steering import (
+from hcli.ledger import Ledger
+from hcli.steering import (
     SteerEvent,
     SteerKindError,
     SteeringQueue,

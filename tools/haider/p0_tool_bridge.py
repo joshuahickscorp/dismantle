@@ -330,6 +330,7 @@ def _validate_cargo(argv: List[str], root: str) -> List[str]:
 
 
 def _validate_python(argv: List[str], root: str) -> List[str]:
+    root = os.path.realpath(root)
     if len(argv) < 2:
         _reject("python requires an argument")
     if argv[1] == "-m":
@@ -570,7 +571,11 @@ class ToolExecutor:
                 stdout = "".join(lines)
                 stdout, trunc2 = truncate_text(stdout, self.max_output_chars, max_lines)
                 truncated = truncated or trunc2
-                extra = {"lines": len(lines), "path": self.guard.relative(full)}
+                extra = {
+                    "lines": len(lines),
+                    "path": self.guard.relative(full),
+                    "truncated": truncated,
+                }
             elif name == "fs.list":
                 full = self.guard.resolve(args.get("path"))
                 max_entries = int(args.get("max_entries") or 200)
@@ -662,6 +667,7 @@ class ToolExecutor:
         elapsed_ms = int((time.monotonic() - start) * 1000)
         stdout, trunc_out = truncate_text(stdout, self.max_output_chars, self.max_output_lines)
         stderr, trunc_err = truncate_text(stderr, self.max_output_chars, self.max_output_lines)
+        extra_trunc = bool(extra.get("truncated")) if isinstance(extra, dict) else False
         return make_observation(
             self.root,
             name,
@@ -670,7 +676,7 @@ class ToolExecutor:
             stdout,
             stderr,
             elapsed_ms,
-            trunc_out or trunc_err,
+            trunc_out or trunc_err or extra_trunc,
             ok,
             extra,
         )

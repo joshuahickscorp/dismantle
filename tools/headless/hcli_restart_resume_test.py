@@ -33,8 +33,7 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-HAIDER = REPO_ROOT / "tools" / "haider"
-sys.path.insert(0, str(HAIDER))
+HAIDER = REPO_ROOT
 
 RESULTS: List[Dict[str, Any]] = []
 

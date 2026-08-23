@@ -15,16 +15,14 @@ from pathlib import Path
 from types import SimpleNamespace
 
 REPO = Path(__file__).resolve().parents[4]
-if str(REPO) not in sys.path:
-    sys.path.insert(0, str(REPO))
 
-from tools.haider.hcli.controller import Controller
-from tools.haider.hcli.engine import Engine
-from tools.haider.hcli.events import EventBus
-from tools.haider.hcli.goal import GoalCompiler
-from tools.haider.hcli.ledger import Ledger
-from tools.haider.hcli.workspace import Workspace
-from tools.haider.hcli.workunit import WorkUnit
+from hcli.controller import Controller
+from hcli.engine import Engine
+from hcli.events import EventBus
+from hcli.goal import GoalCompiler
+from hcli.ledger import Ledger
+from hcli.workspace import Workspace
+from hcli.workunit import WorkUnit
 
 UNFAILABLE = (
     re.compile(r"SystemExit\(\s*0\s*\)"),
@@ -129,7 +127,7 @@ class TestP0_1UnfailableVerifiers(unittest.TestCase):
 
 class TestP0_3GrokTerminalState(unittest.TestCase):
     def test_failed_grok_state_not_accepted_despite_passing_verifier(self):
-        from tools.haider.hcli.executors import WorkUnitExecutor
+        from hcli.executors import WorkUnitExecutor
 
         with tempfile.TemporaryDirectory(prefix="p0-3-fail-") as tmp:
             ran = Path(tmp) / "verifier-ran.txt"
@@ -154,7 +152,7 @@ class TestP0_3GrokTerminalState(unittest.TestCase):
             self.assertFalse(ran.is_file(), "verifier must not run after failed state")
 
     def test_done_grok_state_accepted_with_passing_verifier(self):
-        from tools.haider.hcli.executors import WorkUnitExecutor
+        from hcli.executors import WorkUnitExecutor
 
         with tempfile.TemporaryDirectory(prefix="p0-3-done-") as tmp:
             ran = Path(tmp) / "verifier-ran.txt"
@@ -180,9 +178,9 @@ class TestP0_3GrokTerminalState(unittest.TestCase):
 
 class TestP0_11ErrorPathEvidence(unittest.TestCase):
     def test_engine_source_has_no_empty_evidence_literal(self):
-        src = (
-            Path(__file__).resolve().parents[1] / "engine.py"
-        ).read_text(encoding="utf-8")
+        import hcli.engine as engine_mod
+
+        src = Path(engine_mod.__file__).read_text(encoding="utf-8")
         hits = [
             i
             for i, line in enumerate(src.splitlines(), 1)

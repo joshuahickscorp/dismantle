@@ -130,7 +130,6 @@ def spawn_pool(slots: int):
     Slot topology means one llama-server process with `slots` sequences, so the
     weights are paid for once regardless of the rung.
     """
-    sys.path.insert(0, str(REPO_ROOT / "tools" / "haider"))
     from hcli.models import ModelRegistry
     from hcli.runtime import RuntimePool
 

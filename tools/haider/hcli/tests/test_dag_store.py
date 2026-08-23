@@ -8,12 +8,10 @@ import unittest
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[4]
-if str(REPO) not in sys.path:
-    sys.path.insert(0, str(REPO))
 
-from tools.haider.hcli.dag_store import DagCorruptError, DagStore, atomic_write_json
-from tools.haider.hcli.scheduler import Scheduler
-from tools.haider.hcli.workunit import WorkUnit, is_ready
+from hcli.dag_store import DagCorruptError, DagStore, atomic_write_json
+from hcli.scheduler import Scheduler
+from hcli.workunit import WorkUnit, is_ready
 
 
 def _wu(uid: str, **kwargs) -> WorkUnit:

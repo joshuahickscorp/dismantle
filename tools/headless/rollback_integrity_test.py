@@ -34,7 +34,6 @@ import sys
 import tempfile
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "haider"))
 
 FAILS: list[str] = []
 
@@ -210,7 +209,7 @@ def mutate_a_copy() -> int:
     CRLF, tabs and encodings over a long mission.
     """
     import importlib, shutil as _sh
-    pkg_src = Path(__file__).resolve().parents[1] / "haider" / "hcli"
+    pkg_src = Path(__file__).resolve().parents[2] / "hcli"
     marker = "            path.write_bytes(\n                original\n            )"
     engine_src = (pkg_src / "engine.py").read_text()
     if marker not in engine_src:

@@ -5,10 +5,8 @@ import unittest
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[4]
-if str(REPO) not in sys.path:
-    sys.path.insert(0, str(REPO))
 
-from tools.haider.hcli.workunit import (
+from hcli.workunit import (
     DEFAULT_RETRY_BUDGET,
     WorkUnit,
     identify_ready,
@@ -103,7 +101,7 @@ class TestWorkUnitStatusMachine(unittest.TestCase):
         self.assertEqual(restored.finished_at, 3.5)
 
     def test_identify_ready_and_assign_stamp_clocks(self):
-        from tools.haider.hcli.workunit import assign_ready
+        from hcli.workunit import assign_ready
 
         a = _wu("a")
         units = {"a": a}

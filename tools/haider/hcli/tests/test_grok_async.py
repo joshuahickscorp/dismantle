@@ -9,11 +9,9 @@ from pathlib import Path
 from unittest.mock import patch
 
 REPO = Path(__file__).resolve().parents[4]
-if str(REPO) not in sys.path:
-    sys.path.insert(0, str(REPO))
 
-from tools.haider.hcli.grok_bridge import GrokBridge, GrokRunError
-from tools.haider.hcli.report_compiler import compile_backend_report
+from hcli.grok_bridge import GrokBridge, GrokRunError
+from hcli.report_compiler import compile_backend_report
 
 
 FAKE_BIN = "/fake/grok-run"
@@ -25,7 +23,7 @@ class TestGrokWaitPolls(unittest.TestCase):
         self.root = Path(self.tmpdir.name)
         self.bridge = GrokBridge(self.root)
         self.which = patch(
-            "tools.haider.hcli.grok_bridge.shutil.which",
+            "hcli.grok_bridge.shutil.which",
             return_value=FAKE_BIN,
         )
         self.which.start()
@@ -51,7 +49,7 @@ class TestGrokWaitPolls(unittest.TestCase):
 
         with patch.object(self.bridge, "status", side_effect=fake_status):
             with patch(
-                "tools.haider.hcli.grok_bridge.subprocess.run",
+                "hcli.grok_bridge.subprocess.run",
                 side_effect=boom,
             ):
                 got = self.bridge.wait("tid-1", timeout=5, poll_interval=0.01)

@@ -30,7 +30,6 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 REPO = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(REPO / "tools" / "haider"))
 GENOME = Path.home() / ".config" / "hcli" / "machine_genome.json"
 
 RESULTS: List[Dict[str, Any]] = []

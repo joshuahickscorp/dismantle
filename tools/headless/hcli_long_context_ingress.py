@@ -28,7 +28,6 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(REPO_ROOT / "tools" / "haider"))
 
 
 def build_prompt(target_tokens: int, chars_per_token: float = 3.7) -> str:

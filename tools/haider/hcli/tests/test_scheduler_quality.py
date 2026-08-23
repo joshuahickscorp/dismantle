@@ -18,13 +18,11 @@ import unittest
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[4]
-if str(REPO) not in sys.path:
-    sys.path.insert(0, str(REPO))
 
-from tools.haider.hcli import scheduler as scheduler_mod
-from tools.haider.hcli.resources import ResourceLimits
-from tools.haider.hcli.scheduler import Scheduler
-from tools.haider.hcli.workunit import (
+from hcli import scheduler as scheduler_mod
+from hcli.resources import ResourceLimits
+from hcli.scheduler import Scheduler
+from hcli.workunit import (
     MAX_REPAIRS_PER_ROOT,
     IdentityConflict,
     WorkUnit,
@@ -209,8 +207,8 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, sys.argv[1])
-from tools.haider.hcli.scheduler import Scheduler
-from tools.haider.hcli.workunit import WorkUnit, content_identity
+from hcli.scheduler import Scheduler
+from hcli.workunit import WorkUnit, content_identity
 
 ws = sys.argv[2]
 sched = Scheduler.from_workspace(ws, runtime_count=1)

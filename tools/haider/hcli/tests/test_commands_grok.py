@@ -8,11 +8,9 @@ from pathlib import Path
 from unittest.mock import patch
 
 REPO = Path(__file__).resolve().parents[4]
-if str(REPO) not in sys.path:
-    sys.path.insert(0, str(REPO))
 
-from tools.haider.hcli.commands import CommandHandler
-from tools.haider.hcli.grok_bridge import GrokBridge, GrokRunHandle
+from hcli.commands import CommandHandler
+from hcli.grok_bridge import GrokBridge, GrokRunHandle
 
 VALID_CONTRACT = """# WRITE
 create tools/haider/hcli/commands.py

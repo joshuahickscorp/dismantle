@@ -32,7 +32,6 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(REPO_ROOT / "tools" / "haider"))
 
 from hcli.mission import Mission  # noqa: E402
 from hcli.workunit import WorkUnit  # noqa: E402
@@ -44,7 +43,7 @@ def _cpu_unit(uid: str, description: str, command: str, deps: Optional[List[str]
     """A unit whose acceptance IS the command's exit code.
 
     The command is anchored to the repository root. A CPU verifier runs with the
-    MISSION workspace as its cwd, and these checks import `tools.haider.hcli`,
+    MISSION workspace as its cwd, and these checks import `hcli`,
     so an absolute path alone is not enough -- without the anchor every unit
     fails with ModuleNotFoundError for a reason that has nothing to do with what
     it is checking. Found the hard way while building the self-supplement chain.
@@ -131,7 +130,7 @@ def real_work() -> List[WorkUnit]:
         _cpu_unit(
             "prop.context_authority",
             "the context authority still reproduces the 11008 regression arithmetic",
-            f'{PY} -c "import sys;sys.path.insert(0,r\'{REPO_ROOT}/tools/haider\');'
+            f'{PY} -c "import sys;'
             'from hcli import context_budget as cb;'
             'assert cb.per_seq_context(32768,3)==11008;'
             'assert cb.solve_parallel(32768,11008)==3;'
@@ -142,7 +141,7 @@ def real_work() -> List[WorkUnit]:
         _cpu_unit(
             "prop.gguf_ceiling",
             "the GGUF parser still reads the model's real context ceiling",
-            f'{PY} -c "import sys;sys.path.insert(0,r\'{REPO_ROOT}/tools/haider\');'
+            f'{PY} -c "import sys;'
             'from hcli import context_budget as cb;'
             'v=cb.gguf_context_length(r\'/Users/scammermike/models/qwen3.8-27b-abliterated/'
             'Huihui-Qwen3.8-27B-abliterated-Q5_K.gguf\');'
@@ -154,7 +153,7 @@ def real_work() -> List[WorkUnit]:
         _cpu_unit(
             "chain.compile",
             "imports resolve across the whole hcli package",
-            f'{PY} -c "import sys;sys.path.insert(0,r\'{REPO_ROOT}/tools/haider\');'
+            f'{PY} -c "import sys;'
             'import hcli.engine,hcli.mission,hcli.scheduler,hcli.controller,hcli.executors,'
             'hcli.grok_bridge,hcli.ledger,hcli.context_budget;print(\'ok\')"',
         )

@@ -26,7 +26,6 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(REPO_ROOT / "tools" / "haider"))
 
 # Verify commands that can never fail. A gate that accepted these would be
 # defending nothing.
@@ -53,7 +52,7 @@ def _directive_text() -> str:
     if p.is_file():
         return p.read_text(encoding="utf-8")
     # Fall back to something large and real rather than skipping the gate.
-    return (REPO_ROOT / "tools" / "haider" / "hcli" / "mission.py").read_text(
+    return (REPO_ROOT / "hcli" / "mission.py").read_text(
         encoding="utf-8"
     )
 

@@ -12,8 +12,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(REPO / "tools" / "haider"))
-sys.path.insert(0, str(REPO))
 
 from hcli.app import App
 from hcli.controller import Controller

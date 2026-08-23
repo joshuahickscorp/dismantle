@@ -8,16 +8,14 @@ import unittest
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[4]
-if str(REPO) not in sys.path:
-    sys.path.insert(0, str(REPO))
 
-from tools.haider.hcli.commands import (
+from hcli.commands import (
     MIN_ACCEPTED_RATE_WINDOW_S,
     CommandHandler,
     format_accepted_h,
     format_status,
 )
-from tools.haider.hcli.ledger import Ledger
+from hcli.ledger import Ledger
 
 
 GOAL_MD = """# GOAL

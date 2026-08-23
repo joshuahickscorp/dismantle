@@ -22,9 +22,8 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 REPO = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(REPO / "tools" / "haider"))
 
-HCLI = str(REPO / "tools" / "haider")
+HCLI = str(REPO)
 RECEIPT_PATH = REPO / "receipts" / "headless" / "HCLI_CRASH_CHECKPOINT.json"
 OLD_MARK = "OLD_INTACT"
 NEW_MARK = "NEW_COMPLETE"
@@ -1125,7 +1124,7 @@ def case_no_mid_token_resume_claim() -> None:
     policy = getattr(workunit_mod, "RESUME_POLICY", None)
     denials: List[str] = []
     positives: List[str] = []
-    root = REPO / "tools" / "haider" / "hcli"
+    root = REPO / "hcli"
     for path in sorted(root.rglob("*.py")):
         if "tests/" in path.as_posix():
             continue

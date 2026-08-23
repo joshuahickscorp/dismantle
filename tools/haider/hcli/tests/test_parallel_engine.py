@@ -6,11 +6,10 @@ import tempfile
 import unittest
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from tools.haider.hcli.engine import Engine, EngineError
-from tools.haider.hcli.events import EventBus
-from tools.haider.hcli.workspace import Workspace
+from hcli.engine import Engine, EngineError
+from hcli.events import EventBus
+from hcli.workspace import Workspace
 
 
 WRONG_ADD = "def add(a, b):\n    return a * b - 999\n"

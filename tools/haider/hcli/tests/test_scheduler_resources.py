@@ -9,18 +9,16 @@ import unittest
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[4]
-if str(REPO) not in sys.path:
-    sys.path.insert(0, str(REPO))
 
-from tools.haider.hcli.resources import (
+from hcli.resources import (
     MutationLock,
     ResourceClass,
     ResourceLimits,
     process_start_token,
     resolve_active_decode_limit,
 )
-from tools.haider.hcli.scheduler import NO_PROGRESS, Scheduler, UnverifiedCompletion
-from tools.haider.hcli.workunit import WorkUnit
+from hcli.scheduler import NO_PROGRESS, Scheduler, UnverifiedCompletion
+from hcli.workunit import WorkUnit
 
 
 def _ok_complete(sched, wu_id, fingerprint=None):

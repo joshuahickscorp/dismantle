@@ -96,7 +96,14 @@ REPO = Path(__file__).resolve().parents[2]
 ART = Path(os.environ.get("QWEN38_Q4_ARTIFACT", str(Path.home() / "models/qwen38-gravity-uniform-q4-v1")))
 SRC = Path(os.environ.get("QWEN38_PARENT_BF16", str(Path.home() / "models/qwen3.8-27b-abliterated-bf16")))
 LLAMA = os.environ.get("LLAMA_SERVER", "http://127.0.0.1:52484")
-RECEIPT = REPO / "receipts" / "headless" / "NOETIC_COMPOSITION.json"
+# A whole-model arm writes its OWN receipt. Sharing one path cost the q3 control
+# run its receipt: the arm finished, wrote NOETIC_COMPOSITION.json, and the next
+# thing to touch that path overwrote it. The per-organ run keeps the plain name.
+_ARM = os.environ.get("HAWKING_WHOLE_MODEL_MLP_CODEC", "").strip()
+RECEIPT = REPO / "receipts" / "headless" / (
+    f"NOETIC_COMPOSITION_WHOLEMODEL_{_ARM.upper()}.json" if _ARM
+    else "NOETIC_COMPOSITION.json"
+)
 NATIVE_RECEIPT = REPO / "receipts" / "headless" / "QWEN38_GRAVITY_NATIVE.json"
 
 LAYERS = 64
@@ -861,6 +868,11 @@ def _install_whole_model_codec() -> str | None:
         # deliberately the WEAKER arm: it needs no per-layer capture, and if the
         # weaker codec survives composition the fitted one is not worse.
         WHOLE_MODEL_MLP_CODEC = lambda w: fbc.codec_ternary(w, g=g, d=None)[0]
+    elif name.startswith("q2f_g"):
+        # 4-level fitted 2-bit (2.25 bpw). Brackets the whole-model boundary
+        # between ternary at 1.85, which fails, and q3 at 3.25, which survives.
+        g = int(name.split("_g")[1])
+        WHOLE_MODEL_MLP_CODEC = lambda w: fbc._fourlevel_fitted(w, g)
     elif name.startswith("q") and "_g" in name:
         # Whole-model control arm. Without a run of a codec that is known GOOD
         # locally, a whole-model failure cannot be attributed to sub-2-bit rather

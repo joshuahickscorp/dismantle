@@ -1,20 +1,17 @@
 {
-  "generated_at": "2026-08-23T21:17:33Z",
-  "running": [],
-  "needs_harvest": [
-    {
-      "slug": "g024mlxgate",
-      "id": "g024mlxgate-20260823-164713",
-      "unharvested": [
-        "tools/headless/conventional_control_set_test.py"
-      ],
-      "worktree_extras": 0
-    }
+  "generated_at": "2026-08-23T21:31:50Z",
+  "running": [
+    "g004ir",
+    "g006gravity",
+    "g012exec",
+    "g028auth2",
+    "g031canon"
   ],
+  "needs_harvest": [],
   "headroom": {
-    "load1": 4.28515625,
+    "load1": 6.7294921875,
     "ncpu": 28,
-    "disk_gib": 432.4,
+    "disk_gib": 434.2,
     "room_for_more": true
   }
 }

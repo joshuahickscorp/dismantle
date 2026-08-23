@@ -150,6 +150,7 @@ LIMIT_ENV = (
     "HCLI_OBSERVED_MODEL_OVERLAP",
     "HCLI_DECODE_TOPOLOGY",
     "HCLI_DISABLE_SIGNAL_HOOKS",
+    "HCLI_SWAP_CEILING_GIB",
 )
 
 
@@ -159,6 +160,17 @@ class RuntimePoolTestCase(unittest.TestCase):
         os.environ["HCLI_DISABLE_SIGNAL_HOOKS"] = "1"
         os.environ.pop("HCLI_MAX_RUNTIMES", None)
         os.environ.pop("HCLI_OBSERVED_MODEL_OVERLAP", None)
+        # Pin the swap ceiling so admission is decided by the logic under test
+        # and not by whatever else this machine happens to be running. Left
+        # unset, MemGate reads the host's live swap: seven of these tests
+        # admitted ZERO runtimes and failed, and the assertions then compared
+        # 0 against 0 while claiming to measure admission width. A test whose
+        # outcome depends on ambient memory pressure passes on a quiet box and
+        # fails on a busy one, which is the same as not testing.
+        # This does not weaken refusal coverage: the refusal path is exercised
+        # by a deliberately constructed gate in test_memgate_refuses_and_admits,
+        # not by ambient pressure.
+        os.environ["HCLI_SWAP_CEILING_GIB"] = "64"
 
     def tearDown(self):
         for k, v in self._saved.items():

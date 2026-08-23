@@ -310,12 +310,24 @@ def check_restart_resumes():
         units = restarted.scheduler.units
         a_status = units["A"].status if "A" in units else None
         b_status = units["B"].status if "B" in units else None
+        # `interrupted` is a first-class status distinct from `failed`: a crash
+        # is not a verifier failure, so it neither consumes the retry budget nor
+        # grows the repair tree. This check predates that status and demanded
+        # "failed" or "ready", so a correctly-recovered mission read as broken.
+        # The invariant that matters is that in-flight work is NOT completed and
+        # is still dispatchable.
+        from hcli.workunit import is_ready
+
+        b_unit = units.get("B")
         check(
             name,
             a_status == "completed"
-            and b_status in ("failed", "ready")
-            and b_status != "completed",
-            f"A={a_status} B={b_status} keys={list(units)}",
+            and b_status != "completed"
+            and b_unit is not None
+            and is_ready(b_unit, units),
+            f"A={a_status} B={b_status} "
+            f"B_dispatchable={b_unit is not None and is_ready(b_unit, units)} "
+            f"keys={list(units)}",
         )
 
 

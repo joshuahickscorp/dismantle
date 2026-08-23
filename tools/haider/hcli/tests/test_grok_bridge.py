@@ -192,9 +192,17 @@ class TestMissingContractDoesNotSpawn(_BridgeTest):
 
 
 class TestGrokNotAvailable(_BridgeTest):
+    # find_grok_run falls back to the canonical install location after PATH, so
+    # "absent" now means not on PATH AND not installed. Stubbing shutil.which
+    # alone no longer simulates absence on any machine where grok-run is
+    # actually installed, which is every machine that would run these tests.
+    ABSENT_HINT = Path("/nonexistent/grok-run-definitely-absent")
+
     def test_which_none_raises_specific_error(self):
         self.which_patch.stop()
-        with patch("hcli.grok_bridge.shutil.which", return_value=None):
+        with patch("hcli.grok_bridge.shutil.which", return_value=None), patch(
+            "hcli.grok_bridge.DEFAULT_GROK_RUN_HINT", self.ABSENT_HINT
+        ):
             with self.assertRaises(GrokNotAvailable) as ctx:
                 self.bridge.delegate("t", VALID_CONTRACT, dry_run=True)
         self.assertIn("not on PATH", str(ctx.exception))
@@ -202,11 +210,26 @@ class TestGrokNotAvailable(_BridgeTest):
 
     def test_find_grok_run_none(self):
         self.which_patch.stop()
-        with patch("hcli.grok_bridge.shutil.which", return_value=None):
+        with patch("hcli.grok_bridge.shutil.which", return_value=None), patch(
+            "hcli.grok_bridge.DEFAULT_GROK_RUN_HINT", self.ABSENT_HINT
+        ):
             with patch.dict(os.environ, {}, clear=False):
                 os.environ.pop("GROK_RUN", None)
                 with self.assertRaises(GrokNotAvailable):
                     find_grok_run()
+
+    def test_installed_binary_is_found_without_being_on_path(self):
+        """PATH is not the only authority: the documented install path counts."""
+        self.which_patch.stop()
+        with tempfile.TemporaryDirectory() as tmp:
+            fake = Path(tmp) / "grok-run"
+            fake.write_text("#!/bin/sh\nexit 0\n")
+            fake.chmod(0o755)
+            with patch("hcli.grok_bridge.shutil.which", return_value=None), patch(
+                "hcli.grok_bridge.DEFAULT_GROK_RUN_HINT", fake
+            ):
+                os.environ.pop("GROK_RUN", None)
+                self.assertEqual(find_grok_run(), str(fake))
 
 
 class TestArgvConstruction(_BridgeTest):

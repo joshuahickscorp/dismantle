@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from datetime import datetime, timezone
 import os
 import re
 import subprocess
@@ -91,7 +92,7 @@ def _tracked_paths() -> set:
     return _TRACKED
 
 
-def _worktree_extras(task_id: str, patch_files: List[str]) -> Optional[int]:
+def _worktree_extras(task_id: str, patch_files: List[str], declined: Optional[set] = None) -> Optional[int]:
     """Count files in the worktree that the patch never mentions.
 
     This is the F12 detector. `visionmcp/**` is untracked in this repository,
@@ -109,10 +110,13 @@ def _worktree_extras(task_id: str, patch_files: List[str]) -> Optional[int]:
         if not d.is_dir():
             continue
         for f in d.rglob("*"):
-            if not f.is_file() or "__pycache__" in f.parts:
+            # Tool caches are not work product. Left in, every lane that ran
+            # pytest reported five worktree-only files and the flag stopped
+            # meaning "unharvested work".
+            if not f.is_file() or {"__pycache__", ".pytest_cache", ".ruff_cache", ".mypy_cache"} & set(f.parts):
                 continue
             rel = str(f.relative_to(wt))
-            if rel in known:
+            if rel in known or (declined and rel in declined):
                 continue
             # `diff.patch` is blind ONLY where git does not track the path.
             # For tracked files the patch is authoritative and a difference just
@@ -138,7 +142,38 @@ def _worktree_extras(task_id: str, patch_files: List[str]) -> Optional[int]:
     return extras
 
 
+def _elapsed_s(task_dir: Path, tel: dict, status: str) -> float:
+    if status != "running":
+        return round((tel.get("wall_ms") or 0) / 1000.0, 1)
+    try:
+        meta = json.loads((task_dir / "metadata.json").read_text())
+        started = meta.get("started_at")
+        if not started:
+            return 0.0
+        t0 = datetime.strptime(started, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+        return round((datetime.now(timezone.utc) - t0).total_seconds(), 1)
+    except Exception:
+        return 0.0
+
+
+def _declined() -> set:
+    """Lane outputs reviewed and deliberately NOT harvested.
+
+    Without this, a rejected file is re-flagged on every run and the queue never
+    empties -- and a queue that never empties is a queue nobody reads.
+    """
+    out = set()
+    f = REPO / "tools" / "headless" / "lane_declined.txt"
+    if f.is_file():
+        for line in f.read_text().splitlines():
+            line = line.split("#", 1)[0].strip()
+            if line:
+                out.add(line)
+    return out
+
+
 def main() -> int:
+    declined = _declined()
     ap = argparse.ArgumentParser()
     ap.add_argument("--mine", nargs="*", default=None,
                     help="task-id prefixes to treat as this campaign's lanes")
@@ -168,16 +203,29 @@ def main() -> int:
             "id": tid,
             "slug": re.sub(r"-\d{8}-\d{6}$", "", tid),
             "status": st,
-            "wall_s": round((tel.get("wall_ms") or 0) / 1000.0, 1),
+            # telemetry.json is only written when a lane FINISHES, so wall_ms is
+            # absent for exactly the lanes whose elapsed time is worth watching.
+            # A running lane's clock has to come from metadata's started_at.
+            "wall_s": _elapsed_s(d, tel, st),
             "retries": tel.get("retries"),
             "patch_files": len(pf),
-            "unharvested": _unharvested(pf),
-            "worktree_extras": _worktree_extras(tid, pf),
+            "unharvested": [f for f in _unharvested(pf) if f not in declined],
+            "worktree_extras": _worktree_extras(tid, pf, declined),
         })
 
     running = [r for r in rows if r["status"] == "running"]
     done = [r for r in rows if r["status"] == "done"]
-    needs = [r for r in done if r["unharvested"] or (r["worktree_extras"] or 0) > 0]
+    # NOT `done` — any lane that is not currently running. A lane whose status
+    # file is EMPTY (killed, crashed, or interrupted before it could write one)
+    # still has a worktree full of work, and it is the likeliest to be reaped by
+    # a cleanup sweep. Filtering to status=="done" made those invisible: a
+    # planted worktree-only file in a status-less lane went unflagged, which is
+    # the exact case F12 exists to catch.
+    needs = [
+        r for r in rows
+        if r["status"] != "running"
+        and (r["unharvested"] or (r["worktree_extras"] or 0) > 0)
+    ]
 
     print(f"lanes on this repo: {len(rows)}  running: {len(running)}  done: {len(done)}")
     if running:

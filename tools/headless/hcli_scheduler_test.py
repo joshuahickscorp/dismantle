@@ -341,14 +341,47 @@ def check_durable_restart():
             f"a={restarted.units['a'].status}",
         )
         recovered = restarted.units[crashed_id] if crashed_id else None
+        # `interrupted` is a first-class status, not a synonym for failed: a
+        # crash is not a verifier failure, so it must NOT consume the retry
+        # budget and must NOT grow the repair tree (workunit.is_ready and
+        # make_repair_unit both special-case it). This assertion used to demand
+        # "failed" or "ready" with attempts>=1, which contradicted that design.
+        # What actually matters is that the unit is not completed and is still
+        # dispatchable, so check dispatchability rather than the label.
+        from hcli.workunit import is_ready
+
         check(
-            "durable restart: running unit came back failed/ready, not completed",
-            recovered is not None
-            and recovered.status in ("failed", "ready")
-            and recovered.status != "completed"
-            and recovered.attempts >= 1,
+            "durable restart: running unit did NOT come back completed",
+            recovered is not None and recovered.status != "completed",
             f"crashed_id={crashed_id} recovered="
             f"{None if recovered is None else (recovered.status, recovered.attempts)}",
+        )
+        check(
+            "durable restart: the interrupted unit is still dispatchable",
+            recovered is not None and is_ready(recovered, restarted.units),
+            f"status={None if recovered is None else recovered.status} "
+            f"not re-dispatchable after crash recovery",
+        )
+        # `attempts` counts DISPATCHES and is incremented when a unit is
+        # assigned a slot, so a unit that ran once legitimately carries 1. What
+        # makes the crash free is that re-dispatching an INTERRUPTED unit skips
+        # that increment (workunit.assign_slots) -- so the retry budget, which
+        # is only consulted for status=="failed", is never spent by a crash.
+        from hcli.workunit import CLASSIFICATION_INTERRUPTED, assign_ready
+
+        check(
+            "durable restart: the crash is classified INTERRUPTED, not failed",
+            recovered is not None
+            and recovered.classification == CLASSIFICATION_INTERRUPTED,
+            f"classification={None if recovered is None else recovered.classification}",
+        )
+        before = recovered.attempts if recovered else None
+        redispatched = assign_ready([recovered], 2, restarted.units) if recovered else []
+        check(
+            "durable restart: re-dispatch after a crash does not spend an attempt",
+            recovered is not None and recovered.attempts == before,
+            f"attempts {before} -> {None if recovered is None else recovered.attempts} "
+            f"(redispatched={len(redispatched)})",
         )
 
 

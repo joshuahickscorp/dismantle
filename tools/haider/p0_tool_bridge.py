@@ -511,10 +511,11 @@ class ToolExecutor:
         stdout = ""
         stderr = ""
         ok = True
+        truncated = False
         extra: Optional[Dict[str, Any]] = None
         try:
             if name == "git.status":
-                argv = ["git", "status", "--porcelain=v1", "--branch", "--no-color"]
+                argv = ["git", "status", "--porcelain=v1", "--branch"]
                 exit_code, stdout, stderr = self._run(argv)
                 ok = exit_code == 0
             elif name == "git.diff":
@@ -676,7 +677,12 @@ class ToolExecutor:
             stdout,
             stderr,
             elapsed_ms,
-            trunc_out or trunc_err or extra_trunc,
+            # Union of both signals on purpose. extra_trunc reads the flag
+            # back out of the structured `extra` dict, which fs.read populates;
+            # the local `truncated` also catches branches like fs.list that set
+            # it without writing it into `extra`. Taking either side alone drops
+            # one of those paths silently.
+            truncated or trunc_out or trunc_err or extra_trunc,
             ok,
             extra,
         )

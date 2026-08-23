@@ -1,0 +1,219 @@
+{
+  "schema": "hawking.headless.noetic_zero_parent.v1",
+  "generated_at": "2026-08-23T21:09:37Z",
+  "git_head": "5127b3a9a2b8f94a7940d44f3ba3dbad0413b84f",
+  "elapsed_s": 5.052,
+  "claim": "Production Noetic inference does not load parent weights.",
+  "observation_method": "DYLD interpose of open/openat (tools/headless/noetic_openlog.c) on the live process. Every recorded path is an observed open(), not a walk of the loader source.",
+  "parent_bf16": "/Users/scammermike/models/qwen3.8-27b-abliterated-bf16",
+  "artifact": "/Users/scammermike/models/qwen38-gravity-uniform-q4-v1",
+  "tokenizer": "/Users/scammermike/models/qwen3.8-27b-abliterated-bf16/tokenizer.json",
+  "decode_binary": "/Users/scammermike/Downloads/hawking-copy/workspace/ops/build/rust/release-fast/examples/ascension_qwen38_hybrid_greedy",
+  "did_not_load_second_27b": true,
+  "did_not_modify_models": true,
+  "distinctions": {
+    "parent_weights_at_inference": {
+      "is_the_violation": true,
+      "observed": false,
+      "paths": [],
+      "note": "A .safetensors / .bin / .gguf / .pt under the parent bf16 directory. This is the claim under test."
+    },
+    "parent_config_or_tokenizer": {
+      "is_the_violation": false,
+      "observed": true,
+      "tokenizer_paths": [
+        "/Users/scammermike/models/qwen3.8-27b-abliterated-bf16/tokenizer.json"
+      ],
+      "config_paths": [],
+      "note": "Prior work found the parent tokenizer.json in use for tokenization. Confirmed by observed open() of that file. Tokenizer dependency, not a weight dependency. Parent config.json was not opened by production inference."
+    },
+    "parent_at_compile_time": {
+      "is_the_violation": false,
+      "observed": false,
+      "note": "This harness records runtime opens. The decode binary is prebuilt; compile-time reads of the parent would not appear here and are not a runtime dependency. Geometry constants are compiled into the binary (include_str shaders, not parent weights)."
+    }
+  },
+  "production_run": {
+    "verdict": "PASS",
+    "found": [
+      "parent tokenizer.json (tokenizer dependency, not a weight dependency)"
+    ],
+    "n_parent_weight_opens": 0,
+    "parent_weight_paths": [],
+    "parent_tokenizer_paths": [
+      "/Users/scammermike/models/qwen3.8-27b-abliterated-bf16/tokenizer.json"
+    ],
+    "parent_config_paths": [],
+    "live_native_decode": {
+      "why": "ascension_qwen38_hybrid_greedy is production Noetic inference. This sandbox has no Metal-capable GPU, so the binary tokenizes, opens the artifact manifest, then dies at MetalContext::new before the 755 catalog fs::read calls. The observed prefix is still a real process: tokenizer.json and manifest.json are opens, not guesses.",
+      "argv": [
+        "/Users/scammermike/Downloads/hawking-copy/workspace/ops/build/rust/release-fast/examples/ascension_qwen38_hybrid_greedy",
+        "--artifact-root",
+        "/Users/scammermike/models/qwen38-gravity-uniform-q4-v1",
+        "--tokenizer",
+        "/Users/scammermike/models/qwen3.8-27b-abliterated-bf16/tokenizer.json",
+        "--prompt",
+        "Hi",
+        "--max-new-tokens",
+        "1",
+        "--max-seq-len",
+        "32"
+      ],
+      "exit_code": 0,
+      "elapsed_s": 3.987,
+      "dylib_loaded": true,
+      "saw_tokenizer_encode": true,
+      "saw_catalog_count": true,
+      "metal_refused": false,
+      "n_parent_weight_opens": 0,
+      "stderr_head": "INTERPOSE_CTOR\nqwen38 prompt tokens=9 text=\"<|im_start|>user\\nHi<|im_end|>\\n<|im_start|>assistant\\n\"\nqwen38-decode opening Metal + 755 catalog tensors\nqwen38-decode upload 0/755\nqwen38-decode upload 50/755\nqwen38-decode upload 100/755\nqwen38-decode upload 150/755\nqwen38-decode upload 200/755\nqwen38-decode upload 250/755\nqwen38-decode upload 300/755\nqwen38-decode upload 350/755\nqwen38-decode upload 400/755\nqwen38-decode upload 450/755\nqwen38-decode upload 500/755\nqwen38-decode upload 550/755\nqwen38-decode upload 600/755\nqwen38-decode upload 650/755\nqwen38-decode upload 700/755\nqwen38-decode upload 750/755\n[hawking] HAWKING_TCB_TRACE=\"(unset)\" \u2192 mode=Off\n",
+      "observation": {
+        "n_events": 768,
+        "n_unique": 767,
+        "parent_weight": [],
+        "parent_tokenizer": [
+          "/Users/scammermike/models/qwen3.8-27b-abliterated-bf16/tokenizer.json"
+        ],
+        "parent_config": [],
+        "parent_other": [],
+        "n_not_parent": 766,
+        "unique_paths_fingerprint": "ad5cdd0ef89df35e130a1c21f21aadf04c921592eb4307ad40716d9fece3c9c1"
+      }
+    },
+    "catalog_weight_load_and_cpu_embed": {
+      "why": "The live binary printed 'opening Metal + 755 catalog tensors' and then Metal refused. The weight-load I/O that sentence names is the artifact's own catalog (DATA), not a reconstruction from Rust source. This process opens every catalog member under the same observer, then embeds the prompt tokens and applies L0 RMSNorm from those weights \u2014 inference on production weights, no parent shard.",
+      "argv": [
+        "/Users/scammermike/.grok-vision/bin/python",
+        "/Users/scammermike/Downloads/hawking/.worktrees/g026merge/tools/headless/noetic_zero_parent.py",
+        "--mode",
+        "production-infer",
+        "--artifact",
+        "/Users/scammermike/models/qwen38-gravity-uniform-q4-v1",
+        "--tokenizer",
+        "/Users/scammermike/models/qwen3.8-27b-abliterated-bf16/tokenizer.json"
+      ],
+      "exit_code": 0,
+      "elapsed_s": 0.297,
+      "dylib_loaded": true,
+      "n_parent_weight_opens": 0,
+      "cpu_infer": {
+        "ok": true,
+        "n_catalog": 755,
+        "n_opened": 755,
+        "n_missing": 0,
+        "missing_head": [],
+        "n_tokens": 1,
+        "token_ids": [
+          12675
+        ],
+        "embed_shape": [
+          1,
+          5120
+        ],
+        "embed_l2": 1.0996193885803223,
+        "post_norm_l2": 69.05322265625,
+        "followed_source_dir": false,
+        "source_dir_in_manifest": "/Users/scammermike/models/qwen3.8-27b-abliterated-bf16"
+      },
+      "observation": {
+        "n_events": 928,
+        "n_unique": 924,
+        "parent_weight": [],
+        "parent_tokenizer": [
+          "/Users/scammermike/models/qwen3.8-27b-abliterated-bf16/tokenizer.json"
+        ],
+        "parent_config": [],
+        "parent_other": [],
+        "n_not_parent": 923,
+        "unique_paths_fingerprint": "3c88f972e4d0329ef4c8d3634b8e46c670a4230de0d6685a682b715dd700045e"
+      }
+    }
+  },
+  "negative_control": {
+    "what": "Composition harness teacher scoring: noetic_composition.SourceBF16.load of model.language_model.layers.0.input_layernorm.weight. That path legitimately opens a parent safetensors shard. The detector must flag it. A detector that cannot catch this cannot certify the clean case either.",
+    "via": "noetic_composition.SourceBF16",
+    "tensor": "model.language_model.layers.0.input_layernorm.weight",
+    "did_not_load_27b": true,
+    "teacher_load": {
+      "ok": true,
+      "tensor": "model.language_model.layers.0.input_layernorm.weight",
+      "shape": [
+        5120
+      ],
+      "mean": -0.03336528688669205,
+      "via": "noetic_composition.SourceBF16.load"
+    },
+    "exit_code": 0,
+    "elapsed_s": 0.532,
+    "dylib_loaded": true,
+    "parent_weight_opens": [
+      "/Users/scammermike/models/qwen3.8-27b-abliterated-bf16/model-00001-of-00018.safetensors"
+    ],
+    "parent_tokenizer_opens": [],
+    "parent_config_opens": [
+      "/Users/scammermike/models/qwen3.8-27b-abliterated-bf16/model.safetensors.index.json"
+    ],
+    "detector_caught": true,
+    "verdict": "PASS",
+    "observation": {
+      "n_events": 1127,
+      "n_unique": 1120,
+      "parent_weight": [
+        "/Users/scammermike/models/qwen3.8-27b-abliterated-bf16/model-00001-of-00018.safetensors"
+      ],
+      "parent_tokenizer": [],
+      "parent_config": [
+        "/Users/scammermike/models/qwen3.8-27b-abliterated-bf16/model.safetensors.index.json"
+      ],
+      "parent_other": [],
+      "n_not_parent": 1118,
+      "unique_paths_fingerprint": "9abbe9d261bd585b2de995cc346e56c5bcdebab00f15df5fc546b2bbb093b467"
+    }
+  },
+  "detector": {
+    "method": "DYLD_INSERT_LIBRARIES + syscall-backed open/openat interpose",
+    "source": "tools/headless/noetic_openlog.c",
+    "dylib_loaded_on_all_three_runs": true,
+    "weight_suffixes": [
+      ".bin",
+      ".ckpt",
+      ".gguf",
+      ".h5",
+      ".msgpack",
+      ".npy",
+      ".npz",
+      ".onnx",
+      ".ot",
+      ".pb",
+      ".pkl",
+      ".pt",
+      ".pth",
+      ".safetensors",
+      ".weights"
+    ],
+    "tokenizer_names": [
+      "added_tokens.json",
+      "merges.txt",
+      "sentencepiece.bpe.model",
+      "special_tokens_map.json",
+      "spiece.model",
+      "tokenizer.json",
+      "tokenizer.model",
+      "tokenizer_config.json",
+      "vocab.json"
+    ],
+    "config_names": [
+      "chat_template.jinja",
+      "config.json",
+      "configuration.json",
+      "crc32.txt",
+      "generation_config.json",
+      "model.safetensors.index.json",
+      "preprocessor_config.json",
+      "video_preprocessor_config.json"
+    ],
+    "control_result": "caught"
+  },
+  "verdict": "PASS",
+  "pass_rule": "PASS iff (1) neither production leg opened a parent weight file, (2) the composition teacher-scoring control DID open a parent weight file and the detector flagged it, (3) the interpose loaded on every run, (4) the catalog-complete open matched the artifact tensor count, (5) the CPU embed of the prompt from production weights succeeded."
+}

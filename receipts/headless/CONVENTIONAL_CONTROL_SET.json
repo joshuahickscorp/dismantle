@@ -1,0 +1,362 @@
+{
+  "schema": "hawking.headless.conventional_control_set.v1",
+  "generated_at": "2026-08-23T20:44:19Z",
+  "commit": "38ab698658b4c7966d1b85f96047d886c6e43ad0",
+  "why": "Noetic candidates are only meaningful against a conventional control. MLX 4-bit is the LIVE control, measured now. llama.cpp Q5_K is the ARCHIVED control: the GGUF is gone, the numbers survive as science.",
+  "machine": {
+    "mem_bytes": 103079215104,
+    "cpu": "Apple M3 Ultra",
+    "ncpu": 28,
+    "hw_model": "Mac15,14"
+  },
+  "occupancy": {
+    "llama_up": false,
+    "health": [
+      {
+        "port": 52484,
+        "ok": false,
+        "body": null,
+        "error": "URLError: <urlopen error [Errno 61] Connection refused>"
+      },
+      {
+        "port": 8080,
+        "ok": false,
+        "body": null,
+        "error": "URLError: <urlopen error [Errno 61] Connection refused>"
+      },
+      {
+        "port": 51999,
+        "ok": false,
+        "body": null,
+        "error": "URLError: <urlopen error [Errno 61] Connection refused>"
+      },
+      {
+        "port": 54559,
+        "ok": false,
+        "body": null,
+        "error": "URLError: <urlopen error [Errno 61] Connection refused>"
+      },
+      {
+        "port": 54568,
+        "ok": false,
+        "body": null,
+        "error": "URLError: <urlopen error [Errno 61] Connection refused>"
+      },
+      {
+        "port": 54574,
+        "ok": false,
+        "body": null,
+        "error": "URLError: <urlopen error [Errno 61] Connection refused>"
+      }
+    ],
+    "ollama_models": [],
+    "ollama_error": null,
+    "llama_or_mlx_listen": [],
+    "gguf_on_disk": false,
+    "gguf_path": "/Users/scammermike/models/qwen3.8-27b-abliterated/Huihui-Qwen3.8-27B-abliterated-Q5_K.gguf",
+    "refuse_load_27b": false,
+    "refuse_reason": null
+  },
+  "live": {
+    "runtime": "mlx",
+    "status": "LIVE",
+    "artifact": {
+      "path": "/Users/scammermike/models/qwen3.8-27b-abliterated-mlx/4bit",
+      "bytes": 16081497073,
+      "n_files": 16,
+      "quant": {
+        "group_size": 64,
+        "bits": 4,
+        "mode": "affine"
+      },
+      "lineage": "PocketAiHub",
+      "architectures": [
+        "Qwen3_5ForConditionalGeneration"
+      ],
+      "preferred_huihui_present": false,
+      "note": "on-disk MLX abliterated 4-bit; huihui-lineage directory is absent so the live arm is the PocketAiHub conversion at ~/models/qwen3.8-27b-abliterated-mlx/4bit"
+    },
+    "metal": {
+      "attempted": true,
+      "gpu_usable": false,
+      "mlx_python": "/Users/scammermike/.local/share/uv/tools/mlx-lm/bin/python",
+      "mlx_python_present": true,
+      "command": [
+        "/Users/scammermike/.local/share/uv/tools/mlx-lm/bin/python",
+        "/Users/scammermike/.claude-grok/worktrees/g024mlxctl-20260823-162830/tools/headless/conventional_control_set.py",
+        "--mlx-worker",
+        "metal"
+      ],
+      "mlx_imported": true,
+      "metal_is_available_flag": true,
+      "tiny_eval_ok": false,
+      "device_info": null,
+      "device_info_error": "RuntimeError: [metal::load_device] No Metal device available. This typically occurs in headless, sandboxed, or virtualized macOS sessions where the GPU is not accessible.",
+      "tiny_eval_error": "RuntimeError: [metal::load_device] No Metal device available. This typically occurs in headless, sandboxed, or virtualized macOS sessions where the GPU is not accessible.",
+      "mlx_version": null,
+      "error": "RuntimeError: [metal::load_device] No Metal device available. This typically occurs in headless, sandboxed, or virtualized macOS sessions where the GPU is not accessible.",
+      "note": "mx.metal.is_available() can be True while mx.device_info()/mx.eval still raise [metal::load_device] No Metal device available. gpu_usable is tiny_eval_ok, not the is_available flag.",
+      "spawn": {
+        "ok": false,
+        "returncode": 1,
+        "stderr_tail": "Exception ignored in atexit callback: <nanobind.nb_func object at 0x10117c260>\nRuntimeError: [metal::load_device] No Metal device available. This typically occurs in headless, sandboxed, or virtualized macOS sessions where the GPU is not accessible.\n"
+      }
+    },
+    "occupancy": null,
+    "metrics": {
+      "startup": {
+        "status": "ABSENT",
+        "value": null,
+        "reason": "Metal is not usable in this process: RuntimeError: [metal::load_device] No Metal device available. This typically occurs in headless, sandboxed, or virtualized macOS sessions where the GPU is not accessible.. mx.metal.is_available() can be True while load_device fails (sandboxed / headless session). Live decode/prefill/startup/concurrency/peak-memory/tool-shaped tok/s all require the GPU."
+      },
+      "prefill": {
+        "status": "ABSENT",
+        "value": null,
+        "reason": "Metal is not usable in this process: RuntimeError: [metal::load_device] No Metal device available. This typically occurs in headless, sandboxed, or virtualized macOS sessions where the GPU is not accessible.. mx.metal.is_available() can be True while load_device fails (sandboxed / headless session). Live decode/prefill/startup/concurrency/peak-memory/tool-shaped tok/s all require the GPU."
+      },
+      "decode_tps": {
+        "status": "ABSENT",
+        "value": null,
+        "reason": "Metal is not usable in this process: RuntimeError: [metal::load_device] No Metal device available. This typically occurs in headless, sandboxed, or virtualized macOS sessions where the GPU is not accessible.. mx.metal.is_available() can be True while load_device fails (sandboxed / headless session). Live decode/prefill/startup/concurrency/peak-memory/tool-shaped tok/s all require the GPU."
+      },
+      "context_limit": {
+        "status": "MEASURED",
+        "value": 262144,
+        "command": "python3 -c \"import json; print(json.load(open('/Users/scammermike/models/qwen3.8-27b-abliterated-mlx/4bit/config.json'))['text_config']['max_position_embeddings'])\"",
+        "unit": "tokens",
+        "kind": "architectural_max_from_config_json",
+        "empirical_prefill_at_tokens": null,
+        "empirical_prefill_ok": false,
+        "runnable_262144": {
+          "status": "ABSENT",
+          "value": null,
+          "reason": "probing the architectural 262144-token ceiling would allocate KV for this 27B at that length; that is an admission sweep, not a control-set decode. Config max is recorded; empirical prefill is 512 tokens and was not taken."
+        }
+      },
+      "concurrency": {
+        "status": "ABSENT",
+        "value": null,
+        "reason": "Metal is not usable in this process: RuntimeError: [metal::load_device] No Metal device available. This typically occurs in headless, sandboxed, or virtualized macOS sessions where the GPU is not accessible.. mx.metal.is_available() can be True while load_device fails (sandboxed / headless session). Live decode/prefill/startup/concurrency/peak-memory/tool-shaped tok/s all require the GPU. \u2014 a second 27B load is forbidden; batch_generate was not reached"
+      },
+      "peak_memory": {
+        "status": "ABSENT",
+        "value": null,
+        "reason": "Metal is not usable in this process: RuntimeError: [metal::load_device] No Metal device available. This typically occurs in headless, sandboxed, or virtualized macOS sessions where the GPU is not accessible.. mx.metal.is_available() can be True while load_device fails (sandboxed / headless session). Live decode/prefill/startup/concurrency/peak-memory/tool-shaped tok/s all require the GPU."
+      },
+      "tool_shaped_tps": {
+        "status": "ABSENT",
+        "value": null,
+        "reason": "Metal is not usable in this process: RuntimeError: [metal::load_device] No Metal device available. This typically occurs in headless, sandboxed, or virtualized macOS sessions where the GPU is not accessible.. mx.metal.is_available() can be True while load_device fails (sandboxed / headless session). Live decode/prefill/startup/concurrency/peak-memory/tool-shaped tok/s all require the GPU."
+      }
+    },
+    "versions": {
+      "mlx": null,
+      "mlx_python": "/Users/scammermike/.local/share/uv/tools/mlx-lm/bin/python"
+    }
+  },
+  "archived": {
+    "runtime": "llama.cpp",
+    "status": "ARCHIVED",
+    "artifact": {
+      "status": "ARCHIVED",
+      "present": false,
+      "path": "/Users/scammermike/models/qwen3.8-27b-abliterated/Huihui-Qwen3.8-27B-abliterated-Q5_K.gguf",
+      "last_known_bytes": 19535701280,
+      "last_known_gib": 18.19,
+      "quant": "Q5_K",
+      "lineage": "huihui-ai",
+      "runtime": "llama.cpp",
+      "llama_version": "version: 9430 (d48a56eff)\nbuilt with AppleClang 21.0.0.21000099 for Darwin arm64",
+      "registry_identity": "5821251efd19c3089f86f8cc88c6ee2a7f4957e89a6a0a72642ff839911b2bae",
+      "note": "the Q5_K GGUF artifact is GONE; these numbers survive as archived science and must not be required to re-run"
+    },
+    "metrics": {
+      "startup": {
+        "status": "ARCHIVED",
+        "value": 1.51,
+        "source_receipt": "receipts/headless/MACHINE_GENOME.json",
+        "unit": "s",
+        "command": "python3 tools/headless/machine_probe.py --ctx 8192 --max-runtimes 3 --n-predict 96 --reps 3",
+        "repetitions": [
+          3.03,
+          1.51,
+          1.51
+        ],
+        "n": 3,
+        "min": 1.51,
+        "max": 3.03,
+        "median": 1.51,
+        "spread_pct": 100.662,
+        "note": "three sequential llama-server process starts; first load is cold, later loads are page-cached \u2014 that spread is the confound",
+        "generated_at": "2026-08-22T23:13:28Z"
+      },
+      "prefill": {
+        "status": "ARCHIVED",
+        "value": 82.68641811977446,
+        "source_receipt": "receipts/headless/RUNTIME_AB.json",
+        "unit": "tok/s",
+        "command": "llama-server -m /Users/scammermike/models/qwen3.8-27b-abliterated/Huihui-Qwen3.8-27B-abliterated-Q5_K.gguf --port <free> -c 8192 -ngl 999 --host 127.0.0.1 -np 1 ; POST /completion {prompt, n_predict:192, temperature:0.0, ignore_eos:true, cache_prompt:false}  (tools/headless/runtime_ab.py)",
+        "repetitions": [
+          82.63359627767431,
+          83.12684837343139,
+          82.68641811977446
+        ],
+        "n": 3,
+        "min": 82.63359627767431,
+        "max": 83.12684837343139,
+        "median": 82.68641811977446,
+        "spread_pct": 0.597,
+        "generated_at": "2026-08-22T23:21:40Z"
+      },
+      "decode_tps": {
+        "status": "ARCHIVED",
+        "value": 24.048867298350245,
+        "source_receipt": "receipts/headless/RUNTIME_AB.json",
+        "unit": "tok/s",
+        "command": "llama-server -m /Users/scammermike/models/qwen3.8-27b-abliterated/Huihui-Qwen3.8-27B-abliterated-Q5_K.gguf --port <free> -c 8192 -ngl 999 --host 127.0.0.1 -np 1 ; POST /completion {prompt, n_predict:192, temperature:0.0, ignore_eos:true, cache_prompt:false}  (tools/headless/runtime_ab.py)",
+        "repetitions": [
+          24.074229878551783,
+          24.029231560192976,
+          24.048867298350245
+        ],
+        "n": 3,
+        "min": 24.029231560192976,
+        "max": 24.074229878551783,
+        "median": 24.048867298350245,
+        "spread_pct": 0.2,
+        "spread_definition": "100 * (max - min) / min over the three /completion reps",
+        "generated_at": "2026-08-22T23:21:40Z",
+        "llama_version": "version: 9430 (d48a56eff)\nbuilt with AppleClang 21.0.0.21000099 for Darwin arm64",
+        "artifact_present": false
+      },
+      "context_limit": {
+        "status": "ARCHIVED",
+        "value": 262144,
+        "source_receipt": "receipts/headless/LONG_CONTEXT_RUNTIME_CAPABILITY.json",
+        "unit": "tokens",
+        "command": "llama-server --ctx-size 500000 (no explicit --parallel; kv-unified, slots share the window)",
+        "empirical_request_prompt_tokens": 29982,
+        "empirical_request_ok": true,
+        "machine_genome_probe_ctx": 8192,
+        "note": "per-slot n_ctx 262144 on llama-server --ctx-size 500000. A 29982-token request completed. The GGUF is gone, so this is not re-measured today.",
+        "generated_at": "2026-08-23T03:49:32Z"
+      },
+      "concurrency": {
+        "status": "ARCHIVED",
+        "value": {
+          "slot_k1_aggregate_tps_median": 22.818,
+          "slot_k4_aggregate_tps_median": 27.749,
+          "slot_k4_scaling_vs_1": 1.2161,
+          "slot_k4_spread_pct": 0.1,
+          "slot_k6_aggregate_tps_median": 31.541,
+          "one_mlx_stream_beat_four_llama_slots": true,
+          "mlx_single_stream_tps_cited": 35.506,
+          "note": "ONE MLX decoder (35.506 tok/s, GPU_ATTACK.json) beat FOUR concurrent llama.cpp slot decoders (27.749 tok/s aggregate). Best llama.cpp topology was slot k=6 at 31.541 tok/s, still below one MLX stream."
+        },
+        "source_receipt": "receipts/headless/DECODE_TOPOLOGY.json",
+        "command": "python3 tools/headless/decode_topology_probe.py --per-slot-ctx 4096 --n-predict 128 --reps 3 --streams 1,2,4,6,8",
+        "generated_at": "2026-08-22T23:19:43Z",
+        "also_cited": "receipts/headless/GPU_ATTACK.json"
+      },
+      "peak_memory": {
+        "status": "ARCHIVED",
+        "value": 20553433088,
+        "source_receipt": "receipts/headless/MACHINE_GENOME.json",
+        "unit": "bytes_rss",
+        "command": "python3 tools/headless/machine_probe.py --ctx 8192 --max-runtimes 3 --n-predict 96 --reps 3",
+        "repetitions": [
+          20553433088,
+          20559577088,
+          20552007680
+        ],
+        "n": 3,
+        "min": 20552007680,
+        "max": 20559577088,
+        "median": 20553433088,
+        "spread_pct": 0.037,
+        "gib": 19.142,
+        "generated_at": "2026-08-22T23:13:28Z"
+      },
+      "tool_shaped_tps": {
+        "status": "ARCHIVED",
+        "value": 12.965,
+        "source_receipt": "receipts/headless/STRUCTURED_OUTPUT_PROBE.json",
+        "unit": "complete_call_tok_per_s",
+        "command": "llama-server with HCLI structured-output payload (~7221 prompt tokens, chat_template_kwargs.enable_thinking=false); tools/headless/structured_output_probe.py arm=no_think",
+        "repetitions": [
+          3.48,
+          22.45
+        ],
+        "n": 2,
+        "min": 3.48,
+        "max": 22.45,
+        "median": 12.965,
+        "spread_pct": 545.115,
+        "wall_s_repetitions": [
+          31.62,
+          6.46
+        ],
+        "note": "complete-call tok/s of a tool-shaped HCLI JSON payload, NOT isolated decode tok/s: the first rep is cold (31.62s / 3.48 tok/s), the second is warm prefix (6.46s / 22.45 tok/s). Spread is that cache confound.",
+        "generated_at": "2026-08-22T22:52:27Z"
+      }
+    },
+    "headline_vs_mlx": {
+      "status": "ARCHIVED",
+      "value": {
+        "mlx_4bit_tps": 35.506,
+        "llama_q5k_tps": 24.118578993622144,
+        "speed_ratio": 1.472,
+        "bytes_ratio_llama_over_mlx": 1.215,
+        "one_mlx_beat_four_llama_slots": true
+      },
+      "source_receipt": "receipts/headless/GPU_ATTACK.json",
+      "command": "tools/headless/write_gpu_attack.py reading DECODE_TOPOLOGY.json and RUNTIME_AB.json as they stood when GPU_ATTACK.json was sealed",
+      "reading": "MLX moves 1.215x fewer bytes but runs 1.472x faster, so roughly 21% of the gain is kernel/dispatch efficiency rather than density.",
+      "generated_at": "2026-08-22T23:20:19Z",
+      "note": "ARCHIVED headline. The 1.215 bytes ratio is the PocketAiHub MLX 4-bit vs huihui Q5_K GGUF comparison; lineage-matched RUNTIME_AB.json later measured 1.477x on a 1.289 bytes ratio against the now-deleted huihui MLX 4-bit directory. Neither figure is a live measurement today."
+    },
+    "source_receipts": [
+      "receipts/headless/RUNTIME_AB.json",
+      "receipts/headless/GPU_ATTACK.json",
+      "receipts/headless/MACHINE_GENOME.json",
+      "receipts/headless/DECODE_TOPOLOGY.json",
+      "receipts/headless/STRUCTURED_OUTPUT_PROBE.json",
+      "receipts/headless/LONG_CONTEXT_RUNTIME_CAPABILITY.json",
+      "receipts/headless/MODEL_REGISTRY.json"
+    ]
+  },
+  "comparison": {
+    "live_mlx_over_archived_llama": {
+      "status": "ABSENT",
+      "value": null,
+      "reason": "live MLX decode_tps was not MEASURED today, so no live/archived ratio is computed (the GPU_ATTACK 1.472x figure remains ARCHIVED)"
+    },
+    "historical_headline": {
+      "status": "ARCHIVED",
+      "value": {
+        "mlx_4bit_tps": 35.506,
+        "llama_q5k_tps": 24.118578993622144,
+        "speed_ratio": 1.472,
+        "bytes_ratio_llama_over_mlx": 1.215,
+        "one_mlx_beat_four_llama_slots": true
+      },
+      "source_receipt": "receipts/headless/GPU_ATTACK.json",
+      "command": "tools/headless/write_gpu_attack.py reading DECODE_TOPOLOGY.json and RUNTIME_AB.json as they stood when GPU_ATTACK.json was sealed",
+      "reading": "MLX moves 1.215x fewer bytes but runs 1.472x faster, so roughly 21% of the gain is kernel/dispatch efficiency rather than density.",
+      "generated_at": "2026-08-22T23:20:19Z",
+      "note": "ARCHIVED headline. The 1.215 bytes ratio is the PocketAiHub MLX 4-bit vs huihui Q5_K GGUF comparison; lineage-matched RUNTIME_AB.json later measured 1.477x on a 1.289 bytes ratio against the now-deleted huihui MLX 4-bit directory. Neither figure is a live measurement today."
+    }
+  },
+  "discipline": {
+    "every_live_number_has_command_and_spread": true,
+    "every_archived_number_labelled_ARCHIVED": true,
+    "absent_never_written_as_zero": true,
+    "did_not_load_second_27b": true,
+    "gguf_not_required_to_exist": true
+  },
+  "reproduce": "python3 tools/headless/conventional_control_set.py --reps 3 --n-predict 192",
+  "self_check": {
+    "ok": true,
+    "problems": []
+  }
+}

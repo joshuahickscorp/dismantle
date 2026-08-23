@@ -1,23 +1,29 @@
 {
-  "generated_at": "2026-08-23T20:08:10Z",
+  "generated_at": "2026-08-23T20:58:07Z",
   "running": [
-    "f1attnfloor",
-    "f2densesubbit",
-    "f3generated",
-    "r9spawn"
+    "g005doctor",
+    "g011zpgate",
+    "g024mlxgate",
+    "g026ns"
   ],
   "needs_harvest": [
     {
-      "slug": "x2stale",
-      "id": "x2stale-20260823-145054",
-      "unharvested": [],
-      "worktree_extras": 1
+      "slug": "g010closure",
+      "id": "g010closure-20260823-163311",
+      "unharvested": [
+        "receipts/headless/NOETIC_CLOSURE.json",
+        "tools/headless/conftest.py",
+        "tools/headless/noetic_closure.py",
+        "tools/headless/noetic_closure_interpose.c",
+        "tools/headless/noetic_closure_test.py"
+      ],
+      "worktree_extras": 0
     }
   ],
   "headroom": {
-    "load1": 5.25732421875,
+    "load1": 7.318359375,
     "ncpu": 28,
-    "disk_gib": 435.4,
+    "disk_gib": 432.5,
     "room_for_more": true
   }
 }

@@ -236,9 +236,18 @@ def find_grok_run() -> str:
     found = shutil.which("grok-run")
     if found:
         return found
+    # PATH is authority, but the canonical install location is not a guess --
+    # it is the exact path this module already tells you to install to, and it
+    # is checked for executability before use. Requiring the caller to also
+    # export PATH made HCLI refuse to drive Grok on a machine where the binary
+    # was sitting right there, which is a PATH dependency in production, not a
+    # safety property. GROK_RUN still overrides, and a missing binary still
+    # raises rather than inventing a task id.
+    if DEFAULT_GROK_RUN_HINT.is_file() and os.access(DEFAULT_GROK_RUN_HINT, os.X_OK):
+        return str(DEFAULT_GROK_RUN_HINT)
     raise GrokNotAvailable(
-        "grok-run is not on PATH (shutil.which returned None). "
-        f"Install it at {DEFAULT_GROK_RUN_HINT} and put that directory on PATH. "
+        "grok-run is not on PATH (shutil.which returned None) and is not at "
+        f"{DEFAULT_GROK_RUN_HINT}. Install it there, or set GROK_RUN. "
         "Refusing to invent a task id or pretend a Grok session ran."
     )
 

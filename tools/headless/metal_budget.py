@@ -66,10 +66,27 @@ print(String(data: j, encoding: .utf8)!)
 GIB = 1024 ** 3
 
 
-def metal_device() -> dict:
+_DEVICE_CACHE: dict | None = None
+
+
+def metal_device(force: bool = False) -> dict:
     """Ask Metal directly. Falls back to the documented ~75% heuristic if the
     Swift toolchain is absent, and SAYS which one it used — an estimate silently
-    presented as a measurement is how a gate ends up meaning nothing."""
+    presented as a measurement is how a gate ends up meaning nothing.
+
+    Cached, because every uncached call COMPILES AND RUNS a Swift source file:
+    measured at 229 ms median, and MemGate.consider(refresh_metal=True) drove it
+    on a path the latency ledger ranked third at 277.7 ms. What that spawn
+    re-reads -- name, hasUnifiedMemory, recommendedMaxWorkingSetSize,
+    maxBufferLength -- are constants of the machine and cannot change while this
+    process lives. The one genuinely dynamic field, currentAllocatedSize, is read
+    inside a throwaway subprocess and therefore describes THAT helper's device
+    allocation, never this process's, so refreshing it was never buying the
+    freshness it appeared to buy. Pass force=True to re-probe anyway.
+    """
+    global _DEVICE_CACHE
+    if _DEVICE_CACHE is not None and not force:
+        return dict(_DEVICE_CACHE)
     if shutil.which("swift"):
         with tempfile.NamedTemporaryFile("w", suffix=".swift", delete=False) as f:
             f.write(SWIFT)
@@ -79,6 +96,10 @@ def metal_device() -> dict:
             if p.returncode == 0 and p.stdout.strip():
                 d = json.loads(p.stdout.strip().splitlines()[-1])
                 d["source"] = "MTLDevice.recommendedMaxWorkingSetSize (measured)"
+                d["currentAllocatedSize_scope"] = (
+                    "helper subprocess, not this process — do not read as our allocation"
+                )
+                _DEVICE_CACHE = dict(d)
                 return d
         except Exception:
             pass
@@ -86,7 +107,7 @@ def metal_device() -> dict:
             os.unlink(path)
     total = int(subprocess.run(["sysctl", "-n", "hw.memsize"],
                                capture_output=True, text=True).stdout.strip())
-    return {
+    info = {
         "name": subprocess.run(["sysctl", "-n", "machdep.cpu.brand_string"],
                                capture_output=True, text=True).stdout.strip(),
         "hasUnifiedMemory": True,
@@ -95,6 +116,8 @@ def metal_device() -> dict:
         "currentAllocatedSize": None,
         "source": "ESTIMATE: 75% of hw.memsize — swift unavailable, so this is NOT measured",
     }
+    _DEVICE_CACHE = dict(info)
+    return info
 
 
 def wired_limit_override() -> dict:

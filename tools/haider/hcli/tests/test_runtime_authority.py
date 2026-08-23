@@ -52,6 +52,7 @@ LIMIT_ENV = (
     "HCLI_DISABLE_SIGNAL_HOOKS",
     "HCLI_CTX_SIZE",
     "HCLI_GENOME_STALENESS_HORIZON_S",
+    "HCLI_SWAP_CEILING_GIB",
 )
 
 LIVE_MACHINE = {
@@ -235,6 +236,11 @@ class AuthorityTestCase(unittest.TestCase):
         os.environ.pop("ACTIVE_DECODE_LIMIT", None)
         os.environ.pop("HCLI_GENOME_STALENESS_HORIZON_S", None)
         os.environ["HCLI_CTX_SIZE"] = "8192"
+        # Pin the swap ceiling: unset, MemGate consults the host's live swap and
+        # admits zero runtimes, so assertions like admitted_n == 5 fail for a
+        # reason that has nothing to do with the authority under test. Ambient
+        # memory pressure must not decide the outcome of an admission test.
+        os.environ["HCLI_SWAP_CEILING_GIB"] = "64"
 
     def tearDown(self):
         for k, v in self._saved.items():

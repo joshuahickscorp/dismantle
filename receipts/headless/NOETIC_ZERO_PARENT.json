@@ -1,8 +1,8 @@
 {
   "schema": "hawking.headless.noetic_zero_parent.v1",
-  "generated_at": "2026-08-23T20:54:37Z",
-  "git_head": "e841ace7b595dd2c03705926e632f5f73bf3f9c6",
-  "elapsed_s": 5.471,
+  "generated_at": "2026-08-23T20:59:46Z",
+  "git_head": "05f3cda03ad9528264981f0e874f7c239ab5dc30",
+  "elapsed_s": 7.332,
   "claim": "Production Noetic inference does not load parent weights.",
   "observation_method": "DYLD interpose of open/openat (tools/headless/noetic_openlog.c) on the live process. Every recorded path is an observed open(), not a walk of the loader source.",
   "parent_bf16": "/Users/scammermike/models/qwen3.8-27b-abliterated-bf16",
@@ -60,7 +60,7 @@
         "32"
       ],
       "exit_code": 0,
-      "elapsed_s": 4.164,
+      "elapsed_s": 5.514,
       "dylib_loaded": true,
       "saw_tokenizer_encode": true,
       "saw_catalog_count": true,
@@ -68,7 +68,7 @@
       "n_parent_weight_opens": 0,
       "stderr_head": "INTERPOSE_CTOR\nqwen38 prompt tokens=9 text=\"<|im_start|>user\\nHi<|im_end|>\\n<|im_start|>assistant\\n\"\nqwen38-decode opening Metal + 755 catalog tensors\nqwen38-decode upload 0/755\nqwen38-decode upload 50/755\nqwen38-decode upload 100/755\nqwen38-decode upload 150/755\nqwen38-decode upload 200/755\nqwen38-decode upload 250/755\nqwen38-decode upload 300/755\nqwen38-decode upload 350/755\nqwen38-decode upload 400/755\nqwen38-decode upload 450/755\nqwen38-decode upload 500/755\nqwen38-decode upload 550/755\nqwen38-decode upload 600/755\nqwen38-decode upload 650/755\nqwen38-decode upload 700/755\nqwen38-decode upload 750/755\n[hawking] HAWKING_TCB_TRACE=\"(unset)\" \u2192 mode=Off\n",
       "observation": {
-        "n_events": 768,
+        "n_events": 770,
         "n_unique": 767,
         "parent_weight": [],
         "parent_tokenizer": [
@@ -93,7 +93,7 @@
         "/Users/scammermike/models/qwen3.8-27b-abliterated-bf16/tokenizer.json"
       ],
       "exit_code": 0,
-      "elapsed_s": 0.338,
+      "elapsed_s": 0.463,
       "dylib_loaded": true,
       "n_parent_weight_opens": 0,
       "cpu_infer": {
@@ -144,7 +144,7 @@
       "via": "noetic_composition.SourceBF16.load"
     },
     "exit_code": 0,
-    "elapsed_s": 0.661,
+    "elapsed_s": 1.064,
     "dylib_loaded": true,
     "parent_weight_opens": [
       "/Users/scammermike/models/qwen3.8-27b-abliterated-bf16/model-00001-of-00018.safetensors"
@@ -167,7 +167,7 @@
       ],
       "parent_other": [],
       "n_not_parent": 1119,
-      "unique_paths_fingerprint": "9daf9f0f8d401b7174beac3e957c9dfd484d85dae03bcf2f051b2771572aa7af"
+      "unique_paths_fingerprint": "d56c0aeddda6972b891e83f1c88996dc086e5ef382915af95ebf184703f06197"
     }
   },
   "detector": {

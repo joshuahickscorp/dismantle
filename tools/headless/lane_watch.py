@@ -92,7 +92,7 @@ def _tracked_paths() -> set:
     return _TRACKED
 
 
-def _worktree_extras(task_id: str, patch_files: List[str]) -> Optional[int]:
+def _worktree_extras(task_id: str, patch_files: List[str], declined: Optional[set] = None) -> Optional[int]:
     """Count files in the worktree that the patch never mentions.
 
     This is the F12 detector. `visionmcp/**` is untracked in this repository,
@@ -110,10 +110,13 @@ def _worktree_extras(task_id: str, patch_files: List[str]) -> Optional[int]:
         if not d.is_dir():
             continue
         for f in d.rglob("*"):
-            if not f.is_file() or "__pycache__" in f.parts:
+            # Tool caches are not work product. Left in, every lane that ran
+            # pytest reported five worktree-only files and the flag stopped
+            # meaning "unharvested work".
+            if not f.is_file() or {"__pycache__", ".pytest_cache", ".ruff_cache", ".mypy_cache"} & set(f.parts):
                 continue
             rel = str(f.relative_to(wt))
-            if rel in known:
+            if rel in known or (declined and rel in declined):
                 continue
             # `diff.patch` is blind ONLY where git does not track the path.
             # For tracked files the patch is authoritative and a difference just
@@ -153,7 +156,24 @@ def _elapsed_s(task_dir: Path, tel: dict, status: str) -> float:
         return 0.0
 
 
+def _declined() -> set:
+    """Lane outputs reviewed and deliberately NOT harvested.
+
+    Without this, a rejected file is re-flagged on every run and the queue never
+    empties -- and a queue that never empties is a queue nobody reads.
+    """
+    out = set()
+    f = REPO / "tools" / "headless" / "lane_declined.txt"
+    if f.is_file():
+        for line in f.read_text().splitlines():
+            line = line.split("#", 1)[0].strip()
+            if line:
+                out.add(line)
+    return out
+
+
 def main() -> int:
+    declined = _declined()
     ap = argparse.ArgumentParser()
     ap.add_argument("--mine", nargs="*", default=None,
                     help="task-id prefixes to treat as this campaign's lanes")
@@ -189,8 +209,8 @@ def main() -> int:
             "wall_s": _elapsed_s(d, tel, st),
             "retries": tel.get("retries"),
             "patch_files": len(pf),
-            "unharvested": _unharvested(pf),
-            "worktree_extras": _worktree_extras(tid, pf),
+            "unharvested": [f for f in _unharvested(pf) if f not in declined],
+            "worktree_extras": _worktree_extras(tid, pf, declined),
         })
 
     running = [r for r in rows if r["status"] == "running"]

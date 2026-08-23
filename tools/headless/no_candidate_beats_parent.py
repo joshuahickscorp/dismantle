@@ -45,7 +45,8 @@ def candidates() -> list[dict]:
             "text": row.get("generated_text_verbatim"),
         })
     for name, rid in (("NOETIC_Q3_MLP_Q4_ATTN", "q3_mlp_q4_attn"),
-                      ("AFFINE2_NATIVE_MLP", "affine2_g32_all_mlp")):
+                      ("AFFINE2_NATIVE_MLP", "affine2_g32_all_mlp"),
+                      ("AFFINE2_G64_LSFIT", "affine2_g64_lsfit")):
         d = load(name)
         if not d:
             continue

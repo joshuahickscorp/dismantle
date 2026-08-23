@@ -1,25 +1,38 @@
 {
-  "generated_at": "2026-08-23T22:49:34Z",
+  "generated_at": "2026-08-23T23:03:47Z",
   "running": [
-    "g012aff64",
-    "g015handoff",
+    "g021root",
     "g027exec"
   ],
   "needs_harvest": [
     {
-      "slug": "g021selfopt",
-      "id": "g021selfopt-20260823-182725",
+      "slug": "g012aff64",
+      "id": "g012aff64-20260823-182619",
       "unharvested": [
-        "receipts/headless/SELF_OPT_CANDIDATE_PROMOTED.json",
-        "tools/headless/test_self_opt_promotion_controls.py"
+        "receipts/headless/AFFINE2_G64_LSFIT.json",
+        "tools/headless/affine2_g64_lsfit.py",
+        "tools/headless/test_affine2_g64_lsfit.py"
+      ],
+      "worktree_extras": 0
+    },
+    {
+      "slug": "g015handoff",
+      "id": "g015handoff-20260823-183520",
+      "unharvested": [
+        "receipts/headless/NOETIC_ASCENSION_HANDOFF.json",
+        "receipts/headless/NOETIC_ASCENSION_LOOP.json",
+        "receipts/headless/NOETIC_ASCENSION_SCIENCE_UPDATE.json",
+        "tools/headless/noetic_ascension_handoff.py",
+        "tools/headless/noetic_ascension_loop.py",
+        "tools/headless/test_noetic_ascension_handoff.py"
       ],
       "worktree_extras": 0
     }
   ],
   "headroom": {
-    "load1": 19.10693359375,
+    "load1": 18.486328125,
     "ncpu": 28,
-    "disk_gib": 396.5,
+    "disk_gib": 391.4,
     "room_for_more": true
   }
 }

@@ -861,6 +861,13 @@ def _install_whole_model_codec() -> str | None:
         # deliberately the WEAKER arm: it needs no per-layer capture, and if the
         # weaker codec survives composition the fitted one is not worse.
         WHOLE_MODEL_MLP_CODEC = lambda w: fbc.codec_ternary(w, g=g, d=None)[0]
+    elif name.startswith("q") and "_g" in name:
+        # Whole-model control arm. Without a run of a codec that is known GOOD
+        # locally, a whole-model failure cannot be attributed to sub-2-bit rather
+        # than to any MLP requantization compounding at all.
+        bits = int(name[1:name.index("_g")])
+        g = int(name.split("_g")[1])
+        WHOLE_MODEL_MLP_CODEC = lambda w: requantize_absmax(w, bits, group=g)
     elif name.startswith("binary_g"):
         g = int(name.split("_g")[1])
         WHOLE_MODEL_MLP_CODEC = lambda w: requantize_absmax(w, 1, group=g)

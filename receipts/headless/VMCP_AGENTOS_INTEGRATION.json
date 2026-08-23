@@ -1,7 +1,7 @@
 {
   "gate": "VMCP_AGENTOS_INTEGRATION",
-  "generated_at": "2026-08-23T20:08:34Z",
-  "git_head": "0d0ff83f0631a9bb952817c7982e82bb8ae6da66",
+  "generated_at": "2026-08-23T21:23:42Z",
+  "git_head": "1cd3b4cb3fbe843701ee4e4467a7e0b22025892a",
   "seam": {
     "acquire": "visionmcp.perception.bus.CaptureBus.observe",
     "verify": "CaptureBus.verify + the capture's recorded digest",
@@ -12,7 +12,7 @@
     {
       "name": "VMCP capture completed and is content-addressed",
       "ok": true,
-      "detail": "capture_id=244704dc03e7b8f2 status=COMPLETE authority=OBSERVED"
+      "detail": "capture_id=059d733b3d65451c status=COMPLETE authority=OBSERVED"
     },
     {
       "name": "VMCP verifies its own capture against the artifact store",
@@ -37,7 +37,7 @@
     {
       "name": "REPLAY CONTROL: evidence about one file cannot support a claim about another with identical bytes",
       "ok": true,
-      "detail": "exit=6 SUBJECT_MISMATCH: evidence is about /private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/vmcp-integration-cewnz2yw/t"
+      "detail": "exit=6 SUBJECT_MISMATCH: evidence is about /private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/vmcp-integration-z381ybto/t"
     },
     {
       "name": "the core VMCP profile exposes no scheduler, queue or promotion",

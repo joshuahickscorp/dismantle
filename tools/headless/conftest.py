@@ -1,31 +1,34 @@
-"""Collection rules for tools/headless under a sparse checkout.
+"""Headless pytest collection.
 
-`python3 -m pytest tools/headless` collects every `*_test.py`. Several of
-those import `tools/haider/hcli` at module level. That tree is often not
-materialized here; an ImportError during collection would fail the session
-before the closure harness ran. Skip those files only when haider is absent.
+HCLI tests import `hcli` from tools/haider. This worktree is a sparse checkout
+and that path is often not materialized; collecting the directory then dies
+with ModuleNotFoundError before any test runs. Skip those modules only when
+the package is actually absent, so `pytest tools/headless -q` can still
+exercise the tests that do live here.
 """
 from __future__ import annotations
 
 from pathlib import Path
 
-_HAIDER = Path(__file__).resolve().parents[1] / "haider"
-_HAIDER_COLLECT = frozenset(
-    {
-        "rollback_integrity_test.py",
-    }
-)
+_REPO = Path(__file__).resolve().parents[2]
+_HAIDER = _REPO / "tools" / "haider" / "hcli"
+
+# Files that import hcli in the test body even when collection succeeds.
+_HCLI_BODY = {
+    "rollback_integrity_test.py",
+    "handoff_cold_read_test.py",
+}
 
 
 def pytest_ignore_collect(collection_path, config):  # noqa: ARG001
-    path = Path(collection_path)
-    if path.suffix != ".py":
-        return None
     if _HAIDER.is_dir():
-        return None
-    name = path.name
-    if name.startswith("hcli_") and name.endswith("_test.py"):
+        return False
+    try:
+        name = collection_path.name
+    except AttributeError:
+        return False
+    if name.startswith("hcli_") and name.endswith(".py"):
         return True
-    if name in _HAIDER_COLLECT:
+    if name in _HCLI_BODY:
         return True
-    return None
+    return False

@@ -6,9 +6,9 @@
       "before": {
         "raised": false,
         "response": {
-          "capture_id": "6aeb361e1f60c33ab9c88af281e82cb0752779e98873679a9d266fb0a8e9c9e3",
+          "capture_id": "9f7c0b6e23a1ef31e399d7705c488e2d6f92bdb34eee37f1cf35d178ad06fa34",
           "failures": [],
-          "manifest_digest": "1c76121e0f06a9eef9e57e1c19586b34157fe56ca82e6fa397e17b64a2c64165",
+          "manifest_digest": "319ff15747fc56850383445a34594564ffba287f65023a643d941de64c260a8f",
           "scope": "stored_capture",
           "status": "COMPLETE",
           "valid": true,
@@ -18,15 +18,15 @@
           }
         }
       },
-      "capture_id": "6aeb361e1f60c33ab9c88af281e82cb0752779e98873679a9d266fb0a8e9c9e3",
-      "cas_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/vmcp-forgery-canary-liy93_jz/project/artifacts/sha256/2d/12/2d121251db1fb56638fdf6c82839b358d748c848c635ac9aeea95e02397a48d0",
+      "capture_id": "9f7c0b6e23a1ef31e399d7705c488e2d6f92bdb34eee37f1cf35d178ad06fa34",
+      "cas_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/vmcp-forgery-canary-yfa23ksm/project/artifacts/sha256/2d/12/2d121251db1fb56638fdf6c82839b358d748c848c635ac9aeea95e02397a48d0",
       "id": "tampered_artifact",
       "original_size": 83,
       "recorded_digest": "2d121251db1fb56638fdf6c82839b358d748c848c635ac9aeea95e02397a48d0",
       "response": {
         "raised": false,
         "response": {
-          "capture_id": "6aeb361e1f60c33ab9c88af281e82cb0752779e98873679a9d266fb0a8e9c9e3",
+          "capture_id": "9f7c0b6e23a1ef31e399d7705c488e2d6f92bdb34eee37f1cf35d178ad06fa34",
           "failures": [
             {
               "actual": "fc782e263060390e3299f02bf10b55290f19a947d4ff25a7234cc62d68808ad6",
@@ -34,7 +34,7 @@
               "role": "bytes"
             }
           ],
-          "manifest_digest": "1c76121e0f06a9eef9e57e1c19586b34157fe56ca82e6fa397e17b64a2c64165",
+          "manifest_digest": "319ff15747fc56850383445a34594564ffba287f65023a643d941de64c260a8f",
           "scope": "stored_capture",
           "status": "COMPLETE",
           "valid": false,
@@ -52,9 +52,9 @@
       "before": {
         "raised": false,
         "response": {
-          "capture_id": "ba4147fbe5d79d55c6240ca62c4e1d54dca9849d3bd44ea40a096fb52251565d",
+          "capture_id": "302cb80bc9e08bcb84fa29930bc71b8463f2d048ad3f591c7bea0f283bd2c99f",
           "failures": [],
-          "manifest_digest": "2f40b84122015f78d47238e6f88e31282b17e4e45593c159e343164768d56b20",
+          "manifest_digest": "38ea5d21e89bda7388bb4370ae0fb2f015c8c44c11e41e15d9e5224d28890e0d",
           "scope": "stored_capture",
           "status": "COMPLETE",
           "valid": true,
@@ -64,13 +64,13 @@
           }
         }
       },
-      "capture_id": "ba4147fbe5d79d55c6240ca62c4e1d54dca9849d3bd44ea40a096fb52251565d",
+      "capture_id": "302cb80bc9e08bcb84fa29930bc71b8463f2d048ad3f591c7bea0f283bd2c99f",
       "get_after_tamper": {
-        "manifest_digest": "2f40b84122015f78d47238e6f88e31282b17e4e45593c159e343164768d56b20",
+        "manifest_digest": "38ea5d21e89bda7388bb4370ae0fb2f015c8c44c11e41e15d9e5224d28890e0d",
         "status": "COMPLETE",
         "summary": {
           "mode": "0o100644",
-          "path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/vmcp-forgery-canary-liy93_jz/tamper-rec.txt",
+          "path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/vmcp-forgery-canary-yfa23ksm/tamper-rec.txt",
           "present": true,
           "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
           "size": 81
@@ -79,25 +79,25 @@
       "id": "tampered_record",
       "lying_summary": {
         "mode": "0o100644",
-        "path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/vmcp-forgery-canary-liy93_jz/tamper-rec.txt",
+        "path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/vmcp-forgery-canary-yfa23ksm/tamper-rec.txt",
         "present": true,
         "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
         "size": 81
       },
       "original_summary": {
         "mode": "0o100644",
-        "path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/vmcp-forgery-canary-liy93_jz/tamper-rec.txt",
+        "path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/vmcp-forgery-canary-yfa23ksm/tamper-rec.txt",
         "present": true,
         "sha256": "7b682f09e2f4c4cf0c8769a3d00f1135c669fab317764abf32af2e2494a5374f",
         "size": 81
       },
       "response": {
         "get_after_tamper": {
-          "manifest_digest": "2f40b84122015f78d47238e6f88e31282b17e4e45593c159e343164768d56b20",
+          "manifest_digest": "38ea5d21e89bda7388bb4370ae0fb2f015c8c44c11e41e15d9e5224d28890e0d",
           "status": "COMPLETE",
           "summary": {
             "mode": "0o100644",
-            "path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/vmcp-forgery-canary-liy93_jz/tamper-rec.txt",
+            "path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/vmcp-forgery-canary-yfa23ksm/tamper-rec.txt",
             "present": true,
             "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
             "size": 81
@@ -106,14 +106,14 @@
         "verify": {
           "raised": false,
           "response": {
-            "capture_id": "ba4147fbe5d79d55c6240ca62c4e1d54dca9849d3bd44ea40a096fb52251565d",
+            "capture_id": "302cb80bc9e08bcb84fa29930bc71b8463f2d048ad3f591c7bea0f283bd2c99f",
             "failures": [
               {
                 "reason": "summary_mismatch",
                 "role": "summary"
               }
             ],
-            "manifest_digest": "2f40b84122015f78d47238e6f88e31282b17e4e45593c159e343164768d56b20",
+            "manifest_digest": "38ea5d21e89bda7388bb4370ae0fb2f015c8c44c11e41e15d9e5224d28890e0d",
             "scope": "stored_capture",
             "status": "COMPLETE",
             "valid": false,
@@ -140,7 +140,7 @@
         "artifact_halved": {
           "raised": false,
           "response": {
-            "capture_id": "c5b1f3de5ada9585fd36c1325a1459d67f6ed2bad794d93cee3e6d6f2790cc28",
+            "capture_id": "d23d62fb1ce59f45543802c13cf0e74755b350c00bd35d280474b850307c39ae",
             "failures": [
               {
                 "actual": "47b40cfc898242a3679c4f0f08e26ee49cb6298b1395a25d78f1fab459453b3b",
@@ -148,7 +148,7 @@
                 "role": "bytes"
               }
             ],
-            "manifest_digest": "a7d75af647181fa161aeef533f14ef58a05f57fd3337a423793a49f95115cb3f",
+            "manifest_digest": "6bdb63f6234d6cd94349e33cb0672d9eedd3b51041bb36cfe97a1d7d819b232d",
             "scope": "stored_capture",
             "status": "COMPLETE",
             "valid": false,
@@ -171,19 +171,19 @@
       "undetected_variants": [],
       "variants": {
         "artifact_deleted_for_comparison": {
-          "capture_id": "12f66072c002db8929f0ad18cd6e30a39efc29b21502f3d51796b0829fadb714",
+          "capture_id": "7056f46a5b252088f0789afde1fdd038133d10156c7aaef0c360b048e2f1870e",
           "distinguishable_from_absent": true,
           "response": {
             "raised": false,
             "response": {
-              "capture_id": "12f66072c002db8929f0ad18cd6e30a39efc29b21502f3d51796b0829fadb714",
+              "capture_id": "7056f46a5b252088f0789afde1fdd038133d10156c7aaef0c360b048e2f1870e",
               "failures": [
                 {
                   "reason": "missing",
                   "role": "bytes"
                 }
               ],
-              "manifest_digest": "307150c8c4d1e12d48975685d17c70b1225b4f70fce6cf9d80261f5944b8aa9d",
+              "manifest_digest": "6f73d1a4ab82cad046d530f6c766693ba1339cb03b73027ac1691ed177d89762",
               "scope": "stored_capture",
               "status": "COMPLETE",
               "valid": false,
@@ -196,14 +196,14 @@
           "verdict": "DETECTED"
         },
         "artifact_halved": {
-          "capture_id": "c5b1f3de5ada9585fd36c1325a1459d67f6ed2bad794d93cee3e6d6f2790cc28",
+          "capture_id": "d23d62fb1ce59f45543802c13cf0e74755b350c00bd35d280474b850307c39ae",
           "distinguishable_from_absent": true,
           "distinguishable_from_missing_file": true,
           "original_size": 148,
           "response": {
             "raised": false,
             "response": {
-              "capture_id": "c5b1f3de5ada9585fd36c1325a1459d67f6ed2bad794d93cee3e6d6f2790cc28",
+              "capture_id": "d23d62fb1ce59f45543802c13cf0e74755b350c00bd35d280474b850307c39ae",
               "failures": [
                 {
                   "actual": "47b40cfc898242a3679c4f0f08e26ee49cb6298b1395a25d78f1fab459453b3b",
@@ -211,7 +211,7 @@
                   "role": "bytes"
                 }
               ],
-              "manifest_digest": "a7d75af647181fa161aeef533f14ef58a05f57fd3337a423793a49f95115cb3f",
+              "manifest_digest": "6bdb63f6234d6cd94349e33cb0672d9eedd3b51041bb36cfe97a1d7d819b232d",
               "scope": "stored_capture",
               "status": "COMPLETE",
               "valid": false,
@@ -225,7 +225,7 @@
           "verdict": "DETECTED"
         },
         "record_halved": {
-          "capture_id": "5b9198071675686d1df339e3efe237efd854515b345991f9f3ec19a8cfd19c4a",
+          "capture_id": "59551db3d229ff6fbaec06df6544b582cbb07b2738b80e1a499772b115444c83",
           "distinguishable_from_absent": true,
           "original_summary_json_len": 230,
           "response": {
@@ -234,7 +234,7 @@
             "raised": true,
             "traceback": "Traceback (most recent call last):\n  File \"/Users/scammermike/Downloads/hawking/tools/headless/vmcp_forgery_canary.py\", line 271, in call_verify\n    payload = bus.verify(capture_id)\n  File \"/Users/scammermike/Downloads/hawking/visionmcp/src/visionmcp/perception/bus.py\", line 508, in verify\n    capture = self.get(capture_id)\n  File \"/Users/scammermike/Downloads/hawking/visionmcp/src/visionmcp/perception/bus.py\", line 480, in get\n    \"summary\": json.loads(row[\"summary_json\"]),\n               ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/lib/python3.14/json/__init__.py\", line 352, in loads\n    return _default_decoder.decode(s)\n           ~~~~~~~~~~~~~~~~~~~~~~~^^^\n  File \"/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/lib/python3.14/json/decoder.py\", line 345, in decode\n    obj, end = self.raw_decode(s, idx=_w(s, 0).end())\n               ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/lib/python3.14/json/decoder.py\", line 361, in raw_decode\n    obj, end = self.scan_once(s, idx)\n               ~~~~~~~~~~~~~~^^^^^^^^\njson.decoder.JSONDecodeError: Unterminated string starting at: line 1 column 27 (char 26)\n"
           },
-          "truncated_summary_json": "{\"mode\":\"0o100644\",\"path\":\"/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/vmcp-forgery-canary-liy93_jz/tr",
+          "truncated_summary_json": "{\"mode\":\"0o100644\",\"path\":\"/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/vmcp-forgery-canary-yfa23ksm/tr",
           "truncated_summary_json_len": 115,
           "verdict": "DETECTED"
         }
@@ -243,11 +243,11 @@
     },
     {
       "attack": "adapter returns CaptureOutcome(summary={ok: True, verified: True}) without calling the artifact sink \u2014 success with no evidence body",
-      "capture_id": "95d052fb1c943324baf0687027cd8d99282cc42e06f702256563bac2f04b1996",
+      "capture_id": "c084f47ce737745c9c2a219ea874a000e5ad468ee863f0aa9d500de4910b2649",
       "id": "self_report",
       "leftover": {
         "artifacts": [],
-        "capture_id": "95d052fb1c943324baf0687027cd8d99282cc42e06f702256563bac2f04b1996",
+        "capture_id": "c084f47ce737745c9c2a219ea874a000e5ad468ee863f0aa9d500de4910b2649",
         "manifest_digest": null,
         "status": "INTERRUPTED",
         "summary": {}
@@ -261,7 +261,7 @@
       "response": {
         "leftover": {
           "artifacts": [],
-          "capture_id": "95d052fb1c943324baf0687027cd8d99282cc42e06f702256563bac2f04b1996",
+          "capture_id": "c084f47ce737745c9c2a219ea874a000e5ad468ee863f0aa9d500de4910b2649",
           "manifest_digest": null,
           "status": "INTERRUPTED",
           "summary": {}
@@ -275,7 +275,7 @@
         "verify": {
           "raised": false,
           "response": {
-            "capture_id": "95d052fb1c943324baf0687027cd8d99282cc42e06f702256563bac2f04b1996",
+            "capture_id": "c084f47ce737745c9c2a219ea874a000e5ad468ee863f0aa9d500de4910b2649",
             "failures": [],
             "manifest_digest": null,
             "scope": "stored_capture",
@@ -292,19 +292,19 @@
     },
     {
       "attack": "observe file A; present that valid capture_id as evidence for file B (different path, identical bytes). This is how the AgentOS verifier consumes evidence: CaptureBus.verify(capture_id) plus summary.sha256 vs sha256(claimed_path). It does not bind the capture to the subject.",
-      "capture_id_a": "1c9b842eaa0fac7c92cb977fd75d60d4eca22d8a0642b20bd134e34aabee506f",
-      "capture_id_b": "e2e9aaa67d35f9e63fcc127ea0a5c905ccb3113583f7a923ffa9a73c1f07a4e9",
+      "capture_id_a": "44535880b04eb7538088db57befa8f4453d4b95116e8596ce50a4f2819b3ff29",
+      "capture_id_b": "7fba681aec094baad8f8a2ee52c3d25aa5f1b4b8f17b10c12e8f3d9134107196",
       "consume_a_as_a": {
-        "claimed_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/vmcp-forgery-canary-liy93_jz/replay-a.txt",
+        "claimed_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/vmcp-forgery-canary-yfa23ksm/replay-a.txt",
         "claimed_sha256": "2be327d179d86e7881cced2a34f0ec3fdadf15e099a62fb63e888e886029e758",
         "observed_sha256": "2be327d179d86e7881cced2a34f0ec3fdadf15e099a62fb63e888e886029e758",
-        "recorded_target_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/vmcp-forgery-canary-liy93_jz/replay-a.txt",
+        "recorded_target_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/vmcp-forgery-canary-yfa23ksm/replay-a.txt",
         "result": "SUPPORTED",
         "subject_matches_recorded_target": true,
         "verify": {
-          "capture_id": "1c9b842eaa0fac7c92cb977fd75d60d4eca22d8a0642b20bd134e34aabee506f",
+          "capture_id": "44535880b04eb7538088db57befa8f4453d4b95116e8596ce50a4f2819b3ff29",
           "failures": [],
-          "manifest_digest": "466d20d1a800ff828bacb387ac9247253ab35ab86f60ed32a5c7c34884362966",
+          "manifest_digest": "8eefe7211a84cea57c136a08d74846da0d12daaef0e26d2b2fcfdd2f1fcb40ad",
           "scope": "stored_capture",
           "status": "COMPLETE",
           "valid": true,
@@ -315,20 +315,20 @@
         },
         "verify_valid": true
       },
-      "file_a": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/vmcp-forgery-canary-liy93_jz/replay-a.txt",
-      "file_b": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/vmcp-forgery-canary-liy93_jz/replay-b.txt",
+      "file_a": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/vmcp-forgery-canary-yfa23ksm/replay-a.txt",
+      "file_b": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/vmcp-forgery-canary-yfa23ksm/replay-b.txt",
       "id": "replay",
       "response": {
-        "claimed_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/vmcp-forgery-canary-liy93_jz/replay-b.txt",
+        "claimed_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/vmcp-forgery-canary-yfa23ksm/replay-b.txt",
         "claimed_sha256": "2be327d179d86e7881cced2a34f0ec3fdadf15e099a62fb63e888e886029e758",
         "observed_sha256": "2be327d179d86e7881cced2a34f0ec3fdadf15e099a62fb63e888e886029e758",
-        "recorded_target_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/vmcp-forgery-canary-liy93_jz/replay-a.txt",
+        "recorded_target_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/vmcp-forgery-canary-yfa23ksm/replay-a.txt",
         "result": "SUPPORTED",
         "subject_matches_recorded_target": false,
         "verify": {
-          "capture_id": "1c9b842eaa0fac7c92cb977fd75d60d4eca22d8a0642b20bd134e34aabee506f",
+          "capture_id": "44535880b04eb7538088db57befa8f4453d4b95116e8596ce50a4f2819b3ff29",
           "failures": [],
-          "manifest_digest": "466d20d1a800ff828bacb387ac9247253ab35ab86f60ed32a5c7c34884362966",
+          "manifest_digest": "8eefe7211a84cea57c136a08d74846da0d12daaef0e26d2b2fcfdd2f1fcb40ad",
           "scope": "stored_capture",
           "status": "COMPLETE",
           "valid": true,
@@ -345,9 +345,9 @@
       "verify_a": {
         "raised": false,
         "response": {
-          "capture_id": "1c9b842eaa0fac7c92cb977fd75d60d4eca22d8a0642b20bd134e34aabee506f",
+          "capture_id": "44535880b04eb7538088db57befa8f4453d4b95116e8596ce50a4f2819b3ff29",
           "failures": [],
-          "manifest_digest": "466d20d1a800ff828bacb387ac9247253ab35ab86f60ed32a5c7c34884362966",
+          "manifest_digest": "8eefe7211a84cea57c136a08d74846da0d12daaef0e26d2b2fcfdd2f1fcb40ad",
           "scope": "stored_capture",
           "status": "COMPLETE",
           "valid": true,
@@ -361,18 +361,18 @@
     },
     {
       "attack": "observe a file, overwrite it on disk, then verify the original capture id and re-observe the same path. Distinct from replay (same bytes, different path) and tampered_artifact (CAS bytes).",
-      "capture_id": "ba9d04f5e2872371c6e632ec268c528dd747ddc308497921b0fc2ffbe4d68357",
+      "capture_id": "790f2849ffebbecf770878b1bed9579ca20eda1037ad15c99efec8f62882e47f",
       "digest_after": "d2ac3d7ccd239256605ac8f773f0c850a666aeb787dc40cff7d7c0ffb63aad76",
       "digest_before": "a328e97afaa0854062619b2b1a939b057ce20f932f554790db1479c1e9ef146b",
       "id": "stale_capture_after_subject_mutation",
       "reobserve": {
-        "capture_id": "ba9d04f5e2872371c6e632ec268c528dd747ddc308497921b0fc2ffbe4d68357",
+        "capture_id": "790f2849ffebbecf770878b1bed9579ca20eda1037ad15c99efec8f62882e47f",
         "reused": false,
         "same_id": true,
         "status": "COMPLETE",
         "summary": {
           "mode": "0o100644",
-          "path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/vmcp-forgery-canary-liy93_jz/stale-subject.txt",
+          "path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/vmcp-forgery-canary-yfa23ksm/stale-subject.txt",
           "present": true,
           "sha256": "d2ac3d7ccd239256605ac8f773f0c850a666aeb787dc40cff7d7c0ffb63aad76",
           "size": 109
@@ -386,10 +386,10 @@
         "subject_matches": {
           "raised": false,
           "response": {
-            "capture_id": "ba9d04f5e2872371c6e632ec268c528dd747ddc308497921b0fc2ffbe4d68357",
+            "capture_id": "790f2849ffebbecf770878b1bed9579ca20eda1037ad15c99efec8f62882e47f",
             "live_digest": "d2ac3d7ccd239256605ac8f773f0c850a666aeb787dc40cff7d7c0ffb63aad76",
             "matches": false,
-            "path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/vmcp-forgery-canary-liy93_jz/stale-subject.txt",
+            "path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/vmcp-forgery-canary-yfa23ksm/stale-subject.txt",
             "reason": "subject_changed",
             "recorded_digest": "a328e97afaa0854062619b2b1a939b057ce20f932f554790db1479c1e9ef146b"
           }
@@ -397,7 +397,7 @@
         "verify_live_subject": {
           "raised": false,
           "response": {
-            "capture_id": "ba9d04f5e2872371c6e632ec268c528dd747ddc308497921b0fc2ffbe4d68357",
+            "capture_id": "790f2849ffebbecf770878b1bed9579ca20eda1037ad15c99efec8f62882e47f",
             "failures": [
               {
                 "actual": "d2ac3d7ccd239256605ac8f773f0c850a666aeb787dc40cff7d7c0ffb63aad76",
@@ -406,14 +406,14 @@
                 "role": "subject"
               }
             ],
-            "manifest_digest": "5798ae5bb538274fc254a958f9f4a4fbc64afdb3b404f6ac2ae450c0c844e4c4",
+            "manifest_digest": "3a4eeea6783d8b7cbba8b077d46f440df466df1dc6aadd999b0a6b18bf4a79d8",
             "scope": "stored_capture+live_subject",
             "status": "COMPLETE",
             "subject": {
-              "capture_id": "ba9d04f5e2872371c6e632ec268c528dd747ddc308497921b0fc2ffbe4d68357",
+              "capture_id": "790f2849ffebbecf770878b1bed9579ca20eda1037ad15c99efec8f62882e47f",
               "live_digest": "d2ac3d7ccd239256605ac8f773f0c850a666aeb787dc40cff7d7c0ffb63aad76",
               "matches": false,
-              "path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/vmcp-forgery-canary-liy93_jz/stale-subject.txt",
+              "path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/vmcp-forgery-canary-yfa23ksm/stale-subject.txt",
               "reason": "subject_changed",
               "recorded_digest": "a328e97afaa0854062619b2b1a939b057ce20f932f554790db1479c1e9ef146b"
             },
@@ -427,9 +427,9 @@
         "verify_stored": {
           "raised": false,
           "response": {
-            "capture_id": "ba9d04f5e2872371c6e632ec268c528dd747ddc308497921b0fc2ffbe4d68357",
+            "capture_id": "790f2849ffebbecf770878b1bed9579ca20eda1037ad15c99efec8f62882e47f",
             "failures": [],
-            "manifest_digest": "5798ae5bb538274fc254a958f9f4a4fbc64afdb3b404f6ac2ae450c0c844e4c4",
+            "manifest_digest": "3a4eeea6783d8b7cbba8b077d46f440df466df1dc6aadd999b0a6b18bf4a79d8",
             "scope": "stored_capture",
             "status": "COMPLETE",
             "valid": true,
@@ -443,10 +443,10 @@
       "subject_matches_after_mutation": {
         "raised": false,
         "response": {
-          "capture_id": "ba9d04f5e2872371c6e632ec268c528dd747ddc308497921b0fc2ffbe4d68357",
+          "capture_id": "790f2849ffebbecf770878b1bed9579ca20eda1037ad15c99efec8f62882e47f",
           "live_digest": "d2ac3d7ccd239256605ac8f773f0c850a666aeb787dc40cff7d7c0ffb63aad76",
           "matches": false,
-          "path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/vmcp-forgery-canary-liy93_jz/stale-subject.txt",
+          "path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/vmcp-forgery-canary-yfa23ksm/stale-subject.txt",
           "reason": "subject_changed",
           "recorded_digest": "a328e97afaa0854062619b2b1a939b057ce20f932f554790db1479c1e9ef146b"
         }
@@ -455,7 +455,7 @@
       "verify_live_subject_after_mutation": {
         "raised": false,
         "response": {
-          "capture_id": "ba9d04f5e2872371c6e632ec268c528dd747ddc308497921b0fc2ffbe4d68357",
+          "capture_id": "790f2849ffebbecf770878b1bed9579ca20eda1037ad15c99efec8f62882e47f",
           "failures": [
             {
               "actual": "d2ac3d7ccd239256605ac8f773f0c850a666aeb787dc40cff7d7c0ffb63aad76",
@@ -464,14 +464,14 @@
               "role": "subject"
             }
           ],
-          "manifest_digest": "5798ae5bb538274fc254a958f9f4a4fbc64afdb3b404f6ac2ae450c0c844e4c4",
+          "manifest_digest": "3a4eeea6783d8b7cbba8b077d46f440df466df1dc6aadd999b0a6b18bf4a79d8",
           "scope": "stored_capture+live_subject",
           "status": "COMPLETE",
           "subject": {
-            "capture_id": "ba9d04f5e2872371c6e632ec268c528dd747ddc308497921b0fc2ffbe4d68357",
+            "capture_id": "790f2849ffebbecf770878b1bed9579ca20eda1037ad15c99efec8f62882e47f",
             "live_digest": "d2ac3d7ccd239256605ac8f773f0c850a666aeb787dc40cff7d7c0ffb63aad76",
             "matches": false,
-            "path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/vmcp-forgery-canary-liy93_jz/stale-subject.txt",
+            "path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/vmcp-forgery-canary-yfa23ksm/stale-subject.txt",
             "reason": "subject_changed",
             "recorded_digest": "a328e97afaa0854062619b2b1a939b057ce20f932f554790db1479c1e9ef146b"
           },
@@ -485,9 +485,9 @@
       "verify_stored_after_mutation": {
         "raised": false,
         "response": {
-          "capture_id": "ba9d04f5e2872371c6e632ec268c528dd747ddc308497921b0fc2ffbe4d68357",
+          "capture_id": "790f2849ffebbecf770878b1bed9579ca20eda1037ad15c99efec8f62882e47f",
           "failures": [],
-          "manifest_digest": "5798ae5bb538274fc254a958f9f4a4fbc64afdb3b404f6ac2ae450c0c844e4c4",
+          "manifest_digest": "3a4eeea6783d8b7cbba8b077d46f440df466df1dc6aadd999b0a6b18bf4a79d8",
           "scope": "stored_capture",
           "status": "COMPLETE",
           "valid": true,
@@ -514,17 +514,17 @@
     "self_report",
     "stale_capture_after_subject_mutation"
   ],
-  "elapsed_s": 0.1654,
+  "elapsed_s": 0.1671,
   "gate": "VMCP_FORGERY_CANARY",
-  "generated_at": "2026-08-23T20:08:33Z",
+  "generated_at": "2026-08-23T21:23:33Z",
   "git": {
     "cwd": "/Users/scammermike/Downloads/hawking",
-    "head": "0d0ff83f0631a9bb952817c7982e82bb8ae6da66",
-    "oneline": "0d0ff83f0 Wave A census plus a lane watcher, and the dual-identity defect it exposed",
+    "head": "1cd3b4cb3fbe843701ee4e4467a7e0b22025892a",
+    "oneline": "1cd3b4cb3 Local adequacy does not compose: whole-model ternary flips the prediction",
     "own_git": true,
     "toplevel": "/Users/scammermike/Downloads/hawking"
   },
-  "git_head": "0d0ff83f0631a9bb952817c7982e82bb8ae6da66",
+  "git_head": "1cd3b4cb3fbe843701ee4e4467a7e0b22025892a",
   "handoff": [
     {
       "adversary": "replay",
@@ -535,7 +535,7 @@
   ],
   "not_attempted": [],
   "positive_control": {
-    "capture_id": "8f6091165b934462a5240f707435ca1a6d71e1e0a2e3f0cd39f140bedf84311a",
+    "capture_id": "4838df30491ca5845d8530ec4a3005d23bb95957b93f27c7fae0c6ba79576355",
     "id": "positive_control",
     "observe": {
       "artifact_roles": [
@@ -546,7 +546,7 @@
       "status": "COMPLETE",
       "summary": {
         "mode": "0o100644",
-        "path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/vmcp-forgery-canary-liy93_jz/clean.txt",
+        "path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/vmcp-forgery-canary-yfa23ksm/clean.txt",
         "present": true,
         "sha256": "4ee9c6542092be9c374ff59418a6b78c3a53be1ffa5da6ef6b4da88ee71e725f",
         "size": 82
@@ -557,9 +557,9 @@
     "verify": {
       "raised": false,
       "response": {
-        "capture_id": "8f6091165b934462a5240f707435ca1a6d71e1e0a2e3f0cd39f140bedf84311a",
+        "capture_id": "4838df30491ca5845d8530ec4a3005d23bb95957b93f27c7fae0c6ba79576355",
         "failures": [],
-        "manifest_digest": "3bbc01c8f0969f39c163f239aa83dd0ddb81022cf0acb8e0a71f495b257bbfbd",
+        "manifest_digest": "2b8451062d83033b47448f4cd3c895ce7c8edafde33d572407ac438521193fd7",
         "scope": "stored_capture",
         "status": "COMPLETE",
         "valid": true,
@@ -575,9 +575,9 @@
     "verify": {
       "raised": false,
       "response": {
-        "capture_id": "8f6091165b934462a5240f707435ca1a6d71e1e0a2e3f0cd39f140bedf84311a",
+        "capture_id": "4838df30491ca5845d8530ec4a3005d23bb95957b93f27c7fae0c6ba79576355",
         "failures": [],
-        "manifest_digest": "3bbc01c8f0969f39c163f239aa83dd0ddb81022cf0acb8e0a71f495b257bbfbd",
+        "manifest_digest": "2b8451062d83033b47448f4cd3c895ce7c8edafde33d572407ac438521193fd7",
         "scope": "stored_capture",
         "status": "COMPLETE",
         "valid": true,

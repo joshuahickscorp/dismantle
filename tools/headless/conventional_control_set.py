@@ -20,7 +20,7 @@ Does not load a second 27B alongside a resident one. Concurrent MLX streams are
 taken with batch_generate against the already-loaded copy, not a second process.
 
     python3 tools/headless/conventional_control_set.py
-    python3 -m pytest tools/headless/conventional_control_set.py -q
+    python3 -m pytest tools/headless -q
 """
 from __future__ import annotations
 
@@ -60,10 +60,23 @@ DECODE_PROMPT = (
     "Explain, in ordinary prose and at length, how a compiler turns a "
     "for-loop into basic blocks and then into machine code."
 )
+# A short JSON instruction plus a file-sized context, so this is a tool-shaped
+# call rather than a 50-token toy prompt. Not the 7k-token HCLI mission (that
+# payload lives in STRUCTURED_OUTPUT_PROBE.json and is ARCHIVED); this is the
+# live analogue: structured JSON, EOS honoured, a file in the prompt.
+_TOOL_FILE = (
+    "def add(a, b):\n    return a - b\n\n"
+    "def sub(a, b):\n    return a + b\n\n"
+    "# helper utilities used by the surrounding agent loop\n"
+    "def clamp(x, lo, hi):\n    return lo if x < lo else hi if x > hi else x\n\n"
+) * 40
 TOOL_PROMPT = (
+    "You are a coding agent. The repository file calc.py currently contains:\n\n"
+    f"```python\n{_TOOL_FILE}```\n\n"
     "Return exactly one JSON object and nothing else, of the form "
-    '{"kind":"answer","content":"...","operations":[],"tests":[]}. '
-    "What does os.replace guarantee that os.rename may not? Be brief."
+    '{"kind":"mutation","content":"...","operations":[{"op":"replace","path":'
+    '"calc.py","old_text":"...","new_text":"..."}],"tests":[...]}. '
+    "Fix add so it adds and sub so it subtracts. Be brief."
 )
 
 HERE = Path(__file__).resolve()
@@ -144,6 +157,33 @@ def summarize(values, *, unit, command, status="MEASURED") -> dict:
         )
     mid = statistics.median(nums)
     return measured(mid, command=command, unit=unit, repetitions=values, status=status)
+
+
+def attach_cold_warm(node: dict, *, cold, warm) -> dict:
+    """Label cold vs warm without mixing them into one unexplained number.
+
+    `node['value']` and `node['repetitions']` stay the WARM set (the control).
+    Cold is recorded beside them. A reader who wants the confounded combined
+    spread can rebuild it; a reader who wants the control cannot un-mix it.
+    """
+    node["cold"] = cold
+    node["warm_repetitions"] = list(warm) if warm is not None else []
+    node["cold_and_warm_stated_separately"] = True
+    warm_nums = [v for v in (warm or []) if isinstance(v, (int, float))]
+    if warm_nums:
+        node["warm_median"] = statistics.median(warm_nums)
+        node["warm_min"] = min(warm_nums)
+        node["warm_max"] = max(warm_nums)
+        node["warm_n"] = len(warm_nums)
+        node["warm_spread_pct"] = (
+            round(100.0 * (max(warm_nums) - min(warm_nums)) / min(warm_nums), 3)
+            if min(warm_nums) else None
+        )
+    node["headline_is"] = (
+        "value/repetitions/spread are WARM (after the first sample). "
+        "cold is the first sample this harness run."
+    )
+    return node
 
 
 def load_json(path: Path) -> dict | None:
@@ -257,8 +297,18 @@ def occupancy() -> dict:
         ln for ln in listen.splitlines()
         if "llama-server" in ln or "mlx_lm" in ln
     ]
+    ps_out = sh(["ps", "-ax", "-o", "pid=,command="])
+    resident_ps = []
+    for ln in ps_out.splitlines():
+        s = ln.strip()
+        if not s:
+            continue
+        if any(tok in s for tok in (
+            "llama-server", "mlx_lm.server", "mlx_lm generate", "mlx_lm.generate",
+        )) and "conventional_control_set.py" not in s:
+            resident_ps.append(s[:220])
     gguf_on_disk = GGUF.is_file()
-    refuse = bool(llama_up or ollama_27b or llama_listen)
+    refuse = bool(llama_up or ollama_27b or llama_listen or resident_ps)
     if llama_up:
         reason = (
             "a llama-server is answering on this box; loading the MLX 27B "
@@ -274,6 +324,11 @@ def occupancy() -> dict:
         reason = (
             "lsof shows llama-server or mlx_lm listening; treating GPU as occupied"
         )
+    elif resident_ps:
+        reason = (
+            "ps shows a llama-server / mlx_lm decoder already resident; "
+            "loading a second 27B is forbidden"
+        )
     else:
         reason = None
     return {
@@ -282,6 +337,7 @@ def occupancy() -> dict:
         "ollama_models": ollama_models,
         "ollama_error": ollama_err,
         "llama_or_mlx_listen": llama_listen,
+        "resident_ps": resident_ps,
         "gguf_on_disk": gguf_on_disk,
         "gguf_path": str(GGUF),
         "refuse_load_27b": refuse,
@@ -318,16 +374,28 @@ def worker_metal() -> int:
         "device_info_error": None,
         "tiny_eval_ok": False,
         "tiny_eval_error": None,
+        "cpu_tiny_eval_ok": None,
+        "cpu_tiny_eval_error": None,
         "error": None,
         "mlx_version": None,
+        "mlx_lm_version": None,
     }
     try:
         import mlx
         import mlx.core as mx
 
         out["mlx_imported"] = True
-        out["mlx_version"] = getattr(mlx, "__version__", None)
+        try:
+            from importlib.metadata import version as pkg_version
+            out["mlx_version"] = pkg_version("mlx")
+        except Exception:
+            out["mlx_version"] = getattr(mlx, "__version__", None)
         out["metal_is_available"] = bool(mx.metal.is_available())
+        try:
+            import mlx_lm
+            out["mlx_lm_version"] = getattr(mlx_lm, "__version__", None)
+        except Exception as exc:  # noqa: BLE001
+            out["mlx_lm_import_error"] = f"{type(exc).__name__}: {exc}"
         try:
             out["device_info"] = mx.device_info()
         except Exception as exc:  # noqa: BLE001
@@ -340,6 +408,17 @@ def worker_metal() -> int:
         except Exception as exc:  # noqa: BLE001
             out["tiny_eval_ok"] = False
             out["tiny_eval_error"] = f"{type(exc).__name__}: {exc}"
+            # Metal cannot load a device. Record whether the CPU backend still
+            # evaluates. Do NOT then load the 27B on CPU — that is not a control.
+            try:
+                mx.set_default_device(mx.cpu)
+                z = mx.ones((8,), dtype=mx.float32)
+                mx.eval(z)
+                out["cpu_tiny_eval_ok"] = True
+                out["cpu_tiny_eval_sum"] = float(z.sum().item())
+            except Exception as exc2:  # noqa: BLE001
+                out["cpu_tiny_eval_ok"] = False
+                out["cpu_tiny_eval_error"] = f"{type(exc2).__name__}: {exc2}"
     except Exception as exc:  # noqa: BLE001
         out["error"] = f"{type(exc).__name__}: {exc}"
     print(json.dumps(out))
@@ -347,11 +426,21 @@ def worker_metal() -> int:
 
 
 def worker_load(model: str) -> int:
-    t0 = time.perf_counter()
+    # Import is not model startup. Time only load() so sequential process
+    # reps are comparable to the measure-process load_s (which also starts
+    # the clock after mlx_lm is imported).
     try:
         from mlx_lm import load
         import mlx.core as mx
-
+    except Exception as exc:  # noqa: BLE001
+        print(json.dumps({
+            "load_s": None,
+            "peak_memory_gb": None,
+            "error": f"{type(exc).__name__}: {exc}",
+        }))
+        return 1
+    t0 = time.perf_counter()
+    try:
         load(model)
         mx.eval(mx.ones((4,), dtype=mx.float32))
         print(json.dumps({
@@ -433,17 +522,28 @@ def worker_measure(args) -> int:
             restore_eos()
         mx.reset_peak_memory()
         last = None
+        t = time.perf_counter()
         for r in stream_generate(
             model, tok, prompt, max_tokens=max_tokens, sampler=sampler,
         ):
             last = r
+        wall = round(time.perf_counter() - t, 4)
         restore_eos()
         packed = _pack_resp(last)
-        packed["wall_s"] = None
+        packed["wall_s"] = wall
         return packed
 
-    # Warm the kernels so the first timed decode is not a compile.
-    last_stream(decode_text, 8, ignore=True)
+    # COLD: first generate after load, includes Metal kernel compile.
+    # A single Metal run is page-cache / compile confounded; this sample is
+    # kept and labelled rather than discarded or mixed into the warm median.
+    cold = last_stream(decode_text, args.n_predict, ignore=True)
+    cold["rep"] = "cold"
+    out["cold_decode_run"] = cold
+    print(
+        json.dumps({"progress": "decode_cold",
+                    "generation_tps": cold.get("generation_tps")}),
+        file=sys.stderr, flush=True,
+    )
 
     decode_runs = []
     for i in range(args.reps):
@@ -451,7 +551,7 @@ def worker_measure(args) -> int:
         r["rep"] = i
         decode_runs.append(r)
         print(
-            json.dumps({"progress": "decode", "rep": i,
+            json.dumps({"progress": "decode_warm", "rep": i,
                         "generation_tps": r.get("generation_tps")}),
             file=sys.stderr, flush=True,
         )
@@ -611,7 +711,10 @@ def metal_probe() -> dict:
         "device_info": parsed.get("device_info"),
         "device_info_error": parsed.get("device_info_error"),
         "tiny_eval_error": parsed.get("tiny_eval_error"),
+        "cpu_tiny_eval_ok": parsed.get("cpu_tiny_eval_ok"),
+        "cpu_tiny_eval_error": parsed.get("cpu_tiny_eval_error"),
         "mlx_version": parsed.get("mlx_version"),
+        "mlx_lm_version": parsed.get("mlx_lm_version"),
         "error": r.get("error"),
         "note": (
             "mx.metal.is_available() can be True while mx.device_info()/mx.eval "
@@ -940,6 +1043,18 @@ def measure_mlx_live(model: dict, occ: dict, metal: dict, args) -> dict:
         return _live_all_absent(occ.get("refuse_reason"), model, metal, occupancy=occ)
 
     if not metal.get("gpu_usable"):
+        cpu_note = ""
+        if metal.get("cpu_tiny_eval_ok") is True:
+            cpu_note = (
+                " CPU tiny eval DID run (mx.set_default_device(cpu) then "
+                "mx.eval on an 8-vector). The 27B was NOT loaded on CPU: a "
+                "CPU 27B decode is not a conventional control on this box."
+            )
+        elif metal.get("cpu_tiny_eval_ok") is False:
+            cpu_note = (
+                " CPU tiny eval also failed: "
+                + str(metal.get("cpu_tiny_eval_error"))
+            )
         reason = (
             "Metal is not usable in this process: "
             + (metal.get("error") or metal.get("tiny_eval_error")
@@ -948,6 +1063,7 @@ def measure_mlx_live(model: dict, occ: dict, metal: dict, args) -> dict:
             + ". mx.metal.is_available() can be True while load_device fails "
             "(sandboxed / headless session). Live decode/prefill/startup/"
             "concurrency/peak-memory/tool-shaped tok/s all require the GPU."
+            + cpu_note
         )
         live = _live_all_absent(reason, model, metal)
         # Context limit from config.json does not need the GPU.
@@ -977,6 +1093,7 @@ def measure_mlx_live(model: dict, occ: dict, metal: dict, args) -> dict:
         load_cmds.append(measure_cmd)
     print("  mlx startup extra loads (sequential, GPU freed between)", flush=True)
     for i in range(max(0, args.reps - 1)):
+        time.sleep(2)
         load = spawn_worker(
             "load", extra=["--model", path], timeout=LOAD_TIMEOUT_S,
         )
@@ -990,9 +1107,24 @@ def measure_mlx_live(model: dict, occ: dict, metal: dict, args) -> dict:
 
     startup_cmd = (
         f"{MLX_PY} {HERE} --mlx-worker load --model {path}   "
-        f"(×{args.reps} sequential processes; measure-process load is rep 0)"
+        f"(×{args.reps} sequential processes; measure-process load is cold rep 0)"
     )
-    startup = summarize(load_s_reps, unit="s", command=startup_cmd)
+    warm_loads = [v for v in load_s_reps[1:] if isinstance(v, (int, float))]
+    if warm_loads:
+        startup = summarize(warm_loads, unit="s", command=startup_cmd)
+    else:
+        startup = summarize(load_s_reps, unit="s", command=startup_cmd)
+    attach_cold_warm(
+        startup,
+        cold=load_s_reps[0] if load_s_reps else None,
+        warm=warm_loads,
+    )
+    startup["all_load_s"] = load_s_reps
+    startup["note"] = (
+        "cold is the first process this harness run (disk + GPU upload, Metal "
+        "compile may overlap). warm is each subsequent process after the GPU "
+        "was freed — page-cache confounded relative to cold."
+    )
 
     if not meas.get("ok") or parsed.get("error"):
         reason = (
@@ -1033,6 +1165,7 @@ def measure_mlx_live(model: dict, occ: dict, metal: dict, args) -> dict:
         }
 
     decode_vals = _run_values(parsed.get("decode_runs") or [], "generation_tps")
+    cold_decode = (parsed.get("cold_decode_run") or {}).get("generation_tps")
     prefill_vals = _run_values(parsed.get("prefill_runs") or [], "prompt_tps")
     # Short-prompt prefill from the decode runs is a second, smaller sample.
     short_prefill = _run_values(parsed.get("decode_runs") or [], "prompt_tps")
@@ -1046,24 +1179,100 @@ def measure_mlx_live(model: dict, occ: dict, metal: dict, args) -> dict:
     decode = summarize(
         decode_vals, unit="tok/s", command=measure_cmd,
     )
-    decode["warmup"] = "stream_generate 8 tokens before the timed reps"
+    attach_cold_warm(decode, cold=cold_decode, warm=decode_vals)
     decode["n_predict"] = args.n_predict
-    decode["prompt"] = "runtime_ab DECODE_PROMPT, enable_thinking=false, ignore_eos"
-
-    prefill = summarize(
-        prefill_vals, unit="tok/s", command=measure_cmd,
+    decode["generation_tokens"] = _run_values(
+        parsed.get("decode_runs") or [], "generation_tokens"
     )
+    decode["finish_reasons"] = [
+        r.get("finish_reason") for r in (parsed.get("decode_runs") or [])
+    ]
+    decode["prompt"] = "runtime_ab DECODE_PROMPT, enable_thinking=false, ignore_eos"
+    decode["warmup"] = (
+        "no discarded warmup; the first n_predict generate after load is "
+        "recorded as cold (Metal compile). The next --reps generates are warm."
+    )
+    decode["cold_run"] = parsed.get("cold_decode_run")
+
+    prefill_warm = prefill_vals[1:] if len(prefill_vals) > 1 else prefill_vals
+    prefill_cold = prefill_vals[0] if prefill_vals else None
+    prefill = summarize(
+        prefill_warm if len(prefill_vals) > 1 else prefill_vals,
+        unit="tok/s", command=measure_cmd,
+    )
+    attach_cold_warm(prefill, cold=prefill_cold, warm=prefill_warm if len(prefill_vals) > 1 else [])
     prefill["prompt_tokens"] = args.prefill_tokens
     prefill["generation_tokens_during_prefill_run"] = 8
     prefill["short_prompt_prefill_tps_from_decode_reps"] = short_prefill
+    prefill["all_repetitions"] = prefill_vals
 
-    tool = summarize(tool_vals, unit="tok/s", command=measure_cmd)
-    tool["prompt"] = "HCLI-shaped JSON answer, enable_thinking=false, EOS honoured"
+    tool_warm = tool_vals[1:] if len(tool_vals) > 1 else tool_vals
+    tool = summarize(
+        tool_warm if len(tool_vals) > 1 else tool_vals,
+        unit="tok/s", command=measure_cmd,
+    )
+    attach_cold_warm(
+        tool,
+        cold=tool_vals[0] if tool_vals else None,
+        warm=tool_warm if len(tool_vals) > 1 else [],
+    )
+    tool["prompt"] = (
+        "tool-shaped JSON mutation over a file-sized calc.py context, "
+        "enable_thinking=false, EOS honoured"
+    )
     tool["max_tokens"] = args.tool_tokens
+    tool["all_repetitions"] = tool_vals
+    tool_token_counts = _run_values(parsed.get("tool_runs") or [], "generation_tokens")
+    tool_prompt_counts = _run_values(parsed.get("tool_runs") or [], "prompt_tokens")
+    tool["generation_tokens_repetitions"] = tool_token_counts
+    tool["prompt_tokens_repetitions"] = tool_prompt_counts
+    tool["note"] = (
+        "generation_tps of a structured-JSON tool call, EOS honoured — not the "
+        "ARCHIVED complete-call tok/s in STRUCTURED_OUTPUT_PROBE.json (that one "
+        "had ~7257 prompt tokens and mixed cold 31.6s / warm 6.5s prefix cache). "
+        "Do not ratio these two numbers."
+    )
 
-    peak = summarize(peak_vals, unit="GB (mlx: bytes/1e9)", command=measure_cmd)
-    peak["after_load_gb"] = peak_after_load
-    peak["end_gb"] = parsed.get("peak_memory_gb_end")
+    phase_peaks = {}
+    if isinstance(peak_after_load, (int, float)):
+        phase_peaks["after_load"] = peak_after_load
+    cold_peak = (parsed.get("cold_decode_run") or {}).get("peak_memory_gb")
+    if isinstance(cold_peak, (int, float)):
+        phase_peaks["cold_decode"] = cold_peak
+    if peak_vals:
+        phase_peaks["decode_warm"] = max(peak_vals)
+    prefill_peaks = _run_values(parsed.get("prefill_runs") or [], "peak_memory_gb")
+    if prefill_peaks:
+        phase_peaks["prefill"] = max(prefill_peaks)
+    tool_peaks = _run_values(parsed.get("tool_runs") or [], "peak_memory_gb")
+    if tool_peaks:
+        phase_peaks["tool_shaped"] = max(tool_peaks)
+    batch_peaks = []
+    for runs in (parsed.get("batch_runs") or {}).values():
+        batch_peaks.extend(_run_values(runs, "peak_memory_gb"))
+    if batch_peaks:
+        phase_peaks["batch_generate"] = max(batch_peaks)
+    if isinstance(parsed.get("peak_memory_gb_end"), (int, float)):
+        phase_peaks["end"] = parsed["peak_memory_gb_end"]
+    observed_peaks = [v for v in phase_peaks.values() if isinstance(v, (int, float))]
+    if observed_peaks:
+        peak = measured(
+            max(observed_peaks),
+            command=measure_cmd,
+            unit="GB (mlx peak_memory)",
+            repetitions=observed_peaks,
+            extra={
+                "phase_peaks_gb": phase_peaks,
+                "note": (
+                    "value is the MAX over phases, not the median. repetitions "
+                    "are the per-phase peaks (load, decode, prefill, tool, batch). "
+                    "stream_generate GenerationResponse.peak_memory is already GB; "
+                    "mx.get_peak_memory() after load is divided by 1e9."
+                ),
+            },
+        )
+    else:
+        peak = absent("no peak_memory samples from the measure worker", command=measure_cmd)
 
     batch = parsed.get("batch_runs") or {}
     by_k = {}
@@ -1077,9 +1286,19 @@ def measure_mlx_live(model: dict, occ: dict, metal: dict, args) -> dict:
                 repetitions=runs,
             )
         elif vals:
-            row = summarize(vals, unit="tok/s", command=measure_cmd)
+            warm_vals = vals[1:] if len(vals) > 1 else vals
+            row = summarize(
+                warm_vals if len(vals) > 1 else vals,
+                unit="tok/s", command=measure_cmd,
+            )
+            attach_cold_warm(
+                row,
+                cold=vals[0],
+                warm=warm_vals if len(vals) > 1 else [],
+            )
             row["batch_size"] = int(k)
             row["max_tokens"] = args.batch_tokens
+            row["all_repetitions"] = vals
             row["what"] = (
                 f"{k} sequences in one mlx_lm.batch_generate against the already-"
                 "loaded 27B; not a second process"
@@ -1137,6 +1356,7 @@ def measure_mlx_live(model: dict, occ: dict, metal: dict, args) -> dict:
         },
         "raw": {
             "load_s_in_measure_process": parsed.get("load_s"),
+            "cold_decode_run": parsed.get("cold_decode_run"),
             "decode_runs": parsed.get("decode_runs"),
             "prefill_runs": parsed.get("prefill_runs"),
             "tool_runs": parsed.get("tool_runs"),
@@ -1445,15 +1665,18 @@ def parse_batch_sizes(s: str) -> list[int]:
 
 
 def _load_receipt() -> dict:
-    if not RECEIPT.is_file():
-        write_control_set()
+    assert RECEIPT.is_file(), (
+        f"missing {RECEIPT}; run: python3 tools/headless/conventional_control_set.py"
+    )
     return json.loads(RECEIPT.read_text())
 
 
 def test_harness_writes_conventional_control_set_receipt():
-    path = write_control_set()
-    assert path.is_file(), f"missing {path}"
-    doc = json.loads(path.read_text())
+    """Validates the already-written receipt. Does not load the 27B."""
+    assert RECEIPT.is_file(), (
+        f"missing {RECEIPT}; run: python3 tools/headless/conventional_control_set.py"
+    )
+    doc = json.loads(RECEIPT.read_text())
     assert doc.get("schema") == SCHEMA
     problems = validate(doc)
     assert not problems, problems
@@ -1470,6 +1693,8 @@ def test_live_numbers_have_command_and_spread_or_absent_reason():
             if name != "context_limit" and name != "concurrency":
                 assert node.get("repetitions"), name
                 assert len(node["repetitions"]) >= 2, name
+            if name in ("startup", "prefill", "decode_tps", "tool_shaped_tps"):
+                assert node.get("cold_and_warm_stated_separately") is True, name
         if st == "ABSENT":
             assert node.get("reason"), name
             assert node.get("value") not in (0, 0.0), name

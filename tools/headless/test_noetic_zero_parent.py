@@ -1,16 +1,20 @@
 """G011: production Noetic inference does not load parent weights.
 
-Proved by observed file access (DYLD interpose of open/openat), with a
-negative control that the detector must catch. See noetic_zero_parent.py.
+Proved by observed file access (DYLD interpose of open/openat) on a
+COMPLETE native decode — not a truncated prefix — with a negative control
+the detector must catch. See noetic_zero_parent.py.
 """
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 import pytest
 
-from noetic_zero_parent import (
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from noetic_zero_parent import (  # noqa: E402
     RECEIPT,
+    REPO,
     classify_path,
     parent_dir,
     parse_open_log,
@@ -74,20 +78,53 @@ def test_receipt_written(receipt: dict):
     assert receipt["verdict"] == "PASS", receipt.get("pass_rule")
 
 
+def test_decode_binary_is_from_this_repo(receipt: dict):
+    binary = Path(receipt["decode_binary"]).resolve()
+    repo = REPO.resolve()
+    assert str(binary).startswith(str(repo)), binary
+    assert "hawking-copy" not in str(binary)
+    ident = receipt["decode_binary_identity"]
+    assert ident["from_this_repo"] is True
+    assert ident["not_vestigial_hawking_copy"] is True
+
+
+def test_decode_ran_to_completion_and_emitted_a_token(receipt: dict):
+    live = receipt["production_run"]["live_native_decode"]
+    assert live["complete"] is True, (
+        "native decode did not run to completion; a truncated prefix is "
+        "INCONCLUSIVE, not PASS. "
+        f"exit={live.get('exit_code')} metal_refused={live.get('metal_refused')} "
+        f"timed_out={live.get('timed_out')} tokens={live.get('new_token_ids')} "
+        f"stderr={live.get('stderr_head', '')[-500:]}"
+    )
+    assert live["exit_code"] == 0
+    assert live["timed_out"] is False
+    assert live["metal_refused"] is False
+    assert live["n_new_tokens"] >= 1, live.get("new_token_ids")
+    assert live["generated_text"] is not None
+    assert live["dylib_loaded"] is True
+
+
+def test_observed_the_whole_process_including_catalog_reads(receipt: dict):
+    live = receipt["production_run"]["live_native_decode"]
+    obs = live["observation"]
+    assert obs["n_events"] >= 755, (
+        f"only {obs['n_events']} file-open events; a complete catalog load "
+        "is 755 tensor reads plus tokenizer/manifest/dylibs"
+    )
+    assert live["n_artifact_tensor_opens"] >= 755, live.get("n_artifact_tensor_opens")
+    assert live["saw_catalog_count"] is True
+    assert live["catalog_count"] == 755
+
+
 def test_production_run_opens_no_parent_weights(receipt: dict):
     prod = receipt["production_run"]
     assert prod["parent_weight_paths"] == []
     assert prod["n_parent_weight_opens"] == 0
     assert prod["verdict"] == "PASS"
     live = prod["live_native_decode"]
-    infer = prod["catalog_weight_load_and_cpu_embed"]
-    assert live["dylib_loaded"], "DYLD interpose did not load on the native decode"
-    assert infer["dylib_loaded"], "DYLD interpose did not load on the catalog/CPU infer"
-    cpu = infer["cpu_infer"] or {}
-    assert cpu.get("n_opened") == cpu.get("n_catalog")
-    assert cpu.get("n_catalog") == 755
-    assert cpu.get("ok") is True
-    assert cpu.get("followed_source_dir") is False
+    assert live["n_parent_weight_opens"] == 0
+    assert live["observation"]["parent_weight"] == []
 
 
 def test_negative_control_caught_a_parent_weight_open(receipt: dict):

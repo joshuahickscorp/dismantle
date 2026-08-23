@@ -1,29 +1,32 @@
 {
-  "generated_at": "2026-08-23T20:58:07Z",
+  "generated_at": "2026-08-23T21:03:52Z",
   "running": [
-    "g005doctor",
-    "g011zpgate",
-    "g024mlxgate",
-    "g026ns"
+    "g024mlxgate"
   ],
   "needs_harvest": [
     {
-      "slug": "g010closure",
-      "id": "g010closure-20260823-163311",
+      "slug": "g005doctor",
+      "id": "g005doctor-20260823-163311",
       "unharvested": [
-        "receipts/headless/NOETIC_CLOSURE.json",
-        "tools/headless/conftest.py",
-        "tools/headless/noetic_closure.py",
-        "tools/headless/noetic_closure_interpose.c",
-        "tools/headless/noetic_closure_test.py"
+        "receipts/headless/DOCTOR_V2_PRESCRIPTION.json",
+        "tools/headless/noetic_doctor_v2.py",
+        "tools/headless/test_doctor_v2.py"
+      ],
+      "worktree_extras": 0
+    },
+    {
+      "slug": "g026ns",
+      "id": "g026ns-20260823-162830",
+      "unharvested": [
+        "receipts/headless/NAMESPACE_MIGRATION.json"
       ],
       "worktree_extras": 0
     }
   ],
   "headroom": {
-    "load1": 7.318359375,
+    "load1": 5.68115234375,
     "ncpu": 28,
-    "disk_gib": 432.5,
+    "disk_gib": 430.8,
     "room_for_more": true
   }
 }

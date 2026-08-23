@@ -16,8 +16,12 @@ negative control is the composition harness's teacher-scoring path
 parent weights, and the same observer must flag it.
 
 Observation method: DYLD interpose of open/openat on the live process, not
-a reading of the loader source. Do not load a second 27B. Do not write
-under ~/models.
+a reading of the loader source. The native decode must RUN TO COMPLETION
+and emit at least one token. A truncated prefix (MetalContext::new dying
+before the 755 catalog reads) is INCONCLUSIVE, not PASS.
+
+Do not load a second 27B. Do not write under ~/models. Build the decode
+binary from THIS repo; never execute the vestigial hawking-copy tree.
 
     python3 tools/headless/noetic_zero_parent.py
     python3 -m pytest tools/headless -q
@@ -28,7 +32,8 @@ import argparse
 import hashlib
 import json
 import os
-import struct
+import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -39,10 +44,15 @@ from typing import Any
 SCHEMA = "hawking.headless.noetic_zero_parent.v1"
 PROMPT = "Hi"
 CONTROL_TENSOR = "model.language_model.layers.0.input_layernorm.weight"
+EXPECTED_CATALOG_TENSORS = 755
+EXAMPLE_NAME = "ascension_qwen38_hybrid_greedy"
 
 VISION_PY = Path.home() / ".grok-vision" / "bin" / "python"
 DEFAULT_PARENT = Path.home() / "models" / "qwen3.8-27b-abliterated-bf16"
 DEFAULT_ARTIFACT = Path.home() / "models" / "qwen38-gravity-uniform-q4-v1"
+GPU_LOCK = Path("/tmp/hawking-gpu-lane.lock")
+DECODE_TIMEOUT_S = 1800.0
+CONTROL_TIMEOUT_S = 180.0
 
 WEIGHT_SUFFIXES = {
     ".safetensors",
@@ -95,6 +105,8 @@ def repo_root() -> Path:
 REPO = repo_root()
 RECEIPT = REPO / "receipts" / "headless" / "NOETIC_ZERO_PARENT.json"
 OPENLOG_C = Path(__file__).resolve().with_name("noetic_openlog.c")
+CARGO_TARGET = REPO / "workspace" / "ops" / "build" / "rust"
+DECODE_BINARY = CARGO_TARGET / "release-fast" / "examples" / EXAMPLE_NAME
 
 
 def now_iso() -> str:
@@ -116,25 +128,6 @@ def parent_dir() -> Path:
 
 def artifact_dir() -> Path:
     return Path(os.environ.get("QWEN38_Q4_ARTIFACT", str(DEFAULT_ARTIFACT))).expanduser().resolve()
-
-
-def locate_decode_binary() -> Path | None:
-    names = [
-        REPO / "workspace/ops/build/rust/release-fast/examples/ascension_qwen38_hybrid_greedy",
-        Path(
-            "/Users/scammermike/Downloads/hawking-copy/workspace/ops/build/rust/"
-            "release-fast/examples/ascension_qwen38_hybrid_greedy"
-        ),
-        Path(
-            "/Users/scammermike/Downloads/hawking/workspace/ops/build/rust/"
-            "release-fast/examples/ascension_qwen38_hybrid_greedy"
-        ),
-        REPO / "workspace/ops/build/rust/release/examples/ascension_qwen38_hybrid_greedy",
-    ]
-    for p in names:
-        if p.is_file() and os.access(p, os.X_OK):
-            return p
-    return None
 
 
 # ---------------------------------------------------------------------------
@@ -179,7 +172,13 @@ def classify_path(raw: str, *, parent: Path, cwd: Path | None = None) -> str:
     return "parent_other"
 
 
-def parse_open_log(log_path: Path, *, parent: Path, cwd: Path) -> dict[str, Any]:
+def parse_open_log(
+    log_path: Path,
+    *,
+    parent: Path,
+    cwd: Path,
+    artifact: Path | None = None,
+) -> dict[str, Any]:
     events: list[dict[str, str]] = []
     if log_path.is_file():
         for line in log_path.read_text(errors="replace").splitlines():
@@ -196,6 +195,10 @@ def parse_open_log(log_path: Path, *, parent: Path, cwd: Path) -> dict[str, Any]
         "parent_other": [],
         "not_parent": [],
     }
+    artifact_tensor: list[str] = []
+    artifact_other: list[str] = []
+    art_root = artifact.resolve() if artifact is not None else None
+    art_tensors = (art_root / "tensors") if art_root is not None else None
     for ev in events:
         raw = ev["path"]
         p = Path(raw)
@@ -210,6 +213,12 @@ def parse_open_log(log_path: Path, *, parent: Path, cwd: Path) -> dict[str, Any]
             seen.add(key)
             unique.append(key)
             buckets[klass].append(key)
+            if art_root is not None:
+                rp = Path(key)
+                if art_tensors is not None and _is_under(rp, art_tensors):
+                    artifact_tensor.append(key)
+                elif _is_under(rp, art_root):
+                    artifact_other.append(key)
     return {
         "n_events": len(events),
         "n_unique": len(unique),
@@ -218,6 +227,11 @@ def parse_open_log(log_path: Path, *, parent: Path, cwd: Path) -> dict[str, Any]
         "parent_config": buckets["parent_config"],
         "parent_other": buckets["parent_other"],
         "n_not_parent": len(buckets["not_parent"]),
+        "n_artifact_tensor": len(artifact_tensor),
+        "n_artifact_other": len(artifact_other),
+        "artifact_other": artifact_other,
+        "artifact_tensor_head": artifact_tensor[:8],
+        "artifact_tensor_tail": artifact_tensor[-8:],
         "unique_paths_fingerprint": hashlib.sha256(
             "\n".join(sorted(unique)).encode()
         ).hexdigest(),
@@ -225,7 +239,7 @@ def parse_open_log(log_path: Path, *, parent: Path, cwd: Path) -> dict[str, Any]
 
 
 # ---------------------------------------------------------------------------
-# DYLD observer
+# DYLD observer + GPU lock + this-repo binary
 # ---------------------------------------------------------------------------
 
 
@@ -254,10 +268,107 @@ def compile_dylib(dest: Path) -> Path:
         str(dest),
         str(OPENLOG_C),
     ]
-    subprocess.check_call(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
-    if not dest.is_file():
-        raise SystemExit(f"cc did not write {dest}")
+    proc = subprocess.run(cmd, capture_output=True, text=True)
+    if proc.returncode != 0 or not dest.is_file():
+        raise SystemExit(
+            f"cc did not write {dest}: rc={proc.returncode}\n{proc.stderr}"
+        )
     return dest
+
+
+def binary_identity(path: Path) -> dict[str, Any]:
+    resolved = path.resolve()
+    st = path.stat()
+    h = hashlib.sha256()
+    with open(path, "rb") as fh:
+        h.update(fh.read(1 << 20))
+    text = str(resolved)
+    return {
+        "path": text,
+        "size": st.st_size,
+        "mtime_unix": int(st.st_mtime),
+        "sha256_head_1m": h.hexdigest(),
+        "from_this_repo": text.startswith(str(REPO.resolve())),
+        "not_vestigial_hawking_copy": "hawking-copy" not in text,
+    }
+
+
+def ensure_decode_binary() -> Path:
+    """Build ascension_qwen38_hybrid_greedy from THIS repo. Never fall back
+    to the vestigial hawking-copy tree."""
+    if DECODE_BINARY.is_file() and os.access(DECODE_BINARY, os.X_OK):
+        ident = binary_identity(DECODE_BINARY)
+        if ident["from_this_repo"] and ident["not_vestigial_hawking_copy"]:
+            return DECODE_BINARY
+        raise SystemExit(
+            f"decode binary at {DECODE_BINARY} is not from this repo: {ident}"
+        )
+    CARGO_TARGET.mkdir(parents=True, exist_ok=True)
+    cmd = [
+        "cargo",
+        "build",
+        "--profile",
+        "release-fast",
+        "-p",
+        "hawking-core",
+        "--example",
+        EXAMPLE_NAME,
+        "--target-dir",
+        str(CARGO_TARGET),
+    ]
+    proc = subprocess.run(cmd, cwd=str(REPO), text=True, capture_output=True)
+    if proc.returncode != 0:
+        raise SystemExit(
+            "cargo build of "
+            f"{EXAMPLE_NAME} failed rc={proc.returncode}\n"
+            f"{proc.stderr[-8000:]}"
+        )
+    if not DECODE_BINARY.is_file():
+        raise SystemExit(f"cargo did not write {DECODE_BINARY}")
+    return DECODE_BINARY
+
+
+class GpuLaneLock:
+    """Same mkdir-atomic protocol as tools/gpu_lane_lock.sh."""
+
+    def __init__(self, name: str, timeout: float = 5400.0) -> None:
+        self.name = name
+        self.timeout = timeout
+        self.held = False
+
+    def __enter__(self) -> "GpuLaneLock":
+        deadline = time.time() + self.timeout
+        while True:
+            try:
+                GPU_LOCK.mkdir()
+                (GPU_LOCK / "pid").write_text(str(os.getpid()))
+                (GPU_LOCK / "owner").write_text(self.name)
+                self.held = True
+                return self
+            except FileExistsError:
+                pid_file = GPU_LOCK / "pid"
+                stale = False
+                try:
+                    pid = int(pid_file.read_text().strip())
+                    os.kill(pid, 0)
+                except (ValueError, OSError, FileNotFoundError):
+                    stale = True
+                if stale:
+                    shutil.rmtree(GPU_LOCK, ignore_errors=True)
+                    continue
+                if time.time() >= deadline:
+                    owner = "?"
+                    try:
+                        owner = (GPU_LOCK / "owner").read_text().strip()
+                    except OSError:
+                        pass
+                    raise SystemExit(f"gpu lock timeout, held by {owner}")
+                time.sleep(5)
+
+    def __exit__(self, *exc: object) -> None:
+        if self.held:
+            shutil.rmtree(GPU_LOCK, ignore_errors=True)
+            self.held = False
 
 
 def observe_command(
@@ -269,6 +380,7 @@ def observe_command(
     timeout: float,
     cwd: Path | None = None,
     env_extra: dict[str, str] | None = None,
+    artifact: Path | None = None,
 ) -> dict[str, Any]:
     if log_path.exists():
         log_path.unlink()
@@ -279,6 +391,9 @@ def observe_command(
         env.update(env_extra)
     cwd = cwd or Path.cwd()
     t0 = time.time()
+    timed_out = False
+    err = None
+    proc: subprocess.CompletedProcess[str] | None
     try:
         proc = subprocess.run(
             argv,
@@ -288,16 +403,23 @@ def observe_command(
             text=True,
             timeout=timeout,
         )
-        timed_out = False
-        err = None
     except subprocess.TimeoutExpired as exc:
         proc = None
         timed_out = True
         err = str(exc)
+        stdout = (exc.stdout or "") if isinstance(exc.stdout, str) else (
+            exc.stdout.decode("utf-8", "replace") if exc.stdout else ""
+        )
+        stderr = (exc.stderr or "") if isinstance(exc.stderr, str) else (
+            exc.stderr.decode("utf-8", "replace") if exc.stderr else ""
+        )
+    else:
+        stdout = proc.stdout or ""
+        stderr = proc.stderr or ""
     elapsed = round(time.time() - t0, 3)
-    stdout = (proc.stdout if proc else "") or ""
-    stderr = (proc.stderr if proc else "") or ""
-    classified = parse_open_log(log_path, parent=parent, cwd=cwd)
+    classified = parse_open_log(
+        log_path, parent=parent, cwd=cwd, artifact=artifact
+    )
     dylib_loaded = "INTERPOSE_CTOR" in stderr or classified["n_events"] > 0
     return {
         "argv": argv,
@@ -306,150 +428,66 @@ def observe_command(
         "timed_out": timed_out,
         "timeout_error": err,
         "elapsed_s": elapsed,
-        "stdout_head": stdout[:4000],
-        "stderr_head": stderr[:4000],
+        "stdout": stdout,
+        "stderr": stderr,
+        "stdout_head": stdout[:8000],
+        "stderr_head": stderr[-8000:],
         "dylib_loaded": dylib_loaded,
         "log_path": str(log_path),
         "observation": classified,
     }
 
 
-# ---------------------------------------------------------------------------
-# child modes (run under the observer)
-# ---------------------------------------------------------------------------
-
-
-def _parse_q4_header(payload: memoryview | bytes) -> dict[str, Any]:
-    if payload[:8] != b"HQ30UQ4\0":
-        raise ValueError(f"q4 magic {bytes(payload[:8])!r}")
-    version = struct.unpack_from("<I", payload, 8)[0]
-    gs = struct.unpack_from("<I", payload, 12)[0]
-    rank = struct.unpack_from("<H", payload, 16)[0]
-    elems = struct.unpack_from("<Q", payload, 20)[0]
-    dims = [struct.unpack_from("<I", payload, 32 + 4 * i)[0] for i in range(rank)]
-    after = 32 + 4 * rank
-    groups = (elems + gs - 1) // gs
-    return {
-        "version": version,
-        "group_size": gs,
-        "rank": rank,
-        "elements": elems,
-        "shape": dims,
-        "groups": groups,
-        "scale_off": after,
-        "code_off": after + groups * 2,
-    }
-
-
-def _dequant_q4_rows(payload: memoryview, row_ids: list[int]):
-    import numpy as np
-
-    h = _parse_q4_header(payload)
-    shape = h["shape"]
-    if len(shape) != 2:
-        raise ValueError(f"row dequant needs rank-2, got {shape}")
-    v, width = shape
-    gs = h["group_size"]
-    if width % gs != 0:
-        raise ValueError(f"row width {width} not divisible by group {gs}")
-    groups_per_row = width // gs
-    scales = np.frombuffer(
-        payload, dtype="<f2", count=h["groups"], offset=h["scale_off"]
-    ).astype(np.float32)
-    code_bytes_per_group = gs // 2
-    out = np.empty((len(row_ids), width), dtype=np.float32)
-    for i, rid in enumerate(row_ids):
-        if rid < 0 or rid >= v:
-            raise ValueError(f"row {rid} outside {v}")
-        g0 = rid * groups_per_row
-        sc = scales[g0 : g0 + groups_per_row]
-        off = h["code_off"] + g0 * code_bytes_per_group
-        codes = np.frombuffer(
-            payload, dtype=np.uint8, count=groups_per_row * code_bytes_per_group, offset=off
-        )
-        low = (codes & 0x0F).astype(np.int16) - 8
-        high = (codes >> 4).astype(np.int16) - 8
-        q = np.empty(groups_per_row * gs, dtype=np.float32)
-        q[0::2] = low
-        q[1::2] = high
-        out[i] = q * np.repeat(sc, gs)
-    return out
-
-
-def _read_f32v2(payload: bytes):
-    import numpy as np
-
-    n = int.from_bytes(payload[:8], "little")
-    arr = np.frombuffer(payload, dtype="<f4", count=n, offset=8)
-    return np.array(arr, dtype=np.float32, copy=True)
-
-
-def mode_production_infer(artifact: Path, tokenizer: Path) -> int:
-    """Catalog-complete open of the production weight set, then a real
-    embed of the prompt tokens from those weights. Never opens a parent
-    safetensors shard. Does not follow manifest['source_dir'].
-    """
-    import mmap
-
-    import numpy as np
-    from tokenizers import Tokenizer
-
-    if not (artifact / "manifest.json").is_file():
-        print("FATAL: artifact missing", file=sys.stderr)
-        return 2
-    tz = Tokenizer.from_file(str(tokenizer))
-    ids = tz.encode(PROMPT).ids
-    if not ids:
-        print("FATAL: tokenizer produced no ids", file=sys.stderr)
-        return 2
-
-    man = json.loads((artifact / "manifest.json").read_text())
-    rows = man["tensors"]
-    n_open = 0
-    missing = []
-    for row in rows:
-        path = artifact / "tensors" / row["artifact"]
-        if not path.is_file():
-            missing.append(str(path))
-            continue
-        with open(path, "rb") as fh:
-            fh.read(64)
-        n_open += 1
-
-    embed_row = next(
-        r for r in rows if r["name"] == "language_model.model.embed_tokens.weight"
+def parse_decode_output(stdout: str, stderr: str) -> dict[str, Any]:
+    text = (stderr or "") + "\n" + (stdout or "")
+    generated = None
+    m = re.search(r"^GENERATED_TEXT_VERBATIM: (.*)$", stdout or "", re.M)
+    if m:
+        generated = m.group(1)
+    token_ids: list[int] | None = None
+    for pat in (r"^NEW_TOKENS: \[(.*)\]", r"^generated_token_ids=\[(.*)\]"):
+        m = re.search(pat, stdout or "", re.M)
+        if m:
+            inner = m.group(1).strip()
+            if not inner:
+                token_ids = []
+            else:
+                try:
+                    token_ids = [int(x.strip()) for x in inner.split(",") if x.strip()]
+                except ValueError:
+                    token_ids = None
+            break
+    fallbacks = None
+    m = re.search(r"^FALLBACKS: (\d+)", stdout or "", re.M)
+    if m:
+        fallbacks = int(m.group(1))
+    catalog_count = None
+    m = re.search(r"opening Metal \+ (\d+) catalog tensors", text)
+    if m:
+        catalog_count = int(m.group(1))
+    uploads = [int(x) for x in re.findall(r"qwen38-decode upload (\d+)/\d+", text)]
+    last_upload = max(uploads) if uploads else None
+    metal_refused = bool(
+        re.search(r"no Metal-capable GPU", text)
+        or re.search(r"ascension_qwen38_hybrid_greedy: metal:", text)
     )
-    embed_path = artifact / "tensors" / embed_row["artifact"]
-    with open(embed_path, "rb") as fh:
-        mm = mmap.mmap(fh.fileno(), 0, access=mmap.ACCESS_READ)
-        try:
-            emb = _dequant_q4_rows(memoryview(mm), list(ids))
-        finally:
-            mm.close()
-
-    ln_name = "language_model.model.layers.0.input_layernorm.weight"
-    ln_row = next(r for r in rows if r["name"] == ln_name)
-    ln = _read_f32v2((artifact / "tensors" / ln_row["artifact"]).read_bytes())
-    x = emb.astype(np.float32)
-    rms = np.sqrt((x ** 2).mean(axis=-1, keepdims=True) + 1e-6)
-    y = (x / rms) * (1.0 + ln.astype(np.float32))
-
-    result = {
-        "ok": True,
-        "n_catalog": len(rows),
-        "n_opened": n_open,
-        "n_missing": len(missing),
-        "missing_head": missing[:8],
-        "n_tokens": len(ids),
-        "token_ids": ids,
-        "embed_shape": list(emb.shape),
-        "embed_l2": float(np.linalg.norm(emb)),
-        "post_norm_l2": float(np.linalg.norm(y)),
-        "followed_source_dir": False,
-        "source_dir_in_manifest": man.get("source_dir"),
+    return {
+        "generated_text": generated,
+        "new_token_ids": token_ids,
+        "n_new_tokens": 0 if token_ids is None else len(token_ids),
+        "fallbacks": fallbacks,
+        "saw_tokenizer_encode": "prompt tokens=" in text,
+        "saw_catalog_count": catalog_count is not None,
+        "catalog_count": catalog_count,
+        "saw_upload_progress": bool(uploads),
+        "last_upload_index": last_upload,
+        "metal_refused": metal_refused,
     }
-    print(json.dumps(result))
-    return 0 if not missing else 3
+
+
+# ---------------------------------------------------------------------------
+# child mode: negative control
+# ---------------------------------------------------------------------------
 
 
 def mode_composition_control(parent: Path) -> int:
@@ -480,11 +518,32 @@ def mode_composition_control(parent: Path) -> int:
 # ---------------------------------------------------------------------------
 
 
+def live_slice(obs: dict[str, Any]) -> dict[str, Any]:
+    return {
+        k: obs[k]
+        for k in (
+            "n_events",
+            "n_unique",
+            "parent_weight",
+            "parent_tokenizer",
+            "parent_config",
+            "parent_other",
+            "n_not_parent",
+            "n_artifact_tensor",
+            "n_artifact_other",
+            "artifact_other",
+            "artifact_tensor_head",
+            "artifact_tensor_tail",
+            "unique_paths_fingerprint",
+        )
+        if k in obs
+    }
+
+
 def run_and_write(out: Path | None = None) -> dict[str, Any]:
     parent = parent_dir()
     artifact = artifact_dir()
     tokenizer = parent / "tokenizer.json"
-    binary = locate_decode_binary()
     out = out or RECEIPT
     t0 = time.time()
 
@@ -497,62 +556,75 @@ def run_and_write(out: Path | None = None) -> dict[str, Any]:
         reasons.append(f"parent tokenizer.json missing: {tokenizer}")
     if not (artifact / "manifest.json").is_file():
         reasons.append(f"artifact missing: {artifact}")
-    if binary is None:
-        reasons.append("ascension_qwen38_hybrid_greedy not found")
     if not VISION_PY.is_file():
         reasons.append(f"vision python missing: {VISION_PY}")
     if reasons:
         raise SystemExit("preflight: " + "; ".join(reasons))
 
+    binary = ensure_decode_binary()
+    ident = binary_identity(binary)
+    if not ident["from_this_repo"] or not ident["not_vestigial_hawking_copy"]:
+        raise SystemExit(f"refusing vestigial/foreign decode binary: {ident}")
+
     with tempfile.TemporaryDirectory(prefix="noetic-zero-parent-") as td:
         tmp = Path(td)
         dylib = compile_dylib(tmp / "libopenlog.dylib")
 
-        live = observe_command(
-            [
-                str(binary),
-                "--artifact-root",
-                str(artifact),
-                "--tokenizer",
-                str(tokenizer),
-                "--prompt",
-                PROMPT,
-                "--max-new-tokens",
-                "1",
-                "--max-seq-len",
-                "32",
-            ],
-            dylib=dylib,
-            log_path=tmp / "live.log",
-            parent=parent,
-            timeout=120,
+        print(
+            f"g011: observing native decode {binary} (timeout {DECODE_TIMEOUT_S:.0f}s)",
+            file=sys.stderr,
+            flush=True,
         )
-        live_text = (live.get("stderr_head") or "") + "\n" + (live.get("stdout_head") or "")
-        live["saw_tokenizer_encode"] = "prompt tokens=" in live_text
-        live["saw_catalog_count"] = "opening Metal +" in live_text
-        live["metal_refused"] = "no Metal-capable GPU" in live_text
+        with GpuLaneLock("g011-noetic-zero-parent"):
+            live = observe_command(
+                [
+                    str(binary),
+                    "--artifact-root",
+                    str(artifact),
+                    "--tokenizer",
+                    str(tokenizer),
+                    "--prompt",
+                    PROMPT,
+                    "--max-new-tokens",
+                    "1",
+                    "--max-seq-len",
+                    "32",
+                ],
+                dylib=dylib,
+                log_path=tmp / "live.log",
+                parent=parent,
+                artifact=artifact,
+                timeout=DECODE_TIMEOUT_S,
+            )
+        decoded = parse_decode_output(live.get("stdout") or "", live.get("stderr") or "")
+        live.update(decoded)
         live["n_parent_weight_opens"] = len(live["observation"]["parent_weight"])
-
-        infer = observe_command(
-            [
-                str(VISION_PY),
-                str(Path(__file__).resolve()),
-                "--mode",
-                "production-infer",
-                "--artifact",
-                str(artifact),
-                "--tokenizer",
-                str(tokenizer),
-            ],
-            dylib=dylib,
-            log_path=tmp / "infer.log",
-            parent=parent,
-            timeout=180,
+        live["n_artifact_tensor_opens"] = live["observation"].get("n_artifact_tensor", 0)
+        live["n_file_open_events"] = live["observation"]["n_events"]
+        live["binary"] = str(binary)
+        live["complete"] = bool(
+            live["exit_code"] == 0
+            and not live["timed_out"]
+            and not live["metal_refused"]
+            and (live.get("n_new_tokens") or 0) >= 1
+            and live["n_artifact_tensor_opens"] >= EXPECTED_CATALOG_TENSORS
         )
-        infer_json = _last_json_object(infer.get("stdout_head") or "")
-        infer["cpu_infer"] = infer_json
-        infer["n_parent_weight_opens"] = len(infer["observation"]["parent_weight"])
+        if live["timed_out"] or live["metal_refused"] or live["exit_code"] not in (0,):
+            live["truncation"] = (
+                "native decode did not complete; observing a prefix is not "
+                "evidence that a COMPLETE inference opens no parent weights"
+            )
+        else:
+            live["truncation"] = None
 
+        print(
+            f"g011: native decode exit={live['exit_code']} complete={live['complete']} "
+            f"events={live['n_file_open_events']} tokens={live.get('new_token_ids')!r} "
+            f"text={live.get('generated_text')!r}",
+            file=sys.stderr,
+            flush=True,
+        )
+        print("g011: observing composition negative control", file=sys.stderr, flush=True)
         control = observe_command(
             [
                 str(VISION_PY),
@@ -565,40 +637,32 @@ def run_and_write(out: Path | None = None) -> dict[str, Any]:
             dylib=dylib,
             log_path=tmp / "control.log",
             parent=parent,
-            timeout=120,
+            artifact=artifact,
+            timeout=CONTROL_TIMEOUT_S,
         )
-        control_json = _last_json_object(control.get("stdout_head") or "")
+        control_json = _last_json_object(control.get("stdout") or "")
         control["teacher_load"] = control_json
         control["n_parent_weight_opens"] = len(control["observation"]["parent_weight"])
         control["detector_caught"] = bool(control["observation"]["parent_weight"])
 
     live_obs = live["observation"]
-    infer_obs = infer["observation"]
     control_obs = control["observation"]
 
-    production_weight_paths = list(
-        dict.fromkeys(live_obs["parent_weight"] + infer_obs["parent_weight"])
-    )
-    production_tok = list(
-        dict.fromkeys(live_obs["parent_tokenizer"] + infer_obs["parent_tokenizer"])
-    )
-    production_cfg = list(
-        dict.fromkeys(live_obs["parent_config"] + infer_obs["parent_config"])
-    )
+    production_weight_paths = list(dict.fromkeys(live_obs["parent_weight"]))
+    production_tok = list(dict.fromkeys(live_obs["parent_tokenizer"]))
+    production_cfg = list(dict.fromkeys(live_obs["parent_config"]))
 
     production_clean = len(production_weight_paths) == 0
     control_caught = bool(control_obs["parent_weight"])
-    dylib_ok = bool(live["dylib_loaded"] and infer["dylib_loaded"] and control["dylib_loaded"])
-    catalog_complete = bool(
-        infer_json
-        and infer_json.get("n_opened") == infer_json.get("n_catalog")
-        and infer_json.get("n_catalog")
-    )
-    cpu_infer_ok = bool(infer_json and infer_json.get("ok") and infer.get("exit_code") == 0)
+    dylib_ok = bool(live["dylib_loaded"] and control["dylib_loaded"])
+    decode_complete = bool(live["complete"])
 
-    verdict = "PASS" if (
-        production_clean and control_caught and dylib_ok and catalog_complete and cpu_infer_ok
-    ) else "FAIL"
+    if not decode_complete:
+        verdict = "INCONCLUSIVE"
+    elif not (production_clean and control_caught and dylib_ok):
+        verdict = "FAIL"
+    else:
+        verdict = "PASS"
 
     found = []
     if production_tok:
@@ -612,6 +676,12 @@ def run_and_write(out: Path | None = None) -> dict[str, Any]:
     if not found:
         found.append("no parent files opened")
 
+    production_verdict = (
+        "INCONCLUSIVE"
+        if not decode_complete
+        else ("PASS" if production_clean else "FAIL")
+    )
+
     receipt = {
         "schema": SCHEMA,
         "generated_at": now_iso(),
@@ -619,14 +689,17 @@ def run_and_write(out: Path | None = None) -> dict[str, Any]:
         "elapsed_s": round(time.time() - t0, 3),
         "claim": "Production Noetic inference does not load parent weights.",
         "observation_method": (
-            "DYLD interpose of open/openat (tools/headless/noetic_openlog.c) on the "
-            "live process. Every recorded path is an observed open(), not a walk of "
-            "the loader source."
+            "DYLD interpose of open/openat/open$NOCANCEL/fopen "
+            "(tools/headless/noetic_openlog.c) on the live process. Successful "
+            "opens are resolved via F_GETPATH so openat relative names still "
+            "name the file. Every recorded path is an observed open(), not a "
+            "walk of the loader source."
         ),
         "parent_bf16": str(parent),
         "artifact": str(artifact),
         "tokenizer": str(tokenizer),
         "decode_binary": str(binary),
+        "decode_binary_identity": ident,
         "did_not_load_second_27b": True,
         "did_not_modify_models": True,
         "distinctions": {
@@ -647,24 +720,22 @@ def run_and_write(out: Path | None = None) -> dict[str, Any]:
                 "note": (
                     "Prior work found the parent tokenizer.json in use for "
                     "tokenization. Confirmed by observed open() of that file. "
-                    "Tokenizer dependency, not a weight dependency. Parent "
-                    "config.json was not opened by production inference."
+                    "Tokenizer dependency, not a weight dependency."
                 ),
             },
             "parent_at_compile_time": {
                 "is_the_violation": False,
                 "observed": False,
                 "note": (
-                    "This harness records runtime opens. The decode binary is "
-                    "prebuilt; compile-time reads of the parent would not appear "
-                    "here and are not a runtime dependency. Geometry constants "
-                    "are compiled into the binary (include_str shaders, not parent "
-                    "weights)."
+                    "This harness records runtime opens of the decode process. "
+                    "The binary is built from this repo via cargo; cargo is not "
+                    "given the parent path. Compile-time reads of the parent "
+                    "would not be a runtime dependency."
                 ),
             },
         },
         "production_run": {
-            "verdict": "PASS" if production_clean and catalog_complete and cpu_infer_ok else "FAIL",
+            "verdict": production_verdict,
             "found": found,
             "n_parent_weight_opens": len(production_weight_paths),
             "parent_weight_paths": production_weight_paths,
@@ -672,50 +743,37 @@ def run_and_write(out: Path | None = None) -> dict[str, Any]:
             "parent_config_paths": production_cfg,
             "live_native_decode": {
                 "why": (
-                    "ascension_qwen38_hybrid_greedy is production Noetic inference. "
-                    "This sandbox has no Metal-capable GPU, so the binary tokenizes, "
-                    "opens the artifact manifest, then dies at MetalContext::new "
-                    "before the 755 catalog fs::read calls. The observed prefix is "
-                    "still a real process: tokenizer.json and manifest.json are "
-                    "opens, not guesses."
+                    "ascension_qwen38_hybrid_greedy built from THIS repo is "
+                    "production Noetic inference. A PASS requires the process "
+                    "to run to completion, emit at least one token, and show "
+                    f"the {EXPECTED_CATALOG_TENSORS} catalog tensor reads. A "
+                    "truncated prefix (MetalContext::new dying first) is "
+                    "INCONCLUSIVE, not evidence."
                 ),
-                **{k: live[k] for k in (
-                    "argv", "exit_code", "elapsed_s", "dylib_loaded",
-                    "saw_tokenizer_encode", "saw_catalog_count", "metal_refused",
-                    "n_parent_weight_opens", "stderr_head",
-                )},
-                "observation": {
-                    k: live_obs[k]
-                    for k in (
-                        "n_events", "n_unique", "parent_weight", "parent_tokenizer",
-                        "parent_config", "parent_other", "n_not_parent",
-                        "unique_paths_fingerprint",
-                    )
-                },
-            },
-            "catalog_weight_load_and_cpu_embed": {
-                "why": (
-                    "The live binary printed 'opening Metal + 755 catalog tensors' "
-                    "and then Metal refused. The weight-load I/O that sentence "
-                    "names is the artifact's own catalog (DATA), not a reconstruction "
-                    "from Rust source. This process opens every catalog member under "
-                    "the same observer, then embeds the prompt tokens and applies "
-                    "L0 RMSNorm from those weights — inference on production "
-                    "weights, no parent shard."
-                ),
-                **{k: infer[k] for k in (
-                    "argv", "exit_code", "elapsed_s", "dylib_loaded",
-                    "n_parent_weight_opens",
-                )},
-                "cpu_infer": infer_json,
-                "observation": {
-                    k: infer_obs[k]
-                    for k in (
-                        "n_events", "n_unique", "parent_weight", "parent_tokenizer",
-                        "parent_config", "parent_other", "n_not_parent",
-                        "unique_paths_fingerprint",
-                    )
-                },
+                "argv": live["argv"],
+                "binary": live["binary"],
+                "exit_code": live["exit_code"],
+                "timed_out": live["timed_out"],
+                "elapsed_s": live["elapsed_s"],
+                "dylib_loaded": live["dylib_loaded"],
+                "saw_tokenizer_encode": live["saw_tokenizer_encode"],
+                "saw_catalog_count": live["saw_catalog_count"],
+                "catalog_count": live["catalog_count"],
+                "saw_upload_progress": live["saw_upload_progress"],
+                "last_upload_index": live["last_upload_index"],
+                "metal_refused": live["metal_refused"],
+                "generated_text": live["generated_text"],
+                "new_token_ids": live["new_token_ids"],
+                "n_new_tokens": live["n_new_tokens"],
+                "fallbacks": live["fallbacks"],
+                "n_parent_weight_opens": live["n_parent_weight_opens"],
+                "n_artifact_tensor_opens": live["n_artifact_tensor_opens"],
+                "n_file_open_events": live["n_file_open_events"],
+                "complete": live["complete"],
+                "truncation": live["truncation"],
+                "stderr_head": live["stderr_head"],
+                "stdout_head": live["stdout_head"],
+                "observation": live_slice(live_obs),
             },
         },
         "negative_control": {
@@ -736,20 +794,14 @@ def run_and_write(out: Path | None = None) -> dict[str, Any]:
             "parent_tokenizer_opens": control_obs["parent_tokenizer"],
             "parent_config_opens": control_obs["parent_config"],
             "detector_caught": control_caught,
+            "n_file_open_events": control_obs["n_events"],
             "verdict": "PASS" if control_caught else "FAIL",
-            "observation": {
-                k: control_obs[k]
-                for k in (
-                    "n_events", "n_unique", "parent_weight", "parent_tokenizer",
-                    "parent_config", "parent_other", "n_not_parent",
-                    "unique_paths_fingerprint",
-                )
-            },
+            "observation": live_slice(control_obs),
         },
         "detector": {
-            "method": "DYLD_INSERT_LIBRARIES + syscall-backed open/openat interpose",
+            "method": "DYLD_INSERT_LIBRARIES + syscall-backed open/openat interpose + F_GETPATH",
             "source": "tools/headless/noetic_openlog.c",
-            "dylib_loaded_on_all_three_runs": dylib_ok,
+            "dylib_loaded_on_production_and_control": dylib_ok,
             "weight_suffixes": sorted(WEIGHT_SUFFIXES),
             "tokenizer_names": sorted(TOKENIZER_NAMES),
             "config_names": sorted(CONFIG_NAMES),
@@ -757,11 +809,14 @@ def run_and_write(out: Path | None = None) -> dict[str, Any]:
         },
         "verdict": verdict,
         "pass_rule": (
-            "PASS iff (1) neither production leg opened a parent weight file, "
-            "(2) the composition teacher-scoring control DID open a parent weight "
-            "file and the detector flagged it, (3) the interpose loaded on every "
-            "run, (4) the catalog-complete open matched the artifact tensor count, "
-            "(5) the CPU embed of the prompt from production weights succeeded."
+            "PASS iff (1) the native decode built from THIS repo ran to "
+            "completion (exit 0, at least one emitted token, "
+            f"{EXPECTED_CATALOG_TENSORS} observed catalog tensor opens), "
+            "(2) that complete run opened no parent weight file, (3) the "
+            "composition teacher-scoring control DID open a parent weight "
+            "file and the detector flagged it, (4) the interpose loaded on "
+            "both runs. A truncated run (Metal refused, timeout, zero tokens, "
+            "or missing catalog reads) is INCONCLUSIVE, never PASS."
         ),
     }
 
@@ -777,25 +832,35 @@ def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__.split("\n\n", 1)[0])
     p.add_argument(
         "--mode",
-        choices=("write-receipt", "production-infer", "composition-control"),
+        choices=("write-receipt", "composition-control"),
         default="write-receipt",
     )
-    p.add_argument("--artifact", type=Path, default=None)
-    p.add_argument("--tokenizer", type=Path, default=None)
     p.add_argument("--parent", type=Path, default=None)
     p.add_argument("--out", type=Path, default=None)
     args = p.parse_args(argv)
 
-    if args.mode == "production-infer":
-        art = (args.artifact or artifact_dir()).resolve()
-        tok = (args.tokenizer or (parent_dir() / "tokenizer.json")).resolve()
-        return mode_production_infer(art, tok)
     if args.mode == "composition-control":
         return mode_composition_control((args.parent or parent_dir()).resolve())
 
     rec = run_and_write(args.out)
     print(f"wrote {rec.get('receipt_path', RECEIPT)}")
     print(f"verdict {rec['verdict']}")
+    live = rec["production_run"]["live_native_decode"]
+    print(
+        "decode complete:",
+        live["complete"],
+        "exit",
+        live["exit_code"],
+        "token",
+        repr(live["generated_text"]),
+        live["new_token_ids"],
+    )
+    print(
+        "file-open events:",
+        live["n_file_open_events"],
+        "catalog tensors:",
+        live["n_artifact_tensor_opens"],
+    )
     print(
         "production parent weights:",
         rec["production_run"]["n_parent_weight_opens"],
@@ -806,7 +871,9 @@ def main(argv: list[str] | None = None) -> int:
         rec["negative_control"]["parent_weight_opens"],
     )
     print("found:", rec["production_run"]["found"])
-    return 0 if rec["verdict"] == "PASS" else 1
+    if rec["verdict"] == "PASS":
+        return 0
+    return 2 if rec["verdict"] == "INCONCLUSIVE" else 1
 
 
 if __name__ == "__main__":

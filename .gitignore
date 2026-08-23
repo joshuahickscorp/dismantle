@@ -178,3 +178,7 @@ workspace/campaign/records/ascension-sandbox/physical/**/source-bf16-capture-res
 # target-parallel/ was committed build output and served stale binaries; never track it again.
 target-parallel/
 workspace/campaign/odyssey/.resident.lock/
+.aider*
+.haider/
+
+.preserved/

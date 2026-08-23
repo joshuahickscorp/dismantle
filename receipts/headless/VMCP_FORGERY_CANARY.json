@@ -1,0 +1,472 @@
+{
+  "adversaries": [
+    {
+      "actual_digest_after": "fc782e263060390e3299f02bf10b55290f19a947d4ff25a7234cc62d68808ad6",
+      "attack": "capture a file, then overwrite the stored CAS artifact bytes in place (same path, different content, digest in the record left unchanged)",
+      "before": {
+        "raised": false,
+        "response": {
+          "capture_id": "ec368ae8264bb1493c3fca33a2a1a46991d071c9be32aeeb878c5a41ba208b9f",
+          "failures": [],
+          "manifest_digest": "4ae296d1cc08ea0fc310ba0c2fbb44a24269967180c4935427a0479cb5a568e7",
+          "status": "COMPLETE",
+          "valid": true,
+          "worldir_verification": {
+            "connected": false,
+            "reason": "no_worldir_world_artifact"
+          }
+        }
+      },
+      "capture_id": "ec368ae8264bb1493c3fca33a2a1a46991d071c9be32aeeb878c5a41ba208b9f",
+      "cas_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/vmcp-forgery-canary-xrgyege7/project/artifacts/sha256/2d/12/2d121251db1fb56638fdf6c82839b358d748c848c635ac9aeea95e02397a48d0",
+      "id": "tampered_artifact",
+      "original_size": 83,
+      "recorded_digest": "2d121251db1fb56638fdf6c82839b358d748c848c635ac9aeea95e02397a48d0",
+      "response": {
+        "raised": false,
+        "response": {
+          "capture_id": "ec368ae8264bb1493c3fca33a2a1a46991d071c9be32aeeb878c5a41ba208b9f",
+          "failures": [
+            {
+              "actual": "fc782e263060390e3299f02bf10b55290f19a947d4ff25a7234cc62d68808ad6",
+              "reason": "digest_mismatch",
+              "role": "bytes"
+            }
+          ],
+          "manifest_digest": "4ae296d1cc08ea0fc310ba0c2fbb44a24269967180c4935427a0479cb5a568e7",
+          "status": "COMPLETE",
+          "valid": false,
+          "worldir_verification": {
+            "connected": false,
+            "reason": "no_worldir_world_artifact"
+          }
+        }
+      },
+      "tampered_size": 103,
+      "verdict": "DETECTED"
+    },
+    {
+      "attack": "leave the artifact bytes alone; UPDATE observation_captures.summary_json so the recorded digest (summary.sha256) is a lie",
+      "before": {
+        "raised": false,
+        "response": {
+          "capture_id": "c643da146f66ff25b4cc6d1eb6152b82b97aff0894a9d30511292be2397d143f",
+          "failures": [],
+          "manifest_digest": "59da924ffde76d2c13ad1bda438758f2b09f53400108defb1d249d2dc22545a8",
+          "status": "COMPLETE",
+          "valid": true,
+          "worldir_verification": {
+            "connected": false,
+            "reason": "no_worldir_world_artifact"
+          }
+        }
+      },
+      "capture_id": "c643da146f66ff25b4cc6d1eb6152b82b97aff0894a9d30511292be2397d143f",
+      "get_after_tamper": {
+        "manifest_digest": "59da924ffde76d2c13ad1bda438758f2b09f53400108defb1d249d2dc22545a8",
+        "status": "COMPLETE",
+        "summary": {
+          "mode": "0o100644",
+          "path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/vmcp-forgery-canary-xrgyege7/tamper-rec.txt",
+          "present": true,
+          "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+          "size": 81
+        }
+      },
+      "id": "tampered_record",
+      "lying_summary": {
+        "mode": "0o100644",
+        "path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/vmcp-forgery-canary-xrgyege7/tamper-rec.txt",
+        "present": true,
+        "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "size": 81
+      },
+      "original_summary": {
+        "mode": "0o100644",
+        "path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/vmcp-forgery-canary-xrgyege7/tamper-rec.txt",
+        "present": true,
+        "sha256": "7b682f09e2f4c4cf0c8769a3d00f1135c669fab317764abf32af2e2494a5374f",
+        "size": 81
+      },
+      "response": {
+        "get_after_tamper": {
+          "manifest_digest": "59da924ffde76d2c13ad1bda438758f2b09f53400108defb1d249d2dc22545a8",
+          "status": "COMPLETE",
+          "summary": {
+            "mode": "0o100644",
+            "path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/vmcp-forgery-canary-xrgyege7/tamper-rec.txt",
+            "present": true,
+            "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            "size": 81
+          }
+        },
+        "verify": {
+          "raised": false,
+          "response": {
+            "capture_id": "c643da146f66ff25b4cc6d1eb6152b82b97aff0894a9d30511292be2397d143f",
+            "failures": [
+              {
+                "reason": "summary_mismatch",
+                "role": "summary"
+              }
+            ],
+            "manifest_digest": "59da924ffde76d2c13ad1bda438758f2b09f53400108defb1d249d2dc22545a8",
+            "status": "COMPLETE",
+            "valid": false,
+            "worldir_verification": {
+              "connected": false,
+              "reason": "no_worldir_world_artifact"
+            }
+          }
+        }
+      },
+      "verdict": "DETECTED"
+    },
+    {
+      "absent_capture_response": {
+        "error": "'unknown capture: 0000000000000000000000000000000000000000000000000000000000000000'",
+        "error_type": "KeyError",
+        "raised": true,
+        "traceback": "Traceback (most recent call last):\n  File \"/Users/scammermike/Downloads/hawking-copy/tools/headless/vmcp_forgery_canary.py\", line 270, in call_verify\n    payload = bus.verify(capture_id)\n  File \"/Users/scammermike/Downloads/hawking-copy/visionmcp/src/visionmcp/perception/bus.py\", line 398, in verify\n    raise KeyError(f\"unknown capture: {capture_id}\")\nKeyError: 'unknown capture: 0000000000000000000000000000000000000000000000000000000000000000'\n"
+      },
+      "attack": "cut the stored CAS artifact in half; separately cut the stored summary_json record in half. Compare each response to unknown-capture and to a deleted artifact, so 'absent' is not confused with 'truncated'.",
+      "id": "truncated_receipt",
+      "response": {
+        "absent_is_keyerror": true,
+        "artifact_halved": {
+          "raised": false,
+          "response": {
+            "capture_id": "29430a00c16d6e5a963d5e5a1beb1e8bf515c26f1f2ff666aa0fde5a58ee971a",
+            "failures": [
+              {
+                "actual": "47b40cfc898242a3679c4f0f08e26ee49cb6298b1395a25d78f1fab459453b3b",
+                "reason": "digest_mismatch",
+                "role": "bytes"
+              }
+            ],
+            "manifest_digest": "3f63ca168d82944c5422328e6ce035f2197b31105db849474ea711c475821556",
+            "status": "COMPLETE",
+            "valid": false,
+            "worldir_verification": {
+              "connected": false,
+              "reason": "no_worldir_world_artifact"
+            }
+          }
+        },
+        "artifact_halved_distinguishable_from_absent": true,
+        "artifact_halved_distinguishable_from_deleted_file": true,
+        "record_halved": {
+          "error": "Unterminated string starting at: line 1 column 27 (char 26)",
+          "error_type": "JSONDecodeError",
+          "raised": true,
+          "traceback": "Traceback (most recent call last):\n  File \"/Users/scammermike/Downloads/hawking-copy/tools/headless/vmcp_forgery_canary.py\", line 270, in call_verify\n    payload = bus.verify(capture_id)\n  File \"/Users/scammermike/Downloads/hawking-copy/visionmcp/src/visionmcp/perception/bus.py\", line 396, in verify\n    capture = self.get(capture_id)\n  File \"/Users/scammermike/Downloads/hawking-copy/visionmcp/src/visionmcp/perception/bus.py\", line 378, in get\n    \"summary\": json.loads(row[\"summary_json\"]),\n               ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/lib/python3.14/json/__init__.py\", line 352, in loads\n    return _default_decoder.decode(s)\n           ~~~~~~~~~~~~~~~~~~~~~~~^^^\n  File \"/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/lib/python3.14/json/decoder.py\", line 345, in decode\n    obj, end = self.raw_decode(s, idx=_w(s, 0).end())\n               ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/lib/python3.14/json/decoder.py\", line 361, in raw_decode\n    obj, end = self.scan_once(s, idx)\n               ~~~~~~~~~~~~~~^^^^^^^^\njson.decoder.JSONDecodeError: Unterminated string starting at: line 1 column 27 (char 26)\n"
+        },
+        "record_halved_distinguishable_from_absent": true
+      },
+      "undetected_variants": [],
+      "variants": {
+        "artifact_deleted_for_comparison": {
+          "capture_id": "d0b300c0eb54e270d615ec6ad7602f884a91c411dc64cbfe918ceabf06c703fa",
+          "distinguishable_from_absent": true,
+          "response": {
+            "raised": false,
+            "response": {
+              "capture_id": "d0b300c0eb54e270d615ec6ad7602f884a91c411dc64cbfe918ceabf06c703fa",
+              "failures": [
+                {
+                  "reason": "missing",
+                  "role": "bytes"
+                }
+              ],
+              "manifest_digest": "da4a5b47e1da49c0326f5fb02def5abe650307a9117c4da49100b3c12ea6a787",
+              "status": "COMPLETE",
+              "valid": false,
+              "worldir_verification": {
+                "connected": false,
+                "reason": "no_worldir_world_artifact"
+              }
+            }
+          },
+          "verdict": "DETECTED"
+        },
+        "artifact_halved": {
+          "capture_id": "29430a00c16d6e5a963d5e5a1beb1e8bf515c26f1f2ff666aa0fde5a58ee971a",
+          "distinguishable_from_absent": true,
+          "distinguishable_from_missing_file": true,
+          "original_size": 148,
+          "response": {
+            "raised": false,
+            "response": {
+              "capture_id": "29430a00c16d6e5a963d5e5a1beb1e8bf515c26f1f2ff666aa0fde5a58ee971a",
+              "failures": [
+                {
+                  "actual": "47b40cfc898242a3679c4f0f08e26ee49cb6298b1395a25d78f1fab459453b3b",
+                  "reason": "digest_mismatch",
+                  "role": "bytes"
+                }
+              ],
+              "manifest_digest": "3f63ca168d82944c5422328e6ce035f2197b31105db849474ea711c475821556",
+              "status": "COMPLETE",
+              "valid": false,
+              "worldir_verification": {
+                "connected": false,
+                "reason": "no_worldir_world_artifact"
+              }
+            }
+          },
+          "truncated_size": 74,
+          "verdict": "DETECTED"
+        },
+        "record_halved": {
+          "capture_id": "b9e115a79712ce94179bb01c921d608f17e642e3a8213e11e050710eb7fdeb6a",
+          "distinguishable_from_absent": true,
+          "original_summary_json_len": 230,
+          "response": {
+            "error": "Unterminated string starting at: line 1 column 27 (char 26)",
+            "error_type": "JSONDecodeError",
+            "raised": true,
+            "traceback": "Traceback (most recent call last):\n  File \"/Users/scammermike/Downloads/hawking-copy/tools/headless/vmcp_forgery_canary.py\", line 270, in call_verify\n    payload = bus.verify(capture_id)\n  File \"/Users/scammermike/Downloads/hawking-copy/visionmcp/src/visionmcp/perception/bus.py\", line 396, in verify\n    capture = self.get(capture_id)\n  File \"/Users/scammermike/Downloads/hawking-copy/visionmcp/src/visionmcp/perception/bus.py\", line 378, in get\n    \"summary\": json.loads(row[\"summary_json\"]),\n               ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/lib/python3.14/json/__init__.py\", line 352, in loads\n    return _default_decoder.decode(s)\n           ~~~~~~~~~~~~~~~~~~~~~~~^^^\n  File \"/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/lib/python3.14/json/decoder.py\", line 345, in decode\n    obj, end = self.raw_decode(s, idx=_w(s, 0).end())\n               ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/lib/python3.14/json/decoder.py\", line 361, in raw_decode\n    obj, end = self.scan_once(s, idx)\n               ~~~~~~~~~~~~~~^^^^^^^^\njson.decoder.JSONDecodeError: Unterminated string starting at: line 1 column 27 (char 26)\n"
+          },
+          "truncated_summary_json": "{\"mode\":\"0o100644\",\"path\":\"/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/vmcp-forgery-canary-xrgyege7/tr",
+          "truncated_summary_json_len": 115,
+          "verdict": "DETECTED"
+        }
+      },
+      "verdict": "DETECTED"
+    },
+    {
+      "attack": "adapter returns CaptureOutcome(summary={ok: True, verified: True}) without calling the artifact sink \u2014 success with no evidence body",
+      "capture_id": "9bab8be8598d8afb2cb8f4f4a8492f8027b023614371099dd3b68ec4634c735c",
+      "id": "self_report",
+      "leftover": {
+        "artifacts": [],
+        "capture_id": "9bab8be8598d8afb2cb8f4f4a8492f8027b023614371099dd3b68ec4634c735c",
+        "manifest_digest": null,
+        "status": "INTERRUPTED",
+        "summary": {}
+      },
+      "observe": {
+        "error": "sensor adapter produced no evidence artifacts",
+        "error_type": "RuntimeError",
+        "raised": true,
+        "traceback": "Traceback (most recent call last):\n  File \"/Users/scammermike/Downloads/hawking-copy/tools/headless/vmcp_forgery_canary.py\", line 623, in run_self_report\n    record = bus.observe(\n        \"self.report\",\n    ...<2 lines>...\n        rights_decision=RIGHTS,\n    )\n  File \"/Users/scammermike/Downloads/hawking-copy/visionmcp/src/visionmcp/perception/bus.py\", line 167, in observe\n    manifest = self._finalize(capture_id, request, outcome)\n  File \"/Users/scammermike/Downloads/hawking-copy/visionmcp/src/visionmcp/perception/bus.py\", line 281, in _finalize\n    raise RuntimeError(\"sensor adapter produced no evidence artifacts\")\nRuntimeError: sensor adapter produced no evidence artifacts\n"
+      },
+      "response": {
+        "leftover": {
+          "artifacts": [],
+          "capture_id": "9bab8be8598d8afb2cb8f4f4a8492f8027b023614371099dd3b68ec4634c735c",
+          "manifest_digest": null,
+          "status": "INTERRUPTED",
+          "summary": {}
+        },
+        "observe": {
+          "error": "sensor adapter produced no evidence artifacts",
+          "error_type": "RuntimeError",
+          "raised": true,
+          "traceback": "Traceback (most recent call last):\n  File \"/Users/scammermike/Downloads/hawking-copy/tools/headless/vmcp_forgery_canary.py\", line 623, in run_self_report\n    record = bus.observe(\n        \"self.report\",\n    ...<2 lines>...\n        rights_decision=RIGHTS,\n    )\n  File \"/Users/scammermike/Downloads/hawking-copy/visionmcp/src/visionmcp/perception/bus.py\", line 167, in observe\n    manifest = self._finalize(capture_id, request, outcome)\n  File \"/Users/scammermike/Downloads/hawking-copy/visionmcp/src/visionmcp/perception/bus.py\", line 281, in _finalize\n    raise RuntimeError(\"sensor adapter produced no evidence artifacts\")\nRuntimeError: sensor adapter produced no evidence artifacts\n"
+        },
+        "verify": {
+          "raised": false,
+          "response": {
+            "capture_id": "9bab8be8598d8afb2cb8f4f4a8492f8027b023614371099dd3b68ec4634c735c",
+            "failures": [],
+            "manifest_digest": null,
+            "status": "INTERRUPTED",
+            "valid": false,
+            "worldir_verification": {
+              "connected": false,
+              "reason": "no_worldir_world_artifact"
+            }
+          }
+        }
+      },
+      "verdict": "DETECTED"
+    },
+    {
+      "attack": "observe file A; present that valid capture_id as evidence for file B (different path, identical bytes). This is how the AgentOS verifier consumes evidence: CaptureBus.verify(capture_id) plus summary.sha256 vs sha256(claimed_path). It does not bind the capture to the subject.",
+      "capture_id_a": "3212d5ab80bab694b569683e73ea8b0767d9647cba5567944b9e2686297555ec",
+      "capture_id_b": "c3ae9c03170b6267ff922bee19bd74d63116418b76ead71a8ac5f69075539435",
+      "consume_a_as_a": {
+        "claimed_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/vmcp-forgery-canary-xrgyege7/replay-a.txt",
+        "claimed_sha256": "2be327d179d86e7881cced2a34f0ec3fdadf15e099a62fb63e888e886029e758",
+        "observed_sha256": "2be327d179d86e7881cced2a34f0ec3fdadf15e099a62fb63e888e886029e758",
+        "recorded_target_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/vmcp-forgery-canary-xrgyege7/replay-a.txt",
+        "result": "SUPPORTED",
+        "subject_matches_recorded_target": true,
+        "verify": {
+          "capture_id": "3212d5ab80bab694b569683e73ea8b0767d9647cba5567944b9e2686297555ec",
+          "failures": [],
+          "manifest_digest": "ed688e78fe7dfe99670a0e353d27aa578d355289e1ea3748b19600e856b6cabd",
+          "status": "COMPLETE",
+          "valid": true,
+          "worldir_verification": {
+            "connected": false,
+            "reason": "no_worldir_world_artifact"
+          }
+        },
+        "verify_valid": true
+      },
+      "file_a": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/vmcp-forgery-canary-xrgyege7/replay-a.txt",
+      "file_b": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/vmcp-forgery-canary-xrgyege7/replay-b.txt",
+      "id": "replay",
+      "response": {
+        "claimed_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/vmcp-forgery-canary-xrgyege7/replay-b.txt",
+        "claimed_sha256": "2be327d179d86e7881cced2a34f0ec3fdadf15e099a62fb63e888e886029e758",
+        "observed_sha256": "2be327d179d86e7881cced2a34f0ec3fdadf15e099a62fb63e888e886029e758",
+        "recorded_target_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/vmcp-forgery-canary-xrgyege7/replay-a.txt",
+        "result": "SUPPORTED",
+        "subject_matches_recorded_target": false,
+        "verify": {
+          "capture_id": "3212d5ab80bab694b569683e73ea8b0767d9647cba5567944b9e2686297555ec",
+          "failures": [],
+          "manifest_digest": "ed688e78fe7dfe99670a0e353d27aa578d355289e1ea3748b19600e856b6cabd",
+          "status": "COMPLETE",
+          "valid": true,
+          "worldir_verification": {
+            "connected": false,
+            "reason": "no_worldir_world_artifact"
+          }
+        },
+        "verify_valid": true
+      },
+      "same_capture_id_for_different_paths": false,
+      "shared_sha256": "2be327d179d86e7881cced2a34f0ec3fdadf15e099a62fb63e888e886029e758",
+      "verdict": "UNDETECTED",
+      "verify_a": {
+        "raised": false,
+        "response": {
+          "capture_id": "3212d5ab80bab694b569683e73ea8b0767d9647cba5567944b9e2686297555ec",
+          "failures": [],
+          "manifest_digest": "ed688e78fe7dfe99670a0e353d27aa578d355289e1ea3748b19600e856b6cabd",
+          "status": "COMPLETE",
+          "valid": true,
+          "worldir_verification": {
+            "connected": false,
+            "reason": "no_worldir_world_artifact"
+          }
+        }
+      },
+      "verify_signature": "(capture_id: 'str') -> 'dict[str, Any]'"
+    }
+  ],
+  "attempted": [
+    "tampered_artifact",
+    "tampered_record",
+    "truncated_receipt",
+    "self_report",
+    "replay"
+  ],
+  "detected": [
+    "tampered_artifact",
+    "tampered_record",
+    "truncated_receipt",
+    "self_report"
+  ],
+  "elapsed_s": 0.1525,
+  "gate": "VMCP_FORGERY_CANARY",
+  "generated_at": "2026-08-23T08:52:33Z",
+  "git": {
+    "cwd": "/Users/scammermike/Downloads/hawking-copy",
+    "head": "2f670c2406d22e7eef50a3d6eff7daf954facc77",
+    "oneline": "2f670c2 hcli: wire /grok command dispatch through GrokBridge (G027 phase 2)",
+    "own_git": true,
+    "toplevel": "/Users/scammermike/Downloads/hawking-copy"
+  },
+  "git_head": "2f670c2406d22e7eef50a3d6eff7daf954facc77",
+  "handoff": [
+    {
+      "adversary": "replay",
+      "file": "visionmcp/src/visionmcp/perception/bus.py",
+      "line": 395,
+      "smallest_change": "CaptureBus.verify(self, capture_id) takes no subject. Add an optional claimed target (verify(self, capture_id, *, claimed_target=None)) and, when it is provided, fail with subject_mismatch unless it equals capture['request']['target']. The AgentOS verifier in tools/headless/hcli_vmcp_integration.py (_VERIFIER, ~lines 155-171) must then pass claimed_path through; a content-only sha256 check is not subject-binding."
+    }
+  ],
+  "not_attempted": [],
+  "positive_control": {
+    "capture_id": "ce1a67d4350b89bd6c07a1f41a9dc706f2c78e4835bdec95e4132d6d9ace682b",
+    "id": "positive_control",
+    "observe": {
+      "artifact_roles": [
+        "bytes"
+      ],
+      "authority": "OBSERVED",
+      "reused": false,
+      "status": "COMPLETE",
+      "summary": {
+        "mode": "0o100644",
+        "path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/vmcp-forgery-canary-xrgyege7/clean.txt",
+        "present": true,
+        "sha256": "4ee9c6542092be9c374ff59418a6b78c3a53be1ffa5da6ef6b4da88ee71e725f",
+        "size": 82
+      }
+    },
+    "ok": true,
+    "verdict": "PASS",
+    "verify": {
+      "raised": false,
+      "response": {
+        "capture_id": "ce1a67d4350b89bd6c07a1f41a9dc706f2c78e4835bdec95e4132d6d9ace682b",
+        "failures": [],
+        "manifest_digest": "88d041e71cba2c494f7d79ec35f58d3894c11b89da2d91443d233d382806a79c",
+        "status": "COMPLETE",
+        "valid": true,
+        "worldir_verification": {
+          "connected": false,
+          "reason": "no_worldir_world_artifact"
+        }
+      }
+    }
+  },
+  "positive_control_after_attacks": {
+    "ok": true,
+    "verify": {
+      "raised": false,
+      "response": {
+        "capture_id": "ce1a67d4350b89bd6c07a1f41a9dc706f2c78e4835bdec95e4132d6d9ace682b",
+        "failures": [],
+        "manifest_digest": "88d041e71cba2c494f7d79ec35f58d3894c11b89da2d91443d233d382806a79c",
+        "status": "COMPLETE",
+        "valid": true,
+        "worldir_verification": {
+          "connected": false,
+          "reason": "no_worldir_world_artifact"
+        }
+      }
+    }
+  },
+  "result": "COMPLETE",
+  "seam": {
+    "acquire": "visionmcp.perception.bus.CaptureBus.observe",
+    "adapter": "file.eye (same adapter as VMCP_AGENTOS_INTEGRATION)",
+    "profile": "CaptureBus directly \u2014 not the laboratory MCP profile",
+    "stores": [
+      "ProjectStore",
+      "ArtifactStore"
+    ],
+    "verify": "CaptureBus.verify",
+    "verify_signature": "(self, capture_id: 'str') -> 'dict[str, Any]'"
+  },
+  "undetected": [
+    "replay"
+  ],
+  "verdicts": {
+    "replay": "UNDETECTED",
+    "self_report": "DETECTED",
+    "tampered_artifact": "DETECTED",
+    "tampered_record": "DETECTED",
+    "truncated_receipt": "DETECTED"
+  },
+  "visionmcp": {
+    "git": {
+      "cwd": "/Users/scammermike/Downloads/hawking-copy/visionmcp",
+      "head": null,
+      "note": "not a git root; parent HEAD would be 2f670c2406d2 (2f670c2 hcli: wire /grok command dispatch through GrokBridge (G027 phase 2))",
+      "oneline": null,
+      "own_git": false,
+      "toplevel": "/Users/scammermike/Downloads/hawking-copy"
+    },
+    "in_this_worktree": true,
+    "src": "/Users/scammermike/Downloads/hawking-copy/visionmcp/src",
+    "version": "0.8.0a2"
+  }
+}

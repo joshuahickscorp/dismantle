@@ -91,13 +91,6 @@ def _loc(obj: Any) -> str:
         return f"unresolved:{exc}"
 
 
-def _src_has(obj: Any, token: str) -> bool:
-    try:
-        return token in inspect.getsource(obj)
-    except Exception:
-        return False
-
-
 def _wu(uid: str, **kwargs: Any) -> WorkUnit:
     return WorkUnit(id=uid, role="work", description=uid, **kwargs)
 

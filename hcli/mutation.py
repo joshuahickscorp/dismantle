@@ -4,7 +4,6 @@ import hashlib
 import json
 import os
 import re
-import subprocess
 import traceback
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
@@ -218,30 +217,3 @@ def validate_python_syntax(path: str) -> bool:
 def discover_tests(paths: List[str]) -> List[str]:
     patterns = [r"^test_.*\.py$", r"^.*_test\.py$", r"^.*\.test\.js$", r"^.*\.spec\.js$", r"^.*\.test\.ts$", r"^.*\.spec\.ts$"]
     return [p for p in paths if any(re.match(pat, os.path.basename(p)) for pat in patterns)]
-
-
-def build_validation_plan(changed: List[str], created: List[str]) -> Dict[str, Any]:
-    all_paths = changed + created
-    return {
-        "syntax_checks": [p for p in all_paths if p.endswith(".py")],
-        "tests": discover_tests(all_paths),
-        "commands": [["python", "-m", "pytest", "-x"]] if any(p.endswith(".py") for p in all_paths) else [],
-    }
-
-
-def run_validation(plan: Dict[str, Any], workspace_root: str) -> Dict[str, Any]:
-    result = {"syntax_ok": True, "tests_ok": True, "commands_ok": True, "details": []}
-    for p in plan.get("syntax_checks", []):
-        if not validate_python_syntax(os.path.join(workspace_root, p)):
-            result["syntax_ok"] = False
-            result["details"].append(f"syntax fail: {p}")
-    for cmd in plan.get("commands", []):
-        try:
-            proc = subprocess.run(cmd, cwd=workspace_root, capture_output=True, timeout=60)
-            if proc.returncode != 0:
-                result["commands_ok"] = False
-                result["details"].append(f"cmd fail: {' '.join(cmd)}")
-        except Exception as e:
-            result["commands_ok"] = False
-            result["details"].append(f"cmd error: {e}")
-    return result

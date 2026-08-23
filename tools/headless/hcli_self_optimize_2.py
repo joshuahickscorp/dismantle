@@ -129,10 +129,121 @@ def ok(msg: str) -> None:
     print(f"ok   {msg}", flush=True)
 
 
+def _resolved_sys_path_entry(p: str) -> Optional[str]:
+    if p is None or p == "":
+        return p
+    try:
+        return str(Path(p).resolve())
+    except Exception:
+        return os.path.abspath(p)
+
+
+def _hcli_import_parent() -> str:
+    """Directory that must supply `hcli` for this process.
+
+    Probe children pin this to the git-archive scratch copy via
+    HCLI_SELFOPT_HCLI_PARENT. The invoking worktree is the wrong parent:
+    when that worktree has hcli/ on disk, inserting it at sys.path[0]
+    binds HEAD (already H1) and the scratch variant is ignored.
+    """
+    pinned = os.environ.get("HCLI_SELFOPT_HCLI_PARENT")
+    if pinned:
+        return str(Path(pinned).resolve())
+    return str(HCLI_PARENT.resolve())
+
+
 def ensure_hcli_path() -> None:
-    parent = str(HCLI_PARENT)
-    if parent not in sys.path:
-        sys.path.insert(0, parent)
+    """Pin the chosen hcli parent at sys.path[0].
+
+    Insert-if-absent is not enough: a later insert of the invoking
+    worktree can sit in front of the scratch copy. Always move the
+    chosen parent to the front.
+    """
+    parent = _hcli_import_parent()
+    kept = []
+    for p in sys.path:
+        if _resolved_sys_path_entry(p) == parent:
+            continue
+        kept.append(p)
+    sys.path[:] = kept
+    sys.path.insert(0, parent)
+
+
+def pin_hcli_import_root(root: Path) -> Path:
+    """Force the next `import hcli` to load the package under root.
+
+    G021 divergence: `_install_fake_pool_patches` called `ensure_hcli_path()`,
+    which inserted the invoking worktree at sys.path[0]. Then
+    `from hcli.runtime import RuntimePool` bound that tree's module. `hcli`
+    stayed in sys.modules, so `from hcli.controller import Controller` used
+    HEAD — already H1 — while the wiring marker was read from the stripped
+    scratch file. Baseline therefore reported observed_overlap_ctor=2 with
+    controller_has_h1_wiring=false.
+
+    A sparse hole does not have hcli/ at the worktree, so the same child
+    fell through to scratch and the variants actually ran. That is why the
+    lane PROMOTE (baseline admitted_n [1,1]) did not reproduce on a
+    checkout where hcli/ was present (both arms [2,2]).
+
+    The editable-install meta-path finder was tested and refuted: scratch
+    first, sys.modules purged, resolves to scratch. This pin is the
+    worktree-directory case that test never exercised.
+    """
+    root_s = str(Path(root).resolve())
+    marker = Path(root_s) / "hcli" / "controller.py"
+    if not marker.is_file():
+        die(f"pin_hcli_import_root: {marker} is not a file")
+    os.environ["HCLI_SELFOPT_HCLI_PARENT"] = root_s
+    for mod in list(sys.modules):
+        if mod == "hcli" or mod.startswith("hcli."):
+            del sys.modules[mod]
+    kept = []
+    for p in sys.path:
+        resolved = _resolved_sys_path_entry(p)
+        if resolved == root_s:
+            continue
+        if resolved:
+            other = Path(resolved)
+            if (other / "hcli" / "__init__.py").is_file() or (
+                other / "hcli" / "controller.py"
+            ).is_file():
+                # Another tree that could supply hcli/. Drop it so a
+                # materialized worktree (or a git-archive shadow used in
+                # tests) cannot win over scratch.
+                continue
+        kept.append(p)
+    sys.path[:] = kept
+    sys.path.insert(0, root_s)
+    return Path(root_s)
+
+
+def _hcli_loaded_from(root: Path) -> Dict[str, Any]:
+    """Identity of the imported hcli package. Empty if not imported yet."""
+    root_s = str(Path(root).resolve())
+    mod = sys.modules.get("hcli")
+    ctrl = sys.modules.get("hcli.controller")
+    runtime = sys.modules.get("hcli.runtime")
+    hcli_file = getattr(mod, "__file__", None)
+    controller_file = getattr(ctrl, "__file__", None)
+    runtime_file = getattr(runtime, "__file__", None)
+
+    def _under(path: Optional[str]) -> bool:
+        if not path:
+            return False
+        try:
+            return Path(path).resolve().is_relative_to(Path(root_s))
+        except Exception:
+            return str(Path(path).resolve()).startswith(root_s + os.sep)
+
+    return {
+        "hcli_file": hcli_file,
+        "controller_file": controller_file,
+        "runtime_file": runtime_file,
+        "import_root": root_s,
+        "import_root_is_scratch": bool(
+            _under(hcli_file) and _under(controller_file) and _under(runtime_file)
+        ),
+    }
 
 
 def sha256_file(path: Path) -> Optional[str]:
@@ -649,6 +760,10 @@ def _install_attach_pool_patches() -> None:
     Controller.ensure_runtime_pool does not take backend_factory. Without
     this patch it would spawn a second 27B. The patch must NOT set
     observed_overlap or workspace — those are the mutation.
+
+    Import RuntimePool from the pinned scratch parent, not the invoking
+    worktree. Patching a different module than Controller later imports
+    is the G021 miss: the baseline arm then is not a baseline.
     """
     ensure_hcli_path()
     from hcli.runtime import RuntimePool
@@ -703,6 +818,11 @@ def _install_fake_pool_patches() -> None:
     workspace. Those come from Controller, which is the mutation. Used by
     the promotion-control harness so it can run without a live llama-server
     and without spawning one.
+
+    Must run after pin_hcli_import_root / HCLI_SELFOPT_HCLI_PARENT so
+    RuntimePool and Controller come from the same scratch copy. The
+    previous `ensure_hcli_path()` insert of the invoking worktree patched
+    one object and constructed another when hcli/ was on disk.
     """
     ensure_hcli_path()
     from hcli.runtime import RuntimePool
@@ -1577,6 +1697,8 @@ def stage_gate_correctness(state: Dict[str, Any], repo: Path, ws: Path) -> None:
 def _throughput_child(repo: Path, out: Path, width: int, n_predict: int) -> Dict[str, Any]:
     env = dict(os.environ)
     env["PYTHONDONTWRITEBYTECODE"] = "1"
+    env["PYTHONPATH"] = str(repo)
+    env["HCLI_SELFOPT_HCLI_PARENT"] = str(repo)
     env["ACTIVE_DECODE_LIMIT"] = "2"
     env["HCLI_ACTIVE_DECODE_LIMIT"] = "2"
     env["HCLI_DISABLE_SIGNAL_HOOKS"] = "1"
@@ -1651,7 +1773,8 @@ def run_throughput_probe(
     os.environ.pop("HCLI_MAX_RUNTIMES", None)
     os.environ.pop("HCLI_DECODE_TOPOLOGY", None)
 
-    ensure_hcli_path()
+    controller_root = Path(repo).resolve() if repo is not None else REPO
+    pin_hcli_import_root(controller_root)
     _install_attach_pool_patches()
     from hcli.controller import Controller
     from hcli.runtime import load_observed_overlap, store_observed_overlap
@@ -1667,7 +1790,6 @@ def run_throughput_probe(
     os.environ["HCLI_WORKSPACE"] = isolate
     os.chdir(isolate)
     store_observed_overlap(tmp, 2)
-    controller_root = Path(repo).resolve() if repo is not None else REPO
     controller_src = (controller_root / CONTROLLER_REL).read_text(encoding="utf-8")
     has_wiring = "observed_overlap=load_observed_overlap(self.workspace_root)" in controller_src
 
@@ -2275,17 +2397,21 @@ def run_controller_admit_probe(repo: Optional[Path] = None) -> Dict[str, Any]:
     os.environ.pop("HCLI_DECODE_TOPOLOGY", None)
 
     controller_root = Path(repo).resolve() if repo is not None else REPO
-    # Prefer the tree under --repo (scratch copy). Drop any previously
-    # imported hcli (editable install of another checkout) so the candidate
-    # controller.py is the one we just wrote.
-    for _mod in list(sys.modules):
-        if _mod == "hcli" or _mod.startswith("hcli."):
-            del sys.modules[_mod]
-    sys.path.insert(0, str(controller_root))
+    pin_hcli_import_root(controller_root)
     _install_fake_pool_patches()
-    sys.path.insert(0, str(controller_root))
     from hcli.controller import Controller
     from hcli.runtime import load_observed_overlap, store_observed_overlap
+
+    imported = _hcli_loaded_from(controller_root)
+    if not imported.get("import_root_is_scratch"):
+        return {
+            "ok": False,
+            "error": (
+                "hcli import did not bind the scratch copy: "
+                f"{imported}. Baseline would not be a baseline."
+            ),
+            "import_identity": imported,
+        }
 
     tmp = Path(tempfile.mkdtemp(prefix="hcli-selfopt2-admit-ws-"))
     isolate = Path(tempfile.mkdtemp(prefix="hcli-selfopt2-admit-iso-"))
@@ -2310,6 +2436,16 @@ def run_controller_admit_probe(repo: Optional[Path] = None) -> Dict[str, Any]:
                 "error": f"expected FakeBackend, got {backend_name}",
                 "admitted_n": getattr(pool, "admitted_n", None),
             }
+        # Snapshot overlap files at admit time, before pool.complete may
+        # store a high-water mark onto pool.workspace (the isolate, when
+        # the constructor does not pass workspace). Post-complete loaded=2
+        # on the isolate is not the source of admitted_n.
+        pool_ws = getattr(pool, "workspace", None)
+        loaded_controller_at_admit = load_observed_overlap(tmp)
+        loaded_pool_at_admit = (
+            load_observed_overlap(pool_ws) if pool_ws is not None else None
+        )
+        loaded_isolate_at_admit = load_observed_overlap(isolate)
         batch = {"ok": 0, "tokens": 0, "batch_wall_s": 0.0, "aggregate_tps": None,
                  "runtime_indexes": [], "via": "RuntimePool.complete"}
         if pool.runtimes:
@@ -2336,16 +2472,23 @@ def run_controller_admit_probe(repo: Optional[Path] = None) -> Dict[str, Any]:
             "requested_n": int(getattr(pool, "requested_n", -1)),
             "n_runtimes": len(pool.runtimes),
             "runtime_indexes": batch.get("runtime_indexes"),
-            "loaded_overlap_on_controller_ws": load_observed_overlap(tmp),
-            "loaded_overlap_on_pool_ws": load_observed_overlap(pool.workspace),
-            "loaded_overlap_on_isolate": load_observed_overlap(isolate),
-            "workspace_pool": str(pool.workspace),
+            "stored": 2,
+            "loaded": loaded_controller_at_admit,
+            "loaded_overlap_on_controller_ws": loaded_controller_at_admit,
+            "loaded_overlap_on_pool_ws": loaded_pool_at_admit,
+            "loaded_overlap_on_isolate": loaded_isolate_at_admit,
+            "workspace_pool": str(pool_ws) if pool_ws is not None else None,
             "workspace_controller": str(tmp),
             "workspace_isolate": str(isolate),
             "offered_streams": OFFERED_STREAMS,
             "complete_ok": batch.get("ok"),
             "complete_via": batch.get("via"),
             "via": "Controller.ensure_runtime_pool",
+            "import_identity": imported,
+            "hcli_file": imported.get("hcli_file"),
+            "controller_file": imported.get("controller_file"),
+            "runtime_file": imported.get("runtime_file"),
+            "import_root_is_scratch": imported.get("import_root_is_scratch"),
         }
     except Exception as exc:
         return {
@@ -2353,6 +2496,7 @@ def run_controller_admit_probe(repo: Optional[Path] = None) -> Dict[str, Any]:
             "error": f"{type(exc).__name__}: {exc}",
             "traceback": traceback.format_exc()[-2000:],
             "controller_has_h1_wiring": has_wiring,
+            "import_identity": imported,
         }
     finally:
         if pool is not None:
@@ -2372,6 +2516,7 @@ def _admit_child(hcli_parent: Path, out: Path) -> Dict[str, Any]:
     env["PYTHONDONTWRITEBYTECODE"] = "1"
     env["PYTHONNOUSERSITE"] = "1"
     env["PYTHONPATH"] = str(hcli_parent)
+    env["HCLI_SELFOPT_HCLI_PARENT"] = str(hcli_parent)
     env["ACTIVE_DECODE_LIMIT"] = "2"
     env["HCLI_ACTIVE_DECODE_LIMIT"] = "2"
     env["HCLI_DISABLE_SIGNAL_HOOKS"] = "1"
@@ -2445,6 +2590,12 @@ def run_interleaved_pair(
         clear_controller_pyc(scratch)
         out = probe_dir / f"trial_{i}_{cond}.json"
         result = _admit_child(scratch, out)
+        if result.get("ok") and result.get("import_root_is_scratch") is False:
+            die(
+                "admit child imported hcli from "
+                f"{result.get('hcli_file')!r} not scratch {scratch}. "
+                "Baseline is not a baseline."
+            )
         trials.append(
             {
                 "i": i,
@@ -2466,6 +2617,18 @@ def run_interleaved_pair(
                 "ok": result.get("ok"),
                 "child_exit": result.get("child_exit"),
                 "error": result.get("error"),
+                "stored": result.get("stored"),
+                "loaded": result.get("loaded"),
+                "loaded_overlap_on_controller_ws": result.get("loaded_overlap_on_controller_ws"),
+                "loaded_overlap_on_pool_ws": result.get("loaded_overlap_on_pool_ws"),
+                "loaded_overlap_on_isolate": result.get("loaded_overlap_on_isolate"),
+                "workspace_pool": result.get("workspace_pool"),
+                "workspace_controller": result.get("workspace_controller"),
+                "workspace_isolate": result.get("workspace_isolate"),
+                "hcli_file": result.get("hcli_file"),
+                "controller_file": result.get("controller_file"),
+                "runtime_file": result.get("runtime_file"),
+                "import_root_is_scratch": result.get("import_root_is_scratch"),
             }
         )
     cand = _trial_stats(trials, "candidate")
@@ -2561,6 +2724,154 @@ def run_h1_wiring_test(scratch: Path, controller_text: str) -> Dict[str, Any]:
     }
 
 
+def _trial_import_ok(trials: Optional[List[Dict[str, Any]]]) -> bool:
+    rows = trials or []
+    if not rows:
+        return False
+    return all(t.get("import_root_is_scratch") is True for t in rows if t.get("ok"))
+
+
+def build_root_cause(
+    *,
+    materialize: Dict[str, Any],
+    variants_meta: Dict[str, Any],
+    h1: Dict[str, Any],
+    noop: Dict[str, Any],
+    bad: Dict[str, Any],
+) -> Dict[str, Any]:
+    """The G021 divergence, measured rather than asserted."""
+    h1_trials = h1.get("trials") or []
+    baseline = [t for t in h1_trials if t.get("condition") == "baseline"]
+    candidate = [t for t in h1_trials if t.get("condition") == "candidate"]
+    base_ctor = [t.get("observed_overlap_ctor") for t in baseline]
+    cand_ctor = [t.get("observed_overlap_ctor") for t in candidate]
+    base_wiring = [t.get("controller_has_h1_wiring") for t in baseline]
+    base_imported = [t.get("import_root_is_scratch") for t in baseline]
+    base_files = [t.get("controller_file") for t in baseline]
+    base_stored = [t.get("stored") for t in baseline]
+    base_loaded = [t.get("loaded") for t in baseline]
+    base_loaded_pool = [t.get("loaded_overlap_on_pool_ws") for t in baseline]
+    return {
+        "id": "G021_SCRATCH_IMPORT_SHADOW",
+        "unaccounted_overlap_2": (
+            "Baseline observed_overlap_ctor=2 with controller_has_h1_wiring="
+            "false was not an unaccounted RuntimePool load. "
+            "observed_overlap on the pool is set only from the constructor "
+            "argument (runtime.py stores None when the arg is None; the "
+            "workspace fallback fills overlap_admit_cap, not "
+            "self.observed_overlap). ctor=2 therefore means the executed "
+            "Controller passed load_observed_overlap(workspace). That is "
+            "HEAD's ensure_runtime_pool (controller.py:611). The wiring "
+            "marker is read from the scratch file the parent just wrote, "
+            "which had H1 stripped. Two different objects: disk variant vs "
+            "imported module."
+        ),
+        "why_the_imported_module_was_HEAD": (
+            "run_controller_admit_probe called _install_fake_pool_patches, "
+            "which called ensure_hcli_path(), which inserted the invoking "
+            "worktree (Path(__file__).parents[2]) at sys.path[0]. "
+            "from hcli.runtime import RuntimePool then bound that tree's "
+            "package. hcli stayed in sys.modules, so "
+            "from hcli.controller import Controller ignored the scratch "
+            "copy even though PYTHONPATH and a later sys.path.insert(0, "
+            "scratch) named it. The FakeBackend patch therefore attached "
+            "to whichever RuntimePool the first import found — the worktree "
+            "when hcli/ was on disk, the scratch copy when hcli/ was a "
+            "sparse hole."
+        ),
+        "why_the_lane_promoted": (
+            "The lane worktree had hcli/ absent (sparse hole, materialized "
+            "only via git archive into scratch). ensure_hcli_path inserted "
+            "a directory that did not contain hcli/, so import fell through "
+            "to scratch. Variants ran. Synthetic original (no workspace, no "
+            "observed_overlap) admitted 1; H1 admitted 2. stored/loaded on "
+            "the isolate were null because original does not pass workspace "
+            "and HCLI_WORKSPACE is the empty isolate. That 1→2 is a real "
+            "delta against a constructor HEAD no longer has."
+        ),
+        "why_main_checkout_refused": (
+            "The main checkout had hcli/ present. Both arms imported HEAD. "
+            "HEAD already passes observed_overlap=load_observed_overlap("
+            "self.workspace_root) at controller.py:611 and RuntimePool "
+            "already falls back to load_observed_overlap(self.workspace) at "
+            "runtime.py:637 when the constructor arg is None. Both arms "
+            "admitted 2. REFUSED was the correct tree-level verdict, reached "
+            "for the wrong reason: the baseline arm was not a baseline."
+        ),
+        "refuted": {
+            "editable_install_meta_path_finder": (
+                "Direct test: git archive HEAD hcli to a temp dir, purge "
+                "sys.modules of hcli*, sys.path.insert(0, scratch), import "
+                "hcli — resolves to the scratch copy. The finder does not "
+                "win. The divergence is a sys.path directory that actually "
+                "contains hcli/, inserted in front of scratch by "
+                "ensure_hcli_path."
+            )
+        },
+        "h1_at_head": bool(variants_meta.get("h1_equals_head")),
+        "h1_observed_overlap_arg_redundant_with_runtime_fallback": (
+            "Once workspace is the Controller workspace, RuntimePool."
+            "_overlap_admit_cap loads the high-water file itself. Passing "
+            "observed_overlap=load_observed_overlap(...) changes where the "
+            "value is named, not whether it is used. HEAD already passes "
+            "workspace=self.workspace_root, so the extra kwarg is redundant "
+            "at HEAD."
+        ),
+        "h1_workspace_arg_is_load_bearing_vs_synthetic_original": (
+            "The synthetic original constructor passes neither workspace "
+            "nor observed_overlap. resolve_workspace(None) then uses "
+            "HCLI_WORKSPACE (the empty isolate). The fallback cannot see "
+            "the high-water file stored on the Controller workspace. That "
+            "is why stripped original admits 1 after the import pin, and "
+            "why the lane's PROMOTE measured a before-state that is not "
+            "HEAD."
+        ),
+        "no_remaining_admitted_n_candidate_at_head": (
+            "The only production RuntimePool() site is Controller."
+            "ensure_runtime_pool, already H1. requested_n=2 with overlap=2 "
+            "already admits 2. H2 (DEFAULT_OVERLAP_ADMIT_CAP=2) remains "
+            "rejected as correctness against the unmeasured invariant. "
+            "There is no honest admitted_n promotion left at HEAD."
+        ),
+        "fix": (
+            "pin_hcli_import_root(scratch) before importing hcli. Purge "
+            "sys.modules, drop every sys.path entry that contains hcli/, "
+            "insert scratch at [0], set HCLI_SELFOPT_HCLI_PARENT so later "
+            "ensure_hcli_path calls cannot put the worktree back in front. "
+            "Die if the imported controller_file is not under scratch."
+        ),
+        "measured_this_run": {
+            "worktree_hcli_present": bool(materialize.get("worktree_hcli_present")),
+            "h1_equals_head": bool(variants_meta.get("h1_equals_head")),
+            "baseline_observed_overlap_ctor": base_ctor,
+            "candidate_observed_overlap_ctor": cand_ctor,
+            "baseline_controller_has_h1_wiring": base_wiring,
+            "baseline_import_root_is_scratch": base_imported,
+            "baseline_controller_file": base_files,
+            "baseline_stored": base_stored,
+            "baseline_loaded_controller_ws": base_loaded,
+            "baseline_loaded_pool_ws": base_loaded_pool,
+            "h1_candidate_admitted_n": h1.get("candidate_admitted_n"),
+            "h1_baseline_admitted_n": h1.get("baseline_admitted_n"),
+            "noop_candidate_admitted_n": noop.get("candidate_admitted_n"),
+            "noop_baseline_admitted_n": noop.get("baseline_admitted_n"),
+            "bad_candidate_admitted_n": bad.get("candidate_admitted_n"),
+            "bad_baseline_admitted_n": bad.get("baseline_admitted_n"),
+            "all_trials_imported_scratch": (
+                _trial_import_ok(h1_trials)
+                and _trial_import_ok(noop.get("trials"))
+                and _trial_import_ok(bad.get("trials"))
+            ),
+        },
+        "four_controls_unchanged": {
+            "noop_must_not_win": True,
+            "bad_must_be_refused": True,
+            "paired_interleaved_not_blocks": True,
+            "failing_gate_physically_exercised": True,
+        },
+    }
+
+
 def assemble_promotion_receipt(
     *,
     repo: Path,
@@ -2577,6 +2888,14 @@ def assemble_promotion_receipt(
     bad_verdict = (bad.get("decision") or {}).get("verdict")
     h1_verdict = (h1.get("decision") or {}).get("verdict")
     would_refuse = failing.get("would_refuse_on_failing_gate")
+    root_cause = build_root_cause(
+        materialize=materialize,
+        variants_meta=variants_meta,
+        h1=h1,
+        noop=noop,
+        bad=bad,
+    )
+    imports_ok = bool(root_cause["measured_this_run"]["all_trials_imported_scratch"])
     harness_ok = (
         not noop_win
         and bad_verdict == "REFUSED"
@@ -2589,6 +2908,7 @@ def assemble_promotion_receipt(
         and not bool(wiring.get("noop", {}).get("ok"))
         and not bool(wiring.get("bad", {}).get("ok"))
         and not bool(wiring.get("original", {}).get("ok"))
+        and imports_ok
     )
     if noop_win:
         decision = "reject"
@@ -2596,6 +2916,13 @@ def assemble_promotion_receipt(
         reason = (
             "NO-OP candidate scored as a win; the harness is measuring something "
             "other than the mutation."
+        )
+    elif not imports_ok:
+        decision = "reject"
+        verdict = "HARNESS_INVALID"
+        reason = (
+            "A trial imported hcli from somewhere other than the git-archive "
+            "scratch copy. Baseline is not a baseline."
         )
     elif not harness_ok:
         decision = "reject"
@@ -2610,6 +2937,21 @@ def assemble_promotion_receipt(
         decision = "reject"
         verdict = "REFUSED"
         reason = "H1 wiring test did not pass; promotion would be NO_EVIDENCE"
+    elif variants_meta.get("h1_equals_head"):
+        # The 1→2 delta against synthetic original is real and is recorded
+        # on candidate_h1. It is not a tree change: HEAD already is H1.
+        decision = "reject"
+        verdict = "REFUSED"
+        reason = (
+            "H1 is already HEAD (h1_equals_head=true). The 1→2 admitted_n "
+            "delta is against a synthetic pre-H1 constructor that is not "
+            "the tree; applying H1 is a no-op. RuntimePool already loads "
+            "the high-water file when workspace is passed "
+            "(runtime.py:637), so the extra observed_overlap= constructor "
+            "kwarg is redundant at HEAD. No remaining admitted_n candidate "
+            "at HEAD (only production RuntimePool() site already has the "
+            "wiring; requested_n=2 with overlap=2 already admits 2)."
+        )
     else:
         # H1's own compute_decision (admission 1→2 through the mechanism).
         decided = h1.get("decision") or {}
@@ -2628,6 +2970,7 @@ def assemble_promotion_receipt(
             "win, a BAD candidate must be refused, trials are interleaved, and "
             "a failing gate is physically exercised."
         ),
+        "root_cause": root_cause,
         "sparse_checkout": {
             "worktree_hcli_present": bool(materialize.get("worktree_hcli_present")),
             "hcli_source": materialize.get("source"),
@@ -2841,6 +3184,27 @@ def print_four_controls(receipt: Dict[str, Any]) -> None:
             "FINDING: NO-OP scored as a win; the harness is not measuring the mutation.",
             flush=True,
         )
+    cause = receipt.get("root_cause") or {}
+    measured = cause.get("measured_this_run") or {}
+    print("\n## ROOT CAUSE", flush=True)
+    print(f"id: {cause.get('id')}", flush=True)
+    print(f"h1_equals_head: {cause.get('h1_at_head')}", flush=True)
+    print(
+        f"import_root_is_scratch (all trials): {measured.get('all_trials_imported_scratch')}",
+        flush=True,
+    )
+    print(
+        f"H1 admitted candidate={measured.get('h1_candidate_admitted_n')} "
+        f"baseline={measured.get('h1_baseline_admitted_n')} "
+        f"baseline_ctor={measured.get('baseline_observed_overlap_ctor')} "
+        f"baseline_wiring={measured.get('baseline_controller_has_h1_wiring')}",
+        flush=True,
+    )
+    print(
+        "four controls unchanged: "
+        f"{cause.get('four_controls_unchanged')}",
+        flush=True,
+    )
 
 
 def run_promotion_controls(repo: Path) -> Dict[str, Any]:

@@ -6,6 +6,7 @@ LOC cut cannot inline untrusted tests into the Engine.
 """
 from __future__ import annotations
 
+import inspect
 import os
 import subprocess
 import sys
@@ -70,7 +71,11 @@ class TestCompilePythonFile(unittest.TestCase):
     def test_does_not_spawn_py_compile(self):
         path = self.root / "ok.py"
         path.write_text(VALID, encoding="utf-8")
-        with patch("hcli.mutation.subprocess.run") as mock_run:
+        src = inspect.getsource(compile_python_file)
+        self.assertIn("compile(", src)
+        self.assertNotIn("subprocess", src)
+        self.assertNotIn("Popen", src)
+        with patch("subprocess.run") as mock_run:
             self.assertTrue(validate_python_syntax(str(path)))
             mock_run.assert_not_called()
 

@@ -1,14 +1,11 @@
 {
-  "generated_at": "2026-08-23T23:10:02Z",
-  "running": [
-    "g021root",
-    "g027exec"
-  ],
+  "generated_at": "2026-08-23T23:19:30Z",
+  "running": [],
   "needs_harvest": [],
   "headroom": {
-    "load1": 15.2275390625,
+    "load1": 11.52392578125,
     "ncpu": 28,
-    "disk_gib": 390.2,
+    "disk_gib": 388.1,
     "room_for_more": true
   }
 }

@@ -543,11 +543,6 @@ HEALTH_VERSION = 1
 STATE_HEALTHY = "healthy"
 STATE_DEGRADED = "degraded"
 STATE_CIRCUIT_OPEN = "circuit_open"
-HEALTH_STATES: Tuple[str, ...] = (
-    STATE_HEALTHY,
-    STATE_DEGRADED,
-    STATE_CIRCUIT_OPEN,
-)
 
 # After this many *consecutive backend* failures the breaker opens.
 CIRCUIT_FAILURE_THRESHOLD = 3

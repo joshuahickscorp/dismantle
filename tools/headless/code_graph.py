@@ -172,8 +172,6 @@ PERSIST_READ_TAILS = {
     "read_text",
     "read_bytes",
 }
-WRITE_TAILS = PERSIST_WRITE_TAILS | {"open", "dump"}
-READ_TAILS = PERSIST_READ_TAILS | {"open", "load"}
 SUBPROCESS_TAILS = {
     "run",
     "Popen",
@@ -211,7 +209,6 @@ MUTATION_TAILS = {
     "_apply_create",
     "_apply_replace",
 }
-MUTATION_LOCK_TAILS = {"MutationLock", "acquire", "release"}
 
 DEST_FAMILIES = (
     (".hcli/dag.json", re.compile(r"dag\.json")),

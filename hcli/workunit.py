@@ -15,14 +15,6 @@ from .resources import (
     occupancy_of,
 )
 
-WORKUNIT_STATUSES = (
-    "pending",
-    "ready",
-    "running",
-    "completed",
-    "failed",
-    "interrupted",
-)
 DEFAULT_RETRY_BUDGET = 3
 
 # Durable policy. Depth and per-root count live with the unit and the DAG
@@ -35,7 +27,6 @@ MAX_REPAIRS_PER_ROOT = 6
 RESUME_POLICY = "rerun"
 
 CLASSIFICATION_INTERRUPTED = "INTERRUPTED"
-CLASSIFICATION_VERIFIER_FAILURE = "VERIFIER_FAILURE"
 
 
 @dataclass

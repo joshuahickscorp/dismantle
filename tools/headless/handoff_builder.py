@@ -212,15 +212,6 @@ def py_cmd(*body: str) -> List[str]:
     return ["python3", "-c", RESOLVER + "\n" + "\n".join(body)]
 
 
-def py_assert_eq(expr_src: str, expected: Any) -> List[str]:
-    payload = json.dumps(expected)
-    return py_cmd(
-        expr_src,
-        f"exp = json.loads({json.dumps(payload)})",
-        "assert cur == exp, (cur, exp)",
-    )
-
-
 def py_git_json_eq(path: str, dotted: str, expected: Any) -> List[str]:
     parts = json.dumps(dotted.split("."))
     payload = json.dumps(expected)

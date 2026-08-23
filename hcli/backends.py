@@ -405,14 +405,7 @@ class RuntimeBackend(ABC):
 #                prefix cache yes. --decode-concurrency is the slot analogue
 #                (batch size for simultaneous decode of batchable requests);
 #                it does NOT reserve llama.cpp-style slots.
-KNOWN_FEATURES = (
-    "response_format",
-    "chat_template_kwargs",
-    "slots",
-    "prefix_cache",
-    "grammar",
-)
-
+# Canonical names are the values of FEATURE_ALIASES; there is no unused twin tuple.
 FEATURE_ALIASES = {
     "response_format": "response_format",
     "json_schema": "response_format",

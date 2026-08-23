@@ -924,28 +924,6 @@ def command_is_admissible(command: str) -> Tuple[bool, str]:
     return True, ""
 
 
-def _if_is_main_guard(node: ast.If) -> bool:
-    test = node.test
-    if not isinstance(test, ast.Compare):
-        return False
-    if len(test.ops) != 1 or not isinstance(test.ops[0], ast.Eq):
-        return False
-    if len(test.comparators) != 1:
-        return False
-    left = test.left
-    right = test.comparators[0]
-
-    def is_name(n: ast.AST) -> bool:
-        return isinstance(n, ast.Name) and n.id == "__name__"
-
-    def is_main(n: ast.AST) -> bool:
-        return isinstance(n, ast.Constant) and n.value == "__main__"
-
-    return (is_name(left) and is_main(right)) or (
-        is_main(left) and is_name(right)
-    )
-
-
 def ast_has_tests(tree: ast.AST) -> bool:
     """True if the module defines pytest-idiom tests at top level.
 
@@ -960,12 +938,6 @@ def ast_has_tests(tree: ast.AST) -> bool:
         if isinstance(node, ast.ClassDef) and node.name.startswith("Test"):
             return True
     return False
-
-
-def ast_has_main_guard(tree: ast.AST) -> bool:
-    return any(
-        isinstance(node, ast.If) and _if_is_main_guard(node) for node in tree.body
-    )
 
 
 def should_run_with_pytest(source: str) -> bool:
@@ -988,20 +960,6 @@ def count_static_assertions(tree: ast.AST) -> int:
             elif isinstance(func, ast.Name) and str(func.id).startswith("assert"):
                 n += 1
     return n
-
-
-def _assert_line_numbers(tree: ast.AST) -> set:
-    lines = set()
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Assert) and getattr(node, "lineno", None):
-            lines.add(node.lineno)
-        elif isinstance(node, ast.Call) and getattr(node, "lineno", None):
-            func = node.func
-            if isinstance(func, ast.Attribute) and str(func.attr).startswith("assert"):
-                lines.add(node.lineno)
-            elif isinstance(func, ast.Name) and str(func.id).startswith("assert"):
-                lines.add(node.lineno)
-    return lines
 
 
 def _pytest_passed_count(output: str) -> int:

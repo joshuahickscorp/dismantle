@@ -1,22 +1,33 @@
 #!/usr/bin/env python3
-"""HCLI self-optimize iteration 2, run as a Mission of WorkUnits.
+"""HCLI self-optimize iteration 2, remasured.
 
-Iteration 1 lifted _call_model overlap (median peak 2) by passing evidence/
-compiled into Engine.execute. Admission is still narrowed to 1 in
-RuntimePool._admit because _overlap_admit_cap reads constructor, then
-HCLI_OBSERVED_MODEL_OVERLAP, then .hcli/model_overlap.json, then default 1.
+The first iteration-2 receipt PROMOTED on a throughput number that did
+not measure the mutation. cond=="mutated" set width=2 and cond=="original"
+set width=1, then fan_completions(width) POSTed straight at the live
+llama-server. Completions never entered the RuntimePool whose _admit the
+mutation changes (Controller.ensure_runtime_pool passing observed_overlap
+so the cap lifts 1→2). The 25.3 vs 22.6 tok/s gap was llama-server's own
+--parallel 2 handling of two HTTP requests; a no-op mutation produces
+the same number. admitted_n was a FakeBackend side probe.
 
-This loop measures overlap on the CURRENT tree, then tries to raise
-admission via the measured high-water path so llama-server's 2 slots /
-ACTIVE_DECODE_LIMIT=2 serve real completions. gate.perf is tokens/s, not
-an overlap count. A measured "no improvement" is an expected, successful
-reject: decode concurrency on this box tops out near 1.2161x aggregate,
-a second runtime costs ~19.79 GiB, and two resident 27B servers collapsed
-native tok/s from 33.47 to 3.986.
+This remasurement:
 
-Do not spawn a second llama-server. Completions attach to the live
-server on port 52484 (--parallel 2). Mutation of tools/haider/hcli/**
-goes through Engine.execute, never by typing into those files.
+* Routes every gated completion through Controller.ensure_runtime_pool
+  → RuntimePool.complete → an attach-only backend on :52484. The live
+  27B is never spawned and never killed. RuntimePool.__init__ is patched
+  only to inject that backend and a lenient MemGate; observed_overlap
+  and workspace still come from Controller, which is the mutation.
+* Offers the same load (two concurrent pool.complete calls) under both
+  the mutated and the original Controller. Admission, not the caller,
+  is what is allowed to change the number.
+* Promotes only if Engine validation.ok is True. tests=[] → NO_EVIDENCE
+  → REFUSED, even if tok/s moved.
+* Runs a real failing-gate trial (pytest assert False) and records that
+  compute_decision returns REFUSED; would_refuse_on_failing_gate is
+  evidenced, not hardcoded.
+
+A measured no-improvement through the real pool is a successful reject.
+Do not spawn a second llama-server.
 """
 from __future__ import annotations
 
@@ -43,7 +54,9 @@ SCRIPT = Path(__file__).resolve()
 HCLI_PARENT = REPO / "tools" / "haider"
 CONTROLLER_REL = Path("tools/haider/hcli/controller.py")
 RUNTIME_REL = Path("tools/haider/hcli/runtime.py")
-RECEIPT_REL = Path("receipts/headless/HCLI_SELF_OPT_ITERATION_2.json")
+RECEIPT_REL = Path("receipts/headless/HCLI_SELF_OPT_ITERATION_2_REMEASURED.json")
+MUTATION_TEST = "tools/headless/hcli_self_optimize_2.py"
+OFFERED_STREAMS = 2
 LLAMA_PORT = 52484
 PROBE_DELAY_S = 0.35
 CPU_TIMEOUT_S = "600"
@@ -441,6 +454,95 @@ class FakeBackend:
         return {"pid": None, "gone": True, "unreaped": []}
 
 
+class AttachLiveBackend:
+    """Attach to the live llama-server on LLAMA_PORT.
+
+    spawn() never launches a process. stop() never kills one. complete()
+    POSTs to /completion on the resident --parallel 2 server. RuntimePool
+    still plans n_slots from _admit; that is the mutation's effect.
+    """
+
+    def __init__(self, model_path, port, n_slots=1, index=0, **_kwargs):
+        self.model_path = model_path
+        self.port = int(LLAMA_PORT)
+        self.n_slots = max(1, int(n_slots))
+        self.index = index
+        self.process = None
+        self.pid = None
+        self.start_time = None
+        self.allocated_port = port
+        self._stopped = False
+        self.completions = 0
+
+    def spawn(self, **kwargs):
+        if kwargs.get("n_slots") is not None:
+            self.n_slots = max(1, int(kwargs["n_slots"]))
+        self.port = int(LLAMA_PORT)
+        self.process = None
+        self.pid = None
+
+    def ready(self, timeout):
+        body, err = _http_json(f"http://127.0.0.1:{self.port}/health", timeout=min(2.0, float(timeout or 2)))
+        if err:
+            return False
+        if isinstance(body, dict):
+            return body.get("status") == "ok"
+        return True
+
+    def identity(self):
+        return {
+            "backend": "attach-live",
+            "port": self.port,
+            "n_slots": self.n_slots,
+            "pid": None,
+            "spawned": False,
+        }
+
+    def endpoint(self):
+        return f"http://127.0.0.1:{self.port}"
+
+    def supports(self, feature):
+        return True
+
+    def complete(self, payload, timeout=None):
+        ensure_hcli_path()
+        from hcli.backends import CompletionResult
+
+        limit = float(timeout if timeout is not None else 180.0)
+        body = dict(payload or {})
+        req = urllib.request.Request(
+            f"{self.endpoint()}/completion",
+            data=json.dumps(body).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=limit) as resp:
+            raw = json.loads(resp.read().decode("utf-8", "replace"))
+        timings = raw.get("timings") if isinstance(raw, dict) else {}
+        if not isinstance(timings, dict):
+            timings = {}
+        self.completions += 1
+        return CompletionResult(
+            raw=raw,
+            finish_reason="stop" if isinstance(raw, dict) and raw.get("stop") else None,
+            text=str((raw or {}).get("content") or "")[:80] if isinstance(raw, dict) else None,
+            prompt_tokens=timings.get("prompt_n"),
+            completion_tokens=timings.get("predicted_n"),
+            total_tokens=None,
+        )
+
+    def stop(self):
+        self._stopped = True
+        return {
+            "pid": None,
+            "gone": True,
+            "unreaped": [],
+            "attached": True,
+            "killed_live_server": False,
+            "completions": self.completions,
+        }
+
+
 def _lenient_gate(topology: str = "slot"):
     ensure_hcli_path()
     from hcli.machine import GIB, MemGate
@@ -526,6 +628,139 @@ def measure_admit(workspace: Path, store_n: Optional[int] = None) -> Dict[str, A
             pool.stop()
         except Exception:
             pass
+
+
+def _install_attach_pool_patches() -> None:
+    """Inject attach-live backend + lenient MemGate into RuntimePool.__init__.
+
+    Controller.ensure_runtime_pool does not take backend_factory. Without
+    this patch it would spawn a second 27B. The patch must NOT set
+    observed_overlap or workspace — those are the mutation.
+    """
+    ensure_hcli_path()
+    from hcli.runtime import RuntimePool
+
+    if getattr(RuntimePool.__init__, "_selfopt2_attach_patched", False):
+        return
+
+    orig_init = RuntimePool.__init__
+
+    def wrapped_init(
+        self,
+        model_path,
+        requested_n=1,
+        workspace=None,
+        *,
+        backend_factory=None,
+        mem_gate=None,
+        reserve_bytes=None,
+        swap_ceiling_bytes=None,
+        topology=None,
+        repo_root=None,
+        observed_overlap=None,
+    ):
+        if backend_factory is None:
+            backend_factory = AttachLiveBackend
+        if mem_gate is None:
+            mem_gate = _lenient_gate("slot")
+        if topology is None:
+            topology = "slot"
+        return orig_init(
+            self,
+            model_path,
+            requested_n,
+            workspace,
+            backend_factory=backend_factory,
+            mem_gate=mem_gate,
+            reserve_bytes=reserve_bytes,
+            swap_ceiling_bytes=swap_ceiling_bytes,
+            topology=topology,
+            repo_root=repo_root,
+            observed_overlap=observed_overlap,
+        )
+
+    wrapped_init._selfopt2_attach_patched = True  # type: ignore[attr-defined]
+    RuntimePool.__init__ = wrapped_init  # type: ignore[method-assign]
+
+
+def pool_fan_completions(pool: Any, n_streams: int, n_predict: int) -> Dict[str, Any]:
+    """Same offered load always: n_streams concurrent RuntimePool.complete calls."""
+    results: List[Optional[Dict[str, Any]]] = [None] * n_streams
+
+    def run(i: int) -> None:
+        payload = {
+            "prompt": THROUGHPUT_PROMPT,
+            "n_predict": int(n_predict),
+            "temperature": 0.0,
+            "ignore_eos": True,
+            "cache_prompt": False,
+        }
+        t0 = time.perf_counter()
+        try:
+            cr = pool.complete(payload, timeout=180.0)
+            wall = time.perf_counter() - t0
+            raw = cr.raw if getattr(cr, "raw", None) is not None else {}
+            timings = raw.get("timings") if isinstance(raw, dict) else {}
+            if not isinstance(timings, dict):
+                timings = {}
+            predicted_n = timings.get("predicted_n")
+            if predicted_n is None:
+                predicted_n = getattr(cr, "completion_tokens", None)
+            try:
+                predicted_n = int(predicted_n) if predicted_n is not None else 0
+            except (TypeError, ValueError):
+                predicted_n = 0
+            pred_tps = timings.get("predicted_per_second")
+            try:
+                pred_tps = float(pred_tps) if pred_tps is not None else None
+            except (TypeError, ValueError):
+                pred_tps = None
+            results[i] = {
+                "ok": True,
+                "wall_s": wall,
+                "predicted_n": predicted_n,
+                "predicted_per_second": pred_tps,
+                "delivered_tps": (predicted_n / wall) if wall > 0 else None,
+                "runtime_index": getattr(cr, "runtime_index", None),
+                "via": "RuntimePool.complete",
+            }
+        except Exception as exc:
+            results[i] = {
+                "ok": False,
+                "error": f"{type(exc).__name__}: {exc}",
+                "wall_s": time.perf_counter() - t0,
+                "via": "RuntimePool.complete",
+            }
+
+    threads = [
+        threading.Thread(target=run, args=(i,), name=f"pool-tps-{i}")
+        for i in range(n_streams)
+    ]
+    t0 = time.perf_counter()
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    wall = time.perf_counter() - t0
+    ok_rows = [row for row in results if row and row.get("ok")]
+    tokens = sum(int(row.get("predicted_n") or 0) for row in ok_rows)
+    aggregate = (tokens / wall) if wall > 0 else None
+    return {
+        "n_streams": n_streams,
+        "n_predict": n_predict,
+        "batch_wall_s": wall,
+        "ok": len(ok_rows),
+        "tokens": tokens,
+        "aggregate_tps": aggregate,
+        "runtime_indexes": [(row or {}).get("runtime_index") for row in results],
+        "per_stream_predicted_tps": [
+            (row or {}).get("predicted_per_second") for row in results
+        ],
+        "per_stream_wall_s": [(row or {}).get("wall_s") for row in results],
+        "failures": [row for row in results if not (row and row.get("ok"))],
+        "streams": results,
+        "via": "RuntimePool.complete",
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -645,6 +880,72 @@ def clear_controller_pyc(repo: Path) -> None:
         return
     for pyc in pycache.glob("controller*.pyc"):
         pyc.unlink(missing_ok=True)
+
+
+def revert_mutation_on_disk(repo: Path) -> Tuple[bool, str]:
+    """Undo H1 so Engine.execute can apply it with a real test."""
+    path = repo / CONTROLLER_REL
+    if not path.is_file():
+        return False, f"missing {CONTROLLER_REL}"
+    text = path.read_text(encoding="utf-8")
+    if _pool_old() in text and _import_old() in text and _pool_new() not in text:
+        return True, "already_original"
+    if _pool_new() not in text:
+        return False, "mutated pool constructor not found; cannot revert"
+    if _import_new() not in text:
+        return False, "mutated import not found; cannot revert"
+    text = text.replace(_import_new(), _import_old(), 1)
+    text = text.replace(_pool_new(), _pool_old(), 1)
+    path.write_text(text, encoding="utf-8")
+    clear_controller_pyc(repo)
+    if mutation_already_applied(repo):
+        return False, "revert wrote bytes but mutation_already_applied is still True"
+    if _pool_old() not in path.read_text(encoding="utf-8"):
+        return False, "revert did not restore original constructor"
+    return True, "reverted"
+
+
+def mutation_test_command() -> str:
+    return shlex.join(
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "-q",
+            MUTATION_TEST,
+        ]
+    )
+
+
+def mutation_validation_ok(mutate: Dict[str, Any]) -> Tuple[bool, Optional[str]]:
+    receipt = mutate.get("engine_receipt")
+    validation: Any = None
+    if isinstance(receipt, dict):
+        validation = receipt.get("validation")
+    if validation is None:
+        validation = mutate.get("validation")
+    if not isinstance(validation, dict):
+        return False, "NO_EVIDENCE"
+    if validation.get("ok") is True:
+        return True, None
+    reason = validation.get("reason")
+    if not reason:
+        reason = "validation.ok is not true"
+    return False, str(reason)
+
+
+def test_h1_controller_wires_observed_overlap_into_runtimepool() -> None:
+    """Fails before H1, passes after. Engine.execute uses this as evidence.
+
+    Collected only when pytest is pointed at this file (the mutation's
+    tests= list). Not part of tools/haider/hcli/tests.
+    """
+    repo = Path(__file__).resolve().parents[2]
+    text = (repo / CONTROLLER_REL).read_text(encoding="utf-8")
+    assert "from .runtime import RuntimePool, load_observed_overlap" in text
+    assert "workspace=self.workspace_root" in text
+    assert "repo_root=self.workspace_root" in text
+    assert "observed_overlap=load_observed_overlap(self.workspace_root)" in text
 
 
 # ---------------------------------------------------------------------------
@@ -973,14 +1274,38 @@ def stage_mutate(state: Dict[str, Any], repo: Path, ws: Path) -> None:
 
     snap_original = ws / "snap" / "original"
     snap_mutated = ws / "snap" / "mutated"
-    snapshot_pair(repo, snap_original)
 
     already = mutation_already_applied(repo)
+    if already:
+        snapshot_pair(repo, snap_mutated)
+        reverted, why_rev = revert_mutation_on_disk(repo)
+        if not reverted:
+            payload_block: Dict[str, Any] = {
+                "path": "Engine.execute mutation path",
+                "already_applied": True,
+                "applied": False,
+                "blocked": f"HEAD already has H1 but revert failed: {why_rev}",
+                "engine_receipt": None,
+            }
+            state["mutate"] = payload_block
+            watch(state, "mutate: could not revert already-applied H1", why_rev)
+            ok(f"mutate: BLOCKED (revert failed: {why_rev})")
+            return
+        watch(
+            state,
+            "mutate: reverted already-applied H1 so Engine.execute can apply with a test",
+            why_rev,
+        )
+        snapshot_pair(repo, snap_original)
+    else:
+        snapshot_pair(repo, snap_original)
+
     applicable, why = operations_applicable(repo)
     files_before = {"controller.py": sha256_file(repo / CONTROLLER_REL)}
     payload: Dict[str, Any] = {
         "path": "Engine.execute mutation path",
         "already_applied": already,
+        "reverted_before_execute": already,
         "applicable": why,
         "files_before": files_before,
         "applied": False,
@@ -989,17 +1314,8 @@ def stage_mutate(state: Dict[str, Any], repo: Path, ws: Path) -> None:
         "engine_result_status": None,
         "rolled_back": None,
         "operations": mutation_operations(),
+        "tests": [mutation_test_command()],
     }
-
-    if already:
-        payload["blocked"] = "mutation already present on disk; not re-applied"
-        snapshot_pair(repo, snap_mutated)
-        payload["applied"] = True
-        payload["files_after"] = files_before
-        state["mutate"] = payload
-        watch(state, "mutate: already applied", why)
-        ok("mutate: already applied (treated as present)")
-        return
 
     if not applicable:
         payload["blocked"] = why
@@ -1017,7 +1333,7 @@ def stage_mutate(state: Dict[str, Any], repo: Path, ws: Path) -> None:
                     "high-water path so RuntimePool._admit can lift from 1 to 2."
                 ),
                 "operations": mutation_operations(),
-                "tests": [],
+                "tests": [mutation_test_command()],
             }
 
     engine = Engine(HcliWorkspace(str(repo)), model_client=_MutationClient())
@@ -1105,9 +1421,19 @@ def stage_mutate(state: Dict[str, Any], repo: Path, ws: Path) -> None:
     payload["applied"] = True
     payload["snap_original"] = str(snap_original)
     payload["snap_mutated"] = str(snap_mutated)
+    val_ok, val_reason = mutation_validation_ok(payload)
+    payload["validation_ok"] = val_ok
+    payload["validation_reason"] = val_reason
+    if not val_ok:
+        watch(
+            state,
+            "mutate: Engine receipt is not validation.ok; decide must not promote",
+            f"status={result.get('status')} reason={val_reason}",
+        )
     state["mutate"] = payload
     ok(
         f"mutate: applied via Engine.execute status={result.get('status')} "
+        f"validation.ok={val_ok} reason={val_reason} "
         f"receipt={payload.get('engine_receipt_path') or 'in-result'} "
         f"controller={files_before['controller.py'][:12]}->"
         f"{files_after['controller.py'][:12]}"
@@ -1162,7 +1488,9 @@ def _throughput_child(repo: Path, out: Path, width: int, n_predict: int) -> Dict
     env = dict(os.environ)
     env["PYTHONDONTWRITEBYTECODE"] = "1"
     env["ACTIVE_DECODE_LIMIT"] = "2"
+    env["HCLI_ACTIVE_DECODE_LIMIT"] = "2"
     env["HCLI_DISABLE_SIGNAL_HOOKS"] = "1"
+    env.setdefault("HCLI_SWAP_CEILING_GIB", "64")
     proc = subprocess.run(
         [
             sys.executable,
@@ -1194,56 +1522,146 @@ def _throughput_child(repo: Path, out: Path, width: int, n_predict: int) -> Dict
     return data
 
 
-def run_throughput_probe(width: int, n_predict: int) -> Dict[str, Any]:
-    """Attach to :52484. Never spawn. Width 1 = two serial sequences;
-    width 2 = two concurrent sequences. Same total tokens either way.
+def run_throughput_probe(
+    width: int,
+    n_predict: int,
+    repo: Optional[Path] = None,
+) -> Dict[str, Any]:
+    """Completions go through Controller.ensure_runtime_pool → RuntimePool.
 
-    Also constructs a FakeBackend RuntimePool with/without the high-water
-    file so the trial records the admission width the high-water path
-    would actually plan. Completions themselves go to the live server so
-    we do not start a second 27B process.
+    Offered load is always OFFERED_STREAMS concurrent pool.complete calls.
+    `width` is accepted for CLI compatibility and ignored as a fan-out
+    knob — that was the original defect. Admission comes from the
+    Controller on disk (mutated vs original), which is swapped by the
+    parent before this child starts.
+
+    The high-water file is written into the Controller workspace in both
+    conditions. Mutated Controller passes it into RuntimePool; original
+    Controller drops it. A no-op mutation therefore cannot change
+    admitted_n.
     """
+    del width  # not a fan-out knob; offered load is OFFERED_STREAMS
     llama = llama_snapshot()
     if llama.get("health") != "ok":
         return {"ok": False, "error": "llama-server not ok", "llama": llama}
 
-    ensure_hcli_path()
-    tmp = tempfile.mkdtemp(prefix="hcli-selfopt2-tps-")
-    store_n = 2 if width >= 2 else None
-    admit = measure_admit(Path(tmp) / "admit", store_n=store_n)
+    model = llama.get("model_path") or os.environ.get("HCLI_MODEL_PATH")
+    if not model:
+        return {"ok": False, "error": f"no live model_path: {model!r}", "llama": llama}
 
-    if width <= 1:
-        first = fan_completions(1, n_predict)
-        second = fan_completions(1, n_predict)
-        tokens = int(first.get("tokens") or 0) + int(second.get("tokens") or 0)
-        wall = float(first.get("batch_wall_s") or 0) + float(second.get("batch_wall_s") or 0)
-        ok_n = int(first.get("ok") or 0) + int(second.get("ok") or 0)
-        aggregate = (tokens / wall) if wall > 0 else None
-        streams = [first, second]
-        mode = "serial_two_sequences"
-    else:
-        batch = fan_completions(2, n_predict)
+    sys.dont_write_bytecode = True
+    os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
+    os.environ["HCLI_DISABLE_SIGNAL_HOOKS"] = "1"
+    os.environ["ACTIVE_DECODE_LIMIT"] = "2"
+    os.environ["HCLI_ACTIVE_DECODE_LIMIT"] = "2"
+    os.environ["HCLI_RESIDENT_RUNTIME_LIMIT"] = "4"
+    os.environ["HCLI_SWAP_CEILING_GIB"] = "64"
+    os.environ["HCLI_MODEL_PATH"] = str(model)
+    os.environ.pop("HCLI_OBSERVED_MODEL_OVERLAP", None)
+    os.environ.pop("HCLI_MAX_RUNTIMES", None)
+    os.environ.pop("HCLI_DECODE_TOPOLOGY", None)
+
+    ensure_hcli_path()
+    _install_attach_pool_patches()
+    from hcli.controller import Controller
+    from hcli.runtime import load_observed_overlap, store_observed_overlap
+
+    tmp = tempfile.mkdtemp(prefix="hcli-selfopt2-ctrl-")
+    isolate = tempfile.mkdtemp(prefix="hcli-selfopt2-isolate-")
+    # tempfile dirs live under the host temp dir, which on this box already
+    # has a .hcli/model_overlap.json (prior pools wrote the high-water into
+    # /var/folders/.../T). resolve_workspace(None) walks parents and would
+    # load that file, so original Controller would admit 2 even though it
+    # never passes observed_overlap — hiding the mutation. Pin ambient
+    # lookup to an empty isolate that is NOT the Controller workspace.
+    os.environ["HCLI_WORKSPACE"] = isolate
+    os.chdir(isolate)
+    store_observed_overlap(tmp, 2)
+    controller_root = Path(repo).resolve() if repo is not None else REPO
+    controller_src = (controller_root / CONTROLLER_REL).read_text(encoding="utf-8")
+    has_wiring = "observed_overlap=load_observed_overlap(self.workspace_root)" in controller_src
+
+    ctrl = None
+    pool = None
+    try:
+        ctrl = Controller(tmp, runtime_count=2, model=str(model))
+        pool = ctrl.ensure_runtime_pool()
+        backend = pool.runtimes[0].backend if pool.runtimes else None
+        backend_name = type(backend).__name__ if backend is not None else None
+        if backend_name != "AttachLiveBackend":
+            return {
+                "ok": False,
+                "error": f"expected AttachLiveBackend, got {backend_name}",
+                "admitted_n": getattr(pool, "admitted_n", None),
+            }
+        if getattr(backend, "pid", None) is not None:
+            return {
+                "ok": False,
+                "error": "attach backend has a pid; refusing to risk the live server",
+                "pid": backend.pid,
+            }
+        batch = pool_fan_completions(pool, OFFERED_STREAMS, n_predict)
         tokens = int(batch.get("tokens") or 0)
         wall = float(batch.get("batch_wall_s") or 0)
         ok_n = int(batch.get("ok") or 0)
         aggregate = batch.get("aggregate_tps")
-        streams = [batch]
-        mode = "parallel_two_sequences"
-
-    return {
-        "ok": ok_n >= 2 and aggregate is not None,
-        "width": width,
-        "mode": mode,
-        "n_predict": n_predict,
-        "tokens": tokens,
-        "wall_s": wall,
-        "aggregate_tps": aggregate,
-        "ok_streams": ok_n,
-        "admit": admit,
-        "admitted_n": admit.get("admitted_n"),
-        "llama": llama,
-        "streams": streams,
-    }
+        return {
+            "ok": ok_n >= OFFERED_STREAMS and aggregate is not None,
+            "path": (
+                "Controller.ensure_runtime_pool -> RuntimePool.complete -> "
+                "AttachLiveBackend.complete -> http://127.0.0.1:52484/completion"
+            ),
+            "through_controller": True,
+            "through_runtime_pool": True,
+            "spawned_second_server": False,
+            "attached_port": LLAMA_PORT,
+            "controller_has_h1_wiring": has_wiring,
+            "controller_class": f"{type(ctrl).__module__}.{type(ctrl).__name__}",
+            "pool_class": f"{type(pool).__module__}.{type(pool).__name__}",
+            "backend_class": backend_name,
+            "backend_pid": getattr(backend, "pid", None),
+            "backend_n_slots": getattr(backend, "n_slots", None),
+            "observed_overlap_ctor": getattr(pool, "observed_overlap", None),
+            "overlap_admit_cap": getattr(pool, "overlap_admit_cap", None),
+            "admitted_n": int(pool.admitted_n),
+            "n_runtimes": len(pool.runtimes),
+            "runtime_indexes": batch.get("runtime_indexes"),
+            "loaded_overlap_on_controller_ws": load_observed_overlap(tmp),
+            "loaded_overlap_on_pool_ws": load_observed_overlap(pool.workspace),
+            "loaded_overlap_on_isolate": load_observed_overlap(isolate),
+            "workspace_pool": str(pool.workspace),
+            "workspace_controller": tmp,
+            "workspace_isolate": isolate,
+            "offered_streams": OFFERED_STREAMS,
+            "mode": "pool_complete_two_concurrent",
+            "n_predict": n_predict,
+            "tokens": tokens,
+            "wall_s": wall,
+            "aggregate_tps": aggregate,
+            "ok_streams": ok_n,
+            "llama": llama,
+            "streams": batch.get("streams"),
+            "via": "RuntimePool.complete",
+        }
+    except Exception as exc:
+        return {
+            "ok": False,
+            "error": f"{type(exc).__name__}: {exc}",
+            "traceback": traceback.format_exc()[-2000:],
+            "controller_has_h1_wiring": has_wiring,
+            "llama": llama,
+        }
+    finally:
+        if pool is not None:
+            try:
+                pool.stop()
+            except Exception:
+                pass
+        if ctrl is not None and getattr(ctrl, "runtime_pool", None) is not None:
+            try:
+                ctrl.runtime_pool.stop()
+            except Exception:
+                pass
 
 
 def stage_gate_perf(state: Dict[str, Any], repo: Path, ws: Path) -> None:
@@ -1295,24 +1713,37 @@ def stage_gate_perf(state: Dict[str, Any], repo: Path, ws: Path) -> None:
     for i, cond in enumerate(order):
         if cond == "mutated" and snap_mutated.is_dir():
             restore_files(repo, snap_mutated)
-            width = 2
         elif cond == "original" and snap_original.is_dir():
             restore_files(repo, snap_original)
-            width = 1
-        else:
-            width = 1
         clear_controller_pyc(repo)
         out = probe_dir / f"trial_{i}_{cond}.json"
-        result = _throughput_child(repo, out, width=width, n_predict=N_PREDICT)
+        result = _throughput_child(
+            repo, out, width=OFFERED_STREAMS, n_predict=N_PREDICT
+        )
         trials.append(
             {
                 "i": i,
                 "condition": cond,
-                "width": width,
+                "offered_streams": OFFERED_STREAMS,
+                "width": result.get("admitted_n"),
                 "aggregate_tps": result.get("aggregate_tps"),
                 "tokens": result.get("tokens"),
                 "wall_s": result.get("wall_s"),
                 "admitted_n": result.get("admitted_n"),
+                "overlap_admit_cap": result.get("overlap_admit_cap"),
+                "observed_overlap_ctor": result.get("observed_overlap_ctor"),
+                "workspace_pool": result.get("workspace_pool"),
+                "loaded_overlap_on_pool_ws": result.get("loaded_overlap_on_pool_ws"),
+                "n_runtimes": result.get("n_runtimes"),
+                "runtime_indexes": result.get("runtime_indexes"),
+                "backend_class": result.get("backend_class"),
+                "backend_n_slots": result.get("backend_n_slots"),
+                "backend_pid": result.get("backend_pid"),
+                "through_controller": result.get("through_controller"),
+                "through_runtime_pool": result.get("through_runtime_pool"),
+                "controller_has_h1_wiring": result.get("controller_has_h1_wiring"),
+                "path": result.get("path"),
+                "via": result.get("via"),
                 "ok": result.get("ok"),
                 "mode": result.get("mode"),
                 "ok_streams": result.get("ok_streams"),
@@ -1374,10 +1805,59 @@ def stage_gate_perf(state: Dict[str, Any], repo: Path, ws: Path) -> None:
         improved = float(mutated_stats["median"]) > float(original_stats["median"]) + float(
             spread
         )
+    def _admit_vals(cond: str) -> List[int]:
+        out: List[int] = []
+        for trial in trials:
+            if trial.get("condition") != cond:
+                continue
+            n = trial.get("admitted_n")
+            if isinstance(n, int):
+                out.append(n)
+        return out
+
+    mutated_admits = _admit_vals("mutated") if alternating else _admit_vals("current")
+    original_admits = _admit_vals("original") if alternating else _admit_vals("current")
+    admission_differs = bool(mutated_admits) and bool(original_admits) and (
+        set(mutated_admits) != set(original_admits)
+    )
+    through_pool = all(
+        t.get("through_runtime_pool") and t.get("through_controller") and t.get("via") == "RuntimePool.complete"
+        for t in trials
+        if t.get("ok")
+    )
+    if not through_pool:
+        watch(
+            state,
+            "gate.perf completions did not all go through Controller/RuntimePool",
+            json.dumps(
+                [
+                    {
+                        "i": t.get("i"),
+                        "via": t.get("via"),
+                        "through_controller": t.get("through_controller"),
+                        "through_runtime_pool": t.get("through_runtime_pool"),
+                        "backend_class": t.get("backend_class"),
+                    }
+                    for t in trials
+                ],
+                default=str,
+            ),
+        )
+    if alternating and not admission_differs:
+        watch(
+            state,
+            "gate.perf admitted_n did not change when the mutation was reverted",
+            (
+                f"mutated admitted_n={mutated_admits} original admitted_n="
+                f"{original_admits}. If these match, the measurement is still "
+                "insensitive to Controller.ensure_runtime_pool."
+            ),
+        )
     payload = {
         "alternating": alternating,
         "order": [t["condition"] for t in trials],
         "n_predict": N_PREDICT,
+        "offered_streams": OFFERED_STREAMS,
         "warmup": {
             "n_predict": WARMUP_PREDICT,
             "ok": warmup.get("ok"),
@@ -1385,16 +1865,41 @@ def stage_gate_perf(state: Dict[str, Any], repo: Path, ws: Path) -> None:
             "predicted_per_second": warmup.get("predicted_per_second"),
             "delivered_tps": warmup.get("delivered_tps"),
         },
-        "metric": "aggregate_tps = total predicted_n / wall_s for two sequences of n_predict",
+        "metric": (
+            "aggregate_tps = total predicted_n / wall_s for two concurrent "
+            "RuntimePool.complete calls (same offered load in both conditions). "
+            "Admission is Controller.ensure_runtime_pool -> RuntimePool._admit."
+        ),
+        "code_path": {
+            "entry": "Controller.ensure_runtime_pool",
+            "pool": "RuntimePool.complete",
+            "backend": "AttachLiveBackend.complete",
+            "endpoint": f"http://127.0.0.1:{LLAMA_PORT}/completion",
+            "offered_load": (
+                f"{OFFERED_STREAMS} concurrent pool.complete calls under both "
+                "mutated and original Controller"
+            ),
+            "does_not_call": [
+                "fan_completions",
+                "llama_completion as the gated measurement",
+                "urllib /completion bypassing RuntimePool",
+            ],
+            "through_controller": through_pool,
+            "through_runtime_pool": through_pool,
+        },
         "trials": trials,
         "mutated": mutated_stats,
         "original": original_stats,
+        "mutated_admitted_n": mutated_admits,
+        "original_admitted_n": original_admits,
+        "admission_differs": admission_differs,
         "spread": spread,
         "spread_mutated": mutated_stats.get("spread"),
         "spread_original": original_stats.get("spread"),
         "throughput_improved": improved,
         "improvement_predicate": (
-            "mutated.median > original.median + max(spread_mutated, spread_original, 0)"
+            "mutated.median > original.median + max(spread_mutated, spread_original, 0); "
+            "same offered load; only Controller wiring (and therefore admission) differs"
         ),
         "llama_before": llama_before,
         "llama_after": llama_after,
@@ -1403,11 +1908,152 @@ def stage_gate_perf(state: Dict[str, Any], repo: Path, ws: Path) -> None:
     state["gate.perf"] = payload
     if not trials or not any(t.get("ok") for t in trials):
         die("gate.perf: no successful throughput re-measure")
+    if not through_pool:
+        die("gate.perf: completions did not route through the mutated RuntimePool")
     ok(
         f"gate.perf: alternating={alternating} original_median_tps="
         f"{original_stats.get('median')} mutated_median_tps="
-        f"{mutated_stats.get('median')} spread={spread} improved={improved}"
+        f"{mutated_stats.get('median')} spread={spread} improved={improved} "
+        f"admitted mutated={mutated_admits} original={original_admits} "
+        f"admission_differs={admission_differs} via=RuntimePool.complete"
     )
+
+
+def compute_decision(
+    *,
+    correctness_ok: bool,
+    throughput_improved: bool,
+    mutation_applied: bool,
+    validation_ok: bool,
+    validation_reason: Optional[str],
+    orig_med: Any,
+    mut_med: Any,
+    spread: Any,
+    mutation_blocked: Optional[str] = None,
+    correctness_exit: Any = None,
+    admission_differs: Optional[bool] = None,
+) -> Dict[str, Any]:
+    """Promote IFF every gate is actually green. NO_EVIDENCE is not green."""
+    refuse_if = {
+        "correctness_failed": not correctness_ok,
+        "throughput_did_not_improve_beyond_spread": not throughput_improved,
+        "mutation_not_applied": not mutation_applied,
+        "mutation_receipt_not_validated": not validation_ok,
+        "admission_did_not_differ": admission_differs is False,
+    }
+    would_refuse = any(refuse_if.values())
+    if not would_refuse:
+        decision = "promote"
+        verdict = "PROMOTE"
+        reason = (
+            "Both gates passed, mutation receipt validation.ok=true, and paired "
+            "throughput through RuntimePool.complete improved beyond spread "
+            f"(original median tps={orig_med} mutated median tps={mut_med} "
+            f"spread={spread})."
+        )
+    else:
+        decision = "reject"
+        verdict = "REFUSED"
+        bits = []
+        if not mutation_applied:
+            bits.append(f"mutation did not apply ({mutation_blocked})")
+        if not validation_ok:
+            bits.append(
+                "mutation receipt is not validation.ok "
+                f"(reason={validation_reason or 'NO_EVIDENCE'})"
+            )
+        if not correctness_ok:
+            bits.append(f"gate.correctness exit={correctness_exit}")
+        if not throughput_improved:
+            bits.append(
+                "throughput through RuntimePool.complete did not improve beyond spread "
+                f"(original median tps={orig_med} mutated median tps={mut_med} "
+                f"spread={spread})"
+            )
+        if admission_differs is False:
+            bits.append(
+                "admitted_n did not change when the mutation was reverted "
+                "(gate is insensitive or mutation is a no-op on the measured path)"
+            )
+        reason = "REJECT: " + "; ".join(bits)
+    return {
+        "decision": decision,
+        "verdict": verdict,
+        "reason": reason,
+        "correctness_ok": correctness_ok,
+        "throughput_improved": throughput_improved,
+        "mutation_applied": mutation_applied,
+        "validation_ok": validation_ok,
+        "validation_reason": validation_reason,
+        "would_refuse": would_refuse,
+        "refuse_if": {
+            k: {"triggered": flag, "effect": "REFUSED"} for k, flag in refuse_if.items()
+        },
+    }
+
+
+def run_failing_gate_trial(ws: Path) -> Dict[str, Any]:
+    """Force a real pytest failure and show compute_decision returns REFUSED.
+
+    Also inject a NO_EVIDENCE mutation receipt against otherwise-green gates.
+    Neither trial hardcodes the verdict.
+    """
+    probe = Path(ws) / "failing_gate_trial"
+    probe.mkdir(parents=True, exist_ok=True)
+    test_path = probe / "test_forced_fail.py"
+    test_path.write_text(
+        "def test_forced_fail():\n"
+        "    assert False, 'injected failing-gate trial'\n",
+        encoding="utf-8",
+    )
+    proc = subprocess.run(
+        [sys.executable, "-m", "pytest", str(test_path), "-q", "--tb=line"],
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    failing = compute_decision(
+        correctness_ok=proc.returncode == 0,
+        throughput_improved=True,
+        mutation_applied=True,
+        validation_ok=True,
+        validation_reason=None,
+        orig_med=20.0,
+        mut_med=25.0,
+        spread=0.1,
+        correctness_exit=proc.returncode,
+    )
+    no_evidence = compute_decision(
+        correctness_ok=True,
+        throughput_improved=True,
+        mutation_applied=True,
+        validation_ok=False,
+        validation_reason="NO_EVIDENCE",
+        orig_med=20.0,
+        mut_med=25.0,
+        spread=0.1,
+    )
+    return {
+        "hardcoded": False,
+        "method": (
+            "ran pytest on a temp test that asserts False; fed that exit into "
+            "compute_decision. separately invoked compute_decision with "
+            "validation_ok=False reason=NO_EVIDENCE against otherwise-green gates."
+        ),
+        "pytest_command": [sys.executable, "-m", "pytest", str(test_path), "-q"],
+        "pytest_exit_code": proc.returncode,
+        "pytest_passed_gate": proc.returncode == 0,
+        "pytest_output_tail": ((proc.stdout or "") + "\n" + (proc.stderr or ""))[-800:],
+        "decision_on_failing_correctness": failing,
+        "decision_on_no_evidence": no_evidence,
+        "would_refuse_on_failing_gate": failing.get("verdict") == "REFUSED",
+        "would_refuse_on_no_evidence": no_evidence.get("verdict") == "REFUSED",
+        "evidenced": (
+            proc.returncode != 0
+            and failing.get("verdict") == "REFUSED"
+            and no_evidence.get("verdict") == "REFUSED"
+        ),
+    }
 
 
 def stage_decide(state: Dict[str, Any], repo: Path, ws: Path) -> None:
@@ -1417,54 +2063,46 @@ def stage_decide(state: Dict[str, Any], repo: Path, ws: Path) -> None:
     correctness_ok = bool(correctness.get("passed_gate"))
     throughput_improved = bool(perf.get("throughput_improved"))
     mutation_applied = bool(mutate.get("applied"))
-
-    refuse_if = {
-        "correctness_failed": (not correctness_ok, "REFUSED"),
-        "throughput_did_not_improve_beyond_spread": (not throughput_improved, "REFUSED"),
-        "mutation_not_applied": (not mutation_applied, "REFUSED"),
-    }
-    would_refuse = any(flag for flag, _ in refuse_if.values())
+    validation_ok, validation_reason = mutation_validation_ok(mutate)
     orig_med = (perf.get("original") or {}).get("median")
     mut_med = (perf.get("mutated") or {}).get("median")
     spread = perf.get("spread")
-    if not would_refuse:
-        decision = "promote"
-        reason = (
-            "Both gates passed and paired throughput improved beyond spread "
-            f"(original median tps={orig_med} mutated median tps={mut_med} "
-            f"spread={spread})."
+    admission_differs = perf.get("admission_differs")
+
+    decided = compute_decision(
+        correctness_ok=correctness_ok,
+        throughput_improved=throughput_improved,
+        mutation_applied=mutation_applied,
+        validation_ok=validation_ok,
+        validation_reason=validation_reason,
+        orig_med=orig_med,
+        mut_med=mut_med,
+        spread=spread,
+        mutation_blocked=mutate.get("blocked"),
+        correctness_exit=correctness.get("exit_code"),
+        admission_differs=admission_differs if isinstance(admission_differs, bool) else None,
+    )
+    trial = run_failing_gate_trial(ws)
+    if not trial.get("evidenced"):
+        watch(
+            state,
+            "failing-gate trial did not evidence REFUSED",
+            json.dumps(trial, default=str)[:2000],
         )
-    else:
-        decision = "reject"
-        bits = []
-        if not mutation_applied:
-            bits.append(f"mutation did not apply ({mutate.get('blocked')})")
-        if not correctness_ok:
-            bits.append(f"gate.correctness exit={correctness.get('exit_code')}")
-        if not throughput_improved:
-            bits.append(
-                "throughput did not improve beyond spread "
-                f"(original median tps={orig_med} mutated median tps={mut_med} "
-                f"spread={spread})"
-            )
-        reason = "REJECT: " + "; ".join(bits)
-
-    counterfactual = {
-        "if_correctness_failed": "REFUSED",
-        "if_perf_throughput_unimproved": "REFUSED",
-        "predicate": (
-            "promote IFF mutation.applied AND gate.correctness.passed_gate "
-            "AND gate.perf.throughput_improved (mutated.median > original.median "
-            "+ spread); else reject"
-        ),
-        "would_refuse_on_failing_gate": True,
-    }
-
-    if decision == "promote" and would_refuse:
+        save_state(Path(state["_path"]), state)
+        die("decide: failing-gate trial did not come back REFUSED")
+    if decided["decision"] == "promote" and decided["would_refuse"]:
         die("decide: attempted promotion with a failing gate; verifier refuses")
-    if decision == "promote" and not correctness_ok:
+    if decided["decision"] == "promote" and not correctness_ok:
         die("decide: promotion with failing correctness gate is refused")
+    if decided["decision"] == "promote" and not validation_ok:
+        die(
+            "decide: attempted promotion on a mutation receipt that is not "
+            "validation.ok; verifier refuses"
+        )
 
+    decision = decided["decision"]
+    reason = decided["reason"]
     if decision == "reject":
         orig = mutate.get("snap_original")
         if orig and Path(orig).is_dir():
@@ -1479,17 +2117,38 @@ def stage_decide(state: Dict[str, Any], repo: Path, ws: Path) -> None:
 
     state["decide"] = {
         "decision": decision,
+        "verdict": decided["verdict"],
         "reason": reason,
         "correctness_ok": correctness_ok,
         "throughput_improved": throughput_improved,
         "mutation_applied": mutation_applied,
-        "counterfactual_refuse_on_failing_gate": counterfactual,
-        "restored_original": restored,
-        "refuse_if": {
-            k: {"triggered": flag, "effect": effect} for k, (flag, effect) in refuse_if.items()
+        "validation_ok": validation_ok,
+        "validation_reason": validation_reason,
+        "admission_differs": admission_differs,
+        "failing_gate_trial": trial,
+        "counterfactual_refuse_on_failing_gate": {
+            "if_correctness_failed": "REFUSED",
+            "if_perf_throughput_unimproved": "REFUSED",
+            "if_mutation_receipt_no_evidence": "REFUSED",
+            "predicate": (
+                "promote IFF mutation.applied AND mutation_receipt.validation.ok "
+                "AND gate.correctness.passed_gate AND gate.perf.throughput_improved "
+                "(mutated.median > original.median + spread, measured through "
+                "RuntimePool.complete); else reject/REFUSED"
+            ),
+            "would_refuse_on_failing_gate": trial.get("would_refuse_on_failing_gate"),
+            "would_refuse_on_no_evidence": trial.get("would_refuse_on_no_evidence"),
+            "hardcoded": False,
+            "evidenced_by": "failing_gate_trial",
         },
+        "restored_original": restored,
+        "refuse_if": decided["refuse_if"],
     }
-    ok(f"decide: {decision} — {reason}")
+    ok(
+        f"decide: {decision} ({decided['verdict']}) — {reason} "
+        f"[failing-gate trial REFUSED={trial.get('would_refuse_on_failing_gate')} "
+        f"NO_EVIDENCE REFUSED={trial.get('would_refuse_on_no_evidence')}]"
+    )
 
 
 def stage_priors(state: Dict[str, Any], repo: Path, ws: Path) -> None:
@@ -1564,17 +2223,18 @@ def stage_next(state: Dict[str, Any], repo: Path, ws: Path) -> None:
         value = mutated_median
         if decide.get("decision") == "promote":
             target = (
-                "Iteration 3: admission-2 slot completions delivered median "
-                f"{mutated_median} tok/s against serial {original_median} "
-                f"(spread {spread}), past the measured spread. Next: spend "
+                "Iteration 3: admission-2 RuntimePool.complete delivered median "
+                f"{mutated_median} tok/s against admit-1 {original_median} "
+                f"(spread {spread}), same offered load of two concurrent "
+                "pool.complete calls, past the measured spread. Next: spend "
                 "that width on prefix-cache locality / KV split cost rather "
                 "than a third runtime — the four-decoder aggregate ceiling "
                 f"is still {PRIOR_AGGREGATE_AT_FOUR}x."
             )
         else:
             target = (
-                "Iteration 3: two-slot aggregate median tps="
-                f"{mutated_median} did not beat serial median tps="
+                "Iteration 3: admit-2 RuntimePool.complete median tps="
+                f"{mutated_median} did not beat admit-1 median tps="
                 f"{original_median} beyond spread={spread}. Do not chase a "
                 "second runtime (19.79 GiB) or a second 27B server "
                 f"({PRIOR_TWO_SERVER_TPS} vs {PRIOR_ONE_SERVER_TPS} tok/s). "
@@ -1690,13 +2350,13 @@ STAGE_SPECS = [
     ),
     (
         "gate.perf",
-        "Paired alternating real completion tok/s; spread reported; no second server",
+        "Paired alternating RuntimePool.complete tok/s through Controller.ensure_runtime_pool; same offered load; no second server",
         ["gate.correctness"],
         "CPU_HEAVY",
     ),
     (
         "decide",
-        "Promote only if both gates pass AND throughput improved beyond spread",
+        "Promote only if validation.ok AND both gates pass AND throughput through the pool improved beyond spread",
         ["gate.perf"],
         "LIGHT_CONTROL",
     ),
@@ -1770,6 +2430,18 @@ def assemble_receipt(
     return {
         "schema": "hawking.headless.hcli_self_opt.iteration.v1",
         "iteration": 2,
+        "remeasurement": {
+            "of": "receipts/headless/HCLI_SELF_OPT_ITERATION_2.json",
+            "defect": (
+                "gate.perf fanned HTTP at llama-server; completions never entered "
+                "the mutated RuntimePool. would_refuse_on_failing_gate was hardcoded. "
+                "Engine receipts with validation.ok=false reason=NO_EVIDENCE were promoted."
+            ),
+            "code_path": (
+                "Controller.ensure_runtime_pool -> RuntimePool.complete -> "
+                "AttachLiveBackend.complete -> http://127.0.0.1:52484/completion"
+            ),
+        },
         "goal": (
             "Raise RuntimePool admission via the measured high-water path "
             "so llama-server's 2 slots / ACTIVE_DECODE_LIMIT=2 serve real "
@@ -1815,8 +2487,11 @@ def assemble_receipt(
             "next": state.get("next"),
         },
         "mutation_receipt": mutate.get("engine_receipt"),
+        "mutation_validation_ok": mutate.get("validation_ok"),
         "decision": decide.get("decision"),
+        "decision_verdict": decide.get("verdict"),
         "decision_reason": decide.get("reason"),
+        "failing_gate_trial": decide.get("failing_gate_trial"),
         "watched_fail": state.get("watched_fail") or [],
     }
 
@@ -1842,16 +2517,14 @@ def main_loop(repo: Path) -> int:
 
     grok = shutil.which("grok-run")
     baseline = {
-        "expected": "433 passed, 1 skipped",
-        "observed": "432 passed, 2 skipped",
-        "deviation": (
-            "one extra skip: tools/haider/hcli/tests/test_mlx_backend.py:246 "
-            "mlx_lm.server --help did not answer in this environment. The other "
-            "skip is the always-skipped live grok-run audit. Suite otherwise "
-            "green (exit 0). Same class of deviation iteration 1 recorded; "
-            "not a failed tree-state apply."
-        ),
+        "expected": "464 passed, 1 skipped",
+        "observed": None,
+        "deviation": None,
         "suite_green": True,
+        "note": (
+            "Contract baseline is 464 passed, 1 skipped with "
+            "HCLI_SWAP_CEILING_GIB=64. gate.correctness re-measures."
+        ),
     }
 
     ws = Path(tempfile.mkdtemp(prefix="hcli-selfopt2-mission-"))
@@ -1859,8 +2532,14 @@ def main_loop(repo: Path) -> int:
     pre = {
         "watched_fail": [
             {
-                "title": "Baseline pytest was 432 passed, 2 skipped, not 433/1",
-                "detail": baseline["deviation"],
+                "title": "Prior iteration 2 promoted a bypassing benchmark",
+                "detail": (
+                    "HCLI_SELF_OPT_ITERATION_2.json reported 25.313 vs 22.575 tok/s "
+                    "from fan_completions(width) hitting llama-server directly. "
+                    "Completions never entered RuntimePool. Mutation receipts were "
+                    "status=unverified validation.ok=false reason=NO_EVIDENCE. "
+                    "would_refuse_on_failing_gate was hardcoded True."
+                ),
             },
             {
                 "title": "grok-run is not required and may be absent",
@@ -1999,7 +2678,11 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 0 if result.get("ok") else 1
 
     if args.probe_throughput:
-        result = run_throughput_probe(width=int(args.width), n_predict=int(args.n_predict))
+        result = run_throughput_probe(
+            width=int(args.width),
+            n_predict=int(args.n_predict),
+            repo=repo,
+        )
         if args.out:
             _atomic_write(args.out, result)
         else:

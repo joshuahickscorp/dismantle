@@ -3,8 +3,7 @@
 
 Attacks `CaptureBus.observe` / `CaptureBus.verify` with `ProjectStore` /
 `ArtifactStore` — the same seam `hcli_vmcp_integration.py` proved, in a
-temporary project. visionmcp is read-only; this file only observes how the
-bus responds when the stored evidence is hostile.
+temporary project.
 
 Adversaries (each must be attempted; UNDETECTED is a finding, not a skip):
 
@@ -13,6 +12,8 @@ Adversaries (each must be attempted; UNDETECTED is a finding, not a skip):
   3. truncated_receipt — cut the stored artifact, and the stored record, in half
   4. self_report       — adapter reports success and writes no artifact
   5. replay            — reuse a valid capture id for a DIFFERENT file
+  6. stale_capture_after_subject_mutation — observe, overwrite the live file,
+     then verify the original capture id and re-observe the same path
 
 Positive control: an untampered capture must verify clean, or a canary that
 always says DETECTED would pass.
@@ -787,6 +788,135 @@ def run_replay(bus, file_a: Path, file_b: Path) -> dict[str, Any]:
     return result
 
 
+def call_verify_live(bus, capture_id: str) -> dict[str, Any]:
+    """verify(live_subject=True) if the bus offers it; else KeyError-shaped miss."""
+    verify = getattr(bus, "verify", None)
+    if not callable(verify):
+        return {
+            "raised": True,
+            "error_type": "AttributeError",
+            "error": "bus has no verify",
+        }
+    try:
+        payload = verify(capture_id, live_subject=True)
+        return {"raised": False, "response": jsonable(payload)}
+    except TypeError:
+        return {
+            "raised": True,
+            "error_type": "TypeError",
+            "error": "verify does not accept live_subject",
+            "traceback": traceback.format_exc(),
+        }
+    except Exception as exc:
+        return {
+            "raised": True,
+            "error_type": type(exc).__name__,
+            "error": str(exc),
+            "traceback": traceback.format_exc(),
+        }
+
+
+def call_subject_matches(bus, capture_id: str) -> dict[str, Any]:
+    matcher = getattr(bus, "subject_matches", None)
+    if not callable(matcher):
+        return {
+            "raised": True,
+            "error_type": "AttributeError",
+            "error": "bus has no subject_matches",
+        }
+    try:
+        return {"raised": False, "response": jsonable(matcher(capture_id))}
+    except Exception as exc:
+        return {
+            "raised": True,
+            "error_type": type(exc).__name__,
+            "error": str(exc),
+            "traceback": traceback.format_exc(),
+        }
+
+
+def run_stale_capture_after_subject_mutation(bus, subject: Path) -> dict[str, Any]:
+    attack = (
+        "observe a file, overwrite it on disk, then verify the original "
+        "capture id and re-observe the same path. Distinct from replay "
+        "(same bytes, different path) and tampered_artifact (CAS bytes)."
+    )
+    record = observe_file(bus, subject)
+    capture_id = record["capture_id"]
+    digest_before = hashlib.sha256(subject.read_bytes()).hexdigest()
+    stored_before = call_verify(bus, capture_id)
+    if stored_before.get("raised") or not (stored_before.get("response") or {}).get("valid"):
+        return {
+            "id": "stale_capture_after_subject_mutation",
+            "attack": attack,
+            "verdict": "NOT_ATTEMPTED",
+            "reason": "untampered capture did not verify",
+            "before": stored_before,
+        }
+    subject.write_bytes(subject.read_bytes() + b"\nMUTATED-LIVE-SUBJECT\n")
+    digest_after = hashlib.sha256(subject.read_bytes()).hexdigest()
+    if digest_after == digest_before:
+        return {
+            "id": "stale_capture_after_subject_mutation",
+            "attack": attack,
+            "verdict": "NOT_ATTEMPTED",
+            "reason": "subject overwrite did not change the digest",
+        }
+    stored_after = call_verify(bus, capture_id)
+    live_after = call_verify_live(bus, capture_id)
+    freshness = call_subject_matches(bus, capture_id)
+    reobserve = observe_file(bus, subject)
+    reused = bool(reobserve.get("reused"))
+    same_id = reobserve.get("capture_id") == capture_id
+    live_detected = verdict_from_verify(live_after) == "DETECTED"
+    freshness_response = freshness.get("response") or {}
+    freshness_stale = (
+        not freshness.get("raised")
+        and freshness_response.get("matches") is False
+        and freshness_response.get("reason") == "subject_changed"
+    )
+    reuse_bounded = reused is not True
+    if (live_detected or freshness_stale) and reuse_bounded:
+        verdict = "DETECTED"
+        reason = None
+    else:
+        verdict = "UNDETECTED"
+        reason = (
+            "stored verify stayed valid for a mutated subject and "
+            f"re-observe reused={reused} same_id={same_id}; "
+            f"live_subject detected={live_detected} "
+            f"subject_matches stale={freshness_stale}"
+        )
+    return {
+        "id": "stale_capture_after_subject_mutation",
+        "attack": attack,
+        "capture_id": capture_id,
+        "digest_before": digest_before,
+        "digest_after": digest_after,
+        "verify_stored_after_mutation": stored_after,
+        "verify_live_subject_after_mutation": live_after,
+        "subject_matches_after_mutation": freshness,
+        "reobserve": {
+            "reused": reused,
+            "same_id": same_id,
+            "capture_id": reobserve.get("capture_id"),
+            "status": reobserve.get("status"),
+            "summary": reobserve.get("summary"),
+        },
+        "response": {
+            "digest_before": digest_before,
+            "digest_after": digest_after,
+            "verify_stored": stored_after,
+            "verify_live_subject": live_after,
+            "subject_matches": freshness,
+            "reobserve_reused": reused,
+            "reobserve_same_id": same_id,
+        },
+        "verdict": verdict,
+        **({"reason": reason} if reason else {}),
+    }
+
+
 # --------------------------------------------------------------------------- main
 
 
@@ -841,6 +971,7 @@ def main() -> int:
         self_tgt = write("self-report.txt", "self-report-target\n")
         replay_a = write("replay-a.txt", "replay-shared-bytes\n" + ("B" * 64) + "\n")
         replay_b = write("replay-b.txt", "replay-shared-bytes\n" + ("B" * 64) + "\n")
+        stale_tgt = write("stale-subject.txt", "stale-capture-subject\n" + ("S" * 64) + "\n")
 
         positive = run_positive_control(bus, clean)
         print()
@@ -862,6 +993,7 @@ def main() -> int:
             run_truncated_receipt(bus, trunc_art, trunc_rec),
             run_self_report(bus, self_tgt),
             run_replay(bus, replay_a, replay_b),
+            run_stale_capture_after_subject_mutation(bus, stale_tgt),
         ]
         for body in adversaries:
             print_block(body["id"], body)
@@ -919,6 +1051,20 @@ def main() -> int:
                         ),
                     }
                 )
+            elif body["id"] == "stale_capture_after_subject_mutation":
+                handoff.append(
+                    {
+                        "adversary": "stale_capture_after_subject_mutation",
+                        "file": "visionmcp/src/visionmcp/perception/bus.py",
+                        "smallest_change": (
+                            "verify() must not silently claim a mutated subject is "
+                            "current. Either fail when live_subject=True / "
+                            "subject_matches reports subject_changed, or document "
+                            "that verify is stored-capture only and bound observe() "
+                            "so reused=True cannot be returned after the bytes change."
+                        ),
+                    }
+                )
             else:
                 handoff.append(
                     {
@@ -930,11 +1076,21 @@ def main() -> int:
                     }
                 )
 
+        sixth = next(
+            (
+                a
+                for a in adversaries
+                if a["id"] == "stale_capture_after_subject_mutation"
+            ),
+            None,
+        )
         complete = (
             positive["ok"]
             and still_ok
-            and len(adversaries) == 5
+            and len(adversaries) == 6
             and not skipped
+            and sixth is not None
+            and sixth.get("verdict") == "DETECTED"
         )
         receipt = {
             "gate": "VMCP_FORGERY_CANARY",
@@ -952,9 +1108,31 @@ def main() -> int:
                 "acquire": "visionmcp.perception.bus.CaptureBus.observe",
                 "verify": "CaptureBus.verify",
                 "verify_signature": str(inspect.signature(CaptureBus.verify)),
+                "subject_matches": "CaptureBus.subject_matches",
                 "stores": ["ProjectStore", "ArtifactStore"],
                 "adapter": "file.eye (same adapter as VMCP_AGENTOS_INTEGRATION)",
                 "profile": "CaptureBus directly — not the laboratory MCP profile",
+            },
+            "verify_decision": {
+                "verify": (
+                    "stored snapshot only: CAS bytes, envelope, event receipts. "
+                    "Does not re-read the live subject. Payload scope is "
+                    "stored_capture."
+                ),
+                "live_subject": (
+                    "verify(capture_id, live_subject=True) also fails when the "
+                    "live subject no longer matches the captured digest."
+                ),
+                "subject_matches": (
+                    "CaptureBus.subject_matches(capture_id) re-reads the file "
+                    "at request.target.path and compares it to the recorded "
+                    "digest. That is the API for 'the file changed since'."
+                ),
+                "reuse": (
+                    "observe() returns reused=True only when stored verify is "
+                    "valid AND subject_matches allows reuse. A changed file "
+                    "is recaptured (same request id, new bytes)."
+                ),
             },
             "positive_control": positive,
             "positive_control_after_attacks": {
@@ -985,7 +1163,7 @@ def main() -> int:
         print(f"positive_control: {'PASS' if positive['ok'] and still_ok else 'FAIL'}")
         for body in adversaries:
             print(f"{body['id']}: {body.get('verdict')}")
-        print(f"attempted: {len(attempted)}/5")
+        print(f"attempted: {len(attempted)}/6")
         print(f"undetected: {[a['id'] for a in undetected]}")
         print(f"result: {receipt['result']}")
         print(f"receipt: {RECEIPT_PATH}")

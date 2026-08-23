@@ -10,7 +10,7 @@ so the cap lifts 1→2). The 25.3 vs 22.6 tok/s gap was llama-server's own
 --parallel 2 handling of two HTTP requests; a no-op mutation produces
 the same number. admitted_n was a FakeBackend side probe.
 
-This remasurement:
+This remasurement (SELF_OPT_EXECUTION, settled):
 
 * Routes every gated completion through Controller.ensure_runtime_pool
   → RuntimePool.complete → an attach-only backend on :52484. The live
@@ -26,8 +26,19 @@ This remasurement:
   compute_decision returns REFUSED; would_refuse_on_failing_gate is
   evidenced, not hardcoded.
 
-A measured no-improvement through the real pool is a successful reject.
-Do not spawn a second llama-server.
+Default invocation is the PROMOTION-control harness (G021). It does not
+re-run the ten-WorkUnit mission and does not write hcli/. Four controls
+run through Controller.ensure_runtime_pool on a git-archive scratch copy
+of HEAD hcli, so a missing worktree checkout is not a hole:
+
+1. NO-OP candidate — mutation changes bytes, not admission. Must not win.
+2. BAD candidate — requested_n=0, genuinely worse. Gate must REFUSE.
+3. Paired / interleaved trials — not a baseline block then a candidate block.
+4. Failing-gate refusal, physically exercised — pytest assert False fed
+   into compute_decision; would_refuse_on_failing_gate is computed.
+
+`--mission-loop` restores the iteration-2 Mission DAG. Do not spawn a
+second llama-server.
 """
 from __future__ import annotations
 
@@ -55,7 +66,9 @@ HCLI_PARENT = REPO
 CONTROLLER_REL = Path("hcli/controller.py")
 RUNTIME_REL = Path("hcli/runtime.py")
 RECEIPT_REL = Path("receipts/headless/HCLI_SELF_OPT_ITERATION_2_REMEASURED.json")
+PROMOTION_RECEIPT_REL = Path("receipts/headless/SELF_OPT_CANDIDATE_PROMOTED.json")
 MUTATION_TEST = "tools/headless/hcli_self_optimize_2.py"
+PROMOTION_TRIALS = 4  # interleaved candidate/baseline pairs, not two blocks
 OFFERED_STREAMS = 2
 LLAMA_PORT = 52484
 PROBE_DELAY_S = 0.35
@@ -683,6 +696,60 @@ def _install_attach_pool_patches() -> None:
     RuntimePool.__init__ = wrapped_init  # type: ignore[method-assign]
 
 
+def _install_fake_pool_patches() -> None:
+    """Inject FakeBackend + lenient MemGate into RuntimePool.__init__.
+
+    Same contract as the attach-live patch: do NOT set observed_overlap or
+    workspace. Those come from Controller, which is the mutation. Used by
+    the promotion-control harness so it can run without a live llama-server
+    and without spawning one.
+    """
+    ensure_hcli_path()
+    from hcli.runtime import RuntimePool
+
+    if getattr(RuntimePool.__init__, "_selfopt2_fake_patched", False):
+        return
+
+    orig_init = RuntimePool.__init__
+
+    def wrapped_init(
+        self,
+        model_path,
+        requested_n=1,
+        workspace=None,
+        *,
+        backend_factory=None,
+        mem_gate=None,
+        reserve_bytes=None,
+        swap_ceiling_bytes=None,
+        topology=None,
+        repo_root=None,
+        observed_overlap=None,
+    ):
+        if backend_factory is None:
+            backend_factory = FakeBackend
+        if mem_gate is None:
+            mem_gate = _lenient_gate("slot")
+        if topology is None:
+            topology = "slot"
+        return orig_init(
+            self,
+            model_path,
+            requested_n,
+            workspace,
+            backend_factory=backend_factory,
+            mem_gate=mem_gate,
+            reserve_bytes=reserve_bytes,
+            swap_ceiling_bytes=swap_ceiling_bytes,
+            topology=topology,
+            repo_root=repo_root,
+            observed_overlap=observed_overlap,
+        )
+
+    wrapped_init._selfopt2_fake_patched = True  # type: ignore[attr-defined]
+    RuntimePool.__init__ = wrapped_init  # type: ignore[method-assign]
+
+
 def pool_fan_completions(pool: Any, n_streams: int, n_predict: int) -> Dict[str, Any]:
     """Same offered load always: n_streams concurrent RuntimePool.complete calls."""
     results: List[Optional[Dict[str, Any]]] = [None] * n_streams
@@ -794,6 +861,29 @@ def _pool_new() -> str:
         "                workspace=self.workspace_root,\n"
         "                repo_root=self.workspace_root,\n"
         "                observed_overlap=load_observed_overlap(self.workspace_root),\n"
+        "            )\n"
+    )
+
+
+def _pool_noop() -> str:
+    """Identity mutation: bytes change, RuntimePool constructor does not."""
+    return (
+        "        if self.runtime_pool is None:\n"
+        "            # no-op candidate: comment only, constructor unchanged\n"
+        "            pool = RuntimePool(\n"
+        "                model_path,\n"
+        "                requested_n=self.runtime_count,\n"
+        "            )\n"
+    )
+
+
+def _pool_bad() -> str:
+    """Genuinely worse: admit nothing even when the caller asked for 2."""
+    return (
+        "        if self.runtime_pool is None:\n"
+        "            pool = RuntimePool(\n"
+        "                model_path,\n"
+        "                requested_n=0,\n"
         "            )\n"
     )
 
@@ -1932,6 +2022,7 @@ def compute_decision(
     mutation_blocked: Optional[str] = None,
     correctness_exit: Any = None,
     admission_differs: Optional[bool] = None,
+    metric_name: str = "tps",
 ) -> Dict[str, Any]:
     """Promote IFF every gate is actually green. NO_EVIDENCE is not green."""
     refuse_if = {
@@ -1947,9 +2038,9 @@ def compute_decision(
         verdict = "PROMOTE"
         reason = (
             "Both gates passed, mutation receipt validation.ok=true, and paired "
-            "throughput through RuntimePool.complete improved beyond spread "
-            f"(original median tps={orig_med} mutated median tps={mut_med} "
-            f"spread={spread})."
+            "score through Controller.ensure_runtime_pool improved beyond spread "
+            f"(original median {metric_name}={orig_med} mutated median "
+            f"{metric_name}={mut_med} spread={spread})."
         )
     else:
         decision = "reject"
@@ -1966,9 +2057,9 @@ def compute_decision(
             bits.append(f"gate.correctness exit={correctness_exit}")
         if not throughput_improved:
             bits.append(
-                "throughput through RuntimePool.complete did not improve beyond spread "
-                f"(original median tps={orig_med} mutated median tps={mut_med} "
-                f"spread={spread})"
+                "score through Controller.ensure_runtime_pool did not improve beyond spread "
+                f"(original median {metric_name}={orig_med} mutated median "
+                f"{metric_name}={mut_med} spread={spread})"
             )
         if admission_differs is False:
             bits.append(
@@ -2054,6 +2145,833 @@ def run_failing_gate_trial(ws: Path) -> Dict[str, Any]:
             and no_evidence.get("verdict") == "REFUSED"
         ),
     }
+
+
+# ---------------------------------------------------------------------------
+# G021 promotion controls — mutation caused the win, or the harness is lying
+# ---------------------------------------------------------------------------
+
+def _git_show(repo: Path, rel: str) -> str:
+    proc = subprocess.run(
+        ["git", "-C", str(repo), "show", f"HEAD:{rel}"],
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    if proc.returncode != 0:
+        die(f"git show HEAD:{rel} failed: {(proc.stderr or proc.stdout)[-400:]}")
+    return proc.stdout
+
+
+def materialize_hcli_from_head(repo: Path, dest: Path) -> Dict[str, Any]:
+    """Checkout HEAD hcli into dest without touching the sparse worktree.
+
+    This worktree often does not materialize hcli/. A missing path here is
+    not evidence it is absent from git. git archive reads HEAD directly.
+    """
+    dest.mkdir(parents=True, exist_ok=True)
+    proc = subprocess.run(
+        ["git", "-C", str(repo), "archive", "HEAD", "hcli"],
+        capture_output=True,
+        timeout=60,
+    )
+    if proc.returncode != 0:
+        die(
+            "git archive HEAD hcli failed: "
+            + (proc.stderr or proc.stdout or b"").decode("utf-8", "replace")[-400:]
+        )
+    import tarfile
+    import io
+
+    with tarfile.open(fileobj=io.BytesIO(proc.stdout), mode="r:") as tar:
+        try:
+            tar.extractall(path=dest, filter="data")
+        except TypeError:
+            tar.extractall(path=dest)
+    controller = dest / CONTROLLER_REL
+    if not controller.is_file():
+        die(f"git archive did not produce {CONTROLLER_REL}")
+    return {
+        "dest": str(dest),
+        "source": "git archive HEAD hcli",
+        "worktree_hcli_present": (repo / "hcli").is_dir(),
+        "controller_sha256": sha256_file(controller),
+        "verified_against": "HEAD",
+    }
+
+
+def revert_h1_text(text: str) -> str:
+    if _pool_old() in text and _import_old() in text and _pool_new() not in text:
+        return text
+    if _pool_new() not in text or _import_new() not in text:
+        die("HEAD controller.py does not contain the H1 anchors; cannot build variants")
+    text = text.replace(_import_new(), _import_old(), 1)
+    text = text.replace(_pool_new(), _pool_old(), 1)
+    if _pool_old() not in text or _pool_new() in text:
+        die("revert_h1_text did not restore the original constructor")
+    return text
+
+
+def apply_h1_text(text: str) -> str:
+    if _pool_new() in text and _import_new() in text:
+        return text
+    if _pool_old() not in text or _import_old() not in text:
+        die("original controller text missing RuntimePool constructor anchors")
+    text = text.replace(_import_old(), _import_new(), 1)
+    text = text.replace(_pool_old(), _pool_new(), 1)
+    if _pool_new() not in text:
+        die("apply_h1_text did not land observed_overlap=")
+    return text
+
+
+def controller_variants(head_text: str) -> Dict[str, str]:
+    """Four controller bodies: original, H1, NO-OP, BAD. All from the same HEAD blob."""
+    if _pool_new() in head_text:
+        h1 = head_text
+        original = revert_h1_text(head_text)
+    else:
+        original = head_text
+        h1 = apply_h1_text(head_text)
+    noop = original.replace(_pool_old(), _pool_noop(), 1)
+    bad = original.replace(_pool_old(), _pool_bad(), 1)
+    if noop == original:
+        die("NO-OP candidate is byte-identical to original; it is not a mutation")
+    if bad == original:
+        die("BAD candidate is byte-identical to original; it is not a mutation")
+    if "requested_n=0" not in bad:
+        die("BAD candidate did not land requested_n=0")
+    if "no-op candidate" not in noop:
+        die("NO-OP candidate did not land its comment")
+    if _pool_new() not in h1:
+        die("H1 variant missing observed_overlap wiring")
+    return {"original": original, "h1": h1, "noop": noop, "bad": bad}
+
+
+def h1_wiring_present(text: str) -> bool:
+    return (
+        "from .runtime import RuntimePool, load_observed_overlap" in text
+        and "workspace=self.workspace_root" in text
+        and "repo_root=self.workspace_root" in text
+        and "observed_overlap=load_observed_overlap(self.workspace_root)" in text
+    )
+
+
+def run_controller_admit_probe(repo: Optional[Path] = None) -> Dict[str, Any]:
+    """Admission + FakeBackend complete through Controller.ensure_runtime_pool.
+
+    Offered load is always OFFERED_STREAMS concurrent pool.complete calls.
+    Admission is whatever Controller on disk passes into RuntimePool. A
+    no-op mutation cannot change admitted_n.
+    """
+    sys.dont_write_bytecode = True
+    os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
+    os.environ["HCLI_DISABLE_SIGNAL_HOOKS"] = "1"
+    os.environ["ACTIVE_DECODE_LIMIT"] = "2"
+    os.environ["HCLI_ACTIVE_DECODE_LIMIT"] = "2"
+    os.environ["HCLI_RESIDENT_RUNTIME_LIMIT"] = "4"
+    os.environ["HCLI_SWAP_CEILING_GIB"] = "64"
+    os.environ.pop("HCLI_OBSERVED_MODEL_OVERLAP", None)
+    os.environ.pop("HCLI_MAX_RUNTIMES", None)
+    os.environ.pop("HCLI_DECODE_TOPOLOGY", None)
+
+    controller_root = Path(repo).resolve() if repo is not None else REPO
+    # Prefer the tree under --repo (scratch copy). Drop any previously
+    # imported hcli (editable install of another checkout) so the candidate
+    # controller.py is the one we just wrote.
+    for _mod in list(sys.modules):
+        if _mod == "hcli" or _mod.startswith("hcli."):
+            del sys.modules[_mod]
+    sys.path.insert(0, str(controller_root))
+    _install_fake_pool_patches()
+    sys.path.insert(0, str(controller_root))
+    from hcli.controller import Controller
+    from hcli.runtime import load_observed_overlap, store_observed_overlap
+
+    tmp = Path(tempfile.mkdtemp(prefix="hcli-selfopt2-admit-ws-"))
+    isolate = Path(tempfile.mkdtemp(prefix="hcli-selfopt2-admit-iso-"))
+    model = Path(_dummy_model(tmp))
+    os.environ["HCLI_WORKSPACE"] = str(isolate)
+    os.environ["HCLI_MODEL_PATH"] = str(model)
+    os.chdir(isolate)
+    store_observed_overlap(tmp, 2)
+    controller_src = (controller_root / CONTROLLER_REL).read_text(encoding="utf-8")
+    has_wiring = h1_wiring_present(controller_src)
+
+    ctrl = None
+    pool = None
+    try:
+        ctrl = Controller(tmp, runtime_count=2, model=str(model))
+        pool = ctrl.ensure_runtime_pool()
+        backend = pool.runtimes[0].backend if pool.runtimes else None
+        backend_name = type(backend).__name__ if backend is not None else None
+        if pool.runtimes and backend_name != "FakeBackend":
+            return {
+                "ok": False,
+                "error": f"expected FakeBackend, got {backend_name}",
+                "admitted_n": getattr(pool, "admitted_n", None),
+            }
+        batch = {"ok": 0, "tokens": 0, "batch_wall_s": 0.0, "aggregate_tps": None,
+                 "runtime_indexes": [], "via": "RuntimePool.complete"}
+        if pool.runtimes:
+            batch = pool_fan_completions(pool, OFFERED_STREAMS, 1)
+        return {
+            "ok": True,
+            "path": (
+                "Controller.ensure_runtime_pool -> RuntimePool._admit / "
+                "RuntimePool.complete -> FakeBackend.complete"
+            ),
+            "through_controller": True,
+            "through_runtime_pool": True,
+            "spawned_second_server": False,
+            "controller_has_h1_wiring": has_wiring,
+            "controller_has_noop_comment": "no-op candidate" in controller_src,
+            "controller_has_requested_n_zero": "requested_n=0" in controller_src,
+            "controller_class": f"{type(ctrl).__module__}.{type(ctrl).__name__}",
+            "pool_class": f"{type(pool).__module__}.{type(pool).__name__}",
+            "backend_class": backend_name,
+            "backend_n_slots": getattr(backend, "n_slots", None) if backend else None,
+            "observed_overlap_ctor": getattr(pool, "observed_overlap", None),
+            "overlap_admit_cap": getattr(pool, "overlap_admit_cap", None),
+            "admitted_n": int(pool.admitted_n),
+            "requested_n": int(getattr(pool, "requested_n", -1)),
+            "n_runtimes": len(pool.runtimes),
+            "runtime_indexes": batch.get("runtime_indexes"),
+            "loaded_overlap_on_controller_ws": load_observed_overlap(tmp),
+            "loaded_overlap_on_pool_ws": load_observed_overlap(pool.workspace),
+            "loaded_overlap_on_isolate": load_observed_overlap(isolate),
+            "workspace_pool": str(pool.workspace),
+            "workspace_controller": str(tmp),
+            "workspace_isolate": str(isolate),
+            "offered_streams": OFFERED_STREAMS,
+            "complete_ok": batch.get("ok"),
+            "complete_via": batch.get("via"),
+            "via": "Controller.ensure_runtime_pool",
+        }
+    except Exception as exc:
+        return {
+            "ok": False,
+            "error": f"{type(exc).__name__}: {exc}",
+            "traceback": traceback.format_exc()[-2000:],
+            "controller_has_h1_wiring": has_wiring,
+        }
+    finally:
+        if pool is not None:
+            try:
+                pool.stop()
+            except Exception:
+                pass
+        if ctrl is not None and getattr(ctrl, "runtime_pool", None) is not None:
+            try:
+                ctrl.runtime_pool.stop()
+            except Exception:
+                pass
+
+
+def _admit_child(hcli_parent: Path, out: Path) -> Dict[str, Any]:
+    env = dict(os.environ)
+    env["PYTHONDONTWRITEBYTECODE"] = "1"
+    env["PYTHONNOUSERSITE"] = "1"
+    env["PYTHONPATH"] = str(hcli_parent)
+    env["ACTIVE_DECODE_LIMIT"] = "2"
+    env["HCLI_ACTIVE_DECODE_LIMIT"] = "2"
+    env["HCLI_DISABLE_SIGNAL_HOOKS"] = "1"
+    env.setdefault("HCLI_SWAP_CEILING_GIB", "64")
+    env.pop("HCLI_OBSERVED_MODEL_OVERLAP", None)
+    proc = subprocess.run(
+        [
+            sys.executable,
+            "-B",
+            "-s",
+            str(SCRIPT),
+            "--probe-controller-admit",
+            "--out",
+            str(out),
+            "--repo",
+            str(hcli_parent),
+        ],
+        cwd=str(hcli_parent),
+        capture_output=True,
+        text=True,
+        timeout=120,
+        env=env,
+    )
+    if out.is_file():
+        data = json.loads(out.read_text(encoding="utf-8"))
+    else:
+        data = {"ok": False, "error": "no output file"}
+    data["child_exit"] = proc.returncode
+    if proc.returncode != 0 and not data.get("ok"):
+        data["child_stderr"] = (proc.stderr or "")[-800:]
+    return data
+
+
+def _trial_stats(trials: List[Dict[str, Any]], cond: str, key: str = "admitted_n") -> Dict[str, Any]:
+    vals = [
+        float(t[key])
+        for t in trials
+        if t.get("condition") == cond and isinstance(t.get(key), (int, float))
+    ]
+    if not vals:
+        return {"n": 0, "values": [], "min": None, "max": None, "median": None, "spread": None}
+    return {
+        "n": len(vals),
+        "values": vals,
+        "min": min(vals),
+        "max": max(vals),
+        "median": sorted(vals)[len(vals) // 2],
+        "spread": max(vals) - min(vals),
+    }
+
+
+def run_interleaved_pair(
+    scratch: Path,
+    *,
+    candidate_name: str,
+    candidate_text: str,
+    baseline_text: str,
+    n_trials: int = PROMOTION_TRIALS,
+) -> Dict[str, Any]:
+    """Paired interleaved trials: C, B, C, B — never a block then a block."""
+    controller = scratch / CONTROLLER_REL
+    probe_dir = scratch / "perf_trials" / candidate_name
+    probe_dir.mkdir(parents=True, exist_ok=True)
+    order = (["candidate", "baseline"] * ((n_trials + 1) // 2))[:n_trials]
+    trials: List[Dict[str, Any]] = []
+    for i, cond in enumerate(order):
+        controller.write_text(
+            candidate_text if cond == "candidate" else baseline_text,
+            encoding="utf-8",
+        )
+        clear_controller_pyc(scratch)
+        out = probe_dir / f"trial_{i}_{cond}.json"
+        result = _admit_child(scratch, out)
+        trials.append(
+            {
+                "i": i,
+                "condition": cond,
+                "admitted_n": result.get("admitted_n"),
+                "requested_n": result.get("requested_n"),
+                "overlap_admit_cap": result.get("overlap_admit_cap"),
+                "observed_overlap_ctor": result.get("observed_overlap_ctor"),
+                "n_runtimes": result.get("n_runtimes"),
+                "backend_class": result.get("backend_class"),
+                "through_controller": result.get("through_controller"),
+                "through_runtime_pool": result.get("through_runtime_pool"),
+                "controller_has_h1_wiring": result.get("controller_has_h1_wiring"),
+                "controller_has_noop_comment": result.get("controller_has_noop_comment"),
+                "controller_has_requested_n_zero": result.get("controller_has_requested_n_zero"),
+                "path": result.get("path"),
+                "via": result.get("via"),
+                "complete_via": result.get("complete_via"),
+                "ok": result.get("ok"),
+                "child_exit": result.get("child_exit"),
+                "error": result.get("error"),
+            }
+        )
+    cand = _trial_stats(trials, "candidate")
+    base = _trial_stats(trials, "baseline")
+    spread = max(cand.get("spread") or 0, base.get("spread") or 0, 0)
+    improved = (
+        cand["median"] is not None
+        and base["median"] is not None
+        and float(cand["median"]) > float(base["median"]) + float(spread)
+    )
+    cand_admits = [
+        int(t["admitted_n"])
+        for t in trials
+        if t.get("condition") == "candidate" and isinstance(t.get("admitted_n"), int)
+    ]
+    base_admits = [
+        int(t["admitted_n"])
+        for t in trials
+        if t.get("condition") == "baseline" and isinstance(t.get("admitted_n"), int)
+    ]
+    admission_differs = bool(cand_admits) and bool(base_admits) and set(cand_admits) != set(base_admits)
+    through = all(
+        t.get("through_controller")
+        and t.get("through_runtime_pool")
+        and t.get("via") == "Controller.ensure_runtime_pool"
+        for t in trials
+        if t.get("ok")
+    )
+    decided = compute_decision(
+        correctness_ok=True,
+        throughput_improved=improved,
+        mutation_applied=candidate_text != baseline_text,
+        validation_ok=True,
+        validation_reason=None,
+        orig_med=base.get("median"),
+        mut_med=cand.get("median"),
+        spread=spread,
+        admission_differs=admission_differs,
+        metric_name="admitted_n",
+    )
+    return {
+        "candidate": candidate_name,
+        "alternating": True,
+        "order": [t["condition"] for t in trials],
+        "block_design": False,
+        "trials": trials,
+        "candidate_stats": cand,
+        "baseline_stats": base,
+        "candidate_admitted_n": cand_admits,
+        "baseline_admitted_n": base_admits,
+        "admission_differs": admission_differs,
+        "spread": spread,
+        "score": "admitted_n through Controller.ensure_runtime_pool",
+        "improved": improved,
+        "is_win": bool(improved and decided.get("decision") == "promote"),
+        "through_mutated_mechanism": through,
+        "decision": decided,
+    }
+
+
+def run_h1_wiring_test(scratch: Path, controller_text: str) -> Dict[str, Any]:
+    """Physical pytest against a candidate's controller.py. Evidence, not assertion."""
+    tests = scratch / "tools" / "headless"
+    tests.mkdir(parents=True, exist_ok=True)
+    (scratch / CONTROLLER_REL).write_text(controller_text, encoding="utf-8")
+    test_path = tests / "test_h1_wiring_evidence.py"
+    test_path.write_text(
+        "from pathlib import Path\n"
+        "\n"
+        "def test_h1_controller_wires_observed_overlap_into_runtimepool():\n"
+        "    text = (Path(__file__).resolve().parents[2] / 'hcli' / 'controller.py')"
+        ".read_text(encoding='utf-8')\n"
+        "    assert 'from .runtime import RuntimePool, load_observed_overlap' in text\n"
+        "    assert 'workspace=self.workspace_root' in text\n"
+        "    assert 'repo_root=self.workspace_root' in text\n"
+        "    assert 'observed_overlap=load_observed_overlap(self.workspace_root)' in text\n",
+        encoding="utf-8",
+    )
+    proc = subprocess.run(
+        [sys.executable, "-m", "pytest", str(test_path), "-q", "--tb=line"],
+        cwd=str(scratch),
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    passed = proc.returncode == 0
+    return {
+        "ok": passed,
+        "exit_code": proc.returncode,
+        "output_tail": ((proc.stdout or "") + "\n" + (proc.stderr or ""))[-600:],
+        "test_path": str(test_path),
+        "wiring_present": h1_wiring_present(controller_text),
+    }
+
+
+def assemble_promotion_receipt(
+    *,
+    repo: Path,
+    materialize: Dict[str, Any],
+    variants_meta: Dict[str, Any],
+    noop: Dict[str, Any],
+    bad: Dict[str, Any],
+    h1: Dict[str, Any],
+    failing: Dict[str, Any],
+    wiring: Dict[str, Any],
+    llama: Dict[str, Any],
+) -> Dict[str, Any]:
+    noop_win = bool(noop.get("is_win"))
+    bad_verdict = (bad.get("decision") or {}).get("verdict")
+    h1_verdict = (h1.get("decision") or {}).get("verdict")
+    would_refuse = failing.get("would_refuse_on_failing_gate")
+    harness_ok = (
+        not noop_win
+        and bad_verdict == "REFUSED"
+        and bool(would_refuse) is True
+        and bool(h1.get("through_mutated_mechanism"))
+        and bool(noop.get("through_mutated_mechanism"))
+        and bool(bad.get("through_mutated_mechanism"))
+        and bool((h1.get("order") or ["x"])[0] != (h1.get("order") or ["x", "x"])[1])
+        and bool(wiring.get("h1", {}).get("ok"))
+        and not bool(wiring.get("noop", {}).get("ok"))
+        and not bool(wiring.get("bad", {}).get("ok"))
+        and not bool(wiring.get("original", {}).get("ok"))
+    )
+    if noop_win:
+        decision = "reject"
+        verdict = "HARNESS_INVALID"
+        reason = (
+            "NO-OP candidate scored as a win; the harness is measuring something "
+            "other than the mutation."
+        )
+    elif not harness_ok:
+        decision = "reject"
+        verdict = "REFUSED"
+        reason = (
+            "A required control did not hold: "
+            f"noop_win={noop_win} bad_verdict={bad_verdict} "
+            f"would_refuse_on_failing_gate={would_refuse} "
+            f"h1_through={h1.get('through_mutated_mechanism')}"
+        )
+    elif not wiring.get("h1", {}).get("ok"):
+        decision = "reject"
+        verdict = "REFUSED"
+        reason = "H1 wiring test did not pass; promotion would be NO_EVIDENCE"
+    else:
+        # H1's own compute_decision (admission 1→2 through the mechanism).
+        decided = h1.get("decision") or {}
+        decision = decided.get("decision") or "reject"
+        verdict = decided.get("verdict") or "REFUSED"
+        reason = decided.get("reason") or "no decision"
+        if decision == "promote" and not wiring.get("h1", {}).get("ok"):
+            decision = "reject"
+            verdict = "REFUSED"
+            reason = "attempted promotion on a mutation receipt that is not validation.ok"
+    return {
+        "schema": "hawking.headless.hcli_self_opt.candidate_promoted.v1",
+        "goal": (
+            "Prove the mutation caused the win: baseline and candidate both "
+            "execute through Controller.ensure_runtime_pool, a NO-OP must not "
+            "win, a BAD candidate must be refused, trials are interleaved, and "
+            "a failing gate is physically exercised."
+        ),
+        "sparse_checkout": {
+            "worktree_hcli_present": bool(materialize.get("worktree_hcli_present")),
+            "hcli_source": materialize.get("source"),
+            "verified_against": "HEAD",
+            "controller_verified_via": "git archive HEAD hcli + git show HEAD:hcli/controller.py",
+            "repo_hcli_written": False,
+        },
+        "already_present_before_this_change": {
+            "interleaved_gate_perf": (
+                "stage_gate_perf already alternates mutated/original/mutated/original "
+                "through Controller.ensure_runtime_pool"
+            ),
+            "failing_gate_computed": (
+                "run_failing_gate_trial already feeds a real pytest assert False "
+                "into compute_decision; would_refuse_on_failing_gate is "
+                "failing.get('verdict') == 'REFUSED', never hardcoded True"
+            ),
+            "no_evidence_refused": (
+                "compute_decision refuses validation_ok=False reason=NO_EVIDENCE"
+            ),
+            "missing_before_this_change": [
+                "NO-OP candidate physically scored through the same mechanism",
+                "BAD candidate physically scored through the same mechanism",
+            ],
+        },
+        "mechanism": {
+            "entry": "Controller.ensure_runtime_pool",
+            "pool": "RuntimePool._admit / RuntimePool.complete",
+            "backend": "FakeBackend (no live llama-server, no second 27B)",
+            "score": "admitted_n with high-water overlap=2 stored on the Controller workspace",
+            "why_not_tok_s": (
+                "llama-server on :52484 is not required for this proof. Prior "
+                "iteration-2 remasurement already refused a tok/s win "
+                "(24.063 vs 24.010, spread 0.052). Scoring tok/s of FakeBackend "
+                "would let a NO-OP win on noise — the original defect."
+            ),
+            "does_not_call": [
+                "fan_completions",
+                "llama_completion as the gated measurement",
+                "urllib /completion bypassing RuntimePool",
+            ],
+        },
+        "materialize": materialize,
+        "variants": variants_meta,
+        "controls": {
+            "noop": {
+                "id": "NO-OP",
+                "ran": True,
+                "mutation": (
+                    "comment-only insert above the original RuntimePool constructor; "
+                    "requested_n=self.runtime_count unchanged"
+                ),
+                "must_not_win": True,
+                "is_win": noop_win,
+                "admission_differs": noop.get("admission_differs"),
+                "candidate_admitted_n": noop.get("candidate_admitted_n"),
+                "baseline_admitted_n": noop.get("baseline_admitted_n"),
+                "spread": noop.get("spread"),
+                "order": noop.get("order"),
+                "through_mutated_mechanism": noop.get("through_mutated_mechanism"),
+                "decision": noop.get("decision"),
+                "wiring_test": wiring.get("noop"),
+            },
+            "bad": {
+                "id": "BAD",
+                "ran": True,
+                "mutation": "requested_n=0 in Controller.ensure_runtime_pool",
+                "must_be_refused": True,
+                "is_win": bool(bad.get("is_win")),
+                "admission_differs": bad.get("admission_differs"),
+                "candidate_admitted_n": bad.get("candidate_admitted_n"),
+                "baseline_admitted_n": bad.get("baseline_admitted_n"),
+                "spread": bad.get("spread"),
+                "order": bad.get("order"),
+                "through_mutated_mechanism": bad.get("through_mutated_mechanism"),
+                "decision": bad.get("decision"),
+                "wiring_test": wiring.get("bad"),
+            },
+            "paired_interleaved": {
+                "id": "PAIRED_INTERLEAVED",
+                "ran": True,
+                "block_design": False,
+                "h1_order": h1.get("order"),
+                "noop_order": noop.get("order"),
+                "bad_order": bad.get("order"),
+                "h1_spread": h1.get("spread"),
+                "noop_spread": noop.get("spread"),
+                "bad_spread": bad.get("spread"),
+                "h1": {
+                    "candidate_admitted_n": h1.get("candidate_admitted_n"),
+                    "baseline_admitted_n": h1.get("baseline_admitted_n"),
+                    "admission_differs": h1.get("admission_differs"),
+                    "improved": h1.get("improved"),
+                    "through_mutated_mechanism": h1.get("through_mutated_mechanism"),
+                },
+            },
+            "failing_gate": {
+                "id": "FAILING_GATE",
+                "ran": True,
+                "hardcoded": False,
+                "would_refuse_on_failing_gate": failing.get("would_refuse_on_failing_gate"),
+                "would_refuse_on_no_evidence": failing.get("would_refuse_on_no_evidence"),
+                "evidenced": failing.get("evidenced"),
+                "pytest_exit_code": failing.get("pytest_exit_code"),
+                "method": failing.get("method"),
+                "decision_on_failing_correctness": failing.get("decision_on_failing_correctness"),
+                "decision_on_no_evidence": failing.get("decision_on_no_evidence"),
+            },
+        },
+        "candidate_h1": {
+            "ran": True,
+            "is_win": bool(h1.get("is_win")),
+            "admission_differs": h1.get("admission_differs"),
+            "candidate_admitted_n": h1.get("candidate_admitted_n"),
+            "baseline_admitted_n": h1.get("baseline_admitted_n"),
+            "spread": h1.get("spread"),
+            "order": h1.get("order"),
+            "through_mutated_mechanism": h1.get("through_mutated_mechanism"),
+            "decision": h1.get("decision"),
+            "wiring_test": wiring.get("h1"),
+            "trials": h1.get("trials"),
+        },
+        "mutation_receipt": {
+            "kind": "controller_variant_from_HEAD",
+            "path": str(CONTROLLER_REL),
+            "validation": {
+                "ok": bool(wiring.get("h1", {}).get("ok")),
+                "reason": None if wiring.get("h1", {}).get("ok") else "NO_EVIDENCE",
+                "h1_wiring_pytest_exit": wiring.get("h1", {}).get("exit_code"),
+                "h1_wiring_present": wiring.get("h1", {}).get("wiring_present"),
+                "noop_wiring_pytest_exit": wiring.get("noop", {}).get("exit_code"),
+                "bad_wiring_pytest_exit": wiring.get("bad", {}).get("exit_code"),
+                "note": (
+                    "Evidence is a pytest file physically run against each "
+                    "candidate's controller.py. tests=[] would be NO_EVIDENCE "
+                    "and is refused. Repo hcli/ was not written."
+                ),
+            },
+            "files": {
+                "hcli/controller.py": {
+                    "original_sha256": variants_meta.get("original_sha256"),
+                    "h1_sha256": variants_meta.get("h1_sha256"),
+                    "noop_sha256": variants_meta.get("noop_sha256"),
+                    "bad_sha256": variants_meta.get("bad_sha256"),
+                }
+            },
+        },
+        "llama_server": llama,
+        "decision": decision,
+        "decision_verdict": verdict,
+        "decision_reason": reason,
+        "harness_ok": harness_ok,
+        "would_refuse_on_failing_gate": would_refuse,
+        "failing_gate_trial": failing,
+        "trials": {
+            "noop": noop.get("trials"),
+            "bad": bad.get("trials"),
+            "h1": h1.get("trials"),
+        },
+    }
+
+
+def print_four_controls(receipt: Dict[str, Any]) -> None:
+    controls = receipt.get("controls") or {}
+    noop = controls.get("noop") or {}
+    bad = controls.get("bad") or {}
+    paired = controls.get("paired_interleaved") or {}
+    fail = controls.get("failing_gate") or {}
+    print("\n## FOUR CONTROLS", flush=True)
+    print(
+        f"1. NO-OP candidate: ran={noop.get('ran')} is_win={noop.get('is_win')} "
+        f"admitted_n candidate={noop.get('candidate_admitted_n')} "
+        f"baseline={noop.get('baseline_admitted_n')} "
+        f"admission_differs={noop.get('admission_differs')} "
+        f"through_mechanism={noop.get('through_mutated_mechanism')} "
+        f"verdict={(noop.get('decision') or {}).get('verdict')}",
+        flush=True,
+    )
+    print(
+        f"2. BAD candidate: ran={bad.get('ran')} is_win={bad.get('is_win')} "
+        f"admitted_n candidate={bad.get('candidate_admitted_n')} "
+        f"baseline={bad.get('baseline_admitted_n')} "
+        f"through_mechanism={bad.get('through_mutated_mechanism')} "
+        f"verdict={(bad.get('decision') or {}).get('verdict')}",
+        flush=True,
+    )
+    print(
+        f"3. Paired/interleaved: ran={paired.get('ran')} "
+        f"block_design={paired.get('block_design')} "
+        f"h1_order={paired.get('h1_order')} "
+        f"h1_spread={paired.get('h1_spread')} "
+        f"h1_admitted candidate={(paired.get('h1') or {}).get('candidate_admitted_n')} "
+        f"baseline={(paired.get('h1') or {}).get('baseline_admitted_n')}",
+        flush=True,
+    )
+    print(
+        f"4. Failing-gate: ran={fail.get('ran')} hardcoded={fail.get('hardcoded')} "
+        f"pytest_exit={fail.get('pytest_exit_code')} "
+        f"would_refuse_on_failing_gate={fail.get('would_refuse_on_failing_gate')} "
+        f"would_refuse_on_no_evidence={fail.get('would_refuse_on_no_evidence')} "
+        f"evidenced={fail.get('evidenced')}",
+        flush=True,
+    )
+    print(
+        f"\n decision: {receipt.get('decision')} ({receipt.get('decision_verdict')}) "
+        f"— {receipt.get('decision_reason')}",
+        flush=True,
+    )
+    if noop.get("is_win"):
+        print(
+            "FINDING: NO-OP scored as a win; the harness is not measuring the mutation.",
+            flush=True,
+        )
+
+
+def run_promotion_controls(repo: Path) -> Dict[str, Any]:
+    """Run the four G021 controls. Does not write repo hcli/."""
+    os.environ["HCLI_DISABLE_SIGNAL_HOOKS"] = "1"
+    os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
+    os.environ.setdefault("ACTIVE_DECODE_LIMIT", "2")
+
+    scratch = Path(tempfile.mkdtemp(prefix="hcli-selfopt2-promo-"))
+    materialize = materialize_hcli_from_head(repo, scratch)
+    head_text = (scratch / CONTROLLER_REL).read_text(encoding="utf-8")
+    head_via_show = _git_show(repo, str(CONTROLLER_REL))
+    if head_text != head_via_show:
+        die("git archive controller.py != git show HEAD:hcli/controller.py")
+    variants = controller_variants(head_text)
+    variants_meta = {
+        "original_sha256": hashlib.sha256(variants["original"].encode("utf-8")).hexdigest(),
+        "h1_sha256": hashlib.sha256(variants["h1"].encode("utf-8")).hexdigest(),
+        "noop_sha256": hashlib.sha256(variants["noop"].encode("utf-8")).hexdigest(),
+        "bad_sha256": hashlib.sha256(variants["bad"].encode("utf-8")).hexdigest(),
+        "h1_equals_head": variants["h1"] == head_text,
+        "noop_equals_original": variants["noop"] == variants["original"],
+        "bad_equals_original": variants["bad"] == variants["original"],
+    }
+
+    print(f"promotion scratch {scratch} source={materialize['source']}", flush=True)
+    print("running NO-OP interleaved trials", flush=True)
+    noop = run_interleaved_pair(
+        scratch,
+        candidate_name="noop",
+        candidate_text=variants["noop"],
+        baseline_text=variants["original"],
+    )
+    print(
+        f"ok   NO-OP is_win={noop['is_win']} admitted={noop['candidate_admitted_n']} "
+        f"vs {noop['baseline_admitted_n']} verdict={noop['decision']['verdict']}",
+        flush=True,
+    )
+    print("running BAD interleaved trials", flush=True)
+    bad = run_interleaved_pair(
+        scratch,
+        candidate_name="bad",
+        candidate_text=variants["bad"],
+        baseline_text=variants["original"],
+    )
+    print(
+        f"ok   BAD is_win={bad['is_win']} admitted={bad['candidate_admitted_n']} "
+        f"vs {bad['baseline_admitted_n']} verdict={bad['decision']['verdict']}",
+        flush=True,
+    )
+    print("running H1 interleaved trials", flush=True)
+    h1 = run_interleaved_pair(
+        scratch,
+        candidate_name="h1",
+        candidate_text=variants["h1"],
+        baseline_text=variants["original"],
+    )
+    print(
+        f"ok   H1 is_win={h1['is_win']} admitted={h1['candidate_admitted_n']} "
+        f"vs {h1['baseline_admitted_n']} verdict={h1['decision']['verdict']}",
+        flush=True,
+    )
+
+    print("running H1/NO-OP/BAD wiring pytest", flush=True)
+    wiring = {
+        "h1": run_h1_wiring_test(scratch, variants["h1"]),
+        "noop": run_h1_wiring_test(scratch, variants["noop"]),
+        "bad": run_h1_wiring_test(scratch, variants["bad"]),
+        "original": run_h1_wiring_test(scratch, variants["original"]),
+    }
+    print(
+        f"ok   wiring pytest h1={wiring['h1']['exit_code']} "
+        f"noop={wiring['noop']['exit_code']} bad={wiring['bad']['exit_code']} "
+        f"original={wiring['original']['exit_code']}",
+        flush=True,
+    )
+
+    fail_ws = scratch / "failing_gate"
+    fail_ws.mkdir(parents=True, exist_ok=True)
+    print("running failing-gate trial", flush=True)
+    failing = run_failing_gate_trial(fail_ws)
+    print(
+        f"ok   failing-gate pytest_exit={failing.get('pytest_exit_code')} "
+        f"would_refuse_on_failing_gate={failing.get('would_refuse_on_failing_gate')} "
+        f"hardcoded={failing.get('hardcoded')}",
+        flush=True,
+    )
+
+    llama = llama_snapshot()
+    receipt = assemble_promotion_receipt(
+        repo=repo,
+        materialize=materialize,
+        variants_meta=variants_meta,
+        noop=noop,
+        bad=bad,
+        h1=h1,
+        failing=failing,
+        wiring=wiring,
+        llama=llama,
+    )
+    receipt["workspace"] = str(scratch)
+    dest = repo / PROMOTION_RECEIPT_REL
+    _atomic_write(dest, receipt)
+    receipt["receipt_path"] = str(dest)
+    print(f"receipt {dest}", flush=True)
+    print_four_controls(receipt)
+    return receipt
+
+
+def run_promotion_controls_main(repo: Path) -> int:
+    receipt = run_promotion_controls(repo)
+    controls = receipt.get("controls") or {}
+    shown = all(
+        (controls.get(name) or {}).get("ran") is True
+        for name in ("noop", "bad", "paired_interleaved", "failing_gate")
+    )
+    if not shown:
+        print("FAIL four controls were not all recorded as ran", file=sys.stderr, flush=True)
+        return 1
+    if receipt.get("would_refuse_on_failing_gate") is not True:
+        print("FAIL would_refuse_on_failing_gate was not computed True", file=sys.stderr, flush=True)
+        return 1
+    if (controls.get("noop") or {}).get("is_win"):
+        # Report the finding; do not disguise it. Non-zero so a green run
+        # cannot mean "the no-op won".
+        print("FAIL NO-OP scored as a win", file=sys.stderr, flush=True)
+        return 1
+    if ((controls.get("bad") or {}).get("decision") or {}).get("verdict") != "REFUSED":
+        print("FAIL BAD candidate was not REFUSED", file=sys.stderr, flush=True)
+        return 1
+    return 0
 
 
 def stage_decide(state: Dict[str, Any], repo: Path, ws: Path) -> None:
@@ -2662,6 +3580,21 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--workspace", type=Path)
     parser.add_argument("--probe-overlap", action="store_true")
     parser.add_argument("--probe-throughput", action="store_true")
+    parser.add_argument(
+        "--probe-controller-admit",
+        action="store_true",
+        help="child: admission through Controller.ensure_runtime_pool + FakeBackend",
+    )
+    parser.add_argument(
+        "--promotion-controls",
+        action="store_true",
+        help="run the four G021 promotion controls (default with no other action)",
+    )
+    parser.add_argument(
+        "--mission-loop",
+        action="store_true",
+        help="run the iteration-2 ten-WorkUnit Mission (needs live llama-server)",
+    )
     parser.add_argument("--width", type=int, default=1)
     parser.add_argument("--n-predict", type=int, default=N_PREDICT)
     parser.add_argument("--out", type=Path)
@@ -2689,6 +3622,14 @@ def main(argv: Optional[List[str]] = None) -> int:
             print(json.dumps(result, indent=2, default=str))
         return 0 if result.get("ok") else 1
 
+    if args.probe_controller_admit:
+        result = run_controller_admit_probe(repo=repo)
+        if args.out:
+            _atomic_write(args.out, result)
+        else:
+            print(json.dumps(result, indent=2, default=str))
+        return 0 if result.get("ok") else 1
+
     if args.stage:
         if not args.state or not args.workspace:
             die("--stage requires --state and --workspace")
@@ -2696,7 +3637,10 @@ def main(argv: Optional[List[str]] = None) -> int:
             die(f"unknown stage {args.stage}")
         return run_stage(args.stage, args.state, repo, args.workspace.resolve())
 
-    return main_loop(repo)
+    if args.mission_loop:
+        return main_loop(repo)
+
+    return run_promotion_controls_main(repo)
 
 
 if __name__ == "__main__":

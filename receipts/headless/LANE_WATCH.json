@@ -1,15 +1,25 @@
 {
-  "generated_at": "2026-08-23T22:46:26Z",
+  "generated_at": "2026-08-23T22:49:34Z",
   "running": [
     "g012aff64",
     "g015handoff",
-    "g021selfopt"
+    "g027exec"
   ],
-  "needs_harvest": [],
+  "needs_harvest": [
+    {
+      "slug": "g021selfopt",
+      "id": "g021selfopt-20260823-182725",
+      "unharvested": [
+        "receipts/headless/SELF_OPT_CANDIDATE_PROMOTED.json",
+        "tools/headless/test_self_opt_promotion_controls.py"
+      ],
+      "worktree_extras": 0
+    }
+  ],
   "headroom": {
-    "load1": 6.23681640625,
+    "load1": 19.10693359375,
     "ncpu": 28,
-    "disk_gib": 398.5,
+    "disk_gib": 396.5,
     "room_for_more": true
   }
 }

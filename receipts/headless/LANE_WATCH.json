@@ -1,17 +1,25 @@
 {
-  "generated_at": "2026-08-23T21:31:50Z",
+  "generated_at": "2026-08-23T21:33:22Z",
   "running": [
-    "g004ir",
     "g006gravity",
     "g012exec",
     "g028auth2",
     "g031canon"
   ],
-  "needs_harvest": [],
+  "needs_harvest": [
+    {
+      "slug": "g004ir",
+      "id": "g004ir-20260823-172007",
+      "unharvested": [
+        "receipts/headless/NOETIC_IR.json"
+      ],
+      "worktree_extras": 2
+    }
+  ],
   "headroom": {
-    "load1": 6.7294921875,
+    "load1": 4.9970703125,
     "ncpu": 28,
-    "disk_gib": 434.2,
+    "disk_gib": 431.0,
     "room_for_more": true
   }
 }

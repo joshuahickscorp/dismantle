@@ -1,15 +1,25 @@
 {
-  "generated_at": "2026-08-23T21:49:12Z",
+  "generated_at": "2026-08-23T21:56:32Z",
   "running": [
-    "g006gravity",
     "g012q3mix",
     "g028auth2"
   ],
-  "needs_harvest": [],
+  "needs_harvest": [
+    {
+      "slug": "g006gravity",
+      "id": "g006gravity-20260823-172647",
+      "unharvested": [
+        "receipts/headless/GRAVITY_COMPILER_SEARCH.json",
+        "tools/headless/gravity_compiler_search.py",
+        "tools/headless/test_gravity_compiler_search.py"
+      ],
+      "worktree_extras": 0
+    }
+  ],
   "headroom": {
-    "load1": 6.0361328125,
+    "load1": 7.77490234375,
     "ncpu": 28,
-    "disk_gib": 428.9,
+    "disk_gib": 422.1,
     "room_for_more": true
   }
 }

@@ -1,0 +1,3347 @@
+{
+  "ast_waste": {
+    "module_count": 33,
+    "totals": {
+      "ast.parse": 4,
+      "hashlib.sha256": 13,
+      "json.loads": 31,
+      "os.walk": 4,
+      "shutil.which": 3,
+      "subprocess": 20
+    }
+  },
+  "dynamic_trace": {
+    "checkpoint": {
+      "counts": {
+        "hashlib.sha256": 32,
+        "hashlib.sha256_bytes": 5772,
+        "json.loads": 1
+      },
+      "examples": {},
+      "ms": 1.008
+    },
+    "dag_save_again": {
+      "counts": {
+        "hashlib.sha256": 24,
+        "hashlib.sha256_bytes": 4329,
+        "json.loads": 1
+      },
+      "examples": {},
+      "ms": 0.577
+    },
+    "fingerprint_large_artifact": {
+      "counts": {
+        "hashlib.sha256": 2,
+        "hashlib.sha256_bytes": 176,
+        "json.loads": 1,
+        "os.walk": 1
+      },
+      "examples": {
+        "os.walk": [
+          "/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/cpl-ws-3w7tknvc"
+        ]
+      },
+      "ms": 3.051
+    },
+    "fingerprint_small": {
+      "counts": {
+        "hashlib.sha256": 1,
+        "hashlib.sha256_bytes": 0,
+        "os.walk": 1
+      },
+      "examples": {
+        "os.walk": [
+          "/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/cpl-ws-w9y2j3ew"
+        ]
+      },
+      "ms": 0.143
+    },
+    "memgate_consider": {
+      "counts": {
+        "shutil.which": 1,
+        "subprocess.Popen": 9,
+        "subprocess.run": 9
+      },
+      "examples": {
+        "shutil.which": [
+          "swift"
+        ],
+        "subprocess.Popen": [
+          "['swift', '/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/tmp2uis7yot.swift']",
+          "['sysctl', '-n', 'hw.memsize']",
+          "['sysctl', '-n', 'machdep.cpu.brand_string']",
+          "['sysctl', '-n', 'iogpu.wired_limit_mb']",
+          "['sysctl', '-n', 'vm.pagesize']",
+          "['vm_stat']",
+          "['sysctl', '-n', 'hw.memsize']",
+          "['memory_pressure', '-Q']"
+        ],
+        "subprocess.run": [
+          "['swift', '/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/tmp2uis7yot.swift']",
+          "['sysctl', '-n', 'hw.memsize']",
+          "['sysctl', '-n', 'machdep.cpu.brand_string']",
+          "['sysctl', '-n', 'iogpu.wired_limit_mb']",
+          "['sysctl', '-n', 'vm.pagesize']",
+          "['vm_stat']",
+          "['sysctl', '-n', 'hw.memsize']",
+          "['memory_pressure', '-Q']"
+        ]
+      },
+      "ms": 269.225
+    },
+    "model_discovery": {
+      "counts": {
+        "os.walk": 1
+      },
+      "examples": {
+        "os.walk": [
+          "/Users/scammermike/models"
+        ]
+      },
+      "ms": 1.302
+    },
+    "scheduler_dispatch": {
+      "counts": {
+        "hashlib.sha256": 24,
+        "hashlib.sha256_bytes": 4329,
+        "json.loads": 1
+      },
+      "examples": {},
+      "ms": 0.756
+    }
+  },
+  "fast_paths": [
+    {
+      "cold_median_ms": 0.158,
+      "id": "dag_load",
+      "warm_median_ms": 0.098,
+      "why": "measured fast; not a defect"
+    },
+    {
+      "cold_median_ms": 0.644,
+      "id": "dag_save",
+      "warm_median_ms": 0.563,
+      "why": "measured fast; not a defect"
+    },
+    {
+      "cold_median_ms": 0.371,
+      "id": "context_compile",
+      "warm_median_ms": 0.12,
+      "why": "measured fast; not a defect"
+    },
+    {
+      "cold_median_ms": 0.086,
+      "id": "worker_packet",
+      "warm_median_ms": 0.039,
+      "why": "measured fast; not a defect"
+    },
+    {
+      "cold_median_ms": 0.016,
+      "id": "status_render",
+      "warm_median_ms": 0.004,
+      "why": "measured fast; not a defect"
+    },
+    {
+      "cold_median_ms": 0.549,
+      "id": "scheduler_cycle",
+      "warm_median_ms": 0.44,
+      "why": "measured fast; not a defect"
+    },
+    {
+      "cold_median_ms": 1.027,
+      "id": "receipt_write",
+      "warm_median_ms": 0.23,
+      "why": "measured fast; not a defect"
+    },
+    {
+      "cold_median_ms": 0.89,
+      "id": "checkpoint",
+      "warm_median_ms": 0.751,
+      "why": "measured fast; not a defect"
+    },
+    {
+      "cold_median_ms": 1.041,
+      "id": "model_discovery",
+      "warm_median_ms": 0.784,
+      "why": "measured fast; not a defect"
+    },
+    {
+      "cold_median_ms": 3.284,
+      "id": "fingerprint",
+      "warm_median_ms": 3.312,
+      "why": "measured fast; not a defect"
+    },
+    {
+      "cold_median_ms": 2.296,
+      "id": "hash_artifact",
+      "warm_median_ms": 2.155,
+      "why": "measured fast; not a defect"
+    },
+    {
+      "cold_median_ms": 0.051,
+      "id": "tool_discovery",
+      "warm_median_ms": 0.012,
+      "why": "measured fast; not a defect"
+    },
+    {
+      "cold_median_ms": 0.19,
+      "id": "resource_limits",
+      "warm_median_ms": 0.054,
+      "why": "measured fast; not a defect"
+    }
+  ],
+  "gate": "CONTROL_PLANE_LATENCY",
+  "generated_at": "2026-08-23T20:46:21Z",
+  "git_head": "38ab698658b4c7966d1b85f96047d886c6e43ad0",
+  "largest_removable_cost": {
+    "cold_median_ms": 425.209,
+    "id": "grok_bridge",
+    "label": "GrokBridge.consult(..., dry_run=True) \u2014 no model session",
+    "ms": 425.209,
+    "remove_by": "dry_run still spawns grok-run (Node) to print argv. Construct the argv in-process when dry_run=True; spawn only for live launches. Cache find_grok_run() instead of shutil.which on every call.",
+    "warm_median_ms": 417.708,
+    "which_figure": "cold_median_ms minus irreducible floor_ms"
+  },
+  "measurements": [
+    {
+      "category": "python_interpreter_spawns",
+      "cold_ms": {
+        "max": 21.235,
+        "mean": 20.757,
+        "median": 20.819,
+        "min": 20.292,
+        "n": 5,
+        "samples": [
+          20.863,
+          20.292,
+          20.819,
+          20.575,
+          21.235
+        ],
+        "stdev": 0.314
+      },
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "-c",
+        "pass"
+      ],
+      "floor_ms": 0.0,
+      "id": "python_pass",
+      "label": "Python interpreter spawn (python3 -c pass)",
+      "notes": "Irreducible floor of any Python subprocess. Each process is a cold interpreter; warm is later processes (page cache). Not a defect.",
+      "ok": true,
+      "removable": false,
+      "removable_ms": null,
+      "remove_by": "",
+      "warm_ms": {
+        "max": 21.235,
+        "mean": 20.73,
+        "median": 20.697,
+        "min": 20.292,
+        "n": 4,
+        "samples": [
+          20.292,
+          20.819,
+          20.575,
+          21.235
+        ],
+        "stdev": 0.346
+      }
+    },
+    {
+      "category": "cli_startup",
+      "cold_ms": {
+        "max": 42.535,
+        "mean": 36.792,
+        "median": 34.488,
+        "min": 33.483,
+        "n": 5,
+        "samples": [
+          34.488,
+          33.483,
+          34.116,
+          39.34,
+          42.535
+        ],
+        "stdev": 3.547
+      },
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "-c",
+        "import argparse,sys\np=argparse.ArgumentParser(prog='hcli',description='HCLI \u2014 autonomous local model engineering')\ntry:\n p.parse_args(['--help'])\nexcept SystemExit:\n pass\n"
+      ],
+      "floor_ms": 0.0,
+      "id": "argparse_help",
+      "label": "argparse --help floor (no hcli import)",
+      "notes": "Help-path floor. Fast. --help should approach this, not Controller import.",
+      "ok": true,
+      "removable": false,
+      "removable_ms": null,
+      "remove_by": "",
+      "warm_ms": {
+        "max": 42.535,
+        "mean": 37.368,
+        "median": 36.728,
+        "min": 33.483,
+        "n": 4,
+        "samples": [
+          33.483,
+          34.116,
+          39.34,
+          42.535
+        ],
+        "stdev": 3.75
+      }
+    },
+    {
+      "category": "cli_startup",
+      "cold_ms": {
+        "max": 145.157,
+        "mean": 138.072,
+        "median": 135.457,
+        "min": 135.042,
+        "n": 5,
+        "samples": [
+          145.157,
+          135.042,
+          135.457,
+          135.232,
+          139.473
+        ],
+        "stdev": 3.905
+      },
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "-m",
+        "hcli",
+        "--help"
+      ],
+      "extra": {
+        "returncodes": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "floor_ms": 34.488,
+      "id": "cli_startup",
+      "label": "CLI startup (python3 -m hcli --help)",
+      "notes": "Fresh process each sample. Cold is the first process (page-cache cold); warm is later processes. Package __init__ imports Controller, so --help pays the Engine/Runtime/Mission import graph. See STARTUP_CENSUS D1.",
+      "ok": true,
+      "removable": true,
+      "removable_ms": 100.969,
+      "remove_by": "Stop importing Controller from tools/haider/hcli/__init__.py on the help path (PEP 562 __getattr__). argparse --help sys.exits before App.",
+      "warm_ms": {
+        "max": 139.473,
+        "mean": 136.301,
+        "median": 135.345,
+        "min": 135.042,
+        "n": 4,
+        "samples": [
+          135.042,
+          135.457,
+          135.232,
+          139.473
+        ],
+        "stdev": 1.837
+      }
+    },
+    {
+      "category": "import",
+      "cold_ms": {
+        "max": 93.466,
+        "mean": 84.023,
+        "median": 82.029,
+        "min": 79.078,
+        "n": 5,
+        "samples": [
+          80.11,
+          79.078,
+          93.466,
+          82.029,
+          85.43
+        ],
+        "stdev": 5.194
+      },
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "/Users/scammermike/.claude-grok/worktrees/g030perf-20260823-162830/tools/headless/control_plane_latency.py",
+        "--worker",
+        "import_hcli"
+      ],
+      "floor_ms": 0.0,
+      "id": "import_hcli",
+      "label": "import hcli (package init pulls Controller)",
+      "notes": "",
+      "ok": true,
+      "removable": true,
+      "removable_ms": 82.029,
+      "remove_by": "Defer Controller/Workspace/EventBus in __init__.py via __getattr__.",
+      "warm_ms": {
+        "max": 0.0,
+        "mean": 0.0,
+        "median": 0.0,
+        "min": 0.0,
+        "n": 25,
+        "samples": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stdev": 0.0
+      }
+    },
+    {
+      "category": "import",
+      "cold_ms": {
+        "max": 90.883,
+        "mean": 86.221,
+        "median": 85.046,
+        "min": 83.254,
+        "n": 5,
+        "samples": [
+          83.254,
+          87.114,
+          90.883,
+          85.046,
+          84.808
+        ],
+        "stdev": 2.635
+      },
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "/Users/scammermike/.claude-grok/worktrees/g030perf-20260823-162830/tools/headless/control_plane_latency.py",
+        "--worker",
+        "import_cli"
+      ],
+      "floor_ms": 0.0,
+      "id": "import_cli",
+      "label": "from hcli.cli import parse_haider_args",
+      "notes": "",
+      "ok": true,
+      "removable": true,
+      "removable_ms": 85.046,
+      "remove_by": "Same as import_hcli: package init still imports Controller first.",
+      "warm_ms": {
+        "max": 0.001,
+        "mean": 0.0,
+        "median": 0.0,
+        "min": 0.0,
+        "n": 25,
+        "samples": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.001,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.001,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.001,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "stdev": 0.0
+      }
+    },
+    {
+      "category": "mission_load",
+      "cold_ms": {
+        "max": 7.839,
+        "mean": 7.557,
+        "median": 7.652,
+        "min": 6.989,
+        "n": 5,
+        "samples": [
+          7.652,
+          6.989,
+          7.483,
+          7.821,
+          7.839
+        ],
+        "stdev": 0.312
+      },
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "/Users/scammermike/.claude-grok/worktrees/g030perf-20260823-162830/tools/headless/control_plane_latency.py",
+        "--worker",
+        "mission_load"
+      ],
+      "extra": {
+        "units": 6
+      },
+      "floor_ms": 0.0,
+      "id": "mission_load",
+      "label": "Mission.from_workspace after checkpoint",
+      "notes": "",
+      "ok": true,
+      "removable": false,
+      "removable_ms": null,
+      "remove_by": "",
+      "warm_ms": {
+        "max": 2.088,
+        "mean": 1.348,
+        "median": 1.275,
+        "min": 1.135,
+        "n": 25,
+        "samples": [
+          1.357,
+          1.243,
+          1.329,
+          1.213,
+          1.135,
+          1.326,
+          1.259,
+          1.525,
+          1.261,
+          1.226,
+          1.886,
+          1.431,
+          1.275,
+          1.312,
+          1.217,
+          1.481,
+          1.376,
+          1.257,
+          1.182,
+          1.157,
+          2.088,
+          1.339,
+          1.204,
+          1.246,
+          1.379
+        ],
+        "stdev": 0.212
+      }
+    },
+    {
+      "category": "dag_load",
+      "cold_ms": {
+        "max": 0.188,
+        "mean": 0.162,
+        "median": 0.158,
+        "min": 0.146,
+        "n": 5,
+        "samples": [
+          0.188,
+          0.158,
+          0.151,
+          0.146,
+          0.165
+        ],
+        "stdev": 0.015
+      },
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "/Users/scammermike/.claude-grok/worktrees/g030perf-20260823-162830/tools/headless/control_plane_latency.py",
+        "--worker",
+        "dag_load"
+      ],
+      "extra": {
+        "units": 12
+      },
+      "floor_ms": 0.0,
+      "id": "dag_load",
+      "label": "DagStore.load",
+      "notes": "",
+      "ok": true,
+      "removable": false,
+      "removable_ms": null,
+      "remove_by": "",
+      "warm_ms": {
+        "max": 0.121,
+        "mean": 0.1,
+        "median": 0.098,
+        "min": 0.084,
+        "n": 25,
+        "samples": [
+          0.121,
+          0.103,
+          0.098,
+          0.093,
+          0.091,
+          0.115,
+          0.106,
+          0.1,
+          0.096,
+          0.094,
+          0.112,
+          0.102,
+          0.098,
+          0.096,
+          0.094,
+          0.098,
+          0.093,
+          0.086,
+          0.084,
+          0.095,
+          0.11,
+          0.099,
+          0.106,
+          0.106,
+          0.096
+        ],
+        "stdev": 0.008
+      }
+    },
+    {
+      "category": "dag_load",
+      "cold_ms": {
+        "max": 0.941,
+        "mean": 0.724,
+        "median": 0.644,
+        "min": 0.58,
+        "n": 5,
+        "samples": [
+          0.644,
+          0.941,
+          0.825,
+          0.629,
+          0.58
+        ],
+        "stdev": 0.137
+      },
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "/Users/scammermike/.claude-grok/worktrees/g030perf-20260823-162830/tools/headless/control_plane_latency.py",
+        "--worker",
+        "dag_save"
+      ],
+      "floor_ms": 0.0,
+      "id": "dag_save",
+      "label": "DagStore.save (re-reads previous JSON every write)",
+      "notes": "",
+      "ok": true,
+      "removable": true,
+      "removable_ms": 0.644,
+      "remove_by": "DagStore.save always _read_document() of the file it last wrote, re-parses units, then atomic_write_json. Cache the previous document in-process; skip the disk round-trip when the caller just persisted.",
+      "warm_ms": {
+        "max": 0.873,
+        "mean": 0.587,
+        "median": 0.563,
+        "min": 0.486,
+        "n": 25,
+        "samples": [
+          0.746,
+          0.552,
+          0.561,
+          0.873,
+          0.556,
+          0.651,
+          0.563,
+          0.529,
+          0.514,
+          0.557,
+          0.629,
+          0.567,
+          0.578,
+          0.591,
+          0.563,
+          0.632,
+          0.543,
+          0.56,
+          0.606,
+          0.53,
+          0.673,
+          0.615,
+          0.518,
+          0.492,
+          0.486
+        ],
+        "stdev": 0.082
+      }
+    },
+    {
+      "category": "context_compile",
+      "cold_ms": {
+        "max": 0.391,
+        "mean": 0.375,
+        "median": 0.371,
+        "min": 0.354,
+        "n": 5,
+        "samples": [
+          0.371,
+          0.37,
+          0.354,
+          0.391,
+          0.387
+        ],
+        "stdev": 0.013
+      },
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "/Users/scammermike/.claude-grok/worktrees/g030perf-20260823-162830/tools/headless/control_plane_latency.py",
+        "--worker",
+        "context_compile"
+      ],
+      "extra": {
+        "goal_summary": "# Control-plane ceremony ledger",
+        "workunits": 7
+      },
+      "floor_ms": 0.0,
+      "id": "context_compile",
+      "label": "GoalCompiler.compile (no model)",
+      "notes": "",
+      "ok": true,
+      "removable": false,
+      "removable_ms": null,
+      "remove_by": "",
+      "warm_ms": {
+        "max": 0.15,
+        "mean": 0.122,
+        "median": 0.12,
+        "min": 0.109,
+        "n": 25,
+        "samples": [
+          0.131,
+          0.12,
+          0.115,
+          0.127,
+          0.111,
+          0.148,
+          0.127,
+          0.129,
+          0.122,
+          0.121,
+          0.13,
+          0.116,
+          0.112,
+          0.11,
+          0.109,
+          0.15,
+          0.13,
+          0.121,
+          0.112,
+          0.115,
+          0.132,
+          0.118,
+          0.114,
+          0.112,
+          0.111
+        ],
+        "stdev": 0.011
+      }
+    },
+    {
+      "category": "context_compile",
+      "cold_ms": {
+        "max": 0.101,
+        "mean": 0.087,
+        "median": 0.086,
+        "min": 0.078,
+        "n": 5,
+        "samples": [
+          0.086,
+          0.078,
+          0.081,
+          0.101,
+          0.087
+        ],
+        "stdev": 0.008
+      },
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "/Users/scammermike/.claude-grok/worktrees/g030perf-20260823-162830/tools/headless/control_plane_latency.py",
+        "--worker",
+        "worker_packet"
+      ],
+      "extra": {
+        "prompt_chars": 583
+      },
+      "floor_ms": 0.0,
+      "id": "worker_packet",
+      "label": "compile_worker_context (hashes evidence files)",
+      "notes": "",
+      "ok": true,
+      "removable": true,
+      "removable_ms": 0.086,
+      "remove_by": "identity_for_path sha256-reads every evidence file on each compile. Reuse size+mtime_ns as the invalidation key; hash only on change.",
+      "warm_ms": {
+        "max": 0.155,
+        "mean": 0.047,
+        "median": 0.039,
+        "min": 0.032,
+        "n": 25,
+        "samples": [
+          0.058,
+          0.155,
+          0.043,
+          0.037,
+          0.034,
+          0.051,
+          0.041,
+          0.034,
+          0.032,
+          0.032,
+          0.066,
+          0.049,
+          0.035,
+          0.033,
+          0.032,
+          0.056,
+          0.046,
+          0.039,
+          0.037,
+          0.035,
+          0.07,
+          0.047,
+          0.04,
+          0.038,
+          0.037
+        ],
+        "stdev": 0.024
+      }
+    },
+    {
+      "category": "status_rendering",
+      "cold_ms": {
+        "max": 0.023,
+        "mean": 0.018,
+        "median": 0.016,
+        "min": 0.015,
+        "n": 5,
+        "samples": [
+          0.015,
+          0.02,
+          0.023,
+          0.016,
+          0.016
+        ],
+        "stdev": 0.003
+      },
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "/Users/scammermike/.claude-grok/worktrees/g030perf-20260823-162830/tools/headless/control_plane_latency.py",
+        "--worker",
+        "status_render"
+      ],
+      "extra": {
+        "chars": 303
+      },
+      "floor_ms": 0.0,
+      "id": "status_render",
+      "label": "Mission.status + commands.format_status",
+      "notes": "",
+      "ok": true,
+      "removable": false,
+      "removable_ms": null,
+      "remove_by": "",
+      "warm_ms": {
+        "max": 0.012,
+        "mean": 0.006,
+        "median": 0.004,
+        "min": 0.003,
+        "n": 25,
+        "samples": [
+          0.01,
+          0.007,
+          0.004,
+          0.003,
+          0.003,
+          0.011,
+          0.007,
+          0.004,
+          0.003,
+          0.003,
+          0.012,
+          0.007,
+          0.004,
+          0.004,
+          0.003,
+          0.011,
+          0.007,
+          0.004,
+          0.003,
+          0.003,
+          0.011,
+          0.006,
+          0.004,
+          0.003,
+          0.003
+        ],
+        "stdev": 0.003
+      }
+    },
+    {
+      "category": "scheduler_cycle",
+      "cold_ms": {
+        "max": 0.642,
+        "mean": 0.579,
+        "median": 0.549,
+        "min": 0.528,
+        "n": 5,
+        "samples": [
+          0.549,
+          0.542,
+          0.635,
+          0.528,
+          0.642
+        ],
+        "stdev": 0.049
+      },
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "/Users/scammermike/.claude-grok/worktrees/g030perf-20260823-162830/tools/headless/control_plane_latency.py",
+        "--worker",
+        "scheduler_cycle"
+      ],
+      "extra": {
+        "assigned": 1,
+        "persist_on_dispatch": true,
+        "ready": 0
+      },
+      "floor_ms": 0.0,
+      "id": "scheduler_cycle",
+      "label": "Scheduler.dispatch (one cycle, persists DAG)",
+      "notes": "",
+      "ok": true,
+      "removable": true,
+      "removable_ms": 0.549,
+      "remove_by": "dispatch() always _persist() \u2192 DagStore.save \u2192 re-parse previous dag.json. Persist on a dirty flag, or after complete/fail, not on every empty dispatch.",
+      "warm_ms": {
+        "max": 0.616,
+        "mean": 0.458,
+        "median": 0.44,
+        "min": 0.402,
+        "n": 25,
+        "samples": [
+          0.464,
+          0.435,
+          0.456,
+          0.43,
+          0.421,
+          0.44,
+          0.439,
+          0.427,
+          0.425,
+          0.402,
+          0.455,
+          0.453,
+          0.44,
+          0.488,
+          0.616,
+          0.455,
+          0.429,
+          0.43,
+          0.432,
+          0.416,
+          0.553,
+          0.496,
+          0.489,
+          0.485,
+          0.465
+        ],
+        "stdev": 0.045
+      }
+    },
+    {
+      "category": "receipt_write",
+      "cold_ms": {
+        "max": 1.099,
+        "mean": 1.042,
+        "median": 1.027,
+        "min": 1.005,
+        "n": 5,
+        "samples": [
+          1.07,
+          1.027,
+          1.099,
+          1.005,
+          1.01
+        ],
+        "stdev": 0.036
+      },
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "/Users/scammermike/.claude-grok/worktrees/g030perf-20260823-162830/tools/headless/control_plane_latency.py",
+        "--worker",
+        "receipt_write"
+      ],
+      "extra": {
+        "path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/cpl-ws-xpkxjwnl/.hcli/receipts/goal-cpl.json"
+      },
+      "floor_ms": 0.0,
+      "id": "receipt_write",
+      "label": "Engine._write_receipt",
+      "notes": "",
+      "ok": true,
+      "removable": false,
+      "removable_ms": null,
+      "remove_by": "",
+      "warm_ms": {
+        "max": 0.367,
+        "mean": 0.255,
+        "median": 0.23,
+        "min": 0.196,
+        "n": 25,
+        "samples": [
+          0.324,
+          0.25,
+          0.23,
+          0.227,
+          0.225,
+          0.367,
+          0.296,
+          0.226,
+          0.21,
+          0.196,
+          0.317,
+          0.268,
+          0.221,
+          0.218,
+          0.219,
+          0.3,
+          0.252,
+          0.259,
+          0.322,
+          0.296,
+          0.273,
+          0.227,
+          0.222,
+          0.216,
+          0.218
+        ],
+        "stdev": 0.044
+      }
+    },
+    {
+      "category": "checkpoint",
+      "cold_ms": {
+        "max": 0.949,
+        "mean": 0.888,
+        "median": 0.89,
+        "min": 0.841,
+        "n": 5,
+        "samples": [
+          0.949,
+          0.859,
+          0.841,
+          0.89,
+          0.899
+        ],
+        "stdev": 0.037
+      },
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "/Users/scammermike/.claude-grok/worktrees/g030perf-20260823-162830/tools/headless/control_plane_latency.py",
+        "--worker",
+        "checkpoint"
+      ],
+      "extra": {
+        "path": "/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/cpl-ws-ym1djg72/.hcli/mission/state.json"
+      },
+      "floor_ms": 0.0,
+      "id": "checkpoint",
+      "label": "Mission.checkpoint (DAG first, then state.json)",
+      "notes": "",
+      "ok": true,
+      "removable": false,
+      "removable_ms": null,
+      "remove_by": "",
+      "warm_ms": {
+        "max": 0.924,
+        "mean": 0.759,
+        "median": 0.751,
+        "min": 0.651,
+        "n": 25,
+        "samples": [
+          0.924,
+          0.778,
+          0.752,
+          0.8,
+          0.844,
+          0.752,
+          0.751,
+          0.79,
+          0.889,
+          0.766,
+          0.731,
+          0.745,
+          0.682,
+          0.651,
+          0.721,
+          0.788,
+          0.734,
+          0.69,
+          0.707,
+          0.687,
+          0.887,
+          0.767,
+          0.724,
+          0.721,
+          0.703
+        ],
+        "stdev": 0.067
+      }
+    },
+    {
+      "category": "verifier_dispatch",
+      "cold_ms": {
+        "max": 345.337,
+        "mean": 337.149,
+        "median": 336.666,
+        "min": 329.444,
+        "n": 3,
+        "samples": [
+          336.666,
+          329.444,
+          345.337
+        ],
+        "stdev": 6.497
+      },
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "/Users/scammermike/.claude-grok/worktrees/g030perf-20260823-162830/tools/headless/control_plane_latency.py",
+        "--worker",
+        "verifier_dispatch"
+      ],
+      "extra": {
+        "admit_reason": "",
+        "command_admitted": true,
+        "validate_ok": true
+      },
+      "floor_ms": 20.819,
+      "id": "verifier_dispatch",
+      "label": "command_is_admissible + Engine._validate (py_compile + pytest spawns)",
+      "notes": "",
+      "ok": true,
+      "removable": true,
+      "removable_ms": 315.847,
+      "remove_by": "Each _validate spawns python -m py_compile and a contained pytest. Reuse one interpreter (or py_compile in-process via compile()) for the ceremony; keep pytest as the real check.",
+      "warm_ms": {
+        "max": 250.699,
+        "mean": 230.873,
+        "median": 230.886,
+        "min": 216.72,
+        "n": 15,
+        "samples": [
+          216.72,
+          222.918,
+          228.427,
+          219.282,
+          225.825,
+          232.747,
+          217.151,
+          226.92,
+          230.886,
+          236.963,
+          237.741,
+          235.307,
+          250.699,
+          244.859,
+          236.648
+        ],
+        "stdev": 9.532
+      }
+    },
+    {
+      "category": "experiment_setup",
+      "cold_ms": {
+        "max": 57.239,
+        "mean": 56.358,
+        "median": 56.417,
+        "min": 55.417,
+        "n": 3,
+        "samples": [
+          55.417,
+          57.239,
+          56.417
+        ],
+        "stdev": 0.745
+      },
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "/Users/scammermike/.claude-grok/worktrees/g030perf-20260823-162830/tools/headless/control_plane_latency.py",
+        "--worker",
+        "experiment_setup"
+      ],
+      "extra": {
+        "admitted_n": 0,
+        "controller_engine": "Engine"
+      },
+      "floor_ms": 0.0,
+      "id": "experiment_setup",
+      "label": "RuntimePool.__init__ + Controller.__init__ (no start, no inference)",
+      "notes": "",
+      "ok": true,
+      "removable": true,
+      "removable_ms": 56.417,
+      "remove_by": "Controller.__init__ constructs ModelRegistry and walks ~/models. RuntimePool reads genome JSON and decode topology. Do not start a backend for a status/help/setup path that will not decode.",
+      "warm_ms": {
+        "max": 54.831,
+        "mean": 51.347,
+        "median": 51.551,
+        "min": 48.503,
+        "n": 15,
+        "samples": [
+          52.625,
+          54.831,
+          52.497,
+          50.254,
+          52.102,
+          49.646,
+          51.144,
+          51.221,
+          48.503,
+          52.608,
+          53.058,
+          51.551,
+          51.836,
+          48.836,
+          49.492
+        ],
+        "stdev": 1.682
+      }
+    },
+    {
+      "category": "grok_bridge",
+      "cold_ms": {
+        "max": 429.161,
+        "mean": 421.777,
+        "median": 425.209,
+        "min": 410.961,
+        "n": 3,
+        "samples": [
+          429.161,
+          410.961,
+          425.209
+        ],
+        "stdev": 7.816
+      },
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "/Users/scammermike/.claude-grok/worktrees/g030perf-20260823-162830/tools/headless/control_plane_latency.py",
+        "--worker",
+        "grok_bridge"
+      ],
+      "extra": {
+        "command_run": [
+          "/Users/scammermike/.claude-grok/bin/grok-run",
+          "consult",
+          "--prompt",
+          "ping",
+          "--repo",
+          "/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/cpl-ws-gxha419c"
+        ],
+        "dry_run": true,
+        "error": "",
+        "task_id": "consult-20260823-164643"
+      },
+      "floor_ms": 0.0,
+      "id": "grok_bridge",
+      "label": "GrokBridge.consult(..., dry_run=True) \u2014 no model session",
+      "notes": "",
+      "ok": true,
+      "removable": true,
+      "removable_ms": 425.209,
+      "remove_by": "dry_run still spawns grok-run (Node) to print argv. Construct the argv in-process when dry_run=True; spawn only for live launches. Cache find_grok_run() instead of shutil.which on every call.",
+      "warm_ms": {
+        "max": 430.988,
+        "mean": 420.015,
+        "median": 417.708,
+        "min": 404.851,
+        "n": 15,
+        "samples": [
+          414.698,
+          417.708,
+          411.904,
+          404.851,
+          414.042,
+          426.3,
+          412.487,
+          417.392,
+          428.571,
+          422.338,
+          430.209,
+          430.988,
+          426.186,
+          413.697,
+          428.853
+        ],
+        "stdev": 7.862
+      }
+    },
+    {
+      "category": "runtime_admission",
+      "cold_ms": {
+        "max": 279.185,
+        "mean": 277.968,
+        "median": 277.729,
+        "min": 276.989,
+        "n": 3,
+        "samples": [
+          277.729,
+          279.185,
+          276.989
+        ],
+        "stdev": 0.913
+      },
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "/Users/scammermike/.claude-grok/worktrees/g030perf-20260823-162830/tools/headless/control_plane_latency.py",
+        "--worker",
+        "runtime_admission"
+      ],
+      "extra": {
+        "allow": false,
+        "cached_ms": [
+          19.52095900196582,
+          18.856125010643154,
+          16.935624997131526,
+          18.65445800649468,
+          17.840040993178263
+        ],
+        "gate": "host",
+        "metal_name": "Apple M3 Ultra",
+        "metal_source": "ESTIMATE: 75% of hw.memsize \u2014 swift unavailable, so this is NOT measured",
+        "reason": "swap 2468547133 bytes exceeds ceiling 2147483648 bytes"
+      },
+      "floor_ms": 0.0,
+      "id": "runtime_admission",
+      "label": "MemGate.consider(refresh_metal=True)",
+      "notes": "",
+      "ok": true,
+      "removable": true,
+      "removable_ms": 277.729,
+      "remove_by": "metal_budget.metal_device() writes a temp .swift file and runs `swift <file>` on every uncached/force call (~1s cold, ~200ms warm) even when Metal returns no device and the code then falls back to sysctl. Ship a precompiled helper or call Metal via ctypes/objc; cache recommendedMaxWorkingSetSize for the process; do not compile Swift to read currentAllocatedSize.",
+      "warm_ms": {
+        "max": 282.426,
+        "mean": 275.256,
+        "median": 275.093,
+        "min": 265.219,
+        "n": 15,
+        "samples": [
+          272.755,
+          281.109,
+          281.479,
+          270.369,
+          280.714,
+          282.426,
+          275.571,
+          276.494,
+          275.093,
+          273.21,
+          279.225,
+          270.318,
+          272.541,
+          272.308,
+          265.219
+        ],
+        "stdev": 4.81
+      }
+    },
+    {
+      "category": "runtime_admission",
+      "cold_ms": {
+        "max": 254.97,
+        "mean": 247.232,
+        "median": 243.95,
+        "min": 242.777,
+        "n": 3,
+        "samples": [
+          243.95,
+          242.777,
+          254.97
+        ],
+        "stdev": 5.492
+      },
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "/Users/scammermike/.claude-grok/worktrees/g030perf-20260823-162830/tools/headless/control_plane_latency.py",
+        "--worker",
+        "metal_device"
+      ],
+      "extra": {
+        "cached_ms": [
+          0.004207991878502071,
+          0.0010829971870407462,
+          0.0002500019036233425,
+          0.000166997779160738,
+          0.00020800507627427578
+        ],
+        "error": null,
+        "name": "Apple M3 Ultra",
+        "source": "ESTIMATE: 75% of hw.memsize \u2014 swift unavailable, so this is NOT measured"
+      },
+      "floor_ms": 0.0,
+      "id": "metal_device",
+      "label": "machine.metal_device_info(force=True) \u2014 Swift compiler ceremony",
+      "notes": "",
+      "ok": true,
+      "removable": true,
+      "removable_ms": 243.95,
+      "remove_by": "Same Swift compile as runtime_admission, isolated. Cached force=False path is microseconds once _METAL_CACHE is filled.",
+      "warm_ms": {
+        "max": 256.726,
+        "mean": 249.493,
+        "median": 248.533,
+        "min": 244.141,
+        "n": 15,
+        "samples": [
+          244.725,
+          246.897,
+          256.726,
+          248.329,
+          244.141,
+          248.776,
+          254.968,
+          250.759,
+          247.782,
+          246.166,
+          252.922,
+          253.645,
+          248.533,
+          245.772,
+          252.259
+        ],
+        "stdev": 3.735
+      }
+    },
+    {
+      "category": "experiment_setup",
+      "cold_ms": {
+        "max": 1.497,
+        "mean": 1.12,
+        "median": 1.041,
+        "min": 0.916,
+        "n": 5,
+        "samples": [
+          1.121,
+          1.024,
+          1.041,
+          0.916,
+          1.497
+        ],
+        "stdev": 0.2
+      },
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "/Users/scammermike/.claude-grok/worktrees/g030perf-20260823-162830/tools/headless/control_plane_latency.py",
+        "--worker",
+        "model_discovery"
+      ],
+      "extra": {
+        "cached_ms": [
+          0.0013329990906640887,
+          0.000500003807246685,
+          0.0002500019036233425,
+          0.000166997779160738,
+          0.00012500095181167126
+        ],
+        "n_models": 0,
+        "roots": [
+          "/Users/scammermike/models"
+        ]
+      },
+      "floor_ms": 0.0,
+      "id": "model_discovery",
+      "label": "ModelRegistry.discover(refresh=True) walks ~/models",
+      "notes": "",
+      "ok": true,
+      "removable": true,
+      "removable_ms": 1.041,
+      "remove_by": "os.walk of ~/models plus GGUF header reads for every .gguf. Cache inventory by (dir mtime, file set); do not walk on Controller construction when an explicit model path is given.",
+      "warm_ms": {
+        "max": 1.054,
+        "mean": 0.8,
+        "median": 0.784,
+        "min": 0.688,
+        "n": 25,
+        "samples": [
+          0.742,
+          0.698,
+          0.703,
+          0.7,
+          0.688,
+          0.813,
+          0.8,
+          0.784,
+          1.001,
+          0.845,
+          0.762,
+          0.79,
+          0.783,
+          0.787,
+          0.794,
+          0.723,
+          0.718,
+          0.914,
+          0.841,
+          0.758,
+          0.918,
+          0.861,
+          0.782,
+          0.744,
+          1.054
+        ],
+        "stdev": 0.091
+      }
+    },
+    {
+      "category": "checkpoint",
+      "cold_ms": {
+        "max": 3.744,
+        "mean": 3.372,
+        "median": 3.284,
+        "min": 3.09,
+        "n": 3,
+        "samples": [
+          3.09,
+          3.744,
+          3.284
+        ],
+        "stdev": 0.274
+      },
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "/Users/scammermike/.claude-grok/worktrees/g030perf-20260823-162830/tools/headless/control_plane_latency.py",
+        "--worker",
+        "fingerprint"
+      ],
+      "extra": {
+        "big_bytes": 6789979,
+        "big_fp": "7e429f7bcc2ac9fd3b55",
+        "small_cold_ms": 0.5915419897064567,
+        "small_fp": "23d2d2b216fa1add9271",
+        "small_warm_ms": [
+          0.4998340009478852,
+          0.4985410050721839,
+          0.5012079927837476,
+          0.48512501234654337,
+          0.606458997935988
+        ]
+      },
+      "floor_ms": 0.0,
+      "id": "fingerprint",
+      "label": "Mission.fingerprint \u2014 os.walk + sha256 of every file",
+      "notes": "",
+      "ok": true,
+      "removable": true,
+      "removable_ms": 3.284,
+      "remove_by": "fingerprint() hashes file bytes of the whole workspace on every no-progress check. Hash size+mtime (or a merkle of those) and only re-hash files whose identity changed. Never hash receipts/ or model artifacts as if they were source.",
+      "warm_ms": {
+        "max": 3.738,
+        "mean": 3.305,
+        "median": 3.312,
+        "min": 2.729,
+        "n": 9,
+        "samples": [
+          3.033,
+          3.312,
+          3.116,
+          3.615,
+          3.669,
+          3.738,
+          3.547,
+          2.985,
+          2.729
+        ],
+        "stdev": 0.336
+      }
+    },
+    {
+      "category": "hashing",
+      "cold_ms": {
+        "max": 2.494,
+        "mean": 2.33,
+        "median": 2.296,
+        "min": 2.214,
+        "n": 5,
+        "samples": [
+          2.426,
+          2.219,
+          2.296,
+          2.214,
+          2.494
+        ],
+        "stdev": 0.112
+      },
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "/Users/scammermike/.claude-grok/worktrees/g030perf-20260823-162830/tools/headless/control_plane_latency.py",
+        "--worker",
+        "hash_artifact"
+      ],
+      "extra": {
+        "bytes": 4777530,
+        "json_loads_cold_ms": 10.821666000992991,
+        "json_loads_warm_ms": [
+          10.514499997952953,
+          10.970959003316239,
+          10.727458997280337,
+          12.040125002386048,
+          9.879709003143944
+        ],
+        "path": "/Users/scammermike/.claude-grok/worktrees/g030perf-20260823-162830/receipts/headless/SPRING_CLEAN_CENSUS.json"
+      },
+      "floor_ms": 0.0,
+      "id": "hash_artifact",
+      "label": "identity_for_path sha256 of SPRING_CLEAN_CENSUS.json",
+      "notes": "",
+      "ok": true,
+      "removable": true,
+      "removable_ms": 2.296,
+      "remove_by": "Do not sha256 large immutable receipts on every packet compile; use mtime+size.",
+      "warm_ms": {
+        "max": 2.603,
+        "mean": 2.126,
+        "median": 2.155,
+        "min": 1.787,
+        "n": 25,
+        "samples": [
+          2.351,
+          2.313,
+          2.014,
+          1.881,
+          1.885,
+          1.897,
+          1.906,
+          1.974,
+          2.251,
+          2.277,
+          2.155,
+          2.24,
+          2.193,
+          2.225,
+          2.329,
+          1.857,
+          1.903,
+          1.909,
+          2.054,
+          2.382,
+          2.603,
+          2.407,
+          2.38,
+          1.986,
+          1.787
+        ],
+        "stdev": 0.218
+      }
+    },
+    {
+      "category": "tool_discovery",
+      "cold_ms": {
+        "max": 0.073,
+        "mean": 0.057,
+        "median": 0.051,
+        "min": 0.046,
+        "n": 5,
+        "samples": [
+          0.046,
+          0.05,
+          0.073,
+          0.062,
+          0.051
+        ],
+        "stdev": 0.01
+      },
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "/Users/scammermike/.claude-grok/worktrees/g030perf-20260823-162830/tools/headless/control_plane_latency.py",
+        "--worker",
+        "tool_discovery"
+      ],
+      "extra": {
+        "grok_run": "/Users/scammermike/.claude-grok/bin/grok-run",
+        "which_grok_cold_ms": 0.010083007509820163,
+        "which_grok_warm_ms": [
+          0.009875002433545887,
+          0.009791998309083283,
+          0.009458992280997336,
+          0.009291994501836598,
+          0.009333001798950136
+        ],
+        "which_swift_cold_ms": 0.12933299876749516,
+        "which_swift_warm_ms": [
+          0.044500004150904715,
+          0.03979199391324073,
+          0.03845899482257664,
+          0.03825000021606684,
+          0.03720899985637516
+        ]
+      },
+      "floor_ms": 0.0,
+      "id": "tool_discovery",
+      "label": "find_grok_run / shutil.which",
+      "notes": "",
+      "ok": true,
+      "removable": true,
+      "removable_ms": 0.051,
+      "remove_by": "Cache shutil.which('grok-run') and shutil.which('swift') per process.",
+      "warm_ms": {
+        "max": 0.022,
+        "mean": 0.013,
+        "median": 0.012,
+        "min": 0.009,
+        "n": 25,
+        "samples": [
+          0.017,
+          0.013,
+          0.011,
+          0.01,
+          0.01,
+          0.018,
+          0.013,
+          0.01,
+          0.009,
+          0.009,
+          0.02,
+          0.015,
+          0.012,
+          0.011,
+          0.011,
+          0.022,
+          0.016,
+          0.012,
+          0.011,
+          0.011,
+          0.019,
+          0.014,
+          0.012,
+          0.012,
+          0.011
+        ],
+        "stdev": 0.004
+      }
+    },
+    {
+      "category": "subprocess",
+      "cold_ms": {
+        "max": 15.098,
+        "mean": 13.969,
+        "median": 13.712,
+        "min": 13.159,
+        "n": 5,
+        "samples": [
+          13.712,
+          13.159,
+          14.572,
+          13.302,
+          15.098
+        ],
+        "stdev": 0.749
+      },
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "/Users/scammermike/.claude-grok/worktrees/g030perf-20260823-162830/tools/headless/control_plane_latency.py",
+        "--worker",
+        "workspace_git"
+      ],
+      "extra": {
+        "git_root": "/Users/scammermike/.claude-grok/worktrees/g030perf-20260823-162830"
+      },
+      "floor_ms": 0.0,
+      "id": "workspace_git",
+      "label": "Workspace.__init__ \u2192 git rev-parse --show-toplevel",
+      "notes": "",
+      "ok": true,
+      "removable": true,
+      "removable_ms": 13.712,
+      "remove_by": "Cache git_root on the workspace; do not spawn git per Workspace().",
+      "warm_ms": {
+        "max": 14.403,
+        "mean": 13.491,
+        "median": 13.546,
+        "min": 12.229,
+        "n": 25,
+        "samples": [
+          14.028,
+          13.972,
+          13.169,
+          14.185,
+          13.546,
+          14.246,
+          13.285,
+          12.514,
+          13.421,
+          12.664,
+          14.403,
+          12.421,
+          14.294,
+          13.211,
+          12.907,
+          14.052,
+          13.985,
+          12.928,
+          14.037,
+          13.207,
+          13.152,
+          12.229,
+          13.905,
+          13.763,
+          13.745
+        ],
+        "stdev": 0.622
+      }
+    },
+    {
+      "category": "runtime_admission",
+      "cold_ms": {
+        "max": 22.878,
+        "mean": 21.301,
+        "median": 20.837,
+        "min": 19.713,
+        "n": 5,
+        "samples": [
+          22.412,
+          19.713,
+          22.878,
+          20.664,
+          20.837
+        ],
+        "stdev": 1.172
+      },
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "/Users/scammermike/.claude-grok/worktrees/g030perf-20260823-162830/tools/headless/control_plane_latency.py",
+        "--worker",
+        "host_snapshot"
+      ],
+      "extra": {
+        "pressure": "unknown"
+      },
+      "floor_ms": 0.0,
+      "id": "host_snapshot",
+      "label": "host_snapshot: vm_stat + sysctl + memory_pressure",
+      "notes": "",
+      "ok": true,
+      "removable": false,
+      "removable_ms": null,
+      "remove_by": "",
+      "warm_ms": {
+        "max": 21.495,
+        "mean": 18.715,
+        "median": 18.513,
+        "min": 16.796,
+        "n": 25,
+        "samples": [
+          20.111,
+          17.804,
+          18.315,
+          18.945,
+          17.524,
+          17.437,
+          18.62,
+          19.952,
+          16.796,
+          18.513,
+          18.484,
+          18.301,
+          17.321,
+          18.258,
+          20.589,
+          19.079,
+          18.597,
+          21.495,
+          19.214,
+          19.464,
+          21.132,
+          19.433,
+          18.233,
+          17.319,
+          16.942
+        ],
+        "stdev": 1.226
+      }
+    },
+    {
+      "category": "runtime_admission",
+      "cold_ms": {
+        "max": 0.199,
+        "mean": 0.181,
+        "median": 0.19,
+        "min": 0.156,
+        "n": 5,
+        "samples": [
+          0.199,
+          0.156,
+          0.169,
+          0.192,
+          0.19
+        ],
+        "stdev": 0.016
+      },
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "/Users/scammermike/.claude-grok/worktrees/g030perf-20260823-162830/tools/headless/control_plane_latency.py",
+        "--worker",
+        "resource_limits"
+      ],
+      "extra": {
+        "gpu_decode": 2,
+        "source": "/Users/scammermike/.config/hcli/machine_genome.json"
+      },
+      "floor_ms": 0.0,
+      "id": "resource_limits",
+      "label": "ResourceLimits.resolve (MACHINE_GENOME JSON)",
+      "notes": "",
+      "ok": true,
+      "removable": true,
+      "removable_ms": 0.19,
+      "remove_by": "Memoize genome JSON per process. Scheduler and RuntimePool both re-read it.",
+      "warm_ms": {
+        "max": 0.246,
+        "mean": 0.067,
+        "median": 0.054,
+        "min": 0.043,
+        "n": 25,
+        "samples": [
+          0.078,
+          0.063,
+          0.054,
+          0.053,
+          0.048,
+          0.072,
+          0.056,
+          0.051,
+          0.048,
+          0.044,
+          0.07,
+          0.054,
+          0.049,
+          0.246,
+          0.137,
+          0.078,
+          0.061,
+          0.051,
+          0.049,
+          0.049,
+          0.076,
+          0.057,
+          0.05,
+          0.046,
+          0.043
+        ],
+        "stdev": 0.041
+      }
+    }
+  ],
+  "metal_cached_ms": {
+    "max": 0.004,
+    "mean": 0.001,
+    "median": 0.0,
+    "min": 0.0,
+    "n": 5,
+    "samples": [
+      0.004,
+      0.001,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "stdev": 0.002
+  },
+  "method": {
+    "anti_goodhart": "Rank by measured milliseconds, not by how bad the code looks. A path that is already fast is reported as fast. Optimising a 20\u00b5s which() while paying 900ms of Swift compile is a failure.",
+    "cold": "5 fresh Python processes; first in-process call is cold. CLI/interpreter rows: first process is cold, later processes are warm (page cache / dyld).",
+    "no_model_inference": true,
+    "wall": "time.perf_counter around the named call (in-process) or subprocess (CLI)",
+    "warm": "5 subsequent calls in the same process (or later processes for CLI)"
+  },
+  "python": {
+    "executable": "/opt/homebrew/opt/python@3.14/bin/python3.14",
+    "version": "3.14.6 (main, Jun 10 2026, 10:03:53) [Clang 21.0.0 (clang-2100.0.123.102)]"
+  },
+  "ranked_removable_ms": [
+    {
+      "cold_median_ms": 425.209,
+      "id": "grok_bridge",
+      "label": "GrokBridge.consult(..., dry_run=True) \u2014 no model session",
+      "ms": 425.209,
+      "remove_by": "dry_run still spawns grok-run (Node) to print argv. Construct the argv in-process when dry_run=True; spawn only for live launches. Cache find_grok_run() instead of shutil.which on every call.",
+      "warm_median_ms": 417.708
+    },
+    {
+      "cold_median_ms": 336.666,
+      "id": "verifier_dispatch",
+      "label": "command_is_admissible + Engine._validate (py_compile + pytest spawns)",
+      "ms": 315.847,
+      "remove_by": "Each _validate spawns python -m py_compile and a contained pytest. Reuse one interpreter (or py_compile in-process via compile()) for the ceremony; keep pytest as the real check.",
+      "warm_median_ms": 230.886
+    },
+    {
+      "cold_median_ms": 277.729,
+      "id": "runtime_admission",
+      "label": "MemGate.consider(refresh_metal=True)",
+      "ms": 277.729,
+      "remove_by": "metal_budget.metal_device() writes a temp .swift file and runs `swift <file>` on every uncached/force call (~1s cold, ~200ms warm) even when Metal returns no device and the code then falls back to sysctl. Ship a precompiled helper or call Metal via ctypes/objc; cache recommendedMaxWorkingSetSize for the process; do not compile Swift to read currentAllocatedSize.",
+      "warm_median_ms": 275.093
+    },
+    {
+      "cold_median_ms": 243.95,
+      "id": "metal_device",
+      "label": "machine.metal_device_info(force=True) \u2014 Swift compiler ceremony",
+      "ms": 243.95,
+      "remove_by": "Same Swift compile as runtime_admission, isolated. Cached force=False path is microseconds once _METAL_CACHE is filled.",
+      "warm_median_ms": 248.533
+    },
+    {
+      "cold_median_ms": 135.457,
+      "id": "cli_startup",
+      "label": "CLI startup (python3 -m hcli --help)",
+      "ms": 100.969,
+      "remove_by": "Stop importing Controller from tools/haider/hcli/__init__.py on the help path (PEP 562 __getattr__). argparse --help sys.exits before App.",
+      "warm_median_ms": 135.345
+    },
+    {
+      "cold_median_ms": 85.046,
+      "id": "import_cli",
+      "label": "from hcli.cli import parse_haider_args",
+      "ms": 85.046,
+      "remove_by": "Same as import_hcli: package init still imports Controller first.",
+      "warm_median_ms": 0.0
+    },
+    {
+      "cold_median_ms": 82.029,
+      "id": "import_hcli",
+      "label": "import hcli (package init pulls Controller)",
+      "ms": 82.029,
+      "remove_by": "Defer Controller/Workspace/EventBus in __init__.py via __getattr__.",
+      "warm_median_ms": 0.0
+    },
+    {
+      "cold_median_ms": 56.417,
+      "id": "experiment_setup",
+      "label": "RuntimePool.__init__ + Controller.__init__ (no start, no inference)",
+      "ms": 56.417,
+      "remove_by": "Controller.__init__ constructs ModelRegistry and walks ~/models. RuntimePool reads genome JSON and decode topology. Do not start a backend for a status/help/setup path that will not decode.",
+      "warm_median_ms": 51.551
+    },
+    {
+      "cold_median_ms": 13.712,
+      "id": "workspace_git",
+      "label": "Workspace.__init__ \u2192 git rev-parse --show-toplevel",
+      "ms": 13.712,
+      "remove_by": "Cache git_root on the workspace; do not spawn git per Workspace().",
+      "warm_median_ms": 13.546
+    },
+    {
+      "cold_median_ms": 3.284,
+      "id": "fingerprint",
+      "label": "Mission.fingerprint \u2014 os.walk + sha256 of every file",
+      "ms": 3.284,
+      "remove_by": "fingerprint() hashes file bytes of the whole workspace on every no-progress check. Hash size+mtime (or a merkle of those) and only re-hash files whose identity changed. Never hash receipts/ or model artifacts as if they were source.",
+      "warm_median_ms": 3.312
+    },
+    {
+      "cold_median_ms": 2.296,
+      "id": "hash_artifact",
+      "label": "identity_for_path sha256 of SPRING_CLEAN_CENSUS.json",
+      "ms": 2.296,
+      "remove_by": "Do not sha256 large immutable receipts on every packet compile; use mtime+size.",
+      "warm_median_ms": 2.155
+    },
+    {
+      "cold_median_ms": 1.041,
+      "id": "model_discovery",
+      "label": "ModelRegistry.discover(refresh=True) walks ~/models",
+      "ms": 1.041,
+      "remove_by": "os.walk of ~/models plus GGUF header reads for every .gguf. Cache inventory by (dir mtime, file set); do not walk on Controller construction when an explicit model path is given.",
+      "warm_median_ms": 0.784
+    },
+    {
+      "cold_median_ms": 0.644,
+      "id": "dag_save",
+      "label": "DagStore.save (re-reads previous JSON every write)",
+      "ms": 0.644,
+      "remove_by": "DagStore.save always _read_document() of the file it last wrote, re-parses units, then atomic_write_json. Cache the previous document in-process; skip the disk round-trip when the caller just persisted.",
+      "warm_median_ms": 0.563
+    },
+    {
+      "cold_median_ms": 0.549,
+      "id": "scheduler_cycle",
+      "label": "Scheduler.dispatch (one cycle, persists DAG)",
+      "ms": 0.549,
+      "remove_by": "dispatch() always _persist() \u2192 DagStore.save \u2192 re-parse previous dag.json. Persist on a dirty flag, or after complete/fail, not on every empty dispatch.",
+      "warm_median_ms": 0.44
+    },
+    {
+      "cold_median_ms": 0.19,
+      "id": "resource_limits",
+      "label": "ResourceLimits.resolve (MACHINE_GENOME JSON)",
+      "ms": 0.19,
+      "remove_by": "Memoize genome JSON per process. Scheduler and RuntimePool both re-read it.",
+      "warm_median_ms": 0.054
+    },
+    {
+      "cold_median_ms": 0.086,
+      "id": "worker_packet",
+      "label": "compile_worker_context (hashes evidence files)",
+      "ms": 0.086,
+      "remove_by": "identity_for_path sha256-reads every evidence file on each compile. Reuse size+mtime_ns as the invalidation key; hash only on change.",
+      "warm_median_ms": 0.039
+    },
+    {
+      "cold_median_ms": 0.051,
+      "id": "tool_discovery",
+      "label": "find_grok_run / shutil.which",
+      "ms": 0.051,
+      "remove_by": "Cache shutil.which('grok-run') and shutil.which('swift') per process.",
+      "warm_median_ms": 0.012
+    }
+  ],
+  "repo": "/Users/scammermike/.claude-grok/worktrees/g030perf-20260823-162830",
+  "runtime_admission_cached_ms": {
+    "max": 19.521,
+    "mean": 18.361,
+    "median": 18.654,
+    "min": 16.936,
+    "n": 5,
+    "samples": [
+      19.521,
+      18.856,
+      16.936,
+      18.654,
+      17.84
+    ],
+    "stdev": 0.892
+  },
+  "schema": "hawking.headless.control_plane_latency.v1",
+  "scope_guard": {
+    "did_not_modify": [
+      "tools/haider/hcli",
+      "receipts/ascent-2026-08-16",
+      "receipts/ascent-2026-08-18",
+      "workspace/campaign"
+    ],
+    "wrote": [
+      "tools/headless/control_plane_latency.py",
+      "receipts/headless/CONTROL_PLANE_LATENCY.json"
+    ]
+  },
+  "sparse_checkout": {
+    "hcli_package": "/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/hcli-cpl-f78ymilo/tools/haider/hcli",
+    "hcli_pythonpath": "/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/hcli-cpl-f78ymilo/tools/haider",
+    "hcli_source_mode": "git-archive-HEAD",
+    "metal_budget": "/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/hcli-cpl-f78ymilo/tools/headless/metal_budget.py",
+    "reason": "sparse checkout: tools/haider not on disk; content is HEAD",
+    "tools_haider_on_disk": false
+  },
+  "waste_census": {
+    "duplicated_validation": {
+      "ast_sites": 4,
+      "examples": [
+        {
+          "line": 2856,
+          "module": "hcli.engine",
+          "name": "ast.parse"
+        },
+        {
+          "line": 813,
+          "module": "hcli.verifier_pipeline",
+          "name": "ast.parse"
+        },
+        {
+          "line": 973,
+          "module": "hcli.verifier_pipeline",
+          "name": "ast.parse"
+        },
+        {
+          "line": 1096,
+          "module": "hcli.verifier_pipeline",
+          "name": "ast.parse"
+        }
+      ],
+      "reading": "command_is_admissible lives in verifier_pipeline; Engine._admit_test re-implements pytest-idiom detection. GoalCompiler and Ledger both extract obligations from the same goal text. Not the millisecond leader \u2014 Swift compile is."
+    },
+    "python_interpreter_spawns": {
+      "measured": {
+        "cli_startup": {
+          "cold_ms": {
+            "max": 145.157,
+            "mean": 138.072,
+            "median": 135.457,
+            "min": 135.042,
+            "n": 5,
+            "samples": [
+              145.157,
+              135.042,
+              135.457,
+              135.232,
+              139.473
+            ],
+            "stdev": 3.905
+          },
+          "command": [
+            "/opt/homebrew/opt/python@3.14/bin/python3.14",
+            "-m",
+            "hcli",
+            "--help"
+          ],
+          "ok": true,
+          "removable_ms": 100.969,
+          "warm_ms": {
+            "max": 139.473,
+            "mean": 136.301,
+            "median": 135.345,
+            "min": 135.042,
+            "n": 4,
+            "samples": [
+              135.042,
+              135.457,
+              135.232,
+              139.473
+            ],
+            "stdev": 1.837
+          }
+        },
+        "python_pass": {
+          "cold_ms": {
+            "max": 21.235,
+            "mean": 20.757,
+            "median": 20.819,
+            "min": 20.292,
+            "n": 5,
+            "samples": [
+              20.863,
+              20.292,
+              20.819,
+              20.575,
+              21.235
+            ],
+            "stdev": 0.314
+          },
+          "command": [
+            "/opt/homebrew/opt/python@3.14/bin/python3.14",
+            "-c",
+            "pass"
+          ],
+          "ok": true,
+          "removable_ms": null,
+          "warm_ms": {
+            "max": 21.235,
+            "mean": 20.73,
+            "median": 20.697,
+            "min": 20.292,
+            "n": 4,
+            "samples": [
+              20.292,
+              20.819,
+              20.575,
+              21.235
+            ],
+            "stdev": 0.346
+          }
+        },
+        "verifier_dispatch": {
+          "cold_ms": {
+            "max": 345.337,
+            "mean": 337.149,
+            "median": 336.666,
+            "min": 329.444,
+            "n": 3,
+            "samples": [
+              336.666,
+              329.444,
+              345.337
+            ],
+            "stdev": 6.497
+          },
+          "command": [
+            "/opt/homebrew/opt/python@3.14/bin/python3.14",
+            "/Users/scammermike/.claude-grok/worktrees/g030perf-20260823-162830/tools/headless/control_plane_latency.py",
+            "--worker",
+            "verifier_dispatch"
+          ],
+          "ok": true,
+          "removable_ms": 315.847,
+          "warm_ms": {
+            "max": 250.699,
+            "mean": 230.873,
+            "median": 230.886,
+            "min": 216.72,
+            "n": 15,
+            "samples": [
+              216.72,
+              222.918,
+              228.427,
+              219.282,
+              225.825,
+              232.747,
+              217.151,
+              226.92,
+              230.886,
+              236.963,
+              237.741,
+              235.307,
+              250.699,
+              244.859,
+              236.648
+            ],
+            "stdev": 9.532
+          }
+        }
+      },
+      "reading": "python3 -c pass is ~20ms. Engine._validate pays that again for py_compile and again for pytest, per mutation. CLI --help pays a whole interpreter plus the Controller import graph."
+    },
+    "repeated_filesystem_scans": {
+      "ast_sites": 4,
+      "dynamic": {
+        "fingerprint_large_artifact": {
+          "counts": {
+            "hashlib.sha256": 2,
+            "hashlib.sha256_bytes": 176,
+            "json.loads": 1,
+            "os.walk": 1
+          },
+          "examples": {
+            "os.walk": [
+              "/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/cpl-ws-3w7tknvc"
+            ]
+          },
+          "ms": 3.051
+        },
+        "fingerprint_small": {
+          "counts": {
+            "hashlib.sha256": 1,
+            "hashlib.sha256_bytes": 0,
+            "os.walk": 1
+          },
+          "examples": {
+            "os.walk": [
+              "/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/cpl-ws-w9y2j3ew"
+            ]
+          },
+          "ms": 0.143
+        },
+        "model_discovery": {
+          "counts": {
+            "os.walk": 1
+          },
+          "examples": {
+            "os.walk": [
+              "/Users/scammermike/models"
+            ]
+          },
+          "ms": 1.302
+        },
+        "scheduler_dispatch": {
+          "counts": {
+            "hashlib.sha256": 24,
+            "hashlib.sha256_bytes": 4329,
+            "json.loads": 1
+          },
+          "examples": {},
+          "ms": 0.756
+        }
+      },
+      "examples": [
+        {
+          "line": 223,
+          "module": "hcli.backends",
+          "name": "os.walk"
+        },
+        {
+          "line": 18,
+          "module": "hcli.index",
+          "name": "os.walk"
+        },
+        {
+          "line": 404,
+          "module": "hcli.mission",
+          "name": "os.walk"
+        },
+        {
+          "line": 234,
+          "module": "hcli.models",
+          "name": "os.walk"
+        }
+      ],
+      "measured": {
+        "fingerprint": {
+          "cold_ms": {
+            "max": 3.744,
+            "mean": 3.372,
+            "median": 3.284,
+            "min": 3.09,
+            "n": 3,
+            "samples": [
+              3.09,
+              3.744,
+              3.284
+            ],
+            "stdev": 0.274
+          },
+          "command": [
+            "/opt/homebrew/opt/python@3.14/bin/python3.14",
+            "/Users/scammermike/.claude-grok/worktrees/g030perf-20260823-162830/tools/headless/control_plane_latency.py",
+            "--worker",
+            "fingerprint"
+          ],
+          "ok": true,
+          "removable_ms": 3.284,
+          "warm_ms": {
+            "max": 3.738,
+            "mean": 3.305,
+            "median": 3.312,
+            "min": 2.729,
+            "n": 9,
+            "samples": [
+              3.033,
+              3.312,
+              3.116,
+              3.615,
+              3.669,
+              3.738,
+              3.547,
+              2.985,
+              2.729
+            ],
+            "stdev": 0.336
+          }
+        },
+        "model_discovery": {
+          "cold_ms": {
+            "max": 1.497,
+            "mean": 1.12,
+            "median": 1.041,
+            "min": 0.916,
+            "n": 5,
+            "samples": [
+              1.121,
+              1.024,
+              1.041,
+              0.916,
+              1.497
+            ],
+            "stdev": 0.2
+          },
+          "command": [
+            "/opt/homebrew/opt/python@3.14/bin/python3.14",
+            "/Users/scammermike/.claude-grok/worktrees/g030perf-20260823-162830/tools/headless/control_plane_latency.py",
+            "--worker",
+            "model_discovery"
+          ],
+          "ok": true,
+          "removable_ms": 1.041,
+          "warm_ms": {
+            "max": 1.054,
+            "mean": 0.8,
+            "median": 0.784,
+            "min": 0.688,
+            "n": 25,
+            "samples": [
+              0.742,
+              0.698,
+              0.703,
+              0.7,
+              0.688,
+              0.813,
+              0.8,
+              0.784,
+              1.001,
+              0.845,
+              0.762,
+              0.79,
+              0.783,
+              0.787,
+              0.794,
+              0.723,
+              0.718,
+              0.914,
+              0.841,
+              0.758,
+              0.918,
+              0.861,
+              0.782,
+              0.744,
+              1.054
+            ],
+            "stdev": 0.091
+          }
+        }
+      },
+      "reading": "Mission.fingerprint os.walks and hashes every file. ModelRegistry.discover os.walks ~/models on Controller init. index.py also walks, and is unused in production."
+    },
+    "repeated_hashing": {
+      "ast_sites": 13,
+      "dynamic": {
+        "fingerprint_large_artifact": {
+          "counts": {
+            "hashlib.sha256": 2,
+            "hashlib.sha256_bytes": 176,
+            "json.loads": 1,
+            "os.walk": 1
+          },
+          "examples": {
+            "os.walk": [
+              "/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/cpl-ws-3w7tknvc"
+            ]
+          },
+          "ms": 3.051
+        },
+        "fingerprint_small": {
+          "counts": {
+            "hashlib.sha256": 1,
+            "hashlib.sha256_bytes": 0,
+            "os.walk": 1
+          },
+          "examples": {
+            "os.walk": [
+              "/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/cpl-ws-w9y2j3ew"
+            ]
+          },
+          "ms": 0.143
+        }
+      },
+      "examples": [
+        {
+          "line": 207,
+          "module": "hcli.engine",
+          "name": "hashlib.sha256"
+        },
+        {
+          "line": 1396,
+          "module": "hcli.engine",
+          "name": "hashlib.sha256"
+        },
+        {
+          "line": 771,
+          "module": "hcli.goal",
+          "name": "hashlib.sha256"
+        },
+        {
+          "line": 889,
+          "module": "hcli.ledger",
+          "name": "hashlib.sha256"
+        },
+        {
+          "line": 890,
+          "module": "hcli.ledger",
+          "name": "hashlib.sha256"
+        },
+        {
+          "line": 961,
+          "module": "hcli.ledger",
+          "name": "hashlib.sha256"
+        },
+        {
+          "line": 399,
+          "module": "hcli.mission",
+          "name": "hashlib.sha256"
+        },
+        {
+          "line": 159,
+          "module": "hcli.mutation",
+          "name": "hashlib.sha256"
+        },
+        {
+          "line": 154,
+          "module": "hcli.mutation",
+          "name": "hashlib.sha256"
+        },
+        {
+          "line": 116,
+          "module": "hcli.mutation",
+          "name": "hashlib.sha256"
+        },
+        {
+          "line": 117,
+          "module": "hcli.mutation",
+          "name": "hashlib.sha256"
+        },
+        {
+          "line": 167,
+          "module": "hcli.workunit",
+          "name": "hashlib.sha256"
+        }
+      ],
+      "measured": {
+        "fingerprint": {
+          "cold_ms": {
+            "max": 3.744,
+            "mean": 3.372,
+            "median": 3.284,
+            "min": 3.09,
+            "n": 3,
+            "samples": [
+              3.09,
+              3.744,
+              3.284
+            ],
+            "stdev": 0.274
+          },
+          "command": [
+            "/opt/homebrew/opt/python@3.14/bin/python3.14",
+            "/Users/scammermike/.claude-grok/worktrees/g030perf-20260823-162830/tools/headless/control_plane_latency.py",
+            "--worker",
+            "fingerprint"
+          ],
+          "ok": true,
+          "removable_ms": 3.284,
+          "warm_ms": {
+            "max": 3.738,
+            "mean": 3.305,
+            "median": 3.312,
+            "min": 2.729,
+            "n": 9,
+            "samples": [
+              3.033,
+              3.312,
+              3.116,
+              3.615,
+              3.669,
+              3.738,
+              3.547,
+              2.985,
+              2.729
+            ],
+            "stdev": 0.336
+          }
+        },
+        "hash_artifact": {
+          "cold_ms": {
+            "max": 2.494,
+            "mean": 2.33,
+            "median": 2.296,
+            "min": 2.214,
+            "n": 5,
+            "samples": [
+              2.426,
+              2.219,
+              2.296,
+              2.214,
+              2.494
+            ],
+            "stdev": 0.112
+          },
+          "command": [
+            "/opt/homebrew/opt/python@3.14/bin/python3.14",
+            "/Users/scammermike/.claude-grok/worktrees/g030perf-20260823-162830/tools/headless/control_plane_latency.py",
+            "--worker",
+            "hash_artifact"
+          ],
+          "ok": true,
+          "removable_ms": 2.296,
+          "warm_ms": {
+            "max": 2.603,
+            "mean": 2.126,
+            "median": 2.155,
+            "min": 1.787,
+            "n": 25,
+            "samples": [
+              2.351,
+              2.313,
+              2.014,
+              1.881,
+              1.885,
+              1.897,
+              1.906,
+              1.974,
+              2.251,
+              2.277,
+              2.155,
+              2.24,
+              2.193,
+              2.225,
+              2.329,
+              1.857,
+              1.903,
+              1.909,
+              2.054,
+              2.382,
+              2.603,
+              2.407,
+              2.38,
+              1.986,
+              1.787
+            ],
+            "stdev": 0.218
+          }
+        }
+      },
+      "reading": "identity_for_path sha256-reads evidence on every packet compile. Mission.fingerprint sha256-reads every workspace file. WorkUnit.content_hash hashes identity on admit."
+    },
+    "repeated_json_parsing": {
+      "ast_sites": 31,
+      "dynamic": {
+        "checkpoint": {
+          "counts": {
+            "hashlib.sha256": 32,
+            "hashlib.sha256_bytes": 5772,
+            "json.loads": 1
+          },
+          "examples": {},
+          "ms": 1.008
+        },
+        "dag_save_again": {
+          "counts": {
+            "hashlib.sha256": 24,
+            "hashlib.sha256_bytes": 4329,
+            "json.loads": 1
+          },
+          "examples": {},
+          "ms": 0.577
+        },
+        "scheduler_dispatch": {
+          "counts": {
+            "hashlib.sha256": 24,
+            "hashlib.sha256_bytes": 4329,
+            "json.loads": 1
+          },
+          "examples": {},
+          "ms": 0.756
+        }
+      },
+      "examples": [
+        {
+          "line": 528,
+          "module": "hcli.backends",
+          "name": "json.loads"
+        },
+        {
+          "line": 908,
+          "module": "hcli.backends",
+          "name": "json.loads"
+        },
+        {
+          "line": 242,
+          "module": "hcli.backends",
+          "name": "json.load"
+        },
+        {
+          "line": 195,
+          "module": "hcli.backends",
+          "name": "json.load"
+        },
+        {
+          "line": 71,
+          "module": "hcli.cli",
+          "name": "json.loads"
+        },
+        {
+          "line": 89,
+          "module": "hcli.cli",
+          "name": "json.loads"
+        },
+        {
+          "line": 255,
+          "module": "hcli.commands",
+          "name": "json.loads"
+        },
+        {
+          "line": 49,
+          "module": "hcli.config",
+          "name": "json.load"
+        },
+        {
+          "line": 185,
+          "module": "hcli.context_budget",
+          "name": "json.loads"
+        },
+        {
+          "line": 286,
+          "module": "hcli.context_budget",
+          "name": "json.loads"
+        },
+        {
+          "line": 36,
+          "module": "hcli.controller",
+          "name": "json.loads"
+        },
+        {
+          "line": 227,
+          "module": "hcli.dag_store",
+          "name": "json.loads"
+        }
+      ],
+      "measured": {
+        "dag_save": {
+          "cold_ms": {
+            "max": 0.941,
+            "mean": 0.724,
+            "median": 0.644,
+            "min": 0.58,
+            "n": 5,
+            "samples": [
+              0.644,
+              0.941,
+              0.825,
+              0.629,
+              0.58
+            ],
+            "stdev": 0.137
+          },
+          "command": [
+            "/opt/homebrew/opt/python@3.14/bin/python3.14",
+            "/Users/scammermike/.claude-grok/worktrees/g030perf-20260823-162830/tools/headless/control_plane_latency.py",
+            "--worker",
+            "dag_save"
+          ],
+          "ok": true,
+          "removable_ms": 0.644,
+          "warm_ms": {
+            "max": 0.873,
+            "mean": 0.587,
+            "median": 0.563,
+            "min": 0.486,
+            "n": 25,
+            "samples": [
+              0.746,
+              0.552,
+              0.561,
+              0.873,
+              0.556,
+              0.651,
+              0.563,
+              0.529,
+              0.514,
+              0.557,
+              0.629,
+              0.567,
+              0.578,
+              0.591,
+              0.563,
+              0.632,
+              0.543,
+              0.56,
+              0.606,
+              0.53,
+              0.673,
+              0.615,
+              0.518,
+              0.492,
+              0.486
+            ],
+            "stdev": 0.082
+          }
+        },
+        "resource_limits": {
+          "cold_ms": {
+            "max": 0.199,
+            "mean": 0.181,
+            "median": 0.19,
+            "min": 0.156,
+            "n": 5,
+            "samples": [
+              0.199,
+              0.156,
+              0.169,
+              0.192,
+              0.19
+            ],
+            "stdev": 0.016
+          },
+          "command": [
+            "/opt/homebrew/opt/python@3.14/bin/python3.14",
+            "/Users/scammermike/.claude-grok/worktrees/g030perf-20260823-162830/tools/headless/control_plane_latency.py",
+            "--worker",
+            "resource_limits"
+          ],
+          "ok": true,
+          "removable_ms": 0.19,
+          "warm_ms": {
+            "max": 0.246,
+            "mean": 0.067,
+            "median": 0.054,
+            "min": 0.043,
+            "n": 25,
+            "samples": [
+              0.078,
+              0.063,
+              0.054,
+              0.053,
+              0.048,
+              0.072,
+              0.056,
+              0.051,
+              0.048,
+              0.044,
+              0.07,
+              0.054,
+              0.049,
+              0.246,
+              0.137,
+              0.078,
+              0.061,
+              0.051,
+              0.049,
+              0.049,
+              0.076,
+              0.057,
+              0.05,
+              0.046,
+              0.043
+            ],
+            "stdev": 0.041
+          }
+        }
+      },
+      "reading": "DagStore.save re-parses the JSON document it just wrote, on every Scheduler.dispatch/_persist. ResourceLimits.resolve and RuntimePool both json.loads MACHINE_GENOME.json."
+    },
+    "repeated_tool_discovery": {
+      "ast_sites": 3,
+      "examples": [
+        {
+          "line": 48,
+          "module": "hcli.backends",
+          "name": "shutil.which"
+        },
+        {
+          "line": 96,
+          "module": "hcli.backends",
+          "name": "shutil.which"
+        },
+        {
+          "line": 236,
+          "module": "hcli.grok_bridge",
+          "name": "shutil.which"
+        }
+      ],
+      "measured": {
+        "tool_discovery": {
+          "cold_ms": {
+            "max": 0.073,
+            "mean": 0.057,
+            "median": 0.051,
+            "min": 0.046,
+            "n": 5,
+            "samples": [
+              0.046,
+              0.05,
+              0.073,
+              0.062,
+              0.051
+            ],
+            "stdev": 0.01
+          },
+          "command": [
+            "/opt/homebrew/opt/python@3.14/bin/python3.14",
+            "/Users/scammermike/.claude-grok/worktrees/g030perf-20260823-162830/tools/headless/control_plane_latency.py",
+            "--worker",
+            "tool_discovery"
+          ],
+          "ok": true,
+          "removable_ms": 0.051,
+          "warm_ms": {
+            "max": 0.022,
+            "mean": 0.013,
+            "median": 0.012,
+            "min": 0.009,
+            "n": 25,
+            "samples": [
+              0.017,
+              0.013,
+              0.011,
+              0.01,
+              0.01,
+              0.018,
+              0.013,
+              0.01,
+              0.009,
+              0.009,
+              0.02,
+              0.015,
+              0.012,
+              0.011,
+              0.011,
+              0.022,
+              0.016,
+              0.012,
+              0.011,
+              0.011,
+              0.019,
+              0.014,
+              0.012,
+              0.012,
+              0.011
+            ],
+            "stdev": 0.004
+          }
+        }
+      },
+      "reading": "find_grok_run() calls shutil.which on every GrokBridge._launch. metal_device() calls shutil.which('swift') on every probe. backends.py which()s mlx_lm.server at start, not import. Fast on its own; the spawn it enables is not."
+    },
+    "subprocess_cold_starts": {
+      "ast_sites": 20,
+      "examples": [
+        {
+          "line": 60,
+          "module": "hcli.backends",
+          "name": "subprocess.run"
+        },
+        {
+          "line": 1064,
+          "module": "hcli.backends",
+          "name": "subprocess.Popen"
+        },
+        {
+          "line": 1391,
+          "module": "hcli.backends",
+          "name": "subprocess.Popen"
+        },
+        {
+          "line": 2803,
+          "module": "hcli.engine",
+          "name": "subprocess.Popen"
+        },
+        {
+          "line": 2839,
+          "module": "hcli.engine",
+          "name": "subprocess.run"
+        },
+        {
+          "line": 3208,
+          "module": "hcli.engine",
+          "name": "subprocess.run"
+        },
+        {
+          "line": 125,
+          "module": "hcli.executors",
+          "name": "subprocess.run"
+        },
+        {
+          "line": 545,
+          "module": "hcli.grok_bridge",
+          "name": "subprocess.check_output"
+        },
+        {
+          "line": 1134,
+          "module": "hcli.grok_bridge",
+          "name": "subprocess.run"
+        },
+        {
+          "line": 719,
+          "module": "hcli.ledger",
+          "name": "subprocess.run"
+        },
+        {
+          "line": 25,
+          "module": "hcli.machine",
+          "name": "subprocess.run"
+        },
+        {
+          "line": 88,
+          "module": "hcli.max_policy",
+          "name": "subprocess.run"
+        },
+        {
+          "line": 181,
+          "module": "hcli.mutation",
+          "name": "subprocess.run"
+        },
+        {
+          "line": 209,
+          "module": "hcli.mutation",
+          "name": "subprocess.run"
+        },
+        {
+          "line": 367,
+          "module": "hcli.resources",
+          "name": "subprocess.run"
+        },
+        {
+          "line": 176,
+          "module": "hcli.runtime",
+          "name": "subprocess.run"
+        }
+      ],
+      "measured": {
+        "grok_bridge": {
+          "cold_ms": {
+            "max": 429.161,
+            "mean": 421.777,
+            "median": 425.209,
+            "min": 410.961,
+            "n": 3,
+            "samples": [
+              429.161,
+              410.961,
+              425.209
+            ],
+            "stdev": 7.816
+          },
+          "command": [
+            "/opt/homebrew/opt/python@3.14/bin/python3.14",
+            "/Users/scammermike/.claude-grok/worktrees/g030perf-20260823-162830/tools/headless/control_plane_latency.py",
+            "--worker",
+            "grok_bridge"
+          ],
+          "ok": true,
+          "removable_ms": 425.209,
+          "warm_ms": {
+            "max": 430.988,
+            "mean": 420.015,
+            "median": 417.708,
+            "min": 404.851,
+            "n": 15,
+            "samples": [
+              414.698,
+              417.708,
+              411.904,
+              404.851,
+              414.042,
+              426.3,
+              412.487,
+              417.392,
+              428.571,
+              422.338,
+              430.209,
+              430.988,
+              426.186,
+              413.697,
+              428.853
+            ],
+            "stdev": 7.862
+          }
+        },
+        "host_snapshot": {
+          "cold_ms": {
+            "max": 22.878,
+            "mean": 21.301,
+            "median": 20.837,
+            "min": 19.713,
+            "n": 5,
+            "samples": [
+              22.412,
+              19.713,
+              22.878,
+              20.664,
+              20.837
+            ],
+            "stdev": 1.172
+          },
+          "command": [
+            "/opt/homebrew/opt/python@3.14/bin/python3.14",
+            "/Users/scammermike/.claude-grok/worktrees/g030perf-20260823-162830/tools/headless/control_plane_latency.py",
+            "--worker",
+            "host_snapshot"
+          ],
+          "ok": true,
+          "removable_ms": null,
+          "warm_ms": {
+            "max": 21.495,
+            "mean": 18.715,
+            "median": 18.513,
+            "min": 16.796,
+            "n": 25,
+            "samples": [
+              20.111,
+              17.804,
+              18.315,
+              18.945,
+              17.524,
+              17.437,
+              18.62,
+              19.952,
+              16.796,
+              18.513,
+              18.484,
+              18.301,
+              17.321,
+              18.258,
+              20.589,
+              19.079,
+              18.597,
+              21.495,
+              19.214,
+              19.464,
+              21.132,
+              19.433,
+              18.233,
+              17.319,
+              16.942
+            ],
+            "stdev": 1.226
+          }
+        },
+        "metal_device": {
+          "cold_ms": {
+            "max": 254.97,
+            "mean": 247.232,
+            "median": 243.95,
+            "min": 242.777,
+            "n": 3,
+            "samples": [
+              243.95,
+              242.777,
+              254.97
+            ],
+            "stdev": 5.492
+          },
+          "command": [
+            "/opt/homebrew/opt/python@3.14/bin/python3.14",
+            "/Users/scammermike/.claude-grok/worktrees/g030perf-20260823-162830/tools/headless/control_plane_latency.py",
+            "--worker",
+            "metal_device"
+          ],
+          "ok": true,
+          "removable_ms": 243.95,
+          "warm_ms": {
+            "max": 256.726,
+            "mean": 249.493,
+            "median": 248.533,
+            "min": 244.141,
+            "n": 15,
+            "samples": [
+              244.725,
+              246.897,
+              256.726,
+              248.329,
+              244.141,
+              248.776,
+              254.968,
+              250.759,
+              247.782,
+              246.166,
+              252.922,
+              253.645,
+              248.533,
+              245.772,
+              252.259
+            ],
+            "stdev": 3.735
+          }
+        },
+        "runtime_admission": {
+          "cold_ms": {
+            "max": 279.185,
+            "mean": 277.968,
+            "median": 277.729,
+            "min": 276.989,
+            "n": 3,
+            "samples": [
+              277.729,
+              279.185,
+              276.989
+            ],
+            "stdev": 0.913
+          },
+          "command": [
+            "/opt/homebrew/opt/python@3.14/bin/python3.14",
+            "/Users/scammermike/.claude-grok/worktrees/g030perf-20260823-162830/tools/headless/control_plane_latency.py",
+            "--worker",
+            "runtime_admission"
+          ],
+          "ok": true,
+          "removable_ms": 277.729,
+          "warm_ms": {
+            "max": 282.426,
+            "mean": 275.256,
+            "median": 275.093,
+            "min": 265.219,
+            "n": 15,
+            "samples": [
+              272.755,
+              281.109,
+              281.479,
+              270.369,
+              280.714,
+              282.426,
+              275.571,
+              276.494,
+              275.093,
+              273.21,
+              279.225,
+              270.318,
+              272.541,
+              272.308,
+              265.219
+            ],
+            "stdev": 4.81
+          }
+        },
+        "workspace_git": {
+          "cold_ms": {
+            "max": 15.098,
+            "mean": 13.969,
+            "median": 13.712,
+            "min": 13.159,
+            "n": 5,
+            "samples": [
+              13.712,
+              13.159,
+              14.572,
+              13.302,
+              15.098
+            ],
+            "stdev": 0.749
+          },
+          "command": [
+            "/opt/homebrew/opt/python@3.14/bin/python3.14",
+            "/Users/scammermike/.claude-grok/worktrees/g030perf-20260823-162830/tools/headless/control_plane_latency.py",
+            "--worker",
+            "workspace_git"
+          ],
+          "ok": true,
+          "removable_ms": 13.712,
+          "warm_ms": {
+            "max": 14.403,
+            "mean": 13.491,
+            "median": 13.546,
+            "min": 12.229,
+            "n": 25,
+            "samples": [
+              14.028,
+              13.972,
+              13.169,
+              14.185,
+              13.546,
+              14.246,
+              13.285,
+              12.514,
+              13.421,
+              12.664,
+              14.403,
+              12.421,
+              14.294,
+              13.211,
+              12.907,
+              14.052,
+              13.985,
+              12.928,
+              14.037,
+              13.207,
+              13.152,
+              12.229,
+              13.905,
+              13.763,
+              13.745
+            ],
+            "stdev": 0.622
+          }
+        }
+      },
+      "reading": "Largest: `swift` compile of a temp Metal probe on every force metal_device_info. Grok dry-run still spawns grok-run. Workspace spawns git. host_snapshot spawns vm_stat/sysctl/memory_pressure."
+    }
+  },
+  "what_i_watched_fail": []
+}

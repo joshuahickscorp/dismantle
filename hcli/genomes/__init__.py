@@ -1,8 +1,9 @@
 """Genomes: learned persistent machine / model / runtime science.
 
-``MachineGenome`` is implemented in ``hcli.machine`` (runtime identity
-lives next to the probe that produces it). This package is the ownership
-surface.
+``MachineGenome`` is a compatibility bag in ``hcli.machine``. Admission
+numbers come from ``resolve_runtime_limits``; the producer is
+``tools/headless/machine_probe.py``. This package is the ownership
+surface, not a second genome authority.
 """
 from hcli.machine import (
     GenomeFreshness,

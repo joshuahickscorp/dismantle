@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import shutil
 import sys
@@ -11,11 +10,6 @@ from typing import List, Optional, Tuple
 
 
 MAX_RUNTIME_COUNT = 8
-_EQUILIBRIUM_REL = Path(".haider") / "bootstrap-director-v6" / "worker-equilibrium.json"
-
-
-def _machine_genome_path() -> Path:
-    return Path.home() / ".config" / "hcli" / "machine_genome.json"
 
 
 def _prog_name() -> str:
@@ -29,20 +23,17 @@ def _clamp_runtime_count(n: int) -> int:
     return max(1, min(int(n), MAX_RUNTIME_COUNT))
 
 
-def _read_positive_int(value: object) -> Optional[int]:
-    try:
-        n = int(value)  # type: ignore[arg-type]
-    except (TypeError, ValueError):
-        return None
-    if n < 1:
-        return None
-    return n
-
-
-def _walk_parents(start: Path):
-    start = start.resolve()
-    yield start
-    yield from start.parents
+def _cli_limit_source(raw: str) -> str:
+    """Map ``resolve_runtime_limits`` source strings onto the CLI labels."""
+    if raw.startswith("env:"):
+        return raw.split(":", 1)[-1]
+    if "machine_genome.json" in raw:
+        return "machine_genome.json"
+    if "MACHINE_GENOME.json" in raw:
+        return "MACHINE_GENOME.json"
+    if "worker-equilibrium.json" in raw:
+        return "worker-equilibrium.json"
+    return raw
 
 
 def resolve_resident_runtime_limit(
@@ -50,50 +41,19 @@ def resolve_resident_runtime_limit(
 ) -> Tuple[int, str]:
     """Resolve `hcli max` resident runtime count.
 
-    Precedence, first hit wins:
-      1. env HCLI_RESIDENT_RUNTIME_LIMIT
-      2. ~/.config/hcli/machine_genome.json key resident_runtime_limit
-      3. <repo>/.haider/bootstrap-director-v6/worker-equilibrium.json
-         key bootstrap_workers (repo is found by walking start_dir/cwd)
-      4. fallback 1
+    Adapter over ``hcli.machine.resolve_runtime_limits`` so CLI ``max``
+    cannot pick a STALE genome the runtime pool would refuse. Clamps to
+    ``MAX_RUNTIME_COUNT`` because the positional N grammar is 1-8.
 
-    This is resident runtime count only, not active-decode concurrency.
+    Verified caller: ``parse_haider_args`` (token ``max``).
     """
-    env = os.environ.get("HCLI_RESIDENT_RUNTIME_LIMIT")
-    if env is not None and str(env).strip() != "":
-        n = _read_positive_int(str(env).strip())
-        if n is not None:
-            return _clamp_runtime_count(n), "HCLI_RESIDENT_RUNTIME_LIMIT"
+    from .machine import resolve_runtime_limits
 
-    genome = _machine_genome_path()
-    if genome.is_file():
-        try:
-            data = json.loads(genome.read_text(encoding="utf-8"))
-            n = _read_positive_int(data.get("resident_runtime_limit"))
-            if n is not None:
-                return _clamp_runtime_count(n), "machine_genome.json"
-        except (OSError, json.JSONDecodeError, AttributeError):
-            pass
-
-    start = Path(start_dir or os.getcwd())
-    try:
-        start = start.resolve()
-    except OSError:
-        start = Path(os.getcwd()).resolve()
-
-    for directory in _walk_parents(start):
-        eq = directory / _EQUILIBRIUM_REL
-        if not eq.is_file():
-            continue
-        try:
-            data = json.loads(eq.read_text(encoding="utf-8"))
-            n = _read_positive_int(data.get("bootstrap_workers"))
-            if n is not None:
-                return _clamp_runtime_count(n), "worker-equilibrium.json"
-        except (OSError, json.JSONDecodeError, AttributeError):
-            continue
-
-    return 1, "fallback"
+    start = start_dir or os.getcwd()
+    resolved = resolve_runtime_limits(repo_root=start, start_dir=start)
+    return _clamp_runtime_count(resolved.resident_limit), _cli_limit_source(
+        resolved.resident_source
+    )
 
 
 def parse_haider_args(argv: Optional[List[str]] = None) -> argparse.Namespace:

@@ -6,6 +6,8 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
+from .persist import atomic_write_json
+
 
 class Session:
     def __init__(self, session_id: Optional[str] = None, goal: str = "", runtime_count: int = 1, model: Optional[str] = None):
@@ -48,10 +50,7 @@ class SessionStore:
 
     def save(self, session: Session):
         path = os.path.join(self.dir, f"{session.id}.json")
-        tmp = path + ".tmp"
-        with open(tmp, "w") as f:
-            json.dump(session.to_dict(), f, indent=2)
-        os.replace(tmp, path)
+        atomic_write_json(path, session.to_dict())
 
     def load(self, session_id: str) -> Optional[Session]:
         path = os.path.join(self.dir, f"{session_id}.json")

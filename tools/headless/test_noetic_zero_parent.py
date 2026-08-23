@@ -31,6 +31,15 @@ def receipt() -> dict:
     return rec
 
 
+def _skip_if_metal_refused(receipt: dict) -> None:
+    live = (receipt.get("production_run") or {}).get("live_native_decode") or {}
+    if live.get("metal_refused"):
+        pytest.skip(
+            "native decode INCONCLUSIVE: no Metal-capable GPU on this host "
+            f"(exit={live.get('exit_code')})"
+        )
+
+
 def test_classifier_distinguishes_weight_tokenizer_config():
     weight = PARENT / "model-00001-of-00018.safetensors"
     tok = PARENT / "tokenizer.json"
@@ -73,6 +82,7 @@ def test_detector_flags_a_parent_safetensor_in_a_synthetic_log(tmp_path: Path):
 
 
 def test_receipt_written(receipt: dict):
+    _skip_if_metal_refused(receipt)
     assert RECEIPT.is_file()
     assert receipt["schema"] == "hawking.headless.noetic_zero_parent.v1"
     assert receipt["verdict"] == "PASS", receipt.get("pass_rule")
@@ -89,6 +99,7 @@ def test_decode_binary_is_from_this_repo(receipt: dict):
 
 
 def test_decode_ran_to_completion_and_emitted_a_token(receipt: dict):
+    _skip_if_metal_refused(receipt)
     live = receipt["production_run"]["live_native_decode"]
     assert live["complete"] is True, (
         "native decode did not run to completion; a truncated prefix is "
@@ -106,6 +117,7 @@ def test_decode_ran_to_completion_and_emitted_a_token(receipt: dict):
 
 
 def test_observed_the_whole_process_including_catalog_reads(receipt: dict):
+    _skip_if_metal_refused(receipt)
     live = receipt["production_run"]["live_native_decode"]
     obs = live["observation"]
     assert obs["n_events"] >= 755, (
@@ -118,6 +130,7 @@ def test_observed_the_whole_process_including_catalog_reads(receipt: dict):
 
 
 def test_production_run_opens_no_parent_weights(receipt: dict):
+    _skip_if_metal_refused(receipt)
     prod = receipt["production_run"]
     assert prod["parent_weight_paths"] == []
     assert prod["n_parent_weight_opens"] == 0

@@ -5,6 +5,7 @@ import os
 from typing import Any, Dict, Optional, Tuple
 
 from .context_budget import resolve as resolve_context_budget
+from .persist import atomic_write_json
 
 
 def coerce_bool(value: Any, default: bool = False) -> bool:
@@ -52,11 +53,7 @@ class Config:
             return {}
 
     def _write(self, path: str, data: Dict[str, Any]) -> None:
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        tmp = path + ".tmp"
-        with open(tmp, "w") as f:
-            json.dump(data, f, indent=2)
-        os.replace(tmp, path)
+        atomic_write_json(path, data)
 
     def load(self) -> Dict[str, Any]:
         cfg: Dict[str, Any] = {}
@@ -71,11 +68,7 @@ class Config:
         return os.path.expanduser(str(model))
 
     def save_project(self, data: Dict[str, Any]):
-        os.makedirs(os.path.dirname(self.project_path), exist_ok=True)
-        tmp = self.project_path + ".tmp"
-        with open(tmp, "w") as f:
-            json.dump(data, f, indent=2)
-        os.replace(tmp, self.project_path)
+        atomic_write_json(self.project_path, data)
 
     def save_global(self, data: Dict[str, Any]) -> None:
         existing = self._read(self.global_path)

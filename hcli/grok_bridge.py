@@ -133,6 +133,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Sequence, Union
 
+from .persist import atomic_write_json, atomic_write_text
+
 LOG = logging.getLogger("hcli.grok_bridge")
 
 NO_MUTATION_LOCK_WARNING = (
@@ -945,10 +947,7 @@ class GrokBridge:
         )
         self.receipts_dir.mkdir(parents=True, exist_ok=True)
         dest = self.receipts_dir / f"{task_id}.compact.json"
-        dest.write_text(
-            json.dumps(compact, indent=2, sort_keys=True),
-            encoding="utf-8",
-        )
+        atomic_write_json(dest, compact)
         compact["compact_path"] = str(dest)
         self._update_receipt(str(task_id), extra={"compact_path": str(dest)})
         return compact
@@ -1197,7 +1196,7 @@ class GrokBridge:
         dest_dir.mkdir(parents=True, exist_ok=True)
         stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S-%f")
         path = dest_dir / f"{task}-{stamp}.md"
-        path.write_text(contract_text, encoding="utf-8")
+        atomic_write_text(path, contract_text)
         return path
 
     def _write_receipt(
@@ -1257,10 +1256,7 @@ class GrokBridge:
             "failure_evidence_reason": "grok-stderr.log absent or empty",
         }
         self._fill_observed_receipt(receipt)
-        path.write_text(
-            json.dumps(receipt, indent=2, sort_keys=True),
-            encoding="utf-8",
-        )
+        atomic_write_json(path, receipt)
         return path
 
     def _read_receipt(self, task_id: str) -> Optional[Dict[str, Any]]:
@@ -1300,10 +1296,7 @@ class GrokBridge:
                 current["grok_state"] = state
         self._fill_observed_receipt(current)
         path = self.receipt_path(task_id)
-        path.write_text(
-            json.dumps(current, indent=2, sort_keys=True),
-            encoding="utf-8",
-        )
+        atomic_write_json(path, current)
 
     def _fill_observed_receipt(self, receipt: Dict[str, Any]) -> None:
         """Copy observable fields. Null plus a reason when a value cannot be seen."""

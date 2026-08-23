@@ -4,6 +4,7 @@ import json
 import os
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -11,6 +12,7 @@ from unittest.mock import patch
 REPO = Path(__file__).resolve().parents[4]
 
 from hcli.cli import parse_haider_args, resolve_resident_runtime_limit
+from hcli.machine import live_machine_identity
 
 
 class TestGrammar(unittest.TestCase):
@@ -57,7 +59,9 @@ class TestGrammar(unittest.TestCase):
             args.max_source,
             {
                 "HCLI_RESIDENT_RUNTIME_LIMIT",
+                "RESIDENT_RUNTIME_LIMIT",
                 "machine_genome.json",
+                "MACHINE_GENOME.json",
                 "worker-equilibrium.json",
                 "fallback",
             },
@@ -81,7 +85,17 @@ class TestGrammar(unittest.TestCase):
             genome_dir = home / ".config" / "hcli"
             genome_dir.mkdir(parents=True)
             (genome_dir / "machine_genome.json").write_text(
-                json.dumps({"resident_runtime_limit": 4})
+                json.dumps(
+                    {
+                        "schema": "hcli.machine_genome.v1",
+                        "generated_at": time.strftime(
+                            "%Y-%m-%dT%H:%M:%SZ", time.gmtime()
+                        ),
+                        "measured_by": "tools/headless/machine_probe.py",
+                        "resident_runtime_limit": 4,
+                        "machine": live_machine_identity(),
+                    }
+                )
             )
             eq_dir = workspace / ".haider" / "bootstrap-director-v6"
             eq_dir.mkdir(parents=True)
@@ -91,6 +105,7 @@ class TestGrammar(unittest.TestCase):
 
             with patch.dict(os.environ, {"HOME": str(home)}, clear=False):
                 os.environ.pop("HCLI_RESIDENT_RUNTIME_LIMIT", None)
+                os.environ.pop("RESIDENT_RUNTIME_LIMIT", None)
                 n, source = resolve_resident_runtime_limit(str(workspace))
                 self.assertEqual(n, 4)
                 self.assertEqual(source, "machine_genome.json")

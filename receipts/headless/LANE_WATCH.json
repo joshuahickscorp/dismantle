@@ -1,25 +1,24 @@
 {
-  "generated_at": "2026-08-23T21:56:32Z",
+  "generated_at": "2026-08-23T22:05:22Z",
   "running": [
-    "g012q3mix",
-    "g028auth2"
+    "g012affine2"
   ],
   "needs_harvest": [
     {
-      "slug": "g006gravity",
-      "id": "g006gravity-20260823-172647",
+      "slug": "g012q3mix",
+      "id": "g012q3mix-20260823-174220",
       "unharvested": [
-        "receipts/headless/GRAVITY_COMPILER_SEARCH.json",
-        "tools/headless/gravity_compiler_search.py",
-        "tools/headless/test_gravity_compiler_search.py"
+        "receipts/headless/NOETIC_Q3_MLP_Q4_ATTN.json",
+        "tools/headless/q3_mlp_q4_attn.py",
+        "tools/headless/test_q3_mlp_q4_attn.py"
       ],
       "worktree_extras": 0
     }
   ],
   "headroom": {
-    "load1": 7.77490234375,
+    "load1": 3.400390625,
     "ncpu": 28,
-    "disk_gib": 422.1,
+    "disk_gib": 420.1,
     "room_for_more": true
   }
 }

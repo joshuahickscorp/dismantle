@@ -9,7 +9,6 @@ import subprocess
 import threading
 import time
 import urllib.request
-import uuid
 import weakref
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -36,6 +35,7 @@ from .machine import (
     resolve_runtime_limits,
     slot_allocation_decision,
 )
+from .persist import atomic_write_text as _atomic_write
 from .resources import pid_is_alive, process_start_token
 
 OWNERSHIP_SCHEMA = "hcli.runtime_pool.v1"
@@ -49,20 +49,6 @@ OVERLAP_NAME = "model_overlap.json"
 # higher observed max.
 DEFAULT_OVERLAP_ADMIT_CAP = 1
 _OVERLAP_LOCK = threading.Lock()
-
-TOPOLOGY_KEYS = (
-    "model_path",
-    "artifact_identity",
-    "pid",
-    "port",
-    "ctx_size",
-    "parallel",
-    "per_slot_context",
-    "active_sequences",
-    "kv_configuration",
-)
-
-
 
 TOPOLOGY_KEYS = (
     "model_path",
@@ -434,23 +420,6 @@ def store_observed_overlap(workspace: Union[str, Path], n: int) -> None:
             _atomic_write(path, json.dumps(record, indent=2))
         except OSError:
             pass
-
-
-def _atomic_write(path: Path, text: str) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.parent / f".{path.name}.{os.getpid()}.{uuid.uuid4().hex}.tmp"
-    try:
-        with open(tmp, "w", encoding="utf-8") as handle:
-            handle.write(text)
-            handle.flush()
-            os.fsync(handle.fileno())
-        os.replace(tmp, path)
-    except Exception:
-        try:
-            tmp.unlink()
-        except OSError:
-            pass
-        raise
 
 
 def resolve_workspace(workspace: Optional[Union[str, Path]] = None) -> Path:

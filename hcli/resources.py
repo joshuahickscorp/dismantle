@@ -17,12 +17,13 @@ import re
 import subprocess
 import threading
 import time
-import uuid
 from collections import Counter
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, Optional, Tuple, Union
+
+from .persist import atomic_write_text as _atomic_write_text
 
 
 class ResourceClass(str, Enum):
@@ -66,74 +67,26 @@ def _load_json(path: Path) -> Optional[Dict[str, Any]]:
     return data if isinstance(data, dict) else None
 
 
-def _limit_from_mapping(data: Dict[str, Any]) -> Optional[int]:
-    for key in ("ACTIVE_DECODE_LIMIT", "active_decode_limit"):
-        if key not in data or data[key] is None:
-            continue
-        try:
-            value = int(data[key])
-        except (TypeError, ValueError):
-            continue
-        if value >= 1:
-            return value
-    return None
-
-
-def _limit_from_env() -> Optional[Tuple[int, str]]:
-    for key in ("ACTIVE_DECODE_LIMIT", "HCLI_ACTIVE_DECODE_LIMIT"):
-        raw = os.environ.get(key)
-        if raw is None or not str(raw).strip():
-            continue
-        try:
-            value = int(str(raw).strip())
-        except ValueError:
-            continue
-        if value >= 1:
-            return value, f"env:{key}"
-    return None
-
-
 def resolve_active_decode_limit(
     repo_root: Optional[Union[str, Path]] = None,
 ) -> Tuple[int, str]:
-    """Return (limit, source). Env override first, then MachineGenome paths.
+    """Return (limit, source). Thin adapter over ``resolve_runtime_limits``.
 
-    Search order:
-      1. ACTIVE_DECODE_LIMIT / HCLI_ACTIVE_DECODE_LIMIT env
-      2. ~/.config/hcli/machine_genome.json
-      3. <repo>/receipts/headless/MACHINE_GENOME.json
-      4. <repo>/.haider/bootstrap-director-v6/worker-equilibrium.json
-         (key ``active_decode_limit``)
-      5. conservative fallback of 1
+    The previous body re-read the same genome files without freshness or
+    machine-identity checks, so the scheduler could admit a STALE prior
+    that RuntimePool had already refused. One authority: ``hcli.machine``.
+
+    Verified caller: ``ResourceLimits.resolve`` (and tests that import this
+    name). Do not grow a second file-walker here.
     """
-    env = _limit_from_env()
-    if env is not None:
-        return env
+    from .machine import resolve_runtime_limits
 
-    home_genome = Path.home() / ".config" / "hcli" / "machine_genome.json"
-    root = Path(repo_root) if repo_root is not None else _default_repo_root()
-    candidates: Tuple[Tuple[Path, str], ...] = (
-        (home_genome, str(home_genome)),
-        (
-            root / "receipts" / "headless" / "MACHINE_GENOME.json",
-            "receipts/headless/MACHINE_GENOME.json",
-        ),
-        (
-            root
-            / ".haider"
-            / "bootstrap-director-v6"
-            / "worker-equilibrium.json",
-            "worker-equilibrium.json",
-        ),
-    )
-    for path, label in candidates:
-        data = _load_json(path)
-        if not data:
-            continue
-        value = _limit_from_mapping(data)
-        if value is not None:
-            return value, label
-    return DEFAULT_DECODE_LIMIT, "fallback"
+    kwargs: Dict[str, Any] = {}
+    if repo_root is not None:
+        kwargs["repo_root"] = repo_root
+        kwargs["start_dir"] = repo_root
+    resolved = resolve_runtime_limits(**kwargs)
+    return resolved.active_decode_limit, resolved.active_source
 
 
 @dataclass
@@ -395,24 +348,6 @@ def process_start_token(pid: int) -> Optional[str]:
         if token:
             return token
     return None
-
-
-def _atomic_write_text(path: Path, text: str) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp_name = f".{path.name}.{os.getpid()}.{uuid.uuid4().hex}.tmp"
-    tmp_path = path.parent / tmp_name
-    try:
-        with open(tmp_path, "w", encoding="utf-8") as handle:
-            handle.write(text)
-            handle.flush()
-            os.fsync(handle.fileno())
-        os.replace(tmp_path, path)
-    except Exception:
-        try:
-            tmp_path.unlink()
-        except OSError:
-            pass
-        raise
 
 
 _EMPTY_LOCK_GRACE_S = 5.0

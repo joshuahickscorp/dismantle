@@ -54,6 +54,61 @@ class TestActiveDecodeLimit(unittest.TestCase):
             else:
                 os.environ["ACTIVE_DECODE_LIMIT"] = saved
 
+    def test_delegates_to_resolve_runtime_limits(self):
+        from hcli.machine import resolve_runtime_limits
+
+        with tempfile.TemporaryDirectory() as tmp:
+            a = resolve_active_decode_limit(repo_root=tmp)
+            b = resolve_runtime_limits(repo_root=tmp, start_dir=tmp)
+            self.assertEqual(a, (b.active_decode_limit, b.active_source))
+
+    def test_stale_genome_is_not_an_admission_authority(self):
+        from unittest.mock import patch
+
+        saved = {
+            k: os.environ.pop(k, None)
+            for k in (
+                "ACTIVE_DECODE_LIMIT",
+                "HCLI_ACTIVE_DECODE_LIMIT",
+                "HCLI_RESIDENT_RUNTIME_LIMIT",
+                "RESIDENT_RUNTIME_LIMIT",
+            )
+        }
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                home = root / "home"
+                genome_dir = home / ".config" / "hcli"
+                genome_dir.mkdir(parents=True)
+                (genome_dir / "machine_genome.json").write_text(
+                    json.dumps(
+                        {
+                            "schema": "hcli.machine_genome.v1",
+                            "generated_at": "2020-01-01T00:00:00Z",
+                            "active_decode_limit": 9,
+                            "resident_runtime_limit": 9,
+                            "machine": {
+                                "hw_model": "Mac00,0-not-this-box",
+                                "cpu": "not-this-cpu",
+                                "ncpu": 1,
+                                "mem_bytes": 1,
+                            },
+                        }
+                    )
+                )
+                with patch.object(Path, "home", return_value=home):
+                    limit, source = resolve_active_decode_limit(repo_root=root)
+                self.assertNotEqual(limit, 9)
+                self.assertNotIn("machine_genome.json", source)
+                if source == "fallback":
+                    self.assertEqual(limit, 1)
+        finally:
+            for key, value in saved.items():
+                if value is None:
+                    os.environ.pop(key, None)
+                else:
+                    os.environ[key] = value
+
     def test_fallback_is_conservative_one(self):
         saved = os.environ.get("ACTIVE_DECODE_LIMIT")
         os.environ.pop("ACTIVE_DECODE_LIMIT", None)

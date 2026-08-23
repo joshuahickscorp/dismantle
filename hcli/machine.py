@@ -970,19 +970,35 @@ def resolve_decode_topology(
 
 @dataclass
 class MachineGenome:
+    """Compatibility bag over a caller-supplied genome JSON file.
+
+    Not a producer and not an admission authority. Live numbers come from
+    ``resolve_runtime_limits``, which reads ``~/.config/hcli/machine_genome.json``
+    then ``receipts/headless/MACHINE_GENOME.json`` (FRESH genomes only).
+    The producer is ``tools/headless/machine_probe.py``.
+
+    This class must not grow a ``write()`` that bypasses the probe, and it
+    must not default onto the canonical config path — a naive save would
+    clobber the operator-qualified genome. The default path stays under
+    ``HCLI_HOME`` so the two files cannot alias.
+
+    Verified caller: ``tools/headless/hcli_persistence_audit.py`` (crash
+    demo of save). Admission must not import this class.
+    """
+
     path: Path
     data: Dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        if self.path.exists():
-            try:
-                self.data = json.loads(self.path.read_text())
-            except Exception:
-                self.data = {}
+        self.path = Path(self.path)
+        loaded = _load_json(self.path)
+        if loaded is not None:
+            self.data = loaded
 
     def save(self) -> None:
-        self.path.write_text(json.dumps(self.data, indent=2))
+        from .persist import atomic_write_json
+
+        atomic_write_json(self.path, self.data)
 
     def get_profile(self, key: str) -> Optional[Dict[str, Any]]:
         return self.data.get(key)
@@ -990,7 +1006,12 @@ class MachineGenome:
     def set_profile(self, key: str, profile: Dict[str, Any]) -> None:
         self.data[key] = profile
 
+    def freshness(self, **kwargs: Any) -> GenomeFreshness:
+        """Classify this file the same way ``resolve_runtime_limits`` would."""
+        return assess_genome_freshness(self.data, path=self.path, **kwargs)
+
 
 def get_machine_genome_path() -> Path:
+    """Scratch path for the compatibility bag. Not the live genome."""
     base = Path(os.environ.get("HCLI_HOME", Path.home() / ".local" / "share" / "hcli"))
     return base / "machine-genome.json"

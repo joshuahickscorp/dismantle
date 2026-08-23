@@ -33,56 +33,11 @@ from .workunit import (
 
 LOG = logging.getLogger("hcli.scheduler")
 
-# Re-exported: the cap lives on the unit and in workunit.py so a restart
-# cannot reset it. Kept here so existing `from scheduler import MAX_REPAIR_*`
-# continues to resolve to the same names.
-
-
-def _remaining_depth(units: Dict[str, "WorkUnit"]) -> Dict[str, int]:
-    """How many levels of unfinished work still depend on each unit.
-
-    A unit nothing depends on has depth 1. A unit at the head of a chain of
-    three unfinished dependents has depth 4. Completed and failed dependents do
-    not count: what matters is the work still ahead, not the shape of the
-    original graph.
-
-    Not a scheduling key. Hops are not time; dispatch is FIFO by ready_at.
-    """
-    memo: Dict[str, int] = {}
-    children: Dict[str, List[str]] = {uid: [] for uid in units}
-    for uid, unit in units.items():
-        for dep in unit.dependencies:
-            if dep in children and unit.status not in ("completed", "failed"):
-                children[dep].append(uid)
-
-    def depth(uid: str, seen: Optional[set] = None) -> int:
-        if uid in memo:
-            return memo[uid]
-        seen = seen or set()
-        if uid in seen:
-            # A cycle should not exist, but a scheduler must not hang on one.
-            return 1
-        seen = seen | {uid}
-        kids = children.get(uid, ())
-        memo[uid] = 1 + max((depth(k, seen) for k in kids), default=0)
-        return memo[uid]
-
-    for uid in units:
-        depth(uid)
-    return memo
-
-LOG = logging.getLogger("hcli.scheduler")
-
-# How deep a repair-of-a-repair chain may go before the lineage is declared
-# exhausted. Three is enough for a genuinely transient failure to clear and far
-# short of the unbounded tree a dead backend used to produce.
-MAX_REPAIR_DEPTH = 3
-
-# Depth alone bounds the tree but not its SIZE: with a retry budget of 3 at each
-# level, a lineage whose failures all look different still reaches 3 + 9 + 27 =
-# 39 repairs before depth stops it. Measured. Cap the total per root so the
-# growth is linear in the budget rather than exponential in the depth.
-MAX_REPAIRS_PER_ROOT = 6
+# Re-exported from workunit.py (imported above). Do not reassign these
+# names: a second `MAX_REPAIR_* = N` here used to shadow the import and
+# split the retry-policy authority. Dispatch is FIFO by ready_at; the
+# retired `_remaining_depth` helper lived next to that shadow and is gone.
+# Measurement copy: tools/headless/hcli_scheduler_quality.py::remaining_depth.
 
 
 DEFAULT_NO_PROGRESS_THRESHOLD = 3

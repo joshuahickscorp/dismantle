@@ -1,8 +1,12 @@
 """Leaf persistence helpers.
 
-``atomic_write_json`` used to live in ``dag_store``, which pulled
-``max_policy`` into an import SCC (dag_store -> workunit -> resources
--> max_policy -> dag_store). This module has no hcli imports.
+This module has no hcli imports so it can sit under dag_store, resources,
+ledger, runtime, and grok_bridge without recreating the old SCC
+(dag_store -> workunit -> resources -> max_policy -> dag_store).
+
+``atomic_write_text`` is the only crash-safe writer in HCLI-py.
+``atomic_write_json`` is the JSON adapter. Callers that used to ship a
+private ``_atomic_write*`` re-export these names.
 """
 from __future__ import annotations
 
@@ -13,11 +17,15 @@ from pathlib import Path
 from typing import Any, Union
 
 
-def atomic_write_json(path: Union[str, Path], obj: Any) -> None:
-    """Write JSON via a same-directory temp file and ``os.replace``."""
+def atomic_write_text(path: Union[str, Path], text: str) -> None:
+    """Write UTF-8 text via a same-directory temp file, fsync, and ``os.replace``.
+
+    A crash mid-write leaves the live path intact. JSON receipts, GOAL.md,
+    mutation locks, and runtime ownership files all go through here.
+    """
     dest = Path(path)
     dest.parent.mkdir(parents=True, exist_ok=True)
-    payload = json.dumps(obj, indent=2, sort_keys=True)
+    payload = text if isinstance(text, str) else str(text)
     tmp_name = f".{dest.name}.{os.getpid()}.{uuid.uuid4().hex}.tmp"
     tmp_path = dest.parent / tmp_name
     try:
@@ -32,3 +40,8 @@ def atomic_write_json(path: Union[str, Path], obj: Any) -> None:
         except OSError:
             pass
         raise
+
+
+def atomic_write_json(path: Union[str, Path], obj: Any) -> None:
+    """Write JSON via ``atomic_write_text`` (indent=2, sort_keys=True)."""
+    atomic_write_text(path, json.dumps(obj, indent=2, sort_keys=True))

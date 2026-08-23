@@ -8,6 +8,8 @@ import uuid
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
+from .persist import atomic_write_json
+
 if TYPE_CHECKING:
     from .ledger import Ledger
 
@@ -103,10 +105,7 @@ class SteeringQueue:
                 self._events = []
 
     def _save(self):
-        tmp = self._path + ".tmp"
-        with open(tmp, "w") as f:
-            json.dump([e.to_dict() for e in self._events], f, indent=2)
-        os.replace(tmp, self._path)
+        atomic_write_json(self._path, [e.to_dict() for e in self._events])
 
     def enqueue(self, text: str, kind: str = "knowledge") -> SteerEvent:
         event = SteerEvent(

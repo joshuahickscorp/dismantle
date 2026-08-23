@@ -91,6 +91,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
+from .persist import atomic_write_text as _atomic_write_text
+
 
 VALID_STATUSES = (
     "PENDING",
@@ -369,27 +371,6 @@ def _format_obligation(ob: Obligation) -> str:
         f"      verify: {ob.verify_command}\n"
         f"      evidence: {ob.evidence}"
     )
-
-
-def _atomic_write_text(dest: Path, text: str) -> None:
-    """Write ``text`` via a sibling tmp file and ``os.replace``.
-
-    A crash mid-write leaves the live path intact. Receipts and GOAL.md
-    both go through this so a VERIFIED checkbox cannot land as a
-    truncated markdown file.
-    """
-    dest = Path(dest)
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    tmp = dest.with_name(f".{dest.name}.{os.getpid()}.tmp")
-    try:
-        tmp.write_text(text, encoding="utf-8")
-        os.replace(tmp, dest)
-    except Exception:
-        try:
-            tmp.unlink()
-        except OSError:
-            pass
-        raise
 
 
 class Ledger:

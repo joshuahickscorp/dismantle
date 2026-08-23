@@ -34,8 +34,6 @@ from typing import Any, Dict, List, Optional, Tuple
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import p0_tool_bridge as p0
 
-MAX_MUTATION_OPERATIONS = 20
-
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
@@ -59,521 +57,6 @@ def allocate_port() -> int:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind((DEFAULT_HOST, 0))
         return s.getsockname()[1]
-# ---------------------------------------------------------------------------
-# WorkUnit representation
-# ---------------------------------------------------------------------------
-
-WORKUNIT_STATUSES = ("pending", "ready", "running", "completed", "failed")
-
-
-class WorkUnit:
-    """Small deterministic work unit with mechanically controlled status."""
-
-    def __init__(
-        self,
-        id: str,
-        role: str,
-        description: str,
-        dependencies: Optional[List[str]] = None,
-    ) -> None:
-        self.id = id
-        self.role = role
-        self.description = description
-        self.dependencies = list(dependencies or [])
-        self.status = "pending"
-        self.assigned_runtime: Optional[int] = None
-        self.attempts = 0
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            "id": self.id,
-            "role": self.role,
-            "description": self.description,
-            "dependencies": self.dependencies,
-            "status": self.status,
-            "assigned_runtime": self.assigned_runtime,
-            "attempts": self.attempts,
-        }
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "WorkUnit":
-        wu = cls(
-            id=data["id"],
-            role=data["role"],
-            description=data["description"],
-            dependencies=data.get("dependencies", []),
-        )
-        wu.status = data.get("status", "pending")
-        wu.assigned_runtime = data.get("assigned_runtime")
-        wu.attempts = data.get("attempts", 0)
-        return wu
-
-
-def _transition_workunit_status(
-    wu: WorkUnit,
-    new_status: str,
-) -> bool:
-    """Mechanically controlled status transition.
-
-    Valid transitions:
-        pending -> ready
-        ready -> running
-        running -> completed
-        running -> failed
-        failed -> ready  (retry)
-    """
-    valid = {
-        "pending": {"ready"},
-        "ready": {"running"},
-        "running": {"completed", "failed"},
-        "failed": {"ready"},
-        "completed": set(),
-    }
-    if new_status in valid.get(wu.status, set()):
-        wu.status = new_status
-        return True
-    return False
-
-
-def _workunit_is_ready(
-    wu: WorkUnit,
-    all_units: Dict[str, WorkUnit],
-) -> bool:
-    """A work unit is ready when pending or failed-within-budget and all deps are completed."""
-    if wu.status not in ("pending", "failed"):
-        return False
-    if wu.status == "failed" and wu.attempts >= DEFAULT_RETRY_BUDGET:
-        return False
-    for dep_id in wu.dependencies:
-        dep = all_units.get(dep_id)
-        if dep is None or dep.status != "completed":
-            return False
-    return True
-
-
-def _identify_ready_workunits(
-    units: Dict[str, WorkUnit],
-) -> List[WorkUnit]:
-    """Identify work units that can transition to ready."""
-    ready: List[WorkUnit] = []
-    for wu in units.values():
-        if _workunit_is_ready(wu, units):
-            _transition_workunit_status(wu, "ready")
-            ready.append(wu)
-    return ready
-
-
-def _assign_ready_workunits(
-    ready_units: List[WorkUnit],
-    runtime_count: int,
-) -> List[Tuple[WorkUnit, int]]:
-    """Assign ready independent work to runtime indices.
-
-    Prevents duplicate simultaneous assignment by tracking assigned runtimes.
-    Returns list of (workunit, runtime_index) pairs.
-    """
-    assignments: List[Tuple[WorkUnit, int]] = []
-    used_runtimes: set = set()
-
-    for wu in ready_units:
-        if wu.status != "ready":
-            continue
-        # Find a free runtime index
-        assigned = False
-        for idx in range(runtime_count):
-            if idx not in used_runtimes:
-                _transition_workunit_status(wu, "running")
-                wu.assigned_runtime = idx
-                wu.attempts += 1
-                used_runtimes.add(idx)
-                assignments.append((wu, idx))
-                assigned = True
-                break
-        if not assigned:
-            break
-
-    return assignments
-
-
-def _mark_workunit_completed(wu: WorkUnit) -> None:
-    _transition_workunit_status(wu, "completed")
-    wu.assigned_runtime = None
-
-
-def _mark_workunit_failed(wu: WorkUnit) -> None:
-    _transition_workunit_status(wu, "failed")
-    wu.assigned_runtime = None
-
-
-def parse_haider_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
-    """Compatibility boundary: HAIDER uses HCLI's canonical product grammar.
-
-    HCLI owns the public argument contract.  HAIDER retains ``args.n`` as a
-    temporary compatibility alias for bootstrap callers that have not yet
-    migrated to ``runtime_count``.
-    """
-    from hcli.cli import parse_haider_args as parse_hcli_args
-
-    args = parse_hcli_args(argv)
-
-    # Temporary HAIDER compatibility alias.
-    args.n = args.runtime_count
-
-    return args
-
-DEFAULT_RETRY_BUDGET = 3
-
-
-def _workunit_can_retry(wu: WorkUnit, budget: int = DEFAULT_RETRY_BUDGET) -> bool:
-    """Check if a failed work unit can be retried within budget."""
-    return wu.status == "failed" and wu.attempts < budget
-
-
-def _retry_failed_workunits(units: Dict[str, WorkUnit], budget: int = DEFAULT_RETRY_BUDGET) -> List[WorkUnit]:
-    """Transition failed work units back to ready if retry budget remains."""
-    retried: List[WorkUnit] = []
-    for wu in units.values():
-        if _workunit_can_retry(wu, budget):
-            if _transition_workunit_status(wu, "ready"):
-                retried.append(wu)
-    return retried
-
-
-def _deterministic_evidence(
-    guard: "p0.RepositoryGuard",
-    mission_text: str,
-) -> Dict[str, Any]:
-    """Build bounded workspace evidence without any model call.
-
-    RepositoryGuard is the scope authority.  Do not duplicate its root state;
-    resolve "." through the guard to obtain the current workspace.
-    """
-    workspace = Path(guard.resolve("."))
-
-    explicit_pattern = re.compile(
-        r"(?<![A-Za-z0-9_.-])"
-        r"((?:[A-Za-z0-9_.-]+/)*"
-        r"[A-Za-z0-9_.-]+\."
-        r"(?:py|pyi|js|jsx|ts|tsx|md|json|yaml|yml|toml|rs|go|txt|cfg|ini))"
-    )
-
-    named_files: List[str] = []
-
-    for raw in explicit_pattern.findall(mission_text or ""):
-        raw = raw.rstrip(".,:;)`]}'\"")
-
-        if raw.startswith(".git/") or "/.git/" in raw:
-            continue
-
-        try:
-            full = Path(guard.resolve(raw))
-        except Exception:
-            continue
-
-        if not full.is_file():
-            continue
-
-        try:
-            rel = guard.relative(str(full))
-        except Exception:
-            rel = str(full.relative_to(workspace))
-
-        if rel not in named_files:
-            named_files.append(rel)
-
-    tracked: List[str] = []
-
-    try:
-        result = subprocess.run(
-            ["git", "ls-files"],
-            cwd=str(workspace),
-            capture_output=True,
-            text=True,
-            timeout=10,
-        )
-
-        if result.returncode == 0:
-            tracked = [
-                line.strip()
-                for line in result.stdout.splitlines()
-                if line.strip()
-            ]
-    except (OSError, subprocess.TimeoutExpired):
-        pass
-
-    if not tracked:
-        ignored = {
-            ".git",
-            ".venv",
-            "venv",
-            "node_modules",
-            "__pycache__",
-            "build",
-            "dist",
-            "target",
-            "coverage",
-            ".pytest_cache",
-            ".mypy_cache",
-            ".ruff_cache",
-        }
-
-        for path in workspace.rglob("*"):
-            if not path.is_file():
-                continue
-
-            try:
-                rel_path = path.relative_to(workspace)
-            except ValueError:
-                continue
-
-            if any(part in ignored for part in rel_path.parts):
-                continue
-
-            tracked.append(str(rel_path))
-
-    # Stable de-duplication.
-    tracked = list(dict.fromkeys(tracked))
-
-    mission_lower = (mission_text or "").lower()
-
-    tokens = {
-        token
-        for token in re.findall(r"[a-zA-Z0-9_]+", mission_lower)
-        if len(token) >= 3
-    }
-
-    def relevance(path: str) -> tuple:
-        lower = path.lower()
-
-        score = 0
-
-        if path in named_files:
-            score += 1000
-
-        if "test" in mission_lower and "test" in lower:
-            score += 100
-
-        for token in tokens:
-            if token in lower:
-                score += 10
-
-        # Prefer source / configuration / goal surfaces over arbitrary bulk.
-        if lower.endswith(
-            (
-                ".py",
-                ".js",
-                ".ts",
-                ".tsx",
-                ".rs",
-                ".go",
-                ".md",
-                ".toml",
-                ".json",
-                ".yaml",
-                ".yml",
-            )
-        ):
-            score += 1
-
-        return (-score, len(path), path)
-
-    universe = list(dict.fromkeys(named_files + tracked))
-
-    ranked = sorted(universe, key=relevance)
-
-    # Enough evidence for useful deterministic narrowing without flooding the
-    # worker context.
-    selected = ranked[:24]
-
-    files: List[Dict[str, Any]] = []
-
-    for rel in selected:
-        try:
-            full = Path(guard.resolve(rel))
-        except Exception:
-            continue
-
-        if not full.is_file():
-            continue
-
-        try:
-            content = full.read_text(
-                encoding="utf-8",
-                errors="replace",
-            )
-        except OSError:
-            continue
-
-        # Evidence is a bounded cache, not authority.
-        if len(content) > 12000:
-            content = content[:12000] + "\n...[truncated]"
-
-        files.append(
-            {
-                "path": rel,
-                "content": content,
-            }
-        )
-
-    final_chunks = []
-
-    for item in files:
-        final_chunks.append(
-            f"--- {item['path']} ---\n{item['content']}"
-        )
-
-    stats = {
-        "model_turns": 0,
-        "fast_evidence_files": len(files),
-    }
-
-    return {
-        "ok": True,
-        "files": files,
-        "named_files": named_files,
-        "tracked_files": tracked[:500],
-        "fast_evidence_files": len(files),
-        "model_turns": 0,
-        "stats": stats,
-        "final": "\n\n".join(final_chunks),
-    }
-
-
-def _build_scheduler_plan(
-    units: Dict[str, WorkUnit],
-    runtime_count: int,
-) -> List[Tuple[WorkUnit, int]]:
-    """Build one deterministic scheduling wave.
-
-    Pending work with satisfied dependencies is promoted to ready.
-
-    Already-ready work is dispatchable.
-
-    Failed work is deliberately *not* auto-promoted here.  Retry policy owns
-    the explicit failed -> ready transition, which prevents an ordinary
-    scheduler tick from silently consuming another retry attempt.
-    """
-    ready: List[WorkUnit] = []
-
-    for wu in units.values():
-        if wu.status == "ready":
-            deps_complete = all(
-                dep_id in units
-                and units[dep_id].status == "completed"
-                for dep_id in wu.dependencies
-            )
-
-            if deps_complete:
-                ready.append(wu)
-
-            continue
-
-        if wu.status != "pending":
-            continue
-
-        deps_complete = all(
-            dep_id in units
-            and units[dep_id].status == "completed"
-            for dep_id in wu.dependencies
-        )
-
-        if not deps_complete:
-            continue
-
-        if _transition_workunit_status(wu, "ready"):
-            ready.append(wu)
-
-    return _assign_ready_workunits(
-        ready,
-        runtime_count,
-    )
-
-
-def _build_workunit_receipt(
-    wu: WorkUnit,
-    runtime_index: int,
-    pid: Optional[int],
-    port: Optional[int],
-    ctx_size: int,
-    mutation: Optional[Dict[str, Any]],
-    validation: Optional[Dict[str, Any]],
-    rolled_back: bool,
-) -> Dict[str, Any]:
-    """Construct a deterministic mission receipt for a completed work unit."""
-    return {
-        "workunit_id": wu.id,
-        "role": wu.role,
-        "description": wu.description,
-        "status": wu.status,
-        "attempts": wu.attempts,
-        "runtime_index": runtime_index,
-        "pid": pid,
-        "port": port,
-        "ctx_size": ctx_size,
-        "mutation": mutation,
-        "validation": validation,
-        "rolled_back": rolled_back,
-        "timestamp": _fast_now(),
-    }
-
-
-def _validate_insert_anchor(
-    guard: "p0.RepositoryGuard",
-    path: str,
-    anchor: str,
-    op: str,
-) -> Optional[str]:
-    """Validate insert_before/insert_after anchor safety.
-
-    Returns None if valid, or an error message string if invalid.
-    Checks:
-      - anchor is non-empty and unique in the file
-      - anchor does not end with an opening paren (partial def/class)
-      - anchor is not a partial line (must be a complete line or block boundary)
-      - anchor is not a partial Python declaration (def/class/return/if/elif/else/for/while/with/try/except/finally/lambda/async def)
-    """
-    if not anchor or not anchor.strip():
-        return "anchor is empty"
-    stripped = anchor.strip()
-    if stripped.endswith("("):
-        return f"anchor ends with '(': partial declaration not allowed for {op}"
-    # Reject partial Python declarations: lines that start a compound statement
-    # but are not complete (e.g. "def foo(" or "if x:")
-    partial_decl_re = re.compile(
-        r"^(async\s+def|def|class|return|if|elif|else|for|while|with|try|except|finally|lambda)\b"
-    )
-    if partial_decl_re.match(stripped):
-        # A complete declaration line must end with ':' or be a full expression
-        # For def/class: must end with ':' (complete signature)
-        # For if/elif/for/while/with/try/except/finally: must end with ':'
-        # For return/lambda: must be a complete expression (no trailing operator)
-        if re.match(r"^(async\s+def|def|class|if|elif|for|while|with|try|except|finally)\b", stripped):
-            if not stripped.endswith(":"):
-                return f"anchor is a partial declaration (missing ':'): {op}"
-        elif re.match(r"^(return|lambda)\b", stripped):
-            # return/lambda must not end with an operator or be just the keyword
-            if stripped in ("return", "lambda") or stripped.rstrip().endswith(("+", "-", "*", "/", "%", "&", "|", "^", "<", ">", "=", ",")):
-                return f"anchor is a partial expression: {op}"
-    try:
-        full = guard.resolve(path)
-        content = Path(full).read_text(encoding="utf-8")
-    except Exception as e:
-        return f"cannot read file for anchor validation: {e}"
-    lines = content.splitlines()
-    matches = [i for i, ln in enumerate(lines) if ln.strip() == stripped]
-    if len(matches) == 0:
-        return f"anchor not found in {path}"
-    if len(matches) > 1:
-        return f"anchor is ambiguous ({len(matches)} matches) in {path}"
-    # Check that the anchor line is a complete statement boundary
-    idx = matches[0]
-    stripped = lines[idx].strip()
-    # Reject if line ends with a colon followed by nothing (incomplete block header is ok for insert_before)
-    # Reject if line ends with an operator or comma (incomplete expression)
-    if stripped and stripped[-1] in ("+", "-", "*", "/", "=", ",", "&", "|", "<", ">", "!", "~"):
-        return f"anchor ends with operator '{stripped[-1]}': incomplete expression"
-    return None
-
 
 
 # ---------------------------------------------------------------------------
@@ -1010,7 +493,7 @@ def apply_mutation_operations(
     if not isinstance(operations, list) or not operations:
         return None
 
-    if len(operations) > MAX_MUTATION_OPERATIONS:
+    if len(operations) > 8:
         return None
 
     for operation in operations:
@@ -2132,11 +1615,10 @@ Allowed operations:
 
 Rules:
 
+- maximum 8 operations
 - never mutate .git/**
 - use short exact unique anchors from evidence
 - one coherent transaction
-- maximum 20 operations
-- related multi-file changes are allowed
 - no markdown fences
 - no commentary
 """
@@ -2162,245 +1644,34 @@ Rules:
     ]
 
 
-def _structured_builder_request(
-    host: str,
-    port: int,
-    messages: List[Dict[str, str]],
-    *,
-    max_tokens: int,
-) -> Tuple[str, Dict[str, Any], str, str]:
-    """Direct llama.cpp structured builder call.
-
-    Builder workers are artifact emitters:
-      - thinking disabled
-      - JSON-object constrained
-      - low temperature
-      - bounded output
-
-    Returns:
-        content, usage, finish_reason, reasoning_content
-    """
-
-    payload = {
-        "model": "local",
-        "messages": messages,
-        "temperature": 0.05,
-        "max_tokens": int(max_tokens),
-
-        # llama.cpp OpenAI-compatible structured output.
-        "response_format": {
-            "type": "json_object",
-        },
-
-        # Disable thinking both through server startup flags and
-        # request-level template controls.
-        "chat_template_kwargs": {
-            "enable_thinking": False,
-        },
-
-        # Supported llama-server request-level reasoning control.
-        "reasoning_effort": "none",
-    }
-
-    data = json.dumps(
-        payload
-    ).encode("utf-8")
-
-    request = urllib.request.Request(
-        (
-            f"http://{host}:{port}"
-            "/v1/chat/completions"
-        ),
-        data=data,
-        headers={
-            "Content-Type": "application/json",
-            "Authorization": "Bearer sk-local",
-        },
-        method="POST",
-    )
-
-    timeout = float(
-        os.environ.get(
-            "HAIDER_MODEL_TIMEOUT",
-            "1800",
-        )
-    )
-
-    try:
-        with urllib.request.urlopen(
-            request,
-            timeout=timeout,
-        ) as response:
-            obj = json.loads(
-                response.read().decode(
-                    "utf-8"
-                )
-            )
-    except Exception as exc:
-        raise p0.ModelError(
-            f"structured builder request failed: {exc}"
-        ) from exc
-
-    try:
-        choice = obj["choices"][0]
-        message = choice["message"]
-
-        content = (
-            message.get("content")
-            or ""
-        )
-
-        reasoning_content = (
-            message.get(
-                "reasoning_content"
-            )
-            or ""
-        )
-
-        finish_reason = (
-            choice.get(
-                "finish_reason"
-            )
-            or ""
-        )
-
-    except Exception as exc:
-        raise p0.ModelError(
-            f"invalid structured response: {exc}"
-        ) from exc
-
-    return (
-        content,
-        obj.get("usage") or {},
-        finish_reason,
-        reasoning_content,
-    )
-
-
-def _compact_builder_prompt(
-    mission: str,
-    evidence: Dict[str, Any],
-    role: str,
-) -> List[Dict[str, str]]:
-    role_instruction = {
-        "core": (
-            "You are CORE. Implement ONE highest-leverage source-code "
-            "change that advances the mission."
-        ),
-        "tests": (
-            "You are TEST. Implement ONE focused deterministic test "
-            "change that proves an important mission invariant."
-        ),
-        "adversary": (
-            "You are ADVERSARY. Implement ONE small correctness, safety, "
-            "lifecycle, scheduler, or rollback improvement required by "
-            "the mission."
-        ),
-        "alternate": (
-            "You are ALTERNATE. Implement ONE independent high-leverage "
-            "mission improvement."
-        ),
-    }.get(
-        role,
-        "Implement ONE mission improvement.",
-    )
-
-    system = """You are a direct HAIDER mutation emitter.
-
-DO NOT THINK ALOUD.
-DO NOT EXPLAIN.
-DO NOT WRITE MARKDOWN.
-DO NOT WRITE A PLAN.
-
-Your entire response is ONE JSON object.
-
-Exact outer form:
-
-{"operations":[OPERATION, ...]}
-
-IMPORTANT:
-- Return one COHERENT transaction.
-- Use as many operations as the bounded feature slice actually requires.
-- Maximum 20 operations.
-- Prefer several precise edits over one giant file replacement.
-- Never mutate .git/**.
-- Prefer insert_before or insert_after with a SHORT unique anchor.
-- Do not repeat large existing source blocks.
-- New source code should normally be <= 120 lines.
-- New test code should normally be <= 160 lines.
-- If creating a test file, create exactly one focused file.
-- Return immediately after the JSON closes.
-
-Allowed operations:
-
-{"op":"replace","path":"relative/file.py","old_text":"short exact unique text","new_text":"replacement"}
-
-{"op":"insert_before","path":"relative/file.py","anchor":"short exact unique anchor","text":"new code"}
-
-{"op":"insert_after","path":"relative/file.py","anchor":"short exact unique anchor","text":"new code"}
-
-{"op":"create","path":"relative/new_file.py","content":"complete new file"}
-"""
-
-    evidence_text = (
-        evidence.get(
-            "final",
-            "",
-        )
-    )
-
-    user = (
-        f"{role_instruction}\n\n"
-        "MISSION:\n"
-        f"{mission}\n\n"
-        "REPOSITORY EVIDENCE:\n"
-        f"{evidence_text}\n\n"
-        "Emit ONE compact Mutation-v2 operation now."
-    )
-
-    return [
-        {
-            "role": "system",
-            "content": system,
-        },
-        {
-            "role": "user",
-            "content": user,
-        },
-    ]
-
-
 def _generate_runtime_candidate(
-    slot: Dict[str, Any],
-    host: str,
+    client: p0.ModelClient,
     mission: str,
     evidence: Dict[str, Any],
     role: str,
     runtime_index: int,
 ) -> Dict[str, Any]:
-    """Generate one structured compact builder candidate."""
-
     started = time.monotonic()
 
-    messages = _compact_builder_prompt(
-        mission,
-        evidence,
-        role,
-    )
-
-    initial_budget = int(
-        os.environ.get(
-            "HAIDER_BUILDER_TOKENS",
-            "2200",
+    try:
+        content, usage = client.chat(
+            _candidate_prompt(
+                mission,
+                evidence,
+                role,
+            )
         )
-    )
-
-    repair_budget = int(
-        os.environ.get(
-            "HAIDER_BUILDER_REPAIR_TOKENS",
-            "3000",
-        )
-    )
+    except Exception as exc:
+        return {
+            "ok": False,
+            "role": role,
+            "runtime": runtime_index,
+            "error": str(exc),
+            "elapsed_s": round(
+                time.monotonic() - started,
+                3,
+            ),
+        }
 
     synth_dir = (
         HAIDER_DIR
@@ -2412,208 +1683,61 @@ def _generate_runtime_candidate(
         exist_ok=True,
     )
 
-    attempts: List[Dict[str, Any]] = []
+    path = synth_dir / (
+        f"parallel_{int(time.time())}_"
+        f"r{runtime_index}_{role}.txt"
+    )
 
-    for attempt in range(2):
-        budget = (
-            initial_budget
-            if attempt == 0
-            else repair_budget
-        )
+    path.write_text(
+        content,
+        encoding="utf-8",
+    )
 
-        try:
-            (
-                content,
-                usage,
-                finish_reason,
-                reasoning_content,
-            ) = _structured_builder_request(
-                host,
-                slot["port"],
-                messages,
-                max_tokens=budget,
-            )
-
-        except Exception as exc:
-            return {
-                "ok": False,
-                "role": role,
-                "runtime": runtime_index,
-                "error": str(exc),
-                "attempts": attempts,
-                "elapsed_s": round(
-                    time.monotonic()
-                    - started,
-                    3,
-                ),
-            }
-
-        synth_path = synth_dir / (
-            f"structured_{int(time.time())}_"
-            f"r{runtime_index}_{role}_"
-            f"a{attempt + 1}.json"
-        )
-
-        synth_path.write_text(
-            content,
-            encoding="utf-8",
-        )
-
-        operations = (
-            _extract_mutation_json(
-                content
-            )
-        )
-
-        parsed = (
-            isinstance(
-                operations,
-                list,
-            )
-            and 1 <= len(operations) <= MAX_MUTATION_OPERATIONS
-        )
-
-        attempt_record = {
-            "attempt": attempt + 1,
-            "budget": budget,
-            "chars": len(content),
-            "reasoning_chars": len(
-                reasoning_content
-            ),
-            "finish_reason": finish_reason,
-            "parsed": parsed,
-            "usage": usage,
-            "synthesis_path": str(
-                synth_path
-            ),
-        }
-
-        attempts.append(
-            attempt_record
-        )
-
-        print(
-            "[haider] builder "
-            f"r={runtime_index} "
-            f"role={role} "
-            f"attempt={attempt + 1} "
-            f"finish={finish_reason!r} "
-            f"chars={len(content)} "
-            f"reasoning={len(reasoning_content)} "
-            f"parsed={parsed}"
-        )
-
-        if parsed:
-            return {
-                "ok": True,
-                "role": role,
-                "runtime": runtime_index,
-                "operations": operations,
-                "chars": len(content),
-                "usage": usage,
-                "finish_reason": finish_reason,
-                "reasoning_chars": len(
-                    reasoning_content
-                ),
-                "synthesis_path": str(
-                    synth_path
-                ),
-                "attempts": attempts,
-                "elapsed_s": round(
-                    time.monotonic()
-                    - started,
-                    3,
-                ),
-            }
-
-        # One automatic repair. Keep it compact instead of merely asking
-        # for the same response with a larger budget.
-        if attempt == 0:
-            messages = list(messages)
-
-            messages.append(
-                {
-                    "role": "assistant",
-                    "content": content[-5000:],
-                }
-            )
-
-            messages.append(
-                {
-                    "role": "user",
-                    "content": (
-                        "Your previous JSON was incomplete or invalid. "
-                        "Start over. Return a smaller coherent transaction with no more than 12 operations. "
-                        "Use a short anchor. Do not explain. "
-                        "Close the JSON object early."
-                    ),
-                }
-            )
+    operations = _extract_mutation_json(
+        content
+    )
 
     return {
-        "ok": False,
+        "ok": operations is not None,
         "role": role,
         "runtime": runtime_index,
-        "operations": None,
-        "chars": (
-            attempts[-1]["chars"]
-            if attempts
-            else 0
-        ),
-        "attempts": attempts,
+        "operations": operations,
+        "chars": len(content),
+        "usage": usage,
+        "synthesis_path": str(path),
         "elapsed_s": round(
-            time.monotonic()
-            - started,
+            time.monotonic() - started,
             3,
         ),
     }
-
 
 
 def _candidate_operations_valid(
     guard: p0.RepositoryGuard,
     operations: Any,
 ) -> bool:
-    if not isinstance(operations, list):
-        print("[haider] candidate reject: operations is not a list")
+    if not isinstance(
+        operations,
+        list,
+    ):
         return False
 
     if not operations:
-        print("[haider] candidate reject: empty operation list")
         return False
 
-    if len(operations) > MAX_MUTATION_OPERATIONS:
-        print(
-            "[haider] candidate reject: "
-            f"operation_count={len(operations)} "
-            f"limit={MAX_MUTATION_OPERATIONS}"
-        )
+    if len(operations) > 8:
         return False
 
-    for index, operation in enumerate(operations):
-        ok, reason = validate_mutation_operation(
+    for operation in operations:
+        ok, _ = validate_mutation_operation(
             guard,
             operation,
         )
 
         if not ok:
-            path = (
-                operation.get("path", "")
-                if isinstance(operation, dict)
-                else ""
-            )
-
-            print(
-                "[haider] candidate reject: "
-                f"operation={index} "
-                f"path={path!r} "
-                f"reason={reason!r}"
-            )
-
             return False
 
     return True
-
 
 
 def _parallel_generate(
@@ -2622,11 +1746,9 @@ def _parallel_generate(
     evidence: Dict[str, Any],
     guard: p0.RepositoryGuard,
 ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
-    """Run physically independent builders concurrently."""
+    """Run independent builder roles simultaneously."""
 
-    slots = list(
-        runtime_pool.slots
-    )
+    clients = runtime_pool.clients
 
     roles = [
         "core",
@@ -2634,49 +1756,46 @@ def _parallel_generate(
         "adversary",
     ]
 
-    while len(roles) < len(slots):
-        roles.append(
-            "alternate"
-        )
+    while len(roles) < len(clients):
+        roles.append("alternate")
 
-    roles = roles[:len(slots)]
+    roles = roles[:len(clients)]
 
     results: List[Dict[str, Any]] = []
 
     with concurrent.futures.ThreadPoolExecutor(
-        max_workers=len(slots)
-    ) as pool:
-        futures = []
+        max_workers=len(clients)
+    ) as executor:
+        future_map = {}
 
         for index, (
-            slot,
+            client,
             role,
         ) in enumerate(
             zip(
-                slots,
+                clients,
                 roles,
             )
         ):
-            futures.append(
-                pool.submit(
-                    _generate_runtime_candidate,
-                    slot,
-                    runtime_pool.host,
-                    mission,
-                    evidence,
-                    role,
-                    index,
-                )
+            future = executor.submit(
+                _generate_runtime_candidate,
+                client,
+                mission,
+                evidence,
+                role,
+                index,
+            )
+
+            future_map[future] = (
+                index,
+                role,
             )
 
         for future in concurrent.futures.as_completed(
-            futures
+            future_map
         ):
             result = future.result()
-
-            results.append(
-                result
-            )
+            results.append(result)
 
             print(
                 "[haider] candidate "
@@ -2687,6 +1806,10 @@ def _parallel_generate(
                 f"elapsed={result.get('elapsed_s')}s"
             )
 
+    # Merge non-conflicting valid candidates.
+    #
+    # Priority:
+    #   core -> tests -> adversary -> alternates
     priority = {
         "core": 0,
         "tests": 1,
@@ -2694,25 +1817,15 @@ def _parallel_generate(
         "alternate": 3,
     }
 
-    valid: List[Dict[str, Any]] = []
-
-    for result in results:
-        operations = result.get(
-            "operations"
-        )
-
-        if not result.get("ok"):
-            continue
-
-        if not _candidate_operations_valid(
+    valid = [
+        result
+        for result in results
+        if result.get("ok")
+        and _candidate_operations_valid(
             guard,
-            operations,
-        ):
-            continue
-
-        valid.append(
-            result
+            result.get("operations"),
         )
+    ]
 
     valid.sort(
         key=lambda item: (
@@ -2733,25 +1846,30 @@ def _parallel_generate(
     for result in valid:
         operations = result["operations"]
 
-        candidate_paths = {
-            str(operation.get("path", ""))
-            for operation in operations
+        paths = {
+            str(op.get("path", ""))
+            for op in operations
         }
 
-        # Do not merge two independently generated candidates that both
-        # modify the same file.  But a SINGLE candidate is explicitly
-        # allowed to contain many operations across many related files.
-        if occupied_paths.intersection(candidate_paths):
+        # Avoid two independent candidates concurrently rewriting the same
+        # source file. Later scheduler versions will support structured merge.
+        if occupied_paths.intersection(
+            paths
+        ):
             continue
 
-        if len(merged) + len(operations) > MAX_MUTATION_OPERATIONS:
+        if len(merged) + len(
+            operations
+        ) > 8:
             continue
 
-        merged.extend(operations)
-        occupied_paths.update(candidate_paths)
+        merged.extend(
+            operations
+        )
 
-        if len(merged) >= MAX_MUTATION_OPERATIONS:
-            break
+        occupied_paths.update(
+            paths
+        )
 
     return merged, results
 
@@ -3423,9 +2541,7 @@ def main_fast() -> int:
                     mission_state
                 )
 
-                # P0: Do not terminate mission on single validation failure.
-                # Continue to next cycle if budget remains.
-                continue
+                return 1
 
             cycle_record[
                 "rolled_back"

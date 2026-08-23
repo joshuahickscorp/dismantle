@@ -330,7 +330,6 @@ def _validate_cargo(argv: List[str], root: str) -> List[str]:
 
 
 def _validate_python(argv: List[str], root: str) -> List[str]:
-    root = os.path.realpath(root)
     if len(argv) < 2:
         _reject("python requires an argument")
     if argv[1] == "-m":
@@ -511,11 +510,10 @@ class ToolExecutor:
         stdout = ""
         stderr = ""
         ok = True
-        truncated = False
         extra: Optional[Dict[str, Any]] = None
         try:
             if name == "git.status":
-                argv = ["git", "status", "--porcelain=v1", "--branch"]
+                argv = ["git", "status", "--porcelain=v1", "--branch", "--no-color"]
                 exit_code, stdout, stderr = self._run(argv)
                 ok = exit_code == 0
             elif name == "git.diff":
@@ -572,10 +570,7 @@ class ToolExecutor:
                 stdout = "".join(lines)
                 stdout, trunc2 = truncate_text(stdout, self.max_output_chars, max_lines)
                 truncated = truncated or trunc2
-                extra = {
-                    "lines": len(lines),
-                    "path": self.guard.relative(full),
-                }
+                extra = {"lines": len(lines), "path": self.guard.relative(full)}
             elif name == "fs.list":
                 full = self.guard.resolve(args.get("path"))
                 max_entries = int(args.get("max_entries") or 200)
@@ -675,7 +670,7 @@ class ToolExecutor:
             stdout,
             stderr,
             elapsed_ms,
-            truncated or trunc_out or trunc_err,
+            trunc_out or trunc_err,
             ok,
             extra,
         )

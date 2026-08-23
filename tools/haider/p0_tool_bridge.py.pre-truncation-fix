@@ -511,7 +511,6 @@ class ToolExecutor:
         stdout = ""
         stderr = ""
         ok = True
-        truncated = False
         extra: Optional[Dict[str, Any]] = None
         try:
             if name == "git.status":
@@ -575,6 +574,7 @@ class ToolExecutor:
                 extra = {
                     "lines": len(lines),
                     "path": self.guard.relative(full),
+                    "_truncated": truncated,
                 }
             elif name == "fs.list":
                 full = self.guard.resolve(args.get("path"))
@@ -664,6 +664,9 @@ class ToolExecutor:
             exit_code = 1
             stderr = str(e)
             ok = False
+        if extra and "_truncated" in extra:
+            truncated = bool(extra.pop("_truncated"))
+
         elapsed_ms = int((time.monotonic() - start) * 1000)
         stdout, trunc_out = truncate_text(stdout, self.max_output_chars, self.max_output_lines)
         stderr, trunc_err = truncate_text(stderr, self.max_output_chars, self.max_output_lines)
@@ -675,7 +678,7 @@ class ToolExecutor:
             stdout,
             stderr,
             elapsed_ms,
-            truncated or trunc_out or trunc_err,
+            trunc_out or trunc_err,
             ok,
             extra,
         )

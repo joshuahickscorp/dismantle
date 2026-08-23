@@ -51,11 +51,46 @@ def _reexec_vision() -> None:
     os.execv(str(vis), [str(vis), *sys.argv])
 
 
-_reexec_vision()
+# Importing this module must NEVER replace the interpreter. `pytest` collects
+# this directory under the system python; an import-time execv into the vision
+# python -- which has no pytest -- silently killed the whole collection run.
+if __name__ == "__main__":
+    _reexec_vision()
 
 import numpy as np  # noqa: E402
-import torch  # noqa: E402
-from torch import nn  # noqa: E402
+
+# torch is required to RUN this harness, not to import it. The codec helpers
+# below are pure numpy and are unit-tested under the system python, which has
+# pytest but no torch; the vision python has torch but no pytest. Importing
+# torch unconditionally here meant the tests could not be collected at all.
+try:  # noqa: E402
+    import torch
+    from torch import nn
+    TORCH_AVAILABLE = True
+except ModuleNotFoundError:  # pragma: no cover - exercised by the test run
+    class _AbsentTorch:
+        """Lets the module IMPORT without torch, but never pretends to be it.
+
+        Module-level `@torch.no_grad()` decorators are evaluated at import, so a
+        plain None stub still breaks collection. This passes decoration through
+        untouched and defers the failure to the moment something actually tries
+        to compute, which only main() does.
+        """
+
+        def no_grad(self):
+            return lambda fn: fn
+
+        def __getattr__(self, name):
+            def _absent(*_a, **_k):
+                raise RuntimeError(
+                    f"torch.{name} used without torch: run this harness directly "
+                    "so it re-execs into ~/.grok-vision/bin/python"
+                )
+            return _absent
+
+    torch = _AbsentTorch()
+    nn = _AbsentTorch()
+    TORCH_AVAILABLE = False
 
 REPO = Path(__file__).resolve().parents[2]
 ART = Path(os.environ.get("QWEN38_Q4_ARTIFACT", str(Path.home() / "models/qwen38-gravity-uniform-q4-v1")))
@@ -795,6 +830,9 @@ def rmsnorm_delta(x: np.ndarray, w: np.ndarray, eps: float = 1e-6) -> np.ndarray
 
 @torch.no_grad()
 def main() -> int:
+    if not TORCH_AVAILABLE:
+        sys.exit("torch required: run this harness directly so it re-execs into ~/.grok-vision/bin/python")
+
     warnings.filterwarnings("ignore")
     torch.set_grad_enabled(False)
     torch.set_num_threads(int(os.environ.get("NOETIC_TORCH_THREADS", "8")))

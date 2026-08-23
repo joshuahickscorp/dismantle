@@ -15,6 +15,7 @@ import logging
 import os
 import shutil
 import sys
+import pathlib
 import tempfile
 import traceback
 from contextlib import contextmanager, nullcontext
@@ -193,13 +194,29 @@ def check_antivacuity() -> None:
     _observe("6-grok-absent", naive_absent_grok)
 
 
+def _grok_binary():
+    """Resolve grok-run the way production does, not by raw PATH.
+
+    These checks used `shutil.which` directly, so they reported "not on PATH"
+    on a machine where the binary is installed and the bridge finds it fine.
+    That made three real assertions unrunnable for an environmental reason.
+    """
+    from hcli.grok_bridge import GrokNotAvailable, find_grok_run
+
+    try:
+        return find_grok_run()
+    except GrokNotAvailable:
+        return None
+
+
 def check_dryrun_argv() -> None:
-    grok = shutil.which("grok-run")
+    grok = _grok_binary()
     if grok is None:
         check(
             "dryrun-argv",
             False,
-            "grok-run is not on PATH; cannot assert argv against the real binary",
+            "grok-run not found on PATH or at the install location; "
+            "cannot assert argv against the real binary",
         )
         return
     with tempfile.TemporaryDirectory() as tmp:
@@ -360,9 +377,9 @@ def check_status_parsing() -> None:
 
 
 def check_receipts() -> None:
-    grok = shutil.which("grok-run")
+    grok = _grok_binary()
     if grok is None:
-        check("receipts", False, "grok-run is not on PATH")
+        check("receipts", False, "grok-run not found on PATH or at the install location")
         return
     with tempfile.TemporaryDirectory() as tmp:
         ws = Path(tmp)
@@ -410,9 +427,9 @@ def check_receipts() -> None:
 
 
 def check_no_mutation_lock_warning() -> None:
-    grok = shutil.which("grok-run")
+    grok = _grok_binary()
     if grok is None:
-        check("no-mutation-lock-warning", False, "grok-run is not on PATH")
+        check("no-mutation-lock-warning", False, "grok-run not found on PATH or at the install location")
         return
     log, handler, records = _capture_log()
     try:
@@ -446,6 +463,13 @@ def check_grok_absent() -> None:
         old = gb.shutil.which
         gb.shutil.which = lambda name: None  # type: ignore[assignment]
         os.environ.pop("GROK_RUN", None)
+        # Absence now means "not on PATH AND not at the canonical install
+        # location", because find_grok_run falls back to the documented install
+        # path rather than making HCLI depend on the caller's PATH. Stubbing
+        # only shutil.which no longer simulates absence on a machine where the
+        # binary is actually installed -- which is every machine that matters.
+        old_hint = gb.DEFAULT_GROK_RUN_HINT
+        gb.DEFAULT_GROK_RUN_HINT = pathlib.Path(tmp) / "definitely-absent" / "grok-run"
         try:
             try:
                 bridge.delegate("t", VALID_CONTRACT, dry_run=True)
@@ -466,6 +490,7 @@ def check_grok_absent() -> None:
             check("grok-absent", False, "did not raise GrokNotAvailable")
         finally:
             gb.shutil.which = old
+            gb.DEFAULT_GROK_RUN_HINT = old_hint
 
 
 def check_real_audit_skipped() -> None:

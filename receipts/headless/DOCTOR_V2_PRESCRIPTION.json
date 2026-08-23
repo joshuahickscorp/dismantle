@@ -1,7 +1,7 @@
 {
   "schema": "hawking.headless.doctor_v2_prescription.v1",
-  "generated_at": "2026-08-23T20:58:54Z",
-  "git_head": "85bbeb9a32726fedbf0216b7ff54438fb94b8be5",
+  "generated_at": "2026-08-23T21:16:02Z",
+  "git_head": "a76efc8752104e28d07ccb79b3665cab8b1080ec",
   "python": "/opt/homebrew/opt/python@3.14/bin/python3.14",
   "what_this_is": "Doctor v2 prescription: what physical computation each ORGAN should perform, ranked by expected verified gain per experiment cost. Not bits per tensor.",
   "question": "what physical computation should this ORGAN perform",
@@ -73,8 +73,8 @@
       "dense_subbit": "disk:receipts/headless/DENSE_SUBBIT_TRANSFER.json",
       "organ_census": "disk:receipts/headless/NOETIC_ORGAN_CENSUS.json",
       "route_ledger": "disk:receipts/headless/NOETIC_ROUTE_LEDGER.json",
-      "g034": "copy:receipts/ascent-2026-08-16/G034_TENSOR_OPERATOR.json",
-      "g035": "copy:receipts/ascent-2026-08-16/G035_CROSSLAYER_SHARE.json",
+      "g034": "disk:receipts/ascent-2026-08-16/G034_TENSOR_OPERATOR.json",
+      "g035": "disk:receipts/ascent-2026-08-16/G035_CROSSLAYER_SHARE.json",
       "q80": "disk:receipts/QWEN80_CROSS_EXPERT_STRUCTURE_NEGATIVE.json"
     }
   },
@@ -1888,6 +1888,6 @@
       "why": "live_27b_policy; occupancy is not free"
     }
   ],
-  "wall_s": 95.30170137499226,
-  "written_to": "/Users/scammermike/.claude-grok/worktrees/g005doctor-20260823-163311/receipts/headless/DOCTOR_V2_PRESCRIPTION.json"
+  "wall_s": 89.48960920800164,
+  "written_to": "/Users/scammermike/Downloads/hawking/receipts/headless/DOCTOR_V2_PRESCRIPTION.json"
 }

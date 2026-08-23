@@ -1,19 +1,19 @@
 {
   "schema": "hawking.headless.noetic_zero_parent.v1",
-  "generated_at": "2026-08-23T21:02:55Z",
-  "git_head": "d315a85ded43dee6376d4e05b1289eec4a41bafe",
-  "elapsed_s": 5.437,
+  "generated_at": "2026-08-23T21:16:49Z",
+  "git_head": "a76efc8752104e28d07ccb79b3665cab8b1080ec",
+  "elapsed_s": 45.612,
   "claim": "Production Noetic inference does not load parent weights.",
   "observation_method": "DYLD interpose of open/openat/open$NOCANCEL/fopen (tools/headless/noetic_openlog.c) on the live process. Successful opens are resolved via F_GETPATH so openat relative names still name the file. Every recorded path is an observed open(), not a walk of the loader source.",
   "parent_bf16": "/Users/scammermike/models/qwen3.8-27b-abliterated-bf16",
   "artifact": "/Users/scammermike/models/qwen38-gravity-uniform-q4-v1",
   "tokenizer": "/Users/scammermike/models/qwen3.8-27b-abliterated-bf16/tokenizer.json",
-  "decode_binary": "/Users/scammermike/.claude-grok/worktrees/g011zpgate-20260823-165133/workspace/ops/build/rust/release-fast/examples/ascension_qwen38_hybrid_greedy",
+  "decode_binary": "/Users/scammermike/Downloads/hawking/workspace/ops/build/rust/release-fast/examples/ascension_qwen38_hybrid_greedy",
   "decode_binary_identity": {
-    "path": "/Users/scammermike/.claude-grok/worktrees/g011zpgate-20260823-165133/workspace/ops/build/rust/release-fast/examples/ascension_qwen38_hybrid_greedy",
-    "size": 6290848,
-    "mtime_unix": 1787518671,
-    "sha256_head_1m": "4ecd06fbdf256903e450cf29d7928f90fa1233c0651d27c1a098050ae323e54f",
+    "path": "/Users/scammermike/Downloads/hawking/workspace/ops/build/rust/release-fast/examples/ascension_qwen38_hybrid_greedy",
+    "size": 6324880,
+    "mtime_unix": 1787519802,
+    "sha256_head_1m": "991ad38bce945e9cab61e29f5777b5775529352d8159208d94ebdd48c4dc814a",
     "from_this_repo": true,
     "not_vestigial_hawking_copy": true
   },
@@ -55,7 +55,7 @@
     "live_native_decode": {
       "why": "ascension_qwen38_hybrid_greedy built from THIS repo is production Noetic inference. A PASS requires the process to run to completion, emit at least one token, and show the 755 catalog tensor reads. A truncated prefix (MetalContext::new dying first) is INCONCLUSIVE, not evidence.",
       "argv": [
-        "/Users/scammermike/.claude-grok/worktrees/g011zpgate-20260823-165133/workspace/ops/build/rust/release-fast/examples/ascension_qwen38_hybrid_greedy",
+        "/Users/scammermike/Downloads/hawking/workspace/ops/build/rust/release-fast/examples/ascension_qwen38_hybrid_greedy",
         "--artifact-root",
         "/Users/scammermike/models/qwen38-gravity-uniform-q4-v1",
         "--tokenizer",
@@ -67,10 +67,10 @@
         "--max-seq-len",
         "32"
       ],
-      "binary": "/Users/scammermike/.claude-grok/worktrees/g011zpgate-20260823-165133/workspace/ops/build/rust/release-fast/examples/ascension_qwen38_hybrid_greedy",
+      "binary": "/Users/scammermike/Downloads/hawking/workspace/ops/build/rust/release-fast/examples/ascension_qwen38_hybrid_greedy",
       "exit_code": 0,
       "timed_out": false,
-      "elapsed_s": 4.358,
+      "elapsed_s": 5.509,
       "dylib_loaded": true,
       "saw_tokenizer_encode": true,
       "saw_catalog_count": true,
@@ -86,21 +86,21 @@
       "fallbacks": 0,
       "n_parent_weight_opens": 0,
       "n_artifact_tensor_opens": 755,
-      "n_file_open_events": 808,
+      "n_file_open_events": 806,
       "complete": true,
       "truncation": null,
       "stderr_head": "INTERPOSE_CTOR\nqwen38 prompt tokens=9 text=\"<|im_start|>user\\nHi<|im_end|>\\n<|im_start|>assistant\\n\"\nqwen38-decode opening Metal + 755 catalog tensors\nqwen38-decode upload 0/755\nqwen38-decode upload 50/755\nqwen38-decode upload 100/755\nqwen38-decode upload 150/755\nqwen38-decode upload 200/755\nqwen38-decode upload 250/755\nqwen38-decode upload 300/755\nqwen38-decode upload 350/755\nqwen38-decode upload 400/755\nqwen38-decode upload 450/755\nqwen38-decode upload 500/755\nqwen38-decode upload 550/755\nqwen38-decode upload 600/755\nqwen38-decode upload 650/755\nqwen38-decode upload 700/755\nqwen38-decode upload 750/755\n[hawking] HAWKING_TCB_TRACE=\"(unset)\" \u2192 mode=Off\n",
-      "stdout_head": "GENERATED_TEXT_VERBATIM: <think>\nFALLBACKS: 0\nDENSE_W_MATERIALIZED: 0\nPROMPT_LEN: 9\nNEW_TOKENS: [248068]\ngenerated_token_ids=[248068]\nGPU_NS_PER_STEP: [71723750, 28789374, 28762749, 28769083, 28770541, 28717749, 28902374, 28842750, 29018458]\nWAIT_NS_PER_STEP: [131684750, 29161667, 29156458, 29189833, 29153750, 29089334, 29333209, 29281583, 29432625]\nMEDIAN_GPU_NS_PER_TOKEN: Some(28789374)\nWALL_NS: 374947583\nPREFILL_WALL_NS: 374946541\nDECODE_WALL_NS: 41\nFIRST_STEP_WALL_NS: 134179833\nSTEADY_DECODE_WALL_NS_PER_TOKEN: None\n",
+      "stdout_head": "GENERATED_TEXT_VERBATIM: <think>\nFALLBACKS: 0\nDENSE_W_MATERIALIZED: 0\nPROMPT_LEN: 9\nNEW_TOKENS: [248068]\ngenerated_token_ids=[248068]\nGPU_NS_PER_STEP: [59565416, 28462874, 28395541, 28431250, 28530499, 28539750, 28691541, 28469875, 28503875]\nWAIT_NS_PER_STEP: [111942333, 28792167, 28750125, 28765791, 28851750, 28925292, 29390750, 28820167, 29255417]\nMEDIAN_GPU_NS_PER_TOKEN: Some(28503875)\nWALL_NS: 351891500\nPREFILL_WALL_NS: 351890333\nDECODE_WALL_NS: 42\nFIRST_STEP_WALL_NS: 114127584\nSTEADY_DECODE_WALL_NS_PER_TOKEN: None\n",
       "observation": {
-        "n_events": 808,
-        "n_unique": 786,
+        "n_events": 806,
+        "n_unique": 784,
         "parent_weight": [],
         "parent_tokenizer": [
           "/Users/scammermike/models/qwen3.8-27b-abliterated-bf16/tokenizer.json"
         ],
         "parent_config": [],
         "parent_other": [],
-        "n_not_parent": 785,
+        "n_not_parent": 783,
         "n_artifact_tensor": 755,
         "n_artifact_other": 1,
         "artifact_other": [
@@ -126,7 +126,7 @@
           "/Users/scammermike/models/qwen38-gravity-uniform-q4-v1/tensors/efed180eb167fad870f6cf3a45d10da59f78aea6a4907d3f6a87701a1c590e98.f32v2",
           "/Users/scammermike/models/qwen38-gravity-uniform-q4-v1/tensors/9a327c6eaaee2b1b171f349900068f722121a57c1a481679dc1fd3e521b5da9a.hq30uq4"
         ],
-        "unique_paths_fingerprint": "eda62f111cd6b26d8b2020147946000cf2d76353d63c7ba654c19f6a590d5d16"
+        "unique_paths_fingerprint": "b77c74f15f7e26e9c7e5ec414fa9d540bfbae31dad411cfd2e2ae07a56c5f107"
       }
     }
   },
@@ -145,7 +145,7 @@
       "via": "noetic_composition.SourceBF16.load"
     },
     "exit_code": 0,
-    "elapsed_s": 0.741,
+    "elapsed_s": 0.601,
     "dylib_loaded": true,
     "parent_weight_opens": [
       "/Users/scammermike/models/qwen3.8-27b-abliterated-bf16/model-00001-of-00018.safetensors"
@@ -174,7 +174,7 @@
       "artifact_other": [],
       "artifact_tensor_head": [],
       "artifact_tensor_tail": [],
-      "unique_paths_fingerprint": "9b00d0b2d8330dbe2b33a18eedbec5f94f770e5afd10ff3abdc3134f649f3701"
+      "unique_paths_fingerprint": "6987a2b24508da166b886193e164a33a1c17d7100777d196d3b99e967362f089"
     }
   },
   "detector": {

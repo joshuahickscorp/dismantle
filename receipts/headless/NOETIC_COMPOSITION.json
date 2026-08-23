@@ -1,7 +1,7 @@
 {
   "schema": "hawking.headless.noetic_composition.v1",
-  "generated_at": "2026-08-23T18:47:40Z",
-  "git_head": "2f670c2406d22e7eef50a3d6eff7daf954facc77",
+  "generated_at": "2026-08-23T20:18:33Z",
+  "git_head": "38ab698658b4c7966d1b85f96047d886c6e43ad0",
   "artifact": {
     "root": "/Users/scammermike/models/qwen38-gravity-uniform-q4-v1",
     "schema": "hawking.ascent.qwen38_language_uniform_q4.v1",
@@ -14,24 +14,8 @@
   "parent_bf16": "/Users/scammermike/models/qwen3.8-27b-abliterated-bf16",
   "llama_server": {
     "url": "http://127.0.0.1:52484",
-    "ok": true,
-    "model": {
-      "id": "Huihui-Qwen3.8-27B-abliterated-Q5_K.gguf",
-      "aliases": [],
-      "tags": [],
-      "object": "model",
-      "created": 1787510539,
-      "owned_by": "llamacpp",
-      "meta": {
-        "vocab_type": 2,
-        "n_vocab": 248320,
-        "n_ctx": 16384,
-        "n_ctx_train": 262144,
-        "n_embd": 5120,
-        "n_params": 27320697856,
-        "size": 19524706304
-      }
-    }
+    "ok": false,
+    "model": null
   },
   "prompt": "Explain, in ordinary prose, how a compiler turns a for-loop into basic blocks and then into machine code.",
   "token_ids": [
@@ -53,7 +37,8 @@
     6557
   ],
   "tokenize": {
-    "method": "llama-server /tokenize",
+    "method": "tokenizers.Tokenizer parent tokenizer.json",
+    "llama_tokenize_error": "URLError(ConnectionRefusedError(61, 'Connection refused'))",
     "n_tokens": 23,
     "truncated_to": 16
   },
@@ -755,19 +740,14 @@
       "status": "NOT_RUN",
       "reason": "Generating from the gravity q4 artifact via the native Metal decoder would load the 14.3 GiB catalog while llama-server already holds a 27B Q5_K on :52484. Contract: do not spawn a second 27B. The live Q5_K control is RUN. Native gravity generate was already measured on this artifact in receipts/headless/QWEN38_GRAVITY_NATIVE.json (replacement-character collapse).",
       "live_q5k_control": {
-        "status": "RUN",
-        "vehicle": "llama-server Q5_K already resident on :52484 (NOT the gravity q4 artifact)",
-        "text": "To understand how a compiler transforms a simple `for` loop into executable machine code, it helps to visualize the process not as a single translation, but as a series of distinct stages where the code is progressively stripped of high-level abstractions and replaced with low-level instructions. This journey begins with the source code and ends with",
-        "n_chars": 352,
-        "has_replacement_char": false,
-        "looks_like_prose": true
+        "status": "NOT_RUN"
       },
       "native_gravity_receipt": {
-        "path": "/Users/scammermike/.claude-grok/worktrees/n11comp-20260823-141936/receipts/headless/QWEN38_GRAVITY_NATIVE.json",
-        "bar": "FAIL",
-        "coherence": false,
-        "excerpt_head": "\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd",
-        "replacement_chars": 256
+        "path": "/Users/scammermike/Downloads/hawking/receipts/headless/QWEN38_GRAVITY_NATIVE.json",
+        "bar": "PASS",
+        "coherence": true,
+        "excerpt_head": "<think>\nThe user wants a detailed, prose explanation of how a compiler transform",
+        "replacement_chars": 0
       },
       "python_token_loop_proxy": {
         "argmax_agree": true,
@@ -1968,16 +1948,16 @@
     "did not spawn a second 27B"
   ],
   "notes": [
+    "llama-server unreachable: URLError(ConnectionRefusedError(61, 'Connection refused'))",
     "L0 gate_proj q4 SURVIVES locally on real X (expected for grouped-absmax q4).",
     "undegraded q4 free-run SURVIVED all 64 layers under the named rule."
   ],
   "watched_fail": [
     "free-run rel_l2 is NOT monotonic across depth: compounding is not a linear pile-up. L2->3 \u0394=-0.0104, L4->5 \u0394=-0.0003, L6->7 \u0394=-0.0007, L8->9 \u0394=-0.0008, L9->10 \u0394=-0.0033, L20->21 \u0394=-0.0022, L21->22 \u0394=-0.0015, L24->25 \u0394=-0.0030, L25->26 \u0394=-0.0022, L29->30 \u0394=-0.0016, L33->34 \u0394=-0.0029, L37->38 \u0394=-0.0066, L39->40 \u0394=-0.0016, L40->41 \u0394=-0.0025, L41->42 \u0394=-0.0041, L45->46 \u0394=-0.0004, L49->50 \u0394=-0.0048, L54->55 \u0394=-0.0028, L56->57 \u0394=-0.0002, L58->59 \u0394=-0.0084, L59->60 \u0394=-0.0016, L61->62 \u0394=-0.0033, L62->63 \u0394=-0.0018",
     "scale-aware metric REJECTED 0.01*W_gate on real L0 post_attn_norm (cosine=1.000000 would have accepted; gain=0.010000 caught it; null_cosine=0.4998)",
-    "native gravity q4 generate collapsed to U+FFFD (256 replacement chars in the sealed receipt)",
     "bracketed failure boundary: chain SURVIVES at requantize-q2 grouped-64 and FAILS at requantize-q1 grouped-64"
   ],
-  "wall_s": 320.96522998809814,
+  "wall_s": 315.87045407295227,
   "device": "cpu",
-  "mps_available": false
+  "mps_available": true
 }

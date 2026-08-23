@@ -1,23 +1,30 @@
 {
-  "generated_at": "2026-08-23T20:08:10Z",
-  "running": [
-    "f1attnfloor",
-    "f2densesubbit",
-    "f3generated",
-    "r9spawn"
-  ],
+  "generated_at": "2026-08-23T20:26:35Z",
+  "running": [],
   "needs_harvest": [
     {
-      "slug": "x2stale",
-      "id": "x2stale-20260823-145054",
-      "unharvested": [],
-      "worktree_extras": 1
+      "slug": "f1attnfloor",
+      "id": "f1attnfloor-20260823-155500",
+      "unharvested": [
+        "receipts/headless/ATTENTION_FLOOR_REFIT.json",
+        "tools/headless/attention_floor_refit.py"
+      ],
+      "worktree_extras": 0
+    },
+    {
+      "slug": "r9spawn",
+      "id": "r9spawn-20260823-154305",
+      "unharvested": [
+        "receipts/headless/SUBPROCESS_CENSUS.json",
+        "tools/headless/subprocess_census.py"
+      ],
+      "worktree_extras": 0
     }
   ],
   "headroom": {
-    "load1": 5.25732421875,
+    "load1": 4.40234375,
     "ncpu": 28,
-    "disk_gib": 435.4,
+    "disk_gib": 433.9,
     "room_for_more": true
   }
 }

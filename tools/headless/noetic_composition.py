@@ -438,10 +438,50 @@ def split_fused_ba(fused: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
 
 
 def requantize_absmax(w: np.ndarray, bits: int, group: int = GROUP) -> np.ndarray:
-    """Grouped absmax, signed, bound = 2^(bits-1)-1. bits=4 matches HQ30UQ4."""
+    """Grouped weight codec at `bits` bits per weight. bits=4 matches HQ30UQ4.
+
+    Signed-symmetric absmax (bound = 2^(bits-1)-1) is only a sane
+    parameterization down to 3 bits. At bits=2 the bound is 1, so every weight
+    below half the group max rounds to zero -- measured 829/4096 survivors,
+    rel_l2 0.7219. At bits=1 the bound is 0 and the codec returns the ZERO
+    TENSOR: the first boundary hunt scored `requantize-q1` identical to the
+    `zeroed down_proj` control to four decimals, because it WAS that control.
+    That is an artifact of the parameterization, not a property of 1-bit.
+
+    So the low arms use the codecs those bit-widths are actually defined by:
+
+      bits == 1  binary sign coding, w ~ alpha * sign(w), alpha = mean|w| per
+                 group -- the L2-optimal scalar for a sign code.
+      bits == 2  ternary {-alpha, 0, +alpha} with threshold t = 0.7 * mean|w|
+                 (Ternary Weight Networks) and alpha refit as the mean |w| of
+                 the kept set, rather than absmax rounding.
+
+    Both keep the same group size, so bits still means bits.
+    """
     if bits <= 0:
         return np.zeros_like(w, dtype=np.float32)
     flat = np.asarray(w, dtype=np.float32).reshape(-1)
+
+    if bits <= 2:
+        n = flat.size
+        groups = (n + group - 1) // group
+        pad = groups * group - n
+        work = np.concatenate([flat, np.zeros(pad, dtype=np.float32)]) if pad else flat.copy()
+        g = work.reshape(groups, group)
+        absg = np.abs(g)
+        if bits == 1:
+            alpha = absg.mean(axis=1, keepdims=True)
+            recon = alpha * np.where(g >= 0, 1.0, -1.0)
+        else:
+            thresh = 0.7 * absg.mean(axis=1, keepdims=True)
+            keep = absg > thresh
+            kept = np.where(keep, absg, 0.0).sum(axis=1, keepdims=True)
+            cnt = keep.sum(axis=1, keepdims=True)
+            alpha = np.where(cnt > 0, kept / np.maximum(cnt, 1), 0.0)
+            recon = alpha * np.sign(g) * keep
+        out = recon.reshape(-1)[:n]
+        return out.reshape(w.shape).astype(np.float32)
+
     bound = (1 << (bits - 1)) - 1
     n = flat.size
     groups = (n + group - 1) // group
@@ -459,6 +499,40 @@ def requantize_absmax(w: np.ndarray, bits: int, group: int = GROUP) -> np.ndarra
         q = np.rint(g / scale[:, None]).clip(-8, 7)
     recon = (q * scale[:, None]).reshape(-1)[:n]
     return recon.reshape(w.shape).astype(np.float32)
+
+
+def lowrank(w: np.ndarray, rank: int) -> np.ndarray:
+    """Truncated SVD. The only arm here that can go BELOW one bit per weight."""
+    m = np.asarray(w, dtype=np.float32)
+    u, sv, vt = np.linalg.svd(m, full_matrices=False)
+    r = min(int(rank), sv.size)
+    return (u[:, :r] * sv[:r]) @ vt[:r], r
+
+
+def codec_bpw(kind: str, shape, *, bits: int = 0, group: int = GROUP,
+              rank: int = 0, scale_bits: int = 16) -> float:
+    """Bits per PARENT weight, counting the scales -- not just the code width.
+
+    This is the accounting the archaeology receipt caught NR missing: a codec
+    that stores a 16-bit alpha per group of 64 is not a 1-bit codec, it is a
+    1.25-bit codec, and calling it 1-bit hides 25% of the payload. Every arm
+    below is reported at its true cost so the bracket compares like with like.
+    """
+    out_f, in_f = int(shape[0]), int(shape[1])
+    n = out_f * in_f
+    if kind == "bits":
+        if bits <= 0:
+            return 0.0
+        groups = (n + group - 1) // group
+        return (n * bits + groups * scale_bits) / n
+    if kind == "lowrank":
+        return (rank * (out_f + in_f) * scale_bits) / n
+    if kind == "binary_lowrank":
+        groups = (n + group - 1) // group
+        return (n + groups * scale_bits + rank * (out_f + in_f) * scale_bits) / n
+    if kind == "scale":
+        return 4.0 + scale_bits / group
+    return float("nan")
 
 
 class ArtifactQ4:
@@ -1292,9 +1366,15 @@ def main() -> int:
     # schedule named before looking: bit-depth then gain. Last survivor / first death brackets.
     schedule = [
         {"kind": "bits", "bits": 4, "label": "q4 (artifact down_proj, undegraded)"},
-        {"kind": "bits", "bits": 3, "label": "requantize-q3 grouped-64"},
-        {"kind": "bits", "bits": 2, "label": "requantize-q2 grouped-64"},
-        {"kind": "bits", "bits": 1, "label": "requantize-q1 grouped-64"},
+        {"kind": "bits", "bits": 3, "label": "q3 grouped-64"},
+        {"kind": "bits", "bits": 2, "label": "ternary grouped-64"},
+        {"kind": "bits", "bits": 1, "label": "binary grouped-64"},
+        {"kind": "bits", "bits": 1, "group": 1024, "label": "binary grouped-1024"},
+        # below one bit per weight: only low rank gets there without a mask
+        {"kind": "binary_lowrank", "rank": 64, "label": "binary g1024 + rank-64 residual"},
+        {"kind": "lowrank", "rank": 512, "label": "rank-512 (no quantization)"},
+        {"kind": "lowrank", "rank": 128, "label": "rank-128 (no quantization)"},
+        {"kind": "lowrank", "rank": 32, "label": "rank-32 (no quantization)"},
         {"kind": "scale", "scale": 0.25, "label": "0.25 * q4 down_proj"},
         {"kind": "scale", "scale": 0.05, "label": "0.05 * q4 down_proj"},
         {"kind": "scale", "scale": 0.01, "label": "0.01 * q4 down_proj"},
@@ -1304,10 +1384,27 @@ def main() -> int:
     last_survive = None
     first_die = None
     for step in schedule:
-        if step["kind"] == "bits":
-            wh = requantize_absmax(base_down, int(step["bits"]))
+        kind = step["kind"]
+        grp = int(step.get("group", GROUP))
+        eff_rank = 0
+        if kind == "bits":
+            wh = requantize_absmax(base_down, int(step["bits"]), group=grp)
+        elif kind == "lowrank":
+            wh, eff_rank = lowrank(base_down, int(step["rank"]))
+            wh = wh.astype(np.float32)
+        elif kind == "binary_lowrank":
+            coarse = requantize_absmax(base_down, 1, group=1024)
+            resid, eff_rank = lowrank(base_down - coarse, int(step["rank"]))
+            wh = (coarse + resid).astype(np.float32)
         else:
             wh = (float(step["scale"]) * base_down).astype(np.float32)
+        step["bpw"] = codec_bpw(
+            kind, base_down.shape, bits=int(step.get("bits", 0)), group=grp,
+            rank=eff_rank or int(step.get("rank", 0)),
+        )
+        step["rel_l2_weight"] = float(
+            np.linalg.norm(wh - base_down) / max(np.linalg.norm(base_down), 1e-12)
+        )
         # walk short chain with injected down_proj at L0
         h = x_student_embed.clone()
         end_score = None
@@ -1328,7 +1425,8 @@ def main() -> int:
         }
         boundary_rows.append(rec)
         flag = "SURVIVES" if end_score["survives"] else "FAILS"
-        print(f"    {step['label']:<40} {flag}  {fmt_score(end_score)}")
+        bpw_s = f"{step['bpw']:.4f}bpw" if step.get("bpw") == step.get("bpw") else "  n/a   "
+        print(f"    {step['label']:<34} {bpw_s:>11}  wΔ={step['rel_l2_weight']:.4f}  {flag}  {fmt_score(end_score)}")
         sys.stdout.flush()
         if end_score["survives"]:
             last_survive = rec

@@ -1,32 +1,47 @@
 {
-  "generated_at": "2026-08-24T03:02:57Z",
+  "generated_at": "2026-08-24T03:05:06Z",
   "running": [
-    "n001seal",
-    "n006multisession",
-    "n008families",
     "n009organs",
     "nq2fgen"
   ],
   "needs_harvest": [
     {
-      "slug": "n004gpuledger",
-      "id": "n004gpuledger-20260823-224016",
+      "slug": "n001seal",
+      "id": "n001seal-20260823-223440",
       "unharvested": [
-        "receipts/headless/GPU_LEDGER.json",
-        "receipts/headless/GPU_LEDGER_METAL_PROBE.json",
-        "receipts/headless/GPU_LEDGER_RAW.run1.json",
-        "receipts/headless/GPU_LEDGER_RAW.run2.json",
-        "receipts/headless/GPU_LEDGER_RAW.run3.json",
-        "tools/headless/gpu_ledger.py",
-        "tools/headless/test_gpu_ledger.py"
+        "receipts/headless/NOETIC_PARENT_A.json",
+        "receipts/headless/_NOETIC_PARENT_A_raw.json",
+        "tools/headless/noetic_parent_a.py",
+        "tools/headless/test_noetic_parent_a.py"
+      ],
+      "worktree_extras": 0
+    },
+    {
+      "slug": "n006multisession",
+      "id": "n006multisession-20260823-224028",
+      "unharvested": [
+        "receipts/headless/NOETIC_MULTISESSION.json",
+        "receipts/headless/NOETIC_MULTISESSION.raw.json",
+        "tools/headless/noetic_multisession.py",
+        "tools/headless/test_noetic_multisession.py"
+      ],
+      "worktree_extras": 0
+    },
+    {
+      "slug": "n008families",
+      "id": "n008families-20260823-223551",
+      "unharvested": [
+        "receipts/headless/ONEBIT_FAMILIES.json",
+        "tools/headless/onebit_families.py",
+        "tools/headless/test_onebit_families.py"
       ],
       "worktree_extras": 0
     }
   ],
   "headroom": {
-    "load1": 41.9228515625,
+    "load1": 21.17919921875,
     "ncpu": 28,
-    "disk_gib": 322.3,
+    "disk_gib": 322.1,
     "room_for_more": false
   }
 }

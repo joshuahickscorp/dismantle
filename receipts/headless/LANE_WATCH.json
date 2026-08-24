@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-24T03:22:31Z",
+  "generated_at": "2026-08-24T03:28:53Z",
   "running": [
     "n005dispatch",
     "n007prodbench",
@@ -10,9 +10,9 @@
   ],
   "needs_harvest": [],
   "headroom": {
-    "load1": 12.27587890625,
+    "load1": 13.27880859375,
     "ncpu": 28,
-    "disk_gib": 312.4,
+    "disk_gib": 307.9,
     "room_for_more": true
   }
 }

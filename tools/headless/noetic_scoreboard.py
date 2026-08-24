@@ -238,6 +238,55 @@ def frontier_points(rows: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+def _organ_floor_arithmetic() -> dict[str, Any]:
+    """What the MEASURED organ floors imply for the whole model.
+
+    This is the campaign's central number and it belongs in the tracking spine,
+    not only in the organ receipt. ORGAN_FRONTIERS measured three floors
+    independently; weighting each by its share of the parent parameters answers
+    whether the ~1 EBPW research pressure is reachable by per-organ quantization
+    at all.
+    """
+    org = load("ORGAN_FRONTIERS")
+    if not org:
+        return {"state": ABSENT, "reason": "ORGAN_FRONTIERS.json not on disk"}
+    floors = dig(org, "verdict", "floors_storage_bpw", default={})
+    dn = dig(org, "organs", "deltanet", "physical_cited", "elements")
+    gqa = dig(org, "organs", "gqa", "physical_cited", "elements")
+    mlp = 17_112_760_320  # NOETIC_PARENT_A mlp_elements
+    if not (floors and dn and gqa):
+        return {"state": ABSENT, "reason": "organ element counts incomplete"}
+    emb = PARENT_PARAMS - (dn + gqa + mlp)
+    rows = [
+        ("deltanet", dn, floors.get("deltanet")),
+        ("gqa", gqa, floors.get("gqa")),
+        ("mlp", mlp, 2.25),
+        ("embedding_output", emb, floors.get("embedding_output")),
+    ]
+    if any(b is None for _, _, b in rows):
+        return {"state": ABSENT, "reason": "a measured floor is missing"}
+    total = sum(e * b for _, e, b in rows)
+    without_mlp = sum(e * b for n, e, b in rows if n != "mlp")
+    return {
+        "state": "DERIVED",
+        "per_organ": [
+            {"organ": n, "elements": e, "share": round(e / PARENT_PARAMS, 4), "floor_bpw": b}
+            for n, e, b in rows
+        ],
+        "implied_whole_model_ebpw": round(total / PARENT_PARAMS, 4),
+        "leader_today": 3.139300850311054,
+        "incumbent": INCUMBENT_EBPW,
+        "research_pressure": 1.0,
+        "floor_even_if_mlp_were_free_ebpw": round(without_mlp / PARENT_PARAMS, 4),
+        "reading": (
+            "Per-organ quantization cannot reach ~1 EBPW. The leader is already within "
+            "6% of the implied floor, and the non-MLP organs alone would still cost "
+            "more than 1.5 EBPW with the MLP at zero bits. Reaching ~1 requires "
+            "STRUCTURE that breaks these floors, not narrower codes."
+        ),
+    }
+
+
 def main() -> int:
     rows = candidates()
     fp = frontier_points(rows)
@@ -284,9 +333,10 @@ def main() -> int:
             "collapse_boundary": 1.85,
             "coherent_plateau": "2.25 costs essentially nothing against 3.25 "
             "(rel_l2 0.3471 vs 0.3423)",
-            "missing": "only ONE family is mapped. S017 §42 wants a curve per family; "
-            "N008 is running four structurally distinct ones.",
+            "missing": "only ONE family is mapped for the MLP. S017 §42 wants a curve per "
+            "family; N008 screened five structurally distinct ones at matched bytes.",
         },
+        "implied_whole_model_floor": _organ_floor_arithmetic(),
     }
     OUT.write_text(json.dumps(receipt, indent=2) + "\n")
     print(f"candidates {len(rows)}  cells {n_cells}  ABSENT {n_absent} ({n_absent/n_cells:.0%})")

@@ -56,6 +56,23 @@ def test_leader_is_not_called_resident():
     assert "not resident-promoted" in leader["note"].lower()
 
 
+def test_the_implied_floor_is_derived_from_measured_organ_floors():
+    """The campaign's central number, and it must stay tied to measurement.
+
+    If ORGAN_FRONTIERS ever moves a floor, this must move with it rather than
+    remaining a remembered constant.
+    """
+    f = _d()["implied_whole_model_floor"]
+    assert f["state"] == "DERIVED"
+    assert abs(f["implied_whole_model_ebpw"] - 2.9398) < 0.05
+    # The leader is already close to the floor: per-organ quantization is nearly spent.
+    assert f["leader_today"] - f["implied_whole_model_ebpw"] < 0.25
+    # And the non-MLP organs alone exceed the ~1 EBPW research pressure.
+    assert f["floor_even_if_mlp_were_free_ebpw"] > f["research_pressure"], (
+        "if this ever inverts, ~1 EBPW became reachable by per-organ quantization"
+    )
+
+
 if __name__ == "__main__":
     for n, f in sorted(globals().items()):
         if n.startswith("test_"):

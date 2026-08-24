@@ -1,7 +1,7 @@
 {
   "schema": "hawking.headless.noetic_scoreboard.v1",
   "obligation": "N015 (S017 \u00a73, \u00a742, \u00a744)",
-  "git_head": "3537502f300a",
+  "git_head": "5da82f4a4ed1",
   "parent_params": 26895998464,
   "columns": "S017 \u00a744",
   "honesty": "Every cell states MEASURED, DERIVED or ABSENT. An unmeasured cell is never rendered as 0 \u2014 a plausible zero makes an unmeasured candidate look cheap, which is the specific way a scoreboard lies.",
@@ -567,6 +567,41 @@
     "knee": "between 1.85 and 2.25 bpw body \u2014 sharp, not gradual: rel_l2 more than doubles (0.3471 -> 0.7360) and the argmax flips",
     "collapse_boundary": 1.85,
     "coherent_plateau": "2.25 costs essentially nothing against 3.25 (rel_l2 0.3471 vs 0.3423)",
-    "missing": "only ONE family is mapped. S017 \u00a742 wants a curve per family; N008 is running four structurally distinct ones."
+    "missing": "only ONE family is mapped for the MLP. S017 \u00a742 wants a curve per family; N008 screened five structurally distinct ones at matched bytes."
+  },
+  "implied_whole_model_floor": {
+    "state": "DERIVED",
+    "per_organ": [
+      {
+        "organ": "deltanet",
+        "elements": 5562296832,
+        "share": 0.2068,
+        "floor_bpw": 4.125
+      },
+      {
+        "organ": "gqa",
+        "elements": 1677811712,
+        "share": 0.0624,
+        "floor_bpw": 4.25
+      },
+      {
+        "organ": "mlp",
+        "elements": 17112760320,
+        "share": 0.6363,
+        "floor_bpw": 2.25
+      },
+      {
+        "organ": "embedding_output",
+        "elements": 2543129600,
+        "share": 0.0946,
+        "floor_bpw": 4.125
+      }
+    ],
+    "implied_whole_model_ebpw": 2.9398,
+    "leader_today": 3.139300850311054,
+    "incumbent": 4.252735126866492,
+    "research_pressure": 1.0,
+    "floor_even_if_mlp_were_free_ebpw": 1.5082,
+    "reading": "Per-organ quantization cannot reach ~1 EBPW. The leader is already within 6% of the implied floor, and the non-MLP organs alone would still cost more than 1.5 EBPW with the MLP at zero bits. Reaching ~1 requires STRUCTURE that breaks these floors, not narrower codes."
   }
 }

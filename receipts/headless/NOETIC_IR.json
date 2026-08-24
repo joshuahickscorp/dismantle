@@ -1,9 +1,9 @@
 {
   "schema": "hawking.headless.noetic_ir.v1",
   "ir_kind": "hawking.nos.noetic_representation_ir",
-  "generated_at": "2026-08-24T02:45:38Z",
-  "git_head": "6138f18cc1599e5b0bddd2d21a38ea6a7fcbc707",
-  "elapsed_s": 0.0024,
+  "generated_at": "2026-08-24T03:25:59Z",
+  "git_head": "eb3525e36a999ac581e89fb948d2d9e4cfffdbaf",
+  "elapsed_s": 0.0028,
   "question": "Is there an IR with an executing node \u2014 semantic representation versus machine compilation \u2014 that produces the same numbers as the same computation done directly?",
   "answer": "Yes. Family grouped_absmax_q4 is expressed as a semantic IR node and EXECUTED from it. y_from_ir vs y_direct max_abs_diff=1.907e-06 rel_l2=1.023e-07. Kernel names live on the machine lowering, not the semantic node. A 1 GB planted SharedBasis moves complete_bpw and cannot execute.",
   "doctrine": {

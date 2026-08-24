@@ -1,7 +1,7 @@
 {
  "schema": "hawking.headless.gpu_ledger.v1",
- "generated_at": "2026-08-24T03:04:46Z",
- "git_head": "3537502f300a07435dec84f1e7f3295de893ef3e",
+ "generated_at": "2026-08-24T03:25:55Z",
+ "git_head": "eb3525e36a999ac581e89fb948d2d9e4cfffdbaf",
  "obligation": "N004 \u2014 GPU ledger per token: stop optimizing blind",
  "incumbent": {
   "artifact": "/Users/scammermike/models/qwen38-gravity-uniform-q4-v1",
@@ -12,7 +12,7 @@
  "did_not_load_second_27b": true,
  "occupancy": {
   "ps_matches": [
-   "12402  84880 /Users/scammermike/.local/share/uv/tools/mlx-lm/bin/python /Users/scammermike/.local/bin/mlx_lm.server --model /private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/tmp9wq3pmxx/4bit --host 127.0.0.1 --port 9999 --max-tokens 8192 --decode-concurrency 1 --prompt-concurrency 1 --prompt-cache-size 10 --chat-template-args {\"enable_thinking\":false}"
+   "12402  84848 /Users/scammermike/.local/share/uv/tools/mlx-lm/bin/python /Users/scammermike/.local/bin/mlx_lm.server --model /private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/tmp9wq3pmxx/4bit --host 127.0.0.1 --port 9999 --max-tokens 8192 --decode-concurrency 1 --prompt-concurrency 1 --prompt-cache-size 10 --chat-template-args {\"enable_thinking\":false}"
   ],
   "loaded_a_second_27b": false,
   "note": "mlx_lm.server on a tiny tmp 4bit (~tens of MiB RSS) is not a 27B. A second Qwen3.8-27B would show RSS in the 10+ GiB class and is refused."

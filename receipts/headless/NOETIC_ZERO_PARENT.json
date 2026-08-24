@@ -1,8 +1,8 @@
 {
   "schema": "hawking.headless.noetic_zero_parent.v1",
-  "generated_at": "2026-08-24T02:45:44Z",
-  "git_head": "6138f18cc1599e5b0bddd2d21a38ea6a7fcbc707",
-  "elapsed_s": 6.336,
+  "generated_at": "2026-08-24T03:26:24Z",
+  "git_head": "eb3525e36a999ac581e89fb948d2d9e4cfffdbaf",
+  "elapsed_s": 7.329,
   "claim": "Production Noetic inference does not load parent weights.",
   "observation_method": "DYLD interpose of open/openat/open$NOCANCEL/fopen (tools/headless/noetic_openlog.c) on the live process. Successful opens are resolved via F_GETPATH so openat relative names still name the file. Every recorded path is an observed open(), not a walk of the loader source.",
   "parent_bf16": "/Users/scammermike/models/qwen3.8-27b-abliterated-bf16",
@@ -70,7 +70,7 @@
       "binary": "/Users/scammermike/Downloads/hawking/workspace/ops/build/rust/release-fast/examples/ascension_qwen38_hybrid_greedy",
       "exit_code": 0,
       "timed_out": false,
-      "elapsed_s": 4.848,
+      "elapsed_s": 5.585,
       "dylib_loaded": true,
       "saw_tokenizer_encode": true,
       "saw_catalog_count": true,
@@ -90,7 +90,7 @@
       "complete": true,
       "truncation": null,
       "stderr_head": "INTERPOSE_CTOR\nqwen38 prompt tokens=9 text=\"<|im_start|>user\\nHi<|im_end|>\\n<|im_start|>assistant\\n\"\nqwen38-decode opening Metal + 755 catalog tensors\nqwen38-decode upload 0/755\nqwen38-decode upload 50/755\nqwen38-decode upload 100/755\nqwen38-decode upload 150/755\nqwen38-decode upload 200/755\nqwen38-decode upload 250/755\nqwen38-decode upload 300/755\nqwen38-decode upload 350/755\nqwen38-decode upload 400/755\nqwen38-decode upload 450/755\nqwen38-decode upload 500/755\nqwen38-decode upload 550/755\nqwen38-decode upload 600/755\nqwen38-decode upload 650/755\nqwen38-decode upload 700/755\nqwen38-decode upload 750/755\n[hawking] HAWKING_TCB_TRACE=\"(unset)\" \u2192 mode=Off\n",
-      "stdout_head": "GENERATED_TEXT_VERBATIM: <think>\nFALLBACKS: 0\nDENSE_W_MATERIALIZED: 0\nPROMPT_LEN: 9\nNEW_TOKENS: [248068]\ngenerated_token_ids=[248068]\nGPU_NS_PER_STEP: [73714708, 28487125, 28457249, 28635583, 28501499, 28259791, 28447250, 28605875, 28511875]\nWAIT_NS_PER_STEP: [133927666, 29310125, 28873375, 29048750, 28867708, 28597833, 28828291, 28926125, 28882541]\nMEDIAN_GPU_NS_PER_TOKEN: Some(28501499)\nWALL_NS: 376025125\nPREFILL_WALL_NS: 376024125\nDECODE_WALL_NS: 0\nFIRST_STEP_WALL_NS: 137976125\nSTEADY_DECODE_WALL_NS_PER_TOKEN: None\n",
+      "stdout_head": "GENERATED_TEXT_VERBATIM: <think>\nFALLBACKS: 0\nDENSE_W_MATERIALIZED: 0\nPROMPT_LEN: 9\nNEW_TOKENS: [248068]\ngenerated_token_ids=[248068]\nGPU_NS_PER_STEP: [87766208, 28461583, 29011999, 28609874, 28709249, 28987416, 29119375, 28613375, 28832583]\nWAIT_NS_PER_STEP: [160827042, 29374250, 29295000, 28957791, 29061667, 29300834, 29620542, 28923083, 29154833]\nMEDIAN_GPU_NS_PER_TOKEN: Some(28832583)\nWALL_NS: 406212833\nPREFILL_WALL_NS: 406204792\nDECODE_WALL_NS: 83\nFIRST_STEP_WALL_NS: 165074625\nSTEADY_DECODE_WALL_NS_PER_TOKEN: None\n",
       "observation": {
         "n_events": 804,
         "n_unique": 784,
@@ -145,7 +145,7 @@
       "via": "noetic_composition.SourceBF16.load"
     },
     "exit_code": 0,
-    "elapsed_s": 1.027,
+    "elapsed_s": 1.311,
     "dylib_loaded": true,
     "parent_weight_opens": [
       "/Users/scammermike/models/qwen3.8-27b-abliterated-bf16/model-00001-of-00018.safetensors"
@@ -174,7 +174,7 @@
       "artifact_other": [],
       "artifact_tensor_head": [],
       "artifact_tensor_tail": [],
-      "unique_paths_fingerprint": "91981f30444ba6c714d062f9b86ae4383e3ae4d5cb18e9527fddf030ad47564b"
+      "unique_paths_fingerprint": "15528ac35f8835cb8eb475bd4a874d6f0781308a6aa11efe19540d81ea0b3b86"
     }
   },
   "detector": {

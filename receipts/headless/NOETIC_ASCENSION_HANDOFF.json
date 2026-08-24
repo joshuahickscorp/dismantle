@@ -1,9 +1,9 @@
 {
   "schema": "hawking.headless.noetic_ascension_handoff.v1",
-  "generated_at": "2026-08-24T02:45:36Z",
+  "generated_at": "2026-08-24T03:25:57Z",
   "builder": "tools/headless/noetic_ascension_handoff.py",
   "loop": "tools/headless/noetic_ascension_loop.py",
-  "git_head": "6138f18cc1599e5b0bddd2d21a38ea6a7fcbc707",
+  "git_head": "eb3525e36a999ac581e89fb948d2d9e4cfffdbaf",
   "branch": "odyssey-i",
   "sparse": {
     "on": false,
@@ -357,20 +357,20 @@
   "accounting_metrics": {
     "value": {
       "MODEL_SPECIFIC_BYTES": 14297933604,
-      "SHARED_RUNTIME_BYTES": 481151,
+      "SHARED_RUNTIME_BYTES": 528173,
       "MACHINE_SPECIFIC_BYTES": 3098,
       "GENERATED_CACHE_BYTES": 1230635008,
       "TEMPORARY_BYTES": 1691396,
-      "RESIDENT_BYTES": 15530744257,
+      "RESIDENT_BYTES": 15530791279,
       "ACTIVE_BYTES": 13622266960
     },
     "evidence_path": "receipts/headless/NOETIC_INFORMATION_ACCOUNTING.json",
     "reproducing_command": [
       "python3",
       "-c",
-      "import json\nfrom pathlib import Path\nd = json.loads(Path('receipts/headless/NOETIC_INFORMATION_ACCOUNTING.json').read_text())\ncur = d\nfor part in [\"artifact_accounting\", \"buckets\"]:\n    cur = cur[int(part)] if isinstance(cur, list) else cur[part]\nexp = json.loads(\"{\\\"MODEL_SPECIFIC_BYTES\\\": 14297933604, \\\"SHARED_RUNTIME_BYTES\\\": 481151, \\\"MACHINE_SPECIFIC_BYTES\\\": 3098, \\\"GENERATED_CACHE_BYTES\\\": 1230635008, \\\"TEMPORARY_BYTES\\\": 1691396, \\\"RESIDENT_BYTES\\\": 15530744257, \\\"ACTIVE_BYTES\\\": 13622266960}\")\nassert cur == exp, (cur, exp)"
+      "import json\nfrom pathlib import Path\nd = json.loads(Path('receipts/headless/NOETIC_INFORMATION_ACCOUNTING.json').read_text())\ncur = d\nfor part in [\"artifact_accounting\", \"buckets\"]:\n    cur = cur[int(part)] if isinstance(cur, list) else cur[part]\nexp = json.loads(\"{\\\"MODEL_SPECIFIC_BYTES\\\": 14297933604, \\\"SHARED_RUNTIME_BYTES\\\": 528173, \\\"MACHINE_SPECIFIC_BYTES\\\": 3098, \\\"GENERATED_CACHE_BYTES\\\": 1230635008, \\\"TEMPORARY_BYTES\\\": 1691396, \\\"RESIDENT_BYTES\\\": 15530791279, \\\"ACTIVE_BYTES\\\": 13622266960}\")\nassert cur == exp, (cur, exp)"
     ],
-    "reproducing_command_pretty": "python3 -c 'import json\nfrom pathlib import Path\nd = json.loads(Path('\"'\"'receipts/headless/NOETIC_INFORMATION_ACCOUNTING.json'\"'\"').read_text())\ncur = d\nfor part in [\"artifact_accounting\", \"buckets\"]:\n    cur = cur[int(part)] if isinstance(cur, list) else cur[part]\nexp = json.loads(\"{\\\"MODEL_SPECIFIC_BYTES\\\": 14297933604, \\\"SHARED_RUNTIME_BYTES\\\": 481151, \\\"MACHINE_SPECIFIC_BYTES\\\": 3098, \\\"GENERATED_CACHE_BYTES\\\": 1230635008, \\\"TEMPORARY_BYTES\\\": 1691396, \\\"RESIDENT_BYTES\\\": 15530744257, \\\"ACTIVE_BYTES\\\": 13622266960}\")\nassert cur == exp, (cur, exp)'",
+    "reproducing_command_pretty": "python3 -c 'import json\nfrom pathlib import Path\nd = json.loads(Path('\"'\"'receipts/headless/NOETIC_INFORMATION_ACCOUNTING.json'\"'\"').read_text())\ncur = d\nfor part in [\"artifact_accounting\", \"buckets\"]:\n    cur = cur[int(part)] if isinstance(cur, list) else cur[part]\nexp = json.loads(\"{\\\"MODEL_SPECIFIC_BYTES\\\": 14297933604, \\\"SHARED_RUNTIME_BYTES\\\": 528173, \\\"MACHINE_SPECIFIC_BYTES\\\": 3098, \\\"GENERATED_CACHE_BYTES\\\": 1230635008, \\\"TEMPORARY_BYTES\\\": 1691396, \\\"RESIDENT_BYTES\\\": 15530791279, \\\"ACTIVE_BYTES\\\": 13622266960}\")\nassert cur == exp, (cur, exp)'",
     "source_field": "artifact_accounting.buckets"
   },
   "kernels": {

@@ -1,24 +1,18 @@
 {
-  "generated_at": "2026-08-24T03:13:45Z",
+  "generated_at": "2026-08-24T03:22:31Z",
   "running": [
+    "n005dispatch",
+    "n007prodbench",
+    "n010alloc",
+    "n014adv",
+    "n016prefill",
     "nq2fgen"
   ],
-  "needs_harvest": [
-    {
-      "slug": "n009organs",
-      "id": "n009organs-20260823-223551",
-      "unharvested": [
-        "receipts/headless/ORGAN_FRONTIERS.json",
-        "tools/headless/organ_frontiers.py",
-        "tools/headless/test_organ_frontiers.py"
-      ],
-      "worktree_extras": 0
-    }
-  ],
+  "needs_harvest": [],
   "headroom": {
-    "load1": 22.90283203125,
+    "load1": 12.27587890625,
     "ncpu": 28,
-    "disk_gib": 318.1,
-    "room_for_more": false
+    "disk_gib": 312.4,
+    "room_for_more": true
   }
 }

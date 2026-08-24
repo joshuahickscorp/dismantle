@@ -64,7 +64,7 @@ G105_CHIPSET = "Apple M3 Ultra"
 G105_GPU_CORES = 60
 G105_UNIFIED = 103_079_215_104
 G105_METAL = "Metal 4"
-G105_ROOF = 595.9
+G105_ROOF = 778.8
 
 # Geometry authority: crates/hawking-core/src/model/qwen38_geometry.rs
 # Workspace formula: qwen38_workspace_bytes in qwen38_hybrid_decode.rs

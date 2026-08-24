@@ -96,7 +96,7 @@ ANCHOR_Q80_DISPATCHES_SHAPE = 1155
 ANCHOR_Q80_CBS_SHAPE = 98
 ANCHOR_Q38_TPS = 32.73
 ANCHOR_Q38_MS = 30.606
-ANCHOR_ROOF_GB_S = 595.9
+ANCHOR_ROOF_GB_S = 778.8
 
 KIND_ALG = "measured_from_encoded_algorithm"
 KIND_CPU = "measured_cpu_microbench"

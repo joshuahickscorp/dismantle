@@ -158,7 +158,7 @@ _QL = sorted(Q_INJECT)
 # Throughput model. GPU_LEDGER: decode is bandwidth-bound enough that active
 # bytes rank above stored size. TOKEN_NS and ACTIVE_BYTES are MEASURED there;
 # the per-byte derivative here is DERIVED, not a new GPU run.
-ROOF_GB_S = 595.9
+ROOF_GB_S = 778.8
 ACTIVE_INCUMBENT = 13_622_266_960
 TOKEN_NS_INCUMBENT = 30_375_208
 GPU_LEDGER = "receipts/headless/GPU_LEDGER.json"

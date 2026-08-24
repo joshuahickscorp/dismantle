@@ -65,7 +65,7 @@ Q80_PCT_OF_700 = 0.79
 Q80_IDLE_PCT = 51.0
 Q80_CEILING_GB_S = 700.0
 PEAK_GB_S = 819.0
-HONEST_ROOF_GB_S = ANCHOR_ROOF_GB_S  # 595.9, measured sequential roof
+HONEST_ROOF_GB_S = ANCHOR_ROOF_GB_S  # 778.8, N017 measured sequential DRAM roof
 PRIOR_TOKEN_NS_GIT = "HEAD:receipts/ascent-2026-08-16/QWEN38_TOKEN_NS_LEDGER.json"
 PRIOR_TOKEN_NS_GPU_NS = 33_912_333  # median_gpu_ns in that ledger
 
@@ -932,7 +932,7 @@ def build() -> dict:
             f"Q80 sat at {Q80_PCT_OF_700}% of a {Q80_CEILING_GB_S} GB/s ceiling with "
             f"{Q80_IDLE_PCT}% GPU idle because it was dispatch-bound across many CBs. "
             f"The q4 incumbent is 1 CB / 964 dispatches, streams {achieved_gb_s:.1f} GB/s "
-            f"({pct_of_700:.1f}% of 700, {pct_of_roof:.1f}% of the 595.9 GB/s sequential roof) "
+            f"({pct_of_700:.1f}% of 700, {pct_of_roof:.1f}% of the {HONEST_ROOF_GB_S} GB/s sequential roof) "
             f"with GPU occupying {100*gpu_frac:.1f}% of complete-wall. Host queue wait is "
             f"{idle_pct_if_queue_wait:.2f}% of wall, not {Q80_IDLE_PCT}%. Applying the Q80 "
             "idle diagnosis to this vehicle is false. The remaining lever is ACTIVE BYTES "

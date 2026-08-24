@@ -83,7 +83,7 @@ MULTISESSION_CEILING = {
     "sequential_per_session": {"1": 1.0, "2": 1.002, "4": 0.989},
 }
 GPU_LEDGER_GB_S = 468.9
-ROOF_GB_S = 595.9
+ROOF_GB_S = 778.8
 GPU_CORES = 60
 
 # Enough tokens that a thinking reply can close </think> and emit the answer.

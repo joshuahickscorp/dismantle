@@ -30,7 +30,7 @@ SCHEMA = "hawking.headless.noetic_mlx_anatomy.v1"
 # Anchors already measured. Do not re-derive.
 ANCHOR_TPS_NATIVE = 32.73
 ANCHOR_TOKEN_MS = 30.606
-ANCHOR_ROOF_GB_S = 595.9
+ANCHOR_ROOF_GB_S = 778.8
 ANCHOR_UNIFIED_B = 103_079_215_104
 ANCHOR_GPU_CORES = 60
 ANCHOR_PARAMS = 26_895_998_464

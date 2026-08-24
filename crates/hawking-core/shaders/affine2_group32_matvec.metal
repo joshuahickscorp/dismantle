@@ -1058,3 +1058,421 @@ kernel void affine2_group64_matvec_accfuse_tpr64_tg128(
         output[row] = red[team * kSplit] + red[team * kSplit + 1u];
     }
 }
+
+// ── N030 non-load fused gate_up_swiglu autopsy (isolated, no 27B) ──
+// Same tpr64 occupancy as production. Do not retune load geometry
+// (qmvfast / wide64 / tgx stay unused). No dense W.
+//
+// biasprep: (q*scale)*x in the inner loop; bias*sum(x_group) is applied
+// once per row from a precomputed 64-wide x-sum. Algebraically equal to
+// (q*scale+bias)*x; association differs. drop skips the bias term
+// (deliberately-bad control). decode_probe extracts packed q and poisons
+// the acc so the unpack cannot DCE. addr_probe loads the byte stream.
+
+static inline void affine2_sa_unpack8_dual_vec(
+    uint packed_g, float scale_g, float bias_g,
+    uint packed_u, float scale_u, float bias_u,
+    float4 x0, float4 x1,
+    thread float& acc_g, thread float& acc_u)
+{
+    acc_g += affine2_unpack8_vec(packed_g, scale_g, bias_g, x0, x1);
+    acc_u += affine2_unpack8_vec(packed_u, scale_u, bias_u, x0, x1);
+}
+
+static inline void affine2_sa_unpack8_dual_qx(
+    uint packed_g, float scale_g,
+    uint packed_u, float scale_u,
+    float4 x0, float4 x1,
+    thread float& acc_g, thread float& acc_u)
+{
+    float qx_g = 0.0f;
+    float qx_u = 0.0f;
+    qx_g += float((packed_g       ) & 3u) * x0.x;
+    qx_u += float((packed_u       ) & 3u) * x0.x;
+    qx_g += float((packed_g >>  2u) & 3u) * x0.y;
+    qx_u += float((packed_u >>  2u) & 3u) * x0.y;
+    qx_g += float((packed_g >>  4u) & 3u) * x0.z;
+    qx_u += float((packed_u >>  4u) & 3u) * x0.z;
+    qx_g += float((packed_g >>  6u) & 3u) * x0.w;
+    qx_u += float((packed_u >>  6u) & 3u) * x0.w;
+    qx_g += float((packed_g >>  8u) & 3u) * x1.x;
+    qx_u += float((packed_u >>  8u) & 3u) * x1.x;
+    qx_g += float((packed_g >> 10u) & 3u) * x1.y;
+    qx_u += float((packed_u >> 10u) & 3u) * x1.y;
+    qx_g += float((packed_g >> 12u) & 3u) * x1.z;
+    qx_u += float((packed_u >> 12u) & 3u) * x1.z;
+    qx_g += float((packed_g >> 14u) & 3u) * x1.w;
+    qx_u += float((packed_u >> 14u) & 3u) * x1.w;
+    acc_g += qx_g * scale_g;
+    acc_u += qx_u * scale_u;
+}
+
+kernel void affine2_xsum64(
+    device const float* x    [[buffer(0)]],
+    device float* xsum       [[buffer(1)]],
+    constant uint& cols      [[buffer(2)]],
+    uint tid                  [[thread_position_in_grid]])
+{
+    if ((cols % 64u) != 0u) return;
+    const uint gpr = cols >> 6u;
+    if (tid >= gpr) return;
+    const uint base = tid << 6u;
+    float s = 0.0f;
+    for (uint i = 0u; i < 64u; ++i) {
+        s += x[base + i];
+    }
+    xsum[tid] = s;
+}
+
+kernel void affine2_group64_matvec_gate_up_swiglu_geo_tpr64_tg128(
+    device const uchar* gate_codes  [[buffer(0)]],
+    device const half*  gate_scales [[buffer(1)]],
+    device const half*  gate_biases [[buffer(2)]],
+    device const uchar* up_codes    [[buffer(3)]],
+    device const half*  up_scales   [[buffer(4)]],
+    device const half*  up_biases   [[buffer(5)]],
+    device const float* input       [[buffer(6)]],
+    device float*       act_out     [[buffer(7)]],
+    constant uint& rows             [[buffer(8)]],
+    constant uint& cols             [[buffer(9)]],
+    uint group_id                    [[threadgroup_position_in_grid]],
+    uint simd_lane                   [[thread_index_in_simdgroup]],
+    uint simd_id                     [[simdgroup_index_in_threadgroup]])
+{
+    threadgroup float red[8];
+    constexpr uint kSplit = 2u;
+    const uint team = simd_id / kSplit;
+    const uint split = simd_id % kSplit;
+    const uint lane_in_row = split * 32u + simd_lane;
+    const uint row = group_id * 2u + team;
+    float acc_g = 0.0f;
+    float acc_u = 0.0f;
+    if (row < rows && (cols % 64u) == 0u) {
+        const uint groups_per_row = cols >> 6u;
+        for (uint col = lane_in_row * 8u; col + 8u <= cols; col += 512u) {
+            const uint group = col >> 6u;
+            const uint local = col & 63u;
+            const uint rgb = row * groups_per_row + group;
+            const uint byte0 = rgb * 16u + (local >> 2u);
+            const uint gpacked = uint(*((device const ushort*)(gate_codes + byte0)));
+            const uint upacked = uint(*((device const ushort*)(up_codes + byte0)));
+            const float4 x0 = *((device const float4*)(input + col));
+            const float4 x1 = *((device const float4*)(input + col + 4u));
+            affine2_sa_unpack8_dual_vec(
+                gpacked, float(gate_scales[rgb]), float(gate_biases[rgb]),
+                upacked, float(up_scales[rgb]), float(up_biases[rgb]),
+                x0, x1, acc_g, acc_u);
+        }
+    }
+    acc_g = simd_sum(acc_g);
+    acc_u = simd_sum(acc_u);
+    if (simd_lane == 0u) {
+        red[simd_id] = acc_g;
+        red[4u + simd_id] = acc_u;
+    }
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    if (split == 0u && simd_lane == 0u && row < rows) {
+        const uint t = team * kSplit;
+        const float g = red[t] + red[t + 1u];
+        const float u = red[4u + t] + red[4u + t + 1u];
+        act_out[row] = (g / (1.0f + exp(-g))) * u;
+    }
+}
+
+kernel void affine2_group64_matvec_gate_up_geo_tpr64_tg128(
+    device const uchar* gate_codes  [[buffer(0)]],
+    device const half*  gate_scales [[buffer(1)]],
+    device const half*  gate_biases [[buffer(2)]],
+    device const uchar* up_codes    [[buffer(3)]],
+    device const half*  up_scales   [[buffer(4)]],
+    device const half*  up_biases   [[buffer(5)]],
+    device const float* input       [[buffer(6)]],
+    device float*       gate_out    [[buffer(7)]],
+    device float*       up_out      [[buffer(8)]],
+    constant uint& rows             [[buffer(9)]],
+    constant uint& cols             [[buffer(10)]],
+    uint group_id                    [[threadgroup_position_in_grid]],
+    uint simd_lane                   [[thread_index_in_simdgroup]],
+    uint simd_id                     [[simdgroup_index_in_threadgroup]])
+{
+    threadgroup float red[8];
+    constexpr uint kSplit = 2u;
+    const uint team = simd_id / kSplit;
+    const uint split = simd_id % kSplit;
+    const uint lane_in_row = split * 32u + simd_lane;
+    const uint row = group_id * 2u + team;
+    float acc_g = 0.0f;
+    float acc_u = 0.0f;
+    if (row < rows && (cols % 64u) == 0u) {
+        const uint groups_per_row = cols >> 6u;
+        for (uint col = lane_in_row * 8u; col + 8u <= cols; col += 512u) {
+            const uint group = col >> 6u;
+            const uint local = col & 63u;
+            const uint rgb = row * groups_per_row + group;
+            const uint byte0 = rgb * 16u + (local >> 2u);
+            const uint gpacked = uint(*((device const ushort*)(gate_codes + byte0)));
+            const uint upacked = uint(*((device const ushort*)(up_codes + byte0)));
+            const float4 x0 = *((device const float4*)(input + col));
+            const float4 x1 = *((device const float4*)(input + col + 4u));
+            affine2_sa_unpack8_dual_vec(
+                gpacked, float(gate_scales[rgb]), float(gate_biases[rgb]),
+                upacked, float(up_scales[rgb]), float(up_biases[rgb]),
+                x0, x1, acc_g, acc_u);
+        }
+    }
+    acc_g = simd_sum(acc_g);
+    acc_u = simd_sum(acc_u);
+    if (simd_lane == 0u) {
+        red[simd_id] = acc_g;
+        red[4u + simd_id] = acc_u;
+    }
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    if (split == 0u && simd_lane == 0u && row < rows) {
+        const uint t = team * kSplit;
+        gate_out[row] = red[t] + red[t + 1u];
+        up_out[row] = red[4u + t] + red[4u + t + 1u];
+    }
+}
+
+kernel void affine2_group64_matvec_gate_up_swiglu_biasprep_tpr64_tg128(
+    device const uchar* gate_codes  [[buffer(0)]],
+    device const half*  gate_scales [[buffer(1)]],
+    device const half*  gate_biases [[buffer(2)]],
+    device const uchar* up_codes    [[buffer(3)]],
+    device const half*  up_scales   [[buffer(4)]],
+    device const half*  up_biases   [[buffer(5)]],
+    device const float* input       [[buffer(6)]],
+    device float*       act_out     [[buffer(7)]],
+    device const float* xsum        [[buffer(8)]],
+    constant uint& rows             [[buffer(9)]],
+    constant uint& cols             [[buffer(10)]],
+    uint group_id                    [[threadgroup_position_in_grid]],
+    uint simd_lane                   [[thread_index_in_simdgroup]],
+    uint simd_id                     [[simdgroup_index_in_threadgroup]])
+{
+    threadgroup float red[8];
+    constexpr uint kSplit = 2u;
+    const uint team = simd_id / kSplit;
+    const uint split = simd_id % kSplit;
+    const uint lane_in_row = split * 32u + simd_lane;
+    const uint row = group_id * 2u + team;
+    float acc_g = 0.0f;
+    float acc_u = 0.0f;
+    if (row < rows && (cols % 64u) == 0u) {
+        const uint groups_per_row = cols >> 6u;
+        if (cols == 5120u) {
+            for (uint k = 0u; k < 10u; ++k) {
+                const uint col = lane_in_row * 8u + k * 512u;
+                const uint group = col >> 6u;
+                const uint local = col & 63u;
+                const uint rgb = row * groups_per_row + group;
+                const uint byte0 = rgb * 16u + (local >> 2u);
+                const uint gpacked = uint(*((device const ushort*)(gate_codes + byte0)));
+                const uint upacked = uint(*((device const ushort*)(up_codes + byte0)));
+                const float4 x0 = *((device const float4*)(input + col));
+                const float4 x1 = *((device const float4*)(input + col + 4u));
+                affine2_sa_unpack8_dual_qx(
+                    gpacked, float(gate_scales[rgb]),
+                    upacked, float(up_scales[rgb]),
+                    x0, x1, acc_g, acc_u);
+            }
+        } else {
+            for (uint col = lane_in_row * 8u; col + 8u <= cols; col += 512u) {
+                const uint group = col >> 6u;
+                const uint local = col & 63u;
+                const uint rgb = row * groups_per_row + group;
+                const uint byte0 = rgb * 16u + (local >> 2u);
+                const uint gpacked = uint(*((device const ushort*)(gate_codes + byte0)));
+                const uint upacked = uint(*((device const ushort*)(up_codes + byte0)));
+                const float4 x0 = *((device const float4*)(input + col));
+                const float4 x1 = *((device const float4*)(input + col + 4u));
+                affine2_sa_unpack8_dual_qx(
+                    gpacked, float(gate_scales[rgb]),
+                    upacked, float(up_scales[rgb]),
+                    x0, x1, acc_g, acc_u);
+            }
+        }
+    }
+    acc_g = simd_sum(acc_g);
+    acc_u = simd_sum(acc_u);
+    if (simd_lane == 0u) {
+        red[simd_id] = acc_g;
+        red[4u + simd_id] = acc_u;
+    }
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    if (split == 0u && simd_lane == 0u && row < rows) {
+        const uint t = team * kSplit;
+        float g = red[t] + red[t + 1u];
+        float u = red[4u + t] + red[4u + t + 1u];
+        const uint gpr = cols >> 6u;
+        if (cols == 5120u) {
+            for (uint grp = 0u; grp < 80u; ++grp) {
+                const uint rgb = row * 80u + grp;
+                const float xs = xsum[grp];
+                g += float(gate_biases[rgb]) * xs;
+                u += float(up_biases[rgb]) * xs;
+            }
+        } else {
+            for (uint grp = 0u; grp < gpr; ++grp) {
+                const uint rgb = row * gpr + grp;
+                const float xs = xsum[grp];
+                g += float(gate_biases[rgb]) * xs;
+                u += float(up_biases[rgb]) * xs;
+            }
+        }
+        act_out[row] = (g / (1.0f + exp(-g))) * u;
+    }
+}
+
+kernel void affine2_group64_matvec_gate_up_swiglu_biasprep_drop_tpr64_tg128(
+    device const uchar* gate_codes  [[buffer(0)]],
+    device const half*  gate_scales [[buffer(1)]],
+    device const half*  gate_biases [[buffer(2)]],
+    device const uchar* up_codes    [[buffer(3)]],
+    device const half*  up_scales   [[buffer(4)]],
+    device const half*  up_biases   [[buffer(5)]],
+    device const float* input       [[buffer(6)]],
+    device float*       act_out     [[buffer(7)]],
+    device const float* xsum        [[buffer(8)]],
+    constant uint& rows             [[buffer(9)]],
+    constant uint& cols             [[buffer(10)]],
+    uint group_id                    [[threadgroup_position_in_grid]],
+    uint simd_lane                   [[thread_index_in_simdgroup]],
+    uint simd_id                     [[simdgroup_index_in_threadgroup]])
+{
+    threadgroup float red[8];
+    constexpr uint kSplit = 2u;
+    const uint team = simd_id / kSplit;
+    const uint split = simd_id % kSplit;
+    const uint lane_in_row = split * 32u + simd_lane;
+    const uint row = group_id * 2u + team;
+    float acc_g = 0.0f;
+    float acc_u = 0.0f;
+    if (row < rows && (cols % 64u) == 0u) {
+        const uint groups_per_row = cols >> 6u;
+        for (uint col = lane_in_row * 8u; col + 8u <= cols; col += 512u) {
+            const uint group = col >> 6u;
+            const uint local = col & 63u;
+            const uint rgb = row * groups_per_row + group;
+            const uint byte0 = rgb * 16u + (local >> 2u);
+            const uint gpacked = uint(*((device const ushort*)(gate_codes + byte0)));
+            const uint upacked = uint(*((device const ushort*)(up_codes + byte0)));
+            const float4 x0 = *((device const float4*)(input + col));
+            const float4 x1 = *((device const float4*)(input + col + 4u));
+            affine2_sa_unpack8_dual_qx(
+                gpacked, float(gate_scales[rgb]),
+                upacked, float(up_scales[rgb]),
+                x0, x1, acc_g, acc_u);
+        }
+    }
+    acc_g = simd_sum(acc_g);
+    acc_u = simd_sum(acc_u);
+    if (simd_lane == 0u) {
+        red[simd_id] = acc_g;
+        red[4u + simd_id] = acc_u;
+    }
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    if (split == 0u && simd_lane == 0u && row < rows) {
+        const uint t = team * kSplit;
+        const float g = red[t] + red[t + 1u];
+        const float u = red[4u + t] + red[4u + t + 1u];
+        act_out[row] = (g / (1.0f + exp(-g))) * u;
+        (void)xsum;
+        (void)gate_biases;
+        (void)up_biases;
+    }
+}
+
+kernel void affine2_group64_matvec_gate_up_swiglu_decode_probe_tpr64_tg128(
+    device const uchar* gate_codes  [[buffer(0)]],
+    device const half*  gate_scales [[buffer(1)]],
+    device const half*  gate_biases [[buffer(2)]],
+    device const uchar* up_codes    [[buffer(3)]],
+    device const half*  up_scales   [[buffer(4)]],
+    device const half*  up_biases   [[buffer(5)]],
+    device const float* input       [[buffer(6)]],
+    device float*       act_out     [[buffer(7)]],
+    constant uint& rows             [[buffer(8)]],
+    constant uint& cols             [[buffer(9)]],
+    uint group_id                    [[threadgroup_position_in_grid]],
+    uint simd_lane                   [[thread_index_in_simdgroup]],
+    uint simd_id                     [[simdgroup_index_in_threadgroup]])
+{
+    threadgroup float red[8];
+    constexpr uint kSplit = 2u;
+    const uint team = simd_id / kSplit;
+    const uint split = simd_id % kSplit;
+    const uint lane_in_row = split * 32u + simd_lane;
+    const uint row = group_id * 2u + team;
+    float acc = 0.0f;
+    if (row < rows && (cols % 64u) == 0u) {
+        const uint groups_per_row = cols >> 6u;
+        for (uint col = lane_in_row * 8u; col + 8u <= cols; col += 512u) {
+            const uint group = col >> 6u;
+            const uint local = col & 63u;
+            const uint rgb = row * groups_per_row + group;
+            const uint byte0 = rgb * 16u + (local >> 2u);
+            const uint gpacked = uint(*((device const ushort*)(gate_codes + byte0)));
+            const uint upacked = uint(*((device const ushort*)(up_codes + byte0)));
+            acc += float((gpacked) & 3u) + float((upacked) & 3u);
+            acc += float((gpacked >> 14u) & 3u) + float((upacked >> 14u) & 3u);
+            acc += float(gate_scales[rgb]) + float(up_biases[rgb]);
+        }
+    }
+    acc = simd_sum(acc);
+    if (simd_lane == 0u) red[simd_id] = acc;
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    if (split == 0u && simd_lane == 0u && row < rows) {
+        act_out[row] = red[team * kSplit] + red[team * kSplit + 1u];
+    }
+    (void)input;
+    (void)gate_biases;
+    (void)up_scales;
+}
+
+kernel void affine2_group64_matvec_gate_up_swiglu_addr_probe_tpr64_tg128(
+    device const uchar* gate_codes  [[buffer(0)]],
+    device const half*  gate_scales [[buffer(1)]],
+    device const half*  gate_biases [[buffer(2)]],
+    device const uchar* up_codes    [[buffer(3)]],
+    device const half*  up_scales   [[buffer(4)]],
+    device const half*  up_biases   [[buffer(5)]],
+    device const float* input       [[buffer(6)]],
+    device float*       act_out     [[buffer(7)]],
+    constant uint& rows             [[buffer(8)]],
+    constant uint& cols             [[buffer(9)]],
+    uint group_id                    [[threadgroup_position_in_grid]],
+    uint simd_lane                   [[thread_index_in_simdgroup]],
+    uint simd_id                     [[simdgroup_index_in_threadgroup]])
+{
+    threadgroup float red[8];
+    constexpr uint kSplit = 2u;
+    const uint team = simd_id / kSplit;
+    const uint split = simd_id % kSplit;
+    const uint lane_in_row = split * 32u + simd_lane;
+    const uint row = group_id * 2u + team;
+    float acc = 0.0f;
+    if (row < rows && (cols % 64u) == 0u) {
+        const uint groups_per_row = cols >> 6u;
+        for (uint col = lane_in_row * 8u; col + 8u <= cols; col += 512u) {
+            const uint group = col >> 6u;
+            const uint local = col & 63u;
+            const uint rgb = row * groups_per_row + group;
+            const uint byte0 = rgb * 16u + (local >> 2u);
+            const uint gpacked = uint(*((device const ushort*)(gate_codes + byte0)));
+            const uint upacked = uint(*((device const ushort*)(up_codes + byte0)));
+            const float4 x0 = *((device const float4*)(input + col));
+            const float4 x1 = *((device const float4*)(input + col + 4u));
+            acc += x0.x + x1.w + float(gate_scales[rgb]) + float(up_biases[rgb]);
+            acc += float(gpacked & 1u) + float(upacked & 1u);
+        }
+    }
+    acc = simd_sum(acc);
+    if (simd_lane == 0u) red[simd_id] = acc;
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    if (split == 0u && simd_lane == 0u && row < rows) {
+        act_out[row] = red[team * kSplit] + red[team * kSplit + 1u];
+    }
+    (void)gate_biases;
+    (void)up_scales;
+}

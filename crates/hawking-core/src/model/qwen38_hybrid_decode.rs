@@ -314,6 +314,16 @@ pub const QWEN38_AFFINE_GATE_UP_ACCFUSE: &str =
     "qwen_affine_q2_group64_matvec_gate_up_accfuse_tpr64_tg128";
 pub const QWEN38_AFFINE_GATE_UP_SWIGLU_ACCFUSE: &str =
     "qwen_affine_q2_group64_matvec_gate_up_swiglu_accfuse_tpr64_tg128";
+pub const QWEN38_AFFINE_GATE_UP_BIASPREP: &str =
+    "qwen_affine_q2_group64_matvec_gate_up_biasprep_tpr64_tg128";
+pub const QWEN38_AFFINE_GATE_UP_SWIGLU_BIASPREP: &str =
+    "qwen_affine_q2_group64_matvec_gate_up_swiglu_biasprep_tpr64_tg128";
+pub const QWEN38_AFFINE_GATE_UP_SWIGLU_BIASPREP_DROP: &str =
+    "qwen_affine_q2_group64_matvec_gate_up_swiglu_biasprep_drop_tpr64_tg128";
+pub const QWEN38_RMSNORM_XSUM64_KERNEL: &str = "qwen80_residual_rmsnorm_tg_xsum64";
+pub const QWEN38_ADD_RMSNORM_XSUM64_KERNEL: &str = "qwen80_add_residual_rmsnorm_tg_xsum64";
+/// Group-64 x-sums of the MLP input (hidden) plus headroom for intermediate.
+pub const QWEN38_XSUM64_CAP: usize = QWEN38_INTERMEDIATE / 64;
 
 /// Affine2 GEMV launch geometry. Default is the incumbent tpr64 tile
 /// (no-op control). `HAWKING_AFFINE2_GEO` selects a lever.
@@ -333,6 +343,11 @@ pub enum Affine2Geo {
     SplitK4,
     /// Fuse scale/bias into the accumulate via algebraic rewrite (N024).
     AccFuse,
+    /// N030: deferred group-64 bias via RMSNorm-produced x-sums. Same tpr64
+    /// occupancy. Gate_up_swiglu only; single GEMVs stay tpr64.
+    BiasPrep,
+    /// N030 deliberately-bad control: biasprep inner loop, bias term dropped.
+    BiasPrepDrop,
 }
 
 impl Affine2Geo {
@@ -347,6 +362,8 @@ impl Affine2Geo {
                 "pipe" | "pipeline" => Self::Pipe,
                 "splitk4" | "splitk" => Self::SplitK4,
                 "accfuse" | "acc_fuse" => Self::AccFuse,
+                "biasprep" | "xsum" | "bias_prep" => Self::BiasPrep,
+                "biasprep_drop" | "dropbias" | "drop_bias" => Self::BiasPrepDrop,
                 _ => Self::Tpr64,
             },
             Err(_) => Self::Tpr64,
@@ -364,6 +381,8 @@ impl Affine2Geo {
             Self::Pipe => "pipe",
             Self::SplitK4 => "splitk4",
             Self::AccFuse => "accfuse",
+            Self::BiasPrep => "biasprep",
+            Self::BiasPrepDrop => "biasprep_drop",
         }
     }
 
@@ -378,6 +397,11 @@ impl Affine2Geo {
                 | Self::SplitK4
                 | Self::AccFuse
         )
+    }
+
+    /// Fused gate_up_swiglu consumes group-64 x-sums written by RMSNorm.
+    pub fn uses_xsum(self) -> bool {
+        matches!(self, Self::BiasPrep | Self::BiasPrepDrop)
     }
 }
 pub const QWEN38_ADD_RMSNORM_KERNEL: &str = "qwen80_add_residual_rmsnorm_tg";
@@ -1024,6 +1048,13 @@ pub fn qwen38_affine_q2_launch(
             let grid = rows.div_ceil(2).saturating_mul(tg).max(tg);
             Some((QWEN38_AFFINE_Q2_ACCFUSE, (grid, 1, 1), (tg, 1, 1)))
         }
+        Affine2Geo::BiasPrep | Affine2Geo::BiasPrepDrop => {
+            // mlp_down and other single GEMVs stay on tpr64. BiasPrep is
+            // a fused gate_up_swiglu organ cut (N031 owns down).
+            let tg = 128u32;
+            let grid = rows.div_ceil(2).saturating_mul(tg).max(tg);
+            Some((QWEN38_AFFINE_Q2_GEO_TPR64, (grid, 1, 1), (tg, 1, 1)))
+        }
     }
 }
 
@@ -1100,6 +1131,26 @@ fn qwen38_affine_gate_up_launch(
                 QWEN38_AFFINE_GATE_UP_SWIGLU_ACCFUSE
             } else {
                 QWEN38_AFFINE_GATE_UP_ACCFUSE
+            };
+            (name, (grid, 1, 1), (tg, 1, 1))
+        }
+        Affine2Geo::BiasPrep => {
+            let tg = 128u32;
+            let grid = rows.div_ceil(2).saturating_mul(tg).max(tg);
+            let name = if with_swiglu {
+                QWEN38_AFFINE_GATE_UP_SWIGLU_BIASPREP
+            } else {
+                QWEN38_AFFINE_GATE_UP_BIASPREP
+            };
+            (name, (grid, 1, 1), (tg, 1, 1))
+        }
+        Affine2Geo::BiasPrepDrop => {
+            let tg = 128u32;
+            let grid = rows.div_ceil(2).saturating_mul(tg).max(tg);
+            let name = if with_swiglu {
+                QWEN38_AFFINE_GATE_UP_SWIGLU_BIASPREP_DROP
+            } else {
+                QWEN38_AFFINE_GATE_UP_BIASPREP
             };
             (name, (grid, 1, 1), (tg, 1, 1))
         }
@@ -1284,6 +1335,7 @@ pub fn qwen38_workspace_bytes(max_seq_len: usize) -> Result<Qwen38WorkspaceBytes
     let split_a = f32b(crate::model::qwen38_geometry::QWEN38_IN_PROJ_A_ROWS)?;
     let sampled = std::mem::size_of::<u32>();
     let heads_f32 = f32b(layout.value_heads)?;
+    let xsum64 = f32b(QWEN38_XSUM64_CAP)?;
     let activation = hidden
         .checked_mul(2)
         .and_then(|n| n.checked_add(qkvz))
@@ -1302,6 +1354,7 @@ pub fn qwen38_workspace_bytes(max_seq_len: usize) -> Result<Qwen38WorkspaceBytes
         .and_then(|n| n.checked_add(split_qkv))
         .and_then(|n| n.checked_add(split_b))
         .and_then(|n| n.checked_add(split_a))
+        .and_then(|n| n.checked_add(xsum64))
         .ok_or_else(|| Error::Model("qwen38 workspace overflow".into()))?;
     let deltanet = conv
         .checked_add(rec)
@@ -1850,6 +1903,7 @@ mod device {
         split_qkv: PinnedBuffer,
         split_b: PinnedBuffer,
         split_a: PinnedBuffer,
+        xsum64: PinnedBuffer,
     }
 
     impl Qwen38HybridWorkspace {
@@ -1916,6 +1970,7 @@ mod device {
                 split_a: ctx.new_buffer_checked(f32b(
                     crate::model::qwen38_geometry::QWEN38_IN_PROJ_A_ROWS,
                 )?)?,
+                xsum64: ctx.new_buffer_checked(f32b(QWEN38_XSUM64_CAP)?)?,
             })
         }
 
@@ -1955,6 +2010,7 @@ mod device {
                 &self.split_qkv,
                 &self.split_b,
                 &self.split_a,
+                &self.xsum64,
             ]
             .iter()
             .map(|b| b.length())
@@ -2008,6 +2064,10 @@ mod device {
         pub dense_w_materialized: u64,
         /// BAD control: force the serial one-thread-per-row q2f kernel.
         pub q2f_force_serial: bool,
+        /// One serial compute encoder for the whole token graph. Default off
+        /// (one encoder per dispatch). Opt-in attack on encoder-boundary idle
+        /// and host command construction. Independent of `concurrent_independent`.
+        pub serial_token_encoder: bool,
     }
 
     impl Qwen38HybridDecodeSession {
@@ -2062,6 +2122,7 @@ mod device {
                 affine2_geo: Affine2Geo::from_env(),
                 dense_w_materialized,
                 q2f_force_serial: false,
+                serial_token_encoder: false,
             };
             // `MetalContext` clones share `Arc<DispatchTrace>`. If that ever
             // becomes a fresh buffer, `drain_trace` on the session would miss
@@ -2943,6 +3004,7 @@ mod device {
             let rows = gate.rows;
             let cols = gate.cols;
             let (name, grid, tg) = qwen38_affine_gate_up_launch(self.affine2_geo, with_swiglu, rows);
+            let xsum = self.affine2_geo.uses_xsum();
             if with_swiglu {
                 tcb.dispatch_threads(name, grid, tg, |enc| {
                     enc.set_buffer(0, Some(&gate.codes), 0);
@@ -2953,8 +3015,14 @@ mod device {
                     enc.set_buffer(5, Some(up_b), 0);
                     enc.set_buffer(6, Some(&self.workspace.normalized), 0);
                     enc.set_buffer(7, Some(&self.workspace.act), 0);
-                    set_u32(enc, 8, rows);
-                    set_u32(enc, 9, cols);
+                    if xsum {
+                        enc.set_buffer(8, Some(&self.workspace.xsum64), 0);
+                        set_u32(enc, 9, rows);
+                        set_u32(enc, 10, cols);
+                    } else {
+                        set_u32(enc, 8, rows);
+                        set_u32(enc, 9, cols);
+                    }
                 })
             } else {
                 tcb.dispatch_threads(name, grid, tg, |enc| {
@@ -2967,8 +3035,14 @@ mod device {
                     enc.set_buffer(6, Some(&self.workspace.normalized), 0);
                     enc.set_buffer(7, Some(&self.workspace.gate), 0);
                     enc.set_buffer(8, Some(&self.workspace.up), 0);
-                    set_u32(enc, 9, rows);
-                    set_u32(enc, 10, cols);
+                    if xsum {
+                        enc.set_buffer(9, Some(&self.workspace.xsum64), 0);
+                        set_u32(enc, 10, rows);
+                        set_u32(enc, 11, cols);
+                    } else {
+                        set_u32(enc, 9, rows);
+                        set_u32(enc, 10, cols);
+                    }
                 })
             }
         }
@@ -3469,6 +3543,33 @@ mod device {
 
         pub fn set_q2f_force_serial(&mut self, on: bool) {
             self.q2f_force_serial = on;
+        }
+
+        /// Cover the token graph with one serial compute encoder.
+        /// Forces `concurrent_independent` off so a nested concurrent group
+        /// cannot fight the open serial encoder.
+        pub fn set_serial_token_encoder(&mut self, on: bool) {
+            self.serial_token_encoder = on;
+            if on {
+                self.concurrent_independent = false;
+            }
+        }
+
+        fn encode_full_token(
+            &self,
+            tcb: &mut TokenCommandBuffer<'_>,
+            token: u32,
+        ) -> Result<()> {
+            if self.serial_token_encoder {
+                tcb.begin_serial_group()?;
+            }
+            self.encode_embed(tcb, token)?;
+            self.encode_layers(tcb)?;
+            self.encode_terminal(tcb)?;
+            if self.serial_token_encoder {
+                tcb.end_serial_group()?;
+            }
+            Ok(())
         }
 
         pub fn theoretical_dispatches(&self) -> u64 {
@@ -5013,7 +5114,10 @@ mod device {
                 // Mean 35.792 -> 34.267, 4.26% faster, every pair favouring the retile,
                 // token-identical. HAWKING_RMSNORM_TG=0 restores the 256-pinned kernel.
                 .unwrap_or(1024);
-            let (rms_name, rms_n) = if rms_tg > 0 {
+            let xsum = self.affine2_geo.uses_xsum();
+            let (rms_name, rms_n) = if xsum {
+                (QWEN38_RMSNORM_XSUM64_KERNEL, if rms_tg > 0 { rms_tg } else { 256 })
+            } else if rms_tg > 0 {
                 ("qwen80_residual_rmsnorm_tg", rms_tg)
             } else {
                 ("qwen80_residual_rmsnorm_f32", 256)
@@ -5026,8 +5130,14 @@ mod device {
                     encoder.set_buffer(0, Some(input), 0);
                     encoder.set_buffer(1, Some(weight), 0);
                     encoder.set_buffer(2, Some(output), 0);
-                    encoder.set_bytes(3, 4, &hidden as *const u32 as *const _);
-                    encoder.set_bytes(4, 4, &QWEN38_RMS_EPS as *const f32 as *const _);
+                    if xsum {
+                        encoder.set_buffer(3, Some(&self.workspace.xsum64), 0);
+                        encoder.set_bytes(4, 4, &hidden as *const u32 as *const _);
+                        encoder.set_bytes(5, 4, &QWEN38_RMS_EPS as *const f32 as *const _);
+                    } else {
+                        encoder.set_bytes(3, 4, &hidden as *const u32 as *const _);
+                        encoder.set_bytes(4, 4, &QWEN38_RMS_EPS as *const f32 as *const _);
+                    }
                     // sized to the ACTUAL threadgroup: the scratch is one float per thread and
                     // a hardcoded 256 silently under-allocates for any larger tg, which showed
                     // up immediately as diverged tokens rather than as a crash
@@ -5039,6 +5149,8 @@ mod device {
         fn add_rmsnorm_kernel(&self) -> &'static str {
             if self.fuse_add_rmsnorm_bad {
                 QWEN38_ADD_RMSNORM_BAD_KERNEL
+            } else if self.affine2_geo.uses_xsum() {
+                QWEN38_ADD_RMSNORM_XSUM64_KERNEL
             } else {
                 QWEN38_ADD_RMSNORM_KERNEL
             }
@@ -5069,6 +5181,7 @@ mod device {
                 .unwrap_or(1024);
             let tg = if rms_tg > 0 { rms_tg } else { 256 };
             let hidden = QWEN38_HIDDEN as u32;
+            let xsum = self.affine2_geo.uses_xsum() && !self.fuse_add_rmsnorm_bad;
             tcb.dispatch_threads(
                 self.add_rmsnorm_kernel(),
                 (tg, 1, 1),
@@ -5079,8 +5192,14 @@ mod device {
                     encoder.set_buffer(2, Some(residual_out), 0);
                     encoder.set_buffer(3, Some(weight), 0);
                     encoder.set_buffer(4, Some(x_norm), 0);
-                    encoder.set_bytes(5, 4, &hidden as *const u32 as *const _);
-                    encoder.set_bytes(6, 4, &QWEN38_RMS_EPS as *const f32 as *const _);
+                    if xsum {
+                        encoder.set_buffer(5, Some(&self.workspace.xsum64), 0);
+                        encoder.set_bytes(6, 4, &hidden as *const u32 as *const _);
+                        encoder.set_bytes(7, 4, &QWEN38_RMS_EPS as *const f32 as *const _);
+                    } else {
+                        encoder.set_bytes(5, 4, &hidden as *const u32 as *const _);
+                        encoder.set_bytes(6, 4, &QWEN38_RMS_EPS as *const f32 as *const _);
+                    }
                     encoder.set_threadgroup_memory_length(0, (tg as u64) * 4);
                 },
             )
@@ -6086,9 +6205,7 @@ mod device {
             let encode_t0 = Instant::now();
             let mut tcb = TokenCommandBuffer::new(&self.context);
             Self::enable_dispatch_name_trace(&mut tcb);
-            self.encode_embed(&mut tcb, token)?;
-            self.encode_layers(&mut tcb)?;
-            self.encode_terminal(&mut tcb)?;
+            self.encode_full_token(&mut tcb, token)?;
             let harvested = tcb.structural_kernel_names().map(|names| names.to_vec());
             let encode_ns = encode_t0.elapsed().as_nanos() as u64;
             let mut timing = tcb.commit_and_wait_timed()?;
@@ -6111,12 +6228,12 @@ mod device {
                 ));
             }
             let wall = Instant::now();
-            let encode_started = Instant::now();
+            let alloc_started = Instant::now();
             let mut tcb = TokenCommandBuffer::new(&self.context);
+            let allocation_ns = alloc_started.elapsed().as_nanos() as u64;
             Self::enable_dispatch_name_trace(&mut tcb);
-            self.encode_embed(&mut tcb, token)?;
-            self.encode_layers(&mut tcb)?;
-            self.encode_terminal(&mut tcb)?;
+            let encode_started = Instant::now();
+            self.encode_full_token(&mut tcb, token)?;
             let harvested = tcb.structural_kernel_names().map(|names| names.to_vec());
             let encode_ns = encode_started.elapsed().as_nanos() as u64;
             let commit_started = Instant::now();
@@ -6131,6 +6248,11 @@ mod device {
             let state_started = Instant::now();
             self.position = self.position.saturating_add(1);
             let state_update_ns = state_started.elapsed().as_nanos() as u64;
+            let command_buffers = if timing.command_buffers == 0 {
+                1
+            } else {
+                timing.command_buffers
+            };
             Ok((
                 sampled,
                 Qwen38StepWall {
@@ -6139,12 +6261,18 @@ mod device {
                     submit_ns: timing.submit_ns,
                     wait_ns: timing.wait_ns,
                     gpu_ns: timing.gpu_ns,
+                    gpu_start_s: timing.gpu_start_s,
+                    gpu_end_s: timing.gpu_end_s,
+                    gpu_start_ns: timing.gpu_start_ns,
+                    gpu_end_ns: timing.gpu_end_ns,
+                    allocation_ns,
+                    encoder_count: timing.encoder_count,
                     commit_epilogue_ns,
                     sample_readback_ns,
                     state_update_ns,
                     tcb_encode_ns: timing.encode_ns,
                     dispatches: timing.dispatches,
-                    command_buffers: 1,
+                    command_buffers,
                 },
             ))
         }
@@ -6426,6 +6554,20 @@ pub struct Qwen38StepWall {
     pub submit_ns: u64,
     pub wait_ns: u64,
     pub gpu_ns: Option<u64>,
+    /// Absolute `GPUStartTime` seconds on the driver epoch.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gpu_start_s: Option<f64>,
+    /// Absolute `GPUEndTime` seconds, paired with `gpu_start_s`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gpu_end_s: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gpu_start_ns: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gpu_end_ns: Option<u64>,
+    /// Host Instant around `TokenCommandBuffer::new`. Split out of encode so
+    /// allocation is a classified idle cause, not mixed into command construction.
+    pub allocation_ns: u64,
+    pub encoder_count: u64,
     /// `commit_and_wait_timed` return minus submit minus wait: GPU timestamp
     /// read + command-buffer status check after the host wait returns.
     pub commit_epilogue_ns: u64,
@@ -6439,7 +6581,8 @@ pub struct Qwen38StepWall {
 
 impl Qwen38StepWall {
     pub fn named_sum_ns(&self) -> u64 {
-        self.encode_ns
+        self.allocation_ns
+            .saturating_add(self.encode_ns)
             .saturating_add(self.submit_ns)
             .saturating_add(self.wait_ns)
             .saturating_add(self.commit_epilogue_ns)
@@ -7147,6 +7290,24 @@ mod mixed_catalog_contract_tests {
         assert_eq!(
             qwen38_affine_q2_launch(Affine2Geo::AccFuse, 64, 17408, 5120).map(|l| l.0),
             Some(QWEN38_AFFINE_Q2_ACCFUSE)
+        );
+        assert_eq!(
+            qwen38_affine_q2_launch(Affine2Geo::BiasPrep, 64, 17408, 5120).map(|l| l.0),
+            Some(QWEN38_AFFINE_Q2_GEO_TPR64)
+        );
+        assert!(crate::metal::SHADER_Q80_MIXED_DECODE.contains(
+            "kernel void qwen_affine_q2_group64_matvec_gate_up_swiglu_biasprep_tpr64_tg128("
+        ));
+        assert!(crate::metal::SHADER_Q80_MIXED_DECODE.contains(
+            "kernel void qwen_affine_q2_group64_matvec_gate_up_swiglu_biasprep_drop_tpr64_tg128("
+        ));
+        assert!(crate::metal::SHADER_QWEN80_DEVICE_ACTIVATIONS
+            .contains("kernel void qwen80_residual_rmsnorm_tg_xsum64("));
+        assert!(crate::metal::SHADER_QWEN80_DEVICE_ACTIVATIONS
+            .contains("kernel void qwen80_add_residual_rmsnorm_tg_xsum64("));
+        assert_eq!(
+            qwen38_affine_gate_up_launch(Affine2Geo::BiasPrep, true, 17408).0,
+            QWEN38_AFFINE_GATE_UP_SWIGLU_BIASPREP
         );
         assert!(qwen38_affine_q2_launch(Affine2Geo::Tgsb, 32, 17408, 5120).is_none());
         assert!(crate::metal::SHADER_Q80_MIXED_DECODE
@@ -8210,6 +8371,12 @@ mod complete_wall_identity_tests {
             submit_ns: 20_000,
             wait_ns: 33_500_000,
             gpu_ns: Some(33_100_000),
+            gpu_start_s: None,
+            gpu_end_s: None,
+            gpu_start_ns: None,
+            gpu_end_ns: None,
+            allocation_ns: 0,
+            encoder_count: 900,
             commit_epilogue_ns: 30_000,
             sample_readback_ns: 2_000,
             state_update_ns: 1_000,
@@ -8237,6 +8404,12 @@ mod complete_wall_identity_tests {
                 submit_ns: 20_000,
                 wait_ns: 33_500_000,
                 gpu_ns: Some(33_100_000),
+                gpu_start_s: None,
+                gpu_end_s: None,
+                gpu_start_ns: None,
+                gpu_end_ns: None,
+                allocation_ns: 0,
+                encoder_count: 900,
                 commit_epilogue_ns: 30_000,
                 sample_readback_ns: 2_000,
                 state_update_ns: 1_000,

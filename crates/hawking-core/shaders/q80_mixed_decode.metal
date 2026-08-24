@@ -1366,6 +1366,563 @@ kernel void qwen_affine_q2_group64_matvec_gate_up_swiglu_geo_tpr64_tg128(
     }
 }
 
+// ── Affine2 g64 kernel-geometry levers (do not reuse q4 tpr64 tile) ──
+// All three keep in-register dequant: no dense W. Compile-time group 64.
+// Association matches affine_q2_unpack8: (q*scale+bias)*x per element.
+
+static inline float affine2_dot16_f4(
+    uint packed, float scale, float bias,
+    float4 a, float4 b, float4 c, float4 d)
+{
+    float s = 0.0f;
+    s += (float((packed       ) & 3u) * scale + bias) * a.x;
+    s += (float((packed >>  2u) & 3u) * scale + bias) * a.y;
+    s += (float((packed >>  4u) & 3u) * scale + bias) * a.z;
+    s += (float((packed >>  6u) & 3u) * scale + bias) * a.w;
+    s += (float((packed >>  8u) & 3u) * scale + bias) * b.x;
+    s += (float((packed >> 10u) & 3u) * scale + bias) * b.y;
+    s += (float((packed >> 12u) & 3u) * scale + bias) * b.z;
+    s += (float((packed >> 14u) & 3u) * scale + bias) * b.w;
+    s += (float((packed >> 16u) & 3u) * scale + bias) * c.x;
+    s += (float((packed >> 18u) & 3u) * scale + bias) * c.y;
+    s += (float((packed >> 20u) & 3u) * scale + bias) * c.z;
+    s += (float((packed >> 22u) & 3u) * scale + bias) * c.w;
+    s += (float((packed >> 24u) & 3u) * scale + bias) * d.x;
+    s += (float((packed >> 26u) & 3u) * scale + bias) * d.y;
+    s += (float((packed >> 28u) & 3u) * scale + bias) * d.z;
+    s += (float((packed >> 30u) & 3u) * scale + bias) * d.w;
+    return s;
+}
+
+static inline void affine2_load_x16(
+    device const float* input, uint col,
+    thread float4& a, thread float4& b, thread float4& c, thread float4& d)
+{
+    a = *((device const float4*)(input + col));
+    b = *((device const float4*)(input + col + 4u));
+    c = *((device const float4*)(input + col + 8u));
+    d = *((device const float4*)(input + col + 12u));
+}
+
+static inline float affine2_dot16_at(
+    device const uchar* codes,
+    device const half* scales,
+    device const half* biases,
+    uint row, uint cols, uint col,
+    float4 a, float4 b, float4 c, float4 d)
+{
+    const uint groups_per_row = cols >> 6u;
+    const uint group = col >> 6u;
+    const uint local = col & 63u;
+    const uint rgb = row * groups_per_row + group;
+    const uint packed = *((device const uint*)(codes + rgb * 16u + (local >> 2u)));
+    return affine2_dot16_f4(packed, float(scales[rgb]), float(biases[rgb]), a, b, c, d);
+}
+
+static inline float affine2_dot64_at(
+    device const uchar* codes,
+    device const half* scales,
+    device const half* biases,
+    device const float* input,
+    uint row, uint cols, uint col)
+{
+    const uint groups_per_row = cols >> 6u;
+    const uint group = col >> 6u;
+    const uint rgb = row * groups_per_row + group;
+    const uint4 packed = *((device const uint4*)(codes + rgb * 16u));
+    const float scale = float(scales[rgb]);
+    const float bias = float(biases[rgb]);
+    float4 a, b, c, d;
+    affine2_load_x16(input, col, a, b, c, d);
+    float s = affine2_dot16_f4(packed.x, scale, bias, a, b, c, d);
+    affine2_load_x16(input, col + 16u, a, b, c, d);
+    s += affine2_dot16_f4(packed.y, scale, bias, a, b, c, d);
+    affine2_load_x16(input, col + 32u, a, b, c, d);
+    s += affine2_dot16_f4(packed.z, scale, bias, a, b, c, d);
+    affine2_load_x16(input, col + 48u, a, b, c, d);
+    s += affine2_dot16_f4(packed.w, scale, bias, a, b, c, d);
+    return s;
+}
+
+// Lever 1: qmv_fast tile. 2 simdgroups, 4 rows/simdgroup, TG 64.
+// One simdgroup loads x once (16 values/thread, K-block 512) and reuses it
+// across 4 output rows. uint32 code loads. No threadgroup reduction.
+// Grid threads = ceil(rows/8)*64, TG 64.
+kernel void qwen_affine_q2_group64_matvec_qmvfast_r8tg64(
+    device const uchar* codes       [[buffer(0)]],
+    device const half*  scales      [[buffer(1)]],
+    device const half*  biases      [[buffer(2)]],
+    device const float* input       [[buffer(3)]],
+    device float*       output      [[buffer(4)]],
+    constant uint& rows             [[buffer(5)]],
+    constant uint& cols             [[buffer(6)]],
+    uint group_id                    [[threadgroup_position_in_grid]],
+    uint simd_lane                   [[thread_index_in_simdgroup]],
+    uint simd_id                     [[simdgroup_index_in_threadgroup]])
+{
+    const uint row0 = group_id * 8u + simd_id * 4u;
+    float acc0 = 0.0f, acc1 = 0.0f, acc2 = 0.0f, acc3 = 0.0f;
+    if ((cols % 64u) == 0u) {
+        for (uint bk = 0u; bk < cols; bk += 512u) {
+            const uint col = bk + simd_lane * 16u;
+            if (col + 16u > cols) continue;
+            float4 a, b, c, d;
+            affine2_load_x16(input, col, a, b, c, d);
+            if (row0 < rows) {
+                acc0 += affine2_dot16_at(codes, scales, biases, row0, cols, col, a, b, c, d);
+            }
+            if (row0 + 1u < rows) {
+                acc1 += affine2_dot16_at(codes, scales, biases, row0 + 1u, cols, col, a, b, c, d);
+            }
+            if (row0 + 2u < rows) {
+                acc2 += affine2_dot16_at(codes, scales, biases, row0 + 2u, cols, col, a, b, c, d);
+            }
+            if (row0 + 3u < rows) {
+                acc3 += affine2_dot16_at(codes, scales, biases, row0 + 3u, cols, col, a, b, c, d);
+            }
+        }
+    }
+    acc0 = simd_sum(acc0);
+    acc1 = simd_sum(acc1);
+    acc2 = simd_sum(acc2);
+    acc3 = simd_sum(acc3);
+    if (simd_lane == 0u) {
+        if (row0 < rows) output[row0] = acc0;
+        if (row0 + 1u < rows) output[row0 + 1u] = acc1;
+        if (row0 + 2u < rows) output[row0 + 2u] = acc2;
+        if (row0 + 3u < rows) output[row0 + 3u] = acc3;
+    }
+}
+
+// Same geometry, load codes+scale+bias+x, skip the (q*scale+bias)*x FMA.
+// Addresses the byte stream so the compute kernel can be compared to a
+// load-only ceiling. Writes a poison sum so the loads cannot DCE.
+kernel void qwen_affine_q2_group64_matvec_qmvfast_r8tg64_addr_probe(
+    device const uchar* codes       [[buffer(0)]],
+    device const half*  scales      [[buffer(1)]],
+    device const half*  biases      [[buffer(2)]],
+    device const float* input       [[buffer(3)]],
+    device float*       output      [[buffer(4)]],
+    constant uint& rows             [[buffer(5)]],
+    constant uint& cols             [[buffer(6)]],
+    uint group_id                    [[threadgroup_position_in_grid]],
+    uint simd_lane                   [[thread_index_in_simdgroup]],
+    uint simd_id                     [[simdgroup_index_in_threadgroup]])
+{
+    const uint row0 = group_id * 8u + simd_id * 4u;
+    float acc = 0.0f;
+    if ((cols % 64u) == 0u && row0 < rows) {
+        const uint groups_per_row = cols >> 6u;
+        for (uint bk = 0u; bk < cols; bk += 512u) {
+            const uint col = bk + simd_lane * 16u;
+            if (col + 16u > cols) continue;
+            float4 a, b, c, d;
+            affine2_load_x16(input, col, a, b, c, d);
+            acc += a.x + d.w;
+            for (uint r = 0u; r < 4u; ++r) {
+                const uint row = row0 + r;
+                if (row >= rows) continue;
+                const uint group = col >> 6u;
+                const uint local = col & 63u;
+                const uint rgb = row * groups_per_row + group;
+                const uint packed = *((device const uint*)(codes + rgb * 16u + (local >> 2u)));
+                acc += float(scales[rgb]) + float(biases[rgb]) + as_type<float>(packed);
+            }
+        }
+    }
+    acc = simd_sum(acc);
+    if (simd_lane == 0u && row0 < rows) output[row0] = acc;
+}
+
+// Lever 2: whole-group 64-wide vector loads. 32 threads/row (one simdgroup),
+// 4 rows/TG, TG 128. Each thread owns one g64 group (uint4 codes = 16 B),
+// so scale/bias load once per 64 weights and stay off the 8-wide inner path.
+// K-block 2048. Grid threads = ceil(rows/4)*128, TG 128.
+kernel void qwen_affine_q2_group64_matvec_wide64_r4tg128(
+    device const uchar* codes       [[buffer(0)]],
+    device const half*  scales      [[buffer(1)]],
+    device const half*  biases      [[buffer(2)]],
+    device const float* input       [[buffer(3)]],
+    device float*       output      [[buffer(4)]],
+    constant uint& rows             [[buffer(5)]],
+    constant uint& cols             [[buffer(6)]],
+    uint group_id                    [[threadgroup_position_in_grid]],
+    uint simd_lane                   [[thread_index_in_simdgroup]],
+    uint simd_id                     [[simdgroup_index_in_threadgroup]])
+{
+    const uint row = group_id * 4u + simd_id;
+    float acc = 0.0f;
+    if (row < rows && (cols % 64u) == 0u) {
+        for (uint col = simd_lane * 64u; col + 64u <= cols; col += 2048u) {
+            acc += affine2_dot64_at(codes, scales, biases, input, row, cols, col);
+        }
+    }
+    acc = simd_sum(acc);
+    if (simd_lane == 0u && row < rows) output[row] = acc;
+}
+
+// Lever 3: threadgroup-staged x (K-tile 512) + 8 rows/TG, TG 256.
+// 8 simdgroups, one row each. x is cooperatively loaded once per K-tile
+// and reused by all 8 rows (split-K is the 32-lane simd_sum).
+// Grid threads = ceil(rows/8)*256, TG 256.
+kernel void qwen_affine_q2_group64_matvec_tgx_r8tg256(
+    device const uchar* codes       [[buffer(0)]],
+    device const half*  scales      [[buffer(1)]],
+    device const half*  biases      [[buffer(2)]],
+    device const float* input       [[buffer(3)]],
+    device float*       output      [[buffer(4)]],
+    constant uint& rows             [[buffer(5)]],
+    constant uint& cols             [[buffer(6)]],
+    uint group_id                    [[threadgroup_position_in_grid]],
+    uint lid                         [[thread_index_in_threadgroup]],
+    uint simd_lane                   [[thread_index_in_simdgroup]],
+    uint simd_id                     [[simdgroup_index_in_threadgroup]])
+{
+    threadgroup float x_tile[512];
+    const uint row = group_id * 8u + simd_id;
+    float acc = 0.0f;
+    if ((cols % 64u) == 0u) {
+        for (uint bk = 0u; bk < cols; bk += 512u) {
+            const uint load_at = lid * 2u;
+            if (bk + load_at + 2u <= cols) {
+                *((threadgroup float2*)(x_tile + load_at)) =
+                    *((device const float2*)(input + bk + load_at));
+            }
+            threadgroup_barrier(mem_flags::mem_threadgroup);
+            if (row < rows) {
+                const uint local = simd_lane * 16u;
+                const uint col = bk + local;
+                if (col + 16u <= cols) {
+                float4 a = *((threadgroup const float4*)(x_tile + local));
+                float4 b = *((threadgroup const float4*)(x_tile + local + 4u));
+                float4 c = *((threadgroup const float4*)(x_tile + local + 8u));
+                float4 d = *((threadgroup const float4*)(x_tile + local + 12u));
+                acc += affine2_dot16_at(codes, scales, biases, row, cols, col, a, b, c, d);
+                }
+            }
+            threadgroup_barrier(mem_flags::mem_threadgroup);
+        }
+    }
+    acc = simd_sum(acc);
+    if (simd_lane == 0u && row < rows) output[row] = acc;
+}
+
+static inline void affine2_dot16_dual_at(
+    device const uchar* gate_codes, device const half* gate_scales, device const half* gate_biases,
+    device const uchar* up_codes, device const half* up_scales, device const half* up_biases,
+    uint row, uint cols, uint col,
+    float4 a, float4 b, float4 c, float4 d,
+    thread float& acc_g, thread float& acc_u)
+{
+    const uint groups_per_row = cols >> 6u;
+    const uint group = col >> 6u;
+    const uint local = col & 63u;
+    const uint rgb = row * groups_per_row + group;
+    const uint byte0 = rgb * 16u + (local >> 2u);
+    const uint pg = *((device const uint*)(gate_codes + byte0));
+    const uint pu = *((device const uint*)(up_codes + byte0));
+    acc_g += affine2_dot16_f4(pg, float(gate_scales[rgb]), float(gate_biases[rgb]), a, b, c, d);
+    acc_u += affine2_dot16_f4(pu, float(up_scales[rgb]), float(up_biases[rgb]), a, b, c, d);
+}
+
+static inline void affine2_dot64_dual_at(
+    device const uchar* gate_codes, device const half* gate_scales, device const half* gate_biases,
+    device const uchar* up_codes, device const half* up_scales, device const half* up_biases,
+    device const float* input,
+    uint row, uint cols, uint col,
+    thread float& acc_g, thread float& acc_u)
+{
+    const uint groups_per_row = cols >> 6u;
+    const uint group = col >> 6u;
+    const uint rgb = row * groups_per_row + group;
+    const uint4 pg = *((device const uint4*)(gate_codes + rgb * 16u));
+    const uint4 pu = *((device const uint4*)(up_codes + rgb * 16u));
+    const float sg = float(gate_scales[rgb]);
+    const float bg = float(gate_biases[rgb]);
+    const float su = float(up_scales[rgb]);
+    const float bu = float(up_biases[rgb]);
+    float4 a, b, c, d;
+    affine2_load_x16(input, col, a, b, c, d);
+    acc_g += affine2_dot16_f4(pg.x, sg, bg, a, b, c, d);
+    acc_u += affine2_dot16_f4(pu.x, su, bu, a, b, c, d);
+    affine2_load_x16(input, col + 16u, a, b, c, d);
+    acc_g += affine2_dot16_f4(pg.y, sg, bg, a, b, c, d);
+    acc_u += affine2_dot16_f4(pu.y, su, bu, a, b, c, d);
+    affine2_load_x16(input, col + 32u, a, b, c, d);
+    acc_g += affine2_dot16_f4(pg.z, sg, bg, a, b, c, d);
+    acc_u += affine2_dot16_f4(pu.z, su, bu, a, b, c, d);
+    affine2_load_x16(input, col + 48u, a, b, c, d);
+    acc_g += affine2_dot16_f4(pg.w, sg, bg, a, b, c, d);
+    acc_u += affine2_dot16_f4(pu.w, su, bu, a, b, c, d);
+}
+
+kernel void qwen_affine_q2_group64_matvec_gate_up_qmvfast_r8tg64(
+    device const uchar* gate_codes  [[buffer(0)]],
+    device const half*  gate_scales [[buffer(1)]],
+    device const half*  gate_biases [[buffer(2)]],
+    device const uchar* up_codes    [[buffer(3)]],
+    device const half*  up_scales   [[buffer(4)]],
+    device const half*  up_biases   [[buffer(5)]],
+    device const float* input       [[buffer(6)]],
+    device float*       gate_out    [[buffer(7)]],
+    device float*       up_out      [[buffer(8)]],
+    constant uint& rows             [[buffer(9)]],
+    constant uint& cols             [[buffer(10)]],
+    uint group_id                    [[threadgroup_position_in_grid]],
+    uint simd_lane                   [[thread_index_in_simdgroup]],
+    uint simd_id                     [[simdgroup_index_in_threadgroup]])
+{
+    const uint row0 = group_id * 8u + simd_id * 4u;
+    float g0 = 0.0f, g1 = 0.0f, g2 = 0.0f, g3 = 0.0f;
+    float u0 = 0.0f, u1 = 0.0f, u2 = 0.0f, u3 = 0.0f;
+    if ((cols % 64u) == 0u) {
+        for (uint bk = 0u; bk < cols; bk += 512u) {
+            const uint col = bk + simd_lane * 16u;
+            if (col + 16u > cols) continue;
+            float4 a, b, c, d;
+            affine2_load_x16(input, col, a, b, c, d);
+            if (row0 < rows) {
+                affine2_dot16_dual_at(gate_codes, gate_scales, gate_biases, up_codes, up_scales, up_biases,
+                    row0, cols, col, a, b, c, d, g0, u0);
+            }
+            if (row0 + 1u < rows) {
+                affine2_dot16_dual_at(gate_codes, gate_scales, gate_biases, up_codes, up_scales, up_biases,
+                    row0 + 1u, cols, col, a, b, c, d, g1, u1);
+            }
+            if (row0 + 2u < rows) {
+                affine2_dot16_dual_at(gate_codes, gate_scales, gate_biases, up_codes, up_scales, up_biases,
+                    row0 + 2u, cols, col, a, b, c, d, g2, u2);
+            }
+            if (row0 + 3u < rows) {
+                affine2_dot16_dual_at(gate_codes, gate_scales, gate_biases, up_codes, up_scales, up_biases,
+                    row0 + 3u, cols, col, a, b, c, d, g3, u3);
+            }
+        }
+    }
+    g0 = simd_sum(g0); g1 = simd_sum(g1); g2 = simd_sum(g2); g3 = simd_sum(g3);
+    u0 = simd_sum(u0); u1 = simd_sum(u1); u2 = simd_sum(u2); u3 = simd_sum(u3);
+    if (simd_lane == 0u) {
+        if (row0 < rows) { gate_out[row0] = g0; up_out[row0] = u0; }
+        if (row0 + 1u < rows) { gate_out[row0 + 1u] = g1; up_out[row0 + 1u] = u1; }
+        if (row0 + 2u < rows) { gate_out[row0 + 2u] = g2; up_out[row0 + 2u] = u2; }
+        if (row0 + 3u < rows) { gate_out[row0 + 3u] = g3; up_out[row0 + 3u] = u3; }
+    }
+}
+
+kernel void qwen_affine_q2_group64_matvec_gate_up_swiglu_qmvfast_r8tg64(
+    device const uchar* gate_codes  [[buffer(0)]],
+    device const half*  gate_scales [[buffer(1)]],
+    device const half*  gate_biases [[buffer(2)]],
+    device const uchar* up_codes    [[buffer(3)]],
+    device const half*  up_scales   [[buffer(4)]],
+    device const half*  up_biases   [[buffer(5)]],
+    device const float* input       [[buffer(6)]],
+    device float*       act_out     [[buffer(7)]],
+    constant uint& rows             [[buffer(8)]],
+    constant uint& cols             [[buffer(9)]],
+    uint group_id                    [[threadgroup_position_in_grid]],
+    uint simd_lane                   [[thread_index_in_simdgroup]],
+    uint simd_id                     [[simdgroup_index_in_threadgroup]])
+{
+    const uint row0 = group_id * 8u + simd_id * 4u;
+    float g0 = 0.0f, g1 = 0.0f, g2 = 0.0f, g3 = 0.0f;
+    float u0 = 0.0f, u1 = 0.0f, u2 = 0.0f, u3 = 0.0f;
+    if ((cols % 64u) == 0u) {
+        for (uint bk = 0u; bk < cols; bk += 512u) {
+            const uint col = bk + simd_lane * 16u;
+            if (col + 16u > cols) continue;
+            float4 a, b, c, d;
+            affine2_load_x16(input, col, a, b, c, d);
+            if (row0 < rows) {
+                affine2_dot16_dual_at(gate_codes, gate_scales, gate_biases, up_codes, up_scales, up_biases,
+                    row0, cols, col, a, b, c, d, g0, u0);
+            }
+            if (row0 + 1u < rows) {
+                affine2_dot16_dual_at(gate_codes, gate_scales, gate_biases, up_codes, up_scales, up_biases,
+                    row0 + 1u, cols, col, a, b, c, d, g1, u1);
+            }
+            if (row0 + 2u < rows) {
+                affine2_dot16_dual_at(gate_codes, gate_scales, gate_biases, up_codes, up_scales, up_biases,
+                    row0 + 2u, cols, col, a, b, c, d, g2, u2);
+            }
+            if (row0 + 3u < rows) {
+                affine2_dot16_dual_at(gate_codes, gate_scales, gate_biases, up_codes, up_scales, up_biases,
+                    row0 + 3u, cols, col, a, b, c, d, g3, u3);
+            }
+        }
+    }
+    g0 = simd_sum(g0); g1 = simd_sum(g1); g2 = simd_sum(g2); g3 = simd_sum(g3);
+    u0 = simd_sum(u0); u1 = simd_sum(u1); u2 = simd_sum(u2); u3 = simd_sum(u3);
+    if (simd_lane == 0u) {
+        if (row0 < rows) act_out[row0] = (g0 / (1.0f + exp(-g0))) * u0;
+        if (row0 + 1u < rows) act_out[row0 + 1u] = (g1 / (1.0f + exp(-g1))) * u1;
+        if (row0 + 2u < rows) act_out[row0 + 2u] = (g2 / (1.0f + exp(-g2))) * u2;
+        if (row0 + 3u < rows) act_out[row0 + 3u] = (g3 / (1.0f + exp(-g3))) * u3;
+    }
+}
+
+kernel void qwen_affine_q2_group64_matvec_gate_up_wide64_r4tg128(
+    device const uchar* gate_codes  [[buffer(0)]],
+    device const half*  gate_scales [[buffer(1)]],
+    device const half*  gate_biases [[buffer(2)]],
+    device const uchar* up_codes    [[buffer(3)]],
+    device const half*  up_scales   [[buffer(4)]],
+    device const half*  up_biases   [[buffer(5)]],
+    device const float* input       [[buffer(6)]],
+    device float*       gate_out    [[buffer(7)]],
+    device float*       up_out      [[buffer(8)]],
+    constant uint& rows             [[buffer(9)]],
+    constant uint& cols             [[buffer(10)]],
+    uint group_id                    [[threadgroup_position_in_grid]],
+    uint simd_lane                   [[thread_index_in_simdgroup]],
+    uint simd_id                     [[simdgroup_index_in_threadgroup]])
+{
+    const uint row = group_id * 4u + simd_id;
+    float acc_g = 0.0f, acc_u = 0.0f;
+    if (row < rows && (cols % 64u) == 0u) {
+        for (uint col = simd_lane * 64u; col + 64u <= cols; col += 2048u) {
+            affine2_dot64_dual_at(gate_codes, gate_scales, gate_biases, up_codes, up_scales, up_biases,
+                input, row, cols, col, acc_g, acc_u);
+        }
+    }
+    acc_g = simd_sum(acc_g);
+    acc_u = simd_sum(acc_u);
+    if (simd_lane == 0u && row < rows) {
+        gate_out[row] = acc_g;
+        up_out[row] = acc_u;
+    }
+}
+
+kernel void qwen_affine_q2_group64_matvec_gate_up_swiglu_wide64_r4tg128(
+    device const uchar* gate_codes  [[buffer(0)]],
+    device const half*  gate_scales [[buffer(1)]],
+    device const half*  gate_biases [[buffer(2)]],
+    device const uchar* up_codes    [[buffer(3)]],
+    device const half*  up_scales   [[buffer(4)]],
+    device const half*  up_biases   [[buffer(5)]],
+    device const float* input       [[buffer(6)]],
+    device float*       act_out     [[buffer(7)]],
+    constant uint& rows             [[buffer(8)]],
+    constant uint& cols             [[buffer(9)]],
+    uint group_id                    [[threadgroup_position_in_grid]],
+    uint simd_lane                   [[thread_index_in_simdgroup]],
+    uint simd_id                     [[simdgroup_index_in_threadgroup]])
+{
+    const uint row = group_id * 4u + simd_id;
+    float acc_g = 0.0f, acc_u = 0.0f;
+    if (row < rows && (cols % 64u) == 0u) {
+        for (uint col = simd_lane * 64u; col + 64u <= cols; col += 2048u) {
+            affine2_dot64_dual_at(gate_codes, gate_scales, gate_biases, up_codes, up_scales, up_biases,
+                input, row, cols, col, acc_g, acc_u);
+        }
+    }
+    acc_g = simd_sum(acc_g);
+    acc_u = simd_sum(acc_u);
+    if (simd_lane == 0u && row < rows) {
+        act_out[row] = (acc_g / (1.0f + exp(-acc_g))) * acc_u;
+    }
+}
+
+kernel void qwen_affine_q2_group64_matvec_gate_up_tgx_r8tg256(
+    device const uchar* gate_codes  [[buffer(0)]],
+    device const half*  gate_scales [[buffer(1)]],
+    device const half*  gate_biases [[buffer(2)]],
+    device const uchar* up_codes    [[buffer(3)]],
+    device const half*  up_scales   [[buffer(4)]],
+    device const half*  up_biases   [[buffer(5)]],
+    device const float* input       [[buffer(6)]],
+    device float*       gate_out    [[buffer(7)]],
+    device float*       up_out      [[buffer(8)]],
+    constant uint& rows             [[buffer(9)]],
+    constant uint& cols             [[buffer(10)]],
+    uint group_id                    [[threadgroup_position_in_grid]],
+    uint lid                         [[thread_index_in_threadgroup]],
+    uint simd_lane                   [[thread_index_in_simdgroup]],
+    uint simd_id                     [[simdgroup_index_in_threadgroup]])
+{
+    threadgroup float x_tile[512];
+    const uint row = group_id * 8u + simd_id;
+    float acc_g = 0.0f, acc_u = 0.0f;
+    if ((cols % 64u) == 0u) {
+        for (uint bk = 0u; bk < cols; bk += 512u) {
+            const uint load_at = lid * 2u;
+            if (bk + load_at + 2u <= cols) {
+                *((threadgroup float2*)(x_tile + load_at)) =
+                    *((device const float2*)(input + bk + load_at));
+            }
+            threadgroup_barrier(mem_flags::mem_threadgroup);
+            if (row < rows) {
+                const uint local = simd_lane * 16u;
+                const uint col = bk + local;
+                if (col + 16u <= cols) {
+                float4 a = *((threadgroup const float4*)(x_tile + local));
+                float4 b = *((threadgroup const float4*)(x_tile + local + 4u));
+                float4 c = *((threadgroup const float4*)(x_tile + local + 8u));
+                float4 d = *((threadgroup const float4*)(x_tile + local + 12u));
+                affine2_dot16_dual_at(gate_codes, gate_scales, gate_biases, up_codes, up_scales, up_biases,
+                    row, cols, col, a, b, c, d, acc_g, acc_u);
+                }
+            }
+            threadgroup_barrier(mem_flags::mem_threadgroup);
+        }
+    }
+    acc_g = simd_sum(acc_g);
+    acc_u = simd_sum(acc_u);
+    if (simd_lane == 0u && row < rows) {
+        gate_out[row] = acc_g;
+        up_out[row] = acc_u;
+    }
+}
+
+kernel void qwen_affine_q2_group64_matvec_gate_up_swiglu_tgx_r8tg256(
+    device const uchar* gate_codes  [[buffer(0)]],
+    device const half*  gate_scales [[buffer(1)]],
+    device const half*  gate_biases [[buffer(2)]],
+    device const uchar* up_codes    [[buffer(3)]],
+    device const half*  up_scales   [[buffer(4)]],
+    device const half*  up_biases   [[buffer(5)]],
+    device const float* input       [[buffer(6)]],
+    device float*       act_out     [[buffer(7)]],
+    constant uint& rows             [[buffer(8)]],
+    constant uint& cols             [[buffer(9)]],
+    uint group_id                    [[threadgroup_position_in_grid]],
+    uint lid                         [[thread_index_in_threadgroup]],
+    uint simd_lane                   [[thread_index_in_simdgroup]],
+    uint simd_id                     [[simdgroup_index_in_threadgroup]])
+{
+    threadgroup float x_tile[512];
+    const uint row = group_id * 8u + simd_id;
+    float acc_g = 0.0f, acc_u = 0.0f;
+    if ((cols % 64u) == 0u) {
+        for (uint bk = 0u; bk < cols; bk += 512u) {
+            const uint load_at = lid * 2u;
+            if (bk + load_at + 2u <= cols) {
+                *((threadgroup float2*)(x_tile + load_at)) =
+                    *((device const float2*)(input + bk + load_at));
+            }
+            threadgroup_barrier(mem_flags::mem_threadgroup);
+            if (row < rows) {
+                const uint local = simd_lane * 16u;
+                const uint col = bk + local;
+                if (col + 16u <= cols) {
+                float4 a = *((threadgroup const float4*)(x_tile + local));
+                float4 b = *((threadgroup const float4*)(x_tile + local + 4u));
+                float4 c = *((threadgroup const float4*)(x_tile + local + 8u));
+                float4 d = *((threadgroup const float4*)(x_tile + local + 12u));
+                affine2_dot16_dual_at(gate_codes, gate_scales, gate_biases, up_codes, up_scales, up_biases,
+                    row, cols, col, a, b, c, d, acc_g, acc_u);
+                }
+            }
+            threadgroup_barrier(mem_flags::mem_threadgroup);
+        }
+    }
+    acc_g = simd_sum(acc_g);
+    acc_u = simd_sum(acc_u);
+    if (simd_lane == 0u && row < rows) {
+        act_out[row] = (acc_g / (1.0f + exp(-acc_g))) * acc_u;
+    }
+}
+
 // One-row gather of HGRAVF01 embed. Never a dense W.
 kernel void qwen38_hgrafv_embedding_lookup(
     device const uchar* codes     [[buffer(0)]],

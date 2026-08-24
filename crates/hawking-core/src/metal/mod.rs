@@ -1306,6 +1306,36 @@ mod imp {
             "qwen_affine_q2_group64_matvec_gate_up_swiglu_geo_tpr64_tg128" => {
                 "qwen_affine_q2_group64_matvec_gate_up_swiglu_geo_tpr64_tg128"
             }
+            "qwen_affine_q2_group64_matvec_qmvfast_r8tg64" => {
+                "qwen_affine_q2_group64_matvec_qmvfast_r8tg64"
+            }
+            "qwen_affine_q2_group64_matvec_qmvfast_r8tg64_addr_probe" => {
+                "qwen_affine_q2_group64_matvec_qmvfast_r8tg64_addr_probe"
+            }
+            "qwen_affine_q2_group64_matvec_wide64_r4tg128" => {
+                "qwen_affine_q2_group64_matvec_wide64_r4tg128"
+            }
+            "qwen_affine_q2_group64_matvec_tgx_r8tg256" => {
+                "qwen_affine_q2_group64_matvec_tgx_r8tg256"
+            }
+            "qwen_affine_q2_group64_matvec_gate_up_qmvfast_r8tg64" => {
+                "qwen_affine_q2_group64_matvec_gate_up_qmvfast_r8tg64"
+            }
+            "qwen_affine_q2_group64_matvec_gate_up_swiglu_qmvfast_r8tg64" => {
+                "qwen_affine_q2_group64_matvec_gate_up_swiglu_qmvfast_r8tg64"
+            }
+            "qwen_affine_q2_group64_matvec_gate_up_wide64_r4tg128" => {
+                "qwen_affine_q2_group64_matvec_gate_up_wide64_r4tg128"
+            }
+            "qwen_affine_q2_group64_matvec_gate_up_swiglu_wide64_r4tg128" => {
+                "qwen_affine_q2_group64_matvec_gate_up_swiglu_wide64_r4tg128"
+            }
+            "qwen_affine_q2_group64_matvec_gate_up_tgx_r8tg256" => {
+                "qwen_affine_q2_group64_matvec_gate_up_tgx_r8tg256"
+            }
+            "qwen_affine_q2_group64_matvec_gate_up_swiglu_tgx_r8tg256" => {
+                "qwen_affine_q2_group64_matvec_gate_up_swiglu_tgx_r8tg256"
+            }
             "qwen_q2f_group64_matvec" => "qwen_q2f_group64_matvec",
             "qwen_q2f_group64_matvec_geo_tpr64_tg128" => {
                 "qwen_q2f_group64_matvec_geo_tpr64_tg128"
@@ -2264,6 +2294,16 @@ mod imp {
                 "qwen_affine_q2_group32_matvec_geo_tpr64_tg128_runtime_div",
                 "qwen_affine_q2_group64_matvec_gate_up_geo_tpr64_tg128",
                 "qwen_affine_q2_group64_matvec_gate_up_swiglu_geo_tpr64_tg128",
+                "qwen_affine_q2_group64_matvec_qmvfast_r8tg64",
+                "qwen_affine_q2_group64_matvec_qmvfast_r8tg64_addr_probe",
+                "qwen_affine_q2_group64_matvec_wide64_r4tg128",
+                "qwen_affine_q2_group64_matvec_tgx_r8tg256",
+                "qwen_affine_q2_group64_matvec_gate_up_qmvfast_r8tg64",
+                "qwen_affine_q2_group64_matvec_gate_up_swiglu_qmvfast_r8tg64",
+                "qwen_affine_q2_group64_matvec_gate_up_wide64_r4tg128",
+                "qwen_affine_q2_group64_matvec_gate_up_swiglu_wide64_r4tg128",
+                "qwen_affine_q2_group64_matvec_gate_up_tgx_r8tg256",
+                "qwen_affine_q2_group64_matvec_gate_up_swiglu_tgx_r8tg256",
                 "qwen_q2f_group64_matvec",
                 "qwen_q2f_group64_matvec_geo_tpr64_tg128",
                 "qwen_q2f_group64_matvec_gate_up_geo_tpr64_tg128",

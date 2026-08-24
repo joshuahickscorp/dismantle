@@ -250,7 +250,7 @@ run. Restore from the bundle/mirror. The 2026-07-01
 
 Do not adopt Git LFS as the storage architecture. S020 §26: LFS pointers
 on new commits leave every historical blob in the pack. The ledger
-classifies `workspace/superwave/g1/` as `LFS_CANDIDATE` because that is
+classifies `hawking-experiments/superwave/g1/` as `LFS_CANDIDATE` because that is
 the size of thing people reach for LFS for (largest current HEAD blob is
 `g1_functional_exceptions.json` at 29.0 MiB). The action is still: local
 CAS + git manifest, not LFS.

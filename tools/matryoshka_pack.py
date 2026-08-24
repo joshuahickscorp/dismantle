@@ -10,7 +10,7 @@ The existing mixed-q3mlp-q3attn-v1 artifact (3.3448 complete BPW, coherent) IS
 the standalone base and already runs. This script proves the tiered structure
 in numpy. Native-decode of the correction plane is future work.
 
-  python3 tools/matryoshka_pack.py --layers 15,31,47 --out workspace/superwave/g1/g11-matryoshka.md
+  python3 tools/matryoshka_pack.py --layers 15,31,47 --out hawking-experiments/superwave/g1/g11-matryoshka.md
 """
 from __future__ import annotations
 

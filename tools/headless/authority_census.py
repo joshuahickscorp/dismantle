@@ -681,7 +681,7 @@ CATALOG: List[CatalogRow] = [
     {
         "id": "frankenstein.CheckpointStore",
         "concept": "checkpoint",
-        "path": "lab/operators/frankenstein_latent_v0.py",
+        "path": "hawking-experiments/frankenstein/operators/frankenstein_latent_v0.py",
         "needle": "class CheckpointStore:",
         "symbol": "CheckpointStore (.pt slots)",
         "classification": "canonical_authority",
@@ -690,7 +690,7 @@ CATALOG: List[CatalogRow] = [
         "survives": True,
         "role": "Latent-v0 weight-slot store (slot.pt). Not a controller checkpoint.",
         "move": "Keep local to the operator. Rename would clarify; not required for HCLI.",
-        "callers": ["lab/operators/frankenstein_latent_v0.py"],
+        "callers": ["hawking-experiments/frankenstein/operators/frankenstein_latent_v0.py"],
     },
     {
         "id": "hawking-context.CheckpointId",

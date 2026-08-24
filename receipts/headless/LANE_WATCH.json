@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-24T04:03:09Z",
+  "generated_at": "2026-08-24T04:03:19Z",
   "running": [
     "n005dispatch",
     "n016prefill"
@@ -33,7 +33,7 @@
     }
   ],
   "headroom": {
-    "load1": 3.05126953125,
+    "load1": 3.0302734375,
     "ncpu": 28,
     "disk_gib": 300.6,
     "room_for_more": true

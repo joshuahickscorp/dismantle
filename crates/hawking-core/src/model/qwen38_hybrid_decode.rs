@@ -970,6 +970,8 @@ pub const QWEN38_Q4_DECODE_PROBE_KERNEL: &str =
 pub const QWEN38_F32_STREAM_PROBE_KERNEL: &str = "qwen38_f32_stream_probe";
 pub const QWEN38_HGRAVU01_Q3_GEO_TPR64: &str =
     "qwen_uniform_q3_group64_matvec_geo_tpr64_tg128";
+pub const QWEN38_HGRAVU01_Q3_G128_GEO_TPR64: &str =
+    "qwen_uniform_q3_group128_matvec_geo_tpr64_tg128";
 pub const QWEN38_HGRAVU01_Q4_GEO_TPR64: &str =
     "qwen_uniform_hgravu_q4_group64_matvec_geo_tpr64_tg128";
 pub const QWEN38_AFFINE_Q2_SERIAL: &str = "qwen_affine_q2_group32_matvec";
@@ -1176,18 +1178,23 @@ fn qwen38_affine_gate_up_launch(
 /// G0-class launch for Uniform HGRAVU01 bits 3/4. None leaves the
 /// incumbent simd / simd3 / uniform8 / serial path in `dispatch_factor`.
 /// HGRAVS r160 factors stay on that path because they are not Uniform.
+///
+/// bits=3 group=64  → qwen_uniform_q3_group64_matvec_geo_tpr64_tg128
+/// bits=3 group=128 → qwen_uniform_q3_group128_matvec_geo_tpr64_tg128
+/// bits=4 group=64  → qwen_uniform_hgravu_q4_group64_matvec_geo_tpr64_tg128
 pub fn qwen38_hgravu01_geo_tpr64_launch(
     bits: u32,
     group_size: u32,
     rows: u32,
     cols: u32,
 ) -> Option<(&'static str, (u32, u32, u32), (u32, u32, u32))> {
-    if !qwen38_recon_fuse_enabled() || group_size != 64 || cols % 64 != 0 {
+    if !qwen38_recon_fuse_enabled() || group_size == 0 || cols % group_size != 0 {
         return None;
     }
-    let name = match bits {
-        3 => QWEN38_HGRAVU01_Q3_GEO_TPR64,
-        4 => QWEN38_HGRAVU01_Q4_GEO_TPR64,
+    let name = match (bits, group_size) {
+        (3, 64) => QWEN38_HGRAVU01_Q3_GEO_TPR64,
+        (3, 128) => QWEN38_HGRAVU01_Q3_G128_GEO_TPR64,
+        (4, 64) => QWEN38_HGRAVU01_Q4_GEO_TPR64,
         _ => return None,
     };
     let tg = 128u32;
@@ -1752,6 +1759,42 @@ mod device {
                 census.dense_w_materialized
             );
             eprintln!("{}", qwen38_mixed_k_complete_bind_message());
+            {
+                let mut n_q2f = 0u32;
+                let mut n_q3_g64 = 0u32;
+                let mut n_q3_g128 = 0u32;
+                let mut n_embed_q3 = 0u32;
+                for (name, weight) in &mixed {
+                    match weight {
+                        MixedGpuWeight::Affine(body) if body.biases.is_none() => n_q2f += 1,
+                        MixedGpuWeight::Uniform(body)
+                            if body.bits == 3 && body.group_size == 64 =>
+                        {
+                            n_q3_g64 += 1;
+                        }
+                        MixedGpuWeight::Uniform(body)
+                            if body.bits == 3 && body.group_size == 128 =>
+                        {
+                            n_q3_g128 += 1;
+                            if name.ends_with("embed_tokens.weight") {
+                                n_embed_q3 += 1;
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+                eprintln!(
+                    "qwen38-decode mixed genome: q2f={n_q2f} q3_g64={n_q3_g64} \
+                     q3_g128={n_q3_g128} embed_q3={n_embed_q3} \
+                     mlp_kernel={} dn_kernel={} gqa_kernel={} embed_kernel={} \
+                     dense_w_materialized={}",
+                    QWEN38_Q2F_GEO_TPR64,
+                    QWEN38_HGRAVU01_Q3_GEO_TPR64,
+                    QWEN38_HGRAVU01_Q3_G128_GEO_TPR64,
+                    "qwen38_hgravu_embedding_lookup",
+                    census.dense_w_materialized
+                );
+            }
             if census.affine > 0 {
                 let sample = mixed.values().find_map(|weight| match weight {
                     MixedGpuWeight::Affine(body) => Some(body),
@@ -7189,13 +7232,21 @@ mod mixed_catalog_contract_tests {
         let q4 = qwen38_hgravu01_geo_tpr64_launch(4, 64, 48, 5120).expect("q4");
         assert_eq!(q4.0, QWEN38_HGRAVU01_Q4_GEO_TPR64);
         assert_eq!(q4.1, (48u32.div_ceil(2) * 128, 1, 1));
+        let q3_g128 = qwen38_hgravu01_geo_tpr64_launch(3, 128, 12288, 5120).expect("q3g128");
+        assert_eq!(q3_g128.0, QWEN38_HGRAVU01_Q3_G128_GEO_TPR64);
+        assert_eq!(q3_g128.1, (12288u32.div_ceil(2) * 128, 1, 1));
+        assert_eq!(q3_g128.2, (128, 1, 1));
+        let lm_g128 = qwen38_hgravu01_geo_tpr64_launch(3, 128, 248320, 5120).expect("lm_g128");
+        assert_eq!(lm_g128.0, QWEN38_HGRAVU01_Q3_G128_GEO_TPR64);
         assert!(qwen38_hgravu01_geo_tpr64_launch(8, 64, 5120, 5120).is_none());
         assert!(qwen38_hgravu01_geo_tpr64_launch(3, 64, 2048, 160).is_none());
-        assert!(qwen38_hgravu01_geo_tpr64_launch(3, 128, 17408, 5120).is_none());
+        assert!(qwen38_hgravu01_geo_tpr64_launch(3, 128, 100, 192).is_none());
         assert!(qwen38_hgravu01_geo_tpr64_launch(4, 128, 248320, 5120).is_none());
         assert!(qwen38_hgravu01_geo_tpr64_launch(4, 32, 5120, 5120).is_none());
         assert!(crate::metal::SHADER_Q80_MIXED_DECODE
             .contains("kernel void qwen_uniform_q3_group64_matvec_geo_tpr64_tg128"));
+        assert!(crate::metal::SHADER_Q80_MIXED_DECODE
+            .contains("kernel void qwen_uniform_q3_group128_matvec_geo_tpr64_tg128"));
         assert!(crate::metal::SHADER_Q80_MIXED_DECODE
             .contains("kernel void qwen_uniform_hgravu_q4_group64_matvec_geo_tpr64_tg128"));
 

@@ -1,17 +1,27 @@
 {
-  "generated_at": "2026-08-24T03:36:01Z",
+  "generated_at": "2026-08-24T03:46:18Z",
   "running": [
     "n005dispatch",
     "n007prodbench",
     "n010alloc",
-    "n014adv",
     "n016prefill"
   ],
-  "needs_harvest": [],
+  "needs_harvest": [
+    {
+      "slug": "n014adv",
+      "id": "n014adv-20260823-231618",
+      "unharvested": [
+        "receipts/headless/FRONTIER_ADVERSARY.json",
+        "tools/headless/frontier_adversary.py",
+        "tools/headless/test_frontier_adversary.py"
+      ],
+      "worktree_extras": 0
+    }
+  ],
   "headroom": {
-    "load1": 15.0791015625,
+    "load1": 34.458984375,
     "ncpu": 28,
-    "disk_gib": 306.5,
-    "room_for_more": true
+    "disk_gib": 303.8,
+    "room_for_more": false
   }
 }

@@ -1516,3 +1516,81 @@ class MlxServerBackend(RuntimeBackend):
                 pass
             self._log_handle = None
         return report
+
+
+class NoeticNativeBackend(RuntimeBackend):
+    """Noetic native runtime on the ONE RuntimeBackend interface.
+
+    This is an interface reservation, not a second scheduler and not a
+    fake llama-server. spawn() does not start a process. complete()
+    refuses to invent tokens. Callers that need inference pick MLX
+    (first-class) or llama.cpp (when a GGUF is actually present).
+    """
+
+    def __init__(
+        self,
+        model_path: str = "",
+        port: Optional[int] = None,
+        n_slots: int = 1,
+        **_ignored: Any,
+    ) -> None:
+        self.model_path = os.path.realpath(os.path.expanduser(model_path or ""))
+        self.port = int(port) if port is not None else None
+        self.n_slots = max(1, int(n_slots))
+        self.process = None
+        self.pid: Optional[int] = None
+        self.start_time: Optional[str] = None
+        self._spawned = False
+        self._stopped = False
+
+    def identity(self) -> Dict[str, Any]:
+        return {
+            "backend": "noetic_native",
+            "binary": None,
+            "version": None,
+            "model_path": self.model_path or None,
+            "model_bytes": model_bytes_at(self.model_path) if self.model_path else None,
+            "context": None,
+            "quantisation": None,
+            "n_slots": self.n_slots,
+            "pid": self.pid,
+            "port": self.port,
+            "note": (
+                "interface reservation; complete() does not produce tokens"
+            ),
+        }
+
+    def spawn(self, **kwargs: Any) -> None:
+        if kwargs.get("port") is not None:
+            self.port = int(kwargs["port"])
+        if kwargs.get("n_slots") is not None:
+            self.n_slots = max(1, int(kwargs["n_slots"]))
+        self._spawned = True
+        self._stopped = False
+
+    def ready(self, timeout: float) -> bool:
+        del timeout
+        return self._spawned and not self._stopped
+
+    def endpoint(self) -> str:
+        if self.port is None:
+            return "noetic-native://unbound"
+        return f"noetic-native://127.0.0.1:{self.port}"
+
+    def stop(self) -> Dict[str, Any]:
+        self._stopped = True
+        self._spawned = False
+        return {"gone": True, "backend": "noetic_native"}
+
+    def complete(
+        self, payload: Dict[str, Any], timeout: Optional[float] = None
+    ) -> CompletionResult:
+        del payload, timeout
+        raise RuntimeError(
+            "noetic native backend has no inference server; "
+            "it is an interface reservation on RuntimeBackend, not a token source"
+        )
+
+    def supports(self, feature: str) -> bool:
+        del feature
+        return False

@@ -1,14 +1,23 @@
 {
-  "generated_at": "2026-08-23T23:40:56Z",
+  "generated_at": "2026-08-24T00:23:16Z",
   "running": [
-    "g012fuse",
-    "g029adv"
+    "g012fuse"
   ],
-  "needs_harvest": [],
+  "needs_harvest": [
+    {
+      "slug": "g029adv",
+      "id": "g029adv-20260823-193953",
+      "unharvested": [
+        "receipts/headless/RUNTIME_EXPERIMENT_ADVERSARY.json",
+        "receipts/headless/RUNTIME_GENOME.json"
+      ],
+      "worktree_extras": 3
+    }
+  ],
   "headroom": {
-    "load1": 5.23876953125,
+    "load1": 19.3271484375,
     "ncpu": 28,
-    "disk_gib": 387.9,
+    "disk_gib": 380.6,
     "room_for_more": true
   }
 }

@@ -16,8 +16,8 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 from .backends import (
     CompletionResult,
-    LlamaServerBackend,
     allocate_port,
+    is_mlx_model_dir,
     terminate_pid,
 )
 from .context_budget import (
@@ -848,11 +848,14 @@ class RuntimePool:
                 index=index,
             )
         else:
-            backend = LlamaServerBackend(
-                model_path=self.model_path,
+            from .runtime_iface import make_backend_for_model
+
+            backend = make_backend_for_model(
+                self.model_path,
                 port=port,
-                ctx_size=self.ctx_size,
                 n_slots=n_slots,
+                ctx_size=self.ctx_size,
+                index=index,
             )
         spawn = getattr(backend, "spawn", None)
         if callable(spawn):
@@ -1017,7 +1020,9 @@ class RuntimePool:
         self._prefix_owner = {}
         self.reap_orphans()
 
-        if self.backend_factory is None and not os.path.isfile(self.model_path):
+        if self.backend_factory is None and not (
+            os.path.isfile(self.model_path) or is_mlx_model_dir(self.model_path)
+        ):
             raise FileNotFoundError(self.model_path)
 
         planned = self._plan_count()

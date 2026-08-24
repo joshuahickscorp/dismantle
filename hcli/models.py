@@ -231,7 +231,20 @@ def discover_models(roots: Optional[List[str]] = None) -> List[ModelInfo]:
     for root in roots:
         if not os.path.isdir(root):
             continue
-        for dirpath, _, filenames in os.walk(root):
+        if _is_mlx_dir(root):
+            full = os.path.realpath(root)
+            if full not in seen:
+                seen.add(full)
+                models.append(_info_from_mlx(full))
+            continue
+        for dirpath, dirnames, filenames in os.walk(root):
+            if _is_mlx_dir(dirpath):
+                full = os.path.realpath(dirpath)
+                if full not in seen:
+                    seen.add(full)
+                    models.append(_info_from_mlx(full))
+                dirnames[:] = []
+                continue
             for fn in filenames:
                 if fn.lower().endswith(".gguf"):
                     full = os.path.realpath(os.path.join(dirpath, fn))
@@ -246,8 +259,38 @@ def discover_models(roots: Optional[List[str]] = None) -> List[ModelInfo]:
     return models
 
 
+def _is_mlx_dir(path: str) -> bool:
+    """Same predicate as backends.is_mlx_model_dir; lazy to keep import light."""
+    from .backends import is_mlx_model_dir
+
+    return is_mlx_model_dir(path)
+
+
+def _info_from_mlx(path: str) -> ModelInfo:
+    from .backends import mlx_quantisation_label, model_bytes_at
+
+    path = os.path.realpath(os.path.expanduser(path))
+    fn = os.path.basename(path.rstrip(os.sep))
+    size = model_bytes_at(path) or 0
+    return ModelInfo(
+        path=path,
+        name=fn,
+        size_bytes=int(size),
+        family=_infer_family(path),
+        param_class=(
+        _infer_param_class(path)
+        if _infer_param_class(path) != "?B"
+        else _infer_param_class(fn)
+    ),
+        quantization=mlx_quantisation_label(path),
+        is_projector=False,
+    )
+
+
 def _info_from_path(path: str) -> Optional[ModelInfo]:
     path = os.path.realpath(os.path.expanduser(path))
+    if os.path.isdir(path) and _is_mlx_dir(path):
+        return _info_from_mlx(path)
     if not os.path.isfile(path):
         return None
     fn = os.path.basename(path)
@@ -286,12 +329,14 @@ def resolve_model(explicit: Optional[str] = None,
 
 
 class ModelRegistry:
-    """Deterministic local GGUF inventory and selection facade.
+    """Deterministic local GGUF + MLX-dir inventory and selection facade.
 
-    Discovery never loads a model.  Ambiguous discovery remains ambiguous;
+    Discovery never loads a model. Ambiguous discovery remains ambiguous;
     HCLI does not silently choose one of several installed models.
     Projector/adapter sidecar GGUFs are inventoried (is_projector=True) but
     are not selectable and do not count toward auto-select ambiguity.
+    MLX weight directories (config.json + safetensors) are first-class.
+    The deleted Q5_K GGUF is not required; a missing file is simply absent.
     """
 
     def __init__(self, roots: Optional[List[str]] = None) -> None:
@@ -375,7 +420,7 @@ class ModelRegistry:
                 return info
 
         # Explicit path not under a discovery root is still a valid explicit
-        # model selection if it is a real file.
+        # model selection if it is a real GGUF file or an MLX weight directory.
         info = resolve_model(explicit=selector)
 
         if info is not None and not info.is_projector:

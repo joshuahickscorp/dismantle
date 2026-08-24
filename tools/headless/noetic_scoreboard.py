@@ -67,6 +67,11 @@ def dig(d: Any, *path, default=None):
     return cur
 
 
+_gl = load("GPU_LEDGER") or {}
+_LEDGER_ACTIVE = (_gl.get("ACTIVE_BYTES_PER_TOKEN") or {}).get("value")
+_LEDGER_DRAM = (_gl.get("DRAM_BYTES_PER_TOKEN") or {}).get("value")
+
+
 def candidates() -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
 
@@ -79,8 +84,16 @@ def candidates() -> list[dict[str, Any]]:
             # --- S017 §44 columns ---
             "EBPW": cell(ebpw),
             "RESIDENT_GB": cell(round(gb, 4) if gb else None, kind="DERIVED"),
-            "ACTIVE_GB_PER_TOKEN": cell(None, "GPU ledger (N004) not yet landed"),
-            "DRAM_GB_PER_TOKEN": cell(None, "GPU ledger (N004) not yet landed"),
+            "ACTIVE_GB_PER_TOKEN": cell(
+                round(_LEDGER_ACTIVE / 2**30, 4) if (_LEDGER_ACTIVE and "incumbent" in cid) else None,
+                "GPU ledger measured only the q4 incumbent; per-candidate ACTIVE bytes is the "
+                "missing measurement that would explain why 44.7% fewer STORED bits bought 1.9%",
+            ),
+            "DRAM_GB_PER_TOKEN": cell(
+                round(_LEDGER_DRAM / 2**30, 4) if (_LEDGER_DRAM and "incumbent" in cid) else None,
+                "same: per-candidate DRAM bytes not measured",
+                kind="DERIVED",
+            ),
             "FLOP_PER_TOKEN": cell(None, "per-candidate FLOP census not yet run"),
             "DISPATCHES_PER_TOKEN": cell(disp),
             "ROUTES_PER_TOKEN": cell(0, kind="MEASURED") if ebpw else cell(None),

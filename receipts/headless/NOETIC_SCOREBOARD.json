@@ -1,7 +1,7 @@
 {
   "schema": "hawking.headless.noetic_scoreboard.v1",
   "obligation": "N015 (S017 \u00a73, \u00a742, \u00a744)",
-  "git_head": "7200c96c4cd7",
+  "git_head": "3537502f300a",
   "parent_params": 26895998464,
   "columns": "S017 \u00a744",
   "honesty": "Every cell states MEASURED, DERIVED or ABSENT. An unmeasured cell is never rendered as 0 \u2014 a plausible zero makes an unmeasured candidate look cheap, which is the specific way a scoreboard lies.",
@@ -21,12 +21,12 @@
       "ACTIVE_GB_PER_TOKEN": {
         "value": null,
         "state": "ABSENT",
-        "reason": "GPU ledger (N004) not yet landed"
+        "reason": "GPU ledger measured only the q4 incumbent; per-candidate ACTIVE bytes is the missing measurement that would explain why 44.7% fewer STORED bits bought 1.9%"
       },
       "DRAM_GB_PER_TOKEN": {
         "value": null,
         "state": "ABSENT",
-        "reason": "GPU ledger (N004) not yet landed"
+        "reason": "same: per-candidate DRAM bytes not measured"
       },
       "FLOP_PER_TOKEN": {
         "value": null,
@@ -94,12 +94,12 @@
       "ACTIVE_GB_PER_TOKEN": {
         "value": null,
         "state": "ABSENT",
-        "reason": "GPU ledger (N004) not yet landed"
+        "reason": "GPU ledger measured only the q4 incumbent; per-candidate ACTIVE bytes is the missing measurement that would explain why 44.7% fewer STORED bits bought 1.9%"
       },
       "DRAM_GB_PER_TOKEN": {
         "value": null,
         "state": "ABSENT",
-        "reason": "GPU ledger (N004) not yet landed"
+        "reason": "same: per-candidate DRAM bytes not measured"
       },
       "FLOP_PER_TOKEN": {
         "value": null,
@@ -167,12 +167,12 @@
       "ACTIVE_GB_PER_TOKEN": {
         "value": null,
         "state": "ABSENT",
-        "reason": "GPU ledger (N004) not yet landed"
+        "reason": "GPU ledger measured only the q4 incumbent; per-candidate ACTIVE bytes is the missing measurement that would explain why 44.7% fewer STORED bits bought 1.9%"
       },
       "DRAM_GB_PER_TOKEN": {
         "value": null,
         "state": "ABSENT",
-        "reason": "GPU ledger (N004) not yet landed"
+        "reason": "same: per-candidate DRAM bytes not measured"
       },
       "FLOP_PER_TOKEN": {
         "value": null,
@@ -240,12 +240,12 @@
       "ACTIVE_GB_PER_TOKEN": {
         "value": null,
         "state": "ABSENT",
-        "reason": "GPU ledger (N004) not yet landed"
+        "reason": "GPU ledger measured only the q4 incumbent; per-candidate ACTIVE bytes is the missing measurement that would explain why 44.7% fewer STORED bits bought 1.9%"
       },
       "DRAM_GB_PER_TOKEN": {
         "value": null,
         "state": "ABSENT",
-        "reason": "GPU ledger (N004) not yet landed"
+        "reason": "same: per-candidate DRAM bytes not measured"
       },
       "FLOP_PER_TOKEN": {
         "value": null,
@@ -313,12 +313,12 @@
       "ACTIVE_GB_PER_TOKEN": {
         "value": null,
         "state": "ABSENT",
-        "reason": "GPU ledger (N004) not yet landed"
+        "reason": "GPU ledger measured only the q4 incumbent; per-candidate ACTIVE bytes is the missing measurement that would explain why 44.7% fewer STORED bits bought 1.9%"
       },
       "DRAM_GB_PER_TOKEN": {
         "value": null,
         "state": "ABSENT",
-        "reason": "GPU ledger (N004) not yet landed"
+        "reason": "same: per-candidate DRAM bytes not measured"
       },
       "FLOP_PER_TOKEN": {
         "value": null,
@@ -386,12 +386,12 @@
       "ACTIVE_GB_PER_TOKEN": {
         "value": null,
         "state": "ABSENT",
-        "reason": "GPU ledger (N004) not yet landed"
+        "reason": "GPU ledger measured only the q4 incumbent; per-candidate ACTIVE bytes is the missing measurement that would explain why 44.7% fewer STORED bits bought 1.9%"
       },
       "DRAM_GB_PER_TOKEN": {
         "value": null,
         "state": "ABSENT",
-        "reason": "GPU ledger (N004) not yet landed"
+        "reason": "same: per-candidate DRAM bytes not measured"
       },
       "FLOP_PER_TOKEN": {
         "value": null,
@@ -456,14 +456,12 @@
         "state": "DERIVED"
       },
       "ACTIVE_GB_PER_TOKEN": {
-        "value": null,
-        "state": "ABSENT",
-        "reason": "GPU ledger (N004) not yet landed"
+        "value": 12.6867,
+        "state": "MEASURED"
       },
       "DRAM_GB_PER_TOKEN": {
-        "value": null,
-        "state": "ABSENT",
-        "reason": "GPU ledger (N004) not yet landed"
+        "value": 13.0283,
+        "state": "DERIVED"
       },
       "FLOP_PER_TOKEN": {
         "value": null,
@@ -535,8 +533,8 @@
   },
   "coverage": {
     "cells": 98,
-    "absent": 54,
-    "absent_fraction": 0.551,
+    "absent": 52,
+    "absent_fraction": 0.5306,
     "blocking_obligations": [
       "N004 GPU ledger -> ACTIVE_GB/TOKEN, DRAM_GB/TOKEN",
       "N007 production bench -> AGGREGATE_TPS_C2/C4, VERIFIED_WUS/HOUR, FASTEST_PRODUCTION",

@@ -104,12 +104,44 @@ pub fn qwen38_fuse_dn_inproj_enabled() -> bool {
     crate::env_on("HAWKING_QWEN38_FUSE_DN_INPROJ")
 }
 
+/// Residual add + the following RMSNorm. Default Off.
+///
+/// `HAWKING_QWEN38_FUSE_ADD_RMSNORM=1`   — (1+w) production math
+/// `HAWKING_QWEN38_FUSE_ADD_RMSNORM=bad` — plain `weight[i]` BAD control
+pub fn qwen38_fuse_add_rmsnorm_from_env() -> (bool, bool) {
+    match std::env::var("HAWKING_QWEN38_FUSE_ADD_RMSNORM") {
+        Ok(v) => match v.trim().to_ascii_lowercase().as_str() {
+            "1" | "true" | "on" => (true, false),
+            "bad" | "plainweight" => (true, true),
+            _ => (false, false),
+        },
+        Err(_) => (false, false),
+    }
+}
+
+pub fn qwen38_fuse_add_rmsnorm_enabled() -> bool {
+    qwen38_fuse_add_rmsnorm_from_env().0
+}
+
+/// Mixer residual + MLP RMSNorm, and MLP residual + next mixer RMSNorm
+/// (last layer: MLP residual + final norm). 2 launches saved per layer.
+pub const QWEN38_ADD_RMSNORM_SAVED_PER_TOKEN: u64 = 2 * QWEN38_LAYERS as u64;
+
 /// Production 964 minus the fusions named. Counted the same way as
 /// `production_dispatches_per_token` (one kernel launch = one dispatch).
 pub fn qwen38_fused_dispatches_per_token(
     mlp: Qwen38MlpFusion,
     fuse_gqa_qkv: bool,
     fuse_dn_inproj: bool,
+) -> u64 {
+    qwen38_fused_dispatches_per_token_ex(mlp, fuse_gqa_qkv, fuse_dn_inproj, false)
+}
+
+pub fn qwen38_fused_dispatches_per_token_ex(
+    mlp: Qwen38MlpFusion,
+    fuse_gqa_qkv: bool,
+    fuse_dn_inproj: bool,
+    fuse_add_rmsnorm: bool,
 ) -> u64 {
     let mut n = super::qwen38_token_ns_ledger::production_dispatches_per_token();
     n = n.saturating_sub(mlp.saved_dispatches_per_token());
@@ -118,6 +150,9 @@ pub fn qwen38_fused_dispatches_per_token(
     }
     if fuse_dn_inproj {
         n = n.saturating_sub(QWEN38_DELTANET_LAYERS as u64);
+    }
+    if fuse_add_rmsnorm {
+        n = n.saturating_sub(QWEN38_ADD_RMSNORM_SAVED_PER_TOKEN);
     }
     n
 }
@@ -136,6 +171,8 @@ pub const QWEN38_AFFINE_GATE_UP_SWIGLU_KERNEL: &str =
     "qwen_affine_q2_group64_matvec_gate_up_swiglu_geo_tpr64_tg128";
 pub const QWEN38_AFFINE_Q2_GEO_TPR64_RUNTIME_DIV: &str =
     "qwen_affine_q2_group32_matvec_geo_tpr64_tg128_runtime_div";
+pub const QWEN38_ADD_RMSNORM_KERNEL: &str = "qwen80_add_residual_rmsnorm_tg";
+pub const QWEN38_ADD_RMSNORM_BAD_KERNEL: &str = "qwen80_add_residual_rmsnorm_tg_plainweight";
 
 /// Component parity of a fused kernel against the unfused path.
 #[derive(Clone, Debug)]
@@ -1544,6 +1581,10 @@ mod device {
         pub fuse_gqa_qkv: bool,
         /// Fuse DeltaNet qkvz+ba into one geo_tpr64 concat dispatch. Default Off.
         pub fuse_dn_inproj: bool,
+        /// Fuse residual add + the following RMSNorm. Default Off.
+        pub fuse_add_rmsnorm: bool,
+        /// BAD control: fused kernel multiplies by weight[i] not (1+w).
+        pub fuse_add_rmsnorm_bad: bool,
     }
 
     impl Qwen38HybridDecodeSession {
@@ -1589,6 +1630,8 @@ mod device {
                 mlp_fusion: Qwen38MlpFusion::from_env(),
                 fuse_gqa_qkv: qwen38_fuse_gqa_qkv_enabled(),
                 fuse_dn_inproj: qwen38_fuse_dn_inproj_enabled(),
+                fuse_add_rmsnorm: qwen38_fuse_add_rmsnorm_from_env().0,
+                fuse_add_rmsnorm_bad: qwen38_fuse_add_rmsnorm_from_env().1,
             };
             // `MetalContext` clones share `Arc<DispatchTrace>`. If that ever
             // becomes a fresh buffer, `drain_trace` on the session would miss
@@ -2914,11 +2957,17 @@ mod device {
             self.fuse_dn_inproj = fuse_dn_inproj;
         }
 
+        pub fn set_fuse_add_rmsnorm(&mut self, on: bool, bad: bool) {
+            self.fuse_add_rmsnorm = on;
+            self.fuse_add_rmsnorm_bad = bad;
+        }
+
         pub fn theoretical_dispatches(&self) -> u64 {
-            qwen38_fused_dispatches_per_token(
+            qwen38_fused_dispatches_per_token_ex(
                 self.mlp_fusion,
                 self.fuse_gqa_qkv,
                 self.fuse_dn_inproj,
+                self.fuse_add_rmsnorm,
             )
         }
 
@@ -3105,6 +3154,93 @@ mod device {
                 max_abs_diff_gate: Self::max_abs_diff(&qkvz_u, &qkvz_f),
                 max_abs_diff_up: Self::max_abs_diff(&ba_u, &ba_f),
                 max_abs_diff_act: 0.0,
+                dense_w_materialized: 0,
+            })
+        }
+
+        /// Residual add + RMSNorm vs the two-dispatch production pair.
+        /// `bad=true` binds the plain-weight kernel (intentionally diverges).
+        pub fn measure_add_rmsnorm_fusion_parity(
+            &mut self,
+            layer: usize,
+            bad: bool,
+        ) -> Result<Qwen38FusionParity> {
+            let n = QWEN38_HIDDEN;
+            let mut residual = vec![0.0f32; n];
+            let mut delta = vec![0.0f32; n];
+            for i in 0..n {
+                residual[i] = ((i % 19) as f32) * 0.02 - 0.17;
+                delta[i] = ((i % 13) as f32) * 0.015 - 0.09;
+            }
+            self.write_f32_workspace("hidden", &residual)?;
+            self.write_f32_workspace("mixer", &delta)?;
+            let weight_name = qwen38_layer_name(layer, "post_attention_layernorm.weight");
+            let saved_bad = self.fuse_add_rmsnorm_bad;
+            self.fuse_add_rmsnorm_bad = false;
+            let unfused = self.timed_cb(|tcb| {
+                qwen_next_add_residual_tcb(
+                    tcb,
+                    &self.workspace.hidden,
+                    &self.workspace.mixer,
+                    &self.workspace.first_residual,
+                    QWEN38_HIDDEN,
+                )?;
+                self.encode_rmsnorm(
+                    tcb,
+                    &self.workspace.first_residual,
+                    &weight_name,
+                    &self.workspace.normalized,
+                    QWEN38_HIDDEN as u32,
+                )
+            })?;
+            let residual_u = {
+                let buf = &self.workspace.first_residual;
+                let mut out = vec![0.0f32; n];
+                unsafe {
+                    std::ptr::copy_nonoverlapping(buf.contents() as *const f32, out.as_mut_ptr(), n);
+                }
+                out
+            };
+            let norm_u = self.read_f32_workspace("normalized", n)?;
+            self.write_f32_workspace("hidden", &residual)?;
+            self.write_f32_workspace("mixer", &delta)?;
+            self.fuse_add_rmsnorm_bad = bad;
+            let fused = self.timed_cb(|tcb| {
+                self.encode_add_residual_rmsnorm(
+                    tcb,
+                    &self.workspace.hidden,
+                    &self.workspace.mixer,
+                    &self.workspace.first_residual,
+                    &weight_name,
+                    &self.workspace.normalized,
+                )
+            })?;
+            let residual_f = {
+                let buf = &self.workspace.first_residual;
+                let mut out = vec![0.0f32; n];
+                unsafe {
+                    std::ptr::copy_nonoverlapping(buf.contents() as *const f32, out.as_mut_ptr(), n);
+                }
+                out
+            };
+            let norm_f = self.read_f32_workspace("normalized", n)?;
+            self.fuse_add_rmsnorm_bad = saved_bad;
+            Ok(Qwen38FusionParity {
+                fusion: if bad {
+                    "add_residual_rmsnorm_plainweight"
+                } else {
+                    "add_residual_rmsnorm"
+                },
+                layer,
+                unfused_dispatches: unfused.dispatches,
+                fused_pair_dispatches: fused.dispatches,
+                fused_swiglu_dispatches: fused.dispatches,
+                unfused_gpu_ns: unfused.gpu_ns,
+                fused_pair_gpu_ns: fused.gpu_ns,
+                fused_swiglu_gpu_ns: fused.gpu_ns,
+                max_abs_diff_gate: Self::max_abs_diff(&residual_u, &residual_f),
+                max_abs_diff_up: Self::max_abs_diff(&norm_u, &norm_f),
+                max_abs_diff_act: Self::max_abs_diff(&norm_u, &norm_f),
                 dense_w_materialized: 0,
             })
         }
@@ -3942,6 +4078,56 @@ mod device {
             )
         }
 
+        fn add_rmsnorm_kernel(&self) -> &'static str {
+            if self.fuse_add_rmsnorm_bad {
+                QWEN38_ADD_RMSNORM_BAD_KERNEL
+            } else {
+                QWEN38_ADD_RMSNORM_KERNEL
+            }
+        }
+
+        fn next_norm_weight_name(layer: usize) -> String {
+            if layer + 1 < QWEN38_LAYERS {
+                qwen38_layer_name(layer + 1, "input_layernorm.weight")
+            } else {
+                "language_model.model.norm.weight".to_string()
+            }
+        }
+
+        fn encode_add_residual_rmsnorm(
+            &self,
+            tcb: &mut TokenCommandBuffer<'_>,
+            residual_in: &PinnedBuffer,
+            delta: &PinnedBuffer,
+            residual_out: &PinnedBuffer,
+            weight_name: &str,
+            x_norm: &PinnedBuffer,
+        ) -> Result<()> {
+            let weight = self.f32(weight_name)?;
+            let rms_tg: u32 = std::env::var("HAWKING_RMSNORM_TG")
+                .ok()
+                .and_then(|v| v.parse::<u32>().ok())
+                .filter(|v| *v == 0 || (v.is_power_of_two() && (32..=1024).contains(v)))
+                .unwrap_or(1024);
+            let tg = if rms_tg > 0 { rms_tg } else { 256 };
+            let hidden = QWEN38_HIDDEN as u32;
+            tcb.dispatch_threads(
+                self.add_rmsnorm_kernel(),
+                (tg, 1, 1),
+                (tg, 1, 1),
+                |encoder| {
+                    encoder.set_buffer(0, Some(residual_in), 0);
+                    encoder.set_buffer(1, Some(delta), 0);
+                    encoder.set_buffer(2, Some(residual_out), 0);
+                    encoder.set_buffer(3, Some(weight), 0);
+                    encoder.set_buffer(4, Some(x_norm), 0);
+                    encoder.set_bytes(5, 4, &hidden as *const u32 as *const _);
+                    encoder.set_bytes(6, 4, &QWEN38_RMS_EPS as *const f32 as *const _);
+                    encoder.set_threadgroup_memory_length(0, (tg as u64) * 4);
+                },
+            )
+        }
+
         fn encode_embed(&self, tcb: &mut TokenCommandBuffer<'_>, token: u32) -> Result<()> {
             if !self.weights.mixed.is_empty() {
                 return self.encode_embed_mixed(tcb, token);
@@ -3979,13 +4165,15 @@ mod device {
                 return self.encode_dense_mlp_mixed(tcb, layer, input);
             }
             let n = QWEN38_INTERMEDIATE as u32;
-            self.encode_rmsnorm(
-                tcb,
-                input,
-                &qwen38_layer_name(layer, "post_attention_layernorm.weight"),
-                &self.workspace.normalized,
-                QWEN38_HIDDEN as u32,
-            )?;
+            if !self.fuse_add_rmsnorm {
+                self.encode_rmsnorm(
+                    tcb,
+                    input,
+                    &qwen38_layer_name(layer, "post_attention_layernorm.weight"),
+                    &self.workspace.normalized,
+                    QWEN38_HIDDEN as u32,
+                )?;
+            }
             match self.mlp_fusion {
                 Qwen38MlpFusion::Off => {
                     self.encode_independent_q4_pair(
@@ -4033,13 +4221,25 @@ mod device {
                 &self.workspace.act,
                 &self.workspace.down,
             )?;
-            qwen_next_add_residual_tcb(
-                tcb,
-                input,
-                &self.workspace.down,
-                &self.workspace.hidden,
-                QWEN38_HIDDEN,
-            )
+            if self.fuse_add_rmsnorm {
+                let next = Self::next_norm_weight_name(layer);
+                self.encode_add_residual_rmsnorm(
+                    tcb,
+                    input,
+                    &self.workspace.down,
+                    &self.workspace.hidden,
+                    &next,
+                    &self.workspace.normalized,
+                )
+            } else {
+                qwen_next_add_residual_tcb(
+                    tcb,
+                    input,
+                    &self.workspace.down,
+                    &self.workspace.hidden,
+                    QWEN38_HIDDEN,
+                )
+            }
         }
 
         fn encode_deltanet(
@@ -4054,13 +4254,15 @@ mod device {
             let slot = qwen38_deltanet_state_slot(layer)?;
             let conv_off = (slot * layout.conv_state_elements() * 4) as u64;
             let rec_off = (slot * layout.recurrent_state_elements() * 4) as u64;
-            self.encode_rmsnorm(
-                tcb,
-                &self.workspace.hidden,
-                &qwen38_layer_name(layer, "input_layernorm.weight"),
-                &self.workspace.normalized,
-                QWEN38_HIDDEN as u32,
-            )?;
+            if !(self.fuse_add_rmsnorm && layer > 0) {
+                self.encode_rmsnorm(
+                    tcb,
+                    &self.workspace.hidden,
+                    &qwen38_layer_name(layer, "input_layernorm.weight"),
+                    &self.workspace.normalized,
+                    QWEN38_HIDDEN as u32,
+                )?;
+            }
             if self.fuse_dn_inproj {
                 self.encode_fused_pair_concat(
                     tcb,
@@ -4169,13 +4371,24 @@ mod device {
                 &self.workspace.gated,
                 &self.workspace.mixer,
             )?;
-            qwen_next_add_residual_tcb(
-                tcb,
-                &self.workspace.hidden,
-                &self.workspace.mixer,
-                &self.workspace.first_residual,
-                QWEN38_HIDDEN,
-            )
+            if self.fuse_add_rmsnorm {
+                self.encode_add_residual_rmsnorm(
+                    tcb,
+                    &self.workspace.hidden,
+                    &self.workspace.mixer,
+                    &self.workspace.first_residual,
+                    &qwen38_layer_name(layer, "post_attention_layernorm.weight"),
+                    &self.workspace.normalized,
+                )
+            } else {
+                qwen_next_add_residual_tcb(
+                    tcb,
+                    &self.workspace.hidden,
+                    &self.workspace.mixer,
+                    &self.workspace.first_residual,
+                    QWEN38_HIDDEN,
+                )
+            }
         }
 
         fn encode_gqa(&self, tcb: &mut TokenCommandBuffer<'_>, layer: usize) -> Result<()> {
@@ -4191,13 +4404,15 @@ mod device {
             let slot = qwen38_gqa_state_slot(layer)?;
             let slot_elems = self.max_seq_len * QWEN38_GQA_KV_HEADS * QWEN38_GQA_HEAD_DIM;
             let cache_off = (slot * slot_elems * 4) as u64;
-            self.encode_rmsnorm(
-                tcb,
-                &self.workspace.hidden,
-                &qwen38_layer_name(layer, "input_layernorm.weight"),
-                &self.workspace.normalized,
-                QWEN38_HIDDEN as u32,
-            )?;
+            if !(self.fuse_add_rmsnorm && layer > 0) {
+                self.encode_rmsnorm(
+                    tcb,
+                    &self.workspace.hidden,
+                    &qwen38_layer_name(layer, "input_layernorm.weight"),
+                    &self.workspace.normalized,
+                    QWEN38_HIDDEN as u32,
+                )?;
+            }
             if self.fuse_gqa_qkv {
                 self.encode_fused_qkv(tcb, layer)?;
             } else {
@@ -4307,13 +4522,24 @@ mod device {
                 &self.workspace.gated_attn,
                 &self.workspace.mixer,
             )?;
-            qwen_next_add_residual_tcb(
-                tcb,
-                &self.workspace.hidden,
-                &self.workspace.mixer,
-                &self.workspace.first_residual,
-                QWEN38_HIDDEN,
-            )
+            if self.fuse_add_rmsnorm {
+                self.encode_add_residual_rmsnorm(
+                    tcb,
+                    &self.workspace.hidden,
+                    &self.workspace.mixer,
+                    &self.workspace.first_residual,
+                    &qwen38_layer_name(layer, "post_attention_layernorm.weight"),
+                    &self.workspace.normalized,
+                )
+            } else {
+                qwen_next_add_residual_tcb(
+                    tcb,
+                    &self.workspace.hidden,
+                    &self.workspace.mixer,
+                    &self.workspace.first_residual,
+                    QWEN38_HIDDEN,
+                )
+            }
         }
 
         fn encode_layers(&self, tcb: &mut TokenCommandBuffer<'_>) -> Result<()> {
@@ -4331,13 +4557,15 @@ mod device {
             if !self.weights.mixed.is_empty() {
                 return self.encode_terminal_mixed(tcb);
             }
-            self.encode_rmsnorm(
-                tcb,
-                &self.workspace.hidden,
-                "language_model.model.norm.weight",
-                &self.workspace.normalized,
-                QWEN38_HIDDEN as u32,
-            )?;
+            if !self.fuse_add_rmsnorm {
+                self.encode_rmsnorm(
+                    tcb,
+                    &self.workspace.hidden,
+                    "language_model.model.norm.weight",
+                    &self.workspace.normalized,
+                    QWEN38_HIDDEN as u32,
+                )?;
+            }
             self.encode_q4_matvec(
                 tcb,
                 "language_model.lm_head.weight",
@@ -4437,13 +4665,15 @@ mod device {
             input: &PinnedBuffer,
         ) -> Result<()> {
             let n = QWEN38_INTERMEDIATE as u32;
-            self.encode_rmsnorm(
-                tcb,
-                input,
-                &qwen38_layer_name(layer, "post_attention_layernorm.weight"),
-                &self.workspace.normalized,
-                QWEN38_HIDDEN as u32,
-            )?;
+            if !self.fuse_add_rmsnorm {
+                self.encode_rmsnorm(
+                    tcb,
+                    input,
+                    &qwen38_layer_name(layer, "post_attention_layernorm.weight"),
+                    &self.workspace.normalized,
+                    QWEN38_HIDDEN as u32,
+                )?;
+            }
             match self.mlp_fusion {
                 Qwen38MlpFusion::Off => {
                     self.encode_named_matvec(
@@ -4494,13 +4724,25 @@ mod device {
                 &self.workspace.act,
                 &self.workspace.down,
             )?;
-            qwen_next_add_residual_tcb(
-                tcb,
-                input,
-                &self.workspace.down,
-                &self.workspace.hidden,
-                QWEN38_HIDDEN,
-            )
+            if self.fuse_add_rmsnorm {
+                let next = Self::next_norm_weight_name(layer);
+                self.encode_add_residual_rmsnorm(
+                    tcb,
+                    input,
+                    &self.workspace.down,
+                    &self.workspace.hidden,
+                    &next,
+                    &self.workspace.normalized,
+                )
+            } else {
+                qwen_next_add_residual_tcb(
+                    tcb,
+                    input,
+                    &self.workspace.down,
+                    &self.workspace.hidden,
+                    QWEN38_HIDDEN,
+                )
+            }
         }
 
         fn encode_deltanet_mixed(
@@ -4512,13 +4754,15 @@ mod device {
             let slot = qwen38_deltanet_state_slot(layer)?;
             let conv_off = (slot * layout.conv_state_elements() * 4) as u64;
             let rec_off = (slot * layout.recurrent_state_elements() * 4) as u64;
-            self.encode_rmsnorm(
-                tcb,
-                &self.workspace.hidden,
-                &qwen38_layer_name(layer, "input_layernorm.weight"),
-                &self.workspace.normalized,
-                QWEN38_HIDDEN as u32,
-            )?;
+            if !(self.fuse_add_rmsnorm && layer > 0) {
+                self.encode_rmsnorm(
+                    tcb,
+                    &self.workspace.hidden,
+                    &qwen38_layer_name(layer, "input_layernorm.weight"),
+                    &self.workspace.normalized,
+                    QWEN38_HIDDEN as u32,
+                )?;
+            }
             let fused_qkvz = qwen38_layer_name(layer, "linear_attn.in_proj_qkvz.weight");
             let fused_ba = qwen38_layer_name(layer, "linear_attn.in_proj_ba.weight");
             if self.has_weight(&fused_qkvz) && self.has_weight(&fused_ba) {
@@ -4640,13 +4884,24 @@ mod device {
                 &self.workspace.gated,
                 &self.workspace.mixer,
             )?;
-            qwen_next_add_residual_tcb(
-                tcb,
-                &self.workspace.hidden,
-                &self.workspace.mixer,
-                &self.workspace.first_residual,
-                QWEN38_HIDDEN,
-            )
+            if self.fuse_add_rmsnorm {
+                self.encode_add_residual_rmsnorm(
+                    tcb,
+                    &self.workspace.hidden,
+                    &self.workspace.mixer,
+                    &self.workspace.first_residual,
+                    &qwen38_layer_name(layer, "post_attention_layernorm.weight"),
+                    &self.workspace.normalized,
+                )
+            } else {
+                qwen_next_add_residual_tcb(
+                    tcb,
+                    &self.workspace.hidden,
+                    &self.workspace.mixer,
+                    &self.workspace.first_residual,
+                    QWEN38_HIDDEN,
+                )
+            }
         }
 
         fn encode_gqa_mixed(&self, tcb: &mut TokenCommandBuffer<'_>, layer: usize) -> Result<()> {
@@ -4659,13 +4914,15 @@ mod device {
             let slot = qwen38_gqa_state_slot(layer)?;
             let slot_elems = self.max_seq_len * QWEN38_GQA_KV_HEADS * QWEN38_GQA_HEAD_DIM;
             let cache_off = (slot * slot_elems * 4) as u64;
-            self.encode_rmsnorm(
-                tcb,
-                &self.workspace.hidden,
-                &qwen38_layer_name(layer, "input_layernorm.weight"),
-                &self.workspace.normalized,
-                QWEN38_HIDDEN as u32,
-            )?;
+            if !(self.fuse_add_rmsnorm && layer > 0) {
+                self.encode_rmsnorm(
+                    tcb,
+                    &self.workspace.hidden,
+                    &qwen38_layer_name(layer, "input_layernorm.weight"),
+                    &self.workspace.normalized,
+                    QWEN38_HIDDEN as u32,
+                )?;
+            }
             if self.fuse_gqa_qkv {
                 self.encode_fused_qkv(tcb, layer)?;
             } else {
@@ -4769,23 +5026,36 @@ mod device {
                 &self.workspace.gated_attn,
                 &self.workspace.mixer,
             )?;
-            qwen_next_add_residual_tcb(
-                tcb,
-                &self.workspace.hidden,
-                &self.workspace.mixer,
-                &self.workspace.first_residual,
-                QWEN38_HIDDEN,
-            )
+            if self.fuse_add_rmsnorm {
+                self.encode_add_residual_rmsnorm(
+                    tcb,
+                    &self.workspace.hidden,
+                    &self.workspace.mixer,
+                    &self.workspace.first_residual,
+                    &qwen38_layer_name(layer, "post_attention_layernorm.weight"),
+                    &self.workspace.normalized,
+                )
+            } else {
+                qwen_next_add_residual_tcb(
+                    tcb,
+                    &self.workspace.hidden,
+                    &self.workspace.mixer,
+                    &self.workspace.first_residual,
+                    QWEN38_HIDDEN,
+                )
+            }
         }
 
         fn encode_terminal_mixed(&self, tcb: &mut TokenCommandBuffer<'_>) -> Result<()> {
-            self.encode_rmsnorm(
-                tcb,
-                &self.workspace.hidden,
-                "language_model.model.norm.weight",
-                &self.workspace.normalized,
-                QWEN38_HIDDEN as u32,
-            )?;
+            if !self.fuse_add_rmsnorm {
+                self.encode_rmsnorm(
+                    tcb,
+                    &self.workspace.hidden,
+                    "language_model.model.norm.weight",
+                    &self.workspace.normalized,
+                    QWEN38_HIDDEN as u32,
+                )?;
+            }
             self.encode_named_matvec(
                 tcb,
                 "language_model.lm_head.weight",

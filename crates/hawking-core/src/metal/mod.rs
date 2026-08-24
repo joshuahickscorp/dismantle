@@ -1397,6 +1397,11 @@ mod imp {
             "qwen80_expert_table_silu_mul" => "qwen80_expert_table_silu_mul",
             "qwen80_expert_table_weighted_sum" => "qwen80_expert_table_weighted_sum",
             "qwen80_residual_rmsnorm_f32" => "qwen80_residual_rmsnorm_f32",
+            "qwen80_residual_rmsnorm_tg" => "qwen80_residual_rmsnorm_tg",
+            "qwen80_add_residual_rmsnorm_tg" => "qwen80_add_residual_rmsnorm_tg",
+            "qwen80_add_residual_rmsnorm_tg_plainweight" => {
+                "qwen80_add_residual_rmsnorm_tg_plainweight"
+            },
             "qwen80_silu_mul_f32" => "qwen80_silu_mul_f32",
             "qwen80_qkvz_rearrange_conv_l2_f32" => "qwen80_qkvz_rearrange_conv_l2_f32",
             "qwen80_ba_to_decay_beta_f32" => "qwen80_ba_to_decay_beta_f32",
@@ -2208,6 +2213,9 @@ mod imp {
             use crate::metal::SHADER_QWEN80_DEVICE_ACTIVATIONS;
             const KERNELS: &[&str] = &[
                 "qwen80_residual_rmsnorm_f32",
+                "qwen80_residual_rmsnorm_tg",
+                "qwen80_add_residual_rmsnorm_tg",
+                "qwen80_add_residual_rmsnorm_tg_plainweight",
                 "qwen80_silu_mul_f32",
                 "qwen80_qkvz_rearrange_conv_l2_f32",
                 "qwen80_ba_to_decay_beta_f32",

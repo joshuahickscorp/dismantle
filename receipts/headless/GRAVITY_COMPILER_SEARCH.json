@@ -1,8 +1,8 @@
 {
   "schema": "hawking.headless.gravity_compiler_search.v1",
-  "generated_at": "2026-08-24T01:24:11Z",
-  "git_head": "a01aac932f789bd362e333b052757e42d9f34b25",
-  "elapsed_s": 0.125,
+  "generated_at": "2026-08-24T02:45:34Z",
+  "git_head": "6138f18cc1599e5b0bddd2d21a38ea6a7fcbc707",
+  "elapsed_s": 0.132,
   "question": "Is a Gravity candidate which codec, or a (representation, kernel, layout, runtime graph) executable program?",
   "answer": "A candidate is the pair. Two programs with the same Q4 codes and different kernels (geo_tpr64 vs 1-thread-per-row serial) are different candidates and score differently (occupancy 1\u00d7 vs 23.7\u00d7). Scoring a candidate that names no kernel is refused \u2014 there is no default. gemv_simdgroup_f32 is 1.50\u00d7 faster per dispatch on the compute floor than geo_tpr64, but attached to the Q4 reconstruct-then-GEMM lowering it streams 218.8 GB/token; the bandwidth floor swamps the kernel gain and the search REFUSES the kernel win.",
   "convention": {

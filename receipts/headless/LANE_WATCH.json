@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-24T02:40:46Z",
+  "generated_at": "2026-08-24T02:52:06Z",
   "running": [
     "n001seal",
     "n004gpuledger",
@@ -9,9 +9,9 @@
   ],
   "needs_harvest": [],
   "headroom": {
-    "load1": 7.9951171875,
+    "load1": 8.0244140625,
     "ncpu": 28,
-    "disk_gib": 337.0,
+    "disk_gib": 329.8,
     "room_for_more": true
   }
 }

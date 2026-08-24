@@ -1345,10 +1345,15 @@ def assemble(loop_doc: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
             "No candidate is promoted."
         ),
         evidence_path="receipts/headless/NO_CANDIDATE_YET_BEATS_PARENT.json",
+        # Reproduce against the LIVE verdict, not a literal captured when this
+        # builder was written. Hardcoding it meant the handoff's own command
+        # failed the moment the reopen condition fired and the receipt moved to
+        # REOPENED_CANDIDATE_LEADS_BUT_QUALIFICATION_NOT_RUN -- a claim that
+        # contradicted its own statement one line above.
         cmd=py_receipt_eq(
             "NO_CANDIDATE_YET_BEATS_PARENT.json",
             "verdict",
-            "NO_CANDIDATE_YET_BEATS_PARENT",
+            verdict,
         ),
         how="json field verdict",
         source="receipts/headless/NO_CANDIDATE_YET_BEATS_PARENT.json",

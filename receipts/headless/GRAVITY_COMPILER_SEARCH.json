@@ -1,8 +1,8 @@
 {
   "schema": "hawking.headless.gravity_compiler_search.v1",
-  "generated_at": "2026-08-24T00:41:31Z",
-  "git_head": "62e67cd69cd341eb1e44bbf0a6a17395264c1f5e",
-  "elapsed_s": 0.124,
+  "generated_at": "2026-08-24T01:24:11Z",
+  "git_head": "a01aac932f789bd362e333b052757e42d9f34b25",
+  "elapsed_s": 0.125,
   "question": "Is a Gravity candidate which codec, or a (representation, kernel, layout, runtime graph) executable program?",
   "answer": "A candidate is the pair. Two programs with the same Q4 codes and different kernels (geo_tpr64 vs 1-thread-per-row serial) are different candidates and score differently (occupancy 1\u00d7 vs 23.7\u00d7). Scoring a candidate that names no kernel is refused \u2014 there is no default. gemv_simdgroup_f32 is 1.50\u00d7 faster per dispatch on the compute floor than geo_tpr64, but attached to the Q4 reconstruct-then-GEMM lowering it streams 218.8 GB/token; the bandwidth floor swamps the kernel gain and the search REFUSES the kernel win.",
   "convention": {
@@ -231,6 +231,9 @@
         "qwen_uniform_hgravu_q4_group64_matvec_geo_tpr64_tg128",
         "qwen_affine_q2_group32_matvec",
         "qwen_affine_q2_group32_matvec_geo_tpr64_tg128",
+        "qwen_affine_q2_group32_matvec_geo_tpr64_tg128_runtime_div",
+        "qwen_affine_q2_group64_matvec_gate_up_geo_tpr64_tg128",
+        "qwen_affine_q2_group64_matvec_gate_up_swiglu_geo_tpr64_tg128",
         "qwen38_hgrafv_embedding_lookup",
         "q80_uniform8_matvec_simd_bytes",
         "q80_uniform8_matvec_tg256",

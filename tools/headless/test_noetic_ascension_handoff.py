@@ -153,7 +153,16 @@ def test_builder_refuses_a_claim_with_no_command():
 
 
 def test_verdict_is_the_honest_negative(handoff: dict):
-    assert handoff["verdict"] == "NO_CANDIDATE_YET_BEATS_PARENT"
+    # Pinning this to one literal makes the handoff lie the moment the evidence
+    # moves. NOETIC_FUSED_SUBBIT fired the reopen condition the negative itself
+    # named, so both states are legitimate — what must never happen is claiming
+    # the flat negative while a candidate leads, or claiming a promotion.
+    valid = {
+        "NO_CANDIDATE_YET_BEATS_PARENT",
+        "REOPENED_CANDIDATE_LEADS_BUT_QUALIFICATION_NOT_RUN",
+    }
+    assert handoff["verdict"] in valid, handoff["verdict"]
+    assert handoff.get("did_not_promote") is not False
     assert handoff["gate"] == "REJECTED"
     assert handoff["did_not_promote"] is True
     parent = json.loads(

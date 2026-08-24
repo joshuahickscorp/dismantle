@@ -1,9 +1,9 @@
 {
   "schema": "hawking.headless.noetic_ascension_handoff.v1",
-  "generated_at": "2026-08-24T00:41:33Z",
+  "generated_at": "2026-08-24T01:24:13Z",
   "builder": "tools/headless/noetic_ascension_handoff.py",
   "loop": "tools/headless/noetic_ascension_loop.py",
-  "git_head": "62e67cd69cd341eb1e44bbf0a6a17395264c1f5e",
+  "git_head": "a01aac932f789bd362e333b052757e42d9f34b25",
   "branch": "odyssey-i",
   "sparse": {
     "on": false,
@@ -14,7 +14,7 @@
     "docs_verified_via": "git show HEAD:docs/CURRENT_ARCHITECTURE.md",
     "note": "A missing path in this worktree is not evidence it is absent from the repository. git sparse-checkout add is blocked here."
   },
-  "verdict": "NO_CANDIDATE_YET_BEATS_PARENT",
+  "verdict": "REOPENED_CANDIDATE_LEADS_BUT_QUALIFICATION_NOT_RUN",
   "gate": "REJECTED",
   "did_not_promote": true,
   "did_not_load_second_27b": true,
@@ -69,13 +69,15 @@
   },
   "strongest_candidate": {
     "value": {
-      "id": "mix_all_mlp_hgravu01_q3_g64",
-      "source_receipt": "receipts/headless/NOETIC_Q3_MLP_Q4_ATTN.json",
-      "complete_ebpw": 3.616489579525877,
-      "tok_s": 31.98505658156509,
-      "coherent": "COHERENT: varied tokens, not a single-token copy and not whitespace-only. The q3-MLP / q4-attn mix is both material and coherent on this 16-token sample.",
+      "id": "affine2_g64_fused_swiglu_qkv_dn",
+      "source_receipt": "receipts/headless/NOETIC_FUSED_SUBBIT.json",
+      "complete_ebpw": 3.139300850311054,
+      "tok_s": 34.87340648509909,
+      "dispatches_per_token": 756,
+      "coherent": true,
       "native_kernel_ran": true,
-      "text": "<think>\nThe user wants a detailed, prose explanation of how a compiler transforms a"
+      "beats_parent_on_both_axes": true,
+      "text": "<think>\nThe user wants a detailed, ordinary-prose explanation of how a compiler"
     },
     "evidence_path": "receipts/headless/NO_CANDIDATE_YET_BEATS_PARENT.json",
     "reproducing_command": [
@@ -86,9 +88,9 @@
     "reproducing_command_pretty": "python3 -c 'import json\nfrom pathlib import Path\nh = json.loads(Path('\"'\"'receipts/headless/NOETIC_ASCENSION_HANDOFF.json'\"'\"').read_text())\nr = json.loads(Path('\"'\"'receipts/headless/NO_CANDIDATE_YET_BEATS_PARENT.json'\"'\"').read_text())\nhv = h\nfor part in [\"strongest_candidate\", \"value\", \"id\"]:\n    hv = hv[int(part)] if isinstance(hv, list) else hv[part]\nrv = r\nfor part in [\"best_coherent_candidate\", \"id\"]:\n    rv = rv[int(part)] if isinstance(rv, list) else rv[part]\nassert hv == rv, (hv, rv)'",
     "source_field": "best_coherent_candidate",
     "qualification_failure": {
-      "id": "mix_all_mlp_hgravu01_q3_g64",
-      "ebpw": 3.616489579525877,
-      "tok_s": 31.98505658156509,
+      "id": "affine2_g64_fused_swiglu_qkv_dn",
+      "ebpw": 3.139300850311054,
+      "tok_s": 34.87340648509909,
       "reason": "coherent but same operator family as the incumbent, and no throughput win"
     }
   },
@@ -159,6 +161,14 @@
           "tok_s": 26.83964318075738,
           "coherent": "LS-fitted affine2 g64 generated 16 tokens that match neither the incumbent nor the g32 stutter. Verbatim: '<think>\\nThe user wants a detailed, ordinary-prose explanation of how a compiler'. Coherence judge: {'coherent': True, 'reason': 'emits varied tokens', 'repeated_single_token': False, 'whitespace_only': False, 'two_token_cycle': False, 'n_unique_ids': 15, 'n_new_tokens': 16}.",
           "native_kernel_ran": true
+        },
+        {
+          "id": "affine2_g64_fused_swiglu_qkv_dn",
+          "source_receipt": "receipts/headless/NOETIC_FUSED_SUBBIT.json",
+          "complete_ebpw": 3.139300850311054,
+          "tok_s": 34.87340648509909,
+          "coherent": true,
+          "native_kernel_ran": true
         }
       ],
       "ir_executed_families": [
@@ -184,9 +194,9 @@
     "reproducing_command": [
       "python3",
       "-c",
-      "import json\nfrom pathlib import Path\nd = json.loads(Path('receipts/headless/NO_CANDIDATE_YET_BEATS_PARENT.json').read_text())\nids = [c['id'] for c in d['candidates']]\nexp = json.loads(\"[\\\"mix_a_l0_down_binary_g1024\\\", \\\"mix_b_all_down_binary_g1024\\\", \\\"mix_c_all_mlp_binary_g64\\\", \\\"mix_all_mlp_hgravu01_q3_g64\\\", \\\"mix_all_mlp_affine_g32\\\", \\\"mix_all_mlp_affine_g64_ls\\\"]\")\nassert ids == exp, (ids, exp)"
+      "import json\nfrom pathlib import Path\nd = json.loads(Path('receipts/headless/NO_CANDIDATE_YET_BEATS_PARENT.json').read_text())\nids = [c['id'] for c in d['candidates']]\nexp = json.loads(\"[\\\"mix_a_l0_down_binary_g1024\\\", \\\"mix_b_all_down_binary_g1024\\\", \\\"mix_c_all_mlp_binary_g64\\\", \\\"mix_all_mlp_hgravu01_q3_g64\\\", \\\"mix_all_mlp_affine_g32\\\", \\\"mix_all_mlp_affine_g64_ls\\\", \\\"affine2_g64_fused_swiglu_qkv_dn\\\"]\")\nassert ids == exp, (ids, exp)"
     ],
-    "reproducing_command_pretty": "python3 -c 'import json\nfrom pathlib import Path\nd = json.loads(Path('\"'\"'receipts/headless/NO_CANDIDATE_YET_BEATS_PARENT.json'\"'\"').read_text())\nids = [c['\"'\"'id'\"'\"'] for c in d['\"'\"'candidates'\"'\"']]\nexp = json.loads(\"[\\\"mix_a_l0_down_binary_g1024\\\", \\\"mix_b_all_down_binary_g1024\\\", \\\"mix_c_all_mlp_binary_g64\\\", \\\"mix_all_mlp_hgravu01_q3_g64\\\", \\\"mix_all_mlp_affine_g32\\\", \\\"mix_all_mlp_affine_g64_ls\\\"]\")\nassert ids == exp, (ids, exp)'",
+    "reproducing_command_pretty": "python3 -c 'import json\nfrom pathlib import Path\nd = json.loads(Path('\"'\"'receipts/headless/NO_CANDIDATE_YET_BEATS_PARENT.json'\"'\"').read_text())\nids = [c['\"'\"'id'\"'\"'] for c in d['\"'\"'candidates'\"'\"']]\nexp = json.loads(\"[\\\"mix_a_l0_down_binary_g1024\\\", \\\"mix_b_all_down_binary_g1024\\\", \\\"mix_c_all_mlp_binary_g64\\\", \\\"mix_all_mlp_hgravu01_q3_g64\\\", \\\"mix_all_mlp_affine_g32\\\", \\\"mix_all_mlp_affine_g64_ls\\\", \\\"affine2_g64_fused_swiglu_qkv_dn\\\"]\")\nassert ids == exp, (ids, exp)'",
     "source_field": "candidates[].id",
     "also_cites": [
       "receipts/headless/FIRST_NOETIC_EXECUTABLE.json",
@@ -1041,14 +1051,14 @@
     {
       "id": "F003",
       "kind": "fact",
-      "statement": "strongest coherent candidate is mix_all_mlp_hgravu01_q3_g64 at complete_ebpw=3.616489579525877 tok_s=31.98505658156509",
+      "statement": "strongest coherent candidate is affine2_g64_fused_swiglu_qkv_dn at complete_ebpw=3.139300850311054 tok_s=34.87340648509909",
       "evidence_path": "receipts/headless/NO_CANDIDATE_YET_BEATS_PARENT.json",
       "reproducing_command": [
         "python3",
         "-c",
-        "import json\nfrom pathlib import Path\nd = json.loads(Path('receipts/headless/NO_CANDIDATE_YET_BEATS_PARENT.json').read_text())\ncur = d\nfor part in [\"best_coherent_candidate\", \"id\"]:\n    cur = cur[int(part)] if isinstance(cur, list) else cur[part]\nexp = json.loads(\"\\\"mix_all_mlp_hgravu01_q3_g64\\\"\")\nassert cur == exp, (cur, exp)"
+        "import json\nfrom pathlib import Path\nd = json.loads(Path('receipts/headless/NO_CANDIDATE_YET_BEATS_PARENT.json').read_text())\ncur = d\nfor part in [\"best_coherent_candidate\", \"id\"]:\n    cur = cur[int(part)] if isinstance(cur, list) else cur[part]\nexp = json.loads(\"\\\"affine2_g64_fused_swiglu_qkv_dn\\\"\")\nassert cur == exp, (cur, exp)"
       ],
-      "reproducing_command_pretty": "python3 -c 'import json\nfrom pathlib import Path\nd = json.loads(Path('\"'\"'receipts/headless/NO_CANDIDATE_YET_BEATS_PARENT.json'\"'\"').read_text())\ncur = d\nfor part in [\"best_coherent_candidate\", \"id\"]:\n    cur = cur[int(part)] if isinstance(cur, list) else cur[part]\nexp = json.loads(\"\\\"mix_all_mlp_hgravu01_q3_g64\\\"\")\nassert cur == exp, (cur, exp)'",
+      "reproducing_command_pretty": "python3 -c 'import json\nfrom pathlib import Path\nd = json.loads(Path('\"'\"'receipts/headless/NO_CANDIDATE_YET_BEATS_PARENT.json'\"'\"').read_text())\ncur = d\nfor part in [\"best_coherent_candidate\", \"id\"]:\n    cur = cur[int(part)] if isinstance(cur, list) else cur[part]\nexp = json.loads(\"\\\"affine2_g64_fused_swiglu_qkv_dn\\\"\")\nassert cur == exp, (cur, exp)'",
       "derived_from": {
         "how": "json field best_coherent_candidate.id",
         "source": "receipts/headless/NO_CANDIDATE_YET_BEATS_PARENT.json"
@@ -1073,7 +1083,7 @@
     {
       "id": "F005",
       "kind": "fact",
-      "statement": "6 executable mixes were scored against the parent; IR executed families=['grouped_absmax_q4', 'ternary_group64', 'binary_sign_codes', 'low_rank_uv', 'product_quantization']",
+      "statement": "7 executable mixes were scored against the parent; IR executed families=['grouped_absmax_q4', 'ternary_group64', 'binary_sign_codes', 'low_rank_uv', 'product_quantization']",
       "evidence_path": "receipts/headless/NOETIC_IR.json",
       "reproducing_command": [
         "python3",
@@ -1425,14 +1435,14 @@
     {
       "id": "W027",
       "kind": "watched_fail",
-      "statement": "campaign verdict is NO_CANDIDATE_YET_BEATS_PARENT; the demonstration gate is REJECTED. No candidate is promoted.",
+      "statement": "campaign verdict is REOPENED_CANDIDATE_LEADS_BUT_QUALIFICATION_NOT_RUN; the demonstration gate is REJECTED. No candidate is promoted.",
       "evidence_path": "receipts/headless/NO_CANDIDATE_YET_BEATS_PARENT.json",
       "reproducing_command": [
         "python3",
         "-c",
-        "import json\nfrom pathlib import Path\nd = json.loads(Path('receipts/headless/NO_CANDIDATE_YET_BEATS_PARENT.json').read_text())\ncur = d\nfor part in [\"verdict\"]:\n    cur = cur[int(part)] if isinstance(cur, list) else cur[part]\nexp = json.loads(\"\\\"NO_CANDIDATE_YET_BEATS_PARENT\\\"\")\nassert cur == exp, (cur, exp)"
+        "import json\nfrom pathlib import Path\nd = json.loads(Path('receipts/headless/NO_CANDIDATE_YET_BEATS_PARENT.json').read_text())\ncur = d\nfor part in [\"verdict\"]:\n    cur = cur[int(part)] if isinstance(cur, list) else cur[part]\nexp = json.loads(\"\\\"REOPENED_CANDIDATE_LEADS_BUT_QUALIFICATION_NOT_RUN\\\"\")\nassert cur == exp, (cur, exp)"
       ],
-      "reproducing_command_pretty": "python3 -c 'import json\nfrom pathlib import Path\nd = json.loads(Path('\"'\"'receipts/headless/NO_CANDIDATE_YET_BEATS_PARENT.json'\"'\"').read_text())\ncur = d\nfor part in [\"verdict\"]:\n    cur = cur[int(part)] if isinstance(cur, list) else cur[part]\nexp = json.loads(\"\\\"NO_CANDIDATE_YET_BEATS_PARENT\\\"\")\nassert cur == exp, (cur, exp)'",
+      "reproducing_command_pretty": "python3 -c 'import json\nfrom pathlib import Path\nd = json.loads(Path('\"'\"'receipts/headless/NO_CANDIDATE_YET_BEATS_PARENT.json'\"'\"').read_text())\ncur = d\nfor part in [\"verdict\"]:\n    cur = cur[int(part)] if isinstance(cur, list) else cur[part]\nexp = json.loads(\"\\\"REOPENED_CANDIDATE_LEADS_BUT_QUALIFICATION_NOT_RUN\\\"\")\nassert cur == exp, (cur, exp)'",
       "derived_from": {
         "how": "json field verdict",
         "source": "receipts/headless/NO_CANDIDATE_YET_BEATS_PARENT.json"
@@ -1555,14 +1565,14 @@
     {
       "id": "W027",
       "kind": "watched_fail",
-      "statement": "campaign verdict is NO_CANDIDATE_YET_BEATS_PARENT; the demonstration gate is REJECTED. No candidate is promoted.",
+      "statement": "campaign verdict is REOPENED_CANDIDATE_LEADS_BUT_QUALIFICATION_NOT_RUN; the demonstration gate is REJECTED. No candidate is promoted.",
       "evidence_path": "receipts/headless/NO_CANDIDATE_YET_BEATS_PARENT.json",
       "reproducing_command": [
         "python3",
         "-c",
-        "import json\nfrom pathlib import Path\nd = json.loads(Path('receipts/headless/NO_CANDIDATE_YET_BEATS_PARENT.json').read_text())\ncur = d\nfor part in [\"verdict\"]:\n    cur = cur[int(part)] if isinstance(cur, list) else cur[part]\nexp = json.loads(\"\\\"NO_CANDIDATE_YET_BEATS_PARENT\\\"\")\nassert cur == exp, (cur, exp)"
+        "import json\nfrom pathlib import Path\nd = json.loads(Path('receipts/headless/NO_CANDIDATE_YET_BEATS_PARENT.json').read_text())\ncur = d\nfor part in [\"verdict\"]:\n    cur = cur[int(part)] if isinstance(cur, list) else cur[part]\nexp = json.loads(\"\\\"REOPENED_CANDIDATE_LEADS_BUT_QUALIFICATION_NOT_RUN\\\"\")\nassert cur == exp, (cur, exp)"
       ],
-      "reproducing_command_pretty": "python3 -c 'import json\nfrom pathlib import Path\nd = json.loads(Path('\"'\"'receipts/headless/NO_CANDIDATE_YET_BEATS_PARENT.json'\"'\"').read_text())\ncur = d\nfor part in [\"verdict\"]:\n    cur = cur[int(part)] if isinstance(cur, list) else cur[part]\nexp = json.loads(\"\\\"NO_CANDIDATE_YET_BEATS_PARENT\\\"\")\nassert cur == exp, (cur, exp)'",
+      "reproducing_command_pretty": "python3 -c 'import json\nfrom pathlib import Path\nd = json.loads(Path('\"'\"'receipts/headless/NO_CANDIDATE_YET_BEATS_PARENT.json'\"'\"').read_text())\ncur = d\nfor part in [\"verdict\"]:\n    cur = cur[int(part)] if isinstance(cur, list) else cur[part]\nexp = json.loads(\"\\\"REOPENED_CANDIDATE_LEADS_BUT_QUALIFICATION_NOT_RUN\\\"\")\nassert cur == exp, (cur, exp)'",
       "derived_from": {
         "how": "json field verdict",
         "source": "receipts/headless/NO_CANDIDATE_YET_BEATS_PARENT.json"

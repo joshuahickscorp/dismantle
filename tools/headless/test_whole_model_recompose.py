@@ -17,7 +17,7 @@ def test_complete_ebpw_is_the_weighted_closure():
     total = d["parent_parameter_count"]
     # complete EBPW must equal sum(organ_bits)/total_params to floating tolerance
     bits = sum(a["organ_bits"] for a in d["allocation"])
-    assert abs(d["current_qwen_complete_ebpw_baseline"] - bits / total) < 1e-6
+    assert abs(d["current_qwen_complete_ebpw"] - bits / total) < 1e-6
 
 
 def test_mlp_confirmed_others_provisional():
@@ -25,10 +25,11 @@ def test_mlp_confirmed_others_provisional():
     by = {a["organ"]: a for a in d["allocation"]}
     assert by["mlp"]["floor_status"] == "CONFIRMED"
     assert by["mlp"]["ebpw"] == 2.25
-    # the non-MLP organs must be flagged provisional -- N040 owns their real floors
-    assert set(d["provisional_organs"]) >= {"deltanet", "attention_gqa", "embedding", "output"}
+    # the non-MLP organs are either PROVISIONAL (pre-N040) or MEASURED (after N040 lands).
+    for name in ("deltanet", "attention_gqa", "embedding", "output"):
+        assert by[name]["floor_status"] in ("PROVISIONAL", "MEASURED")
 
 
 def test_sub3_claim_matches_the_number():
     d = json.loads((R / "WHOLE_MODEL_RECOMPOSE.json").read_text())
-    assert d["below_3_0"] == (d["current_qwen_complete_ebpw_baseline"] < 3.0)
+    assert d["below_3_0"] == (d["current_qwen_complete_ebpw"] < 3.0)

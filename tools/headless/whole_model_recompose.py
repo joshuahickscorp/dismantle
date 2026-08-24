@@ -63,8 +63,41 @@ KNOWN_FLOOR = {
 }
 
 
+
+def _measured_floors():
+    """N040 ORGAN_DENSITY_FLOORS measured coherent floors, if present -- these override the
+    provisional values (they reached complete_token composition on real activations)."""
+    p = R / "ORGAN_DENSITY_FLOORS.json"
+    if not p.is_file():
+        return {}
+    d = json.loads(p.read_text())
+    organs = d.get("organs") or d
+    def floor(o):
+        if isinstance(o, dict):
+            for k in ("coherent_floor_ebpw", "floor_ebpw", "lowest_coherent_ebpw", "complete_ebpw", "ebpw"):
+                if k in o and isinstance(o[k], (int, float)):
+                    return o[k]
+            for v in o.values():
+                r = floor(v)
+                if r is not None:
+                    return r
+        return None
+    out = {}
+    m = {"deltanet": "deltanet", "gqa_attention": "attention_gqa",
+         "embedding_output": ["embedding", "output"]}
+    for src, dst in m.items():
+        o = organs.get(src) if isinstance(organs, dict) else None
+        fl = floor(o) if o else None
+        if fl is None:
+            continue
+        for key in ([dst] if isinstance(dst, str) else dst):
+            out[key] = fl
+    return out
+
+
 def recompose():
     op, total_params = organ_params()
+    measured = _measured_floors()
     # map census organ names -> floor keys
     alias = {"mlp": "mlp", "deltanet": "deltanet", "attention_gqa": "attention_gqa",
              "embedding": "embedding", "output": "output"}
@@ -73,7 +106,10 @@ def recompose():
     for cname, floor_key in alias.items():
         if cname not in op:
             continue
-        f = KNOWN_FLOOR[floor_key]
+        f = dict(KNOWN_FLOOR[floor_key])
+        if floor_key in measured:
+            f = {"ebpw": measured[floor_key], "status": "MEASURED",
+                 "src": "N040 ORGAN_DENSITY_FLOORS.json (grouped_absmax q3, complete_token on real X)"}
         params = op[cname]["params"]
         bits = params * f["ebpw"]
         total_bits += bits
@@ -83,11 +119,24 @@ def recompose():
             "organ_bits": bits, "contribution_to_complete_ebpw": round(bits / total_params, 6),
         })
     complete_ebpw = total_bits / total_params
-    return alloc, complete_ebpw, total_params
+    # ACTIVE EBPW/token: census active_bytes_per_token is at the uniform incumbent 4.2527 bpw;
+    # scale each organ by (chosen_ebpw / 4.2527), sum active bits, divide by params.
+    INCUMBENT_BPW = 4.2527
+    census = load("NOETIC_ORGAN_CENSUS")["organs"]
+    active_bits = 0.0
+    for a in alloc:
+        o = census.get(a["organ"])
+        if not o:
+            continue
+        abpt = o["physical"]["active_bytes_per_token"]
+        active_bits += abpt * 8 * (a["ebpw"] / INCUMBENT_BPW)
+        a["active_bytes_per_token_at_floor"] = round(abpt * (a["ebpw"] / INCUMBENT_BPW))
+    active_ebpw_per_token = active_bits / total_params
+    return alloc, complete_ebpw, total_params, active_ebpw_per_token
 
 
 def main():
-    alloc, complete_ebpw, total_params = recompose()
+    alloc, complete_ebpw, total_params, active_ebpw_per_token = recompose()
     provisional = [a["organ"] for a in alloc if a["floor_status"] == "PROVISIONAL"]
     doc = {
         "schema": "hawking.headless.whole_model_recompose.v1",
@@ -99,7 +148,8 @@ def main():
                   "= sum(organ_model_specific_bits) / total_params (executable-closure sum, not one global BPW)",
         "parent_parameter_count": total_params,
         "allocation": alloc,
-        "current_qwen_complete_ebpw_baseline": round(complete_ebpw, 6),
+        "current_qwen_complete_ebpw": round(complete_ebpw, 6),
+        "active_ebpw_per_token": round(active_ebpw_per_token, 6),
         "historical_complete_ebpw": 3.1393,
         "below_3_0": complete_ebpw < 3.0,
         "headline": (

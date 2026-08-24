@@ -1,7 +1,7 @@
 {
  "schema": "hawking.headless.density_descent_frontier.v1",
- "generated_at": "2026-08-24T20:51:34Z",
- "git_head": "13a9957291d82acf7d0c9962e23c7f74a2de5a9d",
+ "generated_at": "2026-08-24T21:57:49Z",
+ "git_head": "3048963996c6ed32df3712a805c7f5918ea86fd8",
  "generated_by": "tools/headless/density_descent_frontier.py",
  "obligation": "N037 \u2014 DENSITY_DESCENT_FRONTIER (S024 \u00a72, \u00a73, \u00a718). Track the two coupled frontiers: COHERENCE (lowest complete EBPW that still generates coherently) and EXECUTION (lowest COMPLETE_TOKEN_NS among coherent candidates). Density ladder 2.25..0.1 are coordinates, not pass literals.",
  "hand_authored": false,
@@ -131,6 +131,13 @@
   },
   {
    "path": "receipts/headless/ONEBIT_FAMILIES.json",
+   "present": true,
+   "required": false,
+   "role": "supporting citation",
+   "absent_reason": null
+  },
+  {
+   "path": "receipts/headless/ORGAN_DENSITY_FLOORS.json",
    "present": true,
    "required": false,
    "role": "supporting citation",
@@ -1425,7 +1432,8 @@
      "absent_reason": null,
      "note": "Lowest coherent native MLP in the N021/BYTES_FRONTIER harness. Parent affine tensors store 2.5 bpw (scale+bias). Whole-model complete EBPW 3.1393 is NOT this organ's number."
     },
-    "source": "receipts/headless/ORGAN_ROOF_LEDGER.json"
+    "source": "receipts/headless/ORGAN_ROOF_LEDGER.json",
+    "composition_floor_complete_ebpw": null
    },
    {
     "organ": "mlp_down",
@@ -1447,7 +1455,8 @@
      "absent_reason": null,
      "note": "Lowest coherent native MLP in the N021/BYTES_FRONTIER harness. Parent affine tensors store 2.5 bpw (scale+bias). Whole-model complete EBPW 3.1393 is NOT this organ's number."
     },
-    "source": "receipts/headless/ORGAN_ROOF_LEDGER.json"
+    "source": "receipts/headless/ORGAN_ROOF_LEDGER.json",
+    "composition_floor_complete_ebpw": null
    },
    {
     "organ": "deltanet",
@@ -1468,7 +1477,15 @@
      "source": "receipts/headless/ORGAN_FRONTIERS.json",
      "absent_reason": null
     },
-    "source": "receipts/headless/ORGAN_ROOF_LEDGER.json"
+    "source": "receipts/headless/ORGAN_ROOF_LEDGER.json",
+    "composition_floor_complete_ebpw": {
+     "value": 3.2614879737507687,
+     "kind": "CITED",
+     "unit": "EBPW",
+     "command": "ORGAN_DENSITY_FLOORS.organs[deltanet].floor.complete_ebpw",
+     "source": "receipts/headless/ORGAN_DENSITY_FLOORS.json",
+     "absent_reason": null
+    }
    },
    {
     "organ": "gqa_attention",
@@ -1489,7 +1506,15 @@
      "source": "receipts/headless/ORGAN_FRONTIERS.json",
      "absent_reason": null
     },
-    "source": "receipts/headless/ORGAN_ROOF_LEDGER.json"
+    "source": "receipts/headless/ORGAN_ROOF_LEDGER.json",
+    "composition_floor_complete_ebpw": {
+     "value": 3.126550820024315,
+     "kind": "CITED",
+     "unit": "EBPW",
+     "command": "ORGAN_DENSITY_FLOORS.organs[gqa_attention].floor.complete_ebpw",
+     "source": "receipts/headless/ORGAN_DENSITY_FLOORS.json",
+     "absent_reason": null
+    }
    },
    {
     "organ": "q4_remainder",
@@ -1510,7 +1535,8 @@
      "source": "receipts/headless/ORGAN_ROOF_LEDGER.json",
      "absent_reason": "no ORGAN_FRONTIERS floor and no ORGAN_LIBRARY complete EBPW"
     },
-    "source": "receipts/headless/ORGAN_ROOF_LEDGER.json"
+    "source": "receipts/headless/ORGAN_ROOF_LEDGER.json",
+    "composition_floor_complete_ebpw": null
    },
    {
     "organ": "lm_head",
@@ -1531,7 +1557,8 @@
      "source": "receipts/headless/ORGAN_FRONTIERS.json",
      "absent_reason": null
     },
-    "source": "receipts/headless/ORGAN_ROOF_LEDGER.json"
+    "source": "receipts/headless/ORGAN_ROOF_LEDGER.json",
+    "composition_floor_complete_ebpw": null
    },
    {
     "organ": "sampling",
@@ -1552,7 +1579,8 @@
      "source": "receipts/headless/ORGAN_BANDWIDTH.json",
      "absent_reason": "sampling has no stored weights; EBPW is not defined for this organ"
     },
-    "source": "receipts/headless/ORGAN_ROOF_LEDGER.json"
+    "source": "receipts/headless/ORGAN_ROOF_LEDGER.json",
+    "composition_floor_complete_ebpw": null
    },
    {
     "organ": "embedding",
@@ -1573,13 +1601,22 @@
      "source": "receipts/headless/ORGAN_FRONTIERS.json",
      "absent_reason": null
     },
-    "source": "receipts/headless/ORGAN_ROOF_LEDGER.json"
+    "source": "receipts/headless/ORGAN_ROOF_LEDGER.json",
+    "composition_floor_complete_ebpw": {
+     "value": 3.125,
+     "kind": "CITED",
+     "unit": "EBPW",
+     "command": "ORGAN_DENSITY_FLOORS.organs[embedding_output].floor.complete_ebpw",
+     "source": "receipts/headless/ORGAN_DENSITY_FLOORS.json",
+     "absent_reason": null
+    }
    }
   ],
   "citations": [
    "receipts/headless/ORGAN_ROOF_LEDGER.json",
    "receipts/headless/ORGAN_FRONTIERS.json",
-   "receipts/headless/ORGAN_LIBRARY.json"
+   "receipts/headless/ORGAN_LIBRARY.json",
+   "receipts/headless/ORGAN_DENSITY_FLOORS.json"
   ]
  },
  "dispatch_parent_context": {

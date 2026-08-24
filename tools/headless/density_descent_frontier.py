@@ -77,6 +77,7 @@ OPTIONAL_KNOWN = (
     "receipts/headless/C1SHAREDBASIS_DESIGN.json",
     "receipts/headless/C3LOWRANKSPARSE_DESIGN.json",
     "receipts/headless/ONEBIT_FAMILIES.json",
+    "receipts/headless/ORGAN_DENSITY_FLOORS.json",
 )
 
 # N035 / N036 seal names. Also glob variants if they land under another suffix.
@@ -1387,6 +1388,8 @@ def organ_density(src: Sources) -> dict[str, Any]:
     source_lib = "receipts/headless/ORGAN_LIBRARY.json"
     fr = src.opt("ORGAN_FRONTIERS") or {}
     lib = src.opt("ORGAN_LIBRARY") or {}
+    df = src.opt("ORGAN_DENSITY_FLOORS") or {}
+    df_organs = df.get("organs") or {}
     lib_by = {o.get("organ"): o for o in (lib.get("organs") or []) if isinstance(o, dict)}
     fr_organs = fr.get("organs") or {}
     mlp_lock = fr.get("mlp_not_extrapolated") or {}
@@ -1411,6 +1414,12 @@ def organ_density(src: Sources) -> dict[str, Any]:
                 "source": source_fr,
             }
         lib_row = lib_by.get(contract) or {}
+        df_key = {
+            "deltanet": "deltanet",
+            "gqa_attention": "gqa_attention",
+            "embedding": "embedding_output",
+        }.get(organ)
+        cfl = ((df_organs.get(df_key) or {}).get("floor") or {}) if df_key else {}
         rows.append(
             {
                 "organ": organ,
@@ -1443,6 +1452,17 @@ def organ_density(src: Sources) -> dict[str, Any]:
                     )
                 ),
                 "source": source_roof,
+                "composition_floor_complete_ebpw": (
+                    qty(
+                        cfl.get("complete_ebpw"),
+                        kind=CITED,
+                        unit="EBPW",
+                        command=f"ORGAN_DENSITY_FLOORS.organs[{df_key}].floor.complete_ebpw",
+                        source="receipts/headless/ORGAN_DENSITY_FLOORS.json",
+                    )
+                    if cfl.get("complete_ebpw") is not None
+                    else None
+                ),
             }
         )
     cites = [source_roof]
@@ -1450,6 +1470,8 @@ def organ_density(src: Sources) -> dict[str, Any]:
         cites.append(source_fr)
     if src.opt("ORGAN_LIBRARY"):
         cites.append(source_lib)
+    if src.opt("ORGAN_DENSITY_FLOORS"):
+        cites.append("receipts/headless/ORGAN_DENSITY_FLOORS.json")
     return {
         "s024": "§17, §18",
         "rule": (

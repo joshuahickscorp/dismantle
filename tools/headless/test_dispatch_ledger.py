@@ -26,8 +26,17 @@ RECEIPT_DOC = None
 
 
 def receipt() -> dict:
+    """Read the sealed ledger. Build only if there is none to read.
+
+    Rebuilding on every pytest run called `ps` (forbidden in some sandboxes)
+    and overwrote a sealed measurement as a side effect of checking it.
+    """
     global RECEIPT_DOC
     if RECEIPT_DOC is None:
+        if RECEIPT.is_file():
+            RECEIPT_DOC = json.loads(RECEIPT.read_text())
+            if RECEIPT_DOC.get("schema") == SCHEMA:
+                return RECEIPT_DOC
         raw = None
         raw_path = REPO / "receipts" / "headless" / "_DISPATCH_LEDGER_raw.json"
         if raw_path.is_file():

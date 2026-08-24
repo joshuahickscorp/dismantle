@@ -34,9 +34,25 @@ SCHEMA = "hawking.headless.control_plane_latency.v1"
 GATE = "CONTROL_PLANE_LATENCY"
 HERE = Path(__file__).resolve()
 REPO = HERE.parents[2]
-RECEIPT = REPO / "receipts" / "headless" / "CONTROL_PLANE_LATENCY.json"
-HCLI_GIT_PREFIX = "tools/haider/hcli"
+RECEIPT = REPO / "receipts" / "headless" / "CONTROL_PLANE_LATENCY_LEDGER.json"
+RECEIPT_LEGACY = REPO / "receipts" / "headless" / "CONTROL_PLANE_LATENCY.json"
+HCLI_GIT_PREFIX = "hcli"
 METAL_BUDGET_SRC = REPO / "tools" / "headless" / "metal_budget.py"
+# Acceptance stage name -> measurement id. A missing row is ABSENT, never estimated.
+STAGE_MAP = {
+    "cli_startup": "cli_startup",
+    "python_import_time": "import_hcli",
+    "mission_load": "mission_load",
+    "dag_load": "dag_load",
+    "context_compiler": "context_compile",
+    "scheduler_cycle": "scheduler_cycle",
+    "persistence": "checkpoint",
+    "receipts_write": "receipt_write",
+    "verifier_launch": "verifier_dispatch",
+    "subprocess_spawn": "python_pass",
+    "grok_bridge_init": "grok_bridge",
+    "experiment_setup": "experiment_setup",
+}
 GROK_RUN_HINT = Path.home() / ".claude-grok" / "bin" / "grok-run"
 N_COLD = 5
 N_WARM = 5
@@ -87,36 +103,39 @@ def run_env(pythonpath: str, extra: Optional[Dict[str, str]] = None) -> Dict[str
 def locate_hcli(repo: Path, extract_root: Path) -> Dict[str, Any]:
     """Prefer on-disk package; otherwise extract HEAD via git archive.
 
-    A missing tools/haider in this worktree is not evidence the package does
-    not exist — this tree is a sparse checkout.
+    Live package is top-level ``hcli/`` (``tools/haider/hcli`` is the fossil
+    namespace). A missing path in this sparse checkout is not evidence the
+    package does not exist in git.
     """
-    on_disk = repo / "tools" / "haider"
-    marker = on_disk / "hcli" / "__main__.py"
+    marker = repo / "hcli" / "__main__.py"
     if marker.is_file():
-        headless_dst = extract_root / "tools" / "headless"
-        headless_dst.mkdir(parents=True, exist_ok=True)
-        if METAL_BUDGET_SRC.is_file():
-            shutil.copy2(METAL_BUDGET_SRC, headless_dst / "metal_budget.py")
-        # Metal budget is loaded relative to tools/haider/hcli/machine.py →
-        # tools/headless/metal_budget.py. When hcli is on disk, that path is
-        # the live file. Copy into extract_root only for the git-archive mode.
         return {
             "mode": "on-disk",
-            "pythonpath": str(on_disk.resolve()),
-            "package": str((on_disk / "hcli").resolve()),
-            "reason": "tools/haider/hcli is materialized in this worktree",
+            "pythonpath": str(repo.resolve()),
+            "package": str((repo / "hcli").resolve()),
+            "reason": "hcli is materialized in this worktree",
+            "metal_budget": str(METAL_BUDGET_SRC) if METAL_BUDGET_SRC.is_file() else None,
+        }
+
+    haider_marker = repo / "tools" / "haider" / "hcli" / "__main__.py"
+    if haider_marker.is_file():
+        return {
+            "mode": "on-disk-haider-fossil",
+            "pythonpath": str((repo / "tools" / "haider").resolve()),
+            "package": str((repo / "tools" / "haider" / "hcli").resolve()),
+            "reason": "tools/haider/hcli is materialized (fossil namespace)",
             "metal_budget": str(METAL_BUDGET_SRC) if METAL_BUDGET_SRC.is_file() else None,
         }
 
     raw = subprocess.run(
-        ["git", "-C", str(repo), "archive", "HEAD", "tools/haider/hcli"],
+        ["git", "-C", str(repo), "archive", "HEAD", "hcli"],
         capture_output=True,
         check=False,
         timeout=120,
     )
     if raw.returncode != 0:
         raise RuntimeError(
-            f"git archive failed: {raw.stderr.decode('utf-8', 'replace').strip()}"
+            f"git archive HEAD hcli failed: {raw.stderr.decode('utf-8', 'replace').strip()}"
         )
     subprocess.run(
         ["tar", "-x", "-C", str(extract_root)],
@@ -124,20 +143,22 @@ def locate_hcli(repo: Path, extract_root: Path) -> Dict[str, Any]:
         capture_output=True,
         check=True,
     )
-    pkg = extract_root / "tools" / "haider" / "hcli"
+    pkg = extract_root / "hcli"
     if not (pkg / "__main__.py").is_file():
         raise RuntimeError(f"git archive did not produce {pkg / '__main__.py'}")
     headless_dst = extract_root / "tools" / "headless"
     headless_dst.mkdir(parents=True, exist_ok=True)
     if METAL_BUDGET_SRC.is_file():
         shutil.copy2(METAL_BUDGET_SRC, headless_dst / "metal_budget.py")
-    pythonpath = extract_root / "tools" / "haider"
+    cargo = repo / "Cargo.toml"
+    if cargo.is_file():
+        shutil.copy2(cargo, extract_root / "Cargo.toml")
     return {
         "mode": "git-archive-HEAD",
-        "pythonpath": str(pythonpath),
+        "pythonpath": str(extract_root),
         "package": str(pkg),
         "extract_root": str(extract_root),
-        "reason": "sparse checkout: tools/haider not on disk; content is HEAD",
+        "reason": "sparse checkout: hcli not on disk; content is HEAD",
         "metal_budget": str(headless_dst / "metal_budget.py"),
     }
 
@@ -1230,10 +1251,11 @@ def _call_name(func: ast.AST) -> str:
 
 def write_receipt(doc: Dict[str, Any]) -> Path:
     RECEIPT.parent.mkdir(parents=True, exist_ok=True)
-    tmp = RECEIPT.with_suffix(".json.tmp")
     text = json.dumps(doc, indent=2, sort_keys=True) + "\n"
-    tmp.write_text(text, encoding="utf-8")
-    os.replace(tmp, RECEIPT)
+    for path in (RECEIPT, RECEIPT_LEGACY):
+        tmp = path.with_suffix(".json.tmp")
+        tmp.write_text(text, encoding="utf-8")
+        os.replace(tmp, path)
     return RECEIPT
 
 
@@ -1279,6 +1301,8 @@ def validate_receipt(doc: Dict[str, Any]) -> List[str]:
             if "median" not in fig or "samples" not in fig:
                 fails.append(f"{rid}: {side} lacks median/samples")
             elif fig.get("median") is None or not fig.get("samples"):
+                if side == "warm_ms" and not row.get("ok"):
+                    continue
                 fails.append(f"{rid}: {side} median/samples empty")
     top = doc.get("largest_removable_cost") or {}
     if not isinstance(top, dict) or top.get("ms") is None:
@@ -1287,6 +1311,24 @@ def validate_receipt(doc: Dict[str, Any]) -> List[str]:
         fails.append("largest_removable_cost.id missing")
     if not top.get("remove_by"):
         fails.append("largest_removable_cost.remove_by missing")
+    stages = doc.get("stages") or {}
+    if not isinstance(stages, dict) or not stages:
+        fails.append("stages missing")
+    else:
+        for name in STAGE_MAP:
+            st = stages.get(name)
+            if not isinstance(st, dict):
+                fails.append(f"stages.{name} missing")
+                continue
+            status = st.get("status")
+            if status == "MEASURED":
+                if st.get("cold_median_ms") is None:
+                    fails.append(f"stages.{name} MEASURED but cold_median_ms empty")
+            elif status == "ABSENT":
+                if not st.get("reason"):
+                    fails.append(f"stages.{name} ABSENT without reason")
+            else:
+                fails.append(f"stages.{name} status {status!r} not MEASURED/ABSENT")
     return fails
 
 
@@ -1832,6 +1874,7 @@ def build_ledger(
             "version": sys.version,
         },
         "sparse_checkout": {
+            "hcli_on_disk": (REPO / "hcli" / "__main__.py").is_file(),
             "tools_haider_on_disk": (
                 REPO / "tools" / "haider" / "hcli" / "__main__.py"
             ).is_file(),
@@ -1857,6 +1900,8 @@ def build_ledger(
             ),
         },
         "measurements": rows,
+        "stages": _stages(rows),
+        "noop_adversary": _noop_adversary(rows),
         "ranked_removable_ms": ranked,
         "largest_removable_cost": {
             "id": top.get("id"),
@@ -1880,15 +1925,96 @@ def build_ledger(
         "scope_guard": {
             "wrote": [
                 "tools/headless/control_plane_latency.py",
+                "receipts/headless/CONTROL_PLANE_LATENCY_LEDGER.json",
                 "receipts/headless/CONTROL_PLANE_LATENCY.json",
             ],
             "did_not_modify": [
-                "tools/haider/hcli",
                 "receipts/ascent-2026-08-16",
                 "receipts/ascent-2026-08-18",
                 "workspace/campaign",
+                "receipts/headless/BANDWIDTH*",
+                "receipts/headless/PREFILL_KV*",
             ],
         },
+    }
+
+
+def _stages(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
+    by = {r.get("id"): r for r in rows if isinstance(r, dict)}
+    out: Dict[str, Any] = {}
+    for name, rid in STAGE_MAP.items():
+        r = by.get(rid)
+        if not isinstance(r, dict):
+            out[name] = {
+                "status": "ABSENT",
+                "measurement_id": rid,
+                "reason": f"measurement {rid!r} was not collected",
+            }
+            continue
+        cold = (r.get("cold_ms") or {}).get("median")
+        warm = (r.get("warm_ms") or {}).get("median")
+        if not r.get("ok") or cold is None:
+            out[name] = {
+                "status": "ABSENT",
+                "measurement_id": rid,
+                "reason": r.get("error") or r.get("notes") or "measurement not ok / no samples",
+                "command": r.get("command"),
+            }
+            continue
+        out[name] = {
+            "status": "MEASURED",
+            "measurement_id": rid,
+            "label": r.get("label"),
+            "command": r.get("command"),
+            "cold_median_ms": cold,
+            "warm_median_ms": warm,
+            "cold_ms": r.get("cold_ms"),
+            "warm_ms": r.get("warm_ms"),
+            "ok": True,
+        }
+    return out
+
+
+def _noop_adversary(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """S020 §36: would a no-op (`python3 -c pass`) also produce this number?
+
+    Process-level rows must beat the interpreter floor or they are the floor.
+    In-process rows are allowed to be faster than the floor — they are not a spawn.
+    """
+    by = {r.get("id"): r for r in rows if isinstance(r, dict)}
+    floor = ((by.get("python_pass") or {}).get("cold_ms") or {}).get("median")
+    process_level = {"cli_startup", "python_pass"}
+    comparisons = []
+    for r in rows:
+        rid = r.get("id")
+        med = (r.get("cold_ms") or {}).get("median")
+        if med is None or floor is None:
+            continue
+        kind = "process" if rid in process_level else "in_process_or_inner"
+        comparisons.append(
+            {
+                "id": rid,
+                "cold_median_ms": med,
+                "python_pass_floor_ms": floor,
+                "kind": kind,
+                "exceeds_noop_floor": bool(med > floor) if kind == "process" else None,
+                "note": (
+                    "CLI --help is a real process; it must exceed python3 -c pass "
+                    "or the number is the interpreter, not hcli."
+                    if rid == "cli_startup"
+                    else (
+                        "This IS the no-op floor."
+                        if rid == "python_pass"
+                        else "In-process call; a no-op process would be slower, not equal."
+                    )
+                ),
+            }
+        )
+    return {
+        "question": "Would a no-op also produce this number?",
+        "noop": "python3 -c pass (measurement id python_pass)",
+        "floor_ms": floor,
+        "comparisons": comparisons,
     }
 
 
@@ -2002,6 +2128,22 @@ def test_required_ceremony_paths_are_present():
         "runtime_admission",
     ):
         assert key in have, key
+
+
+def test_ledger_filename_and_stages_are_measured():
+    doc = _load_or_build_receipt()
+    assert RECEIPT.is_file()
+    assert RECEIPT.name == "CONTROL_PLANE_LATENCY_LEDGER.json"
+    stages = doc["stages"]
+    for name in STAGE_MAP:
+        assert name in stages, name
+        st = stages[name]
+        assert st["status"] in {"MEASURED", "ABSENT"}, (name, st)
+        if st["status"] == "MEASURED":
+            assert isinstance(st["cold_median_ms"], (int, float)), (name, st)
+            assert st["command"], name
+        else:
+            assert st.get("reason"), (name, st)
 
 
 if __name__ == "__main__":

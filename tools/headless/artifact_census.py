@@ -16,7 +16,6 @@ import argparse
 import hashlib
 import json
 import os
-import subprocess
 import sys
 import time
 from pathlib import Path
@@ -117,31 +116,6 @@ def walk_artifacts(roots, min_bytes):
                     continue
                 seen.add(real)
                 yield full, st
-
-
-def git_head(repo: str) -> str | None:
-    try:
-        return subprocess.run(["git", "-C", repo, "rev-parse", "HEAD"],
-                              capture_output=True, text=True, timeout=20).stdout.strip() or None
-    except Exception:
-        return None
-
-
-def dir_sha(path: str, pattern: str = "*.py") -> dict:
-    """Content identity of a source tree: sorted (relpath, sha256) rolled into one digest."""
-    root = Path(os.path.expanduser(path))
-    if not root.is_dir():
-        return {"present": False}
-    files = sorted(p for p in root.rglob(pattern) if "__pycache__" not in p.parts)
-    roll = hashlib.sha256()
-    per = {}
-    for p in files:
-        d = hashlib.sha256(p.read_bytes()).hexdigest()
-        rel = str(p.relative_to(root))
-        per[rel] = d
-        roll.update(rel.encode()); roll.update(d.encode())
-    return {"present": True, "root": str(root), "file_count": len(files),
-            "tree_sha256": roll.hexdigest(), "files": per}
 
 
 def main() -> int:

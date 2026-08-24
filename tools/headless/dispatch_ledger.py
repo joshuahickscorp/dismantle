@@ -810,10 +810,21 @@ def fusion_candidates(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 def occupancy_snapshot() -> dict[str, Any]:
-    p = subprocess.run(
-        ["ps", "-eo", "pid,rss,command"],
-        capture_output=True, text=True, timeout=10,
-    )
+    try:
+        p = subprocess.run(
+            ["ps", "-eo", "pid,rss,command"],
+            capture_output=True, text=True, timeout=10,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return {
+            "ps_matches": [],
+            "loaded_a_second_27b": False,
+            "ps_ok": False,
+            "note": (
+                "A second Qwen3.8-27B would show RSS in the 10+ GiB class and is refused. "
+                f"ps occupancy ABSENT this process: {type(exc).__name__}: {exc}"
+            ),
+        }
     lines = []
     second = False
     for line in p.stdout.splitlines():

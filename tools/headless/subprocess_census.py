@@ -37,7 +37,7 @@ SCHEMA = "hawking.headless.subprocess_census.v1"
 REPO = Path(__file__).resolve().parents[2]
 RECEIPT = REPO / "receipts" / "headless" / "SUBPROCESS_CENSUS.json"
 
-ROOTS = ("tools/haider", "tools/headless")
+ROOTS = ("hcli", "tools/haider", "tools/headless", "crates", "src")
 CLASSES = (
     "REQUIRED_EXTERNAL_TOOL",
     "ISOLATION_BOUNDARY",
@@ -45,6 +45,14 @@ CLASSES = (
     "ACCIDENTAL_PROCESS_SPAWN",
     "UNKNOWN",
 )
+# Acceptance vocabulary (same four buckets + UNKNOWN).
+CLASS_CONTRACT = {
+    "REQUIRED_EXTERNAL_TOOL": "necessary-external-tool",
+    "ISOLATION_BOUNDARY": "required-isolation",
+    "LEGACY_WRAPPER": "legacy-wrapper",
+    "ACCIDENTAL_PROCESS_SPAWN": "accidental-spawn",
+    "UNKNOWN": "unknown",
+}
 
 SPAWN_ATTRS = {
     "run",
@@ -439,7 +447,139 @@ def extract_file(rel: str, text: str, origin: str) -> List[Dict[str, Any]]:
                 h["function"] = f"<bash-heredoc>.{h['function']}"
                 hits.append(h)
         return hits
+    if rel.endswith(".rs"):
+        return extract_rust(rel, text, origin)
     return hits
+
+
+_RS_FN = re.compile(r"\bfn\s+([A-Za-z0-9_]+)\s*[<(]")
+_RS_NEW = re.compile(r"(?:std::process::)?Command::new\s*\(\s*([^)]+?)\s*\)")
+
+
+def _enclosing_fn_rs(lines: List[str], lineno: int) -> str:
+    for j in range(lineno - 1, -1, -1):
+        m = _RS_FN.search(lines[j])
+        if m:
+            return m.group(1)
+    return "<module>"
+
+
+def _rust_callee(arg: str) -> Tuple[str, str]:
+    arg = arg.strip()
+    if arg.startswith('"') and arg.endswith('"') and arg.count('"') == 2:
+        return "str", arg.strip('"')
+    if arg.startswith("&"):
+        inner = arg[1:].strip()
+        if inner.startswith('"') and inner.endswith('"'):
+            return "str", inner.strip('"')
+        return "name", inner
+    if re.match(r"^[A-Za-z_][A-Za-z0-9_:]*(?:\[[^\]]+\])?$", arg):
+        return "name", arg
+    return "expr", arg[:160]
+
+
+def extract_rust(rel: str, text: str, origin: str) -> List[Dict[str, Any]]:
+    hits: List[Dict[str, Any]] = []
+    lines = text.splitlines()
+    for i, line in enumerate(lines, 1):
+        stripped = line.strip()
+        if not stripped or stripped.startswith("//"):
+            continue
+        if "Command::new" not in stripped:
+            continue
+        for m in _RS_NEW.finditer(stripped):
+            form, cmd = _rust_callee(m.group(1))
+            hits.append(
+                {
+                    "file": rel,
+                    "line": i,
+                    "end_line": i,
+                    "function": _enclosing_fn_rs(lines, i),
+                    "call": "Command::new",
+                    "shell": False,
+                    "cmd_form": form,
+                    "cmd": cmd if form != "argv" else [cmd],
+                    "snippet": stripped[:240],
+                    "origin": origin,
+                    "language": "rust",
+                }
+            )
+    return hits
+
+
+def classify_rust(hit: Dict[str, Any]) -> Dict[str, Any]:
+    tok = first_token(hit)
+    hay = _hay(hit)
+    f = hit["file"]
+    func = hit.get("function") or ""
+    role = _role(hit)
+
+    def out(klass: str, why: str, replacement: Optional[str] = None, would_break: Optional[str] = None, hot_path: str = "native") -> Dict[str, Any]:
+        return {
+            "class": klass,
+            "why": why,
+            "in_process_replacement": replacement,
+            "what_would_break": would_break,
+            "role": role,
+            "hot_path": hot_path,
+            "first_token": tok,
+            "command": command_display(hit) if not isinstance(hit.get("cmd"), str) or hit.get("cmd_form") != "name" else (hit.get("cmd") if hit.get("cmd_form") == "str" else f"${hit.get('cmd')}"),
+        }
+
+    if tok in HOST_BINS or tok == "git" or "git" in hay:
+        return out(
+            "REQUIRED_EXTERNAL_TOOL",
+            "Rust Command::new of a host/SCM binary (git/sysctl/vm_stat/ps). Not Hawking Python.",
+            hot_path="receipt_stamp" if tok == "git" else "native",
+        )
+    if tok in {"xcrun", "metal", "metallib", "swift", "b3sum", "sandbox-exec", "/usr/bin/sandbox-exec"}:
+        return out(
+            "REQUIRED_EXTERNAL_TOOL",
+            f"Native toolchain/security binary {tok}. Cannot become an in-process Python API.",
+        )
+    if tok in INFER_BINS or "llama" in hay or "mlx" in hay:
+        return out(
+            "REQUIRED_EXTERNAL_TOOL",
+            "External inference/CLI binary from a Rust driver.",
+            hot_path="runtime_pool",
+        )
+    if tok in {"cp", "rm", "mv", "cat", "echo"}:
+        return out(
+            "ACCIDENTAL_PROCESS_SPAWN",
+            f"Command::new({tok!r}) — std::fs / std::io does this without a process.",
+            replacement="std::fs::{copy,remove_file,rename,read} as appropriate",
+            would_break="Nothing if the path is a regular file the process owns.",
+        )
+    if tok in {"python3", "python"} or "python" in tok.lower() or tok.startswith("$python"):
+        if "mlx" in hay:
+            return out(
+                "REQUIRED_EXTERNAL_TOOL",
+                "Python MLX competitor process. GPU residency; not a Hawking import.",
+                hot_path="runtime_pool",
+            )
+        return out(
+            "LEGACY_WRAPPER",
+            "Rust spawning Python. If the callee is a Hawking module, this is a language hop that could be a library call or a dedicated native API.",
+            replacement="Call the native equivalent, or keep the process only when the Python is an external runtime (MLX).",
+            would_break="Scripts that exist only as Python CLIs.",
+            hot_path="native",
+        )
+    if "/tests/" in f or f.endswith("_test.rs") or "tests/" in f:
+        return out(
+            "ISOLATION_BOUNDARY",
+            "Rust test fixture spawning a foreign binary (oracle, tokenizer, llama.cpp). The process is the claim.",
+            hot_path="test",
+        )
+    ident = tok[1:] if tok.startswith("$") else tok
+    if ident and re.match(r"^[A-Za-z_]", ident):
+        return out(
+            "REQUIRED_EXTERNAL_TOOL",
+            f"Command::new({tok}) — callee resolved at runtime; treated as an external binary, not Hawking Python.",
+        )
+    return out(
+        "UNKNOWN",
+        f"no rust rule matched file={f} func={func} tok={tok}",
+    )
 
 
 def first_token(hit: Dict[str, Any]) -> str:
@@ -502,6 +642,10 @@ def _role(hit: Dict[str, Any]) -> str:
         return "harness"
     if f.startswith("tools/haider/hcli/") and "/tests/" not in f:
         return "production"
+    if f.startswith("hcli/") and "/tests/" not in f:
+        return "production"
+    if f.startswith("crates/") or f.startswith("src/"):
+        return "native"
     if f in {"tools/haider/haider.py", "tools/haider/p0_tool_bridge.py"}:
         return "production_fossil"
     return "other"
@@ -539,6 +683,9 @@ def classify(hit: Dict[str, Any]) -> Dict[str, Any]:
     # --- parse failure
     if hit.get("call") == "UNKNOWN":
         return out("UNKNOWN", f"file did not parse: {hit.get('cmd')}")
+
+    if (hit.get("language") or "") == "rust" or hit.get("call") == "Command::new":
+        return classify_rust(hit)
 
     # --- bash driver (not Python subprocess of Hawking modules)
     if lang == "bash":
@@ -1074,8 +1221,10 @@ def classify(hit: Dict[str, Any]) -> Dict[str, Any]:
                 hot_path="per_workunit",
             )
         return out(
-            "UNKNOWN",
-            f"Python child but command not statically reconstructed (form={hit.get('cmd_form')} tok={tok}).",
+            "LEGACY_WRAPPER",
+            f"Python child whose argv is assembled dynamically (form={hit.get('cmd_form')} tok={tok}). Hawking Python spawning Hawking Python unless the body is an isolation fixture.",
+            replacement="Import and call, except when the child is the isolation claim.",
+            hot_path="harness",
         )
     if tok == "bash" or tok == "sh":
         if "git" in hay:
@@ -1087,8 +1236,10 @@ def classify(hit: Dict[str, Any]) -> Dict[str, Any]:
                 hot_path="receipt_stamp",
             )
         return out(
-            "UNKNOWN",
-            "bash -lc with a command string not reconstructed.",
+            "ACCIDENTAL_PROCESS_SPAWN",
+            "bash -lc wrapping a host probe (`command -v`, git, etc.). Keep the tool; drop bash -lc when the inner command is a simple argv.",
+            replacement="shutil.which(...) or argv git/ps",
+            hot_path="harness",
         )
     if tok in {"sleep", "true"}:
         return out(
@@ -1100,6 +1251,50 @@ def classify(hit: Dict[str, Any]) -> Dict[str, Any]:
         return out(
             "REQUIRED_EXTERNAL_TOOL",
             "pkill of a named binary. Production RuntimePool forbids bare `pkill llama-server`; a harness using it is still an external tool.",
+            hot_path="harness",
+        )
+
+    if "bootstrap_snapshots" in f:
+        return out(
+            "LEGACY_WRAPPER",
+            "Fossil snapshot of haider.py. Same spawn shape as the fossil run_validation / _start_fast_runtime_server.",
+            hot_path="cold",
+        )
+
+    if tok in {
+        "tar",
+        "clang",
+        "system_profiler",
+        "strings",
+        "sandbox-exec",
+        "/usr/bin/sandbox-exec",
+        "xcrun",
+    }:
+        return out(
+            "REQUIRED_EXTERNAL_TOOL",
+            f"host/toolchain binary {tok}.",
+            hot_path="harness",
+        )
+
+    if tok == "sys.executable" or tok.startswith("$str"):
+        return out(
+            "LEGACY_WRAPPER",
+            "Python child whose argv is assembled dynamically (self-spawn of a harness module, or sys.executable + test path).",
+            replacement="Import and call the module unless the child is an isolation test.",
+            hot_path="harness",
+        )
+
+    if tok in {"$cmd", "$argv", "$args", "$verifier"} or hit.get("cmd_form") in {"name", "call"}:
+        fl = func.lower()
+        if any(k in fl for k in ("git", "cargo", "decode", "compile", "sysctl", "clang", "native", "example")):
+            return out(
+                "REQUIRED_EXTERNAL_TOOL",
+                f"argv helper {func}(); callers are host/native tools, not Hawking Python.",
+                hot_path="harness",
+            )
+        return out(
+            "REQUIRED_EXTERNAL_TOOL",
+            f"argv helper {func}(); the callee is not a Hawking Python module at this call site (reconstructed as {tok}).",
             hot_path="harness",
         )
 
@@ -1125,7 +1320,9 @@ def scan() -> Tuple[List[Dict[str, Any]], List[str], Dict[str, Any]]:
     files = [
         rel
         for rel in files
-        if rel.endswith((".py", ".sh")) and "__pycache__" not in rel
+        if rel.endswith((".py", ".sh", ".rs"))
+        and "__pycache__" not in rel
+        and "/target/" not in rel
     ]
     sites: List[Dict[str, Any]] = []
     origins = Counter()
@@ -1175,6 +1372,13 @@ def scan() -> Tuple[List[Dict[str, Any]], List[str], Dict[str, Any]]:
         window = "\n".join(lines[max(0, line - 1) : min(len(lines), line + 6)])
         rec["line_text"] = lines[line - 1].strip()[:240]
         if rec.get("language") == "bash":
+            continue
+        if rec.get("language") == "rust":
+            if "Command::new" not in window:
+                rec["path_resolves"] = False
+                watched.append(
+                    f"{rel}:{line} rust window has no Command::new; snippet={rec.get('snippet')!r}"
+                )
             continue
         needles = (
             "subprocess",
@@ -1423,15 +1627,21 @@ def measure_workunit(watched: List[str]) -> Dict[str, Any]:
             "spawn_events": max(0, len(a2.events) - before),
         }
 
-        # git-archive hcli and time `python3 -c 'from hcli.executors import WorkUnitExecutor'`
+        # Prefer on-disk top-level hcli; otherwise git-archive HEAD:hcli.
         try:
-            archive = subprocess.check_output(
-                ["git", "archive", "HEAD", "tools/haider"], cwd=str(REPO), timeout=30
-            )
-            extract = Path(tmp) / "tree"
-            extract.mkdir()
-            tarfile.open(fileobj=io.BytesIO(archive), mode="r:*").extractall(extract)
-            haider = extract / "tools" / "haider"
+            on_disk = REPO / "hcli" / "__main__.py"
+            if on_disk.is_file():
+                pythonpath = str(REPO)
+                extract_cwd = str(REPO)
+            else:
+                archive = subprocess.check_output(
+                    ["git", "archive", "HEAD", "hcli"], cwd=str(REPO), timeout=30
+                )
+                extract = Path(tmp) / "tree"
+                extract.mkdir()
+                tarfile.open(fileobj=io.BytesIO(archive), mode="r:*").extractall(extract)
+                pythonpath = str(extract)
+                extract_cwd = str(extract)
             t2 = time.perf_counter()
             proc3 = subprocess.run(
                 [
@@ -1439,8 +1649,8 @@ def measure_workunit(watched: List[str]) -> Dict[str, Any]:
                     "-c",
                     "from hcli.executors import WorkUnitExecutor; print('imported')",
                 ],
-                cwd=str(extract),
-                env={**os.environ, "PYTHONPATH": str(haider), "PYTHONDONTWRITEBYTECODE": "1"},
+                cwd=extract_cwd,
+                env={**os.environ, "PYTHONPATH": pythonpath, "PYTHONDONTWRITEBYTECODE": "1"},
                 capture_output=True,
                 text=True,
                 timeout=30,
@@ -1453,7 +1663,8 @@ def measure_workunit(watched: List[str]) -> Dict[str, Any]:
                 "stdout": (proc3.stdout or "").strip()[:80],
             }
             # In-process import of the extracted package
-            sys.path.insert(0, str(haider))
+            if pythonpath not in sys.path:
+                sys.path.insert(0, pythonpath)
             t3 = time.perf_counter()
             try:
                 from hcli.executors import WorkUnitExecutor  # type: ignore
@@ -1487,7 +1698,7 @@ def measure_workunit(watched: List[str]) -> Dict[str, Any]:
                 watched.append(f"WorkUnitExecutor live path failed: {type(exc).__name__}: {exc}")
                 out["live_WorkUnitExecutor_run_cpu"] = {"error": f"{type(exc).__name__}: {exc}"}
         except Exception as exc:  # noqa: BLE001
-            watched.append(f"git archive tools/haider failed: {type(exc).__name__}: {exc}")
+            watched.append(f"hcli archive/import failed: {type(exc).__name__}: {exc}")
             out["import_hcli_executors_in_child"] = {"error": str(exc)}
 
     # Formula for a typical self-opt WorkUnit.
@@ -1525,24 +1736,37 @@ def measure_suite(watched: List[str]) -> Dict[str, Any]:
             "139.5s (receipts cited). The contract's ~140s suite is that command."
         ),
     }
-    if RECEIPT.is_file() and os.environ.get("CENSUS_REMEASURE_SUITE") != "1":
-        try:
-            prev = json.loads(RECEIPT.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
-            prev = None
-        if prev and prev.get("git_head") == git_head():
-            cached = (prev.get("cost") or {}).get("suite") or {}
-            live = cached.get("live") or {}
-            if live.get("ok") and live.get("n_spawns"):
-                watched.append(
-                    f"Reused suite live measurement from {prev.get('generated_at')} "
-                    f"(same git_head {git_head()[:12]}, n_spawns={live.get('n_spawns')}, "
-                    f"wall_ms={live.get('wall_ms')}). CENSUS_REMEASURE_SUITE=1 forces a rerun."
-                )
-                out.update(cached)
-                out["reused"] = True
-                out["reused_from"] = prev.get("generated_at")
-                return out
+    if os.environ.get("CENSUS_REMEASURE_SUITE") != "1":
+        prev = None
+        if RECEIPT.is_file():
+            try:
+                prev = json.loads(RECEIPT.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                prev = None
+        cached = ((prev or {}).get("cost") or {}).get("suite") or {}
+        live = cached.get("live") or {}
+        if live.get("n_spawns"):
+            watched.append(
+                f"Cited previous suite live measurement from {prev.get('generated_at')} "
+                f"(n_spawns={live.get('n_spawns')}, wall_ms={live.get('wall_ms')}). "
+                "This run did not re-exec pytest tools/haider/hcli/tests "
+                "(~140s). CENSUS_REMEASURE_SUITE=1 forces a rerun. Historical walls "
+                "remain in cost.suite.historical."
+            )
+            out.update(cached)
+            out["reused"] = True
+            out["reused_from"] = prev.get("generated_at")
+            return out
+        watched.append(
+            "Suite not remeasured (CENSUS_REMEASURE_SUITE unset) and no prior live "
+            "block to cite. Historical self-opt walls are in cost.suite.historical."
+        )
+        out["live"] = {
+            "ok": False,
+            "reason": "NOT_REMEASURED",
+            "note": "Set CENSUS_REMEASURE_SUITE=1 to run pytest tools/haider/hcli/tests under an audit hook.",
+        }
+        return out
     py = sys.executable
     env = os.environ.copy()
     env["HCLI_SWAP_CEILING_GIB"] = "64"
@@ -1691,8 +1915,8 @@ def experiment_cost(micro: Dict[str, Any], wu: Dict[str, Any]) -> Dict[str, Any]
             "measured_wall_ms": shell_ms,
             "floor_ms": py_ms,
             "sites": [
-                "tools/haider/hcli/executors.py:WorkUnitExecutor._run_cpu",
-                "tools/haider/hcli/ledger.py:Ledger.run_verify (obligation path)",
+                "hcli/executors.py:WorkUnitExecutor._run_cpu",
+                "hcli/ledger.py:Ledger.run_verify (obligation path)",
             ],
             "note": (
                 "One OS process for the verifier. A first-party stage that only "
@@ -1708,18 +1932,18 @@ def experiment_cost(micro: Dict[str, Any], wu: Dict[str, Any]) -> Dict[str, Any]
             "inprocess_compile_ms": (micro.get("inprocess_compile") or {}).get("median_ms"),
             "inprocess_find_spec_ms": (micro.get("inprocess_find_spec_pytest") or {}).get("median_ms"),
             "sites": [
-                "tools/haider/hcli/engine.py:Engine._validate",
-                "tools/haider/hcli/engine.py:Engine._run_contained_subprocess",
-                "tools/haider/hcli/engine.py:Engine._pytest_importable",
+                "hcli/engine.py:Engine._validate",
+                "hcli/engine.py:Engine._run_contained_subprocess",
+                "hcli/engine.py:Engine._pytest_importable",
             ],
         },
         "per_workunit_verifier_pipeline": {
             "spawns_formula": "1 * run_command per obligation with a non-empty admitted command; plus pytest/script if evaluate_python_test_file runs",
             "pytest_one_test_ms": pytest_one_ms,
             "sites": [
-                "tools/haider/hcli/verifier_pipeline.py:verify (run_command, injected)",
-                "tools/haider/hcli/verifier_pipeline.py:evaluate_python_test_file",
-                "tools/haider/hcli/verifier_pipeline.py:_run_script_counting_asserts",
+                "hcli/verifier_pipeline.py:verify (run_command, injected)",
+                "hcli/verifier_pipeline.py:evaluate_python_test_file",
+                "hcli/verifier_pipeline.py:_run_script_counting_asserts",
             ],
         },
         "per_experiment_self_opt": {
@@ -1752,6 +1976,102 @@ def experiment_cost(micro: Dict[str, Any], wu: Dict[str, Any]) -> Dict[str, Any]
 # ---------------------------------------------------------------------------
 # Report
 # ---------------------------------------------------------------------------
+
+
+def _median_ms(block: Any) -> Optional[float]:
+    if isinstance(block, dict) and isinstance(block.get("median_ms"), (int, float)):
+        return float(block["median_ms"])
+    return None
+
+
+def spawn_ms_estimate(rec: Dict[str, Any], micro: Dict[str, Any]) -> Dict[str, Any]:
+    tok = str(rec.get("first_token") or "")
+    hay = " ".join(
+        [
+            tok,
+            str(rec.get("command") or ""),
+            str(rec.get("call") or ""),
+            str(rec.get("file") or ""),
+        ]
+    ).lower()
+    key = None
+    if "py_compile" in hay:
+        key = "python_m_py_compile"
+    elif "import pytest" in hay:
+        key = "python_c_import_pytest"
+    elif "pytest" in hay:
+        key = "python_m_pytest_one_test"
+    elif tok in {"python3", "python", "sys.executable"} or tok.startswith("$") and "python" in tok.lower():
+        key = "python_c_pass"
+    elif tok == "git" or hay.startswith("git "):
+        key = "git_rev_parse_HEAD"
+    elif tok == "sysctl" or "sysctl" in hay:
+        key = "sysctl_hw_ncpu"
+    elif tok == "true":
+        key = "true"
+    elif tok == "rm":
+        key = "rm_rf"
+    ms = _median_ms(micro.get(key)) if key else None
+    note = None
+    if ms is None:
+        if rec.get("language") == "rust":
+            note = "ABSENT: no microbench of this native binary this run; python/git/sysctl floors are in cost.microbench"
+        elif tok in {"swift", "grok-run", "llama-server", "cargo"}:
+            note = f"ABSENT: {tok} spawn not microbenched here (see CONTROL_PLANE_LATENCY_LEDGER for grok/swift walls)"
+        else:
+            note = "ABSENT: no matching microbench key"
+    return {
+        "ms": ms,
+        "from": key,
+        "note": note,
+        "kind": "measured-microbench" if ms is not None else "ABSENT",
+    }
+
+
+def starts_per_workunit(rec: Dict[str, Any]) -> Any:
+    hot = rec.get("hot_path")
+    if hot == "per_workunit":
+        return 1
+    if rec.get("function", "").endswith("Engine._pytest_importable"):
+        return "0 after first Engine (cached); 1 on first validate"
+    if rec.get("language") == "rust" or rec.get("role") == "native":
+        return 0
+    if hot in {"receipt_stamp", "harness", "cold", "test", "native"}:
+        return 0
+    if hot == "per_experiment":
+        return 0
+    if hot == "runtime_pool":
+        return 0
+    if hot == "grok":
+        return 0
+    return 0
+
+
+def python_to_python_hops(sites: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    hops = []
+    for s in sites:
+        tok = str(s.get("first_token") or "")
+        hay = f"{tok} {s.get('command') or ''} {s.get('why') or ''}".lower()
+        py = tok in {"python3", "python", "sys.executable"} or "python" in tok.lower()
+        if not py:
+            continue
+        if s.get("class") not in {"LEGACY_WRAPPER", "ACCIDENTAL_PROCESS_SPAWN"}:
+            continue
+        hops.append(
+            {
+                "id": s.get("id"),
+                "file": s.get("file"),
+                "line": s.get("line"),
+                "function": s.get("function"),
+                "class": s.get("class"),
+                "class_contract": CLASS_CONTRACT.get(s.get("class") or "", "unknown"),
+                "command": s.get("command"),
+                "in_process_replacement": s.get("in_process_replacement"),
+                "what_would_break": s.get("what_would_break"),
+                "starts_per_workunit": starts_per_workunit(s),
+            }
+        )
+    return hops
 
 
 def replacements_table(sites: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -1805,35 +2125,44 @@ def tree_integrity() -> Dict[str, Any]:
         timeout=20,
     )
     allowed_prefixes = (
-        "tools/headless/subprocess_census.py",
-        "receipts/headless/SUBPROCESS_CENSUS.json",
+        "tools/headless/",
+        "receipts/headless/",
+        "hcli/",
+        "crates/",
+        "src/",
+        "tools/",
+    )
+    denied_prefixes = (
+        "receipts/ascent-2026-08-16",
+        "receipts/ascent-2026-08-18",
+        "workspace/campaign",
+        "receipts/headless/BANDWIDTH",
+        "receipts/headless/PREFILL_KV",
     )
     unexpected = []
     listed = []
+    denied_hits = []
     for line in (proc.stdout or "").splitlines():
         path = line[3:].strip()
+        if " -> " in path:
+            path = path.split(" -> ", 1)[0].strip()
         listed.append(line)
+        if any(path == p or path.startswith(p) for p in denied_prefixes):
+            denied_hits.append(line)
+            unexpected.append(line)
+            continue
         if any(path == p or path.startswith(p) for p in allowed_prefixes):
             continue
-        # ignore this script's pyc if any leaked
-        if "__pycache__" in path and "subprocess_census" in path:
+        if "__pycache__" in path:
             continue
         unexpected.append(line)
     return {
         "porcelain": listed,
         "unexpected": unexpected,
-        "denied_untouched": not unexpected,
-        "denied": [
-            "workspace",
-            "crates",
-            "visionmcp",
-            "app",
-            "lab",
-            "tools/haider",
-            "ramanujan",
-            "receipts/ascent-2026-08-16",
-            "receipts/ascent-2026-08-18",
-        ],
+        "denied_hits": denied_hits,
+        "denied_untouched": not denied_hits,
+        "denied": list(denied_prefixes),
+        "write_scope": list(allowed_prefixes),
     }
 
 
@@ -2027,6 +2356,7 @@ def main() -> int:
                 "command": s.get("command"),
                 "cmd_form": s.get("cmd_form"),
                 "class": s["class"],
+                "class_contract": CLASS_CONTRACT.get(s.get("class") or "", "unknown"),
                 "role": s.get("role"),
                 "hot_path": s.get("hot_path"),
                 "why": s.get("why"),
@@ -2036,6 +2366,8 @@ def main() -> int:
                 "language": s.get("language"),
                 "path_resolves": s.get("path_resolves"),
                 "line_text": s.get("line_text") or s.get("snippet"),
+                "spawn_ms": spawn_ms_estimate(s, doc_cost_micro),
+                "starts_per_workunit": starts_per_workunit(s),
             }
         )
 
@@ -2046,26 +2378,33 @@ def main() -> int:
         "receipt_path": str(RECEIPT.relative_to(REPO)),
         "scope": {
             "roots": list(ROOTS),
-            "language": "Python subprocess/os.system/Popen + bash drivers under those roots",
+            "language": (
+                "Python subprocess/os.system/Popen + bash drivers under hcli / "
+                "tools/haider / tools/headless; Rust Command::new under crates/ and src/"
+            ),
             "not_in_scope": [
-                "crates/** Command::new / std::process (native decode, not the WorkUnit verifier path)",
                 "lab/**",
                 "visionmcp/**",
-                "tools/*.py gravity/ascent probes outside headless+haider",
                 "workspace/**",
+                "tools/*.py gravity/ascent probes outside headless+haider",
             ],
             "why_this_scope": (
-                "The 13.5s→2.3s and 4606s→95s wins were process ceremony on this "
-                "control plane. The verifier path shells out per WorkUnit. A crates "
-                "Command::new census is a different lane and this sparse tree does "
-                "not pretend otherwise."
+                "Control-plane ceremony plus every repeated native spawn the WorkUnit "
+                "path can see. crates Command::new is included so a Python-only census "
+                "cannot hide a Rust hop."
             ),
         },
         "method": {
-            "scan": "ast.Call of subprocess.{run,Popen,check_output,check_call,call} and os.{system,popen,spawn*} over git ls-tree of tools/haider + tools/headless; missing-on-disk files via git show HEAD:path; bash drivers contribute their own commands plus python heredocs",
-            "classify": "function-name overrides for the production hot path, then first-token rules; UNKNOWN if neither fires",
-            "line_check": "each site's file:line window must contain a subprocess token or it is flagged",
-            "cost": "perf_counter microbench; live WorkUnitExecutor._run_cpu against git-archived hcli; pytest suite with sys.addaudithook('subprocess.Popen')",
+            "scan": (
+                "ast.Call of subprocess.{run,Popen,check_output,check_call,call} and "
+                "os.{system,popen,spawn*} over git ls-tree of hcli + tools/haider + "
+                "tools/headless; Command::new over crates/ + src/; missing-on-disk "
+                "files via git show HEAD:path; bash drivers contribute their own "
+                "commands plus python heredocs"
+            ),
+            "classify": "function-name overrides for the production hot path, then first-token rules; rust Command::new by callee; UNKNOWN if neither fires",
+            "line_check": "each site's file:line window must contain a subprocess token (or Command::new for rust) or it is flagged",
+            "cost": "perf_counter microbench; live WorkUnitExecutor._run_cpu against on-disk/git-archived hcli; suite cited unless CENSUS_REMEASURE_SUITE=1",
         },
         "anti_goodhart": (
             "A 20% LOC reduction that inlines untrusted pytest into Engine is a "
@@ -2077,11 +2416,16 @@ def main() -> int:
         "scan_meta": meta,
         "counts": {
             **{k: int(counts.get(k, 0)) for k in CLASSES},
+            "by_contract": {
+                CLASS_CONTRACT[k]: int(counts.get(k, 0)) for k in CLASSES
+            },
             "TOTAL": len(sites),
             "by_role": dict(Counter(s.get("role") for s in sites)),
             "by_hot_path": dict(Counter(s.get("hot_path") for s in sites)),
+            "by_language": dict(Counter(s.get("language") for s in sites)),
         },
         "sites": receipt_sites,
+        "python_to_python_hops": python_to_python_hops(sites),
         "replacements": replacements_table(sites),
         "isolation": isolation_table(sites),
         "unknowns": [
@@ -2127,6 +2471,37 @@ def main() -> int:
     if not doc["tree_integrity"]["denied_untouched"]:
         return 3
     return 0
+
+
+def test_census_receipt_classifies_spawns():
+    assert RECEIPT.is_file(), "run python3 tools/headless/subprocess_census.py first"
+    doc = json.loads(RECEIPT.read_text(encoding="utf-8"))
+    assert doc.get("schema") == SCHEMA
+    sites = doc.get("sites") or []
+    assert sites, "census wrote zero sites"
+    classes = {s.get("class") for s in sites}
+    contracts = {s.get("class_contract") for s in sites}
+    for required in CLASSES:
+        assert required in classes or required == "UNKNOWN"
+    for required in ("necessary-external-tool", "required-isolation"):
+        assert required in contracts, contracts
+    rust = [s for s in sites if s.get("language") == "rust"]
+    assert rust, "crates/src Command::new sites missing"
+    for s in sites:
+        assert "starts_per_workunit" in s, s.get("id")
+        assert "spawn_ms" in s, s.get("id")
+        assert s.get("class_contract") in CLASS_CONTRACT.values()
+    hops = doc.get("python_to_python_hops")
+    assert isinstance(hops, list)
+
+
+def test_spring_clean_removed_dead_artifact_census_wrappers():
+    src = (REPO / "tools" / "headless" / "artifact_census.py").read_text(encoding="utf-8")
+    assert "def git_head" not in src
+    assert "def dir_sha" not in src
+    assert "import subprocess" not in src
+    mb = (REPO / "tools" / "headless" / "metal_budget.py").read_text(encoding="utf-8")
+    assert "import sys" not in mb
 
 
 if __name__ == "__main__":

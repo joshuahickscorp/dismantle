@@ -161,6 +161,68 @@ pub fn qwen38_fused_dispatches_per_token_ex(
 pub const QWEN38_BA_DELTA_SAVED_PER_TOKEN: u64 = QWEN38_DELTANET_LAYERS as u64;
 pub const QWEN38_BA_DELTA_KERNEL: &str = "qwen38_gated_delta_decode_vi_simd_ba";
 pub const QWEN38_BA_DELTA_BAD_KERNEL: &str = "qwen38_gated_delta_decode_vi_simd_ba_plain";
+pub const QWEN38_DN_STATE_F4_KERNEL: &str = "qwen38_gated_delta_decode_vi_simd_ba_f4";
+pub const QWEN38_DN_STATE_TG32_KERNEL: &str = "qwen38_gated_delta_decode_vi_simd_ba_tg32";
+/// 128 ki × 32 vi tile + 16-float simd partials (change 2).
+pub const QWEN38_DN_STATE_TG32_BYTES: u64 = (128 * 32 + 16) * 4;
+
+/// Gated-delta state-update kernel. Default is the N025 fused ba sibling.
+/// `WidenF4` packs 4 vi as float4. `CoalesceTg32` stages a 128×32 state
+/// tile in threadgroup memory and loads it coalesced. Production stays
+/// Baseline unless a child sets the flag.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Qwen38DeltaNetStateKernel {
+    Baseline,
+    WidenF4,
+    CoalesceTg32,
+}
+
+impl Qwen38DeltaNetStateKernel {
+    pub fn fused_ba_name(self, bad: bool) -> &'static str {
+        if bad {
+            return QWEN38_BA_DELTA_BAD_KERNEL;
+        }
+        match self {
+            Self::Baseline => QWEN38_BA_DELTA_KERNEL,
+            Self::WidenF4 => QWEN38_DN_STATE_F4_KERNEL,
+            Self::CoalesceTg32 => QWEN38_DN_STATE_TG32_KERNEL,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Baseline => "baseline",
+            Self::WidenF4 => "widen_f4",
+            Self::CoalesceTg32 => "coalesce_tg32",
+        }
+    }
+
+    pub fn from_env() -> Self {
+        match std::env::var("HAWKING_QWEN38_DN_STATE") {
+            Ok(v) => match v.trim().to_ascii_lowercase().as_str() {
+                "f4" | "widen" | "widen_f4" => Self::WidenF4,
+                "tg32" | "coalesce" | "coalesce_tg32" => Self::CoalesceTg32,
+                _ => Self::Baseline,
+            },
+            Err(_) => Self::Baseline,
+        }
+    }
+}
+
+/// Recurrent-state + rec_out parity of a candidate gated-delta kernel
+/// against `qwen38_gated_delta_decode_vi_simd_ba` on one layer.
+#[derive(Clone, Debug)]
+pub struct Qwen38DeltaNetStateParity {
+    pub kernel: &'static str,
+    pub layer: usize,
+    pub max_abs_diff_rec_out: f32,
+    pub max_abs_diff_rec_state: f32,
+    pub baseline_gpu_ns: Option<u64>,
+    pub candidate_gpu_ns: Option<u64>,
+    pub baseline_dispatches: u64,
+    pub candidate_dispatches: u64,
+    pub dense_w_materialized: u64,
+}
 
 /// `HAWKING_QWEN38_FUSE_BA_DELTA=1` honest formula; `=bad` identity decay/beta.
 pub fn qwen38_fuse_ba_delta_from_env() -> (bool, bool) {
@@ -1937,6 +1999,8 @@ mod device {
         pub fuse_ba_delta: bool,
         /// BAD control: fused kernel uses identity decay/beta.
         pub fuse_ba_delta_bad: bool,
+        /// Gated-delta state kernel. Default Baseline (N025 vi_simd_ba).
+        pub dn_state_kernel: Qwen38DeltaNetStateKernel,
         /// Affine2 GEMV geometry. Default tpr64 (incumbent / no-op control).
         pub affine2_geo: Affine2Geo,
         /// GEMV weights reconstructed to dense float. Copied from the catalog
@@ -1994,6 +2058,7 @@ mod device {
                 fuse_add_rmsnorm_bad: qwen38_fuse_add_rmsnorm_from_env().1,
                 fuse_ba_delta: qwen38_fuse_ba_delta_from_env().0,
                 fuse_ba_delta_bad: qwen38_fuse_ba_delta_from_env().1,
+                dn_state_kernel: Qwen38DeltaNetStateKernel::from_env(),
                 affine2_geo: Affine2Geo::from_env(),
                 dense_w_materialized,
                 q2f_force_serial: false,
@@ -3170,12 +3235,17 @@ mod device {
             let vd = layout.value_head_dim as u32;
             let a_log = self.f32(&qwen38_layer_name(layer, "linear_attn.A_log"))?;
             let dt_bias = self.f32(&qwen38_layer_name(layer, "linear_attn.dt_bias"))?;
-            let kernel = if self.fuse_ba_delta_bad {
-                QWEN38_BA_DELTA_BAD_KERNEL
+            let kernel = self.dn_state_kernel.fused_ba_name(self.fuse_ba_delta_bad);
+            let (grid_z, tg_bytes) = if self.fuse_ba_delta_bad {
+                (vd, 512u64)
             } else {
-                QWEN38_BA_DELTA_KERNEL
+                match self.dn_state_kernel {
+                    Qwen38DeltaNetStateKernel::WidenF4 => (vd / 4, 512u64),
+                    Qwen38DeltaNetStateKernel::CoalesceTg32 => (vd / 32, QWEN38_DN_STATE_TG32_BYTES),
+                    Qwen38DeltaNetStateKernel::Baseline => (vd, 512u64),
+                }
             };
-            tcb.dispatch_threads(kernel, (kd, heads, vd), (kd, 1, 1), |encoder| {
+            tcb.dispatch_threads(kernel, (kd, heads, grid_z), (kd, 1, 1), |encoder| {
                 encoder.set_buffer(0, Some(&self.workspace.rec_state), rec_off);
                 encoder.set_buffer(1, Some(&self.workspace.repeated_q), 0);
                 encoder.set_buffer(2, Some(&self.workspace.repeated_k), 0);
@@ -3187,7 +3257,7 @@ mod device {
                 encoder.set_bytes(8, 4, &heads as *const u32 as *const _);
                 encoder.set_bytes(9, 4, &kd as *const u32 as *const _);
                 encoder.set_bytes(10, 4, &vd as *const u32 as *const _);
-                encoder.set_threadgroup_memory_length(0, 128 * 4);
+                encoder.set_threadgroup_memory_length(0, tg_bytes);
             })
         }
 
@@ -3386,6 +3456,10 @@ mod device {
         pub fn set_fuse_ba_delta(&mut self, on: bool, bad: bool) {
             self.fuse_ba_delta = on;
             self.fuse_ba_delta_bad = bad;
+        }
+
+        pub fn set_dn_state_kernel(&mut self, kernel: Qwen38DeltaNetStateKernel) {
+            self.dn_state_kernel = kernel;
         }
 
         /// Record a dense-W reconstruct. Production packed GEMV never calls this.
@@ -3774,6 +3848,153 @@ mod device {
                 max_abs_diff_up: diff,
                 max_abs_diff_act: diff,
                 dense_w_materialized: 0,
+            })
+        }
+
+        /// Candidate gated-delta kernel vs N025 `vi_simd_ba` on layer 0.
+        /// Compares rec_out AND the recurrent state (not just the readout).
+        pub fn measure_dn_state_kernel_parity(
+            &mut self,
+            layer: usize,
+            candidate: Qwen38DeltaNetStateKernel,
+            bad: bool,
+        ) -> Result<Qwen38DeltaNetStateParity> {
+            let layout = Qwen38DeltaNetLayout::source_exact();
+            let slot = qwen38_deltanet_state_slot(layer)?;
+            let rec_n = layout.recurrent_state_elements();
+            let rec_off = (slot * rec_n * 4) as u64;
+            let ba_n = layout.ba_rows();
+            let q_n = layout.key_heads * layout.key_head_dim;
+            let v_n = layout.value_elements();
+            let fill = |n: usize, modulus: usize, scale: f32, bias: f32| -> Vec<f32> {
+                (0..n)
+                    .map(|i| ((i % modulus) as f32) * scale - bias)
+                    .collect()
+            };
+            let write_buf = |buf: &PinnedBuffer, values: &[f32]| unsafe {
+                std::ptr::copy_nonoverlapping(
+                    values.as_ptr(),
+                    buf.contents() as *mut f32,
+                    values.len(),
+                );
+            };
+            let read_buf = |buf: &PinnedBuffer, n: usize| -> Vec<f32> {
+                let mut out = vec![0.0f32; n];
+                unsafe {
+                    std::ptr::copy_nonoverlapping(buf.contents() as *const f32, out.as_mut_ptr(), n);
+                }
+                out
+            };
+            let write_rec = |values: &[f32]| unsafe {
+                std::ptr::copy_nonoverlapping(
+                    values.as_ptr(),
+                    (self.workspace.rec_state.contents() as *mut u8).add(rec_off as usize)
+                        as *mut f32,
+                    rec_n,
+                );
+            };
+            let read_rec = || -> Vec<f32> {
+                let mut out = vec![0.0f32; rec_n];
+                unsafe {
+                    std::ptr::copy_nonoverlapping(
+                        (self.workspace.rec_state.contents() as *const u8).add(rec_off as usize)
+                            as *const f32,
+                        out.as_mut_ptr(),
+                        rec_n,
+                    );
+                }
+                out
+            };
+            let ba = fill(ba_n, 11, 0.02, 0.1);
+            let q = fill(q_n, 13, 0.015, 0.08);
+            let k = fill(q_n, 17, 0.018, 0.09);
+            let v = fill(v_n, 19, 0.012, 0.07);
+            let rec = fill(rec_n, 23, 0.004, 0.05);
+            write_buf(&self.workspace.ba, &ba);
+            write_buf(&self.workspace.repeated_q, &q);
+            write_buf(&self.workspace.repeated_k, &k);
+            write_buf(&self.workspace.conv_v, &v);
+            write_rec(&rec);
+            let saved_on = self.fuse_ba_delta;
+            let saved_bad = self.fuse_ba_delta_bad;
+            let saved_k = self.dn_state_kernel;
+            self.fuse_ba_delta = true;
+            self.fuse_ba_delta_bad = false;
+            self.dn_state_kernel = Qwen38DeltaNetStateKernel::Baseline;
+            let base = self.timed_cb(|tcb| self.encode_gated_delta_fused_ba(tcb, rec_off, layer))?;
+            let rec_out_b = read_buf(&self.workspace.rec_out, v_n);
+            let rec_state_b = read_rec();
+            write_rec(&rec);
+            self.dn_state_kernel = candidate;
+            self.fuse_ba_delta_bad = bad;
+            let cand = self.timed_cb(|tcb| self.encode_gated_delta_fused_ba(tcb, rec_off, layer))?;
+            let rec_out_c = read_buf(&self.workspace.rec_out, v_n);
+            let rec_state_c = read_rec();
+            self.fuse_ba_delta = saved_on;
+            self.fuse_ba_delta_bad = saved_bad;
+            self.dn_state_kernel = saved_k;
+            Ok(Qwen38DeltaNetStateParity {
+                kernel: candidate.fused_ba_name(bad),
+                layer,
+                max_abs_diff_rec_out: Self::max_abs_diff(&rec_out_b, &rec_out_c),
+                max_abs_diff_rec_state: Self::max_abs_diff(&rec_state_b, &rec_state_c),
+                baseline_gpu_ns: base.gpu_ns,
+                candidate_gpu_ns: cand.gpu_ns,
+                baseline_dispatches: base.dispatches,
+                candidate_dispatches: cand.dispatches,
+                dense_w_materialized: 0,
+            })
+        }
+
+        pub fn measure_isolated_dn_state_update(&self) -> Result<CommandBufferTiming> {
+            let layout = Qwen38DeltaNetLayout::source_exact();
+            self.timed_cb(|tcb| {
+                for layer in 0..QWEN38_LAYERS {
+                    if qwen38_mixer_kind(layer)? != Qwen38MixerKind::DeltaNet {
+                        continue;
+                    }
+                    let slot = qwen38_deltanet_state_slot(layer)?;
+                    let rec_off = (slot * layout.recurrent_state_elements() * 4) as u64;
+                    self.encode_dn_ba_and_delta(tcb, layer, rec_off)?;
+                }
+                Ok(())
+            })
+        }
+
+        pub fn measure_isolated_dn_inproj(&self) -> Result<CommandBufferTiming> {
+            self.timed_cb(|tcb| {
+                for layer in 0..QWEN38_LAYERS {
+                    if qwen38_mixer_kind(layer)? != Qwen38MixerKind::DeltaNet {
+                        continue;
+                    }
+                    let fused_qkvz = qwen38_layer_name(layer, "linear_attn.in_proj_qkvz.weight");
+                    let fused_ba = qwen38_layer_name(layer, "linear_attn.in_proj_ba.weight");
+                    if self.has_weight(&fused_qkvz) && self.has_weight(&fused_ba) {
+                        if self.fuse_dn_inproj && self.weights.q4.contains_key(&fused_qkvz) {
+                            self.encode_fused_pair_concat(
+                                tcb,
+                                &fused_qkvz,
+                                &self.workspace.qkvz,
+                                &fused_ba,
+                                &self.workspace.ba,
+                            )?;
+                        } else {
+                            self.encode_named_matvec(
+                                tcb,
+                                &fused_qkvz,
+                                &self.workspace.normalized,
+                                &self.workspace.qkvz,
+                            )?;
+                            self.encode_named_matvec(
+                                tcb,
+                                &fused_ba,
+                                &self.workspace.normalized,
+                                &self.workspace.ba,
+                            )?;
+                        }
+                    }
+                }
+                Ok(())
             })
         }
 
@@ -6891,6 +7112,10 @@ mod mixed_catalog_contract_tests {
             .contains("kernel void qwen38_gated_delta_decode_vi_simd_ba("));
         assert!(crate::metal::SHADER_QWEN38_DEVICE_ACTIVATIONS
             .contains("kernel void qwen38_gated_delta_decode_vi_simd_ba_plain("));
+        assert!(crate::metal::SHADER_QWEN38_DEVICE_ACTIVATIONS
+            .contains("kernel void qwen38_gated_delta_decode_vi_simd_ba_f4("));
+        assert!(crate::metal::SHADER_QWEN38_DEVICE_ACTIVATIONS
+            .contains("kernel void qwen38_gated_delta_decode_vi_simd_ba_tg32("));
         assert_eq!(
             qwen38_fused_dispatches_per_token_full(
                 Qwen38MlpFusion::GateUpSwiglu,

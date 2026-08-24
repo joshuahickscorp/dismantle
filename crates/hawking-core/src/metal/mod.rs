@@ -1447,6 +1447,12 @@ mod imp {
             "qwen38_gated_delta_decode_vi_simd_ba_plain" => {
                 "qwen38_gated_delta_decode_vi_simd_ba_plain"
             }
+            "qwen38_gated_delta_decode_vi_simd_ba_f4" => {
+                "qwen38_gated_delta_decode_vi_simd_ba_f4"
+            }
+            "qwen38_gated_delta_decode_vi_simd_ba_tg32" => {
+                "qwen38_gated_delta_decode_vi_simd_ba_tg32"
+            }
             "qwen38_attention_apply_sigmoid_gate" => "qwen38_attention_apply_sigmoid_gate",
             "qwen38_f32_stream_probe" => "qwen38_f32_stream_probe",
             "qwen30_expert_table_hgravs_gemv" => "qwen30_expert_table_hgravs_gemv",
@@ -2276,6 +2282,8 @@ mod imp {
                 "qwen38_gated_delta_decode_vi",
                 "qwen38_gated_delta_decode_vi_simd_ba",
                 "qwen38_gated_delta_decode_vi_simd_ba_plain",
+                "qwen38_gated_delta_decode_vi_simd_ba_f4",
+                "qwen38_gated_delta_decode_vi_simd_ba_tg32",
                 "qwen38_attention_apply_sigmoid_gate",
                 "qwen38_f32_stream_probe",
             ];

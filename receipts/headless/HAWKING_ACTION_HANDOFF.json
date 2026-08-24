@@ -230,7 +230,7 @@
     ],
     "value": {
       "branch": "odyssey-i",
-      "head": "939533e1ad0b2a80920fc31f15d60562a2597704",
+      "head": "093ba393c2d3a93153d74a5f840de9017250c5af",
       "remote_sync": {
         "ahead": null,
         "behind": null,
@@ -5056,10 +5056,10 @@
       ],
       "counts": {
         "by_status": {
-          "VERIFIED": 25
+          "VERIFIED": 31
         },
-        "n_checked": 25,
-        "n_total": 25,
+        "n_checked": 31,
+        "n_total": 31,
         "n_unchecked": 0
       },
       "ids_by_status": {
@@ -5088,7 +5088,13 @@
           "N022",
           "N023",
           "N024",
-          "N025"
+          "N025",
+          "N026",
+          "N027",
+          "N028",
+          "N029",
+          "N030",
+          "N031"
         ]
       },
       "ids_checked": [
@@ -5116,7 +5122,13 @@
         "N022",
         "N023",
         "N024",
-        "N025"
+        "N025",
+        "N026",
+        "N027",
+        "N028",
+        "N029",
+        "N030",
+        "N031"
       ],
       "ids_pending": []
     }

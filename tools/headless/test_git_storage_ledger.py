@@ -169,8 +169,14 @@ def test_gitignore_must_hold_is_actually_in_head():
 
 
 def test_policy_exists_and_does_not_contradict_gitignore():
-    assert POLICY.is_file(), f"missing {POLICY}"
-    text = POLICY.read_text()
+    rel = "docs/ultragoals/ARTIFACT_STORAGE_POLICY.md"
+    if POLICY.is_file():
+        text = POLICY.read_text()
+    else:
+        # Sparse checkout: the file is in git, not on disk. Absence here is
+        # not evidence the policy does not exist (see worktree contract).
+        text = git_ok("show", f"HEAD:{rel}")
+        assert text.strip(), f"missing {rel} on disk and in HEAD"
     text_l = text.lower()
     for needle in (
         "Git tracks",

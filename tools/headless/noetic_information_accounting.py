@@ -369,17 +369,25 @@ def scan_python_literals(text: str) -> list[dict]:
     return hits
 
 
-def _brace_body(text: str, open_idx: int) -> tuple[str, int] | None:
+def _delimited_body(text: str, open_idx: int, open_ch: str, close_ch: str) -> tuple[str, int] | None:
     depth = 0
     for i in range(open_idx, len(text)):
         c = text[i]
-        if c == "{":
+        if c == open_ch:
             depth += 1
-        elif c == "}":
+        elif c == close_ch:
             depth -= 1
             if depth == 0:
                 return text[open_idx + 1:i], i
     return None
+
+
+def _brace_body(text: str, open_idx: int) -> tuple[str, int] | None:
+    return _delimited_body(text, open_idx, "{", "}")
+
+
+def _bracket_body(text: str, open_idx: int) -> tuple[str, int] | None:
+    return _delimited_body(text, open_idx, "[", "]")
 
 
 def scan_metal_constants(text: str) -> list[dict]:
@@ -439,6 +447,54 @@ def scan_json_payloads(text: str) -> list[dict]:
     return _json_numeric_lists(doc)
 
 
+def scan_bracket_numeric_arrays(text: str) -> list[dict]:
+    """Flat `[ ... ]` numeric literals: Rust `const X: [f32; N] = [ ... ]`.
+
+    The Metal `constant float[] = { ... }` grammar does not match real Rust
+    (or C++ `std::array`) weight dumps. Path is not provenance; neither is
+    'the file is .rs so it must be code'.
+    """
+    hits = []
+    i = 0
+    n = len(text)
+    while i < n:
+        j = text.find("[", i)
+        if j < 0:
+            break
+        body = _bracket_body(text, j)
+        if body is None:
+            i = j + 1
+            continue
+        inner, end = body
+        if "[" in inner:
+            i = j + 1
+            continue
+        nums = re.findall(_NUM, inner)
+        if len(nums) < MIN_HIDDEN:
+            i = end + 1
+            continue
+        try:
+            vals = [float(x) for x in nums]
+        except ValueError:
+            i = end + 1
+            continue
+        if all(v == 0.0 for v in vals):
+            i = end + 1
+            continue
+        rest = re.sub(_NUM, "", inner)
+        if re.search(r"[^\s,._]", rest):
+            i = end + 1
+            continue
+        hits.append({
+            "kind": "bracket_numeric_array",
+            "n": len(vals),
+            "payload_bytes": len(vals) * 4,
+            "line": text[:j].count("\n") + 1,
+        })
+        i = end + 1
+    return hits
+
+
 def scan_text_file(path: Path, text: str) -> list[dict]:
     suf = path.suffix.lower()
     if suf == ".py":
@@ -447,7 +503,9 @@ def scan_text_file(path: Path, text: str) -> list[dict]:
         return scan_metal_constants(text)
     if suf == ".json":
         return scan_json_payloads(text)
-    if suf in {".rs", ".c", ".h", ".cc", ".cpp"}:
+    if suf == ".rs":
+        return scan_metal_constants(text) + scan_bracket_numeric_arrays(text)
+    if suf in {".c", ".h", ".cc", ".cpp"}:
         return scan_metal_constants(text)  # same constant-array grammar
     return []
 
@@ -501,6 +559,11 @@ def embedded_weightlike_bytes(blob: bytes, min_run: int = 64) -> int:
     So look inside. A float32 weight table has a signature compiled code does not:
     a long contiguous run of finite values in a bounded range, with enough
     distinct values that it is not padding. Those bytes book as MODEL_SPECIFIC.
+
+    account_tree applies this to compiled GPU blobs AND to any other non-text
+    file that path_role would park in SHARED / MACHINE / GENERATED (runtime
+    sidecars, MLX .npy, safetensors, header-prefixed .bin). Integer-coded
+    payloads still score 0 — that named gap is not closed here.
 
     This is a heuristic and it is stated as one. It can miss weights stored as
     f16, bf16, or integer codes, and it can false-positive on a legitimate large
@@ -650,6 +713,41 @@ def account_tree(root: Path, mode: str = "content") -> dict:
                     "rel": rel, "event": "cache_required_not_regenerable",
                     "bytes": sz, "required": rel in required,
                 })
+
+        # Path is not provenance for ANY binary, not only .metallib. A .bin
+        # parked next to the host, an MLX .npy under runtime/, a safetensors
+        # sidecar, or an 18-byte-header blob with the "wrong" suffix all used
+        # to sit in SHARED/MACHINE because the GPU-suffix branch never opened
+        # them. Apply the same f32-run detector. Integer codes still score 0
+        # (the named remaining gap); high-entropy NaN/Inf runs also score 0.
+        suf = p.suffix.lower()
+        if (
+            content
+            and role != "MODEL_SPECIFIC_BYTES"
+            and suf not in TEXT_SUFFIXES
+            and suf not in COMPILED_GPU_SUFFIXES
+        ):
+            try:
+                hidden = embedded_weightlike_bytes(p.read_bytes())
+            except OSError:
+                hidden = 0
+            if hidden:
+                hidden = min(hidden, sz)
+                buckets["MODEL_SPECIFIC_BYTES"] += hidden
+                buckets[role] += sz - hidden
+                remaining[rel] = [role, sz - hidden]
+                evidence.append(
+                    {
+                        "file": rel,
+                        "role": "MODEL_SPECIFIC_BYTES",
+                        "bytes": hidden,
+                        "why": (
+                            "non-text file contains a contiguous run parsing as "
+                            "plausible f32 weights; directory/suffix is not provenance"
+                        ),
+                    }
+                )
+                continue
 
         buckets[role] += sz
         remaining[rel] = [role, sz]

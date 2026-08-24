@@ -190,7 +190,7 @@ def family_id(path: str) -> str:
         return "PHASEB"
     if "frankenstein/" in p:
         return "FRANKENSTEIN_NON_PT"
-    if p.startswith("workspace/superwave/g1/"):
+    if p.startswith("hawking-experiments/superwave/g1/"):
         return "SUPERWAVE_G1"
     if p.startswith("ramanujan/"):
         return "RAMANUJAN"
@@ -301,7 +301,7 @@ FAMILY_META: dict[str, dict[str, Any]] = {
         ),
         "gitignore": "workspace/campaign/phaseB/ckpt/",
         "in_rewrite_plan": True,
-        "keep_in_head_exception": "workspace/campaign/evidence/models/frankenstein/latent_v0_checkpoints/",
+        "keep_in_head_exception": "hawking-experiments/frankenstein/data/latent_v0_checkpoints/",
     },
     "NPY_CAPTURES": {
         "class": "HISTORY_REWRITE_CANDIDATE",
@@ -407,14 +407,14 @@ FAMILY_META: dict[str, dict[str, Any]] = {
     },
     "FRANKENSTEIN_NON_PT": {
         "class": "KEEP_GIT",
-        "glob": "workspace/campaign/evidence/models/frankenstein/",
+        "glob": "hawking-experiments/frankenstein/data/",
         "why": "Non-weight frankenstein evidence (json, scripts). Knowledge. .pt bodies classified separately.",
         "gitignore": None,
         "in_rewrite_plan": False,
     },
     "SUPERWAVE_G1": {
         "class": "LFS_CANDIDATE",
-        "glob": "workspace/superwave/g1/",
+        "glob": "hawking-experiments/superwave/g1/",
         "why": (
             "Currently tracked 10–29 MiB JSON dumps (g1_functional_exceptions.json is the "
             "largest HEAD blob at 29.0 MiB). This is the shape of thing people reach for "
@@ -1096,7 +1096,7 @@ def build() -> dict[str, Any]:
             "tracked_despite_gitignore_examples": [
                 "crates/hawking-core/tests/fixtures/gravity_pq/*.bin (KEEP_GIT fixtures; *.bin is a weight rule)",
                 "crates/hawking-core/reports/w4a8_activation_dist.csv",
-                "workspace/superwave/g1/claude-wall/*.log",
+                "hawking-experiments/superwave/g1/claude-wall/*.log",
             ],
             "note": "gitignore does not untrack. 8ad51461a ran git rm --cached for RUN_LOG and the q30 tarball only.",
         },

@@ -42,7 +42,7 @@ SWEEP_ROOTS = [
     "workspace/campaign/evidence/systems/hawking",
     "workspace/campaign/evidence/models/glm52",
     "workspace/campaign/evidence/models/deepseek-v4",
-    "workspace/superwave/g1",
+    "hawking-experiments/superwave/g1",
     ".haider",
     "ramanujan/governance",
     "docs",
@@ -1888,7 +1888,7 @@ def sweep_negative_stores() -> dict:
             "HCLI tactic-cycle fingerprints, not representation science. "
             "Recorded so a later reader does not re-sweep it expecting codec closures."
         )
-    rel = "workspace/superwave/g1/g1-arch-negative.md"
+    rel = "hawking-experiments/superwave/g1/g1-arch-negative.md"
     text = read_text(rel)
     if text is not None:
         found["g1_arch_negative_rows"] = (
@@ -1931,7 +1931,7 @@ def sweep_worktrees_and_branches() -> dict:
 
 def sweep_untracked() -> dict:
     status = git(["status", "--porcelain", "-u", "--",
-                  "receipts", "reports", ".haider", "workspace/superwave", "tools/headless"])
+                  "receipts", "reports", ".haider", "hawking-experiments/superwave", "tools/headless"])
     untracked = [line[3:] for line in (status or "").splitlines() if line.startswith("?? ")]
     return {
         "untracked_under_science_roots_sample": untracked[:40],

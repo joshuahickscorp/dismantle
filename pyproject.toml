@@ -18,3 +18,9 @@ exclude = ["hcli.tests*", "tools*", "lab*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tools/haider"]
+pythonpath = [
+    ".",
+    "hawking-experiments/frankenstein/operators",
+    "hawking-experiments/frankenstein/condense",
+    "hawking-experiments/prometheus/tools",
+]

@@ -434,7 +434,7 @@ NAMES: list[dict] = [
         "schema_prefixes": ("hawking.frankenstein.",),
         "belongs_to": None,
         "reasoning": (
-            "VESTIGIAL campaign. lab/operators/frankenstein_* and hawking.frankenstein.* "
+            "VESTIGIAL campaign. hawking-experiments/frankenstein/operators/frankenstein_* and hawking.frankenstein.* "
             "receipts (paired functional traces, GLM layer capture) are sealed evidence. "
             "The operator itself refuses to acquire a teacher until Ramanujan/Hawking gates pass."
         ),
@@ -532,7 +532,7 @@ NAMES: list[dict] = [
         "class": "VESTIGIAL",
         "kind": "campaign",
         "summary": "Math cartography / capability-elimination campaign. lab status: historical.",
-        "path_prefixes": ("tools/prometheus/",),
+        "path_prefixes": ("hawking-experiments/prometheus/tools/",),
         "path_regex": r"prometheus",
         "content_ere": wb("Prometheus", "prometheus", "PROMETHEUS"),
         "schema_prefixes": ("hawking.prometheus.",),
@@ -702,7 +702,7 @@ NAMES: list[dict] = [
         "class": "AMBIGUOUS",
         "kind": "method",
         "summary": "Fan-out orchestration method plus a dated ascent-era state file.",
-        "path_prefixes": ("SUPERWAVE_STATE.md", "workspace/superwave/"),
+        "path_prefixes": ("SUPERWAVE_STATE.md", "hawking-experiments/superwave/"),
         "path_regex": r"superwave|SUPERWAVE",
         "content_ere": wb("Superwave", "superwave", "SUPERWAVE", "SUPERWAVE_STATE"),
         "schema_prefixes": ("hawking.superwave.",),
@@ -710,7 +710,7 @@ NAMES: list[dict] = [
         "reasoning": (
             "AMBIGUOUS. An orchestration method still used around HCLI/Odyssey, and "
             "a campaign state file that still publishes a superseded G013 law at the "
-            "top. Not a surviving brand. Do not treat workspace/superwave evidence as disposable."
+            "top. Not a surviving brand. Do not treat hawking-experiments/superwave evidence as disposable."
         ),
     },
     {
@@ -1138,7 +1138,7 @@ def evidence_for(spec: dict, owned: list[dict], schemas: list[str]) -> dict:
     elif spec["id"] == "Frankenstein":
         lost.extend([
             "hawking.frankenstein.paired_functional_trace.v1 and GLM capture shards",
-            "lab/operators/frankenstein_pipeline.py fail-closed preflight",
+            "hawking-experiments/frankenstein/operators/frankenstein_pipeline.py fail-closed preflight",
         ])
     elif spec["id"] == "Strand":
         lost.extend([

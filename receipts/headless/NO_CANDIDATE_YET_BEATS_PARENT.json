@@ -1,8 +1,9 @@
 {
   "schema": "hawking.headless.no_candidate_yet_beats_parent.v1",
   "obligation": "G013 (S006 \u00a731-33) \u2014 CONDITIONAL, honest-negative branch",
-  "git_head": "09ec52f0c982",
-  "verdict": "NO_CANDIDATE_YET_BEATS_PARENT",
+  "git_head": "915e1a670243",
+  "verdict": "REOPENED_CANDIDATE_LEADS_BUT_QUALIFICATION_NOT_RUN",
+  "reopen_condition_fired": true,
   "faking_the_shift": "forbidden by S006 \u00a733; no promotion is claimed here",
   "incumbent": {
     "complete_ebpw": 4.252735126866492,
@@ -65,16 +66,29 @@
       "coherent": "LS-fitted affine2 g64 generated 16 tokens that match neither the incumbent nor the g32 stutter. Verbatim: '<think>\\nThe user wants a detailed, ordinary-prose explanation of how a compiler'. Coherence judge: {'coherent': True, 'reason': 'emits varied tokens', 'repeated_single_token': False, 'whitespace_only': False, 'two_token_cycle': False, 'n_unique_ids': 15, 'n_new_tokens': 16}.",
       "native_kernel_ran": true,
       "text": "<think>\nThe user wants a detailed, ordinary-prose explanation of how a compiler"
+    },
+    {
+      "id": "affine2_g64_fused_swiglu_qkv_dn",
+      "source_receipt": "receipts/headless/NOETIC_FUSED_SUBBIT.json",
+      "complete_ebpw": 3.139300850311054,
+      "tok_s": 34.87340648509909,
+      "dispatches_per_token": 756,
+      "coherent": true,
+      "native_kernel_ran": true,
+      "beats_parent_on_both_axes": true,
+      "text": "<think>\nThe user wants a detailed, ordinary-prose explanation of how a compiler"
     }
   ],
   "best_coherent_candidate": {
-    "id": "mix_all_mlp_hgravu01_q3_g64",
-    "source_receipt": "receipts/headless/NOETIC_Q3_MLP_Q4_ATTN.json",
-    "complete_ebpw": 3.616489579525877,
-    "tok_s": 31.98505658156509,
-    "coherent": "COHERENT: varied tokens, not a single-token copy and not whitespace-only. The q3-MLP / q4-attn mix is both material and coherent on this 16-token sample.",
+    "id": "affine2_g64_fused_swiglu_qkv_dn",
+    "source_receipt": "receipts/headless/NOETIC_FUSED_SUBBIT.json",
+    "complete_ebpw": 3.139300850311054,
+    "tok_s": 34.87340648509909,
+    "dispatches_per_token": 756,
+    "coherent": true,
     "native_kernel_ran": true,
-    "text": "<think>\nThe user wants a detailed, prose explanation of how a compiler transforms a"
+    "beats_parent_on_both_axes": true,
+    "text": "<think>\nThe user wants a detailed, ordinary-prose explanation of how a compiler"
   },
   "blocker": {
     "id": "DENSITY_IS_NOT_THE_BINDING_CONSTRAINT",
@@ -127,6 +141,12 @@
       "id": "mix_all_mlp_affine_g64_ls",
       "ebpw": 3.139300850311054,
       "tok_s": 26.83964318075738,
+      "reason": "coherent but same operator family as the incumbent, and no throughput win"
+    },
+    {
+      "id": "affine2_g64_fused_swiglu_qkv_dn",
+      "ebpw": 3.139300850311054,
+      "tok_s": 34.87340648509909,
       "reason": "coherent but same operator family as the incumbent, and no throughput win"
     }
   ],

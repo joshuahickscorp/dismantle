@@ -15,8 +15,25 @@ def _d():
     return json.loads(P.read_text())
 
 
-def test_verdict_is_the_negative():
-    assert _d()["verdict"] == "NO_CANDIDATE_YET_BEATS_PARENT"
+def test_verdict_matches_the_evidence():
+    """The flat negative can only stand while nothing beats the parent.
+
+    NOETIC_FUSED_SUBBIT reduces dispatches per token, which is the reopen
+    condition this receipt itself named, so the verdict must move rather than
+    keep asserting a negative the evidence no longer supports.
+    """
+    d = _d()
+    valid = {
+        "NO_CANDIDATE_YET_BEATS_PARENT",
+        "REOPENED_CANDIDATE_LEADS_BUT_QUALIFICATION_NOT_RUN",
+    }
+    assert d["verdict"] in valid, d["verdict"]
+    leaders = [c for c in d["candidates"] if c.get("beats_parent_on_both_axes")]
+    if leaders:
+        assert d["verdict"] != "NO_CANDIDATE_YET_BEATS_PARENT", (
+            "a candidate leads on both axes; the flat negative is stale"
+        )
+        assert d.get("reopen_condition_fired") is True
 
 
 def test_no_candidate_is_marked_promoted():

@@ -1,7 +1,7 @@
 {
   "schema": "hawking.headless.runtime_experiment_adversary.v1",
-  "generated_at": "2026-08-24T00:29:30Z",
-  "git_head": "6f1d2b294ffbc9cea8bc02ea76befc6ef36b0b82",
+  "generated_at": "2026-08-24T01:10:13Z",
+  "git_head": "915e1a6702436b630866534225e9525668f38abe",
   "sparse_checkout": {
     "note": "This worktree is sparse. hcli/, tools/headless, tools/haider were materialized via git show HEAD:<path> because git sparse-checkout add / git restore fail (index.lock Operation not permitted). Census paths were also verified with git grep HEAD and git show HEAD:hcli/controller.py.",
     "verified_against": "HEAD",
@@ -57,7 +57,7 @@
     "q5k_required": false
   },
   "session_not_duplicated": {
-    "bound_session_id": "ef0d2c32-468b-4e14-b9c1-e669491213c7",
+    "bound_session_id": "9608a437-d38a-4b87-96f6-7a68a952a8d3",
     "session_type": "Session",
     "session_module": "hcli.session"
   },
@@ -82,13 +82,18 @@
     "name": "Huihui-Qwen3.8-27B-abliterated-Q5_K.gguf",
     "present": false,
     "required": false,
-    "git_grep_head_count": 21,
+    "git_grep_head_count": 25,
     "verified_against": "HEAD (git grep) plus working-tree AST of hcli/",
     "hcli_source_hits": [],
     "hcli_ast_files_mentioning_name": [
       "hcli/runtime_iface.py"
     ],
     "classified": [
+      {
+        "line": "HEAD:hcli/runtime_iface.py:32:ARCHIVED_Q5K_GGUF_NAME = \"Huihui-Qwen3.8-27B-abliterated-Q5_K.gguf\"",
+        "path": "hcli/runtime_iface.py",
+        "kind": "hcli_archived_name"
+      },
       {
         "line": "HEAD:tools/haider/hcli/tests/test_context_budget.py:43:    \"Huihui-Qwen3.8-27B-abliterated-Q5_K.gguf\"",
         "path": "tools/haider/hcli/tests/test_context_budget.py",
@@ -102,6 +107,11 @@
       {
         "line": "HEAD:tools/haider/hcli/tests/test_runtime_authority.py:65:MODEL_PATH = \"/models/Huihui-Qwen3.8-27B-abliterated-Q5_K.gguf\"",
         "path": "tools/haider/hcli/tests/test_runtime_authority.py",
+        "kind": "test_fixture"
+      },
+      {
+        "line": "HEAD:tools/haider/hcli/tests/test_runtime_interface.py:66:        path = \"/nonexistent/Huihui-Qwen3.8-27B-abliterated-Q5_K.gguf\"",
+        "path": "tools/haider/hcli/tests/test_runtime_interface.py",
         "kind": "test_fixture"
       },
       {
@@ -122,6 +132,11 @@
       {
         "line": "HEAD:tools/headless/decode_topology_probe.py:61:    \"~/models/qwen3.8-27b-abliterated/Huihui-Qwen3.8-27B-abliterated-Q5_K.gguf\")",
         "path": "tools/headless/decode_topology_probe.py",
+        "kind": "science_or_comment"
+      },
+      {
+        "line": "HEAD:tools/headless/experiment_engine.py:41:Q5K_NAME = \"Huihui-Qwen3.8-27B-abliterated-Q5_K.gguf\"",
+        "path": "tools/headless/experiment_engine.py",
         "kind": "science_or_comment"
       },
       {
@@ -193,6 +208,11 @@
         "line": "HEAD:tools/headless/structured_output_probe.py:35:    \"~/models/qwen3.8-27b-abliterated/Huihui-Qwen3.8-27B-abliterated-Q5_K.gguf\")",
         "path": "tools/headless/structured_output_probe.py",
         "kind": "science_or_comment"
+      },
+      {
+        "line": "HEAD:tools/headless/test_runtime_experiment_adversary.py:18:Q5K = \"Huihui-Qwen3.8-27B-abliterated-Q5_K.gguf\"",
+        "path": "tools/headless/test_runtime_experiment_adversary.py",
+        "kind": "test_fixture"
       }
     ],
     "note": "Hits under tools/headless/*probe.py name the archived path as a historical default. Importing those modules does not open the file. This engine, RuntimeGenome, and RuntimeInterface never open it. HEAD hcli/ does not mention the filename (git grep HEAD -- hcli). The new runtime_iface module names it as archived science and q5k_gguf_required() is False.",
@@ -352,12 +372,12 @@
       "id": "PERSISTENT_RUNTIME",
       "ran": true,
       "ok": true,
-      "interface_persistent_id": 4494080144,
+      "interface_persistent_id": 4424256880,
       "candidate_ids": [
-        4494080144,
-        4494080144,
-        4494080144,
-        4494080144
+        4424256880,
+        4424256880,
+        4424256880,
+        4424256880
       ]
     },
     "exclusive_reservation": {
@@ -367,7 +387,7 @@
       "second_held_while_first": false,
       "third_held_after_release": true,
       "exclusive": true,
-      "path": "/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-ckay1oop/locks/experiment.lock.d"
+      "path": "/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-27nh2gtk/locks/experiment.lock.d"
     },
     "causal_execution_path": {
       "id": "CAUSAL_EXECUTION_PATH",
@@ -527,12 +547,12 @@
       "/opt/homebrew/opt/python@3.14/bin/python3.14",
       "-m",
       "pytest",
-      "/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-ckay1oop/failing_gate/failing_gate_trial/test_forced_fail.py",
+      "/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-27nh2gtk/failing_gate/failing_gate_trial/test_forced_fail.py",
       "-q"
     ],
     "pytest_exit_code": 1,
     "pytest_passed_gate": false,
-    "pytest_output_tail": "F                                                                        [100%]\n=================================== FAILURES ===================================\nE   AssertionError: injected failing-gate trial\n    assert False\n/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-ckay1oop/failing_gate/failing_gate_trial/test_forced_fail.py:2: AssertionError: injected failing-gate trial\n=========================== short test summary info ============================\nFAILED ../../../../var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-ckay1oop/failing_gate/failing_gate_trial/test_forced_fail.py::test_forced_fail\n1 failed in 0.01s\n\n",
+    "pytest_output_tail": "F                                                                        [100%]\n=================================== FAILURES ===================================\nE   AssertionError: injected failing-gate trial\n    assert False\n/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-27nh2gtk/failing_gate/failing_gate_trial/test_forced_fail.py:2: AssertionError: injected failing-gate trial\n=========================== short test summary info ============================\nFAILED ../../../../var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-27nh2gtk/failing_gate/failing_gate_trial/test_forced_fail.py::test_forced_fail\n1 failed in 0.00s\n\n",
     "decision_on_failing_correctness": {
       "decision": "reject",
       "verdict": "REFUSED",
@@ -610,11 +630,11 @@
         "i": 0,
         "condition": "candidate",
         "score": 2,
-        "import_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-ckay1oop/g029_probe_admit.py",
+        "import_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-27nh2gtk/g029_probe_admit.py",
         "import_is_scratch": true,
         "causal": {
-          "executed_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-ckay1oop/g029_probe_admit.py",
-          "mutated_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-ckay1oop/g029_probe_admit.py",
+          "executed_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-27nh2gtk/g029_probe_admit.py",
+          "mutated_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-27nh2gtk/g029_probe_admit.py",
           "executed_sha256": "3ae9ff898484c4f06253067f6d8ff6fb3f2a50a8c1ba133c59794638ace76689",
           "mutated_sha256": "3ae9ff898484c4f06253067f6d8ff6fb3f2a50a8c1ba133c59794638ace76689",
           "via": [
@@ -631,17 +651,17 @@
           "score_calls_admit": true
         },
         "through_mutated_mechanism": true,
-        "runtime_persistent_id": 4494080144
+        "runtime_persistent_id": 4424256880
       },
       {
         "i": 1,
         "condition": "baseline",
         "score": 1,
-        "import_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-ckay1oop/g029_probe_admit.py",
+        "import_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-27nh2gtk/g029_probe_admit.py",
         "import_is_scratch": true,
         "causal": {
-          "executed_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-ckay1oop/g029_probe_admit.py",
-          "mutated_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-ckay1oop/g029_probe_admit.py",
+          "executed_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-27nh2gtk/g029_probe_admit.py",
+          "mutated_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-27nh2gtk/g029_probe_admit.py",
           "executed_sha256": "90653740025baab08779870394dcd120256140eafe5fcc87a8a2d77514418643",
           "mutated_sha256": "90653740025baab08779870394dcd120256140eafe5fcc87a8a2d77514418643",
           "via": [
@@ -658,17 +678,17 @@
           "score_calls_admit": true
         },
         "through_mutated_mechanism": true,
-        "runtime_persistent_id": 4494080144
+        "runtime_persistent_id": 4424256880
       },
       {
         "i": 2,
         "condition": "candidate",
         "score": 2,
-        "import_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-ckay1oop/g029_probe_admit.py",
+        "import_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-27nh2gtk/g029_probe_admit.py",
         "import_is_scratch": true,
         "causal": {
-          "executed_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-ckay1oop/g029_probe_admit.py",
-          "mutated_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-ckay1oop/g029_probe_admit.py",
+          "executed_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-27nh2gtk/g029_probe_admit.py",
+          "mutated_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-27nh2gtk/g029_probe_admit.py",
           "executed_sha256": "3ae9ff898484c4f06253067f6d8ff6fb3f2a50a8c1ba133c59794638ace76689",
           "mutated_sha256": "3ae9ff898484c4f06253067f6d8ff6fb3f2a50a8c1ba133c59794638ace76689",
           "via": [
@@ -685,17 +705,17 @@
           "score_calls_admit": true
         },
         "through_mutated_mechanism": true,
-        "runtime_persistent_id": 4494080144
+        "runtime_persistent_id": 4424256880
       },
       {
         "i": 3,
         "condition": "baseline",
         "score": 1,
-        "import_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-ckay1oop/g029_probe_admit.py",
+        "import_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-27nh2gtk/g029_probe_admit.py",
         "import_is_scratch": true,
         "causal": {
-          "executed_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-ckay1oop/g029_probe_admit.py",
-          "mutated_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-ckay1oop/g029_probe_admit.py",
+          "executed_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-27nh2gtk/g029_probe_admit.py",
+          "mutated_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-27nh2gtk/g029_probe_admit.py",
           "executed_sha256": "90653740025baab08779870394dcd120256140eafe5fcc87a8a2d77514418643",
           "mutated_sha256": "90653740025baab08779870394dcd120256140eafe5fcc87a8a2d77514418643",
           "via": [
@@ -712,7 +732,7 @@
           "score_calls_admit": true
         },
         "through_mutated_mechanism": true,
-        "runtime_persistent_id": 4494080144
+        "runtime_persistent_id": 4424256880
       }
     ],
     "noop": [
@@ -720,11 +740,11 @@
         "i": 0,
         "condition": "candidate",
         "score": 1,
-        "import_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-ckay1oop/g029_probe_admit.py",
+        "import_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-27nh2gtk/g029_probe_admit.py",
         "import_is_scratch": true,
         "causal": {
-          "executed_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-ckay1oop/g029_probe_admit.py",
-          "mutated_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-ckay1oop/g029_probe_admit.py",
+          "executed_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-27nh2gtk/g029_probe_admit.py",
+          "mutated_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-27nh2gtk/g029_probe_admit.py",
           "executed_sha256": "c525dc80b1ea9fdafa791f082239e616eeb7135ccf12d9c300bdaf81a1e45933",
           "mutated_sha256": "c525dc80b1ea9fdafa791f082239e616eeb7135ccf12d9c300bdaf81a1e45933",
           "via": [
@@ -741,17 +761,17 @@
           "score_calls_admit": true
         },
         "through_mutated_mechanism": true,
-        "runtime_persistent_id": 4494080144
+        "runtime_persistent_id": 4424256880
       },
       {
         "i": 1,
         "condition": "baseline",
         "score": 1,
-        "import_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-ckay1oop/g029_probe_admit.py",
+        "import_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-27nh2gtk/g029_probe_admit.py",
         "import_is_scratch": true,
         "causal": {
-          "executed_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-ckay1oop/g029_probe_admit.py",
-          "mutated_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-ckay1oop/g029_probe_admit.py",
+          "executed_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-27nh2gtk/g029_probe_admit.py",
+          "mutated_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-27nh2gtk/g029_probe_admit.py",
           "executed_sha256": "90653740025baab08779870394dcd120256140eafe5fcc87a8a2d77514418643",
           "mutated_sha256": "90653740025baab08779870394dcd120256140eafe5fcc87a8a2d77514418643",
           "via": [
@@ -768,17 +788,17 @@
           "score_calls_admit": true
         },
         "through_mutated_mechanism": true,
-        "runtime_persistent_id": 4494080144
+        "runtime_persistent_id": 4424256880
       },
       {
         "i": 2,
         "condition": "candidate",
         "score": 1,
-        "import_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-ckay1oop/g029_probe_admit.py",
+        "import_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-27nh2gtk/g029_probe_admit.py",
         "import_is_scratch": true,
         "causal": {
-          "executed_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-ckay1oop/g029_probe_admit.py",
-          "mutated_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-ckay1oop/g029_probe_admit.py",
+          "executed_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-27nh2gtk/g029_probe_admit.py",
+          "mutated_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-27nh2gtk/g029_probe_admit.py",
           "executed_sha256": "c525dc80b1ea9fdafa791f082239e616eeb7135ccf12d9c300bdaf81a1e45933",
           "mutated_sha256": "c525dc80b1ea9fdafa791f082239e616eeb7135ccf12d9c300bdaf81a1e45933",
           "via": [
@@ -795,17 +815,17 @@
           "score_calls_admit": true
         },
         "through_mutated_mechanism": true,
-        "runtime_persistent_id": 4494080144
+        "runtime_persistent_id": 4424256880
       },
       {
         "i": 3,
         "condition": "baseline",
         "score": 1,
-        "import_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-ckay1oop/g029_probe_admit.py",
+        "import_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-27nh2gtk/g029_probe_admit.py",
         "import_is_scratch": true,
         "causal": {
-          "executed_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-ckay1oop/g029_probe_admit.py",
-          "mutated_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-ckay1oop/g029_probe_admit.py",
+          "executed_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-27nh2gtk/g029_probe_admit.py",
+          "mutated_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-27nh2gtk/g029_probe_admit.py",
           "executed_sha256": "90653740025baab08779870394dcd120256140eafe5fcc87a8a2d77514418643",
           "mutated_sha256": "90653740025baab08779870394dcd120256140eafe5fcc87a8a2d77514418643",
           "via": [
@@ -822,7 +842,7 @@
           "score_calls_admit": true
         },
         "through_mutated_mechanism": true,
-        "runtime_persistent_id": 4494080144
+        "runtime_persistent_id": 4424256880
       }
     ],
     "bad": [
@@ -830,11 +850,11 @@
         "i": 0,
         "condition": "candidate",
         "score": 0,
-        "import_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-ckay1oop/g029_probe_admit.py",
+        "import_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-27nh2gtk/g029_probe_admit.py",
         "import_is_scratch": true,
         "causal": {
-          "executed_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-ckay1oop/g029_probe_admit.py",
-          "mutated_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-ckay1oop/g029_probe_admit.py",
+          "executed_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-27nh2gtk/g029_probe_admit.py",
+          "mutated_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-27nh2gtk/g029_probe_admit.py",
           "executed_sha256": "78f0428d90f4fe38a257b7801afd6a36031290a478605edecec7743367b09cf7",
           "mutated_sha256": "78f0428d90f4fe38a257b7801afd6a36031290a478605edecec7743367b09cf7",
           "via": [
@@ -851,17 +871,17 @@
           "score_calls_admit": true
         },
         "through_mutated_mechanism": true,
-        "runtime_persistent_id": 4494080144
+        "runtime_persistent_id": 4424256880
       },
       {
         "i": 1,
         "condition": "baseline",
         "score": 1,
-        "import_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-ckay1oop/g029_probe_admit.py",
+        "import_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-27nh2gtk/g029_probe_admit.py",
         "import_is_scratch": true,
         "causal": {
-          "executed_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-ckay1oop/g029_probe_admit.py",
-          "mutated_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-ckay1oop/g029_probe_admit.py",
+          "executed_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-27nh2gtk/g029_probe_admit.py",
+          "mutated_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-27nh2gtk/g029_probe_admit.py",
           "executed_sha256": "90653740025baab08779870394dcd120256140eafe5fcc87a8a2d77514418643",
           "mutated_sha256": "90653740025baab08779870394dcd120256140eafe5fcc87a8a2d77514418643",
           "via": [
@@ -878,17 +898,17 @@
           "score_calls_admit": true
         },
         "through_mutated_mechanism": true,
-        "runtime_persistent_id": 4494080144
+        "runtime_persistent_id": 4424256880
       },
       {
         "i": 2,
         "condition": "candidate",
         "score": 0,
-        "import_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-ckay1oop/g029_probe_admit.py",
+        "import_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-27nh2gtk/g029_probe_admit.py",
         "import_is_scratch": true,
         "causal": {
-          "executed_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-ckay1oop/g029_probe_admit.py",
-          "mutated_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-ckay1oop/g029_probe_admit.py",
+          "executed_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-27nh2gtk/g029_probe_admit.py",
+          "mutated_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-27nh2gtk/g029_probe_admit.py",
           "executed_sha256": "78f0428d90f4fe38a257b7801afd6a36031290a478605edecec7743367b09cf7",
           "mutated_sha256": "78f0428d90f4fe38a257b7801afd6a36031290a478605edecec7743367b09cf7",
           "via": [
@@ -905,17 +925,17 @@
           "score_calls_admit": true
         },
         "through_mutated_mechanism": true,
-        "runtime_persistent_id": 4494080144
+        "runtime_persistent_id": 4424256880
       },
       {
         "i": 3,
         "condition": "baseline",
         "score": 1,
-        "import_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-ckay1oop/g029_probe_admit.py",
+        "import_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-27nh2gtk/g029_probe_admit.py",
         "import_is_scratch": true,
         "causal": {
-          "executed_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-ckay1oop/g029_probe_admit.py",
-          "mutated_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-ckay1oop/g029_probe_admit.py",
+          "executed_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-27nh2gtk/g029_probe_admit.py",
+          "mutated_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-27nh2gtk/g029_probe_admit.py",
           "executed_sha256": "90653740025baab08779870394dcd120256140eafe5fcc87a8a2d77514418643",
           "mutated_sha256": "90653740025baab08779870394dcd120256140eafe5fcc87a8a2d77514418643",
           "via": [
@@ -932,7 +952,7 @@
           "score_calls_admit": true
         },
         "through_mutated_mechanism": true,
-        "runtime_persistent_id": 4494080144
+        "runtime_persistent_id": 4424256880
       }
     ],
     "bypass": [
@@ -940,11 +960,11 @@
         "i": 0,
         "condition": "candidate",
         "score": 99,
-        "import_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-ckay1oop/g029_probe_admit.py",
+        "import_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-27nh2gtk/g029_probe_admit.py",
         "import_is_scratch": true,
         "causal": {
-          "executed_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-ckay1oop/g029_probe_admit.py",
-          "mutated_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-ckay1oop/g029_probe_admit.py",
+          "executed_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-27nh2gtk/g029_probe_admit.py",
+          "mutated_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-27nh2gtk/g029_probe_admit.py",
           "executed_sha256": "1261057a3da429e4d7d91afe4c44b92eaddcf163beba617a1e01376445d268eb",
           "mutated_sha256": "1261057a3da429e4d7d91afe4c44b92eaddcf163beba617a1e01376445d268eb",
           "via": [
@@ -962,17 +982,17 @@
           "score_calls_admit": false
         },
         "through_mutated_mechanism": false,
-        "runtime_persistent_id": 4494080144
+        "runtime_persistent_id": 4424256880
       },
       {
         "i": 1,
         "condition": "baseline",
         "score": 1,
-        "import_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-ckay1oop/g029_probe_admit.py",
+        "import_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-27nh2gtk/g029_probe_admit.py",
         "import_is_scratch": true,
         "causal": {
-          "executed_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-ckay1oop/g029_probe_admit.py",
-          "mutated_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-ckay1oop/g029_probe_admit.py",
+          "executed_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-27nh2gtk/g029_probe_admit.py",
+          "mutated_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-27nh2gtk/g029_probe_admit.py",
           "executed_sha256": "90653740025baab08779870394dcd120256140eafe5fcc87a8a2d77514418643",
           "mutated_sha256": "90653740025baab08779870394dcd120256140eafe5fcc87a8a2d77514418643",
           "via": [
@@ -989,17 +1009,17 @@
           "score_calls_admit": true
         },
         "through_mutated_mechanism": true,
-        "runtime_persistent_id": 4494080144
+        "runtime_persistent_id": 4424256880
       },
       {
         "i": 2,
         "condition": "candidate",
         "score": 99,
-        "import_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-ckay1oop/g029_probe_admit.py",
+        "import_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-27nh2gtk/g029_probe_admit.py",
         "import_is_scratch": true,
         "causal": {
-          "executed_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-ckay1oop/g029_probe_admit.py",
-          "mutated_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-ckay1oop/g029_probe_admit.py",
+          "executed_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-27nh2gtk/g029_probe_admit.py",
+          "mutated_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-27nh2gtk/g029_probe_admit.py",
           "executed_sha256": "1261057a3da429e4d7d91afe4c44b92eaddcf163beba617a1e01376445d268eb",
           "mutated_sha256": "1261057a3da429e4d7d91afe4c44b92eaddcf163beba617a1e01376445d268eb",
           "via": [
@@ -1017,17 +1037,17 @@
           "score_calls_admit": false
         },
         "through_mutated_mechanism": false,
-        "runtime_persistent_id": 4494080144
+        "runtime_persistent_id": 4424256880
       },
       {
         "i": 3,
         "condition": "baseline",
         "score": 1,
-        "import_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-ckay1oop/g029_probe_admit.py",
+        "import_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-27nh2gtk/g029_probe_admit.py",
         "import_is_scratch": true,
         "causal": {
-          "executed_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-ckay1oop/g029_probe_admit.py",
-          "mutated_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-ckay1oop/g029_probe_admit.py",
+          "executed_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-27nh2gtk/g029_probe_admit.py",
+          "mutated_file": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-27nh2gtk/g029_probe_admit.py",
           "executed_sha256": "90653740025baab08779870394dcd120256140eafe5fcc87a8a2d77514418643",
           "mutated_sha256": "90653740025baab08779870394dcd120256140eafe5fcc87a8a2d77514418643",
           "via": [
@@ -1044,9 +1064,9 @@
           "score_calls_admit": true
         },
         "through_mutated_mechanism": true,
-        "runtime_persistent_id": 4494080144
+        "runtime_persistent_id": 4424256880
       }
     ]
   },
-  "workspace": "/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-ckay1oop"
+  "workspace": "/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-27nh2gtk"
 }

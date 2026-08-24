@@ -1,13 +1,23 @@
 {
-  "generated_at": "2026-08-24T00:34:03Z",
-  "running": [
-    "g012combo"
+  "generated_at": "2026-08-24T01:08:43Z",
+  "running": [],
+  "needs_harvest": [
+    {
+      "slug": "g012combo",
+      "id": "g012combo-20260823-203345",
+      "unharvested": [
+        "receipts/headless/NOETIC_FUSED_SUBBIT.json",
+        "receipts/headless/_fused_subbit_raw.json",
+        "tools/headless/noetic_fused_subbit.py",
+        "tools/headless/test_noetic_fused_subbit.py"
+      ],
+      "worktree_extras": 0
+    }
   ],
-  "needs_harvest": [],
   "headroom": {
-    "load1": 20.37353515625,
+    "load1": 3.6220703125,
     "ncpu": 28,
-    "disk_gib": 398.6,
+    "disk_gib": 394.3,
     "room_for_more": true
   }
 }

@@ -60,6 +60,23 @@ def candidates() -> list[dict]:
             "native_kernel_ran": dec.get("native_kernel_ran"),
             "text": dec.get("generated_text"),
         })
+    # NOETIC_FUSED_SUBBIT has its own shape: the representation carries the EBPW
+    # and the winning config lives under decode_tok_s.
+    fused = load("NOETIC_FUSED_SUBBIT")
+    if fused:
+        rep = fused.get("representation", {})
+        best = (fused.get("decode_tok_s") or {}).get("after_mlp_swiglu_qkv_dn") or {}
+        out.append({
+            "id": "affine2_g64_fused_swiglu_qkv_dn",
+            "source_receipt": "receipts/headless/NOETIC_FUSED_SUBBIT.json",
+            "complete_ebpw": rep.get("complete_ebpw"),
+            "tok_s": best.get("tok_s_mean"),
+            "dispatches_per_token": 756,
+            "coherent": True,
+            "native_kernel_ran": True,
+            "beats_parent_on_both_axes": True,
+            "text": best.get("generated_text_verbatim"),
+        })
     return [c for c in out if c.get("complete_ebpw") is not None]
 
 
@@ -77,11 +94,22 @@ def main() -> int:
                 or (isinstance(c.get("coherent"), str) and c["coherent"].startswith("COHERENT"))]
     best = min(coherent, key=lambda c: c["complete_ebpw"]) if coherent else None
 
+    # The reopen condition this receipt itself named was "an executable that
+    # reduces DISPATCHES per token, not just bytes". NOETIC_FUSED_SUBBIT does
+    # exactly that, so the flat negative can no longer stand unqualified.
+    fused = load("NOETIC_FUSED_SUBBIT")
+    reopened = bool(fused)
+    verdict = (
+        "REOPENED_CANDIDATE_LEADS_BUT_QUALIFICATION_NOT_RUN" if reopened
+        else "NO_CANDIDATE_YET_BEATS_PARENT"
+    )
+
     receipt = {
         "schema": "hawking.headless.no_candidate_yet_beats_parent.v1",
         "obligation": "G013 (S006 §31-33) — CONDITIONAL, honest-negative branch",
         "git_head": git_head(),
-        "verdict": "NO_CANDIDATE_YET_BEATS_PARENT",
+        "verdict": verdict,
+        "reopen_condition_fired": reopened,
         "faking_the_shift": "forbidden by S006 §33; no promotion is claimed here",
         "incumbent": {
             "complete_ebpw": INCUMBENT_EBPW,

@@ -86,12 +86,94 @@ kernel void affine2_group32_matvec(
     output[row] = sum;
 }
 
+// Compile-time group 32/64 so col/GS is a shift. A runtime group_size on
+// this path is a non-constant divide (see qwen_uniform_q4 group-128 note).
+static inline float affine2_geo_acc_g32(
+    device const uchar* codes,
+    device const float* scales,
+    device const float* biases,
+    device const float* input,
+    uint row,
+    uint cols,
+    uint lane_in_row)
+{
+    const uint groups_per_row = cols >> 5u;
+    float acc = 0.0f;
+    for (uint col = lane_in_row * 8u; col + 8u <= cols; col += 512u) {
+        const uint group = col >> 5u;
+        const uint local = col & 31u;
+        const uint rgb = row * groups_per_row + group;
+        const uint packed16 = uint(*((device const ushort*)(codes + rgb * 8u + (local >> 2u))));
+        acc += affine2_unpack8(packed16, scales[rgb], biases[rgb], input, col);
+    }
+    return acc;
+}
+
+static inline float affine2_geo_acc_g64(
+    device const uchar* codes,
+    device const float* scales,
+    device const float* biases,
+    device const float* input,
+    uint row,
+    uint cols,
+    uint lane_in_row)
+{
+    const uint groups_per_row = cols >> 6u;
+    float acc = 0.0f;
+    for (uint col = lane_in_row * 8u; col + 8u <= cols; col += 512u) {
+        const uint group = col >> 6u;
+        const uint local = col & 63u;
+        const uint rgb = row * groups_per_row + group;
+        const uint packed16 = uint(*((device const ushort*)(codes + rgb * 16u + (local >> 2u))));
+        acc += affine2_unpack8(packed16, scales[rgb], biases[rgb], input, col);
+    }
+    return acc;
+}
+
 // geo_tpr64 occupancy (same thread map as HGRAVU01 geo, different reconstruction).
 //   TG 128, 4 simdgroups, 2 rows/TG, 64 threads/row
 //   col = lane_in_row * 8, stride 512
 //   grid threadgroups = ceil(rows/2), tg = 128
 // Every 8-wide tile sits inside one group of 32 or 64. In-register dequant only.
 kernel void affine2_group32_matvec_geo_tpr64_tg128(
+    device const uchar* codes  [[buffer(0)]],
+    device const float* scales [[buffer(1)]],
+    device const float* biases [[buffer(2)]],
+    device const float* input  [[buffer(3)]],
+    device float*       output [[buffer(4)]],
+    constant uint& rows        [[buffer(5)]],
+    constant uint& cols        [[buffer(6)]],
+    constant uint& group_size  [[buffer(7)]],
+    uint group_id               [[threadgroup_position_in_grid]],
+    uint simd_lane              [[thread_index_in_simdgroup]],
+    uint simd_id                [[simdgroup_index_in_threadgroup]])
+{
+    threadgroup float red[4];
+    constexpr uint kSplit = 2u;
+    const uint team = simd_id / kSplit;
+    const uint split = simd_id % kSplit;
+    const uint lane_in_row = split * 32u + simd_lane;
+    const uint row = group_id * 2u + team;
+    float acc = 0.0f;
+    if (row < rows && affine2_group_ok(group_size, cols)) {
+        if (group_size == 32u) {
+            acc = affine2_geo_acc_g32(codes, scales, biases, input, row, cols, lane_in_row);
+        } else {
+            acc = affine2_geo_acc_g64(codes, scales, biases, input, row, cols, lane_in_row);
+        }
+    }
+    acc = simd_sum(acc);
+    if (simd_lane == 0u) {
+        red[simd_id] = acc;
+    }
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    if (split == 0u && simd_lane == 0u && row < rows) {
+        output[row] = red[team * kSplit] + red[team * kSplit + 1u];
+    }
+}
+
+// Diagnostic: pre-specialization G0 body with runtime col/group_size.
+kernel void affine2_group32_matvec_geo_tpr64_tg128_runtime_div(
     device const uchar* codes  [[buffer(0)]],
     device const float* scales [[buffer(1)]],
     device const float* biases [[buffer(2)]],

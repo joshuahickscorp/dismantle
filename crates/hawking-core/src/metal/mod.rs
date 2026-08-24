@@ -1293,6 +1293,19 @@ mod imp {
             "qwen_uniform_q4_group64_matvec_qkv_geo_tpr64_tg128" => {
                 "qwen_uniform_q4_group64_matvec_qkv_geo_tpr64_tg128"
             }
+            "qwen_affine_q2_group32_matvec" => "qwen_affine_q2_group32_matvec",
+            "qwen_affine_q2_group32_matvec_geo_tpr64_tg128" => {
+                "qwen_affine_q2_group32_matvec_geo_tpr64_tg128"
+            }
+            "qwen_affine_q2_group32_matvec_geo_tpr64_tg128_runtime_div" => {
+                "qwen_affine_q2_group32_matvec_geo_tpr64_tg128_runtime_div"
+            }
+            "qwen_affine_q2_group64_matvec_gate_up_geo_tpr64_tg128" => {
+                "qwen_affine_q2_group64_matvec_gate_up_geo_tpr64_tg128"
+            }
+            "qwen_affine_q2_group64_matvec_gate_up_swiglu_geo_tpr64_tg128" => {
+                "qwen_affine_q2_group64_matvec_gate_up_swiglu_geo_tpr64_tg128"
+            }
             "qwen_uniform_q4_decode_vector" => "qwen_uniform_q4_decode_vector",
             "qwen_uniform_q4_embedding_lookup" => "qwen_uniform_q4_embedding_lookup",
             "qwen_uniform_q4_embedding_lookup_device_token" => {
@@ -2224,6 +2237,20 @@ mod imp {
                 assert!(
                     SHADER_QWEN_UNIFORM_Q4.contains(&format!("kernel void {kernel}(")),
                     "{kernel} must compile from qwen_uniform_q4.metal"
+                );
+            }
+            use crate::metal::SHADER_Q80_MIXED_DECODE;
+            for &kernel in &[
+                "qwen_affine_q2_group32_matvec",
+                "qwen_affine_q2_group32_matvec_geo_tpr64_tg128",
+                "qwen_affine_q2_group32_matvec_geo_tpr64_tg128_runtime_div",
+                "qwen_affine_q2_group64_matvec_gate_up_geo_tpr64_tg128",
+                "qwen_affine_q2_group64_matvec_gate_up_swiglu_geo_tpr64_tg128",
+            ] {
+                assert_eq!(static_kernel_name(kernel), kernel);
+                assert!(
+                    SHADER_Q80_MIXED_DECODE.contains(&format!("kernel void {kernel}(")),
+                    "{kernel} must compile from q80_mixed_decode.metal"
                 );
             }
             for &kernel in KERNELS {

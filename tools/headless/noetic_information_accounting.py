@@ -489,6 +489,54 @@ def _zero_buckets() -> dict[str, int]:
     return {k: 0 for k in BUCKETS_7}
 
 
+def embedded_weightlike_bytes(blob: bytes, min_run: int = 64) -> int:
+    """Bytes inside a compiled GPU blob that parse as a run of plausible weights.
+
+    Attempt 4 hides model information in a `.metallib` and it was MISSED, because
+    the accountant trusted the SUFFIX: anything ending `.metallib` booked as
+    MACHINE_SPECIFIC without being opened. The receipt's own prescription was
+    "path is not provenance", and a fatbin is exactly where learned constant
+    tables have always lived.
+
+    So look inside. A float32 weight table has a signature compiled code does not:
+    a long contiguous run of finite values in a bounded range, with enough
+    distinct values that it is not padding. Those bytes book as MODEL_SPECIFIC.
+
+    This is a heuristic and it is stated as one. It can miss weights stored as
+    f16, bf16, or integer codes, and it can false-positive on a legitimate large
+    float constant table compiled from scanned source. It is strictly better than
+    trusting the file extension, which caught nothing.
+    """
+    if len(blob) < min_run * 4:
+        return 0
+    # Scan ALL FOUR byte alignments. Embedded data does not start on a
+    # convenient boundary: the planted blob has an 18-byte header, and scanning
+    # only from offset 0 found nothing at all while the payload alone scored the
+    # full 512 bytes. An accountant that can be defeated by an odd-sized header
+    # is not an accountant.
+    best = 0
+    for align in range(4):
+        body = blob[align:]
+        n = len(body) // 4
+        run = 0
+        run_distinct: set[int] = set()
+        for i in range(n):
+            w = body[i * 4:(i + 1) * 4]
+            u = int.from_bytes(w, "little")
+            v = struct.unpack("<f", w)[0]
+            ok = (v == v) and abs(v) != float("inf") and 1e-8 < abs(v) <= 16.0
+            if ok:
+                run += 1
+                run_distinct.add(u)
+            else:
+                if run >= min_run and len(run_distinct) >= min_run // 2:
+                    best = max(best, run)
+                run, run_distinct = 0, set()
+        if run >= min_run and len(run_distinct) >= min_run // 2:
+            best = max(best, run)
+    return best * 4
+
+
 def path_role(rel: str) -> str:
     rel = rel.replace("\\", "/")
     parts = rel.split("/")
@@ -549,6 +597,33 @@ def account_tree(root: Path, mode: str = "content") -> dict:
         role = path_role(rel)
         sz = st.st_size
         stem = p.name.split(".")[0]
+
+        # PATH IS NOT PROVENANCE. A compiled GPU blob booked as MACHINE_SPECIFIC
+        # purely on its suffix, which is how attempt 4 hid model bytes in a
+        # .metallib and was MISSED. In content mode, open it: any embedded run
+        # that parses as plausible weights is charged to MODEL_SPECIFIC.
+        if content and p.suffix.lower() in COMPILED_GPU_SUFFIXES:
+            try:
+                hidden = embedded_weightlike_bytes(p.read_bytes())
+            except OSError:
+                hidden = 0
+            if hidden:
+                hidden = min(hidden, sz)
+                buckets["MODEL_SPECIFIC_BYTES"] += hidden
+                buckets[role] += sz - hidden
+                remaining[rel] = [role, sz - hidden]
+                evidence.append(
+                    {
+                        "file": rel,
+                        "role": "MODEL_SPECIFIC_BYTES",
+                        "bytes": hidden,
+                        "why": (
+                            "compiled GPU blob contains a contiguous run parsing as "
+                            "plausible f32 weights; suffix is not provenance"
+                        ),
+                    }
+                )
+                continue
         rec = recipes.get(stem) or recipes.get(rel.rsplit(".", 1)[0])
         expanded = expanded_from_recipe(rec) if rec else None
 

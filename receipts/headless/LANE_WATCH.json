@@ -1,17 +1,32 @@
 {
-  "generated_at": "2026-08-24T02:52:06Z",
+  "generated_at": "2026-08-24T03:02:57Z",
   "running": [
     "n001seal",
-    "n004gpuledger",
     "n006multisession",
     "n008families",
-    "n009organs"
+    "n009organs",
+    "nq2fgen"
   ],
-  "needs_harvest": [],
+  "needs_harvest": [
+    {
+      "slug": "n004gpuledger",
+      "id": "n004gpuledger-20260823-224016",
+      "unharvested": [
+        "receipts/headless/GPU_LEDGER.json",
+        "receipts/headless/GPU_LEDGER_METAL_PROBE.json",
+        "receipts/headless/GPU_LEDGER_RAW.run1.json",
+        "receipts/headless/GPU_LEDGER_RAW.run2.json",
+        "receipts/headless/GPU_LEDGER_RAW.run3.json",
+        "tools/headless/gpu_ledger.py",
+        "tools/headless/test_gpu_ledger.py"
+      ],
+      "worktree_extras": 0
+    }
+  ],
   "headroom": {
-    "load1": 8.0244140625,
+    "load1": 41.9228515625,
     "ncpu": 28,
-    "disk_gib": 329.8,
-    "room_for_more": true
+    "disk_gib": 322.3,
+    "room_for_more": false
   }
 }

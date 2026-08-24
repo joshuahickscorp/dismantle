@@ -1,7 +1,7 @@
 {
   "schema": "hawking.headless.noetic_information_accounting.v1",
-  "generated_at": "2026-08-23T20:09:48Z",
-  "commit": "0d0ff83f0631a9bb952817c7982e82bb8ae6da66",
+  "generated_at": "2026-08-24T03:02:07Z",
+  "commit": "2eaa878f70cf0ab83c8b21d2ffb21e60c2cc7ba7",
   "why": "A representation search that reports EBPW is dishonest if supporting structures escape the accounting. Seven buckets over the sealed uniform-q4-v1 artifact, then a canary that hides parent-derived bytes in excluded buckets.",
   "anchors_not_rederived": {
     "artifact": "uniform-q4-v1",
@@ -155,13 +155,13 @@
     "hidden_learned_constants_in_bound_shaders": [],
     "kernel_census": {
       "present": true,
-      "declared_kernel_void_names": 561,
+      "declared_kernel_void_names": 568,
       "g105_declared": 554,
       "declared_matches_g105": false,
       "bound_files": [
         {
           "file": "q80_mixed_decode.metal",
-          "bytes": 85487,
+          "bytes": 91049,
           "kernels": [
             "q80_binary_group_csr_matvec_bytes",
             "q80_binary_group_csr_matvec_tg256",
@@ -206,7 +206,7 @@
         },
         {
           "file": "qwen_uniform_q4.metal",
-          "bytes": 73162,
+          "bytes": 84374,
           "kernels": [
             "qwen_uniform_q4_embedding_lookup",
             "qwen_uniform_q4_group128_matvec_geo_tpr64_tg128",
@@ -228,12 +228,12 @@
           ]
         }
       ],
-      "bound_file_bytes": 223206,
-      "all_shader_bytes": 1526519,
-      "unbound_shader_bytes": 1303313,
+      "bound_file_bytes": 239980,
+      "all_shader_bytes": 1546185,
+      "unbound_shader_bytes": 1306205,
       "unbound_file_count": 37,
       "dispatched_names_missing_from_shaders": [],
-      "decode_rs_bytes": 257945
+      "decode_rs_bytes": 288193
     },
     "nx_bytes": 3098,
     "workspace": {
@@ -273,21 +273,21 @@
     "headline_ctx": 8192,
     "buckets": {
       "MODEL_SPECIFIC_BYTES": 14297933604,
-      "SHARED_RUNTIME_BYTES": 481151,
+      "SHARED_RUNTIME_BYTES": 528173,
       "MACHINE_SPECIFIC_BYTES": 3098,
       "GENERATED_CACHE_BYTES": 1230635008,
       "TEMPORARY_BYTES": 1691396,
-      "RESIDENT_BYTES": 15530744257,
+      "RESIDENT_BYTES": 15530791279,
       "ACTIVE_BYTES": 13622266960
     },
-    "partition_sum": 15530744257,
-    "naive_seven_sum": 44683755474,
+    "partition_sum": 15530791279,
+    "naive_seven_sum": 44683849518,
     "bpw": {
       "model_specific": 4.252806192902674,
       "payload_only": 4.252735126866492,
       "on_disk_artifact": 4.252806192902674,
-      "complete_with_runtime_not_amortised": 4.252950228901382,
-      "resident_at_ctx": 4.619495878626773,
+      "complete_with_runtime_not_amortised": 4.252964215219848,
+      "resident_at_ctx": 4.619509864945239,
       "active_per_token": 4.05183454430465
     },
     "anchors_confirmed": {
@@ -395,18 +395,18 @@
         "hide": "model information moved into a compiled GPU binary so it books as MACHINE_SPECIFIC",
         "where": "nx/qwen_uniform_q4_group64.metallib",
         "payload_bytes": 512,
-        "content": "MISSED",
+        "content": "COUNTED",
         "path_only": "MISSED",
-        "content_why": "MODEL_SPECIFIC grew by 0 B, not the planted 512 B. Largest other growth: MACHINE_SPECIFIC_BYTES 530 B",
+        "content_why": "MODEL_SPECIFIC grew by 512 B against a planted 512 B parent-derived payload",
         "path_why": "MODEL_SPECIFIC grew by 0 B, not the planted 512 B. Largest other growth: MACHINE_SPECIFIC_BYTES 530 B",
         "content_delta": {
-          "MODEL_SPECIFIC_BYTES": 0,
+          "MODEL_SPECIFIC_BYTES": 512,
           "SHARED_RUNTIME_BYTES": 0,
-          "MACHINE_SPECIFIC_BYTES": 530,
+          "MACHINE_SPECIFIC_BYTES": 18,
           "GENERATED_CACHE_BYTES": 0,
           "TEMPORARY_BYTES": 0,
           "RESIDENT_BYTES": 530,
-          "ACTIVE_BYTES": 0
+          "ACTIVE_BYTES": 512
         },
         "path_delta": {
           "MODEL_SPECIFIC_BYTES": 0,
@@ -449,13 +449,13 @@
       }
     ],
     "content_tally": {
-      "COUNTED": 4,
-      "MISSED": 1,
+      "COUNTED": 5,
+      "MISSED": 0,
       "statuses": [
         "COUNTED",
         "COUNTED",
         "COUNTED",
-        "MISSED",
+        "COUNTED",
         "COUNTED"
       ]
     },
@@ -471,15 +471,15 @@
       ]
     },
     "combined_content_buckets": {
-      "MODEL_SPECIFIC_BYTES": 18415,
+      "MODEL_SPECIFIC_BYTES": 18927,
       "SHARED_RUNTIME_BYTES": 1110,
-      "MACHINE_SPECIFIC_BYTES": 1006,
+      "MACHINE_SPECIFIC_BYTES": 494,
       "GENERATED_CACHE_BYTES": 0,
       "TEMPORARY_BYTES": 0,
       "RESIDENT_BYTES": 20531,
-      "ACTIVE_BYTES": 18415
+      "ACTIVE_BYTES": 18927
     },
-    "completeness": "not complete. compiled GPU binaries are trusted as machine-only."
+    "completeness": "caught the five plants; geometry-shaped integer codes would still miss."
   },
   "artifact_untouched": {
     "verified": true,

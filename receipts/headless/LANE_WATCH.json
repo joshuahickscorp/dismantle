@@ -1,18 +1,17 @@
 {
-  "generated_at": "2026-08-24T03:28:53Z",
+  "generated_at": "2026-08-24T03:36:01Z",
   "running": [
     "n005dispatch",
     "n007prodbench",
     "n010alloc",
     "n014adv",
-    "n016prefill",
-    "nq2fgen"
+    "n016prefill"
   ],
   "needs_harvest": [],
   "headroom": {
-    "load1": 13.27880859375,
+    "load1": 15.0791015625,
     "ncpu": 28,
-    "disk_gib": 307.9,
+    "disk_gib": 306.5,
     "room_for_more": true
   }
 }

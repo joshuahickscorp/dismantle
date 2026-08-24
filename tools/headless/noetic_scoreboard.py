@@ -260,7 +260,12 @@ def _organ_floor_arithmetic() -> dict[str, Any]:
     rows = [
         ("deltanet", dn, floors.get("deltanet")),
         ("gqa", gqa, floors.get("gqa")),
-        ("mlp", mlp, 2.25),
+        # The leader's MLP is a TRUE 4-level affine at 2 bits + f16 scale + f16
+        # bias per 64 = 2.50, and it is the cheapest MLP codec MEASURED to
+        # GENERATE coherently. The bias-free 2.25 variant decodes natively but
+        # degrades. Using 2.25 here -- as this file first did, taken from the
+        # mis-billed composition arm -- understates the floor.
+        ("mlp", mlp, 2.50),
         ("embedding_output", emb, floors.get("embedding_output")),
     ]
     if any(b is None for _, _, b in rows):
@@ -325,14 +330,28 @@ def main() -> int:
             "family": "uniform grouped-code on the whole MLP",
             "measured_points": [
                 {"bpw_body": 1.85, "codec": "ternary g64", "composed": "FAILS", "argmax": "flips"},
-                {"bpw_body": 2.25, "codec": "q2 4-level fitted g64", "composed": "SURVIVES", "argmax": "agrees"},
+                {"bpw_body": 3.06, "codec": "q2f_g64 AS ACTUALLY BILLED (7 levels)",
+                 "composed": "SURVIVES", "argmax": "agrees",
+                 "correction": "recorded at the time as 2.25 bpw. The codec emitted SEVEN "
+                 "levels, not four: log2(7)+16/64 = 3.06. The survival is real; the PRICE "
+                 "was wrong by 0.81 bpw."},
+                {"bpw_body": 2.25, "codec": "TRUE bias-free 4-level g64",
+                 "composed": "not run", "generation": "DEGRADED", "measured_ebpw": 2.9802,
+                 "note": "the honest 2-bit point: decodes natively at 2.9802 EBPW but emits "
+                 "' IR' then EOS. Cheaper than the leader and NOT coherent."},
+                {"bpw_body": 2.50, "codec": "affine2 g64 LS (leader: 4-level + bias)",
+                 "composed": "SURVIVES", "generation": "COHERENT", "measured_ebpw": 3.1393,
+                 "note": "the 0.25-bpw bias is what separates degraded from coherent at 2 bits"},
                 {"bpw_body": 3.25, "codec": "q3 g64", "composed": "SURVIVES", "argmax": "agrees"},
             ],
-            "knee": "between 1.85 and 2.25 bpw body — sharp, not gradual: rel_l2 "
-            "more than doubles (0.3471 -> 0.7360) and the argmax flips",
+            "knee": "CORRECTED. The composed knee sits between 1.85 (argmax flips) and the "
+            "3.06-bpw arm that survives -- NOT 2.25, which was a mis-billing. At GENERATION "
+            "the boundary is tighter: a TRUE 4-level 2.25-bpw body degrades (' IR' then EOS) "
+            "while the same codec plus a 0.25-bpw bias (2.50 body) is coherent.",
             "collapse_boundary": 1.85,
-            "coherent_plateau": "2.25 costs essentially nothing against 3.25 "
-            "(rel_l2 0.3471 vs 0.3423)",
+            "coherent_plateau": "SUPERSEDED -- it rested on the mis-billed 2.25 point.",
+            "correction_note": "The composition arm billed at 2.25 bpw emitted SEVEN levels "
+            "and really cost ~3.06 bpw. The survival was real; the price was not.",
             "missing": "only ONE family is mapped for the MLP. S017 §42 wants a curve per "
             "family; N008 screened five structurally distinct ones at matched bytes.",
         },

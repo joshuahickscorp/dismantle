@@ -1393,6 +1393,225 @@ kernel void qwen38_hgrafv_embedding_lookup(
     hidden[dim] = float(q) * scale + bias;
 }
 
+// ── Q2F: 4-level LS-fitted 2-bit, group 64, delta only ──
+// Reconstruction: w = (float(q) - 1.5) * delta, q in {0,1,2,3}.
+// Same occupancy as affine2 geo_tpr64. No bias buffer. Group is a
+// compile-time 64 (col>>6, col&63); a bind-time group_size here would
+// be the 1.37x integer-divide defect. Packed codes stay packed.
+
+static inline float q2f_unpack8(
+    uint packed16, float delta,
+    device const float* x, uint col)
+{
+    float sum = 0.0f;
+    for (uint i = 0u; i < 8u; ++i) {
+        const uint q = (packed16 >> (2u * i)) & 3u;
+        sum += ((float(q) - 1.5f) * delta) * x[col + i];
+    }
+    return sum;
+}
+
+static inline float q2f_geo_acc_g64(
+    device const uchar* codes,
+    device const half* deltas,
+    device const float* input,
+    uint row,
+    uint cols,
+    uint lane_in_row)
+{
+    const uint groups_per_row = cols >> 6u;
+    float acc = 0.0f;
+    for (uint col = lane_in_row * 8u; col + 8u <= cols; col += 512u) {
+        const uint group = col >> 6u;
+        const uint local = col & 63u;
+        const uint rgb = row * groups_per_row + group;
+        const float delta = float(deltas[rgb]);
+        const uint packed16 = uint(*((device const ushort*)(codes + rgb * 16u + (local >> 2u))));
+        acc += q2f_unpack8(packed16, delta, input, col);
+    }
+    return acc;
+}
+
+// Serial family. One thread per row. Grid (rows,1,1), TG 256.
+// Compile-time group 64: col>>6 / col&63, no runtime divide.
+kernel void qwen_q2f_group64_matvec(
+    device const uchar* codes       [[buffer(0)]],
+    device const half*  deltas      [[buffer(1)]],
+    device const float* input       [[buffer(2)]],
+    device float*       output      [[buffer(3)]],
+    constant uint& rows             [[buffer(4)]],
+    constant uint& cols             [[buffer(5)]],
+    uint row                         [[thread_position_in_grid]])
+{
+    if (row >= rows || (cols % 64u) != 0u) {
+        return;
+    }
+    const uint groups_per_row = cols >> 6u;
+    float acc = 0.0f;
+    for (uint col = 0u; col + 8u <= cols; col += 8u) {
+        const uint group = col >> 6u;
+        const uint local = col & 63u;
+        const uint rgb = row * groups_per_row + group;
+        const float delta = float(deltas[rgb]);
+        const uint packed16 = uint(*((device const ushort*)(codes + rgb * 16u + (local >> 2u))));
+        acc += q2f_unpack8(packed16, delta, input, col);
+    }
+    output[row] = acc;
+}
+
+// G0 occupancy. Grid ceil(rows/2)*128, TG 128. Group 64 is a literal.
+kernel void qwen_q2f_group64_matvec_geo_tpr64_tg128(
+    device const uchar* codes       [[buffer(0)]],
+    device const half*  deltas      [[buffer(1)]],
+    device const float* input       [[buffer(2)]],
+    device float*       output      [[buffer(3)]],
+    constant uint& rows             [[buffer(4)]],
+    constant uint& cols             [[buffer(5)]],
+    uint group_id                    [[threadgroup_position_in_grid]],
+    uint simd_lane                   [[thread_index_in_simdgroup]],
+    uint simd_id                     [[simdgroup_index_in_threadgroup]])
+{
+    threadgroup float red[4];
+    constexpr uint kSplit = 2u;
+    const uint team = simd_id / kSplit;
+    const uint split = simd_id % kSplit;
+    const uint lane_in_row = split * 32u + simd_lane;
+    const uint row = group_id * 2u + team;
+    float acc = 0.0f;
+    if (row < rows && (cols % 64u) == 0u) {
+        acc = q2f_geo_acc_g64(codes, deltas, input, row, cols, lane_in_row);
+    }
+    acc = simd_sum(acc);
+    if (simd_lane == 0u) {
+        red[simd_id] = acc;
+    }
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    if (split == 0u && simd_lane == 0u && row < rows) {
+        output[row] = red[team * kSplit] + red[team * kSplit + 1u];
+    }
+}
+
+static inline void q2f_unpack8_dual_g64(
+    uint packed_g,
+    float delta_g,
+    uint packed_u,
+    float delta_u,
+    device const float* x,
+    uint col,
+    thread float& acc_g,
+    thread float& acc_u)
+{
+    for (uint i = 0u; i < 8u; ++i) {
+        const float xv = x[col + i];
+        const uint qg = (packed_g >> (2u * i)) & 3u;
+        const uint qu = (packed_u >> (2u * i)) & 3u;
+        acc_g += ((float(qg) - 1.5f) * delta_g) * xv;
+        acc_u += ((float(qu) - 1.5f) * delta_u) * xv;
+    }
+}
+
+kernel void qwen_q2f_group64_matvec_gate_up_geo_tpr64_tg128(
+    device const uchar* gate_codes  [[buffer(0)]],
+    device const half*  gate_deltas [[buffer(1)]],
+    device const uchar* up_codes    [[buffer(2)]],
+    device const half*  up_deltas   [[buffer(3)]],
+    device const float* input       [[buffer(4)]],
+    device float*       gate_out    [[buffer(5)]],
+    device float*       up_out      [[buffer(6)]],
+    constant uint& rows             [[buffer(7)]],
+    constant uint& cols             [[buffer(8)]],
+    uint group_id                    [[threadgroup_position_in_grid]],
+    uint simd_lane                   [[thread_index_in_simdgroup]],
+    uint simd_id                     [[simdgroup_index_in_threadgroup]])
+{
+    threadgroup float red[8];
+    constexpr uint kSplit = 2u;
+    const uint team = simd_id / kSplit;
+    const uint split = simd_id % kSplit;
+    const uint lane_in_row = split * 32u + simd_lane;
+    const uint row = group_id * 2u + team;
+    float acc_g = 0.0f;
+    float acc_u = 0.0f;
+    if (row < rows && (cols % 64u) == 0u) {
+        const uint groups_per_row = cols >> 6u;
+        for (uint col = lane_in_row * 8u; col + 8u <= cols; col += 512u) {
+            const uint group = col >> 6u;
+            const uint local = col & 63u;
+            const uint rgb = row * groups_per_row + group;
+            const uint byte0 = rgb * 16u + (local >> 2u);
+            const uint gpacked = uint(*((device const ushort*)(gate_codes + byte0)));
+            const uint upacked = uint(*((device const ushort*)(up_codes + byte0)));
+            q2f_unpack8_dual_g64(
+                gpacked, float(gate_deltas[rgb]),
+                upacked, float(up_deltas[rgb]),
+                input, col, acc_g, acc_u);
+        }
+    }
+    acc_g = simd_sum(acc_g);
+    acc_u = simd_sum(acc_u);
+    if (simd_lane == 0u) {
+        red[simd_id] = acc_g;
+        red[4u + simd_id] = acc_u;
+    }
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    if (split == 0u && simd_lane == 0u && row < rows) {
+        const uint t = team * kSplit;
+        gate_out[row] = red[t] + red[t + 1u];
+        up_out[row] = red[4u + t] + red[4u + t + 1u];
+    }
+}
+
+kernel void qwen_q2f_group64_matvec_gate_up_swiglu_geo_tpr64_tg128(
+    device const uchar* gate_codes  [[buffer(0)]],
+    device const half*  gate_deltas [[buffer(1)]],
+    device const uchar* up_codes    [[buffer(2)]],
+    device const half*  up_deltas   [[buffer(3)]],
+    device const float* input       [[buffer(4)]],
+    device float*       act_out     [[buffer(5)]],
+    constant uint& rows             [[buffer(6)]],
+    constant uint& cols             [[buffer(7)]],
+    uint group_id                    [[threadgroup_position_in_grid]],
+    uint simd_lane                   [[thread_index_in_simdgroup]],
+    uint simd_id                     [[simdgroup_index_in_threadgroup]])
+{
+    threadgroup float red[8];
+    constexpr uint kSplit = 2u;
+    const uint team = simd_id / kSplit;
+    const uint split = simd_id % kSplit;
+    const uint lane_in_row = split * 32u + simd_lane;
+    const uint row = group_id * 2u + team;
+    float acc_g = 0.0f;
+    float acc_u = 0.0f;
+    if (row < rows && (cols % 64u) == 0u) {
+        const uint groups_per_row = cols >> 6u;
+        for (uint col = lane_in_row * 8u; col + 8u <= cols; col += 512u) {
+            const uint group = col >> 6u;
+            const uint local = col & 63u;
+            const uint rgb = row * groups_per_row + group;
+            const uint byte0 = rgb * 16u + (local >> 2u);
+            const uint gpacked = uint(*((device const ushort*)(gate_codes + byte0)));
+            const uint upacked = uint(*((device const ushort*)(up_codes + byte0)));
+            q2f_unpack8_dual_g64(
+                gpacked, float(gate_deltas[rgb]),
+                upacked, float(up_deltas[rgb]),
+                input, col, acc_g, acc_u);
+        }
+    }
+    acc_g = simd_sum(acc_g);
+    acc_u = simd_sum(acc_u);
+    if (simd_lane == 0u) {
+        red[simd_id] = acc_g;
+        red[4u + simd_id] = acc_u;
+    }
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    if (split == 0u && simd_lane == 0u && row < rows) {
+        const uint t = team * kSplit;
+        const float g = red[t] + red[t + 1u];
+        const float u = red[4u + t] + red[4u + t + 1u];
+        act_out[row] = (g / (1.0f + exp(-g))) * u;
+    }
+}
+
 // HGRAVU01 q8: one code is one byte. Serial family extract walks 8 bits
 // of that byte. These kernels load the byte, subtract bound, FMA — no
 // bit loop, no dense W, no threadgroup weight staging.

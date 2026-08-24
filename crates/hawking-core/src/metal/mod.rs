@@ -1306,6 +1306,16 @@ mod imp {
             "qwen_affine_q2_group64_matvec_gate_up_swiglu_geo_tpr64_tg128" => {
                 "qwen_affine_q2_group64_matvec_gate_up_swiglu_geo_tpr64_tg128"
             }
+            "qwen_q2f_group64_matvec" => "qwen_q2f_group64_matvec",
+            "qwen_q2f_group64_matvec_geo_tpr64_tg128" => {
+                "qwen_q2f_group64_matvec_geo_tpr64_tg128"
+            }
+            "qwen_q2f_group64_matvec_gate_up_geo_tpr64_tg128" => {
+                "qwen_q2f_group64_matvec_gate_up_geo_tpr64_tg128"
+            }
+            "qwen_q2f_group64_matvec_gate_up_swiglu_geo_tpr64_tg128" => {
+                "qwen_q2f_group64_matvec_gate_up_swiglu_geo_tpr64_tg128"
+            }
             "qwen_uniform_q4_decode_vector" => "qwen_uniform_q4_decode_vector",
             "qwen_uniform_q4_embedding_lookup" => "qwen_uniform_q4_embedding_lookup",
             "qwen_uniform_q4_embedding_lookup_device_token" => {
@@ -2246,6 +2256,10 @@ mod imp {
                 "qwen_affine_q2_group32_matvec_geo_tpr64_tg128_runtime_div",
                 "qwen_affine_q2_group64_matvec_gate_up_geo_tpr64_tg128",
                 "qwen_affine_q2_group64_matvec_gate_up_swiglu_geo_tpr64_tg128",
+                "qwen_q2f_group64_matvec",
+                "qwen_q2f_group64_matvec_geo_tpr64_tg128",
+                "qwen_q2f_group64_matvec_gate_up_geo_tpr64_tg128",
+                "qwen_q2f_group64_matvec_gate_up_swiglu_geo_tpr64_tg128",
             ] {
                 assert_eq!(static_kernel_name(kernel), kernel);
                 assert!(

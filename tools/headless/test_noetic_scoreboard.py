@@ -41,12 +41,34 @@ def test_capability_is_honestly_absent():
     assert "capability" in fp["reason"].lower()
 
 
-def test_phase_map_records_the_measured_knee():
+def test_phase_map_records_the_measured_knee_and_its_correction():
+    """The 2.25 point was a MIS-BILLING and the map must say so.
+
+    The composition arm recorded as surviving at 2.25 bpw emitted seven levels,
+    not four, so it really cost about 3.06. The survival was real; the price was
+    not. A phase map that still shows 2.25 SURVIVES would keep the campaign
+    reasoning from a number no artifact ever achieved.
+    """
     pm = _d()["phase_transition_map"]
-    pts = {p["bpw_body"]: p["composed"] for p in pm["measured_points"]}
-    assert pts[1.85] == "FAILS" and pts[2.25] == "SURVIVES"
+    pts = {p["bpw_body"]: p for p in pm["measured_points"]}
+    assert pts[1.85]["composed"] == "FAILS"
     assert pm["collapse_boundary"] == 1.85
     assert pm["state"] == "PARTIAL", "only one family is mapped; do not claim a full map"
+    # The mis-billed arm is present at its TRUE price, carrying the correction.
+    assert 3.06 in pts and "correction" in pts[3.06]
+    assert "2.25" in pts[3.06]["correction"]
+    # And the honest 2.25 point is recorded as degrading, not surviving.
+    assert pts[2.25]["composed"] != "SURVIVES"
+    assert pts[2.25]["generation"] == "DEGRADED"
+    assert pm.get("correction_note"), "the mis-billing must be stated, not silently fixed"
+
+
+def test_the_bias_is_what_buys_coherence():
+    """2.25 decodes and degrades; 2.50 -- the same codec plus a bias -- is coherent."""
+    pts = {p["bpw_body"]: p for p in _d()["phase_transition_map"]["measured_points"]}
+    assert pts[2.25]["measured_ebpw"] < pts[2.50]["measured_ebpw"], "2.25 must be cheaper"
+    assert pts[2.25]["generation"] == "DEGRADED"
+    assert pts[2.50]["generation"] == "COHERENT"
 
 
 def test_leader_is_not_called_resident():
@@ -64,7 +86,14 @@ def test_the_implied_floor_is_derived_from_measured_organ_floors():
     """
     f = _d()["implied_whole_model_floor"]
     assert f["state"] == "DERIVED"
-    assert abs(f["implied_whole_model_ebpw"] - 2.9398) < 0.05
+    # 3.0989 with the MLP at the leader's TRUE 4-level 2.50 bpw. The earlier
+    # 2.9398 used 2.25, taken from the mis-billed composition arm, and understated
+    # the floor. The corrected figure now agrees with the MEASURED leader (3.1393)
+    # to within 0.04, which is the check that it is describing a real artifact.
+    assert abs(f["implied_whole_model_ebpw"] - 3.0989) < 0.05
+    assert abs(f["implied_whole_model_ebpw"] - f["leader_today"]) < 0.10, (
+        "the implied floor must track the artifact that actually exists"
+    )
     # The leader is already close to the floor: per-organ quantization is nearly spent.
     assert f["leader_today"] - f["implied_whole_model_ebpw"] < 0.25
     # And the non-MLP organs alone exceed the ~1 EBPW research pressure.

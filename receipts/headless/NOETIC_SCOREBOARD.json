@@ -1,7 +1,7 @@
 {
   "schema": "hawking.headless.noetic_scoreboard.v1",
   "obligation": "N015 (S017 \u00a73, \u00a742, \u00a744)",
-  "git_head": "5da82f4a4ed1",
+  "git_head": "9967e64a8abe",
   "parent_params": 26895998464,
   "columns": "S017 \u00a744",
   "honesty": "Every cell states MEASURED, DERIVED or ABSENT. An unmeasured cell is never rendered as 0 \u2014 a plausible zero makes an unmeasured candidate look cheap, which is the specific way a scoreboard lies.",
@@ -552,10 +552,27 @@
         "argmax": "flips"
       },
       {
-        "bpw_body": 2.25,
-        "codec": "q2 4-level fitted g64",
+        "bpw_body": 3.06,
+        "codec": "q2f_g64 AS ACTUALLY BILLED (7 levels)",
         "composed": "SURVIVES",
-        "argmax": "agrees"
+        "argmax": "agrees",
+        "correction": "recorded at the time as 2.25 bpw. The codec emitted SEVEN levels, not four: log2(7)+16/64 = 3.06. The survival is real; the PRICE was wrong by 0.81 bpw."
+      },
+      {
+        "bpw_body": 2.25,
+        "codec": "TRUE bias-free 4-level g64",
+        "composed": "not run",
+        "generation": "DEGRADED",
+        "measured_ebpw": 2.9802,
+        "note": "the honest 2-bit point: decodes natively at 2.9802 EBPW but emits ' IR' then EOS. Cheaper than the leader and NOT coherent."
+      },
+      {
+        "bpw_body": 2.5,
+        "codec": "affine2 g64 LS (leader: 4-level + bias)",
+        "composed": "SURVIVES",
+        "generation": "COHERENT",
+        "measured_ebpw": 3.1393,
+        "note": "the 0.25-bpw bias is what separates degraded from coherent at 2 bits"
       },
       {
         "bpw_body": 3.25,
@@ -564,9 +581,10 @@
         "argmax": "agrees"
       }
     ],
-    "knee": "between 1.85 and 2.25 bpw body \u2014 sharp, not gradual: rel_l2 more than doubles (0.3471 -> 0.7360) and the argmax flips",
+    "knee": "CORRECTED. The composed knee sits between 1.85 (argmax flips) and the 3.06-bpw arm that survives -- NOT 2.25, which was a mis-billing. At GENERATION the boundary is tighter: a TRUE 4-level 2.25-bpw body degrades (' IR' then EOS) while the same codec plus a 0.25-bpw bias (2.50 body) is coherent.",
     "collapse_boundary": 1.85,
-    "coherent_plateau": "2.25 costs essentially nothing against 3.25 (rel_l2 0.3471 vs 0.3423)",
+    "coherent_plateau": "SUPERSEDED -- it rested on the mis-billed 2.25 point.",
+    "correction_note": "The composition arm billed at 2.25 bpw emitted SEVEN levels and really cost ~3.06 bpw. The survival was real; the price was not.",
     "missing": "only ONE family is mapped for the MLP. S017 \u00a742 wants a curve per family; N008 screened five structurally distinct ones at matched bytes."
   },
   "implied_whole_model_floor": {
@@ -588,7 +606,7 @@
         "organ": "mlp",
         "elements": 17112760320,
         "share": 0.6363,
-        "floor_bpw": 2.25
+        "floor_bpw": 2.5
       },
       {
         "organ": "embedding_output",
@@ -597,7 +615,7 @@
         "floor_bpw": 4.125
       }
     ],
-    "implied_whole_model_ebpw": 2.9398,
+    "implied_whole_model_ebpw": 3.0989,
     "leader_today": 3.139300850311054,
     "incumbent": 4.252735126866492,
     "research_pressure": 1.0,

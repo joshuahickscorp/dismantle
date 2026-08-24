@@ -695,6 +695,11 @@ pub const QWEN38_HGRAVU01_Q4_GEO_TPR64: &str =
     "qwen_uniform_hgravu_q4_group64_matvec_geo_tpr64_tg128";
 pub const QWEN38_AFFINE_Q2_SERIAL: &str = "qwen_affine_q2_group32_matvec";
 pub const QWEN38_AFFINE_Q2_GEO_TPR64: &str = "qwen_affine_q2_group32_matvec_geo_tpr64_tg128";
+pub const QWEN38_Q2F_SERIAL: &str = "qwen_q2f_group64_matvec";
+pub const QWEN38_Q2F_GEO_TPR64: &str = "qwen_q2f_group64_matvec_geo_tpr64_tg128";
+pub const QWEN38_Q2F_GATE_UP_KERNEL: &str = "qwen_q2f_group64_matvec_gate_up_geo_tpr64_tg128";
+pub const QWEN38_Q2F_GATE_UP_SWIGLU_KERNEL: &str =
+    "qwen_q2f_group64_matvec_gate_up_swiglu_geo_tpr64_tg128";
 pub const QWEN38_HGRAFV_EMBED: &str = "qwen38_hgrafv_embedding_lookup";
 
 /// G0-class launch for Affine HGRAVF01 q2 at group 32 or 64.
@@ -993,7 +998,8 @@ mod device {
     struct GpuAffine {
         codes: PinnedBuffer,
         scales: PinnedBuffer,
-        biases: PinnedBuffer,
+        /// None = Q2F (w = (q-1.5)*delta). Some = affine2 (w = q*scale+bias).
+        biases: Option<PinnedBuffer>,
         rows: u32,
         cols: u32,
         group_size: u32,
@@ -1027,7 +1033,9 @@ mod device {
                 }
                 Self::Uniform(body) => body.codes.length() + body.scales.length(),
                 Self::Affine(body) => {
-                    body.codes.length() + body.scales.length() + body.biases.length()
+                    body.codes.length()
+                        + body.scales.length()
+                        + body.biases.as_ref().map(|b| b.length()).unwrap_or(0)
                 }
             }
         }
@@ -1226,6 +1234,29 @@ mod device {
                                 row.name
                             )));
                         };
+                        let biases = if bias_bytes == 0 {
+                            if std::env::var("HAWKING_Q2F_REUSE_AFFINE2")
+                                .map(|v| v != "0")
+                                .unwrap_or(false)
+                            {
+                                let scales = &payload[scale_off..scale_off + scale_bytes];
+                                let mut derived = vec![0u8; scale_bytes];
+                                for (i, chunk) in scales.chunks_exact(2).enumerate() {
+                                    let bits = u16::from_le_bytes([chunk[0], chunk[1]]);
+                                    let delta = half::f16::from_bits(bits).to_f32();
+                                    let bias = half::f16::from_f32(-1.5 * delta).to_bits();
+                                    derived[i * 2..i * 2 + 2]
+                                        .copy_from_slice(&bias.to_le_bytes());
+                                }
+                                Some(context.new_buffer_with_bytes_checked(&derived)?)
+                            } else {
+                                None
+                            }
+                        } else {
+                            Some(context.new_buffer_with_bytes_checked(
+                                &payload[bias_off..bias_off + bias_bytes],
+                            )?)
+                        };
                         mixed.insert(
                             row.name.clone(),
                             MixedGpuWeight::Affine(GpuAffine {
@@ -1235,9 +1266,7 @@ mod device {
                                 scales: context.new_buffer_with_bytes_checked(
                                     &payload[scale_off..scale_off + scale_bytes],
                                 )?,
-                                biases: context.new_buffer_with_bytes_checked(
-                                    &payload[bias_off..bias_off + bias_bytes],
-                                )?,
+                                biases,
                                 rows: layout.rows,
                                 cols: layout.cols,
                                 group_size,
@@ -1263,22 +1292,34 @@ mod device {
             );
             eprintln!("{}", qwen38_mixed_k_complete_bind_message());
             if census.affine > 0 {
-                let group = mixed
-                    .values()
-                    .find_map(|weight| match weight {
-                        MixedGpuWeight::Affine(body) => Some(body.group_size),
-                        _ => None,
-                    })
-                    .unwrap_or(0);
-                let kernel = if qwen38_recon_fuse_enabled() {
+                let sample = mixed.values().find_map(|weight| match weight {
+                    MixedGpuWeight::Affine(body) => Some(body),
+                    _ => None,
+                });
+                let group = sample.map(|b| b.group_size).unwrap_or(0);
+                let q2f = sample.map(|b| b.biases.is_none()).unwrap_or(false);
+                let kernel = if q2f {
+                    if qwen38_recon_fuse_enabled() {
+                        QWEN38_Q2F_GEO_TPR64
+                    } else {
+                        QWEN38_Q2F_SERIAL
+                    }
+                } else if qwen38_recon_fuse_enabled() {
                     QWEN38_AFFINE_Q2_GEO_TPR64
                 } else {
                     QWEN38_AFFINE_Q2_SERIAL
                 };
-                eprintln!(
-                    "qwen38-decode mixed bind: HGRAVF01 affine2 {kernel} group={group} \
-                     (scale+bias, 4 codes/byte)"
-                );
+                if q2f {
+                    eprintln!(
+                        "qwen38-decode mixed bind: HGRAVF01 q2f {kernel} group={group} \
+                         (delta only, w=(q-1.5)*delta, 4 codes/byte)"
+                    );
+                } else {
+                    eprintln!(
+                        "qwen38-decode mixed bind: HGRAVF01 affine2 {kernel} group={group} \
+                         (scale+bias, 4 codes/byte)"
+                    );
+                }
             }
             Qwen38HybridDecodeSession::assert_mixed_mlp_native(&mixed)?;
             Ok(Self {
@@ -1970,14 +2011,61 @@ mod device {
             input: &PinnedBuffer,
             output: &PinnedBuffer,
         ) {
+            let biases = body
+                .biases
+                .as_ref()
+                .expect("affine2 encode requires a bias buffer");
             enc.set_buffer(0, Some(&body.codes), 0);
             enc.set_buffer(1, Some(&body.scales), 0);
-            enc.set_buffer(2, Some(&body.biases), 0);
+            enc.set_buffer(2, Some(biases), 0);
             enc.set_buffer(3, Some(input), 0);
             enc.set_buffer(4, Some(output), 0);
             set_u32(enc, 5, body.rows);
             set_u32(enc, 6, body.cols);
             set_u32(enc, 7, body.group_size);
+        }
+
+        fn encode_q2f_args(
+            &self,
+            enc: &metal::ComputeCommandEncoderRef,
+            body: &GpuAffine,
+            input: &PinnedBuffer,
+            output: &PinnedBuffer,
+        ) {
+            enc.set_buffer(0, Some(&body.codes), 0);
+            enc.set_buffer(1, Some(&body.scales), 0);
+            enc.set_buffer(2, Some(input), 0);
+            enc.set_buffer(3, Some(output), 0);
+            set_u32(enc, 4, body.rows);
+            set_u32(enc, 5, body.cols);
+        }
+
+        fn dispatch_q2f(
+            &self,
+            tcb: &mut TokenCommandBuffer<'_>,
+            body: &GpuAffine,
+            input: &PinnedBuffer,
+            output: &PinnedBuffer,
+        ) -> Result<()> {
+            if body.bits != 2 || body.group_size != 64 || body.cols % 64 != 0 {
+                return Err(mixed_error(format!(
+                    "q2f dispatch refuses bits={} group_size={} cols={}",
+                    body.bits, body.group_size, body.cols
+                )));
+            }
+            if qwen38_recon_fuse_enabled() {
+                let tg = 128u32;
+                let grid = body.rows.div_ceil(2).saturating_mul(tg).max(tg);
+                return tcb.dispatch_threads(QWEN38_Q2F_GEO_TPR64, (grid, 1, 1), (tg, 1, 1), |enc| {
+                    self.encode_q2f_args(enc, body, input, output)
+                });
+            }
+            tcb.dispatch_threads(
+                QWEN38_Q2F_SERIAL,
+                (body.rows, 1, 1),
+                (256, 1, 1),
+                |enc| self.encode_q2f_args(enc, body, input, output),
+            )
         }
 
         fn dispatch_affine(
@@ -1987,6 +2075,9 @@ mod device {
             input: &PinnedBuffer,
             output: &PinnedBuffer,
         ) -> Result<()> {
+            if body.biases.is_none() {
+                return self.dispatch_q2f(tcb, body, input, output);
+            }
             if body.bits != 2 || !affine_group_size_supported(body.group_size as usize) {
                 return Err(mixed_error(format!(
                     "HGRAVF01 dispatch refuses bits={} group_size={}",
@@ -2365,6 +2456,12 @@ mod device {
                     gate.bits, up.bits, gate.group_size, up.group_size
                 )));
             }
+            let gate_b = gate.biases.as_ref().ok_or_else(|| {
+                mixed_error("fused affine gate/up on a delta-only (q2f) tensor")
+            })?;
+            let up_b = up.biases.as_ref().ok_or_else(|| {
+                mixed_error("fused affine gate/up on a delta-only (q2f) tensor")
+            })?;
             let rows = gate.rows;
             let cols = gate.cols;
             let (grid, tg) = Qwen38MatvecKernel::GeoTpr64Tg128.launch(rows);
@@ -2372,10 +2469,10 @@ mod device {
                 tcb.dispatch_threads(QWEN38_AFFINE_GATE_UP_SWIGLU_KERNEL, grid, tg, |enc| {
                     enc.set_buffer(0, Some(&gate.codes), 0);
                     enc.set_buffer(1, Some(&gate.scales), 0);
-                    enc.set_buffer(2, Some(&gate.biases), 0);
+                    enc.set_buffer(2, Some(gate_b), 0);
                     enc.set_buffer(3, Some(&up.codes), 0);
                     enc.set_buffer(4, Some(&up.scales), 0);
-                    enc.set_buffer(5, Some(&up.biases), 0);
+                    enc.set_buffer(5, Some(up_b), 0);
                     enc.set_buffer(6, Some(&self.workspace.normalized), 0);
                     enc.set_buffer(7, Some(&self.workspace.act), 0);
                     set_u32(enc, 8, rows);
@@ -2385,15 +2482,63 @@ mod device {
                 tcb.dispatch_threads(QWEN38_AFFINE_GATE_UP_KERNEL, grid, tg, |enc| {
                     enc.set_buffer(0, Some(&gate.codes), 0);
                     enc.set_buffer(1, Some(&gate.scales), 0);
-                    enc.set_buffer(2, Some(&gate.biases), 0);
+                    enc.set_buffer(2, Some(gate_b), 0);
                     enc.set_buffer(3, Some(&up.codes), 0);
                     enc.set_buffer(4, Some(&up.scales), 0);
-                    enc.set_buffer(5, Some(&up.biases), 0);
+                    enc.set_buffer(5, Some(up_b), 0);
                     enc.set_buffer(6, Some(&self.workspace.normalized), 0);
                     enc.set_buffer(7, Some(&self.workspace.gate), 0);
                     enc.set_buffer(8, Some(&self.workspace.up), 0);
                     set_u32(enc, 9, rows);
                     set_u32(enc, 10, cols);
+                })
+            }
+        }
+
+        fn encode_fused_q2f_gate_up(
+            &self,
+            tcb: &mut TokenCommandBuffer<'_>,
+            gate: &GpuAffine,
+            up: &GpuAffine,
+            with_swiglu: bool,
+        ) -> Result<()> {
+            if gate.rows != up.rows || gate.cols != up.cols {
+                return Err(mixed_error(format!(
+                    "qwen38 fused q2f gate/up shape mismatch: {}x{} vs {}x{}",
+                    gate.rows, gate.cols, up.rows, up.cols
+                )));
+            }
+            if gate.group_size != 64 || up.group_size != 64 || gate.bits != 2 || up.bits != 2 {
+                return Err(mixed_error(format!(
+                    "qwen38 fused q2f gate/up refuses bits={}/{} group={}/{} (need 2 @ 64)",
+                    gate.bits, up.bits, gate.group_size, up.group_size
+                )));
+            }
+            let rows = gate.rows;
+            let cols = gate.cols;
+            let (grid, tg) = Qwen38MatvecKernel::GeoTpr64Tg128.launch(rows);
+            if with_swiglu {
+                tcb.dispatch_threads(QWEN38_Q2F_GATE_UP_SWIGLU_KERNEL, grid, tg, |enc| {
+                    enc.set_buffer(0, Some(&gate.codes), 0);
+                    enc.set_buffer(1, Some(&gate.scales), 0);
+                    enc.set_buffer(2, Some(&up.codes), 0);
+                    enc.set_buffer(3, Some(&up.scales), 0);
+                    enc.set_buffer(4, Some(&self.workspace.normalized), 0);
+                    enc.set_buffer(5, Some(&self.workspace.act), 0);
+                    set_u32(enc, 6, rows);
+                    set_u32(enc, 7, cols);
+                })
+            } else {
+                tcb.dispatch_threads(QWEN38_Q2F_GATE_UP_KERNEL, grid, tg, |enc| {
+                    enc.set_buffer(0, Some(&gate.codes), 0);
+                    enc.set_buffer(1, Some(&gate.scales), 0);
+                    enc.set_buffer(2, Some(&up.codes), 0);
+                    enc.set_buffer(3, Some(&up.scales), 0);
+                    enc.set_buffer(4, Some(&self.workspace.normalized), 0);
+                    enc.set_buffer(5, Some(&self.workspace.gate), 0);
+                    enc.set_buffer(6, Some(&self.workspace.up), 0);
+                    set_u32(enc, 7, rows);
+                    set_u32(enc, 8, cols);
                 })
             }
         }
@@ -2407,6 +2552,9 @@ mod device {
             let gate_name = qwen38_layer_name(layer, "mlp.gate_proj.weight");
             let up_name = qwen38_layer_name(layer, "mlp.up_proj.weight");
             if let (Some(gate), Some(up)) = (self.affine(&gate_name), self.affine(&up_name)) {
+                if gate.biases.is_none() && up.biases.is_none() {
+                    return self.encode_fused_q2f_gate_up(tcb, gate, up, with_swiglu);
+                }
                 return self.encode_fused_affine_gate_up(tcb, gate, up, with_swiglu);
             }
             let gate = self.q4(&gate_name)?;
@@ -4210,6 +4358,9 @@ mod device {
                 if weight.rows != QWEN38_VOCAB as u32 || weight.cols != QWEN38_HIDDEN as u32 {
                     return Err(mixed_error("embed HGRAVF01 shape drifted"));
                 }
+                let biases = weight.biases.as_ref().ok_or_else(|| {
+                    mixed_error("embed HGRAVF01 is delta-only (q2f); embed kernel needs bias")
+                })?;
                 let hidden = QWEN38_HIDDEN as u32;
                 let vocab = QWEN38_VOCAB as u32;
                 return tcb.dispatch_threads(
@@ -4219,7 +4370,7 @@ mod device {
                     |encoder| {
                         encoder.set_buffer(0, Some(&weight.codes), 0);
                         encoder.set_buffer(1, Some(&weight.scales), 0);
-                        encoder.set_buffer(2, Some(&weight.biases), 0);
+                        encoder.set_buffer(2, Some(biases), 0);
                         encoder.set_buffer(3, Some(&self.workspace.hidden), 0);
                         set_u32(encoder, 4, token);
                         set_u32(encoder, 5, hidden);
@@ -4845,9 +4996,13 @@ mod device {
         let prefill_wall_ns = prefill.elapsed().as_nanos() as u64;
         tokens.push(next);
         let decode = Instant::now();
+        let ignore_eos = std::env::var("HAWKING_QWEN38_IGNORE_EOS")
+            .map(|v| v != "0")
+            .unwrap_or(false);
         while tokens.len() - prompt.len() < max_new_tokens {
-            if next == crate::model::qwen38_geometry::QWEN38_EOS_IM_END
-                || next == crate::model::qwen38_geometry::QWEN38_EOS_END_OF_TEXT
+            if !ignore_eos
+                && (next == crate::model::qwen38_geometry::QWEN38_EOS_IM_END
+                    || next == crate::model::qwen38_geometry::QWEN38_EOS_END_OF_TEXT)
             {
                 break;
             }
@@ -5734,6 +5889,17 @@ mod mixed_catalog_contract_tests {
         assert_eq!(
             QWEN38_AFFINE_Q2_GEO_TPR64_RUNTIME_DIV,
             "qwen_affine_q2_group32_matvec_geo_tpr64_tg128_runtime_div"
+        );
+        assert!(crate::metal::SHADER_Q80_MIXED_DECODE
+            .contains("kernel void qwen_q2f_group64_matvec_geo_tpr64_tg128("));
+        assert!(crate::metal::SHADER_Q80_MIXED_DECODE
+            .contains("kernel void qwen_q2f_group64_matvec("));
+        assert!(crate::metal::SHADER_Q80_MIXED_DECODE
+            .contains("(float(q) - 1.5f) * delta"));
+        assert_eq!(QWEN38_Q2F_GEO_TPR64, "qwen_q2f_group64_matvec_geo_tpr64_tg128");
+        assert_eq!(
+            QWEN38_Q2F_GATE_UP_KERNEL,
+            "qwen_q2f_group64_matvec_gate_up_geo_tpr64_tg128"
         );
     }
 

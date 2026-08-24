@@ -531,12 +531,26 @@ def _fourlevel_fitted(W, g: int):
     G = as_groups(W, g)
     amax = np.max(np.abs(G), axis=-1, keepdims=True)
     delta = np.where(amax > 0, amax / 1.5, 1.0)
-    unit = np.clip(np.rint(G / delta * 2.0) / 2.0, -1.5, 1.5)
-    # half-integers at ±0.5, ±1.5. Refit delta by LS: G ≈ unit * delta
+    # CORRECTED 2026-08-24. The previous line was
+    #     unit = clip(rint(G/delta * 2.0) / 2.0, -1.5, 1.5)
+    # whose comment claimed "half-integers at +/-0.5, +/-1.5". rint() also
+    # returns WHOLE integers, so it emitted SEVEN levels
+    # {-1.5,-1,-0.5,0,0.5,1,1.5} -- log2(7) = 2.807 bits, not 2 -- with 49.7%
+    # of units landing OFF the 4-level grid. Every result billed from this codec
+    # at "2.25 bpw" was really ~3.06 bpw, including the whole-model composition
+    # arm this campaign recorded as SURVIVING at 2.25.
+    # Snap to the four legal codes and nothing else.
+    LEVELS = np.array([-1.5, -0.5, 0.5, 1.5], dtype=np.float32)
+    q = G / delta
+    unit = LEVELS[np.abs(q[..., None] - LEVELS).argmin(axis=-1)]
+    # Refit delta by LS on the legal grid: G ~ unit * delta
     num = (G * unit).sum(axis=-1, keepdims=True)
     den = (unit * unit).sum(axis=-1, keepdims=True)
     delta = np.where(den > 0, num / np.maximum(den, 1e-30), delta)
     delta = snap_f16(delta)
+    # Reassign once against the refitted delta so the codes stay optimal for it.
+    q = G / np.maximum(np.abs(delta), 1e-30) * np.sign(np.where(delta == 0, 1.0, delta))
+    unit = LEVELS[np.abs(q[..., None] - LEVELS).argmin(axis=-1)]
     return (unit * delta).reshape(W.shape)
 
 

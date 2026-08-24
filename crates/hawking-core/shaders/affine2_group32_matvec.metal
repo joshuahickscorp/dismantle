@@ -781,3 +781,280 @@ kernel void affine2_group64_matvec_tgx_r8tg256(
     acc = simd_sum(acc);
     if (simd_lane == 0u && row < rows) output[row] = acc;
 }
+
+// ── N024 non-load critical-path levers ──
+// Same reconstruction as tpr64: w = q*scale+bias, in-register, no dense W.
+// Geometry stays tpr64 occupancy unless a kernel name says otherwise.
+// qmvfast / wide64 / tgx are NOT re-tried here (N018: they lost on the
+// production path). These arms attack scale/bias traffic, unpack, split-K
+// accumulation, and the (q*scale+bias)*x association itself.
+
+constant uint kAffine2SbMaxGroups = 512u;
+
+static inline float affine2_unpack8_vec(
+    uint packed16, float scale, float bias, float4 x0, float4 x1)
+{
+    float s = 0.0f;
+    s += (float((packed16       ) & 3u) * scale + bias) * x0.x;
+    s += (float((packed16 >>  2u) & 3u) * scale + bias) * x0.y;
+    s += (float((packed16 >>  4u) & 3u) * scale + bias) * x0.z;
+    s += (float((packed16 >>  6u) & 3u) * scale + bias) * x0.w;
+    s += (float((packed16 >>  8u) & 3u) * scale + bias) * x1.x;
+    s += (float((packed16 >> 10u) & 3u) * scale + bias) * x1.y;
+    s += (float((packed16 >> 12u) & 3u) * scale + bias) * x1.z;
+    s += (float((packed16 >> 14u) & 3u) * scale + bias) * x1.w;
+    return s;
+}
+
+static inline float affine2_unpack8_accfuse_vec(
+    uint packed16, float scale, float bias, float4 x0, float4 x1)
+{
+    float qx = 0.0f;
+    float xs = 0.0f;
+    const float q0 = float((packed16       ) & 3u);
+    const float q1 = float((packed16 >>  2u) & 3u);
+    const float q2 = float((packed16 >>  4u) & 3u);
+    const float q3 = float((packed16 >>  6u) & 3u);
+    const float q4 = float((packed16 >>  8u) & 3u);
+    const float q5 = float((packed16 >> 10u) & 3u);
+    const float q6 = float((packed16 >> 12u) & 3u);
+    const float q7 = float((packed16 >> 14u) & 3u);
+    qx += q0 * x0.x; xs += x0.x;
+    qx += q1 * x0.y; xs += x0.y;
+    qx += q2 * x0.z; xs += x0.z;
+    qx += q3 * x0.w; xs += x0.w;
+    qx += q4 * x1.x; xs += x1.x;
+    qx += q5 * x1.y; xs += x1.y;
+    qx += q6 * x1.z; xs += x1.z;
+    qx += q7 * x1.w; xs += x1.w;
+    return qx * scale + xs * bias;
+}
+
+static inline void affine2_sb_stage(
+    threadgroup float* sb_scale,
+    threadgroup float* sb_bias,
+    device const half* scales,
+    device const half* biases,
+    uint row0,
+    uint rows,
+    uint gpr,
+    uint lid)
+{
+    for (uint g = lid; g < gpr; g += 128u) {
+        if (row0 < rows) {
+            const uint rgb = row0 * gpr + g;
+            sb_scale[g] = float(scales[rgb]);
+            sb_bias[g] = float(biases[rgb]);
+        }
+        if (row0 + 1u < rows) {
+            const uint rgb = (row0 + 1u) * gpr + g;
+            sb_scale[kAffine2SbMaxGroups + g] = float(scales[rgb]);
+            sb_bias[kAffine2SbMaxGroups + g] = float(biases[rgb]);
+        }
+    }
+}
+
+// Lever: stage per-group scale/bias in threadgroup memory once.
+// tpr64 occupancy (TG 128, 2 rows, 64 threads/row). Inner loop does not
+// reload scale/bias from device per 8-wide tile.
+kernel void affine2_group64_matvec_tgsb_tpr64_tg128(
+    device const uchar* codes  [[buffer(0)]],
+    device const half*  scales [[buffer(1)]],
+    device const half*  biases [[buffer(2)]],
+    device const float* input  [[buffer(3)]],
+    device float*       output [[buffer(4)]],
+    constant uint& rows        [[buffer(5)]],
+    constant uint& cols        [[buffer(6)]],
+    uint group_id               [[threadgroup_position_in_grid]],
+    uint lid                    [[thread_index_in_threadgroup]],
+    uint simd_lane              [[thread_index_in_simdgroup]],
+    uint simd_id                [[simdgroup_index_in_threadgroup]])
+{
+    threadgroup float red[4];
+    threadgroup float sb_scale[2 * kAffine2SbMaxGroups];
+    threadgroup float sb_bias[2 * kAffine2SbMaxGroups];
+    constexpr uint kSplit = 2u;
+    const uint team = simd_id / kSplit;
+    const uint split = simd_id % kSplit;
+    const uint lane_in_row = split * 32u + simd_lane;
+    const uint row0 = group_id * 2u;
+    const uint row = row0 + team;
+    const uint gpr = cols >> 6u;
+    float acc = 0.0f;
+    if ((cols % 64u) == 0u && gpr <= kAffine2SbMaxGroups) {
+        affine2_sb_stage(sb_scale, sb_bias, scales, biases, row0, rows, gpr, lid);
+        threadgroup_barrier(mem_flags::mem_threadgroup);
+        if (row < rows) {
+            const uint sb_base = team * kAffine2SbMaxGroups;
+            for (uint col = lane_in_row * 8u; col + 8u <= cols; col += 512u) {
+                const uint group = col >> 6u;
+                const uint local = col & 63u;
+                const uint rgb = row * gpr + group;
+                const uint packed16 = uint(*((device const ushort*)(codes + rgb * 16u + (local >> 2u))));
+                acc += affine2_unpack8(
+                    packed16, sb_scale[sb_base + group], sb_bias[sb_base + group], input, col);
+            }
+        }
+    }
+    acc = simd_sum(acc);
+    if (simd_lane == 0u) red[simd_id] = acc;
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    if (split == 0u && simd_lane == 0u && row < rows) {
+        output[row] = red[team * kSplit] + red[team * kSplit + 1u];
+    }
+}
+
+// Lever: software-pipeline the next 8-wide unpack (codes + x) ahead of the
+// current FMA. Vectorized x loads. Same (q*scale+bias)*x association as tpr64.
+kernel void affine2_group64_matvec_pipe_tpr64_tg128(
+    device const uchar* codes  [[buffer(0)]],
+    device const half*  scales [[buffer(1)]],
+    device const half*  biases [[buffer(2)]],
+    device const float* input  [[buffer(3)]],
+    device float*       output [[buffer(4)]],
+    constant uint& rows        [[buffer(5)]],
+    constant uint& cols        [[buffer(6)]],
+    uint group_id               [[threadgroup_position_in_grid]],
+    uint simd_lane              [[thread_index_in_simdgroup]],
+    uint simd_id                [[simdgroup_index_in_threadgroup]])
+{
+    threadgroup float red[4];
+    constexpr uint kSplit = 2u;
+    const uint team = simd_id / kSplit;
+    const uint split = simd_id % kSplit;
+    const uint lane_in_row = split * 32u + simd_lane;
+    const uint row = group_id * 2u + team;
+    float acc = 0.0f;
+    if (row < rows && (cols % 64u) == 0u) {
+        const uint groups_per_row = cols >> 6u;
+        uint packed_n = 0u;
+        float scale_n = 0.0f;
+        float bias_n = 0.0f;
+        float4 x0_n = 0.0f;
+        float4 x1_n = 0.0f;
+        bool primed = false;
+        for (uint col = lane_in_row * 8u; col + 8u <= cols; col += 512u) {
+            uint packed;
+            float scale, bias;
+            float4 x0, x1;
+            if (primed) {
+                packed = packed_n;
+                scale = scale_n;
+                bias = bias_n;
+                x0 = x0_n;
+                x1 = x1_n;
+            } else {
+                const uint group = col >> 6u;
+                const uint local = col & 63u;
+                const uint rgb = row * groups_per_row + group;
+                packed = uint(*((device const ushort*)(codes + rgb * 16u + (local >> 2u))));
+                scale = float(scales[rgb]);
+                bias = float(biases[rgb]);
+                x0 = *((device const float4*)(input + col));
+                x1 = *((device const float4*)(input + col + 4u));
+                primed = true;
+            }
+            const uint col_n = col + 512u;
+            if (col_n + 8u <= cols) {
+                const uint group_n = col_n >> 6u;
+                const uint local_n = col_n & 63u;
+                const uint rgb_n = row * groups_per_row + group_n;
+                packed_n = uint(*((device const ushort*)(codes + rgb_n * 16u + (local_n >> 2u))));
+                scale_n = float(scales[rgb_n]);
+                bias_n = float(biases[rgb_n]);
+                x0_n = *((device const float4*)(input + col_n));
+                x1_n = *((device const float4*)(input + col_n + 4u));
+            }
+            acc += affine2_unpack8_vec(packed, scale, bias, x0, x1);
+        }
+    }
+    acc = simd_sum(acc);
+    if (simd_lane == 0u) red[simd_id] = acc;
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    if (split == 0u && simd_lane == 0u && row < rows) {
+        output[row] = red[team * kSplit] + red[team * kSplit + 1u];
+    }
+}
+
+// Lever: 4-way split-K on the reduction (TG 256, 2 rows, 128 threads/row,
+// stride 1024). Not tgx: x stays in device memory, occupancy is 2 rows/TG.
+kernel void affine2_group64_matvec_splitk4_tg256(
+    device const uchar* codes  [[buffer(0)]],
+    device const half*  scales [[buffer(1)]],
+    device const half*  biases [[buffer(2)]],
+    device const float* input  [[buffer(3)]],
+    device float*       output [[buffer(4)]],
+    constant uint& rows        [[buffer(5)]],
+    constant uint& cols        [[buffer(6)]],
+    uint group_id               [[threadgroup_position_in_grid]],
+    uint simd_lane              [[thread_index_in_simdgroup]],
+    uint simd_id                [[simdgroup_index_in_threadgroup]])
+{
+    threadgroup float red[8];
+    constexpr uint kSplit = 4u;
+    const uint team = simd_id / kSplit;
+    const uint split = simd_id % kSplit;
+    const uint lane_in_row = split * 32u + simd_lane;
+    const uint row = group_id * 2u + team;
+    float acc = 0.0f;
+    if (row < rows && (cols % 64u) == 0u) {
+        const uint groups_per_row = cols >> 6u;
+        for (uint col = lane_in_row * 8u; col + 8u <= cols; col += 1024u) {
+            const uint group = col >> 6u;
+            const uint local = col & 63u;
+            const uint rgb = row * groups_per_row + group;
+            const uint packed16 = uint(*((device const ushort*)(codes + rgb * 16u + (local >> 2u))));
+            acc += affine2_unpack8(packed16, float(scales[rgb]), float(biases[rgb]), input, col);
+        }
+    }
+    acc = simd_sum(acc);
+    if (simd_lane == 0u) red[simd_id] = acc;
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    if (split == 0u && simd_lane == 0u && row < rows) {
+        const uint t = team * kSplit;
+        output[row] = red[t] + red[t + 1u] + red[t + 2u] + red[t + 3u];
+    }
+}
+
+// Lever: fuse scale/bias into the accumulate (algebraic rewrite):
+//   sum_i (q_i*scale + bias)*x_i  =  scale*sum(q_i x_i) + bias*sum(x_i)
+// Same tpr64 occupancy. Association differs from tpr64; parity uses 2e-2.
+kernel void affine2_group64_matvec_accfuse_tpr64_tg128(
+    device const uchar* codes  [[buffer(0)]],
+    device const half*  scales [[buffer(1)]],
+    device const half*  biases [[buffer(2)]],
+    device const float* input  [[buffer(3)]],
+    device float*       output [[buffer(4)]],
+    constant uint& rows        [[buffer(5)]],
+    constant uint& cols        [[buffer(6)]],
+    uint group_id               [[threadgroup_position_in_grid]],
+    uint simd_lane              [[thread_index_in_simdgroup]],
+    uint simd_id                [[simdgroup_index_in_threadgroup]])
+{
+    threadgroup float red[4];
+    constexpr uint kSplit = 2u;
+    const uint team = simd_id / kSplit;
+    const uint split = simd_id % kSplit;
+    const uint lane_in_row = split * 32u + simd_lane;
+    const uint row = group_id * 2u + team;
+    float acc = 0.0f;
+    if (row < rows && (cols % 64u) == 0u) {
+        const uint groups_per_row = cols >> 6u;
+        for (uint col = lane_in_row * 8u; col + 8u <= cols; col += 512u) {
+            const uint group = col >> 6u;
+            const uint local = col & 63u;
+            const uint rgb = row * groups_per_row + group;
+            const uint packed16 = uint(*((device const ushort*)(codes + rgb * 16u + (local >> 2u))));
+            const float4 x0 = *((device const float4*)(input + col));
+            const float4 x1 = *((device const float4*)(input + col + 4u));
+            acc += affine2_unpack8_accfuse_vec(
+                packed16, float(scales[rgb]), float(biases[rgb]), x0, x1);
+        }
+    }
+    acc = simd_sum(acc);
+    if (simd_lane == 0u) red[simd_id] = acc;
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    if (split == 0u && simd_lane == 0u && row < rows) {
+        output[row] = red[team * kSplit] + red[team * kSplit + 1u];
+    }
+}

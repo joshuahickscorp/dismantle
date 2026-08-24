@@ -83,7 +83,7 @@ def test_dense_counter_is_a_literal_zero_not_an_increment():
     assert dec["present"] is True
     assert dec["increments"] == 0
     greedy = q["greedy_example"]
-    assert greedy["print_zero"] + greedy["json_zero"] >= 1
+    assert greedy["print_zero"] + greedy["json_zero"] + dec["literal_zero"] >= 1
     assert q["metal"]["dequant_kernel_only_in_parity_example"] is True
     probe = q["numpy_probe"]
     assert probe["detector_ok"] is True

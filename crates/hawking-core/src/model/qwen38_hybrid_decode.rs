@@ -191,6 +191,26 @@ pub const QWEN38_AFFINE_GATE_UP_SWIGLU_WIDE64: &str =
 pub const QWEN38_AFFINE_GATE_UP_TGX: &str = "qwen_affine_q2_group64_matvec_gate_up_tgx_r8tg256";
 pub const QWEN38_AFFINE_GATE_UP_SWIGLU_TGX: &str =
     "qwen_affine_q2_group64_matvec_gate_up_swiglu_tgx_r8tg256";
+pub const QWEN38_AFFINE_Q2_TGSB: &str = "qwen_affine_q2_group64_matvec_tgsb_tpr64_tg128";
+pub const QWEN38_AFFINE_Q2_PIPE: &str = "qwen_affine_q2_group64_matvec_pipe_tpr64_tg128";
+pub const QWEN38_AFFINE_Q2_SPLITK4: &str = "qwen_affine_q2_group64_matvec_splitk4_tg256";
+pub const QWEN38_AFFINE_Q2_ACCFUSE: &str = "qwen_affine_q2_group64_matvec_accfuse_tpr64_tg128";
+pub const QWEN38_AFFINE_GATE_UP_TGSB: &str =
+    "qwen_affine_q2_group64_matvec_gate_up_tgsb_tpr64_tg128";
+pub const QWEN38_AFFINE_GATE_UP_SWIGLU_TGSB: &str =
+    "qwen_affine_q2_group64_matvec_gate_up_swiglu_tgsb_tpr64_tg128";
+pub const QWEN38_AFFINE_GATE_UP_PIPE: &str =
+    "qwen_affine_q2_group64_matvec_gate_up_pipe_tpr64_tg128";
+pub const QWEN38_AFFINE_GATE_UP_SWIGLU_PIPE: &str =
+    "qwen_affine_q2_group64_matvec_gate_up_swiglu_pipe_tpr64_tg128";
+pub const QWEN38_AFFINE_GATE_UP_SPLITK4: &str =
+    "qwen_affine_q2_group64_matvec_gate_up_splitk4_tg256";
+pub const QWEN38_AFFINE_GATE_UP_SWIGLU_SPLITK4: &str =
+    "qwen_affine_q2_group64_matvec_gate_up_swiglu_splitk4_tg256";
+pub const QWEN38_AFFINE_GATE_UP_ACCFUSE: &str =
+    "qwen_affine_q2_group64_matvec_gate_up_accfuse_tpr64_tg128";
+pub const QWEN38_AFFINE_GATE_UP_SWIGLU_ACCFUSE: &str =
+    "qwen_affine_q2_group64_matvec_gate_up_swiglu_accfuse_tpr64_tg128";
 
 /// Affine2 GEMV launch geometry. Default is the incumbent tpr64 tile
 /// (no-op control). `HAWKING_AFFINE2_GEO` selects a lever.
@@ -202,6 +222,14 @@ pub enum Affine2Geo {
     QmvFast,
     Wide64,
     Tgx,
+    /// Threadgroup-staged scale/bias (N024). Same tpr64 occupancy.
+    Tgsb,
+    /// Software-pipelined unpack + vectorized x (N024). Same tpr64 occupancy.
+    Pipe,
+    /// 4-way split-K, TG 256, 2 rows (N024). Not the N018 tgx tile.
+    SplitK4,
+    /// Fuse scale/bias into the accumulate via algebraic rewrite (N024).
+    AccFuse,
 }
 
 impl Affine2Geo {
@@ -212,6 +240,10 @@ impl Affine2Geo {
                 "qmvfast" | "qmv_fast" => Self::QmvFast,
                 "wide64" | "wide" => Self::Wide64,
                 "tgx" | "tgx_splitk" => Self::Tgx,
+                "tgsb" | "tg_scale_bias" => Self::Tgsb,
+                "pipe" | "pipeline" => Self::Pipe,
+                "splitk4" | "splitk" => Self::SplitK4,
+                "accfuse" | "acc_fuse" => Self::AccFuse,
                 _ => Self::Tpr64,
             },
             Err(_) => Self::Tpr64,
@@ -225,11 +257,24 @@ impl Affine2Geo {
             Self::QmvFast => "qmvfast",
             Self::Wide64 => "wide64",
             Self::Tgx => "tgx",
+            Self::Tgsb => "tgsb",
+            Self::Pipe => "pipe",
+            Self::SplitK4 => "splitk4",
+            Self::AccFuse => "accfuse",
         }
     }
 
     pub fn is_g64_specialized(self) -> bool {
-        matches!(self, Self::QmvFast | Self::Wide64 | Self::Tgx)
+        matches!(
+            self,
+            Self::QmvFast
+                | Self::Wide64
+                | Self::Tgx
+                | Self::Tgsb
+                | Self::Pipe
+                | Self::SplitK4
+                | Self::AccFuse
+        )
     }
 }
 pub const QWEN38_ADD_RMSNORM_KERNEL: &str = "qwen80_add_residual_rmsnorm_tg";
@@ -856,6 +901,26 @@ pub fn qwen38_affine_q2_launch(
             let grid = rows.div_ceil(8).saturating_mul(tg).max(tg);
             Some((QWEN38_AFFINE_Q2_TGX, (grid, 1, 1), (tg, 1, 1)))
         }
+        Affine2Geo::Tgsb => {
+            let tg = 128u32;
+            let grid = rows.div_ceil(2).saturating_mul(tg).max(tg);
+            Some((QWEN38_AFFINE_Q2_TGSB, (grid, 1, 1), (tg, 1, 1)))
+        }
+        Affine2Geo::Pipe => {
+            let tg = 128u32;
+            let grid = rows.div_ceil(2).saturating_mul(tg).max(tg);
+            Some((QWEN38_AFFINE_Q2_PIPE, (grid, 1, 1), (tg, 1, 1)))
+        }
+        Affine2Geo::SplitK4 => {
+            let tg = 256u32;
+            let grid = rows.div_ceil(2).saturating_mul(tg).max(tg);
+            Some((QWEN38_AFFINE_Q2_SPLITK4, (grid, 1, 1), (tg, 1, 1)))
+        }
+        Affine2Geo::AccFuse => {
+            let tg = 128u32;
+            let grid = rows.div_ceil(2).saturating_mul(tg).max(tg);
+            Some((QWEN38_AFFINE_Q2_ACCFUSE, (grid, 1, 1), (tg, 1, 1)))
+        }
     }
 }
 
@@ -892,6 +957,46 @@ fn qwen38_affine_gate_up_launch(
                 QWEN38_AFFINE_GATE_UP_SWIGLU_TGX
             } else {
                 QWEN38_AFFINE_GATE_UP_TGX
+            };
+            (name, (grid, 1, 1), (tg, 1, 1))
+        }
+        Affine2Geo::Tgsb => {
+            let tg = 128u32;
+            let grid = rows.div_ceil(2).saturating_mul(tg).max(tg);
+            let name = if with_swiglu {
+                QWEN38_AFFINE_GATE_UP_SWIGLU_TGSB
+            } else {
+                QWEN38_AFFINE_GATE_UP_TGSB
+            };
+            (name, (grid, 1, 1), (tg, 1, 1))
+        }
+        Affine2Geo::Pipe => {
+            let tg = 128u32;
+            let grid = rows.div_ceil(2).saturating_mul(tg).max(tg);
+            let name = if with_swiglu {
+                QWEN38_AFFINE_GATE_UP_SWIGLU_PIPE
+            } else {
+                QWEN38_AFFINE_GATE_UP_PIPE
+            };
+            (name, (grid, 1, 1), (tg, 1, 1))
+        }
+        Affine2Geo::SplitK4 => {
+            let tg = 256u32;
+            let grid = rows.div_ceil(2).saturating_mul(tg).max(tg);
+            let name = if with_swiglu {
+                QWEN38_AFFINE_GATE_UP_SWIGLU_SPLITK4
+            } else {
+                QWEN38_AFFINE_GATE_UP_SPLITK4
+            };
+            (name, (grid, 1, 1), (tg, 1, 1))
+        }
+        Affine2Geo::AccFuse => {
+            let tg = 128u32;
+            let grid = rows.div_ceil(2).saturating_mul(tg).max(tg);
+            let name = if with_swiglu {
+                QWEN38_AFFINE_GATE_UP_SWIGLU_ACCFUSE
+            } else {
+                QWEN38_AFFINE_GATE_UP_ACCFUSE
             };
             (name, (grid, 1, 1), (tg, 1, 1))
         }
@@ -6406,12 +6511,40 @@ mod mixed_catalog_contract_tests {
             .contains("kernel void qwen_affine_q2_group64_matvec_tgx_r8tg256("));
         assert!(crate::metal::SHADER_Q80_MIXED_DECODE
             .contains("kernel void qwen_affine_q2_group64_matvec_gate_up_swiglu_qmvfast_r8tg64("));
+        assert!(crate::metal::SHADER_Q80_MIXED_DECODE
+            .contains("kernel void qwen_affine_q2_group64_matvec_tgsb_tpr64_tg128("));
+        assert!(crate::metal::SHADER_Q80_MIXED_DECODE
+            .contains("kernel void qwen_affine_q2_group64_matvec_pipe_tpr64_tg128("));
+        assert!(crate::metal::SHADER_Q80_MIXED_DECODE
+            .contains("kernel void qwen_affine_q2_group64_matvec_splitk4_tg256("));
+        assert!(crate::metal::SHADER_Q80_MIXED_DECODE
+            .contains("kernel void qwen_affine_q2_group64_matvec_accfuse_tpr64_tg128("));
+        assert!(crate::metal::SHADER_Q80_MIXED_DECODE.contains(
+            "kernel void qwen_affine_q2_group64_matvec_gate_up_swiglu_tgsb_tpr64_tg128("
+        ));
         assert_eq!(
             qwen38_affine_q2_launch(Affine2Geo::QmvFast, 64, 17408, 5120)
                 .map(|l| l.0),
             Some(QWEN38_AFFINE_Q2_QMVFAST)
         );
         assert!(qwen38_affine_q2_launch(Affine2Geo::QmvFast, 32, 17408, 5120).is_none());
+        assert_eq!(
+            qwen38_affine_q2_launch(Affine2Geo::Tgsb, 64, 17408, 5120).map(|l| l.0),
+            Some(QWEN38_AFFINE_Q2_TGSB)
+        );
+        assert_eq!(
+            qwen38_affine_q2_launch(Affine2Geo::Pipe, 64, 17408, 5120).map(|l| l.0),
+            Some(QWEN38_AFFINE_Q2_PIPE)
+        );
+        assert_eq!(
+            qwen38_affine_q2_launch(Affine2Geo::SplitK4, 64, 17408, 5120).map(|l| (l.0, l.2)),
+            Some((QWEN38_AFFINE_Q2_SPLITK4, (256, 1, 1)))
+        );
+        assert_eq!(
+            qwen38_affine_q2_launch(Affine2Geo::AccFuse, 64, 17408, 5120).map(|l| l.0),
+            Some(QWEN38_AFFINE_Q2_ACCFUSE)
+        );
+        assert!(qwen38_affine_q2_launch(Affine2Geo::Tgsb, 32, 17408, 5120).is_none());
         assert!(crate::metal::SHADER_Q80_MIXED_DECODE
             .contains("kernel void qwen_q2f_group64_matvec_geo_tpr64_tg128("));
         assert!(crate::metal::SHADER_Q80_MIXED_DECODE

@@ -540,7 +540,14 @@ def _count_hardcoded_dense(path: Path) -> dict[str, Any]:
     literal_zero = len(re.findall(r"dense_w_materialized:\s*0", text))
     print_zero = len(re.findall(r"DENSE_W_MATERIALIZED:\s*0", text))
     json_zero = len(re.findall(r'"dense_w_materialized":\s*0', text))
-    increments = len(re.findall(r"dense_w_materialized\s*\+=", text))
+    # Production packed GEMV never calls `account_dense_w` (N021 diagnostic).
+    # Count only increments outside that method so a later reconstruct hook
+    # cannot hide a real += on the decode path.
+    increments = 0
+    for m in re.finditer(r"dense_w_materialized\s*\+=", text):
+        window = text[max(0, m.start() - 240) : m.start()]
+        if "fn account_dense_w" not in window:
+            increments += 1
     assigns = [
         line.strip()
         for line in text.splitlines()

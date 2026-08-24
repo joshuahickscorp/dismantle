@@ -1,7 +1,7 @@
 {
   "schema": "hawking.headless.kernel_competence.v1",
   "obligation": "N003 (S017 \u00a75)",
-  "git_head": "6e3dda0fb683",
+  "git_head": "7703d50237aa",
   "law": "A REPRESENTATION CANNOT BE CONDEMNED UNTIL ITS NATIVE KERNEL IS COMPETENT. A candidate may not be recorded REFUTED on speed until this screen passes for its kernel.",
   "measured_anchor": {
     "defect": "non-constant integer divide from a bind-time group_size",
@@ -36,10 +36,10 @@
   ],
   "counts": {
     "files": 43,
-    "kernels": 606,
+    "kernels": 622,
     "by_verdict": {
       "DEFECTIVE": 89,
-      "SUSPECT": 434,
+      "SUSPECT": 450,
       "CLEAR": 83
     }
   },
@@ -2081,6 +2081,30 @@
       "n_findings": 2
     },
     {
+      "file": "affine2_group32_matvec.metal",
+      "kernel": "affine2_group64_matvec_tgsb_tpr64_tg128",
+      "verdict": "SUSPECT",
+      "n_findings": 1
+    },
+    {
+      "file": "affine2_group32_matvec.metal",
+      "kernel": "affine2_group64_matvec_pipe_tpr64_tg128",
+      "verdict": "SUSPECT",
+      "n_findings": 1
+    },
+    {
+      "file": "affine2_group32_matvec.metal",
+      "kernel": "affine2_group64_matvec_splitk4_tg256",
+      "verdict": "SUSPECT",
+      "n_findings": 1
+    },
+    {
+      "file": "affine2_group32_matvec.metal",
+      "kernel": "affine2_group64_matvec_accfuse_tpr64_tg128",
+      "verdict": "SUSPECT",
+      "n_findings": 1
+    },
+    {
       "file": "gravity_pq.metal",
       "kernel": "gravity_layernorm_affine_f32",
       "verdict": "SUSPECT",
@@ -2175,6 +2199,78 @@
       "kernel": "qwen_affine_q2_group64_matvec_gate_up_swiglu_tgx_r8tg256",
       "verdict": "SUSPECT",
       "n_findings": 2
+    },
+    {
+      "file": "q80_mixed_decode.metal",
+      "kernel": "qwen_affine_q2_group64_matvec_tgsb_tpr64_tg128",
+      "verdict": "SUSPECT",
+      "n_findings": 1
+    },
+    {
+      "file": "q80_mixed_decode.metal",
+      "kernel": "qwen_affine_q2_group64_matvec_pipe_tpr64_tg128",
+      "verdict": "SUSPECT",
+      "n_findings": 1
+    },
+    {
+      "file": "q80_mixed_decode.metal",
+      "kernel": "qwen_affine_q2_group64_matvec_splitk4_tg256",
+      "verdict": "SUSPECT",
+      "n_findings": 1
+    },
+    {
+      "file": "q80_mixed_decode.metal",
+      "kernel": "qwen_affine_q2_group64_matvec_accfuse_tpr64_tg128",
+      "verdict": "SUSPECT",
+      "n_findings": 1
+    },
+    {
+      "file": "q80_mixed_decode.metal",
+      "kernel": "qwen_affine_q2_group64_matvec_gate_up_tgsb_tpr64_tg128",
+      "verdict": "SUSPECT",
+      "n_findings": 1
+    },
+    {
+      "file": "q80_mixed_decode.metal",
+      "kernel": "qwen_affine_q2_group64_matvec_gate_up_swiglu_tgsb_tpr64_tg128",
+      "verdict": "SUSPECT",
+      "n_findings": 1
+    },
+    {
+      "file": "q80_mixed_decode.metal",
+      "kernel": "qwen_affine_q2_group64_matvec_gate_up_pipe_tpr64_tg128",
+      "verdict": "SUSPECT",
+      "n_findings": 1
+    },
+    {
+      "file": "q80_mixed_decode.metal",
+      "kernel": "qwen_affine_q2_group64_matvec_gate_up_swiglu_pipe_tpr64_tg128",
+      "verdict": "SUSPECT",
+      "n_findings": 1
+    },
+    {
+      "file": "q80_mixed_decode.metal",
+      "kernel": "qwen_affine_q2_group64_matvec_gate_up_splitk4_tg256",
+      "verdict": "SUSPECT",
+      "n_findings": 1
+    },
+    {
+      "file": "q80_mixed_decode.metal",
+      "kernel": "qwen_affine_q2_group64_matvec_gate_up_swiglu_splitk4_tg256",
+      "verdict": "SUSPECT",
+      "n_findings": 1
+    },
+    {
+      "file": "q80_mixed_decode.metal",
+      "kernel": "qwen_affine_q2_group64_matvec_gate_up_accfuse_tpr64_tg128",
+      "verdict": "SUSPECT",
+      "n_findings": 1
+    },
+    {
+      "file": "q80_mixed_decode.metal",
+      "kernel": "qwen_affine_q2_group64_matvec_gate_up_swiglu_accfuse_tpr64_tg128",
+      "verdict": "SUSPECT",
+      "n_findings": 1
     }
   ],
   "what_this_screen_cannot_do": [
@@ -2185,7 +2281,7 @@
   "per_file": [
     {
       "file": "affine2_group32_matvec.metal",
-      "n_kernels": 15,
+      "n_kernels": 19,
       "kernels": [
         {
           "kernel": "affine2_group32_matvec",
@@ -2515,6 +2611,78 @@
             }
           ],
           "n_findings": 2,
+          "verdict": "SUSPECT",
+          "may_condemn_representation": false,
+          "file": "affine2_group32_matvec.metal",
+          "name_suggests_specialized": true
+        },
+        {
+          "kernel": "affine2_group64_matvec_tgsb_tpr64_tg128",
+          "has_loop": true,
+          "findings": [
+            {
+              "check": "dynamic_branch_in_loop",
+              "severity": "med",
+              "token": "row",
+              "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
+              "snippet": "er(mem_flags::mem_threadgroup);\n        if (row < rows) {\n            const uint sb_base = team"
+            }
+          ],
+          "n_findings": 1,
+          "verdict": "SUSPECT",
+          "may_condemn_representation": false,
+          "file": "affine2_group32_matvec.metal",
+          "name_suggests_specialized": true
+        },
+        {
+          "kernel": "affine2_group64_matvec_pipe_tpr64_tg128",
+          "has_loop": true,
+          "findings": [
+            {
+              "check": "dynamic_branch_in_loop",
+              "severity": "med",
+              "token": "row",
+              "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
+              "snippet": "* 2u + team;\n    float acc = 0.0f;\n    if (row < rows && (cols % 64u) == 0u) {\n        const uint groups_per_"
+            }
+          ],
+          "n_findings": 1,
+          "verdict": "SUSPECT",
+          "may_condemn_representation": false,
+          "file": "affine2_group32_matvec.metal",
+          "name_suggests_specialized": true
+        },
+        {
+          "kernel": "affine2_group64_matvec_splitk4_tg256",
+          "has_loop": true,
+          "findings": [
+            {
+              "check": "dynamic_branch_in_loop",
+              "severity": "med",
+              "token": "row",
+              "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
+              "snippet": "* 2u + team;\n    float acc = 0.0f;\n    if (row < rows && (cols % 64u) == 0u) {\n        const uint groups_per_"
+            }
+          ],
+          "n_findings": 1,
+          "verdict": "SUSPECT",
+          "may_condemn_representation": false,
+          "file": "affine2_group32_matvec.metal",
+          "name_suggests_specialized": true
+        },
+        {
+          "kernel": "affine2_group64_matvec_accfuse_tpr64_tg128",
+          "has_loop": true,
+          "findings": [
+            {
+              "check": "dynamic_branch_in_loop",
+              "severity": "med",
+              "token": "row",
+              "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
+              "snippet": "* 2u + team;\n    float acc = 0.0f;\n    if (row < rows && (cols % 64u) == 0u) {\n        const uint groups_per_"
+            }
+          ],
+          "n_findings": 1,
           "verdict": "SUSPECT",
           "may_condemn_representation": false,
           "file": "affine2_group32_matvec.metal",
@@ -7691,7 +7859,7 @@
     },
     {
       "file": "q80_mixed_decode.metal",
-      "n_kernels": 58,
+      "n_kernels": 70,
       "kernels": [
         {
           "kernel": "q80_binary_group_matvec",
@@ -8468,6 +8636,222 @@
             }
           ],
           "n_findings": 2,
+          "verdict": "SUSPECT",
+          "may_condemn_representation": false,
+          "file": "q80_mixed_decode.metal",
+          "name_suggests_specialized": true
+        },
+        {
+          "kernel": "qwen_affine_q2_group64_matvec_tgsb_tpr64_tg128",
+          "has_loop": true,
+          "findings": [
+            {
+              "check": "dynamic_branch_in_loop",
+              "severity": "med",
+              "token": "row",
+              "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
+              "snippet": "er(mem_flags::mem_threadgroup);\n        if (row < rows) {\n            const uint sb_base = team"
+            }
+          ],
+          "n_findings": 1,
+          "verdict": "SUSPECT",
+          "may_condemn_representation": false,
+          "file": "q80_mixed_decode.metal",
+          "name_suggests_specialized": true
+        },
+        {
+          "kernel": "qwen_affine_q2_group64_matvec_pipe_tpr64_tg128",
+          "has_loop": true,
+          "findings": [
+            {
+              "check": "dynamic_branch_in_loop",
+              "severity": "med",
+              "token": "row",
+              "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
+              "snippet": "* 2u + team;\n    float acc = 0.0f;\n    if (row < rows && (cols % 64u) == 0u) {\n        const uint groups_per_"
+            }
+          ],
+          "n_findings": 1,
+          "verdict": "SUSPECT",
+          "may_condemn_representation": false,
+          "file": "q80_mixed_decode.metal",
+          "name_suggests_specialized": true
+        },
+        {
+          "kernel": "qwen_affine_q2_group64_matvec_splitk4_tg256",
+          "has_loop": true,
+          "findings": [
+            {
+              "check": "dynamic_branch_in_loop",
+              "severity": "med",
+              "token": "row",
+              "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
+              "snippet": "* 2u + team;\n    float acc = 0.0f;\n    if (row < rows && (cols % 64u) == 0u) {\n        const uint groups_per_"
+            }
+          ],
+          "n_findings": 1,
+          "verdict": "SUSPECT",
+          "may_condemn_representation": false,
+          "file": "q80_mixed_decode.metal",
+          "name_suggests_specialized": true
+        },
+        {
+          "kernel": "qwen_affine_q2_group64_matvec_accfuse_tpr64_tg128",
+          "has_loop": true,
+          "findings": [
+            {
+              "check": "dynamic_branch_in_loop",
+              "severity": "med",
+              "token": "row",
+              "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
+              "snippet": "* 2u + team;\n    float acc = 0.0f;\n    if (row < rows && (cols % 64u) == 0u) {\n        const uint groups_per_"
+            }
+          ],
+          "n_findings": 1,
+          "verdict": "SUSPECT",
+          "may_condemn_representation": false,
+          "file": "q80_mixed_decode.metal",
+          "name_suggests_specialized": true
+        },
+        {
+          "kernel": "qwen_affine_q2_group64_matvec_gate_up_tgsb_tpr64_tg128",
+          "has_loop": true,
+          "findings": [
+            {
+              "check": "dynamic_branch_in_loop",
+              "severity": "med",
+              "token": "row",
+              "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
+              "snippet": "er(mem_flags::mem_threadgroup);\n        if (row < rows) {\n            const uint sb_base = team"
+            }
+          ],
+          "n_findings": 1,
+          "verdict": "SUSPECT",
+          "may_condemn_representation": false,
+          "file": "q80_mixed_decode.metal",
+          "name_suggests_specialized": true
+        },
+        {
+          "kernel": "qwen_affine_q2_group64_matvec_gate_up_swiglu_tgsb_tpr64_tg128",
+          "has_loop": true,
+          "findings": [
+            {
+              "check": "dynamic_branch_in_loop",
+              "severity": "med",
+              "token": "row",
+              "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
+              "snippet": "er(mem_flags::mem_threadgroup);\n        if (row < rows) {\n            const uint sb_base = team"
+            }
+          ],
+          "n_findings": 1,
+          "verdict": "SUSPECT",
+          "may_condemn_representation": false,
+          "file": "q80_mixed_decode.metal",
+          "name_suggests_specialized": true
+        },
+        {
+          "kernel": "qwen_affine_q2_group64_matvec_gate_up_pipe_tpr64_tg128",
+          "has_loop": true,
+          "findings": [
+            {
+              "check": "dynamic_branch_in_loop",
+              "severity": "med",
+              "token": "row",
+              "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
+              "snippet": "c_g = 0.0f;\n    float acc_u = 0.0f;\n    if (row < rows && (cols % 64u) == 0u) {\n        const uint groups_per_"
+            }
+          ],
+          "n_findings": 1,
+          "verdict": "SUSPECT",
+          "may_condemn_representation": false,
+          "file": "q80_mixed_decode.metal",
+          "name_suggests_specialized": true
+        },
+        {
+          "kernel": "qwen_affine_q2_group64_matvec_gate_up_swiglu_pipe_tpr64_tg128",
+          "has_loop": true,
+          "findings": [
+            {
+              "check": "dynamic_branch_in_loop",
+              "severity": "med",
+              "token": "row",
+              "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
+              "snippet": "c_g = 0.0f;\n    float acc_u = 0.0f;\n    if (row < rows && (cols % 64u) == 0u) {\n        const uint groups_per_"
+            }
+          ],
+          "n_findings": 1,
+          "verdict": "SUSPECT",
+          "may_condemn_representation": false,
+          "file": "q80_mixed_decode.metal",
+          "name_suggests_specialized": true
+        },
+        {
+          "kernel": "qwen_affine_q2_group64_matvec_gate_up_splitk4_tg256",
+          "has_loop": true,
+          "findings": [
+            {
+              "check": "dynamic_branch_in_loop",
+              "severity": "med",
+              "token": "row",
+              "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
+              "snippet": "c_g = 0.0f;\n    float acc_u = 0.0f;\n    if (row < rows && (cols % 64u) == 0u) {\n        const uint groups_per_"
+            }
+          ],
+          "n_findings": 1,
+          "verdict": "SUSPECT",
+          "may_condemn_representation": false,
+          "file": "q80_mixed_decode.metal",
+          "name_suggests_specialized": true
+        },
+        {
+          "kernel": "qwen_affine_q2_group64_matvec_gate_up_swiglu_splitk4_tg256",
+          "has_loop": true,
+          "findings": [
+            {
+              "check": "dynamic_branch_in_loop",
+              "severity": "med",
+              "token": "row",
+              "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
+              "snippet": "c_g = 0.0f;\n    float acc_u = 0.0f;\n    if (row < rows && (cols % 64u) == 0u) {\n        const uint groups_per_"
+            }
+          ],
+          "n_findings": 1,
+          "verdict": "SUSPECT",
+          "may_condemn_representation": false,
+          "file": "q80_mixed_decode.metal",
+          "name_suggests_specialized": true
+        },
+        {
+          "kernel": "qwen_affine_q2_group64_matvec_gate_up_accfuse_tpr64_tg128",
+          "has_loop": true,
+          "findings": [
+            {
+              "check": "dynamic_branch_in_loop",
+              "severity": "med",
+              "token": "row",
+              "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
+              "snippet": "c_g = 0.0f;\n    float acc_u = 0.0f;\n    if (row < rows && (cols % 64u) == 0u) {\n        const uint groups_per_"
+            }
+          ],
+          "n_findings": 1,
+          "verdict": "SUSPECT",
+          "may_condemn_representation": false,
+          "file": "q80_mixed_decode.metal",
+          "name_suggests_specialized": true
+        },
+        {
+          "kernel": "qwen_affine_q2_group64_matvec_gate_up_swiglu_accfuse_tpr64_tg128",
+          "has_loop": true,
+          "findings": [
+            {
+              "check": "dynamic_branch_in_loop",
+              "severity": "med",
+              "token": "row",
+              "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
+              "snippet": "c_g = 0.0f;\n    float acc_u = 0.0f;\n    if (row < rows && (cols % 64u) == 0u) {\n        const uint groups_per_"
+            }
+          ],
+          "n_findings": 1,
           "verdict": "SUSPECT",
           "may_condemn_representation": false,
           "file": "q80_mixed_decode.metal",

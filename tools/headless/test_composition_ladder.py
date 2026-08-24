@@ -31,7 +31,10 @@ def test_failed_and_untested_are_distinct_states():
 def test_the_2p25_arm_is_untested_not_dead():
     c = _by_id("q2_4level_fitted_g64")
     assert c["died_at"] is None, "it survived the complete token loop; it did not die"
-    assert c["unreached_above"] == "coherent_generation"
+    # N021 carried this arm through native coherent generation. Capability
+    # is still UNREACHED — that is untested, not a death.
+    assert c["highest_rung_reached"] == "coherent_generation"
+    assert c["unreached_above"] == "capability"
 
 
 def test_the_leader_did_not_fail_capability():

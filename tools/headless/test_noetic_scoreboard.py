@@ -74,7 +74,8 @@ def test_the_implied_floor_is_derived_from_measured_organ_floors():
 
 
 if __name__ == "__main__":
-    for n, f in sorted(globals().items()):
-        if n.startswith("test_"):
-            f(); print(f"ok  {n}")
-    print("5/5 passed")
+    n = 0
+    for _name, f in sorted(globals().items()):
+        if _name.startswith("test_"):
+            f(); n += 1; print(f"ok  {_name}")
+    print(f"{n} passed")

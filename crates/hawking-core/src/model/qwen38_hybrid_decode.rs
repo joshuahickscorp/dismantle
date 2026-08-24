@@ -9,9 +9,10 @@
 use super::qwen38_64_layer_execution_schedule::qwen38_assert_schedule_intact;
 use super::qwen38_geometry::{ARGMAX_GROUPS, 
     qwen38_deltanet_state_slot, qwen38_gqa_state_slot, qwen38_layer_name, qwen38_mixer_kind,
-    Qwen38DeltaNetLayout, Qwen38MixerKind, QWEN38_GQA_HEAD_DIM, QWEN38_GQA_HEADS,
-    QWEN38_GQA_KV_HEADS, QWEN38_GQA_LAYERS, QWEN38_GQA_ROTARY_DIM, QWEN38_HIDDEN,
-    QWEN38_INTERMEDIATE, QWEN38_LAYERS, QWEN38_RMS_EPS, QWEN38_ROPE_THETA, QWEN38_VOCAB,
+    Qwen38DeltaNetLayout, Qwen38MixerKind, QWEN38_DELTANET_LAYERS, QWEN38_GQA_HEAD_DIM,
+    QWEN38_GQA_HEADS, QWEN38_GQA_KV_HEADS, QWEN38_GQA_LAYERS, QWEN38_GQA_ROTARY_DIM,
+    QWEN38_HIDDEN, QWEN38_INTERMEDIATE, QWEN38_LAYERS, QWEN38_RMS_EPS, QWEN38_ROPE_THETA,
+    QWEN38_VOCAB,
 };
 use super::qwen38_pack::{
     load_qwen38_manifest, read_qwen38_f32_payload, QWEN38_EXPECTED_CATALOG_TENSORS,
@@ -51,6 +52,100 @@ pub fn qwen38_recon_fuse_enabled() -> bool {
 /// constructor the decode path used before this lever existed.
 pub fn qwen38_trace_dispatch_enabled() -> bool {
     crate::env_on("HAWKING_TRACE_DISPATCH")
+}
+
+/// MLP suffix fusion. Default Off keeps the 964-dispatch production graph.
+///
+/// `HAWKING_QWEN38_FUSE_MLP=pair`   — gate+up in one geo_tpr64 dispatch (still SwiGLU)
+/// `HAWKING_QWEN38_FUSE_MLP=swiglu` — gate+up+SwiGLU in one dispatch
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub enum Qwen38MlpFusion {
+    #[default]
+    Off,
+    GateUpPair,
+    GateUpSwiglu,
+}
+
+impl Qwen38MlpFusion {
+    pub fn from_env() -> Self {
+        match std::env::var("HAWKING_QWEN38_FUSE_MLP") {
+            Ok(v) => match v.trim().to_ascii_lowercase().as_str() {
+                "pair" | "gate_up" => Self::GateUpPair,
+                "swiglu" | "gate_up_swiglu" => Self::GateUpSwiglu,
+                _ => Self::Off,
+            },
+            Err(_) => Self::Off,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Off => "off",
+            Self::GateUpPair => "pair",
+            Self::GateUpSwiglu => "swiglu",
+        }
+    }
+
+    /// Dispatches removed from the 6-kernel MLP suffix, per token (64 layers).
+    pub fn saved_dispatches_per_token(self) -> u64 {
+        match self {
+            Self::Off => 0,
+            Self::GateUpPair => QWEN38_LAYERS as u64,
+            Self::GateUpSwiglu => 2 * QWEN38_LAYERS as u64,
+        }
+    }
+}
+
+pub fn qwen38_fuse_gqa_qkv_enabled() -> bool {
+    crate::env_on("HAWKING_QWEN38_FUSE_GQA_QKV")
+}
+
+pub fn qwen38_fuse_dn_inproj_enabled() -> bool {
+    crate::env_on("HAWKING_QWEN38_FUSE_DN_INPROJ")
+}
+
+/// Production 964 minus the fusions named. Counted the same way as
+/// `production_dispatches_per_token` (one kernel launch = one dispatch).
+pub fn qwen38_fused_dispatches_per_token(
+    mlp: Qwen38MlpFusion,
+    fuse_gqa_qkv: bool,
+    fuse_dn_inproj: bool,
+) -> u64 {
+    let mut n = super::qwen38_token_ns_ledger::production_dispatches_per_token();
+    n = n.saturating_sub(mlp.saved_dispatches_per_token());
+    if fuse_gqa_qkv {
+        n = n.saturating_sub(2 * QWEN38_GQA_LAYERS as u64);
+    }
+    if fuse_dn_inproj {
+        n = n.saturating_sub(QWEN38_DELTANET_LAYERS as u64);
+    }
+    n
+}
+
+pub const QWEN38_Q4_GATE_UP_KERNEL: &str =
+    "qwen_uniform_q4_group64_matvec_gate_up_geo_tpr64_tg128";
+pub const QWEN38_Q4_GATE_UP_SWIGLU_KERNEL: &str =
+    "qwen_uniform_q4_group64_matvec_gate_up_swiglu_geo_tpr64_tg128";
+pub const QWEN38_Q4_PAIR_CONCAT_KERNEL: &str =
+    "qwen_uniform_q4_group64_matvec_pair_concat_geo_tpr64_tg128";
+pub const QWEN38_Q4_QKV_GEO_KERNEL: &str =
+    "qwen_uniform_q4_group64_matvec_qkv_geo_tpr64_tg128";
+
+/// Component parity of a fused kernel against the unfused path.
+#[derive(Clone, Debug)]
+pub struct Qwen38FusionParity {
+    pub fusion: &'static str,
+    pub layer: usize,
+    pub unfused_dispatches: u64,
+    pub fused_pair_dispatches: u64,
+    pub fused_swiglu_dispatches: u64,
+    pub unfused_gpu_ns: Option<u64>,
+    pub fused_pair_gpu_ns: Option<u64>,
+    pub fused_swiglu_gpu_ns: Option<u64>,
+    pub max_abs_diff_gate: f32,
+    pub max_abs_diff_up: f32,
+    pub max_abs_diff_act: f32,
+    pub dense_w_materialized: u64,
 }
 
 fn mixed_error(message: impl Into<String>) -> Error {
@@ -1396,6 +1491,12 @@ mod device {
         /// the vi columns are independent. Default ON after paired generate
         /// admitted a 42.7→33.4 ms token cut with greedy-identical ids.
         pub deltanet_vi_parallel: bool,
+        /// MLP suffix fusion. Default Off. See [`Qwen38MlpFusion`].
+        pub mlp_fusion: Qwen38MlpFusion,
+        /// Fuse GQA Q/K/V into one geo_tpr64 concat dispatch. Default Off.
+        pub fuse_gqa_qkv: bool,
+        /// Fuse DeltaNet qkvz+ba into one geo_tpr64 concat dispatch. Default Off.
+        pub fuse_dn_inproj: bool,
     }
 
     impl Qwen38HybridDecodeSession {
@@ -1438,6 +1539,9 @@ mod device {
                 matvec_kernel: Qwen38MatvecKernel::GeoTpr64Tg128,
                 concurrent_independent: false,
                 deltanet_vi_parallel: true,
+                mlp_fusion: Qwen38MlpFusion::from_env(),
+                fuse_gqa_qkv: qwen38_fuse_gqa_qkv_enabled(),
+                fuse_dn_inproj: qwen38_fuse_dn_inproj_enabled(),
             };
             // `MetalContext` clones share `Arc<DispatchTrace>`. If that ever
             // becomes a fresh buffer, `drain_trace` on the session would miss
@@ -2229,6 +2333,145 @@ mod device {
             Ok(())
         }
 
+        fn encode_fused_gate_up(
+            &self,
+            tcb: &mut TokenCommandBuffer<'_>,
+            layer: usize,
+            with_swiglu: bool,
+        ) -> Result<()> {
+            let gate = self.q4(&qwen38_layer_name(layer, "mlp.gate_proj.weight"))?;
+            let up = self.q4(&qwen38_layer_name(layer, "mlp.up_proj.weight"))?;
+            if gate.rows != up.rows || gate.cols != up.cols {
+                return Err(Error::Model(format!(
+                    "qwen38 fused gate/up shape mismatch layer {layer}: {}x{} vs {}x{}",
+                    gate.rows, gate.cols, up.rows, up.cols
+                )));
+            }
+            if gate.group_size != UNIFORM_Q4_GROUP_SIZE || up.group_size != UNIFORM_Q4_GROUP_SIZE {
+                return Err(Error::Model(format!(
+                    "qwen38 fused gate/up refuses group_size {}/{} (need {UNIFORM_Q4_GROUP_SIZE})",
+                    gate.group_size, up.group_size
+                )));
+            }
+            let rows = gate.rows as u32;
+            let cols = gate.cols as u32;
+            let gpr = (gate.cols / UNIFORM_Q4_GROUP_SIZE) as u32;
+            let (grid, tg) = Qwen38MatvecKernel::GeoTpr64Tg128.launch(rows);
+            if with_swiglu {
+                tcb.dispatch_threads(QWEN38_Q4_GATE_UP_SWIGLU_KERNEL, grid, tg, |enc| {
+                    enc.set_buffer(0, Some(&gate.codes), 0);
+                    enc.set_buffer(1, Some(&gate.scales), 0);
+                    enc.set_buffer(2, Some(&up.codes), 0);
+                    enc.set_buffer(3, Some(&up.scales), 0);
+                    enc.set_buffer(4, Some(&self.workspace.normalized), 0);
+                    enc.set_buffer(5, Some(&self.workspace.act), 0);
+                    set_u32(enc, 6, rows);
+                    set_u32(enc, 7, cols);
+                    set_u32(enc, 8, gpr);
+                })
+            } else {
+                tcb.dispatch_threads(QWEN38_Q4_GATE_UP_KERNEL, grid, tg, |enc| {
+                    enc.set_buffer(0, Some(&gate.codes), 0);
+                    enc.set_buffer(1, Some(&gate.scales), 0);
+                    enc.set_buffer(2, Some(&up.codes), 0);
+                    enc.set_buffer(3, Some(&up.scales), 0);
+                    enc.set_buffer(4, Some(&self.workspace.normalized), 0);
+                    enc.set_buffer(5, Some(&self.workspace.gate), 0);
+                    enc.set_buffer(6, Some(&self.workspace.up), 0);
+                    set_u32(enc, 7, rows);
+                    set_u32(enc, 8, cols);
+                    set_u32(enc, 9, gpr);
+                })
+            }
+        }
+
+        fn encode_fused_pair_concat(
+            &self,
+            tcb: &mut TokenCommandBuffer<'_>,
+            a_name: &str,
+            a_out: &PinnedBuffer,
+            b_name: &str,
+            b_out: &PinnedBuffer,
+        ) -> Result<()> {
+            let a = self.q4(a_name)?;
+            let b = self.q4(b_name)?;
+            if a.cols != b.cols {
+                return Err(Error::Model(format!(
+                    "qwen38 pair-concat col mismatch {a_name} {} vs {b_name} {}",
+                    a.cols, b.cols
+                )));
+            }
+            if a.group_size != UNIFORM_Q4_GROUP_SIZE || b.group_size != UNIFORM_Q4_GROUP_SIZE {
+                return Err(Error::Model(format!(
+                    "qwen38 pair-concat refuses group_size {}/{}",
+                    a.group_size, b.group_size
+                )));
+            }
+            let a_rows = a.rows as u32;
+            let b_rows = b.rows as u32;
+            let cols = a.cols as u32;
+            let gpr = (a.cols / UNIFORM_Q4_GROUP_SIZE) as u32;
+            let total = a_rows.saturating_add(b_rows);
+            let (grid, tg) = Qwen38MatvecKernel::GeoTpr64Tg128.launch(total);
+            tcb.dispatch_threads(QWEN38_Q4_PAIR_CONCAT_KERNEL, grid, tg, |enc| {
+                enc.set_buffer(0, Some(&a.codes), 0);
+                enc.set_buffer(1, Some(&a.scales), 0);
+                enc.set_buffer(2, Some(&b.codes), 0);
+                enc.set_buffer(3, Some(&b.scales), 0);
+                enc.set_buffer(4, Some(&self.workspace.normalized), 0);
+                enc.set_buffer(5, Some(a_out), 0);
+                enc.set_buffer(6, Some(b_out), 0);
+                set_u32(enc, 7, a_rows);
+                set_u32(enc, 8, b_rows);
+                set_u32(enc, 9, cols);
+                set_u32(enc, 10, gpr);
+            })
+        }
+
+        fn encode_fused_qkv(&self, tcb: &mut TokenCommandBuffer<'_>, layer: usize) -> Result<()> {
+            let q = self.q4(&qwen38_layer_name(layer, "self_attn.q_proj.weight"))?;
+            let k = self.q4(&qwen38_layer_name(layer, "self_attn.k_proj.weight"))?;
+            let v = self.q4(&qwen38_layer_name(layer, "self_attn.v_proj.weight"))?;
+            if q.cols != k.cols || q.cols != v.cols {
+                return Err(Error::Model(format!(
+                    "qwen38 fused QKV col mismatch layer {layer}"
+                )));
+            }
+            if q.group_size != UNIFORM_Q4_GROUP_SIZE
+                || k.group_size != UNIFORM_Q4_GROUP_SIZE
+                || v.group_size != UNIFORM_Q4_GROUP_SIZE
+            {
+                return Err(Error::Model(format!(
+                    "qwen38 fused QKV refuses group_size {}/{}/{}",
+                    q.group_size, k.group_size, v.group_size
+                )));
+            }
+            let q_rows = q.rows as u32;
+            let k_rows = k.rows as u32;
+            let v_rows = v.rows as u32;
+            let cols = q.cols as u32;
+            let gpr = (q.cols / UNIFORM_Q4_GROUP_SIZE) as u32;
+            let total = q_rows.saturating_add(k_rows).saturating_add(v_rows);
+            let (grid, tg) = Qwen38MatvecKernel::GeoTpr64Tg128.launch(total);
+            tcb.dispatch_threads(QWEN38_Q4_QKV_GEO_KERNEL, grid, tg, |enc| {
+                enc.set_buffer(0, Some(&q.codes), 0);
+                enc.set_buffer(1, Some(&q.scales), 0);
+                enc.set_buffer(2, Some(&k.codes), 0);
+                enc.set_buffer(3, Some(&k.scales), 0);
+                enc.set_buffer(4, Some(&v.codes), 0);
+                enc.set_buffer(5, Some(&v.scales), 0);
+                enc.set_buffer(6, Some(&self.workspace.normalized), 0);
+                enc.set_buffer(7, Some(&self.workspace.q_proj), 0);
+                enc.set_buffer(8, Some(&self.workspace.k_proj), 0);
+                enc.set_buffer(9, Some(&self.workspace.v_proj), 0);
+                set_u32(enc, 10, q_rows);
+                set_u32(enc, 11, k_rows);
+                set_u32(enc, 12, v_rows);
+                set_u32(enc, 13, cols);
+                set_u32(enc, 14, gpr);
+            })
+        }
+
         fn timed_cb(
             &self,
             encode: impl FnOnce(&mut TokenCommandBuffer<'_>) -> Result<()>,
@@ -2377,22 +2620,29 @@ mod device {
             )
         }
 
+        fn workspace_f32<'a>(&'a self, which: &str) -> Result<&'a PinnedBuffer> {
+            match which {
+                "gate" => Ok(&self.workspace.gate),
+                "up" => Ok(&self.workspace.up),
+                "act" => Ok(&self.workspace.act),
+                "down" => Ok(&self.workspace.down),
+                "hidden" => Ok(&self.workspace.hidden),
+                "normalized" => Ok(&self.workspace.normalized),
+                "logits" => Ok(&self.workspace.logits),
+                "mixer" => Ok(&self.workspace.mixer),
+                "q_proj" => Ok(&self.workspace.q_proj),
+                "k_proj" => Ok(&self.workspace.k_proj),
+                "v_proj" => Ok(&self.workspace.v_proj),
+                "qkvz" => Ok(&self.workspace.qkvz),
+                "ba" => Ok(&self.workspace.ba),
+                other => Err(Error::Model(format!(
+                    "qwen38 unknown workspace buffer {other}"
+                ))),
+            }
+        }
+
         pub fn read_f32_workspace(&self, which: &str, n: usize) -> Result<Vec<f32>> {
-            let buffer = match which {
-                "gate" => &self.workspace.gate,
-                "up" => &self.workspace.up,
-                "act" => &self.workspace.act,
-                "down" => &self.workspace.down,
-                "hidden" => &self.workspace.hidden,
-                "normalized" => &self.workspace.normalized,
-                "logits" => &self.workspace.logits,
-                "mixer" => &self.workspace.mixer,
-                other => {
-                    return Err(Error::Model(format!(
-                        "qwen38 unknown workspace buffer {other}"
-                    )))
-                }
-            };
+            let buffer = self.workspace_f32(which)?;
             let bytes = n
                 .checked_mul(std::mem::size_of::<f32>())
                 .ok_or_else(|| Error::Model("qwen38 read overflow".into()))?;
@@ -2411,6 +2661,234 @@ mod device {
                 );
             }
             Ok(out)
+        }
+
+        pub fn write_f32_workspace(&self, which: &str, values: &[f32]) -> Result<()> {
+            let buffer = self.workspace_f32(which)?;
+            let bytes = values
+                .len()
+                .checked_mul(std::mem::size_of::<f32>())
+                .ok_or_else(|| Error::Model("qwen38 write overflow".into()))?;
+            if buffer.length() < bytes as u64 {
+                return Err(Error::Model(format!(
+                    "qwen38 {which} is {} bytes, need {bytes}",
+                    buffer.length()
+                )));
+            }
+            unsafe {
+                std::ptr::copy_nonoverlapping(
+                    values.as_ptr(),
+                    buffer.contents() as *mut f32,
+                    values.len(),
+                );
+            }
+            Ok(())
+        }
+
+        pub fn apply_fusion(
+            &mut self,
+            mlp: Qwen38MlpFusion,
+            fuse_gqa_qkv: bool,
+            fuse_dn_inproj: bool,
+        ) {
+            self.mlp_fusion = mlp;
+            self.fuse_gqa_qkv = fuse_gqa_qkv;
+            self.fuse_dn_inproj = fuse_dn_inproj;
+        }
+
+        pub fn theoretical_dispatches(&self) -> u64 {
+            qwen38_fused_dispatches_per_token(
+                self.mlp_fusion,
+                self.fuse_gqa_qkv,
+                self.fuse_dn_inproj,
+            )
+        }
+
+        /// Encode one complete token and return the TCB dispatch count.
+        /// Mutates recurrent/KV state — caller should `reset` around a probe.
+        pub fn measure_token_dispatches(&mut self, token: u32) -> Result<(u32, u64, CommandBufferTiming)> {
+            let (sampled, timing) = self.step(token)?;
+            Ok((sampled, timing.dispatches, timing))
+        }
+
+        pub fn measure_isolated_dense_mlp(&self) -> Result<CommandBufferTiming> {
+            self.timed_cb(|tcb| {
+                for layer in 0..QWEN38_LAYERS {
+                    self.encode_dense_mlp(tcb, layer, &self.workspace.first_residual)?;
+                }
+                Ok(())
+            })
+        }
+
+        fn max_abs_diff(a: &[f32], b: &[f32]) -> f32 {
+            a.iter()
+                .zip(b.iter())
+                .map(|(x, y)| (x - y).abs())
+                .fold(0.0f32, f32::max)
+        }
+
+        /// Fused gate+up(+SwiGLU) vs the two-matvec + SwiGLU path on a known x.
+        /// Does not materialize a dense parent W.
+        pub fn measure_mlp_fusion_parity(&self, layer: usize) -> Result<Qwen38FusionParity> {
+            let n_hidden = QWEN38_HIDDEN;
+            let n_mid = QWEN38_INTERMEDIATE;
+            let mut x = vec![0.0f32; n_hidden];
+            for (i, v) in x.iter_mut().enumerate() {
+                *v = ((i % 17) as f32) * 0.01 - 0.08;
+            }
+            self.write_f32_workspace("normalized", &x)?;
+
+            let unfused = self.timed_cb(|tcb| {
+                self.encode_q4_matvec(
+                    tcb,
+                    &qwen38_layer_name(layer, "mlp.gate_proj.weight"),
+                    &self.workspace.normalized,
+                    &self.workspace.gate,
+                )?;
+                self.encode_q4_matvec(
+                    tcb,
+                    &qwen38_layer_name(layer, "mlp.up_proj.weight"),
+                    &self.workspace.normalized,
+                    &self.workspace.up,
+                )?;
+                let n = n_mid as u32;
+                tcb.dispatch_threads(
+                    crate::decode_family::swiglu_f32(),
+                    (n, 1, 1),
+                    (n.min(256).max(1), 1, 1),
+                    |encoder| {
+                        encoder.set_buffer(0, Some(&self.workspace.gate), 0);
+                        encoder.set_buffer(1, Some(&self.workspace.up), 0);
+                        encoder.set_buffer(2, Some(&self.workspace.act), 0);
+                        encoder.set_bytes(3, 4, &n as *const u32 as *const _);
+                    },
+                )
+            })?;
+            let gate_u = self.read_f32_workspace("gate", n_mid)?;
+            let up_u = self.read_f32_workspace("up", n_mid)?;
+            let act_u = self.read_f32_workspace("act", n_mid)?;
+
+            let pair = self.timed_cb(|tcb| self.encode_fused_gate_up(tcb, layer, false))?;
+            let gate_p = self.read_f32_workspace("gate", n_mid)?;
+            let up_p = self.read_f32_workspace("up", n_mid)?;
+
+            let swiglu = self.timed_cb(|tcb| self.encode_fused_gate_up(tcb, layer, true))?;
+            let act_s = self.read_f32_workspace("act", n_mid)?;
+
+            Ok(Qwen38FusionParity {
+                fusion: "gate_up_swiglu",
+                layer,
+                unfused_dispatches: unfused.dispatches,
+                fused_pair_dispatches: pair.dispatches,
+                fused_swiglu_dispatches: swiglu.dispatches,
+                unfused_gpu_ns: unfused.gpu_ns,
+                fused_pair_gpu_ns: pair.gpu_ns,
+                fused_swiglu_gpu_ns: swiglu.gpu_ns,
+                max_abs_diff_gate: Self::max_abs_diff(&gate_u, &gate_p),
+                max_abs_diff_up: Self::max_abs_diff(&up_u, &up_p),
+                max_abs_diff_act: Self::max_abs_diff(&act_u, &act_s),
+                dense_w_materialized: 0,
+            })
+        }
+
+        pub fn measure_qkv_fusion_parity(&self, layer: usize) -> Result<Qwen38FusionParity> {
+            let n_hidden = QWEN38_HIDDEN;
+            let q_n = QWEN38_GQA_HEADS * QWEN38_GQA_HEAD_DIM * 2;
+            let kv_n = QWEN38_GQA_KV_HEADS * QWEN38_GQA_HEAD_DIM;
+            let mut x = vec![0.0f32; n_hidden];
+            for (i, v) in x.iter_mut().enumerate() {
+                *v = ((i % 13) as f32) * 0.02 - 0.12;
+            }
+            self.write_f32_workspace("normalized", &x)?;
+            let unfused = self.timed_cb(|tcb| {
+                self.encode_q4_matvec(
+                    tcb,
+                    &qwen38_layer_name(layer, "self_attn.q_proj.weight"),
+                    &self.workspace.normalized,
+                    &self.workspace.q_proj,
+                )?;
+                self.encode_q4_matvec(
+                    tcb,
+                    &qwen38_layer_name(layer, "self_attn.k_proj.weight"),
+                    &self.workspace.normalized,
+                    &self.workspace.k_proj,
+                )?;
+                self.encode_q4_matvec(
+                    tcb,
+                    &qwen38_layer_name(layer, "self_attn.v_proj.weight"),
+                    &self.workspace.normalized,
+                    &self.workspace.v_proj,
+                )
+            })?;
+            let q_u = self.read_f32_workspace("q_proj", q_n)?;
+            let k_u = self.read_f32_workspace("k_proj", kv_n)?;
+            let v_u = self.read_f32_workspace("v_proj", kv_n)?;
+            let fused = self.timed_cb(|tcb| self.encode_fused_qkv(tcb, layer))?;
+            let q_f = self.read_f32_workspace("q_proj", q_n)?;
+            let k_f = self.read_f32_workspace("k_proj", kv_n)?;
+            let v_f = self.read_f32_workspace("v_proj", kv_n)?;
+            Ok(Qwen38FusionParity {
+                fusion: "gqa_qkv",
+                layer,
+                unfused_dispatches: unfused.dispatches,
+                fused_pair_dispatches: fused.dispatches,
+                fused_swiglu_dispatches: fused.dispatches,
+                unfused_gpu_ns: unfused.gpu_ns,
+                fused_pair_gpu_ns: fused.gpu_ns,
+                fused_swiglu_gpu_ns: fused.gpu_ns,
+                max_abs_diff_gate: Self::max_abs_diff(&q_u, &q_f),
+                max_abs_diff_up: Self::max_abs_diff(&k_u, &k_f),
+                max_abs_diff_act: Self::max_abs_diff(&v_u, &v_f),
+                dense_w_materialized: 0,
+            })
+        }
+
+        pub fn measure_dn_inproj_fusion_parity(&self, layer: usize) -> Result<Qwen38FusionParity> {
+            let layout = Qwen38DeltaNetLayout::source_exact();
+            let n_hidden = QWEN38_HIDDEN;
+            let mut x = vec![0.0f32; n_hidden];
+            for (i, v) in x.iter_mut().enumerate() {
+                *v = ((i % 11) as f32) * 0.015 - 0.07;
+            }
+            self.write_f32_workspace("normalized", &x)?;
+            let unfused = self.timed_cb(|tcb| {
+                self.encode_independent_q4_pair(
+                    tcb,
+                    &qwen38_layer_name(layer, "linear_attn.in_proj_qkvz.weight"),
+                    &self.workspace.normalized,
+                    &self.workspace.qkvz,
+                    &qwen38_layer_name(layer, "linear_attn.in_proj_ba.weight"),
+                    &self.workspace.normalized,
+                    &self.workspace.ba,
+                )
+            })?;
+            let qkvz_u = self.read_f32_workspace("qkvz", layout.qkvz_rows())?;
+            let ba_u = self.read_f32_workspace("ba", layout.ba_rows())?;
+            let fused = self.timed_cb(|tcb| {
+                self.encode_fused_pair_concat(
+                    tcb,
+                    &qwen38_layer_name(layer, "linear_attn.in_proj_qkvz.weight"),
+                    &self.workspace.qkvz,
+                    &qwen38_layer_name(layer, "linear_attn.in_proj_ba.weight"),
+                    &self.workspace.ba,
+                )
+            })?;
+            let qkvz_f = self.read_f32_workspace("qkvz", layout.qkvz_rows())?;
+            let ba_f = self.read_f32_workspace("ba", layout.ba_rows())?;
+            Ok(Qwen38FusionParity {
+                fusion: "dn_qkvz_ba",
+                layer,
+                unfused_dispatches: unfused.dispatches,
+                fused_pair_dispatches: fused.dispatches,
+                fused_swiglu_dispatches: fused.dispatches,
+                unfused_gpu_ns: unfused.gpu_ns,
+                fused_pair_gpu_ns: fused.gpu_ns,
+                fused_swiglu_gpu_ns: fused.gpu_ns,
+                max_abs_diff_gate: Self::max_abs_diff(&qkvz_u, &qkvz_f),
+                max_abs_diff_up: Self::max_abs_diff(&ba_u, &ba_f),
+                max_abs_diff_act: 0.0,
+                dense_w_materialized: 0,
+            })
         }
 
         pub fn measure_named_matvec(&self, name: &str, output: &str) -> Result<CommandBufferTiming> {
@@ -3290,26 +3768,47 @@ mod device {
                 &self.workspace.normalized,
                 QWEN38_HIDDEN as u32,
             )?;
-            self.encode_independent_q4_pair(
-                tcb,
-                &qwen38_layer_name(layer, "mlp.gate_proj.weight"),
-                &self.workspace.normalized,
-                &self.workspace.gate,
-                &qwen38_layer_name(layer, "mlp.up_proj.weight"),
-                &self.workspace.normalized,
-                &self.workspace.up,
-            )?;
-            tcb.dispatch_threads(
-                crate::decode_family::swiglu_f32(),
-                (n, 1, 1),
-                (n.min(256).max(1), 1, 1),
-                |encoder| {
-                    encoder.set_buffer(0, Some(&self.workspace.gate), 0);
-                    encoder.set_buffer(1, Some(&self.workspace.up), 0);
-                    encoder.set_buffer(2, Some(&self.workspace.act), 0);
-                    encoder.set_bytes(3, 4, &n as *const u32 as *const _);
-                },
-            )?;
+            match self.mlp_fusion {
+                Qwen38MlpFusion::Off => {
+                    self.encode_independent_q4_pair(
+                        tcb,
+                        &qwen38_layer_name(layer, "mlp.gate_proj.weight"),
+                        &self.workspace.normalized,
+                        &self.workspace.gate,
+                        &qwen38_layer_name(layer, "mlp.up_proj.weight"),
+                        &self.workspace.normalized,
+                        &self.workspace.up,
+                    )?;
+                    tcb.dispatch_threads(
+                        crate::decode_family::swiglu_f32(),
+                        (n, 1, 1),
+                        (n.min(256).max(1), 1, 1),
+                        |encoder| {
+                            encoder.set_buffer(0, Some(&self.workspace.gate), 0);
+                            encoder.set_buffer(1, Some(&self.workspace.up), 0);
+                            encoder.set_buffer(2, Some(&self.workspace.act), 0);
+                            encoder.set_bytes(3, 4, &n as *const u32 as *const _);
+                        },
+                    )?;
+                }
+                Qwen38MlpFusion::GateUpPair => {
+                    self.encode_fused_gate_up(tcb, layer, false)?;
+                    tcb.dispatch_threads(
+                        crate::decode_family::swiglu_f32(),
+                        (n, 1, 1),
+                        (n.min(256).max(1), 1, 1),
+                        |encoder| {
+                            encoder.set_buffer(0, Some(&self.workspace.gate), 0);
+                            encoder.set_buffer(1, Some(&self.workspace.up), 0);
+                            encoder.set_buffer(2, Some(&self.workspace.act), 0);
+                            encoder.set_bytes(3, 4, &n as *const u32 as *const _);
+                        },
+                    )?;
+                }
+                Qwen38MlpFusion::GateUpSwiglu => {
+                    self.encode_fused_gate_up(tcb, layer, true)?;
+                }
+            }
             self.encode_q4_matvec(
                 tcb,
                 &qwen38_layer_name(layer, "mlp.down_proj.weight"),
@@ -3344,15 +3843,25 @@ mod device {
                 &self.workspace.normalized,
                 QWEN38_HIDDEN as u32,
             )?;
-            self.encode_independent_q4_pair(
-                tcb,
-                &qwen38_layer_name(layer, "linear_attn.in_proj_qkvz.weight"),
-                &self.workspace.normalized,
-                &self.workspace.qkvz,
-                &qwen38_layer_name(layer, "linear_attn.in_proj_ba.weight"),
-                &self.workspace.normalized,
-                &self.workspace.ba,
-            )?;
+            if self.fuse_dn_inproj {
+                self.encode_fused_pair_concat(
+                    tcb,
+                    &qwen38_layer_name(layer, "linear_attn.in_proj_qkvz.weight"),
+                    &self.workspace.qkvz,
+                    &qwen38_layer_name(layer, "linear_attn.in_proj_ba.weight"),
+                    &self.workspace.ba,
+                )?;
+            } else {
+                self.encode_independent_q4_pair(
+                    tcb,
+                    &qwen38_layer_name(layer, "linear_attn.in_proj_qkvz.weight"),
+                    &self.workspace.normalized,
+                    &self.workspace.qkvz,
+                    &qwen38_layer_name(layer, "linear_attn.in_proj_ba.weight"),
+                    &self.workspace.normalized,
+                    &self.workspace.ba,
+                )?;
+            }
             let conv_w = self.f32(&qwen38_layer_name(layer, "linear_attn.conv1d.weight"))?;
             tcb.dispatch_threads(
                 "qwen38_qkvz_rearrange_conv_l2_f32",
@@ -3471,29 +3980,33 @@ mod device {
                 &self.workspace.normalized,
                 QWEN38_HIDDEN as u32,
             )?;
-            if self.concurrent_independent {
-                tcb.begin_concurrent_group()?;
-            }
-            self.encode_q4_matvec(
-                tcb,
-                &qwen38_layer_name(layer, "self_attn.q_proj.weight"),
-                &self.workspace.normalized,
-                &self.workspace.q_proj,
-            )?;
-            self.encode_q4_matvec(
-                tcb,
-                &qwen38_layer_name(layer, "self_attn.k_proj.weight"),
-                &self.workspace.normalized,
-                &self.workspace.k_proj,
-            )?;
-            self.encode_q4_matvec(
-                tcb,
-                &qwen38_layer_name(layer, "self_attn.v_proj.weight"),
-                &self.workspace.normalized,
-                &self.workspace.v_proj,
-            )?;
-            if self.concurrent_independent {
-                tcb.end_concurrent_group()?;
+            if self.fuse_gqa_qkv {
+                self.encode_fused_qkv(tcb, layer)?;
+            } else {
+                if self.concurrent_independent {
+                    tcb.begin_concurrent_group()?;
+                }
+                self.encode_q4_matvec(
+                    tcb,
+                    &qwen38_layer_name(layer, "self_attn.q_proj.weight"),
+                    &self.workspace.normalized,
+                    &self.workspace.q_proj,
+                )?;
+                self.encode_q4_matvec(
+                    tcb,
+                    &qwen38_layer_name(layer, "self_attn.k_proj.weight"),
+                    &self.workspace.normalized,
+                    &self.workspace.k_proj,
+                )?;
+                self.encode_q4_matvec(
+                    tcb,
+                    &qwen38_layer_name(layer, "self_attn.v_proj.weight"),
+                    &self.workspace.normalized,
+                    &self.workspace.v_proj,
+                )?;
+                if self.concurrent_independent {
+                    tcb.end_concurrent_group()?;
+                }
             }
             let q_norm = self.f32(&qwen38_layer_name(layer, "self_attn.q_norm.weight"))?;
             let k_norm = self.f32(&qwen38_layer_name(layer, "self_attn.k_norm.weight"))?;
@@ -5447,6 +5960,14 @@ mod mixed_catalog_contract_tests {
         let src = crate::metal::SHADER_QWEN_UNIFORM_Q4;
         assert!(src.contains("kernel void qwen_uniform_q4_group64_matvec_geo_tpr64_tg128("));
         assert!(src.contains("kernel void qwen_uniform_q4_group128_matvec_geo_tpr64_tg128("));
+        assert!(src.contains("kernel void qwen_uniform_q4_group64_matvec_gate_up_geo_tpr64_tg128("));
+        assert!(src.contains(
+            "kernel void qwen_uniform_q4_group64_matvec_gate_up_swiglu_geo_tpr64_tg128("
+        ));
+        assert!(src.contains(
+            "kernel void qwen_uniform_q4_group64_matvec_pair_concat_geo_tpr64_tg128("
+        ));
+        assert!(src.contains("kernel void qwen_uniform_q4_group64_matvec_qkv_geo_tpr64_tg128("));
         assert!(
             !src.contains("element * bits"),
             "G0 Q4 kernel must not use the overflowing element*bits extract"

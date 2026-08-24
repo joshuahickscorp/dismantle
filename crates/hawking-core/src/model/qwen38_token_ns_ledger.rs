@@ -722,6 +722,29 @@ mod tests {
     }
 
     #[test]
+    fn fused_mlp_swiglu_cuts_128_dispatches() {
+        use super::super::qwen38_hybrid_decode::{
+            qwen38_fused_dispatches_per_token, Qwen38MlpFusion,
+        };
+        assert_eq!(
+            qwen38_fused_dispatches_per_token(Qwen38MlpFusion::GateUpPair, false, false),
+            900
+        );
+        assert_eq!(
+            qwen38_fused_dispatches_per_token(Qwen38MlpFusion::GateUpSwiglu, false, false),
+            836
+        );
+        assert_eq!(
+            qwen38_fused_dispatches_per_token(Qwen38MlpFusion::GateUpSwiglu, true, true),
+            756
+        );
+        assert!(
+            qwen38_fused_dispatches_per_token(Qwen38MlpFusion::GateUpSwiglu, true, true)
+                < production_dispatches_per_token()
+        );
+    }
+
+    #[test]
     fn required_components_are_twelve_and_named() {
         assert_eq!(REQUIRED_COMPONENTS.len(), 12);
         assert!(REQUIRED_COMPONENTS.contains(&"unattributed_residual"));

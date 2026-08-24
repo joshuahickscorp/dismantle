@@ -322,6 +322,7 @@ fn run_default(args: &Args, tokenizer: &Tokenizer, rendered: &str, prompt_ids: &
                 "decode_wall_ns": result.decode_wall_ns,
                 "decode_steps": result.decode_steps,
                 "wall_ns_per_step": result.wall_ns_per_step,
+                "dispatches_per_step": result.dispatches,
                 "timing_label": "DIRTY_ENGINEERING",
             }),
         );

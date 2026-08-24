@@ -1,7 +1,7 @@
 {
   "schema": "hawking.headless.composition_ladder.v1",
   "obligation": "N011 (S017 \u00a728)",
-  "git_head": "6138f18cc159",
+  "git_head": "6e3dda0fb683",
   "rungs": [
     "local_functional_probe",
     "held_out_activation",
@@ -65,15 +65,15 @@
     },
     {
       "id": "q2_4level_fitted_g64 whole-MLP (2.25 bpw)",
-      "highest_rung_reached": "complete_token",
-      "highest_rung_index": 5,
+      "highest_rung_reached": "coherent_generation",
+      "highest_rung_index": 6,
       "died_at": null,
-      "unreached_above": "coherent_generation",
+      "unreached_above": "capability",
       "status": "UNTESTED_ABOVE",
-      "why": "Survived the complete 64-layer token loop with the argmax AGREEING (9714 = 9714), but was never carried to native generation.",
-      "source_receipt": "receipts/headless/NOETIC_COMPOSITION_WHOLEMODEL_Q2F_G64.json",
-      "note": "NOT DEAD -- untested above complete_token. It is the cheapest arm known to survive the whole-model token loop and nobody has asked it to generate.",
-      "may_be_described_as": "complete_token"
+      "why": "Survived the complete 64-layer token loop with the argmax AGREEING (9714 = 9714), and native generation is non-degenerate.",
+      "source_receipt": "receipts/headless/NOETIC_COMPOSITION_WHOLEMODEL_Q2F_G64.json + NATIVE_2BIT_MLP.json",
+      "note": "Cheapest arm known to survive the whole-model token loop, now carried to native generation. Capability is still UNREACHED.",
+      "may_be_described_as": "coherent_generation"
     },
     {
       "id": "NOETIC_PARENT_A (affine2_g64_LS + fused graph)",
@@ -92,8 +92,8 @@
     "candidates": 6,
     "by_highest_rung": {
       "held_out_activation": 1,
-      "coherent_generation": 2,
-      "complete_token": 3
+      "coherent_generation": 3,
+      "complete_token": 2
     },
     "killed_before_capability": 3,
     "untested_above_their_rung": 2
@@ -101,8 +101,8 @@
   "untested_not_failed": [
     {
       "id": "q2_4level_fitted_g64 whole-MLP (2.25 bpw)",
-      "unreached_above": "coherent_generation",
-      "why": "NOT DEAD -- untested above complete_token. It is the cheapest arm known to survive the whole-model token loop and nobody has asked it to generate."
+      "unreached_above": "capability",
+      "why": "Cheapest arm known to survive the whole-model token loop, now carried to native generation. Capability is still UNREACHED."
     },
     {
       "id": "NOETIC_PARENT_A (affine2_g64_LS + fused graph)",

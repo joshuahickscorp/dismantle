@@ -297,6 +297,9 @@ pub struct MixedCatalogCensus {
     pub refused: usize,
     pub expanded_to_q4: usize,
     pub expanded_to_float_gemv: usize,
+    /// GEMV weight tensors reconstructed to dense float. Production affine/q2f
+    /// upload never increments this; it exists so a reconstruct cannot hide.
+    pub dense_w_materialized: usize,
     pub refusals: Vec<String>,
 }
 
@@ -1232,6 +1235,8 @@ mod device {
         q4: HashMap<String, Q4Weight>,
         f32s: HashMap<String, PinnedBuffer>,
         mixed: HashMap<String, MixedGpuWeight>,
+        /// GEMV weights reconstructed to dense float. Stays 0 on the packed path.
+        pub dense_w_materialized: u64,
     }
 
     impl Qwen38HybridWeights {
@@ -1308,6 +1313,7 @@ mod device {
                 q4,
                 f32s,
                 mixed: HashMap::new(),
+                dense_w_materialized: 0,
             })
         }
 
@@ -1463,8 +1469,8 @@ mod device {
             }
             eprintln!(
                 "qwen38-decode mixed census: tensors={} binary={} residual={} \
-                 hgravs={} uniform={} affine={} q4={} f32={} refused=0 expanded_to_q4=0 \
-                 expanded_to_float_gemv=0",
+                 hgravs={} uniform={} affine={} q4={} f32={} refused={} expanded_to_q4={} \
+                 expanded_to_float_gemv={} dense_w_materialized={}",
                 census.tensors,
                 census.binary,
                 census.residual,
@@ -1472,7 +1478,11 @@ mod device {
                 census.uniform,
                 census.affine,
                 census.q4,
-                census.f32
+                census.f32,
+                census.refused,
+                census.expanded_to_q4,
+                census.expanded_to_float_gemv,
+                census.dense_w_materialized
             );
             eprintln!("{}", qwen38_mixed_k_complete_bind_message());
             if census.affine > 0 {
@@ -1511,6 +1521,7 @@ mod device {
                 q4,
                 f32s,
                 mixed,
+                dense_w_materialized: census.dense_w_materialized as u64,
             })
         }
 
@@ -1778,6 +1789,11 @@ mod device {
         pub fuse_add_rmsnorm_bad: bool,
         /// Affine2 GEMV geometry. Default tpr64 (incumbent / no-op control).
         pub affine2_geo: Affine2Geo,
+        /// GEMV weights reconstructed to dense float. Copied from the catalog
+        /// load census and incremented only by [`Self::account_dense_w`].
+        pub dense_w_materialized: u64,
+        /// BAD control: force the serial one-thread-per-row q2f kernel.
+        pub q2f_force_serial: bool,
     }
 
     impl Qwen38HybridDecodeSession {
@@ -1805,6 +1821,7 @@ mod device {
             zero_buffer(&workspace.rec_state);
             zero_buffer(&workspace.gqa_key);
             zero_buffer(&workspace.gqa_value);
+            let dense_w_materialized = weights.dense_w_materialized;
             let session = Self {
                 context: weights.context.clone(),
                 weights,
@@ -1826,6 +1843,8 @@ mod device {
                 fuse_add_rmsnorm: qwen38_fuse_add_rmsnorm_from_env().0,
                 fuse_add_rmsnorm_bad: qwen38_fuse_add_rmsnorm_from_env().1,
                 affine2_geo: Affine2Geo::from_env(),
+                dense_w_materialized,
+                q2f_force_serial: false,
             };
             // `MetalContext` clones share `Arc<DispatchTrace>`. If that ever
             // becomes a fresh buffer, `drain_trace` on the session would miss
@@ -2292,7 +2311,7 @@ mod device {
                     body.bits, body.group_size, body.cols
                 )));
             }
-            if qwen38_recon_fuse_enabled() {
+            if !self.q2f_force_serial && qwen38_recon_fuse_enabled() {
                 let tg = 128u32;
                 let grid = body.rows.div_ceil(2).saturating_mul(tg).max(tg);
                 return tcb.dispatch_threads(QWEN38_Q2F_GEO_TPR64, (grid, 1, 1), (tg, 1, 1), |enc| {
@@ -3163,6 +3182,15 @@ mod device {
         pub fn set_fuse_add_rmsnorm(&mut self, on: bool, bad: bool) {
             self.fuse_add_rmsnorm = on;
             self.fuse_add_rmsnorm_bad = bad;
+        }
+
+        /// Record a dense-W reconstruct. Production packed GEMV never calls this.
+        pub fn account_dense_w(&mut self, n: u64) {
+            self.dense_w_materialized += n;
+        }
+
+        pub fn set_q2f_force_serial(&mut self, on: bool) {
+            self.q2f_force_serial = on;
         }
 
         pub fn theoretical_dispatches(&self) -> u64 {
@@ -5502,6 +5530,7 @@ mod device {
             submit_ns,
             dispatches,
             fallbacks: session.fallbacks,
+            dense_w_materialized: session.dense_w_materialized,
             first_step_wall_ns,
             prefill_wall_ns,
             decode_wall_ns,
@@ -5589,6 +5618,7 @@ mod device {
             prefill_wall_ns,
             decode_wall_ns,
             fallbacks: session.fallbacks,
+            dense_w_materialized: session.dense_w_materialized,
             steps,
         })
     }
@@ -5773,6 +5803,7 @@ pub struct Qwen38CompleteWallResult {
     pub prefill_wall_ns: u64,
     pub decode_wall_ns: u64,
     pub fallbacks: u32,
+    pub dense_w_materialized: u64,
     pub steps: Vec<Qwen38CompleteToken>,
 }
 
@@ -5811,6 +5842,7 @@ pub struct Qwen38GenerateResult {
     pub submit_ns: Vec<u64>,
     pub dispatches: Vec<u64>,
     pub fallbacks: u32,
+    pub dense_w_materialized: u64,
     pub first_step_wall_ns: u64,
     pub prefill_wall_ns: u64,
     pub decode_wall_ns: u64,
@@ -6170,6 +6202,7 @@ mod mixed_catalog_contract_tests {
         assert_eq!(census.refused, 0);
         assert_eq!(census.expanded_to_q4, 0);
         assert_eq!(census.expanded_to_float_gemv, 0);
+        assert_eq!(census.dense_w_materialized, 0);
 
         write_tiny_hq38m20(root, "tensor.x", 6, &payload);
         let census = census_qwen38_mixed_catalog(root).unwrap();
@@ -6201,6 +6234,7 @@ mod mixed_catalog_contract_tests {
         assert_eq!(census.refused, 0);
         assert_eq!(census.expanded_to_q4, 0);
         assert_eq!(census.expanded_to_float_gemv, 0);
+        assert_eq!(census.dense_w_materialized, 0);
     }
 
     #[test]
@@ -6270,6 +6304,7 @@ mod mixed_catalog_contract_tests {
         assert_eq!(census.refused, 0, "refusals: {:?}", census.refusals);
         assert_eq!(census.expanded_to_q4, 0);
         assert_eq!(census.expanded_to_float_gemv, 0);
+        assert_eq!(census.dense_w_materialized, 0);
         assert_eq!(census.tensors, 851);
         assert_eq!(census.binary, 64);
         assert_eq!(census.residual, 368);

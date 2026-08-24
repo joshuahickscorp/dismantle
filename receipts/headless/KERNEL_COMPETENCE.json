@@ -1,7 +1,7 @@
 {
   "schema": "hawking.headless.kernel_competence.v1",
   "obligation": "N003 (S017 \u00a75)",
-  "git_head": "78f585f482d3",
+  "git_head": "6e3dda0fb683",
   "law": "A REPRESENTATION CANNOT BE CONDEMNED UNTIL ITS NATIVE KERNEL IS COMPETENT. A candidate may not be recorded REFUTED on speed until this screen passes for its kernel.",
   "measured_anchor": {
     "defect": "non-constant integer divide from a bind-time group_size",
@@ -35,11 +35,11 @@
     }
   ],
   "counts": {
-    "files": 42,
-    "kernels": 565,
+    "files": 43,
+    "kernels": 606,
     "by_verdict": {
-      "DEFECTIVE": 86,
-      "SUSPECT": 396,
+      "DEFECTIVE": 89,
+      "SUSPECT": 434,
       "CLEAR": 83
     }
   },
@@ -111,6 +111,76 @@
           "token": "gid",
           "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
           "snippet": "{\n    const uint n = rows * cols;\n    if (gid >= n) return;\n    if (!affine2_group_ok(group"
+        }
+      ]
+    },
+    {
+      "file": "affine2_group32_matvec.metal",
+      "kernel": "q2f_group64_dequant",
+      "verdict": "DEFECTIVE",
+      "findings": [
+        {
+          "check": "runtime_integer_divide",
+          "severity": "high",
+          "token": "cols",
+          "why": "A divide or modulo by a value the compiler cannot see is the exact defect measured at 1.37x. Division by a compile-time constant is a shift and is fine.",
+          "snippet": "return;\n    }\n    const uint row = gid / cols;\n    const uint col = gid - row * cols;"
+        },
+        {
+          "check": "dynamic_branch_in_loop",
+          "severity": "med",
+          "token": "gid",
+          "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
+          "snippet": "{\n    const uint n = rows * cols;\n    if (gid >= n || (cols % 64u) != 0u) {\n        return;\n    }\n    cons"
+        }
+      ]
+    },
+    {
+      "file": "affine2_group32_matvec.metal",
+      "kernel": "affine2_group64_matvec_geo_tpr64_tg128_runtime_div",
+      "verdict": "DEFECTIVE",
+      "findings": [
+        {
+          "check": "runtime_integer_divide",
+          "severity": "high",
+          "token": "group_size",
+          "why": "A divide or modulo by a value the compiler cannot see is the exact defect measured at 1.37x. Division by a compile-time constant is a shift and is fine.",
+          "snippet": "const uint groups_per_row = cols / group_size;\n        const uint bytes_per_group = g"
+        },
+        {
+          "check": "dynamic_branch_in_loop",
+          "severity": "med",
+          "token": "row",
+          "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
+          "snippet": "* 2u + team;\n    float acc = 0.0f;\n    if (row < rows && affine2_group_ok(group_size, cols)) {\n        const uint groups_per_row ="
+        }
+      ]
+    },
+    {
+      "file": "bandwidth_roof.metal",
+      "kernel": "roof_seq_simd8x8",
+      "verdict": "DEFECTIVE",
+      "findings": [
+        {
+          "check": "runtime_integer_divide",
+          "severity": "high",
+          "token": "tpg",
+          "why": "A divide or modulo by a value the compiler cannot see is the exact defect measured at 1.37x. Division by a compile-time constant is a shift and is fine.",
+          "snippet": "pg / 32u;\n    const uint tg_index = tid / tpg;\n    const uint global_sg = tg_index *"
+        },
+        {
+          "check": "runtime_sized_loop",
+          "severity": "med",
+          "token": "p",
+          "why": "A loop bound the compiler cannot see blocks unrolling and vectorization.",
+          "snippet": "oup float *sh = tile_mem + sg * 64;\n    for (uint pass = 0u; pass < p.iters; ++pass) {\n        for (ulong til"
+        },
+        {
+          "check": "dynamic_branch_in_loop",
+          "severity": "med",
+          "token": "tid",
+          "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
+          "snippet": "hreadgroup float tile_mem[32 * 64];\n    if (tid >= p.nthreads || tpg < 32u || (tpg / 32u) > 32u) {\n        return;\n    }\n    cons"
         }
       ]
     },
@@ -1975,6 +2045,42 @@
       "n_findings": 2
     },
     {
+      "file": "affine2_group32_matvec.metal",
+      "kernel": "affine2_group64_matvec_geo_tpr64_tg128",
+      "verdict": "SUSPECT",
+      "n_findings": 1
+    },
+    {
+      "file": "affine2_group32_matvec.metal",
+      "kernel": "affine2_group64_matvec_geo_tpr64_tg128_runtime_div",
+      "verdict": "DEFECTIVE",
+      "n_findings": 2
+    },
+    {
+      "file": "affine2_group32_matvec.metal",
+      "kernel": "affine2_group64_matvec_qmvfast_r8tg64",
+      "verdict": "SUSPECT",
+      "n_findings": 2
+    },
+    {
+      "file": "affine2_group32_matvec.metal",
+      "kernel": "affine2_group64_matvec_qmvfast_r8tg64_addr_probe",
+      "verdict": "SUSPECT",
+      "n_findings": 2
+    },
+    {
+      "file": "affine2_group32_matvec.metal",
+      "kernel": "affine2_group64_matvec_wide64_r4tg128",
+      "verdict": "SUSPECT",
+      "n_findings": 1
+    },
+    {
+      "file": "affine2_group32_matvec.metal",
+      "kernel": "affine2_group64_matvec_tgx_r8tg256",
+      "verdict": "SUSPECT",
+      "n_findings": 2
+    },
+    {
       "file": "gravity_pq.metal",
       "kernel": "gravity_layernorm_affine_f32",
       "verdict": "SUSPECT",
@@ -2009,6 +2115,66 @@
       "kernel": "qwen_affine_q2_group64_matvec_gate_up_swiglu_geo_tpr64_tg128",
       "verdict": "SUSPECT",
       "n_findings": 1
+    },
+    {
+      "file": "q80_mixed_decode.metal",
+      "kernel": "qwen_affine_q2_group64_matvec_qmvfast_r8tg64",
+      "verdict": "SUSPECT",
+      "n_findings": 2
+    },
+    {
+      "file": "q80_mixed_decode.metal",
+      "kernel": "qwen_affine_q2_group64_matvec_qmvfast_r8tg64_addr_probe",
+      "verdict": "SUSPECT",
+      "n_findings": 2
+    },
+    {
+      "file": "q80_mixed_decode.metal",
+      "kernel": "qwen_affine_q2_group64_matvec_wide64_r4tg128",
+      "verdict": "SUSPECT",
+      "n_findings": 1
+    },
+    {
+      "file": "q80_mixed_decode.metal",
+      "kernel": "qwen_affine_q2_group64_matvec_tgx_r8tg256",
+      "verdict": "SUSPECT",
+      "n_findings": 2
+    },
+    {
+      "file": "q80_mixed_decode.metal",
+      "kernel": "qwen_affine_q2_group64_matvec_gate_up_qmvfast_r8tg64",
+      "verdict": "SUSPECT",
+      "n_findings": 2
+    },
+    {
+      "file": "q80_mixed_decode.metal",
+      "kernel": "qwen_affine_q2_group64_matvec_gate_up_swiglu_qmvfast_r8tg64",
+      "verdict": "SUSPECT",
+      "n_findings": 2
+    },
+    {
+      "file": "q80_mixed_decode.metal",
+      "kernel": "qwen_affine_q2_group64_matvec_gate_up_wide64_r4tg128",
+      "verdict": "SUSPECT",
+      "n_findings": 1
+    },
+    {
+      "file": "q80_mixed_decode.metal",
+      "kernel": "qwen_affine_q2_group64_matvec_gate_up_swiglu_wide64_r4tg128",
+      "verdict": "SUSPECT",
+      "n_findings": 1
+    },
+    {
+      "file": "q80_mixed_decode.metal",
+      "kernel": "qwen_affine_q2_group64_matvec_gate_up_tgx_r8tg256",
+      "verdict": "SUSPECT",
+      "n_findings": 2
+    },
+    {
+      "file": "q80_mixed_decode.metal",
+      "kernel": "qwen_affine_q2_group64_matvec_gate_up_swiglu_tgx_r8tg256",
+      "verdict": "SUSPECT",
+      "n_findings": 2
     }
   ],
   "what_this_screen_cannot_do": [
@@ -2019,7 +2185,7 @@
   "per_file": [
     {
       "file": "affine2_group32_matvec.metal",
-      "n_kernels": 4,
+      "n_kernels": 15,
       "kernels": [
         {
           "kernel": "affine2_group32_matvec",
@@ -2117,6 +2283,239 @@
           ],
           "n_findings": 2,
           "verdict": "DEFECTIVE",
+          "may_condemn_representation": false,
+          "file": "affine2_group32_matvec.metal",
+          "name_suggests_specialized": true
+        },
+        {
+          "kernel": "q2f_group64_matvec",
+          "has_loop": true,
+          "findings": [
+            {
+              "check": "dynamic_branch_in_loop",
+              "severity": "med",
+              "token": "row",
+              "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
+              "snippet": "{\n    if (row >= rows || (cols % 64u) != 0u) {\n        return;\n    }\n    cons"
+            }
+          ],
+          "n_findings": 1,
+          "verdict": "SUSPECT",
+          "may_condemn_representation": false,
+          "file": "affine2_group32_matvec.metal",
+          "name_suggests_specialized": true
+        },
+        {
+          "kernel": "q2f_group64_matvec_geo_tpr64_tg128",
+          "has_loop": false,
+          "findings": [
+            {
+              "check": "dynamic_branch_in_loop",
+              "severity": "med",
+              "token": "row",
+              "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
+              "snippet": "* 2u + team;\n    float acc = 0.0f;\n    if (row < rows && (cols % 64u) == 0u) {\n        acc = q2f_geo_acc_g64_"
+            }
+          ],
+          "n_findings": 1,
+          "verdict": "SUSPECT",
+          "may_condemn_representation": false,
+          "file": "affine2_group32_matvec.metal",
+          "name_suggests_specialized": true
+        },
+        {
+          "kernel": "q2f_group64_dequant",
+          "has_loop": false,
+          "findings": [
+            {
+              "check": "runtime_integer_divide",
+              "severity": "high",
+              "token": "cols",
+              "why": "A divide or modulo by a value the compiler cannot see is the exact defect measured at 1.37x. Division by a compile-time constant is a shift and is fine.",
+              "snippet": "return;\n    }\n    const uint row = gid / cols;\n    const uint col = gid - row * cols;"
+            },
+            {
+              "check": "dynamic_branch_in_loop",
+              "severity": "med",
+              "token": "gid",
+              "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
+              "snippet": "{\n    const uint n = rows * cols;\n    if (gid >= n || (cols % 64u) != 0u) {\n        return;\n    }\n    cons"
+            }
+          ],
+          "n_findings": 2,
+          "verdict": "DEFECTIVE",
+          "may_condemn_representation": false,
+          "file": "affine2_group32_matvec.metal",
+          "name_suggests_specialized": true
+        },
+        {
+          "kernel": "q2f_group64_matvec_gate_up_geo_tpr64_tg128",
+          "has_loop": true,
+          "findings": [
+            {
+              "check": "dynamic_branch_in_loop",
+              "severity": "med",
+              "token": "row",
+              "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
+              "snippet": "c_g = 0.0f;\n    float acc_u = 0.0f;\n    if (row < rows && (cols % 64u) == 0u) {\n        const uint groups_per_"
+            }
+          ],
+          "n_findings": 1,
+          "verdict": "SUSPECT",
+          "may_condemn_representation": false,
+          "file": "affine2_group32_matvec.metal",
+          "name_suggests_specialized": true
+        },
+        {
+          "kernel": "q2f_group64_matvec_gate_up_swiglu_geo_tpr64_tg128",
+          "has_loop": true,
+          "findings": [
+            {
+              "check": "dynamic_branch_in_loop",
+              "severity": "med",
+              "token": "row",
+              "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
+              "snippet": "c_g = 0.0f;\n    float acc_u = 0.0f;\n    if (row < rows && (cols % 64u) == 0u) {\n        const uint groups_per_"
+            }
+          ],
+          "n_findings": 1,
+          "verdict": "SUSPECT",
+          "may_condemn_representation": false,
+          "file": "affine2_group32_matvec.metal",
+          "name_suggests_specialized": true
+        },
+        {
+          "kernel": "affine2_group64_matvec_geo_tpr64_tg128",
+          "has_loop": true,
+          "findings": [
+            {
+              "check": "dynamic_branch_in_loop",
+              "severity": "med",
+              "token": "row",
+              "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
+              "snippet": "* 2u + team;\n    float acc = 0.0f;\n    if (row < rows && (cols % 64u) == 0u) {\n        const uint groups_per_"
+            }
+          ],
+          "n_findings": 1,
+          "verdict": "SUSPECT",
+          "may_condemn_representation": false,
+          "file": "affine2_group32_matvec.metal",
+          "name_suggests_specialized": true
+        },
+        {
+          "kernel": "affine2_group64_matvec_geo_tpr64_tg128_runtime_div",
+          "has_loop": true,
+          "findings": [
+            {
+              "check": "runtime_integer_divide",
+              "severity": "high",
+              "token": "group_size",
+              "why": "A divide or modulo by a value the compiler cannot see is the exact defect measured at 1.37x. Division by a compile-time constant is a shift and is fine.",
+              "snippet": "const uint groups_per_row = cols / group_size;\n        const uint bytes_per_group = g"
+            },
+            {
+              "check": "dynamic_branch_in_loop",
+              "severity": "med",
+              "token": "row",
+              "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
+              "snippet": "* 2u + team;\n    float acc = 0.0f;\n    if (row < rows && affine2_group_ok(group_size, cols)) {\n        const uint groups_per_row ="
+            }
+          ],
+          "n_findings": 2,
+          "verdict": "DEFECTIVE",
+          "may_condemn_representation": false,
+          "file": "affine2_group32_matvec.metal",
+          "name_suggests_specialized": true
+        },
+        {
+          "kernel": "affine2_group64_matvec_qmvfast_r8tg64",
+          "has_loop": true,
+          "findings": [
+            {
+              "check": "runtime_sized_loop",
+              "severity": "med",
+              "token": "cols",
+              "why": "A loop bound the compiler cannot see blocks unrolling and vectorization.",
+              "snippet": ";\n    if ((cols % 64u) == 0u) {\n        for (uint bk = 0u; bk < cols; bk += 512u) {\n            const uint c"
+            },
+            {
+              "check": "dynamic_branch_in_loop",
+              "severity": "med",
+              "token": "col",
+              "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
+              "snippet": "col = bk + simd_lane * 16u;\n            if (col + 16u > cols) continue;\n            float4 a, b, c, d"
+            }
+          ],
+          "n_findings": 2,
+          "verdict": "SUSPECT",
+          "may_condemn_representation": false,
+          "file": "affine2_group32_matvec.metal",
+          "name_suggests_specialized": true
+        },
+        {
+          "kernel": "affine2_group64_matvec_qmvfast_r8tg64_addr_probe",
+          "has_loop": true,
+          "findings": [
+            {
+              "check": "runtime_sized_loop",
+              "severity": "med",
+              "token": "cols",
+              "why": "A loop bound the compiler cannot see blocks unrolling and vectorization.",
+              "snippet": "nt groups_per_row = cols >> 6u;\n        for (uint bk = 0u; bk < cols; bk += 512u) {\n            const uint c"
+            },
+            {
+              "check": "dynamic_branch_in_loop",
+              "severity": "med",
+              "token": "col",
+              "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
+              "snippet": "col = bk + simd_lane * 16u;\n            if (col + 16u > cols) continue;\n            float4 a, b, c, d"
+            }
+          ],
+          "n_findings": 2,
+          "verdict": "SUSPECT",
+          "may_condemn_representation": false,
+          "file": "affine2_group32_matvec.metal",
+          "name_suggests_specialized": true
+        },
+        {
+          "kernel": "affine2_group64_matvec_wide64_r4tg128",
+          "has_loop": true,
+          "findings": [
+            {
+              "check": "dynamic_branch_in_loop",
+              "severity": "med",
+              "token": "row",
+              "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
+              "snippet": "4u + simd_id;\n    float acc = 0.0f;\n    if (row < rows && (cols % 64u) == 0u) {\n        for (uint col = simd_l"
+            }
+          ],
+          "n_findings": 1,
+          "verdict": "SUSPECT",
+          "may_condemn_representation": false,
+          "file": "affine2_group32_matvec.metal",
+          "name_suggests_specialized": true
+        },
+        {
+          "kernel": "affine2_group64_matvec_tgx_r8tg256",
+          "has_loop": true,
+          "findings": [
+            {
+              "check": "runtime_sized_loop",
+              "severity": "med",
+              "token": "cols",
+              "why": "A loop bound the compiler cannot see blocks unrolling and vectorization.",
+              "snippet": ";\n    if ((cols % 64u) == 0u) {\n        for (uint bk = 0u; bk < cols; bk += 512u) {\n            const uint l"
+            },
+            {
+              "check": "dynamic_branch_in_loop",
+              "severity": "med",
+              "token": "row",
+              "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
+              "snippet": "em_flags::mem_threadgroup);\n            if (row < rows) {\n                const uint local = si"
+            }
+          ],
+          "n_findings": 2,
+          "verdict": "SUSPECT",
           "may_condemn_representation": false,
           "file": "affine2_group32_matvec.metal",
           "name_suggests_specialized": true
@@ -2343,6 +2742,362 @@
           "verdict": "SUSPECT",
           "may_condemn_representation": false,
           "file": "attn.metal",
+          "name_suggests_specialized": false
+        }
+      ]
+    },
+    {
+      "file": "bandwidth_roof.metal",
+      "n_kernels": 14,
+      "kernels": [
+        {
+          "kernel": "roof_fill_u32",
+          "has_loop": true,
+          "findings": [
+            {
+              "check": "runtime_sized_loop",
+              "severity": "med",
+              "token": "nwords",
+              "why": "A loop bound the compiler cannot see blocks unrolling and vectorization.",
+              "snippet": "eads == 0u) {\n        return;\n    }\n    for (ulong i = (ulong)tid; i < nwords; i += (ulong)nthreads) {\n        data[i"
+            }
+          ],
+          "n_findings": 1,
+          "verdict": "SUSPECT",
+          "may_condemn_representation": false,
+          "file": "bandwidth_roof.metal",
+          "name_suggests_specialized": false
+        },
+        {
+          "kernel": "roof_seq_f1",
+          "has_loop": true,
+          "findings": [
+            {
+              "check": "runtime_sized_loop",
+              "severity": "med",
+              "token": "p",
+              "why": "A loop bound the compiler cannot see blocks unrolling and vectorization.",
+              "snippet": "tart, count);\n    float acc = 0.0f;\n    for (uint pass = 0u; pass < p.iters; ++pass) {\n        ulong i = star"
+            },
+            {
+              "check": "dynamic_branch_in_loop",
+              "severity": "med",
+              "token": "tid",
+              "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
+              "snippet": "{\n    if (tid >= p.nthreads) {\n        return;\n    }\n    ulong start"
+            }
+          ],
+          "n_findings": 2,
+          "verdict": "SUSPECT",
+          "may_condemn_representation": false,
+          "file": "bandwidth_roof.metal",
+          "name_suggests_specialized": false
+        },
+        {
+          "kernel": "roof_seq_f2",
+          "has_loop": true,
+          "findings": [
+            {
+              "check": "runtime_sized_loop",
+              "severity": "med",
+              "token": "p",
+              "why": "A loop bound the compiler cannot see blocks unrolling and vectorization.",
+              "snippet": "tart, count);\n    float acc = 0.0f;\n    for (uint pass = 0u; pass < p.iters; ++pass) {\n        ulong i = star"
+            },
+            {
+              "check": "dynamic_branch_in_loop",
+              "severity": "med",
+              "token": "tid",
+              "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
+              "snippet": "{\n    if (tid >= p.nthreads) {\n        return;\n    }\n    ulong start"
+            }
+          ],
+          "n_findings": 2,
+          "verdict": "SUSPECT",
+          "may_condemn_representation": false,
+          "file": "bandwidth_roof.metal",
+          "name_suggests_specialized": false
+        },
+        {
+          "kernel": "roof_seq_f4",
+          "has_loop": true,
+          "findings": [
+            {
+              "check": "runtime_sized_loop",
+              "severity": "med",
+              "token": "p",
+              "why": "A loop bound the compiler cannot see blocks unrolling and vectorization.",
+              "snippet": "tart, count);\n    float acc = 0.0f;\n    for (uint pass = 0u; pass < p.iters; ++pass) {\n        ulong i = star"
+            },
+            {
+              "check": "dynamic_branch_in_loop",
+              "severity": "med",
+              "token": "tid",
+              "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
+              "snippet": "{\n    if (tid >= p.nthreads) {\n        return;\n    }\n    ulong start"
+            }
+          ],
+          "n_findings": 2,
+          "verdict": "SUSPECT",
+          "may_condemn_representation": false,
+          "file": "bandwidth_roof.metal",
+          "name_suggests_specialized": false
+        },
+        {
+          "kernel": "roof_seq_f4x4",
+          "has_loop": true,
+          "findings": [
+            {
+              "check": "runtime_sized_loop",
+              "severity": "med",
+              "token": "p",
+              "why": "A loop bound the compiler cannot see blocks unrolling and vectorization.",
+              "snippet": "tart, count);\n    float acc = 0.0f;\n    for (uint pass = 0u; pass < p.iters; ++pass) {\n        for (ulong i ="
+            },
+            {
+              "check": "dynamic_branch_in_loop",
+              "severity": "med",
+              "token": "tid",
+              "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
+              "snippet": "{\n    if (tid >= p.nthreads) {\n        return;\n    }\n    ulong start"
+            }
+          ],
+          "n_findings": 2,
+          "verdict": "SUSPECT",
+          "may_condemn_representation": false,
+          "file": "bandwidth_roof.metal",
+          "name_suggests_specialized": false
+        },
+        {
+          "kernel": "roof_seq_f4x8",
+          "has_loop": true,
+          "findings": [
+            {
+              "check": "runtime_sized_loop",
+              "severity": "med",
+              "token": "p",
+              "why": "A loop bound the compiler cannot see blocks unrolling and vectorization.",
+              "snippet": "tart, count);\n    float acc = 0.0f;\n    for (uint pass = 0u; pass < p.iters; ++pass) {\n        ulong i = star"
+            },
+            {
+              "check": "dynamic_branch_in_loop",
+              "severity": "med",
+              "token": "tid",
+              "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
+              "snippet": "{\n    if (tid >= p.nthreads) {\n        return;\n    }\n    ulong start"
+            }
+          ],
+          "n_findings": 2,
+          "verdict": "SUSPECT",
+          "may_condemn_representation": false,
+          "file": "bandwidth_roof.metal",
+          "name_suggests_specialized": false
+        },
+        {
+          "kernel": "roof_seq_simd8x8",
+          "has_loop": true,
+          "findings": [
+            {
+              "check": "runtime_integer_divide",
+              "severity": "high",
+              "token": "tpg",
+              "why": "A divide or modulo by a value the compiler cannot see is the exact defect measured at 1.37x. Division by a compile-time constant is a shift and is fine.",
+              "snippet": "pg / 32u;\n    const uint tg_index = tid / tpg;\n    const uint global_sg = tg_index *"
+            },
+            {
+              "check": "runtime_sized_loop",
+              "severity": "med",
+              "token": "p",
+              "why": "A loop bound the compiler cannot see blocks unrolling and vectorization.",
+              "snippet": "oup float *sh = tile_mem + sg * 64;\n    for (uint pass = 0u; pass < p.iters; ++pass) {\n        for (ulong til"
+            },
+            {
+              "check": "dynamic_branch_in_loop",
+              "severity": "med",
+              "token": "tid",
+              "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
+              "snippet": "hreadgroup float tile_mem[32 * 64];\n    if (tid >= p.nthreads || tpg < 32u || (tpg / 32u) > 32u) {\n        return;\n    }\n    cons"
+            }
+          ],
+          "n_findings": 3,
+          "verdict": "DEFECTIVE",
+          "may_condemn_representation": false,
+          "file": "bandwidth_roof.metal",
+          "name_suggests_specialized": false
+        },
+        {
+          "kernel": "roof_stride_f4",
+          "has_loop": true,
+          "findings": [
+            {
+              "check": "runtime_sized_loop",
+              "severity": "med",
+              "token": "loads",
+              "why": "A loop bound the compiler cannot see blocks unrolling and vectorization.",
+              "snippet": "0f;\n    const uint loads = p.iters;\n    for (uint i = 0u; i < loads; ++i) {\n        acc += sum4(data[off]);"
+            },
+            {
+              "check": "dynamic_branch_in_loop",
+              "severity": "med",
+              "token": "tid",
+              "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
+              "snippet": "{\n    if (tid >= p.nthreads || p.stride_bytes < 16u || p.nbytes < 16ul) {\n        return;\n    }\n    const ulong"
+            }
+          ],
+          "n_findings": 2,
+          "verdict": "SUSPECT",
+          "may_condemn_representation": false,
+          "file": "bandwidth_roof.metal",
+          "name_suggests_specialized": false
+        },
+        {
+          "kernel": "roof_gather_f4",
+          "has_loop": true,
+          "findings": [
+            {
+              "check": "runtime_sized_loop",
+              "severity": "med",
+              "token": "p",
+              "why": "A loop bound the compiler cannot see blocks unrolling and vectorization.",
+              "snippet": "7C15ul + 1ul;\n    float acc = 0.0f;\n    for (uint i = 0u; i < p.iters; ++i) {\n        seed = seed * 0xB"
+            },
+            {
+              "check": "dynamic_branch_in_loop",
+              "severity": "med",
+              "token": "tid",
+              "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
+              "snippet": "{\n    if (tid >= p.nthreads || p.nbytes < 16ul) {\n        return;\n    }\n    const ulong"
+            }
+          ],
+          "n_findings": 2,
+          "verdict": "SUSPECT",
+          "may_condemn_representation": false,
+          "file": "bandwidth_roof.metal",
+          "name_suggests_specialized": false
+        },
+        {
+          "kernel": "roof_gather_indexed_f4",
+          "has_loop": true,
+          "findings": [
+            {
+              "check": "runtime_sized_loop",
+              "severity": "med",
+              "token": "p",
+              "why": "A loop bound the compiler cannot see blocks unrolling and vectorization.",
+              "snippet": "tart, count);\n    float acc = 0.0f;\n    for (uint pass = 0u; pass < p.iters; ++pass) {\n        for (ulong i ="
+            },
+            {
+              "check": "dynamic_branch_in_loop",
+              "severity": "med",
+              "token": "tid",
+              "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
+              "snippet": "{\n    if (tid >= p.nthreads) {\n        return;\n    }\n    const ulong"
+            }
+          ],
+          "n_findings": 2,
+          "verdict": "SUSPECT",
+          "may_condemn_representation": false,
+          "file": "bandwidth_roof.metal",
+          "name_suggests_specialized": false
+        },
+        {
+          "kernel": "roof_multi_f4",
+          "has_loop": true,
+          "findings": [
+            {
+              "check": "runtime_sized_loop",
+              "severity": "med",
+              "token": "p",
+              "why": "A loop bound the compiler cannot see blocks unrolling and vectorization.",
+              "snippet": "tart, count);\n    float acc = 0.0f;\n    for (uint pass = 0u; pass < p.iters; ++pass) {\n        for (ulong i ="
+            },
+            {
+              "check": "dynamic_branch_in_loop",
+              "severity": "med",
+              "token": "tid",
+              "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
+              "snippet": "{\n    if (tid >= p.nthreads) {\n        return;\n    }\n    const ulong"
+            }
+          ],
+          "n_findings": 2,
+          "verdict": "SUSPECT",
+          "may_condemn_representation": false,
+          "file": "bandwidth_roof.metal",
+          "name_suggests_specialized": false
+        },
+        {
+          "kernel": "roof_write_f4",
+          "has_loop": true,
+          "findings": [
+            {
+              "check": "runtime_sized_loop",
+              "severity": "med",
+              "token": "p",
+              "why": "A loop bound the compiler cannot see blocks unrolling and vectorization.",
+              "snippet": "v = float4(1.0f, 2.0f, 3.0f, 4.0f);\n    for (uint pass = 0u; pass < p.iters; ++pass) {\n        for (ulong i ="
+            },
+            {
+              "check": "dynamic_branch_in_loop",
+              "severity": "med",
+              "token": "tid",
+              "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
+              "snippet": "{\n    if (tid >= p.nthreads) {\n        return;\n    }\n    ulong start"
+            }
+          ],
+          "n_findings": 2,
+          "verdict": "SUSPECT",
+          "may_condemn_representation": false,
+          "file": "bandwidth_roof.metal",
+          "name_suggests_specialized": false
+        },
+        {
+          "kernel": "roof_readwrite_f4",
+          "has_loop": true,
+          "findings": [
+            {
+              "check": "runtime_sized_loop",
+              "severity": "med",
+              "token": "p",
+              "why": "A loop bound the compiler cannot see blocks unrolling and vectorization.",
+              "snippet": "tart, count);\n    float acc = 0.0f;\n    for (uint pass = 0u; pass < p.iters; ++pass) {\n        for (ulong i ="
+            },
+            {
+              "check": "dynamic_branch_in_loop",
+              "severity": "med",
+              "token": "tid",
+              "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
+              "snippet": "{\n    if (tid >= p.nthreads) {\n        return;\n    }\n    ulong start"
+            }
+          ],
+          "n_findings": 2,
+          "verdict": "SUSPECT",
+          "may_condemn_representation": false,
+          "file": "bandwidth_roof.metal",
+          "name_suggests_specialized": false
+        },
+        {
+          "kernel": "roof_bad_control",
+          "has_loop": true,
+          "findings": [
+            {
+              "check": "runtime_sized_loop",
+              "severity": "med",
+              "token": "p",
+              "why": "A loop bound the compiler cannot see blocks unrolling and vectorization.",
+              "snippet": "& 3u) % nvec;\n    float acc = 0.0f;\n    for (uint i = 0u; i < p.iters; ++i) {\n        acc += sum4(data["
+            },
+            {
+              "check": "dynamic_branch_in_loop",
+              "severity": "med",
+              "token": "tid",
+              "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
+              "snippet": "{\n    if (tid >= p.nthreads || p.nbytes < 16ul) {\n        return;\n    }\n    const ulong"
+            }
+          ],
+          "n_findings": 2,
+          "verdict": "SUSPECT",
+          "may_condemn_representation": false,
+          "file": "bandwidth_roof.metal",
           "name_suggests_specialized": false
         }
       ]
@@ -6936,7 +7691,7 @@
     },
     {
       "file": "q80_mixed_decode.metal",
-      "n_kernels": 44,
+      "n_kernels": 58,
       "kernels": [
         {
           "kernel": "q80_binary_group_matvec",
@@ -7490,6 +8245,235 @@
           "name_suggests_specialized": true
         },
         {
+          "kernel": "qwen_affine_q2_group64_matvec_qmvfast_r8tg64",
+          "has_loop": true,
+          "findings": [
+            {
+              "check": "runtime_sized_loop",
+              "severity": "med",
+              "token": "cols",
+              "why": "A loop bound the compiler cannot see blocks unrolling and vectorization.",
+              "snippet": ";\n    if ((cols % 64u) == 0u) {\n        for (uint bk = 0u; bk < cols; bk += 512u) {\n            const uint c"
+            },
+            {
+              "check": "dynamic_branch_in_loop",
+              "severity": "med",
+              "token": "col",
+              "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
+              "snippet": "col = bk + simd_lane * 16u;\n            if (col + 16u > cols) continue;\n            float4 a, b, c, d"
+            }
+          ],
+          "n_findings": 2,
+          "verdict": "SUSPECT",
+          "may_condemn_representation": false,
+          "file": "q80_mixed_decode.metal",
+          "name_suggests_specialized": true
+        },
+        {
+          "kernel": "qwen_affine_q2_group64_matvec_qmvfast_r8tg64_addr_probe",
+          "has_loop": true,
+          "findings": [
+            {
+              "check": "runtime_sized_loop",
+              "severity": "med",
+              "token": "cols",
+              "why": "A loop bound the compiler cannot see blocks unrolling and vectorization.",
+              "snippet": "nt groups_per_row = cols >> 6u;\n        for (uint bk = 0u; bk < cols; bk += 512u) {\n            const uint c"
+            },
+            {
+              "check": "dynamic_branch_in_loop",
+              "severity": "med",
+              "token": "col",
+              "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
+              "snippet": "col = bk + simd_lane * 16u;\n            if (col + 16u > cols) continue;\n            float4 a, b, c, d"
+            }
+          ],
+          "n_findings": 2,
+          "verdict": "SUSPECT",
+          "may_condemn_representation": false,
+          "file": "q80_mixed_decode.metal",
+          "name_suggests_specialized": true
+        },
+        {
+          "kernel": "qwen_affine_q2_group64_matvec_wide64_r4tg128",
+          "has_loop": true,
+          "findings": [
+            {
+              "check": "dynamic_branch_in_loop",
+              "severity": "med",
+              "token": "row",
+              "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
+              "snippet": "4u + simd_id;\n    float acc = 0.0f;\n    if (row < rows && (cols % 64u) == 0u) {\n        for (uint col = simd_l"
+            }
+          ],
+          "n_findings": 1,
+          "verdict": "SUSPECT",
+          "may_condemn_representation": false,
+          "file": "q80_mixed_decode.metal",
+          "name_suggests_specialized": true
+        },
+        {
+          "kernel": "qwen_affine_q2_group64_matvec_tgx_r8tg256",
+          "has_loop": true,
+          "findings": [
+            {
+              "check": "runtime_sized_loop",
+              "severity": "med",
+              "token": "cols",
+              "why": "A loop bound the compiler cannot see blocks unrolling and vectorization.",
+              "snippet": ";\n    if ((cols % 64u) == 0u) {\n        for (uint bk = 0u; bk < cols; bk += 512u) {\n            const uint l"
+            },
+            {
+              "check": "dynamic_branch_in_loop",
+              "severity": "med",
+              "token": "row",
+              "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
+              "snippet": "em_flags::mem_threadgroup);\n            if (row < rows) {\n                const uint local = si"
+            }
+          ],
+          "n_findings": 2,
+          "verdict": "SUSPECT",
+          "may_condemn_representation": false,
+          "file": "q80_mixed_decode.metal",
+          "name_suggests_specialized": true
+        },
+        {
+          "kernel": "qwen_affine_q2_group64_matvec_gate_up_qmvfast_r8tg64",
+          "has_loop": true,
+          "findings": [
+            {
+              "check": "runtime_sized_loop",
+              "severity": "med",
+              "token": "cols",
+              "why": "A loop bound the compiler cannot see blocks unrolling and vectorization.",
+              "snippet": ";\n    if ((cols % 64u) == 0u) {\n        for (uint bk = 0u; bk < cols; bk += 512u) {\n            const uint c"
+            },
+            {
+              "check": "dynamic_branch_in_loop",
+              "severity": "med",
+              "token": "col",
+              "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
+              "snippet": "col = bk + simd_lane * 16u;\n            if (col + 16u > cols) continue;\n            float4 a, b, c, d"
+            }
+          ],
+          "n_findings": 2,
+          "verdict": "SUSPECT",
+          "may_condemn_representation": false,
+          "file": "q80_mixed_decode.metal",
+          "name_suggests_specialized": true
+        },
+        {
+          "kernel": "qwen_affine_q2_group64_matvec_gate_up_swiglu_qmvfast_r8tg64",
+          "has_loop": true,
+          "findings": [
+            {
+              "check": "runtime_sized_loop",
+              "severity": "med",
+              "token": "cols",
+              "why": "A loop bound the compiler cannot see blocks unrolling and vectorization.",
+              "snippet": ";\n    if ((cols % 64u) == 0u) {\n        for (uint bk = 0u; bk < cols; bk += 512u) {\n            const uint c"
+            },
+            {
+              "check": "dynamic_branch_in_loop",
+              "severity": "med",
+              "token": "col",
+              "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
+              "snippet": "col = bk + simd_lane * 16u;\n            if (col + 16u > cols) continue;\n            float4 a, b, c, d"
+            }
+          ],
+          "n_findings": 2,
+          "verdict": "SUSPECT",
+          "may_condemn_representation": false,
+          "file": "q80_mixed_decode.metal",
+          "name_suggests_specialized": true
+        },
+        {
+          "kernel": "qwen_affine_q2_group64_matvec_gate_up_wide64_r4tg128",
+          "has_loop": true,
+          "findings": [
+            {
+              "check": "dynamic_branch_in_loop",
+              "severity": "med",
+              "token": "row",
+              "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
+              "snippet": "float acc_g = 0.0f, acc_u = 0.0f;\n    if (row < rows && (cols % 64u) == 0u) {\n        for (uint col = simd_l"
+            }
+          ],
+          "n_findings": 1,
+          "verdict": "SUSPECT",
+          "may_condemn_representation": false,
+          "file": "q80_mixed_decode.metal",
+          "name_suggests_specialized": true
+        },
+        {
+          "kernel": "qwen_affine_q2_group64_matvec_gate_up_swiglu_wide64_r4tg128",
+          "has_loop": true,
+          "findings": [
+            {
+              "check": "dynamic_branch_in_loop",
+              "severity": "med",
+              "token": "row",
+              "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
+              "snippet": "float acc_g = 0.0f, acc_u = 0.0f;\n    if (row < rows && (cols % 64u) == 0u) {\n        for (uint col = simd_l"
+            }
+          ],
+          "n_findings": 1,
+          "verdict": "SUSPECT",
+          "may_condemn_representation": false,
+          "file": "q80_mixed_decode.metal",
+          "name_suggests_specialized": true
+        },
+        {
+          "kernel": "qwen_affine_q2_group64_matvec_gate_up_tgx_r8tg256",
+          "has_loop": true,
+          "findings": [
+            {
+              "check": "runtime_sized_loop",
+              "severity": "med",
+              "token": "cols",
+              "why": "A loop bound the compiler cannot see blocks unrolling and vectorization.",
+              "snippet": ";\n    if ((cols % 64u) == 0u) {\n        for (uint bk = 0u; bk < cols; bk += 512u) {\n            const uint l"
+            },
+            {
+              "check": "dynamic_branch_in_loop",
+              "severity": "med",
+              "token": "row",
+              "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
+              "snippet": "em_flags::mem_threadgroup);\n            if (row < rows) {\n                const uint local = si"
+            }
+          ],
+          "n_findings": 2,
+          "verdict": "SUSPECT",
+          "may_condemn_representation": false,
+          "file": "q80_mixed_decode.metal",
+          "name_suggests_specialized": true
+        },
+        {
+          "kernel": "qwen_affine_q2_group64_matvec_gate_up_swiglu_tgx_r8tg256",
+          "has_loop": true,
+          "findings": [
+            {
+              "check": "runtime_sized_loop",
+              "severity": "med",
+              "token": "cols",
+              "why": "A loop bound the compiler cannot see blocks unrolling and vectorization.",
+              "snippet": ";\n    if ((cols % 64u) == 0u) {\n        for (uint bk = 0u; bk < cols; bk += 512u) {\n            const uint l"
+            },
+            {
+              "check": "dynamic_branch_in_loop",
+              "severity": "med",
+              "token": "row",
+              "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
+              "snippet": "em_flags::mem_threadgroup);\n            if (row < rows) {\n                const uint local = si"
+            }
+          ],
+          "n_findings": 2,
+          "verdict": "SUSPECT",
+          "may_condemn_representation": false,
+          "file": "q80_mixed_decode.metal",
+          "name_suggests_specialized": true
+        },
+        {
           "kernel": "qwen38_hgrafv_embedding_lookup",
           "has_loop": false,
           "findings": [
@@ -7506,6 +8490,78 @@
           "may_condemn_representation": false,
           "file": "q80_mixed_decode.metal",
           "name_suggests_specialized": false
+        },
+        {
+          "kernel": "qwen_q2f_group64_matvec",
+          "has_loop": true,
+          "findings": [
+            {
+              "check": "dynamic_branch_in_loop",
+              "severity": "med",
+              "token": "row",
+              "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
+              "snippet": "{\n    if (row >= rows || (cols % 64u) != 0u) {\n        return;\n    }\n    cons"
+            }
+          ],
+          "n_findings": 1,
+          "verdict": "SUSPECT",
+          "may_condemn_representation": false,
+          "file": "q80_mixed_decode.metal",
+          "name_suggests_specialized": true
+        },
+        {
+          "kernel": "qwen_q2f_group64_matvec_geo_tpr64_tg128",
+          "has_loop": false,
+          "findings": [
+            {
+              "check": "dynamic_branch_in_loop",
+              "severity": "med",
+              "token": "row",
+              "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
+              "snippet": "* 2u + team;\n    float acc = 0.0f;\n    if (row < rows && (cols % 64u) == 0u) {\n        acc = q2f_geo_acc_g64("
+            }
+          ],
+          "n_findings": 1,
+          "verdict": "SUSPECT",
+          "may_condemn_representation": false,
+          "file": "q80_mixed_decode.metal",
+          "name_suggests_specialized": true
+        },
+        {
+          "kernel": "qwen_q2f_group64_matvec_gate_up_geo_tpr64_tg128",
+          "has_loop": true,
+          "findings": [
+            {
+              "check": "dynamic_branch_in_loop",
+              "severity": "med",
+              "token": "row",
+              "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
+              "snippet": "c_g = 0.0f;\n    float acc_u = 0.0f;\n    if (row < rows && (cols % 64u) == 0u) {\n        const uint groups_per_"
+            }
+          ],
+          "n_findings": 1,
+          "verdict": "SUSPECT",
+          "may_condemn_representation": false,
+          "file": "q80_mixed_decode.metal",
+          "name_suggests_specialized": true
+        },
+        {
+          "kernel": "qwen_q2f_group64_matvec_gate_up_swiglu_geo_tpr64_tg128",
+          "has_loop": true,
+          "findings": [
+            {
+              "check": "dynamic_branch_in_loop",
+              "severity": "med",
+              "token": "row",
+              "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
+              "snippet": "c_g = 0.0f;\n    float acc_u = 0.0f;\n    if (row < rows && (cols % 64u) == 0u) {\n        const uint groups_per_"
+            }
+          ],
+          "n_findings": 1,
+          "verdict": "SUSPECT",
+          "may_condemn_representation": false,
+          "file": "q80_mixed_decode.metal",
+          "name_suggests_specialized": true
         },
         {
           "kernel": "q80_uniform8_matvec_simd_bytes",
@@ -10286,7 +11342,7 @@
     },
     {
       "file": "qwen80_device_activations.metal",
-      "n_kernels": 13,
+      "n_kernels": 15,
       "kernels": [
         {
           "kernel": "qwen80_residual_rmsnorm_f32",
@@ -10315,6 +11371,56 @@
         },
         {
           "kernel": "qwen80_residual_rmsnorm_tg",
+          "has_loop": true,
+          "findings": [
+            {
+              "check": "runtime_sized_loop",
+              "severity": "med",
+              "token": "hidden",
+              "why": "A loop bound the compiler cannot see blocks unrolling and vectorization.",
+              "snippet": "{\n    float sum = 0.0f;\n    for (uint index = tid; index < hidden; index += tg_size) {\n        const floa"
+            },
+            {
+              "check": "dynamic_branch_in_loop",
+              "severity": "med",
+              "token": "tid",
+              "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
+              "snippet": "; stride > 0u; stride >>= 1u) {\n        if (tid < stride) scratch[tid] += scratch[tid + stride];"
+            }
+          ],
+          "n_findings": 2,
+          "verdict": "SUSPECT",
+          "may_condemn_representation": false,
+          "file": "qwen80_device_activations.metal",
+          "name_suggests_specialized": false
+        },
+        {
+          "kernel": "qwen80_add_residual_rmsnorm_tg",
+          "has_loop": true,
+          "findings": [
+            {
+              "check": "runtime_sized_loop",
+              "severity": "med",
+              "token": "hidden",
+              "why": "A loop bound the compiler cannot see blocks unrolling and vectorization.",
+              "snippet": "{\n    float sum = 0.0f;\n    for (uint index = tid; index < hidden; index += tg_size) {\n        const floa"
+            },
+            {
+              "check": "dynamic_branch_in_loop",
+              "severity": "med",
+              "token": "tid",
+              "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
+              "snippet": "; stride > 0u; stride >>= 1u) {\n        if (tid < stride) scratch[tid] += scratch[tid + stride];"
+            }
+          ],
+          "n_findings": 2,
+          "verdict": "SUSPECT",
+          "may_condemn_representation": false,
+          "file": "qwen80_device_activations.metal",
+          "name_suggests_specialized": false
+        },
+        {
+          "kernel": "qwen80_add_residual_rmsnorm_tg_plainweight",
           "has_loop": true,
           "findings": [
             {

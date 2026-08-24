@@ -371,6 +371,129 @@ kernel void q2f_group64_dequant(
     output[gid] = q2f_w(q, deltas[rgb]);
 }
 
+// Fused gate+up(+SwiGLU). Same occupancy as geo_tpr64. Packed codes stay packed.
+// Standalone uses f32 deltas (host-widened); production mixed path uses half.
+static inline void q2f_unpack8_dual_g64_f32(
+    uint packed_g,
+    float delta_g,
+    uint packed_u,
+    float delta_u,
+    device const float* x,
+    uint col,
+    thread float& acc_g,
+    thread float& acc_u)
+{
+    for (uint i = 0u; i < 8u; ++i) {
+        const float xv = x[col + i];
+        const uint qg = (packed_g >> (2u * i)) & 3u;
+        const uint qu = (packed_u >> (2u * i)) & 3u;
+        acc_g += q2f_w(qg, delta_g) * xv;
+        acc_u += q2f_w(qu, delta_u) * xv;
+    }
+}
+
+kernel void q2f_group64_matvec_gate_up_geo_tpr64_tg128(
+    device const uchar* gate_codes  [[buffer(0)]],
+    device const float* gate_deltas [[buffer(1)]],
+    device const uchar* up_codes    [[buffer(2)]],
+    device const float* up_deltas   [[buffer(3)]],
+    device const float* input       [[buffer(4)]],
+    device float*       gate_out    [[buffer(5)]],
+    device float*       up_out      [[buffer(6)]],
+    constant uint& rows             [[buffer(7)]],
+    constant uint& cols             [[buffer(8)]],
+    uint group_id                    [[threadgroup_position_in_grid]],
+    uint simd_lane                   [[thread_index_in_simdgroup]],
+    uint simd_id                     [[simdgroup_index_in_threadgroup]])
+{
+    threadgroup float red[8];
+    constexpr uint kSplit = 2u;
+    const uint team = simd_id / kSplit;
+    const uint split = simd_id % kSplit;
+    const uint lane_in_row = split * 32u + simd_lane;
+    const uint row = group_id * 2u + team;
+    float acc_g = 0.0f;
+    float acc_u = 0.0f;
+    if (row < rows && (cols % 64u) == 0u) {
+        const uint groups_per_row = cols >> 6u;
+        for (uint col = lane_in_row * 8u; col + 8u <= cols; col += 512u) {
+            const uint group = col >> 6u;
+            const uint local = col & 63u;
+            const uint rgb = row * groups_per_row + group;
+            const uint byte0 = rgb * 16u + (local >> 2u);
+            const uint gpacked = uint(*((device const ushort*)(gate_codes + byte0)));
+            const uint upacked = uint(*((device const ushort*)(up_codes + byte0)));
+            q2f_unpack8_dual_g64_f32(
+                gpacked, gate_deltas[rgb],
+                upacked, up_deltas[rgb],
+                input, col, acc_g, acc_u);
+        }
+    }
+    acc_g = simd_sum(acc_g);
+    acc_u = simd_sum(acc_u);
+    if (simd_lane == 0u) {
+        red[simd_id] = acc_g;
+        red[4u + simd_id] = acc_u;
+    }
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    if (split == 0u && simd_lane == 0u && row < rows) {
+        const uint t = team * kSplit;
+        gate_out[row] = red[t] + red[t + 1u];
+        up_out[row] = red[4u + t] + red[t + 1u + 4u];
+    }
+}
+
+kernel void q2f_group64_matvec_gate_up_swiglu_geo_tpr64_tg128(
+    device const uchar* gate_codes  [[buffer(0)]],
+    device const float* gate_deltas [[buffer(1)]],
+    device const uchar* up_codes    [[buffer(2)]],
+    device const float* up_deltas   [[buffer(3)]],
+    device const float* input       [[buffer(4)]],
+    device float*       act_out     [[buffer(5)]],
+    constant uint& rows             [[buffer(6)]],
+    constant uint& cols             [[buffer(7)]],
+    uint group_id                    [[threadgroup_position_in_grid]],
+    uint simd_lane                   [[thread_index_in_simdgroup]],
+    uint simd_id                     [[simdgroup_index_in_threadgroup]])
+{
+    threadgroup float red[8];
+    constexpr uint kSplit = 2u;
+    const uint team = simd_id / kSplit;
+    const uint split = simd_id % kSplit;
+    const uint lane_in_row = split * 32u + simd_lane;
+    const uint row = group_id * 2u + team;
+    float acc_g = 0.0f;
+    float acc_u = 0.0f;
+    if (row < rows && (cols % 64u) == 0u) {
+        const uint groups_per_row = cols >> 6u;
+        for (uint col = lane_in_row * 8u; col + 8u <= cols; col += 512u) {
+            const uint group = col >> 6u;
+            const uint local = col & 63u;
+            const uint rgb = row * groups_per_row + group;
+            const uint byte0 = rgb * 16u + (local >> 2u);
+            const uint gpacked = uint(*((device const ushort*)(gate_codes + byte0)));
+            const uint upacked = uint(*((device const ushort*)(up_codes + byte0)));
+            q2f_unpack8_dual_g64_f32(
+                gpacked, gate_deltas[rgb],
+                upacked, up_deltas[rgb],
+                input, col, acc_g, acc_u);
+        }
+    }
+    acc_g = simd_sum(acc_g);
+    acc_u = simd_sum(acc_u);
+    if (simd_lane == 0u) {
+        red[simd_id] = acc_g;
+        red[4u + simd_id] = acc_u;
+    }
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    if (split == 0u && simd_lane == 0u && row < rows) {
+        const uint t = team * kSplit;
+        const float g = red[t] + red[t + 1u];
+        const float u = red[4u + t] + red[4u + t + 1u];
+        act_out[row] = (g / (1.0f + exp(-g))) * u;
+    }
+}
+
 // ── g64 kernel-geometry levers (half scale/bias, production byte mix) ──
 // Standalone compile unit for isolated GEMV GB/s. Same reconstruction as
 // q80_mixed_decode affine2 g64 kernels. No dense W.

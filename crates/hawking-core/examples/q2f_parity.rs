@@ -122,10 +122,14 @@ mod macos {
         let affine_geo_fn = library
             .get_function("affine2_group32_matvec_geo_tpr64_tg128", None)
             .map_err(|e| format!("affine2 geo: {e}"))?;
+        let fused_fn = library
+            .get_function("q2f_group64_matvec_gate_up_swiglu_geo_tpr64_tg128", None)
+            .map_err(|e| format!("q2f fused swiglu: {e}"))?;
         let dequant_pipe = device.new_compute_pipeline_state_with_function(&dequant_fn)?;
         let matvec_pipe = device.new_compute_pipeline_state_with_function(&matvec_fn)?;
         let geo_pipe = device.new_compute_pipeline_state_with_function(&geo_fn)?;
         let affine_geo_pipe = device.new_compute_pipeline_state_with_function(&affine_geo_fn)?;
+        let fused_pipe = device.new_compute_pipeline_state_with_function(&fused_fn)?;
 
         let codes_buf = device.new_buffer_with_data(
             packed.codes.as_ptr() as *const _,
@@ -244,6 +248,60 @@ mod macos {
         let max_abs_diff_y = max_abs_diff(&gpu_y, &cpu_y);
         let max_abs_diff_geo = max_abs_diff(&geo_y, &cpu_y);
         let max_abs_diff_reuse = max_abs_diff(&affine_y, &cpu_y);
+
+        // Oracle dequant writes dense W. Production GEMV does not.
+        let mut dense_w_materialized_on_oracle_dequant: u64 = 0;
+        dense_w_materialized_on_oracle_dequant =
+            dense_w_materialized_on_oracle_dequant.saturating_add(1);
+        let dense_w_materialized_on_gemv: u64 = 0;
+
+        let up_values = hawking_core::model::qwen_complete_binary::deterministic_matrix(
+            SYNTH_ROWS, SYNTH_COLS, 43,
+        );
+        let packed_up =
+            pack_q2f_factor_group(&up_values, SYNTH_ROWS, SYNTH_COLS, AFFINE_GROUP_SIZE_64)?;
+        let up_deltas = widen_f16(&packed_up.scales_f16);
+        let cpu_up = affine_factor_matvec_f32(&packed_up, &input)?;
+        let mut cpu_act = vec![0.0f32; packed.rows];
+        for i in 0..packed.rows {
+            let g = cpu_y[i];
+            cpu_act[i] = (g / (1.0 + (-g).exp())) * cpu_up[i];
+        }
+        let up_codes_buf = device.new_buffer_with_data(
+            packed_up.codes.as_ptr() as *const _,
+            packed_up.codes.len() as u64,
+            MTLResourceOptions::StorageModeShared,
+        );
+        let up_deltas_buf = device.new_buffer_with_data(
+            as_bytes_f32(&up_deltas).as_ptr() as *const _,
+            as_bytes_f32(&up_deltas).len() as u64,
+            MTLResourceOptions::StorageModeShared,
+        );
+        let act_buf = device.new_buffer(
+            (packed.rows * 4) as u64,
+            MTLResourceOptions::StorageModeShared,
+        );
+        {
+            let cmd = queue.new_command_buffer();
+            let enc = cmd.new_compute_command_encoder();
+            enc.set_compute_pipeline_state(&fused_pipe);
+            enc.set_buffer(0, Some(&codes_buf), 0);
+            enc.set_buffer(1, Some(&deltas_buf), 0);
+            enc.set_buffer(2, Some(&up_codes_buf), 0);
+            enc.set_buffer(3, Some(&up_deltas_buf), 0);
+            enc.set_buffer(4, Some(&input_buf), 0);
+            enc.set_buffer(5, Some(&act_buf), 0);
+            set_u32(enc, 6, rows);
+            set_u32(enc, 7, cols);
+            let groups = (packed.rows as u64).div_ceil(2);
+            enc.dispatch_thread_groups(MTLSize::new(groups, 1, 1), MTLSize::new(128, 1, 1));
+            enc.end_encoding();
+            cmd.commit();
+            cmd.wait_until_completed();
+        }
+        let gpu_act = read_f32(&act_buf, packed.rows);
+        let max_abs_diff_fused_swiglu = max_abs_diff(&gpu_act, &cpu_act);
+
         let body_bpw = 2.0 + 16.0 / 64.0;
 
         println!("codec: HGRAVF01 fourlevel_q2_group64_fp16_delta");
@@ -253,13 +311,18 @@ mod macos {
         println!("storage_bpw_body: {body_bpw:.2} (2-bit codes + f16 delta @ g64, no bias)");
         println!("kernel: q2f_group64_matvec (in-register dequant, no dense W on GEMV)");
         println!("kernel_geo: q2f_group64_matvec_geo_tpr64_tg128");
+        println!("kernel_fused_swiglu: q2f_group64_matvec_gate_up_swiglu_geo_tpr64_tg128");
         println!("reuse_affine2_kernel: affine2_group32_matvec_geo_tpr64_tg128 (bias=-1.5*delta)");
         println!("max_abs_diff: {:.6e}", max_abs_diff_w);
         println!("max_abs_diff_matvec: {:.6e}", max_abs_diff_y);
         println!("max_abs_diff_geo_tpr64: {:.6e}", max_abs_diff_geo);
         println!("max_abs_diff_reuse_affine2: {:.6e}", max_abs_diff_reuse);
+        println!("max_abs_diff_fused_swiglu: {:.6e}", max_abs_diff_fused_swiglu);
         println!("tolerance: {:.6e}", PASS_TOL);
-        println!("dense_w_materialized_on_gemv: 0");
+        println!(
+            "dense_w_materialized_on_oracle_dequant: {dense_w_materialized_on_oracle_dequant}"
+        );
+        println!("dense_w_materialized_on_gemv: {dense_w_materialized_on_gemv}");
 
         if !max_abs_diff_w.is_finite() || max_abs_diff_w >= PASS_TOL {
             return Err(format!(
@@ -278,6 +341,15 @@ mod macos {
                 "native q2f geo_tpr64 diverged: max_abs_diff_geo_tpr64={max_abs_diff_geo} >= {PASS_TOL}"
             )
             .into());
+        }
+        if !max_abs_diff_fused_swiglu.is_finite() || max_abs_diff_fused_swiglu >= PASS_TOL {
+            return Err(format!(
+                "native q2f fused SwiGLU diverged: max_abs_diff_fused_swiglu={max_abs_diff_fused_swiglu} >= {PASS_TOL}"
+            )
+            .into());
+        }
+        if dense_w_materialized_on_gemv != 0 {
+            return Err("production GEMV materialized dense W".into());
         }
         println!("status: PASS");
         Ok(())

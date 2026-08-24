@@ -42,6 +42,7 @@ CLAIMS = [
     ("GPU_LEDGER", "incumbent is bandwidth-bound, 468.9 GB/s"),
     ("NOETIC_MULTISESSION", "one shared body; concurrency ceiling 1.32x"),
     ("NOETIC_PARENT_A", "sealed leader: 3.1393 EBPW, 756 dispatches"),
+    ("NATIVE_2BIT_MLP", "FULL-MLP native 2-bit, fused SwiGLU, dense_w=0"),
 ]
 
 # What counts as evidence for each requirement. Substring match on the receipt

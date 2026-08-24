@@ -427,6 +427,139 @@ kernel void qwen38_gated_delta_decode_vi_simd(
     state[index] = s;
 }
 
+// ba_to_decay_beta in-register. values_per_key=3 and key_heads=16 are
+// compile-time so `head / 3u` is not the bind-time integer divide that
+// measured 1.37x on affine2. Writes the same rec_out as the two-dispatch
+// (ba_to_decay + vi_simd) pair; decay/beta buffers are not stored.
+kernel void qwen38_gated_delta_decode_vi_simd_ba(
+    device float* state                 [[buffer(0)]],
+    device const float* query           [[buffer(1)]],
+    device const float* key             [[buffer(2)]],
+    device const float* value           [[buffer(3)]],
+    device const float* projected_ba    [[buffer(4)]],
+    device const float* a_log           [[buffer(5)]],
+    device const float* dt_bias         [[buffer(6)]],
+    device float* output                [[buffer(7)]],
+    constant uint& heads                [[buffer(8)]],
+    constant uint& key_dim              [[buffer(9)]],
+    constant uint& value_dim            [[buffer(10)]],
+    threadgroup float* scratch          [[threadgroup(0)]],
+    uint tid                            [[thread_index_in_threadgroup]],
+    uint simd_lane                      [[thread_index_in_simdgroup]],
+    uint simd_id                        [[simdgroup_index_in_threadgroup]],
+    uint3 group                         [[threadgroup_position_in_grid]])
+{
+    const uint head = group.y;
+    const uint vi = group.z;
+    if (head >= heads || vi >= value_dim || key_dim != 128u || value_dim != 128u
+        || heads != 48u) {
+        return;
+    }
+    const uint key_head = head / 3u;
+    const uint within = head - key_head * 3u;
+    const uint ba_base = key_head * 6u;
+    const float bb = projected_ba[ba_base + within];
+    const float a = projected_ba[ba_base + 3u + within];
+    const float x = a + dt_bias[head];
+    const float softplus = max(x, 0.0f) + log(1.0f + exp(-abs(x)));
+    const float g = -exp(a_log[head]) * softplus;
+    const float d = exp(g);
+    const float b = 1.0f / (1.0f + exp(-bb));
+
+    const uint state_base = head * key_dim * value_dim;
+    const uint key_base = head * key_dim;
+    const uint value_base = head * value_dim;
+    const uint ki = tid;
+    const uint index = state_base + ki * value_dim + vi;
+
+    float s = state[index];
+    const float decayed = s * d;
+
+    float part = simd_sum(decayed * key[key_base + ki]);
+    if (simd_lane == 0u) {
+        scratch[simd_id] = part;
+    }
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    const float kv_mem = scratch[0] + scratch[1] + scratch[2] + scratch[3];
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+
+    const float delta = (value[value_base + vi] - kv_mem) * b;
+    s = decayed + key[key_base + ki] * delta;
+
+    float out = simd_sum(s * query[key_base + ki]);
+    if (simd_lane == 0u) {
+        scratch[simd_id] = out;
+    }
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    if (tid == 0u) {
+        output[value_base + vi] = scratch[0] + scratch[1] + scratch[2] + scratch[3];
+    }
+    state[index] = s;
+}
+
+// BAD control: identity decay/beta. Same signature as the honest fused
+// kernel so a no-op (honest vi_simd still consuming precomputed decay)
+// cannot score. Greedy tokens must diverge.
+kernel void qwen38_gated_delta_decode_vi_simd_ba_plain(
+    device float* state                 [[buffer(0)]],
+    device const float* query           [[buffer(1)]],
+    device const float* key             [[buffer(2)]],
+    device const float* value           [[buffer(3)]],
+    device const float* projected_ba    [[buffer(4)]],
+    device const float* a_log           [[buffer(5)]],
+    device const float* dt_bias         [[buffer(6)]],
+    device float* output                [[buffer(7)]],
+    constant uint& heads                [[buffer(8)]],
+    constant uint& key_dim              [[buffer(9)]],
+    constant uint& value_dim            [[buffer(10)]],
+    threadgroup float* scratch          [[threadgroup(0)]],
+    uint tid                            [[thread_index_in_threadgroup]],
+    uint simd_lane                      [[thread_index_in_simdgroup]],
+    uint simd_id                        [[simdgroup_index_in_threadgroup]],
+    uint3 group                         [[threadgroup_position_in_grid]])
+{
+    const uint head = group.y;
+    const uint vi = group.z;
+    if (head >= heads || vi >= value_dim || key_dim != 128u || value_dim != 128u
+        || heads != 48u) {
+        return;
+    }
+    (void)projected_ba;
+    (void)a_log;
+    (void)dt_bias;
+    const float d = 1.0f;
+    const float b = 1.0f;
+    const uint state_base = head * key_dim * value_dim;
+    const uint key_base = head * key_dim;
+    const uint value_base = head * value_dim;
+    const uint ki = tid;
+    const uint index = state_base + ki * value_dim + vi;
+
+    float s = state[index];
+    const float decayed = s * d;
+
+    float part = simd_sum(decayed * key[key_base + ki]);
+    if (simd_lane == 0u) {
+        scratch[simd_id] = part;
+    }
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    const float kv_mem = scratch[0] + scratch[1] + scratch[2] + scratch[3];
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+
+    const float delta = (value[value_base + vi] - kv_mem) * b;
+    s = decayed + key[key_base + ki] * delta;
+
+    float out = simd_sum(s * query[key_base + ki]);
+    if (simd_lane == 0u) {
+        scratch[simd_id] = out;
+    }
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    if (tid == 0u) {
+        output[value_base + vi] = scratch[0] + scratch[1] + scratch[2] + scratch[3];
+    }
+    state[index] = s;
+}
+
 kernel void qwen38_attention_apply_sigmoid_gate(
     device const float* attention_output    [[buffer(0)]],
     device const float* q_proj              [[buffer(1)]],

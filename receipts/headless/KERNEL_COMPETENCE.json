@@ -1,7 +1,7 @@
 {
   "schema": "hawking.headless.kernel_competence.v1",
   "obligation": "N003 (S017 \u00a75)",
-  "git_head": "7703d50237aa",
+  "git_head": "324d108a099f",
   "law": "A REPRESENTATION CANNOT BE CONDEMNED UNTIL ITS NATIVE KERNEL IS COMPETENT. A candidate may not be recorded REFUTED on speed until this screen passes for its kernel.",
   "measured_anchor": {
     "defect": "non-constant integer divide from a bind-time group_size",
@@ -36,10 +36,10 @@
   ],
   "counts": {
     "files": 43,
-    "kernels": 622,
+    "kernels": 624,
     "by_verdict": {
       "DEFECTIVE": 89,
-      "SUSPECT": 450,
+      "SUSPECT": 452,
       "CLEAR": 83
     }
   },
@@ -11416,7 +11416,7 @@
     },
     {
       "file": "qwen38_device_activations.metal",
-      "n_kernels": 10,
+      "n_kernels": 12,
       "kernels": [
         {
           "kernel": "qwen38_qkvz_rearrange_conv_l2_f32",
@@ -11513,6 +11513,42 @@
         },
         {
           "kernel": "qwen38_gated_delta_decode_vi_simd",
+          "has_loop": false,
+          "findings": [
+            {
+              "check": "dynamic_branch_in_loop",
+              "severity": "med",
+              "token": "tid",
+              "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
+              "snippet": "arrier(mem_flags::mem_threadgroup);\n    if (tid == 0u) {\n        output[value_base + vi] = scr"
+            }
+          ],
+          "n_findings": 1,
+          "verdict": "SUSPECT",
+          "may_condemn_representation": false,
+          "file": "qwen38_device_activations.metal",
+          "name_suggests_specialized": false
+        },
+        {
+          "kernel": "qwen38_gated_delta_decode_vi_simd_ba",
+          "has_loop": false,
+          "findings": [
+            {
+              "check": "dynamic_branch_in_loop",
+              "severity": "med",
+              "token": "tid",
+              "why": "A data-dependent branch inside the inner loop serializes a SIMD group.",
+              "snippet": "arrier(mem_flags::mem_threadgroup);\n    if (tid == 0u) {\n        output[value_base + vi] = scr"
+            }
+          ],
+          "n_findings": 1,
+          "verdict": "SUSPECT",
+          "may_condemn_representation": false,
+          "file": "qwen38_device_activations.metal",
+          "name_suggests_specialized": false
+        },
+        {
+          "kernel": "qwen38_gated_delta_decode_vi_simd_ba_plain",
           "has_loop": false,
           "findings": [
             {

@@ -147,6 +147,44 @@ pub fn qwen38_fused_dispatches_per_token_ex(
     fuse_dn_inproj: bool,
     fuse_add_rmsnorm: bool,
 ) -> u64 {
+    qwen38_fused_dispatches_per_token_full(
+        mlp,
+        fuse_gqa_qkv,
+        fuse_dn_inproj,
+        fuse_add_rmsnorm,
+        false,
+    )
+}
+
+/// ba_to_decay folded into gated-delta. 48 launches on the 628 graph.
+/// Default Off — production stays 756/628 until a child enables it.
+pub const QWEN38_BA_DELTA_SAVED_PER_TOKEN: u64 = QWEN38_DELTANET_LAYERS as u64;
+pub const QWEN38_BA_DELTA_KERNEL: &str = "qwen38_gated_delta_decode_vi_simd_ba";
+pub const QWEN38_BA_DELTA_BAD_KERNEL: &str = "qwen38_gated_delta_decode_vi_simd_ba_plain";
+
+/// `HAWKING_QWEN38_FUSE_BA_DELTA=1` honest formula; `=bad` identity decay/beta.
+pub fn qwen38_fuse_ba_delta_from_env() -> (bool, bool) {
+    match std::env::var("HAWKING_QWEN38_FUSE_BA_DELTA") {
+        Ok(v) => match v.trim().to_ascii_lowercase().as_str() {
+            "1" | "true" | "on" => (true, false),
+            "bad" | "plain" | "identity" => (true, true),
+            _ => (false, false),
+        },
+        Err(_) => (false, false),
+    }
+}
+
+pub fn qwen38_fuse_ba_delta_enabled() -> bool {
+    qwen38_fuse_ba_delta_from_env().0
+}
+
+pub fn qwen38_fused_dispatches_per_token_full(
+    mlp: Qwen38MlpFusion,
+    fuse_gqa_qkv: bool,
+    fuse_dn_inproj: bool,
+    fuse_add_rmsnorm: bool,
+    fuse_ba_delta: bool,
+) -> u64 {
     let mut n = super::qwen38_token_ns_ledger::production_dispatches_per_token();
     n = n.saturating_sub(mlp.saved_dispatches_per_token());
     if fuse_gqa_qkv {
@@ -157,6 +195,9 @@ pub fn qwen38_fused_dispatches_per_token_ex(
     }
     if fuse_add_rmsnorm {
         n = n.saturating_sub(QWEN38_ADD_RMSNORM_SAVED_PER_TOKEN);
+    }
+    if fuse_ba_delta {
+        n = n.saturating_sub(QWEN38_BA_DELTA_SAVED_PER_TOKEN);
     }
     n
 }
@@ -1892,6 +1933,10 @@ mod device {
         pub fuse_add_rmsnorm: bool,
         /// BAD control: fused kernel multiplies by weight[i] not (1+w).
         pub fuse_add_rmsnorm_bad: bool,
+        /// Fuse ba_to_decay into gated-delta. Default Off.
+        pub fuse_ba_delta: bool,
+        /// BAD control: fused kernel uses identity decay/beta.
+        pub fuse_ba_delta_bad: bool,
         /// Affine2 GEMV geometry. Default tpr64 (incumbent / no-op control).
         pub affine2_geo: Affine2Geo,
         /// GEMV weights reconstructed to dense float. Copied from the catalog
@@ -1947,6 +1992,8 @@ mod device {
                 fuse_dn_inproj: qwen38_fuse_dn_inproj_enabled(),
                 fuse_add_rmsnorm: qwen38_fuse_add_rmsnorm_from_env().0,
                 fuse_add_rmsnorm_bad: qwen38_fuse_add_rmsnorm_from_env().1,
+                fuse_ba_delta: qwen38_fuse_ba_delta_from_env().0,
+                fuse_ba_delta_bad: qwen38_fuse_ba_delta_from_env().1,
                 affine2_geo: Affine2Geo::from_env(),
                 dense_w_materialized,
                 q2f_force_serial: false,
@@ -3111,6 +3158,53 @@ mod device {
             })
         }
 
+        fn encode_gated_delta_fused_ba(
+            &self,
+            tcb: &mut TokenCommandBuffer<'_>,
+            rec_off: u64,
+            layer: usize,
+        ) -> Result<()> {
+            let layout = Qwen38DeltaNetLayout::source_exact();
+            let heads = layout.value_heads as u32;
+            let kd = layout.key_head_dim as u32;
+            let vd = layout.value_head_dim as u32;
+            let a_log = self.f32(&qwen38_layer_name(layer, "linear_attn.A_log"))?;
+            let dt_bias = self.f32(&qwen38_layer_name(layer, "linear_attn.dt_bias"))?;
+            let kernel = if self.fuse_ba_delta_bad {
+                QWEN38_BA_DELTA_BAD_KERNEL
+            } else {
+                QWEN38_BA_DELTA_KERNEL
+            };
+            tcb.dispatch_threads(kernel, (kd, heads, vd), (kd, 1, 1), |encoder| {
+                encoder.set_buffer(0, Some(&self.workspace.rec_state), rec_off);
+                encoder.set_buffer(1, Some(&self.workspace.repeated_q), 0);
+                encoder.set_buffer(2, Some(&self.workspace.repeated_k), 0);
+                encoder.set_buffer(3, Some(&self.workspace.conv_v), 0);
+                encoder.set_buffer(4, Some(&self.workspace.ba), 0);
+                encoder.set_buffer(5, Some(a_log), 0);
+                encoder.set_buffer(6, Some(dt_bias), 0);
+                encoder.set_buffer(7, Some(&self.workspace.rec_out), 0);
+                encoder.set_bytes(8, 4, &heads as *const u32 as *const _);
+                encoder.set_bytes(9, 4, &kd as *const u32 as *const _);
+                encoder.set_bytes(10, 4, &vd as *const u32 as *const _);
+                encoder.set_threadgroup_memory_length(0, 128 * 4);
+            })
+        }
+
+        fn encode_dn_ba_and_delta(
+            &self,
+            tcb: &mut TokenCommandBuffer<'_>,
+            layer: usize,
+            rec_off: u64,
+        ) -> Result<()> {
+            if self.fuse_ba_delta {
+                self.encode_gated_delta_fused_ba(tcb, rec_off, layer)
+            } else {
+                self.encode_ba_to_decay(tcb, layer)?;
+                self.encode_gated_delta(tcb, rec_off)
+            }
+        }
+
         fn encode_mixer(&self, tcb: &mut TokenCommandBuffer<'_>, layer: usize) -> Result<()> {
             match qwen38_mixer_kind(layer)? {
                 Qwen38MixerKind::DeltaNet => self.encode_deltanet(tcb, layer),
@@ -3289,6 +3383,11 @@ mod device {
             self.fuse_add_rmsnorm_bad = bad;
         }
 
+        pub fn set_fuse_ba_delta(&mut self, on: bool, bad: bool) {
+            self.fuse_ba_delta = on;
+            self.fuse_ba_delta_bad = bad;
+        }
+
         /// Record a dense-W reconstruct. Production packed GEMV never calls this.
         pub fn account_dense_w(&mut self, n: u64) {
             self.dense_w_materialized += n;
@@ -3299,11 +3398,12 @@ mod device {
         }
 
         pub fn theoretical_dispatches(&self) -> u64 {
-            qwen38_fused_dispatches_per_token_ex(
+            qwen38_fused_dispatches_per_token_full(
                 self.mlp_fusion,
                 self.fuse_gqa_qkv,
                 self.fuse_dn_inproj,
                 self.fuse_add_rmsnorm,
+                self.fuse_ba_delta,
             )
         }
 
@@ -3579,6 +3679,307 @@ mod device {
                 max_abs_diff_act: Self::max_abs_diff(&norm_u, &norm_f),
                 dense_w_materialized: 0,
             })
+        }
+
+        /// ba_to_decay + gated-delta vs the fused kernel on layer 0's real A_log/dt_bias.
+        /// `bad=true` binds the identity-decay control (must diverge).
+        pub fn measure_ba_delta_fusion_parity(
+            &mut self,
+            layer: usize,
+            bad: bool,
+        ) -> Result<Qwen38FusionParity> {
+            let layout = Qwen38DeltaNetLayout::source_exact();
+            let slot = qwen38_deltanet_state_slot(layer)?;
+            let rec_n = layout.recurrent_state_elements();
+            let rec_off = (slot * rec_n * 4) as u64;
+            let ba_n = layout.ba_rows();
+            let q_n = layout.key_heads * layout.key_head_dim;
+            let v_n = layout.value_elements();
+            let fill = |n: usize, modulus: usize, scale: f32, bias: f32| -> Vec<f32> {
+                (0..n)
+                    .map(|i| ((i % modulus) as f32) * scale - bias)
+                    .collect()
+            };
+            let write_buf = |buf: &PinnedBuffer, values: &[f32]| {
+                unsafe {
+                    std::ptr::copy_nonoverlapping(
+                        values.as_ptr(),
+                        buf.contents() as *mut f32,
+                        values.len(),
+                    );
+                }
+            };
+            let read_buf = |buf: &PinnedBuffer, n: usize| -> Vec<f32> {
+                let mut out = vec![0.0f32; n];
+                unsafe {
+                    std::ptr::copy_nonoverlapping(buf.contents() as *const f32, out.as_mut_ptr(), n);
+                }
+                out
+            };
+            let ba = fill(ba_n, 11, 0.02, 0.1);
+            let q = fill(q_n, 13, 0.015, 0.08);
+            let k = fill(q_n, 17, 0.018, 0.09);
+            let v = fill(v_n, 19, 0.012, 0.07);
+            let rec = fill(rec_n, 23, 0.004, 0.05);
+            write_buf(&self.workspace.ba, &ba);
+            write_buf(&self.workspace.repeated_q, &q);
+            write_buf(&self.workspace.repeated_k, &k);
+            write_buf(&self.workspace.conv_v, &v);
+            unsafe {
+                std::ptr::copy_nonoverlapping(
+                    rec.as_ptr(),
+                    (self.workspace.rec_state.contents() as *mut u8).add(rec_off as usize)
+                        as *mut f32,
+                    rec_n,
+                );
+            }
+            let saved_on = self.fuse_ba_delta;
+            let saved_bad = self.fuse_ba_delta_bad;
+            self.fuse_ba_delta = false;
+            self.fuse_ba_delta_bad = false;
+            let unfused = self.timed_cb(|tcb| {
+                self.encode_ba_to_decay(tcb, layer)?;
+                self.encode_gated_delta(tcb, rec_off)
+            })?;
+            let rec_out_u = read_buf(&self.workspace.rec_out, v_n);
+            unsafe {
+                std::ptr::copy_nonoverlapping(
+                    rec.as_ptr(),
+                    (self.workspace.rec_state.contents() as *mut u8).add(rec_off as usize)
+                        as *mut f32,
+                    rec_n,
+                );
+            }
+            self.fuse_ba_delta = true;
+            self.fuse_ba_delta_bad = bad;
+            let fused = self.timed_cb(|tcb| self.encode_gated_delta_fused_ba(tcb, rec_off, layer))?;
+            let rec_out_f = read_buf(&self.workspace.rec_out, v_n);
+            self.fuse_ba_delta = saved_on;
+            self.fuse_ba_delta_bad = saved_bad;
+            let diff = Self::max_abs_diff(&rec_out_u, &rec_out_f);
+            Ok(Qwen38FusionParity {
+                fusion: if bad {
+                    "ba_delta_identity"
+                } else {
+                    "ba_delta"
+                },
+                layer,
+                unfused_dispatches: unfused.dispatches,
+                fused_pair_dispatches: fused.dispatches,
+                fused_swiglu_dispatches: fused.dispatches,
+                unfused_gpu_ns: unfused.gpu_ns,
+                fused_pair_gpu_ns: fused.gpu_ns,
+                fused_swiglu_gpu_ns: fused.gpu_ns,
+                max_abs_diff_gate: diff,
+                max_abs_diff_up: diff,
+                max_abs_diff_act: diff,
+                dense_w_materialized: 0,
+            })
+        }
+
+        fn encode_organ_gqa_compute(
+            &self,
+            tcb: &mut TokenCommandBuffer<'_>,
+            layer: usize,
+        ) -> Result<()> {
+            self.encode_rmsnorm(
+                tcb,
+                &self.workspace.hidden,
+                &qwen38_layer_name(layer, "input_layernorm.weight"),
+                &self.workspace.normalized,
+                QWEN38_HIDDEN as u32,
+            )?;
+            let q_name = qwen38_layer_name(layer, "self_attn.q_proj.weight");
+            if self.fuse_gqa_qkv && self.weights.q4.contains_key(&q_name) {
+                self.encode_fused_qkv(tcb, layer)?;
+            } else {
+                self.encode_named_matvec(
+                    tcb,
+                    &q_name,
+                    &self.workspace.normalized,
+                    &self.workspace.q_proj,
+                )?;
+                self.encode_named_matvec(
+                    tcb,
+                    &qwen38_layer_name(layer, "self_attn.k_proj.weight"),
+                    &self.workspace.normalized,
+                    &self.workspace.k_proj,
+                )?;
+                self.encode_named_matvec(
+                    tcb,
+                    &qwen38_layer_name(layer, "self_attn.v_proj.weight"),
+                    &self.workspace.normalized,
+                    &self.workspace.v_proj,
+                )?;
+            }
+            self.encode_rope_cache(tcb, layer)?;
+            self.encode_mha(tcb, layer)?;
+            self.encode_sigmoid_gate(tcb)?;
+            qwen_next_add_residual_tcb(
+                tcb,
+                &self.workspace.hidden,
+                &self.workspace.mixer,
+                &self.workspace.first_residual,
+                QWEN38_HIDDEN,
+            )
+        }
+
+        fn encode_organ_dn_compute(
+            &self,
+            tcb: &mut TokenCommandBuffer<'_>,
+            layer: usize,
+        ) -> Result<()> {
+            let layout = Qwen38DeltaNetLayout::source_exact();
+            let slot = qwen38_deltanet_state_slot(layer)?;
+            let rec_off = (slot * layout.recurrent_state_elements() * 4) as u64;
+            self.encode_rmsnorm(
+                tcb,
+                &self.workspace.hidden,
+                &qwen38_layer_name(layer, "input_layernorm.weight"),
+                &self.workspace.normalized,
+                QWEN38_HIDDEN as u32,
+            )?;
+            let fused_qkvz = qwen38_layer_name(layer, "linear_attn.in_proj_qkvz.weight");
+            let fused_ba = qwen38_layer_name(layer, "linear_attn.in_proj_ba.weight");
+            if self.has_weight(&fused_qkvz) && self.has_weight(&fused_ba) {
+                if self.fuse_dn_inproj && self.weights.q4.contains_key(&fused_qkvz) {
+                    self.encode_fused_pair_concat(
+                        tcb,
+                        &fused_qkvz,
+                        &self.workspace.qkvz,
+                        &fused_ba,
+                        &self.workspace.ba,
+                    )?;
+                } else {
+                    self.encode_named_matvec(
+                        tcb,
+                        &fused_qkvz,
+                        &self.workspace.normalized,
+                        &self.workspace.qkvz,
+                    )?;
+                    self.encode_named_matvec(
+                        tcb,
+                        &fused_ba,
+                        &self.workspace.normalized,
+                        &self.workspace.ba,
+                    )?;
+                }
+            } else if self.has_weight(&qwen38_layer_name(layer, "linear_attn.in_proj_qkv.weight"))
+            {
+                self.encode_split_deltanet_projections(tcb, layer)?;
+            } else {
+                return Err(Error::Model(format!(
+                    "layer {layer} mixer projections missing for organ isolate"
+                )));
+            }
+            self.encode_rearrange(tcb, layer)?;
+            self.encode_dn_ba_and_delta(tcb, layer, rec_off)?;
+            self.encode_gated_rmsnorm(tcb, layer)?;
+            qwen_next_add_residual_tcb(
+                tcb,
+                &self.workspace.hidden,
+                &self.workspace.mixer,
+                &self.workspace.first_residual,
+                QWEN38_HIDDEN,
+            )
+        }
+
+        /// Isolated organ CBs: one family, all layers, GPUEnd−GPUStart.
+        /// Production remains one CB; these partition it. Caller scales.
+        pub fn measure_isolated_organ(&self, organ: &str) -> Result<CommandBufferTiming> {
+            match organ {
+                "embedding" => self.timed_cb(|tcb| self.encode_embed(tcb, 1)),
+                "gqa_attention" => self.timed_cb(|tcb| {
+                    for layer in 0..QWEN38_LAYERS {
+                        if qwen38_mixer_kind(layer)? == Qwen38MixerKind::Gqa {
+                            self.encode_organ_gqa_compute(tcb, layer)?;
+                        }
+                    }
+                    Ok(())
+                }),
+                "deltanet" => self.timed_cb(|tcb| {
+                    for layer in 0..QWEN38_LAYERS {
+                        if qwen38_mixer_kind(layer)? == Qwen38MixerKind::DeltaNet {
+                            self.encode_organ_dn_compute(tcb, layer)?;
+                        }
+                    }
+                    Ok(())
+                }),
+                "mlp_gate_up" => self.timed_cb(|tcb| {
+                    for layer in 0..QWEN38_LAYERS {
+                        self.encode_rmsnorm(
+                            tcb,
+                            &self.workspace.first_residual,
+                            &qwen38_layer_name(layer, "post_attention_layernorm.weight"),
+                            &self.workspace.normalized,
+                            QWEN38_HIDDEN as u32,
+                        )?;
+                        self.encode_fused_gate_up(tcb, layer, true)?;
+                    }
+                    Ok(())
+                }),
+                "mlp_down" => self.timed_cb(|tcb| {
+                    for layer in 0..QWEN38_LAYERS {
+                        self.encode_named_matvec(
+                            tcb,
+                            &qwen38_layer_name(layer, "mlp.down_proj.weight"),
+                            &self.workspace.act,
+                            &self.workspace.down,
+                        )?;
+                        qwen_next_add_residual_tcb(
+                            tcb,
+                            &self.workspace.first_residual,
+                            &self.workspace.down,
+                            &self.workspace.hidden,
+                            QWEN38_HIDDEN,
+                        )?;
+                    }
+                    Ok(())
+                }),
+                "q4_remainder" => self.timed_cb(|tcb| {
+                    for layer in 0..QWEN38_LAYERS {
+                        match qwen38_mixer_kind(layer)? {
+                            Qwen38MixerKind::DeltaNet => {
+                                self.encode_named_matvec(
+                                    tcb,
+                                    &qwen38_layer_name(layer, "linear_attn.out_proj.weight"),
+                                    &self.workspace.gated,
+                                    &self.workspace.mixer,
+                                )?;
+                            }
+                            Qwen38MixerKind::Gqa => {
+                                self.encode_named_matvec(
+                                    tcb,
+                                    &qwen38_layer_name(layer, "self_attn.o_proj.weight"),
+                                    &self.workspace.gated_attn,
+                                    &self.workspace.mixer,
+                                )?;
+                            }
+                        }
+                    }
+                    Ok(())
+                }),
+                "lm_head" => self.timed_cb(|tcb| {
+                    self.encode_rmsnorm(
+                        tcb,
+                        &self.workspace.hidden,
+                        "language_model.model.norm.weight",
+                        &self.workspace.normalized,
+                        QWEN38_HIDDEN as u32,
+                    )?;
+                    self.encode_named_matvec(
+                        tcb,
+                        "language_model.lm_head.weight",
+                        &self.workspace.normalized,
+                        &self.workspace.logits,
+                    )
+                }),
+                "sampling" => self.timed_cb(|tcb| self.encode_argmax(tcb)),
+                "noop_empty" => self.timed_cb(|_tcb| Ok(())),
+                other => Err(Error::Model(format!(
+                    "qwen38 unknown isolated organ {other}"
+                ))),
+            }
         }
 
         pub fn measure_named_matvec(&self, name: &str, output: &str) -> Result<CommandBufferTiming> {
@@ -4645,25 +5046,7 @@ mod device {
                     encoder.set_threadgroup_memory_length(0, 4 * 256 * 4);
                 },
             )?;
-            let a_log = self.f32(&qwen38_layer_name(layer, "linear_attn.A_log"))?;
-            let dt_bias = self.f32(&qwen38_layer_name(layer, "linear_attn.dt_bias"))?;
-            tcb.dispatch_threads(
-                "qwen80_ba_to_decay_beta_f32",
-                (layout.value_heads as u32, 1, 1),
-                (16, 1, 1),
-                |encoder| {
-                    encoder.set_buffer(0, Some(&self.workspace.ba), 0);
-                    encoder.set_buffer(1, Some(a_log), 0);
-                    encoder.set_buffer(2, Some(dt_bias), 0);
-                    encoder.set_buffer(3, Some(&self.workspace.decay), 0);
-                    encoder.set_buffer(4, Some(&self.workspace.beta), 0);
-                    let kh = layout.key_heads as u32;
-                    let vpk = layout.values_per_key as u32;
-                    encoder.set_bytes(5, 4, &kh as *const u32 as *const _);
-                    encoder.set_bytes(6, 4, &vpk as *const u32 as *const _);
-                },
-            )?;
-            self.encode_gated_delta(tcb, rec_off)?;
+            self.encode_dn_ba_and_delta(tcb, layer, rec_off)?;
             let norm_w = self.f32(&qwen38_layer_name(layer, "linear_attn.norm.weight"))?;
             let dn_tg: u32 = std::env::var("HAWKING_DN_RMSNORM_TG")
                 .ok()
@@ -5158,25 +5541,7 @@ mod device {
                     encoder.set_threadgroup_memory_length(0, 4 * 256 * 4);
                 },
             )?;
-            let a_log = self.f32(&qwen38_layer_name(layer, "linear_attn.A_log"))?;
-            let dt_bias = self.f32(&qwen38_layer_name(layer, "linear_attn.dt_bias"))?;
-            tcb.dispatch_threads(
-                "qwen80_ba_to_decay_beta_f32",
-                (layout.value_heads as u32, 1, 1),
-                (16, 1, 1),
-                |encoder| {
-                    encoder.set_buffer(0, Some(&self.workspace.ba), 0);
-                    encoder.set_buffer(1, Some(a_log), 0);
-                    encoder.set_buffer(2, Some(dt_bias), 0);
-                    encoder.set_buffer(3, Some(&self.workspace.decay), 0);
-                    encoder.set_buffer(4, Some(&self.workspace.beta), 0);
-                    let kh = layout.key_heads as u32;
-                    let vpk = layout.values_per_key as u32;
-                    encoder.set_bytes(5, 4, &kh as *const u32 as *const _);
-                    encoder.set_bytes(6, 4, &vpk as *const u32 as *const _);
-                },
-            )?;
-            self.encode_gated_delta(tcb, rec_off)?;
+            self.encode_dn_ba_and_delta(tcb, layer, rec_off)?;
             let norm_w = self.f32(&qwen38_layer_name(layer, "linear_attn.norm.weight"))?;
             let dn_tg: u32 = std::env::var("HAWKING_DN_RMSNORM_TG")
                 .ok()
@@ -6522,6 +6887,20 @@ mod mixed_catalog_contract_tests {
         assert!(crate::metal::SHADER_Q80_MIXED_DECODE.contains(
             "kernel void qwen_affine_q2_group64_matvec_gate_up_swiglu_tgsb_tpr64_tg128("
         ));
+        assert!(crate::metal::SHADER_QWEN38_DEVICE_ACTIVATIONS
+            .contains("kernel void qwen38_gated_delta_decode_vi_simd_ba("));
+        assert!(crate::metal::SHADER_QWEN38_DEVICE_ACTIVATIONS
+            .contains("kernel void qwen38_gated_delta_decode_vi_simd_ba_plain("));
+        assert_eq!(
+            qwen38_fused_dispatches_per_token_full(
+                Qwen38MlpFusion::GateUpSwiglu,
+                true,
+                true,
+                true,
+                true
+            ),
+            580
+        );
         assert_eq!(
             qwen38_affine_q2_launch(Affine2Geo::QmvFast, 64, 17408, 5120)
                 .map(|l| l.0),

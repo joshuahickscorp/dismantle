@@ -742,6 +742,27 @@ mod tests {
             qwen38_fused_dispatches_per_token(Qwen38MlpFusion::GateUpSwiglu, true, true)
                 < production_dispatches_per_token()
         );
+        use super::super::qwen38_hybrid_decode::qwen38_fused_dispatches_per_token_full;
+        assert_eq!(
+            qwen38_fused_dispatches_per_token_full(
+                Qwen38MlpFusion::GateUpSwiglu,
+                true,
+                true,
+                true,
+                false
+            ),
+            628
+        );
+        assert_eq!(
+            qwen38_fused_dispatches_per_token_full(
+                Qwen38MlpFusion::GateUpSwiglu,
+                true,
+                true,
+                true,
+                true
+            ),
+            580
+        );
     }
 
     #[test]

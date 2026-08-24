@@ -1,27 +1,41 @@
 {
-  "generated_at": "2026-08-24T03:46:18Z",
+  "generated_at": "2026-08-24T04:03:09Z",
   "running": [
     "n005dispatch",
-    "n007prodbench",
-    "n010alloc",
     "n016prefill"
   ],
   "needs_harvest": [
     {
-      "slug": "n014adv",
-      "id": "n014adv-20260823-231618",
+      "slug": "n007prodbench",
+      "id": "n007prodbench-20260823-232201",
       "unharvested": [
-        "receipts/headless/FRONTIER_ADVERSARY.json",
-        "tools/headless/frontier_adversary.py",
-        "tools/headless/test_frontier_adversary.py"
+        "receipts/headless/PRODUCTION_BENCH.json",
+        "receipts/headless/PRODUCTION_BENCH.parent.raw.json",
+        "receipts/headless/PRODUCTION_BENCH.q4.raw.json",
+        "receipts/headless/_PRODUCTION_BENCH_workunits.json",
+        "tools/headless/prodbench_driver/Cargo.lock",
+        "tools/headless/prodbench_driver/Cargo.toml",
+        "tools/headless/prodbench_driver/src/main.rs",
+        "tools/headless/production_bench.py",
+        "tools/headless/test_production_bench.py"
+      ],
+      "worktree_extras": 0
+    },
+    {
+      "slug": "n010alloc",
+      "id": "n010alloc-20260823-231538",
+      "unharvested": [
+        "receipts/headless/GLOBAL_ALLOCATOR.json",
+        "tools/headless/global_allocator.py",
+        "tools/headless/test_global_allocator.py"
       ],
       "worktree_extras": 0
     }
   ],
   "headroom": {
-    "load1": 34.458984375,
+    "load1": 3.05126953125,
     "ncpu": 28,
-    "disk_gib": 303.8,
-    "room_for_more": false
+    "disk_gib": 300.6,
+    "room_for_more": true
   }
 }

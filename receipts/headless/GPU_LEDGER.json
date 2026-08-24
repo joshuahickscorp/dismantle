@@ -1,7 +1,7 @@
 {
  "schema": "hawking.headless.gpu_ledger.v1",
- "generated_at": "2026-08-24T03:43:59Z",
- "git_head": "9967e64a8abe9f4c2e21224127228259daa2223f",
+ "generated_at": "2026-08-24T03:01:24Z",
+ "git_head": "7200c96c4cd77bf51f958c207a79b9194f4b7559",
  "obligation": "N004 \u2014 GPU ledger per token: stop optimizing blind",
  "incumbent": {
   "artifact": "/Users/scammermike/models/qwen38-gravity-uniform-q4-v1",
@@ -9,14 +9,12 @@
   "complete_physical_bpw": 4.252735126866492,
   "parameter_count": 26895998464
  },
- "did_not_load_second_27b": false,
+ "did_not_load_second_27b": true,
  "occupancy": {
   "ps_matches": [
-   "12402  84848 /Users/scammermike/.local/share/uv/tools/mlx-lm/bin/python /Users/scammermike/.local/bin/mlx_lm.server --model /private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/tmp9wq3pmxx/4bit --host 127.0.0.1 --port 9999 --max-tokens 8192 --decode-concurrency 1 --prompt-concurrency 1 --prompt-cache-size 10 --chat-template-args {\"enable_thinking\":false}",
-   "92794   2832 bash /Users/scammermike/.claude-grok/worktrees/n007prodbench-20260823-232201/tools/gpu_lane_lock.sh n007-production-bench /Users/scammermike/.claude-grok/worktrees/n007prodbench-20260823-232201/workspace/ops/build/rust-prodbench/release-fast/ascension_qwen38_production_bench --artifact-root /Users/scammermike/noetic/NOETIC_PARENT_A --tokenizer /Users/scammermike/models/qwen3.8-27b-abliterated-bf16/tokenizer.json --workunits /Users/scammermike/.claude-grok/worktrees/n007prodbench-20260823-232201/receipts/headless/_PRODUCTION_BENCH_workunits.json --out /Users/scammermike/.claude-grok/worktrees/n007prodbench-20260823-232201/receipts/headless/PRODUCTION_BENCH.parent.raw.json --fusion parent --max-new-tokens 192 --max-seq-len 512 --concurrencies 1,2,4 --topologies concurrent --probe-c8",
-   "92797 12369600 /Users/scammermike/.claude-grok/worktrees/n007prodbench-20260823-232201/workspace/ops/build/rust-prodbench/release-fast/ascension_qwen38_production_bench --artifact-root /Users/scammermike/noetic/NOETIC_PARENT_A --tokenizer /Users/scammermike/models/qwen3.8-27b-abliterated-bf16/tokenizer.json --workunits /Users/scammermike/.claude-grok/worktrees/n007prodbench-20260823-232201/receipts/headless/_PRODUCTION_BENCH_workunits.json --out /Users/scammermike/.claude-grok/worktrees/n007prodbench-20260823-232201/receipts/headless/PRODUCTION_BENCH.parent.raw.json --fusion parent --max-new-tokens 192 --max-seq-len 512 --concurrencies 1,2,4 --topologies concurrent --probe-c8"
+   "12402  84880 /Users/scammermike/.local/share/uv/tools/mlx-lm/bin/python /Users/scammermike/.local/bin/mlx_lm.server --model /private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/tmp9wq3pmxx/4bit --host 127.0.0.1 --port 9999 --max-tokens 8192 --decode-concurrency 1 --prompt-concurrency 1 --prompt-cache-size 10 --chat-template-args {\"enable_thinking\":false}"
   ],
-  "loaded_a_second_27b": true,
+  "loaded_a_second_27b": false,
   "note": "mlx_lm.server on a tiny tmp 4bit (~tens of MiB RSS) is not a 27B. A second Qwen3.8-27B would show RSS in the 10+ GiB class and is refused."
  },
  "gpu_timestamp_authority": "completed MTLCommandBuffer GPUStartTime/GPUEndTime after wait; never a CPU-wait proxy",

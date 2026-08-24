@@ -25,14 +25,34 @@ from gpu_ledger import (  # noqa: E402
 )
 
 RECEIPT_DOC = None
+RECEIPT_PATH = REPO / "receipts" / "headless" / "GPU_LEDGER.json"
 KINDS = {MEASURED, DERIVED, ABSENT}
 
 
 def receipt() -> dict:
+    """READ the sealed measurement. Build only if there is none to read.
+
+    This previously called build() + write_receipt() unconditionally, so every
+    `pytest tools/headless` run RE-MEASURED the GPU and OVERWROTE the receipt.
+    Three things were wrong with that:
+
+      * it destroyed a sealed measurement as a side effect of running tests;
+      * the test then asserted against numbers it had just produced, so it could
+        never fail on a regression in the RECORDED measurement, only on current
+        machine state; and
+      * it failed spuriously under contention -- with other GPU lanes resident,
+        `did_not_load_second_27b` flipped to False and took the suite red on a
+        fact about the machine rather than about the code.
+
+    Measuring is the harness's job. Checking what was measured is this test's job.
+    """
     global RECEIPT_DOC
     if RECEIPT_DOC is None:
-        RECEIPT_DOC = build()
-        write_receipt(RECEIPT_DOC)
+        if RECEIPT_PATH.is_file():
+            RECEIPT_DOC = json.loads(RECEIPT_PATH.read_text())
+        else:
+            RECEIPT_DOC = build()
+            write_receipt(RECEIPT_DOC)
     return RECEIPT_DOC
 
 

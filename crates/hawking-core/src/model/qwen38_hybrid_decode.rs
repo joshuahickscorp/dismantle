@@ -622,6 +622,10 @@ pub fn mixed_mlp_native_kind_from_lane(lane: MixedCatalogLane) -> Option<MixedMl
 }
 
 fn mixed_mlp_role_allowed(suffix: &str, kind: MixedMlpNativeKind) -> bool {
+    // Native packed codes on any MLP GEMV are legal. mix_c (all-binary g64)
+    // and N036 organ islands (binary body + HGRAVF01 q2f on a subset) both
+    // execute without reconstructing dense W. The lock still refuses
+    // Residual-on-gate (wrong mixed-2p0 role) and missing/Q4/f32 fallback.
     match suffix {
         "mlp.gate_proj.weight" => matches!(
             kind,
@@ -631,13 +635,15 @@ fn mixed_mlp_role_allowed(suffix: &str, kind: MixedMlpNativeKind) -> bool {
         ),
         "mlp.up_proj.weight" => matches!(
             kind,
-            MixedMlpNativeKind::Residual
+            MixedMlpNativeKind::Binary
+                | MixedMlpNativeKind::Residual
                 | MixedMlpNativeKind::Uniform
                 | MixedMlpNativeKind::AffineScaleBias
         ),
         "mlp.down_proj.weight" => matches!(
             kind,
-            MixedMlpNativeKind::Hgravs
+            MixedMlpNativeKind::Binary
+                | MixedMlpNativeKind::Hgravs
                 | MixedMlpNativeKind::Uniform
                 | MixedMlpNativeKind::AffineScaleBias
         ),
@@ -646,9 +652,9 @@ fn mixed_mlp_role_allowed(suffix: &str, kind: MixedMlpNativeKind) -> bool {
 }
 
 /// CPU-side MLP role lock. Mixed-2p0 assignment (gate Binary / up Residual /
-/// down Hgravs) still passes. Pack-declared Uniform passes on any of those
-/// three roles. Anything else — missing, HQ30UQ4, f32, Residual-on-gate —
-/// refuses.
+/// down Hgravs) still passes. All-binary (mix_c) and binary+affine islands
+/// (N036) pass. Pack-declared Uniform or Affine passes on any of those three
+/// roles. Anything else — missing, HQ30UQ4, f32, Residual-on-gate — refuses.
 pub fn assert_mixed_mlp_native_kinds(
     lookup: impl Fn(&str) -> Option<MixedMlpNativeKind>,
 ) -> Result<()> {
@@ -6833,6 +6839,32 @@ mod mixed_catalog_contract_tests {
     #[test]
     fn mixed_mlp_affine_is_admitted_on_every_role() {
         let kinds = filled_mlp_kinds(MixedMlpNativeKind::AffineScaleBias);
+        assert_mixed_mlp_native_kinds(|name| kinds.get(name).copied()).unwrap();
+    }
+
+    #[test]
+    fn mixed_mlp_all_binary_is_admitted() {
+        let kinds = filled_mlp_kinds(MixedMlpNativeKind::Binary);
+        assert_mixed_mlp_native_kinds(|name| kinds.get(name).copied()).unwrap();
+    }
+
+    #[test]
+    fn mixed_mlp_binary_body_affine_down_island_is_admitted() {
+        let mut kinds = HashMap::new();
+        for layer in 0..QWEN38_LAYERS {
+            kinds.insert(
+                qwen38_layer_name(layer, "mlp.gate_proj.weight"),
+                MixedMlpNativeKind::Binary,
+            );
+            kinds.insert(
+                qwen38_layer_name(layer, "mlp.up_proj.weight"),
+                MixedMlpNativeKind::Binary,
+            );
+            kinds.insert(
+                qwen38_layer_name(layer, "mlp.down_proj.weight"),
+                MixedMlpNativeKind::AffineScaleBias,
+            );
+        }
         assert_mixed_mlp_native_kinds(|name| kinds.get(name).copied()).unwrap();
     }
 

@@ -143,3 +143,122 @@ def conformance(results: list[dict[str, Any]]) -> dict[str, Any]:
         "why_not": "no NVIDIA hardware is present, so nothing was compared against "
                    "CUDA itself; P2 remains open",
     }
+
+
+# --------------------------------------------------------------------------
+# PTX front end. The steer names PTX as a C2M input alongside CUDA source, and
+# the pinned seed ships a real PTX corpus, so this parses THAT rather than PTX I
+# wrote to suit myself. Same discipline as the CUDA path: a tiny supported subset
+# and an explicit refusal naming the instruction for everything else.
+# --------------------------------------------------------------------------
+
+PTX_ARITH = {"add.f32": "add", "mul.f32": "mul", "sub.f32": "sub"}
+PTX_SPECIAL = {"%ctaid.x": "ctaid", "%ntid.x": "ntid", "%tid.x": "tid"}
+
+
+class PtxRefusal(C2MRefusal):
+    """A PTX construct outside the supported subset."""
+
+
+def _strip(line: str) -> str:
+    return re.sub(r"//.*$", "", line).strip()
+
+
+def translate_ptx(src: str, *, elements: int) -> TranslatedKernel:
+    lines = [_strip(l) for l in src.splitlines()]
+    lines = [l for l in lines if l and not l.startswith("//")]
+
+    m = re.search(r"\.visible\s+\.entry\s+(\w+)\s*\(", src)
+    if not m:
+        raise PtxRefusal("no .visible .entry found")
+    name = m.group(1)
+
+    params = re.findall(r"\.param\s+\.u64\s+(\w+)", src)
+    if not params:
+        raise PtxRefusal("no .param .u64 pointer parameters; only pointer kernels "
+                         "are in the subset")
+
+    regs: dict[str, Any] = {}          # register -> symbolic value
+    loads: dict[str, int] = {}         # value name -> param index
+    store: tuple[int, str] | None = None
+    counter = 0
+
+    body = src[src.index("{") + 1:src.rindex("}")]
+    for raw in [_strip(l) for l in body.splitlines()]:
+        if not raw or raw.startswith(".reg") or raw == "ret;":
+            continue
+        line = raw.rstrip(";")
+        op = line.split()[0]
+
+        if op.startswith("ld.param.u64"):
+            d, s = re.match(r"ld\.param\.u64\s+(%\w+),\s*\[(\w+)\]", line).groups()
+            regs[d] = ("ptr", params.index(s))
+        elif op.startswith("mov.u32"):
+            d, s = re.match(r"mov\.u32\s+(%\w+),\s*(\S+)", line).groups()
+            if s not in PTX_SPECIAL:
+                raise PtxRefusal(f"mov.u32 from {s!r} is outside the subset; only "
+                                 f"{sorted(PTX_SPECIAL)} are recognised")
+            regs[d] = ("special", PTX_SPECIAL[s])
+        elif op.startswith("cvta.to.global.u64") or op.startswith("cvta.global.u64"):
+            # Address-space cast. Generic -> global is a NO-OP for our purposes
+            # because AIR has no address spaces; the pointer identity carries through.
+            # This single instruction blocked 43 of 291 corpus files.
+            d, s = re.match(r"cvta\.[\w.]+\s+(%\w+),\s*(%\w+)", line).groups()
+            if s not in regs:
+                raise PtxRefusal(f"cvta from untracked register {s!r}")
+            regs[d] = regs[s]
+        elif op in ("mul.lo.u32", "add.u32", "cvt.u64.u32", "shl.b64", "add.u64",
+                    "mad.lo.u32", "mul.wide.u32", "mul.wide.s32", "cvt.s64.s32"):
+            # index arithmetic. The subset assumes the canonical
+            # gid = ctaid.x*ntid.x + tid.x then a scaled pointer bump, so these are
+            # tracked structurally rather than evaluated.
+            parts = re.match(r"\S+\s+(%\w+),\s*(.+)", line)
+            if not parts:
+                raise PtxRefusal(f"cannot parse index arithmetic {line!r}")
+            d = parts.group(1)
+            srcs = [s.strip() for s in parts.group(2).split(",")]
+            base = next((regs[s] for s in srcs
+                         if s in regs and regs[s][0] == "ptr"), None)
+            regs[d] = base if base else ("index", None)
+        elif op.startswith("ld.global.f32"):
+            d, s = re.match(r"ld\.global\.f32\s+(%\w+),\s*\[(%\w+)\]", line).groups()
+            if s not in regs or regs[s][0] != "ptr":
+                raise PtxRefusal(f"ld.global.f32 from {s!r}, which is not a tracked "
+                                 f"parameter pointer")
+            vname = f"v{counter}"; counter += 1
+            regs[d] = ("value", vname)
+            loads[vname] = regs[s][1]
+        elif op in PTX_ARITH:
+            d, a, b = re.match(r"\S+\s+(%\w+),\s*(%\w+),\s*(%\w+)", line).groups()
+            for r in (a, b):
+                if r not in regs or regs[r][0] != "value":
+                    raise PtxRefusal(f"{op} operand {r!r} is not a loaded value")
+            vname = f"v{counter}"; counter += 1
+            regs[d] = ("value", vname)
+            regs[vname] = ("expr", PTX_ARITH[op], regs[a][1], regs[b][1])
+        elif op.startswith("st.global.f32"):
+            p, s = re.match(r"st\.global\.f32\s+\[(%\w+)\],\s*(%\w+)", line).groups()
+            if p not in regs or regs[p][0] != "ptr":
+                raise PtxRefusal(f"st.global.f32 to {p!r}, not a tracked parameter")
+            if s not in regs or regs[s][0] != "value":
+                raise PtxRefusal(f"st.global.f32 of {s!r}, not a computed value")
+            store = (regs[p][1], regs[s][1])
+        else:
+            raise PtxRefusal(f"PTX instruction {op!r} is outside the C2M-T0 subset")
+
+    if store is None:
+        raise PtxRefusal("no st.global.f32; the subset requires exactly one store")
+
+    out_param, out_val = store
+    expr = regs.get(out_val)
+    if not (isinstance(expr, tuple) and expr[0] == "expr"):
+        raise PtxRefusal("the stored value is not a supported arithmetic expression")
+    _, kind, lhs, rhs = expr
+    if lhs not in loads or rhs not in loads:
+        raise PtxRefusal("an operand was not loaded from a parameter pointer")
+
+    in_names = [f"p{loads[lhs]}", f"p{loads[rhs]}"]
+    ins = [AirTensor(n, (elements,), "f32") for n in in_names]
+    prog = AirProgram(name, ins, [AirOp(kind, tuple(in_names), "out_")], "out_")
+    return TranslatedKernel(name, [("float", p, True) for p in params],
+                            in_names, f"p{out_param}", prog)

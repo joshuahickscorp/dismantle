@@ -179,3 +179,53 @@ def runtime_coverage() -> dict[str, Any]:
             "missing input is a quiesced window or a staged copy on Tier 1, NOT a "
             "model reader."),
     }
+
+
+# --- IMPORTS IS NOT EXECUTES, AND ONE OF THE FOUR DOES NOT BUILD -----------------
+# The previous block reported "mlx_lm covers all four, verified by import" and named
+# its own boundary: "class presence is an IMPORT not an execution, so a class that
+# imports can still fail on a real config and that is untested". Tested. THREE OF
+# FOUR build from the REAL config and run a forward pass to full-vocab finite
+# logits; the fourth resolves, accepts the config at ModelArgs level, AND FAILS TO
+# CONSTRUCT -- so the weaker check was right about three specimens and wrong about
+# one, which is exactly why it had to be run.
+#
+# The failure is precise and is NOT the config being unusual: qwen3_vl_moe.Model
+# builds its language model as qwen3_moe.ModelArgs.from_dict(args.text_config), and
+# `tie_word_embeddings` sits at the TOP LEVEL of the real config (False) and is
+# ABSENT from text_config, while qwen3_moe.ModelArgs requires it with no default.
+# Adding that ONE key makes it build and run (1245.5M params, logits (1,4,151936),
+# finite) -- so the gap is one un-inherited field in the wrapper.
+MEASURED_2026_08_25 = {
+    # specimen -> (builds_from_real_config, forward_pass_runs)
+    "Qwen3-30B-A3B":    (True, True),
+    "Kimi-VL-A3B":      (True, True),
+    "Falcon-H1-7B":     (True, True),
+    "Qwen3-VL-30B-A3B": (False, False),
+}
+VL_GAP = ("qwen3_vl_moe.Model passes text_config straight to "
+          "qwen3_moe.ModelArgs.from_dict without inheriting the top-level "
+          "tie_word_embeddings, which qwen3_moe.ModelArgs requires with no default. "
+          "Supplying that one key builds and runs it.")
+
+
+def execution_coverage() -> dict[str, Any]:
+    """What was MEASURED, kept separate from what merely imports.
+
+    Reported as recorded evidence rather than re-run on every call, because
+    constructing four models costs seconds; test_odyssey_pass rebuilds ONE of them
+    for real so this table cannot become a string nobody checks.
+    """
+    return {
+        "measured": {k: {"builds": b, "forward": f}
+                     for k, (b, f) in MEASURED_2026_08_25.items()},
+        "built_and_ran": sum(1 for b, f in MEASURED_2026_08_25.values() if b and f),
+        "of": len(MEASURED_2026_08_25),
+        "one_layer_only": True,      # num_hidden_layers cut to 1; the OTHER layers
+                                     # are identical by the index and were not built
+        "random_weights": True,      # a CAPABILITY claim about the runtime; it says
+                                     # NOTHING about adequacy, and the 2026-07-27
+                                     # gaussian-proxy law is about grading
+                                     # compression, which this does not do
+        "vl_gap": VL_GAP,
+    }

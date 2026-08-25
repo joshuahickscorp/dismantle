@@ -34,5 +34,11 @@
   "the 96-131 MiB/s uncontended figure is from earlier this session on the same volume and is NOT re-measured here.",
   "no kernel changed and no performance claim moves."
  ],
- "tests": "454 accelerator tests pass (was 451): 3 new."
+ "tests": "454 accelerator tests pass (was 451): 3 new.",
+ "AMENDED_IN_PLACE_2026_08_25": {
+  "by": "receipts/headless/ACCELERATOR_RUNTIME_EXECUTES.json",
+  "what_is_STRENGTHENED": "this receipt's own boundary said class presence is an IMPORT not an execution. Measured: 3 of 4 specimens BUILD from their real config and run a forward pass to finite full-vocab logits, including the Mamba hybrid.",
+  "what_is_CORRECTED": "'mlx_lm covers all four' is true of imports and FALSE of execution for Qwen3-VL-30B-A3B, which resolves and accepts its config and then fails to construct -- qwen3_vl_moe.Model does not inherit the top-level tie_word_embeddings into text_config, and qwen3_moe.ModelArgs requires it with no default. Adding that one key builds and runs it.",
+  "what_is_UNCHANGED": "the storage gate. No real weights were loaded, so every weight-space caveat stands and no adequacy claim moves."
+ }
 }

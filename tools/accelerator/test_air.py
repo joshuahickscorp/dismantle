@@ -578,3 +578,84 @@ def test_the_fused_layout_emits_a_different_kernel_before_preparation():
     assert prep is True
     assert gnat.kernel_identity(*stored) != m2                  # as it sits on disk
     assert gnat.kernel_identity(stored[1], stored[0]) == m2      # after transposing
+
+
+# ------------------------------------------- acceptance predicate (G046 / G048)
+
+def _pack_fixture():
+    import numpy as np
+    import gravity_native as gnat
+    rng = np.random.default_rng(0)
+    w = rng.standard_normal((256, 512)).astype(np.float32)
+    packed, scale = gnat.pack_q4_g64(w)
+    x = rng.standard_normal(w.shape[1]).astype(np.float32)
+    return gnat, w, packed, scale, x
+
+
+def test_the_old_self_referential_predicate_accepts_an_ALL_ZEROS_pack():
+    """The defect this exists to prevent, kept as an executable demonstration.
+
+    Comparing the GPU kernel against a numpy decode of THE SAME packed bytes tests
+    only that the kernel implements the representation. The original tensor never
+    enters it, so a pack of pure zeros passes."""
+    import numpy as np
+    gnat, w, packed, scale, x = _pack_fixture()
+    cols = w.shape[1]
+
+    def old_predicate(p, s):
+        ref = gnat.dequantize(p, s, cols) @ x
+        got = ref.copy()                      # a CORRECT kernel returns exactly this
+        return float(np.max(np.abs(got - ref))) <= float(np.max(np.abs(ref))) * 1e-3
+
+    assert old_predicate(np.zeros_like(packed), scale) is True
+    assert old_predicate(packed, scale * 1000.0) is True
+
+
+def test_accept_pack_rejects_every_broken_pack_the_old_one_accepted():
+    import numpy as np
+    gnat, w, packed, scale, x = _pack_fixture()
+    cols = w.shape[1]
+
+    def verdict(p, s):
+        ref = gnat.dequantize(p, s, cols) @ x
+        return gnat.accept_pack(w, p, s, cols, ref, x)
+
+    assert verdict(packed, scale)["accepted"] is True
+    for label, p, s in [
+        ("all zeros", np.zeros_like(packed), scale),
+        ("scales x1000", packed, scale * 1000.0),
+        ("scales x0.5", packed, scale * 0.5),
+        ("nibbles swapped", ((packed >> 4) | (packed << 4)).astype(np.uint8), scale),
+    ]:
+        assert verdict(p, s)["accepted"] is False, label
+
+
+def test_cosine_alone_cannot_tell_the_scaled_packs_apart():
+    """The 2026-08-17 law, demonstrated rather than cited: cosine is SCALE-INVARIANT,
+    so an honest pack, one scaled 1000x and one scaled 0.5x have the SAME cosine.
+    The magnitude band is the entire difference between catching that and not."""
+    import numpy as np
+    gnat, w, packed, scale, x = _pack_fixture()
+    cols = w.shape[1]
+    cos = {}
+    for label, s in [("honest", scale), ("x1000", scale * 1000.0), ("x0.5", scale * 0.5)]:
+        ref = gnat.dequantize(packed, s, cols) @ x
+        r = gnat.accept_pack(w, packed, s, cols, ref, x)
+        cos[label] = round(r["representation_fidelity"]["cosine"], 6)
+    assert cos["honest"] == cos["x1000"] == cos["x0.5"], cos
+    # and yet only one is accepted
+    ref = gnat.dequantize(packed, scale, cols) @ x
+    assert gnat.accept_pack(w, packed, scale, cols, ref, x)["accepted"] is True
+
+
+def test_a_broken_KERNEL_is_caught_even_when_the_pack_is_honest():
+    """The two gates are independent and both must be able to fail alone."""
+    import numpy as np
+    gnat, w, packed, scale, x = _pack_fixture()
+    cols = w.shape[1]
+    ref = gnat.dequantize(packed, scale, cols) @ x
+    bad_kernel = ref * 1.5
+    r = gnat.accept_pack(w, packed, scale, cols, bad_kernel, x)
+    assert r["accepted"] is False
+    assert r["kernel_fidelity"]["ok"] is False
+    assert r["representation_fidelity"]["ok"] is True     # the pack was fine

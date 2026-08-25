@@ -136,3 +136,63 @@ def stored_gate_shape(on_disk_shape: list[int]) -> tuple[tuple[int, int], bool]:
         return (in_dim, two_out // 2), True
     out_dim, in_dim = on_disk_shape
     return (out_dim, in_dim), False
+
+
+def accept_pack(w_true, packed, scale, cols, gpu_out, x, *,
+                kernel_tol_rel: float = 1e-3,
+                min_cosine: float = 0.99,
+                magnitude_band: tuple[float, float] = (0.9, 1.1)) -> dict:
+    """Is a packed tensor ACCEPTED? Two INDEPENDENT gates, both required.
+
+    THIS EXISTS BECAUSE THE OBVIOUS PREDICATE CERTIFIES NOTHING. Comparing the GPU
+    kernel against a numpy decode of THE SAME PACKED BYTES tests only that the
+    kernel implements the representation. The original tensor never enters it, so
+    an ALL-ZEROS PACK PASSES -- measured, not supposed: zeros, swapped nibbles and
+    scales x1000 were all accepted by that predicate, at relative errors against the
+    true tensor of 1.50, 1.54 and 1003.60.
+
+    Gate 1, KERNEL FIDELITY: the kernel agrees with a decode of its own bytes.
+    Necessary, and it is the ONLY thing the old predicate checked.
+
+    Gate 2, REPRESENTATION FIDELITY: the decode resembles the TRUE tensor. Its
+    tolerances are anchored on quantities THE PACK CANNOT INFLUENCE, which is what
+    makes scaling or zeroing the pack fail rather than cancel.
+
+    COSINE IS CHECKED WITH A MAGNITUDE BAND, NEVER ALONE. This campaign sealed that
+    law on 2026-08-17 after an adequacy gate scored 0.01*W at 1.000000 on every axis
+    for a whole campaign: cosine is SCALE-INVARIANT, so a pack whose scales are
+    1000x too large points the right way and is catastrophically wrong. The band is
+    the half of the check that notices.
+    """
+    import numpy as np
+    w_true = np.asarray(w_true, dtype=np.float64)
+    x = np.asarray(x, dtype=np.float64)
+    decoded = np.asarray(dequantize(packed, scale, cols), dtype=np.float64)
+    ref = decoded @ x
+    true = w_true @ x
+    got = np.asarray(gpu_out, dtype=np.float64)
+
+    kernel_err = float(np.max(np.abs(got - ref)))
+    kernel_tol = float(np.max(np.abs(ref))) * kernel_tol_rel
+    kernel_ok = kernel_err <= kernel_tol
+
+    nt, na = float(np.linalg.norm(true)), float(np.linalg.norm(ref))
+    cos = float(np.dot(true, ref) / (nt * na)) if nt > 0 and na > 0 else 0.0
+    ratio = (na / nt) if nt > 0 else float("inf")
+    lo, hi = magnitude_band
+    rep_ok = cos >= min_cosine and lo <= ratio <= hi
+
+    return {
+        "accepted": bool(kernel_ok and rep_ok),
+        "kernel_fidelity": {"ok": bool(kernel_ok), "max_abs_err": kernel_err,
+                            "tolerance": kernel_tol,
+                            "means": "the kernel implements the representation"},
+        "representation_fidelity": {
+            "ok": bool(rep_ok), "cosine": cos, "magnitude_ratio": ratio,
+            "min_cosine": min_cosine, "magnitude_band": list(magnitude_band),
+            "means": "the representation resembles the tensor",
+            "why_both": "cosine alone is scale-invariant; the band is what catches a "
+                        "pack that points the right way at the wrong magnitude"},
+        "relative_error_vs_true": float(np.max(np.abs(ref - true)) /
+                                        max(1e-30, float(np.max(np.abs(true))))),
+    }

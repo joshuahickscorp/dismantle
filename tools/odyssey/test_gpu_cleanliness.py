@@ -90,3 +90,16 @@ def test_receipt_is_machine_generated_and_passes():
     assert d["hand_authored"] is False
     assert d["generated_by"] == "tools/odyssey/gpu_cleanliness.py"
     assert d["pass"] is True
+
+
+def test_the_two_g013_writers_do_not_share_a_canonical_path():
+    """gpu_cleanliness.py owns the MECHANISM receipt; performance_qualification.py owns
+    the CONTENTION demonstration. Earlier in this campaign two writers on one path
+    silently reverted the genome libraries."""
+    pq = (Path(__file__).resolve().parent / "performance_qualification.py").read_text()
+    gc_ = (Path(__file__).resolve().parent / "gpu_cleanliness.py").read_text()
+    assert 'GPU_CLEANLINESS_OVERRIDE.json"' in gc_
+    # the qualifier may REFERENCE the mechanism receipt but must not claim to write it
+    assert "emit_clean" in pq
+    assert 'write_text' in pq
+    assert '"mechanism_receipt"' in pq, "qualifier does not point at the mechanism receipt"

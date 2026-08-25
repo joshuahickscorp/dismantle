@@ -353,7 +353,14 @@ def main():
         "schema": "hawking.headless.gpu_cleanliness_override.v1",
         "generated_at": perf["generated_at"],
         "generated_by": "tools/odyssey/performance_qualification.py",
-        "obligation": "G013 — GPU_CLEANLINESS_OVERRIDE (directive §25)",
+        # NOT the same receipt as GPU_CLEANLINESS_OVERRIDE.json. That one owns the
+        # MECHANISM (the three resume guarantees and the pausable/standing
+        # classification, from tools/odyssey/gpu_cleanliness.py). This one owns the
+        # MEASURED EFFECT: latency with contaminating I/O running vs suspended. Two
+        # writers on one canonical path is how the genome libraries got silently
+        # reverted earlier in this campaign, so they are deliberately separate files.
+        "obligation": "G013 — GPU_CLEANLINESS contention demonstration (directive §25)",
+        "mechanism_receipt": "receipts/headless/GPU_CLEANLINESS_OVERRIDE.json",
         "hand_authored": False,
         "body_measured": name,
         "paired_measurement": {

@@ -9,6 +9,15 @@ Every number a MOCK domain produces is stamped SIMULATED. The steer is explicit
 that a simulated transport number must never be labelled physical evidence, so the
 planner carries the provenance of each cost it used into its decision, and a plan
 built on simulated numbers says so in its own output rather than in a footnote.
+
+G053 CANONICALIZATION: `hmf` (tools/accelerator/hmf.py) is now the canonical name
+for this module; this file is unchanged in behaviour and remains fully importable
+under its own name so no existing receipt, test or caller breaks. hmf.py holds the
+genuinely new HAWKGPU-0 device-abstraction layer (Accelerator, per-domain
+DeviceIdentity/MachineIdentity, topology) on top of what is defined here: the
+State/Ownership/MemoryClass vocabulary additions and the Materialization/HumfObject
+fields they need live in THIS file because Materialization and HumfObject are
+defined here, and hmf.py re-exports them rather than re-declaring them.
 """
 from __future__ import annotations
 
@@ -20,7 +29,26 @@ from typing import Any, Callable
 
 
 class State(str, Enum):
-    """Steer §14. No accidental hidden coherence assumptions."""
+    """Steer §14. No accidental hidden coherence assumptions.
+
+    G053 CANONICALIZATION: the canonical copy-state vocabulary names nine states
+    -- ABSENT, MATERIALIZING, CLEAN, DIRTY, STALE, UNKNOWN, CORRUPT, LOST, EVICTED.
+    Six were already here. UNKNOWN, CORRUPT and LOST are genuinely new members,
+    added rather than substituted for the two members the canonical list does not
+    mention -- TRANSFERRING and INVALID stay, because every existing transition,
+    receipt and test already depends on them and nothing in G053 asks for their
+    removal. Read together the set is a superset of the canonical nine, not a
+    like-for-like rename.
+
+    UNKNOWN as a STATE is a different axis from Materialization.trust == "UNKNOWN":
+    trust says a CLEAN copy's bytes are not vouched for (device_partially_lost's
+    probe timeout leaves state alone on purpose -- see that function's docstring);
+    State.UNKNOWN says the copy's COHERENCE STATE ITSELF could not be established.
+    Existing code paths (device_partially_lost, resolve_unknown, audit) are left
+    untouched and keep using trust + INVALID exactly as before; State.UNKNOWN,
+    State.CORRUPT and State.LOST are wired into LEGAL below so new callers have a
+    real, fail-closed state machine to use rather than a decorative name that is
+    never reachable."""
     ABSENT = "ABSENT"
     CLEAN = "CLEAN"
     DIRTY = "DIRTY"
@@ -29,22 +57,141 @@ class State(str, Enum):
     TRANSFERRING = "TRANSFERRING"
     INVALID = "INVALID"
     EVICTED = "EVICTED"
+    UNKNOWN = "UNKNOWN"
+    CORRUPT = "CORRUPT"
+    LOST = "LOST"
 
 
 # Illegal transitions fail closed (the steer says so of the driver state machine;
 # the same discipline belongs here, where a silent bad transition means silent
 # data corruption rather than a crash).
+#
+# UNKNOWN/CORRUPT/LOST are additive: every pre-existing edge is unchanged, so no
+# transition legal before G053 became illegal. CORRUPT recovers exactly like
+# INVALID (ABSENT or straight to MATERIALIZING) because both mean "known bad,
+# retry is fine." LOST is deliberately STRICTER than INVALID -- only -> ABSENT --
+# because LOST means the bytes are gone with no retry path; a caller must clear
+# the slot before it may be reused, it cannot jump straight back into flight.
 LEGAL: dict[State, set[State]] = {
     State.ABSENT:        {State.MATERIALIZING, State.TRANSFERRING},
-    State.MATERIALIZING: {State.CLEAN, State.INVALID},
-    State.TRANSFERRING:  {State.CLEAN, State.INVALID},
+    State.MATERIALIZING: {State.CLEAN, State.INVALID, State.CORRUPT, State.LOST},
+    State.TRANSFERRING:  {State.CLEAN, State.INVALID, State.CORRUPT, State.LOST},
     State.CLEAN:         {State.DIRTY, State.STALE, State.EVICTED, State.INVALID,
-                          State.TRANSFERRING},
-    State.DIRTY:         {State.CLEAN, State.STALE, State.INVALID},
+                          State.TRANSFERRING, State.UNKNOWN, State.CORRUPT,
+                          State.LOST},
+    State.DIRTY:         {State.CLEAN, State.STALE, State.INVALID, State.UNKNOWN,
+                          State.CORRUPT, State.LOST},
     State.STALE:         {State.TRANSFERRING, State.MATERIALIZING, State.EVICTED,
-                          State.INVALID},
+                          State.INVALID, State.UNKNOWN, State.CORRUPT, State.LOST},
     State.EVICTED:       {State.MATERIALIZING, State.TRANSFERRING, State.ABSENT},
     State.INVALID:       {State.ABSENT, State.MATERIALIZING},
+    State.UNKNOWN:       {State.CLEAN, State.STALE, State.CORRUPT, State.LOST,
+                          State.ABSENT},
+    State.CORRUPT:       {State.ABSENT, State.MATERIALIZING},
+    State.LOST:          {State.ABSENT},
+}
+
+
+class Ownership(str, Enum):
+    """G053: the SECOND, SEPARATE axis. A copy's Ownership says which domain's
+    write is authoritative over it right now (or that it is shared-read, or mid
+    handoff) -- it says NOTHING about the copy's coherence (State). A CLEAN copy
+    can be APPLE_BIAS or SHARED_READ; a DIRTY copy still has an owner. Collapsing
+    the two axes into one would make a write-ownership question and a coherence
+    question the same field, which is exactly the bug class State vs trust above
+    already exists to avoid repeating.
+
+    Five members, matching the canonical set: APPLE_BIAS and SPARK0_BIAS/
+    SPARK1_BIAS name which domain's write is authoritative; SHARED_READ means no
+    domain holds exclusive write ownership; TRANSIT is the handoff state a change
+    of owner must pass through, the ownership equivalent of TRANSFERRING."""
+    APPLE_BIAS = "APPLE_BIAS"
+    SPARK0_BIAS = "SPARK0_BIAS"
+    SPARK1_BIAS = "SPARK1_BIAS"
+    SHARED_READ = "SHARED_READ"
+    TRANSIT = "TRANSIT"
+
+
+# Fail closed exactly like LEGAL above. An exclusive bias may only become shared
+# or hand off through TRANSIT -- never jump straight to a different exclusive
+# bias -- and TRANSIT is the only state that may resolve into any of the others,
+# mirroring how a real handoff has no direct bias-to-bias edge.
+OWNERSHIP_LEGAL: dict[Ownership, set[Ownership]] = {
+    Ownership.APPLE_BIAS:  {Ownership.TRANSIT, Ownership.SHARED_READ},
+    Ownership.SPARK0_BIAS: {Ownership.TRANSIT, Ownership.SHARED_READ},
+    Ownership.SPARK1_BIAS: {Ownership.TRANSIT, Ownership.SHARED_READ},
+    Ownership.SHARED_READ: {Ownership.TRANSIT},
+    Ownership.TRANSIT:     {Ownership.APPLE_BIAS, Ownership.SPARK0_BIAS,
+                            Ownership.SPARK1_BIAS, Ownership.SHARED_READ},
+}
+
+
+class MemoryClass(str, Enum):
+    """G053: what KIND of object this is, which is what actually decides its
+    residency/consistency policy -- see MEMORY_CLASS_POLICY. There is
+    deliberately no universal page policy; a class that is never mutated
+    (IMMUTABLE_WEIGHTS, COMPILER_ARTIFACT, EXPERT_CACHE) may sit SHARED_READ
+    across every domain it has ever been placed in and stay CLEAN there
+    indefinitely, while a class that is mutated every step (KV_STATE,
+    RECURRENT_STATE) goes through ordinary write/stale bookkeeping exactly as
+    today. `memory_class` is optional on HumfObject (default None) so every
+    existing caller that never classified an object keeps working unchanged."""
+    IMMUTABLE_WEIGHTS = "IMMUTABLE_WEIGHTS"
+    KV_STATE = "KV_STATE"
+    RECURRENT_STATE = "RECURRENT_STATE"
+    ACTIVATIONS = "ACTIVATIONS"
+    ROUTING = "ROUTING"
+    METADATA = "METADATA"
+    SCRATCH = "SCRATCH"
+    COMPILER_ARTIFACT = "COMPILER_ARTIFACT"
+    EXPERT_CACHE = "EXPERT_CACHE"
+
+
+# THE LOAD-BEARING FIELD IS `mutable`. False means mark_written() refuses --
+# see HumfObject.mark_written -- which is what makes "IMMUTABLE_WEIGHTS can go
+# SHARED_READ after placement and stay valid" an enforced invariant rather than
+# a comment: nothing can silently write through an immutable object and nothing
+# needs to re-stream it merely because execution crossed a domain, since a read
+# in a foreign domain was never staling anything to begin with (staleness has
+# always come from mark_written, never from mere cross-domain access -- true
+# before G053 too, and now it is also POLICED for the classes that must never
+# see it fire).
+MEMORY_CLASS_POLICY: dict[MemoryClass, dict[str, Any]] = {
+    MemoryClass.IMMUTABLE_WEIGHTS: {
+        "mutable": False, "shared_read_stable": True,
+        "note": "written once at load, then read-only; SHARED_READ across "
+                "domains never forces a re-stream because the value cannot "
+                "change under it"},
+    MemoryClass.COMPILER_ARTIFACT: {
+        "mutable": False, "shared_read_stable": True,
+        "note": "a compiled kernel/binary is immutable once produced -- same "
+                "SHARED_READ-stays-valid treatment as IMMUTABLE_WEIGHTS"},
+    MemoryClass.EXPERT_CACHE: {
+        "mutable": False, "shared_read_stable": True,
+        "note": "a resident expert's weights are immutable once cached; "
+                "eviction is a capacity decision, not a correctness one"},
+    MemoryClass.KV_STATE: {
+        "mutable": True, "shared_read_stable": False,
+        "note": "grows/overwrites every decode step; a write anywhere stales "
+                "every other copy exactly like any DIRTY object"},
+    MemoryClass.RECURRENT_STATE: {
+        "mutable": True, "shared_read_stable": False,
+        "note": "one authoritative copy per sequence, overwritten every step"},
+    MemoryClass.ACTIVATIONS: {
+        "mutable": True, "shared_read_stable": False,
+        "note": "produced and consumed within one pass; ordinarily short-lived, "
+                "no special cross-domain treatment"},
+    MemoryClass.ROUTING: {
+        "mutable": True, "shared_read_stable": False,
+        "note": "recomputed per token/batch; treated as ordinary mutable state"},
+    MemoryClass.METADATA: {
+        "mutable": True, "shared_read_stable": False,
+        "note": "small bookkeeping, mutable, no special policy beyond ordinary "
+                "state"},
+    MemoryClass.SCRATCH: {
+        "mutable": True, "shared_read_stable": False,
+        "note": "transient workspace; contents are not expected to outlive one "
+                "op"},
 }
 
 
@@ -107,12 +254,28 @@ class Materialization:
     # provider's OWN CLAIM about which path it digested and the fabric cannot check it.
     resident_verified: bool = False
     resident_digest_path: str | None = None
+    # G053: OWNERSHIP IS A SEPARATE AXIS FROM STATE -- see the Ownership class
+    # docstring. Defaults to APPLE_BIAS because today there is exactly one real
+    # domain (HAWKGPU-0's APPLE_DOMAIN_0) and it is the only writer there is.
+    ownership: Ownership = Ownership.APPLE_BIAS
 
     def transition(self, to: State) -> None:
         if to not in LEGAL[self.state]:
             raise HumfError(f"illegal transition {self.state.value} -> {to.value} "
                             f"for {self.representation} in {self.domain}")
         self.state = to
+
+    def transition_ownership(self, to: Ownership) -> None:
+        """The Ownership-axis twin of transition(). Deliberately a SEPARATE
+        method over a SEPARATE table (OWNERSHIP_LEGAL) touching a SEPARATE field
+        -- calling this never reads or writes self.state, and transition() never
+        reads or writes self.ownership. That separation is the thing G053 asks
+        to be pinned by a test, not merely documented."""
+        if to not in OWNERSHIP_LEGAL[self.ownership]:
+            raise HumfError(
+                f"illegal ownership transition {self.ownership.value} -> "
+                f"{to.value} for {self.representation} in {self.domain}")
+        self.ownership = to
 
 
 @dataclass
@@ -134,6 +297,10 @@ class HumfObject:
     # only value in the fabric that a transport cannot influence.
     content_digest: str | None = None
     unsealed_because: str | None = None
+    # G053: OPTIONAL classification driving MEMORY_CLASS_POLICY. None (the
+    # default) means "unclassified" and every existing caller that never set
+    # this keeps working with zero policy enforced -- see mark_written().
+    memory_class: MemoryClass | None = None
 
     # 5 valid copies
     def valid_copies(self) -> list[str]:
@@ -161,9 +328,21 @@ class HumfObject:
 
     def mark_written(self, domain: str) -> None:
         """A write makes this copy DIRTY and every other copy STALE. Nothing about
-        that is implicit."""
+        that is implicit.
+
+        G053: if this object is classified into an IMMUTABLE memory_class (per
+        MEMORY_CLASS_POLICY), a write is refused outright rather than silently
+        accepted -- an immutable object that could still be written through is
+        not actually policed, it is only documented, and this fabric does not
+        settle for that. Unclassified objects (memory_class is None) are
+        unaffected, so no existing caller changes behaviour."""
         if domain not in self.materializations:
             raise HumfError(f"{self.identity} has no materialization in {domain}")
+        if self.memory_class is not None and not MEMORY_CLASS_POLICY[self.memory_class]["mutable"]:
+            raise HumfError(
+                f"{self.identity} is classified {self.memory_class.value}, which "
+                f"MEMORY_CLASS_POLICY marks immutable; refusing to write it in "
+                f"{domain} rather than silently violating its own policy")
         self.materializations[domain].transition(State.DIRTY)
         # A legitimate write makes the recorded identity WRONG, and an identity check
         # that fires on legitimate writes gets turned off. Unseal instead: origin

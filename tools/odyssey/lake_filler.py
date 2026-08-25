@@ -26,6 +26,63 @@ _lock = threading.Lock()
 _results = []
 
 
+CLAIMS = ml.LAKE / "claims"
+
+
+def _claim_path(slug):
+    return CLAIMS / f"{slug}.json"
+
+
+def claim_holder(slug):
+    """Who is currently acquiring this slug, or None.
+
+    plan() de-duped ONLY against published specimens, so a repo already being fetched --
+    or, worse, one being fetched by a process ORPHANED BY A PRIOR RESTART -- was invisible
+    and got claimed a second time. Observed for real: PID 52317 (parent dead, reparented
+    to init, running 13h50m) and PID 24470 were BOTH acquiring
+    moonshotai--Kimi-Linear-48B-A3B-Instruct into the SAME partial directory, holding two
+    different shards open and writing the SAME log file. huggingface's per-file lock keeps
+    that from corrupting a shard, but nothing above it stopped the double claim, and a
+    third-party log recorded 579.3 s of lock waiting as the visible cost.
+
+    A claim whose PID is dead is STALE and reclaimable -- otherwise one crash would strand
+    a repo forever, which is a worse failure than the one being fixed.
+    """
+    f = _claim_path(slug)
+    if not f.is_file():
+        return None
+    try:
+        d = json.loads(f.read_text())
+    except Exception:                              # noqa: BLE001 -- unreadable == stale
+        return None
+    pid = d.get("pid")
+    if pid is None:
+        return None
+    try:
+        os.kill(pid, 0)                            # signal 0: liveness, no delivery
+    except (ProcessLookupError, PermissionError):
+        return None                                # holder is gone: STALE, reclaimable
+    return d
+
+
+def take_claim(slug):
+    """Take the claim, or return the live holder. Never steals from a living process."""
+    CLAIMS.mkdir(parents=True, exist_ok=True)
+    with _lock:
+        held = claim_holder(slug)
+        if held is not None and held.get("pid") != os.getpid():
+            return held
+        _claim_path(slug).write_text(json.dumps(
+            {"pid": os.getpid(), "slug": slug, "taken_at": time.time()}))
+    return None
+
+
+def release_claim(slug):
+    d = claim_holder(slug)
+    if d is None or d.get("pid") == os.getpid():
+        _claim_path(slug).unlink(missing_ok=True)
+
+
 def plan():
     sel = json.load(open(REPO / "receipts/headless/MODEL_2_SELECTION.json"))
     resident = ml.resident_slugs()
@@ -36,6 +93,10 @@ def plan():
             continue
         slug = c["canonical_source"].replace("/", "--") + "@" + c["canonical_revision"][:12]
         if slug in resident:
+            continue
+        held = claim_holder(slug)                  # someone alive is already on it
+        if held is not None:
+            print(f"plan: SKIP {slug} -- claimed by live pid {held['pid']}", flush=True)
             continue
         todo.append({"oxx": c["oxx"], "repo": c["canonical_source"],
                      "revision": c["canonical_revision"], "gib": s["download_gib"],
@@ -68,18 +129,41 @@ def fetch(item, worker):
             _results.append(rec)
         print(f"  [w{worker}] REFUSED {item['oxx']} {item['repo']}: {cap}", flush=True)
         return rec
+    held = take_claim(item["slug"])
+    if held is not None:
+        rec = {**item, "worker": worker, "acquired": False,
+               "refused_claim": f"live pid {held['pid']} since {held.get('taken_at')}"}
+        with _lock:
+            _results.append(rec)
+        print(f"  [w{worker}] REFUSED {item['oxx']}: claimed by pid {held['pid']}",
+              flush=True)
+        return rec
     t0 = time.time()
     print(f"  [w{worker}] START  {item['oxx']} {item['repo']} ({item['gib']} GiB)", flush=True)
     log = LOGDIR / f"{item['slug']}.log"
-    with open(log, "w") as fh:
+    # APPEND, never "w". A retry used to TRUNCATE the previous attempt's output, which is
+    # exactly how the Qwen2.5-72B-Instruct failure (1989 s, exit 1) became unreadable --
+    # a fresh attempt for the same repo destroyed the evidence before anyone looked.
+    with open(log, "a") as fh:
+        fh.write(f"\n===== attempt worker={worker} pid={os.getpid()} "
+                 f"t={time.strftime('%Y-%m-%dT%H:%M:%S')} =====\n")
+        fh.flush()
         p = subprocess.run(
             [sys.executable, str(REPO / "tools/odyssey/modellake.py"), "acquire",
              "--repo", item["repo"], "--revision", item["revision"]],
             stdout=fh, stderr=subprocess.STDOUT, cwd=str(REPO))
+    release_claim(item["slug"])
     wall = time.time() - t0
+    # TIER2/slug exists only AFTER the atomic publish, so measuring only there reports
+    # 0 bytes for a download that completed into partial/ and failed to publish -- the
+    # same number a download that never transferred a byte produces. Measure BOTH, and
+    # keep them in separate fields so "downloaded" and "published" cannot be conflated.
     got = ml.du(ml.TIER2 / item["slug"])
+    staged = ml.du(ml.PARTIAL / item["slug"])
     rec = {**item, "worker": worker, "exit_code": p.returncode,
            "acquired": got > 0, "bytes_on_disk": got,
+           "partial_bytes": staged,
+           "downloaded_but_unpublished": got == 0 and staged > 0,
            "wall_s": round(wall, 1),
            "MB_per_s": round(got / 2**20 / wall, 2) if wall > 0 else None,
            "capacity_check": cap, "log": str(log)}
@@ -135,6 +219,7 @@ def main():
     for t in threads:
         t.join()
 
+    release_claim(item["slug"])
     wall = time.time() - t0
     got = [r for r in _results if r.get("acquired")]
     total_bytes = sum(r.get("bytes_on_disk", 0) for r in got)

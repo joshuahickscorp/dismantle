@@ -359,5 +359,12 @@
   "nothing timed, f32 only, one machine, INSTANCE."
  ],
  "what_is_now_known_that_was_not": "the 10x loudness gap is NOT explained by how many threads read across a barrier, and NOT by what they do with the value. Two candidate mechanisms are eliminated by measurement rather than by argument, and a third -- what the slot already holds -- is the only one that has produced any separation at all.",
- "tests": "443 accelerator tests pass (unchanged; no shipped kernel was modified)"
+ "tests": "443 accelerator tests pass (unchanged; no shipped kernel was modified)",
+ "AMENDED_IN_PLACE_2026_08_25": {
+  "by": "receipts/headless/ACCELERATOR_BARRIER_CONTROL_MECHANISM.json",
+  "what_is_RETRACTED": "arm 3's attribution. This receipt reported that a STALE slot (holding a prior valid value) is quieter than a GARBAGE one (uninitialised) and read that as the first separation in three framings. THE TWO ARMS DIFFERED IN TWO WAYS: the stale arm needed an UPSTREAM BARRIER to make its prior value valid and the garbage arm had none. A 2x2x2x2 factorial varying them independently gives marginal p_fired of 1.000 with no upstream barrier against 0.084 with one, while SLOT CONTENTS move it 0.574 vs 0.510 -- nothing. The separation is real and its stated cause is wrong.",
+  "what_ALSO_did_not_survive": "the number itself. Stale at threadgroup 64 measured 0.55 here, 0.90 when THIS RECEIPT'S OWN SCRIPT was re-run verbatim the same day, and 0.02 under a rewrite. p in the intermediate regime is unstable within a single process (0.09 then 0.37 back to back on one kernel), so it is not a property of the kernel at n=20.",
+  "what_STANDS": "arms 1 and 2 are untouched -- dependency density and maskability are still refuted as mechanisms, by measurement. The intact kernel was wrong in 0 of 580 runs. And the DIRECTION of arm 3 survives in the sense that the quiet cell really was quiet; only WHY is corrected.",
+  "why_it_matters": "a refutation that names the wrong cause teaches the wrong lesson to whoever reads it next -- here, that a control's strength depends on what the racing read finds, which would send someone to design a control around slot contents when the lever is where the barrier sits."
+ }
 }

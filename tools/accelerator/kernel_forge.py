@@ -19,6 +19,7 @@ compute the wrong answer.
 from __future__ import annotations
 
 import json
+import re
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -294,8 +295,64 @@ def shape_sweep(cases, check, *, name: str = "sweep") -> dict[str, Any]:
 WIDTH_PRIOR = (32, 64, 128, 256, 512, 1024)
 
 
+# MEASURED, and it is the ONLY factor that moved a barrier control's loudness.
+# A 2x2x2x2 factorial at threadgroup 64 varied what the racing read FINDS
+# (uninitialised garbage vs a prior valid value), whether an UPSTREAM barrier
+# precedes the stripped one, whether the racing write's operand is hoisted into a
+# register or reloaded from global memory, and the input values. Marginal mean
+# p_fired: upstream ABSENT 1.000 vs PRESENT 0.084, against slot contents
+# 0.574/0.510, load 0.505/0.579 and values 0.534/0.551. See
+# ACCELERATOR_BARRIER_CONTROL_MECHANISM.json.
+CONTROL_LOUDNESS_PRIOR = {"no_upstream_barrier": 1.000, "upstream_barrier": 0.084}
+_BARRIER_TOKENS = ("threadgroup_barrier", "simdgroup_barrier")
+
+
+def barrier_control_prior(source: str, strip_index: int = 0) -> dict[str, Any]:
+    """How much evidence a stripped-barrier control can carry, from the SOURCE.
+
+    A control that strips a barrier is only as informative as the race it exposes,
+    and the race window is set by HOW SYNCHRONIZED THE THREADGROUP ALREADY IS when
+    it reaches the conflicting access. An upstream barrier resynchronizes it, so a
+    barrier stripped just after another barrier exposes a window narrow enough that
+    the defect mostly does not fire -- 0.084 against 1.000 with no upstream barrier.
+
+    That is a PRIOR ON THE CONTROL, never a claim about the kernel: a quiet control
+    means the sweep proved little, NOT that the barrier is unnecessary.
+
+    It predicts the two shipped controls from structure. AirNorm's barrier publishes
+    a row sum written straight after an unsynchronized per-thread scan, so nothing is
+    upstream of it -- measured LOUD, 40 of 48. AirTopKSample's sits inside a tree
+    reduce where the previous iteration's barrier is one compare-and-swap upstream --
+    measured QUIET, 4 of 48. ACCELERATOR_QUIET_CONTROL.json reported that 10x gap
+    with no mechanism; this is the mechanism.
+    """
+    hits = [m.start() for m in re.finditer("|".join(_BARRIER_TOKENS), source)]
+    if not 0 <= strip_index < len(hits):
+        raise ValueError(
+            f"barrier_control_prior: strip_index {strip_index} is outside the "
+            f"{len(hits)} barrier(s) in this source. Naming a barrier that is not "
+            f"there would silently return the prior for a different one.")
+    at = hits[strip_index]
+    upstream = strip_index > 0
+    since = source[hits[strip_index - 1]:at] if upstream else source[:at]
+    work = len([ln for ln in since.splitlines()[1:] if ln.strip()
+                and not ln.strip().startswith("//")])
+    return {
+        "barriers_in_source": len(hits), "stripped_at": strip_index,
+        "has_upstream_barrier": upstream, "statements_since_upstream": work,
+        "expected_p_fired": CONTROL_LOUDNESS_PRIOR[
+            "upstream_barrier" if upstream else "no_upstream_barrier"],
+        "verdict": "QUIET_CONTROL_WEAK_EVIDENCE" if upstream else "LOUD_CONTROL",
+        # The factorial varied ONE thing at a time at ONE width on synthetic kernels.
+        # Statement count is reported because a longer gap should widen the window,
+        # and it is NOT part of the prior because it was never varied on its own.
+        "basis": "ACCELERATOR_BARRIER_CONTROL_MECHANISM.json (factorial, tg=64)",
+    }
+
+
 def swept_with_control(cases, check, broken_check, *, name: str = "sweep",
-                       repeat: int = 1) -> dict[str, Any]:
+                       repeat: int = 1, control_priors: dict[str, Any] | None = None
+                       ) -> dict[str, Any]:
     """A sweep that has never been watched fail cannot report zero failures.
 
     Runs the real check over `cases` AND a deliberately broken variant over the same
@@ -369,7 +426,11 @@ def swept_with_control(cases, check, broken_check, *, name: str = "sweep",
         seen.append({"label": label, "detected_at": det,
                      "blind_at": [c["case"] for c in ctl if c["ok"]],
                      "fired_runs": sum(c["wrong"] for c in ctl),
-                     "total_runs": len(ctl) * repeat})
+                     "total_runs": len(ctl) * repeat,
+                     # A control blind for a KNOWN structural reason is interpretable;
+                     # one blind for an unknown reason is not, and the two read the
+                     # same in a blind list. See barrier_control_prior.
+                     "prior": (control_priors or {}).get(label)})
 
     reached = {tuple(c) for s_ in seen for c in s_["detected_at"]}
     blind_everywhere = [list(c) for c in cases if tuple(c) not in reached]

@@ -243,3 +243,96 @@ def test_the_floor_bounds_repeat_and_says_so():
                               name="floor", repeat=8)
     assert r["detection_floor_per_run"] == 0.083
     assert r["floor_bounds_repeat_not_coverage"] is True
+
+
+# --- barrier_control_prior: the mechanism behind the measured 10x -------------
+# ACCELERATOR_QUIET_CONTROL.json measured a LOUD control firing 40 of 48 and a
+# QUIET one 4 of 48 and could not say why. A factorial found the cause is the
+# UPSTREAM BARRIER (1.000 vs 0.084), not what the racing read finds (0.574 vs
+# 0.510). These pin BOTH directions, because a prior that only ever says LOUD is
+# as useless as one that only ever says QUIET.
+
+_NORM_SHAPED = """
+    float ss = 0.0f;
+    for (uint c = lid; c < cols; c += tg) ss += x[base + c] * x[base + c];
+    if (lane == 0u) red[warp] = ss;
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    for (uint i = 0u; i < lanes; ++i) tot += red[i];
+"""
+_TOPK_SHAPED = """
+    cv[lid] = bv;
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    for (uint span = tg / 2u; span > 0u; span >>= 1u) {
+        if (lid < span) cv[lid] = max(cv[lid], cv[lid + span]);
+        threadgroup_barrier(mem_flags::mem_threadgroup);
+    }
+"""
+
+
+def test_a_barrier_with_NOTHING_upstream_is_a_LOUD_control():
+    """AirNorm's row sum: a long unsynchronized scan, then the write, then the
+    barrier. The threadgroup arrives with full accumulated skew."""
+    p = kf.barrier_control_prior(_NORM_SHAPED, 0)
+    assert p["has_upstream_barrier"] is False
+    assert p["verdict"] == "LOUD_CONTROL"
+    assert p["expected_p_fired"] == 1.0
+
+
+def test_a_barrier_JUST_AFTER_ANOTHER_is_a_QUIET_control_and_says_so():
+    """Top-k's tree reduce: the previous iteration's barrier resynchronized the
+    group one compare-and-swap ago, so the race window is narrow."""
+    p = kf.barrier_control_prior(_TOPK_SHAPED, 1)
+    assert p["has_upstream_barrier"] is True
+    assert p["expected_p_fired"] == 0.084
+    # the WEAKNESS must be in the verdict, not left for a reader to infer from a
+    # small number: a quiet control means the SWEEP proved little, never that the
+    # barrier is unnecessary.
+    assert p["verdict"] == "QUIET_CONTROL_WEAK_EVIDENCE"
+
+
+def test_the_SAME_source_gives_OPPOSITE_verdicts_for_different_barriers():
+    """The prior is a property of a POSITION, not of a kernel -- top-k's first
+    barrier has nothing upstream while its loop barriers do."""
+    first = kf.barrier_control_prior(_TOPK_SHAPED, 0)
+    later = kf.barrier_control_prior(_TOPK_SHAPED, 1)
+    assert first["verdict"] == "LOUD_CONTROL"
+    assert later["verdict"] == "QUIET_CONTROL_WEAK_EVIDENCE"
+
+
+def test_naming_a_barrier_that_is_not_there_RAISES():
+    """Silently returning the prior for a different barrier would be worse than
+    refusing: the caller would act on a number about the wrong position."""
+    import pytest
+    with pytest.raises(ValueError, match="outside"):
+        kf.barrier_control_prior(_NORM_SHAPED, 7)
+
+
+def test_the_prior_travels_with_the_control_it_describes():
+    """A control blind for a KNOWN structural reason is interpretable; one blind
+    for an unknown reason is not, and the two read identically in a blind list."""
+    prior = kf.barrier_control_prior(_TOPK_SHAPED, 1)
+    r = kf.swept_with_control([(64,), (1024,)], lambda c: 0.0,
+                              [("quiet", lambda c: 9.9 if c[0] == 1024 else 0.0)],
+                              name="p", repeat=1, control_priors={"quiet": prior})
+    assert r["controls"][0]["prior"]["verdict"] == "QUIET_CONTROL_WEAK_EVIDENCE"
+    assert r["controls"][0]["blind_at"] == [[64]]
+
+
+def test_a_control_with_no_prior_supplied_reports_None_not_a_guess():
+    r = kf.swept_with_control([(64,)], lambda c: 0.0, [("c", lambda c: 9.9)],
+                              name="p", repeat=1)
+    assert r["controls"][0]["prior"] is None
+
+
+def test_an_arm_faster_than_the_clock_is_UNMEASURABLE_not_perfectly_stable():
+    """Found as an intermittent ZeroDivisionError at bench.py:42, roughly one run in
+    four: perf_counter can return the same value twice for a cheap callable, and the
+    spread was computed by dividing by that sample. Zero spread would have read as the
+    most reliable arm ever timed, so the arm is refused instead."""
+    import bench
+    r = bench.time_arm(lambda: None, reps=8, warmup=1)
+    if r["below_timer_resolution"]:
+        assert r["iqr_spread_pct"] == float("inf")
+        assert r["reliable"] is False          # cannot pass a gate it never entered
+    else:                                       # the clock did resolve it: normal path
+        assert r["iqr_spread_pct"] >= 0.0

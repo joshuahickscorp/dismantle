@@ -77,3 +77,16 @@ def test_the_real_ledger_on_disk_is_honest():
     for e in led["entries"]:
         if e["semantic_gap"] == "NONE":
             assert e.get("evidence"), f"{e['capability_id']} claims parity with no evidence"
+
+
+def test_margin_is_symmetric_between_wins_and_losses():
+    """|speedup-1| capped a slowdown at 100% while a speedup was unbounded, so the
+    instrument was quietly harder on losses than wins."""
+    import bench
+    fast = {"median_s": 1.0, "iqr_spread_pct": 14.0, "reliable": False}
+    slow = {"median_s": 3.0, "iqr_spread_pct": 14.0, "reliable": False}
+    loss = bench.compare({"b": fast, "c": slow}, baseline="b", candidate="c")
+    win = bench.compare({"b": slow, "c": fast}, baseline="b", candidate="c")
+    assert loss["margin_pct"] == win["margin_pct"] == 200.0
+    assert loss["verdict"].startswith("BASELINE_WINS")
+    assert win["verdict"].startswith("CANDIDATE_WINS")

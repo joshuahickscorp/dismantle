@@ -50,7 +50,12 @@ def compare(arms: dict[str, dict[str, Any]], *, baseline: str,
     b, c = arms[baseline], arms[candidate]
     speedup = b["median_s"] / c["median_s"]
     noise_all = max(b["iqr_spread_pct"], c["iqr_spread_pct"])
-    margin_all = abs(speedup - 1.0) * 100
+    # SYMMETRIC margin. |speedup - 1| is bounded by 100% for any slowdown however
+    # severe, while a speedup is unbounded -- so a 3x slowdown scored 67% and got
+    # refused where a 3x speedup would have scored 200% and passed. The metric was
+    # quietly harder on losses than on wins, which is exactly the wrong bias for an
+    # instrument that exists to stop us overclaiming.
+    margin_all = (max(speedup, 1.0 / speedup) - 1.0) * 100
     if not (b["reliable"] and c["reliable"]):
         # A flat veto is too crude. It correctly refuses a 2% win measured on 15%
         # noise, but it would also discard a 617% margin sitting 49x above the noise,

@@ -290,3 +290,24 @@ def test_block_2_refuses_shapes_it_cannot_cover():
 def test_unimplemented_block_is_refused():
     with pytest.raises(ValueError, match="only 1 and 2"):
         air.AirMatmul("m", 64, 64, 64, strategy="simdgroup", block=3).validate()
+
+
+# --- reduction ---
+
+def test_reduce_emits_a_barrier_and_a_simd_reduction():
+    s = air.lower_reduce_to_msl(air.AirReduce("r", 1024, "sum"))
+    assert "simd_sum" in s and s.count("threadgroup_barrier") == 1
+    assert "simd_max" in air.lower_reduce_to_msl(air.AirReduce("r", 1024, "max"))
+
+
+def test_reduce_refuses_an_unknown_op_and_a_bad_threadgroup():
+    with pytest.raises(ValueError, match="unknown reduce op"):
+        air.AirReduce("r", 64, "median").validate()
+    with pytest.raises(ValueError, match="multiple of the"):
+        air.AirReduce("r", 64, "sum", threadgroup=100).validate()
+
+
+def test_reduce_partial_count_covers_every_element():
+    for n in (1, 255, 256, 257, 1 << 20):
+        rd = air.AirReduce("r", n, "sum", threadgroup=256)
+        assert rd.partials() * 256 >= n

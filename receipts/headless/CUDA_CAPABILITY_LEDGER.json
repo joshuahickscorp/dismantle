@@ -205,16 +205,17 @@
    "why_it_exists": "reductions are latency-critical and hard to write well",
    "underlying_problem": "tree reduction across a hierarchy with correct synchronization",
    "apple_equivalent": "MLX reductions; simd_sum",
-   "hawking_equivalent": "NONE",
-   "semantic_gap": "LARGE",
+   "hawking_equivalent": "AIR two-stage reduction, sum and max",
+   "semantic_gap": "PARTIAL",
    "performance_gap": {
-    "measured": false,
-    "reason": "nothing implemented"
+    "measured": true,
+    "value": "MLX wins ~3x (0.343 at 2^20, 0.327 at 2^24)",
+    "receipt": "receipts/headless/ACCELERATOR_REDUCTION.json"
    },
    "priority": "P1",
-   "test_corpus": "ABSENT",
-   "current_winner": "MLX",
-   "remaining_limitation": "softmax and normalization both need this, so attention is blocked behind it"
+   "test_corpus": "sum/max at 1024, 2^20, 2^24 and a non-power-of-two 4194311",
+   "current_winner": "MLX, retained",
+   "remaining_limitation": "REDUCTION only -- no SCAN at all. Three launches per reduction where MLX uses far fewer, one element per thread, f32 only. Softmax and therefore attention remain blocked despite the reduction existing."
   },
   {
    "capability_id": "RUNTIME.streams_and_events",

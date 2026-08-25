@@ -365,6 +365,97 @@ def execute_matmul(mm: AirMatmul, a, b):
     return c
 
 
+REDUCE_OPS = ("sum", "max")
+
+
+@dataclass
+class AirReduce:
+    """A full reduction as an AIR program. FRONT D / CCL MATH.reduction_and_scan.
+
+    Two stage rather than atomic: each threadgroup reduces its slice to one partial
+    using simd_sum plus a threadgroup barrier, then the partials are reduced again.
+    Atomics would collapse this to one pass but atomics are still a LARGE gap in the
+    ledger, and borrowing an unbuilt capability to make this look simpler would be a
+    lie about what executes.
+    """
+    name: str
+    n: int
+    op: str = "sum"
+    threadgroup: int = 256
+    dtype: str = "f32"
+    device: str = "APPLE_GPU_0"
+
+    def validate(self) -> None:
+        if self.op not in REDUCE_OPS:
+            raise ValueError(f"unknown reduce op {self.op!r}; known: {REDUCE_OPS}")
+        if self.dtype != "f32":
+            raise ValueError("reductions are f32 only here")
+        if self.threadgroup % 32 or not 32 <= self.threadgroup <= 1024:
+            raise ValueError(f"threadgroup {self.threadgroup} must be a multiple of the "
+                             f"32-wide SIMD group and within Metal's 1024 limit")
+        if self.n <= 0:
+            raise ValueError("n must be positive")
+
+    def partials(self) -> int:
+        return (self.n + self.threadgroup - 1) // self.threadgroup
+
+    def barrier_scopes_emitted(self) -> list[str]:
+        return ["THREADGROUP"]
+
+    def executable_on_metal_backend(self) -> tuple[bool, str]:
+        return True, "two-stage reduction with simd_sum and one threadgroup barrier"
+
+
+def lower_reduce_to_msl(rd: AirReduce) -> str:
+    rd.validate()
+    ident = "0.0f" if rd.op == "sum" else "-INFINITY"
+    simd = "simd_sum" if rd.op == "sum" else "simd_max"
+    comb = "acc += partial[i];" if rd.op == "sum" else "acc = max(acc, partial[i]);"
+    lanes = rd.threadgroup // 32
+    return f"""
+    uint gid = thread_position_in_grid.x;
+    uint lid = thread_position_in_threadgroup.x;
+    uint tgid = threadgroup_position_in_grid.x;
+    threadgroup float partial[{lanes}];
+    float v = (gid < {rd.n}u) ? x[gid] : ({ident});
+    float s = {simd}(v);
+    uint lane = lid % 32u;
+    uint warp = lid / 32u;
+    if (lane == 0u) partial[warp] = s;
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    if (lid == 0u) {{
+        float acc = {ident};
+        for (uint i = 0; i < {lanes}u; ++i) {{ {comb} }}
+        out[tgid] = acc;
+    }}
+"""
+
+
+def execute_reduce(rd: AirReduce, x):
+    """Stage one on the GPU; the partials are reduced again until one value remains."""
+    import mlx.core as mx
+    rd.validate()
+    src = lower_reduce_to_msl(rd)
+    kern = mx.fast.metal_kernel(name=f"air_red_{rd.op}_{rd.name}", input_names=["x"],
+                                output_names=["out"], source=src,
+                                ensure_row_contiguous=True)
+    cur = mx.array(x, dtype=mx.float32)
+    n = rd.n
+    while n > 1:
+        step = AirReduce(rd.name, n, rd.op, rd.threadgroup)
+        k2 = mx.fast.metal_kernel(name=f"air_red_{rd.op}_{n}", input_names=["x"],
+                                  output_names=["out"],
+                                  source=lower_reduce_to_msl(step),
+                                  ensure_row_contiguous=True)
+        p = step.partials()
+        (cur,) = k2(inputs=[cur], grid=(p * step.threadgroup, 1, 1),
+                    threadgroup=(step.threadgroup, 1, 1),
+                    output_shapes=[(p,)], output_dtypes=[mx.float32])
+        mx.eval(cur)
+        n = p
+    return cur
+
+
 def machine_identity() -> dict[str, Any]:
     """MachineIdentity for the receipt. The steer: no result without physical
     identity."""

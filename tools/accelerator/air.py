@@ -334,13 +334,24 @@ class AirMatmul:
             return []
         return ["THREADGROUP", "THREADGROUP"]   # one after load, one after accumulate
 
+    def out_shape(self) -> tuple[int, int]:
+        return (self.m, self.n)
+
     def launch(self) -> tuple[tuple[int, int, int], tuple[int, int, int]]:
         """Grid and threadgroup for this strategy. They differ, so the caller must not
         guess."""
         if self.strategy == "simdgroup":
             s = 8 * self.block
             return (self.n // s * 32, self.m // s, 1), (32, 1, 1)
-        return (self.n, self.m, 1), (self.tile, self.tile, 1)
+        # ROUND UP TO WHOLE THREADGROUPS. The kernel body is fully guarded -- it checks
+        # gy < m, gx < n and k0 + lx < k -- so the tile has never been the constraint.
+        # The LAUNCH was: returning (n, m, 1) against a (tile, tile) threadgroup
+        # under-dispatches whenever m is not a multiple of the tile, and the result is
+        # WRONG rather than refused: 8x64x32 at tile 16 was off by 4.65 and the
+        # 60x60x60 the simdgroup receipt cited as tiled's own justification was off by
+        # 3.84. See ACCELERATOR_GRAPH_COMPOSITION.json.
+        t = self.tile
+        return (((self.n + t - 1) // t) * t, ((self.m + t - 1) // t) * t, 1), (t, t, 1)
 
 
 def lower_matmul_to_msl(mm: AirMatmul) -> str:
@@ -1015,12 +1026,61 @@ def execute_scan(sc: AirScan, x):
 
 @dataclass
 class AirGraphNode:
-    """One dispatch in an AIR graph. `inputs` name either externals or other nodes."""
+    """One dispatch in an AIR graph. `inputs` name either externals or other nodes.
+
+    THE GEOMETRY COMES FROM THE OP, NOT FROM A GUESS. For many blocks this node carried
+    only `n` and a scalar threadgroup, and the executor DERIVED a 1-D grid of
+    blocks*threadgroup with an output of shape (n,). That is right for an elementwise
+    dispatch and WRONG for every other AIR primitive -- and it failed in the worst
+    possible way, which is that IT SOMETIMES LOOKED RIGHT. A row-wise norm at
+    8x1024 with threadgroup 256 got 32 threadgroups where it needed 8: the extra 24 ran
+    OUT OF BOUNDS on both buffers and the answer STILL MATCHED THE ORACLE to 2.6e-07.
+    The same defect at 8x64 launched 2 threadgroups for 8 rows and was wrong by 2.62.
+    Correct BY ACCIDENT OF SHAPE. See ACCELERATOR_GRAPH_COMPOSITION.json.
+
+    So grid, threadgroup, output shape, parameter names and output name are all FIELDS,
+    and node_for() fills them from the op's own launch() rather than re-deriving them.
+    """
     name: str
     source: str
     inputs: list[str]
     n: int
     threadgroup: int = 256
+    grid: tuple[int, int, int] | None = None
+    threadgroup3: tuple[int, int, int] | None = None
+    out_shape: tuple[int, ...] | None = None
+    param_names: list[str] | None = None
+    out_name: str = "out"
+    header: str = ""
+
+    def launch(self) -> tuple[tuple[int, int, int], tuple[int, int, int]]:
+        if self.grid is not None and self.threadgroup3 is not None:
+            return self.grid, self.threadgroup3
+        blocks = (self.n + self.threadgroup - 1) // self.threadgroup
+        return (blocks * self.threadgroup, 1, 1), (self.threadgroup, 1, 1)
+
+    def shape(self) -> tuple[int, ...]:
+        return self.out_shape if self.out_shape is not None else (self.n,)
+
+
+def node_for(name: str, op: Any, inputs: list[str], *, source: str,
+             param_names: list[str], out_name: str = "out", header: str = "") -> AirGraphNode:
+    """Build a graph node whose geometry is TAKEN FROM THE OP.
+
+    op must expose launch() and out_shape(). Asking the op is the whole point: the
+    executor cannot infer a row-wise or tiled launch from an element count, and a
+    guess that is right at one shape and silently wrong at another is worse than a
+    refusal.
+    """
+    grid, tg = op.launch()
+    shape = op.out_shape()
+    n = 1
+    for d in shape:
+        n *= d
+    return AirGraphNode(name=name, source=source, inputs=inputs, n=n,
+                        threadgroup=tg[0], grid=grid, threadgroup3=tg,
+                        out_shape=shape, param_names=param_names,
+                        out_name=out_name, header=header)
 
 
 @dataclass
@@ -1099,13 +1159,13 @@ def execute_graph(g: AirGraph, arrays: dict[str, Any], *, eager: bool = False):
     env = {k: mx.array(v, dtype=mx.float32) for k, v in arrays.items()}
     for nd in g.nodes:
         kern = metal_kernel(mx, name=f"air_g_{g.name}_{nd.name}",
-                            input_names=nd.inputs, output_names=["out"],
-                            source=nd.source, ensure_row_contiguous=True)
-        blocks = (nd.n + nd.threadgroup - 1) // nd.threadgroup
-        (env[nd.name],) = kern(inputs=[env[i] for i in nd.inputs],
-                               grid=(blocks * nd.threadgroup, 1, 1),
-                               threadgroup=(nd.threadgroup, 1, 1),
-                               output_shapes=[(nd.n,)], output_dtypes=[mx.float32])
+                            input_names=nd.param_names or nd.inputs,
+                            output_names=[nd.out_name], source=nd.source,
+                            header=nd.header, ensure_row_contiguous=True)
+        grid, tg = nd.launch()
+        (env[nd.name],) = kern(inputs=[env[i] for i in nd.inputs], grid=grid,
+                               threadgroup=tg, output_shapes=[nd.shape()],
+                               output_dtypes=[mx.float32])
         if eager:
             mx.eval(env[nd.name])
     leaves = [nd.name for nd in g.nodes]
@@ -1335,6 +1395,9 @@ class AirNorm:
         if not self.name.isidentifier():
             raise ValueError(f"name {self.name!r} becomes a Metal symbol and must be a "
                              f"valid identifier")
+
+    def out_shape(self) -> tuple[int, int]:
+        return (self.rows, self.cols)
 
     def barrier_scopes_emitted(self) -> list[str]:
         n = 1 if (self.mode == "rms" or self.variance == "one_pass") else 2

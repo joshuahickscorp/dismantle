@@ -1286,3 +1286,80 @@ def test_causal_conv1d_refuses_what_it_cannot_do():
     with pytest.raises(ValueError, match="valid identifier"):
         air.AirCausalConv1d("c.1", channels=4, length=8, width=4).validate()
     assert mk().barrier_scopes_emitted() == []      # depthwise, one thread per output
+
+
+def test_the_tiled_matmul_handles_a_shape_that_is_not_a_multiple_of_the_tile():
+    """The simdgroup receipt justified keeping the tiled strategy by saying it 'has NO
+    shape constraint -- deleting tiled would have removed the only strategy that handles
+    a 60x60 matmul'. That 60x60x60 was WRONG BY 3.84 until the launch rounded up to
+    whole threadgroups. The kernel body was always guarded; the LAUNCH under-dispatched."""
+    pytest.importorskip("mlx.core")
+    rng = np.random.default_rng(5)
+    for m, k, n in [(60, 60, 60), (8, 64, 32), (17, 64, 32)]:
+        a = (rng.standard_normal((m, k)) * 0.5).astype(np.float32)
+        b = (rng.standard_normal((k, n)) * 0.5).astype(np.float32)
+        mm = air.AirMatmul(f"odd{m}_{k}_{n}", m=m, k=k, n=n, tile=16)
+        got = np.array(air.execute_matmul(mm, a, b))
+        ref = a.astype(np.float64) @ b.astype(np.float64)
+        assert float(np.max(np.abs(got - ref))) < 1e-3, (m, k, n)
+    # and the launch really does cover every row now
+    mm = air.AirMatmul("cover", m=17, k=64, n=32, tile=16)
+    grid, tg = mm.launch()
+    assert grid[0] % tg[0] == 0 and grid[1] % tg[1] == 0
+
+
+def test_a_graph_node_takes_its_geometry_from_the_op():
+    """AirGraphNode derived a 1-D grid from an element count for many blocks, which is
+    right for elementwise and wrong for everything else -- and wrong in the worst way,
+    LOOKING CORRECT at 8x1024 (24 spare threadgroups running out of bounds) and wrong by
+    2.62 at 8x64 (2 threadgroups for 8 rows). node_for asks the op instead."""
+    pytest.importorskip("mlx.core")
+    rng = np.random.default_rng(3)
+    for rows, cols in ((8, 64), (8, 1024), (64, 128)):
+        x = (rng.standard_normal((rows, cols)) * 2).astype(np.float32)
+        w = np.ones(cols, np.float32)
+        nm = air.AirNorm(f"gn{rows}_{cols}", rows=rows, cols=cols, mode="rms")
+        node = air.node_for("normed", nm, ["x", "w"], source=air.lower_norm_to_msl(nm),
+                            param_names=["x", "w"])
+        assert node.launch() == nm.launch() and node.shape() == (rows, cols)
+        g = air.AirGraph(f"gg{rows}_{cols}", nodes=[node], externals=["x", "w"])
+        got = np.array(air.execute_graph(g, {"x": x, "w": w})["normed"])
+        ref = air.norm_oracle(x, w, np.zeros(cols, np.float32), "rms")
+        assert float(np.max(np.abs(got - ref))) < 1e-4, (rows, cols)
+
+
+def test_a_whole_gated_mlp_block_composes_and_matches_an_f64_oracle():
+    """Every AIR receipt grades ONE primitive. This campaign's own law is that LOCAL
+    ADEQUACY DOES NOT COMPOSE -- stated about representations, and equally open about
+    kernels. Five nodes, one submission, checked end to end."""
+    pytest.importorskip("mlx.core")
+    rng = np.random.default_rng(17)
+    T, C, H = 8, 256, 128
+    x = (rng.standard_normal((T, C)) * 0.5).astype(np.float32)
+    wn = (rng.standard_normal(C) * 0.1 + 1).astype(np.float32)
+    wg = (rng.standard_normal((C, H)) * 0.05).astype(np.float32)
+    wd = (rng.standard_normal((H, C)) * 0.05).astype(np.float32)
+    nm = air.AirNorm("bn", rows=T, cols=C, mode="rms")
+    g1 = air.AirMatmul("bg", m=T, k=C, n=H, tile=16)
+    g2 = air.AirMatmul("bd", m=T, k=H, n=C, tile=16)
+    el = lambda n, body: f"uint i = thread_position_in_grid.x;\nif (i >= {n}u) return;\n{body}"
+    nodes = [
+        air.node_for("normed", nm, ["x", "wn"], source=air.lower_norm_to_msl(nm),
+                     param_names=["x", "w"]),
+        air.node_for("gated", g1, ["normed", "wg"], source=air.lower_matmul_to_msl(g1),
+                     param_names=["A", "B"], out_name="C"),
+        air.AirGraphNode("act", el(T * H, "float v = a[i]; out[i] = v / (1.0f + exp(-v));"),
+                         ["gated"], n=T * H, param_names=["a"], out_shape=(T, H)),
+        air.node_for("down", g2, ["act", "wd"], source=air.lower_matmul_to_msl(g2),
+                     param_names=["A", "B"], out_name="C"),
+        air.AirGraphNode("y", el(T * C, "out[i] = a[i] + b[i];"), ["x", "down"],
+                         n=T * C, param_names=["a", "b"], out_shape=(T, C)),
+    ]
+    g = air.AirGraph("mlp", nodes=nodes, externals=["x", "wn", "wg", "wd"])
+    got = np.array(air.execute_graph(g, {"x": x, "wn": wn, "wg": wg, "wd": wd})["y"])
+    xd = x.astype(np.float64)
+    r = 1.0 / np.sqrt((xd * xd).mean(axis=1, keepdims=True) + 1e-5)
+    h = (xd * r * wn.astype(np.float64)) @ wg.astype(np.float64)
+    ref = xd + (h / (1.0 + np.exp(-h))) @ wd.astype(np.float64)
+    assert float(np.max(np.abs(got - ref)) / np.max(np.abs(ref))) < 1e-4
+    assert g.serial_depth() == 5 and g.submissions() == 1

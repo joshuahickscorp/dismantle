@@ -275,6 +275,9 @@ def test_a_barrier_with_NOTHING_upstream_is_a_LOUD_control():
     p = kf.barrier_control_prior(_NORM_SHAPED, 0)
     assert p["has_upstream_barrier"] is False
     assert p["verdict"] == "LOUD_CONTROL"
+    # The loud case IS a reliable prediction: every cell ever measured with no
+    # upstream barrier fires 1.00 -- all eight factorial cells and every width and
+    # work count in the window sweep.
     assert p["expected_p_fired"] == 1.0
 
 
@@ -283,7 +286,12 @@ def test_a_barrier_JUST_AFTER_ANOTHER_is_a_QUIET_control_and_says_so():
     group one compare-and-swap ago, so the race window is narrow."""
     p = kf.barrier_control_prior(_TOPK_SHAPED, 1)
     assert p["has_upstream_barrier"] is True
-    assert p["expected_p_fired"] == 0.084
+    # NO POINT ESTIMATE, and that is the correction: the same kernel measured
+    # p = 0.05 and 0.65 at width 256 in two processes, so the factorial's 0.084 was
+    # a sample from an unstable distribution and a number here would be cited as an
+    # expectation it cannot support.
+    assert p["expected_p_fired"] is None
+    assert p["expected_p_fired_range"] == (0.01, 0.90)
     # the WEAKNESS must be in the verdict, not left for a reader to infer from a
     # small number: a quiet control means the SWEEP proved little, never that the
     # barrier is unnecessary.
@@ -336,3 +344,16 @@ def test_an_arm_faster_than_the_clock_is_UNMEASURABLE_not_perfectly_stable():
         assert r["reliable"] is False          # cannot pass a gate it never entered
     else:                                       # the clock did resolve it: normal path
         assert r["iqr_spread_pct"] >= 0.0
+
+
+
+def test_the_quiet_prior_holds_only_while_the_gap_is_SMALL():
+    """Work between the two barriers widens the race window and drives p back to
+    1.00 -- ~16 fused multiply-adds at width 1024, ~256 at 256, ~1024 at 64. A
+    quiet control is quiet because the gap is short, not because the barrier is
+    unimportant, so the gap size travels with the verdict."""
+    p = kf.barrier_control_prior(_TOPK_SHAPED, 1)
+    assert p["quiet_only_while_the_gap_is_small"] is True
+    assert p["statements_since_upstream"] >= 1
+    loud = kf.barrier_control_prior(_NORM_SHAPED, 0)
+    assert loud["quiet_only_while_the_gap_is_small"] is False

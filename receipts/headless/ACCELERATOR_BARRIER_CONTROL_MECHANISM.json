@@ -309,5 +309,11 @@
   "Nothing timed and the lake fill was NOT quiesced, which cannot bias a correctness count. f32, one machine, INSTANCE.",
   "NO SHIPPED KERNEL WAS MODIFIED, so no performance or correctness claim about any AIR primitive moves."
  ],
- "tests": "450 accelerator tests pass (was 443): 6 new for barrier_control_prior, 1 for the timer-resolution refusal."
+ "tests": "450 accelerator tests pass (was 443): 6 new for barrier_control_prior, 1 for the timer-resolution refusal.",
+ "AMENDED_IN_PLACE_2026_08_25": {
+  "by": "receipts/headless/ACCELERATOR_BARRIER_WINDOW.json",
+  "what_is_CONFIRMED": "the RACE WINDOW mechanism this receipt proposed. Work inserted between the upstream barrier and the racing write drives p back to 1.00, and the crossover moves with width -- ~16 fused multiply-adds at 1024, ~256 at 256, ~1024 at 64. That is the first CONTINUOUS knob after four flat or scattered framings.",
+  "what_is_NARROWED": "'a barrier resynchronizes the group' is too strong above width 64. Work placed BEFORE the barrier still raises p at 128/256/512/1024 (0.11->0.60, 0.65->0.90, 0.89->1.00, 0.79->1.00 in one process) and not at 32 or 64. Skew LEAKS THROUGH a barrier in a wide threadgroup; the barrier narrows the window rather than resetting it.",
+  "what_is_RETRACTED": "the 0.084 marginal as an EXPECTATION. The same kernel measured p = 0.05 and 0.65 at width 256 in two processes, so 0.084 is a sample from an unstable distribution. The direction it established -- upstream barrier present means quiet, absent means loud 1.00 -- stands, and the LOUD half is reliable while the QUIET half is not a number. barrier_control_prior now returns None there rather than a figure that gets cited."
+ }
 }

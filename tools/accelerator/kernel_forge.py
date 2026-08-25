@@ -303,7 +303,15 @@ WIDTH_PRIOR = (32, 64, 128, 256, 512, 1024)
 # p_fired: upstream ABSENT 1.000 vs PRESENT 0.084, against slot contents
 # 0.574/0.510, load 0.505/0.579 and values 0.534/0.551. See
 # ACCELERATOR_BARRIER_CONTROL_MECHANISM.json.
-CONTROL_LOUDNESS_PRIOR = {"no_upstream_barrier": 1.000, "upstream_barrier": 0.084}
+# CORRECTED ONE BLOCK LATER, and the correction is an ASYMMETRY. The LOUD case is
+# a reliable prediction: with no upstream barrier every cell ever measured fires
+# 1.00 -- all eight factorial cells, and every width and work count in the window
+# sweep. The QUIET case IS NOT A NUMBER. The same kernel at width 256 measured
+# p = 0.05 in one process and 0.65 in another; the factorial's 0.084 marginal was a
+# sample from that distribution, and quoting it as an expectation was wrong.
+# See ACCELERATOR_BARRIER_WINDOW.json.
+CONTROL_LOUDNESS_PRIOR = {"no_upstream_barrier": 1.000, "upstream_barrier": None}
+QUIET_OBSERVED_RANGE = (0.01, 0.90)
 _BARRIER_TOKENS = ("threadgroup_barrier", "simdgroup_barrier")
 
 
@@ -340,13 +348,19 @@ def barrier_control_prior(source: str, strip_index: int = 0) -> dict[str, Any]:
     return {
         "barriers_in_source": len(hits), "stripped_at": strip_index,
         "has_upstream_barrier": upstream, "statements_since_upstream": work,
-        "expected_p_fired": CONTROL_LOUDNESS_PRIOR[
-            "upstream_barrier" if upstream else "no_upstream_barrier"],
+        # None for the quiet case ON PURPOSE: there is no expectation to give, and a
+        # number here would be cited as one. The loud case is a real prediction.
+        "expected_p_fired": None if upstream else 1.000,
+        "expected_p_fired_range": QUIET_OBSERVED_RANGE if upstream else (1.0, 1.0),
         "verdict": "QUIET_CONTROL_WEAK_EVIDENCE" if upstream else "LOUD_CONTROL",
-        # The factorial varied ONE thing at a time at ONE width on synthetic kernels.
-        # Statement count is reported because a longer gap should widen the window,
-        # and it is NOT part of the prior because it was never varied on its own.
-        "basis": "ACCELERATOR_BARRIER_CONTROL_MECHANISM.json (factorial, tg=64)",
+        # Measured: work between the two barriers widens the race window and drives
+        # p back to 1.00 -- at width 1024 that takes ~16 fused multiply-adds, at 256
+        # ~256, at 64 ~1024. So statements_since_upstream really is the knob, and it
+        # is reported rather than folded into a single verdict because the amount of
+        # work that makes a quiet control loud DEPENDS ON THE WIDTH.
+        "quiet_only_while_the_gap_is_small": upstream,
+        "basis": "ACCELERATOR_BARRIER_WINDOW.json (work sweep + placement control); "
+                 "ACCELERATOR_BARRIER_CONTROL_MECHANISM.json (factorial, tg=64)",
     }
 
 

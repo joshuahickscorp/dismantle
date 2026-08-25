@@ -1523,3 +1523,97 @@ def execute_batched_matvec(bm: AirBatchedMatvec, w, x):
                 output_shapes=[(bm.batch, bm.rows)], output_dtypes=[mx.float32])
     mx.eval(o)
     return o
+
+
+@dataclass
+class AirSparseMatvec:
+    """CSR sparse matvec. S015 §12 names SPARSE OPERATIONS as a MATH capability.
+
+    WHAT THIS IS NOT FOR, measured rather than assumed: a SPARSE RESIDUAL on top of
+    ws_rtn_q4_g64 does NOT pay on real Qwen3 expert weights -- spending the same bits
+    on a finer group or one more level buys 2.5-3.9x more cosine per bit. See
+    ACCELERATOR_SPARSE.json. The kernel exists because the capability is named and
+    because sparsity has other uses (structured pruning, routing masks), NOT because a
+    sparse residual earned a place in the representation ladder.
+
+    ONE THREAD PER ROW, so no barrier is needed and none is emitted. That makes the
+    load IMBALANCED by construction: a row with 10000 non-zeros and a row with 3 sit in
+    the same threadgroup and the whole group waits for the long one. Naming that is the
+    difference between a kernel with a known limitation and one with a surprise.
+    """
+    name: str
+    rows: int
+    cols: int
+    nnz: int
+    threadgroup: int = 256
+    dtype: str = "f32"
+    device: str = "APPLE_GPU_0"
+
+    def validate(self) -> None:
+        if self.dtype != "f32":
+            raise ValueError("sparse matvec is f32 only here")
+        if self.threadgroup % 32 or not 32 <= self.threadgroup <= 1024:
+            raise ValueError(f"threadgroup {self.threadgroup} must be a multiple of 32 "
+                             f"and within Metal's 1024 limit")
+        if min(self.rows, self.cols) <= 0 or self.nnz < 0:
+            raise ValueError("rows and cols must be positive and nnz non-negative")
+        if self.nnz > self.rows * self.cols:
+            raise ValueError(f"nnz {self.nnz} exceeds the {self.rows * self.cols} "
+                             f"entries the matrix can hold")
+        if not self.name.isidentifier():
+            raise ValueError(f"name {self.name!r} becomes a Metal symbol and must be a "
+                             f"valid identifier")
+
+    def barrier_scopes_emitted(self) -> list[str]:
+        return []
+
+    def executable_on_metal_backend(self) -> tuple[bool, str]:
+        return True, "one thread per row over CSR; no cross-thread reads"
+
+    def density(self) -> float:
+        return self.nnz / float(self.rows * self.cols)
+
+    def launch(self) -> tuple[tuple[int, int, int], tuple[int, int, int]]:
+        return (self.rows, 1, 1), (min(self.threadgroup, self.rows), 1, 1)
+
+
+def lower_sparse_matvec_to_msl(sp: AirSparseMatvec) -> str:
+    sp.validate()
+    return f"""
+    uint r = thread_position_in_grid.x;
+    if (r >= {sp.rows}u) return;
+    int lo = row_ptr[r];
+    int hi = row_ptr[r + 1u];
+    float acc = 0.0f;
+    for (int p = lo; p < hi; ++p) acc += values[p] * x[col_idx[p]];
+    out[r] = acc;
+"""
+
+
+def execute_sparse_matvec(sp: AirSparseMatvec, row_ptr, col_idx, values, x):
+    import mlx.core as mx
+    kern = mx.fast.metal_kernel(
+        name=f"air_spmv_{sp.name}", input_names=["row_ptr", "col_idx", "values", "x"],
+        output_names=["out"], source=lower_sparse_matvec_to_msl(sp),
+        ensure_row_contiguous=True)
+    g, tg = sp.launch()
+    (o,) = kern(inputs=[mx.array(row_ptr, dtype=mx.int32), mx.array(col_idx, dtype=mx.int32),
+                        mx.array(values, dtype=mx.float32), mx.array(x, dtype=mx.float32)],
+                grid=g, threadgroup=tg,
+                output_shapes=[(sp.rows,)], output_dtypes=[mx.float32])
+    mx.eval(o)
+    return o
+
+
+def to_csr(a):
+    """Dense -> CSR, keeping structurally-zero rows as EMPTY rather than dropping them.
+    An empty row is a real case (a fully pruned output) and a kernel that mishandles it
+    returns garbage for that row rather than the zero the maths demands."""
+    import numpy as np
+    a = np.asarray(a, dtype=np.float32)
+    nz = a != 0
+    counts = nz.sum(axis=1)
+    row_ptr = np.zeros(a.shape[0] + 1, np.int32)
+    np.cumsum(counts, out=row_ptr[1:])
+    col_idx = np.tile(np.arange(a.shape[1], dtype=np.int32), (a.shape[0], 1))[nz]
+    return row_ptr, col_idx.astype(np.int32), a[nz].astype(np.float32)

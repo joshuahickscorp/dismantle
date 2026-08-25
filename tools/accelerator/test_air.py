@@ -1183,3 +1183,43 @@ def test_batched_matvec_refuses_what_it_cannot_do():
     # one thread owns one output row, so this lowering emits NO barrier -- pinned so it
     # cannot be conflated with the reductions that do
     assert mk().barrier_scopes_emitted() == []
+
+
+def test_sparse_matvec_matches_a_dense_oracle():
+    pytest.importorskip("mlx.core")
+    rng = np.random.default_rng(101)
+    for rows, cols, dens in [(64, 128, 0.05), (17, 513, 0.2), (5, 32, 1.0)]:
+        a = (rng.standard_normal((rows, cols)) * 2).astype(np.float32)
+        a[rng.random((rows, cols)) > dens] = 0.0
+        x = (rng.standard_normal(cols) * 2).astype(np.float32)
+        rp, ci, v = air.to_csr(a)
+        sp = air.AirSparseMatvec(f"sp{rows}_{cols}", rows=rows, cols=cols, nnz=len(v))
+        got = np.array(air.execute_sparse_matvec(sp, rp, ci, v, x))
+        ref = a.astype(np.float64) @ x.astype(np.float64)
+        assert float(np.max(np.abs(got - ref))) < 1e-4, (rows, cols, dens)
+
+
+def test_a_structurally_empty_row_returns_zero_not_garbage():
+    """A fully pruned output row is a real case. A kernel that walks a stale range
+    returns plausible nonsense for exactly the rows nobody looks at."""
+    pytest.importorskip("mlx.core")
+    a = np.zeros((4, 16), np.float32)
+    a[1, 3] = 2.0; a[3, 15] = -1.5          # rows 0 and 2 are entirely empty
+    x = np.arange(16, dtype=np.float32)
+    rp, ci, v = air.to_csr(a)
+    sp = air.AirSparseMatvec("empty", rows=4, cols=16, nnz=len(v))
+    got = np.array(air.execute_sparse_matvec(sp, rp, ci, v, x))
+    assert got.tolist() == [0.0, 6.0, 0.0, -22.5]
+
+
+def test_sparse_matvec_refuses_what_it_cannot_do():
+    mk = lambda **kw: air.AirSparseMatvec(**{"name": "s", "rows": 4, "cols": 8,
+                                             "nnz": 3, **kw})
+    with pytest.raises(ValueError, match="exceeds the"):
+        mk(nnz=99).validate()
+    with pytest.raises(ValueError, match="must be positive"):
+        mk(rows=0).validate()
+    with pytest.raises(ValueError, match="valid identifier"):
+        air.AirSparseMatvec("s.1", rows=4, cols=8, nnz=3).validate()
+    assert mk().barrier_scopes_emitted() == []      # one thread per row, nothing to order
+    assert abs(mk().density() - 3 / 32) < 1e-9

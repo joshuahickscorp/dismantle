@@ -488,3 +488,38 @@ def fidelity(w_true, w_hat) -> dict:
     cos = float(np.dot(a, b) / (na * nb)) if na > 0 and nb > 0 else 0.0
     return {"cosine": cos, "magnitude_ratio": (nb / na) if na > 0 else float("inf"),
             "rel_fro_err": float(np.linalg.norm(a - b) / na) if na > 0 else float("inf")}
+
+
+def output_space_fidelity(w_true, w_hat, x) -> dict:
+    """Fidelity where the question can actually be answered: through the matmul, on
+    REAL activations.
+
+    WHY THIS EXISTS. A per-tensor weight-space gate implicitly weights every input
+    direction equally, which is exactly what a Gaussian x does -- so it is a
+    synthetic-activation evaluation wearing different clothes. Measured on MiniLM
+    layer 0 at 3 bits / group 64: weight-space cosine separates four organs by
+    0.0038, real activations separate them by 0.0269 (7.1x), and feeding GAUSSIAN
+    inputs collapses the separation back to 0.0052. THE RANKING ALSO INVERTS --
+    output.dense is the WORST organ by weight cosine (0.9647) and the BEST by real
+    activations (0.9982). See ACCELERATOR_ORGAN_DISCRIMINATION.json.
+
+    Returns the real number and the two controls beside it, because the real number
+    alone cannot be told apart from the blind one.
+    """
+    import numpy as np
+    X = np.asarray(x, dtype=np.float64)
+    A = np.asarray(w_true, dtype=np.float64)
+    B = np.asarray(w_hat, dtype=np.float64)
+
+    def cos(m):
+        p, q = (m @ A.T).ravel(), (m @ B.T).ravel()
+        np_, nq = np.linalg.norm(p), np.linalg.norm(q)
+        return float(p @ q / (np_ * nq)) if np_ > 0 and nq > 0 else 0.0
+
+    rng = np.random.default_rng(0)
+    return {"cosine_real_inputs": cos(X),
+            "cosine_gaussian_inputs": cos(rng.normal(0, X.std(), X.shape)),
+            "cosine_shuffled_inputs": cos(
+                np.column_stack([rng.permutation(X[:, j]) for j in range(X.shape[1])])),
+            "note": "if real and gaussian agree, the measurement is about the weight "
+                    "DISTRIBUTION and says nothing about this organ"}

@@ -1363,3 +1363,23 @@ def test_a_whole_gated_mlp_block_composes_and_matches_an_f64_oracle():
     ref = xd + (h / (1.0 + np.exp(-h))) @ wd.astype(np.float64)
     assert float(np.max(np.abs(got - ref)) / np.max(np.abs(ref))) < 1e-4
     assert g.serial_depth() == 5 and g.submissions() == 1
+
+
+def test_the_weight_space_gate_cannot_tell_organs_apart_and_output_space_can():
+    """A per-tensor weight gate weights every input direction equally, which is what a
+    Gaussian x does. Pinned on constructed tensors that reproduce the MiniLM finding:
+    real activations separate two organs that weight-space cosine calls identical."""
+    import gravity_native as gn
+    rng = np.random.default_rng(0)
+    W = (rng.standard_normal((64, 128)) * 0.05).astype(np.float32)
+    Wq = gn.quantize_grouped(W, 3, 64)
+    # activations with a strong preferred direction, as real ones have
+    X = (rng.standard_normal((256, 128)) * 0.1).astype(np.float64)
+    X[:, :8] += 4.0
+    f = gn.output_space_fidelity(W, Wq, X)
+    # THE CONTROL MUST MOVE THE ANSWER, or it is a formality. Directional inputs and
+    # directionless ones disagree by far more than float noise on the same pack.
+    assert abs(f["cosine_real_inputs"] - f["cosine_gaussian_inputs"]) > 5e-3
+    # and where the separation comes from the per-feature marginals rather than from
+    # cross-feature correlation, shuffling the columns changes nothing
+    assert abs(f["cosine_real_inputs"] - f["cosine_shuffled_inputs"]) < 1e-3

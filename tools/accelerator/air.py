@@ -87,14 +87,55 @@ ELEMENTWISE = {
 
 @dataclass(frozen=True)
 class AirBarrier:
-    """A synchronization point. AIR represents it; the Metal backend cannot yet
-    execute one, and lowering REFUSES rather than dropping it -- a silently dropped
-    barrier is a race, which is the worst class of bug to ship quietly."""
+    """A synchronization point. A silently dropped barrier is a race, which is the
+    worst class of bug to ship quietly, so lowering REFUSES rather than drops.
+
+    TWO of the three scopes now have an instruction (see barrier_msl); DEVICE does not
+    and cannot, and the refusal says where the construct that DOES express it lives."""
     scope: str
 
     def __post_init__(self):
         if self.scope not in SYNC_SCOPES:
             raise ValueError(f"unknown sync scope {self.scope!r}; known: {SYNC_SCOPES}")
+
+
+def barrier_msl(scope: str) -> str:
+    """The Metal instruction for a sync scope, or a refusal that names the alternative.
+
+    MEASURED, not assumed, and the two probes together say something sharper than
+    either alone:
+
+      WITHIN a simdgroup -- 32 lanes exchanging through threadgroup memory are correct
+      with NO fence, with simdgroup_barrier, and with threadgroup_barrier, all three at
+      max_abs_err 0.0. An Apple simdgroup runs in lockstep so the neighbour's write is
+      already visible. SIMDGROUP IS THEREFORE NOT LOAD-BEARING FOR CORRECTNESS HERE.
+
+      ACROSS simdgroups -- the same exchange at 256 threads reading 32 slots away is
+      WRONG BY 9.854 with no fence AND WRONG BY EXACTLY THE SAME 9.854 with
+      simdgroup_barrier, while threadgroup_barrier is exact. So the instruction's scope
+      is precisely what its name says: no effect inside (unnecessary) and no effect
+      outside (out of scope).
+
+    It is still emitted, for two reasons that are not correctness-on-this-chip: it
+    constrains the COMPILER's reordering, and lockstep is a HARDWARE PROPERTY that a
+    future device need not preserve. But calling SIMDGROUP a closed synchronization gap
+    would be overreach and the receipt says so.
+
+    DEVICE has no in-kernel instruction in Metal at all. Device-wide ordering IS a
+    command-buffer boundary, and AIR already expresses that -- as an AirGraph EDGE, not
+    as a barrier. Refusing while naming that is worth more than refusing.
+    """
+    if scope == "THREADGROUP":
+        return "threadgroup_barrier(mem_flags::mem_threadgroup);"
+    if scope == "SIMDGROUP":
+        return "simdgroup_barrier(mem_flags::mem_threadgroup);"
+    if scope == "DEVICE":
+        raise NotImplementedError(
+            "DEVICE-scope synchronization has no Metal instruction inside a kernel: "
+            "device-wide ordering IS a command-buffer boundary. AIR expresses it as an "
+            "AirGraph dependency EDGE between nodes, which the runtime turns into "
+            "ordered dispatches. Use AirGraph; a barrier cannot carry this.")
+    raise ValueError(f"unknown sync scope {scope!r}")
 
 
 @dataclass(frozen=True)
@@ -141,9 +182,23 @@ class AirProgram:
         """What AIR can REPRESENT is deliberately wider than what this backend can
         RUN. Saying which is which is the whole point."""
         if self.barriers:
-            return False, (f"{len(self.barriers)} barrier(s) declared; the Metal "
-                           f"backend has no synchronization lowering, and dropping a "
-                           f"barrier would silently introduce a race")
+            # THE ORIGINAL REASON HERE WAS WRONG AND IT TAUGHT THE WRONG LESSON. It
+            # said "the Metal backend has no synchronization lowering" -- but AIR's
+            # matmul, softmax and attention all emit threadgroup barriers, and
+            # barrier_msl() now supplies THREADGROUP and SIMDGROUP instructions. The
+            # binding constraint is not the backend, it is THIS PROGRAM: an elementwise
+            # AIR program declares no threadgroup allocation and no cross-thread read,
+            # so every thread is independent and a barrier of ANY scope has NOTHING TO
+            # ORDER. A refusal that names the wrong cause is worse than a terse one.
+            scopes = sorted({b.scope for b in self.barriers})
+            return False, (f"{len(self.barriers)} barrier(s) declared at {scopes}, but "
+                           f"an elementwise program has no threadgroup allocation and "
+                           f"no cross-thread reads, so there is nothing for a barrier "
+                           f"to order. The constraint is the PROGRAM SHAPE, not the "
+                           f"backend: barrier_msl() supplies THREADGROUP and SIMDGROUP "
+                           f"instructions and AIR's matmul lowering already emits them. "
+                           f"DEVICE scope has no instruction at all -- that ordering is "
+                           f"an AirGraph edge, not a barrier.")
         if self.has_side_effects():
             return False, ("the program declares side effects beyond its output; the "
                            "elementwise lowering assumes pure ops")

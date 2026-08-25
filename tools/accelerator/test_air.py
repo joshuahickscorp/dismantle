@@ -905,3 +905,41 @@ def test_bpw_counts_the_scale():
     assert gnat.bpw_grouped(4, 64) == 4.25
     assert gnat.bpw_grouped(4, 32) == 4.5        # smaller groups are NOT free
     assert gnat.bpw_grouped(2, 128) == 2.125
+
+
+# ----------------------------------- barrier scopes: what each one can and cannot do
+
+def test_barrier_msl_supplies_two_scopes_and_refuses_the_third_by_name():
+    """SIMDGROUP was recorded as UNLOWERABLE for many blocks. It has an instruction and
+    now emits one. DEVICE does NOT, and the refusal names the construct that does carry
+    device-wide ordering rather than merely saying no."""
+    import air
+    assert "threadgroup_barrier" in air.barrier_msl("THREADGROUP")
+    assert "simdgroup_barrier" in air.barrier_msl("SIMDGROUP")
+    with pytest.raises(NotImplementedError, match="AirGraph"):
+        air.barrier_msl("DEVICE")
+
+
+def test_an_elementwise_program_refuses_a_barrier_for_the_RIGHT_reason():
+    """The refusal used to blame the backend. That was wrong -- AIR's matmul emits
+    threadgroup barriers. The real constraint is that an elementwise program has no
+    shared state for a barrier to order, and the message has to say so or it teaches
+    the wrong lesson to whoever reads it."""
+    import air
+    a = air.AirTensor("a", (16,), "f32")
+    prog = air.AirProgram(name="bar_probe", inputs=[a],
+                          ops=[air.AirOp("relu", ["a"], "y")], output="y",
+                          barriers=[air.AirBarrier("SIMDGROUP")])
+    ok, why = prog.executable_on_metal_backend()
+    assert ok is False
+    assert "nothing for a barrier to order" in why
+    assert "PROGRAM SHAPE, not the backend" in why
+
+
+def test_a_matmul_still_accepts_because_its_lowering_emits_its_own_barriers():
+    """The distinction that must not rot: refusal tracks what the backend can EMIT for
+    THIS program, not what AIR can name. Sat beside the elementwise refusal on purpose."""
+    import air
+    mm = air.AirMatmul(name="mm_probe", m=32, k=32, n=32, dtype="f32")
+    ok, why = mm.executable_on_metal_backend()
+    assert ok is True, why

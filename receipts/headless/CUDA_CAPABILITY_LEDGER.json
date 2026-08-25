@@ -354,8 +354,8 @@
   "MULTI_DEVICE": 1
  },
  "classes_with_no_entry": [],
- "performance_gaps_measured": 10,
- "performance_gaps_unmeasured": 9,
+ "performance_gaps_measured": 11,
+ "performance_gaps_unmeasured": 8,
  "parity_claim": "NOT CLAIMED. This is a capability inventory, not a parity statement. No entry may report a semantic gap of NONE without evidence, and the steer forbids the phrase 'CUDA parity' unqualified.",
  "coverage_honesty": "The CUDA surface is vastly larger than this. These are the capabilities reachable or relevant from what has actually been built here; absence from this ledger means NOT YET STUDIED, never NOT NEEDED."
 }

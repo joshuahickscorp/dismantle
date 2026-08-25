@@ -101,3 +101,15 @@ def test_margin_is_symmetric_between_wins_and_losses():
     assert loss["margin_pct"] == win["margin_pct"] == 200.0
     assert loss["verdict"].startswith("BASELINE_WINS")
     assert win["verdict"].startswith("CANDIDATE_WINS")
+
+
+def test_recount_repairs_a_drifted_ledger():
+    """The drift that actually happened: an entry's performance_gap was changed to
+    measured without recomputing, leaving the ledger claiming 10 when it had 11."""
+    led = ccl.build([ccl.entry(**good())])
+    led["performance_gaps_measured"] = 99
+    led["count"] = 42
+    ccl.recount(led)
+    assert led["count"] == 1
+    assert led["performance_gaps_measured"] == 0
+    assert led["performance_gaps_unmeasured"] == 1

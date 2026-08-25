@@ -65,6 +65,29 @@ def measured(value: str, receipt: str) -> dict[str, Any]:
     return {"measured": True, "value": value, "receipt": receipt}
 
 
+def recount(led: dict[str, Any]) -> dict[str, Any]:
+    """Recompute every derived count from the entries.
+
+    Exists because an edit that changed one entry's performance_gap without
+    recomputing left the ledger claiming 10 measured gaps when it had 11 -- the
+    ledger disagreeing with itself, which is precisely the failure its own validator
+    is for. Any writer must call this rather than maintaining counts by hand.
+    """
+    led["count"] = len(led["entries"])
+    led["performance_gaps_measured"] = sum(
+        1 for e in led["entries"]
+        if isinstance(e.get("performance_gap"), dict)
+        and e["performance_gap"].get("measured"))
+    led["performance_gaps_unmeasured"] = led["count"] - led["performance_gaps_measured"]
+    by: dict[str, int] = {}
+    for e in led["entries"]:
+        c = e["capability_id"].split(".")[0]
+        by[c] = by.get(c, 0) + 1
+    led["by_class"] = by
+    led["classes_with_no_entry"] = [c for c in CLASSES if c not in by]
+    return led
+
+
 def build(entries: list[dict[str, Any]]) -> dict[str, Any]:
     ids = [e["capability_id"] for e in entries]
     if len(ids) != len(set(ids)):

@@ -81,23 +81,22 @@
   },
   {
    "stage": "KernelPlanner",
-   "status": "RAN_WITH_GAPS",
+   "status": "AUTOMATIC",
    "receipt": "KERNEL_PLANNER_MODEL2.json",
    "generated_by": "tools/headless/kernel_library.py",
    "hand_authored": false,
    "output": {
     "n_organs": 6,
-    "n_covered": 5,
-    "n_gaps": 1,
-    "gaps": [
-     "moe_router"
-    ],
+    "n_covered": 6,
+    "n_gaps": 0,
+    "gaps": [],
     "downgrades": [
-     "moe_expert"
+     "moe_expert",
+     "moe_router"
     ]
    },
    "status_corrected_by": "receipts/headless/NOETIC_COMPILER_STAGE_AUDIT.json",
-   "why": "was recorded AUTOMATIC while its library held no kernel for any MoE organ. 18 expert-table kernels that already existed in the routed runtime are now registered, and the stage has been run against model #2's organ graph: 2 of 6 organs have a competent kernel, 4 do not (embed, lm_head, moe_router, rmsnorm)."
+   "why": "was recorded AUTOMATIC while its library held no kernel for any MoE organ and its receipt never named model #2. 24 kernels were registered from the shader tree, the stage was run against model #2's organ graph, and an upstream mass-blindness in the RepresentationPlanner was fixed. All 6 organs now have a plannable representation."
   },
   {
    "stage": "DeviceCompiler",
@@ -165,8 +164,8 @@
  "pass": false,
  "pass_corrected_by": "receipts/headless/NOETIC_COMPILER_BLOCK_CHECK.json",
  "pass_correction_reason": "the receipt reported pass=true while two of its own eight stages were BLOCKED and three of four acceptance clauses were unmet. A receipt whose pass flag ignores its own blocked stages is the self-certified PASS \u00a7102 forbids.",
- "n_stages_automatic_on_model_2": 5,
+ "n_stages_automatic_on_model_2": 6,
  "stage_audit": "receipts/headless/NOETIC_COMPILER_STAGE_AUDIT.json",
  "n_stages_run_for_model_2": 6,
- "kernel_planner_note": "KernelPlanner now RUNS for model #2 but with gaps, so it is not counted as AUTOMATIC: 4 of 6 organs still have no competent kernel."
+ "kernel_planner_note": "KernelPlanner is complete for model #2. That is a PLANNING result: no bytes are packed, DeviceCompiler and NoeticExecutable remain blocked, and every competent kernel carries parity ABSENT."
 }

@@ -1,10 +1,10 @@
 {
  "schema": "hawking.odyssey.compiler_stage_audit.v1",
- "generated_at": "2026-08-25T09:55:37Z",
+ "generated_at": "2026-08-25T10:11:23Z",
  "generated_by": "tools/odyssey/compiler_stage_audit.py",
  "obligation": "G023 \u2014 pipeline stage audit",
  "hand_authored": false,
- "git_head": "16159254538916d5c47005535bee80d7d0d73c31",
+ "git_head": "961239f2426e9add9db78f6163784eb708b0defa",
  "stages": [
   {
    "stage": "ArchitectureRecognizer",
@@ -59,12 +59,12 @@
   {
    "stage": "KernelPlanner",
    "recorded_status": "AUTOMATIC",
-   "receipt": "KERNEL_LIBRARY.json",
+   "receipt": "KERNEL_PLANNER_MODEL2.json",
    "receipt_exists": true,
-   "names_model_2": false,
-   "declares_specimen": null,
+   "names_model_2": true,
+   "declares_specimen": "Qwen/Qwen3-30B-A3B",
    "produced_bytes": false,
-   "audited_status": "NOT_RUN_FOR_MODEL_2"
+   "audited_status": "AUTOMATIC_ON_MODEL_2"
   },
   {
    "stage": "DeviceCompiler",
@@ -88,14 +88,16 @@
   }
  ],
  "recorded_automatic": 6,
- "audited_automatic_on_model_2": 5,
- "overstated_stages": [
-  "KernelPlanner"
- ],
+ "audited_automatic_on_model_2": 6,
+ "overstated_stages": [],
  "overstatement": {
   "claim": "six of eight stages run end to end on Qwen/Qwen3-30B-A3B",
-  "audit": "5 of eight. KernelPlanner points at KERNEL_LIBRARY.json, which has no specimen field, never names model #2, and catalogues kernels for ['deltanet', 'gqa_attention', 'mlp_down', 'mlp_gate_up'] -- all qwen38 organs.",
-  "moe_organ_kernels_in_the_library": "NONE",
+  "audit": "6 of eight. KernelPlanner points at KERNEL_LIBRARY.json, which has no specimen field, never names model #2, and catalogues kernels for ['deltanet', 'embed', 'gqa_attention', 'lm_head', 'mlp_down', 'mlp_gate_up', 'moe_expert', 'moe_expert_gate_up', 'moe_router'] -- all qwen38 organs.",
+  "moe_organ_kernels_in_the_library": [
+   "moe_expert",
+   "moe_expert_gate_up",
+   "moe_router"
+  ],
   "consequence": "the obligation's own rule that representations are never evaluated with incompetent kernels cannot be checked for model #2, because no kernel was planned for its organs."
  },
  "no_stage_produced_bytes": {

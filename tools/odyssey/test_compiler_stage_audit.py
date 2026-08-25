@@ -14,22 +14,25 @@ def rec():
     return json.load(open(R))
 
 
-def test_the_audit_disagrees_with_the_recorded_automation_count():
+def test_the_overstatement_the_audit_found_is_now_resolved():
+    """The audit originally found KernelPlanner recorded AUTOMATIC while its receipt
+    never named model #2. It was then actually run, so the counts should agree."""
     d = rec()
-    assert d["audited_automatic_on_model_2"] < d["recorded_automatic"]
-    assert d["overstated_stages"] == ["KernelPlanner"]
+    assert d["overstated_stages"] == []
+    assert d["audited_automatic_on_model_2"] == d["recorded_automatic"]
 
 
-def test_the_overstated_stage_really_has_no_model_2_subject():
-    d = rec()
-    ks = next(s for s in d["stages"] if s["stage"] == "KernelPlanner")
-    assert ks["names_model_2"] is False
-    assert ks["declares_specimen"] is None
+def test_kernel_planner_now_names_model_2():
+    ks = next(s for s in rec()["stages"] if s["stage"] == "KernelPlanner")
+    assert ks["names_model_2"] is True
+    assert ks["receipt"] == "KERNEL_PLANNER_MODEL2.json"
 
 
-def test_no_moe_organ_kernel_is_catalogued_in_the_library():
+def test_moe_organ_kernels_are_now_catalogued():
+    """The audit's original finding was NONE; registering them is what fixed it."""
     d = rec()["overstatement"]
-    assert d["moe_organ_kernels_in_the_library"] == "NONE"
+    assert d["moe_organ_kernels_in_the_library"] != "NONE"
+    assert any("moe" in o for o in d["moe_organ_kernels_in_the_library"])
 
 
 def test_the_stages_that_did_run_declare_model_2_as_their_specimen():
@@ -65,11 +68,13 @@ def test_the_revised_gap_is_smaller_than_both_previous_statements():
     assert "smaller" in d["size"]
 
 
-def test_the_correction_was_written_back_into_the_pipeline_receipt():
+def test_the_pipeline_receipt_records_how_the_stage_was_fixed():
     p = json.load(open(RH / "NOETIC_COMPILER_PIPELINE.json"))
     ks = next(s for s in p["stages"] if s["stage"] == "KernelPlanner")
-    assert ks["status"] == "NOT_RUN_FOR_MODEL_2"
-    assert p["n_stages_automatic_on_model_2"] == 5
+    assert ks["status"] == "AUTOMATIC"
+    assert "never named model #2" in ks["why"]
+    assert p["n_stages_automatic_on_model_2"] == 6
+    assert "no bytes are packed" in p["kernel_planner_note"]
 
 
 def test_the_obligation_remains_blocked_with_named_unmet_clauses():

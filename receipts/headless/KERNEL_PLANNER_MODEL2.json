@@ -1,10 +1,10 @@
 {
  "schema": "hawking.odyssey.kernel_planner_model2.v1",
- "generated_at": "2026-08-25T10:07:48Z",
+ "generated_at": "2026-08-25T10:10:48Z",
  "generated_by": "tools/odyssey/kernel_planner_model2.py",
  "obligation": "G023 \u2014 KernelPlanner stage, run for model #2",
  "hand_authored": false,
- "git_head": "8705bcb0efc19831c32add0985fee374526f609a",
+ "git_head": "961239f2426e9add9db78f6163784eb708b0defa",
  "specimen": {
   "repo": "Qwen/Qwen3-30B-A3B",
   "revision": "ad44e777bcd18fa416d9da3bd8f70d33ebb85d39",
@@ -190,13 +190,13 @@
      "n_supporting_representation_independent": 0,
      "needs_no_gemv_kernel": false,
      "kernels": [
+      "qwen30_expert_table_uniform_q4_paired_gate_up_swiglu",
+      "qwen30_expert_table_uniform_q4_paired_gate_up_swiglu_simdgroup8",
       "qwen30_expert_table_uniform_q4_matvec_rowblock",
       "qwen30_expert_table_uniform_q4_matvec_serial",
       "qwen30_expert_table_uniform_q4_matvec_simdgroup",
       "qwen30_expert_table_uniform_q4_matvec_simdgroup_rowblock4",
-      "qwen30_expert_table_uniform_q4_matvec_simdgroup_rowblock8",
-      "qwen30_expert_table_uniform_q4_paired_gate_up_swiglu",
-      "qwen30_expert_table_uniform_q4_paired_gate_up_swiglu_simdgroup8"
+      "qwen30_expert_table_uniform_q4_matvec_simdgroup_rowblock8"
      ],
      "organ_mass_share": 0.949526,
      "passthrough_rejected_as_too_large": false
@@ -247,24 +247,27 @@
      "kernels": [],
      "organ_mass_share": 0.000412,
      "passthrough_rejected_as_too_large": false
+    },
+    {
+     "family": "leftover_f32",
+     "score": 0.785,
+     "n_competent_kernels": 0,
+     "n_weight_bearing": 0,
+     "n_supporting_representation_independent": 1,
+     "needs_no_gemv_kernel": true,
+     "kernels": [],
+     "organ_mass_share": 0.000412,
+     "passthrough_rejected_as_too_large": false
     }
    ],
-   "selected_representation": null,
-   "selection_reason": null,
+   "selected_representation": "leftover_f32",
+   "selection_reason": "f32 passthrough: this organ is 0.0412% of model mass, at or under the 0.5% ceiling, so no GEMV kernel is required",
    "n_kernels_for_organ": 3,
    "n_competent_kernels": 0,
-   "downgraded_from_top_seed": false,
-   "status": "REPRESENTATION_MISMATCH",
-   "may_be_evaluated": false,
-   "upstream_planning_defect": {
-    "stage": "RepresentationPlanner",
-    "what": "seeded only ['binary_sparse_residual', 'q2_affine', 'ternary'] for an organ that is 0.0412% of model mass",
-    "why_it_matters": "every seeded family is an aggressive quantization family and none has a competent kernel, while the organ is small enough that quantizing it at all buys a negligible number of bytes on the single most routing-sensitive organ in the model",
-    "measured_saving_if_quantized_to_q2_mib": 44.6,
-    "fix": "seed leftover_f32 for this organ in the RepresentationPlanner",
-    "not_patched_here": "adding the seed inside the KernelPlanner would be a hand-authored stage output"
-   },
-   "mismatch": "3 kernel(s) exist for 'moe_router' but none executes any seeded family; they execute ['binary_group', 'topk_select']"
+   "downgraded_from_top_seed": true,
+   "status": "COVERED",
+   "may_be_evaluated": true,
+   "downgrade_note": "the top seeded family 'q2_affine' has no competent kernel; the planner selected 'leftover_f32' instead. \u00a771: a representation with no competent kernel may not be evaluated."
   },
   {
    "organ": "rmsnorm",
@@ -331,28 +334,16 @@
  "passthrough_mass_ceiling": 0.005,
  "passthrough_rule": "an organ may be kept as f32 passthrough only if its MEASURED share of model mass is at or under the ceiling. Organ type is not the test: moe_router is a GEMV organ and qualifies at 0.0434%, moe_expert is a GEMV organ and does not at 99.96%.",
  "n_organs": 6,
- "n_covered": 5,
- "n_gaps": 1,
- "gaps": [
-  "moe_router"
- ],
+ "n_covered": 6,
+ "n_gaps": 0,
+ "gaps": [],
  "section_71_rule": {
   "rule": "representations are never evaluated with incompetent kernels",
   "how_it_is_honoured": "an organ with no competent kernel is marked NO_KERNEL and may_be_evaluated=false, so no representation can be scored on it. Organs WITH kernels are marked COMPETENT_BUT_UNQUALIFIED because every registered expert kernel has parity and measurements ABSENT.",
   "previously": "this rule could not be checked at all for model #2, because the library contained no kernel for any of its organs"
  },
- "stage_status": "RAN_WITH_GAPS",
- "upstream_defects_found": [
-  {
-   "organ": "moe_router",
-   "stage": "RepresentationPlanner",
-   "what": "seeded only ['binary_sparse_residual', 'q2_affine', 'ternary'] for an organ that is 0.0412% of model mass",
-   "why_it_matters": "every seeded family is an aggressive quantization family and none has a competent kernel, while the organ is small enough that quantizing it at all buys a negligible number of bytes on the single most routing-sensitive organ in the model",
-   "measured_saving_if_quantized_to_q2_mib": 44.6,
-   "fix": "seed leftover_f32 for this organ in the RepresentationPlanner",
-   "not_patched_here": "adding the seed inside the KernelPlanner would be a hand-authored stage output"
-  }
- ],
- "honest_summary": "5 of 6 organs have a competent kernel. The remaining 1 (moe_router) have none, so model #2 still cannot be compiled end to end. What changed is that the gap is now enumerated per organ instead of being hidden behind a stage recorded as AUTOMATIC.",
+ "stage_status": "RAN_COMPLETE",
+ "upstream_defects_found": [],
+ "honest_summary": "all 6 organs have a plannable representation with a competent kernel or a justified passthrough, so the KernelPlanner stage is COMPLETE for model #2. This does NOT mean model #2 can be compiled: DeviceCompiler and NoeticExecutable remain blocked, no bytes have been packed, and every competent kernel still carries parity ABSENT.",
  "pass": true
 }

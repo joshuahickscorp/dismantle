@@ -105,37 +105,53 @@ def test_covered_organs_with_kernels_are_unqualified_until_parity_runs():
             assert "UNQUALIFIED" in r["qualification"]
 
 
-def test_the_planner_reports_gaps_rather_than_claiming_coverage():
+def test_the_stage_is_complete_and_says_what_that_does_not_mean():
+    """Complete planning is not a compilable model: two stages remain blocked and every
+    competent kernel still has parity ABSENT."""
     d = rec()
-    assert d["n_gaps"] > 0
-    assert d["stage_status"] == "RAN_WITH_GAPS"
-    assert set(d["gaps"]) == {"moe_router"}
+    assert d["n_gaps"] == 0 and d["stage_status"] == "RAN_COMPLETE"
+    assert "does NOT mean model #2 can be compiled" in d["honest_summary"]
+    assert "parity ABSENT" in d["honest_summary"]
 
 
 def test_the_pipeline_receipt_reflects_the_new_stage_status():
     p = json.load(open(RH / "NOETIC_COMPILER_PIPELINE.json"))
     kp = next(s for s in p["stages"] if s["stage"] == "KernelPlanner")
-    assert kp["status"] == "RAN_WITH_GAPS"
-    assert kp["output"]["n_gaps"] == 1
-    assert p["n_stages_automatic_on_model_2"] == 5
+    assert kp["status"] == "AUTOMATIC"
+    assert kp["output"]["n_gaps"] == 0
+    assert p["n_stages_automatic_on_model_2"] == 6
+    blocked = [s["stage"] for s in p["stages"] if s["status"] == "BLOCKED"]
+    assert blocked == ["DeviceCompiler", "NoeticExecutable"]
 
 
 def test_a_selector_alone_cannot_cover_a_gemv_organ():
-    """A top-k select touches no weights. Counting it alone marked moe_router COVERED
-    for q2_affine when every router matvec present is binary_group."""
+    """A top-k select touches no weights, so no quantized family may be selected for the
+    router on the strength of one. It resolves as a passthrough instead."""
     r = next(x for x in rec()["organ_plan"] if x["organ"] == "moe_router")
     for f in r["seeded_families_in_score_order"]:
-        assert f["n_weight_bearing"] == 0
-        assert f["n_supporting_representation_independent"] >= 1
-        assert f["n_competent_kernels"] == 0
-    assert r["selected_representation"] is None
-    assert r["status"] == "REPRESENTATION_MISMATCH"
+        if f["family"] != "leftover_f32":
+            assert f["n_weight_bearing"] == 0
+            assert f["n_competent_kernels"] == 0
+    assert r["selected_representation"] == "leftover_f32"
 
 
-def test_the_router_gap_is_a_representation_mismatch_not_a_missing_kernel():
-    r = next(x for x in rec()["organ_plan"] if x["organ"] == "moe_router")
-    assert r["n_kernels_for_organ"] >= 3
-    assert "none executes any seeded family" in r["mismatch"]
+def test_the_router_resolved_by_fixing_the_upstream_stage_not_this_one():
+    """The seed came from the RepresentationPlanner becoming mass-aware, not from this
+    stage inventing one."""
+    import json as _j
+    reh = _j.load(open(RH / "QWEN_TRANSFER_REHEARSAL.json"))
+    row = next(r for r in reh["plan"]["organ_plan"] if r["organ"] == "moe_router")
+    assert row["mass_aware_seed_added"] is True
+    assert "leftover_f32" in [s["family"] for s in row["seeded_representations"]]
+    assert row["organ_mass_share"] <= 0.005
+
+
+def test_only_organs_under_the_ceiling_got_a_mass_aware_seed():
+    import json as _j
+    reh = _j.load(open(RH / "QWEN_TRANSFER_REHEARSAL.json"))
+    for r in reh["plan"]["organ_plan"]:
+        if r.get("mass_aware_seed_added"):
+            assert r["organ_mass_share"] <= 0.005, r["organ"]
 
 
 def test_binary_group_is_not_treated_as_binary_sparse_residual():
@@ -191,20 +207,5 @@ def test_moe_expert_still_cannot_take_f32_passthrough():
     assert moe["selected_representation"] != "leftover_f32"
 
 
-def test_the_router_gap_is_diagnosed_as_an_upstream_planning_defect():
-    d = rec()
-    assert d["upstream_defects_found"]
-    u = next(x for x in d["upstream_defects_found"] if x["organ"] == "moe_router")
-    assert u["stage"] == "RepresentationPlanner"
-    assert u["measured_saving_if_quantized_to_q2_mib"] > 0
-    assert "leftover_f32" in u["fix"]
-
-
-def test_the_defect_was_not_patched_inside_this_stage():
-    """Inventing a seed here would be the hand-authored stage output the pipeline
-    forbids, and would make the planner look complete."""
-    u = next(x for x in rec()["upstream_defects_found"] if x["organ"] == "moe_router")
-    assert "hand-authored" in u["not_patched_here"]
-    r = next(x for x in rec()["organ_plan"] if x["organ"] == "moe_router")
-    assert r["selected_representation"] is None
-    assert "moe_router" in rec()["gaps"]
+def test_no_upstream_defect_remains_now_that_the_planner_is_mass_aware():
+    assert rec()["upstream_defects_found"] == []

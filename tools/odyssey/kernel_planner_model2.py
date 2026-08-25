@@ -263,11 +263,16 @@ def main():
         "upstream_defects_found": [
             {"organ": r["organ"], **r["upstream_planning_defect"]}
             for r in plan if r.get("upstream_planning_defect")],
-        "honest_summary": f"{covered} of {len(organs)} organs have a competent kernel. "
-                          f"The remaining {len(gaps)} ({', '.join(gaps)}) have none, so "
-                          f"model #2 still cannot be compiled end to end. What changed is "
-                          f"that the gap is now enumerated per organ instead of being "
-                          f"hidden behind a stage recorded as AUTOMATIC.",
+        "honest_summary": (
+            f"{covered} of {len(organs)} organs have a plannable representation. The "
+            f"remaining {len(gaps)} ({', '.join(gaps)}) do not, so this stage is "
+            f"incomplete."
+            if gaps else
+            f"all {len(organs)} organs have a plannable representation with a competent "
+            f"kernel or a justified passthrough, so the KernelPlanner stage is COMPLETE "
+            f"for model #2. This does NOT mean model #2 can be compiled: DeviceCompiler "
+            f"and NoeticExecutable remain blocked, no bytes have been packed, and every "
+            f"competent kernel still carries parity ABSENT."),
     }
     out["pass"] = covered > 0
     p = RH / "KERNEL_PLANNER_MODEL2.json"

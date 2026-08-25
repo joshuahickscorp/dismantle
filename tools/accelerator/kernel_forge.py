@@ -289,3 +289,61 @@ def shape_sweep(cases, check, *, name: str = "sweep") -> dict[str, Any]:
     return {"name": name, "cases_run": len(results), "failures": len(failures),
             "worst_rel_err": max(r["rel_err"] for r in results),
             "failing": failures[:20], "all_ok": not failures}
+
+
+WIDTH_PRIOR = (32, 64, 128, 256, 512, 1024)
+
+
+def swept_with_control(cases, check, broken_check, *, name: str = "sweep",
+                       repeat: int = 1) -> dict[str, Any]:
+    """A sweep that has never been watched fail cannot report zero failures.
+
+    Runs the real check over `cases` AND a deliberately broken variant over the same
+    cases. If the broken arm passes everywhere, the RESULT IS REFUSED -- not because
+    the kernel is wrong but because the sweep proved nothing about it.
+
+    `repeat` exists because a WIDTH-dependent defect is usually a RACE and therefore
+    PROBABILISTIC, unlike a shape-dependent one which is deterministic. The top-k
+    barrier fired in 16 of 30 runs at threadgroup 1024 and 0 of 30 at 256; a single
+    run of that check is a coin flip. Detection power is set by `repeat`, not by the
+    length of the case list: a race with per-run probability p is missed with
+    (1-p)**repeat, so repeat=8 is blind to anything under ~13% per run.
+
+    MEASURED, AND THE CONTROL HAS ITS OWN BLIND WIDTH: stripping one barrier from
+    AirNorm is caught 8 of 8 runs at threadgroups 64 through 1024 and is EXACT at 32,
+    where the whole threadgroup is ONE SIMDGROUP and lockstep makes the fence
+    unnecessary. A control run only at 32 would have reported the broken kernel fine.
+    See ACCELERATOR_WIDTH_SWEEP.json.
+    """
+    def run(fn, label):
+        out = []
+        for case in cases:
+            errs = []
+            for _ in range(repeat):
+                try:
+                    errs.append(float(fn(case)))
+                except Exception as e:                       # noqa: BLE001
+                    errs.append(float("inf"))
+                    del e
+            worst = max(errs)
+            out.append({"case": list(case), "worst": worst, "repeat": repeat,
+                        "wrong": sum(1 for x in errs if not (x < 1e-4)),
+                        "ok": bool(worst == worst and worst < 1e-4)})
+        if not out:
+            raise ValueError(f"{label} {name!r} ran ZERO cases")
+        return out
+
+    real, ctl = run(check, "sweep"), run(broken_check, "control")
+    detected = [c["case"] for c in ctl if not c["ok"]]
+    if not detected:
+        raise ValueError(
+            f"sweep {name!r} REFUSED: the broken control passed at every case, so a "
+            f"clean result here would be evidence of nothing. Either the control does "
+            f"not break what the check looks at, or the cases do not reach it.")
+    return {"name": name, "cases_run": len(real), "repeat": repeat,
+            "executions": len(real) * repeat * 2,
+            "failures": sum(1 for r in real if not r["ok"]),
+            "all_ok": all(r["ok"] for r in real),
+            "control_detected_at": detected,
+            "control_blind_at": [c["case"] for c in ctl if c["ok"]],
+            "detection_floor_per_run": round(1 - 0.5 ** (1 / repeat), 4)}

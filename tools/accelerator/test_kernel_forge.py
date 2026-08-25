@@ -144,3 +144,37 @@ def test_shape_sweep_would_have_caught_the_tiled_matmul_launch_bug():
     swept = kf.shape_sweep([(m, 16) for m in kf.AWKWARD_SHAPES],
                                      check, name="many")
     assert not swept["all_ok"] and swept["failures"] == len(kf.AWKWARD_SHAPES)
+
+
+def test_a_sweep_whose_control_never_fails_is_refused():
+    """A probabilistic sweep reporting zero failures is exactly the shape of a check
+    that cannot fail. If the broken arm passes everywhere, the clean result is
+    evidence of nothing and the sweep says so instead of reporting green."""
+    with pytest.raises(ValueError, match="broken control passed at every case"):
+        kf.swept_with_control([(64,), (256,)], lambda c: 0.0, lambda c: 0.0,
+                              name="vacuous")
+
+
+def test_the_control_may_be_blind_at_some_widths_and_that_is_reported():
+    """Stripping one barrier from AirNorm is caught at threadgroups 64 through 1024
+    and is EXACT at 32, where the whole threadgroup is one simdgroup. A control run
+    only at 32 would have called the broken kernel fine, so the widths where the
+    control is blind are part of the result."""
+    def broken(case):
+        return 0.0 if case[0] == 32 else 1.0      # the measured lockstep behaviour
+    r = kf.swept_with_control([(w,) for w in kf.WIDTH_PRIOR],
+                              lambda c: 0.0, broken, name="lockstep", repeat=3)
+    assert r["all_ok"] and r["failures"] == 0
+    assert r["control_blind_at"] == [[32]]
+    assert len(r["control_detected_at"]) == 5
+    assert r["executions"] == len(kf.WIDTH_PRIOR) * 3 * 2
+
+
+def test_repeat_sets_the_detection_floor_not_the_case_list():
+    """A width-dependent defect is usually a RACE and therefore probabilistic; the
+    resolving power comes from repeats, and the floor is reported so nobody reads a
+    clean sweep as proof that no race exists."""
+    one = kf.swept_with_control([(1,)], lambda c: 0.0, lambda c: 1.0, repeat=1)
+    many = kf.swept_with_control([(1,)], lambda c: 0.0, lambda c: 1.0, repeat=8)
+    assert one["detection_floor_per_run"] > many["detection_floor_per_run"]
+    assert many["detection_floor_per_run"] < 0.10

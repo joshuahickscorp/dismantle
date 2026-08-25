@@ -56,5 +56,11 @@
   "finite logits from random weights is a WEAK correctness signal -- it rules out a graph that produces NaN and nothing more.",
   "no kernel changed and no performance claim moves."
  ],
- "tests_total": "456 accelerator tests pass (was 454). I first wrote 457 from arithmetic rather than from the run; the suite says 456 and the receipt says what the suite says."
+ "tests_total": "456 accelerator tests pass (was 454). I first wrote 457 from arithmetic rather than from the run; the suite says 456 and the receipt says what the suite says.",
+ "AMENDED_IN_PLACE_2026_08_25": {
+  "by": "receipts/headless/ACCELERATOR_CAUSALITY.json",
+  "what_is_STRENGTHENED": "this receipt's own boundary said finite logits rule out a NaN graph and nothing more. All three specimens that build are now measured DETERMINISTIC, INPUT-SENSITIVE and CAUSAL: changing the token at position 2 leaves positions 0 and 1 bitwise unchanged and moves 2 and 3; changing the last token moves only the last.",
+  "the_control": "a bidirectional block identical but for the mask leaks to positions 0 and 1 through the SAME check, so three of three is a result rather than a check that cannot fail.",
+  "unchanged": "one layer, random weights, text path only, Qwen3-VL still does not construct, and no adequacy claim moves."
+ }
 }

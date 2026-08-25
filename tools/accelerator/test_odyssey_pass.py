@@ -74,3 +74,57 @@ def test_a_real_specimen_ACTUALLY_BUILDS_AND_RUNS_not_just_a_recorded_string():
     y = model(mx.array([[1, 2, 3, 4]])); mx.eval(y)
     assert y.shape[:2] == (1, 4) and y.shape[2] > 1000
     assert bool(mx.all(mx.isfinite(y)).item()), "logits must be finite"
+
+
+# --- causality: the property finite logits cannot see ----------------------------
+
+def _moved_positions(model):
+    """Change the token at position 2. In a causal model positions 0 and 1 must be
+    BITWISE unchanged. Returns which of the four positions moved."""
+    import numpy as np, mlx.core as mx
+    def run(ids):
+        y = model(mx.array([ids])); mx.eval(y); return np.asarray(y)[0]
+    a, b = run([11, 22, 33, 44]), run([11, 22, 99, 44])
+    return [not np.array_equal(a[i], b[i]) for i in range(4)]
+
+
+def test_a_real_specimen_is_CAUSAL_not_merely_finite():
+    """Finite logits pass for a graph that ignores its input entirely and for one
+    that leaks information backwards in time. This checks the property that
+    actually distinguishes an autoregressive decoder."""
+    import json, importlib, pathlib
+    cfg_path = pathlib.Path.home() / "noetic/stage/falcon-h1-7b/config.json"
+    if not cfg_path.is_file():
+        import pytest
+        pytest.skip(f"{cfg_path} absent -- staged config is the input this needs")
+    import mlx.core as mx
+    cfg = json.loads(cfg_path.read_text()); cfg["num_hidden_layers"] = 1
+    mod = importlib.import_module("mlx_lm.models." + cfg["model_type"])
+    mx.random.seed(0)
+    moved = _moved_positions(mod.Model(mod.ModelArgs.from_dict(cfg)))
+    assert moved[0] is False and moved[1] is False, f"leaks backwards: {moved}"
+    assert moved[2] is True, f"ignores its input at the changed position: {moved}"
+
+
+def test_the_causality_check_FAILS_on_a_bidirectional_model():
+    """Three of three passing is exactly the shape of a check that cannot fail, a
+    thing this program has sealed five times. A bidirectional block -- identical but
+    for the mask -- must be caught, or the test above proves nothing."""
+    import numpy as np, mlx.core as mx, mlx.nn as nn
+
+    class Bidirectional(nn.Module):
+        def __init__(self, d=32, v=128):
+            super().__init__()
+            self.emb = nn.Embedding(v, d)
+            self.q, self.k, self.v_ = nn.Linear(d, d), nn.Linear(d, d), nn.Linear(d, d)
+            self.out = nn.Linear(d, v)
+        def __call__(self, ids):
+            h = self.emb(ids)
+            s = (self.q(h) @ self.k(h).transpose(0, 2, 1)) / 32 ** 0.5
+            return self.out(mx.softmax(s, axis=-1) @ self.v_(h))
+
+    mx.random.seed(0)
+    moved = _moved_positions(Bidirectional())
+    assert moved[0] is True and moved[1] is True, (
+        "a bidirectional model must leak backwards; if it does not, the causality "
+        f"check is measuring nothing: {moved}")

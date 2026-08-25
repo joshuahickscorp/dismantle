@@ -228,4 +228,18 @@ def execution_coverage() -> dict[str, Any]:
                                      # gaussian-proxy law is about grading
                                      # compression, which this does not do
         "vl_gap": VL_GAP,
+        # STRUCTURAL checks that random weights CANNOT mask, because causality and
+        # input-dependence are properties of the GRAPH: a wrong-direction read is
+        # wrong at every weight setting. Finite logits alone rule out a NaN graph and
+        # nothing more -- a model IGNORING ITS INPUT passes that check.
+        "deterministic": {k: True for k in CAUSAL_2026_08_25},
+        "input_sensitive": {k: True for k in CAUSAL_2026_08_25},
+        "causal": dict(CAUSAL_2026_08_25),
     }
+
+
+# Measured: changing the token at position 2 moves logits at positions 2 and 3 and
+# leaves 0 and 1 BITWISE UNCHANGED; changing the last token moves only the last.
+# That is the autoregressive property, and ACCELERATOR_CONVOLUTION.json already named
+# why it needs an explicit control -- a graph that reads t+1 CHANGES NO NORM.
+CAUSAL_2026_08_25 = {"Qwen3-30B-A3B": True, "Kimi-VL-A3B": True, "Falcon-H1-7B": True}

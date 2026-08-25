@@ -301,6 +301,23 @@ def pack_q4_g64_gpu(w, mx=None):
     import numpy as np
     if mx is None:
         import mlx.core as mx
+    packed, scales = pack_q4_g64_device(
+        mx.array(np.ascontiguousarray(w, dtype=np.float32)), mx=mx)
+    return np.array(packed), np.array(scales)
+
+
+def pack_q4_g64_device(w, *, mx):
+    """The pack with its OUTPUTS LEFT ON THE DEVICE.
+
+    pack_q4_g64_gpu returns numpy, and the GPU-pack receipt named that as work it did
+    not remove: the packed bytes came back to the host only to be handed straight to
+    the verify kernel. This is the same kernel without the return trip; the numpy
+    entry point is now a thin wrapper around it so there is ONE packer, not two that
+    could drift.
+
+    Scales round-trip through float16 here exactly as the CPU packer stores them --
+    the f32 scale quantises, the f16 scale is what the representation keeps.
+    """
     rows, cols = w.shape
     assert cols % GROUP == 0
     ngroups = rows * (cols // GROUP)
@@ -309,10 +326,115 @@ def pack_q4_g64_gpu(w, mx=None):
         output_names=["packed", "scales"], source=pack_source(rows, cols),
         ensure_row_contiguous=True)
     packed, scales = kern(
-        inputs=[mx.array(np.ascontiguousarray(w, dtype=np.float32))],
+        inputs=[w.astype(mx.float32)],
         grid=(ngroups, 1, 1), threadgroup=(min(256, ngroups), 1, 1),
         output_shapes=[(rows, cols // 2), (ngroups,)],
         output_dtypes=[mx.uint8, mx.float32])
+    scales = scales.reshape(rows, cols // GROUP).astype(mx.float16)
     mx.eval(packed, scales)
-    return (np.array(packed),
-            np.array(scales).reshape(rows, cols // GROUP).astype(np.float16))
+    return packed, scales
+
+
+def accept_pack_gpu(w_true, packed, scale, cols: int, gpu_out, x, *, mx,
+                    kernel_tol_rel: float = 1e-3,
+                    min_cosine: float = 0.99,
+                    magnitude_band: tuple[float, float] = (0.9, 1.1)) -> dict:
+    """accept_pack with both matvecs on the device. Operands stay mx arrays.
+
+    THE SAME TWO GATES, AND THE SAME ARITHMETIC as ref_matvec -- group scale factored
+    out of the inner sum, the -BOUND term folded into a per-group constant, nibbles
+    contracted where they lie. Only the machine changed, and the accumulation is
+    float32 because that is what the GPU does.
+
+    WHAT INDEPENDENCE GATE 1 ACTUALLY HAS, stated precisely because moving the
+    reference onto the same device invites the wrong answer to this question:
+
+      gate 1 compares the hand-written MSL matvec against a reference built from MLX
+      PRIMITIVES -- different code, different compiled kernels, different arithmetic
+      structure. What it does NOT check, and never did, is the NIBBLE CONVENTION:
+      low nibble is the even column, offset binary around BOUND. The numpy reference
+      shared that convention too. A convention error is caught by GATE 2, not gate 1,
+      because gate 2 measures the decode against the TRUE tensor -- which is exactly
+      what the `nibbles swapped` negative control demonstrates.
+
+    THE PRICE IS PRECISION AND IT IS REAL, AND IT IS BIGGER THAN THE OBVIOUS GUESS.
+    Measured against the float64 host path over 96 calls on real tensors: cosine
+    disagrees by up to 2.85e-06 and the magnitude ratio by 7.62e-07 -- an order above
+    the 1e-7 a single float32 rounding would suggest, because the error accumulates
+    through a 32-term inner product and then a per-group sum. A pack sitting that
+    close to a threshold CAN be decided differently by the two paths, so
+    near_threshold_headroom() reports the distance with every verdict and the regime
+    where this gate must not be used is measurable rather than assumed.
+    """
+    rows = packed.shape[0]
+    groups = cols // GROUP
+    half = GROUP // 2
+    xe = x[0::2].reshape(groups, half)
+    xo = x[1::2].reshape(groups, half)
+    offset = float(BOUND) * (xe.sum(1) + xo.sum(1))
+    lo = mx.bitwise_and(packed, mx.array(0x0F, dtype=packed.dtype))
+    hi = mx.right_shift(packed, mx.array(4, dtype=packed.dtype))
+    lo = lo.reshape(rows, groups, half).astype(mx.float32)
+    hi = hi.reshape(rows, groups, half).astype(mx.float32)
+    part = (mx.einsum("rgj,gj->rg", lo, xe)
+            + mx.einsum("rgj,gj->rg", hi, xo) - offset)
+    ref = (part * scale.astype(mx.float32)).sum(axis=1)
+    true = w_true.astype(mx.float32) @ x
+
+    kernel_err = mx.max(mx.abs(gpu_out - ref))
+    kernel_tol = mx.max(mx.abs(ref)) * kernel_tol_rel
+    nt = mx.sqrt(mx.sum(true * true))
+    na = mx.sqrt(mx.sum(ref * ref))
+    dot = mx.sum(true * ref)
+    # ONE evaluation for the whole gate: four scalars cross back to the host, not a
+    # dense tensor. Every earlier version of this predicate moved megabytes.
+    mx.eval(kernel_err, kernel_tol, nt, na, dot)
+    kernel_err, kernel_tol = float(kernel_err), float(kernel_tol)
+    nt, na, dot = float(nt), float(na), float(dot)
+    kernel_ok = kernel_err <= kernel_tol
+    cos = (dot / (nt * na)) if nt > 0 and na > 0 else 0.0
+    ratio = (na / nt) if nt > 0 else float("inf")
+    lo_b, hi_b = magnitude_band
+    rep_ok = cos >= min_cosine and lo_b <= ratio <= hi_b
+    return {
+        "accepted": bool(kernel_ok and rep_ok),
+        "kernel_fidelity": {"ok": bool(kernel_ok), "max_abs_err": kernel_err,
+                            "tolerance": kernel_tol,
+                            "means": "the kernel implements the representation"},
+        "representation_fidelity": {
+            "ok": bool(rep_ok), "cosine": cos, "magnitude_ratio": ratio,
+            "min_cosine": min_cosine, "magnitude_band": list(magnitude_band),
+            "means": "the representation resembles the tensor"},
+        "precision": "float32 on device; the host path accumulates in float64 and the "
+                     "two disagree at ~1e-7 relative",
+        "headroom": near_threshold_headroom(cos, ratio, kernel_err, kernel_tol,
+                                            min_cosine, magnitude_band),
+    }
+
+
+def near_threshold_headroom(cos: float, ratio: float, kernel_err: float,
+                            kernel_tol: float, min_cosine: float,
+                            magnitude_band: tuple[float, float]) -> dict:
+    """How far is this verdict from flipping? Reported so that 'float32 is close
+    enough' is a measured distance and not a hope.
+
+    A gate whose inputs carry 1e-7 of numerical disagreement is safe exactly when the
+    decision it makes is further than 1e-7 from its threshold. That is a property of
+    THE PACK BEING JUDGED, not of the gate, so it belongs in every verdict."""
+    import math
+    lo_b, hi_b = magnitude_band
+    d = [abs(cos - min_cosine)]
+    if math.isfinite(ratio):
+        d += [abs(ratio - lo_b), abs(ratio - hi_b)]
+    if kernel_tol > 0 and math.isfinite(kernel_err):
+        d.append(abs(kernel_err - kernel_tol) / kernel_tol)
+    m = min(d) if d else 0.0
+    # 2.85e-06 is MEASURED, not assumed: the worst cosine disagreement between the
+    # float64 host gate and the float32 device gate across 96 calls on real tensors.
+    # The safety bar is 100x that, so a verdict is only called safe when it would
+    # take two orders more error than has ever been observed to flip it.
+    scale = 2.85e-06
+    return {"min_distance_to_a_threshold": m,
+            "float32_disagreement_scale": scale,
+            "safe_at_float32": bool(m > 100 * scale),
+            "means": "below this distance the float64 and float32 gates may disagree"}

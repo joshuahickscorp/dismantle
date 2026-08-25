@@ -793,3 +793,79 @@ def test_the_cheap_gate_returns_the_same_verdict_on_every_negative_control():
     # and a broken kernel still fails gate 1 with an honest pack
     bad = gnat.accept_pack(w, packed, scale, cols, dense_ref(packed, scale) * 1.5, x)
     assert bad["accepted"] is False and bad["kernel_fidelity"]["ok"] is False
+
+
+# ------------------------------------- the gate on the device (G046/G049, Front D)
+
+def test_the_device_gate_returns_the_same_verdicts_as_the_float64_host_gate():
+    """Moving the reference onto the GPU is only allowed if the DECISIONS survive.
+
+    The numbers cannot survive -- the device accumulates in float32 -- so what is
+    pinned is the verdict on the honest pack and on every negative control, which is
+    the property the gate exists for."""
+    pytest.importorskip("mlx.core")
+    import mlx.core as mx
+    import numpy as np
+    gnat, w, packed, scale, x = _pack_fixture()
+    cols = w.shape[1]
+    for label, p, s, expected in [
+        ("honest", packed, scale, True),
+        ("all zeros", np.zeros_like(packed), scale, False),
+        ("scales x1000", packed, scale * 1000.0, False),
+        ("scales x0.5", packed, scale * 0.5, False),
+        ("nibbles swapped", ((packed >> 4) | (packed << 4)).astype(np.uint8), scale, False),
+    ]:
+        ref = gnat.ref_matvec(p, s, cols, x)
+        host = gnat.accept_pack(w, p, s, cols, ref, x)
+        dev = gnat.accept_pack_gpu(mx.array(w), mx.array(p),
+                                   mx.array(s.astype(np.float32)), cols,
+                                   mx.array(ref.astype(np.float32)), mx.array(x), mx=mx)
+        assert host["accepted"] is expected, label
+        assert dev["accepted"] is expected, label
+
+
+def test_the_device_gate_still_catches_a_broken_kernel():
+    """Gate 1 must be able to fail on its own, or moving it bought a vacuous check."""
+    pytest.importorskip("mlx.core")
+    import mlx.core as mx
+    import numpy as np
+    gnat, w, packed, scale, x = _pack_fixture()
+    cols = w.shape[1]
+    ref = gnat.ref_matvec(packed, scale, cols, x).astype(np.float32)
+    r = gnat.accept_pack_gpu(mx.array(w), mx.array(packed),
+                             mx.array(scale.astype(np.float32)), cols,
+                             mx.array(ref * 1.5), mx.array(x), mx=mx)
+    assert r["accepted"] is False
+    assert r["kernel_fidelity"]["ok"] is False
+    assert r["representation_fidelity"]["ok"] is True
+
+
+def test_headroom_names_the_regime_where_float32_must_not_decide():
+    """A float32 gate is safe exactly when the verdict is far from its threshold.
+    That is a property of the pack being judged, not of the gate, so it is reported
+    with every verdict -- and it must say NO when the margin is thin."""
+    import gravity_native as gnat
+    thin = gnat.near_threshold_headroom(0.9900001, 1.0, 1e-9, 1e-3, 0.99, (0.9, 1.1))
+    assert thin["safe_at_float32"] is False
+    wide = gnat.near_threshold_headroom(0.994, 1.004, 1e-9, 1e-3, 0.99, (0.9, 1.1))
+    assert wide["safe_at_float32"] is True
+    assert wide["min_distance_to_a_threshold"] > thin["min_distance_to_a_threshold"]
+
+
+def test_the_resident_path_packs_the_same_bytes_as_the_host_path():
+    """Arm C decodes bf16 on the device and never brings the pack home. If that
+    changed one byte it would be measuring a different computation."""
+    pytest.importorskip("mlx.core")
+    import mlx.core as mx
+    import numpy as np
+    import gravity_native as gnat
+    rng = np.random.default_rng(3)
+    f32 = (rng.standard_normal((64, 256)) * 0.02).astype(np.float32)
+    bits = (f32.view(np.uint32) >> 16).astype(np.uint16)          # truncate to bf16
+    host = (bits.astype(np.uint32) << 16).view(np.float32).reshape(64, 256)
+    dev = mx.array(bits.reshape(-1)).view(mx.bfloat16).reshape(64, 256)
+    assert np.array_equal(np.array(dev.astype(mx.float32)), host)
+    ph, sh = gnat.pack_q4_g64(host)
+    pd, sd = gnat.pack_q4_g64_device(dev, mx=mx)
+    assert np.array_equal(np.array(pd), ph)
+    assert np.array_equal(np.array(sd), sh)

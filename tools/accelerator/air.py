@@ -28,16 +28,31 @@ from typing import Any
 
 DTYPES = {"f32": "float", "f16": "half"}
 
+# Memory domains an operand may be REQUIRED to live in. AIR carries the requirement;
+# HUMF (G050) owns actually satisfying it. Keeping the vocabularies identical means a
+# program can be handed to HUMF without translation.
+MEMORY_DOMAINS = ("APPLE_UM", "MOCK_EXTERNAL_VRAM", "NVIDIA_VRAM_SIDECAR",
+                  "NVIDIA_VRAM_DIRECT", "SSD_COLD", "HOST_LOGICAL", "ANY")
+
+# Synchronization scopes. AIR can REPRESENT these; the current Metal backend can
+# execute NONE of them, and lower_to_msl refuses rather than dropping them silently.
+SYNC_SCOPES = ("THREADGROUP", "SIMDGROUP", "DEVICE")
+
 
 @dataclass(frozen=True)
 class AirTensor:
     name: str
     shape: tuple[int, ...]
     dtype: str = "f32"
+    memory_domain: str = "ANY"          # where this operand must live
+    read_only: bool = True              # a side-effect declaration, not a hint
 
     def __post_init__(self):
         if self.dtype not in DTYPES:
             raise ValueError(f"unsupported dtype {self.dtype!r}; known: {sorted(DTYPES)}")
+        if self.memory_domain not in MEMORY_DOMAINS:
+            raise ValueError(f"unknown memory domain {self.memory_domain!r}; "
+                             f"known: {MEMORY_DOMAINS}")
         if not self.shape or any(d <= 0 for d in self.shape):
             raise ValueError(f"bad shape {self.shape!r}")
 
@@ -65,11 +80,24 @@ ELEMENTWISE = {
 
 
 @dataclass(frozen=True)
+class AirBarrier:
+    """A synchronization point. AIR represents it; the Metal backend cannot yet
+    execute one, and lowering REFUSES rather than dropping it -- a silently dropped
+    barrier is a race, which is the worst class of bug to ship quietly."""
+    scope: str
+
+    def __post_init__(self):
+        if self.scope not in SYNC_SCOPES:
+            raise ValueError(f"unknown sync scope {self.scope!r}; known: {SYNC_SCOPES}")
+
+
+@dataclass(frozen=True)
 class AirOp:
     kind: str
     inputs: tuple[str, ...]
     output: str
     attrs: dict[str, Any] = field(default_factory=dict)
+    writes_external: bool = False       # declares a side effect beyond `output`
 
     def __post_init__(self):
         if self.kind not in ELEMENTWISE:
@@ -90,6 +118,35 @@ class AirProgram:
     output: str
     device: str = "APPLE_GPU_0"
     specialization: dict[str, float] = field(default_factory=dict)
+    barriers: list[AirBarrier] = field(default_factory=list)
+    output_domain: str = "ANY"
+
+    def has_side_effects(self) -> bool:
+        return any(o.writes_external for o in self.ops) or any(
+            not t.read_only for t in self.inputs)
+
+    def required_domains(self) -> dict[str, str]:
+        d = {t.name: t.memory_domain for t in self.inputs if t.memory_domain != "ANY"}
+        if self.output_domain != "ANY":
+            d[self.output] = self.output_domain
+        return d
+
+    def executable_on_metal_backend(self) -> tuple[bool, str]:
+        """What AIR can REPRESENT is deliberately wider than what this backend can
+        RUN. Saying which is which is the whole point."""
+        if self.barriers:
+            return False, (f"{len(self.barriers)} barrier(s) declared; the Metal "
+                           f"backend has no synchronization lowering, and dropping a "
+                           f"barrier would silently introduce a race")
+        if self.has_side_effects():
+            return False, ("the program declares side effects beyond its output; the "
+                           "elementwise lowering assumes pure ops")
+        foreign = {t.memory_domain for t in self.inputs
+                   if t.memory_domain not in ("ANY", "APPLE_UM")}
+        if foreign:
+            return False, (f"operands require {sorted(foreign)}, which this backend "
+                           f"cannot reach; HUMF must materialise them in APPLE_UM first")
+        return True, "pure elementwise program over Apple unified memory"
 
     def validate(self) -> None:
         live = {t.name for t in self.inputs}
@@ -117,6 +174,11 @@ class AirProgram:
 def lower_to_msl(prog: AirProgram) -> str:
     """AIR -> MSL body. MLX supplies the kernel signature and thread position."""
     prog.validate()
+    ok, why = prog.executable_on_metal_backend()
+    if not ok:
+        raise NotImplementedError(
+            f"AIR represents this program but the Metal backend cannot execute it: "
+            f"{why}. Refusing to lower rather than emitting something that ignores it.")
     t = DTYPES[prog.dtype]
     lines = ["uint i = thread_position_in_grid.x;",
              f"if (i >= {prog.inputs[0].elements}u) return;"]

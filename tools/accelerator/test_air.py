@@ -112,3 +112,69 @@ def test_metal_execution_matches_numpy():
                        specialization={"ALPHA": 2.5})
     got = np.array(air.execute(p, {"x": x, "y": y}))
     assert np.abs(got - np.maximum(2.5 * x + y, 0)).max() < 1e-5
+
+
+# --- synchronization, memory domains, side effects (the gap G043 named) ---
+
+def test_air_represents_a_barrier_and_refuses_to_lower_it():
+    """A silently dropped barrier is a race. Refusing beats emitting."""
+    p = air.AirProgram("b", [air.AirTensor("x", (8,))],
+                       [air.AirOp("relu", ("x",), "z")], "z",
+                       barriers=[air.AirBarrier("THREADGROUP")])
+    ok, why = p.executable_on_metal_backend()
+    assert not ok and "barrier" in why
+    with pytest.raises(NotImplementedError, match="barrier"):
+        air.lower_to_msl(p)
+
+
+def test_an_unknown_sync_scope_is_refused():
+    with pytest.raises(ValueError, match="unknown sync scope"):
+        air.AirBarrier("GLOBAL_ISH")
+
+
+def test_side_effects_are_declared_and_block_lowering():
+    p = air.AirProgram("s", [air.AirTensor("x", (8,))],
+                       [air.AirOp("relu", ("x",), "z", writes_external=True)], "z")
+    assert p.has_side_effects()
+    with pytest.raises(NotImplementedError, match="side effects"):
+        air.lower_to_msl(p)
+
+
+def test_a_writable_operand_counts_as_a_side_effect():
+    p = air.AirProgram("s", [air.AirTensor("x", (8,), read_only=False)],
+                       [air.AirOp("relu", ("x",), "z")], "z")
+    assert p.has_side_effects()
+
+
+def test_an_unknown_memory_domain_is_refused():
+    with pytest.raises(ValueError, match="unknown memory domain"):
+        air.AirTensor("x", (8,), memory_domain="SOMEWHERE")
+
+
+def test_a_foreign_domain_blocks_lowering_rather_than_being_ignored():
+    p = air.AirProgram("v", [air.AirTensor("x", (8,), memory_domain="NVIDIA_VRAM_DIRECT")],
+                       [air.AirOp("relu", ("x",), "z")], "z")
+    with pytest.raises(NotImplementedError, match="HUMF"):
+        air.lower_to_msl(p)
+
+
+def test_apple_um_is_not_treated_as_foreign():
+    p = air.AirProgram("v", [air.AirTensor("x", (8,), memory_domain="APPLE_UM")],
+                       [air.AirOp("relu", ("x",), "z")], "z")
+    assert p.executable_on_metal_backend()[0]
+
+
+def test_air_domain_vocabulary_hands_to_humf_without_translation():
+    """The point of sharing the vocabulary: an AIR requirement is directly a HUMF
+    domain name, so no mapping layer can drift between them."""
+    import humf
+    p = air.AirProgram("v", [air.AirTensor("w", (8,), memory_domain="MOCK_EXTERNAL_VRAM")],
+                       [air.AirOp("relu", ("w",), "z")], "z")
+    req = p.required_domains()
+    assert req == {"w": "MOCK_EXTERNAL_VRAM"}
+    mp = humf.MockExternalMemoryProvider(capacity_bytes=1 << 20, bandwidth_gb_s=5.0)
+    # the name AIR emitted is the name HUMF uses, with no translation in between
+    assert req["w"] == mp.domain.name
+    fabric = humf.Humf({"APPLE_UM": humf.Domain("APPLE_UM", 1 << 30, 589.73, physical=True),
+                        mp.domain.name: mp.domain})
+    assert req["w"] in fabric.domains

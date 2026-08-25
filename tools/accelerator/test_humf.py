@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools/accelerator"))
+import humf  # noqa: E402
 from humf import (DeviceLost, Domain, Humf, HumfError, HumfObject,  # noqa: E402
                   Materialization, MockExternalMemoryProvider, State,
                   TransferTimeout)
@@ -795,5 +796,78 @@ def test_the_identity_recheck_knob_is_the_decay_model_paying_for_itself():
     h.identity_recheck_age = 0
     o.materializations.pop("MOCK_EXTERNAL_VRAM")
     with pytest.raises(HumfError, match="no longer matches the identity sealed"):
+        h.execute("W42", h.plan_acquire("W42", "MOCK_EXTERNAL_VRAM"),
+                  "MOCK_EXTERNAL_VRAM")
+
+
+# ---------------------------------------------------------------------------
+# The device digests its own memory. ACCELERATOR_HUMF_RESIDENT_DIGEST.json.
+# ---------------------------------------------------------------------------
+
+def _fabric_with(cls):
+    mp = cls(capacity_bytes=1 << 30, bandwidth_gb_s=5.0, latency_s=1e-4)
+    doms = {"APPLE_UM": Domain("APPLE_UM", 96 << 30, 589.73, physical=True),
+            mp.domain.name: mp.domain}
+    h = Humf(doms, providers={mp.domain.name: mp})
+    o = HumfObject("W42", "tensor", N, "f32", recompute_cost_s=0.05)
+    o.place(Materialization("APPLE_UM", "dense_f32", "row_major", NB, State.CLEAN,
+                            payload=PAYLOAD))
+    h.register(o)
+    return h, o, mp
+
+
+def test_the_resident_digest_catches_the_skew_the_round_trip_cannot():
+    """Three receipts named this gap and none closed it. The device digesting its own
+    memory through the path a KERNEL reads is what closes it."""
+    h, o, mp = _fabric_with(humf.MockExternalMemoryProvider)
+    mp.compute_skew = True                       # skewed BEFORE the transfer
+    with pytest.raises(humf.HumfError, match="RESIDENT integrity check FAILED"):
+        h.execute("W42", h.plan_acquire("W42", "MOCK_EXTERNAL_VRAM"),
+                  "MOCK_EXTERNAL_VRAM")
+    assert "MOCK_EXTERNAL_VRAM" not in o.valid_copies()
+
+
+def test_a_provider_that_digests_its_READBACK_path_still_passes():
+    """THE CONTROL THAT GIVES THE CHECK ITS MEANING, and the reason this is a NARROWING
+    and not a closure. ReadbackDigestProvider offers the same method, answers, and
+    matches the source -- and a kernel still reads different bytes. The fabric cannot
+    tell the two apart, so it RECORDS the claimed path rather than trusting it."""
+    h, o, bad = _fabric_with(humf.ReadbackDigestProvider)
+    bad.compute_skew = True
+    m = h.execute("W42", h.plan_acquire("W42", "MOCK_EXTERNAL_VRAM"),
+                  "MOCK_EXTERNAL_VRAM")
+    assert m.state is State.CLEAN
+    assert m.resident_verified is True           # true, and NOT a guarantee
+    assert m.resident_digest_path == "readback"  # the boolean is only readable WITH this
+    assert bad.read_for_compute("W42") != PAYLOAD
+
+
+def test_an_honest_transfer_records_the_path_it_was_verified_through():
+    """A check that can only ever refuse is as useless as one that only ever accepts."""
+    h, o, mp = _fabric_with(humf.MockExternalMemoryProvider)
+    m = h.execute("W42", h.plan_acquire("W42", "MOCK_EXTERNAL_VRAM"),
+                  "MOCK_EXTERNAL_VRAM")
+    assert m.state is State.CLEAN
+    assert m.resident_verified is True and m.resident_digest_path == "compute"
+
+
+def test_a_provider_without_a_device_digest_is_not_treated_as_a_failure():
+    """Absence of the capability is not evidence of corruption -- it is absence of
+    evidence, and the field says which."""
+    class NoDigest(humf.MockExternalMemoryProvider):
+        digest_resident = None
+    h, o, mp = _fabric_with(NoDigest)
+    m = h.execute("W42", h.plan_acquire("W42", "MOCK_EXTERNAL_VRAM"),
+                  "MOCK_EXTERNAL_VRAM")
+    assert m.state is State.CLEAN
+    assert m.resident_verified is False and m.resident_digest_path is None
+
+
+def test_the_round_trip_check_is_not_replaced_by_the_resident_one():
+    """They catch different things: corrupt_next damages what comes BACK over the
+    transport, which the resident digest would never see."""
+    h, o, mp = _fabric_with(humf.MockExternalMemoryProvider)
+    mp.corrupt_next = True
+    with pytest.raises(humf.HumfError, match="integrity check FAILED"):
         h.execute("W42", h.plan_acquire("W42", "MOCK_EXTERNAL_VRAM"),
                   "MOCK_EXTERNAL_VRAM")

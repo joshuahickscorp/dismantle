@@ -102,6 +102,11 @@ class Materialization:
     # ever re-asked. A verification is a statement about A MOMENT, and a copy that
     # has sat resident across a thousand later events is not covered by it.
     verified_at: int = 0
+    # Set by the RESIDENT check. `resident_verified` False means the provider offers
+    # no device-side digest, NOT that the copy is bad; `resident_digest_path` is the
+    # provider's OWN CLAIM about which path it digested and the fabric cannot check it.
+    resident_verified: bool = False
+    resident_digest_path: str | None = None
 
     def transition(self, to: State) -> None:
         if to not in LEGAL[self.state]:
@@ -725,10 +730,8 @@ class Humf:
             # compute path diverges from its read-back path PASSES this check and
             # still computes on wrong bytes; MockExternalMemoryProvider.compute_skew
             # demonstrates exactly that, with a test showing the copy stays CLEAN.
-            # There is no cheap fix: catching it needs a check that reads through
-            # THE SAME PATH THE COMPUTATION USES, which means the device computing a
-            # digest of its own memory. Naming the limit where it lives beats
-            # letting `verified` be read as a guarantee about what the GPU sees.
+            # THE FIX IS THE RESIDENT DIGEST BELOW, and it NARROWS this limit rather
+            # than removing it -- see _check_resident.
             actual = _digest(got)
             if actual != expect:
                 raise HumfError(
@@ -736,10 +739,58 @@ class Humf:
                     f"{want_domain}: expected digest {expect:08x}, got {actual:08x}. "
                     f"The transport returned WITHOUT ERROR and returned the WRONG "
                     f"BYTES. Nothing but verification catches that.")
+            self._check_resident(prov, obj, dst, src.payload, want_domain)
             dst.digest = actual
             self.epoch += 1
             dst.verified_at = self.epoch
         dst.payload = got
+
+    def _check_resident(self, prov, obj, dst, source_bytes: bytes,
+                        want_domain: str) -> None:
+        """Ask the DEVICE to digest its own memory, through the path a KERNEL reads.
+
+        WHY THE ROUND-TRIP CHECK ABOVE CANNOT DO THIS: it compares the source with
+        what copy_out RETURNS, and on a real bridge copy_out and a kernel are not the
+        same path -- one comes back over the transport, the other reads device memory
+        directly. A provider whose compute path diverges from its read-back path
+        passes the round trip and still computes on wrong bytes.
+
+        WHAT IT COSTS ON A REAL BRIDGE, and this is the design argument rather than a
+        measurement: a round-trip check has to bring the WHOLE PAYLOAD back across the
+        link, while a resident digest brings back SIXTEEN BYTES. At a 24 MiB tensor on
+        a 5 GB/s bridge that is ~4.8 ms against nothing. The identity block measured
+        that a host blake2b re-hash costs MORE THAN THE MOVE at 1.387 GB/s; on the
+        device the digest runs at device bandwidth and returns a constant. So moving
+        the digest to the device attacks the blind spot AND the affordability problem
+        at once -- but the DEVICE-SIDE DIGEST RATE IS UNMEASURED HERE and no speed
+        claim attaches to it.
+
+        AND IT IS NOT A CLOSURE. The check is only as strong as WHICH PATH the
+        provider's digest reads, and THE FABRIC CANNOT VERIFY THAT CLAIM -- a provider
+        that digests its read-back path exposes an identical API and passes on skewed
+        memory. `resident_digest_path` is therefore RECORDED, not trusted, and a test
+        pins that the dishonest variant still passes. The blind spot moves from
+        `copy_out is not a kernel` to `the digest kernel may not be the compute
+        kernel`, which is a narrower and STATED device property rather than an
+        unconditional hole.
+        """
+        fn = getattr(prov, "digest_resident", None)
+        if fn is None:
+            dst.resident_verified = False
+            dst.resident_digest_path = None
+            return
+        claimed = getattr(prov, "resident_digest_path", "UNDECLARED")
+        seen = self._with_deadline(fn, obj.identity)
+        want = _identity_digest(source_bytes)
+        if seen != want:
+            raise HumfError(
+                f"RESIDENT integrity check FAILED for {obj.identity} in "
+                f"{want_domain}: the device digested its own memory through its "
+                f"{claimed!r} path and got {seen[:16]}, not {want[:16]}. The round-trip "
+                f"check PASSED, so what came back over the transport was right and "
+                f"what a kernel would read is not.")
+        dst.resident_verified = True
+        dst.resident_digest_path = claimed
 
 
 def _with_deadline_impl(self, fn, *args):
@@ -920,6 +971,18 @@ class MockExternalMemoryProvider:
             b = bytearray(b); b[-1] ^= 0xFF; b = bytes(b)
         return b
 
+    # WHICH PATH THIS PROVIDER DIGESTS. "compute" means digest_resident reads through
+    # read_for_compute, the same path a kernel uses, so it CATCHES compute_skew.
+    # ReadbackDigestProvider declares "readback" and does not. The fabric RECORDS this
+    # and cannot verify it -- see Humf._check_resident.
+    resident_digest_path: str = "compute"
+
+    def digest_resident(self, key: str) -> str:
+        """The device digests ITS OWN MEMORY, through the path a kernel reads."""
+        self._maybe_hang()
+        self._require_present()
+        return _identity_digest(self.read_for_compute(key))
+
     def copy_out(self, key: str) -> bytes:
         if self.fail_next == "copy":
             self.fail_next = None
@@ -937,3 +1000,21 @@ class MockExternalMemoryProvider:
             b, self.substitute_next = self.substitute_next, None
             return b
         return self.store[key]
+
+
+class ReadbackDigestProvider(MockExternalMemoryProvider):
+    """A provider whose device-side digest reads THE READ-BACK PATH, not the compute
+    path -- and which is INDISTINGUISHABLE from an honest one through the fabric's API.
+
+    This exists as the control that gives the resident check its meaning. It offers
+    digest_resident, it answers, its digest matches the source, and it is still WRONG
+    about what a kernel would see. The strength of the resident check is a property of
+    the DEVICE's implementation, not of the fabric's protocol, and the only honest move
+    is to record the claim rather than trust it.
+    """
+    resident_digest_path = "readback"
+
+    def digest_resident(self, key: str) -> str:
+        self._maybe_hang()
+        self._require_present()
+        return _identity_digest(super().copy_out(key))

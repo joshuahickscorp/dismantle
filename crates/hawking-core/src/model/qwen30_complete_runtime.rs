@@ -1248,7 +1248,7 @@ fn validate_mixed_activation_weighted_catalog(
     direct: &CompleteBinaryArtifact,
     config: &Qwen30CompleteRuntimeConfig,
 ) -> Result<()> {
-    if direct.model != QwenCompleteBinaryModel::Qwen30Coder {
+    if !direct.model.is_qwen30_family() {
         return Err(model_error(
             "mixed activation-weighted direct base is not the Qwen30 model family",
         ));
@@ -1318,7 +1318,7 @@ fn validate_complete_catalog(
     artifact: &CompleteBinaryArtifact,
     config: &Qwen30CompleteRuntimeConfig,
 ) -> Result<()> {
-    if artifact.model != QwenCompleteBinaryModel::Qwen30Coder {
+    if !artifact.model.is_qwen30_family() {
         return Err(model_error(
             "complete artifact is not the Qwen30 model family",
         ));

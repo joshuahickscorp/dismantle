@@ -52,5 +52,36 @@
   ]
  },
  "what_this_does_not_do": "admit anything. No model #2 artifact of the required 18,867 tensors exists yet, so nothing has actually been loaded. This removes a name check that would have refused a structurally identical model; it does not produce an executable.",
- "pass": true
+ "pass": true,
+ "COMPLETED_IN_A_SECOND_PASS": {
+  "why": "the first pass relaxed one constant and missed two deeper bindings, both found by reading the admission path rather than the constants around it",
+  "layer_2_enum_variant": {
+   "what": "QwenCompleteBinaryModel had two variants and admission reached the repository through admission.model.source_repository(), so relaxing the runtime constant never touched it",
+   "fix": "added a Qwen30Base variant naming Qwen/Qwen3-30B-A3B",
+   "why_a_variant_not_a_second_string": "the manifest records which repository an artifact was built from; collapsing the two models onto one variant would lose that",
+   "shares": [
+    "manifest_schema",
+    "source_audit_schema",
+    "source_audit_status"
+   ],
+   "does_not_share": [
+    "source_repository"
+   ]
+  },
+  "layer_3_family_equality": {
+   "what": "two call sites compared `!= QwenCompleteBinaryModel::Qwen30Coder` while their own error text said 'is not the Qwen30 model family'",
+   "sites": [
+    "qwen30_complete_runtime.rs:1251",
+    "qwen30_complete_runtime.rs:1321"
+   ],
+   "fix": "added is_qwen30_family() and used it, so the code now makes the check it already claimed to be making"
+  },
+  "verification": {
+   "cargo_check": "PASS",
+   "rust_tests": 6,
+   "rust_tests_result": "6 passed (4 variant + 2 allowlist)",
+   "no_wildcard_arms": "the enum impl has 0 wildcard match arms, so a new variant cannot be silently absorbed"
+  },
+  "still_admits_nothing": "no model #2 artifact of 18,867 tensors exists; three binding layers are now open but there is nothing to pass through them"
+ }
 }

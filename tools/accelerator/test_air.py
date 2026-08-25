@@ -223,3 +223,38 @@ def test_tile_is_a_specialization_the_forge_can_tune():
             for t in (8, 16, 32)}
     assert len(set(srcs.values())) == 3
     assert "As[8][8]" in srcs[8] and "As[32][32]" in srcs[32]
+
+
+# --- simdgroup matmul strategy ---
+
+def test_strategies_emit_different_kernels_and_launches():
+    t = air.AirMatmul("m", 64, 64, 64, tile=16, strategy="tiled")
+    s = air.AirMatmul("m", 64, 64, 64, strategy="simdgroup")
+    assert air.lower_matmul_to_msl(t) != air.lower_matmul_to_msl(s)
+    assert "simdgroup_multiply_accumulate" in air.lower_matmul_to_msl(s)
+    assert t.launch() != s.launch()
+
+
+def test_simdgroup_emits_no_barrier_because_a_simd_runs_in_lockstep():
+    assert air.AirMatmul("m", 64, 64, 64, strategy="simdgroup").barrier_scopes_emitted() == []
+    assert air.AirMatmul("m", 64, 64, 64, strategy="tiled").barrier_scopes_emitted() == [
+        "THREADGROUP", "THREADGROUP"]
+
+
+@pytest.mark.parametrize("dim", [("m", 60), ("k", 60), ("n", 60)])
+def test_simdgroup_refuses_shapes_that_are_not_multiples_of_eight(dim):
+    kw = {"m": 64, "k": 64, "n": 64}
+    kw[dim[0]] = dim[1]
+    with pytest.raises(ValueError, match="multiple of 8"):
+        air.AirMatmul("m", strategy="simdgroup", **kw).validate()
+
+
+def test_unknown_strategy_is_refused():
+    with pytest.raises(ValueError, match="unknown matmul strategy"):
+        air.AirMatmul("m", 64, 64, 64, strategy="wishful").validate()
+
+
+def test_tiled_has_no_shape_constraint_so_it_is_not_deleted():
+    """simdgroup wins on speed but cannot take arbitrary shapes, which is why both
+    strategies are kept rather than one replacing the other."""
+    air.AirMatmul("m", 60, 60, 60, strategy="tiled").validate()

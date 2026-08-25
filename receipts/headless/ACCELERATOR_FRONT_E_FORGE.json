@@ -228,5 +228,11 @@
   "negative_science_refined": "The first phrasing of this finding was too broad. The TOP CLUSTER is flat -- the champion beats the runner-up by 0.38% against 4.94% noise, so any of the top five configurations is equally good -- but the FULL landscape spans 20.19% across the 12 reliable candidates, so a BAD configuration does cost real time. The correct conclusion is therefore not 'autotuning buys nothing' but 'autotuning here buys AVOIDANCE OF BAD CONFIGURATIONS, not discovery of a single best one'. Three candidates also failed the reliability gate outright (tg128_ept2, tg512_ept1, tg1024_ept4), which is its own result: some configurations are not merely slower, they are less REPEATABLE, and an unrepeatable kernel cannot be a champion."
  },
  "claim_boundary": "A champion was selected and it does beat the MLX baseline 2.66x -- but that margin comes from FUSION, which P5 already established, NOT from autotuning. The autotune itself found NO distinguishable win: the champion's lead over the runner-up is 0.38% against 4.94% noise. This receipt therefore does NOT support P6, which needs a REPRODUCIBLE MACHINE-SPECIFIC win; nothing here is machine-specific, because a flat landscape would look flat on any bandwidth-bound device. One primitive, one shape, one dtype, INSTANCE level.",
- "pass": true
+ "pass": true,
+ "CORRECTED_BY_LATER_MEASUREMENT": {
+  "receipt": "receipts/headless/ACCELERATOR_FORGE_REVERDICT.json",
+  "correction_1": "the three candidates this receipt reports as failing the reliability gate (tg128_ept2, tg512_ept1, tg1024_ept4) were measured at ~25 reps. At 200 reps ALL FIFTEEN are reliable, IQR 3.52-7.27%. The barring was an artifact.",
+  "correction_2": "the '20.19% landscape spread' is driven almost entirely by one configuration, tg64_ept1. The other fourteen span about 2.4%.",
+  "still_stands": "the flat top cluster, which is confirmed and stronger at 200 reps"
+ }
 }

@@ -1223,3 +1223,66 @@ def test_sparse_matvec_refuses_what_it_cannot_do():
         air.AirSparseMatvec("s.1", rows=4, cols=8, nnz=3).validate()
     assert mk().barrier_scopes_emitted() == []      # one thread per row, nothing to order
     assert abs(mk().density() - 3 / 32) < 1e-9
+
+
+def test_causal_conv1d_matches_a_float64_oracle():
+    pytest.importorskip("mlx.core")
+    rng = np.random.default_rng(31)
+    for C, L, W in [(8, 32, 4), (5, 1, 4), (3, 2, 4), (17, 129, 3), (4, 16, 1)]:
+        x = (rng.standard_normal((C, L)) * 2).astype(np.float32)
+        w = (rng.standard_normal((C, W)) * 2).astype(np.float32)
+        b = (rng.standard_normal(C) * 0.5).astype(np.float32)
+        cv = air.AirCausalConv1d(f"cv{C}_{L}_{W}", channels=C, length=L, width=W)
+        got = np.array(air.execute_causal_conv1d(cv, x, w, b))
+        ref = air.causal_conv1d_oracle(x, w, b, W)
+        assert float(np.max(np.abs(got - ref))) < 1e-4, (C, L, W)
+
+
+def test_a_sequence_shorter_than_the_kernel_is_all_padding():
+    """L=1 with W=4 means three of four taps read the zero pad. It is the DECODE shape
+    for a Mamba mixer, so getting it wrong breaks generation and nothing else."""
+    pytest.importorskip("mlx.core")
+    w = np.array([[1.0, 10.0, 100.0, 1000.0]], np.float32)   # one channel, distinct taps
+    x = np.array([[7.0]], np.float32)
+    b = np.array([0.5], np.float32)
+    cv = air.AirCausalConv1d("short", channels=1, length=1, width=4)
+    got = np.array(air.execute_causal_conv1d(cv, x, w, b))
+    # only the LAST tap sees the single element; the first three see the pad
+    assert abs(float(got[0, 0]) - (1000.0 * 7.0 + 0.5)) < 1e-4
+
+
+def test_peeking_at_the_future_is_caught():
+    """Causality is the correctness. In an autoregressive model a conv that reads t+1
+    changes no norm -- it just makes teacher forcing mysteriously easy -- so the control
+    has to be explicit."""
+    pytest.importorskip("mlx.core")
+    import mlx.core as mx
+    rng = np.random.default_rng(9)
+    C, L, W = 16, 32, 4
+    x = (rng.standard_normal((C, L)) * 2).astype(np.float32)
+    w = (rng.standard_normal((C, W)) * 2).astype(np.float32)
+    b = np.zeros(C, np.float32)
+    cv = air.AirCausalConv1d("peek", channels=C, length=L, width=W)
+    good = np.array(air.execute_causal_conv1d(cv, x, w, b))
+    src = air.lower_causal_conv1d_to_msl(cv)
+    bad = src.replace(f"int src = (int)t - {W - 1} + (int)k;", "int src = (int)t + (int)k;")
+    assert bad != src
+    kern = mx.fast.metal_kernel(name="conv_peek_t", input_names=["x", "w", "bias"],
+                                output_names=["out"], source=bad, ensure_row_contiguous=True)
+    g, tg = cv.launch()
+    (o,) = kern(inputs=[mx.array(x), mx.array(w), mx.array(b)], grid=g, threadgroup=tg,
+                output_shapes=[(C, L)], output_dtypes=[mx.float32])
+    mx.eval(o)
+    assert float(np.max(np.abs(np.array(o) - good))) > 1e-2
+
+
+def test_causal_conv1d_refuses_what_it_cannot_do():
+    mk = lambda **kw: air.AirCausalConv1d(**{"name": "c", "channels": 4, "length": 8,
+                                             "width": 4, **kw})
+    with pytest.raises(ValueError, match="must be positive"):
+        mk(channels=0).validate()
+    with pytest.raises(ValueError, match="multiple of 32"):
+        mk(threadgroup=48).validate()
+    with pytest.raises(ValueError, match="valid identifier"):
+        air.AirCausalConv1d("c.1", channels=4, length=8, width=4).validate()
+    assert mk().barrier_scopes_emitted() == []      # depthwise, one thread per output

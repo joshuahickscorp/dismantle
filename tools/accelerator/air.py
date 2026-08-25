@@ -1617,3 +1617,98 @@ def to_csr(a):
     np.cumsum(counts, out=row_ptr[1:])
     col_idx = np.tile(np.arange(a.shape[1], dtype=np.int32), (a.shape[0], 1))[nz]
     return row_ptr, col_idx.astype(np.int32), a[nz].astype(np.float32)
+
+
+@dataclass
+class AirCausalConv1d:
+    """Causal DEPTHWISE conv1d -- the Mamba mixer's convolution.
+
+    S015 §3 says CONVOLUTION WHERE USEFUL, and the qualifier is load-bearing. A census
+    of the four specimens on disk answers it rather than an opinion: Falcon-H1-7B holds
+    88 conv tensors (weight + bias for each of 44 layers, [3584, 1, 4] bf16), and
+    Qwen3-30B-A3B, Qwen3-VL-30B-A3B and Kimi-VL-A3B hold ZERO between them. So this
+    exists because ONE REAL SPECIMEN NEEDS IT, in exactly the shape that specimen uses.
+
+    CAUSALITY IS THE CORRECTNESS, NOT A DETAIL. Left-padding by W-1 is what stops
+    position t reading position t+1; get it wrong and an autoregressive model sees its
+    own future, which changes no norm and shows up as a model that is mysteriously good
+    at teacher forcing. A negative control pins that symmetric padding gives a
+    DIFFERENT answer.
+    """
+    name: str
+    channels: int
+    length: int
+    width: int = 4
+    threadgroup: int = 256
+    dtype: str = "f32"
+    device: str = "APPLE_GPU_0"
+
+    def validate(self) -> None:
+        if self.dtype != "f32":
+            raise ValueError("conv1d is f32 only here")
+        if self.threadgroup % 32 or not 32 <= self.threadgroup <= 1024:
+            raise ValueError(f"threadgroup {self.threadgroup} must be a multiple of 32 "
+                             f"and within Metal's 1024 limit")
+        if min(self.channels, self.length, self.width) <= 0:
+            raise ValueError("channels, length and width must be positive")
+        if self.width > self.length + self.width - 1:
+            raise ValueError("width exceeds the padded input")
+        if not self.name.isidentifier():
+            raise ValueError(f"name {self.name!r} becomes a Metal symbol and must be a "
+                             f"valid identifier")
+
+    def barrier_scopes_emitted(self) -> list[str]:
+        return []          # one thread owns one output position; nothing to order
+
+    def executable_on_metal_backend(self) -> tuple[bool, str]:
+        return True, "one thread per (channel, position); depthwise so no cross-channel reads"
+
+    def launch(self) -> tuple[tuple[int, int, int], tuple[int, int, int]]:
+        n = self.channels * self.length
+        return (n, 1, 1), (min(self.threadgroup, n), 1, 1)
+
+
+def lower_causal_conv1d_to_msl(cv: AirCausalConv1d) -> str:
+    cv.validate()
+    return f"""
+    uint gid = thread_position_in_grid.x;
+    if (gid >= {cv.channels * cv.length}u) return;
+    uint c = gid / {cv.length}u;
+    uint t = gid % {cv.length}u;
+    float acc = bias[c];
+    for (uint k = 0u; k < {cv.width}u; ++k) {{
+        // CAUSAL: tap k reads t - (W-1) + k, and anything before 0 is ZERO, not
+        // wrapped and not clamped. Wrapping would read the END of the sequence.
+        int src = (int)t - {cv.width - 1} + (int)k;
+        if (src >= 0) acc += w[c * {cv.width}u + k] * x[c * {cv.length}u + (uint)src];
+    }}
+    out[gid] = acc;
+"""
+
+
+def execute_causal_conv1d(cv: AirCausalConv1d, x, w, b):
+    import mlx.core as mx
+    kern = mx.fast.metal_kernel(name=f"air_conv1d_{cv.name}", input_names=["x", "w", "bias"],
+                                output_names=["out"],
+                                source=lower_causal_conv1d_to_msl(cv),
+                                ensure_row_contiguous=True)
+    g, tg = cv.launch()
+    (o,) = kern(inputs=[mx.array(x, dtype=mx.float32), mx.array(w, dtype=mx.float32),
+                        mx.array(b, dtype=mx.float32)],
+                grid=g, threadgroup=tg,
+                output_shapes=[(cv.channels, cv.length)], output_dtypes=[mx.float32])
+    mx.eval(o)
+    return o
+
+
+def causal_conv1d_oracle(x, w, b, width: int):
+    """float64 reference from the definition: left-pad by width-1, then correlate."""
+    import numpy as np
+    x = np.asarray(x, dtype=np.float64)
+    w = np.asarray(w, dtype=np.float64).reshape(x.shape[0], width)
+    pad = np.concatenate([np.zeros((x.shape[0], width - 1)), x], axis=1)
+    out = np.empty_like(x)
+    for k in range(width):
+        term = pad[:, k:k + x.shape[1]] * w[:, k:k + 1]
+        out = term if k == 0 else out + term
+    return out + np.asarray(b, dtype=np.float64)[:, None]

@@ -332,13 +332,13 @@
    "semantic_gap": "PARTIAL",
    "performance_gap": {
     "measured": true,
-    "value": "LOSES to the naive materialised path 1.37x at 1024 and 3.5x at 2048x128; beats MLX sdpa 1.11x at 1024x64 only",
-    "receipt": "receipts/headless/ACCELERATOR_ATTENTION.json"
+    "value": "loses to naive 1.37x at 1024; a simdgroup rebuild is SLOWER still (0.70x)",
+    "receipt": "receipts/headless/ACCELERATOR_ATTENTION_SIMDGROUP_REFUTED.json"
    },
    "priority": "P0",
    "test_corpus": "512/1024/2048 with head_dim 64 and 128, a causal variant, a non-power-of-two 37x40, and a refusal case at seq 100000",
    "current_winner": "MLX, and at 2048 even the NAIVE three-call path beats ours",
-   "remaining_limitation": "not flash-attention: no online softmax so the whole score row must fit in threadgroup memory, and scores are scalar dot products rather than simdgroup matrix ops, which is why it loses. Single head, f32, no batching, no KV cache.",
+   "remaining_limitation": "not flash-attention: no online softmax so the score row must fit in threadgroup memory. THE EARLIER DIAGNOSIS THAT SCALAR DOT PRODUCTS CAUSE THE LOSS IS REFUTED -- a simdgroup-matrix rebuild is 0.70x/0.73x SLOWER because its 8-row blocking drops occupancy from 256 threads per row to 32 threads per 8 rows, and needs 8x the threadgroup memory (capped at seq 1016). The real constraint is OCCUPANCY. Single head, f32, no batching, no KV cache.",
    "evidence": "receipts/headless/ACCELERATOR_ATTENTION.json"
   }
  ],

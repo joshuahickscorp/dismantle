@@ -128,3 +128,54 @@ def run_pass(name: str, spec_dir: Path, kb: dict[str, Any]) -> dict[str, Any]:
                   "NOT DISCHARGED HERE — that is Gravity's question and this pass does "
                   "not answer it; for model #2 it is carried by the KernelPlanner and "
                   "packer work under G023, and for the others it has not been done")}}
+
+
+# --- WHICH RUNTIME, AND WHY THE FORWARD PASS IS BLOCKED --------------------------
+# Five G048 receipts carried "no runtime here executes a Qwen3-MoE, Falcon or Mamba
+# forward pass" and used it to justify grading the lake specimens in WEIGHT SPACE --
+# the very space this program measured to be nearly invariant across architectures,
+# so the metric cannot tell them apart. THE SENTENCE CONFLATES TWO RUNTIMES.
+#
+# Hawking's own Rust body dispatches on llama / llama2 / llama3 / mistral / qwen2 /
+# qwen2.5 / qwen (crates/hawking-core/src/model/mod.rs) and really does lack every
+# lake architecture. mlx_lm -- already a hard dependency, the thing every AIR kernel
+# runs through -- carries model classes for ALL FIVE. So the gap is NOT a missing
+# reader, which would be weeks of Rust; it is STORAGE AND CONTENTION, which is hours
+# of waiting or one quiesced window. Those need completely different remediation and
+# naming the wrong one parks the obligation forever.
+HAWKING_RUST_ARCHS = ("llama", "llama2", "llama3", "llama3.1", "llama3.2",
+                      "mistral", "qwen2", "qwen2.5", "qwen")
+LAKE_SPECIMEN_MODULES = ("qwen3_moe", "qwen3_vl_moe", "kimi_vl", "falcon_h1")
+
+
+def runtime_coverage() -> dict[str, Any]:
+    """Who can actually execute a lake specimen, asked rather than assumed.
+
+    Returns both runtimes separately BECAUSE THE RECEIPTS COLLAPSED THEM. A caller
+    that wants a forward pass needs to know the answer is 'yes, and the weights are
+    two hours away over a contended USB bus', not 'no, write a reader first'.
+    """
+    import importlib
+    mlx = {}
+    for mod in LAKE_SPECIMEN_MODULES:
+        try:
+            importlib.import_module("mlx_lm.models." + mod)
+            mlx[mod] = True
+        except Exception:                    # noqa: BLE001 -- absence is the answer
+            mlx[mod] = False
+    return {
+        "hawking_rust_archs": list(HAWKING_RUST_ARCHS),
+        "hawking_rust_covers_any_lake_specimen": False,
+        "mlx_lm_module_present": mlx,
+        "mlx_lm_covers_all_lake_specimens": all(mlx.values()),
+        # The gate that is actually open, per S015 §129: named input, not a parking lot.
+        "blocked_on": "FAST_LOCAL_STORAGE",
+        "blocked_on_detail": (
+            "Falcon-H1-7B is the smallest lake specimen at 15.17 GB over 4 shards. "
+            "Under the operator-prioritised fill (4 concurrent hf downloads) a "
+            "sequential read of that volume did not complete 256 MiB in 120 s, so "
+            "the contended rate is under ~2.1 MB/s against 96-131 MiB/s measured "
+            "uncontended -- a >45x contention penalty and >2 h for one load. The "
+            "missing input is a quiesced window or a staged copy on Tier 1, NOT a "
+            "model reader."),
+    }

@@ -17,7 +17,7 @@ import json
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, ClassVar
 
 REPO = Path(__file__).resolve().parents[2]
 
@@ -60,7 +60,7 @@ class Ascension:
     # A profile may only be sealed on evidence that speaks to what it CLAIMS. Sealing
     # MAX_THROUGHPUT on sustained evidence alone was a real hole: sustained load says
     # nothing about how the kernel behaves against other work.
-    PROFILE_REQUIRES: dict[str, tuple[str, ...]] = {
+    PROFILE_REQUIRES: ClassVar[dict[str, tuple[str, ...]]] = {
         "SUSTAINED": ("sustained_qualification",),
         "MAX_THROUGHPUT": ("sustained_qualification", "concurrency_sweep"),
         "HCLI_AUTONOMOUS": ("sustained_qualification", "concurrency_sweep"),

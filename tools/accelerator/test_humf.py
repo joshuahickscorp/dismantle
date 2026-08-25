@@ -449,3 +449,88 @@ def test_a_round_trip_check_validates_the_round_trip_not_the_resident_copy():
     seen_by_kernel = mp.read_for_compute("W42")
     assert seen_by_kernel != PAYLOAD                 # and the kernel sees something else
     assert m.state is State.CLEAN                    # the fabric still says CLEAN
+
+
+# ------------- quarantine is about TRUST, not direction; and a probe can time out
+
+def test_a_quarantined_domain_is_not_offered_as_a_transfer_SOURCE():
+    """The hole this closes was mine, made two blocks ago: the quarantine check lived
+    only in execute() and read want_domain, so the planner would source FROM a domain
+    the fabric had just declared untrustworthy without a word."""
+    h, o, mp = fabric()
+    doms = dict(h.domains); doms["SCRATCH"] = Domain("SCRATCH", 1 << 30, 100.0, physical=True)
+    h.domains = doms
+    o.place(Materialization("MOCK_EXTERNAL_VRAM", "dense_f32", "row_major", NB,
+                            State.CLEAN, payload=PAYLOAD))
+    o.materializations["APPLE_UM"].transition(State.EVICTED)   # leave ONE clean copy
+    h.quarantined["MOCK_EXTERNAL_VRAM"] = "partial loss, trust unknown"
+    plan = h.plan_acquire("W42", "SCRATCH")
+    # MY FIRST VERSION OF THIS TEST ASSERTED IMPOSSIBLE AND THE CODE WAS RIGHT, NOT
+    # THE TEST: the fixture object HAS a recompute recipe, so refusing the quarantined
+    # source correctly falls back to RECOMPUTE rather than stranding the object. What
+    # matters is that the untrusted domain is not offered AT ALL.
+    assert all(op.get("from") != "MOCK_EXTERNAL_VRAM" for op in plan.options), plan.options
+    assert plan.action == "RECOMPUTE", plan.detail
+
+
+def test_with_no_recipe_a_quarantined_only_object_is_IMPOSSIBLE_and_says_why():
+    """When there IS no honest alternative the fabric refuses and names the quarantine,
+    rather than handing over bytes it has declared untrustworthy."""
+    h, o, mp = fabric()
+    doms = dict(h.domains); doms["SCRATCH"] = Domain("SCRATCH", 1 << 30, 100.0, physical=True)
+    h.domains = doms
+    o.recompute_cost_s = None                      # no way out but the bad one
+    o.place(Materialization("MOCK_EXTERNAL_VRAM", "dense_f32", "row_major", NB,
+                            State.CLEAN, payload=PAYLOAD))
+    o.materializations["APPLE_UM"].transition(State.EVICTED)
+    h.quarantined["MOCK_EXTERNAL_VRAM"] = "partial loss"
+    plan = h.plan_acquire("W42", "SCRATCH")
+    assert plan.action == "IMPOSSIBLE"
+    assert "QUARANTINED" in plan.detail
+
+
+def test_already_resident_in_a_quarantined_domain_is_refused_too():
+    """Handing back a copy that happens to live in the quarantined domain would be the
+    same trust failure through a different door."""
+    h, o, mp = fabric()
+    o.place(Materialization("MOCK_EXTERNAL_VRAM", "dense_f32", "row_major", NB,
+                            State.CLEAN, payload=PAYLOAD))
+    h.quarantined["MOCK_EXTERNAL_VRAM"] = "bus reset"
+    plan = h.plan_acquire("W42", "MOCK_EXTERNAL_VRAM")
+    assert plan.action == "IMPOSSIBLE" and "QUARANTINED" in plan.detail
+
+
+def test_releasing_the_quarantine_restores_the_domain_as_a_source():
+    """A check that can only ever refuse is as useless as one that only ever accepts."""
+    h, o, mp = fabric()
+    doms = dict(h.domains); doms["SCRATCH"] = Domain("SCRATCH", 1 << 30, 100.0, physical=True)
+    h.domains = doms
+    o.place(Materialization("MOCK_EXTERNAL_VRAM", "dense_f32", "row_major", NB,
+                            State.CLEAN, payload=PAYLOAD))
+    o.materializations["APPLE_UM"].transition(State.EVICTED)
+    o.recompute_cost_s = None
+    h.quarantined["MOCK_EXTERNAL_VRAM"] = "bus reset"
+    assert h.plan_acquire("W42", "SCRATCH").action == "IMPOSSIBLE"
+    h.release_quarantine("MOCK_EXTERNAL_VRAM")
+    assert h.plan_acquire("W42", "SCRATCH").action == "TRANSFER"
+
+
+def test_a_probe_that_times_out_is_UNKNOWN_not_lost():
+    """A timeout means we could not ask, NOT that the copy is gone. Calling it lost
+    would be the manufactured-data-loss error one level up; calling it survived would
+    name a phantom. The state is left ALONE."""
+    h, o, mp = fabric()
+    h.transfer_timeout_s = 0.05
+    live = HumfObject("SLOW", "tensor", N, "f32")
+    live.place(Materialization("MOCK_EXTERNAL_VRAM", "dense_f32", "row_major", NB,
+                               State.CLEAN, payload=PAYLOAD))
+    h.register(live)
+    mp.store["SLOW"] = PAYLOAD
+    mp.hang_next_s = 0.6
+    r = h.device_partially_lost("MOCK_EXTERNAL_VRAM", "reset, probe hung")
+    assert r["unknown"] == ["SLOW"], r
+    assert r["lost"] == [] and r["data_lost"] == []
+    m = live.materializations["MOCK_EXTERNAL_VRAM"]
+    assert m.state is State.CLEAN and m.payload == PAYLOAD   # untouched
+    # and the quarantine is what stops it being used before an operator resolves it
+    assert "MOCK_EXTERNAL_VRAM" in h.quarantined

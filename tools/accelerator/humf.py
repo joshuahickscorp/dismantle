@@ -224,16 +224,29 @@ class Humf:
         where the bookkeeping cannot be derived and has to be MEASURED.
         """
         prov = self.providers.get(domain)
-        survived, lost, data_lost = [], [], []
+        survived, lost, data_lost, unknown = [], [], [], []
         for ident, obj in self.objects.items():
             m = obj.materializations.get(domain)
             if m is None or m.state in (State.ABSENT, State.EVICTED, State.INVALID):
                 continue
+            # THE PROBE IS ITSELF A TRANSPORT OPERATION. The previous receipt named
+            # this as an honest gap: it was not wrapped in the deadline the transfer
+            # path uses, so a device that HANGS on the probe would hang the handler.
+            # It is wrapped now -- and a TIMEOUT IS NOT A LOSS. Calling it lost would
+            # be the manufactured-data-loss error one level up: the copy may be
+            # perfectly fine and we merely could not ask. Calling it survived would
+            # name a phantom. So there is a THIRD outcome, UNKNOWN, and the fabric
+            # LEAVES THE STATE ALONE -- it must not act on information it does not
+            # have. The domain is quarantined either way, which is what stops an
+            # UNKNOWN copy being used before an operator resolves it.
             alive = False
             if prov is not None:
                 try:
-                    prov.copy_out(ident)
+                    self._with_deadline(prov.copy_out, ident)
                     alive = True
+                except TransferTimeout:
+                    unknown.append(ident)
+                    continue
                 except Exception:
                     alive = False
             if alive:
@@ -248,11 +261,14 @@ class Humf:
         self.quarantined[domain] = reason
         self.log.append({"action": "DEVICE_PARTIALLY_LOST", "domain": domain,
                          "reason": reason, "survived": survived, "lost": lost,
-                         "data_lost": data_lost, "at": time.time()})
+                         "unknown": unknown, "data_lost": data_lost,
+                         "at": time.time()})
         return {"domain": domain, "reason": reason, "survived": survived,
-                "lost": lost, "data_lost": data_lost,
-                "means": "each copy was PROBED, not assumed; a blanket verdict would "
-                         "either name phantoms or manufacture data loss"}
+                "lost": lost, "unknown": unknown, "data_lost": data_lost,
+                "means": "each copy was PROBED under a deadline, not assumed. A blanket "
+                         "verdict would either name phantoms or manufacture data loss, "
+                         "and a probe that TIMED OUT is UNKNOWN -- state untouched, "
+                         "counted as neither"}
 
     def release_quarantine(self, domain: str) -> list[str]:
         """Explicit, never automatic. A link that failed once is trusted again only
@@ -293,14 +309,31 @@ class Humf:
         obj = self.objects[identity]
         opts: list[dict[str, Any]] = []
 
+        # QUARANTINE IS ABOUT TRUST, NOT DIRECTION. The check in execute() reads
+        # `want_domain in self.quarantined` and is about the DESTINATION -- and for two
+        # blocks that was the ONLY place quarantine appeared, so the planner would
+        # happily offer a copy LIVING IN a quarantined domain as a transfer SOURCE.
+        # DEMONSTRATED AGAINST THE PRE-FIX CODE: after a partial loss the plan came
+        # back 'TRANSFER from MOCK_EXTERNAL_VRAM' without a word. That is the
+        # silent-wrong-answer class -- reading from a domain the fabric had just
+        # declared untrustworthy. A quarantined domain supplies NOTHING, in either
+        # direction, until release_quarantine() says otherwise.
         here = obj.materializations.get(want_domain)
         if here and here.state is State.CLEAN and (
                 want_representation in (None, here.representation)):
+            if want_domain in self.quarantined:
+                return Plan("IMPOSSIBLE", float("inf"),
+                            f"{identity} is CLEAN in {want_domain} but that domain is "
+                            f"QUARANTINED ({self.quarantined[want_domain]}); its "
+                            f"contents are not to be relied upon until released",
+                            "MEASURED", [])
             return Plan("ALREADY_RESIDENT", 0.0, f"{identity} is CLEAN in {want_domain}",
                         "MEASURED", [])
 
         for src, m in obj.materializations.items():
             if src == want_domain or m.state is not State.CLEAN:
+                continue
+            if src in self.quarantined:
                 continue
             c, prov = self._transfer_cost(src, want_domain, m.bytes)
             opts.append({"action": "TRANSFER", "from": src, "bytes": m.bytes,
@@ -313,9 +346,14 @@ class Humf:
                          "cost_provenance": "MEASURED"})
 
         if not opts:
-            return Plan("IMPOSSIBLE", float("inf"),
-                        f"{identity} has no CLEAN copy and no recompute recipe",
-                        "MEASURED", [])
+            blocked = [d for d, m in obj.materializations.items()
+                       if m.state is State.CLEAN and d in self.quarantined]
+            why = (f"{identity} has no CLEAN copy and no recompute recipe"
+                   if not blocked else
+                   f"{identity}'s only CLEAN copies are in QUARANTINED domains "
+                   f"{sorted(blocked)}; refusing to source from a domain whose "
+                   f"contents the fabric has declared untrustworthy")
+            return Plan("IMPOSSIBLE", float("inf"), why, "MEASURED", [])
 
         best = min(opts, key=lambda o: o["cost_s"])
         return Plan(best["action"], best["cost_s"],

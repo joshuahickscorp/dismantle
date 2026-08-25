@@ -190,7 +190,8 @@ def ref_matvec(packed, scale, cols: int, x):
 def accept_pack(w_true, packed, scale, cols, gpu_out, x, *,
                 kernel_tol_rel: float = 1e-3,
                 min_cosine: float = 0.99,
-                magnitude_band: tuple[float, float] = (0.9, 1.1)) -> dict:
+                magnitude_band: tuple[float, float] = (0.9, 1.1),
+                activations=None) -> dict:
     """Is a packed tensor ACCEPTED? Two INDEPENDENT gates, both required.
 
     THIS EXISTS BECAUSE THE OBVIOUS PREDICATE CERTIFIES NOTHING. Comparing the GPU
@@ -251,6 +252,23 @@ def accept_pack(w_true, packed, scale, cols, gpu_out, x, *,
                         "pack that points the right way at the wrong magnitude"},
         "relative_error_vs_true": float(np.max(np.abs(ref - true)) /
                                         max(1e-30, float(np.max(np.abs(true))))),
+        # OPTIONAL THIRD READING, when real activations are available. Not a third
+        # gate -- accepted stays the two-gate verdict -- because a caller with no
+        # activations must not silently get a weaker answer than one who has them.
+        # It is reported so the DISAGREEMENT is visible. Measured over 108 packs
+        # (6 layers x 6 organs x 3 bit widths of MiniLM): the two gates agree 94.4%
+        # of the time, the 5 disagreements in one direction are ALL output.dense at
+        # 3 bits -- bits the weight gate refuses to save -- and the 1 in the other
+        # direction is layer 4's value projection at 4 bits, which the weight gate
+        # accepts at 0.99273 and real activations reject at 0.98974. See
+        # ACCELERATOR_GATE_DISAGREEMENT.json.
+        "output_space": (None if activations is None else
+                         (lambda o: o | {"ok": bool(o["cosine_real_inputs"] >= min_cosine),
+                                         "agrees_with_single_x_gate":
+                                             bool((o["cosine_real_inputs"] >= min_cosine)
+                                                  == rep_ok)})(
+                             output_space_fidelity(
+                                 w_true, dequantize(packed, scale, cols), activations))),
     }
 
 
@@ -502,6 +520,14 @@ def output_space_fidelity(w_true, w_hat, x) -> dict:
     inputs collapses the separation back to 0.0052. THE RANKING ALSO INVERTS --
     output.dense is the WORST organ by weight cosine (0.9647) and the BEST by real
     activations (0.9982). See ACCELERATOR_ORGAN_DISCRIMINATION.json.
+
+    HOW MANY ROWS. Measured over 72 packs by resampling against the full capture: a
+    ONE-ROW gate flips its verdict on 12.6% of packs, and that falls to 11.5% at 2
+    rows, 8.9% at 8, 5.7% at 16, 3.1% at 32 and 0.7% at 64; the mean cosine gap falls
+    0.0104 -> 0.0005 over the same range. AND REALISM IS NOT THE LEVER AT N=1: one
+    real activation row agreed with the full capture LESS often (83.3%) than one
+    Gaussian vector (91.7%), because a single token is high-variance while a Gaussian
+    averages over directions. SAMPLE SIZE FIRST, REALISM SECOND.
 
     Returns the real number and the two controls beside it, because the real number
     alone cannot be told apart from the blind one.

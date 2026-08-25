@@ -165,5 +165,14 @@
   "accelerator_total": 240,
   "was_total": 239
  },
- "pass": true
+ "pass": true,
+ "amendments": [
+  {
+   "date": "2026-08-25",
+   "kind": "PRECISION -- a claim a reader could take too widely",
+   "what_this_receipt_measured": "gravity_native.fidelity(), which IS weight-space, and the per-tensor sweep built on it. Every number here stands.",
+   "what_it_must_not_be_read_as": "a claim about accept_pack. accept_pack's representation gate is ALREADY OUTPUT-SPACE -- it compares w_true @ x against a matvec of the packed bytes. The finding does not vanish, it MOVES: a single Gaussian x is exactly the directionless input this receipt shows to be blind, so the question for accept_pack is WHICH x and HOW MANY, not weight versus output.",
+   "measured_in": "ACCELERATOR_GATE_DISAGREEMENT.json"
+  }
+ ]
 }

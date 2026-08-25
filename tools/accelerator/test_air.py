@@ -1383,3 +1383,40 @@ def test_the_weight_space_gate_cannot_tell_organs_apart_and_output_space_can():
     # and where the separation comes from the per-feature marginals rather than from
     # cross-feature correlation, shuffling the columns changes nothing
     assert abs(f["cosine_real_inputs"] - f["cosine_shuffled_inputs"]) < 1e-3
+
+
+def test_accept_pack_reports_the_output_space_reading_without_letting_it_decide():
+    """accept_pack's representation gate is already output-space, but on ONE x. When
+    real activations are supplied the wider reading is REPORTED beside the verdict and
+    never replaces it -- a caller with no activations must not silently get a weaker
+    answer than one who has them."""
+    import gravity_native as gn
+    rng = np.random.default_rng(0)
+    W = (rng.standard_normal((64, 128)) * 0.05).astype(np.float32)
+    packed, scale = gn.pack_q4_g64(W)
+    x = rng.standard_normal(128).astype(np.float32)
+    out = gn.ref_matvec(packed, scale, 128, x)
+    X = (rng.standard_normal((32, 128)) * 0.1); X[:, :8] += 4.0
+    with_act = gn.accept_pack(W, packed, scale, 128, out, x, activations=X)
+    without = gn.accept_pack(W, packed, scale, 128, out, x)
+    assert without["output_space"] is None
+    assert with_act["accepted"] == without["accepted"]      # it does not decide
+    assert set(with_act["output_space"]) >= {
+        "cosine_real_inputs", "cosine_gaussian_inputs", "ok",
+        "agrees_with_single_x_gate"}
+
+
+def test_one_input_vector_is_a_noisier_gate_than_many():
+    """A one-row gate flips its verdict on 12.6% of real packs. Pinned structurally:
+    the spread of single-row cosines straddles the aggregate, so the verdict a
+    single-x gate returns depends on which row it happened to get."""
+    import gravity_native as gn
+    rng = np.random.default_rng(1)
+    W = (rng.standard_normal((32, 64)) * 0.05).astype(np.float32)
+    Wq = gn.quantize_grouped(W, 3, 64)
+    X = np.abs(rng.standard_normal((64, 64))) * rng.choice([0.1, 3.0], (64, 1))
+    singles = [gn.output_space_fidelity(W, Wq, X[i:i + 1])["cosine_real_inputs"]
+               for i in range(X.shape[0])]
+    full = gn.output_space_fidelity(W, Wq, X)["cosine_real_inputs"]
+    assert min(singles) < full < max(singles)
+    assert max(singles) - min(singles) > 10 * abs(full - float(np.mean(singles)))

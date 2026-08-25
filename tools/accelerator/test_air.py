@@ -545,3 +545,36 @@ def test_eager_mode_is_a_control_not_a_feature():
     a = air.execute_graph(_chain(4096, 4), {"x": x})["n3"]
     b = air.execute_graph(_chain(4096, 4), {"x": x}, eager=True)["n3"]
     assert np.array_equal(np.array(a), np.array(b))
+
+
+# ------------------------------------------------ storage layout and reuse (G048)
+
+def test_kernel_identity_is_the_msl_not_a_heuristic():
+    import gravity_native as gnat
+    assert gnat.kernel_identity(768, 2048) == gnat.kernel_identity(768, 2048)
+    assert gnat.kernel_identity(768, 2048) != gnat.kernel_identity(2048, 768)
+    assert gnat.kernel_identity(768, 2048) != gnat.kernel_identity(1408, 2048)
+
+
+def test_fused_expert_storage_needs_preparation_and_2d_does_not():
+    """The two conventions actually on disk. A fused [experts, in, 2*out] tensor
+    stores its gate half TRANSPOSED, so the shape a config implies and the shape the
+    bytes are in are different -- which is what makes reuse a layout claim."""
+    import gravity_native as gnat
+    shape, prep = gnat.stored_gate_shape([128, 2048, 1536])     # Qwen3-VL
+    assert (shape, prep) == ((2048, 768), True)
+    shape, prep = gnat.stored_gate_shape([768, 2048])            # Qwen3-30B-A3B
+    assert (shape, prep) == ((768, 2048), False)
+    shape, prep = gnat.stored_gate_shape([1408, 2048])           # Kimi-VL
+    assert (shape, prep) == ((1408, 2048), False)
+
+
+def test_the_fused_layout_emits_a_different_kernel_before_preparation():
+    """The sharp version of the correction: the VL variant's tensor AS STORED does
+    NOT share model #2's kernel, even though its GEMV shape does after preparation."""
+    import gravity_native as gnat
+    m2 = gnat.kernel_identity(768, 2048)
+    stored, prep = gnat.stored_gate_shape([128, 2048, 1536])
+    assert prep is True
+    assert gnat.kernel_identity(*stored) != m2                  # as it sits on disk
+    assert gnat.kernel_identity(stored[1], stored[0]) == m2      # after transposing

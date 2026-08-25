@@ -100,3 +100,39 @@ def sources(rows: int, cols: int) -> dict[str, str]:
          "GROUPS": cols // GROUP, "GROUP": GROUP, "BOUND": BOUND}
     return {"native": NATIVE_MATVEC % d, "dense": DENSE_MATVEC % d,
             "dequant": DEQUANT % d}
+
+
+def kernel_identity(rows: int, cols: int) -> str:
+    """The identity of the emitted native kernel: a hash of the MSL itself.
+
+    Two tensors share a kernel exactly when this matches. Not a similarity score,
+    not a model-family heuristic -- the bytes that will be compiled.
+    """
+    import hashlib
+    return hashlib.sha256(sources(rows, cols)["native"].encode()).hexdigest()[:16]
+
+
+def stored_gate_shape(on_disk_shape: list[int]) -> tuple[tuple[int, int], bool]:
+    """(gate shape as STORED, whether preparation is needed) for a MoE expert tensor.
+
+    Two storage conventions are in the specimens on disk and they are NOT
+    interchangeable:
+
+      [out, in]            one 2-D tensor per expert per projection (Qwen3-30B-A3B,
+                           Kimi-VL). Already in the orientation the kernel wants.
+
+      [experts, in, 2*out] one 3-D tensor stacking every expert, with gate and up
+                           FUSED along the last axis (Qwen3-VL-30B-A3B). The gate
+                           half is stored [in, out] -- TRANSPOSED relative to what
+                           the kernel wants -- so it needs de-interleaving and
+                           transposing before the same kernel applies.
+
+    This distinction is the reason kernel reuse is a claim about STORAGE LAYOUT and
+    not only about GEMV shape: the fused tensor's stored orientation emits a
+    DIFFERENT kernel from the one the same model's shape suggests.
+    """
+    if len(on_disk_shape) == 3:
+        _, in_dim, two_out = on_disk_shape
+        return (in_dim, two_out // 2), True
+    out_dim, in_dim = on_disk_shape
+    return (out_dim, in_dim), False

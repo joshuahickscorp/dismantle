@@ -28,7 +28,14 @@ STAGES = ("fingerprint", "benchmark", "roof_measurement", "workload_census",
 PROFILES = ("INTERACTIVE", "MAX_THROUGHPUT", "MIN_LATENCY", "MIN_MEMORY",
             "SUSTAINED", "BATTERY_AWARE", "HCLI_AUTONOMOUS", "ODYSSEY_RESEARCH")
 
-KNOWLEDGE_LEVELS = ("EXACT_MACHINE", "SOC_FAMILY", "APPLE_GENERAL")
+# NOTE: this is the §26 TUNING-SCOPE vocabulary (general / SoC / exact machine) and it
+# is NOT the §80 knowledge-level vocabulary used by receipt.py (INSTANCE, MODEL_FAMILY,
+# ARCHITECTURE, ...). They share the phrase "knowledge level" and mean different things:
+# §26 asks how widely a TUNING RESULT applies, §80 asks how far a FINDING may be
+# promoted. Conflating them was a real bug -- an ADP tuning scope was passed straight
+# into a receipt and rejected. Renamed here so the two cannot be swapped by accident.
+TUNING_SCOPES = ("EXACT_MACHINE", "SOC_FAMILY", "APPLE_GENERAL")
+KNOWLEDGE_LEVELS = TUNING_SCOPES  # kept so existing callers still resolve
 
 
 @dataclass
@@ -50,8 +57,29 @@ class Ascension:
                 and not (isinstance(self.stages[s], dict)
                          and self.stages[s].get("status") == "NOT_RUN")]
 
-    def may_seal_adp(self) -> tuple[bool, str]:
-        """A production ADP needs sustained evidence, not a microbenchmark (§29)."""
+    # A profile may only be sealed on evidence that speaks to what it CLAIMS. Sealing
+    # MAX_THROUGHPUT on sustained evidence alone was a real hole: sustained load says
+    # nothing about how the kernel behaves against other work.
+    PROFILE_REQUIRES: dict[str, tuple[str, ...]] = {
+        "SUSTAINED": ("sustained_qualification",),
+        "MAX_THROUGHPUT": ("sustained_qualification", "concurrency_sweep"),
+        "HCLI_AUTONOMOUS": ("sustained_qualification", "concurrency_sweep"),
+        "MIN_LATENCY": ("dispatch_plan",),
+        "MIN_MEMORY": ("memory_plan",),
+        "INTERACTIVE": ("dispatch_plan",),
+        "ODYSSEY_RESEARCH": ("sustained_qualification",),
+        "BATTERY_AWARE": ("sustained_qualification",),
+    }
+
+    def may_seal_adp(self, profile: str = "SUSTAINED") -> tuple[bool, str]:
+        """A production ADP needs sustained evidence, not a microbenchmark (§29) -- and
+        it needs the evidence its OWN profile depends on."""
+        for stage in self.PROFILE_REQUIRES.get(profile, ("sustained_qualification",)):
+            got = self.stages.get(stage)
+            if not isinstance(got, dict) or got.get("status") == "NOT_RUN":
+                return False, (f"profile {profile} requires stage {stage!r}, which has "
+                               f"not run; sealing it would claim something no "
+                               f"measurement here supports")
         sust = self.stages.get("sustained_qualification")
         if not isinstance(sust, dict) or sust.get("status") == "NOT_RUN":
             return False, ("sustained_qualification has not run; §29 forbids sealing a "
@@ -65,9 +93,11 @@ class Ascension:
         if profile not in PROFILES:
             raise ValueError(f"{profile!r} is not a named profile; §24 forbids vague "
                              f"'optimized settings'")
-        if knowledge_level not in KNOWLEDGE_LEVELS:
-            raise ValueError(f"{knowledge_level!r} is not a knowledge level")
-        ok, why = self.may_seal_adp()
+        if knowledge_level not in TUNING_SCOPES:
+            raise ValueError(f"{knowledge_level!r} is not a §26 tuning scope; the §80 "
+                             f"knowledge levels used by receipts are a DIFFERENT "
+                             f"vocabulary and must not be passed here")
+        ok, why = self.may_seal_adp(profile)
         return {
             "adp": f"ADP-{self.machine.get('soc','UNKNOWN').replace(' ','')}-{profile}",
             "profile": profile,

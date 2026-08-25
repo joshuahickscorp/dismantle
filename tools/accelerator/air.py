@@ -467,7 +467,13 @@ def lower_softmax_to_msl(sm: AirSoftmax) -> str:
     uint lid = thread_position_in_threadgroup.x;
     uint lane = lid % 32u;
     uint warp = lid / 32u;
-    threadgroup float red[{lanes}];
+    // WRITE-AFTER-READ: the second reduction gets ITS OWN SLOTS rather than reusing
+    // the first's. Reusing them needs a barrier between every thread's READ of the
+    // first result and the first thread's WRITE of the second, and there was none --
+    // found when the intact LayerNorm came out wrong by 0.061 at threadgroup 1024
+    // while exact at 64 and 256. Separate slots remove the hazard structurally, which
+    // beats a third barrier: there is nothing left to forget.
+    threadgroup float red[{2 * lanes}];
     uint base = row * {sm.cols}u;
 
     // pass 1: row max, for numerical stability
@@ -483,10 +489,10 @@ def lower_softmax_to_msl(sm: AirSoftmax) -> str:
     float s = 0.0f;
     for (uint c = lid; c < {sm.cols}u; c += {sm.threadgroup}u) s += exp(x[base + c] - rowmax);
     float ss = simd_sum(s);
-    if (lane == 0u) red[warp] = ss;
+    if (lane == 0u) red[{lanes}u + warp] = ss;
     threadgroup_barrier(mem_flags::mem_threadgroup);
     float rowsum = 0.0f;
-    for (uint i = 0; i < {lanes}u; ++i) rowsum += red[i];
+    for (uint i = 0; i < {lanes}u; ++i) rowsum += red[{lanes}u + i];
 
     // pass 3: normalise
     float inv = 1.0f / rowsum;
@@ -701,7 +707,13 @@ def lower_attention_to_msl(at: AirAttention) -> str:
     uint lane = lid % 32u;
     uint warp = lid / 32u;
     threadgroup float scores[{at.seq_k}];
-    threadgroup float red[{lanes}];
+    // WRITE-AFTER-READ: the second reduction gets ITS OWN SLOTS rather than reusing
+    // the first's. Reusing them needs a barrier between every thread's READ of the
+    // first result and the first thread's WRITE of the second, and there was none --
+    // found when the intact LayerNorm came out wrong by 0.061 at threadgroup 1024
+    // while exact at 64 and 256. Separate slots remove the hazard structurally, which
+    // beats a third barrier: there is nothing left to forget.
+    threadgroup float red[{2 * lanes}];
 
     // scores = Q . K^T * scale, held in threadgroup memory and never written out
     for (uint j = lid; j < {at.seq_k}u; j += {at.threadgroup}u) {{
@@ -729,10 +741,10 @@ def lower_attention_to_msl(at: AirAttention) -> str:
         acc += e;
     }}
     float ss = simd_sum(acc);
-    if (lane == 0u) red[warp] = ss;
+    if (lane == 0u) red[{lanes}u + warp] = ss;
     threadgroup_barrier(mem_flags::mem_threadgroup);
     float rowsum = 0.0f;
-    for (uint i = 0; i < {lanes}u; ++i) rowsum += red[i];
+    for (uint i = 0; i < {lanes}u; ++i) rowsum += red[{lanes}u + i];
     float inv = 1.0f / rowsum;
     threadgroup_barrier(mem_flags::mem_threadgroup);
 
@@ -1273,3 +1285,164 @@ def topk_sample_oracle(x, u, k: int, temperature: float = 1.0):
     pos = (target >= cdf).sum(axis=1)
     pos = np.minimum(pos, k - 1)
     return order[np.arange(len(order)), pos], vals, order
+
+
+@dataclass
+class AirNorm:
+    """RMSNorm and LayerNorm as ONE fused kernel per row. S015 §3 names NORMALIZATION
+    in the required corpus.
+
+    TWO VARIANCE STRATEGIES ARE KEPT ON PURPOSE, and the reason is numerical, not
+    stylistic. TWO_PASS computes the mean, then sums (x - mean)^2. ONE_PASS computes
+    sum(x) and sum(x^2) in the SAME loop and takes var = E[x^2] - E[x]^2, which saves a
+    pass over the row and a barrier. The second form is a textbook example of
+    CATASTROPHIC CANCELLATION: when the mean is large relative to the spread, E[x^2]
+    and E[x]^2 are two nearly equal large numbers whose difference is the small answer,
+    and f32 has no bits left to express it. ONE_PASS is retained as the DEMONSTRATION
+    of that, with its error measured rather than asserted, because a strategy nobody
+    has watched fail reads as a strategy that merely lost a style argument.
+
+    RMSNorm has NO mean to subtract, so the cancellation question does not arise there
+    at all -- which is worth saying, because it is the reason the modern transformer's
+    choice of RMSNorm removes a numerical hazard as well as an arithmetic step.
+    """
+    name: str
+    rows: int
+    cols: int
+    mode: str = "rms"                 # rms | layer
+    variance: str = "two_pass"        # two_pass | one_pass  (layer only)
+    eps: float = 1e-5
+    threadgroup: int = 256
+    dtype: str = "f32"
+    device: str = "APPLE_GPU_0"
+
+    def validate(self) -> None:
+        if self.dtype != "f32":
+            raise ValueError("norm is f32 only here")
+        if self.mode not in ("rms", "layer"):
+            raise ValueError(f"mode {self.mode!r} must be 'rms' or 'layer'")
+        if self.variance not in ("two_pass", "one_pass"):
+            raise ValueError(f"variance {self.variance!r} must be 'two_pass' or 'one_pass'")
+        if self.mode == "rms" and self.variance != "two_pass":
+            raise ValueError("RMSNorm subtracts no mean, so there is no one-pass "
+                             "variance to choose -- the option does not apply and "
+                             "silently ignoring it would hide that")
+        if self.threadgroup % 32 or not 32 <= self.threadgroup <= 1024:
+            raise ValueError(f"threadgroup {self.threadgroup} must be a multiple of 32 "
+                             f"and within Metal's 1024 limit")
+        if self.rows <= 0 or self.cols <= 0:
+            raise ValueError("rows and cols must be positive")
+        if not self.name.isidentifier():
+            raise ValueError(f"name {self.name!r} becomes a Metal symbol and must be a "
+                             f"valid identifier")
+
+    def barrier_scopes_emitted(self) -> list[str]:
+        n = 1 if (self.mode == "rms" or self.variance == "one_pass") else 2
+        return ["THREADGROUP"] * n
+
+    def executable_on_metal_backend(self) -> tuple[bool, str]:
+        return True, f"fused row {self.mode}norm, {len(self.barrier_scopes_emitted())} barriers"
+
+    def input_names(self) -> list[str]:
+        return ["x", "w"] if self.mode == "rms" else ["x", "w", "b"]
+
+    def launch(self) -> tuple[tuple[int, int, int], tuple[int, int, int]]:
+        return (self.rows * self.threadgroup, 1, 1), (self.threadgroup, 1, 1)
+
+
+def lower_norm_to_msl(nm: AirNorm) -> str:
+    nm.validate()
+    lanes = nm.threadgroup // 32
+    tg, cols = nm.threadgroup, nm.cols
+    # the one-pass form reduces TWO quantities, so its scratch is twice as wide.
+    # This was a real bug for one commit: `head + f"..." .replace(...)` binds the
+    # replace to the f-string alone, so the declaration in `head` never changed.
+    slots = 2 * lanes if nm.mode == "layer" else lanes
+    head = f"""
+    uint row = threadgroup_position_in_grid.x;
+    uint lid = thread_position_in_threadgroup.x;
+    uint lane = lid % 32u;
+    uint warp = lid / 32u;
+    threadgroup float red[{slots}];
+    uint base = row * {cols}u;
+"""
+    if nm.mode == "rms":
+        return head + f"""
+    float s = 0.0f;
+    for (uint c = lid; c < {cols}u; c += {tg}u) {{ float v = x[base + c]; s += v * v; }}
+    float ss = simd_sum(s);
+    if (lane == 0u) red[warp] = ss;
+    {barrier_msl("THREADGROUP")}
+    float tot = 0.0f;
+    for (uint i = 0u; i < {lanes}u; ++i) tot += red[i];
+    float rstd = rsqrt(tot / {float(cols)}f + {nm.eps}f);
+    for (uint c = lid; c < {cols}u; c += {tg}u)
+        out[base + c] = x[base + c] * rstd * w[c];
+"""
+    if nm.variance == "one_pass":
+        return head + f"""
+    // E[x^2] - E[x]^2 IN ONE PASS. Cheaper by a pass and a barrier, and WRONG when the
+    // mean is large relative to the spread -- see ACCELERATOR_NORMALIZATION.json.
+    float s = 0.0f, s2 = 0.0f;
+    for (uint c = lid; c < {cols}u; c += {tg}u) {{ float v = x[base + c]; s += v; s2 += v * v; }}
+    float ss = simd_sum(s), ss2 = simd_sum(s2);
+    if (lane == 0u) {{ red[warp] = ss; red[{lanes}u + warp] = ss2; }}
+    {barrier_msl("THREADGROUP")}
+    float tot = 0.0f, tot2 = 0.0f;
+    for (uint i = 0u; i < {lanes}u; ++i) {{ tot += red[i]; tot2 += red[{lanes}u + i]; }}
+    float mean = tot / {float(cols)}f;
+    float var = tot2 / {float(cols)}f - mean * mean;
+    float rstd = rsqrt(var + {nm.eps}f);
+    for (uint c = lid; c < {cols}u; c += {tg}u)
+        out[base + c] = (x[base + c] - mean) * rstd * w[c] + b[c];
+"""
+    return head + f"""
+    float s = 0.0f;
+    for (uint c = lid; c < {cols}u; c += {tg}u) s += x[base + c];
+    float ss = simd_sum(s);
+    if (lane == 0u) red[warp] = ss;
+    {barrier_msl("THREADGROUP")}
+    float tot = 0.0f;
+    for (uint i = 0u; i < {lanes}u; ++i) tot += red[i];
+    float mean = tot / {float(cols)}f;
+
+    float v = 0.0f;
+    for (uint c = lid; c < {cols}u; c += {tg}u) {{ float d = x[base + c] - mean; v += d * d; }}
+    float sv = simd_sum(v);
+    if (lane == 0u) red[{lanes}u + warp] = sv;
+    {barrier_msl("THREADGROUP")}
+    float tot2 = 0.0f;
+    for (uint i = 0u; i < {lanes}u; ++i) tot2 += red[{lanes}u + i];
+    float rstd = rsqrt(tot2 / {float(cols)}f + {nm.eps}f);
+    for (uint c = lid; c < {cols}u; c += {tg}u)
+        out[base + c] = (x[base + c] - mean) * rstd * w[c] + b[c];
+"""
+
+
+def execute_norm(nm: AirNorm, x, w, b=None):
+    import mlx.core as mx
+    src = lower_norm_to_msl(nm)
+    names = nm.input_names()
+    kern = mx.fast.metal_kernel(name=f"air_norm_{nm.name}", input_names=names,
+                                output_names=["out"], source=src,
+                                ensure_row_contiguous=True)
+    ins = [mx.array(x, dtype=mx.float32), mx.array(w, dtype=mx.float32)]
+    if nm.mode == "layer":
+        ins.append(mx.array(b, dtype=mx.float32))
+    g, tg = nm.launch()
+    (o,) = kern(inputs=ins, grid=g, threadgroup=tg,
+                output_shapes=[(nm.rows, nm.cols)], output_dtypes=[mx.float32])
+    mx.eval(o)
+    return o
+
+
+def norm_oracle(x, w, b, mode: str, eps: float = 1e-5):
+    """float64 reference, written from the definition. RMSNorm has no mean."""
+    import numpy as np
+    xd = np.asarray(x, dtype=np.float64)
+    if mode == "rms":
+        r = 1.0 / np.sqrt((xd * xd).mean(axis=1, keepdims=True) + eps)
+        return xd * r * np.asarray(w, np.float64)
+    m = xd.mean(axis=1, keepdims=True)
+    v = ((xd - m) ** 2).mean(axis=1, keepdims=True)
+    return (xd - m) / np.sqrt(v + eps) * np.asarray(w, np.float64) + np.asarray(b, np.float64)

@@ -1033,3 +1033,104 @@ def test_the_distribution_is_checked_and_the_check_can_fail():
     assert chi2(np.array(ch)) < critical
     assert chi2(np.full(n, order[0])) > critical        # argmax-always must FAIL
     assert chi2(order[np.minimum((u * k).astype(int), k - 1)]) > critical  # uniform too
+
+
+def test_norm_refuses_what_it_cannot_do():
+    mk = lambda **kw: air.AirNorm(**{"name": "n", "rows": 2, "cols": 64, **kw})
+    with pytest.raises(ValueError, match="must be 'rms' or 'layer'"):
+        mk(mode="batch").validate()
+    with pytest.raises(ValueError, match="two_pass"):
+        mk(mode="layer", variance="welford").validate()
+    # RMSNorm subtracts no mean, so a one-pass variance is not a choice that exists
+    with pytest.raises(ValueError, match="no mean"):
+        mk(mode="rms", variance="one_pass").validate()
+    with pytest.raises(ValueError, match="multiple of 32"):
+        mk(threadgroup=100).validate()
+    with pytest.raises(ValueError, match="valid identifier"):
+        air.AirNorm("n.1", rows=2, cols=64).validate()
+
+
+def test_norm_matches_a_float64_oracle():
+    pytest.importorskip("mlx.core")
+    rng = np.random.default_rng(21)
+    for rows, cols, mode in [(4, 128, "rms"), (3, 4099, "layer"), (2, 37, "layer")]:
+        x = (rng.standard_normal((rows, cols)) * 2).astype(np.float32)
+        w = (rng.standard_normal(cols) * 0.5 + 1).astype(np.float32)
+        b = (rng.standard_normal(cols) * 0.1).astype(np.float32)
+        nm = air.AirNorm(f"n_{mode}_{cols}", rows=rows, cols=cols, mode=mode)
+        got = np.array(air.execute_norm(nm, x, w, b))
+        assert float(np.max(np.abs(got - air.norm_oracle(x, w, b, mode)))) < 1e-5
+
+
+def test_the_write_after_read_regression_at_threadgroup_1024():
+    """THE BUG THIS PINS WAS REAL AND MINE: phase 2 reused phase 1's scratch with
+    nothing ordering its WRITE after every thread's READ of the first result. Exact at
+    threadgroup 64 and 256, WRONG BY 0.061 at 1024, because 32 lanes make the read loop
+    long enough for a fast thread to overtake a slow one. Found only by running the
+    barrier control ACROSS WIDTHS, which is the discipline the top-k receipt argued for
+    one block earlier."""
+    pytest.importorskip("mlx.core")
+    rng = np.random.default_rng(1234)
+    rows, cols = 32, 4096
+    x = (rng.standard_normal((rows, cols)) * 2).astype(np.float32)
+    w = np.ones(cols, np.float32); b = np.zeros(cols, np.float32)
+    ref = air.norm_oracle(x, w, b, "layer")
+    for tgw in (256, 1024):
+        nm = air.AirNorm(f"war{tgw}", rows=rows, cols=cols, mode="layer", threadgroup=tgw)
+        got = np.array(air.execute_norm(nm, x, w, b))
+        assert float(np.max(np.abs(got - ref))) < 1e-5, tgw
+
+
+def test_the_two_reductions_do_not_share_scratch_anywhere():
+    """Structural pin so the hazard cannot come back by someone tidying the slots.
+    Softmax and attention carry the SAME shape and never fired -- and a race that does
+    not fire is not a passing test, so they are fixed on structure, not on evidence."""
+    sm = air.lower_softmax_to_msl(air.AirSoftmax("s", rows=4, cols=128))
+    at = air.lower_attention_to_msl(air.AirAttention("a", seq_q=64, seq_k=64, head_dim=32))
+    nm = air.lower_norm_to_msl(air.AirNorm("n", rows=4, cols=128, mode="layer"))
+    for src in (sm, at, nm):
+        assert "u + warp] =" in src        # the second reduction writes its own slots
+
+
+def test_the_one_pass_variance_really_does_die():
+    """Both strategies are kept, and the cheap one is kept as a DEMONSTRATION. A
+    strategy nobody has watched fail reads as one that merely lost a style argument."""
+    pytest.importorskip("mlx.core")
+    rng = np.random.default_rng(7)
+    rows, cols = 2, 4096
+    w = np.ones(cols, np.float32); b = np.zeros(cols, np.float32)
+    for ratio, must_be_close in ((1, True), (4096, False)):
+        x = ((rng.standard_normal((rows, cols)) + ratio)).astype(np.float32)
+        ref = air.norm_oracle(x, w, b, "layer")
+        one = np.array(air.execute_norm(
+            air.AirNorm(f"op{ratio}", rows=rows, cols=cols, mode="layer",
+                        variance="one_pass"), x, w, b))
+        two = np.array(air.execute_norm(
+            air.AirNorm(f"tp{ratio}", rows=rows, cols=cols, mode="layer"), x, w, b))
+        assert float(np.max(np.abs(two - ref))) < 1e-2      # two-pass survives both
+        ok = bool(np.isfinite(one).all()) and float(np.max(np.abs(one - ref))) < 1e-3
+        assert ok == must_be_close, (ratio, ok)
+
+
+def test_stripping_the_first_norm_barrier_breaks_it():
+    """The barrier that publishes the row mean is read by EVERY thread, so this control
+    is LOUD where the top-k tree-reduce control was nearly silent -- same class of
+    control, different evidential value, and the difference is whether the dependency
+    is total or incidental."""
+    pytest.importorskip("mlx.core")
+    import mlx.core as mx
+    rng = np.random.default_rng(3)
+    rows, cols = 32, 4096
+    x = (rng.standard_normal((rows, cols)) * 2).astype(np.float32)
+    w = np.ones(cols, np.float32); b = np.zeros(cols, np.float32)
+    nm = air.AirNorm("bar", rows=rows, cols=cols, mode="layer")
+    bad = air.lower_norm_to_msl(nm).replace(
+        "threadgroup_barrier(mem_flags::mem_threadgroup);", "", 1)
+    kern = mx.fast.metal_kernel(name="nobar_norm", input_names=nm.input_names(),
+                                output_names=["out"], source=bad, ensure_row_contiguous=True)
+    g, tg = nm.launch()
+    (o,) = kern(inputs=[mx.array(x), mx.array(w), mx.array(b)], grid=g, threadgroup=tg,
+                output_shapes=[(rows, cols)], output_dtypes=[mx.float32])
+    mx.eval(o)
+    ref = air.norm_oracle(x, w, b, "layer")
+    assert float(np.max(np.abs(np.array(o) - ref))) > 1e-2

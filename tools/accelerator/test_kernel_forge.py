@@ -110,3 +110,37 @@ def test_the_threadgroup_prior_is_documented_as_primitive_specific():
     the source is what stops the tuple being read as a property of the machine."""
     src = Path(kf.__file__).read_text()
     assert "PRIMITIVE-SPECIFIC" in src and "CHAIN-SHAPED PRIOR" in src
+
+
+def test_a_sweep_that_ran_nothing_is_not_a_passing_sweep():
+    """The first shape fuzz in this program reported ZERO FAILURES for four primitives
+    it never executed -- one filter demanded every dimension be a multiple of 8 while
+    the grid held exactly one such value. A coverage counter is part of the check."""
+    with pytest.raises(ValueError, match="ZERO cases"):
+        kf.shape_sweep([], lambda c: 0.0, name="empty")
+
+
+def test_shape_sweep_records_a_raise_as_a_failure_not_a_skip():
+    """A shape the kernel REFUSES is a shape the caller needs told about; skipping it
+    would let a refusal read as a pass."""
+    def check(case):
+        if case[0] == 3:
+            raise RuntimeError("threadgroup memory exceeded")
+        return 0.0
+    r = kf.shape_sweep([(1,), (3,), (7,)], check, name="raises")
+    assert r["cases_run"] == 3 and r["failures"] == 1 and not r["all_ok"]
+    assert "threadgroup memory" in r["failing"][0]["raised"]
+    good = kf.shape_sweep([(1,), (7,)], check, name="clean")
+    assert good["all_ok"] and good["cases_run"] == 2
+
+
+def test_shape_sweep_would_have_caught_the_tiled_matmul_launch_bug():
+    """The defect: correct whenever m is a multiple of the tile, wrong otherwise. A
+    single-shape check at 64x64x64 passes it; the sweep does not."""
+    def check(case):
+        m, tile = case
+        return 0.0 if m % tile == 0 else 3.84      # the measured 60x60x60 error
+    assert kf.shape_sweep([(64, 16)], check, name="one")["all_ok"]
+    swept = kf.shape_sweep([(m, 16) for m in kf.AWKWARD_SHAPES],
+                                     check, name="many")
+    assert not swept["all_ok"] and swept["failures"] == len(kf.AWKWARD_SHAPES)

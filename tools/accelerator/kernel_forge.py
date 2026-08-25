@@ -246,3 +246,46 @@ def save_champion(key: str, payload: dict[str, Any]) -> None:
     c[key] = payload | {"cached_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
     CACHE.parent.mkdir(parents=True, exist_ok=True)
     CACHE.write_text(json.dumps(c, indent=1))
+
+
+AWKWARD_SHAPES = (1, 2, 3, 7, 13, 17, 31, 33, 63, 65, 127, 129, 257)
+
+
+def shape_sweep(cases, check, *, name: str = "sweep") -> dict[str, Any]:
+    """Vary the SHAPE, because a single-shape check never varies the LAUNCH.
+
+    The forge has verified every candidate before timing it since the first block, on
+    the principle that the fastest way to run a kernel is to compute the wrong answer.
+    That verification calls the op's OWN execute(), so it reuses the very launch it is
+    meant to be testing -- which is how the tiled matmul stayed wrong at every shape
+    where m was not a multiple of the tile, for many blocks, with every check passing.
+
+    `check(case)` returns a relative error, or raises. A case that raises is recorded
+    as a FAILURE, not skipped, because a shape the kernel refuses is a shape the caller
+    needs told about.
+
+    A SWEEP THAT RAN NOTHING IS NOT A PASSING SWEEP. The first version of this
+    program's own shape fuzz reported ZERO FAILURES for four primitives it never
+    executed -- one filter demanded every dimension be a multiple of 8 while the shape
+    grid held exactly one such value -- so cases_run is returned and zero RAISES.
+    See ACCELERATOR_SHAPE_FUZZ.json.
+    """
+    results, failures = [], []
+    for case in cases:
+        try:
+            err = float(check(case))
+            bad = not (err == err and err < 1e-4)      # NaN-safe
+        except Exception as e:                          # noqa: BLE001
+            err, bad = float("inf"), True
+            failures.append({"case": list(case), "raised": f"{type(e).__name__}: {e}"[:120]})
+        else:
+            if bad:
+                failures.append({"case": list(case), "rel_err": err})
+        results.append({"case": list(case), "rel_err": err, "ok": not bad})
+    if not results:
+        raise ValueError(
+            f"shape_sweep {name!r} ran ZERO cases. A sweep that executed nothing "
+            f"cannot report zero failures -- check the shape filter, not the kernel.")
+    return {"name": name, "cases_run": len(results), "failures": len(failures),
+            "worst_rel_err": max(r["rel_err"] for r in results),
+            "failing": failures[:20], "all_ok": not failures}

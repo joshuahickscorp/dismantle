@@ -1446,3 +1446,80 @@ def norm_oracle(x, w, b, mode: str, eps: float = 1e-5):
     m = xd.mean(axis=1, keepdims=True)
     v = ((xd - m) ** 2).mean(axis=1, keepdims=True)
     return (xd - m) / np.sqrt(v + eps) * np.asarray(w, np.float64) + np.asarray(b, np.float64)
+
+
+@dataclass
+class AirBatchedMatvec:
+    """B independent matvecs, each with its OWN matrix AND its own vector.
+
+    S015 §3 names BATCHED GEMM in the required corpus. The batched case that matters
+    for MoE needs a distinction nothing here had drawn:
+
+    A DECODE-TIME EXPERT BATCH IS NOT A BATCHED OPERATION. Every routed expert
+    multiplies THE SAME activation, so y_e = W_e @ x for e in 0..B is arithmetically
+    identical to stacking the W_e vertically and doing ONE matvec -- verified bit for
+    bit, not argued. That case needs no batched kernel and never did.
+
+    THIS KERNEL IS FOR THE CASE THAT DOES NOT COLLAPSE: a different x per batch
+    element, which is what prefill and any multi-token batch produce. Keeping the two
+    apart is the point -- calling both `batched` would have hidden that the first is
+    free and only the second needs anything built.
+    """
+    name: str
+    batch: int
+    rows: int
+    cols: int
+    threadgroup: int = 256
+    dtype: str = "f32"
+    device: str = "APPLE_GPU_0"
+
+    def validate(self) -> None:
+        if self.dtype != "f32":
+            raise ValueError("batched matvec is f32 only here")
+        if self.threadgroup % 32 or not 32 <= self.threadgroup <= 1024:
+            raise ValueError(f"threadgroup {self.threadgroup} must be a multiple of 32 "
+                             f"and within Metal's 1024 limit")
+        if min(self.batch, self.rows, self.cols) <= 0:
+            raise ValueError("batch, rows and cols must be positive")
+        if not self.name.isidentifier():
+            raise ValueError(f"name {self.name!r} becomes a Metal symbol and must be a "
+                             f"valid identifier")
+
+    def barrier_scopes_emitted(self) -> list[str]:
+        return []          # one thread owns one output row; nothing to order
+
+    def executable_on_metal_backend(self) -> tuple[bool, str]:
+        return True, "one thread per (batch, row); no cross-thread reads"
+
+    def launch(self) -> tuple[tuple[int, int, int], tuple[int, int, int]]:
+        n = self.batch * self.rows
+        return (n, 1, 1), (min(self.threadgroup, n), 1, 1)
+
+
+def lower_batched_matvec_to_msl(bm: AirBatchedMatvec) -> str:
+    bm.validate()
+    return f"""
+    uint gid = thread_position_in_grid.x;
+    if (gid >= {bm.batch * bm.rows}u) return;
+    uint b = gid / {bm.rows}u;
+    uint r = gid % {bm.rows}u;
+    uint wbase = b * {bm.rows * bm.cols}u + r * {bm.cols}u;
+    uint xbase = b * {bm.cols}u;
+    float acc = 0.0f;
+    for (uint c = 0u; c < {bm.cols}u; ++c) acc += w[wbase + c] * x[xbase + c];
+    out[gid] = acc;
+"""
+
+
+def execute_batched_matvec(bm: AirBatchedMatvec, w, x):
+    import mlx.core as mx
+    kern = mx.fast.metal_kernel(name=f"air_bmv_{bm.name}", input_names=["w", "x"],
+                                output_names=["out"],
+                                source=lower_batched_matvec_to_msl(bm),
+                                ensure_row_contiguous=True)
+    g, tg = bm.launch()
+    (o,) = kern(inputs=[mx.array(w, dtype=mx.float32), mx.array(x, dtype=mx.float32)],
+                grid=g, threadgroup=tg,
+                output_shapes=[(bm.batch, bm.rows)], output_dtypes=[mx.float32])
+    mx.eval(o)
+    return o

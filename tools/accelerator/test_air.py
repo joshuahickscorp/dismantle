@@ -1134,3 +1134,52 @@ def test_stripping_the_first_norm_barrier_breaks_it():
     mx.eval(o)
     ref = air.norm_oracle(x, w, b, "layer")
     assert float(np.max(np.abs(np.array(o) - ref))) > 1e-2
+
+
+def test_batched_matvec_matches_a_float64_oracle():
+    pytest.importorskip("mlx.core")
+    rng = np.random.default_rng(77)
+    for B, R, C in [(4, 16, 64), (3, 7, 129), (17, 5, 32)]:
+        w = (rng.standard_normal((B, R, C)) * 2).astype(np.float32)
+        x = (rng.standard_normal((B, C)) * 2).astype(np.float32)
+        bm = air.AirBatchedMatvec(f"bmv{B}_{R}_{C}", batch=B, rows=R, cols=C)
+        got = np.array(air.execute_batched_matvec(bm, w, x))
+        ref = np.einsum("brc,bc->br", w.astype(np.float64), x.astype(np.float64))
+        assert float(np.max(np.abs(got - ref))) < 1e-4, (B, R, C)
+
+
+def test_a_shared_activation_batch_collapses_to_one_taller_matvec():
+    """The distinction the batched kernel exists to keep: a DECODE-time expert batch
+    shares its activation, so it is arithmetically a taller matvec and needs no batched
+    kernel. Only a batch with a DIFFERENT vector per element needs one."""
+    pytest.importorskip("mlx.core")
+    rng = np.random.default_rng(5)
+    B, R, C = 6, 8, 64
+    w = (rng.standard_normal((B, R, C)) * 2).astype(np.float32)
+    xs = (rng.standard_normal(C) * 2).astype(np.float32)
+    shared = np.repeat(xs[None, :], B, axis=0)
+    batched = np.array(air.execute_batched_matvec(
+        air.AirBatchedMatvec("shared", batch=B, rows=R, cols=C), w, shared))
+    stacked = np.array(air.execute_batched_matvec(
+        air.AirBatchedMatvec("stacked", batch=1, rows=B * R, cols=C),
+        w.reshape(1, B * R, C), xs[None, :]))
+    assert (batched.reshape(-1) == stacked.reshape(-1)).all()   # EXACT, not close
+    # and a different vector per element does NOT collapse, or the distinction is empty
+    diff = (rng.standard_normal((B, C)) * 2).astype(np.float32)
+    other = np.array(air.execute_batched_matvec(
+        air.AirBatchedMatvec("differ", batch=B, rows=R, cols=C), w, diff))
+    assert not np.allclose(other, batched)
+
+
+def test_batched_matvec_refuses_what_it_cannot_do():
+    mk = lambda **kw: air.AirBatchedMatvec(**{"name": "b", "batch": 2, "rows": 4,
+                                              "cols": 8, **kw})
+    with pytest.raises(ValueError, match="multiple of 32"):
+        mk(threadgroup=48).validate()
+    with pytest.raises(ValueError, match="must be positive"):
+        mk(batch=0).validate()
+    with pytest.raises(ValueError, match="valid identifier"):
+        air.AirBatchedMatvec("b.1", batch=2, rows=4, cols=8).validate()
+    # one thread owns one output row, so this lowering emits NO barrier -- pinned so it
+    # cannot be conflated with the reductions that do
+    assert mk().barrier_scopes_emitted() == []

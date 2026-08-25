@@ -32,6 +32,13 @@ CACHE = REPO / "receipts/headless/KERNEL_FORGE_CACHE.json"
 # memory-bound chain.
 RELIABILITY_GATE_PCT = 10.0
 
+# The prior stops at 64 and that exclusion is now MEASURED rather than assumed.
+# ELEMENTS PER THREADGROUP (threadgroup x elems_per_thread) is the controlling
+# variable: 32 -> 0.956 ms, 64 -> 0.595, 128 -> 0.512, >=256 -> 0.511-0.522, and
+# tg32_ept2 (per_tg 64) lands at 0.5954 against tg64_ept1's 0.5955 -- two different
+# configurations with the SAME per_tg agreeing to 0.02%. So the cliff is an occupancy
+# threshold below ~128 elements per threadgroup, and the prior correctly refuses to
+# spend reps there. See ACCELERATOR_PERF_MODEL.json.
 THREADGROUP_PRIOR = (64, 128, 256, 512, 1024)
 ELEMS_PER_THREAD_PRIOR = (1, 2, 4)
 

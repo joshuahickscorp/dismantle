@@ -1,8 +1,8 @@
 {
   "schema": "hawking.headless.noetic_zero_parent.v1",
-  "generated_at": "2026-08-24T15:50:13Z",
-  "git_head": "9678590e733e233cdab8e0ac29b7f0d34701db20",
-  "elapsed_s": 4.766,
+  "generated_at": "2026-08-25T03:53:55Z",
+  "git_head": "eb1494112b61953122262e311cc9243dbd44952e",
+  "elapsed_s": 4.954,
   "claim": "Production Noetic inference does not load parent weights.",
   "observation_method": "DYLD interpose of open/openat/open$NOCANCEL/fopen (tools/headless/noetic_openlog.c) on the live process. Successful opens are resolved via F_GETPATH so openat relative names still name the file. Every recorded path is an observed open(), not a walk of the loader source.",
   "parent_bf16": "/Users/scammermike/models/qwen3.8-27b-abliterated-bf16",
@@ -11,9 +11,9 @@
   "decode_binary": "/Users/scammermike/Downloads/hawking/workspace/ops/build/rust/release-fast/examples/ascension_qwen38_hybrid_greedy",
   "decode_binary_identity": {
     "path": "/Users/scammermike/Downloads/hawking/workspace/ops/build/rust/release-fast/examples/ascension_qwen38_hybrid_greedy",
-    "size": 6324880,
-    "mtime_unix": 1787519802,
-    "sha256_head_1m": "991ad38bce945e9cab61e29f5777b5775529352d8159208d94ebdd48c4dc814a",
+    "size": 6533664,
+    "mtime_unix": 1787616065,
+    "sha256_head_1m": "aa205f33bce3f15792dbd669e5fc5bdc73e07fc8787c2ae23a27dbc65043cd13",
     "from_this_repo": true,
     "not_vestigial_hawking_copy": true
   },
@@ -70,7 +70,7 @@
       "binary": "/Users/scammermike/Downloads/hawking/workspace/ops/build/rust/release-fast/examples/ascension_qwen38_hybrid_greedy",
       "exit_code": 0,
       "timed_out": false,
-      "elapsed_s": 3.911,
+      "elapsed_s": 4.041,
       "dylib_loaded": true,
       "saw_tokenizer_encode": true,
       "saw_catalog_count": true,
@@ -90,7 +90,7 @@
       "complete": true,
       "truncation": null,
       "stderr_head": "INTERPOSE_CTOR\nqwen38 prompt tokens=9 text=\"<|im_start|>user\\nHi<|im_end|>\\n<|im_start|>assistant\\n\"\nqwen38-decode opening Metal + 755 catalog tensors\nqwen38-decode upload 0/755\nqwen38-decode upload 50/755\nqwen38-decode upload 100/755\nqwen38-decode upload 150/755\nqwen38-decode upload 200/755\nqwen38-decode upload 250/755\nqwen38-decode upload 300/755\nqwen38-decode upload 350/755\nqwen38-decode upload 400/755\nqwen38-decode upload 450/755\nqwen38-decode upload 500/755\nqwen38-decode upload 550/755\nqwen38-decode upload 600/755\nqwen38-decode upload 650/755\nqwen38-decode upload 700/755\nqwen38-decode upload 750/755\n[hawking] HAWKING_TCB_TRACE=\"(unset)\" \u2192 mode=Off\n",
-      "stdout_head": "GENERATED_TEXT_VERBATIM: <think>\nFALLBACKS: 0\nDENSE_W_MATERIALIZED: 0\nPROMPT_LEN: 9\nNEW_TOKENS: [248068]\ngenerated_token_ids=[248068]\nGPU_NS_PER_STEP: [58577416, 28352375, 28293375, 28523666, 28492375, 28447749, 28533750, 28488291, 28312708]\nWAIT_NS_PER_STEP: [107035500, 28742583, 28837500, 28892833, 28892500, 28841458, 28977958, 28894834, 28719125]\nMEDIAN_GPU_NS_PER_TOKEN: Some(28488291)\nWALL_NS: 345582792\nPREFILL_WALL_NS: 345581041\nDECODE_WALL_NS: 83\nFIRST_STEP_WALL_NS: 109138250\nSTEADY_DECODE_WALL_NS_PER_TOKEN: None\n",
+      "stdout_head": "GENERATED_TEXT_VERBATIM: <think>\nFALLBACKS: 0\nDENSE_W_MATERIALIZED: 0\nPROMPT_LEN: 9\nNEW_TOKENS: [248068]\ngenerated_token_ids=[248068]\nGPU_NS_PER_STEP: [63600499, 28374416, 28664666, 28440291, 28590000, 28380333, 28684874, 28546791, 28491041]\nWAIT_NS_PER_STEP: [114878375, 28730250, 29041291, 28856708, 28986292, 28838417, 29054916, 28838334, 28858333]\nMEDIAN_GPU_NS_PER_TOKEN: Some(28546791)\nWALL_NS: 355480333\nPREFILL_WALL_NS: 355478250\nDECODE_WALL_NS: 833\nFIRST_STEP_WALL_NS: 117053417\nSTEADY_DECODE_WALL_NS_PER_TOKEN: None\n",
       "observation": {
         "n_events": 804,
         "n_unique": 784,
@@ -145,7 +145,7 @@
       "via": "noetic_composition.SourceBF16.load"
     },
     "exit_code": 0,
-    "elapsed_s": 0.538,
+    "elapsed_s": 0.579,
     "dylib_loaded": true,
     "parent_weight_opens": [
       "/Users/scammermike/models/qwen3.8-27b-abliterated-bf16/model-00001-of-00018.safetensors"
@@ -174,7 +174,7 @@
       "artifact_other": [],
       "artifact_tensor_head": [],
       "artifact_tensor_tail": [],
-      "unique_paths_fingerprint": "e4c43eee4fcedda8969594e7475074da0a355c39bd4aaa5d8c0b6d89109ce158"
+      "unique_paths_fingerprint": "a6c797f28cba408c12a13dd7e8c101b3857cd7cfd88a620668344e1194310d54"
     }
   },
   "detector": {

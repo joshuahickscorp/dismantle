@@ -5,7 +5,7 @@
       "/Users/scammermike/.claude-grok/tasks/*/status"
     ],
     "value": {
-      "n_running": 6,
+      "n_running": 2,
       "running": [
         {
           "base_commit": "e00ab15a76901b15384f5c472c3fd412f866f2c3",
@@ -21,69 +21,17 @@
           "workdir": "/Users/scammermike/.claude-grok/worktrees/device-bound-enrolment-20260824-152147"
         },
         {
-          "base_commit": "",
-          "branch": "",
-          "id": "w0-activation-20260824-155747",
-          "mode": "audit",
+          "base_commit": "697713f91357176b184de4942658ed7b2a0b7a12",
+          "branch": "grok/redundancy-independence-20260824-174239",
+          "id": "redundancy-independence-20260824-174239",
+          "mode": "delegate",
           "model": "grok-4.6",
-          "profile": "maximum",
-          "started_at": "2026-08-24T19:58:07Z",
+          "profile": "power",
+          "started_at": "2026-08-24T21:42:44Z",
           "status": "running",
-          "status_path": "/Users/scammermike/.claude-grok/tasks/w0-activation-20260824-155747/status",
-          "task_id": "w0-activation-20260824-155747",
-          "workdir": "/Users/scammermike/Downloads/substrate"
-        },
-        {
-          "base_commit": "",
-          "branch": "",
-          "id": "w0-archaeology-20260824-155808",
-          "mode": "audit",
-          "model": "grok-4.6",
-          "profile": "maximum",
-          "started_at": "2026-08-24T19:58:26Z",
-          "status": "running",
-          "status_path": "/Users/scammermike/.claude-grok/tasks/w0-archaeology-20260824-155808/status",
-          "task_id": "w0-archaeology-20260824-155808",
-          "workdir": "/Users/scammermike/Downloads/substrate"
-        },
-        {
-          "base_commit": "",
-          "branch": "",
-          "id": "w0-recorder-20260824-155826",
-          "mode": "audit",
-          "model": "grok-4.6",
-          "profile": "maximum",
-          "started_at": "2026-08-24T19:58:45Z",
-          "status": "running",
-          "status_path": "/Users/scammermike/.claude-grok/tasks/w0-recorder-20260824-155826/status",
-          "task_id": "w0-recorder-20260824-155826",
-          "workdir": "/Users/scammermike/Downloads/substrate"
-        },
-        {
-          "base_commit": "",
-          "branch": "",
-          "id": "w0-security-20260824-155702",
-          "mode": "audit",
-          "model": "grok-4.6",
-          "profile": "maximum",
-          "started_at": "2026-08-24T19:57:28Z",
-          "status": "running",
-          "status_path": "/Users/scammermike/.claude-grok/tasks/w0-security-20260824-155702/status",
-          "task_id": "w0-security-20260824-155702",
-          "workdir": "/Users/scammermike/Downloads/substrate"
-        },
-        {
-          "base_commit": "",
-          "branch": "",
-          "id": "w0-storage-20260824-155729",
-          "mode": "audit",
-          "model": "grok-4.6",
-          "profile": "maximum",
-          "started_at": "2026-08-24T19:57:47Z",
-          "status": "running",
-          "status_path": "/Users/scammermike/.claude-grok/tasks/w0-storage-20260824-155729/status",
-          "task_id": "w0-storage-20260824-155729",
-          "workdir": "/Users/scammermike/Downloads/substrate"
+          "status_path": "/Users/scammermike/.claude-grok/tasks/redundancy-independence-20260824-174239/status",
+          "task_id": "redundancy-independence-20260824-174239",
+          "workdir": "/Users/scammermike/.claude-grok/worktrees/redundancy-independence-20260824-174239"
         }
       ],
       "tasks_root": "/Users/scammermike/.claude-grok/tasks"
@@ -302,6 +250,91 @@
       }
     }
   },
+  "current_specimen": {
+    "kind": "MEASURED",
+    "source": [
+      "receipts/headless/MODEL_2_SELECTION.json",
+      "/Volumes/corpdrive/hawking-modellake/specimens"
+    ],
+    "value": {
+      "lake_root": "/Volumes/corpdrive/hawking-modellake",
+      "principal_specimen": {
+        "canonical_revision": "ad44e777bcd18fa416d9da3bd8f70d33ebb85d39",
+        "canonical_source": "Qwen/Qwen3-30B-A3B",
+        "download_gib": 56.89,
+        "mission_value": 4.0,
+        "model": "Qwen3-30B-A3B",
+        "novel_organs": [
+          "moe_experts",
+          "moe_router"
+        ],
+        "novelty_axes": [
+          "routing"
+        ],
+        "oxx": "O005",
+        "resolved_sha": "ad44e777bcd18fa416d9da3bd8f70d33ebb85d39",
+        "same_family_as_parent": true,
+        "transfer_overlap": 1.0,
+        "why": "highest mission value per download GiB among acquirable candidates"
+      },
+      "resident_in_model_lake": [
+        "Qwen--Qwen3-30B-A3B@ad44e777bcd1",
+        "tiiuae--Falcon-H1-7B-Instruct@41e72f27effb"
+      ],
+      "stale_on_disk_flags_found": [
+        {
+          "bytes_present": 0,
+          "measured_present": false,
+          "oxx": "O003",
+          "recovered_on_disk": true
+        },
+        {
+          "bytes_present": 0,
+          "measured_present": false,
+          "oxx": "O006",
+          "recovered_on_disk": true
+        }
+      ]
+    }
+  },
+  "doctor_state": {
+    "kind": "MEASURED",
+    "source": [
+      "receipts/headless/DOCTOR_TECHNIQUE_LIBRARY.json",
+      "receipts/headless/DOCTOR_TRANSFER.json"
+    ],
+    "value": {
+      "all_KEEP": true,
+      "last_prescription_run": {
+        "experiments_prescribed": [
+          "HX-BUTTERFLYQUANT",
+          "HX-H2O",
+          "HX-HIGGS",
+          "HX-HYPERQUANT",
+          "HX-KIVI",
+          "HX-MINICACHE",
+          "HX-OCTOPUS",
+          "HX-OSCAR",
+          "HX-OSTQUANT",
+          "HX-PROSPARSE",
+          "HX-QTIP",
+          "HX-RESQ",
+          "HX-SPINQUANT",
+          "HX-SUPERBPE",
+          "HX-TEAL"
+        ],
+        "n_organs": 6,
+        "search_space_reduction": 0.9359,
+        "specimen": {
+          "oxx": "O005",
+          "repo": "Qwen/Qwen3-30B-A3B",
+          "revision": "ad44e777bcd18fa416d9da3bd8f70d33ebb85d39"
+        }
+      },
+      "n_techniques": 39,
+      "pruning_law": "a single model's failure never prunes a technique"
+    }
+  },
   "git": {
     "kind": "MEASURED",
     "source": [
@@ -309,7 +342,7 @@
     ],
     "value": {
       "branch": "odyssey-i",
-      "head": "7bcb1a954e6833a6322d53387f6e48b7a21ecde1",
+      "head": "eb1494112b61953122262e311cc9243dbd44952e",
       "remote_sync": {
         "ahead": null,
         "behind": null,
@@ -5112,10 +5145,10 @@
   "ledgers": {
     "kind": "MEASURED",
     "source": [
-      "/Users/scammermike/.claude/ultragoal/hawking-noetic-onebit/GOAL.md"
+      "/Users/scammermike/.claude/ultragoal/hawking-odyssey-maxx-ascension/GOAL.md"
     ],
     "value": {
-      "active_ledger_path": "/Users/scammermike/.claude/ultragoal/hawking-noetic-onebit/GOAL.md",
+      "active_ledger_path": "/Users/scammermike/.claude/ultragoal/hawking-odyssey-maxx-ascension/GOAL.md",
       "completed_ledgers": [
         {
           "cited_from": [
@@ -5126,8 +5159,7 @@
         },
         {
           "cited_from": [
-            "hawking-headless-v3/DISCOVERY_PARENT_32of32.md",
-            "cited in active GOAL.md"
+            "hawking-headless-v3/DISCOVERY_PARENT_32of32.md"
           ],
           "exists": true,
           "path": "/Users/scammermike/.claude/ultragoal/hawking-headless-v3/DISCOVERY_PARENT_32of32.md"
@@ -5135,93 +5167,158 @@
       ],
       "counts": {
         "by_status": {
-          "VERIFIED": 37
+          "BLOCKED": 1,
+          "PENDING": 4,
+          "VERIFIED": 27
         },
-        "n_checked": 37,
-        "n_total": 37,
-        "n_unchecked": 0
+        "n_checked": 27,
+        "n_total": 32,
+        "n_unchecked": 5
       },
       "ids_by_status": {
+        "BLOCKED": [
+          "G023"
+        ],
+        "PENDING": [
+          "G005",
+          "G011",
+          "G013",
+          "G032"
+        ],
         "VERIFIED": [
-          "N001",
-          "N002",
-          "N003",
-          "N004",
-          "N005",
-          "N006",
-          "N007",
-          "N008",
-          "N009",
-          "N010",
-          "N011",
-          "N012",
-          "N013",
-          "N014",
-          "N015",
-          "N016",
-          "N017",
-          "N018",
-          "N019",
-          "N020",
-          "N021",
-          "N022",
-          "N023",
-          "N024",
-          "N025",
-          "N026",
-          "N027",
-          "N028",
-          "N029",
-          "N030",
-          "N031",
-          "N032",
-          "N033",
-          "N034",
-          "N035",
-          "N036",
-          "N037"
+          "G001",
+          "G002",
+          "G003",
+          "G004",
+          "G006",
+          "G007",
+          "G008",
+          "G009",
+          "G010",
+          "G012",
+          "G014",
+          "G015",
+          "G016",
+          "G017",
+          "G018",
+          "G019",
+          "G020",
+          "G021",
+          "G022",
+          "G024",
+          "G025",
+          "G026",
+          "G027",
+          "G028",
+          "G029",
+          "G030",
+          "G031"
         ]
       },
       "ids_checked": [
-        "N001",
-        "N002",
-        "N003",
-        "N004",
-        "N005",
-        "N006",
-        "N007",
-        "N008",
-        "N009",
-        "N010",
-        "N011",
-        "N012",
-        "N013",
-        "N014",
-        "N015",
-        "N016",
-        "N017",
-        "N018",
-        "N019",
-        "N020",
-        "N021",
-        "N022",
-        "N023",
-        "N024",
-        "N025",
-        "N026",
-        "N027",
-        "N028",
-        "N029",
-        "N030",
-        "N031",
-        "N032",
-        "N033",
-        "N034",
-        "N035",
-        "N036",
-        "N037"
+        "G001",
+        "G002",
+        "G003",
+        "G004",
+        "G006",
+        "G007",
+        "G008",
+        "G009",
+        "G010",
+        "G012",
+        "G014",
+        "G015",
+        "G016",
+        "G017",
+        "G018",
+        "G019",
+        "G020",
+        "G021",
+        "G022",
+        "G024",
+        "G025",
+        "G026",
+        "G027",
+        "G028",
+        "G029",
+        "G030",
+        "G031"
       ],
-      "ids_pending": []
+      "ids_pending": [
+        "G005",
+        "G011",
+        "G013",
+        "G023",
+        "G032"
+      ],
+      "predecessor_ledger": "/Users/scammermike/.claude/ultragoal/hawking-noetic-onebit/GOAL.md",
+      "resolved_from": "/Users/scammermike/.claude/ultragoal/active",
+      "ultragoal": "hawking-odyssey-maxx-ascension"
+    }
+  },
+  "libraries": {
+    "kind": "MEASURED",
+    "source": [
+      "receipts/headless/ORGAN_FRONTIER_MATRIX.json",
+      "receipts/headless/REPRESENTATION_LIBRARY.json",
+      "receipts/headless/KERNEL_LIBRARY.json",
+      "receipts/headless/SUPEROPERATOR_LIBRARY.json",
+      "receipts/headless/QWEN_TRANSFER_REPORT.json",
+      "receipts/headless/CROSS_MODEL_LAWS.json"
+    ],
+    "value": {
+      "cross_model_laws": {
+        "counts": {
+          "counts": {
+            "ARCHITECTURE_GENERAL": 1,
+            "FAMILY_TRANSFERRED": 2,
+            "MACHINE_GENERAL": 1,
+            "QWEN_SPECIFIC": 5
+          },
+          "n_laws": 9
+        },
+        "present": true,
+        "schema": "hawking.headless.cross_model_laws.v1"
+      },
+      "kernel_library": {
+        "counts": {
+          "n_complete": 17,
+          "n_kernels": 17
+        },
+        "present": true,
+        "schema": "hawking.headless.kernel_library.v2"
+      },
+      "organ_frontier_matrix": {
+        "counts": {
+          "n_families": 18,
+          "n_measured": 5,
+          "n_models": 1
+        },
+        "present": true,
+        "schema": "hawking.headless.organ_frontier_matrix.v1"
+      },
+      "representation_library": {
+        "counts": {
+          "n_families": 20,
+          "n_measured": 11
+        },
+        "present": true,
+        "schema": "hawking.headless.representation_library.v2"
+      },
+      "superoperator_library": {
+        "counts": {
+          "n_operators": 3
+        },
+        "present": true,
+        "schema": "hawking.headless.superoperator_library.v1"
+      },
+      "transfer_report": {
+        "counts": {
+          "n_entries": 25
+        },
+        "present": true,
+        "schema": "hawking.headless.qwen_transfer_report.v1"
+      }
     }
   },
   "negative_science": {
@@ -5231,28 +5328,180 @@
     ],
     "value": {
       "counts": {
-        "artifact_of_method": 10,
-        "entries": 31,
-        "evidence_paths_missing": [],
-        "live_opportunities": 9,
-        "numbers_unconfirmed": [],
-        "property_of_idea": 21,
-        "seeds": 8,
-        "seeds_confirmed": 4,
-        "seeds_corrected": 4
+        "by_level": {
+          "FAMILY": 0,
+          "GENERAL_PHYSICAL": 0,
+          "MODEL_SPECIFIC": 40
+        },
+        "migrated_from_v1": 31,
+        "qwen_measured": 9,
+        "rejected_at_admission": 0,
+        "total": 40
       },
       "path": "receipts/headless/NOETIC_NEGATIVE_SCIENCE.json",
-      "schema": "hawking.headless.noetic_negative_science.v1",
-      "wrote_to": "/Users/scammermike/.claude-grok/worktrees/n10persist-20260823-141823/receipts/headless/NOETIC_NEGATIVE_SCIENCE.json",
-      "wrote_where": "repo"
+      "schema": "hawking.headless.negative_science.v2",
+      "wrote_to": null,
+      "wrote_where": null
     }
   },
   "next_workunits": {
     "kind": "MEASURED",
     "source": [
-      "/Users/scammermike/.claude/ultragoal/hawking-noetic-onebit/GOAL.md"
+      "/Users/scammermike/.claude/ultragoal/hawking-odyssey-maxx-ascension/GOAL.md"
     ],
-    "value": []
+    "value": [
+      {
+        "checkbox": " ",
+        "checked": false,
+        "headline": "- [ ] G005 — QWEN_PERFORMANCE_QUALIFICATION=PASS (§12, §72, §73, §75, §76): measure the rebuilt executable uncontended, reprofiled from zero — TTFT, prefill, TPOT, single-stream TPS, p50/p95, DRAM bytes/token, dispatches/token, resident bytes, active bytes/token, model-reachable roof, concurrency equilibrium, verified WUs/hour. | status: PENDING | risk: high | tier: V3",
+        "id": "G005",
+        "name": "QWEN_PERFORMANCE_QUALIFICATION",
+        "status": "PENDING"
+      },
+      {
+        "checkbox": " ",
+        "checked": false,
+        "headline": "- [ ] G011 — QWEN_RETIREMENT_GATE=PASS (§17): only after the transfer substrate succeeds may Qwen become RETIREMENT_READY=true. Preserve final executable, exact source identity, genomes, kernels, recipes, receipts, negative science, indispensable artifacts. Relegate reproducible bulky parents per ModelLake policy. | status: PENDING | risk: high | tier: V3",
+        "id": "G011",
+        "name": "QWEN_RETIREMENT_GATE",
+        "status": "PENDING"
+      },
+      {
+        "checkbox": " ",
+        "checked": false,
+        "headline": "- [ ] G013 — GPU_CLEANLINESS_OVERRIDE (§25): HDD/network activity that contaminates unified memory, CPU submission, or GPU benchmarks is automatically paused for protected qualification and resumed immediately after. No forged speedups. | status: PENDING | risk: med | tier: V2",
+        "id": "G013",
+        "name": "GPU_CLEANLINESS_OVERRIDE",
+        "status": "PENDING"
+      },
+      {
+        "checkbox": " ",
+        "checked": false,
+        "headline": "- [ ] G023 — NOETIC_COMPILER PIPELINE (§54, §70, §71): Foreign Model -> ArchitectureRecognizer -> OrganGraph -> Doctor -> RepresentationPlanner -> PhysicalGraphCompiler -> KernelPlanner -> DeviceCompiler -> NoeticExecutable, increasingly automatic. DeviceGenome = RepresentationGenome x KernelGenome x RuntimeGenome x MachineGenome; representations are never evaluated with incompetent kernels; device profiles qualified where useful. | status: BLOCKED | risk: high | tier: V3",
+        "id": "G023",
+        "name": "NOETIC_COMPILER",
+        "status": "BLOCKED"
+      },
+      {
+        "checkbox": " ",
+        "checked": false,
+        "headline": "- [ ] G032 — WHOLE_MODEL_CAPABILITY_COMPOSITION (directive §1 reopened on contradictory physical evidence; §5, §69, §84): the 2.5970-EBPW heterogeneous body is capability-broken where the 3.1393-EBPW body is not, despite every organ in it passing its own held-out probe. Establish which representation change causes the collapse, and correct the campaign's stated starting authority. | status: PENDING | risk: high | tier: V3",
+        "id": "G032",
+        "name": "WHOLE_MODEL_CAPABILITY_COMPOSITION",
+        "status": "PENDING"
+      }
+    ]
+  },
+  "odyssey_queue": {
+    "kind": "MEASURED",
+    "source": [
+      "receipts/headless/ODYSSEY_QUEUE_RECOVERED.json"
+    ],
+    "value": {
+      "measure_presence_with": "tools/odyssey/model2_select.py (stats the real paths)",
+      "n_patients": 14,
+      "on_disk_flags_are_stale": true,
+      "patients": [
+        {
+          "canonical_revision": "dcc83ea841ab6100d6b47a070329e1ba4cf78752",
+          "canonical_source": "google/gemma-3-1b-it",
+          "class": "tiny-dense",
+          "model": "gemma-3-1b-it",
+          "oxx": "O000"
+        },
+        {
+          "canonical_revision": "41e72f27effbab80cd45b6e884688452253a3686",
+          "canonical_source": "tiiuae/Falcon-H1-7B-Instruct",
+          "class": "hybrid",
+          "model": "Falcon-H1-7B-Instruct",
+          "oxx": "O001"
+        },
+        {
+          "canonical_revision": "093f9f388b31de276ce2de164bdc2081324b9767",
+          "canonical_source": "google/gemma-3-4b-it",
+          "class": "mm-dense",
+          "model": "gemma-3-4b-it",
+          "oxx": "O002"
+        },
+        {
+          "canonical_revision": "398eede0903cd983a2bfa0cc634e9ac1d843f375",
+          "canonical_source": "moonshotai/Kimi-VL-A3B-Instruct",
+          "class": "mm-moe",
+          "model": "Kimi-VL-A3B-Instruct",
+          "oxx": "O003"
+        },
+        {
+          "canonical_revision": "68faf511d618ef198fef186659617cfd2eb8e33a",
+          "canonical_source": "mistralai/Mistral-Small-3.1-24B-Instruct-2503",
+          "class": "mm-dense",
+          "model": "Mistral-Small-3.1-24B-Instruct-2503",
+          "oxx": "O004"
+        },
+        {
+          "canonical_revision": "ad44e777bcd18fa416d9da3bd8f70d33ebb85d39",
+          "canonical_source": "Qwen/Qwen3-30B-A3B",
+          "class": "moe",
+          "model": "Qwen3-30B-A3B",
+          "oxx": "O005"
+        },
+        {
+          "canonical_revision": "9c4b90e1e4ba969fd3b5378b57d966d725f1b86c",
+          "canonical_source": "Qwen/Qwen3-VL-30B-A3B-Instruct",
+          "class": "mm-moe",
+          "model": "Qwen3-VL-30B-A3B-Instruct",
+          "oxx": "O006"
+        },
+        {
+          "canonical_revision": "e1df551a447157d4658b573f9a695d57658590e9",
+          "canonical_source": "moonshotai/Kimi-Linear-48B-A3B-Instruct",
+          "class": "moe",
+          "model": "Kimi-Linear-48B-A3B-Instruct",
+          "oxx": "O007"
+        },
+        {
+          "canonical_revision": "5a844bbacf32cf46d9561d11622833340aa426b9",
+          "canonical_source": "ai21labs/AI21-Jamba-Mini-1.5",
+          "class": "hybrid",
+          "model": "AI21-Jamba-Mini-1.5",
+          "oxx": "O008"
+        },
+        {
+          "canonical_revision": "495f39366efef23836d0cfae4fbe635880d2be31",
+          "canonical_source": "Qwen/Qwen2.5-72B-Instruct",
+          "class": "large-dense",
+          "model": "Qwen2.5-72B-Instruct",
+          "oxx": "O009"
+        },
+        {
+          "canonical_revision": "a24ceef6ce4f3536971efe9b778bdaa1bab18daa",
+          "canonical_source": "zai-org/GLM-4.5-Air",
+          "class": "large-moe",
+          "model": "GLM-4.5-Air",
+          "oxx": "O010"
+        },
+        {
+          "canonical_revision": "60d8d70770c6776ff598c94bb586a859a38244f1",
+          "canonical_source": "deepseek-ai/DeepSeek-V4-Flash",
+          "class": "large-moe",
+          "model": "DSV4F",
+          "oxx": "O011"
+        },
+        {
+          "canonical_revision": "cbb2c7cfb52fa128a9660cb1a7a78e017899e115",
+          "canonical_source": "zai-org/GLM-4.5",
+          "class": "large-moe",
+          "model": "GLM-4.5",
+          "oxx": "O012"
+        },
+        {
+          "canonical_revision": "9f62e4e9fffbd0a83ddd60e1c209d828994b3569",
+          "canonical_source": "moonshotai/Kimi-K3",
+          "class": "streamed",
+          "model": "Kimi-K3",
+          "oxx": "O013"
+        }
+      ]
+    }
   },
   "schema": "hawking.headless.action_handoff.v1"
 }

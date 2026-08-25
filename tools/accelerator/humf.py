@@ -90,6 +90,13 @@ class Materialization:
     state: State = State.ABSENT
     payload: bytes | None = None      # the actual data, when this copy holds any
     digest: int | None = None         # integrity of that data, when it was verified
+    # TRUST IS PER COPY, NOT ONLY PER DOMAIN. A quarantine says the LINK is not to
+    # be relied upon; it says nothing about whether any individual copy on it is
+    # good, and releasing the quarantine used to return both to service together.
+    # TRUSTED = usable. UNKNOWN = a probe could not answer for it, so it is out of
+    # service until resolved. ASSERTED = an operator said it is fine WITHOUT a
+    # check, which is a weaker thing than verified and is recorded as a weaker thing.
+    trust: str = "TRUSTED"
 
     def transition(self, to: State) -> None:
         if to not in LEGAL[self.state]:
@@ -113,7 +120,20 @@ class HumfObject:
 
     # 5 valid copies
     def valid_copies(self) -> list[str]:
+        """Copies holding the current value. THIS IS A QUESTION ABOUT STATE, and it
+        deliberately still names a copy whose TRUST is UNKNOWN -- such a copy may be
+        perfectly current, and folding the two axes together would make field 5 mean
+        something other than what §32 says it means. Ask trusted_copies() when the
+        question is what may actually be relied upon."""
         return [d for d, m in self.materializations.items() if m.state is State.CLEAN]
+
+    def trusted_copies(self) -> list[str]:
+        """Valid AND relied upon. The distinction matters most where it is easiest to
+        miss: DATA-LOSS accounting. Counting an UNKNOWN copy as a survivor reports
+        'you still have it' about a copy nobody can vouch for, which is the safe-
+        looking direction and the wrong one."""
+        return [d for d, m in self.materializations.items()
+                if m.state is State.CLEAN and m.trust != "UNKNOWN"]
 
     # 6 dirty state
     def is_dirty(self) -> bool:
@@ -141,6 +161,11 @@ class Plan:
     detail: str
     cost_provenance: str
     options: list[dict[str, Any]]
+    # THE PLAN NAMES ITS SOURCE. Without this _move re-derived `the first CLEAN
+    # copy` on its own, so a plan reading `via TRANSFER from TRUSTED_SRC` could move
+    # bytes out of a QUARANTINED domain -- the planner's refusal was decorative and
+    # the log described a transfer that did not happen.
+    source: str | None = None
 
     @property
     def rests_on_simulated_numbers(self) -> bool:
@@ -196,7 +221,7 @@ class Humf:
             m.transition(State.INVALID)
             m.payload, m.digest = None, None
             invalidated.append(ident)
-            if was_dirty or (not obj.valid_copies() and obj.recompute is None):
+            if was_dirty or (not obj.trusted_copies() and obj.recompute is None):
                 data_lost.append(ident)
         self.quarantined[domain] = reason
         self.log.append({"action": "DEVICE_LOST", "domain": domain, "reason": reason,
@@ -245,6 +270,12 @@ class Humf:
                     self._with_deadline(prov.copy_out, ident)
                     alive = True
                 except TransferTimeout:
+                    # The STATE is left alone -- CLEAN, payload intact -- because the
+                    # copy may be perfectly fine. But its TRUST is now unknown, and
+                    # that has to be recorded ON THE COPY: the quarantine protects it
+                    # only until someone releases the link, and the link and the copy
+                    # are two different questions.
+                    m.trust = "UNKNOWN"
                     unknown.append(ident)
                     continue
                 except Exception:
@@ -256,7 +287,7 @@ class Humf:
             m.transition(State.INVALID)
             m.payload, m.digest = None, None
             lost.append(ident)
-            if was_dirty or (not obj.valid_copies() and obj.recompute is None):
+            if was_dirty or (not obj.trusted_copies() and obj.recompute is None):
                 data_lost.append(ident)
         self.quarantined[domain] = reason
         self.log.append({"action": "DEVICE_PARTIALLY_LOST", "domain": domain,
@@ -280,18 +311,115 @@ class Humf:
         resuming would be a lie about what happened). Recovery is INVALID -> ABSENT
         -> TRANSFERRING, and putting that here keeps it ONE explicit operator action
         rather than a sequence a caller can half-perform.
+
+        WHAT IT DOES NOT DO, and this was the asymmetry the previous receipt named
+        against itself: releasing the quarantine says THE LINK IS FINE. It does not
+        say AND EVERY COPY ON IT IS GOOD. A copy whose probe timed out is UNKNOWN,
+        and it stays UNKNOWN through a release -- otherwise an operator clearing a
+        flaky bus would silently return copies to service whose trust was never
+        re-established. They are reported, not cleared, and resolve_unknown() or
+        accept_unknown() is the only way back.
         """
         self.quarantined.pop(domain, None)
         prov = self.providers.get(domain)
         if prov is not None:
             prov.present = True
-        cleared = []
+        cleared, still_unresolved = [], []
         for ident, obj in self.objects.items():
             m = obj.materializations.get(domain)
-            if m is not None and m.state is State.INVALID:
+            if m is None:
+                continue
+            if m.state is State.INVALID:
                 m.transition(State.ABSENT)
                 cleared.append(ident)
-        return cleared
+            elif m.trust == "UNKNOWN":
+                still_unresolved.append(ident)
+        self.log.append({"action": "RELEASE_QUARANTINE", "domain": domain,
+                         "cleared": cleared, "still_unresolved": still_unresolved,
+                         "at": time.time()})
+        return {"domain": domain, "cleared": cleared,
+                "still_unresolved": still_unresolved,
+                "means": "the LINK is trusted again. Every copy listed in "
+                         "still_unresolved is NOT -- a released quarantine is not a "
+                         "certificate for what sits on it"}
+
+    def resolve_unknown(self, domain: str, identity: str) -> dict[str, Any]:
+        """Re-probe ONE copy whose trust is UNKNOWN and say what came back.
+
+        RE-ESTABLISHING TRUST NEEDS SOMETHING TO CHECK AGAINST, and that is the whole
+        difficulty. Where a digest was recorded when the copy was verified, a probe
+        that returns matching bytes is a VERIFICATION. Where none was recorded there
+        is nothing to compare to, so the probe establishes PRESENCE ONLY -- the copy
+        answered, and that is all anyone can say about it. Reporting the second as if
+        it were the first is exactly the kind of quiet promotion this fabric exists
+        to refuse, so it stays UNKNOWN and an operator has to say accept_unknown().
+
+        CARRIED FORWARD FROM THE VERIFICATION BLOCK: the probe reads through
+        copy_out, the ROUND-TRIP path, not the path a kernel would use. So even
+        VERIFIED here means the read-back path agrees, not that the resident bytes a
+        compute would see are good.
+        """
+        obj = self.objects[identity]
+        m = obj.materializations.get(domain)
+        if m is None or m.trust != "UNKNOWN":
+            raise HumfError(f"{identity} has no UNKNOWN copy in {domain} to resolve")
+        prov = self.providers.get(domain)
+        if prov is None:
+            raise HumfError(f"{domain} has no provider to re-probe; only "
+                            f"accept_unknown() can resolve a copy nobody can ask about")
+        try:
+            got = self._with_deadline(prov.copy_out, identity)
+        except TransferTimeout:
+            verdict, detail = "STILL_UNKNOWN", ("the probe timed out again; nothing "
+                                                "changes, because nothing was learned")
+        except Exception as e:
+            was_dirty = m.state is State.DIRTY
+            m.transition(State.INVALID)
+            m.payload, m.digest = None, None
+            verdict = "LOST"
+            detail = (f"the probe answered with a failure, so the copy is gone rather "
+                      f"than unknown: {e}")
+            if was_dirty or (not obj.trusted_copies() and obj.recompute is None):
+                verdict = "LOST_AND_UNRECOVERABLE"
+        else:
+            if m.digest is None:
+                verdict = "PRESENT_BUT_UNVERIFIABLE"
+                detail = ("the copy answered, and no digest was ever recorded for it, "
+                          "so there is nothing to check the bytes against. PRESENCE "
+                          "IS NOT INTEGRITY -- trust stays UNKNOWN and only "
+                          "accept_unknown() can move it, as an assertion")
+            elif _digest(got) == m.digest:
+                m.trust = "TRUSTED"
+                verdict = "VERIFIED"
+                detail = (f"bytes match the digest recorded when this copy was "
+                          f"verified ({m.digest:08x}); trust re-established against "
+                          f"the READ-BACK path")
+            else:
+                m.transition(State.INVALID)
+                m.payload, m.digest = None, None
+                verdict = "CORRUPT"
+                detail = ("the copy was there and it was WRONG -- the probe returned "
+                          "bytes that do not match the recorded digest. This is the "
+                          "case a timeout could have been hiding")
+        self.log.append({"action": "RESOLVE_UNKNOWN", "domain": domain,
+                         "object": identity, "verdict": verdict, "at": time.time()})
+        return {"domain": domain, "object": identity, "verdict": verdict,
+                "detail": detail, "trust": m.trust, "state": m.state.value}
+
+    def accept_unknown(self, domain: str, identity: str, reason: str) -> dict[str, Any]:
+        """An operator says the copy is fine. Recorded as an ASSERTION, never as a
+        verification, because that is what it is -- nobody checked anything."""
+        m = self.objects[identity].materializations.get(domain)
+        if m is None or m.trust != "UNKNOWN":
+            raise HumfError(f"{identity} has no UNKNOWN copy in {domain} to accept")
+        m.trust = "ASSERTED"
+        self.log.append({"action": "ACCEPT_UNKNOWN", "domain": domain,
+                         "object": identity, "reason": reason,
+                         "evidence": "NONE -- operator assertion", "at": time.time()})
+        return {"domain": domain, "object": identity, "trust": "ASSERTED",
+                "reason": reason,
+                "means": "back in service on an operator's word. No probe ran, no "
+                         "digest was compared, and the log says so"}
 
     def register(self, obj: HumfObject) -> None:
         self.objects[obj.identity] = obj
@@ -327,13 +455,21 @@ class Humf:
                             f"QUARANTINED ({self.quarantined[want_domain]}); its "
                             f"contents are not to be relied upon until released",
                             "MEASURED", [])
+            if here.trust == "UNKNOWN":
+                return Plan("IMPOSSIBLE", float("inf"),
+                            f"{identity} is CLEAN in {want_domain} but its trust is "
+                            f"UNKNOWN -- a probe could not answer for this copy. "
+                            f"Releasing the domain quarantine did not resolve it; "
+                            f"resolve_unknown() re-probes, accept_unknown() records "
+                            f"an operator's assertion instead",
+                            "MEASURED", [])
             return Plan("ALREADY_RESIDENT", 0.0, f"{identity} is CLEAN in {want_domain}",
                         "MEASURED", [])
 
         for src, m in obj.materializations.items():
             if src == want_domain or m.state is not State.CLEAN:
                 continue
-            if src in self.quarantined:
+            if src in self.quarantined or m.trust == "UNKNOWN":
                 continue
             c, prov = self._transfer_cost(src, want_domain, m.bytes)
             opts.append({"action": "TRANSFER", "from": src, "bytes": m.bytes,
@@ -348,18 +484,27 @@ class Humf:
         if not opts:
             blocked = [d for d, m in obj.materializations.items()
                        if m.state is State.CLEAN and d in self.quarantined]
-            why = (f"{identity} has no CLEAN copy and no recompute recipe"
-                   if not blocked else
-                   f"{identity}'s only CLEAN copies are in QUARANTINED domains "
-                   f"{sorted(blocked)}; refusing to source from a domain whose "
-                   f"contents the fabric has declared untrustworthy")
+            unresolved = [d for d, m in obj.materializations.items()
+                          if m.state is State.CLEAN and m.trust == "UNKNOWN"
+                          and d not in self.quarantined]
+            if blocked:
+                why = (f"{identity}'s only CLEAN copies are in QUARANTINED domains "
+                       f"{sorted(blocked)}; refusing to source from a domain whose "
+                       f"contents the fabric has declared untrustworthy")
+            elif unresolved:
+                why = (f"{identity}'s only CLEAN copies are UNRESOLVED in "
+                       f"{sorted(unresolved)} -- the quarantine was released but the "
+                       f"copies' trust was never re-established. A released link is "
+                       f"not a certificate for what sits on it")
+            else:
+                why = f"{identity} has no CLEAN copy and no recompute recipe"
             return Plan("IMPOSSIBLE", float("inf"), why, "MEASURED", [])
 
         best = min(opts, key=lambda o: o["cost_s"])
         return Plan(best["action"], best["cost_s"],
                     f"{identity} -> {want_domain} via {best['action']}"
                     + (f" from {best['from']}" if best.get("from") else ""),
-                    best["cost_provenance"], opts)
+                    best["cost_provenance"], opts, source=best.get("from"))
 
     def execute(self, identity: str, plan: Plan, want_domain: str,
                 representation: str = "dense_f32", layout: str = "row_major",
@@ -434,8 +579,25 @@ class Humf:
                 raise HumfError(f"{obj.identity} has no recompute recipe")
             dst.payload = obj.recompute()
             return
-        src = next((m for d, m in obj.materializations.items()
-                    if d != want_domain and m.state is State.CLEAN), None)
+        # USE THE SOURCE THE PLAN NAMED. This used to re-derive `the first CLEAN
+        # copy`, which meant the planner and the mover could disagree: DEMONSTRATED
+        # against the pre-fix code, a plan reading `via TRANSFER from TRUSTED_SRC`
+        # moved the bytes out of a QUARANTINED domain, so the refusal in
+        # plan_acquire was decorative and the log described a transfer that had not
+        # happened. A plan whose source is not what executes is not an audit trail.
+        def _usable(d, m):
+            return (d != want_domain and m.state is State.CLEAN
+                    and d not in self.quarantined and m.trust != "UNKNOWN")
+        if plan.source is not None:
+            src = obj.materializations.get(plan.source)
+            if src is None or not _usable(plan.source, src):
+                raise HumfError(
+                    f"the plan named {plan.source} as the source for {obj.identity} "
+                    f"and that copy is no longer usable; refusing to substitute "
+                    f"another one silently -- re-plan instead")
+        else:
+            src = next((m for d, m in obj.materializations.items()
+                        if _usable(d, m)), None)
         if src is None or src.payload is None:
             raise HumfError(
                 f"transfer of {obj.identity} into {want_domain} has no valid source "

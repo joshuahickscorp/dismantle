@@ -534,3 +534,146 @@ def test_a_probe_that_times_out_is_UNKNOWN_not_lost():
     assert m.state is State.CLEAN and m.payload == PAYLOAD   # untouched
     # and the quarantine is what stops it being used before an operator resolves it
     assert "MOCK_EXTERNAL_VRAM" in h.quarantined
+
+
+def _unknown_copy(verify=True):
+    """A copy in the mock domain whose probe timed out, so its trust is UNKNOWN.
+
+    Built through a REAL transfer so the copy carries whatever digest the transfer
+    recorded -- which is the thing resolution has to check against.
+    """
+    h, o, mp = fabric()
+    h.verify_transfers = verify
+    p = h.plan_acquire("W42", "MOCK_EXTERNAL_VRAM")
+    h.execute("W42", p, "MOCK_EXTERNAL_VRAM")
+    h.transfer_timeout_s = 0.05
+    mp.hang_next_s = 0.6
+    r = h.device_partially_lost("MOCK_EXTERNAL_VRAM", "reset, probe hung")
+    assert r["unknown"] == ["W42"], r
+    return h, o, mp
+
+
+def test_releasing_a_quarantine_does_not_resolve_an_unknown_copy():
+    """The asymmetry the previous receipt named against itself. Releasing says THE
+    LINK IS FINE; it must not also say AND EVERY COPY ON IT IS GOOD."""
+    h, o, mp = _unknown_copy()
+    m = o.materializations["MOCK_EXTERNAL_VRAM"]
+    assert m.trust == "UNKNOWN" and m.state is State.CLEAN   # state untouched
+    r = h.release_quarantine("MOCK_EXTERNAL_VRAM")
+    assert "MOCK_EXTERNAL_VRAM" not in h.quarantined          # the link is back
+    assert r["still_unresolved"] == ["W42"]                   # the copy is not
+    assert m.trust == "UNKNOWN"
+    # and the refusal is real, not just a report: the copy is still out of service
+    o.materializations["APPLE_UM"].transition(State.EVICTED)
+    o.recompute_cost_s = None
+    p = h.plan_acquire("W42", "APPLE_UM")
+    assert p.action == "IMPOSSIBLE" and "UNRESOLVED" in p.detail
+
+
+def test_resolve_unknown_verifies_against_the_recorded_digest():
+    h, o, mp = _unknown_copy()
+    h.release_quarantine("MOCK_EXTERNAL_VRAM")
+    r = h.resolve_unknown("MOCK_EXTERNAL_VRAM", "W42")
+    assert r["verdict"] == "VERIFIED", r
+    assert o.materializations["MOCK_EXTERNAL_VRAM"].trust == "TRUSTED"
+    # back in service, which is the direction a check that only ever refuses lacks
+    o.materializations["APPLE_UM"].transition(State.EVICTED)
+    assert h.plan_acquire("W42", "APPLE_UM").action == "TRANSFER"
+
+
+def test_a_probe_with_nothing_to_compare_against_is_presence_only():
+    """PRESENCE IS NOT INTEGRITY. Without a recorded digest the probe proves the copy
+    answered and nothing whatever about its bytes, so trust stays UNKNOWN."""
+    h, o, mp = _unknown_copy(verify=False)
+    assert o.materializations["MOCK_EXTERNAL_VRAM"].digest is None
+    r = h.resolve_unknown("MOCK_EXTERNAL_VRAM", "W42")
+    assert r["verdict"] == "PRESENT_BUT_UNVERIFIABLE", r
+    assert o.materializations["MOCK_EXTERNAL_VRAM"].trust == "UNKNOWN"
+
+
+def test_resolve_unknown_catches_a_copy_that_was_there_and_wrong():
+    """The case a timeout can hide: the copy answers, and the bytes are wrong."""
+    h, o, mp = _unknown_copy()
+    mp.corrupt_next = True
+    r = h.resolve_unknown("MOCK_EXTERNAL_VRAM", "W42")
+    assert r["verdict"] == "CORRUPT", r
+    m = o.materializations["MOCK_EXTERNAL_VRAM"]
+    assert m.state is State.INVALID and m.payload is None
+    assert "MOCK_EXTERNAL_VRAM" not in o.valid_copies()
+
+
+def test_a_probe_that_times_out_again_changes_nothing():
+    h, o, mp = _unknown_copy()
+    mp.hang_next_s = 0.6
+    r = h.resolve_unknown("MOCK_EXTERNAL_VRAM", "W42")
+    assert r["verdict"] == "STILL_UNKNOWN", r
+    m = o.materializations["MOCK_EXTERNAL_VRAM"]
+    assert m.trust == "UNKNOWN" and m.state is State.CLEAN and m.payload == PAYLOAD
+
+
+def test_accept_unknown_is_recorded_as_an_assertion_not_a_verification():
+    h, o, mp = _unknown_copy(verify=False)
+    h.accept_unknown("MOCK_EXTERNAL_VRAM", "W42", "operator inspected the bus by hand")
+    assert o.materializations["MOCK_EXTERNAL_VRAM"].trust == "ASSERTED"
+    entry = [e for e in h.log if e["action"] == "ACCEPT_UNKNOWN"][-1]
+    assert entry["evidence"] == "NONE -- operator assertion"
+    # AND THE ASYMMETRY RUNS BOTH WAYS, which this caught: accepting the COPY does
+    # not clear the LINK. While the domain is still quarantined the copy is not
+    # offered at all and the planner falls back to RECOMPUTE; only once the link is
+    # released too does the accepted copy return to service. Two axes, both cleared
+    # separately, neither standing in for the other.
+    o.materializations["APPLE_UM"].transition(State.EVICTED)
+    assert h.plan_acquire("W42", "APPLE_UM").action == "RECOMPUTE"
+    h.release_quarantine("MOCK_EXTERNAL_VRAM")
+    p = h.plan_acquire("W42", "APPLE_UM")
+    assert p.action == "TRANSFER" and p.source == "MOCK_EXTERNAL_VRAM"
+
+
+def test_the_mover_uses_the_source_the_plan_named():
+    """A plan whose source is not what executes is not an audit trail. DEMONSTRATED
+    against the pre-fix code: a plan reading `from TRUSTED_SRC` moved the bytes out
+    of a QUARANTINED domain, because _move re-derived `the first CLEAN copy`."""
+    GOOD, BAD = b"G" * NB, b"B" * NB
+    doms = {"QUARANTINED_SRC": Domain("QUARANTINED_SRC", 1 << 30, 5.0, physical=True),
+            "TRUSTED_SRC": Domain("TRUSTED_SRC", 1 << 30, 5.0, physical=True),
+            "SCRATCH": Domain("SCRATCH", 1 << 30, 100.0, physical=True)}
+    h = Humf(doms)
+    o = HumfObject("W", "tensor", N, "f32")
+    # insertion order puts the quarantined domain FIRST, which is all _move looked at
+    o.place(Materialization("QUARANTINED_SRC", "dense_f32", "row_major", NB,
+                            State.CLEAN, payload=BAD))
+    o.place(Materialization("TRUSTED_SRC", "dense_f32", "row_major", NB,
+                            State.CLEAN, payload=GOOD))
+    h.register(o)
+    h.quarantined["QUARANTINED_SRC"] = "bus reset"
+    p = h.plan_acquire("W", "SCRATCH")
+    assert p.source == "TRUSTED_SRC"
+    assert h.execute("W", p, "SCRATCH").payload == GOOD
+
+
+def test_the_mover_refuses_to_substitute_a_source_the_plan_did_not_name():
+    """If the named source went bad between plan and execute, re-plan -- do not pick
+    another one silently. A quiet substitution is how the log stops matching reality."""
+    h, o, mp = fabric()
+    doms = dict(h.domains); doms["SCRATCH"] = Domain("SCRATCH", 1 << 30, 100.0, physical=True)
+    h.domains = doms
+    p = h.plan_acquire("W42", "SCRATCH")
+    assert p.source == "APPLE_UM"
+    o.place(Materialization("MOCK_EXTERNAL_VRAM", "dense_f32", "row_major", NB,
+                            State.CLEAN, payload=PAYLOAD))
+    o.materializations["APPLE_UM"].transition(State.EVICTED)   # the named source dies
+    with pytest.raises(HumfError, match="refusing to substitute"):
+        h.execute("W42", p, "SCRATCH")
+
+
+def test_an_unknown_copy_is_not_counted_as_a_survivor_in_data_loss():
+    """valid_copies() is about STATE and still names it. trusted_copies() is about
+    what may be relied upon, and DATA-LOSS accounting must ask the second: counting
+    an UNKNOWN copy as a survivor reports `you still have it` about a copy nobody
+    can vouch for."""
+    h, o, mp = _unknown_copy()
+    assert "MOCK_EXTERNAL_VRAM" in o.valid_copies()
+    assert "MOCK_EXTERNAL_VRAM" not in o.trusted_copies()
+    o.recompute_cost_s, o.recompute = None, None
+    r = h.device_lost("APPLE_UM", "the other domain went away too")
+    assert r["data_lost"] == ["W42"], r

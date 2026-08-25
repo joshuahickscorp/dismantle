@@ -116,16 +116,17 @@
    "why_it_exists": "a software-managed scratchpad far faster than global memory",
    "underlying_problem": "reuse within a block should not go to DRAM",
    "apple_equivalent": "threadgroup address space",
-   "hawking_equivalent": "NONE \u2014 C2M refuses any kernel using it",
-   "semantic_gap": "LARGE",
+   "hawking_equivalent": "tools/accelerator/gemm.py tiled GEMM",
+   "semantic_gap": "PARTIAL",
    "performance_gap": {
-    "measured": false,
-    "reason": "nothing implemented, so nothing to measure"
+    "measured": true,
+    "value": "MLX 12733 GFLOP/s vs ours 2683 at 2048^2 = 4.7x in MLX's favour",
+    "receipt": "receipts/headless/ACCELERATOR_GEMM.json"
    },
    "priority": "P0",
-   "test_corpus": "ABSENT: no tiled kernel exists yet",
-   "current_winner": "MLX and llama.cpp Metal, both of which use it",
-   "remaining_limitation": "blocks every tiled algorithm, which is most of GEMM and attention"
+   "test_corpus": "512/1024/2048 square f32 GEMM vs MLX, plus 2 negative controls",
+   "current_winner": "MLX, retained (\u00a7141) -- replacement is not justified by evidence",
+   "remaining_limitation": "threadgroup tiles execute; no double buffering, no bank-conflict work"
   },
   {
    "capability_id": "EXECUTION.atomics",
@@ -167,16 +168,17 @@
    "why_it_exists": "phase separation inside a block",
    "underlying_problem": "ordering between cooperating threads",
    "apple_equivalent": "threadgroup_barrier",
-   "hawking_equivalent": "NONE \u2014 refused by C2M, and AIR cannot represent it",
-   "semantic_gap": "LARGE",
+   "hawking_equivalent": "tools/accelerator/gemm.py tiled GEMM",
+   "semantic_gap": "PARTIAL",
    "performance_gap": {
-    "measured": false,
-    "reason": "nothing implemented"
+    "measured": true,
+    "value": "MLX 12733 GFLOP/s vs ours 2683 at 2048^2 = 4.7x in MLX's favour",
+    "receipt": "receipts/headless/ACCELERATOR_GEMM.json"
    },
    "priority": "P0",
-   "test_corpus": "ABSENT",
-   "current_winner": "MLX/Metal",
-   "remaining_limitation": "AIR has no synchronization node at all, which is a stated gap in FRONT A, not an oversight"
+   "test_corpus": "512/1024/2048 square f32 GEMM vs MLX, plus 2 negative controls",
+   "current_winner": "MLX, retained (\u00a7141) -- replacement is not justified by evidence",
+   "remaining_limitation": "threadgroup_barrier executes; SIMDGROUP and DEVICE scope untested, and AIR can represent a barrier but cannot lower one"
   },
   {
    "capability_id": "MATH.gemm",
@@ -184,16 +186,17 @@
    "why_it_exists": "matrix multiply is the dominant cost of a transformer",
    "underlying_problem": "peak arithmetic needs tiling, blocking and hardware MMA units",
    "apple_equivalent": "MLX matmul; Apple matrix coprocessor via MPS",
-   "hawking_equivalent": "NONE \u2014 only matvec exists",
-   "semantic_gap": "LARGE",
+   "hawking_equivalent": "tools/accelerator/gemm.py tiled GEMM",
+   "semantic_gap": "PARTIAL",
    "performance_gap": {
-    "measured": false,
-    "reason": "no Hawking GEMM exists to compare"
+    "measured": true,
+    "value": "MLX 12733 GFLOP/s vs ours 2683 at 2048^2 = 4.7x in MLX's favour",
+    "receipt": "receipts/headless/ACCELERATOR_GEMM.json"
    },
    "priority": "P0",
-   "test_corpus": "ABSENT",
-   "current_winner": "MLX, decisively, and it is retained as the qualified winner",
-   "remaining_limitation": "requires shared memory and warp primitives, both of which are themselves LARGE gaps above"
+   "test_corpus": "512/1024/2048 square f32 GEMM vs MLX, plus 2 negative controls",
+   "current_winner": "MLX, retained (\u00a7141) -- replacement is not justified by evidence",
+   "remaining_limitation": "a correct tiled GEMM exists but is 4.7x slower than MLX; no simdgroup matrix ops, no register blocking, no vectorised loads"
   },
   {
    "capability_id": "MATH.reduction_and_scan",
@@ -310,8 +313,8 @@
   "MULTI_DEVICE": 1
  },
  "classes_with_no_entry": [],
- "performance_gaps_measured": 3,
- "performance_gaps_unmeasured": 14,
+ "performance_gaps_measured": 6,
+ "performance_gaps_unmeasured": 11,
  "parity_claim": "NOT CLAIMED. This is a capability inventory, not a parity statement. No entry may report a semantic gap of NONE without evidence, and the steer forbids the phrase 'CUDA parity' unqualified.",
  "coverage_honesty": "The CUDA surface is vastly larger than this. These are the capabilities reachable or relevant from what has actually been built here; absence from this ledger means NOT YET STUDIED, never NOT NEEDED."
 }

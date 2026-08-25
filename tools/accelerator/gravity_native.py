@@ -438,3 +438,53 @@ def near_threshold_headroom(cos: float, ratio: float, kernel_err: float,
             "float32_disagreement_scale": scale,
             "safe_at_float32": bool(m > 100 * scale),
             "means": "below this distance the float64 and float32 gates may disagree"}
+
+
+def quantize_grouped(w, bits: int, group: int):
+    """Grouped absmax at arbitrary width, DEQUANTIZED. The study form of ws_rtn_q4_g64.
+
+    No bit packing: a fidelity study needs the reconstructed values, not the byte
+    layout, and building a second packer would create a second thing that could drift
+    from the shipped one. Instead this is pinned by a test to reproduce
+    dequantize(pack_q4_g64(w)) EXACTLY at bits=4, group=64 -- if the sweep's anchor
+    point is not the real representation, the sweep is measuring something else.
+
+    bits=1 IS THE DELETION CONTROL, not a cheap option. bound = 2^(bits-1) - 1 is ZERO
+    at bits=1, so every weight quantises to zero and the tensor is deleted. This
+    campaign sealed that on 2026-08-17; including it gives the sweep a floor whose
+    answer is known in advance, which is what makes the rest of the curve readable.
+    """
+    import numpy as np
+    rows, cols = w.shape
+    assert cols % group == 0, "columns must be a multiple of the group"
+    bound = (1 << (bits - 1)) - 1
+    g = w.reshape(rows, cols // group, group).astype(np.float32)
+    amax = np.abs(g).max(axis=2)
+    scale = np.where(amax > 0, amax / bound, 1.0).astype(np.float32) if bound else \
+        np.ones_like(amax, dtype=np.float32)
+    # THE QUANTISER USES THE f32 SCALE AND THE RECONSTRUCTION USES THE STORED f16 ONE.
+    # That asymmetry is the real representation, not an oversight: casting the scale
+    # BEFORE dividing would change which integer each weight rounds to. The anchor
+    # test caught this -- the first version cast first and did NOT reproduce the
+    # shipped packer, which is exactly the divergence the anchor exists to prevent.
+    q = np.rint(g / scale[:, :, None]).clip(-bound, bound)
+    stored = scale.astype(np.float16).astype(np.float32)
+    return (q * stored[:, :, None]).reshape(rows, cols)
+
+
+def bpw_grouped(bits: int, group: int) -> float:
+    """Complete bits per weight: the payload plus the f16 scale amortised over a group.
+    Quoting `bits` alone would understate every small-group setting."""
+    return bits + 16.0 / group
+
+
+def fidelity(w_true, w_hat) -> dict:
+    """Weight-space cosine WITH a magnitude band, never cosine alone -- the same law
+    accept_pack enforces, for the same reason."""
+    import numpy as np
+    a = np.asarray(w_true, dtype=np.float64).ravel()
+    b = np.asarray(w_hat, dtype=np.float64).ravel()
+    na, nb = float(np.linalg.norm(a)), float(np.linalg.norm(b))
+    cos = float(np.dot(a, b) / (na * nb)) if na > 0 and nb > 0 else 0.0
+    return {"cosine": cos, "magnitude_ratio": (nb / na) if na > 0 else float("inf"),
+            "rel_fro_err": float(np.linalg.norm(a - b) / na) if na > 0 else float("inf")}

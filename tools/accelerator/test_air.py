@@ -869,3 +869,39 @@ def test_the_resident_path_packs_the_same_bytes_as_the_host_path():
     pd, sd = gnat.pack_q4_g64_device(dev, mx=mx)
     assert np.array_equal(np.array(pd), ph)
     assert np.array_equal(np.array(sd), sh)
+
+
+# ------------------------------- the representation study anchors on the real packer
+
+def test_quantize_grouped_reproduces_the_shipped_representation_exactly():
+    """The sweep's anchor point must BE ws_rtn_q4_g64, not a lookalike. If bits=4,
+    group=64 diverged from the real packer by even a rounding, every other point on
+    the curve would be measuring a different representation."""
+    import numpy as np
+    import gravity_native as gnat
+    rng = np.random.default_rng(5)
+    for shape in ((256, 512), (64, 64), (768, 2048)):
+        w = (rng.standard_normal(shape) * 0.02).astype(np.float32)
+        packed, scale = gnat.pack_q4_g64(w)
+        shipped = gnat.dequantize(packed, scale, shape[1])
+        study = gnat.quantize_grouped(w, bits=gnat.BITS, group=gnat.GROUP)
+        assert np.array_equal(shipped, study), shape
+
+
+def test_one_bit_is_the_deletion_control_not_a_cheap_option():
+    """bound = 2^(bits-1)-1 is ZERO at bits=1, so absmax 1-bit deletes the tensor.
+    Sealed by this campaign on 2026-08-17; pinned here so the sweep's floor cannot be
+    misread as a working configuration."""
+    import numpy as np
+    import gravity_native as gnat
+    w = np.random.default_rng(6).standard_normal((64, 128)).astype(np.float32)
+    out = gnat.quantize_grouped(w, bits=1, group=64)
+    assert np.count_nonzero(out) == 0
+    assert gnat.fidelity(w, out)["cosine"] == 0.0
+
+
+def test_bpw_counts_the_scale():
+    import gravity_native as gnat
+    assert gnat.bpw_grouped(4, 64) == 4.25
+    assert gnat.bpw_grouped(4, 32) == 4.5        # smaller groups are NOT free
+    assert gnat.bpw_grouped(2, 128) == 2.125

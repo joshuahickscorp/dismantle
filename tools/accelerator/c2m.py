@@ -39,6 +39,12 @@ UNSUPPORTED = {
 
 # The T0 expression forms. A pattern frontend, not a general C expression parser --
 # stated plainly so nobody mistakes its reach.
+#
+# THE INDEX VARIABLE IS DISCOVERED, NOT ASSUMED. These read `i` for display only;
+# patterns_for() rebuilds them around whatever identifier the kernel actually binds to
+# the global thread index. The hardcoded `i` REFUSED TWO KERNELS IN THE PINNED SEED
+# THAT COMPUTE EXACTLY a[index] + b[index] -- a supported operation rejected over a
+# VARIABLE NAME. Measured in ACCELERATOR_C2M_CORPUS_CENSUS.json.
 PATTERNS: list[tuple[str, str, int]] = [
     (r"^(\w+)\[i\]\s*\+\s*(\w+)\[i\]$", "add", 2),
     (r"^(\w+)\[i\]\s*\*\s*(\w+)\[i\]$", "mul", 2),
@@ -46,6 +52,19 @@ PATTERNS: list[tuple[str, str, int]] = [
     (r"^fmaxf\(\s*(\w+)\[i\]\s*,\s*0(?:\.0)?f?\s*\)$", "relu", 1),
     (r"^fmax\(\s*(\w+)\[i\]\s*,\s*0(?:\.0)?f?\s*\)$", "relu", 1),
 ]
+
+
+def patterns_for(idx: str) -> list[tuple[str, str, int]]:
+    """The same forms, written around the kernel's OWN index identifier."""
+    q = re.escape(idx)
+    return [(pat.replace(r"\[i\]", r"\[" + q + r"\]"), op, ar)
+            for pat, op, ar in PATTERNS]
+
+
+INDEX_BINDING = re.compile(
+    r"\b(?:const\s+)?(?:unsigned\s+)?(?:int|long|size_t|unsigned)\s+(\w+)\s*=\s*[^;]*"
+    r"(?:blockIdx\.x\s*\*\s*blockDim\.x\s*\+\s*threadIdx\.x"
+    r"|threadIdx\.x\s*\+\s*blockIdx\.x\s*\*\s*blockDim\.x)")
 
 GRID_IDX = re.compile(
     r"blockIdx\.x\s*\*\s*blockDim\.x\s*\+\s*threadIdx\.x"
@@ -96,17 +115,23 @@ def translate(src: str, *, elements: int) -> TranslatedKernel:
     if not GRID_IDX.search(body):
         raise C2MRefusal("no recognised global thread index "
                          "(expected blockIdx.x * blockDim.x + threadIdx.x)")
+    ib = INDEX_BINDING.search(body)
+    if not ib:
+        raise C2MRefusal("the global thread index is computed but not bound to a named "
+                         "variable; the T0 subset indexes through that name")
+    idx = ib.group(1)
+    q = re.escape(idx)
 
     # the single guarded assignment this tier supports
-    am = re.search(r"(\w+)\s*\[\s*i\s*\]\s*=\s*([^;]+);", body)
+    am = re.search(r"(\w+)\s*\[\s*" + q + r"\s*\]\s*=\s*([^;]+);", body)
     if not am:
-        raise C2MRefusal("no single indexed assignment found in the kernel body")
+        raise C2MRefusal(f"no single assignment indexed by {idx!r} found in the body")
     out_name, expr = am.group(1), am.group(2).strip()
 
-    if len(re.findall(r"\w+\s*\[\s*i\s*\]\s*=", body)) > 1:
+    if len(re.findall(r"\w+\s*\[\s*" + q + r"\s*\]\s*=(?!=)", body)) > 1:
         raise C2MRefusal("more than one store; the T0 subset is a single assignment")
 
-    for pat, op, arity in PATTERNS:
+    for pat, op, arity in patterns_for(idx):
         pm = re.match(pat, expr)
         if not pm:
             continue

@@ -296,3 +296,45 @@ def test_recognised_idioms_execute_and_match_numpy():
     s = float(np.array(ci.execute_idiom(ci.recognize(_RED), {"in": mx.array(x)},
                                         dims={"n": n}))[0])
     assert abs(s - float(np.sum(x.astype(np.float64)))) / abs(float(np.sum(x.astype(np.float64)))) < 1e-4
+
+
+def test_the_index_variable_is_discovered_not_assumed():
+    """Three kernels in the pinned seed compute EXACTLY a[index] + b[index] -- a
+    supported operation -- and were refused because the frontend hardcoded `i`. A
+    supported operation rejected over a VARIABLE NAME. See
+    ACCELERATOR_C2M_CORPUS_CENSUS.json."""
+    for idx in ("i", "id", "index", "gid"):
+        src = ("__global__ void vector_add(const float* a, const float* b, float* c) {"
+               f"  int {idx} = blockIdx.x * blockDim.x + threadIdx.x;"
+               f"  c[{idx}] = a[{idx}] + b[{idx}];"
+               "}")
+        t = c2m.translate(src, elements=64)
+        assert t.program.ops[0].kind == "add"
+        assert t.inputs == ["a", "b"]
+
+
+def test_a_computed_index_that_is_never_named_is_refused():
+    """The subset indexes THROUGH the name, so an index computed inline has nothing to
+    match against and is refused with that reason rather than mistranslated."""
+    src = ("__global__ void k(const float* a, const float* b, float* c) {"
+           "  c[blockIdx.x * blockDim.x + threadIdx.x] = a[0] + b[0];"
+           "}")
+    with pytest.raises(c2m.C2MRefusal, match="not bound to a named variable"):
+        c2m.translate(src, elements=64)
+
+
+def test_the_recogniser_misses_the_real_idioms_on_a_DECLARATION_not_an_algorithm():
+    """The seed carries a real tiled GEMM and a real block reduction, and the T2 door
+    matched NEITHER -- failing on the first required fragment both times, because the
+    real code writes `__shared__ float As[BLOCKSIZE * BLOCKSIZE]` where the recogniser
+    demands a 2-D literal, and `extern __shared__ float sdata[]` where it demands a
+    sized array. The T2 receipt PREDICTED this brittleness; this measures it."""
+    gemm = ("__global__ void sgemm(const float* A, const float* B, float* C, int M,"
+            " int N, int K) { __shared__ float As[BLOCKSIZE * BLOCKSIZE];"
+            " __shared__ float Bs[BLOCKSIZE * BLOCKSIZE]; __syncthreads(); }")
+    with pytest.raises(c2m.C2MRefusal, match="shared tile for A"):
+        ci.recognize(gemm)
+    red = ("__global__ void reduce(const float* in, float* out, int n) {"
+           " extern __shared__ float sdata[]; int tid = threadIdx.x; }")
+    with pytest.raises(c2m.C2MRefusal, match="shared buffer"):
+        ci.recognize(red)

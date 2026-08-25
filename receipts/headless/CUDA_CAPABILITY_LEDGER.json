@@ -301,22 +301,41 @@
    "test_corpus": "HUMF P8 across APPLE_UM and MOCK_EXTERNAL_VRAM",
    "current_winner": "NOT APPLICABLE \u2014 no second physical device",
    "remaining_limitation": "EGB-D0 has not been reached; no hardware is present"
+  },
+  {
+   "capability_id": "MATH.softmax",
+   "cuda_mechanism": "hand-fused softmax kernels, or cuDNN's",
+   "why_it_exists": "softmax is on the critical path of every attention layer and is bandwidth-bound, so its passes over memory dominate",
+   "underlying_problem": "three dependent reductions over the same row, naively three passes",
+   "apple_equivalent": "mx.softmax",
+   "hawking_equivalent": "AIR fused row softmax, one threadgroup per row, two barriers",
+   "semantic_gap": "PARTIAL",
+   "performance_gap": {
+    "measured": true,
+    "value": "1.46x/1.35x over the naive three-pass shape; INDISTINGUISHABLE from MLX",
+    "receipt": "receipts/headless/ACCELERATOR_SOFTMAX.json"
+   },
+   "priority": "P0",
+   "test_corpus": "64x128, 512x1024, 128x4099, 8x3, an overflow row, and a barrier-stripped negative control",
+   "current_winner": "MLX and AIR are indistinguishable; MLX retained as incumbent",
+   "remaining_limitation": "f32 only, last axis only, no masking, no causal variant. ATTENTION ITSELF REMAINS ABSENT -- this is a piece of it.",
+   "evidence": "receipts/headless/ACCELERATOR_SOFTMAX.json"
   }
  ],
- "count": 17,
+ "count": 18,
  "by_class": {
   "MEMORY": 2,
   "COMPILER": 3,
   "EXECUTION": 5,
-  "MATH": 2,
+  "MATH": 3,
   "RUNTIME": 2,
   "PROFILING": 1,
   "DEBUGGING": 1,
   "MULTI_DEVICE": 1
  },
  "classes_with_no_entry": [],
- "performance_gaps_measured": 7,
- "performance_gaps_unmeasured": 10,
+ "performance_gaps_measured": 9,
+ "performance_gaps_unmeasured": 9,
  "parity_claim": "NOT CLAIMED. This is a capability inventory, not a parity statement. No entry may report a semantic gap of NONE without evidence, and the steer forbids the phrase 'CUDA parity' unqualified.",
  "coverage_honesty": "The CUDA surface is vastly larger than this. These are the capabilities reachable or relevant from what has actually been built here; absence from this ledger means NOT YET STUDIED, never NOT NEEDED."
 }

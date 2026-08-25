@@ -311,3 +311,31 @@ def test_reduce_partial_count_covers_every_element():
     for n in (1, 255, 256, 257, 1 << 20):
         rd = air.AirReduce("r", n, "sum", threadgroup=256)
         assert rd.partials() * 256 >= n
+
+
+# --- fused softmax ---
+
+def test_softmax_emits_two_barriers_and_both_simd_reductions():
+    s = air.lower_softmax_to_msl(air.AirSoftmax("s", 8, 64))
+    assert s.count("threadgroup_barrier") == 2
+    assert "simd_max" in s and "simd_sum" in s
+    assert air.AirSoftmax("s", 8, 64).barrier_scopes_emitted() == ["THREADGROUP"] * 2
+
+
+def test_softmax_subtracts_the_row_max_for_stability():
+    """Without it, exp of a large logit overflows to inf and the row becomes nan."""
+    s = air.lower_softmax_to_msl(air.AirSoftmax("s", 8, 64))
+    assert "rowmax" in s and "exp(x[base + c] - rowmax)" in s
+
+
+def test_softmax_refuses_a_bad_threadgroup_and_empty_shapes():
+    with pytest.raises(ValueError, match="multiple of 32"):
+        air.AirSoftmax("s", 8, 64, threadgroup=48).validate()
+    with pytest.raises(ValueError, match="must be positive"):
+        air.AirSoftmax("s", 0, 64).validate()
+
+
+def test_softmax_launches_one_threadgroup_per_row():
+    sm = air.AirSoftmax("s", 37, 64, threadgroup=128)
+    grid, tg = sm.launch()
+    assert grid == (37 * 128, 1, 1) and tg == (128, 1, 1)

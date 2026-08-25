@@ -369,6 +369,92 @@ REDUCE_OPS = ("sum", "max")
 
 
 @dataclass
+class AirSoftmax:
+    """Row-wise softmax as ONE fused kernel. FRONT D / the CCL's attention prerequisite.
+
+    The naive shape is three passes over the row -- max, then sum of exp, then divide --
+    each re-reading data the previous pass already touched. This does all three inside
+    one threadgroup with two barriers, so the row is read once into registers and the
+    reductions happen in the SIMD units. That fusion is only expressible because
+    barriers and simd reductions now lower, which is what the reduction work bought.
+    """
+    name: str
+    rows: int
+    cols: int
+    threadgroup: int = 256
+    dtype: str = "f32"
+    device: str = "APPLE_GPU_0"
+
+    def validate(self) -> None:
+        if self.dtype != "f32":
+            raise ValueError("softmax is f32 only here")
+        if self.threadgroup % 32 or not 32 <= self.threadgroup <= 1024:
+            raise ValueError(f"threadgroup {self.threadgroup} must be a multiple of 32 "
+                             f"and within Metal's 1024 limit")
+        if self.rows <= 0 or self.cols <= 0:
+            raise ValueError("rows and cols must be positive")
+
+    def barrier_scopes_emitted(self) -> list[str]:
+        return ["THREADGROUP", "THREADGROUP"]     # after the max, after the sum
+
+    def executable_on_metal_backend(self) -> tuple[bool, str]:
+        return True, "fused row softmax with two threadgroup reductions"
+
+    def launch(self) -> tuple[tuple[int, int, int], tuple[int, int, int]]:
+        return (self.rows * self.threadgroup, 1, 1), (self.threadgroup, 1, 1)
+
+
+def lower_softmax_to_msl(sm: AirSoftmax) -> str:
+    sm.validate()
+    lanes = sm.threadgroup // 32
+    return f"""
+    uint row = threadgroup_position_in_grid.x;
+    uint lid = thread_position_in_threadgroup.x;
+    uint lane = lid % 32u;
+    uint warp = lid / 32u;
+    threadgroup float red[{lanes}];
+    uint base = row * {sm.cols}u;
+
+    // pass 1: row max, for numerical stability
+    float m = -INFINITY;
+    for (uint c = lid; c < {sm.cols}u; c += {sm.threadgroup}u) m = max(m, x[base + c]);
+    float sm_ = simd_max(m);
+    if (lane == 0u) red[warp] = sm_;
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    float rowmax = -INFINITY;
+    for (uint i = 0; i < {lanes}u; ++i) rowmax = max(rowmax, red[i]);
+
+    // pass 2: sum of exp, same threads, no re-launch
+    float s = 0.0f;
+    for (uint c = lid; c < {sm.cols}u; c += {sm.threadgroup}u) s += exp(x[base + c] - rowmax);
+    float ss = simd_sum(s);
+    if (lane == 0u) red[warp] = ss;
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    float rowsum = 0.0f;
+    for (uint i = 0; i < {lanes}u; ++i) rowsum += red[i];
+
+    // pass 3: normalise
+    float inv = 1.0f / rowsum;
+    for (uint c = lid; c < {sm.cols}u; c += {sm.threadgroup}u)
+        out[base + c] = exp(x[base + c] - rowmax) * inv;
+"""
+
+
+def execute_softmax(sm: AirSoftmax, x):
+    import mlx.core as mx
+    src = lower_softmax_to_msl(sm)
+    kern = mx.fast.metal_kernel(name=f"air_softmax_{sm.name}", input_names=["x"],
+                                output_names=["out"], source=src,
+                                ensure_row_contiguous=True)
+    g, tg = sm.launch()
+    (o,) = kern(inputs=[mx.array(x, dtype=mx.float32)], grid=g, threadgroup=tg,
+                output_shapes=[(sm.rows, sm.cols)], output_dtypes=[mx.float32])
+    mx.eval(o)
+    return o
+
+
+
+@dataclass
 class AirReduce:
     """A full reduction as an AIR program. FRONT D / CCL MATH.reduction_and_scan.
 

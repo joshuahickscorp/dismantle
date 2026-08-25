@@ -178,3 +178,48 @@ def test_air_domain_vocabulary_hands_to_humf_without_translation():
     fabric = humf.Humf({"APPLE_UM": humf.Domain("APPLE_UM", 1 << 30, 589.73, physical=True),
                         mp.domain.name: mp.domain})
     assert req["w"] in fabric.domains
+
+
+# --- AIR produces the tiled matmul rather than sitting beside a hand-written one ---
+
+def test_air_matmul_lowering_emits_tiles_and_barriers():
+    mm = air.AirMatmul("m", 64, 64, 64, tile=16)
+    src = air.lower_matmul_to_msl(mm)
+    assert "threadgroup float As" in src and "threadgroup float Bs" in src
+    assert src.count("threadgroup_barrier") == 2
+    assert mm.barrier_scopes_emitted() == ["THREADGROUP", "THREADGROUP"]
+
+
+def test_threadgroup_barriers_are_executable_because_air_emits_them():
+    """Barrier REPRESENTATION is refused for elementwise programs, but a matmul
+    LOWERS its own barriers, so the scope is executable there. The distinction is
+    the point: refusal tracks what the backend can emit, not what AIR can name."""
+    mm = air.AirMatmul("m", 64, 64, 64)
+    ok, _ = mm.executable_on_metal_backend()
+    assert ok
+    p = air.AirProgram("b", [air.AirTensor("x", (8,))],
+                       [air.AirOp("relu", ("x",), "z")], "z",
+                       barriers=[air.AirBarrier("THREADGROUP")])
+    assert not p.executable_on_metal_backend()[0]
+
+
+def test_a_matmul_operand_in_a_foreign_domain_is_refused():
+    with pytest.raises(NotImplementedError, match="HUMF"):
+        air.lower_matmul_to_msl(
+            air.AirMatmul("v", 64, 64, 64, a_domain="NVIDIA_VRAM_DIRECT"))
+
+
+@pytest.mark.parametrize("tile,msg", [(64, "exceeds 32"), (3, "power of two"),
+                                      (0, "power of two")])
+def test_impossible_tiles_are_refused(tile, msg):
+    with pytest.raises(ValueError, match=msg):
+        air.AirMatmul("t", 64, 64, 64, tile=tile).validate()
+
+
+def test_tile_is_a_specialization_the_forge_can_tune():
+    """Different tiles produce different kernels, which is what makes tuning possible
+    at the AIR level rather than by editing MSL."""
+    srcs = {t: air.lower_matmul_to_msl(air.AirMatmul("m", 64, 64, 64, tile=t))
+            for t in (8, 16, 32)}
+    assert len(set(srcs.values())) == 3
+    assert "As[8][8]" in srcs[8] and "As[32][32]" in srcs[32]

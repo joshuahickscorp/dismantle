@@ -202,6 +202,96 @@ def lower_to_msl(prog: AirProgram) -> str:
     return "\n    ".join(lines)
 
 
+@dataclass
+class AirMatmul:
+    """A tiled matmul as an AIR PROGRAM, not a hand-written kernel sitting beside AIR.
+
+    This exists because the GEMM receipt recorded exactly that gap: AIR had no tiling,
+    no threadgroup allocation and only barrier REPRESENTATION rather than lowering, so
+    the working kernel was MSL I wrote by hand. Now the tile size is a specialization,
+    the threadgroup allocation is declared, and the barriers are EMITTED BY THE
+    LOWERING -- which is what makes the THREADGROUP scope executable rather than
+    refused.
+    """
+    name: str
+    m: int
+    k: int
+    n: int
+    tile: int = 16
+    dtype: str = "f32"
+    device: str = "APPLE_GPU_0"
+    a_domain: str = "ANY"
+    b_domain: str = "ANY"
+
+    def validate(self) -> None:
+        if self.dtype not in DTYPES:
+            raise ValueError(f"unsupported dtype {self.dtype!r}")
+        if self.tile <= 0 or self.tile & (self.tile - 1):
+            raise ValueError(f"tile {self.tile} must be a positive power of two")
+        if self.tile > 32:
+            raise ValueError(f"tile {self.tile} exceeds 32; a {self.tile}x{self.tile} "
+                             f"threadgroup would exceed Metal's 1024-thread limit")
+        for d in (self.a_domain, self.b_domain):
+            if d not in MEMORY_DOMAINS:
+                raise ValueError(f"unknown memory domain {d!r}")
+
+    def executable_on_metal_backend(self) -> tuple[bool, str]:
+        foreign = {d for d in (self.a_domain, self.b_domain)
+                   if d not in ("ANY", "APPLE_UM")}
+        if foreign:
+            return False, (f"operands require {sorted(foreign)}; HUMF must materialise "
+                           f"them in APPLE_UM first")
+        # THREADGROUP barriers ARE executable now: this lowering emits them itself.
+        return True, "tiled matmul with threadgroup tiles and emitted barriers"
+
+    def barrier_scopes_emitted(self) -> list[str]:
+        return ["THREADGROUP", "THREADGROUP"]   # one after load, one after accumulate
+
+
+def lower_matmul_to_msl(mm: AirMatmul) -> str:
+    """AIR -> tiled MSL. The barriers here are EMITTED BY AIR."""
+    mm.validate()
+    ok, why = mm.executable_on_metal_backend()
+    if not ok:
+        raise NotImplementedError(f"AIR represents this matmul but the Metal backend "
+                                  f"cannot execute it: {why}")
+    T, ty = mm.tile, DTYPES[mm.dtype]
+    return f"""
+    uint gx = thread_position_in_grid.x;
+    uint gy = thread_position_in_grid.y;
+    uint lx = thread_position_in_threadgroup.x;
+    uint ly = thread_position_in_threadgroup.y;
+    threadgroup {ty} As[{T}][{T}];
+    threadgroup {ty} Bs[{T}][{T}];
+    float acc = 0.0f;
+    for (uint k0 = 0; k0 < {mm.k}u; k0 += {T}u) {{
+        As[ly][lx] = (gy < {mm.m}u && (k0 + lx) < {mm.k}u)
+                   ? A[gy * {mm.k}u + k0 + lx] : ({ty})0;
+        Bs[ly][lx] = ((k0 + ly) < {mm.k}u && gx < {mm.n}u)
+                   ? B[(k0 + ly) * {mm.n}u + gx] : ({ty})0;
+        threadgroup_barrier(mem_flags::mem_threadgroup);
+        for (uint k = 0; k < {T}u; ++k) acc += (float)As[ly][k] * (float)Bs[k][lx];
+        threadgroup_barrier(mem_flags::mem_threadgroup);
+    }}
+    if (gy < {mm.m}u && gx < {mm.n}u) C[gy * {mm.n}u + gx] = ({ty})acc;
+"""
+
+
+def execute_matmul(mm: AirMatmul, a, b):
+    """Run an AIR matmul on the Apple GPU."""
+    import mlx.core as mx
+    src = lower_matmul_to_msl(mm)
+    kern = mx.fast.metal_kernel(name=f"air_mm_{mm.name}", input_names=["A", "B"],
+                                output_names=["C"], source=src,
+                                ensure_row_contiguous=True)
+    dt = mx.float32 if mm.dtype == "f32" else mx.float16
+    (c,) = kern(inputs=[mx.array(a, dtype=dt), mx.array(b, dtype=dt)],
+                grid=(mm.n, mm.m, 1), threadgroup=(mm.tile, mm.tile, 1),
+                output_shapes=[(mm.m, mm.n)], output_dtypes=[dt])
+    mx.eval(c)
+    return c
+
+
 def machine_identity() -> dict[str, Any]:
     """MachineIdentity for the receipt. The steer: no result without physical
     identity."""

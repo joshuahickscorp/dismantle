@@ -86,13 +86,14 @@
    "hawking_equivalent": "AirProgram.specialization emits const floats into the MSL",
    "semantic_gap": "PARTIAL",
    "performance_gap": {
-    "measured": false,
-    "reason": "specialisation was never isolated as its own arm"
+    "measured": true,
+    "value": "NO MEASURABLE BENEFIT on this backend. A literal scalar against a buffer read is INDISTINGUISHABLE (1.62% margin vs 7.95% noise); a compute-bound loop bound where unrolling should pay is INDISTINGUISHABLE with the literal 3.09% SLOWER, both arms clean at 5.25%/4.96%.",
+    "receipt": "receipts/headless/ACCELERATOR_SPEC_CONSTANTS.json"
    },
    "priority": "P2",
    "test_corpus": "saxpy->relu with ALPHA as a specialization constant",
    "current_winner": "UNKNOWN \u2014 never measured against a non-specialised variant",
-   "remaining_limitation": "scalar floats only; no types, no shapes, no predicates"
+   "remaining_limitation": "two shapes on one machine; whether the literal loop is actually unrolled cannot be checked because xcrun metal is ABSENT so generated code cannot be inspected; and a constant that would enable BRANCH ELIMINATION or a different memory layout is untested"
   },
   {
    "capability_id": "EXECUTION.grid_block_thread",
@@ -374,8 +375,8 @@
   "MULTI_DEVICE": 1
  },
  "classes_with_no_entry": [],
- "performance_gaps_measured": 14,
- "performance_gaps_unmeasured": 6,
+ "performance_gaps_measured": 15,
+ "performance_gaps_unmeasured": 5,
  "parity_claim": "NOT CLAIMED. This is a capability inventory, not a parity statement. No entry may report a semantic gap of NONE without evidence, and the steer forbids the phrase 'CUDA parity' unqualified.",
  "coverage_honesty": "The CUDA surface is vastly larger than this. These are the capabilities reachable or relevant from what has actually been built here; absence from this ledger means NOT YET STUDIED, never NOT NEEDED."
 }

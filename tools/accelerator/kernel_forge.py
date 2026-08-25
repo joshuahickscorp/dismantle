@@ -315,7 +315,18 @@ def swept_with_control(cases, check, broken_check, *, name: str = "sweep",
     unnecessary. A control run only at 32 would have reported the broken kernel fine.
     See ACCELERATOR_WIDTH_SWEEP.json.
     """
-    def run(fn, label):
+    def run(fn, label, raises_are_failures=True):
+        """A RAISE MEANS DIFFERENT THINGS IN THE TWO ARMS, and conflating them made a
+        control report that it detected the defect at every width when it had in fact
+        crashed at every width -- a TypeError in the probe's own call, counted as
+        `inf` and therefore as a detection. Caught because that control's blind list
+        disagreed with a shipped receipt, not by re-reading the loop.
+
+        For the REAL arm a raise IS a failure: a shape the kernel refuses is a shape
+        the caller needs told about (ACCELERATOR_SHAPE_FUZZ.json). For a CONTROL arm
+        a raise means the control NEVER EXECUTED, so it proves nothing about the
+        kernel and the sweep is refused rather than crediting it with a detection.
+        """
         out = []
         for case in cases:
             errs = []
@@ -323,6 +334,13 @@ def swept_with_control(cases, check, broken_check, *, name: str = "sweep",
                 try:
                     errs.append(float(fn(case)))
                 except Exception as e:                       # noqa: BLE001
+                    if not raises_are_failures:
+                        raise ValueError(
+                            f"sweep {name!r} REFUSED: control {label!r} RAISED at case "
+                            f"{list(case)} ({type(e).__name__}: {e}). A control that "
+                            f"crashes never ran the kernel, so counting it as a "
+                            f"detection would credit the sweep with power it has not "
+                            f"got.") from e
                     errs.append(float("inf"))
                     del e
             worst = max(errs)
@@ -333,17 +351,45 @@ def swept_with_control(cases, check, broken_check, *, name: str = "sweep",
             raise ValueError(f"{label} {name!r} ran ZERO cases")
         return out
 
-    real, ctl = run(check, "sweep"), run(broken_check, "control")
-    detected = [c["case"] for c in ctl if not c["ok"]]
-    if not detected:
-        raise ValueError(
-            f"sweep {name!r} REFUSED: the broken control passed at every case, so a "
-            f"clean result here would be evidence of nothing. Either the control does "
-            f"not break what the check looks at, or the cases do not reach it.")
+    real = run(check, "sweep")
+    controls = broken_check if isinstance(broken_check, (list, tuple)) else \
+        [("control", broken_check)]
+    controls = [c if isinstance(c, (list, tuple)) else (f"control{i}", c)
+                for i, c in enumerate(controls)]
+
+    seen: list[dict[str, Any]] = []
+    for label, fn in controls:
+        ctl = run(fn, label, raises_are_failures=False)
+        det = [c["case"] for c in ctl if not c["ok"]]
+        if not det:
+            raise ValueError(
+                f"sweep {name!r} REFUSED: control {label!r} passed at every case, so a "
+                f"clean result here would be evidence of nothing. Either the control "
+                f"does not break what the check looks at, or the cases do not reach it.")
+        seen.append({"label": label, "detected_at": det,
+                     "blind_at": [c["case"] for c in ctl if c["ok"]],
+                     "fired_runs": sum(c["wrong"] for c in ctl),
+                     "total_runs": len(ctl) * repeat})
+
+    reached = {tuple(c) for s_ in seen for c in s_["detected_at"]}
+    blind_everywhere = [list(c) for c in cases if tuple(c) not in reached]
     return {"name": name, "cases_run": len(real), "repeat": repeat,
-            "executions": len(real) * repeat * 2,
+            "executions": len(real) * repeat * (1 + len(controls)),
             "failures": sum(1 for r in real if not r["ok"]),
             "all_ok": all(r["ok"] for r in real),
-            "control_detected_at": detected,
-            "control_blind_at": [c["case"] for c in ctl if c["ok"]],
-            "detection_floor_per_run": round(1 - 0.5 ** (1 / repeat), 4)}
+            "controls": seen,
+            # BACK-COMPAT, AND A TRAP IF READ ALONE: these describe the FIRST control
+            # only. ONE control's blind list is not the SWEEP's blind list -- measured
+            # in ACCELERATOR_QUIET_CONTROL.json, where a LOUD control is blind at 1 of
+            # 6 widths and a QUIET one at 4 of 6 ON THE SAME MACHINE.
+            "control_detected_at": seen[0]["detected_at"],
+            "control_blind_at": seen[0]["blind_at"],
+            "blind_at_every_control": blind_everywhere,
+            "detection_floor_per_run": round(1 - 0.5 ** (1 / repeat), 4),
+            # THE FLOOR BOUNDS `repeat`, NOT THE SWEEP. It is calibrated -- 40 blocks
+            # of 8 on a real race with p = 0.1187 detected in 25, against a binomial
+            # 0.6363, and the per-block hit distribution fits Binomial(8, p) at
+            # chi2 = 0.150 on 2 dof. What it does NOT cover is a case where the defect
+            # does not fire AT ALL: no repeat count rescues p = 0, and that is exactly
+            # where the quiet control was blind.
+            "floor_bounds_repeat_not_coverage": True}

@@ -150,7 +150,7 @@ def test_a_sweep_whose_control_never_fails_is_refused():
     """A probabilistic sweep reporting zero failures is exactly the shape of a check
     that cannot fail. If the broken arm passes everywhere, the clean result is
     evidence of nothing and the sweep says so instead of reporting green."""
-    with pytest.raises(ValueError, match="broken control passed at every case"):
+    with pytest.raises(ValueError, match="passed at every case"):
         kf.swept_with_control([(64,), (256,)], lambda c: 0.0, lambda c: 0.0,
                               name="vacuous")
 
@@ -178,3 +178,68 @@ def test_repeat_sets_the_detection_floor_not_the_case_list():
     many = kf.swept_with_control([(1,)], lambda c: 0.0, lambda c: 1.0, repeat=8)
     assert one["detection_floor_per_run"] > many["detection_floor_per_run"]
     assert many["detection_floor_per_run"] < 0.10
+
+
+# ---------------------------------------------------------------------------
+# Two controls, and the raise that looked like a detection.
+# ACCELERATOR_QUIET_CONTROL.json.
+# ---------------------------------------------------------------------------
+
+def test_a_control_that_raises_refuses_the_sweep():
+    """A control that crashes never ran the kernel. Counting its exception as `inf`
+    -- the rule that is CORRECT for the real arm -- credited a control with detecting
+    the defect at every width when a TypeError in the probe was all it detected."""
+    with pytest.raises(ValueError, match="RAISED at case"):
+        kf.swept_with_control([(64,), (256,)], lambda c: 0.0,
+                              [("crashes", lambda c: 1 / 0)], name="raiser")
+
+
+def test_the_real_arm_still_counts_a_raise_as_a_failure():
+    """The asymmetry is deliberate: a shape the kernel refuses is a shape the caller
+    needs told about, while a control that refuses proves nothing."""
+    def half_raises(case):
+        if case[0] == 256:
+            raise RuntimeError("kernel refuses this width")
+        return 0.0
+    r = kf.swept_with_control([(64,), (256,)], half_raises,
+                              [("ctl", lambda c: 9.9)], name="mixed")
+    assert r["failures"] == 1 and not r["all_ok"]
+
+
+def test_two_controls_report_separate_blind_lists():
+    """ONE control's blind list is not the SWEEP's. Measured on real kernels: a barrier
+    on a TOTAL dependency is caught at 5 of 6 widths (40 of 48 runs) while one on an
+    INCIDENTAL dependency is caught at 2 of 6 (4 of 48) -- same repeat, same widths,
+    same machine."""
+    cases = [(32,), (64,), (256,)]
+    loud = lambda c: 9.9                                     # fires everywhere
+    quiet = lambda c: 9.9 if c[0] == 256 else 0.0            # fires at one width
+    r = kf.swept_with_control(cases, lambda c: 0.0,
+                              [("loud", loud), ("quiet", quiet)], name="two")
+    by = {c["label"]: c for c in r["controls"]}
+    assert by["loud"]["blind_at"] == []
+    assert [x[0] for x in by["quiet"]["blind_at"]] == [32, 64]
+    # the sweep is NOT refused for a control being quiet -- only for one that is blind
+    # everywhere, which proves nothing at all.
+    assert r["all_ok"]
+
+
+def test_blind_at_every_control_is_what_the_sweep_actually_missed():
+    """A case no control reached is a case the sweep says nothing about, however many
+    controls ran."""
+    cases = [(32,), (64,), (256,)]
+    a = lambda c: 9.9 if c[0] == 64 else 0.0
+    b = lambda c: 9.9 if c[0] == 256 else 0.0
+    r = kf.swept_with_control(cases, lambda c: 0.0, [("a", a), ("b", b)], name="union")
+    assert [x[0] for x in r["blind_at_every_control"]] == [32]
+    # and the back-compat field describes the FIRST control alone, which is the trap
+    assert [x[0] for x in r["control_blind_at"]] == [32, 256]
+
+
+def test_the_floor_bounds_repeat_and_says_so():
+    """1 - 0.5**(1/repeat) is calibrated -- 40 blocks of 8 on a real race at p=0.1187
+    detected in 25 against a binomial 0.6363 -- but no repeat count rescues p = 0."""
+    r = kf.swept_with_control([(64,)], lambda c: 0.0, [("c", lambda c: 9.9)],
+                              name="floor", repeat=8)
+    assert r["detection_floor_per_run"] == 0.083
+    assert r["floor_bounds_repeat_not_coverage"] is True

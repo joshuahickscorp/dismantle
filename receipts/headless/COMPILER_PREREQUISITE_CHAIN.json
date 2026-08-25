@@ -1,10 +1,10 @@
 {
  "schema": "hawking.odyssey.compiler_prerequisite_chain.v1",
- "generated_at": "2026-08-25T10:47:58Z",
+ "generated_at": "2026-08-25T10:50:26Z",
  "generated_by": "tools/odyssey/compiler_prerequisite_chain.py",
  "obligation": "G023 \u2014 the complete chain for the two remaining clauses",
  "hand_authored": false,
- "git_head": "416bcfc0005804c6bc907e48880d61a244035044",
+ "git_head": "54c8da4dd2509a2305186b900504acedc895fd19",
  "chain": [
   {
    "step": 1,
@@ -12,7 +12,7 @@
    "producer": "lab/operators/ascension_qwen30_physical_campaign.py",
    "producer_exists": true,
    "blocker": "SOURCE_REPOSITORY is a MODULE CONSTANT, not a parameter -- only model_dir and root are arguments",
-   "constant_use_sites": 4,
+   "constant_use_sites": 5,
    "work": "parameterize the repository the way CompleteBinaryGravity already is",
    "input_present": true,
    "input": "/Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3-30B-A3B@ad44e777bcd1"
@@ -68,5 +68,15 @@
  },
  "honest_summary": "every producer in this chain exists except the parity harness. Two of them hardcode a repository where one already takes it as a parameter, and one representation decision has to be made. The remaining work is parameterize, decide, run, grade -- not invent.",
  "what_is_NOT_claimed": "that running this chain would produce a coherent model. Local adequacy does not compose, and the routed body has never been executed at any representation.",
- "pass": true
+ "pass": true,
+ "step_1_blocker_removed": {
+  "when": "2026-08-25",
+  "what": "lab/operators/ascension_qwen30_physical_campaign.py now takes source_repository, source_revision and audit_prefix as constructor arguments and CLI flags, matching CompleteBinaryGravity in the same directory",
+  "read_sites_converted": 3,
+  "defaults_unchanged": true,
+  "old_module_constants_still_resolve": true,
+  "why_audit_prefix": "the audit and status filenames were fixed strings, so auditing a second model into the same root would have overwritten the first",
+  "tests": "tools/odyssey/test_audit_producer_parameterized.py, 6 passed",
+  "still_not_run": "parameterizing is not auditing. The operator has not been run against model #2's 57G of shards, so no audit exists for it."
+ }
 }

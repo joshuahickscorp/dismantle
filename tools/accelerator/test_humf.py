@@ -5,8 +5,9 @@ from pathlib import Path
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools/accelerator"))
-from humf import (Domain, Humf, HumfError, HumfObject, Materialization,  # noqa: E402
-                  MockExternalMemoryProvider, State)
+from humf import (DeviceLost, Domain, Humf, HumfError, HumfObject,  # noqa: E402
+                  Materialization, MockExternalMemoryProvider, State,
+                  TransferTimeout)
 
 N = 1 << 20
 NB = N * 4
@@ -276,3 +277,117 @@ def test_a_lying_provider_is_named_as_a_different_threat_from_a_failing_one():
     import humf
     assert "malicious" in humf._digest.__doc__
     assert "authentication" in humf._digest.__doc__
+
+
+# --------------------------- the three modes the corruption receipt left unmodelled
+
+def test_a_torn_write_is_caught_by_the_same_check_that_catches_a_lie():
+    """A transport that delivers a PREFIX and stops leaves plausible bytes and raises
+    nothing. It needed no new defence -- a digest over the whole payload cannot miss
+    a truncated tail -- and recording that it is the SAME class as silent corruption
+    is more useful than inventing a second mechanism."""
+    h, o, mp = fabric()
+    mp.tear_next = True
+    plan = h.plan_acquire("W42", "MOCK_EXTERNAL_VRAM")
+    with pytest.raises(HumfError, match="integrity check FAILED"):
+        h.execute("W42", plan, "MOCK_EXTERNAL_VRAM")
+    assert o.materializations["MOCK_EXTERNAL_VRAM"].state is State.INVALID
+    assert "MOCK_EXTERNAL_VRAM" not in o.valid_copies()
+
+
+def test_without_verification_a_torn_write_is_marked_CLEAN_and_is_wrong():
+    """The control. A check that is never watched failing is indistinguishable from
+    one that does nothing."""
+    mp = MockExternalMemoryProvider(capacity_bytes=1 << 30, bandwidth_gb_s=5.0)
+    doms = {"APPLE_UM": Domain("APPLE_UM", 96 << 30, 589.73, physical=True),
+            mp.domain.name: mp.domain}
+    h = Humf(doms, providers={mp.domain.name: mp}, verify_transfers=False)
+    o = HumfObject("W42", "tensor", N, "f32")
+    o.place(Materialization("APPLE_UM", "dense_f32", "row_major", NB, State.CLEAN,
+                            payload=PAYLOAD))
+    h.register(o)
+    mp.tear_next = True
+    m = h.execute("W42", h.plan_acquire("W42", "MOCK_EXTERNAL_VRAM"), "MOCK_EXTERNAL_VRAM")
+    assert m.state is State.CLEAN
+    assert "MOCK_EXTERNAL_VRAM" in o.valid_copies()
+    assert m.payload != PAYLOAD          # counted valid, and wrong
+
+
+def test_a_hanging_transport_returns_control_and_quarantines_the_domain():
+    """A transport that HANGS is worse than one that fails: nothing raises and
+    nothing completes, so without a deadline the destination sits in TRANSFERRING
+    forever and the except branch never runs."""
+    h, o, mp = fabric()
+    h.transfer_timeout_s = 0.05
+    mp.hang_next_s = 0.6
+    with pytest.raises(TransferTimeout):
+        h.execute("W42", h.plan_acquire("W42", "MOCK_EXTERNAL_VRAM"), "MOCK_EXTERNAL_VRAM")
+    assert o.materializations["MOCK_EXTERNAL_VRAM"].state is State.INVALID
+    assert "MOCK_EXTERNAL_VRAM" in h.quarantined
+
+
+def test_a_quarantined_domain_refuses_the_next_transfer_until_released():
+    """Quarantine is not decoration: the timed-out call was NOT abandoned, so a
+    second transfer would race a worker still inside the provider."""
+    h, o, mp = fabric()
+    h.transfer_timeout_s = 0.05
+    mp.hang_next_s = 0.6
+    with pytest.raises(TransferTimeout):
+        h.execute("W42", h.plan_acquire("W42", "MOCK_EXTERNAL_VRAM"), "MOCK_EXTERNAL_VRAM")
+    with pytest.raises(HumfError, match="QUARANTINED"):
+        h.execute("W42", h.plan_acquire("W42", "MOCK_EXTERNAL_VRAM"), "MOCK_EXTERNAL_VRAM")
+    h.release_quarantine("MOCK_EXTERNAL_VRAM")
+    m = h.execute("W42", h.plan_acquire("W42", "MOCK_EXTERNAL_VRAM"), "MOCK_EXTERNAL_VRAM")
+    assert m.state is State.CLEAN and m.payload == PAYLOAD
+
+
+def test_a_lost_device_invalidates_every_copy_it_held_not_only_the_one_in_flight():
+    """The case that separates a lost DEVICE from a failed COPY. Getting it wrong is
+    silent: valid_copies() would keep naming copies on a device that is gone."""
+    h, o, mp = fabric()
+    other = HumfObject("W43", "tensor", N, "f32")
+    other.place(Materialization("MOCK_EXTERNAL_VRAM", "dense_f32", "row_major", NB,
+                                State.CLEAN, payload=PAYLOAD))
+    h.register(other)
+    assert other.valid_copies() == ["MOCK_EXTERNAL_VRAM"]
+    mp.vanish_next = True
+    with pytest.raises(DeviceLost):
+        h.execute("W42", h.plan_acquire("W42", "MOCK_EXTERNAL_VRAM"), "MOCK_EXTERNAL_VRAM")
+    assert other.valid_copies() == []                    # the bystander went too
+    assert "MOCK_EXTERNAL_VRAM" in h.quarantined
+
+
+def test_losing_the_only_live_copy_is_reported_as_DATA_LOSS_not_as_degraded_replication():
+    """A DIRTY copy in a lost domain was the ONLY holder of the live state. Folding
+    that into a count of invalidated copies would hide the one outcome that cannot
+    be recovered from."""
+    h, o, mp = fabric()
+    live = HumfObject("W44", "tensor", N, "f32")
+    live.place(Materialization("MOCK_EXTERNAL_VRAM", "dense_f32", "row_major", NB,
+                               State.CLEAN, payload=PAYLOAD))
+    h.register(live)
+    live.mark_written("MOCK_EXTERNAL_VRAM")              # now DIRTY: the live state
+    report = h.device_lost("MOCK_EXTERNAL_VRAM", "cable pulled")
+    assert "W44" in report["data_lost"]
+    assert "W44" in report["invalidated"]
+
+
+def test_a_lost_device_does_not_report_data_loss_for_a_replicated_object():
+    """The other direction: an object with a good copy elsewhere is degraded, not
+    lost, and calling that data loss would be crying wolf."""
+    h, o, mp = fabric()
+    o.place(Materialization("MOCK_EXTERNAL_VRAM", "dense_f32", "row_major", NB,
+                            State.CLEAN, payload=PAYLOAD))
+    report = h.device_lost("MOCK_EXTERNAL_VRAM", "bus reset")
+    assert "W42" in report["invalidated"]
+    assert report["data_lost"] == []
+    assert o.valid_copies() == ["APPLE_UM"]
+
+
+def test_the_source_survives_a_lost_device():
+    h, o, mp = fabric()
+    mp.vanish_next = True
+    with pytest.raises(DeviceLost):
+        h.execute("W42", h.plan_acquire("W42", "MOCK_EXTERNAL_VRAM"), "MOCK_EXTERNAL_VRAM")
+    src = o.materializations["APPLE_UM"]
+    assert src.state is State.CLEAN and src.payload == PAYLOAD

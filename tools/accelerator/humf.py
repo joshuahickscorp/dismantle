@@ -48,6 +48,19 @@ LEGAL: dict[State, set[State]] = {
 }
 
 
+class DeviceLost(RuntimeError):
+    """The domain itself went away mid-transfer -- a pulled cable, a bus reset, a
+    driver crash. Distinct from HumfError on purpose: a failed COPY damages ONE
+    object, while a lost DEVICE invalidates EVERY copy that domain was holding, and
+    treating the second as the first leaves valid_copies() naming copies that no
+    longer exist anywhere."""
+
+
+class TransferTimeout(RuntimeError):
+    """The transport did not answer inside its deadline. Detected, not abandoned --
+    see Humf._move for exactly what that distinction costs."""
+
+
 class HumfError(RuntimeError):
     pass
 
@@ -137,7 +150,8 @@ class Plan:
 class Humf:
     def __init__(self, domains: dict[str, Domain],
                  providers: dict[str, Any] | None = None,
-                 verify_transfers: bool = True):
+                 verify_transfers: bool = True,
+                 transfer_timeout_s: float | None = None):
         self.domains = domains
         self.objects: dict[str, HumfObject] = {}
         self.log: list[dict[str, Any]] = []
@@ -151,6 +165,71 @@ class Humf:
         # no defence at all -- only VERIFICATION is. Enabled across provider-backed
         # domains only; see integrity_policy() for why that is not timidity.
         self.verify_transfers = verify_transfers
+        # A transport that HANGS is a third failure mode, and it is worse than one
+        # that raises: nothing raises, nothing completes, and the destination sits in
+        # TRANSFERRING forever with no path out because the except branch never runs.
+        self.transfer_timeout_s = transfer_timeout_s
+        # A domain that timed out or vanished is not trustworthy for the NEXT
+        # transfer either. Quarantine is what an operator would do with a flaky link,
+        # and doing it here is what stops a second transfer racing a first one that
+        # is still running inside a worker thread we could not abandon.
+        self.quarantined: dict[str, str] = {}
+
+    def device_lost(self, domain: str, reason: str) -> dict[str, Any]:
+        """The domain went away. EVERY copy it held is gone, not just the one being
+        transferred.
+
+        This is the case that separates a lost DEVICE from a failed COPY, and getting
+        it wrong is silent: valid_copies() would keep naming copies in a domain that
+        no longer exists, and the planner would keep choosing them as transfer
+        sources. The report distinguishes objects that are merely less replicated
+        from objects whose LIVE state was in that domain -- a DIRTY copy there was
+        the only holder, so losing it is DATA LOSS and must be named as such rather
+        than folded into a count of invalidated copies.
+        """
+        invalidated, data_lost = [], []
+        for ident, obj in self.objects.items():
+            m = obj.materializations.get(domain)
+            if m is None or m.state in (State.ABSENT, State.EVICTED, State.INVALID):
+                continue
+            was_dirty = m.state is State.DIRTY
+            m.transition(State.INVALID)
+            m.payload, m.digest = None, None
+            invalidated.append(ident)
+            if was_dirty or (not obj.valid_copies() and obj.recompute is None):
+                data_lost.append(ident)
+        self.quarantined[domain] = reason
+        self.log.append({"action": "DEVICE_LOST", "domain": domain, "reason": reason,
+                         "invalidated": invalidated, "data_lost": data_lost,
+                         "at": time.time()})
+        return {"domain": domain, "reason": reason, "invalidated": invalidated,
+                "data_lost": data_lost,
+                "means": "a lost device invalidates every copy it held; anything whose "
+                         "live or only state was there is DATA LOSS, not degraded "
+                         "replication"}
+
+    def release_quarantine(self, domain: str) -> list[str]:
+        """Explicit, never automatic. A link that failed once is trusted again only
+        because a person or a policy said so.
+
+        It also clears the wreckage, and it has to: an INVALID copy cannot go
+        straight back to TRANSFERRING (the state machine forbids it, correctly --
+        INVALID means the contents are unknown, and pretending a transfer is
+        resuming would be a lie about what happened). Recovery is INVALID -> ABSENT
+        -> TRANSFERRING, and putting that here keeps it ONE explicit operator action
+        rather than a sequence a caller can half-perform.
+        """
+        self.quarantined.pop(domain, None)
+        prov = self.providers.get(domain)
+        if prov is not None:
+            prov.present = True
+        cleared = []
+        for ident, obj in self.objects.items():
+            m = obj.materializations.get(domain)
+            if m is not None and m.state is State.INVALID:
+                m.transition(State.ABSENT)
+                cleared.append(ident)
+        return cleared
 
     def register(self, obj: HumfObject) -> None:
         self.objects[obj.identity] = obj
@@ -206,6 +285,9 @@ class Humf:
             return obj.materializations[want_domain]
         if plan.action == "IMPOSSIBLE":
             raise HumfError(plan.detail)
+        if want_domain in self.quarantined:
+            raise HumfError(f"{want_domain} is QUARANTINED ({self.quarantined[want_domain]}); "
+                            f"transfers into it are refused until released explicitly")
         dst = obj.materializations.get(want_domain)
         if dst is None:
             src_any = next(iter(obj.materializations.values()), None)
@@ -222,6 +304,23 @@ class Humf:
         # transfer must not damage the copy that was good.
         try:
             self._move(obj, plan, want_domain, dst)
+        except DeviceLost as e:
+            dst.transition(State.INVALID)
+            dst.payload = None
+            self.log.append({"object": identity, "action": plan.action,
+                             "domain": want_domain, "outcome": "DEVICE_LOST",
+                             "at": time.time()})
+            # the whole domain, not just this object
+            self.device_lost(want_domain, str(e))
+            raise
+        except TransferTimeout as e:
+            dst.transition(State.INVALID)
+            dst.payload = None
+            self.quarantined[want_domain] = str(e)
+            self.log.append({"object": identity, "action": plan.action,
+                             "domain": want_domain, "outcome": "TIMEOUT",
+                             "at": time.time()})
+            raise
         except Exception:
             dst.transition(State.INVALID)
             self.log.append({"object": identity, "action": plan.action,
@@ -264,8 +363,8 @@ class Humf:
             return
         expect = _digest(src.payload)
         src.digest = expect
-        prov.copy_in(obj.identity, src.payload)
-        got = prov.copy_out(obj.identity)
+        self._with_deadline(prov.copy_in, obj.identity, src.payload)
+        got = self._with_deadline(prov.copy_out, obj.identity)
         if self.verify_transfers:
             actual = _digest(got)
             if actual != expect:
@@ -276,6 +375,39 @@ class Humf:
                     f"BYTES. Nothing but verification catches that.")
             dst.digest = actual
         dst.payload = got
+
+
+def _with_deadline_impl(self, fn, *args):
+    """Run a provider call under a deadline, and be exact about what that buys.
+
+    WHAT IT DOES: the fabric regains control when the transport does not answer in
+    time, the destination goes INVALID instead of sitting in TRANSFERRING forever,
+    and the domain is QUARANTINED.
+
+    WHAT IT DOES NOT DO: it cannot ABANDON the call. The worker thread is still
+    inside the provider and may still complete, mutating provider state after the
+    fabric has given up. That is why quarantine is not optional dressing -- refusing
+    the next transfer into that domain is the only thing keeping a second call from
+    racing the first. Real abandonment needs the transport to run somewhere it can be
+    killed, which is not built here and is not claimed.
+    """
+    if self.transfer_timeout_s is None:
+        return fn(*args)
+    import concurrent.futures as _cf
+    with _cf.ThreadPoolExecutor(max_workers=1) as ex:
+        fut = ex.submit(fn, *args)
+        try:
+            return fut.result(timeout=self.transfer_timeout_s)
+        except _cf.TimeoutError:
+            ex.shutdown(wait=False)
+            raise TransferTimeout(
+                f"transport did not answer within {self.transfer_timeout_s}s; the "
+                f"call was NOT abandoned, only given up on -- the worker may still "
+                f"be running inside the provider, which is why the domain is "
+                f"quarantined rather than merely marked failed")
+
+
+Humf._with_deadline = _with_deadline_impl
 
 
 def _digest(b: bytes) -> int:
@@ -323,6 +455,10 @@ class MockExternalMemoryProvider:
         self.allocated = 0
         self.fail_next: str | None = None      # failure injection
         self.corrupt_next: bool = False        # the harder mode: LIE, do not fail
+        self.tear_next: bool = False           # store only part of what was handed in
+        self.hang_next_s: float = 0.0          # a transport that is slow, not broken
+        self.vanish_next: bool = False         # the device leaves mid-transfer
+        self.present: bool = True
         # Real bytes, so a round trip proves the DATA survived rather than only the
         # bookkeeping agreeing with itself.
         self.store: dict[str, bytes] = {}
@@ -344,12 +480,38 @@ class MockExternalMemoryProvider:
         if self.fail_next == "copy":
             self.fail_next = None
             raise HumfError("injected failure: copy_in")
+        self._maybe_hang()
+        self._require_present()
+        if self.tear_next:
+            # A TORN WRITE: the transport delivered a prefix and stopped, leaving the
+            # tail as whatever was there before. No exception, plausible-looking bytes.
+            self.tear_next = False
+            head = bytes(payload[: len(payload) // 2])
+            tail = self.store.get(key, b"\x00" * len(payload))[len(payload) // 2:]
+            self.store[key] = head + tail[: len(payload) - len(head)].ljust(
+                len(payload) - len(head), b"\x00")
+            return
         self.store[key] = bytes(payload)
+
+    def _maybe_hang(self) -> None:
+        if self.hang_next_s:
+            d, self.hang_next_s = self.hang_next_s, 0.0
+            time.sleep(d)
+
+    def _require_present(self) -> None:
+        if self.vanish_next:
+            self.vanish_next = False
+            self.present = False
+            self.store.clear()          # the device left; so did everything on it
+        if not self.present:
+            raise DeviceLost(f"{self.domain.name} is no longer attached")
 
     def copy_out(self, key: str) -> bytes:
         if self.fail_next == "copy":
             self.fail_next = None
             raise HumfError("injected failure: copy_out")
+        self._maybe_hang()
+        self._require_present()
         if key not in self.store:
             raise HumfError(f"{key} is not resident in {self.domain.name}")
         if self.corrupt_next:

@@ -943,3 +943,93 @@ def test_a_matmul_still_accepts_because_its_lowering_emits_its_own_barriers():
     mm = air.AirMatmul(name="mm_probe", m=32, k=32, n=32, dtype="f32")
     ok, why = mm.executable_on_metal_backend()
     assert ok is True, why
+
+
+def test_topk_sample_refuses_what_it_cannot_do():
+    mk = lambda **kw: air.AirTopKSample(**{"name": "t", "rows": 2, "cols": 64,
+                                           "k": 4, **kw})
+    with pytest.raises(ValueError, match="exceeds 64"):
+        mk(k=65, cols=1024).validate()
+    with pytest.raises(ValueError, match="must be in 1"):
+        mk(k=65, cols=32).validate()
+    with pytest.raises(ValueError, match="temperature"):
+        mk(temperature=0.0).validate()
+    with pytest.raises(ValueError, match="multiple of 32"):
+        mk(threadgroup=100).validate()
+    # a name with a dot becomes an invalid Metal SYMBOL and fails deep inside the MLX
+    # header with no mention of the name; found by naming a variant after its temperature
+    with pytest.raises(ValueError, match="valid identifier"):
+        air.AirTopKSample("l2_0.5", rows=2, cols=64, k=4).validate()
+
+
+def test_topk_is_exact_against_a_stable_argsort():
+    pytest.importorskip("mlx.core")
+    rng = np.random.default_rng(11)
+    for rows, cols, k in [(4, 64, 5), (2, 1031, 8), (3, 128, 1)]:
+        x = (rng.standard_normal((rows, cols)) * 3).astype(np.float32)
+        u = rng.random(rows).astype(np.float32)
+        ts = air.AirTopKSample(f"tk_{rows}_{cols}_{k}", rows=rows, cols=cols, k=k)
+        _, tv, ti = air.execute_topk_sample(ts, x, u)
+        _, ovals, oidx = air.topk_sample_oracle(x, u, k)
+        assert (np.array(ti) == oidx).all()
+        assert float(np.max(np.abs(np.array(tv) - ovals))) == 0.0
+
+
+def test_ties_break_to_the_lower_index_where_ONE_thread_sees_them_all():
+    """The regression a mutation of mine failed to catch. The tie-break lives in TWO
+    places -- the per-thread scan and the tree reduce -- and at cols <= threadgroup
+    each thread sees at most one element, so the per-thread half is DEAD CODE and a
+    test at that shape proves nothing about it. The ties here sit a full threadgroup
+    stride apart so one thread must break them itself."""
+    pytest.importorskip("mlx.core")
+    tg, cols = 256, 1024
+    x = np.zeros((2, cols), np.float32)
+    for c in (5, 5 + tg, 5 + 2 * tg):
+        x[:, c] = 1.0
+    u = np.array([0.1, 0.9], np.float32)
+    ts = air.AirTopKSample("tiestride", rows=2, cols=cols, k=3, threadgroup=tg)
+    _, _, ti = air.execute_topk_sample(ts, x, u)
+    assert np.array(ti)[0].tolist() == [5, 5 + tg, 5 + 2 * tg]
+
+
+def test_the_sample_is_a_pure_function_of_the_logits_and_u():
+    """Randomness as an INPUT is what makes exact grading possible at all: same u
+    gives the same answer, a different u actually moves it, and the answer matches an
+    independent numpy CDF walk."""
+    pytest.importorskip("mlx.core")
+    rng = np.random.default_rng(5)
+    rows, cols, k = 256, 512, 8
+    x = (rng.standard_normal((rows, cols)) * 2.5).astype(np.float32)
+    u = rng.random(rows).astype(np.float32)
+    ts = air.AirTopKSample("pure", rows=rows, cols=cols, k=k)
+    a, _, _ = air.execute_topk_sample(ts, x, u)
+    b, _, _ = air.execute_topk_sample(ts, x, u)
+    c, _, _ = air.execute_topk_sample(ts, x, rng.random(rows).astype(np.float32))
+    och, _, _ = air.topk_sample_oracle(x, u, k)
+    assert (np.array(a) == np.array(b)).all()          # reproducible
+    assert (np.array(a) != np.array(c)).sum() > rows // 4   # and not trivially constant
+    assert (np.array(a) == och).all()                  # matches the independent oracle
+
+
+def test_the_distribution_is_checked_and_the_check_can_fail():
+    """A sampler cannot be graded by equality alone: `the index is one of the top k`
+    PASSES FOR A SAMPLER THAT ALWAYS RETURNS THE ARGMAX. So the frequencies are tested
+    -- and the negative control is what makes that test evidence rather than ritual."""
+    pytest.importorskip("mlx.core")
+    rng = np.random.default_rng(99)
+    n, cols, k = 4096, 256, 8
+    logits = (rng.standard_normal(cols) * 2.0).astype(np.float32)
+    X = np.repeat(logits[None, :], n, axis=0)
+    u = rng.random(n).astype(np.float32)
+    ts = air.AirTopKSample("dist", rows=n, cols=cols, k=k)
+    ch, _, ti = air.execute_topk_sample(ts, X, u)
+    order = np.array(ti)[0]
+    vals = logits[order]
+    p = np.exp(vals - vals.max()); p = p / p.sum()
+    exp_counts = p * n
+    chi2 = lambda idx: float(((np.array([(idx == t).sum() for t in order]) - exp_counts)
+                              ** 2 / exp_counts).sum())
+    critical = 24.322                       # chi-square upper 0.1% point, df = k-1 = 7
+    assert chi2(np.array(ch)) < critical
+    assert chi2(np.full(n, order[0])) > critical        # argmax-always must FAIL
+    assert chi2(order[np.minimum((u * k).astype(int), k - 1)]) > critical  # uniform too

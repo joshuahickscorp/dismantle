@@ -1099,3 +1099,177 @@ def execute_graph(g: AirGraph, arrays: dict[str, Any], *, eager: bool = False):
     leaves = [nd.name for nd in g.nodes]
     mx.eval(*[env[k] for k in leaves])
     return env
+
+
+@dataclass
+class AirTopKSample:
+    """Top-k filtering and categorical sampling: the decode tail of an LLM.
+
+    S015 §3 names TOP-K and SAMPLING in the required corpus and no receipt has ever
+    claimed or refused either, which by the ledger's own rule means NOT YET STUDIED.
+
+    THE RANDOMNESS IS AN INPUT, NOT A SIDE EFFECT. `u` carries one uniform per row,
+    drawn host-side from a seeded generator, so the kernel is a PURE FUNCTION of
+    (logits, u) and can be graded by exact equality against an independent oracle.
+    A kernel that generated its own randomness could only ever be graded
+    statistically, and a statistical check is far weaker than an exact one -- this
+    design choice is what makes the strongest grading layer available at all.
+
+    Three outputs on purpose: the selected values and indices are returned alongside
+    the sampled choice so top-k can be graded against numpy's sort WITHOUT the
+    sampler in the way. Grading only the final index would confound two mechanisms.
+
+    TIES BREAK TOWARD THE LOWER INDEX, matching a stable argsort. An unspecified
+    tie-break would make the exact grading layer unusable on any logit vector with
+    repeats -- which includes every masked or clamped distribution in practice.
+    """
+    name: str
+    rows: int
+    cols: int
+    k: int
+    temperature: float = 1.0
+    threadgroup: int = 256
+    dtype: str = "f32"
+    device: str = "APPLE_GPU_0"
+
+    def validate(self) -> None:
+        if self.dtype != "f32":
+            raise ValueError("top-k sampling is f32 only here")
+        if self.threadgroup % 32 or not 32 <= self.threadgroup <= 1024:
+            raise ValueError(f"threadgroup {self.threadgroup} must be a multiple of 32 "
+                             f"and within Metal's 1024 limit")
+        if self.rows <= 0 or self.cols <= 0:
+            raise ValueError("rows and cols must be positive")
+        if not 1 <= self.k <= self.cols:
+            raise ValueError(f"k={self.k} must be in 1..cols ({self.cols})")
+        if self.k > 64:
+            # The selection is k rounds of a full-row argmax with an O(k) membership
+            # test per element, so cost grows as k^2. Refusing beyond 64 states the
+            # algorithm's domain instead of quietly becoming the slowest way to sort.
+            raise ValueError(f"k={self.k} exceeds 64; this is iterative extraction, "
+                             f"not a sort, and beyond ~64 a different algorithm is "
+                             f"the right answer rather than this one scaled up")
+        if not self.temperature > 0:
+            raise ValueError("temperature must be positive; temperature 0 is argmax "
+                             "and is a DIFFERENT operation, not a limit this kernel takes")
+        if not self.name.isidentifier():
+            # The name is interpolated into the generated function's SYMBOL, so a dot
+            # or a space produces a Metal compile error twenty lines deep in MLX's
+            # own header with no hint that a Python string caused it. Found by naming
+            # a variant after its temperature. The other AIR lowerings interpolate
+            # their names the same way and are NOT guarded -- named, not silently
+            # fixed, because a guard nobody has watched fire is worth little.
+            raise ValueError(f"name {self.name!r} becomes a Metal symbol and must be a "
+                             f"valid identifier; a '.' or ' ' fails deep inside the "
+                             f"MLX header with no mention of the name")
+
+    def barrier_scopes_emitted(self) -> list[str]:
+        # one per tree-reduction step per extraction round, plus one after each write
+        steps = max(1, self.threadgroup.bit_length() - 1)
+        return ["THREADGROUP"] * (self.k * (steps + 1))
+
+    def executable_on_metal_backend(self) -> tuple[bool, str]:
+        return True, "iterative argmax extraction then a serial CDF walk over k"
+
+    def launch(self) -> tuple[tuple[int, int, int], tuple[int, int, int]]:
+        return (self.rows * self.threadgroup, 1, 1), (self.threadgroup, 1, 1)
+
+
+def lower_topk_sample_to_msl(ts: AirTopKSample) -> str:
+    ts.validate()
+    tg = ts.threadgroup
+    return f"""
+    uint row = threadgroup_position_in_grid.x;
+    uint lid = thread_position_in_threadgroup.x;
+    threadgroup float cv[{tg}];
+    threadgroup uint  ci[{tg}];
+    threadgroup float sel_v[{ts.k}];
+    threadgroup uint  sel_i[{ts.k}];
+    uint base = row * {ts.cols}u;
+
+    for (uint t = 0u; t < {ts.k}u; ++t) {{
+        float bv = -INFINITY; uint bi = 0xFFFFFFFFu;
+        for (uint c = lid; c < {ts.cols}u; c += {tg}u) {{
+            bool taken = false;
+            for (uint s = 0u; s < t; ++s) if (sel_i[s] == c) taken = true;
+            if (taken) continue;
+            float v = x[base + c];
+            // TIES TO THE LOWER INDEX, so the answer matches a stable argsort
+            if (v > bv || (v == bv && c < bi)) {{ bv = v; bi = c; }}
+        }}
+        cv[lid] = bv; ci[lid] = bi;
+        {barrier_msl("THREADGROUP")}
+        // `half` is a METAL TYPE NAME, so the obvious loop variable does not compile
+        for (uint span = {tg}u / 2u; span > 0u; span >>= 1u) {{
+            if (lid < span) {{
+                float ov = cv[lid + span]; uint oi = ci[lid + span];
+                if (ov > cv[lid] || (ov == cv[lid] && oi < ci[lid])) {{
+                    cv[lid] = ov; ci[lid] = oi;
+                }}
+            }}
+            {barrier_msl("THREADGROUP")}
+        }}
+        if (lid == 0u) {{ sel_v[t] = cv[0]; sel_i[t] = ci[0]; }}
+        {barrier_msl("THREADGROUP")}
+    }}
+
+    if (lid == 0u) {{
+        // k is small, so the CDF walk is SERIAL IN ONE THREAD on purpose: a
+        // parallel scan over k <= 64 would cost more in barriers than it saves.
+        float m = -INFINITY;
+        for (uint s = 0u; s < {ts.k}u; ++s) m = max(m, sel_v[s]);
+        float tot = 0.0f;
+        for (uint s = 0u; s < {ts.k}u; ++s) tot += exp((sel_v[s] - m) / {ts.temperature}f);
+        float target = u[row] * tot;
+        float acc = 0.0f;
+        uint pick = sel_i[{ts.k}u - 1u];   // the last bucket absorbs any rounding slack
+        for (uint s = 0u; s < {ts.k}u; ++s) {{
+            acc += exp((sel_v[s] - m) / {ts.temperature}f);
+            if (target < acc) {{ pick = sel_i[s]; break; }}
+        }}
+        choice[row] = (int)pick;
+    }}
+    for (uint s = lid; s < {ts.k}u; s += {tg}u) {{
+        topk_val[row * {ts.k}u + s] = sel_v[s];
+        topk_idx[row * {ts.k}u + s] = (int)sel_i[s];
+    }}
+"""
+
+
+def execute_topk_sample(ts: AirTopKSample, x, u):
+    import mlx.core as mx
+    src = lower_topk_sample_to_msl(ts)
+    kern = mx.fast.metal_kernel(
+        name=f"air_topk_{ts.name}", input_names=["x", "u"],
+        output_names=["choice", "topk_val", "topk_idx"], source=src,
+        ensure_row_contiguous=True)
+    g, tg = ts.launch()
+    choice, tv, ti = kern(
+        inputs=[mx.array(x, dtype=mx.float32), mx.array(u, dtype=mx.float32)],
+        grid=g, threadgroup=tg,
+        output_shapes=[(ts.rows,), (ts.rows, ts.k), (ts.rows, ts.k)],
+        output_dtypes=[mx.int32, mx.float32, mx.int32])
+    mx.eval(choice, tv, ti)
+    return choice, tv, ti
+
+
+def topk_sample_oracle(x, u, k: int, temperature: float = 1.0):
+    """An INDEPENDENT numpy implementation, written from the operation's definition
+    rather than from the kernel: a stable argsort for the top-k, and a searchsorted
+    over the cumulative distribution for the choice.
+
+    Independent in code, NOT in convention -- both sides agree that ties go to the
+    lower index and that the bucket is chosen by `target < cumulative`. A convention
+    error would agree with itself here, which is exactly why the distributional layer
+    with its negative controls exists rather than this oracle alone.
+    """
+    import numpy as np
+    x = np.asarray(x, dtype=np.float32)
+    order = np.argsort(-x, axis=1, kind="stable")[:, :k]
+    vals = np.take_along_axis(x, order, axis=1)
+    p = np.exp((vals - vals.max(axis=1, keepdims=True)) / temperature)
+    cdf = np.cumsum(p, axis=1)
+    target = np.asarray(u, dtype=np.float32)[:, None] * cdf[:, -1:]
+    pos = (target >= cdf).sum(axis=1)
+    pos = np.minimum(pos, k - 1)
+    return order[np.arange(len(order)), pos], vals, order

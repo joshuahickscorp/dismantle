@@ -36,6 +36,15 @@ def time_arm(fn: Callable[[], Any], *, reps: int = 40, warmup: int = 10) -> dict
             "reliable": iqr <= IQR_GATE_PCT}
 
 
+def implausible(reason: str) -> dict[str, Any]:
+    """A result that violates a physical expectation is rejected regardless of how
+    large its margin is. Learned the hard way: a bandwidth-bound kernel reading twice
+    the bytes reported a SHORTER time, and the margin-over-noise escape hatch admitted
+    it because the margin was large. A big margin on an impossible result is evidence
+    the measurement is broken, not that the effect is strong."""
+    return {"verdict": "REJECTED_IMPLAUSIBLE", "reason": reason, "speedup": None}
+
+
 def compare(arms: dict[str, dict[str, Any]], *, baseline: str,
             candidate: str) -> dict[str, Any]:
     b, c = arms[baseline], arms[candidate]

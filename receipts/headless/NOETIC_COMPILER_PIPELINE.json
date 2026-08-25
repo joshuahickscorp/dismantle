@@ -167,5 +167,14 @@
  "n_stages_automatic_on_model_2": 6,
  "stage_audit": "receipts/headless/NOETIC_COMPILER_STAGE_AUDIT.json",
  "n_stages_run_for_model_2": 6,
- "kernel_planner_note": "KernelPlanner is complete for model #2. That is a PLANNING result: no bytes are packed, DeviceCompiler and NoeticExecutable remain blocked, and every competent kernel carries parity ABSENT."
+ "kernel_planner_note": "KernelPlanner is complete for model #2. That is a PLANNING result: no bytes are packed, DeviceCompiler and NoeticExecutable remain blocked, and every competent kernel carries parity ABSENT.",
+ "acceptance_clauses": {
+  "pipeline_runs_end_to_end_on_model_2": false,
+  "manual_interventions_counted_and_recorded": true,
+  "produced_executable_is_coherent": false,
+  "two_device_profiles_qualified": true,
+  "n_met": 2,
+  "n_total": 4,
+  "device_profiles_receipt": "receipts/headless/DEVICE_PROFILES.json"
+ }
 }

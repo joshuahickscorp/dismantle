@@ -414,3 +414,96 @@ def test_sgemm_near_misses_are_refused(label, old, new):
     """Widening recognition without near-miss evidence is how a loose match ships."""
     with pytest.raises(c2m.C2MRefusal):
         ci.recognize(_REAL_SGEMM.replace(old, new, 1))
+
+
+# ---------------------------------------------------------------------------
+# The corpus denominator. ACCELERATOR_C2M_CORPUS_DENOMINATOR.json.
+# ---------------------------------------------------------------------------
+
+_EMPTY_PROBE = 'extern "C" __global__ void p(const float*, int64_t, float*) {}'
+
+
+def test_empty_body_is_refused_for_being_empty_not_for_its_parameters():
+    """The nine seed stubs were refused with 'cannot parse parameter const float*'.
+
+    True, and the wrong cause: an unnamed parameter is fixable, a kernel with no body
+    is not translatable by anything, ever. A refusal naming the wrong cause sends the
+    reader to fix a parameter parser for a kernel that computes nothing.
+    """
+    with pytest.raises(c2m.C2MRefusal) as e:
+        c2m.translate(_EMPTY_PROBE, elements=8)
+    assert "EMPTY BODY" in str(e.value)
+    assert "parameter" not in str(e.value)
+
+
+def test_commuted_index_product_is_the_same_index():
+    """blockDim.x * blockIdx.x is integer multiplication written the other way round.
+
+    The addend order was already accepted and the factor order was not, which is what
+    hid it. Two seed kernels spell it this way.
+    """
+    src = ("__global__ void t(const float* a, const float* b, float* c, int n) {"
+           " int id = blockDim.x * blockIdx.x + threadIdx.x;"
+           " if (id < n) { c[id] = a[id] + b[id]; } }")
+    tk = c2m.translate(src, elements=64)
+    assert tk.program.ops[0].kind == "add"
+
+
+@pytest.mark.parametrize("idx,why", [
+    ("int id = blockIdx.x + blockDim.x * threadIdx.x;", "a different index entirely"),
+    ("int id = blockDim.y * blockIdx.x + threadIdx.x;", "wrong axis on the factor"),
+    ("int id = blockIdx.x * blockDim.x + threadIdx.y;", "wrong axis on the addend"),
+    ("int id = blockIdx.x * blockIdx.x + threadIdx.x;", "the same factor twice"),
+])
+def test_index_near_misses_stay_refused(idx, why):
+    """The widening is exactly commutativity. Each of these MEANS something else."""
+    src = ("__global__ void t(const float* a, const float* b, float* c, int n) {"
+           f" {idx} if (id < n) {{ c[id] = a[id] + b[id]; }} }}")
+    with pytest.raises(c2m.C2MRefusal):
+        c2m.translate(src, elements=64)
+
+
+def test_split_kernels_finds_every_kernel_in_one_file():
+    """translate()'s greedy `\\{(.*)\\}` swallows every kernel after the first."""
+    src = (f"__global__ void one(float* c) {{ {IDX} c[i] = 1.0f; }}\n"
+           f"__global__ void two(float* c) {{ {IDX} c[i] = 2.0f; }}\n")
+    assert [n for n, _, _ in c2m.split_kernels(src)] == ["one", "two"]
+
+
+def test_census_keeps_empty_kernels_out_of_the_computing_denominator():
+    r = c2m.census({"a.cu": _EMPTY_PROBE + "\n" + k("c[i] = a[i] + b[i];")})
+    assert r["kernels"] == 2
+    assert r["empty_body"] == 1
+    assert r["computing_kernels"] == 1
+    assert r["translated"] == 1
+
+
+def test_census_counts_one_computation_written_two_ways_as_one():
+    """Seven of the seed's kernels compute a[idx] + b[idx] under four spellings.
+
+    Counting kernels instead of computations is how a corpus of one trivial map reads
+    as coverage.
+    """
+    a = ("__global__ void one(const float* a, const float* b, float* c, int n)"
+         " { int i = blockIdx.x * blockDim.x + threadIdx.x;"
+         " if (i < n) { c[i] = a[i] + b[i]; } }")
+    b = ("__global__ void two(const float* a, const float* b, float* c, int n)"
+         " { int id = blockDim.x * blockIdx.x + threadIdx.x;"
+         " if (id < n) { c[id] = a[id] + b[id]; } }")
+    r = c2m.census({"a.cu": a, "b.cu": b})
+    assert r["elementwise_shaped_upper_bound"] == 2
+    assert r["distinct_elementwise_computations"] == 1
+
+
+def test_elementwise_shaped_is_an_upper_bound_not_a_classification():
+    """The cooperative check is a regex over the body, so a shuffle one function call
+    away is invisible. The seed's softmax_warp is counted elementwise-shaped and is a
+    warp reduction. Pinned as a KNOWN blindness rather than left for a reader to trust
+    the count."""
+    hidden = ("__global__ void t(const float* a, float* c, int n) {"
+              " int i = blockIdx.x * blockDim.x + threadIdx.x;"
+              " float v = warp_reduce_sum(a[i]);"
+              " if (i < n) { c[i] = v; } }")
+    r = c2m.census({"a.cu": hidden})
+    assert r["elementwise_shaped_upper_bound"] == 1   # counted, and it is not one
+    assert r["translated"] == 0                       # translate is not fooled

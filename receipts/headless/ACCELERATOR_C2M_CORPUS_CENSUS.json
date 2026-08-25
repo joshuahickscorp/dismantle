@@ -201,5 +201,13 @@
   "accelerator_total": 246,
   "was_total": 243
  },
- "pass": true
+ "pass": true,
+ "AMENDED_2026-08-25_ITS_BINDING_CONSTRAINT_IS_REFUTED": {
+  "receipt": "receipts/headless/ACCELERATOR_C2M_CORPUS_DENOMINATOR.json",
+  "what_this_receipt_claimed": "'THE BINDING CONSTRAINT IS NAMED AT LAST AND IT IS NOT A GPU FEATURE: C2M matches five fixed expression shapes and real kernels write anything else. C2M IS NOT A C COMPILER, and the corpus says that is the whole distance to T3 -- not shared memory, not barriers, not atomics.'",
+  "measured_since": "NOT ONE computing kernel in this corpus is refused for its expression form. An elementwise AIR program needs every leaf of the store to be a pointer parameter indexed by the thread index -- a DATA-FLOW condition no parser supplies -- and exactly 7 of the 27 computing kernels satisfy it, of which 6 already translate and the 7th is blocked by fp64. A full C expression parser's yield on this corpus is ZERO. The distance to T3 is loops, shared memory and barriers, blocking 20 of 27 -- exactly what this receipt said it was not.",
+  "why_it_went_wrong": "the claim rested on 'store-in-pattern-set is FLAT AT 1 ACROSS THE WHOLE CURVE'. This same block then shipped the index-variable discovery fix that took translated kernels 1 -> 4. The binding-constraint sentence was written from the pre-fix number and never re-derived after its own fix landed.",
+  "and_the_denominator": "9 of the 36 __global__ kernels have EMPTY BODIES -- signature/ABI probes that compute nothing, so 9 slots are unreachable by construction. The computing denominator is 27, not 35. Of its 9 elementwise-shaped kernels, SEVEN compute a[idx] + b[idx]: the corpus holds ONE distinct elementwise computation.",
+  "what_survives": "everything about SPELLING. This receipt's central finding -- that a supported computation was rejected over the index VARIABLE NAME -- is reproduced and extended: the index PRODUCT's factor order was rejected the same way, moving translated kernels 5 -> 6. A pattern matcher's misses are dominated by spelling."
+ }
 }

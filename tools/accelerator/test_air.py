@@ -339,3 +339,30 @@ def test_softmax_launches_one_threadgroup_per_row():
     sm = air.AirSoftmax("s", 37, 64, threadgroup=128)
     grid, tg = sm.launch()
     assert grid == (37 * 128, 1, 1) and tg == (128, 1, 1)
+
+
+# --- fused attention ---
+
+def test_attention_emits_four_barriers_and_holds_scores_in_threadgroup_memory():
+    s = air.lower_attention_to_msl(air.AirAttention("a", 64, 64, 32))
+    assert s.count("threadgroup_barrier") == 4
+    assert "threadgroup float scores[64]" in s
+    assert air.AirAttention("a", 64, 64, 32).barrier_scopes_emitted() == ["THREADGROUP"] * 4
+
+
+def test_attention_refuses_a_sequence_that_will_not_fit_in_threadgroup_memory():
+    """This kernel is not flash-attention: it holds the whole score row, so a long
+    sequence must be refused rather than silently truncated."""
+    with pytest.raises(ValueError, match="online softmax"):
+        air.AirAttention("a", 10, 100_000, 64).validate()
+
+
+def test_causal_flag_changes_the_emitted_kernel():
+    plain = air.lower_attention_to_msl(air.AirAttention("a", 64, 64, 32, causal=False))
+    causal = air.lower_attention_to_msl(air.AirAttention("a", 64, 64, 32, causal=True))
+    assert "-INFINITY;" in causal and plain != causal
+
+
+def test_attention_reports_the_materialisation_it_avoids():
+    at = air.AirAttention("a", 1024, 1024, 64)
+    assert at.materialised_bytes_avoided() == 2 * 1024 * 1024 * 4

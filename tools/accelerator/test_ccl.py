@@ -72,8 +72,19 @@ def test_the_real_ledger_on_disk_is_honest():
     led = json.loads(p.read_text())
     assert led["count"] >= 17
     assert led["classes_with_no_entry"] == []
-    # most gaps are unmeasured, and the ledger must say so rather than imply coverage
-    assert led["performance_gaps_unmeasured"] > led["performance_gaps_measured"]
+    # This once asserted that unmeasured gaps OUTNUMBER measured ones, which was true
+    # when written and stopped being true as the work progressed -- a transient fact
+    # encoded as a law. The invariant that actually matters is that the two counts are
+    # CONSISTENT WITH THE ENTRIES, so the ledger cannot overstate its own coverage.
+    measured = sum(1 for e in led["entries"]
+                   if isinstance(e["performance_gap"], dict)
+                   and e["performance_gap"].get("measured"))
+    assert led["performance_gaps_measured"] == measured
+    assert led["performance_gaps_unmeasured"] == led["count"] - measured
+    for e in led["entries"]:
+        pg = e["performance_gap"]
+        if isinstance(pg, dict) and pg.get("measured"):
+            assert pg.get("receipt"), f"{e['capability_id']} claims a measured gap with no receipt"
     for e in led["entries"]:
         if e["semantic_gap"] == "NONE":
             assert e.get("evidence"), f"{e['capability_id']} claims parity with no evidence"

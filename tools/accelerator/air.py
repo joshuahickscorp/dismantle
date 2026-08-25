@@ -542,6 +542,135 @@ def execute_reduce(rd: AirReduce, x):
     return cur
 
 
+@dataclass
+class AirAttention:
+    """Single-head scaled dot-product attention as ONE fused kernel.
+
+    scores = Q K^T / sqrt(d); P = softmax(scores); O = P V -- computed by one
+    threadgroup per query row, with the score row held in threadgroup memory so it is
+    never written to device memory at all. The naive shape materialises an
+    (seq x seq) score matrix and a second (seq x seq) probability matrix; this writes
+    neither.
+
+    THE SCORE ROW LIVES IN THREADGROUP MEMORY, which caps seq_len. That cap is
+    enforced rather than assumed: a longer sequence is REFUSED, because the honest
+    answer is that this kernel does not do flash-attention's online softmax and
+    therefore cannot stream an unbounded sequence.
+    """
+    name: str
+    seq_q: int
+    seq_k: int
+    head_dim: int
+    threadgroup: int = 256
+    causal: bool = False
+    dtype: str = "f32"
+    device: str = "APPLE_GPU_0"
+
+    # 32 KiB of threadgroup memory is the Metal limit; the score row plus the
+    # reduction scratch must fit inside it.
+    MAX_THREADGROUP_BYTES: ClassVar[int] = 32 * 1024
+
+    def validate(self) -> None:
+        if self.dtype != "f32":
+            raise ValueError("attention is f32 only here")
+        if self.threadgroup % 32 or not 32 <= self.threadgroup <= 1024:
+            raise ValueError(f"threadgroup {self.threadgroup} must be a multiple of 32 "
+                             f"and within Metal's 1024 limit")
+        need = self.seq_k * 4 + (self.threadgroup // 32) * 4
+        if need > self.MAX_THREADGROUP_BYTES:
+            raise ValueError(
+                f"seq_k={self.seq_k} needs {need} bytes of threadgroup memory, over the "
+                f"{self.MAX_THREADGROUP_BYTES} limit. This kernel holds the whole score "
+                f"row in threadgroup memory and does NOT implement flash-attention's "
+                f"online softmax, so it cannot stream a longer sequence. Refusing "
+                f"rather than silently truncating.")
+        if min(self.seq_q, self.seq_k, self.head_dim) <= 0:
+            raise ValueError("all dimensions must be positive")
+
+    def barrier_scopes_emitted(self) -> list[str]:
+        return ["THREADGROUP"] * 4
+
+    def executable_on_metal_backend(self) -> tuple[bool, str]:
+        return True, "fused single-head attention, score row in threadgroup memory"
+
+    def launch(self) -> tuple[tuple[int, int, int], tuple[int, int, int]]:
+        return (self.seq_q * self.threadgroup, 1, 1), (self.threadgroup, 1, 1)
+
+    def materialised_bytes_avoided(self) -> int:
+        """What the naive shape would write to device memory and this does not."""
+        return 2 * self.seq_q * self.seq_k * 4
+
+
+def lower_attention_to_msl(at: AirAttention) -> str:
+    at.validate()
+    lanes = at.threadgroup // 32
+    scale = 1.0 / (at.head_dim ** 0.5)
+    causal = ("if (j > q) s = -INFINITY;" if at.causal else "")
+    return f"""
+    uint q = threadgroup_position_in_grid.x;
+    uint lid = thread_position_in_threadgroup.x;
+    uint lane = lid % 32u;
+    uint warp = lid / 32u;
+    threadgroup float scores[{at.seq_k}];
+    threadgroup float red[{lanes}];
+
+    // scores = Q . K^T * scale, held in threadgroup memory and never written out
+    for (uint j = lid; j < {at.seq_k}u; j += {at.threadgroup}u) {{
+        float s = 0.0f;
+        for (uint d = 0; d < {at.head_dim}u; ++d)
+            s += Q[q * {at.head_dim}u + d] * K[j * {at.head_dim}u + d];
+        s *= {scale}f;
+        {causal}
+        scores[j] = s;
+    }}
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+
+    float m = -INFINITY;
+    for (uint j = lid; j < {at.seq_k}u; j += {at.threadgroup}u) m = max(m, scores[j]);
+    float mm = simd_max(m);
+    if (lane == 0u) red[warp] = mm;
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    float rowmax = -INFINITY;
+    for (uint i = 0; i < {lanes}u; ++i) rowmax = max(rowmax, red[i]);
+
+    float acc = 0.0f;
+    for (uint j = lid; j < {at.seq_k}u; j += {at.threadgroup}u) {{
+        float e = exp(scores[j] - rowmax);
+        scores[j] = e;
+        acc += e;
+    }}
+    float ss = simd_sum(acc);
+    if (lane == 0u) red[warp] = ss;
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    float rowsum = 0.0f;
+    for (uint i = 0; i < {lanes}u; ++i) rowsum += red[i];
+    float inv = 1.0f / rowsum;
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+
+    // O = P V, one output element per thread stride
+    for (uint d = lid; d < {at.head_dim}u; d += {at.threadgroup}u) {{
+        float o = 0.0f;
+        for (uint j = 0; j < {at.seq_k}u; ++j) o += scores[j] * V[j * {at.head_dim}u + d];
+        out[q * {at.head_dim}u + d] = o * inv;
+    }}
+"""
+
+
+def execute_attention(at: AirAttention, q, k, v):
+    import mlx.core as mx
+    src = lower_attention_to_msl(at)
+    kern = mx.fast.metal_kernel(name=f"air_attn_{at.name}",
+                                input_names=["Q", "K", "V"], output_names=["out"],
+                                source=src, ensure_row_contiguous=True)
+    g, tg = at.launch()
+    (o,) = kern(inputs=[mx.array(q, dtype=mx.float32), mx.array(k, dtype=mx.float32),
+                        mx.array(v, dtype=mx.float32)],
+                grid=g, threadgroup=tg,
+                output_shapes=[(at.seq_q, at.head_dim)], output_dtypes=[mx.float32])
+    mx.eval(o)
+    return o
+
+
 def machine_identity() -> dict[str, Any]:
     """MachineIdentity for the receipt. The steer: no result without physical
     identity."""

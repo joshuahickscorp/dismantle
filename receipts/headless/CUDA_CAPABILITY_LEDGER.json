@@ -320,21 +320,40 @@
    "current_winner": "MLX and AIR are indistinguishable; MLX retained as incumbent",
    "remaining_limitation": "f32 only, last axis only, no masking, no causal variant. ATTENTION ITSELF REMAINS ABSENT -- this is a piece of it.",
    "evidence": "receipts/headless/ACCELERATOR_SOFTMAX.json"
+  },
+  {
+   "capability_id": "MATH.attention",
+   "cuda_mechanism": "FlashAttention and cuDNN fused attention kernels",
+   "why_it_exists": "attention materialises an O(seq^2) score matrix that dominates memory traffic and capacity at long sequence",
+   "underlying_problem": "a chain of matmul, softmax and matmul where the intermediates are far larger than the inputs",
+   "apple_equivalent": "mx.fast.scaled_dot_product_attention",
+   "hawking_equivalent": "AIR fused single-head attention, score row in threadgroup memory",
+   "semantic_gap": "PARTIAL",
+   "performance_gap": {
+    "measured": true,
+    "value": "LOSES to the naive materialised path 1.37x at 1024 and 3.5x at 2048x128; beats MLX sdpa 1.11x at 1024x64 only",
+    "receipt": "receipts/headless/ACCELERATOR_ATTENTION.json"
+   },
+   "priority": "P0",
+   "test_corpus": "512/1024/2048 with head_dim 64 and 128, a causal variant, a non-power-of-two 37x40, and a refusal case at seq 100000",
+   "current_winner": "MLX, and at 2048 even the NAIVE three-call path beats ours",
+   "remaining_limitation": "not flash-attention: no online softmax so the whole score row must fit in threadgroup memory, and scores are scalar dot products rather than simdgroup matrix ops, which is why it loses. Single head, f32, no batching, no KV cache.",
+   "evidence": "receipts/headless/ACCELERATOR_ATTENTION.json"
   }
  ],
- "count": 18,
+ "count": 19,
  "by_class": {
   "MEMORY": 2,
   "COMPILER": 3,
   "EXECUTION": 5,
-  "MATH": 3,
+  "MATH": 4,
   "RUNTIME": 2,
   "PROFILING": 1,
   "DEBUGGING": 1,
   "MULTI_DEVICE": 1
  },
  "classes_with_no_entry": [],
- "performance_gaps_measured": 9,
+ "performance_gaps_measured": 10,
  "performance_gaps_unmeasured": 9,
  "parity_claim": "NOT CLAIMED. This is a capability inventory, not a parity statement. No entry may report a semantic gap of NONE without evidence, and the steer forbids the phrase 'CUDA parity' unqualified.",
  "coverage_honesty": "The CUDA surface is vastly larger than this. These are the capabilities reachable or relevant from what has actually been built here; absence from this ledger means NOT YET STUDIED, never NOT NEEDED."

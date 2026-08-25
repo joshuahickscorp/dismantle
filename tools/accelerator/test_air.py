@@ -366,3 +366,27 @@ def test_causal_flag_changes_the_emitted_kernel():
 def test_attention_reports_the_materialisation_it_avoids():
     at = air.AirAttention("a", 1024, 1024, 64)
     assert at.materialised_bytes_avoided() == 2 * 1024 * 1024 * 4
+
+
+# --- atomic reduction strategy ---
+
+def test_atomic_strategy_emits_an_atomic_add_and_one_barrier():
+    s = air.lower_reduce_to_msl(air.AirReduce("r", 1024, "sum", strategy="atomic"))
+    assert "atomic_fetch_add_explicit" in s
+    assert s.count("threadgroup_barrier") == 1
+
+
+def test_atomic_strategy_refuses_max():
+    """Metal has no float atomic max here, so max must stay two-stage rather than
+    silently producing a wrong answer."""
+    with pytest.raises(ValueError, match="sum only"):
+        air.AirReduce("r", 64, "max", strategy="atomic").validate()
+
+
+def test_unknown_reduce_strategy_is_refused():
+    with pytest.raises(ValueError, match="unknown reduce strategy"):
+        air.AirReduce("r", 64, "sum", strategy="wishful").validate()
+
+
+def test_two_stage_remains_available_for_max():
+    air.AirReduce("r", 64, "max", strategy="two_stage").validate()

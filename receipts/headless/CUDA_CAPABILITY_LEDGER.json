@@ -134,16 +134,17 @@
    "why_it_exists": "concurrent accumulation without a separate reduction pass",
    "underlying_problem": "many threads updating one location",
    "apple_equivalent": "atomic_fetch_add_explicit in MSL",
-   "hawking_equivalent": "NONE \u2014 refused by C2M",
-   "semantic_gap": "LARGE",
+   "hawking_equivalent": "atomic_fetch_add_explicit in AIR's atomic reduction strategy",
+   "semantic_gap": "PARTIAL",
    "performance_gap": {
-    "measured": false,
-    "reason": "nothing implemented"
+    "measured": true,
+    "value": "single-pass atomic sum is 3.05x/1.80x over two-stage; INDISTINGUISHABLE from MLX",
+    "receipt": "receipts/headless/ACCELERATOR_ATOMICS.json"
    },
    "priority": "P1",
-   "test_corpus": "ABSENT",
-   "current_winner": "MLX/Metal primitives",
-   "remaining_limitation": "blocks histogram, scatter, and any single-pass reduction"
+   "test_corpus": "sum at 2^20 and 2^24, atomic vs two-stage vs MLX, plus a refusal for max",
+   "current_winner": "MLX and AIR indistinguishable; MLX retained as incumbent",
+   "remaining_limitation": "float ADD only. No atomic max (Metal lacks it here, so the strategy refuses), no CAS, no integer atomics, no shared-memory atomics. Summation order is NONDETERMINISTIC and the result is 3.4x less exact than the two-stage form."
   },
   {
    "capability_id": "EXECUTION.warp_primitives",
@@ -209,13 +210,13 @@
    "semantic_gap": "PARTIAL",
    "performance_gap": {
     "measured": true,
-    "value": "MLX wins ~3x (0.343 at 2^20, 0.327 at 2^24)",
-    "receipt": "receipts/headless/ACCELERATOR_REDUCTION.json"
+    "value": "atomic single-pass reaches parity with MLX; two-stage loses 3x",
+    "receipt": "receipts/headless/ACCELERATOR_ATOMICS.json"
    },
    "priority": "P1",
    "test_corpus": "sum/max at 1024, 2^20, 2^24 and a non-power-of-two 4194311",
    "current_winner": "MLX, retained",
-   "remaining_limitation": "REDUCTION only -- no SCAN at all. Three launches per reduction where MLX uses far fewer, one element per thread, f32 only. Softmax and therefore attention remain blocked despite the reduction existing."
+   "remaining_limitation": "SCAN STILL DOES NOT EXIST. Reduction now has two strategies (two-stage exact, atomic faster but nondeterministic); sum and max only, f32 only."
   },
   {
    "capability_id": "RUNTIME.streams_and_events",

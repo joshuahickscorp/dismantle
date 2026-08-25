@@ -468,6 +468,7 @@ class AirReduce:
     n: int
     op: str = "sum"
     threadgroup: int = 256
+    strategy: str = "two_stage"      # "two_stage" | "atomic"
     dtype: str = "f32"
     device: str = "APPLE_GPU_0"
 
@@ -481,6 +482,11 @@ class AirReduce:
                              f"32-wide SIMD group and within Metal's 1024 limit")
         if self.n <= 0:
             raise ValueError("n must be positive")
+        if self.strategy not in ("two_stage", "atomic"):
+            raise ValueError(f"unknown reduce strategy {self.strategy!r}")
+        if self.strategy == "atomic" and self.op != "sum":
+            raise ValueError("the atomic strategy implements sum only; Metal has no "
+                             "float atomic max here, so max must use two_stage")
 
     def partials(self) -> int:
         return (self.n + self.threadgroup - 1) // self.threadgroup
@@ -494,6 +500,23 @@ class AirReduce:
 
 def lower_reduce_to_msl(rd: AirReduce) -> str:
     rd.validate()
+    if rd.strategy == "atomic":
+        lanes = rd.threadgroup // 32
+        return f"""
+    uint gid = thread_position_in_grid.x;
+    uint lid = thread_position_in_threadgroup.x;
+    uint lane = lid % 32u;
+    threadgroup float red[{lanes}];
+    float v = (gid < {rd.n}u) ? x[gid] : 0.0f;
+    float s = simd_sum(v);
+    if (lane == 0u) red[lid / 32u] = s;
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    if (lid == 0u) {{
+        float acc = 0.0f;
+        for (uint i = 0; i < {lanes}u; ++i) acc += red[i];
+        atomic_fetch_add_explicit(&out[0], acc, memory_order_relaxed);
+    }}
+"""
     ident = "0.0f" if rd.op == "sum" else "-INFINITY"
     simd = "simd_sum" if rd.op == "sum" else "simd_max"
     comb = "acc += partial[i];" if rd.op == "sum" else "acc = max(acc, partial[i]);"
@@ -518,9 +541,24 @@ def lower_reduce_to_msl(rd: AirReduce) -> str:
 
 
 def execute_reduce(rd: AirReduce, x):
-    """Stage one on the GPU; the partials are reduced again until one value remains."""
+    """Stage one on the GPU; the partials are reduced again until one value remains.
+
+    The atomic strategy does it in ONE launch instead, which is what the two-stage
+    receipt named as the reason it lost to MLX by 3x.
+    """
     import mlx.core as mx
     rd.validate()
+    if rd.strategy == "atomic":
+        kern = mx.fast.metal_kernel(name=f"air_red_atomic_{rd.name}", input_names=["x"],
+                                    output_names=["out"],
+                                    source=lower_reduce_to_msl(rd),
+                                    ensure_row_contiguous=True, atomic_outputs=True)
+        (o,) = kern(inputs=[mx.array(x, dtype=mx.float32)],
+                    grid=(rd.partials() * rd.threadgroup, 1, 1),
+                    threadgroup=(rd.threadgroup, 1, 1),
+                    output_shapes=[(1,)], output_dtypes=[mx.float32], init_value=0)
+        mx.eval(o)
+        return o
     src = lower_reduce_to_msl(rd)
     kern = mx.fast.metal_kernel(name=f"air_red_{rd.op}_{rd.name}", input_names=["x"],
                                 output_names=["out"], source=src,

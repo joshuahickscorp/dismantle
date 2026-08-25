@@ -1,10 +1,10 @@
 {
  "schema": "hawking.odyssey.kernel_planner_model2.v1",
- "generated_at": "2026-08-25T10:04:49Z",
+ "generated_at": "2026-08-25T10:07:48Z",
  "generated_by": "tools/odyssey/kernel_planner_model2.py",
  "obligation": "G023 \u2014 KernelPlanner stage, run for model #2",
  "hand_authored": false,
- "git_head": "fa9ce42dc3fb24d557a0035102d25c8a57bab21e",
+ "git_head": "8705bcb0efc19831c32add0985fee374526f609a",
  "specimen": {
   "repo": "Qwen/Qwen3-30B-A3B",
   "revision": "ad44e777bcd18fa416d9da3bd8f70d33ebb85d39",
@@ -24,7 +24,8 @@
      "kernels": [
       "qwen38_hgravu_embedding_lookup"
      ],
-     "passthrough_rejected_for_gemv_organ": false
+     "organ_mass_share": 0.010191,
+     "passthrough_rejected_as_too_large": false
     },
     {
      "family": "q2_affine",
@@ -36,7 +37,8 @@
      "kernels": [
       "qwen38_hgrafv_embedding_lookup"
      ],
-     "passthrough_rejected_for_gemv_organ": false
+     "organ_mass_share": 0.010191,
+     "passthrough_rejected_as_too_large": false
     },
     {
      "family": "binary_sparse_residual",
@@ -46,7 +48,8 @@
      "n_supporting_representation_independent": 0,
      "needs_no_gemv_kernel": false,
      "kernels": [],
-     "passthrough_rejected_for_gemv_organ": false
+     "organ_mass_share": 0.010191,
+     "passthrough_rejected_as_too_large": false
     }
    ],
    "selected_representation": "conventional_low_bit",
@@ -71,7 +74,8 @@
      "kernels": [
       "qwen80_add_residual_rmsnorm_tg"
      ],
-     "passthrough_rejected_for_gemv_organ": false
+     "organ_mass_share": 0.029673,
+     "passthrough_rejected_as_too_large": false
     },
     {
      "family": "q2_affine",
@@ -81,7 +85,8 @@
      "n_supporting_representation_independent": 0,
      "needs_no_gemv_kernel": false,
      "kernels": [],
-     "passthrough_rejected_for_gemv_organ": false
+     "organ_mass_share": 0.029673,
+     "passthrough_rejected_as_too_large": false
     },
     {
      "family": "binary_sparse_residual",
@@ -91,7 +96,8 @@
      "n_supporting_representation_independent": 0,
      "needs_no_gemv_kernel": false,
      "kernels": [],
-     "passthrough_rejected_for_gemv_organ": false
+     "organ_mass_share": 0.029673,
+     "passthrough_rejected_as_too_large": false
     }
    ],
    "selected_representation": "conventional_low_bit",
@@ -116,7 +122,8 @@
      "kernels": [
       "qwen_uniform_q4_group64_final_norm_lm_head_simdgroup8"
      ],
-     "passthrough_rejected_for_gemv_organ": false
+     "organ_mass_share": 0.010191,
+     "passthrough_rejected_as_too_large": false
     },
     {
      "family": "q2_affine",
@@ -126,7 +133,8 @@
      "n_supporting_representation_independent": 0,
      "needs_no_gemv_kernel": false,
      "kernels": [],
-     "passthrough_rejected_for_gemv_organ": false
+     "organ_mass_share": 0.010191,
+     "passthrough_rejected_as_too_large": false
     },
     {
      "family": "binary_sparse_residual",
@@ -136,7 +144,8 @@
      "n_supporting_representation_independent": 0,
      "needs_no_gemv_kernel": false,
      "kernels": [],
-     "passthrough_rejected_for_gemv_organ": false
+     "organ_mass_share": 0.010191,
+     "passthrough_rejected_as_too_large": false
     }
    ],
    "selected_representation": "conventional_low_bit",
@@ -159,7 +168,8 @@
      "n_supporting_representation_independent": 0,
      "needs_no_gemv_kernel": false,
      "kernels": [],
-     "passthrough_rejected_for_gemv_organ": false
+     "organ_mass_share": 0.949526,
+     "passthrough_rejected_as_too_large": false
     },
     {
      "family": "leftover_f32",
@@ -169,7 +179,8 @@
      "n_supporting_representation_independent": 0,
      "needs_no_gemv_kernel": true,
      "kernels": [],
-     "passthrough_rejected_for_gemv_organ": true
+     "organ_mass_share": 0.949526,
+     "passthrough_rejected_as_too_large": true
     },
     {
      "family": "conventional_low_bit",
@@ -179,15 +190,16 @@
      "n_supporting_representation_independent": 0,
      "needs_no_gemv_kernel": false,
      "kernels": [
-      "qwen30_expert_table_uniform_q4_paired_gate_up_swiglu",
-      "qwen30_expert_table_uniform_q4_paired_gate_up_swiglu_simdgroup8",
       "qwen30_expert_table_uniform_q4_matvec_rowblock",
       "qwen30_expert_table_uniform_q4_matvec_serial",
       "qwen30_expert_table_uniform_q4_matvec_simdgroup",
       "qwen30_expert_table_uniform_q4_matvec_simdgroup_rowblock4",
-      "qwen30_expert_table_uniform_q4_matvec_simdgroup_rowblock8"
+      "qwen30_expert_table_uniform_q4_matvec_simdgroup_rowblock8",
+      "qwen30_expert_table_uniform_q4_paired_gate_up_swiglu",
+      "qwen30_expert_table_uniform_q4_paired_gate_up_swiglu_simdgroup8"
      ],
-     "passthrough_rejected_for_gemv_organ": false
+     "organ_mass_share": 0.949526,
+     "passthrough_rejected_as_too_large": false
     }
    ],
    "selected_representation": "conventional_low_bit",
@@ -211,7 +223,8 @@
      "n_supporting_representation_independent": 1,
      "needs_no_gemv_kernel": false,
      "kernels": [],
-     "passthrough_rejected_for_gemv_organ": false
+     "organ_mass_share": 0.000412,
+     "passthrough_rejected_as_too_large": false
     },
     {
      "family": "binary_sparse_residual",
@@ -221,7 +234,8 @@
      "n_supporting_representation_independent": 1,
      "needs_no_gemv_kernel": false,
      "kernels": [],
-     "passthrough_rejected_for_gemv_organ": false
+     "organ_mass_share": 0.000412,
+     "passthrough_rejected_as_too_large": false
     },
     {
      "family": "ternary",
@@ -231,7 +245,8 @@
      "n_supporting_representation_independent": 1,
      "needs_no_gemv_kernel": false,
      "kernels": [],
-     "passthrough_rejected_for_gemv_organ": false
+     "organ_mass_share": 0.000412,
+     "passthrough_rejected_as_too_large": false
     }
    ],
    "selected_representation": null,
@@ -241,6 +256,14 @@
    "downgraded_from_top_seed": false,
    "status": "REPRESENTATION_MISMATCH",
    "may_be_evaluated": false,
+   "upstream_planning_defect": {
+    "stage": "RepresentationPlanner",
+    "what": "seeded only ['binary_sparse_residual', 'q2_affine', 'ternary'] for an organ that is 0.0412% of model mass",
+    "why_it_matters": "every seeded family is an aggressive quantization family and none has a competent kernel, while the organ is small enough that quantizing it at all buys a negligible number of bytes on the single most routing-sensitive organ in the model",
+    "measured_saving_if_quantized_to_q2_mib": 44.6,
+    "fix": "seed leftover_f32 for this organ in the RepresentationPlanner",
+    "not_patched_here": "adding the seed inside the KernelPlanner would be a hand-authored stage output"
+   },
    "mismatch": "3 kernel(s) exist for 'moe_router' but none executes any seeded family; they execute ['binary_group', 'topk_select']"
   },
   {
@@ -254,7 +277,8 @@
      "n_supporting_representation_independent": 0,
      "needs_no_gemv_kernel": true,
      "kernels": [],
-     "passthrough_rejected_for_gemv_organ": false
+     "organ_mass_share": 6e-06,
+     "passthrough_rejected_as_too_large": false
     },
     {
      "family": "q2_affine",
@@ -264,7 +288,8 @@
      "n_supporting_representation_independent": 0,
      "needs_no_gemv_kernel": false,
      "kernels": [],
-     "passthrough_rejected_for_gemv_organ": false
+     "organ_mass_share": 6e-06,
+     "passthrough_rejected_as_too_large": false
     },
     {
      "family": "binary_sparse_residual",
@@ -274,11 +299,12 @@
      "n_supporting_representation_independent": 0,
      "needs_no_gemv_kernel": false,
      "kernels": [],
-     "passthrough_rejected_for_gemv_organ": false
+     "organ_mass_share": 6e-06,
+     "passthrough_rejected_as_too_large": false
     }
    ],
    "selected_representation": "leftover_f32",
-   "selection_reason": "f32 passthrough on a non-GEMV organ: no kernel is required",
+   "selection_reason": "f32 passthrough: this organ is 0.0006% of model mass, at or under the 0.5% ceiling, so no GEMV kernel is required",
    "n_kernels_for_organ": 0,
    "n_competent_kernels": 0,
    "downgraded_from_top_seed": false,
@@ -286,6 +312,24 @@
    "may_be_evaluated": true
   }
  ],
+ "organ_mass_shares": {
+  "moe_expert": 0.949526,
+  "moe_router": 0.000412,
+  "gqa_attention": 0.029673,
+  "embed": 0.010191,
+  "lm_head": 0.010191,
+  "rmsnorm": 6e-06
+ },
+ "organ_param_counts": {
+  "moe_expert": 28991029248,
+  "moe_router": 12582912,
+  "gqa_attention": 905969664,
+  "embed": 311164928,
+  "lm_head": 311164928,
+  "rmsnorm": 196608
+ },
+ "passthrough_mass_ceiling": 0.005,
+ "passthrough_rule": "an organ may be kept as f32 passthrough only if its MEASURED share of model mass is at or under the ceiling. Organ type is not the test: moe_router is a GEMV organ and qualifies at 0.0434%, moe_expert is a GEMV organ and does not at 99.96%.",
  "n_organs": 6,
  "n_covered": 5,
  "n_gaps": 1,
@@ -298,6 +342,17 @@
   "previously": "this rule could not be checked at all for model #2, because the library contained no kernel for any of its organs"
  },
  "stage_status": "RAN_WITH_GAPS",
+ "upstream_defects_found": [
+  {
+   "organ": "moe_router",
+   "stage": "RepresentationPlanner",
+   "what": "seeded only ['binary_sparse_residual', 'q2_affine', 'ternary'] for an organ that is 0.0412% of model mass",
+   "why_it_matters": "every seeded family is an aggressive quantization family and none has a competent kernel, while the organ is small enough that quantizing it at all buys a negligible number of bytes on the single most routing-sensitive organ in the model",
+   "measured_saving_if_quantized_to_q2_mib": 44.6,
+   "fix": "seed leftover_f32 for this organ in the RepresentationPlanner",
+   "not_patched_here": "adding the seed inside the KernelPlanner would be a hand-authored stage output"
+  }
+ ],
  "honest_summary": "5 of 6 organs have a competent kernel. The remaining 1 (moe_router) have none, so model #2 still cannot be compiled end to end. What changed is that the gap is now enumerated per organ instead of being hidden behind a stage recorded as AUTOMATIC.",
  "pass": true
 }

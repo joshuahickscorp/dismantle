@@ -88,14 +88,8 @@ def test_a_top_seed_without_a_competent_kernel_is_downgraded_not_accepted():
     assert moe["n_competent_kernels"] > 0
 
 
-def test_f32_passthrough_is_refused_for_a_gemv_organ():
-    """Selecting leftover_f32 for moe_expert would report the largest organ COVERED by
-    declining to compress it -- a 4x expansion dressed as a plan."""
-    moe = next(r for r in rec()["organ_plan"] if r["organ"] == "moe_expert")
-    f32 = [f for f in moe["seeded_families_in_score_order"]
-           if f["family"] == "leftover_f32"]
-    assert f32 and f32[0]["passthrough_rejected_for_gemv_organ"] is True
-    assert moe["selected_representation"] != "leftover_f32"
+# superseded by test_moe_expert_still_cannot_take_f32_passthrough: the refusal is no
+# longer keyed on organ type but on measured mass, so the old field no longer exists.
 
 
 def test_a_norm_organ_may_select_f32_passthrough():
@@ -169,3 +163,48 @@ def test_the_second_registration_round_verified_both_declaration_and_reference()
         if k["kernel_identity"] in added:
             assert f"kernel void {k['kernel_identity']}" in (root / k["shader"]).read_text()
             assert k["parity"]["kind"] == "ABSENT" and k["parity"]["absent_reason"]
+
+
+def test_passthrough_eligibility_is_decided_by_measured_mass_not_organ_type():
+    """Refusing f32 for every GEMV organ was too crude: moe_router and moe_expert are
+    both GEMV organs and only one of them should qualify."""
+    d = rec()
+    s = d["organ_mass_shares"]
+    ceil = d["passthrough_mass_ceiling"]
+    assert s["moe_expert"] > ceil
+    assert s["moe_router"] <= ceil
+    assert "Organ type is not the test" in d["passthrough_rule"]
+
+
+def test_organ_mass_shares_are_computed_from_the_specimen_config():
+    d = rec()
+    assert abs(sum(d["organ_mass_shares"].values()) - 1.0) < 1e-5
+    assert d["organ_param_counts"]["moe_expert"] > d["organ_param_counts"]["moe_router"]
+
+
+def test_moe_expert_still_cannot_take_f32_passthrough():
+    """The size rule must not reopen the case it was built to close."""
+    moe = next(r for r in rec()["organ_plan"] if r["organ"] == "moe_expert")
+    f32 = [f for f in moe["seeded_families_in_score_order"]
+           if f["family"] == "leftover_f32"]
+    assert f32 and f32[0]["passthrough_rejected_as_too_large"] is True
+    assert moe["selected_representation"] != "leftover_f32"
+
+
+def test_the_router_gap_is_diagnosed_as_an_upstream_planning_defect():
+    d = rec()
+    assert d["upstream_defects_found"]
+    u = next(x for x in d["upstream_defects_found"] if x["organ"] == "moe_router")
+    assert u["stage"] == "RepresentationPlanner"
+    assert u["measured_saving_if_quantized_to_q2_mib"] > 0
+    assert "leftover_f32" in u["fix"]
+
+
+def test_the_defect_was_not_patched_inside_this_stage():
+    """Inventing a seed here would be the hand-authored stage output the pipeline
+    forbids, and would make the planner look complete."""
+    u = next(x for x in rec()["upstream_defects_found"] if x["organ"] == "moe_router")
+    assert "hand-authored" in u["not_patched_here"]
+    r = next(x for x in rec()["organ_plan"] if x["organ"] == "moe_router")
+    assert r["selected_representation"] is None
+    assert "moe_router" in rec()["gaps"]

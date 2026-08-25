@@ -52,11 +52,35 @@ REPRESENTATION_EXECUTES = {
 }
 NEEDS_NO_GEMV = {"leftover_f32"}
 
-# leftover_f32 is a real answer for a passthrough organ like a norm, and a NON-ANSWER for
-# an organ that must execute a matvec: selecting it for moe_expert would report the
-# model's largest organ (18,432 tensors) as COVERED by declining to compress it at all,
-# which is a 4x expansion dressed as a plan.
-GEMV_ORGANS = {"embed", "lm_head", "moe_expert", "moe_router", "gqa_attention"}
+# leftover_f32 is a real answer for some organs and a NON-ANSWER for others, and the
+# dividing line is MEASURED MASS, not organ type. Refusing it for every GEMV organ was
+# too crude: it is plainly wrong for moe_expert, which is 99.96% of the routed mass and
+# where f32 would be a fourfold expansion dressed as a plan -- and plainly right for
+# moe_router, which is 12,582,912 parameters, 0.0434% of that mass. Quantizing the router
+# at all saves 44.6 MiB on the organ where a single wrong route sends a token to entirely
+# the wrong experts. Keeping small, high-sensitivity organs in f32 is already this
+# campaign's practice: the qwen38 body carries 353 leftover f32 tensors.
+PASSTHROUGH_MASS_CEILING = 0.005          # 0.5% of model mass
+
+
+def organ_mass_shares(cfg):
+    """Parameter share per organ, computed from the specimen's own config."""
+    t = cfg.get("text_config", cfg)
+    H, L = t["hidden_size"], t["num_hidden_layers"]
+    E = t.get("num_experts")
+    inter = t.get("moe_intermediate_size") or t.get("intermediate_size")
+    V = t.get("vocab_size") or cfg.get("vocab_size") or 0
+    kv, hd = t.get("num_key_value_heads", 0), t.get("head_dim", 0)
+    q = t.get("num_attention_heads", 0)
+    counts = {
+        "moe_expert": L * E * 3 * H * inter if E else 0,
+        "moe_router": L * E * H if E else 0,
+        "gqa_attention": L * (q * hd * H + 2 * kv * hd * H + q * hd * H),
+        "embed": V * H, "lm_head": V * H,
+        "rmsnorm": L * 2 * H,
+    }
+    total = sum(counts.values()) or 1
+    return {k: v / total for k, v in counts.items()}, counts
 
 REPRESENTATION_INDEPENDENT = {"topk_select", "norm_only"}
 
@@ -77,6 +101,13 @@ def main():
     by_organ = {}
     for k in lib["kernels"]:
         by_organ.setdefault(k["organ_identity"], []).append(k)
+
+    import glob
+    cfgs = glob.glob("/Volumes/corpdrive/hawking-modellake/specimens/"
+                     "Qwen--Qwen3-30B-A3B@*/**/config.json", recursive=True)
+    shares, counts = ({}, {})
+    if cfgs:
+        shares, counts = organ_mass_shares(json.load(open(cfgs[0])))
 
     rehearsal = json.load(open(RH / "QWEN_TRANSFER_REHEARSAL.json"))
     # every seeded family in score order. Taking only the top-scored one made the planner
@@ -113,8 +144,7 @@ def main():
             supporting = [k for k in organ_kernels
                           if k["representation_identity"] in REPRESENTATION_INDEPENDENT]
             competent = (weight_bearing + supporting) if weight_bearing else []
-            if organ not in GEMV_ORGANS:
-                competent = weight_bearing + supporting
+
             row = {"family": fam, "score": cand_family["score"],
                    "n_competent_kernels": len(competent),
                    "n_weight_bearing": len(weight_bearing),
@@ -122,12 +152,17 @@ def main():
                    "needs_no_gemv_kernel": fam in NEEDS_NO_GEMV,
                    "kernels": [k["kernel_identity"] for k in competent][:8]}
             considered.append(row)
-            passthrough_ok = fam in NEEDS_NO_GEMV and organ not in GEMV_ORGANS
-            row["passthrough_rejected_for_gemv_organ"] = (
-                fam in NEEDS_NO_GEMV and organ in GEMV_ORGANS)
+            share = shares.get(organ, 1.0)
+            passthrough_ok = (fam in NEEDS_NO_GEMV
+                              and share <= PASSTHROUGH_MASS_CEILING)
+            row["organ_mass_share"] = round(share, 6)
+            row["passthrough_rejected_as_too_large"] = (
+                fam in NEEDS_NO_GEMV and share > PASSTHROUGH_MASS_CEILING)
             if selected is None and (competent or passthrough_ok):
-                selected = {**row, "why": ("f32 passthrough on a non-GEMV organ: no "
-                                           "kernel is required"
+                selected = {**row, "why": (f"f32 passthrough: this organ is "
+                                           f"{share:.4%} of model mass, at or under the "
+                                           f"{PASSTHROUGH_MASS_CEILING:.1%} ceiling, so "
+                                           f"no GEMV kernel is required"
                                            if fam in NEEDS_NO_GEMV else
                                            f"highest-scoring seeded family with a "
                                            f"competent kernel")}
@@ -151,6 +186,28 @@ def main():
                 f"the top seeded family {considered[0]['family']!r} has no competent "
                 f"kernel; the planner selected {selected['family']!r} instead. §71: a "
                 f"representation with no competent kernel may not be evaluated.")
+        # An organ whose seeds are ALL aggressive families, on an organ small enough
+        # that quantizing it buys nothing, is an upstream planning defect rather than a
+        # kernel gap. It is diagnosed here and NOT patched here: inventing a seed inside
+        # the KernelPlanner would be the hand-authored stage output this pipeline forbids.
+        if not selected and organ in shares:
+            fams = {f["family"] for f in considered}
+            if "leftover_f32" not in fams and shares[organ] <= PASSTHROUGH_MASS_CEILING:
+                r["upstream_planning_defect"] = {
+                    "stage": "RepresentationPlanner",
+                    "what": f"seeded only {sorted(fams)} for an organ that is "
+                            f"{shares[organ]:.4%} of model mass",
+                    "why_it_matters": "every seeded family is an aggressive quantization "
+                                      "family and none has a competent kernel, while the "
+                                      "organ is small enough that quantizing it at all "
+                                      "buys a negligible number of bytes on the single "
+                                      "most routing-sensitive organ in the model",
+                    "measured_saving_if_quantized_to_q2_mib": round(
+                        counts.get(organ, 0) * (4 - 0.28) / 2**20, 1),
+                    "fix": "seed leftover_f32 for this organ in the RepresentationPlanner",
+                    "not_patched_here": "adding the seed inside the KernelPlanner would "
+                                        "be a hand-authored stage output",
+                }
         if not selected and organ_kernels:
             r["mismatch"] = (
                 f"{len(organ_kernels)} kernel(s) exist for {organ!r} but none executes "
@@ -181,6 +238,13 @@ def main():
                      "revision": spec["result"].get("revision"),
                      "organ_graph_source": "receipts/headless/ARCHITECTURE_RECOGNIZER.json"},
         "organ_plan": plan,
+        "organ_mass_shares": {k: round(v, 6) for k, v in shares.items()},
+        "organ_param_counts": counts,
+        "passthrough_mass_ceiling": PASSTHROUGH_MASS_CEILING,
+        "passthrough_rule": "an organ may be kept as f32 passthrough only if its MEASURED "
+                            "share of model mass is at or under the ceiling. Organ type "
+                            "is not the test: moe_router is a GEMV organ and qualifies at "
+                            "0.0434%, moe_expert is a GEMV organ and does not at 99.96%.",
         "n_organs": len(organs),
         "n_covered": covered,
         "n_gaps": len(gaps),
@@ -196,6 +260,9 @@ def main():
                           "the library contained no kernel for any of its organs",
         },
         "stage_status": ("RAN_WITH_GAPS" if gaps else "RAN_COMPLETE"),
+        "upstream_defects_found": [
+            {"organ": r["organ"], **r["upstream_planning_defect"]}
+            for r in plan if r.get("upstream_planning_defect")],
         "honest_summary": f"{covered} of {len(organs)} organs have a competent kernel. "
                           f"The remaining {len(gaps)} ({', '.join(gaps)}) have none, so "
                           f"model #2 still cannot be compiled end to end. What changed is "

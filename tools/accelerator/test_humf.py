@@ -391,3 +391,61 @@ def test_the_source_survives_a_lost_device():
         h.execute("W42", h.plan_acquire("W42", "MOCK_EXTERNAL_VRAM"), "MOCK_EXTERNAL_VRAM")
     src = o.materializations["APPLE_UM"]
     assert src.state is State.CLEAN and src.payload == PAYLOAD
+
+
+# ------------------ partial device loss, and what a round-trip check cannot see
+
+def test_a_partial_loss_probes_each_copy_instead_of_assuming():
+    """The full-loss handler is safe because of a BLANKET ASSUMPTION. On a partial
+    loss that assumption is wrong in BOTH directions, so the fabric has to ask."""
+    h, o, mp = fabric()
+    kept = HumfObject("KEPT", "tensor", N, "f32")
+    kept.place(Materialization("MOCK_EXTERNAL_VRAM", "dense_f32", "row_major", NB,
+                               State.CLEAN, payload=PAYLOAD))
+    gone = HumfObject("GONE", "tensor", N, "f32")
+    gone.place(Materialization("MOCK_EXTERNAL_VRAM", "dense_f32", "row_major", NB,
+                               State.CLEAN, payload=PAYLOAD))
+    h.register(kept); h.register(gone)
+    mp.store["KEPT"] = PAYLOAD
+    mp.store["GONE"] = PAYLOAD
+    mp.lose(["GONE"])                       # a reset that cleared ONE allocation
+    r = h.device_partially_lost("MOCK_EXTERNAL_VRAM", "bus reset cleared one region")
+    assert r["survived"] == ["KEPT"], r
+    assert r["lost"] == ["GONE"], r
+    assert kept.valid_copies() == ["MOCK_EXTERNAL_VRAM"]
+    assert gone.valid_copies() == []
+
+
+def test_a_blanket_verdict_would_manufacture_data_loss():
+    """Treating a partial loss as a full one destroys live state the device still
+    holds. Pinned by contrast: the full handler invalidates the survivor, the partial
+    handler keeps it."""
+    h, o, mp = fabric()
+    live = HumfObject("LIVE", "tensor", N, "f32")
+    live.place(Materialization("MOCK_EXTERNAL_VRAM", "dense_f32", "row_major", NB,
+                               State.CLEAN, payload=PAYLOAD))
+    h.register(live)
+    mp.store["LIVE"] = PAYLOAD
+    live.mark_written("MOCK_EXTERNAL_VRAM")              # DIRTY: the only live state
+    r = h.device_partially_lost("MOCK_EXTERNAL_VRAM", "partial reset")
+    assert r["survived"] == ["LIVE"]
+    assert r["data_lost"] == []                          # nothing manufactured
+    # the full-loss handler on the SAME state would have called it lost
+    h.release_quarantine("MOCK_EXTERNAL_VRAM")
+    full = h.device_lost("MOCK_EXTERNAL_VRAM", "same event read as a full loss")
+    assert "LIVE" in full["data_lost"]
+
+
+def test_a_round_trip_check_validates_the_round_trip_not_the_resident_copy():
+    """The hazard the corruption receipt could not see. copy_out and a KERNEL are not
+    the same path on a real bridge: one goes back over the transport, the other reads
+    device memory directly. A provider whose compute path differs PASSES verification
+    and still computes on wrong bytes."""
+    h, o, mp = fabric()
+    m = h.execute("W42", h.plan_acquire("W42", "MOCK_EXTERNAL_VRAM"), "MOCK_EXTERNAL_VRAM")
+    assert m.state is State.CLEAN                    # verification passed
+    assert m.payload == PAYLOAD                      # the ROUND TRIP is intact
+    mp.compute_skew = True
+    seen_by_kernel = mp.read_for_compute("W42")
+    assert seen_by_kernel != PAYLOAD                 # and the kernel sees something else
+    assert m.state is State.CLEAN                    # the fabric still says CLEAN

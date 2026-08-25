@@ -208,6 +208,52 @@ class Humf:
                          "live or only state was there is DATA LOSS, not degraded "
                          "replication"}
 
+    def device_partially_lost(self, domain: str, reason: str) -> dict[str, Any]:
+        """SOME allocations are gone and the device is still attached.
+
+        THIS CANNOT REUSE device_lost, and the reason is the whole point. The
+        full-loss handler is safe because of a BLANKET ASSUMPTION -- nothing in that
+        domain survived -- and on a partial loss that assumption is WRONG IN BOTH
+        DIRECTIONS. Assume everything survived and valid_copies() names phantoms.
+        Assume everything died and a DIRTY copy that was still there becomes
+        MANUFACTURED DATA LOSS: the fabric would destroy live state the device still
+        held.
+
+        So the fabric ASKS. Each copy is probed through the provider; the ones that
+        answer survive, the ones that do not go INVALID. A partial loss is the case
+        where the bookkeeping cannot be derived and has to be MEASURED.
+        """
+        prov = self.providers.get(domain)
+        survived, lost, data_lost = [], [], []
+        for ident, obj in self.objects.items():
+            m = obj.materializations.get(domain)
+            if m is None or m.state in (State.ABSENT, State.EVICTED, State.INVALID):
+                continue
+            alive = False
+            if prov is not None:
+                try:
+                    prov.copy_out(ident)
+                    alive = True
+                except Exception:
+                    alive = False
+            if alive:
+                survived.append(ident)
+                continue
+            was_dirty = m.state is State.DIRTY
+            m.transition(State.INVALID)
+            m.payload, m.digest = None, None
+            lost.append(ident)
+            if was_dirty or (not obj.valid_copies() and obj.recompute is None):
+                data_lost.append(ident)
+        self.quarantined[domain] = reason
+        self.log.append({"action": "DEVICE_PARTIALLY_LOST", "domain": domain,
+                         "reason": reason, "survived": survived, "lost": lost,
+                         "data_lost": data_lost, "at": time.time()})
+        return {"domain": domain, "reason": reason, "survived": survived,
+                "lost": lost, "data_lost": data_lost,
+                "means": "each copy was PROBED, not assumed; a blanket verdict would "
+                         "either name phantoms or manufacture data loss"}
+
     def release_quarantine(self, domain: str) -> list[str]:
         """Explicit, never automatic. A link that failed once is trusted again only
         because a person or a policy said so.
@@ -366,6 +412,18 @@ class Humf:
         self._with_deadline(prov.copy_in, obj.identity, src.payload)
         got = self._with_deadline(prov.copy_out, obj.identity)
         if self.verify_transfers:
+            # WHAT THIS CHECK PROVES AND WHAT IT DOES NOT. It compares the SOURCE
+            # bytes against what copy_out RETURNS, so it validates THE ROUND TRIP.
+            # It does NOT validate THE RESIDENT COPY, because on a real bridge
+            # copy_out and a KERNEL are not the same path -- one comes back over the
+            # transport, the other reads device memory directly. A provider whose
+            # compute path diverges from its read-back path PASSES this check and
+            # still computes on wrong bytes; MockExternalMemoryProvider.compute_skew
+            # demonstrates exactly that, with a test showing the copy stays CLEAN.
+            # There is no cheap fix: catching it needs a check that reads through
+            # THE SAME PATH THE COMPUTATION USES, which means the device computing a
+            # digest of its own memory. Naming the limit where it lives beats
+            # letting `verified` be read as a guarantee about what the GPU sees.
             actual = _digest(got)
             if actual != expect:
                 raise HumfError(
@@ -459,6 +517,12 @@ class MockExternalMemoryProvider:
         self.hang_next_s: float = 0.0          # a transport that is slow, not broken
         self.vanish_next: bool = False         # the device leaves mid-transfer
         self.present: bool = True
+        # A PARTIAL loss: a reset that clears SOME allocations. Harder than a full
+        # loss because the fabric cannot tell which copies survived without asking.
+        self.lose_keys: set[str] = set()
+        # The compute path returning DIFFERENT bytes from the read-back path. This is
+        # the hazard a round-trip check cannot see; see read_for_compute.
+        self.compute_skew: bool = False
         # Real bytes, so a round trip proves the DATA survived rather than only the
         # bookkeeping agreeing with itself.
         self.store: dict[str, bytes] = {}
@@ -505,6 +569,27 @@ class MockExternalMemoryProvider:
             self.store.clear()          # the device left; so did everything on it
         if not self.present:
             raise DeviceLost(f"{self.domain.name} is no longer attached")
+
+    def lose(self, keys) -> None:
+        """A PARTIAL device loss: these allocations are gone, the rest survive. The
+        device stays PRESENT, which is exactly what makes it harder than vanishing."""
+        for k in keys:
+            self.store.pop(k, None)
+            self.lose_keys.add(k)
+
+    def read_for_compute(self, key: str) -> bytes:
+        """What a KERNEL would see, as distinct from what copy_out returns.
+
+        On a real bridge these are not the same path: copy_out goes back over the
+        transport, while a kernel reads device memory directly. compute_skew makes
+        them differ so the fabric's round-trip check can be shown for what it is.
+        """
+        if key not in self.store:
+            raise HumfError(f"{key} is not resident in {self.domain.name}")
+        b = self.store[key]
+        if self.compute_skew:
+            b = bytearray(b); b[-1] ^= 0xFF; b = bytes(b)
+        return b
 
     def copy_out(self, key: str) -> bytes:
         if self.fail_next == "copy":

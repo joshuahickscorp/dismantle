@@ -32,13 +32,23 @@ CACHE = REPO / "receipts/headless/KERNEL_FORGE_CACHE.json"
 # memory-bound chain.
 RELIABILITY_GATE_PCT = 10.0
 
-# The prior stops at 64 and that exclusion is now MEASURED rather than assumed.
-# ELEMENTS PER THREADGROUP (threadgroup x elems_per_thread) is the controlling
-# variable: 32 -> 0.956 ms, 64 -> 0.595, 128 -> 0.512, >=256 -> 0.511-0.522, and
-# tg32_ept2 (per_tg 64) lands at 0.5954 against tg64_ept1's 0.5955 -- two different
-# configurations with the SAME per_tg agreeing to 0.02%. So the cliff is an occupancy
-# threshold below ~128 elements per threadgroup, and the prior correctly refuses to
-# spend reps there. See ACCELERATOR_PERF_MODEL.json.
+# The prior stops at 64 and that exclusion is MEASURED -- ON ONE PRIMITIVE, WHICH IS
+# THE PART THAT MATTERS. ELEMENTS PER THREADGROUP (threadgroup x elems_per_thread) is
+# the controlling variable, and that now rests on a real collapse rather than one
+# pair: at per_tg 256 the four splits (32,8) (64,4) (128,2) (256,1) land within 1.9%
+# while their THREAD COUNTS differ 8x, so threadgroup count is what tracks and thread
+# count is not. See ACCELERATOR_PERF_MODEL.json and ACCELERATOR_CLIFF_TRANSFER.json.
+#
+# BUT THE CLIFF'S LOCATION IS PRIMITIVE-SPECIFIC AND THIS PRIOR IS CALIBRATED ON THE
+# FUSED CHAIN. Measured at 2^24 f32, times relative to each primitive's own floor:
+#   per_tg          32     64    128    256    512
+#   write-only    2.94x  1.90x  1.37x  1.11x  1.02x   <- still 1.9x AT THE PRIOR'S FLOOR
+#   fused chain   1.87x  1.17x  1.00x  1.00x  1.00x   <- what this prior was fit on
+#   heavy (FMA)   1.15x  1.05x  1.05x  1.05x  1.00x   <- barely a cliff at all
+# A cheaper primitive stays dispatch-bound to a LARGER per_tg, so tg=64 is a safe
+# floor for the chain and lands inside the bad region for a write-only kernel; an
+# expensive one is barely affected and the exclusion merely costs it a candidate.
+# TREAT THIS TUPLE AS A CHAIN-SHAPED PRIOR, NOT A PROPERTY OF THE MACHINE.
 THREADGROUP_PRIOR = (64, 128, 256, 512, 1024)
 ELEMS_PER_THREAD_PRIOR = (1, 2, 4)
 
@@ -56,6 +66,13 @@ class Candidate:
     @property
     def name(self) -> str:
         return f"tg{self.threadgroup}_ept{self.elems_per_thread}"
+
+    @property
+    def per_tg(self) -> int:
+        """Elements per threadgroup -- the variable that actually tracks time. Two
+        candidates sharing it are the same physical point to within a couple of
+        percent, whatever their threadgroup sizes."""
+        return self.threadgroup * self.elems_per_thread
 
 
 @dataclass
@@ -87,6 +104,23 @@ def fused_chain_source(threadgroup: int, elems_per_thread: int, n: int) -> str:
             f"}}",
         ]
     return "\n    ".join(body)
+
+
+def collapse_groups(candidates: list[Candidate]) -> dict[int, list[str]]:
+    """Group candidates by per_tg, because candidates sharing it are NOT independent
+    samples of the landscape.
+
+    The default grid is 15 candidates over 7 distinct per_tg values, so roughly half
+    the search re-measures a point it already has. This does not dedupe them -- the
+    collapse is close but not exact, and the exception is measured: on the READ-heavy
+    chain an ept of 8 costs ~7.9% against the same per_tg reached with a bigger
+    threadgroup, while the write-only kernel shows no such penalty. Reporting the
+    redundancy beats silently discarding candidates that can differ.
+    """
+    out: dict[int, list[str]] = {}
+    for c in candidates:
+        out.setdefault(c.per_tg, []).append(c.name)
+    return out
 
 
 def generate(n: int) -> list[Candidate]:

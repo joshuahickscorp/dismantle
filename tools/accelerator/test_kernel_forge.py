@@ -91,3 +91,22 @@ def test_bench_flags_a_reliability_verdict_taken_from_too_few_reps():
     many = bench.time_arm(work, reps=bench.STABLE_RELIABILITY_MIN_REPS, warmup=2)
     assert many["reliability_verdict_is_stable"] is True
     assert many["reliability_caveat"] is None
+
+
+def test_per_tg_is_the_variable_and_the_grid_repeats_itself():
+    """Candidates sharing per_tg are the same physical point, so the default grid
+    explores far fewer distinct configurations than it has candidates."""
+    cands = kf.generate(1 << 20)
+    groups = kf.collapse_groups(cands)
+    assert len(cands) == 15 and len(groups) == 7
+    assert sorted(groups) == [64, 128, 256, 512, 1024, 2048, 4096]
+    # the repeats are real: per_tg 256 is reached three different ways
+    assert sorted(groups[256]) == ["tg128_ept2", "tg256_ept1", "tg64_ept4"]
+
+
+def test_the_threadgroup_prior_is_documented_as_primitive_specific():
+    """The prior's floor was measured on the fused chain and does NOT transfer -- a
+    write-only kernel is still 1.9x off its floor at per_tg 64. Pinning the caveat in
+    the source is what stops the tuple being read as a property of the machine."""
+    src = Path(kf.__file__).read_text()
+    assert "PRIMITIVE-SPECIFIC" in src and "CHAIN-SHAPED PRIOR" in src

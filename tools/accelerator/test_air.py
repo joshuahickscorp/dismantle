@@ -721,3 +721,75 @@ def test_the_f16_scale_overflows_above_a_known_absmax_and_the_gate_catches_it():
     ref = gnat.dequantize(pc, sc, 64) @ x
     v = gnat.accept_pack(w, pc, sc, 64, ref, x)
     assert v["accepted"] is False                    # the gate refuses it
+
+
+# --------------------------------------- the honest gate, made cheap (G046/G049)
+
+def test_ref_matvec_agrees_with_the_dense_path_to_machine_epsilon():
+    """The cheap reference must be the SAME reference, not a looser one.
+
+    Verification became 61% of WorkUnit wall once the packer moved to the GPU, and
+    the tempting fix is to check less. This checks exactly as much: the group-wise
+    contraction and the dense rematerialization it replaced agree to float64 epsilon,
+    so no threshold anywhere had to move."""
+    import numpy as np
+    gnat, w, packed, scale, x = _pack_fixture()
+    cols = w.shape[1]
+    dense = gnat.dequantize(packed, scale, cols).astype(np.float64) @ x.astype(np.float64)
+    cheap = gnat.ref_matvec(packed, scale, cols, x)
+    rel = float(np.max(np.abs(cheap - dense)) / np.max(np.abs(dense)))
+    assert rel < 1e-14, rel
+
+
+def test_ref_matvec_never_materialises_a_dense_tensor():
+    """S015 §19 in the verifier itself: the peak allocation must stay far below the
+    dense tensor the old path built. Measured by tracemalloc, not by reading code."""
+    import tracemalloc
+    import numpy as np
+    gnat, w, packed, scale, x = _pack_fixture()
+    cols = w.shape[1]
+    dense_bytes = w.size * 4
+    tracemalloc.start()
+    gnat.ref_matvec(packed, scale, cols, x)
+    _, peak_cheap = tracemalloc.get_traced_memory()
+    tracemalloc.stop()
+    tracemalloc.start()
+    gnat.dequantize(packed, scale, cols).astype(np.float64) @ x.astype(np.float64)
+    _, peak_dense = tracemalloc.get_traced_memory()
+    tracemalloc.stop()
+    assert peak_dense > dense_bytes, peak_dense       # the old path really did build it
+    assert peak_cheap < peak_dense
+
+
+def test_the_cheap_gate_returns_the_same_verdict_on_every_negative_control():
+    """A cheaper gate is only honest if it rejects everything the expensive one did.
+
+    Each control is run through accept_pack twice -- once with the reference computed
+    the old dense way, once the new way -- and both the verdict and the numbers must
+    match. A gate that got faster by getting more permissive fails here."""
+    import numpy as np
+    gnat, w, packed, scale, x = _pack_fixture()
+    cols = w.shape[1]
+
+    def dense_ref(p, s):
+        return gnat.dequantize(p, s, cols).astype(np.float64) @ x.astype(np.float64)
+
+    controls = [
+        ("honest", packed, scale, True),
+        ("all zeros", np.zeros_like(packed), scale, False),
+        ("scales x1000", packed, scale * 1000.0, False),
+        ("scales x0.5", packed, scale * 0.5, False),
+        ("nibbles swapped", ((packed >> 4) | (packed << 4)).astype(np.uint8), scale, False),
+    ]
+    for label, p, s, expected in controls:
+        ref = dense_ref(p, s)
+        cheap = gnat.accept_pack(w, p, s, cols, ref, x)
+        assert cheap["accepted"] is expected, label
+        assert abs(cheap["representation_fidelity"]["cosine"] -
+                   float(np.dot((w.astype(np.float64) @ x.astype(np.float64)), ref) /
+                         (np.linalg.norm(w.astype(np.float64) @ x.astype(np.float64))
+                          * np.linalg.norm(ref)))) < 1e-12, label
+
+    # and a broken kernel still fails gate 1 with an honest pack
+    bad = gnat.accept_pack(w, packed, scale, cols, dense_ref(packed, scale) * 1.5, x)
+    assert bad["accepted"] is False and bad["kernel_fidelity"]["ok"] is False

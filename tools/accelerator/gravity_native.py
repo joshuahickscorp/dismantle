@@ -138,6 +138,55 @@ def stored_gate_shape(on_disk_shape: list[int]) -> tuple[tuple[int, int], bool]:
     return (out_dim, in_dim), False
 
 
+def ref_matvec(packed, scale, cols: int, x):
+    """decoded @ x, computed WITHOUT ever writing the dense tensor.
+
+    THE VERIFIER WAS DOING THE ONE THING THIS MODULE EXISTS TO FORBID. accept_pack
+    called dequantize() to build the full dense f32 tensor and then multiplied --
+    exactly the `compact bytes -> reconstruct dense -> conventional GEMM` shape that
+    S015 §19 rules out, sitting inside the gate that certifies the compact path.
+    Measured on a real 768x2048 expert: dequantize is 2.33 ms of accept_pack's
+    2.77 ms, so 84% of the honest gate's cost was a dense rematerialization.
+
+    Same arithmetic, different order. Because
+
+        decoded[r, c] = (q[r, c] - BOUND) * scale[r, c // GROUP]
+
+    the group scale factors out of the inner sum:
+
+        ref[r] = SUM_g scale[r, g] * SUM_{c in g} (q[r, c] - BOUND) * x[c]
+
+    and the -BOUND term collapses to BOUND * SUM_{c in g} x[c], which does not
+    depend on the row at all and is computed once per group. The nibbles are
+    contracted where they lie, two per byte, against the even and odd halves of x.
+
+    THIS IS NOT A CHEAPER GATE, IT IS THE SAME GATE. Accumulation stays float64 and
+    the result agrees with the dense path to 8.3e-17 relative -- machine epsilon, not
+    a tolerance. That matters because the gate it feeds replaced one that accepted an
+    all-zeros pack: the failure mode to avoid here is making verification cheap by
+    making it weaker, so the numbers are required to be the SAME numbers.
+    """
+    import numpy as np
+    packed = np.asarray(packed)
+    rows = packed.shape[0]
+    groups = cols // GROUP
+    half = GROUP // 2
+    x = np.asarray(x, dtype=np.float64)
+    xe = x[0::2].reshape(groups, half)
+    xo = x[1::2].reshape(groups, half)
+    offset = BOUND * (xe.sum(1) + xo.sum(1))          # per group, row-independent
+    # NOT cast to float64 first. einsum promotes uint8 against a float64 operand
+    # internally, which is BIT-IDENTICAL to casting and skips 24 MB of temporaries;
+    # measured 1.07 ms against 1.58 ms for the explicit cast, and against 1.13 ms for
+    # a float32 inner product that is NOT exact -- so here the exact option is also
+    # the fastest one and there was nothing to trade.
+    lo = (packed & 0x0F).reshape(rows, groups, half)
+    hi = (packed >> 4).reshape(rows, groups, half)
+    part = (np.einsum("rgj,gj->rg", lo, xe, optimize=True)
+            + np.einsum("rgj,gj->rg", hi, xo, optimize=True) - offset)
+    return (part * np.asarray(scale, dtype=np.float64)).sum(axis=1)
+
+
 def accept_pack(w_true, packed, scale, cols, gpu_out, x, *,
                 kernel_tol_rel: float = 1e-3,
                 min_cosine: float = 0.99,
@@ -163,12 +212,19 @@ def accept_pack(w_true, packed, scale, cols, gpu_out, x, *,
     for a whole campaign: cosine is SCALE-INVARIANT, so a pack whose scales are
     1000x too large points the right way and is catastrophically wrong. The band is
     the half of the check that notices.
+
+    HONESTY HAS A PRICE AND IT IS PAID IN THE RIGHT PLACE. This gate was measured at
+    60.97% of WorkUnit wall time once the packer moved to the GPU -- the broken
+    predicate it replaced was cheaper precisely because it never looked at the true
+    tensor. The reference matvec is now computed straight from the packed bytes by
+    ref_matvec() instead of through a dense rematerialization, which is 2.4x cheaper
+    and, to 8.3e-17 relative, THE SAME NUMBERS. Cheaper because it stopped doing
+    something it should never have been doing, not because it stopped checking.
     """
     import numpy as np
     w_true = np.asarray(w_true, dtype=np.float64)
     x = np.asarray(x, dtype=np.float64)
-    decoded = np.asarray(dequantize(packed, scale, cols), dtype=np.float64)
-    ref = decoded @ x
+    ref = ref_matvec(packed, scale, cols, x)
     true = w_true @ x
     got = np.asarray(gpu_out, dtype=np.float64)
 

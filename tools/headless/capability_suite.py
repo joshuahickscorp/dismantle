@@ -406,11 +406,14 @@ def score(responses):
     return per_item, per_axis
 
 
-def build_items():
+def build_items(default_system=None):
     out = []
     for spec in SUITE:
         for rep in range(spec.get("repeats", 1)):
-            out.append({"id": spec["id"], "rep": rep, "system": spec.get("system"),
+            out.append({"id": spec["id"], "rep": rep,
+                        "system": spec.get("system") or default_system,
+                        "system_was_default": not spec.get("system")
+                                              and bool(default_system),
                         "prompt": spec["prompt"], "max_tokens": spec.get("max_tokens", 512)})
     return out
 
@@ -433,9 +436,15 @@ def main() -> int:
     ap.add_argument("--think", dest="no_think", action="store_false")
     ap.add_argument("--timeout", type=float, default=3600.0)
     ap.add_argument("--out", default=None)
+    # G042 adversary: some items carry a system prompt and some do not, and G039 showed
+    # the code items are decided by deliberation runaway under the no-system-prompt
+    # regime. This re-scores the suite with a default system prompt for items that lack
+    # one, to test whether the capability ranking is regime-dependent.
+    ap.add_argument("--default-system", default=None,
+                    help="system prompt applied ONLY to items that define none")
     args = ap.parse_args()
 
-    items = build_items()
+    items = build_items(args.default_system)
     print(f"suite: {len(SUITE)} items, {len(items)} calls, backend={args.backend}", flush=True)
 
     responses = []

@@ -212,6 +212,34 @@ def main():
             },
         },
     }
+    # G042's adversary attacked the capability column and won.
+    def _cap(label):
+        q = RH / f"CAPABILITY_{label}.json"
+        return json.load(open(q))["overall"]["passed"] if q.is_file() else None
+
+    s_no, s_sys = _cap("noetic-sealed-3.14"), _cap("noetic-sealed-3.14-sysprompt")
+    v_no, v_sys = _cap("noetic-variantB-2.76"), _cap("noetic-variantB-2.76-sysprompt")
+    if None not in (s_no, s_sys, v_no, v_sys):
+        out["CAPABILITY_COLUMN_IS_REGIME_CONDITIONAL"] = {
+            "attacked_by": "G042 adversary A5 "
+                           "(receipts/headless/GRAND_CANDIDATE.json)",
+            "no_system_prompt": {"sealed": s_no, "variantB": v_no, "gap": s_no - v_no},
+            "with_default_system_prompt": {"sealed": s_sys, "variantB": v_sys,
+                                           "gap": s_sys - v_sys},
+            "finding": f"re-scoring the full suite with a neutral system prompt on the "
+                       f"15 items that define none moves sealed {s_no}->{s_sys} and "
+                       f"variantB {v_no}->{v_sys}. They TIE. sealed loses the knowledge "
+                       f"axis outright; variantB gains coding 0.000->1.000.",
+            "consequence": "the capability_passed column above no longer separates the "
+                           "two frontier bodies. The SELECTION still stands because the "
+                           "composite is measured under one consistent regime and does "
+                           "not use capability as a tiebreak, but capability must not be "
+                           "quoted as a reason to prefer sealed.",
+            "what_still_separates_them": "verified HCLI WUs/hour (56.92 vs 48.84, three "
+                                         "reps each, spreads 0.61% and 0.36%) and TPOT; "
+                                         "variantB still wins EBPW and TTFT.",
+        }
+
     out["pass"] = bool(eligible and front and best)
     p = RH / "PARETO_ARCHIVE.json"
     p.write_text(json.dumps(out, indent=1))

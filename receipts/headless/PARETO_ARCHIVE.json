@@ -1,10 +1,10 @@
 {
  "schema": "hawking.odyssey.pareto_archive.v1",
- "generated_at": "2026-08-25T08:38:01Z",
+ "generated_at": "2026-08-25T09:43:09Z",
  "generated_by": "tools/odyssey/pareto_archive.py",
  "obligation": "G040 \u2014 PARETO_ARCHIVE + FINAL_RESIDENT_SELECTION",
  "hand_authored": false,
- "git_head": "7960493c0737cfd98663a6a09ed54c9dcfb0b2cc",
+ "git_head": "b474b06d0864a9f27e741e0a8a30195ed1b9e52d",
  "candidates": {
   "sealed-3.14": {
    "complete_ebpw": 3.139301,
@@ -160,6 +160,22 @@
    },
    "reading": "MEASUREMENT-STABLE, BENCH-LIMITED. Three alternated reps per body give a rate spread of 0.36% and 0.61%, and the accepted count is identical in every rep, so the composite margin is several times the measurement noise and is not an artifact. What it cannot settle is bench composition: both bodies accept 5 of 6 WorkUnits and the whole gap is wall-clock on a 6-unit suite. A different WorkUnit mix could reorder them, and no number of reps fixes that."
   }
+ },
+ "CAPABILITY_COLUMN_IS_REGIME_CONDITIONAL": {
+  "attacked_by": "G042 adversary A5 (receipts/headless/GRAND_CANDIDATE.json)",
+  "no_system_prompt": {
+   "sealed": 30,
+   "variantB": 24,
+   "gap": 6
+  },
+  "with_default_system_prompt": {
+   "sealed": 27,
+   "variantB": 27,
+   "gap": 0
+  },
+  "finding": "re-scoring the full suite with a neutral system prompt on the 15 items that define none moves sealed 30->27 and variantB 24->27. They TIE. sealed loses the knowledge axis outright; variantB gains coding 0.000->1.000.",
+  "consequence": "the capability_passed column above no longer separates the two frontier bodies. The SELECTION still stands because the composite is measured under one consistent regime and does not use capability as a tiebreak, but capability must not be quoted as a reason to prefer sealed.",
+  "what_still_separates_them": "verified HCLI WUs/hour (56.92 vs 48.84, three reps each, spreads 0.61% and 0.36%) and TPOT; variantB still wins EBPW and TTFT."
  },
  "pass": true
 }

@@ -659,3 +659,65 @@ def test_a_broken_KERNEL_is_caught_even_when_the_pack_is_honest():
     assert r["accepted"] is False
     assert r["kernel_fidelity"]["ok"] is False
     assert r["representation_fidelity"]["ok"] is True     # the pack was fine
+
+
+# ------------------------------------------------- GPU packer (G046, Front D)
+
+@pytest.mark.parametrize("shape", [(768, 2048), (256, 512), (64, 64)])
+def test_gpu_pack_is_BIT_EXACT_against_the_cpu_packer(shape):
+    """Bit-exactness is achievable here and therefore REQUIRED. The quantiser is
+    integer rounding of an f32 quotient and Metal's rint() is round-half-to-even
+    exactly as numpy's is, so the correctness question is BINARY -- the bytes match
+    or the port is wrong. A tolerance would have hidden a rounding-mode difference
+    that changes one weight in a million."""
+    pytest.importorskip("mlx.core")
+    import numpy as np
+    import gravity_native as gnat
+    w = np.random.default_rng(0).standard_normal(shape).astype(np.float32)
+    pc, sc = gnat.pack_q4_g64(w)
+    pg, sg = gnat.pack_q4_g64_gpu(w)
+    assert np.array_equal(pc, pg)
+    assert np.array_equal(sc, sg)
+
+
+def test_gpu_pack_bit_exact_on_the_paths_that_would_diverge():
+    """The cases where a naive port silently differs: the amax==0 branch, an exact
+    .5 quotient where the rounding mode decides, and a single huge outlier."""
+    pytest.importorskip("mlx.core")
+    import numpy as np
+    import gravity_native as gnat
+    rng = np.random.default_rng(1)
+    cases = {}
+    cases["all_zero"] = np.zeros((64, 128), np.float32)
+    mixed = rng.standard_normal((64, 128)).astype(np.float32); mixed[0, :64] = 0.0
+    cases["one_zero_group"] = mixed
+    half = np.zeros((1, 64), np.float32)
+    half[0, :] = (np.arange(64) - 32) * 0.5
+    half[0, 0] = 7.0
+    cases["exact_half_quotients"] = half
+    cases["negatives_only"] = -np.abs(rng.standard_normal((32, 64))).astype(np.float32)
+    for name, w in cases.items():
+        pc, sc = gnat.pack_q4_g64(w)
+        pg, sg = gnat.pack_q4_g64_gpu(w)
+        assert np.array_equal(pc, pg), name
+        assert np.array_equal(sc, sg), name
+
+
+def test_the_f16_scale_overflows_above_a_known_absmax_and_the_gate_catches_it():
+    """A pre-existing limit of the representation, not of the GPU port -- BOTH
+    packers do it identically. Recorded because it is silent: the stored f16 scale
+    becomes inf and the dequantized tensor becomes nan."""
+    pytest.importorskip("mlx.core")
+    import numpy as np
+    import gravity_native as gnat
+    rng = np.random.default_rng(2)
+    w = rng.standard_normal((64, 64)).astype(np.float32)
+    w[3, 10] = 6e5                                   # absmax/7 exceeds f16's 65504
+    pc, sc = gnat.pack_q4_g64(w)
+    pg, sg = gnat.pack_q4_g64_gpu(w)
+    assert np.array_equal(pc, pg)                    # the port is still faithful
+    assert np.isinf(np.asarray(sc, dtype=np.float32)).any()
+    x = rng.standard_normal(64).astype(np.float32)
+    ref = gnat.dequantize(pc, sc, 64) @ x
+    v = gnat.accept_pack(w, pc, sc, 64, ref, x)
+    assert v["accepted"] is False                    # the gate refuses it

@@ -196,3 +196,67 @@ def accept_pack(w_true, packed, scale, cols, gpu_out, x, *,
         "relative_error_vs_true": float(np.max(np.abs(ref - true)) /
                                         max(1e-30, float(np.max(np.abs(true))))),
     }
+
+
+# One thread per GROUP of 64 weights. Each computes its own absmax, derives the
+# scale, and writes its 32 packed bytes -- so the pack is embarrassingly parallel
+# across groups and needs no barrier at all.
+PACK_MSL = """
+    uint gid = thread_position_in_grid.x;
+    if (gid >= %(NGROUPS)du) return;
+    uint row = gid / %(GPR)du;
+    uint grp = gid %% %(GPR)du;
+    uint base = row * %(COLS)du + grp * %(GROUP)du;
+    float amax = 0.0f;
+    for (uint i = 0; i < %(GROUP)du; ++i) amax = fmax(amax, fabs(w[base + i]));
+    float s = (amax > 0.0f) ? (amax / %(BOUNDF)s) : 1.0f;
+    scales[gid] = s;
+    uint pbase = row * %(PACKED_COLS)du + grp * %(HALFGROUP)du;
+    for (uint i = 0; i < %(GROUP)du; i += 2u) {
+        float r0 = rint(w[base + i]      / s);
+        float r1 = rint(w[base + i + 1u] / s);
+        int q0 = (int)clamp(r0, -%(BOUNDF)s, %(BOUNDF)s) + %(BOUND)d;
+        int q1 = (int)clamp(r1, -%(BOUNDF)s, %(BOUNDF)s) + %(BOUND)d;
+        packed[pbase + i / 2u] = (uchar)(q0 | (q1 << 4));
+    }
+"""
+
+
+def pack_source(rows: int, cols: int) -> str:
+    gpr = cols // GROUP
+    return PACK_MSL % {"NGROUPS": rows * gpr, "GPR": gpr, "COLS": cols,
+                       "GROUP": GROUP, "HALFGROUP": GROUP // 2,
+                       "PACKED_COLS": cols // 2, "BOUND": BOUND,
+                       "BOUNDF": f"{float(BOUND)}f"}
+
+
+def pack_q4_g64_gpu(w, mx=None):
+    """The same pack on the GPU. BIT-EXACT against pack_q4_g64, or it is worthless.
+
+    Bit-exactness is achievable here and therefore REQUIRED: the quantiser is
+    integer rounding of an f32 quotient, and Metal's rint() is round-half-to-even
+    exactly as numpy's is. That makes the correctness question binary rather than a
+    tolerance argument -- either the bytes match or the port is wrong. A tolerance
+    would have hidden a rounding-mode difference that changes 1 weight in 10^6.
+
+    Note the f16 scale is stored but the F32 scale is what quantises, matching the
+    CPU path exactly; casting first would change the nibbles.
+    """
+    import numpy as np
+    if mx is None:
+        import mlx.core as mx
+    rows, cols = w.shape
+    assert cols % GROUP == 0
+    ngroups = rows * (cols // GROUP)
+    kern = mx.fast.metal_kernel(
+        name=f"pack_q4_{rows}_{cols}", input_names=["w"],
+        output_names=["packed", "scales"], source=pack_source(rows, cols),
+        ensure_row_contiguous=True)
+    packed, scales = kern(
+        inputs=[mx.array(np.ascontiguousarray(w, dtype=np.float32))],
+        grid=(ngroups, 1, 1), threadgroup=(min(256, ngroups), 1, 1),
+        output_shapes=[(rows, cols // 2), (ngroups,)],
+        output_dtypes=[mx.uint8, mx.float32])
+    mx.eval(packed, scales)
+    return (np.array(packed),
+            np.array(scales).reshape(rows, cols // GROUP).astype(np.float16))

@@ -338,3 +338,79 @@ def test_the_recogniser_misses_the_real_idioms_on_a_DECLARATION_not_an_algorithm
            " extern __shared__ float sdata[]; int tid = threadIdx.x; }")
     with pytest.raises(c2m.C2MRefusal, match="shared buffer"):
         ci.recognize(red)
+
+
+_REAL_SGEMM = """
+template <const int BLOCKSIZE>
+__global__ void sgemm_shared_mem_block(int M, int N, int K, float alpha,
+                                       const float *A, const float *B,
+                                       float beta, float *C) {
+    const int cRow = blockIdx.x;
+    const int cCol = blockIdx.y;
+    __shared__ float As[BLOCKSIZE * BLOCKSIZE];
+    __shared__ float Bs[BLOCKSIZE * BLOCKSIZE];
+    const int threadCol = threadIdx.x % BLOCKSIZE;
+    const int threadRow = threadIdx.x / BLOCKSIZE;
+    float tmp = 0.0f;
+    for (int bkIdx = 0; bkIdx < K; bkIdx += BLOCKSIZE) {
+        As[threadRow * BLOCKSIZE + threadCol] = A[threadRow * K + threadCol];
+        Bs[threadRow * BLOCKSIZE + threadCol] = B[threadRow * N + threadCol];
+        __syncthreads();
+        for (int dotIdx = 0; dotIdx < BLOCKSIZE; ++dotIdx)
+            tmp += As[threadRow * BLOCKSIZE + dotIdx] * Bs[dotIdx * BLOCKSIZE + threadCol];
+        __syncthreads();
+    }
+    C[threadRow * N + threadCol] = alpha * tmp + beta * C[threadRow * N + threadCol];
+}
+"""
+
+
+def test_the_real_sgemm_is_its_own_idiom_because_alpha_beta_is_a_different_function():
+    """Widening tiled_gemm to match the seed's real kernel was the obvious fix and
+    would have SUBSTITUTED A DIFFERENT COMPUTATION: this computes alpha*A@B + beta*C.
+    The tiled door must still refuse it, and the new door must not claim the tile,
+    which is a template parameter the kernel source does not contain."""
+    rec = ci.recognize(_REAL_SGEMM)
+    assert rec.idiom == "sgemm_alpha_beta"
+    assert rec.tile is None
+    with pytest.raises(c2m.C2MRefusal, match="shared tile for A"):
+        ci._match_all(_REAL_SGEMM, ci._GEMM_FRAGMENTS, "tiled_gemm")
+    with pytest.raises(c2m.C2MRefusal, match="TEMPLATE PARAMETER"):
+        ci.execute_idiom(rec, {}, dims={"M": 8, "K": 8, "N": 8})
+
+
+def test_the_naive_widening_would_have_passed_the_seeds_own_test():
+    """The seed's main() calls this kernel with alpha=1 and beta=0, where a plain
+    matmul agrees EXACTLY. A recogniser loosened to match the shape would have been
+    correct on the only inputs the corpus exercises and wrong everywhere else."""
+    pytest.importorskip("mlx.core")
+    import numpy as _np, air, c2m_idiom
+    rng = _np.random.default_rng(3)
+    M = K = N = 32
+    A = (rng.standard_normal((M, K)) * 0.3).astype(_np.float32)
+    B = (rng.standard_normal((K, N)) * 0.3).astype(_np.float32)
+    C0 = (rng.standard_normal((M, N)) * 0.3).astype(_np.float32)
+    rec = ci.recognize(_REAL_SGEMM)
+    plain = _np.asarray(air.execute_matmul(
+        air.AirMatmul("plain", M, K, N, tile=16, strategy="tiled"), A, B))
+    for alpha, beta, must_agree in ((1.0, 0.0, True), (2.0, 0.5, False)):
+        got = _np.asarray(c2m_idiom.execute_idiom(
+            rec, {"A": A, "B": B, "C": C0, "alpha": alpha, "beta": beta},
+            dims={"M": M, "K": K, "N": N, "tile": 16}))
+        ref = alpha * (A.astype(_np.float64) @ B.astype(_np.float64)) + beta * C0
+        assert float(_np.max(_np.abs(got - ref)) / _np.max(_np.abs(ref))) < 1e-5
+        plain_err = float(_np.max(_np.abs(plain - ref)) / _np.max(_np.abs(ref)))
+        assert (plain_err < 1e-5) is must_agree
+
+
+@pytest.mark.parametrize("label,old,new", [
+    ("beta dropped", "alpha * tmp + beta * C[threadRow * N + threadCol]", "alpha * tmp"),
+    ("B index transposed", "Bs[dotIdx * BLOCKSIZE + threadCol]",
+     "Bs[threadCol * BLOCKSIZE + dotIdx]"),
+    ("accumulator starts at one", "float tmp = 0.0f", "float tmp = 1.0f"),
+    ("rectangular tile", "As[BLOCKSIZE * BLOCKSIZE]", "As[BLOCKSIZE * OTHERSIZE]"),
+])
+def test_sgemm_near_misses_are_refused(label, old, new):
+    """Widening recognition without near-miss evidence is how a loose match ships."""
+    with pytest.raises(c2m.C2MRefusal):
+        ci.recognize(_REAL_SGEMM.replace(old, new, 1))

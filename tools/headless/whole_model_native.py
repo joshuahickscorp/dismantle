@@ -124,6 +124,13 @@ GROUP_Q2F = 64
 GROUP_Q3_DN = 64
 GROUP_Q3_GQA = 128
 BITS_Q3 = 3
+# Routed MoE. GROUP/BITS follow the representation the KernelPlanner selected for
+# moe_expert (conventional_low_bit, executed by the uniform_q4_group kernels) after
+# downgrading from q2_affine, which no kernel executes.
+# See receipts/headless/KERNEL_PLANNER_MODEL2.json.
+GROUP_Q4_MOE = 64
+BITS_Q4 = 4
+KERNEL_MOE_EXPERT = "qwen30_expert_table_uniform_q4_matvec_simdgroup"
 MAX_NEW = 16
 MAX_SEQ = 128
 COMPLETE_WALL_PAIRS = 4  # 8 warm reps
@@ -148,6 +155,18 @@ GENOME = {
         "shader": "crates/hawking-core/shaders/q80_mixed_decode.metal",
         "container": "HGRAVF01",
         "catalog_codec": CODEC_AFFINE,
+    },
+    "moe_expert": {
+        "codec": "ws_rtn_q4_g64",
+        "family": "grouped_absmax",
+        "gemv_storage_bpw": 4.25,
+        "group": GROUP_Q4_MOE,
+        "bits": BITS_Q4,
+        "kernel": KERNEL_MOE_EXPERT,
+        "shader": "crates/hawking-core/shaders/qwen30_device_expert_table.metal",
+        "container": "HGRAVU01",
+        "catalog_codec": CODEC_UNIFORM,
+        "per_expert_segments": True,
     },
     "deltanet": {
         "codec": "ws_rtn_q3_g64",
@@ -319,6 +338,28 @@ def is_gqa_gemv(name: str) -> bool:
     )
 
 
+_MOE_EXPERT_RE = re.compile(r"\.mlp\.experts\.\d+\.(gate_proj|up_proj|down_proj)\.weight$")
+
+
+def is_moe_expert(name: str) -> bool:
+    """A routed expert projection.
+
+    These end in `gate_proj.weight` like a dense MLP but carry `experts.<N>.` in the
+    middle, so is_mlp_gemv's endswith("mlp.gate_proj.weight") never matched them and all
+    18,432 of them resolved to `leftover` and were kept f32. That single predicate is why
+    the packer could not emit a routed body.
+    """
+    return bool(_MOE_EXPERT_RE.search(name))
+
+
+def is_moe_router(name: str) -> bool:
+    """The per-layer router. Deliberately NOT given a genome entry: the KernelPlanner
+    selected leftover_f32 for it on measured mass (0.0412% of the model, where quantizing
+    saves 44.6 MiB on the most routing-sensitive organ), and `leftover` already means an
+    f32 passthrough."""
+    return name.endswith(".mlp.gate.weight")
+
+
 def is_embed(name: str) -> bool:
     return name.endswith("embed_tokens.weight")
 
@@ -328,6 +369,10 @@ def is_output(name: str) -> bool:
 
 
 def organ_role(name: str) -> str:
+    # BEFORE the dense-MLP test: an expert projection would otherwise have to be
+    # distinguished by a negative lookahead, and ordering is the clearer guard
+    if is_moe_expert(name):
+        return "moe_expert"
     if is_mlp_gemv(name):
         return "mlp"
     if is_dn_gemv(name):
@@ -531,7 +576,16 @@ def compile_mix(
     shared_leftover = max(0, catalog_leftover - already)
     organ_bits += shared_leftover * LEFTOVER_BPW
     closure_denom = PARENT_PARAMS
-    complete_ebpw = organ_bits / float(closure_denom)
+    # organ_bits above is built from HARDCODED design rates (mlp 2.25, dn 3.25, gqa/embed/
+    # output 3.125). That makes it a CONSTANT: repacking the same model with attention at
+    # q4 instead of q3 added 1,288,519,664 bytes and this number did not move at all. It
+    # agreed with the physical figure to seven decimals for the body the constants were
+    # written for, which is exactly why it survived.
+    #
+    # The physical figure -- derived from the bytes actually written -- is authoritative.
+    # The design figure is kept beside it because a divergence between them is meaningful:
+    # it means the artifact is not the mix the constants describe.
+    design_ebpw = organ_bits / float(closure_denom)
 
     mlp_active = mlp_n * 2.25 / 8.0
     dn_active = complete_organ_bytes(DN_GEMV_N, DN_LEFTOVER_N, 3.25)
@@ -543,6 +597,23 @@ def compile_mix(
     active_ebpw = 8.0 * active_bytes / float(PARENT_PARAMS)
 
     physical_ebpw = 8.0 * (payload_bytes - header_bytes) / float(PARENT_PARAMS)
+
+    complete_ebpw = physical_ebpw
+    # A design/physical divergence means the packed artifact is not the mix the design
+    # constants describe. Surface it rather than reporting the constant.
+    ebpw_agreement = {
+        "design_ebpw_from_hardcoded_rates": design_ebpw,
+        "physical_ebpw_from_payload_bytes": physical_ebpw,
+        "delta": physical_ebpw - design_ebpw,
+        "agree_within_1e_3": abs(physical_ebpw - design_ebpw) < 1e-3,
+        "authoritative": "physical_ebpw_from_payload_bytes",
+        "note": ("the design figure is a constant built from hardcoded per-organ rates; it "
+                 "cannot move when the genome changes, so it is reported only as a "
+                 "cross-check against the bytes actually written"),
+        "active_bytes_caveat": ("active_bytes_per_token above is built the same hardcoded "
+                                "way and is frozen for the same reason; it is not corrected "
+                                "here because no measurement in this campaign depends on it"),
+    }
 
     wired = {
         "mlp": counts["mlp"] > 0,
@@ -570,6 +641,8 @@ def compile_mix(
         "parent_params": PARENT_PARAMS,
         "complete_ebpw": complete_ebpw,
         "complete_ebpw_physical_codes_plus_scales": physical_ebpw,
+        "complete_ebpw_from_design_constants": design_ebpw,
+        "ebpw_agreement": ebpw_agreement,
         "active_bytes_per_token": active_bytes,
         "active_ebpw_per_token": active_ebpw,
         "n041_target_complete_ebpw": n041.get("current_qwen_complete_ebpw", N041_TARGET_EBPW),

@@ -77,6 +77,11 @@ def quiesce_check():
             continue
         if "pgrep" in cmdline or cmdline.endswith("/ps") or " -Ao " in cmdline:
             continue
+        # the caller is python and will cross the 20% threshold under load, so without
+        # this a measurement run counts ITSELF as busy work and can never quiesce. It
+        # showed up as a test that passed alone and failed inside a full suite.
+        if pid in (str(os.getpid()), str(os.getppid())):
+            continue
         row = {"pid": pid, "cpu": cpu, "etime": etime, "cmd": cmdline[:90]}
 
         # a shell WAITING for a workload names it but is not doing it; counting the
@@ -90,8 +95,14 @@ def quiesce_check():
         elif any(w in cmdline for w in OUR_WORKLOADS) and not is_waiter:
             ours.append({**row, "matched_by": "workload name"})
         elif cpu > 20.0 and not is_waiter:
-            if any(k in cmdline.lower() for k in OURS):
-                ours.append({**row, "matched_by": "cpu over 20% and a tool name"})
+            # Match the PROGRAM, not the command line. A bare substring test put three
+            # Google Chrome renderers at ~100% CPU into the must-finish bucket, because
+            # the linker token "ld" appears inside "--field-trial-handle". The gate would
+            # then have waited for the user's browser to finish, which never happens.
+            prog = Path(cmdline.split()[0]).name.lower() if cmdline.split() else ""
+            if any(prog == k or prog.startswith(k) for k in OURS):
+                ours.append({**row, "matched_by": "cpu over 20% and a tool name",
+                             "program": prog})
             else:
                 standing.append({**row, "matched_by": "cpu over 20%, not ours"})
 

@@ -35,17 +35,17 @@ def test_the_one_mismatch_is_a_string_not_a_capability():
     assert d["enforced_at_n_sites"] >= 5
 
 
-def test_the_packer_really_cannot_emit_moe_organs():
-    """This is checked against the live module, not asserted."""
+def test_the_packer_gap_this_receipt_found_is_now_closed():
+    """The receipt records the gap as it stood. It has since been fixed, so the live
+    module must now DISAGREE with that snapshot -- the fix landing, not a regression."""
     import sys
     sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "headless"))
     import whole_model_native as w
     d = rec()["THE_ACTUAL_HOLE_IS_A_PACKER"]
-    assert d["packer_handles_moe_expert"] is False
-    assert d["packer_handles_moe_router"] is False
-    assert "moe_expert" not in w.GENOME
-    assert sorted(w.GENOME) == d["packer_organs"]
-
+    assert d["packer_handles_moe_expert"] is False, "the receipt should record the gap"
+    assert "moe_expert" in w.GENOME, "the packer still cannot emit routed experts"
+    assert w.organ_role(
+        "model.layers.0.mlp.experts.101.gate_proj.weight") == "moe_expert"
 
 def test_the_reframing_is_recorded_as_a_correction():
     d = rec()["THE_ACTUAL_HOLE_IS_A_PACKER"]

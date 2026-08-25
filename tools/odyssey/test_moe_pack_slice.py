@@ -65,10 +65,13 @@ def test_the_packer_gap_is_pinned_to_a_specific_resolver_line():
     assert len(d["what_a_real_packer_needs"]) >= 4
 
 
-def test_the_resolver_really_does_send_experts_to_leftover():
-    """Checked against the live module, not asserted."""
+def test_the_resolver_gap_this_slice_pinned_is_now_fixed():
+    """The slice pinned the defect; the resolver has since been extended. The dense-MLP
+    and router paths must be unchanged by that fix."""
     import sys
     sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "headless"))
     import whole_model_native as w
-    assert w.organ_role("model.layers.0.mlp.experts.101.gate_proj.weight") == "leftover"
+    assert w.organ_role("model.layers.0.mlp.experts.101.gate_proj.weight") == "moe_expert"
     assert w.organ_role("model.layers.0.mlp.gate_proj.weight") == "mlp"
+    # the router still falls through to leftover: the planner chose f32 passthrough
+    assert w.organ_role("model.layers.0.mlp.gate.weight") == "leftover"

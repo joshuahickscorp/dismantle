@@ -13,6 +13,13 @@ from __future__ import annotations
 from typing import Any, Callable
 
 IQR_GATE_PCT = 10.0
+
+# A reliability verdict below this many reps is NOT STABLE. Measured directly: the
+# same kernel's IQR estimate ranged 1.84%-13.38% across 8 independent 20-rep runs and
+# 3.41%-14.29% across 8 independent 40-rep runs, so the gate's own verdict FLIPPED
+# run to run. At 200 reps all three probed kernels held inside a 3-point band. Below
+# this threshold `reliable` is reported as an UNSTABLE ESTIMATE rather than a fact.
+STABLE_RELIABILITY_MIN_REPS = 200
 # a margin this many times the worst arm noise survives a failed reliability gate
 LARGE_MARGIN_RATIO = 5.0
 
@@ -29,11 +36,17 @@ def time_arm(fn: Callable[[], Any], *, reps: int = 40, warmup: int = 10) -> dict
     s.sort()
     q1, med, q3 = s[len(s) // 4], s[len(s) // 2], s[(3 * len(s)) // 4]
     iqr = (q3 - q1) / q1 * 100
+    stable = reps >= STABLE_RELIABILITY_MIN_REPS
     return {"median_s": med, "q1_s": q1, "q3_s": q3,
             "iqr_spread_pct": round(iqr, 2),
             "full_range_pct": round((s[-1] - s[0]) / s[0] * 100, 2),
             "reps": reps, "warmup": warmup,
-            "reliable": iqr <= IQR_GATE_PCT}
+            "reliable": iqr <= IQR_GATE_PCT,
+            "reliability_verdict_is_stable": stable,
+            "reliability_caveat": None if stable else (
+                f"{reps} reps is below the {STABLE_RELIABILITY_MIN_REPS} needed for a "
+                f"stable reliability verdict; this arm's `reliable` flag may flip on a "
+                f"rerun and should not be cited as a property of the kernel")}
 
 
 def implausible(reason: str) -> dict[str, Any]:

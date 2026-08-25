@@ -75,3 +75,19 @@ def test_a_jittery_candidate_cannot_knock_out_steady_ones_during_elimination():
     res = kf.successive_halving(cands, measure=measure_of(cands), rounds=2, base_reps=5)
     assert res["champion"] is not None, "a reliable candidate existed and must survive"
     assert res["champion"].name == "steady"
+
+
+def test_bench_flags_a_reliability_verdict_taken_from_too_few_reps():
+    """Measured: the same kernel's IQR ranged 1.84-13.38% across eight independent
+    20-rep runs, so the gate verdict flipped run to run. A verdict below the stable
+    threshold must say so rather than presenting itself as a property of the kernel."""
+    import bench
+    calls = {"n": 0}
+    def work():
+        calls["n"] += 1
+    few = bench.time_arm(work, reps=20, warmup=2)
+    assert few["reliability_verdict_is_stable"] is False
+    assert "may flip on a rerun" in few["reliability_caveat"]
+    many = bench.time_arm(work, reps=bench.STABLE_RELIABILITY_MIN_REPS, warmup=2)
+    assert many["reliability_verdict_is_stable"] is True
+    assert many["reliability_caveat"] is None

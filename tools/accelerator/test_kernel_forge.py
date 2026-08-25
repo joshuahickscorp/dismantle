@@ -39,8 +39,15 @@ def test_an_unreliable_candidate_cannot_be_champion():
     cands = [Fake("fast_but_jittery", 1.0, iqr=30.0), Fake("steady", 2.0, iqr=2.0)]
     res = kf.successive_halving(cands, measure=measure_of(cands), rounds=1, base_reps=5)
     assert res["champion"].name == "steady"
-    assert any(r["candidate"] == "fast_but_jittery"
-               for r in res["rejected_for_unreliability"])
+    # Check the BEHAVIOUR, not the mechanism. An earlier version of this test also
+    # required the jittery candidate to appear in rejected_for_unreliability, which
+    # pinned it to being rejected at the FINAL gate. The better fix sinks it during
+    # elimination instead, so it never reaches that gate -- and the over-specific
+    # assertion failed on a change that improved the code.
+    eliminated_early = any("fast_but_jittery" in r["eliminated"] for r in res["rounds"])
+    rejected_late = any(r["candidate"] == "fast_but_jittery"
+                        for r in res["rejected_for_unreliability"])
+    assert eliminated_early or rejected_late
 
 
 def test_no_champion_when_every_survivor_is_unreliable():
@@ -56,3 +63,15 @@ def test_each_round_keeps_half_and_doubles_the_reps():
     reps = [r["reps_each"] for r in res["rounds"]]
     assert reps == [5, 10, 20]
     assert [r["kept"] for r in res["rounds"]] == [4, 2, 1]
+
+
+def test_a_jittery_candidate_cannot_knock_out_steady_ones_during_elimination():
+    """The failure this actually had: gating only at the END let a fast jittery
+    candidate win round one, eliminate every steady candidate, and then be rejected
+    itself -- leaving no champion at all. The gate fired correctly and the answer was
+    still wrong."""
+    cands = [Fake("jitter1", 0.1, iqr=40.0), Fake("jitter2", 0.2, iqr=40.0),
+             Fake("steady", 5.0, iqr=1.0), Fake("steady2", 6.0, iqr=1.0)]
+    res = kf.successive_halving(cands, measure=measure_of(cands), rounds=2, base_reps=5)
+    assert res["champion"] is not None, "a reliable candidate existed and must survive"
+    assert res["champion"].name == "steady"

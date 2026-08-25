@@ -140,16 +140,20 @@ def successive_halving(candidates: list[Any], *, measure, rounds: int = 3,
     while len(alive) > 1 and rounds > 0:
         timed = []
         for c in alive:
-            med, _iqr = measure(c, reps)
-            timed.append((med, c))
+            med, iqr = measure(c, reps)
+            timed.append((med, iqr, c))
             spent += reps
-        timed.sort(key=lambda p: p[0])
+        # An UNREPEATABLE candidate must never displace a repeatable one during
+        # elimination. Gating only at the end let a fast jittery candidate knock out
+        # the steady ones in round one and then get rejected itself, leaving NO
+        # champion at all -- the gate fired correctly and the answer was still wrong.
+        timed.sort(key=lambda p: (p[1] > RELIABILITY_GATE_PCT, p[0]))
         n_keep = max(1, int(len(timed) * keep))
         history.append({"round": len(history) + 1, "reps_each": reps,
                         "candidates": len(timed), "kept": n_keep,
                         "best_time_s": timed[0][0],
-                        "eliminated": [str(c) for _, c in timed[n_keep:]]})
-        alive = [c for _, c in timed[:n_keep]]
+                        "eliminated": [str(c) for _, _, c in timed[n_keep:]]})
+        alive = [c for _, _, c in timed[:n_keep]]
         reps *= 2
         rounds -= 1
     # Final confirmation at full budget, WITH the reliability gate. A survivor that

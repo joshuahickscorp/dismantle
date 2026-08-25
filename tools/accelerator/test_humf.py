@@ -677,3 +677,123 @@ def test_an_unknown_copy_is_not_counted_as_a_survivor_in_data_loss():
     o.recompute_cost_s, o.recompute = None, None
     r = h.device_lost("APPLE_UM", "the other domain went away too")
     assert r["data_lost"] == ["W42"], r
+
+
+def _forge_crc(payload: bytes, free_at: int, want: int) -> bytes:
+    """crc32 is affine over GF(2), so repairing a checksum is a 32x32 linear solve
+    over 4 chosen bytes -- not a search."""
+    import zlib
+    crc = lambda b: zlib.crc32(b) & 0xFFFFFFFF
+    n = len(payload); k = crc(bytes(n)); piv = {}
+    for i in range(32):
+        e = bytearray(n); e[free_at + i // 8] = 1 << (i % 8)
+        v, tag = crc(bytes(e)) ^ k, 1 << i
+        while v:
+            b = v.bit_length() - 1
+            if b not in piv:
+                piv[b] = (v, tag); break
+            pv, pt = piv[b]; v ^= pv; tag ^= pt
+    t, sol = crc(payload) ^ want, 0
+    while t:
+        b = t.bit_length() - 1
+        pv, pt = piv[b]; t ^= pv; sol ^= pt
+    out = bytearray(payload)
+    for i in range(32):
+        if sol >> i & 1:
+            out[free_at + i // 8] ^= 1 << (i % 8)
+    return bytes(out)
+
+
+def test_the_transfer_check_accepts_a_forged_checksum():
+    from humf import _digest
+    """WATCH THE CHECK FAIL TO FIRE. A payload with a flipped weight byte and four
+    repaired padding bytes passes the fabric's integrity check, is marked CLEAN and
+    counts as TRUSTED. This is not a flaw in crc32 -- it catches every accidental
+    corruption class measured -- it is the difference between error detection and
+    identity, and the reason _identity_digest exists."""
+    h, o, mp = fabric()
+    bad = bytearray(PAYLOAD); bad[8] ^= 0x80
+    forged = _forge_crc(bytes(bad), len(PAYLOAD) - 4, _digest(PAYLOAD))
+    assert _digest(forged) == _digest(PAYLOAD) and forged != PAYLOAD
+    mp.substitute_next = forged
+    h.execute("W42", h.plan_acquire("W42", "MOCK_EXTERNAL_VRAM"), "MOCK_EXTERNAL_VRAM")
+    dst = o.materializations["MOCK_EXTERNAL_VRAM"]
+    assert dst.state is State.CLEAN
+    assert "MOCK_EXTERNAL_VRAM" in o.trusted_copies()
+    assert dst.payload != PAYLOAD                      # while holding wrong bytes
+    # and the digest the fabric recorded is the RIGHT one, for the WRONG bytes
+    assert dst.digest == _digest(PAYLOAD)
+
+
+def test_a_source_that_rotted_in_place_propagates_through_a_passing_check():
+    from humf import _digest
+    """The per-transfer check compares SOURCE to DESTINATION, so a faithful copy of
+    corrupt bytes is exactly what it is looking for -- and afterwards the two copies
+    AGREE, so every later check confirms the corruption. Sealing the identity at
+    registration is what closes it; this pins the hole with the seal removed."""
+    h, o, mp = fabric()
+    o.content_digest = None                            # the behaviour before sealing
+    rotted = bytearray(PAYLOAD); rotted[16] ^= 0x80
+    o.materializations["APPLE_UM"].payload = bytes(rotted)
+    h.execute("W42", h.plan_acquire("W42", "MOCK_EXTERNAL_VRAM"), "MOCK_EXTERNAL_VRAM")
+    dst = o.materializations["MOCK_EXTERNAL_VRAM"]
+    assert dst.state is State.CLEAN and dst.payload != PAYLOAD
+    assert _digest(dst.payload) == _digest(o.materializations["APPLE_UM"].payload)
+
+    h2, o2, mp2 = fabric()                             # same rot, seal intact
+    rotted2 = bytearray(PAYLOAD); rotted2[16] ^= 0x80
+    o2.materializations["APPLE_UM"].payload = bytes(rotted2)
+    with pytest.raises(HumfError, match="no longer matches the identity sealed"):
+        h2.execute("W42", h2.plan_acquire("W42", "MOCK_EXTERNAL_VRAM"),
+                   "MOCK_EXTERNAL_VRAM")
+    # the destination is left INVALID holding NOTHING -- the refusal happens before
+    # a single byte is handed to the transport, so the rot never crosses
+    dst2 = o2.materializations["MOCK_EXTERNAL_VRAM"]
+    assert dst2.state is State.INVALID and dst2.payload is None
+    assert "MOCK_EXTERNAL_VRAM" not in o2.valid_copies()
+    assert o2.materializations["APPLE_UM"].trust == "UNKNOWN"
+
+
+def test_audit_finds_rot_nothing_else_would_have_touched():
+    h, o, mp = fabric()
+    h.execute("W42", h.plan_acquire("W42", "MOCK_EXTERNAL_VRAM"), "MOCK_EXTERNAL_VRAM")
+    assert h.audit("W42")["diverged"] == []
+    scrubbed = bytearray(o.materializations["MOCK_EXTERNAL_VRAM"].payload)
+    scrubbed[0:4] = b"\x00\x00\x00\x00"
+    o.materializations["MOCK_EXTERNAL_VRAM"].payload = bytes(scrubbed)
+    after = h.audit("W42")
+    assert after["diverged"] == ["MOCK_EXTERNAL_VRAM"]
+    assert o.materializations["MOCK_EXTERNAL_VRAM"].trust == "UNKNOWN"
+    assert o.materializations["APPLE_UM"].trust == "TRUSTED"
+
+
+def test_trust_has_an_age_and_a_write_unseals_rather_than_false_alarming():
+    h, o, mp = fabric()
+    h.execute("W42", h.plan_acquire("W42", "MOCK_EXTERNAL_VRAM"), "MOCK_EXTERNAL_VRAM")
+    assert h.stale_verifications(5) == []
+    h.epoch += 40
+    assert {x["domain"] for x in h.stale_verifications(5)} == {
+        "APPLE_UM", "MOCK_EXTERNAL_VRAM"}
+    o.mark_written("APPLE_UM")
+    assert o.content_digest is None and "written in APPLE_UM" in o.unsealed_because
+    assert h.audit("W42")["audited"] is False          # nothing to check against
+    o.materializations["APPLE_UM"].transition(State.CLEAN)
+    assert h.seal_value("W42", "APPLE_UM") is not None
+    assert h.audit("W42")["diverged"] == []
+
+
+def test_the_identity_recheck_knob_is_the_decay_model_paying_for_itself():
+    """Re-hashing the source on EVERY transfer is the safe default and it is not
+    free -- blake2b runs ~25x slower than crc32 on this machine. Re-verifying only
+    what has gone unlooked-at is what makes it affordable."""
+    h, o, mp = fabric()
+    h.identity_recheck_age = None                      # registration only
+    rotted = bytearray(PAYLOAD); rotted[16] ^= 0x80
+    o.materializations["APPLE_UM"].payload = bytes(rotted)
+    h.execute("W42", h.plan_acquire("W42", "MOCK_EXTERNAL_VRAM"), "MOCK_EXTERNAL_VRAM")
+    assert o.materializations["MOCK_EXTERNAL_VRAM"].state is State.CLEAN  # not caught
+    h.identity_recheck_age = 0
+    o.materializations.pop("MOCK_EXTERNAL_VRAM")
+    with pytest.raises(HumfError, match="no longer matches the identity sealed"):
+        h.execute("W42", h.plan_acquire("W42", "MOCK_EXTERNAL_VRAM"),
+                  "MOCK_EXTERNAL_VRAM")

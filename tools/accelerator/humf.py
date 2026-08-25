@@ -97,6 +97,11 @@ class Materialization:
     # service until resolved. ASSERTED = an operator said it is fine WITHOUT a
     # check, which is a weaker thing than verified and is recorded as a weaker thing.
     trust: str = "TRUSTED"
+    # WHEN that trust was last established, as a fabric event counter. Trust used to
+    # be a fact with no age: a copy verified once was TRUSTED forever and nothing
+    # ever re-asked. A verification is a statement about A MOMENT, and a copy that
+    # has sat resident across a thousand later events is not covered by it.
+    verified_at: int = 0
 
     def transition(self, to: State) -> None:
         if to not in LEGAL[self.state]:
@@ -117,6 +122,13 @@ class HumfObject:
     recompute_cost_s: float | None = None           # 11
     next_use_hint: str | None = None                # 12
     recompute: Callable[[], Any] | None = None
+    # THE OBJECT'S IDENTITY, computed by the FABRIC at registration and never by a
+    # transport. The per-transfer check compares the source against the DESTINATION,
+    # so a source that rotted in place verifies rot against rot and passes -- and
+    # afterwards both copies agree, so nothing will ever flag it again. This is the
+    # only value in the fabric that a transport cannot influence.
+    content_digest: str | None = None
+    unsealed_because: str | None = None
 
     # 5 valid copies
     def valid_copies(self) -> list[str]:
@@ -148,6 +160,11 @@ class HumfObject:
         if domain not in self.materializations:
             raise HumfError(f"{self.identity} has no materialization in {domain}")
         self.materializations[domain].transition(State.DIRTY)
+        # A legitimate write makes the recorded identity WRONG, and an identity check
+        # that fires on legitimate writes gets turned off. Unseal instead: origin
+        # checking is skipped, and says so, until seal_value() re-establishes it.
+        self.content_digest = None
+        self.unsealed_because = f"written in {domain}"
         self.owner = domain
         for d, m in self.materializations.items():
             if d != domain and m.state is State.CLEAN:
@@ -175,6 +192,7 @@ class Plan:
 class Humf:
     def __init__(self, domains: dict[str, Domain],
                  providers: dict[str, Any] | None = None,
+                 identity_recheck_age: int | None = 0,
                  verify_transfers: bool = True,
                  transfer_timeout_s: float | None = None):
         self.domains = domains
@@ -190,6 +208,19 @@ class Humf:
         # no defence at all -- only VERIFICATION is. Enabled across provider-backed
         # domains only; see integrity_policy() for why that is not timidity.
         self.verify_transfers = verify_transfers
+        # A monotonic event counter. Trust is stamped with it so a verification has
+        # an AGE, which is the difference between "this was checked" and "this is
+        # checked". Not a clock: wall time is not what invalidates a copy, activity
+        # is, and a counter cannot drift or be adjusted underneath the fabric.
+        self.epoch: int = 0
+        # HOW OLD a source's verification may be before a transfer re-establishes it.
+        # 0 = every transfer (the safe default), None = never (registration only), k =
+        # only when the source has not been verified in the last k events. This is the
+        # knob the cost forces: the identity digest runs at ~1.39 GB/s against crc32's
+        # ~35.5, so on a 5 GB/s bridge an unconditional re-hash costs more than the
+        # transfer it protects. Decay is what makes it affordable -- re-verify what
+        # has gone unlooked-at, not what was just checked.
+        self.identity_recheck_age = identity_recheck_age
         # A transport that HANGS is a third failure mode, and it is worse than one
         # that raises: nothing raises, nothing completes, and the destination sits in
         # TRANSFERRING forever with no path out because the except branch never runs.
@@ -423,6 +454,61 @@ class Humf:
 
     def register(self, obj: HumfObject) -> None:
         self.objects[obj.identity] = obj
+        self.seal_value(obj.identity)
+
+    def seal_value(self, identity: str, domain: str | None = None) -> str | None:
+        """Record what this object IS, from a copy the fabric already holds.
+
+        Called at registration and after a write is complete. Cost is once per
+        object, not once per transfer, which is why it can afford a cryptographic
+        digest where the transfer check cannot -- see integrity_policy()."""
+        obj = self.objects[identity]
+        m = (obj.materializations.get(domain) if domain else
+             next((x for x in obj.materializations.values()
+                   if x.state is State.CLEAN and x.payload is not None), None))
+        if m is None or m.payload is None:
+            return None
+        obj.content_digest = _identity_digest(m.payload)
+        obj.unsealed_because = None
+        self.epoch += 1
+        m.verified_at = self.epoch
+        return obj.content_digest
+
+    def audit(self, identity: str) -> dict[str, Any]:
+        """Re-check every copy against the sealed identity, NOW.
+
+        This is what makes trust something with an age rather than a permanent
+        label. Nothing calls it automatically -- a fabric that re-hashed on a timer
+        would be paying for a check nobody asked for -- but the query
+        stale_verifications() exists so a caller can find out what it is relying on
+        that has not been looked at in a long time."""
+        obj = self.objects[identity]
+        if obj.content_digest is None:
+            return {"object": identity, "audited": False,
+                    "reason": f"value is UNSEALED ({obj.unsealed_because}); there is "
+                              f"nothing to check against until seal_value()"}
+        self.epoch += 1
+        copies = {}
+        for d, m in obj.materializations.items():
+            if m.payload is None:
+                copies[d] = "NO_BYTES_HELD"
+                continue
+            if _identity_digest(m.payload) == obj.content_digest:
+                m.verified_at = self.epoch
+                copies[d] = "MATCHES"
+            else:
+                m.trust = "UNKNOWN"
+                copies[d] = "DIVERGED"
+        return {"object": identity, "audited": True, "epoch": self.epoch,
+                "copies": copies,
+                "diverged": [d for d, v in copies.items() if v == "DIVERGED"]}
+
+    def stale_verifications(self, max_age: int) -> list[dict[str, Any]]:
+        """Copies whose trust rests on a check older than max_age fabric events."""
+        return [{"object": o.identity, "domain": d, "verified_at": m.verified_at,
+                 "age": self.epoch - m.verified_at, "trust": m.trust}
+                for o in self.objects.values() for d, m in o.materializations.items()
+                if m.state is State.CLEAN and self.epoch - m.verified_at > max_age]
 
     def _transfer_cost(self, src: str, dst: str, nbytes: int) -> tuple[float, str]:
         a, b = self.domains[src], self.domains[dst]
@@ -607,6 +693,25 @@ class Humf:
             dst.payload = src.payload
             dst.digest = src.digest
             return
+        # THE SOURCE IS CHECKED AGAINST THE SEALED IDENTITY BEFORE IT IS SENT. The
+        # round-trip check below compares the source to the destination, so a source
+        # that rotted in place is compared against a faithful copy of its own rot and
+        # PASSES -- and after that both copies agree and nothing will ever flag it.
+        # Measured in ACCELERATOR_HUMF_IDENTITY.json: a single flipped weight byte
+        # propagated to a second domain through a check that reported success.
+        recheck = (obj.content_digest is not None
+                   and self.identity_recheck_age is not None
+                   and self.epoch - src.verified_at >= self.identity_recheck_age)
+        if recheck:
+            now = _identity_digest(src.payload)
+            if now != obj.content_digest:
+                src.trust = "UNKNOWN"
+                raise HumfError(
+                    f"refusing to transfer {obj.identity} out of {src.domain}: the "
+                    f"source no longer matches the identity sealed at registration "
+                    f"({now[:16]} vs {obj.content_digest[:16]}). Nothing moved. The "
+                    f"per-transfer check would have PASSED this, because it compares "
+                    f"the source with the destination and both would have agreed.")
         expect = _digest(src.payload)
         src.digest = expect
         self._with_deadline(prov.copy_in, obj.identity, src.payload)
@@ -632,6 +737,8 @@ class Humf:
                     f"The transport returned WITHOUT ERROR and returned the WRONG "
                     f"BYTES. Nothing but verification catches that.")
             dst.digest = actual
+            self.epoch += 1
+            dst.verified_at = self.epoch
         dst.payload = got
 
 
@@ -666,6 +773,23 @@ def _with_deadline_impl(self, fn, *args):
 
 
 Humf._with_deadline = _with_deadline_impl
+
+
+def _identity_digest(b: bytes) -> str:
+    """WHAT the object IS, as opposed to whether a transfer glitched.
+
+    crc32 is affine over GF(2), so repairing a checksum is a 32x32 linear solve over
+    any 4 bytes you are allowed to touch -- 0.035 ms in Python, measured, not a
+    search. A payload with a flipped weight byte and four repaired padding bytes
+    passed this fabric's own integrity check, was marked CLEAN, and counted as a
+    TRUSTED copy. That is not a flaw in crc32: it caught 100% of every accidental
+    corruption class measured (single, double and eight-bit flips, 4- and 64-byte
+    bursts, 4000 trials each). ERROR DETECTION IS NOT IDENTITY, and the two jobs get
+    two functions. This one is paid ONCE PER OBJECT at seal time, not once per
+    transfer, so its ~1.37 GB/s costs nothing that matters.
+    """
+    import hashlib
+    return hashlib.blake2b(b, digest_size=16).hexdigest()
 
 
 def _digest(b: bytes) -> int:
@@ -713,6 +837,11 @@ class MockExternalMemoryProvider:
         self.allocated = 0
         self.fail_next: str | None = None      # failure injection
         self.corrupt_next: bool = False        # the harder mode: LIE, do not fail
+        # The HARDEST mode: return chosen bytes. corrupt_next models a FAULT, which is
+        # what crc32 is designed against. substitute_next models bytes that were
+        # SHAPED -- by a hostile peer or, far more likely on a bridge, by a buggy
+        # driver reusing a stale buffer whose checksum happens to agree.
+        self.substitute_next: bytes | None = None
         self.tear_next: bool = False           # store only part of what was handed in
         self.hang_next_s: float = 0.0          # a transport that is slow, not broken
         self.vanish_next: bool = False         # the device leaves mid-transfer
@@ -804,4 +933,7 @@ class MockExternalMemoryProvider:
             b = bytearray(self.store[key])
             b[0] ^= 0xFF                       # one flipped bit pattern, no exception
             return bytes(b)
+        if self.substitute_next is not None:
+            b, self.substitute_next = self.substitute_next, None
+            return b
         return self.store[key]

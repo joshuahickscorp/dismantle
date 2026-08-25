@@ -1,10 +1,10 @@
 {
  "schema": "hawking.odyssey.kernel_planner_model2.v1",
- "generated_at": "2026-08-25T09:58:37Z",
+ "generated_at": "2026-08-25T10:02:23Z",
  "generated_by": "tools/odyssey/kernel_planner_model2.py",
  "obligation": "G023 \u2014 KernelPlanner stage, run for model #2",
  "hand_authored": false,
- "git_head": "0ea9fa444c6433fc6fa555866328af789c7753df",
+ "git_head": "18d63f181edb1d5dd437d3f86245140b79735405",
  "specimen": {
   "repo": "Qwen/Qwen3-30B-A3B",
   "revision": "ad44e777bcd18fa416d9da3bd8f70d33ebb85d39",
@@ -13,175 +13,241 @@
  "organ_plan": [
   {
    "organ": "embed",
+   "seeded_families_in_score_order": [
+    {
+     "family": "conventional_low_bit",
+     "score": 2.5,
+     "n_competent_kernels": 0,
+     "needs_no_gemv_kernel": false,
+     "kernels": [],
+     "passthrough_rejected_for_gemv_organ": false
+    },
+    {
+     "family": "q2_affine",
+     "score": 1.07,
+     "n_competent_kernels": 0,
+     "needs_no_gemv_kernel": false,
+     "kernels": [],
+     "passthrough_rejected_for_gemv_organ": false
+    },
+    {
+     "family": "binary_sparse_residual",
+     "score": 1.069,
+     "n_competent_kernels": 0,
+     "needs_no_gemv_kernel": false,
+     "kernels": [],
+     "passthrough_rejected_for_gemv_organ": false
+    }
+   ],
+   "selected_representation": null,
+   "selection_reason": null,
+   "n_kernels_for_organ": 0,
    "n_competent_kernels": 0,
-   "kernels": [],
+   "downgraded_from_top_seed": false,
    "status": "NO_KERNEL",
    "may_be_evaluated": false
   },
   {
    "organ": "gqa_attention",
-   "n_competent_kernels": 1,
-   "kernels": [
+   "seeded_families_in_score_order": [
     {
-     "kernel_identity": "qwen80_add_residual_rmsnorm_tg",
-     "representation_identity": "q4_control",
-     "parity": "ABSENT",
-     "measurements": "PRESENT_NO_KIND"
+     "family": "conventional_low_bit",
+     "score": 2.5,
+     "n_competent_kernels": 1,
+     "needs_no_gemv_kernel": false,
+     "kernels": [
+      "qwen80_add_residual_rmsnorm_tg"
+     ],
+     "passthrough_rejected_for_gemv_organ": false
+    },
+    {
+     "family": "q2_affine",
+     "score": 1.07,
+     "n_competent_kernels": 0,
+     "needs_no_gemv_kernel": false,
+     "kernels": [],
+     "passthrough_rejected_for_gemv_organ": false
+    },
+    {
+     "family": "binary_sparse_residual",
+     "score": 1.069,
+     "n_competent_kernels": 0,
+     "needs_no_gemv_kernel": false,
+     "kernels": [],
+     "passthrough_rejected_for_gemv_organ": false
     }
    ],
+   "selected_representation": "conventional_low_bit",
+   "selection_reason": "highest-scoring seeded family with a competent kernel",
+   "n_kernels_for_organ": 1,
+   "n_competent_kernels": 1,
+   "downgraded_from_top_seed": false,
    "status": "COVERED",
    "may_be_evaluated": true,
-   "n_unqualified": 1,
-   "qualification": "COMPETENT_BUT_UNQUALIFIED: 1 of 1 candidates have parity ABSENT, so a representation may be PLANNED against them but must not be SCORED against them until parity is run"
+   "qualification": "COMPETENT_BUT_UNQUALIFIED: 1 of 1 have parity ABSENT"
   },
   {
    "organ": "lm_head",
+   "seeded_families_in_score_order": [
+    {
+     "family": "conventional_low_bit",
+     "score": 2.5,
+     "n_competent_kernels": 0,
+     "needs_no_gemv_kernel": false,
+     "kernels": [],
+     "passthrough_rejected_for_gemv_organ": false
+    },
+    {
+     "family": "q2_affine",
+     "score": 1.07,
+     "n_competent_kernels": 0,
+     "needs_no_gemv_kernel": false,
+     "kernels": [],
+     "passthrough_rejected_for_gemv_organ": false
+    },
+    {
+     "family": "binary_sparse_residual",
+     "score": 1.069,
+     "n_competent_kernels": 0,
+     "needs_no_gemv_kernel": false,
+     "kernels": [],
+     "passthrough_rejected_for_gemv_organ": false
+    }
+   ],
+   "selected_representation": null,
+   "selection_reason": null,
+   "n_kernels_for_organ": 0,
    "n_competent_kernels": 0,
-   "kernels": [],
+   "downgraded_from_top_seed": false,
    "status": "NO_KERNEL",
    "may_be_evaluated": false
   },
   {
    "organ": "moe_expert",
-   "n_competent_kernels": 18,
-   "kernels": [
+   "seeded_families_in_score_order": [
     {
-     "kernel_identity": "qwen30_expert_table_paired_gate_up_swiglu",
-     "representation_identity": "unknown",
-     "parity": "ABSENT",
-     "measurements": "ABSENT"
+     "family": "q2_affine",
+     "score": 2.5,
+     "n_competent_kernels": 0,
+     "needs_no_gemv_kernel": false,
+     "kernels": [],
+     "passthrough_rejected_for_gemv_organ": false
     },
     {
-     "kernel_identity": "qwen30_expert_table_uniform_q4_paired_gate_up_swiglu",
-     "representation_identity": "uniform_q4_group",
-     "parity": "ABSENT",
-     "measurements": "ABSENT"
+     "family": "leftover_f32",
+     "score": 0.785,
+     "n_competent_kernels": 0,
+     "needs_no_gemv_kernel": true,
+     "kernels": [],
+     "passthrough_rejected_for_gemv_organ": true
     },
     {
-     "kernel_identity": "qwen30_expert_table_uniform_q4_paired_gate_up_swiglu_simdgroup8",
-     "representation_identity": "uniform_q4_group",
-     "parity": "ABSENT",
-     "measurements": "ABSENT"
-    },
-    {
-     "kernel_identity": "qwen30_expert_table_binary_matvec",
-     "representation_identity": "binary_group",
-     "parity": "ABSENT",
-     "measurements": "ABSENT"
-    },
-    {
-     "kernel_identity": "qwen30_expert_table_binary_matvec_rowblock2",
-     "representation_identity": "binary_group",
-     "parity": "ABSENT",
-     "measurements": "ABSENT"
-    },
-    {
-     "kernel_identity": "qwen30_expert_table_binary_matvec_rowblock4",
-     "representation_identity": "binary_group",
-     "parity": "ABSENT",
-     "measurements": "ABSENT"
-    },
-    {
-     "kernel_identity": "qwen30_expert_table_binary_matvec_rowblock8",
-     "representation_identity": "binary_group",
-     "parity": "ABSENT",
-     "measurements": "ABSENT"
-    },
-    {
-     "kernel_identity": "qwen30_expert_table_binary_matvec_serial",
-     "representation_identity": "binary_group",
-     "parity": "ABSENT",
-     "measurements": "ABSENT"
-    },
-    {
-     "kernel_identity": "qwen30_expert_table_binary_matvec_simdgroup",
-     "representation_identity": "binary_group",
-     "parity": "ABSENT",
-     "measurements": "ABSENT"
-    },
-    {
-     "kernel_identity": "qwen30_expert_table_hgravs_gemv",
-     "representation_identity": "hgravs01_factored",
-     "parity": "ABSENT",
-     "measurements": "ABSENT"
-    },
-    {
-     "kernel_identity": "qwen30_expert_table_hgravs_gemv_rowblock2",
-     "representation_identity": "hgravs01_factored",
-     "parity": "ABSENT",
-     "measurements": "ABSENT"
-    },
-    {
-     "kernel_identity": "qwen30_expert_table_hgravs_gemv_rowblock4",
-     "representation_identity": "hgravs01_factored",
-     "parity": "ABSENT",
-     "measurements": "ABSENT"
-    },
-    {
-     "kernel_identity": "qwen30_expert_table_hgravs_gemv_rowblock8",
-     "representation_identity": "hgravs01_factored",
-     "parity": "ABSENT",
-     "measurements": "ABSENT"
-    },
-    {
-     "kernel_identity": "qwen30_expert_table_uniform_q4_matvec_rowblock",
-     "representation_identity": "uniform_q4_group",
-     "parity": "ABSENT",
-     "measurements": "ABSENT"
-    },
-    {
-     "kernel_identity": "qwen30_expert_table_uniform_q4_matvec_serial",
-     "representation_identity": "uniform_q4_group",
-     "parity": "ABSENT",
-     "measurements": "ABSENT"
-    },
-    {
-     "kernel_identity": "qwen30_expert_table_uniform_q4_matvec_simdgroup",
-     "representation_identity": "uniform_q4_group",
-     "parity": "ABSENT",
-     "measurements": "ABSENT"
-    },
-    {
-     "kernel_identity": "qwen30_expert_table_uniform_q4_matvec_simdgroup_rowblock4",
-     "representation_identity": "uniform_q4_group",
-     "parity": "ABSENT",
-     "measurements": "ABSENT"
-    },
-    {
-     "kernel_identity": "qwen30_expert_table_uniform_q4_matvec_simdgroup_rowblock8",
-     "representation_identity": "uniform_q4_group",
-     "parity": "ABSENT",
-     "measurements": "ABSENT"
+     "family": "conventional_low_bit",
+     "score": 0.5,
+     "n_competent_kernels": 7,
+     "needs_no_gemv_kernel": false,
+     "kernels": [
+      "qwen30_expert_table_uniform_q4_matvec_rowblock",
+      "qwen30_expert_table_uniform_q4_matvec_serial",
+      "qwen30_expert_table_uniform_q4_matvec_simdgroup",
+      "qwen30_expert_table_uniform_q4_matvec_simdgroup_rowblock4",
+      "qwen30_expert_table_uniform_q4_matvec_simdgroup_rowblock8",
+      "qwen30_expert_table_uniform_q4_paired_gate_up_swiglu",
+      "qwen30_expert_table_uniform_q4_paired_gate_up_swiglu_simdgroup8"
+     ],
+     "passthrough_rejected_for_gemv_organ": false
     }
    ],
+   "selected_representation": "conventional_low_bit",
+   "selection_reason": "highest-scoring seeded family with a competent kernel",
+   "n_kernels_for_organ": 18,
+   "n_competent_kernels": 7,
+   "downgraded_from_top_seed": true,
    "status": "COVERED",
    "may_be_evaluated": true,
-   "n_unqualified": 18,
-   "qualification": "COMPETENT_BUT_UNQUALIFIED: 18 of 18 candidates have parity ABSENT, so a representation may be PLANNED against them but must not be SCORED against them until parity is run"
+   "downgrade_note": "the top seeded family 'q2_affine' has no competent kernel; the planner selected 'conventional_low_bit' instead. \u00a771: a representation with no competent kernel may not be evaluated.",
+   "qualification": "COMPETENT_BUT_UNQUALIFIED: 7 of 7 have parity ABSENT"
   },
   {
    "organ": "moe_router",
+   "seeded_families_in_score_order": [
+    {
+     "family": "q2_affine",
+     "score": 1.07,
+     "n_competent_kernels": 0,
+     "needs_no_gemv_kernel": false,
+     "kernels": [],
+     "passthrough_rejected_for_gemv_organ": false
+    },
+    {
+     "family": "binary_sparse_residual",
+     "score": 1.069,
+     "n_competent_kernels": 0,
+     "needs_no_gemv_kernel": false,
+     "kernels": [],
+     "passthrough_rejected_for_gemv_organ": false
+    },
+    {
+     "family": "ternary",
+     "score": 1.058,
+     "n_competent_kernels": 0,
+     "needs_no_gemv_kernel": false,
+     "kernels": [],
+     "passthrough_rejected_for_gemv_organ": false
+    }
+   ],
+   "selected_representation": null,
+   "selection_reason": null,
+   "n_kernels_for_organ": 0,
    "n_competent_kernels": 0,
-   "kernels": [],
+   "downgraded_from_top_seed": false,
    "status": "NO_KERNEL",
    "may_be_evaluated": false
   },
   {
    "organ": "rmsnorm",
+   "seeded_families_in_score_order": [
+    {
+     "family": "leftover_f32",
+     "score": 2.535,
+     "n_competent_kernels": 0,
+     "needs_no_gemv_kernel": true,
+     "kernels": [],
+     "passthrough_rejected_for_gemv_organ": false
+    },
+    {
+     "family": "q2_affine",
+     "score": 1.07,
+     "n_competent_kernels": 0,
+     "needs_no_gemv_kernel": false,
+     "kernels": [],
+     "passthrough_rejected_for_gemv_organ": false
+    },
+    {
+     "family": "binary_sparse_residual",
+     "score": 1.069,
+     "n_competent_kernels": 0,
+     "needs_no_gemv_kernel": false,
+     "kernels": [],
+     "passthrough_rejected_for_gemv_organ": false
+    }
+   ],
+   "selected_representation": "leftover_f32",
+   "selection_reason": "f32 passthrough on a non-GEMV organ: no kernel is required",
+   "n_kernels_for_organ": 0,
    "n_competent_kernels": 0,
-   "kernels": [],
-   "status": "NO_KERNEL",
-   "may_be_evaluated": false
+   "downgraded_from_top_seed": false,
+   "status": "COVERED",
+   "may_be_evaluated": true
   }
  ],
  "n_organs": 6,
- "n_covered": 2,
- "n_gaps": 4,
+ "n_covered": 3,
+ "n_gaps": 3,
  "gaps": [
   "embed",
   "lm_head",
-  "moe_router",
-  "rmsnorm"
+  "moe_router"
  ],
  "section_71_rule": {
   "rule": "representations are never evaluated with incompetent kernels",
@@ -189,6 +255,6 @@
   "previously": "this rule could not be checked at all for model #2, because the library contained no kernel for any of its organs"
  },
  "stage_status": "RAN_WITH_GAPS",
- "honest_summary": "2 of 6 organs have a competent kernel. The remaining 4 (embed, lm_head, moe_router, rmsnorm) have none, so model #2 still cannot be compiled end to end. What changed is that the gap is now enumerated per organ instead of being hidden behind a stage recorded as AUTOMATIC.",
+ "honest_summary": "3 of 6 organs have a competent kernel. The remaining 3 (embed, lm_head, moe_router) have none, so model #2 still cannot be compiled end to end. What changed is that the gap is now enumerated per organ instead of being hidden behind a stage recorded as AUTOMATIC.",
  "pass": true
 }

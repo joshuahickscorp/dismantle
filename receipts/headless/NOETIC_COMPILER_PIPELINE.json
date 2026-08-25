@@ -87,13 +87,15 @@
    "hand_authored": false,
    "output": {
     "n_organs": 6,
-    "n_covered": 2,
-    "n_gaps": 4,
+    "n_covered": 3,
+    "n_gaps": 3,
     "gaps": [
      "embed",
      "lm_head",
-     "moe_router",
-     "rmsnorm"
+     "moe_router"
+    ],
+    "downgrades": [
+     "moe_expert"
     ]
    },
    "status_corrected_by": "receipts/headless/NOETIC_COMPILER_STAGE_AUDIT.json",

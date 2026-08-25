@@ -105,6 +105,13 @@
    "consequence": "the instrument was quietly HARDER ON LOSSES THAN ON WINS -- exactly the wrong bias for a gate that exists to stop overclaiming. This reduction's 3x loss was being reported as NO_CLAIM.",
    "fix": "margin is now max(speedup, 1/speedup) - 1, symmetric by construction",
    "no_prior_verdict_flips": "every earlier comparison was re-evaluated under the corrected metric: P5 fusion 1.7081 and 2.6213 still CANDIDATE_WINS, P7 native 2.0796 still CANDIDATE_WINS, GEMM 4096 still BASELINE_WINS at 0.8081, GEMM 1024 still INDISTINGUISHABLE, forge champion still INDISTINGUISHABLE from its runner-up. The fix only ever made losses easier to state."
+  },
+  "CORRECTED_BY_LATER_MEASUREMENT": {
+   "corrected_by": "receipts/headless/ACCELERATOR_SYNC_CORRECTION.json",
+   "date": "2026-08-25",
+   "what_was_wrong": "'MLX WINS ~3x' overstated the loss. About half of it was this program's own harness calling mx.eval once per level of the reduction tree, turning one command buffer into three with a host round trip between each.",
+   "corrected_numbers": "With one sync: 0.241 ms vs MLX 0.204 at 2^20 (NO_CLAIM -- margin 18% against 10.6% arm noise) and 0.522 vs 0.298 at 2^24 (MLX wins 1.75x). MLX remains the qualified winner for reduction, by a smaller margin than published.",
+   "what_still_stands": "The correctness results, the load-bearing barrier control (1756.60 -> 1109.53 with the barrier stripped), and the margin-asymmetry fix to compare() -- none of which depended on the sync count."
   }
  },
  "claim_boundary": "A correct f32 sum and max reduction exists in AIR and handles non-power-of-two sizes. It is about 3x slower than MLX and MLX is retained. No scan, no segmented reduction, no other dtype, and no softmax -- so attention remains blocked behind this even though the reduction itself now exists.",

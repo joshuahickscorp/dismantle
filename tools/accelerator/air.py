@@ -549,35 +549,31 @@ def execute_reduce(rd: AirReduce, x):
     import mlx.core as mx
     rd.validate()
     if rd.strategy == "atomic":
-        kern = mx.fast.metal_kernel(name=f"air_red_atomic_{rd.name}", input_names=["x"],
-                                    output_names=["out"],
-                                    source=lower_reduce_to_msl(rd),
-                                    ensure_row_contiguous=True, atomic_outputs=True)
+        kern = metal_kernel(mx, name=f"air_red_atomic_{rd.name}", input_names=["x"],
+                            output_names=["out"],
+                            source=lower_reduce_to_msl(rd),
+                            ensure_row_contiguous=True, atomic_outputs=True)
         (o,) = kern(inputs=[mx.array(x, dtype=mx.float32)],
                     grid=(rd.partials() * rd.threadgroup, 1, 1),
                     threadgroup=(rd.threadgroup, 1, 1),
                     output_shapes=[(1,)], output_dtypes=[mx.float32], init_value=0)
         mx.eval(o)
         return o
-    src = lower_reduce_to_msl(rd)
-    kern = mx.fast.metal_kernel(name=f"air_red_{rd.op}_{rd.name}", input_names=["x"],
-                                output_names=["out"], source=src,
-                                ensure_row_contiguous=True)
     cur = mx.array(x, dtype=mx.float32)
     n = rd.n
     while n > 1:
         step = AirReduce(rd.name, n, rd.op, rd.threadgroup)
-        k2 = mx.fast.metal_kernel(name=f"air_red_{rd.op}_{n}", input_names=["x"],
-                                  output_names=["out"],
-                                  source=lower_reduce_to_msl(step),
-                                  ensure_row_contiguous=True)
+        k2 = metal_kernel(mx, name=f"air_red_{rd.op}_{n}", input_names=["x"],
+                          output_names=["out"],
+                          source=lower_reduce_to_msl(step),
+                          ensure_row_contiguous=True)
         p = step.partials()
         (cur,) = k2(inputs=[cur], grid=(p * step.threadgroup, 1, 1),
                     threadgroup=(step.threadgroup, 1, 1),
                     output_shapes=[(p,)], output_dtypes=[mx.float32])
-        mx.eval(cur)
         n = p
-    return cur
+    mx.eval(cur)      # ONE host round trip for the whole tree, not one per level.
+    return cur        # The per-level eval was a defect; see ACCELERATOR_SCAN.json.
 
 
 @dataclass
@@ -742,4 +738,209 @@ def execute(prog: AirProgram, arrays: dict[str, Any]):
         grid=(n, 1, 1), threadgroup=(min(256, n), 1, 1),
         output_shapes=[prog.inputs[0].shape], output_dtypes=[mxdt])
     mx.eval(out)
+    return out
+
+
+SCAN_OPS = ("sum", "max")
+
+
+@dataclass
+class AirScan:
+    """A prefix scan as an AIR program. FRONT D / CCL MATH.reduction_and_scan.
+
+    Scan is the piece the reduction receipt named as ABSENT: "SCAN STILL DOES NOT
+    EXIST". It is harder than reduction for one structural reason -- a reduction
+    throws away all but one value, so a threadgroup can finish independently, while
+    a scan needs every earlier block's total before any of its own outputs are
+    final. That forces the three-phase shape: scan within blocks, scan the block
+    totals, then add the offsets back.
+
+    TWO STRATEGIES, KEPT FOR THE SAME REASON THE MATMUL KEEPS TWO:
+
+      simd_prefix    -- Apple's simd_prefix_inclusive_sum does a 32-wide scan in the
+                        SIMD unit with no threadgroup memory and no barrier. Sum
+                        ONLY: Metal provides prefix sum and product, and NO prefix
+                        max, so op="max" is refused on this strategy rather than
+                        silently falling back.
+      hillis_steele  -- the textbook CUDA-era shape: the whole block in threadgroup
+                        memory, log2(threadgroup) doubling steps, 2 barriers each.
+                        Works for ANY associative op including max, and is the
+                        honest baseline for asking whether the vendor primitive is
+                        worth anything (S015 §141).
+    """
+    name: str
+    n: int
+    op: str = "sum"
+    inclusive: bool = True
+    threadgroup: int = 256
+    strategy: str = "simd_prefix"     # "simd_prefix" | "hillis_steele"
+    dtype: str = "f32"
+    device: str = "APPLE_GPU_0"
+
+    def validate(self) -> None:
+        if self.op not in SCAN_OPS:
+            raise ValueError(f"unknown scan op {self.op!r}; known: {SCAN_OPS}")
+        if self.dtype != "f32":
+            raise ValueError("scans are f32 only here")
+        if self.threadgroup % 32 or not 32 <= self.threadgroup <= 1024:
+            raise ValueError(f"threadgroup {self.threadgroup} must be a multiple of the "
+                             f"32-wide SIMD group and within Metal's 1024 limit")
+        if self.n <= 0:
+            raise ValueError("n must be positive")
+        if self.strategy not in ("simd_prefix", "hillis_steele"):
+            raise ValueError(f"unknown scan strategy {self.strategy!r}")
+        if self.strategy == "simd_prefix" and self.op != "sum":
+            raise ValueError(
+                "the simd_prefix strategy implements sum only. Metal provides "
+                "simd_prefix_inclusive_sum and simd_prefix_inclusive_product but NO "
+                "prefix max, so op='max' must use hillis_steele. Refusing rather "
+                "than falling back silently, because a strategy that quietly becomes "
+                "a different strategy makes its own benchmark meaningless.")
+        if not self.inclusive and self.op != "sum":
+            raise ValueError(
+                "exclusive scan is implemented for sum only (it is derived as "
+                "inclusive - x). Exclusive max is NOT IMPOSSIBLE, just not built: "
+                "it needs a shift rather than a subtraction. Not implemented is "
+                "what this says, not unsupported by the hardware.")
+
+    def blocks(self) -> int:
+        return (self.n + self.threadgroup - 1) // self.threadgroup
+
+    def barrier_scopes_emitted(self) -> list[str]:
+        if self.strategy == "simd_prefix":
+            return ["THREADGROUP"] * 2
+        # buffer load, then 2 per doubling step
+        steps = max(1, (self.threadgroup - 1).bit_length())
+        return ["THREADGROUP"] * (1 + 2 * steps)
+
+    def executable_on_metal_backend(self) -> tuple[bool, str]:
+        return True, f"three-phase {self.strategy} scan, block totals scanned recursively"
+
+    def launch(self) -> tuple[tuple[int, int, int], tuple[int, int, int]]:
+        return (self.blocks() * self.threadgroup, 1, 1), (self.threadgroup, 1, 1)
+
+
+def lower_scan_block_to_msl(sc: AirScan) -> str:
+    """Phase one: scan within each block, and write each block's total to sums[]."""
+    sc.validate()
+    if sc.strategy == "simd_prefix":
+        lanes = sc.threadgroup // 32
+        return f"""
+    uint gid = thread_position_in_grid.x;
+    uint lid = thread_position_in_threadgroup.x;
+    uint tgid = threadgroup_position_in_grid.x;
+    uint lane = lid % 32u;
+    uint warp = lid / 32u;
+    threadgroup float wsum[{lanes}];
+    float v = (gid < {sc.n}u) ? x[gid] : 0.0f;
+    float incl = simd_prefix_inclusive_sum(v);
+    if (lane == 31u) wsum[warp] = incl;
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    if (lid == 0u) {{
+        float acc = 0.0f;
+        for (uint i = 0; i < {lanes}u; ++i) {{ float t = wsum[i]; wsum[i] = acc; acc += t; }}
+        sums[tgid] = acc;
+    }}
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    float res = incl + wsum[warp];
+    if (gid < {sc.n}u) out[gid] = res;
+"""
+    ident = "0.0f" if sc.op == "sum" else "-INFINITY"
+    comb = "a + b" if sc.op == "sum" else "max(a, b)"
+    steps = max(1, (sc.threadgroup - 1).bit_length())
+    return f"""
+    uint gid = thread_position_in_grid.x;
+    uint lid = thread_position_in_threadgroup.x;
+    uint tgid = threadgroup_position_in_grid.x;
+    threadgroup float buf[{sc.threadgroup}];
+    float v = (gid < {sc.n}u) ? x[gid] : ({ident});
+    buf[lid] = v;
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    for (uint s = 0; s < {steps}u; ++s) {{
+        uint off = 1u << s;
+        float a = buf[lid];
+        float b = (lid >= off) ? buf[lid - off] : ({ident});
+        threadgroup_barrier(mem_flags::mem_threadgroup);
+        buf[lid] = {comb};
+        threadgroup_barrier(mem_flags::mem_threadgroup);
+    }}
+    float res = buf[lid];
+    if (lid == {sc.threadgroup - 1}u) sums[tgid] = res;
+    if (gid < {sc.n}u) out[gid] = res;
+"""
+
+
+def lower_scan_offset_to_msl(sc: AirScan) -> str:
+    """Phase three: fold each block's exclusive prefix back into its elements."""
+    comb = "y[gid] + off[tgid]" if sc.op == "sum" else "max(y[gid], off[tgid])"
+    return f"""
+    uint gid = thread_position_in_grid.x;
+    uint tgid = threadgroup_position_in_grid.x;
+    if (gid < {sc.n}u) out[gid] = {comb};
+"""
+
+
+_KERNEL_CACHE: dict[tuple, Any] = {}
+
+
+def metal_kernel(mx, *, name, input_names, output_names, source, **kw):
+    """Build a metal_kernel once and reuse it.
+
+    Not a micro-optimization: building the wrapper on every call puts Python object
+    construction and MLX's compiled-kernel lookup INSIDE any timing loop that calls
+    it, which showed up as 21-24% IQR on an arm whose MLX baseline measured 3%. A
+    benchmark that times its own harness is measuring the wrong thing.
+    """
+    key = (name, source, tuple(input_names), tuple(output_names),
+           tuple(sorted(kw.items())))
+    k = _KERNEL_CACHE.get(key)
+    if k is None:
+        k = _KERNEL_CACHE[key] = mx.fast.metal_kernel(
+            name=name, input_names=list(input_names), output_names=list(output_names),
+            source=source, **kw)
+    return k
+
+
+def _scan_inclusive_gpu(sc: AirScan, arr, mx):
+    """Inclusive scan of `arr` (an mx array of length sc.n). Recursive on blocks."""
+    nb = sc.blocks()
+    blk = metal_kernel(
+        mx, name=f"air_scan_{sc.strategy}_{sc.op}_{sc.n}",
+        input_names=["x"], output_names=["out", "sums"],
+        source=lower_scan_block_to_msl(sc), ensure_row_contiguous=True)
+    y, sums = blk(inputs=[arr], grid=(nb * sc.threadgroup, 1, 1),
+                  threadgroup=(sc.threadgroup, 1, 1),
+                  output_shapes=[(sc.n,), (nb,)],
+                  output_dtypes=[mx.float32, mx.float32])
+    if nb == 1:
+        return y
+    inner = AirScan(sc.name, nb, sc.op, True, sc.threadgroup, sc.strategy)
+    sums_incl = _scan_inclusive_gpu(inner, sums, mx)
+    ident = 0.0 if sc.op == "sum" else float("-inf")
+    offs = mx.concatenate([mx.array([ident], dtype=mx.float32), sums_incl[:-1]])
+    add = metal_kernel(
+        mx, name=f"air_scanoff_{sc.op}_{sc.n}", input_names=["y", "off"],
+        output_names=["out"], source=lower_scan_offset_to_msl(sc),
+        ensure_row_contiguous=True)
+    (z,) = add(inputs=[y, offs], grid=(nb * sc.threadgroup, 1, 1),
+               threadgroup=(sc.threadgroup, 1, 1),
+               output_shapes=[(sc.n,)], output_dtypes=[mx.float32])
+    return z
+
+
+def execute_scan(sc: AirScan, x):
+    """Full-array scan on the Apple GPU.
+
+    Three phases because a scan cannot be block-local: block scan, scan of block
+    totals (recursively, so 2^24 elements is 3 levels not a serial pass), then the
+    offset fold. Exclusive is derived from inclusive by subtracting the element,
+    which is why it is sum-only.
+    """
+    import mlx.core as mx
+    sc.validate()
+    arr = mx.array(x, dtype=mx.float32)
+    out = _scan_inclusive_gpu(sc, arr, mx)
+    if not sc.inclusive:
+        out = out - arr
+    mx.eval(out)                 # ONE sync for the whole recursion, not one per level
     return out

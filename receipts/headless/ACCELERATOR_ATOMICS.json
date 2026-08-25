@@ -116,7 +116,15 @@
    ],
    "meaning": "the atomic strategy is 3.4x less accurate at 2^24 (2.0e-06 against 5.9e-07) because atomic adds land in nondeterministic order, so the float summation order changes run to run. Both are far inside any reasonable tolerance, but the faster strategy is the less exact one and BOTH ARE KEPT rather than the slower one being deleted."
   },
-  "max_still_needs_two_stage": "Metal has no float atomic max here, so the atomic strategy REFUSES op='max' rather than silently producing a wrong answer"
+  "max_still_needs_two_stage": "Metal has no float atomic max here, so the atomic strategy REFUSES op='max' rather than silently producing a wrong answer",
+  "CORRECTED_BY_LATER_MEASUREMENT": {
+   "corrected_by": "receipts/headless/ACCELERATOR_SYNC_CORRECTION.json",
+   "date": "2026-08-25",
+   "what_was_wrong": "This receipt's central claim -- that the two-stage reduction's loss was LAUNCH COUNT, and that atomics collapsing 3 launches to 1 confirmed it at 3.05x / 1.80x -- is REFUTED. The two-stage arm called mx.eval once per level of the tree, so it paid three HOST ROUND TRIPS where the atomic arm paid one. The comparison varied launches and syncs together.",
+   "what_the_decomposition_shows": "Launches isolated (1 dispatch vs 3, both with one sync): NO_CLAIM at 2^20, INDISTINGUISHABLE 1.019x at 2^24. Syncs isolated (3 dispatches both, 1 sync vs 3): 2.30x at 2^20, 1.28x at 2^24 -- essentially the whole reported effect.",
+   "consequence": "The recommendation flips. Atomic adds are nondeterministic in order and 3.4x less exact; that was worth a 3x speedup and is not worth zero. two_stage is now the strategy to prefer. Both are still kept -- the atomic path remains real evidence that Metal float atomics work, which is what closed EXECUTION.atomics.",
+   "what_still_stands": "The correctness results, the float-atomic capability itself, and the exactness tradeoff measurement (2.0e-06 vs 5.9e-07) are unaffected -- none of them depended on the timing harness."
+  }
  },
  "claim_boundary": "Float atomics work and make a single-pass sum reduction 3.05x and 1.80x faster than the two-stage form. Against MLX it is INDISTINGUISHABLE at both sizes -- no win claimed. Sum only, f32 only. The atomic path is measurably less numerically exact and nondeterministic in summation order, which is a real cost, not a footnote.",
  "pass": true

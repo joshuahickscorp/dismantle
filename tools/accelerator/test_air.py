@@ -390,3 +390,89 @@ def test_unknown_reduce_strategy_is_refused():
 
 def test_two_stage_remains_available_for_max():
     air.AirReduce("r", 64, "max", strategy="two_stage").validate()
+
+
+# ---------------------------------------------------------------- scan (G046)
+
+def test_scan_refuses_max_on_the_simd_prefix_strategy():
+    """Metal has simd_prefix_inclusive_sum and _product but no prefix max. A strategy
+    that quietly became a different strategy would make its own benchmark a lie."""
+    with pytest.raises(ValueError, match="prefix max"):
+        air.AirScan("s", 1024, "max", True, 256, "simd_prefix").validate()
+    air.AirScan("s", 1024, "max", True, 256, "hillis_steele").validate()   # legal
+
+
+def test_scan_refuses_exclusive_max_and_says_it_is_unbuilt_not_impossible():
+    with pytest.raises(ValueError, match="NOT IMPOSSIBLE"):
+        air.AirScan("s", 1024, "max", False, 256, "hillis_steele").validate()
+
+
+def test_scan_strategies_emit_different_barrier_counts():
+    """simd_prefix does its 32-wide scan inside the SIMD unit and needs 2 barriers;
+    hillis_steele holds the block in threadgroup memory and pays 2 per doubling step.
+    Conflating them would hide what the vendor primitive actually buys."""
+    s = air.AirScan("s", 4096, "sum", True, 256, "simd_prefix")
+    h = air.AirScan("s", 4096, "sum", True, 256, "hillis_steele")
+    assert len(s.barrier_scopes_emitted()) == 2
+    assert len(h.barrier_scopes_emitted()) == 1 + 2 * 8      # log2(256) steps
+    assert "simd_prefix_inclusive_sum" in air.lower_scan_block_to_msl(s)
+    assert "simd_prefix_inclusive_sum" not in air.lower_scan_block_to_msl(h)
+
+
+def test_scan_blocks_covers_a_non_multiple():
+    assert air.AirScan("s", 4099, "sum", True, 256).blocks() == 17
+
+
+def test_scan_executes_and_matches_an_f64_oracle():
+    pytest.importorskip("mlx.core")
+    import numpy as np
+    rng = np.random.default_rng(5)
+    for n in (7, 1000, 4099, 1 << 16):
+        x = rng.standard_normal(n).astype(np.float32)
+        ref = np.cumsum(x.astype(np.float64))
+        scale = float(np.max(np.abs(ref)))
+        for strat in ("simd_prefix", "hillis_steele"):
+            g = np.array(air.execute_scan(air.AirScan("t", n, "sum", True, 256, strat), x))
+            assert np.max(np.abs(g - ref)) / scale < 1e-5, (n, strat)
+        e = np.array(air.execute_scan(air.AirScan("t", n, "sum", False, 256), x))
+        assert np.max(np.abs(e - (ref - x))) / scale < 1e-5
+        m = np.array(air.execute_scan(air.AirScan("t", n, "max", True, 256, "hillis_steele"), x))
+        assert np.array_equal(m, np.maximum.accumulate(x))
+
+
+def test_a_block_local_scan_alone_is_wrong():
+    """The structural fact that makes scan harder than reduction: a block cannot
+    finish without every earlier block's total. Phase one ALONE must be wrong, or the
+    three-phase shape is unmotivated and the correctness test proves nothing."""
+    pytest.importorskip("mlx.core")
+    import mlx.core as mx
+    import numpy as np
+    n = 1 << 16
+    rng = np.random.default_rng(9)
+    x = rng.standard_normal(n).astype(np.float32)
+    ref = np.cumsum(x.astype(np.float64))
+    sc = air.AirScan("c", n, "sum", True, 256, "simd_prefix")
+    k = mx.fast.metal_kernel(name="t_blockonly", input_names=["x"],
+                             output_names=["out", "sums"],
+                             source=air.lower_scan_block_to_msl(sc),
+                             ensure_row_contiguous=True)
+    y, _ = k(inputs=[mx.array(x)], grid=(sc.blocks() * 256, 1, 1), threadgroup=(256, 1, 1),
+             output_shapes=[(n,), (sc.blocks(),)],
+             output_dtypes=[mx.float32, mx.float32])
+    mx.eval(y)
+    err = np.max(np.abs(np.array(y) - ref)) / float(np.max(np.abs(ref)))
+    assert err > 1e-3, f"block-local scan should be badly wrong, got {err}"
+
+
+def test_kernel_cache_returns_the_same_object():
+    """Building the wrapper per call put MLX's kernel lookup inside timing loops and
+    showed up as 20%+ IQR. Pinned because it is a measurement correctness property,
+    not a micro-optimization."""
+    pytest.importorskip("mlx.core")
+    import mlx.core as mx
+    src = air.lower_scan_offset_to_msl(air.AirScan("k", 1024, "sum", True, 256))
+    a = air.metal_kernel(mx, name="t_cache", input_names=["y", "off"],
+                         output_names=["out"], source=src, ensure_row_contiguous=True)
+    b = air.metal_kernel(mx, name="t_cache", input_names=["y", "off"],
+                         output_names=["out"], source=src, ensure_row_contiguous=True)
+    assert a is b

@@ -206,17 +206,17 @@
    "why_it_exists": "reductions are latency-critical and hard to write well",
    "underlying_problem": "tree reduction across a hierarchy with correct synchronization",
    "apple_equivalent": "MLX reductions; simd_sum",
-   "hawking_equivalent": "AIR two-stage reduction, sum and max",
+   "hawking_equivalent": "AIR two-stage reduction (sum, max) and three-phase scan (sum, max) with two strategies each",
    "semantic_gap": "PARTIAL",
    "performance_gap": {
     "measured": true,
-    "value": "atomic single-pass reaches parity with MLX; two-stage loses 3x",
-    "receipt": "receipts/headless/ACCELERATOR_ATOMICS.json"
+    "value": "scan beats mx.cumsum 8.09x at 2^24 and 1.84x at 2^20; reduction loses 1.75x to mx.sum at 2^24 and is not distinguishable at 2^20. The earlier 'atomics win 3.05x on launch count' is REFUTED -- the cost was host round trips, not launches.",
+    "receipt": "receipts/headless/ACCELERATOR_SCAN.json + ACCELERATOR_SYNC_CORRECTION.json"
    },
    "priority": "P1",
-   "test_corpus": "sum/max at 1024, 2^20, 2^24 and a non-power-of-two 4194311",
-   "current_winner": "MLX, retained",
-   "remaining_limitation": "SCAN STILL DOES NOT EXIST. Reduction now has two strategies (two-stage exact, atomic faster but nondeterministic); sum and max only, f32 only."
+   "test_corpus": "sum/max reduce and inclusive/exclusive/max scan at 7, 256, 1000, non-power-of-two 4099, 2^16, 2^20, 2^22, 2^24, graded against an f64 oracle and cross-checked against mx.cumsum",
+   "current_winner": "SPLIT: Hawking for scan (mx.cumsum runs at 19 GB/s on a 589 GB/s machine here); MLX for reduction, retained",
+   "remaining_limitation": "f32 only, 1-D only. Scan is sum and max; exclusive is sum-only (derived as inclusive minus x) and the simd_prefix strategy is sum-only because Metal has no prefix max. No segmented scan, no scan-by-key, no multi-dimensional or strided axis. Nothing here has run inside a model."
   },
   {
    "capability_id": "RUNTIME.streams_and_events",

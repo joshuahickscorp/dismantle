@@ -1,0 +1,334 @@
+{
+ "roadmap_version": "HAWKING_CIVILIZATION_ASCENSION_V1",
+ "frozen_plan": "HAWKING_SUPER_ROADMAP_FREEZE_V1_2026-08-25.md",
+ "generated_from": "disk truth: GOAL.md + receipts + git + a real pytest run",
+ "active_era": "I",
+ "era_sovereignty": "ERA I is sovereign. Later-era work is permitted ONLY when it is already running, consumes an idle resource, produces infrastructure Era I needs, or resolves an uncertainty that changes Era-I design. It NEVER earns civilization completion.",
+ "active_civilizations": [
+  "I-A_AGENTOS_HCLI",
+  "I-B_DOCTOR",
+  "I-C_GRAVITY_NOETIC",
+  "I-D_ACCELERATOR",
+  "I-E_ODYSSEY_I"
+ ],
+ "civilization_status": {
+  "I-A_AGENTOS_HCLI": {
+   "obligations": [
+    "G013",
+    "G014",
+    "G015",
+    "G030",
+    "G031"
+   ],
+   "verified": 5,
+   "open": [],
+   "evidence_satisfied": 9,
+   "evidence_of": 9,
+   "evidence_pct": 100.0,
+   "obligation_pct": 100.0,
+   "completion_pct": 100.0,
+   "completion_basis": "min(evidence categories satisfied / 9, obligations verified / total). The MINIMUM on purpose: I-D has all nine categories and zero verified obligations, and reporting 100% there is the inflation S015 \u00a7II forbids. Never a file count.",
+   "open_gates": [
+    "S016 civilization-grade scheduler: Era/Civilization/Program/Gate as first-class scheduler concepts -- NOT_STARTED"
+   ],
+   "status": "ADVERSARIALLY_VERIFIED",
+   "evidence": {
+    "artifact": true,
+    "runtime": true,
+    "adversarial_verification": true,
+    "negative_control": true,
+    "failure_recovery": true,
+    "durable_receipt": true,
+    "integration": true,
+    "measured_useful_work": true,
+    "named_boundaries": true
+   },
+   "note": "the OLD gate is met. S016's civilization-grade scheduler (Era/Civilization/Program/Gate as first-class scheduler concepts) is NOT_STARTED and is NOT counted here -- it is a NEW gate, tracked as a blocker."
+  },
+  "I-B_DOCTOR": {
+   "obligations": [
+    "G016",
+    "G017",
+    "G018",
+    "G019",
+    "G020",
+    "G021",
+    "G035"
+   ],
+   "verified": 7,
+   "open": [],
+   "evidence_satisfied": 6,
+   "evidence_of": 9,
+   "evidence_pct": 66.7,
+   "obligation_pct": 100.0,
+   "completion_pct": 66.7,
+   "completion_basis": "min(evidence categories satisfied / 9, obligations verified / total). The MINIMUM on purpose: I-D has all nine categories and zero verified obligations, and reporting 100% there is the inflation S015 \u00a7II forbids. Never a file count.",
+   "open_gates": [
+    "gate: on an UNSEEN model, reduce a huge hypothesis space to a small high-information experimental set and explain why -- not run"
+   ],
+   "status": "PHYSICALLY_RUNNING",
+   "evidence": {
+    "artifact": true,
+    "runtime": true,
+    "adversarial_verification": false,
+    "negative_control": true,
+    "failure_recovery": false,
+    "durable_receipt": true,
+    "integration": true,
+    "measured_useful_work": false,
+    "named_boundaries": true
+   },
+   "note": "39-technique library and applicability matrix exist. The gate -- on an UNSEEN model reduce a huge hypothesis space and explain why -- has not been run end to end on an unseen specimen."
+  },
+  "I-C_GRAVITY_NOETIC": {
+   "obligations": [
+    "G001",
+    "G002",
+    "G003",
+    "G004",
+    "G005",
+    "G006",
+    "G022",
+    "G023",
+    "G032",
+    "G033",
+    "G034",
+    "G036",
+    "G037",
+    "G038",
+    "G040",
+    "G042"
+   ],
+   "verified": 15,
+   "open": [
+    "G023"
+   ],
+   "evidence_satisfied": 8,
+   "evidence_of": 9,
+   "evidence_pct": 88.9,
+   "obligation_pct": 93.8,
+   "completion_pct": 88.9,
+   "completion_basis": "min(evidence categories satisfied / 9, obligations verified / total). The MINIMUM on purpose: I-D has all nine categories and zero verified obligations, and reporting 100% there is the inflation S015 \u00a7II forbids. Never a file count.",
+   "open_gates": [
+    "G023 Noetic compiler pipeline",
+    "real-weight execution gate",
+    "EBPW namespace separation not yet permanent in code"
+   ],
+   "status": "ADVERSARIALLY_VERIFIED",
+   "evidence": {
+    "artifact": true,
+    "runtime": true,
+    "adversarial_verification": true,
+    "negative_control": true,
+    "failure_recovery": false,
+    "durable_receipt": true,
+    "integration": true,
+    "measured_useful_work": true,
+    "named_boundaries": true
+   },
+   "note": "G023 NOETIC_COMPILER PIPELINE open. Real-weight execution gate open. The frozen EBPW accounting bug is found and named but the namespaces (DESIGN_EXPECTED / ARTIFACT_PHYSICAL / RUNTIME_MEASURED) are not yet permanently separated in code."
+  },
+  "I-D_ACCELERATOR": {
+   "obligations": [
+    "G043",
+    "G044",
+    "G045",
+    "G046",
+    "G047",
+    "G049",
+    "G055",
+    "G058"
+   ],
+   "verified": 0,
+   "open": [
+    "G043",
+    "G044",
+    "G045",
+    "G046",
+    "G047",
+    "G049",
+    "G055",
+    "G058"
+   ],
+   "evidence_satisfied": 9,
+   "evidence_of": 9,
+   "evidence_pct": 100.0,
+   "obligation_pct": 0.0,
+   "completion_pct": 0.0,
+   "completion_basis": "min(evidence categories satisfied / 9, obligations verified / total). The MINIMUM on purpose: I-D has all nine categories and zero verified obligations, and reporting 100% there is the inflation S015 \u00a7II forbids. Never a file count.",
+   "open_gates": [
+    "C2M T3: several real open CUDA codebases -- NOT CLAIMED",
+    "P2 CUDA differential -- blocked on NVIDIA hardware",
+    "AIR multi-backend (G058) -- Metal only"
+   ],
+   "status": "ADVERSARIALLY_VERIFIED",
+   "evidence": {
+    "artifact": true,
+    "runtime": true,
+    "adversarial_verification": true,
+    "negative_control": true,
+    "failure_recovery": true,
+    "durable_receipt": true,
+    "integration": true,
+    "measured_useful_work": true,
+    "named_boundaries": true
+   },
+   "note": "Every category has receipts. The GATE is still open: C2M T3 is NOT CLAIMED (no real open CUDA project runs) and P2 has no CUDA differential because no NVIDIA hardware exists. Category coverage is not gate closure."
+  },
+  "I-E_ODYSSEY_I": {
+   "obligations": [
+    "G007",
+    "G008",
+    "G009",
+    "G010",
+    "G011",
+    "G012",
+    "G024",
+    "G025",
+    "G026",
+    "G027",
+    "G028",
+    "G029",
+    "G039",
+    "G041",
+    "G048",
+    "G056"
+   ],
+   "verified": 14,
+   "open": [
+    "G048",
+    "G056"
+   ],
+   "evidence_satisfied": 7,
+   "evidence_of": 9,
+   "evidence_pct": 77.8,
+   "obligation_pct": 87.5,
+   "completion_pct": 77.8,
+   "completion_basis": "min(evidence categories satisfied / 9, obligations verified / total). The MINIMUM on purpose: I-D has all nine categories and zero verified obligations, and reporting 100% there is the inflation S015 \u00a7II forbids. Never a file count.",
+   "open_gates": [
+    "model #2 is not a Noetic executable",
+    "no real weights have executed (blocked on FAST_LOCAL_STORAGE)",
+    "G056 lake fast-forward in flight"
+   ],
+   "status": "ADVERSARIALLY_VERIFIED",
+   "evidence": {
+    "artifact": true,
+    "runtime": true,
+    "adversarial_verification": true,
+    "negative_control": true,
+    "failure_recovery": false,
+    "durable_receipt": true,
+    "integration": true,
+    "measured_useful_work": false,
+    "named_boundaries": true
+   },
+   "note": "4 specimens censused, compounding MEASURED (100%/40%/0% with the Falcon zero making it meaningful). Model #2 is NOT a Noetic executable and NO REAL WEIGHTS have executed -- so 'measured useful work' is FALSE for the school's own product."
+  },
+  "II-E_GREEN_MACHINE": {
+   "obligations": [
+    "G057"
+   ],
+   "verified": 0,
+   "open": [
+    "G057"
+   ],
+   "evidence_satisfied": null,
+   "evidence_of": null,
+   "evidence_pct": null,
+   "obligation_pct": 0.0,
+   "completion_pct": null,
+   "completion_basis": "min(evidence categories satisfied / 9, obligations verified / total). The MINIMUM on purpose: I-D has all nine categories and zero verified obligations, and reporting 100% there is the inflation S015 \u00a7II forbids. Never a file count.",
+   "open_gates": [],
+   "status": "EXPLORING",
+   "evidence": null,
+   "note": "Era-IV/II advance work; not scored under Era-I sovereignty."
+  },
+  "IV-A_FUSION": {
+   "obligations": [
+    "G053",
+    "G054"
+   ],
+   "verified": 0,
+   "open": [
+    "G053",
+    "G054"
+   ],
+   "evidence_satisfied": null,
+   "evidence_of": null,
+   "evidence_pct": null,
+   "obligation_pct": 0.0,
+   "completion_pct": null,
+   "completion_basis": "min(evidence categories satisfied / 9, obligations verified / total). The MINIMUM on purpose: I-D has all nine categories and zero verified obligations, and reporting 100% there is the inflation S015 \u00a7II forbids. Never a file count.",
+   "open_gates": [],
+   "status": "EXPLORING",
+   "evidence": null,
+   "note": "Era-IV/II advance work; not scored under Era-I sovereignty."
+  },
+  "IV-B_HMF_HGVAS": {
+   "obligations": [
+    "G050"
+   ],
+   "verified": 0,
+   "open": [
+    "G050"
+   ],
+   "evidence_satisfied": null,
+   "evidence_of": null,
+   "evidence_pct": null,
+   "obligation_pct": 0.0,
+   "completion_pct": null,
+   "completion_basis": "min(evidence categories satisfied / 9, obligations verified / total). The MINIMUM on purpose: I-D has all nine categories and zero verified obligations, and reporting 100% there is the inflation S015 \u00a7II forbids. Never a file count.",
+   "open_gates": [],
+   "status": "EXPLORING",
+   "evidence": null,
+   "note": "Era-IV/II advance work; not scored under Era-I sovereignty."
+  },
+  "IV-D_EGPU": {
+   "obligations": [
+    "G051",
+    "G052"
+   ],
+   "verified": 0,
+   "open": [
+    "G051",
+    "G052"
+   ],
+   "evidence_satisfied": null,
+   "evidence_of": null,
+   "evidence_pct": null,
+   "obligation_pct": 0.0,
+   "completion_pct": null,
+   "completion_basis": "min(evidence categories satisfied / 9, obligations verified / total). The MINIMUM on purpose: I-D has all nine categories and zero verified obligations, and reporting 100% there is the inflation S015 \u00a7II forbids. Never a file count.",
+   "open_gates": [],
+   "status": "EXPLORING",
+   "evidence": null,
+   "note": "Era-IV/II advance work; not scored under Era-I sovereignty."
+  }
+ },
+ "obligation_status_counts": {
+  "VERIFIED": 41,
+  "BLOCKED": 1,
+  "IN_PROGRESS": 14,
+  "NOT_STARTED": 2
+ },
+ "obligations_total": 58,
+ "unmapped_obligations": [],
+ "orphan_map_entries": [],
+ "receipt_count": 402,
+ "accelerator_receipt_count": 77,
+ "last_verified_commit": "67031d0b3",
+ "last_verified_test_count": 460,
+ "test_count_is_from_a_run_not_arithmetic": true,
+ "named_gates": {
+  "NVIDIA_CUDA_HARDWARE": "P2 differential. No local NVIDIA execution exists.",
+  "FAST_LOCAL_STORAGE": "real weights for G048. Falcon-H1-7B is 15.17 GB and the contended USB bus measured under ~0.5 MB/s against 96-131 MiB/s quiet.",
+  "SUDO_POWERMETRICS": "thermal_envelope; sudo not available to this process.",
+  "SUDO_PURGE_OR_96GiB_WORKING_SET": "a repeatable cold read.",
+  "XCRUN_METAL": "AOT metallib and generated-code inspection. Toolchain absent."
+ },
+ "resource_ownership": {
+  "USB_BUS_corpdrive": "ModelLake fill (4 hf download workers) -- OPERATOR PRIORITISED",
+  "GPU": "free for zero-I/O accelerator science",
+  "TIER1_SSD": "~/noetic/stage holds 202 MB: 64 Qwen3 expert tensors + Falcon config"
+ }
+}

@@ -198,11 +198,15 @@ def runtime_coverage() -> dict[str, Any]:
 # finite) -- so the gap is one un-inherited field in the wrapper.
 MEASURED_2026_08_25 = {
     # specimen -> (builds_from_real_config, forward_pass_runs)
+    # ALL FOUR after prepare_config closes the VL gap; the fourth was (False, False)
+    # for exactly one block and the receipt of that block is kept, because a gap that
+    # was measured and then closed is different evidence from one that never existed.
     "Qwen3-30B-A3B":    (True, True),
     "Kimi-VL-A3B":      (True, True),
     "Falcon-H1-7B":     (True, True),
-    "Qwen3-VL-30B-A3B": (False, False),
+    "Qwen3-VL-30B-A3B": (True, True),
 }
+VL_GAP_CLOSED_BY = "odyssey_pass.prepare_config (Hawking-side, NOT a library patch)"
 VL_GAP = ("qwen3_vl_moe.Model passes text_config straight to "
           "qwen3_moe.ModelArgs.from_dict without inheriting the top-level "
           "tie_word_embeddings, which qwen3_moe.ModelArgs requires with no default. "
@@ -235,6 +239,7 @@ def execution_coverage() -> dict[str, Any]:
         "deterministic": {k: True for k in CAUSAL_2026_08_25},
         "input_sensitive": {k: True for k in CAUSAL_2026_08_25},
         "causal": dict(CAUSAL_2026_08_25),
+        "vl_gap_closed_by": VL_GAP_CLOSED_BY,
     }
 
 
@@ -242,4 +247,36 @@ def execution_coverage() -> dict[str, Any]:
 # leaves 0 and 1 BITWISE UNCHANGED; changing the last token moves only the last.
 # That is the autoregressive property, and ACCELERATOR_CONVOLUTION.json already named
 # why it needs an explicit control -- a graph that reads t+1 CHANGES NO NORM.
-CAUSAL_2026_08_25 = {"Qwen3-30B-A3B": True, "Kimi-VL-A3B": True, "Falcon-H1-7B": True}
+CAUSAL_2026_08_25 = {"Qwen3-30B-A3B": True, "Kimi-VL-A3B": True, "Falcon-H1-7B": True,
+                     "Qwen3-VL-30B-A3B": True}
+
+
+# --- THE VL GAP, CLOSED ON HAWKING'S SIDE AND NOT IN THE LIBRARY -----------------
+# ACCELERATOR_RUNTIME_EXECUTES.json diagnosed it exactly: qwen3_vl_moe.Model builds
+# its language model as qwen3_moe.ModelArgs.from_dict(args.text_config), while
+# tie_word_embeddings sits at the config's TOP LEVEL and is ABSENT from text_config,
+# and qwen3_moe.ModelArgs requires it with no default.
+#
+# NOT PATCHED IN mlx_lm. A site-package edit is invisible, unversioned and lost on
+# the next upgrade -- and it would make this machine disagree with every other one
+# running the same library, which is the opposite of a reproducible receipt. The
+# repair lives HERE, where it is read, tested and travels with Hawking.
+#
+# THE WIDENING IS EXACTLY ONE KEY AND NO WIDER. Inheriting the whole top-level dict
+# into text_config would silently overwrite fields the nested config sets on purpose
+# -- a wider door that mistranslates is worse than a narrow one, measured twice
+# already in C2M.
+INHERITED_INTO_TEXT_CONFIG = ("tie_word_embeddings",)
+
+
+def prepare_config(cfg: dict[str, Any]) -> dict[str, Any]:
+    """Copy down ONLY the named top-level keys a nested ModelArgs requires and the
+    nested config does not carry. Never overwrites a key the nested config sets."""
+    import copy
+    c = copy.deepcopy(cfg)
+    tc = c.get("text_config")
+    if isinstance(tc, dict):
+        for k in INHERITED_INTO_TEXT_CONFIG:
+            if k in c and k not in tc:
+                tc[k] = c[k]
+    return c

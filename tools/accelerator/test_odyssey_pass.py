@@ -23,7 +23,7 @@ def test_mlx_lm_CAN_read_every_lake_specimen():
     # ...AND THAT IS THE WEAKER CLAIM. Measured one block later: 3 of 4 actually
     # build and run; qwen3_vl_moe imports and does not construct. The import check
     # was right about three specimens and WRONG ABOUT ONE.
-    assert op.execution_coverage()["built_and_ran"] == 3
+    assert op.execution_coverage()["built_and_ran"] == 4   # was 3 until prepare_config
 
 
 def test_HAWKING_S_OWN_RUNTIME_still_covers_none_of_them():
@@ -43,16 +43,19 @@ def test_the_gate_names_STORAGE_not_a_missing_reader():
     assert "reader" in cov["blocked_on_detail"]      # says what it is NOT
 
 
-def test_IMPORTS_AND_EXECUTES_DISAGREE_ON_EXACTLY_ONE_SPECIMEN():
+def test_IMPORTS_AND_EXECUTES_NOW_AGREE_AFTER_THE_ONE_FIELD_REPAIR():
     """The whole reason the stronger check had to be run. If these two ever agree
     again the disagreement has been fixed or reintroduced, and either way somebody
     should look rather than inheriting a stale claim."""
     imports = op.runtime_coverage()["mlx_lm_module_present"]
     ex = op.execution_coverage()["measured"]
     assert all(imports.values()), imports
-    disagree = [k for k, v in ex.items() if not v["builds"]]
-    assert disagree == ["Qwen3-VL-30B-A3B"], disagree
-    assert "tie_word_embeddings" in op.VL_GAP     # the gap is NAMED, not a shrug
+    # The disagreement is CLOSED: prepare_config supplies the one field the wrapper
+    # does not inherit. The gap text stays because the LIBRARY still has it -- what
+    # changed is that Hawking carries the repair, and the two are different facts.
+    assert [k for k, v in ex.items() if not v["builds"]] == []
+    assert "tie_word_embeddings" in op.VL_GAP
+    assert "NOT a library patch" in op.VL_GAP_CLOSED_BY
 
 
 def test_a_real_specimen_ACTUALLY_BUILDS_AND_RUNS_not_just_a_recorded_string():
@@ -128,3 +131,22 @@ def test_the_causality_check_FAILS_on_a_bidirectional_model():
     assert moved[0] is True and moved[1] is True, (
         "a bidirectional model must leak backwards; if it does not, the causality "
         f"check is measuring nothing: {moved}")
+
+
+def test_prepare_config_copies_ONE_key_and_NEVER_overwrites():
+    """A wider door that mistranslates is worse than a narrow one -- measured twice
+    already in C2M. Both directions pinned: it supplies a MISSING key, and it leaves
+    a key the nested config sets on purpose exactly where it was."""
+    supplied = op.prepare_config({"tie_word_embeddings": False, "vocab_size": 9,
+                                  "text_config": {"hidden_size": 4}})
+    assert supplied["text_config"]["tie_word_embeddings"] is False
+    assert "vocab_size" not in supplied["text_config"], "copied a key it was not asked to"
+    kept = op.prepare_config({"tie_word_embeddings": False,
+                              "text_config": {"tie_word_embeddings": True}})
+    assert kept["text_config"]["tie_word_embeddings"] is True, "overwrote the nested value"
+
+
+def test_prepare_config_does_not_mutate_its_input():
+    src = {"tie_word_embeddings": False, "text_config": {}}
+    op.prepare_config(src)
+    assert src["text_config"] == {}, "mutated the caller's config in place"

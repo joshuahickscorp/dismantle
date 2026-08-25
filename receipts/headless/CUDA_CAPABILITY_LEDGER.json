@@ -187,17 +187,17 @@
    "why_it_exists": "matrix multiply is the dominant cost of a transformer",
    "underlying_problem": "peak arithmetic needs tiling, blocking and hardware MMA units",
    "apple_equivalent": "MLX matmul; Apple matrix coprocessor via MPS",
-   "hawking_equivalent": "tools/accelerator/gemm.py tiled GEMM",
+   "hawking_equivalent": "AIR simdgroup matmul with 2x2 register blocking",
    "semantic_gap": "PARTIAL",
    "performance_gap": {
     "measured": true,
-    "value": "best AIR strategy reaches 36.7% of MLX at 2048",
-    "receipt": "receipts/headless/ACCELERATOR_SIMDGROUP_GEMM.json"
+    "value": "parity with MLX at 1024 and 2048; MLX wins 1.24x at 4096",
+    "receipt": "receipts/headless/ACCELERATOR_REGISTER_BLOCKING.json"
    },
    "priority": "P0",
    "test_corpus": "512/1024/2048 square f32 GEMM vs MLX, plus 2 negative controls",
-   "current_winner": "MLX, retained (\u00a7141) -- replacement is not justified by evidence",
-   "remaining_limitation": "no hierarchical blocking -- one 8x8 tile per simdgroup streaming operands from device memory, which is why it collapses to 36.7% of MLX at 2048 while holding 91-98% at 1024 and below"
+   "current_winner": "MLX at 4096 and above; parity below, so MLX is retained",
+   "remaining_limitation": "parity to 2048, then MLX pulls ahead 1.24x at 4096; no threadgroup-level staging, no double buffering, no batching, no transpose, f32 only"
   },
   {
    "capability_id": "MATH.reduction_and_scan",

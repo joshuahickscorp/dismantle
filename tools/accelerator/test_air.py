@@ -258,3 +258,35 @@ def test_tiled_has_no_shape_constraint_so_it_is_not_deleted():
     """simdgroup wins on speed but cannot take arbitrary shapes, which is why both
     strategies are kept rather than one replacing the other."""
     air.AirMatmul("m", 60, 60, 60, strategy="tiled").validate()
+
+
+# --- register blocking ---
+
+def test_block_2_emits_four_accumulators_and_four_macs():
+    s = air.lower_matmul_to_msl(air.AirMatmul("m", 64, 64, 64, strategy="simdgroup", block=2))
+    assert s.count("make_filled_simdgroup_matrix") == 4
+    assert s.count("simdgroup_multiply_accumulate") == 4
+    assert s.count("simdgroup_load") == 4      # 4 loads feeding 4 MACs, not 2 feeding 1
+    assert s.count("simdgroup_store") == 4
+
+
+def test_block_1_is_the_unblocked_kernel():
+    s = air.lower_matmul_to_msl(air.AirMatmul("m", 64, 64, 64, strategy="simdgroup", block=1))
+    assert s.count("simdgroup_multiply_accumulate") == 1
+    assert s.count("simdgroup_load") == 2
+
+
+def test_blocking_changes_the_launch_geometry():
+    a = air.AirMatmul("m", 64, 64, 64, strategy="simdgroup", block=1)
+    b = air.AirMatmul("m", 64, 64, 64, strategy="simdgroup", block=2)
+    assert a.launch() != b.launch()
+
+
+def test_block_2_refuses_shapes_it_cannot_cover():
+    with pytest.raises(ValueError, match="multiple of 16"):
+        air.AirMatmul("m", 24, 64, 64, strategy="simdgroup", block=2).validate()
+
+
+def test_unimplemented_block_is_refused():
+    with pytest.raises(ValueError, match="only 1 and 2"):
+        air.AirMatmul("m", 64, 64, 64, strategy="simdgroup", block=3).validate()

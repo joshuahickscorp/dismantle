@@ -225,6 +225,7 @@ class AirMatmul:
     n: int
     tile: int = 16
     strategy: str = "tiled"          # "tiled" | "simdgroup"
+    block: int = 1                   # simdgroup only: NxN grid of 8x8 tiles per simdgroup
     dtype: str = "f32"
     device: str = "APPLE_GPU_0"
     a_domain: str = "ANY"
@@ -239,11 +240,20 @@ class AirMatmul:
         if self.strategy == "simdgroup":
             if self.dtype != "f32":
                 raise ValueError("the simdgroup strategy is f32 only here")
+            if self.block not in (1, 2):
+                raise ValueError(f"block {self.block} not supported; only 1 and 2 are "
+                                 f"implemented")
+            step = 8 * self.block
             for d, nm in ((self.m, "m"), (self.k, "k"), (self.n, "n")):
                 if d % 8:
                     raise ValueError(f"simdgroup matrices are 8x8, so {nm}={d} must be "
                                      f"a multiple of 8; refusing rather than emitting a "
                                      f"kernel that would read out of bounds")
+            for d, nm in ((self.m, "m"), (self.n, "n")):
+                if d % step:
+                    raise ValueError(f"block={self.block} makes each simdgroup cover "
+                                     f"{step}x{step}, so {nm}={d} must be a multiple of "
+                                     f"{step}")
         if self.tile <= 0 or self.tile & (self.tile - 1):
             raise ValueError(f"tile {self.tile} must be a positive power of two")
         if self.tile > 32:
@@ -273,7 +283,8 @@ class AirMatmul:
         """Grid and threadgroup for this strategy. They differ, so the caller must not
         guess."""
         if self.strategy == "simdgroup":
-            return (self.n // 8 * 32, self.m // 8, 1), (32, 1, 1)
+            s = 8 * self.block
+            return (self.n // s * 32, self.m // s, 1), (32, 1, 1)
         return (self.n, self.m, 1), (self.tile, self.tile, 1)
 
 
@@ -286,19 +297,35 @@ def lower_matmul_to_msl(mm: AirMatmul) -> str:
                                   f"cannot execute it: {why}")
     T, ty = mm.tile, DTYPES[mm.dtype]
     if mm.strategy == "simdgroup":
+        B_, K_, N_ = mm.block, mm.k, mm.n
+        s = 8 * B_
+        decl = "\n    ".join(
+            f"simdgroup_float8x8 acc{i}{j} = make_filled_simdgroup_matrix<float,8,8>(0.0f);"
+            for i in range(B_) for j in range(B_))
+        loads = "\n        ".join(
+            [f"simdgroup_float8x8 a{i};" for i in range(B_)] +
+            [f"simdgroup_float8x8 b{j};" for j in range(B_)] +
+            [f"simdgroup_load(a{i}, A + (row + {8*i}u) * {K_}u + k, {K_}u);"
+             for i in range(B_)] +
+            [f"simdgroup_load(b{j}, B + k * {N_}u + col + {8*j}u, {N_}u);"
+             for j in range(B_)])
+        macs = "\n        ".join(
+            f"simdgroup_multiply_accumulate(acc{i}{j}, a{i}, b{j}, acc{i}{j});"
+            for i in range(B_) for j in range(B_))
+        stores = "\n    ".join(
+            f"simdgroup_store(acc{i}{j}, C + (row + {8*i}u) * {N_}u + col + {8*j}u, {N_}u);"
+            for i in range(B_) for j in range(B_))
         return f"""
     uint tg_x = threadgroup_position_in_grid.x;
     uint tg_y = threadgroup_position_in_grid.y;
-    uint row = tg_y * 8u;
-    uint col = tg_x * 8u;
-    simdgroup_float8x8 acc = make_filled_simdgroup_matrix<float, 8, 8>(0.0f);
-    for (uint k = 0; k < {mm.k}u; k += 8u) {{
-        simdgroup_float8x8 ma, mb;
-        simdgroup_load(ma, A + row * {mm.k}u + k, {mm.k}u);
-        simdgroup_load(mb, B + k * {mm.n}u + col, {mm.n}u);
-        simdgroup_multiply_accumulate(acc, ma, mb, acc);
+    uint row = tg_y * {s}u;
+    uint col = tg_x * {s}u;
+    {decl}
+    for (uint k = 0; k < {K_}u; k += 8u) {{
+        {loads}
+        {macs}
     }}
-    simdgroup_store(acc, C + row * {mm.n}u + col, {mm.n}u);
+    {stores}
 """
     return f"""
     uint gx = thread_position_in_grid.x;

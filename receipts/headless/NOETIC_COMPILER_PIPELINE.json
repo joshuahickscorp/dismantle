@@ -81,17 +81,23 @@
   },
   {
    "stage": "KernelPlanner",
-   "status": "NOT_RUN_FOR_MODEL_2",
-   "receipt": "KERNEL_LIBRARY.json",
+   "status": "RAN_WITH_GAPS",
+   "receipt": "KERNEL_PLANNER_MODEL2.json",
    "generated_by": "tools/headless/kernel_library.py",
    "hand_authored": false,
    "output": {
-    "n_kernels": 17,
-    "n_complete": 17,
-    "n_without_runnable_contract": 9
+    "n_organs": 6,
+    "n_covered": 2,
+    "n_gaps": 4,
+    "gaps": [
+     "embed",
+     "lm_head",
+     "moe_router",
+     "rmsnorm"
+    ]
    },
    "status_corrected_by": "receipts/headless/NOETIC_COMPILER_STAGE_AUDIT.json",
-   "why": "recorded AUTOMATIC, but its receipt (KERNEL_LIBRARY.json) has no specimen field, never names Qwen/Qwen3-30B-A3B, and catalogues kernels only for qwen38 organs (deltanet, gqa_attention, mlp_down, mlp_gate_up). No kernel was planned for any MoE organ."
+   "why": "was recorded AUTOMATIC while its library held no kernel for any MoE organ. 18 expert-table kernels that already existed in the routed runtime are now registered, and the stage has been run against model #2's organ graph: 2 of 6 organs have a competent kernel, 4 do not (embed, lm_head, moe_router, rmsnorm)."
   },
   {
    "stage": "DeviceCompiler",
@@ -160,5 +166,7 @@
  "pass_corrected_by": "receipts/headless/NOETIC_COMPILER_BLOCK_CHECK.json",
  "pass_correction_reason": "the receipt reported pass=true while two of its own eight stages were BLOCKED and three of four acceptance clauses were unmet. A receipt whose pass flag ignores its own blocked stages is the self-certified PASS \u00a7102 forbids.",
  "n_stages_automatic_on_model_2": 5,
- "stage_audit": "receipts/headless/NOETIC_COMPILER_STAGE_AUDIT.json"
+ "stage_audit": "receipts/headless/NOETIC_COMPILER_STAGE_AUDIT.json",
+ "n_stages_run_for_model_2": 6,
+ "kernel_planner_note": "KernelPlanner now RUNS for model #2 but with gaps, so it is not counted as AUTOMATIC: 4 of 6 organs still have no competent kernel."
 }

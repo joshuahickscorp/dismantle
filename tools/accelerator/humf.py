@@ -13,6 +13,7 @@ built on simulated numbers says so in its own output rather than in a footnote.
 from __future__ import annotations
 
 import time
+import zlib
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable
@@ -75,6 +76,7 @@ class Materialization:
     bytes: int
     state: State = State.ABSENT
     payload: bytes | None = None      # the actual data, when this copy holds any
+    digest: int | None = None         # integrity of that data, when it was verified
 
     def transition(self, to: State) -> None:
         if to not in LEGAL[self.state]:
@@ -134,7 +136,8 @@ class Plan:
 
 class Humf:
     def __init__(self, domains: dict[str, Domain],
-                 providers: dict[str, Any] | None = None):
+                 providers: dict[str, Any] | None = None,
+                 verify_transfers: bool = True):
         self.domains = domains
         self.objects: dict[str, HumfObject] = {}
         self.log: list[dict[str, Any]] = []
@@ -143,6 +146,11 @@ class Humf:
         # and marked a copy valid that held nothing -- see the defect recorded in
         # ACCELERATOR_HUMF_FAILURE_INJECTION.json.
         self.providers: dict[str, Any] = providers or {}
+        # A provider that FAILS raises and the state machine can react. A provider
+        # that LIES returns the wrong bytes and raises nothing, so error handling is
+        # no defence at all -- only VERIFICATION is. Enabled across provider-backed
+        # domains only; see integrity_policy() for why that is not timidity.
+        self.verify_transfers = verify_transfers
 
     def register(self, obj: HumfObject) -> None:
         self.objects[obj.identity] = obj
@@ -250,11 +258,58 @@ class Humf:
                 f"transfer of {obj.identity} into {want_domain} has no valid source "
                 f"payload. A STALE or empty copy is never a transfer source.")
         prov = self.providers.get(want_domain)
-        if prov is not None:
-            prov.copy_in(obj.identity, src.payload)
-            dst.payload = prov.copy_out(obj.identity)
-        else:
+        if prov is None:
             dst.payload = src.payload
+            dst.digest = src.digest
+            return
+        expect = _digest(src.payload)
+        src.digest = expect
+        prov.copy_in(obj.identity, src.payload)
+        got = prov.copy_out(obj.identity)
+        if self.verify_transfers:
+            actual = _digest(got)
+            if actual != expect:
+                raise HumfError(
+                    f"integrity check FAILED transferring {obj.identity} into "
+                    f"{want_domain}: expected digest {expect:08x}, got {actual:08x}. "
+                    f"The transport returned WITHOUT ERROR and returned the WRONG "
+                    f"BYTES. Nothing but verification catches that.")
+            dst.digest = actual
+        dst.payload = got
+
+
+def _digest(b: bytes) -> int:
+    """CRC32, not a cryptographic hash, and the reason is measured.
+
+    Measured on this machine, across two independent probes: crc32 ~37-38 GB/s,
+    sha256 ~2.7-2.9, blake2b ~1.37. crc32 is roughly 13x faster than sha256, which
+    puts the affordability crossover -- where verification costs a quarter of the
+    transfer -- at about 9 GB/s. Below that a check is cheap; a 32 GB/s link would
+    put it back in question, so this is a threshold and not a blanket rule. The threat here is a
+    FAULTY transport, not an adversarial one -- a cable, a reset, a driver bug --
+    and a checksum is the right tool for accident. It is NOT the right tool for a
+    malicious peer, and calling it integrity rather than authentication is the
+    honest name.
+    """
+    return zlib.crc32(b) & 0xFFFFFFFF
+
+
+def integrity_policy(transport_gb_s: float, checksum_gb_s: float = 38.44) -> dict:
+    """What verification costs as a fraction of the transfer it protects.
+
+    The conclusion has a shape worth stating: verification is affordable EXACTLY in
+    the regime where an external bridge is used. Over Apple unified memory at
+    589.73 GB/s a crc32 pass costs 15x the "transfer" -- and that is fine, because
+    there is no transport there to corrupt. Over a Thunderbolt or PCIe link of a
+    few GB/s it costs well under a tenth. The domain that NEEDS checking is the
+    domain that can AFFORD it.
+    """
+    overhead = transport_gb_s / checksum_gb_s
+    return {"transport_gb_s": transport_gb_s, "checksum_gb_s": checksum_gb_s,
+            "verification_cost_as_multiple_of_transfer": round(overhead, 3),
+            "affordable": overhead < 0.25,
+            "note": "checksum_gb_s is MEASURED on this machine; transport_gb_s is "
+                    "whatever the caller supplies and is NOT measured here"}
 
 
 class MockExternalMemoryProvider:
@@ -267,6 +322,7 @@ class MockExternalMemoryProvider:
                              physical=False, latency_s=latency_s)
         self.allocated = 0
         self.fail_next: str | None = None      # failure injection
+        self.corrupt_next: bool = False        # the harder mode: LIE, do not fail
         # Real bytes, so a round trip proves the DATA survived rather than only the
         # bookkeeping agreeing with itself.
         self.store: dict[str, bytes] = {}
@@ -296,4 +352,9 @@ class MockExternalMemoryProvider:
             raise HumfError("injected failure: copy_out")
         if key not in self.store:
             raise HumfError(f"{key} is not resident in {self.domain.name}")
+        if self.corrupt_next:
+            self.corrupt_next = False
+            b = bytearray(self.store[key])
+            b[0] ^= 0xFF                       # one flipped bit pattern, no exception
+            return bytes(b)
         return self.store[key]

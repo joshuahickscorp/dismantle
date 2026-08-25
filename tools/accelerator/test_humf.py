@@ -206,3 +206,73 @@ def test_recompute_actually_runs_the_recipe():
     assert plan.action == "RECOMPUTE"
     m = h.execute("W42", plan, "APPLE_UM")
     assert m.state is State.CLEAN and m.payload == b"\xAB" * NB
+
+
+# ------------------------------------------- the harder failure: a provider that LIES
+
+def test_silent_corruption_is_ACCEPTED_when_verification_is_off():
+    """The control that makes the next test mean something. A provider that returns
+    the wrong bytes WITHOUT RAISING defeats error handling entirely -- the transfer
+    "succeeds", the copy is marked CLEAN, and the data is wrong. This is what the
+    failure-injection work explicitly listed as not modelled."""
+    from humf import _digest
+    mp = MockExternalMemoryProvider(capacity_bytes=1 << 30, bandwidth_gb_s=5.0,
+                                    latency_s=1e-4)
+    doms = {"APPLE_UM": Domain("APPLE_UM", 96 << 30, 589.73, physical=True),
+            mp.domain.name: mp.domain}
+    h = Humf(doms, providers={mp.domain.name: mp}, verify_transfers=False)
+    o = HumfObject("W42", "tensor", N, "f32", recompute_cost_s=0.05)
+    o.place(Materialization("APPLE_UM", "dense_f32", "row_major", NB, State.CLEAN,
+                            payload=PAYLOAD))
+    h.register(o)
+    mp.corrupt_next = True
+    h.execute("W42", h.plan_acquire("W42", "MOCK_EXTERNAL_VRAM"), "MOCK_EXTERNAL_VRAM")
+    dst = o.materializations["MOCK_EXTERNAL_VRAM"]
+    assert dst.state is State.CLEAN                     # no error was raised
+    assert "MOCK_EXTERNAL_VRAM" in o.valid_copies()     # and it counts as valid
+    assert dst.payload != PAYLOAD                       # while holding the wrong bytes
+    assert _digest(dst.payload) != _digest(PAYLOAD)
+
+
+def test_verification_catches_what_error_handling_cannot():
+    h, o, mp = fabric()
+    mp.corrupt_next = True
+    with pytest.raises(HumfError, match="integrity check FAILED"):
+        h.execute("W42", h.plan_acquire("W42", "MOCK_EXTERNAL_VRAM"),
+                  "MOCK_EXTERNAL_VRAM")
+    dst = o.materializations["MOCK_EXTERNAL_VRAM"]
+    assert dst.state is State.INVALID
+    assert "MOCK_EXTERNAL_VRAM" not in o.valid_copies()
+    assert o.materializations["APPLE_UM"].state is State.CLEAN   # source intact
+
+
+def test_a_clean_transfer_records_a_matching_digest_on_both_copies():
+    """Verification must not only reject -- it must also ACCEPT, and leave the
+    integrity it checked recorded rather than thrown away."""
+    h, o, mp = fabric()
+    h.execute("W42", h.plan_acquire("W42", "MOCK_EXTERNAL_VRAM"), "MOCK_EXTERNAL_VRAM")
+    src = o.materializations["APPLE_UM"]
+    dst = o.materializations["MOCK_EXTERNAL_VRAM"]
+    assert src.digest is not None and src.digest == dst.digest
+
+
+def test_integrity_policy_says_verification_is_affordable_where_it_is_needed():
+    """The design conclusion, from a MEASURED checksum rate: over Apple unified
+    memory a checksum costs many times the transfer and is not affordable -- and
+    does not need to be, since there is no transport there to corrupt. Over an
+    external link of a few GB/s it costs under a tenth. The domain that needs
+    checking is the domain that can afford it."""
+    from humf import integrity_policy
+    um = integrity_policy(589.73)
+    ext = integrity_policy(4.0)
+    assert um["affordable"] is False and um["verification_cost_as_multiple_of_transfer"] > 10
+    assert ext["affordable"] is True and ext["verification_cost_as_multiple_of_transfer"] < 0.15
+
+
+def test_a_lying_provider_is_named_as_a_different_threat_from_a_failing_one():
+    """crc32 is the right tool for ACCIDENT and the wrong tool for an ADVERSARY.
+    Naming it integrity rather than authentication is the honest label, and the
+    module says so where someone would otherwise assume more."""
+    import humf
+    assert "malicious" in humf._digest.__doc__
+    assert "authentication" in humf._digest.__doc__

@@ -80,3 +80,101 @@ def test_conformance_states_it_is_not_a_cuda_differential():
     c = c2m.conformance([{"matches_oracle": True}])
     assert c["is_a_cuda_differential"] is False
     assert c["oracle"] == "numpy on CPU"
+
+
+# ------------------------------------------------------------- T1 runtime (G045)
+
+import cuda_runtime as cr  # noqa: E402
+
+_KERNELS = {"vadd": "__global__ void vadd(const float* a, const float* b, float* c, int n){"
+                    " int i = blockIdx.x * blockDim.x + threadIdx.x; if (i < n) c[i] = a[i] + b[i]; }"}
+_SAFE = """
+cudaMalloc((void**)&d_a, N*sizeof(float));
+cudaMalloc((void**)&d_b, N*sizeof(float));
+cudaMalloc((void**)&d_c, N*sizeof(float));
+cudaMemcpy(d_a, h_a, N*sizeof(float), cudaMemcpyHostToDevice);
+cudaMemcpy(d_b, h_b, N*sizeof(float), cudaMemcpyHostToDevice);
+vadd<<<(N+255)/256, 256>>>(d_a, d_b, d_c, N);
+cudaDeviceSynchronize();
+cudaMemcpy(h_c, d_c, N*sizeof(float), cudaMemcpyDeviceToHost);
+"""
+_HAZARD = _SAFE.replace("vadd<<<", "h_a[0] = 999.0f;\nvadd<<<")
+
+
+@pytest.mark.parametrize("bad,frag", [
+    ("cudaStreamCreate(&s);", "streams"),
+    ("cudaMemcpyAsync(a,b,4,cudaMemcpyHostToDevice,0);", "asynchronous"),
+    ("cudaMallocManaged((void**)&p, 4);", "managed memory"),
+    ("cudaMemset(d_a, 0, 4);", "memset"),
+    ("int x = foo();", "outside the C2M-T1 subset"),
+])
+def test_t1_refuses_by_name(bad, frag):
+    with pytest.raises(c2m.C2MRefusal, match=frag):
+        cr.parse_host(bad)
+
+
+def test_may_delete_copies_names_the_offending_statement():
+    """The condition on S015 §9. A host write after the copy makes the alias
+    observationally different from the snapshot, so the deletion is refused."""
+    assert cr.parse_host(_SAFE).may_delete_copies()[0] is True
+    ok, why = cr.parse_host(_HAZARD).may_delete_copies()
+    assert ok is False and "h_a" in why and "999.0f" in why
+
+
+def test_a_write_after_the_launch_does_not_block_the_deletion():
+    """The guard must be about the SNAPSHOT WINDOW, not about host writes in
+    general -- otherwise it would refuse programs that are perfectly safe."""
+    after = _SAFE.replace("cudaDeviceSynchronize();", "cudaDeviceSynchronize();\nh_a[0] = 5.0f;")
+    assert cr.parse_host(after).may_delete_copies()[0] is True
+
+
+def test_both_modes_agree_on_a_safe_program():
+    pytest.importorskip("mlx.core")
+    import numpy as np
+    n = 4096
+    rng = np.random.default_rng(0)
+    a, b = (rng.standard_normal(n).astype(np.float32) for _ in range(2))
+    arr = lambda: {"h_a": a.copy(), "h_b": b.copy(), "h_c": np.zeros(n, np.float32)}
+    f = cr.execute_host(_SAFE, _KERNELS, arr(), elements=n, mode="FAITHFUL")
+    u = cr.execute_host(_SAFE, _KERNELS, arr(), elements=n, mode="UNIFIED")
+    assert np.array_equal(f["host"]["h_c"], u["host"]["h_c"])
+    assert np.max(np.abs(f["host"]["h_c"] - (a + b))) < 1e-5
+    assert (f["copies_performed"], u["copies_performed"]) == (3, 0)
+
+
+def test_the_hazard_is_real_and_the_guard_is_necessary():
+    """A refusal nobody has watched be NECESSARY is indistinguishable from one that
+    is merely cautious. Bypassing the guard must produce a WRONG answer."""
+    pytest.importorskip("mlx.core")
+    import numpy as np
+    n = 4096
+    rng = np.random.default_rng(3)
+    a, b = (rng.standard_normal(n).astype(np.float32) for _ in range(2))
+    arr = lambda: {"h_a": a.copy(), "h_b": b.copy(), "h_c": np.zeros(n, np.float32)}
+    f = cr.execute_host(_HAZARD, _KERNELS, arr(), elements=n, mode="FAITHFUL")
+    u = cr.execute_host(_HAZARD, _KERNELS, arr(), elements=n, mode="UNIFIED", _unsafe_ok=True)
+    assert abs(f["host"]["h_c"][0] - u["host"]["h_c"][0]) > 100
+    assert np.array_equal(f["host"]["h_c"][1:], u["host"]["h_c"][1:])  # one element only
+    with pytest.raises(c2m.C2MRefusal):
+        cr.execute_host(_HAZARD, _KERNELS, arr(), elements=n, mode="UNIFIED")
+
+
+def test_uninitialised_device_read_is_refused():
+    pytest.importorskip("mlx.core")
+    import numpy as np
+    src = ("cudaMalloc((void**)&d_a, N*sizeof(float));\n"
+           "cudaMalloc((void**)&d_b, N*sizeof(float));\n"
+           "cudaMalloc((void**)&d_c, N*sizeof(float));\n"
+           "vadd<<<1,256>>>(d_a, d_b, d_c, N);\n")
+    with pytest.raises(c2m.C2MRefusal, match="never written"):
+        cr.execute_host(src, _KERNELS, {"h_a": np.zeros(4, np.float32)},
+                        elements=4, mode="FAITHFUL")
+
+
+def test_t1_is_claimed_only_when_both_modes_agree():
+    assert cr.conformance_t1([])["tier_claimed"] == "C2M-T0"
+    assert cr.conformance_t1([{"matches_oracle": True, "both_modes_agree": False}]
+                             )["tier_claimed"] == "C2M-T0"
+    c = cr.conformance_t1([{"matches_oracle": True, "both_modes_agree": True}])
+    assert c["tier_claimed"] == "C2M-T1"
+    assert "FRONTEND" in c["higher_tiers"]["C2M-T2"] or "C2M frontend" in c["higher_tiers"]["C2M-T2"]

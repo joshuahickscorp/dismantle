@@ -8,17 +8,17 @@
    "why_it_exists": "a discrete GPU has its own physical memory the CPU cannot address",
    "underlying_problem": "data must physically cross PCIe to be computed on",
    "apple_equivalent": "none needed; CPU and GPU address the same physical memory",
-   "hawking_equivalent": "operands stay resident; no copy is issued at all",
+   "hawking_equivalent": "cuda_runtime.execute_host UNIFIED mode: cudaMalloc becomes an alias and both cudaMemcpy directions become no-ops, guarded by may_delete_copies()",
    "semantic_gap": "DELETED_BY_UNIFIED_MEMORY",
    "performance_gap": {
     "measured": true,
-    "value": "per-call copying costs 7.17-7.44x on a fused elementwise op, reproducible to 3.74% across 3 runs",
-    "receipt": "receipts/headless/ACCELERATOR_FRONT_G_P6.json"
+    "value": "eliminating the copies is worth 7.4x on the copy itself (P6 microbenchmark) and 1.7x inside a translated host program",
+    "receipt": "receipts/headless/ACCELERATOR_FRONT_G_P6.json + ACCELERATOR_C2M_T1_RUNTIME.json"
    },
    "priority": "P0",
-   "test_corpus": "fused mul->relu->silu, 2^24 f32, resident vs copied",
+   "test_corpus": "vadd and vmul host programs at 4096 and 2^22 in both modes, plus a hazard program that writes its host buffer between the copy and the launch",
    "current_winner": "Hawking resident-operand path",
-   "remaining_limitation": "the comparison uses the NAIVE CUDA pattern; a competent CUDA programmer hoists the upload and does not pay this",
+   "remaining_limitation": "THE DELETION IS CONDITIONAL, and calling this gap deleted without the condition would be wrong. A CUDA host-to-device copy is a SNAPSHOT; an alias is a LIVE REFERENCE. A program that writes the host buffer after the copy and before the launch DIVERGES -- demonstrated at 999.36 in exactly one element with every other element bit-identical. may_delete_copies() refuses those programs by name. Also unhandled: device-to-device copies, async copies, pinned and managed memory, all refused rather than emulated.",
    "evidence": "receipts/headless/ACCELERATOR_FRONT_G_P6.json"
   },
   {

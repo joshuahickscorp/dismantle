@@ -476,3 +476,72 @@ def test_kernel_cache_returns_the_same_object():
     b = air.metal_kernel(mx, name="t_cache", input_names=["y", "off"],
                          output_names=["out"], source=src, ensure_row_contiguous=True)
     assert a is b
+
+
+# ------------------------------------------------------------ graphs (G046/G045)
+
+def _body(n, src):
+    return f"uint i=thread_position_in_grid.x; if(i<{n}u) out[i]={src}[i]*1.5f+0.25f;"
+
+
+def _chain(n, k):
+    g = air.AirGraph(f"c{k}", externals=["x"]); prev = "x"
+    for j in range(k):
+        g.nodes.append(air.AirGraphNode(f"n{j}", _body(n, prev), [prev], n)); prev = f"n{j}"
+    return g
+
+
+def _fan(n, k):
+    g = air.AirGraph(f"f{k}", externals=["x"])
+    for j in range(k):
+        g.nodes.append(air.AirGraphNode(f"n{j}", _body(n, "x"), ["x"], n))
+    return g
+
+
+def test_graph_depth_and_width_separate_ordering_from_independence():
+    """The two halves of what CUDA graphs and streams offer. A chain can only be
+    batched; a fan is the only shape where concurrency could possibly help."""
+    c, f = _chain(4096, 8), _fan(4096, 8)
+    assert (c.serial_depth(), c.width()) == (8, 1)
+    assert (f.serial_depth(), f.width()) == (1, 8)
+    assert c.submissions() == f.submissions() == 1
+
+
+def test_graph_refuses_a_forward_reference():
+    g = air.AirGraph("bad", externals=["x"])
+    g.nodes.append(air.AirGraphNode("a", _body(64, "later"), ["later"], 64))
+    with pytest.raises(ValueError, match="neither an external nor a node"):
+        g.validate()
+
+
+def test_graph_refuses_duplicate_node_names():
+    g = air.AirGraph("dup", externals=["x"])
+    g.nodes += [air.AirGraphNode("a", _body(64, "x"), ["x"], 64),
+                air.AirGraphNode("a", _body(64, "x"), ["x"], 64)]
+    with pytest.raises(ValueError, match="unique"):
+        g.validate()
+
+
+def test_graph_executes_a_chain_in_order():
+    """A chain of 1.5x+0.25 is order-sensitive: a dropped or reordered node changes
+    the answer, so matching numpy proves the dependency edges were honoured."""
+    pytest.importorskip("mlx.core")
+    import numpy as np
+    x = np.random.default_rng(1).standard_normal(4096).astype(np.float32)
+    env = air.execute_graph(_chain(4096, 4), {"x": x})
+    ref = x
+    for _ in range(4):
+        ref = ref * 1.5 + 0.25
+    assert np.max(np.abs(np.array(env["n3"]) - ref)) < 1e-5
+
+
+def test_eager_mode_is_a_control_not_a_feature():
+    """eager=True exists only so the batched number has a baseline. It must produce
+    the SAME answer -- if it did not, the comparison would be between two different
+    computations rather than two submission strategies."""
+    pytest.importorskip("mlx.core")
+    import numpy as np
+    x = np.random.default_rng(4).standard_normal(4096).astype(np.float32)
+    a = air.execute_graph(_chain(4096, 4), {"x": x})["n3"]
+    b = air.execute_graph(_chain(4096, 4), {"x": x}, eager=True)["n3"]
+    assert np.array_equal(np.array(a), np.array(b))

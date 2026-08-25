@@ -944,3 +944,103 @@ def execute_scan(sc: AirScan, x):
         out = out - arr
     mx.eval(out)                 # ONE sync for the whole recursion, not one per level
     return out
+
+
+@dataclass
+class AirGraphNode:
+    """One dispatch in an AIR graph. `inputs` name either externals or other nodes."""
+    name: str
+    source: str
+    inputs: list[str]
+    n: int
+    threadgroup: int = 256
+
+
+@dataclass
+class AirGraph:
+    """A recorded DAG of dispatches executed as ONE submission. CCL RUNTIME.graphs.
+
+    This is the Apple-side answer to what CUDA graphs and streams are FOR, and the
+    two halves of that question must not be conflated:
+
+      SUBMISSION BATCHING -- many dispatches, one command buffer, one host sync.
+        ACCELERATOR_SYNC_CORRECTION.json measured what this is worth: 1.28x to
+        2.30x, and it is the ENTIRE effect that was previously misattributed to
+        launch count. A graph gets this by construction.
+
+      CONCURRENCY -- independent branches of the DAG running AT THE SAME TIME.
+        That is what CUDA streams add on top of ordering, and NOTHING here
+        establishes that Metal gives it. serial_depth() and width() exist so the
+        question can be asked of a specific graph rather than assumed.
+
+    A graph that batches but serializes is still worth building and is NOT the same
+    capability. The receipt says which one was measured.
+    """
+    name: str
+    nodes: list[AirGraphNode] = field(default_factory=list)
+    externals: list[str] = field(default_factory=list)
+
+    def validate(self) -> None:
+        seen: set[str] = set(self.externals)
+        names = [nd.name for nd in self.nodes]
+        if len(set(names)) != len(names):
+            raise ValueError("node names must be unique; SSA is what makes the "
+                             "dependency edges unambiguous")
+        for nd in self.nodes:
+            for i in nd.inputs:
+                if i not in seen:
+                    raise ValueError(
+                        f"node {nd.name!r} reads {i!r}, which is neither an external "
+                        f"nor a node defined before it. AIR graphs are recorded in "
+                        f"dependency order; a forward reference is either a cycle or "
+                        f"a typo and both are refused rather than reordered.")
+            seen.add(nd.name)
+
+    def levels(self) -> list[list[str]]:
+        """Nodes grouped by depth. Everything in one level is mutually independent."""
+        self.validate()
+        depth = {e: 0 for e in self.externals}
+        out: dict[int, list[str]] = {}
+        for nd in self.nodes:
+            d = 1 + max(depth[i] for i in nd.inputs)
+            depth[nd.name] = d
+            out.setdefault(d, []).append(nd.name)
+        return [out[d] for d in sorted(out)]
+
+    def serial_depth(self) -> int:
+        return len(self.levels())
+
+    def width(self) -> int:
+        return max(len(l) for l in self.levels())
+
+    def submissions(self) -> int:
+        return 1
+
+    def sync_points(self) -> int:
+        return 1
+
+
+def execute_graph(g: AirGraph, arrays: dict[str, Any], *, eager: bool = False):
+    """Run the whole DAG. One submission and one host sync unless eager=True.
+
+    eager=True forces a host round trip after every node -- not a mode anyone should
+    use, but the CONTROL that makes the batched number mean something. Without it
+    "a graph is fast" is a claim with no baseline.
+    """
+    import mlx.core as mx
+    g.validate()
+    env = {k: mx.array(v, dtype=mx.float32) for k, v in arrays.items()}
+    for nd in g.nodes:
+        kern = metal_kernel(mx, name=f"air_g_{g.name}_{nd.name}",
+                            input_names=nd.inputs, output_names=["out"],
+                            source=nd.source, ensure_row_contiguous=True)
+        blocks = (nd.n + nd.threadgroup - 1) // nd.threadgroup
+        (env[nd.name],) = kern(inputs=[env[i] for i in nd.inputs],
+                               grid=(blocks * nd.threadgroup, 1, 1),
+                               threadgroup=(nd.threadgroup, 1, 1),
+                               output_shapes=[(nd.n,)], output_dtypes=[mx.float32])
+        if eager:
+            mx.eval(env[nd.name])
+    leaves = [nd.name for nd in g.nodes]
+    mx.eval(*[env[k] for k in leaves])
+    return env

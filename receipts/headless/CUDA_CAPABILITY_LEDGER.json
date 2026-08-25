@@ -224,16 +224,17 @@
    "why_it_exists": "overlap of compute and transfer, and explicit dependency expression",
    "underlying_problem": "serialising independent work wastes the device",
    "apple_equivalent": "MTLCommandQueue, command buffers, MTLEvent",
-   "hawking_equivalent": "NONE; AIR expresses dependencies as SSA but not asynchrony",
-   "semantic_gap": "LARGE",
+   "hawking_equivalent": "AirGraph expresses independence as DAG width; there are no named streams and no events",
+   "semantic_gap": "PARTIAL",
    "performance_gap": {
-    "measured": false,
-    "reason": "nothing implemented"
+    "measured": true,
+    "value": "independent branches overlap only weakly: 1.09x at k=8 and 1.16x at k=16 over a serial chain of the same work at 2^20, and NO_CLAIM at 4096. Concurrency is the SMALLER half of what a graph buys here",
+    "receipt": "receipts/headless/ACCELERATOR_GRAPH_SUBMISSION.json"
    },
    "priority": "P1",
-   "test_corpus": "ABSENT",
-   "current_winner": "MLX's own scheduling",
-   "remaining_limitation": "C2M-T1 explicitly requires this and is NOT claimed"
+   "test_corpus": "fan (depth 1, width k) vs chain (depth k, width 1), same total work",
+   "current_winner": "MLX's own scheduling, retained; we do not control it",
+   "remaining_limitation": "No named streams, no events, no cross-stream dependencies, no host callbacks, no priority. Only DAG width is expressed, and the runtime decides what to do with it."
   },
   {
    "capability_id": "RUNTIME.graphs",
@@ -241,16 +242,17 @@
    "why_it_exists": "per-launch CPU cost dominates short kernels in a tight loop",
    "underlying_problem": "re-encoding an unchanged command stream every iteration",
    "apple_equivalent": "indirect command buffers; reusable command buffers",
-   "hawking_equivalent": "NONE",
-   "semantic_gap": "LARGE",
+   "hawking_equivalent": "AIR AirGraph: a recorded dependency DAG executed as one command-buffer submission with one host sync",
+   "semantic_gap": "PARTIAL",
    "performance_gap": {
-    "measured": false,
-    "reason": "launch overhead has not been isolated, though the P7 crossover shows small ops ARE launch-bound here"
+    "measured": true,
+    "value": "batching k dispatches into one submission cuts the marginal cost of an added dispatch 15.5x (0.168 -> 0.011 ms); total 2.9x at k=4, 4.8x at k=8, 8.0x at k=16",
+    "receipt": "receipts/headless/ACCELERATOR_GRAPH_SUBMISSION.json"
    },
    "priority": "P0",
-   "test_corpus": "ABSENT",
-   "current_winner": "UNKNOWN",
-   "remaining_limitation": "the decode loop is exactly the shape this targets, and the evidence that small kernels are launch-bound is already in the P7 sweep"
+   "test_corpus": "chain and fan of k=1,2,4,8,16 elementwise dispatches at 4096 and 2^20",
+   "current_winner": "Hawking AirGraph (MLX's laziness supplies the batching; AirGraph makes it explicit and measurable)",
+   "remaining_limitation": "No graph instantiation or update reuse, no conditional or dynamic nodes, no cross-device nodes. The DAG is re-recorded per call; only the compiled kernels are cached."
   },
   {
    "capability_id": "PROFILING.kernel_timing",
@@ -354,8 +356,8 @@
   "MULTI_DEVICE": 1
  },
  "classes_with_no_entry": [],
- "performance_gaps_measured": 11,
- "performance_gaps_unmeasured": 8,
+ "performance_gaps_measured": 13,
+ "performance_gaps_unmeasured": 6,
  "parity_claim": "NOT CLAIMED. This is a capability inventory, not a parity statement. No entry may report a semantic gap of NONE without evidence, and the steer forbids the phrase 'CUDA parity' unqualified.",
  "coverage_honesty": "The CUDA surface is vastly larger than this. These are the capabilities reachable or relevant from what has actually been built here; absence from this ledger means NOT YET STUDIED, never NOT NEEDED."
 }

@@ -1,0 +1,79 @@
+"""CCL pins. FRONT B (G044). The validator exists to stop a ledger with holes from
+reading as a ledger with coverage."""
+import json
+import sys
+from pathlib import Path
+
+import pytest
+
+REPO = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(REPO / "tools/accelerator"))
+import ccl  # noqa: E402
+
+
+def good(**over):
+    base = dict(capability_id="MEMORY.t", cuda_mechanism="m", why_it_exists="w",
+                underlying_problem="u", apple_equivalent="a", hawking_equivalent="h",
+                semantic_gap="PARTIAL", performance_gap=ccl.unmeasured("none"),
+                priority="P1", test_corpus="t", current_winner="w",
+                remaining_limitation="l")
+    base.update(over)
+    return base
+
+
+def test_every_named_field_is_required():
+    for f in ccl.FIELDS:
+        d = good()
+        d.pop(f)
+        with pytest.raises(ccl.CCLError, match="missing"):
+            ccl.entry(**d)
+
+
+def test_parity_claim_without_evidence_is_refused():
+    with pytest.raises(ccl.CCLError, match="PARITY CLAIM"):
+        ccl.entry(**good(semantic_gap="NONE"))
+
+
+def test_parity_claim_with_evidence_is_allowed():
+    e = ccl.entry(**good(semantic_gap="NONE", evidence="receipts/x.json"))
+    assert e["semantic_gap"] == "NONE"
+
+
+def test_measured_performance_gap_requires_a_receipt():
+    with pytest.raises(ccl.CCLError, match="needs a receipt"):
+        ccl.entry(**good(performance_gap={"measured": True, "value": "2x"}))
+
+
+def test_capability_id_must_name_a_real_class():
+    with pytest.raises(ccl.CCLError, match="must start with"):
+        ccl.entry(**good(capability_id="VIBES.t"))
+
+
+def test_unknown_gap_and_priority_are_refused():
+    with pytest.raises(ccl.CCLError):
+        ccl.entry(**good(semantic_gap="SMALLISH"))
+    with pytest.raises(ccl.CCLError):
+        ccl.entry(**good(priority="URGENT"))
+
+
+def test_duplicate_ids_refused():
+    with pytest.raises(ccl.CCLError, match="duplicate"):
+        ccl.build([ccl.entry(**good()), ccl.entry(**good())])
+
+
+def test_built_ledger_never_claims_parity():
+    led = ccl.build([ccl.entry(**good())])
+    assert "NOT CLAIMED" in led["parity_claim"]
+    assert "NOT YET STUDIED" in led["coverage_honesty"]
+
+
+def test_the_real_ledger_on_disk_is_honest():
+    p = REPO / "receipts/headless/CUDA_CAPABILITY_LEDGER.json"
+    led = json.loads(p.read_text())
+    assert led["count"] >= 17
+    assert led["classes_with_no_entry"] == []
+    # most gaps are unmeasured, and the ledger must say so rather than imply coverage
+    assert led["performance_gaps_unmeasured"] > led["performance_gaps_measured"]
+    for e in led["entries"]:
+        if e["semantic_gap"] == "NONE":
+            assert e.get("evidence"), f"{e['capability_id']} claims parity with no evidence"

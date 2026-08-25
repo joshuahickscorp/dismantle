@@ -1,0 +1,317 @@
+{
+ "schema": "hawking.accelerator.cuda_capability_ledger.v1",
+ "generated_at": "2026-08-25T12:20:46Z",
+ "entries": [
+  {
+   "capability_id": "MEMORY.host_device_copy",
+   "cuda_mechanism": "cudaMalloc + cudaMemcpy H2D/D2H around every kernel",
+   "why_it_exists": "a discrete GPU has its own physical memory the CPU cannot address",
+   "underlying_problem": "data must physically cross PCIe to be computed on",
+   "apple_equivalent": "none needed; CPU and GPU address the same physical memory",
+   "hawking_equivalent": "operands stay resident; no copy is issued at all",
+   "semantic_gap": "DELETED_BY_UNIFIED_MEMORY",
+   "performance_gap": {
+    "measured": true,
+    "value": "per-call copying costs 7.17-7.44x on a fused elementwise op, reproducible to 3.74% across 3 runs",
+    "receipt": "receipts/headless/ACCELERATOR_FRONT_G_P6.json"
+   },
+   "priority": "P0",
+   "test_corpus": "fused mul->relu->silu, 2^24 f32, resident vs copied",
+   "current_winner": "Hawking resident-operand path",
+   "remaining_limitation": "the comparison uses the NAIVE CUDA pattern; a competent CUDA programmer hoists the upload and does not pay this",
+   "evidence": "receipts/headless/ACCELERATOR_FRONT_G_P6.json"
+  },
+  {
+   "capability_id": "MEMORY.quantized_weight_access",
+   "cuda_mechanism": "dequantize to dense then call cuBLAS, or a fused dequant-GEMM kernel",
+   "why_it_exists": "tensor cores consume dense formats; compact formats must be expanded",
+   "underlying_problem": "compact weights are not directly consumable by library GEMM",
+   "apple_equivalent": "none provided; MLX quantized ops cover its own formats only",
+   "hawking_equivalent": "representation-native matvec reading packed nibbles + f16 group scales",
+   "semantic_gap": "PARTIAL",
+   "performance_gap": {
+    "measured": true,
+    "value": "no advantage below ~64 MiB; 2.08x at 256 MiB where it becomes bandwidth-bound",
+    "receipt": "receipts/headless/ACCELERATOR_FRONT_D_P7.json"
+   },
+   "priority": "P0",
+   "test_corpus": "real Qwen3-30B-A3B expert tensor at ws_rtn_q4_g64",
+   "current_winner": "Hawking native kernel above the crossover; nothing below it",
+   "remaining_limitation": "matvec only; no GEMM, no batched form, and one expert sits BELOW the crossover so single-expert use gains nothing",
+   "evidence": "receipts/headless/ACCELERATOR_FRONT_D_P7.json"
+  },
+  {
+   "capability_id": "COMPILER.kernel_fusion",
+   "cuda_mechanism": "hand-fused kernels, or a compiler like Triton/torch.compile",
+   "why_it_exists": "each launch re-reads and re-writes memory an op chain need not touch",
+   "underlying_problem": "unfused chains are bandwidth-bound on intermediates",
+   "apple_equivalent": "MLX does not fuse an arbitrary elementwise chain automatically",
+   "hawking_equivalent": "AIR lowers a multi-op SSA chain into one kernel",
+   "semantic_gap": "PARTIAL",
+   "performance_gap": {
+    "measured": true,
+    "value": "1.71x over the naive 3-kernel translation, 2.62x over MLX",
+    "receipt": "receipts/headless/ACCELERATOR_FRONT_D_P5.json"
+   },
+   "priority": "P0",
+   "test_corpus": "mul->relu->silu chain, 2^24 f32",
+   "current_winner": "Hawking fused AIR program",
+   "remaining_limitation": "elementwise chains over one shape and dtype only",
+   "evidence": "receipts/headless/ACCELERATOR_FRONT_D_P5.json"
+  },
+  {
+   "capability_id": "COMPILER.jit_kernel_compilation",
+   "cuda_mechanism": "NVRTC / driver JIT of PTX at runtime",
+   "why_it_exists": "shapes and constants are not known until run time",
+   "underlying_problem": "AOT compilation cannot specialise on runtime values",
+   "apple_equivalent": "Metal runtime library compilation; MLX exposes it via metal_kernel",
+   "hawking_equivalent": "AIR emits MSL, MLX JIT-compiles it",
+   "semantic_gap": "PARTIAL",
+   "performance_gap": {
+    "measured": false,
+    "reason": "compile latency has not been measured"
+   },
+   "priority": "P1",
+   "test_corpus": "the six AIR programs of P3",
+   "current_winner": "MLX JIT (retained; nothing here replaces it)",
+   "remaining_limitation": "xcrun metal is ABSENT on this machine, so AOT metallib compilation is unavailable and there is no offline compile path at all"
+  },
+  {
+   "capability_id": "COMPILER.specialization_constants",
+   "cuda_mechanism": "template parameters and __constant__ values baked at compile time",
+   "why_it_exists": "a constant known at compile time removes a load and enables unrolling",
+   "underlying_problem": "runtime values block optimisation",
+   "apple_equivalent": "Metal function constants",
+   "hawking_equivalent": "AirProgram.specialization emits const floats into the MSL",
+   "semantic_gap": "PARTIAL",
+   "performance_gap": {
+    "measured": false,
+    "reason": "specialisation was never isolated as its own arm"
+   },
+   "priority": "P2",
+   "test_corpus": "saxpy->relu with ALPHA as a specialization constant",
+   "current_winner": "UNKNOWN \u2014 never measured against a non-specialised variant",
+   "remaining_limitation": "scalar floats only; no types, no shapes, no predicates"
+  },
+  {
+   "capability_id": "EXECUTION.grid_block_thread",
+   "cuda_mechanism": "blockIdx/blockDim/threadIdx and the launch configuration",
+   "why_it_exists": "a portable way to index a data-parallel launch",
+   "underlying_problem": "mapping work onto a hierarchy of parallel units",
+   "apple_equivalent": "thread_position_in_grid and threadgroup sizing",
+   "hawking_equivalent": "C2M recognises the canonical global index and maps it",
+   "semantic_gap": "PARTIAL",
+   "performance_gap": {
+    "measured": false,
+    "reason": "indexing is not independently measurable"
+   },
+   "priority": "P0",
+   "test_corpus": "the four translated kernels of P4",
+   "current_winner": "Hawking C2M for the canonical form",
+   "remaining_limitation": "ONLY the 1-D canonical form; no 2-D or 3-D grids, no block-relative indexing, no grid-stride loops"
+  },
+  {
+   "capability_id": "EXECUTION.shared_memory",
+   "cuda_mechanism": "__shared__ arrays with block-scoped lifetime",
+   "why_it_exists": "a software-managed scratchpad far faster than global memory",
+   "underlying_problem": "reuse within a block should not go to DRAM",
+   "apple_equivalent": "threadgroup address space",
+   "hawking_equivalent": "NONE \u2014 C2M refuses any kernel using it",
+   "semantic_gap": "LARGE",
+   "performance_gap": {
+    "measured": false,
+    "reason": "nothing implemented, so nothing to measure"
+   },
+   "priority": "P0",
+   "test_corpus": "ABSENT: no tiled kernel exists yet",
+   "current_winner": "MLX and llama.cpp Metal, both of which use it",
+   "remaining_limitation": "blocks every tiled algorithm, which is most of GEMM and attention"
+  },
+  {
+   "capability_id": "EXECUTION.atomics",
+   "cuda_mechanism": "atomicAdd/atomicCAS on global and shared memory",
+   "why_it_exists": "concurrent accumulation without a separate reduction pass",
+   "underlying_problem": "many threads updating one location",
+   "apple_equivalent": "atomic_fetch_add_explicit in MSL",
+   "hawking_equivalent": "NONE \u2014 refused by C2M",
+   "semantic_gap": "LARGE",
+   "performance_gap": {
+    "measured": false,
+    "reason": "nothing implemented"
+   },
+   "priority": "P1",
+   "test_corpus": "ABSENT",
+   "current_winner": "MLX/Metal primitives",
+   "remaining_limitation": "blocks histogram, scatter, and any single-pass reduction"
+  },
+  {
+   "capability_id": "EXECUTION.warp_primitives",
+   "cuda_mechanism": "__shfl_sync, __ballot_sync, warp-level reduction",
+   "why_it_exists": "intra-warp exchange without shared memory or barriers",
+   "underlying_problem": "lane-to-lane communication inside a scheduling unit",
+   "apple_equivalent": "simd_shuffle and friends over a 32-wide SIMD group",
+   "hawking_equivalent": "NONE",
+   "semantic_gap": "UNKNOWN",
+   "performance_gap": {
+    "measured": false,
+    "reason": "nothing implemented and Apple's semantics not yet studied"
+   },
+   "priority": "P1",
+   "test_corpus": "ABSENT",
+   "current_winner": "UNKNOWN",
+   "remaining_limitation": "CUDA warp is 32 and Apple SIMD group is 32, but divergence and sync semantics have NOT been compared and must not be assumed identical"
+  },
+  {
+   "capability_id": "EXECUTION.synchronization",
+   "cuda_mechanism": "__syncthreads and cooperative groups",
+   "why_it_exists": "phase separation inside a block",
+   "underlying_problem": "ordering between cooperating threads",
+   "apple_equivalent": "threadgroup_barrier",
+   "hawking_equivalent": "NONE \u2014 refused by C2M, and AIR cannot represent it",
+   "semantic_gap": "LARGE",
+   "performance_gap": {
+    "measured": false,
+    "reason": "nothing implemented"
+   },
+   "priority": "P0",
+   "test_corpus": "ABSENT",
+   "current_winner": "MLX/Metal",
+   "remaining_limitation": "AIR has no synchronization node at all, which is a stated gap in FRONT A, not an oversight"
+  },
+  {
+   "capability_id": "MATH.gemm",
+   "cuda_mechanism": "cuBLAS GEMM on tensor cores",
+   "why_it_exists": "matrix multiply is the dominant cost of a transformer",
+   "underlying_problem": "peak arithmetic needs tiling, blocking and hardware MMA units",
+   "apple_equivalent": "MLX matmul; Apple matrix coprocessor via MPS",
+   "hawking_equivalent": "NONE \u2014 only matvec exists",
+   "semantic_gap": "LARGE",
+   "performance_gap": {
+    "measured": false,
+    "reason": "no Hawking GEMM exists to compare"
+   },
+   "priority": "P0",
+   "test_corpus": "ABSENT",
+   "current_winner": "MLX, decisively, and it is retained as the qualified winner",
+   "remaining_limitation": "requires shared memory and warp primitives, both of which are themselves LARGE gaps above"
+  },
+  {
+   "capability_id": "MATH.reduction_and_scan",
+   "cuda_mechanism": "CUB block/device reduce and scan",
+   "why_it_exists": "reductions are latency-critical and hard to write well",
+   "underlying_problem": "tree reduction across a hierarchy with correct synchronization",
+   "apple_equivalent": "MLX reductions; simd_sum",
+   "hawking_equivalent": "NONE",
+   "semantic_gap": "LARGE",
+   "performance_gap": {
+    "measured": false,
+    "reason": "nothing implemented"
+   },
+   "priority": "P1",
+   "test_corpus": "ABSENT",
+   "current_winner": "MLX",
+   "remaining_limitation": "softmax and normalization both need this, so attention is blocked behind it"
+  },
+  {
+   "capability_id": "RUNTIME.streams_and_events",
+   "cuda_mechanism": "cudaStream_t, cudaEvent_t, async launch and dependency ordering",
+   "why_it_exists": "overlap of compute and transfer, and explicit dependency expression",
+   "underlying_problem": "serialising independent work wastes the device",
+   "apple_equivalent": "MTLCommandQueue, command buffers, MTLEvent",
+   "hawking_equivalent": "NONE; AIR expresses dependencies as SSA but not asynchrony",
+   "semantic_gap": "LARGE",
+   "performance_gap": {
+    "measured": false,
+    "reason": "nothing implemented"
+   },
+   "priority": "P1",
+   "test_corpus": "ABSENT",
+   "current_winner": "MLX's own scheduling",
+   "remaining_limitation": "C2M-T1 explicitly requires this and is NOT claimed"
+  },
+  {
+   "capability_id": "RUNTIME.graphs",
+   "cuda_mechanism": "CUDA Graphs: capture once, replay with minimal launch overhead",
+   "why_it_exists": "per-launch CPU cost dominates short kernels in a tight loop",
+   "underlying_problem": "re-encoding an unchanged command stream every iteration",
+   "apple_equivalent": "indirect command buffers; reusable command buffers",
+   "hawking_equivalent": "NONE",
+   "semantic_gap": "LARGE",
+   "performance_gap": {
+    "measured": false,
+    "reason": "launch overhead has not been isolated, though the P7 crossover shows small ops ARE launch-bound here"
+   },
+   "priority": "P0",
+   "test_corpus": "ABSENT",
+   "current_winner": "UNKNOWN",
+   "remaining_limitation": "the decode loop is exactly the shape this targets, and the evidence that small kernels are launch-bound is already in the P7 sweep"
+  },
+  {
+   "capability_id": "PROFILING.kernel_timing",
+   "cuda_mechanism": "cudaEventElapsedTime, Nsight Compute counters",
+   "why_it_exists": "optimisation without measurement is guessing",
+   "underlying_problem": "attributing time to a specific kernel on an async device",
+   "apple_equivalent": "Metal GPU counters; Instruments",
+   "hawking_equivalent": "bench.py wall-clock with warmup, IQR gate and an implausibility rejection",
+   "semantic_gap": "PARTIAL",
+   "performance_gap": {
+    "measured": false,
+    "reason": "the instrument is not itself benchmarked"
+   },
+   "priority": "P0",
+   "test_corpus": "every timed arm in P5, P6, P7",
+   "current_winner": "Hawking bench.py for comparisons",
+   "remaining_limitation": "WALL CLOCK ONLY \u2014 no DRAM byte counters, no occupancy, no stall reasons, so mechanism is inferred rather than observed"
+  },
+  {
+   "capability_id": "DEBUGGING.numerical_diagnostics",
+   "cuda_mechanism": "compute-sanitizer, device printf, cuda-gdb",
+   "why_it_exists": "silent numerical corruption is the worst failure mode",
+   "underlying_problem": "a wrong answer at speed looks like a right answer",
+   "apple_equivalent": "Metal shader validation, GPU frame capture",
+   "hawking_equivalent": "every candidate verified against an oracle BEFORE it is timed",
+   "semantic_gap": "PARTIAL",
+   "performance_gap": {
+    "measured": false,
+    "reason": "not a performance capability"
+   },
+   "priority": "P0",
+   "test_corpus": "P3 six programs, P4 four kernels, forge 15 variants",
+   "current_winner": "Hawking verify-before-time discipline",
+   "remaining_limitation": "oracle comparison only; no race detection, no OOB checking, no device-side assertion"
+  },
+  {
+   "capability_id": "MULTI_DEVICE.peer_access",
+   "cuda_mechanism": "cudaDeviceEnablePeerAccess, NVLink, NCCL collectives",
+   "why_it_exists": "multi-GPU training and inference need direct device-to-device paths",
+   "underlying_problem": "moving tensors between devices without a host bounce",
+   "apple_equivalent": "none on a single SoC; Thunderbolt/RDMA between machines",
+   "hawking_equivalent": "HUMF models the domains but only a MOCK external one exists",
+   "semantic_gap": "LARGE",
+   "performance_gap": {
+    "measured": false,
+    "reason": "no real second device exists; every transport number so far is SIMULATED and may not be cited as evidence"
+   },
+   "priority": "P2",
+   "test_corpus": "HUMF P8 across APPLE_UM and MOCK_EXTERNAL_VRAM",
+   "current_winner": "NOT APPLICABLE \u2014 no second physical device",
+   "remaining_limitation": "EGB-D0 has not been reached; no hardware is present"
+  }
+ ],
+ "count": 17,
+ "by_class": {
+  "MEMORY": 2,
+  "COMPILER": 3,
+  "EXECUTION": 5,
+  "MATH": 2,
+  "RUNTIME": 2,
+  "PROFILING": 1,
+  "DEBUGGING": 1,
+  "MULTI_DEVICE": 1
+ },
+ "classes_with_no_entry": [],
+ "performance_gaps_measured": 3,
+ "performance_gaps_unmeasured": 14,
+ "parity_claim": "NOT CLAIMED. This is a capability inventory, not a parity statement. No entry may report a semantic gap of NONE without evidence, and the steer forbids the phrase 'CUDA parity' unqualified.",
+ "coverage_honesty": "The CUDA surface is vastly larger than this. These are the capabilities reachable or relevant from what has actually been built here; absence from this ledger means NOT YET STUDIED, never NOT NEEDED."
+}

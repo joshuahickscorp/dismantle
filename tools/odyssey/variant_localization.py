@@ -182,6 +182,62 @@ def main():
                           "buy may exist: raise ONE non-MLP organ (or a subset of layers) "
                           "to q4 and re-score only the two code items.",
         }
+        # The correction lives HERE, not only in the JSON. Patching a receipt by hand
+        # means the next run of its own generator silently deletes the refutation.
+        sens_p = Path("/tmp/prompt_sens.json")
+        sens = json.load(open(sens_p)) if sens_p.is_file() else None
+        if sens:
+            sp = sum(1 for c in sens["sealed-3.14"].values() if c["verified"])
+            vp = sum(1 for c in sens["variantB-2.76"].values() if c["verified"])
+            out["CORRECTION_axis_localization_refuted"] = {
+                "what_this_receipt_claimed":
+                    "the non-MLP q4->q3 drop costs EXACTLY the two code-generation axes; "
+                    "'q3 non-MLP cannot emit a python code block'",
+                "status": "REFUTED by G039's HCLI bench and a prompt-sensitivity probe",
+                "how_it_was_caught": "variantB passed BOTH code WorkUnits in the HCLI "
+                                     "bench, impossible if it cannot emit a code block",
+                "probe": {"task": "the capability suite's own code-compiles prompt, "
+                                  "verbatim",
+                          "cells": "4 system prompts x 2 bodies, greedy so deterministic",
+                          "results": sens,
+                          "sealed_cells_passed": sp, "variantB_cells_passed": vp},
+                "corrected_finding":
+                    "Both bodies can write correct code. Every failure in every cell is "
+                    "the SAME mechanism: the generation never closes its <think> block "
+                    "and runs to exactly the 1536-token cap. When a body does answer it "
+                    "uses 187-544 tokens, so the failure is BIMODAL -- terminate early or "
+                    "run away -- not a gradual loss of skill. The system prompt decides "
+                    "which side it lands on.",
+                "the_inversion":
+                    "the capability suite sends NO system prompt, the one cell of four "
+                    "where sealed terminates and variantB runs away. Under the other "
+                    "three variantB passes and sealed fails two. On this item variantB is "
+                    "MORE prompt-robust than sealed (3/4 vs 2/4), the opposite of what "
+                    "the axis table said.",
+                "what_survives": [
+                    "the MLP per-group bias is still load-bearing: variantA scores 0/43 "
+                    "and no prompt was involved in that build difference",
+                    "the container is still exonerated",
+                    "variantB is still a real body at 2.756021 EBPW",
+                ],
+                "what_does_not_survive": [
+                    "'the non-MLP q4->q3 drop costs the coding and self_correction axes'",
+                    "the per-axis attribution table as a statement about CAPABILITY "
+                    "rather than about one prompt regime",
+                    "the allocator's 96.0 vs 15.7 points/bpw, a figure for the "
+                    "no-system-prompt regime ONLY",
+                ],
+                "real_cost_coordinate":
+                    "tokens-to-terminate-deliberation under a fixed budget: prompt-"
+                    "conditional, bimodal, and not an organ property",
+            }
+            out["marginal_information_allocator"]["REGIME_CAVEAT"] = (
+                "these points/bpw figures derive from capability-suite scores measured "
+                "with NO system prompt. That regime is now known to decide the code items "
+                "by deliberation runaway rather than by skill, so the ranking holds for "
+                "that regime only and must not be quoted as an unconditional "
+                "bit-allocation law.")
+
         out["pareto_candidate"] = {
             "body": "variantB", "complete_ebpw_physical": 2.756021,
             "capability": f"{vb_cap['passed']}/43",

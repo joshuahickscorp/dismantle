@@ -86,3 +86,54 @@ def test_pareto_candidate_beats_sealed_on_density_and_is_the_only_sub_3_body_tha
     assert d["complete_ebpw_physical"] < 3.0
     assert int(d["capability"].split("/")[0]) > 0
     assert Path(d["artifact_root"]).is_dir()
+
+
+# --- the correction G039 forced -------------------------------------------------
+
+def test_the_axis_localization_claim_is_marked_refuted():
+    """variantB passed both code WorkUnits in the HCLI bench, which is impossible if
+    'q3 non-MLP cannot emit a python code block'."""
+    c = rec().get("CORRECTION_axis_localization_refuted")
+    assert c, "the refuted claim is not recorded"
+    assert c["status"].startswith("REFUTED")
+
+
+def test_the_refutation_carries_its_own_probe_data():
+    c = rec()["CORRECTION_axis_localization_refuted"]["probe"]
+    assert len(c["results"]) == 2
+    for body, cells in c["results"].items():
+        assert len(cells) >= 4, f"{body} needs several prompt cells to show sensitivity"
+
+
+def test_every_failure_is_the_same_budget_runaway():
+    """If failures had varied causes the bimodal claim would be wrong."""
+    cells = rec()["CORRECTION_axis_localization_refuted"]["probe"]["results"]
+    for body, cs in cells.items():
+        for name, c in cs.items():
+            if not c["verified"]:
+                assert c["unterminated_think"] is True, (body, name)
+                assert c["tokens"] == 1536, (body, name)
+            else:
+                assert c["tokens"] < 600, (body, name)
+
+
+def test_the_inversion_is_recorded_not_smoothed_over():
+    """variantB is more prompt-robust than sealed on this item, the opposite of the
+    axis table."""
+    c = rec()["CORRECTION_axis_localization_refuted"]["probe"]
+    assert c["variantB_cells_passed"] > c["sealed_cells_passed"]
+
+
+def test_what_survives_and_what_does_not_are_both_enumerated():
+    c = rec()["CORRECTION_axis_localization_refuted"]
+    assert len(c["what_survives"]) >= 2
+    assert len(c["what_does_not_survive"]) >= 2
+    assert any("bias" in s for s in c["what_survives"])
+
+
+def test_the_allocator_carries_a_regime_caveat():
+    """Its points/bpw come from the no-system-prompt regime and cannot be quoted as an
+    unconditional law."""
+    a = rec()["marginal_information_allocator"]
+    assert "REGIME_CAVEAT" in a
+    assert "system prompt" in a["REGIME_CAVEAT"].lower()

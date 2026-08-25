@@ -1,1769 +1,245 @@
 {
  "schema": "hawking.headless.tokenizer_gravity.v1",
- "generated_at": "2026-08-24T22:41:00Z",
- "git_head": "f6a4fe7c9ee4ec3a3f5763bf020e7abe29f6bb94",
+ "generated_at": "2026-08-25T08:42:01Z",
  "generated_by": "tools/headless/tokenizer_gravity.py",
- "obligation": "N045 \u2014 TOKENIZER_GRAVITY (S026 \u00a730-38, \u00a7118; DOC-TOKENIZER; structural elimination; CPU)",
+ "obligation": "G036 \u2014 TOKENIZER_GRAVITY_QWEN",
  "hand_authored": false,
- "did_not_touch_gpu": true,
- "did_not_run_cargo_or_metal_benchmarks": true,
- "did_not_load_a_model": true,
- "did_not_load_27b_weight_payloads": true,
- "did_not_mutate_noetic_parent_a": true,
- "did_not_write_under_models": true,
- "loaded": {
-  "tokenizer_json": "/Users/scammermike/models/qwen3.8-27b-abliterated-bf16/tokenizer.json",
-  "tokenizer_json_sha256": "0997f410c57a1f4e53b09e4be8f4a172d90edd9564368fb0847030937229b9f3",
-  "tokenizer_json_bytes": 12809320,
-  "what_this_is": "tokenizer.json (BPE vocab + merges). Not 27B weights."
+ "git_head": "ef8f1d223697fe11f88bbfa9e7ed0bd5a1dba061",
+ "organ_system": {
+  "coupled": [
+   "tokenizer",
+   "vocabulary",
+   "embedding",
+   "lm_head"
+  ],
+  "vocab_rows": 248077,
+  "embedding_bytes": 496640242,
+  "lm_head_bytes": 496640242,
+  "combined_bytes": 993280484,
+  "payload_share_pct": 11.38,
+  "bytes_per_row": 4003.92
  },
- "ascii_only_is_default": false,
- "ascii_only_is_default_law": "S026 \u00a731: ASCII-only must NOT be the default. It is the CONTROL.",
- "VocabularyGenome": {
-  "model": "Qwen3.8-27B (Qwen2Tokenizer, ByteLevel BPE)",
-  "vocab_size": 248320,
-  "bpe_vocab_size": 248044,
-  "n_merges": 247587,
-  "n_added_tokens": 33,
-  "n_special_tail_rows": 276,
-  "special_tail_id_range": [
-   248044,
-   248319
-  ],
-  "byte_fallback_flag_in_tokenizer_json": false,
-  "byte_level_pre_tokenizer": true,
-  "n_byte_tokens": 256,
-  "n_reserved_empty": 243,
-  "n_invalid_utf8_fragments": 944,
-  "n_ascii_utf8": 127819,
-  "n_non_ascii_utf8": 119314,
-  "n_cold_script": 101852,
-  "n_added_in_genome": 33,
-  "n_special_shaped": 29,
-  "hidden_size": 5120,
-  "tie_word_embeddings": false,
-  "token_classes": {
-   "ascii": 127819,
-   "CJK": 54532,
-   "CYRILLIC": 18580,
-   "latin": 14350,
-   "ARABIC": 8815,
-   "HANGUL": 6807,
-   "THAI": 5741,
-   "HIRAGANA": 2649,
-   "KATAKANA": 1667,
-   "greek_or_math": 1545,
-   "DEVANAGARI": 959,
-   "invalid_utf8_fragment": 944,
-   "BENGALI": 531,
-   "hebrew": 520,
-   "TAMIL": 268,
-   "reserved_empty": 243,
-   "MALAYALAM": 205,
-   "TELUGU": 188,
-   "GEORGIAN": 186,
-   "MYANMAR": 147,
-   "KANNADA": 144,
-   "fullwidth": 126,
-   "right": 120,
-   "GUJARATI": 116,
-   "armenian": 88,
-   "KHMER": 79,
-   "sinhala": 77,
-   "ORIYA": 75,
-   "left": 70,
-   "GURMUKHI": 65,
-   "em": 46,
-   "thaana": 42,
-   "ideographic": 40,
-   "horizontal": 39,
-   "LAO": 37,
-   "KATAKANA-HIRAGANA": 32,
-   "black": 29,
-   "halfwidth": 29,
-   "ethiopic": 25,
-   "right-pointing": 23,
-   "white": 21,
-   "box": 18,
-   "euro": 13,
-   "en": 11,
-   "TIBETAN": 10,
-   "no-break": 9,
-   "replacement": 9,
-   "left-pointing": 8,
-   "soft": 7,
-   "degree": 7,
-   "double": 7,
-   "ZERO": 6,
-   "bullet": 6,
-   "full": 6,
-   "section": 6,
-   "inverted": 6,
-   "not": 6,
-   "zero": 5,
-   "single": 5,
-   "heavy": 5,
-   "downwards": 5,
-   "pound": 4,
-   "rightwards": 4,
-   "multiplication": 4,
-   "acute": 4,
-   "masculine": 4,
-   "won": 4,
-   "middle": 3,
-   "registered": 3,
-   "vulgar": 3,
-   "superscript": 3,
-   "subscript": 3,
-   "female": 3,
-   "macron": 3,
-   "wave": 3,
-   "circled": 3,
-   "caron": 3,
-   "ORNATE": 3,
-   "copyright": 2,
-   "plus-minus": 2,
-   "minus": 2,
-   "slightly": 2,
-   "variation": 2,
-   "less-than": 2,
-   "other": 2,
-   "upwards": 2,
-   "leftwards": 2,
-   "element": 2,
-   "check": 2,
-   "left-to-right": 2,
-   "pilcrow": 2,
-   "for": 2,
-   "winking": 2,
-   "double-struck": 2,
-   "greater-than": 2,
-   "micro": 2,
-   "reference": 2,
-   "broken": 2,
-   "yen": 2,
-   "braille": 2,
-   "light": 2,
-   "grinning": 2,
-   "numero": 2,
-   "postal": 2,
-   "parenthesized": 2,
-   "ruble": 2,
-   "almost": 2,
-   "dong": 2,
-   "bullseye": 2,
-   "square": 2,
-   "trade": 1,
-   "hyphen": 1,
-   "prime": 1,
-   "eighth": 1,
-   "non-breaking": 1,
-   "cent": 1,
-   "feminine": 1,
-   "trigram": 1,
-   "logical": 1,
-   "diaeresis": 1,
-   "currency": 1,
-   "dagger": 1,
-   "per": 1,
-   "indian": 1,
-   "reversed": 1,
-   "proportion": 1,
-   "sparkles": 1,
-   "one": 1,
-   "hyphenation": 1,
-   "tilde": 1,
-   "much": 1,
-   "two": 1,
-   "smiling": 1,
-   "large": 1,
-   "division": 1
+ "corpus": {
+  "provenance_chars": {
+   "agent_prompts_and_tool_schemas": 1827,
+   "capability_prompts": 0,
+   "python_source": 231720,
+   "json_receipts": 177611,
+   "model_replies": 2445,
+   "paths": 23148,
+   "shell": 244
   },
-  "added_tokens": [
-   {
-    "id": 248044,
-    "content": "<|endoftext|>",
-    "special": true
+  "total_chars": 437191,
+  "total_tokens": 141434,
+  "distinct_rows_used": 8445,
+  "coverage_pct": 3.4,
+  "why": "a real HCLI/AgentOS workload -- tool schemas, missions, python, shell, JSON receipts, paths and the model's own replies -- not generic text (S011 \u00a712)"
+ },
+ "genome": {
+  "REQUIRED": 289,
+  "HOT": 2931,
+  "WARM": 5421,
+  "COLD": 239436,
+  "byte_fallback_rows": 256
+ },
+ "genome_definition": {
+  "REQUIRED": "special/control tokens, added tokens, and byte-fallback rows; removing a byte-fallback row makes some bytes unencodable",
+  "HOT": "rows covering the first 90% of observed token mass",
+  "WARM": "rows covering the next 9.5%, plus every other observed row",
+  "COLD": "rows never observed anywhere in the HCLI corpus"
+ },
+ "candidates": [
+  {
+   "candidate": "CONTROL_ascii_condensed",
+   "note": "reproduces the external ASCII-only result. S011 \u00a710: CONTROL ONLY, never production policy -- it deletes every non-ASCII row and so deletes multilingual capability outright",
+   "rows_kept": 126537,
+   "rows_removed": 121540,
+   "rows_removed_pct": 48.99,
+   "embedding_plus_head_bytes_saved": 486636447,
+   "payload_pct_saved": 5.574,
+   "complete_ebpw_after": 2.452248,
+   "token_inflation_x": 1.0026,
+   "tokens_before": 16793,
+   "tokens_after": 16836,
+   "lm_head_flops_scale": 0.5101,
+   "net_wall_time_x": 1.0026,
+   "verdict": "LOSES ON HELD-OUT TEXT: 3.105x inflation on language the HCLI corpus never contained",
+   "heldout_worst_inflation_x": 3.105
+  },
+  {
+   "candidate": "hawking_required_hot",
+   "note": "REQUIRED + the rows covering 90% of real HCLI token mass",
+   "rows_kept": 3220,
+   "rows_removed": 244857,
+   "rows_removed_pct": 98.7,
+   "embedding_plus_head_bytes_saved": 980387861,
+   "payload_pct_saved": 11.229,
+   "complete_ebpw_after": 2.305385,
+   "token_inflation_x": 1.1912,
+   "tokens_before": 16793,
+   "tokens_after": 20003,
+   "lm_head_flops_scale": 0.013,
+   "net_wall_time_x": 1.1912,
+   "verdict": "LOSES ON HELD-OUT TEXT: 3.105x inflation on language the HCLI corpus never contained",
+   "heldout_worst_inflation_x": 3.105
+  },
+  {
+   "candidate": "hawking_required_hot_warm",
+   "note": "REQUIRED + HOT + WARM: every row observed in the HCLI corpus",
+   "rows_kept": 8641,
+   "rows_removed": 239436,
+   "rows_removed_pct": 96.52,
+   "embedding_plus_head_bytes_saved": 958682610,
+   "payload_pct_saved": 10.98,
+   "complete_ebpw_after": 2.311842,
+   "token_inflation_x": 1.0156,
+   "tokens_before": 16793,
+   "tokens_after": 17055,
+   "lm_head_flops_scale": 0.0348,
+   "net_wall_time_x": 1.0156,
+   "verdict": "LOSES ON HELD-OUT TEXT: 3.105x inflation on language the HCLI corpus never contained",
+   "heldout_worst_inflation_x": 3.105
+  },
+  {
+   "candidate": "no_change_control",
+   "note": "keeps everything; must show inflation 1.0 or the measurement is wrong",
+   "rows_kept": 248077,
+   "rows_removed": 0,
+   "rows_removed_pct": 0.0,
+   "embedding_plus_head_bytes_saved": 0,
+   "payload_pct_saved": 0.0,
+   "complete_ebpw_after": 2.596994,
+   "token_inflation_x": 1.0026,
+   "tokens_before": 16793,
+   "tokens_after": 16836,
+   "lm_head_flops_scale": 1.0,
+   "net_wall_time_x": 1.0026,
+   "verdict": "CONTROL: no rows removed"
+  }
+ ],
+ "heldout_probe": {
+  "why": "COLD means 'never observed in the HCLI corpus', which is a claim about the corpus and not about what the model must be able to say. These samples were never in it.",
+  "samples": {
+   "chinese": "\u8bf7\u89e3\u91ca\u7f16\u8bd1\u5668\u5982\u4f55\u5c06\u5faa\u73af\u8f6c\u6362\u4e3a\u57fa\u672c\u5757\uff0c\u7136\u540e\u751f\u6210\u673a\u5668\u4ee3\u7801\u3002",
+   "japanese": "\u30b3\u30f3\u30d1\u30a4\u30e9\u304c\u30eb\u30fc\u30d7\u3092\u57fa\u672c\u30d6\u30ed\u30c3\u30af\u306b\u5909\u63db\u3059\u308b\u65b9\u6cd5\u3092\u8aac\u660e\u3057\u3066\u304f\u3060\u3055\u3044\u3002",
+   "russian": "\u041e\u0431\u044a\u044f\u0441\u043d\u0438\u0442\u0435, \u043a\u0430\u043a \u043a\u043e\u043c\u043f\u0438\u043b\u044f\u0442\u043e\u0440 \u043f\u0440\u0435\u043e\u0431\u0440\u0430\u0437\u0443\u0435\u0442 \u0446\u0438\u043a\u043b \u0432 \u0431\u0430\u0437\u043e\u0432\u044b\u0435 \u0431\u043b\u043e\u043a\u0438.",
+   "emoji_and_symbols": "\u2705 done \u2192 \u2211(x\u00b2) \u2248 3.14 \u00b7 \u00b5s \u00b7 \u00b10.5 \u2014 \u00abquoted\u00bb \ud83d\ude00",
+   "german_prose": "Die \u00dcbersetzung eines Schleifenkonstrukts erfordert Pr\u00e4zision."
+  },
+  "results": {
+   "CONTROL_ascii_condensed": {
+    "per_sample": {
+     "chinese": {
+      "tokens_before": 14,
+      "tokens_after": 27,
+      "inflation_x": 1.929
+     },
+     "japanese": {
+      "tokens_before": 16,
+      "tokens_after": 33,
+      "inflation_x": 2.062
+     },
+     "russian": {
+      "tokens_before": 19,
+      "tokens_after": 59,
+      "inflation_x": 3.105
+     },
+     "emoji_and_symbols": {
+      "tokens_before": 28,
+      "tokens_after": 36,
+      "inflation_x": 1.286
+     },
+     "german_prose": {
+      "tokens_before": 14,
+      "tokens_after": 17,
+      "inflation_x": 1.214
+     }
+    },
+    "worst_inflation_x": 3.105,
+    "mean_inflation_x": 1.919
    },
-   {
-    "id": 248045,
-    "content": "<|im_start|>",
-    "special": true
+   "hawking_required_hot": {
+    "per_sample": {
+     "chinese": {
+      "tokens_before": 14,
+      "tokens_after": 27,
+      "inflation_x": 1.929
+     },
+     "japanese": {
+      "tokens_before": 16,
+      "tokens_after": 33,
+      "inflation_x": 2.062
+     },
+     "russian": {
+      "tokens_before": 19,
+      "tokens_after": 59,
+      "inflation_x": 3.105
+     },
+     "emoji_and_symbols": {
+      "tokens_before": 28,
+      "tokens_after": 41,
+      "inflation_x": 1.464
+     },
+     "german_prose": {
+      "tokens_before": 14,
+      "tokens_after": 43,
+      "inflation_x": 3.071
+     }
+    },
+    "worst_inflation_x": 3.105,
+    "mean_inflation_x": 2.326
    },
-   {
-    "id": 248046,
-    "content": "<|im_end|>",
-    "special": true
-   },
-   {
-    "id": 248047,
-    "content": "<|object_ref_start|>",
-    "special": true
-   },
-   {
-    "id": 248048,
-    "content": "<|object_ref_end|>",
-    "special": true
-   },
-   {
-    "id": 248049,
-    "content": "<|box_start|>",
-    "special": true
-   },
-   {
-    "id": 248050,
-    "content": "<|box_end|>",
-    "special": true
-   },
-   {
-    "id": 248051,
-    "content": "<|quad_start|>",
-    "special": true
-   },
-   {
-    "id": 248052,
-    "content": "<|quad_end|>",
-    "special": true
-   },
-   {
-    "id": 248053,
-    "content": "<|vision_start|>",
-    "special": true
-   },
-   {
-    "id": 248054,
-    "content": "<|vision_end|>",
-    "special": true
-   },
-   {
-    "id": 248055,
-    "content": "<|vision_pad|>",
-    "special": true
-   },
-   {
-    "id": 248056,
-    "content": "<|image_pad|>",
-    "special": true
-   },
-   {
-    "id": 248057,
-    "content": "<|video_pad|>",
-    "special": true
-   },
-   {
-    "id": 248058,
-    "content": "<tool_call>",
-    "special": false
-   },
-   {
-    "id": 248059,
-    "content": "</tool_call>",
-    "special": false
-   },
-   {
-    "id": 248060,
-    "content": "<|fim_prefix|>",
-    "special": false
-   },
-   {
-    "id": 248061,
-    "content": "<|fim_middle|>",
-    "special": false
-   },
-   {
-    "id": 248062,
-    "content": "<|fim_suffix|>",
-    "special": false
-   },
-   {
-    "id": 248063,
-    "content": "<|fim_pad|>",
-    "special": false
-   },
-   {
-    "id": 248064,
-    "content": "<|repo_name|>",
-    "special": false
-   },
-   {
-    "id": 248065,
-    "content": "<|file_sep|>",
-    "special": false
-   },
-   {
-    "id": 248066,
-    "content": "<tool_response>",
-    "special": false
-   },
-   {
-    "id": 248067,
-    "content": "</tool_response>",
-    "special": false
-   },
-   {
-    "id": 248068,
-    "content": "<think>",
-    "special": false
-   },
-   {
-    "id": 248069,
-    "content": "</think>",
-    "special": false
-   },
-   {
-    "id": 248070,
-    "content": "<|audio_start|>",
-    "special": true
-   },
-   {
-    "id": 248071,
-    "content": "<|audio_end|>",
-    "special": true
-   },
-   {
-    "id": 248072,
-    "content": "<tts_pad>",
-    "special": true
-   },
-   {
-    "id": 248073,
-    "content": "<tts_text_bos>",
-    "special": true
-   },
-   {
-    "id": 248074,
-    "content": "<tts_text_eod>",
-    "special": true
-   },
-   {
-    "id": 248075,
-    "content": "<tts_text_bos_single>",
-    "special": true
-   },
-   {
-    "id": 248076,
-    "content": "<|audio_pad|>",
-    "special": true
+   "hawking_required_hot_warm": {
+    "per_sample": {
+     "chinese": {
+      "tokens_before": 14,
+      "tokens_after": 27,
+      "inflation_x": 1.929
+     },
+     "japanese": {
+      "tokens_before": 16,
+      "tokens_after": 33,
+      "inflation_x": 2.062
+     },
+     "russian": {
+      "tokens_before": 19,
+      "tokens_after": 59,
+      "inflation_x": 3.105
+     },
+     "emoji_and_symbols": {
+      "tokens_before": 28,
+      "tokens_after": 36,
+      "inflation_x": 1.286
+     },
+     "german_prose": {
+      "tokens_before": 14,
+      "tokens_after": 37,
+      "inflation_x": 2.643
+     }
+    },
+    "worst_inflation_x": 3.105,
+    "mean_inflation_x": 2.205
    }
-  ],
-  "frequencies": {
-   "corpus": "AgentOS domains (english docs, code, JSON receipts, shell, paths, math, structured/tool)",
-   "n_tokens": 68152,
-   "n_unique": 6100,
-   "top": [
-    {
-     "id": 198,
-     "count": 5076,
-     "surface": "\n",
-     "kind": "utf8",
-     "in_ascii_keep": true,
-     "in_hot": true,
-     "in_cold": false
-    },
-    {
-     "id": 328,
-     "count": 2582,
-     "surface": " \"",
-     "kind": "utf8",
-     "in_ascii_keep": true,
-     "in_hot": true,
-     "in_cold": false
-    },
-    {
-     "id": 11,
-     "count": 1512,
-     "surface": ",",
-     "kind": "utf8",
-     "in_ascii_keep": true,
-     "in_hot": true,
-     "in_cold": false
-    },
-    {
-     "id": 763,
-     "count": 1288,
-     "surface": "\":",
-     "kind": "utf8",
-     "in_ascii_keep": true,
-     "in_hot": true,
-     "in_cold": false
-    },
-    {
-     "id": 262,
-     "count": 1265,
-     "surface": "   ",
-     "kind": "utf8",
-     "in_ascii_keep": true,
-     "in_hot": true,
-     "in_cold": false
-    },
-    {
-     "id": 285,
-     "count": 1166,
-     "surface": "       ",
-     "kind": "utf8",
-     "in_ascii_keep": true,
-     "in_hot": true,
-     "in_cold": false
-    },
-    {
-     "id": 220,
-     "count": 915,
-     "surface": " ",
-     "kind": "utf8",
-     "in_ascii_keep": true,
-     "in_hot": true,
-     "in_cold": false
-    },
-    {
-     "id": 17,
-     "count": 843,
-     "surface": "2",
-     "kind": "utf8",
-     "in_ascii_keep": true,
-     "in_hot": true,
-     "in_cold": false
-    },
-    {
-     "id": 15,
-     "count": 810,
-     "surface": "0",
-     "kind": "utf8",
-     "in_ascii_keep": true,
-     "in_hot": true,
-     "in_cold": false
-    },
-    {
-     "id": 487,
-     "count": 808,
-     "surface": "\",",
-     "kind": "utf8",
-     "in_ascii_keep": true,
-     "in_hot": true,
-     "in_cold": false
-    },
-    {
-     "id": 18,
-     "count": 788,
-     "surface": "3",
-     "kind": "utf8",
-     "in_ascii_keep": true,
-     "in_hot": true,
-     "in_cold": false
-    },
-    {
-     "id": 13,
-     "count": 745,
-     "surface": ".",
-     "kind": "utf8",
-     "in_ascii_keep": true,
-     "in_hot": true,
-     "in_cold": false
-    },
-    {
-     "id": 16,
-     "count": 709,
-     "surface": "1",
-     "kind": "utf8",
-     "in_ascii_keep": true,
-     "in_hot": true,
-     "in_cold": false
-    },
-    {
-     "id": 309,
-     "count": 660,
-     "surface": "           ",
-     "kind": "utf8",
-     "in_ascii_keep": true,
-     "in_hot": true,
-     "in_cold": false
-    },
-    {
-     "id": 283,
-     "count": 618,
-     "surface": " =",
-     "kind": "utf8",
-     "in_ascii_keep": true,
-     "in_hot": true,
-     "in_cold": false
-    },
-    {
-     "id": 25,
-     "count": 614,
-     "surface": ":",
-     "kind": "utf8",
-     "in_ascii_keep": true,
-     "in_hot": true,
-     "in_cold": false
-    },
-    {
-     "id": 23,
-     "count": 558,
-     "surface": "8",
-     "kind": "utf8",
-     "in_ascii_keep": true,
-     "in_hot": true,
-     "in_cold": false
-    },
-    {
-     "id": 313,
-     "count": 544,
-     "surface": " {",
-     "kind": "utf8",
-     "in_ascii_keep": true,
-     "in_hot": true,
-     "in_cold": false
-    },
-    {
-     "id": 406,
-     "count": 498,
-     "surface": "     ",
-     "kind": "utf8",
-     "in_ascii_keep": true,
-     "in_hot": true,
-     "in_cold": false
-    },
-    {
-     "id": 8,
-     "count": 497,
-     "surface": ")",
-     "kind": "utf8",
-     "in_ascii_keep": true,
-     "in_hot": true,
-     "in_cold": false
-    },
-    {
-     "id": 21,
-     "count": 448,
-     "surface": "6",
-     "kind": "utf8",
-     "in_ascii_keep": true,
-     "in_hot": true,
-     "in_cold": false
-    },
-    {
-     "id": 14,
-     "count": 447,
-     "surface": "/",
-     "kind": "utf8",
-     "in_ascii_keep": true,
-     "in_hot": true,
-     "in_cold": false
-    },
-    {
-     "id": 19,
-     "count": 421,
-     "surface": "4",
-     "kind": "utf8",
-     "in_ascii_keep": true,
-     "in_hot": true,
-     "in_cold": false
-    },
-    {
-     "id": 20,
-     "count": 342,
-     "surface": "5",
-     "kind": "utf8",
-     "in_ascii_keep": true,
-     "in_hot": true,
-     "in_cold": false
-    },
-    {
-     "id": 279,
-     "count": 341,
-     "surface": " the",
-     "kind": "utf8",
-     "in_ascii_keep": true,
-     "in_hot": true,
-     "in_cold": false
-    },
-    {
-     "id": 318,
-     "count": 316,
-     "surface": " (",
-     "kind": "utf8",
-     "in_ascii_keep": true,
-     "in_hot": true,
-     "in_cold": false
-    },
-    {
-     "id": 271,
-     "count": 307,
-     "surface": "\n\n",
-     "kind": "utf8",
-     "in_ascii_keep": true,
-     "in_hot": true,
-     "in_cold": false
-    },
-    {
-     "id": 369,
-     "count": 299,
-     "surface": " is",
-     "kind": "utf8",
-     "in_ascii_keep": true,
-     "in_hot": true,
-     "in_cold": false
-    },
-    {
-     "id": 26,
-     "count": 294,
-     "surface": ";",
-     "kind": "utf8",
-     "in_ascii_keep": true,
-     "in_hot": true,
-     "in_cold": false
-    },
-    {
-     "id": 1,
-     "count": 273,
-     "surface": "\"",
-     "kind": "utf8",
-     "in_ascii_keep": true,
-     "in_hot": true,
-     "in_cold": false
-    },
-    {
-     "id": 82,
-     "count": 261,
-     "surface": "s",
-     "kind": "utf8",
-     "in_ascii_keep": true,
-     "in_hot": true,
-     "in_cold": false
-    },
-    {
-     "id": 1510,
-     "count": 260,
-     "surface": " `",
-     "kind": "utf8",
-     "in_ascii_keep": true,
-     "in_hot": true,
-     "in_cold": false
-    },
-    {
-     "id": 264,
-     "count": 258,
-     "surface": " a",
-     "kind": "utf8",
-     "in_ascii_keep": true,
-     "in_hot": true,
-     "in_cold": false
-    },
-    {
-     "id": 256,
-     "count": 258,
-     "surface": "  ",
-     "kind": "utf8",
-     "in_ascii_keep": true,
-     "in_hot": true,
-     "in_cold": false
-    },
-    {
-     "id": 22,
-     "count": 256,
-     "surface": "7",
-     "kind": "utf8",
-     "in_ascii_keep": true,
-     "in_hot": true,
-     "in_cold": false
-    },
-    {
-     "id": 1657,
-     "count": 249,
-     "surface": "less",
-     "kind": "utf8",
-     "in_ascii_keep": true,
-     "in_hot": true,
-     "in_cold": false
-    },
-    {
-     "id": 18927,
-     "count": 242,
-     "surface": "cli",
-     "kind": "utf8",
-     "in_ascii_keep": true,
-     "in_hot": true,
-     "in_cold": false
-    },
-    {
-     "id": 63,
-     "count": 241,
-     "surface": "`",
-     "kind": "utf8",
-     "in_ascii_keep": true,
-     "in_hot": true,
-     "in_cold": false
-    },
-    {
-     "id": 333,
-     "count": 233,
-     "surface": " }",
-     "kind": "utf8",
-     "in_ascii_keep": true,
-     "in_hot": true,
-     "in_cold": false
-    },
-    {
-     "id": 52488,
-     "count": 228,
-     "surface": "/head",
-     "kind": "utf8",
-     "in_ascii_keep": true,
-     "in_hot": true,
-     "in_cold": false
-    }
-   ],
-   "not_generic_web_crawl": true
-  },
-  "merges": {
-   "n_full": 247587,
-   "n_kept_ascii_control": 128449,
-   "n_kept_script_cold": 145901,
-   "rule": "keep a merge iff both parts and the result survive"
   }
  },
- "tokenizer_closure_bytes": {
-  "files": [
-   {
-    "name": "tokenizer.json",
-    "path": "/Users/scammermike/models/qwen3.8-27b-abliterated-bf16/tokenizer.json",
-    "bytes": 12809320,
-    "present": true
-   },
-   {
-    "name": "merges.txt",
-    "path": "/Users/scammermike/models/qwen3.8-27b-abliterated-bf16/merges.txt",
-    "bytes": 3353259,
-    "present": true
-   },
-   {
-    "name": "vocab.json",
-    "path": "/Users/scammermike/models/qwen3.8-27b-abliterated-bf16/vocab.json",
-    "bytes": 6722759,
-    "present": true
-   },
-   {
-    "name": "tokenizer_config.json",
-    "path": "/Users/scammermike/models/qwen3.8-27b-abliterated-bf16/tokenizer_config.json",
-    "bytes": 17928,
-    "present": true
-   },
-   {
-    "name": "chat_template.jinja",
-    "path": "/Users/scammermike/models/qwen3.8-27b-abliterated-bf16/chat_template.jinja",
-    "bytes": 8952,
-    "present": true
-   }
-  ],
-  "total_bytes": 22912218,
-  "counted_in_complete_closure": true,
-  "law": "S026 \u00a793: complete executable closure counts tokenizer data",
-  "note": "These bytes are MODEL_SPECIFIC. They are the vocabulary's physical program, not free. A row prune that rewrites tokenizer.ggml.* must also recount this bucket."
+ "conclusion": {
+  "adoptable_today": null,
+  "finding": "Every candidate looks good on the HCLI corpus and fails on held-out language. required_hot_warm saves 10.98% of payload (2.5970 -> 2.3118 EBPW) for 1.56% inflation ON THE CORPUS IT WAS FITTED TO, and costs 2.2x mean / 3.1x worst on text that corpus never contained. Since a forward pass costs the same whatever the token, inflation is wall time one-for-one: a 2.2x token count is a 2.2x slowdown, which no 11% byte saving repays.",
+  "why_cold_is_not_safe": "COLD means 'never observed in 141,434 tokens of English and code', which touched 3.4% of the vocabulary. It is a fact about the corpus, not about what production must be able to say.",
+  "the_control_did_its_job": "S011 \u00a710 says reproduce ASCII-condensing as a CONTROL and do not adopt it. The held-out numbers show exactly why: it deletes every CJK and Cyrillic row, and those samples collapse to byte fallback. It is reproduced at 5.57% payload saved and left unadopted.",
+  "the_inversion_worth_keeping": "on German prose the crude ASCII control (1.214x) BEATS both corpus-fitted genomes (2.643x and 3.071x). Fitting a vocabulary to an English-and-code corpus is worse for a Latin-script language than a rule that keeps all ASCII, because the corpus never contained the German subwords the genome discarded.",
+  "what_would_make_this_adoptable": [
+   "an HCLI token distribution that INCLUDES every language production must serve, so COLD is a claim about the workload and not about the sample",
+   "a retrained BPE merge table over the surviving rows, which the greedy re-encoder here only approximates",
+   "an end-to-end capability re-score, because token inflation changes what fits in the context window as well as what it costs"
+  ]
  },
- "param_split": {
-  "kind": "STREAMED_HEADERS",
-  "did_not_load_weight_payloads": true,
-  "elements": {
-   "text_body": 24353201664,
-   "vision": 460730096,
-   "embed": 1271398400,
-   "lm_head": 1271398400,
-   "mtp": 424699392
-  },
-  "language_params": 26895998464,
-  "language_params_matches_parent": true,
-  "vision_excluded_from_parent_params": true,
-  "mtp_excluded_from_parent_params": true
+ "inflation_method": {
+  "what": "greedy longest-match re-encoding over the surviving surface forms",
+  "honest_limit": "a MODEL of the cost, not a re-derived BPE merge table. It is an upper bound on the surviving vocabulary's efficiency and therefore a LOWER bound on inflation; a retrained tokenizer could do better than this number.",
+  "sample_chars": 60000,
+  "control": "no_change_control keeps every row and must return ~1.0"
  },
- "ascii_prune_control": {
-  "name": "Qwen3.8 ASCII-prune CONTROL",
-  "source": "bsaleh03/Qwen3.8-27B-ASCII-Condensed (unsloth UD-IQ4_XS row-gather)",
-  "predicate": "KEEP a row unless its GPT-2-decoded payload is valid UTF-8 containing at least one non-ASCII codepoint. This keeps all 256 byte-fallback tokens, all 276 special/reserved tail rows, ASCII text, and invalid UTF-8 fragments needed for byte composition. It DROPS accented Latin, CJK, Cyrillic, etc.",
-  "source_rows": 248320,
-  "pruned_rows": 129006,
-  "rows_removed": 119314,
-  "control_target_rows": 129006,
-  "matches_published_control": true,
-  "keep_ids_sha256": "24fc4187e5e6e8876250a715e6ff2b60c9812259dc7148f49ae84ddc31beef33",
-  "n_byte_tokens_kept": 256,
-  "n_added_tokens_kept": 33,
-  "n_special_tail_kept": 276,
-  "embed_and_output_rows_removed_rest_unchanged": true,
-  "bytes_and_flops": {
-   "codec": "HQ30UQ4 grouped absmax q4 g64 (incumbent embed/head; Parent A hardlinks these)",
-   "q4_bpw": 4.25,
-   "row_bytes": 2720,
-   "source_bf16_bytes_per_table": 2542796800,
-   "source_bf16_embed_bytes_removed": 1221775360,
-   "source_bf16_output_bytes_removed": 1221775360,
-   "source_bf16_embed_plus_output_bytes_removed": 2443550720,
-   "q4_embed_bytes_full": 675430440,
-   "q4_output_bytes_full": 675430440,
-   "q4_embed_bytes_pruned": 350896360,
-   "q4_output_bytes_pruned": 350896360,
-   "q4_embed_bytes_removed": 324534080,
-   "q4_output_bytes_removed": 324534080,
-   "q4_embed_plus_output_bytes_removed": 649068160,
-   "organs_touched": [
-    "embed",
-    "lm_head"
-   ],
-   "rest_of_model_unchanged": true,
-   "tie_word_embeddings": false,
-   "eliminated_parent_equivalent_parameters": 1221775360,
-   "active_weight_bytes_per_token_full": 13622266960,
-   "active_weight_bytes_per_token_pruned": 13297732880,
-   "lm_head_share_of_active_full": 0.04958282215311981,
-   "payload_bytes_full": 14297694680,
-   "payload_bytes_pruned": 13648626520,
-   "capacity_gqa_kv_positions_freed": 4951.9970703125,
-   "citations": {
-    "q4_embed_bytes": "/Users/scammermike/models/qwen38-gravity-uniform-q4-v1/manifest.json",
-    "payload": "receipts/headless/PREFILL_KV.json incumbent.payload_bytes",
-    "kv": "receipts/headless/PREFILL_KV.json kv_bytes_per_position",
-    "active_definition": "receipts/headless/NOETIC_INFORMATION_ACCOUNTING.json ACTIVE_BYTES"
-   }
-  },
-  "output_head_flops": {
-   "body_elements": 24353201664,
-   "lm_head_elements_full": 1271398400,
-   "lm_head_elements_pruned": 660510720,
-   "lm_head_elements_removed": 610887680,
-   "embed_is_gather_not_gemv": true,
-   "body_flops_per_token": 48706403328,
-   "output_head_flops_per_token_full": 2542796800,
-   "output_head_flops_per_token_pruned": 1321021440,
-   "output_head_flops_per_token_removed": 1221775360,
-   "head_share_of_decode_flops_full": 0.04961632169183345,
-   "formula": "dense decode FLOPs/token \u2248 2*(text_body + lm_head); embed is gather"
-  },
-  "TOKEN_INFLATION": {
-   "english": {
-    "domain": "english",
-    "kind": "agentos_docs",
-    "source": [
-     "docs/ultragoals/NOETIC_CANON.md",
-     "docs/ultragoals/ARTIFACT_STORAGE_POLICY.md"
-    ],
-    "n_chars": 26536,
-    "n_tokens_full": 7571,
-    "n_tokens_pruned": 7637,
-    "n_full_tokens_dropped_by_prune": 65,
-    "TOKEN_INFLATION_RATIO": 1.0087174745740326,
-    "token_strings_identical": false,
-    "effective_sequence_cost": {
-     "formula": "n_tokens * active_weight_bytes_per_token + n_tokens * kv_bytes_per_position",
-     "kv_bytes_per_position": 131072,
-     "kv_source": "receipts/headless/PREFILL_KV.json components.kv_bytes_per_position",
-     "deltanet_state_grows_with_seq": false,
-     "full_weight_bytes": 103134183154160,
-     "pruned_weight_bytes": 101554786004560,
-     "full_kv_bytes": 992346112,
-     "pruned_kv_bytes": 1000996864,
-     "full_cost_bytes": 103135175500272,
-     "pruned_cost_bytes": 101555787001424,
-     "cost_ratio": 0.9846862286199937,
-     "full_flops": 388007694169088,
-     "pruned_flops": 382059442953216,
-     "flop_ratio": 0.9846697596329628
-    },
-    "net_beneficial": true,
-    "net_beneficial_reason": "cost_ratio < 1 (pruned sequence of this text is cheaper in active-bytes + GQA KV than the unpruned sequence)"
-   },
-   "code": {
-    "domain": "code",
-    "kind": "agentos_source",
-    "source": [
-     "tools/headless/noetic_ir.py",
-     "crates/hawking-core/src/model/qwen38_geometry.rs",
-     "crates/hawking-core/src/tokenizer.rs",
-     "crates/hawking-core/src/vocab_prune.rs"
-    ],
-    "n_chars": 117646,
-    "n_tokens_full": 34214,
-    "n_tokens_pruned": 34263,
-    "n_full_tokens_dropped_by_prune": 49,
-    "TOKEN_INFLATION_RATIO": 1.0014321622727538,
-    "token_strings_identical": false,
-    "effective_sequence_cost": {
-     "formula": "n_tokens * active_weight_bytes_per_token + n_tokens * kv_bytes_per_position",
-     "kv_bytes_per_position": 131072,
-     "kv_source": "receipts/headless/PREFILL_KV.json components.kv_bytes_per_position",
-     "deltanet_state_grows_with_seq": false,
-     "full_weight_bytes": 466072241769440,
-     "pruned_weight_bytes": 455620221667440,
-     "full_kv_bytes": 4484497408,
-     "pruned_kv_bytes": 4490919936,
-     "full_cost_bytes": 466076726266848,
-     "pruned_cost_bytes": 455624712587376,
-     "cost_ratio": 0.9775744784272111,
-     "full_flops": 1753440133179392,
-     "pruned_flops": 1714089654825984,
-     "flop_ratio": 0.9775581283849957
-    },
-    "net_beneficial": true,
-    "net_beneficial_reason": "cost_ratio < 1 (pruned sequence of this text is cheaper in active-bytes + GQA KV than the unpruned sequence)"
-   },
-   "json": {
-    "domain": "json",
-    "kind": "agentos_receipts",
-    "source": [
-     "receipts/headless/ARCHITECTURE_CANON.json",
-     "receipts/headless/MODEL_REGISTRY.json"
-    ],
-    "n_chars": 51353,
-    "n_tokens_full": 16331,
-    "n_tokens_pruned": 16332,
-    "n_full_tokens_dropped_by_prune": 1,
-    "TOKEN_INFLATION_RATIO": 1.0000612332374013,
-    "token_strings_identical": false,
-    "effective_sequence_cost": {
-     "formula": "n_tokens * active_weight_bytes_per_token + n_tokens * kv_bytes_per_position",
-     "kv_bytes_per_position": 131072,
-     "kv_source": "receipts/headless/PREFILL_KV.json components.kv_bytes_per_position",
-     "deltanet_state_grows_with_seq": false,
-     "full_weight_bytes": 222465241723760,
-     "pruned_weight_bytes": 217178573396160,
-     "full_kv_bytes": 2140536832,
-     "pruned_kv_bytes": 2140667904,
-     "full_cost_bytes": 222467382260592,
-     "pruned_cost_bytes": 217180714064064,
-     "cost_ratio": 0.9762362098083424,
-     "full_flops": 836950687290368,
-     "pruned_flops": 817047901310976,
-     "flop_ratio": 0.9762198821488188
-    },
-    "net_beneficial": true,
-    "net_beneficial_reason": "cost_ratio < 1 (pruned sequence of this text is cheaper in active-bytes + GQA KV than the unpruned sequence)"
-   },
-   "shell": {
-    "domain": "shell",
-    "kind": "agentos_shell",
-    "source": [
-     "tools/headless/qwen38_gravity_native_bench.sh"
-    ],
-    "n_chars": 16970,
-    "n_tokens_full": 5263,
-    "n_tokens_pruned": 5263,
-    "n_full_tokens_dropped_by_prune": 0,
-    "TOKEN_INFLATION_RATIO": 1.0,
-    "token_strings_identical": true,
-    "effective_sequence_cost": {
-     "formula": "n_tokens * active_weight_bytes_per_token + n_tokens * kv_bytes_per_position",
-     "kv_bytes_per_position": 131072,
-     "kv_source": "receipts/headless/PREFILL_KV.json components.kv_bytes_per_position",
-     "deltanet_state_grows_with_seq": false,
-     "full_weight_bytes": 71693991010480,
-     "pruned_weight_bytes": 69985968147440,
-     "full_kv_bytes": 689831936,
-     "pruned_kv_bytes": 689831936,
-     "full_cost_bytes": 71694680842416,
-     "pruned_cost_bytes": 69986657979376,
-     "cost_ratio": 0.9761764353649302,
-     "full_flops": 269724540273664,
-     "pruned_flops": 263294336553984,
-     "flop_ratio": 0.9761601087051409
-    },
-    "net_beneficial": true,
-    "net_beneficial_reason": "cost_ratio < 1 (pruned sequence of this text is cheaper in active-bytes + GQA KV than the unpruned sequence)"
-   },
-   "file_paths": {
-    "domain": "file_paths",
-    "kind": "agentos_paths",
-    "source": [
-     "materialized worktree paths + production artifact paths"
-    ],
-    "n_chars": 5046,
-    "n_tokens_full": 1369,
-    "n_tokens_pruned": 1369,
-    "n_full_tokens_dropped_by_prune": 0,
-    "TOKEN_INFLATION_RATIO": 1.0,
-    "token_strings_identical": true,
-    "effective_sequence_cost": {
-     "formula": "n_tokens * active_weight_bytes_per_token + n_tokens * kv_bytes_per_position",
-     "kv_bytes_per_position": 131072,
-     "kv_source": "receipts/headless/PREFILL_KV.json components.kv_bytes_per_position",
-     "deltanet_state_grows_with_seq": false,
-     "full_weight_bytes": 18648883468240,
-     "pruned_weight_bytes": 18204596312720,
-     "full_kv_bytes": 179437568,
-     "pruned_kv_bytes": 179437568,
-     "full_cost_bytes": 18649062905808,
-     "pruned_cost_bytes": 18204775750288,
-     "cost_ratio": 0.9761764353649302,
-     "full_flops": 70160154975232,
-     "pruned_flops": 68487544507392,
-     "flop_ratio": 0.9761601087051409
-    },
-    "net_beneficial": true,
-    "net_beneficial_reason": "cost_ratio < 1 (pruned sequence of this text is cheaper in active-bytes + GQA KV than the unpruned sequence)"
-   },
-   "math": {
-    "domain": "math",
-    "kind": "agentos_math",
-    "source": [
-     "docs/ultragoals/NOETIC_CANON.md",
-     "geometry identities"
-    ],
-    "n_chars": 4270,
-    "n_tokens_full": 1209,
-    "n_tokens_pruned": 1226,
-    "n_full_tokens_dropped_by_prune": 17,
-    "TOKEN_INFLATION_RATIO": 1.0140612076095947,
-    "token_strings_identical": false,
-    "effective_sequence_cost": {
-     "formula": "n_tokens * active_weight_bytes_per_token + n_tokens * kv_bytes_per_position",
-     "kv_bytes_per_position": 131072,
-     "kv_source": "receipts/headless/PREFILL_KV.json components.kv_bytes_per_position",
-     "deltanet_state_grows_with_seq": false,
-     "full_weight_bytes": 16469320754640,
-     "pruned_weight_bytes": 16303020510880,
-     "full_kv_bytes": 158466048,
-     "pruned_kv_bytes": 160694272,
-     "full_cost_bytes": 16469479220688,
-     "pruned_cost_bytes": 16303181205152,
-     "cost_ratio": 0.9899026548861906,
-     "full_flops": 61960282954752,
-     "pruned_flops": 61333622765568,
-     "flop_ratio": 0.9898860986538484
-    },
-    "net_beneficial": true,
-    "net_beneficial_reason": "cost_ratio < 1 (pruned sequence of this text is cheaper in active-bytes + GQA KV than the unpruned sequence)"
-   },
-   "french": {
-    "domain": "french",
-    "kind": "capability_probe_french",
-    "source": [
-     "LABELED_CAPABILITY_PROBE \u00a7109 French; not generic crawl"
-    ],
-    "n_chars": 323,
-    "n_tokens_full": 87,
-    "n_tokens_pruned": 132,
-    "n_full_tokens_dropped_by_prune": 19,
-    "TOKEN_INFLATION_RATIO": 1.5172413793103448,
-    "token_strings_identical": false,
-    "effective_sequence_cost": {
-     "formula": "n_tokens * active_weight_bytes_per_token + n_tokens * kv_bytes_per_position",
-     "kv_bytes_per_position": 131072,
-     "kv_source": "receipts/headless/PREFILL_KV.json components.kv_bytes_per_position",
-     "deltanet_state_grows_with_seq": false,
-     "full_weight_bytes": 1185137225520,
-     "pruned_weight_bytes": 1755300740160,
-     "full_kv_bytes": 11403264,
-     "pruned_kv_bytes": 17301504,
-     "full_cost_bytes": 1185148628784,
-     "pruned_cost_bytes": 1755318041664,
-     "cost_ratio": 1.4810952812433424,
-     "full_flops": 4458680411136,
-     "pruned_flops": 6603620069376,
-     "flop_ratio": 1.481070509759524
-    },
-    "net_beneficial": false,
-    "net_beneficial_reason": "cost_ratio >= 1: inflation and/or unchanged body work ate the LM-head saving (\u00a735). A smaller head that emits more tokens loses."
-   },
-   "cjk": {
-    "domain": "cjk",
-    "kind": "capability_probe_cjk",
-    "source": [
-     "LABELED_CAPABILITY_PROBE \u00a7109 CJK; not generic crawl"
-    ],
-    "n_chars": 112,
-    "n_tokens_full": 63,
-    "n_tokens_pruned": 181,
-    "n_full_tokens_dropped_by_prune": 51,
-    "TOKEN_INFLATION_RATIO": 2.873015873015873,
-    "token_strings_identical": false,
-    "effective_sequence_cost": {
-     "formula": "n_tokens * active_weight_bytes_per_token + n_tokens * kv_bytes_per_position",
-     "kv_bytes_per_position": 131072,
-     "kv_source": "receipts/headless/PREFILL_KV.json components.kv_bytes_per_position",
-     "deltanet_state_grows_with_seq": false,
-     "full_weight_bytes": 858202818480,
-     "pruned_weight_bytes": 2406889651280,
-     "full_kv_bytes": 8257536,
-     "pruned_kv_bytes": 23724032,
-     "full_cost_bytes": 858211076016,
-     "pruned_cost_bytes": 2406913375312,
-     "cost_ratio": 2.8045703936674977,
-     "full_flops": 3228699608064,
-     "pruned_flops": 9054963883008,
-     "flop_ratio": 2.80452348691477
-    },
-    "net_beneficial": false,
-    "net_beneficial_reason": "cost_ratio >= 1: inflation and/or unchanged body work ate the LM-head saving (\u00a735). A smaller head that emits more tokens loses."
-   },
-   "french_or_multilingual": {
-    "domain": "french_or_multilingual",
-    "kind": "capability_probe",
-    "source": [
-     "LABELED_CAPABILITY_PROBE \u00a7109; not generic crawl"
-    ],
-    "n_chars": 436,
-    "n_tokens_full": 150,
-    "n_tokens_pruned": 313,
-    "n_full_tokens_dropped_by_prune": 70,
-    "TOKEN_INFLATION_RATIO": 2.0866666666666664,
-    "token_strings_identical": false,
-    "effective_sequence_cost": {
-     "formula": "n_tokens * active_weight_bytes_per_token + n_tokens * kv_bytes_per_position",
-     "kv_bytes_per_position": 131072,
-     "kv_source": "receipts/headless/PREFILL_KV.json components.kv_bytes_per_position",
-     "deltanet_state_grows_with_seq": false,
-     "full_weight_bytes": 2043340044000,
-     "pruned_weight_bytes": 4162190391440,
-     "full_kv_bytes": 19660800,
-     "pruned_kv_bytes": 41025536,
-     "full_cost_bytes": 2043359704800,
-     "pruned_cost_bytes": 4162231416976,
-     "cost_ratio": 2.0369548284614876,
-     "full_flops": 7687380019200,
-     "pruned_flops": 15658583952384,
-     "flop_ratio": 2.0369207601647275
-    },
-    "net_beneficial": false,
-    "net_beneficial_reason": "cost_ratio >= 1: inflation and/or unchanged body work ate the LM-head saving (\u00a735). A smaller head that emits more tokens loses."
-   },
-   "structured_output": {
-    "domain": "structured_output",
-    "kind": "agentos_tools_and_schema",
-    "source": [
-     "chat_template.jinja tool format",
-     "JSON schema",
-     "receipts/headless/STRUCTURED_OUTPUT_PROBE.json"
-    ],
-    "n_chars": 5661,
-    "n_tokens_full": 2195,
-    "n_tokens_pruned": 2195,
-    "n_full_tokens_dropped_by_prune": 0,
-    "TOKEN_INFLATION_RATIO": 1.0,
-    "token_strings_identical": true,
-    "effective_sequence_cost": {
-     "formula": "n_tokens * active_weight_bytes_per_token + n_tokens * kv_bytes_per_position",
-     "kv_bytes_per_position": 131072,
-     "kv_source": "receipts/headless/PREFILL_KV.json components.kv_bytes_per_position",
-     "deltanet_state_grows_with_seq": false,
-     "full_weight_bytes": 29900875977200,
-     "pruned_weight_bytes": 29188523671600,
-     "full_kv_bytes": 287703040,
-     "pruned_kv_bytes": 287703040,
-     "full_cost_bytes": 29901163680240,
-     "pruned_cost_bytes": 29188811374640,
-     "cost_ratio": 0.9761764353649302,
-     "full_flops": 112491994280960,
-     "pruned_flops": 109810197365760,
-     "flop_ratio": 0.9761601087051409
-    },
-    "net_beneficial": true,
-    "net_beneficial_reason": "cost_ratio < 1 (pruned sequence of this text is cheaper in active-bytes + GQA KV than the unpruned sequence)"
-   },
-   "ascii_english_control": {
-    "domain": "ascii_english_control",
-    "kind": "ascii_identity_control",
-    "source": [
-     "constructed ASCII-only English; identity control"
-    ],
-    "n_chars": 167,
-    "n_tokens_full": 35,
-    "n_tokens_pruned": 35,
-    "n_full_tokens_dropped_by_prune": 0,
-    "TOKEN_INFLATION_RATIO": 1.0,
-    "token_strings_identical": true,
-    "effective_sequence_cost": {
-     "formula": "n_tokens * active_weight_bytes_per_token + n_tokens * kv_bytes_per_position",
-     "kv_bytes_per_position": 131072,
-     "kv_source": "receipts/headless/PREFILL_KV.json components.kv_bytes_per_position",
-     "deltanet_state_grows_with_seq": false,
-     "full_weight_bytes": 476779343600,
-     "pruned_weight_bytes": 465420650800,
-     "full_kv_bytes": 4587520,
-     "pruned_kv_bytes": 4587520,
-     "full_cost_bytes": 476783931120,
-     "pruned_cost_bytes": 465425238320,
-     "cost_ratio": 0.9761764353649302,
-     "full_flops": 1793722004480,
-     "pruned_flops": 1750959866880,
-     "flop_ratio": 0.9761601087051409
-    },
-    "net_beneficial": true,
-    "net_beneficial_reason": "cost_ratio < 1 (pruned sequence of this text is cheaper in active-bytes + GQA KV than the unpruned sequence)"
-   },
-   "typographic_english": {
-    "domain": "typographic_english",
-    "kind": "punctuation_probe",
-    "source": [
-     "constructed; curly quotes + em dash are non-ASCII"
-    ],
-    "n_chars": 101,
-    "n_tokens_full": 29,
-    "n_tokens_pruned": 35,
-    "n_full_tokens_dropped_by_prune": 5,
-    "TOKEN_INFLATION_RATIO": 1.206896551724138,
-    "token_strings_identical": false,
-    "effective_sequence_cost": {
-     "formula": "n_tokens * active_weight_bytes_per_token + n_tokens * kv_bytes_per_position",
-     "kv_bytes_per_position": 131072,
-     "kv_source": "receipts/headless/PREFILL_KV.json components.kv_bytes_per_position",
-     "deltanet_state_grows_with_seq": false,
-     "full_weight_bytes": 395045741840,
-     "pruned_weight_bytes": 465420650800,
-     "full_kv_bytes": 3801088,
-     "pruned_kv_bytes": 4587520,
-     "full_cost_bytes": 395049542928,
-     "pruned_cost_bytes": 465425238320,
-     "cost_ratio": 1.178143973716295,
-     "full_flops": 1486226803712,
-     "pruned_flops": 1750959866880,
-     "flop_ratio": 1.1781242691268943
-    },
-    "net_beneficial": false,
-    "net_beneficial_reason": "cost_ratio >= 1: inflation and/or unchanged body work ate the LM-head saving (\u00a735). A smaller head that emits more tokens loses."
-   }
-  },
-  "agentos_mix": {
-   "domains": [
-    "english",
-    "code",
-    "json",
-    "shell",
-    "file_paths",
-    "math",
-    "structured_output"
-   ],
-   "n_tokens_full": 68152,
-   "n_tokens_pruned": 68285,
-   "TOKEN_INFLATION_RATIO": 1.0019515201314708
-  },
-  "net_beneficial_per_domain": {
-   "english": true,
-   "code": true,
-   "json": true,
-   "shell": true,
-   "file_paths": true,
-   "math": true,
-   "french": false,
-   "cjk": false,
-   "french_or_multilingual": false,
-   "structured_output": true,
-   "ascii_english_control": true,
-   "typographic_english": false
-  },
-  "verdict": "CONTROL reproduced (248320 -> 129006). Net-beneficial on pure-ASCII AgentOS domains (code/JSON/shell/paths/structured, ratio=1). NOT net-beneficial on French/multilingual or typographic English: inflation eats a ~5% LM-head that is only ~5% of decode work (\u00a735). ASCII-only is therefore a measured CONTROL, not the default (\u00a731)."
- },
- "script_cold_prune_candidate": {
-  "name": "script-cold deletion (CJK/Cyrillic/Arabic/Hangul/Thai/\u2026)",
-  "why_better_than_ascii_only": "Keeps accented Latin, typographic punctuation, and Greek/math symbols so French and curly-quoted English do not inflate. Still a DELETION of cold-script generation rows \u2014 input remains representable via byte-fallback, generation capability is NOT proven preserved (\u00a7109).",
-  "source_rows": 248320,
-  "pruned_rows": 146468,
-  "rows_removed": 101852,
-  "keep_ids_sha256": "9a08ce7a75b85fc93b280d0e004073c108dae8c6bda82e22882965363d01bba8",
-  "bytes_and_flops": {
-   "codec": "HQ30UQ4 grouped absmax q4 g64 (incumbent embed/head; Parent A hardlinks these)",
-   "q4_bpw": 4.25,
-   "row_bytes": 2720,
-   "source_bf16_bytes_per_table": 2542796800,
-   "source_bf16_embed_bytes_removed": 1042964480,
-   "source_bf16_output_bytes_removed": 1042964480,
-   "source_bf16_embed_plus_output_bytes_removed": 2085928960,
-   "q4_embed_bytes_full": 675430440,
-   "q4_output_bytes_full": 675430440,
-   "q4_embed_bytes_pruned": 398393000,
-   "q4_output_bytes_pruned": 398393000,
-   "q4_embed_bytes_removed": 277037440,
-   "q4_output_bytes_removed": 277037440,
-   "q4_embed_plus_output_bytes_removed": 554074880,
-   "organs_touched": [
-    "embed",
-    "lm_head"
-   ],
-   "rest_of_model_unchanged": true,
-   "tie_word_embeddings": false,
-   "eliminated_parent_equivalent_parameters": 1042964480,
-   "active_weight_bytes_per_token_full": 13622266960,
-   "active_weight_bytes_per_token_pruned": 13345229520,
-   "lm_head_share_of_active_full": 0.04958282215311981,
-   "payload_bytes_full": 14297694680,
-   "payload_bytes_pruned": 13743619800,
-   "capacity_gqa_kv_positions_freed": 4227.255859375,
-   "citations": {
-    "q4_embed_bytes": "/Users/scammermike/models/qwen38-gravity-uniform-q4-v1/manifest.json",
-    "payload": "receipts/headless/PREFILL_KV.json incumbent.payload_bytes",
-    "kv": "receipts/headless/PREFILL_KV.json kv_bytes_per_position",
-    "active_definition": "receipts/headless/NOETIC_INFORMATION_ACCOUNTING.json ACTIVE_BYTES"
-   }
-  },
-  "output_head_flops": {
-   "body_elements": 24353201664,
-   "lm_head_elements_full": 1271398400,
-   "lm_head_elements_pruned": 749916160,
-   "lm_head_elements_removed": 521482240,
-   "embed_is_gather_not_gemv": true,
-   "body_flops_per_token": 48706403328,
-   "output_head_flops_per_token_full": 2542796800,
-   "output_head_flops_per_token_pruned": 1499832320,
-   "output_head_flops_per_token_removed": 1042964480,
-   "head_share_of_decode_flops_full": 0.04961632169183345,
-   "formula": "dense decode FLOPs/token \u2248 2*(text_body + lm_head); embed is gather"
-  },
-  "TOKEN_INFLATION": {
-   "english": {
-    "domain": "english",
-    "kind": "agentos_docs",
-    "source": [
-     "docs/ultragoals/NOETIC_CANON.md",
-     "docs/ultragoals/ARTIFACT_STORAGE_POLICY.md"
-    ],
-    "n_chars": 26536,
-    "n_tokens_full": 7571,
-    "n_tokens_pruned": 7571,
-    "n_full_tokens_dropped_by_prune": 0,
-    "TOKEN_INFLATION_RATIO": 1.0,
-    "token_strings_identical": true,
-    "effective_sequence_cost": {
-     "formula": "n_tokens * active_weight_bytes_per_token + n_tokens * kv_bytes_per_position",
-     "kv_bytes_per_position": 131072,
-     "kv_source": "receipts/headless/PREFILL_KV.json components.kv_bytes_per_position",
-     "deltanet_state_grows_with_seq": false,
-     "full_weight_bytes": 103134183154160,
-     "pruned_weight_bytes": 101036732695920,
-     "full_kv_bytes": 992346112,
-     "pruned_kv_bytes": 992346112,
-     "full_cost_bytes": 103135175500272,
-     "pruned_cost_bytes": 101037725042032,
-     "cost_ratio": 0.9796630931390187,
-     "full_flops": 388007694169088,
-     "pruned_flops": 380111410091008,
-     "flop_ratio": 0.9796491559400909
-    },
-    "net_beneficial": true,
-    "net_beneficial_reason": "cost_ratio < 1 (pruned sequence of this text is cheaper in active-bytes + GQA KV than the unpruned sequence)"
-   },
-   "code": {
-    "domain": "code",
-    "kind": "agentos_source",
-    "source": [
-     "tools/headless/noetic_ir.py",
-     "crates/hawking-core/src/model/qwen38_geometry.rs",
-     "crates/hawking-core/src/tokenizer.rs",
-     "crates/hawking-core/src/vocab_prune.rs"
-    ],
-    "n_chars": 117646,
-    "n_tokens_full": 34214,
-    "n_tokens_pruned": 34214,
-    "n_full_tokens_dropped_by_prune": 0,
-    "TOKEN_INFLATION_RATIO": 1.0,
-    "token_strings_identical": true,
-    "effective_sequence_cost": {
-     "formula": "n_tokens * active_weight_bytes_per_token + n_tokens * kv_bytes_per_position",
-     "kv_bytes_per_position": 131072,
-     "kv_source": "receipts/headless/PREFILL_KV.json components.kv_bytes_per_position",
-     "deltanet_state_grows_with_seq": false,
-     "full_weight_bytes": 466072241769440,
-     "pruned_weight_bytes": 456593682797280,
-     "full_kv_bytes": 4484497408,
-     "pruned_kv_bytes": 4484497408,
-     "full_cost_bytes": 466076726266848,
-     "pruned_cost_bytes": 456598167294688,
-     "cost_ratio": 0.9796630931390187,
-     "full_flops": 1753440133179392,
-     "pruned_flops": 1717756146460672,
-     "flop_ratio": 0.9796491559400909
-    },
-    "net_beneficial": true,
-    "net_beneficial_reason": "cost_ratio < 1 (pruned sequence of this text is cheaper in active-bytes + GQA KV than the unpruned sequence)"
-   },
-   "json": {
-    "domain": "json",
-    "kind": "agentos_receipts",
-    "source": [
-     "receipts/headless/ARCHITECTURE_CANON.json",
-     "receipts/headless/MODEL_REGISTRY.json"
-    ],
-    "n_chars": 51353,
-    "n_tokens_full": 16331,
-    "n_tokens_pruned": 16331,
-    "n_full_tokens_dropped_by_prune": 0,
-    "TOKEN_INFLATION_RATIO": 1.0,
-    "token_strings_identical": true,
-    "effective_sequence_cost": {
-     "formula": "n_tokens * active_weight_bytes_per_token + n_tokens * kv_bytes_per_position",
-     "kv_bytes_per_position": 131072,
-     "kv_source": "receipts/headless/PREFILL_KV.json components.kv_bytes_per_position",
-     "deltanet_state_grows_with_seq": false,
-     "full_weight_bytes": 222465241723760,
-     "pruned_weight_bytes": 217940943291120,
-     "full_kv_bytes": 2140536832,
-     "pruned_kv_bytes": 2140536832,
-     "full_cost_bytes": 222467382260592,
-     "pruned_cost_bytes": 217943083827952,
-     "cost_ratio": 0.9796630931390187,
-     "full_flops": 836950687290368,
-     "pruned_flops": 819918034367488,
-     "flop_ratio": 0.9796491559400909
-    },
-    "net_beneficial": true,
-    "net_beneficial_reason": "cost_ratio < 1 (pruned sequence of this text is cheaper in active-bytes + GQA KV than the unpruned sequence)"
-   },
-   "shell": {
-    "domain": "shell",
-    "kind": "agentos_shell",
-    "source": [
-     "tools/headless/qwen38_gravity_native_bench.sh"
-    ],
-    "n_chars": 16970,
-    "n_tokens_full": 5263,
-    "n_tokens_pruned": 5263,
-    "n_full_tokens_dropped_by_prune": 0,
-    "TOKEN_INFLATION_RATIO": 1.0,
-    "token_strings_identical": true,
-    "effective_sequence_cost": {
-     "formula": "n_tokens * active_weight_bytes_per_token + n_tokens * kv_bytes_per_position",
-     "kv_bytes_per_position": 131072,
-     "kv_source": "receipts/headless/PREFILL_KV.json components.kv_bytes_per_position",
-     "deltanet_state_grows_with_seq": false,
-     "full_weight_bytes": 71693991010480,
-     "pruned_weight_bytes": 70235942963760,
-     "full_kv_bytes": 689831936,
-     "pruned_kv_bytes": 689831936,
-     "full_cost_bytes": 71694680842416,
-     "pruned_cost_bytes": 70236632795696,
-     "cost_ratio": 0.9796630931390187,
-     "full_flops": 269724540273664,
-     "pruned_flops": 264235418215424,
-     "flop_ratio": 0.9796491559400909
-    },
-    "net_beneficial": true,
-    "net_beneficial_reason": "cost_ratio < 1 (pruned sequence of this text is cheaper in active-bytes + GQA KV than the unpruned sequence)"
-   },
-   "file_paths": {
-    "domain": "file_paths",
-    "kind": "agentos_paths",
-    "source": [
-     "materialized worktree paths + production artifact paths"
-    ],
-    "n_chars": 5046,
-    "n_tokens_full": 1369,
-    "n_tokens_pruned": 1369,
-    "n_full_tokens_dropped_by_prune": 0,
-    "TOKEN_INFLATION_RATIO": 1.0,
-    "token_strings_identical": true,
-    "effective_sequence_cost": {
-     "formula": "n_tokens * active_weight_bytes_per_token + n_tokens * kv_bytes_per_position",
-     "kv_bytes_per_position": 131072,
-     "kv_source": "receipts/headless/PREFILL_KV.json components.kv_bytes_per_position",
-     "deltanet_state_grows_with_seq": false,
-     "full_weight_bytes": 18648883468240,
-     "pruned_weight_bytes": 18269619212880,
-     "full_kv_bytes": 179437568,
-     "pruned_kv_bytes": 179437568,
-     "full_cost_bytes": 18649062905808,
-     "pruned_cost_bytes": 18269798650448,
-     "cost_ratio": 0.9796630931390187,
-     "full_flops": 70160154975232,
-     "pruned_flops": 68732336602112,
-     "flop_ratio": 0.9796491559400909
-    },
-    "net_beneficial": true,
-    "net_beneficial_reason": "cost_ratio < 1 (pruned sequence of this text is cheaper in active-bytes + GQA KV than the unpruned sequence)"
-   },
-   "math": {
-    "domain": "math",
-    "kind": "agentos_math",
-    "source": [
-     "docs/ultragoals/NOETIC_CANON.md",
-     "geometry identities"
-    ],
-    "n_chars": 4270,
-    "n_tokens_full": 1209,
-    "n_tokens_pruned": 1209,
-    "n_full_tokens_dropped_by_prune": 0,
-    "TOKEN_INFLATION_RATIO": 1.0,
-    "token_strings_identical": true,
-    "effective_sequence_cost": {
-     "formula": "n_tokens * active_weight_bytes_per_token + n_tokens * kv_bytes_per_position",
-     "kv_bytes_per_position": 131072,
-     "kv_source": "receipts/headless/PREFILL_KV.json components.kv_bytes_per_position",
-     "deltanet_state_grows_with_seq": false,
-     "full_weight_bytes": 16469320754640,
-     "pruned_weight_bytes": 16134382489680,
-     "full_kv_bytes": 158466048,
-     "pruned_kv_bytes": 158466048,
-     "full_cost_bytes": 16469479220688,
-     "pruned_cost_bytes": 16134540955728,
-     "cost_ratio": 0.9796630931390187,
-     "full_flops": 61960282954752,
-     "pruned_flops": 60699338898432,
-     "flop_ratio": 0.9796491559400909
-    },
-    "net_beneficial": true,
-    "net_beneficial_reason": "cost_ratio < 1 (pruned sequence of this text is cheaper in active-bytes + GQA KV than the unpruned sequence)"
-   },
-   "french": {
-    "domain": "french",
-    "kind": "capability_probe_french",
-    "source": [
-     "LABELED_CAPABILITY_PROBE \u00a7109 French; not generic crawl"
-    ],
-    "n_chars": 323,
-    "n_tokens_full": 87,
-    "n_tokens_pruned": 87,
-    "n_full_tokens_dropped_by_prune": 0,
-    "TOKEN_INFLATION_RATIO": 1.0,
-    "token_strings_identical": true,
-    "effective_sequence_cost": {
-     "formula": "n_tokens * active_weight_bytes_per_token + n_tokens * kv_bytes_per_position",
-     "kv_bytes_per_position": 131072,
-     "kv_source": "receipts/headless/PREFILL_KV.json components.kv_bytes_per_position",
-     "deltanet_state_grows_with_seq": false,
-     "full_weight_bytes": 1185137225520,
-     "pruned_weight_bytes": 1161034968240,
-     "full_kv_bytes": 11403264,
-     "pruned_kv_bytes": 11403264,
-     "full_cost_bytes": 1185148628784,
-     "pruned_cost_bytes": 1161046371504,
-     "cost_ratio": 0.9796630931390187,
-     "full_flops": 4458680411136,
-     "pruned_flops": 4367942501376,
-     "flop_ratio": 0.9796491559400909
-    },
-    "net_beneficial": true,
-    "net_beneficial_reason": "cost_ratio < 1 (pruned sequence of this text is cheaper in active-bytes + GQA KV than the unpruned sequence)"
-   },
-   "cjk": {
-    "domain": "cjk",
-    "kind": "capability_probe_cjk",
-    "source": [
-     "LABELED_CAPABILITY_PROBE \u00a7109 CJK; not generic crawl"
-    ],
-    "n_chars": 112,
-    "n_tokens_full": 63,
-    "n_tokens_pruned": 169,
-    "n_full_tokens_dropped_by_prune": 43,
-    "TOKEN_INFLATION_RATIO": 2.6825396825396823,
-    "token_strings_identical": false,
-    "effective_sequence_cost": {
-     "formula": "n_tokens * active_weight_bytes_per_token + n_tokens * kv_bytes_per_position",
-     "kv_bytes_per_position": 131072,
-     "kv_source": "receipts/headless/PREFILL_KV.json components.kv_bytes_per_position",
-     "deltanet_state_grows_with_seq": false,
-     "full_weight_bytes": 858202818480,
-     "pruned_weight_bytes": 2255343788880,
-     "full_kv_bytes": 8257536,
-     "pruned_kv_bytes": 22151168,
-     "full_cost_bytes": 858211076016,
-     "pruned_cost_bytes": 2255365940048,
-     "cost_ratio": 2.6279851228649864,
-     "full_flops": 3228699608064,
-     "pruned_flops": 8484853824512,
-     "flop_ratio": 2.6279477357757997
-    },
-    "net_beneficial": false,
-    "net_beneficial_reason": "cost_ratio >= 1: inflation and/or unchanged body work ate the LM-head saving (\u00a735). A smaller head that emits more tokens loses."
-   },
-   "french_or_multilingual": {
-    "domain": "french_or_multilingual",
-    "kind": "capability_probe",
-    "source": [
-     "LABELED_CAPABILITY_PROBE \u00a7109; not generic crawl"
-    ],
-    "n_chars": 436,
-    "n_tokens_full": 150,
-    "n_tokens_pruned": 256,
-    "n_full_tokens_dropped_by_prune": 43,
-    "TOKEN_INFLATION_RATIO": 1.7066666666666668,
-    "token_strings_identical": false,
-    "effective_sequence_cost": {
-     "formula": "n_tokens * active_weight_bytes_per_token + n_tokens * kv_bytes_per_position",
-     "kv_bytes_per_position": 131072,
-     "kv_source": "receipts/headless/PREFILL_KV.json components.kv_bytes_per_position",
-     "deltanet_state_grows_with_seq": false,
-     "full_weight_bytes": 2043340044000,
-     "pruned_weight_bytes": 3416378757120,
-     "full_kv_bytes": 19660800,
-     "pruned_kv_bytes": 33554432,
-     "full_cost_bytes": 2043359704800,
-     "pruned_cost_bytes": 3416412311552,
-     "cost_ratio": 1.671958345623925,
-     "full_flops": 7687380019200,
-     "pruned_flops": 12852796325888,
-     "flop_ratio": 1.6719345594710886
-    },
-    "net_beneficial": false,
-    "net_beneficial_reason": "cost_ratio >= 1: inflation and/or unchanged body work ate the LM-head saving (\u00a735). A smaller head that emits more tokens loses."
-   },
-   "structured_output": {
-    "domain": "structured_output",
-    "kind": "agentos_tools_and_schema",
-    "source": [
-     "chat_template.jinja tool format",
-     "JSON schema",
-     "receipts/headless/STRUCTURED_OUTPUT_PROBE.json"
-    ],
-    "n_chars": 5661,
-    "n_tokens_full": 2195,
-    "n_tokens_pruned": 2195,
-    "n_full_tokens_dropped_by_prune": 0,
-    "TOKEN_INFLATION_RATIO": 1.0,
-    "token_strings_identical": true,
-    "effective_sequence_cost": {
-     "formula": "n_tokens * active_weight_bytes_per_token + n_tokens * kv_bytes_per_position",
-     "kv_bytes_per_position": 131072,
-     "kv_source": "receipts/headless/PREFILL_KV.json components.kv_bytes_per_position",
-     "deltanet_state_grows_with_seq": false,
-     "full_weight_bytes": 29900875977200,
-     "pruned_weight_bytes": 29292778796400,
-     "full_kv_bytes": 287703040,
-     "pruned_kv_bytes": 287703040,
-     "full_cost_bytes": 29901163680240,
-     "pruned_cost_bytes": 29293066499440,
-     "cost_ratio": 0.9796630931390187,
-     "full_flops": 112491994280960,
-     "pruned_flops": 110202687247360,
-     "flop_ratio": 0.9796491559400909
-    },
-    "net_beneficial": true,
-    "net_beneficial_reason": "cost_ratio < 1 (pruned sequence of this text is cheaper in active-bytes + GQA KV than the unpruned sequence)"
-   },
-   "ascii_english_control": {
-    "domain": "ascii_english_control",
-    "kind": "ascii_identity_control",
-    "source": [
-     "constructed ASCII-only English; identity control"
-    ],
-    "n_chars": 167,
-    "n_tokens_full": 35,
-    "n_tokens_pruned": 35,
-    "n_full_tokens_dropped_by_prune": 0,
-    "TOKEN_INFLATION_RATIO": 1.0,
-    "token_strings_identical": true,
-    "effective_sequence_cost": {
-     "formula": "n_tokens * active_weight_bytes_per_token + n_tokens * kv_bytes_per_position",
-     "kv_bytes_per_position": 131072,
-     "kv_source": "receipts/headless/PREFILL_KV.json components.kv_bytes_per_position",
-     "deltanet_state_grows_with_seq": false,
-     "full_weight_bytes": 476779343600,
-     "pruned_weight_bytes": 467083033200,
-     "full_kv_bytes": 4587520,
-     "pruned_kv_bytes": 4587520,
-     "full_cost_bytes": 476783931120,
-     "pruned_cost_bytes": 467087620720,
-     "cost_ratio": 0.9796630931390187,
-     "full_flops": 1793722004480,
-     "pruned_flops": 1757218247680,
-     "flop_ratio": 0.9796491559400909
-    },
-    "net_beneficial": true,
-    "net_beneficial_reason": "cost_ratio < 1 (pruned sequence of this text is cheaper in active-bytes + GQA KV than the unpruned sequence)"
-   },
-   "typographic_english": {
-    "domain": "typographic_english",
-    "kind": "punctuation_probe",
-    "source": [
-     "constructed; curly quotes + em dash are non-ASCII"
-    ],
-    "n_chars": 101,
-    "n_tokens_full": 29,
-    "n_tokens_pruned": 29,
-    "n_full_tokens_dropped_by_prune": 0,
-    "TOKEN_INFLATION_RATIO": 1.0,
-    "token_strings_identical": true,
-    "effective_sequence_cost": {
-     "formula": "n_tokens * active_weight_bytes_per_token + n_tokens * kv_bytes_per_position",
-     "kv_bytes_per_position": 131072,
-     "kv_source": "receipts/headless/PREFILL_KV.json components.kv_bytes_per_position",
-     "deltanet_state_grows_with_seq": false,
-     "full_weight_bytes": 395045741840,
-     "pruned_weight_bytes": 387011656080,
-     "full_kv_bytes": 3801088,
-     "pruned_kv_bytes": 3801088,
-     "full_cost_bytes": 395049542928,
-     "pruned_cost_bytes": 387015457168,
-     "cost_ratio": 0.9796630931390187,
-     "full_flops": 1486226803712,
-     "pruned_flops": 1455980833792,
-     "flop_ratio": 0.9796491559400909
-    },
-    "net_beneficial": true,
-    "net_beneficial_reason": "cost_ratio < 1 (pruned sequence of this text is cheaper in active-bytes + GQA KV than the unpruned sequence)"
-   }
-  },
-  "net_beneficial_per_domain": {
-   "english": true,
-   "code": true,
-   "json": true,
-   "shell": true,
-   "file_paths": true,
-   "math": true,
-   "french": true,
-   "cjk": false,
-   "french_or_multilingual": false,
-   "structured_output": true,
-   "ascii_english_control": true,
-   "typographic_english": true
-  }
- },
- "proposed_scheme": {
-  "kind": "hot_warm_cold_residency",
-  "ascii_only_is_default": false,
-  "deletion_is_default": false,
-  "why_not_ascii_only": "ASCII-only deletes French/Latin-extended generation rows and typographic punctuation used in real English. On this box the LM head is ~5% of decode work, so any inflation \u2273 5% loses. Tool/JSON/code/path/schema tokens are ASCII and do not need that deletion to be cheap. \u00a731, \u00a782, \u00a7109.",
-  "why_not_hot_only_deletion": "A 4\u20136k AgentOS-observed HOT set, used as a DELETE keep-set, inflates even ASCII English (unseen subwords fall to bytes). That is \u00a735 in miniature. HOT is a residency tier, not a deletion whitelist.",
-  "protects": [
-   "tool_call / tool_response / think sentinels",
-   "JSON structural tokens and JSON Schema keywords",
-   "code / shell punctuation and identifiers observed in AgentOS",
-   "file path tokens (/, ., -, _, extensions)",
-   "all 256 byte-level tokens (compositional representability)",
-   "all 33 added tokens including chat/tool/FIM specials"
-  ],
-  "missing_protected_token_ids": [],
-  "protected_surfaces_all_in_hot": true,
-  "tiers": {
-   "hot": {
-    "definition": "Always-resident LM-head rows: byte alphabet, added/special tail, AgentOS-observed tokens, protected tool/JSON/code/path/schema surfaces.",
-    "n_rows": 6535,
-    "resident_in_default_gemv": true
-   },
-   "warm": {
-    "definition": "Latin/ASCII/Greek/math/symbol rows not in HOT. Stay on the parent disk. Page into the GEMV when the session needs them (accented French, typographic quotes, \u0394/\u2248). Do NOT delete: generation capability lives in these rows (\u00a7109).",
-    "n_rows": 139933,
-    "resident_in_default_gemv": false,
-    "page_in": true,
-    "delete": false
-   },
-   "cold": {
-    "definition": "CJK/Cyrillic/Arabic/Hangul/Thai/\u2026 rows. Input still encodes via byte-fallback (3 bytes/char typical). Generation of these tokens requires a page-in of the rows; byte-fallback representability is NOT a proof that generation capability survives (\u00a7109). Default is page-in-on-demand, not deletion.",
-    "n_rows": 101852,
-    "resident_in_default_gemv": false,
-    "page_in": true,
-    "delete": false,
-    "deletion_would_be": "the script-cold candidate above; not default"
-   }
-  },
-  "default_resident_rows": 6535,
-  "default_resident_vs_full": 0.026316849226804124,
-  "default_resident_vs_ascii_control": 0.05065655860967707,
-  "two_stage_head": "Decode GEMV over HOT every token (~5k\u20138k rows, ~3% of the full head, ~0.15% of decode FLOPs). WARM/COLD rows exist as a gather-able residual table, scored only on page-in. This removes work from EVERY decode step (\u00a736) WITHOUT the inflation of deleting unseen English subwords."
- },
- "laws": {
-  "\u00a730_38": "Vocabulary is first-class; VocabularyGenome lives here.",
-  "\u00a731": "ASCII-only is the CONTROL, not the default.",
-  "\u00a735": "A 10% smaller LM head that produces 25% more tokens LOSES.",
-  "\u00a736": "LM head work is on EVERY decode step; high EV only if inflation does not eat it.",
-  "\u00a781": "Profile real AgentOS token distribution, not generic frequency.",
-  "\u00a782": "Protect tool/JSON/code/path/schema tokens.",
-  "\u00a793": "Complete closure counts tokenizer data.",
-  "\u00a7109": "Free capability != free information. Byte-fallback preserves representability, not generation.",
-  "\u00a7118": "Tokenizer topology is part of the physical program."
- },
- "self_check": {
-  "control_rows_129006": true,
-  "ascii_english_ratio_is_1": true,
-  "ascii_english_strings_identical": true,
-  "ascii_only_is_not_default": true,
-  "protected_in_hot": true,
-  "tokenizer_bytes_counted": true,
-  "rest_unchanged": true,
-  "did_not_touch_gpu": true,
-  "did_not_mutate_parent": true
- },
- "wall_s": 3.818556785583496
+ "measurement_is_calibrated": true,
+ "pass": true
 }

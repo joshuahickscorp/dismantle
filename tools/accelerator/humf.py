@@ -74,6 +74,7 @@ class Materialization:
     layout: str
     bytes: int
     state: State = State.ABSENT
+    payload: bytes | None = None      # the actual data, when this copy holds any
 
     def transition(self, to: State) -> None:
         if to not in LEGAL[self.state]:
@@ -132,10 +133,16 @@ class Plan:
 
 
 class Humf:
-    def __init__(self, domains: dict[str, Domain]):
+    def __init__(self, domains: dict[str, Domain],
+                 providers: dict[str, Any] | None = None):
         self.domains = domains
         self.objects: dict[str, HumfObject] = {}
         self.log: list[dict[str, Any]] = []
+        # Domains backed by a provider actually move bytes on execute(). Without
+        # this the executor transitioned TRANSFERRING -> CLEAN on bookkeeping alone
+        # and marked a copy valid that held nothing -- see the defect recorded in
+        # ACCELERATOR_HUMF_FAILURE_INJECTION.json.
+        self.providers: dict[str, Any] = providers or {}
 
     def register(self, obj: HumfObject) -> None:
         self.objects[obj.identity] = obj
@@ -200,14 +207,54 @@ class Humf:
             obj.place(dst)
         dst.transition(State.TRANSFERRING if plan.action == "TRANSFER"
                        else State.MATERIALIZING)
+        # MOVE THE BYTES. A transfer that is only a state change cannot fail, and a
+        # transfer that cannot fail is not a transfer -- it is an assumption. If the
+        # provider raises, the destination goes INVALID and stays out of
+        # valid_copies(); the SOURCE is left untouched, because a failed outbound
+        # transfer must not damage the copy that was good.
+        try:
+            self._move(obj, plan, want_domain, dst)
+        except Exception:
+            dst.transition(State.INVALID)
+            self.log.append({"object": identity, "action": plan.action,
+                             "domain": want_domain, "outcome": "FAILED",
+                             "at": time.time()})
+            raise
         dst.transition(State.CLEAN)
         if obj.owner is None:
             obj.owner = want_domain
         self.log.append({"object": identity, "action": plan.action,
                          "domain": want_domain, "cost_s": plan.cost_s,
                          "cost_provenance": plan.cost_provenance,
-                         "at": time.time()})
+                         "outcome": "OK", "at": time.time()})
         return dst
+
+    def _move(self, obj: "HumfObject", plan: Plan, want_domain: str,
+              dst: Materialization) -> None:
+        """Actually put the data where the plan says it goes.
+
+        RECOMPUTE runs the object's recipe. TRANSFER reads a valid source copy and
+        hands it to the destination domain's provider, if that domain has one. A
+        domain with no provider still only gets bytes it was given -- it never
+        gets a payload conjured from nothing.
+        """
+        if plan.action == "RECOMPUTE":
+            if obj.recompute is None:
+                raise HumfError(f"{obj.identity} has no recompute recipe")
+            dst.payload = obj.recompute()
+            return
+        src = next((m for d, m in obj.materializations.items()
+                    if d != want_domain and m.state is State.CLEAN), None)
+        if src is None or src.payload is None:
+            raise HumfError(
+                f"transfer of {obj.identity} into {want_domain} has no valid source "
+                f"payload. A STALE or empty copy is never a transfer source.")
+        prov = self.providers.get(want_domain)
+        if prov is not None:
+            prov.copy_in(obj.identity, src.payload)
+            dst.payload = prov.copy_out(obj.identity)
+        else:
+            dst.payload = src.payload
 
 
 class MockExternalMemoryProvider:

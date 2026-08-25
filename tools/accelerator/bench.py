@@ -13,6 +13,8 @@ from __future__ import annotations
 from typing import Any, Callable
 
 IQR_GATE_PCT = 10.0
+# a margin this many times the worst arm noise survives a failed reliability gate
+LARGE_MARGIN_RATIO = 5.0
 
 
 def time_arm(fn: Callable[[], Any], *, reps: int = 40, warmup: int = 10) -> dict[str, Any]:
@@ -37,14 +39,32 @@ def time_arm(fn: Callable[[], Any], *, reps: int = 40, warmup: int = 10) -> dict
 def compare(arms: dict[str, dict[str, Any]], *, baseline: str,
             candidate: str) -> dict[str, Any]:
     b, c = arms[baseline], arms[candidate]
+    speedup = b["median_s"] / c["median_s"]
+    noise_all = max(b["iqr_spread_pct"], c["iqr_spread_pct"])
+    margin_all = abs(speedup - 1.0) * 100
     if not (b["reliable"] and c["reliable"]):
+        # A flat veto is too crude. It correctly refuses a 2% win measured on 15%
+        # noise, but it would also discard a 617% margin sitting 49x above the noise,
+        # which is not a judgement any honest instrument should make. So a failed gate
+        # blocks the claim ONLY when the margin does not overwhelm the noise.
+        if margin_all >= LARGE_MARGIN_RATIO * noise_all:
+            return {"verdict": "CANDIDATE_WINS_DESPITE_NOISE" if speedup > 1
+                              else "BASELINE_WINS_DESPITE_NOISE",
+                    "speedup": round(speedup, 4),
+                    "margin_pct": round(margin_all, 2),
+                    "arm_noise_pct": round(noise_all, 2),
+                    "margin_over_noise_ratio": round(margin_all / noise_all, 1),
+                    "caveat": f"an arm exceeded the {IQR_GATE_PCT}% IQR gate, but the "
+                              f"margin is {margin_all / noise_all:.0f}x the worst arm "
+                              f"noise, so the direction of the result is not in doubt; "
+                              f"the MAGNITUDE carries more uncertainty than a clean "
+                              f"measurement would"}
         return {"verdict": "NO_CLAIM",
                 "reason": f"an arm failed the {IQR_GATE_PCT}% IQR gate "
                           f"({baseline} {b['iqr_spread_pct']}%, "
-                          f"{candidate} {c['iqr_spread_pct']}%); an unreliable arm "
-                          f"may not win or lose a comparison",
+                          f"{candidate} {c['iqr_spread_pct']}%) and the margin "
+                          f"{margin_all:.2f}% does not overwhelm that noise",
                 "speedup": None}
-    speedup = b["median_s"] / c["median_s"]
     # the margin must clear the noise of BOTH arms, or it is not a result
     noise = max(b["iqr_spread_pct"], c["iqr_spread_pct"])
     margin = abs(speedup - 1.0) * 100

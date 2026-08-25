@@ -452,10 +452,35 @@ def near_threshold_headroom(cos: float, ratio: float, kernel_err: float,
     # The safety bar is 100x that, so a verdict is only called safe when it would
     # take two orders more error than has ever been observed to flip it.
     scale = 2.85e-06
+    # AND FLOAT32 IS NOT THE WIDEST SOURCE OF DISAGREEMENT WHEN THE INPUTS ARE A
+    # SAMPLE. Measured over 72 packs against a 1518-row pooled capture: packs with
+    # under 0.002 of headroom flip their verdict on 20.8% of 176-row resamples, packs
+    # between 0.002 and 0.01 on 0.19%, and packs beyond 0.01 on NONE -- and the same
+    # band predicts disagreement between calibration DOMAINS (prose, code, numeric,
+    # multilingual, structured), which never disagreed above 0.00815 of headroom.
+    # THE BAR IS 7x WIDER THAN THE FLOAT32 ONE and the widest unstable pack sits 28.6x
+    # out: three of the six unstable packs PASS safe_at_float32, one flipping on 8.3%
+    # of resamples. More rows do not fix it -- 512 rows flip at 1.39% against 176's
+    # 1.27% -- because the flips live where the answer is genuinely undecided.
+    # WHY THE BAR IS NOT SET AT THE WIDEST UNSTABLE PACK: cosine headroom for an
+    # ACCEPTED pack is capped at 1 - min_cosine, so a bar at 0.01 with min_cosine 0.99
+    # would call EVERY acceptance undecided. 0.002 is where the flip rate collapses
+    # from 20.8% to 0.19%, and the two unstable packs above it are why this is
+    # reported as an INDICATOR AND NOT A GUARANTEE.
+    # See ACCELERATOR_GATE_HEADROOM.json.
+    SAMPLING_BAR = 0.002
     return {"min_distance_to_a_threshold": m,
             "float32_disagreement_scale": scale,
             "safe_at_float32": bool(m > 100 * scale),
-            "means": "below this distance the float64 and float32 gates may disagree"}
+            "sampling_bar": SAMPLING_BAR,
+            "decided_under_resampling": bool(m > SAMPLING_BAR),
+            "decided_is_an_indicator_not_a_guarantee":
+                "2 of 72 packs above this bar were still unstable (headroom 0.00632 "
+                "flipping on 8.3% of 176-row resamples, 0.00815 disagreeing across "
+                "calibration domains)",
+            "means": "below float32_disagreement_scale x100 the float64 and float32 "
+                     "gates may disagree; below sampling_bar the verdict depends on "
+                     "WHICH activation rows were captured, which no precision buys back"}
 
 
 def quantize_grouped(w, bits: int, group: int):

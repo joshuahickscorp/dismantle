@@ -1420,3 +1420,27 @@ def test_one_input_vector_is_a_noisier_gate_than_many():
     full = gn.output_space_fidelity(W, Wq, X)["cosine_real_inputs"]
     assert min(singles) < full < max(singles)
     assert max(singles) - min(singles) > 10 * abs(full - float(np.mean(singles)))
+
+
+def test_a_verdict_can_be_precision_safe_and_still_undecided():
+    """safe_at_float32 answers a question about ARITHMETIC. When the gate's inputs are
+    a SAMPLE of activations the wider source of disagreement is WHICH ROWS -- measured
+    at 28.6x the float32 bar, with three of six unstable packs passing safe_at_float32
+    and one of them flipping on 8.3% of 176-row resamples."""
+    import gravity_native as gn
+    near = gn.near_threshold_headroom(cos=0.99 + 0.0008, ratio=1.0, kernel_err=0.0,
+                                      kernel_tol=1.0, min_cosine=0.99,
+                                      magnitude_band=(0.9, 1.1))
+    assert near["safe_at_float32"] is True              # 0.0008 clears 100 x 2.85e-06
+    assert near["decided_under_resampling"] is False    # and is inside the 0.002 band
+    far = gn.near_threshold_headroom(cos=0.9999, ratio=1.0, kernel_err=0.0,
+                                     kernel_tol=1.0, min_cosine=0.99,
+                                     magnitude_band=(0.9, 1.1))
+    assert far["safe_at_float32"] and far["decided_under_resampling"]
+    # AND THE BAR CANNOT BE SET AT THE WIDEST UNSTABLE PACK: an accepted pack's
+    # cosine headroom is capped at 1 - min_cosine, so a 0.01 bar would call every
+    # acceptance undecided. Pinned so nobody "tightens" it into vacuity.
+    assert gn.near_threshold_headroom(cos=1.0, ratio=1.0, kernel_err=0.0,
+                                      kernel_tol=1.0, min_cosine=0.99,
+                                      magnitude_band=(0.9, 1.1)
+                                      )["min_distance_to_a_threshold"] <= 0.01 + 1e-12

@@ -115,12 +115,57 @@ def test_the_planner_reports_gaps_rather_than_claiming_coverage():
     d = rec()
     assert d["n_gaps"] > 0
     assert d["stage_status"] == "RAN_WITH_GAPS"
-    assert set(d["gaps"]) == {"embed", "lm_head", "moe_router"}
+    assert set(d["gaps"]) == {"moe_router"}
 
 
 def test_the_pipeline_receipt_reflects_the_new_stage_status():
     p = json.load(open(RH / "NOETIC_COMPILER_PIPELINE.json"))
     kp = next(s for s in p["stages"] if s["stage"] == "KernelPlanner")
     assert kp["status"] == "RAN_WITH_GAPS"
-    assert kp["output"]["n_gaps"] == 3
+    assert kp["output"]["n_gaps"] == 1
     assert p["n_stages_automatic_on_model_2"] == 5
+
+
+def test_a_selector_alone_cannot_cover_a_gemv_organ():
+    """A top-k select touches no weights. Counting it alone marked moe_router COVERED
+    for q2_affine when every router matvec present is binary_group."""
+    r = next(x for x in rec()["organ_plan"] if x["organ"] == "moe_router")
+    for f in r["seeded_families_in_score_order"]:
+        assert f["n_weight_bearing"] == 0
+        assert f["n_supporting_representation_independent"] >= 1
+        assert f["n_competent_kernels"] == 0
+    assert r["selected_representation"] is None
+    assert r["status"] == "REPRESENTATION_MISMATCH"
+
+
+def test_the_router_gap_is_a_representation_mismatch_not_a_missing_kernel():
+    r = next(x for x in rec()["organ_plan"] if x["organ"] == "moe_router")
+    assert r["n_kernels_for_organ"] >= 3
+    assert "none executes any seeded family" in r["mismatch"]
+
+
+def test_binary_group_is_not_treated_as_binary_sparse_residual():
+    """A plain binary kernel has no residual path."""
+    import importlib.util, sys
+    mp = Path(__file__).resolve().parent / "kernel_planner_model2.py"
+    spec = importlib.util.spec_from_file_location("_kp", mp)
+    m = importlib.util.module_from_spec(spec)
+    sys.modules["_kp"] = m
+    spec.loader.exec_module(m)
+    # check the VALUE SET, not a text span: binary_group legitimately appears as its own
+    # key between binary_sparse_residual and ternary
+    assert m.REPRESENTATION_EXECUTES["binary_sparse_residual"] == {"binary_sparse_residual"}
+    assert "binary_group" in m.REPRESENTATION_EXECUTES["binary_group"]
+
+
+def test_the_second_registration_round_verified_both_declaration_and_reference():
+    lib = json.load(open(KL))
+    r = lib["organ_registration_round2"]
+    assert r["n_added"] == 6
+    assert "referenced from src/" in r["each_verified"]
+    root = Path(__file__).resolve().parents[2]
+    added = set(r["added"])
+    for k in lib["kernels"]:
+        if k["kernel_identity"] in added:
+            assert f"kernel void {k['kernel_identity']}" in (root / k["shader"]).read_text()
+            assert k["parity"]["kind"] == "ABSENT" and k["parity"]["absent_reason"]

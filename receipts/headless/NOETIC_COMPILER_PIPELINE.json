@@ -87,11 +87,9 @@
    "hand_authored": false,
    "output": {
     "n_organs": 6,
-    "n_covered": 3,
-    "n_gaps": 3,
+    "n_covered": 5,
+    "n_gaps": 1,
     "gaps": [
-     "embed",
-     "lm_head",
      "moe_router"
     ],
     "downgrades": [

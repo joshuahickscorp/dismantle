@@ -23,7 +23,7 @@
   "citations"
  ],
  "law": "no anonymous performance wins: a field may be ABSENT with a reason, never missing and never blank without one",
- "n_kernels": 35,
+ "n_kernels": 41,
  "n_complete": 17,
  "n_rejected": 0,
  "rejected": [],
@@ -4270,6 +4270,542 @@
      "receipts/headless/NOETIC_COMPILER_STAGE_AUDIT.json"
     ]
    }
+  },
+  {
+   "kernel_identity": "qwen38_hgravu_embedding_lookup",
+   "organ_identity": "embed",
+   "representation_identity": "uniform_qn_group",
+   "machine_identity": {
+    "chipset": "Apple M3 Ultra",
+    "gpu_cores": 60,
+    "unified_memory_bytes": 103079215104,
+    "metal_family": "Metal 4",
+    "source": "receipts/headless/NOETIC_PARENT_A.json",
+    "command": "NOETIC_PARENT_A.MachineGenome",
+    "device_measured_sustained_gb_s": {
+     "value": 778.8,
+     "kind": "CITED",
+     "unit": "GB/s",
+     "command": "BANDWIDTH_ROOF.anchor_roof.correction.new_roof_gb_s",
+     "absent_reason": null,
+     "note": "N017 sequential unique-once DRAM roof, sealed as 778.8. Copied, not re-derived. Raw highest_dram_read_gb_s=778.7585851761676 is the measurement that sealed this figure.",
+     "source": "receipts/headless/BANDWIDTH_ROOF.json"
+    },
+    "parent_genome_roof_gb_s_is_not_the_campaign_roof": {
+     "parent_machinegenome_measured_roof_gb_s": 595.9,
+     "note": "595.9 is the G072 family scoring reference sealed into NOETIC_PARENT_A.MachineGenome, not DEVICE_MEASURED_SUSTAINED. Canon law 10. Current DRAM roof is 778.8.",
+     "source": "receipts/headless/NOETIC_PARENT_A.json"
+    }
+   },
+   "why_qualified": "HGRAVU01 is grouped absmax: uniform low-bit codes with a per-group scale and no bias",
+   "shader": "crates/hawking-core/shaders/qwen38_device_activations.metal",
+   "shader_sha256": {
+    "kind": "MEASURED",
+    "value": "fd86dd516f94936c442814311ba20ebcff638d60c6c7702ccb5fdc3e8c89bfab",
+    "note": "sha256 of the shader SOURCE"
+   },
+   "compiled_identity": {
+    "kind": "ABSENT",
+    "value": null,
+    "absent_reason": "compiled from source at admission; no metallib is emitted to hash"
+   },
+   "specialization": {
+    "kind": "MEASURED",
+    "value": {
+     "simdgroup": false,
+     "fused_norm": false,
+     "top_k_is_runtime_parameter": false
+    }
+   },
+   "memory_layout": {
+    "kind": "MEASURED",
+    "value": {
+     "declared_in": "qwen38_device_activations.metal",
+     "referenced_from": [
+      "crates/hawking-core/src/metal/mod.rs",
+      "crates/hawking-core/src/model/qwen38_hybrid_decode.rs"
+     ]
+    }
+   },
+   "competence": {
+    "kind": "MEASURED",
+    "value": {
+     "executes": "uniform_qn_group",
+     "organ": "embed"
+    },
+    "note": "which representation this kernel can execute; says nothing about whether it executes it correctly"
+   },
+   "measurements": {
+    "kind": "ABSENT",
+    "value": null,
+    "absent_reason": "never benchmarked in this campaign"
+   },
+   "supported_capability_regime": {
+    "kind": "ABSENT",
+    "value": null,
+    "absent_reason": "unknown: no model #2 artifact exists, so this kernel has never executed a whole-model decode here"
+   },
+   "parity": {
+    "kind": "ABSENT",
+    "value": null,
+    "absent_reason": "no parity oracle was run for this kernel in this campaign"
+   },
+   "citations": {
+    "kind": "MEASURED",
+    "value": [
+     "crates/hawking-core/src/metal/mod.rs",
+     "crates/hawking-core/src/model/qwen38_hybrid_decode.rs",
+     "crates/hawking-core/shaders/qwen38_device_activations.metal"
+    ]
+   }
+  },
+  {
+   "kernel_identity": "qwen38_hgrafv_embedding_lookup",
+   "organ_identity": "embed",
+   "representation_identity": "q2_affine",
+   "machine_identity": {
+    "chipset": "Apple M3 Ultra",
+    "gpu_cores": 60,
+    "unified_memory_bytes": 103079215104,
+    "metal_family": "Metal 4",
+    "source": "receipts/headless/NOETIC_PARENT_A.json",
+    "command": "NOETIC_PARENT_A.MachineGenome",
+    "device_measured_sustained_gb_s": {
+     "value": 778.8,
+     "kind": "CITED",
+     "unit": "GB/s",
+     "command": "BANDWIDTH_ROOF.anchor_roof.correction.new_roof_gb_s",
+     "absent_reason": null,
+     "note": "N017 sequential unique-once DRAM roof, sealed as 778.8. Copied, not re-derived. Raw highest_dram_read_gb_s=778.7585851761676 is the measurement that sealed this figure.",
+     "source": "receipts/headless/BANDWIDTH_ROOF.json"
+    },
+    "parent_genome_roof_gb_s_is_not_the_campaign_roof": {
+     "parent_machinegenome_measured_roof_gb_s": 595.9,
+     "note": "595.9 is the G072 family scoring reference sealed into NOETIC_PARENT_A.MachineGenome, not DEVICE_MEASURED_SUSTAINED. Canon law 10. Current DRAM roof is 778.8.",
+     "source": "receipts/headless/NOETIC_PARENT_A.json"
+    }
+   },
+   "why_qualified": "HGRAVF01 is the fitted-affine container: 2-bit codes with a per-group scale, which is the q2_affine family",
+   "shader": "crates/hawking-core/shaders/q80_mixed_decode.metal",
+   "shader_sha256": {
+    "kind": "MEASURED",
+    "value": "28580af822f2ba543c740eef04172383a7c8987c7d5cd650d48cf6b42a4cebd3",
+    "note": "sha256 of the shader SOURCE"
+   },
+   "compiled_identity": {
+    "kind": "ABSENT",
+    "value": null,
+    "absent_reason": "compiled from source at admission; no metallib is emitted to hash"
+   },
+   "specialization": {
+    "kind": "MEASURED",
+    "value": {
+     "simdgroup": false,
+     "fused_norm": false,
+     "top_k_is_runtime_parameter": false
+    }
+   },
+   "memory_layout": {
+    "kind": "MEASURED",
+    "value": {
+     "declared_in": "q80_mixed_decode.metal",
+     "referenced_from": [
+      "crates/hawking-core/src/metal/mod.rs",
+      "crates/hawking-core/src/model/qwen38_hybrid_decode.rs"
+     ]
+    }
+   },
+   "competence": {
+    "kind": "MEASURED",
+    "value": {
+     "executes": "q2_affine",
+     "organ": "embed"
+    },
+    "note": "which representation this kernel can execute; says nothing about whether it executes it correctly"
+   },
+   "measurements": {
+    "kind": "ABSENT",
+    "value": null,
+    "absent_reason": "never benchmarked in this campaign"
+   },
+   "supported_capability_regime": {
+    "kind": "ABSENT",
+    "value": null,
+    "absent_reason": "unknown: no model #2 artifact exists, so this kernel has never executed a whole-model decode here"
+   },
+   "parity": {
+    "kind": "ABSENT",
+    "value": null,
+    "absent_reason": "no parity oracle was run for this kernel in this campaign"
+   },
+   "citations": {
+    "kind": "MEASURED",
+    "value": [
+     "crates/hawking-core/src/metal/mod.rs",
+     "crates/hawking-core/src/model/qwen38_hybrid_decode.rs",
+     "crates/hawking-core/shaders/q80_mixed_decode.metal"
+    ]
+   }
+  },
+  {
+   "kernel_identity": "qwen_uniform_q4_group64_final_norm_lm_head_simdgroup8",
+   "organ_identity": "lm_head",
+   "representation_identity": "uniform_q4_group",
+   "machine_identity": {
+    "chipset": "Apple M3 Ultra",
+    "gpu_cores": 60,
+    "unified_memory_bytes": 103079215104,
+    "metal_family": "Metal 4",
+    "source": "receipts/headless/NOETIC_PARENT_A.json",
+    "command": "NOETIC_PARENT_A.MachineGenome",
+    "device_measured_sustained_gb_s": {
+     "value": 778.8,
+     "kind": "CITED",
+     "unit": "GB/s",
+     "command": "BANDWIDTH_ROOF.anchor_roof.correction.new_roof_gb_s",
+     "absent_reason": null,
+     "note": "N017 sequential unique-once DRAM roof, sealed as 778.8. Copied, not re-derived. Raw highest_dram_read_gb_s=778.7585851761676 is the measurement that sealed this figure.",
+     "source": "receipts/headless/BANDWIDTH_ROOF.json"
+    },
+    "parent_genome_roof_gb_s_is_not_the_campaign_roof": {
+     "parent_machinegenome_measured_roof_gb_s": 595.9,
+     "note": "595.9 is the G072 family scoring reference sealed into NOETIC_PARENT_A.MachineGenome, not DEVICE_MEASURED_SUSTAINED. Canon law 10. Current DRAM roof is 778.8.",
+     "source": "receipts/headless/NOETIC_PARENT_A.json"
+    }
+   },
+   "why_qualified": "uniform q4 at group 64, fused with the final norm",
+   "shader": "crates/hawking-core/shaders/qwen_uniform_q4.metal",
+   "shader_sha256": {
+    "kind": "MEASURED",
+    "value": "676a6a520b67bb31af0b6614698efe13653bf1141a946005d71e47e5ae27e15f",
+    "note": "sha256 of the shader SOURCE"
+   },
+   "compiled_identity": {
+    "kind": "ABSENT",
+    "value": null,
+    "absent_reason": "compiled from source at admission; no metallib is emitted to hash"
+   },
+   "specialization": {
+    "kind": "MEASURED",
+    "value": {
+     "simdgroup": true,
+     "fused_norm": true,
+     "top_k_is_runtime_parameter": false
+    }
+   },
+   "memory_layout": {
+    "kind": "MEASURED",
+    "value": {
+     "declared_in": "qwen_uniform_q4.metal",
+     "referenced_from": [
+      "crates/hawking-core/src/metal/mod.rs",
+      "crates/hawking-core/src/model/qwen30_complete_runtime.rs"
+     ]
+    }
+   },
+   "competence": {
+    "kind": "MEASURED",
+    "value": {
+     "executes": "uniform_q4_group",
+     "organ": "lm_head"
+    },
+    "note": "which representation this kernel can execute; says nothing about whether it executes it correctly"
+   },
+   "measurements": {
+    "kind": "ABSENT",
+    "value": null,
+    "absent_reason": "never benchmarked in this campaign"
+   },
+   "supported_capability_regime": {
+    "kind": "ABSENT",
+    "value": null,
+    "absent_reason": "unknown: no model #2 artifact exists, so this kernel has never executed a whole-model decode here"
+   },
+   "parity": {
+    "kind": "ABSENT",
+    "value": null,
+    "absent_reason": "no parity oracle was run for this kernel in this campaign"
+   },
+   "citations": {
+    "kind": "MEASURED",
+    "value": [
+     "crates/hawking-core/src/metal/mod.rs",
+     "crates/hawking-core/src/model/qwen30_complete_runtime.rs",
+     "crates/hawking-core/shaders/qwen_uniform_q4.metal"
+    ]
+   }
+  },
+  {
+   "kernel_identity": "qwen80_postnorm_router_top10_matvec",
+   "organ_identity": "moe_router",
+   "representation_identity": "binary_group",
+   "machine_identity": {
+    "chipset": "Apple M3 Ultra",
+    "gpu_cores": 60,
+    "unified_memory_bytes": 103079215104,
+    "metal_family": "Metal 4",
+    "source": "receipts/headless/NOETIC_PARENT_A.json",
+    "command": "NOETIC_PARENT_A.MachineGenome",
+    "device_measured_sustained_gb_s": {
+     "value": 778.8,
+     "kind": "CITED",
+     "unit": "GB/s",
+     "command": "BANDWIDTH_ROOF.anchor_roof.correction.new_roof_gb_s",
+     "absent_reason": null,
+     "note": "N017 sequential unique-once DRAM roof, sealed as 778.8. Copied, not re-derived. Raw highest_dram_read_gb_s=778.7585851761676 is the measurement that sealed this figure.",
+     "source": "receipts/headless/BANDWIDTH_ROOF.json"
+    },
+    "parent_genome_roof_gb_s_is_not_the_campaign_roof": {
+     "parent_machinegenome_measured_roof_gb_s": 595.9,
+     "note": "595.9 is the G072 family scoring reference sealed into NOETIC_PARENT_A.MachineGenome, not DEVICE_MEASURED_SUSTAINED. Canon law 10. Current DRAM roof is 778.8.",
+     "source": "receipts/headless/NOETIC_PARENT_A.json"
+    }
+   },
+   "why_qualified": "signature takes router_signs (uchar) and router_scales (half): plain grouped binary, with no residual path",
+   "shader": "crates/hawking-core/shaders/qwen80_postnorm_router_top10.metal",
+   "shader_sha256": {
+    "kind": "MEASURED",
+    "value": "c69e43ca2a5e3d03621deed52ab3fc8c1a089313f1a28f431b88a024c5ab943b",
+    "note": "sha256 of the shader SOURCE"
+   },
+   "compiled_identity": {
+    "kind": "ABSENT",
+    "value": null,
+    "absent_reason": "compiled from source at admission; no metallib is emitted to hash"
+   },
+   "specialization": {
+    "kind": "MEASURED",
+    "value": {
+     "simdgroup": false,
+     "fused_norm": true,
+     "top_k_is_runtime_parameter": true
+    }
+   },
+   "memory_layout": {
+    "kind": "MEASURED",
+    "value": {
+     "declared_in": "qwen80_postnorm_router_top10.metal",
+     "referenced_from": [
+      "crates/hawking-core/src/metal/mod.rs",
+      "crates/hawking-core/src/model/qwen80_complete_runtime.rs",
+      "crates/hawking-core/src/model/qwen80_hybrid_token_graph.rs",
+      "crates/hawking-core/src/model/qwen80_48_layer_execution_schedule.rs"
+     ]
+    }
+   },
+   "competence": {
+    "kind": "MEASURED",
+    "value": {
+     "executes": "binary_group",
+     "organ": "moe_router"
+    },
+    "note": "which representation this kernel can execute; says nothing about whether it executes it correctly"
+   },
+   "measurements": {
+    "kind": "ABSENT",
+    "value": null,
+    "absent_reason": "never benchmarked in this campaign"
+   },
+   "supported_capability_regime": {
+    "kind": "ABSENT",
+    "value": null,
+    "absent_reason": "unknown: no model #2 artifact exists, so this kernel has never executed a whole-model decode here"
+   },
+   "parity": {
+    "kind": "ABSENT",
+    "value": null,
+    "absent_reason": "no parity oracle was run for this kernel in this campaign"
+   },
+   "citations": {
+    "kind": "MEASURED",
+    "value": [
+     "crates/hawking-core/src/metal/mod.rs",
+     "crates/hawking-core/src/model/qwen80_complete_runtime.rs",
+     "crates/hawking-core/src/model/qwen80_hybrid_token_graph.rs",
+     "crates/hawking-core/src/model/qwen80_48_layer_execution_schedule.rs",
+     "crates/hawking-core/shaders/qwen80_postnorm_router_top10.metal"
+    ]
+   }
+  },
+  {
+   "kernel_identity": "qwen80_postnorm_router_top10_select",
+   "organ_identity": "moe_router",
+   "representation_identity": "topk_select",
+   "machine_identity": {
+    "chipset": "Apple M3 Ultra",
+    "gpu_cores": 60,
+    "unified_memory_bytes": 103079215104,
+    "metal_family": "Metal 4",
+    "source": "receipts/headless/NOETIC_PARENT_A.json",
+    "command": "NOETIC_PARENT_A.MachineGenome",
+    "device_measured_sustained_gb_s": {
+     "value": 778.8,
+     "kind": "CITED",
+     "unit": "GB/s",
+     "command": "BANDWIDTH_ROOF.anchor_roof.correction.new_roof_gb_s",
+     "absent_reason": null,
+     "note": "N017 sequential unique-once DRAM roof, sealed as 778.8. Copied, not re-derived. Raw highest_dram_read_gb_s=778.7585851761676 is the measurement that sealed this figure.",
+     "source": "receipts/headless/BANDWIDTH_ROOF.json"
+    },
+    "parent_genome_roof_gb_s_is_not_the_campaign_roof": {
+     "parent_machinegenome_measured_roof_gb_s": 595.9,
+     "note": "595.9 is the G072 family scoring reference sealed into NOETIC_PARENT_A.MachineGenome, not DEVICE_MEASURED_SUSTAINED. Canon law 10. Current DRAM roof is 778.8.",
+     "source": "receipts/headless/NOETIC_PARENT_A.json"
+    }
+   },
+   "why_qualified": "operates on logits only and touches no weights, so it is representation-independent; top_k and experts are runtime parameters, not baked in",
+   "shader": "crates/hawking-core/shaders/qwen80_postnorm_router_top10.metal",
+   "shader_sha256": {
+    "kind": "MEASURED",
+    "value": "c69e43ca2a5e3d03621deed52ab3fc8c1a089313f1a28f431b88a024c5ab943b",
+    "note": "sha256 of the shader SOURCE"
+   },
+   "compiled_identity": {
+    "kind": "ABSENT",
+    "value": null,
+    "absent_reason": "compiled from source at admission; no metallib is emitted to hash"
+   },
+   "specialization": {
+    "kind": "MEASURED",
+    "value": {
+     "simdgroup": false,
+     "fused_norm": true,
+     "top_k_is_runtime_parameter": true
+    }
+   },
+   "memory_layout": {
+    "kind": "MEASURED",
+    "value": {
+     "declared_in": "qwen80_postnorm_router_top10.metal",
+     "referenced_from": [
+      "crates/hawking-core/src/metal/mod.rs",
+      "crates/hawking-core/src/model/qwen80_complete_runtime.rs",
+      "crates/hawking-core/src/model/qwen80_hybrid_token_graph.rs",
+      "crates/hawking-core/src/model/qwen80_48_layer_execution_schedule.rs"
+     ]
+    }
+   },
+   "competence": {
+    "kind": "MEASURED",
+    "value": {
+     "executes": "topk_select",
+     "organ": "moe_router"
+    },
+    "note": "which representation this kernel can execute; says nothing about whether it executes it correctly"
+   },
+   "measurements": {
+    "kind": "ABSENT",
+    "value": null,
+    "absent_reason": "never benchmarked in this campaign"
+   },
+   "supported_capability_regime": {
+    "kind": "ABSENT",
+    "value": null,
+    "absent_reason": "unknown: no model #2 artifact exists, so this kernel has never executed a whole-model decode here"
+   },
+   "parity": {
+    "kind": "ABSENT",
+    "value": null,
+    "absent_reason": "no parity oracle was run for this kernel in this campaign"
+   },
+   "citations": {
+    "kind": "MEASURED",
+    "value": [
+     "crates/hawking-core/src/metal/mod.rs",
+     "crates/hawking-core/src/model/qwen80_complete_runtime.rs",
+     "crates/hawking-core/src/model/qwen80_hybrid_token_graph.rs",
+     "crates/hawking-core/src/model/qwen80_48_layer_execution_schedule.rs",
+     "crates/hawking-core/shaders/qwen80_postnorm_router_top10.metal"
+    ]
+   }
+  },
+  {
+   "kernel_identity": "qwen_binary_postnorm_router_matvec",
+   "organ_identity": "moe_router",
+   "representation_identity": "binary_group",
+   "machine_identity": {
+    "chipset": "Apple M3 Ultra",
+    "gpu_cores": 60,
+    "unified_memory_bytes": 103079215104,
+    "metal_family": "Metal 4",
+    "source": "receipts/headless/NOETIC_PARENT_A.json",
+    "command": "NOETIC_PARENT_A.MachineGenome",
+    "device_measured_sustained_gb_s": {
+     "value": 778.8,
+     "kind": "CITED",
+     "unit": "GB/s",
+     "command": "BANDWIDTH_ROOF.anchor_roof.correction.new_roof_gb_s",
+     "absent_reason": null,
+     "note": "N017 sequential unique-once DRAM roof, sealed as 778.8. Copied, not re-derived. Raw highest_dram_read_gb_s=778.7585851761676 is the measurement that sealed this figure.",
+     "source": "receipts/headless/BANDWIDTH_ROOF.json"
+    },
+    "parent_genome_roof_gb_s_is_not_the_campaign_roof": {
+     "parent_machinegenome_measured_roof_gb_s": 595.9,
+     "note": "595.9 is the G072 family scoring reference sealed into NOETIC_PARENT_A.MachineGenome, not DEVICE_MEASURED_SUSTAINED. Canon law 10. Current DRAM roof is 778.8.",
+     "source": "receipts/headless/NOETIC_PARENT_A.json"
+    }
+   },
+   "why_qualified": "router_signs + router_scales, fused with the post-norm",
+   "shader": "crates/hawking-core/shaders/qwen_binary.metal",
+   "shader_sha256": {
+    "kind": "MEASURED",
+    "value": "a51539b798ce77a72bd72691638b30fd9a1c992757b66ff264012fb38d9c4710",
+    "note": "sha256 of the shader SOURCE"
+   },
+   "compiled_identity": {
+    "kind": "ABSENT",
+    "value": null,
+    "absent_reason": "compiled from source at admission; no metallib is emitted to hash"
+   },
+   "specialization": {
+    "kind": "MEASURED",
+    "value": {
+     "simdgroup": false,
+     "fused_norm": true,
+     "top_k_is_runtime_parameter": false
+    }
+   },
+   "memory_layout": {
+    "kind": "MEASURED",
+    "value": {
+     "declared_in": "qwen_binary.metal",
+     "referenced_from": [
+      "crates/hawking-core/src/metal/mod.rs",
+      "crates/hawking-core/src/model/qwen30_complete_runtime.rs"
+     ]
+    }
+   },
+   "competence": {
+    "kind": "MEASURED",
+    "value": {
+     "executes": "binary_group",
+     "organ": "moe_router"
+    },
+    "note": "which representation this kernel can execute; says nothing about whether it executes it correctly"
+   },
+   "measurements": {
+    "kind": "ABSENT",
+    "value": null,
+    "absent_reason": "never benchmarked in this campaign"
+   },
+   "supported_capability_regime": {
+    "kind": "ABSENT",
+    "value": null,
+    "absent_reason": "unknown: no model #2 artifact exists, so this kernel has never executed a whole-model decode here"
+   },
+   "parity": {
+    "kind": "ABSENT",
+    "value": null,
+    "absent_reason": "no parity oracle was run for this kernel in this campaign"
+   },
+   "citations": {
+    "kind": "MEASURED",
+    "value": [
+     "crates/hawking-core/src/metal/mod.rs",
+     "crates/hawking-core/src/model/qwen30_complete_runtime.rs",
+     "crates/hawking-core/shaders/qwen_binary.metal"
+    ]
+   }
   }
  ],
  "preserved_from_v1": true,
@@ -4310,5 +4846,23 @@
   "declared_in_shader": 18,
   "referenced_by_runtime": 18,
   "in_both": 18
+ },
+ "organ_registration_round2": {
+  "added": [
+   "qwen38_hgravu_embedding_lookup",
+   "qwen38_hgrafv_embedding_lookup",
+   "qwen_uniform_q4_group64_final_norm_lm_head_simdgroup8",
+   "qwen80_postnorm_router_top10_matvec",
+   "qwen80_postnorm_router_top10_select",
+   "qwen_binary_postnorm_router_matvec"
+  ],
+  "n_added": 6,
+  "organs": [
+   "embed",
+   "lm_head",
+   "moe_router"
+  ],
+  "each_verified": "declared as `kernel void` in its shader AND referenced from src/",
+  "nothing_measured_was_invented": "measurements, supported_capability_regime and parity are ABSENT with reasons on all of them"
  }
 }

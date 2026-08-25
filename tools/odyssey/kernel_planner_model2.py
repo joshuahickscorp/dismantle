@@ -39,9 +39,13 @@ SERVES = {
 #   planner seeded family: conventional_low_bit, q2_affine, binary_sparse_residual,
 #     ternary, leftover_f32
 REPRESENTATION_EXECUTES = {
-    "conventional_low_bit": {"q4_control", "uniform_q4_group"},
+    "conventional_low_bit": {"q4_control", "uniform_q4_group", "uniform_qn_group"},
     "q2_affine": {"q2_affine"},
-    "binary_sparse_residual": {"binary_sparse_residual", "binary", "binary_group"},
+    # NOT {binary, binary_group}: a plain binary kernel has no residual path and cannot
+    # execute a binary-plus-sparse-residual representation. Conflating them is the same
+    # looseness that made moe_expert look covered by organ name alone.
+    "binary_sparse_residual": {"binary_sparse_residual"},
+    "binary_group": {"binary", "binary_group"},
     "ternary": {"ternary"},
     # an f32 passthrough organ is not executed by a quantized GEMV kernel at all
     "leftover_f32": set(),
@@ -100,11 +104,21 @@ def main():
         for cand_family in seeded.get(organ, []):
             fam = cand_family["family"]
             can = REPRESENTATION_EXECUTES.get(fam, set())
-            competent = [k for k in organ_kernels
-                         if k["representation_identity"] in can
-                         or k["representation_identity"] in REPRESENTATION_INDEPENDENT]
+            # A representation-INDEPENDENT kernel (a top-k select over logits) supports
+            # an organ but cannot execute it: it touches no weights. Counting it alone
+            # marked moe_router COVERED for q2_affine when the only q2_affine-capable
+            # thing present was a selector and every router MATVEC is binary_group.
+            weight_bearing = [k for k in organ_kernels
+                              if k["representation_identity"] in can]
+            supporting = [k for k in organ_kernels
+                          if k["representation_identity"] in REPRESENTATION_INDEPENDENT]
+            competent = (weight_bearing + supporting) if weight_bearing else []
+            if organ not in GEMV_ORGANS:
+                competent = weight_bearing + supporting
             row = {"family": fam, "score": cand_family["score"],
                    "n_competent_kernels": len(competent),
+                   "n_weight_bearing": len(weight_bearing),
+                   "n_supporting_representation_independent": len(supporting),
                    "needs_no_gemv_kernel": fam in NEEDS_NO_GEMV,
                    "kernels": [k["kernel_identity"] for k in competent][:8]}
             considered.append(row)

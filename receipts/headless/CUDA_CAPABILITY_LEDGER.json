@@ -68,13 +68,14 @@
    "hawking_equivalent": "AIR emits MSL, MLX JIT-compiles it",
    "semantic_gap": "PARTIAL",
    "performance_gap": {
-    "measured": false,
-    "reason": "compile latency has not been measured"
+    "measured": true,
+    "value": "36.8 ms per DISTINCT kernel on this machine, near-flat in source size (102 chars 36.8 ms, 5990 chars 43.6 ms) and CACHED on repeat: the same name+source recompiles in 0.24 ms. Compile is 23.2% of a WorkUnit's first-run excess; MLX's own first-use costs are 55.1%, dominated by the FIRST mx.array at 151 ms, which is device/allocator init and NOT compilation.",
+    "receipt": "receipts/headless/ACCELERATOR_JIT_COMPILE.json"
    },
    "priority": "P1",
    "test_corpus": "the six AIR programs of P3",
    "current_winner": "MLX JIT (retained; nothing here replaces it)",
-   "remaining_limitation": "xcrun metal is ABSENT on this machine, so AOT metallib compilation is unavailable and there is no offline compile path at all"
+   "remaining_limitation": "measured on mx.fast.metal_kernel JIT only; xcrun metal AOT is ABSENT on this machine so an AOT metallib comparison cannot be made, and CUDA's own nvrtc latency is unmeasured because no NVIDIA hardware exists"
   },
   {
    "capability_id": "COMPILER.specialization_constants",
@@ -373,8 +374,8 @@
   "MULTI_DEVICE": 1
  },
  "classes_with_no_entry": [],
- "performance_gaps_measured": 13,
- "performance_gaps_unmeasured": 7,
+ "performance_gaps_measured": 14,
+ "performance_gaps_unmeasured": 6,
  "parity_claim": "NOT CLAIMED. This is a capability inventory, not a parity statement. No entry may report a semantic gap of NONE without evidence, and the steer forbids the phrase 'CUDA parity' unqualified.",
  "coverage_honesty": "The CUDA surface is vastly larger than this. These are the capabilities reachable or relevant from what has actually been built here; absence from this ledger means NOT YET STUDIED, never NOT NEEDED."
 }

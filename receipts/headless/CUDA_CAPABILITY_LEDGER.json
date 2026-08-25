@@ -342,12 +342,29 @@
    "current_winner": "MLX, and at 2048 even the NAIVE three-call path beats ours",
    "remaining_limitation": "not flash-attention: no online softmax, score row must fit threadgroup memory. Diagnosis history: 'scalar dot products' REFUTED; 'occupancy' DIRECTIONALLY CONFIRMED -- 4 simdgroups on the same query block take the simdgroup variant from 0.70x losing to INDISTINGUISHABLE from the scalar kernel. But the NAIVE three-MLX-call path STILL WINS 1.08x with clean arms, so fused attention is not useful here at these shapes. Single head, f32, no batching, no KV cache.",
    "evidence": "receipts/headless/ACCELERATOR_ATTENTION.json"
+  },
+  {
+   "capability_id": "COMPILER.frontend_parsing",
+   "cuda_mechanism": "nvcc / clang CUDA frontend: a full C++ frontend for device and host code",
+   "why_it_exists": "CUDA's corpus is written in C++, so a compiler must accept C++",
+   "underlying_problem": "turning arbitrary source into an executable device program",
+   "apple_equivalent": "the Metal compiler accepts MSL, a different C++ dialect; nothing accepts CUDA",
+   "hawking_equivalent": "C2M's FOUR narrow doors: T0 expression matching over 4 elementwise forms, a PTX instruction subset, the T1 host runtime statement subset, and T2 algorithm-level IDIOM RECOGNITION over 2 kernels",
+   "semantic_gap": "LARGE",
+   "performance_gap": {
+    "measured": false,
+    "reason": "a frontend gap is about COVERAGE, not speed; measuring a translation rate would say nothing about how much of CUDA is reachable"
+   },
+   "priority": "P1",
+   "test_corpus": "4 elementwise kernels, the pinned seed's 291 .ptx files, 4 host programs, 2 recognised idioms and 12 near-miss kernels",
+   "current_winner": "the pinned seed Lulzx/cuda-metal, which has a REAL clang-based CUDA frontend and builds here; C2M does not compete with it on coverage and is not claimed to",
+   "remaining_limitation": "THIS IS THE LARGEST REMAINING SOFTWARE GAP AND IT IS NOT NARROWING QUICKLY. None of the four doors parses C++. PTX coverage measured 1.0% of the seed's own corpus. Idiom recognition covers exactly 2 textbook kernels and REFUSES the same algorithm written with different variable names or a different guard style. Adding doors widens what is reachable without widening what is COMPILABLE, and saying so keeps a tier number from reading as CUDA coverage."
   }
  ],
- "count": 19,
+ "count": 20,
  "by_class": {
   "MEMORY": 2,
-  "COMPILER": 3,
+  "COMPILER": 4,
   "EXECUTION": 5,
   "MATH": 4,
   "RUNTIME": 2,
@@ -357,7 +374,7 @@
  },
  "classes_with_no_entry": [],
  "performance_gaps_measured": 13,
- "performance_gaps_unmeasured": 6,
+ "performance_gaps_unmeasured": 7,
  "parity_claim": "NOT CLAIMED. This is a capability inventory, not a parity statement. No entry may report a semantic gap of NONE without evidence, and the steer forbids the phrase 'CUDA parity' unqualified.",
  "coverage_honesty": "The CUDA surface is vastly larger than this. These are the capabilities reachable or relevant from what has actually been built here; absence from this ledger means NOT YET STUDIED, never NOT NEEDED."
 }

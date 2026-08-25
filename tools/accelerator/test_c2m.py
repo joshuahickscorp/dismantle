@@ -178,3 +178,121 @@ def test_t1_is_claimed_only_when_both_modes_agree():
     c = cr.conformance_t1([{"matches_oracle": True, "both_modes_agree": True}])
     assert c["tier_claimed"] == "C2M-T1"
     assert "FRONTEND" in c["higher_tiers"]["C2M-T2"] or "C2M frontend" in c["higher_tiers"]["C2M-T2"]
+
+
+# ------------------------------------------------------ T2 idiom recognition (G045)
+
+import c2m_idiom as ci  # noqa: E402
+
+_GEMM = """
+__global__ void sgemm_tiled(const float* A, const float* B, float* C, int M, int K, int N) {
+    __shared__ float As[16][16];
+    __shared__ float Bs[16][16];
+    int tx = threadIdx.x, ty = threadIdx.y;
+    int row = blockIdx.y * 16 + ty;
+    int col = blockIdx.x * 16 + tx;
+    float acc = 0.0f;
+    for (int t = 0; t < (K + 15) / 16; ++t) {
+        As[ty][tx] = (row < M && t * 16 + tx < K) ? A[row * K + t * 16 + tx] : 0.0f;
+        Bs[ty][tx] = (t * 16 + ty < K && col < N) ? B[(t * 16 + ty) * N + col] : 0.0f;
+        __syncthreads();
+        for (int k = 0; k < 16; ++k) acc += As[ty][k] * Bs[k][tx];
+        __syncthreads();
+    }
+    if (row < M && col < N) C[row * N + col] = acc;
+}
+"""
+_RED = """
+__global__ void reduce_sum(const float* in, float* out, int n) {
+    __shared__ float sdata[256];
+    int tid = threadIdx.x;
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    sdata[tid] = (i < n) ? in[i] : 0.0f;
+    __syncthreads();
+    for (int s = blockDim.x / 2; s > 0; s >>= 1) {
+        if (tid < s) sdata[tid] += sdata[tid + s];
+        __syncthreads();
+    }
+    if (tid == 0) out[blockIdx.x] = sdata[0];
+}
+"""
+
+
+def test_the_two_textbook_idioms_are_recognised():
+    g = ci.recognize(_GEMM)
+    assert (g.idiom, g.kernel_name, g.tile) == ("tiled_gemm", "sgemm_tiled", 16)
+    r = ci.recognize(_RED)
+    assert (r.idiom, r.threadgroup) == ("block_reduce_sum", 256)
+
+
+# Each near-miss differs from its idiom in EXACTLY ONE respect. Accepting any of
+# them would mean recognition is not checking anything, so these ARE the evidence
+# that "this is a tiled GEMM" is a claim rather than a guess.
+@pytest.mark.parametrize("mutate,frag", [
+    (lambda s: s.replace("acc += As[ty][k] * Bs[k][tx]", "acc += As[ty][k] * Bs[tx][k]"),
+     "inner product"),
+    (lambda s: s.replace("__syncthreads();", "", 1), "__syncthreads"),
+    (lambda s: s.replace("float acc = 0.0f", "float acc = 1.0f"), "accumulator"),
+    (lambda s: s.replace("C[row * N + col] = acc", "C[col * M + row] = acc"), "store to C"),
+    (lambda s: s.replace("__shared__ float Bs[16][16];", "__shared__ float Bs[16][32];"),
+     "shared tiles are"),
+])
+def test_gemm_near_misses_are_refused(mutate, frag):
+    with pytest.raises(c2m.C2MRefusal, match=frag):
+        ci.recognize(mutate(_GEMM))
+
+
+@pytest.mark.parametrize("mutate,frag", [
+    (lambda s: s.replace("sdata[tid] += sdata[tid + s]", "sdata[tid] *= sdata[tid + s]"),
+     "partial SUM"),
+    (lambda s: s.replace("(i < n) ? in[i] : 0.0f", "(i < n) ? in[i] : 1.0f"), "zero identity"),
+    (lambda s: s.replace("s = blockDim.x / 2; s > 0; s >>= 1", "s = 1; s < blockDim.x; s <<= 1"),
+     "halving tree"),
+    (lambda s: s.replace("__syncthreads();", "", 1), "__syncthreads"),
+    (lambda s: s.replace("sdata[256]", "sdata[100]"), "legal Metal threadgroup"),
+])
+def test_reduce_near_misses_are_refused(mutate, frag):
+    with pytest.raises(c2m.C2MRefusal, match=frag):
+        ci.recognize(mutate(_RED))
+
+
+def test_the_two_doors_do_not_overlap():
+    """T0 must refuse what T2 accepts and vice versa. If either door quietly took
+    the other's kernels, neither would mean what its tier says."""
+    for src in (_GEMM, _RED):
+        with pytest.raises(c2m.C2MRefusal):
+            c2m.translate(src, elements=64)
+    elementwise = ("__global__ void vadd(const float* a, const float* b, float* c, int n){"
+                   " int i = blockIdx.x * blockDim.x + threadIdx.x; if (i < n) c[i] = a[i] + b[i]; }")
+    with pytest.raises(c2m.C2MRefusal, match="no known idiom"):
+        ci.recognize(elementwise)
+    assert c2m.translate(elementwise, elements=64).output == "c"
+
+
+def test_t2_is_refused_unless_every_near_miss_was_refused():
+    """A tier claimed on recognition that never rejects anything is a coin flip."""
+    good = [{"idiom": "tiled_gemm", "matches_oracle": True}]
+    assert ci.conformance_t2(good, [])["tier_claimed"] == "C2M-T1"
+    assert ci.conformance_t2(good, [{"refused": False}])["tier_claimed"] == "C2M-T1"
+    c = ci.conformance_t2(good, [{"refused": True}])
+    assert c["tier_claimed"] == "C2M-T2"
+    assert "not general compilation" in c["mechanism"]
+
+
+def test_recognised_idioms_execute_and_match_numpy():
+    pytest.importorskip("mlx.core")
+    import mlx.core as mx
+    import numpy as np
+    rng = np.random.default_rng(2)
+    M, K, N = 48, 80, 32                       # not a multiple of the 16 tile
+    A = rng.standard_normal((M, K)).astype(np.float32)
+    B = rng.standard_normal((K, N)).astype(np.float32)
+    got = np.array(ci.execute_idiom(ci.recognize(_GEMM), {"A": mx.array(A), "B": mx.array(B)},
+                                    dims={"M": M, "K": K, "N": N}))
+    ref = A.astype(np.float64) @ B.astype(np.float64)
+    assert np.max(np.abs(got - ref)) / np.max(np.abs(ref)) < 1e-5
+    n = 4194311                                # not a power of two
+    x = rng.standard_normal(n).astype(np.float32)
+    s = float(np.array(ci.execute_idiom(ci.recognize(_RED), {"in": mx.array(x)},
+                                        dims={"n": n}))[0])
+    assert abs(s - float(np.sum(x.astype(np.float64)))) / abs(float(np.sum(x.astype(np.float64)))) < 1e-4

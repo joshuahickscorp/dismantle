@@ -175,3 +175,64 @@ def test_a_single_repetition_yields_NO_spread_rather_than_a_fake_zero():
     C.machine_state._before = {"quiet": True}
     out = C.machine_state(_responses({"a": [1.0]}))
     assert out["worst_repetition_spread_pct"] is None, out
+
+
+# ------------------------------------------------- measurement weight / vacuity
+# 43 cases are 11 items. A five-point move is ONE item weighted five, and reading
+# it as five independent successes is the error these pin against.
+
+def test_43_cases_are_11_items_and_the_field_says_so():
+    import json
+    a = C.REPO / "receipts/headless/CAPABILITY_sealed-3.14-binB-fused4-swiglu.json"
+    b = C.REPO / "receipts/headless/CAPABILITY_sealed-3.14-binB-fused4-NOTHINK.json"
+    if not (a.is_file() and b.is_file()):
+        return
+    for p in (a, b):
+        m = C.measurement_weight(json.loads(p.read_text())["per_item"])
+        assert m["cases"] == 43 and m["distinct_items"] == 11, m
+        assert m["every_repeat_identical"] is True, (
+            "greedy decode at temperature 0 should make every repeat identical; "
+            f"if this fails the suite has found real nondeterminism: {m}")
+
+
+def test_the_weight_field_can_report_NONDETERMINISM():
+    """Anti-vacuity. every_repeat_identical == True is only a finding if the field
+    can come back False."""
+    per_item = {"x": {"repeats": 2, "results": [
+        {"completion_tokens": 4, "reply_head": "a", "pass": True},
+        {"completion_tokens": 4, "reply_head": "b", "pass": False}]}}
+    m = C.measurement_weight(per_item)
+    assert m["every_repeat_identical"] is False, m
+    assert m["distinct_outputs_per_item"]["x"] == 2
+
+
+def test_the_no_think_leak_check_is_MOSTLY_VACUOUS_and_that_is_recorded():
+    """`no-think-leak` (capability_suite.py:228-231) forbids "<think>", "</think>"
+    and "reasoning_content". But call_noetic:305 SPLITS the raw output on
+    "</think>" and scores only what follows, so both of the first two needles are
+    removed by the harness before the predicate ever sees the text, and the third
+    is an API field name a CLI backend never emits. It scores 3/3 on BOTH template
+    arms.
+
+    NOT fully vacuous, and the difference is load-bearing: :304's `unterminated`
+    guard makes a reply that never leaves the think block score as EMPTY, and
+    must_not_contain refuses empty. That guard exists because the 2.5970-EBPW body
+    once passed this exact check BY never finishing thinking -- the comment at
+    :299-303 says so. What remains vacuous is the leak check itself.
+
+    Kept rather than deleted: it is 3 of 43 on BOTH arms, so it is common-mode and
+    cannot touch the arm comparison -- but both absolute scores carry it, and that
+    is visible here rather than counted silently as capability."""
+    split = lambda raw: (raw.split("</think>", 1)[1] if "</think>" in raw else raw).strip()
+    leaked = split("<think>\nreasoning\n</think>\nok")
+    assert "<think>" not in leaked and "</think>" not in leaked, leaked
+    ok, why = C.must_not_contain("<think>", "</think>", "reasoning_content")(leaked, {})
+    assert ok, f"the harness strips the needles it checks for; only empty can fail: {why}"
+
+    # the half that is NOT vacuous, and the reason the guard was added
+    empty_ok, empty_why = C.must_not_contain("<think>", "</think>")("", {})
+    assert not empty_ok and "empty" in empty_why.lower(), (empty_ok, empty_why)
+
+    # and it CAN still fail on a real leak after the split
+    bad_ok, _ = C.must_not_contain("<think>", "</think>")("ok <think> oops", {})
+    assert not bad_ok, "a think block AFTER </think> must still be caught"

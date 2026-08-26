@@ -305,6 +305,52 @@ HK = "hawking-core release-fast Rust/Metal decoder, binary d34044cffae8f320"
 
 LAWS: list[dict[str, Any]] = [
     dict(
+        law_id="AKB-CHAT-TEMPLATE-ARM-MOVES-CAPABILITY",
+        statement=(
+            "The chat-template arm changed the sealed-3.14 resident's measured capability by "
+            "five of forty-three cases with no byte of the artifact altered: 30/43 on "
+            "open_think against 35/43 on pre_closed_think, same artifact_inventory_sha "
+            "1aff5df85bda1108, same binary, same chat_template file. The whole movement is on "
+            "structured_output, 5/15 -> 10/15, and eight empty replies become zero -- under "
+            "open_think eight calls generated 1135-1536 tokens and returned nothing after the "
+            "think block was stripped. The think arm held THREE TIMES the token budget "
+            "(capability_suite.py:277) and still lost, so the budget asymmetry favours the "
+            "losing arm. Per-token decode is arm-dependent and small in the same direction: at "
+            "one fixed prompt, pre_closed_think reads 28.0208 ms/token against open_think's "
+            "28.3018, a 1.003% advantage, because the open render is 65 prompt tokens against "
+            "25 and carries a longer KV cache. Capability outweighs decode 16.6x, taking "
+            "arm-matched accepted TPS 24.65 -> 29.05."),
+        applicability={
+            "MODEL": "Qwen3.8-27B sealed-3.14 (NOETIC_PARENT_A), 3.1393 complete EBPW",
+            "ARCHITECTURE": "Qwen3.8 hybrid, 48 DeltaNet + 16 GQA layers",
+            "ORGAN": NONE,
+            "REPRESENTATION": ("UNCHANGED across arms: HQ30UQ4 g64 mixer + affine_q2 g64 MLP. "
+                               "The arm is a SERVING MODE, not a representation."),
+            "SHAPE": "batch 1 decode; 43-case capability suite; timing at one 21-token prompt",
+            "MACHINE": M3, "RUNTIME": HK,
+            "KERNEL": "the 628-dispatch fused decode graph, identical in both arms",
+            "STORAGE_TIER": NONE, "TOPOLOGY": NONE,
+            "WORKLOAD_PHASE": "single-request decode with a rendered chat prompt"},
+        evidence_class="Measured",
+        source_receipts=["receipts/headless/ACCELERATOR_RESIDENT_TEMPLATE_ARM.json"],
+        citations=[
+            "receipts/headless/ACCELERATOR_RESIDENT_TEMPLATE_ARM.json#THE_FINDING",
+            "receipts/headless/ACCELERATOR_RESIDENT_TEMPLATE_ARM.json"
+            "#RAW_TPS_IS_ARM_DEPENDENT_AND_I_MEASURED_IT_RATHER_THAN_ASSUMING_IT",
+            "receipts/headless/ACCELERATOR_RESIDENT_TEMPLATE_ARM.json#claim_boundary"],
+        status="ACTIVE", superseded_by=None, negative_result=False,
+        confidence_basis=(
+            "ONE capability run per arm, unpaired -- admissible because the claim is a PASS "
+            "COUNT, which does not drift with machine load, and the same runs' wall times are "
+            "explicitly refused (the no_think run's own machine_state records "
+            "worst_repetition_spread_pct 63.8). The timing half is 3 admitted sweeps under the "
+            "pre-registered quiescence gate with per-arm spreads of 0.18-0.34%, 0 refused. "
+            "MODEL is deliberately not UNSCOPED: the same effect was measured on the 2.60-EBPW "
+            "body at 0/43 vs 14/43, which is two bodies of one family and not breadth. Nothing "
+            "here says the arm is better in general -- a task that needs chain-of-thought is "
+            "exactly what it removes, and the suite's one such item fails under both arms."),
+    ),
+    dict(
         law_id="AKB-BANDWIDTH-CEILING-BOUNDS-ACCEPTED-TPS",
         statement=(
             "Single-request decode of the sealed-3.14 body reads 9,878,898,416 weight bytes per "

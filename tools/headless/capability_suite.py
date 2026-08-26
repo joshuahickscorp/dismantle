@@ -375,6 +375,40 @@ def run_mlx(model_path, items, mlx_py, timeout):
 
 # --------------------------------------------------------------- scoring
 
+def measurement_weight(per_item) -> dict:
+    """43 cases are not 43 measurements.
+
+    Decoding is greedy at temperature 0, so every repetition of an item is
+    BYTE-IDENTICAL to its siblings -- verified across both arms of the
+    template-arm comparison, where not one of eleven items in either receipt
+    held more than one distinct (completion_tokens, reply_head, pass) triple.
+
+    So a score out of 43 is eleven measurements carrying weights
+    (3,3,3,5,5,5,5,5,3,3,3), and a five-point move is ONE ITEM whose weight
+    happens to be five -- not five independent successes. Reporting x/43 without
+    this invites reading repetition as evidence. The repeats are not useless:
+    they would catch nondeterminism, and this field is what shows they found
+    none rather than leaving that unstated.
+    """
+    per_item = per_item or {}
+    determinism = {}
+    for iid, blk in per_item.items():
+        trips = {(r.get("completion_tokens"), r.get("reply_head"), r.get("pass"))
+                 for r in blk.get("results", [])}
+        determinism[iid] = len(trips)
+    return {
+        "distinct_items": len(per_item),
+        "cases": sum(b.get("repeats", 0) for b in per_item.values()),
+        "weights": {i: b.get("repeats") for i, b in per_item.items()},
+        "distinct_outputs_per_item": determinism,
+        "every_repeat_identical": all(v <= 1 for v in determinism.values()),
+        "how_to_read_it": (
+            "a move of N points is a move of however many ITEMS carry weight N, "
+            "not N independent cases. Repeats detect nondeterminism and add no "
+            "independent evidence when there is none."),
+    }
+
+
 def score(responses):
     """responses: list of {id, rep, text, ...}. Returns per-item and per-axis."""
     by_id = {}
@@ -389,7 +423,20 @@ def score(responses):
             ok, why = spec["check"](r.get("text") or "", r)
             results.append({"rep": r.get("rep"), "pass": bool(ok),
                             "why": "" if ok else why,
+                            # finish_reason is a PROCESS EXIT CODE for the noetic
+                            # backend (see the runner: "stop" iff exit_code == 0), so
+                            # it reads "stop" on a call that was TRUNCATED at its
+                            # budget exactly as on one that hit EOS. It cannot report
+                            # truncation and the flag beside it says so, because a
+                            # field that always says stop is worse than no field.
                             "finish_reason": r.get("finish_reason"),
+                            "finish_reason_is_exit_code": r.get("finish_reason_is_exit_code"),
+                            # Computed by the runner and previously DROPPED here, which
+                            # left no field in any receipt able to distinguish EOS from
+                            # a cap hit -- the eight empty open_think replies at
+                            # 1135-1536 tokens all read finish_reason "stop".
+                            "hit_budget_cap": r.get("hit_budget_cap"),
+                            "token_budget": r.get("token_budget"),
                             "completion_tokens": r.get("completion_tokens"),
                             "wall_s": r.get("wall_s"),
                             "reply_head": (r.get("text") or "")[:220]})
@@ -634,6 +681,7 @@ def main() -> int:
                                 it["prompt"], it["max_tokens"], args.no_think, args.timeout,
                                 tokenizer_dir=args.tokenizer_dir)
                 r["finish_reason"] = "stop" if r["exit_code"] == 0 else f"EXIT{r['exit_code']}"
+                r["finish_reason_is_exit_code"] = True
                 r["completion_tokens"] = r.get("n_new_tokens")
             except Exception as e:
                 r = {"text": "", "finish_reason": f"ERROR:{type(e).__name__}: {e}",
@@ -684,6 +732,7 @@ def main() -> int:
         "harness_health": _health,
         "machine_state": _machine,
         "per_axis": per_axis,
+        "measurement_weight": measurement_weight(per_item),
         "per_item": per_item,
     }
     out = Path(args.out or (REPO / f"receipts/headless/CAPABILITY_{args.label}.json"))

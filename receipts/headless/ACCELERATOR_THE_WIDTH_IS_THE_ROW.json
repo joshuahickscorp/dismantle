@@ -533,5 +533,18 @@
   "python": "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3.12 (BY PATH: python3.12 names two interpreters on this machine)",
   "re_derived_after_the_last_change_in_this_block": true,
   "ledger": "civilization/validate.py, 0 violations"
+ },
+ "AMENDED_2026-08-26_THE_ROW_IS_CONFIRMED_AND_MY_REL_ERR_INFERENCE_IS_REFUTED": {
+  "by": "receipts/headless/ACCELERATOR_THE_UNIT_IS_THE_ROW_AT_ITS_OWN_WIDTH.json",
+  "the_main_conclusion_is_CONFIRMED_not_corrected": "this receipt located the unit at 64 lanes and named its own remainder -- the row, the threads-per-row and a 2-simdgroup pair coincide there and are not separated. Halving tpr separates them: at tpr=32 a row is ONE simdgroup and a 64-lane hardware width would span TWO rows, so the two hypotheses predict non-overlapping bands. The first departure at tpr=32 costs 1.2213x and 1.2456x at 14 of 14 rounds twice, inside the 1.20-1.30 band H_ROW predicts and twice the 1.02-1.10 H_64LANE predicts. THE UNIT IS THE ROW AT ITS OWN WIDTH, not a hardware constant.",
+  "the_shape_this_receipt_named_for_that_test_was_wrong": "its `next` says 'at tpr=32 with cols=32768 a lane holds the SAME four groups'. It holds SIXTEEN. cols=8192 is the shape that holds groups-per-lane at four, and the sweep was run there.",
+  "and_ONE_INFERENCE_HERE_IS_REFUTED": "P3 of this receipt asserted the control must read the LOWEST rel_err 'since it sums in the shipped association order'. THE MEASUREMENT STANDS -- the control did read 2.5123e-07 against k32's 2.5200e-07 at this shape -- but THE REASONING WAS NEVER SOUND, because one association order has no claim to less rounding error than another. At tpr=32 the control is NOT lowest in either run (2.31162e-07 against k1's 2.29271e-07), and across four shapes the winner changes. What survives is the weaker and true statement: the arms DIFFER, which is independent evidence the reorder landed.",
+  "laws_reconciled": [
+   "AKB-THE-INSTANT-IS-THE-COST"
+  ],
+  "laws_unaffected": [
+   "AKB-GRID-LAUNCH-IS-NOT-FREE"
+  ],
+  "why_unaffected_and_not_reconciled": "AKB-GRID-LAUNCH-IS-NOT-FREE also rests on this receipt, for the bound that threadgroup count is free at fixed thread count. This amendment narrows WHICH WIDTH is charged for a shattered request and refutes an inference about ROUNDING ORDER; it does not touch the launch measurement, the attribution correction or the bound. RECONCILED would be the wrong word -- it means 'reaches the law and the law already carries the correction', and this reaches it NOT AT ALL. One list would conflate a law that survived a correction with a law the correction never met."
  }
 }

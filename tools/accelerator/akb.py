@@ -1380,7 +1380,16 @@ LAWS: list[dict[str, Any]] = [
             "64 lanes of a row, which a lane rotation never lets the threadgroup move. So the "
             "unit is excluded at 32 lanes and at 128-512 threads and located at 64, WHERE THE "
             "ROW, THE THREADS-PER-ROW AND A 2-SIMDGROUP PAIR COINCIDE AND ARE NOT SEPARATED. "
-            "NOTHING IS ADOPTED -- both arms are correct and the rotated one LOSES AT BOTH SHAPES "
+            "NARROWED AGAIN BY ACCELERATOR_THE_UNIT_IS_THE_ROW_AT_ITS_OWN_WIDTH, WHICH SEPARATES "
+            "THEM: THE UNIT IS THE ROW AT WHATEVER WIDTH TPR SETS AND NOT A HARDWARE CONSTANT. "
+            "At tpr=32 a row is ONE simdgroup while a fixed 64-lane hardware width would span TWO "
+            "rows at unrelated addresses, so the two readings predict non-overlapping bands -- "
+            "and the first departure there costs 1.2213x and 1.2456x at 14 of 14 rounds twice, "
+            "inside the row band and twice the hardware-constant band, with per-lane work held "
+            "identical at four groups and 256 elements. The step is sharper at the narrower row: "
+            "two runs costs 22-25% while everything from two runs to thirty-two adds a further "
+            "six points, and the k=4 anomaly does NOT reproduce at the same run count. "
+            "NOTHING IS ADOPTED -- both arms are correct and the rotated one LOSES AT EVERY SHAPE "
             "MEASURED, so the shipped order already sits at the best point on this axis."),
         evidence_domain="accelerator", civilization="I-D_ACCELERATOR",
         machine_scope="Apple M3 Ultra, INSTANCE",
@@ -1399,7 +1408,8 @@ LAWS: list[dict[str, Any]] = [
         evidence_class="Measured",
         source_receipts=["receipts/headless/ACCELERATOR_THE_INSTANT_IS_THE_COST.json",
                          "receipts/headless/ACCELERATOR_THE_PENALTY_IS_A_STEP.json",
-                         "receipts/headless/ACCELERATOR_THE_WIDTH_IS_THE_ROW.json"],
+                         "receipts/headless/ACCELERATOR_THE_WIDTH_IS_THE_ROW.json",
+                         "receipts/headless/ACCELERATOR_THE_UNIT_IS_THE_ROW_AT_ITS_OWN_WIDTH.json"],
         citations=[
             "receipts/headless/ACCELERATOR_THE_INSTANT_IS_THE_COST.json#P1_CONFIRMED_PAST_THE_TOP_OF_MY_OWN_BAND",
             "receipts/headless/ACCELERATOR_THE_INSTANT_IS_THE_COST.json#P2_CONFIRMED_AND_IT_IS_MONOTONE",

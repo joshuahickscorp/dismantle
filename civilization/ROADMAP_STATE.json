@@ -341,9 +341,9 @@
  "obligations_total": 73,
  "unmapped_obligations": [],
  "orphan_map_entries": [],
- "receipt_count": 417,
+ "receipt_count": 418,
  "accelerator_receipt_count": 80,
- "last_verified_commit": "53a38e30d",
+ "last_verified_commit": "be05019f7",
  "last_verified_test_count": 510,
  "test_count_is_from_a_run_not_arithmetic": true,
  "test_environment": {
@@ -757,6 +757,12 @@
    ]
   },
   {
+   "receipt": "CAPABILITY_IDENTITY_GATE.json",
+   "markers": [
+    "RETRACT"
+   ]
+  },
+  {
    "receipt": "CAPABILITY_TEMPLATE_FACTORIAL.json",
    "markers": [
     "REFUT",
@@ -798,6 +804,12 @@
    "markers": [
     "REFUT",
     "superseded"
+   ]
+  },
+  {
+   "receipt": "DECODING_GRAVITY.json",
+   "markers": [
+    "REFUT"
    ]
   },
   {
@@ -885,6 +897,15 @@
    "receipt": "GRAND_CANDIDATE.json",
    "markers": [
     "REFUT"
+   ]
+  },
+  {
+   "receipt": "HAWKING_ACTION_HANDOFF.json",
+   "markers": [
+    "REFUT",
+    "RETRACT",
+    "superseded",
+    "was a confound"
    ]
   },
   {
@@ -1157,17 +1178,52 @@
    "ACCELERATOR_SYNC_DIAGNOSTIC.json",
    "CAPABILITY_ARM_A_THINK.json",
    "CAPABILITY_ARM_D_NOTHINK.json",
+   "CAPABILITY_IDENTITY_GATE.json",
    "CAPABILITY_TEMPLATE_ARM_PAIRED.json",
    "CAPABILITY_TEMPLATE_FACTORIAL.json",
    "CAPABILITY_TEMPLATE_INTERACTION.json",
+   "CAPABILITY_llamacpp-q5k.json",
+   "CAPABILITY_mlx-4bit.json",
+   "CAPABILITY_noetic-clean-2.60.json",
+   "CAPABILITY_noetic-clean-rebuild.json",
+   "CAPABILITY_noetic-sealed-3.14-sysprompt.json",
+   "CAPABILITY_noetic-sealed-3.14.json",
+   "CAPABILITY_noetic-variantA-2.98.json",
+   "CAPABILITY_noetic-variantB-2.76-sysprompt.json",
+   "CAPABILITY_noetic-variantB-2.76.json",
    "DECODE_NOT_SUBMISSION_BOUND.json",
+   "DECODING_GRAVITY.json",
+   "DENSITY_DESCENT_FRONTIER.json",
+   "DOCTOR_TECHNIQUE_LIBRARY.json",
+   "DOCTOR_TECHNIQUE_REGISTRY.json",
+   "DOCTOR_V2_PRESCRIPTION.json",
    "EBPW_NAMESPACE_SEPARATION.json",
+   "GRAVITY_COMPILER_SEARCH.json",
    "GROK_DELEGATION_UNAVAILABLE.json",
+   "HAWKING_ACTION_HANDOFF.json",
+   "HCLI_CRASH_CHECKPOINT.json",
+   "KERNEL_LIBRARY.json",
+   "NOETIC_ASCENSION_HANDOFF.json",
    "NOETIC_BODY_ARCHAEOLOGY.json",
+   "NOETIC_CLOSURE.json",
+   "NOETIC_INFORMATION_ACCOUNTING_CANARY.json",
+   "NOETIC_IR.json",
+   "NOETIC_NATIVE_OPERATOR.json",
+   "NOETIC_NEGATIVE_SCIENCE.json",
+   "NOETIC_ZERO_PARENT.json",
+   "ODYSSEY_QUEUE_RECOVERED.json",
+   "ORGAN_LIBRARY.json",
    "PHYSICAL_METRIC_AUDIT.json",
    "PHYSICAL_METRIC_CANARIES.json",
+   "QWEN_COMPLETION_RECEIPT.json",
+   "REPRESENTATION_LIBRARY.json",
    "RESIDENT_2P60_RUNTIME_PROVENANCE.json",
-   "RESIDENT_ACCEPTED_TPS.json"
+   "RESIDENT_ACCEPTED_TPS.json",
+   "RUNTIME_EXPERIMENT_ADVERSARY.json",
+   "RUNTIME_GENOME.json",
+   "SELF_OPT_CANDIDATE_PROMOTED.json",
+   "SUPEROPERATOR_LIBRARY.json",
+   "WHOLE_MODEL_RECOMPOSE.json"
   ]
  }
 }

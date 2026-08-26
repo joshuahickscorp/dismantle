@@ -1,9 +1,9 @@
 {
  "schema": "hawking.accelerator.receipt.v1",
- "generated_at": "2026-08-26T00:51:42Z",
+ "generated_at": "2026-08-26T00:52:38Z",
  "experiment_class": "ACCEL-DISPATCH",
  "knowledge_level": "INSTANCE",
- "git_head": "0a094032e1f6c8f30c25513958ac9d179b5f4c26",
+ "git_head": "54c129c630fc93b220007ad05e974798b9eb5a59",
  "identities": {
   "experiment": {
    "id": "SYNC_TAX_DIAGNOSTIC_IS_AN_INSTRUMENT",
@@ -70,97 +70,97 @@
      "warmup": 8,
      "arms": {
       "chained": {
-       "median_s": 0.0008930419999160222,
-       "q1_s": 0.0008777080001891591,
-       "q3_s": 0.0009174169999823789,
+       "median_s": 0.0008758750000197324,
+       "q1_s": 0.0008577500002502347,
+       "q3_s": 0.0009088749998227286,
        "below_timer_resolution": false,
-       "iqr_spread_pct": 4.52,
+       "iqr_spread_pct": 5.96,
        "reliable": true,
-       "median_ms": 0.893,
-       "per_step_us": 55.815
+       "median_ms": 0.8759,
+       "per_step_us": 54.742
       },
       "synced": {
-       "median_s": 0.004829790999792749,
-       "q1_s": 0.004529249999905005,
-       "q3_s": 0.004963750000115397,
+       "median_s": 0.004621000000042841,
+       "q1_s": 0.004462249999960477,
+       "q3_s": 0.004734707999887178,
        "below_timer_resolution": false,
-       "iqr_spread_pct": 9.59,
+       "iqr_spread_pct": 6.11,
        "reliable": true,
-       "median_ms": 4.8298,
-       "per_step_us": 301.862
+       "median_ms": 4.621,
+       "per_step_us": 288.813
       },
       "ctl_chained": {
-       "median_s": 9.99999883788405e-07,
-       "q1_s": 7.920002644823398e-07,
-       "q3_s": 1.5420000636368059e-06,
+       "median_s": 1.0830003702722024e-06,
+       "q1_s": 8.749998414714355e-07,
+       "q3_s": 1.8330001694266684e-06,
        "below_timer_resolution": false,
-       "iqr_spread_pct": 94.7,
+       "iqr_spread_pct": 109.49,
        "reliable": false,
-       "median_ms": 0.001,
-       "per_step_us": 0.062
+       "median_ms": 0.0011,
+       "per_step_us": 0.068
       },
       "ctl_synced": {
-       "median_s": 1.4159995771478862e-06,
-       "q1_s": 1.207999957841821e-06,
-       "q3_s": 1.6669996512064245e-06,
+       "median_s": 1.4590000319003593e-06,
+       "q1_s": 1.249999968422344e-06,
+       "q3_s": 1.791999693523394e-06,
        "below_timer_resolution": false,
-       "iqr_spread_pct": 38.0,
+       "iqr_spread_pct": 43.36,
        "reliable": false,
-       "median_ms": 0.0014,
-       "per_step_us": 0.088
+       "median_ms": 0.0015,
+       "per_step_us": 0.091
       },
       "submitted": {
-       "median_s": 0.0014139159998194373,
-       "q1_s": 0.0013563749998866115,
-       "q3_s": 0.0015432089999194432,
+       "median_s": 0.0013881659997423412,
+       "q1_s": 0.0013163329999770212,
+       "q3_s": 0.0014430000001084409,
        "below_timer_resolution": false,
-       "iqr_spread_pct": 13.77,
-       "reliable": false,
-       "median_ms": 1.4139,
-       "per_step_us": 88.37
+       "iqr_spread_pct": 9.62,
+       "reliable": true,
+       "median_ms": 1.3882,
+       "per_step_us": 86.76
       }
      },
-     "submission_and_compute_per_step_us": 55.815,
-     "harness_floor_per_step_us": 0.062,
-     "work_visible_per_step_us": 55.646,
-     "wait_cost_per_step_us": 245.194,
+     "submission_and_compute_per_step_us": 54.742,
+     "harness_floor_per_step_us": 0.068,
+     "work_visible_per_step_us": 54.638,
+     "wait_cost_per_step_us": 231.536,
      "control_wait_cost_per_step_us": 0.022,
-     "excess_over_control_per_step_us": 245.172,
+     "excess_over_control_per_step_us": 231.514,
      "detection_floors_per_step_us": {
-      "wait_cost": 4.337,
-      "work_visible": 1.118,
-      "excess_over_control": 4.337
+      "wait_cost": 4.328,
+      "work_visible": 1.414,
+      "excess_over_control": 4.328
      },
-     "min_detectable_effect_per_step_us": 4.337,
+     "min_detectable_effect_per_step_us": 4.328,
      "mde_basis": "two-sided 1.96 sigma on the paired difference, n=60; assumes the reps are independent, which a thermally drifting contended machine does not guarantee",
      "paired": {
       "wait": {
-       "median_s": 0.003923104000250532,
-       "sd_s": 0.0002742546092352204,
+       "median_s": 0.0037045834999389626,
+       "sd_s": 0.00027369952567272727,
        "n": 60
       },
       "control_wait": {
-       "median_s": 3.5349989957467187e-07,
-       "sd_s": 8.033879762594055e-07,
+       "median_s": 3.544998889992712e-07,
+       "sd_s": 7.907628191526834e-07,
        "n": 60
       }
      },
      "spread_gate_pct": 10.0,
      "arms_inside_spread_gate": [
       "chained",
-      "synced"
+      "synced",
+      "submitted"
      ],
      "arms_outside_spread_gate": [
       "ctl_chained",
-      "ctl_synced",
-      "submitted"
+      "ctl_synced"
      ],
      "confound_check": {
       "status": "RAN",
       "design": "three arms holding one variable each: chained (1 submission, 1 wait), submitted (K submissions, 1 wait), synced (K submissions, K waits)",
-      "cost_of_K_submissions_per_step_us": 32.384,
-      "cost_of_K_waits_per_step_us": 214.633,
-      "mde_per_step_us": 5.508,
+      "cost_of_K_submissions_per_step_us": 30.779,
+      "cost_of_K_waits_per_step_us": 198.398,
+      "mde_per_step_us": 5.018,
       "follows": "wait",
       "reading": "the cost tracks the WAIT count with submission count held at K, so the mechanism is the host round trip"
      },
@@ -181,78 +181,78 @@
      "warmup": 8,
      "arms": {
       "chained": {
-       "median_s": 0.018885375000081694,
-       "q1_s": 0.01880779100019936,
-       "q3_s": 0.018979792000209272,
+       "median_s": 0.018920208000054117,
+       "q1_s": 0.018877083000006678,
+       "q3_s": 0.01898904199970275,
        "below_timer_resolution": false,
-       "iqr_spread_pct": 0.91,
+       "iqr_spread_pct": 0.59,
        "reliable": true,
-       "median_ms": 18.8854,
-       "per_step_us": 1180.336
+       "median_ms": 18.9202,
+       "per_step_us": 1182.513
       },
       "synced": {
-       "median_s": 0.02246508299958805,
-       "q1_s": 0.022368916999766952,
-       "q3_s": 0.022732291000011173,
+       "median_s": 0.02262212499999805,
+       "q1_s": 0.022510124999826076,
+       "q3_s": 0.02284841599976062,
        "below_timer_resolution": false,
-       "iqr_spread_pct": 1.62,
+       "iqr_spread_pct": 1.5,
        "reliable": true,
-       "median_ms": 22.4651,
-       "per_step_us": 1404.068
+       "median_ms": 22.6221,
+       "per_step_us": 1413.883
       },
       "ctl_chained": {
-       "median_s": 2.4169999051082414e-06,
-       "q1_s": 1.041999894368928e-06,
-       "q3_s": 4.208000063954387e-06,
+       "median_s": 2.8750000637955964e-06,
+       "q1_s": 1.1249999261053745e-06,
+       "q3_s": 3.499999820633093e-06,
        "below_timer_resolution": false,
-       "iqr_spread_pct": 303.84,
+       "iqr_spread_pct": 211.11,
        "reliable": false,
-       "median_ms": 0.0024,
-       "per_step_us": 0.151
+       "median_ms": 0.0029,
+       "per_step_us": 0.18
       },
       "ctl_synced": {
-       "median_s": 3.250000190746505e-06,
-       "q1_s": 1.2500004231696948e-06,
-       "q3_s": 3.833000391750829e-06,
+       "median_s": 1.6670001059537753e-06,
+       "q1_s": 1.3750000107393134e-06,
+       "q3_s": 4.417000127432402e-06,
        "below_timer_resolution": false,
-       "iqr_spread_pct": 206.64,
+       "iqr_spread_pct": 221.24,
        "reliable": false,
-       "median_ms": 0.0033,
-       "per_step_us": 0.203
+       "median_ms": 0.0017,
+       "per_step_us": 0.104
       },
       "submitted": {
-       "median_s": 0.018859750000046915,
-       "q1_s": 0.018796709000071132,
-       "q3_s": 0.01911183299989716,
+       "median_s": 0.01890037500015751,
+       "q1_s": 0.01883358400027646,
+       "q3_s": 0.018926208000266342,
        "below_timer_resolution": false,
-       "iqr_spread_pct": 1.68,
+       "iqr_spread_pct": 0.49,
        "reliable": true,
-       "median_ms": 18.8598,
-       "per_step_us": 1178.734
+       "median_ms": 18.9004,
+       "per_step_us": 1181.273
       }
      },
-     "submission_and_compute_per_step_us": 1180.336,
-     "harness_floor_per_step_us": 0.151,
-     "work_visible_per_step_us": 1180.115,
-     "wait_cost_per_step_us": 224.185,
-     "control_wait_cost_per_step_us": -0.076,
-     "excess_over_control_per_step_us": 224.26,
+     "submission_and_compute_per_step_us": 1182.513,
+     "harness_floor_per_step_us": 0.18,
+     "work_visible_per_step_us": 1182.448,
+     "wait_cost_per_step_us": 228.039,
+     "control_wait_cost_per_step_us": -0.089,
+     "excess_over_control_per_step_us": 228.128,
      "detection_floors_per_step_us": {
-      "wait_cost": 9.343,
-      "work_visible": 2.97,
-      "excess_over_control": 9.343
+      "wait_cost": 7.22,
+      "work_visible": 2.662,
+      "excess_over_control": 7.22
      },
-     "min_detectable_effect_per_step_us": 9.343,
+     "min_detectable_effect_per_step_us": 7.22,
      "mde_basis": "two-sided 1.96 sigma on the paired difference, n=15; assumes the reps are independent, which a thermally drifting contended machine does not guarantee",
      "paired": {
       "wait": {
-       "median_s": 0.0035869579992322542,
-       "sd_s": 0.00029538087130491237,
+       "median_s": 0.00364862499964147,
+       "sd_s": 0.00022825509148577283,
        "n": 15
       },
       "control_wait": {
-       "median_s": -1.2089999472664203e-06,
-       "sd_s": 3.333790908070383e-06,
+       "median_s": -1.4170004760671873e-06,
+       "sd_s": 3.5996250213805027e-06,
        "n": 15
       }
      },
@@ -269,9 +269,9 @@
      "confound_check": {
       "status": "RAN",
       "design": "three arms holding one variable each: chained (1 submission, 1 wait), submitted (K submissions, 1 wait), synced (K submissions, K waits)",
-      "cost_of_K_submissions_per_step_us": -0.56,
-      "cost_of_K_waits_per_step_us": 220.206,
-      "mde_per_step_us": 9.097,
+      "cost_of_K_submissions_per_step_us": -3.453,
+      "cost_of_K_waits_per_step_us": 233.383,
+      "mde_per_step_us": 8.021,
       "follows": "wait",
       "reading": "the cost tracks the WAIT count with submission count held at K, so the mechanism is the host round trip"
      },
@@ -292,606 +292,78 @@
      "warmup": 8,
      "arms": {
       "chained": {
-       "median_s": 0.0011458330000095884,
-       "q1_s": 0.0011405000000195287,
-       "q3_s": 0.0011551249999683932,
+       "median_s": 0.0011477920002107567,
+       "q1_s": 0.001141624999945634,
+       "q3_s": 0.0011688750000757864,
        "below_timer_resolution": false,
-       "iqr_spread_pct": 1.28,
+       "iqr_spread_pct": 2.39,
        "reliable": true,
-       "median_ms": 1.1458,
-       "per_step_us": 71.615
+       "median_ms": 1.1478,
+       "per_step_us": 71.737
       },
       "synced": {
-       "median_s": 0.0011484999999993306,
-       "q1_s": 0.001141667000410962,
-       "q3_s": 0.0011534579998624395,
+       "median_s": 0.0011495829999148555,
+       "q1_s": 0.0011401249998925778,
+       "q3_s": 0.0011651669997263525,
        "below_timer_resolution": false,
-       "iqr_spread_pct": 1.03,
+       "iqr_spread_pct": 2.2,
        "reliable": true,
-       "median_ms": 1.1485,
-       "per_step_us": 71.781
-      },
-      "ctl_chained": {
-       "median_s": 9.1600031737471e-07,
-       "q1_s": 7.920002644823398e-07,
-       "q3_s": 1.0409999049443286e-06,
-       "below_timer_resolution": false,
-       "iqr_spread_pct": 31.44,
-       "reliable": false,
-       "median_ms": 0.0009,
-       "per_step_us": 0.057
-      },
-      "ctl_synced": {
-       "median_s": 1.2919999790028669e-06,
-       "q1_s": 1.207999957841821e-06,
-       "q3_s": 1.3750000107393134e-06,
-       "below_timer_resolution": false,
-       "iqr_spread_pct": 13.82,
-       "reliable": false,
-       "median_ms": 0.0013,
-       "per_step_us": 0.081
-      },
-      "submitted": {
-       "median_s": 0.001145083000210434,
-       "q1_s": 0.0011407079996388347,
-       "q3_s": 0.0011557920001905586,
-       "below_timer_resolution": false,
-       "iqr_spread_pct": 1.32,
-       "reliable": true,
-       "median_ms": 1.1451,
-       "per_step_us": 71.568
-      }
-     },
-     "submission_and_compute_per_step_us": 71.615,
-     "harness_floor_per_step_us": 0.057,
-     "work_visible_per_step_us": 71.543,
-     "wait_cost_per_step_us": 0.051,
-     "control_wait_cost_per_step_us": 0.021,
-     "excess_over_control_per_step_us": 0.03,
-     "detection_floors_per_step_us": {
-      "wait_cost": 0.623,
-      "work_visible": 0.439,
-      "excess_over_control": 0.623
-     },
-     "min_detectable_effect_per_step_us": 0.623,
-     "mde_basis": "two-sided 1.96 sigma on the paired difference, n=60; assumes the reps are independent, which a thermally drifting contended machine does not guarantee",
-     "paired": {
-      "wait": {
-       "median_s": 8.124995929392753e-07,
-       "sd_s": 3.9411516441203806e-05,
-       "n": 60
-      },
-      "control_wait": {
-       "median_s": 3.335001110826852e-07,
-       "sd_s": 3.5366311035755205e-07,
-       "n": 60
-      }
-     },
-     "spread_gate_pct": 10.0,
-     "arms_inside_spread_gate": [
-      "chained",
-      "synced",
-      "submitted"
-     ],
-     "arms_outside_spread_gate": [
-      "ctl_chained",
-      "ctl_synced"
-     ],
-     "confound_check": {
-      "status": "RAN",
-      "design": "three arms holding one variable each: chained (1 submission, 1 wait), submitted (K submissions, 1 wait), synced (K submissions, K waits)",
-      "cost_of_K_submissions_per_step_us": -0.06,
-      "cost_of_K_waits_per_step_us": 0.126,
-      "mde_per_step_us": 0.687,
-      "follows": "ambiguous",
-      "reading": "neither difference clears this run's detection floor; the mechanism is UNRESOLVED here, not settled"
-     },
-     "verdict": "NO_SIGNIFICANT_SYNC_TAX",
-     "verdict_reading": "the wait cost does not clear this run's detection floor. A NEGATIVE, and the instrument is supposed to be able to return one"
-    },
-    "injected_stall": {
-     "workload": {
-      "name": "mlx_matmul_128x128_float32_stall200us",
-      "primitive": "matmul",
-      "shape": [
-       128,
-       128
-      ]
-     },
-     "k_steps_between_waits": 16,
-     "reps": 60,
-     "warmup": 8,
-     "arms": {
-      "chained": {
-       "median_s": 0.0009367500001644657,
-       "q1_s": 0.0009233749997292762,
-       "q3_s": 0.0009645410000302945,
-       "below_timer_resolution": false,
-       "iqr_spread_pct": 4.46,
-       "reliable": true,
-       "median_ms": 0.9368,
-       "per_step_us": 58.547
-      },
-      "synced": {
-       "median_s": 0.00711341700025514,
-       "q1_s": 0.006990291999954934,
-       "q3_s": 0.007275541999661073,
-       "below_timer_resolution": false,
-       "iqr_spread_pct": 4.08,
-       "reliable": true,
-       "median_ms": 7.1134,
-       "per_step_us": 444.589
-      },
-      "ctl_chained": {
-       "median_s": 9.590003173798323e-07,
-       "q1_s": 7.49999799154466e-07,
-       "q3_s": 1.6250000953732524e-06,
-       "below_timer_resolution": false,
-       "iqr_spread_pct": 116.67,
-       "reliable": false,
-       "median_ms": 0.001,
-       "per_step_us": 0.06
-      },
-      "ctl_synced": {
-       "median_s": 1.2919999790028669e-06,
-       "q1_s": 1.0839999049494509e-06,
-       "q3_s": 1.5409996194648556e-06,
-       "below_timer_resolution": false,
-       "iqr_spread_pct": 42.16,
-       "reliable": false,
-       "median_ms": 0.0013,
-       "per_step_us": 0.081
-      },
-      "submitted": {
-       "median_s": 0.001386041999921872,
-       "q1_s": 0.0013570420001087768,
-       "q3_s": 0.0014405420001821767,
-       "below_timer_resolution": false,
-       "iqr_spread_pct": 6.15,
-       "reliable": true,
-       "median_ms": 1.386,
-       "per_step_us": 86.628
-      }
-     },
-     "submission_and_compute_per_step_us": 58.547,
-     "harness_floor_per_step_us": 0.06,
-     "work_visible_per_step_us": 58.405,
-     "wait_cost_per_step_us": 385.763,
-     "control_wait_cost_per_step_us": 0.018,
-     "excess_over_control_per_step_us": 385.745,
-     "detection_floors_per_step_us": {
-      "wait_cost": 3.408,
-      "work_visible": 1.103,
-      "excess_over_control": 3.408
-     },
-     "min_detectable_effect_per_step_us": 3.408,
-     "mde_basis": "two-sided 1.96 sigma on the paired difference, n=60; assumes the reps are independent, which a thermally drifting contended machine does not guarantee",
-     "paired": {
-      "wait": {
-       "median_s": 0.006172208500174747,
-       "sd_s": 0.00021551737222916438,
-       "n": 60
-      },
-      "control_wait": {
-       "median_s": 2.9199986784078646e-07,
-       "sd_s": 8.557627978085043e-07,
-       "n": 60
-      }
-     },
-     "spread_gate_pct": 10.0,
-     "arms_inside_spread_gate": [
-      "chained",
-      "synced",
-      "submitted"
-     ],
-     "arms_outside_spread_gate": [
-      "ctl_chained",
-      "ctl_synced"
-     ],
-     "confound_check": {
-      "status": "RAN",
-      "design": "three arms holding one variable each: chained (1 submission, 1 wait), submitted (K submissions, 1 wait), synced (K submissions, K waits)",
-      "cost_of_K_submissions_per_step_us": 28.126,
-      "cost_of_K_waits_per_step_us": 358.154,
-      "mde_per_step_us": 3.834,
-      "follows": "wait",
-      "reading": "the cost tracks the WAIT count with submission count held at K, so the mechanism is the host round trip"
-     },
-     "verdict": "SYNC_TAX",
-     "verdict_reading": "the wait cost is separated from BOTH this run's detection floor and the empty-loop control"
-    },
-    "window_sweep": {
-     "workload": {
-      "name": "mlx_matmul_128x128_float32",
-      "primitive": "matmul",
-      "shape": [
-       128,
-       128
-      ]
-     },
-     "ks": [
-      1,
-      2,
-      4,
-      8,
-      16,
-      32
-     ],
-     "reps_per_k": 20,
-     "rows": [
-      {
-       "k": 1,
-       "chained_per_step_us": 497.083,
-       "wait_cost_per_step_us": -3.229,
-       "verdict": "NO_SIGNIFICANT_SYNC_TAX"
-      },
-      {
-       "k": 2,
-       "chained_per_step_us": 253.208,
-       "wait_cost_per_step_us": 87.261,
-       "verdict": "SYNC_TAX"
-      },
-      {
-       "k": 4,
-       "chained_per_step_us": 135.844,
-       "wait_cost_per_step_us": 137.771,
-       "verdict": "SYNC_TAX"
-      },
-      {
-       "k": 8,
-       "chained_per_step_us": 78.453,
-       "wait_cost_per_step_us": 162.638,
-       "verdict": "SYNC_TAX"
-      },
-      {
-       "k": 16,
-       "chained_per_step_us": 44.034,
-       "wait_cost_per_step_us": 175.895,
-       "verdict": "SYNC_TAX"
-      },
-      {
-       "k": 32,
-       "chained_per_step_us": 26.091,
-       "wait_cost_per_step_us": 189.309,
-       "verdict": "SYNC_TAX"
-      }
-     ],
-     "zero_point_check": {
-      "ran": true,
-      "true_wait_cost_per_step_us": 0.0,
-      "read_wait_cost_per_step_us": -3.229,
-      "why": "at k=1 the chained and synced arms are byte-identical programs, so the correct reading is 0 and the deviation is this run's instrument noise"
-     },
-     "window_gain_k1_over_kmax": 19.052,
-     "smallest_k_within_10pct_of_widest": 32,
-     "reading": "chained per-step cost falls as the single wait amortizes over more work. window_gain is what widening the window bought FOR THIS workload on THIS machine, not a constant."
-    },
-    "injected_stall_calibration": {
-     "injected_us_per_sync": 200.0,
-     "read_back_us_per_step": 140.569,
-     "expected_read_back_us_per_step": 187.5,
-     "why_not_the_full_injection": "the chained arm syncs ONCE per rep and the synced arm K times, so an injection of S into sync() raises the paired difference by S*(K-1)/K per step, not S"
-    },
-    "findings": [
-     "THE INSTRUMENT RETURNS A NEGATIVE. NumPy matmul 256x256 f32 on CPU reads 0.051us/step of wait cost against a 0.623us/step floor: NO_SIGNIFICANT_SYNC_TAX. There is no asynchronous boundary in that runtime, there is nothing to wait on, and the instrument says so.",
-     "MLX matmul 128x128 f32 on GPU reads 245.194us/step of wait cost against 55.815us/step of submission+compute: SYNC_TAX. Its confound arm says the cost follows 'wait'.",
-     "THE CONFOUND ARM SEPARATES THE TWO CORRELATED VARIABLES. At 128x128, holding the wait count at 1 and raising submissions from 1 to K cost 32.384us/step, which CLEARS its own 5.508us/step floor, while raising the wait count cost 214.633us/step. Submission count is the smaller term either way; whether it is nonzero at all is a separate question this run answers YES.",
-     "THE SAME PRIMITIVE AT A DIFFERENT SHAPE MOVES THE ANSWER. At 2048x2048 the wait cost is 224.185us/step against 1180.336us/step of work -- a comparable tax in absolute terms and a small fraction of the cost in relative terms. Verdict SYNC_TAX, confound arm 'wait'.",
-     "THE WINDOW IS THE KNOB, ONE LEVEL UP FROM THE BARRIER RECEIPT. Widening it from k=1 to k=32 cut chained per-step cost 19.052x, and k=32 is already within 10% of the widest window measured.",
-     "CALIBRATION: 200.0us injected into sync() read back as 140.569us/step against an expected 187.5us/step, a gap of -46.9us.",
-     "ZERO POINT: at k=1 the two arms are the same program, so the true wait cost is exactly 0 and the instrument read -3.229us/step. That is this machine's noise on this instrument in this run, measured rather than argued.",
-     "THE SPREAD GATE IS FAILED ALMOST EVERYWHERE and that is expected: the machine is contended by a running ModelLake fill, exactly as ACCELERATOR_SYNC_NOT_SUBMISSION.json recorded at 34-39% IQR. Arms outside the 10.0% gate in the 128x128 arm: ['ctl_chained', 'ctl_synced', 'submitted']."
-    ]
-   },
-   {
-    "held_out_small": {
-     "workload": {
-      "name": "mlx_matmul_128x128_float32",
-      "primitive": "matmul",
-      "shape": [
-       128,
-       128
-      ]
-     },
-     "k_steps_between_waits": 16,
-     "reps": 60,
-     "warmup": 8,
-     "arms": {
-      "chained": {
-       "median_s": 0.0007550000000264845,
-       "q1_s": 0.0007304999999178108,
-       "q3_s": 0.0007988329998624977,
-       "below_timer_resolution": false,
-       "iqr_spread_pct": 9.35,
-       "reliable": true,
-       "median_ms": 0.755,
-       "per_step_us": 47.188
-      },
-      "synced": {
-       "median_s": 0.003703999999743246,
-       "q1_s": 0.003539291999913985,
-       "q3_s": 0.004021374999865657,
-       "below_timer_resolution": false,
-       "iqr_spread_pct": 13.62,
-       "reliable": false,
-       "median_ms": 3.704,
-       "per_step_us": 231.5
+       "median_ms": 1.1496,
+       "per_step_us": 71.849
       },
       "ctl_chained": {
        "median_s": 9.99999883788405e-07,
-       "q1_s": 7.909998203103896e-07,
-       "q3_s": 1.5830000847927295e-06,
+       "q1_s": 8.339998203155119e-07,
+       "q3_s": 1.3750000107393134e-06,
        "below_timer_resolution": false,
-       "iqr_spread_pct": 100.13,
+       "iqr_spread_pct": 64.87,
        "reliable": false,
        "median_ms": 0.001,
        "per_step_us": 0.062
       },
       "ctl_synced": {
        "median_s": 1.3750000107393134e-06,
-       "q1_s": 1.207999957841821e-06,
-       "q3_s": 1.6250000953732524e-06,
+       "q1_s": 1.249999968422344e-06,
+       "q3_s": 1.5420000636368059e-06,
        "below_timer_resolution": false,
-       "iqr_spread_pct": 34.52,
+       "iqr_spread_pct": 23.36,
        "reliable": false,
        "median_ms": 0.0014,
        "per_step_us": 0.086
       },
       "submitted": {
-       "median_s": 0.0011912910003957222,
-       "q1_s": 0.0011672079999698326,
-       "q3_s": 0.0013176249999560241,
+       "median_s": 0.0011506249998092244,
+       "q1_s": 0.0011357500002304732,
+       "q3_s": 0.0011663750001389417,
        "below_timer_resolution": false,
-       "iqr_spread_pct": 12.89,
-       "reliable": false,
-       "median_ms": 1.1913,
-       "per_step_us": 74.456
+       "iqr_spread_pct": 2.7,
+       "reliable": true,
+       "median_ms": 1.1506,
+       "per_step_us": 71.914
       }
      },
-     "submission_and_compute_per_step_us": 47.188,
+     "submission_and_compute_per_step_us": 71.737,
      "harness_floor_per_step_us": 0.062,
-     "work_visible_per_step_us": 47.013,
-     "wait_cost_per_step_us": 184.156,
+     "work_visible_per_step_us": 71.681,
+     "wait_cost_per_step_us": -0.053,
      "control_wait_cost_per_step_us": 0.022,
-     "excess_over_control_per_step_us": 184.134,
+     "excess_over_control_per_step_us": -0.075,
      "detection_floors_per_step_us": {
-      "wait_cost": 4.745,
-      "work_visible": 1.422,
-      "excess_over_control": 4.745
+      "wait_cost": 1.821,
+      "work_visible": 0.96,
+      "excess_over_control": 1.821
      },
-     "min_detectable_effect_per_step_us": 4.745,
+     "min_detectable_effect_per_step_us": 1.821,
      "mde_basis": "two-sided 1.96 sigma on the paired difference, n=60; assumes the reps are independent, which a thermally drifting contended machine does not guarantee",
      "paired": {
       "wait": {
-       "median_s": 0.0029465000000072905,
-       "sd_s": 0.00030004332030262085,
+       "median_s": -8.540000635548495e-07,
+       "sd_s": 0.00011515625730135414,
        "n": 60
       },
       "control_wait": {
-       "median_s": 3.54000121660647e-07,
-       "sd_s": 7.207998823975596e-07,
-       "n": 60
-      }
-     },
-     "spread_gate_pct": 10.0,
-     "arms_inside_spread_gate": [
-      "chained"
-     ],
-     "arms_outside_spread_gate": [
-      "synced",
-      "ctl_chained",
-      "ctl_synced",
-      "submitted"
-     ],
-     "confound_check": {
-      "status": "RAN",
-      "design": "three arms holding one variable each: chained (1 submission, 1 wait), submitted (K submissions, 1 wait), synced (K submissions, K waits)",
-      "cost_of_K_submissions_per_step_us": 27.616,
-      "cost_of_K_waits_per_step_us": 154.445,
-      "mde_per_step_us": 5.074,
-      "follows": "wait",
-      "reading": "the cost tracks the WAIT count with submission count held at K, so the mechanism is the host round trip"
-     },
-     "verdict": "SYNC_TAX",
-     "verdict_reading": "the wait cost is separated from BOTH this run's detection floor and the empty-loop control"
-    },
-    "held_out_large": {
-     "workload": {
-      "name": "mlx_matmul_2048x2048_float32",
-      "primitive": "matmul",
-      "shape": [
-       2048,
-       2048
-      ]
-     },
-     "k_steps_between_waits": 16,
-     "reps": 15,
-     "warmup": 8,
-     "arms": {
-      "chained": {
-       "median_s": 0.018887666999944486,
-       "q1_s": 0.018849499999760155,
-       "q3_s": 0.018990915999893332,
-       "below_timer_resolution": false,
-       "iqr_spread_pct": 0.75,
-       "reliable": true,
-       "median_ms": 18.8877,
-       "per_step_us": 1180.479
-      },
-      "synced": {
-       "median_s": 0.022556750000148895,
-       "q1_s": 0.022323583000343206,
-       "q3_s": 0.022830832999716222,
-       "below_timer_resolution": false,
-       "iqr_spread_pct": 2.27,
-       "reliable": true,
-       "median_ms": 22.5568,
-       "per_step_us": 1409.797
-      },
-      "ctl_chained": {
-       "median_s": 2.541999947425211e-06,
-       "q1_s": 1.041999894368928e-06,
-       "q3_s": 3.291999746579677e-06,
-       "below_timer_resolution": false,
-       "iqr_spread_pct": 215.93,
-       "reliable": false,
-       "median_ms": 0.0025,
-       "per_step_us": 0.159
-      },
-      "ctl_synced": {
-       "median_s": 1.499999598308932e-06,
-       "q1_s": 1.3330000001587905e-06,
-       "q3_s": 4.292000085115433e-06,
-       "below_timer_resolution": false,
-       "iqr_spread_pct": 221.98,
-       "reliable": false,
-       "median_ms": 0.0015,
-       "per_step_us": 0.094
-      },
-      "submitted": {
-       "median_s": 0.018939582999792037,
-       "q1_s": 0.018804875000114407,
-       "q3_s": 0.019083042000147543,
-       "below_timer_resolution": false,
-       "iqr_spread_pct": 1.48,
-       "reliable": true,
-       "median_ms": 18.9396,
-       "per_step_us": 1183.724
-      }
-     },
-     "submission_and_compute_per_step_us": 1180.479,
-     "harness_floor_per_step_us": 0.159,
-     "work_visible_per_step_us": 1180.409,
-     "wait_cost_per_step_us": 221.383,
-     "control_wait_cost_per_step_us": -0.078,
-     "excess_over_control_per_step_us": 221.461,
-     "detection_floors_per_step_us": {
-      "wait_cost": 8.741,
-      "work_visible": 3.892,
-      "excess_over_control": 8.741
-     },
-     "min_detectable_effect_per_step_us": 8.741,
-     "mde_basis": "two-sided 1.96 sigma on the paired difference, n=15; assumes the reps are independent, which a thermally drifting contended machine does not guarantee",
-     "paired": {
-      "wait": {
-       "median_s": 0.0035421249999672,
-       "sd_s": 0.00027636717813177806,
-       "n": 15
-      },
-      "control_wait": {
-       "median_s": -1.2509999578469433e-06,
-       "sd_s": 2.6879344488947113e-06,
-       "n": 15
-      }
-     },
-     "spread_gate_pct": 10.0,
-     "arms_inside_spread_gate": [
-      "chained",
-      "synced",
-      "submitted"
-     ],
-     "arms_outside_spread_gate": [
-      "ctl_chained",
-      "ctl_synced"
-     ],
-     "confound_check": {
-      "status": "RAN",
-      "design": "three arms holding one variable each: chained (1 submission, 1 wait), submitted (K submissions, 1 wait), synced (K submissions, K waits)",
-      "cost_of_K_submissions_per_step_us": -0.01,
-      "cost_of_K_waits_per_step_us": 231.443,
-      "mde_per_step_us": 9.741,
-      "follows": "wait",
-      "reading": "the cost tracks the WAIT count with submission count held at K, so the mechanism is the host round trip"
-     },
-     "verdict": "SYNC_TAX",
-     "verdict_reading": "the wait cost is separated from BOTH this run's detection floor and the empty-loop control"
-    },
-    "held_out_negative_numpy": {
-     "workload": {
-      "name": "numpy_matmul_256x256_float32",
-      "primitive": "matmul",
-      "shape": [
-       256,
-       256
-      ]
-     },
-     "k_steps_between_waits": 16,
-     "reps": 60,
-     "warmup": 8,
-     "arms": {
-      "chained": {
-       "median_s": 0.0011476250001578592,
-       "q1_s": 0.0011436249997132109,
-       "q3_s": 0.0011590419999265578,
-       "below_timer_resolution": false,
-       "iqr_spread_pct": 1.35,
-       "reliable": true,
-       "median_ms": 1.1476,
-       "per_step_us": 71.727
-      },
-      "synced": {
-       "median_s": 0.0011490829997455876,
-       "q1_s": 0.0011430409999775293,
-       "q3_s": 0.0011556250001376611,
-       "below_timer_resolution": false,
-       "iqr_spread_pct": 1.1,
-       "reliable": true,
-       "median_ms": 1.1491,
-       "per_step_us": 71.818
-      },
-      "ctl_chained": {
-       "median_s": 9.170003067993093e-07,
-       "q1_s": 8.749998414714355e-07,
-       "q3_s": 1.0420003491162788e-06,
-       "below_timer_resolution": false,
-       "iqr_spread_pct": 19.09,
-       "reliable": false,
-       "median_ms": 0.0009,
-       "per_step_us": 0.057
-      },
-      "ctl_synced": {
-       "median_s": 1.3330000001587905e-06,
-       "q1_s": 1.249999968422344e-06,
-       "q3_s": 1.500000053056283e-06,
-       "below_timer_resolution": false,
-       "iqr_spread_pct": 20.0,
-       "reliable": false,
-       "median_ms": 0.0013,
-       "per_step_us": 0.083
-      },
-      "submitted": {
-       "median_s": 0.0011487500000839646,
-       "q1_s": 0.001145790999999008,
-       "q3_s": 0.0011597909997362876,
-       "below_timer_resolution": false,
-       "iqr_spread_pct": 1.22,
-       "reliable": true,
-       "median_ms": 1.1488,
-       "per_step_us": 71.797
-      }
-     },
-     "submission_and_compute_per_step_us": 71.727,
-     "harness_floor_per_step_us": 0.057,
-     "work_visible_per_step_us": 71.671,
-     "wait_cost_per_step_us": -0.102,
-     "control_wait_cost_per_step_us": 0.027,
-     "excess_over_control_per_step_us": -0.129,
-     "detection_floors_per_step_us": {
-      "wait_cost": 0.524,
-      "work_visible": 0.288,
-      "excess_over_control": 0.524
-     },
-     "min_detectable_effect_per_step_us": 0.524,
-     "mde_basis": "two-sided 1.96 sigma on the paired difference, n=60; assumes the reps are independent, which a thermally drifting contended machine does not guarantee",
-     "paired": {
-      "wait": {
-       "median_s": -1.624999867999577e-06,
-       "sd_s": 3.310224368199217e-05,
-       "n": 60
-      },
-      "control_wait": {
-       "median_s": 4.3749992073571775e-07,
-       "sd_s": 7.479865378266415e-07,
+       "median_s": 3.5399989428697154e-07,
+       "sd_s": 6.192089812063239e-07,
        "n": 60
       }
      },
@@ -908,9 +380,9 @@
      "confound_check": {
       "status": "RAN",
       "design": "three arms holding one variable each: chained (1 submission, 1 wait), submitted (K submissions, 1 wait), synced (K submissions, K waits)",
-      "cost_of_K_submissions_per_step_us": 0.094,
-      "cost_of_K_waits_per_step_us": -0.056,
-      "mde_per_step_us": 0.552,
+      "cost_of_K_submissions_per_step_us": 0.174,
+      "cost_of_K_waits_per_step_us": -0.033,
+      "mde_per_step_us": 1.799,
       "follows": "ambiguous",
       "reading": "neither difference clears this run's detection floor; the mechanism is UNRESOLVED here, not settled"
      },
@@ -931,78 +403,78 @@
      "warmup": 8,
      "arms": {
       "chained": {
-       "median_s": 0.0009244170000783924,
-       "q1_s": 0.000905874999716616,
-       "q3_s": 0.0009477080002397997,
+       "median_s": 0.0009359999999105639,
+       "q1_s": 0.0009084159996746166,
+       "q3_s": 0.0009496249999756401,
        "below_timer_resolution": false,
-       "iqr_spread_pct": 4.62,
+       "iqr_spread_pct": 4.54,
        "reliable": true,
-       "median_ms": 0.9244,
-       "per_step_us": 57.776
+       "median_ms": 0.936,
+       "per_step_us": 58.5
       },
       "synced": {
-       "median_s": 0.0070617090000268945,
-       "q1_s": 0.006898541999817098,
-       "q3_s": 0.00725345799992283,
+       "median_s": 0.007120125000255939,
+       "q1_s": 0.0069593329999406706,
+       "q3_s": 0.0072374999999738066,
        "below_timer_resolution": false,
-       "iqr_spread_pct": 5.14,
+       "iqr_spread_pct": 4.0,
        "reliable": true,
-       "median_ms": 7.0617,
-       "per_step_us": 441.357
+       "median_ms": 7.1201,
+       "per_step_us": 445.008
       },
       "ctl_chained": {
-       "median_s": 1.0409999049443286e-06,
-       "q1_s": 7.500002539018169e-07,
-       "q3_s": 1.7920001482707448e-06,
-       "below_timer_resolution": false,
-       "iqr_spread_pct": 138.93,
-       "reliable": false,
-       "median_ms": 0.001,
-       "per_step_us": 0.065
-      },
-      "ctl_synced": {
        "median_s": 1.3330000001587905e-06,
-       "q1_s": 1.1250003808527254e-06,
-       "q3_s": 1.5830000847927295e-06,
+       "q1_s": 8.750002962187864e-07,
+       "q3_s": 2.457999926264165e-06,
        "below_timer_resolution": false,
-       "iqr_spread_pct": 40.71,
+       "iqr_spread_pct": 180.91,
        "reliable": false,
        "median_ms": 0.0013,
        "per_step_us": 0.083
       },
-      "submitted": {
-       "median_s": 0.0013830829998369154,
-       "q1_s": 0.001355416000023979,
-       "q3_s": 0.0014290829999481502,
+      "ctl_synced": {
+       "median_s": 1.45800004247576e-06,
+       "q1_s": 1.165999947261298e-06,
+       "q3_s": 1.9590002011682373e-06,
        "below_timer_resolution": false,
-       "iqr_spread_pct": 5.44,
+       "iqr_spread_pct": 68.01,
+       "reliable": false,
+       "median_ms": 0.0015,
+       "per_step_us": 0.091
+      },
+      "submitted": {
+       "median_s": 0.0013865000000805594,
+       "q1_s": 0.0013515829996322282,
+       "q3_s": 0.0014283750001595763,
+       "below_timer_resolution": false,
+       "iqr_spread_pct": 5.68,
        "reliable": true,
-       "median_ms": 1.3831,
-       "per_step_us": 86.443
+       "median_ms": 1.3865,
+       "per_step_us": 86.656
       }
      },
-     "submission_and_compute_per_step_us": 57.776,
-     "harness_floor_per_step_us": 0.065,
-     "work_visible_per_step_us": 57.645,
-     "wait_cost_per_step_us": 383.066,
-     "control_wait_cost_per_step_us": 0.021,
-     "excess_over_control_per_step_us": 383.046,
+     "submission_and_compute_per_step_us": 58.5,
+     "harness_floor_per_step_us": 0.083,
+     "work_visible_per_step_us": 58.411,
+     "wait_cost_per_step_us": 381.267,
+     "control_wait_cost_per_step_us": 0.017,
+     "excess_over_control_per_step_us": 381.25,
      "detection_floors_per_step_us": {
-      "wait_cost": 3.231,
-      "work_visible": 1.087,
-      "excess_over_control": 3.231
+      "wait_cost": 3.399,
+      "work_visible": 1.391,
+      "excess_over_control": 3.399
      },
-     "min_detectable_effect_per_step_us": 3.231,
+     "min_detectable_effect_per_step_us": 3.399,
      "mde_basis": "two-sided 1.96 sigma on the paired difference, n=60; assumes the reps are independent, which a thermally drifting contended machine does not guarantee",
      "paired": {
       "wait": {
-       "median_s": 0.006129062999889356,
-       "sd_s": 0.00020431461089487238,
+       "median_s": 0.006100271500145027,
+       "sd_s": 0.00021494980337540342,
        "n": 60
       },
       "control_wait": {
-       "median_s": 3.3299988899671007e-07,
-       "sd_s": 8.85102976759748e-07,
+       "median_s": 2.7100008992420044e-07,
+       "sd_s": 1.3229420072711495e-06,
        "n": 60
       }
      },
@@ -1019,9 +491,9 @@
      "confound_check": {
       "status": "RAN",
       "design": "three arms holding one variable each: chained (1 submission, 1 wait), submitted (K submissions, 1 wait), synced (K submissions, K waits)",
-      "cost_of_K_submissions_per_step_us": 28.28,
-      "cost_of_K_waits_per_step_us": 351.733,
-      "mde_per_step_us": 3.766,
+      "cost_of_K_submissions_per_step_us": 27.807,
+      "cost_of_K_waits_per_step_us": 356.4,
+      "mde_per_step_us": 3.97,
       "follows": "wait",
       "reading": "the cost tracks the WAIT count with submission count held at K, so the mechanism is the host round trip"
      },
@@ -1049,66 +521,67 @@
      "rows": [
       {
        "k": 1,
-       "chained_per_step_us": 496.292,
-       "wait_cost_per_step_us": 0.813,
+       "chained_per_step_us": 481.333,
+       "wait_cost_per_step_us": -5.625,
        "verdict": "NO_SIGNIFICANT_SYNC_TAX"
       },
       {
        "k": 2,
-       "chained_per_step_us": 254.146,
-       "wait_cost_per_step_us": 79.229,
+       "chained_per_step_us": 253.896,
+       "wait_cost_per_step_us": 78.833,
        "verdict": "SYNC_TAX"
       },
       {
        "k": 4,
-       "chained_per_step_us": 133.75,
-       "wait_cost_per_step_us": 136.536,
+       "chained_per_step_us": 132.521,
+       "wait_cost_per_step_us": 141.698,
        "verdict": "SYNC_TAX"
       },
       {
        "k": 8,
-       "chained_per_step_us": 75.656,
-       "wait_cost_per_step_us": 160.034,
+       "chained_per_step_us": 76.614,
+       "wait_cost_per_step_us": 156.068,
        "verdict": "SYNC_TAX"
       },
       {
        "k": 16,
-       "chained_per_step_us": 46.029,
-       "wait_cost_per_step_us": 178.88,
+       "chained_per_step_us": 45.737,
+       "wait_cost_per_step_us": 181.706,
        "verdict": "SYNC_TAX"
       },
       {
        "k": 32,
-       "chained_per_step_us": 25.992,
-       "wait_cost_per_step_us": 188.353,
+       "chained_per_step_us": 26.398,
+       "wait_cost_per_step_us": 186.04,
        "verdict": "SYNC_TAX"
       }
      ],
      "zero_point_check": {
       "ran": true,
       "true_wait_cost_per_step_us": 0.0,
-      "read_wait_cost_per_step_us": 0.813,
+      "read_wait_cost_per_step_us": -5.625,
       "why": "at k=1 the chained and synced arms are byte-identical programs, so the correct reading is 0 and the deviation is this run's instrument noise"
      },
-     "window_gain_k1_over_kmax": 19.094,
+     "window_gain_k1_over_kmax": 18.234,
      "smallest_k_within_10pct_of_widest": 32,
      "reading": "chained per-step cost falls as the single wait amortizes over more work. window_gain is what widening the window bought FOR THIS workload on THIS machine, not a constant."
     },
     "injected_stall_calibration": {
      "injected_us_per_sync": 200.0,
-     "read_back_us_per_step": 198.91,
+     "read_back_us_per_step": 149.731,
      "expected_read_back_us_per_step": 187.5,
+     "read_back_fraction_of_expected": 0.799,
      "why_not_the_full_injection": "the chained arm syncs ONCE per rep and the synced arm K times, so an injection of S into sync() raises the paired difference by S*(K-1)/K per step, not S"
     },
     "findings": [
-     "THE INSTRUMENT RETURNS A NEGATIVE. NumPy matmul 256x256 f32 on CPU reads -0.102us/step of wait cost against a 0.524us/step floor: NO_SIGNIFICANT_SYNC_TAX. There is no asynchronous boundary in that runtime, there is nothing to wait on, and the instrument says so.",
-     "MLX matmul 128x128 f32 on GPU reads 184.156us/step of wait cost against 47.188us/step of submission+compute: SYNC_TAX. Its confound arm says the cost follows 'wait'.",
-     "THE CONFOUND ARM SEPARATES THE TWO CORRELATED VARIABLES. At 128x128, holding the wait count at 1 and raising submissions from 1 to K cost 27.616us/step, which CLEARS its own 5.074us/step floor, while raising the wait count cost 154.445us/step. Submission count is the smaller term either way; whether it is nonzero at all is a separate question this run answers YES.",
-     "THE SAME PRIMITIVE AT A DIFFERENT SHAPE MOVES THE ANSWER. At 2048x2048 the wait cost is 221.383us/step against 1180.479us/step of work -- a comparable tax in absolute terms and a small fraction of the cost in relative terms. Verdict SYNC_TAX, confound arm 'wait'.",
-     "THE WINDOW IS THE KNOB, ONE LEVEL UP FROM THE BARRIER RECEIPT. Widening it from k=1 to k=32 cut chained per-step cost 19.094x, and k=32 is already within 10% of the widest window measured.",
-     "CALIBRATION: 200.0us injected into sync() read back as 198.91us/step against an expected 187.5us/step, a gap of 11.4us.",
-     "ZERO POINT: at k=1 the two arms are the same program, so the true wait cost is exactly 0 and the instrument read 0.813us/step. That is this machine's noise on this instrument in this run, measured rather than argued.",
-     "THE SPREAD GATE IS FAILED ALMOST EVERYWHERE and that is expected: the machine is contended by a running ModelLake fill, exactly as ACCELERATOR_SYNC_NOT_SUBMISSION.json recorded at 34-39% IQR. Arms outside the 10.0% gate in the 128x128 arm: ['synced', 'ctl_chained', 'ctl_synced', 'submitted']."
+     "THE INSTRUMENT RETURNS A NEGATIVE. NumPy matmul 256x256 f32 on CPU reads -0.053us/step of wait cost against a 1.821us/step floor: NO_SIGNIFICANT_SYNC_TAX. There is no asynchronous boundary in that runtime, there is nothing to wait on, and the instrument says so.",
+     "MLX matmul 128x128 f32 on GPU reads 231.536us/step of wait cost against 54.742us/step of submission+compute: SYNC_TAX. Its confound arm says the cost follows 'wait'.",
+     "THE CONFOUND ARM SEPARATES THE TWO CORRELATED VARIABLES. At 128x128, holding the wait count at 1 and raising submissions from 1 to K cost 30.779us/step, which CLEARS its own 5.018us/step floor, while raising the wait count cost 198.398us/step. Submission count is the smaller term either way; whether it is nonzero at all is a separate question this run answers YES.",
+     "THE SAME PRIMITIVE AT A DIFFERENT SHAPE MOVES THE ANSWER. At 2048x2048 the wait cost is 228.039us/step against 1182.513us/step of work -- a comparable tax in absolute terms and a small fraction of the cost in relative terms. Verdict SYNC_TAX, confound arm 'wait'.",
+     "THE WINDOW IS THE KNOB, ONE LEVEL UP FROM THE BARRIER RECEIPT. Widening it from k=1 to k=32 cut chained per-step cost 18.234x, and k=32 is already within 10% of the widest window measured.",
+     "CALIBRATION: 200.0us injected into sync() read back as 149.731us/step against an expected 187.5us/step -- 0.799 of the injection. DETECTION is not in doubt (381.267us/step stalled against 231.536us/step clean, against a 3.399us/step floor). MAGNITUDE recovery is imperfect and the gap is much larger than the zero-point noise, so it is NOT noise. The obvious candidate -- the busy spin occupies a core and lets the driver settle, making the NEXT mx.eval cheaper, so part of the injection is absorbed rather than added -- is UNVERIFIED here. Read the stalled arm as a detector, not as a ruler.",
+     "ZERO POINT: at k=1 the two arms are the same program, so the true wait cost is exactly 0 and the instrument read -5.625us/step. That is this machine's noise on this instrument in this run, measured rather than argued.",
+     "THE SPREAD GATE IS FAILED ALMOST EVERYWHERE and that is expected: the machine is contended by a running ModelLake fill, exactly as ACCELERATOR_SYNC_NOT_SUBMISSION.json recorded at 34-39% IQR. Arms outside the 10.0% gate in the 128x128 arm: ['ctl_chained', 'ctl_synced']."
     ]
    },
    {
@@ -1126,87 +599,86 @@
      "warmup": 8,
      "arms": {
       "chained": {
-       "median_s": 0.0008948330000748683,
-       "q1_s": 0.0008809999999357387,
-       "q3_s": 0.0009285420001106104,
+       "median_s": 0.0008574999997108534,
+       "q1_s": 0.000787541000136116,
+       "q3_s": 0.0009166250001726439,
        "below_timer_resolution": false,
-       "iqr_spread_pct": 5.4,
-       "reliable": true,
-       "median_ms": 0.8948,
-       "per_step_us": 55.927
+       "iqr_spread_pct": 16.39,
+       "reliable": false,
+       "median_ms": 0.8575,
+       "per_step_us": 53.594
       },
       "synced": {
-       "median_s": 0.0047397920002367755,
-       "q1_s": 0.004574583000248822,
-       "q3_s": 0.0049055829999815614,
+       "median_s": 0.003938374999961525,
+       "q1_s": 0.00358562500014159,
+       "q3_s": 0.004478625000047032,
        "below_timer_resolution": false,
-       "iqr_spread_pct": 7.24,
-       "reliable": true,
-       "median_ms": 4.7398,
-       "per_step_us": 296.237
+       "iqr_spread_pct": 24.91,
+       "reliable": false,
+       "median_ms": 3.9384,
+       "per_step_us": 246.148
       },
       "ctl_chained": {
-       "median_s": 9.99999883788405e-07,
-       "q1_s": 8.329998308909126e-07,
-       "q3_s": 1.500000053056283e-06,
+       "median_s": 1.749999682942871e-06,
+       "q1_s": 1.0829999155248515e-06,
+       "q3_s": 2.750000021478627e-06,
        "below_timer_resolution": false,
-       "iqr_spread_pct": 80.07,
+       "iqr_spread_pct": 153.92,
        "reliable": false,
-       "median_ms": 0.001,
-       "per_step_us": 0.062
+       "median_ms": 0.0017,
+       "per_step_us": 0.109
       },
       "ctl_synced": {
-       "median_s": 1.3339999895833898e-06,
-       "q1_s": 1.207999957841821e-06,
-       "q3_s": 1.6250000953732524e-06,
+       "median_s": 1.6250000953732524e-06,
+       "q1_s": 1.3750000107393134e-06,
+       "q3_s": 2.5409999580006115e-06,
        "below_timer_resolution": false,
-       "iqr_spread_pct": 34.52,
+       "iqr_spread_pct": 84.8,
        "reliable": false,
-       "median_ms": 0.0013,
-       "per_step_us": 0.083
+       "median_ms": 0.0016,
+       "per_step_us": 0.102
       },
       "submitted": {
-       "median_s": 0.0013953750003565801,
-       "q1_s": 0.0013471249999383872,
-       "q3_s": 0.0015121249998628628,
+       "median_s": 0.001385250000112137,
+       "q1_s": 0.0012878750003437744,
+       "q3_s": 0.0015186249997896084,
        "below_timer_resolution": false,
-       "iqr_spread_pct": 12.25,
+       "iqr_spread_pct": 17.92,
        "reliable": false,
-       "median_ms": 1.3954,
-       "per_step_us": 87.211
+       "median_ms": 1.3853,
+       "per_step_us": 86.578
       }
      },
-     "submission_and_compute_per_step_us": 55.927,
-     "harness_floor_per_step_us": 0.062,
-     "work_visible_per_step_us": 55.822,
-     "wait_cost_per_step_us": 237.773,
+     "submission_and_compute_per_step_us": 53.594,
+     "harness_floor_per_step_us": 0.109,
+     "work_visible_per_step_us": 53.401,
+     "wait_cost_per_step_us": 189.305,
      "control_wait_cost_per_step_us": 0.016,
-     "excess_over_control_per_step_us": 237.758,
+     "excess_over_control_per_step_us": 189.289,
      "detection_floors_per_step_us": {
-      "wait_cost": 4.269,
-      "work_visible": 1.472,
-      "excess_over_control": 4.269
+      "wait_cost": 66.425,
+      "work_visible": 13.987,
+      "excess_over_control": 66.425
      },
-     "min_detectable_effect_per_step_us": 4.269,
+     "min_detectable_effect_per_step_us": 66.425,
      "mde_basis": "two-sided 1.96 sigma on the paired difference, n=60; assumes the reps are independent, which a thermally drifting contended machine does not guarantee",
      "paired": {
       "wait": {
-       "median_s": 0.003804374999845095,
-       "sd_s": 0.0002699560646285179,
+       "median_s": 0.0030288745001598727,
+       "sd_s": 0.004200234365079793,
        "n": 60
       },
       "control_wait": {
-       "median_s": 2.5050007934623864e-07,
-       "sd_s": 6.762717017027012e-07,
+       "median_s": 2.499998572602635e-07,
+       "sd_s": 1.6419366624226029e-06,
        "n": 60
       }
      },
      "spread_gate_pct": 10.0,
-     "arms_inside_spread_gate": [
-      "chained",
-      "synced"
-     ],
+     "arms_inside_spread_gate": [],
      "arms_outside_spread_gate": [
+      "chained",
+      "synced",
       "ctl_chained",
       "ctl_synced",
       "submitted"
@@ -1214,9 +686,9 @@
      "confound_check": {
       "status": "RAN",
       "design": "three arms holding one variable each: chained (1 submission, 1 wait), submitted (K submissions, 1 wait), synced (K submissions, K waits)",
-      "cost_of_K_submissions_per_step_us": 31.435,
-      "cost_of_K_waits_per_step_us": 206.901,
-      "mde_per_step_us": 4.736,
+      "cost_of_K_submissions_per_step_us": 31.247,
+      "cost_of_K_waits_per_step_us": 163.449,
+      "mde_per_step_us": 67.24,
       "follows": "wait",
       "reading": "the cost tracks the WAIT count with submission count held at K, so the mechanism is the host round trip"
      },
@@ -1237,102 +709,101 @@
      "warmup": 8,
      "arms": {
       "chained": {
-       "median_s": 0.018897917000231246,
-       "q1_s": 0.018853708000278857,
-       "q3_s": 0.01902933299970755,
+       "median_s": 0.021040666999851965,
+       "q1_s": 0.020273915999950987,
+       "q3_s": 0.03426424999997835,
        "below_timer_resolution": false,
-       "iqr_spread_pct": 0.93,
-       "reliable": true,
-       "median_ms": 18.8979,
-       "per_step_us": 1181.12
+       "iqr_spread_pct": 69.01,
+       "reliable": false,
+       "median_ms": 21.0407,
+       "per_step_us": 1315.042
       },
       "synced": {
-       "median_s": 0.022500292000131594,
-       "q1_s": 0.02239762499993958,
-       "q3_s": 0.02299074999973527,
+       "median_s": 0.02531641599989598,
+       "q1_s": 0.0248634999998103,
+       "q3_s": 0.03709045799996602,
        "below_timer_resolution": false,
-       "iqr_spread_pct": 2.65,
-       "reliable": true,
-       "median_ms": 22.5003,
-       "per_step_us": 1406.268
+       "iqr_spread_pct": 49.18,
+       "reliable": false,
+       "median_ms": 25.3164,
+       "per_step_us": 1582.276
       },
       "ctl_chained": {
-       "median_s": 2.6249999791616574e-06,
-       "q1_s": 9.590003173798323e-07,
-       "q3_s": 3.7500003600143827e-06,
+       "median_s": 4.083000021637417e-06,
+       "q1_s": 1.6250000953732524e-06,
+       "q3_s": 5.915999736316735e-06,
        "below_timer_resolution": false,
-       "iqr_spread_pct": 291.03,
+       "iqr_spread_pct": 264.06,
        "reliable": false,
-       "median_ms": 0.0026,
-       "per_step_us": 0.164
+       "median_ms": 0.0041,
+       "per_step_us": 0.255
       },
       "ctl_synced": {
-       "median_s": 1.4170000213198364e-06,
-       "q1_s": 1.2089999472664203e-06,
-       "q3_s": 4.209000053378986e-06,
+       "median_s": 4.083000021637417e-06,
+       "q1_s": 2.2920003175386228e-06,
+       "q3_s": 6.583999947906705e-06,
        "below_timer_resolution": false,
-       "iqr_spread_pct": 248.14,
+       "iqr_spread_pct": 187.26,
        "reliable": false,
-       "median_ms": 0.0014,
-       "per_step_us": 0.089
+       "median_ms": 0.0041,
+       "per_step_us": 0.255
       },
       "submitted": {
-       "median_s": 0.01894566599958125,
-       "q1_s": 0.018902499999967404,
-       "q3_s": 0.01910008300001209,
+       "median_s": 0.021289374999923893,
+       "q1_s": 0.02032470900030603,
+       "q3_s": 0.02965425000002142,
        "below_timer_resolution": false,
-       "iqr_spread_pct": 1.05,
-       "reliable": true,
-       "median_ms": 18.9457,
-       "per_step_us": 1184.104
+       "iqr_spread_pct": 45.9,
+       "reliable": false,
+       "median_ms": 21.2894,
+       "per_step_us": 1330.586
       }
      },
-     "submission_and_compute_per_step_us": 1181.12,
-     "harness_floor_per_step_us": 0.164,
-     "work_visible_per_step_us": 1180.938,
-     "wait_cost_per_step_us": 219.88,
-     "control_wait_cost_per_step_us": -0.081,
-     "excess_over_control_per_step_us": 219.961,
+     "submission_and_compute_per_step_us": 1315.042,
+     "harness_floor_per_step_us": 0.255,
+     "work_visible_per_step_us": 1314.672,
+     "wait_cost_per_step_us": 286.849,
+     "control_wait_cost_per_step_us": -0.112,
+     "excess_over_control_per_step_us": 286.961,
      "detection_floors_per_step_us": {
-      "wait_cost": 11.858,
-      "work_visible": 4.522,
-      "excess_over_control": 11.858
+      "wait_cost": 405.296,
+      "work_visible": 223.054,
+      "excess_over_control": 405.296
      },
-     "min_detectable_effect_per_step_us": 11.858,
+     "min_detectable_effect_per_step_us": 405.296,
      "mde_basis": "two-sided 1.96 sigma on the paired difference, n=15; assumes the reps are independent, which a thermally drifting contended machine does not guarantee",
      "paired": {
       "wait": {
-       "median_s": 0.0035180840000066382,
-       "sd_s": 0.0003749050547914696,
+       "median_s": 0.004589583999859315,
+       "sd_s": 0.012813922000193965,
        "n": 15
       },
       "control_wait": {
-       "median_s": -1.2919999790028669e-06,
-       "sd_s": 2.951725755952823e-06,
+       "median_s": -1.7909997040987946e-06,
+       "sd_s": 4.556071784562642e-06,
        "n": 15
       }
      },
      "spread_gate_pct": 10.0,
-     "arms_inside_spread_gate": [
+     "arms_inside_spread_gate": [],
+     "arms_outside_spread_gate": [
       "chained",
       "synced",
-      "submitted"
-     ],
-     "arms_outside_spread_gate": [
       "ctl_chained",
-      "ctl_synced"
+      "ctl_synced",
+      "submitted"
      ],
      "confound_check": {
       "status": "RAN",
       "design": "three arms holding one variable each: chained (1 submission, 1 wait), submitted (K submissions, 1 wait), synced (K submissions, K waits)",
-      "cost_of_K_submissions_per_step_us": -1.404,
-      "cost_of_K_waits_per_step_us": 224.862,
-      "mde_per_step_us": 14.164,
-      "follows": "wait",
-      "reading": "the cost tracks the WAIT count with submission count held at K, so the mechanism is the host round trip"
+      "cost_of_K_submissions_per_step_us": -36.107,
+      "cost_of_K_waits_per_step_us": 279.294,
+      "mde_per_step_us": 425.315,
+      "follows": "ambiguous",
+      "reading": "neither difference clears this run's detection floor; the mechanism is UNRESOLVED here, not settled"
      },
-     "verdict": "SYNC_TAX",
-     "verdict_reading": "the wait cost is separated from BOTH this run's detection floor and the empty-loop control"
+     "verdict": "NO_SIGNIFICANT_SYNC_TAX",
+     "verdict_reading": "the wait cost does not clear this run's detection floor. A NEGATIVE, and the instrument is supposed to be able to return one"
     },
     "held_out_negative_numpy": {
      "workload": {
@@ -1348,78 +819,78 @@
      "warmup": 8,
      "arms": {
       "chained": {
-       "median_s": 0.0011477090001790202,
-       "q1_s": 0.0011431249999986903,
-       "q3_s": 0.0011742920000870072,
+       "median_s": 0.001166166999610141,
+       "q1_s": 0.0011343749997649866,
+       "q3_s": 0.0011918340001102479,
        "below_timer_resolution": false,
-       "iqr_spread_pct": 2.73,
+       "iqr_spread_pct": 5.07,
        "reliable": true,
-       "median_ms": 1.1477,
-       "per_step_us": 71.732
+       "median_ms": 1.1662,
+       "per_step_us": 72.885
       },
       "synced": {
-       "median_s": 0.0011493330002849689,
-       "q1_s": 0.0011437920002208557,
-       "q3_s": 0.0011771669996960554,
+       "median_s": 0.0011741249995793623,
+       "q1_s": 0.0011407910001253185,
+       "q3_s": 0.001200790999973833,
        "below_timer_resolution": false,
-       "iqr_spread_pct": 2.92,
+       "iqr_spread_pct": 5.26,
        "reliable": true,
-       "median_ms": 1.1493,
-       "per_step_us": 71.833
+       "median_ms": 1.1741,
+       "per_step_us": 73.383
       },
       "ctl_chained": {
-       "median_s": 9.169998520519584e-07,
-       "q1_s": 8.340002750628628e-07,
-       "q3_s": 9.99999883788405e-07,
+       "median_s": 9.99999883788405e-07,
+       "q1_s": 8.749998414714355e-07,
+       "q3_s": 1.5840000742173288e-06,
        "below_timer_resolution": false,
-       "iqr_spread_pct": 19.9,
+       "iqr_spread_pct": 81.03,
        "reliable": false,
-       "median_ms": 0.0009,
-       "per_step_us": 0.057
+       "median_ms": 0.001,
+       "per_step_us": 0.062
       },
       "ctl_synced": {
-       "median_s": 1.2920004337502178e-06,
-       "q1_s": 1.207999957841821e-06,
-       "q3_s": 1.416000031895237e-06,
+       "median_s": 1.4170000213198364e-06,
+       "q1_s": 1.249999968422344e-06,
+       "q3_s": 1.6250000953732524e-06,
        "below_timer_resolution": false,
-       "iqr_spread_pct": 17.22,
+       "iqr_spread_pct": 30.0,
        "reliable": false,
-       "median_ms": 0.0013,
-       "per_step_us": 0.081
+       "median_ms": 0.0014,
+       "per_step_us": 0.089
       },
       "submitted": {
-       "median_s": 0.0011475000001155422,
-       "q1_s": 0.0011395829997127294,
-       "q3_s": 0.0011672079999698326,
+       "median_s": 0.0011749999998755811,
+       "q1_s": 0.001141499999903317,
+       "q3_s": 0.0012027500001750013,
        "below_timer_resolution": false,
-       "iqr_spread_pct": 2.42,
+       "iqr_spread_pct": 5.37,
        "reliable": true,
-       "median_ms": 1.1475,
-       "per_step_us": 71.719
+       "median_ms": 1.175,
+       "per_step_us": 73.437
       }
      },
-     "submission_and_compute_per_step_us": 71.732,
-     "harness_floor_per_step_us": 0.057,
-     "work_visible_per_step_us": 71.661,
-     "wait_cost_per_step_us": 0.03,
-     "control_wait_cost_per_step_us": 0.023,
-     "excess_over_control_per_step_us": 0.006,
+     "submission_and_compute_per_step_us": 72.885,
+     "harness_floor_per_step_us": 0.062,
+     "work_visible_per_step_us": 72.544,
+     "wait_cost_per_step_us": 0.189,
+     "control_wait_cost_per_step_us": 0.021,
+     "excess_over_control_per_step_us": 0.168,
      "detection_floors_per_step_us": {
-      "wait_cost": 0.319,
-      "work_visible": 0.396,
-      "excess_over_control": 0.319
+      "wait_cost": 0.995,
+      "work_visible": 0.907,
+      "excess_over_control": 0.995
      },
-     "min_detectable_effect_per_step_us": 0.319,
+     "min_detectable_effect_per_step_us": 0.995,
      "mde_basis": "two-sided 1.96 sigma on the paired difference, n=60; assumes the reps are independent, which a thermally drifting contended machine does not guarantee",
      "paired": {
       "wait": {
-       "median_s": 4.789997092302656e-07,
-       "sd_s": 2.0183820340034264e-05,
+       "median_s": 3.020499889316852e-06,
+       "sd_s": 6.29390116486085e-05,
        "n": 60
       },
       "control_wait": {
-       "median_s": 3.74999899577233e-07,
-       "sd_s": 2.5118866865758344e-07,
+       "median_s": 3.3349988370900974e-07,
+       "sd_s": 9.716124820426582e-07,
        "n": 60
       }
      },
@@ -1436,9 +907,9 @@
      "confound_check": {
       "status": "RAN",
       "design": "three arms holding one variable each: chained (1 submission, 1 wait), submitted (K submissions, 1 wait), synced (K submissions, K waits)",
-      "cost_of_K_submissions_per_step_us": -0.018,
-      "cost_of_K_waits_per_step_us": 0.228,
-      "mde_per_step_us": 0.403,
+      "cost_of_K_submissions_per_step_us": 0.237,
+      "cost_of_K_waits_per_step_us": 0.029,
+      "mde_per_step_us": 1.069,
       "follows": "ambiguous",
       "reading": "neither difference clears this run's detection floor; the mechanism is UNRESOLVED here, not settled"
      },
@@ -1459,87 +930,86 @@
      "warmup": 8,
      "arms": {
       "chained": {
-       "median_s": 0.0009251249998669664,
-       "q1_s": 0.0009072499997273553,
-       "q3_s": 0.0009470830000282149,
+       "median_s": 0.0010294999997313425,
+       "q1_s": 0.0009817909999583208,
+       "q3_s": 0.0012282079997021356,
        "below_timer_resolution": false,
-       "iqr_spread_pct": 4.39,
-       "reliable": true,
-       "median_ms": 0.9251,
-       "per_step_us": 57.82
+       "iqr_spread_pct": 25.1,
+       "reliable": false,
+       "median_ms": 1.0295,
+       "per_step_us": 64.344
       },
       "synced": {
-       "median_s": 0.007052208000004612,
-       "q1_s": 0.006939290999980585,
-       "q3_s": 0.007235499999751482,
+       "median_s": 0.007190374999936466,
+       "q1_s": 0.006921166999745765,
+       "q3_s": 0.01708687500013184,
        "below_timer_resolution": false,
-       "iqr_spread_pct": 4.27,
-       "reliable": true,
-       "median_ms": 7.0522,
-       "per_step_us": 440.763
+       "iqr_spread_pct": 146.88,
+       "reliable": false,
+       "median_ms": 7.1904,
+       "per_step_us": 449.398
       },
       "ctl_chained": {
-       "median_s": 1.2089999472664203e-06,
-       "q1_s": 7.079997885739431e-07,
-       "q3_s": 1.6670001059537753e-06,
+       "median_s": 2.041999778157333e-06,
+       "q1_s": 9.58000327955233e-07,
+       "q3_s": 3.1669997042627074e-06,
        "below_timer_resolution": false,
-       "iqr_spread_pct": 135.45,
+       "iqr_spread_pct": 230.58,
        "reliable": false,
-       "median_ms": 0.0012,
-       "per_step_us": 0.076
+       "median_ms": 0.002,
+       "per_step_us": 0.128
       },
       "ctl_synced": {
-       "median_s": 1.2909999895782676e-06,
-       "q1_s": 1.1669999366858974e-06,
-       "q3_s": 1.4590000319003593e-06,
+       "median_s": 1.7920001482707448e-06,
+       "q1_s": 1.4170000213198364e-06,
+       "q3_s": 2.4170003598555923e-06,
        "below_timer_resolution": false,
-       "iqr_spread_pct": 25.02,
+       "iqr_spread_pct": 70.57,
        "reliable": false,
-       "median_ms": 0.0013,
-       "per_step_us": 0.081
+       "median_ms": 0.0018,
+       "per_step_us": 0.112
       },
       "submitted": {
-       "median_s": 0.001386207999985345,
-       "q1_s": 0.0013502910001079726,
-       "q3_s": 0.0015072500000314903,
+       "median_s": 0.0016201660000660922,
+       "q1_s": 0.00150187500003085,
+       "q3_s": 0.0019645410002340213,
        "below_timer_resolution": false,
-       "iqr_spread_pct": 11.62,
+       "iqr_spread_pct": 30.81,
        "reliable": false,
-       "median_ms": 1.3862,
-       "per_step_us": 86.638
+       "median_ms": 1.6202,
+       "per_step_us": 101.26
       }
      },
-     "submission_and_compute_per_step_us": 57.82,
-     "harness_floor_per_step_us": 0.076,
-     "work_visible_per_step_us": 57.758,
-     "wait_cost_per_step_us": 384.345,
-     "control_wait_cost_per_step_us": 0.036,
-     "excess_over_control_per_step_us": 384.309,
+     "submission_and_compute_per_step_us": 64.344,
+     "harness_floor_per_step_us": 0.128,
+     "work_visible_per_step_us": 64.051,
+     "wait_cost_per_step_us": 384.566,
+     "control_wait_cost_per_step_us": -0.003,
+     "excess_over_control_per_step_us": 384.569,
      "detection_floors_per_step_us": {
-      "wait_cost": 3.83,
-      "work_visible": 1.022,
-      "excess_over_control": 3.83
+      "wait_cost": 108.421,
+      "work_visible": 19.499,
+      "excess_over_control": 108.421
      },
-     "min_detectable_effect_per_step_us": 3.83,
+     "min_detectable_effect_per_step_us": 108.421,
      "mde_basis": "two-sided 1.96 sigma on the paired difference, n=60; assumes the reps are independent, which a thermally drifting contended machine does not guarantee",
      "paired": {
       "wait": {
-       "median_s": 0.00614952050023021,
-       "sd_s": 0.0002421777013840962,
+       "median_s": 0.006153062500061424,
+       "sd_s": 0.006855687309408789,
        "n": 60
       },
       "control_wait": {
-       "median_s": 5.839999630552484e-07,
-       "sd_s": 8.185595425295189e-07,
+       "median_s": -4.2499777919147164e-08,
+       "sd_s": 2.419529773324631e-06,
        "n": 60
       }
      },
      "spread_gate_pct": 10.0,
-     "arms_inside_spread_gate": [
-      "chained",
-      "synced"
-     ],
+     "arms_inside_spread_gate": [],
      "arms_outside_spread_gate": [
+      "chained",
+      "synced",
       "ctl_chained",
       "ctl_synced",
       "submitted"
@@ -1547,9 +1017,9 @@
      "confound_check": {
       "status": "RAN",
       "design": "three arms holding one variable each: chained (1 submission, 1 wait), submitted (K submissions, 1 wait), synced (K submissions, K waits)",
-      "cost_of_K_submissions_per_step_us": 28.842,
-      "cost_of_K_waits_per_step_us": 352.798,
-      "mde_per_step_us": 4.318,
+      "cost_of_K_submissions_per_step_us": 33.927,
+      "cost_of_K_waits_per_step_us": 352.197,
+      "mde_per_step_us": 106.613,
       "follows": "wait",
       "reading": "the cost tracks the WAIT count with submission count held at K, so the mechanism is the host round trip"
      },
@@ -1577,66 +1047,594 @@
      "rows": [
       {
        "k": 1,
-       "chained_per_step_us": 495.291,
-       "wait_cost_per_step_us": 4.792,
+       "chained_per_step_us": 564.542,
+       "wait_cost_per_step_us": -49.125,
        "verdict": "NO_SIGNIFICANT_SYNC_TAX"
       },
       {
        "k": 2,
-       "chained_per_step_us": 250.146,
-       "wait_cost_per_step_us": 90.906,
-       "verdict": "SYNC_TAX"
+       "chained_per_step_us": 256.354,
+       "wait_cost_per_step_us": 84.291,
+       "verdict": "NO_SIGNIFICANT_SYNC_TAX"
       },
       {
        "k": 4,
-       "chained_per_step_us": 131.5,
-       "wait_cost_per_step_us": 138.5,
-       "verdict": "SYNC_TAX"
+       "chained_per_step_us": 139.312,
+       "wait_cost_per_step_us": 140.219,
+       "verdict": "WORK_NOT_VISIBLE"
       },
       {
        "k": 8,
-       "chained_per_step_us": 76.354,
-       "wait_cost_per_step_us": 161.904,
-       "verdict": "SYNC_TAX"
+       "chained_per_step_us": 85.011,
+       "wait_cost_per_step_us": 158.49,
+       "verdict": "NO_SIGNIFICANT_SYNC_TAX"
       },
       {
        "k": 16,
-       "chained_per_step_us": 46.029,
-       "wait_cost_per_step_us": 174.027,
-       "verdict": "SYNC_TAX"
+       "chained_per_step_us": 55.109,
+       "wait_cost_per_step_us": 199.632,
+       "verdict": "WORK_NOT_VISIBLE"
       },
       {
        "k": 32,
-       "chained_per_step_us": 26.318,
-       "wait_cost_per_step_us": 187.9,
+       "chained_per_step_us": 32.013,
+       "wait_cost_per_step_us": 180.276,
        "verdict": "SYNC_TAX"
       }
      ],
      "zero_point_check": {
       "ran": true,
       "true_wait_cost_per_step_us": 0.0,
-      "read_wait_cost_per_step_us": 4.792,
+      "read_wait_cost_per_step_us": -49.125,
       "why": "at k=1 the chained and synced arms are byte-identical programs, so the correct reading is 0 and the deviation is this run's instrument noise"
      },
-     "window_gain_k1_over_kmax": 18.819,
+     "window_gain_k1_over_kmax": 17.635,
      "smallest_k_within_10pct_of_widest": 32,
      "reading": "chained per-step cost falls as the single wait amortizes over more work. window_gain is what widening the window bought FOR THIS workload on THIS machine, not a constant."
     },
     "injected_stall_calibration": {
      "injected_us_per_sync": 200.0,
-     "read_back_us_per_step": 146.572,
+     "read_back_us_per_step": 195.261,
      "expected_read_back_us_per_step": 187.5,
+     "read_back_fraction_of_expected": 1.041,
      "why_not_the_full_injection": "the chained arm syncs ONCE per rep and the synced arm K times, so an injection of S into sync() raises the paired difference by S*(K-1)/K per step, not S"
     },
     "findings": [
-     "THE INSTRUMENT RETURNS A NEGATIVE. NumPy matmul 256x256 f32 on CPU reads 0.03us/step of wait cost against a 0.319us/step floor: NO_SIGNIFICANT_SYNC_TAX. There is no asynchronous boundary in that runtime, there is nothing to wait on, and the instrument says so.",
-     "MLX matmul 128x128 f32 on GPU reads 237.773us/step of wait cost against 55.927us/step of submission+compute: SYNC_TAX. Its confound arm says the cost follows 'wait'.",
-     "THE CONFOUND ARM SEPARATES THE TWO CORRELATED VARIABLES. At 128x128, holding the wait count at 1 and raising submissions from 1 to K cost 31.435us/step, which CLEARS its own 4.736us/step floor, while raising the wait count cost 206.901us/step. Submission count is the smaller term either way; whether it is nonzero at all is a separate question this run answers YES.",
-     "THE SAME PRIMITIVE AT A DIFFERENT SHAPE MOVES THE ANSWER. At 2048x2048 the wait cost is 219.88us/step against 1181.12us/step of work -- a comparable tax in absolute terms and a small fraction of the cost in relative terms. Verdict SYNC_TAX, confound arm 'wait'.",
-     "THE WINDOW IS THE KNOB, ONE LEVEL UP FROM THE BARRIER RECEIPT. Widening it from k=1 to k=32 cut chained per-step cost 18.819x, and k=32 is already within 10% of the widest window measured.",
-     "CALIBRATION: 200.0us injected into sync() read back as 146.572us/step against an expected 187.5us/step, a gap of -40.9us.",
-     "ZERO POINT: at k=1 the two arms are the same program, so the true wait cost is exactly 0 and the instrument read 4.792us/step. That is this machine's noise on this instrument in this run, measured rather than argued.",
-     "THE SPREAD GATE IS FAILED ALMOST EVERYWHERE and that is expected: the machine is contended by a running ModelLake fill, exactly as ACCELERATOR_SYNC_NOT_SUBMISSION.json recorded at 34-39% IQR. Arms outside the 10.0% gate in the 128x128 arm: ['ctl_chained', 'ctl_synced', 'submitted']."
+     "THE INSTRUMENT RETURNS A NEGATIVE. NumPy matmul 256x256 f32 on CPU reads 0.189us/step of wait cost against a 0.995us/step floor: NO_SIGNIFICANT_SYNC_TAX. There is no asynchronous boundary in that runtime, there is nothing to wait on, and the instrument says so.",
+     "MLX matmul 128x128 f32 on GPU reads 189.305us/step of wait cost against 53.594us/step of submission+compute: SYNC_TAX. Its confound arm says the cost follows 'wait'.",
+     "THE CONFOUND ARM SEPARATES THE TWO CORRELATED VARIABLES. At 128x128, holding the wait count at 1 and raising submissions from 1 to K cost 31.247us/step, which DOES NOT CLEAR its own 67.24us/step floor, while raising the wait count cost 163.449us/step. Submission count is the smaller term either way; whether it is nonzero at all is a separate question this run CANNOT ANSWER.",
+     "THE SAME PRIMITIVE AT A DIFFERENT SHAPE MOVES THE ANSWER. At 2048x2048 the wait cost is 286.849us/step against 1315.042us/step of work -- a comparable tax in absolute terms and a small fraction of the cost in relative terms. Verdict NO_SIGNIFICANT_SYNC_TAX, confound arm 'ambiguous'.",
+     "THE WINDOW IS THE KNOB, ONE LEVEL UP FROM THE BARRIER RECEIPT. Widening it from k=1 to k=32 cut chained per-step cost 17.635x, and k=32 is already within 10% of the widest window measured.",
+     "CALIBRATION: 200.0us injected into sync() read back as 195.261us/step against an expected 187.5us/step -- 1.041 of the injection. DETECTION is not in doubt (384.566us/step stalled against 189.305us/step clean, against a 108.421us/step floor). MAGNITUDE recovery is imperfect and the gap is much larger than the zero-point noise, so it is NOT noise. The obvious candidate -- the busy spin occupies a core and lets the driver settle, making the NEXT mx.eval cheaper, so part of the injection is absorbed rather than added -- is UNVERIFIED here. Read the stalled arm as a detector, not as a ruler.",
+     "ZERO POINT: at k=1 the two arms are the same program, so the true wait cost is exactly 0 and the instrument read -49.125us/step. That is this machine's noise on this instrument in this run, measured rather than argued.",
+     "THE SPREAD GATE IS FAILED ALMOST EVERYWHERE and that is expected: the machine is contended by a running ModelLake fill, exactly as ACCELERATOR_SYNC_NOT_SUBMISSION.json recorded at 34-39% IQR. Arms outside the 10.0% gate in the 128x128 arm: ['chained', 'synced', 'ctl_chained', 'ctl_synced', 'submitted']."
+    ]
+   },
+   {
+    "held_out_small": {
+     "workload": {
+      "name": "mlx_matmul_128x128_float32",
+      "primitive": "matmul",
+      "shape": [
+       128,
+       128
+      ]
+     },
+     "k_steps_between_waits": 16,
+     "reps": 60,
+     "warmup": 8,
+     "arms": {
+      "chained": {
+       "median_s": 0.0008452500001112639,
+       "q1_s": 0.0007827080003153242,
+       "q3_s": 0.0010077909996653034,
+       "below_timer_resolution": false,
+       "iqr_spread_pct": 28.76,
+       "reliable": false,
+       "median_ms": 0.8453,
+       "per_step_us": 52.828
+      },
+      "synced": {
+       "median_s": 0.003884499999912805,
+       "q1_s": 0.0036511670000436425,
+       "q3_s": 0.004407999999784806,
+       "below_timer_resolution": false,
+       "iqr_spread_pct": 20.73,
+       "reliable": false,
+       "median_ms": 3.8845,
+       "per_step_us": 242.781
+      },
+      "ctl_chained": {
+       "median_s": 2.2909998733666725e-06,
+       "q1_s": 1.1669999366858974e-06,
+       "q3_s": 2.8340000426396728e-06,
+       "below_timer_resolution": false,
+       "iqr_spread_pct": 142.84,
+       "reliable": false,
+       "median_ms": 0.0023,
+       "per_step_us": 0.143
+      },
+      "ctl_synced": {
+       "median_s": 2.041999778157333e-06,
+       "q1_s": 1.5410000742122065e-06,
+       "q3_s": 2.6669999897421803e-06,
+       "below_timer_resolution": false,
+       "iqr_spread_pct": 73.07,
+       "reliable": false,
+       "median_ms": 0.002,
+       "per_step_us": 0.128
+      },
+      "submitted": {
+       "median_s": 0.0013992080002935836,
+       "q1_s": 0.001322125000115193,
+       "q3_s": 0.0016013340000426979,
+       "below_timer_resolution": false,
+       "iqr_spread_pct": 21.12,
+       "reliable": false,
+       "median_ms": 1.3992,
+       "per_step_us": 87.451
+      }
+     },
+     "submission_and_compute_per_step_us": 52.828,
+     "harness_floor_per_step_us": 0.143,
+     "work_visible_per_step_us": 52.629,
+     "wait_cost_per_step_us": 188.979,
+     "control_wait_cost_per_step_us": -0.01,
+     "excess_over_control_per_step_us": 188.99,
+     "detection_floors_per_step_us": {
+      "wait_cost": 88.414,
+      "work_visible": 5.74,
+      "excess_over_control": 88.414
+     },
+     "min_detectable_effect_per_step_us": 88.414,
+     "mde_basis": "two-sided 1.96 sigma on the paired difference, n=60; assumes the reps are independent, which a thermally drifting contended machine does not guarantee",
+     "paired": {
+      "wait": {
+       "median_s": 0.00302366650021213,
+       "sd_s": 0.005590597398180918,
+       "n": 60
+      },
+      "control_wait": {
+       "median_s": -1.6599983609921765e-07,
+       "sd_s": 1.9824239138670302e-06,
+       "n": 60
+      }
+     },
+     "spread_gate_pct": 10.0,
+     "arms_inside_spread_gate": [],
+     "arms_outside_spread_gate": [
+      "chained",
+      "synced",
+      "ctl_chained",
+      "ctl_synced",
+      "submitted"
+     ],
+     "confound_check": {
+      "status": "RAN",
+      "design": "three arms holding one variable each: chained (1 submission, 1 wait), submitted (K submissions, 1 wait), synced (K submissions, K waits)",
+      "cost_of_K_submissions_per_step_us": 32.316,
+      "cost_of_K_waits_per_step_us": 155.359,
+      "mde_per_step_us": 81.101,
+      "follows": "wait",
+      "reading": "the cost tracks the WAIT count with submission count held at K, so the mechanism is the host round trip"
+     },
+     "verdict": "SYNC_TAX",
+     "verdict_reading": "the wait cost is separated from BOTH this run's detection floor and the empty-loop control"
+    },
+    "held_out_large": {
+     "workload": {
+      "name": "mlx_matmul_2048x2048_float32",
+      "primitive": "matmul",
+      "shape": [
+       2048,
+       2048
+      ]
+     },
+     "k_steps_between_waits": 16,
+     "reps": 15,
+     "warmup": 8,
+     "arms": {
+      "chained": {
+       "median_s": 0.021835459000158153,
+       "q1_s": 0.02053291599986551,
+       "q3_s": 0.022995166999862704,
+       "below_timer_resolution": false,
+       "iqr_spread_pct": 11.99,
+       "reliable": false,
+       "median_ms": 21.8355,
+       "per_step_us": 1364.716
+      },
+      "synced": {
+       "median_s": 0.02665841600037311,
+       "q1_s": 0.024836250000134896,
+       "q3_s": 0.028004416999920068,
+       "below_timer_resolution": false,
+       "iqr_spread_pct": 12.76,
+       "reliable": false,
+       "median_ms": 26.6584,
+       "per_step_us": 1666.151
+      },
+      "ctl_chained": {
+       "median_s": 4.207999609207036e-06,
+       "q1_s": 1.791999693523394e-06,
+       "q3_s": 7.500000265281415e-06,
+       "below_timer_resolution": false,
+       "iqr_spread_pct": 318.53,
+       "reliable": false,
+       "median_ms": 0.0042,
+       "per_step_us": 0.263
+      },
+      "ctl_synced": {
+       "median_s": 3.791999915847555e-06,
+       "q1_s": 2.3329998839471955e-06,
+       "q3_s": 5.624999630526872e-06,
+       "below_timer_resolution": false,
+       "iqr_spread_pct": 141.11,
+       "reliable": false,
+       "median_ms": 0.0038,
+       "per_step_us": 0.237
+      },
+      "submitted": {
+       "median_s": 0.022061667000343732,
+       "q1_s": 0.021481416999904468,
+       "q3_s": 0.02352312500033804,
+       "below_timer_resolution": false,
+       "iqr_spread_pct": 9.5,
+       "reliable": true,
+       "median_ms": 22.0617,
+       "per_step_us": 1378.854
+      }
+     },
+     "submission_and_compute_per_step_us": 1364.716,
+     "harness_floor_per_step_us": 0.263,
+     "work_visible_per_step_us": 1364.604,
+     "wait_cost_per_step_us": 293.068,
+     "control_wait_cost_per_step_us": -0.148,
+     "excess_over_control_per_step_us": 293.216,
+     "detection_floors_per_step_us": {
+      "wait_cost": 178.246,
+      "work_visible": 44.196,
+      "excess_over_control": 178.246
+     },
+     "min_detectable_effect_per_step_us": 178.246,
+     "mde_basis": "two-sided 1.96 sigma on the paired difference, n=15; assumes the reps are independent, which a thermally drifting contended machine does not guarantee",
+     "paired": {
+      "wait": {
+       "median_s": 0.004689083000357641,
+       "sd_s": 0.005635467574580903,
+       "n": 15
+      },
+      "control_wait": {
+       "median_s": -2.373999450355768e-06,
+       "sd_s": 5.104840561247702e-06,
+       "n": 15
+      }
+     },
+     "spread_gate_pct": 10.0,
+     "arms_inside_spread_gate": [
+      "submitted"
+     ],
+     "arms_outside_spread_gate": [
+      "chained",
+      "synced",
+      "ctl_chained",
+      "ctl_synced"
+     ],
+     "confound_check": {
+      "status": "RAN",
+      "design": "three arms holding one variable each: chained (1 submission, 1 wait), submitted (K submissions, 1 wait), synced (K submissions, K waits)",
+      "cost_of_K_submissions_per_step_us": 17.06,
+      "cost_of_K_waits_per_step_us": 262.974,
+      "mde_per_step_us": 311.941,
+      "follows": "ambiguous",
+      "reading": "neither difference clears this run's detection floor; the mechanism is UNRESOLVED here, not settled"
+     },
+     "verdict": "SYNC_TAX",
+     "verdict_reading": "the wait cost is separated from BOTH this run's detection floor and the empty-loop control"
+    },
+    "held_out_negative_numpy": {
+     "workload": {
+      "name": "numpy_matmul_256x256_float32",
+      "primitive": "matmul",
+      "shape": [
+       256,
+       256
+      ]
+     },
+     "k_steps_between_waits": 16,
+     "reps": 60,
+     "warmup": 8,
+     "arms": {
+      "chained": {
+       "median_s": 0.0011769170000661688,
+       "q1_s": 0.0011341250001351,
+       "q3_s": 0.0012120829997002147,
+       "below_timer_resolution": false,
+       "iqr_spread_pct": 6.87,
+       "reliable": true,
+       "median_ms": 1.1769,
+       "per_step_us": 73.557
+      },
+      "synced": {
+       "median_s": 0.0011821660000350676,
+       "q1_s": 0.0011360419998709403,
+       "q3_s": 0.0012241250001352455,
+       "below_timer_resolution": false,
+       "iqr_spread_pct": 7.75,
+       "reliable": true,
+       "median_ms": 1.1822,
+       "per_step_us": 73.885
+      },
+      "ctl_chained": {
+       "median_s": 1.165999947261298e-06,
+       "q1_s": 9.170003067993093e-07,
+       "q3_s": 1.707999672362348e-06,
+       "below_timer_resolution": false,
+       "iqr_spread_pct": 86.26,
+       "reliable": false,
+       "median_ms": 0.0012,
+       "per_step_us": 0.073
+      },
+      "ctl_synced": {
+       "median_s": 1.416000031895237e-06,
+       "q1_s": 1.249999968422344e-06,
+       "q3_s": 1.6669996512064245e-06,
+       "below_timer_resolution": false,
+       "iqr_spread_pct": 33.36,
+       "reliable": false,
+       "median_ms": 0.0014,
+       "per_step_us": 0.089
+      },
+      "submitted": {
+       "median_s": 0.0011832079999294365,
+       "q1_s": 0.0011401670003579056,
+       "q3_s": 0.0012223339999763994,
+       "below_timer_resolution": false,
+       "iqr_spread_pct": 7.21,
+       "reliable": true,
+       "median_ms": 1.1832,
+       "per_step_us": 73.95
+      }
+     },
+     "submission_and_compute_per_step_us": 73.557,
+     "harness_floor_per_step_us": 0.073,
+     "work_visible_per_step_us": 73.466,
+     "wait_cost_per_step_us": 0.145,
+     "control_wait_cost_per_step_us": 0.017,
+     "excess_over_control_per_step_us": 0.128,
+     "detection_floors_per_step_us": {
+      "wait_cost": 1.179,
+      "work_visible": 0.936,
+      "excess_over_control": 1.179
+     },
+     "min_detectable_effect_per_step_us": 1.179,
+     "mde_basis": "two-sided 1.96 sigma on the paired difference, n=60; assumes the reps are independent, which a thermally drifting contended machine does not guarantee",
+     "paired": {
+      "wait": {
+       "median_s": 2.3129998680815334e-06,
+       "sd_s": 7.455724943408253e-05,
+       "n": 60
+      },
+      "control_wait": {
+       "median_s": 2.7149985726282466e-07,
+       "sd_s": 1.0007543105837972e-06,
+       "n": 60
+      }
+     },
+     "spread_gate_pct": 10.0,
+     "arms_inside_spread_gate": [
+      "chained",
+      "synced",
+      "submitted"
+     ],
+     "arms_outside_spread_gate": [
+      "ctl_chained",
+      "ctl_synced"
+     ],
+     "confound_check": {
+      "status": "RAN",
+      "design": "three arms holding one variable each: chained (1 submission, 1 wait), submitted (K submissions, 1 wait), synced (K submissions, K waits)",
+      "cost_of_K_submissions_per_step_us": 0.376,
+      "cost_of_K_waits_per_step_us": -0.021,
+      "mde_per_step_us": 1.133,
+      "follows": "ambiguous",
+      "reading": "neither difference clears this run's detection floor; the mechanism is UNRESOLVED here, not settled"
+     },
+     "verdict": "NO_SIGNIFICANT_SYNC_TAX",
+     "verdict_reading": "the wait cost does not clear this run's detection floor. A NEGATIVE, and the instrument is supposed to be able to return one"
+    },
+    "injected_stall": {
+     "workload": {
+      "name": "mlx_matmul_128x128_float32_stall200us",
+      "primitive": "matmul",
+      "shape": [
+       128,
+       128
+      ]
+     },
+     "k_steps_between_waits": 16,
+     "reps": 60,
+     "warmup": 8,
+     "arms": {
+      "chained": {
+       "median_s": 0.0010795829998642148,
+       "q1_s": 0.0010005829999499838,
+       "q3_s": 0.0013841250001860317,
+       "below_timer_resolution": false,
+       "iqr_spread_pct": 38.33,
+       "reliable": false,
+       "median_ms": 1.0796,
+       "per_step_us": 67.474
+      },
+      "synced": {
+       "median_s": 0.0071862089998830925,
+       "q1_s": 0.006985958999848663,
+       "q3_s": 0.007772250000016356,
+       "below_timer_resolution": false,
+       "iqr_spread_pct": 11.26,
+       "reliable": false,
+       "median_ms": 7.1862,
+       "per_step_us": 449.138
+      },
+      "ctl_chained": {
+       "median_s": 1.7920001482707448e-06,
+       "q1_s": 9.57999873207882e-07,
+       "q3_s": 3.0830001378490124e-06,
+       "below_timer_resolution": false,
+       "iqr_spread_pct": 221.82,
+       "reliable": false,
+       "median_ms": 0.0018,
+       "per_step_us": 0.112
+      },
+      "ctl_synced": {
+       "median_s": 1.708000127109699e-06,
+       "q1_s": 1.3749995559919626e-06,
+       "q3_s": 2.5839999580057338e-06,
+       "below_timer_resolution": false,
+       "iqr_spread_pct": 87.93,
+       "reliable": false,
+       "median_ms": 0.0017,
+       "per_step_us": 0.107
+      },
+      "submitted": {
+       "median_s": 0.0016277079998872068,
+       "q1_s": 0.0015236659996844537,
+       "q3_s": 0.0018834580000657297,
+       "below_timer_resolution": false,
+       "iqr_spread_pct": 23.61,
+       "reliable": false,
+       "median_ms": 1.6277,
+       "per_step_us": 101.732
+      }
+     },
+     "submission_and_compute_per_step_us": 67.474,
+     "harness_floor_per_step_us": 0.112,
+     "work_visible_per_step_us": 67.169,
+     "wait_cost_per_step_us": 378.137,
+     "control_wait_cost_per_step_us": 0.008,
+     "excess_over_control_per_step_us": 378.129,
+     "detection_floors_per_step_us": {
+      "wait_cost": 90.639,
+      "work_visible": 12.28,
+      "excess_over_control": 90.639
+     },
+     "min_detectable_effect_per_step_us": 90.639,
+     "mde_basis": "two-sided 1.96 sigma on the paired difference, n=60; assumes the reps are independent, which a thermally drifting contended machine does not guarantee",
+     "paired": {
+      "wait": {
+       "median_s": 0.006050187999790069,
+       "sd_s": 0.00573129375634842,
+       "n": 60
+      },
+      "control_wait": {
+       "median_s": 1.2499981494329404e-07,
+       "sd_s": 2.2113866449229063e-06,
+       "n": 60
+      }
+     },
+     "spread_gate_pct": 10.0,
+     "arms_inside_spread_gate": [],
+     "arms_outside_spread_gate": [
+      "chained",
+      "synced",
+      "ctl_chained",
+      "ctl_synced",
+      "submitted"
+     ],
+     "confound_check": {
+      "status": "RAN",
+      "design": "three arms holding one variable each: chained (1 submission, 1 wait), submitted (K submissions, 1 wait), synced (K submissions, K waits)",
+      "cost_of_K_submissions_per_step_us": 32.945,
+      "cost_of_K_waits_per_step_us": 349.336,
+      "mde_per_step_us": 90.298,
+      "follows": "wait",
+      "reading": "the cost tracks the WAIT count with submission count held at K, so the mechanism is the host round trip"
+     },
+     "verdict": "SYNC_TAX",
+     "verdict_reading": "the wait cost is separated from BOTH this run's detection floor and the empty-loop control"
+    },
+    "window_sweep": {
+     "workload": {
+      "name": "mlx_matmul_128x128_float32",
+      "primitive": "matmul",
+      "shape": [
+       128,
+       128
+      ]
+     },
+     "ks": [
+      1,
+      2,
+      4,
+      8,
+      16,
+      32
+     ],
+     "reps_per_k": 20,
+     "rows": [
+      {
+       "k": 1,
+       "chained_per_step_us": 482.25,
+       "wait_cost_per_step_us": -2.958,
+       "verdict": "WORK_NOT_VISIBLE"
+      },
+      {
+       "k": 2,
+       "chained_per_step_us": 255.5,
+       "wait_cost_per_step_us": 87.625,
+       "verdict": "SYNC_TAX"
+      },
+      {
+       "k": 4,
+       "chained_per_step_us": 174.437,
+       "wait_cost_per_step_us": 128.896,
+       "verdict": "SYNC_TAX"
+      },
+      {
+       "k": 8,
+       "chained_per_step_us": 81.677,
+       "wait_cost_per_step_us": 178.57,
+       "verdict": "SYNC_TAX"
+      },
+      {
+       "k": 16,
+       "chained_per_step_us": 56.875,
+       "wait_cost_per_step_us": 162.288,
+       "verdict": "SYNC_TAX"
+      },
+      {
+       "k": 32,
+       "chained_per_step_us": 33.757,
+       "wait_cost_per_step_us": 179.209,
+       "verdict": "SYNC_TAX"
+      }
+     ],
+     "zero_point_check": {
+      "ran": true,
+      "true_wait_cost_per_step_us": 0.0,
+      "read_wait_cost_per_step_us": -2.958,
+      "why": "at k=1 the chained and synced arms are byte-identical programs, so the correct reading is 0 and the deviation is this run's instrument noise"
+     },
+     "window_gain_k1_over_kmax": 14.286,
+     "smallest_k_within_10pct_of_widest": 32,
+     "reading": "chained per-step cost falls as the single wait amortizes over more work. window_gain is what widening the window bought FOR THIS workload on THIS machine, not a constant."
+    },
+    "injected_stall_calibration": {
+     "injected_us_per_sync": 200.0,
+     "read_back_us_per_step": 189.158,
+     "expected_read_back_us_per_step": 187.5,
+     "read_back_fraction_of_expected": 1.009,
+     "why_not_the_full_injection": "the chained arm syncs ONCE per rep and the synced arm K times, so an injection of S into sync() raises the paired difference by S*(K-1)/K per step, not S"
+    },
+    "findings": [
+     "THE INSTRUMENT RETURNS A NEGATIVE. NumPy matmul 256x256 f32 on CPU reads 0.145us/step of wait cost against a 1.179us/step floor: NO_SIGNIFICANT_SYNC_TAX. There is no asynchronous boundary in that runtime, there is nothing to wait on, and the instrument says so.",
+     "MLX matmul 128x128 f32 on GPU reads 188.979us/step of wait cost against 52.828us/step of submission+compute: SYNC_TAX. Its confound arm says the cost follows 'wait'.",
+     "THE CONFOUND ARM SEPARATES THE TWO CORRELATED VARIABLES. At 128x128, holding the wait count at 1 and raising submissions from 1 to K cost 32.316us/step, which DOES NOT CLEAR its own 81.101us/step floor, while raising the wait count cost 155.359us/step. Submission count is the smaller term either way; whether it is nonzero at all is a separate question this run CANNOT ANSWER.",
+     "THE SAME PRIMITIVE AT A DIFFERENT SHAPE MOVES THE ANSWER. At 2048x2048 the wait cost is 293.068us/step against 1364.716us/step of work -- a comparable tax in absolute terms and a small fraction of the cost in relative terms. Verdict SYNC_TAX, confound arm 'ambiguous'.",
+     "THE WINDOW IS THE KNOB, ONE LEVEL UP FROM THE BARRIER RECEIPT. Widening it from k=1 to k=32 cut chained per-step cost 14.286x, and k=32 is already within 10% of the widest window measured.",
+     "CALIBRATION: 200.0us injected into sync() read back as 189.158us/step against an expected 187.5us/step -- 1.009 of the injection. DETECTION is not in doubt (378.137us/step stalled against 188.979us/step clean, against a 90.639us/step floor). MAGNITUDE recovery is imperfect and the gap is much larger than the zero-point noise, so it is NOT noise. The obvious candidate -- the busy spin occupies a core and lets the driver settle, making the NEXT mx.eval cheaper, so part of the injection is absorbed rather than added -- is UNVERIFIED here. Read the stalled arm as a detector, not as a ruler.",
+     "ZERO POINT: at k=1 the two arms are the same program, so the true wait cost is exactly 0 and the instrument read -2.958us/step. That is this machine's noise on this instrument in this run, measured rather than argued.",
+     "THE SPREAD GATE IS FAILED ALMOST EVERYWHERE and that is expected: the machine is contended by a running ModelLake fill, exactly as ACCELERATOR_SYNC_NOT_SUBMISSION.json recorded at 34-39% IQR. Arms outside the 10.0% gate in the 128x128 arm: ['chained', 'synced', 'ctl_chained', 'ctl_synced', 'submitted']."
     ]
    }
   ],
@@ -1651,37 +1649,37 @@
      ],
      "verdict_stable": true,
      "wait_cost_per_step_us": [
-      245.194,
-      184.156,
-      237.773
+      231.536,
+      189.305,
+      188.979
      ],
-     "wait_cost_spread_pct": 24.9,
+     "wait_cost_spread_pct": 18.4,
      "detection_floor_per_step_us": [
-      4.337,
-      4.745,
-      4.269
+      4.328,
+      66.425,
+      88.414
      ],
-     "floor_spread_pct": 10.0
+     "floor_spread_pct": 95.1
     },
     "held_out_large": {
      "verdicts": [
       "SYNC_TAX",
-      "SYNC_TAX",
+      "NO_SIGNIFICANT_SYNC_TAX",
       "SYNC_TAX"
      ],
-     "verdict_stable": true,
+     "verdict_stable": false,
      "wait_cost_per_step_us": [
-      224.185,
-      221.383,
-      219.88
+      228.039,
+      286.849,
+      293.068
      ],
-     "wait_cost_spread_pct": 1.9,
+     "wait_cost_spread_pct": 22.2,
      "detection_floor_per_step_us": [
-      9.343,
-      8.741,
-      11.858
+      7.22,
+      405.296,
+      178.246
      ],
-     "floor_spread_pct": 26.3
+     "floor_spread_pct": 98.2
     },
     "held_out_negative_numpy": {
      "verdicts": [
@@ -1691,17 +1689,17 @@
      ],
      "verdict_stable": true,
      "wait_cost_per_step_us": [
-      0.051,
-      -0.102,
-      0.03
+      -0.053,
+      0.189,
+      0.145
      ],
-     "wait_cost_spread_pct": 300.0,
+     "wait_cost_spread_pct": 128.0,
      "detection_floor_per_step_us": [
-      0.623,
-      0.524,
-      0.319
+      1.821,
+      0.995,
+      1.179
      ],
-     "floor_spread_pct": 48.8
+     "floor_spread_pct": 45.4
     },
     "injected_stall": {
      "verdicts": [
@@ -1711,21 +1709,23 @@
      ],
      "verdict_stable": true,
      "wait_cost_per_step_us": [
-      385.763,
-      383.066,
-      384.345
+      381.267,
+      384.566,
+      378.137
      ],
-     "wait_cost_spread_pct": 0.7,
+     "wait_cost_spread_pct": 1.7,
      "detection_floor_per_step_us": [
-      3.408,
-      3.231,
-      3.83
+      3.399,
+      108.421,
+      90.639
      ],
-     "floor_spread_pct": 15.6
+     "floor_spread_pct": 96.9
     }
    },
-   "verdict_unstable_arms": [],
-   "reading": "every arm's verdict reproduced across batteries",
+   "verdict_unstable_arms": [
+    "held_out_large"
+   ],
+   "reading": "the verdict did NOT reproduce for ['held_out_large']. For those arms this receipt reports the readings and REFUSES a verdict; the wait cost itself moved far less than the verdict did, which means the boundary was crossed by the DETECTION FLOOR moving with machine noise, not by the workload changing",
    "the_transferable_part": "the instrument, the arm design and the direction of the readings transfer. The verdicts and the microsecond magnitudes are properties of a run on a contended machine."
   },
   "negative_controls": [

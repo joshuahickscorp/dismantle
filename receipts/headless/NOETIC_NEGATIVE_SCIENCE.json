@@ -1,9 +1,9 @@
 {
  "schema": "hawking.headless.negative_science.v2",
- "generated_at": "2026-08-25T04:03:22Z",
+ "generated_at": "2026-08-26T03:40:25Z",
  "generated_by": "tools/headless/negative_science.py",
  "obligation": "G021 \u2014 NEGATIVE_SCIENCE THREE-LEVEL (directive \u00a780, \u00a781)",
- "git_head": "eb1494112b61953122262e311cc9243dbd44952e",
+ "git_head": "e665c7319eb06bc1611d1ede67e091160dea83c0",
  "hand_authored": false,
  "required_fields": [
   "model",
@@ -30,17 +30,19 @@
   "law": "a single model's failure is MODEL_SPECIFIC and never globally prunes a technique (directive \u00a781)"
  },
  "counts": {
-  "total": 40,
+  "total": 39,
   "by_level": {
-   "MODEL_SPECIFIC": 40,
+   "MODEL_SPECIFIC": 39,
    "FAMILY": 0,
    "GENERAL_PHYSICAL": 0
   },
-  "qwen_measured": 9,
+  "qwen_measured": 8,
   "migrated_from_v1": 31,
-  "rejected_at_admission": 0
+  "rejected_at_admission": 1
  },
- "rejected_at_admission": [],
+ "rejected_at_admission": [
+  "QN-STATE-MERGING: evidence does not resolve: [('receipts/headless/STATE_GRAVITY.json#answer', 'receipts/headless/STATE_GRAVITY.json#answer: no key answer')]"
+ ],
  "entries": [
   {
    "id": "QN-BINARY-INJURY",
@@ -178,26 +180,6 @@
    "level": "MODEL_SPECIFIC",
    "evidence": [
     "receipts/headless/STRUCTURAL_ELIMINATION.json#verdict.one_line"
-   ],
-   "measured_on_models": [
-    "qwen3.8-27b-abliterated"
-   ],
-   "migrated": false
-  },
-  {
-   "id": "QN-STATE-MERGING",
-   "model": "qwen3.8-27b-abliterated",
-   "organ": "kv_state+deltanet_state",
-   "technique": "depth_state_merging",
-   "representation": "merged / shared KV across depth",
-   "kernel": "n/a (state)",
-   "machine": "M3 Ultra 96GB / Metal",
-   "capability": "negative under tested conditions",
-   "physical_reason": "depth-state and KV merging measured negative on this Qwen under the tested conditions",
-   "reopen_condition": "a state topology (recurrent, latent-attention, or a longer-context regime) where merged state preserves capability",
-   "level": "MODEL_SPECIFIC",
-   "evidence": [
-    "receipts/headless/STATE_GRAVITY.json#answer"
    ],
    "measured_on_models": [
     "qwen3.8-27b-abliterated"
@@ -2309,15 +2291,15 @@
   }
  ],
  "predecessor_counts": {
-  "total": 40,
+  "total": 39,
   "by_level": {
-   "MODEL_SPECIFIC": 40,
+   "MODEL_SPECIFIC": 39,
    "FAMILY": 0,
    "GENERAL_PHYSICAL": 0
   },
-  "qwen_measured": 9,
+  "qwen_measured": 8,
   "migrated_from_v1": 31,
-  "rejected_at_admission": 0
+  "rejected_at_admission": 1
  },
- "pass": true
+ "pass": false
 }

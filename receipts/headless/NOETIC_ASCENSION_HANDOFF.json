@@ -1,9 +1,9 @@
 {
   "schema": "hawking.headless.noetic_ascension_handoff.v1",
-  "generated_at": "2026-08-25T03:53:34Z",
+  "generated_at": "2026-08-26T03:40:26Z",
   "builder": "tools/headless/noetic_ascension_handoff.py",
   "loop": "tools/headless/noetic_ascension_loop.py",
-  "git_head": "eb1494112b61953122262e311cc9243dbd44952e",
+  "git_head": "e665c7319eb06bc1611d1ede67e091160dea83c0",
   "branch": "odyssey-i",
   "sparse": {
     "on": false,
@@ -98,7 +98,7 @@
     "value": {
       "claim": "The artifact is a compiled program whose whole closure is hashed, not a model file sitting next to loose helpers.",
       "n_hashed_members": 757,
-      "closure_sha256": "aca4c2040355895f1315df6cc5e2bb8f774918cd6770009583d4a84289c6beed",
+      "closure_sha256": "e6e2631ee7e001b14adeabc0dabf5353665bd967c90ed4ac66a8aa7509a44067",
       "io_executor_read_but_not_hashed": 0,
       "live_decode_read_but_not_hashed": 0
     },
@@ -106,9 +106,9 @@
     "reproducing_command": [
       "python3",
       "-c",
-      "import json\nfrom pathlib import Path\nd = json.loads(Path('receipts/headless/NOETIC_CLOSURE.json').read_text())\ncur = d\nfor part in [\"closure_sha256\"]:\n    cur = cur[int(part)] if isinstance(cur, list) else cur[part]\nexp = json.loads(\"\\\"aca4c2040355895f1315df6cc5e2bb8f774918cd6770009583d4a84289c6beed\\\"\")\nassert cur == exp, (cur, exp)"
+      "import json\nfrom pathlib import Path\nd = json.loads(Path('receipts/headless/NOETIC_CLOSURE.json').read_text())\ncur = d\nfor part in [\"closure_sha256\"]:\n    cur = cur[int(part)] if isinstance(cur, list) else cur[part]\nexp = json.loads(\"\\\"e6e2631ee7e001b14adeabc0dabf5353665bd967c90ed4ac66a8aa7509a44067\\\"\")\nassert cur == exp, (cur, exp)"
     ],
-    "reproducing_command_pretty": "python3 -c 'import json\nfrom pathlib import Path\nd = json.loads(Path('\"'\"'receipts/headless/NOETIC_CLOSURE.json'\"'\"').read_text())\ncur = d\nfor part in [\"closure_sha256\"]:\n    cur = cur[int(part)] if isinstance(cur, list) else cur[part]\nexp = json.loads(\"\\\"aca4c2040355895f1315df6cc5e2bb8f774918cd6770009583d4a84289c6beed\\\"\")\nassert cur == exp, (cur, exp)'",
+    "reproducing_command_pretty": "python3 -c 'import json\nfrom pathlib import Path\nd = json.loads(Path('\"'\"'receipts/headless/NOETIC_CLOSURE.json'\"'\"').read_text())\ncur = d\nfor part in [\"closure_sha256\"]:\n    cur = cur[int(part)] if isinstance(cur, list) else cur[part]\nexp = json.loads(\"\\\"e6e2631ee7e001b14adeabc0dabf5353665bd967c90ed4ac66a8aa7509a44067\\\"\")\nassert cur == exp, (cur, exp)'",
     "source_field": "closure_sha256 + compare.*.n_read_but_not_hashed"
   },
   "families_tested": {
@@ -557,8 +557,8 @@
       "output_collapsed": "QWEN38_GRAVITY_NATIVE bar is FAIL on coherence (replacement characters). The timing is of a collapsed greedy loop; it is still the wall of this executable.",
       "executable_bpw": 4.252735126866492,
       "parent_parameter_count": 26895998464,
-      "machine_genome_single_decoder_tps": 21.289,
-      "machine_genome_best_aggregate_tps": 25.407,
+      "machine_genome_single_decoder_tps": null,
+      "machine_genome_best_aggregate_tps": null,
       "conventional_live_mlx_decode_tps": 38.05867772872637,
       "q3_tok_s": 31.98505658156509,
       "affine_tok_s": 32.07808521067725,
@@ -582,15 +582,15 @@
     "value": {
       "obligation": "G021 \u2014 NEGATIVE_SCIENCE THREE-LEVEL (directive \u00a780, \u00a781)",
       "counts": {
-        "total": 40,
+        "total": 39,
         "by_level": {
-          "MODEL_SPECIFIC": 40,
+          "MODEL_SPECIFIC": 39,
           "FAMILY": 0,
           "GENERAL_PHYSICAL": 0
         },
-        "qwen_measured": 9,
+        "qwen_measured": 8,
         "migrated_from_v1": 31,
-        "rejected_at_admission": 0
+        "rejected_at_admission": 1
       },
       "live_opportunity_ids": [],
       "nns015": null

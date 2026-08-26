@@ -1,7 +1,7 @@
 {
  "schema": "hawking.headless.qwen_completion_receipt.v1",
- "generated_at": "2026-08-25T03:53:55Z",
- "git_head": "eb1494112b61953122262e311cc9243dbd44952e",
+ "generated_at": "2026-08-26T03:40:53Z",
+ "git_head": "e665c7319eb06bc1611d1ede67e091160dea83c0",
  "generated_by": "tools/headless/qwen_completion_receipt.py",
  "obligation": "N039 \u2014 QWEN_COMPLETION_RECEIPT (S024 \u00a784; Odyssey textbook #1, retirement gate; CPU). Records the \u00a784 completion vector for the current Qwen3.8 specimen. Does NOT retire the specimen; records whether the knowledge is sealed.",
  "hand_authored": false,

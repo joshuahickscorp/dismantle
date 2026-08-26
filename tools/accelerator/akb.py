@@ -1233,6 +1233,64 @@ LAWS: list[dict[str, Any]] = [
             "NOT refute production's 17.35 us, which is a bytes-plus-dispatch number."),
     ),
     dict(
+        law_id="AKB-THE-REDUCTION-TAIL-IS-FREE",
+        statement=(
+            "THE CROSS-LANE REDUCTION TAIL COSTS NOTHING MEASURABLE, AND DELETING IT "
+            "ENTIRELY BOUNDS EVERY POSSIBLE REDUCTION VARIANT. On a 17408x5120 q4_g64 "
+            "matvec at tpr64 the shipped serial tail -- one lane summing 64 threadgroup "
+            "slots while 63 idle -- is INDISTINGUISHABLE from simd_sum at 0.981x and from a "
+            "six-step tree at 0.960x, and a DELETION CONTROL that removes the barrier, the "
+            "threadgroup array and the reduction altogether measures 0.985x. All eight "
+            "minima across two runs and four arms span 5.3%, and the ranking REVERSES "
+            "between runs -- the serial tail took the shortest minimum in one run and the "
+            "longest in the other -- "
+            "which is the signature of no effect. The deletion control is the decisive arm "
+            "because it bounds what ANY tail can buy rather than ranking three tails against "
+            "each other: IF REMOVING THE REDUCTION OUTRIGHT BUYS NOTHING, NO REDUCTION CAN. "
+            "This closes the one structural candidate "
+            "AKB-SIX-LEVERS-ELIMINATED-AND-THE-FLOOR-MECHANISM-IS-UNRESOLVED left named and "
+            "untested, taking the count to SEVEN levers eliminated by measurement. THE "
+            "FLOOR'S MECHANISM IS STILL NOT NAMED and no eighth story is offered -- what "
+            "changed is that the kernel-level candidate list is now EMPTY rather than "
+            "holding one open item."),
+        applicability={
+            "MODEL": NONE, "ARCHITECTURE": NONE,
+            "ORGAN": "MLP-shaped GEMV at 89.1M weights, a shape borrowed from the resident",
+            "REPRESENTATION": "ws_rtn_q4_g64, identical in every arm",
+            "SHAPE": "rows=17408 cols=5120, group 64, tpr64 at tg128",
+            "MACHINE": M3, "RUNTIME": "MLX mx.fast.metal_kernel JIT, 14 round-robin rounds x 20 reps, two runs",
+            "KERNEL": "native matvec with four reduction tails: serial, simd_sum, tree, deleted",
+            "STORAGE_TIER": NONE, "TOPOLOGY": NONE,
+            "WORKLOAD_PHASE": "single-token decode-shaped GEMV, CONTENDED machine"},
+        evidence_class="Measured",
+        source_receipts=["receipts/headless/ACCELERATOR_THE_REDUCTION_TAIL_IS_FREE.json"],
+        citations=[
+            "receipts/headless/ACCELERATOR_THE_REDUCTION_TAIL_IS_FREE.json#THE_RESULT_IS_THAT_THE_TAIL_IS_FREE",
+            "receipts/headless/ACCELERATOR_THE_REDUCTION_TAIL_IS_FREE.json#P3_THE_BOUND",
+            "receipts/headless/ACCELERATOR_THE_REDUCTION_TAIL_IS_FREE.json#why_the_deletion_control_stores_from_every_lane",
+            "receipts/headless/ACCELERATOR_THE_REDUCTION_TAIL_IS_FREE.json#claim_boundary"],
+        status="ACTIVE", superseded_by=None, negative_result=True,
+        confidence_basis=(
+            "The arms are comparable BY CONSTRUCTION and a test asserts it: the kernel body "
+            "is byte-identical across all four sources, so the element count is identical "
+            "and a difference is the tail and nothing else. The deletion control's store is "
+            "UNCONDITIONAL on purpose, because predicating it on lane==0 lets the compiler "
+            "sink the pure loop into the branch and the arm would measure dead-code "
+            "elimination; the guard is verified by the measurement itself, since the arm "
+            "lands ON the ~300 G elem/s element floor rather than 64x above it. It also ADDS "
+            "64-fold store traffic, which makes the bound CONSERVATIVE. Anti-vacuity holds: "
+            "the deletion control reads rel_err 0.986 against the float64 oracle while the "
+            "three real tails read 1.4-2.0e-07, and three mutations were watched failing. "
+            "Run 1 is CONTAMINATED at 105-259% round-spread so minima and an ordinal "
+            "rounds-won count are reported beside every median; run 2 at 16-24% is the "
+            "cleaner one and is the run in which the serial tail comes LAST. ONE shape, ONE "
+            "tpr, ONE machine, INSTANCE -- the tail's share scales with TPR and with the "
+            "per-element work in front of it, so a much smaller GROUPS/TPR ratio would not "
+            "inherit this. tpr=32 with simd_sum, which needs no threadgroup memory and no "
+            "barrier at all, is CONFOUNDED with geometry and NOT RUN. No shipped kernel "
+            "changed and neither variant earns a place."),
+    ),
+    dict(
         law_id="AKB-SIX-LEVERS-ELIMINATED-AND-THE-FLOOR-MECHANISM-IS-UNRESOLVED",
         statement=(
             "THE PER-ELEMENT MATVEC FLOOR SURVIVES OPERAND REUSE AND INSTRUCTION-LEVEL "
@@ -1251,7 +1309,11 @@ LAWS: list[dict[str, Any]] = [
             "ILP. NO SEVENTH MECHANISM IS OFFERED -- this program's scorecard is five "
             "diagnoses written down and two wrong, and the one structural feature no arm "
             "varied, the serial cross-lane reduction tail, is recorded as a NAMED UNTESTED "
-            "CANDIDATE rather than an explanation."),
+            "CANDIDATE rather than an explanation. AMENDED 2026-08-26 by "
+            "receipts/headless/ACCELERATOR_THE_REDUCTION_TAIL_IS_FREE.json: THAT CANDIDATE "
+            "IS NOW DEAD, not pending -- simd_sum 0.981x, a tree 0.960x, and DELETING the "
+            "reduction entirely 0.985x, so the count is SEVEN levers and the candidate list "
+            "at the kernel level is EMPTY."),
         applicability={
             "MODEL": NONE, "ARCHITECTURE": NONE,
             "ORGAN": "MLP-shaped GEMV at 89.1M weights, a shape borrowed from the resident",
@@ -1262,7 +1324,8 @@ LAWS: list[dict[str, Any]] = [
             "STORAGE_TIER": NONE, "TOPOLOGY": NONE,
             "WORKLOAD_PHASE": "single-token decode-shaped GEMV, CONTENDED machine"},
         evidence_class="Measured",
-        source_receipts=["receipts/headless/ACCELERATOR_TWO_MORE_LEVERS_DIE.json"],
+        source_receipts=["receipts/headless/ACCELERATOR_TWO_MORE_LEVERS_DIE.json",
+                         "receipts/headless/ACCELERATOR_THE_REDUCTION_TAIL_IS_FREE.json"],
         citations=["receipts/headless/ACCELERATOR_TWO_MORE_LEVERS_DIE.json#P1_OPERAND_REUSE_IS_REFUTED_AND_NOT_NARROWLY",
                    "receipts/headless/ACCELERATOR_TWO_MORE_LEVERS_DIE.json#P3_INSTRUCTION_LATENCY_IS_INDISTINGUISHABLE",
                    "receipts/headless/ACCELERATOR_TWO_MORE_LEVERS_DIE.json#THE_MECHANISM_IS_UNRESOLVED_AND_I_AM_NOT_REACHING_FOR_A_SIXTH_STORY",
@@ -1649,7 +1712,18 @@ LAWS: list[dict[str, Any]] = [
             "blind at 1 of 6 widths; a barrier on an INCIDENTAL dependency fired in 4 of 48 "
             "and was blind at 4 of 6 -- a 10x difference in loudness. A sweep whose only "
             "control is loud reports a blind list of length 1 and thereby implies a "
-            "resolving power it does not have."),
+            "resolving power it does not have. EXTENDED 2026-08-26 by "
+            "receipts/headless/ACCELERATOR_THE_REDUCTION_TAIL_IS_FREE.json, which "
+            "amends receipts/headless/ACCELERATOR_BARRIER_WINDOW.json: loudness is not "
+            "transferable BETWEEN controls and it is not even STABLE FOR ONE CONTROL. A "
+            "barrier stripped from gravity_native's serial reduction tail -- classified "
+            "LOUD by the shipped prior, no upstream barrier -- fired 8 of 8 in one process "
+            "and 4 of 60 = 0.067 under ground truth in another, with the intact kernel "
+            "wrong 0 of 60. So the asymmetry that receipt encoded, that the loud case is a "
+            "reliable prediction while the quiet one is not, DOES NOT SURVIVE, and a third "
+            "window-closing mechanism is named: THE READING THREAD BEING THE SLOWEST ONE, "
+            "a property of the work distribution across lanes that a prior reading barrier "
+            "structure cannot see."),
         applicability={
             "MODEL": NONE, "ARCHITECTURE": NONE, "ORGAN": NONE,
             "REPRESENTATION": "dense_f32",
@@ -1658,7 +1732,8 @@ LAWS: list[dict[str, Any]] = [
             "KERNEL": "AirNorm (loud control) and AirTopKSample (quiet control)",
             "STORAGE_TIER": NONE, "TOPOLOGY": NONE, "WORKLOAD_PHASE": "correctness grading"},
         evidence_class="Measured",
-        source_receipts=["receipts/headless/ACCELERATOR_QUIET_CONTROL.json"],
+        source_receipts=["receipts/headless/ACCELERATOR_QUIET_CONTROL.json",
+                         "receipts/headless/ACCELERATOR_THE_REDUCTION_TAIL_IS_FREE.json"],
         citations=["receipts/headless/ACCELERATOR_QUIET_CONTROL.json#headline",
                    "receipts/headless/ACCELERATOR_QUIET_CONTROL.json#claim_boundary"],
         status="ACTIVE", superseded_by=None, negative_result=True,

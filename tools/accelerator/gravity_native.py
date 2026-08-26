@@ -18,6 +18,11 @@ from __future__ import annotations
 import numpy as np
 
 GROUP = 64
+
+# One simdgroup on this chip. MEASURED, not assumed: ACCELERATOR_BARRIER_SCOPES
+# found 32 lanes exchanging through threadgroup memory exact with NO fence, and
+# five later blocks reproduced it. It stays an M3 Ultra observation.
+SIMD_WIDTH = 32
 BITS = 4
 BOUND = (1 << (BITS - 1)) - 1          # 7; offset-binary around it
 
@@ -97,7 +102,7 @@ out[row] = acc;
 # program has now twice shipped a tree reduce whose second write raced its own
 # reads (ACCELERATOR_NORMALIZATION), and the cheap structural choice is the one
 # that cannot carry that hazard.
-NATIVE_MATVEC_TPR = """
+NATIVE_MATVEC_TPR_BODY = """
 uint gid = thread_position_in_grid.x;
 uint row = gid / %(TPR)du;
 uint lane = gid %% %(TPR)du;
@@ -114,7 +119,19 @@ for (uint g = lane; g < %(GROUPS)du; g += %(TPR)du) {
         acc += w0 * x[c0 + k] + w1 * x[c0 + k + 1u];
     }
 }
-threadgroup float part[%(TG)du];
+"""
+
+
+# THE CROSS-LANE REDUCTION TAIL, AS FOUR ARMS THAT DIFFER IN NOTHING ELSE.
+# ACCELERATOR_TWO_MORE_LEVERS_DIE eliminated six levers and named exactly one
+# structural feature no arm had varied: the tail. TPR lanes each hold a partial
+# and the shipped kernel has ONE lane sum them serially while TPR-1 idle. Every
+# tail below leaves the ELEMENT COUNT UNTOUCHED -- same loop, same groups, same
+# fused multiply-adds -- so a difference between them is the tail and nothing
+# else, which is the only way to settle a named candidate rather than argue it.
+REDUCE_TAILS = {
+    # Shipped. One lane, TPR serial adds, TPR-1 lanes idle.
+    "serial": """threadgroup float part[%(TG)du];
 uint lid = thread_position_in_threadgroup.x;
 part[lid] = acc;
 threadgroup_barrier(mem_flags::mem_threadgroup);
@@ -123,7 +140,60 @@ if (lane == 0u) {
     for (uint i = 0; i < %(TPR)du; ++i) t += part[lid + i];
     out[row] = t;
 }
-"""
+""",
+
+    # simd_sum reduces 32 lanes in hardware with no threadgroup memory and no
+    # barrier, so only the TPR/32 per-simdgroup partials need publishing. On this
+    # chip a simdgroup is 32 lanes wide and tpr=64 spans exactly two of them.
+    "simd": """
+float v = simd_sum(acc);
+threadgroup float part[%(SIMDS)du];
+uint lid = thread_position_in_threadgroup.x;
+uint sg = lid / 32u;
+if (lid %% 32u == 0u) part[sg] = v;
+threadgroup_barrier(mem_flags::mem_threadgroup);
+if (lane == 0u) {
+    float t = 0.0f;
+    for (uint i = 0; i < %(SIMDS_PER_ROW)du; ++i) t += part[sg + i];
+    out[row] = t;
+}
+""",
+
+    # log2(TPR) halving steps. Writers at step s are lanes [0,s) and readers read
+    # slots [s,2s), which are DISJOINT, so the write-after-read hazard
+    # ACCELERATOR_NORMALIZATION found in three shipped kernels cannot arise here;
+    # it is disjoint by construction rather than by a third barrier.
+    "tree": """
+threadgroup float part[%(TG)du];
+uint lid = thread_position_in_threadgroup.x;
+part[lid] = acc;
+threadgroup_barrier(mem_flags::mem_threadgroup);
+for (uint s = %(TPR)du / 2u; s > 0u; s >>= 1) {
+    if (lane < s) part[lid] += part[lid + s];
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+}
+if (lane == 0u) out[row] = part[lid];
+""",
+
+    # DELETION CONTROL. WRONG BY CONSTRUCTION and never a candidate: no barrier,
+    # no threadgroup array, no reduction at all, so out[row] holds whichever
+    # lane's partial landed last. It bounds what ANY reduction variant can buy,
+    # which is a stronger statement than any comparison between the three real
+    # tails: if deleting the tail entirely buys nothing, no tail can.
+    #
+    # THE STORE IS UNCONDITIONAL ON PURPOSE. Predicating it on lane==0 lets the
+    # compiler SINK the whole loop into the branch -- the loop is pure and its
+    # value is used only there -- so TPR-1 lanes would do NO WORK and the arm
+    # would read as a large win that measures dead-code elimination. Storing from
+    # every lane cannot be sunk. It ADDS TPR-fold store traffic, which makes the
+    # bound CONSERVATIVE: a tie here means the tail is worth at most the tie
+    # minus those extra stores.
+    "none": """
+out[row] = acc;
+""",
+}
+
+NATIVE_MATVEC_TPR = NATIVE_MATVEC_TPR_BODY + REDUCE_TAILS["serial"]
 
 
 # TWO MORE UNPACKS AT THE SAME GEOMETRY, so the only variable is HOW THE NIBBLES
@@ -277,6 +347,35 @@ def source_unpack(rows: int, cols: int, unpack: str = "byte",
     if unpack == "lut":
         src = (LUT_PROLOGUE % d) + src
     return src
+
+
+def source_reduce(rows: int, cols: int, reduce: str = "serial",
+                  tpr: int = 64, tg: int = 128) -> str:
+    """The native matvec with a chosen CROSS-LANE REDUCTION TAIL.
+
+    Same body, same groups, same fused multiply-adds -- the ELEMENT COUNT IS
+    IDENTICAL across every tail, which is what makes a difference between them
+    attributable to the tail. "none" is a DELETION CONTROL and is WRONG BY
+    CONSTRUCTION; it is never a candidate, and a caller who mistakes it for one
+    gets an answer off by roughly a factor of tpr.
+    """
+    if reduce not in REDUCE_TAILS:
+        raise ValueError(f"unknown reduction {reduce!r}; have {sorted(REDUCE_TAILS)}")
+    if tg % tpr:
+        raise ValueError(f"threadgroup {tg} must be a whole number of rows at tpr={tpr}")
+    if (rows * tpr) % tg:
+        raise ValueError(
+            f"rows*tpr={rows * tpr} is not a multiple of threadgroup {tg}; the grid "
+            "would be padded and the padding threads would skip the barrier")
+    if reduce == "simd" and (tpr % SIMD_WIDTH or tg % SIMD_WIDTH):
+        raise ValueError(
+            f"simd_sum reduces exactly {SIMD_WIDTH} lanes, so tpr={tpr} and tg={tg} "
+            f"must both be whole multiples of {SIMD_WIDTH}; a row spanning a partial "
+            "simdgroup would drop the lanes outside it")
+    return (NATIVE_MATVEC_TPR_BODY + REDUCE_TAILS[reduce]) % {
+        "PACKED_COLS": cols // 2, "GROUPS": cols // GROUP, "GROUP": GROUP,
+        "BOUND": BOUND, "TPR": tpr, "TG": tg,
+        "SIMDS": max(tg // SIMD_WIDTH, 1), "SIMDS_PER_ROW": max(tpr // SIMD_WIDTH, 1)}
 
 
 def source_tpr(rows: int, cols: int, tpr: int = 64, tg: int = 128) -> str:

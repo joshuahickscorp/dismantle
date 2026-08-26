@@ -37,7 +37,11 @@
    "zero-kernel refusal disabled -> the zero-kernel test fails",
    "refuse ALWAYS -> the still-measures-a-real-corpus test fails, which is the anti-vacuity arm: a check that refuses everything proves nothing"
   ],
-  "tests": "61 in test_c2m.py, 3 new"
+  "tests": "61 in test_c2m.py, 3 new",
+  "A_CHECK_I_CITED_WAS_STILL_RUNNING_WHEN_I_CITED_IT": [
+   "The published sentence read 'Checked: no cuda-metal directory under the home tree, the scratchpads or /private/tmp'. AT PUBLICATION TIME the home-tree sweep had been moved to the background by a harness timeout and HAD NOT RETURNED. What actually backed the claim was narrower: explicit directory probes at the likely paths, `git ls-files` finding no .cu or .ptx, no vendored tree, and a maxdepth-4 find under /private/tmp. Those were enough to act on and they were NOT the sweep I named. CITING A CHECK WHOSE RESULT I DID NOT YET HOLD is the same class as this program's 0-of-0 findings, arrived at from the other side: not a check that could not fail, but a check that had not finished."
+  ],
+  "THE_DEEPER_SWEEP_COMPLETED_AND_CONFIRMS_IT": "find over ~ and /private/tmp and /Volumes/corpdrive at maxdepth 5 for a cuda-metal directory, plus ~ at maxdepth 6 for sgemm_shmem.cu by name: EMPTY OUTPUT, exit 0. So the claim is unchanged and its evidence is now WIDER than what was available when it was written -- it adds the mounted lake volume, which the original probes never covered. The correction is to the PROVENANCE of the evidence, not to the finding."
  },
  "claim_boundary": "THIS CHANGES NO COVERAGE NUMBER AND REFUTES NONE. What it establishes is that the corpus behind them is absent today and that the instrument reporting them could not say so. NO RE-MEASUREMENT WAS ATTEMPTED -- re-cloning is a network fetch and is recorded as a named gate rather than performed. The refusal cannot detect a corpus that is present but WRONG (a different commit, a partial clone, a subset of files): it distinguishes empty from non-empty and nothing finer, and a caller who points it at three files of a 24-file corpus still gets a number that looks like coverage. Verifying the corpus IDENTITY -- a hash over the tree against the pinned commit -- is the obvious next thing and is NOT built here. Nothing timed, no kernel changed.",
  "pass": true,

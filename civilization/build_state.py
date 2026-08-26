@@ -14,7 +14,8 @@ GOAL = pathlib.Path.home() / ".claude/ultragoal/hawking-odyssey-maxx-ascension/G
 ERA_MAP = {
     "I-A_AGENTOS_HCLI":   ["G013", "G014", "G015", "G030", "G031", "G063",
                            "G064", "G065"],
-    "I-B_DOCTOR":         ["G016", "G017", "G018", "G019", "G020", "G021", "G035"],
+    "I-B_DOCTOR":         ["G016", "G017", "G018", "G019", "G020", "G021", "G035",
+                           "G073"],
     "I-C_GRAVITY_NOETIC": ["G001", "G002", "G003", "G004", "G005", "G006", "G022",
                            "G023", "G032", "G033", "G034", "G036", "G037", "G038",
                            "G040", "G042", "G059",

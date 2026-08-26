@@ -59,14 +59,17 @@
     "G019",
     "G020",
     "G021",
-    "G035"
+    "G035",
+    "G073"
    ],
    "verified": 7,
-   "open": [],
+   "open": [
+    "G073"
+   ],
    "evidence_satisfied": 6,
    "evidence_of": 9,
    "evidence_pct": 66.7,
-   "obligation_pct": 100.0,
+   "obligation_pct": 87.5,
    "completion_pct": 66.7,
    "completion_basis": "min(evidence categories satisfied / 9, obligations verified / total). The MINIMUM on purpose: I-D has all nine categories and zero verified obligations, and reporting 100% there is the inflation S015 \u00a7II forbids. Never a file count.",
    "open_gates": [
@@ -336,13 +339,11 @@
   "OPEN": 1
  },
  "obligations_total": 73,
- "unmapped_obligations": [
-  "G073"
- ],
+ "unmapped_obligations": [],
  "orphan_map_entries": [],
  "receipt_count": 417,
  "accelerator_receipt_count": 80,
- "last_verified_commit": "0c1778997",
+ "last_verified_commit": "53a38e30d",
  "last_verified_test_count": 510,
  "test_count_is_from_a_run_not_arithmetic": true,
  "test_environment": {

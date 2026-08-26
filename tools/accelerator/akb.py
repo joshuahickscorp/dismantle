@@ -1346,6 +1346,58 @@ LAWS: list[dict[str, Any]] = [
             "changed and neither variant earns a place."),
     ),
     dict(
+        law_id="AKB-THE-ENTRY-COST-IS-FOOTPRINT",
+        statement=(
+            "THE LOOP-ENTRY COST OF AN ISOLATED q4_g64 MATVEC IS THE ADDRESS FOOTPRINT, NOT THE LOOP. "
+            "Confining every address to ONE group while holding the loop bound, the iteration count, "
+            "the element count, the scale loads, the reduction, the grid and the stores IDENTICAL "
+            "measures 1.472x and 1.453x at two elements per group, winning 13 of 14 and 12 of 14 "
+            "round-robin rounds -- and the confined arm lands ON the trivial one-store kernel, 0.2116 "
+            "and 0.2061 ms against 0.2144 and 0.1998, so the ENTIRE loop-entry gap "
+            "AKB-ENTERING-THE-LOOP-COSTS-MORE-THAN-RUNNING-IT measured is address spread. AT THE FULL "
+            "ELEMENT COUNT the same variable is worth 1.082x and 1.098x, 11 and 12 of 14 rounds: "
+            "spreading a row's addresses over 2560 bytes instead of 64 costs 8-10% at production "
+            "shape, which is the FIRST LEVER IN EIGHT BLOCKS TO MOVE ANYTHING. It does NOT contradict "
+            "the weight reads measuring free by deletion "
+            "(ACCELERATOR_THE_FLOOR_IS_THE_ELEMENT_NOT_THE_BYTE): that control deleted packed's 2560 "
+            "bytes per row while LEAVING x's 20480 and the scales in place, so the footprint barely "
+            "moved and the effect could not appear -- a control that deletes one of three operands is "
+            "not a footprint experiment. THE CONFINED ARM IS WRONG BY CONSTRUCTION and is NOT A "
+            "CANDIDATE KERNEL; this says what the cost is MADE OF, not that a faster kernel exists. "
+            "The MECHANISM is not named -- cold lines, TLB reach, cache capacity and coalescing are "
+            "NOT separated here."),
+        applicability={
+            "MODEL": NONE, "ARCHITECTURE": NONE,
+            "ORGAN": "MLP-shaped GEMV at 89.1M weights, a shape borrowed from the resident",
+            "REPRESENTATION": "ws_rtn_q4_g64",
+            "SHAPE": "rows=17408 cols=5120, group 64, tpr64 at tg128; 2 and 64 elements per group",
+            "MACHINE": M3,
+            "RUNTIME": "MLX mx.fast.metal_kernel JIT, 14 round-robin rounds x 20 reps, two runs",
+            "KERNEL": "native matvec with every address confined to N groups at fixed work",
+            "STORAGE_TIER": NONE, "TOPOLOGY": NONE,
+            "WORKLOAD_PHASE": "a SINGLY SUBMITTED decode-shaped GEMV, CONTENDED machine"},
+        evidence_class="Measured",
+        source_receipts=["receipts/headless/ACCELERATOR_THE_ENTRY_COST_IS_FOOTPRINT.json"],
+        citations=[
+            "receipts/headless/ACCELERATOR_THE_ENTRY_COST_IS_FOOTPRINT.json#P1_IS_MINE_AND_IT_IS_REFUTED",
+            "receipts/headless/ACCELERATOR_THE_ENTRY_COST_IS_FOOTPRINT.json#P2_footprint_at_FULL_element_count",
+            "receipts/headless/ACCELERATOR_THE_ENTRY_COST_IS_FOOTPRINT.json#HOW_THIS_RECONCILES_WITH_THE_WEIGHT_READS_BEING_FREE_RATHER_THAN_CONTRADICTING_IT",
+            "receipts/headless/ACCELERATOR_THE_ENTRY_COST_IS_FOOTPRINT.json#WHAT_THIS_IS_NOT"],
+        status="ACTIVE", superseded_by=None, negative_result=False,
+        confidence_basis=(
+            "My own P1 predicted INDISTINGUISHABLE within 10% with a 1.15x falsifier, on the strength "
+            "of three earlier free-read results, and it is refuted past that falsifier TWICE. P2 "
+            "predicted the same at full element count and is refuted too. The single-variable claim is "
+            "asserted LINE BY LINE against the base source rather than believed, the index still "
+            "varies with g so the body cannot be hoisted whole, and local at the FULL group count "
+            "reproduces the shipped kernel exactly so the family contains what executes. Every "
+            "confined probe is WRONG at rel_err ~0.98 and separately checked NON-DEGENERATE, because "
+            "a folded loop is also wrong. Three mutations watched failing. BENCH_STATE CONTENDED with "
+            "round-spreads 110-375%, so minima are the estimator and the ORDINAL 13/14 and 12/14 "
+            "rounds-won counts are what carry the verdict rather than the ratios. ONE shape, ONE tpr, "
+            "ONE machine, INSTANCE. No shipped kernel changed."),
+    ),
+    dict(
         law_id="AKB-ENTERING-THE-LOOP-COSTS-MORE-THAN-RUNNING-IT",
         statement=(
             "IN AN ISOLATED q4_g64 MATVEC THE FIRST ELEMENTS OF THE INNER LOOP COST FAR MORE THAN "

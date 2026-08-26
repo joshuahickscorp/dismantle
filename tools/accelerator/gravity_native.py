@@ -487,7 +487,7 @@ def source_operand_probe(rows: int, cols: int, probe: str,
     CONSTRUCTION -- these are probes, never candidates, and a caller who ships one
     ships a wrong answer. See OPERAND_PROBES for what each removes and why."""
     if (probe not in OPERAND_PROBES and not probe.startswith("thin")
-            and probe != "redonly"):
+            and probe != "redonly" and "_local" not in probe):
         raise ValueError(
             f"unknown operand probe {probe!r}; have {sorted(OPERAND_PROBES) + ['thin']}")
     d = {"PACKED_COLS": cols // 2, "GROUPS": cols // GROUP, "GROUP": GROUP,
@@ -511,6 +511,26 @@ def source_operand_probe(rows: int, cols: int, probe: str,
         return (head + f"acc = (float)(row + lane) + (float)scales[row * {d['GROUPS']}u] * 0.0f"
                        " + (float)packed[row] * 0.0f + x[0] * 0.0f;\n"
                 + REDUCE_TAILS["serial"] % d)
+    if "_local" in probe:
+        # FOOTPRINT AT FIXED WORK. The loop, the iteration count, the element
+        # count, the scale loads and the reduction are all UNCHANGED; only the
+        # ADDRESSES move, confined to N groups so every lane's first touch lands
+        # in the same few cache lines instead of striding across the row. This is
+        # the first-touch candidate ACCELERATOR_ENTERING_THE_LOOP named, expressed
+        # as a single variable. The index still varies with g so the loop body is
+        # not loop-invariant and cannot be hoisted whole.
+        stem, _, n = probe.partition("_local")
+        keep = int(n)
+        groups = d["GROUPS"]
+        if keep < 1 or keep > groups or groups % keep:
+            raise ValueError(f"local keeps a DIVISOR of {groups} groups; got {keep}")
+        base = source_operand_probe(rows, cols, stem, tpr, tg)
+        for frag in ("scales[sbase + g]", "uint c0 = g * %(GROUP)du;" % d):
+            if frag not in base:
+                raise AssertionError(f"{frag!r} is not in the source to confine")
+        return (base.replace("scales[sbase + g]", f"scales[sbase + (g % {keep}u)]")
+                    .replace("uint c0 = g * %(GROUP)du;" % d,
+                             f"uint c0 = (g %% {keep}u) * %(GROUP)du;" % d))
     if probe.endswith("_nobarrier"):
         # THE BARRIER AND THE SERIAL SUM ALONE, at IDENTICAL STORE TRAFFIC. Every
         # lane still writes its threadgroup slot -- so the loop cannot be sunk --

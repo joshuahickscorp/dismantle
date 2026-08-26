@@ -1370,10 +1370,18 @@ LAWS: list[dict[str, Any]] = [
             "and still costs 1.2434x and 1.2341x at 14 of 14 rounds twice, so the separating "
             "width is the THREADGROUP, whose request splits from one run to two there; and a "
             "six-rung granularity ladder is NOT MONOTONE, with k=4 reproducibly worst, so the "
-            "penalty is a STEP at the first departure from a single contiguous threadgroup "
-            "request and not a gradient in the run count. NOTHING IS ADOPTED -- both arms are "
-            "correct and the rotated one LOSES AT BOTH SHAPES MEASURED, so the shipped order "
-            "already sits at the best point on this axis."),
+            "penalty is a STEP at the first departure from a single contiguous request "
+            "and not a gradient in the run count. AMENDED AGAIN BY "
+            "ACCELERATOR_THE_WIDTH_IS_THE_ROW: THE CHARGED WIDTH IS THE ROW, NOT THE "
+            "THREADGROUP. Sweeping the threadgroup width 64/128/256/512 takes the CONTROL from "
+            "one contiguous threadgroup request to eight and costs NOTHING -- 0.9861/0.9936/"
+            "1.0146 and 1.0035/1.0068/1.0029 against tg=64 across two runs, at coin-flip ordinal "
+            "counts -- while the k=32 penalty holds 1.209x to 1.267x at EVERY width, tracking the "
+            "64 lanes of a row, which a lane rotation never lets the threadgroup move. So the "
+            "unit is excluded at 32 lanes and at 128-512 threads and located at 64, WHERE THE "
+            "ROW, THE THREADS-PER-ROW AND A 2-SIMDGROUP PAIR COINCIDE AND ARE NOT SEPARATED. "
+            "NOTHING IS ADOPTED -- both arms are correct and the rotated one LOSES AT BOTH SHAPES "
+            "MEASURED, so the shipped order already sits at the best point on this axis."),
         evidence_domain="accelerator", civilization="I-D_ACCELERATOR",
         machine_scope="Apple M3 Ultra, INSTANCE",
         representation_scope="ws_rtn_q4_g64",
@@ -1390,7 +1398,8 @@ LAWS: list[dict[str, Any]] = [
             "WORKLOAD_PHASE": "a SINGLY SUBMITTED decode-shaped GEMV, CONTENDED machine"},
         evidence_class="Measured",
         source_receipts=["receipts/headless/ACCELERATOR_THE_INSTANT_IS_THE_COST.json",
-                         "receipts/headless/ACCELERATOR_THE_PENALTY_IS_A_STEP.json"],
+                         "receipts/headless/ACCELERATOR_THE_PENALTY_IS_A_STEP.json",
+                         "receipts/headless/ACCELERATOR_THE_WIDTH_IS_THE_ROW.json"],
         citations=[
             "receipts/headless/ACCELERATOR_THE_INSTANT_IS_THE_COST.json#P1_CONFIRMED_PAST_THE_TOP_OF_MY_OWN_BAND",
             "receipts/headless/ACCELERATOR_THE_INSTANT_IS_THE_COST.json#P2_CONFIRMED_AND_IT_IS_MONOTONE",
@@ -1608,7 +1617,16 @@ LAWS: list[dict[str, Any]] = [
             "parallelism to apply to real work and that gain outweighs the launch cost, while here "
             "there is no work to parallelise so the launch cost is the only effect left. A LAUNCH "
             "COST IS INVISIBLE WHENEVER THE GRID BUYS PARALLELISM, which is why it took a kernel "
-            "that does nothing to see it."),
+            "that does nothing to see it. AMENDED BY ACCELERATOR_THE_WIDTH_IS_THE_ROW: THE "
+            "ATTRIBUTION TO THREADGROUPS IS NOT SUPPORTED BY A CLEANER AXIS. That sweep moved "
+            "THREAD COUNT AND THREADGROUP COUNT TOGETHER; holding threads FIXED at 1,114,112 on a "
+            "REAL kernel while the threadgroup count falls 8x, 17408 to 2176, moves NOTHING -- "
+            "1.5% one way in one run and 0.3% the other in the second, the direction BACKWARDS "
+            "for a launch cost in both, bounding it under 0.5 ns per threadgroup against the 2-6 "
+            "reported here. EITHER the price is per THREAD rather than per threadgroup, which the "
+            "confounded axis could not separate, OR real work hides it; BOTH ARE LIVE AND NEITHER "
+            "IS PICKED. The 12.0% and 35.4% rises are NOT withdrawn -- what is withdrawn is "
+            "reading them as a per-threadgroup price."),
         applicability={
             "MODEL": NONE, "ARCHITECTURE": NONE, "ORGAN": NONE,
             "REPRESENTATION": "one f16 scale read per row; no weights read",
@@ -1619,7 +1637,8 @@ LAWS: list[dict[str, Any]] = [
             "STORAGE_TIER": NONE, "TOPOLOGY": NONE,
             "WORKLOAD_PHASE": "a SINGLY SUBMITTED dispatch doing no work"},
         evidence_class="Measured",
-        source_receipts=["receipts/headless/ACCELERATOR_THE_FLOOR_SPLITS_THREE_WAYS.json"],
+        source_receipts=["receipts/headless/ACCELERATOR_THE_FLOOR_SPLITS_THREE_WAYS.json",
+                         "receipts/headless/ACCELERATOR_THE_WIDTH_IS_THE_ROW.json"],
         citations=[
             "receipts/headless/ACCELERATOR_THE_FLOOR_SPLITS_THREE_WAYS.json#P2_THE_GRID_AXIS_AND_MY_PREDICTION_IS_REFUTED",
             "receipts/headless/ACCELERATOR_THE_FLOOR_SPLITS_THREE_WAYS.json#THE_DECOMPOSITION",

@@ -305,5 +305,15 @@
   },
   "rule": "S032 \u00a73 -- if quiescence is unknown the state is UNKNOWN, not quiet",
   "provenance": "DERIVED from a quiescence sample this receipt already carried"
+ },
+ "AMENDED_2026-08-26_THE_UNIT_IS_THE_ROW_NOT_THE_THREADGROUP": {
+  "by": "receipts/headless/ACCELERATOR_THE_WIDTH_IS_THE_ROW.json",
+  "what_is_corrected": "This receipt concluded 'THE UNIT THAT MATTERS HERE IS THE THREADGROUP, NOT THE SIMDGROUP'. THE FIRST HALF IS REFUTED BY THE VERY AXIS THIS RECEIPT NAMED AGAINST ITSELF. Sweeping the threadgroup width 64/128/256/512 takes the CONTROL from ONE contiguous threadgroup request to EIGHT and costs NOTHING -- 1.0000/0.9861/0.9936/1.0146 and 1.0000/1.0035/1.0068/1.0029 across two runs, at 4,5,4 and 5,10,9 of 14 ordinal rounds -- while the k=32 penalty stays 1.209x-1.267x at EVERY width, tracking the ROW's request count, which the rotation never lets tg move.",
+  "why_the_column_read_that_way": "the 'thrd runs' column in this receipt's ladder was the ROW's count, 64/k, under the wrong label. At this receipt's own tg=128 a threadgroup holds TWO rows at unrelated base addresses, so the control's real threadgroup request was TWO runs and not the ONE recorded.",
+  "and_this_receipt_also_mis-stated_the_simdgroup_arithmetic": "its 'next' says 'at tg=64 a threadgroup IS one simdgroup ... while at tg=256 there are four'. A simdgroup on this chip is 32 lanes: tg=64 is TWO and tg=256 is EIGHT.",
+  "what_is_unchanged": "EVERY MEASUREMENT HERE STANDS -- k=32 at 1.2434x and 1.2341x, the non-monotone ladder, k=4 reproducibly worst, 84 of 84 rounds lost -- and so does the negative half of the conclusion, that the SIMDGROUP is not the unit. What changes is where the positive half points: across three blocks the unit is excluded at 32 lanes and at 128-512 threads and located at 64 lanes, where the row, the threads-per-row and a 2-simdgroup pair COINCIDE AND ARE NOT SEPARATED.",
+  "laws_reconciled": [
+   "AKB-THE-INSTANT-IS-THE-COST"
+  ]
  }
 }

@@ -1112,18 +1112,35 @@ def _segments(command: str) -> List[str]:
     whole line, which is the difference between refusing
     `cat receipts/x.json | python3 -c ...` and allowing it.
     """
-    parts, buf, i = [], [], 0
+    parts, buf, i, quote = [], [], 0, ""
     while i < len(command):
-        for sep in ("&&", "||"):
-            if command.startswith(sep, i):
-                parts.append("".join(buf)); buf = []; i += 2; break
-        else:
-            ch = command[i]
-            if ch in ("|", ";", "&"):
-                parts.append("".join(buf)); buf = []
-            else:
-                buf.append(ch)
+        ch = command[i]
+        # QUOTE AWARE. The first version was not, and it split inside a quoted
+        # argument: a real mission proposed
+        # `python3 -c "import os; p = ...; path = os.path.join(...)"` and the guard
+        # reported "verb 'path' is not in the read-only set" -- a verb scraped out
+        # of Python source. The verdict was still correct (python3 is not provably
+        # read-only, so it failed closed), but a reason nobody can act on is a bug
+        # in its own right.
+        if quote:
+            buf.append(ch)
+            if ch == quote:
+                quote = ""
             i += 1
+            continue
+        if ch in ("'", '"'):
+            quote = ch
+            buf.append(ch)
+            i += 1
+            continue
+        if command.startswith("&&", i) or command.startswith("||", i):
+            parts.append("".join(buf)); buf = []; i += 2
+            continue
+        if ch in ("|", ";", "&"):
+            parts.append("".join(buf)); buf = []
+        else:
+            buf.append(ch)
+        i += 1
     parts.append("".join(buf))
     return [p.strip() for p in parts if p.strip()]
 

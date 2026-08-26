@@ -304,5 +304,14 @@
   },
   "rule": "S032 \u00a73 -- if quiescence is unknown the state is UNKNOWN, not quiet",
   "provenance": "DERIVED from a quiescence sample this receipt already carried"
+ },
+ "AMENDED_2026-08-26_THE_SIMDGROUP_ARITHMETIC_IN_THIS_RECEIPT_IS_WRONG": {
+  "amending_receipt": "receipts/headless/ACCELERATOR_THE_SIMDGROUP_SPAN_DOUBLES.json",
+  "what_is_withdrawn": "This receipt's mechanism sentence -- 'a permutation leaves THE SET OF ADDRESSES THE SIMDGROUP TOUCHES AT EACH INSTANT EXACTLY IDENTICAL', and the exclusion it licensed, 'it is NOT reach, NOT capacity and NOT cold lines'. THE SET IS IDENTICAL OVER 64 LANES AND NOT OVER A 32-LANE SIMDGROUP, which is the coalescing unit: the identity gives a simdgroup a contiguous 1024-byte span while EVERY permutation gives it 2048, exactly double. Reach and capacity were therefore NEVER EXCLUDED and that exclusion must not be cited.",
+  "what_stands": "THE MEASUREMENT. Lane order costs, the identity is faster, and it is not the extra multiply and modulo -- and it is not an artifact of arm order either, which the amending block tested by rotating the order and watching the effect survive at 10-12 of 14 rounds.",
+  "and_the_magnitude_is_softer_than_this_receipt_reads": "1.0802 and 1.0793 agreeing to 0.08% here; four further runs span 1.027 to 1.073 at round-spreads up to 618%. The DIRECTION and the ordinal separation reproduce; 1.08x is not re-confirmed as a value, which is what this receipt itself said carried the finding.",
+  "laws_reconciled": [
+   "AKB-LANE-ORDER-COSTS"
+  ]
  }
 }

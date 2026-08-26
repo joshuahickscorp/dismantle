@@ -1356,7 +1356,14 @@ LAWS: list[dict[str, Any]] = [
             "NAMED COMPONENT of the footprint mechanism ACCELERATOR_THE_ENTRY_COST_IS_FOOTPRINT left "
             "unnamed: the simdgroup's 32 lanes touch the SAME addresses at the same instant either "
             "way, so it is not reach, not capacity and not cold lines -- the memory system cares which "
-            "lane asks. IT DOES NOT HAPPEN AT THIN WORK: 0.9911 and 1.0202 in opposite directions, 5 "
+            "lane asks. AMENDED BY ACCELERATOR_THE_SIMDGROUP_SPAN_DOUBLES: THAT EXCLUSION RESTED ON "
+            "WRONG ARITHMETIC. The address set is identical over 64 LANES and NOT over a 32-LANE "
+            "SIMDGROUP, the coalescing unit, where the identity spans a CONTIGUOUS 1024 BYTES and "
+            "EVERY permutation spans 2048 -- so reach and capacity were NEVER EXCLUDED and that "
+            "exclusion must not be cited. The MEASUREMENT stands and survives ROTATING THE ARM "
+            "ORDER, which had never been controlled for; the magnitude softens to a 1.03-1.11x "
+            "range over six runs, and a reversal that keeps adjacency costs like a scatter, so "
+            "adjacency is not the variable either. IT DOES NOT HAPPEN AT THIN WORK: 0.9911 and 1.0202 in opposite directions, 5 "
             "and 7 of 14 rounds, so the effect scales with concurrent requests per lane, which is a "
             "CANDIDATE and not a claim. THE MAGNITUDES COINCIDE WITH THE FOOTPRINT EFFECT (1.082x and "
             "1.098x) AND THAT IS NOT AN IDENTITY CLAIM, because confining the footprint moves the "
@@ -1375,12 +1382,15 @@ LAWS: list[dict[str, Any]] = [
             "STORAGE_TIER": NONE, "TOPOLOGY": NONE,
             "WORKLOAD_PHASE": "a SINGLY SUBMITTED decode-shaped GEMV, CONTENDED machine"},
         evidence_class="Measured",
-        source_receipts=["receipts/headless/ACCELERATOR_LANE_ORDER_COSTS.json"],
+        source_receipts=["receipts/headless/ACCELERATOR_LANE_ORDER_COSTS.json",
+                         "receipts/headless/ACCELERATOR_THE_SIMDGROUP_SPAN_DOUBLES.json"],
         citations=[
             "receipts/headless/ACCELERATOR_LANE_ORDER_COSTS.json#P1_LANE_ORDER_COSTS_AT_FULL_ELEMENT_COUNT",
             "receipts/headless/ACCELERATOR_LANE_ORDER_COSTS.json#WHAT_THIS_NAMES_THAT_WAS_UNNAMED",
             "receipts/headless/ACCELERATOR_LANE_ORDER_COSTS.json#P2_AND_IT_DOES_NOT_HAPPEN_AT_THIN_WORK",
-            "receipts/headless/ACCELERATOR_LANE_ORDER_COSTS.json#WHAT_THIS_PROBE_STRUCTURALLY_CANNOT_SEPARATE_SAID_IN_ADVANCE"],
+            "receipts/headless/ACCELERATOR_LANE_ORDER_COSTS.json#WHAT_THIS_PROBE_STRUCTURALLY_CANNOT_SEPARATE_SAID_IN_ADVANCE",
+            "receipts/headless/ACCELERATOR_THE_SIMDGROUP_SPAN_DOUBLES.json#AND_THE_CENTRAL_ARITHMETIC_OF_MY_PREVIOUS_BLOCK_IS_WRONG",
+            "receipts/headless/ACCELERATOR_THE_SIMDGROUP_SPAN_DOUBLES.json#THE_ORDER_ARTIFACT_I_HAD_NOT_CONTROLLED_FOR"],
         status="ACTIVE", superseded_by=None, negative_result=False,
         confidence_basis=(
             "THE CONTROL IS THE IDENTITY PERMUTATION, NOT THE SHIPPED KERNEL: _lane1 carries the same "

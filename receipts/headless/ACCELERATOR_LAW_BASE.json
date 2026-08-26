@@ -26,13 +26,13 @@
   "SUPERSEDED",
   "CONDITIONAL"
  ],
- "corpus_size": 103,
+ "corpus_size": 104,
  "outside_scope_count": 347,
  "known_accelerator_outside_scope": [
   "TOKEN_EXECUTION_ATLAS.json"
  ],
  "scope_is_a_filename_prefix": "membership is decided by the ACCELERATOR_* glob, so a receipt named otherwise is neither extracted nor refused -- it is invisible. The excluded names are listed rather than silently dropped.",
- "receipts_yielding_laws": 32,
+ "receipts_yielding_laws": 33,
  "membership_routes": {
   "declared": [
    "ACCELERATOR_628_BOUNDARY_CENSUS.json",
@@ -118,6 +118,7 @@
    "ACCELERATOR_QUIET_CONTROL.json",
    "ACCELERATOR_REAL_LAKE_WEIGHTS.json",
    "ACCELERATOR_REDUCTION.json",
+   "ACCELERATOR_REFLOOR_ON_ACTIVATIONS.json",
    "ACCELERATOR_REGISTER_BLOCKING.json",
    "ACCELERATOR_RESIDENT_TEMPLATE_ARM.json",
    "ACCELERATOR_RUNTIME_EXECUTES.json",
@@ -142,7 +143,7 @@
    "ACCELERATOR_WORKUNIT_THROUGHPUT.json"
   ],
   "declared_count": 15,
-  "legacy_glob_only_count": 88,
+  "legacy_glob_only_count": 89,
   "note": "membership by DECLARATION does not depend on the filename; membership by the legacy glob does. The legacy count is the size of the remaining filename dependence and should fall, never rise."
  },
  "none_claims_not_grounded_count": 0,
@@ -866,7 +867,7 @@
   },
   {
    "law_id": "AKB-WEIGHT-METRICS-INVERT-ON-ATTENTION-Q",
-   "statement": "For attention q_proj under ws_rtn_q4_g64, WEIGHT-SPACE FIDELITY RANKS FOUR SPECIMENS IN EXACTLY THE WRONG ORDER against real-activation error. Cosine runs 0.988150 / 0.989516 / 0.994001 / 0.994252 while real-activation relative error runs 0.032677 / 0.033354 / 0.056519 / 0.065670 -- monotone and fully reversed, Spearman -1.000 on two token sets and -0.800 on two more. It is NOT the scale-invariance defect: weight_rel_err, which is not scale-invariant, inverts identically. The GAUSSIAN activation proxy fails on the SAME boundary, overstating error by up to 1.6x on q_proj while landing within 7% on the expert gate. CONSEQUENCE: the weight-space floor procedure assigns 4.500 bpw to the specimen whose real activations tolerate the representation BEST and 4.125 to the one that tolerates it WORST, Spearman(floor_bpw, real_err) = -1.000.",
+   "statement": "For attention q_proj under ws_rtn_q4_g64, WEIGHT-SPACE FIDELITY RANKS FOUR SPECIMENS IN EXACTLY THE WRONG ORDER against real-activation error. Cosine runs 0.988150 / 0.989516 / 0.994001 / 0.994252 while real-activation relative error runs 0.032677 / 0.033354 / 0.056519 / 0.065670 -- monotone and fully reversed, Spearman -1.000 on two token sets and -0.800 on two more. It is NOT the scale-invariance defect: weight_rel_err, which is not scale-invariant, inverts identically. The GAUSSIAN activation proxy fails on the SAME boundary, overstating error by up to 1.6x on q_proj while landing within 7% on the expert gate. CONSEQUENCE: the weight-space floor procedure assigns 4.500 bpw to the specimen whose real activations tolerate the representation BEST and 4.125 to the one that tolerates it WORST, Spearman(floor_bpw, real_err) = -1.000. SHARPENED BY A SECOND RECEIPT, and the sharpening is CONFOUND-FREE where the original was not: moving each specimen from ONE FLAT SETTING to ITS OWN weight-space floor -- same weights, same activations, only the setting moves, so no cross-architecture comparison is involved -- changes real-activation error MONOTONICALLY BY RANK. The best improves 14.21%, the second is exactly unchanged, the third worsens 10.43%, the fourth worsens 9.63%. THE PROCEDURE IMPROVES THE ALREADY-GOOD AND DEGRADES THE ALREADY-BAD, and the spread it is meant to equalise comes out 1.33x WIDER than using one flat setting for everybody (0.043958 against 0.032994). NO CORRECTED BUDGET FOLLOWS: the re-floored ordering is bar-independent only at the COARSE grouping, and the Kimi/Falcon pair swaps at 2 of 5 bars.",
    "applicability": {
     "MODEL": "UNSCOPED",
     "ARCHITECTURE": "UNSCOPED",
@@ -882,12 +883,15 @@
    },
    "evidence_class": "Measured",
    "source_receipts": [
-    "receipts/headless/ACCELERATOR_ACTIVATION_VS_WEIGHT_SPACE.json"
+    "receipts/headless/ACCELERATOR_ACTIVATION_VS_WEIGHT_SPACE.json",
+    "receipts/headless/ACCELERATOR_REFLOOR_ON_ACTIVATIONS.json"
    ],
    "citations": [
     "receipts/headless/ACCELERATOR_ACTIVATION_VS_WEIGHT_SPACE.json#result.THE_ANSWER_IS_ORGAN_DEPENDENT",
     "receipts/headless/ACCELERATOR_ACTIVATION_VS_WEIGHT_SPACE.json#result.THE_BIT_BUDGET_IS_INVERTED_ACROSS_SPECIMENS",
-    "receipts/headless/ACCELERATOR_ACTIVATION_VS_WEIGHT_SPACE.json#claim_boundary"
+    "receipts/headless/ACCELERATOR_ACTIVATION_VS_WEIGHT_SPACE.json#claim_boundary",
+    "receipts/headless/ACCELERATOR_REFLOOR_ON_ACTIVATIONS.json#result.THE_CONFOUND_FREE_HEADLINE",
+    "receipts/headless/ACCELERATOR_REFLOOR_ON_ACTIVATIONS.json#result.P2_REFUTED_IN_PART_AND_I_DO_NOT_GET_TO_QUOTE_A_BUDGET"
    ],
    "unscoped_basis": {
     "MODEL": "receipts/headless/ACCELERATOR_ACTIVATION_VS_WEIGHT_SPACE.json#result.q_proj_rows",
@@ -896,7 +900,7 @@
    "status": "ACTIVE",
    "superseded_by": null,
    "negative_result": true,
-   "confidence_basis": "Four specimens are THREE independent architecture groups -- the Qwen pair differs at the 4th decimal -- so architecture, shape and cosine are NOT separated, and the receipt names that confound rather than burying it. What raises this above one ordering flipping on noise is that the inversion is monotone on all four points, holds within the twin pair, and reproduces across four independent token sets. The contrast case is what makes it a boundary rather than a blanket claim: the expert gate does not invert. Its mechanism is already in this base as AKB-ORGAN-FLOOR-DOES-NOT-TRANSFER -- within-group outliers concentrated in q_proj at Pearson -0.9841 -- so this is that weight-space law's activation-space consequence, not an unexplained correlation."
+   "confidence_basis": "Four specimens are THREE independent architecture groups -- the Qwen pair differs at the 4th decimal -- so architecture, shape and cosine are NOT separated, and the receipt names that confound rather than burying it. What raises this above one ordering flipping on noise is that the inversion is monotone on all four points, holds within the twin pair, and reproduces across four independent token sets. The contrast case is what makes it a boundary rather than a blanket claim: the expert gate does not invert. Its mechanism is already in this base as AKB-ORGAN-FLOOR-DOES-NOT-TRANSFER -- within-group outliers concentrated in q_proj at Pearson -0.9841 -- so this is that weight-space law's activation-space consequence, not an unexplained correlation. THE SECOND RECEIPT REMOVES THE CONFOUND FROM THE CORE CLAIM: its within-specimen deltas hold one specimen's weights and activations fixed and move only the setting, so the monotone-by-rank result needs no cross-architecture comparison at all. The SPREAD figure and the bar-based reflooring still do, which is why the budget is NOT quoted."
   },
   {
    "law_id": "AKB-ORGAN-FLOOR-DOES-NOT-TRANSFER",

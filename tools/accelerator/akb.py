@@ -1213,7 +1213,18 @@ LAWS: list[dict[str, Any]] = [
             "overstating error by up to 1.6x on q_proj while landing within 7% on the expert "
             "gate. CONSEQUENCE: the weight-space floor procedure assigns 4.500 bpw to the "
             "specimen whose real activations tolerate the representation BEST and 4.125 to "
-            "the one that tolerates it WORST, Spearman(floor_bpw, real_err) = -1.000."),
+            "the one that tolerates it WORST, Spearman(floor_bpw, real_err) = -1.000. "
+            "SHARPENED BY A SECOND RECEIPT, and the sharpening is CONFOUND-FREE where the "
+            "original was not: moving each specimen from ONE FLAT SETTING to ITS OWN "
+            "weight-space floor -- same weights, same activations, only the setting moves, "
+            "so no cross-architecture comparison is involved -- changes real-activation "
+            "error MONOTONICALLY BY RANK. The best improves 14.21%, the second is exactly "
+            "unchanged, the third worsens 10.43%, the fourth worsens 9.63%. THE PROCEDURE "
+            "IMPROVES THE ALREADY-GOOD AND DEGRADES THE ALREADY-BAD, and the spread it is "
+            "meant to equalise comes out 1.33x WIDER than using one flat setting for "
+            "everybody (0.043958 against 0.032994). NO CORRECTED BUDGET FOLLOWS: the "
+            "re-floored ordering is bar-independent only at the COARSE grouping, and the "
+            "Kimi/Falcon pair swaps at 2 of 5 bars."),
         applicability={
             "MODEL": UNSCOPED, "ARCHITECTURE": UNSCOPED,
             "ORGAN": "attention q_proj; the expert gate does NOT invert and is the contrast",
@@ -1224,10 +1235,13 @@ LAWS: list[dict[str, Any]] = [
             "TOPOLOGY": NONE,
             "WORKLOAD_PHASE": "representation fidelity against REAL activations, decode position 0"},
         evidence_class="Measured",
-        source_receipts=["receipts/headless/ACCELERATOR_ACTIVATION_VS_WEIGHT_SPACE.json"],
+        source_receipts=["receipts/headless/ACCELERATOR_ACTIVATION_VS_WEIGHT_SPACE.json",
+                         "receipts/headless/ACCELERATOR_REFLOOR_ON_ACTIVATIONS.json"],
         citations=["receipts/headless/ACCELERATOR_ACTIVATION_VS_WEIGHT_SPACE.json#result.THE_ANSWER_IS_ORGAN_DEPENDENT",
                    "receipts/headless/ACCELERATOR_ACTIVATION_VS_WEIGHT_SPACE.json#result.THE_BIT_BUDGET_IS_INVERTED_ACROSS_SPECIMENS",
-                   "receipts/headless/ACCELERATOR_ACTIVATION_VS_WEIGHT_SPACE.json#claim_boundary"],
+                   "receipts/headless/ACCELERATOR_ACTIVATION_VS_WEIGHT_SPACE.json#claim_boundary",
+                   "receipts/headless/ACCELERATOR_REFLOOR_ON_ACTIVATIONS.json#result.THE_CONFOUND_FREE_HEADLINE",
+                   "receipts/headless/ACCELERATOR_REFLOOR_ON_ACTIVATIONS.json#result.P2_REFUTED_IN_PART_AND_I_DO_NOT_GET_TO_QUOTE_A_BUDGET"],
         unscoped_basis={
             "MODEL": "receipts/headless/ACCELERATOR_ACTIVATION_VS_WEIGHT_SPACE.json#result.q_proj_rows",
             "ARCHITECTURE": "receipts/headless/ACCELERATOR_ACTIVATION_VS_WEIGHT_SPACE.json#result.architectures_measured"},
@@ -1242,7 +1256,11 @@ LAWS: list[dict[str, Any]] = [
             "gate does not invert. Its mechanism is already in this base as "
             "AKB-ORGAN-FLOOR-DOES-NOT-TRANSFER -- within-group outliers concentrated in q_proj "
             "at Pearson -0.9841 -- so this is that weight-space law's activation-space "
-            "consequence, not an unexplained correlation."),
+            "consequence, not an unexplained correlation. THE SECOND RECEIPT REMOVES THE "
+            "CONFOUND FROM THE CORE CLAIM: its within-specimen deltas hold one specimen's "
+            "weights and activations fixed and move only the setting, so the monotone-by-rank "
+            "result needs no cross-architecture comparison at all. The SPREAD figure and the "
+            "bar-based reflooring still do, which is why the budget is NOT quoted."),
     ),
     dict(
         law_id="AKB-ORGAN-FLOOR-DOES-NOT-TRANSFER",

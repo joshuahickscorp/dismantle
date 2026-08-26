@@ -102,5 +102,14 @@
     "n=5/n=4 after excluding 3 of 12 runs, far below this program's 200-rep gate.",
     "The four fusion levers pre-existed; nothing about any kernel was written or changed in this block."
   ],
-  "next": "run the 43-case capability suite under fusion (the \u00a718 floor), then attack BYTES rather than launches -- the affine-q2 MLP gate+up fusion that FUSE_MLP does not reach is the one candidate that removes a read rather than a launch"
+  "next": "run the 43-case capability suite under fusion (the \u00a718 floor), then attack BYTES rather than launches -- the affine-q2 MLP gate+up fusion that FUSE_MLP does not reach is the one candidate that removes a read rather than a launch",
+  "akb_registration": {
+    "evidence_domain": "accelerator",
+    "civilization": "I-D_ACCELERATOR",
+    "program": "HAWKING ACCELERATOR (S015/S031/S032)",
+    "machine_scope": "Apple M3 Ultra, INSTANCE",
+    "representation_scope": "sealed-3.14, unchanged across arms",
+    "kernel_scope": "964 vs 756 dispatch decode graphs, paired",
+    "why_declared": "membership must not depend on what this file was named (S032 \u00a713). Before this declaration the receipt was INVISIBLE to the AKB -- neither extracted nor refused -- which reads identically to triaged and found empty."
+  }
 }

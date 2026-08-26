@@ -309,23 +309,64 @@ def test_every_shipped_law_validates():
         akb.validate(copy.deepcopy(entry), superseded=sup)
 
 
-def test_the_corpus_scope_is_a_filename_prefix_and_says_so():
-    """The AKB decides membership by an ACCELERATOR_* glob, so an Accelerator
-    receipt named otherwise is neither extracted NOR refused -- it is INVISIBLE,
-    which reads identically to 'triaged and found empty'. That is the same name-
-    filter defect bench.machine_quiescence was built to remove, in a second
-    instrument. The scope is not widened by guesswork; it is REPORTED."""
+def test_membership_no_longer_depends_ONLY_on_the_filename():
+    """THIS TEST ASSERTED THE OPPOSITE AND WAS RIGHT TO, UNTIL IT WASN'T.
+
+    It used to require `the corpus scope IS a filename prefix and says so`. That was
+    true when written and is a TRANSIENT FACT ENCODED AS A LAW -- the same shape this
+    program caught once before, when a test asserted unmeasured gaps outnumber
+    measured ones and kept failing after the ledger moved past it.
+
+    S032 §13 required membership to stop depending on what a file was named. It now
+    has two routes and the build reports which one each member arrived by."""
     b = akb.build()
-    assert b["outside_scope_count"] > 0
-    named = b["known_accelerator_outside_scope"]
-    assert "TOKEN_GRAPH_REDUCTION_TIMED.json" in named, named
-    assert "FUSION_GAIN_IS_LENGTH_INDEPENDENT.json" in named, named
+    m = b["membership_routes"]
+    assert m["declared_count"] > 0, (
+        "no receipt declares itself; membership is still purely a filename glob")
+    # the four that were INVISIBLE are in, and they are in BY DECLARING
+    for name in ("TOKEN_EXECUTION_ATLAS_COUNTS.json", "TOKEN_GRAPH_REDUCTION_TIMED.json",
+                 "CAPABILITY_FUSED_GRAPH_CLEARED.json",
+                 "FUSION_GAIN_IS_LENGTH_INDEPENDENT.json"):
+        assert name in m["declared"], (name, m["declared"])
+        assert name not in m["legacy_glob_only"], name
+
+
+def test_an_INCOMPLETE_declaration_does_not_buy_membership():
+    """A receipt that names its domain and nothing else would join the corpus while
+    telling the reader nothing about what its evidence covers. All six scopes or
+    none -- the same rule the AKB applies to an entry's eleven applicability axes."""
+    import json, tempfile, pathlib as _p
+    full = {"evidence_domain": "accelerator", "civilization": "I-D_ACCELERATOR",
+            "program": "x", "machine_scope": "x", "representation_scope": "x",
+            "kernel_scope": "x"}
+    with tempfile.TemporaryDirectory() as td:
+        f = _p.Path(td) / "r.json"
+        f.write_text(json.dumps({"akb_registration": full}))
+        assert akb.registration(f) is not None, "a complete declaration was refused"
+        for drop in akb.REGISTRATION_KEYS:
+            partial = {k: v for k, v in full.items() if k != drop}
+            f.write_text(json.dumps({"akb_registration": partial}))
+            assert akb.registration(f) is None, f"a declaration missing {drop!r} bought membership"
+        # and a declaration for ANOTHER domain is not this lane's evidence
+        f.write_text(json.dumps({"akb_registration": {**full, "evidence_domain": "q80"}}))
+        assert akb.registration(f) is None, "another campaign's declaration bought membership"
+
+
+def test_the_legacy_glob_route_is_REPORTED_so_it_can_shrink():
+    """83 of 88 members still arrive by filename. That number is the size of the
+    remaining name dependence; reporting it is what makes it shrinkable, and a
+    silent one is a gap nobody can close."""
+    m = akb.build()["membership_routes"]
+    assert m["legacy_glob_only_count"] + m["declared_count"] == akb.build()["corpus_size"]
+    assert m["legacy_glob_only_count"] > 0, (
+        "if this ever hits zero the legacy route is dead and both it and this test "
+        "should go -- that is a good failure, not a bad one")
 
 
 def test_the_named_gap_list_cannot_go_stale_silently():
-    """If one of those receipts is ever renamed into the glob it must LEAVE this
-    list rather than sit in it forever as a false alarm -- a gap list that only
-    grows is one nobody reads."""
+    """If a receipt named in the gap list is ever brought INTO the corpus -- by a
+    rename or now by a declaration -- it must LEAVE the list rather than sit in it
+    forever as a false alarm. A gap list that only grows is one nobody reads."""
     b = akb.build()
     inside = {p.name for p in akb.corpus()}
     assert not (set(b["known_accelerator_outside_scope"]) & inside)

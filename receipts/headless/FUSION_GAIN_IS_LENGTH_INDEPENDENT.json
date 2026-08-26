@@ -76,5 +76,53 @@
     "No capability was re-run in this block; the 30/43 equality stands on the previous block's evidence.",
     "No kernel was written or changed."
   ],
-  "next": "a quiescence check that enumerates every process over a CPU or RSS threshold rather than grepping for known names, and a re-measurement in a genuinely quiet window to settle whether 2.1-2.3% is the floor or still contended"
+  "next": "a quiescence check that enumerates every process over a CPU or RSS threshold rather than grepping for known names, and a re-measurement in a genuinely quiet window to settle whether 2.1-2.3% is the floor or still contended",
+  "akb_registration": {
+    "evidence_domain": "accelerator",
+    "civilization": "I-D_ACCELERATOR",
+    "program": "HAWKING ACCELERATOR (S015/S031/S032)",
+    "machine_scope": "Apple M3 Ultra, INSTANCE",
+    "representation_scope": "sealed-3.14, unchanged across arms",
+    "kernel_scope": "964 vs 756 decode graphs at 64 / 256 / 1024 generated tokens",
+    "why_declared": "membership must not depend on what this file was named (S032 \u00a713). Before this declaration the receipt was INVISIBLE to the AKB -- neither extracted nor refused -- which reads identically to triaged and found empty."
+  },
+  "identities": {
+    "experiment": {
+      "class": "ACCEL-FUSION",
+      "knowledge_level": "INSTANCE",
+      "question": "does the fusion gain grow with generation length?"
+    },
+    "machine": {
+      "soc": "Apple M3 Ultra",
+      "gpu_cores": 60,
+      "ram_gib": 96,
+      "measured_dram_gbps": 589.73,
+      "receipt": "receipts/headless/MACHINE_GENOME.json"
+    },
+    "device": {
+      "backend": "Metal",
+      "api": "MTLCommandBuffer GPUStartTime/GPUEndTime"
+    },
+    "model": {
+      "root": "/Users/scammermike/noetic/NOETIC_PARENT_A",
+      "tag": "sealed-3.14",
+      "complete_ebpw": 3.139300850311054
+    },
+    "representation": {
+      "mixer": "HQ30UQ4 g64",
+      "mlp": "HGRAVF01 affine_q2 group64 LS",
+      "note": "UNCHANGED across every arm in this receipt"
+    },
+    "runtime": {
+      "binary": "workspace/ops/build/rust/release-fast/examples/ascension_qwen38_hybrid_greedy",
+      "git_head": "3a96dbe8042e94005c9a736cb912453660bd9cc3"
+    },
+    "kernel": {
+      "graph": "964-dispatch control against the 756-dispatch three-lever fused graph"
+    },
+    "transport": {
+      "status": "ABSENT",
+      "reason": "single-device unified-memory Metal run; no bridge and no host<->device transport is crossed"
+    }
+  }
 }

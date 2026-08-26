@@ -73,15 +73,82 @@ class Refused(Exception):
 
 # --------------------------------------------------------------------------- corpus
 
-def corpus(root: Path = REPO) -> list[Path]:
-    """Every Accelerator receipt on disk, sorted. The real 77, not a fixture.
+# S032 §13. Membership was decided by a FILENAME PREFIX, which is the same
+# name-filter defect this program fixed in bench.machine_quiescence: a receipt
+# named otherwise is INVISIBLE, and invisible reads identically to "triaged and
+# found empty". The steer forbids both available shortcuts -- do not widen to every
+# receipt in the directory, and do not let a classifier GUESS which civilization
+# owns the 348 foreign ones. So a receipt DECLARES itself instead.
+EVIDENCE_DOMAIN = "accelerator"
 
-    Excludes this module's OWN outputs. They match the corpus glob, and without this
-    the base would ingest itself: each build would add a receipt, and the AKB would
-    end up citing itself as evidence for its own laws.
+# The six scopes S032 §13 names. A declaring receipt must carry all of them, so a
+# half-filled declaration cannot buy membership -- the same rule the AKB already
+# applies to an entry's eleven applicability axes.
+REGISTRATION_KEYS = ("evidence_domain", "civilization", "program",
+                     "machine_scope", "representation_scope", "kernel_scope")
+
+
+def registration(path: Path) -> dict | None:
+    """The receipt's own membership declaration, or None if it does not declare.
+
+    A declaration that is INCOMPLETE is not a declaration: it returns None rather
+    than a partial dict, because a receipt that names its domain and nothing else
+    would otherwise join the corpus while telling the reader nothing about what its
+    evidence covers.
     """
-    return sorted(p for p in (root / "receipts/headless").glob("ACCELERATOR_*.json")
-                  if p.name not in OWN_OUTPUTS)
+    try:
+        doc = json.loads(path.read_text())
+    except Exception:
+        return None
+    reg = doc.get("akb_registration")
+    if not isinstance(reg, dict):
+        return None
+    if any(k not in reg for k in REGISTRATION_KEYS):
+        return None
+    if reg.get("evidence_domain") != EVIDENCE_DOMAIN:
+        return None
+    return reg
+
+
+def corpus(root: Path = REPO) -> list[Path]:
+    """Every Accelerator receipt on disk, sorted. Two routes, and the AKB reports
+    which one each receipt arrived by.
+
+    DECLARED -- the receipt carries a complete `akb_registration` naming this
+    evidence_domain. This is the route S032 §13 asks for and the only one that
+    does not depend on what a file was called.
+
+    LEGACY GLOB -- the filename starts with ACCELERATOR_. Retained because 80-odd
+    receipts predate the declaration and rewriting them all in one pass would be a
+    bulk edit nobody reviewed; the build reports how many arrive this way so the
+    legacy route's size is visible and can shrink.
+
+    Excludes this module's OWN outputs either way: they match the glob, and without
+    this the base would ingest itself -- each build adding a receipt until the AKB
+    cited itself as evidence for its own laws.
+    """
+    d = root / "receipts/headless"
+    by_glob = {p for p in d.glob("ACCELERATOR_*.json")}
+    by_decl = {p for p in d.glob("*.json") if registration(p) is not None}
+    return sorted((by_glob | by_decl) - {d / n for n in OWN_OUTPUTS},
+                  key=lambda q: q.name)
+
+
+def membership_routes(root: Path = REPO) -> dict:
+    """How each corpus member got in. A route nobody can see is a route nobody
+    can shrink."""
+    d = root / "receipts/headless"
+    out = {"declared": [], "legacy_glob_only": []}
+    for p in corpus(root):
+        (out["declared"] if registration(p) is not None
+         else out["legacy_glob_only"]).append(p.name)
+    out["declared_count"] = len(out["declared"])
+    out["legacy_glob_only_count"] = len(out["legacy_glob_only"])
+    out["note"] = (
+        "membership by DECLARATION does not depend on the filename; membership by "
+        "the legacy glob does. The legacy count is the size of the remaining "
+        "filename dependence and should fall, never rise.")
+    return out
 
 
 def outside_scope(root: Path = REPO) -> list[str]:
@@ -304,6 +371,82 @@ MLX = "MLX 0.32.1 metal_kernel JIT under CPython 3.12"
 HK = "hawking-core release-fast Rust/Metal decoder, binary d34044cffae8f320"
 
 LAWS: list[dict[str, Any]] = [
+    dict(
+        law_id="AKB-964-DISPATCHES-PER-DECODE-TOKEN",
+        statement=(
+            "The sealed-3.14 resident's production decode graph runs 964 dispatches per token, "
+            "MEASURED by delta so prefill cancels: (15424 - 11568) / (6 - 2) = 964.000 exactly. "
+            "The arithmetic 1 + 64*15 + 3 is structurally confirmed and BOTH LAYER KINDS COST "
+            "EXACTLY 15 BY DIFFERENT ROUTES -- a DeltaNet layer spends 2 rmsnorm + 2 "
+            "add_residual + 6 matvec + 1 swiglu + 4 DeltaNet-specific, a GQA layer 2 + 2 + 7 "
+            "matvec + 1 + 3 GQA-specific -- which the schedule file could not have shown. The "
+            "matvecs split CLEANLY BY ORGAN with nothing mixed inside one: 209 uniform-q4 take "
+            "every mixer projection plus the lm_head, 192 affine-q2 take every MLP projection."),
+        applicability={
+            "MODEL": "Qwen3.8-27B sealed-3.14 (NOETIC_PARENT_A), 3.1393 complete EBPW",
+            "ARCHITECTURE": "Qwen3.8 hybrid, 48 DeltaNet + 16 GQA layers",
+            "ORGAN": "whole decode graph, resolved per kernel family",
+            "REPRESENTATION": "mixed HQ30UQ4 g64 mixer + affine_q2 g64 MLP",
+            "SHAPE": "batch 1 decode, 11-token prompt; dispatch count is structural and was "
+                     "not varied over prompts",
+            "MACHINE": M3, "RUNTIME": HK,
+            "KERNEL": "the 964-dispatch production graph, all four fusion levers off",
+            "STORAGE_TIER": NONE, "TOPOLOGY": NONE,
+            "WORKLOAD_PHASE": "single-request decode"},
+        evidence_class="Measured",
+        source_receipts=["receipts/headless/TOKEN_EXECUTION_ATLAS_COUNTS.json"],
+        citations=["receipts/headless/TOKEN_EXECUTION_ATLAS_COUNTS.json#headline",
+                   "receipts/headless/TOKEN_EXECUTION_ATLAS_COUNTS.json"
+                   "#the_arithmetic_is_now_STRUCTURALLY_confirmed",
+                   "receipts/headless/TOKEN_EXECUTION_ATLAS_COUNTS.json#claim_boundary"],
+        status="ACTIVE", superseded_by=None, negative_result=False,
+        confidence_basis=(
+            "The delta method removes prefill exactly and lands on a whole number, 964.000. It "
+            "became measurable only after a real defect was fixed: the runtime pushed one label "
+            "per dispatch into a Vec and the session harvest collapsed it into a HashSet, "
+            "destroying the multiplicity the question is about. COUNTS ONLY -- nothing here is "
+            "timed, and AKB-DISPATCH-COUNT-DOES-NOT-PREDICT-COST establishes that this count "
+            "does not predict the graph's cost. This receipt's OWN earlier histogram was "
+            "withdrawn for describing a uniform-q4 body; what is recorded here is the "
+            "re-measured version."),
+    ),
+    dict(
+        law_id="AKB-FUSION-GAIN-IS-LENGTH-INDEPENDENT",
+        statement=(
+            "The four pre-existing fusion levers were worth 2.1-2.3% of wall at EVERY generation "
+            "length measured -- 64, 256 and 1024 new tokens -- for 21.6% fewer dispatches, with "
+            "output identical: clean floors 30.2791 ms/token unfused against 29.6304 fused, "
+            "unfused reproducing 30.2282-30.3325 across 5 clean runs in two sessions (0.35% "
+            "spread) and fused 29.5537-29.6653 (0.38%), with complete separation. THIS TIGHTENS "
+            "THE CEILING RATHER THAN LOOSENING IT: a length-independent gain means the dispatch "
+            "ladder does not improve at longer generations either, which the +29.09% it replaced "
+            "would have implied."),
+        applicability={
+            "MODEL": "Qwen3.8-27B sealed-3.14 (NOETIC_PARENT_A)",
+            "ARCHITECTURE": "Qwen3.8 hybrid, 48 DeltaNet + 16 GQA layers",
+            "ORGAN": "whole decode graph", "REPRESENTATION": "sealed-3.14, unchanged across arms",
+            "SHAPE": "64, 256 and 1024 new tokens at max_seq_len 2048, one prompt",
+            "MACHINE": M3, "RUNTIME": HK,
+            "KERNEL": "964-dispatch control against the 756-dispatch three-lever graph",
+            "STORAGE_TIER": NONE, "TOPOLOGY": NONE,
+            "WORKLOAD_PHASE": "single-request decode"},
+        evidence_class="Reproduced",
+        source_receipts=["receipts/headless/FUSION_GAIN_IS_LENGTH_INDEPENDENT.json"],
+        citations=["receipts/headless/FUSION_GAIN_IS_LENGTH_INDEPENDENT.json"
+                   "#THE_29_PERCENT_IS_REFUTED",
+                   "receipts/headless/FUSION_GAIN_IS_LENGTH_INDEPENDENT.json"
+                   "#what_this_costs_and_what_survives",
+                   "receipts/headless/FUSION_GAIN_IS_LENGTH_INDEPENDENT.json#claim_boundary"],
+        status="ACTIVE", superseded_by=None, negative_result=True,
+        confidence_basis=(
+            "Reproduced: both floors recur across two sessions and two processes at 0.35-0.38% "
+            "spread. Admitted by COMPLETE SEPARATION of two tight clusters after excluding 12 of "
+            "24 runs as outliers -- an enormous exclusion rate, stated as such, and the reason "
+            "the receipt refuses a rep count as its basis. This law REFUTES the +29.09% its own "
+            "predecessor published, which came from unpaired runs on a contended machine. SHAPE "
+            "is not UNSCOPED: length-independence is established over 64 to 1024 and says "
+            "nothing beyond 1024."),
+    ),
     dict(
         law_id="AKB-DECODE-BYTES-ARE-THE-MLP-NOT-THE-HEAD",
         statement=(
@@ -1155,6 +1298,12 @@ UNEXTRACTED_REASONS = {
 }
 
 UNEXTRACTED: dict[str, str] = {
+    # Newly VISIBLE via akb_registration (S032 §13) rather than via a filename.
+    # Each carries a real result and each is superseded or subsumed by something
+    # already in LAWS, so being visible earns a REASON rather than an entry.
+    "TOKEN_GRAPH_REDUCTION_TIMED.json": "SUPERSEDED_IN_FLIGHT",
+    "CAPABILITY_FUSED_GRAPH_CLEARED.json": "SUPERSEDED_IN_FLIGHT",
+    "HCLI_RESIDENT_SEAL.json": "SUBSUMED",
     # an instrument, not a measured relation
     "ACCELERATOR_QUIESCENCE_INSTRUMENT.json": "PROSE_ONLY",
     # capability, not a measured relation
@@ -1263,6 +1412,7 @@ def build(*, root: Path = REPO) -> dict[str, Any]:
             "otherwise is neither extracted nor refused -- it is invisible. The "
             "excluded names are listed rather than silently dropped."),
         "receipts_yielding_laws": len(cited),
+        "membership_routes": membership_routes(root),
         "none_claims_not_grounded_count": sum(
             len(e.get("none_claims_not_grounded", [])) for e in entries),
         "none_claims_not_grounded_note": (

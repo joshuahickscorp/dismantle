@@ -220,5 +220,15 @@
       ],
       "source": "receipts/headless/ACCELERATOR_RESIDENT_TEMPLATE_ARM.json#receipt"
     }
+  },
+  "akb_registration": {
+    "evidence_domain": "accelerator",
+    "civilization": "I-D_ACCELERATOR",
+    "program": "HAWKING ACCELERATOR (S015/S031/S032)",
+    "machine_scope": "Apple M3 Ultra, INSTANCE",
+    "representation_scope": "sealed-3.14 at 3.1393 complete EBPW",
+    "kernel_scope": "the 628-dispatch fused decode graph",
+    "note": "declared so it is VISIBLE to the tripwire rather than invisible; it is a DECLARATION DERIVED FROM RECEIPTS ALREADY IN THE CORPUS and carries no new measurement, so it is classified SUBSUMED rather than extracted.",
+    "why_declared": "membership must not depend on what this file was named (S032 \u00a713). Before this declaration the receipt was INVISIBLE to the AKB -- neither extracted nor refused -- which reads identically to triaged and found empty."
   }
 }

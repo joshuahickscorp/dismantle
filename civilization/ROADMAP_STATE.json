@@ -339,11 +339,11 @@
   }
  },
  "obligation_status_counts": {
-  "VERIFIED": 49,
+  "VERIFIED": 50,
   "BLOCKED": 1,
   "IN_PROGRESS": 14,
   "NOT_STARTED": 2,
-  "PENDING": 7,
+  "PENDING": 6,
   "OPEN": 4
  },
  "obligations_total": 77,
@@ -351,7 +351,7 @@
  "orphan_map_entries": [],
  "receipt_count": 437,
  "accelerator_receipt_count": 85,
- "last_verified_commit": "5c93405ec",
+ "last_verified_commit": "b2de6cd7f",
  "last_verified_test_count": 522,
  "test_count_is_from_a_run_not_arithmetic": true,
  "test_environment": {

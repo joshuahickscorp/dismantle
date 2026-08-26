@@ -351,17 +351,17 @@
  "obligations_total": 77,
  "unmapped_obligations": [],
  "orphan_map_entries": [],
- "receipt_count": 428,
- "accelerator_receipt_count": 80,
- "last_verified_commit": "7e320896d",
- "last_verified_test_count": 510,
+ "receipt_count": 429,
+ "accelerator_receipt_count": 81,
+ "last_verified_commit": "582040242",
+ "last_verified_test_count": 515,
  "test_count_is_from_a_run_not_arithmetic": true,
  "test_environment": {
   "interpreter": "/usr/local/bin/python3",
   "resolves_to": "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3.12",
   "version_and_mlx": "3.12.6 /Users/scammermike/Library/Python/3.12/lib/python/site-packages/mlx/core.cpython-312-darwin.so",
   "suite": "tools/accelerator",
-  "failed": 0
+  "failed": 1
  },
  "named_gates": {
   "NVIDIA_CUDA_HARDWARE": "P2 differential. No local NVIDIA execution exists.",
@@ -650,6 +650,12 @@
    "receipt": "ACCELERATOR_ORGAN_REPRESENTATION_FLOOR.json",
    "markers": [
     "AMENDED_IN_PLACE",
+    "REFUT"
+   ]
+  },
+  {
+   "receipt": "ACCELERATOR_QUIESCENCE_INSTRUMENT.json",
+   "markers": [
     "REFUT"
    ]
   },
@@ -1209,6 +1215,7 @@
   "receipts": [
    "ACCELERATOR_AKB_CONSTRUCTION.json",
    "ACCELERATOR_LAW_BASE.json",
+   "ACCELERATOR_QUIESCENCE_INSTRUMENT.json",
    "ACCELERATOR_SYNC_DIAGNOSTIC.json",
    "CAPABILITY_ARM_A_THINK.json",
    "CAPABILITY_ARM_D_NOTHINK.json",

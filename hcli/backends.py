@@ -572,6 +572,44 @@ def _type_matches(value: Any, expected: Any) -> bool:
     return actual == name
 
 
+def _edit_distance(a: str, b: str) -> int:
+    """Levenshtein, small strings only -- these are JSON key names."""
+    if a == b:
+        return 0
+    prev = list(range(len(b) + 1))
+    for i, ca in enumerate(a, 1):
+        cur = [i]
+        for j, cb in enumerate(b, 1):
+            cur.append(min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (ca != cb)))
+        prev = cur
+    return prev[-1]
+
+
+def _near_miss_key(required: str, instance: Dict[str, Any],
+                   schema: Dict[str, Any]) -> Optional[str]:
+    """A key the instance HAS that looks like the required one it is missing.
+
+    Only keys the schema does not otherwise know about qualify: a legitimate
+    sibling property is not a misspelling of anything. Threshold scales with the
+    name's length so short keys cannot collide with each other.
+    """
+    known = set(schema.get("properties") or {}) | set(schema.get("required") or [])
+    # At most a third of the name may differ, capped at 3 edits. A flat
+    # distance-1 threshold makes `ix` a misspelling of `id`, which is half the
+    # string -- a guess that would be wrong more often than useful on short keys.
+    limit = min(3, len(required) // 3)
+    if limit < 1:
+        return None
+    best, best_d = None, limit + 1
+    for key in instance:
+        if key in known or not isinstance(key, str):
+            continue
+        d = _edit_distance(required.lower(), key.lower())
+        if d < best_d:
+            best, best_d = key, d
+    return best if best_d <= limit else None
+
+
 def validate_against_schema(
     instance: Any, schema: Dict[str, Any], path: str = "$"
 ) -> Optional[str]:
@@ -594,6 +632,16 @@ def validate_against_schema(
             return f"{path}: expected object, got {_json_type_name(instance)}"
         for key in schema.get("required") or []:
             if key not in instance:
+                # NAME THE NEAR MISS. A weak-structured-output backend usually gets
+                # the shape right and drifts one key -- measured against the sealed
+                # 27B resident, which wrote "consequential" on obligations[0] and
+                # "consequent" on [1], [2] and [3]. "missing required property
+                # 'consequential'" told it what was absent and nothing about what
+                # it had actually written, and six retries never converged.
+                near = _near_miss_key(key, instance, schema)
+                if near:
+                    return (f"{path}: missing required property {key!r} -- you wrote "
+                            f"{near!r}, which is not the schema's name for it")
                 return f"{path}: missing required property {key!r}"
         props = schema.get("properties") or {}
         additional = schema.get("additionalProperties", True)

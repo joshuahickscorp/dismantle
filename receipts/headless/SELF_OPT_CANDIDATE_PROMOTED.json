@@ -4,11 +4,11 @@
   "root_cause": {
     "id": "G021_SCRATCH_IMPORT_SHADOW",
     "unaccounted_overlap_2": "Baseline observed_overlap_ctor=2 with controller_has_h1_wiring=false was not an unaccounted RuntimePool load. observed_overlap on the pool is set only from the constructor argument (runtime.py stores None when the arg is None; the workspace fallback fills overlap_admit_cap, not self.observed_overlap). ctor=2 therefore means the executed Controller passed load_observed_overlap(workspace). That is HEAD's ensure_runtime_pool (controller.py:611). The wiring marker is read from the scratch file the parent just wrote, which had H1 stripped. Two different objects: disk variant vs imported module.",
-    "why_the_imported_module_was_HEAD": "run_controller_admit_probe called _install_fake_pool_patches, which called ensure_hcli_path(), which inserted the invoking worktree (Path(__file__).parents[2]) at sys.path[0]. from hcli.runtime import RuntimePool then bound that tree's package. hcli stayed in sys.modules, so from hcli.controller import Controller ignored the scratch copy even though PYTHONPATH and a later sys.path.insert(0, scratch) named it. The FakeBackend patch therefore attached to whichever RuntimePool the first import found — the worktree when hcli/ was on disk, the scratch copy when hcli/ was a sparse hole.",
-    "why_the_lane_promoted": "The lane worktree had hcli/ absent (sparse hole, materialized only via git archive into scratch). ensure_hcli_path inserted a directory that did not contain hcli/, so import fell through to scratch. Variants ran. Synthetic original (no workspace, no observed_overlap) admitted 1; H1 admitted 2. stored/loaded on the isolate were null because original does not pass workspace and HCLI_WORKSPACE is the empty isolate. That 1→2 is a real delta against a constructor HEAD no longer has.",
+    "why_the_imported_module_was_HEAD": "run_controller_admit_probe called _install_fake_pool_patches, which called ensure_hcli_path(), which inserted the invoking worktree (Path(__file__).parents[2]) at sys.path[0]. from hcli.runtime import RuntimePool then bound that tree's package. hcli stayed in sys.modules, so from hcli.controller import Controller ignored the scratch copy even though PYTHONPATH and a later sys.path.insert(0, scratch) named it. The FakeBackend patch therefore attached to whichever RuntimePool the first import found \u2014 the worktree when hcli/ was on disk, the scratch copy when hcli/ was a sparse hole.",
+    "why_the_lane_promoted": "The lane worktree had hcli/ absent (sparse hole, materialized only via git archive into scratch). ensure_hcli_path inserted a directory that did not contain hcli/, so import fell through to scratch. Variants ran. Synthetic original (no workspace, no observed_overlap) admitted 1; H1 admitted 2. stored/loaded on the isolate were null because original does not pass workspace and HCLI_WORKSPACE is the empty isolate. That 1\u21922 is a real delta against a constructor HEAD no longer has.",
     "why_main_checkout_refused": "The main checkout had hcli/ present. Both arms imported HEAD. HEAD already passes observed_overlap=load_observed_overlap(self.workspace_root) at controller.py:611 and RuntimePool already falls back to load_observed_overlap(self.workspace) at runtime.py:637 when the constructor arg is None. Both arms admitted 2. REFUSED was the correct tree-level verdict, reached for the wrong reason: the baseline arm was not a baseline.",
     "refuted": {
-      "editable_install_meta_path_finder": "Direct test: git archive HEAD hcli to a temp dir, purge sys.modules of hcli*, sys.path.insert(0, scratch), import hcli — resolves to the scratch copy. The finder does not win. The divergence is a sys.path directory that actually contains hcli/, inserted in front of scratch by ensure_hcli_path."
+      "editable_install_meta_path_finder": "Direct test: git archive HEAD hcli to a temp dir, purge sys.modules of hcli*, sys.path.insert(0, scratch), import hcli \u2014 resolves to the scratch copy. The finder does not win. The divergence is a sys.path directory that actually contains hcli/, inserted in front of scratch by ensure_hcli_path."
     },
     "h1_at_head": true,
     "h1_observed_overlap_arg_redundant_with_runtime_fallback": "Once workspace is the Controller workspace, RuntimePool._overlap_admit_cap loads the high-water file itself. Passing observed_overlap=load_observed_overlap(...) changes where the value is named, not whether it is used. HEAD already passes workspace=self.workspace_root, so the extra kwarg is redundant at HEAD.",
@@ -104,7 +104,7 @@
     "pool": "RuntimePool._admit / RuntimePool.complete",
     "backend": "FakeBackend (no live llama-server, no second 27B)",
     "score": "admitted_n with high-water overlap=2 stored on the Controller workspace",
-    "why_not_tok_s": "llama-server on :52484 is not required for this proof. Prior iteration-2 remasurement already refused a tok/s win (24.063 vs 24.010, spread 0.052). Scoring tok/s of FakeBackend would let a NO-OP win on noise — the original defect.",
+    "why_not_tok_s": "llama-server on :52484 is not required for this proof. Prior iteration-2 remasurement already refused a tok/s win (24.063 vs 24.010, spread 0.052). Scoring tok/s of FakeBackend would let a NO-OP win on noise \u2014 the original defect.",
     "does_not_call": [
       "fan_completions",
       "llama_completion as the gated measurement",
@@ -597,7 +597,7 @@
   },
   "decision": "reject",
   "decision_verdict": "REFUSED",
-  "decision_reason": "H1 is already HEAD (h1_equals_head=true). The 1→2 admitted_n delta is against a synthetic pre-H1 constructor that is not the tree; applying H1 is a no-op. RuntimePool already loads the high-water file when workspace is passed (runtime.py:637), so the extra observed_overlap= constructor kwarg is redundant at HEAD. No remaining admitted_n candidate at HEAD (only production RuntimePool() site already has the wiring; requested_n=2 with overlap=2 already admits 2).",
+  "decision_reason": "H1 is already HEAD (h1_equals_head=true). The 1\u21922 admitted_n delta is against a synthetic pre-H1 constructor that is not the tree; applying H1 is a no-op. RuntimePool already loads the high-water file when workspace is passed (runtime.py:637), so the extra observed_overlap= constructor kwarg is redundant at HEAD. No remaining admitted_n candidate at HEAD (only production RuntimePool() site already has the wiring; requested_n=2 with overlap=2 already admits 2).",
   "harness_ok": true,
   "would_refuse_on_failing_gate": true,
   "failing_gate_trial": {
@@ -1087,5 +1087,14 @@
       }
     ]
   },
-  "workspace": "/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/hcli-selfopt2-promo-39o6__iq"
+  "workspace": "/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/hcli-selfopt2-promo-39o6__iq",
+  "bench": {
+    "state": "UNKNOWN",
+    "recorded_at": "2026-08-26T00:00:00Z",
+    "recorded_by": "S032 \u00a73 backfill, tools/accelerator/receipt.py::_check_bench",
+    "machine": "Apple M3 Ultra, 60 GPU cores, 96 GiB (receipts/headless/MACHINE_GENOME.json)",
+    "quiescence": null,
+    "rule": "S032 \u00a73 -- if quiescence is unknown the state is UNKNOWN, not quiet",
+    "provenance": "this receipt was written before quiescence was a benchmark input and recorded none. UNKNOWN is what it measured under, not a claim that the machine was busy"
+  }
 }

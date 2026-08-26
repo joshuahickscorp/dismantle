@@ -490,7 +490,7 @@
       },
       {
         "question": "what cache is STALE?",
-        "answer": "sys.modules + __pycache__ of the mutated probe (G021 analogue: hcli import shadow). pin_probe_import purges and reloads from the scratch file each trial. MACHINE_GENOME llama Q5_K identity is STALE as a live runtime prior — RuntimeGenome records MLX from CONVENTIONAL_CONTROL_SET instead of trusting it.",
+        "answer": "sys.modules + __pycache__ of the mutated probe (G021 analogue: hcli import shadow). pin_probe_import purges and reloads from the scratch file each trial. MACHINE_GENOME llama Q5_K identity is STALE as a live runtime prior \u2014 RuntimeGenome records MLX from CONVENTIONAL_CONTROL_SET instead of trusting it.",
         "evidence": {
           "all_trials_imported_scratch": true,
           "q5k_present": false,
@@ -1073,5 +1073,14 @@
       }
     ]
   },
-  "workspace": "/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-jhiqfl5s"
+  "workspace": "/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/g029-engine-jhiqfl5s",
+  "bench": {
+    "state": "UNKNOWN",
+    "recorded_at": "2026-08-26T00:00:00Z",
+    "recorded_by": "S032 \u00a73 backfill, tools/accelerator/receipt.py::_check_bench",
+    "machine": "Apple M3 Ultra, 60 GPU cores, 96 GiB (receipts/headless/MACHINE_GENOME.json)",
+    "quiescence": null,
+    "rule": "S032 \u00a73 -- if quiescence is unknown the state is UNKNOWN, not quiet",
+    "provenance": "this receipt was written before quiescence was a benchmark input and recorded none. UNKNOWN is what it measured under, not a claim that the machine was busy"
+  }
 }

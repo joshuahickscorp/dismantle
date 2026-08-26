@@ -372,6 +372,53 @@ HK = "hawking-core release-fast Rust/Metal decoder, binary d34044cffae8f320"
 
 LAWS: list[dict[str, Any]] = [
     dict(
+        law_id="AKB-INPUT-OPERAND-REUSE-IS-NOT-THE-MLP-FUSION-WIN",
+        statement=(
+            "Loading the input vector ONCE for two accumulators instead of twice did NOT make a "
+            "dual-accumulator affine_q2 matvec faster at the sealed resident's real MLP shape. "
+            "Two arms, one dispatch each, identical weights read and identical output to "
+            "1.913e-07 against a float64 oracle, differing only in whether the input slice is "
+            "loaded once or twice through two unaliased parameters: the REUSE arm measured 0.3715 "
+            "ms against RELOAD's 0.3646, 1.9% SLOWER, with reload faster in 3 of 3 admitted "
+            "sweeps. An 8-20% advantage for reuse -- the size at which it was proposed as the "
+            "mechanism behind 84% of the gate_up fusion win -- is excluded. MECHANISM: the kernel "
+            "issues 8 shift-and-mask unpacks plus 2 fused multiply-adds per byte pair, and "
+            "against that instruction stream one extra L1 load is free. The regime cross-checks "
+            "-- 149.9 GB/s here against the 161.9 GB/s ACCELERATOR_EXPERT_BATCH measured for a "
+            "native q4 arm it independently called arithmetic-bound on the unpack."),
+        applicability={
+            "MODEL": NONE,
+            "ARCHITECTURE": NONE,
+            "ORGAN": "MLP gate/up projection pair",
+            "REPRESENTATION": "affine_q2 group64 at 2.5 bpw, the artifact's own MLP codec",
+            "SHAPE": "17408 x 5120, the artifact's real MLP shape; one shape only",
+            "MACHINE": M3, "RUNTIME": MLX,
+            "KERNEL": ("synthetic dual-accumulator matvec, threadgroup 128, 2 rows per "
+                       "threadgroup -- NOT the production kernel"),
+            "STORAGE_TIER": NONE, "TOPOLOGY": NONE,
+            "WORKLOAD_PHASE": "single-token decode shape (one input vector)"},
+        evidence_class="Measured",
+        source_receipts=["receipts/headless/ACCELERATOR_MLP_OPERAND_REUSE_REFUTED.json"],
+        citations=[
+            "receipts/headless/ACCELERATOR_MLP_OPERAND_REUSE_REFUTED.json#measured",
+            "receipts/headless/ACCELERATOR_MLP_OPERAND_REUSE_REFUTED.json"
+            "#WHAT_THIS_ELIMINATES_FROM_S032_5_S_THIRTEEN_CANDIDATES",
+            "receipts/headless/ACCELERATOR_MLP_OPERAND_REUSE_REFUTED.json#claim_boundary"],
+        status="ACTIVE", superseded_by=None, negative_result=True,
+        confidence_basis=(
+            "3 sweeps admitted and 0 refused under a pre-registered quiescence gate (max_rss "
+            "0.13-0.15 GiB). The arms carry ~15% IQR, ABOVE the program's 10% gate, so this "
+            "refutes the hypothesis AT THE SIZE IT WAS PROPOSED and resolves no small effect in "
+            "either direction -- it rests on sign consistency 3/3 plus a median in the wrong "
+            "direction, not on a clean gate. The control's defence against common-subexpression "
+            "elimination is ARCHITECTURAL (two unaliased buffer parameters) and unverified "
+            "against generated assembly, because xcrun metal is ABSENT on this machine. Says "
+            "NOTHING about the production 17.35 us/dispatch measurement -- it refutes one "
+            "proposed mechanism for it. The arm that would settle what IS left -- prologue, "
+            "reduction and epilogue together -- is BUILT, CORRECT and UNTIMED, blocked on a "
+            "quiesced window."),
+    ),
+    dict(
         law_id="AKB-964-DISPATCHES-PER-DECODE-TOKEN",
         statement=(
             "The sealed-3.14 resident's production decode graph runs 964 dispatches per token, "

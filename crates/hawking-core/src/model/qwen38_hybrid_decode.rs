@@ -26,7 +26,7 @@ use super::qwen_complete_binary::{
 };
 use crate::tokenizer::Tokenizer;
 use crate::{Error, Result};
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -2073,10 +2073,16 @@ mod device {
         workspace: Qwen38HybridWorkspace,
         max_seq_len: usize,
         position: usize,
-        /// Distinct `dispatch_threads` labels harvested when
-        /// `HAWKING_TRACE_DISPATCH=1`. `None` on the default path so `step`
-        /// allocates nothing extra.
-        seen_kernels: Option<HashSet<String>>,
+        /// `dispatch_threads` labels harvested when
+        /// `HAWKING_TRACE_DISPATCH=1`, WITH THEIR COUNTS. `None` on the
+        /// default path so `step` allocates nothing extra.
+        ///
+        /// A set here would have been enough for the fusion sentinels that
+        /// first needed this, and it is NOT enough to answer how many
+        /// dispatches a token costs -- the runtime pushes one label per
+        /// dispatch and collapsing them to a set destroys exactly the
+        /// multiplicity the question is about.
+        seen_kernels: Option<BTreeMap<String, u64>>,
         pub fallbacks: u32,
         /// Default matches the shipped bring-up binding. Diagnostic lanes may
         /// retarget to another shipped kernel; they must not invent one.
@@ -2152,7 +2158,7 @@ mod device {
                 max_seq_len,
                 position: 0,
                 seen_kernels: if qwen38_trace_dispatch_enabled() {
-                    Some(HashSet::new())
+                    Some(BTreeMap::new())
                 } else {
                     None
                 },
@@ -2218,7 +2224,9 @@ mod device {
                 return;
             };
             if let Some(names) = names {
-                seen.extend(names);
+                for name in names {
+                    *seen.entry(name).or_insert(0) += 1;
+                }
             }
         }
 
@@ -2231,6 +2239,23 @@ mod device {
         /// Also unions `MetalContext::drain_trace` so a
         /// `HAWKING_TCB_TRACE=cpu` run still reports through the
         /// `Arc<DispatchTrace>` that survives `weights.context.clone()`.
+        /// Per-kernel dispatch COUNTS since the last drain, from the TCB
+        /// structural label list -- one entry pushed per `dispatch_threads`.
+        ///
+        /// Does NOT drain, and does NOT union `MetalContext::drain_trace`:
+        /// that path is a timing sampler and unioning it would double-count.
+        /// Read this BEFORE `drain_dispatched_kernel_names`, which clears the
+        /// same store. Empty when `HAWKING_TRACE_DISPATCH` is not `1`.
+        pub fn dispatched_kernel_histogram(&self) -> Vec<(String, u64)> {
+            let Some(seen) = self.seen_kernels.as_ref() else {
+                return Vec::new();
+            };
+            let mut rows: Vec<(String, u64)> =
+                seen.iter().map(|(k, v)| (k.clone(), *v)).collect();
+            rows.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+            rows
+        }
+
         pub fn drain_dispatched_kernel_names(&mut self) -> Vec<String> {
             let mut names: Vec<String> = self
                 .context
@@ -2240,7 +2265,7 @@ mod device {
                 .filter(|name| name != "other" && !name.starts_with("tcb_"))
                 .collect();
             if let Some(seen) = self.seen_kernels.as_mut() {
-                names.extend(seen.drain());
+                names.extend(std::mem::take(seen).into_keys());
             }
             names.sort();
             names.dedup();

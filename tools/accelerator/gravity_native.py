@@ -144,6 +144,29 @@ UNPACK_BODIES = {
         float w1 = (float)((int)(byte >> 4)   - %(BOUND)d) * s;
         acc += w0 * x[c0 + k] + w1 * x[c0 + k + 1u];
 """,
+    # FOUR INDEPENDENT ACCUMULATORS. The byte body chains every FMA through ONE
+    # `acc`, so the inner loop is a SERIAL DEPENDENCY and each add waits on the
+    # previous one's latency no matter how much issue width is free. At 307.7 G
+    # elem/s against a lane-issue rate two orders higher, latency rather than
+    # throughput is the standing candidate, and four accumulators break the
+    # chain four ways while changing NOTHING ELSE -- same loads, same unpack,
+    # same element count. Summed at the end, so the arithmetic differs from the
+    # serial form only in ASSOCIATION ORDER and the f64 oracle tolerance covers
+    # it (measured 2.0e-07, identical to the serial arm).
+    "ilp4": """
+        uchar b0 = packed[pbase + (c0 + k) / 2u];
+        uchar b1 = packed[pbase + (c0 + k + 2u) / 2u];
+        uchar b2 = packed[pbase + (c0 + k + 4u) / 2u];
+        uchar b3 = packed[pbase + (c0 + k + 6u) / 2u];
+        a0 += ((float)((int)(b0 & 0x0F) - %(BOUND)d) * s) * x[c0 + k]
+            + ((float)((int)(b0 >> 4)   - %(BOUND)d) * s) * x[c0 + k + 1u];
+        a1 += ((float)((int)(b1 & 0x0F) - %(BOUND)d) * s) * x[c0 + k + 2u]
+            + ((float)((int)(b1 >> 4)   - %(BOUND)d) * s) * x[c0 + k + 3u];
+        a2 += ((float)((int)(b2 & 0x0F) - %(BOUND)d) * s) * x[c0 + k + 4u]
+            + ((float)((int)(b2 >> 4)   - %(BOUND)d) * s) * x[c0 + k + 5u];
+        a3 += ((float)((int)(b3 & 0x0F) - %(BOUND)d) * s) * x[c0 + k + 6u]
+            + ((float)((int)(b3 >> 4)   - %(BOUND)d) * s) * x[c0 + k + 7u];
+""",
     "lut": """
         uchar byte = packed[pbase + (c0 + k) / 2u];
         float2 d = lut[byte];
@@ -173,6 +196,47 @@ threadgroup_barrier(mem_flags::mem_threadgroup);
 """
 
 
+# WHERE x IS READ FROM. The per-element floor is one x read and one FMA per
+# weight, and the FMA is 2.9% of this chip's lane-issue rate, so the x READ is
+# the candidate. Today every lane reads x from DEVICE memory and x is re-read
+# once per row -- 17408 x 5120 = 89.1M reads, 356 MB of x traffic for a 47 MB
+# weight matvec. x is 20,480 bytes and Metal allows 32,768 of threadgroup
+# storage, so it FITS: stage it once per threadgroup and every later read is
+# threadgroup-local. That is OPERAND REUSE, the mechanism register blocking
+# already measured worth 2.48x for GEMM, and the amortisation factor is exactly
+# ROWS PER THREADGROUP = tg / tpr.
+X_STAGE_PROLOGUE = """
+threadgroup float xs[%(COLS)d];
+for (uint i = thread_position_in_threadgroup.x; i < %(COLS)du; i += %(TG)du) {
+    xs[i] = x[i];
+}
+threadgroup_barrier(mem_flags::mem_threadgroup);
+"""
+
+
+def source_stage_x(rows: int, cols: int, unpack: str = "byte",
+                   tpr: int = 64, tg: int = 128) -> str:
+    """The same kernel with x staged in threadgroup memory.
+
+    REFUSES when x plus the reduction scratch would exceed Metal's 32,768-byte
+    threadgroup allocation, because the alternative is a compile failure twenty
+    lines inside MLX's generated header with no mention of the cause -- the
+    footgun ACCELERATOR_TOPK_SAMPLING already met from a different direction.
+    """
+    need = cols * 4 + tg * 4
+    if need > 32768:
+        raise ValueError(
+            f"threadgroup allocation {need} bytes exceeds Metal's 32768: "
+            f"x needs {cols * 4} and the reduction scratch {tg * 4}")
+    src = source_unpack(rows, cols, unpack, tpr, tg)
+    body = X_STAGE_PROLOGUE % {"COLS": cols, "TG": tg}
+    # Read from the staged copy everywhere the kernel touched device x. The
+    # replacement is on the INDEXED FORM so the staging prologue's own `x[i]`
+    # is written first and is not rewritten into a read of itself.
+    src = src.replace("x[c0 + k", "xs[c0 + k")
+    return body + src
+
+
 def source_unpack(rows: int, cols: int, unpack: str = "byte",
                   tpr: int = 64, tg: int = 128) -> str:
     """The tpr kernel with a chosen unpack. Same geometry, same reduction, same
@@ -184,10 +248,21 @@ def source_unpack(rows: int, cols: int, unpack: str = "byte",
     multiple of 4; source_unpack REFUSES otherwise rather than emitting a kernel
     that reads correctly on most shapes and faults on the rest.
     """
-    if unpack not in ("byte", "lut", "word"):
+    if unpack not in ("byte", "lut", "word", "ilp4"):
         raise ValueError(f"unknown unpack {unpack!r}")
     d = {"PACKED_COLS": cols // 2, "GROUPS": cols // GROUP, "GROUP": GROUP,
          "BOUND": BOUND, "TPR": tpr, "TG": tg}
+    if unpack == "ilp4":
+        src = source_tpr(rows, cols, tpr, tg)
+        src = src.replace(UNPACK_BODIES["byte"] % d, UNPACK_BODIES["ilp4"] % d)
+        src = src.replace("k += 2", "k += 8")
+        # Declare the four accumulators beside `acc` and fold them in before the
+        # reduction, so the cross-lane half of the kernel is untouched.
+        src = src.replace("float acc = 0.0f;",
+                          "float acc = 0.0f;\nfloat a0 = 0.0f, a1 = 0.0f, a2 = 0.0f, a3 = 0.0f;")
+        src = src.replace("threadgroup float part[",
+                          "acc += (a0 + a1) + (a2 + a3);\nthreadgroup float part[")
+        return src
     if unpack == "word":
         if (cols // 2) % 4:
             raise ValueError(

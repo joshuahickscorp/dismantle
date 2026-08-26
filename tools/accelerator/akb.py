@@ -1233,6 +1233,56 @@ LAWS: list[dict[str, Any]] = [
             "NOT refute production's 17.35 us, which is a bytes-plus-dispatch number."),
     ),
     dict(
+        law_id="AKB-SIX-LEVERS-ELIMINATED-AND-THE-FLOOR-MECHANISM-IS-UNRESOLVED",
+        statement=(
+            "THE PER-ELEMENT MATVEC FLOOR SURVIVES OPERAND REUSE AND INSTRUCTION-LEVEL "
+            "PARALLELISM, THE TWO STRONGEST KERNEL-SIDE CANDIDATES, AND ITS MECHANISM IS "
+            "STILL NOT NAMED. Staging x in threadgroup memory -- 20,480 bytes inside "
+            "Metal's 32,768 allowance, the mechanism register blocking measured worth 2.48x "
+            "for GEMM -- LOSES to reading x from device, 0.870x at 16 rows per stage "
+            "and 0.499x at 2, "
+            "reproduced in direction and magnitude across two runs, so the x reads were "
+            "already cache-served and staging adds a pass, a barrier and threadgroup "
+            "pressure while removing nothing. Four independent accumulators, breaking the "
+            "serial dependency chain with the SAME loads, decode and element count, are "
+            "INDISTINGUISHABLE at 0.987x on medians and 1.054x on minima, 8 of 14 rounds -- "
+            "a coin flip. SIX LEVERS ARE NOW ELIMINATED BY MEASUREMENT: weight bytes, load "
+            "instructions, decode arithmetic, the weight reads entirely, operand reuse and "
+            "ILP. NO SEVENTH MECHANISM IS OFFERED -- this program's scorecard is five "
+            "diagnoses written down and two wrong, and the one structural feature no arm "
+            "varied, the serial cross-lane reduction tail, is recorded as a NAMED UNTESTED "
+            "CANDIDATE rather than an explanation."),
+        applicability={
+            "MODEL": NONE, "ARCHITECTURE": NONE,
+            "ORGAN": "MLP-shaped GEMV at 89.1M weights, a shape borrowed from the resident",
+            "REPRESENTATION": "ws_rtn_q4_g64, identical in every arm",
+            "SHAPE": "rows=17408 cols=5120, group 64, tpr64 at tg 128 and 1024",
+            "MACHINE": M3, "RUNTIME": "MLX mx.fast.metal_kernel JIT, 14 round-robin rounds x 20 reps",
+            "KERNEL": "native matvec: device x, staged x at two amortisations, four accumulators",
+            "STORAGE_TIER": NONE, "TOPOLOGY": NONE,
+            "WORKLOAD_PHASE": "single-token decode-shaped GEMV, CONTENDED machine"},
+        evidence_class="Measured",
+        source_receipts=["receipts/headless/ACCELERATOR_TWO_MORE_LEVERS_DIE.json"],
+        citations=["receipts/headless/ACCELERATOR_TWO_MORE_LEVERS_DIE.json#P1_OPERAND_REUSE_IS_REFUTED_AND_NOT_NARROWLY",
+                   "receipts/headless/ACCELERATOR_TWO_MORE_LEVERS_DIE.json#P3_INSTRUCTION_LATENCY_IS_INDISTINGUISHABLE",
+                   "receipts/headless/ACCELERATOR_TWO_MORE_LEVERS_DIE.json#THE_MECHANISM_IS_UNRESOLVED_AND_I_AM_NOT_REACHING_FOR_A_SIXTH_STORY",
+                   "receipts/headless/ACCELERATOR_TWO_MORE_LEVERS_DIE.json#claim_boundary"],
+        status="ACTIVE", superseded_by=None, negative_result=True,
+        confidence_basis=(
+            "BOTH pre-registered predictions land on the wrong side, which is what carries "
+            "it. The four-arm run is CONTAMINATED -- arm A shows 272.6% round-spread -- so "
+            "medians are unreliable and minima and an ordinal rounds-won count are reported "
+            "beside every one; what survives contamination is that the staging arms "
+            "reproduce their direction and magnitude across two independent runs, and that "
+            "no staged or ILP arm wins a majority of rounds. The ILP verdict rests on ONE "
+            "run and its two estimators disagree in direction, which is why it is called "
+            "indistinguishable rather than a small loss. Correctness precedes every timing "
+            "at 1.8-2.0e-07 against a shared float64 oracle and the staging barrier control "
+            "fired 8 of 8. ONE shape, ONE machine, INSTANCE; MODEL and ARCHITECTURE are "
+            "NONE because the weights are synthetic at a borrowed shape. No shipped kernel "
+            "changed and neither variant earns a place."),
+    ),
+    dict(
         law_id="AKB-THE-MATVEC-FLOOR-IS-THE-ELEMENT-NOT-THE-BYTE",
         statement=(
             "A REPRESENTATION-NATIVE MATVEC AT THE RESIDENT'S MLP SHAPE IS BOUND BY ITS "

@@ -16,7 +16,7 @@ import gravity_native as G  # noqa: E402
 mx = pytest.importorskip("mlx.core")
 
 ROWS, COLS, TPR, TG = 256, 4096, 64, 128
-VARIANTS = ("byte", "word", "lut")
+VARIANTS = ("byte", "word", "lut", "ilp4")
 
 
 @pytest.fixture(scope="module")
@@ -46,11 +46,45 @@ def test_every_unpack_computes_the_same_answer(u, case):
     assert np.linalg.norm(_run(u, packed, scale, x) - oracle) / np.linalg.norm(oracle) < 1e-5
 
 
+def test_x_STAGING_computes_the_same_answer_and_REFUSES_an_oversized_allocation(case):
+    """x staged in threadgroup memory is the operand-reuse arm. The refusal is
+    the load-bearing half: Metal allows 32,768 bytes and exceeding it fails
+    twenty lines inside MLX's generated header with no mention of the cause."""
+    packed, scale, x, oracle = case
+    src = G.source_stage_x(ROWS, COLS, "byte", TPR, TG)
+    assert f"threadgroup float xs[{COLS}]" in src
+    assert " x[c0 + k" not in src, "a device read of x survived the rewrite"
+    k = mx.fast.metal_kernel(
+        name="tuv_stage", input_names=["packed", "scales", "x"], output_names=["out"],
+        source=src, ensure_row_contiguous=True)
+    (o,) = k(inputs=[mx.array(packed), mx.array(scale), mx.array(x)],
+             grid=(ROWS * TPR, 1, 1), threadgroup=(TG, 1, 1),
+             output_shapes=[(ROWS,)], output_dtypes=[mx.float32])
+    mx.eval(o)
+    got = np.array(o, dtype=np.float64)
+    assert np.linalg.norm(got - oracle) / np.linalg.norm(oracle) < 1e-5
+    with pytest.raises(ValueError, match="exceeds Metal"):
+        G.source_stage_x(ROWS, 8192, "byte", TPR, 1024)
+
+
+def test_ilp4_breaks_the_chain_WITHOUT_changing_the_element_count():
+    """Four accumulators must change ASSOCIATION ORDER and nothing else. If the
+    step or the loads moved too, a timing difference could not be attributed."""
+    serial = G.source_unpack(ROWS, COLS, "byte", TPR, TG)
+    ilp = G.source_unpack(ROWS, COLS, "ilp4", TPR, TG)
+    assert "float a0 = 0.0f" in ilp and "float a0" not in serial
+    assert "acc += (a0 + a1) + (a2 + a3);" in ilp
+    assert ilp.index("acc += (a0 + a1)") < ilp.index("threadgroup float part[")
+    # 4 bytes per iteration at 4x the step is the SAME bytes and elements.
+    assert "k += 8" in ilp and ilp.count("packed[pbase") == 4
+    assert "k += 2" in serial and serial.count("packed[pbase") == 1
+
+
 def test_the_three_are_ACTUALLY_DIFFERENT_KERNELS():
     """Without this a variant that fell through to the byte body would time at
     exactly 1.000x and be reported as 'no difference' rather than 'not built'."""
     src = {u: G.source_unpack(ROWS, COLS, u, TPR, TG) for u in VARIANTS}
-    assert len(set(src.values())) == 3
+    assert len(set(src.values())) == len(VARIANTS)
     assert "device uint*" in src["word"] and "device uint*" not in src["byte"]
     assert "threadgroup float2 lut" in src["lut"] and "lut[" not in src["byte"]
     assert "k += 8" in src["word"] and "k += 2" in src["byte"]

@@ -941,7 +941,11 @@ def default_caller(endpoint: str, model: Optional[str] = None) -> Callable[..., 
     :8080 or the resident 27B from ``~/models/serve-abliterated.sh``. No server
     up is a BLOCKED envelope naming the connection error, never a fake ACCEPT.
     """
-    from .backends import _post_json, completion_from_openai
+    from .backends import (
+        _post_json,
+        completion_from_openai,
+        make_structured_output_contract,
+    )
 
     def caller(prompt: str, *, schema: Optional[dict] = None) -> Any:
         payload: Dict[str, Any] = {
@@ -969,6 +973,35 @@ def default_caller(endpoint: str, model: Optional[str] = None) -> Callable[..., 
                 "type": "json_schema",
                 "json_schema": {"name": "delegation", "schema": schema},
             }
+
+        def _complete(body, timeout=None):
+            raw = _post_json(endpoint, body, float(timeout or 180.0), "delegate")
+            return completion_from_openai(raw, [])
+
+        # STRUCTURED OUTPUT GOES THROUGH THE EXISTING CONTRACT, not a bare post.
+        # mlx_lm.server has NO response_format and NO grammar (backends.py says so
+        # in its capability table), so a raw post just sends a field the server
+        # ignores and the model answers in prose. Measured: the resident 27B
+        # returned a markdown essay with LaTeX, `json.loads` raised, and the
+        # planner reported the misleading `PlanError: planner returned no
+        # obligations`. make_structured_output_contract is the machinery this repo
+        # already has for exactly that backend: strip the field, inject the schema
+        # instruction, VALIDATE every reply, retry a bounded number of times with
+        # the rejection reason appended, then raise StructuredOutputExhausted --
+        # never a silent pass.
+        if schema:
+            contract = make_structured_output_contract(None, schema)
+            if contract is not None:
+                completion = contract.enforce(_complete, payload, 180.0)
+                parsed = (completion.raw or {}).get("_structured") \
+                    if isinstance(completion.raw, dict) else None
+                if parsed is not None:
+                    return parsed
+                try:
+                    return json.loads(completion.text or "")
+                except json.JSONDecodeError:
+                    return completion.text or ""
+
         data = _post_json(endpoint, payload, 180.0, "delegate")
         completion = completion_from_openai(data, [])
         text = completion.text or ""

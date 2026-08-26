@@ -32,7 +32,14 @@ UNSUPPORTED = {
     "__ldg": "read-only cache intrinsics",
     "cooperative_groups": "cooperative groups",
     "printf": "device printf",
-    "double": "fp64",
+    # NOT A FRONTEND GAP AND NOT A FEATURE THIS SUBSET DECLINED TO BUILD.
+    # Metal REFUSES the type outright -- the compiler says
+    # "'double' is not supported in Metal" -- so this is a HARDWARE refusal in
+    # the same class as the FFT one, and the workaround has a MEASURED price:
+    # a double-double chain reaches ~42.6 effective mantissa bits against f32's
+    # 18.6 on the same 4096-term dot product and f64's 53
+    # (receipts/headless/ACCELERATOR_FP64_IS_A_HARDWARE_REFUSAL.json).
+    "double": "fp64 (Metal has no double; see the fp64 receipt for the cost)",
     "__syncwarp": "warp synchronization",
     "__shfl": "warp shuffle",
 }

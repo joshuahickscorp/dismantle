@@ -1442,6 +1442,9 @@ UNEXTRACTED_REASONS = {
 }
 
 UNEXTRACTED: dict[str, str] = {
+    # A hardware refusal and a precision measurement of its workaround; the
+    # AKB's axes are about kernel performance and this is about a TYPE.
+    "ACCELERATOR_FP64_IS_A_HARDWARE_REFUSAL.json": "CAPABILITY_NOT_LAW",
     # A NEGATIVE capability probe with a named instrument gate; nothing timed.
     "ACCELERATOR_OCCUPANCY_PROBE.json": "CAPABILITY_NOT_LAW",
     # An IR capability and a legality rule; the physical law it rests on

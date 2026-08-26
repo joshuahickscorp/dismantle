@@ -1346,6 +1346,60 @@ LAWS: list[dict[str, Any]] = [
             "changed and neither variant earns a place."),
     ),
     dict(
+        law_id="AKB-LANE-ORDER-COSTS",
+        statement=(
+            "WHICH LANE TOUCHES WHICH ADDRESS COSTS ABOUT 8% AT FULL ELEMENT COUNT, AT AN IDENTICAL "
+            "ADDRESS SET. Permuting lane -> (lane*37) % 64, a bijection that leaves the row's "
+            "footprint, the threadgroup's footprint, the iteration count, the element count and the "
+            "multiset of per-lane iteration counts UNCHANGED, measures 1.0802x and 1.0793x across two "
+            "runs -- AGREEING TO 0.08% -- and loses 27 OF 28 round-robin rounds. This is the FIRST "
+            "NAMED COMPONENT of the footprint mechanism ACCELERATOR_THE_ENTRY_COST_IS_FOOTPRINT left "
+            "unnamed: the simdgroup's 32 lanes touch the SAME addresses at the same instant either "
+            "way, so it is not reach, not capacity and not cold lines -- the memory system cares which "
+            "lane asks. IT DOES NOT HAPPEN AT THIN WORK: 0.9911 and 1.0202 in opposite directions, 5 "
+            "and 7 of 14 rounds, so the effect scales with concurrent requests per lane, which is a "
+            "CANDIDATE and not a claim. THE MAGNITUDES COINCIDE WITH THE FOOTPRINT EFFECT (1.082x and "
+            "1.098x) AND THAT IS NOT AN IDENTITY CLAIM, because confining the footprint moves the "
+            "address set AND the ordering together and these arms do not separate them. AND THE BAND "
+            "WAS TOO WIDE TO SEE IT: 1.08x sits INSIDE the pre-registered +-10% indistinguishable "
+            "band, so the pre-registered verdict is CONFIRMED while the effect is real -- the ORDINAL "
+            "rounds-won count and the cross-run agreement are what carry it, never the ratio."),
+        applicability={
+            "MODEL": NONE, "ARCHITECTURE": NONE,
+            "ORGAN": "MLP-shaped GEMV at 89.1M weights, a shape borrowed from the resident",
+            "REPRESENTATION": "ws_rtn_q4_g64",
+            "SHAPE": "rows=17408 cols=5120, group 64, tpr64 at tg128; full and 2-element-per-group work",
+            "MACHINE": M3,
+            "RUNTIME": "MLX mx.fast.metal_kernel JIT, 14 round-robin rounds x 20 reps, two runs",
+            "KERNEL": "native matvec with lanes permuted over groups by an odd multiplier",
+            "STORAGE_TIER": NONE, "TOPOLOGY": NONE,
+            "WORKLOAD_PHASE": "a SINGLY SUBMITTED decode-shaped GEMV, CONTENDED machine"},
+        evidence_class="Measured",
+        source_receipts=["receipts/headless/ACCELERATOR_LANE_ORDER_COSTS.json"],
+        citations=[
+            "receipts/headless/ACCELERATOR_LANE_ORDER_COSTS.json#P1_LANE_ORDER_COSTS_AT_FULL_ELEMENT_COUNT",
+            "receipts/headless/ACCELERATOR_LANE_ORDER_COSTS.json#WHAT_THIS_NAMES_THAT_WAS_UNNAMED",
+            "receipts/headless/ACCELERATOR_LANE_ORDER_COSTS.json#P2_AND_IT_DOES_NOT_HAPPEN_AT_THIN_WORK",
+            "receipts/headless/ACCELERATOR_LANE_ORDER_COSTS.json#WHAT_THIS_PROBE_STRUCTURALLY_CANNOT_SEPARATE_SAID_IN_ADVANCE"],
+        status="ACTIVE", superseded_by=None, negative_result=False,
+        confidence_basis=(
+            "THE CONTROL IS THE IDENTITY PERMUTATION, NOT THE SHIPPED KERNEL: _lane1 carries the same "
+            "multiply and modulo as _lane37, so the comparison prices ORDER and not two extra "
+            "instructions, and that arithmetic is separately measured free (0.99x / 1.0398x, mixed in "
+            "direction). THE ANTI-VACUITY CONTROL IS DIFFERENT IN KIND from every other probe in this "
+            "family: those were WRONG BY CONSTRUCTION and had to be, while a bijection MUST BE "
+            "CORRECT, so its replacement is a bijection verified over all 64 lanes rather than "
+            "inferred from coprimality, an assertion that the sources differ in EXACTLY ONE LINE, and "
+            "a refusal of even multipliers which would skip and double-visit groups while looking "
+            "plausible. lane37 reads rel_err 1.952e-07 against lane1's 2.021e-07 -- different, which "
+            "is itself evidence the permutation moved which lane accumulates what. Three mutations "
+            "watched failing, including collapsing the permutation to the identity, which would tie "
+            "and read as a finding. BENCH_STATE CONTENDED at 36-261% round-spread; minima are the "
+            "estimator and the ordinal count carries the verdict. ONE permutation, ONE shape, ONE "
+            "machine, INSTANCE. The reordered kernel is CORRECT and therefore a legitimate candidate, "
+            "and it is SLOWER, so nothing is adopted and no shipped kernel changed."),
+    ),
+    dict(
         law_id="AKB-THE-ENTRY-COST-IS-FOOTPRINT",
         statement=(
             "THE LOOP-ENTRY COST OF AN ISOLATED q4_g64 MATVEC IS THE ADDRESS FOOTPRINT, NOT THE LOOP. "

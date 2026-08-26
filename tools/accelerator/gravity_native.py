@@ -487,7 +487,8 @@ def source_operand_probe(rows: int, cols: int, probe: str,
     CONSTRUCTION -- these are probes, never candidates, and a caller who ships one
     ships a wrong answer. See OPERAND_PROBES for what each removes and why."""
     if (probe not in OPERAND_PROBES and not probe.startswith("thin")
-            and probe != "redonly" and "_local" not in probe):
+            and probe != "redonly" and "_local" not in probe
+            and "_lane" not in probe):
         raise ValueError(
             f"unknown operand probe {probe!r}; have {sorted(OPERAND_PROBES) + ['thin']}")
     d = {"PACKED_COLS": cols // 2, "GROUPS": cols // GROUP, "GROUP": GROUP,
@@ -511,6 +512,25 @@ def source_operand_probe(rows: int, cols: int, probe: str,
         return (head + f"acc = (float)(row + lane) + (float)scales[row * {d['GROUPS']}u] * 0.0f"
                        " + (float)packed[row] * 0.0f + x[0] * 0.0f;\n"
                 + REDUCE_TAILS["serial"] % d)
+    if "_lane" in probe:
+        # WHICH LANE TOUCHES WHICH GROUP, at IDENTICAL footprint and identical
+        # work. The multiplier is coprime with TPR so lane -> (lane*M) % TPR is a
+        # BIJECTION: every group is still visited exactly once per row, the row's
+        # address footprint is unchanged, and the multiset of per-lane iteration
+        # counts is unchanged -- only the ASSIGNMENT moves. ACCELERATOR_THE_ENTRY
+        # _COST_IS_FOOTPRINT measured that footprint costs and could not say
+        # whether the limit is per LANE or per THREADGROUP; this is that variable.
+        stem, _, m = probe.partition("_lane")
+        mult = int(m)
+        if mult % 2 == 0 or not 1 <= mult < tpr:
+            raise ValueError(
+                f"lane needs an ODD multiplier in [1, {tpr}) so lane -> (lane*M) % {tpr} "
+                f"is a bijection and no group is visited twice or skipped; got {mult}")
+        base = source_operand_probe(rows, cols, stem, tpr, tg) if stem else source_tpr(rows, cols, tpr, tg)
+        frag = "for (uint g = lane;"
+        if frag not in base:
+            raise AssertionError(f"{frag!r} is not in the source to reorder")
+        return base.replace(frag, f"for (uint g = (lane * {mult}u) %% {tpr}u;" % ())
     if "_local" in probe:
         # FOOTPRINT AT FIXED WORK. The loop, the iteration count, the element
         # count, the scale loads and the reduction are all UNCHANGED; only the

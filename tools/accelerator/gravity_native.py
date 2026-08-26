@@ -530,12 +530,24 @@ def source_operand_probe(rows: int, cols: int, probe: str,
         # rotation offset ZERO, so it pays identical arithmetic in the shipped
         # order and rot-vs-rot0 is the ORDER alone.
         off = probe[3:]
-        if off not in ("0", "lane"):
-            raise ValueError(f"rot probe must be rot0 (control) or rotlane; got {probe!r}")
+        if off.startswith("blk"):
+            # THE GRANULARITY LADDER. Lanes inside a block of k share one rotation
+            # offset, so their groups stay CONSECUTIVE and iteration 0's request is
+            # 32/k contiguous runs -- a continuous sweep of the run count at an
+            # address set that is still invariant lane by lane. rotblk64 is the
+            # CONTROL: lane/64 is 0 for every lane, so it computes the SHIPPED
+            # ORDER while paying the identical division and modulo.
+            k = int(off[3:])
+            if k < 1 or k & (k - 1):
+                raise ValueError(f"rotblk needs a POWER OF TWO block so lanes divide "
+                                 f"evenly into blocks and the run count is 32/k; got {k}")
+            off = f"(lane / {k}u)"
+        elif off not in ("0", "lane"):
+            raise ValueError(f"rot probe must be rot0 (control), rotlane or rotblkK; got {probe!r}")
         frag = "for (uint g = lane; g < %(GROUPS)du; g += %(TPR)du) {" % d
         if frag not in src:
             raise AssertionError(f"{frag!r} is not in the source to reorder")
-        shift = "0u" if off == "0" else "lane"
+        shift = "0u" if off == "0" else off if off.startswith("(") else "lane"
         return src.replace(frag,
             f"uint _n = (%(GROUPS)du - lane + %(TPR)du - 1u) / %(TPR)du;\n"
             f"for (uint _i = 0u; _i < _n; _i++) {{\n"

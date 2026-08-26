@@ -1365,8 +1365,15 @@ LAWS: list[dict[str, Any]] = [
             "not one of those levers changed what a simdgroup asks for at an instant while the "
             "shipped kernel already issues ONE contiguous request per iteration. THE CAUSE IS NOT "
             "NAMED: coalescer width, transaction count and queue occupancy are not separated here. "
-            "NOTHING IS ADOPTED -- both arms are correct and the rotated one LOSES AT BOTH SHAPES "
-            "MEASURED, so the shipped order already sits at the best point on this axis."),
+            "AMENDED BY ACCELERATOR_THE_PENALTY_IS_A_STEP: THE WIDTH IS WRONG AND THE COST IS A "
+            "STEP. A block rotation at k=32 leaves EVERY SIMDGROUP ITERATION one contiguous run "
+            "and still costs 1.2434x and 1.2341x at 14 of 14 rounds twice, so the separating "
+            "width is the THREADGROUP, whose request splits from one run to two there; and a "
+            "six-rung granularity ladder is NOT MONOTONE, with k=4 reproducibly worst, so the "
+            "penalty is a STEP at the first departure from a single contiguous threadgroup "
+            "request and not a gradient in the run count. NOTHING IS ADOPTED -- both arms are "
+            "correct and the rotated one LOSES AT BOTH SHAPES MEASURED, so the shipped order "
+            "already sits at the best point on this axis."),
         evidence_domain="accelerator", civilization="I-D_ACCELERATOR",
         machine_scope="Apple M3 Ultra, INSTANCE",
         representation_scope="ws_rtn_q4_g64",
@@ -1382,11 +1389,14 @@ LAWS: list[dict[str, Any]] = [
             "STORAGE_TIER": NONE, "TOPOLOGY": NONE,
             "WORKLOAD_PHASE": "a SINGLY SUBMITTED decode-shaped GEMV, CONTENDED machine"},
         evidence_class="Measured",
-        source_receipts=["receipts/headless/ACCELERATOR_THE_INSTANT_IS_THE_COST.json"],
+        source_receipts=["receipts/headless/ACCELERATOR_THE_INSTANT_IS_THE_COST.json",
+                         "receipts/headless/ACCELERATOR_THE_PENALTY_IS_A_STEP.json"],
         citations=[
             "receipts/headless/ACCELERATOR_THE_INSTANT_IS_THE_COST.json#P1_CONFIRMED_PAST_THE_TOP_OF_MY_OWN_BAND",
             "receipts/headless/ACCELERATOR_THE_INSTANT_IS_THE_COST.json#P2_CONFIRMED_AND_IT_IS_MONOTONE",
-            "receipts/headless/ACCELERATOR_THE_INSTANT_IS_THE_COST.json#WHAT_THIS_MEANS_FOR_THE_EIGHT_DEAD_LEVERS"],
+            "receipts/headless/ACCELERATOR_THE_INSTANT_IS_THE_COST.json#WHAT_THIS_MEANS_FOR_THE_EIGHT_DEAD_LEVERS",
+            "receipts/headless/ACCELERATOR_THE_PENALTY_IS_A_STEP.json#P2_IS_THE_DISCRIMINATOR_AND_IT_IS_REFUTED_PAST_MY_FALSIFIER",
+            "receipts/headless/ACCELERATOR_THE_PENALTY_IS_A_STEP.json#WHAT_THE_SIX_RUNGS_SAY_TOGETHER"],
         status="ACTIVE", superseded_by=None, negative_result=False,
         confidence_basis=(
             "THE ANTI-VACUITY CONTROL IS DIFFERENT IN KIND A THIRD TIME: a reordering permutes the "

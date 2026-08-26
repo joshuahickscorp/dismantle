@@ -24,6 +24,11 @@ STABLE_RELIABILITY_MIN_REPS = 200
 LARGE_MARGIN_RATIO = 5.0
 
 
+# Fewer than this many samples at or above p95 and the figure is an order
+# statistic rather than a percentile estimate. 40 reps gives 3; 200 gives 11.
+TAIL_SAMPLES_FOR_A_STABLE_P95 = 5
+
+
 def time_arm(fn: Callable[[], Any], *, reps: int = 40, warmup: int = 10) -> dict[str, Any]:
     import time
     for _ in range(warmup):
@@ -35,6 +40,16 @@ def time_arm(fn: Callable[[], Any], *, reps: int = 40, warmup: int = 10) -> dict
         s.append(time.perf_counter() - t0)
     s.sort()
     q1, med, q3 = s[len(s) // 4], s[len(s) // 2], s[(3 * len(s)) // 4]
+    # S032 §16: latency is first class, and a median alone hides the tail a caller
+    # actually waits on. p95 is reported with the SAMPLE COUNT BEHIND IT, because
+    # at the default 40 reps only THREE samples sit at or above p95 -- order
+    # statistics, not an estimate of the 95th percentile. A tail figure whose
+    # resolution is invisible is how a three-sample tail gets quoted as a
+    # distribution.
+    def _pct(p: float) -> float:
+        return s[min(len(s) - 1, int(round(p * (len(s) - 1))))]
+    p95, p99 = _pct(0.95), _pct(0.99)
+    tail_samples = max(1, len(s) - int(round(0.95 * (len(s) - 1))))
     # AN ARM FASTER THAN THE CLOCK IS NOT AN ARM WITH ZERO SPREAD. perf_counter can
     # return the same value twice for a cheap enough callable, and dividing by that
     # sample raised ZeroDivisionError in roughly one run of four -- an intermittent
@@ -46,6 +61,13 @@ def time_arm(fn: Callable[[], Any], *, reps: int = 40, warmup: int = 10) -> dict
     rng = float("inf") if below_resolution else (s[-1] - s[0]) / s[0] * 100
     stable = reps >= STABLE_RELIABILITY_MIN_REPS
     return {"median_s": med, "q1_s": q1, "q3_s": q3,
+            "p50_s": med, "p95_s": p95, "p99_s": p99,
+            "p95_over_p50": None if med <= 0 else round(p95 / med, 4),
+            "samples_at_or_above_p95": tail_samples,
+            "tail_resolution": (
+                "p95 here is one sample of %d; it is an ORDER STATISTIC, not an "
+                "estimate of the 95th percentile" % len(s))
+                if tail_samples < TAIL_SAMPLES_FOR_A_STABLE_P95 else None,
             "below_timer_resolution": below_resolution,
             "iqr_spread_pct": round(iqr, 2),
             "full_range_pct": round(rng, 2),

@@ -871,3 +871,89 @@ def test_the_round_trip_check_is_not_replaced_by_the_resident_one():
     with pytest.raises(humf.HumfError, match="integrity check FAILED"):
         h.execute("W42", h.plan_acquire("W42", "MOCK_EXTERNAL_VRAM"),
                   "MOCK_EXTERNAL_VRAM")
+
+
+# --------------------------------------------------------------------------
+# THE MODE FIVE RECEIPTS LISTED AS STILL NOT MODELLED: a provider that corrupts
+# CONSISTENTLY IN BOTH DIRECTIONS, so every digest agrees with itself.
+#
+# PREDICTION WRITTEN BEFORE THE RUN: round-trip PASSES (it compares x against x),
+# the source seal PASSES (the source was never written), the resident digest on the
+# COMPUTE path CATCHES it, and the resident digest on the READBACK path does not.
+# --------------------------------------------------------------------------
+
+def _fabric_with(provider_cls):
+    from humf import Materialization as M
+    mp = provider_cls(capacity_bytes=1 << 30, bandwidth_gb_s=5.0, latency_s=1e-4)
+    doms = {"APPLE_UM": Domain("APPLE_UM", 96 << 30, 589.73, physical=True),
+            mp.domain.name: mp.domain}
+    h = Humf(doms, providers={mp.domain.name: mp})
+    o = HumfObject("W42", "tensor", N, "f32", recompute_cost_s=0.05)
+    o.place(M("APPLE_UM", "dense_f32", "row_major", NB, State.CLEAN, payload=PAYLOAD))
+    h.register(o)
+    return h, o, mp
+
+
+def test_ANTI_VACUITY_the_corruption_provider_really_corrupts_what_a_kernel_reads():
+    """If the stored bytes were fine this whole block would be testing nothing."""
+    from humf import ConsistentCorruptionProvider
+    mp = ConsistentCorruptionProvider(capacity_bytes=1 << 20, bandwidth_gb_s=5.0,
+                                      latency_s=0.0)
+    mp.allocate(64)
+    mp.copy_in("k", b"abcd")
+    assert mp.copy_out("k") == b"abcd", "the ROUND TRIP must agree or nothing is hidden"
+    assert mp.read_for_compute("k") != b"abcd", "a kernel must see different bytes"
+
+
+def test_the_ROUND_TRIP_check_CANNOT_SEE_consistent_corruption():
+    """It compares the source with what came back, and both are x."""
+    from humf import ConsistentCorruptionProvider
+    h, o, mp = _fabric_with(ConsistentCorruptionProvider)
+    src = o.materializations["APPLE_UM"]
+    expect = humf._digest(src.payload)
+    mp.copy_in(o.identity, src.payload)
+    assert humf._digest(mp.copy_out(o.identity)) == expect, \
+        "the per-transfer check would have refused this, and the point is that it does not"
+
+
+def test_the_SOURCE_SEAL_cannot_see_it_either():
+    """The seal protects the SOURCE, and the source was never written."""
+    from humf import ConsistentCorruptionProvider
+    h, o, mp = _fabric_with(ConsistentCorruptionProvider)
+    assert humf._identity_digest(o.materializations["APPLE_UM"].payload) == o.content_digest
+
+
+def test_the_RESIDENT_DIGEST_ON_THE_COMPUTE_PATH_CATCHES_IT():
+    """This is the cell that closes the gap: the device digests what a kernel reads."""
+    from humf import ConsistentCorruptionProvider
+    h, o, mp = _fabric_with(ConsistentCorruptionProvider)
+    plan = h.plan_acquire(o.identity, mp.domain.name)
+    with pytest.raises(HumfError) as e:
+        h.execute(o.identity, plan, mp.domain.name)
+    assert "RESIDENT integrity check FAILED" in str(e.value)
+    assert mp.domain.name not in o.valid_copies()
+
+
+def test_the_READBACK_DIGEST_PATH_LEAVES_THE_GAP_OPEN_AND_SAYS_SO():
+    """The same corruption on a device that digests its read-back path is accepted,
+    marked resident_verified, and still misread by a kernel. The fabric CANNOT test
+    the digest path -- it records the claim, and that record is the whole defence."""
+    from humf import ReadbackConsistentCorruptionProvider as P
+    h, o, mp = _fabric_with(P)
+    plan = h.plan_acquire(o.identity, mp.domain.name)
+    h.execute(o.identity, plan, mp.domain.name)
+    dst = o.materializations[mp.domain.name]
+    assert dst.state is State.CLEAN
+    assert dst.resident_verified is True
+    assert dst.resident_digest_path == "readback", \
+        "the claim must travel with the verdict or nobody can tell these two apart"
+    assert mp.read_for_compute(o.identity) != o.materializations["APPLE_UM"].payload
+
+
+def test_an_HONEST_provider_still_transfers_under_the_same_path():
+    """A check that only ever refuses is as useless as one that only ever accepts."""
+    h, o, mp = _fabric_with(MockExternalMemoryProvider)
+    plan = h.plan_acquire(o.identity, mp.domain.name)
+    h.execute(o.identity, plan, mp.domain.name)
+    assert o.materializations[mp.domain.name].state is State.CLEAN
+    assert o.materializations[mp.domain.name].resident_digest_path == "compute"

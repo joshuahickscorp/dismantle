@@ -1,0 +1,118 @@
+{
+  "receipt": "ACCELERATOR_HUMF_CONSISTENT_CORRUPTION",
+  "date": "2026-08-26",
+  "obligation": "G050 FRONT H -- the mode five consecutive receipts listed as STILL NOT MODELLED",
+  "akb_registration": {
+    "evidence_domain": "accelerator",
+    "civilization": "I-D_ACCELERATOR",
+    "program": "HUMF/HMF trust model (S015 \u00a732, \u00a714; S016 \u00a79)",
+    "machine_scope": "NONE -- mock provider, no hardware property is claimed",
+    "representation_scope": "NONE -- no representation is measured",
+    "kernel_scope": "NONE -- no kernel is executed",
+    "why_declared": "membership must not depend on what this file was named (S032 \u00a713)"
+  },
+  "question": "five HUMF receipts in a row closed with the same sentence -- STILL NOT MODELLED, a provider that corrupts CONSISTENTLY IN BOTH DIRECTIONS so every digest agrees with itself. A gap carried five times without being built is a gap nobody has actually looked at.",
+  "WHAT_THE_MODE_IS_AND_WHY_IT_IS_NOT_CONTRIVED": {
+    "shape": "the corruption is an INVOLUTION, XOR with a fixed mask, applied on copy_in and undone on copy_out",
+    "trace": [
+      "copy_in(x)          stores x ^ m",
+      "copy_out()          returns (x ^ m) ^ m == x   -- THE ROUND TRIP AGREES",
+      "read_for_compute()  returns x ^ m              -- what a KERNEL sees"
+    ],
+    "why_this_is_a_real_bridge_failure": "a stuck address line, a byte-swapped DMA descriptor or an endianness mismatch in a driver is exactly this: a deterministic transform applied symmetrically. The UN-DOING on read-back is not exotic, it is what makes the fault invisible to every check that goes back over the same transport."
+  },
+  "THE_FOUR_CHECKS_AND_THE_PREDICTION_WRITTEN_BEFORE_THE_RUN": {
+    "prediction_recorded_first": true,
+    "cells": [
+      {
+        "check": "per-transfer round-trip crc32 (source vs copy_out)",
+        "predicted": "PASSES",
+        "measured": "PASSES",
+        "why": "it compares x against x; there is nothing for it to see"
+      },
+      {
+        "check": "source identity seal, blake2b at registration",
+        "predicted": "PASSES",
+        "measured": "PASSES",
+        "why": "it protects the SOURCE and the source was never written"
+      },
+      {
+        "check": "resident digest through the COMPUTE path",
+        "predicted": "CAUGHT",
+        "measured": "CAUGHT",
+        "why": "the device digests x^m and the fabric wants the digest of x; the transfer RAISES and the destination stays out of valid_copies()"
+      },
+      {
+        "check": "resident digest through the READBACK path",
+        "predicted": "PASSES",
+        "measured": "PASSES",
+        "why": "the digest un-does the corruption exactly as copy_out does, so it reports the source's own digest for memory a kernel would misread"
+      }
+    ],
+    "verdict": "all four confirmed. The gap carried for five receipts is NOT a hole in the fabric -- it is caught by the check the resident-digest block built, and it is open exactly where that block already said its strength lives."
+  },
+  "SO_THE_GAP_NARROWS_RATHER_THAN_CLOSING": {
+    "what_closed": "consistent bidirectional corruption is now MODELLED, executable, and caught by a named check rather than listed as unhandled",
+    "what_stays_open_and_why_the_fabric_cannot_close_it": "the catching check reads the device's OWN digest of its OWN memory, and whether that digest reads the compute path or the read-back path is a property of the DEVICE. ReadbackConsistentCorruptionProvider is INDISTINGUISHABLE from an honest one through the API: it offers digest_resident, it answers, its digest matches the source, resident_verified comes back True. The fabric records resident_digest_path as a CLAIM and does not trust it, and that record is the entire defence.",
+    "the_shape_of_the_remaining_risk": "not an unconditional hole any more but a QUESTION SOMEBODY CAN ASK A VENDOR -- does your device digest kernel read the same memory path your compute kernels read -- which is a different and far better position than a gap with no name."
+  },
+  "tests": {
+    "file": "tools/accelerator/test_humf.py",
+    "total": 65,
+    "new": 6,
+    "anti_vacuity_first": "a test asserts the provider's ROUND TRIP agrees AND its compute path does not, because if the stored bytes were fine the whole block would test nothing",
+    "the_honest_control": "an unmodified provider still transfers CLEAN through the same path with resident_digest_path 'compute' -- a check that only ever refuses is as useless as one that only ever accepts",
+    "mutations_watched_failing": [
+      "copy_out no longer undoes the corruption -> the mode becomes visible to the round-trip check and the readback test fails",
+      "the resident digest is never taken -> the compute-path catch disappears and the honest control loses its recorded path",
+      "the readback control digests the compute path instead -> it starts catching the corruption and stops being a control"
+    ]
+  },
+  "claim_boundary": [
+    "MOCK PROVIDER ONLY. No external GPU exists, every transport number in HUMF is a knob, and S015 \u00a721 forbids citing one as physical evidence. What is proven is the STATE MACHINE and THE SCOPE OF EACH CHECK, not any hardware property.",
+    "the corruption is INJECTED, not observed. Nothing here says how likely a symmetric transport fault is, only what each check does when one occurs.",
+    "ONE corruption shape -- a byte-wise involution. A transform that is NOT an involution would break the round trip and be caught trivially; one that is stateful or position-dependent is untested.",
+    "STILL NOT MODELLED and unchanged: an adversary who can observe the sealed identity or recompute a crc32, and TRUST DECAY beyond the existing identity_recheck_age -- the resident check runs ON TRANSFER, so a scrub afterwards still needs audit().",
+    "nothing timed; no kernel changed; no performance claim moves."
+  ],
+  "next": "S016 \u00a79 extends the eight coherence states to NINE COPY STATES and FIVE OWNERSHIP STATES under the HUMF->HMF canonicalization, and that extension is not built",
+  "identities": {
+    "experiment": {
+      "class": "ACCEL-STATE",
+      "knowledge_level": "INSTANCE",
+      "question": "which of the fabric's four integrity checks can see a provider that corrupts consistently in both directions?"
+    },
+    "machine": {
+      "soc": "Apple M3 Ultra",
+      "gpu_cores": 60,
+      "ram_gib": 96,
+      "receipt": "receipts/headless/MACHINE_GENOME.json",
+      "note": "recorded for provenance; no machine property is measured"
+    },
+    "device": {
+      "status": "ABSENT",
+      "reason": "mock provider; no external memory domain exists on this machine"
+    },
+    "model": {
+      "status": "ABSENT",
+      "reason": "no model is executed"
+    },
+    "representation": {
+      "status": "ABSENT",
+      "reason": "no representation is measured"
+    },
+    "kernel": {
+      "status": "ABSENT",
+      "reason": "no kernel is executed"
+    },
+    "runtime": {
+      "tool": "tools/accelerator/humf.py",
+      "git_head": "a142639854dc4dbdbfee098267e21d0574dda170"
+    },
+    "transport": {
+      "status": "ABSENT",
+      "reason": "SIMULATED. bandwidth_gb_s is a knob and S015 \u00a721 forbids citing a simulated transport number as physical evidence"
+    }
+  },
+  "bench": null
+}

@@ -1442,6 +1442,8 @@ UNEXTRACTED_REASONS = {
 }
 
 UNEXTRACTED: dict[str, str] = {
+    # A trust-model result over a MOCK fabric; no physical relation is measured.
+    "ACCELERATOR_HUMF_CONSISTENT_CORRUPTION.json": "MOCK_NOT_PHYSICAL",
     # An integration result and six defect fixes; no measured physical relation.
     "HCLI_RESIDENT_END_TO_END.json": "CAPABILITY_NOT_LAW",
     # A coverage census over receipt SCHEMA, not a physical relation.

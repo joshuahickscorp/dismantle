@@ -1197,3 +1197,50 @@ class ReadbackDigestProvider(MockExternalMemoryProvider):
         self._maybe_hang()
         self._require_present()
         return _identity_digest(super().copy_out(key))
+
+
+class ConsistentCorruptionProvider(MockExternalMemoryProvider):
+    """The mode FIVE consecutive receipts listed as STILL NOT MODELLED: a provider
+    that corrupts CONSISTENTLY IN BOTH DIRECTIONS, so every digest agrees with itself.
+
+    The corruption is an INVOLUTION -- XOR with a fixed mask -- applied on the way in
+    and undone on the way out. That is not a contrived shape: it is what a bridge with
+    a stuck address line, a byte-swapped DMA descriptor or an endianness mismatch in
+    the driver actually does, and the un-doing on read-back is what makes it invisible.
+
+      copy_in(x)          stores x ^ m
+      copy_out()          returns (x ^ m) ^ m == x        <- the round trip AGREES
+      read_for_compute()  returns x ^ m                   <- what a KERNEL sees
+
+    So the per-transfer round-trip check compares x against x and passes, and the
+    source identity seal is untouched because the source was never written. The only
+    check that can see it is one that reads the COMPUTE path -- which is exactly the
+    resident digest, and exactly why ReadbackDigestProvider is its control.
+    """
+    MASK = 0x5A
+
+    def _flip(self, b: bytes) -> bytes:
+        return bytes(v ^ self.MASK for v in b)
+
+    def copy_in(self, key: str, payload: bytes) -> None:
+        super().copy_in(key, self._flip(payload))
+
+    def copy_out(self, key: str) -> bytes:
+        return self._flip(super().copy_out(key))
+
+
+class ReadbackConsistentCorruptionProvider(ConsistentCorruptionProvider):
+    """The same corruption, on a device whose digest reads the READ-BACK path.
+
+    Its digest un-does the corruption exactly as copy_out does, so it reports the
+    source's own digest for memory a kernel would misread. This is the cell that
+    stays open, and it stays open for a reason the fabric CANNOT test: the digest
+    path is a property of the device, and this provider is indistinguishable from an
+    honest one through the API.
+    """
+    resident_digest_path = "readback"
+
+    def digest_resident(self, key: str) -> str:
+        self._maybe_hang()
+        self._require_present()
+        return _identity_digest(self.copy_out(key))

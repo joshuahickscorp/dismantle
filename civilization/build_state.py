@@ -12,15 +12,16 @@ GOAL = pathlib.Path.home() / ".claude/ultragoal/hawking-odyssey-maxx-ascension/G
 # Judgement, stated in the open. An obligation lands where its EVIDENCE lands,
 # not where its title sounds like it belongs.
 ERA_MAP = {
-    "I-A_AGENTOS_HCLI":   ["G013", "G014", "G015", "G030", "G031"],
+    "I-A_AGENTOS_HCLI":   ["G013", "G014", "G015", "G030", "G031", "G063"],
     "I-B_DOCTOR":         ["G016", "G017", "G018", "G019", "G020", "G021", "G035"],
     "I-C_GRAVITY_NOETIC": ["G001", "G002", "G003", "G004", "G005", "G006", "G022",
                            "G023", "G032", "G033", "G034", "G036", "G037", "G038",
-                           "G040", "G042"],
-    "I-D_ACCELERATOR":    ["G043", "G044", "G045", "G046", "G047", "G049", "G055", "G058"],
+                           "G040", "G042", "G059"],
+    "I-D_ACCELERATOR":    ["G043", "G044", "G045", "G046", "G047", "G049", "G055", "G058",
+                           "G060", "G062"],
     "I-E_ODYSSEY_I":      ["G007", "G008", "G009", "G010", "G011", "G012", "G024",
                            "G025", "G026", "G027", "G028", "G029", "G039", "G041",
-                           "G048", "G056"],
+                           "G048", "G056", "G061"],
     "II-E_GREEN_MACHINE": ["G057"],
     "IV-A_FUSION":        ["G053", "G054"],
     "IV-B_HMF_HGVAS":     ["G050"],
@@ -91,6 +92,62 @@ EVIDENCE = {
 }
 
 
+
+NAMED_GATES = {
+    "NVIDIA_CUDA_HARDWARE": "P2 differential. No local NVIDIA execution exists.",
+    "FAST_LOCAL_STORAGE": ("real weights for G048. Falcon-H1-7B is 15.17 GB and the "
+                           "contended USB bus measured under ~0.5 MB/s against "
+                           "96-131 MiB/s quiet."),
+    "SUDO_POWERMETRICS": "thermal_envelope; sudo not available to this process.",
+    "SUDO_PURGE_OR_96GiB_WORKING_SET": ("a repeatable cold read. Evicting the page "
+        "cache needs either `sudo purge` -- sudo is not available to this process "
+        "-- or a working set larger than the 96 GiB of unified memory. Neither is "
+        "available, so every cold number measured here is warm-cache contaminated "
+        "and must be labelled so."),
+    "XCRUN_METAL": "AOT metallib and generated-code inspection. Toolchain absent.",
+}
+
+# Which civilizations each gate actually holds up. A gate that blocks nothing is
+# trivia; a gate that blocks a civilization belongs on the critical path.
+GATE_BLOCKS = {
+    "NVIDIA_CUDA_HARDWARE": ["I-D_ACCELERATOR"],
+    "FAST_LOCAL_STORAGE": ["I-E_ODYSSEY_I", "I-C_GRAVITY_NOETIC"],
+    "SUDO_POWERMETRICS": ["II-E_GREEN_MACHINE"],
+    "SUDO_PURGE_OR_96GiB_WORKING_SET": ["I-D_ACCELERATOR"],
+    "XCRUN_METAL": ["I-D_ACCELERATOR"],
+}
+
+# Judgement, stated in the open. Ranked by expected roadmap information gain x
+# dependency unlock x probability of a decisive result, divided by wall time and
+# resource conflict -- NOT by which is easiest.
+NEXT_DECISIVE_GATES = [
+    {"rank": 1, "civilization": "I-C_GRAVITY_NOETIC",
+     "gate": "physical EBPW accounting that cannot be faked accidentally",
+     "why": ("two headline metrics -- active_ebpw_per_token and dram_bytes_per_token -- "
+             "are still DESIGN constants published under physical/runtime names, and the "
+             "audit flags them itself. Zero I/O, so it does not contend with the fill."),
+     "resource": "CPU + local SSD clone; no bus contention"},
+    {"rank": 2, "civilization": "I-D_ACCELERATOR",
+     "gate": "measured laws converted to AKB entries with exact applicability domains",
+     "why": ("the laws exist across 77 receipts as prose. As typed entries they become "
+             "what model N+1 does not rediscover. This is the compounding step and it "
+             "is pure read."),
+     "resource": "CPU only"},
+    {"rank": 3, "civilization": "I-E_ODYSSEY_I",
+     "gate": "every recorded specimen backed by a live build, not a literal",
+     "why": ("execution_coverage() returns a recorded table whose only live guard "
+             "rebuilds Falcon-H1 -- the one specimen that was never broken. The VL row, "
+             "which the repair was written for, rests on nothing live."),
+     "resource": "GPU via mlx; <10 KB read off the lake"},
+    {"rank": 4, "civilization": "I-E_ODYSSEY_I",
+     "gate": "real weights execute (G048)",
+     "why": ("highest information remaining, but RESOURCE-CONFLICTED: needs a quiesced "
+             "window or a 15.17 GB stage competing with the operator-prioritised fill. "
+             "Scheduled only when the fill yields or no higher-value download remains."),
+     "resource": "USB bus -- CONTENDED, currently owned by the fill"},
+]
+
+
 def obligations():
     """Parse GOAL.md. Status comes from the file, never from this script."""
     text = GOAL.read_text()
@@ -101,6 +158,147 @@ def obligations():
         if m.group(1) in out:
             out[m.group(1)]["status"] = m.group(2)
     return out
+
+
+
+# --- LIVE STATE ------------------------------------------------------------------
+# Everything below is MEASURED at build time. The directive's census requires
+# finding "running work not represented in state", and a literal here would be the
+# exact fiction that requirement exists to catch.
+
+def _ps():
+    return subprocess.run(["ps", "-axo", "command"], capture_output=True,
+                          text=True).stdout.splitlines()
+
+
+AGENT_QUIET_SECS = 300
+
+
+def running_lanes():
+    """Delegation lanes that are ACTUALLY alive, across BOTH executors.
+
+    The first version of this function knew only about Grok, and it reported
+    `running_lanes: 0` while three Claude workflow agents were mid-edit in this
+    repo -- precisely the "running work not represented in state" defect the field
+    exists to catch, committed by the detector itself. A census blind to the
+    executor actually in use is not a census.
+
+    The two executors are NOT equally observable, and the difference is recorded
+    per lane rather than smoothed over:
+
+      grok    DEFINITIVE. A live `grok` process holding the lane's task.md. Never
+              the status file: swgrok documents in its own source that `grok-run
+              status` carries no pid and reports long-dead lanes as running, and
+              on 2026-08-25 four lanes killed by an HTTP 402 all still read "done".
+
+      claude  HEURISTIC. A workflow agent transcript touched within
+              AGENT_QUIET_SECS. There is no pid to check, and an agent can be
+              legitimately quiet while one long tool call runs, so this can report
+              a finished agent as alive. Labelled, not hidden.
+    """
+    out = []
+
+    tasks = pathlib.Path.home() / ".claude-grok/tasks"
+    if tasks.is_dir():
+        cmds = _ps()
+        for d in sorted(tasks.iterdir()):
+            tm = d / "task.md"
+            if tm.is_file() and any(c.startswith("grok ") and str(tm) in c for c in cmds):
+                out.append({"lane": d.name, "executor": "grok", "alive": True,
+                            "task_file": str(tm), "detection": "definitive",
+                            "judged_by": "live grok process holding task.md, not a status file"})
+
+    import time
+    now = time.time()
+    root = pathlib.Path.home() / ".claude/projects"
+    if root.is_dir():
+        for wf in sorted(root.glob("*/*/subagents/workflows/wf_*")):
+            for a in sorted(wf.glob("agent-*.jsonl")):
+                age = now - a.stat().st_mtime
+                if age < AGENT_QUIET_SECS:
+                    out.append({"lane": f"{wf.name}/{a.stem}", "executor": "claude",
+                                "alive": True, "transcript": str(a),
+                                "detection": "heuristic",
+                                "judged_by": f"transcript touched {age:.0f}s ago "
+                                             f"(< {AGENT_QUIET_SECS}s); no pid exists to check, "
+                                             "so a finished agent can read as alive"})
+    return out
+
+
+def acquisition_workers():
+    """ModelLake fill workers, counted from live processes."""
+    cmds = _ps()
+    hf = [c for c in cmds if "/hf download " in c or c.startswith("hf download")]
+    ml = [c for c in cmds if "modellake.py acquire" in c]
+    filler = [c for c in cmds if "lake_filler.py" in c]
+    def repo_of(c):
+        m = re.search(r"--repo (\S+)", c) or re.search(r"hf download (\S+)", c)
+        return m.group(1) if m else "?"
+    return {"hf_download_workers": len(hf), "modellake_acquire": len(ml),
+            "lake_filler": len(filler),
+            "repos": sorted({repo_of(c) for c in hf + ml} - {"?"}),
+            "counted_from": "ps, not a status file"}
+
+
+def unresolved_retractions():
+    """Receipts that record a retraction, refutation or in-place amendment.
+
+    This corpus supersedes itself: a later receipt can overturn an earlier one. A
+    ledger that does not surface that serves stale laws as current.
+    """
+    rec = HAWKING / "receipts/headless"
+    marks = ("RETRACT", "REFUT", "AMENDED_IN_PLACE", "DID_NOT_REPRODUCE",
+             "was a confound", "superseded")
+    out = []
+    for f in sorted(rec.glob("*.json")):
+        try:
+            txt = f.read_text()
+        except Exception:
+            continue
+        hit = sorted({m for m in marks if m.lower() in txt.lower()})
+        if hit:
+            out.append({"receipt": f.name, "markers": hit})
+    return out
+
+
+def laws_since(checkpoint):
+    """Receipts newer than the named checkpoint, by mtime.
+
+    Heuristic and labelled as such: mtime is not provenance. It answers 'what
+    landed since' well enough to seed the next checkpoint, and nothing stronger.
+    """
+    cp = HAWKING / "civilization" / checkpoint
+    if not cp.is_file():
+        return {"basis": "checkpoint absent", "receipts": []}
+    since = cp.stat().st_mtime
+    rec = HAWKING / "receipts/headless"
+    new = sorted(f.name for f in rec.glob("*.json") if f.stat().st_mtime > since)
+    return {"basis": "mtime newer than " + checkpoint,
+            "heuristic": True,
+            "why_heuristic": "mtime is not provenance; an untouched-but-amended receipt is missed",
+            "receipts": new}
+
+
+# Judgement, stated in the open -- like ERA_MAP. Dependencies are what one
+# civilization needs FROM another before its gate can close.
+DEPENDENCIES = {
+    "I-C_GRAVITY_NOETIC": [
+        "I-D_ACCELERATOR: a representation is not condemned until its native "
+        "execution is competent, so a Gravity floor needs an Accelerator kernel",
+        "I-E_ODYSSEY_I: real weights on fast local storage (FAST_LOCAL_STORAGE gate)",
+    ],
+    "I-D_ACCELERATOR": [
+        "I-E_ODYSSEY_I: Accelerator work must be driven by real specimen "
+        "bottlenecks, not synthetic ones",
+        "EXTERNAL: NVIDIA hardware for any CUDA differential (no local execution exists)",
+    ],
+    "I-E_ODYSSEY_I": [
+        "I-B_DOCTOR: prescription before packing, or the school runs blind experiments",
+        "RESOURCE: the USB bus, currently owned by the ModelLake fill",
+    ],
+    "I-B_DOCTOR": ["I-E_ODYSSEY_I: more than one architecture, or the library is Qwen folklore"],
+    "I-A_AGENTOS_HCLI": [],
+}
 
 
 def build():
@@ -152,6 +350,20 @@ def build():
         capture_output=True, text=True, cwd=HAWKING).stdout
     tm = re.search(r"(\d+) passed", tests)
 
+    lanes = running_lanes()
+    acq = acquisition_workers()
+    retractions = unresolved_retractions()
+    stage = pathlib.Path.home() / "noetic/stage"
+    stage_bytes = sum(f.stat().st_size for f in stage.rglob("*") if f.is_file()) if stage.is_dir() else 0
+    stage_note = f"~/noetic/stage holds {stage_bytes/1e6:.1f} MB across {len(list(stage.rglob('*'))) if stage.is_dir() else 0} entries"
+
+    # A blocker is only real if it is QUANTIFIED. "no runtime" and "storage slow"
+    # are not blockers, they are shrugs -- the directive says so in section XII.
+    blockers = []
+    for gate, why in NAMED_GATES.items():
+        blockers.append({"gate": gate, "quantified_as": why,
+                         "blocks": GATE_BLOCKS.get(gate, [])})
+
     return {
         "roadmap_version": "HAWKING_CIVILIZATION_ASCENSION_V1",
         "frozen_plan": "HAWKING_SUPER_ROADMAP_FREEZE_V1_2026-08-25.md",
@@ -174,20 +386,43 @@ def build():
             cwd=HAWKING).stdout.strip(),
         "last_verified_test_count": int(tm.group(1)) if tm else None,
         "test_count_is_from_a_run_not_arithmetic": True,
-        "named_gates": {
-            "NVIDIA_CUDA_HARDWARE": "P2 differential. No local NVIDIA execution exists.",
-            "FAST_LOCAL_STORAGE": ("real weights for G048. Falcon-H1-7B is 15.17 GB and the "
-                                   "contended USB bus measured under ~0.5 MB/s against "
-                                   "96-131 MiB/s quiet."),
-            "SUDO_POWERMETRICS": "thermal_envelope; sudo not available to this process.",
-            "SUDO_PURGE_OR_96GiB_WORKING_SET": "a repeatable cold read.",
-            "XCRUN_METAL": "AOT metallib and generated-code inspection. Toolchain absent.",
-        },
+        "named_gates": NAMED_GATES,
+        # DERIVED, not typed. This field carried "4 hf download workers" as a literal
+        # and drifted the moment the fill changed shape -- a ledger that lets a human
+        # retype a measurement is a ledger that lies with confidence.
         "resource_ownership": {
-            "USB_BUS_corpdrive": "ModelLake fill (4 hf download workers) -- OPERATOR PRIORITISED",
+            "USB_BUS_corpdrive": {
+                "owner": "ModelLake fill -- OPERATOR PRIORITISED",
+                "workers": acq,
+                "consequence": ("frontier science that needs this bus must wait for a "
+                                "quiesced window; zero-I/O science is unaffected"),
+            },
             "GPU": "free for zero-I/O accelerator science",
-            "TIER1_SSD": "~/noetic/stage holds 202 MB: 64 Qwen3 expert tensors + Falcon config",
+            "TIER1_SSD": stage_note,
         },
+
+        # --- directive VIII required fields ---------------------------------------
+        "civilization_progress": {
+            "value_pct": 1.0,
+            "heuristic": True,
+            "basis": ("the frozen plan's civilizational coordinate against the COMPLETE "
+                      "Hawking system as denominator -- five eras, twenty-five "
+                      "civilizations. It is NOT a ledger-completion statistic and must "
+                      "never be recomputed from obligation or file counts."),
+            "source": "HAWKING_SUPER_ROADMAP_FREEZE_V1_2026-08-25.md",
+        },
+        "completion_evidence": {
+            name: {"categories_met": sum(EVIDENCE[name][c] for c in EVIDENCE_CATEGORIES),
+                   "of": len(EVIDENCE_CATEGORIES),
+                   "note": EVIDENCE[name]["note"]}
+            for name in ERA_I
+        },
+        "blockers": blockers,
+        "dependencies": DEPENDENCIES,
+        "running_lanes": lanes,
+        "next_decisive_gates": NEXT_DECISIVE_GATES,
+        "unresolved_retractions": retractions,
+        "laws_since_last_checkpoint": laws_since("ERA_I_CHECKPOINT_001.json"),
     }
 
 

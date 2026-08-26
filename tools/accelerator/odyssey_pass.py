@@ -12,6 +12,7 @@ is undefined and the pass says so; it only becomes meaningful from the second.
 """
 from __future__ import annotations
 
+import copy
 import json
 import time
 from pathlib import Path
@@ -217,10 +218,18 @@ def execution_coverage() -> dict[str, Any]:
     """What was MEASURED, kept separate from what merely imports.
 
     Reported as recorded evidence rather than re-run on every call, because
-    constructing four models costs seconds; test_odyssey_pass rebuilds ONE of them
-    for real so this table cannot become a string nobody checks.
+    constructing four models costs seconds. THE HONESTY GUARD IS THAT EVERY ROW IS
+    REBUILT: test_odyssey_pass parameterises over SPECIMEN_STAGE and rebuilds ALL
+    FOUR from their real staged configs, then asserts this table equals what the
+    live run produced. Until 2026-08-25 the guard rebuilt exactly ONE row --
+    Falcon-H1, the only specimen that was never broken -- so the row the repair
+    exists for (Qwen3-VL) rested on a literal with nothing live behind it.
     """
     return {
+        # named, not implied: which rows a live rebuild covers. The assertion that
+        # this set equals the recorded table's keys lives in the test, so the two
+        # cannot drift apart silently.
+        "live_rebuild_covers": sorted(SPECIMEN_STAGE),
         "measured": {k: {"builds": b, "forward": f}
                      for k, (b, f) in MEASURED_2026_08_25.items()},
         "built_and_ran": sum(1 for b, f in MEASURED_2026_08_25.values() if b and f),
@@ -272,11 +281,57 @@ INHERITED_INTO_TEXT_CONFIG = ("tie_word_embeddings",)
 def prepare_config(cfg: dict[str, Any]) -> dict[str, Any]:
     """Copy down ONLY the named top-level keys a nested ModelArgs requires and the
     nested config does not carry. Never overwrites a key the nested config sets."""
-    import copy
     c = copy.deepcopy(cfg)
     tc = c.get("text_config")
     if isinstance(tc, dict):
         for k in INHERITED_INTO_TEXT_CONFIG:
             if k in c and k not in tc:
                 tc[k] = c[k]
+    return c
+
+
+# --- THE INPUTS A LIVE REBUILD NEEDS, AND WHY THEY ARE STAGED --------------------
+# The table above is RECORDED, and a recorded table is only honest if something
+# rebuilds every row. Until 2026-08-25 exactly ONE row had a live test behind it,
+# and the reason given was a resource law: the lake lives on a USB bus owned by the
+# operator's fill and a test must not fight it. THE LAW IS RIGHT AND WAS APPLIED AT
+# THE WRONG MAGNITUDE. The four specimen config.json files total 6268 bytes
+# (963 + 1661 + 2005 + 1639); the smallest weight set is 15.17 GB. Staging six KB of
+# JSON is not contention, and treating it as if it were cost the coverage on the one
+# specimen the repair was written for.
+#
+# Weights are still NOT staged and still NOT loaded. This stays a one-layer,
+# random-weight CAPABILITY claim about the runtime.
+STAGE_ROOT = Path.home() / "noetic/stage"
+SPECIMEN_STAGE = {
+    "Qwen3-30B-A3B":    "qwen3-30b-a3b",
+    "Kimi-VL-A3B":      "kimi-vl-a3b",
+    "Falcon-H1-7B":     "falcon-h1-7b",
+    "Qwen3-VL-30B-A3B": "qwen3-vl-30b-a3b",
+}
+
+
+def staged_config_path(specimen: str) -> Path:
+    """Where a live rebuild reads its config from. Absence is a FAILURE for the
+    caller to raise on -- never a skip. A skip inside a suite reported as
+    "460 tests pass" reads exactly like a pass, and this repo has shipped that."""
+    return STAGE_ROOT / SPECIMEN_STAGE[specimen] / "config.json"
+
+
+def thin_to_one_layer(cfg: dict[str, Any]) -> dict[str, Any]:
+    """Cut every layer count to 1 -- top level, text tower, vision tower -- so a
+    full-vocab forward pass is affordable in a unit test.
+
+    The other layers are identical BY THE INDEX and were not built, so this is a
+    claim about the GRAPH and not about depth. `depth` is the vision tower's
+    spelling of the same number (qwen3_vl_moe's vision_config uses it); missing keys
+    are left missing rather than invented, because inventing one would silently
+    build a tower the real config does not describe."""
+    c = copy.deepcopy(cfg)
+    for d in (c, c.get("text_config"), c.get("vision_config")):
+        if isinstance(d, dict):
+            if "num_hidden_layers" in d:
+                d["num_hidden_layers"] = 1
+            if "depth" in d:
+                d["depth"] = 1
     return c

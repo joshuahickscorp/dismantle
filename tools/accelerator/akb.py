@@ -1201,6 +1201,52 @@ LAWS: list[dict[str, Any]] = [
             "NOT refute production's 17.35 us, which is a bytes-plus-dispatch number."),
     ),
     dict(
+        law_id="AKB-THE-DISPATCH-LADDER-CANNOT-REACH-THE-ACCEPTED-TPS-TARGET",
+        statement=(
+            "THE DECODE GRAPH'S COUNT COLUMN AND ITS BYTES COLUMN DISAGREE BY THREE ORDERS "
+            "OF MAGNITUDE. On the sealed 3.1393 resident, 402 of 964 dispatches -- 41.6% of "
+            "the count -- carry 99.893% of the weight bytes; the other 562 carry 0.107%. "
+            "Priced at the measured 1.042 us for a byte-free removal, deleting EVERY "
+            "weight-free dispatch, far past the S031 s4 target of 200, returns at most "
+            "0.586 ms against a 29.29 ms token, about 2% -- the same order as the 2.19% the "
+            "fusion block measured end to end from a different direction. AND THE CEILING IS "
+            "HARD: at 9.879 GB of weight traffic per token the sealed body runs at "
+            "337.27 GB/s = 57.2% of this machine's measured 589.73 GB/s roof, so a PERFECT "
+            "machine tops out at 59.70 raw TPS while 50 ACCEPTED TPS at the 30/43 capability "
+            "floor needs 71.67. NO DISPATCH COUNT REACHES THE TARGET; only fewer bytes do, "
+            "which is S031 s2's own order with a number attached."),
+        applicability={
+            "MODEL": "sealed-3.14 (NOETIC_PARENT_A), 26.896G parent params",
+            "ARCHITECTURE": "qwen3_5 64-layer hybrid, 48 DeltaNet + 16 GQA",
+            "ORGAN": "whole decode graph, all 14 kernel families",
+            "REPRESENTATION": "mixed hq30uq4 / hgrafv01 / f32v2 at 3.1393 complete EBPW",
+            "SHAPE": "single-token decode, 11-token prompt",
+            "MACHINE": M3, "RUNTIME": "Hawking Rust Metal decode, dispatch counter",
+            "KERNEL": "all 964 dispatches of the resident graph",
+            "STORAGE_TIER": NONE, "TOPOLOGY": NONE,
+            "WORKLOAD_PHASE": "single-request decode; says nothing about prefill"},
+        evidence_class="Derived",
+        source_receipts=["receipts/headless/ACCELERATOR_TOKEN_BYTES_ATLAS.json"],
+        citations=["receipts/headless/ACCELERATOR_TOKEN_BYTES_ATLAS.json#THE_COUNT_COLUMN_AND_THE_BYTES_COLUMN_DISAGREE",
+                   "receipts/headless/ACCELERATOR_TOKEN_BYTES_ATLAS.json#THE_CEILING",
+                   "receipts/headless/ACCELERATOR_TOKEN_BYTES_ATLAS.json#three_reconciliations_that_make_it_falsifiable",
+                   "receipts/headless/ACCELERATOR_TOKEN_BYTES_ATLAS.json#claim_boundary"],
+        status="ACTIVE", superseded_by=None, negative_result=True,
+        confidence_basis=(
+            "NOTHING WAS TIMED. The bytes are read off the artifact's own catalog and the TPS "
+            "figures are arithmetic over a RECORDED 34.14 raw TPS and a RECORDED 589.73 GB/s "
+            "roof -- a DERIVATION, not an experiment, and classed Derived for that reason. "
+            "What carries it is the reconciliation: the attribution sums to the catalog total, "
+            "the catalog total equals bytes on disk at ZERO delta, and 8*bytes/params "
+            "reproduces the sealed 3.139300850311054 to twelve places; and the map derived "
+            "from the tensor inventory reproduces the runtime's independently measured 964, "
+            "having FAILED at 948 until a missing weight-free kernel was found. Weight traffic "
+            "ONLY -- activations, KV and the DeltaNet state are uncounted, and every uncounted "
+            "byte LOWERS the ceiling, so the conclusion sits on the safe side of its own "
+            "omission: including the largest omission moves 59.70 to 57.93, nowhere near "
+            "71.67. ONE artifact, INSTANCE, no kernel changed and no adequacy claim moves."),
+    ),
+    dict(
         law_id="AKB-WEIGHT-METRICS-INVERT-ON-ATTENTION-Q",
         statement=(
             "For attention q_proj under ws_rtn_q4_g64, WEIGHT-SPACE FIDELITY RANKS FOUR "

@@ -56,3 +56,105 @@ def test_SHORT_KEYS_CANNOT_COLLIDE_WITH_EACH_OTHER():
                                    ("kitten", "sitting", 3)])
 def test_the_distance_is_the_real_one(a, b, d):
     assert _edit_distance(a, b) == d
+
+
+# --------------------------------------------------------------------------
+# Repair, and the limits on it. A repair that nobody can see is worse than the
+# drift it fixes.
+# --------------------------------------------------------------------------
+import json
+
+from hcli.backends import (StructuredOutputContract, SchemaViolation,
+                           repair_near_miss_keys, schema_instruction)
+
+PLAN = {"type": "object", "additionalProperties": False,
+        "required": ["obligations"],
+        "properties": {"obligations": {
+            "type": "array",
+            "items": {"type": "object", "additionalProperties": False,
+                      "required": ["id", "consequential"],
+                      "properties": {"id": {"type": "string"},
+                                     "consequential": {"type": "boolean"}}}}}}
+
+
+def contract():
+    return StructuredOutputContract(schema=PLAN,
+                                    instruction=schema_instruction(PLAN))
+
+
+def test_ANTI_VACUITY_a_clean_reply_needs_no_repair():
+    c = contract()
+    c.validate(json.dumps({"obligations": [{"id": "a", "consequential": True}]}))
+    assert c.repairs == []
+
+
+def test_THE_MEASURED_DRIFT_IS_REPAIRED_AND_RECORDED():
+    """The exact reply the sealed resident produced: right on obligations[0],
+    'consequent' on the rest."""
+    c = contract()
+    out = c.validate(json.dumps({"obligations": [
+        {"id": "a", "consequential": True},
+        {"id": "b", "consequent": True}]}))
+    assert out["obligations"][1]["consequential"] is True
+    assert c.repairs and "'consequent' -> 'consequential'" in c.repairs[0]
+
+
+def test_A_WHITESPACE_PADDED_KEY_IS_STRIPPED_AND_RECORDED():
+    """The drift the retry produced once the first was named: ' angles'."""
+    c = contract()
+    out = c.validate(json.dumps({"obligations": [{"id": "a", " consequential ": True}]}))
+    assert out["obligations"][0]["consequential"] is True
+    assert any("whitespace" in r for r in c.repairs)
+
+
+def test_A_REPAIR_THAT_WOULD_ONLY_RELOCATE_A_TYPE_ERROR_IS_REFUSED():
+    """Renaming a string onto a boolean property must not be reported as fixed.
+    The re-validation is what refuses it -- there is no separate type guard on the
+    rename, because a mutation proved that guard changed no outcome."""
+    c = contract()
+    with pytest.raises(SchemaViolation):
+        c.validate(json.dumps({"obligations": [{"id": "a", "consequent": "yes"}]}))
+    assert c.repairs == []
+
+
+def test_A_MISSING_KEY_WITH_NO_CANDIDATE_IS_STILL_A_VIOLATION():
+    c = contract()
+    with pytest.raises(SchemaViolation):
+        c.validate(json.dumps({"obligations": [{"id": "a"}]}))
+
+
+def test_REPAIR_REACHES_INSIDE_ARRAYS_not_just_the_top_level():
+    """Every real drift here was on an array element, never the root object."""
+    log = []
+    repair_near_miss_keys({"obligations": [{"id": "a", "consequent": True}]}, PLAN, log)
+    assert log and "$.obligations[0]" in log[0]
+
+
+def test_A_REPAIRED_OBJECT_THAT_IS_STILL_INVALID_IS_STILL_REFUSED():
+    """A repair fixes ONE key. If the object is invalid for another reason the
+    re-validation is what catches it -- and without that step an invalid object
+    would be returned as if it had validated.
+
+    The first version of this file did not have this case, and the mutation that
+    deleted the re-validation passed all 18 tests.
+    """
+    c = contract()
+    with pytest.raises(SchemaViolation):
+        # 'consequent' is repairable; 'id' is simply absent and nothing resembles it.
+        c.validate(json.dumps({"obligations": [{"consequent": True}]}))
+
+
+def test_A_REPAIR_IS_NEVER_SILENT_IN_THE_RECEIPT():
+    """It must reach result.raw, which is what the envelope records -- not only
+    the contract object, which nothing downstream reads.
+
+    The first version asserted c.repairs and so passed with the receipt line
+    deleted.
+    """
+    from hcli.backends import CompletionResult
+    c = contract()
+    reply = json.dumps({"obligations": [{"id": "b", "consequent": True}]})
+    out = c.enforce(lambda body, timeout=None: CompletionResult(raw={}, text=reply),
+                    {"messages": [{"role": "user", "content": "go"}]})
+    assert out.raw["_structured_repairs"], "the repair never reached the receipt"
+    assert "structured_output_key_repair" in out.degraded

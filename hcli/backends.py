@@ -610,6 +610,55 @@ def _near_miss_key(required: str, instance: Dict[str, Any],
     return best if best_d <= limit else None
 
 
+def repair_near_miss_keys(instance: Any, schema: Dict[str, Any],
+                         log: List[str], path: str = "$") -> Any:
+    """Rename an UNAMBIGUOUS near-miss key onto the required name it misses.
+
+    A grammar-less backend usually produces the right SHAPE and drifts one key.
+    Measured on the sealed 27B resident: a correct four-obligation plan was thrown
+    away six times over `consequent` for `consequential`, and the retry that named
+    the drift produced a different one (` angles`, with a leading space).
+
+    Refusing a recoverable plan over one token is not rigour, but repairing one
+    silently would be worse than the drift. Every rename is APPENDED TO log and
+    travels into the receipt, and a rename only happens when:
+
+      * the required key is genuinely absent, and
+      * exactly one unknown key is within the near-miss threshold.
+
+    A rename whose value does not fit the property is caught by the caller's
+    re-validation, which discards the whole repair. An earlier version also
+    checked the value type HERE; a mutation deleting that check passed every test,
+    because the outer re-validation already refuses the same objects. It was
+    redundant, so it is gone -- and the re-validation now has its own test.
+    """
+    if isinstance(instance, dict) and isinstance(schema, dict):
+        # Surrounding whitespace in a key is never intentional and is the same
+        # class of drift; strip it first, and only when nothing collides.
+        for key in [k for k in instance if isinstance(k, str) and k != k.strip()]:
+            if key.strip() and key.strip() not in instance:
+                instance[key.strip()] = instance.pop(key)
+                log.append(f"{path}: key {key!r} -> {key.strip()!r} (whitespace)")
+        props = schema.get("properties") or {}
+        for key in schema.get("required") or []:
+            if key in instance:
+                continue
+            near = _near_miss_key(key, instance, schema)
+            if near is None:
+                continue
+            instance[key] = instance.pop(near)
+            log.append(f"{path}: key {near!r} -> {key!r}")
+        for key, value in list(instance.items()):
+            if key in props and isinstance(props[key], dict):
+                repair_near_miss_keys(value, props[key], log, f"{path}.{key}")
+    elif isinstance(instance, list) and isinstance(schema, dict):
+        items = schema.get("items")
+        if isinstance(items, dict):
+            for i, value in enumerate(instance):
+                repair_near_miss_keys(value, items, log, f"{path}[{i}]")
+    return instance
+
+
 def validate_against_schema(
     instance: Any, schema: Dict[str, Any], path: str = "$"
 ) -> Optional[str]:
@@ -778,6 +827,9 @@ class StructuredOutputContract:
     instruction: str
     max_attempts: int = DEFAULT_STRUCTURED_OUTPUT_ATTEMPTS
     degraded_features: List[str] = field(default_factory=lambda: ["response_format"])
+    # Every key rename this contract performed. Carried into the receipt so a
+    # repair is auditable rather than invisible.
+    repairs: List[str] = field(default_factory=list)
 
     def apply(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         prepared = deepcopy(payload)
@@ -790,6 +842,11 @@ class StructuredOutputContract:
         parsed = extract_json_object(text)
         err = validate_against_schema(parsed, self.schema)
         if err:
+            log: List[str] = []
+            repaired = repair_near_miss_keys(deepcopy(parsed), self.schema, log)
+            if log and not validate_against_schema(repaired, self.schema):
+                self.repairs.extend(log)
+                return repaired
             raise SchemaViolation(err, text=str(text) if text is not None else None)
         return parsed
 
@@ -839,6 +896,10 @@ class StructuredOutputContract:
             if isinstance(result.raw, dict):
                 result.raw = dict(result.raw)
                 result.raw["_structured"] = parsed
+                if self.repairs:
+                    result.raw["_structured_repairs"] = list(self.repairs)
+                    if "structured_output_key_repair" not in result.degraded:
+                        result.degraded.append("structured_output_key_repair")
             result.schema_attempts = attempt
             return result
         reason = (

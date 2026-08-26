@@ -337,9 +337,9 @@
  "obligations_total": 72,
  "unmapped_obligations": [],
  "orphan_map_entries": [],
- "receipt_count": 415,
+ "receipt_count": 416,
  "accelerator_receipt_count": 80,
- "last_verified_commit": "d0f1196f3",
+ "last_verified_commit": "c824ce094",
  "last_verified_test_count": 510,
  "test_count_is_from_a_run_not_arithmetic": true,
  "test_environment": {
@@ -1161,7 +1161,8 @@
    "NOETIC_BODY_ARCHAEOLOGY.json",
    "PHYSICAL_METRIC_AUDIT.json",
    "PHYSICAL_METRIC_CANARIES.json",
-   "RESIDENT_2P60_RUNTIME_PROVENANCE.json"
+   "RESIDENT_2P60_RUNTIME_PROVENANCE.json",
+   "RESIDENT_ACCEPTED_TPS.json"
   ]
  }
 }

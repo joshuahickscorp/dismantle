@@ -1442,6 +1442,8 @@ UNEXTRACTED_REASONS = {
 }
 
 UNEXTRACTED: dict[str, str] = {
+    # A NEGATIVE capability probe with a named instrument gate; nothing timed.
+    "ACCELERATOR_OCCUPANCY_PROBE.json": "CAPABILITY_NOT_LAW",
     # An IR capability and a legality rule; the physical law it rests on
     # (lockstep at simd width 32) is already carried by the barrier-scopes work.
     "ACCELERATOR_SIMDGROUP_SCOPE_EXECUTES.json": "CAPABILITY_NOT_LAW",

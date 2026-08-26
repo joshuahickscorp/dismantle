@@ -269,6 +269,37 @@ LAWS: list[dict[str, Any]] = [
                           "2**24 only, and states the ratio is about MLX's cumsum on THIS shape."),
     ),
     dict(
+        law_id="AKB-WAIT-DOMINATES-SUBMISSION",
+        statement=(
+            "For an MLX matmul on this box, the per-step cost of WAITING dominated the cost "
+            "of SUBMITTING. At 128x128 f32 the wait arm read 184.7 / 188.3 / 179.1 us per "
+            "step across three batteries (4.9% spread, verdict SYNC_TAX all three), while a "
+            "confound arm that varies SUBMISSION COUNT alone did not reproduce that reading. "
+            "The direction is what transfers; the microsecond figures are INSTANCE values on "
+            "a machine contended by the ModelLake fill and MUST NOT be quoted as constants."),
+        applicability={
+            "MODEL": NONE, "ARCHITECTURE": NONE, "ORGAN": NONE,
+            "REPRESENTATION": "dense_f32", "SHAPE": "matmul 128x128 (and 2048x2048, unstable)",
+            "MACHINE": M3, "RUNTIME": MLX,
+            "KERNEL": "mlx lazy graph + Metal; no custom kernel",
+            "STORAGE_TIER": NONE, "TOPOLOGY": NONE, "WORKLOAD_PHASE": "microbenchmark"},
+        evidence_class="Reproduced",
+        source_receipts=["receipts/headless/ACCELERATOR_SYNC_DIAGNOSTIC.json"],
+        citations=["receipts/headless/ACCELERATOR_SYNC_DIAGNOSTIC.json#result.run_to_run.per_arm.held_out_small",
+                   "receipts/headless/ACCELERATOR_SYNC_DIAGNOSTIC.json#result.negative_controls",
+                   "receipts/headless/ACCELERATOR_SYNC_DIAGNOSTIC.json#claim_boundary"],
+        status="CONDITIONAL", superseded_by=None, negative_result=False,
+        confidence_basis=(
+            "CONDITIONAL, not ACTIVE, because the instrument's own run_to_run block records "
+            "that the 2048x2048 arm did NOT reproduce -- NO_SIGNIFICANT_SYNC_TAX then "
+            "SYNC_TAX twice, stable=false, detection floor swinging 76-324 us. The small "
+            "shape reproduced 3/3; the large one did not, and a law that holds at one shape "
+            "of two is conditional on shape. The instrument also returns a NEGATIVE where "
+            "one is true, which is what distinguishes it from a confirmation device: the "
+            "NumPy CPU arm reads -0.083 / 0.055 / -0.050 us per step, NO_SIGNIFICANT_SYNC_TAX "
+            "stable across all three batteries."),
+    ),
+    dict(
         law_id="AKB-GEMM-BLOCK2-PARITY",
         statement=(
             "The first sweep's claim that AIR's blocked simdgroup matmul reached 149.5% of "

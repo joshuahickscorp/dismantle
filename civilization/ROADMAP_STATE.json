@@ -328,15 +328,15 @@
  "orphan_map_entries": [],
  "receipt_count": 408,
  "accelerator_receipt_count": 80,
- "last_verified_commit": "0a094032e",
- "last_verified_test_count": 509,
+ "last_verified_commit": "5d7a169fb",
+ "last_verified_test_count": 510,
  "test_count_is_from_a_run_not_arithmetic": true,
  "test_environment": {
   "interpreter": "/usr/local/bin/python3",
   "resolves_to": "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3.12",
   "version_and_mlx": "3.12.6 /Users/scammermike/Library/Python/3.12/lib/python/site-packages/mlx/core.cpython-312-darwin.so",
   "suite": "tools/accelerator",
-  "failed": 1
+  "failed": 0
  },
  "named_gates": {
   "NVIDIA_CUDA_HARDWARE": "P2 differential. No local NVIDIA execution exists.",
@@ -464,7 +464,15 @@
    "alive": true,
    "transcript": "/Users/scammermike/.claude/projects/-Users-scammermike-Downloads-hawking/5e40f321-b30e-4c5c-ac16-027ddd36ed33/subagents/workflows/wf_0b67889e-5bd/agent-a2dee8274c35b9401.jsonl",
    "detection": "heuristic",
-   "judged_by": "transcript touched 5s ago (< 300s); no pid exists to check, so a finished agent can read as alive"
+   "judged_by": "transcript touched 194s ago (< 300s); no pid exists to check, so a finished agent can read as alive"
+  },
+  {
+   "lane": "wf_320337a4-374/agent-a37fb853a2cf7b697",
+   "executor": "claude",
+   "alive": true,
+   "transcript": "/Users/scammermike/.claude/projects/-Users-scammermike-Downloads-hawking/5e40f321-b30e-4c5c-ac16-027ddd36ed33/subagents/workflows/wf_320337a4-374/agent-a37fb853a2cf7b697.jsonl",
+   "detection": "heuristic",
+   "judged_by": "transcript touched 17s ago (< 300s); no pid exists to check, so a finished agent can read as alive"
   }
  ],
  "next_decisive_gates": [

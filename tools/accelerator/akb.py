@@ -305,6 +305,98 @@ HK = "hawking-core release-fast Rust/Metal decoder, binary d34044cffae8f320"
 
 LAWS: list[dict[str, Any]] = [
     dict(
+        law_id="AKB-DECODE-BYTES-ARE-THE-MLP-NOT-THE-HEAD",
+        statement=(
+            "One decode token of the sealed-3.14 resident reads 9,868,249,760 weight bytes, and "
+            "the ranking by TOKEN bytes is MLP 54.19% over 128 dispatches, DeltaNet projections "
+            "29.93% over 96, GQA projections 9.03% over 48, lm_head 6.84% in ONE. The derivation "
+            "from element counts and codec bpw reconciles against the artifact's own "
+            "payload_bytes to 0.101%, and the residual has a name -- MIX_REPORT records "
+            "f32_bytes 10,584,840 against an unaccounted 10,651,416. THE PER-DISPATCH RANKING "
+            "DISAGREES WITH THE PER-TOKEN ONE: the head moves 675,430,400 bytes in one dispatch "
+            "against 55,705,600 for the largest MLP dispatch, 12.13x, and is still 6.84% of the "
+            "token because the MLP runs its dispatch 128 times. Deleting the head entirely -- "
+            "which no exact algorithm can do -- caps at 6.84%, and the full logit tensor that "
+            "argmax fusion would remove is 0.0201% of the token's bytes."),
+        applicability={
+            "MODEL": "Qwen3.8-27B sealed-3.14 (NOETIC_PARENT_A), 3.1393 complete EBPW",
+            "ARCHITECTURE": ("Qwen3.8 hybrid: 48 DeltaNet + 16 GQA (full_attention_interval 4), "
+                             "H 5120, I 17408, V 248320, untied head"),
+            "ORGAN": "whole body, resolved by organ",
+            "REPRESENTATION": "HQ30UQ4 g64 mixer/head at 4.25 bpw + affine_q2 g64 MLP at 2.5 bpw",
+            "SHAPE": "batch 1 decode, one token; KV and activation traffic EXCLUDED",
+            "MACHINE": M3, "RUNTIME": HK,
+            "KERNEL": "the 628-dispatch fused decode graph",
+            "STORAGE_TIER": "weights resident in unified memory; not a storage-read accounting",
+            "TOPOLOGY": NONE,
+            "WORKLOAD_PHASE": "single-request decode (prefill amortises the head differently)"},
+        evidence_class="Derived",
+        source_receipts=["receipts/headless/ACCELERATOR_TOKEN_BYTE_ATLAS_628.json"],
+        citations=[
+            "receipts/headless/ACCELERATOR_TOKEN_BYTE_ATLAS_628.json"
+            "#THE_DERIVATION_RECONCILES_AND_THAT_IS_WHAT_MAKES_IT_A_MEASUREMENT",
+            "receipts/headless/ACCELERATOR_TOKEN_BYTE_ATLAS_628.json#ORGAN_ROLLUP",
+            "receipts/headless/ACCELERATOR_TOKEN_BYTE_ATLAS_628.json#WHAT_THIS_ATLAS_IS_NOT"],
+        status="ACTIVE", superseded_by=None, negative_result=False,
+        confidence_basis=(
+            "Derived, not Measured, and the class says so: exact element counts times codec bpw. "
+            "Its strength is the reconciliation -- 0.101% unaccounted landing on an "
+            "independently recorded f32_bytes. Its weakness is that the ms figures divide bytes "
+            "by ONE effective bandwidth and families demonstrably do not share one "
+            "(ACCELERATOR_EXPERT_BATCH measured 161.9 vs 426.4 GB/s on this machine), so only "
+            "the BYTE ranking is claimed. Non-projection dispatches read activations and no "
+            "weights and are absent from a weight-byte ranking by construction, not free."),
+    ),
+    dict(
+        law_id="AKB-NORM-BOUNDS-CANNOT-PRUNE-THIS-HEAD",
+        statement=(
+            "No exact norm-based rejection bound prunes the sealed-3.14 lm_head. Row norms are "
+            "near-equinorm -- coefficient of variation 0.1288 on the likely head and 0.1646 on "
+            "the companion table -- so the Cauchy-Schwarz test |x.w| <= ||x|| ||w|| rejects "
+            "0.000% and 0.073% of the 248320 rows at an alignment cos of 0.10 and 0.236% and "
+            "0.976% at 0.30; pruning half would need cos about 0.63. The two-stage prefix bound "
+            "dies the same way because energy is uniform across dimensions: median tail-norm "
+            "ratio tracks sqrt(1-k/D) at 0.995-1.023 for k from 0.25D to 0.90D on both tables, "
+            "and the top 10% of 64-dimension groups holds 13.3-13.7% of the squared norm against "
+            "a uniform 10%, so a prefix bound at k=D/2 is 1.41x tighter than one that already "
+            "prunes under 1%. MECHANISM: the head has no preferred magnitude and no preferred "
+            "dimension subspace, and its discrimination is entirely full-dimensional DIRECTION, "
+            "which is what every norm bound discards."),
+        applicability={
+            "MODEL": "Qwen3.8-27B sealed-3.14 (NOETIC_PARENT_A), untied [248320, 5120] head",
+            "ARCHITECTURE": "Qwen3.8 hybrid, tie_word_embeddings false",
+            "ORGAN": "lm_head (and the companion embedding table, which refutes less strongly)",
+            "REPRESENTATION": "HQ30UQ4 g64 at 4.25 bpw; norms taken on the QUANTIZED weights",
+            "SHAPE": "248320 rows x 5120 dims; tail profile on 4096 seeded rows at 64-dim groups",
+            "MACHINE": M3, "RUNTIME": HK,
+            # The bare sentinel, GROUNDED: the source receipt records KernelIdentity
+            # ABSENT with a reason, because nothing was dispatched. Writing this as
+            # prose starting with the word NONE is what the sentinel guard caught --
+            # it reads as NONE to a reviewer and validates as a named value.
+            "KERNEL": NONE,
+            "STORAGE_TIER": NONE, "TOPOLOGY": NONE,
+            "WORKLOAD_PHASE": "greedy single-token selection at decode"},
+        evidence_class="Measured",
+        source_receipts=["receipts/headless/ACCELERATOR_LM_HEAD_EXACT_BOUNDS_REFUTED.json"],
+        citations=[
+            "receipts/headless/ACCELERATOR_LM_HEAD_EXACT_BOUNDS_REFUTED.json"
+            "#MEASURED_WITHOUT_DEQUANTIZING_ANYTHING",
+            "receipts/headless/ACCELERATOR_LM_HEAD_EXACT_BOUNDS_REFUTED.json"
+            "#THE_SECOND_FAMILY_DIES_THE_SAME_WAY_AND_I_PREDICTED_THAT_TOO",
+            "receipts/headless/ACCELERATOR_LM_HEAD_EXACT_BOUNDS_REFUTED.json#claim_boundary"],
+        status="ACTIVE", superseded_by=None, negative_result=True,
+        confidence_basis=(
+            "Both halves were PREDICTED IN WRITING BEFORE THE RUN with a named falsifier and "
+            "both confirmed -- CV under 0.30 as predicted, and tail decay tracking the uniform "
+            "sqrt(1-k/D) within 2.3% as predicted. Norms are exact over all 248320 rows of both "
+            "tables, computed from the packed codes with no dequantization. The weakness is that "
+            "NO FORWARD PASS RAN: cos(theta) is a free parameter and the curve is reported "
+            "across it, so what is established is that no plausible alignment prunes materially, "
+            "not that a measured alignment obtains. MODEL is deliberately not UNSCOPED -- a "
+            "heavy-tailed head elsewhere would reopen the family. Says NOTHING about low-rank "
+            "factorization: a matrix can be per-row isotropic and still low rank."),
+    ),
+    dict(
         law_id="AKB-CHAT-TEMPLATE-ARM-MOVES-CAPABILITY",
         statement=(
             "The chat-template arm changed the sealed-3.14 resident's measured capability by "

@@ -121,21 +121,19 @@
     "G071",
     "G072"
    ],
-   "verified": 18,
+   "verified": 20,
    "open": [
-    "G074",
     "G023",
     "G068",
     "G069",
     "G070",
-    "G071",
     "G072"
    ],
    "evidence_satisfied": 8,
    "evidence_of": 9,
    "evidence_pct": 88.9,
-   "obligation_pct": 72.0,
-   "completion_pct": 72.0,
+   "obligation_pct": 80.0,
+   "completion_pct": 80.0,
    "completion_basis": "min(evidence categories satisfied / 9, obligations verified / total). The MINIMUM on purpose: I-D has all nine categories and zero verified obligations, and reporting 100% there is the inflation S015 \u00a7II forbids. Never a file count.",
    "open_gates": [
     "G074",
@@ -341,19 +339,19 @@
   }
  },
  "obligation_status_counts": {
-  "VERIFIED": 48,
+  "VERIFIED": 49,
   "BLOCKED": 1,
   "IN_PROGRESS": 14,
   "NOT_STARTED": 2,
   "PENDING": 7,
-  "OPEN": 5
+  "OPEN": 4
  },
  "obligations_total": 77,
  "unmapped_obligations": [],
  "orphan_map_entries": [],
- "receipt_count": 432,
- "accelerator_receipt_count": 82,
- "last_verified_commit": "f1ce08848",
+ "receipt_count": 437,
+ "accelerator_receipt_count": 85,
+ "last_verified_commit": "5c93405ec",
  "last_verified_test_count": 522,
  "test_count_is_from_a_run_not_arithmetic": true,
  "test_environment": {
@@ -647,6 +645,12 @@
    ]
   },
   {
+   "receipt": "ACCELERATOR_LM_HEAD_EXACT_BOUNDS_REFUTED.json",
+   "markers": [
+    "REFUT"
+   ]
+  },
+  {
    "receipt": "ACCELERATOR_ORGAN_DISCRIMINATION.json",
    "markers": [
     "AMENDED_IN_PLACE"
@@ -669,6 +673,12 @@
    "receipt": "ACCELERATOR_REGISTER_BLOCKING.json",
    "markers": [
     "RETRACT"
+   ]
+  },
+  {
+   "receipt": "ACCELERATOR_RESIDENT_TEMPLATE_ARM.json",
+   "markers": [
+    "REFUT"
    ]
   },
   {
@@ -723,6 +733,12 @@
   },
   {
    "receipt": "ACCELERATOR_TIER1_MEASURED.json",
+   "markers": [
+    "REFUT"
+   ]
+  },
+  {
+   "receipt": "ACCELERATOR_TOKEN_BYTE_ATLAS_628.json",
    "markers": [
     "REFUT"
    ]
@@ -1222,8 +1238,11 @@
    "ACCELERATOR_AKB_CONSTRUCTION.json",
    "ACCELERATOR_DISPATCH_IS_NOT_THE_COST.json",
    "ACCELERATOR_LAW_BASE.json",
+   "ACCELERATOR_LM_HEAD_EXACT_BOUNDS_REFUTED.json",
    "ACCELERATOR_QUIESCENCE_INSTRUMENT.json",
+   "ACCELERATOR_RESIDENT_TEMPLATE_ARM.json",
    "ACCELERATOR_SYNC_DIAGNOSTIC.json",
+   "ACCELERATOR_TOKEN_BYTE_ATLAS_628.json",
    "CAPABILITY_ARM_A_THINK.json",
    "CAPABILITY_ARM_D_NOTHINK.json",
    "CAPABILITY_FUSED_GRAPH_CLEARED.json",
@@ -1241,6 +1260,7 @@
    "CAPABILITY_noetic-variantA-2.98.json",
    "CAPABILITY_noetic-variantB-2.76-sysprompt.json",
    "CAPABILITY_noetic-variantB-2.76.json",
+   "CAPABILITY_sealed-3.14-binB-fused4-NOTHINK.json",
    "CAPABILITY_sealed-3.14-binB-fused4-swiglu.json",
    "CAPABILITY_sealed-3.14-binB-unfused.json",
    "CAPABILITY_sealed-3.14-identified-fused.json",
@@ -1258,6 +1278,7 @@
    "HAWKING_ACTION_HANDOFF.json",
    "HCLI_CRASH_CHECKPOINT.json",
    "HCLI_FABRICATION_CONTROL.json",
+   "HCLI_RESIDENT_SEAL.json",
    "KERNEL_LIBRARY.json",
    "NOETIC_ASCENSION_HANDOFF.json",
    "NOETIC_BODY_ARCHAEOLOGY.json",

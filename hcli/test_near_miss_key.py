@@ -158,3 +158,24 @@ def test_A_REPAIR_IS_NEVER_SILENT_IN_THE_RECEIPT():
                     {"messages": [{"role": "user", "content": "go"}]})
     assert out.raw["_structured_repairs"], "the repair never reached the receipt"
     assert "structured_output_key_repair" in out.degraded
+
+
+def test_the_call_timeout_is_configurable_and_defaults_to_180():
+    """A local resident that reloads the model per call is exactly the backend the
+    hardcoded 180 s was wrong for: a real mission died at 722 s having exceeded it
+    on one generate."""
+    import os
+    from hcli.delegate import _delegate_timeout
+    old = os.environ.pop("HCLI_DELEGATE_TIMEOUT_S", None)
+    try:
+        assert _delegate_timeout() == 180.0
+        os.environ["HCLI_DELEGATE_TIMEOUT_S"] = "600"
+        assert _delegate_timeout() == 600.0
+        os.environ["HCLI_DELEGATE_TIMEOUT_S"] = "not a number"
+        assert _delegate_timeout() == 180.0, "a bad value must fall back, not raise"
+        os.environ["HCLI_DELEGATE_TIMEOUT_S"] = "0"
+        assert _delegate_timeout() >= 1.0, "a zero timeout would fail every call"
+    finally:
+        os.environ.pop("HCLI_DELEGATE_TIMEOUT_S", None)
+        if old is not None:
+            os.environ["HCLI_DELEGATE_TIMEOUT_S"] = old

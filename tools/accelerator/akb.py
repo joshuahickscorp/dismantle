@@ -226,6 +226,22 @@ def validate(entry: dict[str, Any], *, superseded: dict[str, list[str]] | None =
                 f"{n} value. One measured value is not breadth -- name the value, or "
                 f"say UNKNOWN.")
 
+    # A value that READS as a sentinel but is not one. "NONE -- holds for any
+    # kernel" looks like NONE to a reviewer and is a named value to every check
+    # below, so it slips the grounding rule while claiming its breadth. Same for
+    # a prose UNSCOPED. Caught after writing one by accident in this lane's own
+    # bandwidth-ceiling law.
+    for axis, value in entry["applicability"].items():
+        if not isinstance(value, str):
+            continue
+        head = value.strip().upper()
+        for sentinel in (NONE, UNSCOPED, UNKNOWN):
+            if value != sentinel and head.startswith(sentinel):
+                raise Refused(
+                    f"{lid}: axis {axis} is {value[:60]!r}, which READS as {sentinel} and is "
+                    f"treated as a named value by every check below. Use the bare sentinel and "
+                    f"ground it, or name the value the evidence actually covers.")
+
     # NONE must be grounded in the receipt recording that identity ABSENT.
     for axis, value in entry["applicability"].items():
         if value != NONE or axis not in IDENTITY_OF_AXIS:
@@ -288,6 +304,56 @@ MLX = "MLX 0.32.1 metal_kernel JIT under CPython 3.12"
 HK = "hawking-core release-fast Rust/Metal decoder, binary d34044cffae8f320"
 
 LAWS: list[dict[str, Any]] = [
+    dict(
+        law_id="AKB-BANDWIDTH-CEILING-BOUNDS-ACCEPTED-TPS",
+        statement=(
+            "Single-request decode of the sealed-3.14 body reads 9,878,898,416 weight bytes per "
+            "token -- the whole payload except the embedding table, which is read as one row "
+            "while the untied lm_head is read in full. Against this box's measured 589.73 GB/s "
+            "that sets a floor of 16.752 ms per token, so the raw-TPS ceiling is 187.40 divided "
+            "by complete EBPW and the accepted-TPS ceiling is that times capability over 43. The "
+            "measured graph sits at 27.5896 ms, which is 358.1 GB/s or 60.7% of the wall, leaving "
+            "1.65x of total headroom for ALL execution-graph work combined. 50 accepted TPS "
+            "therefore requires capability/EBPW >= 11.473; the resident is at 30/3.1393 = 9.556, "
+            "20.1% short, so at 30/43 the target is unreachable by 1.20x even at infinite graph "
+            "efficiency. The 2.5970-EBPW specimen's accepted CEILING at 14/43 is 23.49, below the "
+            "resident's present accepted measurement of 25.29."),
+        applicability={
+            "MODEL": "Qwen3.8-27B sealed-3.14 (NOETIC_PARENT_A), 26,895,998,464 parent params",
+            "ARCHITECTURE": "Qwen3.8 hybrid, 64 layers, untied 248320x5120 embed and lm_head",
+            "ORGAN": "whole body; the bound is over total resident weight bytes",
+            "REPRESENTATION": "complete EBPW 3.1393 (HQ30UQ4 g64 mixer + affine_q2 g64 MLP)",
+            "SHAPE": "batch 1, one token, KV traffic EXCLUDED so the bound is optimistic",
+            "MACHINE": M3, "RUNTIME": HK,
+            # NOT the NONE sentinel. A descriptive string starting with the word
+            # NONE would read as NONE to a human and as a named value to
+            # validate(), which is the worst of both. The FLOOR is kernel-
+            # independent arithmetic; the 358.1 GB/s and 60.7% figures are not,
+            # so the axis names the kernels that produced them.
+            "KERNEL": ("the 628-dispatch fused graph: qwen80_add_residual_rmsnorm_tg, "
+                       "qwen_uniform_q4_group64_matvec_{qkv,pair_concat,geo_tpr64}, "
+                       "qwen_affine_q2_group64_matvec_gate_up_swiglu_geo_tpr64_tg128"),
+            "STORAGE_TIER": "resident in unified memory; not a storage-read bound",
+            "TOPOLOGY": NONE,
+            "WORKLOAD_PHASE": "single-request decode (prefill amortises the lm_head differently)"},
+        evidence_class="Derived",
+        source_receipts=["receipts/headless/ACCELERATOR_DISPATCH_IS_NOT_THE_COST.json"],
+        citations=[
+            "receipts/headless/ACCELERATOR_DISPATCH_IS_NOT_THE_COST.json"
+            "#FINDING_7_THE_BANDWIDTH_WALL_TURNS_S031_19_INTO_A_CONSTRAINT_CURVE",
+            "receipts/headless/ACCELERATOR_DISPATCH_IS_NOT_THE_COST.json"
+            "#FINDING_7_THE_BANDWIDTH_WALL_TURNS_S031_19_INTO_A_CONSTRAINT_CURVE.claim_boundary"],
+        status="ACTIVE", superseded_by=None, negative_result=True,
+        confidence_basis=(
+            "Derived, NOT Measured, and the class says so: it is arithmetic over two independent "
+            "measurements -- the artifact's payload_bytes and MACHINE_GENOME's 589.73 GB/s triad "
+            "median at 1.89% IQR. Its weakest input is that KV-cache traffic is excluded, which "
+            "makes every ceiling here an UPPER BOUND; that is the safe direction for the "
+            "unreachability claim and the unsafe direction for the 59.7 raw figure, which must "
+            "not be quoted as attainable. KERNEL is NONE because the bound is over bytes and no "
+            "kernel can move fewer than the weights it reads; TOPOLOGY is NONE and is grounded in "
+            "the source receipt recording transport ABSENT."),
+    ),
     dict(
         law_id="AKB-DISPATCH-COUNT-DOES-NOT-PREDICT-COST",
         statement=(

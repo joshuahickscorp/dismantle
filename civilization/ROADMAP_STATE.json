@@ -351,10 +351,10 @@
  "obligations_total": 77,
  "unmapped_obligations": [],
  "orphan_map_entries": [],
- "receipt_count": 429,
- "accelerator_receipt_count": 81,
- "last_verified_commit": "d0c779da8",
- "last_verified_test_count": 518,
+ "receipt_count": 430,
+ "accelerator_receipt_count": 82,
+ "last_verified_commit": "a92f29515",
+ "last_verified_test_count": 520,
  "test_count_is_from_a_run_not_arithmetic": true,
  "test_environment": {
   "interpreter": "/usr/local/bin/python3",
@@ -591,6 +591,12 @@
     "AMENDED_IN_PLACE",
     "REFUT",
     "RETRACT"
+   ]
+  },
+  {
+   "receipt": "ACCELERATOR_DISPATCH_IS_NOT_THE_COST.json",
+   "markers": [
+    "REFUT"
    ]
   },
   {
@@ -1214,6 +1220,7 @@
   "why_heuristic": "mtime is not provenance; an untouched-but-amended receipt is missed",
   "receipts": [
    "ACCELERATOR_AKB_CONSTRUCTION.json",
+   "ACCELERATOR_DISPATCH_IS_NOT_THE_COST.json",
    "ACCELERATOR_LAW_BASE.json",
    "ACCELERATOR_QUIESCENCE_INSTRUMENT.json",
    "ACCELERATOR_SYNC_DIAGNOSTIC.json",

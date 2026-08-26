@@ -377,3 +377,34 @@ def test_a_NONE_contradicted_by_a_PRESENT_identity_is_REFUSED():
         except akb.Refused:
             continue
         raise AssertionError(f"{axis}=NONE survived though the receipt records it PRESENT")
+
+
+def test_a_value_that_READS_as_a_sentinel_but_is_not_one_is_REFUSED():
+    """'NONE -- the bound holds for any kernel' looks like NONE to a reviewer and
+    is a named value to the grounding check, so it claims the breadth of a
+    sentinel while escaping the rule that grounds one. Written by accident in this
+    lane's own bandwidth-ceiling law and caught before it shipped."""
+    import copy
+    law = next(l for l in akb.LAWS
+               if l["law_id"] == "AKB-BANDWIDTH-CEILING-BOUNDS-ACCEPTED-TPS")
+    superseded = akb.superseding_corpus(akb.corpus())
+    assert akb.validate(copy.deepcopy(law), superseded=superseded) is not None
+
+    for axis, prose in [("KERNEL", "NONE -- the bound is over bytes, any kernel"),
+                        ("SHAPE", "UNSCOPED across every length we tried"),
+                        ("ORGAN", "UNKNOWN, nobody has looked at this")]:
+        bad = copy.deepcopy(law)
+        bad["applicability"][axis] = prose
+        try:
+            akb.validate(bad, superseded=superseded)
+        except akb.Refused:
+            continue
+        raise AssertionError(f"{axis}={prose!r} survived; the sentinel guard is decoration")
+
+
+def test_the_sentinel_guard_did_not_break_the_bare_sentinels():
+    """Anti-vacuity partner. A guard that refused NONE itself would pass the test
+    above and make every honest entry unwritable."""
+    built = akb.build()
+    used = {v for e in built["entries"] for v in e["applicability"].values()}
+    assert akb.NONE in used, "no entry uses the bare NONE sentinel any more"

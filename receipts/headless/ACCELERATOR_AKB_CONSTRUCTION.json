@@ -1,9 +1,9 @@
 {
  "schema": "hawking.accelerator.receipt.v1",
- "generated_at": "2026-08-26T12:48:28Z",
+ "generated_at": "2026-08-26T12:54:29Z",
  "experiment_class": "ACCEL-STATE",
  "knowledge_level": "INSTANCE",
- "git_head": "f3ee860f777e914babf3d1372ba98cf4c3da28b7",
+ "git_head": "e9918f6ef552110a42b906b06d393dbfe5189462",
  "identities": {
   "experiment": {
    "id": "G060-AKB-DEVICE-GENOME",
@@ -39,15 +39,15 @@
   }
  },
  "result": {
-  "corpus_size": 100,
-  "receipts_yielding_laws": 31,
-  "laws": 33,
+  "corpus_size": 101,
+  "receipts_yielding_laws": 32,
+  "laws": 34,
   "entries_by_status": {
-   "ACTIVE": 28,
+   "ACTIVE": 29,
    "CONDITIONAL": 4,
    "REFUTED": 1
   },
-  "negative_results": 17,
+  "negative_results": 18,
   "unextracted_count": 69,
   "unextracted_by_reason": {
    "CAPABILITY_NOT_LAW": 29,

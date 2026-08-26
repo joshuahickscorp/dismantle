@@ -26,13 +26,13 @@
   "SUPERSEDED",
   "CONDITIONAL"
  ],
- "corpus_size": 100,
+ "corpus_size": 101,
  "outside_scope_count": 347,
  "known_accelerator_outside_scope": [
   "TOKEN_EXECUTION_ATLAS.json"
  ],
  "scope_is_a_filename_prefix": "membership is decided by the ACCELERATOR_* glob, so a receipt named otherwise is neither extracted nor refused -- it is invisible. The excluded names are listed rather than silently dropped.",
- "receipts_yielding_laws": 31,
+ "receipts_yielding_laws": 32,
  "membership_routes": {
   "declared": [
    "ACCELERATOR_628_BOUNDARY_CENSUS.json",
@@ -76,6 +76,7 @@
    "ACCELERATOR_CONVOLUTION.json",
    "ACCELERATOR_DEVICE_RESIDENT.json",
    "ACCELERATOR_DISPATCH_IS_NOT_THE_COST.json",
+   "ACCELERATOR_DISPATCH_IS_NOT_THE_PRICE.json",
    "ACCELERATOR_EXPERT_BATCH.json",
    "ACCELERATOR_FORGE_REVERDICT.json",
    "ACCELERATOR_FRONT_A_P3.json",
@@ -139,7 +140,7 @@
    "ACCELERATOR_WORKUNIT_THROUGHPUT.json"
   ],
   "declared_count": 15,
-  "legacy_glob_only_count": 85,
+  "legacy_glob_only_count": 86,
   "note": "membership by DECLARATION does not depend on the filename; membership by the legacy glob does. The legacy count is the size of the remaining filename dependence and should fall, never rise."
  },
  "none_claims_not_grounded_count": 0,
@@ -832,6 +833,36 @@
    "confidence_basis": "Weight space only -- no activations, no model executed, no adequacy claim. The source pins itself at MODEL_FAMILY at most and points at the organ-floor receipt showing organ ranking does not transfer across architectures, so ARCHITECTURE is named, never UNSCOPED."
   },
   {
+   "law_id": "AKB-A-REMOVED-DISPATCH-IS-PRICED-BY-ITS-BYTES",
+   "statement": "COST PER REMOVED DISPATCH IS NOT A WELL-DEFINED QUANTITY unless the bytes held constant are stated. Fusing two half-width GEMV kernels into one full-width kernel removes a dispatch while moving ZERO extra bytes and returns 1.042 us; adding a dispatch that reads more weights costs 70.708 us. Same machine, same shape, same session -- a factor of 68. Doubling dispatches AND weights costs +23.76%, not +100%, so dispatches overlap and the machine is bandwidth-bound. OPERAND REUSE IS REFUTED as the mechanism at +0.418% against a pre-registered 8-20%, with complete_separation False.",
+   "applicability": {
+    "MODEL": "NONE",
+    "ARCHITECTURE": "NONE",
+    "ORGAN": "MLP GEMV; the production comparison point is the gate_up pair",
+    "REPRESENTATION": "grouped absmax group=64 operands",
+    "SHAPE": "rows=17408 cols=5120, 8704 threadgroups per dispatch",
+    "MACHINE": "Apple M3 Ultra, 60 GPU cores, 96 GiB unified (this box)",
+    "RUNTIME": "MLX 0.32.1 mx.fast.metal_kernel JIT, 200 reps, 3 sweeps",
+    "KERNEL": "hand-written MSL: single_only / reuse / reload / two_no_add / two_plus_add",
+    "STORAGE_TIER": "NONE",
+    "TOPOLOGY": "NONE",
+    "WORKLOAD_PHASE": "single-token decode-shaped GEMV, CONTENDED machine"
+   },
+   "evidence_class": "Measured",
+   "source_receipts": [
+    "receipts/headless/ACCELERATOR_DISPATCH_IS_NOT_THE_PRICE.json"
+   ],
+   "citations": [
+    "receipts/headless/ACCELERATOR_DISPATCH_IS_NOT_THE_PRICE.json#result.THE_SEPARATION",
+    "receipts/headless/ACCELERATOR_DISPATCH_IS_NOT_THE_PRICE.json#result.OPERAND_REUSE_IS_REFUTED",
+    "receipts/headless/ACCELERATOR_DISPATCH_IS_NOT_THE_PRICE.json#claim_boundary"
+   ],
+   "status": "ACTIVE",
+   "superseded_by": null,
+   "negative_result": true,
+   "confidence_basis": "ONE shape, THREE sweeps, and BENCH_STATE CONTENDED -- so the absolute values are upper bounds and the 0.418% reuse figure sits INSIDE the 5.86-8.84% IQR and must not be read as a small positive. What carries the law is the SEPARATION: 1.042 vs 70.708 us is a factor of 68, far outside that noise, and the +23.76% overlap figure is likewise well above it. The refutation is sound rather than merely unresolved because the pre-registered 8% floor WOULD have cleared this noise. MODEL and ARCHITECTURE are NONE because the arms are synthetic; the receipt withdraws the earlier 8.6 us figure AND the framing that produced it, and does NOT refute production's 17.35 us, which is a bytes-plus-dispatch number."
+  },
+  {
    "law_id": "AKB-WEIGHT-METRICS-INVERT-ON-ATTENTION-Q",
    "statement": "For attention q_proj under ws_rtn_q4_g64, WEIGHT-SPACE FIDELITY RANKS FOUR SPECIMENS IN EXACTLY THE WRONG ORDER against real-activation error. Cosine runs 0.988150 / 0.989516 / 0.994001 / 0.994252 while real-activation relative error runs 0.032677 / 0.033354 / 0.056519 / 0.065670 -- monotone and fully reversed, Spearman -1.000 on two token sets and -0.800 on two more. It is NOT the scale-invariance defect: weight_rel_err, which is not scale-invariant, inverts identically. The GAUSSIAN activation proxy fails on the SAME boundary, overstating error by up to 1.6x on q_proj while landing within 7% on the expert gate. CONSEQUENCE: the weight-space floor procedure assigns 4.500 bpw to the specimen whose real activations tolerate the representation BEST and 4.125 to the one that tolerates it WORST, Spearman(floor_bpw, real_err) = -1.000.",
    "applicability": {
@@ -1136,11 +1167,11 @@
   }
  ],
  "entries_by_status": {
-  "ACTIVE": 28,
+  "ACTIVE": 29,
   "CONDITIONAL": 4,
   "REFUTED": 1
  },
- "negative_results": 17,
+ "negative_results": 18,
  "supersession_in_corpus": {
   "ACCELERATOR_BARRIER_CONTROL_MECHANISM.json": [
    "ACCELERATOR_BARRIER_CONTROL_MECHANISM.json#AMENDED_IN_PLACE_2026_08_25",

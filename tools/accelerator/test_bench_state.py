@@ -121,3 +121,59 @@ def test_THE_STATE_IS_DERIVED_FROM_SAMPLES_NOT_PASSED_IN():
     contended measurement without editing the derivation."""
     import inspect
     assert "state" not in inspect.signature(bench.bench_block).parameters
+
+
+def test_QUIESCED_is_refused_when_a_SAMPLE_disagrees_with_the_summary():
+    """A harness in this program wrote "bench_state": "QUIESCED" as a literal while
+    all six of its quiescence probes read quiet=False. It never reached build(), but
+    the hole it exposed is real: the summary was checked and the samples were not.
+
+    Both arms run. The quiet-summary/noisy-sample dict must be REFUSED, and the
+    all-quiet one must still be accepted -- otherwise this test would pass by
+    refusing everything."""
+    quiet = {"quiet": True, "n_contenders": 0, "contenders": []}
+    noisy = {"quiet": False, "n_contenders": 2,
+             "contenders": [{"comm": "avconferenced", "cpu_pct": 33.4, "rss_gib": 0.02}]}
+    ids = {k: "x" for k in R.IDENTITIES}
+    def build(before, after):
+        return R.build(
+            experiment_class="ACCEL-KERNEL", knowledge_level="INSTANCE", identities=ids,
+            result={"median_ms": 1.0}, claim_boundary="b", passed=True,
+            bench={"state": "QUIESCED", "recorded_at": "2026-08-26T00:00:00Z",
+                   "machine": "m", "quiescence": quiet,
+                   "samples": {"before": before, "after": after}})
+
+    with pytest.raises(ValueError, match="ASSERTED"):
+        build(quiet, noisy)
+    with pytest.raises(ValueError, match="ASSERTED"):
+        build(noisy, quiet)
+    assert build(quiet, quiet)["bench"]["state"] == "QUIESCED"
+
+
+def test_bench_block_NEVER_produces_a_dict_this_guard_would_refuse():
+    """The guard above protects hand-built dicts. bench_block must be incapable of
+    tripping it, or the tool and its check disagree."""
+    quiet = {"quiet": True, "n_contenders": 0, "contenders": []}
+    noisy = {"quiet": False, "n_contenders": 1, "contenders": [{"comm": "x"}]}
+    for before, after in ((quiet, quiet), (quiet, noisy), (noisy, noisy), (None, quiet)):
+        b = bench.bench_block(machine="m", before=before, after=after)
+        R.build(experiment_class="ACCEL-KERNEL", knowledge_level="INSTANCE",
+                      identities={k: "x" for k in R.IDENTITIES},
+                      result={"median_ms": 1.0}, claim_boundary="b", passed=True, bench=b)
+        if b["state"] == "QUIESCED":
+            assert before is not None and after is not None
+
+
+def test_ONE_SIDED_quiet_is_UNKNOWN_not_QUIESCED():
+    """Both ends or it is not quiesced. A quiet `before` with no `after` says the
+    machine was quiet at one instant, not across the window; contention that starts
+    after the before-sample and ends before any after-sample leaves no trace.
+
+    The noisy arm runs too: one-sided NOISE still reads CONTENDED, because evidence
+    of noise is evidence while absence of observed noise on one side is not."""
+    quiet = {"quiet": True, "n_contenders": 0, "contenders": []}
+    noisy = {"quiet": False, "n_contenders": 1, "contenders": [{"comm": "x"}]}
+    assert bench.bench_block(machine="m", before=quiet, after=None)["state"] == "UNKNOWN"
+    assert bench.bench_block(machine="m", before=None, after=quiet)["state"] == "UNKNOWN"
+    assert bench.bench_block(machine="m", before=quiet, after=quiet)["state"] == "QUIESCED"
+    assert bench.bench_block(machine="m", before=noisy, after=None)["state"] == "CONTENDED"

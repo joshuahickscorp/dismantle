@@ -249,7 +249,14 @@ def bench_block(*, machine: str, note: str | None = None,
     elif any(s.get("quiet") is None for s in samples):
         state, worst = "UNKNOWN", max(samples, key=lambda s: s.get("n_contenders") or 0)
     elif all(s.get("quiet") is True for s in samples):
-        state, worst = "QUIESCED", samples[0]
+        # BOTH ENDS OR IT IS NOT QUIESCED. A single quiet sample says the machine
+        # was quiet at one instant, not across the window -- contention that
+        # started after a quiet `before` and ended before there was an `after` to
+        # see it leaves no trace. Evidence of noise is evidence; absence of
+        # observed noise on ONE side is not evidence of quiet, and this is the
+        # same asymmetry the enumeration failure above already respects.
+        state, worst = (("QUIESCED", samples[0]) if before is not None and after is not None
+                        else ("UNKNOWN", samples[0]))
     else:
         state, worst = "CONTENDED", max(samples, key=lambda s: s.get("max_rss_gib") or 0.0)
     return {

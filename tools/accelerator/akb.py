@@ -1164,6 +1164,43 @@ LAWS: list[dict[str, Any]] = [
                           "across architectures, so ARCHITECTURE is named, never UNSCOPED."),
     ),
     dict(
+        law_id="AKB-A-REMOVED-DISPATCH-IS-PRICED-BY-ITS-BYTES",
+        statement=(
+            "COST PER REMOVED DISPATCH IS NOT A WELL-DEFINED QUANTITY unless the bytes held "
+            "constant are stated. Fusing two half-width GEMV kernels into one full-width "
+            "kernel removes a dispatch while moving ZERO extra bytes and returns 1.042 us; "
+            "adding a dispatch that reads more weights costs 70.708 us. Same machine, same "
+            "shape, same session -- a factor of 68. Doubling dispatches AND weights costs "
+            "+23.76%, not +100%, so dispatches overlap and the machine is bandwidth-bound. "
+            "OPERAND REUSE IS REFUTED as the mechanism at +0.418% against a pre-registered "
+            "8-20%, with complete_separation False."),
+        applicability={
+            "MODEL": NONE, "ARCHITECTURE": NONE,
+            "ORGAN": "MLP GEMV; the production comparison point is the gate_up pair",
+            "REPRESENTATION": "grouped absmax group=64 operands",
+            "SHAPE": "rows=17408 cols=5120, 8704 threadgroups per dispatch",
+            "MACHINE": M3, "RUNTIME": "MLX 0.32.1 mx.fast.metal_kernel JIT, 200 reps, 3 sweeps",
+            "KERNEL": "hand-written MSL: single_only / reuse / reload / two_no_add / two_plus_add",
+            "STORAGE_TIER": NONE, "TOPOLOGY": NONE,
+            "WORKLOAD_PHASE": "single-token decode-shaped GEMV, CONTENDED machine"},
+        evidence_class="Measured",
+        source_receipts=["receipts/headless/ACCELERATOR_DISPATCH_IS_NOT_THE_PRICE.json"],
+        citations=["receipts/headless/ACCELERATOR_DISPATCH_IS_NOT_THE_PRICE.json#result.THE_SEPARATION",
+                   "receipts/headless/ACCELERATOR_DISPATCH_IS_NOT_THE_PRICE.json#result.OPERAND_REUSE_IS_REFUTED",
+                   "receipts/headless/ACCELERATOR_DISPATCH_IS_NOT_THE_PRICE.json#claim_boundary"],
+        status="ACTIVE", superseded_by=None, negative_result=True,
+        confidence_basis=(
+            "ONE shape, THREE sweeps, and BENCH_STATE CONTENDED -- so the absolute values are "
+            "upper bounds and the 0.418% reuse figure sits INSIDE the 5.86-8.84% IQR and must "
+            "not be read as a small positive. What carries the law is the SEPARATION: 1.042 vs "
+            "70.708 us is a factor of 68, far outside that noise, and the +23.76% overlap "
+            "figure is likewise well above it. The refutation is sound rather than merely "
+            "unresolved because the pre-registered 8% floor WOULD have cleared this noise. "
+            "MODEL and ARCHITECTURE are NONE because the arms are synthetic; the receipt "
+            "withdraws the earlier 8.6 us figure AND the framing that produced it, and does "
+            "NOT refute production's 17.35 us, which is a bytes-plus-dispatch number."),
+    ),
+    dict(
         law_id="AKB-WEIGHT-METRICS-INVERT-ON-ATTENTION-Q",
         statement=(
             "For attention q_proj under ws_rtn_q4_g64, WEIGHT-SPACE FIDELITY RANKS FOUR "

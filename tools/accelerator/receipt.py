@@ -87,6 +87,22 @@ def _check_bench(bench, result) -> None:
             raise ValueError(
                 f"bench state QUIESCED while {q['n_contenders']} contenders are "
                 f"recorded: {[c.get('comm') for c in q.get('contenders') or []][:4]}")
+        # ...AND THE SUMMARY MUST AGREE WITH THE SAMPLES IT SUMMARISES. bench_block
+        # derives `quiescence` as the WORST sample, so the two agree by construction
+        # -- but a hand-built bench dict can carry a quiet summary over noisy
+        # samples, and this program has already shipped one harness that wrote
+        # "bench_state": "QUIESCED" as a LITERAL while every one of its six
+        # quiescence probes read quiet=False. That harness never reached this
+        # function; the hole it revealed is that the summary was trusted alone.
+        for side, sample in (bench.get("samples") or {}).items():
+            if isinstance(sample, dict) and sample.get("quiet") is not True:
+                raise ValueError(
+                    f"bench state QUIESCED but the {side!r} sample reports "
+                    f"quiet={sample.get('quiet')!r} with "
+                    f"{sample.get('n_contenders')} contenders "
+                    f"{[c.get('comm') for c in sample.get('contenders') or []][:3]}. "
+                    f"A summary that disagrees with its own samples is an ASSERTED "
+                    f"state, and S032 §3 requires a derived one.")
 
 
 # Steer §80. Never promote too early.

@@ -179,3 +179,65 @@ def test_the_call_timeout_is_configurable_and_defaults_to_180():
         os.environ.pop("HCLI_DELEGATE_TIMEOUT_S", None)
         if old is not None:
             os.environ["HCLI_DELEGATE_TIMEOUT_S"] = old
+
+
+# --------------------------------------------------------------------------
+# A syntax error upstream must not be reported as a shape error downstream.
+#
+# Measured on the sealed 27B resident: it emitted an unescaped quote inside a
+# string, the outermost object failed to decode, the scan salvaged the SECOND
+# obligation object, and the rejection read "$: missing required property
+# 'obligations'". Six retries chased a phantom.
+# --------------------------------------------------------------------------
+
+MALFORMED = '''{
+  "obligations": [
+    {"id": "a", "statement": "s", "agent_role": "test",
+     "angles": ["find \\"$ROOT/receipts/head" -type f"], "consequential": true},
+    {"id": "b", "statement": "t", "agent_role": "test",
+     "angles": ["ok"], "consequential": true}
+  ]
+}'''
+
+
+def test_the_fixture_really_is_malformed_and_really_does_salvage():
+    """ANTI-VACUITY: if this text parsed, or salvaged nothing, the tests below
+    would be asserting against a situation that never happens."""
+    with pytest.raises(Exception):
+        json.loads(MALFORMED)
+    from hcli.backends import extract_json_object
+    got = extract_json_object(MALFORMED)
+    assert isinstance(got, dict) and got.get("id") == "b", got
+
+
+def test_A_SALVAGED_FRAGMENT_IS_REPORTED_AS_ONE():
+    from hcli.backends import extract_json_object
+    diag = []
+    extract_json_object(MALFORMED, diag)
+    assert diag and "NOT valid JSON" in diag[0] and "INNER object" in diag[0]
+
+
+def test_THE_REJECTION_NAMES_THE_SYNTAX_ERROR_NOT_ONLY_THE_SHAPE():
+    c = contract()
+    with pytest.raises(SchemaViolation) as e:
+        c.validate(MALFORMED)
+    reason = str(e.value)
+    assert "NOT valid JSON" in reason, reason
+    assert "obligations" in reason, "the shape error is still reported, after the cause"
+
+
+def test_A_WELL_FORMED_REPLY_CARRIES_NO_SALVAGE_NOTE():
+    from hcli.backends import extract_json_object
+    diag = []
+    extract_json_object(json.dumps({"obligations": []}), diag)
+    assert diag == []
+
+
+def test_PROSE_WRAPPED_JSON_IS_STILL_ACCEPTED_WITHOUT_A_NOTE():
+    """The salvage exists for replies that wrap the object in text. That path must
+    not start reporting a syntax error it does not have."""
+    from hcli.backends import extract_json_object
+    diag = []
+    got = extract_json_object(
+        'Here is the plan:\n' + json.dumps({"obligations": []}), diag)
+    assert got == {"obligations": []} and diag == []

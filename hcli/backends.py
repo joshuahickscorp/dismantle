@@ -506,8 +506,19 @@ def inject_schema_instruction(payload: Dict[str, Any], instruction: str) -> None
     append_user_text(payload, instruction, skip_if="MUST satisfy this JSON Schema")
 
 
-def extract_json_object(content: Any) -> Dict[str, Any]:
-    """Pull a JSON object out of a model reply. Raises SchemaViolation."""
+def extract_json_object(content: Any, diag: Optional[List[str]] = None) -> Dict[str, Any]:
+    """Pull a JSON object out of a model reply. Raises SchemaViolation.
+
+    ``diag`` collects notes about HOW the object was obtained. It matters when the
+    whole reply does not parse and an inner object is salvaged instead: that object
+    is a FRAGMENT, and validating it produces a schema error that blames the shape
+    when the real fault is a syntax error further up.
+
+    Measured on the sealed 27B resident: it emitted an unescaped quote inside a
+    string (``"find \"$ROOT/receipts/head" -type f"``), the outer object failed to
+    decode, the scan returned the first OBLIGATION object, and the rejection read
+    "missing required property 'obligations'". Six retries chased a phantom.
+    """
     if isinstance(content, dict):
         return content
     text = str(content or "").strip()
@@ -530,16 +541,29 @@ def extract_json_object(content: Any) -> Dict[str, Any]:
     except Exception:
         pass
     decoder = json.JSONDecoder()
+    first_brace = text.find("{")
+    outer_error: Optional[str] = None
     for index, char in enumerate(text):
         if char != "{":
             continue
         try:
             parsed, _ = decoder.raw_decode(text[index:])
-        except Exception:
+        except Exception as exc:
+            if index == first_brace:
+                outer_error = str(exc)
             continue
         if isinstance(parsed, dict):
+            if diag is not None and index != first_brace:
+                diag.append(
+                    "the reply is NOT valid JSON -- the outermost object failed to "
+                    f"decode ({outer_error or 'unknown error'}) and an INNER object "
+                    f"at offset {index} was validated instead. Fix the syntax; the "
+                    f"schema complaint below is about a fragment.")
             return parsed
-    raise SchemaViolation("response is not a JSON object", text=text)
+    raise SchemaViolation(
+        "response is not a JSON object"
+        + (f" (outermost object failed to decode: {outer_error})" if outer_error else ""),
+        text=text)
 
 
 def _json_type_name(value: Any) -> str:
@@ -839,8 +863,12 @@ class StructuredOutputContract:
         return prepared
 
     def validate(self, text: Any) -> Dict[str, Any]:
-        parsed = extract_json_object(text)
+        diag: List[str] = []
+        parsed = extract_json_object(text, diag)
         err = validate_against_schema(parsed, self.schema)
+        if err and diag:
+            # The syntax error is the cause; the schema error is its shadow.
+            err = diag[0] + " || " + err
         if err:
             log: List[str] = []
             repaired = repair_near_miss_keys(deepcopy(parsed), self.schema, log)

@@ -26,7 +26,7 @@
   "SUPERSEDED",
   "CONDITIONAL"
  ],
- "corpus_size": 102,
+ "corpus_size": 103,
  "outside_scope_count": 347,
  "known_accelerator_outside_scope": [
   "TOKEN_EXECUTION_ATLAS.json"
@@ -63,6 +63,7 @@
    "ACCELERATOR_BARRIER_CONTROL_MECHANISM.json",
    "ACCELERATOR_BARRIER_SCOPES.json",
    "ACCELERATOR_BARRIER_WINDOW.json",
+   "ACCELERATOR_C2M_CORPUS_ABSENT.json",
    "ACCELERATOR_C2M_CORPUS_CENSUS.json",
    "ACCELERATOR_C2M_CORPUS_DENOMINATOR.json",
    "ACCELERATOR_C2M_PTX.json",
@@ -141,7 +142,7 @@
    "ACCELERATOR_WORKUNIT_THROUGHPUT.json"
   ],
   "declared_count": 15,
-  "legacy_glob_only_count": 87,
+  "legacy_glob_only_count": 88,
   "note": "membership by DECLARATION does not depend on the filename; membership by the legacy glob does. The legacy count is the size of the remaining filename dependence and should fall, never rise."
  },
  "none_claims_not_grounded_count": 0,
@@ -1283,6 +1284,11 @@
    "reason": "not yet triaged by this lane"
   },
   {
+   "receipt": "receipts/headless/ACCELERATOR_C2M_CORPUS_ABSENT.json",
+   "reason_code": "CAPABILITY_NOT_LAW",
+   "reason": "records that a construct now EXISTS and executes -- a capability claim. There is no measured relation to type, and the receipt itself claims no performance."
+  },
+  {
    "receipt": "receipts/headless/ACCELERATOR_C2M_CORPUS_CENSUS.json",
    "reason_code": "SUPERSEDED_IN_FLIGHT",
    "reason": "carries an AMEND* key or is named by a later receipt's boundary_this_closes, and the amendment changes what the number means. Typing the pre-amendment claim would record a law the corpus has already moved past."
@@ -1583,5 +1589,5 @@
    "reason": "carries an AMEND* key or is named by a later receipt's boundary_this_closes, and the amendment changes what the number means. Typing the pre-amendment claim would record a law the corpus has already moved past."
   }
  ],
- "unextracted_count": 70
+ "unextracted_count": 71
 }

@@ -382,8 +382,33 @@ def split_kernels(src: str) -> list[tuple[str, str, str]]:
     return out
 
 
+class EmptyCorpus(RuntimeError):
+    """The corpus was not there. Distinct from `nothing translated`."""
+
+
 def census(sources: dict[str, str], *, elements: int = 16) -> dict[str, Any]:
-    """The honest denominator for a CUDA corpus. `sources` maps path -> file text."""
+    """The honest denominator for a CUDA corpus. `sources` maps path -> file text.
+
+    RAISES ON AN EMPTY CORPUS, and the message points at the CORPUS rather than the
+    frontend. census({}) used to return kernels 0, translated 0 and an empty refusal
+    histogram -- which reads EXACTLY like a coverage measurement of a frontend that
+    translates nothing, and this program has sealed that shape five times
+    (a gate blind to magnitude, a predicate accepting an all-zeros pack, a tie-break
+    mutation on dead code, a coverage curve counting absent blockers, and a shape
+    sweep reporting 0 wrong of 0 cases). kernel_forge.shape_sweep already raises for
+    the same reason and names the shape FILTER; this names the CORPUS.
+
+    IT MATTERS RIGHT NOW AND NOT HYPOTHETICALLY: the pinned Lulzx/cuda-metal clone
+    every C2M coverage number was measured over lived in a session scratchpad and
+    has been reaped, so calling census over a corpus reader that finds nothing is a
+    live possibility rather than a defensive one."""
+    if not sources:
+        raise EmptyCorpus(
+            "census called with ZERO SOURCE FILES. This is not a frontend that "
+            "translates nothing -- it is a corpus that is not there. The pinned "
+            "corpus is Lulzx/cuda-metal @ 19a702303dd29a1b25d668c6a6eca51302a2323c "
+            "and it is NOT vendored into this repo; if the clone has been reaped, "
+            "re-clone it before reading any coverage number as a measurement.")
     kernels, empty, ew, translated = [], [], [], []
     refusals: dict[str, int] = {}
     computations: dict[str, list[str]] = {}
@@ -407,6 +432,13 @@ def census(sources: dict[str, str], *, elements: int = 16) -> dict[str, Any]:
                 translated.append(name)
             except C2MRefusal as e:
                 refusals[str(e)[:60]] = refusals.get(str(e)[:60], 0) + 1
+    if not kernels:
+        raise EmptyCorpus(
+            f"census read {len(sources)} source file(s) and found ZERO __global__ "
+            f"kernels in them. A coverage fraction over zero kernels is 0 of 0, "
+            f"which reads identically to 0 of many. Files read: "
+            f"{sorted(sources)[:5]}. Check the corpus path before treating any "
+            f"number here as a measurement.")
     return {
         "kernels": len(kernels),
         "empty_body": len(empty),

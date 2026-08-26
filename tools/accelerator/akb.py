@@ -1528,6 +1528,10 @@ UNEXTRACTED: dict[str, str] = {
     "ACCELERATOR_FP64_IS_A_HARDWARE_REFUSAL.json": "CAPABILITY_NOT_LAW",
     # A NEGATIVE capability probe with a named instrument gate; nothing timed.
     "ACCELERATOR_OCCUPANCY_PROBE.json": "CAPABILITY_NOT_LAW",
+    # Records that the pinned CUDA corpus is absent from this machine and that the
+    # census could not say so. A fact about EVIDENCE AVAILABILITY and an instrument
+    # refusal; there is no measured relation to type and nothing is timed.
+    "ACCELERATOR_C2M_CORPUS_ABSENT.json": "CAPABILITY_NOT_LAW",
     # Adds a BUDGETED SWEEP to the fabric and the reporting discipline that stops a
     # skipped copy reading as a clean one. Bookkeeping over a mock provider with
     # nothing timed; the only number in it is an ESTIMATE from a rate measured in

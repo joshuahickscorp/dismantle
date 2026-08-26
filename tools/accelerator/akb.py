@@ -1345,6 +1345,8 @@ UNEXTRACTED_REASONS = {
 }
 
 UNEXTRACTED: dict[str, str] = {
+    # A path-and-permission repair, not a measured relation about execution.
+    "ACCELERATOR_HCLI_VERIFIER_PATH_SEMANTICS.json": "CAPABILITY_NOT_LAW",
     # Newly VISIBLE via akb_registration (S032 §13) rather than via a filename.
     # Each carries a real result and each is superseded or subsumed by something
     # already in LAWS, so being visible earns a REASON rather than an entry.

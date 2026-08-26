@@ -361,9 +361,9 @@
  "obligations_total": 83,
  "unmapped_obligations": [],
  "orphan_map_entries": [],
- "receipt_count": 438,
- "accelerator_receipt_count": 86,
- "last_verified_commit": "1b1df5235",
+ "receipt_count": 439,
+ "accelerator_receipt_count": 87,
+ "last_verified_commit": "9060e603a",
  "last_verified_test_count": 524,
  "test_count_is_from_a_run_not_arithmetic": true,
  "test_environment": {
@@ -1255,6 +1255,7 @@
   "receipts": [
    "ACCELERATOR_AKB_CONSTRUCTION.json",
    "ACCELERATOR_DISPATCH_IS_NOT_THE_COST.json",
+   "ACCELERATOR_HCLI_VERIFIER_PATH_SEMANTICS.json",
    "ACCELERATOR_LAW_BASE.json",
    "ACCELERATOR_LM_HEAD_EXACT_BOUNDS_REFUTED.json",
    "ACCELERATOR_MLP_OPERAND_REUSE_REFUTED.json",

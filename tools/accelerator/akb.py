@@ -1442,6 +1442,8 @@ UNEXTRACTED_REASONS = {
 }
 
 UNEXTRACTED: dict[str, str] = {
+    # An integration result and six defect fixes; no measured physical relation.
+    "HCLI_RESIDENT_END_TO_END.json": "CAPABILITY_NOT_LAW",
     # A coverage census over receipt SCHEMA, not a physical relation.
     "ACCELERATOR_BENCH_STATE_IS_A_SCHEMA_REQUIREMENT.json": "METHOD_NOT_LAW",
     # An endpoint that now EXISTS and refuses correctly; no measured relation.

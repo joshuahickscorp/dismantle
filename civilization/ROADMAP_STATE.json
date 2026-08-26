@@ -361,17 +361,17 @@
  "obligations_total": 83,
  "unmapped_obligations": [],
  "orphan_map_entries": [],
- "receipt_count": 442,
+ "receipt_count": 443,
  "accelerator_receipt_count": 90,
- "last_verified_commit": "7a5513f67",
- "last_verified_test_count": 549,
+ "last_verified_commit": "91142d7bd",
+ "last_verified_test_count": 555,
  "test_count_is_from_a_run_not_arithmetic": true,
  "test_environment": {
   "interpreter": "/usr/local/bin/python3",
   "resolves_to": "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3.12",
   "version_and_mlx": "3.12.6 /Users/scammermike/Library/Python/3.12/lib/python/site-packages/mlx/core.cpython-312-darwin.so",
   "suite": "tools/accelerator",
-  "failed": 4
+  "failed": 0
  },
  "named_gates": {
   "NVIDIA_CUDA_HARDWARE": "P2 differential. No local NVIDIA execution exists.",
@@ -1406,6 +1406,7 @@
    "HCLI_LONG_CONTEXT_ROOT_INGRESS.json",
    "HCLI_MIXED_MAX.json",
    "HCLI_PERSISTENCE_AUDIT.json",
+   "HCLI_RESIDENT_END_TO_END.json",
    "HCLI_RESIDENT_SEAL.json",
    "HCLI_SCHEDULER_QUALITY.json",
    "HCLI_SELF_OPT_ITERATION_1.json",

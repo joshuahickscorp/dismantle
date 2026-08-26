@@ -1442,6 +1442,8 @@ UNEXTRACTED_REASONS = {
 }
 
 UNEXTRACTED: dict[str, str] = {
+    # A coverage census over receipt SCHEMA, not a physical relation.
+    "ACCELERATOR_BENCH_STATE_IS_A_SCHEMA_REQUIREMENT.json": "METHOD_NOT_LAW",
     # An endpoint that now EXISTS and refuses correctly; no measured relation.
     "ACCELERATOR_SEALED_RESIDENT_ENDPOINT.json": "CAPABILITY_NOT_LAW",
     # A path-and-permission repair, not a measured relation about execution.

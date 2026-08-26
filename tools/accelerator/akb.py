@@ -208,6 +208,11 @@ def resolve(citation: str, root: Path = REPO) -> Any:
     return cur
 
 
+# receipt name -> law ids an amendment in it explicitly declares unaffected.
+# Populated by superseding_corpus, which is the only thing that reads amendments.
+_EXEMPT: dict[str, set[str]] = {}
+
+
 def superseding_corpus(paths: list[Path] | None = None) -> dict[str, list[str]]:
     """Receipts this corpus supersedes itself on, and by what.
 
@@ -221,6 +226,16 @@ def superseding_corpus(paths: list[Path] | None = None) -> dict[str, list[str]]:
         amended = [k for k in d if "AMEND" in k.upper()]
         if amended:
             out.setdefault(f.name, []).extend(f"{f.name}#{k}" for k in amended)
+            # An amendment may DECLARE which laws it leaves standing. Explicit
+            # registration, not a semantic guess about scope (S032 §13) -- an
+            # amendment that withdraws one figure from a receipt does not
+            # automatically invalidate a law resting on a different measurement in
+            # the same file, but nothing may INFER that; the amendment has to say
+            # so, by law_id, in the receipt.
+            for k in amended:
+                for lid in (d[k] or {}).get("laws_unaffected", []) \
+                        if isinstance(d.get(k), dict) else []:
+                    _EXEMPT.setdefault(f.name, set()).add(str(lid))
         closes = d.get("boundary_this_closes")
         if closes:
             for target in RECEIPT_NAME.findall(json.dumps(closes)):
@@ -339,11 +354,12 @@ def validate(entry: dict[str, Any], *, superseded: dict[str, list[str]] | None =
     if entry["status"] == "ACTIVE":
         for rel in entry["source_receipts"]:
             name = Path(rel.partition("#")[0]).name
-            if name in superseded:
+            if name in superseded and lid not in _EXEMPT.get(name, ()):
                 raise Refused(
                     f"{lid}: status ACTIVE but source {name} is superseded by "
                     f"{superseded[name]}. A law resting on an amended or closed receipt is "
-                    f"CONDITIONAL at best.")
+                    f"CONDITIONAL at best. If the amendment does not bear on THIS law, "
+                    f"the amendment must say so by naming {lid} in laws_unaffected.")
 
     # NC5 -- Measured may not rest on a receipt that did not pass.
     if entry["evidence_class"] == "Measured":
@@ -1556,6 +1572,10 @@ def build(*, root: Path = REPO) -> dict[str, Any]:
         "entries_by_status": by_status,
         "negative_results": sum(1 for e in entries if e["negative_result"]),
         "supersession_in_corpus": {k: v for k, v in sorted(superseded.items())},
+        # Which laws an amendment explicitly declared it does NOT reach, by law_id.
+        # Published so the exemption is auditable from the artifact rather than
+        # living only in a module global.
+        "amendment_exemptions": {k: sorted(v) for k, v in sorted(_EXEMPT.items())},
         "unextracted": unextracted,
         "unextracted_count": len(unextracted),
     }

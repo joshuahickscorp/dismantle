@@ -205,3 +205,37 @@ def name_filter_quiescence(names: tuple[str, ...]) -> dict[str, Any]:
             "hits": hits,
             "why_this_is_kept": "executable demonstration that a name filter "
                                 "reports what it looked for, not what is there"}
+
+
+def bench_block(*, machine: str, note: str | None = None,
+                before: dict[str, Any] | None = None,
+                after: dict[str, Any] | None = None) -> dict[str, Any]:
+    """The S032 §3 machine-state block a performance receipt must carry.
+
+    The state is DERIVED from the samples, never asserted alongside them. Pass
+    the quiescence samples taken around the measurement; if none were taken the
+    state is UNKNOWN, which is the steer's rule verbatim: "If quiescence is
+    unknown: BENCH_STATE = UNKNOWN, not quiet."
+
+    A sample whose enumeration FAILED (quiet is None) is also UNKNOWN, not quiet
+    -- a `ps` that exited non-zero found nothing because it could not look.
+    """
+    import time as _t
+    samples = [s for s in (before, after) if isinstance(s, dict)]
+    if not samples:
+        state, worst = "UNKNOWN", None
+    elif any(s.get("quiet") is None for s in samples):
+        state, worst = "UNKNOWN", max(samples, key=lambda s: s.get("n_contenders") or 0)
+    elif all(s.get("quiet") is True for s in samples):
+        state, worst = "QUIESCED", samples[0]
+    else:
+        state, worst = "CONTENDED", max(samples, key=lambda s: s.get("max_rss_gib") or 0.0)
+    return {
+        "state": state,
+        "recorded_at": _t.strftime("%Y-%m-%dT%H:%M:%SZ", _t.gmtime()),
+        "machine": machine,
+        "quiescence": worst,
+        "samples": {"before": before, "after": after},
+        "note": note,
+        "rule": "S032 §3 -- if quiescence is unknown the state is UNKNOWN, not quiet",
+    }

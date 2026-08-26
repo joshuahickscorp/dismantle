@@ -33,6 +33,7 @@ import json
 import os
 import re
 import subprocess
+import sys
 import time
 import urllib.request
 from pathlib import Path
@@ -493,6 +494,60 @@ def identity_is_sufficient(ident: dict) -> tuple[bool, str]:
     return True, "artifact named"
 
 
+def machine_state(responses) -> dict:
+    """The machine this run happened on, RECORDED rather than left to be inferred.
+
+    Two unpaired capability runs of the same artifact once differed by 19% of wall
+    and it took reading per-repetition SPREAD to work out that one arm had run on a
+    contended machine (ACCELERATOR_DISPATCH_IS_NOT_THE_COST.json). That inference
+    worked and is weaker than a field. Sampled at the START and END of the run only:
+    a sample per item would perturb the thing it measures, which is the same reason
+    bench.time_arm does not call it either.
+
+    ``worst_repetition_spread_pct`` is the signal that actually caught it -- a graph
+    change cannot make a kernel more REPEATABLE, so a run whose repeats scatter was
+    sharing the machine. It is derived from the responses already collected and costs
+    nothing.
+    """
+    try:
+        sys.path.insert(0, str(REPO / "tools/accelerator"))
+        import bench
+        before = machine_state._before
+        after = bench.machine_quiescence()
+    except Exception as e:  # never let a diagnostic field fail a scored run
+        return {"recorded": False, "why": f"{type(e).__name__}: {e}"}
+    if not before:
+        # An absent BEFORE sample is NOT a recorded machine state. Returning
+        # recorded=True with a null field is the same failure the quiescence
+        # instrument itself refuses: "I could not look" must not read as "I
+        # looked and found nothing".
+        return {"recorded": False,
+                "why": "no quiescence sample was taken before the items ran"}
+
+    by_id: dict[str, list[float]] = {}
+    for r in responses:
+        w = r.get("wall_s")
+        if isinstance(w, (int, float)):
+            by_id.setdefault(r["id"], []).append(float(w))
+    spreads = {k: round(100 * (max(v) - min(v)) / (sorted(v)[len(v) // 2] or 1), 1)
+               for k, v in by_id.items() if len(v) > 1}
+    return {
+        "recorded": True,
+        "quiescence_before": before,
+        "quiescence_after": after,
+        "quiet_at_both_samples": bool(
+            before and after and before.get("quiet") and after.get("quiet")),
+        "worst_repetition_spread_pct": max(spreads.values()) if spreads else None,
+        "repetition_spread_pct_by_item": dict(sorted(
+            spreads.items(), key=lambda kv: -kv[1])),
+        "how_to_read_it": (
+            "a run whose repeats scatter shared the machine. A graph or model change "
+            "cannot make a kernel more REPEATABLE, so a cross-run timing comparison "
+            "between one run at 40% worst spread and another at 0.8% is not a "
+            "comparison. PASS COUNTS do not drift with load; wall times do."),
+    }
+
+
 def harness_health(responses) -> dict:
     """Separate A BODY THAT ANSWERED BADLY from A HARNESS THAT NEVER ASKED.
 
@@ -552,6 +607,14 @@ def main() -> int:
                     help="system prompt applied ONLY to items that define none")
     args = ap.parse_args()
 
+    # The BEFORE sample must be taken before any item runs, not reconstructed after.
+    try:
+        sys.path.insert(0, str(REPO / "tools/accelerator"))
+        import bench as _bench
+        machine_state._before = _bench.machine_quiescence()
+    except Exception as e:
+        machine_state._before = {"quiet": None, "refused": f"{type(e).__name__}: {e}"}
+
     items = build_items(args.default_system)
     print(f"suite: {len(SUITE)} items, {len(items)} calls, backend={args.backend}", flush=True)
 
@@ -592,6 +655,7 @@ def main() -> int:
             print(f"  {it['id']}[{it['rep']}] {r.get('finish_reason')} "
                   f"{r.get('completion_tokens')}tok {r.get('wall_s')}s", flush=True)
 
+    _machine = machine_state(responses)
     _health = harness_health(responses)
     _ident = artifact_identity(args)
     _ident_ok, _ident_why = identity_is_sufficient(_ident)
@@ -618,6 +682,7 @@ def main() -> int:
                              if overall_total and _health["scoreable"] else None),
                     "scoreable": _health["scoreable"]},
         "harness_health": _health,
+        "machine_state": _machine,
         "per_axis": per_axis,
         "per_item": per_item,
     }

@@ -280,13 +280,13 @@
   "claim_boundary": [
     "ONE artifact, ONE prompt (11 tokens), ONE generation length (64 new, EOS at 49), ONE machine, INSTANCE. The 3.75% at equal dispatch count is measured at this length and this shape and nothing here says it holds at 1024 tokens.",
     "3 admitted sweeps per arm. The result is admitted by COMPLETE SEPARATION of clusters whose spreads are 0.12-0.37% -- far inside the 10% gate -- and not by a 200-rep count.",
-    "CAPABILITY IS NOT YET IN THIS RECEIPT. The 628-dispatch graph has NOT been through the 43-case suite at the time of writing, so the \u00a718 floor is NOT cleared for it and no accepted-TPS figure is claimed. A dispatch reduction that is not capability-preserving is not a win.",
+    "The two capability runs are NOT PAIRED and their timing is unusable, which the receipt states rather than quoting the 19% it produced. What they establish is the 30/43 FLOOR and the 43/43 semantic identity, neither of which drifts with machine load.",
     "The 34.8x DRAM overshoot RULES OUT a bandwidth explanation for the pair lever; it does NOT establish which of load-issue, cache traffic or register pressure is the mechanism. The experiment that would settle it -- a kernel that fuses the dispatch while still loading the input twice -- does not exist and was not built.",
     "GPU time is per-COMMAND-BUFFER (GPUEndTime-GPUStartTime), so every per-dispatch figure here is a MARGINAL derived by differencing two graphs, not a per-dispatch measurement. Metal timestamp counter sampling is probed as supported and deliberately not encoded (crates/hawking-core/src/metal/mod.rs:704), so the S031 \u00a73 atlas still has no per-dispatch duration column -- what it now has is a per-LEVER one.",
     "The atlas's BYTES and FLOPS columns remain open. The byte arithmetic here covers two levers and is derived from shapes, not instrumented.",
     "The lake fill and mlx_boot were not quiesced by force at any point; the admitted window was waited for, not created."
   ],
-  "next": "the capability suite on the 628 graph -- unfused and fused on the SAME binary -- and then the two levers FINDING_7 actually leaves open: capability 30 -> 36 at fixed EBPW, or EBPW 3.14 -> 2.62 at fixed capability. The graph has 1.65x left in it and the target needs 1.20x of ceiling that the graph cannot supply.",
+  "next": "the two levers FINDING_7 leaves open -- capability 30 -> 36 at fixed EBPW, or EBPW 3.14 -> 2.62 at fixed capability -- because the graph has 1.65x left and the \u00a719 target needs 1.20x of CEILING the graph cannot supply. structured_output at 5/15 is 10 of the 13 failing cases, so capability is where the reachable lever is, and S031 \u00a720 already names it as a first-class HCLI organ.",
   "identities": {
     "experiment": {
       "class": "ACCEL-DISPATCH",
@@ -375,6 +375,12 @@
       "command": "cargo test --profile release-fast -p hawking-core --lib mlp_fusion_env",
       "passed": 1,
       "failed": 0
+    },
+    "headless": {
+      "command": "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3 -m pytest tools/headless/test_capability_identity.py -q",
+      "passed": 14,
+      "failed": 0,
+      "was": 10
     }
   },
   "FINDING_7_THE_BANDWIDTH_WALL_TURNS_S031_19_INTO_A_CONSTRAINT_CURVE": {
@@ -428,5 +434,120 @@
       "activation and KV traffic, the argmax, and the sampler are all excluded; they are small next to 9.879 GB but they are not zero.",
       "one machine, one artifact, INSTANCE. 187.40 is a constant of THIS SoC and THIS parameter count and transfers to neither another machine nor another model."
     ]
+  },
+  "FINDING_8_THE_18_FLOOR_HOLDS_AND_A_19_PERCENT_TIMING_GAIN_IN_THE_SAME_RUNS_IS_REFUTED": {
+    "the_gate": "S031 \u00a718 makes 30/43 a FLOOR. The 628-dispatch graph had never been through the suite.",
+    "both_arms_on_the_SAME_binary_d34044cf": {
+      "unfused_964": {
+        "passed": 30,
+        "total": 43,
+        "rate": 0.6977,
+        "errored": 0,
+        "empty_replies": 8,
+        "scoreable": true
+      },
+      "fused4_swiglu_628": {
+        "passed": 30,
+        "total": 43,
+        "rate": 0.6977,
+        "errored": 0,
+        "empty_replies": 8,
+        "scoreable": true
+      }
+    },
+    "per_axis": "IDENTICAL on all seven -- knowledge 3/3, reasoning 3/6, structured_output 5/15, mutation 10/10, coding 3/3, self_correction 3/3, hygiene 3/3",
+    "per_repetition": "43 of 43 SEMANTICALLY IDENTICAL on (pass, why, finish_reason, completion_tokens, reply_head). Same text, not merely the same score.",
+    "and_it_re_measures_the_baseline_the_floor_came_from": "the 30/43 this campaign quotes was scored on binary 20b7ffe4; this re-scores it at 30/43 on d34044cf with artifact_inventory_sha 1aff5df85bda1108 unchanged, so the guard I added this block is capability-inert as well as timing-inert",
+    "ACCEPTED_TPS_IS_NOW_A_MEASUREMENT": {
+      "unfused": {
+        "raw_tps": 33.87,
+        "capability": "30/43",
+        "accepted_tps": 23.63
+      },
+      "fused4_swiglu": {
+        "raw_tps": 36.25,
+        "capability": "30/43",
+        "accepted_tps": 25.29
+      },
+      "delta_pct": 7.03,
+      "against_S031_19": "the steer's baseline is 23.82 accepted and its first named rung is 30. 25.29 clears the baseline and does NOT reach the first rung."
+    },
+    "AND_THE_TIMING_IN_THE_SAME_TWO_RUNS_IS_REFUTED_BY_THE_RUNS_THEMSELVES": {
+      "what_it_looked_like": "the fused arm finished 11 of 11 items faster, aggregate wall 960.9 s against 777.8 s = 19.06%, and a pooled linear fit gives 42.725 ms/token unfused against 33.714 fused = 21.09%",
+      "why_it_is_NOT_a_fusion_measurement": "the two arms ran back to back, NOT paired, and their own WITHIN-ARM REPETITION SPREADS separate them completely: the unfused arm reaches 44.6%, 37.3%, 36.8%, 27.1% and 19.9% on five items while the fused arm is 0.1-0.8% on ALL ELEVEN. A graph change cannot make a kernel more REPEATABLE. That is the machine, quiet during the second arm and contended during the first.",
+      "and_the_absolute_levels_say_the_same": "against the quiet paired benchmark in this same receipt, the unfused fit is +44.7% inflated and the fused fit +22.2%. BOTH arms are contaminated; the difference between their contaminations is what the 19% measures.",
+      "within_arm_repetition_spreads": [
+        {
+          "item": "fact-capital",
+          "tokens": 43,
+          "unfused_spread_pct": 44.6,
+          "fused_spread_pct": 0.5
+        },
+        {
+          "item": "json-kind-correct",
+          "tokens": 222,
+          "unfused_spread_pct": 37.3,
+          "fused_spread_pct": 0.8
+        },
+        {
+          "item": "mutation-anchor-exact",
+          "tokens": 344,
+          "unfused_spread_pct": 36.8,
+          "fused_spread_pct": 0.5
+        },
+        {
+          "item": "fact-arith",
+          "tokens": 142,
+          "unfused_spread_pct": 27.1,
+          "fused_spread_pct": 0.2
+        },
+        {
+          "item": "json-no-prose",
+          "tokens": 188,
+          "unfused_spread_pct": 19.9,
+          "fused_spread_pct": 0.6
+        },
+        {
+          "item": "fact-multistep",
+          "tokens": 1536,
+          "unfused_spread_pct": 13.0,
+          "fused_spread_pct": 0.1
+        },
+        {
+          "item": "json-answer",
+          "tokens": 1135,
+          "unfused_spread_pct": 11.4,
+          "fused_spread_pct": 0.4
+        },
+        {
+          "item": "mutation-refuses-invention",
+          "tokens": 264,
+          "unfused_spread_pct": 0.3,
+          "fused_spread_pct": 0.3
+        },
+        {
+          "item": "no-think-leak",
+          "tokens": 63,
+          "unfused_spread_pct": 0.3,
+          "fused_spread_pct": 0.6
+        },
+        {
+          "item": "code-compiles",
+          "tokens": 544,
+          "unfused_spread_pct": 0.2,
+          "fused_spread_pct": 0.1
+        },
+        {
+          "item": "code-self-correct",
+          "tokens": 107,
+          "unfused_spread_pct": 0.0,
+          "fused_spread_pct": 0.2
+        }
+      ],
+      "this_is_the_SAME_ERROR_AS_LAST_BLOCK_CAUGHT_A_CHEAPER_WAY": "CAPABILITY_FUSED_GRAPH_CLEARED published +29.09% from two unpaired capability runs and FUSION_GAIN_IS_LENGTH_INDEPENDENT refuted it with a new paired length sweep. Here the refutation needed NO new experiment -- the repetition spread was already in both receipts and says which arm ran on a quiet machine. A cross-arm comparison whose arms have 44.6% and 0.5% internal spread is not a comparison.",
+      "WHAT_STANDS": "6.541% wall / 7.03% accepted TPS, from 3 admitted alternating sweeps under the pre-registered quiescence gate. The capability runs establish the FLOOR and nothing about speed.",
+      "a_real_effect_this_does_NOT_establish": "the fused arm is still +22.2% above its own quiet 64-token figure, and the capability workload runs to 1536 tokens where KV-cache traffic is far larger. That is a CANDIDATE for a genuine length cost and is exactly the term FINDING_7 excludes from its byte count. It is named, not measured: nothing here separates KV growth from residual contention.",
+      "and_the_quiescence_field_is_STILL_NOT_WIRED_INTO_THE_CAPABILITY_HARNESS": "WAS NOT, AND NOW IS. tools/headless/capability_suite.py grows a machine_state block: bench.machine_quiescence sampled ONCE before the items run and ONCE after -- not per item, because a subprocess per call would perturb what it measures, the same reason bench.time_arm does not call it either -- plus worst_repetition_spread_pct and a per-item spread table derived from responses already collected, at no cost. Exercised on THESE TWO RUNS' own responses without re-running a 20-minute suite: it reports 44.6% for the unfused arm and 0.8% for the fused one, reproducing by field exactly what had to be inferred by hand. A missing BEFORE sample returns recorded=false with a reason and NEVER a null field beside recorded=true, and a single repetition returns None rather than a fake 0.0% that would read as a perfectly quiet machine. Four tests, two mutations watched firing: recorded-without-a-sample and zero-spread-from-one-repetition, each caught by exactly the intended test."
+    }
   }
 }

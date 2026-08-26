@@ -125,3 +125,53 @@ def test_empty_replies_are_counted_SEPARATELY_from_errors():
     which IS a capability fact; an empty reply after a raise is not."""
     h = C.harness_health([{"text": "", "finish_reason": "stop"}] * 5)
     assert h["scoreable"] and h["errored"] == 0 and h["empty_replies"] == 5
+
+
+# --------------------------------------------------------------- machine_state
+# Two unpaired capability runs of the SAME artifact differed by 19% of wall and it
+# took reading per-repetition spread, by hand, to establish that one arm had shared
+# the machine (ACCELERATOR_DISPATCH_IS_NOT_THE_COST.json). These pin the field that
+# now records it, so the next reader does not have to infer it.
+
+def _responses(spreads):
+    """One item per entry; each maps id -> the wall times of its repetitions."""
+    return [{"id": k, "rep": i, "wall_s": w}
+            for k, ws in spreads.items() for i, w in enumerate(ws)]
+
+
+def test_repetition_spread_separates_a_contended_run_from_a_quiet_one():
+    """The signal itself. A graph or model change cannot make a kernel more
+    REPEATABLE, so scatter across repetitions is the machine, not the model."""
+    C.machine_state._before = {"quiet": True, "max_rss_gib": 0.1}
+    contended = C.machine_state(_responses({"a": [5.45, 5.45, 7.88], "b": [15.0, 17.9, 12.3]}))
+    quiet = C.machine_state(_responses({"a": [5.22, 5.24, 5.21], "b": [11.55, 11.53, 11.52]}))
+    assert contended["worst_repetition_spread_pct"] > 30, contended
+    assert quiet["worst_repetition_spread_pct"] < 2, quiet
+    # and the worst offender is NAMED, not just counted
+    assert next(iter(contended["repetition_spread_pct_by_item"])) == "a"
+
+
+def test_a_missing_BEFORE_sample_is_NOT_a_recorded_machine_state():
+    """'I could not look' must not read as 'I looked and found nothing'. Returning
+    recorded=True with a null quiescence field is exactly that."""
+    C.machine_state._before = None
+    out = C.machine_state(_responses({"a": [1.0, 1.0]}))
+    assert out["recorded"] is False and "before" in out["why"], out
+
+
+def test_the_field_is_recorded_when_a_sample_EXISTS():
+    """Anti-vacuity. A machine_state that always refused would pass the test above
+    and record nothing forever."""
+    C.machine_state._before = {"quiet": False, "max_rss_gib": 33.7}
+    out = C.machine_state(_responses({"a": [1.0, 1.02]}))
+    assert out["recorded"] is True
+    assert out["quiescence_before"]["max_rss_gib"] == 33.7
+    assert out["quiet_at_both_samples"] is False, "before was not quiet"
+
+
+def test_a_single_repetition_yields_NO_spread_rather_than_a_fake_zero():
+    """One sample has no spread. Reporting 0.0% would read as a perfectly quiet
+    machine, which is the flattering direction."""
+    C.machine_state._before = {"quiet": True}
+    out = C.machine_state(_responses({"a": [1.0]}))
+    assert out["worst_repetition_spread_pct"] is None, out

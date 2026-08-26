@@ -488,7 +488,8 @@ def source_operand_probe(rows: int, cols: int, probe: str,
     ships a wrong answer. See OPERAND_PROBES for what each removes and why."""
     if (probe not in OPERAND_PROBES and not probe.startswith("thin")
             and probe != "redonly" and "_local" not in probe
-            and "_lane" not in probe and "blocked" not in probe):
+            and "_lane" not in probe and "blocked" not in probe
+            and not probe.startswith("rot")):
         raise ValueError(
             f"unknown operand probe {probe!r}; have {sorted(OPERAND_PROBES) + ['thin']}")
     d = {"PACKED_COLS": cols // 2, "GROUPS": cols // GROUP, "GROUP": GROUP,
@@ -512,6 +513,34 @@ def source_operand_probe(rows: int, cols: int, probe: str,
         return (head + f"acc = (float)(row + lane) + (float)scales[row * {d['GROUPS']}u] * 0.0f"
                        " + (float)packed[row] * 0.0f + x[0] * 0.0f;\n"
                 + REDUCE_TAILS["serial"] % d)
+    if probe.startswith("rot"):
+        # PER-ITERATION ORDER, WITH EVERY LOOP-WIDE PROPERTY PINNED. Lane L visits
+        # the SAME groups {L, L+TPR, ...} rotated by its own lane index, so the
+        # per-lane set is identical LANE BY LANE and therefore the per-simdgroup
+        # loop-wide set, its SPAN, its FRAGMENT COUNT and every stride in it are
+        # identical too. The only thing that moves is WHICH ITERATION asks for
+        # WHICH: at GROUPS=80 TPR=64 simdgroup 0's first iteration goes from ONE
+        # contiguous 1024-byte run to SEVENTEEN runs over the same 2560 bytes.
+        #
+        # This is the first probe in the family where span, fragmentation, stride
+        # and the address set are ALL held: a blocked partition moved the set and a
+        # permutation moved the simdgroup's span, so neither could isolate order.
+        #
+        # rot0 is the CONTROL: same n, same runtime modulo, same index expression,
+        # rotation offset ZERO, so it pays identical arithmetic in the shipped
+        # order and rot-vs-rot0 is the ORDER alone.
+        off = probe[3:]
+        if off not in ("0", "lane"):
+            raise ValueError(f"rot probe must be rot0 (control) or rotlane; got {probe!r}")
+        frag = "for (uint g = lane; g < %(GROUPS)du; g += %(TPR)du) {" % d
+        if frag not in src:
+            raise AssertionError(f"{frag!r} is not in the source to reorder")
+        shift = "0u" if off == "0" else "lane"
+        return src.replace(frag,
+            f"uint _n = (%(GROUPS)du - lane + %(TPR)du - 1u) / %(TPR)du;\n"
+            f"for (uint _i = 0u; _i < _n; _i++) {{\n"
+            f"    uint g = lane + ((_i + {shift}) %% _n) * %(TPR)du;" % d, 1)
+
     if "blocked" in probe:
         # THE SPAN, VARIED WITHOUT A PERMUTATION. Lane L takes a CONTIGUOUS run of
         # exactly the count the strided loop gives it -- ceil((GROUPS-L)/TPR) -- laid

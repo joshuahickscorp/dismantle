@@ -1346,6 +1346,67 @@ LAWS: list[dict[str, Any]] = [
             "changed and neither variant earns a place."),
     ),
     dict(
+        law_id="AKB-THE-INSTANT-IS-THE-COST",
+        statement=(
+            "WHAT A SIMDGROUP ASKS FOR AT ONE INSTANT COSTS 1.11x TO 1.41x, AT AN ADDRESS SET THAT "
+            "IS IDENTICAL LANE BY LANE. Rotating each lane's inner sequence by its own lane index "
+            "leaves the per-lane group SET unchanged -- not the same count, THE SAME GROUPS -- so "
+            "the per-simdgroup loop-wide set, its span, its fragment count and every stride in it "
+            "are identical by construction, and the only thing that moves is WHICH ITERATION asks "
+            "for WHICH: simdgroup 0's first iteration goes from ONE contiguous 1024-byte run to "
+            "SEVENTEEN runs at GROUPS=80, and to THIRTY-TWO at GROUPS=256. Measured on an Apple M3 "
+            "Ultra at 17408x5120 tpr64: 1.2199x, 1.1103x and 1.1668x across three runs losing 12, "
+            "11 and 14 of 14 round-robin rounds, and 1.4095x at 17408x16384 losing 14 of 14, so "
+            "HARDER SHATTERING COSTS MORE and the structural ladder was computed before the timing. "
+            "THIS IS THE FIRST CONFIRMED MECHANISM AFTER TWELVE ELIMINATIONS -- weight bytes, load "
+            "instructions, decode arithmetic, the weight reads at all, operand reuse, ILP, the "
+            "reduction tail, the x reads, displacement (ill-posed), adjacency, fragmentation, "
+            "stride magnitude and span -- and it explains them rather than replacing them, because "
+            "not one of those levers changed what a simdgroup asks for at an instant while the "
+            "shipped kernel already issues ONE contiguous request per iteration. THE CAUSE IS NOT "
+            "NAMED: coalescer width, transaction count and queue occupancy are not separated here. "
+            "NOTHING IS ADOPTED -- both arms are correct and the rotated one LOSES AT BOTH SHAPES "
+            "MEASURED, so the shipped order already sits at the best point on this axis."),
+        evidence_domain="accelerator", civilization="I-D_ACCELERATOR",
+        machine_scope="Apple M3 Ultra, INSTANCE",
+        representation_scope="ws_rtn_q4_g64",
+        kernel_scope="native matvec under a per-lane iteration rotation",
+        applicability={
+            "MODEL": NONE, "ARCHITECTURE": NONE,
+            "ORGAN": "MLP-shaped GEMV, a shape borrowed from the resident",
+            "REPRESENTATION": "ws_rtn_q4_g64",
+            "SHAPE": "rows=17408 at cols 5120 (1.25 groups/lane) and 16384 (4 groups/lane), group 64, tpr64 at tg128",
+            "MACHINE": M3,
+            "RUNTIME": "MLX mx.fast.metal_kernel JIT, 14 round-robin rounds x 20 reps, three runs at 5120 and one at 16384",
+            "KERNEL": "native matvec with each lane's inner sequence rotated by its own lane index",
+            "STORAGE_TIER": NONE, "TOPOLOGY": NONE,
+            "WORKLOAD_PHASE": "a SINGLY SUBMITTED decode-shaped GEMV, CONTENDED machine"},
+        evidence_class="Measured",
+        source_receipts=["receipts/headless/ACCELERATOR_THE_INSTANT_IS_THE_COST.json"],
+        citations=[
+            "receipts/headless/ACCELERATOR_THE_INSTANT_IS_THE_COST.json#P1_CONFIRMED_PAST_THE_TOP_OF_MY_OWN_BAND",
+            "receipts/headless/ACCELERATOR_THE_INSTANT_IS_THE_COST.json#P2_CONFIRMED_AND_IT_IS_MONOTONE",
+            "receipts/headless/ACCELERATOR_THE_INSTANT_IS_THE_COST.json#WHAT_THIS_MEANS_FOR_THE_EIGHT_DEAD_LEVERS"],
+        status="ACTIVE", superseded_by=None, negative_result=False,
+        confidence_basis=(
+            "THE ANTI-VACUITY CONTROL IS DIFFERENT IN KIND A THIRD TIME: a reordering permutes the "
+            "same terms so every arm MUST be correct, and the replacements are the per-lane sets "
+            "asserted EQUAL lane by lane, the order asserted DIFFERENT so a rotation that silently "
+            "reduced to the shipped order cannot tie and read as a finding, the loop-wide span and "
+            "fragment count asserted EQUAL rather than assumed, and an executing test running the "
+            "generated Metal against a float64 oracle because the previous block watched a mutation "
+            "survive a suite that pinned only its own Python. The reorder is visible in the answer: "
+            "rel_err moves 2.021e-07 to 2.030e-07 and 2.512e-07 to 2.562e-07, independent evidence "
+            "it landed. rot0 is the control and pays the identical runtime modulo in the shipped "
+            "order, measured free at 5120 (1.0997 / 0.9862 / 1.0169, opposite directions). Three "
+            "mutations watched failing. TWO POINTS on the groups-per-lane axis give a DIRECTION and "
+            "not a shape, and the two shapes differ in total work, a confound named rather than "
+            "buried -- what is not confounded is that rot loses to rot0 at each shape separately. "
+            "BENCH_STATE CONTENDED, round-spreads 14.6% to 333.7%, minima the estimator and the "
+            "ordinal counts carrying the verdict. ONE tpr, ONE machine, INSTANCE. No model "
+            "executed, no capability run, no adequacy claim moves."),
+    ),
+    dict(
         law_id="AKB-LANE-ORDER-COSTS",
         statement=(
             "WHICH LANE TOUCHES WHICH ADDRESS COSTS ABOUT 8% AT FULL ELEMENT COUNT, AT AN IDENTICAL "

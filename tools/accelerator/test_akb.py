@@ -329,3 +329,51 @@ def test_the_named_gap_list_cannot_go_stale_silently():
     b = akb.build()
     inside = {p.name for p in akb.corpus()}
     assert not (set(b["known_accelerator_outside_scope"]) & inside)
+
+
+def test_a_NONE_that_could_not_be_checked_is_REPORTED_not_silently_skipped():
+    """The NONE grounding check skips a receipt with no identities block. Skipping
+    SILENTLY is the check that cannot fail: an ungrounded NONE on MACHINE reads
+    exactly like a grounded one, and NONE on MACHINE turns an M3 Ultra result into
+    a universal. Found by mutating this lane's own newest law."""
+    import json
+    p = akb.RH / "ACCELERATOR_DISPATCH_IS_NOT_THE_COST.json"
+    if not p.is_file():
+        return
+    built = akb.build()
+    assert built["none_claims_not_grounded_count"] == 0, (
+        "a law claims NONE on an identity-backed axis that nothing checked: "
+        f"{[n for e in built['entries'] for n in e.get('none_claims_not_grounded', [])]}")
+
+    # ANTI-VACUITY. Zero is only a result if the counter can move.
+    backup = p.read_text()
+    doc = json.loads(backup)
+    doc.pop("identities", None)
+    p.write_text(json.dumps(doc, indent=2))
+    try:
+        broken = akb.build()
+    finally:
+        p.write_text(backup)
+    assert broken["none_claims_not_grounded_count"] >= 1, (
+        "stripping the identities block off a cited receipt did not raise the "
+        "ungrounded-NONE count, so the counter reports nothing and the zero above "
+        "means nothing")
+    assert akb.build()["none_claims_not_grounded_count"] == 0, "restore failed"
+
+
+def test_a_NONE_contradicted_by_a_PRESENT_identity_is_REFUSED():
+    """The other direction. Reporting the unverifiable ones is worthless if a
+    verifiable over-claim still passes."""
+    import copy
+    law = next(l for l in akb.LAWS
+               if l["law_id"] == "AKB-DISPATCH-COUNT-DOES-NOT-PREDICT-COST")
+    superseded = akb.superseding_corpus(akb.corpus())
+    assert akb.validate(copy.deepcopy(law), superseded=superseded) is not None
+    for axis in ("MACHINE", "RUNTIME", "MODEL", "KERNEL"):
+        bad = copy.deepcopy(law)
+        bad["applicability"][axis] = akb.NONE
+        try:
+            akb.validate(bad, superseded=superseded)
+        except akb.Refused:
+            continue
+        raise AssertionError(f"{axis}=NONE survived though the receipt records it PRESENT")

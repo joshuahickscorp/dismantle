@@ -234,7 +234,18 @@ def validate(entry: dict[str, Any], *, superseded: dict[str, list[str]] | None =
         for rel in entry["source_receipts"]:
             ids = resolve(rel.partition("#")[0], root=root).get("identities")
             if ids is None:
-                continue  # receipt predates the identity schema; recorded, not assumed
+                # The receipt predates the identity schema, so the NONE cannot be
+                # checked against anything. Skipping SILENTLY is the check that
+                # cannot fail: an ungrounded NONE on MACHINE would read exactly like
+                # a grounded one, and NONE on MACHINE is the widest over-claim
+                # available -- it turns an M3 Ultra result into a universal. Record
+                # it so "checked and grounded" is distinguishable from "could not
+                # check". Not raised, because refusing here would retroactively
+                # invalidate every law citing a pre-schema receipt.
+                entry.setdefault("none_claims_not_grounded", []).append(
+                    {"axis": axis, "identity": ident, "receipt": rel,
+                     "why": "source receipt has no identities block to check against"})
+                continue
             got = ids.get(ident)
             if not (isinstance(got, dict) and got.get("status") in ("ABSENT", "MOCK", "SIMULATED")):
                 raise Refused(
@@ -274,8 +285,54 @@ def validate(entry: dict[str, Any], *, superseded: dict[str, list[str]] | None =
 
 M3 = "Apple M3 Ultra, 60 GPU cores, 96 GiB unified (this box)"
 MLX = "MLX 0.32.1 metal_kernel JIT under CPython 3.12"
+HK = "hawking-core release-fast Rust/Metal decoder, binary d34044cffae8f320"
 
 LAWS: list[dict[str, Any]] = [
+    dict(
+        law_id="AKB-DISPATCH-COUNT-DOES-NOT-PREDICT-COST",
+        statement=(
+            "Two decode graphs at the SAME dispatch count differed in wall time. On the "
+            "sealed-3.14 mixed-codec Qwen3.8 body, add_rmsnorm+gqa_qkv+dn_inproj fusion and "
+            "mlp_swiglu+gqa_qkv+dn_inproj fusion BOTH measure 756 dispatches per decode "
+            "token -- byte-identical trace totals of 9072 at n=2 and 12096 at n=6 -- and "
+            "read 28.8697 ms and 27.7872 ms per token, 3.75% apart with complete separation "
+            "and per-arm spreads of 0.25% and 0.21%. The metric fails in the other direction "
+            "too: a 692-dispatch graph measured 27.7757 ms, indistinguishable from the "
+            "756-dispatch one at 0.04%. The marginal cost of a removed dispatch was 2.64, "
+            "2.86 and 17.35 us on the GPU for three levers measured in one session, a 6.6x "
+            "range, so no single us-per-dispatch constant can be multiplied by a count. "
+            "DISPATCHES_PER_TOKEN is a structural fact about the graph and was NOT a "
+            "predictor of its cost here."),
+        applicability={
+            "MODEL": "Qwen3.8-27B sealed-3.14 (NOETIC_PARENT_A), 3.1393 complete EBPW",
+            "ARCHITECTURE": "Qwen3.8 hybrid, 48 DeltaNet + 16 GQA layers",
+            "ORGAN": "whole decode graph; the outlier lever is the MLP gate/up pair",
+            "REPRESENTATION": "mixed: HQ30UQ4 g64 mixer + HGRAVF01 affine_q2 g64 MLP",
+            "SHAPE": "batch 1 decode, 11-token prompt, 49 generated tokens, max_seq_len 2048",
+            "MACHINE": M3, "RUNTIME": HK,
+            "KERNEL": ("qwen80_add_residual_rmsnorm_tg, qwen_uniform_q4_*_matvec_{qkv,"
+                       "pair_concat}, qwen_affine_q2_group64_matvec_gate_up_swiglu_geo_tpr64_tg128"),
+            "STORAGE_TIER": NONE, "TOPOLOGY": NONE,
+            "WORKLOAD_PHASE": "single-request decode (NOT prefill; S031 §7 keeps them separate)"},
+        evidence_class="Measured",
+        source_receipts=["receipts/headless/ACCELERATOR_DISPATCH_IS_NOT_THE_COST.json"],
+        citations=[
+            "receipts/headless/ACCELERATOR_DISPATCH_IS_NOT_THE_COST.json"
+            "#FINDING_2_TWO_GRAPHS_AT_THE_SAME_DISPATCH_COUNT_DIFFER_BY_3_75_PERCENT",
+            "receipts/headless/ACCELERATOR_DISPATCH_IS_NOT_THE_COST.json"
+            "#FINDING_3_A_DISPATCH_IS_NOT_A_UNIT_OF_COST.marginal_us_per_removed_dispatch",
+            "receipts/headless/ACCELERATOR_DISPATCH_IS_NOT_THE_COST.json#claim_boundary"],
+        status="ACTIVE", superseded_by=None, negative_result=True,
+        confidence_basis=(
+            "3 admitted sweeps per arm under a PRE-REGISTERED admission gate -- "
+            "bench.machine_quiescence sampled before and after each run, admitted only with "
+            "no process over 2 GiB RSS at either sample, 0 runs refused. Admitted by complete "
+            "separation of clusters spreading 0.12-0.37%, not by a rep count. SHAPE and "
+            "WORKLOAD_PHASE are deliberately not UNSCOPED: one prompt, one length, decode "
+            "only. The 17.35 us outlier's MECHANISM is not established -- the receipt rules "
+            "out host (flat at 1.5-1.8% of wall) and DRAM bandwidth (a 34.8x overshoot of "
+            "this machine's measured 589.73 GB/s) and names no third cause."),
+    ),
     dict(
         law_id="AKB-SCAN-VS-CUMSUM",
         statement=(
@@ -1002,6 +1059,13 @@ def build(*, root: Path = REPO) -> dict[str, Any]:
             "otherwise is neither extracted nor refused -- it is invisible. The "
             "excluded names are listed rather than silently dropped."),
         "receipts_yielding_laws": len(cited),
+        "none_claims_not_grounded_count": sum(
+            len(e.get("none_claims_not_grounded", [])) for e in entries),
+        "none_claims_not_grounded_note": (
+            "a NONE on an identity-backed axis that could not be checked because its "
+            "source receipt predates the identity schema. Reported, not refused: these "
+            "are unverified breadth claims, and an unreported one reads identically to "
+            "a verified one."),
         "entries": entries,
         "entries_by_status": by_status,
         "negative_results": sum(1 for e in entries if e["negative_result"]),

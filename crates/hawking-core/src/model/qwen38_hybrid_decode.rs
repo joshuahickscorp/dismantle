@@ -56,8 +56,9 @@ pub fn qwen38_trace_dispatch_enabled() -> bool {
 
 /// MLP suffix fusion. Default Off keeps the 964-dispatch production graph.
 ///
-/// `HAWKING_QWEN38_FUSE_MLP=pair`   — gate+up in one geo_tpr64 dispatch (still SwiGLU)
-/// `HAWKING_QWEN38_FUSE_MLP=swiglu` — gate+up+SwiGLU in one dispatch
+/// `HAWKING_QWEN38_FUSE_MLP=pair`          — gate+up in one geo_tpr64 dispatch (still SwiGLU)
+/// `HAWKING_QWEN38_FUSE_MLP=swiglu` or `=1` — gate+up+SwiGLU in one dispatch
+/// anything else                            — PANICS, see `from_env`
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum Qwen38MlpFusion {
     #[default]
@@ -67,12 +68,33 @@ pub enum Qwen38MlpFusion {
 }
 
 impl Qwen38MlpFusion {
+    /// Unset means Off. An UNRECOGNISED value PANICS rather than silently
+    /// meaning Off.
+    ///
+    /// Why this is not merely defensive: the three sibling levers
+    /// (`FUSE_GQA_QKV`, `FUSE_DN_INPROJ`, `FUSE_ADD_RMSNORM`) are all
+    /// `=1` flags, so `=1` is the natural thing to write here too -- and it
+    /// used to parse to `Off`. A measurement run that way records the
+    /// UNFUSED graph while its operator believes the lever is on, and the
+    /// dispatch count comes back unchanged, which reads as "this lever is
+    /// inert" rather than "this lever never ran". That misreading was
+    /// published once (receipts/headless/TOKEN_EXECUTION_ATLAS_COUNTS.json,
+    /// corrected by ACCELERATOR_DISPATCH_IS_NOT_THE_COST.json). `1`/`true`/
+    /// `on`/`yes` therefore mean the STRONGEST fusion, matching what `=1`
+    /// means for every sibling lever.
     pub fn from_env() -> Self {
         match std::env::var("HAWKING_QWEN38_FUSE_MLP") {
             Ok(v) => match v.trim().to_ascii_lowercase().as_str() {
+                "" | "0" | "off" | "false" | "no" => Self::Off,
                 "pair" | "gate_up" => Self::GateUpPair,
-                "swiglu" | "gate_up_swiglu" => Self::GateUpSwiglu,
-                _ => Self::Off,
+                "swiglu" | "gate_up_swiglu" | "1" | "true" | "on" | "yes" => {
+                    Self::GateUpSwiglu
+                }
+                other => panic!(
+                    "HAWKING_QWEN38_FUSE_MLP={other:?} is not a recognised value; \
+                     use pair | swiglu | 1 | 0. Falling back to Off here would \
+                     silently measure the unfused graph."
+                ),
             },
             Err(_) => Self::Off,
         }
@@ -6808,6 +6830,56 @@ pub fn generate_greedy_complete_wall(
     _max_new: usize,
 ) -> Result<Qwen38CompleteWallResult> {
     Err(Error::Model("qwen38 native decode is Metal-only".into()))
+}
+
+#[cfg(test)]
+mod mlp_fusion_env_tests {
+    use super::*;
+
+    /// All four assertions live in ONE test on purpose: they mutate the same
+    /// process-global env var, and split across parallel `#[test]`s they would
+    /// race each other.
+    #[test]
+    fn an_unrecognised_value_never_silently_means_off() {
+        const K: &str = "HAWKING_QWEN38_FUSE_MLP";
+        let restore = std::env::var(K).ok();
+
+        // 1. The regression itself. `=1` is what the three sibling levers use,
+        //    and it used to parse to Off -- measuring the UNFUSED graph while
+        //    reporting the lever as on.
+        std::env::set_var(K, "1");
+        assert_eq!(
+            Qwen38MlpFusion::from_env(),
+            Qwen38MlpFusion::GateUpSwiglu,
+            "=1 must mean the strongest fusion, as it does for every sibling lever"
+        );
+        assert_eq!(Qwen38MlpFusion::from_env().saved_dispatches_per_token(), 128);
+
+        // 2. The named values still mean what the shader and the receipts say.
+        std::env::set_var(K, "pair");
+        assert_eq!(Qwen38MlpFusion::from_env(), Qwen38MlpFusion::GateUpPair);
+        std::env::set_var(K, "swiglu");
+        assert_eq!(Qwen38MlpFusion::from_env(), Qwen38MlpFusion::GateUpSwiglu);
+
+        // 3. Off is still REACHABLE. A guard that made every value fuse would
+        //    pass assertion 1 and destroy the ability to measure a baseline,
+        //    which is the whole point of a default-off lever.
+        std::env::set_var(K, "0");
+        assert_eq!(Qwen38MlpFusion::from_env(), Qwen38MlpFusion::Off);
+        std::env::remove_var(K);
+        assert_eq!(Qwen38MlpFusion::from_env(), Qwen38MlpFusion::Off);
+
+        // 4. A typo is LOUD. Without this the guard above is decoration:
+        //    `=swigly` would land back in the silent-Off hole.
+        std::env::set_var(K, "swigly");
+        let typo = std::panic::catch_unwind(Qwen38MlpFusion::from_env);
+        std::env::remove_var(K);
+        assert!(typo.is_err(), "an unrecognised value must panic, not mean Off");
+
+        if let Some(v) = restore {
+            std::env::set_var(K, v);
+        }
+    }
 }
 
 #[cfg(test)]

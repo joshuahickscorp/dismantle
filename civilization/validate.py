@@ -145,7 +145,7 @@ def validate(state, goal_text=None):
             cmds = None
         for L in lanes:
             ex, det = L.get("executor"), L.get("detection")
-            if ex not in ("grok", "claude"):
+            if ex not in ("grok", "claude", "resident"):
                 v.append(f"running lane {L.get('lane')} names no known executor: {ex!r}")
                 continue
             if det not in ("definitive", "heuristic"):
@@ -165,6 +165,10 @@ def validate(state, goal_text=None):
                         c.startswith("grok ") and tf in c for c in cmds):
                     v.append(f"running lane {L.get('lane')} claims alive but no live process "
                              "holds its task file -- a status file is not a pid")
+
+            elif ex == "resident" and not L.get("judged_by"):
+                v.append(f"resident lane {L.get('lane')} says nothing about how it was "
+                         "detected; a process that COMMITS to this repo must be named exactly")
 
             elif ex == "claude" and det != "heuristic":
                 # There is no pid for a workflow agent. Anything claiming definitive

@@ -204,3 +204,29 @@ def test_publishing_a_PASSED_count_while_tests_FAILED_is_REFUSED():
     """A passed-count beside unreported failures is a half-truth."""
     s = state(); s["test_environment"]["failed"] = 5
     assert any("tests FAILED in the run" in b for b in validate(s, GOAL))
+
+
+def test_a_RESIDENT_committer_is_representable_and_must_name_itself():
+    """A launchd job was found committing to this branch every five minutes while
+    the census reported zero running lanes -- it landed a commit BETWEEN two of one
+    session's own commits. A committer the ledger cannot see is the worst kind to
+    miss, so 'resident' is a first-class executor and must say how it was found."""
+    s = state()
+    s["running_lanes"] = [{"lane": "tools/odyssey_driver.sh", "executor": "resident",
+                           "alive": True, "detection": "definitive",
+                           "judged_by": "live process in ps"}]
+    assert validate(s, GOAL) == []
+    s["running_lanes"][0].pop("judged_by")
+    assert any("must be named exactly" in b for b in validate(s, GOAL))
+
+
+def test_the_resident_matcher_does_not_catch_an_ordinary_SHELL():
+    """Anti-over-reporting. The first matcher used `"hawking" in line and
+    "driver.sh" in line`, which caught the session's own `zsh -c source ...` shell.
+    A census that over-reports is as useless as one that under-reports."""
+    import build_state
+    lanes = build_state.running_lanes()
+    for L in lanes:
+        if L["executor"] == "resident":
+            assert L["lane"].endswith("driver.sh"), L["lane"]
+            assert " -c " not in L["lane"], f"caught a shell, not a driver: {L['lane']}"

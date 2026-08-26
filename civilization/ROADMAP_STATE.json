@@ -19,17 +19,21 @@
     "G015",
     "G030",
     "G031",
-    "G063"
+    "G063",
+    "G064",
+    "G065"
    ],
    "verified": 5,
    "open": [
-    "G063"
+    "G063",
+    "G064",
+    "G065"
    ],
    "evidence_satisfied": 9,
    "evidence_of": 9,
    "evidence_pct": 100.0,
-   "obligation_pct": 83.3,
-   "completion_pct": 83.3,
+   "obligation_pct": 62.5,
+   "completion_pct": 62.5,
    "completion_basis": "min(evidence categories satisfied / 9, obligations verified / total). The MINIMUM on purpose: I-D has all nine categories and zero verified obligations, and reporting 100% there is the inflation S015 \u00a7II forbids. Never a file count.",
    "open_gates": [
     "S016 civilization-grade scheduler: Era/Civilization/Program/Gate as first-class scheduler concepts -- NOT_STARTED"
@@ -145,7 +149,7 @@
     "G060",
     "G062"
    ],
-   "verified": 1,
+   "verified": 2,
    "open": [
     "G043",
     "G044",
@@ -154,14 +158,13 @@
     "G047",
     "G049",
     "G055",
-    "G058",
-    "G062"
+    "G058"
    ],
    "evidence_satisfied": 9,
    "evidence_of": 9,
    "evidence_pct": 100.0,
-   "obligation_pct": 10.0,
-   "completion_pct": 10.0,
+   "obligation_pct": 20.0,
+   "completion_pct": 20.0,
    "completion_basis": "min(evidence categories satisfied / 9, obligations verified / total). The MINIMUM on purpose: I-D has all nine categories and zero verified obligations, and reporting 100% there is the inflation S015 \u00a7II forbids. Never a file count.",
    "open_gates": [
     "C2M T3: several real open CUDA codebases -- NOT CLAIMED",
@@ -314,26 +317,26 @@
   }
  },
  "obligation_status_counts": {
-  "VERIFIED": 44,
+  "VERIFIED": 45,
   "BLOCKED": 1,
   "IN_PROGRESS": 14,
   "NOT_STARTED": 2,
-  "PENDING": 2
+  "PENDING": 3
  },
- "obligations_total": 63,
+ "obligations_total": 65,
  "unmapped_obligations": [],
  "orphan_map_entries": [],
- "receipt_count": 407,
- "accelerator_receipt_count": 79,
- "last_verified_commit": "3d75773c5",
- "last_verified_test_count": 497,
+ "receipt_count": 408,
+ "accelerator_receipt_count": 80,
+ "last_verified_commit": "0a094032e",
+ "last_verified_test_count": 509,
  "test_count_is_from_a_run_not_arithmetic": true,
  "test_environment": {
   "interpreter": "/usr/local/bin/python3",
   "resolves_to": "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3.12",
   "version_and_mlx": "3.12.6 /Users/scammermike/Library/Python/3.12/lib/python/site-packages/mlx/core.cpython-312-darwin.so",
   "suite": "tools/accelerator",
-  "failed": 0
+  "failed": 1
  },
  "named_gates": {
   "NVIDIA_CUDA_HARDWARE": "P2 differential. No local NVIDIA execution exists.",
@@ -448,12 +451,20 @@
  },
  "running_lanes": [
   {
+   "lane": "/Users/scammermike/Downloads/hawking/tools/odyssey_driver.sh",
+   "executor": "resident",
+   "alive": true,
+   "detection": "definitive",
+   "judged_by": "live process in ps",
+   "commits_to_this_repo": true
+  },
+  {
    "lane": "wf_0b67889e-5bd/agent-a2dee8274c35b9401",
    "executor": "claude",
    "alive": true,
    "transcript": "/Users/scammermike/.claude/projects/-Users-scammermike-Downloads-hawking/5e40f321-b30e-4c5c-ac16-027ddd36ed33/subagents/workflows/wf_0b67889e-5bd/agent-a2dee8274c35b9401.jsonl",
    "detection": "heuristic",
-   "judged_by": "transcript touched 52s ago (< 300s); no pid exists to check, so a finished agent can read as alive"
+   "judged_by": "transcript touched 5s ago (< 300s); no pid exists to check, so a finished agent can read as alive"
   }
  ],
  "next_decisive_gates": [
@@ -1123,6 +1134,7 @@
   "receipts": [
    "ACCELERATOR_AKB_CONSTRUCTION.json",
    "ACCELERATOR_LAW_BASE.json",
+   "ACCELERATOR_SYNC_DIAGNOSTIC.json",
    "EBPW_NAMESPACE_SEPARATION.json",
    "GROK_DELEGATION_UNAVAILABLE.json",
    "PHYSICAL_METRIC_AUDIT.json",

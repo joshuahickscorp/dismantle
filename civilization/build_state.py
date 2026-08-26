@@ -12,7 +12,8 @@ GOAL = pathlib.Path.home() / ".claude/ultragoal/hawking-odyssey-maxx-ascension/G
 # Judgement, stated in the open. An obligation lands where its EVIDENCE lands,
 # not where its title sounds like it belongs.
 ERA_MAP = {
-    "I-A_AGENTOS_HCLI":   ["G013", "G014", "G015", "G030", "G031", "G063"],
+    "I-A_AGENTOS_HCLI":   ["G013", "G014", "G015", "G030", "G031", "G063",
+                           "G064", "G065"],
     "I-B_DOCTOR":         ["G016", "G017", "G018", "G019", "G020", "G021", "G035"],
     "I-C_GRAVITY_NOETIC": ["G001", "G002", "G003", "G004", "G005", "G006", "G022",
                            "G023", "G032", "G033", "G034", "G036", "G037", "G038",
@@ -210,6 +211,27 @@ def running_lanes():
 
     import time
     now = time.time()
+    # RESIDENT AUTONOMOUS WORK. A launchd job was found committing to this branch
+    # every five minutes while the census reported zero running lanes -- it landed a
+    # commit BETWEEN two of this session's own commits. A delegation lane is not the
+    # only kind of running work, and a committer the ledger cannot see is the worst
+    # kind to miss.
+    # Matched on the LAST token being a driver script under this repo's tools/, not
+    # on the line merely mentioning one: the first version also caught this session's
+    # own `zsh -c source ...` shell, and a census that over-reports is as useless as
+    # one that under-reports.
+    for line in _ps():
+        tok = line.strip().split()
+        if not tok:
+            continue
+        prog = tok[-1]
+        if not (prog.endswith("driver.sh") and str(HAWKING) in prog):
+            continue
+        out.append({"lane": prog, "executor": "resident",
+                        "alive": True, "detection": "definitive",
+                        "judged_by": "live process in ps",
+                        "commits_to_this_repo": True})
+
     root = pathlib.Path.home() / ".claude/projects"
     if root.is_dir():
         for wf in sorted(root.glob("*/*/subagents/workflows/wf_*")):

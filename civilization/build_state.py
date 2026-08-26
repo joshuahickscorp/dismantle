@@ -12,15 +12,15 @@ GOAL = pathlib.Path.home() / ".claude/ultragoal/hawking-odyssey-maxx-ascension/G
 # Judgement, stated in the open. An obligation lands where its EVIDENCE lands,
 # not where its title sounds like it belongs.
 ERA_MAP = {
-    "I-A_AGENTOS_HCLI":   ["G076", "G013", "G014", "G015", "G030", "G031", "G063",
+    "I-A_AGENTOS_HCLI":   ["G083", "G076", "G013", "G014", "G015", "G030", "G031", "G063",
                            "G064", "G065"],
     "I-B_DOCTOR":         ["G077", "G016", "G017", "G018", "G019", "G020", "G021", "G035",
                            "G073"],
-    "I-C_GRAVITY_NOETIC": ["G074", "G001", "G002", "G003", "G004", "G005", "G006", "G022",
+    "I-C_GRAVITY_NOETIC": ["G082", "G074", "G001", "G002", "G003", "G004", "G005", "G006", "G022",
                            "G023", "G032", "G033", "G034", "G036", "G037", "G038",
                            "G040", "G042", "G059",
                            "G066", "G067", "G068", "G069", "G070", "G071", "G072"],
-    "I-D_ACCELERATOR":    ["G075", "G043", "G044", "G045", "G046", "G047", "G049", "G055", "G058",
+    "I-D_ACCELERATOR":    ["G078", "G079", "G080", "G081", "G075", "G043", "G044", "G045", "G046", "G047", "G049", "G055", "G058",
                            "G060", "G062"],
     "I-E_ODYSSEY_I":      ["G007", "G008", "G009", "G010", "G011", "G012", "G024",
                            "G025", "G026", "G027", "G028", "G029", "G039", "G041",

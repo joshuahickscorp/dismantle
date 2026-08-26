@@ -14,6 +14,7 @@
  "civilization_status": {
   "I-A_AGENTOS_HCLI": {
    "obligations": [
+    "G083",
     "G076",
     "G013",
     "G014",
@@ -26,6 +27,7 @@
    ],
    "verified": 6,
    "open": [
+    "G083",
     "G076",
     "G064",
     "G065"
@@ -33,8 +35,8 @@
    "evidence_satisfied": 9,
    "evidence_of": 9,
    "evidence_pct": 100.0,
-   "obligation_pct": 66.7,
-   "completion_pct": 66.7,
+   "obligation_pct": 60.0,
+   "completion_pct": 60.0,
    "completion_basis": "min(evidence categories satisfied / 9, obligations verified / total). The MINIMUM on purpose: I-D has all nine categories and zero verified obligations, and reporting 100% there is the inflation S015 \u00a7II forbids. Never a file count.",
    "open_gates": [
     "S016 civilization-grade scheduler: Era/Civilization/Program/Gate as first-class scheduler concepts -- NOT_STARTED"
@@ -95,6 +97,7 @@
   },
   "I-C_GRAVITY_NOETIC": {
    "obligations": [
+    "G082",
     "G074",
     "G001",
     "G002",
@@ -123,6 +126,7 @@
    ],
    "verified": 20,
    "open": [
+    "G082",
     "G023",
     "G068",
     "G069",
@@ -132,8 +136,8 @@
    "evidence_satisfied": 8,
    "evidence_of": 9,
    "evidence_pct": 88.9,
-   "obligation_pct": 80.0,
-   "completion_pct": 80.0,
+   "obligation_pct": 76.9,
+   "completion_pct": 76.9,
    "completion_basis": "min(evidence categories satisfied / 9, obligations verified / total). The MINIMUM on purpose: I-D has all nine categories and zero verified obligations, and reporting 100% there is the inflation S015 \u00a7II forbids. Never a file count.",
    "open_gates": [
     "G074",
@@ -157,6 +161,10 @@
   },
   "I-D_ACCELERATOR": {
    "obligations": [
+    "G078",
+    "G079",
+    "G080",
+    "G081",
     "G075",
     "G043",
     "G044",
@@ -171,6 +179,10 @@
    ],
    "verified": 2,
    "open": [
+    "G078",
+    "G079",
+    "G080",
+    "G081",
     "G075",
     "G043",
     "G044",
@@ -184,8 +196,8 @@
    "evidence_satisfied": 9,
    "evidence_of": 9,
    "evidence_pct": 100.0,
-   "obligation_pct": 18.2,
-   "completion_pct": 18.2,
+   "obligation_pct": 13.3,
+   "completion_pct": 13.3,
    "completion_basis": "min(evidence categories satisfied / 9, obligations verified / total). The MINIMUM on purpose: I-D has all nine categories and zero verified obligations, and reporting 100% there is the inflation S015 \u00a7II forbids. Never a file count.",
    "open_gates": [
     "G075",
@@ -341,17 +353,17 @@
  "obligation_status_counts": {
   "VERIFIED": 50,
   "BLOCKED": 1,
-  "IN_PROGRESS": 14,
-  "NOT_STARTED": 2,
+  "IN_PROGRESS": 19,
+  "NOT_STARTED": 3,
   "PENDING": 6,
   "OPEN": 4
  },
- "obligations_total": 77,
+ "obligations_total": 83,
  "unmapped_obligations": [],
  "orphan_map_entries": [],
  "receipt_count": 437,
  "accelerator_receipt_count": 85,
- "last_verified_commit": "b2de6cd7f",
+ "last_verified_commit": "6c2e1136e",
  "last_verified_test_count": 522,
  "test_count_is_from_a_run_not_arithmetic": true,
  "test_environment": {

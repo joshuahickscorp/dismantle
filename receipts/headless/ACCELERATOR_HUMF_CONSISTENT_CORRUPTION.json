@@ -75,7 +75,7 @@
     "STILL NOT MODELLED and unchanged: an adversary who can observe the sealed identity or recompute a crc32, and TRUST DECAY beyond the existing identity_recheck_age -- the resident check runs ON TRANSFER, so a scrub afterwards still needs audit().",
     "nothing timed; no kernel changed; no performance claim moves."
   ],
-  "next": "S016 \u00a79 extends the eight coherence states to NINE COPY STATES and FIVE OWNERSHIP STATES under the HUMF->HMF canonicalization, and that extension is not built",
+  "next": "CORRECTION TO THIS RECEIPT'S OWN FIRST DRAFT: I wrote that S016 \u00a79's nine copy states and five ownership states were 'not built', and CHECKED BEFORE PUBLISHING -- they ARE built, under G053. humf.State carries all nine (ABSENT, MATERIALIZING, CLEAN, DIRTY, STALE, UNKNOWN, CORRUPT, LOST, EVICTED) plus INVALID and TRANSFERRING, a superset and not a rename; humf.Ownership carries exactly the five (APPLE_BIAS, SPARK0_BIAS, SPARK1_BIAS, SHARED_READ, TRANSIT). Naming an unbuilt thing that exists would have sent the next reader to rebuild it. The real next item is the one this receipt's claim boundary names: TRUST DECAY past identity_recheck_age, since the resident check runs ON TRANSFER and a scrub afterwards still needs audit() to be called by somebody.",
   "identities": {
     "experiment": {
       "class": "ACCEL-STATE",
@@ -114,5 +114,11 @@
       "reason": "SIMULATED. bandwidth_gb_s is a knob and S015 \u00a721 forbids citing a simulated transport number as physical evidence"
     }
   },
-  "bench": null
+  "bench": null,
+  "A_CORRECTION_I_CAUGHT_BEFORE_PUBLISHING": {
+    "what": "the first draft's `next` said S016 \u00a79's state extension was not built",
+    "checked": "humf.State and humf.Ownership, against the steer's own list read from STEERS.md line 1184-1186",
+    "result": "nine of nine copy states present, five of five ownership states present, two extra copy states (INVALID, TRANSFERRING) that predate the extension",
+    "why_it_matters": "a `next` naming work already done is worse than an empty one -- it sends the next reader to rebuild something and to distrust the ledger when they find it there"
+  }
 }

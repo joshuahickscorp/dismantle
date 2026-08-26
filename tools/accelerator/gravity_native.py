@@ -488,7 +488,7 @@ def source_operand_probe(rows: int, cols: int, probe: str,
     ships a wrong answer. See OPERAND_PROBES for what each removes and why."""
     if (probe not in OPERAND_PROBES and not probe.startswith("thin")
             and probe != "redonly" and "_local" not in probe
-            and "_lane" not in probe):
+            and "_lane" not in probe and "blocked" not in probe):
         raise ValueError(
             f"unknown operand probe {probe!r}; have {sorted(OPERAND_PROBES) + ['thin']}")
     d = {"PACKED_COLS": cols // 2, "GROUPS": cols // GROUP, "GROUP": GROUP,
@@ -512,6 +512,39 @@ def source_operand_probe(rows: int, cols: int, probe: str,
         return (head + f"acc = (float)(row + lane) + (float)scales[row * {d['GROUPS']}u] * 0.0f"
                        " + (float)packed[row] * 0.0f + x[0] * 0.0f;\n"
                 + REDUCE_TAILS["serial"] % d)
+    if "blocked" in probe:
+        # THE SPAN, VARIED WITHOUT A PERMUTATION. Lane L takes a CONTIGUOUS run of
+        # exactly the count the strided loop gives it -- ceil((GROUPS-L)/TPR) -- laid
+        # out in lane order, so the per-lane element count is IDENTICAL LANE BY LANE,
+        # every simdgroup's group TOTAL is identical, the threadgroup footprint is
+        # identical, and the only thing that moves is which addresses a simdgroup
+        # touches: at GROUPS=80 TPR=64 simd0 goes from {0..31, 64..79}, a 2560-byte
+        # span in two fragments, to {0..47}, a contiguous 1536.
+        #
+        # IT IS STILL A PARTITION, so the arm is CORRECT and the wrong-by-construction
+        # anti-vacuity control is unavailable -- the replacements are the exact-cover
+        # check, the lane-by-lane count equality and the not-the-identity assertion.
+        #
+        # blockedctl is the CONTROL: it computes off and cnt exactly as blocked does
+        # and CONSUMES them so nothing folds, then strides the SHIPPED way. Comparing
+        # blocked against the shipped kernel would confound the ADDRESSES with the
+        # dropped modulo and the added branch; blocked against blockedctl is the
+        # addresses alone.
+        groups, q = d["GROUPS"], d["GROUPS"] // tpr
+        rem = d["GROUPS"] % tpr
+        frag = "for (uint g = lane; g < %(GROUPS)du; g += %(TPR)du) {" % d
+        if frag not in src:
+            raise AssertionError(f"{frag!r} is not in the source to reassign")
+        setup = (f"uint _cnt = lane < {rem}u ? {q + 1}u : {q}u;\n"
+                 f"uint _off = lane < {rem}u ? {q + 1}u * lane"
+                 f" : {(q + 1) * rem}u + {q}u * (lane - {rem}u);\n")
+        if probe.endswith("ctl"):
+            # SAME arithmetic, SHIPPED addresses. The zero multiply keeps _off and
+            # _cnt live so the compiler cannot delete the work being controlled for.
+            return src.replace(frag, setup + "acc += 0.0f * (float)(_off + _cnt);\n" + frag, 1)
+        assert q * tpr + rem == groups
+        return src.replace(frag, setup + "for (uint g = _off; g < _off + _cnt; g++) {", 1)
+
     if "_lane" in probe:
         # WHICH LANE TOUCHES WHICH GROUP, at IDENTICAL footprint and identical
         # work. The multiplier is coprime with TPR so lane -> (lane*M) % TPR is a

@@ -1363,7 +1363,15 @@ LAWS: list[dict[str, Any]] = [
             "exclusion must not be cited. The MEASUREMENT stands and survives ROTATING THE ARM "
             "ORDER, which had never been controlled for; the magnitude softens to a 1.03-1.11x "
             "range over six runs, and a reversal that keeps adjacency costs like a scatter, so "
-            "adjacency is not the variable either. IT DOES NOT HAPPEN AT THIN WORK: 0.9911 and 1.0202 in opposite directions, 5 "
+            "adjacency is not the variable either. AMENDED AGAIN BY "
+            "ACCELERATOR_SPAN_IS_REFUTED_COALESCING_IS_NOT: THE SPAN CANDIDATE IS WITHDRAWN. A "
+            "BLOCKED PARTITION varies it without a permutation -- same per-lane count lane by "
+            "lane, simd0 cut from 2560 bytes in two fragments to a contiguous 1536 -- and it is "
+            "1.0315x and 1.0303x SLOWER, so span joins fragmentation and stride magnitude as "
+            "EXCLUDED. What survives is PER-ITERATION COALESCING, which no arm had varied: the "
+            "shipped assignment is the only one issuing ONE contiguous request per iteration, "
+            "and at this shape, tpr and machine no other arm has beaten it. A CANDIDATE, "
+            "NOT A CLAIM. IT DOES NOT HAPPEN AT THIN WORK: 0.9911 and 1.0202 in opposite directions, 5 "
             "and 7 of 14 rounds, so the effect scales with concurrent requests per lane, which is a "
             "CANDIDATE and not a claim. THE MAGNITUDES COINCIDE WITH THE FOOTPRINT EFFECT (1.082x and "
             "1.098x) AND THAT IS NOT AN IDENTITY CLAIM, because confining the footprint moves the "
@@ -1383,14 +1391,17 @@ LAWS: list[dict[str, Any]] = [
             "WORKLOAD_PHASE": "a SINGLY SUBMITTED decode-shaped GEMV, CONTENDED machine"},
         evidence_class="Measured",
         source_receipts=["receipts/headless/ACCELERATOR_LANE_ORDER_COSTS.json",
-                         "receipts/headless/ACCELERATOR_THE_SIMDGROUP_SPAN_DOUBLES.json"],
+                         "receipts/headless/ACCELERATOR_THE_SIMDGROUP_SPAN_DOUBLES.json",
+                         "receipts/headless/ACCELERATOR_SPAN_IS_REFUTED_COALESCING_IS_NOT.json"],
         citations=[
             "receipts/headless/ACCELERATOR_LANE_ORDER_COSTS.json#P1_LANE_ORDER_COSTS_AT_FULL_ELEMENT_COUNT",
             "receipts/headless/ACCELERATOR_LANE_ORDER_COSTS.json#WHAT_THIS_NAMES_THAT_WAS_UNNAMED",
             "receipts/headless/ACCELERATOR_LANE_ORDER_COSTS.json#P2_AND_IT_DOES_NOT_HAPPEN_AT_THIN_WORK",
             "receipts/headless/ACCELERATOR_LANE_ORDER_COSTS.json#WHAT_THIS_PROBE_STRUCTURALLY_CANNOT_SEPARATE_SAID_IN_ADVANCE",
             "receipts/headless/ACCELERATOR_THE_SIMDGROUP_SPAN_DOUBLES.json#AND_THE_CENTRAL_ARITHMETIC_OF_MY_PREVIOUS_BLOCK_IS_WRONG",
-            "receipts/headless/ACCELERATOR_THE_SIMDGROUP_SPAN_DOUBLES.json#THE_ORDER_ARTIFACT_I_HAD_NOT_CONTROLLED_FOR"],
+            "receipts/headless/ACCELERATOR_THE_SIMDGROUP_SPAN_DOUBLES.json#THE_ORDER_ARTIFACT_I_HAD_NOT_CONTROLLED_FOR",
+            "receipts/headless/ACCELERATOR_SPAN_IS_REFUTED_COALESCING_IS_NOT.json#P1_IS_MINE_AND_IT_IS_REFUTED_PAST_MY_OWN_FALSIFIER",
+            "receipts/headless/ACCELERATOR_SPAN_IS_REFUTED_COALESCING_IS_NOT.json#WHAT_SURVIVES_IS_A_PROPERTY_NO_ARM_HAD_EVER_VARIED"],
         status="ACTIVE", superseded_by=None, negative_result=False,
         confidence_basis=(
             "THE CONTROL IS THE IDENTITY PERMUTATION, NOT THE SHIPPED KERNEL: _lane1 carries the same "

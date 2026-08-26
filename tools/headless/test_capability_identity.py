@@ -82,3 +82,46 @@ def test_the_binary_and_template_ARE_content_hashed(tmp_path):
     b = C.artifact_identity(a_args)
     assert a["chat_template_sha256_16"] != b["chat_template_sha256_16"]
     assert a["binary_sha256_16"] != b["binary_sha256_16"]
+
+
+# --- harness health: a crash is not a score --------------------------------
+
+def _err(n, kind="ModuleNotFoundError"):
+    return [{"text": "", "finish_reason": f"ERROR:{kind}: No module named 'transformers'"}
+            for _ in range(n)]
+
+
+def test_an_all_error_run_is_REFUSED_not_scored_zero():
+    """The real event: 43 calls raised under python3.14 and the receipt said
+    0/43 rate 0.0 -- identical in a summary line to the 2.60 body's genuine
+    0/43. A score of zero is a claim about a model; a suite that never reached
+    one has no claim to make."""
+    h = C.harness_health(_err(43))
+    assert h["every_call_errored"] and not h["scoreable"]
+    assert "HARNESS failure" in h["verdict"]
+    assert h["error_kinds"] == ["ModuleNotFoundError"]
+
+
+def test_a_REAL_ZERO_is_still_scoreable():
+    """Anti-vacuity, and the distinction that matters: the 2.60 body under the
+    open-<think> arm really does score 0/43 while ANSWERING every time. That
+    must stay a score, or the refusal has eaten a real finding."""
+    real = [{"text": "<think>\nreasoning that never ends", "finish_reason": "length"}
+            for _ in range(43)]
+    h = C.harness_health(real)
+    assert h["scoreable"] and not h["every_call_errored"]
+    assert h["empty_replies"] == 0
+
+
+def test_a_PARTIAL_failure_still_scores_and_is_counted():
+    """One flaky call must not void 42 real ones -- but the count is reported
+    so a reader can see the run was not clean."""
+    h = C.harness_health(_err(3) + [{"text": "Paris", "finish_reason": "stop"}] * 40)
+    assert h["scoreable"] and h["errored"] == 3 and h["calls"] == 43
+
+
+def test_empty_replies_are_counted_SEPARATELY_from_errors():
+    """An empty reply with a clean finish_reason is the model producing nothing,
+    which IS a capability fact; an empty reply after a raise is not."""
+    h = C.harness_health([{"text": "", "finish_reason": "stop"}] * 5)
+    assert h["scoreable"] and h["errored"] == 0 and h["empty_replies"] == 5

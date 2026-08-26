@@ -493,6 +493,39 @@ def identity_is_sufficient(ident: dict) -> tuple[bool, str]:
     return True, "artifact named"
 
 
+def harness_health(responses) -> dict:
+    """Separate A BODY THAT ANSWERED BADLY from A HARNESS THAT NEVER ASKED.
+
+    G073 follow-on, found by running this suite under python3.14 (no
+    transformers): all 43 calls raised, every reply was empty, and the receipt
+    reported overall 0/43 rate 0.0 -- INDISTINGUISHABLE IN A SUMMARY LINE from
+    the 2.60 body's real 0/43 under the open-<think> arm. A score of zero is a
+    claim about a MODEL; a suite that never reached the model has no claim to
+    make, and reporting one is the campaign's probe-crash-labelled-as-the-
+    subject's-failure defect in the scoreboard itself.
+
+    Caught only because 0/43 CONTRADICTED a known 14/43 on the same body and
+    arm. Nothing in the harness would have said so.
+    """
+    total = len(responses)
+    errs = [r for r in responses if str(r.get("finish_reason", "")).startswith("ERROR:")]
+    empties = [r for r in responses if not str(r.get("text", "")).strip()]
+    kinds = sorted({str(r["finish_reason"]).split(":", 1)[1].split(":")[0].strip()
+                    for r in errs}) if errs else []
+    all_errored = bool(total) and len(errs) == total
+    return {
+        "calls": total,
+        "errored": len(errs),
+        "empty_replies": len(empties),
+        "error_kinds": kinds,
+        "every_call_errored": all_errored,
+        "scoreable": not all_errored,
+        "verdict": ("REFUSED: every call raised, so the suite never reached the model and "
+                    f"this is a HARNESS failure, not a capability score. kinds={kinds}"
+                    if all_errored else "the suite reached the model"),
+    }
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--backend", choices=["llama", "mlx", "noetic"], required=True)
@@ -559,6 +592,7 @@ def main() -> int:
             print(f"  {it['id']}[{it['rep']}] {r.get('finish_reason')} "
                   f"{r.get('completion_tokens')}tok {r.get('wall_s')}s", flush=True)
 
+    _health = harness_health(responses)
     _ident = artifact_identity(args)
     _ident_ok, _ident_why = identity_is_sufficient(_ident)
     per_item, per_axis = score(responses)
@@ -578,7 +612,12 @@ def main() -> int:
                     "exact string, parsed JSON, compiled AST. No model grades any model, because "
                     "that would make the gate inherit the unreliability it exists to detect."),
         "overall": {"passed": overall_pass, "total": overall_total,
-                    "rate": round(overall_pass / overall_total, 4) if overall_total else 0.0},
+                    # A rate is a claim about the MODEL. If the suite never reached it,
+                    # there is no rate -- null, not 0.0, which reads as "answered wrong".
+                    "rate": (round(overall_pass / overall_total, 4)
+                             if overall_total and _health["scoreable"] else None),
+                    "scoreable": _health["scoreable"]},
+        "harness_health": _health,
         "per_axis": per_axis,
         "per_item": per_item,
     }
@@ -587,6 +626,8 @@ def main() -> int:
     out.write_text(json.dumps(doc, indent=1))
 
     print(f"\n=== CAPABILITY {args.label} ===")
+    if not _health["scoreable"]:
+        print(f"  {_health['verdict']}")
     print(f"  overall {overall_pass}/{overall_total} = {doc['overall']['rate']}")
     print(f"  arm     {_ident['chat_template_arm']}")
     if not _ident_ok:

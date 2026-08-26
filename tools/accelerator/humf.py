@@ -367,6 +367,12 @@ class Plan:
     # bytes out of a QUARANTINED domain -- the planner's refusal was decorative and
     # the log described a transfer that did not happen.
     source: str | None = None
+    # HOW OLD THE ANSWER'S TRUST IS, in fabric events, or None where the question
+    # does not apply. ALREADY_RESIDENT used to carry nothing, so a caller acting on
+    # a plan had no signal at all about a copy last checked ten thousand events ago
+    # -- and the fabric COULD answer, via stale_verifications(), only if somebody
+    # thought to ask. A number nobody is handed is a number nobody reads.
+    verification_age: int | None = None
 
     @property
     def rests_on_simulated_numbers(self) -> bool:
@@ -377,6 +383,7 @@ class Humf:
     def __init__(self, domains: dict[str, Domain],
                  providers: dict[str, Any] | None = None,
                  identity_recheck_age: int | None = 0,
+                 resident_recheck_age: int | None = None,
                  verify_transfers: bool = True,
                  transfer_timeout_s: float | None = None):
         self.domains = domains
@@ -397,6 +404,21 @@ class Humf:
         # checked". Not a clock: wall time is not what invalidates a copy, activity
         # is, and a counter cannot drift or be adjusted underneath the fabric.
         self.epoch: int = 0
+        # WHEN AN ALREADY-RESIDENT ANSWER MUST BE RE-EARNED. The transfer path checks
+        # its source against the sealed identity, so a copy that rots and is then
+        # MOVED is caught. ALREADY_RESIDENT moves nothing, so a copy that rots IN
+        # PLACE was handed back CLEAN, in valid_copies() AND in trusted_copies(), on
+        # a check of any age. DEMONSTRATED against the pre-fix code: 50 events after
+        # its last verification, one flipped byte, plan_acquire returned
+        # ALREADY_RESIDENT and trusted_copies() still named it.
+        #
+        # None keeps exactly that behaviour, so nothing changes silently for an
+        # existing caller; 0 re-checks every time; k re-checks only past k events.
+        # The cost is one blake2b over the payload, measured at 1.387 GB/s in
+        # ACCELERATOR_HUMF_IDENTITY.json -- affordable on a copy nobody has looked
+        # at in a long time and NOT affordable on every acquire, which is the whole
+        # reason this is an age and not a boolean.
+        self.resident_recheck_age = resident_recheck_age
         # HOW OLD a source's verification may be before a transfer re-establishes it.
         # 0 = every transfer (the safe default), None = never (registration only), k =
         # only when the source has not been verified in the last k events. This is the
@@ -733,8 +755,25 @@ class Humf:
                             f"resolve_unknown() re-probes, accept_unknown() records "
                             f"an operator's assertion instead",
                             "MEASURED", [])
+            age = self.epoch - here.verified_at
+            if (self.resident_recheck_age is not None
+                    and age > self.resident_recheck_age
+                    and obj.content_digest is not None
+                    and here.payload is not None):
+                if _identity_digest(here.payload) != obj.content_digest:
+                    here.trust = "UNKNOWN"
+                    return Plan("IMPOSSIBLE", float("inf"),
+                                f"{identity} was CLEAN in {want_domain} and its bytes no "
+                                f"longer match the identity sealed at registration. It "
+                                f"rotted IN PLACE, so no transfer check could ever have "
+                                f"seen it; trust is now UNKNOWN. resolve_unknown() "
+                                f"re-probes, accept_unknown() records an assertion",
+                                "MEASURED", [], verification_age=age)
+                self.epoch += 1
+                here.verified_at = self.epoch
+                age = 0
             return Plan("ALREADY_RESIDENT", 0.0, f"{identity} is CLEAN in {want_domain}",
-                        "MEASURED", [])
+                        "MEASURED", [], verification_age=age)
 
         for src, m in obj.materializations.items():
             if src == want_domain or m.state is not State.CLEAN:

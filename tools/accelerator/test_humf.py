@@ -957,3 +957,97 @@ def test_an_HONEST_provider_still_transfers_under_the_same_path():
     h.execute(o.identity, plan, mp.domain.name)
     assert o.materializations[mp.domain.name].state is State.CLEAN
     assert o.materializations[mp.domain.name].resident_digest_path == "compute"
+
+
+# --------------------------------------------------------------------------
+# A copy that rots IN PLACE is never moved, so no transfer check can ever see it.
+# DEMONSTRATED against the pre-fix code: 50 events after its last verification, one
+# flipped byte, plan_acquire returned ALREADY_RESIDENT and trusted_copies() still
+# named it.
+# --------------------------------------------------------------------------
+
+def _rotted(**kw):
+    from humf import Materialization as M
+    doms = {"APPLE_UM": Domain("APPLE_UM", 96 << 30, 589.73, physical=True)}
+    h = Humf(doms, **kw)
+    o = HumfObject("W", "tensor", N, "f32", recompute_cost_s=0.05)
+    o.place(M("APPLE_UM", "dense_f32", "row_major", NB, State.CLEAN, payload=PAYLOAD))
+    h.register(o)
+    m = o.materializations["APPLE_UM"]
+    for _ in range(50):
+        h.epoch += 1
+    b = bytearray(m.payload); b[0] ^= 0xFF; m.payload = bytes(b)
+    return h, o, m
+
+
+def test_the_DEFAULT_still_hands_back_a_rotted_resident_copy():
+    """The control, and it is the pre-fix behaviour kept EXECUTABLE. Without it the
+    fix below could be read as closing a hole that was never open."""
+    h, o, m = _rotted()
+    p = h.plan_acquire(o.identity, "APPLE_UM")
+    assert p.action == "ALREADY_RESIDENT"
+    assert "APPLE_UM" in o.trusted_copies()
+
+
+def test_the_PLAN_NOW_CARRIES_THE_AGE_even_when_it_does_not_recheck():
+    """A number nobody is handed is a number nobody reads. stale_verifications()
+    could always answer this -- only if somebody thought to ask."""
+    h, o, m = _rotted()
+    p = h.plan_acquire(o.identity, "APPLE_UM")
+    assert p.verification_age == 50
+
+
+def test_UNDER_A_POLICY_the_rot_is_CAUGHT_and_trust_goes_UNKNOWN():
+    h, o, m = _rotted(resident_recheck_age=10)
+    p = h.plan_acquire(o.identity, "APPLE_UM")
+    assert p.action == "IMPOSSIBLE"
+    assert "rotted IN PLACE" in p.detail
+    assert m.trust == "UNKNOWN"
+    assert "APPLE_UM" not in o.trusted_copies()
+
+
+def test_A_HEALTHY_COPY_PASSES_THE_RECHECK_AND_ITS_AGE_RESETS():
+    """A check that only ever refuses is as useless as one that only ever accepts."""
+    from humf import Materialization as M
+    doms = {"APPLE_UM": Domain("APPLE_UM", 96 << 30, 589.73, physical=True)}
+    h = Humf(doms, resident_recheck_age=10)
+    o = HumfObject("W", "tensor", N, "f32")
+    o.place(M("APPLE_UM", "dense_f32", "row_major", NB, State.CLEAN, payload=PAYLOAD))
+    h.register(o)
+    for _ in range(50):
+        h.epoch += 1
+    p = h.plan_acquire(o.identity, "APPLE_UM")
+    assert p.action == "ALREADY_RESIDENT" and p.verification_age == 0
+    assert "APPLE_UM" in o.trusted_copies()
+
+
+def test_A_YOUNG_VERIFICATION_IS_NOT_RECHECKED():
+    """The age is the whole point: re-hashing on every acquire costs one blake2b over
+    the payload and would be unaffordable, which is why this is not a boolean."""
+    from humf import Materialization as M
+    doms = {"APPLE_UM": Domain("APPLE_UM", 96 << 30, 589.73, physical=True)}
+    h = Humf(doms, resident_recheck_age=100)
+    o = HumfObject("W", "tensor", N, "f32")
+    o.place(M("APPLE_UM", "dense_f32", "row_major", NB, State.CLEAN, payload=PAYLOAD))
+    h.register(o)
+    m = o.materializations["APPLE_UM"]
+    for _ in range(5):
+        h.epoch += 1
+    b = bytearray(m.payload); b[0] ^= 0xFF; m.payload = bytes(b)
+    p = h.plan_acquire(o.identity, "APPLE_UM")
+    assert p.action == "ALREADY_RESIDENT", "5 events is inside a 100-event policy"
+    assert p.verification_age == 5
+
+
+def test_AN_UNSEALED_VALUE_CANNOT_BE_RECHECKED_AND_SAYS_SO_BY_NOT_LYING():
+    """No sealed identity means nothing to compare against; the policy must not
+    invent a verdict, and must not refuse a copy it cannot judge."""
+    from humf import Materialization as M
+    doms = {"APPLE_UM": Domain("APPLE_UM", 96 << 30, 589.73, physical=True)}
+    h = Humf(doms, resident_recheck_age=0)
+    o = HumfObject("W", "tensor", N, "f32")
+    o.place(M("APPLE_UM", "dense_f32", "row_major", NB, State.CLEAN, payload=PAYLOAD))
+    h.register(o)
+    o.content_digest = None
+    p = h.plan_acquire(o.identity, "APPLE_UM")
+    assert p.action == "ALREADY_RESIDENT"

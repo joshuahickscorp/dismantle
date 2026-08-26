@@ -1426,6 +1426,8 @@ UNEXTRACTED_REASONS = {
 }
 
 UNEXTRACTED: dict[str, str] = {
+    # An endpoint that now EXISTS and refuses correctly; no measured relation.
+    "ACCELERATOR_SEALED_RESIDENT_ENDPOINT.json": "CAPABILITY_NOT_LAW",
     # A path-and-permission repair, not a measured relation about execution.
     "ACCELERATOR_HCLI_VERIFIER_PATH_SEMANTICS.json": "CAPABILITY_NOT_LAW",
     # Newly VISIBLE via akb_registration (S032 §13) rather than via a filename.

@@ -353,15 +353,15 @@
  "orphan_map_entries": [],
  "receipt_count": 429,
  "accelerator_receipt_count": 81,
- "last_verified_commit": "582040242",
- "last_verified_test_count": 515,
+ "last_verified_commit": "d0c779da8",
+ "last_verified_test_count": 518,
  "test_count_is_from_a_run_not_arithmetic": true,
  "test_environment": {
   "interpreter": "/usr/local/bin/python3",
   "resolves_to": "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3.12",
   "version_and_mlx": "3.12.6 /Users/scammermike/Library/Python/3.12/lib/python/site-packages/mlx/core.cpython-312-darwin.so",
   "suite": "tools/accelerator",
-  "failed": 1
+  "failed": 0
  },
  "named_gates": {
   "NVIDIA_CUDA_HARDWARE": "P2 differential. No local NVIDIA execution exists.",

@@ -84,6 +84,40 @@ def corpus(root: Path = REPO) -> list[Path]:
                   if p.name not in OWN_OUTPUTS)
 
 
+def outside_scope(root: Path = REPO) -> list[str]:
+    """Receipts in the same directory that the corpus glob CANNOT SEE.
+
+    The corpus scopes itself by FILENAME PREFIX, which is a name filter with the
+    same defect this program just fixed in bench: a receipt named TOKEN_*, or
+    CAPABILITY_*, or FUSION_* is neither extracted NOR refused by
+    test_every_unextracted_receipt_carries_a_reason -- IT IS INVISIBLE, and
+    invisible reads identically to `triaged and found empty`.
+
+    The scope itself is defensible (this is the ACCELERATOR knowledge base) and it
+    is NOT widened here by guesswork, because pulling in every headless receipt
+    would ingest Q80, noetic and civilization work this lane cannot type. What
+    changes is that the exclusion is now REPORTED rather than silent, so a reader
+    can see that membership depends on what a file was named.
+    """
+    seen = {p.name for p in corpus(root)} | set(OWN_OUTPUTS)
+    return sorted(p.name for p in (root / "receipts/headless").glob("*.json")
+                  if p.name not in seen)
+
+
+# Accelerator receipts that do NOT start with ACCELERATOR_ and are therefore
+# invisible to the corpus glob. Listed EXPLICITLY rather than inferred, because a
+# content classifier would be this lane guessing which of 348 headless receipts
+# are its own -- and a wrong guess ingests another campaign's work as Accelerator
+# evidence. Named here, the gap is a short auditable list instead of a silence.
+KNOWN_ACCELERATOR_OUTSIDE_SCOPE = (
+    "TOKEN_EXECUTION_ATLAS.json",
+    "TOKEN_EXECUTION_ATLAS_COUNTS.json",
+    "TOKEN_GRAPH_REDUCTION_TIMED.json",
+    "CAPABILITY_FUSED_GRAPH_CLEARED.json",
+    "FUSION_GAIN_IS_LENGTH_INDEPENDENT.json",
+)
+
+
 def resolve(citation: str, root: Path = REPO) -> Any:
     """Resolve ``relative/path.json#a.b.c`` to its value, or refuse.
 
@@ -860,6 +894,8 @@ UNEXTRACTED_REASONS = {
 }
 
 UNEXTRACTED: dict[str, str] = {
+    # an instrument, not a measured relation
+    "ACCELERATOR_QUIESCENCE_INSTRUMENT.json": "PROSE_ONLY",
     # capability, not a measured relation
     "ACCELERATOR_AIR_COMPLETENESS.json": "CAPABILITY_NOT_LAW",
     "ACCELERATOR_AIR_MATMUL.json": "CAPABILITY_NOT_LAW",
@@ -957,6 +993,14 @@ def build(*, root: Path = REPO) -> dict[str, Any]:
         "evidence_classes": list(EVIDENCE_CLASSES),
         "statuses": list(STATUSES),
         "corpus_size": len(paths),
+        "outside_scope_count": len(outside_scope(root)),
+        "known_accelerator_outside_scope": [
+            n for n in KNOWN_ACCELERATOR_OUTSIDE_SCOPE
+            if n in set(outside_scope(root))],
+        "scope_is_a_filename_prefix": (
+            "membership is decided by the ACCELERATOR_* glob, so a receipt named "
+            "otherwise is neither extracted nor refused -- it is invisible. The "
+            "excluded names are listed rather than silently dropped."),
         "receipts_yielding_laws": len(cited),
         "entries": entries,
         "entries_by_status": by_status,

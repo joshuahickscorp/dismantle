@@ -307,3 +307,25 @@ def test_every_shipped_law_validates():
     sup = akb.superseding_corpus()
     for entry in akb.LAWS:
         akb.validate(copy.deepcopy(entry), superseded=sup)
+
+
+def test_the_corpus_scope_is_a_filename_prefix_and_says_so():
+    """The AKB decides membership by an ACCELERATOR_* glob, so an Accelerator
+    receipt named otherwise is neither extracted NOR refused -- it is INVISIBLE,
+    which reads identically to 'triaged and found empty'. That is the same name-
+    filter defect bench.machine_quiescence was built to remove, in a second
+    instrument. The scope is not widened by guesswork; it is REPORTED."""
+    b = akb.build()
+    assert b["outside_scope_count"] > 0
+    named = b["known_accelerator_outside_scope"]
+    assert "TOKEN_GRAPH_REDUCTION_TIMED.json" in named, named
+    assert "FUSION_GAIN_IS_LENGTH_INDEPENDENT.json" in named, named
+
+
+def test_the_named_gap_list_cannot_go_stale_silently():
+    """If one of those receipts is ever renamed into the glob it must LEAVE this
+    list rather than sit in it forever as a false alarm -- a gap list that only
+    grows is one nobody reads."""
+    b = akb.build()
+    inside = {p.name for p in akb.corpus()}
+    assert not (set(b["known_accelerator_outside_scope"]) & inside)

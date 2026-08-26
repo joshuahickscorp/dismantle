@@ -16,7 +16,7 @@ ERA_MAP = {
                            "G064", "G065"],
     "I-B_DOCTOR":         ["G016", "G017", "G018", "G019", "G020", "G021", "G035",
                            "G073"],
-    "I-C_GRAVITY_NOETIC": ["G001", "G002", "G003", "G004", "G005", "G006", "G022",
+    "I-C_GRAVITY_NOETIC": ["G074", "G001", "G002", "G003", "G004", "G005", "G006", "G022",
                            "G023", "G032", "G033", "G034", "G036", "G037", "G038",
                            "G040", "G042", "G059",
                            "G066", "G067", "G068", "G069", "G070", "G071", "G072"],
@@ -48,7 +48,7 @@ OPEN_GATES = {
                        "as first-class scheduler concepts -- NOT_STARTED"],
   "I-B_DOCTOR": ["gate: on an UNSEEN model, reduce a huge hypothesis space to a small "
                  "high-information experimental set and explain why -- not run"],
-  "I-C_GRAVITY_NOETIC": ["G023 Noetic compiler pipeline",
+  "I-C_GRAVITY_NOETIC": ["G074", "G023 Noetic compiler pipeline",
                          "real-weight execution gate",
                          "EBPW namespace separation not yet permanent in code"],
   "I-D_ACCELERATOR": ["C2M T3: several real open CUDA codebases -- NOT CLAIMED",
@@ -309,7 +309,7 @@ def laws_since(checkpoint):
 # Judgement, stated in the open -- like ERA_MAP. Dependencies are what one
 # civilization needs FROM another before its gate can close.
 DEPENDENCIES = {
-    "I-C_GRAVITY_NOETIC": [
+    "I-C_GRAVITY_NOETIC": ["G074", 
         "I-D_ACCELERATOR: a representation is not condemned until its native "
         "execution is competent, so a Gravity floor needs an Accelerator kernel",
         "I-E_ODYSSEY_I: real weights on fast local storage (FAST_LOCAL_STORAGE gate)",

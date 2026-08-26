@@ -91,6 +91,7 @@
   },
   "I-C_GRAVITY_NOETIC": {
    "obligations": [
+    "G074",
     "G001",
     "G002",
     "G003",
@@ -118,6 +119,7 @@
    ],
    "verified": 18,
    "open": [
+    "G074",
     "G023",
     "G068",
     "G069",
@@ -128,10 +130,11 @@
    "evidence_satisfied": 8,
    "evidence_of": 9,
    "evidence_pct": 88.9,
-   "obligation_pct": 75.0,
-   "completion_pct": 75.0,
+   "obligation_pct": 72.0,
+   "completion_pct": 72.0,
    "completion_basis": "min(evidence categories satisfied / 9, obligations verified / total). The MINIMUM on purpose: I-D has all nine categories and zero verified obligations, and reporting 100% there is the inflation S015 \u00a7II forbids. Never a file count.",
    "open_gates": [
+    "G074",
     "G023 Noetic compiler pipeline",
     "real-weight execution gate",
     "EBPW namespace separation not yet permanent in code"
@@ -336,14 +339,14 @@
   "IN_PROGRESS": 14,
   "NOT_STARTED": 2,
   "PENDING": 7,
-  "OPEN": 1
+  "OPEN": 2
  },
- "obligations_total": 73,
+ "obligations_total": 74,
  "unmapped_obligations": [],
  "orphan_map_entries": [],
- "receipt_count": 418,
+ "receipt_count": 420,
  "accelerator_receipt_count": 80,
- "last_verified_commit": "be05019f7",
+ "last_verified_commit": "6c564e103",
  "last_verified_test_count": 510,
  "test_count_is_from_a_run_not_arithmetic": true,
  "test_environment": {
@@ -448,6 +451,7 @@
  ],
  "dependencies": {
   "I-C_GRAVITY_NOETIC": [
+   "G074",
    "I-D_ACCELERATOR: a representation is not condemned until its native execution is competent, so a Gravity floor needs an Accelerator kernel",
    "I-E_ODYSSEY_I: real weights on fast local storage (FAST_LOCAL_STORAGE gate)"
   ],
@@ -1184,6 +1188,7 @@
    "CAPABILITY_TEMPLATE_INTERACTION.json",
    "CAPABILITY_llamacpp-q5k.json",
    "CAPABILITY_mlx-4bit.json",
+   "CAPABILITY_noetic-2.60-identified.json",
    "CAPABILITY_noetic-clean-2.60.json",
    "CAPABILITY_noetic-clean-rebuild.json",
    "CAPABILITY_noetic-sealed-3.14-sysprompt.json",
@@ -1219,6 +1224,7 @@
    "REPRESENTATION_LIBRARY.json",
    "RESIDENT_2P60_RUNTIME_PROVENANCE.json",
    "RESIDENT_ACCEPTED_TPS.json",
+   "RESIDENT_PARETO_FRONTIER.json",
    "RUNTIME_EXPERIMENT_ADVERSARY.json",
    "RUNTIME_GENOME.json",
    "SELF_OPT_CANDIDATE_PROMOTED.json",

@@ -1442,6 +1442,9 @@ UNEXTRACTED_REASONS = {
 }
 
 UNEXTRACTED: dict[str, str] = {
+    # An IR capability and a legality rule; the physical law it rests on
+    # (lockstep at simd width 32) is already carried by the barrier-scopes work.
+    "ACCELERATOR_SIMDGROUP_SCOPE_EXECUTES.json": "CAPABILITY_NOT_LAW",
     # A trust-model result over a MOCK fabric; no physical relation is measured.
     "ACCELERATOR_HUMF_CONSISTENT_CORRUPTION.json": "MOCK_NOT_PHYSICAL",
     # An integration result and six defect fixes; no measured physical relation.

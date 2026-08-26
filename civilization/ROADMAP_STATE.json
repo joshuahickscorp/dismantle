@@ -361,9 +361,9 @@
  "obligations_total": 83,
  "unmapped_obligations": [],
  "orphan_map_entries": [],
- "receipt_count": 439,
- "accelerator_receipt_count": 87,
- "last_verified_commit": "9060e603a",
+ "receipt_count": 440,
+ "accelerator_receipt_count": 88,
+ "last_verified_commit": "21b16dd74",
  "last_verified_test_count": 524,
  "test_count_is_from_a_run_not_arithmetic": true,
  "test_environment": {
@@ -1253,6 +1253,7 @@
   "heuristic": true,
   "why_heuristic": "mtime is not provenance; an untouched-but-amended receipt is missed",
   "receipts": [
+   "ACCELERATOR_628_BOUNDARY_CENSUS.json",
    "ACCELERATOR_AKB_CONSTRUCTION.json",
    "ACCELERATOR_DISPATCH_IS_NOT_THE_COST.json",
    "ACCELERATOR_HCLI_VERIFIER_PATH_SEMANTICS.json",

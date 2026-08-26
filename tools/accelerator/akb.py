@@ -372,6 +372,87 @@ HK = "hawking-core release-fast Rust/Metal decoder, binary d34044cffae8f320"
 
 LAWS: list[dict[str, Any]] = [
     dict(
+        law_id="AKB-GRAPH-BOUNDARY-LEVER-IS-NEARLY-EXHAUSTED",
+        statement=(
+            "The 628-dispatch decode graph holds 401 dispatches at boundaries whose intermediate "
+            "is consumed once and never escapes -- 63.9% of the graph, and deleting all of them "
+            "would leave 227. Together they are worth about 1.10 ms of a 28.0208 ms token (3.9%) "
+            "in dispatch cost at the 2.75 us marginal measured for non-operand-sharing levers, "
+            "plus 31.68 MB of intermediate traffic = 0.32% of the token's weight bytes. Against "
+            "the 1.65x of headroom the byte wall leaves, EVERY REMAINING GRAPH BOUNDARY TOGETHER "
+            "IS ABOUT 4% OF A 65% GAP. Two of twelve boundaries are undeletable and marked so: "
+            "GQA's qkv and rope/cache outputs ESCAPE into the KV cache. The clearest abstraction "
+            "tax by ratio is ba_to_decay_beta -> gated_delta_decode, which spends a whole "
+            "dispatch moving 384 BYTES, 48 times per token."),
+        applicability={
+            "MODEL": "Qwen3.8-27B sealed-3.14 (NOETIC_PARENT_A)",
+            "ARCHITECTURE": ("Qwen3.8 hybrid; fused, the two layer kinds DIVERGE -- 48 DeltaNet "
+                             "at 10 dispatches, 16 GQA at 9, where unfused both were 15"),
+            "ORGAN": "whole decode graph, resolved to producer/consumer pairs",
+            "REPRESENTATION": "HQ30UQ4 g64 mixer + affine_q2 g64 MLP",
+            "SHAPE": "batch 1 decode; intermediate sizes assume f32 activations",
+            "MACHINE": M3, "RUNTIME": HK,
+            "KERNEL": "the 628-dispatch fused graph, histogram from a real 6-token trace",
+            "STORAGE_TIER": NONE, "TOPOLOGY": NONE,
+            "WORKLOAD_PHASE": "single-request decode"},
+        evidence_class="Derived",
+        source_receipts=["receipts/headless/ACCELERATOR_628_BOUNDARY_CENSUS.json"],
+        citations=[
+            "receipts/headless/ACCELERATOR_628_BOUNDARY_CENSUS.json#THE_BOUNDARY_CENSUS",
+            "receipts/headless/ACCELERATOR_628_BOUNDARY_CENSUS.json"
+            "#AND_THAT_IS_THE_CEILING_ON_EVERY_REMAINING_BOUNDARY_TOGETHER",
+            "receipts/headless/ACCELERATOR_628_BOUNDARY_CENSUS.json#claim_boundary"],
+        status="ACTIVE", superseded_by=None, negative_result=True,
+        confidence_basis=(
+            "Derived, and the class says so. The dispatch COUNTS are exact -- the histogram "
+            "reconciles to 628 and the layer arithmetic closes. The 3.9% is 401 multiplied by a "
+            "rate measured on three OTHER levers, and the one lever that broke that rate broke "
+            "it by 6.6x, so a boundary of an unanticipated shape would make this LOW rather than "
+            "high. The boundary list is STRUCTURAL: producer/consumer pairs read off the "
+            "histogram and the layer shape, with no buffer traced to prove single consumption -- "
+            "the two escapes are marked because their escape is known, not because a tool found "
+            "them. Nothing here was built or timed."),
+    ),
+    dict(
+        law_id="AKB-DELTANET-STATE-IS-3-PERCENT-OF-THE-TOKEN",
+        statement=(
+            "The DeltaNet recurrent state is 48 value heads x 128 value dim x 128 key dim of f32 "
+            "= 3.146 MB PER LAYER, read and written every token across 48 layers = 301.99 MB per "
+            "decode token, 3.06% of the 9.868 GB of weights -- and it appears in no weight "
+            "ranking because it is not a weight. With the conv cache (22.02 MB) and the GQA KV "
+            "read at context 60 (7.86 MB), non-weight traffic is 331.87 MB per token, 3.36%. So "
+            "the token reads about 10.20 GB rather than 9.87 and the byte-wall fraction moves "
+            "from 60.7% to about 62.7%. THE KV TERM IS THE ONLY ONE THAT GROWS WITH CONTEXT: at "
+            "8192 tokens it would be 1.07 GB per token, 10.9% of the weight bytes, which is the "
+            "first term in this accounting that makes the ceiling context-dependent."),
+        applicability={
+            "MODEL": "Qwen3.8-27B sealed-3.14 (NOETIC_PARENT_A)",
+            "ARCHITECTURE": ("Qwen3.8 hybrid: 48 DeltaNet layers with 48 value heads at 128x128 "
+                             "state, 16 GQA layers with 4 kv heads at head_dim 256"),
+            "ORGAN": "DeltaNet recurrent state, DeltaNet conv cache, GQA KV cache",
+            "REPRESENTATION": "f32 state; the state is NOT quantized and this is why it is "
+                              "invisible to an EBPW accounting",
+            "SHAPE": "batch 1 decode; the KV figure is at context 60 and is linear in context",
+            "MACHINE": M3, "RUNTIME": HK,
+            "KERNEL": "the 628-dispatch fused graph",
+            "STORAGE_TIER": NONE, "TOPOLOGY": NONE,
+            "WORKLOAD_PHASE": "single-request decode"},
+        evidence_class="Derived",
+        source_receipts=["receipts/headless/ACCELERATOR_628_BOUNDARY_CENSUS.json"],
+        citations=[
+            "receipts/headless/ACCELERATOR_628_BOUNDARY_CENSUS.json"
+            "#WHAT_THE_WEIGHT_ATLAS_EXCLUDED_IS_NOW_A_NUMBER",
+            "receipts/headless/ACCELERATOR_628_BOUNDARY_CENSUS.json#claim_boundary"],
+        status="ACTIVE", superseded_by=None, negative_result=False,
+        confidence_basis=(
+            "Derived from the artifact's own config -- linear_num_value_heads, "
+            "linear_value_head_dim and linear_key_head_dim -- times f32 and the layer count. It "
+            "upgrades a NAMED EXCLUSION in ACCELERATOR_TOKEN_BYTE_ATLAS_628 to a number, which "
+            "is what that receipt asked for. It assumes the state is read AND written once per "
+            "layer per token, which is what a recurrence does and was not traced. The activation "
+            "floor is excluded as too crude to state."),
+    ),
+    dict(
         law_id="AKB-INPUT-OPERAND-REUSE-IS-NOT-THE-MLP-FUSION-WIN",
         statement=(
             "Loading the input vector ONCE for two accumulators instead of twice did NOT make a "

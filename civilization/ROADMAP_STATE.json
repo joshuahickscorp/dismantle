@@ -336,9 +336,9 @@
  "obligations_total": 71,
  "unmapped_obligations": [],
  "orphan_map_entries": [],
- "receipt_count": 410,
+ "receipt_count": 411,
  "accelerator_receipt_count": 80,
- "last_verified_commit": "aa497322a",
+ "last_verified_commit": "9e74d6263",
  "last_verified_test_count": 510,
  "test_count_is_from_a_run_not_arithmetic": true,
  "test_environment": {
@@ -752,6 +752,13 @@
    ]
   },
   {
+   "receipt": "CAPABILITY_TEMPLATE_FACTORIAL.json",
+   "markers": [
+    "REFUT",
+    "RETRACT"
+   ]
+  },
+  {
    "receipt": "CAPABILITY_TEMPLATE_INTERACTION.json",
    "markers": [
     "REFUT"
@@ -1143,6 +1150,7 @@
    "ACCELERATOR_AKB_CONSTRUCTION.json",
    "ACCELERATOR_LAW_BASE.json",
    "ACCELERATOR_SYNC_DIAGNOSTIC.json",
+   "CAPABILITY_TEMPLATE_FACTORIAL.json",
    "CAPABILITY_TEMPLATE_INTERACTION.json",
    "EBPW_NAMESPACE_SEPARATION.json",
    "GROK_DELEGATION_UNAVAILABLE.json",

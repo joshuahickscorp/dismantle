@@ -351,9 +351,9 @@
  "obligations_total": 77,
  "unmapped_obligations": [],
  "orphan_map_entries": [],
- "receipt_count": 427,
+ "receipt_count": 428,
  "accelerator_receipt_count": 80,
- "last_verified_commit": "125d25fa7",
+ "last_verified_commit": "7e320896d",
  "last_verified_test_count": 510,
  "test_count_is_from_a_run_not_arithmetic": true,
  "test_environment": {
@@ -896,6 +896,14 @@
    ]
   },
   {
+   "receipt": "FUSION_GAIN_IS_LENGTH_INDEPENDENT.json",
+   "markers": [
+    "REFUT",
+    "RETRACT",
+    "superseded"
+   ]
+  },
+  {
    "receipt": "GENERATED_WEIGHTS_RETEST.json",
    "markers": [
     "REFUT"
@@ -1228,6 +1236,7 @@
    "DOCTOR_TECHNIQUE_REGISTRY.json",
    "DOCTOR_V2_PRESCRIPTION.json",
    "EBPW_NAMESPACE_SEPARATION.json",
+   "FUSION_GAIN_IS_LENGTH_INDEPENDENT.json",
    "GRAVITY_COMPILER_SEARCH.json",
    "GROK_DELEGATION_UNAVAILABLE.json",
    "HAWKING_ACTION_HANDOFF.json",

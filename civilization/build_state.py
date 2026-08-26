@@ -345,10 +345,28 @@ def build():
         counts[v.get("status", "UNKNOWN")] = counts.get(v.get("status", "UNKNOWN"), 0) + 1
 
     rec = HAWKING / "receipts/headless"
+
+    # THE INTERPRETER IS PART OF THE MEASUREMENT. The default `python3` on this box
+    # is 3.14.6 with NO mlx, where tools/accelerator reports five failures; the
+    # framework 3.12 has mlx and reports them all passing. A test count without the
+    # interpreter that produced it is not a measurement, so both are recorded and
+    # the validator refuses a count that arrives without one.
+    PY = "/usr/local/bin/python3"
     tests = subprocess.run(
-        ["/usr/local/bin/python3", "-m", "pytest", str(HAWKING / "tools/accelerator"), "-q"],
+        [PY, "-m", "pytest", str(HAWKING / "tools/accelerator"), "-q"],
         capture_output=True, text=True, cwd=HAWKING).stdout
     tm = re.search(r"(\d+) passed", tests)
+    fm = re.search(r"(\d+) failed", tests)
+    interp = subprocess.run(
+        [PY, "-c", "import sys;import mlx.core as m;print(sys.version.split()[0], m.__file__)"],
+        capture_output=True, text=True).stdout.strip()
+    test_env = {
+        "interpreter": PY,
+        "resolves_to": str(pathlib.Path(PY).resolve()),
+        "version_and_mlx": interp or "mlx NOT importable under this interpreter",
+        "suite": "tools/accelerator",
+        "failed": int(fm.group(1)) if fm else 0,
+    }
 
     lanes = running_lanes()
     acq = acquisition_workers()
@@ -386,6 +404,7 @@ def build():
             cwd=HAWKING).stdout.strip(),
         "last_verified_test_count": int(tm.group(1)) if tm else None,
         "test_count_is_from_a_run_not_arithmetic": True,
+        "test_environment": test_env,
         "named_gates": NAMED_GATES,
         # DERIVED, not typed. This field carried "4 hf download workers" as a literal
         # and drifted the moment the fill changed shape -- a ledger that lets a human

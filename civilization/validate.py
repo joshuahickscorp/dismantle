@@ -68,6 +68,19 @@ def validate(state, goal_text=None):
         v.append("test count not marked as coming from a run (S015 XI: the run is evidence)")
     if not isinstance(state.get("last_verified_test_count"), int):
         v.append("last_verified_test_count is not an integer from a real pytest run")
+    # A count without its interpreter is not a measurement. The same suite reports
+    # 5 failed under the default python3 (3.14, no mlx) and all passing under the
+    # framework 3.12 -- so the number alone cannot be compared across runs.
+    te = state.get("test_environment")
+    if not te:
+        v.append("test count arrives with no test_environment -- which interpreter?")
+    else:
+        if "mlx NOT importable" in str(te.get("version_and_mlx")):
+            v.append(f"tests were counted under an interpreter without mlx "
+                     f"({te.get('interpreter')}) -- that suite cannot pass there")
+        if te.get("failed"):
+            v.append(f"{te['failed']} tests FAILED in the run this count came from; a "
+                     "passed-count published unreported failures is a half-truth")
 
     # Status counts must match the authority on disk, not this file.
     if goal_text is not None:

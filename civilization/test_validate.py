@@ -185,3 +185,22 @@ def test_a_later_era_civilization_claiming_a_GRADUATED_status_is_REFUSED():
     s = state()
     s["civilization_status"]["IV-B_HMF_HGVAS"]["status"] = "ADVERSARIALLY_VERIFIED"
     assert any("advance work is" in b for b in validate(s, GOAL))
+
+
+def test_a_test_count_with_NO_INTERPRETER_is_REFUSED():
+    """The same suite reports 5 failed under the default python3 (3.14, no mlx) and
+    all passing under the framework 3.12. The number alone is not a measurement."""
+    s = state(); s.pop("test_environment", None)
+    assert any("no test_environment" in b for b in validate(s, GOAL))
+
+
+def test_a_count_from_an_interpreter_WITHOUT_MLX_is_REFUSED():
+    s = state()
+    s["test_environment"]["version_and_mlx"] = "mlx NOT importable under this interpreter"
+    assert any("without mlx" in b for b in validate(s, GOAL))
+
+
+def test_publishing_a_PASSED_count_while_tests_FAILED_is_REFUSED():
+    """A passed-count beside unreported failures is a half-truth."""
+    s = state(); s["test_environment"]["failed"] = 5
+    assert any("tests FAILED in the run" in b for b in validate(s, GOAL))

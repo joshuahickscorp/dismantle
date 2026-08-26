@@ -30,7 +30,15 @@ STATE = HERE / "ROADMAP_STATE.json"
 
 # An authored claim must point at something on disk. Receipt names, obligation
 # ids, and repo-relative tool paths all count; an adjective does not.
-CITATION = re.compile(r"[A-Z0-9_]+\.json|G\d{3}|tools/[\w/.]+|receipts/[\w/.]+")
+# The repo's real top-level directories, named explicitly. A generic "any path"
+# pattern would make this rule vacuous, and omitting `civilization/` made it
+# reject correctly-cited claims about the control plane itself -- caught by
+# running the real authored block through it.
+CITATION = re.compile(
+    r"[A-Z0-9_]+\.json"
+    r"|G\d{3}"
+    r"|(?:tools|receipts|civilization|crates|hcli|lab|workspace|docs)/[\w/.-]+"
+    r"|test_\w+")
 
 
 def previous(n):

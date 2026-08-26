@@ -128,3 +128,24 @@ def test_comparing_against_the_HAND_WRITTEN_001_schema_does_not_crash():
     state = json.loads(C.STATE.read_text())
     out = C.regressions(state, ("ERA_I_CHECKPOINT_001.json", doc))
     assert isinstance(out["found"], list)
+
+
+def test_a_claim_citing_the_CONTROL_PLANE_ITSELF_is_accepted():
+    """Regression. The citation regex listed tools/ and receipts/ but not
+    civilization/, so correctly-cited claims about the control plane were refused
+    as prose. Found by running the real authored block through the validator."""
+    cp = good()
+    cp["authored"]["what_changed_in_the_roadmap"] = [
+        "resource_ownership is derived from ps now (civilization/build_state.py)"]
+    assert C.validate(cp) == []
+
+
+def test_widening_the_regex_did_not_make_it_accept_ANYTHING():
+    """The anti-vacuity partner of the test above. A citation rule that accepts
+    every sentence is worse than no rule, because it looks like a check."""
+    cp = good()
+    for prose in ["the system is now much more coherent",
+                  "performance improved substantially across the board",
+                  "we fixed several issues and it is faster now"]:
+        cp["authored"]["what_became_physically_true"] = [prose]
+        assert any("cites nothing" in b for b in C.validate(cp)), prose

@@ -145,7 +145,7 @@
     "G060",
     "G062"
    ],
-   "verified": 0,
+   "verified": 1,
    "open": [
     "G043",
     "G044",
@@ -155,14 +155,13 @@
     "G049",
     "G055",
     "G058",
-    "G060",
     "G062"
    ],
    "evidence_satisfied": 9,
    "evidence_of": 9,
    "evidence_pct": 100.0,
-   "obligation_pct": 0.0,
-   "completion_pct": 0.0,
+   "obligation_pct": 10.0,
+   "completion_pct": 10.0,
    "completion_basis": "min(evidence categories satisfied / 9, obligations verified / total). The MINIMUM on purpose: I-D has all nine categories and zero verified obligations, and reporting 100% there is the inflation S015 \u00a7II forbids. Never a file count.",
    "open_gates": [
     "C2M T3: several real open CUDA codebases -- NOT CLAIMED",
@@ -315,20 +314,27 @@
   }
  },
  "obligation_status_counts": {
-  "VERIFIED": 43,
+  "VERIFIED": 44,
   "BLOCKED": 1,
   "IN_PROGRESS": 14,
   "NOT_STARTED": 2,
-  "PENDING": 3
+  "PENDING": 2
  },
  "obligations_total": 63,
  "unmapped_obligations": [],
  "orphan_map_entries": [],
- "receipt_count": 404,
- "accelerator_receipt_count": 77,
- "last_verified_commit": "3c0c8ef52",
- "last_verified_test_count": 469,
+ "receipt_count": 407,
+ "accelerator_receipt_count": 79,
+ "last_verified_commit": "3d75773c5",
+ "last_verified_test_count": 497,
  "test_count_is_from_a_run_not_arithmetic": true,
+ "test_environment": {
+  "interpreter": "/usr/local/bin/python3",
+  "resolves_to": "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3.12",
+  "version_and_mlx": "3.12.6 /Users/scammermike/Library/Python/3.12/lib/python/site-packages/mlx/core.cpython-312-darwin.so",
+  "suite": "tools/accelerator",
+  "failed": 0
+ },
  "named_gates": {
   "NVIDIA_CUDA_HARDWARE": "P2 differential. No local NVIDIA execution exists.",
   "FAST_LOCAL_STORAGE": "real weights for G048. Falcon-H1-7B is 15.17 GB and the contended USB bus measured under ~0.5 MB/s against 96-131 MiB/s quiet.",
@@ -440,7 +446,16 @@
   ],
   "I-A_AGENTOS_HCLI": []
  },
- "running_lanes": [],
+ "running_lanes": [
+  {
+   "lane": "wf_0b67889e-5bd/agent-a2dee8274c35b9401",
+   "executor": "claude",
+   "alive": true,
+   "transcript": "/Users/scammermike/.claude/projects/-Users-scammermike-Downloads-hawking/5e40f321-b30e-4c5c-ac16-027ddd36ed33/subagents/workflows/wf_0b67889e-5bd/agent-a2dee8274c35b9401.jsonl",
+   "detection": "heuristic",
+   "judged_by": "transcript touched 52s ago (< 300s); no pid exists to check, so a finished agent can read as alive"
+  }
+ ],
  "next_decisive_gates": [
   {
    "rank": 1,
@@ -472,6 +487,14 @@
   }
  ],
  "unresolved_retractions": [
+  {
+   "receipt": "ACCELERATOR_AKB_CONSTRUCTION.json",
+   "markers": [
+    "AMENDED_IN_PLACE",
+    "REFUT",
+    "superseded"
+   ]
+  },
   {
    "receipt": "ACCELERATOR_ATOMICS.json",
    "markers": [
@@ -573,6 +596,15 @@
   {
    "receipt": "ACCELERATOR_HONEST_GATE.json",
    "markers": [
+    "superseded"
+   ]
+  },
+  {
+   "receipt": "ACCELERATOR_LAW_BASE.json",
+   "markers": [
+    "AMENDED_IN_PLACE",
+    "REFUT",
+    "RETRACT",
     "superseded"
    ]
   },
@@ -1089,7 +1121,10 @@
   "heuristic": true,
   "why_heuristic": "mtime is not provenance; an untouched-but-amended receipt is missed",
   "receipts": [
+   "ACCELERATOR_AKB_CONSTRUCTION.json",
+   "ACCELERATOR_LAW_BASE.json",
    "EBPW_NAMESPACE_SEPARATION.json",
+   "GROK_DELEGATION_UNAVAILABLE.json",
    "PHYSICAL_METRIC_AUDIT.json",
    "PHYSICAL_METRIC_CANARIES.json"
   ]

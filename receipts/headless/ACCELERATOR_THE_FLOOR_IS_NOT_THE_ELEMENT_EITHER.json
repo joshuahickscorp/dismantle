@@ -477,5 +477,19 @@
   "the_fix_is_that_a_check_names_its_missing_input_instead_of_supplying_it": "The stamper ALREADY had a --check mode that reports and exits 1 without writing, so the test now calls that, and its failure message tells the author to run the tool themselves. THE STAMPER IS A TOOL AND THE TEST IS A CHECK, and the two had been collapsed. Verified in both directions: with the stamp removed the suite FAILS and the receipt is STILL unstamped afterwards; after running the tool by hand the suite passes twice with the receipt BYTE-IDENTICAL across both runs.",
   "scope_checked_rather_than_assumed": "workspace/campaign/odyssey/ODYSSEY_COMPLETIONS.json is also modified in this tree, which looked like a second instance. It is not: a controlled before/after comparison shows this suite run leaves it unchanged, so that modification predates this block and no claim is made about it.",
   "what_this_does_NOT_establish": "Only one such test was found, by tripping over it. Nothing here surveys the suite for other tests that write, and the fact that this one hid for many blocks is the reason to say so rather than to imply a clean sweep."
+ },
+ "AMENDED_2026_08_26_THE_FIXED_COST_IS_NOT_ONE_THING": {
+  "what_this_receipt_claimed": "A FIXED cost of 0.2450 ms = 86.1% of the kernel, read as the SIXTH SIGHTING of the per-submission floor, with its own boundary naming that submission and grid launch were not separated because every arm held the grid at 1.11M threads.",
+  "what_separates_them": "receipts/headless/ACCELERATOR_THE_FLOOR_SPLITS_THREE_WAYS.json ran the arm this receipt named as next. A trivial one-store-per-row probe holding the OUTPUT fixed while the grid sweeps 64x costs 50-64% of the baseline, extrapolates to 0.152-0.163 ms at zero threadgroups, and RISES 12% and 35% across the sweep.",
+  "the_correction": "SUBMISSION IS THE LARGEST TERM AND NOT THE WHOLE OF IT. Roughly 0.157 ms is submission, a further 0.02-0.055 ms is GRID LAUNCH which this receipt's axis could not see, and 18-30% of the kernel is the GROUP LOOP, its 1.39M scale loads and the reduction -- per-row work that an INNER-loop sweep holds constant and therefore deposits in the intercept. A FIXED INTERCEPT IS ONLY AS SPECIFIC AS THE AXIS THAT WAS VARIED.",
+  "what_stands": "The 86%-not-elements measurement is unchanged and is now CORROBORATED BY A SECOND ROUTE: the element term measures under 15% of the baseline from the trivial/thin2/baseline decomposition, against 14% from this receipt's own five-point element sweep. Every one of the seven dead levers still died for the reason stated -- the isolated instrument was mostly measuring something else -- and the production cross-check is untouched.",
+  "laws_reconciled": [
+   "AKB-AN-ISOLATED-MATVEC-IS-MOSTLY-NOT-ITS-ELEMENTS"
+  ],
+  "amending_receipt": "receipts/headless/ACCELERATOR_THE_FLOOR_SPLITS_THREE_WAYS.json",
+  "laws_unaffected": [
+   "AKB-THE-MATVEC-FLOOR-IS-THE-ELEMENT-NOT-THE-BYTE"
+  ],
+  "why_that_law_is_unaffected_rather_than_reconciled": "That law's claim is that the floor is NEITHER the byte NOR the element, and this amendment says what the remainder is MADE OF. Nothing in the split touches either half of that claim or the arms that established it -- the byte deletion still ties and every x-read and multiply arm still ties -- so the amendment does not REACH it. Reconciled would be the wrong word: it means 'reaches it and is already fixed', and this reaches it not at all. The distinction is worth keeping because one list would conflate a law that survived a correction with a law the correction never touched."
  }
 }

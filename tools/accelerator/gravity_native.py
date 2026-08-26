@@ -223,6 +223,44 @@ NATIVE_MATVEC_TPR = NATIVE_MATVEC_TPR_BODY + REDUCE_TAILS["serial"]
 # ELEMENT COUNT and removes exactly one operation, so a difference is that
 # operation. Each returns a WRONG answer, which is the anti-vacuity condition: a
 # probe that matched the oracle did not remove what it claims to remove.
+# THE GRID PROBE. WRONG BY CONSTRUCTION, NEVER A CANDIDATE.
+#
+# ACCELERATOR_THE_FLOOR_IS_NOT_THE_ELEMENT_EITHER fitted a fixed cost of 0.2450 ms
+# = 86.1% of an isolated matvec and named its own boundary: submission and grid
+# launch are NOT separated, because every arm there held the grid at 1.11M threads.
+#
+# This separates them. It keeps the SAME OUTPUT -- one value per row -- while
+# doing NO group loop, NO scale loads over groups, NO reduction and NO barrier, so
+# it can be launched at ANY threads-per-row and the GRID sweeps 64x with the work
+# fixed at nothing. A flat sweep means the fixed cost is SUBMISSION; a rising one
+# prices GRID LAUNCH.
+#
+# It reads ONE scale so the output is non-degenerate: a kernel storing a constant
+# would also be wrong, and would time an empty kernel rather than a cheap one.
+TRIVIAL_STORE = """
+uint gid = thread_position_in_grid.x;
+uint row = gid / %(TPR)du;
+uint lane = gid %% %(TPR)du;
+if (lane == 0u) out[row] = (float)scales[row * %(GROUPS)du] + (float)packed[row] * 0.0f + x[0] * 0.0f;
+"""
+
+
+def source_trivial(rows: int, cols: int, tpr: int = 64, tg: int = 128) -> str:
+    """One store per row and nothing else, at a chosen grid. WRONG BY CONSTRUCTION.
+
+    Every buffer is referenced -- packed and x multiplied by zero -- because MLX
+    binds the signature from the named inputs and an unreferenced buffer would make
+    this a DIFFERENT dispatch from the arms it is compared against, which is the
+    one thing that would make the comparison meaningless.
+    """
+    if tg % tpr:
+        raise ValueError(f"threadgroup {tg} must be a whole number of rows at tpr={tpr}")
+    if (rows * tpr) % tg:
+        raise ValueError(
+            f"rows*tpr={rows * tpr} is not a multiple of threadgroup {tg}")
+    return TRIVIAL_STORE % {"TPR": tpr, "GROUPS": cols // GROUP}
+
+
 OPERAND_PROBES = {
     # HALF THE x READS: one x value feeds both nibbles of the byte. Same FMA
     # count, same weight loads, 44.6M fewer x reads -- exactly the number of

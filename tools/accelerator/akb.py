@@ -1346,6 +1346,52 @@ LAWS: list[dict[str, Any]] = [
             "changed and neither variant earns a place."),
     ),
     dict(
+        law_id="AKB-GRID-LAUNCH-IS-NOT-FREE",
+        statement=(
+            "DISPATCHING MORE THREADGROUPS COSTS TIME EVEN WITH NO WORK TO DO, at about 2-6 "
+            "nanoseconds per threadgroup on this chip. A trivial one-store-per-row kernel holding "
+            "its OUTPUT fixed while the grid sweeps 136 to 8704 threadgroups -- 64x, with the work "
+            "fixed at nothing -- rose 12.0% and 35.4% across two runs, MONOTONICALLY from tpr4 "
+            "upward in both. The direction reproduces and the MAGNITUDE DOES NOT, so the price is "
+            "a range and not a value. THIS DOES NOT CONTRADICT the earlier measurement that tpr1 "
+            "took longer than tpr64 on the REAL kernel: there the wide grid had 64x the "
+            "parallelism to apply to real work and that gain outweighs the launch cost, while here "
+            "there is no work to parallelise so the launch cost is the only effect left. A LAUNCH "
+            "COST IS INVISIBLE WHENEVER THE GRID BUYS PARALLELISM, which is why it took a kernel "
+            "that does nothing to see it."),
+        applicability={
+            "MODEL": NONE, "ARCHITECTURE": NONE, "ORGAN": NONE,
+            "REPRESENTATION": "one f16 scale read per row; no weights read",
+            "SHAPE": "17408 outputs, grid swept 17408 to 1114112 threads at threadgroup 128",
+            "MACHINE": M3,
+            "RUNTIME": "MLX mx.fast.metal_kernel JIT, 14 round-robin rounds x 20 reps, twice",
+            "KERNEL": "a trivial one-store-per-row probe, WRONG BY CONSTRUCTION",
+            "STORAGE_TIER": NONE, "TOPOLOGY": NONE,
+            "WORKLOAD_PHASE": "a SINGLY SUBMITTED dispatch doing no work"},
+        evidence_class="Measured",
+        source_receipts=["receipts/headless/ACCELERATOR_THE_FLOOR_SPLITS_THREE_WAYS.json"],
+        citations=[
+            "receipts/headless/ACCELERATOR_THE_FLOOR_SPLITS_THREE_WAYS.json#P2_THE_GRID_AXIS_AND_MY_PREDICTION_IS_REFUTED",
+            "receipts/headless/ACCELERATOR_THE_FLOOR_SPLITS_THREE_WAYS.json#THE_DECOMPOSITION",
+            "receipts/headless/ACCELERATOR_THE_FLOOR_SPLITS_THREE_WAYS.json#claim_boundary"],
+        status="ACTIVE", superseded_by=None, negative_result=False,
+        confidence_basis=(
+            "My own pre-registered prediction was FLAT WITHIN 15% and it is REFUTED, which is what "
+            "carries this. The arms differ ONLY in launch: all seven return BITWISE IDENTICAL "
+            "output, pinned by a test, so a timing difference cannot be a different computation. "
+            "The probe is WRONG BY CONSTRUCTION at rel_err 1.000 against the float64 oracle -- the "
+            "anti-vacuity condition -- and separately checked NON-DEGENERATE at 17408 of 17408 "
+            "nonzero with 1289 distinct values, because a kernel storing a CONSTANT is also wrong "
+            "and would time an empty dispatch rather than a cheap one. Every buffer is referenced, "
+            "multiplied by zero where unused, because MLX binds the signature from the named "
+            "inputs and an unreferenced buffer would make this a different dispatch from its "
+            "comparands. Three mutations were watched failing. THE GRID IS VARIED BY CHANGING "
+            "THREADS-PER-ROW, so lane count moves with it -- legitimate only because this kernel "
+            "has NO cross-lane structure at all, and a kernel that did would not inherit this. "
+            "BENCH_STATE CONTENDED with round-spreads 14-472%; minima are the estimator and "
+            "medians sit beside them. ONE shape, ONE machine, INSTANCE. No shipped kernel changed."),
+    ),
+    dict(
         law_id="AKB-AN-ISOLATED-MATVEC-IS-MOSTLY-NOT-ITS-ELEMENTS",
         statement=(
             "AT THIS SHAPE 86% OF AN ISOLATED q4_g64 MATVEC'S MEASURED TIME DOES NOT DEPEND ON "
@@ -1365,7 +1411,19 @@ LAWS: list[dict[str, Any]] = [
             "DOES NOT PAY IT -- 402 weight-carrying dispatches inside a 29.29 ms token average "
             "0.0729 ms each, 3.4x BELOW this isolated floor, because 964 dispatches share a "
             "submission. SUBMISSION AND GRID LAUNCH ARE NOT SEPARATED HERE and no claim divides "
-            "the 0.245 ms between them."),
+            "the 0.245 ms between them. AMENDED 2026-08-26 by "
+            "receipts/headless/ACCELERATOR_THE_FLOOR_SPLITS_THREE_WAYS.json, WHICH SEPARATES "
+            "THEM: a trivial one-store-per-row probe holding the OUTPUT fixed while the grid "
+            "sweeps 136 to 8704 threadgroups costs 50-64% of the baseline, extrapolates to "
+            "0.152-0.163 ms at zero threadgroups -- landing on the ~0.157 ms submission "
+            "ACCELERATOR_GRAPH_SUBMISSION measured directly -- and RISES 12% and 35% across the "
+            "64x grid, so grid launch is NOT free at about 2-6 ns per threadgroup. THE FIXED "
+            "COST IS NOT ONE THING: submission is the largest term, grid launch is real and was "
+            "invisible to an axis that held the grid fixed, and 18-30% is the GROUP LOOP, its "
+            "1.39M scale loads and the reduction -- per-row work an INNER-loop sweep holds "
+            "constant and therefore deposits in the intercept. A FIXED INTERCEPT IS ONLY AS "
+            "SPECIFIC AS THE AXIS THAT WAS VARIED. The 86%-not-elements measurement STANDS and "
+            "is corroborated, the element term measuring under 15% there by another route."),
         applicability={
             "MODEL": NONE, "ARCHITECTURE": NONE,
             "ORGAN": "MLP-shaped GEMV at 89.1M weights, a shape borrowed from the resident",
@@ -1377,7 +1435,8 @@ LAWS: list[dict[str, Any]] = [
             "WORKLOAD_PHASE": "a SINGLY SUBMITTED decode-shaped GEMV, CONTENDED machine -- and the "
                               "singly-submitted part is the whole point"},
         evidence_class="Measured",
-        source_receipts=["receipts/headless/ACCELERATOR_THE_FLOOR_IS_NOT_THE_ELEMENT_EITHER.json"],
+        source_receipts=["receipts/headless/ACCELERATOR_THE_FLOOR_IS_NOT_THE_ELEMENT_EITHER.json",
+                         "receipts/headless/ACCELERATOR_THE_FLOOR_SPLITS_THREE_WAYS.json"],
         citations=[
             "receipts/headless/ACCELERATOR_THE_FLOOR_IS_NOT_THE_ELEMENT_EITHER.json#THE_FIT_MAKES_IT_A_NUMBER",
             "receipts/headless/ACCELERATOR_THE_FLOOR_IS_NOT_THE_ELEMENT_EITHER.json#THE_SIXTH_SIGHTING_AND_IT_EXPLAINS_THE_WHOLE_WALL",

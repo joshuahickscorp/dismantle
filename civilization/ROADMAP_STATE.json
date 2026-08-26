@@ -362,7 +362,7 @@
  "orphan_map_entries": [],
  "receipt_count": 443,
  "accelerator_receipt_count": 90,
- "last_verified_commit": "957e63e33",
+ "last_verified_commit": "138c30f7f",
  "last_verified_test_count": 555,
  "test_count_is_from_a_run_not_arithmetic": true,
  "test_environment": {

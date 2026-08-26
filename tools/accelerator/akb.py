@@ -1164,6 +1164,50 @@ LAWS: list[dict[str, Any]] = [
                           "across architectures, so ARCHITECTURE is named, never UNSCOPED."),
     ),
     dict(
+        law_id="AKB-WEIGHT-METRICS-INVERT-ON-ATTENTION-Q",
+        statement=(
+            "For attention q_proj under ws_rtn_q4_g64, WEIGHT-SPACE FIDELITY RANKS FOUR "
+            "SPECIMENS IN EXACTLY THE WRONG ORDER against real-activation error. Cosine runs "
+            "0.988150 / 0.989516 / 0.994001 / 0.994252 while real-activation relative error "
+            "runs 0.032677 / 0.033354 / 0.056519 / 0.065670 -- monotone and fully reversed, "
+            "Spearman -1.000 on two token sets and -0.800 on two more. It is NOT the "
+            "scale-invariance defect: weight_rel_err, which is not scale-invariant, inverts "
+            "identically. The GAUSSIAN activation proxy fails on the SAME boundary, "
+            "overstating error by up to 1.6x on q_proj while landing within 7% on the expert "
+            "gate. CONSEQUENCE: the weight-space floor procedure assigns 4.500 bpw to the "
+            "specimen whose real activations tolerate the representation BEST and 4.125 to "
+            "the one that tolerates it WORST, Spearman(floor_bpw, real_err) = -1.000."),
+        applicability={
+            "MODEL": UNSCOPED, "ARCHITECTURE": UNSCOPED,
+            "ORGAN": "attention q_proj; the expert gate does NOT invert and is the contrast",
+            "REPRESENTATION": "grouped absmax bits=4 group=64, exactly ws_rtn_q4_g64",
+            "SHAPE": "layer-0 q_proj, [4096,2048] / [3072,2048] / [1536,3072]",
+            "MACHINE": M3, "RUNTIME": "CPython 3.12, mlx_lm weights + numpy float32 reference",
+            "KERNEL": NONE, "STORAGE_TIER": "TIER 2 /Volumes/corpdrive model lake",
+            "TOPOLOGY": NONE,
+            "WORKLOAD_PHASE": "representation fidelity against REAL activations, decode position 0"},
+        evidence_class="Measured",
+        source_receipts=["receipts/headless/ACCELERATOR_ACTIVATION_VS_WEIGHT_SPACE.json"],
+        citations=["receipts/headless/ACCELERATOR_ACTIVATION_VS_WEIGHT_SPACE.json#result.THE_ANSWER_IS_ORGAN_DEPENDENT",
+                   "receipts/headless/ACCELERATOR_ACTIVATION_VS_WEIGHT_SPACE.json#result.THE_BIT_BUDGET_IS_INVERTED_ACROSS_SPECIMENS",
+                   "receipts/headless/ACCELERATOR_ACTIVATION_VS_WEIGHT_SPACE.json#claim_boundary"],
+        unscoped_basis={
+            "MODEL": "receipts/headless/ACCELERATOR_ACTIVATION_VS_WEIGHT_SPACE.json#result.q_proj_rows",
+            "ARCHITECTURE": "receipts/headless/ACCELERATOR_ACTIVATION_VS_WEIGHT_SPACE.json#result.architectures_measured"},
+        status="ACTIVE", superseded_by=None, negative_result=True,
+        confidence_basis=(
+            "Four specimens are THREE independent architecture groups -- the Qwen pair differs "
+            "at the 4th decimal -- so architecture, shape and cosine are NOT separated, and the "
+            "receipt names that confound rather than burying it. What raises this above one "
+            "ordering flipping on noise is that the inversion is monotone on all four points, "
+            "holds within the twin pair, and reproduces across four independent token sets. The "
+            "contrast case is what makes it a boundary rather than a blanket claim: the expert "
+            "gate does not invert. Its mechanism is already in this base as "
+            "AKB-ORGAN-FLOOR-DOES-NOT-TRANSFER -- within-group outliers concentrated in q_proj "
+            "at Pearson -0.9841 -- so this is that weight-space law's activation-space "
+            "consequence, not an unexplained correlation."),
+    ),
+    dict(
         law_id="AKB-ORGAN-FLOOR-DOES-NOT-TRANSFER",
         statement=(
             "The prior law that ATTENTION SETS THE REPRESENTATION FLOOR IS "

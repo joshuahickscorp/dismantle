@@ -26,13 +26,13 @@
   "SUPERSEDED",
   "CONDITIONAL"
  ],
- "corpus_size": 99,
+ "corpus_size": 100,
  "outside_scope_count": 347,
  "known_accelerator_outside_scope": [
   "TOKEN_EXECUTION_ATLAS.json"
  ],
  "scope_is_a_filename_prefix": "membership is decided by the ACCELERATOR_* glob, so a receipt named otherwise is neither extracted nor refused -- it is invisible. The excluded names are listed rather than silently dropped.",
- "receipts_yielding_laws": 30,
+ "receipts_yielding_laws": 31,
  "membership_routes": {
   "declared": [
    "ACCELERATOR_628_BOUNDARY_CENSUS.json",
@@ -52,6 +52,7 @@
    "TOKEN_GRAPH_REDUCTION_TIMED.json"
   ],
   "legacy_glob_only": [
+   "ACCELERATOR_ACTIVATION_VS_WEIGHT_SPACE.json",
    "ACCELERATOR_AIR_COMPLETENESS.json",
    "ACCELERATOR_AIR_MATMUL.json",
    "ACCELERATOR_ATOMICS.json",
@@ -138,7 +139,7 @@
    "ACCELERATOR_WORKUNIT_THROUGHPUT.json"
   ],
   "declared_count": 15,
-  "legacy_glob_only_count": 84,
+  "legacy_glob_only_count": 85,
   "note": "membership by DECLARATION does not depend on the filename; membership by the legacy glob does. The legacy count is the size of the remaining filename dependence and should fall, never rise."
  },
  "none_claims_not_grounded_count": 0,
@@ -831,6 +832,40 @@
    "confidence_basis": "Weight space only -- no activations, no model executed, no adequacy claim. The source pins itself at MODEL_FAMILY at most and points at the organ-floor receipt showing organ ranking does not transfer across architectures, so ARCHITECTURE is named, never UNSCOPED."
   },
   {
+   "law_id": "AKB-WEIGHT-METRICS-INVERT-ON-ATTENTION-Q",
+   "statement": "For attention q_proj under ws_rtn_q4_g64, WEIGHT-SPACE FIDELITY RANKS FOUR SPECIMENS IN EXACTLY THE WRONG ORDER against real-activation error. Cosine runs 0.988150 / 0.989516 / 0.994001 / 0.994252 while real-activation relative error runs 0.032677 / 0.033354 / 0.056519 / 0.065670 -- monotone and fully reversed, Spearman -1.000 on two token sets and -0.800 on two more. It is NOT the scale-invariance defect: weight_rel_err, which is not scale-invariant, inverts identically. The GAUSSIAN activation proxy fails on the SAME boundary, overstating error by up to 1.6x on q_proj while landing within 7% on the expert gate. CONSEQUENCE: the weight-space floor procedure assigns 4.500 bpw to the specimen whose real activations tolerate the representation BEST and 4.125 to the one that tolerates it WORST, Spearman(floor_bpw, real_err) = -1.000.",
+   "applicability": {
+    "MODEL": "UNSCOPED",
+    "ARCHITECTURE": "UNSCOPED",
+    "ORGAN": "attention q_proj; the expert gate does NOT invert and is the contrast",
+    "REPRESENTATION": "grouped absmax bits=4 group=64, exactly ws_rtn_q4_g64",
+    "SHAPE": "layer-0 q_proj, [4096,2048] / [3072,2048] / [1536,3072]",
+    "MACHINE": "Apple M3 Ultra, 60 GPU cores, 96 GiB unified (this box)",
+    "RUNTIME": "CPython 3.12, mlx_lm weights + numpy float32 reference",
+    "KERNEL": "NONE",
+    "STORAGE_TIER": "TIER 2 /Volumes/corpdrive model lake",
+    "TOPOLOGY": "NONE",
+    "WORKLOAD_PHASE": "representation fidelity against REAL activations, decode position 0"
+   },
+   "evidence_class": "Measured",
+   "source_receipts": [
+    "receipts/headless/ACCELERATOR_ACTIVATION_VS_WEIGHT_SPACE.json"
+   ],
+   "citations": [
+    "receipts/headless/ACCELERATOR_ACTIVATION_VS_WEIGHT_SPACE.json#result.THE_ANSWER_IS_ORGAN_DEPENDENT",
+    "receipts/headless/ACCELERATOR_ACTIVATION_VS_WEIGHT_SPACE.json#result.THE_BIT_BUDGET_IS_INVERTED_ACROSS_SPECIMENS",
+    "receipts/headless/ACCELERATOR_ACTIVATION_VS_WEIGHT_SPACE.json#claim_boundary"
+   ],
+   "unscoped_basis": {
+    "MODEL": "receipts/headless/ACCELERATOR_ACTIVATION_VS_WEIGHT_SPACE.json#result.q_proj_rows",
+    "ARCHITECTURE": "receipts/headless/ACCELERATOR_ACTIVATION_VS_WEIGHT_SPACE.json#result.architectures_measured"
+   },
+   "status": "ACTIVE",
+   "superseded_by": null,
+   "negative_result": true,
+   "confidence_basis": "Four specimens are THREE independent architecture groups -- the Qwen pair differs at the 4th decimal -- so architecture, shape and cosine are NOT separated, and the receipt names that confound rather than burying it. What raises this above one ordering flipping on noise is that the inversion is monotone on all four points, holds within the twin pair, and reproduces across four independent token sets. The contrast case is what makes it a boundary rather than a blanket claim: the expert gate does not invert. Its mechanism is already in this base as AKB-ORGAN-FLOOR-DOES-NOT-TRANSFER -- within-group outliers concentrated in q_proj at Pearson -0.9841 -- so this is that weight-space law's activation-space consequence, not an unexplained correlation."
+  },
+  {
    "law_id": "AKB-ORGAN-FLOOR-DOES-NOT-TRANSFER",
    "statement": "The prior law that ATTENTION SETS THE REPRESENTATION FLOOR IS ARCHITECTURE-SPECIFIC, not general. Attention set the floor on BOTH Qwen models -- q_proj needed group 32 where every MLP and expert tensor cleared at group 128 -- and DID NOT transfer: on Kimi-VL and Falcon-H1 no organ was more demanding than any other. The mechanism is within-group outliers, at Pearson -0.9841 across 33 organs and 4 architectures.",
    "applicability": {
@@ -1101,11 +1136,11 @@
   }
  ],
  "entries_by_status": {
-  "ACTIVE": 27,
+  "ACTIVE": 28,
   "CONDITIONAL": 4,
   "REFUTED": 1
  },
- "negative_results": 16,
+ "negative_results": 17,
  "supersession_in_corpus": {
   "ACCELERATOR_BARRIER_CONTROL_MECHANISM.json": [
    "ACCELERATOR_BARRIER_CONTROL_MECHANISM.json#AMENDED_IN_PLACE_2026_08_25",

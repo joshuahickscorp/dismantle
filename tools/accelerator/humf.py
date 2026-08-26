@@ -716,6 +716,76 @@ class Humf:
                 for o in self.objects.values() for d, m in o.materializations.items()
                 if m.state is State.CLEAN and self.epoch - m.verified_at > max_age]
 
+    # A COPY NOBODY EVER ACQUIRES IS NEVER RE-CHECKED. The resident-recheck policy
+    # closes the ACQUIRE path, which is where a stale copy is actually relied upon;
+    # it can do nothing about a copy that simply sits. stale_verifications() could
+    # already NAME those, and a number nobody is handed is a number nobody reads --
+    # the same sentence that block used about Plan.verification_age, still true one
+    # level up, because naming a stale copy and re-checking it are different acts.
+    SCRUB_DIGEST_GB_S = 1.387      # blake2b-128, MEASURED in ACCELERATOR_HUMF_IDENTITY
+
+    def scrub(self, max_age: int, budget_bytes: int | None = None) -> dict[str, Any]:
+        """Re-check the copies nobody has looked at, oldest first, within a budget.
+
+        CALLER-DRIVEN AND NOT A TIMER, deliberately. audit()'s own docstring says a
+        fabric that re-hashed on a timer would be paying for a check nobody asked
+        for, and that argument survives: what was missing is not a scheduler but the
+        ACT -- a caller who wants the check should not have to write the loop, the
+        ordering and the budget accounting themselves, because each of those is a
+        place to get it quietly wrong.
+
+        THE BUDGET IS IN BYTES because the cost is a re-hash at SCRUB_DIGEST_GB_S,
+        which ACCELERATOR_HUMF_IDENTITY measured as costing MORE THAN THE MOVE on a
+        fast link. A scrub that ignores its own cost is one an operator turns off.
+
+        WHAT IT REFUSES TO LET YOU READ WRONG: `complete` is False whenever anything
+        stale went unchecked, and `not_checked` names it with a reason. A budgeted
+        sweep that reports no divergence WITHOUT saying what it skipped is the
+        0-of-0-reads-like-0-of-many shape this program has sealed repeatedly -- so
+        `stale_found` is reported beside `checked`, and finding nothing stale is a
+        DIFFERENT result from checking nothing.
+        """
+        stale = self.stale_verifications(max_age)
+        # Oldest first: the copy nobody has looked at longest is the one whose trust
+        # is worth least. Ties broken by identity so the order is deterministic.
+        stale.sort(key=lambda r: (-r["age"], r["object"], r["domain"]))
+        by_object: dict[str, int] = {}
+        for r in stale:
+            m = self.objects[r["object"]].materializations[r["domain"]]
+            n = len(m.payload) if m.payload is not None else 0
+            by_object[r["object"]] = max(by_object.get(r["object"], 0), n)
+
+        checked, diverged, not_checked, spent = [], [], [], 0
+        for ident in dict.fromkeys(r["object"] for r in stale):
+            nbytes = by_object[ident]
+            if budget_bytes is not None and spent + nbytes > budget_bytes:
+                not_checked.append({"object": ident, "bytes": nbytes,
+                                    "reason": "BUDGET_EXHAUSTED"})
+                continue
+            res = self.audit(ident)
+            if not res["audited"]:
+                not_checked.append({"object": ident, "bytes": nbytes,
+                                    "reason": res["reason"]})
+                continue
+            spent += nbytes
+            checked.append(ident)
+            diverged.extend({"object": ident, "domain": d} for d in res["diverged"])
+        return {
+            "max_age": max_age,
+            "stale_found": len(stale),
+            "objects_checked": checked,
+            "diverged": diverged,
+            "not_checked": not_checked,
+            "complete": not not_checked,
+            "budget_bytes": budget_bytes,
+            "bytes_digested": spent,
+            "estimated_seconds": spent / (self.SCRUB_DIGEST_GB_S * 1e9),
+            "reading": ("no divergence among the copies CHECKED; `not_checked` is what "
+                        "this sweep says nothing about" if not diverged else
+                        "divergence found -- those copies are now UNKNOWN and out of "
+                        "trusted_copies()"),
+        }
+
     def _transfer_cost(self, src: str, dst: str, nbytes: int) -> tuple[float, str]:
         a, b = self.domains[src], self.domains[dst]
         bw = min(a.bandwidth_gb_s, b.bandwidth_gb_s) * 1e9

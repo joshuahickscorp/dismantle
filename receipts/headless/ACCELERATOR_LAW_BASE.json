@@ -26,7 +26,7 @@
   "SUPERSEDED",
   "CONDITIONAL"
  ],
- "corpus_size": 101,
+ "corpus_size": 102,
  "outside_scope_count": 347,
  "known_accelerator_outside_scope": [
   "TOKEN_EXECUTION_ATLAS.json"
@@ -100,6 +100,7 @@
    "ACCELERATOR_HUMF_PARTIAL_LOSS.json",
    "ACCELERATOR_HUMF_QUARANTINE_TRUST.json",
    "ACCELERATOR_HUMF_RESIDENT_DIGEST.json",
+   "ACCELERATOR_HUMF_SCRUB.json",
    "ACCELERATOR_HUMF_SILENT_CORRUPTION.json",
    "ACCELERATOR_HUMF_TORN_TIMEOUT_LOST.json",
    "ACCELERATOR_HUMF_TRUST_RESOLUTION.json",
@@ -140,7 +141,7 @@
    "ACCELERATOR_WORKUNIT_THROUGHPUT.json"
   ],
   "declared_count": 15,
-  "legacy_glob_only_count": 86,
+  "legacy_glob_only_count": 87,
   "note": "membership by DECLARATION does not depend on the filename; membership by the legacy glob does. The legacy count is the size of the remaining filename dependence and should fall, never rise."
  },
  "none_claims_not_grounded_count": 0,
@@ -1442,6 +1443,11 @@
    "reason": "every transport number in it is a knob for hardware that does not exist on this machine, and the receipt forbids citing one as physical evidence."
   },
   {
+   "receipt": "receipts/headless/ACCELERATOR_HUMF_SCRUB.json",
+   "reason_code": "CAPABILITY_NOT_LAW",
+   "reason": "records that a construct now EXISTS and executes -- a capability claim. There is no measured relation to type, and the receipt itself claims no performance."
+  },
+  {
    "receipt": "receipts/headless/ACCELERATOR_HUMF_TORN_TIMEOUT_LOST.json",
    "reason_code": "MOCK_ONLY",
    "reason": "every transport number in it is a knob for hardware that does not exist on this machine, and the receipt forbids citing one as physical evidence."
@@ -1577,5 +1583,5 @@
    "reason": "carries an AMEND* key or is named by a later receipt's boundary_this_closes, and the amendment changes what the number means. Typing the pre-amendment claim would record a law the corpus has already moved past."
   }
  ],
- "unextracted_count": 69
+ "unextracted_count": 70
 }

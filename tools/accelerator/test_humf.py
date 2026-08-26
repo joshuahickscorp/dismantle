@@ -1051,3 +1051,81 @@ def test_AN_UNSEALED_VALUE_CANNOT_BE_RECHECKED_AND_SAYS_SO_BY_NOT_LYING():
     o.content_digest = None
     p = h.plan_acquire(o.identity, "APPLE_UM")
     assert p.action == "ALREADY_RESIDENT"
+
+
+# --- the copy nobody acquires -------------------------------------------------
+
+def _aged(h, obj, domain, age):
+    """Push one copy's last verification `age` fabric events into the past."""
+    h.epoch += age
+    obj.materializations[domain].verified_at = h.epoch - age
+
+
+def test_scrub_FINDS_NOTHING_STALE_and_CHECKS_NOTHING_are_DIFFERENT_RESULTS():
+    """A budgeted sweep reporting no divergence without saying what it skipped is the
+    0-of-0-reads-like-0-of-many shape. Both arms run here, and they must not look
+    alike: one found nothing to do, the other did nothing it found."""
+    h, o, _ = _fabric_with(MockExternalMemoryProvider)
+    h.seal_value("W42")
+
+    fresh = h.scrub(max_age=1000)
+    assert fresh["stale_found"] == 0 and fresh["objects_checked"] == []
+    assert fresh["complete"] is True
+
+    _aged(h, o, "APPLE_UM", 5000)
+    starved = h.scrub(max_age=1000, budget_bytes=0)
+    assert starved["stale_found"] == 1, "the copy must be stale or this proves nothing"
+    assert starved["objects_checked"] == []
+    assert starved["complete"] is False
+    assert starved["not_checked"][0]["reason"] == "BUDGET_EXHAUSTED"
+    # the whole point: identical `diverged` and `objects_checked`, opposite meaning
+    assert fresh["diverged"] == starved["diverged"] == []
+    assert fresh["complete"] != starved["complete"]
+
+
+def test_scrub_CATCHES_ROT_IN_A_COPY_NO_ONE_EVER_ACQUIRES():
+    """The resident-recheck policy closes the ACQUIRE path. This copy is never
+    acquired, never transferred and never written -- the case no transfer check can
+    reach."""
+    h, o, _ = _fabric_with(MockExternalMemoryProvider)
+    h.seal_value("W42")
+    _aged(h, o, "APPLE_UM", 5000)
+    assert "APPLE_UM" in o.trusted_copies()
+
+    m = o.materializations["APPLE_UM"]
+    m.payload = bytes([m.payload[0] ^ 0x01]) + m.payload[1:]   # one flipped byte
+
+    res = h.scrub(max_age=1000)
+    assert res["diverged"] == [{"object": "W42", "domain": "APPLE_UM"}]
+    assert res["complete"] is True
+    assert "APPLE_UM" not in o.trusted_copies(), "a diverged copy must lose trust"
+
+
+def test_scrub_DOES_NOT_REPORT_CLEAN_FOR_A_COPY_IT_SKIPPED():
+    """The mutation that matters: if `complete` ignored not_checked, a starved scrub
+    over a ROTTED copy would report no divergence and read as an all-clear."""
+    h, o, _ = _fabric_with(MockExternalMemoryProvider)
+    h.seal_value("W42")
+    _aged(h, o, "APPLE_UM", 5000)
+    m = o.materializations["APPLE_UM"]
+    m.payload = bytes([m.payload[0] ^ 0xFF]) + m.payload[1:]
+
+    res = h.scrub(max_age=1000, budget_bytes=1)      # smaller than the payload
+    assert res["diverged"] == [], "the rot is real but this sweep did not look"
+    assert res["complete"] is False and res["not_checked"], (
+        "a sweep that skipped a rotted copy must not read as an all-clear")
+    # and with budget it IS caught, so the skip is the budget and not a blind check
+    assert h.scrub(max_age=1000)["diverged"] == [{"object": "W42", "domain": "APPLE_UM"}]
+
+
+def test_scrub_REFUSES_AN_UNSEALED_OBJECT_BY_NAME_rather_than_calling_it_clean():
+    """An unsealed value has nothing to check against. Counting it as checked would
+    manufacture confidence out of an absent baseline."""
+    h, o, _ = _fabric_with(MockExternalMemoryProvider)
+    o.mark_written("APPLE_UM")                 # a write UNSEALS the identity
+    _aged(h, o, "APPLE_UM", 5000)
+    o.materializations["APPLE_UM"].state = State.CLEAN   # stale_verifications reads CLEAN
+    assert o.content_digest is None, "fixture must be unsealed for this to test anything"
+    res = h.scrub(max_age=1000)
+    assert res["objects_checked"] == [] and res["complete"] is False
+    assert "UNSEALED" in res["not_checked"][0]["reason"]

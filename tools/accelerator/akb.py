@@ -1528,6 +1528,11 @@ UNEXTRACTED: dict[str, str] = {
     "ACCELERATOR_FP64_IS_A_HARDWARE_REFUSAL.json": "CAPABILITY_NOT_LAW",
     # A NEGATIVE capability probe with a named instrument gate; nothing timed.
     "ACCELERATOR_OCCUPANCY_PROBE.json": "CAPABILITY_NOT_LAW",
+    # Adds a BUDGETED SWEEP to the fabric and the reporting discipline that stops a
+    # skipped copy reading as a clean one. Bookkeeping over a mock provider with
+    # nothing timed; the only number in it is an ESTIMATE from a rate measured in
+    # ACCELERATOR_HUMF_IDENTITY, which this base already carries.
+    "ACCELERATOR_HUMF_SCRUB.json": "CAPABILITY_NOT_LAW",
     # Records that all four Odyssey specimens now EXECUTE ON REAL LAKE WEIGHTS
     # once the storage gate opened. Its two measured numbers are a storage bus
     # rate and an mmap page-in rate, neither of which is a kernel law on this

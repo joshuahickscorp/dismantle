@@ -1346,6 +1346,58 @@ LAWS: list[dict[str, Any]] = [
             "changed and neither variant earns a place."),
     ),
     dict(
+        law_id="AKB-ENTERING-THE-LOOP-COSTS-MORE-THAN-RUNNING-IT",
+        statement=(
+            "IN AN ISOLATED q4_g64 MATVEC THE FIRST ELEMENTS OF THE INNER LOOP COST FAR MORE THAN "
+            "THE REST. Going from NO element work to TWO elements per 64-wide group costs "
+            "0.069-0.099 ms across three runs; going from two to SIXTY-FOUR costs 0.006-0.031 ms. "
+            "The first two elements cost 2.2x to 15x what the remaining sixty-two cost, in every "
+            "run, which is roughly 80x to 500x per element -- a WIDE RANGE because both terms are "
+            "differences between small contended quantities, so the DIRECTION transfers and the "
+            "magnitude is a range. THIS NAMES A SHAPE THAT WAS ALREADY MEASURED AND UNEXPLAINED: "
+            "ACCELERATOR_THE_FLOOR_IS_NOT_THE_ELEMENT_EITHER found a FLAT low region, three arms "
+            "within 0.2% across an 8x work range, and called its linear model wrong in shape "
+            "without naming the shape. The cost sits in the FIRST iteration, so widening 2 to 16 "
+            "adds almost nothing and a knee appears only near full width. AND THE REDUCTION IS NOT "
+            "THE TERM: isolated with a single variable it ties three times (-0.0015, +0.0030, "
+            "-0.0009 ms) and priced at IDENTICAL STORE TRAFFIC it is 0.0023 ms = 3.4% of the gap. "
+            "The mechanism of the first-iteration cost is NOT NAMED -- first touch of cold cache "
+            "lines is the obvious candidate and it is recorded as untested."),
+        applicability={
+            "MODEL": NONE, "ARCHITECTURE": NONE,
+            "ORGAN": "MLP-shaped GEMV at 89.1M weights, a shape borrowed from the resident",
+            "REPRESENTATION": "ws_rtn_q4_g64, identical where read",
+            "SHAPE": "rows=17408 cols=5120, group 64, tpr64 at tg128, 2 vs 64 elements per group",
+            "MACHINE": M3,
+            "RUNTIME": "MLX mx.fast.metal_kernel JIT, 14 round-robin rounds x 20 reps, three runs",
+            "KERNEL": "native matvec decomposed into trivial, reduction-only, loop-without-barrier, loop-with-barrier and full",
+            "STORAGE_TIER": NONE, "TOPOLOGY": NONE,
+            "WORKLOAD_PHASE": "a SINGLY SUBMITTED decode-shaped GEMV, CONTENDED machine"},
+        evidence_class="Measured",
+        source_receipts=["receipts/headless/ACCELERATOR_ENTERING_THE_LOOP_COSTS_MORE_THAN_RUNNING_IT.json"],
+        citations=[
+            "receipts/headless/ACCELERATOR_ENTERING_THE_LOOP_COSTS_MORE_THAN_RUNNING_IT.json#THE_RESULT_THIS_BLOCK_DID_NOT_SET_OUT_TO_GET",
+            "receipts/headless/ACCELERATOR_ENTERING_THE_LOOP_COSTS_MORE_THAN_RUNNING_IT.json#P1_THE_REDUCTION_IS_REFUTED_AS_THE_TERM",
+            "receipts/headless/ACCELERATOR_ENTERING_THE_LOOP_COSTS_MORE_THAN_RUNNING_IT.json#claim_boundary"],
+        status="ACTIVE", superseded_by=None, negative_result=False,
+        confidence_basis=(
+            "The named suspect was REFUTED BY ARITHMETIC BEFORE ANY ARM RAN -- 1.39M scale loads "
+            "over 1.11M threads is 1.25 per thread and cannot be a fifth of a kernel -- so no arm "
+            "was spent on it and the correction is recorded as pre-run. My own P1 predicted the "
+            "reduction was 60% of the term and it is refuted three times. A DEFECT IN MY OWN "
+            "DESIGN is what makes the barrier price trustworthy: the obvious from-above arm also "
+            "turns one predicated store per row into an unconditional store from every lane, 64 "
+            "fold, and its disagreement with the from-below route in SIGN is what exposed it; the "
+            "equal-store arm was built for that and the two routes then agree. Every probe is "
+            "WRONG BY CONSTRUCTION and separately checked NON-DEGENERATE, with the reduction-only "
+            "arm's accumulator depending on the ROW as well as the lane because a per-lane "
+            "constant would reduce to the same value everywhere. Three mutations watched failing, "
+            "and a fourth REPORTED SURVIVING because it hit an identical line in a different tail "
+            "-- re-anchored on two lines, then caught. BENCH_STATE CONTENDED with round-spreads to "
+            "375%; minima are the estimator and medians sit beside them. ONE shape, ONE tpr, ONE "
+            "machine, INSTANCE. No shipped kernel changed."),
+    ),
+    dict(
         law_id="AKB-GRID-LAUNCH-IS-NOT-FREE",
         statement=(
             "DISPATCHING MORE THREADGROUPS COSTS TIME EVEN WITH NO WORK TO DO, at about 2-6 "

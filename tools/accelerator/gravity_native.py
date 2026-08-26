@@ -486,7 +486,8 @@ def source_operand_probe(rows: int, cols: int, probe: str,
     """The native matvec with ONE per-element operation removed. WRONG BY
     CONSTRUCTION -- these are probes, never candidates, and a caller who ships one
     ships a wrong answer. See OPERAND_PROBES for what each removes and why."""
-    if probe not in OPERAND_PROBES and not probe.startswith("thin"):
+    if (probe not in OPERAND_PROBES and not probe.startswith("thin")
+            and probe != "redonly"):
         raise ValueError(
             f"unknown operand probe {probe!r}; have {sorted(OPERAND_PROBES) + ['thin']}")
     d = {"PACKED_COLS": cols // 2, "GROUPS": cols // GROUP, "GROUP": GROUP,
@@ -497,6 +498,46 @@ def source_operand_probe(rows: int, cols: int, probe: str,
         raise AssertionError(
             "the byte body is not in the generated source, so the probe would "
             "silently be the baseline; the templates have drifted apart")
+    if probe == "redonly":
+        # THE REDUCTION ALONE. Group loop, scale loads and element work all gone;
+        # the threadgroup array, the barrier and lane 0's serial 64-slot sum stay.
+        # trivial -> redonly is a SINGLE-VARIABLE isolation of the reduction, which
+        # is the only item in the trivial -> thin2 gap that is not per-thread tiny.
+        # acc depends on BOTH row and lane so the reduced answer differs per row --
+        # a per-lane constant would sum to the same value everywhere and time a
+        # degenerate kernel rather than a cheap one.
+        body = NATIVE_MATVEC_TPR_BODY % d
+        head = body[:body.index("uint pbase")]
+        return (head + f"acc = (float)(row + lane) + (float)scales[row * {d['GROUPS']}u] * 0.0f"
+                       " + (float)packed[row] * 0.0f + x[0] * 0.0f;\n"
+                + REDUCE_TAILS["serial"] % d)
+    if probe.endswith("_nobarrier"):
+        # THE BARRIER AND THE SERIAL SUM ALONE, at IDENTICAL STORE TRAFFIC. Every
+        # lane still writes its threadgroup slot -- so the loop cannot be sunk --
+        # and lane 0 still makes the one store per row, but nothing is ordered and
+        # nothing is summed. The _noreduce arm removes the reduction AND replaces a
+        # predicated store with 64 unconditional ones, which is a SECOND VARIABLE;
+        # this arm exists because that confound makes _noreduce unusable for
+        # pricing the barrier.
+        base = source_operand_probe(rows, cols, probe[:-len("_nobarrier")], tpr, tg)
+        tail = REDUCE_TAILS["serial"] % d
+        if tail not in base:
+            raise AssertionError("the serial tail is not in this source to remove")
+        return base.replace(tail, """
+threadgroup float part[%(TG)du];
+uint lid = thread_position_in_threadgroup.x;
+part[lid] = acc;
+if (lane == 0u) out[row] = part[lid];
+""" % d)
+    if probe.endswith("_noreduce"):
+        # The SAME arm with the reduction deleted, measuring it from the other
+        # side. The store is UNCONDITIONAL for the reason REDUCE_TAILS["none"]
+        # records: a lane==0 predicate lets the compiler sink the pure loop.
+        base = source_operand_probe(rows, cols, probe[:-len("_noreduce")], tpr, tg)
+        tail = REDUCE_TAILS["serial"] % d
+        if tail not in base:
+            raise AssertionError("the serial tail is not in this source to remove")
+        return base.replace(tail, REDUCE_TAILS["none"] % d)
     if probe.startswith("thin"):
         # THE WORK-DELETION CONTROL, and the one that asks whether any per-element
         # work is being measured at all. Every arm above removes ONE operation and

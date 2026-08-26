@@ -1447,6 +1447,13 @@ UNEXTRACTED: dict[str, str] = {
     "ACCELERATOR_FP64_IS_A_HARDWARE_REFUSAL.json": "CAPABILITY_NOT_LAW",
     # A NEGATIVE capability probe with a named instrument gate; nothing timed.
     "ACCELERATOR_OCCUPANCY_PROBE.json": "CAPABILITY_NOT_LAW",
+    # Records that all four Odyssey specimens now EXECUTE ON REAL LAKE WEIGHTS
+    # once the storage gate opened. Its two measured numbers are a storage bus
+    # rate and an mmap page-in rate, neither of which is a kernel law on this
+    # base's axes (primitive x shape x representation x machine). The finding
+    # that a 51.5% load still looks peaked is an INSTRUMENT caveat, and this
+    # base already refuses to type those as laws (PROSE_ONLY exists for it).
+    "ACCELERATOR_REAL_LAKE_WEIGHTS.json": "CAPABILITY_NOT_LAW",
     # An IR capability and a legality rule; the physical law it rests on
     # (lockstep at simd width 32) is already carried by the barrier-scopes work.
     "ACCELERATOR_SIMDGROUP_SCOPE_EXECUTES.json": "CAPABILITY_NOT_LAW",

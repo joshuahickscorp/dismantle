@@ -23,17 +23,16 @@
     "G064",
     "G065"
    ],
-   "verified": 5,
+   "verified": 6,
    "open": [
-    "G063",
     "G064",
     "G065"
    ],
    "evidence_satisfied": 9,
    "evidence_of": 9,
    "evidence_pct": 100.0,
-   "obligation_pct": 62.5,
-   "completion_pct": 62.5,
+   "obligation_pct": 75.0,
+   "completion_pct": 75.0,
    "completion_basis": "min(evidence categories satisfied / 9, obligations verified / total). The MINIMUM on purpose: I-D has all nine categories and zero verified obligations, and reporting 100% there is the inflation S015 \u00a7II forbids. Never a file count.",
    "open_gates": [
     "S016 civilization-grade scheduler: Era/Civilization/Program/Gate as first-class scheduler concepts -- NOT_STARTED"
@@ -317,18 +316,18 @@
   }
  },
  "obligation_status_counts": {
-  "VERIFIED": 45,
+  "VERIFIED": 46,
   "BLOCKED": 1,
   "IN_PROGRESS": 14,
   "NOT_STARTED": 2,
-  "PENDING": 3
+  "PENDING": 2
  },
  "obligations_total": 65,
  "unmapped_obligations": [],
  "orphan_map_entries": [],
  "receipt_count": 408,
  "accelerator_receipt_count": 80,
- "last_verified_commit": "5d7a169fb",
+ "last_verified_commit": "0ff1ea5cb",
  "last_verified_test_count": 510,
  "test_count_is_from_a_run_not_arithmetic": true,
  "test_environment": {
@@ -459,50 +458,42 @@
    "commits_to_this_repo": true
   },
   {
-   "lane": "wf_0b67889e-5bd/agent-a2dee8274c35b9401",
-   "executor": "claude",
-   "alive": true,
-   "transcript": "/Users/scammermike/.claude/projects/-Users-scammermike-Downloads-hawking/5e40f321-b30e-4c5c-ac16-027ddd36ed33/subagents/workflows/wf_0b67889e-5bd/agent-a2dee8274c35b9401.jsonl",
-   "detection": "heuristic",
-   "judged_by": "transcript touched 194s ago (< 300s); no pid exists to check, so a finished agent can read as alive"
-  },
-  {
    "lane": "wf_320337a4-374/agent-a37fb853a2cf7b697",
    "executor": "claude",
    "alive": true,
    "transcript": "/Users/scammermike/.claude/projects/-Users-scammermike-Downloads-hawking/5e40f321-b30e-4c5c-ac16-027ddd36ed33/subagents/workflows/wf_320337a4-374/agent-a37fb853a2cf7b697.jsonl",
    "detection": "heuristic",
-   "judged_by": "transcript touched 17s ago (< 300s); no pid exists to check, so a finished agent can read as alive"
+   "judged_by": "transcript touched 13s ago (< 300s); no pid exists to check, so a finished agent can read as alive"
   }
  ],
  "next_decisive_gates": [
   {
    "rank": 1,
-   "civilization": "I-C_GRAVITY_NOETIC",
-   "gate": "physical EBPW accounting that cannot be faked accidentally",
-   "why": "two headline metrics -- active_ebpw_per_token and dram_bytes_per_token -- are still DESIGN constants published under physical/runtime names, and the audit flags them itself. Zero I/O, so it does not contend with the fill.",
-   "resource": "CPU + local SSD clone; no bus contention"
+   "civilization": "I-A_AGENTOS_HCLI",
+   "gate": "CLAUDE_HCLI_DELEGATION (G064) and HCLI_ALPHA_STANDALONE (G065)",
+   "why": "steer S022, and it is now the EXECUTION-CAPACITY gate for the whole program: Grok is 402-blocked, so HCLI is the only executor that can be delegated to. G065 additionally covers the operator's Claude-limit outage, when it becomes the ONLY way work continues at all.",
+   "resource": "CPU + a local model server; the 1B GGUF avoids contending with the fill"
   },
   {
    "rank": 2,
-   "civilization": "I-D_ACCELERATOR",
-   "gate": "measured laws converted to AKB entries with exact applicability domains",
-   "why": "the laws exist across 77 receipts as prose. As typed entries they become what model N+1 does not rediscover. This is the compounding step and it is pure read.",
-   "resource": "CPU only"
+   "civilization": "I-C_GRAVITY_NOETIC",
+   "gate": "G023 Noetic compiler pipeline -- the one BLOCKED obligation in Era I",
+   "why": "its recorded blocker was already re-verified FALSE AS STATED: a wired 7,046-line native Metal routed-MoE path exists. The real blocker is much narrower -- that reader is bound to one model and one artifact family -- so the unblock is GENERALIZATION of a working reader, not a from-scratch build.",
+   "resource": "CPU; no bus contention"
   },
   {
    "rank": 3,
    "civilization": "I-E_ODYSSEY_I",
-   "gate": "every recorded specimen backed by a live build, not a literal",
-   "why": "execution_coverage() returns a recorded table whose only live guard rebuilds Falcon-H1 -- the one specimen that was never broken. The VL row, which the repair was written for, rests on nothing live.",
-   "resource": "GPU via mlx; <10 KB read off the lake"
+   "gate": "real weights execute (G048)",
+   "why": "still the highest-information experiment remaining and still the same RESOURCE CONFLICT: it needs a quiesced window or a 15.17 GB stage competing with the operator-prioritised fill. Every specimen result to date is one-layer and random-weight, so nothing yet says anything about adequacy.",
+   "resource": "USB bus -- CONTENDED, currently owned by the fill"
   },
   {
    "rank": 4,
-   "civilization": "I-E_ODYSSEY_I",
-   "gate": "real weights execute (G048)",
-   "why": "highest information remaining, but RESOURCE-CONFLICTED: needs a quiesced window or a 15.17 GB stage competing with the operator-prioritised fill. Scheduled only when the fill yields or no higher-value download remains.",
-   "resource": "USB bus -- CONTENDED, currently owned by the fill"
+   "civilization": "I-D_ACCELERATOR",
+   "gate": "C2M T3 -- a real open CUDA project slice, not a synthetic kernel",
+   "why": "I-D has 9/9 evidence categories and 2/10 obligations. T3 is NOT CLAIMED and is the gate that separates a kernel corpus from a compiler. P2's CUDA differential stays blocked on hardware that does not exist here.",
+   "resource": "CPU + GPU; zero I/O"
   }
  ],
  "unresolved_retractions": [

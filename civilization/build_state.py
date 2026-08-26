@@ -122,30 +122,33 @@ GATE_BLOCKS = {
 # dependency unlock x probability of a decisive result, divided by wall time and
 # resource conflict -- NOT by which is easiest.
 NEXT_DECISIVE_GATES = [
-    {"rank": 1, "civilization": "I-C_GRAVITY_NOETIC",
-     "gate": "physical EBPW accounting that cannot be faked accidentally",
-     "why": ("two headline metrics -- active_ebpw_per_token and dram_bytes_per_token -- "
-             "are still DESIGN constants published under physical/runtime names, and the "
-             "audit flags them itself. Zero I/O, so it does not contend with the fill."),
-     "resource": "CPU + local SSD clone; no bus contention"},
-    {"rank": 2, "civilization": "I-D_ACCELERATOR",
-     "gate": "measured laws converted to AKB entries with exact applicability domains",
-     "why": ("the laws exist across 77 receipts as prose. As typed entries they become "
-             "what model N+1 does not rediscover. This is the compounding step and it "
-             "is pure read."),
-     "resource": "CPU only"},
+    {"rank": 1, "civilization": "I-A_AGENTOS_HCLI",
+     "gate": "CLAUDE_HCLI_DELEGATION (G064) and HCLI_ALPHA_STANDALONE (G065)",
+     "why": ("steer S022, and it is now the EXECUTION-CAPACITY gate for the whole "
+             "program: Grok is 402-blocked, so HCLI is the only executor that can be "
+             "delegated to. G065 additionally covers the operator's Claude-limit "
+             "outage, when it becomes the ONLY way work continues at all."),
+     "resource": "CPU + a local model server; the 1B GGUF avoids contending with the fill"},
+    {"rank": 2, "civilization": "I-C_GRAVITY_NOETIC",
+     "gate": "G023 Noetic compiler pipeline -- the one BLOCKED obligation in Era I",
+     "why": ("its recorded blocker was already re-verified FALSE AS STATED: a wired "
+             "7,046-line native Metal routed-MoE path exists. The real blocker is much "
+             "narrower -- that reader is bound to one model and one artifact family -- so "
+             "the unblock is GENERALIZATION of a working reader, not a from-scratch build."),
+     "resource": "CPU; no bus contention"},
     {"rank": 3, "civilization": "I-E_ODYSSEY_I",
-     "gate": "every recorded specimen backed by a live build, not a literal",
-     "why": ("execution_coverage() returns a recorded table whose only live guard "
-             "rebuilds Falcon-H1 -- the one specimen that was never broken. The VL row, "
-             "which the repair was written for, rests on nothing live."),
-     "resource": "GPU via mlx; <10 KB read off the lake"},
-    {"rank": 4, "civilization": "I-E_ODYSSEY_I",
      "gate": "real weights execute (G048)",
-     "why": ("highest information remaining, but RESOURCE-CONFLICTED: needs a quiesced "
-             "window or a 15.17 GB stage competing with the operator-prioritised fill. "
-             "Scheduled only when the fill yields or no higher-value download remains."),
+     "why": ("still the highest-information experiment remaining and still the same "
+             "RESOURCE CONFLICT: it needs a quiesced window or a 15.17 GB stage competing "
+             "with the operator-prioritised fill. Every specimen result to date is "
+             "one-layer and random-weight, so nothing yet says anything about adequacy."),
      "resource": "USB bus -- CONTENDED, currently owned by the fill"},
+    {"rank": 4, "civilization": "I-D_ACCELERATOR",
+     "gate": "C2M T3 -- a real open CUDA project slice, not a synthetic kernel",
+     "why": ("I-D has 9/9 evidence categories and 2/10 obligations. T3 is NOT CLAIMED and "
+             "is the gate that separates a kernel corpus from a compiler. P2's CUDA "
+             "differential stays blocked on hardware that does not exist here."),
+     "resource": "CPU + GPU; zero I/O"},
 ]
 
 

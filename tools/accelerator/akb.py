@@ -1233,6 +1233,58 @@ LAWS: list[dict[str, Any]] = [
             "NOT refute production's 17.35 us, which is a bytes-plus-dispatch number."),
     ),
     dict(
+        law_id="AKB-THE-MATVEC-FLOOR-IS-THE-ELEMENT-NOT-THE-BYTE",
+        statement=(
+            "A REPRESENTATION-NATIVE MATVEC AT THE RESIDENT'S MLP SHAPE IS BOUND BY ITS "
+            "ELEMENT COUNT, NOT BY ITS BYTES AND NOT BY ITS UNPACK. A deletion control "
+            "with the SAME geometry, reduction and element count that NEVER READS THE "
+            "PACKED ARRAY measures 0.2897 ms against the real kernel's 0.2825 -- the real "
+            "kernel FASTER, a statistical tie -- so 44.6 MB of weight traffic costs "
+            "NOTHING MEASURABLE. Two candidate levers are eliminated by measurement: "
+            "4-byte loads cut load instructions FOURFOLD and change nothing (1.004x, 7 of "
+            "12 round-robin rounds, a coin flip), and a 256-entry LUT removing the "
+            "mask/shift/convert/subtract chain is 16.1% SLOWER (1 of 12 rounds). The "
+            "floor is one x read and one fused multiply-add per weight at 307.7 G elem/s, "
+            "and weight traffic below ~171 MB at this element count hides beneath it. "
+            "CONSEQUENCE FOR THE INSTRUMENT: effective GB/s is weight_bytes/time, so when "
+            "time is set by elements it measures THE REPRESENTATION'S DENSITY AND NOT THE "
+            "MACHINE -- the same kernel would report half the GB/s at half the bpw without "
+            "running any faster."),
+        applicability={
+            "MODEL": NONE, "ARCHITECTURE": NONE,
+            "ORGAN": "MLP-shaped GEMV at 89.1M weights, a shape borrowed from the resident",
+            "REPRESENTATION": "ws_rtn_q4_g64 in every arm; the control reads no weights",
+            "SHAPE": "rows=17408 cols=5120, group 64, tpr64 tg128",
+            "MACHINE": M3, "RUNTIME": "MLX mx.fast.metal_kernel JIT, 12-16 round-robin rounds x 20 reps",
+            "KERNEL": "native matvec under byte / word / lut unpacks plus a no-weights control",
+            "STORAGE_TIER": NONE, "TOPOLOGY": NONE,
+            "WORKLOAD_PHASE": "single-token decode-shaped GEMV, CONTENDED machine"},
+        evidence_class="Measured",
+        source_receipts=["receipts/headless/ACCELERATOR_THE_FLOOR_IS_THE_ELEMENT_NOT_THE_BYTE.json"],
+        citations=["receipts/headless/ACCELERATOR_THE_FLOOR_IS_THE_ELEMENT_NOT_THE_BYTE.json#BOTH_PREDICTIONS_LAND_ON_THE_WRONG_SIDE",
+                   "receipts/headless/ACCELERATOR_THE_FLOOR_IS_THE_ELEMENT_NOT_THE_BYTE.json#AND_THE_DELETION_CONTROL_SAYS_WHAT_THE_WALL_IS",
+                   "receipts/headless/ACCELERATOR_THE_FLOOR_IS_THE_ELEMENT_NOT_THE_BYTE.json#AN_INSTRUMENT_CORRECTION_THAT_MATTERS_MORE_THAN_THE_ARMS",
+                   "receipts/headless/ACCELERATOR_THE_FLOOR_IS_THE_ELEMENT_NOT_THE_BYTE.json#claim_boundary"],
+        status="ACTIVE", superseded_by=None, negative_result=True,
+        confidence_basis=(
+            "BOTH pre-registered predictions land on the WRONG side, which is what carries "
+            "it: the load-width lever was predicted to win 1.5x and is refuted at 1.004x, "
+            "the LUT was predicted not to win and LOSES. The first sweep was DISCARDED and "
+            "why is part of the evidence -- sequential arms put byte first and it read "
+            "116.4% IQR at 3.4x its own previous measurement, so a transient lands on "
+            "whoever holds the clock; round-robin then reproduced the previous block's "
+            "byte figure to 4.8%. The floor probe's estimator is the MINIMUM of round "
+            "medians, stated because contention only adds time, and its control carries "
+            "63.1% round-spread so 'the bytes are free' is DIRECTIONAL -- admitted because "
+            "the tie runs in the wrong direction for a cost, not by a clean gate. THE "
+            "DENSE DECOMPOSITION IS REJECTED BY THIS PROGRAM'S OWN IMPLAUSIBILITY RULE at "
+            "an implied 617.3 GB/s over the measured 589.73 roof, since the arms have "
+            "different launch geometries; no dense number is claimed. ONE shape, ONE "
+            "machine, INSTANCE; the ~171 MB crossover scales with the element count and is "
+            "this shape's number. Correctness precedes every timing at 2.0-2.2e-07 against "
+            "a shared float64 oracle. No shipped kernel changed."),
+    ),
+    dict(
         law_id="AKB-THE-UNPACK-IS-THE-WALL-NOT-THE-BYTES",
         statement=(
             "A REPRESENTATION-NATIVE MATVEC ON THIS MACHINE IS ARITHMETIC-BOUND ON ITS "
@@ -1240,7 +1292,13 @@ LAWS: list[dict[str, Any]] = [
             "shape 17408x5120, dense f32 sustains 405.7 GB/s while ws_rtn_q4_g64 native "
             "reaches 138.7 GB/s at one thread per row and 160.9 GB/s at the resident's own "
             "SIXTY-FOUR threads per row -- 1.16x for a 64x change in lanes, against a "
-            "pre-registered 1.5x that is REFUTED. The native arm reads 7.53x FEWER BYTES "
+            "pre-registered 1.5x that is REFUTED. AMENDED 2026-08-26 by "
+            "ACCELERATOR_THE_FLOOR_IS_THE_ELEMENT_NOT_THE_BYTE: THE UNPACK IS NOT THE "
+            "WALL EITHER -- a deletion control reading NO packed bytes measures 0.2897 ms "
+            "against the real kernel's 0.2825, a LUT decode is 16.1% SLOWER and 4-byte "
+            "loads change nothing at 1.004x, so the wall is the PER-ELEMENT rate at "
+            "307.7 G elem/s and weight traffic under ~171 MB hides beneath it. The "
+            "native arm reads 7.53x FEWER BYTES "
             "for only 2.99x less time, converting 40% of its own byte ratio and burning "
             "the rest on the unpack, and its best geometry sits at 27.3% of the measured "
             "589.73 GB/s roof. THE BODY-LEVEL COROLLARY IS ALREADY IN PRODUCTION DATA: "

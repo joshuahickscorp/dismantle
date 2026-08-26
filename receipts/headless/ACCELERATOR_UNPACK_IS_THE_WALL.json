@@ -298,5 +298,15 @@
   },
   "rule": "S032 s3 -- derived, never asserted",
   "consequence": "absolute GB/s are lower bounds; the arm-to-arm ratios are the finding"
+ },
+ "AMENDED_2026-08-26_THE_UNPACK_IS_NOT_THE_WALL_EITHER": {
+  "by": "receipts/headless/ACCELERATOR_THE_FLOOR_IS_THE_ELEMENT_NOT_THE_BYTE.json",
+  "what_stands": "fewer bytes are NECESSARY AND NOT SUFFICIENT, and the three-body production evidence (3.1393 / 2.9802 / 2.5970 EBPW at 34.14 / 34.12 / 33.12 raw TPS) is unchanged -- and is now EXPLAINED rather than only observed.",
+  "what_is_corrected": "this receipt named the UNPACK as the wall. It is not. A deletion control running the same geometry and element count with the packed array NEVER READ measures 0.2897 ms against the real kernel's 0.2825 -- reading 44.6 MB of weights costs NOTHING MEASURABLE. Removing the decode arithmetic (a 256-entry LUT, this receipt's own named lever) is 16.1% SLOWER; removing three quarters of the load instructions (4-byte words) changes nothing at 1.004x over 12 round-robin rounds. The wall is the PER-ELEMENT matvec rate -- one x read and one FMA per weight at 307.7 G elem/s -- which is neither the bytes nor the unpack.",
+  "why_the_earlier_reading_was_reachable": "the comparison here was native against DENSE, and native converting only 40% of its byte ratio is consistent with an unpack cost AND with an element floor. Separating them needed a deletion control and this block did not run one.",
+  "laws_reconciled": [
+   "AKB-THE-UNPACK-IS-THE-WALL-NOT-THE-BYTES"
+  ],
+  "laws_reconciled_note": "the correction is written INTO that law's statement, which cites ACCELERATOR_THE_FLOOR_IS_THE_ELEMENT_NOT_THE_BYTE by name; the validator refuses the claim otherwise."
  }
 }

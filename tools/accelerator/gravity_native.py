@@ -126,6 +126,84 @@ if (lane == 0u) {
 """
 
 
+# TWO MORE UNPACKS AT THE SAME GEOMETRY, so the only variable is HOW THE NIBBLES
+# ARE FETCHED AND DECODED. ACCELERATOR_UNPACK_IS_THE_WALL named the lever as
+# "an unpack costing fewer instructions per weight -- a LOOKUP rather than a
+# shift-mask-subtract-multiply chain", which assumes the instructions that cost
+# are ARITHMETIC. Counting them says otherwise: NATIVE_MATVEC_TPR loads ONE BYTE
+# per two weights, so the LOAD COUNT is a candidate that sentence never named.
+#
+# WORD reads four bytes and decodes eight weights with the SAME arithmetic --
+# load width alone. LUT keeps the byte load and replaces mask/shift/convert/
+# subtract with one threadgroup read of a 256-entry float2 table -- the receipt's
+# own suggestion, built as suggested so it can be measured rather than assumed.
+UNPACK_BODIES = {
+    "byte": """
+        uchar byte = packed[pbase + (c0 + k) / 2u];
+        float w0 = (float)((int)(byte & 0x0F) - %(BOUND)d) * s;
+        float w1 = (float)((int)(byte >> 4)   - %(BOUND)d) * s;
+        acc += w0 * x[c0 + k] + w1 * x[c0 + k + 1u];
+""",
+    "lut": """
+        uchar byte = packed[pbase + (c0 + k) / 2u];
+        float2 d = lut[byte];
+        acc += d.x * s * x[c0 + k] + d.y * s * x[c0 + k + 1u];
+""",
+}
+
+# The word body consumes EIGHT weights per iteration, so it carries its own step.
+UNPACK_WORD_BODY = """
+        uint v = *((const device uint*)(packed + pbase + (c0 + k) / 2u));
+        for (uint t = 0; t < 8; ++t) {
+            float w = (float)((int)((v >> (4u * t)) & 0xFu) - %(BOUND)d) * s;
+            acc += w * x[c0 + k + t];
+        }
+"""
+
+# 256 entries x float2, filled once per threadgroup then published by a barrier.
+# Every thread fills a strided slice so the fill is O(256/TG) each rather than
+# serialised through one lane.
+LUT_PROLOGUE = """
+threadgroup float2 lut[256];
+for (uint i = thread_position_in_threadgroup.x; i < 256u; i += %(TG)du) {
+    lut[i] = float2((float)((int)(i & 0x0F) - %(BOUND)d),
+                    (float)((int)(i >> 4)   - %(BOUND)d));
+}
+threadgroup_barrier(mem_flags::mem_threadgroup);
+"""
+
+
+def source_unpack(rows: int, cols: int, unpack: str = "byte",
+                  tpr: int = 64, tg: int = 128) -> str:
+    """The tpr kernel with a chosen unpack. Same geometry, same reduction, same
+    barrier -- ONLY the fetch-and-decode of the nibbles moves.
+
+    The `word` variant casts to a 4-byte pointer, which Metal requires be
+    4-BYTE ALIGNED. Every address it forms is pbase + g*(GROUP/2) + k/2 with
+    GROUP=64, so the alignment holds exactly when the row stride cols/2 is a
+    multiple of 4; source_unpack REFUSES otherwise rather than emitting a kernel
+    that reads correctly on most shapes and faults on the rest.
+    """
+    if unpack not in ("byte", "lut", "word"):
+        raise ValueError(f"unknown unpack {unpack!r}")
+    d = {"PACKED_COLS": cols // 2, "GROUPS": cols // GROUP, "GROUP": GROUP,
+         "BOUND": BOUND, "TPR": tpr, "TG": tg}
+    if unpack == "word":
+        if (cols // 2) % 4:
+            raise ValueError(
+                f"word unpack needs a 4-byte-aligned row stride; cols={cols} "
+                f"gives {cols // 2} bytes per row, which is not a multiple of 4")
+        body, step = UNPACK_WORD_BODY % d, 8
+    else:
+        body, step = UNPACK_BODIES[unpack] % d, 2
+    src = source_tpr(rows, cols, tpr, tg)
+    src = src.replace(UNPACK_BODIES["byte"] % d, body)
+    src = src.replace("k += 2", f"k += {step}")
+    if unpack == "lut":
+        src = (LUT_PROLOGUE % d) + src
+    return src
+
+
 def source_tpr(rows: int, cols: int, tpr: int = 64, tg: int = 128) -> str:
     """The native matvec at a chosen threads-per-row. Refuses a geometry that
     would need a bounds guard before the barrier: a thread that returns early

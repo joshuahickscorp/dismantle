@@ -83,6 +83,64 @@ for (uint c = 0; c < %(COLS)du; ++c) acc += w[base + c] * x[c];
 out[row] = acc;
 """
 
+# The resident's OWN geometry. tools/.../qwen38_dispatch_trace names the shipped
+# MLP kernel qwen_affine_q2_group32_matvec_geo_tpr64_tg128 -- SIXTY-FOUR THREADS
+# PER ROW -- while NATIVE_MATVEC above puts one thread on one row and serialises
+# the whole unpack. ACCELERATOR_EXPERT_BATCH measured that one-thread-per-row
+# kernel ARITHMETIC-BOUND ON THE UNPACK at 161.9 GB/s, and a technique is a
+# property of a technique, a shape and a machine together, so that number says
+# nothing about the resident until the geometry matches.
+#
+# The reduction is deliberately a flat serial sum by one lane over its row's TPR
+# slots rather than a tree: it costs TPR adds against the ~GROUP*GROUPS/TPR
+# unpack operations each lane already did, and it has NOTHING TO FORGET. This
+# program has now twice shipped a tree reduce whose second write raced its own
+# reads (ACCELERATOR_NORMALIZATION), and the cheap structural choice is the one
+# that cannot carry that hazard.
+NATIVE_MATVEC_TPR = """
+uint gid = thread_position_in_grid.x;
+uint row = gid / %(TPR)du;
+uint lane = gid %% %(TPR)du;
+float acc = 0.0f;
+uint pbase = row * %(PACKED_COLS)du;
+uint sbase = row * %(GROUPS)du;
+for (uint g = lane; g < %(GROUPS)du; g += %(TPR)du) {
+    float s = (float)scales[sbase + g];
+    uint c0 = g * %(GROUP)du;
+    for (uint k = 0; k < %(GROUP)du; k += 2) {
+        uchar byte = packed[pbase + (c0 + k) / 2u];
+        float w0 = (float)((int)(byte & 0x0F) - %(BOUND)d) * s;
+        float w1 = (float)((int)(byte >> 4)   - %(BOUND)d) * s;
+        acc += w0 * x[c0 + k] + w1 * x[c0 + k + 1u];
+    }
+}
+threadgroup float part[%(TG)du];
+uint lid = thread_position_in_threadgroup.x;
+part[lid] = acc;
+threadgroup_barrier(mem_flags::mem_threadgroup);
+if (lane == 0u) {
+    float t = 0.0f;
+    for (uint i = 0; i < %(TPR)du; ++i) t += part[lid + i];
+    out[row] = t;
+}
+"""
+
+
+def source_tpr(rows: int, cols: int, tpr: int = 64, tg: int = 128) -> str:
+    """The native matvec at a chosen threads-per-row. Refuses a geometry that
+    would need a bounds guard before the barrier: a thread that returns early
+    never reaches it, and a threadgroup barrier some threads skip is undefined."""
+    if tg % tpr:
+        raise ValueError(f"threadgroup {tg} must be a whole number of rows at tpr={tpr}")
+    if (rows * tpr) % tg:
+        raise ValueError(
+            f"rows*tpr={rows * tpr} is not a multiple of threadgroup {tg}; the grid "
+            "would be padded and the padding threads would skip the barrier")
+    return NATIVE_MATVEC_TPR % {
+        "PACKED_COLS": cols // 2, "GROUPS": cols // GROUP, "GROUP": GROUP,
+        "BOUND": BOUND, "TPR": tpr, "TG": tg}
+
+
 DEQUANT = """
 uint idx = thread_position_in_grid.x;
 if (idx >= %(ROWS)du * %(COLS)du) return;

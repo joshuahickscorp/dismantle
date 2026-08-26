@@ -278,5 +278,15 @@
   },
   "rule": "S032 s3 -- derived, never asserted",
   "why_it_cannot_bias": "nothing was timed. Contention cannot change a byte count read from a file."
+ },
+ "AMENDED_2026-08-26_NECESSARY_IS_NOT_SUFFICIENT": {
+  "by": "receipts/headless/ACCELERATOR_UNPACK_IS_THE_WALL.json",
+  "what_stands": "the CEILING. 9.879 GB of weight traffic per token against a measured 589.73 GB/s roof still caps raw TPS at 59.70 against the 71.67 that 50 accepted TPS needs at the 30/43 floor. Fewer bytes are NECESSARY and that is unchanged.",
+  "what_is_corrected": "THE_CEILING.consequence reads 'ONLY FEWER BYTES CAN', which invites reading fewer bytes as SUFFICIENT. They are not. The best representation-native matvec geometry measured -- including the resident's OWN 64-threads-per-row shape -- sustains 160.9 GB/s, 27.3% of roof, reading 7.53x fewer bytes than dense for only a 2.99x speedup. And the byte lever has ALREADY BEEN PULLED in production: S031 s0's own three bodies span 3.1393 / 2.9802 / 2.5970 EBPW, and 17.3% fewer bytes returned -3.0% raw TPS where bandwidth-bound demands +20.9%.",
+  "direction_of_the_correction": "the atlas's conclusion is NARROWED, not reversed -- bytes remain the only route past the ceiling, and cutting them without cutting the unpack cost per weight does not convert.",
+  "laws_reconciled": [
+   "AKB-THE-DISPATCH-LADDER-CANNOT-REACH-THE-ACCEPTED-TPS-TARGET"
+  ],
+  "laws_reconciled_note": "the correction is written INTO that law's statement, which cites ACCELERATOR_UNPACK_IS_THE_WALL by name. It is NOT declared unaffected -- it is affected and already carries the amendment, and the validator refuses the claim unless the statement shows it."
  }
 }

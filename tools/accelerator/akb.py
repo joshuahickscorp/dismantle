@@ -210,6 +210,7 @@ def resolve(citation: str, root: Path = REPO) -> Any:
 
 # receipt name -> law ids an amendment in it explicitly declares unaffected.
 # Populated by superseding_corpus, which is the only thing that reads amendments.
+_RECONCILED: dict[str, dict[str, set[str]]] = {}
 _EXEMPT: dict[str, set[str]] = {}
 
 
@@ -233,9 +234,26 @@ def superseding_corpus(paths: list[Path] | None = None) -> dict[str, list[str]]:
             # the same file, but nothing may INFER that; the amendment has to say
             # so, by law_id, in the receipt.
             for k in amended:
-                for lid in (d[k] or {}).get("laws_unaffected", []) \
-                        if isinstance(d.get(k), dict) else []:
+                blk = d.get(k) if isinstance(d.get(k), dict) else {}
+                for lid in (blk or {}).get("laws_unaffected", []):
                     _EXEMPT.setdefault(f.name, set()).add(str(lid))
+                # A THIRD STATE, because two were not enough. `laws_unaffected`
+                # says the amendment does not bear on that law. But an amendment
+                # that DOES bear on a law and whose correction has ALREADY BEEN
+                # WRITTEN INTO that law's statement is neither unaffected nor
+                # unreconciled, and calling it unaffected would be false.
+                # `laws_reconciled` names those -- and it is NOT a promise: the
+                # law's own statement must CITE the amending receipt, checked in
+                # NC4, so a reconciliation nobody performed still refuses.
+                # The acceptable citations are the receipts the AMENDMENT ITSELF
+                # names -- usually the one that did the correcting -- plus this
+                # file. Deriving them from the block rather than from the file
+                # name is what lets an in-file amendment point at the receipt
+                # that actually carries the new measurement.
+                stems = {Path(m).stem for m in RECEIPT_NAME.findall(json.dumps(blk))}
+                stems.add(Path(f.name).stem)
+                for lid in (blk or {}).get("laws_reconciled", []):
+                    _RECONCILED.setdefault(f.name, {})[str(lid)] = stems
         closes = d.get("boundary_this_closes")
         if closes:
             for target in RECEIPT_NAME.findall(json.dumps(closes)):
@@ -355,11 +373,25 @@ def validate(entry: dict[str, Any], *, superseded: dict[str, list[str]] | None =
         for rel in entry["source_receipts"]:
             name = Path(rel.partition("#")[0]).name
             if name in superseded and lid not in _EXEMPT.get(name, ()):
+                if lid in _RECONCILED.get(name, {}):
+                    # Claimed reconciled -- so the law must SHOW it, by citing the
+                    # receipt that amended it. A declaration alone would let a law
+                    # opt out of the check it exists to fail.
+                    amenders = _RECONCILED[name][lid]
+                    if not any(a in entry["statement"] for a in amenders):
+                        raise Refused(
+                            f"{lid}: the amendment to {name} claims this law is RECONCILED, "
+                            f"but the law's own statement cites none of {sorted(amenders)}. "
+                            "A reconciliation nobody wrote into the law is a promise, not a "
+                            "correction.")
+                    continue
                 raise Refused(
                     f"{lid}: status ACTIVE but source {name} is superseded by "
                     f"{superseded[name]}. A law resting on an amended or closed receipt is "
                     f"CONDITIONAL at best. If the amendment does not bear on THIS law, "
-                    f"the amendment must say so by naming {lid} in laws_unaffected.")
+                    f"the amendment must say so by naming {lid} in laws_unaffected; if it "
+                    f"DOES bear on it and the law already carries the correction, name it "
+                    f"in laws_reconciled and cite the amending receipt in the statement.")
 
     # NC5 -- Measured may not rest on a receipt that did not pass.
     if entry["evidence_class"] == "Measured":
@@ -1201,6 +1233,57 @@ LAWS: list[dict[str, Any]] = [
             "NOT refute production's 17.35 us, which is a bytes-plus-dispatch number."),
     ),
     dict(
+        law_id="AKB-THE-UNPACK-IS-THE-WALL-NOT-THE-BYTES",
+        statement=(
+            "A REPRESENTATION-NATIVE MATVEC ON THIS MACHINE IS ARITHMETIC-BOUND ON ITS "
+            "UNPACK, AND THE THREAD GEOMETRY IS NOT THE LEVER. At the resident's real MLP "
+            "shape 17408x5120, dense f32 sustains 405.7 GB/s while ws_rtn_q4_g64 native "
+            "reaches 138.7 GB/s at one thread per row and 160.9 GB/s at the resident's own "
+            "SIXTY-FOUR threads per row -- 1.16x for a 64x change in lanes, against a "
+            "pre-registered 1.5x that is REFUTED. The native arm reads 7.53x FEWER BYTES "
+            "for only 2.99x less time, converting 40% of its own byte ratio and burning "
+            "the rest on the unpack, and its best geometry sits at 27.3% of the measured "
+            "589.73 GB/s roof. THE BODY-LEVEL COROLLARY IS ALREADY IN PRODUCTION DATA: "
+            "three bodies of one parent at 3.1393 / 2.9802 / 2.5970 complete EBPW record "
+            "34.14 / 34.12 / 33.12 raw TPS, so Spearman(EBPW, TPS) is +1.000 where "
+            "bandwidth-bound demands -1.000, effective bandwidth FALLS 337.3 -> 318.8 -> "
+            "266.8 GB/s as bytes fall, and a 17.3% byte cut returned -3.0% instead of "
+            "+20.9%. FEWER BYTES ARE NECESSARY AND NOT SUFFICIENT."),
+        applicability={
+            "MODEL": ("kernel arms NONE -- synthetic weights at a borrowed shape; the body "
+                      "corollary is the three NOETIC_PARENT_A bodies at 3.1393 / 2.9802 / "
+                      "2.5970 complete EBPW"),
+            "ARCHITECTURE": "kernel arms NONE; the body corollary is qwen3_5, 48 DeltaNet + 16 GQA",
+            "ORGAN": "MLP-shaped GEMV; the body-level corollary is whole-decoder",
+            "REPRESENTATION": "ws_rtn_q4_g64 measured; the body corollary spans the "
+                              "sealed mixed hq30uq4 / hgrafv01 ladder",
+            "SHAPE": "rows=17408 cols=5120, group 64",
+            "MACHINE": M3, "RUNTIME": "MLX mx.fast.metal_kernel JIT, 200 reps, 40 warmup",
+            "KERNEL": "hand-written MSL: dense f32, native tpr1, native tpr64",
+            "STORAGE_TIER": NONE, "TOPOLOGY": NONE,
+            "WORKLOAD_PHASE": "single-token decode-shaped GEMV, CONTENDED machine"},
+        evidence_class="Measured",
+        source_receipts=["receipts/headless/ACCELERATOR_UNPACK_IS_THE_WALL.json"],
+        citations=["receipts/headless/ACCELERATOR_UNPACK_IS_THE_WALL.json#THE_WALL",
+                   "receipts/headless/ACCELERATOR_UNPACK_IS_THE_WALL.json#PREDICTIONS",
+                   "receipts/headless/ACCELERATOR_UNPACK_IS_THE_WALL.json#THE_PRODUCTION_EVIDENCE_THAT_SETTLES_THE_DIRECTION",
+                   "receipts/headless/ACCELERATOR_UNPACK_IS_THE_WALL.json#claim_boundary"],
+        status="ACTIVE", superseded_by=None, negative_result=True,
+        confidence_basis=(
+            "BENCH_STATE CONTENDED with the operator's 40.63 GiB job at 102.1% CPU left "
+            "running, so every absolute GB/s is a LOWER BOUND and the arm-to-arm ratios "
+            "measured back to back in one process are what carries it; arms clear the 10% "
+            "gate at 6.30 / 7.68 / 9.68% IQR. The timed kernels are ws_rtn_q4_g64 while the "
+            "resident's MLP is affine_q2 group 32 at 2.50 bpw, a DIFFERENT format reading "
+            "fewer bytes and doing MORE unpack per byte -- the DIRECTION transfers and the "
+            "absolute rate does not, which is why MODEL and ARCHITECTURE are NONE. The "
+            "three-body TPS figures are RECORDED in S031 s0 and not re-measured, and their "
+            "3.0% spread could be noise; what is not noise-sized is the ABSENCE of the "
+            "+20.9% a bandwidth-bound model demands. Correctness precedes every timing at "
+            "2.0e-07 to 1.2e-06 against a shared float64 oracle, with the tpr64 barrier "
+            "control watched firing. TWO geometry points only; no optimum is claimed."),
+    ),
+    dict(
         law_id="AKB-THE-DISPATCH-LADDER-CANNOT-REACH-THE-ACCEPTED-TPS-TARGET",
         statement=(
             "THE DECODE GRAPH'S COUNT COLUMN AND ITS BYTES COLUMN DISAGREE BY THREE ORDERS "
@@ -1214,7 +1297,10 @@ LAWS: list[dict[str, Any]] = [
             "337.27 GB/s = 57.2% of this machine's measured 589.73 GB/s roof, so a PERFECT "
             "machine tops out at 59.70 raw TPS while 50 ACCEPTED TPS at the 30/43 capability "
             "floor needs 71.67. NO DISPATCH COUNT REACHES THE TARGET; only fewer bytes do, "
-            "which is S031 s2's own order with a number attached."),
+            "which is S031 s2's own order with a number attached. AMENDED 2026-08-26 by "
+            "ACCELERATOR_UNPACK_IS_THE_WALL: fewer bytes are NECESSARY and NOT "
+            "SUFFICIENT -- the 17.3% byte cut from 3.1393 to 2.5970 EBPW returned "
+            "-3.0% raw TPS, not the +20.9% bandwidth-bound demands."),
         applicability={
             "MODEL": "sealed-3.14 (NOETIC_PARENT_A), 26.896G parent params",
             "ARCHITECTURE": "qwen3_5 64-layer hybrid, 48 DeltaNet + 16 GQA",
@@ -1751,6 +1837,11 @@ def build(*, root: Path = REPO) -> dict[str, Any]:
         # Published so the exemption is auditable from the artifact rather than
         # living only in a module global.
         "amendment_exemptions": {k: sorted(v) for k, v in sorted(_EXEMPT.items())},
+        # Kept SEPARATE from the exemptions on purpose: "this amendment does not
+        # reach that law" and "it reaches it and the law already carries the
+        # correction" are different statuses, and one list would let a reader
+        # take a reconciled law for an untouched one.
+        "amendment_reconciliations": {k: sorted(v) for k, v in sorted(_RECONCILED.items())},
         "unextracted": unextracted,
         "unextracted_count": len(unextracted),
     }

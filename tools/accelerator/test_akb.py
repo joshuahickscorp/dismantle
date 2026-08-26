@@ -85,14 +85,38 @@ def test_no_superseded_receipt_is_served_as_an_active_law():
     built = akb.build()
     sup = built["supersession_in_corpus"]
     ex = built["amendment_exemptions"]
+    rec = built["amendment_reconciliations"]
     for entry in akb.active(built):
         for rel in entry["source_receipts"]:
             name = Path(rel).name
             if name not in sup:
                 continue
-            assert entry["law_id"] in ex.get(name, []), (
+            assert (entry["law_id"] in ex.get(name, [])
+                    or entry["law_id"] in rec.get(name, [])), (
                 f"{entry['law_id']} serves the superseded {name} as ACTIVE and the "
-                f"amendment does not name it in laws_unaffected")
+                f"amendment names it in neither laws_unaffected nor laws_reconciled")
+            assert not (entry["law_id"] in ex.get(name, [])
+                        and entry["law_id"] in rec.get(name, [])), (
+                f"{entry['law_id']} is declared BOTH unaffected and reconciled by "
+                f"{name}; those are contradictory claims about the same amendment")
+
+
+def test_a_RECONCILIATION_THAT_THE_LAW_DOES_NOT_CARRY_IS_REFUSED(monkeypatch):
+    """The anti-vacuity arm for laws_reconciled. Declaring a law reconciled must
+    not be enough -- if it were, any law could opt out of the supersession check
+    it exists to fail. The law's own statement has to cite the amending receipt."""
+    built = akb.build()
+    rec = built["amendment_reconciliations"]
+    assert rec, "nothing is declared reconciled, so this control tests nothing"
+    name, lids = next(iter(rec.items()))
+    lid = lids[0]
+    victim = next(e for e in akb.LAWS if e["law_id"] == lid)
+    stripped = dict(victim)
+    stripped["statement"] = "a statement citing no amending receipt at all."
+    monkeypatch.setattr(
+        akb, "LAWS", [stripped if e["law_id"] == lid else e for e in akb.LAWS])
+    with pytest.raises(akb.Refused, match="promise, not a correction"):
+        akb.build()
 
 
 def test_an_amendment_exemption_must_name_a_law_THAT_EXISTS():

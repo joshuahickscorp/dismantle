@@ -351,9 +351,9 @@
  "obligations_total": 77,
  "unmapped_obligations": [],
  "orphan_map_entries": [],
- "receipt_count": 421,
+ "receipt_count": 422,
  "accelerator_receipt_count": 80,
- "last_verified_commit": "a62db87f0",
+ "last_verified_commit": "fcc4dc927",
  "last_verified_test_count": 510,
  "test_count_is_from_a_run_not_arithmetic": true,
  "test_environment": {
@@ -486,190 +486,6 @@
    "detection": "definitive",
    "judged_by": "live process in ps",
    "commits_to_this_repo": true
-  },
-  {
-   "lane": "wf_54b892e3-3ec/agent-a0337c21f740b02e8",
-   "executor": "claude",
-   "alive": true,
-   "transcript": "/Users/scammermike/.claude/projects/-Users-scammermike-Downloads-hawking/5e40f321-b30e-4c5c-ac16-027ddd36ed33/subagents/workflows/wf_54b892e3-3ec/agent-a0337c21f740b02e8.jsonl",
-   "detection": "heuristic",
-   "judged_by": "transcript touched 45s ago (< 300s); no pid exists to check, so a finished agent can read as alive"
-  },
-  {
-   "lane": "wf_54b892e3-3ec/agent-a212f9c9e06ea0de0",
-   "executor": "claude",
-   "alive": true,
-   "transcript": "/Users/scammermike/.claude/projects/-Users-scammermike-Downloads-hawking/5e40f321-b30e-4c5c-ac16-027ddd36ed33/subagents/workflows/wf_54b892e3-3ec/agent-a212f9c9e06ea0de0.jsonl",
-   "detection": "heuristic",
-   "judged_by": "transcript touched 276s ago (< 300s); no pid exists to check, so a finished agent can read as alive"
-  },
-  {
-   "lane": "wf_54b892e3-3ec/agent-a28cc666116f4a377",
-   "executor": "claude",
-   "alive": true,
-   "transcript": "/Users/scammermike/.claude/projects/-Users-scammermike-Downloads-hawking/5e40f321-b30e-4c5c-ac16-027ddd36ed33/subagents/workflows/wf_54b892e3-3ec/agent-a28cc666116f4a377.jsonl",
-   "detection": "heuristic",
-   "judged_by": "transcript touched 77s ago (< 300s); no pid exists to check, so a finished agent can read as alive"
-  },
-  {
-   "lane": "wf_54b892e3-3ec/agent-a2bfd9e1df1ce9e0f",
-   "executor": "claude",
-   "alive": true,
-   "transcript": "/Users/scammermike/.claude/projects/-Users-scammermike-Downloads-hawking/5e40f321-b30e-4c5c-ac16-027ddd36ed33/subagents/workflows/wf_54b892e3-3ec/agent-a2bfd9e1df1ce9e0f.jsonl",
-   "detection": "heuristic",
-   "judged_by": "transcript touched 79s ago (< 300s); no pid exists to check, so a finished agent can read as alive"
-  },
-  {
-   "lane": "wf_54b892e3-3ec/agent-a311b47eef0cd8042",
-   "executor": "claude",
-   "alive": true,
-   "transcript": "/Users/scammermike/.claude/projects/-Users-scammermike-Downloads-hawking/5e40f321-b30e-4c5c-ac16-027ddd36ed33/subagents/workflows/wf_54b892e3-3ec/agent-a311b47eef0cd8042.jsonl",
-   "detection": "heuristic",
-   "judged_by": "transcript touched 103s ago (< 300s); no pid exists to check, so a finished agent can read as alive"
-  },
-  {
-   "lane": "wf_54b892e3-3ec/agent-a3b8988cb42adeafd",
-   "executor": "claude",
-   "alive": true,
-   "transcript": "/Users/scammermike/.claude/projects/-Users-scammermike-Downloads-hawking/5e40f321-b30e-4c5c-ac16-027ddd36ed33/subagents/workflows/wf_54b892e3-3ec/agent-a3b8988cb42adeafd.jsonl",
-   "detection": "heuristic",
-   "judged_by": "transcript touched 246s ago (< 300s); no pid exists to check, so a finished agent can read as alive"
-  },
-  {
-   "lane": "wf_54b892e3-3ec/agent-a4912bb50793f3e41",
-   "executor": "claude",
-   "alive": true,
-   "transcript": "/Users/scammermike/.claude/projects/-Users-scammermike-Downloads-hawking/5e40f321-b30e-4c5c-ac16-027ddd36ed33/subagents/workflows/wf_54b892e3-3ec/agent-a4912bb50793f3e41.jsonl",
-   "detection": "heuristic",
-   "judged_by": "transcript touched 83s ago (< 300s); no pid exists to check, so a finished agent can read as alive"
-  },
-  {
-   "lane": "wf_54b892e3-3ec/agent-a4d7cb3eda093570b",
-   "executor": "claude",
-   "alive": true,
-   "transcript": "/Users/scammermike/.claude/projects/-Users-scammermike-Downloads-hawking/5e40f321-b30e-4c5c-ac16-027ddd36ed33/subagents/workflows/wf_54b892e3-3ec/agent-a4d7cb3eda093570b.jsonl",
-   "detection": "heuristic",
-   "judged_by": "transcript touched 89s ago (< 300s); no pid exists to check, so a finished agent can read as alive"
-  },
-  {
-   "lane": "wf_54b892e3-3ec/agent-a6b9137fb9b6e14c3",
-   "executor": "claude",
-   "alive": true,
-   "transcript": "/Users/scammermike/.claude/projects/-Users-scammermike-Downloads-hawking/5e40f321-b30e-4c5c-ac16-027ddd36ed33/subagents/workflows/wf_54b892e3-3ec/agent-a6b9137fb9b6e14c3.jsonl",
-   "detection": "heuristic",
-   "judged_by": "transcript touched 225s ago (< 300s); no pid exists to check, so a finished agent can read as alive"
-  },
-  {
-   "lane": "wf_54b892e3-3ec/agent-a886f3e010fe75877",
-   "executor": "claude",
-   "alive": true,
-   "transcript": "/Users/scammermike/.claude/projects/-Users-scammermike-Downloads-hawking/5e40f321-b30e-4c5c-ac16-027ddd36ed33/subagents/workflows/wf_54b892e3-3ec/agent-a886f3e010fe75877.jsonl",
-   "detection": "heuristic",
-   "judged_by": "transcript touched 103s ago (< 300s); no pid exists to check, so a finished agent can read as alive"
-  },
-  {
-   "lane": "wf_54b892e3-3ec/agent-a89c54a27add412e1",
-   "executor": "claude",
-   "alive": true,
-   "transcript": "/Users/scammermike/.claude/projects/-Users-scammermike-Downloads-hawking/5e40f321-b30e-4c5c-ac16-027ddd36ed33/subagents/workflows/wf_54b892e3-3ec/agent-a89c54a27add412e1.jsonl",
-   "detection": "heuristic",
-   "judged_by": "transcript touched 65s ago (< 300s); no pid exists to check, so a finished agent can read as alive"
-  },
-  {
-   "lane": "wf_54b892e3-3ec/agent-a92c6dfd4d395d25f",
-   "executor": "claude",
-   "alive": true,
-   "transcript": "/Users/scammermike/.claude/projects/-Users-scammermike-Downloads-hawking/5e40f321-b30e-4c5c-ac16-027ddd36ed33/subagents/workflows/wf_54b892e3-3ec/agent-a92c6dfd4d395d25f.jsonl",
-   "detection": "heuristic",
-   "judged_by": "transcript touched 115s ago (< 300s); no pid exists to check, so a finished agent can read as alive"
-  },
-  {
-   "lane": "wf_54b892e3-3ec/agent-a9fdc08f7076cbdd4",
-   "executor": "claude",
-   "alive": true,
-   "transcript": "/Users/scammermike/.claude/projects/-Users-scammermike-Downloads-hawking/5e40f321-b30e-4c5c-ac16-027ddd36ed33/subagents/workflows/wf_54b892e3-3ec/agent-a9fdc08f7076cbdd4.jsonl",
-   "detection": "heuristic",
-   "judged_by": "transcript touched 114s ago (< 300s); no pid exists to check, so a finished agent can read as alive"
-  },
-  {
-   "lane": "wf_54b892e3-3ec/agent-aa2b468acca2c56f5",
-   "executor": "claude",
-   "alive": true,
-   "transcript": "/Users/scammermike/.claude/projects/-Users-scammermike-Downloads-hawking/5e40f321-b30e-4c5c-ac16-027ddd36ed33/subagents/workflows/wf_54b892e3-3ec/agent-aa2b468acca2c56f5.jsonl",
-   "detection": "heuristic",
-   "judged_by": "transcript touched 100s ago (< 300s); no pid exists to check, so a finished agent can read as alive"
-  },
-  {
-   "lane": "wf_54b892e3-3ec/agent-aa51864a5805f4885",
-   "executor": "claude",
-   "alive": true,
-   "transcript": "/Users/scammermike/.claude/projects/-Users-scammermike-Downloads-hawking/5e40f321-b30e-4c5c-ac16-027ddd36ed33/subagents/workflows/wf_54b892e3-3ec/agent-aa51864a5805f4885.jsonl",
-   "detection": "heuristic",
-   "judged_by": "transcript touched 90s ago (< 300s); no pid exists to check, so a finished agent can read as alive"
-  },
-  {
-   "lane": "wf_54b892e3-3ec/agent-aa5201e8226f6bd77",
-   "executor": "claude",
-   "alive": true,
-   "transcript": "/Users/scammermike/.claude/projects/-Users-scammermike-Downloads-hawking/5e40f321-b30e-4c5c-ac16-027ddd36ed33/subagents/workflows/wf_54b892e3-3ec/agent-aa5201e8226f6bd77.jsonl",
-   "detection": "heuristic",
-   "judged_by": "transcript touched 87s ago (< 300s); no pid exists to check, so a finished agent can read as alive"
-  },
-  {
-   "lane": "wf_54b892e3-3ec/agent-aaf4efd180fb97fde",
-   "executor": "claude",
-   "alive": true,
-   "transcript": "/Users/scammermike/.claude/projects/-Users-scammermike-Downloads-hawking/5e40f321-b30e-4c5c-ac16-027ddd36ed33/subagents/workflows/wf_54b892e3-3ec/agent-aaf4efd180fb97fde.jsonl",
-   "detection": "heuristic",
-   "judged_by": "transcript touched 100s ago (< 300s); no pid exists to check, so a finished agent can read as alive"
-  },
-  {
-   "lane": "wf_54b892e3-3ec/agent-adbf5996db07a7c5f",
-   "executor": "claude",
-   "alive": true,
-   "transcript": "/Users/scammermike/.claude/projects/-Users-scammermike-Downloads-hawking/5e40f321-b30e-4c5c-ac16-027ddd36ed33/subagents/workflows/wf_54b892e3-3ec/agent-adbf5996db07a7c5f.jsonl",
-   "detection": "heuristic",
-   "judged_by": "transcript touched 105s ago (< 300s); no pid exists to check, so a finished agent can read as alive"
-  },
-  {
-   "lane": "wf_54b892e3-3ec/agent-aec2a90dbaaa316b7",
-   "executor": "claude",
-   "alive": true,
-   "transcript": "/Users/scammermike/.claude/projects/-Users-scammermike-Downloads-hawking/5e40f321-b30e-4c5c-ac16-027ddd36ed33/subagents/workflows/wf_54b892e3-3ec/agent-aec2a90dbaaa316b7.jsonl",
-   "detection": "heuristic",
-   "judged_by": "transcript touched 68s ago (< 300s); no pid exists to check, so a finished agent can read as alive"
-  },
-  {
-   "lane": "wf_54b892e3-3ec/agent-af1987df7df71ca87",
-   "executor": "claude",
-   "alive": true,
-   "transcript": "/Users/scammermike/.claude/projects/-Users-scammermike-Downloads-hawking/5e40f321-b30e-4c5c-ac16-027ddd36ed33/subagents/workflows/wf_54b892e3-3ec/agent-af1987df7df71ca87.jsonl",
-   "detection": "heuristic",
-   "judged_by": "transcript touched 239s ago (< 300s); no pid exists to check, so a finished agent can read as alive"
-  },
-  {
-   "lane": "wf_54b892e3-3ec/agent-af2b2d808a41ed21b",
-   "executor": "claude",
-   "alive": true,
-   "transcript": "/Users/scammermike/.claude/projects/-Users-scammermike-Downloads-hawking/5e40f321-b30e-4c5c-ac16-027ddd36ed33/subagents/workflows/wf_54b892e3-3ec/agent-af2b2d808a41ed21b.jsonl",
-   "detection": "heuristic",
-   "judged_by": "transcript touched 125s ago (< 300s); no pid exists to check, so a finished agent can read as alive"
-  },
-  {
-   "lane": "wf_54b892e3-3ec/agent-af86c331b609f04ad",
-   "executor": "claude",
-   "alive": true,
-   "transcript": "/Users/scammermike/.claude/projects/-Users-scammermike-Downloads-hawking/5e40f321-b30e-4c5c-ac16-027ddd36ed33/subagents/workflows/wf_54b892e3-3ec/agent-af86c331b609f04ad.jsonl",
-   "detection": "heuristic",
-   "judged_by": "transcript touched 50s ago (< 300s); no pid exists to check, so a finished agent can read as alive"
-  },
-  {
-   "lane": "wf_54b892e3-3ec/agent-afb66f578aa6b6655",
-   "executor": "claude",
-   "alive": true,
-   "transcript": "/Users/scammermike/.claude/projects/-Users-scammermike-Downloads-hawking/5e40f321-b30e-4c5c-ac16-027ddd36ed33/subagents/workflows/wf_54b892e3-3ec/agent-afb66f578aa6b6655.jsonl",
-   "detection": "heuristic",
-   "judged_by": "transcript touched 111s ago (< 300s); no pid exists to check, so a finished agent can read as alive"
   }
  ],
  "next_decisive_gates": [
@@ -1354,6 +1170,12 @@
    ]
   },
   {
+   "receipt": "TOKEN_EXECUTION_ATLAS.json",
+   "markers": [
+    "REFUT"
+   ]
+  },
+  {
    "receipt": "VARIANT_LOCALIZATION.json",
    "markers": [
     "REFUT"
@@ -1424,6 +1246,7 @@
    "RUNTIME_GENOME.json",
    "SELF_OPT_CANDIDATE_PROMOTED.json",
    "SUPEROPERATOR_LIBRARY.json",
+   "TOKEN_EXECUTION_ATLAS.json",
    "WHOLE_MODEL_RECOMPOSE.json"
   ]
  }

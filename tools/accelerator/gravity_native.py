@@ -207,6 +207,56 @@ NATIVE_MATVEC_TPR = NATIVE_MATVEC_TPR_BODY + REDUCE_TAILS["serial"]
 # load width alone. LUT keeps the byte load and replaces mask/shift/convert/
 # subtract with one threadgroup read of a 256-entry float2 table -- the receipt's
 # own suggestion, built as suggested so it can be measured rather than assumed.
+# THE OPERAND PROBES. WRONG BY CONSTRUCTION, NEVER CANDIDATES.
+#
+# ACCELERATOR_THE_FLOOR_IS_THE_ELEMENT_NOT_THE_BYTE named the floor as "one x read
+# and one fused multiply-add per weight", and seven levers have since died against
+# it -- but that phrase names TWO operations and no arm had ever removed the x
+# READ. The weight reads were deleted and measured FREE; x never was.
+#
+# It is not a formality: 89.1M x reads in 0.29 ms is 307 G reads/s = 1.2 TB/s,
+# TWICE this machine's measured 589.73 GB/s DRAM roof, so those reads are
+# necessarily CACHE-SERVED and whether ~1.2 TB/s is the cache read ceiling is a
+# machine property that would set a floor no kernel change can move.
+#
+# Each body keeps the loop, the groups, the weight decode, the reduction and the
+# ELEMENT COUNT and removes exactly one operation, so a difference is that
+# operation. Each returns a WRONG answer, which is the anti-vacuity condition: a
+# probe that matched the oracle did not remove what it claims to remove.
+OPERAND_PROBES = {
+    # HALF THE x READS: one x value feeds both nibbles of the byte. Same FMA
+    # count, same weight loads, 44.6M fewer x reads -- exactly the number of
+    # weight-byte loads the no-weights control removed for free, so if load count
+    # were the mechanism that control would already have shown it.
+    "xreuse": """
+        uchar byte = packed[pbase + (c0 + k) / 2u];
+        float w0 = (float)((int)(byte & 0x0F) - %(BOUND)d) * s;
+        float w1 = (float)((int)(byte >> 4)   - %(BOUND)d) * s;
+        float xv = x[c0 + k];
+        acc += w0 * xv + w1 * xv;
+""",
+    # THE MULTIPLY REMOVED, both operands still consumed so nothing can fold.
+    # Same loads, same element count, an ADD where an FMA was.
+    "nomul": """
+        uchar byte = packed[pbase + (c0 + k) / 2u];
+        float w0 = (float)((int)(byte & 0x0F) - %(BOUND)d) * s;
+        float w1 = (float)((int)(byte >> 4)   - %(BOUND)d) * s;
+        acc += w0 + x[c0 + k];
+        acc += w1 + x[c0 + k + 1u];
+""",
+    # THE x-READ DELETION CONTROL, the exact analogue of the no-weights control
+    # that found reading 44.6 MB of packed weights costs nothing. x is NEVER read;
+    # the weights are still loaded, decoded and accumulated so the loop cannot
+    # fold. This is the arm that answers the question.
+    "noxread": """
+        uchar byte = packed[pbase + (c0 + k) / 2u];
+        float w0 = (float)((int)(byte & 0x0F) - %(BOUND)d) * s;
+        float w1 = (float)((int)(byte >> 4)   - %(BOUND)d) * s;
+        acc += w0 + w1;
+""",
+}
+
+
 UNPACK_BODIES = {
     "byte": """
         uchar byte = packed[pbase + (c0 + k) / 2u];
@@ -391,6 +441,40 @@ def source_tpr(rows: int, cols: int, tpr: int = 64, tg: int = 128) -> str:
     return NATIVE_MATVEC_TPR % {
         "PACKED_COLS": cols // 2, "GROUPS": cols // GROUP, "GROUP": GROUP,
         "BOUND": BOUND, "TPR": tpr, "TG": tg}
+
+
+def source_operand_probe(rows: int, cols: int, probe: str,
+                         tpr: int = 64, tg: int = 128) -> str:
+    """The native matvec with ONE per-element operation removed. WRONG BY
+    CONSTRUCTION -- these are probes, never candidates, and a caller who ships one
+    ships a wrong answer. See OPERAND_PROBES for what each removes and why."""
+    if probe not in OPERAND_PROBES and not probe.startswith("thin"):
+        raise ValueError(
+            f"unknown operand probe {probe!r}; have {sorted(OPERAND_PROBES) + ['thin']}")
+    d = {"PACKED_COLS": cols // 2, "GROUPS": cols // GROUP, "GROUP": GROUP,
+         "BOUND": BOUND, "TPR": tpr, "TG": tg}
+    src = source_tpr(rows, cols, tpr, tg)
+    body = UNPACK_BODIES["byte"] % d
+    if body not in src:
+        raise AssertionError(
+            "the byte body is not in the generated source, so the probe would "
+            "silently be the baseline; the templates have drifted apart")
+    if probe.startswith("thin"):
+        # THE WORK-DELETION CONTROL, and the one that asks whether any per-element
+        # work is being measured at all. Every arm above removes ONE operation and
+        # ties; this removes 31 of every 32 inner iterations while holding the GRID,
+        # the lane assignment, the group loop, the reduction and the stores fixed.
+        # If it ties too, the time is not set by the elements and the "element
+        # floor" framing is measuring something else entirely.
+        keep = int(probe[4:] or "2")          # elements kept per group
+        if keep % 2 or not 2 <= keep <= GROUP:
+            raise ValueError(
+                f"thin keeps an EVEN element count in [2, {GROUP}]; got {keep}")
+        bound = f"k < {GROUP}u"
+        if src.count(bound) != 1:
+            raise AssertionError(f"expected exactly one {bound!r} to narrow")
+        return src.replace(bound, f"k < {keep}u")
+    return src.replace(body, OPERAND_PROBES[probe] % d)
 
 
 DEQUANT = """

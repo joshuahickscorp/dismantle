@@ -1346,6 +1346,64 @@ LAWS: list[dict[str, Any]] = [
             "changed and neither variant earns a place."),
     ),
     dict(
+        law_id="AKB-AN-ISOLATED-MATVEC-IS-MOSTLY-NOT-ITS-ELEMENTS",
+        statement=(
+            "AT THIS SHAPE 86% OF AN ISOLATED q4_g64 MATVEC'S MEASURED TIME DOES NOT DEPEND ON "
+            "ITS ELEMENT COUNT. Holding the grid, the lane assignment, the group loop, the "
+            "reduction and the stores FIXED and deleting 96.9% of the inner iterations returns "
+            "18%; a five-point sweep over element counts spanning 32x fits a FIXED cost of "
+            "0.2450 ms on minima and 0.2600 on medians, 86.1% and 84.8% of the full kernel, and "
+            "the three narrowest arms read FLAT to 0.2% across an 8x work range so the shape is a "
+            "FLOOR WITH A KNEE rather than a line. Removing each named per-element operation "
+            "confirms it from the other side: half the x reads 0.947x, the multiply 0.979x, and "
+            "EVERY x READ removed 0.987x and 1.019x. This is the SIXTH independent sighting of "
+            "the ~0.16-0.25 ms per-submission floor and the fitted 0.2450 agrees to 0.5% with the "
+            "0.2438 ms intercept ACCELERATOR_EXPERT_BATCH fitted on a different kernel. IT "
+            "EXPLAINS THE SEVEN DEAD LEVERS rather than adding an eighth: fewer bytes, fewer "
+            "loads, cheaper decode, no weight reads, operand reuse, ILP and the whole reduction "
+            "tail could not move a number five parts fixed to one part element work. PRODUCTION "
+            "DOES NOT PAY IT -- 402 weight-carrying dispatches inside a 29.29 ms token average "
+            "0.0729 ms each, 3.4x BELOW this isolated floor, because 964 dispatches share a "
+            "submission. SUBMISSION AND GRID LAUNCH ARE NOT SEPARATED HERE and no claim divides "
+            "the 0.245 ms between them."),
+        applicability={
+            "MODEL": NONE, "ARCHITECTURE": NONE,
+            "ORGAN": "MLP-shaped GEMV at 89.1M weights, a shape borrowed from the resident",
+            "REPRESENTATION": "ws_rtn_q4_g64, identical in every arm",
+            "SHAPE": "rows=17408 cols=5120, group 64, tpr64 at tg128, element count swept 32x",
+            "MACHINE": M3, "RUNTIME": "MLX mx.fast.metal_kernel JIT, 14 round-robin rounds x 20 reps",
+            "KERNEL": "native matvec with one per-element operation removed per arm, and an element-count sweep at fixed grid",
+            "STORAGE_TIER": NONE, "TOPOLOGY": NONE,
+            "WORKLOAD_PHASE": "a SINGLY SUBMITTED decode-shaped GEMV, CONTENDED machine -- and the "
+                              "singly-submitted part is the whole point"},
+        evidence_class="Measured",
+        source_receipts=["receipts/headless/ACCELERATOR_THE_FLOOR_IS_NOT_THE_ELEMENT_EITHER.json"],
+        citations=[
+            "receipts/headless/ACCELERATOR_THE_FLOOR_IS_NOT_THE_ELEMENT_EITHER.json#THE_FIT_MAKES_IT_A_NUMBER",
+            "receipts/headless/ACCELERATOR_THE_FLOOR_IS_NOT_THE_ELEMENT_EITHER.json#THE_SIXTH_SIGHTING_AND_IT_EXPLAINS_THE_WHOLE_WALL",
+            "receipts/headless/ACCELERATOR_THE_FLOOR_IS_NOT_THE_ELEMENT_EITHER.json#P1_THE_x_READ_DELETION_TIES",
+            "receipts/headless/ACCELERATOR_THE_FLOOR_IS_NOT_THE_ELEMENT_EITHER.json#claim_boundary"],
+        status="ACTIVE", superseded_by=None, negative_result=True,
+        confidence_basis=(
+            "Two routes to the same floor: the regression intercept is 0.2450 ms and the flat "
+            "region's own minimum is 0.2475, 1% apart. The linear model is WRONG IN SHAPE and the "
+            "receipt says so -- R2 0.888 with three arms flat across 8x work -- so the intercept "
+            "is quoted as a floor estimate and the slope is not offered as a per-element cost. "
+            "Every probe is WRONG BY CONSTRUCTION at rel_err 0.98-4.88 against the baseline's "
+            "2.02e-07, which is the anti-vacuity condition, and each is separately checked "
+            "NON-DEGENERATE at 17408 of 17408 nonzero rows because a folded loop is also wrong. "
+            "The widest sweep arm is asserted BYTE-IDENTICAL to the shipped kernel so the family "
+            "cannot exclude what executes, and a template-drift guard raises rather than letting "
+            "a no-op replacement make a probe BE the baseline. Four mutations were watched "
+            "failing -- and two earlier ones reported surviving without ever landing, a shell "
+            "escaping error that reads exactly like a suite that cannot detect them. BENCH_STATE "
+            "CONTENDED with round-spreads 16-271%, so minima and an ordinal rounds-won count sit "
+            "beside every median. ONE shape, ONE tpr, ONE machine, INSTANCE: the 86% share is "
+            "this shape's, and a kernel with far more element work per submission would show "
+            "less, which is the finding rather than a caveat. No shipped kernel changed and no "
+            "production claim moves."),
+    ),
+    dict(
         law_id="AKB-THE-MATVEC-FLOOR-IS-THE-ELEMENT-NOT-THE-BYTE",
         statement=(
             "A REPRESENTATION-NATIVE MATVEC AT THE RESIDENT'S MLP SHAPE IS BOUND BY ITS "
@@ -1362,7 +1420,17 @@ LAWS: list[dict[str, Any]] = [
             "CONSEQUENCE FOR THE INSTRUMENT: effective GB/s is weight_bytes/time, so when "
             "time is set by elements it measures THE REPRESENTATION'S DENSITY AND NOT THE "
             "MACHINE -- the same kernel would report half the GB/s at half the bpw without "
-            "running any faster."),
+            "running any faster."
+            "AMENDED 2026-08-26 by "
+            "receipts/headless/ACCELERATOR_THE_FLOOR_IS_NOT_THE_ELEMENT_EITHER.json: THIS "
+            "LAW'S OWN NAME IS WRONG. The floor is NEITHER the byte NOR the element. Halving "
+            "the x reads reads 0.947x, removing the MULTIPLY 0.979x, and REMOVING EVERY x READ "
+            "0.987x and 1.019x across two runs -- so neither operation the phrase 'one x read "
+            "and one fused multiply-add' names costs anything. Deleting 96.9% of the element "
+            "work at a FIXED GRID returns 18%, and a five-point sweep fits a FIXED cost of "
+            "0.2450 ms = 86.1% of the full kernel, with eight times the element work reading "
+            "FLAT to 0.2%. What the arms here measured is unchanged; what they tied AGAINST was "
+            "mostly not element work. The ~171 MB crossover is WITHDRAWN."),
         applicability={
             "MODEL": NONE, "ARCHITECTURE": NONE,
             "ORGAN": "MLP-shaped GEMV at 89.1M weights, a shape borrowed from the resident",
@@ -1373,7 +1441,8 @@ LAWS: list[dict[str, Any]] = [
             "STORAGE_TIER": NONE, "TOPOLOGY": NONE,
             "WORKLOAD_PHASE": "single-token decode-shaped GEMV, CONTENDED machine"},
         evidence_class="Measured",
-        source_receipts=["receipts/headless/ACCELERATOR_THE_FLOOR_IS_THE_ELEMENT_NOT_THE_BYTE.json"],
+        source_receipts=["receipts/headless/ACCELERATOR_THE_FLOOR_IS_THE_ELEMENT_NOT_THE_BYTE.json",
+                         "receipts/headless/ACCELERATOR_THE_FLOOR_IS_NOT_THE_ELEMENT_EITHER.json"],
         citations=["receipts/headless/ACCELERATOR_THE_FLOOR_IS_THE_ELEMENT_NOT_THE_BYTE.json#BOTH_PREDICTIONS_LAND_ON_THE_WRONG_SIDE",
                    "receipts/headless/ACCELERATOR_THE_FLOOR_IS_THE_ELEMENT_NOT_THE_BYTE.json#AND_THE_DELETION_CONTROL_SAYS_WHAT_THE_WALL_IS",
                    "receipts/headless/ACCELERATOR_THE_FLOOR_IS_THE_ELEMENT_NOT_THE_BYTE.json#AN_INSTRUMENT_CORRECTION_THAT_MATTERS_MORE_THAN_THE_ARMS",

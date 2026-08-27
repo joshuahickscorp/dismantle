@@ -172,6 +172,7 @@ def _flash_summary(repo: Path) -> Dict[str, Any]:
     ebpw = _receipt(repo, "FLASH_EBPW_BUDGET.json") or {}
     token_ns = _receipt(repo, "FLASH_TOKEN_NS_BUDGET.json") or {}
     tensor_probe = _receipt(repo, "FLASH_FIRST_TENSOR_PROBE.json") or {}
+    representation_experiment = _receipt(repo, "FLASH_ROUTED_EXPERT_REPRESENTATION_EXPERIMENT.json") or {}
     source = flash.get("source_identity") or flash.get("source") or {}
     promotion = flash.get("promotion_gate") or {}
     return {
@@ -217,6 +218,20 @@ def _flash_summary(repo: Path) -> Dict[str, Any]:
             "body_mutated": tensor_probe.get("body_mutated"),
             "model_loaded": tensor_probe.get("model_loaded"),
             "claim_boundary": "bounded slice evidence only; whole-model capability and runtime remain untested",
+        },
+        "bounded_source_layout_experiment": {
+            "status": representation_experiment.get("status"),
+            "receipt_path": str(repo / "receipts" / "headless" / "FLASH_ROUTED_EXPERT_REPRESENTATION_EXPERIMENT.json"),
+            "source_label": representation_experiment.get("source_label"),
+            "candidate_label": representation_experiment.get("candidate_label"),
+            "tensor_name": representation_experiment.get("tensor_name"),
+            "source_tensor": representation_experiment.get("source_tensor"),
+            "candidates": representation_experiment.get("candidates"),
+            "comparison": representation_experiment.get("comparison"),
+            "replications": representation_experiment.get("replications"),
+            "body_mutated": representation_experiment.get("body_mutated"),
+            "model_loaded": representation_experiment.get("model_loaded"),
+            "claim_boundary": "bounded source-layout/reference-vector evidence only; whole-model capability, native kernel, and runtime remain untested",
         },
         "budgets": {
             "ebpw": {"status": ebpw.get("status"), "receipt_path": str(repo / "receipts" / "headless" / "FLASH_EBPW_BUDGET.json"), "measured": ebpw.get("measured"), "target_contract": ebpw.get("target_contract")},
@@ -368,6 +383,9 @@ def build_handoff(repo_root: Optional[str | os.PathLike[str]] = None, *, emit: O
     flash_executable = _receipt(repo, "FLASH_NEXT_NOETIC_EXECUTABLE.json") or {}
     if flash_executable.get("status") != "SCAFFOLD_ONLY" or flash_executable.get("promotion_allowed") is not False:
         blockers.append("Flash-Next noetic executable contract is missing an explicit scaffold/refusal boundary.")
+    representation_experiment = _receipt(repo, "FLASH_ROUTED_EXPERT_REPRESENTATION_EXPERIMENT.json") or {}
+    if representation_experiment.get("status") != "PASSED":
+        blockers.append("Flash-Next source-layout representation experiment is absent or incomplete.")
     protected_watch = _receipt(repo, "QWEN_PROTECTED_BENCH_READY.json") or {}
     if protected_watch.get("status") not in {"COMPLETED", "WAITING_FOR_QUIESCENCE"}:
         blockers.append("The bounded protected Qwen benchmark watcher is not in a safe waiting/completed state.")
@@ -400,7 +418,7 @@ def build_handoff(repo_root: Optional[str | os.PathLike[str]] = None, *, emit: O
         "modellake": lake,
         "fpga": _fpga_summary(repo),
         "verification": {
-            "full_suite": {"command": "pytest -q", "last_observed_status": "PASSED", "last_observed": "722 passed, 2 skipped"},
+            "full_suite": {"command": "pytest -q", "last_observed_status": "PASSED", "last_observed": "725 passed, 2 skipped"},
             "provider_focus": {"last_observed_status": "PASSED", "last_observed": "31 passed, 2 warnings"},
             "receipt_gates": {
                 "autonomy": (_receipt(repo, "HCLI_AGENTOS_AUTONOMY_GATE.json") or {}).get("status"),
@@ -408,6 +426,7 @@ def build_handoff(repo_root: Optional[str | os.PathLike[str]] = None, *, emit: O
                 "qwen38_fusion_audit": fusion_status,
                 "preboard": (_receipt(repo, "HCLI_AGENTOS_PREBOARD.json") or {}).get("status"),
                 "flash_pre_runtime": (_receipt(repo, "HCLI_FLASH_NEXT_PRE_RUNTIME_SCIENCE.json") or {}).get("status"),
+                "flash_representation_experiment": representation_experiment.get("status"),
                 "modellake_supervision": lake_status,
                 "unattended_window": window_status,
             },
@@ -430,6 +449,8 @@ def build_handoff(repo_root: Optional[str | os.PathLike[str]] = None, *, emit: O
             "watch_protected_qwen_window": f"python3 -m hcli agentos protected-bench-watch --repo-root {repo} --profile {repo / 'hcli/hawking-native.sealed-3.14.json'} --resident-binary {repo / '.hcli/instrumented/ascension_qwen38_resident'} --duration-s 21600 --interval-s 60",
             "build_flash_executable_scaffold": f"python3 -m hcli agentos flash-executable --repo-root {repo}",
             "run_flash_tensor_probe": f"python3 -m hcli agentos flash-tensor-probe --emit {repo / 'receipts/headless/FLASH_FIRST_TENSOR_PROBE.json'}",
+            "run_flash_representation_experiment": f"python3 -m hcli agentos flash-representation-experiment --emit {repo / 'receipts/headless/FLASH_ROUTED_EXPERT_REPRESENTATION_EXPERIMENT.json'}",
+            "run_flash_representation_replication": f"python3 -m hcli agentos flash-representation-experiment --expert-indices 32,33,34,35,36,37,38,39 --row-start 64 --row-count 16 --emit {repo / 'receipts/headless/FLASH_ROUTED_EXPERT_REPRESENTATION_EXPERIMENT_DISJOINT.json'}",
             "resume_modellake_only_if_interrupted": f"python3 -m hcli agentos background resume --workspace {repo} --repo-root {repo} {MODEL_LAKE_JOB}",
             "do_not_start": "Do not launch or promote a new Odyssey; continue only through the existing HCLI/ModelLake authorities and governed windows.",
         },

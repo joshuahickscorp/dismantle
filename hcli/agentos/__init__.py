@@ -92,6 +92,8 @@ __all__ = [
     "run_flash_executable_scaffold",
     "FLASH_TENSOR_PROBE_SCHEMA",
     "run_flash_tensor_probe",
+    "FLASH_REPRESENTATION_EXPERIMENT_SCHEMA",
+    "run_flash_representation_experiment",
     "PREBOARD_SCHEMA",
     "run_preboard",
     "INITIAL_CHARGE_SCHEMA",
@@ -208,6 +210,10 @@ def __getattr__(name: str):
         from hcli.agentos import flash_tensor_probe
 
         return flash_tensor_probe.SCHEMA if name == "FLASH_TENSOR_PROBE_SCHEMA" else flash_tensor_probe.run_flash_tensor_probe
+    if name in {"FLASH_REPRESENTATION_EXPERIMENT_SCHEMA", "run_flash_representation_experiment"}:
+        from hcli.agentos import flash_representation_experiment
+
+        return flash_representation_experiment.SCHEMA if name == "FLASH_REPRESENTATION_EXPERIMENT_SCHEMA" else flash_representation_experiment.run_flash_representation_experiment
     if name in {"PREBOARD_SCHEMA", "run_preboard"}:
         from hcli.agentos import preboard
 

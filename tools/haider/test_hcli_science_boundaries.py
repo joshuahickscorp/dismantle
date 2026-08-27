@@ -10,6 +10,7 @@ from hcli.agentos.benchmark_boundary import (
 )
 from hcli.agentos.flash_executable import run_flash_executable_scaffold
 from hcli.agentos import flash_tensor_probe
+from hcli.agentos import flash_representation_experiment
 from hcli.flash_next import PINNED_REVISION
 from hcli.agentos.fpga_preboard import simulate_partition
 from hcli.agentos.protected_benchmark_watcher import _classify_blockers
@@ -116,6 +117,54 @@ def test_flash_executable_scaffold_ingests_probe_as_bounded_evidence(tmp_path):
     assert result["manifest"]["complete_token_timing"]["accepted_tps"] is None
 
 
+def test_flash_representation_experiment_uses_source_layout_and_direct_candidate_dots(tmp_path, monkeypatch):
+    lake = tmp_path / "lake"
+    specimen = lake / "specimens" / flash_representation_experiment.LAKE_SLUG
+    manifests = lake / "manifests"
+    specimen.mkdir(parents=True)
+    manifests.mkdir(parents=True)
+    tensor_name = flash_representation_experiment.DEFAULT_TENSOR
+    shard_name = "model-00002-of-00131.safetensors"
+    # Two experts x two complete rows x 64 columns: enough to exercise the
+    # source [expert, row, column] layout and one full G64 group per row.
+    values = []
+    for expert in range(2):
+        for row in range(2):
+            values.extend([0x3F80 + expert * 0x20 + row * 0x10 + (column % 4) for column in range(64)])
+    payload = b"".join(struct.pack("<H", value) for value in values)
+    header = json.dumps({tensor_name: {"dtype": "BF16", "shape": [2, 2, 64], "data_offsets": [0, len(payload)]}}, separators=(",", ":")).encode()
+    (specimen / shard_name).write_bytes(struct.pack("<Q", len(header)) + header + payload)
+    (specimen / "model.safetensors.index.json").write_text(
+        json.dumps({"weight_map": {tensor_name: shard_name}}), encoding="utf-8"
+    )
+    (manifests / f"{flash_representation_experiment.LAKE_SLUG}.json").write_text(
+        json.dumps({
+            "repo": "Qwen/Qwen3.8-Flash-Next",
+            "revision": PINNED_REVISION,
+            "resolved_sha": PINNED_REVISION,
+            "path": str(specimen),
+            "n_files": 2,
+        }), encoding="utf-8"
+    )
+    monkeypatch.setattr(flash_representation_experiment, "LAKE_ROOT", lake)
+
+    result = flash_representation_experiment.run_flash_representation_experiment(
+        root=specimen,
+        expert_indices=[0, 1],
+        row_count=2,
+        emit=tmp_path / "representation.json",
+    )
+
+    assert result["status"] == "PASSED"
+    assert result["source_tensor"]["layout"].startswith("row-major [expert, row, column]")
+    assert result["source_tensor"]["values_read"] == 256
+    assert result["candidates"]["independent_q4_g64"]["direct_representation_dot"] is True
+    assert result["candidates"]["shared_bf16_basis_nf4_residual"]["direct_representation_dot"] is True
+    assert result["comparison"]["same_source_rows"] is True
+    assert result["comparison"]["capability_parity"] == "NOT_TESTED"
+    assert result["body_mutated"] is False
+
+
 def test_fpga_partition_simulation_is_model_specific_and_never_hardware():
     qwen = simulate_partition("qwen27")
     flash = simulate_partition("flash-next")
@@ -141,4 +190,5 @@ def test_cli_exposes_general_science_surfaces():
     assert parser.parse_args(["qwen27-mlp-ab"]).command == "qwen27-mlp-ab"
     assert parser.parse_args(["flash-executable"]).command == "flash-executable"
     assert parser.parse_args(["flash-tensor-probe"]).command == "flash-tensor-probe"
+    assert parser.parse_args(["flash-representation-experiment"]).command == "flash-representation-experiment"
     assert parser.parse_args(["protected-bench-watch"]).command == "protected-bench-watch"

@@ -191,6 +191,7 @@ def build_parser() -> argparse.ArgumentParser:
     flash_executable.add_argument("--repo-root", default=None)
     flash_executable.add_argument("--science-receipt", default=None)
     flash_executable.add_argument("--tensor-probe-receipt", default=None)
+    flash_executable.add_argument("--representation-experiment-receipt", default=None)
     flash_executable.add_argument("--emit", default=None)
     flash_executable.add_argument("--ebpw-emit", default=None)
     flash_executable.add_argument("--token-ns-emit", default=None)
@@ -203,6 +204,17 @@ def build_parser() -> argparse.ArgumentParser:
     flash_tensor_probe.add_argument("--tensor-name", default=None)
     flash_tensor_probe.add_argument("--sample-bytes", type=int, default=1 * 1024 * 1024)
     flash_tensor_probe.add_argument("--emit", default=None)
+
+    flash_representation = sub.add_parser(
+        "flash-representation-experiment",
+        help="run a bounded source-layout-aware routed-expert representation/reference-vector experiment",
+    )
+    flash_representation.add_argument("--root", default=None, help="final specimen root; defaults to the canonical ModelLake specimen")
+    flash_representation.add_argument("--tensor-name", default=None)
+    flash_representation.add_argument("--expert-indices", default=None, help="comma-separated expert indices")
+    flash_representation.add_argument("--row-start", type=int, default=0)
+    flash_representation.add_argument("--row-count", type=int, default=16)
+    flash_representation.add_argument("--emit", default=None)
 
     preboard = sub.add_parser(
         "preboard",
@@ -487,6 +499,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 repo_root=args.repo_root,
                 science_receipt=args.science_receipt,
                 tensor_probe_receipt=args.tensor_probe_receipt,
+                representation_experiment_receipt=args.representation_experiment_receipt,
                 emit=args.emit,
                 ebpw_emit=args.ebpw_emit,
                 token_ns_emit=args.token_ns_emit,
@@ -501,6 +514,24 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 root=args.root,
                 tensor_name=args.tensor_name or DEFAULT_TENSOR,
                 sample_bytes=args.sample_bytes,
+                emit=args.emit,
+            )
+            _emit(report)
+            return 0 if report.get("status") == "PASSED" else 1
+
+        if args.command == "flash-representation-experiment":
+            from hcli.agentos.flash_representation_experiment import (
+                DEFAULT_EXPERT_INDICES,
+                DEFAULT_TENSOR,
+                run_flash_representation_experiment,
+            )
+
+            report = run_flash_representation_experiment(
+                root=args.root,
+                tensor_name=args.tensor_name or DEFAULT_TENSOR,
+                expert_indices=args.expert_indices if args.expert_indices is not None else DEFAULT_EXPERT_INDICES,
+                row_start=args.row_start,
+                row_count=args.row_count,
                 emit=args.emit,
             )
             _emit(report)

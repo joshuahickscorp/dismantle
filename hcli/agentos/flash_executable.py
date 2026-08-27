@@ -35,6 +35,8 @@ DERIVED = "[D]"
 NOT_MEASURED = "NOT_MEASURED"
 DEFAULT_SCIENCE = "HCLI_FLASH_NEXT_PRE_RUNTIME_SCIENCE.json"
 DEFAULT_TENSOR_PROBE = "FLASH_FIRST_TENSOR_PROBE.json"
+DEFAULT_REPRESENTATION_EXPERIMENT = "FLASH_ROUTED_EXPERT_REPRESENTATION_EXPERIMENT.json"
+DEFAULT_REPRESENTATION_REPLICATION = "FLASH_ROUTED_EXPERT_REPRESENTATION_EXPERIMENT_DISJOINT.json"
 DEFAULT_EXECUTABLE = "FLASH_NEXT_NOETIC_EXECUTABLE.json"
 DEFAULT_EBPW = "FLASH_EBPW_BUDGET.json"
 DEFAULT_TOKEN_NS = "FLASH_TOKEN_NS_BUDGET.json"
@@ -179,6 +181,60 @@ def _tensor_probe_summary(
     }
 
 
+def _representation_experiment_summary(
+    repo: Path,
+    receipt: Optional[str | os.PathLike[str]] = None,
+) -> Dict[str, Any]:
+    """Read bounded layout experiment evidence without promoting it."""
+    path = Path(receipt).expanduser().resolve() if receipt else repo / "receipts" / "headless" / DEFAULT_REPRESENTATION_EXPERIMENT
+    experiment = _read_json(path)
+    replication_path = repo / "receipts" / "headless" / DEFAULT_REPRESENTATION_REPLICATION
+    replication = _read_json(replication_path)
+    replications = []
+    if replication is not None:
+        replications.append({
+            "status": replication.get("status"),
+            "receipt_path": str(replication_path),
+            "receipt_sha256": _sha256(replication_path),
+            "source_tensor": replication.get("source_tensor"),
+            "candidates": replication.get("candidates"),
+            "comparison": replication.get("comparison"),
+            "body_mutated": replication.get("body_mutated"),
+            "model_loaded": replication.get("model_loaded"),
+            "whole_model_capability": "NOT_TESTED",
+            "whole_model_runtime": "NOT_TESTED",
+        })
+    if experiment is None:
+        return {
+            "status": "NOT_RUN",
+            "receipt_path": str(path),
+            "source_tensor": None,
+            "candidates": None,
+            "comparison": None,
+            "whole_model_capability": "NOT_TESTED",
+            "whole_model_runtime": "NOT_TESTED",
+            "replications": replications,
+        }
+    return {
+        "status": experiment.get("status"),
+        "receipt_path": str(path),
+        "receipt_sha256": _sha256(path),
+        "source_label": experiment.get("source_label"),
+        "candidate_label": experiment.get("candidate_label"),
+        "root": experiment.get("root"),
+        "tensor_name": experiment.get("tensor_name"),
+        "source_tensor": experiment.get("source_tensor"),
+        "candidates": experiment.get("candidates"),
+        "comparison": experiment.get("comparison"),
+        "next_experiment": experiment.get("next_experiment"),
+        "body_mutated": experiment.get("body_mutated"),
+        "model_loaded": experiment.get("model_loaded"),
+        "whole_model_capability": "NOT_TESTED",
+        "whole_model_runtime": "NOT_TESTED",
+        "replications": replications,
+    }
+
+
 def _primary_organs(science: Mapping[str, Any]) -> list[Mapping[str, Any]]:
     rows = science.get("organ_graph")
     if not isinstance(rows, list):
@@ -275,6 +331,7 @@ def _ebpw_budget(
     science: Mapping[str, Any],
     source: Mapping[str, Any],
     tensor_probe: Mapping[str, Any],
+    representation_experiment: Mapping[str, Any],
 ) -> Dict[str, Any]:
     parameters = source.get("source_parameter_count")
     system_ceiling = int(parameters * COMPLETE_SYSTEM_EBPW_MAX) if isinstance(parameters, int) else None
@@ -300,7 +357,38 @@ def _ebpw_budget(
         "mtp": "explicit draft/verify/rollback representation",
         "vision": "conditional multimodal path; text-resident omission requires an explicit separate contract",
     }
-    if tensor_probe.get("status") == "PASSED":
+    if representation_experiment.get("status") == "PASSED":
+        comparison = representation_experiment.get("comparison") or {}
+        candidates = representation_experiment.get("candidates") or {}
+        chosen_representation.update({
+            "status": "BOUNDED_LAYOUT_EXPERIMENT_OBSERVED_NOT_WHOLE_MODEL",
+            "bounded_source_experiment": {
+                "receipt_path": representation_experiment.get("receipt_path"),
+                "tensor_name": representation_experiment.get("tensor_name"),
+                "source_layout": (representation_experiment.get("source_tensor") or {}).get("layout"),
+                "experts": (representation_experiment.get("source_tensor") or {}).get("selected_experts"),
+                "row_range": (representation_experiment.get("source_tensor") or {}).get("row_range"),
+                "independent_q4_effective_bits_per_value": (candidates.get("independent_q4_g64") or {}).get("effective_bits_per_value"),
+                "shared_basis_nf4_residual_effective_bits_per_value": (candidates.get("shared_bf16_basis_nf4_residual") or {}).get("effective_bits_per_value"),
+                "shared_basis_nf4_residual_cosine": ((candidates.get("shared_bf16_basis_nf4_residual") or {}).get("reference_vector") or {}).get("cosine"),
+                "same_source_rows": comparison.get("same_source_rows"),
+                "same_reference_vector": comparison.get("same_reference_vector"),
+                "capability_parity": "NOT_TESTED",
+                "whole_model_runtime": "NOT_TESTED",
+                "disjoint_replications": [
+                    {
+                        "status": item.get("status"),
+                        "receipt_path": item.get("receipt_path"),
+                        "source_experts": (item.get("source_tensor") or {}).get("selected_experts"),
+                        "source_row_range": (item.get("source_tensor") or {}).get("row_range"),
+                        "label": DERIVED,
+                    }
+                    for item in representation_experiment.get("replications") or []
+                ],
+                "label": DERIVED,
+            },
+        })
+    elif tensor_probe.get("status") == "PASSED":
         chosen_representation.update({
             "status": "BOUNDED_SLICE_OBSERVED_NOT_WHOLE_MODEL",
             "bounded_source_probe": {
@@ -329,6 +417,7 @@ def _ebpw_budget(
         },
         "chosen_representation": chosen_representation,
         "bounded_source_probe": tensor_probe,
+        "bounded_representation_experiment": representation_experiment,
         "organs": organs,
         "complete_system_accounting": accounting,
         "measured": {
@@ -419,6 +508,7 @@ def _executable_manifest(
     ebpw: Mapping[str, Any],
     token_ns: Mapping[str, Any],
     tensor_probe: Mapping[str, Any],
+    representation_experiment: Mapping[str, Any],
 ) -> Dict[str, Any]:
     organs = [str(row.get("organ")) for row in ebpw.get("organs") or [] if isinstance(row, Mapping)]
     return {
@@ -441,10 +531,13 @@ def _executable_manifest(
             "header_only_source": tensor_probe.get("status") != "PASSED",
             "bounded_source_slice_observed": tensor_probe.get("status") == "PASSED",
             "bounded_probe_receipt": tensor_probe.get("receipt_path"),
+            "bounded_source_layout_experiment_observed": representation_experiment.get("status") == "PASSED",
+            "bounded_representation_experiment_receipt": representation_experiment.get("receipt_path"),
             "weight_body_loaded": False,
         },
         "model_lake": lake,
         "source_tensor_probe": tensor_probe,
+        "source_representation_experiment": representation_experiment,
         "chosen_representation": ebpw.get("chosen_representation"),
         "native_loader": {
             "status": "NOT_IMPLEMENTED",
@@ -525,6 +618,7 @@ def run_flash_executable_scaffold(
     repo_root: Optional[str | os.PathLike[str]] = None,
     science_receipt: Optional[str | os.PathLike[str]] = None,
     tensor_probe_receipt: Optional[str | os.PathLike[str]] = None,
+    representation_experiment_receipt: Optional[str | os.PathLike[str]] = None,
     emit: Optional[str | os.PathLike[str]] = None,
     ebpw_emit: Optional[str | os.PathLike[str]] = None,
     token_ns_emit: Optional[str | os.PathLike[str]] = None,
@@ -554,9 +648,10 @@ def run_flash_executable_scaffold(
         source["science_receipt"] = {"path": str(science_path), "sha256": _sha256(science_path), "status": science.get("status")}
         lake = _modellake_identity(repo)
         tensor_probe = _tensor_probe_summary(repo, tensor_probe_receipt)
-        ebpw = _ebpw_budget(science, source, tensor_probe)
+        representation_experiment = _representation_experiment_summary(repo, representation_experiment_receipt)
+        ebpw = _ebpw_budget(science, source, tensor_probe, representation_experiment)
         token_ns = _token_ns_budget(science, source)
-        manifest = _executable_manifest(science, source, lake, ebpw, token_ns, tensor_probe)
+        manifest = _executable_manifest(science, source, lake, ebpw, token_ns, tensor_probe, representation_experiment)
         atomic_write_json(ebpw_path, ebpw)
         atomic_write_json(token_path, token_ns)
         manifest["ebpw_budget_receipt"] = str(ebpw_path)
@@ -574,6 +669,9 @@ def run_flash_executable_scaffold(
                 "model_lake_not_mutated": lake.get("mutation_by_this_scaffold") is False,
                 "bounded_probe_is_explicit": tensor_probe.get("status") in {"NOT_RUN", "PASSED"},
                 "bounded_probe_does_not_claim_whole_model": tensor_probe.get("whole_model_capability") == "NOT_TESTED" and tensor_probe.get("whole_model_runtime") == "NOT_TESTED",
+                "bounded_representation_experiment_is_explicit": representation_experiment.get("status") in {"NOT_RUN", "PASSED"},
+                "bounded_representation_experiment_does_not_claim_whole_model": representation_experiment.get("whole_model_capability") == "NOT_TESTED" and representation_experiment.get("whole_model_runtime") == "NOT_TESTED",
+                "bounded_representation_replications_are_explicit": all(item.get("status") in {"PASSED", "NOT_RUN"} for item in representation_experiment.get("replications") or []),
                 "native_loader_status_explicit": manifest.get("native_loader", {}).get("status") == "NOT_IMPLEMENTED",
                 "native_kernels_status_explicit": manifest.get("native_kernels", {}).get("status") == "PLAN_ONLY",
                 "complete_token_timing_not_fabricated": manifest.get("complete_token_timing", {}).get("accepted_tps") is None,
@@ -600,6 +698,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser.add_argument("--repo-root")
     parser.add_argument("--science-receipt")
     parser.add_argument("--tensor-probe-receipt")
+    parser.add_argument("--representation-experiment-receipt")
     parser.add_argument("--emit")
     parser.add_argument("--ebpw-emit")
     parser.add_argument("--token-ns-emit")
@@ -608,6 +707,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         repo_root=args.repo_root,
         science_receipt=args.science_receipt,
         tensor_probe_receipt=args.tensor_probe_receipt,
+        representation_experiment_receipt=args.representation_experiment_receipt,
         emit=args.emit,
         ebpw_emit=args.ebpw_emit,
         token_ns_emit=args.token_ns_emit,
@@ -616,7 +716,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     return 0 if report.get("status") == "PASSED" else 1
 
 
-__all__ = ["DEFAULT_TENSOR_PROBE", "EBPW_SCHEMA", "SCHEMA", "TOKEN_NS_SCHEMA", "main", "run_flash_executable_scaffold"]
+__all__ = ["DEFAULT_REPRESENTATION_EXPERIMENT", "DEFAULT_REPRESENTATION_REPLICATION", "DEFAULT_TENSOR_PROBE", "EBPW_SCHEMA", "SCHEMA", "TOKEN_NS_SCHEMA", "main", "run_flash_executable_scaffold"]
 
 
 if __name__ == "__main__":

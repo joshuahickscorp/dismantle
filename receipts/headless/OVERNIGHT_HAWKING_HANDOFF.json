@@ -5,14 +5,11 @@
       "9d373ecc4863b244fc74761c99fc837f7705f3db"
     ],
     "branch": "odyssey-i",
-    "git_revision": "5651e858f7c2cbd5f9064b7f82e2ce76c53020e1",
+    "git_revision": "0fb8da09f04255c9a78a69de301b8de9ef1321d4",
     "unrelated_preserved_edit": "tools/odyssey_ctl.py",
     "working_tree_status": [
       "M receipts/headless/HCLI_AGENTOS_CHECKPOINT.json",
-      " M receipts/headless/HCLI_MODELLAKE_FLASH_ACQUISITION_SUPERVISION.json",
       " M receipts/headless/OVERNIGHT_HAWKING_HANDOFF.json",
-      " M receipts/headless/QWEN27_HISTORICAL_RUNTIME_IDENTITY.json",
-      " M receipts/headless/QWEN27_RUNTIME_DIFF.json",
       " M receipts/headless/QWEN_PROTECTED_BENCH_READY.json",
       " M tools/odyssey_ctl.py"
     ]
@@ -35,6 +32,7 @@
     "refresh_initial_charge": "python3 -m hcli agentos initial-charge --repo-root /Users/scammermike/Downloads/hawking --workspace /Users/scammermike/Downloads/hawking/.hcli/initial-charge --emit /Users/scammermike/Downloads/hawking/receipts/headless/HAWKING_INITIAL_CHARGE.json",
     "refresh_maps": "python3 -m hcli agentos science-maps --repo-root /Users/scammermike/Downloads/hawking --transfer-emit /Users/scammermike/Downloads/hawking/receipts/headless/QWEN38_ACCELERATOR_TRANSFER_MAP.json --precedent-emit /Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NEXT_PRECEDENT_MAP.json",
     "resume_modellake_only_if_interrupted": "python3 -m hcli agentos background resume --workspace /Users/scammermike/Downloads/hawking --repo-root /Users/scammermike/Downloads/hawking job-2f77c1d6-e33b-44fe-bc12-549cf47805c7",
+    "run_flash_tensor_probe": "python3 -m hcli agentos flash-tensor-probe --emit /Users/scammermike/Downloads/hawking/receipts/headless/FLASH_FIRST_TENSOR_PROBE.json",
     "run_full_tests": "pytest -q",
     "run_qwen27_mlp_diagnostic": "python3 -m hcli agentos qwen27-mlp-ab --repo-root /Users/scammermike/Downloads/hawking --profile /Users/scammermike/Downloads/hawking/hcli/hawking-native.sealed-3.14.json --resident-binary /Users/scammermike/Downloads/hawking/.hcli/instrumented/ascension_qwen38_resident",
     "run_qwen27_runtime_archaeology": "python3 -m hcli agentos qwen27-runtime-archaeology --repo-root /Users/scammermike/Downloads/hawking --profile /Users/scammermike/Downloads/hawking/hcli/hawking-native.sealed-3.14.json",
@@ -148,6 +146,56 @@
       "vocab_size": 248320
     },
     "architecture_fingerprint": "8dbc9c34f223d240def13a1f7c70d3cbddbc768bc9ccc9c002683e2958b6be5b",
+    "bounded_source_tensor_probe": {
+      "body_mutated": false,
+      "candidate_label": "[D]",
+      "claim_boundary": "bounded slice evidence only; whole-model capability and runtime remain untested",
+      "dense_vs_packed_low_bit": {
+        "candidate": {
+          "candidate_bytes": 278528,
+          "candidate_sha256": "a859376326cf4bc1199e9c297177acac6ee64756b84e6dd3f36842c54d82bcb0",
+          "code_bytes": 262144,
+          "effective_bits_per_value": 4.25,
+          "group_size": 64,
+          "groups": 8192,
+          "label": "[D]",
+          "max_abs_error": 0.011823381696428572,
+          "mean_abs_error": 0.001339952767113279,
+          "model_capability_tested": false,
+          "reconstruction_finite": true,
+          "rmse": 0.001600212788700384,
+          "runtime_performance_tested": false,
+          "scale_bytes": 16384,
+          "scheme": "symmetric_signed_4bit_group64_with_fp16_scales",
+          "source_peak_abs": 0.169921875,
+          "status": "BOUNDED_SLICE_RECONSTRUCTION_ONLY"
+        },
+        "comparison": {
+          "candidate_bytes_over_control": 0.265625,
+          "candidate_is_smaller": true,
+          "capability_parity": "NOT_TESTED",
+          "label": "[D]",
+          "same_values_compared": 524288,
+          "whole_model_runtime": "NOT_TESTED"
+        },
+        "control": {
+          "bits_per_value": 16.0,
+          "bytes": 1048576,
+          "label": "[V]",
+          "representation": "source BF16 slice"
+        }
+      },
+      "model_loaded": false,
+      "organ": {
+        "id": "routed_experts",
+        "label": "[D]",
+        "mapping_basis": "tensor name model.language_model.layers.*.mlp.experts.*"
+      },
+      "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_FIRST_TENSOR_PROBE.json",
+      "source_label": "[V]",
+      "status": "PASSED",
+      "tensor_name": "model.language_model.layers.0.mlp.experts.gate_up_proj"
+    },
     "budgets": {
       "ebpw": {
         "measured": {
@@ -776,7 +824,7 @@
       "telemetry/receipt verifier"
     ]
   },
-  "generated_at": 1787808508.7521842,
+  "generated_at": 1787809465.747249,
   "hcli": {
     "background_jobs": [
       {
@@ -1443,7 +1491,7 @@
     "next_experiment": "Protected quiescent same-source A/B: record binary/artifact/tokenizer, representation, dispatches, complete wall/GPU timing, fallback count, capability, and cache/quiescence before accepting any optimization.",
     "protected_benchmark_watcher": {
       "NOT_FOR_PROMOTION": true,
-      "polls": 15,
+      "polls": 31,
       "qualification": false,
       "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/QWEN_PROTECTED_BENCH_READY.json",
       "runs": [],

@@ -7,11 +7,16 @@
   "complete_system_ebpw": null,
   "complete_token_runtime": "NOT_TESTED",
   "component_status": "BOUNDED_COMPONENT_COMPILED",
+  "component_window": {
+    "expert_index": 0,
+    "row_count": 128,
+    "row_start": 0
+  },
   "elapsed_s": 0.0,
-  "finished_at": 1787817587.686204,
+  "finished_at": 1787818553.1421702,
   "flash_tps": null,
-  "generated_at": 1787817587.685727,
-  "graph_fingerprint": "9577f562f3fd8bf5c10ef5393dd62ee7ad841fe5dc8b2fe5a1372be5dd7c6e0d",
+  "generated_at": 1787818553.141751,
+  "graph_fingerprint": "f8345fdeaf302a708c8d6ec10181410650bb2d19765c427e6e22cc6a27efa63f",
   "inputs": {
     "kernel": {
       "label": "[V]",
@@ -52,7 +57,7 @@
   "nomenclature_version": "HAWKING_NOMENCLATURE_V1",
   "physical_graph": {
     "compiler_stage": "PhysicalGraphCompiler",
-    "component_scope": "one routed-expert source block; not complete Flash execution",
+    "component_scope": "one routed-expert source block expert=0 rows=0:128; not complete Flash execution",
     "computation": [
       {
         "execution_input": false,
@@ -70,34 +75,46 @@
         "body_persisted": true,
         "candidate_id": "independent_q4_g64",
         "execution_input": true,
+        "expert_index": 0,
         "id": "noetic_component_body_load",
         "kind": "source_independent_component_body",
+        "row_count": 128,
+        "row_start": 0,
         "stage": "NoeticCompiler"
       },
       {
         "candidate_id": "independent_q4_g64",
         "descriptor_sha256": "60e7c098c67f26013e47d3411efc554b7e8612417300eb2116d8237f53568c19",
         "execution_input": true,
+        "expert_index": 0,
         "id": "noetic_descriptor_load",
         "kind": "serialized_representation_descriptor",
         "loader_status": "BOUNDED_NOETIC_DESCRIPTOR_AND_BODY_LOAD",
+        "row_count": 128,
+        "row_start": 0,
         "schema": "hcli.noetic.representation_descriptor.v1",
         "stage": "NoeticCompiler"
       },
       {
         "dispatches_per_sample": 1,
+        "expert_index": 0,
         "id": "routed_expert_q4_g64_matvec",
         "kernel": "qwen_uniform_q4_group64_matvec",
         "kind": "native_kernel_dispatch",
         "parity_within_tolerance": true,
         "registered": true,
+        "row_count": 128,
+        "row_start": 0,
         "source_independent_execution": true,
         "stage": "HawkingAccelerator"
       },
       {
         "complete_token": false,
+        "expert_index": 0,
         "id": "bounded_component_output",
         "kind": "source_block_matvec_output",
+        "row_count": 128,
+        "row_start": 0,
         "stage": "NoeticExecutableCandidate",
         "whole_model": false
       }
@@ -162,8 +179,8 @@
         "status": "PASSED"
       }
     ],
-    "fingerprint": "9577f562f3fd8bf5c10ef5393dd62ee7ad841fe5dc8b2fe5a1372be5dd7c6e0d",
-    "generated_at": 1787817587.6860769,
+    "fingerprint": "f8345fdeaf302a708c8d6ec10181410650bb2d19765c427e6e22cc6a27efa63f",
+    "generated_at": 1787818553.142051,
     "graph_execution_observed": false,
     "memory": [
       {
@@ -194,6 +211,11 @@
       "candidate_body_persisted": true,
       "candidate_bytes_full_tensor": 891289600,
       "candidate_id": "independent_q4_g64",
+      "component_window": {
+        "expert_index": 0,
+        "row_count": 128,
+        "row_start": 0
+      },
       "dense_rematerialization": "forbidden",
       "descriptor_schema": "hcli.noetic.representation_descriptor.v1",
       "effective_bits_per_value": 4.25,

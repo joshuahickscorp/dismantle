@@ -196,6 +196,7 @@ def build_parser() -> argparse.ArgumentParser:
     flash_executable.add_argument("--loader-roundtrip-receipt", default=None)
     flash_executable.add_argument("--kernel-parity-receipt", default=None)
     flash_executable.add_argument("--graph-component-receipt", default=None)
+    flash_executable.add_argument("--component-campaign-receipt", default=None)
     flash_executable.add_argument("--emit", default=None)
     flash_executable.add_argument("--ebpw-emit", default=None)
     flash_executable.add_argument("--token-ns-emit", default=None)
@@ -258,6 +259,16 @@ def build_parser() -> argparse.ArgumentParser:
     flash_body.add_argument("--row-count", type=int, default=128)
     flash_body.add_argument("--body", default=None)
     flash_body.add_argument("--emit", default=None)
+
+    flash_campaign = sub.add_parser(
+        "flash-component-campaign",
+        help="compose multiple persisted source-independent Flash Noetic components into one bounded campaign graph",
+    )
+    flash_campaign.add_argument("--repo-root", default=None)
+    flash_campaign.add_argument("--loader-receipt", default=None)
+    flash_campaign.add_argument("--transform-receipt", default=None)
+    flash_campaign.add_argument("--component", action="append", default=None, help="BODY_RECEIPT,KERNEL_RECEIPT; repeat for additional bounded components")
+    flash_campaign.add_argument("--emit", default=None)
 
     flash_graph = sub.add_parser(
         "flash-graph-component",
@@ -557,6 +568,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 loader_roundtrip_receipt=args.loader_roundtrip_receipt,
                 kernel_parity_receipt=args.kernel_parity_receipt,
                 graph_component_receipt=args.graph_component_receipt,
+                component_campaign_receipt=args.component_campaign_receipt,
                 emit=args.emit,
                 ebpw_emit=args.ebpw_emit,
                 token_ns_emit=args.token_ns_emit,
@@ -637,6 +649,19 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 row_start=args.row_start,
                 row_count=args.row_count,
                 body=args.body,
+                emit=args.emit,
+            )
+            _emit(report)
+            return 0 if report.get("status") == "PASSED" else 1
+
+        if args.command == "flash-component-campaign":
+            from hcli.agentos.flash_component_campaign import run_flash_component_campaign
+
+            report = run_flash_component_campaign(
+                repo_root=args.repo_root,
+                loader_receipt=args.loader_receipt,
+                transform_receipt=args.transform_receipt,
+                component_specs=args.component,
                 emit=args.emit,
             )
             _emit(report)

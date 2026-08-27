@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import struct
 
 from hcli.agentos.benchmark_boundary import (
@@ -14,6 +15,7 @@ from hcli.agentos import flash_representation_experiment
 from hcli.agentos import flash_transform_parity
 from hcli.agentos import flash_loader_roundtrip
 from hcli.agentos import flash_graph_component
+from hcli.agentos import flash_component_campaign
 from hcli.flash_next import PINNED_REVISION
 from hcli.agentos.fpga_preboard import simulate_partition
 from hcli.agentos.protected_benchmark_watcher import _classify_blockers
@@ -451,6 +453,126 @@ def test_flash_graph_component_compiles_validated_noetic_receipts_without_promot
     }
 
 
+def test_flash_component_campaign_composes_two_source_independent_blocks(tmp_path):
+    root = tmp_path / "repo"
+    receipts = root / "receipts" / "headless"
+    receipts.mkdir(parents=True)
+    specimen = str(tmp_path / "specimen")
+    revision = PINNED_REVISION
+    manifest = {
+        "repo": "Qwen/Qwen3.8-Flash-Next",
+        "revision": revision,
+        "resolved_sha": revision,
+        "path": specimen,
+    }
+    tensor = {
+        "tensor_name": "model.language_model.layers.0.mlp.experts.gate_up_proj",
+        "dtype": "BF16",
+        "shape": [512, 1280, 2560],
+        "layout": "row-major [expert, row, column]",
+        "group_size": 64,
+    }
+    candidate = {
+        "candidate_bytes": 891289600,
+        "candidate_sha256": "c" * 64,
+        "effective_bits_per_value": 4.25,
+        "status": "FULL_TENSOR_TRANSFORM_ONLY",
+    }
+    transform = {
+        "schema": "hcli.agentos.flash_transform_parity.v1",
+        "status": "PASSED",
+        "repo": "Qwen/Qwen3.8-Flash-Next",
+        "pinned_revision": revision,
+        "root": specimen,
+        "model_lake_manifest": manifest,
+        "candidates": {"independent_q4_g64": candidate},
+    }
+    descriptor = {
+        "schema": "hcli.noetic.representation_descriptor.v1",
+        "candidate_id": "independent_q4_g64",
+        "source_tensor": tensor,
+        "full_transform_reference": candidate,
+    }
+    loader = {
+        "schema": "hcli.agentos.flash_loader_roundtrip.v1",
+        "status": "PASSED",
+        "repo": "Qwen/Qwen3.8-Flash-Next",
+        "pinned_revision": revision,
+        "root": specimen,
+        "model_lake_manifest": manifest,
+        "candidate_id": "independent_q4_g64",
+        "representation_descriptor": descriptor,
+        "body_mutated": False,
+        "model_loaded": False,
+    }
+    transform_path = receipts / "transform.json"
+    loader_path = receipts / "loader.json"
+    transform_path.write_text(json.dumps(transform), encoding="utf-8")
+    loader_path.write_text(json.dumps(loader), encoding="utf-8")
+    specs = []
+    for index, row_start in enumerate((0, 128)):
+        body_bytes = bytes([index + 1]) * 8
+        body_path = tmp_path / f"body-{index}.bin"
+        body_path.write_bytes(body_bytes)
+        body_receipt_path = receipts / f"body-{index}.json"
+        body = {
+            "schema": "hcli.agentos.flash_noetic_component_body.v1",
+            "status": "PASSED",
+            "repo": "Qwen/Qwen3.8-Flash-Next",
+            "pinned_revision": revision,
+            "root": specimen,
+            "model_lake_manifest": manifest,
+            "candidate_id": "independent_q4_g64",
+            "source_independent": True,
+            "candidate_body_persisted": True,
+            "body_mutated": False,
+            "model_loaded": False,
+            "source_block": {**tensor, "expert_index": 0, "row_start": row_start, "row_count": 128},
+            "body": {
+                "path": str(body_path),
+                "sha256": hashlib.sha256(body_bytes).hexdigest(),
+                "bytes": len(body_bytes),
+            },
+        }
+        body_receipt_path.write_text(json.dumps(body), encoding="utf-8")
+        kernel_receipt_path = receipts / f"kernel-{index}.json"
+        kernel = {
+            "schema": "hawking.flash_noetic_q4_kernel_parity.v1",
+            "status": "PASSED",
+            "repo": "Qwen/Qwen3.8-Flash-Next",
+            "pinned_revision": revision,
+            "root": specimen,
+            "model_lake_manifest": manifest,
+            "source_tensor": {**tensor, "selected_expert": 0, "selected_row_start": row_start, "selected_row_count": 128, "selected_block_bytes": 655360},
+            "noetic_descriptor": {"schema": "hcli.noetic.representation_descriptor.v1"},
+            "noetic_representation": {"candidate_id": "independent_q4_g64"},
+            "native_loader": {"status": "BOUNDED_NOETIC_DESCRIPTOR_AND_BODY_LOAD", "candidate_id": "independent_q4_g64", "descriptor_sha256": "d" * 64, "source_independent_execution": True, "candidate_body_persisted": True},
+            "native_kernel": {"kernel": "qwen_uniform_q4_group64_matvec", "kernel_registered": True, "dispatches_per_sample": 1},
+            "parity": {"within_tolerance": True},
+            "candidate_body": {"path": str(body_path), "sha256": body["body"]["sha256"], "bytes": len(body_bytes), "receipt_path": str(body_receipt_path), "source_independent": True},
+            "body_mutated": False,
+            "model_loaded": False,
+        }
+        kernel_receipt_path.write_text(json.dumps(kernel), encoding="utf-8")
+        specs.append({"id": f"e0_r{row_start}_128", "body_receipt": str(body_receipt_path), "kernel_receipt": str(kernel_receipt_path)})
+
+    result = flash_component_campaign.run_flash_component_campaign(
+        repo_root=root,
+        loader_receipt=loader_path,
+        transform_receipt=transform_path,
+        component_specs=specs,
+        emit=receipts / "campaign.json",
+    )
+
+    assert result["status"] == "PASSED"
+    assert result["component_status"] == "BOUNDED_MULTI_COMPONENT_COMPILED"
+    assert result["component_count"] == 2
+    assert result["candidate_body_persisted"] is True
+    assert result["physical_graph"]["qualification"] == "BOUNDED_MULTI_COMPONENT_ONLY"
+    assert any(node["id"].startswith("e0_r128_128:") for node in result["physical_graph"]["computation"])
+    assert result["noetic_ir"]["complete_model"] is False
+
+
 def test_canonical_nomenclature_is_versioned_without_renaming_legacy_terms():
     assert NOMENCLATURE_VERSION == "HAWKING_NOMENCLATURE_V1"
     assert CANONICAL_PIPELINE[0] == "SourceSpecimen"
@@ -530,6 +652,7 @@ def test_cli_exposes_general_science_surfaces():
     assert parser.parse_args(["flash-transform-parity"]).command == "flash-transform-parity"
     assert parser.parse_args(["flash-loader-roundtrip"]).command == "flash-loader-roundtrip"
     assert parser.parse_args(["flash-component-body"]).command == "flash-component-body"
+    assert parser.parse_args(["flash-component-campaign"]).command == "flash-component-campaign"
     assert parser.parse_args(["flash-graph-component"]).command == "flash-graph-component"
     assert parser.parse_args(["flash-executable", "--kernel-parity-receipt", "kernel.json"]).kernel_parity_receipt == "kernel.json"
     assert parser.parse_args(["flash-executable", "--graph-component-receipt", "graph.json"]).graph_component_receipt == "graph.json"

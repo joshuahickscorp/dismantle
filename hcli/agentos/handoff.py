@@ -185,6 +185,7 @@ def _flash_summary(repo: Path) -> Dict[str, Any]:
     kernel_path = body_kernel_path if body_kernel_path.is_file() else legacy_kernel_path
     kernel_parity = _read_object(kernel_path) or {}
     component_body = _receipt(repo, "FLASH_NOETIC_ROUTED_EXPERT_BODY.json") or {}
+    component_campaign = _receipt(repo, "FLASH_NOETIC_ROUTED_EXPERT_COMPONENT_CAMPAIGN.json") or {}
     graph_component = _receipt(repo, "FLASH_NOETIC_ROUTED_EXPERT_GRAPH.json") or {}
     source = flash.get("source_identity") or flash.get("source") or {}
     promotion = flash.get("promotion_gate") or {}
@@ -304,6 +305,22 @@ def _flash_summary(repo: Path) -> Dict[str, Any]:
             "claim_boundary": component_body.get("claim_boundary"),
             "next_action": component_body.get("next_action"),
         },
+        "source_independent_component_campaign": {
+            "status": component_campaign.get("status"),
+            "receipt_path": str(repo / "receipts" / "headless" / "FLASH_NOETIC_ROUTED_EXPERT_COMPONENT_CAMPAIGN.json"),
+            "component_status": component_campaign.get("component_status"),
+            "component_count": component_campaign.get("component_count"),
+            "component_windows": component_campaign.get("component_windows"),
+            "source_independent_execution": component_campaign.get("source_independent_execution"),
+            "candidate_body_persisted": component_campaign.get("candidate_body_persisted"),
+            "physical_graph": component_campaign.get("physical_graph"),
+            "noetic_ir": component_campaign.get("noetic_ir"),
+            "whole_model_capability": component_campaign.get("whole_model_capability"),
+            "complete_token_runtime": component_campaign.get("complete_token_runtime"),
+            "promotion_allowed": component_campaign.get("promotion_allowed"),
+            "claim_boundary": component_campaign.get("claim_boundary"),
+            "next_action": component_campaign.get("next_action"),
+        },
         "bounded_noetic_graph_component": {
             "status": graph_component.get("status"),
             "component_status": graph_component.get("component_status"),
@@ -321,7 +338,7 @@ def _flash_summary(repo: Path) -> Dict[str, Any]:
             "ebpw": {"status": ebpw.get("status"), "receipt_path": str(repo / "receipts" / "headless" / "FLASH_EBPW_BUDGET.json"), "measured": ebpw.get("measured"), "target_contract": ebpw.get("target_contract")},
             "token_ns": {"status": token_ns.get("status"), "receipt_path": str(repo / "receipts" / "headless" / "FLASH_TOKEN_NS_BUDGET.json"), "system_ledger": token_ns.get("system_ledger"), "target_contract": token_ns.get("target_contract")},
         },
-        "next_action": "Extend the source-independent component body across the routed-expert organ, then compose the remaining Flash organs; keep complete-system EBPW and accepted Flash TPS unmeasured until native protected execution exists.",
+        "next_action": "Extend the source-independent component campaign across additional routed-expert windows, then compose the remaining Flash organs; keep complete-system EBPW and accepted Flash TPS unmeasured until native protected execution exists.",
     }
 
 
@@ -485,6 +502,9 @@ def build_handoff(repo_root: Optional[str | os.PathLike[str]] = None, *, emit: O
     component_body = _receipt(repo, "FLASH_NOETIC_ROUTED_EXPERT_BODY.json") or {}
     if component_body.get("status") != "PASSED" or component_body.get("source_independent") is not True or component_body.get("candidate_body_persisted") is not True:
         blockers.append("Flash-Next source-independent routed-expert component body is absent or incomplete.")
+    component_campaign = _receipt(repo, "FLASH_NOETIC_ROUTED_EXPERT_COMPONENT_CAMPAIGN.json") or {}
+    if component_campaign.get("status") != "PASSED" or component_campaign.get("source_independent_execution") is not True or component_campaign.get("candidate_body_persisted") is not True:
+        blockers.append("Flash-Next bounded multi-component Noetic campaign is absent or incomplete.")
     graph_component = _receipt(repo, "FLASH_NOETIC_ROUTED_EXPERT_GRAPH.json") or {}
     if graph_component.get("status") != "PASSED" or graph_component.get("promotion_allowed") is not False:
         blockers.append("Flash-Next bounded Noetic routed-expert graph component is absent or incomplete.")
@@ -534,6 +554,7 @@ def build_handoff(repo_root: Optional[str | os.PathLike[str]] = None, *, emit: O
                 "flash_loader_roundtrip": loader_roundtrip.get("status"),
                 "flash_kernel_parity": kernel_parity.get("status"),
                 "flash_component_body": component_body.get("status"),
+                "flash_component_campaign": component_campaign.get("status"),
                 "flash_graph_component": graph_component.get("status"),
                 "modellake_supervision": lake_status,
                 "unattended_window": window_status,
@@ -558,6 +579,7 @@ def build_handoff(repo_root: Optional[str | os.PathLike[str]] = None, *, emit: O
             "watch_protected_qwen_window": f"python3 -m hcli agentos protected-bench-watch --repo-root {repo} --profile {repo / 'hcli/hawking-native.sealed-3.14.json'} --resident-binary {repo / '.hcli/instrumented/ascension_qwen38_resident'} --duration-s 21600 --interval-s 60",
             "build_flash_executable_scaffold": f"python3 -m hcli agentos flash-executable --repo-root {repo}",
             "run_flash_component_body": f"python3 -m hcli agentos flash-component-body --root /Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc --repo-root {repo} --emit {repo / 'receipts/headless/FLASH_NOETIC_ROUTED_EXPERT_BODY.json'}",
+            "run_flash_component_campaign": f"python3 -m hcli agentos flash-component-campaign --repo-root {repo} --emit {repo / 'receipts/headless/FLASH_NOETIC_ROUTED_EXPERT_COMPONENT_CAMPAIGN.json'}",
             "run_flash_graph_component": f"python3 -m hcli agentos flash-graph-component --repo-root {repo} --emit {repo / 'receipts/headless/FLASH_NOETIC_ROUTED_EXPERT_GRAPH.json'}",
             "run_flash_tensor_probe": f"python3 -m hcli agentos flash-tensor-probe --emit {repo / 'receipts/headless/FLASH_FIRST_TENSOR_PROBE.json'}",
             "run_flash_representation_experiment": f"python3 -m hcli agentos flash-representation-experiment --emit {repo / 'receipts/headless/FLASH_ROUTED_EXPERT_REPRESENTATION_EXPERIMENT.json'}",

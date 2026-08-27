@@ -179,6 +179,7 @@ def _gate_summary(workspace: Path, repo_root: Path) -> Dict[str, Any]:
     ]
     flash_body_candidates = [repo_root / "receipts" / "headless" / "FLASH_NOETIC_ROUTED_EXPERT_BODY.json"]
     flash_graph_candidates = [repo_root / "receipts" / "headless" / "FLASH_NOETIC_ROUTED_EXPERT_GRAPH.json"]
+    flash_campaign_candidates = [repo_root / "receipts" / "headless" / "FLASH_NOETIC_ROUTED_EXPERT_COMPONENT_CAMPAIGN.json"]
     recovery = None
     for path in recovery_candidates:
         value = _read_object(path)
@@ -461,6 +462,7 @@ def _gate_summary(workspace: Path, repo_root: Path) -> Dict[str, Any]:
     flash_kernel = _science_receipt(flash_kernel_candidates, fields=("source_label", "derived_label", "model_lake_manifest", "source_tensor", "noetic_descriptor", "noetic_representation", "native_loader", "native_kernel", "gpu_timing", "parity", "body_mutated", "model_loaded", "complete_system_ebpw", "flash_tps", "promotion_allowed", "claim_boundary", "next_action"))
     flash_body = _science_receipt(flash_body_candidates, fields=("source_identity", "source_block", "representation_descriptor", "body", "native_loader", "source_guard", "source_independent", "candidate_body_persisted", "whole_model_capability", "whole_model_runtime", "complete_system_ebpw", "flash_tps", "promotion_allowed", "claim_boundary", "next_action"))
     flash_graph = _science_receipt(flash_graph_candidates, fields=("component_status", "semantic_type", "compiler_stage", "candidate_id", "source_identity", "source_backed", "candidate_body_persisted", "whole_model_capability", "complete_token_runtime", "physical_graph", "noetic_ir", "graph_fingerprint", "promotion_allowed", "claim_boundary", "next_action"))
+    flash_campaign = _science_receipt(flash_campaign_candidates, fields=("component_status", "semantic_type", "compiler_stage", "candidate_id", "source_identity", "component_count", "component_windows", "components", "source_independent_execution", "candidate_body_persisted", "whole_model_capability", "complete_token_runtime", "physical_graph", "noetic_ir", "promotion_allowed", "claim_boundary", "next_action"))
     return {
         "recovery_gate": {
             **(recovery or {
@@ -585,6 +587,7 @@ def _gate_summary(workspace: Path, repo_root: Path) -> Dict[str, Any]:
         "flash_kernel_parity": flash_kernel or {"status": "NOT_RUN", "receipt_path": None, "schema": None, "source_label": None, "derived_label": None, "model_lake_manifest": None, "source_tensor": None, "noetic_descriptor": None, "noetic_representation": None, "native_loader": None, "native_kernel": None, "gpu_timing": None, "parity": None, "body_mutated": None, "model_loaded": None, "complete_system_ebpw": None, "flash_tps": None, "promotion_allowed": None, "claim_boundary": None, "next_action": None},
         "flash_graph_component": flash_graph or {"status": "NOT_RUN", "receipt_path": None, "schema": None, "component_status": "NOT_COMPILED", "semantic_type": None, "compiler_stage": None, "candidate_id": None, "source_identity": None, "source_backed": None, "candidate_body_persisted": None, "whole_model_capability": None, "complete_token_runtime": None, "physical_graph": None, "noetic_ir": None, "graph_fingerprint": None, "promotion_allowed": False, "claim_boundary": None, "next_action": None},
         "flash_component_body": flash_body or {"status": "NOT_RUN", "receipt_path": None, "schema": None, "source_identity": None, "source_block": None, "representation_descriptor": None, "body": None, "native_loader": None, "source_guard": None, "source_independent": None, "candidate_body_persisted": None, "whole_model_capability": None, "whole_model_runtime": None, "complete_system_ebpw": None, "flash_tps": None, "promotion_allowed": False, "claim_boundary": None, "next_action": None},
+        "flash_component_campaign": flash_campaign or {"status": "NOT_RUN", "receipt_path": None, "schema": None, "component_status": "NOT_COMPILED", "semantic_type": None, "compiler_stage": None, "candidate_id": None, "source_identity": None, "component_count": 0, "component_windows": [], "components": [], "source_independent_execution": None, "candidate_body_persisted": None, "whole_model_capability": None, "complete_token_runtime": None, "physical_graph": None, "noetic_ir": None, "promotion_allowed": False, "claim_boundary": None, "next_action": None},
         "production_provider_gate": "NOT_RUN",
     }
 
@@ -663,6 +666,8 @@ def build_program_checkpoint(
         blockers.append("bounded Flash-Next native noetic kernel parity has not been persisted")
     if gates["flash_component_body"].get("status") != "PASSED" or gates["flash_component_body"].get("source_independent") is not True or gates["flash_component_body"].get("candidate_body_persisted") is not True:
         blockers.append("bounded Flash-Next source-independent component body has not been persisted")
+    if gates["flash_component_campaign"].get("status") != "PASSED" or gates["flash_component_campaign"].get("source_independent_execution") is not True or gates["flash_component_campaign"].get("candidate_body_persisted") is not True:
+        blockers.append("bounded Flash-Next multi-component Noetic campaign has not been compiled")
     if gates["qwen27_runtime_identity"].get("status") != "PASSED":
         blockers.append("Qwen27 current-versus-historical runtime identity archaeology has not been persisted")
     if gates["qwen27_mlp_diagnostic"].get("status") != "PASSED":
@@ -749,6 +754,7 @@ def build_program_checkpoint(
             "flash_loader_roundtrip": gates["flash_loader_roundtrip"]["status"],
             "flash_kernel_parity": gates["flash_kernel_parity"]["status"],
             "flash_component_body": gates["flash_component_body"]["status"],
+            "flash_component_campaign": gates["flash_component_campaign"]["status"],
             "flash_graph_component": gates["flash_graph_component"]["status"],
         },
         "blockers": blockers,
@@ -758,7 +764,7 @@ def build_program_checkpoint(
             "persist research provenance and protected benchmark receipts",
             "qualify additional providers only after their own deterministic verification closes",
             "continue the bounded protected Qwen watcher; do not treat contaminated A/B telemetry as promotion evidence",
-            "extend the source-independent Flash Noetic routed-expert body across additional blocks and compose remaining organs; fill actual EBPW/token-ns fields only from native protected receipts",
+            "extend the source-independent Flash Noetic campaign across additional blocks and compose remaining organs; fill actual EBPW/token-ns fields only from native protected receipts",
         ],
         "claim_boundary": "This checkpoint is an evidence census; it does not certify a model, runtime, hardware accelerator, or unattended sovereignty.",
     }

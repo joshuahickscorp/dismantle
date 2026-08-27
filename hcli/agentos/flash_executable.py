@@ -43,6 +43,7 @@ DEFAULT_LOADER_ROUNDTRIP = "FLASH_ROUTED_EXPERT_LOADER_ROUNDTRIP.json"
 DEFAULT_KERNEL_PARITY = "FLASH_NOETIC_Q4_KERNEL_PARITY.json"
 DEFAULT_BODY_KERNEL_PARITY = "FLASH_NOETIC_Q4_BODY_KERNEL_PARITY.json"
 DEFAULT_GRAPH_COMPONENT = "FLASH_NOETIC_ROUTED_EXPERT_GRAPH.json"
+DEFAULT_COMPONENT_CAMPAIGN = "FLASH_NOETIC_ROUTED_EXPERT_COMPONENT_CAMPAIGN.json"
 DEFAULT_EXECUTABLE = "FLASH_NEXT_NOETIC_EXECUTABLE.json"
 DEFAULT_EBPW = "FLASH_EBPW_BUDGET.json"
 DEFAULT_TOKEN_NS = "FLASH_TOKEN_NS_BUDGET.json"
@@ -426,6 +427,51 @@ def _graph_component_summary(
     }
 
 
+def _component_campaign_summary(
+    repo: Path,
+    receipt: Optional[str | os.PathLike[str]] = None,
+) -> Dict[str, Any]:
+    """Read a bounded multi-component Noetic campaign without promoting it."""
+    path = Path(receipt).expanduser().resolve() if receipt else repo / "receipts" / "headless" / DEFAULT_COMPONENT_CAMPAIGN
+    campaign = _read_json(path)
+    if campaign is None:
+        return {
+            "status": "NOT_RUN",
+            "receipt_path": str(path),
+            "component_status": "NOT_COMPILED",
+            "component_count": 0,
+            "component_windows": [],
+            "source_independent_execution": None,
+            "candidate_body_persisted": None,
+            "whole_model_capability": "NOT_TESTED",
+            "complete_token_runtime": "NOT_TESTED",
+            "promotion_allowed": False,
+        }
+    return {
+        "status": campaign.get("status"),
+        "receipt_path": str(path),
+        "receipt_sha256": _sha256(path),
+        "schema": campaign.get("schema"),
+        "nomenclature_version": campaign.get("nomenclature_version"),
+        "semantic_type": campaign.get("semantic_type"),
+        "compiler_stage": campaign.get("compiler_stage"),
+        "component_status": campaign.get("component_status"),
+        "component_count": campaign.get("component_count"),
+        "component_windows": campaign.get("component_windows"),
+        "components": campaign.get("components"),
+        "source_identity": campaign.get("source_identity"),
+        "source_independent_execution": campaign.get("source_independent_execution"),
+        "candidate_body_persisted": campaign.get("candidate_body_persisted"),
+        "physical_graph": campaign.get("physical_graph"),
+        "noetic_ir": campaign.get("noetic_ir"),
+        "whole_model_capability": campaign.get("whole_model_capability"),
+        "complete_token_runtime": campaign.get("complete_token_runtime"),
+        "promotion_allowed": campaign.get("promotion_allowed"),
+        "claim_boundary": campaign.get("claim_boundary"),
+        "next_action": campaign.get("next_action"),
+    }
+
+
 def _primary_organs(science: Mapping[str, Any]) -> list[Mapping[str, Any]]:
     rows = science.get("organ_graph")
     if not isinstance(rows, list):
@@ -783,6 +829,7 @@ def _executable_manifest(
     loader_roundtrip: Mapping[str, Any],
     kernel_parity: Mapping[str, Any],
     graph_component: Mapping[str, Any],
+    component_campaign: Mapping[str, Any],
 ) -> Dict[str, Any]:
     organs = [str(row.get("organ")) for row in ebpw.get("organs") or [] if isinstance(row, Mapping)]
     return {
@@ -816,6 +863,8 @@ def _executable_manifest(
             "bounded_native_kernel_parity_receipt": kernel_parity.get("receipt_path"),
             "bounded_noetic_graph_component_observed": graph_component.get("status") == "PASSED",
             "bounded_noetic_graph_component_receipt": graph_component.get("receipt_path"),
+            "bounded_component_campaign_observed": component_campaign.get("status") == "PASSED",
+            "bounded_component_campaign_receipt": component_campaign.get("receipt_path"),
             "bounded_component_body_loaded": kernel_parity.get("source_independent_execution") is True,
             "bounded_component_body_receipt": (kernel_parity.get("candidate_body") or {}).get("receipt_path"),
             "weight_body_loaded": False,
@@ -827,6 +876,7 @@ def _executable_manifest(
         "source_loader_roundtrip": loader_roundtrip,
         "source_kernel_parity": kernel_parity,
         "source_graph_component": graph_component,
+        "source_component_campaign": component_campaign,
         "chosen_representation": ebpw.get("chosen_representation"),
         "native_loader": {
             "status": "NOT_IMPLEMENTED",
@@ -870,10 +920,27 @@ def _executable_manifest(
                 "candidate_body": kernel_parity.get("candidate_body"),
                 "label": DERIVED,
             },
+            "bounded_campaign_evidence": {
+                "status": component_campaign.get("status"),
+                "receipt": component_campaign.get("receipt_path"),
+                "component_count": component_campaign.get("component_count"),
+                "component_windows": component_campaign.get("component_windows"),
+                "physical_graph_fingerprint": (component_campaign.get("physical_graph") or {}).get("fingerprint"),
+                "source_independent_execution": component_campaign.get("source_independent_execution"),
+                "candidate_body_persisted": component_campaign.get("candidate_body_persisted"),
+                "scope": "bounded routed-expert body campaign only; not complete Flash execution",
+                "label": DERIVED,
+            },
             "dense_rematerialization": "FORBIDDEN_BY_FINAL_RUNTIME_POLICY",
         },
         "graph_runtime": {
-            "status": "BOUNDED_COMPONENT_COMPILED" if graph_component.get("status") == "PASSED" else "PLAN_ONLY",
+            "status": (
+                "BOUNDED_MULTI_COMPONENT_COMPILED"
+                if component_campaign.get("status") == "PASSED"
+                else "BOUNDED_COMPONENT_COMPILED"
+                if graph_component.get("status") == "PASSED"
+                else "PLAN_ONLY"
+            ),
             "organ_order": organs,
             "graph_source": "pinned header organ graph; bounded component body-backed when the native body-load receipt is present, while remaining runtime edges still require implementation",
             "bounded_component": {
@@ -885,6 +952,17 @@ def _executable_manifest(
                 "whole_model_capability": graph_component.get("whole_model_capability"),
                 "complete_token_runtime": graph_component.get("complete_token_runtime"),
                 "candidate_body_persisted": graph_component.get("candidate_body_persisted"),
+            },
+            "component_campaign": {
+                "status": component_campaign.get("component_status"),
+                "receipt_path": component_campaign.get("receipt_path"),
+                "fingerprint": (component_campaign.get("physical_graph") or {}).get("fingerprint"),
+                "component_count": component_campaign.get("component_count"),
+                "component_windows": component_campaign.get("component_windows"),
+                "source_independent_execution": component_campaign.get("source_independent_execution"),
+                "candidate_body_persisted": component_campaign.get("candidate_body_persisted"),
+                "whole_model_capability": component_campaign.get("whole_model_capability"),
+                "complete_token_runtime": component_campaign.get("complete_token_runtime"),
             },
             "text_only_vision_bypass": "CONDITIONAL_AND_UNPROVEN",
             "mtp_accept_reject": "EXPLICIT_REQUIRED_EDGE",
@@ -906,12 +984,19 @@ def _executable_manifest(
             "complete_wall_ns_per_accepted_token": None,
         },
         "runtime_genome": {
-            "status": "BOUNDED_COMPONENT_ONLY" if graph_component.get("status") == "PASSED" else "NOT_COMPILED",
+            "status": (
+                "BOUNDED_MULTI_COMPONENT_ONLY"
+                if component_campaign.get("status") == "PASSED"
+                else "BOUNDED_COMPONENT_ONLY"
+                if graph_component.get("status") == "PASSED"
+                else "NOT_COMPILED"
+            ),
             "executable_sha256": None,
             "loader_sha256": None,
             "kernel_source_hashes": [],
             "kernel_binary_hashes": [],
             "graph_fingerprint": graph_component.get("graph_fingerprint"),
+            "component_campaign_fingerprint": (component_campaign.get("physical_graph") or {}).get("fingerprint"),
             "device_identity": None,
             "compiler_identity": None,
             "representation_manifest_sha256": None,
@@ -941,6 +1026,7 @@ def run_flash_executable_scaffold(
     loader_roundtrip_receipt: Optional[str | os.PathLike[str]] = None,
     kernel_parity_receipt: Optional[str | os.PathLike[str]] = None,
     graph_component_receipt: Optional[str | os.PathLike[str]] = None,
+    component_campaign_receipt: Optional[str | os.PathLike[str]] = None,
     emit: Optional[str | os.PathLike[str]] = None,
     ebpw_emit: Optional[str | os.PathLike[str]] = None,
     token_ns_emit: Optional[str | os.PathLike[str]] = None,
@@ -976,9 +1062,10 @@ def run_flash_executable_scaffold(
         loader_roundtrip = _loader_roundtrip_summary(repo, loader_roundtrip_receipt)
         kernel_parity = _kernel_parity_summary(repo, kernel_parity_receipt)
         graph_component = _graph_component_summary(repo, graph_component_receipt)
+        component_campaign = _component_campaign_summary(repo, component_campaign_receipt)
         ebpw = _ebpw_budget(science, source, tensor_probe, representation_experiment, transform_parity, loader_roundtrip, kernel_parity)
         token_ns = _token_ns_budget(science, source)
-        manifest = _executable_manifest(science, source, lake, ebpw, token_ns, tensor_probe, representation_experiment, transform_parity, loader_roundtrip, kernel_parity, graph_component)
+        manifest = _executable_manifest(science, source, lake, ebpw, token_ns, tensor_probe, representation_experiment, transform_parity, loader_roundtrip, kernel_parity, graph_component, component_campaign)
         atomic_write_json(ebpw_path, ebpw)
         atomic_write_json(token_path, token_ns)
         manifest["ebpw_budget_receipt"] = str(ebpw_path)
@@ -1020,6 +1107,17 @@ def run_flash_executable_scaffold(
                     )
                 ),
                 "bounded_graph_component_refuses_promotion": graph_component.get("promotion_allowed") is False,
+                "bounded_component_campaign_is_explicit": component_campaign.get("status") in {"NOT_RUN", "PASSED"},
+                "bounded_component_campaign_does_not_claim_whole_model": component_campaign.get("whole_model_capability") in {None, "NOT_TESTED"} and component_campaign.get("complete_token_runtime") in {None, "NOT_TESTED"},
+                "bounded_component_campaign_body_is_scoped": (
+                    component_campaign.get("status") == "NOT_RUN"
+                    or (
+                        component_campaign.get("status") == "PASSED"
+                        and component_campaign.get("source_independent_execution") is True
+                        and component_campaign.get("candidate_body_persisted") is True
+                    )
+                ),
+                "bounded_component_campaign_refuses_promotion": component_campaign.get("promotion_allowed") is False,
                 "native_loader_status_explicit": manifest.get("native_loader", {}).get("status") == "NOT_IMPLEMENTED",
                 "native_kernels_status_explicit": manifest.get("native_kernels", {}).get("status") == "PLAN_ONLY",
                 "complete_token_timing_not_fabricated": manifest.get("complete_token_timing", {}).get("accepted_tps") is None,
@@ -1051,6 +1149,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser.add_argument("--loader-roundtrip-receipt")
     parser.add_argument("--kernel-parity-receipt")
     parser.add_argument("--graph-component-receipt")
+    parser.add_argument("--component-campaign-receipt")
     parser.add_argument("--emit")
     parser.add_argument("--ebpw-emit")
     parser.add_argument("--token-ns-emit")
@@ -1064,6 +1163,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         loader_roundtrip_receipt=args.loader_roundtrip_receipt,
         kernel_parity_receipt=args.kernel_parity_receipt,
         graph_component_receipt=args.graph_component_receipt,
+        component_campaign_receipt=args.component_campaign_receipt,
         emit=args.emit,
         ebpw_emit=args.ebpw_emit,
         token_ns_emit=args.token_ns_emit,

@@ -190,6 +190,11 @@ def _validate(
         "parity": parity,
         "identities": identities,
         "transform_candidate": transform_candidate,
+        "component_window": {
+            "expert_index": int(kernel_source.get("selected_expert", 0) or 0),
+            "row_start": int(kernel_source.get("selected_row_start", 0) or 0),
+            "row_count": int(kernel_source.get("selected_row_count", 128) or 128),
+        },
         "source_independent_execution": native_loader.get("source_independent_execution") is True,
         "candidate_body_persisted": native_loader.get("candidate_body_persisted") is True,
         "loader_ref": _receipt_ref(loader_path, loader),
@@ -204,7 +209,10 @@ def _component_graph(validation: Mapping[str, Any]) -> Dict[str, Any]:
     source = validation["source_tensor"]
     representation = validation["representation"]
     kernel = validation["native_kernel"]
-    source_identity = validation["identities"]["kernel"]
+    window = validation["component_window"]
+    expert_index = window["expert_index"]
+    row_start = window["row_start"]
+    row_count = window["row_count"]
     source_independent = bool(validation.get("source_independent_execution"))
     nodes = [
         {
@@ -212,9 +220,9 @@ def _component_graph(validation: Mapping[str, Any]) -> Dict[str, Any]:
             "stage": "SourceSpecimen",
             "kind": "verified_source_reference",
             "tensor_name": source.get("tensor_name"),
-            "expert": 0,
-            "row_start": 0,
-            "row_count": 128,
+            "expert": expert_index,
+            "row_start": row_start,
+            "row_count": row_count,
             "source_block_bytes": validation["kernel_source"].get("selected_block_bytes"),
             "source_backed": True,
             "execution_input": False,
@@ -226,6 +234,9 @@ def _component_graph(validation: Mapping[str, Any]) -> Dict[str, Any]:
             "stage": "NoeticCompiler",
             "kind": "source_independent_component_body",
             "candidate_id": candidate_id,
+            "expert_index": expert_index,
+            "row_start": row_start,
+            "row_count": row_count,
             "body_persisted": True,
             "execution_input": True,
         })
@@ -236,6 +247,9 @@ def _component_graph(validation: Mapping[str, Any]) -> Dict[str, Any]:
             "kind": "serialized_representation_descriptor",
             "schema": descriptor.get("schema"),
             "candidate_id": candidate_id,
+            "expert_index": expert_index,
+            "row_start": row_start,
+            "row_count": row_count,
             "descriptor_sha256": validation["native_loader"].get("descriptor_sha256"),
             "loader_status": validation["native_loader"].get("status"),
             "execution_input": True,
@@ -245,6 +259,9 @@ def _component_graph(validation: Mapping[str, Any]) -> Dict[str, Any]:
             "stage": "HawkingAccelerator",
             "kind": "native_kernel_dispatch",
             "kernel": kernel.get("kernel"),
+            "expert_index": expert_index,
+            "row_start": row_start,
+            "row_count": row_count,
             "dispatches_per_sample": kernel.get("dispatches_per_sample"),
             "registered": kernel.get("kernel_registered"),
             "parity_within_tolerance": validation["parity"].get("within_tolerance"),
@@ -254,6 +271,9 @@ def _component_graph(validation: Mapping[str, Any]) -> Dict[str, Any]:
             "id": "bounded_component_output",
             "stage": "NoeticExecutableCandidate",
             "kind": "source_block_matvec_output",
+            "expert_index": expert_index,
+            "row_start": row_start,
+            "row_count": row_count,
             "whole_model": False,
             "complete_token": False,
         },
@@ -286,12 +306,13 @@ def _component_graph(validation: Mapping[str, Any]) -> Dict[str, Any]:
         provider={"provider": "apple-metal", "kernel": kernel.get("kernel")},
         devices=("apple_metal",),
     )
-    physical["component_scope"] = "one routed-expert source block; not complete Flash execution"
+    physical["component_scope"] = f"one routed-expert source block expert={expert_index} rows={row_start}:{row_start + row_count}; not complete Flash execution"
     physical["computation"] = nodes
     physical["dependencies"] = edges
     physical["representation"] = {
         "descriptor_schema": descriptor.get("schema"),
         "candidate_id": candidate_id,
+        "component_window": window,
         "effective_bits_per_value": representation.get("effective_bits_per_value"),
         "candidate_bytes_full_tensor": validation["transform_candidate"].get("candidate_bytes"),
         "candidate_body_persisted": validation["candidate_body_persisted"],
@@ -327,6 +348,7 @@ def _compile_report(
         "repo": REPO_ID,
         "pinned_revision": PINNED_REVISION,
         "candidate_id": validation["candidate_id"],
+        "component_window": validation["component_window"],
         "source_identity": validation["identities"].get("kernel"),
         "source_backed": not validation["source_independent_execution"],
         "source_independent_execution": validation["source_independent_execution"],

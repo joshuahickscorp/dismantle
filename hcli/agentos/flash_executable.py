@@ -46,6 +46,7 @@ DEFAULT_TRANSFORM_PARITY = "FLASH_FULL_TENSOR_TRANSFORM_PARITY.json"
 DEFAULT_LOADER_ROUNDTRIP = "FLASH_ROUTED_EXPERT_LOADER_ROUNDTRIP.json"
 DEFAULT_KERNEL_PARITY = "FLASH_NOETIC_Q4_KERNEL_PARITY.json"
 DEFAULT_BODY_KERNEL_PARITY = "FLASH_NOETIC_Q4_BODY_KERNEL_PARITY.json"
+DEFAULT_SHARED_EXPERT_KERNEL_PARITY = "FLASH_NOETIC_Q4_MATRIX_KERNEL_SHARED_EXPERT_GATE_L0_R0_128_PARITY.json"
 DEFAULT_GRAPH_COMPONENT = "FLASH_NOETIC_ROUTED_EXPERT_GRAPH.json"
 DEFAULT_COMPONENT_CAMPAIGN = "FLASH_NOETIC_ROUTED_EXPERT_COMPONENT_CAMPAIGN.json"
 DEFAULT_ROUTER_GRAPH = "FLASH_NOETIC_ROUTER_GRAPH.json"
@@ -385,6 +386,82 @@ def _kernel_parity_summary(
         "complete_system_ebpw": kernel.get("complete_system_ebpw"),
         "flash_tps": kernel.get("flash_tps"),
         "promotion_allowed": kernel.get("promotion_allowed"),
+        "claim_boundary": kernel.get("claim_boundary"),
+        "next_action": kernel.get("next_action"),
+    }
+
+
+def _shared_expert_kernel_parity_summary(
+    repo: Path,
+    receipt: Optional[str | os.PathLike[str]] = None,
+) -> Dict[str, Any]:
+    """Read the bounded shared-expert matrix parity without widening claims.
+
+    The shared expert is a rank-2 matrix component, so it does not fit the
+    routed-expert component campaign's rank-3 window contract.  Keep its
+    native parity as a separate evidence lane and make the executable
+    manifest consume it explicitly once the queued job completes.
+    """
+    path = (
+        Path(receipt).expanduser().resolve()
+        if receipt
+        else repo / "receipts" / "headless" / DEFAULT_SHARED_EXPERT_KERNEL_PARITY
+    )
+    kernel = _read_json(path)
+    if kernel is None:
+        return {
+            "status": "NOT_RUN",
+            "receipt_path": str(path),
+            "source_tensor": None,
+            "noetic_descriptor": None,
+            "noetic_representation": None,
+            "native_loader": None,
+            "native_kernel": None,
+            "gpu_timing": None,
+            "parity": None,
+            "candidate_body": None,
+            "source_independent_execution": None,
+            "candidate_body_persisted": None,
+            "whole_model_capability": "NOT_TESTED",
+            "whole_model_runtime": "NOT_TESTED",
+            "promotion_allowed": False,
+        }
+    native_loader = (
+        kernel.get("native_loader")
+        if isinstance(kernel.get("native_loader"), Mapping)
+        else {}
+    )
+    native_kernel = (
+        kernel.get("native_kernel")
+        if isinstance(kernel.get("native_kernel"), Mapping)
+        else {}
+    )
+    return {
+        "status": kernel.get("status"),
+        "receipt_path": str(path),
+        "receipt_sha256": _sha256(path),
+        "repo": kernel.get("repo"),
+        "pinned_revision": kernel.get("pinned_revision"),
+        "root": kernel.get("root"),
+        "model_lake_manifest": kernel.get("model_lake_manifest"),
+        "source_tensor": kernel.get("source_tensor"),
+        "noetic_descriptor": kernel.get("noetic_descriptor"),
+        "noetic_representation": kernel.get("noetic_representation"),
+        "native_loader": native_loader,
+        "native_kernel": native_kernel,
+        "gpu_timing": kernel.get("gpu_timing"),
+        "parity": kernel.get("parity"),
+        "input": kernel.get("input"),
+        "candidate_body": kernel.get("candidate_body"),
+        "body_mutated": kernel.get("body_mutated"),
+        "model_loaded": kernel.get("model_loaded"),
+        "source_independent_execution": native_loader.get("source_independent_execution"),
+        "candidate_body_persisted": native_loader.get("candidate_body_persisted"),
+        "whole_model_capability": native_kernel.get("whole_model_capability", "NOT_TESTED"),
+        "whole_model_runtime": native_kernel.get("whole_model_runtime", "NOT_TESTED"),
+        "complete_system_ebpw": kernel.get("complete_system_ebpw"),
+        "flash_tps": kernel.get("flash_tps"),
+        "promotion_allowed": kernel.get("promotion_allowed", False),
         "claim_boundary": kernel.get("claim_boundary"),
         "next_action": kernel.get("next_action"),
     }
@@ -967,6 +1044,7 @@ def _executable_manifest(
     transform_parity: Mapping[str, Any],
     loader_roundtrip: Mapping[str, Any],
     kernel_parity: Mapping[str, Any],
+    shared_expert_kernel_parity: Mapping[str, Any],
     graph_component: Mapping[str, Any],
     component_campaign: Mapping[str, Any],
     router_graph: Mapping[str, Any],
@@ -1003,6 +1081,8 @@ def _executable_manifest(
             "bounded_loader_roundtrip_receipt": loader_roundtrip.get("receipt_path"),
             "bounded_native_kernel_parity_observed": kernel_parity.get("status") == "PASSED",
             "bounded_native_kernel_parity_receipt": kernel_parity.get("receipt_path"),
+            "bounded_shared_expert_kernel_parity_observed": shared_expert_kernel_parity.get("status") == "PASSED",
+            "bounded_shared_expert_kernel_parity_receipt": shared_expert_kernel_parity.get("receipt_path"),
             "bounded_noetic_graph_component_observed": graph_component.get("status") == "PASSED",
             "bounded_noetic_graph_component_receipt": graph_component.get("receipt_path"),
             "bounded_component_campaign_observed": component_campaign.get("status") == "PASSED",
@@ -1023,6 +1103,7 @@ def _executable_manifest(
         "source_transform_parity": transform_parity,
         "source_loader_roundtrip": loader_roundtrip,
         "source_kernel_parity": kernel_parity,
+        "source_shared_expert_kernel_parity": shared_expert_kernel_parity,
         "source_graph_component": graph_component,
         "source_component_campaign": component_campaign,
         "source_router_graph": router_graph,
@@ -1080,6 +1161,19 @@ def _executable_manifest(
                 "source_independent_execution": component_campaign.get("source_independent_execution"),
                 "candidate_body_persisted": component_campaign.get("candidate_body_persisted"),
                 "scope": "bounded routed-expert body campaign only; not complete Flash execution",
+                "label": DERIVED,
+            },
+            "bounded_shared_expert_matrix_evidence": {
+                "status": shared_expert_kernel_parity.get("status"),
+                "receipt": shared_expert_kernel_parity.get("receipt_path"),
+                "source_tensor": shared_expert_kernel_parity.get("source_tensor"),
+                "native_loader": shared_expert_kernel_parity.get("native_loader"),
+                "native_kernel": shared_expert_kernel_parity.get("native_kernel"),
+                "gpu_timing": shared_expert_kernel_parity.get("gpu_timing"),
+                "parity": shared_expert_kernel_parity.get("parity"),
+                "source_independent_execution": shared_expert_kernel_parity.get("source_independent_execution"),
+                "candidate_body_persisted": shared_expert_kernel_parity.get("candidate_body_persisted"),
+                "scope": "one shared-expert rank-2 matrix window only; not complete Flash execution",
                 "label": DERIVED,
             },
             "bounded_router_matrix_evidence": {
@@ -1212,6 +1306,7 @@ def _executable_manifest(
             "router_graph_fingerprint": (router_graph.get("physical_graph") or {}).get("fingerprint"),
             "router_selection_fingerprint": (router_selection.get("physical_graph") or {}).get("fingerprint"),
             "router_representation_ab_fingerprint": (router_representation_ab.get("physical_graph") or {}).get("fingerprint"),
+            "shared_expert_kernel_parity_receipt": shared_expert_kernel_parity.get("receipt_path"),
             "device_identity": None,
             "compiler_identity": None,
             "representation_manifest_sha256": None,
@@ -1227,7 +1322,7 @@ def _executable_manifest(
             "hidden_dense_rematerialization": False,
         }),
         "promotion_allowed": False,
-        "claim_boundary": "FLASH_NEXT_NOETIC_EXECUTABLE remains a scaffold. It records full-tensor representation, one bounded source-independent component body, bounded descriptor-loader, and bounded native-kernel evidence, not a whole-model loader, capability, complete-system EBPW, or Flash TPS claim.",
+        "claim_boundary": "FLASH_NEXT_NOETIC_EXECUTABLE remains a scaffold. It records full-tensor representation, bounded source-independent component bodies, bounded descriptor-loader, and bounded native-kernel evidence, not a whole-model loader, capability, complete-system EBPW, or Flash TPS claim.",
     }
 
 
@@ -1240,6 +1335,7 @@ def run_flash_executable_scaffold(
     transform_parity_receipt: Optional[str | os.PathLike[str]] = None,
     loader_roundtrip_receipt: Optional[str | os.PathLike[str]] = None,
     kernel_parity_receipt: Optional[str | os.PathLike[str]] = None,
+    shared_expert_kernel_parity_receipt: Optional[str | os.PathLike[str]] = None,
     graph_component_receipt: Optional[str | os.PathLike[str]] = None,
     component_campaign_receipt: Optional[str | os.PathLike[str]] = None,
     router_graph_receipt: Optional[str | os.PathLike[str]] = None,
@@ -1279,6 +1375,7 @@ def run_flash_executable_scaffold(
         transform_parity = _transform_parity_summary(repo, transform_parity_receipt)
         loader_roundtrip = _loader_roundtrip_summary(repo, loader_roundtrip_receipt)
         kernel_parity = _kernel_parity_summary(repo, kernel_parity_receipt)
+        shared_expert_kernel_parity = _shared_expert_kernel_parity_summary(repo, shared_expert_kernel_parity_receipt)
         graph_component = _graph_component_summary(repo, graph_component_receipt)
         component_campaign = _component_campaign_summary(repo, component_campaign_receipt)
         router_graph = _router_graph_summary(repo, router_graph_receipt)
@@ -1286,7 +1383,7 @@ def run_flash_executable_scaffold(
         router_representation_ab = _router_representation_ab_summary(repo, router_representation_ab_receipt)
         ebpw = _ebpw_budget(science, source, tensor_probe, representation_experiment, transform_parity, loader_roundtrip, kernel_parity)
         token_ns = _token_ns_budget(science, source)
-        manifest = _executable_manifest(science, source, lake, ebpw, token_ns, tensor_probe, representation_experiment, transform_parity, loader_roundtrip, kernel_parity, graph_component, component_campaign, router_graph, router_selection, router_representation_ab)
+        manifest = _executable_manifest(science, source, lake, ebpw, token_ns, tensor_probe, representation_experiment, transform_parity, loader_roundtrip, kernel_parity, shared_expert_kernel_parity, graph_component, component_campaign, router_graph, router_selection, router_representation_ab)
         atomic_write_json(ebpw_path, ebpw)
         atomic_write_json(token_path, token_ns)
         manifest["ebpw_budget_receipt"] = str(ebpw_path)
@@ -1317,6 +1414,10 @@ def run_flash_executable_scaffold(
                 "bounded_kernel_parity_does_not_claim_whole_model": kernel_parity.get("whole_model_capability") == "NOT_TESTED" and kernel_parity.get("whole_model_runtime") == "NOT_TESTED",
                 "bounded_kernel_parity_does_not_mutate_source": kernel_parity.get("body_mutated") in {None, False},
                 "bounded_native_descriptor_load_is_explicit": (kernel_parity.get("native_loader") or {}).get("status") in {None, "NOT_RUN", "BOUNDED_NOETIC_DESCRIPTOR_LOAD", "BOUNDED_NOETIC_DESCRIPTOR_AND_BODY_LOAD"},
+                "bounded_shared_expert_kernel_parity_is_explicit": shared_expert_kernel_parity.get("status") in {"NOT_RUN", "PASSED"},
+                "bounded_shared_expert_kernel_parity_does_not_claim_whole_model": shared_expert_kernel_parity.get("whole_model_capability") == "NOT_TESTED" and shared_expert_kernel_parity.get("whole_model_runtime") == "NOT_TESTED",
+                "bounded_shared_expert_kernel_parity_does_not_mutate_source": shared_expert_kernel_parity.get("body_mutated") in {None, False},
+                "bounded_shared_expert_kernel_parity_refuses_promotion": shared_expert_kernel_parity.get("promotion_allowed") is False,
                 "bounded_graph_component_is_explicit": graph_component.get("status") in {"NOT_RUN", "PASSED"},
                 "bounded_graph_component_does_not_claim_whole_model": graph_component.get("whole_model_capability") in {None, "NOT_TESTED"} and graph_component.get("complete_token_runtime") in {None, "NOT_TESTED"},
                 "bounded_graph_component_body_is_scoped": (
@@ -1396,6 +1497,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser.add_argument("--transform-parity-receipt")
     parser.add_argument("--loader-roundtrip-receipt")
     parser.add_argument("--kernel-parity-receipt")
+    parser.add_argument("--shared-expert-kernel-parity-receipt")
     parser.add_argument("--graph-component-receipt")
     parser.add_argument("--component-campaign-receipt")
     parser.add_argument("--router-graph-receipt")
@@ -1413,6 +1515,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         transform_parity_receipt=args.transform_parity_receipt,
         loader_roundtrip_receipt=args.loader_roundtrip_receipt,
         kernel_parity_receipt=args.kernel_parity_receipt,
+        shared_expert_kernel_parity_receipt=args.shared_expert_kernel_parity_receipt,
         graph_component_receipt=args.graph_component_receipt,
         component_campaign_receipt=args.component_campaign_receipt,
         router_graph_receipt=args.router_graph_receipt,
@@ -1426,7 +1529,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     return 0 if report.get("status") == "PASSED" else 1
 
 
-__all__ = ["DEFAULT_KERNEL_PARITY", "DEFAULT_LOADER_ROUNDTRIP", "DEFAULT_REPRESENTATION_EXPERIMENT", "DEFAULT_REPRESENTATION_REPLICATION", "DEFAULT_ROUTER_REPRESENTATION_AB", "DEFAULT_ROUTER_SELECTION", "DEFAULT_TENSOR_PROBE", "DEFAULT_TRANSFORM_PARITY", "EBPW_SCHEMA", "SCHEMA", "TOKEN_NS_SCHEMA", "main", "run_flash_executable_scaffold"]
+__all__ = ["DEFAULT_KERNEL_PARITY", "DEFAULT_LOADER_ROUNDTRIP", "DEFAULT_REPRESENTATION_EXPERIMENT", "DEFAULT_REPRESENTATION_REPLICATION", "DEFAULT_ROUTER_REPRESENTATION_AB", "DEFAULT_ROUTER_SELECTION", "DEFAULT_SHARED_EXPERT_KERNEL_PARITY", "DEFAULT_TENSOR_PROBE", "DEFAULT_TRANSFORM_PARITY", "EBPW_SCHEMA", "SCHEMA", "TOKEN_NS_SCHEMA", "main", "run_flash_executable_scaffold"]
 
 
 if __name__ == "__main__":

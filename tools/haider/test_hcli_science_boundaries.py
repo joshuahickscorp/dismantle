@@ -754,6 +754,54 @@ def test_flash_executable_ingests_bounded_kernel_evidence_without_promoting_it(t
     assert result["manifest"]["promotion_allowed"] is False
 
 
+def test_flash_executable_records_shared_expert_kernel_lane_without_promoting_it(tmp_path):
+    repo = tmp_path / "repo"
+    receipts = repo / "receipts" / "headless"
+    receipts.mkdir(parents=True)
+    source = "/Users/scammermike/Downloads/hawking/receipts/headless/HCLI_FLASH_NEXT_PRE_RUNTIME_SCIENCE.json"
+    shared = receipts / "shared-kernel.json"
+    shared.write_text(json.dumps({
+        "status": "PASSED",
+        "repo": "Qwen/Qwen3.8-Flash-Next",
+        "pinned_revision": PINNED_REVISION,
+        "source_tensor": {
+            "tensor_name": "model.language_model.layers.0.mlp.shared_expert.gate_proj.weight",
+            "shape": [640, 2560],
+            "selected_row_start": 0,
+            "selected_row_count": 128,
+        },
+        "native_loader": {
+            "status": "BOUNDED_NOETIC_DESCRIPTOR_AND_BODY_LOAD",
+            "source_independent_execution": True,
+            "candidate_body_persisted": True,
+        },
+        "native_kernel": {
+            "kernel": "qwen_uniform_q4_group64_matvec",
+            "whole_model_capability": "NOT_TESTED",
+            "whole_model_runtime": "NOT_TESTED",
+        },
+        "gpu_timing": {"gpu_ns_median": 456},
+        "parity": {"within_tolerance": True},
+        "body_mutated": False,
+        "model_loaded": False,
+        "promotion_allowed": False,
+    }), encoding="utf-8")
+
+    result = run_flash_executable_scaffold(
+        repo_root=repo,
+        science_receipt=source,
+        shared_expert_kernel_parity_receipt=shared,
+    )
+
+    assert result["status"] == "PASSED"
+    manifest = result["manifest"]
+    assert manifest["status"] == "SCAFFOLD_ONLY"
+    assert manifest["source_shared_expert_kernel_parity"]["status"] == "PASSED"
+    assert manifest["native_kernels"]["bounded_shared_expert_matrix_evidence"]["status"] == "PASSED"
+    assert manifest["native_kernels"]["bounded_shared_expert_matrix_evidence"]["source_independent_execution"] is True
+    assert manifest["promotion_allowed"] is False
+
+
 def test_fpga_partition_simulation_is_model_specific_and_never_hardware():
     qwen = simulate_partition("qwen27")
     flash = simulate_partition("flash-next")

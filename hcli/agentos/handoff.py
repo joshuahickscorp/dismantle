@@ -197,6 +197,7 @@ def _flash_summary(repo: Path) -> Dict[str, Any]:
 
 def _qwen27_summary(repo: Path) -> Dict[str, Any]:
     regression = _receipt(repo, "HCLI_ACCELERATOR_REGRESSION.json") or {}
+    fusion_audit = _receipt(repo, "HCLI_QWEN38_FUSION_SOURCE_AUDIT.json") or {}
     profile_path = repo / "hcli" / "hawking-native.sealed-3.14.json"
     profile = _read_object(profile_path) or {}
     current = profile.get("current_runtime") or {}
@@ -218,6 +219,14 @@ def _qwen27_summary(repo: Path) -> Dict[str, Any]:
             "qualification": regression.get("qualification"),
             "current_vs_historical": regression.get("current_vs_historical"),
             "dispatch_kernel_genome": regression.get("prior_dispatch_kernel_genome"),
+        },
+        "fusion_source_audit": {
+            "status": fusion_audit.get("status"),
+            "qualification": fusion_audit.get("qualification"),
+            "receipt_path": str(repo / "receipts" / "headless" / "HCLI_QWEN38_FUSION_SOURCE_AUDIT.json"),
+            "selected_graph": fusion_audit.get("selected_graph"),
+            "source_contract": fusion_audit.get("source_contract"),
+            "result": fusion_audit.get("result"),
         },
         "next_experiment": "Protected quiescent same-source A/B: record binary/artifact/tokenizer, representation, dispatches, complete wall/GPU timing, fallback count, capability, and cache/quiescence before accepting any optimization.",
     }
@@ -280,6 +289,7 @@ def build_handoff(repo_root: Optional[str | os.PathLike[str]] = None, *, emit: O
     promotion_status = (flash.get("promotion") or {}).get("status")
     lake_status = (lake.get("supervision") or {}).get("status")
     window_status = (window.get("final_receipt") or {}).get("status")
+    fusion_status = (_receipt(repo, "HCLI_QWEN38_FUSION_SOURCE_AUDIT.json") or {}).get("status")
     blockers = [
         "Flash-Next final promotion gate remains incomplete until every required byte/evidence field and both hard thresholds pass.",
         "Qwen27 current resident observation is a contaminated/contended regression audit, not a performance qualification.",
@@ -289,6 +299,8 @@ def build_handoff(repo_root: Optional[str | os.PathLike[str]] = None, *, emit: O
         blockers.append("Flash-Next ModelLake acquisition is still partial or not yet atomically published.")
     if window_status != "PASSED":
         blockers.append("The corrected one-hour unattended window has not yet produced a final PASSED receipt.")
+    if fusion_status != "PASSED":
+        blockers.append("Qwen3.8 fusion source semantics are not yet resolved into a source-backed dispatch consequence.")
     payload: Dict[str, Any] = {
         "schema": SCHEMA,
         "generated_at": time.time(),
@@ -318,11 +330,12 @@ def build_handoff(repo_root: Optional[str | os.PathLike[str]] = None, *, emit: O
         "modellake": lake,
         "fpga": _fpga_summary(repo),
         "verification": {
-            "full_suite": {"command": "pytest -q", "last_observed_status": "PASSED", "last_observed": "710 passed, 2 skipped, 2 warnings"},
+            "full_suite": {"command": "pytest -q", "last_observed_status": "PASSED", "last_observed": "712 passed, 2 skipped, 2 warnings"},
             "provider_focus": {"last_observed_status": "PASSED", "last_observed": "31 passed, 2 warnings"},
             "receipt_gates": {
                 "autonomy": (_receipt(repo, "HCLI_AGENTOS_AUTONOMY_GATE.json") or {}).get("status"),
                 "accelerator_regression": (_receipt(repo, "HCLI_ACCELERATOR_REGRESSION.json") or {}).get("status"),
+                "qwen38_fusion_audit": fusion_status,
                 "preboard": (_receipt(repo, "HCLI_AGENTOS_PREBOARD.json") or {}).get("status"),
                 "flash_pre_runtime": (_receipt(repo, "HCLI_FLASH_NEXT_PRE_RUNTIME_SCIENCE.json") or {}).get("status"),
                 "modellake_supervision": lake_status,
@@ -341,6 +354,7 @@ def build_handoff(repo_root: Optional[str | os.PathLike[str]] = None, *, emit: O
             "refresh_ab": f"python3 -m hcli agentos ab-scaffold --repo-root {repo} --emit {repo / 'receipts/headless/HCLI_DENSE_VS_NF_AB_SCAFFOLD.json'}",
             "refresh_fpga_preboard": f"python3 -m hcli agentos fpga-preboard --repo-root {repo} --emit {repo / 'receipts/headless/HCLI_FPGA_PREBOARD.json'}",
             "run_full_tests": "pytest -q",
+            "run_qwen38_fusion_audit": f"python3 -m hcli agentos qwen38-fusion-audit --repo-root {repo} --profile {repo / 'hcli/hawking-native.sealed-3.14.json'} --emit {repo / 'receipts/headless/HCLI_QWEN38_FUSION_SOURCE_AUDIT.json'}",
             "resume_modellake_only_if_interrupted": f"python3 -m hcli agentos background resume --workspace {repo} --repo-root {repo} {MODEL_LAKE_JOB}",
             "do_not_start": "Do not launch or promote a new Odyssey; continue only through the existing HCLI/ModelLake authorities and governed windows.",
         },

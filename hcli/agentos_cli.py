@@ -133,6 +133,14 @@ def build_parser() -> argparse.ArgumentParser:
     accelerator_regression.add_argument("--timeout-s", type=float, default=180.0)
     accelerator_regression.add_argument("--emit", default=None)
 
+    fusion_audit = sub.add_parser(
+        "qwen38-fusion-audit",
+        help="resolve Qwen3.8 fusion values and source-derived dispatch consequences without GPU work",
+    )
+    fusion_audit.add_argument("--repo-root", default=None)
+    fusion_audit.add_argument("--profile", default=None)
+    fusion_audit.add_argument("--emit", default=None)
+
     modellake = sub.add_parser(
         "modellake-census",
         help="census ModelLake and capture the pinned Flash-Next manifest without downloading",
@@ -345,6 +353,17 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 profile=args.profile,
                 emit=args.emit,
                 timeout_s=args.timeout_s,
+            )
+            _emit(report)
+            return 0 if report.get("status") == "PASSED" else 1
+
+        if args.command == "qwen38-fusion-audit":
+            from hcli.agentos.qwen38_fusion_audit import run_qwen38_fusion_source_audit
+
+            report = run_qwen38_fusion_source_audit(
+                repo_root=args.repo_root,
+                profile=args.profile,
+                emit=args.emit,
             )
             _emit(report)
             return 0 if report.get("status") == "PASSED" else 1

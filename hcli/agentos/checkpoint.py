@@ -131,6 +131,11 @@ def _gate_summary(workspace: Path, repo_root: Path) -> Dict[str, Any]:
         repo_root / "receipts" / "headless" / "accelerator-regression.json",
         repo_root / "receipts" / "headless" / "HCLI_ACCELERATOR_REGRESSION.json",
     ]
+    fusion_source_audit_candidates = [
+        workspace / ".hcli" / "receipts" / "qwen38-fusion-audit.json",
+        repo_root / "receipts" / "headless" / "qwen38-fusion-audit.json",
+        repo_root / "receipts" / "headless" / "HCLI_QWEN38_FUSION_SOURCE_AUDIT.json",
+    ]
     modellake_candidates = [
         workspace / ".hcli" / "receipts" / "modellake-census.json",
         repo_root / "receipts" / "headless" / "modellake-census.json",
@@ -279,6 +284,19 @@ def _gate_summary(workspace: Path, repo_root: Path) -> Dict[str, Any]:
                 "perf_qualified": ((value.get("experiment") or {}).get("perf_qualified"))
                 if isinstance(value.get("experiment"), dict)
                 else None,
+            }
+            break
+    fusion_source_audit = None
+    for path in fusion_source_audit_candidates:
+        value = _read_object(path)
+        if value is not None:
+            fusion_source_audit = {
+                "status": value.get("status"),
+                "qualification": value.get("qualification"),
+                "receipt_path": str(path),
+                "checks": value.get("checks"),
+                "selected_graph": value.get("selected_graph"),
+                "result": value.get("result"),
             }
             break
     modellake = None
@@ -464,6 +482,14 @@ def _gate_summary(workspace: Path, repo_root: Path) -> Dict[str, Any]:
             "bench_state": None,
             "perf_qualified": None,
         },
+        "qwen38_fusion_audit": fusion_source_audit or {
+            "status": "NOT_RUN",
+            "qualification": "NONE",
+            "receipt_path": None,
+            "checks": {},
+            "selected_graph": None,
+            "result": None,
+        },
         "modellake": modellake or {
             "status": "NOT_RUN",
             "qualification": "NONE",
@@ -540,6 +566,8 @@ def build_program_checkpoint(
         blockers.append("live native accelerator smoke receipt has not passed")
     if gates["accelerator_regression"]["status"] != "PASSED":
         blockers.append("current-vs-historical accelerator regression audit has not passed")
+    if gates["qwen38_fusion_audit"]["status"] != "PASSED":
+        blockers.append("Qwen3.8 fusion source semantics and dispatch consequence audit has not passed")
     if gates["modellake"]["status"] != "PASSED":
         blockers.append("pinned Flash-Next ModelLake census has not passed")
     if gates["flash_science"]["status"] != "PASSED":
@@ -614,6 +642,7 @@ def build_program_checkpoint(
             "native_mission": gates["native_mission_gate"]["qualification"],
             "autonomy": gates["autonomy_gate"]["qualification"],
             "accelerator_smoke": gates["accelerator_smoke"]["qualification"],
+            "qwen38_fusion_audit": gates["qwen38_fusion_audit"]["qualification"],
             "unattended_sovereignty": (
                 gates["unattended"].get("qualification")
                 if isinstance(gates.get("unattended"), dict)

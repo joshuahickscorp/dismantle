@@ -261,6 +261,87 @@ class AgentOSGeneralTest(unittest.TestCase):
         self.assertEqual(report["model_lake"]["hash_status"], "NOT_RUN")
         self.assertEqual(len(report["organ_census"]), 7)
 
+    def test_flash_science_organ_graph_is_explicit_and_non_additive_for_norms(self):
+        from hcli.agentos.flash_science import _organ_graph
+
+        config = {"text_config": {
+            "hidden_size": 4,
+            "num_hidden_layers": 2,
+            "layer_types": ["linear_attention", "full_attention"],
+            "num_experts": 4,
+            "num_experts_per_tok": 1,
+            "moe_intermediate_size": 2,
+            "shared_expert_intermediate_size": 2,
+            "vocab_size": 8,
+            "ngram_vocab_size_base": 4,
+            "ngram_size": 2,
+            "split_ngram_parts": 2,
+            "linear_key_head_dim": 2,
+            "linear_value_head_dim": 2,
+            "linear_num_key_heads": 1,
+            "linear_num_value_heads": 1,
+            "linear_conv_kernel_dim": 2,
+            "num_key_value_heads": 1,
+            "head_dim": 2,
+            "num_attention_heads": 1,
+            "indexer_budget": 2,
+            "indexer_compress_ratio": 1,
+            "indexer_head_dim": 2,
+            "indexer_kv_heads": 1,
+            "indexer_n_heads": 1,
+            "mtp": {"hybrid": True},
+        }, "vision_config": {"hidden_size": 2}}
+        names = [
+            "model.language_model.embed_tokens.weight",
+            "model.language_model.layers.0.linear_attn.in_proj_qkv.weight",
+            "model.language_model.layers.1.self_attn.q_proj.weight",
+            "model.language_model.layers.0.mlp.gate.weight",
+            "model.language_model.layers.0.mlp.experts.gate_up_proj",
+            "model.language_model.layers.0.mlp.shared_expert.gate_proj.weight",
+            "model.language_model.layers.0.attn_hyper_connection.hc_norm.weight",
+            "model.language_model.layers.0.attn_hyper_connection.input_mix_weight_up.weight",
+            "model.visual.blocks.0.attn.proj.weight",
+            "mtp.layers.0.mlp.experts.gate_up_proj",
+            "model.language_model.layers.1.ple.ple_embedding.ngram_embedding.shard_0.weight",
+            "lm_head.weight",
+        ]
+        weight_map = {name: f"shard-{index}" for index, name in enumerate(names)}
+        layouts = {
+            name: {"shape": [4, 4], "dtype": "BF16", "payload_bytes": 32}
+            for name in names
+        }
+        layouts["model.language_model.layers.0.mlp.experts.gate_up_proj"] = {
+            "shape": [4, 2, 4], "dtype": "BF16", "payload_bytes": 64,
+        }
+        graph = _organ_graph(config, weight_map, {shard: 32 for shard in weight_map.values()}, layouts)
+        by_id = {row["id"]: row for row in graph}
+        self.assertEqual(by_id["routed_experts"]["stored_bytes"]["value"], 64)
+        self.assertEqual(by_id["routed_experts"]["active_bytes_per_token"]["value"], 16)
+        self.assertIn("model.language_model.layers.0.attn_hyper_connection.hc_norm.weight", by_id["norms"]["tensor_names"])
+        self.assertEqual(by_id["norms"]["accounting_role"], "CROSS_CUTTING_VIEW")
+        self.assertEqual(by_id["mtp"]["tensors"], 1)
+        self.assertGreater(by_id["recurrent_state"]["state_bytes"]["resident_bytes"], 0)
+
+    def test_qwen38_fusion_source_audit_resolves_profile_graph_without_gpu(self):
+        from hcli.agentos.qwen38_fusion_audit import run_qwen38_fusion_source_audit
+
+        repo = Path(__file__).resolve().parents[4]
+        with tempfile.TemporaryDirectory() as tmp:
+            report = run_qwen38_fusion_source_audit(
+                repo_root=repo,
+                profile=repo / "hcli" / "hawking-native.sealed-3.14.json",
+                emit=Path(tmp) / "fusion-audit.json",
+            )
+        self.assertEqual(report["status"], "PASSED")
+        self.assertFalse(report["experiment"]["physical_runtime_executed"])
+        selected = report["selected_graph"]["dispatch_consequence"]
+        self.assertEqual(selected["baseline_source_derived"], 964)
+        self.assertEqual(selected["selected_source_derived"], 628)
+        self.assertEqual(
+            report["accepted_values"]["HAWKING_QWEN38_FUSE_MLP"]["gate_up_swiglu"],
+            ["swiglu", "gate_up_swiglu", "1", "true", "on", "yes"],
+        )
+
     def test_roles_do_not_choose_a_model_name(self):
         choice = RoleRouter().choose("science", {"specialist": object()})
         self.assertEqual(choice["provider"], "specialist")

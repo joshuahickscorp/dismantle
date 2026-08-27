@@ -77,6 +77,8 @@ __all__ = [
     "run_unattended_window",
     "ACCELERATOR_REGRESSION_SCHEMA",
     "run_accelerator_regression",
+    "QWEN38_FUSION_AUDIT_SCHEMA",
+    "run_qwen38_fusion_source_audit",
     "MODELLAKE_CENSUS_SCHEMA",
     "run_modellake_census",
     "FLASH_SCIENCE_SCHEMA",
@@ -163,6 +165,10 @@ def __getattr__(name: str):
         from hcli.agentos import accelerator_regression
 
         return accelerator_regression.SCHEMA if name == "ACCELERATOR_REGRESSION_SCHEMA" else accelerator_regression.run_accelerator_regression
+    if name in {"QWEN38_FUSION_AUDIT_SCHEMA", "run_qwen38_fusion_source_audit"}:
+        from hcli.agentos import qwen38_fusion_audit
+
+        return qwen38_fusion_audit.SCHEMA if name == "QWEN38_FUSION_AUDIT_SCHEMA" else qwen38_fusion_audit.run_qwen38_fusion_source_audit
     if name in {"MODELLAKE_CENSUS_SCHEMA", "run_modellake_census"}:
         from hcli.agentos import modellake_gate
 

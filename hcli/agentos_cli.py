@@ -214,6 +214,7 @@ def build_parser() -> argparse.ArgumentParser:
     flash_executable.add_argument("--router-selection-receipt", default=None)
     flash_executable.add_argument("--native-router-selection-receipt", default=None)
     flash_executable.add_argument("--native-routed-expert-dispatch-receipt", default=None)
+    flash_executable.add_argument("--native-gate-up-swiglu-receipt", default=None)
     flash_executable.add_argument("--router-representation-ab-receipt", default=None)
     flash_executable.add_argument("--emit", default=None)
     flash_executable.add_argument("--ebpw-emit", default=None)
@@ -662,6 +663,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 router_selection_receipt=args.router_selection_receipt,
                 native_router_selection_receipt=args.native_router_selection_receipt,
                 native_routed_expert_dispatch_receipt=args.native_routed_expert_dispatch_receipt,
+                native_gate_up_swiglu_receipt=args.native_gate_up_swiglu_receipt,
                 router_representation_ab_receipt=args.router_representation_ab_receipt,
                 emit=args.emit,
                 ebpw_emit=args.ebpw_emit,

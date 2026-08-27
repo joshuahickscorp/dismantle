@@ -6,7 +6,9 @@
 //! through the existing Metal matvec kernel, then performs the selected-weight
 //! gather on the host.  The gather is deliberately reported as host-side
 //! composition: this is not a fused expert, complete expert, token, TPS, or
-//! EBPW measurement.
+//! EBPW measurement.  The `--gate-up-swiglu` mode consumes full selected-expert
+//! bodies and exercises the existing native gate+up/SwiGLU kernel, while still
+//! stopping before down projection and the complete token graph.
 
 #![recursion_limit = "512"]
 
@@ -29,6 +31,7 @@ mod macos {
     use std::time::Instant;
 
     const SCHEMA: &str = "hawking.flash_noetic_routed_expert_dispatch_native.v1";
+    const GATE_UP_SCHEMA: &str = "hawking.flash_noetic_routed_expert_gate_up_swiglu_native.v1";
     const BODY_SCHEMA: &str = "hcli.agentos.flash_noetic_component_body.v1";
     const KERNEL_SCHEMA: &str = "hawking.flash_noetic_q4_kernel_parity.v1";
     const ROUTER_SCHEMA: &str = "hawking.flash_noetic_router_selection_native.v1";
@@ -40,12 +43,16 @@ mod macos {
     const GROUP_SIZE: usize = 64;
     const CODE_BYTES_PER_GROUP: usize = GROUP_SIZE / 2;
     const KERNEL_NAME: &str = "qwen_uniform_q4_group64_matvec";
+    const GATE_UP_KERNEL_NAME: &str =
+        "qwen_uniform_q4_group64_matvec_gate_up_swiglu_geo_tpr64_tg128";
     const REFERENCE_MULTIPLIER: usize = 71;
     const REFERENCE_MODULUS: usize = 509;
     const REFERENCE_OFFSET: f32 = 254.0;
     const DEFAULT_WARMUP: usize = 2;
     const DEFAULT_REPS: usize = 7;
     const OUTPUT_ERROR_TOLERANCE: f32 = 2.0e-3;
+    const GATE_UP_BODY_ROWS: usize = 1280;
+    const GATE_UP_ROWS: usize = 640;
     const MANIFEST_PATH: &str =
         "/Volumes/corpdrive/hawking-modellake/manifests/Qwen--Qwen3.8-Flash-Next@34567a4712bc.json";
 
@@ -56,6 +63,7 @@ mod macos {
         warmup: usize,
         reps: usize,
         out: PathBuf,
+        gate_up_swiglu: bool,
     }
 
     struct PackedBody {
@@ -81,6 +89,23 @@ mod macos {
         kernel_receipt_sha256: String,
         codes: Buffer,
         scales: Buffer,
+        output: Buffer,
+        expected: Vec<f32>,
+    }
+
+    struct LoadedGateUp {
+        body: PackedBody,
+        gate: PackedBody,
+        up: PackedBody,
+        body_receipt: Value,
+        body_receipt_path: PathBuf,
+        kernel_receipt: Value,
+        kernel_receipt_path: PathBuf,
+        kernel_receipt_sha256: String,
+        gate_codes: Buffer,
+        gate_scales: Buffer,
+        up_codes: Buffer,
+        up_scales: Buffer,
         output: Buffer,
         expected: Vec<f32>,
     }
@@ -119,6 +144,7 @@ mod macos {
             warmup: DEFAULT_WARMUP,
             reps: DEFAULT_REPS,
             out: repo.join("receipts/headless/FLASH_NOETIC_ROUTED_EXPERT_DISPATCH_NATIVE.json"),
+            gate_up_swiglu: false,
         };
         let mut values = env::args().skip(1);
         while let Some(flag) = values.next() {
@@ -135,11 +161,12 @@ mod macos {
                 "--warmup" => args.warmup = parse_usize(values.next(), &flag)?,
                 "--reps" => args.reps = parse_usize(values.next(), &flag)?,
                 "--out" => args.out = PathBuf::from(values.next().ok_or("missing --out")?),
+                "--gate-up-swiglu" => args.gate_up_swiglu = true,
                 "--help" | "-h" => {
                     println!(
                         "usage: flash_noetic_routed_expert_dispatch [--root DIR] \
                          [--router-receipt FILE] [--campaign-receipt FILE] \
-                         [--warmup N] [--reps N] [--out FILE]"
+                         [--warmup N] [--reps N] [--out FILE] [--gate-up-swiglu]"
                     );
                     std::process::exit(0);
                 }
@@ -151,6 +178,13 @@ mod macos {
         }
         if args.reps == 0 || args.reps > 128 {
             return Err("--reps must be in 1..=128".into());
+        }
+        if args.gate_up_swiglu
+            && args.out
+                == repo.join("receipts/headless/FLASH_NOETIC_ROUTED_EXPERT_DISPATCH_NATIVE.json")
+        {
+            args.out = repo
+                .join("receipts/headless/FLASH_NOETIC_ROUTED_EXPERT_GATE_UP_SWIGLU_NATIVE.json");
         }
         Ok(args)
     }
@@ -359,7 +393,11 @@ mod macos {
             .as_u64()
             .and_then(|value| usize::try_from(value).ok())
             .ok_or("expert body column dimension is invalid")?;
-        if expert_index >= 512 || rows == 0 || rows > 512 || row_start + rows > 1280 {
+        if expert_index >= 512
+            || rows == 0
+            || rows > GATE_UP_BODY_ROWS
+            || row_start + rows > GATE_UP_BODY_ROWS
+        {
             return Err("expert body window is outside bounded dispatch limits".into());
         }
         if usize_field(source, "bytes")? != rows * columns * 2 {
@@ -399,6 +437,49 @@ mod macos {
                 scales: body_bytes[code_bytes..].to_vec(),
             },
             receipt,
+        ))
+    }
+
+    fn split_gate_up(body: &PackedBody) -> Result<(PackedBody, PackedBody), Box<dyn Error>> {
+        if body.row_start != 0
+            || body.rows != GATE_UP_BODY_ROWS
+            || GATE_UP_BODY_ROWS != GATE_UP_ROWS * 2
+        {
+            return Err("gate/up activation requires a full 1280-row fused body".into());
+        }
+        let row_code_bytes = body.columns / 2;
+        let row_scale_bytes = (body.columns / GROUP_SIZE) * 2;
+        let half_code_bytes = GATE_UP_ROWS * row_code_bytes;
+        let half_scale_bytes = GATE_UP_ROWS * row_scale_bytes;
+        if body.code_bytes != GATE_UP_BODY_ROWS * row_code_bytes
+            || body.scale_bytes != GATE_UP_BODY_ROWS * row_scale_bytes
+            || body.codes.len() != body.code_bytes
+            || body.scales.len() != body.scale_bytes
+        {
+            return Err("full gate/up body has an invalid packed layout".into());
+        }
+        let make_half = |codes: Vec<u8>, scales: Vec<u8>| PackedBody {
+            path: body.path.clone(),
+            receipt_sha256: body.receipt_sha256.clone(),
+            body_sha256: body.body_sha256.clone(),
+            expert_index: body.expert_index,
+            row_start: 0,
+            rows: GATE_UP_ROWS,
+            columns: body.columns,
+            code_bytes: half_code_bytes,
+            scale_bytes: half_scale_bytes,
+            codes,
+            scales,
+        };
+        Ok((
+            make_half(
+                body.codes[..half_code_bytes].to_vec(),
+                body.scales[..half_scale_bytes].to_vec(),
+            ),
+            make_half(
+                body.codes[half_code_bytes..].to_vec(),
+                body.scales[half_scale_bytes..].to_vec(),
+            ),
         ))
     }
 
@@ -545,6 +626,52 @@ mod macos {
                 encoder.set_bytes(6, 4, &groups as *const u32 as *const _);
             })?,
         )
+    }
+
+    fn dispatch_gate_up_swiglu(
+        context: &MetalContext,
+        gate: &PackedBody,
+        gate_codes: &Buffer,
+        gate_scales: &Buffer,
+        up_codes: &Buffer,
+        up_scales: &Buffer,
+        input: &Buffer,
+        output: &Buffer,
+    ) -> Result<MetalDispatchTiming, Box<dyn Error>> {
+        let rows = gate.rows as u32;
+        let columns = gate.columns as u32;
+        let groups = (gate.columns / GROUP_SIZE) as u32;
+        let threadgroup = 128u32;
+        let grid = rows
+            .div_ceil(2)
+            .saturating_mul(threadgroup)
+            .max(threadgroup);
+        Ok(context.dispatch_threads_timed(
+            GATE_UP_KERNEL_NAME,
+            (grid, 1, 1),
+            (threadgroup, 1, 1),
+            |encoder| {
+                encoder.set_buffer(0, Some(gate_codes), 0);
+                encoder.set_buffer(1, Some(gate_scales), 0);
+                encoder.set_buffer(2, Some(up_codes), 0);
+                encoder.set_buffer(3, Some(up_scales), 0);
+                encoder.set_buffer(4, Some(input), 0);
+                encoder.set_buffer(5, Some(output), 0);
+                encoder.set_bytes(6, 4, &rows as *const u32 as *const _);
+                encoder.set_bytes(7, 4, &columns as *const u32 as *const _);
+                encoder.set_bytes(8, 4, &groups as *const u32 as *const _);
+            },
+        )?)
+    }
+
+    fn cpu_gate_up_swiglu(gate: &PackedBody, up: &PackedBody, input: &[f32]) -> Vec<f32> {
+        let gate_values = cpu_matvec(gate, input);
+        let up_values = cpu_matvec(up, input);
+        gate_values
+            .into_iter()
+            .zip(up_values)
+            .map(|(gate, up)| (gate / (1.0 + (-gate).exp())) * up)
+            .collect()
     }
 
     fn gpu_ns(timing: MetalDispatchTiming) -> Result<u64, Box<dyn Error>> {
@@ -990,13 +1117,374 @@ mod macos {
         }))
     }
 
+    fn run_gate_up_swiglu(args: &Args) -> Result<Value, Box<dyn Error>> {
+        let started = Instant::now();
+        let repo = repository_root();
+        let root = args.root.canonicalize()?;
+        let manifest = validate_manifest(&root)?;
+        let (router, router_sha256, selected_ids, selected_weights) =
+            validate_router(&args.router_receipt)?;
+        let mut selected_specs = Vec::with_capacity(selected_ids.len());
+        for expert_id in &selected_ids {
+            let body_path = repo.join(format!(
+                "receipts/headless/FLASH_NOETIC_GATE_UP_BODY_E{expert_id}_R0_1280.json"
+            ));
+            let kernel_path = repo.join(format!(
+                "receipts/headless/FLASH_NOETIC_GATE_UP_KERNEL_E{expert_id}_R0_1280_PARITY.json"
+            ));
+            let (body, body_receipt) = validate_body(&body_path)?;
+            if body.expert_index != *expert_id
+                || body.row_start != 0
+                || body.rows != GATE_UP_BODY_ROWS
+            {
+                return Err(format!(
+                    "gate/up body receipt for expert {expert_id} is not the full 1280-row body"
+                )
+                .into());
+            }
+            let (kernel, kernel_sha256) = validate_kernel(&kernel_path, &body)?;
+            let expected_input = sha256_bytes(&f32_bytes(&deterministic_input(body.columns)));
+            if kernel
+                .get("input")
+                .and_then(|input| input.get("deterministic_sha256"))
+                .and_then(Value::as_str)
+                != Some(expected_input.as_str())
+            {
+                return Err(format!(
+                    "gate/up kernel input for expert {expert_id} does not match the deterministic input"
+                )
+                .into());
+            }
+            selected_specs.push((
+                body,
+                body_receipt,
+                body_path,
+                kernel,
+                kernel_path,
+                kernel_sha256,
+            ));
+        }
+        let columns = selected_specs
+            .first()
+            .map(|(body, _, _, _, _, _)| body.columns)
+            .ok_or("no selected gate/up experts")?;
+        if selected_specs.iter().any(|(body, _, _, _, _, _)| {
+            body.columns != columns || body.row_start != 0 || body.rows != GATE_UP_BODY_ROWS
+        }) {
+            return Err("selected gate/up bodies have inconsistent full-body shapes".into());
+        }
+
+        let input = deterministic_input(columns);
+        let input_sha256 = sha256_bytes(&f32_bytes(&input));
+        let context = MetalContext::new_with_trace(true)?;
+        let input_buffer = context.new_buffer_with_bytes_checked(&f32_bytes(&input))?;
+        let mut loaded = Vec::with_capacity(selected_specs.len());
+        for (body, body_receipt, body_receipt_path, kernel, kernel_receipt_path, kernel_sha256) in
+            selected_specs
+        {
+            let (gate, up) = split_gate_up(&body)?;
+            let expected = cpu_gate_up_swiglu(&gate, &up, &input);
+            loaded.push(LoadedGateUp {
+                gate_codes: context.new_buffer_with_bytes_checked(&gate.codes)?,
+                gate_scales: context.new_buffer_with_bytes_checked(&gate.scales)?,
+                up_codes: context.new_buffer_with_bytes_checked(&up.codes)?,
+                up_scales: context.new_buffer_with_bytes_checked(&up.scales)?,
+                output: context.new_buffer_checked(gate.rows * std::mem::size_of::<f32>())?,
+                body,
+                gate,
+                up,
+                body_receipt,
+                body_receipt_path,
+                kernel_receipt: kernel,
+                kernel_receipt_path,
+                kernel_receipt_sha256: kernel_sha256,
+                expected,
+            });
+        }
+
+        let mut warmup_route_gpu_ns = Vec::with_capacity(args.warmup);
+        for _ in 0..args.warmup {
+            let mut total = 0u64;
+            for item in &loaded {
+                total = total.saturating_add(gpu_ns(dispatch_gate_up_swiglu(
+                    &context,
+                    &item.gate,
+                    &item.gate_codes,
+                    &item.gate_scales,
+                    &item.up_codes,
+                    &item.up_scales,
+                    &input_buffer,
+                    &item.output,
+                )?)?);
+            }
+            warmup_route_gpu_ns.push(total);
+        }
+
+        let mut per_expert_gpu_ns = vec![Vec::with_capacity(args.reps); loaded.len()];
+        let mut per_expert_host_ns = vec![Vec::with_capacity(args.reps); loaded.len()];
+        let mut per_expert_output_hashes = vec![Vec::with_capacity(args.reps); loaded.len()];
+        let mut route_gpu_ns = Vec::with_capacity(args.reps);
+        let mut route_host_ns = Vec::with_capacity(args.reps);
+        let mut mixed_hashes = Vec::with_capacity(args.reps);
+        let mut last_outputs: Vec<Vec<f32>> = vec![Vec::new(); loaded.len()];
+        for _ in 0..args.reps {
+            let mut total_gpu = 0u64;
+            let mut total_host = 0u64;
+            let mut mixed = vec![0.0f32; GATE_UP_ROWS];
+            for (index, item) in loaded.iter().enumerate() {
+                let timing = dispatch_gate_up_swiglu(
+                    &context,
+                    &item.gate,
+                    &item.gate_codes,
+                    &item.gate_scales,
+                    &item.up_codes,
+                    &item.up_scales,
+                    &input_buffer,
+                    &item.output,
+                )?;
+                let observed = read_f32(&item.output, GATE_UP_ROWS);
+                if !observed.iter().all(|value| value.is_finite()) {
+                    return Err(format!(
+                        "native gate/up SwiGLU output for expert {} is non-finite",
+                        item.body.expert_index
+                    )
+                    .into());
+                }
+                let parity = output_metrics(&item.expected, &observed);
+                if parity.get("within_tolerance").and_then(Value::as_bool) != Some(true) {
+                    return Err(format!(
+                        "native gate/up SwiGLU parity failed for expert {}: {parity}",
+                        item.body.expert_index
+                    )
+                    .into());
+                }
+                let gpu = gpu_ns(timing)?;
+                let host = timing.host_wall_us.saturating_mul(1000);
+                total_gpu = total_gpu.saturating_add(gpu);
+                total_host = total_host.saturating_add(host);
+                per_expert_gpu_ns[index].push(gpu);
+                per_expert_host_ns[index].push(host);
+                per_expert_output_hashes[index].push(sha256_bytes(&f32_bytes_for_hash(&observed)));
+                for (slot, value) in observed.iter().enumerate() {
+                    mixed[slot] += selected_weights[index] * value;
+                }
+                last_outputs[index] = observed;
+            }
+            route_gpu_ns.push(total_gpu);
+            route_host_ns.push(total_host);
+            mixed_hashes.push(sha256_bytes(&f32_bytes_for_hash(&mixed)));
+        }
+        if per_expert_output_hashes
+            .iter()
+            .any(|hashes| hashes.windows(2).any(|pair| pair[0] != pair[1]))
+            || mixed_hashes.windows(2).any(|pair| pair[0] != pair[1])
+        {
+            return Err("native gate/up SwiGLU outputs changed across repeated executions".into());
+        }
+        let mut expected_mixed = vec![0.0f32; GATE_UP_ROWS];
+        let mut observed_mixed = vec![0.0f32; GATE_UP_ROWS];
+        for (index, item) in loaded.iter().enumerate() {
+            for (slot, value) in item.expected.iter().enumerate() {
+                expected_mixed[slot] += selected_weights[index] * value;
+            }
+            for (slot, value) in last_outputs[index].iter().enumerate() {
+                observed_mixed[slot] += selected_weights[index] * value;
+            }
+        }
+        let mixed_parity = output_metrics(&expected_mixed, &observed_mixed);
+        if mixed_parity
+            .get("within_tolerance")
+            .and_then(Value::as_bool)
+            != Some(true)
+        {
+            return Err(format!("weighted gate/up gather parity failed: {mixed_parity}").into());
+        }
+
+        let source_selection_parity = router
+            .get("source_selection_parity")
+            .cloned()
+            .unwrap_or_else(|| json!({"status": "UNKNOWN"}));
+        let source_mismatch = source_selection_parity
+            .get("expert_ids_exact_match")
+            .and_then(Value::as_bool)
+            == Some(false);
+        let mut physical_graph = json!({
+            "schema": "hcli.physical_graph.v1",
+            "semantic_type": "PhysicalGraph",
+            "compiler_stage": "HawkingAccelerator",
+            "component_scope": "native router receipt -> selected full persisted gate_up bodies -> split gate/up Q4/G64 buffers -> native Metal gate_up_swiglu -> host weighted gather; down projection and complete token graph excluded",
+            "device_placement": {"selected": "apple_metal", "candidates": ["apple_metal", "cpu"]},
+            "native_kernel": GATE_UP_KERNEL_NAME,
+            "native_kernel_execution_observed": true,
+            "selected_expert_count": loaded.len(),
+            "dispatches_per_route": loaded.len(),
+            "gate_rows": GATE_UP_ROWS,
+            "full_body_rows": GATE_UP_BODY_ROWS,
+            "source_selection_parity_status": source_selection_parity.get("status"),
+            "source_selection_parity_qualified": source_selection_parity.get("expert_ids_exact_match"),
+            "source_selection_mismatch_accepted_as_bounded_boundary": source_mismatch,
+            "promotion_allowed": false,
+        });
+        let physical_graph_fingerprint = sha256_bytes(&serde_json::to_vec(&physical_graph)?);
+        physical_graph["fingerprint"] = Value::String(physical_graph_fingerprint);
+
+        let device_memory = context.device_memory_limits();
+        let mut components_json = Vec::with_capacity(loaded.len());
+        for (index, item) in loaded.iter().enumerate() {
+            components_json.push(json!({
+                "expert_index": item.body.expert_index,
+                "body_rows": item.body.rows,
+                "gate_rows": item.gate.rows,
+                "up_rows": item.up.rows,
+                "body_receipt": component_ref(&item.body_receipt_path, &item.body_receipt, Some(&item.body.receipt_sha256)),
+                "kernel_receipt": component_ref(&item.kernel_receipt_path, &item.kernel_receipt, Some(&item.kernel_receipt_sha256)),
+                "candidate_body": {
+                    "path": item.body.path,
+                    "sha256": item.body.body_sha256,
+                    "bytes": item.body.code_bytes + item.body.scale_bytes,
+                    "source_independent": true,
+                    "candidate_body_persisted": true,
+                    "layout": "fused gate_up body split into contiguous gate/up row halves",
+                    "label": "[D]",
+                },
+                "native_dispatch": {
+                    "kernel": GATE_UP_KERNEL_NAME,
+                    "dispatches_per_route": 1,
+                    "gpu_ns": per_expert_gpu_ns[index],
+                    "gpu_ns_median": percentile_median(&per_expert_gpu_ns[index]),
+                    "host_wall_ns": per_expert_host_ns[index],
+                    "host_wall_ns_median": percentile_median(&per_expert_host_ns[index]),
+                    "output_hashes": per_expert_output_hashes[index],
+                    "stable_output": true,
+                },
+                "parity": output_metrics(&item.expected, &last_outputs[index]),
+                "source_reference_used_for_execution": false,
+            }));
+        }
+        let route_gpu_median = percentile_median(&route_gpu_ns);
+        let route_host_median = percentile_median(&route_host_ns);
+        Ok(json!({
+            "schema": GATE_UP_SCHEMA,
+            "nomenclature_version": NOMENCLATURE_VERSION,
+            "semantic_type": "NoeticExecutableCandidate",
+            "compiler_stage": "HawkingAccelerator",
+            "status": "PASSED",
+            "qualification": "BOUNDED_NATIVE_ROUTED_EXPERT_GATE_UP_SWIGLU_ACTIVATION",
+            "repo": REPO_ID,
+            "pinned_revision": PINNED_REVISION,
+            "root": root,
+            "model_lake_manifest": manifest,
+            "router_receipt": {
+                "path": args.router_receipt.canonicalize()?,
+                "sha256": router_sha256,
+                "schema": ROUTER_SCHEMA,
+                "status": "PASSED",
+                "label": "[V]",
+            },
+            "component_receipt_policy": {
+                "directory": repo.join("receipts/headless"),
+                "body_pattern": "FLASH_NOETIC_GATE_UP_BODY_E{expert}_R0_1280.json",
+                "kernel_pattern": "FLASH_NOETIC_GATE_UP_KERNEL_E{expert}_R0_1280_PARITY.json",
+                "body_rows": GATE_UP_BODY_ROWS,
+                "gate_rows": GATE_UP_ROWS,
+            },
+            "selection": router.get("selection").cloned().unwrap_or_else(|| json!({})),
+            "source_selection_parity": source_selection_parity,
+            "components": components_json,
+            "execution": {
+                "provider": "apple-metal",
+                "operation": "native_router_selection_receipt -> full persisted fused gate_up body load -> gate/up row split -> native Q4_G64 gate_up_swiglu -> host_selected_weight_gather",
+                "selected_expert_ids": selected_ids,
+                "selected_expert_count": loaded.len(),
+                "dispatches_per_route": loaded.len(),
+                "measured_routes": args.reps,
+                "total_measured_dispatches": loaded.len() * args.reps,
+                "native_gate_up_swiglu_observed": true,
+                "native_expert_gate_up_activation_observed": true,
+                "source_reference_used_for_execution": false,
+                "source_selection_mismatch_accepted_as_bounded_boundary": source_mismatch,
+                "body_mutated": false,
+                "model_loaded": false,
+                "complete_expert_activation": false,
+                "complete_token_runtime": false,
+                "down_projection": "NOT_TESTED",
+            },
+            "input": {
+                "definition": "((index * 71) mod 509 - 254) / 509",
+                "values": columns,
+                "deterministic_sha256": input_sha256,
+                "label": "[V]",
+            },
+            "gpu_timing": {
+                "device": context.device_name(),
+                "warmup_runs": args.warmup,
+                "measured_runs": args.reps,
+                "warmup_route_gpu_ns": warmup_route_gpu_ns,
+                "route_gpu_ns": route_gpu_ns,
+                "route_gpu_ns_median": route_gpu_median,
+                "route_host_wall_ns": route_host_ns,
+                "route_host_wall_ns_median": route_host_median,
+                "dispatches_per_route": loaded.len(),
+                "output_hashes": mixed_hashes,
+                "memory_limits": {
+                    "max_buffer_length": device_memory.max_buffer_length,
+                    "recommended_max_working_set_size": device_memory.recommended_max_working_set_size,
+                    "current_allocated_size": device_memory.current_allocated_size,
+                    "has_unified_memory": device_memory.has_unified_memory,
+                },
+                "timing_authority": "Metal completed-command-buffer GPUStartTime/GPUEndTime for native gate_up_swiglu dispatches summed across selected experts; host wall reported separately",
+            },
+            "gather": {
+                "status": "BOUNDED_HOST_WEIGHTED_GATHER",
+                "weights": selected_weights,
+                "output_rows": GATE_UP_ROWS,
+                "output_sha256": mixed_hashes.last(),
+                "parity": mixed_parity,
+                "fused_native_gather": false,
+            },
+            "noetic_ir": {
+                "schema": "hcli.noetic.ir.v1",
+                "semantic_type": "NoeticIR",
+                "operations": [
+                    "consume_native_router_selection",
+                    "resolve_selected_full_persisted_fused_gate_up_bodies",
+                    "split_fused_gate_up_body_into_gate_and_up_q4_g64_buffers",
+                    "execute_native_q4_g64_gate_up_swiglu_per_selected_expert",
+                    "apply_selected_router_weights_on_host",
+                    "emit_bounded_gate_up_activation_outputs",
+                ],
+                "source_independent": true,
+                "complete_expert": false,
+                "complete_model": false,
+            },
+            "physical_graph": physical_graph,
+            "whole_model_capability": "NOT_TESTED",
+            "complete_expert_runtime": "NOT_TESTED",
+            "complete_token_runtime": "NOT_TESTED",
+            "complete_system_ebpw": null,
+            "flash_tps": null,
+            "body_mutated": false,
+            "model_loaded": false,
+            "native_gate_up_swiglu_observed": true,
+            "native_expert_gate_up_activation_observed": true,
+            "promotion_allowed": false,
+            "claim_boundary": "PASSED bounded native source-independent Q4/G64 gate+up/SwiGLU activation for the ten selected persisted expert bodies, with host-side selected-weight gather. Down projection, complete expert activation, complete-model loading, complete-token runtime, Flash TPS, and EBPW remain untested; source-selection mismatch remains explicit.",
+            "next_action": "add and validate source-independent down-projection bodies, then compose a bounded native expert output before attempting any protected complete-token Flash graph",
+            "elapsed_s": started.elapsed().as_secs_f64(),
+        }))
+    }
+
     pub fn main() -> Result<(), Box<dyn Error>> {
         let args = parse_args()?;
         let destination = args.out.clone();
-        let report = match run(&args) {
+        let report = match if args.gate_up_swiglu {
+            run_gate_up_swiglu(&args)
+        } else {
+            run(&args)
+        } {
             Ok(report) => report,
             Err(error) => json!({
-                "schema": SCHEMA,
+                "schema": if args.gate_up_swiglu { GATE_UP_SCHEMA } else { SCHEMA },
                 "nomenclature_version": NOMENCLATURE_VERSION,
                 "status": "FAILED",
                 "repo": REPO_ID,
@@ -1005,6 +1493,8 @@ mod macos {
                 "body_mutated": false,
                 "model_loaded": false,
                 "native_routed_body_dispatch_observed": false,
+                "native_gate_up_swiglu_observed": false,
+                "native_expert_gate_up_activation_observed": false,
                 "whole_model_capability": "NOT_TESTED",
                 "complete_expert_runtime": "NOT_TESTED",
                 "complete_token_runtime": "NOT_TESTED",

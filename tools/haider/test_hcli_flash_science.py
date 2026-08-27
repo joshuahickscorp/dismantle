@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 
 from hcli.agentos.flash_executable import (
+    _native_gate_up_swiglu_summary,
     _native_router_selection_summary,
     _native_routed_expert_dispatch_summary,
 )
@@ -146,6 +147,46 @@ def test_native_routed_expert_dispatch_summary_preserves_bounded_claim_boundary(
     assert summary["source_independent_execution"] is True
     assert summary["source_selection_parity"]["status"] == "MISMATCH"
     assert summary["whole_model_capability"] == "NOT_TESTED"
+    assert summary["complete_expert_runtime"] == "NOT_TESTED"
+    assert summary["promotion_allowed"] is False
+
+
+def test_native_gate_up_swiglu_summary_preserves_activation_boundary(tmp_path):
+    receipt = tmp_path / "native-gate-up-swiglu.json"
+    receipt.write_text(
+        json.dumps(
+            {
+                "schema": "hawking.flash_noetic_routed_expert_gate_up_swiglu_native.v1",
+                "nomenclature_version": "HAWKING_NOMENCLATURE_V1",
+                "status": "PASSED",
+                "semantic_type": "NoeticExecutableCandidate",
+                "compiler_stage": "HawkingAccelerator",
+                "qualification": "BOUNDED_NATIVE_ROUTED_EXPERT_GATE_UP_SWIGLU_ACTIVATION",
+                "selection": {"expert_ids": [1, 2]},
+                "source_selection_parity": {"status": "MISMATCH", "expert_ids_exact_match": False},
+                "components": [{"candidate_body": {"source_independent": True}}],
+                "execution": {"selected_expert_count": 2, "native_gate_up_swiglu_observed": True},
+                "native_gate_up_swiglu_observed": True,
+                "native_expert_gate_up_activation_observed": True,
+                "noetic_ir": {"source_independent": True},
+                "whole_model_capability": "NOT_TESTED",
+                "complete_expert_runtime": "NOT_TESTED",
+                "complete_token_runtime": "NOT_TESTED",
+                "promotion_allowed": False,
+                "physical_graph": {"fingerprint": "graph"},
+                "claim_boundary": "gate/up only",
+                "next_action": "continue",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    summary = _native_gate_up_swiglu_summary(tmp_path, receipt)
+
+    assert summary["status"] == "PASSED"
+    assert summary["native_gate_up_swiglu_observed"] is True
+    assert summary["native_expert_gate_up_activation_observed"] is True
+    assert summary["source_independent_execution"] is True
     assert summary["complete_expert_runtime"] == "NOT_TESTED"
     assert summary["promotion_allowed"] is False
 

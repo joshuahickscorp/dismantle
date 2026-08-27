@@ -209,6 +209,7 @@ def _flash_summary(repo: Path) -> Dict[str, Any]:
     router_selection = _receipt(repo, "FLASH_NOETIC_ROUTER_SELECTION.json") or {}
     router_selection_native = _receipt(repo, "FLASH_NOETIC_ROUTER_SELECTION_NATIVE.json") or {}
     routed_expert_dispatch_native = _receipt(repo, "FLASH_NOETIC_ROUTED_EXPERT_DISPATCH_NATIVE.json") or {}
+    gate_up_swiglu_native = _receipt(repo, "FLASH_NOETIC_ROUTED_EXPERT_GATE_UP_SWIGLU_NATIVE.json") or {}
     router_representation_ab = _receipt(repo, "FLASH_NOETIC_ROUTER_REPRESENTATION_AB.json") or {}
     source = flash.get("source_identity") or flash.get("source") or {}
     promotion = flash.get("promotion_gate") or {}
@@ -446,6 +447,31 @@ def _flash_summary(repo: Path) -> Dict[str, Any]:
             "claim_boundary": routed_expert_dispatch_native.get("claim_boundary"),
             "next_action": routed_expert_dispatch_native.get("next_action"),
         },
+        "bounded_noetic_gate_up_swiglu_native": {
+            "status": gate_up_swiglu_native.get("status"),
+            "receipt_path": str(repo / "receipts" / "headless" / "FLASH_NOETIC_ROUTED_EXPERT_GATE_UP_SWIGLU_NATIVE.json"),
+            "semantic_type": gate_up_swiglu_native.get("semantic_type"),
+            "compiler_stage": gate_up_swiglu_native.get("compiler_stage"),
+            "qualification": gate_up_swiglu_native.get("qualification"),
+            "router_receipt": gate_up_swiglu_native.get("router_receipt"),
+            "component_receipt_policy": gate_up_swiglu_native.get("component_receipt_policy"),
+            "selection": gate_up_swiglu_native.get("selection"),
+            "source_selection_parity": gate_up_swiglu_native.get("source_selection_parity"),
+            "components": gate_up_swiglu_native.get("components"),
+            "execution": gate_up_swiglu_native.get("execution"),
+            "gpu_timing": gate_up_swiglu_native.get("gpu_timing"),
+            "gather": gate_up_swiglu_native.get("gather"),
+            "physical_graph": gate_up_swiglu_native.get("physical_graph"),
+            "noetic_ir": gate_up_swiglu_native.get("noetic_ir"),
+            "native_gate_up_swiglu_observed": gate_up_swiglu_native.get("native_gate_up_swiglu_observed"),
+            "native_expert_gate_up_activation_observed": gate_up_swiglu_native.get("native_expert_gate_up_activation_observed"),
+            "whole_model_capability": gate_up_swiglu_native.get("whole_model_capability"),
+            "complete_expert_runtime": gate_up_swiglu_native.get("complete_expert_runtime"),
+            "complete_token_runtime": gate_up_swiglu_native.get("complete_token_runtime"),
+            "promotion_allowed": gate_up_swiglu_native.get("promotion_allowed"),
+            "claim_boundary": gate_up_swiglu_native.get("claim_boundary"),
+            "next_action": gate_up_swiglu_native.get("next_action"),
+        },
         "bounded_noetic_router_representation_ab": {
             "status": router_representation_ab.get("status"),
             "receipt_path": str(repo / "receipts" / "headless" / "FLASH_NOETIC_ROUTER_REPRESENTATION_AB.json"),
@@ -612,6 +638,7 @@ def build_handoff(repo_root: Optional[str | os.PathLike[str]] = None, *, emit: O
     router_selection = flash.get("bounded_noetic_router_selection") or {}
     router_selection_native = flash.get("bounded_noetic_router_selection_native") or {}
     routed_expert_dispatch_native = flash.get("bounded_noetic_routed_expert_dispatch_native") or {}
+    gate_up_swiglu_native = flash.get("bounded_noetic_gate_up_swiglu_native") or {}
     router_representation_ab = flash.get("bounded_noetic_router_representation_ab") or {}
     lake = _model_lake_summary(repo)
     window = _window_summary(repo)
@@ -674,6 +701,14 @@ def build_handoff(repo_root: Optional[str | os.PathLike[str]] = None, *, emit: O
         or routed_expert_dispatch_native.get("promotion_allowed") is not False
     ):
         blockers.append("Flash-Next bounded native routed-expert dispatch has not explicitly proven scoped physical execution with promotion refused.")
+    if gate_up_swiglu_native.get("status") not in {None, "PASSED"}:
+        blockers.append("Flash-Next bounded native gate/up SwiGLU receipt is invalid or incomplete.")
+    if gate_up_swiglu_native.get("status") == "PASSED" and (
+        gate_up_swiglu_native.get("native_gate_up_swiglu_observed") is not True
+        or gate_up_swiglu_native.get("native_expert_gate_up_activation_observed") is not True
+        or gate_up_swiglu_native.get("promotion_allowed") is not False
+    ):
+        blockers.append("Flash-Next bounded native gate/up SwiGLU has not explicitly proven scoped physical activation with promotion refused.")
     graph_component = _receipt(repo, "FLASH_NOETIC_ROUTED_EXPERT_GRAPH.json") or {}
     if graph_component.get("status") != "PASSED" or graph_component.get("promotion_allowed") is not False:
         blockers.append("Flash-Next bounded Noetic routed-expert graph component is absent or incomplete.")
@@ -730,6 +765,7 @@ def build_handoff(repo_root: Optional[str | os.PathLike[str]] = None, *, emit: O
                 "flash_router_selection": router_selection.get("status"),
                 "flash_router_selection_native": router_selection_native.get("status"),
                 "flash_routed_expert_dispatch_native": routed_expert_dispatch_native.get("status"),
+                "flash_gate_up_swiglu_native": gate_up_swiglu_native.get("status"),
                 "flash_router_representation_ab": router_representation_ab.get("status"),
                 "modellake_supervision": lake_status,
                 "unattended_window": window_status,
@@ -763,6 +799,7 @@ def build_handoff(repo_root: Optional[str | os.PathLike[str]] = None, *, emit: O
             "run_flash_native_router_selection": f"{repo / 'workspace/ops/build/rust/release/examples/flash_noetic_router_selection'} --root /Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc --body-receipt {repo / 'receipts/headless/FLASH_NOETIC_ROUTER_COMPONENT_FULL_BODY.json'} --kernel-receipt {repo / 'receipts/headless/FLASH_NOETIC_ROUTER_COMPONENT_FULL_KERNEL_PARITY.json'} --reference-receipt {repo / 'receipts/headless/FLASH_NOETIC_ROUTER_SELECTION.json'} --warmup 2 --reps 7 --out {repo / 'receipts/headless/FLASH_NOETIC_ROUTER_SELECTION_NATIVE.json'}",
             "build_flash_native_routed_expert_dispatch": "cargo build -p hawking-core --release --example flash_noetic_routed_expert_dispatch",
             "run_flash_native_routed_expert_dispatch": f"{repo / 'workspace/ops/build/rust/release/examples/flash_noetic_routed_expert_dispatch'} --root /Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc --router-receipt {repo / 'receipts/headless/FLASH_NOETIC_ROUTER_SELECTION_NATIVE.json'} --campaign-receipt {repo / 'receipts/headless/FLASH_NOETIC_ROUTED_EXPERT_COMPONENT_CAMPAIGN.json'} --warmup 2 --reps 7 --out {repo / 'receipts/headless/FLASH_NOETIC_ROUTED_EXPERT_DISPATCH_NATIVE.json'}",
+            "run_flash_native_gate_up_swiglu": f"{repo / 'workspace/ops/build/rust/release/examples/flash_noetic_routed_expert_dispatch'} --root /Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc --router-receipt {repo / 'receipts/headless/FLASH_NOETIC_ROUTER_SELECTION_NATIVE.json'} --gate-up-swiglu --warmup 2 --reps 7 --out {repo / 'receipts/headless/FLASH_NOETIC_ROUTED_EXPERT_GATE_UP_SWIGLU_NATIVE.json'}",
             "run_flash_router_representation_ab": f"python3 -m hcli agentos flash-router-representation-ab --repo-root {repo} --root /Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc --emit {repo / 'receipts/headless/FLASH_NOETIC_ROUTER_REPRESENTATION_AB.json'}",
             "run_flash_tensor_probe": f"python3 -m hcli agentos flash-tensor-probe --emit {repo / 'receipts/headless/FLASH_FIRST_TENSOR_PROBE.json'}",
             "run_flash_representation_experiment": f"python3 -m hcli agentos flash-representation-experiment --emit {repo / 'receipts/headless/FLASH_ROUTED_EXPERT_REPRESENTATION_EXPERIMENT.json'}",

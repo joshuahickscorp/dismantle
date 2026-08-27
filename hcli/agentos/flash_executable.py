@@ -56,6 +56,7 @@ DEFAULT_ROUTER_GRAPH = "FLASH_NOETIC_ROUTER_GRAPH.json"
 DEFAULT_ROUTER_SELECTION = "FLASH_NOETIC_ROUTER_SELECTION.json"
 DEFAULT_NATIVE_ROUTER_SELECTION = "FLASH_NOETIC_ROUTER_SELECTION_NATIVE.json"
 DEFAULT_NATIVE_ROUTED_EXPERT_DISPATCH = "FLASH_NOETIC_ROUTED_EXPERT_DISPATCH_NATIVE.json"
+DEFAULT_NATIVE_GATE_UP_SWIGLU = "FLASH_NOETIC_ROUTED_EXPERT_GATE_UP_SWIGLU_NATIVE.json"
 DEFAULT_ROUTER_REPRESENTATION_AB = "FLASH_NOETIC_ROUTER_REPRESENTATION_AB.json"
 DEFAULT_EXECUTABLE = "FLASH_NEXT_NOETIC_EXECUTABLE.json"
 DEFAULT_EBPW = "FLASH_EBPW_BUDGET.json"
@@ -815,6 +816,59 @@ def _native_routed_expert_dispatch_summary(
     }
 
 
+def _native_gate_up_swiglu_summary(
+    repo: Path,
+    receipt: Optional[str | os.PathLike[str]] = None,
+) -> Dict[str, Any]:
+    """Read bounded native gate/up/SwiGLU activation without promoting it to full experts."""
+    path = (
+        Path(receipt).expanduser().resolve()
+        if receipt
+        else repo / "receipts" / "headless" / DEFAULT_NATIVE_GATE_UP_SWIGLU
+    )
+    activation = _read_json(path)
+    if activation is None:
+        return {
+            "status": "NOT_RUN",
+            "receipt_path": str(path),
+            "whole_model_capability": "NOT_TESTED",
+            "complete_expert_runtime": "NOT_TESTED",
+            "complete_token_runtime": "NOT_TESTED",
+            "promotion_allowed": False,
+        }
+    execution = activation.get("execution") if isinstance(activation.get("execution"), Mapping) else {}
+    noetic_ir = activation.get("noetic_ir") if isinstance(activation.get("noetic_ir"), Mapping) else {}
+    return {
+        "status": activation.get("status"),
+        "receipt_path": str(path),
+        "receipt_sha256": _sha256(path),
+        "schema": activation.get("schema"),
+        "nomenclature_version": activation.get("nomenclature_version"),
+        "semantic_type": activation.get("semantic_type"),
+        "compiler_stage": activation.get("compiler_stage"),
+        "qualification": activation.get("qualification"),
+        "router_receipt": activation.get("router_receipt"),
+        "component_receipt_policy": activation.get("component_receipt_policy"),
+        "selection": activation.get("selection"),
+        "source_selection_parity": activation.get("source_selection_parity"),
+        "components": activation.get("components"),
+        "execution": execution,
+        "gpu_timing": activation.get("gpu_timing"),
+        "gather": activation.get("gather"),
+        "physical_graph": activation.get("physical_graph"),
+        "noetic_ir": noetic_ir,
+        "native_gate_up_swiglu_observed": activation.get("native_gate_up_swiglu_observed"),
+        "native_expert_gate_up_activation_observed": activation.get("native_expert_gate_up_activation_observed"),
+        "source_independent_execution": noetic_ir.get("source_independent"),
+        "whole_model_capability": activation.get("whole_model_capability"),
+        "complete_expert_runtime": activation.get("complete_expert_runtime"),
+        "complete_token_runtime": activation.get("complete_token_runtime"),
+        "promotion_allowed": activation.get("promotion_allowed"),
+        "claim_boundary": activation.get("claim_boundary"),
+        "next_action": activation.get("next_action"),
+    }
+
+
 def _router_representation_ab_summary(
     repo: Path,
     receipt: Optional[str | os.PathLike[str]] = None,
@@ -1222,6 +1276,7 @@ def _executable_manifest(
     router_selection: Mapping[str, Any],
     native_router_selection: Mapping[str, Any],
     native_routed_expert_dispatch: Mapping[str, Any],
+    native_gate_up_swiglu: Mapping[str, Any],
     router_representation_ab: Mapping[str, Any],
 ) -> Dict[str, Any]:
     organs = [str(row.get("organ")) for row in ebpw.get("organs") or [] if isinstance(row, Mapping)]
@@ -1274,6 +1329,8 @@ def _executable_manifest(
             "bounded_native_router_selection_receipt": native_router_selection.get("receipt_path"),
             "bounded_native_routed_expert_dispatch_observed": native_routed_expert_dispatch.get("status") == "PASSED",
             "bounded_native_routed_expert_dispatch_receipt": native_routed_expert_dispatch.get("receipt_path"),
+            "bounded_native_gate_up_swiglu_observed": native_gate_up_swiglu.get("status") == "PASSED",
+            "bounded_native_gate_up_swiglu_receipt": native_gate_up_swiglu.get("receipt_path"),
             "bounded_router_representation_ab_observed": router_representation_ab.get("status") == "PASSED",
             "bounded_router_representation_ab_receipt": router_representation_ab.get("receipt_path"),
             "bounded_component_body_loaded": kernel_parity.get("source_independent_execution") is True,
@@ -1296,6 +1353,7 @@ def _executable_manifest(
         "source_router_selection": router_selection,
         "source_router_selection_native": native_router_selection,
         "source_routed_expert_dispatch_native": native_routed_expert_dispatch,
+        "source_routed_expert_gate_up_swiglu_native": native_gate_up_swiglu,
         "source_router_representation_ab": router_representation_ab,
         "chosen_representation": ebpw.get("chosen_representation"),
         "native_loader": {
@@ -1314,6 +1372,10 @@ def _executable_manifest(
             "bounded_native_routed_expert_dispatch_receipt": native_routed_expert_dispatch.get("receipt_path"),
             "bounded_native_routed_expert_dispatch_observed": native_routed_expert_dispatch.get("native_routed_body_dispatch_observed"),
             "bounded_native_routed_expert_dispatch_scope": "selected persisted routed-expert body windows only; full expert activation remains untested",
+            "bounded_native_gate_up_swiglu_status": native_gate_up_swiglu.get("status"),
+            "bounded_native_gate_up_swiglu_receipt": native_gate_up_swiglu.get("receipt_path"),
+            "bounded_native_gate_up_swiglu_observed": native_gate_up_swiglu.get("native_gate_up_swiglu_observed"),
+            "bounded_native_gate_up_swiglu_scope": "selected full persisted fused gate_up bodies split into gate/up halves and activated by native SwiGLU; down projection and full expert remain untested",
             "required": ["verified body manifest", "zero-copy/streaming policy", "per-organ ownership", "resident lifetime", "loader hash"],
             "body_read_by_scaffold": False,
         },
@@ -1454,6 +1516,19 @@ def _executable_manifest(
                 "scope": "native selected persisted Q4/G64 routed-expert body windows plus host weighted gather; no complete expert or Flash execution",
                 "label": DERIVED,
             },
+            "bounded_native_gate_up_swiglu_evidence": {
+                "status": native_gate_up_swiglu.get("status"),
+                "receipt": native_gate_up_swiglu.get("receipt_path"),
+                "qualification": native_gate_up_swiglu.get("qualification"),
+                "native_gate_up_swiglu_observed": native_gate_up_swiglu.get("native_gate_up_swiglu_observed"),
+                "native_expert_gate_up_activation_observed": native_gate_up_swiglu.get("native_expert_gate_up_activation_observed"),
+                "source_independent_execution": native_gate_up_swiglu.get("source_independent_execution"),
+                "selected_expert_count": (native_gate_up_swiglu.get("execution") or {}).get("selected_expert_count"),
+                "gate_rows": ((native_gate_up_swiglu.get("execution") or {}).get("gate_rows")),
+                "physical_graph_fingerprint": (native_gate_up_swiglu.get("physical_graph") or {}).get("fingerprint"),
+                "scope": "native Q4/G64 gate+up/SwiGLU activation plus host weighted gather; down projection and complete expert/Flash execution remain untested",
+                "label": DERIVED,
+            },
             "bounded_router_representation_ab_evidence": {
                 "status": router_representation_ab.get("status"),
                 "receipt": router_representation_ab.get("receipt_path"),
@@ -1538,6 +1613,18 @@ def _executable_manifest(
                 "complete_expert_runtime": native_routed_expert_dispatch.get("complete_expert_runtime"),
                 "complete_token_runtime": native_routed_expert_dispatch.get("complete_token_runtime"),
             },
+            "native_gate_up_swiglu": {
+                "status": native_gate_up_swiglu.get("status"),
+                "receipt_path": native_gate_up_swiglu.get("receipt_path"),
+                "fingerprint": (native_gate_up_swiglu.get("physical_graph") or {}).get("fingerprint"),
+                "source_independent_execution": native_gate_up_swiglu.get("source_independent_execution"),
+                "native_gate_up_swiglu_observed": native_gate_up_swiglu.get("native_gate_up_swiglu_observed"),
+                "native_expert_gate_up_activation_observed": native_gate_up_swiglu.get("native_expert_gate_up_activation_observed"),
+                "selected_expert_count": (native_gate_up_swiglu.get("execution") or {}).get("selected_expert_count"),
+                "whole_model_capability": native_gate_up_swiglu.get("whole_model_capability"),
+                "complete_expert_runtime": native_gate_up_swiglu.get("complete_expert_runtime"),
+                "complete_token_runtime": native_gate_up_swiglu.get("complete_token_runtime"),
+            },
             "router_representation_ab": {
                 "status": router_representation_ab.get("status"),
                 "receipt_path": router_representation_ab.get("receipt_path"),
@@ -1585,6 +1672,8 @@ def _executable_manifest(
             "native_router_selection_fingerprint": (native_router_selection.get("physical_graph") or {}).get("fingerprint"),
             "native_routed_expert_dispatch_receipt": native_routed_expert_dispatch.get("receipt_path"),
             "native_routed_expert_dispatch_fingerprint": (native_routed_expert_dispatch.get("physical_graph") or {}).get("fingerprint"),
+            "native_gate_up_swiglu_receipt": native_gate_up_swiglu.get("receipt_path"),
+            "native_gate_up_swiglu_fingerprint": (native_gate_up_swiglu.get("physical_graph") or {}).get("fingerprint"),
             "router_representation_ab_fingerprint": (router_representation_ab.get("physical_graph") or {}).get("fingerprint"),
             "shared_expert_kernel_parity_receipt": shared_expert_kernel_parity.get("receipt_path"),
             "deltanet_kernel_parity_receipt": deltanet_kernel_parity.get("receipt_path"),
@@ -1628,6 +1717,7 @@ def run_flash_executable_scaffold(
     router_selection_receipt: Optional[str | os.PathLike[str]] = None,
     native_router_selection_receipt: Optional[str | os.PathLike[str]] = None,
     native_routed_expert_dispatch_receipt: Optional[str | os.PathLike[str]] = None,
+    native_gate_up_swiglu_receipt: Optional[str | os.PathLike[str]] = None,
     router_representation_ab_receipt: Optional[str | os.PathLike[str]] = None,
     emit: Optional[str | os.PathLike[str]] = None,
     ebpw_emit: Optional[str | os.PathLike[str]] = None,
@@ -1673,10 +1763,11 @@ def run_flash_executable_scaffold(
         router_selection = _router_selection_summary(repo, router_selection_receipt)
         native_router_selection = _native_router_selection_summary(repo, native_router_selection_receipt)
         native_routed_expert_dispatch = _native_routed_expert_dispatch_summary(repo, native_routed_expert_dispatch_receipt)
+        native_gate_up_swiglu = _native_gate_up_swiglu_summary(repo, native_gate_up_swiglu_receipt)
         router_representation_ab = _router_representation_ab_summary(repo, router_representation_ab_receipt)
         ebpw = _ebpw_budget(science, source, tensor_probe, representation_experiment, transform_parity, loader_roundtrip, kernel_parity)
         token_ns = _token_ns_budget(science, source)
-        manifest = _executable_manifest(science, source, lake, ebpw, token_ns, tensor_probe, representation_experiment, transform_parity, loader_roundtrip, kernel_parity, shared_expert_kernel_parity, deltanet_kernel_parity, sparse_attention_kernel_parity, mtp_gate_kernel_parity, graph_component, component_campaign, router_graph, router_selection, native_router_selection, native_routed_expert_dispatch, router_representation_ab)
+        manifest = _executable_manifest(science, source, lake, ebpw, token_ns, tensor_probe, representation_experiment, transform_parity, loader_roundtrip, kernel_parity, shared_expert_kernel_parity, deltanet_kernel_parity, sparse_attention_kernel_parity, mtp_gate_kernel_parity, graph_component, component_campaign, router_graph, router_selection, native_router_selection, native_routed_expert_dispatch, native_gate_up_swiglu, router_representation_ab)
         atomic_write_json(ebpw_path, ebpw)
         atomic_write_json(token_path, token_ns)
         manifest["ebpw_budget_receipt"] = str(ebpw_path)
@@ -1778,6 +1869,11 @@ def run_flash_executable_scaffold(
                 "bounded_native_routed_expert_dispatch_is_source_independent": native_routed_expert_dispatch.get("status") == "NOT_RUN" or native_routed_expert_dispatch.get("source_independent_execution") is True,
                 "bounded_native_routed_expert_dispatch_is_physically_observed_only_when_present": native_routed_expert_dispatch.get("status") == "NOT_RUN" or native_routed_expert_dispatch.get("native_routed_body_dispatch_observed") is True,
                 "bounded_native_routed_expert_dispatch_refuses_promotion": native_routed_expert_dispatch.get("promotion_allowed") is False,
+                "bounded_native_gate_up_swiglu_is_explicit": native_gate_up_swiglu.get("status") in {"NOT_RUN", "PASSED"},
+                "bounded_native_gate_up_swiglu_does_not_claim_whole_model": native_gate_up_swiglu.get("whole_model_capability") in {None, "NOT_TESTED"} and native_gate_up_swiglu.get("complete_expert_runtime") in {None, "NOT_TESTED"} and native_gate_up_swiglu.get("complete_token_runtime") in {None, "NOT_TESTED"},
+                "bounded_native_gate_up_swiglu_is_source_independent": native_gate_up_swiglu.get("status") == "NOT_RUN" or native_gate_up_swiglu.get("source_independent_execution") is True,
+                "bounded_native_gate_up_swiglu_is_physically_observed_only_when_present": native_gate_up_swiglu.get("status") == "NOT_RUN" or native_gate_up_swiglu.get("native_gate_up_swiglu_observed") is True,
+                "bounded_native_gate_up_swiglu_refuses_promotion": native_gate_up_swiglu.get("promotion_allowed") is False,
                 "bounded_router_representation_ab_is_explicit": router_representation_ab.get("status") in {"NOT_RUN", "PASSED"},
                 "bounded_router_representation_ab_does_not_claim_whole_model": router_representation_ab.get("whole_model_capability") in {None, "NOT_TESTED"} and router_representation_ab.get("complete_token_runtime") in {None, "NOT_TESTED"},
                 "bounded_router_representation_ab_does_not_persist_bodies": router_representation_ab.get("candidate_bodies_persisted") in {None, False},
@@ -1822,6 +1918,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser.add_argument("--router-selection-receipt")
     parser.add_argument("--native-router-selection-receipt")
     parser.add_argument("--native-routed-expert-dispatch-receipt")
+    parser.add_argument("--native-gate-up-swiglu-receipt")
     parser.add_argument("--router-representation-ab-receipt")
     parser.add_argument("--emit")
     parser.add_argument("--ebpw-emit")
@@ -1845,6 +1942,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         router_selection_receipt=args.router_selection_receipt,
         native_router_selection_receipt=args.native_router_selection_receipt,
         native_routed_expert_dispatch_receipt=args.native_routed_expert_dispatch_receipt,
+        native_gate_up_swiglu_receipt=args.native_gate_up_swiglu_receipt,
         router_representation_ab_receipt=args.router_representation_ab_receipt,
         emit=args.emit,
         ebpw_emit=args.ebpw_emit,
@@ -1854,7 +1952,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     return 0 if report.get("status") == "PASSED" else 1
 
 
-__all__ = ["DEFAULT_DELTANET_KERNEL_PARITY", "DEFAULT_KERNEL_PARITY", "DEFAULT_LOADER_ROUNDTRIP", "DEFAULT_MTP_GATE_KERNEL_PARITY", "DEFAULT_NATIVE_ROUTED_EXPERT_DISPATCH", "DEFAULT_NATIVE_ROUTER_SELECTION", "DEFAULT_REPRESENTATION_EXPERIMENT", "DEFAULT_REPRESENTATION_REPLICATION", "DEFAULT_ROUTER_REPRESENTATION_AB", "DEFAULT_ROUTER_SELECTION", "DEFAULT_SHARED_EXPERT_KERNEL_PARITY", "DEFAULT_SPARSE_ATTENTION_KERNEL_PARITY", "DEFAULT_TENSOR_PROBE", "DEFAULT_TRANSFORM_PARITY", "EBPW_SCHEMA", "SCHEMA", "TOKEN_NS_SCHEMA", "main", "run_flash_executable_scaffold"]
+__all__ = ["DEFAULT_DELTANET_KERNEL_PARITY", "DEFAULT_KERNEL_PARITY", "DEFAULT_LOADER_ROUNDTRIP", "DEFAULT_MTP_GATE_KERNEL_PARITY", "DEFAULT_NATIVE_GATE_UP_SWIGLU", "DEFAULT_NATIVE_ROUTED_EXPERT_DISPATCH", "DEFAULT_NATIVE_ROUTER_SELECTION", "DEFAULT_REPRESENTATION_EXPERIMENT", "DEFAULT_REPRESENTATION_REPLICATION", "DEFAULT_ROUTER_REPRESENTATION_AB", "DEFAULT_ROUTER_SELECTION", "DEFAULT_SHARED_EXPERT_KERNEL_PARITY", "DEFAULT_SPARSE_ATTENTION_KERNEL_PARITY", "DEFAULT_TENSOR_PROBE", "DEFAULT_TRANSFORM_PARITY", "EBPW_SCHEMA", "SCHEMA", "TOKEN_NS_SCHEMA", "main", "run_flash_executable_scaffold"]
 
 
 if __name__ == "__main__":

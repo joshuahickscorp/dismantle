@@ -37,6 +37,16 @@ DEFAULT_COMPONENTS = (
         "body_receipt": "FLASH_NOETIC_ROUTED_EXPERT_BODY_E0_R128_256.json",
         "kernel_receipt": "FLASH_NOETIC_Q4_BODY_KERNEL_E0_R128_256_PARITY.json",
     },
+    {
+        "id": "e1_r0_128",
+        "body_receipt": "FLASH_NOETIC_ROUTED_EXPERT_BODY_E1_R0_128.json",
+        "kernel_receipt": "FLASH_NOETIC_Q4_BODY_KERNEL_E1_R0_128_PARITY.json",
+    },
+    {
+        "id": "e32_r0_128",
+        "body_receipt": "FLASH_NOETIC_ROUTED_EXPERT_BODY_E32_R0_128.json",
+        "kernel_receipt": "FLASH_NOETIC_Q4_BODY_KERNEL_E32_R0_128_PARITY.json",
+    },
 )
 
 
@@ -195,8 +205,11 @@ def _validate_component(
             errors.append("body receipt sha256 does not match persisted body")
         if body_record.get("bytes") != body_file.stat().st_size:
             errors.append("body receipt byte count does not match persisted body")
-    if candidate_body.get("path") != str(body_file) if body_file else candidate_body.get("path") is not None:
-        errors.append("kernel candidate body path does not match body receipt")
+    if body_file is not None:
+        if candidate_body.get("path") != str(body_file):
+            errors.append("kernel candidate body path does not match body receipt")
+    elif candidate_body.get("path") is not None:
+        errors.append("kernel candidate body path is present without a persisted body")
     if candidate_body.get("sha256") != body_record.get("sha256"):
         errors.append("kernel candidate body sha256 does not match body receipt")
     if candidate_body.get("bytes") != body_record.get("bytes"):

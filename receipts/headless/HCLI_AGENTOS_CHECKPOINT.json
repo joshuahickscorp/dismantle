@@ -1,0 +1,2667 @@
+{
+  "blockers": [
+    "accelerator performance qualification and unattended sovereign-resident operation remain unproven"
+  ],
+  "claim_boundary": "This checkpoint is an evidence census; it does not certify a model, runtime, hardware accelerator, or unattended sovereignty.",
+  "connectivity": {
+    "available_surfaces": [
+      "filesystem",
+      "shell",
+      "git",
+      "python",
+      "rust",
+      "cargo",
+      "metal",
+      "vmcp",
+      "modellake",
+      "hf_cli",
+      "github_cli",
+      "web",
+      "github",
+      "huggingface"
+    ],
+    "download_performed": false,
+    "external_write_performed": false,
+    "generated_at": 1787793227.84708,
+    "network_probed": true,
+    "repo_root": "/Users/scammermike/Downloads/hawking",
+    "schema": "hcli.agentos.connectivity.v1",
+    "secrets_policy": "credential values are never read into the receipt; only presence is recorded",
+    "surfaces": {
+      "cargo": {
+        "executable": "/opt/homebrew/bin/cargo",
+        "status": "AVAILABLE",
+        "version": "cargo 1.94.1 (Homebrew)"
+      },
+      "filesystem": {
+        "repo_root": "/Users/scammermike/Downloads/hawking",
+        "status": "AVAILABLE",
+        "workspace": "/Users/scammermike/Downloads/hawking",
+        "writable_workspace": true
+      },
+      "git": {
+        "executable": "/usr/bin/git",
+        "status": "AVAILABLE",
+        "version": "git version 2.54.0 (Apple Git-156)"
+      },
+      "github": {
+        "elapsed_ms": 91.57,
+        "http_status": 200,
+        "status": "AVAILABLE",
+        "url": "https://api.github.com/"
+      },
+      "github_cli": {
+        "account": "joshuahickscorp",
+        "auth_available": true,
+        "credential_present": false,
+        "credential_value": null,
+        "executable": "/opt/homebrew/bin/gh",
+        "source": "cli-auth-status",
+        "status": "AUTHENTICATED"
+      },
+      "hf_cli": {
+        "account": null,
+        "auth_available": true,
+        "credential_present": false,
+        "credential_value": null,
+        "executable": "/Library/Frameworks/Python.framework/Versions/3.12/bin/hf",
+        "source": "cli-auth-status",
+        "status": "AUTHENTICATED"
+      },
+      "huggingface": {
+        "elapsed_ms": 44.2,
+        "http_status": 200,
+        "status": "AVAILABLE",
+        "url": "https://huggingface.co/"
+      },
+      "metal": {
+        "executable": "/usr/sbin/system_profiler",
+        "report_available": true,
+        "status": "AVAILABLE"
+      },
+      "modellake": {
+        "managed_by": "tools/odyssey/modellake.py",
+        "root": "/Volumes/corpdrive/hawking-modellake",
+        "status": "AVAILABLE"
+      },
+      "python": {
+        "executable": "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "status": "AVAILABLE",
+        "version": "3.14.6"
+      },
+      "rust": {
+        "executable": "/opt/homebrew/bin/rustc",
+        "status": "AVAILABLE",
+        "version": "rustc 1.94.1 (e408947bf 2026-03-25) (Homebrew)"
+      },
+      "shell": {
+        "executable": "/bin/zsh",
+        "status": "AVAILABLE"
+      },
+      "vmcp": {
+        "confidence": "high",
+        "hcli_marker": "/Users/scammermike/Downloads/hawking/hcli/vmcp",
+        "package_materialized": true,
+        "source": "file:///Users/scammermike/Downloads/hawking/visionmcp/src/visionmcp",
+        "status": "AVAILABLE",
+        "unresolved": []
+      },
+      "web": {
+        "elapsed_ms": 160.99,
+        "http_status": 200,
+        "status": "AVAILABLE",
+        "url": "https://www.rfc-editor.org/"
+      }
+    },
+    "workspace": "/Users/scammermike/Downloads/hawking"
+  },
+  "gates": {
+    "accelerator_smoke": {
+      "bench_state": "CONTENDED",
+      "pass": true,
+      "qualification": "LIVE_ACCELERATOR_EXECUTION_NO_PERF_CLAIM",
+      "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/HCLI_ACCELERATOR_NATIVE_SMOKE.json",
+      "status": "PASSED"
+    },
+    "native_gate": {
+      "checks": {
+        "A1_direct_resident": true,
+        "A2_hawking_native_backend": true,
+        "A3_provider_abstraction": true,
+        "A4_hcli_plain_cognition": true,
+        "A5_hcli_structured_cognition": true,
+        "A6_full_hcli_task": true
+      },
+      "profile_path": "/Users/scammermike/Downloads/hawking/hcli/hawking-native.sealed-3.14.json",
+      "qualification": "LIVE_NATIVE_HCLI_LADDER",
+      "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/HCLI_AGENTOS_NATIVE_GATE.json",
+      "status": "PASSED"
+    },
+    "native_mission_gate": {
+      "checks": {
+        "fact_hash_present": true,
+        "mission_completed": true,
+        "model_not_acceptance_authority": true,
+        "native_cognition_called": true,
+        "receipt_exists": true,
+        "result_verdict_accept": true,
+        "typed_read_ok": true,
+        "typed_write_ok": true,
+        "unit_completed": true,
+        "verifier_passed": true
+      },
+      "profile_path": "/Users/scammermike/Downloads/hawking/hcli/hawking-native.sealed-3.14.json",
+      "qualification": "LIVE_NATIVE_TOOL_VERIFIER_RECEIPT",
+      "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/HCLI_NATIVE_MISSION_GATE.json",
+      "status": "PASSED"
+    },
+    "production_provider_gate": "NOT_RUN",
+    "recovery_gate": {
+      "checks": {
+        "benchmark_rejected": true,
+        "malformed_json": true,
+        "network_unavailable": true,
+        "nonsense_model": true,
+        "recovery": true
+      },
+      "qualification": "FIXTURE_PHYSICAL_CONTROL_PLANE_ONLY",
+      "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/HCLI_AGENTOS_RECOVERY_GATE.json",
+      "status": "PASSED"
+    },
+    "research_gate": {
+      "checks": {
+        "github_repository": true,
+        "github_search": true,
+        "huggingface_download": true,
+        "huggingface_file": true,
+        "huggingface_resolve": true,
+        "official_fetch": true,
+        "web_search": true
+      },
+      "qualification": "RESEARCH_OPERATIONAL",
+      "receipt_path": "/Users/scammermike/Downloads/hawking/.hcli/receipts/research-gate.json",
+      "status": "PASSED"
+    },
+    "resident_gate": {
+      "checks": {
+        "all_nonempty": true,
+        "no_errors": true,
+        "no_restart": true,
+        "one_model_open": true,
+        "one_pid_reused": true,
+        "one_weight_upload": true,
+        "requested_count_reached": true,
+        "resident_started": true,
+        "state_reset_isolated": true,
+        "unique_responses": true,
+        "zero_fallbacks": true
+      },
+      "profile_path": "/Users/scammermike/Downloads/hawking/hcli/hawking-native.sealed-3.14.json",
+      "qualification": "LIVE_RESIDENT_SEQUENTIAL_PROOF",
+      "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/HCLI_AGENTOS_RESIDENT_GATE.json",
+      "status": "PASSED"
+    },
+    "unattended": "NOT_PROVEN",
+    "vmcp_gate": {
+      "checks": {
+        "external_search": true,
+        "local_deterministic_validation": true,
+        "vmcp_source_rediscovered": true,
+        "vmcp_tool_called": true
+      },
+      "qualification": "VMCP_OPERATIONAL",
+      "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/HCLI_AGENTOS_VMCP_GATE.json",
+      "status": "PASSED"
+    }
+  },
+  "generated_at": 1787793227.849406,
+  "git_revision": "cfcf63c4194d5b59ad22cdfb47a0954f2389f39d",
+  "host": {
+    "machine": "arm64",
+    "platform": "macOS-27.0-arm64-arm-64bit-Mach-O",
+    "python": "3.14.6"
+  },
+  "maturity": {
+    "accelerator_smoke": "LIVE_ACCELERATOR_EXECUTION_NO_PERF_CLAIM",
+    "control_plane": "FOUNDATION",
+    "durable_mission": "IMPLEMENTED",
+    "fixture_recovery": "PASSED",
+    "native_hcli": "LIVE_NATIVE_HCLI_LADDER",
+    "native_mission": "LIVE_NATIVE_TOOL_VERIFIER_RECEIPT",
+    "native_resident": "LIVE_RESIDENT_SEQUENTIAL_PROOF",
+    "provider_generalization": "IMPLEMENTED_CONTRACTS",
+    "research": "RESEARCH_OPERATIONAL",
+    "unattended_sovereignty": "NOT_CLAIMED",
+    "vmcp": "VMCP_OPERATIONAL"
+  },
+  "next_actions": [
+    "run recovery-gate against every configured production provider",
+    "persist research provenance and protected benchmark receipts",
+    "qualify additional providers only after their own deterministic verification closes"
+  ],
+  "provider_neutral_contracts": {
+    "model_name_is_not_a_control_plane_type": true,
+    "role_policy_source": "hcli.providers.RoleRouter",
+    "schemas": [
+      "hcli.provider.profile.v1",
+      "hcli.provider.capabilities.v1",
+      "hcli.provider.generation_request.v1",
+      "hcli.provider.generation_response.v1",
+      "hcli.provider.health.v1",
+      "hcli.provider.failure.v1",
+      "hcli.provider.receipt.v1",
+      "hcli.provider.roles.v1"
+    ]
+  },
+  "receipts": [
+    {
+      "bytes": 10244,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/.DS_Store",
+      "suffix": ""
+    },
+    {
+      "bytes": 6417,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/DSV4F_ACTIVATION_X_LAYER_TILE_BATCH.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 2905,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/DSV4F_NATIVE_INDEX_ADMISSION_COLD_TOKEN.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 2469,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/DSV4F_NATIVE_PLUS_ZEROCOPY_COMBINED.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 69141,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/DSV4F_P4B_POSITION1_COMPLETE_ATTENTION_METAL-v1-reseal-darwin-dd.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 66398,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/DSV4F_RESIDUAL_COMPOSITION_ORACLE.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 13521,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/DSV4F_RESIDUAL_COMPOSITION_ORACLE.md",
+      "suffix": ".md"
+    },
+    {
+      "bytes": 140181,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/DSV4F_TENSOR_SCHEDULE.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 14144,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/DSV4F_TENSOR_SCHEDULE.md",
+      "suffix": ".md"
+    },
+    {
+      "bytes": 15021,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/DSV4F_TOKEN_NS_LEDGER.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 85459,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/DSV4F_TOKEN_NS_LEDGER_warm.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 28611,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/QWEN30_CAPTURE_SUMMARIES_RECLAIMED.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 6876,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/QWEN30_SOURCE_IDENTITY_RECLAIMED.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 4950,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/QWEN80_BIT_BUDGET_LEDGER.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 4402,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/QWEN80_CAPTURE_INDEX.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 5519,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/QWEN80_CAPTURE_SPEED.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 658,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/QWEN80_CROSS_EXPERT_STRUCTURE_NEGATIVE.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 871882,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/QWEN80_DOCTOR6_PRESCRIPTION_CLAMP145.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 872608,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/QWEN80_DOCTOR6_PRESCRIPTION_HGRAVS01.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 870564,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/QWEN80_DOCTOR6_PRESCRIPTION_MEASURED_BAR.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 422554,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/QWEN80_DOCTOR6_PRESCRIPTION_V1.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 17166,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/QWEN80_DOWN_PROJ_FRONTIER_SWEEP.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 1908,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/QWEN80_MIXED_REPRESENTATION_UNDER_1_5.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 828970,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/QWEN80_PRESCRIPTION_CLAMP25.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 831042,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/QWEN80_PRESCRIPTION_INDEXED.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 6697,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/QWEN80_REPRESENTATION_FRONTIER_SWEEP.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 270723,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/QWEN80_RESIDUAL_ENCODING.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 16230,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/QWEN80_SOURCE_IDENTITY.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 1604,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/QWEN80_SWIGLU_INTERMEDIATE_VERIFY.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 1293910,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/QWEN80_TOKEN_NS_LEDGER.before-opt.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 1301224,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/QWEN80_TOKEN_NS_LEDGER.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 2260,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/QWEN80_UNIFORM_Q4_VELOCITY_BASELINE.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 2874,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/QWEN80_UNIFORM_Q4_VELOCITY_PROFILE8.before-opt.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 2874,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/QWEN80_UNIFORM_Q4_VELOCITY_PROFILE8.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 27862,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/agentos/OPTIMIZATION_SURVEY_AND_PARALLELIZATION_PLAN.md",
+      "suffix": ".md"
+    },
+    {
+      "bytes": 41392,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/agentos/PROGRAM_PLAN.md",
+      "suffix": ".md"
+    },
+    {
+      "bytes": 1851,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/agentos/README.md",
+      "suffix": ".md"
+    },
+    {
+      "bytes": 28211,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/agentos/SUBSTRATE.jsonl",
+      "suffix": ".jsonl"
+    },
+    {
+      "bytes": 2285,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/ARGMAX_TWO_PASS_NO_TRANSFER.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 532738,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/ASCENT_STATE.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 3873,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/ATTENTION_FUNCTION_SPACE.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 1914,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/BACKLOG_IS_STALE.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 2004,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/BACKLOG_MINE.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 21656,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/BACKLOG_MINE_REPORT.md",
+      "suffix": ".md"
+    },
+    {
+      "bytes": 2352,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/BLOCKED_CENSUS.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 10116,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/CAPABILITY_COMPACT_Q3ATTN_R1P2.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 7255,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/CODEC_ALU_COST.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 41850,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/COMPACT_Q3ATTN_R1P2_TPS.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 2347,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/CORRECTION_ROOF_IS_CONDITIONED.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 19113,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/CROSS_ADVERSARIAL_FINDINGS.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 2213,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/CROSS_LANE_CONFLICT_LMHEAD.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 2460,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/DENSITY_LEADER_SPEED.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 2016,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/DRAIN_REQUIREMENT.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 2243,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/DRAIN_REQUIRES_USER_COORDINATION.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 56863,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/DSV4F_BYTE_REDUCTION.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 6101,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/DSV4F_BYTE_REDUCTION.md",
+      "suffix": ".md"
+    },
+    {
+      "bytes": 2071,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/DSV4F_GATE_BELOW_DRAM_FLOOR.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 11483,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/DSV4F_GPU_BODY_DIAGNOSIS.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 10450,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/DSV4F_GPU_BODY_WALL.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 1871,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/DSV4F_HOST_EXCLUSIVE_HALVED.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 15220,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/DSV4F_HOST_WALL_BASELINE.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 6014,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/DSV4F_SEALED_SCIENCE_WEIGHTS_DELETED.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 90040,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/DSV4F_TOKEN_NS_LEDGER.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 2368,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/DSV4F_UNBLOCK_REQUIRES_RESEAL.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 7390,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/DSV_INTEGRATE_OCCUPANCY_2026_08_16.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 1551,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/EOD_REGRESSION_CHECK.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 1633,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/EOD_REGRESSION_CHECK_2.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 1839,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/FEMTOSECOND_PROGRESS_Q80.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 1637,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/FEMTOSECOND_PROGRESS_Q80_V2.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 2259,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/FS_PER_WEIGHT_LAW.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 1540,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G001_KERNEL_GAP.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 2275,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G002_EXACT_PATCH_SITE.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 91643,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G002_FAMILY_FACET_AB.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 2505,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G002_PARITY_TEST_BLIND_SPOT.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 2348,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G002_Q80_HOT_PATH_RESOLUTION.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 5898,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G002_TILES_INTO_FAMILY.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 16860,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G002_TRANSFER_MATRIX.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 8666,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G003_CATALOG_GEOM.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 1793,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G003_CATALOG_GEOM.md",
+      "suffix": ".md"
+    },
+    {
+      "bytes": 1707,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G003_GAP_AFTER_ALL_IDENTIFIED_WORK.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 6512,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G003_Q80_CB_COLLAPSE.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 10213,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G003_Q80_MIXED_DELTANET_VI_REBASE3.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 9625,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G003_Q80_TOKEN_NS.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 3609,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G004_DEPTH_SENSITIVITY.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 14013,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G004_DEPTH_SENSITIVITY_CAPABILITY.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 611,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G004_DEPTH_SENSITIVITY_DIVERGENCE.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 6559,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G004_ERROR_PROPAGATION_CHAIN.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 2329,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G005_BAR_UNREACHABLE.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 9149,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G005_MODEL_DRIVES_TOOLS.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 8219,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G005_MODEL_WIRED_OFFLOAD.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 2554,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G005_NATIVE_WIRED.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 9451,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G005_SPECIAL_UNIT_READY.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 14382,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G005_TOOL_PLANE.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 2691,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G005_WIDER_CATALOG.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 14024,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G005_WIDER_OFFLOAD.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 2152,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G005_WRITE_AND_PYTEST_FAILURE.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 1921,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G008_PREFERRED_TARGET_UNREACHABLE.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 3106,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G011_AUTONOMOUS_LAUNCH_ACHIEVED.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 2380,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G011_AUTONOMOUS_LOOP_STARVED.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 1465,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G011_CONTRACT_FORMAT_GAP.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 1609,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G011_CYCLE_CAN_CLOSE.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 1621,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G011_DAEMON_RUNNING_FIXED_CODE.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 2042,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G011_LOOP_REPAIR_VERIFIED.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 1512,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G013_FS_EFFICIENCY_CLOSURE.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 3306,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G013_FS_EFFICIENCY_CLOSURE_V2.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 5469,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G014_FS_OCCUPANCY_CONTROL.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 2293,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G015_NATIVE_LEG_VERIFY_ON_MAIN.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 2513,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G016_BPW_FEASIBILITY.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 2593,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G016_PACKER_DESIGN.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 3937,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G023_FAMILY_RECEIPT.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 2406,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G023_KERNEL_AXES.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 18570,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G023_REUSE_MATRIX.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 2265,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G023_VERIFICATION.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 6432,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G024_BOUND_REVIEW.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 7405,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G024_QWEN38_TOKEN_NS.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 12263,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G024_RATE_DISTORTION_BOUND.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 4098,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G029_PROTECTED_VERIFICATION.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 4839,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G031_CAPTURE_SAMPLING_STABILITY.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 18302,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G031_FAMILY_REVIEW.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 1966,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G032_CHANNEL_SCALE_BLOCK_FOLD.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 10193,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G032_CHANSCALE_CAPABILITY.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 7090,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G032_XFORM_HADAMARD_Q2.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 7108,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G032_XFORM_HADAMARD_Q3.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 7132,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G032_XFORM_HADAMARD_Q4.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 10609,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G032_XFORM_MEMBERS.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 2411,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G033_DRAFT_TIER_CLOSURE.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 10939,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G033_FUNCTION_SPACE_RANK.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 10925,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G033_FUNCTION_SPACE_RANK_G32.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 14164,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G033_PLANES_LADDER.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 5746,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G034_TENSOR_OPERATOR.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 9203,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G035_CROSSLAYER_SHARE.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 4564,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G036_FUNCTION_FIT_HELDOUT.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 6515,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G039_TILE_ENTROPY.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 5024,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G041_COST_VECTOR.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 5101,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G042_BPW_FAMILY.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 4999,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G043_FLOP_FAMILY.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 4945,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G044_ROOFLINE_KNEE.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 19500,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G045_HORIZON_EFFICIENCY.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 6083,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G046_ACTIVATION_MANIFOLD.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 3627,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G047_COUNTERFACTUAL_DOCTOR.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 5400,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G048_DISTINGUISHER.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 4377,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G048_DISTINGUISHER_K48.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 4529,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G049_PROOF_CARRYING_COVERAGE.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 6249,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G051_GAUGE_FIXING.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 9181,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G053_BASIN_WALKING.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 4770,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G056_MATRYOSHKA_NESTING.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 4402,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G057_SELF_SPECULATIVE.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 6261,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G058_DYNAMIC_PRECISION.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 2297,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G060_ATTENTION_OCCUPANCY.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 2482,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G060_CONTEXT_WALL.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 4377,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G060_LATENT_KV_VERDICT.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 8118,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G061_JOINT_STATE_WEIGHT.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 9502,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G064_DEPTH_REDUNDANCY.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 5095,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G066_ENTANGLEMENT_PREDICTOR.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 68417,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G067_PHASE_TRANSITION.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 12664,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G068_COMPOSITION_GRAPH.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 21117,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G069_PLANES_FUNCTIONAL.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 31947,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G070_CORRECTION_TOPOLOGY.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 5016,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G072_MULTI_PLANE_GEMV.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 11055,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G073_PLANE_ALLOCATION.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 10049,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G074_EXCEPTION_SELECTION.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 3729,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G075_CAUSAL_MAP.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 6228,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G076_DOCTOR_DIMENSIONS.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 3188,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G079_CAPABILITY_LOCALITY.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 1224,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G079_LOCALITY_V2_ALL_CLASSES.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 10806,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G081_PROFILE_GUIDED.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 2116,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G081_PROFILE_V2_ALL_CLASSES.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 2968,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G082_PREFIX_PARTIAL_EVAL.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 4542,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G083_TOOL_SPECIALIZATION.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 3702,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G084_NEURAL_JIT.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 3177,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G085_HOT_COLD_PLACEMENT.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 4917,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G089_LATENT_RUNTIME_SPAN.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 2501,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G090_LM_HEAD_SHARE.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 4121,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G090_LM_HEAD_SHORTLIST.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 4919,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G091_MULTI_TOKEN.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 2693,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G093_ON_DEVICE_SCHEDULER.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 4542,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G094_CACHE_RESIDENCY.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 3940,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G095_AUTOTUNER.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 5165,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G096_NEURAL_ISA_AUDIT.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 4035,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G097_DESCRIPTION_LENGTH.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 47276,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G098_LEDGER_PRIOR.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 4243,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G099_SUPEROPT_FRONTIER.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 3498,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G100_USEFUL_WORK.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 2045,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G103_NR_CONTAINER.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 1985,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G103_NR_uniform-q4-v1.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 2350,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G104_NX_GENOME.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 3505,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G104_NX_SEAL.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 7960,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G105_NR_NX_ARTIFACT.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 201118,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G105_TENSOR_DIGESTS.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 30852,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G106_ROUTE_GRAPH.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 2606,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G107_RPS_RPT_LIVE.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 2874,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G108_ROUTE_DEPTH.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 19927,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G109_ORGAN_GEOMETRY.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 9355,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G110_NONGEMV_CENSUS.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 3442,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G111_RETILE_AB.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 2540,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G112_DISPATCH_FUSION_BOUND.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 2455,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G113_ENCODE_OVERHEAD.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 3829,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G114_RANS_ACCOUNTING.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 2924,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G115_RANS_PREDICTION.json",
+      "suffix": ".json"
+    },
+    {
+      "bytes": 5891,
+      "path": "/Users/scammermike/Downloads/hawking/receipts/ascent-2026-08-16/G116_RANS_NET_VERDICT.json",
+      "suffix": ".json"
+    }
+  ],
+  "repo_root": "/Users/scammermike/Downloads/hawking",
+  "schema": "hcli.agentos.program_checkpoint.v1",
+  "tools": {
+    "count": 41,
+    "names": [
+      "accelerator.benchmark",
+      "accelerator.inspect",
+      "architecture.inspect",
+      "benchmark.inspect",
+      "benchmark.run",
+      "doctor.inspect",
+      "doctor.query",
+      "filesystem.read",
+      "filesystem.search",
+      "filesystem.write",
+      "fs.read",
+      "fs.search",
+      "git.checkout-safe",
+      "git.checkout/revert-safe",
+      "git.diff",
+      "git.log",
+      "git.revert-safe",
+      "git.status",
+      "github.fetch",
+      "github.search",
+      "gravity.experiment",
+      "gravity.inspect",
+      "huggingface.download",
+      "huggingface.fetch_file",
+      "huggingface.history",
+      "huggingface.manifest",
+      "huggingface.resolve",
+      "modellake.status",
+      "receipt.inspect",
+      "receipt.read",
+      "roadmap.inspect",
+      "roadmap.read",
+      "shell.exec",
+      "shell.readonly",
+      "tests.list",
+      "tests.run",
+      "vmcp.capabilities",
+      "vmcp.inspect",
+      "vmcp.query",
+      "web.fetch",
+      "web.search"
+    ],
+    "specs": [
+      {
+        "description": "Inspect or explicitly authorize a physical accelerator benchmark window.",
+        "deterministic": false,
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "confirm": {
+              "type": "boolean"
+            },
+            "receipt": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "confirm"
+          ],
+          "type": "object"
+        },
+        "mutation": "costly",
+        "name": "accelerator.benchmark",
+        "output_schema": {
+          "type": "object"
+        },
+        "provenance": "hcli.tool_registry",
+        "resources": [
+          "gpu",
+          "exclusive_benchmark_window"
+        ],
+        "roles": [],
+        "schema": "hcli.agentos.tool.v1",
+        "timeout_s": 30.0,
+        "verifier_expectations": [
+          "physical claims require live samples and benchmark state"
+        ]
+      },
+      {
+        "description": "Read the latest accelerator machine receipt.",
+        "deterministic": true,
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "mutation": "read_only",
+        "name": "accelerator.inspect",
+        "output_schema": {
+          "type": "object"
+        },
+        "provenance": "hcli.tool_registry",
+        "resources": [],
+        "roles": [],
+        "schema": "hcli.agentos.tool.v1",
+        "timeout_s": 30.0,
+        "verifier_expectations": []
+      },
+      {
+        "description": "Recognize generic model organs/topology from config and tensor-index metadata only.",
+        "deterministic": true,
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "max_tensors": {
+              "type": "integer"
+            },
+            "path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "type": "object"
+        },
+        "mutation": "read_only",
+        "name": "architecture.inspect",
+        "output_schema": {
+          "type": "object"
+        },
+        "provenance": "hcli.tool_registry",
+        "resources": [
+          "filesystem"
+        ],
+        "roles": [],
+        "schema": "hcli.agentos.tool.v1",
+        "timeout_s": 30.0,
+        "verifier_expectations": []
+      },
+      {
+        "description": "Inspect benchmark evidence through a named receipt path.",
+        "deterministic": true,
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "type": "object"
+        },
+        "mutation": "read_only",
+        "name": "benchmark.inspect",
+        "output_schema": {
+          "type": "object"
+        },
+        "provenance": "hcli.tool_registry",
+        "resources": [],
+        "roles": [],
+        "schema": "hcli.agentos.tool.v1",
+        "timeout_s": 30.0,
+        "verifier_expectations": []
+      },
+      {
+        "description": "Run one explicitly confirmed bounded benchmark/test command.",
+        "deterministic": false,
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "confirm": {
+              "type": "boolean"
+            },
+            "paths": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "root": {
+              "type": "string"
+            },
+            "runner": {
+              "enum": [
+                "pytest",
+                "unittest",
+                "cargo"
+              ],
+              "type": "string"
+            },
+            "timeout_s": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "confirm"
+          ],
+          "type": "object"
+        },
+        "mutation": "costly",
+        "name": "benchmark.run",
+        "output_schema": {
+          "type": "object"
+        },
+        "provenance": "hcli.tool_registry",
+        "resources": [
+          "cpu",
+          "exclusive_benchmark_window"
+        ],
+        "roles": [],
+        "schema": "hcli.agentos.tool.v1",
+        "timeout_s": 30.0,
+        "verifier_expectations": [
+          "verified is true only for exit code zero"
+        ]
+      },
+      {
+        "description": "Read the latest Doctor tournament receipt.",
+        "deterministic": true,
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "mutation": "read_only",
+        "name": "doctor.inspect",
+        "output_schema": {
+          "type": "object"
+        },
+        "provenance": "hcli.tool_registry",
+        "resources": [],
+        "roles": [],
+        "schema": "hcli.agentos.tool.v1",
+        "timeout_s": 30.0,
+        "verifier_expectations": []
+      },
+      {
+        "description": "Ask the local Doctor evidence/planning surface for a bounded proposal.",
+        "deterministic": false,
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "max_results": {
+              "type": "integer"
+            },
+            "model": {
+              "type": "string"
+            },
+            "operation": {
+              "type": "string"
+            },
+            "organ": {
+              "type": "string"
+            },
+            "receipt": {
+              "type": "string"
+            },
+            "research_query": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "mutation": "research",
+        "name": "doctor.query",
+        "output_schema": {
+          "type": "object"
+        },
+        "provenance": "hcli.tool_registry",
+        "resources": [
+          "filesystem",
+          "network"
+        ],
+        "roles": [],
+        "schema": "hcli.agentos.tool.v1",
+        "timeout_s": 30.0,
+        "verifier_expectations": [
+          "Doctor proposals require a later measurement receipt"
+        ]
+      },
+      {
+        "description": "Read one known file under an AgentOS read root.",
+        "deterministic": true,
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "encoding": {
+              "type": "string"
+            },
+            "max_bytes": {
+              "type": "integer"
+            },
+            "path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "type": "object"
+        },
+        "mutation": "read_only",
+        "name": "filesystem.read",
+        "output_schema": {
+          "type": "object"
+        },
+        "provenance": "hcli.tool_registry",
+        "resources": [],
+        "roles": [],
+        "schema": "hcli.agentos.tool.v1",
+        "timeout_s": 30.0,
+        "verifier_expectations": []
+      },
+      {
+        "description": "Search bounded text files under a read root.",
+        "deterministic": true,
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "glob": {
+              "type": "string"
+            },
+            "max_results": {
+              "type": "integer"
+            },
+            "pattern": {
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "pattern"
+          ],
+          "type": "object"
+        },
+        "mutation": "read_only",
+        "name": "filesystem.search",
+        "output_schema": {
+          "type": "object"
+        },
+        "provenance": "hcli.tool_registry",
+        "resources": [],
+        "roles": [],
+        "schema": "hcli.agentos.tool.v1",
+        "timeout_s": 30.0,
+        "verifier_expectations": []
+      },
+      {
+        "description": "Atomically write a workspace/repository file under reversible permission.",
+        "deterministic": true,
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "content": {
+              "type": "string"
+            },
+            "encoding": {
+              "type": "string"
+            },
+            "overwrite": {
+              "type": "boolean"
+            },
+            "path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path",
+            "content"
+          ],
+          "type": "object"
+        },
+        "mutation": "reversible_repo",
+        "name": "filesystem.write",
+        "output_schema": {
+          "type": "object"
+        },
+        "provenance": "hcli.tool_registry",
+        "resources": [
+          "filesystem",
+          "ssd"
+        ],
+        "roles": [],
+        "schema": "hcli.agentos.tool.v1",
+        "timeout_s": 30.0,
+        "verifier_expectations": [
+          "caller must verify resulting bytes"
+        ]
+      },
+      {
+        "description": "Read one known file under an AgentOS read root.",
+        "deterministic": true,
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "encoding": {
+              "type": "string"
+            },
+            "max_bytes": {
+              "type": "integer"
+            },
+            "path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "type": "object"
+        },
+        "mutation": "read_only",
+        "name": "fs.read",
+        "output_schema": {
+          "type": "object"
+        },
+        "provenance": "hcli.tool_registry",
+        "resources": [],
+        "roles": [],
+        "schema": "hcli.agentos.tool.v1",
+        "timeout_s": 30.0,
+        "verifier_expectations": []
+      },
+      {
+        "description": "Search bounded text files under a read root.",
+        "deterministic": true,
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "glob": {
+              "type": "string"
+            },
+            "max_results": {
+              "type": "integer"
+            },
+            "pattern": {
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "pattern"
+          ],
+          "type": "object"
+        },
+        "mutation": "read_only",
+        "name": "fs.search",
+        "output_schema": {
+          "type": "object"
+        },
+        "provenance": "hcli.tool_registry",
+        "resources": [],
+        "roles": [],
+        "schema": "hcli.agentos.tool.v1",
+        "timeout_s": 30.0,
+        "verifier_expectations": []
+      },
+      {
+        "description": "Governed placeholder for safe checkout/revert; refuses without a caller-owned recovery plan.",
+        "deterministic": true,
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "paths": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "type": "object"
+        },
+        "mutation": "destructive",
+        "name": "git.checkout-safe",
+        "output_schema": {
+          "type": "object"
+        },
+        "provenance": "hcli.tool_registry",
+        "resources": [],
+        "roles": [],
+        "schema": "hcli.agentos.tool.v1",
+        "timeout_s": 30.0,
+        "verifier_expectations": []
+      },
+      {
+        "description": "Governed placeholder for safe checkout/revert; refuses without a caller-owned recovery plan.",
+        "deterministic": true,
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "paths": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "type": "object"
+        },
+        "mutation": "destructive",
+        "name": "git.checkout/revert-safe",
+        "output_schema": {
+          "type": "object"
+        },
+        "provenance": "hcli.tool_registry",
+        "resources": [],
+        "roles": [],
+        "schema": "hcli.agentos.tool.v1",
+        "timeout_s": 30.0,
+        "verifier_expectations": []
+      },
+      {
+        "description": "Inspect repository changes without mutating Git.",
+        "deterministic": true,
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "paths": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "type": "object"
+        },
+        "mutation": "read_only",
+        "name": "git.diff",
+        "output_schema": {
+          "type": "object"
+        },
+        "provenance": "hcli.tool_registry",
+        "resources": [],
+        "roles": [],
+        "schema": "hcli.agentos.tool.v1",
+        "timeout_s": 30.0,
+        "verifier_expectations": []
+      },
+      {
+        "description": "Inspect recent repository commits without mutating Git.",
+        "deterministic": true,
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "limit": {
+              "type": "integer"
+            },
+            "path": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "mutation": "read_only",
+        "name": "git.log",
+        "output_schema": {
+          "type": "object"
+        },
+        "provenance": "hcli.tool_registry",
+        "resources": [],
+        "roles": [],
+        "schema": "hcli.agentos.tool.v1",
+        "timeout_s": 30.0,
+        "verifier_expectations": []
+      },
+      {
+        "description": "Governed placeholder for safe checkout/revert; refuses without a caller-owned recovery plan.",
+        "deterministic": true,
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "paths": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "type": "object"
+        },
+        "mutation": "destructive",
+        "name": "git.revert-safe",
+        "output_schema": {
+          "type": "object"
+        },
+        "provenance": "hcli.tool_registry",
+        "resources": [],
+        "roles": [],
+        "schema": "hcli.agentos.tool.v1",
+        "timeout_s": 30.0,
+        "verifier_expectations": []
+      },
+      {
+        "description": "Inspect repository status without mutating Git.",
+        "deterministic": true,
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "mutation": "read_only",
+        "name": "git.status",
+        "output_schema": {
+          "type": "object"
+        },
+        "provenance": "hcli.tool_registry",
+        "resources": [],
+        "roles": [],
+        "schema": "hcli.agentos.tool.v1",
+        "timeout_s": 30.0,
+        "verifier_expectations": []
+      },
+      {
+        "description": "Fetch bounded public GitHub HTTPS evidence with no credentials.",
+        "deterministic": false,
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "max_bytes": {
+              "type": "integer"
+            },
+            "timeout_s": {
+              "type": "number"
+            },
+            "url": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "url"
+          ],
+          "type": "object"
+        },
+        "mutation": "research",
+        "name": "github.fetch",
+        "output_schema": {
+          "type": "object"
+        },
+        "provenance": "hcli.tool_registry",
+        "resources": [],
+        "roles": [],
+        "schema": "hcli.agentos.tool.v1",
+        "timeout_s": 30.0,
+        "verifier_expectations": []
+      },
+      {
+        "description": "Search public GitHub repositories/issues/code/commits with bounded provenance.",
+        "deterministic": false,
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "enum": [
+                "repositories",
+                "issues",
+                "code",
+                "commits"
+              ],
+              "type": "string"
+            },
+            "max_results": {
+              "type": "integer"
+            },
+            "query": {
+              "type": "string"
+            },
+            "timeout_s": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "query"
+          ],
+          "type": "object"
+        },
+        "mutation": "research",
+        "name": "github.search",
+        "output_schema": {
+          "type": "object"
+        },
+        "provenance": "hcli.tool_registry",
+        "resources": [
+          "network"
+        ],
+        "roles": [],
+        "schema": "hcli.agentos.tool.v1",
+        "timeout_s": 30.0,
+        "verifier_expectations": [
+          "GitHub source URL and retrieval timestamp are required"
+        ]
+      },
+      {
+        "description": "Propose a bounded Gravity representation experiment with negative-control requirements.",
+        "deterministic": true,
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "execute": {
+              "type": "boolean"
+            },
+            "model": {
+              "type": "string"
+            },
+            "organ": {
+              "type": "string"
+            },
+            "receipt": {
+              "type": "string"
+            },
+            "representation": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "mutation": "reversible_runtime",
+        "name": "gravity.experiment",
+        "output_schema": {
+          "type": "object"
+        },
+        "provenance": "hcli.tool_registry",
+        "resources": [
+          "cpu",
+          "ssd"
+        ],
+        "roles": [],
+        "schema": "hcli.agentos.tool.v1",
+        "timeout_s": 30.0,
+        "verifier_expectations": [
+          "no capability claim without native execution and protected verifier"
+        ]
+      },
+      {
+        "description": "Read the latest Gravity compiler/search receipt.",
+        "deterministic": true,
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "mutation": "read_only",
+        "name": "gravity.inspect",
+        "output_schema": {
+          "type": "object"
+        },
+        "provenance": "hcli.tool_registry",
+        "resources": [],
+        "roles": [],
+        "schema": "hcli.agentos.tool.v1",
+        "timeout_s": 30.0,
+        "verifier_expectations": []
+      },
+      {
+        "description": "Resume and atomically publish one explicitly confirmed Hugging Face file.",
+        "deterministic": false,
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "confirm": {
+              "type": "boolean"
+            },
+            "destination": {
+              "type": "string"
+            },
+            "expected_sha256": {
+              "type": "string"
+            },
+            "max_bytes": {
+              "type": "integer"
+            },
+            "path": {
+              "type": "string"
+            },
+            "repo": {
+              "type": "string"
+            },
+            "revision": {
+              "type": "string"
+            },
+            "timeout_s": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "repo",
+            "path",
+            "destination",
+            "confirm"
+          ],
+          "type": "object"
+        },
+        "mutation": "costly",
+        "name": "huggingface.download",
+        "output_schema": {
+          "type": "object"
+        },
+        "provenance": "hcli.tool_registry",
+        "resources": [
+          "network",
+          "modellake",
+          "ssd"
+        ],
+        "roles": [],
+        "schema": "hcli.agentos.tool.v1",
+        "timeout_s": 30.0,
+        "verifier_expectations": [
+          "hash must be checked before atomic publish"
+        ]
+      },
+      {
+        "description": "Fetch a bounded text/metadata file from a public or already-authorized Hugging Face repo.",
+        "deterministic": false,
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "max_bytes": {
+              "type": "integer"
+            },
+            "path": {
+              "type": "string"
+            },
+            "repo": {
+              "type": "string"
+            },
+            "revision": {
+              "type": "string"
+            },
+            "timeout_s": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "repo",
+            "path"
+          ],
+          "type": "object"
+        },
+        "mutation": "research",
+        "name": "huggingface.fetch_file",
+        "output_schema": {
+          "type": "object"
+        },
+        "provenance": "hcli.tool_registry",
+        "resources": [
+          "network"
+        ],
+        "roles": [],
+        "schema": "hcli.agentos.tool.v1",
+        "timeout_s": 30.0,
+        "verifier_expectations": []
+      },
+      {
+        "description": "Inspect bounded Hugging Face commit history.",
+        "deterministic": false,
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "repo": {
+              "type": "string"
+            },
+            "revision": {
+              "type": "string"
+            },
+            "timeout_s": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "repo"
+          ],
+          "type": "object"
+        },
+        "mutation": "research",
+        "name": "huggingface.history",
+        "output_schema": {
+          "type": "object"
+        },
+        "provenance": "hcli.tool_registry",
+        "resources": [
+          "network"
+        ],
+        "roles": [],
+        "schema": "hcli.agentos.tool.v1",
+        "timeout_s": 30.0,
+        "verifier_expectations": []
+      },
+      {
+        "description": "Resolve a Hugging Face revision and return a bounded manifest.",
+        "deterministic": false,
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "repo": {
+              "type": "string"
+            },
+            "revision": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "repo"
+          ],
+          "type": "object"
+        },
+        "mutation": "research",
+        "name": "huggingface.manifest",
+        "output_schema": {
+          "type": "object"
+        },
+        "provenance": "hcli.tool_registry",
+        "resources": [
+          "network"
+        ],
+        "roles": [],
+        "schema": "hcli.agentos.tool.v1",
+        "timeout_s": 30.0,
+        "verifier_expectations": []
+      },
+      {
+        "description": "Resolve a Hugging Face model revision and bounded file manifest.",
+        "deterministic": false,
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "repo": {
+              "type": "string"
+            },
+            "revision": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "repo"
+          ],
+          "type": "object"
+        },
+        "mutation": "research",
+        "name": "huggingface.resolve",
+        "output_schema": {
+          "type": "object"
+        },
+        "provenance": "hcli.tool_registry",
+        "resources": [],
+        "roles": [],
+        "schema": "hcli.agentos.tool.v1",
+        "timeout_s": 30.0,
+        "verifier_expectations": []
+      },
+      {
+        "description": "Read the ModelLake rolling-pipeline receipt.",
+        "deterministic": true,
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "mutation": "read_only",
+        "name": "modellake.status",
+        "output_schema": {
+          "type": "object"
+        },
+        "provenance": "hcli.tool_registry",
+        "resources": [],
+        "roles": [],
+        "schema": "hcli.agentos.tool.v1",
+        "timeout_s": 30.0,
+        "verifier_expectations": []
+      },
+      {
+        "description": "Inspect a JSON/text receipt under the repository or mission state roots.",
+        "deterministic": true,
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "encoding": {
+              "type": "string"
+            },
+            "max_bytes": {
+              "type": "integer"
+            },
+            "path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "type": "object"
+        },
+        "mutation": "read_only",
+        "name": "receipt.inspect",
+        "output_schema": {
+          "type": "object"
+        },
+        "provenance": "hcli.tool_registry",
+        "resources": [],
+        "roles": [],
+        "schema": "hcli.agentos.tool.v1",
+        "timeout_s": 30.0,
+        "verifier_expectations": []
+      },
+      {
+        "description": "Read a JSON/text receipt under the repository or mission state roots.",
+        "deterministic": true,
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "encoding": {
+              "type": "string"
+            },
+            "max_bytes": {
+              "type": "integer"
+            },
+            "path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "type": "object"
+        },
+        "mutation": "read_only",
+        "name": "receipt.read",
+        "output_schema": {
+          "type": "object"
+        },
+        "provenance": "hcli.tool_registry",
+        "resources": [],
+        "roles": [],
+        "schema": "hcli.agentos.tool.v1",
+        "timeout_s": 30.0,
+        "verifier_expectations": []
+      },
+      {
+        "description": "Inspect the persisted civilization roadmap receipt.",
+        "deterministic": true,
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "mutation": "read_only",
+        "name": "roadmap.inspect",
+        "output_schema": {
+          "type": "object"
+        },
+        "provenance": "hcli.tool_registry",
+        "resources": [],
+        "roles": [],
+        "schema": "hcli.agentos.tool.v1",
+        "timeout_s": 30.0,
+        "verifier_expectations": []
+      },
+      {
+        "description": "Read the persisted civilization roadmap.",
+        "deterministic": true,
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "mutation": "read_only",
+        "name": "roadmap.read",
+        "output_schema": {
+          "type": "object"
+        },
+        "provenance": "hcli.tool_registry",
+        "resources": [],
+        "roles": [],
+        "schema": "hcli.agentos.tool.v1",
+        "timeout_s": 30.0,
+        "verifier_expectations": []
+      },
+      {
+        "description": "Run one typed, allowlisted reversible command without a shell interpreter.",
+        "deterministic": true,
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "argv": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "cwd": {
+              "type": "string"
+            },
+            "timeout_s": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "argv"
+          ],
+          "type": "object"
+        },
+        "mutation": "reversible_runtime",
+        "name": "shell.exec",
+        "output_schema": {
+          "type": "object"
+        },
+        "provenance": "hcli.tool_registry",
+        "resources": [
+          "cpu"
+        ],
+        "roles": [],
+        "schema": "hcli.agentos.tool.v1",
+        "timeout_s": 30.0,
+        "verifier_expectations": [
+          "returncode must be checked by the caller"
+        ]
+      },
+      {
+        "description": "Run one allowlisted read-only command without a shell interpreter.",
+        "deterministic": true,
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "command"
+          ],
+          "type": "object"
+        },
+        "mutation": "read_only",
+        "name": "shell.readonly",
+        "output_schema": {
+          "type": "object"
+        },
+        "provenance": "hcli.tool_registry",
+        "resources": [],
+        "roles": [],
+        "schema": "hcli.agentos.tool.v1",
+        "timeout_s": 30.0,
+        "verifier_expectations": []
+      },
+      {
+        "description": "Discover deterministic test files without executing them.",
+        "deterministic": true,
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "root": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "mutation": "read_only",
+        "name": "tests.list",
+        "output_schema": {
+          "type": "object"
+        },
+        "provenance": "hcli.tool_registry",
+        "resources": [],
+        "roles": [],
+        "schema": "hcli.agentos.tool.v1",
+        "timeout_s": 30.0,
+        "verifier_expectations": []
+      },
+      {
+        "description": "Run a bounded pytest/unittest/cargo verification command under reversible runtime permission.",
+        "deterministic": false,
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "paths": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "root": {
+              "type": "string"
+            },
+            "runner": {
+              "enum": [
+                "pytest",
+                "unittest",
+                "cargo"
+              ],
+              "type": "string"
+            },
+            "timeout_s": {
+              "type": "number"
+            }
+          },
+          "type": "object"
+        },
+        "mutation": "reversible_runtime",
+        "name": "tests.run",
+        "output_schema": {
+          "type": "object"
+        },
+        "provenance": "hcli.tool_registry",
+        "resources": [
+          "cpu"
+        ],
+        "roles": [],
+        "schema": "hcli.agentos.tool.v1",
+        "timeout_s": 30.0,
+        "verifier_expectations": [
+          "verified is true only for exit code zero"
+        ]
+      },
+      {
+        "description": "Read the latest VMCP capability census.",
+        "deterministic": true,
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "mutation": "read_only",
+        "name": "vmcp.capabilities",
+        "output_schema": {
+          "type": "object"
+        },
+        "provenance": "hcli.tool_registry",
+        "resources": [],
+        "roles": [],
+        "schema": "hcli.agentos.tool.v1",
+        "timeout_s": 30.0,
+        "verifier_expectations": []
+      },
+      {
+        "description": "Inspect the discovered VisionMCP public API and profile/tool surface without starting a worker.",
+        "deterministic": true,
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "profile": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "mutation": "read_only",
+        "name": "vmcp.inspect",
+        "output_schema": {
+          "type": "object"
+        },
+        "provenance": "hcli.tool_registry",
+        "resources": [
+          "filesystem"
+        ],
+        "roles": [],
+        "schema": "hcli.agentos.tool.v1",
+        "timeout_s": 30.0,
+        "verifier_expectations": []
+      },
+      {
+        "description": "Call one allowlisted read/evidence tool on the discovered VisionMCP core surface.",
+        "deterministic": false,
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "arguments": {
+              "type": "object"
+            },
+            "profile": {
+              "type": "string"
+            },
+            "tool": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "tool"
+          ],
+          "type": "object"
+        },
+        "mutation": "read_only",
+        "name": "vmcp.query",
+        "output_schema": {
+          "type": "object"
+        },
+        "provenance": "hcli.tool_registry",
+        "resources": [
+          "filesystem"
+        ],
+        "roles": [],
+        "schema": "hcli.agentos.tool.v1",
+        "timeout_s": 30.0,
+        "verifier_expectations": []
+      },
+      {
+        "description": "Fetch bounded public HTTPS evidence with no credentials.",
+        "deterministic": false,
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "max_bytes": {
+              "type": "integer"
+            },
+            "timeout_s": {
+              "type": "number"
+            },
+            "url": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "url"
+          ],
+          "type": "object"
+        },
+        "mutation": "research",
+        "name": "web.fetch",
+        "output_schema": {
+          "type": "object"
+        },
+        "provenance": "hcli.tool_registry",
+        "resources": [],
+        "roles": [],
+        "schema": "hcli.agentos.tool.v1",
+        "timeout_s": 30.0,
+        "verifier_expectations": []
+      },
+      {
+        "description": "Search the public web through a bounded, credential-free provider.",
+        "deterministic": false,
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "max_results": {
+              "type": "integer"
+            },
+            "query": {
+              "type": "string"
+            },
+            "timeout_s": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "query"
+          ],
+          "type": "object"
+        },
+        "mutation": "research",
+        "name": "web.search",
+        "output_schema": {
+          "type": "object"
+        },
+        "provenance": "hcli.tool_registry",
+        "resources": [
+          "network"
+        ],
+        "roles": [],
+        "schema": "hcli.agentos.tool.v1",
+        "timeout_s": 30.0,
+        "verifier_expectations": [
+          "source URL and retrieval timestamp are required"
+        ]
+      }
+    ]
+  },
+  "workspace": "/Users/scammermike/Downloads/hawking"
+}

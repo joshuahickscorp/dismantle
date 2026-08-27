@@ -218,6 +218,7 @@ def build_parser() -> argparse.ArgumentParser:
     flash_executable.add_argument("--native-expert-composition-receipt", default=None)
     flash_executable.add_argument("--native-shared-expert-composition-receipt", default=None)
     flash_executable.add_argument("--native-shared-residual-hyperconnection-receipt", default=None)
+    flash_executable.add_argument("--native-exact-hyperconnection-receipt", default=None)
     flash_executable.add_argument("--router-representation-ab-receipt", default=None)
     flash_executable.add_argument("--emit", default=None)
     flash_executable.add_argument("--ebpw-emit", default=None)
@@ -295,6 +296,18 @@ def build_parser() -> argparse.ArgumentParser:
     flash_matrix.add_argument("--row-count", type=int, default=128)
     flash_matrix.add_argument("--body", default=None)
     flash_matrix.add_argument("--emit", default=None)
+
+    flash_vector = sub.add_parser(
+        "flash-vector-body",
+        help="persist one exact source BF16 vector for a Flash Noetic boundary",
+    )
+    flash_vector.add_argument("--root", default=None, help="final specimen root; defaults to the canonical ModelLake specimen")
+    flash_vector.add_argument("--repo-root", default=None)
+    flash_vector.add_argument("--tensor-name", default="model.language_model.layers.0.mlp_hyper_connection.hc_norm.weight")
+    flash_vector.add_argument("--candidate", default="source_bf16_exact")
+    flash_vector.add_argument("--component-kind", default="mlp_hyperconnection_hc_norm")
+    flash_vector.add_argument("--body", default=None)
+    flash_vector.add_argument("--emit", default=None)
 
     flash_router_graph = sub.add_parser(
         "flash-router-graph",
@@ -670,6 +683,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 native_expert_composition_receipt=args.native_expert_composition_receipt,
                 native_shared_expert_composition_receipt=args.native_shared_expert_composition_receipt,
                 native_shared_residual_hyperconnection_receipt=args.native_shared_residual_hyperconnection_receipt,
+                native_exact_hyperconnection_receipt=args.native_exact_hyperconnection_receipt,
                 router_representation_ab_receipt=args.router_representation_ab_receipt,
                 emit=args.emit,
                 ebpw_emit=args.ebpw_emit,
@@ -767,6 +781,21 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 component_kind=args.component_kind,
                 row_start=args.row_start,
                 row_count=args.row_count,
+                body=args.body,
+                emit=args.emit,
+            )
+            _emit(report)
+            return 0 if report.get("status") == "PASSED" else 1
+
+        if args.command == "flash-vector-body":
+            from hcli.agentos.flash_vector_component_body import run_flash_vector_body
+
+            report = run_flash_vector_body(
+                root=args.root,
+                repo_root=args.repo_root,
+                tensor_name=args.tensor_name,
+                candidate_id=args.candidate,
+                component_kind=args.component_kind,
                 body=args.body,
                 emit=args.emit,
             )

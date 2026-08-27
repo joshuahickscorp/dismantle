@@ -70,6 +70,34 @@ def test_flash_executable_scaffold_writes_honest_budgets(tmp_path):
     assert result["token_ns_budget"]["system_ledger"]["complete_generation_wall_ns"] is None
 
 
+def test_flash_executable_ingests_exact_layer0_moe_receipt_without_promoting(tmp_path):
+    receipt = tmp_path / "FLASH_NOETIC_EXACT_HYPERCONNECTION_NATIVE.json"
+    receipt.write_text(json.dumps({
+        "status": "PASSED",
+        "schema": "hawking.flash_noetic_exact_hyperconnection_native.v1",
+        "qualification": "EXACT_LAYER0_ROUTED_SHARED_MOE_CANDIDATE",
+        "layer": 0,
+        "execution": {
+            "complete_layer0_moe_candidate": True,
+            "complete_moe_combine": True,
+            "device_intermediate_no_host_roundtrip": True,
+        },
+        "physical_graph": {"fingerprint": "f" * 64},
+        "noetic_ir": {"source_independent": True},
+        "source_selection_parity": {"status": "MISMATCH", "top_k_overlap_count": 8},
+        "promotion_allowed": False,
+    }), encoding="utf-8")
+
+    summary = flash_executable._native_exact_hyperconnection_summary(tmp_path, receipt)
+
+    assert summary["status"] == "PASSED"
+    assert summary["complete_layer0_moe_candidate"] is True
+    assert summary["complete_moe_combine"] is True
+    assert summary["device_intermediate_no_host_roundtrip"] is True
+    assert summary["source_selection_parity"]["status"] == "MISMATCH"
+    assert summary["promotion_allowed"] is False
+
+
 def test_flash_executable_prefers_current_modellake_receipt_names(tmp_path, monkeypatch):
     repo = tmp_path / "repo"
     receipts = repo / "receipts" / "headless"
@@ -1008,6 +1036,7 @@ def test_cli_exposes_general_science_surfaces():
     assert parser.parse_args(["flash-loader-roundtrip"]).command == "flash-loader-roundtrip"
     assert parser.parse_args(["flash-component-body"]).command == "flash-component-body"
     assert parser.parse_args(["flash-matrix-body"]).command == "flash-matrix-body"
+    assert parser.parse_args(["flash-vector-body"]).command == "flash-vector-body"
     assert parser.parse_args(["flash-router-graph"]).command == "flash-router-graph"
     assert parser.parse_args(["flash-router-selection"]).command == "flash-router-selection"
     assert parser.parse_args(["flash-router-representation-ab"]).command == "flash-router-representation-ab"
@@ -1025,6 +1054,7 @@ def test_cli_exposes_general_science_surfaces():
     assert parser.parse_args(["flash-executable", "--native-expert-composition-receipt", "native-composition.json"]).native_expert_composition_receipt == "native-composition.json"
     assert parser.parse_args(["flash-executable", "--native-shared-expert-composition-receipt", "native-shared-composition.json"]).native_shared_expert_composition_receipt == "native-shared-composition.json"
     assert parser.parse_args(["flash-executable", "--native-shared-residual-hyperconnection-receipt", "native-shared-residual.json"]).native_shared_residual_hyperconnection_receipt == "native-shared-residual.json"
+    assert parser.parse_args(["flash-executable", "--native-exact-hyperconnection-receipt", "native-exact.json"]).native_exact_hyperconnection_receipt == "native-exact.json"
     assert parser.parse_args(["flash-executable", "--router-representation-ab-receipt", "router-ab.json"]).router_representation_ab_receipt == "router-ab.json"
     assert parser.parse_args(["protected-bench-watch"]).command == "protected-bench-watch"
     assert parser.parse_args(["protected-accelerator-bench"]).command == "protected-accelerator-bench"

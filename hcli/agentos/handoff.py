@@ -213,6 +213,10 @@ def _flash_summary(repo: Path) -> Dict[str, Any]:
     expert_composition_native = _receipt(repo, "FLASH_NOETIC_ROUTED_EXPERT_COMPOSITION_NATIVE.json") or {}
     shared_expert_composition_native = _receipt(repo, "FLASH_NOETIC_SHARED_EXPERT_COMPOSITION_NATIVE.json") or {}
     shared_residual_hyperconnection_native = _receipt(repo, "FLASH_NOETIC_SHARED_RESIDUAL_HYPERCONNECTION_NATIVE.json") or {}
+    exact_hyperconnection_native = _receipt(repo, "FLASH_NOETIC_EXACT_HYPERCONNECTION_NATIVE.json") or {}
+    gpu_work_ledger = _receipt(repo, "FLASH_GPU_WORK_LEDGER.json") or {}
+    token_critical_path = _receipt(repo, "FLASH_TOKEN_CRITICAL_PATH.json") or {}
+    cuda_capability_graph = _receipt(repo, "CUDA_CAPABILITY_GRAPH.json") or {}
     router_representation_ab = _receipt(repo, "FLASH_NOETIC_ROUTER_REPRESENTATION_AB.json") or {}
     source = flash.get("source_identity") or flash.get("source") or {}
     promotion = flash.get("promotion_gate") or {}
@@ -574,6 +578,97 @@ def _flash_summary(repo: Path) -> Dict[str, Any]:
             "claim_boundary": shared_residual_hyperconnection_native.get("claim_boundary"),
             "next_action": shared_residual_hyperconnection_native.get("next_action"),
         },
+        "bounded_noetic_exact_hyperconnection_native": {
+            "status": exact_hyperconnection_native.get("status"),
+            "receipt_path": str(repo / "receipts" / "headless" / "FLASH_NOETIC_EXACT_HYPERCONNECTION_NATIVE.json"),
+            "schema": exact_hyperconnection_native.get("schema"),
+            "semantic_type": exact_hyperconnection_native.get("semantic_type"),
+            "compiler_stage": exact_hyperconnection_native.get("compiler_stage"),
+            "qualification": exact_hyperconnection_native.get("qualification"),
+            "layer": exact_hyperconnection_native.get("layer"),
+            "dependencies": exact_hyperconnection_native.get("dependencies"),
+            "source_reference": exact_hyperconnection_native.get("source_reference"),
+            "semantics": exact_hyperconnection_native.get("semantics"),
+            "execution": exact_hyperconnection_native.get("execution"),
+            "input": exact_hyperconnection_native.get("input"),
+            "parity": exact_hyperconnection_native.get("parity"),
+            "gpu_timing": exact_hyperconnection_native.get("gpu_timing"),
+            "physical_graph": exact_hyperconnection_native.get("physical_graph"),
+            "noetic_ir": exact_hyperconnection_native.get("noetic_ir"),
+            "source_selection_parity": exact_hyperconnection_native.get("source_selection_parity"),
+            "routed_expert_count": exact_hyperconnection_native.get("routed_expert_count"),
+            "routed_expert_ids": exact_hyperconnection_native.get("routed_expert_ids"),
+            "selected_weight_sum": exact_hyperconnection_native.get("selected_weight_sum"),
+            "native_hyperconnection_read_observed": exact_hyperconnection_native.get("native_hyperconnection_read_observed"),
+            "native_hyperconnection_write_observed": exact_hyperconnection_native.get("native_hyperconnection_write_observed"),
+            "exact_hyperconnection_semantics_observed": exact_hyperconnection_native.get("exact_hyperconnection_semantics_observed"),
+            "native_routed_expert_gate_up_swiglu_observed": exact_hyperconnection_native.get("native_routed_expert_gate_up_swiglu_observed"),
+            "native_routed_expert_down_projection_observed": exact_hyperconnection_native.get("native_routed_expert_down_projection_observed"),
+            "native_moe_weighted_sum_observed": exact_hyperconnection_native.get("native_moe_weighted_sum_observed"),
+            "native_moe_shared_add_observed": exact_hyperconnection_native.get("native_moe_shared_add_observed"),
+            "device_intermediate_no_host_roundtrip": exact_hyperconnection_native.get("device_intermediate_no_host_roundtrip"),
+            "source_independent_execution": exact_hyperconnection_native.get("source_independent_execution"),
+            "source_hc_norm_payload_exact": exact_hyperconnection_native.get("source_hc_norm_payload_exact"),
+            "complete_layer0_moe_candidate": exact_hyperconnection_native.get("complete_layer0_moe_candidate"),
+            "complete_moe_combine": exact_hyperconnection_native.get("complete_moe_combine"),
+            "whole_model_capability": exact_hyperconnection_native.get("whole_model_capability"),
+            "complete_expert_runtime": exact_hyperconnection_native.get("complete_expert_runtime"),
+            "complete_token_runtime": exact_hyperconnection_native.get("complete_token_runtime"),
+            "complete_system_ebpw": exact_hyperconnection_native.get("complete_system_ebpw"),
+            "flash_tps": exact_hyperconnection_native.get("flash_tps"),
+            "promotion_allowed": exact_hyperconnection_native.get("promotion_allowed"),
+            "claim_boundary": exact_hyperconnection_native.get("claim_boundary"),
+            "next_action": exact_hyperconnection_native.get("next_action"),
+        },
+        "flash_gpu_work_ledger": {
+            "status": gpu_work_ledger.get("status"),
+            "receipt_path": str(repo / "receipts" / "headless" / "FLASH_GPU_WORK_LEDGER.json"),
+            "schema": gpu_work_ledger.get("schema"),
+            "qualification": gpu_work_ledger.get("qualification"),
+            "source_receipt": gpu_work_ledger.get("source_receipt"),
+            "device": gpu_work_ledger.get("device"),
+            "physical_graph_fingerprint": gpu_work_ledger.get("physical_graph_fingerprint"),
+            "measured_runs": gpu_work_ledger.get("measured_runs"),
+            "dispatches_per_graph": gpu_work_ledger.get("dispatches_per_graph"),
+            "graph_gpu_ns_median": gpu_work_ledger.get("graph_gpu_ns_median"),
+            "graph_host_wall_ns_median": gpu_work_ledger.get("graph_host_wall_ns_median"),
+            "graph_wall_minus_gpu_ns_median": gpu_work_ledger.get("graph_wall_minus_gpu_ns_median"),
+            "stages": gpu_work_ledger.get("stages"),
+            "device_intermediate_no_host_roundtrip": gpu_work_ledger.get("device_intermediate_no_host_roundtrip"),
+            "complete_token_runtime": gpu_work_ledger.get("complete_token_runtime"),
+            "flash_tps": gpu_work_ledger.get("flash_tps"),
+            "complete_system_ebpw": gpu_work_ledger.get("complete_system_ebpw"),
+            "promotion_allowed": gpu_work_ledger.get("promotion_allowed"),
+            "claim_boundary": gpu_work_ledger.get("claim_boundary"),
+        },
+        "flash_token_critical_path": {
+            "status": token_critical_path.get("status"),
+            "receipt_path": str(repo / "receipts" / "headless" / "FLASH_TOKEN_CRITICAL_PATH.json"),
+            "schema": token_critical_path.get("schema"),
+            "source_receipt": token_critical_path.get("source_receipt"),
+            "candidate_graph": token_critical_path.get("candidate_graph"),
+            "complete_token_runtime": token_critical_path.get("complete_token_runtime"),
+            "accepted_tokens": token_critical_path.get("accepted_tokens"),
+            "complete_wall_ns_per_accepted_token": token_critical_path.get("complete_wall_ns_per_accepted_token"),
+            "flash_tps": token_critical_path.get("flash_tps"),
+            "complete_system_ebpw": token_critical_path.get("complete_system_ebpw"),
+            "promotion_allowed": token_critical_path.get("promotion_allowed"),
+            "blockers": token_critical_path.get("blockers"),
+            "claim_boundary": token_critical_path.get("claim_boundary"),
+        },
+        "cuda_capability_graph": {
+            "status": cuda_capability_graph.get("status"),
+            "receipt_path": str(repo / "receipts" / "headless" / "CUDA_CAPABILITY_GRAPH.json"),
+            "schema": cuda_capability_graph.get("schema"),
+            "execution_device": cuda_capability_graph.get("execution_device"),
+            "native_backend_observed": cuda_capability_graph.get("native_backend_observed"),
+            "cuda_execution_observed": cuda_capability_graph.get("cuda_execution_observed"),
+            "qualification": cuda_capability_graph.get("qualification"),
+            "nodes": cuda_capability_graph.get("nodes"),
+            "edges": cuda_capability_graph.get("edges"),
+            "promotion_allowed": cuda_capability_graph.get("promotion_allowed"),
+            "claim_boundary": cuda_capability_graph.get("claim_boundary"),
+        },
         "bounded_noetic_router_representation_ab": {
             "status": router_representation_ab.get("status"),
             "receipt_path": str(repo / "receipts" / "headless" / "FLASH_NOETIC_ROUTER_REPRESENTATION_AB.json"),
@@ -744,6 +839,10 @@ def build_handoff(repo_root: Optional[str | os.PathLike[str]] = None, *, emit: O
     expert_composition_native = flash.get("bounded_noetic_expert_composition_native") or {}
     shared_expert_composition_native = flash.get("bounded_noetic_shared_expert_composition_native") or {}
     shared_residual_hyperconnection_native = flash.get("bounded_noetic_shared_residual_hyperconnection_native") or {}
+    exact_hyperconnection_native = flash.get("bounded_noetic_exact_hyperconnection_native") or {}
+    gpu_work_ledger = flash.get("flash_gpu_work_ledger") or {}
+    token_critical_path = flash.get("flash_token_critical_path") or {}
+    cuda_capability_graph = flash.get("cuda_capability_graph") or {}
     router_representation_ab = flash.get("bounded_noetic_router_representation_ab") or {}
     lake = _model_lake_summary(repo)
     window = _window_summary(repo)
@@ -848,6 +947,19 @@ def build_handoff(repo_root: Optional[str | os.PathLike[str]] = None, *, emit: O
         or shared_residual_hyperconnection_native.get("promotion_allowed") is not False
     ):
         blockers.append("Flash-Next bounded native shared-expert residual/hyperconnection composition has not explicitly proven the device-resident candidate graph with promotion refused.")
+    if exact_hyperconnection_native.get("status") not in {None, "PASSED"}:
+        blockers.append("Flash-Next exact HyperConnection routed-plus-shared MoE receipt is invalid or incomplete.")
+    if exact_hyperconnection_native.get("status") == "PASSED" and (
+        exact_hyperconnection_native.get("complete_layer0_moe_candidate") is not True
+        or exact_hyperconnection_native.get("complete_moe_combine") is not True
+        or exact_hyperconnection_native.get("native_hyperconnection_read_observed") is not True
+        or exact_hyperconnection_native.get("native_hyperconnection_write_observed") is not True
+        or exact_hyperconnection_native.get("native_moe_weighted_sum_observed") is not True
+        or exact_hyperconnection_native.get("native_moe_shared_add_observed") is not True
+        or exact_hyperconnection_native.get("device_intermediate_no_host_roundtrip") is not True
+        or exact_hyperconnection_native.get("promotion_allowed") is not False
+    ):
+        blockers.append("Flash-Next exact HyperConnection routed-plus-shared MoE receipt has not explicitly proven its device-resident scoped graph with promotion refused.")
     graph_component = _receipt(repo, "FLASH_NOETIC_ROUTED_EXPERT_GRAPH.json") or {}
     if graph_component.get("status") != "PASSED" or graph_component.get("promotion_allowed") is not False:
         blockers.append("Flash-Next bounded Noetic routed-expert graph component is absent or incomplete.")
@@ -908,6 +1020,10 @@ def build_handoff(repo_root: Optional[str | os.PathLike[str]] = None, *, emit: O
                 "flash_expert_composition_native": expert_composition_native.get("status"),
                 "flash_shared_expert_composition_native": shared_expert_composition_native.get("status"),
                 "flash_shared_residual_hyperconnection_native": shared_residual_hyperconnection_native.get("status"),
+                "flash_exact_hyperconnection": exact_hyperconnection_native.get("status"),
+                "flash_gpu_work_ledger": gpu_work_ledger.get("status"),
+                "flash_token_critical_path": token_critical_path.get("status"),
+                "cuda_capability_graph": cuda_capability_graph.get("status"),
                 "flash_router_representation_ab": router_representation_ab.get("status"),
                 "modellake_supervision": lake_status,
                 "unattended_window": window_status,
@@ -945,6 +1061,7 @@ def build_handoff(repo_root: Optional[str | os.PathLike[str]] = None, *, emit: O
             "run_flash_native_expert_composition": f"{repo / 'workspace/ops/build/rust/release/examples/flash_noetic_routed_expert_dispatch'} --root /Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc --router-receipt {repo / 'receipts/headless/FLASH_NOETIC_ROUTER_SELECTION_NATIVE.json'} --expert-composition --warmup 2 --reps 7 --out {repo / 'receipts/headless/FLASH_NOETIC_ROUTED_EXPERT_COMPOSITION_NATIVE.json'}",
             "run_flash_native_shared_expert_composition": f"{repo / 'workspace/ops/build/rust/release/examples/flash_noetic_routed_expert_dispatch'} --root /Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc --shared-expert-composition --warmup 2 --reps 7 --out {repo / 'receipts/headless/FLASH_NOETIC_SHARED_EXPERT_COMPOSITION_NATIVE.json'}",
             "run_flash_native_shared_residual_composition": f"{repo / 'workspace/ops/build/rust/release/examples/flash_noetic_routed_expert_dispatch'} --root /Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc --shared-residual-composition --warmup 2 --reps 7 --out {repo / 'receipts/headless/FLASH_NOETIC_SHARED_RESIDUAL_HYPERCONNECTION_NATIVE.json'}",
+            "run_flash_native_exact_hyperconnection": f"tools/gpu_lane_lock.sh flash-next-exact-layer0-moe {repo / 'workspace/ops/build/rust/release/examples/flash_noetic_routed_expert_dispatch'} --exact-hyperconnection-composition --root /Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc --warmup 2 --reps 3 --out {repo / 'receipts/headless/FLASH_NOETIC_EXACT_HYPERCONNECTION_NATIVE.json'}",
             "run_flash_router_representation_ab": f"python3 -m hcli agentos flash-router-representation-ab --repo-root {repo} --root /Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc --emit {repo / 'receipts/headless/FLASH_NOETIC_ROUTER_REPRESENTATION_AB.json'}",
             "run_flash_tensor_probe": f"python3 -m hcli agentos flash-tensor-probe --emit {repo / 'receipts/headless/FLASH_FIRST_TENSOR_PROBE.json'}",
             "run_flash_representation_experiment": f"python3 -m hcli agentos flash-representation-experiment --emit {repo / 'receipts/headless/FLASH_ROUTED_EXPERT_REPRESENTATION_EXPERIMENT.json'}",

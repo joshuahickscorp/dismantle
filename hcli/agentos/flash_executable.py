@@ -29,6 +29,7 @@ from hcli.agentos.modellake_receipts import (
     preferred_census_receipt,
     preferred_supervision_receipt,
 )
+from hcli.agentos.flash_telemetry import emit_flash_telemetry
 from hcli.nomenclature import NOMENCLATURE_VERSION
 from hcli.persist import atomic_write_json
 
@@ -60,6 +61,7 @@ DEFAULT_NATIVE_GATE_UP_SWIGLU = "FLASH_NOETIC_ROUTED_EXPERT_GATE_UP_SWIGLU_NATIV
 DEFAULT_NATIVE_EXPERT_COMPOSITION = "FLASH_NOETIC_ROUTED_EXPERT_COMPOSITION_NATIVE.json"
 DEFAULT_NATIVE_SHARED_EXPERT_COMPOSITION = "FLASH_NOETIC_SHARED_EXPERT_COMPOSITION_NATIVE.json"
 DEFAULT_NATIVE_SHARED_RESIDUAL_HYPERCONNECTION = "FLASH_NOETIC_SHARED_RESIDUAL_HYPERCONNECTION_NATIVE.json"
+DEFAULT_NATIVE_EXACT_HYPERCONNECTION = "FLASH_NOETIC_EXACT_HYPERCONNECTION_NATIVE.json"
 DEFAULT_ROUTER_REPRESENTATION_AB = "FLASH_NOETIC_ROUTER_REPRESENTATION_AB.json"
 DEFAULT_EXECUTABLE = "FLASH_NEXT_NOETIC_EXECUTABLE.json"
 DEFAULT_EBPW = "FLASH_EBPW_BUDGET.json"
@@ -1067,6 +1069,99 @@ def _native_shared_residual_hyperconnection_summary(
     }
 
 
+def _native_exact_hyperconnection_summary(
+    repo: Path,
+    receipt: Optional[str | os.PathLike[str]] = None,
+) -> Dict[str, Any]:
+    """Read the physical exact layer-0 routed-plus-shared MoE boundary."""
+    path = (
+        Path(receipt).expanduser().resolve()
+        if receipt
+        else repo / "receipts" / "headless" / DEFAULT_NATIVE_EXACT_HYPERCONNECTION
+    )
+    composition = _read_json(path)
+    if composition is None:
+        return {
+            "status": "NOT_RUN",
+            "receipt_path": str(path),
+            "schema": None,
+            "qualification": None,
+            "layer": None,
+            "dependencies": None,
+            "execution": None,
+            "input": None,
+            "source_reference": None,
+            "semantics": None,
+            "parity": None,
+            "gpu_timing": None,
+            "physical_graph": None,
+            "noetic_ir": None,
+            "source_selection_parity": None,
+            "complete_layer0_moe_candidate": None,
+            "complete_moe_combine": None,
+            "native_routed_expert_gate_up_swiglu_observed": None,
+            "native_routed_expert_down_projection_observed": None,
+            "native_moe_weighted_sum_observed": None,
+            "native_moe_shared_add_observed": None,
+            "whole_model_capability": "NOT_TESTED",
+            "complete_expert_runtime": "NOT_TESTED",
+            "complete_token_runtime": "NOT_TESTED",
+            "complete_system_ebpw": None,
+            "flash_tps": None,
+            "promotion_allowed": False,
+            "claim_boundary": None,
+            "next_action": None,
+        }
+    execution = composition.get("execution") if isinstance(composition.get("execution"), Mapping) else {}
+    physical_graph = composition.get("physical_graph") if isinstance(composition.get("physical_graph"), Mapping) else {}
+    noetic_ir = composition.get("noetic_ir") if isinstance(composition.get("noetic_ir"), Mapping) else {}
+    return {
+        "status": composition.get("status"),
+        "receipt_path": str(path),
+        "receipt_sha256": _sha256(path),
+        "schema": composition.get("schema"),
+        "nomenclature_version": composition.get("nomenclature_version"),
+        "semantic_type": composition.get("semantic_type"),
+        "compiler_stage": composition.get("compiler_stage"),
+        "qualification": composition.get("qualification"),
+        "layer": composition.get("layer"),
+        "dependencies": composition.get("dependencies"),
+        "execution": execution,
+        "input": composition.get("input"),
+        "source_reference": composition.get("source_reference"),
+        "semantics": composition.get("semantics"),
+        "parity": composition.get("parity"),
+        "gpu_timing": composition.get("gpu_timing"),
+        "physical_graph": physical_graph,
+        "noetic_ir": noetic_ir,
+        "source_selection_parity": composition.get("source_selection_parity"),
+        "routed_expert_count": composition.get("routed_expert_count") or execution.get("routed_expert_count"),
+        "routed_expert_ids": composition.get("routed_expert_ids") or execution.get("routed_expert_ids"),
+        "selected_weight_sum": composition.get("selected_weight_sum") or execution.get("selected_weight_sum"),
+        "native_hyperconnection_read_observed": composition.get("native_hyperconnection_read_observed") or execution.get("native_hyperconnection_read_observed"),
+        "native_hyperconnection_write_observed": composition.get("native_hyperconnection_write_observed") or execution.get("native_hyperconnection_write_observed"),
+        "exact_hyperconnection_semantics_observed": composition.get("exact_hyperconnection_semantics_observed") or execution.get("exact_hyperconnection_semantics_observed"),
+        "native_routed_expert_gate_up_swiglu_observed": composition.get("native_routed_expert_gate_up_swiglu_observed") or execution.get("native_routed_expert_gate_up_swiglu_observed"),
+        "native_routed_expert_down_projection_observed": composition.get("native_routed_expert_down_projection_observed") or execution.get("native_routed_expert_down_projection_observed"),
+        "native_moe_weighted_sum_observed": composition.get("native_moe_weighted_sum_observed") or execution.get("native_moe_weighted_sum_observed"),
+        "native_moe_shared_add_observed": composition.get("native_moe_shared_add_observed") or execution.get("native_moe_shared_add_observed"),
+        "device_intermediate_no_host_roundtrip": composition.get("device_intermediate_no_host_roundtrip") or execution.get("device_intermediate_no_host_roundtrip") or physical_graph.get("device_intermediate_no_host_roundtrip"),
+        "source_independent_execution": composition.get("source_independent_execution") or noetic_ir.get("source_independent"),
+        "source_hc_norm_payload_exact": composition.get("source_hc_norm_payload_exact"),
+        "hc_norm_loaded": composition.get("hc_norm_loaded"),
+        "complete_layer0_moe_candidate": composition.get("complete_layer0_moe_candidate") or execution.get("complete_layer0_moe_candidate") or noetic_ir.get("complete_layer0_moe_candidate"),
+        "complete_moe_combine": composition.get("complete_moe_combine") or execution.get("complete_moe_combine") or noetic_ir.get("complete_moe_combine"),
+        "whole_model_capability": composition.get("whole_model_capability"),
+        "complete_expert_runtime": composition.get("complete_expert_runtime"),
+        "complete_token_runtime": composition.get("complete_token_runtime"),
+        "complete_system_ebpw": composition.get("complete_system_ebpw"),
+        "flash_tps": composition.get("flash_tps"),
+        "promotion_allowed": composition.get("promotion_allowed"),
+        "claim_boundary": composition.get("claim_boundary"),
+        "next_action": composition.get("next_action"),
+    }
+
+
 def _router_representation_ab_summary(
     repo: Path,
     receipt: Optional[str | os.PathLike[str]] = None,
@@ -1478,6 +1573,7 @@ def _executable_manifest(
     native_expert_composition: Mapping[str, Any],
     native_shared_expert_composition: Mapping[str, Any],
     native_shared_residual_hyperconnection: Mapping[str, Any],
+    native_exact_hyperconnection: Mapping[str, Any],
     router_representation_ab: Mapping[str, Any],
 ) -> Dict[str, Any]:
     organs = [str(row.get("organ")) for row in ebpw.get("organs") or [] if isinstance(row, Mapping)]
@@ -1538,6 +1634,8 @@ def _executable_manifest(
             "bounded_native_shared_expert_composition_receipt": native_shared_expert_composition.get("receipt_path"),
             "bounded_native_shared_residual_hyperconnection_observed": native_shared_residual_hyperconnection.get("status") == "PASSED",
             "bounded_native_shared_residual_hyperconnection_receipt": native_shared_residual_hyperconnection.get("receipt_path"),
+            "bounded_native_exact_hyperconnection_observed": native_exact_hyperconnection.get("status") == "PASSED",
+            "bounded_native_exact_hyperconnection_receipt": native_exact_hyperconnection.get("receipt_path"),
             "bounded_router_representation_ab_observed": router_representation_ab.get("status") == "PASSED",
             "bounded_router_representation_ab_receipt": router_representation_ab.get("receipt_path"),
             "bounded_component_body_loaded": kernel_parity.get("source_independent_execution") is True,
@@ -1564,6 +1662,7 @@ def _executable_manifest(
         "source_routed_expert_composition_native": native_expert_composition,
         "source_shared_expert_composition_native": native_shared_expert_composition,
         "source_shared_residual_hyperconnection_native": native_shared_residual_hyperconnection,
+        "source_exact_hyperconnection_native": native_exact_hyperconnection,
         "source_router_representation_ab": router_representation_ab,
         "chosen_representation": ebpw.get("chosen_representation"),
         "native_loader": {
@@ -1598,6 +1697,10 @@ def _executable_manifest(
             "bounded_native_shared_residual_hyperconnection_receipt": native_shared_residual_hyperconnection.get("receipt_path"),
             "bounded_native_shared_residual_hyperconnection_observed": native_shared_residual_hyperconnection.get("native_shared_residual_composition_observed"),
             "bounded_native_shared_residual_hyperconnection_scope": "layer-0 shared-expert output injected on-device into a four-stream hyperconnection candidate and consumed by low-rank down/up plus block-gated residual mix; hc_norm, exact source semantics, routed/MoE, and complete model/token runtime remain untested",
+            "bounded_native_exact_hyperconnection_status": native_exact_hyperconnection.get("status"),
+            "bounded_native_exact_hyperconnection_receipt": native_exact_hyperconnection.get("receipt_path"),
+            "bounded_native_exact_hyperconnection_observed": native_exact_hyperconnection.get("complete_layer0_moe_candidate"),
+            "bounded_native_exact_hyperconnection_scope": "layer-0 exact HyperConnection read/write equations around selected routed top-10 plus sigmoid-gated shared MoE, with device-resident weighted sum/add; source router parity, source BF16 activation parity, attention/state, complete model/token runtime, TPS, and EBPW remain unqualified",
             "required": ["verified body manifest", "zero-copy/streaming policy", "per-organ ownership", "resident lifetime", "loader hash"],
             "body_read_by_scaffold": False,
         },
@@ -1605,8 +1708,9 @@ def _executable_manifest(
             "status": "PLAN_ONLY",
             "coverage": [
                 {"organ": "embeddings", "kernel": "partitioned_embedding_lookup", "status": "NOT_IMPLEMENTED"},
-                {"organ": "routed_experts", "kernel": "native_nf_expert_gemv", "status": "NOT_IMPLEMENTED"},
+                {"organ": "routed_experts", "kernel": "native_nf_expert_gemv", "status": "BOUNDED_LAYER0_SELECTED_TOP10_COMPOSITION_ONLY"},
                 {"organ": "shared_expert", "kernel": "qwen_uniform_q4_group64_matvec_gate_up_swiglu + qwen_uniform_q4_group64_matvec + qwen_next_shared_expert_sigmoid_gate", "status": "BOUNDED_LAYER0_COMPOSITION_ONLY"},
+                {"organ": "moe_join", "kernel": "qwen_next_moe_weighted_sum + qwen_next_moe_add_shared", "status": "BOUNDED_LAYER0_EXACT_MOE_JOIN"},
                 {"organ": "router", "kernel": "router_topk_gather", "status": "NOT_IMPLEMENTED"},
                 {"organ": "deltanet", "kernel": "persistent_state_update", "status": "NOT_IMPLEMENTED"},
                 {"organ": "recurrent_state", "kernel": "resident_state_read_modify_write", "status": "NOT_IMPLEMENTED"},
@@ -1803,6 +1907,34 @@ def _executable_manifest(
                 "scope": "bounded layer-0 shared-expert-to-hyperconnection candidate graph only; hc_norm and exact source hyperconnection semantics, routed/MoE combine, remaining Flash organs, complete model/token runtime, TPS, and EBPW remain untested",
                 "label": DERIVED,
             },
+            "bounded_native_exact_hyperconnection_evidence": {
+                "status": native_exact_hyperconnection.get("status"),
+                "receipt": native_exact_hyperconnection.get("receipt_path"),
+                "receipt_sha256": native_exact_hyperconnection.get("receipt_sha256"),
+                "qualification": native_exact_hyperconnection.get("qualification"),
+                "layer": native_exact_hyperconnection.get("layer"),
+                "complete_layer0_moe_candidate": native_exact_hyperconnection.get("complete_layer0_moe_candidate"),
+                "complete_moe_combine": native_exact_hyperconnection.get("complete_moe_combine"),
+                "routed_expert_count": native_exact_hyperconnection.get("routed_expert_count"),
+                "routed_expert_ids": native_exact_hyperconnection.get("routed_expert_ids"),
+                "selected_weight_sum": native_exact_hyperconnection.get("selected_weight_sum"),
+                "source_selection_parity": native_exact_hyperconnection.get("source_selection_parity"),
+                "source_hc_norm_payload_exact": native_exact_hyperconnection.get("source_hc_norm_payload_exact"),
+                "native_hyperconnection_read_observed": native_exact_hyperconnection.get("native_hyperconnection_read_observed"),
+                "native_hyperconnection_write_observed": native_exact_hyperconnection.get("native_hyperconnection_write_observed"),
+                "native_routed_expert_gate_up_swiglu_observed": native_exact_hyperconnection.get("native_routed_expert_gate_up_swiglu_observed"),
+                "native_routed_expert_down_projection_observed": native_exact_hyperconnection.get("native_routed_expert_down_projection_observed"),
+                "native_moe_weighted_sum_observed": native_exact_hyperconnection.get("native_moe_weighted_sum_observed"),
+                "native_moe_shared_add_observed": native_exact_hyperconnection.get("native_moe_shared_add_observed"),
+                "device_intermediate_no_host_roundtrip": native_exact_hyperconnection.get("device_intermediate_no_host_roundtrip"),
+                "source_independent_execution": native_exact_hyperconnection.get("source_independent_execution"),
+                "parity": native_exact_hyperconnection.get("parity"),
+                "gpu_timing": native_exact_hyperconnection.get("gpu_timing"),
+                "physical_graph": native_exact_hyperconnection.get("physical_graph"),
+                "noetic_ir": native_exact_hyperconnection.get("noetic_ir"),
+                "scope": "bounded exact layer-0 candidate only; source route parity and source BF16 numeric parity are unresolved, and complete token/TPS/EBPW remain unmeasured",
+                "label": DERIVED,
+            },
             "bounded_router_representation_ab_evidence": {
                 "status": router_representation_ab.get("status"),
                 "receipt": router_representation_ab.get("receipt_path"),
@@ -1942,6 +2074,21 @@ def _executable_manifest(
                 "whole_model_capability": native_shared_residual_hyperconnection.get("whole_model_capability"),
                 "complete_token_runtime": native_shared_residual_hyperconnection.get("complete_token_runtime"),
             },
+            "native_exact_hyperconnection": {
+                "status": native_exact_hyperconnection.get("status"),
+                "receipt_path": native_exact_hyperconnection.get("receipt_path"),
+                "receipt_sha256": native_exact_hyperconnection.get("receipt_sha256"),
+                "qualification": native_exact_hyperconnection.get("qualification"),
+                "fingerprint": (native_exact_hyperconnection.get("physical_graph") or {}).get("fingerprint"),
+                "source_independent_execution": native_exact_hyperconnection.get("source_independent_execution"),
+                "source_selection_parity": native_exact_hyperconnection.get("source_selection_parity"),
+                "complete_layer0_moe_candidate": native_exact_hyperconnection.get("complete_layer0_moe_candidate"),
+                "complete_moe_combine": native_exact_hyperconnection.get("complete_moe_combine"),
+                "routed_expert_count": native_exact_hyperconnection.get("routed_expert_count"),
+                "device_intermediate_no_host_roundtrip": native_exact_hyperconnection.get("device_intermediate_no_host_roundtrip"),
+                "whole_model_capability": native_exact_hyperconnection.get("whole_model_capability"),
+                "complete_token_runtime": native_exact_hyperconnection.get("complete_token_runtime"),
+            },
             "router_representation_ab": {
                 "status": router_representation_ab.get("status"),
                 "receipt_path": router_representation_ab.get("receipt_path"),
@@ -1997,6 +2144,8 @@ def _executable_manifest(
             "native_shared_expert_composition_fingerprint": (native_shared_expert_composition.get("physical_graph") or {}).get("fingerprint"),
             "native_shared_residual_hyperconnection_receipt": native_shared_residual_hyperconnection.get("receipt_path"),
             "native_shared_residual_hyperconnection_fingerprint": (native_shared_residual_hyperconnection.get("physical_graph") or {}).get("fingerprint"),
+            "native_exact_hyperconnection_receipt": native_exact_hyperconnection.get("receipt_path"),
+            "native_exact_hyperconnection_fingerprint": (native_exact_hyperconnection.get("physical_graph") or {}).get("fingerprint"),
             "router_representation_ab_fingerprint": (router_representation_ab.get("physical_graph") or {}).get("fingerprint"),
             "shared_expert_kernel_parity_receipt": shared_expert_kernel_parity.get("receipt_path"),
             "deltanet_kernel_parity_receipt": deltanet_kernel_parity.get("receipt_path"),
@@ -2017,7 +2166,7 @@ def _executable_manifest(
             "hidden_dense_rematerialization": False,
         }),
         "promotion_allowed": False,
-        "claim_boundary": "FLASH_NEXT_NOETIC_EXECUTABLE remains a scaffold. It records full-tensor representation, bounded source-independent component bodies, bounded descriptor-loader, routed-expert/native composition evidence, and the bounded layer-0 shared-expert candidate graph, not a whole-model loader, capability, complete-system EBPW, or Flash TPS claim.",
+        "claim_boundary": "FLASH_NEXT_NOETIC_EXECUTABLE remains a scaffold. It now records a physically observed exact layer-0 HyperConnection read/write boundary around a selected routed-plus-shared MoE candidate, while source router parity, source BF16 activation parity, whole-model loading/capability, complete-token timing, complete-system EBPW, Flash TPS, and promotion remain unqualified.",
     }
 
 
@@ -2044,6 +2193,7 @@ def run_flash_executable_scaffold(
     native_expert_composition_receipt: Optional[str | os.PathLike[str]] = None,
     native_shared_expert_composition_receipt: Optional[str | os.PathLike[str]] = None,
     native_shared_residual_hyperconnection_receipt: Optional[str | os.PathLike[str]] = None,
+    native_exact_hyperconnection_receipt: Optional[str | os.PathLike[str]] = None,
     router_representation_ab_receipt: Optional[str | os.PathLike[str]] = None,
     emit: Optional[str | os.PathLike[str]] = None,
     ebpw_emit: Optional[str | os.PathLike[str]] = None,
@@ -2093,10 +2243,13 @@ def run_flash_executable_scaffold(
         native_expert_composition = _native_expert_composition_summary(repo, native_expert_composition_receipt)
         native_shared_expert_composition = _native_shared_expert_composition_summary(repo, native_shared_expert_composition_receipt)
         native_shared_residual_hyperconnection = _native_shared_residual_hyperconnection_summary(repo, native_shared_residual_hyperconnection_receipt)
+        native_exact_hyperconnection = _native_exact_hyperconnection_summary(repo, native_exact_hyperconnection_receipt)
         router_representation_ab = _router_representation_ab_summary(repo, router_representation_ab_receipt)
         ebpw = _ebpw_budget(science, source, tensor_probe, representation_experiment, transform_parity, loader_roundtrip, kernel_parity)
         token_ns = _token_ns_budget(science, source)
-        manifest = _executable_manifest(science, source, lake, ebpw, token_ns, tensor_probe, representation_experiment, transform_parity, loader_roundtrip, kernel_parity, shared_expert_kernel_parity, deltanet_kernel_parity, sparse_attention_kernel_parity, mtp_gate_kernel_parity, graph_component, component_campaign, router_graph, router_selection, native_router_selection, native_routed_expert_dispatch, native_gate_up_swiglu, native_expert_composition, native_shared_expert_composition, native_shared_residual_hyperconnection, router_representation_ab)
+        manifest = _executable_manifest(science, source, lake, ebpw, token_ns, tensor_probe, representation_experiment, transform_parity, loader_roundtrip, kernel_parity, shared_expert_kernel_parity, deltanet_kernel_parity, sparse_attention_kernel_parity, mtp_gate_kernel_parity, graph_component, component_campaign, router_graph, router_selection, native_router_selection, native_routed_expert_dispatch, native_gate_up_swiglu, native_expert_composition, native_shared_expert_composition, native_shared_residual_hyperconnection, native_exact_hyperconnection, router_representation_ab)
+        telemetry = emit_flash_telemetry(repo, exact_receipt=native_exact_hyperconnection.get("receipt_path"))
+        manifest["flash_telemetry"] = telemetry
         atomic_write_json(ebpw_path, ebpw)
         atomic_write_json(token_path, token_ns)
         manifest["ebpw_budget_receipt"] = str(ebpw_path)
@@ -2107,6 +2260,7 @@ def run_flash_executable_scaffold(
             "manifest": manifest,
             "ebpw_budget": ebpw,
             "token_ns_budget": token_ns,
+            "flash_telemetry": telemetry,
             "checks": {
                 "source_receipt_present": True,
                 "source_revision_pinned": (science.get("source_identity") or {}).get("pinned_revision") == PINNED_REVISION if isinstance(science.get("source_identity"), Mapping) else False,
@@ -2221,6 +2375,11 @@ def run_flash_executable_scaffold(
                 "bounded_native_shared_residual_hyperconnection_is_physically_observed_only_when_present": native_shared_residual_hyperconnection.get("status") == "NOT_RUN" or (native_shared_residual_hyperconnection.get("native_hyperconnection_stream_injection_observed") is True and native_shared_residual_hyperconnection.get("native_hyperconnection_low_rank_down_observed") is True and native_shared_residual_hyperconnection.get("native_hyperconnection_low_rank_up_observed") is True and native_shared_residual_hyperconnection.get("native_hyperconnection_block_inject_observed") is True and native_shared_residual_hyperconnection.get("native_hyperconnection_residual_mix_observed") is True and native_shared_residual_hyperconnection.get("native_shared_residual_composition_observed") is True),
                 "bounded_native_shared_residual_hyperconnection_keeps_intermediate_on_device": native_shared_residual_hyperconnection.get("status") == "NOT_RUN" or native_shared_residual_hyperconnection.get("device_intermediate_no_host_roundtrip") is True,
                 "bounded_native_shared_residual_hyperconnection_refuses_promotion": native_shared_residual_hyperconnection.get("promotion_allowed") is False,
+                "bounded_native_exact_hyperconnection_is_explicit": native_exact_hyperconnection.get("status") in {"NOT_RUN", "PASSED"},
+                "bounded_native_exact_hyperconnection_does_not_claim_whole_model": native_exact_hyperconnection.get("whole_model_capability") in {None, "NOT_TESTED"} and native_exact_hyperconnection.get("complete_token_runtime") in {None, "NOT_TESTED"},
+                "bounded_native_exact_hyperconnection_is_source_independent": native_exact_hyperconnection.get("status") == "NOT_RUN" or native_exact_hyperconnection.get("source_independent_execution") is True,
+                "bounded_native_exact_hyperconnection_is_physically_observed_only_when_present": native_exact_hyperconnection.get("status") == "NOT_RUN" or (native_exact_hyperconnection.get("complete_layer0_moe_candidate") is True and native_exact_hyperconnection.get("complete_moe_combine") is True and native_exact_hyperconnection.get("device_intermediate_no_host_roundtrip") is True),
+                "bounded_native_exact_hyperconnection_refuses_promotion": native_exact_hyperconnection.get("promotion_allowed") is False,
                 "bounded_router_representation_ab_is_explicit": router_representation_ab.get("status") in {"NOT_RUN", "PASSED"},
                 "bounded_router_representation_ab_does_not_claim_whole_model": router_representation_ab.get("whole_model_capability") in {None, "NOT_TESTED"} and router_representation_ab.get("complete_token_runtime") in {None, "NOT_TESTED"},
                 "bounded_router_representation_ab_does_not_persist_bodies": router_representation_ab.get("candidate_bodies_persisted") in {None, False},
@@ -2269,6 +2428,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser.add_argument("--native-expert-composition-receipt")
     parser.add_argument("--native-shared-expert-composition-receipt")
     parser.add_argument("--native-shared-residual-hyperconnection-receipt")
+    parser.add_argument("--native-exact-hyperconnection-receipt")
     parser.add_argument("--router-representation-ab-receipt")
     parser.add_argument("--emit")
     parser.add_argument("--ebpw-emit")
@@ -2296,6 +2456,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         native_expert_composition_receipt=args.native_expert_composition_receipt,
         native_shared_expert_composition_receipt=args.native_shared_expert_composition_receipt,
         native_shared_residual_hyperconnection_receipt=args.native_shared_residual_hyperconnection_receipt,
+        native_exact_hyperconnection_receipt=args.native_exact_hyperconnection_receipt,
         router_representation_ab_receipt=args.router_representation_ab_receipt,
         emit=args.emit,
         ebpw_emit=args.ebpw_emit,
@@ -2305,7 +2466,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     return 0 if report.get("status") == "PASSED" else 1
 
 
-__all__ = ["DEFAULT_DELTANET_KERNEL_PARITY", "DEFAULT_KERNEL_PARITY", "DEFAULT_LOADER_ROUNDTRIP", "DEFAULT_MTP_GATE_KERNEL_PARITY", "DEFAULT_NATIVE_EXPERT_COMPOSITION", "DEFAULT_NATIVE_GATE_UP_SWIGLU", "DEFAULT_NATIVE_ROUTED_EXPERT_DISPATCH", "DEFAULT_NATIVE_ROUTER_SELECTION", "DEFAULT_NATIVE_SHARED_EXPERT_COMPOSITION", "DEFAULT_NATIVE_SHARED_RESIDUAL_HYPERCONNECTION", "DEFAULT_REPRESENTATION_EXPERIMENT", "DEFAULT_REPRESENTATION_REPLICATION", "DEFAULT_ROUTER_REPRESENTATION_AB", "DEFAULT_ROUTER_SELECTION", "DEFAULT_SHARED_EXPERT_KERNEL_PARITY", "DEFAULT_SPARSE_ATTENTION_KERNEL_PARITY", "DEFAULT_TENSOR_PROBE", "DEFAULT_TRANSFORM_PARITY", "EBPW_SCHEMA", "SCHEMA", "TOKEN_NS_SCHEMA", "main", "run_flash_executable_scaffold"]
+__all__ = ["DEFAULT_DELTANET_KERNEL_PARITY", "DEFAULT_KERNEL_PARITY", "DEFAULT_LOADER_ROUNDTRIP", "DEFAULT_MTP_GATE_KERNEL_PARITY", "DEFAULT_NATIVE_EXACT_HYPERCONNECTION", "DEFAULT_NATIVE_EXPERT_COMPOSITION", "DEFAULT_NATIVE_GATE_UP_SWIGLU", "DEFAULT_NATIVE_ROUTED_EXPERT_DISPATCH", "DEFAULT_NATIVE_ROUTER_SELECTION", "DEFAULT_NATIVE_SHARED_EXPERT_COMPOSITION", "DEFAULT_NATIVE_SHARED_RESIDUAL_HYPERCONNECTION", "DEFAULT_REPRESENTATION_EXPERIMENT", "DEFAULT_REPRESENTATION_REPLICATION", "DEFAULT_ROUTER_REPRESENTATION_AB", "DEFAULT_ROUTER_SELECTION", "DEFAULT_SHARED_EXPERT_KERNEL_PARITY", "DEFAULT_SPARSE_ATTENTION_KERNEL_PARITY", "DEFAULT_TENSOR_PROBE", "DEFAULT_TRANSFORM_PARITY", "EBPW_SCHEMA", "SCHEMA", "TOKEN_NS_SCHEMA", "main", "run_flash_executable_scaffold"]
 
 
 if __name__ == "__main__":

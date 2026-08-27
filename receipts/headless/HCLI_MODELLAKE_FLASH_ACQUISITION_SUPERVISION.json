@@ -1,0 +1,384 @@
+{
+  "capacity": {
+    "free_after_expected_bytes": 3176911035722,
+    "free_bytes": 3536934322176,
+    "path": "/Volumes/corpdrive/hawking-modellake"
+  },
+  "checks": {
+    "atomic_publish_identity": true,
+    "capacity_headroom_observed": true,
+    "job_identity_matches_pinned_target": true,
+    "job_resumable": true,
+    "no_delete_policy": true,
+    "partial_not_final": true
+  },
+  "claim_boundary": "This receipt observes a resumable acquisition and never claims a partial tree is ready; it makes no model capability or performance claim.",
+  "expected_argv": [
+    "python3",
+    "tools/odyssey/modellake.py",
+    "acquire",
+    "--repo",
+    "Qwen/Qwen3.8-Flash-Next",
+    "--revision",
+    "34567a4712bc9766c4449e2e98e4468bfa24d915"
+  ],
+  "final": {
+    "direct_bytes": 0,
+    "direct_files": 0,
+    "entries": [],
+    "path": "/Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc",
+    "present": false
+  },
+  "final_manifest": null,
+  "job": {
+    "argv": [
+      "python3",
+      "tools/odyssey/modellake.py",
+      "acquire",
+      "--repo",
+      "Qwen/Qwen3.8-Flash-Next",
+      "--revision",
+      "34567a4712bc9766c4449e2e98e4468bfa24d915"
+    ],
+    "created_at": 1787799182.557255,
+    "cwd": "/Users/scammermike/Downloads/hawking",
+    "error": null,
+    "finished_at": null,
+    "job_id": "job-2f77c1d6-e33b-44fe-bc12-549cf47805c7",
+    "label": "modellake-flash-next-acquire",
+    "log_path": "/Users/scammermike/Downloads/hawking/.hcli/background/logs/job-2f77c1d6-e33b-44fe-bc12-549cf47805c7.log",
+    "parent_job_id": null,
+    "pid": 36538,
+    "restart_policy": "explicit rerun from argv; never resume a process mid-token",
+    "resumable": true,
+    "returncode": null,
+    "schema": "hcli.agentos.background_job.v1",
+    "started_at": 1787799182.557255,
+    "state": "RUNNING",
+    "timeout_s": null
+  },
+  "next_action": "If RUNNING_SAFE, continue observing. If interrupted, re-census and explicitly resume the same pinned argv; publish only after the existing tool verifies every file and atomically renames the tree.",
+  "observed_at": 1787801648.7194161,
+  "partial": {
+    "direct_bytes": 198547621562,
+    "direct_files": 76,
+    "entries": [
+      {
+        "bytes": 1570,
+        "name": ".gitattributes"
+      },
+      {
+        "bytes": 3235,
+        "name": "LICENSE"
+      },
+      {
+        "bytes": 95,
+        "name": "README.md"
+      },
+      {
+        "bytes": 8952,
+        "name": "chat_template.jinja"
+      },
+      {
+        "bytes": 4745,
+        "name": "config.json"
+      },
+      {
+        "bytes": 202,
+        "name": "generation_config.json"
+      },
+      {
+        "bytes": 3353259,
+        "name": "merges.txt"
+      },
+      {
+        "bytes": 1040155944,
+        "name": "model-00001-of-00131.safetensors"
+      },
+      {
+        "bytes": 3355443368,
+        "name": "model-00002-of-00131.safetensors"
+      },
+      {
+        "bytes": 1832518264,
+        "name": "model-00003-of-00131.safetensors"
+      },
+      {
+        "bytes": 3355443368,
+        "name": "model-00004-of-00131.safetensors"
+      },
+      {
+        "bytes": 3355888504,
+        "name": "model-00005-of-00131.safetensors"
+      },
+      {
+        "bytes": 3200016032,
+        "name": "model-00006-of-00131.safetensors"
+      },
+      {
+        "bytes": 3200016032,
+        "name": "model-00007-of-00131.safetensors"
+      },
+      {
+        "bytes": 3200016032,
+        "name": "model-00008-of-00131.safetensors"
+      },
+      {
+        "bytes": 3200016032,
+        "name": "model-00009-of-00131.safetensors"
+      },
+      {
+        "bytes": 3200016032,
+        "name": "model-00010-of-00131.safetensors"
+      },
+      {
+        "bytes": 3200016032,
+        "name": "model-00011-of-00131.safetensors"
+      },
+      {
+        "bytes": 3200016032,
+        "name": "model-00012-of-00131.safetensors"
+      },
+      {
+        "bytes": 3200016032,
+        "name": "model-00013-of-00131.safetensors"
+      },
+      {
+        "bytes": 3200016032,
+        "name": "model-00014-of-00131.safetensors"
+      },
+      {
+        "bytes": 3200016032,
+        "name": "model-00015-of-00131.safetensors"
+      },
+      {
+        "bytes": 3200016032,
+        "name": "model-00016-of-00131.safetensors"
+      },
+      {
+        "bytes": 3200016032,
+        "name": "model-00017-of-00131.safetensors"
+      },
+      {
+        "bytes": 3200016032,
+        "name": "model-00018-of-00131.safetensors"
+      },
+      {
+        "bytes": 3200016032,
+        "name": "model-00019-of-00131.safetensors"
+      },
+      {
+        "bytes": 3200016032,
+        "name": "model-00020-of-00131.safetensors"
+      },
+      {
+        "bytes": 3200016032,
+        "name": "model-00021-of-00131.safetensors"
+      },
+      {
+        "bytes": 3200016032,
+        "name": "model-00022-of-00131.safetensors"
+      },
+      {
+        "bytes": 3200016032,
+        "name": "model-00023-of-00131.safetensors"
+      },
+      {
+        "bytes": 3200016032,
+        "name": "model-00024-of-00131.safetensors"
+      },
+      {
+        "bytes": 3200016032,
+        "name": "model-00025-of-00131.safetensors"
+      },
+      {
+        "bytes": 3200016032,
+        "name": "model-00026-of-00131.safetensors"
+      },
+      {
+        "bytes": 3200016032,
+        "name": "model-00027-of-00131.safetensors"
+      },
+      {
+        "bytes": 3200016032,
+        "name": "model-00028-of-00131.safetensors"
+      },
+      {
+        "bytes": 3200016032,
+        "name": "model-00029-of-00131.safetensors"
+      },
+      {
+        "bytes": 3200016032,
+        "name": "model-00030-of-00131.safetensors"
+      },
+      {
+        "bytes": 3200016040,
+        "name": "model-00031-of-00131.safetensors"
+      },
+      {
+        "bytes": 3200016040,
+        "name": "model-00032-of-00131.safetensors"
+      },
+      {
+        "bytes": 3200016040,
+        "name": "model-00033-of-00131.safetensors"
+      },
+      {
+        "bytes": 3200016040,
+        "name": "model-00034-of-00131.safetensors"
+      },
+      {
+        "bytes": 3200016040,
+        "name": "model-00035-of-00131.safetensors"
+      },
+      {
+        "bytes": 3200016040,
+        "name": "model-00036-of-00131.safetensors"
+      },
+      {
+        "bytes": 1742347160,
+        "name": "model-00037-of-00131.safetensors"
+      },
+      {
+        "bytes": 3355443376,
+        "name": "model-00038-of-00131.safetensors"
+      },
+      {
+        "bytes": 1716599840,
+        "name": "model-00039-of-00131.safetensors"
+      },
+      {
+        "bytes": 3355443376,
+        "name": "model-00040-of-00131.safetensors"
+      },
+      {
+        "bytes": 1941966288,
+        "name": "model-00041-of-00131.safetensors"
+      },
+      {
+        "bytes": 3355443376,
+        "name": "model-00042-of-00131.safetensors"
+      },
+      {
+        "bytes": 1839072016,
+        "name": "model-00043-of-00131.safetensors"
+      },
+      {
+        "bytes": 3355443376,
+        "name": "model-00044-of-00131.safetensors"
+      },
+      {
+        "bytes": 1832518280,
+        "name": "model-00045-of-00131.safetensors"
+      },
+      {
+        "bytes": 3355443376,
+        "name": "model-00046-of-00131.safetensors"
+      },
+      {
+        "bytes": 1716681904,
+        "name": "model-00047-of-00131.safetensors"
+      },
+      {
+        "bytes": 3355443376,
+        "name": "model-00048-of-00131.safetensors"
+      },
+      {
+        "bytes": 1935433152,
+        "name": "model-00049-of-00131.safetensors"
+      },
+      {
+        "bytes": 3355443376,
+        "name": "model-00050-of-00131.safetensors"
+      },
+      {
+        "bytes": 1832518280,
+        "name": "model-00051-of-00131.safetensors"
+      },
+      {
+        "bytes": 3355443376,
+        "name": "model-00052-of-00131.safetensors"
+      },
+      {
+        "bytes": 1839072024,
+        "name": "model-00053-of-00131.safetensors"
+      },
+      {
+        "bytes": 3355443376,
+        "name": "model-00054-of-00131.safetensors"
+      },
+      {
+        "bytes": 1716599840,
+        "name": "model-00055-of-00131.safetensors"
+      },
+      {
+        "bytes": 3355443376,
+        "name": "model-00056-of-00131.safetensors"
+      },
+      {
+        "bytes": 1941966280,
+        "name": "model-00057-of-00131.safetensors"
+      },
+      {
+        "bytes": 3355443368,
+        "name": "model-00058-of-00131.safetensors"
+      },
+      {
+        "bytes": 1716600048,
+        "name": "model-00059-of-00131.safetensors"
+      },
+      {
+        "bytes": 3471361528,
+        "name": "model-00060-of-00131.safetensors"
+      },
+      {
+        "bytes": 3355443376,
+        "name": "model-00061-of-00131.safetensors"
+      },
+      {
+        "bytes": 3510240000,
+        "name": "model-00062-of-00131.safetensors"
+      },
+      {
+        "bytes": 3355443376,
+        "name": "model-00063-of-00131.safetensors"
+      },
+      {
+        "bytes": 1832518280,
+        "name": "model-00064-of-00131.safetensors"
+      },
+      {
+        "bytes": 3355443376,
+        "name": "model-00065-of-00131.safetensors"
+      },
+      {
+        "bytes": 1719221392,
+        "name": "model-00066-of-00131.safetensors"
+      },
+      {
+        "bytes": 3355443376,
+        "name": "model-00067-of-00131.safetensors"
+      },
+      {
+        "bytes": 1935412552,
+        "name": "model-00068-of-00131.safetensors"
+      },
+      {
+        "bytes": 1832523520,
+        "name": "model-00070-of-00131.safetensors"
+      }
+    ],
+    "path": "/Volumes/corpdrive/hawking-modellake/partial/Qwen--Qwen3.8-Flash-Next@34567a4712bc",
+    "present": true
+  },
+  "qualification": "MODELLAKE_FLASH_ACQUISITION_SUPERVISED_NO_DELETE",
+  "repo_root": "/Users/scammermike/Downloads/hawking",
+  "schema": "hcli.agentos.modellake_supervision.v1",
+  "status": "RUNNING_SAFE",
+  "target": {
+    "expected_bytes": 360023286454,
+    "pinned_revision": "34567a4712bc9766c4449e2e98e4468bfa24d915",
+    "repo": "Qwen/Qwen3.8-Flash-Next",
+    "slug": "Qwen--Qwen3.8-Flash-Next@34567a4712bc"
+  }
+}

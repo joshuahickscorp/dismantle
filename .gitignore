@@ -157,6 +157,11 @@ tools/sovereignty/__pycache__/
 /.hcli/model_overlap.json
 /.hcli/sessions/
 /.hcli/receipts/*.json
+/.hcli/background/
+/.hcli/autonomy-window/
+/.hcli/autonomy-window-*/
+/.hcli/agentos/
+/.hcli/initial-charge/
 
 # python venv (never commit; self-symlink hazard)
 /tools/condense/.venv/

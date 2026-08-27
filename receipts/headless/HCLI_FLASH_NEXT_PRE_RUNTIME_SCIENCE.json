@@ -1,0 +1,1293 @@
+{
+  "active_compute_bounds": {
+    "active_bytes_per_token": {
+      "label": "LOCAL_PHYSICAL",
+      "status": "NOT_MEASURED",
+      "value": null
+    },
+    "device_bytes_touched_per_token": {
+      "label": "LOCAL_PHYSICAL",
+      "status": "NOT_MEASURED",
+      "value": null
+    },
+    "flops_per_token": {
+      "label": "LOCAL_PHYSICAL",
+      "status": "NOT_MEASURED",
+      "value": null
+    },
+    "full_attention_layers": 12,
+    "label": "DERIVED",
+    "layers": 48,
+    "linear_attention_layers": 36,
+    "routed_expert_fraction": 0.01953125,
+    "routed_experts_per_token": 10,
+    "shared_expert_included": true,
+    "state_bytes_per_token": {
+      "label": "LOCAL_PHYSICAL",
+      "status": "NOT_MEASURED",
+      "value": null
+    },
+    "total_experts": 512
+  },
+  "architecture": {
+    "architectures": [
+      "Qwen4ExpForConditionalGeneration"
+    ],
+    "experts": 512,
+    "experts_per_token": 10,
+    "full_attention_layers": 12,
+    "hidden_size": 2560,
+    "index_total_size": 359999963128.0,
+    "indexer_budget": 2048,
+    "label": "DERIVED",
+    "layer_types": [
+      "linear_attention",
+      "linear_attention",
+      "linear_attention",
+      "full_attention",
+      "linear_attention",
+      "linear_attention",
+      "linear_attention",
+      "full_attention",
+      "linear_attention",
+      "linear_attention",
+      "linear_attention",
+      "full_attention",
+      "linear_attention",
+      "linear_attention",
+      "linear_attention",
+      "full_attention",
+      "linear_attention",
+      "linear_attention",
+      "linear_attention",
+      "full_attention",
+      "linear_attention",
+      "linear_attention",
+      "linear_attention",
+      "full_attention",
+      "linear_attention",
+      "linear_attention",
+      "linear_attention",
+      "full_attention",
+      "linear_attention",
+      "linear_attention",
+      "linear_attention",
+      "full_attention",
+      "linear_attention",
+      "linear_attention",
+      "linear_attention",
+      "full_attention",
+      "linear_attention",
+      "linear_attention",
+      "linear_attention",
+      "full_attention",
+      "linear_attention",
+      "linear_attention",
+      "linear_attention",
+      "full_attention",
+      "linear_attention",
+      "linear_attention",
+      "linear_attention",
+      "full_attention"
+    ],
+    "layers": 48,
+    "linear_attention_layers": 36,
+    "model_type": "qwen4_exp",
+    "mtp": {
+      "hybrid": true,
+      "layer_types": [
+        "full_attention"
+      ],
+      "mtp_use_hidden_state_from_layer": null,
+      "num_hidden_layers": 1,
+      "rope_theta": 10000000
+    },
+    "ngram_size": 3,
+    "ngram_vocab_size_base": 20000000,
+    "observed_index_metadata": {
+      "total_size": 359999963128.0
+    },
+    "split_ngram_parts": 128,
+    "tensor_count": 1658,
+    "text_model_type": "qwen4_exp_text",
+    "vision_config": {
+      "deepstack_visual_indexes": [],
+      "depth": 27,
+      "hidden_act": "gelu_pytorch_tanh",
+      "hidden_size": 1152,
+      "in_channels": 3,
+      "initializer_range": 0.02,
+      "intermediate_size": 4304,
+      "model_type": "qwen4_exp",
+      "num_heads": 16,
+      "num_position_embeddings": 2304,
+      "out_hidden_size": 2560,
+      "patch_size": 16,
+      "spatial_merge_size": 2,
+      "temporal_patch_size": 2
+    },
+    "vocab_size": 248320
+  },
+  "architecture_fingerprint": {
+    "algorithm": "sha256(canonical pinned metadata + sorted tensor names)",
+    "label": "DERIVED",
+    "value": "8dbc9c34f223d240def13a1f7c70d3cbddbc768bc9ccc9c002683e2958b6be5b"
+  },
+  "checks": {
+    "all_metadata_fetched": true,
+    "config_parsed": true,
+    "index_parsed": true,
+    "no_weights_downloaded": true,
+    "pinned_metadata_urls": true,
+    "promotion_not_allowed": true
+  },
+  "elapsed_s": 2.612,
+  "finished_at": 1787797733.116,
+  "gravity_plan": [
+    {
+      "hypothesis": "cross-expert shared basis plus residual",
+      "native_kernel": "representation-native routed expert decode",
+      "organ": "moe_experts",
+      "status": "PLAN_ONLY"
+    },
+    {
+      "hypothesis": "factorized/generative lookup rather than generic matrix quantization",
+      "native_kernel": "ngram lookup/generator",
+      "organ": "ngram_embedding",
+      "status": "PLAN_ONLY"
+    },
+    {
+      "hypothesis": "persistent resident state-machine execution",
+      "native_kernel": "linear-attention state update",
+      "organ": "deltanet",
+      "status": "PLAN_ONLY"
+    },
+    {
+      "hypothesis": "indexer-budget sparse block traversal",
+      "native_kernel": "sparse attention selection and gather",
+      "organ": "qsa_sparse_attention",
+      "status": "PLAN_ONLY"
+    },
+    {
+      "hypothesis": "accepted drafts reduce effective decode steps only when accepted work is counted",
+      "native_kernel": "MTP accept/reject path",
+      "organ": "mtp",
+      "status": "PLAN_ONLY"
+    }
+  ],
+  "local_physical": {
+    "architecture": "arm64",
+    "label": "LOCAL_PHYSICAL",
+    "machine": "macOS-27.0-arm64-arm-64bit-Mach-O",
+    "model_lake_target_present": false,
+    "native_executable": false,
+    "native_kernel": "NOT_COMPILED",
+    "weights_loaded": false
+  },
+  "metadata": [
+    {
+      "bytes": 4745,
+      "content_type": "text/plain; charset=utf-8",
+      "label": "UPSTREAM_SOURCE",
+      "name": "config.json",
+      "revision": "34567a4712bc9766c4449e2e98e4468bfa24d915",
+      "sha256": "889658f2508e8c61d409b02e70e0d78d8d4452ec65aaafbe129805d213d2e74b",
+      "status": "FETCHED",
+      "url": "https://huggingface.co/Qwen/Qwen3.8-Flash-Next/resolve/34567a4712bc9766c4449e2e98e4468bfa24d915/config.json"
+    },
+    {
+      "bytes": 12809320,
+      "content_type": "application/json",
+      "label": "UPSTREAM_SOURCE",
+      "name": "tokenizer.json",
+      "revision": "34567a4712bc9766c4449e2e98e4468bfa24d915",
+      "sha256": "0997f410c57a1f4e53b09e4be8f4a172d90edd9564368fb0847030937229b9f3",
+      "status": "FETCHED",
+      "url": "https://huggingface.co/Qwen/Qwen3.8-Flash-Next/resolve/34567a4712bc9766c4449e2e98e4468bfa24d915/tokenizer.json"
+    },
+    {
+      "bytes": 17928,
+      "content_type": "text/plain; charset=utf-8",
+      "label": "UPSTREAM_SOURCE",
+      "name": "tokenizer_config.json",
+      "revision": "34567a4712bc9766c4449e2e98e4468bfa24d915",
+      "sha256": "b11349aafa7cdc6a320767cf7ceb29ed82f7eda5d65e8e0819e76f0ce947bf27",
+      "status": "FETCHED",
+      "url": "https://huggingface.co/Qwen/Qwen3.8-Flash-Next/resolve/34567a4712bc9766c4449e2e98e4468bfa24d915/tokenizer_config.json"
+    },
+    {
+      "bytes": 170726,
+      "content_type": "text/plain; charset=utf-8",
+      "label": "UPSTREAM_SOURCE",
+      "name": "model.safetensors.index.json",
+      "revision": "34567a4712bc9766c4449e2e98e4468bfa24d915",
+      "sha256": "99e815241ef03325536b0aaa4441deea45174c17fae31e10f0bb456410c590de",
+      "status": "FETCHED",
+      "url": "https://huggingface.co/Qwen/Qwen3.8-Flash-Next/resolve/34567a4712bc9766c4449e2e98e4468bfa24d915/model.safetensors.index.json"
+    },
+    {
+      "bytes": 95,
+      "content_type": "text/plain; charset=utf-8",
+      "label": "UPSTREAM_SOURCE",
+      "name": "README.md",
+      "revision": "34567a4712bc9766c4449e2e98e4468bfa24d915",
+      "sha256": "a4c4b7ec9715335c8ee52ef6b0acf44a1ae4a6fc4215cd6e11e47ef002fe1589",
+      "status": "FETCHED",
+      "url": "https://huggingface.co/Qwen/Qwen3.8-Flash-Next/resolve/34567a4712bc9766c4449e2e98e4468bfa24d915/README.md"
+    },
+    {
+      "bytes": 202,
+      "content_type": "text/plain; charset=utf-8",
+      "label": "UPSTREAM_SOURCE",
+      "name": "generation_config.json",
+      "revision": "34567a4712bc9766c4449e2e98e4468bfa24d915",
+      "sha256": "e70c136c1b78ddc1fb0905bac8e733a4dc448d4f852a5dd75143fffc70be550e",
+      "status": "FETCHED",
+      "url": "https://huggingface.co/Qwen/Qwen3.8-Flash-Next/resolve/34567a4712bc9766c4449e2e98e4468bfa24d915/generation_config.json"
+    },
+    {
+      "bytes": 390,
+      "content_type": "text/plain; charset=utf-8",
+      "label": "UPSTREAM_SOURCE",
+      "name": "preprocessor_config.json",
+      "revision": "34567a4712bc9766c4449e2e98e4468bfa24d915",
+      "sha256": "27225450ac9c6529872ee1924fcb0962ff5634834f817040f444118116f4e516",
+      "status": "FETCHED",
+      "url": "https://huggingface.co/Qwen/Qwen3.8-Flash-Next/resolve/34567a4712bc9766c4449e2e98e4468bfa24d915/preprocessor_config.json"
+    }
+  ],
+  "organ_graph": [
+    {
+      "accelerator": {
+        "native_kernel_required": true,
+        "status": "PLAN_ONLY"
+      },
+      "active_bytes_per_token": {
+        "label": "LOCAL_PHYSICAL",
+        "status": "NOT_MEASURED",
+        "value": null
+      },
+      "bottleneck": {
+        "label": "LOCAL_PHYSICAL",
+        "status": "NOT_MEASURED",
+        "value": "unresolved until native execution"
+      },
+      "bytes": {
+        "label": "LOCAL_PHYSICAL",
+        "status": "NOT_MEASURED_TENSOR_SHAPES_NOT_IN_INDEX",
+        "value": null
+      },
+      "dimensions": {
+        "hidden_size": 2560,
+        "ngram_size": 3,
+        "ngram_vocab_size_base": 20000000,
+        "split_ngram_parts": 128
+      },
+      "flops_per_token": {
+        "label": "LOCAL_PHYSICAL",
+        "status": "NOT_MEASURED",
+        "value": null
+      },
+      "gravity": {
+        "native_representation_required": true,
+        "status": "PLAN_ONLY"
+      },
+      "id": "ngram_embedding",
+      "label": "DERIVED",
+      "regularity": {
+        "label": "DERIVED",
+        "status": "STRUCTURAL_ONLY",
+        "value": "repeated layer/name patterns"
+      },
+      "shard_bytes_observed": 104298732704,
+      "shards": [
+        "model-00005-of-00131.safetensors",
+        "model-00006-of-00131.safetensors",
+        "model-00007-of-00131.safetensors",
+        "model-00008-of-00131.safetensors",
+        "model-00009-of-00131.safetensors",
+        "model-00010-of-00131.safetensors",
+        "model-00011-of-00131.safetensors",
+        "model-00012-of-00131.safetensors",
+        "model-00013-of-00131.safetensors",
+        "model-00014-of-00131.safetensors",
+        "model-00015-of-00131.safetensors",
+        "model-00016-of-00131.safetensors",
+        "model-00017-of-00131.safetensors",
+        "model-00018-of-00131.safetensors",
+        "model-00019-of-00131.safetensors",
+        "model-00020-of-00131.safetensors",
+        "model-00021-of-00131.safetensors",
+        "model-00022-of-00131.safetensors",
+        "model-00023-of-00131.safetensors",
+        "model-00024-of-00131.safetensors",
+        "model-00025-of-00131.safetensors",
+        "model-00026-of-00131.safetensors",
+        "model-00027-of-00131.safetensors",
+        "model-00028-of-00131.safetensors",
+        "model-00029-of-00131.safetensors",
+        "model-00030-of-00131.safetensors",
+        "model-00031-of-00131.safetensors",
+        "model-00032-of-00131.safetensors",
+        "model-00033-of-00131.safetensors",
+        "model-00034-of-00131.safetensors",
+        "model-00035-of-00131.safetensors",
+        "model-00036-of-00131.safetensors",
+        "model-00037-of-00131.safetensors"
+      ],
+      "state_bytes": {
+        "label": "LOCAL_PHYSICAL",
+        "status": "NOT_MEASURED",
+        "value": null
+      },
+      "tensor_name_examples": [
+        "model.language_model.layers.1.ple.ple_embedding.ngram_embedding.shard_0.weight",
+        "model.language_model.layers.1.ple.ple_embedding.ngram_embedding.shard_1.weight",
+        "model.language_model.layers.1.ple.ple_embedding.ngram_embedding.shard_10.weight",
+        "model.language_model.layers.1.ple.ple_embedding.ngram_embedding.shard_100.weight",
+        "model.language_model.layers.1.ple.ple_embedding.ngram_embedding.shard_101.weight",
+        "model.language_model.layers.1.ple.ple_embedding.ngram_embedding.shard_102.weight",
+        "model.language_model.layers.1.ple.ple_embedding.ngram_embedding.shard_103.weight",
+        "model.language_model.layers.1.ple.ple_embedding.ngram_embedding.shard_104.weight",
+        "model.language_model.layers.1.ple.ple_embedding.ngram_embedding.shard_105.weight",
+        "model.language_model.layers.1.ple.ple_embedding.ngram_embedding.shard_106.weight"
+      ],
+      "tensors": 130
+    },
+    {
+      "accelerator": {
+        "native_kernel_required": true,
+        "status": "PLAN_ONLY"
+      },
+      "active_bytes_per_token": {
+        "label": "LOCAL_PHYSICAL",
+        "status": "NOT_MEASURED",
+        "value": null
+      },
+      "bottleneck": {
+        "label": "LOCAL_PHYSICAL",
+        "status": "NOT_MEASURED",
+        "value": "unresolved until native execution"
+      },
+      "bytes": {
+        "label": "LOCAL_PHYSICAL",
+        "status": "NOT_MEASURED_TENSOR_SHAPES_NOT_IN_INDEX",
+        "value": null
+      },
+      "dimensions": {
+        "experts": 512,
+        "experts_per_token": 10,
+        "hidden_size": 2560,
+        "layers": 48,
+        "moe_intermediate_size": 640,
+        "shared_expert_intermediate_size": 640,
+        "vocab_size": 248320
+      },
+      "flops_per_token": {
+        "label": "LOCAL_PHYSICAL",
+        "status": "NOT_MEASURED",
+        "value": null
+      },
+      "gravity": {
+        "native_representation_required": true,
+        "status": "PLAN_ONLY"
+      },
+      "id": "moe_router",
+      "label": "DERIVED",
+      "regularity": {
+        "label": "DERIVED",
+        "status": "STRUCTURAL_ONLY",
+        "value": "repeated layer/name patterns"
+      },
+      "shard_bytes_observed": 256745794216,
+      "shards": [
+        "model-00002-of-00131.safetensors",
+        "model-00003-of-00131.safetensors",
+        "model-00004-of-00131.safetensors",
+        "model-00005-of-00131.safetensors",
+        "model-00038-of-00131.safetensors",
+        "model-00039-of-00131.safetensors",
+        "model-00040-of-00131.safetensors",
+        "model-00041-of-00131.safetensors",
+        "model-00042-of-00131.safetensors",
+        "model-00043-of-00131.safetensors",
+        "model-00044-of-00131.safetensors",
+        "model-00045-of-00131.safetensors",
+        "model-00046-of-00131.safetensors",
+        "model-00047-of-00131.safetensors",
+        "model-00048-of-00131.safetensors",
+        "model-00049-of-00131.safetensors",
+        "model-00050-of-00131.safetensors",
+        "model-00051-of-00131.safetensors",
+        "model-00052-of-00131.safetensors",
+        "model-00053-of-00131.safetensors",
+        "model-00054-of-00131.safetensors",
+        "model-00055-of-00131.safetensors",
+        "model-00056-of-00131.safetensors",
+        "model-00057-of-00131.safetensors",
+        "model-00058-of-00131.safetensors",
+        "model-00059-of-00131.safetensors",
+        "model-00060-of-00131.safetensors",
+        "model-00061-of-00131.safetensors",
+        "model-00062-of-00131.safetensors",
+        "model-00063-of-00131.safetensors",
+        "model-00064-of-00131.safetensors",
+        "model-00065-of-00131.safetensors",
+        "model-00066-of-00131.safetensors",
+        "model-00067-of-00131.safetensors",
+        "model-00068-of-00131.safetensors",
+        "model-00069-of-00131.safetensors",
+        "model-00070-of-00131.safetensors",
+        "model-00071-of-00131.safetensors",
+        "model-00072-of-00131.safetensors",
+        "model-00073-of-00131.safetensors",
+        "model-00074-of-00131.safetensors",
+        "model-00075-of-00131.safetensors",
+        "model-00076-of-00131.safetensors",
+        "model-00077-of-00131.safetensors",
+        "model-00078-of-00131.safetensors",
+        "model-00079-of-00131.safetensors",
+        "model-00080-of-00131.safetensors",
+        "model-00081-of-00131.safetensors",
+        "model-00082-of-00131.safetensors",
+        "model-00083-of-00131.safetensors",
+        "model-00084-of-00131.safetensors",
+        "model-00085-of-00131.safetensors",
+        "model-00086-of-00131.safetensors",
+        "model-00087-of-00131.safetensors",
+        "model-00088-of-00131.safetensors",
+        "model-00089-of-00131.safetensors",
+        "model-00090-of-00131.safetensors",
+        "model-00091-of-00131.safetensors",
+        "model-00092-of-00131.safetensors",
+        "model-00093-of-00131.safetensors",
+        "model-00094-of-00131.safetensors",
+        "model-00095-of-00131.safetensors",
+        "model-00096-of-00131.safetensors",
+        "model-00097-of-00131.safetensors",
+        "model-00098-of-00131.safetensors",
+        "model-00099-of-00131.safetensors",
+        "model-00100-of-00131.safetensors",
+        "model-00101-of-00131.safetensors",
+        "model-00102-of-00131.safetensors",
+        "model-00103-of-00131.safetensors",
+        "model-00104-of-00131.safetensors",
+        "model-00105-of-00131.safetensors",
+        "model-00106-of-00131.safetensors",
+        "model-00107-of-00131.safetensors",
+        "model-00108-of-00131.safetensors",
+        "model-00109-of-00131.safetensors",
+        "model-00110-of-00131.safetensors",
+        "model-00111-of-00131.safetensors",
+        "model-00112-of-00131.safetensors",
+        "model-00113-of-00131.safetensors",
+        "model-00114-of-00131.safetensors",
+        "model-00115-of-00131.safetensors",
+        "model-00116-of-00131.safetensors",
+        "model-00117-of-00131.safetensors",
+        "model-00118-of-00131.safetensors",
+        "model-00119-of-00131.safetensors",
+        "model-00120-of-00131.safetensors",
+        "model-00121-of-00131.safetensors",
+        "model-00122-of-00131.safetensors",
+        "model-00123-of-00131.safetensors",
+        "model-00124-of-00131.safetensors",
+        "model-00125-of-00131.safetensors",
+        "model-00126-of-00131.safetensors",
+        "model-00127-of-00131.safetensors",
+        "model-00128-of-00131.safetensors",
+        "model-00129-of-00131.safetensors",
+        "model-00130-of-00131.safetensors"
+      ],
+      "state_bytes": {
+        "label": "LOCAL_PHYSICAL",
+        "status": "NOT_MEASURED",
+        "value": null
+      },
+      "tensor_name_examples": [
+        "model.language_model.layers.0.mlp.experts.gate_up_proj",
+        "model.language_model.layers.0.mlp.gate.weight",
+        "model.language_model.layers.0.mlp.shared_expert.gate_proj.weight",
+        "model.language_model.layers.0.mlp.shared_expert_gate.weight",
+        "model.language_model.layers.1.mlp.experts.gate_up_proj",
+        "model.language_model.layers.1.mlp.gate.weight",
+        "model.language_model.layers.1.mlp.shared_expert.gate_proj.weight",
+        "model.language_model.layers.1.mlp.shared_expert_gate.weight",
+        "model.language_model.layers.10.mlp.experts.gate_up_proj",
+        "model.language_model.layers.10.mlp.gate.weight"
+      ],
+      "tensors": 196
+    },
+    {
+      "accelerator": {
+        "native_kernel_required": true,
+        "status": "PLAN_ONLY"
+      },
+      "active_bytes_per_token": {
+        "label": "LOCAL_PHYSICAL",
+        "status": "NOT_MEASURED",
+        "value": null
+      },
+      "bottleneck": {
+        "label": "LOCAL_PHYSICAL",
+        "status": "NOT_MEASURED",
+        "value": "unresolved until native execution"
+      },
+      "bytes": {
+        "label": "LOCAL_PHYSICAL",
+        "status": "NOT_MEASURED_TENSOR_SHAPES_NOT_IN_INDEX",
+        "value": null
+      },
+      "dimensions": {
+        "experts": 512,
+        "experts_per_token": 10,
+        "hidden_size": 2560,
+        "layers": 48,
+        "moe_intermediate_size": 640,
+        "shared_expert_intermediate_size": 640,
+        "vocab_size": 248320
+      },
+      "flops_per_token": {
+        "label": "LOCAL_PHYSICAL",
+        "status": "NOT_MEASURED",
+        "value": null
+      },
+      "gravity": {
+        "native_representation_required": true,
+        "status": "PLAN_ONLY"
+      },
+      "id": "moe_experts",
+      "label": "DERIVED",
+      "regularity": {
+        "label": "DERIVED",
+        "status": "STRUCTURAL_ONLY",
+        "value": "repeated layer/name patterns"
+      },
+      "shard_bytes_observed": 256745794216,
+      "shards": [
+        "model-00002-of-00131.safetensors",
+        "model-00003-of-00131.safetensors",
+        "model-00004-of-00131.safetensors",
+        "model-00005-of-00131.safetensors",
+        "model-00038-of-00131.safetensors",
+        "model-00039-of-00131.safetensors",
+        "model-00040-of-00131.safetensors",
+        "model-00041-of-00131.safetensors",
+        "model-00042-of-00131.safetensors",
+        "model-00043-of-00131.safetensors",
+        "model-00044-of-00131.safetensors",
+        "model-00045-of-00131.safetensors",
+        "model-00046-of-00131.safetensors",
+        "model-00047-of-00131.safetensors",
+        "model-00048-of-00131.safetensors",
+        "model-00049-of-00131.safetensors",
+        "model-00050-of-00131.safetensors",
+        "model-00051-of-00131.safetensors",
+        "model-00052-of-00131.safetensors",
+        "model-00053-of-00131.safetensors",
+        "model-00054-of-00131.safetensors",
+        "model-00055-of-00131.safetensors",
+        "model-00056-of-00131.safetensors",
+        "model-00057-of-00131.safetensors",
+        "model-00058-of-00131.safetensors",
+        "model-00059-of-00131.safetensors",
+        "model-00060-of-00131.safetensors",
+        "model-00061-of-00131.safetensors",
+        "model-00062-of-00131.safetensors",
+        "model-00063-of-00131.safetensors",
+        "model-00064-of-00131.safetensors",
+        "model-00065-of-00131.safetensors",
+        "model-00066-of-00131.safetensors",
+        "model-00067-of-00131.safetensors",
+        "model-00068-of-00131.safetensors",
+        "model-00069-of-00131.safetensors",
+        "model-00070-of-00131.safetensors",
+        "model-00071-of-00131.safetensors",
+        "model-00072-of-00131.safetensors",
+        "model-00073-of-00131.safetensors",
+        "model-00074-of-00131.safetensors",
+        "model-00075-of-00131.safetensors",
+        "model-00076-of-00131.safetensors",
+        "model-00077-of-00131.safetensors",
+        "model-00078-of-00131.safetensors",
+        "model-00079-of-00131.safetensors",
+        "model-00080-of-00131.safetensors",
+        "model-00081-of-00131.safetensors",
+        "model-00082-of-00131.safetensors",
+        "model-00083-of-00131.safetensors",
+        "model-00084-of-00131.safetensors",
+        "model-00085-of-00131.safetensors",
+        "model-00086-of-00131.safetensors",
+        "model-00087-of-00131.safetensors",
+        "model-00088-of-00131.safetensors",
+        "model-00089-of-00131.safetensors",
+        "model-00090-of-00131.safetensors",
+        "model-00091-of-00131.safetensors",
+        "model-00092-of-00131.safetensors",
+        "model-00093-of-00131.safetensors",
+        "model-00094-of-00131.safetensors",
+        "model-00095-of-00131.safetensors",
+        "model-00096-of-00131.safetensors",
+        "model-00097-of-00131.safetensors",
+        "model-00098-of-00131.safetensors",
+        "model-00099-of-00131.safetensors",
+        "model-00100-of-00131.safetensors",
+        "model-00101-of-00131.safetensors",
+        "model-00102-of-00131.safetensors",
+        "model-00103-of-00131.safetensors",
+        "model-00104-of-00131.safetensors",
+        "model-00105-of-00131.safetensors",
+        "model-00106-of-00131.safetensors",
+        "model-00107-of-00131.safetensors",
+        "model-00108-of-00131.safetensors",
+        "model-00109-of-00131.safetensors",
+        "model-00110-of-00131.safetensors",
+        "model-00111-of-00131.safetensors",
+        "model-00112-of-00131.safetensors",
+        "model-00113-of-00131.safetensors",
+        "model-00114-of-00131.safetensors",
+        "model-00115-of-00131.safetensors",
+        "model-00116-of-00131.safetensors",
+        "model-00117-of-00131.safetensors",
+        "model-00118-of-00131.safetensors",
+        "model-00119-of-00131.safetensors",
+        "model-00120-of-00131.safetensors",
+        "model-00121-of-00131.safetensors",
+        "model-00122-of-00131.safetensors",
+        "model-00123-of-00131.safetensors",
+        "model-00124-of-00131.safetensors",
+        "model-00125-of-00131.safetensors",
+        "model-00126-of-00131.safetensors",
+        "model-00127-of-00131.safetensors",
+        "model-00128-of-00131.safetensors",
+        "model-00129-of-00131.safetensors",
+        "model-00130-of-00131.safetensors"
+      ],
+      "state_bytes": {
+        "label": "LOCAL_PHYSICAL",
+        "status": "NOT_MEASURED",
+        "value": null
+      },
+      "tensor_name_examples": [
+        "model.language_model.layers.0.mlp.experts.down_proj",
+        "model.language_model.layers.0.mlp.experts.gate_up_proj",
+        "model.language_model.layers.0.mlp.shared_expert.down_proj.weight",
+        "model.language_model.layers.0.mlp.shared_expert.gate_proj.weight",
+        "model.language_model.layers.0.mlp.shared_expert.up_proj.weight",
+        "model.language_model.layers.0.mlp.shared_expert_gate.weight",
+        "model.language_model.layers.1.mlp.experts.down_proj",
+        "model.language_model.layers.1.mlp.experts.gate_up_proj",
+        "model.language_model.layers.1.mlp.shared_expert.down_proj.weight",
+        "model.language_model.layers.1.mlp.shared_expert.gate_proj.weight"
+      ],
+      "tensors": 294
+    },
+    {
+      "accelerator": {
+        "native_kernel_required": true,
+        "status": "PLAN_ONLY"
+      },
+      "active_bytes_per_token": {
+        "label": "LOCAL_PHYSICAL",
+        "status": "NOT_MEASURED",
+        "value": null
+      },
+      "bottleneck": {
+        "label": "LOCAL_PHYSICAL",
+        "status": "NOT_MEASURED",
+        "value": "unresolved until native execution"
+      },
+      "bytes": {
+        "label": "LOCAL_PHYSICAL",
+        "status": "NOT_MEASURED_TENSOR_SHAPES_NOT_IN_INDEX",
+        "value": null
+      },
+      "dimensions": {
+        "experts": 512,
+        "experts_per_token": 10,
+        "hidden_size": 2560,
+        "layers": 48,
+        "moe_intermediate_size": 640,
+        "shared_expert_intermediate_size": 640,
+        "vocab_size": 248320
+      },
+      "flops_per_token": {
+        "label": "LOCAL_PHYSICAL",
+        "status": "NOT_MEASURED",
+        "value": null
+      },
+      "gravity": {
+        "native_representation_required": true,
+        "status": "PLAN_ONLY"
+      },
+      "id": "moe_shared_expert",
+      "label": "DERIVED",
+      "regularity": {
+        "label": "DERIVED",
+        "status": "STRUCTURAL_ONLY",
+        "value": "repeated layer/name patterns"
+      },
+      "shard_bytes_observed": 92213150720,
+      "shards": [
+        "model-00003-of-00131.safetensors",
+        "model-00005-of-00131.safetensors",
+        "model-00039-of-00131.safetensors",
+        "model-00041-of-00131.safetensors",
+        "model-00043-of-00131.safetensors",
+        "model-00045-of-00131.safetensors",
+        "model-00047-of-00131.safetensors",
+        "model-00049-of-00131.safetensors",
+        "model-00051-of-00131.safetensors",
+        "model-00053-of-00131.safetensors",
+        "model-00055-of-00131.safetensors",
+        "model-00057-of-00131.safetensors",
+        "model-00059-of-00131.safetensors",
+        "model-00062-of-00131.safetensors",
+        "model-00064-of-00131.safetensors",
+        "model-00066-of-00131.safetensors",
+        "model-00068-of-00131.safetensors",
+        "model-00070-of-00131.safetensors",
+        "model-00072-of-00131.safetensors",
+        "model-00074-of-00131.safetensors",
+        "model-00076-of-00131.safetensors",
+        "model-00078-of-00131.safetensors",
+        "model-00080-of-00131.safetensors",
+        "model-00082-of-00131.safetensors",
+        "model-00084-of-00131.safetensors",
+        "model-00086-of-00131.safetensors",
+        "model-00088-of-00131.safetensors",
+        "model-00090-of-00131.safetensors",
+        "model-00092-of-00131.safetensors",
+        "model-00094-of-00131.safetensors",
+        "model-00096-of-00131.safetensors",
+        "model-00098-of-00131.safetensors",
+        "model-00100-of-00131.safetensors",
+        "model-00102-of-00131.safetensors",
+        "model-00104-of-00131.safetensors",
+        "model-00106-of-00131.safetensors",
+        "model-00108-of-00131.safetensors",
+        "model-00110-of-00131.safetensors",
+        "model-00112-of-00131.safetensors",
+        "model-00114-of-00131.safetensors",
+        "model-00116-of-00131.safetensors",
+        "model-00118-of-00131.safetensors",
+        "model-00120-of-00131.safetensors",
+        "model-00122-of-00131.safetensors",
+        "model-00124-of-00131.safetensors",
+        "model-00126-of-00131.safetensors",
+        "model-00128-of-00131.safetensors",
+        "model-00130-of-00131.safetensors"
+      ],
+      "state_bytes": {
+        "label": "LOCAL_PHYSICAL",
+        "status": "NOT_MEASURED",
+        "value": null
+      },
+      "tensor_name_examples": [
+        "model.language_model.layers.0.mlp.shared_expert.down_proj.weight",
+        "model.language_model.layers.0.mlp.shared_expert.gate_proj.weight",
+        "model.language_model.layers.0.mlp.shared_expert.up_proj.weight",
+        "model.language_model.layers.0.mlp.shared_expert_gate.weight",
+        "model.language_model.layers.1.mlp.shared_expert.down_proj.weight",
+        "model.language_model.layers.1.mlp.shared_expert.gate_proj.weight",
+        "model.language_model.layers.1.mlp.shared_expert.up_proj.weight",
+        "model.language_model.layers.1.mlp.shared_expert_gate.weight",
+        "model.language_model.layers.10.mlp.shared_expert.down_proj.weight",
+        "model.language_model.layers.10.mlp.shared_expert.gate_proj.weight"
+      ],
+      "tensors": 196
+    },
+    {
+      "accelerator": {
+        "native_kernel_required": true,
+        "status": "PLAN_ONLY"
+      },
+      "active_bytes_per_token": {
+        "label": "LOCAL_PHYSICAL",
+        "status": "NOT_MEASURED",
+        "value": null
+      },
+      "bottleneck": {
+        "label": "LOCAL_PHYSICAL",
+        "status": "NOT_MEASURED",
+        "value": "unresolved until native execution"
+      },
+      "bytes": {
+        "label": "LOCAL_PHYSICAL",
+        "status": "NOT_MEASURED_TENSOR_SHAPES_NOT_IN_INDEX",
+        "value": null
+      },
+      "dimensions": {
+        "conv_kernel_dim": 4,
+        "layer_types": [
+          "linear_attention",
+          "linear_attention",
+          "linear_attention",
+          "full_attention",
+          "linear_attention",
+          "linear_attention",
+          "linear_attention",
+          "full_attention",
+          "linear_attention",
+          "linear_attention",
+          "linear_attention",
+          "full_attention",
+          "linear_attention",
+          "linear_attention",
+          "linear_attention",
+          "full_attention",
+          "linear_attention",
+          "linear_attention",
+          "linear_attention",
+          "full_attention",
+          "linear_attention",
+          "linear_attention",
+          "linear_attention",
+          "full_attention",
+          "linear_attention",
+          "linear_attention",
+          "linear_attention",
+          "full_attention",
+          "linear_attention",
+          "linear_attention",
+          "linear_attention",
+          "full_attention",
+          "linear_attention",
+          "linear_attention",
+          "linear_attention",
+          "full_attention",
+          "linear_attention",
+          "linear_attention",
+          "linear_attention",
+          "full_attention",
+          "linear_attention",
+          "linear_attention",
+          "linear_attention",
+          "full_attention",
+          "linear_attention",
+          "linear_attention",
+          "linear_attention",
+          "full_attention"
+        ],
+        "linear_key_head_dim": 128,
+        "linear_layers": 36,
+        "linear_num_key_heads": 16,
+        "linear_num_value_heads": 48,
+        "linear_value_head_dim": 128
+      },
+      "flops_per_token": {
+        "label": "LOCAL_PHYSICAL",
+        "status": "NOT_MEASURED",
+        "value": null
+      },
+      "gravity": {
+        "native_representation_required": true,
+        "status": "PLAN_ONLY"
+      },
+      "id": "deltanet",
+      "label": "DERIVED",
+      "regularity": {
+        "label": "DERIVED",
+        "status": "STRUCTURAL_ONLY",
+        "value": "repeated layer/name patterns"
+      },
+      "shard_bytes_observed": 71521308760,
+      "shards": [
+        "model-00001-of-00131.safetensors",
+        "model-00003-of-00131.safetensors",
+        "model-00037-of-00131.safetensors",
+        "model-00041-of-00131.safetensors",
+        "model-00043-of-00131.safetensors",
+        "model-00045-of-00131.safetensors",
+        "model-00049-of-00131.safetensors",
+        "model-00051-of-00131.safetensors",
+        "model-00053-of-00131.safetensors",
+        "model-00057-of-00131.safetensors",
+        "model-00059-of-00131.safetensors",
+        "model-00060-of-00131.safetensors",
+        "model-00062-of-00131.safetensors",
+        "model-00064-of-00131.safetensors",
+        "model-00068-of-00131.safetensors",
+        "model-00070-of-00131.safetensors",
+        "model-00072-of-00131.safetensors",
+        "model-00076-of-00131.safetensors",
+        "model-00078-of-00131.safetensors",
+        "model-00082-of-00131.safetensors",
+        "model-00086-of-00131.safetensors",
+        "model-00088-of-00131.safetensors",
+        "model-00090-of-00131.safetensors",
+        "model-00094-of-00131.safetensors",
+        "model-00096-of-00131.safetensors",
+        "model-00098-of-00131.safetensors",
+        "model-00102-of-00131.safetensors",
+        "model-00104-of-00131.safetensors",
+        "model-00106-of-00131.safetensors",
+        "model-00108-of-00131.safetensors",
+        "model-00112-of-00131.safetensors",
+        "model-00114-of-00131.safetensors",
+        "model-00116-of-00131.safetensors",
+        "model-00120-of-00131.safetensors",
+        "model-00122-of-00131.safetensors",
+        "model-00126-of-00131.safetensors",
+        "model-00128-of-00131.safetensors"
+      ],
+      "state_bytes": {
+        "label": "LOCAL_PHYSICAL",
+        "status": "NOT_MEASURED",
+        "value": null
+      },
+      "tensor_name_examples": [
+        "model.language_model.layers.0.linear_attn.A_log",
+        "model.language_model.layers.0.linear_attn.conv1d.weight",
+        "model.language_model.layers.0.linear_attn.dt_bias",
+        "model.language_model.layers.0.linear_attn.in_proj_a.weight",
+        "model.language_model.layers.0.linear_attn.in_proj_b.weight",
+        "model.language_model.layers.0.linear_attn.in_proj_qkv.weight",
+        "model.language_model.layers.0.linear_attn.in_proj_z.weight",
+        "model.language_model.layers.0.linear_attn.norm.weight",
+        "model.language_model.layers.0.linear_attn.out_proj.weight",
+        "model.language_model.layers.1.linear_attn.A_log"
+      ],
+      "tensors": 324
+    },
+    {
+      "accelerator": {
+        "native_kernel_required": true,
+        "status": "PLAN_ONLY"
+      },
+      "active_bytes_per_token": {
+        "label": "LOCAL_PHYSICAL",
+        "status": "NOT_MEASURED",
+        "value": null
+      },
+      "bottleneck": {
+        "label": "LOCAL_PHYSICAL",
+        "status": "NOT_MEASURED",
+        "value": "unresolved until native execution"
+      },
+      "bytes": {
+        "label": "LOCAL_PHYSICAL",
+        "status": "NOT_MEASURED_TENSOR_SHAPES_NOT_IN_INDEX",
+        "value": null
+      },
+      "dimensions": {
+        "full_attention_interval": 4,
+        "indexer_budget": 2048,
+        "indexer_compress_ratio": 4,
+        "indexer_head_dim": 128,
+        "indexer_kv_heads": 1,
+        "indexer_n_heads": 4
+      },
+      "flops_per_token": {
+        "label": "LOCAL_PHYSICAL",
+        "status": "NOT_MEASURED",
+        "value": null
+      },
+      "gravity": {
+        "native_representation_required": true,
+        "status": "PLAN_ONLY"
+      },
+      "id": "qsa_sparse_attention",
+      "label": "DERIVED",
+      "regularity": {
+        "label": "DERIVED",
+        "status": "STRUCTURAL_ONLY",
+        "value": "repeated layer/name patterns"
+      },
+      "shard_bytes_observed": 28714110312,
+      "shards": [
+        "model-00041-of-00131.safetensors",
+        "model-00049-of-00131.safetensors",
+        "model-00057-of-00131.safetensors",
+        "model-00068-of-00131.safetensors",
+        "model-00076-of-00131.safetensors",
+        "model-00082-of-00131.safetensors",
+        "model-00086-of-00131.safetensors",
+        "model-00090-of-00131.safetensors",
+        "model-00094-of-00131.safetensors",
+        "model-00100-of-00131.safetensors",
+        "model-00102-of-00131.safetensors",
+        "model-00108-of-00131.safetensors",
+        "model-00112-of-00131.safetensors",
+        "model-00120-of-00131.safetensors",
+        "model-00126-of-00131.safetensors"
+      ],
+      "state_bytes": {
+        "label": "LOCAL_PHYSICAL",
+        "status": "NOT_MEASURED",
+        "value": null
+      },
+      "tensor_name_examples": [
+        "model.language_model.layers.11.self_attn.indexer.index_qk_proj.weight",
+        "model.language_model.layers.11.self_attn.indexer.k_layernorm.weight",
+        "model.language_model.layers.11.self_attn.indexer.q_layernorm.weight",
+        "model.language_model.layers.11.self_attn.k_proj.weight",
+        "model.language_model.layers.11.self_attn.q_proj.weight",
+        "model.language_model.layers.11.self_attn.v_proj.weight",
+        "model.language_model.layers.15.self_attn.indexer.index_qk_proj.weight",
+        "model.language_model.layers.15.self_attn.indexer.k_layernorm.weight",
+        "model.language_model.layers.15.self_attn.indexer.q_layernorm.weight",
+        "model.language_model.layers.15.self_attn.k_proj.weight"
+      ],
+      "tensors": 78
+    },
+    {
+      "accelerator": {
+        "native_kernel_required": true,
+        "status": "PLAN_ONLY"
+      },
+      "active_bytes_per_token": {
+        "label": "LOCAL_PHYSICAL",
+        "status": "NOT_MEASURED",
+        "value": null
+      },
+      "bottleneck": {
+        "label": "LOCAL_PHYSICAL",
+        "status": "NOT_MEASURED",
+        "value": "unresolved until native execution"
+      },
+      "bytes": {
+        "label": "LOCAL_PHYSICAL",
+        "status": "NOT_MEASURED_TENSOR_SHAPES_NOT_IN_INDEX",
+        "value": null
+      },
+      "dimensions": {
+        "dedicated_embeddings": false,
+        "mtp": {
+          "hybrid": true,
+          "layer_types": [
+            "full_attention"
+          ],
+          "mtp_use_hidden_state_from_layer": null,
+          "num_hidden_layers": 1,
+          "rope_theta": 10000000
+        },
+        "mtp_num_hidden_layers": 1
+      },
+      "flops_per_token": {
+        "label": "LOCAL_PHYSICAL",
+        "status": "NOT_MEASURED",
+        "value": null
+      },
+      "gravity": {
+        "native_representation_required": true,
+        "status": "PLAN_ONLY"
+      },
+      "id": "mtp",
+      "label": "DERIVED",
+      "regularity": {
+        "label": "DERIVED",
+        "status": "STRUCTURAL_ONLY",
+        "value": "repeated layer/name patterns"
+      },
+      "shard_bytes_observed": 55167376024,
+      "shards": [
+        "model-00037-of-00131.safetensors",
+        "model-00041-of-00131.safetensors",
+        "model-00043-of-00131.safetensors",
+        "model-00047-of-00131.safetensors",
+        "model-00049-of-00131.safetensors",
+        "model-00053-of-00131.safetensors",
+        "model-00057-of-00131.safetensors",
+        "model-00060-of-00131.safetensors",
+        "model-00062-of-00131.safetensors",
+        "model-00066-of-00131.safetensors",
+        "model-00070-of-00131.safetensors",
+        "model-00072-of-00131.safetensors",
+        "model-00076-of-00131.safetensors",
+        "model-00078-of-00131.safetensors",
+        "model-00082-of-00131.safetensors",
+        "model-00086-of-00131.safetensors",
+        "model-00088-of-00131.safetensors",
+        "model-00090-of-00131.safetensors",
+        "model-00094-of-00131.safetensors",
+        "model-00100-of-00131.safetensors",
+        "model-00102-of-00131.safetensors",
+        "model-00106-of-00131.safetensors",
+        "model-00108-of-00131.safetensors",
+        "model-00112-of-00131.safetensors",
+        "model-00114-of-00131.safetensors",
+        "model-00118-of-00131.safetensors",
+        "model-00120-of-00131.safetensors",
+        "model-00124-of-00131.safetensors"
+      ],
+      "state_bytes": {
+        "label": "LOCAL_PHYSICAL",
+        "status": "NOT_MEASURED",
+        "value": null
+      },
+      "tensor_name_examples": [
+        "mtp.fc_embedding.weight",
+        "mtp.fc_hidden.weight",
+        "mtp.hyper_connection_mixer.hc_norm.weight",
+        "mtp.hyper_connection_mixer.input_mix_weight_down.weight",
+        "mtp.hyper_connection_mixer.input_mix_weight_up.weight",
+        "mtp.layers.0.attn_hyper_connection.block_inject_weight.weight",
+        "mtp.layers.0.attn_hyper_connection.hc_norm.weight",
+        "mtp.layers.0.attn_hyper_connection.input_mix_weight_down.weight",
+        "mtp.layers.0.attn_hyper_connection.input_mix_weight_up.weight",
+        "mtp.layers.0.mlp.experts.down_proj"
+      ],
+      "tensors": 31
+    },
+    {
+      "accelerator": {
+        "native_kernel_required": true,
+        "status": "PLAN_ONLY"
+      },
+      "active_bytes_per_token": {
+        "label": "LOCAL_PHYSICAL",
+        "status": "NOT_MEASURED",
+        "value": null
+      },
+      "bottleneck": {
+        "label": "LOCAL_PHYSICAL",
+        "status": "NOT_MEASURED",
+        "value": "unresolved until native execution"
+      },
+      "bytes": {
+        "label": "LOCAL_PHYSICAL",
+        "status": "NOT_MEASURED_TENSOR_SHAPES_NOT_IN_INDEX",
+        "value": null
+      },
+      "dimensions": {
+        "hidden_size": 2560,
+        "vocab_size": 248320
+      },
+      "flops_per_token": {
+        "label": "LOCAL_PHYSICAL",
+        "status": "NOT_MEASURED",
+        "value": null
+      },
+      "gravity": {
+        "native_representation_required": true,
+        "status": "PLAN_ONLY"
+      },
+      "id": "lm_head",
+      "label": "DERIVED",
+      "regularity": {
+        "label": "DERIVED",
+        "status": "STRUCTURAL_ONLY",
+        "value": "repeated layer/name patterns"
+      },
+      "shard_bytes_observed": 1271398528,
+      "shards": [
+        "model-00131-of-00131.safetensors"
+      ],
+      "state_bytes": {
+        "label": "LOCAL_PHYSICAL",
+        "status": "NOT_MEASURED",
+        "value": null
+      },
+      "tensor_name_examples": [
+        "lm_head.weight"
+      ],
+      "tensors": 1
+    }
+  ],
+  "promotion_gate": {
+    "artifact_contract": "FLASH_NEXT_COMPLETE_MULTIMODAL",
+    "claim_boundary": "Only PROMOTABLE closes the final Flash-Next gate. A measured candidate that misses either hard threshold remains a research/Pareto intermediate.",
+    "evidence": {
+      "capability_contract_passed": false,
+      "dense_parent_execution_fallback": false,
+      "dense_vs_nf_ab": false,
+      "hidden_dense_rematerialization": false,
+      "mtp_accounting_disclosed": false,
+      "native_executable": false,
+      "reproducible_protected_receipt": false,
+      "runtime_kernel_genome_complete": false,
+      "whole_model_reference_comparison": false
+    },
+    "hard_gate": {
+      "accepted_capability_preserving_tps_at_or_above_50": false,
+      "complete_system_ebpw_at_or_below_1": false
+    },
+    "ladder": {
+      "exceptional": {
+        "accepted_tps_min": 90.0,
+        "complete_system_ebpw_max": 0.6
+      },
+      "extreme": {
+        "accepted_tps_min": 120.0,
+        "complete_system_ebpw_max": 0.5
+      },
+      "final": {
+        "accepted_tps_min": 50.0,
+        "complete_system_ebpw_max": 1.0
+      },
+      "strong": {
+        "accepted_tps_min": 70.0,
+        "complete_system_ebpw_max": 0.75
+      }
+    },
+    "measured": {
+      "accepted_capability_preserving_tps": null,
+      "complete_system_ebpw": null
+    },
+    "missing_or_refused": [
+      "MTP accounting",
+      "complete-system byte ledger",
+      "dense-parent fallback declaration",
+      "dense-versus-NF A/B receipt",
+      "ebpw_accounting.all_required_bytes_included=true",
+      "ebpw_accounting.bases.bytes",
+      "ebpw_accounting.dictionaries.bytes",
+      "ebpw_accounting.expert_indices.bytes",
+      "ebpw_accounting.generators.bytes",
+      "ebpw_accounting.lookup_structures.bytes",
+      "ebpw_accounting.mtp_representation.bytes",
+      "ebpw_accounting.ngram_representation.bytes",
+      "ebpw_accounting.required_executable_metadata.bytes",
+      "ebpw_accounting.residuals.bytes",
+      "ebpw_accounting.routing_metadata.bytes",
+      "ebpw_accounting.scales.bytes",
+      "ebpw_accounting.weight_codes.bytes",
+      "ebpw_accounting.zero_points.bytes",
+      "fallback_count disclosure",
+      "hidden dense-rematerialization declaration",
+      "native executable",
+      "protected capability contract",
+      "reproducible protected receipt",
+      "runtime/kernel genome",
+      "whole-model reference comparison"
+    ],
+    "promotion_allowed": false,
+    "schema": "hcli.flash-next.promotion.v1",
+    "status": "INCOMPLETE"
+  },
+  "promotion_law": {
+    "accepted_capability_preserving_tps_min": 50.0,
+    "complete_system_ebpw_max": 1.0,
+    "dense_parent_execution_fallback": false,
+    "hidden_dense_rematerialization": false,
+    "text_resident_exception": "FLASH_NEXT_TEXT_RESIDENT may omit vision tensors only when explicitly declared and qualified"
+  },
+  "qualification": "FLASH_NEXT_PRE_RUNTIME_IDENTITY_AND_PLAN_ONLY",
+  "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/HCLI_FLASH_NEXT_PRE_RUNTIME_SCIENCE.json",
+  "required_primitives": [
+    "dense-vs-NF reference comparator",
+    "shared-basis/residual decoder",
+    "sparse expert router and index lookup",
+    "ngram factorized lookup/generator",
+    "linear recurrent-state update",
+    "QSA sparse traversal",
+    "MTP acceptance accounting",
+    "complete-token wall meter"
+  ],
+  "schema": "hcli.flash-next.pre-runtime-science.v1",
+  "source_identity": {
+    "expected_complete_source_bytes": 360023286454,
+    "expected_file_count": 144,
+    "labels": {
+      "derived": "DERIVED",
+      "local_physical": "LOCAL_PHYSICAL",
+      "upstream": "UPSTREAM_SOURCE"
+    },
+    "page": "https://huggingface.co/Qwen/Qwen3.8-Flash-Next",
+    "pinned_revision": "34567a4712bc9766c4449e2e98e4468bfa24d915",
+    "repo": "Qwen/Qwen3.8-Flash-Next"
+  },
+  "started_at": 1787797730.503982,
+  "status": "PASSED"
+}

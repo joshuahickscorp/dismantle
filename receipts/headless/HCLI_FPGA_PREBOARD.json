@@ -1,0 +1,58 @@
+{
+  "checks": {
+    "both_model_maps_written": true,
+    "flash_next_hwir_present": true,
+    "mock_provider_is_simulation_only": true,
+    "no_physical_board_claim": true,
+    "qwen27_hwir_present": true
+  },
+  "claim_boundary": "Pre-board compiler scaffolding for both Qwen systems. No physical FPGA execution or performance is claimed.",
+  "fingerprint": "250d12132b94f2f0546e624e529b33a8ba8dd86389384f8cdacd538211393e26",
+  "fpga_backend": {
+    "claim": false,
+    "status": "NOT_BUILT"
+  },
+  "generated_at": 1787800373.4951758,
+  "maps": {
+    "flash_next": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NEXT_FPGA_ORGAN_MAP.json",
+    "qwen27": "/Users/scammermike/Downloads/hawking/receipts/headless/QWEN27_FPGA_ORGAN_MAP.json"
+  },
+  "model_specific": {
+    "flash_next": [
+      "expert_bank",
+      "router_topk_and_gather",
+      "routed_plus_shared_expert",
+      "deltanet_persistent_state",
+      "ngram_lookup_or_generator",
+      "sparse_attention",
+      "mtp_draft_verify_rollback"
+    ],
+    "qwen27": [
+      "mlp_gate_up_down",
+      "gqa_qkv_and_output",
+      "deltanet_state_and_input_projection",
+      "norm_add_epilogues",
+      "lm_head_and_sampling",
+      "command_buffer_graph"
+    ]
+  },
+  "physical_board": {
+    "claim": false,
+    "status": "ABSENT"
+  },
+  "repo_root": "/Users/scammermike/Downloads/hawking",
+  "schema": "hcli.agentos.fpga_preboard.v1",
+  "shared_primitives": [
+    "packed low-bit GEMV",
+    "norm/epilogue",
+    "persistent state/update",
+    "transport/link accounting",
+    "kernel genome/cache",
+    "telemetry/receipt verifier"
+  ],
+  "simulation": {
+    "flash_next": "[S] link sensitivity only",
+    "qwen27": "[S] link sensitivity only"
+  },
+  "status": "PASSED"
+}

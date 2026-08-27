@@ -116,6 +116,46 @@ def _gate_summary(workspace: Path, repo_root: Path) -> Dict[str, Any]:
         repo_root / "receipts" / "headless" / "accelerator-native-smoke.json",
         repo_root / "receipts" / "headless" / "HCLI_ACCELERATOR_NATIVE_SMOKE.json",
     ]
+    autonomy_candidates = [
+        workspace / ".hcli" / "receipts" / "autonomy-gate.json",
+        repo_root / "receipts" / "headless" / "autonomy-gate.json",
+        repo_root / "receipts" / "headless" / "HCLI_AGENTOS_AUTONOMY_GATE.json",
+    ]
+    unattended_candidates = [
+        workspace / ".hcli" / "receipts" / "unattended-window.json",
+        repo_root / "receipts" / "headless" / "unattended-window.json",
+        repo_root / "receipts" / "headless" / "HCLI_AGENTOS_UNATTENDED_WINDOW.json",
+    ]
+    accelerator_regression_candidates = [
+        workspace / ".hcli" / "receipts" / "accelerator-regression.json",
+        repo_root / "receipts" / "headless" / "accelerator-regression.json",
+        repo_root / "receipts" / "headless" / "HCLI_ACCELERATOR_REGRESSION.json",
+    ]
+    modellake_candidates = [
+        workspace / ".hcli" / "receipts" / "modellake-census.json",
+        repo_root / "receipts" / "headless" / "modellake-census.json",
+        repo_root / "receipts" / "headless" / "HCLI_MODELLAKE_FLASH_CENSUS.json",
+    ]
+    flash_science_candidates = [
+        workspace / ".hcli" / "receipts" / "flash-science.json",
+        repo_root / "receipts" / "headless" / "flash-science.json",
+        repo_root / "receipts" / "headless" / "HCLI_FLASH_NEXT_PRE_RUNTIME_SCIENCE.json",
+    ]
+    preboard_candidates = [
+        workspace / ".hcli" / "receipts" / "preboard.json",
+        repo_root / "receipts" / "headless" / "preboard.json",
+        repo_root / "receipts" / "headless" / "HCLI_AGENTOS_PREBOARD.json",
+    ]
+    charge_candidates = [
+        workspace / ".hcli" / "receipts" / "initial-charge.json",
+        repo_root / "receipts" / "headless" / "initial-charge.json",
+        repo_root / "receipts" / "headless" / "HAWKING_INITIAL_CHARGE.json",
+    ]
+    transfer_map_candidates = [repo_root / "receipts" / "headless" / "QWEN38_ACCELERATOR_TRANSFER_MAP.json"]
+    precedent_map_candidates = [repo_root / "receipts" / "headless" / "FLASH_NEXT_PRECEDENT_MAP.json"]
+    ab_candidates = [repo_root / "receipts" / "headless" / "HCLI_DENSE_VS_NF_AB_SCAFFOLD.json"]
+    fpga_candidates = [repo_root / "receipts" / "headless" / "HCLI_FPGA_PREBOARD.json"]
+    lake_supervision_candidates = [repo_root / "receipts" / "headless" / "HCLI_MODELLAKE_FLASH_ACQUISITION_SUPERVISION.json"]
     recovery = None
     for path in recovery_candidates:
         value = _read_object(path)
@@ -198,6 +238,167 @@ def _gate_summary(workspace: Path, repo_root: Path) -> Dict[str, Any]:
                 if isinstance(value.get("bench"), dict) else None,
             }
             break
+    autonomy = None
+    for path in autonomy_candidates:
+        value = _read_object(path)
+        if value is not None:
+            autonomy = {
+                "status": value.get("status"),
+                "qualification": value.get("qualification"),
+                "receipt_path": str(path),
+                "checks": value.get("checks"),
+                "stage_status": value.get("stage_status"),
+            }
+            break
+    unattended = None
+    for path in unattended_candidates:
+        value = _read_object(path)
+        if value is not None:
+            unattended = {
+                "status": value.get("status"),
+                "qualification": value.get("qualification"),
+                "receipt_path": str(path),
+                "checks": value.get("checks"),
+                "metrics": value.get("metrics"),
+                "duration_requested_s": value.get("duration_requested_s"),
+                "elapsed_s": value.get("elapsed_s"),
+            }
+            break
+    accelerator_regression = None
+    for path in accelerator_regression_candidates:
+        value = _read_object(path)
+        if value is not None:
+            accelerator_regression = {
+                "status": value.get("status"),
+                "qualification": value.get("qualification"),
+                "receipt_path": str(path),
+                "checks": value.get("checks"),
+                "bench_state": ((value.get("experiment") or {}).get("bench") or {}).get("state")
+                if isinstance(value.get("experiment"), dict)
+                else None,
+                "perf_qualified": ((value.get("experiment") or {}).get("perf_qualified"))
+                if isinstance(value.get("experiment"), dict)
+                else None,
+            }
+            break
+    modellake = None
+    for path in modellake_candidates:
+        value = _read_object(path)
+        if value is not None:
+            modellake = {
+                "status": value.get("status"),
+                "qualification": value.get("qualification"),
+                "receipt_path": str(path),
+                "checks": value.get("checks"),
+                "download_performed": (value.get("acquisition_policy") or {}).get("download_performed")
+                if isinstance(value.get("acquisition_policy"), dict)
+                else None,
+                "pinned_revision": (value.get("source") or {}).get("requested_revision")
+                if isinstance(value.get("source"), dict)
+                else None,
+            }
+            break
+    flash_science = None
+    for path in flash_science_candidates:
+        value = _read_object(path)
+        if value is not None:
+            flash_science = {
+                "status": value.get("status"),
+                "qualification": value.get("qualification"),
+                "receipt_path": str(path),
+                "checks": value.get("checks"),
+                "promotion_gate": value.get("promotion_gate"),
+                "architecture_fingerprint": value.get("architecture_fingerprint"),
+            }
+            break
+    preboard = None
+    for path in preboard_candidates:
+        value = _read_object(path)
+        if value is not None:
+            preboard = {
+                "status": value.get("status"),
+                "qualification": value.get("qualification"),
+                "receipt_path": str(path),
+                "checks": value.get("checks"),
+                "claim_boundary": value.get("claim_boundary"),
+            }
+            break
+    charge = None
+    for path in charge_candidates:
+        value = _read_object(path)
+        if value is not None:
+            charge = {
+                "status": value.get("status"),
+                "charge_id": value.get("charge_id"),
+                "receipt_path": str(path),
+                "mission_id": value.get("mission_id"),
+                "workspace": value.get("workspace"),
+                "unit_count": len(value.get("units") or []) if isinstance(value.get("units"), list) else None,
+                "provider_neutral": value.get("provider_neutral"),
+            }
+            break
+    transfer_map = None
+    for path in transfer_map_candidates:
+        value = _read_object(path)
+        if value is not None:
+            transfer_map = {
+                "status": "PRESENT",
+                "receipt_path": str(path),
+                "schema": value.get("schema"),
+                "fingerprint": value.get("fingerprint"),
+                "entries": len(value.get("transfer_matrix") or []) if isinstance(value.get("transfer_matrix"), list) else None,
+            }
+            break
+    precedent_map = None
+    for path in precedent_map_candidates:
+        value = _read_object(path)
+        if value is not None:
+            precedent_map = {
+                "status": "PRESENT",
+                "receipt_path": str(path),
+                "schema": value.get("schema"),
+                "fingerprint": value.get("fingerprint"),
+                "entries": len(value.get("entries") or []) if isinstance(value.get("entries"), list) else None,
+            }
+            break
+    ab_scaffold = None
+    for path in ab_candidates:
+        value = _read_object(path)
+        if value is not None:
+            ab_scaffold = {
+                "status": value.get("status"),
+                "receipt_path": str(path),
+                "schema": value.get("schema"),
+                "evaluation": value.get("evaluation"),
+            }
+            break
+    fpga = None
+    for path in fpga_candidates:
+        value = _read_object(path)
+        if value is not None:
+            fpga = {
+                "status": value.get("status"),
+                "receipt_path": str(path),
+                "schema": value.get("schema"),
+                "fingerprint": value.get("fingerprint"),
+                "checks": value.get("checks"),
+                "physical_board": value.get("physical_board"),
+            }
+            break
+    lake_supervision = None
+    for path in lake_supervision_candidates:
+        value = _read_object(path)
+        if value is not None:
+            lake_supervision = {
+                "status": value.get("status"),
+                "qualification": value.get("qualification"),
+                "receipt_path": str(path),
+                "checks": value.get("checks"),
+                "job": value.get("job"),
+                "target": value.get("target"),
+                "capacity": value.get("capacity"),
+            }
+            break
     return {
         "recovery_gate": {
             **(recovery or {
@@ -247,7 +448,59 @@ def _gate_summary(workspace: Path, repo_root: Path) -> Dict[str, Any]:
             "pass": None,
             "bench_state": None,
         },
-        "unattended": "NOT_PROVEN",
+        "autonomy_gate": autonomy or {
+            "status": "NOT_RUN",
+            "qualification": "NONE",
+            "receipt_path": None,
+            "checks": {},
+            "stage_status": {},
+        },
+        "unattended": unattended or "NOT_PROVEN",
+        "accelerator_regression": accelerator_regression or {
+            "status": "NOT_RUN",
+            "qualification": "NONE",
+            "receipt_path": None,
+            "checks": {},
+            "bench_state": None,
+            "perf_qualified": None,
+        },
+        "modellake": modellake or {
+            "status": "NOT_RUN",
+            "qualification": "NONE",
+            "receipt_path": None,
+            "checks": {},
+            "download_performed": None,
+            "pinned_revision": None,
+        },
+        "flash_science": flash_science or {
+            "status": "NOT_RUN",
+            "qualification": "NONE",
+            "receipt_path": None,
+            "checks": {},
+            "promotion_gate": None,
+            "architecture_fingerprint": None,
+        },
+        "preboard": preboard or {
+            "status": "NOT_RUN",
+            "qualification": "NONE",
+            "receipt_path": None,
+            "checks": {},
+            "claim_boundary": None,
+        },
+        "initial_charge": charge or {
+            "status": "NOT_RUN",
+            "charge_id": None,
+            "receipt_path": None,
+            "mission_id": None,
+            "workspace": None,
+            "unit_count": None,
+            "provider_neutral": None,
+        },
+        "transfer_map": transfer_map or {"status": "NOT_RUN", "receipt_path": None, "schema": None, "fingerprint": None, "entries": None},
+        "precedent_map": precedent_map or {"status": "NOT_RUN", "receipt_path": None, "schema": None, "fingerprint": None, "entries": None},
+        "ab_scaffold": ab_scaffold or {"status": "NOT_RUN", "receipt_path": None, "schema": None, "evaluation": None},
+        "fpga_preboard": fpga or {"status": "NOT_RUN", "receipt_path": None, "schema": None, "fingerprint": None, "checks": {}, "physical_board": None},
+        "modellake_supervision": lake_supervision or {"status": "NOT_RUN", "qualification": "NONE", "receipt_path": None, "checks": {}, "job": None, "target": None, "capacity": None},
         "production_provider_gate": "NOT_RUN",
     }
 
@@ -281,8 +534,33 @@ def build_program_checkpoint(
         blockers.append("20-request native resident proof has not passed")
     if gates["native_mission_gate"]["status"] != "PASSED":
         blockers.append("native tool/verifier mission gate has not passed")
+    if gates["autonomy_gate"]["status"] != "PASSED":
+        blockers.append("A1-A5 AgentOS autonomy and crash-recovery qualification has not passed")
     if gates["accelerator_smoke"]["status"] != "PASSED":
         blockers.append("live native accelerator smoke receipt has not passed")
+    if gates["accelerator_regression"]["status"] != "PASSED":
+        blockers.append("current-vs-historical accelerator regression audit has not passed")
+    if gates["modellake"]["status"] != "PASSED":
+        blockers.append("pinned Flash-Next ModelLake census has not passed")
+    if gates["flash_science"]["status"] != "PASSED":
+        blockers.append("Flash-Next pre-runtime architecture/organ science has not passed")
+    if gates["preboard"]["status"] != "PASSED":
+        blockers.append("negative-science/FPGA compiler preboard has not passed")
+    if gates["initial_charge"]["status"] not in {"CREATED", "IDEMPOTENT_EXISTING_CHARGE"}:
+        blockers.append("provider-neutral Hawking initial charge has not been persisted")
+    if gates["transfer_map"]["status"] != "PRESENT":
+        blockers.append("two-Qwen accelerator transfer map has not been persisted")
+    if gates["precedent_map"]["status"] != "PRESENT":
+        blockers.append("Flash-Next precedent map has not been persisted")
+    if gates["ab_scaffold"]["status"] != "READY_SCAFFOLD":
+        blockers.append("dense-vs-NF A/B scaffold has not been persisted")
+    if gates["fpga_preboard"]["status"] != "PASSED":
+        blockers.append("two-model FPGA preboard maps have not passed")
+    if gates["modellake_supervision"]["status"] not in {"RUNNING_SAFE", "PASSED", "WAITING_OR_NOT_OBSERVED"}:
+        blockers.append("pinned Flash-Next ModelLake acquisition is not in a safe observed state")
+    flash_promotion = gates["flash_science"].get("promotion_gate")
+    if isinstance(flash_promotion, dict) and flash_promotion.get("status") != "PROMOTABLE":
+        blockers.append("Flash-Next final promotion gate is not PROMOTABLE (complete EBPW/TPS or required evidence is missing)")
     if connectivity.get("surfaces", {}).get("modellake", {}).get("status") != "AVAILABLE":
         blockers.append("ModelLake is not mounted in this environment")
     vmcp = connectivity.get("surfaces", {}).get("vmcp", {})
@@ -334,12 +612,27 @@ def build_program_checkpoint(
             "native_hcli": gates["native_gate"]["qualification"],
             "native_resident": gates["resident_gate"]["qualification"],
             "native_mission": gates["native_mission_gate"]["qualification"],
+            "autonomy": gates["autonomy_gate"]["qualification"],
             "accelerator_smoke": gates["accelerator_smoke"]["qualification"],
-            "unattended_sovereignty": "NOT_CLAIMED",
+            "unattended_sovereignty": (
+                gates["unattended"].get("qualification")
+                if isinstance(gates.get("unattended"), dict)
+                else "NOT_CLAIMED"
+            ),
+            "flash_pre_runtime": gates["flash_science"]["qualification"],
+            "negative_science_preboard": gates["preboard"]["qualification"],
+            "initial_charge": gates["initial_charge"]["status"],
+            "qwen38_transfer_map": gates["transfer_map"]["status"],
+            "flash_precedent_map": gates["precedent_map"]["status"],
+            "dense_vs_nf_ab": gates["ab_scaffold"]["status"],
+            "fpga_preboard": gates["fpga_preboard"]["status"],
+            "modellake_supervision": gates["modellake_supervision"]["status"],
+            "flash_promotion": flash_promotion.get("status") if isinstance(flash_promotion, dict) else "NOT_PROVEN",
         },
         "blockers": blockers,
         "next_actions": [
             "run recovery-gate against every configured production provider",
+            "complete the one-hour unattended production-provider observation before making any sovereignty claim",
             "persist research provenance and protected benchmark receipts",
             "qualify additional providers only after their own deterministic verification closes",
         ],

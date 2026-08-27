@@ -182,6 +182,7 @@ class AgentOS:
             runtime_pool=pool,
             repo_root=self.repo_root,
             providers=selected_providers,
+            stop_runtime_pool=False,
         )
         self.mission.checkpoint()
         self._persist_control_checkpoint(event="mission_started")
@@ -198,6 +199,7 @@ class AgentOS:
             runtime_count=self.runtime_count,
             repo_root=self.repo_root,
             providers=self.providers,
+            stop_runtime_pool=False,
         )
         self._persist_control_checkpoint(event="mission_recovered")
         return self.mission

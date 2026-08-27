@@ -797,6 +797,14 @@ class Controller:
                 },
             )
 
+        # A Mission can finish while leaving the Controller-owned pool in its
+        # field for status/provenance.  Reconcile that pool before every
+        # caller receives it: an empty or dead pool is restartable state, not
+        # a reason to let the next model request fall through to a verifier.
+        try:
+            self.runtime_pool.start()
+        except Exception:
+            raise
         return self.runtime_pool
 
     def execute(

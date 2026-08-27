@@ -1,6 +1,7 @@
 {
   "blockers": [
-    "accelerator performance qualification and unattended sovereign-resident operation remain unproven"
+    "accelerator performance qualification and unattended sovereign-resident operation remain unproven",
+    "Flash-Next final promotion gate is not PROMOTABLE (complete EBPW/TPS or required evidence is missing)"
   ],
   "claim_boundary": "This checkpoint is an evidence census; it does not certify a model, runtime, hardware accelerator, or unattended sovereignty.",
   "connectivity": {
@@ -15,15 +16,12 @@
       "vmcp",
       "modellake",
       "hf_cli",
-      "github_cli",
-      "web",
-      "github",
-      "huggingface"
+      "github_cli"
     ],
     "download_performed": false,
     "external_write_performed": false,
-    "generated_at": 1787794722.8122501,
-    "network_probed": true,
+    "generated_at": 1787801797.554404,
+    "network_probed": false,
     "repo_root": "/Users/scammermike/Downloads/hawking",
     "schema": "hcli.agentos.connectivity.v1",
     "secrets_policy": "credential values are never read into the receipt; only presence is recorded",
@@ -45,10 +43,8 @@
         "version": "git version 2.54.0 (Apple Git-156)"
       },
       "github": {
-        "elapsed_ms": 68.07,
-        "http_status": 200,
-        "status": "AVAILABLE",
-        "url": "https://api.github.com/"
+        "reason": "network probe disabled",
+        "status": "NOT_PROBED"
       },
       "github_cli": {
         "account": "joshuahickscorp",
@@ -69,10 +65,8 @@
         "status": "AUTHENTICATED"
       },
       "huggingface": {
-        "elapsed_ms": 40.62,
-        "http_status": 200,
-        "status": "AVAILABLE",
-        "url": "https://huggingface.co/"
+        "reason": "network probe disabled",
+        "status": "NOT_PROBED"
       },
       "metal": {
         "executable": "/usr/sbin/system_profiler",
@@ -107,21 +101,274 @@
         "unresolved": []
       },
       "web": {
-        "elapsed_ms": 102.03,
-        "http_status": 200,
-        "status": "AVAILABLE",
-        "url": "https://www.rfc-editor.org/"
+        "reason": "network probe disabled",
+        "status": "NOT_PROBED"
       }
     },
     "workspace": "/Users/scammermike/Downloads/hawking"
   },
   "gates": {
+    "ab_scaffold": {
+      "evaluation": {
+        "checks": {
+          "capability_preserved": false,
+          "fallbacks_disclosed_and_zero": false,
+          "same_bench_state": false,
+          "same_device": false,
+          "same_dimensions": false,
+          "same_input": false,
+          "same_source": false
+        },
+        "claim_boundary": "Only matched, capability-preserving complete-token measurements can produce a system verdict; a primitive win does not imply a whole-model win.",
+        "missing_or_refused": [
+          "bytes_touched",
+          "capability_preserved",
+          "complete_wall_ns",
+          "dispatches",
+          "fallbacks_disclosed_and_zero",
+          "gpu_ns",
+          "numerical_deviation",
+          "representation_bytes",
+          "same_bench_state",
+          "same_device",
+          "same_dimensions",
+          "same_input",
+          "same_source"
+        ],
+        "schema": "hcli.agentos.dense_vs_nf_ab.v1",
+        "status": "INCOMPLETE",
+        "verdict": "INCONCLUSIVE"
+      },
+      "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/HCLI_DENSE_VS_NF_AB_SCAFFOLD.json",
+      "schema": "hcli.agentos.dense_vs_nf_ab.v1",
+      "status": "READY_SCAFFOLD"
+    },
+    "accelerator_regression": {
+      "bench_state": "CONTENDED",
+      "checks": {
+        "current_and_historical_recorded": true,
+        "fallbacks_disclosed": true,
+        "fusion_values_recorded": true,
+        "no_unqualified_performance_claim": true,
+        "one_live_request_or_explicit_failure": true,
+        "profile_valid": true,
+        "source_inspected_without_mutation": true
+      },
+      "perf_qualified": false,
+      "qualification": "CURRENT_RUNTIME_REGRESSION_AUDITED_NO_PERFORMANCE_QUALIFICATION",
+      "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/HCLI_ACCELERATOR_REGRESSION.json",
+      "status": "PASSED"
+    },
     "accelerator_smoke": {
       "bench_state": "CONTENDED",
       "pass": true,
       "qualification": "LIVE_ACCELERATOR_EXECUTION_NO_PERF_CLAIM",
       "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/HCLI_ACCELERATOR_NATIVE_SMOKE.json",
       "status": "PASSED"
+    },
+    "autonomy_gate": {
+      "checks": {
+        "a1_three_real_workunits": true,
+        "a2_ten_real_workunits": true,
+        "a3_resident_recovery": true,
+        "a4_process_recovery": true,
+        "a5_idempotency": true,
+        "all_requested_stages_passed": true
+      },
+      "qualification": "LIVE_AGENTOS_AUTONOMY_CONTROL_PLANE",
+      "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/HCLI_AGENTOS_AUTONOMY_GATE.json",
+      "stage_status": {
+        "A1_three_workunits": "PASSED",
+        "A2_ten_workunits": "PASSED",
+        "A3_resident_kill": "PASSED",
+        "A4_hcli_process_kill": "PASSED",
+        "A5_post_mutation_crash": "PASSED"
+      },
+      "status": "PASSED"
+    },
+    "flash_science": {
+      "architecture_fingerprint": {
+        "algorithm": "sha256(canonical pinned metadata + sorted tensor names)",
+        "label": "DERIVED",
+        "value": "8dbc9c34f223d240def13a1f7c70d3cbddbc768bc9ccc9c002683e2958b6be5b"
+      },
+      "checks": {
+        "all_metadata_fetched": true,
+        "config_parsed": true,
+        "index_parsed": true,
+        "no_weights_downloaded": true,
+        "pinned_metadata_urls": true,
+        "promotion_not_allowed": true
+      },
+      "promotion_gate": {
+        "artifact_contract": "FLASH_NEXT_COMPLETE_MULTIMODAL",
+        "claim_boundary": "Only PROMOTABLE closes the final Flash-Next gate. A measured candidate that misses either hard threshold remains a research/Pareto intermediate.",
+        "evidence": {
+          "capability_contract_passed": false,
+          "dense_parent_execution_fallback": false,
+          "dense_vs_nf_ab": false,
+          "hidden_dense_rematerialization": false,
+          "mtp_accounting_disclosed": false,
+          "native_executable": false,
+          "reproducible_protected_receipt": false,
+          "runtime_kernel_genome_complete": false,
+          "whole_model_reference_comparison": false
+        },
+        "hard_gate": {
+          "accepted_capability_preserving_tps_at_or_above_50": false,
+          "complete_system_ebpw_at_or_below_1": false
+        },
+        "ladder": {
+          "exceptional": {
+            "accepted_tps_min": 90.0,
+            "complete_system_ebpw_max": 0.6
+          },
+          "extreme": {
+            "accepted_tps_min": 120.0,
+            "complete_system_ebpw_max": 0.5
+          },
+          "final": {
+            "accepted_tps_min": 50.0,
+            "complete_system_ebpw_max": 1.0
+          },
+          "strong": {
+            "accepted_tps_min": 70.0,
+            "complete_system_ebpw_max": 0.75
+          }
+        },
+        "measured": {
+          "accepted_capability_preserving_tps": null,
+          "complete_system_ebpw": null
+        },
+        "missing_or_refused": [
+          "MTP accounting",
+          "complete-system byte ledger",
+          "dense-parent fallback declaration",
+          "dense-versus-NF A/B receipt",
+          "ebpw_accounting.all_required_bytes_included=true",
+          "ebpw_accounting.bases.bytes",
+          "ebpw_accounting.dictionaries.bytes",
+          "ebpw_accounting.expert_indices.bytes",
+          "ebpw_accounting.generators.bytes",
+          "ebpw_accounting.lookup_structures.bytes",
+          "ebpw_accounting.mtp_representation.bytes",
+          "ebpw_accounting.ngram_representation.bytes",
+          "ebpw_accounting.required_executable_metadata.bytes",
+          "ebpw_accounting.residuals.bytes",
+          "ebpw_accounting.routing_metadata.bytes",
+          "ebpw_accounting.scales.bytes",
+          "ebpw_accounting.weight_codes.bytes",
+          "ebpw_accounting.zero_points.bytes",
+          "fallback_count disclosure",
+          "hidden dense-rematerialization declaration",
+          "native executable",
+          "protected capability contract",
+          "reproducible protected receipt",
+          "runtime/kernel genome",
+          "whole-model reference comparison"
+        ],
+        "promotion_allowed": false,
+        "schema": "hcli.flash-next.promotion.v1",
+        "status": "INCOMPLETE"
+      },
+      "qualification": "FLASH_NEXT_PRE_RUNTIME_IDENTITY_AND_PLAN_ONLY",
+      "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/HCLI_FLASH_NEXT_PRE_RUNTIME_SCIENCE.json",
+      "status": "PASSED"
+    },
+    "fpga_preboard": {
+      "checks": {
+        "both_model_maps_written": true,
+        "flash_next_hwir_present": true,
+        "mock_provider_is_simulation_only": true,
+        "no_physical_board_claim": true,
+        "qwen27_hwir_present": true
+      },
+      "fingerprint": "250d12132b94f2f0546e624e529b33a8ba8dd86389384f8cdacd538211393e26",
+      "physical_board": {
+        "claim": false,
+        "status": "ABSENT"
+      },
+      "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/HCLI_FPGA_PREBOARD.json",
+      "schema": "hcli.agentos.fpga_preboard.v1",
+      "status": "PASSED"
+    },
+    "initial_charge": {
+      "charge_id": "HAWKING_INITIAL_CHARGE",
+      "mission_id": "8a9ae0ed-6ff4-4c8f-b08b-53943b20307d",
+      "provider_neutral": true,
+      "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/HAWKING_INITIAL_CHARGE.json",
+      "status": "IDEMPOTENT_EXISTING_CHARGE",
+      "unit_count": 10,
+      "workspace": "/Users/scammermike/Downloads/hawking/.hcli/initial-charge"
+    },
+    "modellake": {
+      "checks": {
+        "capacity_observed": true,
+        "enough_free_capacity_for_pinned_source": true,
+        "model_lake_mounted": true,
+        "no_download_performed": true,
+        "pinned_revision_resolved_exactly": true,
+        "protected_paths_reported": true,
+        "remote_bytes_match_pin": true,
+        "remote_file_count_matches_pin": true,
+        "target_not_published_as_verified": true
+      },
+      "download_performed": false,
+      "pinned_revision": "34567a4712bc9766c4449e2e98e4468bfa24d915",
+      "qualification": "MODELLAKE_CENSUS_PINNED_FLASH_IDENTITY_NO_ACQUISITION",
+      "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/HCLI_MODELLAKE_FLASH_CENSUS.json",
+      "status": "PASSED"
+    },
+    "modellake_supervision": {
+      "capacity": {
+        "free_after_expected_bytes": 3176911035722,
+        "free_bytes": 3536934322176,
+        "path": "/Volumes/corpdrive/hawking-modellake"
+      },
+      "checks": {
+        "atomic_publish_identity": true,
+        "capacity_headroom_observed": true,
+        "job_identity_matches_pinned_target": true,
+        "job_resumable": true,
+        "no_delete_policy": true,
+        "partial_not_final": true
+      },
+      "job": {
+        "argv": [
+          "python3",
+          "tools/odyssey/modellake.py",
+          "acquire",
+          "--repo",
+          "Qwen/Qwen3.8-Flash-Next",
+          "--revision",
+          "34567a4712bc9766c4449e2e98e4468bfa24d915"
+        ],
+        "created_at": 1787799182.557255,
+        "cwd": "/Users/scammermike/Downloads/hawking",
+        "error": null,
+        "finished_at": null,
+        "job_id": "job-2f77c1d6-e33b-44fe-bc12-549cf47805c7",
+        "label": "modellake-flash-next-acquire",
+        "log_path": "/Users/scammermike/Downloads/hawking/.hcli/background/logs/job-2f77c1d6-e33b-44fe-bc12-549cf47805c7.log",
+        "parent_job_id": null,
+        "pid": 36538,
+        "restart_policy": "explicit rerun from argv; never resume a process mid-token",
+        "resumable": true,
+        "returncode": null,
+        "schema": "hcli.agentos.background_job.v1",
+        "started_at": 1787799182.557255,
+        "state": "RUNNING",
+        "timeout_s": null
+      },
+      "qualification": "MODELLAKE_FLASH_ACQUISITION_SUPERVISED_NO_DELETE",
+      "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/HCLI_MODELLAKE_FLASH_ACQUISITION_SUPERVISION.json",
+      "status": "RUNNING_SAFE",
+      "target": {
+        "expected_bytes": 360023286454,
+        "pinned_revision": "34567a4712bc9766c4449e2e98e4468bfa24d915",
+        "repo": "Qwen/Qwen3.8-Flash-Next",
+        "slug": "Qwen--Qwen3.8-Flash-Next@34567a4712bc"
+      }
     },
     "native_gate": {
       "checks": {
@@ -154,6 +401,26 @@
       "qualification": "LIVE_NATIVE_TOOL_VERIFIER_RECEIPT",
       "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/HCLI_NATIVE_MISSION_GATE.json",
       "status": "PASSED"
+    },
+    "preboard": {
+      "checks": {
+        "deterministic_preboard_fingerprint": true,
+        "interfaces_defined": true,
+        "negative_science_receipts_censused": true,
+        "no_fpga_backend_built_claim": true,
+        "no_physical_board_claim": true
+      },
+      "claim_boundary": "This is a planning/preboard receipt. No FPGA board, FPGA backend, simulator timing, or hardware performance is claimed.",
+      "qualification": "NEGATIVE_SCIENCE_CENSUS_AND_FPGA_PREBOARD_NO_PHYSICAL_BOARD_CLAIM",
+      "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/HCLI_AGENTOS_PREBOARD.json",
+      "status": "PASSED"
+    },
+    "precedent_map": {
+      "entries": 474,
+      "fingerprint": "ed7e6ca572aedc898c29f3636f71ba57d6f3882c1a2304c79c3a0a0047be2f1f",
+      "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NEXT_PRECEDENT_MAP.json",
+      "schema": "hcli.agentos.flash_next_precedent_map.v1",
+      "status": "PRESENT"
     },
     "production_provider_gate": "NOT_RUN",
     "recovery_gate": {
@@ -201,6 +468,13 @@
       "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/HCLI_AGENTOS_RESIDENT_GATE.json",
       "status": "PASSED"
     },
+    "transfer_map": {
+      "entries": 6,
+      "fingerprint": "d58074c1bb98f5ff2dd3e51e08b542dd685dddf548fed3db4f8bb4001b5ed4fc",
+      "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/QWEN38_ACCELERATOR_TRANSFER_MAP.json",
+      "schema": "hcli.agentos.qwen38_accelerator_transfer_map.v1",
+      "status": "PRESENT"
+    },
     "unattended": "NOT_PROVEN",
     "vmcp_gate": {
       "checks": {
@@ -214,8 +488,8 @@
       "status": "PASSED"
     }
   },
-  "generated_at": 1787794722.81465,
-  "git_revision": "5a0c84d4ebde2687e60891829f81f47e06fecd3d",
+  "generated_at": 1787801797.5602958,
+  "git_revision": "9d373ecc4863b244fc74761c99fc837f7705f3db",
   "host": {
     "machine": "arm64",
     "platform": "macOS-27.0-arm64-arm-64bit-Mach-O",
@@ -223,19 +497,30 @@
   },
   "maturity": {
     "accelerator_smoke": "LIVE_ACCELERATOR_EXECUTION_NO_PERF_CLAIM",
+    "autonomy": "LIVE_AGENTOS_AUTONOMY_CONTROL_PLANE",
     "control_plane": "FOUNDATION",
+    "dense_vs_nf_ab": "READY_SCAFFOLD",
     "durable_mission": "IMPLEMENTED",
     "fixture_recovery": "PASSED",
+    "flash_pre_runtime": "FLASH_NEXT_PRE_RUNTIME_IDENTITY_AND_PLAN_ONLY",
+    "flash_precedent_map": "PRESENT",
+    "flash_promotion": "INCOMPLETE",
+    "fpga_preboard": "PASSED",
+    "initial_charge": "IDEMPOTENT_EXISTING_CHARGE",
+    "modellake_supervision": "RUNNING_SAFE",
     "native_hcli": "LIVE_NATIVE_HCLI_LADDER",
     "native_mission": "LIVE_NATIVE_TOOL_VERIFIER_RECEIPT",
     "native_resident": "LIVE_RESIDENT_SEQUENTIAL_PROOF",
+    "negative_science_preboard": "NEGATIVE_SCIENCE_CENSUS_AND_FPGA_PREBOARD_NO_PHYSICAL_BOARD_CLAIM",
     "provider_generalization": "IMPLEMENTED_CONTRACTS",
+    "qwen38_transfer_map": "PRESENT",
     "research": "RESEARCH_OPERATIONAL",
     "unattended_sovereignty": "NOT_CLAIMED",
     "vmcp": "VMCP_OPERATIONAL"
   },
   "next_actions": [
     "run recovery-gate against every configured production provider",
+    "complete the one-hour unattended production-provider observation before making any sovereignty claim",
     "persist research provenance and protected benchmark receipts",
     "qualify additional providers only after their own deterministic verification closes"
   ],

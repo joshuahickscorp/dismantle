@@ -660,6 +660,26 @@ class _TokenizerRenderer:
             parts.append("<think>\n\n</think>\n\n")
         return "".join(parts)
 
+    @staticmethod
+    def _close_declared_thinking_block(text: str, *, contract: Dict[str, Any], thinking_requested: bool) -> str:
+        """Normalize a declared closed-thinking contract when a tokenizer omits it.
+
+        Some resident tokenizer revisions accept ``enable_thinking=False`` but
+        still leave the generation prompt at ``<think>\n``.  Only the profile's
+        explicitly named Qwen closed-thinking contract gets this repair; a
+        generic provider/model never receives Qwen-specific prompt syntax.
+        """
+        if thinking_requested:
+            return text
+        template = str(contract.get("fallback_template") or "").strip().lower()
+        if template not in {"qwen_closed_think", "qwen-chat-template-or-closed-think-fallback"}:
+            return text
+        if text.endswith("<think>\n"):
+            return text + "\n</think>\n\n"
+        if text.endswith("<think>"):
+            return text + "\n\n</think>\n\n"
+        return text
+
     def render(
         self,
         messages: List[Dict[str, Any]],
@@ -681,6 +701,11 @@ class _TokenizerRenderer:
                     add_generation_prompt=True,
                     **template_kwargs,
                 )
+                text = self._close_declared_thinking_block(
+                    str(text),
+                    contract=contract,
+                    thinking_requested=thinking_requested,
+                )
                 qualified = bool(template_kwargs) or not thinking_requested
             except TypeError:
                 # Older tokenizer wrappers may not expose provider-specific
@@ -690,6 +715,11 @@ class _TokenizerRenderer:
                     messages,
                     tokenize=False,
                     add_generation_prompt=True,
+                )
+                text = self._close_declared_thinking_block(
+                    str(text),
+                    contract=contract,
+                    thinking_requested=thinking_requested,
                 )
             except Exception as exc:  # noqa: BLE001
                 raise HawkingNativeError(

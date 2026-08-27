@@ -105,7 +105,15 @@ class WorkUnitExecutor:
             request_payload = {
                 "model": context.get("model") or name,
                 "messages": [{"role": "user", "content": prompt}],
-                "max_tokens": int(context.get("max_tokens") or 1024),
+                # Keep explicit provider calls on the same bounded generation
+                # budget as the engine path.  A provider-neutral WorkUnit
+                # must not silently jump from HCLI_MODEL_TOKENS=64 to a
+                # 1024-token request merely because it implements ``generate``
+                # instead of the legacy Engine seam.
+                "max_tokens": int(
+                    context.get("max_tokens")
+                    or os.environ.get("HCLI_MODEL_TOKENS", "1024")
+                ),
             }
             payload = request_payload
             generate = getattr(provider, "generate", None)

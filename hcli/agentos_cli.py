@@ -109,6 +109,99 @@ def build_parser() -> argparse.ArgumentParser:
     mission_gate.add_argument("--profile", default=None)
     mission_gate.add_argument("--emit", default=None)
 
+    autonomy = sub.add_parser("autonomy-gate", help="run live AgentOS WorkUnit and crash-recovery qualification")
+    autonomy.add_argument("--repo-root", default=None)
+    autonomy.add_argument("--profile", default=None)
+    autonomy.add_argument("--stage", default="all", help="all, a1, a2, a3/resident-kill, a4/process-kill, or a5/idempotency")
+    autonomy.add_argument("--count", type=int, default=10)
+    autonomy.add_argument("--emit", default=None)
+
+    unattended = sub.add_parser("unattended-window", help="run bounded real native WorkUnits without human intervention")
+    unattended.add_argument("--repo-root", default=None)
+    unattended.add_argument("--profile", default=None)
+    unattended.add_argument("--workspace", default=None)
+    unattended.add_argument("--duration-s", type=float, default=3600.0)
+    unattended.add_argument("--interval-s", type=float, default=30.0)
+    unattended.add_argument("--emit", default=None)
+
+    accelerator_regression = sub.add_parser(
+        "accelerator-regression",
+        help="audit the current resident regression with one bounded request",
+    )
+    accelerator_regression.add_argument("--repo-root", default=None)
+    accelerator_regression.add_argument("--profile", default=None)
+    accelerator_regression.add_argument("--timeout-s", type=float, default=180.0)
+    accelerator_regression.add_argument("--emit", default=None)
+
+    modellake = sub.add_parser(
+        "modellake-census",
+        help="census ModelLake and capture the pinned Flash-Next manifest without downloading",
+    )
+    modellake.add_argument("--repo-root", default=None)
+    modellake.add_argument("--timeout-s", type=float, default=30.0)
+    modellake.add_argument("--emit", default=None)
+
+    modellake_supervise = sub.add_parser(
+        "modellake-supervise",
+        help="observe a supervised pinned ModelLake acquisition without mutating it",
+    )
+    modellake_supervise.add_argument("--repo-root", default=None)
+    modellake_supervise.add_argument("--job-id", required=True)
+    modellake_supervise.add_argument("--emit", default=None)
+
+    flash_science = sub.add_parser(
+        "flash-science",
+        help="inspect pinned Flash-Next metadata and build a pre-runtime organ/Gravity plan",
+    )
+    flash_science.add_argument("--repo-root", default=None)
+    flash_science.add_argument("--timeout-s", type=float, default=30.0)
+    flash_science.add_argument("--emit", default=None)
+
+    preboard = sub.add_parser(
+        "preboard",
+        help="census negative science and define the FPGA/compiler preboard boundary",
+    )
+    preboard.add_argument("--repo-root", default=None)
+    preboard.add_argument("--emit", default=None)
+
+    charge = sub.add_parser(
+        "initial-charge",
+        help="create or inspect the durable provider-neutral Hawking initial charge",
+    )
+    charge.add_argument("--repo-root", default=None)
+    charge.add_argument("--workspace", default=None)
+    charge.add_argument("--emit", default=None)
+    charge.add_argument("--force", action="store_true")
+
+    science_maps = sub.add_parser(
+        "science-maps",
+        help="build the receipt-first two-Qwen transfer and Flash precedent maps",
+    )
+    science_maps.add_argument("--repo-root", default=None)
+    science_maps.add_argument("--transfer-emit", default=None)
+    science_maps.add_argument("--precedent-emit", default=None)
+
+    ab_scaffold = sub.add_parser(
+        "ab-scaffold",
+        help="emit the dense-versus-NF organ/full-model A/B protocol scaffold",
+    )
+    ab_scaffold.add_argument("--repo-root", default=None)
+    ab_scaffold.add_argument("--emit", default=None)
+
+    fpga_preboard = sub.add_parser(
+        "fpga-preboard",
+        help="build Qwen27 and Flash-Next FPGA/HWIR pre-board maps",
+    )
+    fpga_preboard.add_argument("--repo-root", default=None)
+    fpga_preboard.add_argument("--emit", default=None)
+
+    handoff = sub.add_parser(
+        "handoff",
+        help="write the resumable overnight Hawking status and continuation handoff",
+    )
+    handoff.add_argument("--repo-root", default=None)
+    handoff.add_argument("--emit", default=None)
+
     background = sub.add_parser("background", help="inspect or manage durable shell-free background jobs")
     bgsub = background.add_subparsers(dest="background_command")
     bg_list = bgsub.add_parser("list", help="list persisted jobs")
@@ -216,6 +309,132 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             )
             _emit(report)
             return 0 if report.get("status") == "PASSED" else 1
+
+        if args.command == "autonomy-gate":
+            from hcli.agentos.autonomy_gate import run_autonomy_gate
+
+            report = run_autonomy_gate(
+                repo_root=args.repo_root,
+                profile=args.profile,
+                emit=args.emit,
+                stage=args.stage,
+                count=args.count,
+            )
+            _emit(report)
+            return 0 if report.get("status") == "PASSED" else 1
+
+        if args.command == "unattended-window":
+            from hcli.agentos.autonomy_gate import run_unattended_window
+
+            report = run_unattended_window(
+                repo_root=args.repo_root,
+                profile=args.profile,
+                workspace=args.workspace,
+                emit=args.emit,
+                duration_s=args.duration_s,
+                interval_s=args.interval_s,
+            )
+            _emit(report)
+            return 0 if report.get("status") == "PASSED" else 1
+
+        if args.command == "accelerator-regression":
+            from hcli.agentos.accelerator_regression import run_accelerator_regression
+
+            report = run_accelerator_regression(
+                repo_root=args.repo_root,
+                profile=args.profile,
+                emit=args.emit,
+                timeout_s=args.timeout_s,
+            )
+            _emit(report)
+            return 0 if report.get("status") == "PASSED" else 1
+
+        if args.command == "modellake-census":
+            from hcli.agentos.modellake_gate import run_modellake_census
+
+            report = run_modellake_census(
+                repo_root=args.repo_root,
+                emit=args.emit,
+                timeout_s=args.timeout_s,
+            )
+            _emit(report)
+            return 0 if report.get("status") == "PASSED" else 1
+
+        if args.command == "modellake-supervise":
+            from hcli.agentos.modellake_supervisor import run_model_lake_supervision
+
+            report = run_model_lake_supervision(
+                repo_root=args.repo_root,
+                job_id=args.job_id,
+                emit=args.emit,
+            )
+            _emit(report)
+            return 0 if report.get("status") in {"PASSED", "RUNNING_SAFE", "WAITING_OR_NOT_OBSERVED"} else 1
+
+        if args.command == "flash-science":
+            from hcli.agentos.flash_science import run_flash_science_gate
+
+            report = run_flash_science_gate(
+                repo_root=args.repo_root,
+                emit=args.emit,
+                timeout_s=args.timeout_s,
+            )
+            _emit(report)
+            return 0 if report.get("status") == "PASSED" else 1
+
+        if args.command == "preboard":
+            from hcli.agentos.preboard import run_preboard
+
+            report = run_preboard(
+                repo_root=args.repo_root,
+                emit=args.emit,
+            )
+            _emit(report)
+            return 0 if report.get("status") == "PASSED" else 1
+
+        if args.command == "initial-charge":
+            from hcli.agentos.charge import create_initial_charge
+
+            report = create_initial_charge(
+                repo_root=args.repo_root,
+                workspace=args.workspace,
+                emit=args.emit,
+                force=args.force,
+            )
+            _emit(report)
+            return 0
+
+        if args.command == "science-maps":
+            from hcli.agentos.science_maps import write_science_maps
+
+            report = write_science_maps(
+                repo_root=args.repo_root,
+                transfer_emit=args.transfer_emit,
+                precedent_emit=args.precedent_emit,
+            )
+            _emit(report)
+            return 0 if report.get("status") == "PASSED" else 1
+
+        if args.command == "ab-scaffold":
+            from hcli.agentos.representation_ab import run_ab_scaffold
+
+            report = run_ab_scaffold(repo_root=args.repo_root, emit=args.emit)
+            _emit(report)
+            return 0 if report.get("status") == "READY_SCAFFOLD" else 1
+
+        if args.command == "fpga-preboard":
+            from hcli.agentos.fpga_preboard import run_fpga_preboard
+
+            report = run_fpga_preboard(repo_root=args.repo_root, emit=args.emit)
+            _emit(report)
+            return 0 if report.get("status") == "PASSED" else 1
+
+        if args.command == "handoff":
+            from hcli.agentos.handoff import build_handoff
+
+            report = build_handoff(args.repo_root, emit=args.emit)
+            _emit(report)
+            return 0
 
         if args.command == "checkpoint":
             from hcli.agentos.checkpoint import write_program_checkpoint

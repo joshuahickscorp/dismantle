@@ -178,6 +178,7 @@ class Mission:
         install_signals: bool = False,
         before_dispatch: Optional[Callable[["Mission"], None]] = None,
         providers: Optional[Dict[str, Any]] = None,
+        stop_runtime_pool: bool = True,
     ) -> None:
         self.workspace = _as_workspace(workspace)
         self.engine = engine
@@ -193,6 +194,13 @@ class Mission:
         self.install_signals = bool(install_signals)
         self.before_dispatch = before_dispatch
         self.providers = dict(providers or {})
+        # A Mission may be given a pool it owns, or a pool owned by the
+        # long-lived Controller/AgentOS facade.  The latter must survive a
+        # completed mission so the next durable mission can use the same
+        # resident; stopping it here otherwise leaves the controller holding
+        # a non-empty-but-dead pool and causes false no-model completions in
+        # callers that only inspect a fixed verifier.
+        self.stop_runtime_pool = bool(stop_runtime_pool)
 
         self.phase = "idle"
         self.strategy = "default"
@@ -828,7 +836,17 @@ class Mission:
                 "validation": {"ok": False, "reason": "cancelled"},
             }
         validation = self._route_validation(wu, raw)
-        return {"raw": raw, "validation": validation, "cancelled": False}
+        # Engine telemetry is scoped to one structured execution and is reset
+        # for the next WorkUnit.  Carry the completed worker's observation to
+        # the Mission log before the next dispatch so a multi-unit mission
+        # can report every model call rather than only its final one.
+        model_calls = list(getattr(self.engine, "_model_calls", []) or [])
+        return {
+            "raw": raw,
+            "validation": validation,
+            "model_calls": model_calls,
+            "cancelled": False,
+        }
 
     def _unit_context(self, wu: WorkUnit) -> Dict[str, Any]:
         self._maybe_compile()
@@ -890,9 +908,6 @@ class Mission:
             if isinstance(val, dict):
                 return val
             return {"ok": bool(val)}
-        if isinstance(raw.get("validation"), dict):
-            return raw["validation"]
-
         # The unit's OWN verifier, fixed when the WorkUnit was dispatched, is
         # the authority. Preferring it over `raw["tests"]` matters because
         # `raw` is model output: letting the model nominate the tests that
@@ -908,6 +923,9 @@ class Mission:
                 val.setdefault("acceptance_source", "workunit_verifier")
                 return val
             return {"ok": False, "reason": "NO_DETERMINISTIC_VALIDATION"}
+
+        if isinstance(raw.get("validation"), dict):
+            return raw["validation"]
 
         if hasattr(engine, "_validate"):
             tests = list(raw.get("tests") or [])
@@ -948,6 +966,15 @@ class Mission:
             self._fail_unit(wu, {"error": str(item["error"])})
             return
         result = item.get("result") or {}
+        observed_model_calls = result.get("model_calls")
+        if isinstance(observed_model_calls, list) and observed_model_calls:
+            self._log(
+                {
+                    "event": "model_calls_observed",
+                    "id": uid,
+                    "calls": observed_model_calls,
+                }
+            )
         if result.get("cancelled"):
             self._fail_unit(wu, {"reason": "cancelled"}, emit_repair=False)
             return
@@ -1205,7 +1232,7 @@ class Mission:
                     pids.add(int(pid))
                 except (TypeError, ValueError):
                     pass
-        pool = self.runtime_pool
+        pool = self.runtime_pool if self.stop_runtime_pool else None
         if pool is not None:
             for runtime in getattr(pool, "runtimes", []) or []:
                 pid = getattr(runtime, "pid", None)

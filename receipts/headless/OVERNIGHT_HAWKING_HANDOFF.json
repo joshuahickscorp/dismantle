@@ -1,0 +1,781 @@
+{
+  "baseline": {
+    "baseline_commits": [
+      "5a0c84d4ebde2687e60891829f81f47e06fecd3d",
+      "9d373ecc4863b244fc74761c99fc837f7705f3db"
+    ],
+    "branch": "odyssey-i",
+    "git_revision": "9d373ecc4863b244fc74761c99fc837f7705f3db",
+    "unrelated_preserved_edit": "tools/odyssey_ctl.py",
+    "working_tree_status": [
+      "M .gitignore",
+      " M hcli/agentos/__init__.py",
+      " M hcli/agentos/checkpoint.py",
+      " M hcli/agentos/runtime.py",
+      " M hcli/agentos_cli.py",
+      " M hcli/controller.py",
+      " M hcli/executors.py",
+      " M hcli/flash_next.py",
+      " M hcli/hawking_native.py",
+      " M hcli/mission.py",
+      " M receipts/headless/HCLI_AGENTOS_CHECKPOINT.json",
+      " M tools/haider/hcli/tests/test_mission.py",
+      " M tools/haider/hcli/tests/test_mutation_lock_race.py",
+      " M tools/odyssey_ctl.py",
+      "?? hcli/agentos/accelerator_regression.py",
+      "?? hcli/agentos/autonomy_gate.py",
+      "?? hcli/agentos/charge.py",
+      "?? hcli/agentos/flash_science.py",
+      "?? hcli/agentos/fpga_preboard.py",
+      "?? hcli/agentos/handoff.py",
+      "?? hcli/agentos/modellake_gate.py",
+      "?? hcli/agentos/modellake_supervisor.py",
+      "?? hcli/agentos/preboard.py",
+      "?? hcli/agentos/representation_ab.py",
+      "?? hcli/agentos/science_maps.py",
+      "?? receipts/headless/FLASH_NEXT_FPGA_ORGAN_MAP.json",
+      "?? receipts/headless/FLASH_NEXT_PRECEDENT_MAP.json",
+      "?? receipts/headless/HAWKING_INITIAL_CHARGE.json",
+      "?? receipts/headless/HCLI_ACCELERATOR_REGRESSION.json",
+      "?? receipts/headless/HCLI_AGENTOS_AUTONOMY_GATE.json",
+      "?? receipts/headless/HCLI_AGENTOS_PREBOARD.json",
+      "?? receipts/headless/HCLI_DENSE_VS_NF_AB_SCAFFOLD.json",
+      "?? receipts/headless/HCLI_FLASH_NEXT_PRE_RUNTIME_SCIENCE.json",
+      "?? receipts/headless/HCLI_FPGA_PREBOARD.json",
+      "?? receipts/headless/HCLI_MODELLAKE_FLASH_ACQUISITION_SUPERVISION.json",
+      "?? receipts/headless/HCLI_MODELLAKE_FLASH_CENSUS.json",
+      "?? receipts/headless/OVERNIGHT_HAWKING_HANDOFF.json",
+      "?? receipts/headless/QWEN27_FPGA_ORGAN_MAP.json",
+      "?? receipts/headless/QWEN38_ACCELERATOR_TRANSFER_MAP.json"
+    ]
+  },
+  "blockers": [
+    "Flash-Next final promotion gate remains incomplete until every required byte/evidence field and both hard thresholds pass.",
+    "Qwen27 current resident observation is a contaminated/contended regression audit, not a performance qualification.",
+    "No physical FPGA board, bitstream, or hardware performance is claimed.",
+    "Flash-Next ModelLake acquisition is still partial or not yet atomically published.",
+    "The corrected one-hour unattended window has not yet produced a final PASSED receipt."
+  ],
+  "claim_boundary": "This handoff is a resumable status snapshot. It does not certify model quality, accelerator performance, Flash promotion, FPGA hardware, or sovereignty.",
+  "continuation": {
+    "do_not_start": "Do not launch or promote a new Odyssey; continue only through the existing HCLI/ModelLake authorities and governed windows.",
+    "inspect_status": "python3 -m hcli agentos status --workspace /Users/scammermike/Downloads/hawking --repo-root /Users/scammermike/Downloads/hawking",
+    "modellake_job_status": "python3 -m hcli agentos background status --workspace /Users/scammermike/Downloads/hawking --repo-root /Users/scammermike/Downloads/hawking job-2f77c1d6-e33b-44fe-bc12-549cf47805c7",
+    "refresh_ab": "python3 -m hcli agentos ab-scaffold --repo-root /Users/scammermike/Downloads/hawking --emit /Users/scammermike/Downloads/hawking/receipts/headless/HCLI_DENSE_VS_NF_AB_SCAFFOLD.json",
+    "refresh_checkpoint": "python3 -m hcli agentos checkpoint --repo-root /Users/scammermike/Downloads/hawking --workspace /Users/scammermike/Downloads/hawking --emit /Users/scammermike/Downloads/hawking/receipts/headless/HCLI_AGENTOS_CHECKPOINT.json",
+    "refresh_fpga_preboard": "python3 -m hcli agentos fpga-preboard --repo-root /Users/scammermike/Downloads/hawking --emit /Users/scammermike/Downloads/hawking/receipts/headless/HCLI_FPGA_PREBOARD.json",
+    "refresh_initial_charge": "python3 -m hcli agentos initial-charge --repo-root /Users/scammermike/Downloads/hawking --workspace /Users/scammermike/Downloads/hawking/.hcli/initial-charge --emit /Users/scammermike/Downloads/hawking/receipts/headless/HAWKING_INITIAL_CHARGE.json",
+    "refresh_maps": "python3 -m hcli agentos science-maps --repo-root /Users/scammermike/Downloads/hawking --transfer-emit /Users/scammermike/Downloads/hawking/receipts/headless/QWEN38_ACCELERATOR_TRANSFER_MAP.json --precedent-emit /Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NEXT_PRECEDENT_MAP.json",
+    "resume_modellake_only_if_interrupted": "python3 -m hcli agentos background resume --workspace /Users/scammermike/Downloads/hawking --repo-root /Users/scammermike/Downloads/hawking job-2f77c1d6-e33b-44fe-bc12-549cf47805c7",
+    "run_full_tests": "pytest -q",
+    "supervise_modellake": "python3 -m hcli agentos modellake-supervise --repo-root /Users/scammermike/Downloads/hawking --job-id job-2f77c1d6-e33b-44fe-bc12-549cf47805c7 --emit /Users/scammermike/Downloads/hawking/receipts/headless/HCLI_MODELLAKE_FLASH_ACQUISITION_SUPERVISION.json",
+    "unattended_job_status": "python3 -m hcli agentos background status --workspace /Users/scammermike/Downloads/hawking --repo-root /Users/scammermike/Downloads/hawking job-d659ef87-240c-4504-b1ee-1c0ec459deb2"
+  },
+  "flash_next": {
+    "architecture": {
+      "architectures": [
+        "Qwen4ExpForConditionalGeneration"
+      ],
+      "experts": 512,
+      "experts_per_token": 10,
+      "full_attention_layers": 12,
+      "hidden_size": 2560,
+      "index_total_size": 359999963128.0,
+      "indexer_budget": 2048,
+      "label": "DERIVED",
+      "layer_types": [
+        "linear_attention",
+        "linear_attention",
+        "linear_attention",
+        "full_attention",
+        "linear_attention",
+        "linear_attention",
+        "linear_attention",
+        "full_attention",
+        "linear_attention",
+        "linear_attention",
+        "linear_attention",
+        "full_attention",
+        "linear_attention",
+        "linear_attention",
+        "linear_attention",
+        "full_attention",
+        "linear_attention",
+        "linear_attention",
+        "linear_attention",
+        "full_attention",
+        "linear_attention",
+        "linear_attention",
+        "linear_attention",
+        "full_attention",
+        "linear_attention",
+        "linear_attention",
+        "linear_attention",
+        "full_attention",
+        "linear_attention",
+        "linear_attention",
+        "linear_attention",
+        "full_attention",
+        "linear_attention",
+        "linear_attention",
+        "linear_attention",
+        "full_attention",
+        "linear_attention",
+        "linear_attention",
+        "linear_attention",
+        "full_attention",
+        "linear_attention",
+        "linear_attention",
+        "linear_attention",
+        "full_attention",
+        "linear_attention",
+        "linear_attention",
+        "linear_attention",
+        "full_attention"
+      ],
+      "layers": 48,
+      "linear_attention_layers": 36,
+      "model_type": "qwen4_exp",
+      "mtp": {
+        "hybrid": true,
+        "layer_types": [
+          "full_attention"
+        ],
+        "mtp_use_hidden_state_from_layer": null,
+        "num_hidden_layers": 1,
+        "rope_theta": 10000000
+      },
+      "ngram_size": 3,
+      "ngram_vocab_size_base": 20000000,
+      "observed_index_metadata": {
+        "total_size": 359999963128.0
+      },
+      "split_ngram_parts": 128,
+      "tensor_count": 1658,
+      "text_model_type": "qwen4_exp_text",
+      "vision_config": {
+        "deepstack_visual_indexes": [],
+        "depth": 27,
+        "hidden_act": "gelu_pytorch_tanh",
+        "hidden_size": 1152,
+        "in_channels": 3,
+        "initializer_range": 0.02,
+        "intermediate_size": 4304,
+        "model_type": "qwen4_exp",
+        "num_heads": 16,
+        "num_position_embeddings": 2304,
+        "out_hidden_size": 2560,
+        "patch_size": 16,
+        "spatial_merge_size": 2,
+        "temporal_patch_size": 2
+      },
+      "vocab_size": 248320
+    },
+    "architecture_fingerprint": "8dbc9c34f223d240def13a1f7c70d3cbddbc768bc9ccc9c002683e2958b6be5b",
+    "expected_complete_source_bytes": 360023286454,
+    "expected_file_count": 144,
+    "gravity_targets": [
+      "expert bank sharing/bases/residuals/factors/generators/router",
+      "separate n-gram lookup/generator system",
+      "DeltaNet state representation",
+      "QSA sparse attention/indexer",
+      "explicit MTP draft/verify/rollback accounting",
+      "native kernels and command-boundary telemetry"
+    ],
+    "next_action": "Keep metadata/weights/native executable identity separate; fill complete-system byte ledger and matched dense-vs-NF rows only when the pinned source is fully ready.",
+    "pinned_revision": "34567a4712bc9766c4449e2e98e4468bfa24d915",
+    "promotion": {
+      "hard_gate": {
+        "accepted_capability_preserving_tps_at_or_above_50": false,
+        "complete_system_ebpw_at_or_below_1": false
+      },
+      "measured": {
+        "accepted_capability_preserving_tps": null,
+        "complete_system_ebpw": null
+      },
+      "missing_or_refused": [
+        "MTP accounting",
+        "complete-system byte ledger",
+        "dense-parent fallback declaration",
+        "dense-versus-NF A/B receipt",
+        "ebpw_accounting.all_required_bytes_included=true",
+        "ebpw_accounting.bases.bytes",
+        "ebpw_accounting.dictionaries.bytes",
+        "ebpw_accounting.expert_indices.bytes",
+        "ebpw_accounting.generators.bytes",
+        "ebpw_accounting.lookup_structures.bytes",
+        "ebpw_accounting.mtp_representation.bytes",
+        "ebpw_accounting.ngram_representation.bytes",
+        "ebpw_accounting.required_executable_metadata.bytes",
+        "ebpw_accounting.residuals.bytes",
+        "ebpw_accounting.routing_metadata.bytes",
+        "ebpw_accounting.scales.bytes",
+        "ebpw_accounting.weight_codes.bytes",
+        "ebpw_accounting.zero_points.bytes",
+        "fallback_count disclosure",
+        "hidden dense-rematerialization declaration",
+        "native executable",
+        "protected capability contract",
+        "reproducible protected receipt",
+        "runtime/kernel genome",
+        "whole-model reference comparison"
+      ],
+      "status": "INCOMPLETE"
+    },
+    "repo": "Qwen/Qwen3.8-Flash-Next"
+  },
+  "fpga": {
+    "labels": {
+      "derived": "[D]",
+      "simulated": "[S]",
+      "verified": "[V]"
+    },
+    "maps": {
+      "flash_next": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NEXT_FPGA_ORGAN_MAP.json",
+      "qwen27": "/Users/scammermike/Downloads/hawking/receipts/headless/QWEN27_FPGA_ORGAN_MAP.json"
+    },
+    "next_action": "Compile/verify HWIR and link sensitivity contracts; do not report board, bitstream, U50, or hardware timing until a physical receipt exists.",
+    "preboard": {
+      "checks": {
+        "both_model_maps_written": true,
+        "flash_next_hwir_present": true,
+        "mock_provider_is_simulation_only": true,
+        "no_physical_board_claim": true,
+        "qwen27_hwir_present": true
+      },
+      "fingerprint": "250d12132b94f2f0546e624e529b33a8ba8dd86389384f8cdacd538211393e26",
+      "fpga_backend": {
+        "claim": false,
+        "status": "NOT_BUILT"
+      },
+      "physical_board": {
+        "claim": false,
+        "status": "ABSENT"
+      },
+      "status": "PASSED"
+    },
+    "shared_primitives": [
+      "packed low-bit GEMV",
+      "norm/epilogue",
+      "persistent state/update",
+      "transport/link accounting",
+      "kernel genome/cache",
+      "telemetry/receipt verifier"
+    ]
+  },
+  "generated_at": 1787801795.8466182,
+  "hcli": {
+    "background_jobs": [
+      {
+        "argv": [
+          "python3",
+          "-m",
+          "hcli",
+          "agentos",
+          "unattended-window",
+          "--repo-root",
+          "/Users/scammermike/Downloads/hawking",
+          "--profile",
+          "/Users/scammermike/Downloads/hawking/hcli/hawking-native.sealed-3.14.json",
+          "--workspace",
+          "/Users/scammermike/Downloads/hawking/.hcli/autonomy-window",
+          "--emit",
+          "/Users/scammermike/Downloads/hawking/receipts/headless/HCLI_AGENTOS_UNATTENDED_WINDOW.json",
+          "--duration-s",
+          "3600",
+          "--interval-s",
+          "30"
+        ],
+        "cwd": "/Users/scammermike/Downloads/hawking",
+        "error": null,
+        "finished_at": 1787800112.68957,
+        "job_id": "job-0aff0dc8-214b-412e-af0f-082de944d684",
+        "label": "hcli-autonomy-one-hour",
+        "log_path": "/Users/scammermike/Downloads/hawking/.hcli/background/logs/job-0aff0dc8-214b-412e-af0f-082de944d684.log",
+        "pid": 21912,
+        "resumable": true,
+        "returncode": null,
+        "started_at": 1787798298.559073,
+        "state": "CANCELLED"
+      },
+      {
+        "argv": [
+          "python3",
+          "tools/odyssey/modellake.py",
+          "acquire",
+          "--repo",
+          "Qwen/Qwen3.8-Flash-Next",
+          "--revision",
+          "34567a4712bc9766c4449e2e98e4468bfa24d915"
+        ],
+        "cwd": "/Users/scammermike/Downloads/hawking",
+        "error": null,
+        "finished_at": null,
+        "job_id": "job-2f77c1d6-e33b-44fe-bc12-549cf47805c7",
+        "label": "modellake-flash-next-acquire",
+        "log_path": "/Users/scammermike/Downloads/hawking/.hcli/background/logs/job-2f77c1d6-e33b-44fe-bc12-549cf47805c7.log",
+        "pid": 36538,
+        "resumable": true,
+        "returncode": null,
+        "started_at": 1787799182.557255,
+        "state": "RUNNING"
+      },
+      {
+        "argv": [
+          "python3",
+          "-m",
+          "hcli.agentos",
+          "autonomy-gate",
+          "--help"
+        ],
+        "cwd": "/Users/scammermike/Downloads/hawking",
+        "error": null,
+        "finished_at": 1787798284.684493,
+        "job_id": "job-be8da18e-5d4e-418b-99c3-9198e7fd5a9a",
+        "label": "hcli-autonomy-one-hour",
+        "log_path": "/Users/scammermike/Downloads/hawking/.hcli/background/logs/job-be8da18e-5d4e-418b-99c3-9198e7fd5a9a.log",
+        "pid": 21712,
+        "resumable": true,
+        "returncode": 1,
+        "started_at": 1787798284.5167959,
+        "state": "FAILED"
+      },
+      {
+        "argv": [
+          "python3",
+          "-m",
+          "hcli",
+          "agentos",
+          "unattended-window",
+          "--repo-root",
+          "/Users/scammermike/Downloads/hawking",
+          "--profile",
+          "/Users/scammermike/Downloads/hawking/hcli/hawking-native.sealed-3.14.json",
+          "--workspace",
+          "/Users/scammermike/Downloads/hawking/.hcli/autonomy-window-verified",
+          "--emit",
+          "/Users/scammermike/Downloads/hawking/receipts/headless/HCLI_AGENTOS_UNATTENDED_WINDOW.json",
+          "--duration-s",
+          "3600",
+          "--interval-s",
+          "30"
+        ],
+        "cwd": "/Users/scammermike/Downloads/hawking",
+        "error": null,
+        "finished_at": null,
+        "job_id": "job-d659ef87-240c-4504-b1ee-1c0ec459deb2",
+        "label": "hcli-autonomy-one-hour-verified",
+        "log_path": "/Users/scammermike/Downloads/hawking/.hcli/background/logs/job-d659ef87-240c-4504-b1ee-1c0ec459deb2.log",
+        "pid": 54862,
+        "resumable": true,
+        "returncode": null,
+        "started_at": 1787800278.02771,
+        "state": "RUNNING"
+      }
+    ],
+    "current_default_profile": "/Users/scammermike/Downloads/hawking/hcli/hawking-native.sealed-3.14.json",
+    "dense_vs_nf_scaffold": "/Users/scammermike/Downloads/hawking/receipts/headless/HCLI_DENSE_VS_NF_AB_SCAFFOLD.json",
+    "explicit_selection_rule": "--model/config/env/provider selection wins; the resident profile is only the local default when no explicit selection exists.",
+    "initial_charge": {
+      "charge_id": "HAWKING_INITIAL_CHARGE",
+      "mission_id": "8a9ae0ed-6ff4-4c8f-b08b-53943b20307d",
+      "mission_state_path": "/Users/scammermike/Downloads/hawking/.hcli/initial-charge/.hcli/mission/state.json",
+      "next_action": "recover this Mission from mission_state_path, select the next dependency-ready WorkUnit, route by role/provider policy, and require its fixed verifier",
+      "provider_neutral": true,
+      "status": "IDEMPOTENT_EXISTING_CHARGE",
+      "unit_count": 10,
+      "units": [
+        {
+          "dependencies": [],
+          "id": "P0-A-modellake-supervision",
+          "priority": "P0",
+          "resource_class": "IO_HEAVY",
+          "retry_state": {
+            "attempts": 0,
+            "max_attempts": 3,
+            "policy": "rerun non-adoptable unit after verifier-visible failure",
+            "status": "ready"
+          },
+          "role": "model_lake_supervisor",
+          "stop_condition": "Stop before deletion, capacity headroom below the protected threshold, hash mismatch, or an unrecognized acquisition process."
+        },
+        {
+          "dependencies": [],
+          "id": "P0-B-flash-architecture-census",
+          "priority": "P0",
+          "resource_class": "STATIC_ANALYSIS",
+          "retry_state": {
+            "attempts": 0,
+            "max_attempts": 3,
+            "policy": "rerun non-adoptable unit after verifier-visible failure",
+            "status": "ready"
+          },
+          "role": "architecture_science",
+          "stop_condition": "Stop on pinned identity mismatch or any attempt to infer physical execution from metadata alone."
+        },
+        {
+          "dependencies": [],
+          "id": "P0-C-precedent-and-transfer-index",
+          "priority": "P0",
+          "resource_class": "CPU_HEAVY",
+          "retry_state": {
+            "attempts": 0,
+            "max_attempts": 3,
+            "policy": "rerun non-adoptable unit after verifier-visible failure",
+            "status": "ready"
+          },
+          "role": "evidence_science",
+          "stop_condition": "Stop on unreadable authority receipts or a classification that would turn an architecture-specific result into a universal law."
+        },
+        {
+          "dependencies": [
+            "P0-C-precedent-and-transfer-index"
+          ],
+          "id": "P0-D-qwen27-regression",
+          "priority": "P0",
+          "resource_class": "GPU_EXCLUSIVE",
+          "retry_state": {
+            "attempts": 0,
+            "max_attempts": 3,
+            "policy": "rerun non-adoptable unit after verifier-visible failure",
+            "status": "pending"
+          },
+          "role": "accelerator_science",
+          "stop_condition": "Stop on fallback, capability deviation, contaminated benchmark state, missing identity, or any attempt to promote raw TPS as accepted TPS."
+        },
+        {
+          "dependencies": [
+            "P0-A-modellake-supervision",
+            "P0-B-flash-architecture-census",
+            "P0-C-precedent-and-transfer-index"
+          ],
+          "id": "P1-A-flash-gravity-candidates",
+          "priority": "P1",
+          "resource_class": "CPU_HEAVY",
+          "retry_state": {
+            "attempts": 0,
+            "max_attempts": 3,
+            "policy": "rerun non-adoptable unit after verifier-visible failure",
+            "status": "pending"
+          },
+          "role": "representation_science",
+          "stop_condition": "Stop any candidate that omits required capability, hides MTP work, rematerializes a dense parent, or lacks a complete-system byte ledger."
+        },
+        {
+          "dependencies": [
+            "P1-A-flash-gravity-candidates"
+          ],
+          "id": "P1-B-representation-native-kernels",
+          "priority": "P1",
+          "resource_class": "COMPILE",
+          "retry_state": {
+            "attempts": 0,
+            "max_attempts": 3,
+            "policy": "rerun non-adoptable unit after verifier-visible failure",
+            "status": "pending"
+          },
+          "role": "kernel_engineering",
+          "stop_condition": "Stop on parity failure, hidden dense fallback, incomplete kernel genome, or a primitive-only win that loses complete-token work."
+        },
+        {
+          "dependencies": [
+            "P1-A-flash-gravity-candidates",
+            "P1-B-representation-native-kernels"
+          ],
+          "id": "P1-C-flash-pareto-ledger",
+          "priority": "P1",
+          "resource_class": "STATIC_ANALYSIS",
+          "retry_state": {
+            "attempts": 0,
+            "max_attempts": 3,
+            "policy": "rerun non-adoptable unit after verifier-visible failure",
+            "status": "pending"
+          },
+          "role": "promotion_verifier",
+          "stop_condition": "Never promote below 1.00 complete EBPW or below 50 accepted capability-preserving TPS; retain misses as Pareto intermediates."
+        },
+        {
+          "dependencies": [
+            "P1-C-flash-pareto-ledger"
+          ],
+          "id": "P1-D-dense-vs-nf-organ-ab",
+          "priority": "P1",
+          "resource_class": "GPU_EXCLUSIVE",
+          "retry_state": {
+            "attempts": 0,
+            "max_attempts": 3,
+            "policy": "rerun non-adoptable unit after verifier-visible failure",
+            "status": "pending"
+          },
+          "role": "benchmark_science",
+          "stop_condition": "Stop and record INCONCLUSIVE if any identity, input, device, state, or capability control is not matched."
+        },
+        {
+          "dependencies": [
+            "P0-B-flash-architecture-census",
+            "P0-C-precedent-and-transfer-index"
+          ],
+          "id": "P1-E-fpga-both-models",
+          "priority": "P1",
+          "resource_class": "COMPILE",
+          "retry_state": {
+            "attempts": 0,
+            "max_attempts": 3,
+            "policy": "rerun non-adoptable unit after verifier-visible failure",
+            "status": "pending"
+          },
+          "role": "fpga_preboard_engineering",
+          "stop_condition": "Stop at preboard boundaries; no physical board or U50 performance claim without hardware receipt."
+        },
+        {
+          "dependencies": [
+            "P0-C-precedent-and-transfer-index"
+          ],
+          "id": "P2-negative-science-doctor-vmcp-prep",
+          "priority": "P2",
+          "resource_class": "LIGHT_CONTROL",
+          "retry_state": {
+            "attempts": 0,
+            "max_attempts": 3,
+            "policy": "rerun non-adoptable unit after verifier-visible failure",
+            "status": "pending"
+          },
+          "role": "evidence_science",
+          "stop_condition": "Stop at evidence/preparation boundaries; do not declare impossibility from a bounded negative and do not promote Odyssey."
+        }
+      ],
+      "workspace": "/Users/scammermike/Downloads/hawking/.hcli/initial-charge"
+    },
+    "precedent_map": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NEXT_PRECEDENT_MAP.json",
+    "provider_neutral_semantics": "Mission/DAG owns work identity, dependencies, resources, stop conditions, checkpoints, receipts, and retry state; provider/model identity is execution policy.",
+    "transfer_map": "/Users/scammermike/Downloads/hawking/receipts/headless/QWEN38_ACCELERATOR_TRANSFER_MAP.json",
+    "unattended_window": {
+      "claim_boundary": "Only a completed receipt with fresh model-call evidence can qualify the requested unattended window.",
+      "final_receipt": {
+        "checks": null,
+        "elapsed_s": null,
+        "metrics": null,
+        "path": "/Users/scammermike/Downloads/hawking/receipts/headless/HCLI_AGENTOS_UNATTENDED_WINDOW.json",
+        "present": false,
+        "status": null
+      },
+      "progress_workspaces": [
+        {
+          "checks": {},
+          "cycles": 21,
+          "deadline": 1787803878.20885,
+          "metrics": {
+            "accepted": 20,
+            "attempted": 21,
+            "human_interventions": 0,
+            "inconclusive": 1,
+            "model_calls": 21,
+            "rejected": 0,
+            "retries": 1,
+            "typed_tool_calls": 42,
+            "verifier_calls": 20
+          },
+          "path": "/Users/scammermike/Downloads/hawking/.hcli/autonomy-window-verified/window-progress.json",
+          "started_at": 1787800278.20885,
+          "status": "RUNNING"
+        },
+        {
+          "checks": {},
+          "cycles": 59,
+          "deadline": 1787801898.72442,
+          "metrics": {
+            "accepted": 59,
+            "attempted": 59,
+            "human_interventions": 0,
+            "inconclusive": 0,
+            "model_calls": 2,
+            "rejected": 0,
+            "retries": 0,
+            "typed_tool_calls": 118,
+            "verifier_calls": 59
+          },
+          "path": "/Users/scammermike/Downloads/hawking/.hcli/autonomy-window/window-progress.json",
+          "started_at": 1787798298.72442,
+          "status": "RUNNING"
+        }
+      ]
+    }
+  },
+  "host": {
+    "machine": "arm64",
+    "platform": "macOS-27.0-arm64-arm-64bit-Mach-O",
+    "python": "3.14.6"
+  },
+  "modellake": {
+    "census": {
+      "capacity": {
+        "available_for_unprivileged_bytes": 3746816499712,
+        "capacity_bytes": 5000771321856,
+        "filesystem": "observed via statvfs",
+        "free_bytes": 3746816499712,
+        "mounted_directory": true,
+        "path": "/Volumes/corpdrive/hawking-modellake"
+      },
+      "partial_count": 4,
+      "status": "PASSED",
+      "target": {},
+      "verified_specimens": {
+        "entries": [
+          {
+            "age_s": 27868.5,
+            "kind": "file",
+            "name": ".DS_Store",
+            "path": "/Volumes/corpdrive/hawking-modellake/specimens/.DS_Store",
+            "size": {
+              "bytes": 8196,
+              "status": "EXACT_FILE_STAT"
+            }
+          },
+          {
+            "age_s": 180897.4,
+            "kind": "directory",
+            "name": "Qwen--Qwen3-30B-A3B@ad44e777bcd1",
+            "path": "/Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3-30B-A3B@ad44e777bcd1",
+            "size": {
+              "bytes": 61084360704,
+              "status": "BOUNDED_DU"
+            }
+          },
+          {
+            "age_s": 165413.9,
+            "kind": "directory",
+            "name": "Qwen--Qwen3-VL-30B-A3B-Instruct@9c4b90e1e4ba",
+            "path": "/Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3-VL-30B-A3B-Instruct@9c4b90e1e4ba",
+            "size": {
+              "bytes": 62153351168,
+              "status": "BOUNDED_DU"
+            }
+          },
+          {
+            "age_s": 153796.0,
+            "kind": "directory",
+            "name": "moonshotai--Kimi-VL-A3B-Instruct@398eede0903c",
+            "path": "/Volumes/corpdrive/hawking-modellake/specimens/moonshotai--Kimi-VL-A3B-Instruct@398eede0903c",
+            "size": {
+              "bytes": 32823230464,
+              "status": "BOUNDED_DU"
+            }
+          },
+          {
+            "age_s": 180032.9,
+            "kind": "directory",
+            "name": "tiiuae--Falcon-H1-7B-Instruct@41e72f27effb",
+            "path": "/Volumes/corpdrive/hawking-modellake/specimens/tiiuae--Falcon-H1-7B-Instruct@41e72f27effb",
+            "size": {
+              "bytes": 15182311424,
+              "status": "BOUNDED_DU"
+            }
+          }
+        ],
+        "path": "/Volumes/corpdrive/hawking-modellake/specimens",
+        "present": true,
+        "truncated": false
+      }
+    },
+    "next_action": "Continue supervision; if interrupted, resume the same pinned argv only after re-census and headroom checks; publish only after full hash verification and atomic rename.",
+    "no_delete_policy": true,
+    "root": "/Volumes/corpdrive/hawking-modellake",
+    "supervision": {
+      "checks": {
+        "atomic_publish_identity": true,
+        "capacity_headroom_observed": true,
+        "job_identity_matches_pinned_target": true,
+        "job_resumable": true,
+        "no_delete_policy": true,
+        "partial_not_final": true
+      },
+      "final": {
+        "path": "/Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc",
+        "present": false
+      },
+      "job": {
+        "argv": [
+          "python3",
+          "tools/odyssey/modellake.py",
+          "acquire",
+          "--repo",
+          "Qwen/Qwen3.8-Flash-Next",
+          "--revision",
+          "34567a4712bc9766c4449e2e98e4468bfa24d915"
+        ],
+        "cwd": "/Users/scammermike/Downloads/hawking",
+        "error": null,
+        "finished_at": null,
+        "job_id": "job-2f77c1d6-e33b-44fe-bc12-549cf47805c7",
+        "label": "modellake-flash-next-acquire",
+        "log_path": "/Users/scammermike/Downloads/hawking/.hcli/background/logs/job-2f77c1d6-e33b-44fe-bc12-549cf47805c7.log",
+        "pid": 36538,
+        "resumable": true,
+        "returncode": null,
+        "started_at": 1787799182.557255,
+        "state": "RUNNING"
+      },
+      "partial": {
+        "bytes": 198547621562,
+        "files": 76,
+        "path": "/Volumes/corpdrive/hawking-modellake/partial/Qwen--Qwen3.8-Flash-Next@34567a4712bc"
+      },
+      "qualification": "MODELLAKE_FLASH_ACQUISITION_SUPERVISED_NO_DELETE",
+      "status": "RUNNING_SAFE"
+    }
+  },
+  "qwen27": {
+    "current_runtime_observation": {
+      "bench_state": null,
+      "complete_tps_current_measured": 24.4086,
+      "complete_tps_historical_qualified": 34.0,
+      "current_vs_historical": {
+        "current_tps": 24.4086,
+        "gap_percent_of_historical": 28.21,
+        "gap_tps": 9.5914,
+        "historical_tps": 34.0,
+        "identity_warning": "The profile values are anchors, not a paired live A/B measurement in this run.",
+        "profile_current_runtime": {
+          "complete_tps_current_measured": 24.4086,
+          "complete_tps_historical_qualified": 34.0,
+          "fallbacks": 0
+        }
+      },
+      "dispatch_kernel_genome": null,
+      "fallbacks": 0,
+      "qualification": "CURRENT_RUNTIME_REGRESSION_AUDITED_NO_PERFORMANCE_QUALIFICATION"
+    },
+    "model_a": {
+      "artifact_root": "/Users/scammermike/noetic/NOETIC_PARENT_A",
+      "binary": "/Users/scammermike/Downloads/hawking/workspace/ops/build/rust/release-fast/examples/ascension_qwen38_resident",
+      "identity": "qwen3.8-27b-sealed-3.14",
+      "label": "Qwen3.8-27B sealed resident / NOETIC_PARENT_A",
+      "physical_ebpw": 3.1393,
+      "profile": "/Users/scammermike/Downloads/hawking/hcli/hawking-native.sealed-3.14.json",
+      "profile_sha256": "d0ccab6562eebde05f81fbc9e7d40698f4aa9a83ae8e19606a7372a1f3abb7ce"
+    },
+    "next_experiment": "Protected quiescent same-source A/B: record binary/artifact/tokenizer, representation, dispatches, complete wall/GPU timing, fallback count, capability, and cache/quiescence before accepting any optimization."
+  },
+  "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/OVERNIGHT_HAWKING_HANDOFF.json",
+  "schema": "hcli.agentos.overnight_handoff.v1",
+  "status": "READY_FOR_OVERNIGHT_CONTINUATION",
+  "verification": {
+    "full_suite": {
+      "command": "pytest -q",
+      "last_observed": "710 passed, 2 skipped, 2 warnings",
+      "last_observed_status": "PASSED"
+    },
+    "provider_focus": {
+      "last_observed": "31 passed, 2 warnings",
+      "last_observed_status": "PASSED"
+    },
+    "receipt_gates": {
+      "accelerator_regression": "PASSED",
+      "autonomy": "PASSED",
+      "flash_pre_runtime": "PASSED",
+      "modellake_supervision": "RUNNING_SAFE",
+      "preboard": "PASSED",
+      "unattended_window": null
+    }
+  }
+}

@@ -845,13 +845,13 @@ def test_protected_accelerator_benchmark_normalizes_provider_metrics_without_mod
     }
     row = _request_record(raw, elapsed_ns=100, index=1, phase="measure")
     summary = _aggregate([row, {**row, "index": 2}])
+    assert summary["kernel_genome_exact_and_stable"] is True
+    assert summary["generated_token_ids_exact_and_stable"] is True
     assert row["complete_wall_ns_per_token"] == 25
     assert row["gpu_ns_per_token"] == 20
     assert row["wall_minus_gpu_ns_per_token"] == 5
     assert row["dispatches_per_token"] == 10
     assert row["capability_sanity"]["status"] == "PASS"
-    assert summary["kernel_genome_exact_and_stable"] is True
-    assert summary["generated_token_ids_exact_and_stable"] is True
 
 
 def test_cli_exposes_general_science_surfaces():

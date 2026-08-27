@@ -30,6 +30,7 @@ from hcli.agentos.accelerator_regression import (
     _safe,
 )
 from hcli.agentos.benchmark_boundary import classify_window
+from hcli.nomenclature import NOMENCLATURE_VERSION
 from hcli.persist import atomic_write_json
 
 
@@ -347,6 +348,7 @@ def run_protected_accelerator_benchmark(
     started = time.time()
     report: Dict[str, Any] = {
         "schema": SCHEMA,
+        "nomenclature_version": NOMENCLATURE_VERSION,
         "status": "WAITING_FOR_QUIESCENCE",
         "qualification": False,
         "NOT_FOR_PROMOTION": True,

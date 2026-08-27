@@ -509,7 +509,14 @@ def run_protected_accelerator_benchmark(
         run_valid = all(report["checks"].values())
         report["measurement_verdict"] = "ACCEPT" if run_valid and report.get("protected_window") is True else "INCONCLUSIVE"
         report["qualification"] = bool(run_valid and report.get("protected_window") is True)
-        report["status"] = "PASSED" if report["measurements"] and not report["errors"] else "FAILED"
+        waiting_boundary = (
+            not report["measurements"]
+            and not report["errors"]
+            and isinstance(report.get("error"), Mapping)
+            and report["error"].get("type") in {"LockTimeout", "QuiescenceTimeout"}
+        )
+        if not waiting_boundary:
+            report["status"] = "PASSED" if report["measurements"] and not report["errors"] else "FAILED"
         report["claim_boundary"] = (
             "This receipt is a protected provider-neutral execution baseline when all "
             "physical metrics and quiescence checks pass. It never promotes a "

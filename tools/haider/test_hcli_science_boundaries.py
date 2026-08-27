@@ -350,6 +350,11 @@ def test_flash_executable_ingests_bounded_kernel_evidence_without_promoting_it(t
         },
         "source_tensor": {"selected_block_bytes": 128},
         "noetic_representation": {"candidate_id": "independent_q4_g64"},
+        "native_loader": {
+            "status": "BOUNDED_NOETIC_DESCRIPTOR_LOAD",
+            "whole_model_capability": "NOT_TESTED",
+            "whole_model_runtime": "NOT_TESTED",
+        },
         "gpu_timing": {"gpu_ns_median": 123},
         "parity": {"within_tolerance": True},
         "body_mutated": False,
@@ -361,6 +366,7 @@ def test_flash_executable_ingests_bounded_kernel_evidence_without_promoting_it(t
     result = run_flash_executable_scaffold(repo_root=repo, science_receipt=source)
     assert result["status"] == "PASSED"
     assert result["manifest"]["source_kernel_parity"]["status"] == "PASSED"
+    assert result["manifest"]["native_loader"]["bounded_native_descriptor_load_status"] == "BOUNDED_NOETIC_DESCRIPTOR_LOAD"
     assert result["manifest"]["native_kernels"]["status"] == "PLAN_ONLY"
     assert result["manifest"]["complete_token_timing"]["accepted_tps"] is None
     assert result["manifest"]["promotion_allowed"] is False

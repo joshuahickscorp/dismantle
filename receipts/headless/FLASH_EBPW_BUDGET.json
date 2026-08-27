@@ -1,35 +1,35 @@
 {
   "bounded_kernel_parity": {
     "body_mutated": false,
-    "claim_boundary": "PASSED bounded source-tensor noetic Q4 Metal kernel parity and GPU timing only; no whole-model loader, capability, complete-token runtime, EBPW, or Flash TPS claim",
+    "claim_boundary": "PASSED bounded serialized Noetic descriptor load, source-tensor Q4 Metal kernel parity, and GPU timing only; no whole-model loader, capability, complete-token runtime, EBPW, or Flash TPS claim",
     "complete_system_ebpw": null,
     "flash_tps": null,
     "gpu_timing": {
       "device": "Apple M3 Ultra",
       "gpu_ns": [
-        439834,
-        443584,
-        441625,
-        442959,
-        440875,
-        443125,
-        440625
+        451209,
+        443041,
+        451250,
+        451500,
+        441834,
+        443666,
+        449750
       ],
-      "gpu_ns_max": 443584,
-      "gpu_ns_median": 441625,
-      "gpu_ns_min": 439834,
+      "gpu_ns_max": 451500,
+      "gpu_ns_median": 449750,
+      "gpu_ns_min": 441834,
       "host_wall_ns": [
-        843083,
-        980292,
-        824500,
-        852417,
-        809625,
-        847125,
-        771791
+        805209,
+        1135250,
+        951750,
+        865083,
+        742958,
+        740208,
+        749792
       ],
-      "host_wall_ns_max": 980292,
-      "host_wall_ns_median": 843083,
-      "host_wall_ns_min": 771791,
+      "host_wall_ns_max": 1135250,
+      "host_wall_ns_median": 805209,
+      "host_wall_ns_min": 740208,
       "measured_runs": 7,
       "memory_limits": {
         "current_allocated_size": 638976,
@@ -76,7 +76,25 @@
       "whole_model_capability": "NOT_TESTED",
       "whole_model_runtime": "NOT_TESTED"
     },
-    "next_action": "compose this kernel descriptor into a native routed-expert loader parity round and keep protected complete-token timing gated",
+    "native_loader": {
+      "candidate_body_persisted": false,
+      "candidate_id": "independent_q4_g64",
+      "dense_rematerialization": "forbidden",
+      "descriptor_path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_ROUTED_EXPERT_LOADER_ROUNDTRIP.json",
+      "descriptor_sha256": "60e7c098c67f26013e47d3411efc554b7e8612417300eb2116d8237f53568c19",
+      "source_block_streamed": true,
+      "status": "BOUNDED_NOETIC_DESCRIPTOR_LOAD",
+      "whole_model_capability": "NOT_TESTED",
+      "whole_model_runtime": "NOT_TESTED"
+    },
+    "next_action": "compose the validated descriptor and kernel into a native routed-expert graph component while keeping protected complete-token timing gated",
+    "noetic_descriptor": {
+      "candidate_id": "independent_q4_g64",
+      "load_policy": "validated serialized descriptor; candidate body is not persisted by this bounded probe",
+      "path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_ROUTED_EXPERT_LOADER_ROUNDTRIP.json",
+      "schema": "hcli.noetic.representation_descriptor.v1",
+      "sha256": "60e7c098c67f26013e47d3411efc554b7e8612417300eb2116d8237f53568c19"
+    },
     "noetic_representation": {
       "candidate_bytes": 174080,
       "candidate_id": "independent_q4_g64",
@@ -108,7 +126,7 @@
     "pinned_revision": "34567a4712bc9766c4449e2e98e4468bfa24d915",
     "promotion_allowed": false,
     "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_Q4_KERNEL_PARITY.json",
-    "receipt_sha256": "302f736ddc3229135ab8704d60acab431fbd8d6fd63d6fef503fbc3e0990eb81",
+    "receipt_sha256": "ebe3e2b04501c2346c30bc6520ed9ba4358e157ec6418ab68d056d5a35976fc2",
     "repo": "Qwen/Qwen3.8-Flash-Next",
     "root": "/Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc",
     "source_tensor": {
@@ -987,32 +1005,39 @@
         "status": "PASSED"
       },
       "native_kernel_parity": {
+        "descriptor": {
+          "candidate_id": "independent_q4_g64",
+          "load_policy": "validated serialized descriptor; candidate body is not persisted by this bounded probe",
+          "path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_ROUTED_EXPERT_LOADER_ROUNDTRIP.json",
+          "schema": "hcli.noetic.representation_descriptor.v1",
+          "sha256": "60e7c098c67f26013e47d3411efc554b7e8612417300eb2116d8237f53568c19"
+        },
         "gpu_timing": {
           "device": "Apple M3 Ultra",
           "gpu_ns": [
-            439834,
-            443584,
-            441625,
-            442959,
-            440875,
-            443125,
-            440625
+            451209,
+            443041,
+            451250,
+            451500,
+            441834,
+            443666,
+            449750
           ],
-          "gpu_ns_max": 443584,
-          "gpu_ns_median": 441625,
-          "gpu_ns_min": 439834,
+          "gpu_ns_max": 451500,
+          "gpu_ns_median": 449750,
+          "gpu_ns_min": 441834,
           "host_wall_ns": [
-            843083,
-            980292,
-            824500,
-            852417,
-            809625,
-            847125,
-            771791
+            805209,
+            1135250,
+            951750,
+            865083,
+            742958,
+            740208,
+            749792
           ],
-          "host_wall_ns_max": 980292,
-          "host_wall_ns_median": 843083,
-          "host_wall_ns_min": 771791,
+          "host_wall_ns_max": 1135250,
+          "host_wall_ns_median": 805209,
+          "host_wall_ns_min": 740208,
           "measured_runs": 7,
           "memory_limits": {
             "current_allocated_size": 638976,
@@ -1025,6 +1050,17 @@
         },
         "kernel": "qwen_uniform_q4_group64_matvec",
         "label": "[D]",
+        "native_loader": {
+          "candidate_body_persisted": false,
+          "candidate_id": "independent_q4_g64",
+          "dense_rematerialization": "forbidden",
+          "descriptor_path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_ROUTED_EXPERT_LOADER_ROUNDTRIP.json",
+          "descriptor_sha256": "60e7c098c67f26013e47d3411efc554b7e8612417300eb2116d8237f53568c19",
+          "source_block_streamed": true,
+          "status": "BOUNDED_NOETIC_DESCRIPTOR_LOAD",
+          "whole_model_capability": "NOT_TESTED",
+          "whole_model_runtime": "NOT_TESTED"
+        },
         "parity": {
           "cosine": 0.9999999999999639,
           "count": 128,

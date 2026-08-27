@@ -5,10 +5,18 @@
       "9d373ecc4863b244fc74761c99fc837f7705f3db"
     ],
     "branch": "odyssey-i",
-    "git_revision": "e75be7b5780b1c7db219cbb731d53a5bacf7493a",
+    "git_revision": "c318c42626fcf47fa2be59eb79b29c94aadcff98",
     "unrelated_preserved_edit": "tools/odyssey_ctl.py",
     "working_tree_status": [
-      "M receipts/headless/HCLI_AGENTOS_CHECKPOINT.json",
+      "M crates/hawking-core/examples/flash_noetic_q4_kernel_parity.rs",
+      " M hcli/agentos/checkpoint.py",
+      " M hcli/agentos/flash_executable.py",
+      " M hcli/agentos/handoff.py",
+      " M receipts/headless/FLASH_EBPW_BUDGET.json",
+      " M receipts/headless/FLASH_NEXT_NOETIC_EXECUTABLE.json",
+      " M receipts/headless/FLASH_NOETIC_Q4_KERNEL_PARITY.json",
+      " M receipts/headless/HCLI_AGENTOS_CHECKPOINT.json",
+      " M tools/haider/test_hcli_science_boundaries.py",
       " M tools/odyssey_ctl.py",
       "?? .hcli/flash-kernel-build/",
       "?? .hcli/locks/",
@@ -156,33 +164,33 @@
     "architecture_fingerprint": "8dbc9c34f223d240def13a1f7c70d3cbddbc768bc9ccc9c002683e2958b6be5b",
     "bounded_native_kernel_parity": {
       "body_mutated": false,
-      "claim_boundary": "PASSED bounded source-tensor noetic Q4 Metal kernel parity and GPU timing only; no whole-model loader, capability, complete-token runtime, EBPW, or Flash TPS claim",
+      "claim_boundary": "PASSED bounded serialized Noetic descriptor load, source-tensor Q4 Metal kernel parity, and GPU timing only; no whole-model loader, capability, complete-token runtime, EBPW, or Flash TPS claim",
       "gpu_timing": {
         "device": "Apple M3 Ultra",
         "gpu_ns": [
-          439834,
-          443584,
-          441625,
-          442959,
-          440875,
-          443125,
-          440625
+          451209,
+          443041,
+          451250,
+          451500,
+          441834,
+          443666,
+          449750
         ],
-        "gpu_ns_max": 443584,
-        "gpu_ns_median": 441625,
-        "gpu_ns_min": 439834,
+        "gpu_ns_max": 451500,
+        "gpu_ns_median": 449750,
+        "gpu_ns_min": 441834,
         "host_wall_ns": [
-          843083,
-          980292,
-          824500,
-          852417,
-          809625,
-          847125,
-          771791
+          805209,
+          1135250,
+          951750,
+          865083,
+          742958,
+          740208,
+          749792
         ],
-        "host_wall_ns_max": 980292,
-        "host_wall_ns_median": 843083,
-        "host_wall_ns_min": 771791,
+        "host_wall_ns_max": 1135250,
+        "host_wall_ns_median": 805209,
+        "host_wall_ns_min": 740208,
         "measured_runs": 7,
         "memory_limits": {
           "current_allocated_size": 638976,
@@ -214,7 +222,25 @@
         "whole_model_capability": "NOT_TESTED",
         "whole_model_runtime": "NOT_TESTED"
       },
-      "next_action": "compose this kernel descriptor into a native routed-expert loader parity round and keep protected complete-token timing gated",
+      "native_loader": {
+        "candidate_body_persisted": false,
+        "candidate_id": "independent_q4_g64",
+        "dense_rematerialization": "forbidden",
+        "descriptor_path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_ROUTED_EXPERT_LOADER_ROUNDTRIP.json",
+        "descriptor_sha256": "60e7c098c67f26013e47d3411efc554b7e8612417300eb2116d8237f53568c19",
+        "source_block_streamed": true,
+        "status": "BOUNDED_NOETIC_DESCRIPTOR_LOAD",
+        "whole_model_capability": "NOT_TESTED",
+        "whole_model_runtime": "NOT_TESTED"
+      },
+      "next_action": "compose the validated descriptor and kernel into a native routed-expert graph component while keeping protected complete-token timing gated",
+      "noetic_descriptor": {
+        "candidate_id": "independent_q4_g64",
+        "load_policy": "validated serialized descriptor; candidate body is not persisted by this bounded probe",
+        "path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_ROUTED_EXPERT_LOADER_ROUNDTRIP.json",
+        "schema": "hcli.noetic.representation_descriptor.v1",
+        "sha256": "60e7c098c67f26013e47d3411efc554b7e8612417300eb2116d8237f53568c19"
+      },
       "noetic_representation": {
         "candidate_bytes": 174080,
         "candidate_id": "independent_q4_g64",
@@ -857,7 +883,7 @@
       "explicit MTP draft/verify/rollback accounting",
       "native kernels and command-boundary telemetry"
     ],
-    "next_action": "Compose bounded kernel evidence into a native routed-expert loader/graph; keep complete-system EBPW and accepted Flash TPS unmeasured until native protected execution exists.",
+    "next_action": "Compose the validated Noetic descriptor and bounded kernel into a native routed-expert graph; keep complete-system EBPW and accepted Flash TPS unmeasured until native protected execution exists.",
     "noetic_executable": {
       "NOT_FOR_PROMOTION": true,
       "complete_token_timing": {
@@ -968,6 +994,8 @@
         "body_read_by_scaffold": false,
         "bounded_descriptor_roundtrip_receipt": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_ROUTED_EXPERT_LOADER_ROUNDTRIP.json",
         "bounded_descriptor_roundtrip_status": "PASSED",
+        "bounded_native_descriptor_load_receipt": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_Q4_KERNEL_PARITY.json",
+        "bounded_native_descriptor_load_status": "BOUNDED_NOETIC_DESCRIPTOR_LOAD",
         "bounded_native_kernel_parity_receipt": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_Q4_KERNEL_PARITY.json",
         "bounded_native_kernel_parity_status": "PASSED",
         "required": [
@@ -1510,7 +1538,7 @@
       "telemetry/receipt verifier"
     ]
   },
-  "generated_at": 1787814530.26226,
+  "generated_at": 1787815193.213124,
   "hcli": {
     "background_jobs": [
       {
@@ -1957,18 +1985,18 @@
         },
         {
           "checks": {},
-          "cycles": 49,
+          "cycles": 60,
           "deadline": 1787833148.5820968,
           "metrics": {
-            "accepted": 49,
-            "attempted": 49,
+            "accepted": 60,
+            "attempted": 60,
             "human_interventions": 0,
             "inconclusive": 0,
-            "model_calls": 49,
+            "model_calls": 60,
             "rejected": 0,
             "retries": 0,
-            "typed_tool_calls": 98,
-            "verifier_calls": 49
+            "typed_tool_calls": 120,
+            "verifier_calls": 60
           },
           "path": "/Users/scammermike/Downloads/hawking/.hcli/unattended-qwen-long/window-progress.json",
           "started_at": 1787811548.5820968,

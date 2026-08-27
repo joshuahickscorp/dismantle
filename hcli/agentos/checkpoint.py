@@ -453,7 +453,7 @@ def _gate_summary(workspace: Path, repo_root: Path) -> Dict[str, Any]:
     flash_representation = _science_receipt(flash_representation_candidates, fields=("source_label", "candidate_label", "source_tensor", "candidates", "comparison", "body_mutated", "model_loaded", "whole_model_capability", "whole_model_runtime", "next_experiment", "replications"))
     flash_transform = _science_receipt(flash_transform_candidates, fields=("source_label", "candidate_label", "source_tensor", "candidates", "comparison", "transform_parity", "body_mutated", "model_loaded", "whole_model_capability", "whole_model_runtime", "next_experiment", "claim_boundary"))
     flash_loader = _science_receipt(flash_loader_candidates, fields=("source_label", "candidate_label", "candidate_id", "transform_reference", "representation_descriptor", "serialized_descriptor_sha256", "encoded_sample", "loader_roundtrip", "body_mutated", "model_loaded", "whole_model_capability", "whole_model_runtime", "native_loader", "next_experiment", "claim_boundary"))
-    flash_kernel = _science_receipt(flash_kernel_candidates, fields=("source_label", "derived_label", "model_lake_manifest", "source_tensor", "noetic_representation", "native_kernel", "gpu_timing", "parity", "body_mutated", "model_loaded", "complete_system_ebpw", "flash_tps", "promotion_allowed", "claim_boundary", "next_action"))
+    flash_kernel = _science_receipt(flash_kernel_candidates, fields=("source_label", "derived_label", "model_lake_manifest", "source_tensor", "noetic_descriptor", "noetic_representation", "native_loader", "native_kernel", "gpu_timing", "parity", "body_mutated", "model_loaded", "complete_system_ebpw", "flash_tps", "promotion_allowed", "claim_boundary", "next_action"))
     return {
         "recovery_gate": {
             **(recovery or {
@@ -575,7 +575,7 @@ def _gate_summary(workspace: Path, repo_root: Path) -> Dict[str, Any]:
         "flash_representation_experiment": flash_representation or {"status": "NOT_RUN", "receipt_path": None, "schema": None, "source_label": None, "candidate_label": None, "source_tensor": None, "candidates": None, "comparison": None, "body_mutated": None, "model_loaded": None, "whole_model_capability": None, "whole_model_runtime": None, "replications": None},
         "flash_transform_parity": flash_transform or {"status": "NOT_RUN", "receipt_path": None, "schema": None, "source_label": None, "candidate_label": None, "source_tensor": None, "candidates": None, "comparison": None, "transform_parity": None, "body_mutated": None, "model_loaded": None, "whole_model_capability": None, "whole_model_runtime": None, "next_experiment": None, "claim_boundary": None},
         "flash_loader_roundtrip": flash_loader or {"status": "NOT_RUN", "receipt_path": None, "schema": None, "source_label": None, "candidate_label": None, "candidate_id": None, "transform_reference": None, "representation_descriptor": None, "serialized_descriptor_sha256": None, "encoded_sample": None, "loader_roundtrip": None, "body_mutated": None, "model_loaded": None, "whole_model_capability": None, "whole_model_runtime": None, "native_loader": None, "next_experiment": None, "claim_boundary": None},
-        "flash_kernel_parity": flash_kernel or {"status": "NOT_RUN", "receipt_path": None, "schema": None, "source_label": None, "derived_label": None, "model_lake_manifest": None, "source_tensor": None, "noetic_representation": None, "native_kernel": None, "gpu_timing": None, "parity": None, "body_mutated": None, "model_loaded": None, "complete_system_ebpw": None, "flash_tps": None, "promotion_allowed": None, "claim_boundary": None, "next_action": None},
+        "flash_kernel_parity": flash_kernel or {"status": "NOT_RUN", "receipt_path": None, "schema": None, "source_label": None, "derived_label": None, "model_lake_manifest": None, "source_tensor": None, "noetic_descriptor": None, "noetic_representation": None, "native_loader": None, "native_kernel": None, "gpu_timing": None, "parity": None, "body_mutated": None, "model_loaded": None, "complete_system_ebpw": None, "flash_tps": None, "promotion_allowed": None, "claim_boundary": None, "next_action": None},
         "production_provider_gate": "NOT_RUN",
     }
 
@@ -745,7 +745,7 @@ def build_program_checkpoint(
             "persist research provenance and protected benchmark receipts",
             "qualify additional providers only after their own deterministic verification closes",
             "continue the bounded protected Qwen watcher; do not treat contaminated A/B telemetry as promotion evidence",
-            "compose bounded Flash native-kernel evidence into a native routed-expert loader/graph; fill actual EBPW/token-ns fields only from native protected receipts",
+            "compose the validated Flash Noetic descriptor and bounded native kernel into a routed-expert graph; fill actual EBPW/token-ns fields only from native protected receipts",
         ],
         "claim_boundary": "This checkpoint is an evidence census; it does not certify a model, runtime, hardware accelerator, or unattended sovereignty.",
     }

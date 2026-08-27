@@ -271,7 +271,9 @@ def _flash_summary(repo: Path) -> Dict[str, Any]:
             "status": kernel_parity.get("status"),
             "receipt_path": str(repo / "receipts" / "headless" / "FLASH_NOETIC_Q4_KERNEL_PARITY.json"),
             "source_tensor": kernel_parity.get("source_tensor"),
+            "noetic_descriptor": kernel_parity.get("noetic_descriptor"),
             "noetic_representation": kernel_parity.get("noetic_representation"),
+            "native_loader": kernel_parity.get("native_loader"),
             "native_kernel": kernel_parity.get("native_kernel"),
             "gpu_timing": kernel_parity.get("gpu_timing"),
             "parity": kernel_parity.get("parity"),
@@ -284,7 +286,7 @@ def _flash_summary(repo: Path) -> Dict[str, Any]:
             "ebpw": {"status": ebpw.get("status"), "receipt_path": str(repo / "receipts" / "headless" / "FLASH_EBPW_BUDGET.json"), "measured": ebpw.get("measured"), "target_contract": ebpw.get("target_contract")},
             "token_ns": {"status": token_ns.get("status"), "receipt_path": str(repo / "receipts" / "headless" / "FLASH_TOKEN_NS_BUDGET.json"), "system_ledger": token_ns.get("system_ledger"), "target_contract": token_ns.get("target_contract")},
         },
-        "next_action": "Compose bounded kernel evidence into a native routed-expert loader/graph; keep complete-system EBPW and accepted Flash TPS unmeasured until native protected execution exists.",
+        "next_action": "Compose the validated Noetic descriptor and bounded kernel into a native routed-expert graph; keep complete-system EBPW and accepted Flash TPS unmeasured until native protected execution exists.",
     }
 
 

@@ -44,6 +44,7 @@ mod macos {
 
     struct Args {
         root: PathBuf,
+        descriptor: PathBuf,
         tensor_name: String,
         expert_index: usize,
         row_start: usize,
@@ -51,6 +52,12 @@ mod macos {
         warmup: usize,
         reps: usize,
         out: PathBuf,
+    }
+
+    struct NoeticDescriptor {
+        path: PathBuf,
+        sha256: String,
+        body: Value,
     }
 
     struct TensorLocation {
@@ -102,6 +109,7 @@ mod macos {
         let root = repository_root();
         let mut args = Args {
             root: default_lake_root(),
+            descriptor: root.join("receipts/headless/FLASH_ROUTED_EXPERT_LOADER_ROUNDTRIP.json"),
             tensor_name: TENSOR_NAME.to_owned(),
             expert_index: 0,
             row_start: 0,
@@ -114,6 +122,9 @@ mod macos {
         while let Some(flag) = values.next() {
             match flag.as_str() {
                 "--root" => args.root = PathBuf::from(values.next().ok_or("missing --root")?),
+                "--descriptor" => {
+                    args.descriptor = PathBuf::from(values.next().ok_or("missing --descriptor")?)
+                }
                 "--tensor-name" => {
                     args.tensor_name = values.next().ok_or("missing --tensor-name")?
                 }
@@ -126,6 +137,7 @@ mod macos {
                 "--help" | "-h" => {
                     println!(
                         "usage: flash_noetic_q4_kernel_parity [--root DIR] [--tensor-name NAME] \
+                         [--descriptor FILE] \
                          [--expert-index N] [--row-start N] [--row-count N] [--warmup N] \
                          [--reps N] [--out FILE]"
                     );
@@ -156,6 +168,111 @@ mod macos {
     fn read_json(path: &Path) -> Result<(Value, Vec<u8>), Box<dyn Error>> {
         let bytes = fs::read(path)?;
         Ok((serde_json::from_slice(&bytes)?, bytes))
+    }
+
+    fn descriptor_string<'a>(value: &'a Value, field: &str) -> Result<&'a str, Box<dyn Error>> {
+        value
+            .get(field)
+            .and_then(Value::as_str)
+            .ok_or_else(|| format!("Noetic descriptor is missing string field {field}").into())
+    }
+
+    fn descriptor_usize(value: &Value, field: &str) -> Result<usize, Box<dyn Error>> {
+        value
+            .get(field)
+            .and_then(Value::as_u64)
+            .and_then(|number| usize::try_from(number).ok())
+            .ok_or_else(|| format!("Noetic descriptor is missing integer field {field}").into())
+    }
+
+    fn load_noetic_descriptor(
+        path: &Path,
+        tensor_name: &str,
+    ) -> Result<NoeticDescriptor, Box<dyn Error>> {
+        let canonical_path = path.canonicalize()?;
+        let (receipt, bytes) = read_json(&canonical_path)?;
+        if receipt.get("status").and_then(Value::as_str) != Some("PASSED") {
+            return Err("Noetic loader receipt is not PASSED".into());
+        }
+        if receipt.get("nomenclature_version").and_then(Value::as_str) != Some(NOMENCLATURE_VERSION)
+        {
+            return Err("Noetic loader receipt has an unsupported nomenclature version".into());
+        }
+        let descriptor = receipt
+            .get("representation_descriptor")
+            .ok_or("Noetic loader receipt has no representation_descriptor")?;
+        if descriptor_string(descriptor, "schema")? != "hcli.noetic.representation_descriptor.v1" {
+            return Err("unsupported Noetic representation descriptor schema".into());
+        }
+        if descriptor_string(descriptor, "candidate_id")? != "independent_q4_g64" {
+            return Err("bounded Metal probe currently accepts independent_q4_g64 only".into());
+        }
+        let source = descriptor
+            .get("source_tensor")
+            .ok_or("Noetic descriptor has no source_tensor")?;
+        if descriptor_string(source, "tensor_name")? != tensor_name
+            || descriptor_string(source, "dtype")?.to_uppercase() != "BF16"
+        {
+            return Err(
+                "Noetic descriptor source tensor does not match the selected BF16 tensor".into(),
+            );
+        }
+        let shape = source
+            .get("shape")
+            .and_then(Value::as_array)
+            .ok_or("Noetic descriptor source_tensor has no shape")?;
+        let shape_values: Vec<usize> = shape
+            .iter()
+            .map(|value| {
+                value
+                    .as_u64()
+                    .and_then(|number| usize::try_from(number).ok())
+                    .ok_or_else(|| "Noetic descriptor source shape is not an integer vector".into())
+            })
+            .collect::<Result<_, Box<dyn Error>>>()?;
+        if shape_values != TENSOR_SHAPE {
+            return Err(
+                "Noetic descriptor source shape does not match Flash routed experts".into(),
+            );
+        }
+        if descriptor_usize(source, "group_size")? != GROUP_SIZE {
+            return Err("Noetic descriptor group size is not 64".into());
+        }
+        let storage = descriptor
+            .get("storage")
+            .ok_or("Noetic descriptor has no storage policy")?;
+        if descriptor_string(storage, "code_dtype")? != "uint4_packed"
+            || descriptor_usize(storage, "code_offset")? != 8
+            || descriptor_string(storage, "nibble_order")?
+                != "low_nibble_then_high_nibble_row_major"
+            || descriptor_string(storage, "scale_dtype")? != "little_endian_float16"
+        {
+            return Err(
+                "Noetic descriptor storage policy is not the bounded native Q4 layout".into(),
+            );
+        }
+        let policy = descriptor
+            .get("loader_policy")
+            .ok_or("Noetic descriptor has no loader_policy")?;
+        if policy.get("source_mutation").and_then(Value::as_bool) != Some(false)
+            || policy.get("model_load").and_then(Value::as_bool) != Some(false)
+            || descriptor_string(policy, "dense_rematerialization")? != "forbidden"
+        {
+            return Err("Noetic descriptor loader policy permits an unsafe fallback".into());
+        }
+        let transform_reference = descriptor
+            .get("full_transform_reference")
+            .ok_or("Noetic descriptor has no full_transform_reference")?;
+        if descriptor_string(transform_reference, "status")? != "FULL_TENSOR_TRANSFORM_ONLY" {
+            return Err(
+                "Noetic descriptor transform reference is not the verified Q4 candidate".into(),
+            );
+        }
+        Ok(NoeticDescriptor {
+            path: canonical_path,
+            sha256: sha256_hex(&bytes),
+            body: descriptor.clone(),
+        })
     }
 
     fn validate_manifest(root: &Path) -> Result<Value, Box<dyn Error>> {
@@ -474,6 +591,12 @@ mod macos {
     fn run(args: &Args) -> Result<Value, Box<dyn Error>> {
         let started = Instant::now();
         let root = args.root.canonicalize()?;
+        let descriptor = load_noetic_descriptor(&args.descriptor, &args.tensor_name)?;
+        let descriptor_path = descriptor.path.display().to_string();
+        let descriptor_sha256 = descriptor.sha256.clone();
+        let descriptor_schema = descriptor_string(&descriptor.body, "schema")?.to_owned();
+        let descriptor_candidate_id =
+            descriptor_string(&descriptor.body, "candidate_id")?.to_owned();
         let manifest = validate_manifest(&root)?;
         let location = load_tensor_location(&root, &args.tensor_name)?;
         if args.expert_index >= location.shape[0]
@@ -571,9 +694,16 @@ mod macos {
                 "selected_block_sha256": source_hash,
                 "selected_shard_full_hash_recomputed": false,
             },
+            "noetic_descriptor": {
+                "path": descriptor_path,
+                "sha256": descriptor_sha256,
+                "schema": descriptor_schema,
+                "candidate_id": descriptor_candidate_id,
+                "load_policy": "validated serialized descriptor; candidate body is not persisted by this bounded probe",
+            },
             "noetic_representation": {
                 "schema": "hcli.noetic.representation_descriptor.v1",
-                "candidate_id": "independent_q4_g64",
+                "candidate_id": descriptor_candidate_id,
                 "layout": "row-major [expert, row, column]",
                 "group_size": GROUP_SIZE,
                 "code_dtype": "uint4_packed",
@@ -601,6 +731,17 @@ mod macos {
                 "whole_model_capability": "NOT_TESTED",
                 "whole_model_runtime": "NOT_TESTED",
                 "label": "[V]/[D]",
+            },
+            "native_loader": {
+                "status": "BOUNDED_NOETIC_DESCRIPTOR_LOAD",
+                "descriptor_path": descriptor_path,
+                "descriptor_sha256": descriptor_sha256,
+                "candidate_id": descriptor_candidate_id,
+                "source_block_streamed": true,
+                "candidate_body_persisted": false,
+                "dense_rematerialization": "forbidden",
+                "whole_model_capability": "NOT_TESTED",
+                "whole_model_runtime": "NOT_TESTED",
             },
             "gpu_timing": {
                 "device": context.device_name(),
@@ -633,8 +774,8 @@ mod macos {
             "complete_system_ebpw": null,
             "flash_tps": null,
             "promotion_allowed": false,
-            "claim_boundary": "PASSED bounded source-tensor noetic Q4 Metal kernel parity and GPU timing only; no whole-model loader, capability, complete-token runtime, EBPW, or Flash TPS claim",
-            "next_action": "compose this kernel descriptor into a native routed-expert loader parity round and keep protected complete-token timing gated",
+            "claim_boundary": "PASSED bounded serialized Noetic descriptor load, source-tensor Q4 Metal kernel parity, and GPU timing only; no whole-model loader, capability, complete-token runtime, EBPW, or Flash TPS claim",
+            "next_action": "compose the validated descriptor and kernel into a native routed-expert graph component while keeping protected complete-token timing gated",
             "elapsed_s": elapsed_s,
         }))
     }

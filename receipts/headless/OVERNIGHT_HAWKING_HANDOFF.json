@@ -5,11 +5,10 @@
       "9d373ecc4863b244fc74761c99fc837f7705f3db"
     ],
     "branch": "odyssey-i",
-    "git_revision": "ddb1cfae76580b6781aa1841b8f0aeff748ff445",
+    "git_revision": "2ee9b2258a2431289bc74272ee6b3de6c566b2f7",
     "unrelated_preserved_edit": "tools/odyssey_ctl.py",
     "working_tree_status": [
-      "M receipts/headless/HCLI_AGENTOS_CHECKPOINT.json",
-      " M tools/odyssey_ctl.py",
+      "M tools/odyssey_ctl.py",
       "?? .hcli/flash-kernel-build/",
       "?? .hcli/locks/",
       "?? .hcli/unattended-qwen-long/"
@@ -4162,7 +4161,7 @@
       "telemetry/receipt verifier"
     ]
   },
-  "generated_at": 1787824351.407657,
+  "generated_at": 1787824558.355808,
   "hcli": {
     "background_jobs": [
       {
@@ -4627,18 +4626,18 @@
         },
         {
           "checks": {},
-          "cycles": 207,
+          "cycles": 210,
           "deadline": 1787833148.5820968,
           "metrics": {
-            "accepted": 206,
-            "attempted": 207,
+            "accepted": 209,
+            "attempted": 210,
             "human_interventions": 0,
             "inconclusive": 1,
-            "model_calls": 207,
+            "model_calls": 210,
             "rejected": 0,
             "retries": 1,
-            "typed_tool_calls": 414,
-            "verifier_calls": 206
+            "typed_tool_calls": 420,
+            "verifier_calls": 209
           },
           "path": "/Users/scammermike/Downloads/hawking/.hcli/unattended-qwen-long/window-progress.json",
           "started_at": 1787811548.5820968,

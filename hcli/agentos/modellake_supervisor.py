@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from hcli.flash_next import EXPECTED_BYTES, PINNED_REVISION, REPO_ID
+from hcli.nomenclature import NOMENCLATURE_VERSION
 from hcli.persist import atomic_write_json
 
 
@@ -94,6 +95,7 @@ def run_model_lake_supervision(
         status = "WAITING_OR_NOT_OBSERVED"
     report = {
         "schema": SCHEMA,
+        "nomenclature_version": NOMENCLATURE_VERSION,
         "status": status,
         "qualification": "MODELLAKE_FLASH_ACQUISITION_SUPERVISED_NO_DELETE",
         "observed_at": time.time(),

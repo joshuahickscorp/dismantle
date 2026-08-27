@@ -1,7 +1,7 @@
 {
   "capacity": {
-    "free_after_expected_bytes": 3026768510282,
-    "free_bytes": 3386791796736,
+    "free_after_expected_bytes": 3026768231754,
+    "free_bytes": 3386791518208,
     "path": "/Volumes/corpdrive/hawking-modellake"
   },
   "checks": {
@@ -647,7 +647,8 @@
     "timeout_s": null
   },
   "next_action": "If RUNNING_SAFE, continue observing. If interrupted, re-census and explicitly resume the same pinned argv; publish only after the existing tool verifies every file and atomically renames the tree.",
-  "observed_at": 1787808536.7129972,
+  "nomenclature_version": "HAWKING_NOMENCLATURE_V1",
+  "observed_at": 1787814499.600488,
   "partial": {
     "direct_bytes": 0,
     "direct_files": 0,

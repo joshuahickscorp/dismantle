@@ -9,6 +9,7 @@
     "protected_quiescent_before_and_after": true,
     "same_source_input_and_output_contract": true
   },
+  "nomenclature_version": "HAWKING_NOMENCLATURE_V1",
   "organs": [
     {
       "actual_complete_wall_ns_per_accepted_token": null,

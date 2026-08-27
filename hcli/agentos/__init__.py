@@ -37,6 +37,7 @@ from hcli.providers import (
     RuntimeGenome,
 )
 from hcli.physical_graph import PhysicalGraph, compile_physical_graph
+from hcli.nomenclature import NOMENCLATURE_VERSION
 from hcli.result_envelope import ResultEnvelope, build_result_envelope
 from hcli.tool_registry import ToolContext, ToolRegistry, ToolResult, ToolSpec, default_tool_registry
 
@@ -94,6 +95,10 @@ __all__ = [
     "run_flash_tensor_probe",
     "FLASH_REPRESENTATION_EXPERIMENT_SCHEMA",
     "run_flash_representation_experiment",
+    "FLASH_TRANSFORM_PARITY_SCHEMA",
+    "run_flash_transform_parity",
+    "FLASH_LOADER_ROUNDTRIP_SCHEMA",
+    "run_flash_loader_roundtrip",
     "PREBOARD_SCHEMA",
     "run_preboard",
     "INITIAL_CHARGE_SCHEMA",
@@ -130,6 +135,7 @@ __all__ = [
     "RuntimeGenome",
     "PhysicalGraph",
     "compile_physical_graph",
+    "NOMENCLATURE_VERSION",
     "ResultEnvelope",
     "build_result_envelope",
     "ToolContext",
@@ -214,6 +220,14 @@ def __getattr__(name: str):
         from hcli.agentos import flash_representation_experiment
 
         return flash_representation_experiment.SCHEMA if name == "FLASH_REPRESENTATION_EXPERIMENT_SCHEMA" else flash_representation_experiment.run_flash_representation_experiment
+    if name in {"FLASH_TRANSFORM_PARITY_SCHEMA", "run_flash_transform_parity"}:
+        from hcli.agentos import flash_transform_parity
+
+        return flash_transform_parity.SCHEMA if name == "FLASH_TRANSFORM_PARITY_SCHEMA" else flash_transform_parity.run_flash_transform_parity
+    if name in {"FLASH_LOADER_ROUNDTRIP_SCHEMA", "run_flash_loader_roundtrip"}:
+        from hcli.agentos import flash_loader_roundtrip
+
+        return flash_loader_roundtrip.SCHEMA if name == "FLASH_LOADER_ROUNDTRIP_SCHEMA" else flash_loader_roundtrip.run_flash_loader_roundtrip
     if name in {"PREBOARD_SCHEMA", "run_preboard"}:
         from hcli.agentos import preboard
 

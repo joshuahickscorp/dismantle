@@ -25,6 +25,7 @@ from hcli.flash_next import (
     REPO_ID,
     evaluate_flash_promotion,
 )
+from hcli.nomenclature import NOMENCLATURE_VERSION
 from hcli.persist import atomic_write_json
 
 
@@ -37,6 +38,9 @@ DEFAULT_SCIENCE = "HCLI_FLASH_NEXT_PRE_RUNTIME_SCIENCE.json"
 DEFAULT_TENSOR_PROBE = "FLASH_FIRST_TENSOR_PROBE.json"
 DEFAULT_REPRESENTATION_EXPERIMENT = "FLASH_ROUTED_EXPERT_REPRESENTATION_EXPERIMENT.json"
 DEFAULT_REPRESENTATION_REPLICATION = "FLASH_ROUTED_EXPERT_REPRESENTATION_EXPERIMENT_DISJOINT.json"
+DEFAULT_TRANSFORM_PARITY = "FLASH_FULL_TENSOR_TRANSFORM_PARITY.json"
+DEFAULT_LOADER_ROUNDTRIP = "FLASH_ROUTED_EXPERT_LOADER_ROUNDTRIP.json"
+DEFAULT_KERNEL_PARITY = "FLASH_NOETIC_Q4_KERNEL_PARITY.json"
 DEFAULT_EXECUTABLE = "FLASH_NEXT_NOETIC_EXECUTABLE.json"
 DEFAULT_EBPW = "FLASH_EBPW_BUDGET.json"
 DEFAULT_TOKEN_NS = "FLASH_TOKEN_NS_BUDGET.json"
@@ -235,6 +239,133 @@ def _representation_experiment_summary(
     }
 
 
+def _transform_parity_summary(
+    repo: Path,
+    receipt: Optional[str | os.PathLike[str]] = None,
+) -> Dict[str, Any]:
+    """Read full-tensor transform evidence without promoting it to runtime."""
+    path = Path(receipt).expanduser().resolve() if receipt else repo / "receipts" / "headless" / DEFAULT_TRANSFORM_PARITY
+    transform = _read_json(path)
+    if transform is None:
+        return {
+            "status": "NOT_RUN",
+            "receipt_path": str(path),
+            "source_tensor": None,
+            "candidates": None,
+            "comparison": None,
+            "transform_parity": None,
+            "whole_model_capability": "NOT_TESTED",
+            "whole_model_runtime": "NOT_TESTED",
+        }
+    return {
+        "status": transform.get("status"),
+        "receipt_path": str(path),
+        "receipt_sha256": _sha256(path),
+        "root": transform.get("root"),
+        "tensor_name": transform.get("tensor_name"),
+        "source_tensor": transform.get("source_tensor"),
+        "candidates": transform.get("candidates"),
+        "comparison": transform.get("comparison"),
+        "transform_parity": transform.get("transform_parity"),
+        "next_experiment": transform.get("next_experiment"),
+        "body_mutated": transform.get("body_mutated"),
+        "model_loaded": transform.get("model_loaded"),
+        "whole_model_capability": transform.get("whole_model_capability"),
+        "whole_model_runtime": transform.get("whole_model_runtime"),
+        "native_loader": transform.get("native_loader"),
+        "native_kernel": transform.get("native_kernel"),
+        "runtime_performance": transform.get("runtime_performance"),
+        "claim_boundary": transform.get("claim_boundary"),
+    }
+
+
+def _loader_roundtrip_summary(
+    repo: Path,
+    receipt: Optional[str | os.PathLike[str]] = None,
+) -> Dict[str, Any]:
+    """Read bounded noetic loader evidence without calling it native runtime."""
+    path = Path(receipt).expanduser().resolve() if receipt else repo / "receipts" / "headless" / DEFAULT_LOADER_ROUNDTRIP
+    loader = _read_json(path)
+    if loader is None:
+        return {
+            "status": "NOT_RUN",
+            "receipt_path": str(path),
+            "candidate_id": None,
+            "representation_descriptor": None,
+            "encoded_sample": None,
+            "loader_roundtrip": None,
+            "whole_model_capability": "NOT_TESTED",
+            "whole_model_runtime": "NOT_TESTED",
+        }
+    return {
+        "status": loader.get("status"),
+        "receipt_path": str(path),
+        "receipt_sha256": _sha256(path),
+        "candidate_id": loader.get("candidate_id"),
+        "tensor_name": loader.get("tensor_name"),
+        "transform_reference": loader.get("transform_reference"),
+        "representation_descriptor": loader.get("representation_descriptor"),
+        "serialized_descriptor_sha256": loader.get("serialized_descriptor_sha256"),
+        "encoded_sample": loader.get("encoded_sample"),
+        "loader_roundtrip": loader.get("loader_roundtrip"),
+        "source_sample": loader.get("source_sample"),
+        "body_mutated": loader.get("body_mutated"),
+        "model_loaded": loader.get("model_loaded"),
+        "whole_model_capability": loader.get("whole_model_capability"),
+        "whole_model_runtime": loader.get("whole_model_runtime"),
+        "native_loader": loader.get("native_loader"),
+        "native_kernel": loader.get("native_kernel"),
+        "runtime_performance": loader.get("runtime_performance"),
+        "claim_boundary": loader.get("claim_boundary"),
+    }
+
+
+def _kernel_parity_summary(
+    repo: Path,
+    receipt: Optional[str | os.PathLike[str]] = None,
+) -> Dict[str, Any]:
+    """Read bounded native Metal evidence without treating it as Flash runtime."""
+    path = Path(receipt).expanduser().resolve() if receipt else repo / "receipts" / "headless" / DEFAULT_KERNEL_PARITY
+    kernel = _read_json(path)
+    if kernel is None:
+        return {
+            "status": "NOT_RUN",
+            "receipt_path": str(path),
+            "source_tensor": None,
+            "noetic_representation": None,
+            "native_kernel": None,
+            "gpu_timing": None,
+            "parity": None,
+            "whole_model_capability": "NOT_TESTED",
+            "whole_model_runtime": "NOT_TESTED",
+        }
+    native_kernel = kernel.get("native_kernel") if isinstance(kernel.get("native_kernel"), Mapping) else {}
+    return {
+        "status": kernel.get("status"),
+        "receipt_path": str(path),
+        "receipt_sha256": _sha256(path),
+        "repo": kernel.get("repo"),
+        "pinned_revision": kernel.get("pinned_revision"),
+        "root": kernel.get("root"),
+        "model_lake_manifest": kernel.get("model_lake_manifest"),
+        "source_tensor": kernel.get("source_tensor"),
+        "noetic_representation": kernel.get("noetic_representation"),
+        "native_kernel": kernel.get("native_kernel"),
+        "gpu_timing": kernel.get("gpu_timing"),
+        "parity": kernel.get("parity"),
+        "input": kernel.get("input"),
+        "body_mutated": kernel.get("body_mutated"),
+        "model_loaded": kernel.get("model_loaded"),
+        "whole_model_capability": native_kernel.get("whole_model_capability", "NOT_TESTED"),
+        "whole_model_runtime": native_kernel.get("whole_model_runtime", "NOT_TESTED"),
+        "complete_system_ebpw": kernel.get("complete_system_ebpw"),
+        "flash_tps": kernel.get("flash_tps"),
+        "promotion_allowed": kernel.get("promotion_allowed"),
+        "claim_boundary": kernel.get("claim_boundary"),
+        "next_action": kernel.get("next_action"),
+    }
+
+
 def _primary_organs(science: Mapping[str, Any]) -> list[Mapping[str, Any]]:
     rows = science.get("organ_graph")
     if not isinstance(rows, list):
@@ -332,6 +463,9 @@ def _ebpw_budget(
     source: Mapping[str, Any],
     tensor_probe: Mapping[str, Any],
     representation_experiment: Mapping[str, Any],
+    transform_parity: Mapping[str, Any],
+    loader_roundtrip: Mapping[str, Any],
+    kernel_parity: Mapping[str, Any],
 ) -> Dict[str, Any]:
     parameters = source.get("source_parameter_count")
     system_ceiling = int(parameters * COMPLETE_SYSTEM_EBPW_MAX) if isinstance(parameters, int) else None
@@ -346,9 +480,10 @@ def _ebpw_budget(
         for field in COMPLETE_SYSTEM_BYTE_FIELDS
     }
     chosen_representation = {
-        "id": "flash-expert-shared-basis-nf-residual-v0",
+        "id": "flash-routed-expert-dual-candidate-v1",
         "status": "HYPOTHESIS_NOT_BUILT",
         "label": DERIVED,
+        "selection_policy": "minimize observed tensor-level effective bits per value while retaining a lower-error quality alternate; this does not select a whole-model runtime representation",
         "expert_bank": "shared basis plus per-expert NF residual",
         "router": "resident route metadata and selected-expert gather",
         "deltanet": "resident state-native representation",
@@ -357,7 +492,58 @@ def _ebpw_budget(
         "mtp": "explicit draft/verify/rollback representation",
         "vision": "conditional multimodal path; text-resident omission requires an explicit separate contract",
     }
-    if representation_experiment.get("status") == "PASSED":
+    if transform_parity.get("status") == "PASSED":
+        comparison = transform_parity.get("comparison") or {}
+        candidates = transform_parity.get("candidates") or {}
+        source_tensor = transform_parity.get("source_tensor") or {}
+        independent = candidates.get("independent_q4_g64") or {}
+        shared = candidates.get("shared_bf16_basis_nf4_residual") or {}
+        chosen_representation.update({
+            "status": "FULL_TENSOR_TRANSFORM_OBSERVED_NOT_WHOLE_MODEL",
+            "selected_candidate": "independent_q4_g64",
+            "selected_candidate_reason": "lower observed tensor-level EBPW (4.25 versus 4.28125 bits/value); shared-basis/NF4 remains the lower-error quality alternate",
+            "quality_alternate": "shared_bf16_basis_nf4_residual",
+            "bounded_source_transform": {
+                "receipt_path": transform_parity.get("receipt_path"),
+                "tensor_name": transform_parity.get("tensor_name"),
+                "source_layout": source_tensor.get("layout"),
+                "shape": source_tensor.get("shape"),
+                "source_payload_bytes": source_tensor.get("payload_bytes"),
+                "full_payload_read": comparison.get("full_payload_read"),
+                "independent_q4_candidate_bytes": independent.get("candidate_bytes"),
+                "independent_q4_effective_bits_per_value": independent.get("effective_bits_per_value"),
+                "shared_basis_nf4_residual_candidate_bytes": shared.get("candidate_bytes"),
+                "shared_basis_nf4_residual_effective_bits_per_value": shared.get("effective_bits_per_value"),
+                "independent_weight_reconstruction": independent.get("weight_reconstruction"),
+                "shared_weight_reconstruction": shared.get("weight_reconstruction"),
+                "independent_reference_vector": independent.get("reference_vector"),
+                "shared_reference_vector": shared.get("reference_vector"),
+                "pack_unpack_parity": (transform_parity.get("transform_parity") or {}).get("pack_unpack_parity"),
+                "capability_parity": comparison.get("capability_parity", "NOT_TESTED"),
+                "whole_model_runtime": comparison.get("whole_model_runtime", "NOT_TESTED"),
+                "next_experiment": transform_parity.get("next_experiment"),
+                "loader_roundtrip": {
+                    "status": loader_roundtrip.get("status"),
+                    "candidate_id": loader_roundtrip.get("candidate_id"),
+                    "receipt_path": loader_roundtrip.get("receipt_path"),
+                    "descriptor_sha256": loader_roundtrip.get("serialized_descriptor_sha256"),
+                    "roundtrip": loader_roundtrip.get("loader_roundtrip"),
+                    "label": DERIVED,
+                },
+                "native_kernel_parity": {
+                    "status": kernel_parity.get("status"),
+                    "receipt_path": kernel_parity.get("receipt_path"),
+                    "kernel": (kernel_parity.get("native_kernel") or {}).get("kernel"),
+                    "gpu_timing": kernel_parity.get("gpu_timing"),
+                    "parity": kernel_parity.get("parity"),
+                    "whole_model_capability": kernel_parity.get("whole_model_capability", "NOT_TESTED"),
+                    "whole_model_runtime": kernel_parity.get("whole_model_runtime", "NOT_TESTED"),
+                    "label": DERIVED,
+                },
+                "label": DERIVED,
+            },
+        })
+    elif representation_experiment.get("status") == "PASSED":
         comparison = representation_experiment.get("comparison") or {}
         candidates = representation_experiment.get("candidates") or {}
         chosen_representation.update({
@@ -405,6 +591,7 @@ def _ebpw_budget(
         })
     return {
         "schema": EBPW_SCHEMA,
+        "nomenclature_version": NOMENCLATURE_VERSION,
         "status": "PLANNED_UNTIL_VERIFIED_BODY",
         "label": DERIVED,
         "source_identity": source,
@@ -418,6 +605,26 @@ def _ebpw_budget(
         "chosen_representation": chosen_representation,
         "bounded_source_probe": tensor_probe,
         "bounded_representation_experiment": representation_experiment,
+        "bounded_transform_parity": transform_parity,
+        "bounded_loader_roundtrip": loader_roundtrip,
+        "bounded_kernel_parity": kernel_parity,
+        "bounded_tensor_observation": {
+            "status": "FULL_TENSOR_TRANSFORM_ONLY" if transform_parity.get("status") == "PASSED" else "NOT_MEASURED",
+            "is_complete_system": False,
+            "source_tensor": (transform_parity.get("source_tensor") if transform_parity.get("status") == "PASSED" else None),
+            "comparison": (transform_parity.get("comparison") if transform_parity.get("status") == "PASSED" else None),
+            "candidates": {
+                name: {
+                    "candidate_bytes": value.get("candidate_bytes"),
+                    "effective_bits_per_value": value.get("effective_bits_per_value"),
+                    "weight_reconstruction": value.get("weight_reconstruction"),
+                    "reference_vector": value.get("reference_vector"),
+                }
+                for name, value in (transform_parity.get("candidates") or {}).items()
+                if isinstance(value, Mapping)
+            } if transform_parity.get("status") == "PASSED" else None,
+            "label": DERIVED,
+        },
         "organs": organs,
         "complete_system_accounting": accounting,
         "measured": {
@@ -463,6 +670,7 @@ def _token_ns_budget(science: Mapping[str, Any], source: Mapping[str, Any]) -> D
         })
     return {
         "schema": TOKEN_NS_SCHEMA,
+        "nomenclature_version": NOMENCLATURE_VERSION,
         "status": "PLANNED_UNTIL_NATIVE_EXECUTION",
         "label": DERIVED,
         "source_identity": source,
@@ -509,10 +717,14 @@ def _executable_manifest(
     token_ns: Mapping[str, Any],
     tensor_probe: Mapping[str, Any],
     representation_experiment: Mapping[str, Any],
+    transform_parity: Mapping[str, Any],
+    loader_roundtrip: Mapping[str, Any],
+    kernel_parity: Mapping[str, Any],
 ) -> Dict[str, Any]:
     organs = [str(row.get("organ")) for row in ebpw.get("organs") or [] if isinstance(row, Mapping)]
     return {
         "schema": SCHEMA,
+        "nomenclature_version": NOMENCLATURE_VERSION,
         "status": "SCAFFOLD_ONLY",
         "qualification": False,
         "NOT_FOR_PROMOTION": True,
@@ -533,14 +745,27 @@ def _executable_manifest(
             "bounded_probe_receipt": tensor_probe.get("receipt_path"),
             "bounded_source_layout_experiment_observed": representation_experiment.get("status") == "PASSED",
             "bounded_representation_experiment_receipt": representation_experiment.get("receipt_path"),
+            "bounded_full_tensor_transform_observed": transform_parity.get("status") == "PASSED",
+            "bounded_transform_parity_receipt": transform_parity.get("receipt_path"),
+            "bounded_loader_roundtrip_observed": loader_roundtrip.get("status") == "PASSED",
+            "bounded_loader_roundtrip_receipt": loader_roundtrip.get("receipt_path"),
+            "bounded_native_kernel_parity_observed": kernel_parity.get("status") == "PASSED",
+            "bounded_native_kernel_parity_receipt": kernel_parity.get("receipt_path"),
             "weight_body_loaded": False,
         },
         "model_lake": lake,
         "source_tensor_probe": tensor_probe,
         "source_representation_experiment": representation_experiment,
+        "source_transform_parity": transform_parity,
+        "source_loader_roundtrip": loader_roundtrip,
+        "source_kernel_parity": kernel_parity,
         "chosen_representation": ebpw.get("chosen_representation"),
         "native_loader": {
             "status": "NOT_IMPLEMENTED",
+            "bounded_descriptor_roundtrip_status": loader_roundtrip.get("status"),
+            "bounded_descriptor_roundtrip_receipt": loader_roundtrip.get("receipt_path"),
+            "bounded_native_kernel_parity_status": kernel_parity.get("status"),
+            "bounded_native_kernel_parity_receipt": kernel_parity.get("receipt_path"),
             "required": ["verified body manifest", "zero-copy/streaming policy", "per-organ ownership", "resident lifetime", "loader hash"],
             "body_read_by_scaffold": False,
         },
@@ -562,6 +787,13 @@ def _executable_manifest(
                 {"organ": "residual_hyperconnections", "kernel": "low_rank_residual_mix", "status": "NOT_IMPLEMENTED"},
                 {"organ": "support_misc", "kernel": "ownership_audit_required", "status": "UNRESOLVED"},
             ],
+            "bounded_component_evidence": {
+                "status": kernel_parity.get("status"),
+                "kernel": (kernel_parity.get("native_kernel") or {}).get("kernel"),
+                "receipt": kernel_parity.get("receipt_path"),
+                "scope": "one real routed-expert source block only; not complete Flash execution",
+                "label": DERIVED,
+            },
             "dense_rematerialization": "FORBIDDEN_BY_FINAL_RUNTIME_POLICY",
         },
         "graph_runtime": {
@@ -609,7 +841,7 @@ def _executable_manifest(
             "hidden_dense_rematerialization": False,
         }),
         "promotion_allowed": False,
-        "claim_boundary": "FLASH_NEXT_NOETIC_EXECUTABLE is not built. This manifest is the reproducible contract for the next implementation steps; it contains no native Flash capability or performance claim.",
+        "claim_boundary": "FLASH_NEXT_NOETIC_EXECUTABLE remains a scaffold. It records full-tensor representation, bounded descriptor-loader, and bounded native-kernel evidence, not a whole-model loader, capability, complete-system EBPW, or Flash TPS claim.",
     }
 
 
@@ -619,6 +851,9 @@ def run_flash_executable_scaffold(
     science_receipt: Optional[str | os.PathLike[str]] = None,
     tensor_probe_receipt: Optional[str | os.PathLike[str]] = None,
     representation_experiment_receipt: Optional[str | os.PathLike[str]] = None,
+    transform_parity_receipt: Optional[str | os.PathLike[str]] = None,
+    loader_roundtrip_receipt: Optional[str | os.PathLike[str]] = None,
+    kernel_parity_receipt: Optional[str | os.PathLike[str]] = None,
     emit: Optional[str | os.PathLike[str]] = None,
     ebpw_emit: Optional[str | os.PathLike[str]] = None,
     token_ns_emit: Optional[str | os.PathLike[str]] = None,
@@ -636,6 +871,7 @@ def run_flash_executable_scaffold(
         token_path = token_path.resolve()
     result: Dict[str, Any] = {
         "schema": SCHEMA,
+        "nomenclature_version": NOMENCLATURE_VERSION,
         "status": "RUNNING",
         "repo_root": str(repo),
         "science_receipt": str(science_path),
@@ -649,9 +885,12 @@ def run_flash_executable_scaffold(
         lake = _modellake_identity(repo)
         tensor_probe = _tensor_probe_summary(repo, tensor_probe_receipt)
         representation_experiment = _representation_experiment_summary(repo, representation_experiment_receipt)
-        ebpw = _ebpw_budget(science, source, tensor_probe, representation_experiment)
+        transform_parity = _transform_parity_summary(repo, transform_parity_receipt)
+        loader_roundtrip = _loader_roundtrip_summary(repo, loader_roundtrip_receipt)
+        kernel_parity = _kernel_parity_summary(repo, kernel_parity_receipt)
+        ebpw = _ebpw_budget(science, source, tensor_probe, representation_experiment, transform_parity, loader_roundtrip, kernel_parity)
         token_ns = _token_ns_budget(science, source)
-        manifest = _executable_manifest(science, source, lake, ebpw, token_ns, tensor_probe, representation_experiment)
+        manifest = _executable_manifest(science, source, lake, ebpw, token_ns, tensor_probe, representation_experiment, transform_parity, loader_roundtrip, kernel_parity)
         atomic_write_json(ebpw_path, ebpw)
         atomic_write_json(token_path, token_ns)
         manifest["ebpw_budget_receipt"] = str(ebpw_path)
@@ -672,6 +911,15 @@ def run_flash_executable_scaffold(
                 "bounded_representation_experiment_is_explicit": representation_experiment.get("status") in {"NOT_RUN", "PASSED"},
                 "bounded_representation_experiment_does_not_claim_whole_model": representation_experiment.get("whole_model_capability") == "NOT_TESTED" and representation_experiment.get("whole_model_runtime") == "NOT_TESTED",
                 "bounded_representation_replications_are_explicit": all(item.get("status") in {"PASSED", "NOT_RUN"} for item in representation_experiment.get("replications") or []),
+                "bounded_transform_parity_is_explicit": transform_parity.get("status") in {"NOT_RUN", "PASSED"},
+                "bounded_transform_parity_does_not_claim_whole_model": transform_parity.get("whole_model_capability") == "NOT_TESTED" and transform_parity.get("whole_model_runtime") == "NOT_TESTED",
+                "bounded_transform_parity_does_not_mutate_source": transform_parity.get("body_mutated") in {None, False},
+                "bounded_loader_roundtrip_is_explicit": loader_roundtrip.get("status") in {"NOT_RUN", "PASSED"},
+                "bounded_loader_roundtrip_does_not_claim_whole_model": loader_roundtrip.get("whole_model_capability") == "NOT_TESTED" and loader_roundtrip.get("whole_model_runtime") == "NOT_TESTED",
+                "bounded_loader_roundtrip_does_not_mutate_source": loader_roundtrip.get("body_mutated") in {None, False},
+                "bounded_kernel_parity_is_explicit": kernel_parity.get("status") in {"NOT_RUN", "PASSED"},
+                "bounded_kernel_parity_does_not_claim_whole_model": kernel_parity.get("whole_model_capability") == "NOT_TESTED" and kernel_parity.get("whole_model_runtime") == "NOT_TESTED",
+                "bounded_kernel_parity_does_not_mutate_source": kernel_parity.get("body_mutated") in {None, False},
                 "native_loader_status_explicit": manifest.get("native_loader", {}).get("status") == "NOT_IMPLEMENTED",
                 "native_kernels_status_explicit": manifest.get("native_kernels", {}).get("status") == "PLAN_ONLY",
                 "complete_token_timing_not_fabricated": manifest.get("complete_token_timing", {}).get("accepted_tps") is None,
@@ -699,6 +947,9 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser.add_argument("--science-receipt")
     parser.add_argument("--tensor-probe-receipt")
     parser.add_argument("--representation-experiment-receipt")
+    parser.add_argument("--transform-parity-receipt")
+    parser.add_argument("--loader-roundtrip-receipt")
+    parser.add_argument("--kernel-parity-receipt")
     parser.add_argument("--emit")
     parser.add_argument("--ebpw-emit")
     parser.add_argument("--token-ns-emit")
@@ -708,6 +959,9 @@ def main(argv: Optional[list[str]] = None) -> int:
         science_receipt=args.science_receipt,
         tensor_probe_receipt=args.tensor_probe_receipt,
         representation_experiment_receipt=args.representation_experiment_receipt,
+        transform_parity_receipt=args.transform_parity_receipt,
+        loader_roundtrip_receipt=args.loader_roundtrip_receipt,
+        kernel_parity_receipt=args.kernel_parity_receipt,
         emit=args.emit,
         ebpw_emit=args.ebpw_emit,
         token_ns_emit=args.token_ns_emit,
@@ -716,7 +970,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     return 0 if report.get("status") == "PASSED" else 1
 
 
-__all__ = ["DEFAULT_REPRESENTATION_EXPERIMENT", "DEFAULT_REPRESENTATION_REPLICATION", "DEFAULT_TENSOR_PROBE", "EBPW_SCHEMA", "SCHEMA", "TOKEN_NS_SCHEMA", "main", "run_flash_executable_scaffold"]
+__all__ = ["DEFAULT_KERNEL_PARITY", "DEFAULT_LOADER_ROUNDTRIP", "DEFAULT_REPRESENTATION_EXPERIMENT", "DEFAULT_REPRESENTATION_REPLICATION", "DEFAULT_TENSOR_PROBE", "DEFAULT_TRANSFORM_PARITY", "EBPW_SCHEMA", "SCHEMA", "TOKEN_NS_SCHEMA", "main", "run_flash_executable_scaffold"]
 
 
 if __name__ == "__main__":

@@ -12,6 +12,8 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Dict, Iterable, List, Mapping, Optional
 
+from hcli.nomenclature import NOMENCLATURE_VERSION
+
 
 SCHEMA = "hcli.physical_graph.v1"
 
@@ -45,6 +47,9 @@ class PhysicalGraph:
     def to_dict(self) -> Dict[str, Any]:
         body = {
             "schema": SCHEMA,
+            "nomenclature_version": NOMENCLATURE_VERSION,
+            "semantic_type": "PhysicalGraphPlan",
+            "compiler_stage": "PhysicalGraphCompiler",
             "model_id": self.model_id,
             "computation": _copy(self.computation),
             "data": _copy(self.data),

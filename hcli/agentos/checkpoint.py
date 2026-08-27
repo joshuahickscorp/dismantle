@@ -26,6 +26,7 @@ from hcli.providers import (
     RECEIPT_SCHEMA,
     ROLE_SCHEMA,
 )
+from hcli.nomenclature import NOMENCLATURE_VERSION
 from hcli.tool_registry import default_tool_registry
 
 
@@ -170,6 +171,9 @@ def _gate_summary(workspace: Path, repo_root: Path) -> Dict[str, Any]:
     flash_token_ns_candidates = [repo_root / "receipts" / "headless" / "FLASH_TOKEN_NS_BUDGET.json"]
     flash_tensor_probe_candidates = [repo_root / "receipts" / "headless" / "FLASH_FIRST_TENSOR_PROBE.json"]
     flash_representation_candidates = [repo_root / "receipts" / "headless" / "FLASH_ROUTED_EXPERT_REPRESENTATION_EXPERIMENT.json"]
+    flash_transform_candidates = [repo_root / "receipts" / "headless" / "FLASH_FULL_TENSOR_TRANSFORM_PARITY.json"]
+    flash_loader_candidates = [repo_root / "receipts" / "headless" / "FLASH_ROUTED_EXPERT_LOADER_ROUNDTRIP.json"]
+    flash_kernel_candidates = [repo_root / "receipts" / "headless" / "FLASH_NOETIC_Q4_KERNEL_PARITY.json"]
     recovery = None
     for path in recovery_candidates:
         value = _read_object(path)
@@ -447,6 +451,9 @@ def _gate_summary(workspace: Path, repo_root: Path) -> Dict[str, Any]:
     flash_token_ns = _science_receipt(flash_token_ns_candidates, fields=("status", "system_ledger", "target_contract", "promotion_allowed"))
     flash_tensor_probe = _science_receipt(flash_tensor_probe_candidates, fields=("source_label", "candidate_label", "source_tensor", "organ", "dense_vs_packed_low_bit", "next_experiment", "body_mutated", "model_loaded"))
     flash_representation = _science_receipt(flash_representation_candidates, fields=("source_label", "candidate_label", "source_tensor", "candidates", "comparison", "body_mutated", "model_loaded", "whole_model_capability", "whole_model_runtime", "next_experiment", "replications"))
+    flash_transform = _science_receipt(flash_transform_candidates, fields=("source_label", "candidate_label", "source_tensor", "candidates", "comparison", "transform_parity", "body_mutated", "model_loaded", "whole_model_capability", "whole_model_runtime", "next_experiment", "claim_boundary"))
+    flash_loader = _science_receipt(flash_loader_candidates, fields=("source_label", "candidate_label", "candidate_id", "transform_reference", "representation_descriptor", "serialized_descriptor_sha256", "encoded_sample", "loader_roundtrip", "body_mutated", "model_loaded", "whole_model_capability", "whole_model_runtime", "native_loader", "next_experiment", "claim_boundary"))
+    flash_kernel = _science_receipt(flash_kernel_candidates, fields=("source_label", "derived_label", "model_lake_manifest", "source_tensor", "noetic_representation", "native_kernel", "gpu_timing", "parity", "body_mutated", "model_loaded", "complete_system_ebpw", "flash_tps", "promotion_allowed", "claim_boundary", "next_action"))
     return {
         "recovery_gate": {
             **(recovery or {
@@ -566,6 +573,9 @@ def _gate_summary(workspace: Path, repo_root: Path) -> Dict[str, Any]:
         "flash_token_ns_budget": flash_token_ns or {"status": "NOT_RUN", "receipt_path": None, "schema": None, "system_ledger": None, "target_contract": None, "promotion_allowed": None},
         "flash_tensor_probe": flash_tensor_probe or {"status": "NOT_RUN", "receipt_path": None, "schema": None, "source_label": None, "candidate_label": None, "source_tensor": None, "organ": None, "dense_vs_packed_low_bit": None, "next_experiment": None, "body_mutated": None, "model_loaded": None},
         "flash_representation_experiment": flash_representation or {"status": "NOT_RUN", "receipt_path": None, "schema": None, "source_label": None, "candidate_label": None, "source_tensor": None, "candidates": None, "comparison": None, "body_mutated": None, "model_loaded": None, "whole_model_capability": None, "whole_model_runtime": None, "replications": None},
+        "flash_transform_parity": flash_transform or {"status": "NOT_RUN", "receipt_path": None, "schema": None, "source_label": None, "candidate_label": None, "source_tensor": None, "candidates": None, "comparison": None, "transform_parity": None, "body_mutated": None, "model_loaded": None, "whole_model_capability": None, "whole_model_runtime": None, "next_experiment": None, "claim_boundary": None},
+        "flash_loader_roundtrip": flash_loader or {"status": "NOT_RUN", "receipt_path": None, "schema": None, "source_label": None, "candidate_label": None, "candidate_id": None, "transform_reference": None, "representation_descriptor": None, "serialized_descriptor_sha256": None, "encoded_sample": None, "loader_roundtrip": None, "body_mutated": None, "model_loaded": None, "whole_model_capability": None, "whole_model_runtime": None, "native_loader": None, "next_experiment": None, "claim_boundary": None},
+        "flash_kernel_parity": flash_kernel or {"status": "NOT_RUN", "receipt_path": None, "schema": None, "source_label": None, "derived_label": None, "model_lake_manifest": None, "source_tensor": None, "noetic_representation": None, "native_kernel": None, "gpu_timing": None, "parity": None, "body_mutated": None, "model_loaded": None, "complete_system_ebpw": None, "flash_tps": None, "promotion_allowed": None, "claim_boundary": None, "next_action": None},
         "production_provider_gate": "NOT_RUN",
     }
 
@@ -636,6 +646,12 @@ def build_program_checkpoint(
         blockers.append("bounded Flash-Next source-tensor representation probe has not been persisted")
     if gates["flash_representation_experiment"].get("status") != "PASSED":
         blockers.append("bounded Flash-Next source-layout representation experiment has not been persisted")
+    if gates["flash_transform_parity"].get("status") != "PASSED":
+        blockers.append("full routed-expert Flash-Next transform parity has not been persisted")
+    if gates["flash_loader_roundtrip"].get("status") != "PASSED":
+        blockers.append("bounded Flash-Next noetic loader round-trip has not been persisted")
+    if gates["flash_kernel_parity"].get("status") != "PASSED":
+        blockers.append("bounded Flash-Next native noetic kernel parity has not been persisted")
     if gates["qwen27_runtime_identity"].get("status") != "PASSED":
         blockers.append("Qwen27 current-versus-historical runtime identity archaeology has not been persisted")
     if gates["qwen27_mlp_diagnostic"].get("status") != "PASSED":
@@ -648,6 +664,7 @@ def build_program_checkpoint(
     tool_specs = registry.discover()
     return {
         "schema": SCHEMA,
+        "nomenclature_version": NOMENCLATURE_VERSION,
         "generated_at": time.time(),
         "repo_root": str(repo),
         "workspace": str(ws),
@@ -717,6 +734,9 @@ def build_program_checkpoint(
             "flash_token_ns_budget": gates["flash_token_ns_budget"]["status"],
             "flash_tensor_probe": gates["flash_tensor_probe"]["status"],
             "flash_representation_experiment": gates["flash_representation_experiment"]["status"],
+            "flash_transform_parity": gates["flash_transform_parity"]["status"],
+            "flash_loader_roundtrip": gates["flash_loader_roundtrip"]["status"],
+            "flash_kernel_parity": gates["flash_kernel_parity"]["status"],
         },
         "blockers": blockers,
         "next_actions": [
@@ -725,7 +745,7 @@ def build_program_checkpoint(
             "persist research provenance and protected benchmark receipts",
             "qualify additional providers only after their own deterministic verification closes",
             "continue the bounded protected Qwen watcher; do not treat contaminated A/B telemetry as promotion evidence",
-            "build Flash organ-by-organ from verified body identity; fill actual EBPW/token-ns fields only from native protected receipts",
+            "compose bounded Flash native-kernel evidence into a native routed-expert loader/graph; fill actual EBPW/token-ns fields only from native protected receipts",
         ],
         "claim_boundary": "This checkpoint is an evidence census; it does not certify a model, runtime, hardware accelerator, or unattended sovereignty.",
     }

@@ -15,13 +15,15 @@ import time
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from hcli.nomenclature import NOMENCLATURE_VERSION
 from hcli.persist import atomic_write_json
 
 
 SCHEMA = "hcli.agentos.overnight_handoff.v1"
 DEFAULT_NAME = "OVERNIGHT_HAWKING_HANDOFF.json"
 MODEL_LAKE_JOB = "job-2f77c1d6-e33b-44fe-bc12-549cf47805c7"
-UNATTENDED_JOB = "job-d659ef87-240c-4504-b1ee-1c0ec459deb2"
+UNATTENDED_JOB = "job-a323d5ee-404c-4708-b7a8-aea7fcd15f3a"
+FLASH_TRANSFORM_JOB = "job-db0bdba9-2515-4f68-9836-1849b435cd1d"
 
 
 def _read_object(path: Path, *, max_bytes: int = 16 * 1024 * 1024) -> Optional[Dict[str, Any]]:
@@ -109,6 +111,7 @@ def _window_summary(repo: Path) -> Dict[str, Any]:
     candidates = [
         repo / ".hcli" / "autonomy-window-verified" / "window-progress.json",
         repo / ".hcli" / "autonomy-window" / "window-progress.json",
+        repo / ".hcli" / "unattended-qwen-long" / "window-progress.json",
     ]
     progress: list[Dict[str, Any]] = []
     for path in candidates:
@@ -117,6 +120,7 @@ def _window_summary(repo: Path) -> Dict[str, Any]:
             continue
         progress.append({
             "path": str(path),
+            "window_kind": "qwen-accelerator-long" if path.parent.name == "unattended-qwen-long" else "autonomy",
             "status": value.get("status"),
             "started_at": value.get("started_at"),
             "deadline": value.get("deadline"),
@@ -173,6 +177,10 @@ def _flash_summary(repo: Path) -> Dict[str, Any]:
     token_ns = _receipt(repo, "FLASH_TOKEN_NS_BUDGET.json") or {}
     tensor_probe = _receipt(repo, "FLASH_FIRST_TENSOR_PROBE.json") or {}
     representation_experiment = _receipt(repo, "FLASH_ROUTED_EXPERT_REPRESENTATION_EXPERIMENT.json") or {}
+    transform_parity = _receipt(repo, "FLASH_FULL_TENSOR_TRANSFORM_PARITY.json") or {}
+    loader_roundtrip = _receipt(repo, "FLASH_ROUTED_EXPERT_LOADER_ROUNDTRIP.json") or {}
+    loader_roundtrip_shared = _receipt(repo, "FLASH_ROUTED_EXPERT_LOADER_ROUNDTRIP_SHARED.json") or {}
+    kernel_parity = _receipt(repo, "FLASH_NOETIC_Q4_KERNEL_PARITY.json") or {}
     source = flash.get("source_identity") or flash.get("source") or {}
     promotion = flash.get("promotion_gate") or {}
     return {
@@ -233,11 +241,50 @@ def _flash_summary(repo: Path) -> Dict[str, Any]:
             "model_loaded": representation_experiment.get("model_loaded"),
             "claim_boundary": "bounded source-layout/reference-vector evidence only; whole-model capability, native kernel, and runtime remain untested",
         },
+        "full_tensor_transform_parity": {
+            "status": transform_parity.get("status"),
+            "receipt_path": str(repo / "receipts" / "headless" / "FLASH_FULL_TENSOR_TRANSFORM_PARITY.json"),
+            "source_tensor": transform_parity.get("source_tensor"),
+            "candidates": transform_parity.get("candidates"),
+            "comparison": transform_parity.get("comparison"),
+            "transform_parity": transform_parity.get("transform_parity"),
+            "next_experiment": transform_parity.get("next_experiment"),
+            "body_mutated": transform_parity.get("body_mutated"),
+            "model_loaded": transform_parity.get("model_loaded"),
+            "claim_boundary": transform_parity.get("claim_boundary") or "full tensor transform only; whole-model loader, capability, native kernel, and runtime remain untested",
+        },
+        "noetic_loader_roundtrip": {
+            "status": loader_roundtrip.get("status"),
+            "receipt_path": str(repo / "receipts" / "headless" / "FLASH_ROUTED_EXPERT_LOADER_ROUNDTRIP.json"),
+            "candidate_id": loader_roundtrip.get("candidate_id"),
+            "representation_descriptor": loader_roundtrip.get("representation_descriptor"),
+            "serialized_descriptor_sha256": loader_roundtrip.get("serialized_descriptor_sha256"),
+            "encoded_sample": loader_roundtrip.get("encoded_sample"),
+            "loader_roundtrip": loader_roundtrip.get("loader_roundtrip"),
+            "body_mutated": loader_roundtrip.get("body_mutated"),
+            "model_loaded": loader_roundtrip.get("model_loaded"),
+            "claim_boundary": loader_roundtrip.get("claim_boundary") or "bounded descriptor round-trip only; native loader and runtime remain untested",
+            "quality_alternate_receipt": str(repo / "receipts" / "headless" / "FLASH_ROUTED_EXPERT_LOADER_ROUNDTRIP_SHARED.json") if loader_roundtrip_shared else None,
+            "quality_alternate_status": loader_roundtrip_shared.get("status"),
+        },
+        "bounded_native_kernel_parity": {
+            "status": kernel_parity.get("status"),
+            "receipt_path": str(repo / "receipts" / "headless" / "FLASH_NOETIC_Q4_KERNEL_PARITY.json"),
+            "source_tensor": kernel_parity.get("source_tensor"),
+            "noetic_representation": kernel_parity.get("noetic_representation"),
+            "native_kernel": kernel_parity.get("native_kernel"),
+            "gpu_timing": kernel_parity.get("gpu_timing"),
+            "parity": kernel_parity.get("parity"),
+            "body_mutated": kernel_parity.get("body_mutated"),
+            "model_loaded": kernel_parity.get("model_loaded"),
+            "claim_boundary": kernel_parity.get("claim_boundary") or "bounded source-block Metal evidence only; complete Flash runtime remains untested",
+            "next_action": kernel_parity.get("next_action"),
+        },
         "budgets": {
             "ebpw": {"status": ebpw.get("status"), "receipt_path": str(repo / "receipts" / "headless" / "FLASH_EBPW_BUDGET.json"), "measured": ebpw.get("measured"), "target_contract": ebpw.get("target_contract")},
             "token_ns": {"status": token_ns.get("status"), "receipt_path": str(repo / "receipts" / "headless" / "FLASH_TOKEN_NS_BUDGET.json"), "system_ledger": token_ns.get("system_ledger"), "target_contract": token_ns.get("target_contract")},
         },
-        "next_action": "Keep metadata/weights/native executable identity separate; fill complete-system byte ledger and matched dense-vs-NF rows only when the pinned source is fully ready.",
+        "next_action": "Compose bounded kernel evidence into a native routed-expert loader/graph; keep complete-system EBPW and accepted Flash TPS unmeasured until native protected execution exists.",
     }
 
 
@@ -386,11 +433,21 @@ def build_handoff(repo_root: Optional[str | os.PathLike[str]] = None, *, emit: O
     representation_experiment = _receipt(repo, "FLASH_ROUTED_EXPERT_REPRESENTATION_EXPERIMENT.json") or {}
     if representation_experiment.get("status") != "PASSED":
         blockers.append("Flash-Next source-layout representation experiment is absent or incomplete.")
+    transform_parity = _receipt(repo, "FLASH_FULL_TENSOR_TRANSFORM_PARITY.json") or {}
+    if transform_parity.get("status") != "PASSED":
+        blockers.append("Flash-Next full routed-expert transform parity is absent or incomplete.")
+    loader_roundtrip = _receipt(repo, "FLASH_ROUTED_EXPERT_LOADER_ROUNDTRIP.json") or {}
+    if loader_roundtrip.get("status") != "PASSED":
+        blockers.append("Flash-Next bounded noetic loader round-trip is absent or incomplete.")
+    kernel_parity = _receipt(repo, "FLASH_NOETIC_Q4_KERNEL_PARITY.json") or {}
+    if kernel_parity.get("status") != "PASSED":
+        blockers.append("Flash-Next bounded native noetic kernel parity is absent or incomplete.")
     protected_watch = _receipt(repo, "QWEN_PROTECTED_BENCH_READY.json") or {}
     if protected_watch.get("status") not in {"COMPLETED", "WAITING_FOR_QUIESCENCE"}:
         blockers.append("The bounded protected Qwen benchmark watcher is not in a safe waiting/completed state.")
     payload: Dict[str, Any] = {
         "schema": SCHEMA,
+        "nomenclature_version": NOMENCLATURE_VERSION,
         "generated_at": time.time(),
         "status": "READY_FOR_OVERNIGHT_CONTINUATION",
         "claim_boundary": "This handoff is a resumable status snapshot. It does not certify model quality, accelerator performance, Flash promotion, FPGA hardware, or sovereignty.",
@@ -418,7 +475,7 @@ def build_handoff(repo_root: Optional[str | os.PathLike[str]] = None, *, emit: O
         "modellake": lake,
         "fpga": _fpga_summary(repo),
         "verification": {
-            "full_suite": {"command": "pytest -q", "last_observed_status": "PASSED", "last_observed": "725 passed, 2 skipped"},
+            "full_suite": {"command": "pytest -q", "last_observed_status": "PASSED", "last_observed": "730 passed, 2 skipped"},
             "provider_focus": {"last_observed_status": "PASSED", "last_observed": "31 passed, 2 warnings"},
             "receipt_gates": {
                 "autonomy": (_receipt(repo, "HCLI_AGENTOS_AUTONOMY_GATE.json") or {}).get("status"),
@@ -427,6 +484,9 @@ def build_handoff(repo_root: Optional[str | os.PathLike[str]] = None, *, emit: O
                 "preboard": (_receipt(repo, "HCLI_AGENTOS_PREBOARD.json") or {}).get("status"),
                 "flash_pre_runtime": (_receipt(repo, "HCLI_FLASH_NEXT_PRE_RUNTIME_SCIENCE.json") or {}).get("status"),
                 "flash_representation_experiment": representation_experiment.get("status"),
+                "flash_transform_parity": transform_parity.get("status"),
+                "flash_loader_roundtrip": loader_roundtrip.get("status"),
+                "flash_kernel_parity": kernel_parity.get("status"),
                 "modellake_supervision": lake_status,
                 "unattended_window": window_status,
             },
@@ -438,6 +498,7 @@ def build_handoff(repo_root: Optional[str | os.PathLike[str]] = None, *, emit: O
             "supervise_modellake": f"python3 -m hcli agentos modellake-supervise --repo-root {repo} --job-id {MODEL_LAKE_JOB} --emit {repo / 'receipts/headless/HCLI_MODELLAKE_FLASH_ACQUISITION_SUPERVISION.json'}",
             "modellake_job_status": f"python3 -m hcli agentos background status --workspace {repo} --repo-root {repo} {MODEL_LAKE_JOB}",
             "unattended_job_status": f"python3 -m hcli agentos background status --workspace {repo} --repo-root {repo} {UNATTENDED_JOB}",
+            "flash_transform_job_status": f"python3 -m hcli agentos background status --workspace {repo} --repo-root {repo} {FLASH_TRANSFORM_JOB}",
             "refresh_initial_charge": f"python3 -m hcli agentos initial-charge --repo-root {repo} --workspace {repo / '.hcli/initial-charge'} --emit {repo / 'receipts/headless/HAWKING_INITIAL_CHARGE.json'}",
             "refresh_maps": f"python3 -m hcli agentos science-maps --repo-root {repo} --transfer-emit {repo / 'receipts/headless/QWEN38_ACCELERATOR_TRANSFER_MAP.json'} --precedent-emit {repo / 'receipts/headless/FLASH_NEXT_PRECEDENT_MAP.json'}",
             "refresh_ab": f"python3 -m hcli agentos ab-scaffold --repo-root {repo} --emit {repo / 'receipts/headless/HCLI_DENSE_VS_NF_AB_SCAFFOLD.json'}",
@@ -451,6 +512,10 @@ def build_handoff(repo_root: Optional[str | os.PathLike[str]] = None, *, emit: O
             "run_flash_tensor_probe": f"python3 -m hcli agentos flash-tensor-probe --emit {repo / 'receipts/headless/FLASH_FIRST_TENSOR_PROBE.json'}",
             "run_flash_representation_experiment": f"python3 -m hcli agentos flash-representation-experiment --emit {repo / 'receipts/headless/FLASH_ROUTED_EXPERT_REPRESENTATION_EXPERIMENT.json'}",
             "run_flash_representation_replication": f"python3 -m hcli agentos flash-representation-experiment --expert-indices 32,33,34,35,36,37,38,39 --row-start 64 --row-count 16 --emit {repo / 'receipts/headless/FLASH_ROUTED_EXPERT_REPRESENTATION_EXPERIMENT_DISJOINT.json'}",
+            "run_flash_transform_parity": f"python3 -m hcli agentos flash-transform-parity --root /Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc --chunk-rows 128 --emit {repo / 'receipts/headless/FLASH_FULL_TENSOR_TRANSFORM_PARITY.json'}",
+            "run_flash_bounded_loader_roundtrip": f"python3 -m hcli agentos flash-loader-roundtrip --root /Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc --repo-root {repo} --candidate independent_q4_g64 --emit {repo / 'receipts/headless/FLASH_ROUTED_EXPERT_LOADER_ROUNDTRIP.json'}",
+            "run_flash_bounded_loader_roundtrip_quality_alternate": f"python3 -m hcli agentos flash-loader-roundtrip --root /Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc --repo-root {repo} --candidate shared_bf16_basis_nf4_residual --emit {repo / 'receipts/headless/FLASH_ROUTED_EXPERT_LOADER_ROUNDTRIP_SHARED.json'}",
+            "run_flash_native_kernel_parity": f"{repo / '.hcli/flash-kernel-build/release-fast/examples/flash_noetic_q4_kernel_parity'} --root /Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc --reps 7 --warmup 2 --out {repo / 'receipts/headless/FLASH_NOETIC_Q4_KERNEL_PARITY.json'}",
             "resume_modellake_only_if_interrupted": f"python3 -m hcli agentos background resume --workspace {repo} --repo-root {repo} {MODEL_LAKE_JOB}",
             "do_not_start": "Do not launch or promote a new Odyssey; continue only through the existing HCLI/ModelLake authorities and governed windows.",
         },

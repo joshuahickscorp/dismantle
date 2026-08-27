@@ -1,0 +1,674 @@
+//! Bounded native-kernel parity for the pinned Flash-Next noetic Q4 descriptor.
+//!
+//! This probe reads a real routed-expert block from the exact ModelLake
+//! specimen, encodes it with the descriptor already exercised by the Python
+//! loader round-trip, and runs the existing uniform-Q4/group-64 Metal matvec.
+//! It is intentionally one source tensor block, not a model loader, decoder,
+//! token loop, capability test, complete-system EBPW result, or Flash TPS
+//! claim.
+
+#[cfg(not(target_os = "macos"))]
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    Err(std::io::Error::other("Flash noetic kernel parity requires macOS Metal").into())
+}
+
+#[cfg(target_os = "macos")]
+mod macos {
+    use half::{bf16, f16};
+    use hawking_core::metal::{MetalContext, MetalDispatchTiming};
+    use metal::Buffer;
+    use serde_json::{json, Value};
+    use sha2::{Digest, Sha256};
+    use std::env;
+    use std::error::Error;
+    use std::fs::{self, File};
+    use std::io::{Read, Seek, SeekFrom};
+    use std::path::{Path, PathBuf};
+    use std::time::Instant;
+
+    const SCHEMA: &str = "hawking.flash_noetic_q4_kernel_parity.v1";
+    const NOMENCLATURE_VERSION: &str = "HAWKING_NOMENCLATURE_V1";
+    const REPO_ID: &str = "Qwen/Qwen3.8-Flash-Next";
+    const PINNED_REVISION: &str = "34567a4712bc9766c4449e2e98e4468bfa24d915";
+    const TENSOR_NAME: &str = "model.language_model.layers.0.mlp.experts.gate_up_proj";
+    const TENSOR_SHAPE: [usize; 3] = [512, 1280, 2560];
+    const GROUP_SIZE: usize = 64;
+    const CODE_BYTES_PER_GROUP: usize = GROUP_SIZE / 2;
+    const KERNEL_NAME: &str = "qwen_uniform_q4_group64_matvec";
+    const MAX_HEADER_BYTES: u64 = 64 * 1024 * 1024;
+    const MAX_BLOCK_BYTES: usize = 8 * 1024 * 1024;
+    const DEFAULT_ROW_COUNT: usize = 128;
+    const DEFAULT_WARMUP: usize = 2;
+    const DEFAULT_REPS: usize = 7;
+    const OUTPUT_ERROR_TOLERANCE: f32 = 2.0e-3;
+
+    struct Args {
+        root: PathBuf,
+        tensor_name: String,
+        expert_index: usize,
+        row_start: usize,
+        row_count: usize,
+        warmup: usize,
+        reps: usize,
+        out: PathBuf,
+    }
+
+    struct TensorLocation {
+        tensor_name: String,
+        shard: PathBuf,
+        shard_name: String,
+        shard_size: u64,
+        header_bytes: Vec<u8>,
+        dtype: String,
+        shape: [usize; 3],
+        data_start: u64,
+        data_begin: u64,
+        data_end: u64,
+        index_sha256: String,
+    }
+
+    struct PackedQ4 {
+        codes: Vec<u8>,
+        scales_bits: Vec<u16>,
+        candidate_bytes: Vec<u8>,
+        source_rmse: f64,
+        source_max_abs_error: f32,
+    }
+
+    fn repository_root() -> PathBuf {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../..")
+            .canonicalize()
+            .unwrap_or_else(|_| PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../.."))
+    }
+
+    fn default_lake_root() -> PathBuf {
+        if let Some(value) = env::var_os("HCLI_FLASH_NEXT_ROOT") {
+            return PathBuf::from(value);
+        }
+        PathBuf::from(
+            "/Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc",
+        )
+    }
+
+    fn parse_usize(value: Option<String>, flag: &str) -> Result<usize, Box<dyn Error>> {
+        value
+            .ok_or_else(|| format!("missing value after {flag}"))?
+            .parse::<usize>()
+            .map_err(|error| format!("invalid {flag}: {error}").into())
+    }
+
+    fn parse_args() -> Result<Args, Box<dyn Error>> {
+        let root = repository_root();
+        let mut args = Args {
+            root: default_lake_root(),
+            tensor_name: TENSOR_NAME.to_owned(),
+            expert_index: 0,
+            row_start: 0,
+            row_count: DEFAULT_ROW_COUNT,
+            warmup: DEFAULT_WARMUP,
+            reps: DEFAULT_REPS,
+            out: root.join("receipts/headless/FLASH_NOETIC_Q4_KERNEL_PARITY.json"),
+        };
+        let mut values = env::args().skip(1);
+        while let Some(flag) = values.next() {
+            match flag.as_str() {
+                "--root" => args.root = PathBuf::from(values.next().ok_or("missing --root")?),
+                "--tensor-name" => {
+                    args.tensor_name = values.next().ok_or("missing --tensor-name")?
+                }
+                "--expert-index" => args.expert_index = parse_usize(values.next(), &flag)?,
+                "--row-start" => args.row_start = parse_usize(values.next(), &flag)?,
+                "--row-count" => args.row_count = parse_usize(values.next(), &flag)?,
+                "--warmup" => args.warmup = parse_usize(values.next(), &flag)?,
+                "--reps" => args.reps = parse_usize(values.next(), &flag)?,
+                "--out" => args.out = PathBuf::from(values.next().ok_or("missing --out")?),
+                "--help" | "-h" => {
+                    println!(
+                        "usage: flash_noetic_q4_kernel_parity [--root DIR] [--tensor-name NAME] \
+                         [--expert-index N] [--row-start N] [--row-count N] [--warmup N] \
+                         [--reps N] [--out FILE]"
+                    );
+                    std::process::exit(0);
+                }
+                other => return Err(format!("unknown argument {other}").into()),
+            }
+        }
+        if args.reps == 0 || args.reps > 128 {
+            return Err("--reps must be in 1..=128".into());
+        }
+        if args.warmup > 64 {
+            return Err("--warmup must be <= 64".into());
+        }
+        if args.row_count == 0 || args.row_count > TENSOR_SHAPE[1] {
+            return Err("--row-count must be in 1..=1280".into());
+        }
+        if args.row_count * TENSOR_SHAPE[2] * 2 > MAX_BLOCK_BYTES {
+            return Err("selected source block exceeds the safety limit".into());
+        }
+        Ok(args)
+    }
+
+    fn sha256_hex(bytes: &[u8]) -> String {
+        format!("{:x}", Sha256::digest(bytes))
+    }
+
+    fn read_json(path: &Path) -> Result<(Value, Vec<u8>), Box<dyn Error>> {
+        let bytes = fs::read(path)?;
+        Ok((serde_json::from_slice(&bytes)?, bytes))
+    }
+
+    fn validate_manifest(root: &Path) -> Result<Value, Box<dyn Error>> {
+        let manifest_path = Path::new("/Volumes/corpdrive/hawking-modellake/manifests/Qwen--Qwen3.8-Flash-Next@34567a4712bc.json");
+        let (manifest, bytes) = read_json(manifest_path)?;
+        let repo = manifest.get("repo").and_then(Value::as_str);
+        let revision = manifest.get("revision").and_then(Value::as_str);
+        let resolved = manifest.get("resolved_sha").and_then(Value::as_str);
+        if repo != Some(REPO_ID)
+            || revision != Some(PINNED_REVISION)
+            || resolved != Some(PINNED_REVISION)
+        {
+            return Err("ModelLake manifest is not the exact pinned Flash target".into());
+        }
+        if let Some(path) = manifest.get("path").and_then(Value::as_str) {
+            if Path::new(path).canonicalize()? != root.canonicalize()? {
+                return Err("selected specimen root does not match the pinned manifest".into());
+            }
+        }
+        Ok(json!({
+            "path": manifest_path.display().to_string(),
+            "sha256": sha256_hex(&bytes),
+            "repo": repo,
+            "revision": revision,
+            "resolved_sha": resolved,
+            "n_files": manifest.get("n_files"),
+            "bytes": manifest.get("bytes"),
+            "label": "[V]",
+        }))
+    }
+
+    fn load_tensor_location(
+        root: &Path,
+        tensor_name: &str,
+    ) -> Result<TensorLocation, Box<dyn Error>> {
+        let index_path = root.join("model.safetensors.index.json");
+        let (index, index_bytes) = read_json(&index_path)?;
+        let weight_map = index
+            .get("weight_map")
+            .and_then(Value::as_object)
+            .ok_or("safetensors index has no weight_map")?;
+        let shard_name = weight_map
+            .get(tensor_name)
+            .and_then(Value::as_str)
+            .ok_or_else(|| format!("safetensors index has no {tensor_name}"))?;
+        let shard = root.join(shard_name);
+        if shard.canonicalize()?.parent() != Some(root.canonicalize()?.as_path()) {
+            return Err("safetensors shard escapes the selected specimen".into());
+        }
+        let mut file = File::open(&shard)?;
+        let mut length_bytes = [0u8; 8];
+        file.read_exact(&mut length_bytes)?;
+        let header_len = u64::from_le_bytes(length_bytes);
+        if header_len == 0 || header_len > MAX_HEADER_BYTES {
+            return Err(format!("unsafe safetensors header length {header_len}").into());
+        }
+        let mut header_bytes = vec![0u8; header_len as usize];
+        file.read_exact(&mut header_bytes)?;
+        let header: Value = serde_json::from_slice(&header_bytes)?;
+        let tensor = header
+            .get(tensor_name)
+            .ok_or_else(|| format!("shard header has no {tensor_name}"))?;
+        let dtype = tensor
+            .get("dtype")
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_owned();
+        let shape_values = tensor
+            .get("shape")
+            .and_then(Value::as_array)
+            .ok_or("tensor header has no shape")?;
+        if shape_values.len() != 3 {
+            return Err("Flash routed-expert tensor is not rank three".into());
+        }
+        let shape = [
+            shape_values[0].as_u64().ok_or("invalid expert dimension")? as usize,
+            shape_values[1].as_u64().ok_or("invalid row dimension")? as usize,
+            shape_values[2].as_u64().ok_or("invalid column dimension")? as usize,
+        ];
+        if dtype.to_uppercase() != "BF16" || shape != TENSOR_SHAPE {
+            return Err(format!(
+                "unexpected Flash tensor contract: dtype={dtype}, shape={shape:?}"
+            )
+            .into());
+        }
+        let offsets = tensor
+            .get("data_offsets")
+            .and_then(Value::as_array)
+            .ok_or("tensor header has no data_offsets")?;
+        if offsets.len() != 2 {
+            return Err("tensor data_offsets must have two values".into());
+        }
+        let data_begin = offsets[0].as_u64().ok_or("invalid tensor data start")?;
+        let data_end = offsets[1].as_u64().ok_or("invalid tensor data end")?;
+        let expected_bytes = shape.iter().product::<usize>() * 2;
+        if data_end.checked_sub(data_begin) != Some(expected_bytes as u64) {
+            return Err("tensor data range disagrees with BF16 shape".into());
+        }
+        let shard_size = file.metadata()?.len();
+        let data_start = 8u64 + header_len;
+        if data_start.checked_add(data_end).is_none() || data_start + data_end > shard_size {
+            return Err("tensor data range exceeds shard".into());
+        }
+        Ok(TensorLocation {
+            tensor_name: tensor_name.to_owned(),
+            shard,
+            shard_name: shard_name.to_owned(),
+            shard_size,
+            header_bytes,
+            dtype,
+            shape,
+            data_start,
+            data_begin,
+            data_end,
+            index_sha256: sha256_hex(&index_bytes),
+        })
+    }
+
+    fn read_source_block(
+        location: &TensorLocation,
+        expert: usize,
+        row_start: usize,
+        row_count: usize,
+    ) -> Result<Vec<u8>, Box<dyn Error>> {
+        let cols = location.shape[2];
+        let row_width = cols * 2;
+        let first_element = (expert * location.shape[1] + row_start)
+            .checked_mul(cols)
+            .ok_or("source element offset overflow")?;
+        let offset = location
+            .data_start
+            .checked_add(location.data_begin)
+            .and_then(|value| value.checked_add((first_element * 2) as u64))
+            .ok_or("source byte offset overflow")?;
+        let byte_count = row_count * row_width;
+        let mut file = File::open(&location.shard)?;
+        file.seek(SeekFrom::Start(offset))?;
+        let mut raw = vec![0u8; byte_count];
+        file.read_exact(&mut raw)?;
+        Ok(raw)
+    }
+
+    fn bf16_at(raw: &[u8], element: usize) -> f32 {
+        let offset = element * 2;
+        bf16::from_bits(u16::from_le_bytes([raw[offset], raw[offset + 1]])).to_f32()
+    }
+
+    fn pack_q4(raw: &[u8], rows: usize, cols: usize) -> Result<PackedQ4, Box<dyn Error>> {
+        if raw.len() != rows * cols * 2 || cols % GROUP_SIZE != 0 {
+            return Err("source block does not match packed Q4 dimensions".into());
+        }
+        let groups_per_row = cols / GROUP_SIZE;
+        let group_count = rows * groups_per_row;
+        let mut codes = vec![0u8; group_count * CODE_BYTES_PER_GROUP];
+        let mut scales_bits = Vec::with_capacity(group_count);
+        let mut squared_error = 0.0f64;
+        let mut max_abs_error = 0.0f32;
+        for row in 0..rows {
+            for group in 0..groups_per_row {
+                let begin = row * cols + group * GROUP_SIZE;
+                let mut peak = 0.0f32;
+                for col in 0..GROUP_SIZE {
+                    let value = bf16_at(raw, begin + col);
+                    if !value.is_finite() {
+                        return Err("source BF16 block contains a non-finite value".into());
+                    }
+                    peak = peak.max(value.abs());
+                }
+                let stored_scale = f16::from_f32(if peak == 0.0 { 0.0 } else { peak / 7.0 });
+                let scale = stored_scale.to_f32();
+                if !scale.is_finite() {
+                    return Err("Q4 group scale is not finite".into());
+                }
+                scales_bits.push(stored_scale.to_bits());
+                let code_base = (row * groups_per_row + group) * CODE_BYTES_PER_GROUP;
+                for col in 0..GROUP_SIZE {
+                    let value = bf16_at(raw, begin + col);
+                    let q = if scale == 0.0 {
+                        0i32
+                    } else {
+                        (value / scale).round().clamp(-8.0, 7.0) as i32
+                    };
+                    let nibble = (q + 8) as u8;
+                    let slot = &mut codes[code_base + col / 2];
+                    if col % 2 == 0 {
+                        *slot |= nibble;
+                    } else {
+                        *slot |= nibble << 4;
+                    }
+                    let error = value - q as f32 * scale;
+                    squared_error += f64::from(error) * f64::from(error);
+                    max_abs_error = max_abs_error.max(error.abs());
+                }
+            }
+        }
+        let mut candidate_bytes = codes.clone();
+        for bits in &scales_bits {
+            candidate_bytes.extend_from_slice(&bits.to_le_bytes());
+        }
+        Ok(PackedQ4 {
+            codes,
+            scales_bits,
+            candidate_bytes,
+            source_rmse: (squared_error / (rows * cols) as f64).sqrt(),
+            source_max_abs_error: max_abs_error,
+        })
+    }
+
+    fn deterministic_input(cols: usize) -> Vec<f32> {
+        (0..cols)
+            .map(|index| ((index * 71 % 509) as f32 - 254.0) / 509.0)
+            .collect()
+    }
+
+    fn cpu_matvec(packed: &PackedQ4, rows: usize, cols: usize, input: &[f32]) -> Vec<f32> {
+        let groups_per_row = cols / GROUP_SIZE;
+        let mut output = vec![0.0f32; rows];
+        for row in 0..rows {
+            for group in 0..groups_per_row {
+                let group_base = row * groups_per_row + group;
+                let scale = f16::from_bits(packed.scales_bits[group_base]).to_f32();
+                let code_base = group_base * CODE_BYTES_PER_GROUP;
+                for local in 0..GROUP_SIZE {
+                    let byte = packed.codes[code_base + local / 2];
+                    let nibble = if local % 2 == 0 {
+                        byte & 0x0f
+                    } else {
+                        byte >> 4
+                    };
+                    output[row] +=
+                        (nibble as i32 - 8) as f32 * scale * input[group * GROUP_SIZE + local];
+                }
+            }
+        }
+        output
+    }
+
+    fn read_f32(buffer: &Buffer, count: usize) -> Vec<f32> {
+        let pointer = buffer.contents() as *const f32;
+        unsafe { std::slice::from_raw_parts(pointer, count) }.to_vec()
+    }
+
+    fn dispatch(
+        context: &MetalContext,
+        codes: &Buffer,
+        scales: &Buffer,
+        input: &Buffer,
+        output: &Buffer,
+        rows: usize,
+        cols: usize,
+    ) -> Result<MetalDispatchTiming, Box<dyn Error>> {
+        let rows_u32 = rows as u32;
+        let cols_u32 = cols as u32;
+        let groups_u32 = (cols / GROUP_SIZE) as u32;
+        Ok(
+            context.dispatch_threads_timed(
+                KERNEL_NAME,
+                (rows_u32, 1, 1),
+                (1, 1, 1),
+                |encoder| {
+                    encoder.set_buffer(0, Some(codes), 0);
+                    encoder.set_buffer(1, Some(scales), 0);
+                    encoder.set_buffer(2, Some(input), 0);
+                    encoder.set_buffer(3, Some(output), 0);
+                    encoder.set_bytes(4, 4, &rows_u32 as *const u32 as *const _);
+                    encoder.set_bytes(5, 4, &cols_u32 as *const u32 as *const _);
+                    encoder.set_bytes(6, 4, &groups_u32 as *const u32 as *const _);
+                },
+            )?,
+        )
+    }
+
+    fn gpu_ns(timing: MetalDispatchTiming) -> Result<u64, Box<dyn Error>> {
+        match (timing.gpu_start_ns, timing.gpu_end_ns) {
+            (Some(start), Some(end)) if end > start => Ok(end - start),
+            _ => Err("Metal completed without a usable GPU timestamp".into()),
+        }
+    }
+
+    fn output_metrics(reference: &[f32], observed: &[f32]) -> Value {
+        let mut max_abs = 0.0f32;
+        let mut squared = 0.0f64;
+        let mut left_norm = 0.0f64;
+        let mut right_norm = 0.0f64;
+        let mut dot = 0.0f64;
+        for (left, right) in reference.iter().zip(observed) {
+            let error = *left - *right;
+            max_abs = max_abs.max(error.abs());
+            squared += f64::from(error) * f64::from(error);
+            left_norm += f64::from(*left) * f64::from(*left);
+            right_norm += f64::from(*right) * f64::from(*right);
+            dot += f64::from(*left) * f64::from(*right);
+        }
+        let count = reference.len();
+        json!({
+            "count": count,
+            "max_abs_error": max_abs,
+            "rmse": (squared / count as f64).sqrt(),
+            "cosine": if left_norm > 0.0 && right_norm > 0.0 { Some(dot / (left_norm.sqrt() * right_norm.sqrt())) } else { None },
+            "finite": observed.iter().all(|value| value.is_finite()),
+            "tolerance": OUTPUT_ERROR_TOLERANCE,
+            "within_tolerance": max_abs <= OUTPUT_ERROR_TOLERANCE,
+        })
+    }
+
+    fn write_atomic(path: &Path, value: &Value) -> Result<(), Box<dyn Error>> {
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        let temporary = path.with_extension(format!("json.tmp-{}", std::process::id()));
+        fs::write(&temporary, serde_json::to_vec_pretty(value)?)?;
+        fs::rename(temporary, path)?;
+        Ok(())
+    }
+
+    fn run(args: &Args) -> Result<Value, Box<dyn Error>> {
+        let started = Instant::now();
+        let root = args.root.canonicalize()?;
+        let manifest = validate_manifest(&root)?;
+        let location = load_tensor_location(&root, &args.tensor_name)?;
+        if args.expert_index >= location.shape[0]
+            || args.row_start >= location.shape[1]
+            || args.row_count > location.shape[1] - args.row_start
+        {
+            return Err("selected expert/row window is outside the pinned tensor".into());
+        }
+        let before = fs::metadata(&location.shard)?;
+        let raw = read_source_block(&location, args.expert_index, args.row_start, args.row_count)?;
+        let source_hash = sha256_hex(&raw);
+        let packed = pack_q4(&raw, args.row_count, location.shape[2])?;
+        let input = deterministic_input(location.shape[2]);
+        let input_hash = sha256_hex(bytemuck::cast_slice(&input));
+        let expected = cpu_matvec(&packed, args.row_count, location.shape[2], &input);
+        let context = MetalContext::new_with_trace(true)?;
+        let codes = context.new_buffer_with_bytes_checked(&packed.codes)?;
+        let scales =
+            context.new_buffer_with_bytes_checked(bytemuck::cast_slice(&packed.scales_bits))?;
+        let input_buffer = context.new_buffer_with_bytes_checked(bytemuck::cast_slice(&input))?;
+        let output_buffer =
+            context.new_buffer_checked(args.row_count * std::mem::size_of::<f32>())?;
+
+        for _ in 0..args.warmup {
+            let timing = dispatch(
+                &context,
+                &codes,
+                &scales,
+                &input_buffer,
+                &output_buffer,
+                args.row_count,
+                location.shape[2],
+            )?;
+            let _ = gpu_ns(timing)?;
+        }
+        let mut gpu_samples = Vec::with_capacity(args.reps);
+        let mut host_samples = Vec::with_capacity(args.reps);
+        for _ in 0..args.reps {
+            let host_started = Instant::now();
+            let timing = dispatch(
+                &context,
+                &codes,
+                &scales,
+                &input_buffer,
+                &output_buffer,
+                args.row_count,
+                location.shape[2],
+            )?;
+            host_samples.push(host_started.elapsed().as_nanos() as u64);
+            gpu_samples.push(gpu_ns(timing)?);
+        }
+        let observed = read_f32(&output_buffer, args.row_count);
+        let parity = output_metrics(&expected, &observed);
+        if parity.get("finite").and_then(Value::as_bool) != Some(true)
+            || parity.get("within_tolerance").and_then(Value::as_bool) != Some(true)
+        {
+            return Err(format!("Flash Q4 Metal parity failed: {parity}").into());
+        }
+        let after = fs::metadata(&location.shard)?;
+        if before.len() != after.len() || before.modified().ok() != after.modified().ok() {
+            return Err("source shard changed during the bounded probe".into());
+        }
+        let mut gpu_sorted = gpu_samples.clone();
+        gpu_sorted.sort_unstable();
+        let mut host_sorted = host_samples.clone();
+        host_sorted.sort_unstable();
+        let memory = context.device_memory_limits();
+        let candidate_sha256 = sha256_hex(&packed.candidate_bytes);
+        let values = args.row_count * location.shape[2];
+        let elapsed_s = started.elapsed().as_secs_f64();
+        Ok(json!({
+            "schema": SCHEMA,
+            "nomenclature_version": NOMENCLATURE_VERSION,
+            "status": "PASSED",
+            "repo": REPO_ID,
+            "pinned_revision": PINNED_REVISION,
+            "root": root,
+            "model_lake_manifest": manifest,
+            "source_label": "[V]",
+            "derived_label": "[D]",
+            "source_tensor": {
+                "tensor_name": location.tensor_name,
+                "dtype": location.dtype,
+                "shape": location.shape,
+                "shard": location.shard,
+                "shard_name": location.shard_name,
+                "shard_size": location.shard_size,
+                "header_sha256": sha256_hex(&location.header_bytes),
+                "index_sha256": location.index_sha256,
+                "tensor_data_offsets": [location.data_begin, location.data_end],
+                "selected_expert": args.expert_index,
+                "selected_row_start": args.row_start,
+                "selected_row_count": args.row_count,
+                "selected_block_bytes": raw.len(),
+                "selected_block_sha256": source_hash,
+                "selected_shard_full_hash_recomputed": false,
+            },
+            "noetic_representation": {
+                "schema": "hcli.noetic.representation_descriptor.v1",
+                "candidate_id": "independent_q4_g64",
+                "layout": "row-major [expert, row, column]",
+                "group_size": GROUP_SIZE,
+                "code_dtype": "uint4_packed",
+                "nibble_order": "low_nibble_then_high_nibble_row_major",
+                "code_offset": 8,
+                "scale_dtype": "little_endian_float16",
+                "scale_scope": "one scale per 64 source values",
+                "candidate_bytes": packed.candidate_bytes.len(),
+                "code_bytes": packed.codes.len(),
+                "scale_bytes": packed.scales_bits.len() * 2,
+                "effective_bits_per_value": packed.candidate_bytes.len() as f64 * 8.0 / values as f64,
+                "candidate_sha256": candidate_sha256,
+                "source_to_candidate_rmse": packed.source_rmse,
+                "source_to_candidate_max_abs_error": packed.source_max_abs_error,
+                "label": "[D]",
+            },
+            "native_kernel": {
+                "kernel": KERNEL_NAME,
+                "shader_family": "qwen_uniform_q4.metal",
+                "kernel_registered": true,
+                "dispatches_per_sample": 1,
+                "grid": [args.row_count, 1, 1],
+                "threadgroup": [1, 1, 1],
+                "scope": "one Flash routed-expert source block matvec",
+                "whole_model_capability": "NOT_TESTED",
+                "whole_model_runtime": "NOT_TESTED",
+                "label": "[V]/[D]",
+            },
+            "gpu_timing": {
+                "device": context.device_name(),
+                "warmup_runs": args.warmup,
+                "measured_runs": args.reps,
+                "gpu_ns": gpu_samples,
+                "gpu_ns_min": gpu_sorted[0],
+                "gpu_ns_median": gpu_sorted[gpu_sorted.len() / 2],
+                "gpu_ns_max": *gpu_sorted.last().unwrap(),
+                "host_wall_ns": host_samples,
+                "host_wall_ns_min": host_sorted[0],
+                "host_wall_ns_median": host_sorted[host_sorted.len() / 2],
+                "host_wall_ns_max": *host_sorted.last().unwrap(),
+                "timing_authority": "Metal completed-command-buffer GPUStartTime/GPUEndTime; host wall reported separately",
+                "memory_limits": {
+                    "max_buffer_length": memory.max_buffer_length,
+                    "recommended_max_working_set_size": memory.recommended_max_working_set_size,
+                    "current_allocated_size": memory.current_allocated_size,
+                    "has_unified_memory": memory.has_unified_memory,
+                },
+            },
+            "parity": parity,
+            "input": {
+                "values": input.len(),
+                "deterministic_sha256": input_hash,
+                "definition": "((index * 71) mod 509 - 254) / 509",
+            },
+            "body_mutated": false,
+            "model_loaded": false,
+            "complete_system_ebpw": null,
+            "flash_tps": null,
+            "promotion_allowed": false,
+            "claim_boundary": "PASSED bounded source-tensor noetic Q4 Metal kernel parity and GPU timing only; no whole-model loader, capability, complete-token runtime, EBPW, or Flash TPS claim",
+            "next_action": "compose this kernel descriptor into a native routed-expert loader parity round and keep protected complete-token timing gated",
+            "elapsed_s": elapsed_s,
+        }))
+    }
+
+    pub fn main() -> Result<(), Box<dyn Error>> {
+        let args = parse_args()?;
+        let destination = args.out.clone();
+        let report = match run(&args) {
+            Ok(report) => report,
+            Err(error) => json!({
+                "schema": SCHEMA,
+                "nomenclature_version": NOMENCLATURE_VERSION,
+                "status": "FAILED",
+                "repo": REPO_ID,
+                "pinned_revision": PINNED_REVISION,
+                "error": {"type": "ProbeError", "message": error.to_string()},
+                "body_mutated": false,
+                "model_loaded": false,
+                "whole_model_capability": "NOT_TESTED",
+                "whole_model_runtime": "NOT_TESTED",
+                "promotion_allowed": false,
+            }),
+        };
+        write_atomic(&destination, &report)?;
+        println!("{}", serde_json::to_string_pretty(&report)?);
+        if report.get("status").and_then(Value::as_str) == Some("PASSED") {
+            Ok(())
+        } else {
+            Err("Flash noetic Q4 kernel parity failed; see the receipt".into())
+        }
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    macos::main()
+}

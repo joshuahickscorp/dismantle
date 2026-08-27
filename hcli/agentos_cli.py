@@ -197,6 +197,7 @@ def build_parser() -> argparse.ArgumentParser:
     flash_executable.add_argument("--kernel-parity-receipt", default=None)
     flash_executable.add_argument("--graph-component-receipt", default=None)
     flash_executable.add_argument("--component-campaign-receipt", default=None)
+    flash_executable.add_argument("--router-graph-receipt", default=None)
     flash_executable.add_argument("--emit", default=None)
     flash_executable.add_argument("--ebpw-emit", default=None)
     flash_executable.add_argument("--token-ns-emit", default=None)
@@ -259,6 +260,29 @@ def build_parser() -> argparse.ArgumentParser:
     flash_body.add_argument("--row-count", type=int, default=128)
     flash_body.add_argument("--body", default=None)
     flash_body.add_argument("--emit", default=None)
+
+    flash_matrix = sub.add_parser(
+        "flash-matrix-body",
+        help="persist one bounded source-independent Noetic Q4/G64 body for a pinned BF16 matrix",
+    )
+    flash_matrix.add_argument("--root", default=None, help="final specimen root; defaults to the canonical ModelLake specimen")
+    flash_matrix.add_argument("--repo-root", default=None)
+    flash_matrix.add_argument("--tensor-name", default="model.language_model.layers.0.mlp.gate.weight")
+    flash_matrix.add_argument("--candidate", default="independent_q4_g64")
+    flash_matrix.add_argument("--component-kind", default="router")
+    flash_matrix.add_argument("--row-start", type=int, default=0)
+    flash_matrix.add_argument("--row-count", type=int, default=128)
+    flash_matrix.add_argument("--body", default=None)
+    flash_matrix.add_argument("--emit", default=None)
+
+    flash_router_graph = sub.add_parser(
+        "flash-router-graph",
+        help="compile the bounded source-independent Flash router matrix into a Noetic graph",
+    )
+    flash_router_graph.add_argument("--repo-root", default=None)
+    flash_router_graph.add_argument("--body-receipt", default=None)
+    flash_router_graph.add_argument("--kernel-receipt", default=None)
+    flash_router_graph.add_argument("--emit", default=None)
 
     flash_campaign = sub.add_parser(
         "flash-component-campaign",
@@ -569,6 +593,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 kernel_parity_receipt=args.kernel_parity_receipt,
                 graph_component_receipt=args.graph_component_receipt,
                 component_campaign_receipt=args.component_campaign_receipt,
+                router_graph_receipt=args.router_graph_receipt,
                 emit=args.emit,
                 ebpw_emit=args.ebpw_emit,
                 token_ns_emit=args.token_ns_emit,
@@ -649,6 +674,35 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 row_start=args.row_start,
                 row_count=args.row_count,
                 body=args.body,
+                emit=args.emit,
+            )
+            _emit(report)
+            return 0 if report.get("status") == "PASSED" else 1
+
+        if args.command == "flash-matrix-body":
+            from hcli.agentos.flash_matrix_component_body import run_flash_matrix_component_body
+
+            report = run_flash_matrix_component_body(
+                root=args.root,
+                repo_root=args.repo_root,
+                tensor_name=args.tensor_name,
+                candidate_id=args.candidate,
+                component_kind=args.component_kind,
+                row_start=args.row_start,
+                row_count=args.row_count,
+                body=args.body,
+                emit=args.emit,
+            )
+            _emit(report)
+            return 0 if report.get("status") == "PASSED" else 1
+
+        if args.command == "flash-router-graph":
+            from hcli.agentos.flash_router_graph import run_flash_router_graph
+
+            report = run_flash_router_graph(
+                repo_root=args.repo_root,
+                body_receipt=args.body_receipt,
+                kernel_receipt=args.kernel_receipt,
                 emit=args.emit,
             )
             _emit(report)

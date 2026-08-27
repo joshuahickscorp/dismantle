@@ -2,43 +2,43 @@
   "body_mutated": false,
   "candidate_body": {
     "bytes": 174080,
-    "path": "/Users/scammermike/Downloads/hawking/.hcli/flash-component/flash-routed-expert-independent-q4-g64-e0-r0-128.bin",
-    "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_ROUTED_EXPERT_BODY.json",
-    "receipt_sha256": "60deabc9be0f32005679ad17a6124a56f89a791dab2c641268d9f5bc7599672b",
-    "sha256": "5be289f04c8ec072a951fdd249d21fd44d69aad8baafedde0158e77aca72aa78",
+    "path": "/Users/scammermike/Downloads/hawking/.hcli/flash-component/flash-router-independent-q4-g64-l0-r0-128.bin",
+    "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_ROUTER_COMPONENT_BODY.json",
+    "receipt_sha256": "25d0698f06c3a265a2824727ee2433e2e11ec8a96d1776bf185b2733d7117e31",
+    "sha256": "d4d583518c768ec7123ac3747b97521b3e92f8532090b956a59b7925681ec194",
     "source_independent": true
   },
   "claim_boundary": "PASSED bounded source-independent Noetic component-body load, source-reference Q4 Metal kernel parity, and GPU timing only; no whole-model loader, capability, complete-token runtime, EBPW, or Flash TPS claim",
   "complete_system_ebpw": null,
   "derived_label": "[D]",
-  "elapsed_s": 0.037696416,
+  "elapsed_s": 0.055607167,
   "flash_tps": null,
   "gpu_timing": {
     "device": "Apple M3 Ultra",
     "gpu_ns": [
-      341459,
-      327250,
-      282500,
-      331416,
-      352584,
-      271000,
-      306166
+      448459,
+      451166,
+      452625,
+      442750,
+      442084,
+      446250,
+      445750
     ],
-    "gpu_ns_max": 352584,
-    "gpu_ns_median": 327250,
-    "gpu_ns_min": 271000,
+    "gpu_ns_max": 452625,
+    "gpu_ns_median": 446250,
+    "gpu_ns_min": 442084,
     "host_wall_ns": [
-      566333,
-      590166,
-      520333,
-      583667,
-      554375,
-      471416,
-      514125
+      909333,
+      832166,
+      866250,
+      960584,
+      835750,
+      902083,
+      844875
     ],
-    "host_wall_ns_max": 590166,
-    "host_wall_ns_median": 554375,
-    "host_wall_ns_min": 471416,
+    "host_wall_ns_max": 960584,
+    "host_wall_ns_median": 866250,
+    "host_wall_ns_min": 832166,
     "measured_runs": 7,
     "memory_limits": {
       "current_allocated_size": 638976,
@@ -75,7 +75,7 @@
     "kernel": "qwen_uniform_q4_group64_matvec",
     "kernel_registered": true,
     "label": "[V]/[D]",
-    "scope": "one Flash routed-expert source block matvec",
+    "scope": "one Flash matrix row-block matvec",
     "shader_family": "qwen_uniform_q4.metal",
     "threadgroup": [
       1,
@@ -89,8 +89,8 @@
     "candidate_body_persisted": true,
     "candidate_id": "independent_q4_g64",
     "dense_rematerialization": "forbidden",
-    "descriptor_path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_ROUTED_EXPERT_LOADER_ROUNDTRIP.json",
-    "descriptor_sha256": "60e7c098c67f26013e47d3411efc554b7e8612417300eb2116d8237f53568c19",
+    "descriptor_path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_ROUTER_COMPONENT_BODY.json",
+    "descriptor_sha256": "25d0698f06c3a265a2824727ee2433e2e11ec8a96d1776bf185b2733d7117e31",
     "source_block_streamed_for_reference": true,
     "source_independent_execution": true,
     "status": "BOUNDED_NOETIC_DESCRIPTOR_AND_BODY_LOAD",
@@ -101,36 +101,36 @@
   "noetic_descriptor": {
     "candidate_id": "independent_q4_g64",
     "load_policy": "validated serialized descriptor; candidate body is not persisted by this bounded probe",
-    "path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_ROUTED_EXPERT_LOADER_ROUNDTRIP.json",
+    "path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_ROUTER_COMPONENT_BODY.json",
     "schema": "hcli.noetic.representation_descriptor.v1",
-    "sha256": "60e7c098c67f26013e47d3411efc554b7e8612417300eb2116d8237f53568c19"
+    "sha256": "25d0698f06c3a265a2824727ee2433e2e11ec8a96d1776bf185b2733d7117e31"
   },
   "noetic_representation": {
     "candidate_bytes": 174080,
     "candidate_id": "independent_q4_g64",
-    "candidate_sha256": "5be289f04c8ec072a951fdd249d21fd44d69aad8baafedde0158e77aca72aa78",
+    "candidate_sha256": "d4d583518c768ec7123ac3747b97521b3e92f8532090b956a59b7925681ec194",
     "code_bytes": 163840,
     "code_dtype": "uint4_packed",
     "code_offset": 8,
     "effective_bits_per_value": 4.25,
     "group_size": 64,
     "label": "[D]",
-    "layout": "row-major [expert, row, column]",
+    "layout": "row-major [row, column]",
     "nibble_order": "low_nibble_then_high_nibble_row_major",
     "scale_bytes": 10240,
     "scale_dtype": "little_endian_float16",
     "scale_scope": "one scale per 64 source values",
     "schema": "hcli.noetic.representation_descriptor.v1",
-    "source_to_candidate_max_abs_error": 0.0118255615234375,
-    "source_to_candidate_rmse": 0.001611581793462567
+    "source_to_candidate_max_abs_error": 0.09716796875,
+    "source_to_candidate_rmse": 0.004324238964848516
   },
   "nomenclature_version": "HAWKING_NOMENCLATURE_V1",
   "parity": {
-    "cosine": 0.9999999999999637,
+    "cosine": 0.9999999999999728,
     "count": 128,
     "finite": true,
-    "max_abs_error": 1.564621925354004e-7,
-    "rmse": 5.2199908547982395e-8,
+    "max_abs_error": 2.384185791015625e-7,
+    "rmse": 7.272206036371456e-8,
     "tolerance": 0.0020000000949949026,
     "within_tolerance": true
   },
@@ -142,27 +142,26 @@
   "source_label": "[V]",
   "source_tensor": {
     "dtype": "BF16",
-    "header_sha256": "d482a7b5ad9050e1ec1541aa95e6ce3e836d943641748dbb0836f0c5232e3f9d",
+    "header_sha256": "931bf5e2754636596a8f1032d56ff6db6d113d94f78c3a9a890bb2d9ab9b6eec",
     "index_sha256": "99e815241ef03325536b0aaa4441deea45174c17fae31e10f0bb456410c590de",
     "selected_block_bytes": 655360,
-    "selected_block_sha256": "033fdf732c60ab90664b73e1b72dedd53b9fc92490048eabfc7e862eaab48060",
+    "selected_block_sha256": "eec2355a41333751d8fa08ca04791d79075044dc9b90181acd68c14f65aa2a75",
     "selected_expert": 0,
     "selected_row_count": 128,
     "selected_row_start": 0,
     "selected_shard_full_hash_recomputed": false,
     "shape": [
       512,
-      1280,
       2560
     ],
-    "shard": "/Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc/model-00002-of-00131.safetensors",
-    "shard_name": "model-00002-of-00131.safetensors",
-    "shard_size": 3355443368,
+    "shard": "/Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc/model-00003-of-00131.safetensors",
+    "shard_name": "model-00003-of-00131.safetensors",
+    "shard_size": 1832518264,
     "tensor_data_offsets": [
-      0,
-      3355443200
+      1677721600,
+      1680343040
     ],
-    "tensor_name": "model.language_model.layers.0.mlp.experts.gate_up_proj"
+    "tensor_name": "model.language_model.layers.0.mlp.gate.weight"
   },
   "status": "PASSED"
 }

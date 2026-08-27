@@ -227,6 +227,12 @@ def _validate_component(
         errors.append("body and kernel tensor names disagree")
     if body_source.get("shape") != kernel_source.get("shape"):
         errors.append("body and kernel tensor shapes disagree")
+    if body_source.get("dtype") != kernel_source.get("dtype"):
+        errors.append("body and kernel tensor dtypes disagree")
+    if body_source.get("bytes") != kernel_source.get("selected_block_bytes"):
+        errors.append("body and kernel source-block sizes disagree")
+    if body_source.get("payload_sha256") != kernel_source.get("selected_block_sha256"):
+        errors.append("body and kernel source-block hashes disagree")
 
     identities = {
         "body": _identity(body),

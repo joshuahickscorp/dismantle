@@ -187,6 +187,9 @@ def _flash_summary(repo: Path) -> Dict[str, Any]:
     component_body = _receipt(repo, "FLASH_NOETIC_ROUTED_EXPERT_BODY.json") or {}
     component_campaign = _receipt(repo, "FLASH_NOETIC_ROUTED_EXPERT_COMPONENT_CAMPAIGN.json") or {}
     graph_component = _receipt(repo, "FLASH_NOETIC_ROUTED_EXPERT_GRAPH.json") or {}
+    router_body = _receipt(repo, "FLASH_NOETIC_ROUTER_COMPONENT_BODY.json") or {}
+    router_kernel = _receipt(repo, "FLASH_NOETIC_ROUTER_COMPONENT_KERNEL_PARITY.json") or {}
+    router_graph = _receipt(repo, "FLASH_NOETIC_ROUTER_GRAPH.json") or {}
     source = flash.get("source_identity") or flash.get("source") or {}
     promotion = flash.get("promotion_gate") or {}
     return {
@@ -320,6 +323,39 @@ def _flash_summary(repo: Path) -> Dict[str, Any]:
             "promotion_allowed": component_campaign.get("promotion_allowed"),
             "claim_boundary": component_campaign.get("claim_boundary"),
             "next_action": component_campaign.get("next_action"),
+        },
+        "source_independent_router_component": {
+            "status": router_body.get("status"),
+            "receipt_path": str(repo / "receipts" / "headless" / "FLASH_NOETIC_ROUTER_COMPONENT_BODY.json"),
+            "component_kind": router_body.get("component_kind"),
+            "tensor_name": router_body.get("tensor_name"),
+            "source_block": router_body.get("source_block"),
+            "representation_descriptor": router_body.get("representation_descriptor"),
+            "body": router_body.get("body"),
+            "source_independent": router_body.get("source_independent"),
+            "candidate_body_persisted": router_body.get("candidate_body_persisted"),
+            "native_kernel": router_kernel.get("native_kernel"),
+            "gpu_timing": router_kernel.get("gpu_timing"),
+            "parity": router_kernel.get("parity"),
+            "native_loader": router_kernel.get("native_loader"),
+            "claim_boundary": router_body.get("claim_boundary"),
+            "next_action": router_body.get("next_action"),
+        },
+        "bounded_noetic_router_graph": {
+            "status": router_graph.get("status"),
+            "component_status": router_graph.get("component_status"),
+            "receipt_path": str(repo / "receipts" / "headless" / "FLASH_NOETIC_ROUTER_GRAPH.json"),
+            "candidate_id": router_graph.get("candidate_id"),
+            "component_window": router_graph.get("component_window"),
+            "source_independent_execution": router_graph.get("source_independent_execution"),
+            "candidate_body_persisted": router_graph.get("candidate_body_persisted"),
+            "physical_graph": router_graph.get("physical_graph"),
+            "noetic_ir": router_graph.get("noetic_ir"),
+            "whole_model_capability": router_graph.get("whole_model_capability"),
+            "complete_token_runtime": router_graph.get("complete_token_runtime"),
+            "promotion_allowed": router_graph.get("promotion_allowed"),
+            "claim_boundary": router_graph.get("claim_boundary"),
+            "next_action": router_graph.get("next_action"),
         },
         "bounded_noetic_graph_component": {
             "status": graph_component.get("status"),
@@ -461,6 +497,8 @@ def build_handoff(repo_root: Optional[str | os.PathLike[str]] = None, *, emit: O
     destination = Path(emit).expanduser().resolve() if emit else repo / "receipts" / "headless" / DEFAULT_NAME
     jobs = _background(repo)
     flash = _flash_summary(repo)
+    router_body = flash.get("source_independent_router_component") or {}
+    router_graph = flash.get("bounded_noetic_router_graph") or {}
     lake = _model_lake_summary(repo)
     window = _window_summary(repo)
     promotion_status = (flash.get("promotion") or {}).get("status")
@@ -505,6 +543,10 @@ def build_handoff(repo_root: Optional[str | os.PathLike[str]] = None, *, emit: O
     component_campaign = _receipt(repo, "FLASH_NOETIC_ROUTED_EXPERT_COMPONENT_CAMPAIGN.json") or {}
     if component_campaign.get("status") != "PASSED" or component_campaign.get("source_independent_execution") is not True or component_campaign.get("candidate_body_persisted") is not True:
         blockers.append("Flash-Next bounded multi-component Noetic campaign is absent or incomplete.")
+    if router_body.get("status") != "PASSED" or router_body.get("source_independent") is not True or router_body.get("candidate_body_persisted") is not True:
+        blockers.append("Flash-Next bounded source-independent router matrix body is absent or incomplete.")
+    if router_graph.get("status") != "PASSED" or router_graph.get("promotion_allowed") is not False:
+        blockers.append("Flash-Next bounded Noetic router graph is absent or incomplete.")
     graph_component = _receipt(repo, "FLASH_NOETIC_ROUTED_EXPERT_GRAPH.json") or {}
     if graph_component.get("status") != "PASSED" or graph_component.get("promotion_allowed") is not False:
         blockers.append("Flash-Next bounded Noetic routed-expert graph component is absent or incomplete.")
@@ -541,7 +583,7 @@ def build_handoff(repo_root: Optional[str | os.PathLike[str]] = None, *, emit: O
         "modellake": lake,
         "fpga": _fpga_summary(repo),
         "verification": {
-            "full_suite": {"command": "pytest -q", "last_observed_status": "PASSED", "last_observed": "732 passed, 2 skipped"},
+            "full_suite": {"command": "pytest -q", "last_observed_status": "PASSED", "last_observed": "733 passed, 2 skipped"},
             "provider_focus": {"last_observed_status": "PASSED", "last_observed": "30 passed, 2 warnings"},
             "receipt_gates": {
                 "autonomy": (_receipt(repo, "HCLI_AGENTOS_AUTONOMY_GATE.json") or {}).get("status"),
@@ -556,6 +598,8 @@ def build_handoff(repo_root: Optional[str | os.PathLike[str]] = None, *, emit: O
                 "flash_component_body": component_body.get("status"),
                 "flash_component_campaign": component_campaign.get("status"),
                 "flash_graph_component": graph_component.get("status"),
+                "flash_router_component_body": router_body.get("status"),
+                "flash_router_graph": router_graph.get("status"),
                 "modellake_supervision": lake_status,
                 "unattended_window": window_status,
             },
@@ -581,6 +625,8 @@ def build_handoff(repo_root: Optional[str | os.PathLike[str]] = None, *, emit: O
             "run_flash_component_body": f"python3 -m hcli agentos flash-component-body --root /Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc --repo-root {repo} --emit {repo / 'receipts/headless/FLASH_NOETIC_ROUTED_EXPERT_BODY.json'}",
             "run_flash_component_campaign": f"python3 -m hcli agentos flash-component-campaign --repo-root {repo} --emit {repo / 'receipts/headless/FLASH_NOETIC_ROUTED_EXPERT_COMPONENT_CAMPAIGN.json'}",
             "run_flash_graph_component": f"python3 -m hcli agentos flash-graph-component --repo-root {repo} --emit {repo / 'receipts/headless/FLASH_NOETIC_ROUTED_EXPERT_GRAPH.json'}",
+            "run_flash_router_component_body": f"python3 -m hcli agentos flash-matrix-body --root /Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc --repo-root {repo} --tensor-name model.language_model.layers.0.mlp.gate.weight --component-kind router --emit {repo / 'receipts/headless/FLASH_NOETIC_ROUTER_COMPONENT_BODY.json'}",
+            "run_flash_router_graph": f"python3 -m hcli agentos flash-router-graph --repo-root {repo} --emit {repo / 'receipts/headless/FLASH_NOETIC_ROUTER_GRAPH.json'}",
             "run_flash_tensor_probe": f"python3 -m hcli agentos flash-tensor-probe --emit {repo / 'receipts/headless/FLASH_FIRST_TENSOR_PROBE.json'}",
             "run_flash_representation_experiment": f"python3 -m hcli agentos flash-representation-experiment --emit {repo / 'receipts/headless/FLASH_ROUTED_EXPERT_REPRESENTATION_EXPERIMENT.json'}",
             "run_flash_representation_replication": f"python3 -m hcli agentos flash-representation-experiment --expert-indices 32,33,34,35,36,37,38,39 --row-start 64 --row-count 16 --emit {repo / 'receipts/headless/FLASH_ROUTED_EXPERT_REPRESENTATION_EXPERIMENT_DISJOINT.json'}",

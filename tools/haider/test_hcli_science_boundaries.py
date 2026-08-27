@@ -16,6 +16,7 @@ from hcli.agentos import flash_transform_parity
 from hcli.agentos import flash_loader_roundtrip
 from hcli.agentos import flash_graph_component
 from hcli.agentos import flash_component_campaign
+from hcli.agentos import flash_router_graph
 from hcli.flash_next import PINNED_REVISION
 from hcli.agentos.fpga_preboard import simulate_partition
 from hcli.agentos.protected_benchmark_watcher import _classify_blockers
@@ -527,7 +528,7 @@ def test_flash_component_campaign_composes_two_source_independent_blocks(tmp_pat
             "candidate_body_persisted": True,
             "body_mutated": False,
             "model_loaded": False,
-            "source_block": {**tensor, "expert_index": 0, "row_start": row_start, "row_count": 128},
+            "source_block": {**tensor, "expert_index": 0, "row_start": row_start, "row_count": 128, "bytes": 655360, "payload_sha256": "a" * 64},
             "body": {
                 "path": str(body_path),
                 "sha256": hashlib.sha256(body_bytes).hexdigest(),
@@ -543,7 +544,7 @@ def test_flash_component_campaign_composes_two_source_independent_blocks(tmp_pat
             "pinned_revision": revision,
             "root": specimen,
             "model_lake_manifest": manifest,
-            "source_tensor": {**tensor, "selected_expert": 0, "selected_row_start": row_start, "selected_row_count": 128, "selected_block_bytes": 655360},
+            "source_tensor": {**tensor, "selected_expert": 0, "selected_row_start": row_start, "selected_row_count": 128, "selected_block_bytes": 655360, "selected_block_sha256": "a" * 64},
             "noetic_descriptor": {"schema": "hcli.noetic.representation_descriptor.v1"},
             "noetic_representation": {"candidate_id": "independent_q4_g64"},
             "native_loader": {"status": "BOUNDED_NOETIC_DESCRIPTOR_AND_BODY_LOAD", "candidate_id": "independent_q4_g64", "descriptor_sha256": "d" * 64, "source_independent_execution": True, "candidate_body_persisted": True},
@@ -571,6 +572,80 @@ def test_flash_component_campaign_composes_two_source_independent_blocks(tmp_pat
     assert result["physical_graph"]["qualification"] == "BOUNDED_MULTI_COMPONENT_ONLY"
     assert any(node["id"].startswith("e0_r128_128:") for node in result["physical_graph"]["computation"])
     assert result["noetic_ir"]["complete_model"] is False
+
+
+def test_flash_router_graph_compiles_rank_two_source_independent_body(tmp_path):
+    root = tmp_path / "repo"
+    receipts = root / "receipts" / "headless"
+    receipts.mkdir(parents=True)
+    specimen = str(tmp_path / "specimen")
+    revision = PINNED_REVISION
+    body_bytes = bytes(range(8))
+    body_path = tmp_path / "router.bin"
+    body_path.write_bytes(body_bytes)
+    body_receipt_path = receipts / "router-body.json"
+    tensor = {
+        "tensor_name": "model.language_model.layers.0.mlp.gate.weight",
+        "dtype": "BF16",
+        "shape": [512, 2560],
+    }
+    descriptor = {
+        "schema": "hcli.noetic.representation_descriptor.v1",
+        "candidate_id": "independent_q4_g64",
+        "source_tensor": {**tensor, "layout": "row-major [row, column]", "group_size": 64},
+        "storage": {
+            "code_dtype": "uint4_packed",
+            "code_offset": 8,
+            "nibble_order": "low_nibble_then_high_nibble_row_major",
+            "scale_dtype": "little_endian_float16",
+        },
+        "transform_reference": {"status": "BOUNDED_TENSOR_TRANSFORM_ONLY"},
+        "loader_policy": {"source_mutation": False, "model_load": False, "dense_rematerialization": "forbidden"},
+    }
+    body = {
+        "schema": "hcli.agentos.flash_noetic_component_body.v1",
+        "status": "PASSED",
+        "repo": "Qwen/Qwen3.8-Flash-Next",
+        "pinned_revision": revision,
+        "root": specimen,
+        "component_kind": "router",
+        "candidate_id": "independent_q4_g64",
+        "source_independent": True,
+        "candidate_body_persisted": True,
+        "body_mutated": False,
+        "model_loaded": False,
+        "source_block": {**tensor, "row_start": 0, "row_count": 128, "bytes": 655360, "payload_sha256": "b" * 64},
+        "representation_descriptor": descriptor,
+        "body": {"path": str(body_path), "sha256": hashlib.sha256(body_bytes).hexdigest(), "bytes": len(body_bytes)},
+    }
+    body_receipt_path.write_text(json.dumps(body), encoding="utf-8")
+    kernel_receipt_path = receipts / "router-kernel.json"
+    kernel = {
+        "schema": "hawking.flash_noetic_q4_kernel_parity.v1",
+        "status": "PASSED",
+        "repo": "Qwen/Qwen3.8-Flash-Next",
+        "pinned_revision": revision,
+        "root": specimen,
+        "source_tensor": {**tensor, "selected_row_start": 0, "selected_row_count": 128, "selected_block_bytes": 655360, "selected_block_sha256": "b" * 64},
+        "native_loader": {"status": "BOUNDED_NOETIC_DESCRIPTOR_AND_BODY_LOAD", "source_independent_execution": True, "candidate_body_persisted": True},
+        "native_kernel": {"kernel": "qwen_uniform_q4_group64_matvec", "kernel_registered": True, "dispatches_per_sample": 1},
+        "parity": {"within_tolerance": True},
+        "candidate_body": {"path": str(body_path), "sha256": body["body"]["sha256"], "bytes": len(body_bytes)},
+        "body_mutated": False,
+        "model_loaded": False,
+    }
+    kernel_receipt_path.write_text(json.dumps(kernel), encoding="utf-8")
+    result = flash_router_graph.run_flash_router_graph(
+        repo_root=root,
+        body_receipt=body_receipt_path,
+        kernel_receipt=kernel_receipt_path,
+        emit=receipts / "router-graph.json",
+    )
+    assert result["status"] == "PASSED"
+    assert result["component_status"] == "BOUNDED_ROUTER_MATRIX_COMPILED"
+    assert result["physical_graph"]["qualification"] == "BOUNDED_ROUTER_MATRIX_ONLY"
+    assert result["noetic_ir"]["complete_model"] is False
+    assert result["promotion_allowed"] is False
 
 
 def test_canonical_nomenclature_is_versioned_without_renaming_legacy_terms():
@@ -652,6 +727,8 @@ def test_cli_exposes_general_science_surfaces():
     assert parser.parse_args(["flash-transform-parity"]).command == "flash-transform-parity"
     assert parser.parse_args(["flash-loader-roundtrip"]).command == "flash-loader-roundtrip"
     assert parser.parse_args(["flash-component-body"]).command == "flash-component-body"
+    assert parser.parse_args(["flash-matrix-body"]).command == "flash-matrix-body"
+    assert parser.parse_args(["flash-router-graph"]).command == "flash-router-graph"
     assert parser.parse_args(["flash-component-campaign"]).command == "flash-component-campaign"
     assert parser.parse_args(["flash-graph-component"]).command == "flash-graph-component"
     assert parser.parse_args(["flash-executable", "--kernel-parity-receipt", "kernel.json"]).kernel_parity_receipt == "kernel.json"

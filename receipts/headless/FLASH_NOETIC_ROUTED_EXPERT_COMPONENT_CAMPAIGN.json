@@ -44,29 +44,29 @@
       "gpu_timing": {
         "device": "Apple M3 Ultra",
         "gpu_ns": [
-          346500,
-          263250,
-          256750,
-          313166,
-          347000,
-          316000,
-          345000
+          341459,
+          327250,
+          282500,
+          331416,
+          352584,
+          271000,
+          306166
         ],
-        "gpu_ns_max": 347000,
-        "gpu_ns_median": 316000,
-        "gpu_ns_min": 256750,
+        "gpu_ns_max": 352584,
+        "gpu_ns_median": 327250,
+        "gpu_ns_min": 271000,
         "host_wall_ns": [
-          578292,
-          461209,
-          504459,
-          562958,
-          674375,
-          554750,
-          546959
+          566333,
+          590166,
+          520333,
+          583667,
+          554375,
+          471416,
+          514125
         ],
-        "host_wall_ns_max": 674375,
-        "host_wall_ns_median": 554750,
-        "host_wall_ns_min": 461209,
+        "host_wall_ns_max": 590166,
+        "host_wall_ns_median": 554375,
+        "host_wall_ns_min": 471416,
         "measured_runs": 7,
         "memory_limits": {
           "current_allocated_size": 638976,
@@ -82,7 +82,7 @@
         "label": "[V]",
         "path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_Q4_BODY_KERNEL_PARITY.json",
         "schema": "hawking.flash_noetic_q4_kernel_parity.v1",
-        "sha256": "b62c3e78a7fbb0aac0a5af6a1af6962662af7eb946e8edc871153fc8b874677d",
+        "sha256": "28f6dcdcc9a9d77b39c5e803ca9a902cb6cff75e37fa115e5effd01dc85d7295",
         "status": "PASSED"
       },
       "parity": {
@@ -313,9 +313,9 @@
     }
   ],
   "elapsed_s": 0.003,
-  "finished_at": 1787819047.7671309,
+  "finished_at": 1787820648.1927838,
   "flash_tps": null,
-  "generated_at": 1787819047.764578,
+  "generated_at": 1787820648.190166,
   "inputs": {
     "components": [
       {
@@ -331,7 +331,7 @@
           "label": "[V]",
           "path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_Q4_BODY_KERNEL_PARITY.json",
           "schema": "hawking.flash_noetic_q4_kernel_parity.v1",
-          "sha256": "b62c3e78a7fbb0aac0a5af6a1af6962662af7eb946e8edc871153fc8b874677d",
+          "sha256": "28f6dcdcc9a9d77b39c5e803ca9a902cb6cff75e37fa115e5effd01dc85d7295",
           "status": "PASSED"
         }
       },
@@ -846,7 +846,7 @@
         "label": "[V]",
         "path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_Q4_BODY_KERNEL_PARITY.json",
         "schema": "hawking.flash_noetic_q4_kernel_parity.v1",
-        "sha256": "b62c3e78a7fbb0aac0a5af6a1af6962662af7eb946e8edc871153fc8b874677d",
+        "sha256": "28f6dcdcc9a9d77b39c5e803ca9a902cb6cff75e37fa115e5effd01dc85d7295",
         "status": "PASSED"
       },
       {
@@ -871,8 +871,8 @@
         "status": "PASSED"
       }
     ],
-    "fingerprint": "ef43c1c65829e2e240e841b4c9856567eabaeaaeba63cc641a34e382e7af5055",
-    "generated_at": 1787819047.766955,
+    "fingerprint": "da2cfb70c04a4626f6a060ea4ec654b2ddd740b02ed28975d57d57801f8dfcbe",
+    "generated_at": 1787820648.192599,
     "graph_execution_observed": false,
     "memory": [
       {

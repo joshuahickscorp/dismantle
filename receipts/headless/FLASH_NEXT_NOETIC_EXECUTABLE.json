@@ -86,29 +86,29 @@
         "gpu_timing": {
           "device": "Apple M3 Ultra",
           "gpu_ns": [
-            346500,
-            263250,
-            256750,
-            313166,
-            347000,
-            316000,
-            345000
+            341459,
+            327250,
+            282500,
+            331416,
+            352584,
+            271000,
+            306166
           ],
-          "gpu_ns_max": 347000,
-          "gpu_ns_median": 316000,
-          "gpu_ns_min": 256750,
+          "gpu_ns_max": 352584,
+          "gpu_ns_median": 327250,
+          "gpu_ns_min": 271000,
           "host_wall_ns": [
-            578292,
-            461209,
-            504459,
-            562958,
-            674375,
-            554750,
-            546959
+            566333,
+            590166,
+            520333,
+            583667,
+            554375,
+            471416,
+            514125
           ],
-          "host_wall_ns_max": 674375,
-          "host_wall_ns_median": 554750,
-          "host_wall_ns_min": 461209,
+          "host_wall_ns_max": 590166,
+          "host_wall_ns_median": 554375,
+          "host_wall_ns_min": 471416,
           "measured_runs": 7,
           "memory_limits": {
             "current_allocated_size": 638976,
@@ -267,7 +267,7 @@
           "row_start": 0
         }
       ],
-      "fingerprint": "ef43c1c65829e2e240e841b4c9856567eabaeaaeba63cc641a34e382e7af5055",
+      "fingerprint": "da2cfb70c04a4626f6a060ea4ec654b2ddd740b02ed28975d57d57801f8dfcbe",
       "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_ROUTED_EXPERT_COMPONENT_CAMPAIGN.json",
       "source_independent_execution": true,
       "status": "BOUNDED_MULTI_COMPONENT_COMPILED",
@@ -291,6 +291,19 @@
       "support_misc",
       "recurrent_state"
     ],
+    "router_component": {
+      "candidate_body_persisted": true,
+      "complete_token_runtime": "NOT_TESTED",
+      "component_window": {
+        "row_count": 128,
+        "row_start": 0
+      },
+      "fingerprint": "9764c8703c65ebb3c52d3b16813cb132cde70ffc4efde2989c73f63aeb9e7407",
+      "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_ROUTER_GRAPH.json",
+      "source_independent_execution": true,
+      "status": "BOUNDED_ROUTER_MATRIX_COMPILED",
+      "whole_model_capability": "NOT_TESTED"
+    },
     "status": "BOUNDED_MULTI_COMPONENT_COMPILED",
     "text_only_vision_bypass": "CONDITIONAL_AND_UNPROVEN"
   },
@@ -359,7 +372,7 @@
         }
       ],
       "label": "[D]",
-      "physical_graph_fingerprint": "ef43c1c65829e2e240e841b4c9856567eabaeaaeba63cc641a34e382e7af5055",
+      "physical_graph_fingerprint": "da2cfb70c04a4626f6a060ea4ec654b2ddd740b02ed28975d57d57801f8dfcbe",
       "receipt": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_ROUTED_EXPERT_COMPONENT_CAMPAIGN.json",
       "scope": "bounded routed-expert body campaign only; not complete Flash execution",
       "source_independent_execution": true,
@@ -378,6 +391,16 @@
       "label": "[D]",
       "receipt": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_Q4_BODY_KERNEL_PARITY.json",
       "scope": "one real routed-expert source block only; not complete Flash execution",
+      "source_independent_execution": true,
+      "status": "PASSED"
+    },
+    "bounded_router_matrix_evidence": {
+      "candidate_body_persisted": true,
+      "component_status": "BOUNDED_ROUTER_MATRIX_COMPILED",
+      "label": "[D]",
+      "physical_graph_fingerprint": "9764c8703c65ebb3c52d3b16813cb132cde70ffc4efde2989c73f63aeb9e7407",
+      "receipt": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_ROUTER_GRAPH.json",
+      "scope": "bounded router matrix matvec only; sigmoid/top-k and complete Flash execution remain unimplemented",
       "source_independent_execution": true,
       "status": "PASSED"
     },
@@ -558,7 +581,7 @@
   "qualification": false,
   "runtime_genome": {
     "compiler_identity": null,
-    "component_campaign_fingerprint": "ef43c1c65829e2e240e841b4c9856567eabaeaaeba63cc641a34e382e7af5055",
+    "component_campaign_fingerprint": "da2cfb70c04a4626f6a060ea4ec654b2ddd740b02ed28975d57d57801f8dfcbe",
     "device_identity": null,
     "executable_sha256": null,
     "graph_fingerprint": "f8345fdeaf302a708c8d6ec10181410650bb2d19765c427e6e22cc6a27efa63f",
@@ -567,6 +590,7 @@
     "loader_sha256": null,
     "receipt_schema": "hcli.agentos.flash_next_noetic_executable.v1",
     "representation_manifest_sha256": null,
+    "router_graph_fingerprint": "9764c8703c65ebb3c52d3b16813cb132cde70ffc4efde2989c73f63aeb9e7407",
     "status": "BOUNDED_MULTI_COMPONENT_ONLY"
   },
   "schema": "hcli.agentos.flash_next_noetic_executable.v1",
@@ -613,29 +637,29 @@
         "gpu_timing": {
           "device": "Apple M3 Ultra",
           "gpu_ns": [
-            346500,
-            263250,
-            256750,
-            313166,
-            347000,
-            316000,
-            345000
+            341459,
+            327250,
+            282500,
+            331416,
+            352584,
+            271000,
+            306166
           ],
-          "gpu_ns_max": 347000,
-          "gpu_ns_median": 316000,
-          "gpu_ns_min": 256750,
+          "gpu_ns_max": 352584,
+          "gpu_ns_median": 327250,
+          "gpu_ns_min": 271000,
           "host_wall_ns": [
-            578292,
-            461209,
-            504459,
-            562958,
-            674375,
-            554750,
-            546959
+            566333,
+            590166,
+            520333,
+            583667,
+            554375,
+            471416,
+            514125
           ],
-          "host_wall_ns_max": 674375,
-          "host_wall_ns_median": 554750,
-          "host_wall_ns_min": 461209,
+          "host_wall_ns_max": 590166,
+          "host_wall_ns_median": 554375,
+          "host_wall_ns_min": 471416,
           "measured_runs": 7,
           "memory_limits": {
             "current_allocated_size": 638976,
@@ -651,7 +675,7 @@
           "label": "[V]",
           "path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_Q4_BODY_KERNEL_PARITY.json",
           "schema": "hawking.flash_noetic_q4_kernel_parity.v1",
-          "sha256": "b62c3e78a7fbb0aac0a5af6a1af6962662af7eb946e8edc871153fc8b874677d",
+          "sha256": "28f6dcdcc9a9d77b39c5e803ca9a902cb6cff75e37fa115e5effd01dc85d7295",
           "status": "PASSED"
         },
         "parity": {
@@ -1325,7 +1349,7 @@
           "label": "[V]",
           "path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_Q4_BODY_KERNEL_PARITY.json",
           "schema": "hawking.flash_noetic_q4_kernel_parity.v1",
-          "sha256": "b62c3e78a7fbb0aac0a5af6a1af6962662af7eb946e8edc871153fc8b874677d",
+          "sha256": "28f6dcdcc9a9d77b39c5e803ca9a902cb6cff75e37fa115e5effd01dc85d7295",
           "status": "PASSED"
         },
         {
@@ -1350,8 +1374,8 @@
           "status": "PASSED"
         }
       ],
-      "fingerprint": "ef43c1c65829e2e240e841b4c9856567eabaeaaeba63cc641a34e382e7af5055",
-      "generated_at": 1787819047.766955,
+      "fingerprint": "da2cfb70c04a4626f6a060ea4ec654b2ddd740b02ed28975d57d57801f8dfcbe",
+      "generated_at": 1787820648.192599,
       "graph_execution_observed": false,
       "memory": [
         {
@@ -1428,7 +1452,7 @@
     },
     "promotion_allowed": false,
     "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_ROUTED_EXPERT_COMPONENT_CAMPAIGN.json",
-    "receipt_sha256": "b036936db4a5e6a04716a09a5696f8f1ad0850dad8271af6118583bd1ece96c2",
+    "receipt_sha256": "cadba78bad512d0794eb94bfe432faeeb848d4440bc4488b4e90c5b9e9b6dabb",
     "schema": "hcli.agentos.flash_noetic_component_campaign.v1",
     "semantic_type": "NoeticExecutableCandidate",
     "source_identity": {
@@ -1776,6 +1800,8 @@
     "bounded_noetic_graph_component_receipt": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_ROUTED_EXPERT_GRAPH.json",
     "bounded_probe_receipt": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_FIRST_TENSOR_PROBE.json",
     "bounded_representation_experiment_receipt": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_ROUTED_EXPERT_REPRESENTATION_EXPERIMENT.json",
+    "bounded_router_graph_observed": true,
+    "bounded_router_graph_receipt": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_ROUTER_GRAPH.json",
     "bounded_source_layout_experiment_observed": true,
     "bounded_source_slice_observed": true,
     "bounded_transform_parity_receipt": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_FULL_TENSOR_TRANSFORM_PARITY.json",
@@ -1806,29 +1832,29 @@
     "gpu_timing": {
       "device": "Apple M3 Ultra",
       "gpu_ns": [
-        346500,
-        263250,
-        256750,
-        313166,
-        347000,
-        316000,
-        345000
+        341459,
+        327250,
+        282500,
+        331416,
+        352584,
+        271000,
+        306166
       ],
-      "gpu_ns_max": 347000,
-      "gpu_ns_median": 316000,
-      "gpu_ns_min": 256750,
+      "gpu_ns_max": 352584,
+      "gpu_ns_median": 327250,
+      "gpu_ns_min": 271000,
       "host_wall_ns": [
-        578292,
-        461209,
-        504459,
-        562958,
-        674375,
-        554750,
-        546959
+        566333,
+        590166,
+        520333,
+        583667,
+        554375,
+        471416,
+        514125
       ],
-      "host_wall_ns_max": 674375,
-      "host_wall_ns_median": 554750,
-      "host_wall_ns_min": 461209,
+      "host_wall_ns_max": 590166,
+      "host_wall_ns_median": 554375,
+      "host_wall_ns_min": 471416,
       "measured_runs": 7,
       "memory_limits": {
         "current_allocated_size": 638976,
@@ -1887,7 +1913,7 @@
       "whole_model_capability": "NOT_TESTED",
       "whole_model_runtime": "NOT_TESTED"
     },
-    "next_action": "compose the source-independent component body into the routed-expert graph while keeping protected complete-token timing gated",
+    "next_action": "compose the source-independent component body into the bounded Noetic graph while keeping protected complete-token timing gated",
     "noetic_descriptor": {
       "candidate_id": "independent_q4_g64",
       "load_policy": "validated serialized descriptor; candidate body is not persisted by this bounded probe",
@@ -1926,7 +1952,7 @@
     "pinned_revision": "34567a4712bc9766c4449e2e98e4468bfa24d915",
     "promotion_allowed": false,
     "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_Q4_BODY_KERNEL_PARITY.json",
-    "receipt_sha256": "b62c3e78a7fbb0aac0a5af6a1af6962662af7eb946e8edc871153fc8b874677d",
+    "receipt_sha256": "28f6dcdcc9a9d77b39c5e803ca9a902cb6cff75e37fa115e5effd01dc85d7295",
     "repo": "Qwen/Qwen3.8-Flash-Next",
     "root": "/Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc",
     "source_independent_execution": true,
@@ -2390,6 +2416,207 @@
     "tensor_name": "model.language_model.layers.0.mlp.experts.gate_up_proj",
     "whole_model_capability": "NOT_TESTED",
     "whole_model_runtime": "NOT_TESTED"
+  },
+  "source_router_graph": {
+    "candidate_body_persisted": true,
+    "candidate_id": "independent_q4_g64",
+    "claim_boundary": "Bounded source-independent Flash router matrix body, serialized Noetic descriptor, and native Q4 matvec compiled; router selection semantics, complete-model capability, complete-token runtime, EBPW, and Flash TPS remain untested.",
+    "compiler_stage": "PhysicalGraphCompiler",
+    "complete_token_runtime": "NOT_TESTED",
+    "component_status": "BOUNDED_ROUTER_MATRIX_COMPILED",
+    "component_window": {
+      "row_count": 128,
+      "row_start": 0
+    },
+    "next_action": "implement and verify router sigmoid/top-k semantics against the source model before connecting this primitive to a complete token graph",
+    "noetic_ir": {
+      "candidate_id": "independent_q4_g64",
+      "complete_model": false,
+      "operations": [
+        "retain_verified_router_matrix_as_parity_reference",
+        "load_persisted_source_independent_router_body",
+        "load_serialized_representation_descriptor",
+        "dispatch_qwen_uniform_q4_group64_matvec",
+        "emit_bounded_router_logits",
+        "defer_router_sigmoid_and_top_k"
+      ],
+      "schema": "hcli.noetic.ir.v1",
+      "semantic_type": "NoeticIR",
+      "source_independent": true
+    },
+    "nomenclature_version": "HAWKING_NOMENCLATURE_V1",
+    "physical_graph": {
+      "compiler_stage": "PhysicalGraphCompiler",
+      "component_scope": "bounded source-independent Flash router matrix row block; top-k/sigmoid semantics not executed",
+      "computation": [
+        {
+          "execution_input": false,
+          "id": "source_matrix_reference",
+          "kind": "verified_source_reference",
+          "row_count": 128,
+          "row_start": 0,
+          "stage": "SourceSpecimen",
+          "tensor_name": "model.language_model.layers.0.mlp.gate.weight"
+        },
+        {
+          "body_persisted": true,
+          "candidate_id": "independent_q4_g64",
+          "execution_input": true,
+          "id": "noetic_router_body_load",
+          "kind": "source_independent_component_body",
+          "stage": "NoeticCompiler"
+        },
+        {
+          "descriptor_schema": "hcli.noetic.representation_descriptor.v1",
+          "descriptor_sha256": "8caf31b179a448bb51119d9bbc9ebb4d1ec2df461779d60b8603e29c0b011a14",
+          "execution_input": true,
+          "id": "noetic_router_descriptor_load",
+          "kind": "serialized_representation_descriptor",
+          "stage": "NoeticCompiler"
+        },
+        {
+          "dispatches_per_sample": 1,
+          "execution_input": true,
+          "id": "router_q4_matvec",
+          "kernel": "qwen_uniform_q4_group64_matvec",
+          "kind": "native_kernel_dispatch",
+          "parity_within_tolerance": true,
+          "registered": true,
+          "stage": "HawkingAccelerator"
+        },
+        {
+          "complete_token": false,
+          "execution_input": true,
+          "id": "router_logits_boundary",
+          "kind": "bounded_router_logits",
+          "sigmoid_executed": false,
+          "stage": "NoeticExecutableCandidate",
+          "top_k_executed": false
+        }
+      ],
+      "data": [
+        {
+          "active_bytes_per_token": null,
+          "bytes": null,
+          "id": "router",
+          "kind": "tensor_group",
+          "source": "architecture metadata; size unresolved"
+        }
+      ],
+      "dependencies": [
+        {
+          "from": "noetic_router_body_load",
+          "kind": "body_to_descriptor",
+          "to": "noetic_router_descriptor_load"
+        },
+        {
+          "from": "noetic_router_descriptor_load",
+          "kind": "descriptor_to_kernel",
+          "to": "router_q4_matvec"
+        },
+        {
+          "from": "router_q4_matvec",
+          "kind": "kernel_to_logits",
+          "to": "router_logits_boundary"
+        },
+        {
+          "from": "source_matrix_reference",
+          "kind": "parity_reference_only",
+          "to": "router_logits_boundary"
+        }
+      ],
+      "device_placement": {
+        "candidates": [
+          "apple_metal"
+        ],
+        "selected": null
+      },
+      "evidence": [
+        {
+          "label": "[V]",
+          "path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_ROUTER_COMPONENT_BODY.json",
+          "schema": "hcli.agentos.flash_noetic_component_body.v1",
+          "sha256": "25d0698f06c3a265a2824727ee2433e2e11ec8a96d1776bf185b2733d7117e31",
+          "status": "PASSED"
+        },
+        {
+          "label": "[V]",
+          "path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_ROUTER_COMPONENT_KERNEL_PARITY.json",
+          "schema": "hawking.flash_noetic_q4_kernel_parity.v1",
+          "sha256": "c789694af302b5830b5740594e27f970600e5217d8ae35981480f5b1dd3ad6b9",
+          "status": "PASSED"
+        }
+      ],
+      "fingerprint": "9764c8703c65ebb3c52d3b16813cb132cde70ffc4efde2989c73f63aeb9e7407",
+      "generated_at": 1787820648.190494,
+      "graph_execution_observed": false,
+      "memory": [
+        {
+          "role": "active working set",
+          "status": "candidate",
+          "tier": "hot"
+        },
+        {
+          "role": "canonical source",
+          "status": "candidate",
+          "tier": "cold"
+        }
+      ],
+      "model_id": "Qwen/Qwen3.8-Flash-Next",
+      "native_kernel_execution_observed": true,
+      "nomenclature_version": "HAWKING_NOMENCLATURE_V1",
+      "precision": {
+        "accumulator": "unresolved",
+        "activation": "unresolved",
+        "weight": "unresolved"
+      },
+      "provider_context": {
+        "kernel": "qwen_uniform_q4_group64_matvec",
+        "provider": "apple-metal"
+      },
+      "qualification": "BOUNDED_ROUTER_MATRIX_ONLY",
+      "representation": {
+        "candidate_body_persisted": true,
+        "candidate_id": "independent_q4_g64",
+        "component_body_bytes": 174080,
+        "dense_rematerialization": "forbidden",
+        "source_independent_execution": true,
+        "source_layout": "row-major [row, column]"
+      },
+      "residency": {
+        "cold_source": "parity reference only",
+        "component_body": "persisted body is the execution input",
+        "whole_model": "not loaded"
+      },
+      "schema": "hcli.physical_graph.v1",
+      "semantic_type": "PhysicalGraphPlan",
+      "state": {
+        "kv_cache": "unresolved",
+        "recurrent_state": "unresolved"
+      },
+      "synchronization": [
+        {
+          "kind": "runtime_boundary",
+          "status": "unresolved"
+        }
+      ]
+    },
+    "promotion_allowed": false,
+    "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_ROUTER_GRAPH.json",
+    "receipt_sha256": "2ae7b3cdb3753220590e882fb50e93c59ec9e02fad6ac8e26d91bfe516c54573",
+    "schema": "hcli.agentos.flash_noetic_router_graph.v1",
+    "semantic_type": "NoeticExecutableCandidate",
+    "source_identity": {
+      "repo": "Qwen/Qwen3.8-Flash-Next",
+      "revision": "34567a4712bc9766c4449e2e98e4468bfa24d915",
+      "root": "/Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc"
+    },
+    "source_independent_execution": true,
+    "status": "PASSED",
+    "validation": {
+      "errors": []
+    },
+    "whole_model_capability": "NOT_TESTED"
   },
   "source_tensor_probe": {
     "body_mutated": false,

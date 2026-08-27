@@ -31,7 +31,6 @@ mod macos {
     const REPO_ID: &str = "Qwen/Qwen3.8-Flash-Next";
     const PINNED_REVISION: &str = "34567a4712bc9766c4449e2e98e4468bfa24d915";
     const TENSOR_NAME: &str = "model.language_model.layers.0.mlp.experts.gate_up_proj";
-    const TENSOR_SHAPE: [usize; 3] = [512, 1280, 2560];
     const GROUP_SIZE: usize = 64;
     const CODE_BYTES_PER_GROUP: usize = GROUP_SIZE / 2;
     const KERNEL_NAME: &str = "qwen_uniform_q4_group64_matvec";
@@ -69,7 +68,7 @@ mod macos {
         shard_size: u64,
         header_bytes: Vec<u8>,
         dtype: String,
-        shape: [usize; 3],
+        shape: Vec<usize>,
         data_start: u64,
         data_begin: u64,
         data_end: u64,
@@ -166,11 +165,8 @@ mod macos {
         if args.warmup > 64 {
             return Err("--warmup must be <= 64".into());
         }
-        if args.row_count == 0 || args.row_count > TENSOR_SHAPE[1] {
-            return Err("--row-count must be in 1..=1280".into());
-        }
-        if args.row_count * TENSOR_SHAPE[2] * 2 > MAX_BLOCK_BYTES {
-            return Err("selected source block exceeds the safety limit".into());
+        if args.row_count == 0 {
+            return Err("--row-count must be positive".into());
         }
         Ok(args)
     }
@@ -244,10 +240,22 @@ mod macos {
                     .ok_or_else(|| "Noetic descriptor source shape is not an integer vector".into())
             })
             .collect::<Result<_, Box<dyn Error>>>()?;
-        if shape_values != TENSOR_SHAPE {
-            return Err(
-                "Noetic descriptor source shape does not match Flash routed experts".into(),
-            );
+        if shape_values.len() != 2 && shape_values.len() != 3 {
+            return Err("Noetic descriptor source shape must be rank two or three".into());
+        }
+        let columns = *shape_values
+            .last()
+            .ok_or("Noetic descriptor source shape is empty")?;
+        if columns == 0 || columns % GROUP_SIZE != 0 {
+            return Err("Noetic descriptor source columns are not divisible by 64".into());
+        }
+        let expected_layout = if shape_values.len() == 3 {
+            "row-major [expert, row, column]"
+        } else {
+            "row-major [row, column]"
+        };
+        if descriptor_string(source, "layout")? != expected_layout {
+            return Err("Noetic descriptor source layout does not match its rank".into());
         }
         if descriptor_usize(source, "group_size")? != GROUP_SIZE {
             return Err("Noetic descriptor group size is not 64".into());
@@ -276,10 +284,14 @@ mod macos {
         }
         let transform_reference = descriptor
             .get("full_transform_reference")
-            .ok_or("Noetic descriptor has no full_transform_reference")?;
-        if descriptor_string(transform_reference, "status")? != "FULL_TENSOR_TRANSFORM_ONLY" {
+            .or_else(|| descriptor.get("transform_reference"))
+            .ok_or("Noetic descriptor has no transform_reference")?;
+        let transform_status = descriptor_string(transform_reference, "status")?;
+        if transform_status != "FULL_TENSOR_TRANSFORM_ONLY"
+            && transform_status != "BOUNDED_TENSOR_TRANSFORM_ONLY"
+        {
             return Err(
-                "Noetic descriptor transform reference is not the verified Q4 candidate".into(),
+                "Noetic descriptor transform reference is not a verified Q4 candidate".into(),
             );
         }
         Ok(NoeticDescriptor {
@@ -358,15 +370,19 @@ mod macos {
             .get("shape")
             .and_then(Value::as_array)
             .ok_or("tensor header has no shape")?;
-        if shape_values.len() != 3 {
-            return Err("Flash routed-expert tensor is not rank three".into());
+        if shape_values.len() != 2 && shape_values.len() != 3 {
+            return Err("Flash matrix tensor must be rank two or three".into());
         }
-        let shape = [
-            shape_values[0].as_u64().ok_or("invalid expert dimension")? as usize,
-            shape_values[1].as_u64().ok_or("invalid row dimension")? as usize,
-            shape_values[2].as_u64().ok_or("invalid column dimension")? as usize,
-        ];
-        if dtype.to_uppercase() != "BF16" || shape != TENSOR_SHAPE {
+        let shape: Vec<usize> = shape_values
+            .iter()
+            .map(|value| {
+                value
+                    .as_u64()
+                    .ok_or("invalid tensor dimension")
+                    .map(|v| v as usize)
+            })
+            .collect::<Result<_, _>>()?;
+        if dtype.to_uppercase() != "BF16" || shape.last().copied().unwrap_or(0) % GROUP_SIZE != 0 {
             return Err(format!(
                 "unexpected Flash tensor contract: dtype={dtype}, shape={shape:?}"
             )
@@ -411,9 +427,27 @@ mod macos {
         row_start: usize,
         row_count: usize,
     ) -> Result<Vec<u8>, Box<dyn Error>> {
-        let cols = location.shape[2];
+        let cols = *location.shape.last().ok_or("tensor shape has no columns")?;
+        let row_total = if location.shape.len() == 3 {
+            location.shape[1]
+        } else {
+            location.shape[0]
+        };
+        let expert_total = if location.shape.len() == 3 {
+            location.shape[0]
+        } else {
+            1
+        };
+        if expert >= expert_total || row_start >= row_total || row_count > row_total - row_start {
+            return Err("selected matrix row window is outside the pinned tensor".into());
+        }
         let row_width = cols * 2;
-        let first_element = (expert * location.shape[1] + row_start)
+        let first_row = if location.shape.len() == 3 {
+            expert * location.shape[1] + row_start
+        } else {
+            row_start
+        };
+        let first_element = first_row
             .checked_mul(cols)
             .ok_or("source element offset overflow")?;
         let offset = location
@@ -711,11 +745,19 @@ mod macos {
             descriptor_string(&descriptor.body, "candidate_id")?.to_owned();
         let manifest = validate_manifest(&root)?;
         let location = load_tensor_location(&root, &args.tensor_name)?;
-        if args.expert_index >= location.shape[0]
-            || args.row_start >= location.shape[1]
-            || args.row_count > location.shape[1] - args.row_start
+        let (expert_total, row_total, columns) = if location.shape.len() == 3 {
+            (location.shape[0], location.shape[1], location.shape[2])
+        } else {
+            (1, location.shape[0], location.shape[1])
+        };
+        if args.expert_index >= expert_total
+            || args.row_start >= row_total
+            || args.row_count > row_total - args.row_start
         {
-            return Err("selected expert/row window is outside the pinned tensor".into());
+            return Err("selected matrix row window is outside the pinned tensor".into());
+        }
+        if args.row_count * columns * 2 > MAX_BLOCK_BYTES {
+            return Err("selected source block exceeds the safety limit".into());
         }
         let before = fs::metadata(&location.shard)?;
         let raw = read_source_block(&location, args.expert_index, args.row_start, args.row_count)?;
@@ -725,17 +767,17 @@ mod macos {
                 .body_receipt
                 .as_ref()
                 .ok_or("--body-receipt is required with --candidate-body")?;
-            load_candidate_body(body_path, receipt_path, args.row_count, location.shape[2])?
+            load_candidate_body(body_path, receipt_path, args.row_count, columns)?
         } else {
-            pack_q4(&raw, args.row_count, location.shape[2])?
+            pack_q4(&raw, args.row_count, columns)?
         };
         let (source_rmse, source_max_abs_error) =
-            source_error(&packed, &raw, args.row_count, location.shape[2]);
+            source_error(&packed, &raw, args.row_count, columns);
         packed.source_rmse = source_rmse;
         packed.source_max_abs_error = source_max_abs_error;
-        let input = deterministic_input(location.shape[2]);
+        let input = deterministic_input(columns);
         let input_hash = sha256_hex(bytemuck::cast_slice(&input));
-        let expected = cpu_matvec(&packed, args.row_count, location.shape[2], &input);
+        let expected = cpu_matvec(&packed, args.row_count, columns, &input);
         let context = MetalContext::new_with_trace(true)?;
         let codes = context.new_buffer_with_bytes_checked(&packed.codes)?;
         let scales =
@@ -752,7 +794,7 @@ mod macos {
                 &input_buffer,
                 &output_buffer,
                 args.row_count,
-                location.shape[2],
+                columns,
             )?;
             let _ = gpu_ns(timing)?;
         }
@@ -767,7 +809,7 @@ mod macos {
                 &input_buffer,
                 &output_buffer,
                 args.row_count,
-                location.shape[2],
+                columns,
             )?;
             host_samples.push(host_started.elapsed().as_nanos() as u64);
             gpu_samples.push(gpu_ns(timing)?);
@@ -789,7 +831,7 @@ mod macos {
         host_sorted.sort_unstable();
         let memory = context.device_memory_limits();
         let candidate_sha256 = sha256_hex(&packed.candidate_bytes);
-        let values = args.row_count * location.shape[2];
+        let values = args.row_count * columns;
         let elapsed_s = started.elapsed().as_secs_f64();
         let body_info = if let Some(body_path) = &args.candidate_body {
             let receipt_path = args.body_receipt.as_ref().unwrap();
@@ -811,6 +853,16 @@ mod macos {
         } else {
             "BOUNDED_NOETIC_DESCRIPTOR_LOAD"
         };
+        let layout = if location.shape.len() == 3 {
+            "row-major [expert, row, column]"
+        } else {
+            "row-major [row, column]"
+        };
+        let component_scope = if location.shape.len() == 3 {
+            "one Flash routed-expert source block matvec"
+        } else {
+            "one Flash matrix row-block matvec"
+        };
         Ok(json!({
             "schema": SCHEMA,
             "nomenclature_version": NOMENCLATURE_VERSION,
@@ -831,7 +883,7 @@ mod macos {
                 "header_sha256": sha256_hex(&location.header_bytes),
                 "index_sha256": location.index_sha256,
                 "tensor_data_offsets": [location.data_begin, location.data_end],
-                "selected_expert": args.expert_index,
+                "selected_expert": if location.shape.len() == 3 { args.expert_index } else { 0 },
                 "selected_row_start": args.row_start,
                 "selected_row_count": args.row_count,
                 "selected_block_bytes": raw.len(),
@@ -848,7 +900,7 @@ mod macos {
             "noetic_representation": {
                 "schema": "hcli.noetic.representation_descriptor.v1",
                 "candidate_id": descriptor_candidate_id,
-                "layout": "row-major [expert, row, column]",
+                "layout": layout,
                 "group_size": GROUP_SIZE,
                 "code_dtype": "uint4_packed",
                 "nibble_order": "low_nibble_then_high_nibble_row_major",
@@ -872,7 +924,7 @@ mod macos {
                 "dispatches_per_sample": 1,
                 "grid": [args.row_count, 1, 1],
                 "threadgroup": [1, 1, 1],
-                "scope": "one Flash routed-expert source block matvec",
+                "scope": component_scope,
                 "whole_model_capability": "NOT_TESTED",
                 "whole_model_runtime": "NOT_TESTED",
                 "label": "[V]/[D]",
@@ -921,7 +973,7 @@ mod macos {
             "flash_tps": null,
             "promotion_allowed": false,
             "claim_boundary": if has_body { "PASSED bounded source-independent Noetic component-body load, source-reference Q4 Metal kernel parity, and GPU timing only; no whole-model loader, capability, complete-token runtime, EBPW, or Flash TPS claim" } else { "PASSED bounded serialized Noetic descriptor load, source-tensor Q4 Metal kernel parity, and GPU timing only; no whole-model loader, capability, complete-token runtime, EBPW, or Flash TPS claim" },
-            "next_action": if has_body { "compose the source-independent component body into the routed-expert graph while keeping protected complete-token timing gated" } else { "persist a source-independent component body, then compose it into the routed-expert graph while keeping protected complete-token timing gated" },
+            "next_action": if has_body { "compose the source-independent component body into the bounded Noetic graph while keeping protected complete-token timing gated" } else { "persist a source-independent component body, then compose it into the bounded Noetic graph while keeping protected complete-token timing gated" },
             "elapsed_s": elapsed_s,
         }))
     }

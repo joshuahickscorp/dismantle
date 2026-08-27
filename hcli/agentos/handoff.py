@@ -154,13 +154,21 @@ def _model_lake_summary(repo: Path) -> Dict[str, Any]:
     job = supervision.get("job") if isinstance(supervision.get("job"), dict) else {}
     partial = supervision.get("partial") or {}
     final = supervision.get("final") or {}
+    partial_inventory = census.get("partials") or []
+    if isinstance(partial_inventory, dict):
+        partial_inventory = partial_inventory.get("entries") or []
+    partial_count = sum(
+        1
+        for entry in partial_inventory
+        if isinstance(entry, dict) and entry.get("name") != ".DS_Store"
+    )
     return {
         "root": "/Volumes/corpdrive/hawking-modellake",
         "census": {
             "status": census.get("status"),
             "capacity": census.get("capacity"),
             "verified_specimens": census.get("verified_specimens") or census.get("specimens"),
-            "partial_count": len(census.get("partials") or []),
+            "partial_count": partial_count,
             "target": census.get("target") or {},
             "receipt_path": str(census_path),
         },
@@ -199,6 +207,8 @@ def _flash_summary(repo: Path) -> Dict[str, Any]:
     router_kernel = _receipt(repo, "FLASH_NOETIC_ROUTER_COMPONENT_KERNEL_PARITY.json") or {}
     router_graph = _receipt(repo, "FLASH_NOETIC_ROUTER_GRAPH.json") or {}
     router_selection = _receipt(repo, "FLASH_NOETIC_ROUTER_SELECTION.json") or {}
+    router_selection_native = _receipt(repo, "FLASH_NOETIC_ROUTER_SELECTION_NATIVE.json") or {}
+    routed_expert_dispatch_native = _receipt(repo, "FLASH_NOETIC_ROUTED_EXPERT_DISPATCH_NATIVE.json") or {}
     router_representation_ab = _receipt(repo, "FLASH_NOETIC_ROUTER_REPRESENTATION_AB.json") or {}
     source = flash.get("source_identity") or flash.get("source") or {}
     promotion = flash.get("promotion_gate") or {}
@@ -388,6 +398,54 @@ def _flash_summary(repo: Path) -> Dict[str, Any]:
             "claim_boundary": router_selection.get("claim_boundary"),
             "next_action": router_selection.get("next_action"),
         },
+        "bounded_noetic_router_selection_native": {
+            "status": router_selection_native.get("status"),
+            "receipt_path": str(repo / "receipts" / "headless" / "FLASH_NOETIC_ROUTER_SELECTION_NATIVE.json"),
+            "semantic_type": router_selection_native.get("semantic_type"),
+            "compiler_stage": router_selection_native.get("compiler_stage"),
+            "qualification": router_selection_native.get("qualification"),
+            "candidate_body": router_selection_native.get("candidate_body"),
+            "native_loader": router_selection_native.get("native_loader"),
+            "native_kernel": router_selection_native.get("native_kernel"),
+            "execution": router_selection_native.get("execution"),
+            "selection": router_selection_native.get("selection"),
+            "reference": router_selection_native.get("reference"),
+            "source_selection_parity": router_selection_native.get("source_selection_parity"),
+            "parity": router_selection_native.get("parity"),
+            "gpu_timing": router_selection_native.get("gpu_timing"),
+            "physical_graph": router_selection_native.get("physical_graph"),
+            "noetic_ir": router_selection_native.get("noetic_ir"),
+            "native_selection_execution_observed": router_selection_native.get("native_selection_execution_observed"),
+            "whole_model_capability": router_selection_native.get("whole_model_capability"),
+            "complete_token_runtime": router_selection_native.get("complete_token_runtime"),
+            "promotion_allowed": router_selection_native.get("promotion_allowed"),
+            "claim_boundary": router_selection_native.get("claim_boundary"),
+            "next_action": router_selection_native.get("next_action"),
+        },
+        "bounded_noetic_routed_expert_dispatch_native": {
+            "status": routed_expert_dispatch_native.get("status"),
+            "receipt_path": str(repo / "receipts" / "headless" / "FLASH_NOETIC_ROUTED_EXPERT_DISPATCH_NATIVE.json"),
+            "semantic_type": routed_expert_dispatch_native.get("semantic_type"),
+            "compiler_stage": routed_expert_dispatch_native.get("compiler_stage"),
+            "qualification": routed_expert_dispatch_native.get("qualification"),
+            "router_receipt": routed_expert_dispatch_native.get("router_receipt"),
+            "campaign_receipt": routed_expert_dispatch_native.get("campaign_receipt"),
+            "selection": routed_expert_dispatch_native.get("selection"),
+            "source_selection_parity": routed_expert_dispatch_native.get("source_selection_parity"),
+            "components": routed_expert_dispatch_native.get("components"),
+            "execution": routed_expert_dispatch_native.get("execution"),
+            "gpu_timing": routed_expert_dispatch_native.get("gpu_timing"),
+            "gather": routed_expert_dispatch_native.get("gather"),
+            "physical_graph": routed_expert_dispatch_native.get("physical_graph"),
+            "noetic_ir": routed_expert_dispatch_native.get("noetic_ir"),
+            "native_routed_body_dispatch_observed": routed_expert_dispatch_native.get("native_routed_body_dispatch_observed"),
+            "whole_model_capability": routed_expert_dispatch_native.get("whole_model_capability"),
+            "complete_expert_runtime": routed_expert_dispatch_native.get("complete_expert_runtime"),
+            "complete_token_runtime": routed_expert_dispatch_native.get("complete_token_runtime"),
+            "promotion_allowed": routed_expert_dispatch_native.get("promotion_allowed"),
+            "claim_boundary": routed_expert_dispatch_native.get("claim_boundary"),
+            "next_action": routed_expert_dispatch_native.get("next_action"),
+        },
         "bounded_noetic_router_representation_ab": {
             "status": router_representation_ab.get("status"),
             "receipt_path": str(repo / "receipts" / "headless" / "FLASH_NOETIC_ROUTER_REPRESENTATION_AB.json"),
@@ -426,7 +484,7 @@ def _flash_summary(repo: Path) -> Dict[str, Any]:
             "ebpw": {"status": ebpw.get("status"), "receipt_path": str(repo / "receipts" / "headless" / "FLASH_EBPW_BUDGET.json"), "measured": ebpw.get("measured"), "target_contract": ebpw.get("target_contract")},
             "token_ns": {"status": token_ns.get("status"), "receipt_path": str(repo / "receipts" / "headless" / "FLASH_TOKEN_NS_BUDGET.json"), "system_ledger": token_ns.get("system_ledger"), "target_contract": token_ns.get("target_contract")},
         },
-        "next_action": "Extend the source-independent component campaign across additional routed-expert windows, then compose the remaining Flash organs; keep complete-system EBPW and accepted Flash TPS unmeasured until native protected execution exists.",
+        "next_action": "Extend the source-independent component campaign from native router selection into persisted routed-expert execution, then compose the remaining Flash organs; keep complete-system EBPW and accepted Flash TPS unmeasured until native protected complete-token execution exists.",
     }
 
 
@@ -552,6 +610,8 @@ def build_handoff(repo_root: Optional[str | os.PathLike[str]] = None, *, emit: O
     router_body = flash.get("source_independent_router_component") or {}
     router_graph = flash.get("bounded_noetic_router_graph") or {}
     router_selection = flash.get("bounded_noetic_router_selection") or {}
+    router_selection_native = flash.get("bounded_noetic_router_selection_native") or {}
+    routed_expert_dispatch_native = flash.get("bounded_noetic_routed_expert_dispatch_native") or {}
     router_representation_ab = flash.get("bounded_noetic_router_representation_ab") or {}
     lake = _model_lake_summary(repo)
     window = _window_summary(repo)
@@ -603,6 +663,17 @@ def build_handoff(repo_root: Optional[str | os.PathLike[str]] = None, *, emit: O
         blockers.append("Flash-Next bounded Noetic router graph is absent or incomplete.")
     if router_selection.get("status") != "PASSED" or router_selection.get("promotion_allowed") is not False:
         blockers.append("Flash-Next bounded Noetic router selection edge is absent or incomplete.")
+    if router_selection_native.get("status") not in {None, "PASSED"}:
+        blockers.append("Flash-Next bounded native Noetic router selection receipt is invalid or incomplete.")
+    if router_selection_native.get("status") == "PASSED" and router_selection_native.get("promotion_allowed") is not False:
+        blockers.append("Flash-Next bounded native Noetic router selection has not explicitly refused promotion.")
+    if routed_expert_dispatch_native.get("status") not in {None, "PASSED"}:
+        blockers.append("Flash-Next bounded native routed-expert dispatch receipt is invalid or incomplete.")
+    if routed_expert_dispatch_native.get("status") == "PASSED" and (
+        routed_expert_dispatch_native.get("native_routed_body_dispatch_observed") is not True
+        or routed_expert_dispatch_native.get("promotion_allowed") is not False
+    ):
+        blockers.append("Flash-Next bounded native routed-expert dispatch has not explicitly proven scoped physical execution with promotion refused.")
     graph_component = _receipt(repo, "FLASH_NOETIC_ROUTED_EXPERT_GRAPH.json") or {}
     if graph_component.get("status") != "PASSED" or graph_component.get("promotion_allowed") is not False:
         blockers.append("Flash-Next bounded Noetic routed-expert graph component is absent or incomplete.")
@@ -657,6 +728,8 @@ def build_handoff(repo_root: Optional[str | os.PathLike[str]] = None, *, emit: O
                 "flash_router_component_body": router_body.get("status"),
                 "flash_router_graph": router_graph.get("status"),
                 "flash_router_selection": router_selection.get("status"),
+                "flash_router_selection_native": router_selection_native.get("status"),
+                "flash_routed_expert_dispatch_native": routed_expert_dispatch_native.get("status"),
                 "flash_router_representation_ab": router_representation_ab.get("status"),
                 "modellake_supervision": lake_status,
                 "unattended_window": window_status,
@@ -686,6 +759,10 @@ def build_handoff(repo_root: Optional[str | os.PathLike[str]] = None, *, emit: O
             "run_flash_router_component_body": f"python3 -m hcli agentos flash-matrix-body --root /Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc --repo-root {repo} --tensor-name model.language_model.layers.0.mlp.gate.weight --component-kind router --emit {repo / 'receipts/headless/FLASH_NOETIC_ROUTER_COMPONENT_BODY.json'}",
             "run_flash_router_graph": f"python3 -m hcli agentos flash-router-graph --repo-root {repo} --emit {repo / 'receipts/headless/FLASH_NOETIC_ROUTER_GRAPH.json'}",
             "run_flash_router_selection": f"python3 -m hcli agentos flash-router-selection --repo-root {repo} --body-receipt {repo / 'receipts/headless/FLASH_NOETIC_ROUTER_COMPONENT_FULL_BODY.json'} --kernel-receipt {repo / 'receipts/headless/FLASH_NOETIC_ROUTER_COMPONENT_FULL_KERNEL_PARITY.json'} --emit {repo / 'receipts/headless/FLASH_NOETIC_ROUTER_SELECTION.json'}",
+            "build_flash_native_router_selection": "cargo build -p hawking-core --release --example flash_noetic_router_selection",
+            "run_flash_native_router_selection": f"{repo / 'workspace/ops/build/rust/release/examples/flash_noetic_router_selection'} --root /Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc --body-receipt {repo / 'receipts/headless/FLASH_NOETIC_ROUTER_COMPONENT_FULL_BODY.json'} --kernel-receipt {repo / 'receipts/headless/FLASH_NOETIC_ROUTER_COMPONENT_FULL_KERNEL_PARITY.json'} --reference-receipt {repo / 'receipts/headless/FLASH_NOETIC_ROUTER_SELECTION.json'} --warmup 2 --reps 7 --out {repo / 'receipts/headless/FLASH_NOETIC_ROUTER_SELECTION_NATIVE.json'}",
+            "build_flash_native_routed_expert_dispatch": "cargo build -p hawking-core --release --example flash_noetic_routed_expert_dispatch",
+            "run_flash_native_routed_expert_dispatch": f"{repo / 'workspace/ops/build/rust/release/examples/flash_noetic_routed_expert_dispatch'} --root /Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc --router-receipt {repo / 'receipts/headless/FLASH_NOETIC_ROUTER_SELECTION_NATIVE.json'} --campaign-receipt {repo / 'receipts/headless/FLASH_NOETIC_ROUTED_EXPERT_COMPONENT_CAMPAIGN.json'} --warmup 2 --reps 7 --out {repo / 'receipts/headless/FLASH_NOETIC_ROUTED_EXPERT_DISPATCH_NATIVE.json'}",
             "run_flash_router_representation_ab": f"python3 -m hcli agentos flash-router-representation-ab --repo-root {repo} --root /Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc --emit {repo / 'receipts/headless/FLASH_NOETIC_ROUTER_REPRESENTATION_AB.json'}",
             "run_flash_tensor_probe": f"python3 -m hcli agentos flash-tensor-probe --emit {repo / 'receipts/headless/FLASH_FIRST_TENSOR_PROBE.json'}",
             "run_flash_representation_experiment": f"python3 -m hcli agentos flash-representation-experiment --emit {repo / 'receipts/headless/FLASH_ROUTED_EXPERT_REPRESENTATION_EXPERIMENT.json'}",

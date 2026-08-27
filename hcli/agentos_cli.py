@@ -212,6 +212,8 @@ def build_parser() -> argparse.ArgumentParser:
     flash_executable.add_argument("--component-campaign-receipt", default=None)
     flash_executable.add_argument("--router-graph-receipt", default=None)
     flash_executable.add_argument("--router-selection-receipt", default=None)
+    flash_executable.add_argument("--native-router-selection-receipt", default=None)
+    flash_executable.add_argument("--native-routed-expert-dispatch-receipt", default=None)
     flash_executable.add_argument("--router-representation-ab-receipt", default=None)
     flash_executable.add_argument("--emit", default=None)
     flash_executable.add_argument("--ebpw-emit", default=None)
@@ -658,6 +660,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 component_campaign_receipt=args.component_campaign_receipt,
                 router_graph_receipt=args.router_graph_receipt,
                 router_selection_receipt=args.router_selection_receipt,
+                native_router_selection_receipt=args.native_router_selection_receipt,
+                native_routed_expert_dispatch_receipt=args.native_routed_expert_dispatch_receipt,
                 router_representation_ab_receipt=args.router_representation_ab_receipt,
                 emit=args.emit,
                 ebpw_emit=args.ebpw_emit,

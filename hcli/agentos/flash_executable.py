@@ -54,6 +54,8 @@ DEFAULT_GRAPH_COMPONENT = "FLASH_NOETIC_ROUTED_EXPERT_GRAPH.json"
 DEFAULT_COMPONENT_CAMPAIGN = "FLASH_NOETIC_ROUTED_EXPERT_COMPONENT_CAMPAIGN.json"
 DEFAULT_ROUTER_GRAPH = "FLASH_NOETIC_ROUTER_GRAPH.json"
 DEFAULT_ROUTER_SELECTION = "FLASH_NOETIC_ROUTER_SELECTION.json"
+DEFAULT_NATIVE_ROUTER_SELECTION = "FLASH_NOETIC_ROUTER_SELECTION_NATIVE.json"
+DEFAULT_NATIVE_ROUTED_EXPERT_DISPATCH = "FLASH_NOETIC_ROUTED_EXPERT_DISPATCH_NATIVE.json"
 DEFAULT_ROUTER_REPRESENTATION_AB = "FLASH_NOETIC_ROUTER_REPRESENTATION_AB.json"
 DEFAULT_EXECUTABLE = "FLASH_NEXT_NOETIC_EXECUTABLE.json"
 DEFAULT_EBPW = "FLASH_EBPW_BUDGET.json"
@@ -707,6 +709,112 @@ def _router_selection_summary(
     }
 
 
+def _native_router_selection_summary(
+    repo: Path,
+    receipt: Optional[str | os.PathLike[str]] = None,
+) -> Dict[str, Any]:
+    """Read the bounded native router executable without promoting it to a model runtime."""
+    path = Path(receipt).expanduser().resolve() if receipt else repo / "receipts" / "headless" / DEFAULT_NATIVE_ROUTER_SELECTION
+    selection = _read_json(path)
+    if selection is None:
+        return {
+            "status": "NOT_RUN",
+            "receipt_path": str(path),
+            "selection_status": "NOT_EXECUTED",
+            "source_independent_execution": None,
+            "native_selection_execution_observed": None,
+            "whole_model_capability": "NOT_TESTED",
+            "complete_token_runtime": "NOT_TESTED",
+            "promotion_allowed": False,
+        }
+    native_loader = selection.get("native_loader") if isinstance(selection.get("native_loader"), Mapping) else {}
+    return {
+        "status": selection.get("status"),
+        "receipt_path": str(path),
+        "receipt_sha256": _sha256(path),
+        "schema": selection.get("schema"),
+        "nomenclature_version": selection.get("nomenclature_version"),
+        "semantic_type": selection.get("semantic_type"),
+        "compiler_stage": selection.get("compiler_stage"),
+        "qualification": selection.get("qualification"),
+        "selection_status": "EXECUTED" if selection.get("selection") else "NOT_EXECUTED",
+        "source_identity": {"repo": selection.get("repo"), "revision": selection.get("pinned_revision"), "root": selection.get("root")},
+        "candidate_body": selection.get("candidate_body"),
+        "native_loader": native_loader,
+        "native_kernel": selection.get("native_kernel"),
+        "gpu_timing": selection.get("gpu_timing"),
+        "selection": selection.get("selection"),
+        "reference": selection.get("reference"),
+        "source_selection_parity": selection.get("source_selection_parity"),
+        "parity": selection.get("parity"),
+        "execution": selection.get("execution"),
+        "physical_graph": selection.get("physical_graph"),
+        "noetic_ir": selection.get("noetic_ir"),
+        "native_selection_execution_observed": selection.get("native_selection_execution_observed"),
+        "source_independent_execution": native_loader.get("source_independent_execution"),
+        "whole_model_capability": selection.get("whole_model_capability"),
+        "complete_token_runtime": selection.get("complete_token_runtime"),
+        "promotion_allowed": selection.get("promotion_allowed"),
+        "claim_boundary": selection.get("claim_boundary"),
+        "next_action": selection.get("next_action"),
+    }
+
+
+def _native_routed_expert_dispatch_summary(
+    repo: Path,
+    receipt: Optional[str | os.PathLike[str]] = None,
+) -> Dict[str, Any]:
+    """Read bounded native selected-body dispatch without promoting it to full experts."""
+    path = (
+        Path(receipt).expanduser().resolve()
+        if receipt
+        else repo / "receipts" / "headless" / DEFAULT_NATIVE_ROUTED_EXPERT_DISPATCH
+    )
+    dispatch = _read_json(path)
+    if dispatch is None:
+        return {
+            "status": "NOT_RUN",
+            "receipt_path": str(path),
+            "whole_model_capability": "NOT_TESTED",
+            "complete_expert_runtime": "NOT_TESTED",
+            "complete_token_runtime": "NOT_TESTED",
+            "promotion_allowed": False,
+        }
+    execution = dispatch.get("execution") if isinstance(dispatch.get("execution"), Mapping) else {}
+    return {
+        "status": dispatch.get("status"),
+        "receipt_path": str(path),
+        "receipt_sha256": _sha256(path),
+        "schema": dispatch.get("schema"),
+        "nomenclature_version": dispatch.get("nomenclature_version"),
+        "semantic_type": dispatch.get("semantic_type"),
+        "compiler_stage": dispatch.get("compiler_stage"),
+        "qualification": dispatch.get("qualification"),
+        "router_receipt": dispatch.get("router_receipt"),
+        "campaign_receipt": dispatch.get("campaign_receipt"),
+        "selection": dispatch.get("selection"),
+        "source_selection_parity": dispatch.get("source_selection_parity"),
+        "components": dispatch.get("components"),
+        "execution": execution,
+        "gpu_timing": dispatch.get("gpu_timing"),
+        "gather": dispatch.get("gather"),
+        "physical_graph": dispatch.get("physical_graph"),
+        "noetic_ir": dispatch.get("noetic_ir"),
+        "native_routed_body_dispatch_observed": dispatch.get("native_routed_body_dispatch_observed"),
+        "source_independent_execution": all(
+            (component.get("candidate_body") or {}).get("source_independent") is True
+            for component in dispatch.get("components") or []
+            if isinstance(component, Mapping)
+        ) if dispatch.get("components") else None,
+        "whole_model_capability": dispatch.get("whole_model_capability"),
+        "complete_expert_runtime": dispatch.get("complete_expert_runtime"),
+        "complete_token_runtime": dispatch.get("complete_token_runtime"),
+        "promotion_allowed": dispatch.get("promotion_allowed"),
+        "claim_boundary": dispatch.get("claim_boundary"),
+        "next_action": dispatch.get("next_action"),
+    }
+
+
 def _router_representation_ab_summary(
     repo: Path,
     receipt: Optional[str | os.PathLike[str]] = None,
@@ -1112,6 +1220,8 @@ def _executable_manifest(
     component_campaign: Mapping[str, Any],
     router_graph: Mapping[str, Any],
     router_selection: Mapping[str, Any],
+    native_router_selection: Mapping[str, Any],
+    native_routed_expert_dispatch: Mapping[str, Any],
     router_representation_ab: Mapping[str, Any],
 ) -> Dict[str, Any]:
     organs = [str(row.get("organ")) for row in ebpw.get("organs") or [] if isinstance(row, Mapping)]
@@ -1160,6 +1270,10 @@ def _executable_manifest(
             "bounded_router_graph_receipt": router_graph.get("receipt_path"),
             "bounded_router_selection_observed": router_selection.get("status") == "PASSED",
             "bounded_router_selection_receipt": router_selection.get("receipt_path"),
+            "bounded_native_router_selection_observed": native_router_selection.get("status") == "PASSED",
+            "bounded_native_router_selection_receipt": native_router_selection.get("receipt_path"),
+            "bounded_native_routed_expert_dispatch_observed": native_routed_expert_dispatch.get("status") == "PASSED",
+            "bounded_native_routed_expert_dispatch_receipt": native_routed_expert_dispatch.get("receipt_path"),
             "bounded_router_representation_ab_observed": router_representation_ab.get("status") == "PASSED",
             "bounded_router_representation_ab_receipt": router_representation_ab.get("receipt_path"),
             "bounded_component_body_loaded": kernel_parity.get("source_independent_execution") is True,
@@ -1180,6 +1294,8 @@ def _executable_manifest(
         "source_component_campaign": component_campaign,
         "source_router_graph": router_graph,
         "source_router_selection": router_selection,
+        "source_router_selection_native": native_router_selection,
+        "source_routed_expert_dispatch_native": native_routed_expert_dispatch,
         "source_router_representation_ab": router_representation_ab,
         "chosen_representation": ebpw.get("chosen_representation"),
         "native_loader": {
@@ -1194,6 +1310,10 @@ def _executable_manifest(
             "bounded_component_body": kernel_parity.get("candidate_body"),
             "bounded_native_kernel_parity_status": kernel_parity.get("status"),
             "bounded_native_kernel_parity_receipt": kernel_parity.get("receipt_path"),
+            "bounded_native_routed_expert_dispatch_status": native_routed_expert_dispatch.get("status"),
+            "bounded_native_routed_expert_dispatch_receipt": native_routed_expert_dispatch.get("receipt_path"),
+            "bounded_native_routed_expert_dispatch_observed": native_routed_expert_dispatch.get("native_routed_body_dispatch_observed"),
+            "bounded_native_routed_expert_dispatch_scope": "selected persisted routed-expert body windows only; full expert activation remains untested",
             "required": ["verified body manifest", "zero-copy/streaming policy", "per-organ ownership", "resident lifetime", "loader hash"],
             "body_read_by_scaffold": False,
         },
@@ -1310,6 +1430,30 @@ def _executable_manifest(
                 "scope": "derived CPU router softmax/top-k over a persisted full body; no native selection kernel or complete Flash execution",
                 "label": DERIVED,
             },
+            "bounded_native_router_selection_evidence": {
+                "status": native_router_selection.get("status"),
+                "receipt": native_router_selection.get("receipt_path"),
+                "selection_status": native_router_selection.get("selection_status"),
+                "source_selection_parity_status": (native_router_selection.get("source_selection_parity") or {}).get("status"),
+                "source_selection_parity_qualified": (native_router_selection.get("source_selection_parity") or {}).get("expert_ids_exact_match"),
+                "native_selection_execution_observed": native_router_selection.get("native_selection_execution_observed"),
+                "source_independent_execution": native_router_selection.get("source_independent_execution"),
+                "physical_graph_fingerprint": (native_router_selection.get("physical_graph") or {}).get("fingerprint"),
+                "scope": "native Metal router matvec plus FP32 softmax/top-k over a persisted full body; no complete Flash execution",
+                "label": DERIVED,
+            },
+            "bounded_native_routed_expert_dispatch_evidence": {
+                "status": native_routed_expert_dispatch.get("status"),
+                "receipt": native_routed_expert_dispatch.get("receipt_path"),
+                "qualification": native_routed_expert_dispatch.get("qualification"),
+                "native_routed_body_dispatch_observed": native_routed_expert_dispatch.get("native_routed_body_dispatch_observed"),
+                "source_independent_execution": native_routed_expert_dispatch.get("source_independent_execution"),
+                "selected_expert_count": (native_routed_expert_dispatch.get("execution") or {}).get("selected_expert_count"),
+                "dispatches_per_route": (native_routed_expert_dispatch.get("execution") or {}).get("dispatches_per_route"),
+                "physical_graph_fingerprint": (native_routed_expert_dispatch.get("physical_graph") or {}).get("fingerprint"),
+                "scope": "native selected persisted Q4/G64 routed-expert body windows plus host weighted gather; no complete expert or Flash execution",
+                "label": DERIVED,
+            },
             "bounded_router_representation_ab_evidence": {
                 "status": router_representation_ab.get("status"),
                 "receipt": router_representation_ab.get("receipt_path"),
@@ -1373,6 +1517,27 @@ def _executable_manifest(
                 "whole_model_capability": router_selection.get("whole_model_capability"),
                 "complete_token_runtime": router_selection.get("complete_token_runtime"),
             },
+            "native_router_selection": {
+                "status": native_router_selection.get("selection_status"),
+                "receipt_path": native_router_selection.get("receipt_path"),
+                "fingerprint": (native_router_selection.get("physical_graph") or {}).get("fingerprint"),
+                "source_independent_execution": native_router_selection.get("source_independent_execution"),
+                "native_selection_execution_observed": native_router_selection.get("native_selection_execution_observed"),
+                "source_selection_parity_qualified": (native_router_selection.get("source_selection_parity") or {}).get("expert_ids_exact_match"),
+                "whole_model_capability": native_router_selection.get("whole_model_capability"),
+                "complete_token_runtime": native_router_selection.get("complete_token_runtime"),
+            },
+            "native_routed_expert_dispatch": {
+                "status": native_routed_expert_dispatch.get("status"),
+                "receipt_path": native_routed_expert_dispatch.get("receipt_path"),
+                "fingerprint": (native_routed_expert_dispatch.get("physical_graph") or {}).get("fingerprint"),
+                "source_independent_execution": native_routed_expert_dispatch.get("source_independent_execution"),
+                "native_routed_body_dispatch_observed": native_routed_expert_dispatch.get("native_routed_body_dispatch_observed"),
+                "selected_expert_count": (native_routed_expert_dispatch.get("execution") or {}).get("selected_expert_count"),
+                "whole_model_capability": native_routed_expert_dispatch.get("whole_model_capability"),
+                "complete_expert_runtime": native_routed_expert_dispatch.get("complete_expert_runtime"),
+                "complete_token_runtime": native_routed_expert_dispatch.get("complete_token_runtime"),
+            },
             "router_representation_ab": {
                 "status": router_representation_ab.get("status"),
                 "receipt_path": router_representation_ab.get("receipt_path"),
@@ -1416,6 +1581,10 @@ def _executable_manifest(
             "component_campaign_fingerprint": (component_campaign.get("physical_graph") or {}).get("fingerprint"),
             "router_graph_fingerprint": (router_graph.get("physical_graph") or {}).get("fingerprint"),
             "router_selection_fingerprint": (router_selection.get("physical_graph") or {}).get("fingerprint"),
+            "native_router_selection_receipt": native_router_selection.get("receipt_path"),
+            "native_router_selection_fingerprint": (native_router_selection.get("physical_graph") or {}).get("fingerprint"),
+            "native_routed_expert_dispatch_receipt": native_routed_expert_dispatch.get("receipt_path"),
+            "native_routed_expert_dispatch_fingerprint": (native_routed_expert_dispatch.get("physical_graph") or {}).get("fingerprint"),
             "router_representation_ab_fingerprint": (router_representation_ab.get("physical_graph") or {}).get("fingerprint"),
             "shared_expert_kernel_parity_receipt": shared_expert_kernel_parity.get("receipt_path"),
             "deltanet_kernel_parity_receipt": deltanet_kernel_parity.get("receipt_path"),
@@ -1457,6 +1626,8 @@ def run_flash_executable_scaffold(
     component_campaign_receipt: Optional[str | os.PathLike[str]] = None,
     router_graph_receipt: Optional[str | os.PathLike[str]] = None,
     router_selection_receipt: Optional[str | os.PathLike[str]] = None,
+    native_router_selection_receipt: Optional[str | os.PathLike[str]] = None,
+    native_routed_expert_dispatch_receipt: Optional[str | os.PathLike[str]] = None,
     router_representation_ab_receipt: Optional[str | os.PathLike[str]] = None,
     emit: Optional[str | os.PathLike[str]] = None,
     ebpw_emit: Optional[str | os.PathLike[str]] = None,
@@ -1500,10 +1671,12 @@ def run_flash_executable_scaffold(
         component_campaign = _component_campaign_summary(repo, component_campaign_receipt)
         router_graph = _router_graph_summary(repo, router_graph_receipt)
         router_selection = _router_selection_summary(repo, router_selection_receipt)
+        native_router_selection = _native_router_selection_summary(repo, native_router_selection_receipt)
+        native_routed_expert_dispatch = _native_routed_expert_dispatch_summary(repo, native_routed_expert_dispatch_receipt)
         router_representation_ab = _router_representation_ab_summary(repo, router_representation_ab_receipt)
         ebpw = _ebpw_budget(science, source, tensor_probe, representation_experiment, transform_parity, loader_roundtrip, kernel_parity)
         token_ns = _token_ns_budget(science, source)
-        manifest = _executable_manifest(science, source, lake, ebpw, token_ns, tensor_probe, representation_experiment, transform_parity, loader_roundtrip, kernel_parity, shared_expert_kernel_parity, deltanet_kernel_parity, sparse_attention_kernel_parity, mtp_gate_kernel_parity, graph_component, component_campaign, router_graph, router_selection, router_representation_ab)
+        manifest = _executable_manifest(science, source, lake, ebpw, token_ns, tensor_probe, representation_experiment, transform_parity, loader_roundtrip, kernel_parity, shared_expert_kernel_parity, deltanet_kernel_parity, sparse_attention_kernel_parity, mtp_gate_kernel_parity, graph_component, component_campaign, router_graph, router_selection, native_router_selection, native_routed_expert_dispatch, router_representation_ab)
         atomic_write_json(ebpw_path, ebpw)
         atomic_write_json(token_path, token_ns)
         manifest["ebpw_budget_receipt"] = str(ebpw_path)
@@ -1595,6 +1768,16 @@ def run_flash_executable_scaffold(
                 ),
                 "bounded_router_selection_is_not_mislabeled_native": router_selection.get("native_selection_execution_observed") in {None, False},
                 "bounded_router_selection_refuses_promotion": router_selection.get("promotion_allowed") is False,
+                "bounded_native_router_selection_is_explicit": native_router_selection.get("status") in {"NOT_RUN", "PASSED"},
+                "bounded_native_router_selection_does_not_claim_whole_model": native_router_selection.get("whole_model_capability") in {None, "NOT_TESTED"} and native_router_selection.get("complete_token_runtime") in {None, "NOT_TESTED"},
+                "bounded_native_router_selection_is_source_independent": native_router_selection.get("status") == "NOT_RUN" or native_router_selection.get("source_independent_execution") is True,
+                "bounded_native_router_selection_is_physically_observed_only_when_present": native_router_selection.get("status") == "NOT_RUN" or native_router_selection.get("native_selection_execution_observed") is True,
+                "bounded_native_router_selection_refuses_promotion": native_router_selection.get("promotion_allowed") is False,
+                "bounded_native_routed_expert_dispatch_is_explicit": native_routed_expert_dispatch.get("status") in {"NOT_RUN", "PASSED"},
+                "bounded_native_routed_expert_dispatch_does_not_claim_whole_model": native_routed_expert_dispatch.get("whole_model_capability") in {None, "NOT_TESTED"} and native_routed_expert_dispatch.get("complete_expert_runtime") in {None, "NOT_TESTED"} and native_routed_expert_dispatch.get("complete_token_runtime") in {None, "NOT_TESTED"},
+                "bounded_native_routed_expert_dispatch_is_source_independent": native_routed_expert_dispatch.get("status") == "NOT_RUN" or native_routed_expert_dispatch.get("source_independent_execution") is True,
+                "bounded_native_routed_expert_dispatch_is_physically_observed_only_when_present": native_routed_expert_dispatch.get("status") == "NOT_RUN" or native_routed_expert_dispatch.get("native_routed_body_dispatch_observed") is True,
+                "bounded_native_routed_expert_dispatch_refuses_promotion": native_routed_expert_dispatch.get("promotion_allowed") is False,
                 "bounded_router_representation_ab_is_explicit": router_representation_ab.get("status") in {"NOT_RUN", "PASSED"},
                 "bounded_router_representation_ab_does_not_claim_whole_model": router_representation_ab.get("whole_model_capability") in {None, "NOT_TESTED"} and router_representation_ab.get("complete_token_runtime") in {None, "NOT_TESTED"},
                 "bounded_router_representation_ab_does_not_persist_bodies": router_representation_ab.get("candidate_bodies_persisted") in {None, False},
@@ -1637,6 +1820,8 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser.add_argument("--component-campaign-receipt")
     parser.add_argument("--router-graph-receipt")
     parser.add_argument("--router-selection-receipt")
+    parser.add_argument("--native-router-selection-receipt")
+    parser.add_argument("--native-routed-expert-dispatch-receipt")
     parser.add_argument("--router-representation-ab-receipt")
     parser.add_argument("--emit")
     parser.add_argument("--ebpw-emit")
@@ -1658,6 +1843,8 @@ def main(argv: Optional[list[str]] = None) -> int:
         component_campaign_receipt=args.component_campaign_receipt,
         router_graph_receipt=args.router_graph_receipt,
         router_selection_receipt=args.router_selection_receipt,
+        native_router_selection_receipt=args.native_router_selection_receipt,
+        native_routed_expert_dispatch_receipt=args.native_routed_expert_dispatch_receipt,
         router_representation_ab_receipt=args.router_representation_ab_receipt,
         emit=args.emit,
         ebpw_emit=args.ebpw_emit,
@@ -1667,7 +1854,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     return 0 if report.get("status") == "PASSED" else 1
 
 
-__all__ = ["DEFAULT_DELTANET_KERNEL_PARITY", "DEFAULT_KERNEL_PARITY", "DEFAULT_LOADER_ROUNDTRIP", "DEFAULT_MTP_GATE_KERNEL_PARITY", "DEFAULT_REPRESENTATION_EXPERIMENT", "DEFAULT_REPRESENTATION_REPLICATION", "DEFAULT_ROUTER_REPRESENTATION_AB", "DEFAULT_ROUTER_SELECTION", "DEFAULT_SHARED_EXPERT_KERNEL_PARITY", "DEFAULT_SPARSE_ATTENTION_KERNEL_PARITY", "DEFAULT_TENSOR_PROBE", "DEFAULT_TRANSFORM_PARITY", "EBPW_SCHEMA", "SCHEMA", "TOKEN_NS_SCHEMA", "main", "run_flash_executable_scaffold"]
+__all__ = ["DEFAULT_DELTANET_KERNEL_PARITY", "DEFAULT_KERNEL_PARITY", "DEFAULT_LOADER_ROUNDTRIP", "DEFAULT_MTP_GATE_KERNEL_PARITY", "DEFAULT_NATIVE_ROUTED_EXPERT_DISPATCH", "DEFAULT_NATIVE_ROUTER_SELECTION", "DEFAULT_REPRESENTATION_EXPERIMENT", "DEFAULT_REPRESENTATION_REPLICATION", "DEFAULT_ROUTER_REPRESENTATION_AB", "DEFAULT_ROUTER_SELECTION", "DEFAULT_SHARED_EXPERT_KERNEL_PARITY", "DEFAULT_SPARSE_ATTENTION_KERNEL_PARITY", "DEFAULT_TENSOR_PROBE", "DEFAULT_TRANSFORM_PARITY", "EBPW_SCHEMA", "SCHEMA", "TOKEN_NS_SCHEMA", "main", "run_flash_executable_scaffold"]
 
 
 if __name__ == "__main__":

@@ -1,5 +1,12 @@
 from __future__ import annotations
 
+import json
+
+from hcli.agentos.flash_executable import (
+    _native_router_selection_summary,
+    _native_routed_expert_dispatch_summary,
+)
+from hcli.agentos.handoff import _model_lake_summary
 from hcli.agentos.flash_science import (
     GRAVITY_LADDER,
     _accelerator_primitive_plan,
@@ -55,3 +62,113 @@ def test_flash_plan_does_not_claim_a_physical_accelerator():
     plan = _accelerator_primitive_plan()
     assert plan["physical_execution_claim"] is False
     assert "physical" in plan["claim_boundary"].lower()
+
+
+def test_native_router_selection_summary_preserves_bounded_claim_boundary(tmp_path):
+    receipt = tmp_path / "native-router-selection.json"
+    receipt.write_text(
+        json.dumps(
+            {
+                "schema": "hawking.flash_noetic_router_selection_native.v1",
+                "nomenclature_version": "HAWKING_NOMENCLATURE_V1",
+                "status": "PASSED",
+                "semantic_type": "NoeticExecutableCandidate",
+                "compiler_stage": "HawkingAccelerator",
+                "qualification": "BOUNDED_NATIVE_ROUTER_SELECTION",
+                "repo": "Qwen/Qwen3.8-Flash-Next",
+                "pinned_revision": "revision",
+                "root": "/lake/specimen",
+                "selection": {"expert_ids": [1, 2]},
+                "native_selection_execution_observed": True,
+                "native_loader": {"source_independent_execution": True},
+                "source_selection_parity": {
+                    "status": "MISMATCH",
+                    "expert_ids_exact_match": False,
+                },
+                "whole_model_capability": "NOT_TESTED",
+                "complete_token_runtime": "NOT_TESTED",
+                "promotion_allowed": False,
+                "physical_graph": {"fingerprint": "graph"},
+                "claim_boundary": "bounded only",
+                "next_action": "continue",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    summary = _native_router_selection_summary(tmp_path, receipt)
+
+    assert summary["status"] == "PASSED"
+    assert summary["selection_status"] == "EXECUTED"
+    assert summary["source_independent_execution"] is True
+    assert summary["native_selection_execution_observed"] is True
+    assert summary["source_selection_parity"]["status"] == "MISMATCH"
+    assert summary["promotion_allowed"] is False
+
+
+def test_native_routed_expert_dispatch_summary_preserves_bounded_claim_boundary(tmp_path):
+    receipt = tmp_path / "native-routed-expert-dispatch.json"
+    receipt.write_text(
+        json.dumps(
+            {
+                "schema": "hawking.flash_noetic_routed_expert_dispatch_native.v1",
+                "nomenclature_version": "HAWKING_NOMENCLATURE_V1",
+                "status": "PASSED",
+                "semantic_type": "NoeticExecutableCandidate",
+                "compiler_stage": "HawkingAccelerator",
+                "qualification": "BOUNDED_NATIVE_ROUTED_EXPERT_BODY_DISPATCH",
+                "router_receipt": "router.json",
+                "campaign_receipt": "campaign.json",
+                "selection": {"expert_ids": [1, 2]},
+                "source_selection_parity": {"status": "MISMATCH", "expert_ids_exact_match": False},
+                "components": [
+                    {"candidate_body": {"source_independent": True}},
+                    {"candidate_body": {"source_independent": True}},
+                ],
+                "execution": {"selected_expert_count": 2, "dispatches_per_route": 2},
+                "native_routed_body_dispatch_observed": True,
+                "whole_model_capability": "NOT_TESTED",
+                "complete_expert_runtime": "NOT_TESTED",
+                "complete_token_runtime": "NOT_TESTED",
+                "promotion_allowed": False,
+                "physical_graph": {"fingerprint": "graph"},
+                "claim_boundary": "bounded selected-body dispatch only",
+                "next_action": "continue",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    summary = _native_routed_expert_dispatch_summary(tmp_path, receipt)
+
+    assert summary["status"] == "PASSED"
+    assert summary["native_routed_body_dispatch_observed"] is True
+    assert summary["source_independent_execution"] is True
+    assert summary["source_selection_parity"]["status"] == "MISMATCH"
+    assert summary["whole_model_capability"] == "NOT_TESTED"
+    assert summary["complete_expert_runtime"] == "NOT_TESTED"
+    assert summary["promotion_allowed"] is False
+
+
+def test_handoff_counts_nested_modellake_partials_without_ds_store(tmp_path):
+    receipts = tmp_path / "receipts" / "headless"
+    receipts.mkdir(parents=True)
+    (receipts / "MODELLAKE_FLASH_NEXT_CENSUS.json").write_text(
+        json.dumps(
+            {
+                "status": "PASSED",
+                "partials": {
+                    "entries": [
+                        {"name": ".DS_Store"},
+                        {"name": "partial-a"},
+                        {"name": "partial-b"},
+                    ]
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    summary = _model_lake_summary(tmp_path)
+
+    assert summary["census"]["partial_count"] == 2

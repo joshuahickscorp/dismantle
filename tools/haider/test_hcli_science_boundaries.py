@@ -1019,6 +1019,8 @@ def test_cli_exposes_general_science_surfaces():
     assert parser.parse_args(["flash-executable", "--mtp-gate-kernel-parity-receipt", "mtp.json"]).mtp_gate_kernel_parity_receipt == "mtp.json"
     assert parser.parse_args(["flash-executable", "--graph-component-receipt", "graph.json"]).graph_component_receipt == "graph.json"
     assert parser.parse_args(["flash-executable", "--router-selection-receipt", "selection.json"]).router_selection_receipt == "selection.json"
+    assert parser.parse_args(["flash-executable", "--native-router-selection-receipt", "native-selection.json"]).native_router_selection_receipt == "native-selection.json"
+    assert parser.parse_args(["flash-executable", "--native-routed-expert-dispatch-receipt", "native-dispatch.json"]).native_routed_expert_dispatch_receipt == "native-dispatch.json"
     assert parser.parse_args(["flash-executable", "--router-representation-ab-receipt", "router-ab.json"]).router_representation_ab_receipt == "router-ab.json"
     assert parser.parse_args(["protected-bench-watch"]).command == "protected-bench-watch"
     assert parser.parse_args(["protected-accelerator-bench"]).command == "protected-accelerator-bench"

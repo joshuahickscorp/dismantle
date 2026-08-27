@@ -171,6 +171,7 @@ def _flash_summary(repo: Path) -> Dict[str, Any]:
     executable = _receipt(repo, "FLASH_NEXT_NOETIC_EXECUTABLE.json") or {}
     ebpw = _receipt(repo, "FLASH_EBPW_BUDGET.json") or {}
     token_ns = _receipt(repo, "FLASH_TOKEN_NS_BUDGET.json") or {}
+    tensor_probe = _receipt(repo, "FLASH_FIRST_TENSOR_PROBE.json") or {}
     source = flash.get("source_identity") or flash.get("source") or {}
     promotion = flash.get("promotion_gate") or {}
     return {
@@ -204,6 +205,18 @@ def _flash_summary(repo: Path) -> Dict[str, Any]:
             "native_kernels": executable.get("native_kernels"),
             "complete_token_timing": executable.get("complete_token_timing"),
             "runtime_genome": executable.get("runtime_genome"),
+        },
+        "bounded_source_tensor_probe": {
+            "status": tensor_probe.get("status"),
+            "receipt_path": str(repo / "receipts" / "headless" / "FLASH_FIRST_TENSOR_PROBE.json"),
+            "source_label": tensor_probe.get("source_label"),
+            "candidate_label": tensor_probe.get("candidate_label"),
+            "tensor_name": tensor_probe.get("tensor_name"),
+            "organ": tensor_probe.get("organ"),
+            "dense_vs_packed_low_bit": tensor_probe.get("dense_vs_packed_low_bit"),
+            "body_mutated": tensor_probe.get("body_mutated"),
+            "model_loaded": tensor_probe.get("model_loaded"),
+            "claim_boundary": "bounded slice evidence only; whole-model capability and runtime remain untested",
         },
         "budgets": {
             "ebpw": {"status": ebpw.get("status"), "receipt_path": str(repo / "receipts" / "headless" / "FLASH_EBPW_BUDGET.json"), "measured": ebpw.get("measured"), "target_contract": ebpw.get("target_contract")},
@@ -416,6 +429,7 @@ def build_handoff(repo_root: Optional[str | os.PathLike[str]] = None, *, emit: O
             "run_qwen27_mlp_diagnostic": f"python3 -m hcli agentos qwen27-mlp-ab --repo-root {repo} --profile {repo / 'hcli/hawking-native.sealed-3.14.json'} --resident-binary {repo / '.hcli/instrumented/ascension_qwen38_resident'}",
             "watch_protected_qwen_window": f"python3 -m hcli agentos protected-bench-watch --repo-root {repo} --profile {repo / 'hcli/hawking-native.sealed-3.14.json'} --resident-binary {repo / '.hcli/instrumented/ascension_qwen38_resident'} --duration-s 21600 --interval-s 60",
             "build_flash_executable_scaffold": f"python3 -m hcli agentos flash-executable --repo-root {repo}",
+            "run_flash_tensor_probe": f"python3 -m hcli agentos flash-tensor-probe --emit {repo / 'receipts/headless/FLASH_FIRST_TENSOR_PROBE.json'}",
             "resume_modellake_only_if_interrupted": f"python3 -m hcli agentos background resume --workspace {repo} --repo-root {repo} {MODEL_LAKE_JOB}",
             "do_not_start": "Do not launch or promote a new Odyssey; continue only through the existing HCLI/ModelLake authorities and governed windows.",
         },

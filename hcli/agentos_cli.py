@@ -190,9 +190,19 @@ def build_parser() -> argparse.ArgumentParser:
     )
     flash_executable.add_argument("--repo-root", default=None)
     flash_executable.add_argument("--science-receipt", default=None)
+    flash_executable.add_argument("--tensor-probe-receipt", default=None)
     flash_executable.add_argument("--emit", default=None)
     flash_executable.add_argument("--ebpw-emit", default=None)
     flash_executable.add_argument("--token-ns-emit", default=None)
+
+    flash_tensor_probe = sub.add_parser(
+        "flash-tensor-probe",
+        help="read a bounded tensor slice from the pinned Flash-Next specimen and compare a derived packed candidate",
+    )
+    flash_tensor_probe.add_argument("--root", default=None, help="final specimen root; defaults to the canonical ModelLake specimen")
+    flash_tensor_probe.add_argument("--tensor-name", default=None)
+    flash_tensor_probe.add_argument("--sample-bytes", type=int, default=1 * 1024 * 1024)
+    flash_tensor_probe.add_argument("--emit", default=None)
 
     preboard = sub.add_parser(
         "preboard",
@@ -476,9 +486,22 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             report = run_flash_executable_scaffold(
                 repo_root=args.repo_root,
                 science_receipt=args.science_receipt,
+                tensor_probe_receipt=args.tensor_probe_receipt,
                 emit=args.emit,
                 ebpw_emit=args.ebpw_emit,
                 token_ns_emit=args.token_ns_emit,
+            )
+            _emit(report)
+            return 0 if report.get("status") == "PASSED" else 1
+
+        if args.command == "flash-tensor-probe":
+            from hcli.agentos.flash_tensor_probe import DEFAULT_TENSOR, run_flash_tensor_probe
+
+            report = run_flash_tensor_probe(
+                root=args.root,
+                tensor_name=args.tensor_name or DEFAULT_TENSOR,
+                sample_bytes=args.sample_bytes,
+                emit=args.emit,
             )
             _emit(report)
             return 0 if report.get("status") == "PASSED" else 1

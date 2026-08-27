@@ -1,4 +1,97 @@
 {
+  "bounded_source_probe": {
+    "body_mutated": false,
+    "candidate_label": "[D]",
+    "dense_vs_packed_low_bit": {
+      "candidate": {
+        "candidate_bytes": 278528,
+        "candidate_sha256": "a859376326cf4bc1199e9c297177acac6ee64756b84e6dd3f36842c54d82bcb0",
+        "code_bytes": 262144,
+        "effective_bits_per_value": 4.25,
+        "group_size": 64,
+        "groups": 8192,
+        "label": "[D]",
+        "max_abs_error": 0.011823381696428572,
+        "mean_abs_error": 0.001339952767113279,
+        "model_capability_tested": false,
+        "reconstruction_finite": true,
+        "rmse": 0.001600212788700384,
+        "runtime_performance_tested": false,
+        "scale_bytes": 16384,
+        "scheme": "symmetric_signed_4bit_group64_with_fp16_scales",
+        "source_peak_abs": 0.169921875,
+        "status": "BOUNDED_SLICE_RECONSTRUCTION_ONLY"
+      },
+      "comparison": {
+        "candidate_bytes_over_control": 0.265625,
+        "candidate_is_smaller": true,
+        "capability_parity": "NOT_TESTED",
+        "label": "[D]",
+        "same_values_compared": 524288,
+        "whole_model_runtime": "NOT_TESTED"
+      },
+      "control": {
+        "bits_per_value": 16.0,
+        "bytes": 1048576,
+        "label": "[V]",
+        "representation": "source BF16 slice"
+      }
+    },
+    "model_loaded": false,
+    "next_experiment": {
+      "action": "implement exact source-layout-aware shared-basis/NF-residual representation and matched reference-vector parity before any native kernel",
+      "id": "flash-routed-expert-slice-to-organ",
+      "required_before_promotion": [
+        "full tensor transform parity",
+        "native loader",
+        "native kernel",
+        "whole-model capability",
+        "protected complete-token timing"
+      ],
+      "source_mutation_allowed": false
+    },
+    "organ": {
+      "id": "routed_experts",
+      "label": "[D]",
+      "mapping_basis": "tensor name model.language_model.layers.*.mlp.experts.*"
+    },
+    "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_FIRST_TENSOR_PROBE.json",
+    "receipt_sha256": "00f75160f02085fd8ddf182e42a16f0b4b8c90add1b8269864524803fd5c8d75",
+    "root": "/Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc",
+    "source_label": "[V]",
+    "source_tensor": {
+      "data_offsets": [
+        0,
+        3355443200
+      ],
+      "dtype": "BF16",
+      "header_bytes": 160,
+      "index_sha256": "99e815241ef03325536b0aaa4441deea45174c17fae31e10f0bb456410c590de",
+      "label": "[V]",
+      "payload_bytes": 3355443200,
+      "selected_shard_full_hash_recomputed": false,
+      "shape": [
+        512,
+        1280,
+        2560
+      ],
+      "shard": "/Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc/model-00002-of-00131.safetensors",
+      "shard_name": "model-00002-of-00131.safetensors",
+      "shard_size": 3355443368,
+      "slice_bytes": 1048576,
+      "slice_finite": true,
+      "slice_nonzero_values": 524288,
+      "slice_offset_bytes": 0,
+      "slice_sha256": "b90d368c2c12e0dbef0b1628a60163b48ba1ae06eea4ce73a7b9482e9a37aae4",
+      "slice_values": 524288,
+      "tensor_name": "model.language_model.layers.0.mlp.experts.gate_up_proj",
+      "verification_scope": "local safetensors header and bounded bytes under the exact pinned final ModelLake identity"
+    },
+    "status": "PASSED",
+    "tensor_name": "model.language_model.layers.0.mlp.experts.gate_up_proj",
+    "whole_model_capability": "NOT_TESTED",
+    "whole_model_runtime": "NOT_TESTED"
+  },
   "budget_policy": {
     "allocation": "No guessed per-organ actual is accepted. A provisional ceiling may be allocated only after a representation body and loader manifest exist.",
     "overhead_must_be_counted": true,
@@ -6,6 +99,21 @@
     "zero_bytes_are_not_inferred_from_missing_fields": true
   },
   "chosen_representation": {
+    "bounded_source_probe": {
+      "candidate_effective_bits_per_value": 4.25,
+      "candidate_is_smaller_on_slice": true,
+      "candidate_scheme": "symmetric_signed_4bit_group64_with_fp16_scales",
+      "capability_parity": "NOT_TESTED",
+      "label": "[D]",
+      "organ": {
+        "id": "routed_experts",
+        "label": "[D]",
+        "mapping_basis": "tensor name model.language_model.layers.*.mlp.experts.*"
+      },
+      "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_FIRST_TENSOR_PROBE.json",
+      "tensor_name": "model.language_model.layers.0.mlp.experts.gate_up_proj",
+      "whole_model_runtime": "NOT_TESTED"
+    },
     "deltanet": "resident state-native representation",
     "expert_bank": "shared basis plus per-expert NF residual",
     "id": "flash-expert-shared-basis-nf-residual-v0",
@@ -14,7 +122,7 @@
     "ngram": "lookup/compositional representation, not generic dense quantization",
     "router": "resident route metadata and selected-expert gather",
     "sparse_attention": "budget/index-native sparse representation",
-    "status": "HYPOTHESIS_NOT_BUILT",
+    "status": "BOUNDED_SLICE_OBSERVED_NOT_WHOLE_MODEL",
     "vision": "conditional multimodal path; text-resident omission requires an explicit separate contract"
   },
   "claim_boundary": "This is an EBPW budget and representation contract, not a compressed artifact measurement. Missing actual bytes remain missing.",

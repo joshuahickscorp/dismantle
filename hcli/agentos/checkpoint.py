@@ -168,6 +168,7 @@ def _gate_summary(workspace: Path, repo_root: Path) -> Dict[str, Any]:
     flash_executable_candidates = [repo_root / "receipts" / "headless" / "FLASH_NEXT_NOETIC_EXECUTABLE.json"]
     flash_ebpw_candidates = [repo_root / "receipts" / "headless" / "FLASH_EBPW_BUDGET.json"]
     flash_token_ns_candidates = [repo_root / "receipts" / "headless" / "FLASH_TOKEN_NS_BUDGET.json"]
+    flash_tensor_probe_candidates = [repo_root / "receipts" / "headless" / "FLASH_FIRST_TENSOR_PROBE.json"]
     recovery = None
     for path in recovery_candidates:
         value = _read_object(path)
@@ -443,6 +444,7 @@ def _gate_summary(workspace: Path, repo_root: Path) -> Dict[str, Any]:
     flash_executable = _science_receipt(flash_executable_candidates, fields=("status", "qualification", "NOT_FOR_PROMOTION", "promotion_allowed", "native_loader", "native_kernels", "complete_token_timing", "runtime_genome"))
     flash_ebpw = _science_receipt(flash_ebpw_candidates, fields=("status", "measured", "target_contract", "promotion_allowed"))
     flash_token_ns = _science_receipt(flash_token_ns_candidates, fields=("status", "system_ledger", "target_contract", "promotion_allowed"))
+    flash_tensor_probe = _science_receipt(flash_tensor_probe_candidates, fields=("source_label", "candidate_label", "source_tensor", "organ", "dense_vs_packed_low_bit", "next_experiment", "body_mutated", "model_loaded"))
     return {
         "recovery_gate": {
             **(recovery or {
@@ -560,6 +562,7 @@ def _gate_summary(workspace: Path, repo_root: Path) -> Dict[str, Any]:
         "flash_executable": flash_executable or {"status": "NOT_RUN", "receipt_path": None, "schema": None, "qualification": None, "NOT_FOR_PROMOTION": None, "promotion_allowed": None, "native_loader": None, "native_kernels": None, "complete_token_timing": None, "runtime_genome": None},
         "flash_ebpw_budget": flash_ebpw or {"status": "NOT_RUN", "receipt_path": None, "schema": None, "measured": None, "target_contract": None, "promotion_allowed": None},
         "flash_token_ns_budget": flash_token_ns or {"status": "NOT_RUN", "receipt_path": None, "schema": None, "system_ledger": None, "target_contract": None, "promotion_allowed": None},
+        "flash_tensor_probe": flash_tensor_probe or {"status": "NOT_RUN", "receipt_path": None, "schema": None, "source_label": None, "candidate_label": None, "source_tensor": None, "organ": None, "dense_vs_packed_low_bit": None, "next_experiment": None, "body_mutated": None, "model_loaded": None},
         "production_provider_gate": "NOT_RUN",
     }
 
@@ -626,6 +629,8 @@ def build_program_checkpoint(
         blockers.append("Flash-Next noetic executable contract/scaffold has not been persisted")
     elif gates["flash_executable"].get("promotion_allowed") is not False:
         blockers.append("Flash-Next executable scaffold has not explicitly refused promotion")
+    if gates["flash_tensor_probe"].get("status") != "PASSED":
+        blockers.append("bounded Flash-Next source-tensor representation probe has not been persisted")
     if gates["qwen27_runtime_identity"].get("status") != "PASSED":
         blockers.append("Qwen27 current-versus-historical runtime identity archaeology has not been persisted")
     if gates["qwen27_mlp_diagnostic"].get("status") != "PASSED":
@@ -705,6 +710,7 @@ def build_program_checkpoint(
             "flash_executable": gates["flash_executable"]["status"],
             "flash_ebpw_budget": gates["flash_ebpw_budget"]["status"],
             "flash_token_ns_budget": gates["flash_token_ns_budget"]["status"],
+            "flash_tensor_probe": gates["flash_tensor_probe"]["status"],
         },
         "blockers": blockers,
         "next_actions": [

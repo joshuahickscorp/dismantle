@@ -34,6 +34,7 @@ TOKEN_NS_SCHEMA = "hcli.agentos.flash_token_ns_budget.v1"
 DERIVED = "[D]"
 NOT_MEASURED = "NOT_MEASURED"
 DEFAULT_SCIENCE = "HCLI_FLASH_NEXT_PRE_RUNTIME_SCIENCE.json"
+DEFAULT_TENSOR_PROBE = "FLASH_FIRST_TENSOR_PROBE.json"
 DEFAULT_EXECUTABLE = "FLASH_NEXT_NOETIC_EXECUTABLE.json"
 DEFAULT_EBPW = "FLASH_EBPW_BUDGET.json"
 DEFAULT_TOKEN_NS = "FLASH_TOKEN_NS_BUDGET.json"
@@ -143,6 +144,41 @@ def _modellake_identity(repo: Path) -> Dict[str, Any]:
     }
 
 
+def _tensor_probe_summary(
+    repo: Path,
+    receipt: Optional[str | os.PathLike[str]] = None,
+) -> Dict[str, Any]:
+    """Read bounded probe evidence without treating it as a full model build."""
+    path = Path(receipt).expanduser().resolve() if receipt else repo / "receipts" / "headless" / DEFAULT_TENSOR_PROBE
+    probe = _read_json(path)
+    if probe is None:
+        return {
+            "status": "NOT_RUN",
+            "receipt_path": str(path),
+            "source_tensor": None,
+            "dense_vs_packed_low_bit": None,
+            "whole_model_capability": "NOT_TESTED",
+            "whole_model_runtime": "NOT_TESTED",
+        }
+    return {
+        "status": probe.get("status"),
+        "receipt_path": str(path),
+        "receipt_sha256": _sha256(path),
+        "source_label": probe.get("source_label"),
+        "candidate_label": probe.get("candidate_label"),
+        "root": probe.get("root"),
+        "tensor_name": probe.get("tensor_name"),
+        "source_tensor": probe.get("source_tensor"),
+        "organ": probe.get("organ"),
+        "dense_vs_packed_low_bit": probe.get("dense_vs_packed_low_bit"),
+        "next_experiment": probe.get("next_experiment"),
+        "body_mutated": probe.get("body_mutated"),
+        "model_loaded": probe.get("model_loaded"),
+        "whole_model_capability": "NOT_TESTED",
+        "whole_model_runtime": "NOT_TESTED",
+    }
+
+
 def _primary_organs(science: Mapping[str, Any]) -> list[Mapping[str, Any]]:
     rows = science.get("organ_graph")
     if not isinstance(rows, list):
@@ -235,7 +271,11 @@ def _organ_records(science: Mapping[str, Any]) -> list[Dict[str, Any]]:
     return rows
 
 
-def _ebpw_budget(science: Mapping[str, Any], source: Mapping[str, Any]) -> Dict[str, Any]:
+def _ebpw_budget(
+    science: Mapping[str, Any],
+    source: Mapping[str, Any],
+    tensor_probe: Mapping[str, Any],
+) -> Dict[str, Any]:
     parameters = source.get("source_parameter_count")
     system_ceiling = int(parameters * COMPLETE_SYSTEM_EBPW_MAX) if isinstance(parameters, int) else None
     organs = _organ_records(science)
@@ -248,6 +288,33 @@ def _ebpw_budget(science: Mapping[str, Any], source: Mapping[str, Any]) -> Dict[
         }
         for field in COMPLETE_SYSTEM_BYTE_FIELDS
     }
+    chosen_representation = {
+        "id": "flash-expert-shared-basis-nf-residual-v0",
+        "status": "HYPOTHESIS_NOT_BUILT",
+        "label": DERIVED,
+        "expert_bank": "shared basis plus per-expert NF residual",
+        "router": "resident route metadata and selected-expert gather",
+        "deltanet": "resident state-native representation",
+        "ngram": "lookup/compositional representation, not generic dense quantization",
+        "sparse_attention": "budget/index-native sparse representation",
+        "mtp": "explicit draft/verify/rollback representation",
+        "vision": "conditional multimodal path; text-resident omission requires an explicit separate contract",
+    }
+    if tensor_probe.get("status") == "PASSED":
+        chosen_representation.update({
+            "status": "BOUNDED_SLICE_OBSERVED_NOT_WHOLE_MODEL",
+            "bounded_source_probe": {
+                "receipt_path": tensor_probe.get("receipt_path"),
+                "tensor_name": tensor_probe.get("tensor_name"),
+                "organ": tensor_probe.get("organ"),
+                "candidate_scheme": ((tensor_probe.get("dense_vs_packed_low_bit") or {}).get("candidate") or {}).get("scheme"),
+                "candidate_effective_bits_per_value": ((tensor_probe.get("dense_vs_packed_low_bit") or {}).get("candidate") or {}).get("effective_bits_per_value"),
+                "candidate_is_smaller_on_slice": ((tensor_probe.get("dense_vs_packed_low_bit") or {}).get("comparison") or {}).get("candidate_is_smaller"),
+                "capability_parity": "NOT_TESTED",
+                "whole_model_runtime": "NOT_TESTED",
+                "label": DERIVED,
+            },
+        })
     return {
         "schema": EBPW_SCHEMA,
         "status": "PLANNED_UNTIL_VERIFIED_BODY",
@@ -260,18 +327,8 @@ def _ebpw_budget(science: Mapping[str, Any], source: Mapping[str, Any]) -> Dict[
             "target_ceiling_bytes": system_ceiling,
             "target_ceiling_is_not_an_actual_measurement": True,
         },
-        "chosen_representation": {
-            "id": "flash-expert-shared-basis-nf-residual-v0",
-            "status": "HYPOTHESIS_NOT_BUILT",
-            "label": DERIVED,
-            "expert_bank": "shared basis plus per-expert NF residual",
-            "router": "resident route metadata and selected-expert gather",
-            "deltanet": "resident state-native representation",
-            "ngram": "lookup/compositional representation, not generic dense quantization",
-            "sparse_attention": "budget/index-native sparse representation",
-            "mtp": "explicit draft/verify/rollback representation",
-            "vision": "conditional multimodal path; text-resident omission requires an explicit separate contract",
-        },
+        "chosen_representation": chosen_representation,
+        "bounded_source_probe": tensor_probe,
         "organs": organs,
         "complete_system_accounting": accounting,
         "measured": {
@@ -361,6 +418,7 @@ def _executable_manifest(
     lake: Mapping[str, Any],
     ebpw: Mapping[str, Any],
     token_ns: Mapping[str, Any],
+    tensor_probe: Mapping[str, Any],
 ) -> Dict[str, Any]:
     organs = [str(row.get("organ")) for row in ebpw.get("organs") or [] if isinstance(row, Mapping)]
     return {
@@ -380,10 +438,13 @@ def _executable_manifest(
             "pinned_revision": PINNED_REVISION,
             "architecture_fingerprint": _safe(science.get("architecture_fingerprint")),
             "science_receipt": source.get("science_receipt"),
-            "header_only_source": True,
+            "header_only_source": tensor_probe.get("status") != "PASSED",
+            "bounded_source_slice_observed": tensor_probe.get("status") == "PASSED",
+            "bounded_probe_receipt": tensor_probe.get("receipt_path"),
             "weight_body_loaded": False,
         },
         "model_lake": lake,
+        "source_tensor_probe": tensor_probe,
         "chosen_representation": ebpw.get("chosen_representation"),
         "native_loader": {
             "status": "NOT_IMPLEMENTED",
@@ -463,6 +524,7 @@ def run_flash_executable_scaffold(
     *,
     repo_root: Optional[str | os.PathLike[str]] = None,
     science_receipt: Optional[str | os.PathLike[str]] = None,
+    tensor_probe_receipt: Optional[str | os.PathLike[str]] = None,
     emit: Optional[str | os.PathLike[str]] = None,
     ebpw_emit: Optional[str | os.PathLike[str]] = None,
     token_ns_emit: Optional[str | os.PathLike[str]] = None,
@@ -491,9 +553,10 @@ def run_flash_executable_scaffold(
         source = _source_summary(science)
         source["science_receipt"] = {"path": str(science_path), "sha256": _sha256(science_path), "status": science.get("status")}
         lake = _modellake_identity(repo)
-        ebpw = _ebpw_budget(science, source)
+        tensor_probe = _tensor_probe_summary(repo, tensor_probe_receipt)
+        ebpw = _ebpw_budget(science, source, tensor_probe)
         token_ns = _token_ns_budget(science, source)
-        manifest = _executable_manifest(science, source, lake, ebpw, token_ns)
+        manifest = _executable_manifest(science, source, lake, ebpw, token_ns, tensor_probe)
         atomic_write_json(ebpw_path, ebpw)
         atomic_write_json(token_path, token_ns)
         manifest["ebpw_budget_receipt"] = str(ebpw_path)
@@ -509,6 +572,8 @@ def run_flash_executable_scaffold(
                 "source_revision_pinned": (science.get("source_identity") or {}).get("pinned_revision") == PINNED_REVISION if isinstance(science.get("source_identity"), Mapping) else False,
                 "header_only_boundary_preserved": source.get("header_audit", {}).get("body_bytes_loaded") == 0 and source.get("header_audit", {}).get("body_bytes_requested") == 0,
                 "model_lake_not_mutated": lake.get("mutation_by_this_scaffold") is False,
+                "bounded_probe_is_explicit": tensor_probe.get("status") in {"NOT_RUN", "PASSED"},
+                "bounded_probe_does_not_claim_whole_model": tensor_probe.get("whole_model_capability") == "NOT_TESTED" and tensor_probe.get("whole_model_runtime") == "NOT_TESTED",
                 "native_loader_status_explicit": manifest.get("native_loader", {}).get("status") == "NOT_IMPLEMENTED",
                 "native_kernels_status_explicit": manifest.get("native_kernels", {}).get("status") == "PLAN_ONLY",
                 "complete_token_timing_not_fabricated": manifest.get("complete_token_timing", {}).get("accepted_tps") is None,
@@ -534,6 +599,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo-root")
     parser.add_argument("--science-receipt")
+    parser.add_argument("--tensor-probe-receipt")
     parser.add_argument("--emit")
     parser.add_argument("--ebpw-emit")
     parser.add_argument("--token-ns-emit")
@@ -541,6 +607,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     report = run_flash_executable_scaffold(
         repo_root=args.repo_root,
         science_receipt=args.science_receipt,
+        tensor_probe_receipt=args.tensor_probe_receipt,
         emit=args.emit,
         ebpw_emit=args.ebpw_emit,
         token_ns_emit=args.token_ns_emit,
@@ -549,7 +616,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     return 0 if report.get("status") == "PASSED" else 1
 
 
-__all__ = ["EBPW_SCHEMA", "SCHEMA", "TOKEN_NS_SCHEMA", "main", "run_flash_executable_scaffold"]
+__all__ = ["DEFAULT_TENSOR_PROBE", "EBPW_SCHEMA", "SCHEMA", "TOKEN_NS_SCHEMA", "main", "run_flash_executable_scaffold"]
 
 
 if __name__ == "__main__":

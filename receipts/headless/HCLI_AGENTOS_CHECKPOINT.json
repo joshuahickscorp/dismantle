@@ -20,7 +20,7 @@
     ],
     "download_performed": false,
     "external_write_performed": false,
-    "generated_at": 1787817487.0474198,
+    "generated_at": 1787817588.914402,
     "network_probed": false,
     "repo_root": "/Users/scammermike/Downloads/hawking",
     "schema": "hcli.agentos.connectivity.v1",
@@ -796,7 +796,8 @@
         "candidate_id": "independent_q4_g64",
         "complete_model": false,
         "operations": [
-          "stream_verified_source_block",
+          "retain_verified_source_block_as_parity_reference",
+          "load_persisted_source_independent_component_body",
           "load_serialized_representation_descriptor",
           "dispatch_qwen_uniform_q4_group64_matvec"
         ],
@@ -917,7 +918,7 @@
           }
         ],
         "fingerprint": "9577f562f3fd8bf5c10ef5393dd62ee7ad841fe5dc8b2fe5a1372be5dd7c6e0d",
-        "generated_at": 1787817409.745667,
+        "generated_at": 1787817587.6860769,
         "graph_execution_observed": false,
         "memory": [
           {
@@ -2371,8 +2372,8 @@
       "status": "PASSED"
     }
   },
-  "generated_at": 1787817487.068036,
-  "git_revision": "e57b0a9461dcaef88ea5840ee644ce77db5203ee",
+  "generated_at": 1787817588.924329,
+  "git_revision": "942779042216999413730f4c96c084cdc96ce918",
   "host": {
     "machine": "arm64",
     "platform": "macOS-27.0-arm64-arm-64bit-Mach-O",

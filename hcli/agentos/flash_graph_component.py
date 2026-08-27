@@ -354,7 +354,8 @@ def _compile_report(
             "semantic_type": "NoeticIR",
             "candidate_id": validation["candidate_id"],
             "operations": [
-                "stream_verified_source_block",
+                "retain_verified_source_block_as_parity_reference",
+                *(["load_persisted_source_independent_component_body"] if validation["source_independent_execution"] else []),
                 "load_serialized_representation_descriptor",
                 "dispatch_qwen_uniform_q4_group64_matvec",
             ],

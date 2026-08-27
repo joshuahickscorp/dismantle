@@ -7,10 +7,10 @@
   "complete_system_ebpw": null,
   "complete_token_runtime": "NOT_TESTED",
   "component_status": "BOUNDED_COMPONENT_COMPILED",
-  "elapsed_s": 0.001,
-  "finished_at": 1787817409.745791,
+  "elapsed_s": 0.0,
+  "finished_at": 1787817587.686204,
   "flash_tps": null,
-  "generated_at": 1787817409.7447839,
+  "generated_at": 1787817587.685727,
   "graph_fingerprint": "9577f562f3fd8bf5c10ef5393dd62ee7ad841fe5dc8b2fe5a1372be5dd7c6e0d",
   "inputs": {
     "kernel": {
@@ -40,7 +40,8 @@
     "candidate_id": "independent_q4_g64",
     "complete_model": false,
     "operations": [
-      "stream_verified_source_block",
+      "retain_verified_source_block_as_parity_reference",
+      "load_persisted_source_independent_component_body",
       "load_serialized_representation_descriptor",
       "dispatch_qwen_uniform_q4_group64_matvec"
     ],
@@ -162,7 +163,7 @@
       }
     ],
     "fingerprint": "9577f562f3fd8bf5c10ef5393dd62ee7ad841fe5dc8b2fe5a1372be5dd7c6e0d",
-    "generated_at": 1787817409.745667,
+    "generated_at": 1787817587.6860769,
     "graph_execution_observed": false,
     "memory": [
       {

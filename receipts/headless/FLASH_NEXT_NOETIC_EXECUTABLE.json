@@ -518,7 +518,8 @@
       "candidate_id": "independent_q4_g64",
       "complete_model": false,
       "operations": [
-        "stream_verified_source_block",
+        "retain_verified_source_block_as_parity_reference",
+        "load_persisted_source_independent_component_body",
         "load_serialized_representation_descriptor",
         "dispatch_qwen_uniform_q4_group64_matvec"
       ],
@@ -640,7 +641,7 @@
         }
       ],
       "fingerprint": "9577f562f3fd8bf5c10ef5393dd62ee7ad841fe5dc8b2fe5a1372be5dd7c6e0d",
-      "generated_at": 1787817409.745667,
+      "generated_at": 1787817587.6860769,
       "graph_execution_observed": false,
       "memory": [
         {
@@ -696,7 +697,7 @@
     },
     "promotion_allowed": false,
     "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_ROUTED_EXPERT_GRAPH.json",
-    "receipt_sha256": "9fbcc8f241a9786d100ddab7766a4727da3ecc3dd0623759c3ff25615f6a9c2d",
+    "receipt_sha256": "2d6cddfe5efc6f3918454eff465dc13636693279cd1eca18cf14ed327058346d",
     "schema": "hcli.agentos.flash_noetic_graph_component.v1",
     "semantic_type": "NoeticExecutableCandidate",
     "source_backed": false,

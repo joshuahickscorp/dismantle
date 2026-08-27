@@ -20,7 +20,7 @@
     ],
     "download_performed": false,
     "external_write_performed": false,
-    "generated_at": 1787801895.649099,
+    "generated_at": 1787804661.163292,
     "network_probed": false,
     "repo_root": "/Users/scammermike/Downloads/hawking",
     "schema": "hcli.agentos.connectivity.v1",
@@ -195,10 +195,13 @@
       "checks": {
         "all_metadata_fetched": true,
         "config_parsed": true,
+        "header_payload_matches_index": true,
         "index_parsed": true,
         "no_weights_downloaded": true,
         "pinned_metadata_urls": true,
-        "promotion_not_allowed": true
+        "promotion_not_allowed": true,
+        "safetensors_headers_complete": true,
+        "weight_bodies_not_requested": true
       },
       "promotion_gate": {
         "artifact_contract": "FLASH_NEXT_COMPLETE_MULTIMODAL",
@@ -321,8 +324,8 @@
     },
     "modellake_supervision": {
       "capacity": {
-        "free_after_expected_bytes": 3155166862666,
-        "free_bytes": 3515190149120,
+        "free_after_expected_bytes": 3026739354954,
+        "free_bytes": 3386762641408,
         "path": "/Volumes/corpdrive/hawking-modellake"
       },
       "checks": {
@@ -423,6 +426,75 @@
       "status": "PRESENT"
     },
     "production_provider_gate": "NOT_RUN",
+    "qwen38_fusion_audit": {
+      "checks": {
+        "no_physical_performance_claim": true,
+        "prior_receipt_retained": true,
+        "profile_exists": true,
+        "profile_fusion_controls_declared": true,
+        "selected_graph_is_source_derived": true,
+        "source_contract_passes": true
+      },
+      "qualification": "QWEN38_FUSION_SOURCE_AUTHORITY_NO_PERFORMANCE_CLAIM",
+      "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/HCLI_QWEN38_FUSION_SOURCE_AUDIT.json",
+      "result": {
+        "current_profile_selected_graph": {
+          "baseline_source_derived": 964,
+          "physical_dispatch_trace": null,
+          "physical_trace_status": "NOT_MEASURED",
+          "saved_by_control": {
+            "add_rmsnorm": 128,
+            "ba_delta": 0,
+            "dn_inproj": 48,
+            "gqa_qkv": 32,
+            "mlp": 128
+          },
+          "selected_source_derived": 628
+        },
+        "finding": "swiglu is accepted as the strongest MLP fusion; 1/true/on/yes are also accepted only by the custom MLP parser, while sibling env_on flags accept exact 1.",
+        "next_experiment": "In one protected QUIESCED window, trace identical complete-token requests for the current 628-dispatch source-derived profile and one-control mutations; record dispatches, GPU/wall timing, capability, and fallback count.",
+        "physical_graph_trace": "NOT_MEASURED",
+        "status": "SOURCE_SEMANTICS_RESOLVED"
+      },
+      "selected_graph": {
+        "dispatch_consequence": {
+          "baseline_source_derived": 964,
+          "physical_dispatch_trace": null,
+          "physical_trace_status": "NOT_MEASURED",
+          "saved_by_control": {
+            "add_rmsnorm": 128,
+            "ba_delta": 0,
+            "dn_inproj": 48,
+            "gqa_qkv": 32,
+            "mlp": 128
+          },
+          "selected_source_derived": 628
+        },
+        "dispatch_constants": {
+          "deltanet_layers": 48,
+          "dense_mlp_suffix_dispatches": 6,
+          "gqa_layers": 16,
+          "layers": 64,
+          "mixer_prefix_dispatches": 9,
+          "terminal_head_kernels": 3
+        },
+        "effective_controls": {
+          "fuse_add_rmsnorm": true,
+          "fuse_ba_delta": false,
+          "fuse_dn_inproj": true,
+          "fuse_gqa_qkv": true,
+          "mlp_fusion": "swiglu"
+        },
+        "kernel_family": "qwen_affine_q2_group64_matvec_gate_up_swiglu_geo_tpr64_tg128",
+        "profile_values": {
+          "HAWKING_QWEN38_FUSE_ADD_RMSNORM": "1",
+          "HAWKING_QWEN38_FUSE_DN_INPROJ": "1",
+          "HAWKING_QWEN38_FUSE_GQA_QKV": "1",
+          "HAWKING_QWEN38_FUSE_MLP": "swiglu"
+        }
+      },
+      "status": "PASSED"
+    },
     "recovery_gate": {
       "checks": {
         "benchmark_rejected": true,
@@ -475,7 +547,31 @@
       "schema": "hcli.agentos.qwen38_accelerator_transfer_map.v1",
       "status": "PRESENT"
     },
-    "unattended": "NOT_PROVEN",
+    "unattended": {
+      "checks": {
+        "accepted_work_had_fresh_model_calls": true,
+        "no_human_interventions": true,
+        "real_work_attempted": true,
+        "requested_duration_observed": true,
+        "useful_work_accepted": true
+      },
+      "duration_requested_s": 3600.0,
+      "elapsed_s": 3600.242,
+      "metrics": {
+        "accepted": 54,
+        "attempted": 55,
+        "human_interventions": 0,
+        "inconclusive": 1,
+        "model_calls": 55,
+        "rejected": 0,
+        "retries": 1,
+        "typed_tool_calls": 110,
+        "verifier_calls": 54
+      },
+      "qualification": "LIVE_UNATTENDED_NATIVE_WORK",
+      "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/HCLI_AGENTOS_UNATTENDED_WINDOW.json",
+      "status": "PASSED"
+    },
     "vmcp_gate": {
       "checks": {
         "external_search": true,
@@ -488,8 +584,8 @@
       "status": "PASSED"
     }
   },
-  "generated_at": 1787801895.654111,
-  "git_revision": "e8d9871e87a8e91cda792de4f96d07fb4eb5003f",
+  "generated_at": 1787804661.171882,
+  "git_revision": "17c7dd4c47e420318e09383b577c5dd70103990c",
   "host": {
     "machine": "arm64",
     "platform": "macOS-27.0-arm64-arm-64bit-Mach-O",
@@ -513,9 +609,10 @@
     "native_resident": "LIVE_RESIDENT_SEQUENTIAL_PROOF",
     "negative_science_preboard": "NEGATIVE_SCIENCE_CENSUS_AND_FPGA_PREBOARD_NO_PHYSICAL_BOARD_CLAIM",
     "provider_generalization": "IMPLEMENTED_CONTRACTS",
+    "qwen38_fusion_audit": "QWEN38_FUSION_SOURCE_AUTHORITY_NO_PERFORMANCE_CLAIM",
     "qwen38_transfer_map": "PRESENT",
     "research": "RESEARCH_OPERATIONAL",
-    "unattended_sovereignty": "NOT_CLAIMED",
+    "unattended_sovereignty": "LIVE_UNATTENDED_NATIVE_WORK",
     "vmcp": "VMCP_OPERATIONAL"
   },
   "next_actions": [

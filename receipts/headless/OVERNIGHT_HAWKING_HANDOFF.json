@@ -5,18 +5,21 @@
       "9d373ecc4863b244fc74761c99fc837f7705f3db"
     ],
     "branch": "odyssey-i",
-    "git_revision": "e8d9871e87a8e91cda792de4f96d07fb4eb5003f",
+    "git_revision": "faae32ea2d1c1fff8328be1aaa8a9fafb23df730",
     "unrelated_preserved_edit": "tools/odyssey_ctl.py",
     "working_tree_status": [
-      "M tools/odyssey_ctl.py"
+      "M receipts/headless/HCLI_AGENTOS_CHECKPOINT.json",
+      " M receipts/headless/HCLI_MODELLAKE_FLASH_ACQUISITION_SUPERVISION.json",
+      " M receipts/headless/OVERNIGHT_HAWKING_HANDOFF.json",
+      " M tools/odyssey_ctl.py",
+      "?? receipts/headless/HCLI_AGENTOS_UNATTENDED_WINDOW.json"
     ]
   },
   "blockers": [
     "Flash-Next final promotion gate remains incomplete until every required byte/evidence field and both hard thresholds pass.",
     "Qwen27 current resident observation is a contaminated/contended regression audit, not a performance qualification.",
     "No physical FPGA board, bitstream, or hardware performance is claimed.",
-    "Flash-Next ModelLake acquisition is still partial or not yet atomically published.",
-    "The corrected one-hour unattended window has not yet produced a final PASSED receipt."
+    "Flash-Next ModelLake acquisition is still partial or not yet atomically published."
   ],
   "claim_boundary": "This handoff is a resumable status snapshot. It does not certify model quality, accelerator performance, Flash promotion, FPGA hardware, or sovereignty.",
   "continuation": {
@@ -30,6 +33,7 @@
     "refresh_maps": "python3 -m hcli agentos science-maps --repo-root /Users/scammermike/Downloads/hawking --transfer-emit /Users/scammermike/Downloads/hawking/receipts/headless/QWEN38_ACCELERATOR_TRANSFER_MAP.json --precedent-emit /Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NEXT_PRECEDENT_MAP.json",
     "resume_modellake_only_if_interrupted": "python3 -m hcli agentos background resume --workspace /Users/scammermike/Downloads/hawking --repo-root /Users/scammermike/Downloads/hawking job-2f77c1d6-e33b-44fe-bc12-549cf47805c7",
     "run_full_tests": "pytest -q",
+    "run_qwen38_fusion_audit": "python3 -m hcli agentos qwen38-fusion-audit --repo-root /Users/scammermike/Downloads/hawking --profile /Users/scammermike/Downloads/hawking/hcli/hawking-native.sealed-3.14.json --emit /Users/scammermike/Downloads/hawking/receipts/headless/HCLI_QWEN38_FUSION_SOURCE_AUDIT.json",
     "supervise_modellake": "python3 -m hcli agentos modellake-supervise --repo-root /Users/scammermike/Downloads/hawking --job-id job-2f77c1d6-e33b-44fe-bc12-549cf47805c7 --emit /Users/scammermike/Downloads/hawking/receipts/headless/HCLI_MODELLAKE_FLASH_ACQUISITION_SUPERVISION.json",
     "unattended_job_status": "python3 -m hcli agentos background status --workspace /Users/scammermike/Downloads/hawking --repo-root /Users/scammermike/Downloads/hawking job-d659ef87-240c-4504-b1ee-1c0ec459deb2"
   },
@@ -129,7 +133,11 @@
         "out_hidden_size": 2560,
         "patch_size": 16,
         "spatial_merge_size": 2,
-        "temporal_patch_size": 2
+        "temporal_patch_size": 2,
+        "tensor_shape_coverage": {
+          "available": 333,
+          "total": 333
+        }
       },
       "vocab_size": 248320
     },
@@ -225,7 +233,7 @@
       "telemetry/receipt verifier"
     ]
   },
-  "generated_at": 1787801894.566111,
+  "generated_at": 1787804947.881769,
   "hcli": {
     "background_jobs": [
       {
@@ -324,15 +332,15 @@
         ],
         "cwd": "/Users/scammermike/Downloads/hawking",
         "error": null,
-        "finished_at": null,
+        "finished_at": 1787803878.467991,
         "job_id": "job-d659ef87-240c-4504-b1ee-1c0ec459deb2",
         "label": "hcli-autonomy-one-hour-verified",
         "log_path": "/Users/scammermike/Downloads/hawking/.hcli/background/logs/job-d659ef87-240c-4504-b1ee-1c0ec459deb2.log",
         "pid": 54862,
         "resumable": true,
-        "returncode": null,
+        "returncode": 0,
         "started_at": 1787800278.02771,
-        "state": "RUNNING"
+        "state": "COMPLETED"
       }
     ],
     "current_default_profile": "/Users/scammermike/Downloads/hawking/hcli/hawking-native.sealed-3.14.json",
@@ -514,28 +522,44 @@
     "unattended_window": {
       "claim_boundary": "Only a completed receipt with fresh model-call evidence can qualify the requested unattended window.",
       "final_receipt": {
-        "checks": null,
-        "elapsed_s": null,
-        "metrics": null,
+        "checks": {
+          "accepted_work_had_fresh_model_calls": true,
+          "no_human_interventions": true,
+          "real_work_attempted": true,
+          "requested_duration_observed": true,
+          "useful_work_accepted": true
+        },
+        "elapsed_s": 3600.242,
+        "metrics": {
+          "accepted": 54,
+          "attempted": 55,
+          "human_interventions": 0,
+          "inconclusive": 1,
+          "model_calls": 55,
+          "rejected": 0,
+          "retries": 1,
+          "typed_tool_calls": 110,
+          "verifier_calls": 54
+        },
         "path": "/Users/scammermike/Downloads/hawking/receipts/headless/HCLI_AGENTOS_UNATTENDED_WINDOW.json",
-        "present": false,
-        "status": null
+        "present": true,
+        "status": "PASSED"
       },
       "progress_workspaces": [
         {
           "checks": {},
-          "cycles": 23,
+          "cycles": 55,
           "deadline": 1787803878.20885,
           "metrics": {
-            "accepted": 22,
-            "attempted": 23,
+            "accepted": 54,
+            "attempted": 55,
             "human_interventions": 0,
             "inconclusive": 1,
-            "model_calls": 23,
+            "model_calls": 55,
             "rejected": 0,
             "retries": 1,
-            "typed_tool_calls": 46,
-            "verifier_calls": 22
+            "typed_tool_calls": 110,
+            "verifier_calls": 54
           },
           "path": "/Users/scammermike/Downloads/hawking/.hcli/autonomy-window-verified/window-progress.json",
           "started_at": 1787800278.20885,
@@ -678,8 +702,8 @@
         "state": "RUNNING"
       },
       "partial": {
-        "bytes": 198547621562,
-        "files": 76,
+        "bytes": 360023286454,
+        "files": 144,
         "path": "/Volumes/corpdrive/hawking-modellake/partial/Qwen--Qwen3.8-Flash-Next@34567a4712bc"
       },
       "qualification": "MODELLAKE_FLASH_ACQUISITION_SUPERVISED_NO_DELETE",
@@ -707,6 +731,119 @@
       "fallbacks": 0,
       "qualification": "CURRENT_RUNTIME_REGRESSION_AUDITED_NO_PERFORMANCE_QUALIFICATION"
     },
+    "fusion_source_audit": {
+      "qualification": "QWEN38_FUSION_SOURCE_AUTHORITY_NO_PERFORMANCE_CLAIM",
+      "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/HCLI_QWEN38_FUSION_SOURCE_AUDIT.json",
+      "result": {
+        "current_profile_selected_graph": {
+          "baseline_source_derived": 964,
+          "physical_dispatch_trace": null,
+          "physical_trace_status": "NOT_MEASURED",
+          "saved_by_control": {
+            "add_rmsnorm": 128,
+            "ba_delta": 0,
+            "dn_inproj": 48,
+            "gqa_qkv": 32,
+            "mlp": 128
+          },
+          "selected_source_derived": 628
+        },
+        "finding": "swiglu is accepted as the strongest MLP fusion; 1/true/on/yes are also accepted only by the custom MLP parser, while sibling env_on flags accept exact 1.",
+        "next_experiment": "In one protected QUIESCED window, trace identical complete-token requests for the current 628-dispatch source-derived profile and one-control mutations; record dispatches, GPU/wall timing, capability, and fallback count.",
+        "physical_graph_trace": "NOT_MEASURED",
+        "status": "SOURCE_SEMANTICS_RESOLVED"
+      },
+      "selected_graph": {
+        "dispatch_consequence": {
+          "baseline_source_derived": 964,
+          "physical_dispatch_trace": null,
+          "physical_trace_status": "NOT_MEASURED",
+          "saved_by_control": {
+            "add_rmsnorm": 128,
+            "ba_delta": 0,
+            "dn_inproj": 48,
+            "gqa_qkv": 32,
+            "mlp": 128
+          },
+          "selected_source_derived": 628
+        },
+        "dispatch_constants": {
+          "deltanet_layers": 48,
+          "dense_mlp_suffix_dispatches": 6,
+          "gqa_layers": 16,
+          "layers": 64,
+          "mixer_prefix_dispatches": 9,
+          "terminal_head_kernels": 3
+        },
+        "effective_controls": {
+          "fuse_add_rmsnorm": true,
+          "fuse_ba_delta": false,
+          "fuse_dn_inproj": true,
+          "fuse_gqa_qkv": true,
+          "mlp_fusion": "swiglu"
+        },
+        "kernel_family": "qwen_affine_q2_group64_matvec_gate_up_swiglu_geo_tpr64_tg128",
+        "profile_values": {
+          "HAWKING_QWEN38_FUSE_ADD_RMSNORM": "1",
+          "HAWKING_QWEN38_FUSE_DN_INPROJ": "1",
+          "HAWKING_QWEN38_FUSE_GQA_QKV": "1",
+          "HAWKING_QWEN38_FUSE_MLP": "swiglu"
+        }
+      },
+      "source_contract": {
+        "all_assertions_pass": true,
+        "assertions": {
+          "add_rmsnorm_enable_values_present": true,
+          "dispatch_formula_references_add_rmsnorm_savings": true,
+          "dispatch_formula_references_deltanet_savings": true,
+          "dispatch_formula_references_gqa_savings": true,
+          "dispatch_formula_references_mlp_savings": true,
+          "mlp_off_values_present": true,
+          "mlp_pair_values_present": true,
+          "mlp_parser_present": true,
+          "mlp_swiglu_values_present": true,
+          "mlp_unknown_value_panics": true,
+          "production_dispatch_formula_present": true,
+          "schedule_has_nine_plus_six": true,
+          "sibling_env_on_is_exact_one": true
+        },
+        "authority_lines": {
+          "add_rmsnorm_from_env": 137,
+          "dispatch_formula": 265,
+          "env_on": 198,
+          "mlp_from_env": 85,
+          "production_dispatches": 56
+        },
+        "files": {
+          "/Users/scammermike/Downloads/hawking/crates/hawking-core/src/lib.rs": {
+            "exists": true,
+            "line_count": 229,
+            "sha256": "f437f58229d862f019aa92e26df5e2abd496e8b49e0f038054296c92593313ee"
+          },
+          "/Users/scammermike/Downloads/hawking/crates/hawking-core/src/model/qwen38_64_layer_execution_schedule.rs": {
+            "exists": true,
+            "line_count": 189,
+            "sha256": "e399c5bf6b86dfcf198091f031017a1adc66d435f7a1014e690aab66f1552456"
+          },
+          "/Users/scammermike/Downloads/hawking/crates/hawking-core/src/model/qwen38_geometry.rs": {
+            "exists": true,
+            "line_count": 579,
+            "sha256": "c722d11bc6aca57ab70d745e32dc63296edb33ae8d24f50df135231a4829c131"
+          },
+          "/Users/scammermike/Downloads/hawking/crates/hawking-core/src/model/qwen38_hybrid_decode.rs": {
+            "exists": true,
+            "line_count": 8650,
+            "sha256": "fbb11476dff889029d52451f95f538b7a7c39910d689d29e7b4e9a72a00b6746"
+          },
+          "/Users/scammermike/Downloads/hawking/crates/hawking-core/src/model/qwen38_token_ns_ledger.rs": {
+            "exists": true,
+            "line_count": 840,
+            "sha256": "12242ce30663b1e27a52f01e6142ca831de71bfb8abe915cf35cbfeff650b790"
+          }
+        }
+      },
+      "status": "PASSED"
+    },
     "model_a": {
       "artifact_root": "/Users/scammermike/noetic/NOETIC_PARENT_A",
       "binary": "/Users/scammermike/Downloads/hawking/workspace/ops/build/rust/release-fast/examples/ascension_qwen38_resident",
@@ -724,7 +861,7 @@
   "verification": {
     "full_suite": {
       "command": "pytest -q",
-      "last_observed": "710 passed, 2 skipped, 2 warnings",
+      "last_observed": "712 passed, 2 skipped, 2 warnings",
       "last_observed_status": "PASSED"
     },
     "provider_focus": {
@@ -737,7 +874,8 @@
       "flash_pre_runtime": "PASSED",
       "modellake_supervision": "RUNNING_SAFE",
       "preboard": "PASSED",
-      "unattended_window": null
+      "qwen38_fusion_audit": "PASSED",
+      "unattended_window": "PASSED"
     }
   }
 }

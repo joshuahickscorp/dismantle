@@ -5,7 +5,7 @@
       "9d373ecc4863b244fc74761c99fc837f7705f3db"
     ],
     "branch": "odyssey-i",
-    "git_revision": "ddcf22ddc23ec2011102e2a058dd46edda4249ab",
+    "git_revision": "ddb1cfae76580b6781aa1841b8f0aeff748ff445",
     "unrelated_preserved_edit": "tools/odyssey_ctl.py",
     "working_tree_status": [
       "M receipts/headless/HCLI_AGENTOS_CHECKPOINT.json",
@@ -4162,7 +4162,7 @@
       "telemetry/receipt verifier"
     ]
   },
-  "generated_at": 1787824224.293657,
+  "generated_at": 1787824351.407657,
   "hcli": {
     "background_jobs": [
       {
@@ -4627,18 +4627,18 @@
         },
         {
           "checks": {},
-          "cycles": 205,
+          "cycles": 207,
           "deadline": 1787833148.5820968,
           "metrics": {
-            "accepted": 204,
-            "attempted": 205,
+            "accepted": 206,
+            "attempted": 207,
             "human_interventions": 0,
             "inconclusive": 1,
-            "model_calls": 205,
+            "model_calls": 207,
             "rejected": 0,
             "retries": 1,
-            "typed_tool_calls": 410,
-            "verifier_calls": 204
+            "typed_tool_calls": 414,
+            "verifier_calls": 206
           },
           "path": "/Users/scammermike/Downloads/hawking/.hcli/unattended-qwen-long/window-progress.json",
           "started_at": 1787811548.5820968,

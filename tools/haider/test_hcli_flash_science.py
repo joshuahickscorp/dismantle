@@ -89,6 +89,20 @@ def test_native_router_selection_summary_preserves_bounded_claim_boundary(tmp_pa
                     "status": "MISMATCH",
                     "expert_ids_exact_match": False,
                 },
+                "native_source_authority_kernel": {
+                    "kernel": "gemv_native_bf16_seq",
+                    "source_payload_exact": True,
+                    "source_guard_unchanged": True,
+                },
+                "native_source_authority_execution_observed": True,
+                "source_payload_exact": True,
+                "source_guard_unchanged": True,
+                "source_native_selection": {"expert_ids": [1, 2]},
+                "source_reference_parity": {
+                    "status": "MATCH",
+                    "expert_ids_exact_match": True,
+                },
+                "source_native_parity": {"within_tolerance": True},
                 "whole_model_capability": "NOT_TESTED",
                 "complete_token_runtime": "NOT_TESTED",
                 "promotion_allowed": False,
@@ -107,6 +121,13 @@ def test_native_router_selection_summary_preserves_bounded_claim_boundary(tmp_pa
     assert summary["source_independent_execution"] is True
     assert summary["native_selection_execution_observed"] is True
     assert summary["source_selection_parity"]["status"] == "MISMATCH"
+    assert summary["native_source_authority_execution_observed"] is True
+    assert summary["native_source_authority_kernel"]["kernel"] == "gemv_native_bf16_seq"
+    assert summary["source_native_selection"]["expert_ids"] == [1, 2]
+    assert summary["source_reference_parity"]["status"] == "MATCH"
+    assert summary["source_native_parity"]["within_tolerance"] is True
+    assert summary["source_payload_exact"] is True
+    assert summary["source_guard_unchanged"] is True
     assert summary["promotion_allowed"] is False
 
 

@@ -25,6 +25,7 @@ mod macos {
     use std::env;
     use std::error::Error;
     use std::fs;
+    use std::io::{Read, Seek, SeekFrom};
     use std::path::{Path, PathBuf};
     use std::time::Instant;
 
@@ -39,6 +40,7 @@ mod macos {
     const GROUP_SIZE: usize = 64;
     const CODE_BYTES_PER_GROUP: usize = GROUP_SIZE / 2;
     const KERNEL_NAME: &str = "qwen_uniform_q4_group64_matvec";
+    const SOURCE_KERNEL_NAME: &str = "gemv_native_bf16_seq";
     const REFERENCE_MULTIPLIER: usize = 71;
     const REFERENCE_MODULUS: usize = 509;
     const REFERENCE_OFFSET: f32 = 254.0;
@@ -68,6 +70,16 @@ mod macos {
         scale_bytes: usize,
         codes: Vec<u8>,
         scales: Vec<u8>,
+    }
+
+    struct SourceMatrix {
+        path: PathBuf,
+        rows: usize,
+        columns: usize,
+        data_offset: u64,
+        payload_sha256: String,
+        source_guard_unchanged: bool,
+        bytes: Vec<u8>,
     }
 
     struct Selection {
@@ -364,6 +376,148 @@ mod macos {
         Ok((receipt, digest))
     }
 
+    fn source_guard(path: &Path) -> Result<(u64, Option<std::time::SystemTime>), Box<dyn Error>> {
+        let metadata = fs::metadata(path)?;
+        Ok((metadata.len(), metadata.modified().ok()))
+    }
+
+    fn read_source_matrix(
+        root: &Path,
+        body_receipt: &Value,
+        kernel_receipt: &Value,
+    ) -> Result<SourceMatrix, Box<dyn Error>> {
+        let source_block = body_receipt
+            .get("source_block")
+            .ok_or("router body receipt has no source_block")?;
+        let source_tensor = kernel_receipt
+            .get("source_tensor")
+            .ok_or("router kernel receipt has no source_tensor")?;
+        if string_field(source_block, "tensor_name")? != TENSOR_NAME
+            || string_field(source_tensor, "tensor_name")? != TENSOR_NAME
+            || string_field(source_block, "dtype")?.to_uppercase() != "BF16"
+            || string_field(source_tensor, "dtype")?.to_uppercase() != "BF16"
+        {
+            return Err("router source authority is not the pinned BF16 gate tensor".into());
+        }
+        let shape = source_block
+            .get("shape")
+            .and_then(Value::as_array)
+            .ok_or("router source block has no shape")?;
+        if shape.len() != 2 || source_tensor.get("shape").and_then(Value::as_array) != Some(shape) {
+            return Err("router source authority shapes disagree".into());
+        }
+        let rows = shape[0]
+            .as_u64()
+            .and_then(|value| usize::try_from(value).ok())
+            .ok_or("router source row count is invalid")?;
+        let columns = shape[1]
+            .as_u64()
+            .and_then(|value| usize::try_from(value).ok())
+            .ok_or("router source column count is invalid")?;
+        let expected_bytes = rows
+            .checked_mul(columns)
+            .and_then(|value| value.checked_mul(2))
+            .ok_or("router source byte count overflowed")?;
+        if usize_field(source_block, "bytes")? != expected_bytes
+            || usize_field(source_tensor, "selected_block_bytes")? != expected_bytes
+        {
+            return Err("router source authority byte count is incomplete".into());
+        }
+
+        let source_shard = PathBuf::from(string_field(source_tensor, "shard")?).canonicalize()?;
+        if source_shard.strip_prefix(root).is_err() {
+            return Err(
+                "router source authority shard is outside the pinned ModelLake root".into(),
+            );
+        }
+        if string_field(source_block, "shard")? != source_shard.to_string_lossy() {
+            return Err("router body and kernel source shard paths disagree".into());
+        }
+        let offsets = source_tensor
+            .get("tensor_data_offsets")
+            .and_then(Value::as_array)
+            .ok_or("router source authority has no tensor_data_offsets")?;
+        if offsets.len() != 2 {
+            return Err("router source authority offsets are not a pair".into());
+        }
+        let begin = offsets[0]
+            .as_u64()
+            .ok_or("router source authority begin offset is invalid")?;
+        let end = offsets[1]
+            .as_u64()
+            .ok_or("router source authority end offset is invalid")?;
+        if end < begin || end - begin != expected_bytes as u64 {
+            return Err("router source authority offsets do not cover the complete matrix".into());
+        }
+
+        let mut file = fs::File::open(&source_shard)?;
+        let mut prefix = [0u8; 8];
+        file.read_exact(&mut prefix)?;
+        let header_bytes = u64::from_le_bytes(prefix);
+        if header_bytes == 0 || header_bytes > 64 * 1024 * 1024 {
+            return Err("router source safetensors header length is unsafe".into());
+        }
+        let mut header = vec![0u8; header_bytes as usize];
+        file.read_exact(&mut header)?;
+        if let Some(expected_header_sha256) =
+            source_tensor.get("header_sha256").and_then(Value::as_str)
+        {
+            if sha256_bytes(&header) != expected_header_sha256 {
+                return Err(
+                    "router source safetensors header hash does not match the parity receipt"
+                        .into(),
+                );
+            }
+        }
+        let header_value: Value = serde_json::from_slice(&header)?;
+        let tensor = header_value
+            .get(TENSOR_NAME)
+            .ok_or("router source safetensors header has no gate tensor")?;
+        if string_field(tensor, "dtype")?.to_uppercase() != "BF16"
+            || tensor.get("shape").and_then(Value::as_array) != Some(shape)
+            || tensor.get("data_offsets").and_then(Value::as_array) != Some(offsets)
+        {
+            return Err(
+                "router source safetensors header disagrees with the parity receipt".into(),
+            );
+        }
+        let data_offset = 8u64
+            .checked_add(header_bytes)
+            .and_then(|value| value.checked_add(begin))
+            .ok_or("router source data offset overflowed")?;
+        let file_len = source_guard(&source_shard)?.0;
+        if data_offset
+            .checked_add(expected_bytes as u64)
+            .filter(|end_offset| *end_offset <= file_len)
+            .is_none()
+        {
+            return Err("router source data range exceeds the selected shard".into());
+        }
+        let guard_before = source_guard(&source_shard)?;
+        file.seek(SeekFrom::Start(data_offset))?;
+        let mut bytes = vec![0u8; expected_bytes];
+        file.read_exact(&mut bytes)?;
+        let guard_after = source_guard(&source_shard)?;
+        if guard_before != guard_after {
+            return Err("router source shard changed during the native authority read".into());
+        }
+        let payload_sha256 = sha256_bytes(&bytes);
+        if payload_sha256 != string_field(source_block, "payload_sha256")?
+            || payload_sha256 != string_field(source_tensor, "selected_block_sha256")?
+        {
+            return Err("router source authority payload hash does not match the receipts".into());
+        }
+        Ok(SourceMatrix {
+            path: source_shard,
+            rows,
+            columns,
+            data_offset,
+            payload_sha256,
+            source_guard_unchanged: true,
+            bytes,
+        })
+    }
+
     fn validate_reference(path: &Path) -> Result<(Value, String), Box<dyn Error>> {
         let (receipt, digest) = read_json(path)?;
         if string_field(&receipt, "schema")? != SELECTION_SCHEMA
@@ -456,6 +610,24 @@ mod macos {
         output
     }
 
+    #[inline(never)]
+    fn source_cpu_matvec(source: &SourceMatrix, input: &[f32]) -> Vec<f32> {
+        let mut output = vec![0.0f32; source.rows];
+        for row in 0..source.rows {
+            let row_offset = row * source.columns * 2;
+            let mut accumulator = 0.0f32;
+            for column in 0..source.columns {
+                let offset = row_offset + column * 2;
+                let bits = u16::from_le_bytes([source.bytes[offset], source.bytes[offset + 1]]);
+                let weight = f32::from_bits((u32::from(bits)) << 16);
+                let product = weight * input[column];
+                accumulator = accumulator + product;
+            }
+            output[row] = accumulator;
+        }
+        output
+    }
+
     fn read_f32(buffer: &Buffer, count: usize) -> Vec<f32> {
         let pointer = buffer.contents() as *const f32;
         unsafe { std::slice::from_raw_parts(pointer, count) }.to_vec()
@@ -483,6 +655,29 @@ mod macos {
                 encoder.set_bytes(6, 4, &groups as *const u32 as *const _);
             })?,
         )
+    }
+
+    fn dispatch_source(
+        context: &MetalContext,
+        source: &SourceMatrix,
+        weights: &Buffer,
+        input: &Buffer,
+        output: &Buffer,
+    ) -> Result<MetalDispatchTiming, Box<dyn Error>> {
+        let rows = source.rows as u32;
+        let columns = source.columns as u32;
+        Ok(context.dispatch_threads_timed(
+            SOURCE_KERNEL_NAME,
+            (rows, 1, 1),
+            (1, 1, 1),
+            |encoder| {
+                encoder.set_buffer(0, Some(weights), 0);
+                encoder.set_buffer(1, Some(input), 0);
+                encoder.set_buffer(2, Some(output), 0);
+                encoder.set_bytes(3, 4, &rows as *const u32 as *const _);
+                encoder.set_bytes(4, 4, &columns as *const u32 as *const _);
+            },
+        )?)
     }
 
     fn gpu_ns(timing: MetalDispatchTiming) -> Result<u64, Box<dyn Error>> {
@@ -637,12 +832,17 @@ mod macos {
             }
         }
 
+        let source_matrix = read_source_matrix(&root, &body_receipt, &kernel)?;
         let expected = cpu_matvec(&body, &input);
+        let source_expected = source_cpu_matvec(&source_matrix, &input);
         let context = MetalContext::new_with_trace(true)?;
         let codes_buffer = context.new_buffer_with_bytes_checked(&body.codes)?;
         let scales_buffer = context.new_buffer_with_bytes_checked(&body.scales)?;
+        let source_buffer = context.new_buffer_with_bytes_checked(&source_matrix.bytes)?;
         let input_buffer = context.new_buffer_with_bytes_checked(&f32_bytes(&input))?;
         let output_buffer = context.new_buffer_checked(body.rows * std::mem::size_of::<f32>())?;
+        let source_output_buffer =
+            context.new_buffer_checked(source_matrix.rows * std::mem::size_of::<f32>())?;
         let mut warmup_gpu_ns = Vec::with_capacity(args.warmup);
         for _ in 0..args.warmup {
             warmup_gpu_ns.push(gpu_ns(dispatch(
@@ -684,6 +884,54 @@ mod macos {
             return Err("native router logits changed across repeated executions".into());
         }
 
+        let mut source_warmup_gpu_ns = Vec::with_capacity(args.warmup);
+        for _ in 0..args.warmup {
+            source_warmup_gpu_ns.push(gpu_ns(dispatch_source(
+                &context,
+                &source_matrix,
+                &source_buffer,
+                &input_buffer,
+                &source_output_buffer,
+            )?)?);
+        }
+        let mut source_gpu_ns_samples = Vec::with_capacity(args.reps);
+        let mut source_host_ns_samples = Vec::with_capacity(args.reps);
+        let mut source_output_hashes = Vec::with_capacity(args.reps);
+        let mut last_source_output = Vec::new();
+        for _ in 0..args.reps {
+            let timing = dispatch_source(
+                &context,
+                &source_matrix,
+                &source_buffer,
+                &input_buffer,
+                &source_output_buffer,
+            )?;
+            let output = read_f32(&source_output_buffer, source_matrix.rows);
+            if !output.iter().all(|value| value.is_finite()) {
+                return Err("native source router logits contain a non-finite value".into());
+            }
+            source_gpu_ns_samples.push(gpu_ns(timing)?);
+            source_host_ns_samples.push(timing.host_wall_us.saturating_mul(1000));
+            source_output_hashes.push(sha256_bytes(&f32_bytes(&output)));
+            last_source_output = output;
+        }
+        let source_parity = output_metrics(&source_expected, &last_source_output);
+        if source_parity
+            .get("within_tolerance")
+            .and_then(Value::as_bool)
+            != Some(true)
+        {
+            return Err(
+                format!("native source router matvec parity failed: {source_parity}").into(),
+            );
+        }
+        if source_output_hashes
+            .windows(2)
+            .any(|pair| pair[0] != pair[1])
+        {
+            return Err("native source router logits changed across repeated executions".into());
+        }
+
         let reference_config = reference
             .get("config")
             .and_then(|value| value.get("router"))
@@ -697,20 +945,26 @@ mod macos {
             return Err("router body row count does not match the pinned router config".into());
         }
         let selection = select_router(&last_output, top_k, normalize)?;
+        let source_native_selection = select_router(&last_source_output, top_k, normalize)?;
         let candidate_reference_ids = receipt_ids(&reference, "selection")?;
         let source_reference_ids = receipt_ids(&reference, "source_selection")?;
         let candidate_ids_match = selection.expert_ids == candidate_reference_ids;
-        let source_ids_match = selection.expert_ids == source_reference_ids;
+        let source_reference_ids_match = source_native_selection.expert_ids == source_reference_ids;
+        let candidate_source_ids_match = selection.expert_ids == source_native_selection.expert_ids;
         let common_source_ids = selection
             .expert_ids
             .iter()
-            .filter(|id| source_reference_ids.contains(id))
+            .filter(|id| source_native_selection.expert_ids.contains(id))
             .count();
         let device_memory = context.device_memory_limits();
         let mut gpu_sorted = gpu_ns_samples.clone();
         gpu_sorted.sort_unstable();
         let mut host_sorted = host_ns_samples.clone();
         host_sorted.sort_unstable();
+        let mut source_gpu_sorted = source_gpu_ns_samples.clone();
+        source_gpu_sorted.sort_unstable();
+        let mut source_host_sorted = source_host_ns_samples.clone();
+        source_host_sorted.sort_unstable();
         let source_block = body_receipt
             .get("source_block")
             .cloned()
@@ -718,15 +972,18 @@ mod macos {
         let reference = json!({
             "receipt_path": args.reference_receipt.canonicalize()?,
             "receipt_sha256": reference_sha256,
-            "candidate_expert_ids": candidate_reference_ids,
-            "source_expert_ids": source_reference_ids,
+            "candidate_expert_ids": candidate_reference_ids.clone(),
+            "source_expert_ids": source_reference_ids.clone(),
             "candidate_selection_ids_match": candidate_ids_match,
-            "source_selection_ids_match": source_ids_match,
+            "source_selection_ids_match": source_reference_ids_match,
+            "source_native_expert_ids": source_native_selection.expert_ids.clone(),
+            "source_native_selection_ids_match": source_reference_ids_match,
+            "candidate_vs_source_native_ids_match": candidate_source_ids_match,
             "source_top_k_overlap_count": common_source_ids,
             "source_top_k_overlap_fraction": common_source_ids as f64 / top_k as f64,
             "label": "[V]",
         });
-        let source_selection_status = if source_ids_match {
+        let source_selection_status = if candidate_source_ids_match {
             "MATCH"
         } else {
             "MISMATCH"
@@ -739,7 +996,9 @@ mod macos {
             "device_placement": {"selected": "apple_metal", "candidates": ["apple_metal", "cpu"]},
             "native_kernel_execution_observed": true,
             "source_selection_parity_status": source_selection_status,
-            "source_selection_parity_qualified": source_ids_match,
+            "source_selection_parity_qualified": candidate_source_ids_match,
+            "source_native_reference_parity_status": if source_reference_ids_match { "MATCH" } else { "MISMATCH" },
+            "source_native_reference_parity_qualified": source_reference_ids_match,
             "promotion_allowed": false,
         });
         let physical_graph_fingerprint = sha256_bytes(&serde_json::to_vec(&physical_graph)?);
@@ -813,16 +1072,34 @@ mod macos {
                 "whole_model_runtime": "NOT_TESTED",
                 "label": "[V]/[D]",
             },
+            "native_source_authority_kernel": {
+                "kernel": SOURCE_KERNEL_NAME,
+                "shader_family": "matmul.metal",
+                "kernel_registered": true,
+                "dispatches_per_selection": 1,
+                "grid": [source_matrix.rows, 1, 1],
+                "threadgroup": [1, 1, 1],
+                "weight_dtype": "BF16",
+                "accumulator_dtype": "float32",
+                "accumulation": "left_to_right_product_then_add",
+                "source_payload_exact": true,
+                "source_guard_unchanged": source_matrix.source_guard_unchanged,
+                "label": "[V]/[D]",
+            },
             "execution": {
                 "provider": "apple-metal",
                 "body_source_independent": true,
-                "operation": "persisted_Q4_G64_body -> Metal_matvec -> FP32_softmax -> stable_top_k -> selected_weight_normalization",
+                "operation": "persisted_Q4_G64_body -> native_Q4_Metal_matvec -> FP32_softmax/top_k; pinned_BF16_source_reference -> native_BF16_Metal_matvec -> FP32_softmax/top_k",
                 "model_loaded": false,
                 "body_mutated": false,
                 "native_selection_execution_observed": true,
                 "source_reference_used_for_execution": false,
                 "source_reference_used_for_comparison": true,
+                "native_source_authority_execution_observed": true,
+                "source_tensor_read_for_authority": true,
+                "source_payload_exact": true,
                 "selected_expert_ids": selection.expert_ids,
+                "source_native_selected_expert_ids": source_native_selection.expert_ids,
             },
             "input": {
                 "definition": "((index * 71) mod 509 - 254) / 509",
@@ -840,17 +1117,41 @@ mod macos {
                 "label": "[V]",
             },
             "selection": selection_json(&selection),
+            "source_native_selection": selection_json(&source_native_selection),
             "reference": reference,
             "source_selection_parity": {
                 "status": source_selection_status,
-                "qualification": if source_ids_match { "SOURCE_ROUTER_SELECTION_MATCH" } else { "SOURCE_ROUTER_SELECTION_NOT_QUALIFIED" },
-                "expert_ids_exact_match": source_ids_match,
+                "qualification": if candidate_source_ids_match { "SOURCE_ROUTER_SELECTION_MATCH" } else { "SOURCE_ROUTER_SELECTION_NOT_QUALIFIED" },
+                "expert_ids_exact_match": candidate_source_ids_match,
                 "top_k_overlap_count": common_source_ids,
                 "top_k_overlap_fraction": common_source_ids as f64 / top_k as f64,
                 "candidate_reference_ids_match": candidate_ids_match,
+                "source_expert_ids": source_native_selection.expert_ids.clone(),
+                "candidate_expert_ids": selection.expert_ids.clone(),
+                "source_native_reference_ids_match": source_reference_ids_match,
+                "label": "[V]/[D]",
+            },
+            "source_reference_parity": {
+                "status": if source_reference_ids_match { "MATCH" } else { "MISMATCH" },
+                "qualification": if source_reference_ids_match { "NATIVE_BF16_SOURCE_ROUTER_SELECTION" } else { "NATIVE_BF16_SOURCE_ROUTER_SELECTION_NOT_QUALIFIED" },
+                "expert_ids_exact_match": source_reference_ids_match,
+                "native_source_expert_ids": source_native_selection.expert_ids.clone(),
+                "reference_source_expert_ids": source_reference_ids.clone(),
+                "top_k_overlap_count": source_native_selection
+                    .expert_ids
+                    .iter()
+                    .filter(|id| source_reference_ids.contains(id))
+                    .count(),
+                "top_k_overlap_fraction": source_native_selection
+                    .expert_ids
+                    .iter()
+                    .filter(|id| source_reference_ids.contains(id))
+                    .count() as f64
+                    / top_k as f64,
                 "label": "[V]/[D]",
             },
             "parity": parity,
+            "source_native_parity": source_parity,
             "gpu_timing": {
                 "device": context.device_name(),
                 "warmup_runs": args.warmup,
@@ -873,12 +1174,34 @@ mod macos {
                     "has_unified_memory": device_memory.has_unified_memory,
                 },
             },
+            "source_gpu_timing": {
+                "device": context.device_name(),
+                "warmup_runs": args.warmup,
+                "measured_runs": args.reps,
+                "warmup_gpu_ns": source_warmup_gpu_ns,
+                "gpu_ns": source_gpu_ns_samples,
+                "gpu_ns_min": source_gpu_sorted[0],
+                "gpu_ns_median": source_gpu_sorted[source_gpu_sorted.len() / 2],
+                "gpu_ns_max": *source_gpu_sorted.last().unwrap(),
+                "host_wall_ns": source_host_ns_samples,
+                "host_wall_ns_min": source_host_sorted[0],
+                "host_wall_ns_median": source_host_sorted[source_host_sorted.len() / 2],
+                "host_wall_ns_max": *source_host_sorted.last().unwrap(),
+                "output_hashes": source_output_hashes,
+                "timing_authority": "Metal completed-command-buffer GPUStartTime/GPUEndTime; host wall reported separately",
+                "source_shard": source_matrix.path,
+                "source_payload_sha256": source_matrix.payload_sha256,
+                "source_data_offset": source_matrix.data_offset,
+                "source_guard_unchanged": source_matrix.source_guard_unchanged,
+            },
             "noetic_ir": {
                 "schema": "hcli.noetic.ir.v1",
                 "semantic_type": "NoeticIR",
                 "operations": [
                     "load_persisted_source_independent_router_body",
                     "execute_native_q4_g64_router_matvec",
+                    "read_pinned_bf16_source_authority_block",
+                    "execute_native_bf16_source_router_matvec",
                     "compute_fp32_router_softmax",
                     "select_router_top_k",
                     "normalize_selected_router_weights",
@@ -895,9 +1218,12 @@ mod macos {
             "body_mutated": false,
             "model_loaded": false,
             "native_selection_execution_observed": true,
+            "native_source_authority_execution_observed": true,
+            "source_payload_exact": true,
+            "source_guard_unchanged": source_matrix.source_guard_unchanged,
             "promotion_allowed": false,
-            "claim_boundary": "PASSED bounded native source-independent Flash router selection over a persisted Q4/G64 body. Native Metal logits and FP32 top-k are physically observed; source top-k parity is reported explicitly and is not qualified on mismatch. No whole-model loader, capability, complete-token runtime, EBPW, or Flash TPS claim is made.",
-            "next_action": "connect native router selection to persisted routed-expert bodies and a protected complete-token graph only after source-selection parity is qualified or the mismatch is explicitly accepted as a representation boundary",
+            "claim_boundary": "PASSED bounded native source-independent Flash router selection over a persisted Q4/G64 body, plus a separately guarded native BF16 source-authority matvec. Candidate-vs-source top-k parity remains explicit and is not qualified on mismatch; the native BF16 source authority is qualified only against the pinned reference selection. No whole-model loader, capability, complete-token runtime, EBPW, or Flash TPS claim is made.",
+            "next_action": "persist or select a representation whose native candidate route matches the qualified BF16 source top-k, then connect that route to persisted expert bodies and a protected complete-token graph",
             "elapsed_s": started.elapsed().as_secs_f64(),
         }))
     }

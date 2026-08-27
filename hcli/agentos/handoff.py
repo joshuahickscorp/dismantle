@@ -16,6 +16,10 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from hcli.nomenclature import NOMENCLATURE_VERSION
+from hcli.agentos.modellake_receipts import (
+    preferred_census_receipt,
+    preferred_supervision_receipt,
+)
 from hcli.persist import atomic_write_json
 
 
@@ -143,8 +147,10 @@ def _window_summary(repo: Path) -> Dict[str, Any]:
 
 
 def _model_lake_summary(repo: Path) -> Dict[str, Any]:
-    census = _receipt(repo, "HCLI_MODELLAKE_FLASH_CENSUS.json") or {}
-    supervision = _receipt(repo, "HCLI_MODELLAKE_FLASH_ACQUISITION_SUPERVISION.json") or {}
+    census_path = preferred_census_receipt(repo)
+    supervision_path = preferred_supervision_receipt(repo)
+    census = _read_object(census_path) or {}
+    supervision = _read_object(supervision_path) or {}
     job = supervision.get("job") if isinstance(supervision.get("job"), dict) else {}
     partial = supervision.get("partial") or {}
     final = supervision.get("final") or {}
@@ -156,6 +162,7 @@ def _model_lake_summary(repo: Path) -> Dict[str, Any]:
             "verified_specimens": census.get("verified_specimens") or census.get("specimens"),
             "partial_count": len(census.get("partials") or []),
             "target": census.get("target") or {},
+            "receipt_path": str(census_path),
         },
         "supervision": {
             "status": supervision.get("status"),
@@ -164,6 +171,7 @@ def _model_lake_summary(repo: Path) -> Dict[str, Any]:
             "partial": {"path": partial.get("path"), "bytes": partial.get("direct_bytes"), "files": partial.get("direct_files")},
             "final": {"present": final.get("present"), "path": final.get("path")},
             "checks": supervision.get("checks") or {},
+            "receipt_path": str(supervision_path),
         },
         "no_delete_policy": True,
         "next_action": "Continue supervision; if interrupted, resume the same pinned argv only after re-census and headroom checks; publish only after full hash verification and atomic rename.",

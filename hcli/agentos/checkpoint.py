@@ -27,6 +27,10 @@ from hcli.providers import (
     ROLE_SCHEMA,
 )
 from hcli.nomenclature import NOMENCLATURE_VERSION
+from hcli.agentos.modellake_receipts import (
+    CENSUS_RECEIPT_NAMES,
+    SUPERVISION_RECEIPT_NAMES,
+)
 from hcli.tool_registry import default_tool_registry
 
 
@@ -139,8 +143,9 @@ def _gate_summary(workspace: Path, repo_root: Path) -> Dict[str, Any]:
     ]
     modellake_candidates = [
         workspace / ".hcli" / "receipts" / "modellake-census.json",
+        repo_root / "receipts" / "headless" / CENSUS_RECEIPT_NAMES[0],
         repo_root / "receipts" / "headless" / "modellake-census.json",
-        repo_root / "receipts" / "headless" / "HCLI_MODELLAKE_FLASH_CENSUS.json",
+        repo_root / "receipts" / "headless" / CENSUS_RECEIPT_NAMES[1],
     ]
     flash_science_candidates = [
         workspace / ".hcli" / "receipts" / "flash-science.json",
@@ -161,7 +166,10 @@ def _gate_summary(workspace: Path, repo_root: Path) -> Dict[str, Any]:
     precedent_map_candidates = [repo_root / "receipts" / "headless" / "FLASH_NEXT_PRECEDENT_MAP.json"]
     ab_candidates = [repo_root / "receipts" / "headless" / "HCLI_DENSE_VS_NF_AB_SCAFFOLD.json"]
     fpga_candidates = [repo_root / "receipts" / "headless" / "HCLI_FPGA_PREBOARD.json"]
-    lake_supervision_candidates = [repo_root / "receipts" / "headless" / "HCLI_MODELLAKE_FLASH_ACQUISITION_SUPERVISION.json"]
+    lake_supervision_candidates = [
+        repo_root / "receipts" / "headless" / SUPERVISION_RECEIPT_NAMES[0],
+        repo_root / "receipts" / "headless" / SUPERVISION_RECEIPT_NAMES[1],
+    ]
     qwen27_identity_candidates = [repo_root / "receipts" / "headless" / "QWEN27_HISTORICAL_RUNTIME_IDENTITY.json"]
     qwen27_diff_candidates = [repo_root / "receipts" / "headless" / "QWEN27_RUNTIME_DIFF.json"]
     qwen27_mlp_candidates = [repo_root / "receipts" / "headless" / "QWEN27_MLP_DIAGNOSTIC_AB.json"]

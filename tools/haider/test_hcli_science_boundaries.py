@@ -899,6 +899,53 @@ def test_flash_executable_records_sparse_attention_kernel_lane_without_promoting
     assert manifest["promotion_allowed"] is False
 
 
+def test_flash_executable_records_mtp_gate_kernel_lane_without_promoting_it(tmp_path):
+    repo = tmp_path / "repo"
+    receipts = repo / "receipts" / "headless"
+    receipts.mkdir(parents=True)
+    source = "/Users/scammermike/Downloads/hawking/receipts/headless/HCLI_FLASH_NEXT_PRE_RUNTIME_SCIENCE.json"
+    mtp = receipts / "mtp-kernel.json"
+    mtp.write_text(json.dumps({
+        "status": "PASSED",
+        "source_tensor": {
+            "tensor_name": "mtp.layers.0.mlp.gate.weight",
+            "shape": [512, 2560],
+            "selected_row_start": 0,
+            "selected_row_count": 128,
+        },
+        "native_loader": {
+            "status": "BOUNDED_NOETIC_DESCRIPTOR_AND_BODY_LOAD",
+            "source_independent_execution": True,
+            "candidate_body_persisted": True,
+        },
+        "native_kernel": {
+            "kernel": "qwen_uniform_q4_group64_matvec",
+            "whole_model_capability": "NOT_TESTED",
+            "whole_model_runtime": "NOT_TESTED",
+        },
+        "gpu_timing": {"gpu_ns_median": 321},
+        "parity": {"within_tolerance": True},
+        "body_mutated": False,
+        "model_loaded": False,
+        "promotion_allowed": False,
+    }), encoding="utf-8")
+
+    result = run_flash_executable_scaffold(
+        repo_root=repo,
+        science_receipt=source,
+        mtp_gate_kernel_parity_receipt=mtp,
+    )
+
+    assert result["status"] == "PASSED"
+    manifest = result["manifest"]
+    assert manifest["source_mtp_gate_kernel_parity"]["status"] == "PASSED"
+    evidence = manifest["native_kernels"]["bounded_mtp_gate_matrix_evidence"]
+    assert evidence["status"] == "PASSED"
+    assert evidence["source_independent_execution"] is True
+    assert manifest["runtime_genome"]["mtp_gate_kernel_parity_receipt"] == str(mtp.resolve())
+    assert manifest["promotion_allowed"] is False
+
+
 def test_fpga_partition_simulation_is_model_specific_and_never_hardware():
     qwen = simulate_partition("qwen27")
     flash = simulate_partition("flash-next")
@@ -969,6 +1016,7 @@ def test_cli_exposes_general_science_surfaces():
     assert parser.parse_args(["flash-executable", "--kernel-parity-receipt", "kernel.json"]).kernel_parity_receipt == "kernel.json"
     assert parser.parse_args(["flash-executable", "--deltanet-kernel-parity-receipt", "deltanet.json"]).deltanet_kernel_parity_receipt == "deltanet.json"
     assert parser.parse_args(["flash-executable", "--sparse-attention-kernel-parity-receipt", "sparse.json"]).sparse_attention_kernel_parity_receipt == "sparse.json"
+    assert parser.parse_args(["flash-executable", "--mtp-gate-kernel-parity-receipt", "mtp.json"]).mtp_gate_kernel_parity_receipt == "mtp.json"
     assert parser.parse_args(["flash-executable", "--graph-component-receipt", "graph.json"]).graph_component_receipt == "graph.json"
     assert parser.parse_args(["flash-executable", "--router-selection-receipt", "selection.json"]).router_selection_receipt == "selection.json"
     assert parser.parse_args(["flash-executable", "--router-representation-ab-receipt", "router-ab.json"]).router_representation_ab_receipt == "router-ab.json"

@@ -207,6 +207,7 @@ def build_parser() -> argparse.ArgumentParser:
     flash_executable.add_argument("--shared-expert-kernel-parity-receipt", default=None)
     flash_executable.add_argument("--deltanet-kernel-parity-receipt", default=None)
     flash_executable.add_argument("--sparse-attention-kernel-parity-receipt", default=None)
+    flash_executable.add_argument("--mtp-gate-kernel-parity-receipt", default=None)
     flash_executable.add_argument("--graph-component-receipt", default=None)
     flash_executable.add_argument("--component-campaign-receipt", default=None)
     flash_executable.add_argument("--router-graph-receipt", default=None)
@@ -652,6 +653,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 shared_expert_kernel_parity_receipt=args.shared_expert_kernel_parity_receipt,
                 deltanet_kernel_parity_receipt=args.deltanet_kernel_parity_receipt,
                 sparse_attention_kernel_parity_receipt=args.sparse_attention_kernel_parity_receipt,
+                mtp_gate_kernel_parity_receipt=args.mtp_gate_kernel_parity_receipt,
                 graph_component_receipt=args.graph_component_receipt,
                 component_campaign_receipt=args.component_campaign_receipt,
                 router_graph_receipt=args.router_graph_receipt,

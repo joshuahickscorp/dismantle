@@ -5,13 +5,17 @@
       "9d373ecc4863b244fc74761c99fc837f7705f3db"
     ],
     "branch": "odyssey-i",
-    "git_revision": "0fb8da09f04255c9a78a69de301b8de9ef1321d4",
+    "git_revision": "364901e278c4d50494ca17a004fbd3a497e2663e",
     "unrelated_preserved_edit": "tools/odyssey_ctl.py",
     "working_tree_status": [
-      "M receipts/headless/HCLI_AGENTOS_CHECKPOINT.json",
+      "M receipts/headless/FLASH_EBPW_BUDGET.json",
+      " M receipts/headless/FLASH_NEXT_NOETIC_EXECUTABLE.json",
+      " M receipts/headless/HCLI_AGENTOS_CHECKPOINT.json",
       " M receipts/headless/OVERNIGHT_HAWKING_HANDOFF.json",
       " M receipts/headless/QWEN_PROTECTED_BENCH_READY.json",
-      " M tools/odyssey_ctl.py"
+      " M tools/odyssey_ctl.py",
+      "?? .hcli/locks/",
+      "?? receipts/headless/QWEN27_MLP_PROTECTED_AB.json"
     ]
   },
   "blockers": [
@@ -32,6 +36,8 @@
     "refresh_initial_charge": "python3 -m hcli agentos initial-charge --repo-root /Users/scammermike/Downloads/hawking --workspace /Users/scammermike/Downloads/hawking/.hcli/initial-charge --emit /Users/scammermike/Downloads/hawking/receipts/headless/HAWKING_INITIAL_CHARGE.json",
     "refresh_maps": "python3 -m hcli agentos science-maps --repo-root /Users/scammermike/Downloads/hawking --transfer-emit /Users/scammermike/Downloads/hawking/receipts/headless/QWEN38_ACCELERATOR_TRANSFER_MAP.json --precedent-emit /Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NEXT_PRECEDENT_MAP.json",
     "resume_modellake_only_if_interrupted": "python3 -m hcli agentos background resume --workspace /Users/scammermike/Downloads/hawking --repo-root /Users/scammermike/Downloads/hawking job-2f77c1d6-e33b-44fe-bc12-549cf47805c7",
+    "run_flash_representation_experiment": "python3 -m hcli agentos flash-representation-experiment --emit /Users/scammermike/Downloads/hawking/receipts/headless/FLASH_ROUTED_EXPERT_REPRESENTATION_EXPERIMENT.json",
+    "run_flash_representation_replication": "python3 -m hcli agentos flash-representation-experiment --expert-indices 32,33,34,35,36,37,38,39 --row-start 64 --row-count 16 --emit /Users/scammermike/Downloads/hawking/receipts/headless/FLASH_ROUTED_EXPERT_REPRESENTATION_EXPERIMENT_DISJOINT.json",
     "run_flash_tensor_probe": "python3 -m hcli agentos flash-tensor-probe --emit /Users/scammermike/Downloads/hawking/receipts/headless/FLASH_FIRST_TENSOR_PROBE.json",
     "run_full_tests": "pytest -q",
     "run_qwen27_mlp_diagnostic": "python3 -m hcli agentos qwen27-mlp-ab --repo-root /Users/scammermike/Downloads/hawking --profile /Users/scammermike/Downloads/hawking/hcli/hawking-native.sealed-3.14.json --resident-binary /Users/scammermike/Downloads/hawking/.hcli/instrumented/ascension_qwen38_resident",
@@ -146,6 +152,309 @@
       "vocab_size": 248320
     },
     "architecture_fingerprint": "8dbc9c34f223d240def13a1f7c70d3cbddbc768bc9ccc9c002683e2958b6be5b",
+    "bounded_source_layout_experiment": {
+      "body_mutated": false,
+      "candidate_label": "[D]",
+      "candidates": {
+        "independent_q4_g64": {
+          "code_bytes": 163840,
+          "direct_representation_dot": true,
+          "effective_bits_per_value": 4.25,
+          "group_size": 64,
+          "id": "independent_q4_g64",
+          "label": "[D]",
+          "model_capability_tested": false,
+          "native_kernel_tested": false,
+          "packed_sha256": "9f5612799e319910ef4f47e725b9d63f745300cf1cc6d445d2327d6b05187b9f",
+          "payload_bytes": 174080,
+          "reference_vector": {
+            "cosine": 0.9927497732308443,
+            "count": 128,
+            "finite": true,
+            "max_abs_error": 0.2378245795927423,
+            "mean_abs_error": 0.06873697751021061,
+            "rmse": 0.08160478050650556
+          },
+          "runtime_performance_tested": false,
+          "scale_bytes": 10240,
+          "scale_sha256": "5fd637402a39679967b27af36a94dbfb029d553f903552f21d116ab5471ae75b",
+          "scheme": "symmetric_signed_4bit_group64_with_fp16_scales",
+          "status": "BOUNDED_SLICE_REFERENCE_ONLY",
+          "weight_reconstruction": {
+            "cosine": 0.9928395990721878,
+            "count": 327680,
+            "finite": true,
+            "max_abs_error": 0.01171875,
+            "mean_abs_error": 0.0013477750406725164,
+            "rmse": 0.0016188287359001326
+          }
+        },
+        "shared_bf16_basis_nf4_residual": {
+          "basis_bytes": 81920,
+          "basis_dtype": "BF16",
+          "basis_sha256": "013c123bdbceb38be9bf8cc2be01ca670f89e22ed5adf19889b8f431cc136c48",
+          "basis_shared_once_across_selected_experts": true,
+          "direct_representation_dot": true,
+          "effective_bits_per_value": 6.25,
+          "group_size": 64,
+          "id": "shared_bf16_basis_nf4_residual",
+          "label": "[D]",
+          "model_capability_tested": false,
+          "native_kernel_tested": false,
+          "payload_bytes": 256000,
+          "reference_vector": {
+            "cosine": 0.9964679064088282,
+            "count": 128,
+            "finite": true,
+            "max_abs_error": 0.20105526741221114,
+            "mean_abs_error": 0.04436403510273433,
+            "rmse": 0.05686003608190755
+          },
+          "residual_code_bytes": 163840,
+          "residual_codebook": [
+            -1.0,
+            -0.6961928,
+            -0.52507305,
+            -0.3949175,
+            -0.28444138,
+            -0.18477343,
+            -0.09105004,
+            0.0,
+            0.0795803,
+            0.1609302,
+            0.2461123,
+            0.33791524,
+            0.44070983,
+            0.562617,
+            0.72295684,
+            1.0
+          ],
+          "residual_packed_sha256": "5309634893be043057ef143fc3cf3d11403484a6204f9271cdab13f03aa9c8c6",
+          "residual_scale_bytes": 10240,
+          "residual_scale_sha256": "a73f2e7ae7ea639f04a4a9148841d0df58829c10c6c82f17391da324305faed0",
+          "runtime_performance_tested": false,
+          "scheme": "shared_bf16_basis_plus_nf4_group64_residual_with_fp16_scales",
+          "status": "BOUNDED_SLICE_REFERENCE_ONLY",
+          "weight_reconstruction": {
+            "cosine": 0.9960545267715731,
+            "count": 327680,
+            "finite": true,
+            "max_abs_error": 0.00878707348632813,
+            "mean_abs_error": 0.0009481292150370897,
+            "rmse": 0.0011944009190902978
+          }
+        }
+      },
+      "claim_boundary": "bounded source-layout/reference-vector evidence only; whole-model capability, native kernel, and runtime remain untested",
+      "comparison": {
+        "capability_parity": "NOT_TESTED",
+        "dense_bytes": 655360,
+        "independent_q4_bytes": 174080,
+        "independent_q4_smaller_than_dense": true,
+        "label": "[D]",
+        "same_dimensions": true,
+        "same_reference_vector": true,
+        "same_source_rows": true,
+        "shared_basis_nf4_residual_bytes": 256000,
+        "shared_basis_nf4_residual_smaller_than_dense": true,
+        "shared_basis_nf4_residual_smaller_than_independent_q4": false,
+        "whole_model_runtime": "NOT_TESTED"
+      },
+      "model_loaded": false,
+      "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_ROUTED_EXPERT_REPRESENTATION_EXPERIMENT.json",
+      "replications": [
+        {
+          "body_mutated": false,
+          "candidates": {
+            "independent_q4_g64": {
+              "code_bytes": 163840,
+              "direct_representation_dot": true,
+              "effective_bits_per_value": 4.25,
+              "group_size": 64,
+              "id": "independent_q4_g64",
+              "label": "[D]",
+              "model_capability_tested": false,
+              "native_kernel_tested": false,
+              "packed_sha256": "8e1820e95f0eee5086b833230fdfa43b27abe79acf80241a4c9c4f5ee9b55509",
+              "payload_bytes": 174080,
+              "reference_vector": {
+                "cosine": 0.9926150262772738,
+                "count": 128,
+                "finite": true,
+                "max_abs_error": 0.23432114979859453,
+                "mean_abs_error": 0.06695361256713105,
+                "rmse": 0.08446779282499414
+              },
+              "runtime_performance_tested": false,
+              "scale_bytes": 10240,
+              "scale_sha256": "73cd52a7acf97e957c47ca576c1b68e950e68dc252f112e5ea514aaaa42a3530",
+              "scheme": "symmetric_signed_4bit_group64_with_fp16_scales",
+              "status": "BOUNDED_SLICE_REFERENCE_ONLY",
+              "weight_reconstruction": {
+                "cosine": 0.9926909403448401,
+                "count": 327680,
+                "finite": true,
+                "max_abs_error": 0.0103912353515625,
+                "mean_abs_error": 0.0013594143118975666,
+                "rmse": 0.0016321929969009526
+              }
+            },
+            "shared_bf16_basis_nf4_residual": {
+              "basis_bytes": 81920,
+              "basis_dtype": "BF16",
+              "basis_sha256": "62bd9c25fe9a0461863271332d23643c888fdbe8ae50cdc2e5251a74880fdce8",
+              "basis_shared_once_across_selected_experts": true,
+              "direct_representation_dot": true,
+              "effective_bits_per_value": 6.25,
+              "group_size": 64,
+              "id": "shared_bf16_basis_nf4_residual",
+              "label": "[D]",
+              "model_capability_tested": false,
+              "native_kernel_tested": false,
+              "payload_bytes": 256000,
+              "reference_vector": {
+                "cosine": 0.9958623181641211,
+                "count": 128,
+                "finite": true,
+                "max_abs_error": 0.23036894869610192,
+                "mean_abs_error": 0.04666408695034275,
+                "rmse": 0.05989290335045836
+              },
+              "residual_code_bytes": 163840,
+              "residual_codebook": [
+                -1.0,
+                -0.6961928,
+                -0.52507305,
+                -0.3949175,
+                -0.28444138,
+                -0.18477343,
+                -0.09105004,
+                0.0,
+                0.0795803,
+                0.1609302,
+                0.2461123,
+                0.33791524,
+                0.44070983,
+                0.562617,
+                0.72295684,
+                1.0
+              ],
+              "residual_packed_sha256": "7343174598ec3399be93253d98708c80d1d173a35b30db36ee141fc4d07bd8fa",
+              "residual_scale_bytes": 10240,
+              "residual_scale_sha256": "a7ca900c386b6cb46a1c0a8875e13ba5c8bc0763d143aebe6f71e882a22b4fdf",
+              "runtime_performance_tested": false,
+              "scheme": "shared_bf16_basis_plus_nf4_group64_residual_with_fp16_scales",
+              "status": "BOUNDED_SLICE_REFERENCE_ONLY",
+              "weight_reconstruction": {
+                "cosine": 0.996039074662419,
+                "count": 327680,
+                "finite": true,
+                "max_abs_error": 0.008170487519531248,
+                "mean_abs_error": 0.0009504485305216112,
+                "rmse": 0.0011948455019687495
+              }
+            }
+          },
+          "comparison": {
+            "capability_parity": "NOT_TESTED",
+            "dense_bytes": 655360,
+            "independent_q4_bytes": 174080,
+            "independent_q4_smaller_than_dense": true,
+            "label": "[D]",
+            "same_dimensions": true,
+            "same_reference_vector": true,
+            "same_source_rows": true,
+            "shared_basis_nf4_residual_bytes": 256000,
+            "shared_basis_nf4_residual_smaller_than_dense": true,
+            "shared_basis_nf4_residual_smaller_than_independent_q4": false,
+            "whole_model_runtime": "NOT_TESTED"
+          },
+          "model_loaded": false,
+          "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_ROUTED_EXPERT_REPRESENTATION_EXPERIMENT_DISJOINT.json",
+          "receipt_sha256": "c369ca30cdf0ae755227e28ddd51bfad590babf2db67f5551a7a39cec773779a",
+          "source_tensor": {
+            "bytes_read": 655360,
+            "columns": 2560,
+            "data_offsets": [
+              0,
+              3355443200
+            ],
+            "dtype": "BF16",
+            "label": "[V]",
+            "layout": "row-major [expert, row, column]; selected rows are complete across the column axis",
+            "row_range": [
+              64,
+              80
+            ],
+            "selected_experts": [
+              32,
+              33,
+              34,
+              35,
+              36,
+              37,
+              38,
+              39
+            ],
+            "selected_shard_full_hash_recomputed": false,
+            "shape": [
+              512,
+              1280,
+              2560
+            ],
+            "shard": "/Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc/model-00002-of-00131.safetensors",
+            "shard_name": "model-00002-of-00131.safetensors",
+            "slice_sha256": "94f0278acf44e15a32b83002178ea55ccd0bb218cc0a5822797cb866993a5e30",
+            "tensor_name": "model.language_model.layers.0.mlp.experts.gate_up_proj",
+            "values_read": 327680,
+            "verification_scope": "local BF16 row bytes under exact pinned final ModelLake identity"
+          },
+          "status": "PASSED",
+          "whole_model_capability": "NOT_TESTED",
+          "whole_model_runtime": "NOT_TESTED"
+        }
+      ],
+      "source_label": "[V]",
+      "source_tensor": {
+        "bytes_read": 655360,
+        "columns": 2560,
+        "data_offsets": [
+          0,
+          3355443200
+        ],
+        "dtype": "BF16",
+        "label": "[V]",
+        "layout": "row-major [expert, row, column]; selected rows are complete across the column axis",
+        "row_range": [
+          0,
+          16
+        ],
+        "selected_experts": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "selected_shard_full_hash_recomputed": false,
+        "shape": [
+          512,
+          1280,
+          2560
+        ],
+        "shard": "/Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc/model-00002-of-00131.safetensors",
+        "shard_name": "model-00002-of-00131.safetensors",
+        "slice_sha256": "0231401e37c227c91d704966d2d7e84350a2032e8e53fceb8aec73241e269b16",
+        "tensor_name": "model.language_model.layers.0.mlp.experts.gate_up_proj",
+        "values_read": 327680,
+        "verification_scope": "local BF16 row bytes under exact pinned final ModelLake identity"
+      },
+      "status": "PASSED",
+      "tensor_name": "model.language_model.layers.0.mlp.experts.gate_up_proj"
+    },
     "bounded_source_tensor_probe": {
       "body_mutated": false,
       "candidate_label": "[D]",
@@ -824,7 +1133,7 @@
       "telemetry/receipt verifier"
     ]
   },
-  "generated_at": 1787809465.747249,
+  "generated_at": 1787810985.867223,
   "hcli": {
     "background_jobs": [
       {
@@ -905,15 +1214,15 @@
         ],
         "cwd": "/Users/scammermike/Downloads/hawking",
         "error": null,
-        "finished_at": null,
+        "finished_at": 1787810619.170028,
         "job_id": "job-badd2475-5dfc-48cf-a509-5ffe22b97c41",
         "label": "qwen-protected-bench-ready",
         "log_path": "/Users/scammermike/Downloads/hawking/.hcli/background/logs/job-badd2475-5dfc-48cf-a509-5ffe22b97c41.log",
         "pid": 89684,
         "resumable": true,
-        "returncode": null,
+        "returncode": 0,
         "started_at": 1787807609.674143,
-        "state": "RUNNING"
+        "state": "COMPLETED"
       },
       {
         "argv": [
@@ -1491,11 +1800,20 @@
     "next_experiment": "Protected quiescent same-source A/B: record binary/artifact/tokenizer, representation, dispatches, complete wall/GPU timing, fallback count, capability, and cache/quiescence before accepting any optimization.",
     "protected_benchmark_watcher": {
       "NOT_FOR_PROMOTION": true,
-      "polls": 31,
+      "polls": 51,
       "qualification": false,
       "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/QWEN_PROTECTED_BENCH_READY.json",
-      "runs": [],
-      "status": "WAITING_FOR_QUIESCENCE"
+      "runs": [
+        {
+          "NOT_FOR_PROMOTION": true,
+          "benchmark_class": "DIAGNOSTIC_CONTAMINATED",
+          "experiment_verdict": "ACCEPT",
+          "qualification": false,
+          "result_receipt": "/Users/scammermike/Downloads/hawking/receipts/headless/QWEN27_MLP_PROTECTED_AB.json",
+          "status": "PASSED"
+        }
+      ],
+      "status": "COMPLETED"
     },
     "runtime_identity_archaeology": {
       "diff_receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/QWEN27_RUNTIME_DIFF.json",
@@ -1522,7 +1840,7 @@
   "verification": {
     "full_suite": {
       "command": "pytest -q",
-      "last_observed": "722 passed, 2 skipped",
+      "last_observed": "725 passed, 2 skipped",
       "last_observed_status": "PASSED"
     },
     "provider_focus": {
@@ -1533,6 +1851,7 @@
       "accelerator_regression": "PASSED",
       "autonomy": "PASSED",
       "flash_pre_runtime": "PASSED",
+      "flash_representation_experiment": "PASSED",
       "modellake_supervision": "PASSED",
       "preboard": "PASSED",
       "qwen38_fusion_audit": "PASSED",

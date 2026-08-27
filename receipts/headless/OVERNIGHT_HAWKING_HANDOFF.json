@@ -5,21 +5,15 @@
       "9d373ecc4863b244fc74761c99fc837f7705f3db"
     ],
     "branch": "odyssey-i",
-    "git_revision": "61a6c38dc61d11f42562101ea97e41f8d2c0c9b7",
+    "git_revision": "56f04f3eeabacead19f1b3089c0b2d2c70816ac0",
     "unrelated_preserved_edit": "tools/odyssey_ctl.py",
     "working_tree_status": [
-      "M hcli/agentos/flash_component_campaign.py",
-      " M receipts/headless/FLASH_NEXT_NOETIC_EXECUTABLE.json",
-      " M receipts/headless/FLASH_NOETIC_ROUTED_EXPERT_COMPONENT_CAMPAIGN.json",
+      "M hcli/agentos/handoff.py",
       " M receipts/headless/HCLI_AGENTOS_CHECKPOINT.json",
       " M tools/odyssey_ctl.py",
       "?? .hcli/flash-kernel-build/",
       "?? .hcli/locks/",
-      "?? .hcli/unattended-qwen-long/",
-      "?? receipts/headless/FLASH_NOETIC_Q4_BODY_KERNEL_E1_R0_128_PARITY.json",
-      "?? receipts/headless/FLASH_NOETIC_Q4_BODY_KERNEL_E32_R0_128_PARITY.json",
-      "?? receipts/headless/FLASH_NOETIC_ROUTED_EXPERT_BODY_E1_R0_128.json",
-      "?? receipts/headless/FLASH_NOETIC_ROUTED_EXPERT_BODY_E32_R0_128.json"
+      "?? .hcli/unattended-qwen-long/"
     ]
   },
   "blockers": [
@@ -2604,7 +2598,7 @@
       "telemetry/receipt verifier"
     ]
   },
-  "generated_at": 1787819070.805971,
+  "generated_at": 1787819393.304039,
   "hcli": {
     "background_jobs": [
       {
@@ -3051,18 +3045,18 @@
         },
         {
           "checks": {},
-          "cycles": 120,
+          "cycles": 125,
           "deadline": 1787833148.5820968,
           "metrics": {
-            "accepted": 119,
-            "attempted": 120,
+            "accepted": 124,
+            "attempted": 125,
             "human_interventions": 0,
             "inconclusive": 1,
-            "model_calls": 120,
+            "model_calls": 125,
             "rejected": 0,
             "retries": 1,
-            "typed_tool_calls": 240,
-            "verifier_calls": 119
+            "typed_tool_calls": 250,
+            "verifier_calls": 124
           },
           "path": "/Users/scammermike/Downloads/hawking/.hcli/unattended-qwen-long/window-progress.json",
           "started_at": 1787811548.5820968,
@@ -3392,7 +3386,7 @@
   "verification": {
     "full_suite": {
       "command": "pytest -q",
-      "last_observed": "731 passed, 2 skipped",
+      "last_observed": "732 passed, 2 skipped",
       "last_observed_status": "PASSED"
     },
     "provider_focus": {

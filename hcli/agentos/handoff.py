@@ -541,7 +541,7 @@ def build_handoff(repo_root: Optional[str | os.PathLike[str]] = None, *, emit: O
         "modellake": lake,
         "fpga": _fpga_summary(repo),
         "verification": {
-            "full_suite": {"command": "pytest -q", "last_observed_status": "PASSED", "last_observed": "731 passed, 2 skipped"},
+            "full_suite": {"command": "pytest -q", "last_observed_status": "PASSED", "last_observed": "732 passed, 2 skipped"},
             "provider_focus": {"last_observed_status": "PASSED", "last_observed": "30 passed, 2 warnings"},
             "receipt_gates": {
                 "autonomy": (_receipt(repo, "HCLI_AGENTOS_AUTONOMY_GATE.json") or {}).get("status"),

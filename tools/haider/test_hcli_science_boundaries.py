@@ -10,6 +10,7 @@ from hcli.agentos.benchmark_boundary import (
     classify_window,
 )
 from hcli.agentos.flash_executable import run_flash_executable_scaffold
+from hcli.agentos import flash_executable
 from hcli.agentos import flash_tensor_probe
 from hcli.agentos import flash_representation_experiment
 from hcli.agentos import flash_transform_parity
@@ -66,6 +67,45 @@ def test_flash_executable_scaffold_writes_honest_budgets(tmp_path):
     assert manifest["complete_token_timing"]["accepted_tps"] is None
     assert result["ebpw_budget"]["measured"]["complete_system_ebpw"] is None
     assert result["token_ns_budget"]["system_ledger"]["complete_generation_wall_ns"] is None
+
+
+def test_flash_executable_prefers_current_modellake_receipt_names(tmp_path, monkeypatch):
+    repo = tmp_path / "repo"
+    receipts = repo / "receipts" / "headless"
+    receipts.mkdir(parents=True)
+    lake = tmp_path / "lake"
+    final = lake / "specimens" / flash_executable.LAKE_SLUG
+    final.mkdir(parents=True)
+    (lake / "manifests").mkdir(parents=True)
+    (lake / "manifests" / f"{flash_executable.LAKE_SLUG}.json").write_text(
+        json.dumps({"resolved_sha": flash_executable.PINNED_REVISION}), encoding="utf-8"
+    )
+    # Both names are intentionally present: the old HCLI names remain sealed
+    # compatibility receipts, while the descriptive names are the current
+    # source-specimen observations.
+    (receipts / "HCLI_MODELLAKE_FLASH_CENSUS.json").write_text(json.dumps({
+        "status": "PASSED",
+        "flash_target_manifest": {"final_present": False},
+    }), encoding="utf-8")
+    (receipts / "MODELLAKE_FLASH_NEXT_CENSUS.json").write_text(json.dumps({
+        "status": "PASSED",
+        "flash_target_manifest": {"final_present": True},
+    }), encoding="utf-8")
+    (receipts / "HCLI_MODELLAKE_FLASH_ACQUISITION_SUPERVISION.json").write_text(json.dumps({
+        "status": "LEGACY",
+    }), encoding="utf-8")
+    (receipts / "MODELLAKE_FLASH_NEXT_SUPERVISION.json").write_text(json.dumps({
+        "status": "CURRENT",
+    }), encoding="utf-8")
+    monkeypatch.setattr(flash_executable, "LAKE_ROOT", lake)
+
+    result = flash_executable._modellake_identity(repo)
+
+    assert result["census_receipt"]["path"].endswith("MODELLAKE_FLASH_NEXT_CENSUS.json")
+    assert result["supervision_receipt"]["path"].endswith("MODELLAKE_FLASH_NEXT_SUPERVISION.json")
+    assert result["census_final_present"] is True
+    assert result["observed_job_status"] == "CURRENT"
+    assert result["status"] == "VERIFIED_FINAL_IDENTITY"
 
 
 def test_flash_tensor_probe_reads_bounded_slice_and_keeps_claim_boundary(tmp_path, monkeypatch):

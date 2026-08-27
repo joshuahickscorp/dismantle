@@ -50,6 +50,19 @@ DEFAULT_ROUTER_REPRESENTATION_AB = "FLASH_NOETIC_ROUTER_REPRESENTATION_AB.json"
 DEFAULT_EXECUTABLE = "FLASH_NEXT_NOETIC_EXECUTABLE.json"
 DEFAULT_EBPW = "FLASH_EBPW_BUDGET.json"
 DEFAULT_TOKEN_NS = "FLASH_TOKEN_NS_BUDGET.json"
+# The canonical nomenclature migration introduced the descriptive
+# ``MODELLAKE_FLASH_NEXT_*`` names.  Keep the original HCLI names as a
+# compatibility fallback: they are sealed historical receipts and must not be
+# renamed or rewritten.  When both exist, the descriptive receipt is the
+# current source-specimen observation and therefore wins.
+MODELLAKE_CENSUS_RECEIPT_NAMES = (
+    "MODELLAKE_FLASH_NEXT_CENSUS.json",
+    "HCLI_MODELLAKE_FLASH_CENSUS.json",
+)
+MODELLAKE_SUPERVISION_RECEIPT_NAMES = (
+    "MODELLAKE_FLASH_NEXT_SUPERVISION.json",
+    "HCLI_MODELLAKE_FLASH_ACQUISITION_SUPERVISION.json",
+)
 LAKE_ROOT = Path("/Volumes/corpdrive/hawking-modellake")
 LAKE_SLUG = REPO_ID.replace("/", "--") + "@" + PINNED_REVISION[:12]
 
@@ -121,9 +134,19 @@ def _direct_inventory(path: Path) -> Dict[str, Any]:
     }
 
 
+def _preferred_receipt(repo: Path, names: tuple[str, ...]) -> Path:
+    """Resolve the newest canonical name while preserving legacy aliases."""
+    headless = repo / "receipts" / "headless"
+    for name in names:
+        candidate = headless / name
+        if candidate.is_file():
+            return candidate
+    return headless / names[0]
+
+
 def _modellake_identity(repo: Path) -> Dict[str, Any]:
-    census_path = repo / "receipts" / "headless" / "HCLI_MODELLAKE_FLASH_CENSUS.json"
-    supervision_path = repo / "receipts" / "headless" / "HCLI_MODELLAKE_FLASH_ACQUISITION_SUPERVISION.json"
+    census_path = _preferred_receipt(repo, MODELLAKE_CENSUS_RECEIPT_NAMES)
+    supervision_path = _preferred_receipt(repo, MODELLAKE_SUPERVISION_RECEIPT_NAMES)
     census = _read_json(census_path) or {}
     supervision = _read_json(supervision_path) or {}
     final = LAKE_ROOT / "specimens" / LAKE_SLUG

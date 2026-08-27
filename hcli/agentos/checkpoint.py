@@ -161,6 +161,13 @@ def _gate_summary(workspace: Path, repo_root: Path) -> Dict[str, Any]:
     ab_candidates = [repo_root / "receipts" / "headless" / "HCLI_DENSE_VS_NF_AB_SCAFFOLD.json"]
     fpga_candidates = [repo_root / "receipts" / "headless" / "HCLI_FPGA_PREBOARD.json"]
     lake_supervision_candidates = [repo_root / "receipts" / "headless" / "HCLI_MODELLAKE_FLASH_ACQUISITION_SUPERVISION.json"]
+    qwen27_identity_candidates = [repo_root / "receipts" / "headless" / "QWEN27_HISTORICAL_RUNTIME_IDENTITY.json"]
+    qwen27_diff_candidates = [repo_root / "receipts" / "headless" / "QWEN27_RUNTIME_DIFF.json"]
+    qwen27_mlp_candidates = [repo_root / "receipts" / "headless" / "QWEN27_MLP_DIAGNOSTIC_AB.json"]
+    protected_watch_candidates = [repo_root / "receipts" / "headless" / "QWEN_PROTECTED_BENCH_READY.json"]
+    flash_executable_candidates = [repo_root / "receipts" / "headless" / "FLASH_NEXT_NOETIC_EXECUTABLE.json"]
+    flash_ebpw_candidates = [repo_root / "receipts" / "headless" / "FLASH_EBPW_BUDGET.json"]
+    flash_token_ns_candidates = [repo_root / "receipts" / "headless" / "FLASH_TOKEN_NS_BUDGET.json"]
     recovery = None
     for path in recovery_candidates:
         value = _read_object(path)
@@ -417,6 +424,25 @@ def _gate_summary(workspace: Path, repo_root: Path) -> Dict[str, Any]:
                 "capacity": value.get("capacity"),
             }
             break
+    def _science_receipt(candidates: list[Path], *, fields: tuple[str, ...] = ()) -> Optional[Dict[str, Any]]:
+        for path in candidates:
+            value = _read_object(path)
+            if value is not None:
+                return {
+                    "status": value.get("status"),
+                    "receipt_path": str(path),
+                    "schema": value.get("schema"),
+                    **{field: value.get(field) for field in fields},
+                }
+        return None
+
+    qwen27_identity = _science_receipt(qwen27_identity_candidates, fields=("historical_selection", "checks"))
+    qwen27_diff = _science_receipt(qwen27_diff_candidates, fields=("summary", "classification_policy"))
+    qwen27_mlp = _science_receipt(qwen27_mlp_candidates, fields=("benchmark_class", "qualification", "NOT_FOR_PROMOTION", "experiment_verdict", "selector_verdict", "checks"))
+    protected_watch = _science_receipt(protected_watch_candidates, fields=("qualification", "NOT_FOR_PROMOTION", "runs", "last_poll"))
+    flash_executable = _science_receipt(flash_executable_candidates, fields=("status", "qualification", "NOT_FOR_PROMOTION", "promotion_allowed", "native_loader", "native_kernels", "complete_token_timing", "runtime_genome"))
+    flash_ebpw = _science_receipt(flash_ebpw_candidates, fields=("status", "measured", "target_contract", "promotion_allowed"))
+    flash_token_ns = _science_receipt(flash_token_ns_candidates, fields=("status", "system_ledger", "target_contract", "promotion_allowed"))
     return {
         "recovery_gate": {
             **(recovery or {
@@ -527,6 +553,13 @@ def _gate_summary(workspace: Path, repo_root: Path) -> Dict[str, Any]:
         "ab_scaffold": ab_scaffold or {"status": "NOT_RUN", "receipt_path": None, "schema": None, "evaluation": None},
         "fpga_preboard": fpga or {"status": "NOT_RUN", "receipt_path": None, "schema": None, "fingerprint": None, "checks": {}, "physical_board": None},
         "modellake_supervision": lake_supervision or {"status": "NOT_RUN", "qualification": "NONE", "receipt_path": None, "checks": {}, "job": None, "target": None, "capacity": None},
+        "qwen27_runtime_identity": qwen27_identity or {"status": "NOT_RUN", "receipt_path": None, "schema": None, "historical_selection": None, "checks": {}},
+        "qwen27_runtime_diff": qwen27_diff or {"status": "NOT_RUN", "receipt_path": None, "schema": None, "summary": None, "classification_policy": None},
+        "qwen27_mlp_diagnostic": qwen27_mlp or {"status": "NOT_RUN", "receipt_path": None, "schema": None, "benchmark_class": None, "qualification": None, "NOT_FOR_PROMOTION": None, "experiment_verdict": None, "selector_verdict": None, "checks": {}},
+        "protected_benchmark_watcher": protected_watch or {"status": "NOT_RUN", "receipt_path": None, "qualification": None, "NOT_FOR_PROMOTION": None, "runs": [], "last_poll": None},
+        "flash_executable": flash_executable or {"status": "NOT_RUN", "receipt_path": None, "schema": None, "qualification": None, "NOT_FOR_PROMOTION": None, "promotion_allowed": None, "native_loader": None, "native_kernels": None, "complete_token_timing": None, "runtime_genome": None},
+        "flash_ebpw_budget": flash_ebpw or {"status": "NOT_RUN", "receipt_path": None, "schema": None, "measured": None, "target_contract": None, "promotion_allowed": None},
+        "flash_token_ns_budget": flash_token_ns or {"status": "NOT_RUN", "receipt_path": None, "schema": None, "system_ledger": None, "target_contract": None, "promotion_allowed": None},
         "production_provider_gate": "NOT_RUN",
     }
 
@@ -589,6 +622,14 @@ def build_program_checkpoint(
     flash_promotion = gates["flash_science"].get("promotion_gate")
     if isinstance(flash_promotion, dict) and flash_promotion.get("status") != "PROMOTABLE":
         blockers.append("Flash-Next final promotion gate is not PROMOTABLE (complete EBPW/TPS or required evidence is missing)")
+    if gates["flash_executable"].get("status") != "PASSED":
+        blockers.append("Flash-Next noetic executable contract/scaffold has not been persisted")
+    elif gates["flash_executable"].get("promotion_allowed") is not False:
+        blockers.append("Flash-Next executable scaffold has not explicitly refused promotion")
+    if gates["qwen27_runtime_identity"].get("status") != "PASSED":
+        blockers.append("Qwen27 current-versus-historical runtime identity archaeology has not been persisted")
+    if gates["qwen27_mlp_diagnostic"].get("status") != "PASSED":
+        blockers.append("Qwen27 MLP selector diagnostic has not produced a complete receipt")
     if connectivity.get("surfaces", {}).get("modellake", {}).get("status") != "AVAILABLE":
         blockers.append("ModelLake is not mounted in this environment")
     vmcp = connectivity.get("surfaces", {}).get("vmcp", {})
@@ -657,6 +698,13 @@ def build_program_checkpoint(
             "fpga_preboard": gates["fpga_preboard"]["status"],
             "modellake_supervision": gates["modellake_supervision"]["status"],
             "flash_promotion": flash_promotion.get("status") if isinstance(flash_promotion, dict) else "NOT_PROVEN",
+            "qwen27_runtime_identity": gates["qwen27_runtime_identity"]["status"],
+            "qwen27_runtime_diff": gates["qwen27_runtime_diff"]["status"],
+            "qwen27_mlp_diagnostic": gates["qwen27_mlp_diagnostic"]["status"],
+            "protected_benchmark_watcher": gates["protected_benchmark_watcher"]["status"],
+            "flash_executable": gates["flash_executable"]["status"],
+            "flash_ebpw_budget": gates["flash_ebpw_budget"]["status"],
+            "flash_token_ns_budget": gates["flash_token_ns_budget"]["status"],
         },
         "blockers": blockers,
         "next_actions": [
@@ -664,6 +712,8 @@ def build_program_checkpoint(
             "complete the one-hour unattended production-provider observation before making any sovereignty claim",
             "persist research provenance and protected benchmark receipts",
             "qualify additional providers only after their own deterministic verification closes",
+            "continue the bounded protected Qwen watcher; do not treat contaminated A/B telemetry as promotion evidence",
+            "build Flash organ-by-organ from verified body identity; fill actual EBPW/token-ns fields only from native protected receipts",
         ],
         "claim_boundary": "This checkpoint is an evidence census; it does not certify a model, runtime, hardware accelerator, or unattended sovereignty.",
     }

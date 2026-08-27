@@ -17,6 +17,7 @@ import time
 from pathlib import Path
 from typing import Any, Dict, Mapping, Optional
 
+from hcli.agentos.benchmark_boundary import classify_window
 from hcli.persist import atomic_write_json
 
 
@@ -105,6 +106,7 @@ def _bench(before: Dict[str, Any], after: Dict[str, Any], note: str) -> Dict[str
 
 def _source_inspection(repo: Path, profile: Mapping[str, Any]) -> Dict[str, Any]:
     source = repo / "crates" / "hawking-core" / "src" / "model" / "qwen38_hybrid_decode.rs"
+    shader = repo / "crates" / "hawking-core" / "shaders" / "qwen_uniform_q4.metal"
     text = ""
     try:
         text = source.read_text(encoding="utf-8", errors="replace")
@@ -120,6 +122,9 @@ def _source_inspection(repo: Path, profile: Mapping[str, Any]) -> Dict[str, Any]
         "source_path": str(source),
         "source_sha256": _sha256(source),
         "source_exists": source.is_file(),
+        "shader_path": str(shader),
+        "shader_sha256": _sha256(shader),
+        "shader_exists": shader.is_file(),
         "fusion_controls_found_at_lines": line_map,
         "profile_fusion_env": {key: fusion_env.get(key) for key in FUSION_KEYS},
         "all_profile_controls_declared": all(key in fusion_env for key in FUSION_KEYS),
@@ -202,10 +207,34 @@ def _profile_summary(config: Any) -> Dict[str, Any]:
         "representation",
         "compiler",
     )
-    return {key: _safe(identity.get(key)) for key in keys if key in identity}
+    summary = {key: _safe(identity.get(key)) for key in keys if key in identity}
+    binary = Path(config.selected_binary())
+    tokenizer = Path(config.tokenizer)
+    summary.update(
+        {
+            "binary_sha256": _sha256(binary),
+            "tokenizer_sha256": _sha256(tokenizer),
+            "binary_sha256_16": identity.get("binary_sha256_16"),
+            "tokenizer_sha256_16": identity.get("tokenizer_sha256_16"),
+            "runtime_env": _safe(getattr(config, "runtime_env", {})),
+            "fusion_env": _safe(getattr(config, "fusion_env", {})),
+            "selected_binary": str(binary),
+            "selected_binary_exists": binary.is_file(),
+            "tokenizer_exists": tokenizer.is_file(),
+        }
+    )
+    compiler = dict(getattr(config, "compiler", {}) or {})
+    summary["compiler"] = _safe(compiler)
+    return summary
 
 
-def _run_one_request(config: Any, timeout_s: float) -> Dict[str, Any]:
+def _run_one_request(
+    config: Any,
+    timeout_s: float,
+    *,
+    prompt: str = "Return exactly: HAWKING_OK",
+    max_new_tokens: int = 16,
+) -> Dict[str, Any]:
     from hcli.hawking_native import HawkingNativeConnector
 
     connector = HawkingNativeConnector(config)
@@ -216,8 +245,8 @@ def _run_one_request(config: Any, timeout_s: float) -> Dict[str, Any]:
         connector.start(timeout=timeout_s)
         raw = connector.complete_payload(
             {
-                "messages": [{"role": "user", "content": "Return exactly: HAWKING_OK"}],
-                "max_tokens": 16,
+                "messages": [{"role": "user", "content": prompt}],
+                "max_tokens": max_new_tokens,
                 "chat_template_kwargs": {"enable_thinking": False},
             },
             timeout=timeout_s,
@@ -231,6 +260,30 @@ def _run_one_request(config: Any, timeout_s: float) -> Dict[str, Any]:
     hawking = hawking if isinstance(hawking, Mapping) else {}
     health = hawking.get("resident_health")
     health = health if isinstance(health, Mapping) else {}
+    native_metrics = hawking.get("native_metrics")
+    native_metrics = native_metrics if isinstance(native_metrics, Mapping) else {}
+    native_gpu_per_token = native_metrics.get("gpu_ns_per_generated_token")
+    native_wall_minus_gpu = native_metrics.get("wall_minus_gpu_ns")
+    native_dispatches_per_token = native_metrics.get("dispatches_per_generated_token")
+    native_dispatches = native_metrics.get("dispatches")
+    native_prefill = native_metrics.get("prefill")
+    native_decode = native_metrics.get("decode")
+    native_prefill_steps = native_metrics.get("prefill_steps")
+    native_decode_steps = native_metrics.get("decode_steps")
+    if isinstance(native_prefill, Mapping):
+        native_prefill_steps = native_prefill.get("steps", native_prefill_steps)
+    if isinstance(native_decode, Mapping):
+        native_decode_steps = native_decode.get("steps", native_decode_steps)
+    native_kernel_genome = native_metrics.get("kernel_genome")
+    output_text = None
+    choices = raw.get("choices") if isinstance(raw, Mapping) else None
+    if isinstance(choices, list) and choices and isinstance(choices[0], Mapping):
+        message = choices[0].get("message")
+        if isinstance(message, Mapping) and isinstance(message.get("content"), str):
+            output_text = message.get("content")
+    new_token_ids = hawking.get("new_token_ids")
+    if not isinstance(new_token_ids, list):
+        new_token_ids = None
     generated = hawking.get("generated_tokens")
     try:
         generated_i = int(generated) if generated is not None else None
@@ -242,23 +295,33 @@ def _run_one_request(config: Any, timeout_s: float) -> Dict[str, Any]:
         else None
     )
     return {
-        "request": {"max_tokens": 16, "prompt": "Return exactly: HAWKING_OK"},
+        "request": {"max_tokens": max_new_tokens, "prompt": prompt},
         "ok": raw is not None and error is None,
         "error": error,
         "generated_tokens": generated_i,
+        "output_text": output_text,
+        "new_token_ids": new_token_ids,
         "prompt_tokens": hawking.get("prompt_tokens"),
         "fallbacks": hawking.get("fallbacks"),
         "wall_ns": elapsed_ns,
         "wall_ns_per_token": wall_ns_per_token,
-        "gpu_ns_per_token": None,
-        "wall_minus_gpu_ns": None,
-        "dispatches": None,
-        "prefill_steps": None,
+        "native_generation_wall_ns": native_metrics.get("generation_wall_ns"),
+        "gpu_ns_per_token": native_gpu_per_token,
+        "wall_minus_gpu_ns": native_wall_minus_gpu,
+        "dispatches": native_dispatches,
+        "dispatches_per_token": native_dispatches_per_token,
+        "prefill_steps": native_prefill_steps,
+        "decode_steps": native_decode_steps,
+        "prefill_metrics": _safe(native_prefill) if native_prefill else None,
+        "decode_metrics": _safe(native_decode) if native_decode else None,
+        "kernel_genome": _safe(native_kernel_genome) if native_kernel_genome else None,
+        "native_metrics": _safe(native_metrics),
         "metric_absence_reasons": {
-            "gpu_ns_per_token": "native JSONL protocol does not expose Metal timestamps",
-            "wall_minus_gpu_ns": "GPU timestamp is absent",
-            "dispatches": "dispatch tracing was not enabled for this smoke request",
-            "prefill_steps": "native response did not expose a prefill/decode phase split",
+            "gpu_ns_per_token": None if native_gpu_per_token is not None else "native provider did not declare GPU timestamps",
+            "wall_minus_gpu_ns": None if native_wall_minus_gpu is not None else "native provider did not declare GPU timestamps",
+            "dispatches": None if native_dispatches is not None else "native provider did not declare dispatch counts",
+            "prefill_steps": None if native_prefill_steps is not None else "native provider did not declare a prefill/decode phase split",
+            "kernel_genome": None if native_kernel_genome is not None else "native provider did not declare kernel identity telemetry",
         },
         "resident_health": {
             key: health.get(key)
@@ -292,7 +355,10 @@ def run_accelerator_regression(
     report: Dict[str, Any] = {
         "schema": SCHEMA,
         "status": "RUNNING",
-        "qualification": "CURRENT_RUNTIME_REGRESSION_AUDITED_NO_PERFORMANCE_QUALIFICATION",
+        "qualification": False,
+        "qualification_label": "CURRENT_RUNTIME_REGRESSION_AUDITED_NO_PERFORMANCE_QUALIFICATION",
+        "benchmark_class": "DIAGNOSTIC_CONTAMINATED",
+        "NOT_FOR_PROMOTION": True,
         "started_at": started,
         "repo_root": str(repo),
         "profile_path": str(profile_path),
@@ -365,13 +431,29 @@ def run_accelerator_regression(
             after,
             "A single current-resident smoke request. This is a capability/execution observation; only QUIESCED paired runs can support performance claims.",
         )
+        boundary = classify_window(
+            before,
+            after,
+            bench,
+            qualification=False,
+            not_for_promotion=True,
+        )
+        report.update({
+            key: boundary[key]
+            for key in ("benchmark_class", "qualification", "NOT_FOR_PROMOTION", "contamination", "machine_snapshot", "protected_window")
+        })
         report["experiment"] = {
             "name": "current-resident-smoke",
             "status": "OBSERVED" if live.get("ok") else "FAILED",
             "hypothesis_result": "not causally resolved; current and historical anchors are not a protected paired comparison",
             "live": live,
             "bench": bench,
-            "perf_qualified": bench.get("state") == "QUIESCED",
+            "benchmark_class": boundary["benchmark_class"],
+            "qualification": boundary["qualification"],
+            "NOT_FOR_PROMOTION": boundary["NOT_FOR_PROMOTION"],
+            "contamination": boundary["contamination"],
+            "machine_snapshot": boundary["machine_snapshot"],
+            "perf_qualified": False,
             "accepted_capability_preserving_tps": None,
             "fallback_count": live.get("fallbacks"),
         }
@@ -402,8 +484,13 @@ def run_accelerator_regression(
             "source_inspected_without_mutation": source.get("source_exists") is True,
             "one_live_request_or_explicit_failure": live.get("ok") is True or live.get("error") is not None,
             "fallbacks_disclosed": "fallbacks" in live,
-            "no_unqualified_performance_claim": report["experiment"]["perf_qualified"] is False
-            or bench.get("state") == "QUIESCED",
+            "no_unqualified_performance_claim": report["experiment"]["perf_qualified"] is False,
+            "benchmark_boundary_recorded": report.get("benchmark_class") in {
+                "QUALIFIED_PROTECTED",
+                "DIAGNOSTIC_CONTAMINATED",
+            },
+            "diagnostic_not_for_promotion": report.get("benchmark_class") != "DIAGNOSTIC_CONTAMINATED"
+            or report.get("NOT_FOR_PROMOTION") is True,
         }
         report["status"] = "PASSED" if all(report["checks"].values()) else "FAILED"
     except Exception as exc:  # noqa: BLE001 - keep the gate's failure boundary durable
@@ -411,9 +498,17 @@ def run_accelerator_regression(
         report["error"] = {"type": type(exc).__name__, "message": str(exc)[:2000]}
     finally:
         if "experiment" not in report:
+            after = _quiescence()
+            bench = _bench(before, after, "experiment did not start")
+            boundary = classify_window(before, after, bench, qualification=False, not_for_promotion=True)
+            report.update({
+                key: boundary[key]
+                for key in ("benchmark_class", "qualification", "NOT_FOR_PROMOTION", "contamination", "machine_snapshot", "protected_window")
+            })
             report["experiment"] = {
                 "status": "NOT_RUN",
-                "bench": _bench(before, _quiescence(), "experiment did not start"),
+                "bench": bench,
+                **boundary,
             }
     report["finished_at"] = time.time()
     report["elapsed_s"] = round(report["finished_at"] - started, 3)
@@ -444,4 +539,4 @@ if __name__ == "__main__":
     raise SystemExit(main())
 
 
-__all__ = ["FUSION_KEYS", "SCHEMA", "run_accelerator_regression"]
+__all__ = ["FUSION_KEYS", "SCHEMA", "run_accelerator_regression", "_run_one_request"]

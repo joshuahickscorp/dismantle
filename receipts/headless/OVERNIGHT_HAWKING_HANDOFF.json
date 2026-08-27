@@ -5,24 +5,53 @@
       "9d373ecc4863b244fc74761c99fc837f7705f3db"
     ],
     "branch": "odyssey-i",
-    "git_revision": "faae32ea2d1c1fff8328be1aaa8a9fafb23df730",
+    "git_revision": "1dc9055cf08a796d8fda3046afa12c3c9705a483",
     "unrelated_preserved_edit": "tools/odyssey_ctl.py",
     "working_tree_status": [
-      "M receipts/headless/HCLI_AGENTOS_CHECKPOINT.json",
+      "M .gitignore",
+      " M crates/hawking-core/examples/ascension_qwen38_resident.rs",
+      " M hcli/agentos/__init__.py",
+      " M hcli/agentos/accelerator_regression.py",
+      " M hcli/agentos/checkpoint.py",
+      " M hcli/agentos/flash_science.py",
+      " M hcli/agentos/fpga_preboard.py",
+      " M hcli/agentos/handoff.py",
+      " M hcli/agentos_cli.py",
+      " M hcli/hawking_native.py",
+      " M receipts/headless/FLASH_NEXT_FPGA_ORGAN_MAP.json",
+      " M receipts/headless/HCLI_ACCELERATOR_REGRESSION.json",
+      " M receipts/headless/HCLI_AGENTOS_CHECKPOINT.json",
+      " M receipts/headless/HCLI_FLASH_NEXT_PRE_RUNTIME_SCIENCE.json",
+      " M receipts/headless/HCLI_FPGA_PREBOARD.json",
       " M receipts/headless/HCLI_MODELLAKE_FLASH_ACQUISITION_SUPERVISION.json",
       " M receipts/headless/OVERNIGHT_HAWKING_HANDOFF.json",
+      " M receipts/headless/QWEN27_FPGA_ORGAN_MAP.json",
       " M tools/odyssey_ctl.py",
-      "?? receipts/headless/HCLI_AGENTOS_UNATTENDED_WINDOW.json"
+      "?? hcli/agentos/benchmark_boundary.py",
+      "?? hcli/agentos/flash_executable.py",
+      "?? hcli/agentos/protected_benchmark_watcher.py",
+      "?? hcli/agentos/qwen27_mlp_diagnostic.py",
+      "?? hcli/agentos/qwen27_runtime_identity.py",
+      "?? receipts/headless/FLASH_EBPW_BUDGET.json",
+      "?? receipts/headless/FLASH_NEXT_NOETIC_EXECUTABLE.json",
+      "?? receipts/headless/FLASH_TOKEN_NS_BUDGET.json",
+      "?? receipts/headless/QWEN27_HISTORICAL_RUNTIME_IDENTITY.json",
+      "?? receipts/headless/QWEN27_MLP_DIAGNOSTIC_AB.json",
+      "?? receipts/headless/QWEN27_RUNTIME_DIFF.json",
+      "?? receipts/headless/QWEN_PROTECTED_BENCH_READY.json",
+      "?? tools/haider/test_hcli_flash_science.py",
+      "?? tools/haider/test_hcli_science_boundaries.py"
     ]
   },
   "blockers": [
     "Flash-Next final promotion gate remains incomplete until every required byte/evidence field and both hard thresholds pass.",
     "Qwen27 current resident observation is a contaminated/contended regression audit, not a performance qualification.",
     "No physical FPGA board, bitstream, or hardware performance is claimed.",
-    "Flash-Next ModelLake acquisition is still partial or not yet atomically published."
+    "Qwen27 MLP selector result is diagnostic/contaminated or absent; it is not a protected performance qualification."
   ],
   "claim_boundary": "This handoff is a resumable status snapshot. It does not certify model quality, accelerator performance, Flash promotion, FPGA hardware, or sovereignty.",
   "continuation": {
+    "build_flash_executable_scaffold": "python3 -m hcli agentos flash-executable --repo-root /Users/scammermike/Downloads/hawking",
     "do_not_start": "Do not launch or promote a new Odyssey; continue only through the existing HCLI/ModelLake authorities and governed windows.",
     "inspect_status": "python3 -m hcli agentos status --workspace /Users/scammermike/Downloads/hawking --repo-root /Users/scammermike/Downloads/hawking",
     "modellake_job_status": "python3 -m hcli agentos background status --workspace /Users/scammermike/Downloads/hawking --repo-root /Users/scammermike/Downloads/hawking job-2f77c1d6-e33b-44fe-bc12-549cf47805c7",
@@ -33,9 +62,12 @@
     "refresh_maps": "python3 -m hcli agentos science-maps --repo-root /Users/scammermike/Downloads/hawking --transfer-emit /Users/scammermike/Downloads/hawking/receipts/headless/QWEN38_ACCELERATOR_TRANSFER_MAP.json --precedent-emit /Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NEXT_PRECEDENT_MAP.json",
     "resume_modellake_only_if_interrupted": "python3 -m hcli agentos background resume --workspace /Users/scammermike/Downloads/hawking --repo-root /Users/scammermike/Downloads/hawking job-2f77c1d6-e33b-44fe-bc12-549cf47805c7",
     "run_full_tests": "pytest -q",
+    "run_qwen27_mlp_diagnostic": "python3 -m hcli agentos qwen27-mlp-ab --repo-root /Users/scammermike/Downloads/hawking --profile /Users/scammermike/Downloads/hawking/hcli/hawking-native.sealed-3.14.json --resident-binary /Users/scammermike/Downloads/hawking/.hcli/instrumented/ascension_qwen38_resident",
+    "run_qwen27_runtime_archaeology": "python3 -m hcli agentos qwen27-runtime-archaeology --repo-root /Users/scammermike/Downloads/hawking --profile /Users/scammermike/Downloads/hawking/hcli/hawking-native.sealed-3.14.json",
     "run_qwen38_fusion_audit": "python3 -m hcli agentos qwen38-fusion-audit --repo-root /Users/scammermike/Downloads/hawking --profile /Users/scammermike/Downloads/hawking/hcli/hawking-native.sealed-3.14.json --emit /Users/scammermike/Downloads/hawking/receipts/headless/HCLI_QWEN38_FUSION_SOURCE_AUDIT.json",
     "supervise_modellake": "python3 -m hcli agentos modellake-supervise --repo-root /Users/scammermike/Downloads/hawking --job-id job-2f77c1d6-e33b-44fe-bc12-549cf47805c7 --emit /Users/scammermike/Downloads/hawking/receipts/headless/HCLI_MODELLAKE_FLASH_ACQUISITION_SUPERVISION.json",
-    "unattended_job_status": "python3 -m hcli agentos background status --workspace /Users/scammermike/Downloads/hawking --repo-root /Users/scammermike/Downloads/hawking job-d659ef87-240c-4504-b1ee-1c0ec459deb2"
+    "unattended_job_status": "python3 -m hcli agentos background status --workspace /Users/scammermike/Downloads/hawking --repo-root /Users/scammermike/Downloads/hawking job-d659ef87-240c-4504-b1ee-1c0ec459deb2",
+    "watch_protected_qwen_window": "python3 -m hcli agentos protected-bench-watch --repo-root /Users/scammermike/Downloads/hawking --profile /Users/scammermike/Downloads/hawking/hcli/hawking-native.sealed-3.14.json --resident-binary /Users/scammermike/Downloads/hawking/.hcli/instrumented/ascension_qwen38_resident --duration-s 21600 --interval-s 60"
   },
   "flash_next": {
     "architecture": {
@@ -142,6 +174,66 @@
       "vocab_size": 248320
     },
     "architecture_fingerprint": "8dbc9c34f223d240def13a1f7c70d3cbddbc768bc9ccc9c002683e2958b6be5b",
+    "budgets": {
+      "ebpw": {
+        "measured": {
+          "all_required_bytes_included": false,
+          "complete_system_bytes": null,
+          "complete_system_ebpw": null,
+          "dense_parent_execution_fallback": null,
+          "fallback_count": null,
+          "hidden_dense_rematerialization": null
+        },
+        "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_EBPW_BUDGET.json",
+        "status": "PLANNED_UNTIL_VERIFIED_BODY",
+        "target_contract": {
+          "complete_system_byte_fields": [
+            "weight_codes",
+            "scales",
+            "zero_points",
+            "bases",
+            "residuals",
+            "dictionaries",
+            "expert_indices",
+            "routing_metadata",
+            "generators",
+            "lookup_structures",
+            "ngram_representation",
+            "mtp_representation",
+            "required_executable_metadata"
+          ],
+          "complete_system_ebpw_max": 1.0,
+          "denominator": "source_parameter_count derived from complete pinned header payload / declared dtype bytes",
+          "target_ceiling_bytes": 179999981564,
+          "target_ceiling_is_not_an_actual_measurement": true
+        }
+      },
+      "token_ns": {
+        "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_TOKEN_NS_BUDGET.json",
+        "status": "PLANNED_UNTIL_NATIVE_EXECUTION",
+        "system_ledger": {
+          "accepted_tokens": null,
+          "capability_parity": null,
+          "complete_generation_wall_ns": null,
+          "copy_bytes": null,
+          "decode_wall_ns": null,
+          "dispatches": null,
+          "fallback_count": null,
+          "gpu_ns": null,
+          "host_wait_ns": null,
+          "prefill_wall_ns": null,
+          "protected_benchmark_class": null,
+          "rejected_draft_tokens": null,
+          "sync_ns": null
+        },
+        "target_contract": {
+          "accepted_capability_preserving_tps_min": 50.0,
+          "complete_wall_ns_per_accepted_token_max": 20000000,
+          "kernel_only_or_raw_draft_timing_is_not_acceptable": true,
+          "timing_unit": "complete accepted generated token wall time, including all required graph/runtime/host ceremony"
+        }
+      }
+    },
     "expected_complete_source_bytes": 360023286454,
     "expected_file_count": 144,
     "gravity_targets": [
@@ -153,6 +245,133 @@
       "native kernels and command-boundary telemetry"
     ],
     "next_action": "Keep metadata/weights/native executable identity separate; fill complete-system byte ledger and matched dense-vs-NF rows only when the pinned source is fully ready.",
+    "noetic_executable": {
+      "NOT_FOR_PROMOTION": true,
+      "complete_token_timing": {
+        "accepted_tps": null,
+        "budget_receipt": {
+          "accepted_tokens": null,
+          "capability_parity": null,
+          "complete_generation_wall_ns": null,
+          "copy_bytes": null,
+          "decode_wall_ns": null,
+          "dispatches": null,
+          "fallback_count": null,
+          "gpu_ns": null,
+          "host_wait_ns": null,
+          "prefill_wall_ns": null,
+          "protected_benchmark_class": null,
+          "rejected_draft_tokens": null,
+          "sync_ns": null
+        },
+        "complete_token_definition": "complete accepted generated token wall time, including all required graph/runtime/host ceremony",
+        "complete_wall_ns_per_accepted_token": null,
+        "status": "NOT_MEASURED"
+      },
+      "native_kernels": {
+        "coverage": [
+          {
+            "kernel": "partitioned_embedding_lookup",
+            "organ": "embeddings",
+            "status": "NOT_IMPLEMENTED"
+          },
+          {
+            "kernel": "native_nf_expert_gemv",
+            "organ": "routed_experts",
+            "status": "NOT_IMPLEMENTED"
+          },
+          {
+            "kernel": "shared_expert_fused_gemv",
+            "organ": "shared_expert",
+            "status": "NOT_IMPLEMENTED"
+          },
+          {
+            "kernel": "router_topk_gather",
+            "organ": "router",
+            "status": "NOT_IMPLEMENTED"
+          },
+          {
+            "kernel": "persistent_state_update",
+            "organ": "deltanet",
+            "status": "NOT_IMPLEMENTED"
+          },
+          {
+            "kernel": "resident_state_read_modify_write",
+            "organ": "recurrent_state",
+            "status": "NOT_IMPLEMENTED"
+          },
+          {
+            "kernel": "budgeted_sparse_gather_reduce",
+            "organ": "sparse_attention",
+            "status": "NOT_IMPLEMENTED"
+          },
+          {
+            "kernel": "lookup_or_compositional_generator",
+            "organ": "ngram_engine",
+            "status": "NOT_IMPLEMENTED"
+          },
+          {
+            "kernel": "draft_verify_rollback",
+            "organ": "mtp",
+            "status": "NOT_IMPLEMENTED"
+          },
+          {
+            "kernel": "fused_norm_epilogue",
+            "organ": "norms",
+            "status": "NOT_IMPLEMENTED"
+          },
+          {
+            "kernel": "vocabulary_projection_and_reduce",
+            "organ": "lm_head",
+            "status": "NOT_IMPLEMENTED"
+          },
+          {
+            "kernel": "conditional_multimodal_vision_path",
+            "organ": "vision_backbone",
+            "status": "NOT_IMPLEMENTED"
+          },
+          {
+            "kernel": "low_rank_residual_mix",
+            "organ": "residual_hyperconnections",
+            "status": "NOT_IMPLEMENTED"
+          },
+          {
+            "kernel": "ownership_audit_required",
+            "organ": "support_misc",
+            "status": "UNRESOLVED"
+          }
+        ],
+        "dense_rematerialization": "FORBIDDEN_BY_FINAL_RUNTIME_POLICY",
+        "status": "PLAN_ONLY"
+      },
+      "native_loader": {
+        "body_read_by_scaffold": false,
+        "required": [
+          "verified body manifest",
+          "zero-copy/streaming policy",
+          "per-organ ownership",
+          "resident lifetime",
+          "loader hash"
+        ],
+        "status": "NOT_IMPLEMENTED"
+      },
+      "promotion_allowed": false,
+      "qualification": false,
+      "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NEXT_NOETIC_EXECUTABLE.json",
+      "runtime_genome": {
+        "compiler_identity": null,
+        "device_identity": null,
+        "executable_sha256": null,
+        "graph_fingerprint": null,
+        "kernel_binary_hashes": [],
+        "kernel_source_hashes": [],
+        "loader_sha256": null,
+        "receipt_schema": "hcli.agentos.flash_next_noetic_executable.v1",
+        "representation_manifest_sha256": null,
+        "status": "NOT_COMPILED"
+      },
+      "status": "SCAFFOLD_ONLY"
+    },
     "pinned_revision": "34567a4712bc9766c4449e2e98e4468bfa24d915",
     "promotion": {
       "hard_gate": {
@@ -222,6 +441,356 @@
         "claim": false,
         "status": "ABSENT"
       },
+      "simulation": {
+        "flash_next": {
+          "claim_boundary": "[S] executable scenario model only; source and device parameters must be revalidated on a selected board before any hardware claim",
+          "label": "[S]",
+          "link": {
+            "bandwidth_gbps": 64.0,
+            "label": "[S]",
+            "latency_ns": 900.0
+          },
+          "model": "flash-next",
+          "performance_claim": false,
+          "physical_execution": false,
+          "scenarios": [
+            {
+              "apple_only_ns": 12000000,
+              "claim_boundary": "[S] deterministic link/partition sensitivity only; not FPGA hardware timing",
+              "decision": "MIXED_CANDIDATE",
+              "fpga_only_ns": 8030000,
+              "inputs": {
+                "activation_bytes": 40960,
+                "apple_compute_ns": 12000000,
+                "basis": "Flash routed-expert structural active-bytes and HBM residency hypothesis",
+                "fpga_compute_ns": 8000000,
+                "hbm_resident_bytes": 4718592000,
+                "partial_reduction_bytes": 65536,
+                "synchronization_ns": 30000
+              },
+              "label": "[S]",
+              "mixed_beats_apple_only": true,
+              "mixed_ns": 8058424,
+              "organ": "expert_bank",
+              "performance_claim": false,
+              "physical_execution": false,
+              "predicted_critical_path": "mixed_transport_or_fpga_compute",
+              "scenario": "expert_subset_residency",
+              "transport": {
+                "activation_bytes": 40960,
+                "bandwidth_gbps": 64.0,
+                "bytes": 106496,
+                "estimated_transfer_ns": 28424.0,
+                "hops": 2,
+                "label": "[S]",
+                "latency_ns": 900.0,
+                "partial_reduction_bytes": 65536,
+                "pcie_bytes": 106496,
+                "status": "SENSITIVITY_ONLY"
+              }
+            },
+            {
+              "apple_only_ns": 9000000,
+              "claim_boundary": "[S] deterministic link/partition sensitivity only; not FPGA hardware timing",
+              "decision": "MIXED_CANDIDATE",
+              "fpga_only_ns": 6028000,
+              "inputs": {
+                "activation_bytes": 20480,
+                "apple_compute_ns": 9000000,
+                "basis": "Flash top-k selected-expert execution and partial-reduction hypothesis",
+                "fpga_compute_ns": 6000000,
+                "hbm_resident_bytes": 4718592000,
+                "partial_reduction_bytes": 81920,
+                "synchronization_ns": 28000
+              },
+              "label": "[S]",
+              "mixed_beats_apple_only": true,
+              "mixed_ns": 6055400,
+              "organ": "routed_plus_shared_expert",
+              "performance_claim": false,
+              "physical_execution": false,
+              "predicted_critical_path": "mixed_transport_or_fpga_compute",
+              "scenario": "selected_expert_execution",
+              "transport": {
+                "activation_bytes": 20480,
+                "bandwidth_gbps": 64.0,
+                "bytes": 102400,
+                "estimated_transfer_ns": 27400.0,
+                "hops": 2,
+                "label": "[S]",
+                "latency_ns": 900.0,
+                "partial_reduction_bytes": 81920,
+                "pcie_bytes": 102400,
+                "status": "SENSITIVITY_ONLY"
+              }
+            },
+            {
+              "apple_only_ns": 400000,
+              "claim_boundary": "[S] deterministic link/partition sensitivity only; not FPGA hardware timing",
+              "decision": "MIXED_CANDIDATE",
+              "fpga_only_ns": 262000,
+              "inputs": {
+                "activation_bytes": 10240,
+                "apple_compute_ns": 400000,
+                "basis": "Flash router source payload and irregular gather hypothesis",
+                "fpga_compute_ns": 250000,
+                "hbm_resident_bytes": 125829120,
+                "partial_reduction_bytes": 16384,
+                "synchronization_ns": 12000
+              },
+              "label": "[S]",
+              "mixed_beats_apple_only": true,
+              "mixed_ns": 270456,
+              "organ": "router_topk_and_gather",
+              "performance_claim": false,
+              "physical_execution": false,
+              "predicted_critical_path": "mixed_transport_or_fpga_compute",
+              "scenario": "router_topk_gather",
+              "transport": {
+                "activation_bytes": 10240,
+                "bandwidth_gbps": 64.0,
+                "bytes": 26624,
+                "estimated_transfer_ns": 8456.0,
+                "hops": 2,
+                "label": "[S]",
+                "latency_ns": 900.0,
+                "partial_reduction_bytes": 16384,
+                "pcie_bytes": 26624,
+                "status": "SENSITIVITY_ONLY"
+              }
+            },
+            {
+              "apple_only_ns": 2800000,
+              "claim_boundary": "[S] deterministic link/partition sensitivity only; not FPGA hardware timing",
+              "decision": "MIXED_CANDIDATE",
+              "fpga_only_ns": 1915000,
+              "inputs": {
+                "activation_bytes": 65536,
+                "apple_compute_ns": 2800000,
+                "basis": "Flash recurrent-state read/modify/write structural hypothesis",
+                "fpga_compute_ns": 1900000,
+                "hbm_resident_bytes": 235339776,
+                "partial_reduction_bytes": 0,
+                "synchronization_ns": 15000
+              },
+              "label": "[S]",
+              "mixed_beats_apple_only": true,
+              "mixed_ns": 1924092,
+              "organ": "deltanet_persistent_state",
+              "performance_claim": false,
+              "physical_execution": false,
+              "predicted_critical_path": "mixed_transport_or_fpga_compute",
+              "scenario": "deltanet_state",
+              "transport": {
+                "activation_bytes": 65536,
+                "bandwidth_gbps": 64.0,
+                "bytes": 65536,
+                "estimated_transfer_ns": 9092.0,
+                "hops": 1,
+                "label": "[S]",
+                "latency_ns": 900.0,
+                "partial_reduction_bytes": 0,
+                "pcie_bytes": 65536,
+                "status": "SENSITIVITY_ONLY"
+              }
+            },
+            {
+              "apple_only_ns": 1800000,
+              "claim_boundary": "[S] deterministic link/partition sensitivity only; not FPGA hardware timing",
+              "decision": "MIXED_CANDIDATE",
+              "fpga_only_ns": 1318000,
+              "inputs": {
+                "activation_bytes": 8192,
+                "apple_compute_ns": 1800000,
+                "basis": "Flash n-gram lookup/generator source payload hypothesis",
+                "fpga_compute_ns": 1300000,
+                "hbm_resident_bytes": 102466171160,
+                "partial_reduction_bytes": 32768,
+                "synchronization_ns": 18000
+              },
+              "label": "[S]",
+              "mixed_beats_apple_only": true,
+              "mixed_ns": 1330040,
+              "organ": "ngram_lookup_or_generator",
+              "performance_claim": false,
+              "physical_execution": false,
+              "predicted_critical_path": "mixed_transport_or_fpga_compute",
+              "scenario": "compact_ngram_lookup",
+              "transport": {
+                "activation_bytes": 8192,
+                "bandwidth_gbps": 64.0,
+                "bytes": 40960,
+                "estimated_transfer_ns": 12040.0,
+                "hops": 2,
+                "label": "[S]",
+                "latency_ns": 900.0,
+                "partial_reduction_bytes": 32768,
+                "pcie_bytes": 40960,
+                "status": "SENSITIVITY_ONLY"
+              }
+            },
+            {
+              "apple_only_ns": 3500000,
+              "claim_boundary": "[S] deterministic link/partition sensitivity only; not FPGA hardware timing",
+              "decision": "MIXED_CANDIDATE",
+              "fpga_only_ns": 2422000,
+              "inputs": {
+                "activation_bytes": 16384,
+                "apple_compute_ns": 3500000,
+                "basis": "Flash MTP conditional path; accepted/rejected token ledger still required",
+                "fpga_compute_ns": 2400000,
+                "hbm_resident_bytes": 5214301696,
+                "partial_reduction_bytes": 49152,
+                "synchronization_ns": 22000
+              },
+              "label": "[S]",
+              "mixed_beats_apple_only": true,
+              "mixed_ns": 2440184,
+              "organ": "mtp_draft_verify_rollback",
+              "performance_claim": false,
+              "physical_execution": false,
+              "predicted_critical_path": "mixed_transport_or_fpga_compute",
+              "scenario": "mtp_verification",
+              "transport": {
+                "activation_bytes": 16384,
+                "bandwidth_gbps": 64.0,
+                "bytes": 65536,
+                "estimated_transfer_ns": 18184.0,
+                "hops": 2,
+                "label": "[S]",
+                "latency_ns": 900.0,
+                "partial_reduction_bytes": 49152,
+                "pcie_bytes": 65536,
+                "status": "SENSITIVITY_ONLY"
+              }
+            }
+          ],
+          "schema": "hcli.fpga.partition_simulation.v1",
+          "status": "SIMULATION_ONLY"
+        },
+        "label": "[S]",
+        "qwen27": {
+          "claim_boundary": "[S] executable scenario model only; source and device parameters must be revalidated on a selected board before any hardware claim",
+          "label": "[S]",
+          "link": {
+            "bandwidth_gbps": 64.0,
+            "label": "[S]",
+            "latency_ns": 900.0
+          },
+          "model": "qwen27",
+          "performance_claim": false,
+          "physical_execution": false,
+          "scenarios": [
+            {
+              "apple_only_ns": 5000000,
+              "claim_boundary": "[S] deterministic link/partition sensitivity only; not FPGA hardware timing",
+              "decision": "MIXED_CANDIDATE",
+              "fpga_only_ns": 3520000,
+              "inputs": {
+                "activation_bytes": 81920,
+                "apple_compute_ns": 5000000,
+                "basis": "Qwen27 routed/shared MLP source-payload and within-organ split hypothesis",
+                "fpga_compute_ns": 3500000,
+                "hbm_resident_bytes": 241591910400,
+                "partial_reduction_bytes": 32768,
+                "synchronization_ns": 20000
+              },
+              "label": "[S]",
+              "mixed_beats_apple_only": true,
+              "mixed_ns": 3550472,
+              "organ": "mlp_gate_up_down",
+              "performance_claim": false,
+              "physical_execution": false,
+              "predicted_critical_path": "mixed_transport_or_fpga_compute",
+              "scenario": "within_ffn_split",
+              "transport": {
+                "activation_bytes": 81920,
+                "bandwidth_gbps": 64.0,
+                "bytes": 114688,
+                "estimated_transfer_ns": 30472.0,
+                "hops": 2,
+                "label": "[S]",
+                "latency_ns": 900.0,
+                "partial_reduction_bytes": 32768,
+                "pcie_bytes": 114688,
+                "status": "SENSITIVITY_ONLY"
+              }
+            },
+            {
+              "apple_only_ns": 2800000,
+              "claim_boundary": "[S] deterministic link/partition sensitivity only; not FPGA hardware timing",
+              "decision": "MIXED_CANDIDATE",
+              "fpga_only_ns": 2115000,
+              "inputs": {
+                "activation_bytes": 65536,
+                "apple_compute_ns": 2800000,
+                "basis": "Qwen27 recurrent-state read/modify/write structural ledger",
+                "fpga_compute_ns": 2100000,
+                "hbm_resident_bytes": 235339776,
+                "partial_reduction_bytes": 0,
+                "synchronization_ns": 15000
+              },
+              "label": "[S]",
+              "mixed_beats_apple_only": true,
+              "mixed_ns": 2124092,
+              "organ": "deltanet_state_and_input_projection",
+              "performance_claim": false,
+              "physical_execution": false,
+              "predicted_critical_path": "mixed_transport_or_fpga_compute",
+              "scenario": "deltanet_state",
+              "transport": {
+                "activation_bytes": 65536,
+                "bandwidth_gbps": 64.0,
+                "bytes": 65536,
+                "estimated_transfer_ns": 9092.0,
+                "hops": 1,
+                "label": "[S]",
+                "latency_ns": 900.0,
+                "partial_reduction_bytes": 0,
+                "pcie_bytes": 65536,
+                "status": "SENSITIVITY_ONLY"
+              }
+            },
+            {
+              "apple_only_ns": 1600000,
+              "claim_boundary": "[S] deterministic link/partition sensitivity only; not FPGA hardware timing",
+              "decision": "MIXED_CANDIDATE",
+              "fpga_only_ns": 1225000,
+              "inputs": {
+                "activation_bytes": 10240,
+                "apple_compute_ns": 1600000,
+                "basis": "Qwen27 packed low-bit GEMV transfer sensitivity hypothesis",
+                "fpga_compute_ns": 1200000,
+                "hbm_resident_bytes": 1000000000,
+                "partial_reduction_bytes": 40960,
+                "synchronization_ns": 25000
+              },
+              "label": "[S]",
+              "mixed_beats_apple_only": true,
+              "mixed_ns": 1239600,
+              "organ": "mlp_gate_up_down",
+              "performance_claim": false,
+              "physical_execution": false,
+              "predicted_critical_path": "mixed_transport_or_fpga_compute",
+              "scenario": "low_bit_gemv",
+              "transport": {
+                "activation_bytes": 10240,
+                "bandwidth_gbps": 64.0,
+                "bytes": 51200,
+                "estimated_transfer_ns": 14600.0,
+                "hops": 2,
+                "label": "[S]",
+                "latency_ns": 900.0,
+                "partial_reduction_bytes": 40960,
+                "pcie_bytes": 51200,
+                "status": "SENSITIVITY_ONLY"
+              }
+            }
+          ],
+          "schema": "hcli.fpga.partition_simulation.v1",
+          "status": "SIMULATION_ONLY"
+        }
+      },
       "status": "PASSED"
     },
     "shared_primitives": [
@@ -233,7 +802,7 @@
       "telemetry/receipt verifier"
     ]
   },
-  "generated_at": 1787804947.881769,
+  "generated_at": 1787808167.437393,
   "hcli": {
     "background_jobs": [
       {
@@ -280,14 +849,48 @@
         ],
         "cwd": "/Users/scammermike/Downloads/hawking",
         "error": null,
-        "finished_at": null,
+        "finished_at": 1787806393.376609,
         "job_id": "job-2f77c1d6-e33b-44fe-bc12-549cf47805c7",
         "label": "modellake-flash-next-acquire",
         "log_path": "/Users/scammermike/Downloads/hawking/.hcli/background/logs/job-2f77c1d6-e33b-44fe-bc12-549cf47805c7.log",
         "pid": 36538,
         "resumable": true,
-        "returncode": null,
+        "returncode": 0,
         "started_at": 1787799182.557255,
+        "state": "COMPLETED"
+      },
+      {
+        "argv": [
+          "python3",
+          "-m",
+          "hcli",
+          "agentos",
+          "protected-bench-watch",
+          "--repo-root",
+          "/Users/scammermike/Downloads/hawking",
+          "--profile",
+          "/Users/scammermike/Downloads/hawking/hcli/hawking-native.sealed-3.14.json",
+          "--resident-binary",
+          "/Users/scammermike/Downloads/hawking/.hcli/instrumented/ascension_qwen38_resident",
+          "--duration-s",
+          "21600",
+          "--interval-s",
+          "60",
+          "--emit",
+          "/Users/scammermike/Downloads/hawking/receipts/headless/QWEN_PROTECTED_BENCH_READY.json",
+          "--result-emit",
+          "/Users/scammermike/Downloads/hawking/receipts/headless/QWEN27_MLP_PROTECTED_AB.json"
+        ],
+        "cwd": "/Users/scammermike/Downloads/hawking",
+        "error": null,
+        "finished_at": null,
+        "job_id": "job-badd2475-5dfc-48cf-a509-5ffe22b97c41",
+        "label": "qwen-protected-bench-ready",
+        "log_path": "/Users/scammermike/Downloads/hawking/.hcli/background/logs/job-badd2475-5dfc-48cf-a509-5ffe22b97c41.log",
+        "pid": 89684,
+        "resumable": true,
+        "returncode": null,
+        "started_at": 1787807609.674143,
         "state": "RUNNING"
       },
       {
@@ -673,11 +1276,11 @@
         "job_identity_matches_pinned_target": true,
         "job_resumable": true,
         "no_delete_policy": true,
-        "partial_not_final": true
+        "partial_not_final": false
       },
       "final": {
         "path": "/Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc",
-        "present": false
+        "present": true
       },
       "job": {
         "argv": [
@@ -691,28 +1294,29 @@
         ],
         "cwd": "/Users/scammermike/Downloads/hawking",
         "error": null,
-        "finished_at": null,
+        "finished_at": 1787806393.376609,
         "job_id": "job-2f77c1d6-e33b-44fe-bc12-549cf47805c7",
         "label": "modellake-flash-next-acquire",
         "log_path": "/Users/scammermike/Downloads/hawking/.hcli/background/logs/job-2f77c1d6-e33b-44fe-bc12-549cf47805c7.log",
         "pid": 36538,
         "resumable": true,
-        "returncode": null,
+        "returncode": 0,
         "started_at": 1787799182.557255,
-        "state": "RUNNING"
+        "state": "COMPLETED"
       },
       "partial": {
-        "bytes": 360023286454,
-        "files": 144,
+        "bytes": 0,
+        "files": 0,
         "path": "/Volumes/corpdrive/hawking-modellake/partial/Qwen--Qwen3.8-Flash-Next@34567a4712bc"
       },
       "qualification": "MODELLAKE_FLASH_ACQUISITION_SUPERVISED_NO_DELETE",
-      "status": "RUNNING_SAFE"
+      "status": "PASSED"
     }
   },
   "qwen27": {
     "current_runtime_observation": {
       "bench_state": null,
+      "benchmark_class": "DIAGNOSTIC_CONTAMINATED",
       "complete_tps_current_measured": 24.4086,
       "complete_tps_historical_qualified": 34.0,
       "current_vs_historical": {
@@ -729,7 +1333,7 @@
       },
       "dispatch_kernel_genome": null,
       "fallbacks": 0,
-      "qualification": "CURRENT_RUNTIME_REGRESSION_AUDITED_NO_PERFORMANCE_QUALIFICATION"
+      "qualification": false
     },
     "fusion_source_audit": {
       "qualification": "QWEN38_FUSION_SOURCE_AUTHORITY_NO_PERFORMANCE_CLAIM",
@@ -844,6 +1448,15 @@
       },
       "status": "PASSED"
     },
+    "mlp_selector_diagnostic": {
+      "NOT_FOR_PROMOTION": true,
+      "benchmark_class": "DIAGNOSTIC_CONTAMINATED",
+      "experiment_verdict": "ACCEPT",
+      "qualification": false,
+      "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/QWEN27_MLP_DIAGNOSTIC_AB.json",
+      "selector_verdict": "EQUIVALENT_STRONGEST_GRAPH_AND_OUTPUT",
+      "status": "PASSED"
+    },
     "model_a": {
       "artifact_root": "/Users/scammermike/noetic/NOETIC_PARENT_A",
       "binary": "/Users/scammermike/Downloads/hawking/workspace/ops/build/rust/release-fast/examples/ascension_qwen38_resident",
@@ -853,7 +1466,33 @@
       "profile": "/Users/scammermike/Downloads/hawking/hcli/hawking-native.sealed-3.14.json",
       "profile_sha256": "d0ccab6562eebde05f81fbc9e7d40698f4aa9a83ae8e19606a7372a1f3abb7ce"
     },
-    "next_experiment": "Protected quiescent same-source A/B: record binary/artifact/tokenizer, representation, dispatches, complete wall/GPU timing, fallback count, capability, and cache/quiescence before accepting any optimization."
+    "next_experiment": "Protected quiescent same-source A/B: record binary/artifact/tokenizer, representation, dispatches, complete wall/GPU timing, fallback count, capability, and cache/quiescence before accepting any optimization.",
+    "protected_benchmark_watcher": {
+      "NOT_FOR_PROMOTION": true,
+      "polls": 10,
+      "qualification": false,
+      "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/QWEN_PROTECTED_BENCH_READY.json",
+      "runs": [],
+      "status": "WAITING_FOR_QUIESCENCE"
+    },
+    "runtime_identity_archaeology": {
+      "diff_receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/QWEN27_RUNTIME_DIFF.json",
+      "diff_summary": {
+        "different_verified": 6,
+        "not_comparable": 2,
+        "same_verified": 3,
+        "unknown": 9
+      },
+      "historical_selection": {
+        "best_historical_tps": 35.67011507580202,
+        "historical_anchor_tps": 33.716875920652136,
+        "receipt": "NOETIC_DISPATCH_FUSION.json",
+        "selected_arm": "after_mlp_swiglu_qkv_dn",
+        "selection_reason": "checked-in receipt with the closest explicit ~34 TPS control and the strongest paired fusion arm"
+      },
+      "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/QWEN27_HISTORICAL_RUNTIME_IDENTITY.json",
+      "status": "PASSED"
+    }
   },
   "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/OVERNIGHT_HAWKING_HANDOFF.json",
   "schema": "hcli.agentos.overnight_handoff.v1",
@@ -861,7 +1500,7 @@
   "verification": {
     "full_suite": {
       "command": "pytest -q",
-      "last_observed": "712 passed, 2 skipped, 2 warnings",
+      "last_observed": "722 passed, 2 skipped",
       "last_observed_status": "PASSED"
     },
     "provider_focus": {
@@ -872,7 +1511,7 @@
       "accelerator_regression": "PASSED",
       "autonomy": "PASSED",
       "flash_pre_runtime": "PASSED",
-      "modellake_supervision": "RUNNING_SAFE",
+      "modellake_supervision": "PASSED",
       "preboard": "PASSED",
       "qwen38_fusion_audit": "PASSED",
       "unattended_window": "PASSED"

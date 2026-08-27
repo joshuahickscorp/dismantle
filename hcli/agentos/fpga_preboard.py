@@ -139,6 +139,183 @@ class TransportLinkSimulator:
         }
 
 
+def _partition_scenarios(model: str) -> list[Dict[str, Any]]:
+    """Return bounded scenario inputs for the executable link/partition model.
+
+    The values are deliberately scenario parameters, not measurements.  They
+    make the HWIR partition and transport decision executable now, while the
+    receipt keeps the physical-board boundary explicit.
+    """
+    if model == "qwen27":
+        return [
+            {
+                "scenario": "within_ffn_split",
+                "organ": "mlp_gate_up_down",
+                "activation_bytes": 81920,
+                "partial_reduction_bytes": 32768,
+                "hbm_resident_bytes": 241591910400,
+                "apple_compute_ns": 5000000,
+                "fpga_compute_ns": 3500000,
+                "synchronization_ns": 20000,
+                "basis": "Qwen27 routed/shared MLP source-payload and within-organ split hypothesis",
+            },
+            {
+                "scenario": "deltanet_state",
+                "organ": "deltanet_state_and_input_projection",
+                "activation_bytes": 65536,
+                "partial_reduction_bytes": 0,
+                "hbm_resident_bytes": 235339776,
+                "apple_compute_ns": 2800000,
+                "fpga_compute_ns": 2100000,
+                "synchronization_ns": 15000,
+                "basis": "Qwen27 recurrent-state read/modify/write structural ledger",
+            },
+            {
+                "scenario": "low_bit_gemv",
+                "organ": "mlp_gate_up_down",
+                "activation_bytes": 10240,
+                "partial_reduction_bytes": 40960,
+                "hbm_resident_bytes": 1000000000,
+                "apple_compute_ns": 1600000,
+                "fpga_compute_ns": 1200000,
+                "synchronization_ns": 25000,
+                "basis": "Qwen27 packed low-bit GEMV transfer sensitivity hypothesis",
+            },
+        ]
+    return [
+        {
+            "scenario": "expert_subset_residency",
+            "organ": "expert_bank",
+            "activation_bytes": 40960,
+            "partial_reduction_bytes": 65536,
+            "hbm_resident_bytes": 4718592000,
+            "apple_compute_ns": 12000000,
+            "fpga_compute_ns": 8000000,
+            "synchronization_ns": 30000,
+            "basis": "Flash routed-expert structural active-bytes and HBM residency hypothesis",
+        },
+        {
+            "scenario": "selected_expert_execution",
+            "organ": "routed_plus_shared_expert",
+            "activation_bytes": 20480,
+            "partial_reduction_bytes": 81920,
+            "hbm_resident_bytes": 4718592000,
+            "apple_compute_ns": 9000000,
+            "fpga_compute_ns": 6000000,
+            "synchronization_ns": 28000,
+            "basis": "Flash top-k selected-expert execution and partial-reduction hypothesis",
+        },
+        {
+            "scenario": "router_topk_gather",
+            "organ": "router_topk_and_gather",
+            "activation_bytes": 10240,
+            "partial_reduction_bytes": 16384,
+            "hbm_resident_bytes": 125829120,
+            "apple_compute_ns": 400000,
+            "fpga_compute_ns": 250000,
+            "synchronization_ns": 12000,
+            "basis": "Flash router source payload and irregular gather hypothesis",
+        },
+        {
+            "scenario": "deltanet_state",
+            "organ": "deltanet_persistent_state",
+            "activation_bytes": 65536,
+            "partial_reduction_bytes": 0,
+            "hbm_resident_bytes": 235339776,
+            "apple_compute_ns": 2800000,
+            "fpga_compute_ns": 1900000,
+            "synchronization_ns": 15000,
+            "basis": "Flash recurrent-state read/modify/write structural hypothesis",
+        },
+        {
+            "scenario": "compact_ngram_lookup",
+            "organ": "ngram_lookup_or_generator",
+            "activation_bytes": 8192,
+            "partial_reduction_bytes": 32768,
+            "hbm_resident_bytes": 102466171160,
+            "apple_compute_ns": 1800000,
+            "fpga_compute_ns": 1300000,
+            "synchronization_ns": 18000,
+            "basis": "Flash n-gram lookup/generator source payload hypothesis",
+        },
+        {
+            "scenario": "mtp_verification",
+            "organ": "mtp_draft_verify_rollback",
+            "activation_bytes": 16384,
+            "partial_reduction_bytes": 49152,
+            "hbm_resident_bytes": 5214301696,
+            "apple_compute_ns": 3500000,
+            "fpga_compute_ns": 2400000,
+            "synchronization_ns": 22000,
+            "basis": "Flash MTP conditional path; accepted/rejected token ledger still required",
+        },
+    ]
+
+
+def simulate_partition(model: str, simulator: Optional[TransportLinkSimulator] = None) -> Dict[str, Any]:
+    """Execute a deterministic partition/link sensitivity simulation.
+
+    This is intentionally not a cycle-accurate FPGA simulator.  It estimates
+    whether the declared transport boundary could erase a hypothetical
+    accelerator benefit, and labels all outputs ``[S]``.
+    """
+    link = simulator or TransportLinkSimulator()
+    rows: list[Dict[str, Any]] = []
+    for spec in _partition_scenarios(model):
+        activation = max(0, int(spec["activation_bytes"]))
+        reduction = max(0, int(spec["partial_reduction_bytes"]))
+        transport_bytes = activation + reduction
+        transport = link.transfer(transport_bytes, hops=2 if reduction else 1)
+        apple_only = int(spec["apple_compute_ns"])
+        fpga_only = int(spec["fpga_compute_ns"] + spec["synchronization_ns"])
+        mixed = int(
+            spec["fpga_compute_ns"]
+            + transport["estimated_transfer_ns"]
+            + spec["synchronization_ns"]
+        )
+        rows.append({
+            "scenario": spec["scenario"],
+            "organ": spec["organ"],
+            "label": SIMULATED,
+            "inputs": {
+                key: value
+                for key, value in spec.items()
+                if key not in {"scenario", "organ"}
+            },
+            "transport": {
+                **transport,
+                "pcie_bytes": transport_bytes,
+                "activation_bytes": activation,
+                "partial_reduction_bytes": reduction,
+                "label": SIMULATED,
+            },
+            "apple_only_ns": apple_only,
+            "fpga_only_ns": fpga_only,
+            "mixed_ns": mixed,
+            "mixed_beats_apple_only": mixed < apple_only,
+            "predicted_critical_path": "mixed_transport_or_fpga_compute",
+            "decision": "MIXED_CANDIDATE" if mixed < apple_only else "REJECT_MIXED_IF_NOT_BEAT",
+            "physical_execution": False,
+            "performance_claim": False,
+            "claim_boundary": "[S] deterministic link/partition sensitivity only; not FPGA hardware timing",
+        })
+    return {
+        "schema": "hcli.fpga.partition_simulation.v1",
+        "model": model,
+        "label": SIMULATED,
+        "status": "SIMULATION_ONLY",
+        "link": {
+            "bandwidth_gbps": link.bandwidth_gbps,
+            "latency_ns": link.latency_ns,
+            "label": SIMULATED,
+        },
+        "scenarios": rows,
+        "physical_execution": False,
+        "performance_claim": False,
+        "claim_boundary": "[S] executable scenario model only; source and device parameters must be revalidated on a selected board before any hardware claim",
+    }
+
+
 def partitioner(model: str, organs: Iterable[Mapping[str, Any]]) -> Dict[str, Any]:
     """Produce a candidate within-organ partition map, never a hardware claim."""
     model_key = str(model)
@@ -207,6 +384,7 @@ def _map(model: str) -> Dict[str, Any]:
     hwir = _hwir(model, organs).to_dict()
     simulator = TransportLinkSimulator()
     link_rows = [simulator.transfer(size, hops=hops) for size, hops in ((1 << 20, 1), (16 << 20, 1), (64 << 20, 2))]
+    partition_simulation = simulate_partition(model, simulator)
     device = FPGADeviceGenome()
     hbm = HBMGenome()
     provider = MockFPGAProvider()
@@ -242,6 +420,7 @@ def _map(model: str) -> Dict[str, Any]:
             "rows": link_rows,
             "label": SIMULATED,
         },
+        "partition_simulation": partition_simulation,
         "experiment_dag": experiment_dag,
         "module_cache": {
             "schema": "hcli.fpga.module_cache.v1",
@@ -275,7 +454,7 @@ def _map(model: str) -> Dict[str, Any]:
         "provider": provider.identity(),
         "provider_capabilities": provider.capabilities(),
         "simulation_receipt": provider.execute(hwir),
-        "claim_boundary": "Candidate FPGA mapping only. [D] denotes a derived hypothesis and [S] denotes link/schema simulation. No physical board, bitstream, hardware timing, or U50 performance is claimed.",
+        "claim_boundary": "Candidate FPGA mapping only. [D] denotes a derived hypothesis and [S] denotes executable link/partition simulation. No physical board, bitstream, hardware timing, or U50 performance is claimed.",
     }
 
 
@@ -301,7 +480,11 @@ def run_fpga_preboard(
         "model_specific": {"qwen27": [row["organ"] for row in qwen27["organs"]], "flash_next": [row["organ"] for row in flash["organs"]]},
         "physical_board": {"status": "ABSENT", "claim": False},
         "fpga_backend": {"status": "NOT_BUILT", "claim": False},
-        "simulation": {"qwen27": "[S] link sensitivity only", "flash_next": "[S] link sensitivity only"},
+        "simulation": {
+            "qwen27": qwen27.get("partition_simulation"),
+            "flash_next": flash.get("partition_simulation"),
+            "label": SIMULATED,
+        },
         "fingerprint": _hash({"qwen27": qwen27["hwir"], "flash_next": flash["hwir"]}),
         "checks": {
             "both_model_maps_written": qwen_path.is_file() and flash_path.is_file(),
@@ -310,7 +493,7 @@ def run_fpga_preboard(
             "mock_provider_is_simulation_only": qwen27.get("simulation_receipt", {}).get("physical_execution") is False and flash.get("simulation_receipt", {}).get("physical_execution") is False,
             "no_physical_board_claim": qwen27["device_genome"]["physical_board_present"] is False and flash["device_genome"]["physical_board_present"] is False,
         },
-        "claim_boundary": "Pre-board compiler scaffolding for both Qwen systems. No physical FPGA execution or performance is claimed.",
+        "claim_boundary": "Pre-board compiler scaffolding plus executable [S] link/partition sensitivity for both Qwen systems. No physical FPGA execution or performance is claimed.",
     }
     report["status"] = "PASSED" if all(report["checks"].values()) else "FAILED"
     destination = Path(emit).expanduser().resolve() if emit else repo / "receipts" / "headless" / "HCLI_FPGA_PREBOARD.json"
@@ -331,7 +514,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     return 0 if report.get("status") == "PASSED" else 1
 
 
-__all__ = ["DERIVED", "FPGADeviceGenome", "FPGAProvider", "HBMGenome", "HWIR", "MockFPGAProvider", "SCHEMA", "SIMULATED", "TransportLinkSimulator", "main", "partitioner", "run_fpga_preboard"]
+__all__ = ["DERIVED", "FPGADeviceGenome", "FPGAProvider", "HBMGenome", "HWIR", "MockFPGAProvider", "SCHEMA", "SIMULATED", "TransportLinkSimulator", "main", "partitioner", "run_fpga_preboard", "simulate_partition"]
 
 
 if __name__ == "__main__":

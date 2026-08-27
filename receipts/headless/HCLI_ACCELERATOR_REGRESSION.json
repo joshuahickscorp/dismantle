@@ -1,6 +1,10 @@
 {
+  "NOT_FOR_PROMOTION": true,
+  "benchmark_class": "DIAGNOSTIC_CONTAMINATED",
   "checks": {
+    "benchmark_boundary_recorded": true,
     "current_and_historical_recorded": true,
+    "diagnostic_not_for_promotion": true,
     "fallbacks_disclosed": true,
     "fusion_values_recorded": true,
     "no_unqualified_performance_claim": true,
@@ -8,6 +12,13 @@
     "profile_valid": true,
     "source_inspected_without_mutation": true
   },
+  "contamination": [
+    "/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/Metadata.framework/Versions/A/Support/mds_stores",
+    "/System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer",
+    "/System/Library/PrivateFrameworks/StorageManagement.framework/PlugIns/ApplicationsStorageExtension.appex/Contents/MacOS/ApplicationsStorageExtension",
+    "/System/Library/PrivateFrameworks/StorageManagement.framework/PlugIns/StorageManagementService",
+    "/usr/libexec/avconferenced"
+  ],
   "current_vs_historical": {
     "current_tps": 24.4086,
     "gap_percent_of_historical": 28.21,
@@ -20,8 +31,9 @@
       "fallbacks": 0
     }
   },
-  "elapsed_s": 3.451,
+  "elapsed_s": 3.924,
   "experiment": {
+    "NOT_FOR_PROMOTION": true,
     "accepted_capability_preserving_tps": null,
     "bench": {
       "machine": "Darwin arm64 (macOS-27.0-arm64-arm-64bit-Mach-O)",
@@ -29,81 +41,39 @@
       "quiescence": {
         "contenders": [
           {
-            "comm": "/System/Library/PrivateFrameworks/MediaAnalysis.framework/Versions/A/mediaanalysisd",
-            "cpu_pct": 92.2,
-            "pid": 39373,
-            "rss_gib": 0.46
+            "comm": "/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/Metadata.framework/Versions/A/Support/mds_stores",
+            "cpu_pct": 95.4,
+            "pid": 292,
+            "rss_gib": 0.28
           },
           {
             "comm": "/System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer",
-            "cpu_pct": 46.1,
+            "cpu_pct": 42.7,
             "pid": 180,
             "rss_gib": 0.21
           },
           {
-            "comm": "/System/Library/Frameworks/Contacts.framework/Support/contactsd",
-            "cpu_pct": 29.3,
-            "pid": 39364,
-            "rss_gib": 0.13
-          },
-          {
             "comm": "/usr/libexec/avconferenced",
-            "cpu_pct": 42.7,
+            "cpu_pct": 67.8,
             "pid": 739,
             "rss_gib": 0.12
           },
           {
-            "comm": "/System/Library/ExtensionKit/Extensions/TGOnDeviceInferenceProviderService.appex/Contents/MacOS/TGOnDeviceInferenceProviderService",
-            "cpu_pct": 34.0,
-            "pid": 820,
-            "rss_gib": 0.12
-          },
-          {
-            "comm": "/System/Library/ExtensionKit/Extensions/Storage.appex/Contents/MacOS/Storage",
-            "cpu_pct": 31.3,
-            "pid": 59654,
-            "rss_gib": 0.11
-          },
-          {
-            "comm": "/System/Library/PrivateFrameworks/CoreSuggestions.framework/Versions/A/Support/suggestd",
-            "cpu_pct": 28.0,
-            "pid": 617,
-            "rss_gib": 0.1
-          },
-          {
-            "comm": "/System/Library/PrivateFrameworks/IMDPersistence.framework/XPCServices/IMDPersistenceAgent.xpc/Contents/MacOS/IMDPersistenceAgent",
-            "cpu_pct": 20.7,
-            "pid": 630,
-            "rss_gib": 0.07
-          },
-          {
             "comm": "/System/Library/PrivateFrameworks/StorageManagement.framework/PlugIns/StorageManagementService",
-            "cpu_pct": 60.2,
+            "cpu_pct": 117.4,
             "pid": 59666,
             "rss_gib": 0.04
           },
           {
-            "comm": "/System/Library/Frameworks/VideoToolbox.framework/Versions/A/XPCServices/VTEncoderXPCService.xpc/Contents/MacOS/VTEncoderXPCService",
-            "cpu_pct": 25.1,
-            "pid": 52616,
-            "rss_gib": 0.04
-          },
-          {
             "comm": "/System/Library/PrivateFrameworks/StorageManagement.framework/PlugIns/ApplicationsStorageExtension.appex/Contents/MacOS/ApplicationsStorageExtension",
-            "cpu_pct": 61.9,
+            "cpu_pct": 94.8,
             "pid": 59677,
             "rss_gib": 0.03
-          },
-          {
-            "comm": "/System/Library/PrivateFrameworks/ModelCatalogRuntime.framework/Versions/A/modelcatalogd",
-            "cpu_pct": 21.6,
-            "pid": 427,
-            "rss_gib": 0.02
           }
         ],
-        "max_rss_gib": 0.46,
+        "max_rss_gib": 0.28,
         "method": "enumerate",
-        "n_contenders": 12,
+        "n_contenders": 5,
         "no_name_filter": true,
         "quiet": false,
         "rss_is_the_gate_not_cpu": "Metal working set is this machine's admission gate (2026-08-22), so a large-RSS neighbour contends with a resident model in the dimension that decides; CPU is reported because it is real, not because it is equally predictive.",
@@ -111,140 +81,41 @@
           "cpu_pct": 20.0,
           "rss_gib": 2.0
         },
-        "total_cpu_pct": 493.1
+        "total_cpu_pct": 418.1
       },
-      "recorded_at": "2026-08-27T02:23:00Z",
+      "recorded_at": "2026-08-27T05:15:07Z",
       "rule": "S032 \u00a73 -- if quiescence is unknown the state is UNKNOWN, not quiet",
       "samples": {
         "after": {
           "contenders": [
             {
-              "comm": "/System/Library/PrivateFrameworks/MediaAnalysis.framework/Versions/A/mediaanalysisd",
-              "cpu_pct": 92.2,
-              "pid": 39373,
-              "rss_gib": 0.46
-            },
-            {
               "comm": "/System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer",
-              "cpu_pct": 46.1,
-              "pid": 180,
-              "rss_gib": 0.21
-            },
-            {
-              "comm": "/System/Library/Frameworks/Contacts.framework/Support/contactsd",
-              "cpu_pct": 29.3,
-              "pid": 39364,
-              "rss_gib": 0.13
-            },
-            {
-              "comm": "/usr/libexec/avconferenced",
-              "cpu_pct": 42.7,
-              "pid": 739,
-              "rss_gib": 0.12
-            },
-            {
-              "comm": "/System/Library/ExtensionKit/Extensions/TGOnDeviceInferenceProviderService.appex/Contents/MacOS/TGOnDeviceInferenceProviderService",
-              "cpu_pct": 34.0,
-              "pid": 820,
-              "rss_gib": 0.12
-            },
-            {
-              "comm": "/System/Library/ExtensionKit/Extensions/Storage.appex/Contents/MacOS/Storage",
-              "cpu_pct": 31.3,
-              "pid": 59654,
-              "rss_gib": 0.11
-            },
-            {
-              "comm": "/System/Library/PrivateFrameworks/CoreSuggestions.framework/Versions/A/Support/suggestd",
-              "cpu_pct": 28.0,
-              "pid": 617,
-              "rss_gib": 0.1
-            },
-            {
-              "comm": "/System/Library/PrivateFrameworks/IMDPersistence.framework/XPCServices/IMDPersistenceAgent.xpc/Contents/MacOS/IMDPersistenceAgent",
-              "cpu_pct": 20.7,
-              "pid": 630,
-              "rss_gib": 0.07
-            },
-            {
-              "comm": "/System/Library/PrivateFrameworks/StorageManagement.framework/PlugIns/StorageManagementService",
-              "cpu_pct": 60.2,
-              "pid": 59666,
-              "rss_gib": 0.04
-            },
-            {
-              "comm": "/System/Library/Frameworks/VideoToolbox.framework/Versions/A/XPCServices/VTEncoderXPCService.xpc/Contents/MacOS/VTEncoderXPCService",
-              "cpu_pct": 25.1,
-              "pid": 52616,
-              "rss_gib": 0.04
-            },
-            {
-              "comm": "/System/Library/PrivateFrameworks/StorageManagement.framework/PlugIns/ApplicationsStorageExtension.appex/Contents/MacOS/ApplicationsStorageExtension",
-              "cpu_pct": 61.9,
-              "pid": 59677,
-              "rss_gib": 0.03
-            },
-            {
-              "comm": "/System/Library/PrivateFrameworks/ModelCatalogRuntime.framework/Versions/A/modelcatalogd",
-              "cpu_pct": 21.6,
-              "pid": 427,
-              "rss_gib": 0.02
-            }
-          ],
-          "max_rss_gib": 0.46,
-          "method": "enumerate",
-          "n_contenders": 12,
-          "no_name_filter": true,
-          "quiet": false,
-          "rss_is_the_gate_not_cpu": "Metal working set is this machine's admission gate (2026-08-22), so a large-RSS neighbour contends with a resident model in the dimension that decides; CPU is reported because it is real, not because it is equally predictive.",
-          "thresholds": {
-            "cpu_pct": 20.0,
-            "rss_gib": 2.0
-          },
-          "total_cpu_pct": 493.1
-        },
-        "before": {
-          "contenders": [
-            {
-              "comm": "/System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer",
-              "cpu_pct": 45.1,
+              "cpu_pct": 45.3,
               "pid": 180,
               "rss_gib": 0.21
             },
             {
               "comm": "/usr/libexec/avconferenced",
-              "cpu_pct": 37.3,
+              "cpu_pct": 79.3,
               "pid": 739,
               "rss_gib": 0.12
             },
             {
               "comm": "/System/Library/PrivateFrameworks/StorageManagement.framework/PlugIns/StorageManagementService",
-              "cpu_pct": 98.2,
+              "cpu_pct": 99.5,
               "pid": 59666,
               "rss_gib": 0.04
             },
             {
-              "comm": "/System/Library/Frameworks/VideoToolbox.framework/Versions/A/XPCServices/VTEncoderXPCService.xpc/Contents/MacOS/VTEncoderXPCService",
-              "cpu_pct": 22.6,
-              "pid": 52616,
-              "rss_gib": 0.04
-            },
-            {
               "comm": "/System/Library/PrivateFrameworks/StorageManagement.framework/PlugIns/ApplicationsStorageExtension.appex/Contents/MacOS/ApplicationsStorageExtension",
-              "cpu_pct": 80.7,
+              "cpu_pct": 100.0,
               "pid": 59677,
-              "rss_gib": 0.03
-            },
-            {
-              "comm": "/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python",
-              "cpu_pct": 25.8,
-              "pid": 8787,
               "rss_gib": 0.03
             }
           ],
           "max_rss_gib": 0.21,
           "method": "enumerate",
-          "n_contenders": 6,
+          "n_contenders": 4,
           "no_name_filter": true,
           "quiet": false,
           "rss_is_the_gate_not_cpu": "Metal working set is this machine's admission gate (2026-08-22), so a large-RSS neighbour contends with a resident model in the dimension that decides; CPU is reported because it is real, not because it is equally predictive.",
@@ -252,26 +123,98 @@
             "cpu_pct": 20.0,
             "rss_gib": 2.0
           },
-          "total_cpu_pct": 309.7
+          "total_cpu_pct": 324.1
+        },
+        "before": {
+          "contenders": [
+            {
+              "comm": "/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/Metadata.framework/Versions/A/Support/mds_stores",
+              "cpu_pct": 95.4,
+              "pid": 292,
+              "rss_gib": 0.28
+            },
+            {
+              "comm": "/System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer",
+              "cpu_pct": 42.7,
+              "pid": 180,
+              "rss_gib": 0.21
+            },
+            {
+              "comm": "/usr/libexec/avconferenced",
+              "cpu_pct": 67.8,
+              "pid": 739,
+              "rss_gib": 0.12
+            },
+            {
+              "comm": "/System/Library/PrivateFrameworks/StorageManagement.framework/PlugIns/StorageManagementService",
+              "cpu_pct": 117.4,
+              "pid": 59666,
+              "rss_gib": 0.04
+            },
+            {
+              "comm": "/System/Library/PrivateFrameworks/StorageManagement.framework/PlugIns/ApplicationsStorageExtension.appex/Contents/MacOS/ApplicationsStorageExtension",
+              "cpu_pct": 94.8,
+              "pid": 59677,
+              "rss_gib": 0.03
+            }
+          ],
+          "max_rss_gib": 0.28,
+          "method": "enumerate",
+          "n_contenders": 5,
+          "no_name_filter": true,
+          "quiet": false,
+          "rss_is_the_gate_not_cpu": "Metal working set is this machine's admission gate (2026-08-22), so a large-RSS neighbour contends with a resident model in the dimension that decides; CPU is reported because it is real, not because it is equally predictive.",
+          "thresholds": {
+            "cpu_pct": 20.0,
+            "rss_gib": 2.0
+          },
+          "total_cpu_pct": 418.1
         }
       },
       "state": "CONTENDED"
     },
+    "benchmark_class": "DIAGNOSTIC_CONTAMINATED",
+    "contamination": [
+      "/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/Metadata.framework/Versions/A/Support/mds_stores",
+      "/System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer",
+      "/System/Library/PrivateFrameworks/StorageManagement.framework/PlugIns/ApplicationsStorageExtension.appex/Contents/MacOS/ApplicationsStorageExtension",
+      "/System/Library/PrivateFrameworks/StorageManagement.framework/PlugIns/StorageManagementService",
+      "/usr/libexec/avconferenced"
+    ],
     "fallback_count": 0,
     "hypothesis_result": "not causally resolved; current and historical anchors are not a protected paired comparison",
     "live": {
+      "decode_metrics": null,
+      "decode_steps": 5,
       "dispatches": null,
+      "dispatches_per_token": null,
       "error": null,
       "fallbacks": 0,
       "generated_tokens": 6,
       "gpu_ns_per_token": null,
+      "kernel_genome": null,
       "metric_absence_reasons": {
-        "dispatches": "dispatch tracing was not enabled for this smoke request",
-        "gpu_ns_per_token": "native JSONL protocol does not expose Metal timestamps",
-        "prefill_steps": "native response did not expose a prefill/decode phase split",
-        "wall_minus_gpu_ns": "GPU timestamp is absent"
+        "dispatches": "native provider did not declare dispatch counts",
+        "gpu_ns_per_token": "native provider did not declare GPU timestamps",
+        "kernel_genome": "native provider did not declare kernel identity telemetry",
+        "prefill_steps": "native provider did not declare a prefill/decode phase split",
+        "wall_minus_gpu_ns": "native provider did not declare GPU timestamps"
       },
+      "native_generation_wall_ns": null,
+      "native_metrics": {
+        "decode_steps": 5
+      },
+      "new_token_ids": [
+        39,
+        14006,
+        42,
+        1658,
+        8116,
+        248046
+      ],
       "ok": true,
+      "output_text": "HAWKING_OK",
+      "prefill_metrics": null,
       "prefill_steps": null,
       "prompt_tokens": 20,
       "request": {
@@ -280,17 +223,104 @@
       },
       "resident_health": {
         "model_open_count": 1,
-        "pid": 8789,
+        "pid": 91084,
         "resident_identity": "sealed-3.14",
         "restart_count": 0,
         "weight_upload_count": 1
       },
       "wall_minus_gpu_ns": null,
-      "wall_ns": 3368259708,
-      "wall_ns_per_token": 561376618.0
+      "wall_ns": 3826846583,
+      "wall_ns_per_token": 637807763.833
+    },
+    "machine_snapshot": {
+      "after": {
+        "contenders": [
+          {
+            "comm": "/System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer",
+            "cpu_pct": 45.3,
+            "pid": 180,
+            "rss_gib": 0.21
+          },
+          {
+            "comm": "/usr/libexec/avconferenced",
+            "cpu_pct": 79.3,
+            "pid": 739,
+            "rss_gib": 0.12
+          },
+          {
+            "comm": "/System/Library/PrivateFrameworks/StorageManagement.framework/PlugIns/StorageManagementService",
+            "cpu_pct": 99.5,
+            "pid": 59666,
+            "rss_gib": 0.04
+          },
+          {
+            "comm": "/System/Library/PrivateFrameworks/StorageManagement.framework/PlugIns/ApplicationsStorageExtension.appex/Contents/MacOS/ApplicationsStorageExtension",
+            "cpu_pct": 100.0,
+            "pid": 59677,
+            "rss_gib": 0.03
+          }
+        ],
+        "max_rss_gib": 0.21,
+        "method": "enumerate",
+        "n_contenders": 4,
+        "no_name_filter": true,
+        "quiet": false,
+        "rss_is_the_gate_not_cpu": "Metal working set is this machine's admission gate (2026-08-22), so a large-RSS neighbour contends with a resident model in the dimension that decides; CPU is reported because it is real, not because it is equally predictive.",
+        "thresholds": {
+          "cpu_pct": 20.0,
+          "rss_gib": 2.0
+        },
+        "total_cpu_pct": 324.1
+      },
+      "before": {
+        "contenders": [
+          {
+            "comm": "/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/Metadata.framework/Versions/A/Support/mds_stores",
+            "cpu_pct": 95.4,
+            "pid": 292,
+            "rss_gib": 0.28
+          },
+          {
+            "comm": "/System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer",
+            "cpu_pct": 42.7,
+            "pid": 180,
+            "rss_gib": 0.21
+          },
+          {
+            "comm": "/usr/libexec/avconferenced",
+            "cpu_pct": 67.8,
+            "pid": 739,
+            "rss_gib": 0.12
+          },
+          {
+            "comm": "/System/Library/PrivateFrameworks/StorageManagement.framework/PlugIns/StorageManagementService",
+            "cpu_pct": 117.4,
+            "pid": 59666,
+            "rss_gib": 0.04
+          },
+          {
+            "comm": "/System/Library/PrivateFrameworks/StorageManagement.framework/PlugIns/ApplicationsStorageExtension.appex/Contents/MacOS/ApplicationsStorageExtension",
+            "cpu_pct": 94.8,
+            "pid": 59677,
+            "rss_gib": 0.03
+          }
+        ],
+        "max_rss_gib": 0.28,
+        "method": "enumerate",
+        "n_contenders": 5,
+        "no_name_filter": true,
+        "quiet": false,
+        "rss_is_the_gate_not_cpu": "Metal working set is this machine's admission gate (2026-08-22), so a large-RSS neighbour contends with a resident model in the dimension that decides; CPU is reported because it is real, not because it is equally predictive.",
+        "thresholds": {
+          "cpu_pct": 20.0,
+          "rss_gib": 2.0
+        },
+        "total_cpu_pct": 418.1
+      }
     },
     "name": "current-resident-smoke",
     "perf_qualified": false,
+    "qualification": false,
     "status": "OBSERVED"
   },
   "experiment_contract": {
@@ -300,7 +330,7 @@
     "one_experiment_at_a_time": true,
     "protected_measurement": "machine-wide enumerating quiescence before and after; CONTENDED/UNKNOWN forbids a performance claim."
   },
-  "finished_at": 1787797380.950614,
+  "finished_at": 1787807707.118459,
   "hypotheses": [
     {
       "confidence": "source inspection only",
@@ -405,6 +435,9 @@
           "HAWKING_QWEN38_FUSE_GQA_QKV": "1",
           "HAWKING_QWEN38_FUSE_MLP": "swiglu"
         },
+        "shader_exists": true,
+        "shader_path": "/Users/scammermike/Downloads/hawking/crates/hawking-core/shaders/qwen_uniform_q4.metal",
+        "shader_sha256": "676a6a520b67bb31af0b6614698efe13653bf1141a946005d71e47e5ae27e15f",
         "source_contains_fusion_dispatch_accounting": true,
         "source_control_note": "The source parser is inspected, not modified. A profile value is only a configuration identity; it is not a performance result.",
         "source_exists": true,
@@ -421,6 +454,8 @@
       "architecture": "unknown",
       "artifact_root": "/Users/scammermike/noetic/NOETIC_PARENT_A",
       "binary": "/Users/scammermike/Downloads/hawking/workspace/ops/build/rust/release-fast/examples/ascension_qwen38_resident",
+      "binary_sha256": "2d5fd0f157fb7987f307782d3a12abf2efadd6a0e14a787740e51adb101ac3f8",
+      "binary_sha256_16": "2d5fd0f157fb7987",
       "compiler": {
         "language": "rust",
         "profile": "release-fast",
@@ -432,6 +467,12 @@
         "fallbacks": 0
       },
       "family": "qwen3.8",
+      "fusion_env": {
+        "HAWKING_QWEN38_FUSE_ADD_RMSNORM": "1",
+        "HAWKING_QWEN38_FUSE_DN_INPROJ": "1",
+        "HAWKING_QWEN38_FUSE_GQA_QKV": "1",
+        "HAWKING_QWEN38_FUSE_MLP": "swiglu"
+      },
       "mode": "resident",
       "model_id": "qwen3.8-27b-sealed-3.14",
       "param_class": "?B",
@@ -446,7 +487,13 @@
       },
       "resident_identity": "sealed-3.14",
       "runtime": "hawking-native",
-      "tokenizer": "/Users/scammermike/noetic/NOETIC_PARENT_A/tokenizer.json"
+      "runtime_env": {},
+      "selected_binary": "/Users/scammermike/Downloads/hawking/workspace/ops/build/rust/release-fast/examples/ascension_qwen38_resident",
+      "selected_binary_exists": true,
+      "tokenizer": "/Users/scammermike/noetic/NOETIC_PARENT_A/tokenizer.json",
+      "tokenizer_exists": true,
+      "tokenizer_sha256": "0997f410c57a1f4e53b09e4be8f4a172d90edd9564368fb0847030937229b9f3",
+      "tokenizer_sha256_16": "0997f410c57a1f4e"
     },
     "representation": {
       "fusion_env": {
@@ -524,6 +571,92 @@
     "source_receipt": "/Users/scammermike/Downloads/hawking/receipts/headless/NOETIC_DISPATCH_FUSION.json",
     "status": "PRIOR_SOURCE_RECEIPT"
   },
+  "machine_snapshot": {
+    "after": {
+      "contenders": [
+        {
+          "comm": "/System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer",
+          "cpu_pct": 45.3,
+          "pid": 180,
+          "rss_gib": 0.21
+        },
+        {
+          "comm": "/usr/libexec/avconferenced",
+          "cpu_pct": 79.3,
+          "pid": 739,
+          "rss_gib": 0.12
+        },
+        {
+          "comm": "/System/Library/PrivateFrameworks/StorageManagement.framework/PlugIns/StorageManagementService",
+          "cpu_pct": 99.5,
+          "pid": 59666,
+          "rss_gib": 0.04
+        },
+        {
+          "comm": "/System/Library/PrivateFrameworks/StorageManagement.framework/PlugIns/ApplicationsStorageExtension.appex/Contents/MacOS/ApplicationsStorageExtension",
+          "cpu_pct": 100.0,
+          "pid": 59677,
+          "rss_gib": 0.03
+        }
+      ],
+      "max_rss_gib": 0.21,
+      "method": "enumerate",
+      "n_contenders": 4,
+      "no_name_filter": true,
+      "quiet": false,
+      "rss_is_the_gate_not_cpu": "Metal working set is this machine's admission gate (2026-08-22), so a large-RSS neighbour contends with a resident model in the dimension that decides; CPU is reported because it is real, not because it is equally predictive.",
+      "thresholds": {
+        "cpu_pct": 20.0,
+        "rss_gib": 2.0
+      },
+      "total_cpu_pct": 324.1
+    },
+    "before": {
+      "contenders": [
+        {
+          "comm": "/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/Metadata.framework/Versions/A/Support/mds_stores",
+          "cpu_pct": 95.4,
+          "pid": 292,
+          "rss_gib": 0.28
+        },
+        {
+          "comm": "/System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer",
+          "cpu_pct": 42.7,
+          "pid": 180,
+          "rss_gib": 0.21
+        },
+        {
+          "comm": "/usr/libexec/avconferenced",
+          "cpu_pct": 67.8,
+          "pid": 739,
+          "rss_gib": 0.12
+        },
+        {
+          "comm": "/System/Library/PrivateFrameworks/StorageManagement.framework/PlugIns/StorageManagementService",
+          "cpu_pct": 117.4,
+          "pid": 59666,
+          "rss_gib": 0.04
+        },
+        {
+          "comm": "/System/Library/PrivateFrameworks/StorageManagement.framework/PlugIns/ApplicationsStorageExtension.appex/Contents/MacOS/ApplicationsStorageExtension",
+          "cpu_pct": 94.8,
+          "pid": 59677,
+          "rss_gib": 0.03
+        }
+      ],
+      "max_rss_gib": 0.28,
+      "method": "enumerate",
+      "n_contenders": 5,
+      "no_name_filter": true,
+      "quiet": false,
+      "rss_is_the_gate_not_cpu": "Metal working set is this machine's admission gate (2026-08-22), so a large-RSS neighbour contends with a resident model in the dimension that decides; CPU is reported because it is real, not because it is equally predictive.",
+      "thresholds": {
+        "cpu_pct": 20.0,
+        "rss_gib": 2.0
+      },
+      "total_cpu_pct": 418.1
+    }
+  },
   "prior_receipts": {
     "fusion": {
       "bench_state": "UNKNOWN",
@@ -591,7 +724,9 @@
     }
   },
   "profile_path": "/Users/scammermike/Downloads/hawking/hcli/hawking-native.sealed-3.14.json",
-  "qualification": "CURRENT_RUNTIME_REGRESSION_AUDITED_NO_PERFORMANCE_QUALIFICATION",
+  "protected_window": false,
+  "qualification": false,
+  "qualification_label": "CURRENT_RUNTIME_REGRESSION_AUDITED_NO_PERFORMANCE_QUALIFICATION",
   "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/HCLI_ACCELERATOR_REGRESSION.json",
   "repo_root": "/Users/scammermike/Downloads/hawking",
   "schema": "hcli.agentos.accelerator_regression.v1",
@@ -609,12 +744,15 @@
       "HAWKING_QWEN38_FUSE_GQA_QKV": "1",
       "HAWKING_QWEN38_FUSE_MLP": "swiglu"
     },
+    "shader_exists": true,
+    "shader_path": "/Users/scammermike/Downloads/hawking/crates/hawking-core/shaders/qwen_uniform_q4.metal",
+    "shader_sha256": "676a6a520b67bb31af0b6614698efe13653bf1141a946005d71e47e5ae27e15f",
     "source_contains_fusion_dispatch_accounting": true,
     "source_control_note": "The source parser is inspected, not modified. A profile value is only a configuration identity; it is not a performance result.",
     "source_exists": true,
     "source_path": "/Users/scammermike/Downloads/hawking/crates/hawking-core/src/model/qwen38_hybrid_decode.rs",
     "source_sha256": "fbb11476dff889029d52451f95f538b7a7c39910d689d29e7b4e9a72a00b6746"
   },
-  "started_at": 1787797377.499305,
+  "started_at": 1787807703.1940072,
   "status": "PASSED"
 }

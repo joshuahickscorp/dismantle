@@ -95,6 +95,14 @@ def _coerce_bool(value: Any, default: bool = False) -> bool:
     return default
 
 
+def _safe(value: Any) -> Any:
+    """Return a JSON-stable copy for optional provider telemetry."""
+    try:
+        return json.loads(json.dumps(value, sort_keys=True, default=str))
+    except (TypeError, ValueError):
+        return str(value)
+
+
 def _sha16(path: Path) -> Optional[str]:
     try:
         digest = hashlib.sha256()
@@ -167,6 +175,7 @@ class HawkingNativeConfig:
     max_seq_len: int = 8192
     generation: Dict[str, Any] = field(default_factory=dict)
     fusion_env: Dict[str, str] = field(default_factory=dict)
+    runtime_env: Dict[str, str] = field(default_factory=dict)
     resident_identity: str = "native-resident"
     mode: str = "auto"
     resident_binary: Optional[str] = None
@@ -206,6 +215,9 @@ class HawkingNativeConfig:
         self.generation = dict(self.generation or {})
         self.fusion_env = {
             str(key): str(value) for key, value in dict(self.fusion_env or {}).items()
+        }
+        self.runtime_env = {
+            str(key): str(value) for key, value in dict(self.runtime_env or {}).items()
         }
         self.mode = str(self.mode or "auto").strip().lower()
         if self.mode not in {"auto", "one_shot", "resident"}:
@@ -252,6 +264,9 @@ class HawkingNativeConfig:
             fusion = data.get("required_fusion_env")
         if not isinstance(fusion, dict):
             fusion = {}
+        runtime_env = data.get("runtime_env", data.get("environment", {}))
+        if not isinstance(runtime_env, dict):
+            runtime_env = {}
         return cls(
             artifact_root=data.get("artifact_root", ""),
             tokenizer=data.get("tokenizer", ""),
@@ -259,6 +274,7 @@ class HawkingNativeConfig:
             max_seq_len=data.get("max_seq_len", 8192),
             generation=generation,
             fusion_env=fusion,
+            runtime_env=runtime_env,
             resident_identity=data.get("resident_identity", data.get("resident", "native-resident")),
             mode=data.get("mode", data.get("execution_mode", "auto")),
             resident_binary=data.get("resident_binary"),
@@ -340,6 +356,7 @@ class HawkingNativeConfig:
                 "enable_thinking": False,
             },
             fusion_env=dict(REQUIRED_FUSION_ENV),
+            runtime_env={},
             resident_identity=os.environ.get("HCLI_HAWKING_RESIDENT_IDENTITY", "sealed-3.14"),
             mode=os.environ.get("HCLI_HAWKING_NATIVE_MODE", "auto"),
             family="qwen3.8",
@@ -465,6 +482,7 @@ class HawkingNativeConfig:
             "max_seq_len": self.max_seq_len,
             "generation": dict(self.generation),
             "fusion_env": dict(self.fusion_env),
+            "runtime_env": dict(self.runtime_env),
             "executable_profile": self.executable_profile,
             "physical_ebpw": self.physical_ebpw,
             "qualification": self.qualification,
@@ -813,6 +831,7 @@ class ResidentProcess:
         self._pending = {}
         self._ready_payload = None
         env = os.environ.copy()
+        env.update(self.config.runtime_env)
         env.update(self.config.fusion_env)
         process = subprocess.Popen(
             [
@@ -1153,6 +1172,7 @@ class HawkingNativeConnector:
         os.close(output_fd)
         output_path = Path(output_name).resolve()
         env = os.environ.copy()
+        env.update(self.config.runtime_env)
         env.update(self.config.fusion_env)
         command = [
             self.config.binary,
@@ -1266,6 +1286,33 @@ class HawkingNativeConnector:
             decode_tps = decode_steps / decode_wall_s
         complete_tps = generated_count / wall_s if wall_s > 0 else None
         runtime_identity = config.identity()
+        declared_metrics = body.get("metrics")
+        if isinstance(declared_metrics, dict):
+            native_metrics = _safe(declared_metrics)
+        else:
+            # Keep the common connector model-neutral.  A native provider may
+            # expose timing/dispatch data either under ``metrics`` or as these
+            # stable top-level fields; no Qwen-specific interpretation belongs
+            # in the transport layer.
+            metric_keys = (
+                "complete_wall_ns",
+                "complete_wall_ns_per_generated_token",
+                "gpu_ns",
+                "gpu_ns_per_generated_token",
+                "wall_minus_gpu_ns",
+                "dispatches",
+                "dispatches_per_generated_token",
+                "prefill",
+                "decode",
+                "step_trace",
+                "kernel_genome",
+                "capability",
+                "prefill_steps",
+                "decode_steps",
+            )
+            native_metrics = {
+                key: _safe(body.get(key)) for key in metric_keys if key in body
+            }
         hawking = {
             "protocol": config.protocol,
             "mode": mode,
@@ -1281,6 +1328,10 @@ class HawkingNativeConnector:
             "prompt_tokens": prompt_tokens,
             "token_count_source": prompt.token_count_source,
             "generated_tokens": generated_count,
+            # A native provider may expose exact generated ids. Keeping them in
+            # the provider envelope is useful for paired diagnostics, while the
+            # core HCLI contract still treats text/usage as the portable fields.
+            "new_token_ids": list(generated),
             "complete_tps": complete_tps,
             "decode_tps": decode_tps,
             "wall_ms": wall_s * 1000.0,
@@ -1290,6 +1341,7 @@ class HawkingNativeConnector:
             "generation_clamped": clamped,
             "retry_count": retry_count,
             "resident_health": resident_health,
+            "native_metrics": native_metrics,
         }
         return {
             "id": f"hawking-chat-{uuid.uuid4()}",

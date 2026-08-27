@@ -1,5 +1,5 @@
 {
-  "claim_boundary": "Candidate FPGA mapping only. [D] denotes a derived hypothesis and [S] denotes link/schema simulation. No physical board, bitstream, hardware timing, or U50 performance is claimed.",
+  "claim_boundary": "Candidate FPGA mapping only. [D] denotes a derived hypothesis and [S] denotes executable link/partition simulation. No physical board, bitstream, hardware timing, or U50 performance is claimed.",
   "device_genome": {
     "device_id": "unselected-fpga-device",
     "family": "unselected",
@@ -332,6 +332,232 @@
       "priority": "P1"
     }
   ],
+  "partition_simulation": {
+    "claim_boundary": "[S] executable scenario model only; source and device parameters must be revalidated on a selected board before any hardware claim",
+    "label": "[S]",
+    "link": {
+      "bandwidth_gbps": 64.0,
+      "label": "[S]",
+      "latency_ns": 900.0
+    },
+    "model": "flash-next",
+    "performance_claim": false,
+    "physical_execution": false,
+    "scenarios": [
+      {
+        "apple_only_ns": 12000000,
+        "claim_boundary": "[S] deterministic link/partition sensitivity only; not FPGA hardware timing",
+        "decision": "MIXED_CANDIDATE",
+        "fpga_only_ns": 8030000,
+        "inputs": {
+          "activation_bytes": 40960,
+          "apple_compute_ns": 12000000,
+          "basis": "Flash routed-expert structural active-bytes and HBM residency hypothesis",
+          "fpga_compute_ns": 8000000,
+          "hbm_resident_bytes": 4718592000,
+          "partial_reduction_bytes": 65536,
+          "synchronization_ns": 30000
+        },
+        "label": "[S]",
+        "mixed_beats_apple_only": true,
+        "mixed_ns": 8058424,
+        "organ": "expert_bank",
+        "performance_claim": false,
+        "physical_execution": false,
+        "predicted_critical_path": "mixed_transport_or_fpga_compute",
+        "scenario": "expert_subset_residency",
+        "transport": {
+          "activation_bytes": 40960,
+          "bandwidth_gbps": 64.0,
+          "bytes": 106496,
+          "estimated_transfer_ns": 28424.0,
+          "hops": 2,
+          "label": "[S]",
+          "latency_ns": 900.0,
+          "partial_reduction_bytes": 65536,
+          "pcie_bytes": 106496,
+          "status": "SENSITIVITY_ONLY"
+        }
+      },
+      {
+        "apple_only_ns": 9000000,
+        "claim_boundary": "[S] deterministic link/partition sensitivity only; not FPGA hardware timing",
+        "decision": "MIXED_CANDIDATE",
+        "fpga_only_ns": 6028000,
+        "inputs": {
+          "activation_bytes": 20480,
+          "apple_compute_ns": 9000000,
+          "basis": "Flash top-k selected-expert execution and partial-reduction hypothesis",
+          "fpga_compute_ns": 6000000,
+          "hbm_resident_bytes": 4718592000,
+          "partial_reduction_bytes": 81920,
+          "synchronization_ns": 28000
+        },
+        "label": "[S]",
+        "mixed_beats_apple_only": true,
+        "mixed_ns": 6055400,
+        "organ": "routed_plus_shared_expert",
+        "performance_claim": false,
+        "physical_execution": false,
+        "predicted_critical_path": "mixed_transport_or_fpga_compute",
+        "scenario": "selected_expert_execution",
+        "transport": {
+          "activation_bytes": 20480,
+          "bandwidth_gbps": 64.0,
+          "bytes": 102400,
+          "estimated_transfer_ns": 27400.0,
+          "hops": 2,
+          "label": "[S]",
+          "latency_ns": 900.0,
+          "partial_reduction_bytes": 81920,
+          "pcie_bytes": 102400,
+          "status": "SENSITIVITY_ONLY"
+        }
+      },
+      {
+        "apple_only_ns": 400000,
+        "claim_boundary": "[S] deterministic link/partition sensitivity only; not FPGA hardware timing",
+        "decision": "MIXED_CANDIDATE",
+        "fpga_only_ns": 262000,
+        "inputs": {
+          "activation_bytes": 10240,
+          "apple_compute_ns": 400000,
+          "basis": "Flash router source payload and irregular gather hypothesis",
+          "fpga_compute_ns": 250000,
+          "hbm_resident_bytes": 125829120,
+          "partial_reduction_bytes": 16384,
+          "synchronization_ns": 12000
+        },
+        "label": "[S]",
+        "mixed_beats_apple_only": true,
+        "mixed_ns": 270456,
+        "organ": "router_topk_and_gather",
+        "performance_claim": false,
+        "physical_execution": false,
+        "predicted_critical_path": "mixed_transport_or_fpga_compute",
+        "scenario": "router_topk_gather",
+        "transport": {
+          "activation_bytes": 10240,
+          "bandwidth_gbps": 64.0,
+          "bytes": 26624,
+          "estimated_transfer_ns": 8456.0,
+          "hops": 2,
+          "label": "[S]",
+          "latency_ns": 900.0,
+          "partial_reduction_bytes": 16384,
+          "pcie_bytes": 26624,
+          "status": "SENSITIVITY_ONLY"
+        }
+      },
+      {
+        "apple_only_ns": 2800000,
+        "claim_boundary": "[S] deterministic link/partition sensitivity only; not FPGA hardware timing",
+        "decision": "MIXED_CANDIDATE",
+        "fpga_only_ns": 1915000,
+        "inputs": {
+          "activation_bytes": 65536,
+          "apple_compute_ns": 2800000,
+          "basis": "Flash recurrent-state read/modify/write structural hypothesis",
+          "fpga_compute_ns": 1900000,
+          "hbm_resident_bytes": 235339776,
+          "partial_reduction_bytes": 0,
+          "synchronization_ns": 15000
+        },
+        "label": "[S]",
+        "mixed_beats_apple_only": true,
+        "mixed_ns": 1924092,
+        "organ": "deltanet_persistent_state",
+        "performance_claim": false,
+        "physical_execution": false,
+        "predicted_critical_path": "mixed_transport_or_fpga_compute",
+        "scenario": "deltanet_state",
+        "transport": {
+          "activation_bytes": 65536,
+          "bandwidth_gbps": 64.0,
+          "bytes": 65536,
+          "estimated_transfer_ns": 9092.0,
+          "hops": 1,
+          "label": "[S]",
+          "latency_ns": 900.0,
+          "partial_reduction_bytes": 0,
+          "pcie_bytes": 65536,
+          "status": "SENSITIVITY_ONLY"
+        }
+      },
+      {
+        "apple_only_ns": 1800000,
+        "claim_boundary": "[S] deterministic link/partition sensitivity only; not FPGA hardware timing",
+        "decision": "MIXED_CANDIDATE",
+        "fpga_only_ns": 1318000,
+        "inputs": {
+          "activation_bytes": 8192,
+          "apple_compute_ns": 1800000,
+          "basis": "Flash n-gram lookup/generator source payload hypothesis",
+          "fpga_compute_ns": 1300000,
+          "hbm_resident_bytes": 102466171160,
+          "partial_reduction_bytes": 32768,
+          "synchronization_ns": 18000
+        },
+        "label": "[S]",
+        "mixed_beats_apple_only": true,
+        "mixed_ns": 1330040,
+        "organ": "ngram_lookup_or_generator",
+        "performance_claim": false,
+        "physical_execution": false,
+        "predicted_critical_path": "mixed_transport_or_fpga_compute",
+        "scenario": "compact_ngram_lookup",
+        "transport": {
+          "activation_bytes": 8192,
+          "bandwidth_gbps": 64.0,
+          "bytes": 40960,
+          "estimated_transfer_ns": 12040.0,
+          "hops": 2,
+          "label": "[S]",
+          "latency_ns": 900.0,
+          "partial_reduction_bytes": 32768,
+          "pcie_bytes": 40960,
+          "status": "SENSITIVITY_ONLY"
+        }
+      },
+      {
+        "apple_only_ns": 3500000,
+        "claim_boundary": "[S] deterministic link/partition sensitivity only; not FPGA hardware timing",
+        "decision": "MIXED_CANDIDATE",
+        "fpga_only_ns": 2422000,
+        "inputs": {
+          "activation_bytes": 16384,
+          "apple_compute_ns": 3500000,
+          "basis": "Flash MTP conditional path; accepted/rejected token ledger still required",
+          "fpga_compute_ns": 2400000,
+          "hbm_resident_bytes": 5214301696,
+          "partial_reduction_bytes": 49152,
+          "synchronization_ns": 22000
+        },
+        "label": "[S]",
+        "mixed_beats_apple_only": true,
+        "mixed_ns": 2440184,
+        "organ": "mtp_draft_verify_rollback",
+        "performance_claim": false,
+        "physical_execution": false,
+        "predicted_critical_path": "mixed_transport_or_fpga_compute",
+        "scenario": "mtp_verification",
+        "transport": {
+          "activation_bytes": 16384,
+          "bandwidth_gbps": 64.0,
+          "bytes": 65536,
+          "estimated_transfer_ns": 18184.0,
+          "hops": 2,
+          "label": "[S]",
+          "latency_ns": 900.0,
+          "partial_reduction_bytes": 49152,
+          "pcie_bytes": 65536,
+          "status": "SENSITIVITY_ONLY"
+        }
+      }
+    ],
+    "schema": "hcli.fpga.partition_simulation.v1",
+    "status": "SIMULATION_ONLY"
+  },
   "partitioner": {
     "model": "flash-next",
     "partitions": [

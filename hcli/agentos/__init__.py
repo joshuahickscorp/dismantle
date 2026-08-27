@@ -77,12 +77,19 @@ __all__ = [
     "run_unattended_window",
     "ACCELERATOR_REGRESSION_SCHEMA",
     "run_accelerator_regression",
+    "QWEN27_RUNTIME_IDENTITY_SCHEMA",
+    "QWEN27_RUNTIME_DIFF_SCHEMA",
+    "run_runtime_archaeology",
+    "QWEN27_MLP_DIAGNOSTIC_SCHEMA",
+    "run_qwen27_mlp_diagnostic_ab",
     "QWEN38_FUSION_AUDIT_SCHEMA",
     "run_qwen38_fusion_source_audit",
     "MODELLAKE_CENSUS_SCHEMA",
     "run_modellake_census",
     "FLASH_SCIENCE_SCHEMA",
     "run_flash_science_gate",
+    "FLASH_EXECUTABLE_SCHEMA",
+    "run_flash_executable_scaffold",
     "PREBOARD_SCHEMA",
     "run_preboard",
     "INITIAL_CHARGE_SCHEMA",
@@ -95,6 +102,8 @@ __all__ = [
     "run_ab_scaffold",
     "FPGA_PREBOARD_SCHEMA",
     "run_fpga_preboard",
+    "PROTECTED_BENCHMARK_WATCHER_SCHEMA",
+    "run_protected_benchmark_watcher",
     "MODELLAKE_SUPERVISION_SCHEMA",
     "run_model_lake_supervision",
     "OVERNIGHT_HANDOFF_SCHEMA",
@@ -165,6 +174,18 @@ def __getattr__(name: str):
         from hcli.agentos import accelerator_regression
 
         return accelerator_regression.SCHEMA if name == "ACCELERATOR_REGRESSION_SCHEMA" else accelerator_regression.run_accelerator_regression
+    if name in {"QWEN27_RUNTIME_IDENTITY_SCHEMA", "QWEN27_RUNTIME_DIFF_SCHEMA", "run_runtime_archaeology"}:
+        from hcli.agentos import qwen27_runtime_identity
+
+        if name == "QWEN27_RUNTIME_IDENTITY_SCHEMA":
+            return qwen27_runtime_identity.IDENTITY_SCHEMA
+        if name == "QWEN27_RUNTIME_DIFF_SCHEMA":
+            return qwen27_runtime_identity.DIFF_SCHEMA
+        return qwen27_runtime_identity.run_runtime_archaeology
+    if name in {"QWEN27_MLP_DIAGNOSTIC_SCHEMA", "run_qwen27_mlp_diagnostic_ab"}:
+        from hcli.agentos import qwen27_mlp_diagnostic
+
+        return qwen27_mlp_diagnostic.SCHEMA if name == "QWEN27_MLP_DIAGNOSTIC_SCHEMA" else qwen27_mlp_diagnostic.run_qwen27_mlp_diagnostic_ab
     if name in {"QWEN38_FUSION_AUDIT_SCHEMA", "run_qwen38_fusion_source_audit"}:
         from hcli.agentos import qwen38_fusion_audit
 
@@ -177,6 +198,10 @@ def __getattr__(name: str):
         from hcli.agentos import flash_science
 
         return flash_science.SCHEMA if name == "FLASH_SCIENCE_SCHEMA" else flash_science.run_flash_science_gate
+    if name in {"FLASH_EXECUTABLE_SCHEMA", "run_flash_executable_scaffold"}:
+        from hcli.agentos import flash_executable
+
+        return flash_executable.SCHEMA if name == "FLASH_EXECUTABLE_SCHEMA" else flash_executable.run_flash_executable_scaffold
     if name in {"PREBOARD_SCHEMA", "run_preboard"}:
         from hcli.agentos import preboard
 
@@ -205,6 +230,10 @@ def __getattr__(name: str):
         from hcli.agentos import fpga_preboard
 
         return fpga_preboard.SCHEMA if name == "FPGA_PREBOARD_SCHEMA" else fpga_preboard.run_fpga_preboard
+    if name in {"PROTECTED_BENCHMARK_WATCHER_SCHEMA", "run_protected_benchmark_watcher"}:
+        from hcli.agentos import protected_benchmark_watcher
+
+        return protected_benchmark_watcher.SCHEMA if name == "PROTECTED_BENCHMARK_WATCHER_SCHEMA" else protected_benchmark_watcher.run_protected_benchmark_watcher
     if name in {"MODELLAKE_SUPERVISION_SCHEMA", "run_model_lake_supervision"}:
         from hcli.agentos import modellake_supervisor
 

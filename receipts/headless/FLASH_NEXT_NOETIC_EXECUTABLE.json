@@ -1,0 +1,307 @@
+{
+  "NOT_FOR_PROMOTION": true,
+  "accepted_capability_preserving_tps": null,
+  "capability_contract": {
+    "declarations_are_requirements_not_runtime_evidence": true,
+    "dense_parent_execution_fallback": false,
+    "fallback_count": null,
+    "hidden_dense_rematerialization": false,
+    "required": [
+      "same-model output parity",
+      "multimodal/text contract",
+      "sequence isolation",
+      "zero hidden dense rematerialization",
+      "fallback disclosure",
+      "accepted-token accounting"
+    ],
+    "status": "NOT_RUN"
+  },
+  "chosen_representation": {
+    "deltanet": "resident state-native representation",
+    "expert_bank": "shared basis plus per-expert NF residual",
+    "id": "flash-expert-shared-basis-nf-residual-v0",
+    "label": "[D]",
+    "mtp": "explicit draft/verify/rollback representation",
+    "ngram": "lookup/compositional representation, not generic dense quantization",
+    "router": "resident route metadata and selected-expert gather",
+    "sparse_attention": "budget/index-native sparse representation",
+    "status": "HYPOTHESIS_NOT_BUILT",
+    "vision": "conditional multimodal path; text-resident omission requires an explicit separate contract"
+  },
+  "claim_boundary": "FLASH_NEXT_NOETIC_EXECUTABLE is not built. This manifest is the reproducible contract for the next implementation steps; it contains no native Flash capability or performance claim.",
+  "complete_system_ebpw": null,
+  "complete_token_timing": {
+    "accepted_tps": null,
+    "budget_receipt": {
+      "accepted_tokens": null,
+      "capability_parity": null,
+      "complete_generation_wall_ns": null,
+      "copy_bytes": null,
+      "decode_wall_ns": null,
+      "dispatches": null,
+      "fallback_count": null,
+      "gpu_ns": null,
+      "host_wait_ns": null,
+      "prefill_wall_ns": null,
+      "protected_benchmark_class": null,
+      "rejected_draft_tokens": null,
+      "sync_ns": null
+    },
+    "complete_token_definition": "complete accepted generated token wall time, including all required graph/runtime/host ceremony",
+    "complete_wall_ns_per_accepted_token": null,
+    "status": "NOT_MEASURED"
+  },
+  "declarations_are_requirements_not_runtime_evidence": true,
+  "dense_parent_execution_fallback": false,
+  "ebpw_budget_receipt": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_EBPW_BUDGET.json",
+  "fallback_count": null,
+  "graph_runtime": {
+    "fallbacks": "No fallback may be silently counted as native Flash execution.",
+    "graph_source": "pinned header organ graph; runtime edges still require body-backed implementation",
+    "mtp_accept_reject": "EXPLICIT_REQUIRED_EDGE",
+    "organ_order": [
+      "embeddings",
+      "deltanet",
+      "sparse_attention",
+      "router",
+      "routed_experts",
+      "shared_expert",
+      "lm_head",
+      "mtp",
+      "ngram_engine",
+      "vision_backbone",
+      "residual_hyperconnections",
+      "support_misc",
+      "recurrent_state"
+    ],
+    "status": "PLAN_ONLY",
+    "text_only_vision_bypass": "CONDITIONAL_AND_UNPROVEN"
+  },
+  "hidden_dense_rematerialization": false,
+  "label": "[D]",
+  "model_lake": {
+    "body_read_by_this_scaffold": false,
+    "census_final_present": false,
+    "census_receipt": {
+      "path": "/Users/scammermike/Downloads/hawking/receipts/headless/HCLI_MODELLAKE_FLASH_CENSUS.json",
+      "present": true,
+      "sha256": "e266b8a18167699b4700984c54e4b2f2b69f007596ca05b7c77635b0548faed9"
+    },
+    "expected_bytes": 360023286454,
+    "final": {
+      "path": "/Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc",
+      "present": true,
+      "verified_manifest": true
+    },
+    "manifest": {
+      "path": "/Volumes/corpdrive/hawking-modellake/manifests/Qwen--Qwen3.8-Flash-Next@34567a4712bc.json",
+      "present": true,
+      "resolved_sha": "34567a4712bc9766c4449e2e98e4468bfa24d915"
+    },
+    "mutation_by_this_scaffold": false,
+    "observed_job_status": "PASSED",
+    "partial": {
+      "direct_bytes": 0,
+      "direct_files": 0,
+      "path": "/Volumes/corpdrive/hawking-modellake/partial/Qwen--Qwen3.8-Flash-Next@34567a4712bc",
+      "present": false
+    },
+    "pinned_revision": "34567a4712bc9766c4449e2e98e4468bfa24d915",
+    "repo": "Qwen/Qwen3.8-Flash-Next",
+    "status": "VERIFIED_FINAL_IDENTITY",
+    "supervision_receipt": {
+      "path": "/Users/scammermike/Downloads/hawking/receipts/headless/HCLI_MODELLAKE_FLASH_ACQUISITION_SUPERVISION.json",
+      "present": true,
+      "sha256": "c8bb698c5239912dbbab858c8e47f7bf749303f600af6a71b1534a89bcaaefa2"
+    }
+  },
+  "native_kernels": {
+    "coverage": [
+      {
+        "kernel": "partitioned_embedding_lookup",
+        "organ": "embeddings",
+        "status": "NOT_IMPLEMENTED"
+      },
+      {
+        "kernel": "native_nf_expert_gemv",
+        "organ": "routed_experts",
+        "status": "NOT_IMPLEMENTED"
+      },
+      {
+        "kernel": "shared_expert_fused_gemv",
+        "organ": "shared_expert",
+        "status": "NOT_IMPLEMENTED"
+      },
+      {
+        "kernel": "router_topk_gather",
+        "organ": "router",
+        "status": "NOT_IMPLEMENTED"
+      },
+      {
+        "kernel": "persistent_state_update",
+        "organ": "deltanet",
+        "status": "NOT_IMPLEMENTED"
+      },
+      {
+        "kernel": "resident_state_read_modify_write",
+        "organ": "recurrent_state",
+        "status": "NOT_IMPLEMENTED"
+      },
+      {
+        "kernel": "budgeted_sparse_gather_reduce",
+        "organ": "sparse_attention",
+        "status": "NOT_IMPLEMENTED"
+      },
+      {
+        "kernel": "lookup_or_compositional_generator",
+        "organ": "ngram_engine",
+        "status": "NOT_IMPLEMENTED"
+      },
+      {
+        "kernel": "draft_verify_rollback",
+        "organ": "mtp",
+        "status": "NOT_IMPLEMENTED"
+      },
+      {
+        "kernel": "fused_norm_epilogue",
+        "organ": "norms",
+        "status": "NOT_IMPLEMENTED"
+      },
+      {
+        "kernel": "vocabulary_projection_and_reduce",
+        "organ": "lm_head",
+        "status": "NOT_IMPLEMENTED"
+      },
+      {
+        "kernel": "conditional_multimodal_vision_path",
+        "organ": "vision_backbone",
+        "status": "NOT_IMPLEMENTED"
+      },
+      {
+        "kernel": "low_rank_residual_mix",
+        "organ": "residual_hyperconnections",
+        "status": "NOT_IMPLEMENTED"
+      },
+      {
+        "kernel": "ownership_audit_required",
+        "organ": "support_misc",
+        "status": "UNRESOLVED"
+      }
+    ],
+    "dense_rematerialization": "FORBIDDEN_BY_FINAL_RUNTIME_POLICY",
+    "status": "PLAN_ONLY"
+  },
+  "native_loader": {
+    "body_read_by_scaffold": false,
+    "required": [
+      "verified body manifest",
+      "zero-copy/streaming policy",
+      "per-organ ownership",
+      "resident lifetime",
+      "loader hash"
+    ],
+    "status": "NOT_IMPLEMENTED"
+  },
+  "promotion_allowed": false,
+  "promotion_gate": {
+    "artifact_contract": "FLASH_NEXT_COMPLETE_MULTIMODAL",
+    "claim_boundary": "Only PROMOTABLE closes the final Flash-Next gate. A measured candidate that misses either hard threshold remains a research/Pareto intermediate.",
+    "evidence": {
+      "capability_contract_passed": false,
+      "dense_parent_execution_fallback": true,
+      "dense_vs_nf_ab": false,
+      "hidden_dense_rematerialization": true,
+      "mtp_accounting_disclosed": false,
+      "native_executable": false,
+      "reproducible_protected_receipt": false,
+      "runtime_kernel_genome_complete": false,
+      "whole_model_reference_comparison": false
+    },
+    "hard_gate": {
+      "accepted_capability_preserving_tps_at_or_above_50": false,
+      "complete_system_ebpw_at_or_below_1": false
+    },
+    "ladder": {
+      "exceptional": {
+        "accepted_tps_min": 90.0,
+        "complete_system_ebpw_max": 0.6
+      },
+      "extreme": {
+        "accepted_tps_min": 120.0,
+        "complete_system_ebpw_max": 0.5
+      },
+      "final": {
+        "accepted_tps_min": 50.0,
+        "complete_system_ebpw_max": 1.0
+      },
+      "strong": {
+        "accepted_tps_min": 70.0,
+        "complete_system_ebpw_max": 0.75
+      }
+    },
+    "measured": {
+      "accepted_capability_preserving_tps": null,
+      "complete_system_ebpw": null
+    },
+    "missing_or_refused": [
+      "MTP accounting",
+      "complete-system byte ledger",
+      "dense-versus-NF A/B receipt",
+      "ebpw_accounting.all_required_bytes_included=true",
+      "ebpw_accounting.bases.bytes",
+      "ebpw_accounting.dictionaries.bytes",
+      "ebpw_accounting.expert_indices.bytes",
+      "ebpw_accounting.generators.bytes",
+      "ebpw_accounting.lookup_structures.bytes",
+      "ebpw_accounting.mtp_representation.bytes",
+      "ebpw_accounting.ngram_representation.bytes",
+      "ebpw_accounting.required_executable_metadata.bytes",
+      "ebpw_accounting.residuals.bytes",
+      "ebpw_accounting.routing_metadata.bytes",
+      "ebpw_accounting.scales.bytes",
+      "ebpw_accounting.weight_codes.bytes",
+      "ebpw_accounting.zero_points.bytes",
+      "fallback_count disclosure",
+      "native executable",
+      "protected capability contract",
+      "reproducible protected receipt",
+      "runtime/kernel genome",
+      "whole-model reference comparison"
+    ],
+    "promotion_allowed": false,
+    "schema": "hcli.flash-next.promotion.v1",
+    "status": "INCOMPLETE"
+  },
+  "qualification": false,
+  "runtime_genome": {
+    "compiler_identity": null,
+    "device_identity": null,
+    "executable_sha256": null,
+    "graph_fingerprint": null,
+    "kernel_binary_hashes": [],
+    "kernel_source_hashes": [],
+    "loader_sha256": null,
+    "receipt_schema": "hcli.agentos.flash_next_noetic_executable.v1",
+    "representation_manifest_sha256": null,
+    "status": "NOT_COMPILED"
+  },
+  "schema": "hcli.agentos.flash_next_noetic_executable.v1",
+  "source_identity": {
+    "architecture_fingerprint": {
+      "algorithm": "sha256(canonical pinned metadata + sorted tensor names)",
+      "label": "DERIVED",
+      "value": "8dbc9c34f223d240def13a1f7c70d3cbddbc768bc9ccc9c002683e2958b6be5b"
+    },
+    "header_only_source": true,
+    "pinned_revision": "34567a4712bc9766c4449e2e98e4468bfa24d915",
+    "repo": "Qwen/Qwen3.8-Flash-Next",
+    "science_receipt": {
+      "path": "/Users/scammermike/Downloads/hawking/receipts/headless/HCLI_FLASH_NEXT_PRE_RUNTIME_SCIENCE.json",
+      "sha256": "d74f9b747e11afcccfdc1d78167bada27f926e5e70d654050ac5ae9fd47dd7d1",
+      "status": "PASSED"
+    },
+    "weight_body_loaded": false
+  },
+  "status": "SCAFFOLD_ONLY",
+  "token_ns_budget_receipt": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_TOKEN_NS_BUDGET.json"
+}

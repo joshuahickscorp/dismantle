@@ -49,6 +49,23 @@ METADATA_FILES = (
 )
 HEADER_PROBE_BYTES = 64 * 1024
 MAX_HEADER_BYTES = 64 * 1024 * 1024
+GRAVITY_LADDER = (
+    "ELIMINATE",
+    "REPARAMETERIZE",
+    "SHARE",
+    "FACTORIZE",
+    "GENERATE",
+    "ROUTE",
+    "INFORMATION_ASSIGNMENT",
+    "HEAL",
+    "QUANTIZE",
+    "NATIVE_OPERATORS",
+    "STATE_OPTIMIZATION",
+    "COMPUTE_REMOVAL",
+    "DECODE_STEP_REMOVAL",
+    "DEVICE_COMPILE",
+    "VERIFY",
+)
 DTYPE_BYTES = {
     "BF16": 2,
     "F16": 2,
@@ -276,6 +293,225 @@ def _dtype_bytes(layouts: Mapping[str, Mapping[str, Any]]) -> Optional[int]:
 
 def _metric(value: Optional[int | float], *, status: str = "STRUCTURAL_ESTIMATE", **extra: Any) -> Dict[str, Any]:
     return {"value": value, "label": DERIVED, "status": status, **extra}
+
+
+def _gravity_science_plan() -> Dict[str, Any]:
+    """Return the ordered, non-mutating Gravity worklist for Flash-Next.
+
+    The ladder is intentionally a plan rather than a claim.  Each candidate
+    has to earn source parity, accepted-token accounting, and a complete
+    device receipt before it can affect a runtime or promotion decision.
+    """
+    specs = [
+        (
+            "ELIMINATE",
+            ["duplicate DeltaNet state copies", "unused vision work on text-only decode", "rejected MTP work after acceptance accounting"],
+            ["deltanet", "vision_backbone", "mtp"],
+            ["state/activation trace", "text-only versus multimodal parity", "accepted and rejected token ledger"],
+        ),
+        (
+            "REPARAMETERIZE",
+            ["fused gate/up/SwiGLU layout", "projection and residual layout", "low-rank hyperconnection placement"],
+            ["shared_expert", "routed_experts", "residual_hyperconnections"],
+            ["exact tensor transform proof", "same-model numerical parity", "no hidden dense rematerialization"],
+        ),
+        (
+            "SHARE",
+            ["routed/shared expert basis", "residual hyperconnection basis", "n-gram dictionaries and route metadata"],
+            ["routed_experts", "shared_expert", "ngram_engine", "router"],
+            ["independent-information accounting", "collision/error bounds", "source-to-runtime ownership map"],
+        ),
+        (
+            "FACTORIZE",
+            ["expert bank into shared basis plus residual", "n-gram lookup representation", "candidate vocabulary projection"],
+            ["routed_experts", "ngram_engine", "lm_head"],
+            ["factorization reconstruction parity", "complete output distribution parity", "measured bytes after representation"],
+        ),
+        (
+            "GENERATE",
+            ["compositional n-gram rows", "expert residual reconstruction", "on-device route metadata"],
+            ["ngram_engine", "routed_experts", "router"],
+            ["generator versus stored-row parity", "latency and bandwidth trace", "no uncounted generated work"],
+        ),
+        (
+            "ROUTE",
+            ["router top-k expert assignment", "QSA indexer-budget block traversal", "candidate vocabulary routing"],
+            ["router", "sparse_attention", "lm_head"],
+            ["route histogram", "selected-index trace", "output capability parity"],
+        ),
+        (
+            "INFORMATION_ASSIGNMENT",
+            ["assign tokens to experts", "assign attention budget to blocks", "assign accepted work to decode steps"],
+            ["router", "sparse_attention", "mtp"],
+            ["zero-independent-information test", "budget conservation", "accepted-token definition"],
+        ),
+        (
+            "HEAL",
+            ["residual/hyperconnection correction path", "state rollback on rejected draft", "numerical repair/guard bands"],
+            ["residual_hyperconnections", "recurrent_state", "mtp"],
+            ["failure injection", "rollback parity", "bounded error and no silent fallback"],
+        ),
+        (
+            "QUANTIZE",
+            ["representation-native NF expert storage", "low-bit router/projection candidates", "quantized lookup payloads"],
+            ["routed_experts", "router", "ngram_engine"],
+            ["same-source dense-vs-NF A/B", "per-organ scales/packing", "capability-preserving quality gate"],
+        ),
+        (
+            "NATIVE_OPERATORS",
+            ["NF GEMV and fused epilogue", "DeltaNet state update", "QSA gather/reduction", "n-gram lookup/generator", "MTP accept/reject"],
+            ["routed_experts", "deltanet", "sparse_attention", "ngram_engine", "mtp"],
+            ["kernel genome", "dispatch trace", "reference-vector parity", "complete-token meter"],
+        ),
+        (
+            "STATE_OPTIMIZATION",
+            ["resident DeltaNet F32 state", "sparse KV-cache locality", "MTP state snapshot/rollback", "expert residency"],
+            ["recurrent_state", "sparse_attention", "mtp", "routed_experts"],
+            ["resident-state bytes", "sequence isolation", "rollback trace", "no per-token weight transfer"],
+        ),
+        (
+            "COMPUTE_REMOVAL",
+            ["skip vision backbone for text-only requests", "remove duplicate epilogue launches", "avoid unselected experts"],
+            ["vision_backbone", "norms", "routed_experts"],
+            ["request-mode proof", "dispatch absence", "selected-expert parity"],
+        ),
+        (
+            "DECODE_STEP_REMOVAL",
+            ["MTP accepted-token step reduction", "n-gram-assisted accepted work", "eliminate rejected draft execution"],
+            ["mtp", "ngram_engine"],
+            ["accepted complete tokens per wall time", "draft/verify/rollback ledger", "no primitive-only TPS"],
+        ),
+        (
+            "DEVICE_COMPILE",
+            ["FPGA HBM expert/router placement", "resident DeltaNet state pipeline", "sparse/lookup transport and command graph"],
+            ["routed_experts", "router", "recurrent_state", "sparse_attention", "ngram_engine"],
+            ["device identity", "bitstream/module hash", "HWIR fingerprint", "transport trace"],
+        ),
+        (
+            "VERIFY",
+            ["pinned source identity", "organ ownership and byte ledger", "same-model parity", "capability-preserving complete-token rate"],
+            ["all_organs"],
+            ["all required byte fields", "fallback disclosure", "protected quiescent receipt", "promotion thresholds"],
+        ),
+    ]
+    stages = []
+    for order, (stage, candidates, organs, evidence) in enumerate(specs, start=1):
+        stages.append({
+            "order": order,
+            "stage": stage,
+            "display_name": "DECODE-STEP REMOVAL" if stage == "DECODE_STEP_REMOVAL" else stage,
+            "label": DERIVED,
+            "status": "PLAN_ONLY",
+            "candidate_hypotheses": candidates,
+            "organs": organs,
+            "evidence_required": evidence,
+            "source_mutation_allowed": False,
+            "native_representation_required": True,
+        })
+    return {
+        "status": "PLAN_ONLY",
+        "label": DERIVED,
+        "ordered": True,
+        "ladder": list(GRAVITY_LADDER),
+        "stages": stages,
+        "source_mutation_policy": "No source, profile, or pinned artifact mutation is authorized by this pre-runtime plan.",
+        "claim_boundary": "Gravity candidates are derived hypotheses. They do not establish quality, speed, capability, or promotion.",
+    }
+
+
+def _three_zero_questions() -> Dict[str, Any]:
+    """Record the three zero questions without converting them into claims."""
+    return {
+        "label": DERIVED,
+        "status": "UNRESOLVED_PLAN",
+        "storage": {
+            "question": "Can required persistent storage be driven to zero without deleting information or changing the accepted function?",
+            "status": "NOT_PROVEN",
+            "current_answer": "No zero-storage claim. Source weights, recurrent state, cache state, and any accepted-token state remain explicit requirements or conditional costs.",
+            "candidates": ["eliminate duplicate state copies", "share/factorize expert and dictionary storage", "remove unused text-only vision storage from the active working set"],
+            "evidence_required": ["exact byte ledger", "reconstruction/parity proof", "resident-state and cache receipt"],
+        },
+        "independent_information": {
+            "question": "Can representations share or be generated so that independent information reaches zero while preserving the model function?",
+            "status": "NOT_PROVEN",
+            "current_answer": "No zero-independent-information claim. Shared bases, residuals, dictionaries, and route metadata are candidates whose residual information must be measured.",
+            "candidates": ["shared expert basis plus residual", "low-rank hyperconnection basis", "shared n-gram dictionary and route metadata"],
+            "evidence_required": ["rank/residual accounting", "collision and reconstruction bounds", "same-source capability parity"],
+        },
+        "execution": {
+            "question": "Can an execution path be removed to zero work without changing accepted complete-token behavior?",
+            "status": "NOT_PROVEN",
+            "current_answer": "Only conditional removal is allowed. Text-only vision and rejected speculative work may be skipped only when request mode, state, and accepted-token parity are proven.",
+            "candidates": ["text-only vision bypass", "unselected-expert elimination", "MTP rejected-work and decode-step removal"],
+            "evidence_required": ["dispatch absence trace", "accepted-token ledger", "state rollback/parity receipt"],
+        },
+        "claim_boundary": "The three zeros are questions and experiment gates, not achieved reductions.",
+    }
+
+
+def _accelerator_primitive_plan() -> Dict[str, Any]:
+    """Map every Flash candidate primitive to a current capability and gap."""
+    rows = [
+        ("packed_low_bit_gemv", "shared_expert", "packed low-bit GEMV is named in the Qwen27/FPGA pre-board scaffold", "Flash NF packing, scales, and same-model parity are not implemented or measured", "P0"),
+        ("native_nf_expert_gemv", "routed_experts", "packed low-bit GEMV schema and expert-bank placement hypothesis", "no Flash-native NF decode kernel, physical dispatch trace, or performance receipt", "P0"),
+        ("router_topk_gather", "router", "route metadata/partial-reduction transport is present in the Flash HWIR map", "no runtime top-k/gather kernel or load-balance trace", "P0"),
+        ("fused_route_gather", "router", "Flash HWIR keeps route metadata and expert-bank placement adjacent", "no fused route-to-expert gather implementation or route/latency trace", "P0"),
+        ("expert_residency_scheduling", "routed_experts", "resident weight-shard policy and expert-bank HBM hypothesis exist", "no residency scheduler, eviction trace, or per-token transfer proof", "P0"),
+        ("basis_residual_decode", "routed_experts", "shared-basis/residual is a recorded Gravity candidate", "no exact reconstruction proof or resident decoder", "P0"),
+        ("fused_gate_up_swiglu", "shared_expert", "Qwen fusion source audit and norm/epilogue scaffold exist", "Flash tensor ownership and fused dispatch parity are unverified", "P0"),
+        ("rmsnorm_epilogue", "norms", "norm/epilogue is a shared pre-board primitive", "no Flash-native kernel or physical fusion trace", "P1"),
+        ("persistent_deltanet_state_update", "deltanet", "Qwen27 persistent state/update and resident-state hypothesis exist", "Flash state geometry, sequence isolation, and update parity are unimplemented", "P0"),
+        ("deltanet_scan_state", "deltanet", "the Flash organ graph identifies repeated linear-attention layers and virtual recurrent state", "no scan kernel, state transition oracle, or physical state bandwidth trace", "P0"),
+        ("qsa_sparse_indexer_kv_gather", "sparse_attention", "Flash HWIR names indexer traversal and sparse KV gather", "no sparse kernel, budget trace, or context-dependent physical bytes", "P1"),
+        ("ngram_lookup_generator", "ngram_engine", "Flash organ graph and lookup/generator worklist exist", "no representation-native lookup/generator backend or parity oracle", "P1"),
+        ("mtp_accept_reject_rollback", "mtp", "MTP acceptance accounting is specified as a required primitive", "no accepted-token runtime, rollback implementation, or decode-step proof", "P1"),
+        ("lm_head_partitioned_topk", "lm_head", "Qwen27 vocabulary reduction/selection is a pre-board precedent", "Flash vocabulary path and complete distribution parity are unverified", "P1"),
+        ("embedding_hbm_gather", "embeddings", "HBM gather/row-cache is a derived organ primitive", "no cache locality trace or device implementation", "P2"),
+        ("low_rank_hyperconnection_mix", "residual_hyperconnections", "Flash source census identifies low-rank hyperconnections", "no existing accelerator kernel or parity implementation", "P1"),
+        ("conditional_vision_bypass", "vision_backbone", "text-only zero-compute candidate is represented in the organ graph", "no request-mode dispatch proof or multimodal parity harness", "P1"),
+        ("complete_token_acceptance_meter", "mtp", "HCLI receipt/verifier and unattended complete-work accounting exist", "Flash-native accepted-token and rollback fields are not wired to a runtime", "P0"),
+        ("kernel_genome_and_receipt_verifier", "all_organs", "kernel genome/cache and telemetry/receipt verifier are shared pre-board capabilities", "no Flash compiled kernel genome or physical device receipt", "P0"),
+        ("fpga_hwir_link_transport", "all_organs", "Qwen27/Flash HWIR, partitioner, and link sensitivity simulation exist", "no selected board, bitstream, DMA bridge, or hardware timing", "P1"),
+    ]
+    entries = [
+        {
+            "primitive": primitive,
+            "organ": organ,
+            "label": DERIVED,
+            "status": "PLAN_ONLY",
+            "priority": priority,
+            "existing_capability": capability,
+            "gap": gap,
+            "evidence_required": ["same-model reference parity", "capability receipt", "complete-token wall/GPU/dispatch trace"],
+        }
+        for primitive, organ, capability, gap, priority in rows
+    ]
+    return {
+        "status": "PLAN_ONLY",
+        "label": DERIVED,
+        "candidate_classes": [
+            "low-bit GEMV",
+            "expert routing",
+            "fused route/gather",
+            "expert execution",
+            "DeltaNet scan/state",
+            "sparse attention",
+            "MTP",
+            "norms",
+            "epilogues",
+            "persistent state",
+            "expert residency scheduling",
+        ],
+        "entries": entries,
+        "existing_capability_sources": [
+            "receipts/headless/HCLI_FPGA_PREBOARD.json",
+            "receipts/headless/QWEN27_FPGA_ORGAN_MAP.json",
+            "receipts/headless/FLASH_NEXT_FPGA_ORGAN_MAP.json",
+            "receipts/headless/HCLI_QWEN38_FUSION_SOURCE_AUDIT.json",
+        ],
+        "physical_execution_claim": False,
+        "claim_boundary": "Capability names are scaffold/pre-board precedents. Every Flash primitive must re-earn same-model parity, physical execution, and complete-token accounting.",
+    }
 
 
 def _state_record(organ: str, text: Mapping[str, Any], dtype_bytes: int) -> Dict[str, Any]:
@@ -968,6 +1204,9 @@ def run_flash_science_gate(
         }
         architecture_fingerprint = _canonical_hash({"architecture": architecture, "tensor_names": sorted(str(name) for name in weight_map), "metadata_sha256": {name: (fetched.get(name) or {}).get("sha256") for name, _ in METADATA_FILES}})
         organ_graph = _organ_graph(config, weight_map, remote_sizes, tensor_header_audit.get("tensor_headers") or {})
+        gravity_science = _gravity_science_plan()
+        zero_questions = _three_zero_questions()
+        accelerator_primitive_plan = _accelerator_primitive_plan()
         report.update({
             "metadata": _metadata_summary(fetched),
             "architecture_fingerprint": {"value": architecture_fingerprint, "algorithm": "sha256(canonical pinned metadata + sorted tensor names)", "label": DERIVED},
@@ -987,6 +1226,10 @@ def run_flash_science_gate(
                 {"organ": "qsa_sparse_attention", "hypothesis": "indexer-budget sparse block traversal", "native_kernel": "sparse attention selection and gather", "status": "PLAN_ONLY"},
                 {"organ": "mtp", "hypothesis": "accepted drafts reduce effective decode steps only when accepted work is counted", "native_kernel": "MTP accept/reject path", "status": "PLAN_ONLY"},
             ],
+            "gravity_science": gravity_science,
+            "gravity_ladder": gravity_science["stages"],
+            "three_zero_questions": zero_questions,
+            "accelerator_primitive_plan": accelerator_primitive_plan,
             "required_primitives": [
                 "dense-vs-NF reference comparator",
                 "shared-basis/residual decoder",
@@ -1047,4 +1290,11 @@ if __name__ == "__main__":
     raise SystemExit(main())
 
 
-__all__ = ["SCHEMA", "run_flash_science_gate"]
+__all__ = [
+    "GRAVITY_LADDER",
+    "SCHEMA",
+    "run_flash_science_gate",
+    "_accelerator_primitive_plan",
+    "_gravity_science_plan",
+    "_three_zero_questions",
+]

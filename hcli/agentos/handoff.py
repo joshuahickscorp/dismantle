@@ -168,6 +168,9 @@ def _model_lake_summary(repo: Path) -> Dict[str, Any]:
 
 def _flash_summary(repo: Path) -> Dict[str, Any]:
     flash = _receipt(repo, "HCLI_FLASH_NEXT_PRE_RUNTIME_SCIENCE.json") or {}
+    executable = _receipt(repo, "FLASH_NEXT_NOETIC_EXECUTABLE.json") or {}
+    ebpw = _receipt(repo, "FLASH_EBPW_BUDGET.json") or {}
+    token_ns = _receipt(repo, "FLASH_TOKEN_NS_BUDGET.json") or {}
     source = flash.get("source_identity") or flash.get("source") or {}
     promotion = flash.get("promotion_gate") or {}
     return {
@@ -191,6 +194,21 @@ def _flash_summary(repo: Path) -> Dict[str, Any]:
             "measured": promotion.get("measured") or {},
             "missing_or_refused": promotion.get("missing_or_refused") or [],
         },
+        "noetic_executable": {
+            "status": executable.get("status"),
+            "qualification": executable.get("qualification"),
+            "NOT_FOR_PROMOTION": executable.get("NOT_FOR_PROMOTION"),
+            "promotion_allowed": executable.get("promotion_allowed"),
+            "receipt_path": str(repo / "receipts" / "headless" / "FLASH_NEXT_NOETIC_EXECUTABLE.json"),
+            "native_loader": executable.get("native_loader"),
+            "native_kernels": executable.get("native_kernels"),
+            "complete_token_timing": executable.get("complete_token_timing"),
+            "runtime_genome": executable.get("runtime_genome"),
+        },
+        "budgets": {
+            "ebpw": {"status": ebpw.get("status"), "receipt_path": str(repo / "receipts" / "headless" / "FLASH_EBPW_BUDGET.json"), "measured": ebpw.get("measured"), "target_contract": ebpw.get("target_contract")},
+            "token_ns": {"status": token_ns.get("status"), "receipt_path": str(repo / "receipts" / "headless" / "FLASH_TOKEN_NS_BUDGET.json"), "system_ledger": token_ns.get("system_ledger"), "target_contract": token_ns.get("target_contract")},
+        },
         "next_action": "Keep metadata/weights/native executable identity separate; fill complete-system byte ledger and matched dense-vs-NF rows only when the pinned source is fully ready.",
     }
 
@@ -198,6 +216,10 @@ def _flash_summary(repo: Path) -> Dict[str, Any]:
 def _qwen27_summary(repo: Path) -> Dict[str, Any]:
     regression = _receipt(repo, "HCLI_ACCELERATOR_REGRESSION.json") or {}
     fusion_audit = _receipt(repo, "HCLI_QWEN38_FUSION_SOURCE_AUDIT.json") or {}
+    identity = _receipt(repo, "QWEN27_HISTORICAL_RUNTIME_IDENTITY.json") or {}
+    runtime_diff = _receipt(repo, "QWEN27_RUNTIME_DIFF.json") or {}
+    mlp = _receipt(repo, "QWEN27_MLP_DIAGNOSTIC_AB.json") or {}
+    protected = _receipt(repo, "QWEN_PROTECTED_BENCH_READY.json") or {}
     profile_path = repo / "hcli" / "hawking-native.sealed-3.14.json"
     profile = _read_object(profile_path) or {}
     current = profile.get("current_runtime") or {}
@@ -217,6 +239,7 @@ def _qwen27_summary(repo: Path) -> Dict[str, Any]:
             "fallbacks": current.get("fallbacks"),
             "bench_state": regression.get("bench_state"),
             "qualification": regression.get("qualification"),
+            "benchmark_class": regression.get("benchmark_class"),
             "current_vs_historical": regression.get("current_vs_historical"),
             "dispatch_kernel_genome": regression.get("prior_dispatch_kernel_genome"),
         },
@@ -227,6 +250,30 @@ def _qwen27_summary(repo: Path) -> Dict[str, Any]:
             "selected_graph": fusion_audit.get("selected_graph"),
             "source_contract": fusion_audit.get("source_contract"),
             "result": fusion_audit.get("result"),
+        },
+        "runtime_identity_archaeology": {
+            "status": identity.get("status"),
+            "receipt_path": str(repo / "receipts" / "headless" / "QWEN27_HISTORICAL_RUNTIME_IDENTITY.json"),
+            "historical_selection": identity.get("historical_selection"),
+            "diff_summary": runtime_diff.get("summary"),
+            "diff_receipt_path": str(repo / "receipts" / "headless" / "QWEN27_RUNTIME_DIFF.json"),
+        },
+        "mlp_selector_diagnostic": {
+            "status": mlp.get("status"),
+            "benchmark_class": mlp.get("benchmark_class"),
+            "qualification": mlp.get("qualification"),
+            "NOT_FOR_PROMOTION": mlp.get("NOT_FOR_PROMOTION"),
+            "experiment_verdict": mlp.get("experiment_verdict"),
+            "selector_verdict": mlp.get("selector_verdict"),
+            "receipt_path": str(repo / "receipts" / "headless" / "QWEN27_MLP_DIAGNOSTIC_AB.json"),
+        },
+        "protected_benchmark_watcher": {
+            "status": protected.get("status"),
+            "qualification": protected.get("qualification"),
+            "NOT_FOR_PROMOTION": protected.get("NOT_FOR_PROMOTION"),
+            "polls": len(protected.get("polls") or []),
+            "runs": protected.get("runs") or [],
+            "receipt_path": str(repo / "receipts" / "headless" / "QWEN_PROTECTED_BENCH_READY.json"),
         },
         "next_experiment": "Protected quiescent same-source A/B: record binary/artifact/tokenizer, representation, dispatches, complete wall/GPU timing, fallback count, capability, and cache/quiescence before accepting any optimization.",
     }
@@ -241,6 +288,7 @@ def _fpga_summary(repo: Path) -> Dict[str, Any]:
             "physical_board": preboard.get("physical_board"),
             "fpga_backend": preboard.get("fpga_backend"),
             "checks": preboard.get("checks") or {},
+            "simulation": preboard.get("simulation"),
         },
         "maps": {
             "qwen27": str(repo / "receipts" / "headless" / "QWEN27_FPGA_ORGAN_MAP.json"),
@@ -295,12 +343,21 @@ def build_handoff(repo_root: Optional[str | os.PathLike[str]] = None, *, emit: O
         "Qwen27 current resident observation is a contaminated/contended regression audit, not a performance qualification.",
         "No physical FPGA board, bitstream, or hardware performance is claimed.",
     ]
-    if lake_status not in {"READY", "COMPLETED"}:
+    if lake_status not in {"PASSED", "READY", "COMPLETED"}:
         blockers.append("Flash-Next ModelLake acquisition is still partial or not yet atomically published.")
     if window_status != "PASSED":
         blockers.append("The corrected one-hour unattended window has not yet produced a final PASSED receipt.")
     if fusion_status != "PASSED":
         blockers.append("Qwen3.8 fusion source semantics are not yet resolved into a source-backed dispatch consequence.")
+    qwen_mlp = _receipt(repo, "QWEN27_MLP_DIAGNOSTIC_AB.json") or {}
+    if qwen_mlp.get("benchmark_class") != "QUALIFIED_PROTECTED":
+        blockers.append("Qwen27 MLP selector result is diagnostic/contaminated or absent; it is not a protected performance qualification.")
+    flash_executable = _receipt(repo, "FLASH_NEXT_NOETIC_EXECUTABLE.json") or {}
+    if flash_executable.get("status") != "SCAFFOLD_ONLY" or flash_executable.get("promotion_allowed") is not False:
+        blockers.append("Flash-Next noetic executable contract is missing an explicit scaffold/refusal boundary.")
+    protected_watch = _receipt(repo, "QWEN_PROTECTED_BENCH_READY.json") or {}
+    if protected_watch.get("status") not in {"COMPLETED", "WAITING_FOR_QUIESCENCE"}:
+        blockers.append("The bounded protected Qwen benchmark watcher is not in a safe waiting/completed state.")
     payload: Dict[str, Any] = {
         "schema": SCHEMA,
         "generated_at": time.time(),
@@ -330,7 +387,7 @@ def build_handoff(repo_root: Optional[str | os.PathLike[str]] = None, *, emit: O
         "modellake": lake,
         "fpga": _fpga_summary(repo),
         "verification": {
-            "full_suite": {"command": "pytest -q", "last_observed_status": "PASSED", "last_observed": "712 passed, 2 skipped, 2 warnings"},
+            "full_suite": {"command": "pytest -q", "last_observed_status": "PASSED", "last_observed": "722 passed, 2 skipped"},
             "provider_focus": {"last_observed_status": "PASSED", "last_observed": "31 passed, 2 warnings"},
             "receipt_gates": {
                 "autonomy": (_receipt(repo, "HCLI_AGENTOS_AUTONOMY_GATE.json") or {}).get("status"),
@@ -355,6 +412,10 @@ def build_handoff(repo_root: Optional[str | os.PathLike[str]] = None, *, emit: O
             "refresh_fpga_preboard": f"python3 -m hcli agentos fpga-preboard --repo-root {repo} --emit {repo / 'receipts/headless/HCLI_FPGA_PREBOARD.json'}",
             "run_full_tests": "pytest -q",
             "run_qwen38_fusion_audit": f"python3 -m hcli agentos qwen38-fusion-audit --repo-root {repo} --profile {repo / 'hcli/hawking-native.sealed-3.14.json'} --emit {repo / 'receipts/headless/HCLI_QWEN38_FUSION_SOURCE_AUDIT.json'}",
+            "run_qwen27_runtime_archaeology": f"python3 -m hcli agentos qwen27-runtime-archaeology --repo-root {repo} --profile {repo / 'hcli/hawking-native.sealed-3.14.json'}",
+            "run_qwen27_mlp_diagnostic": f"python3 -m hcli agentos qwen27-mlp-ab --repo-root {repo} --profile {repo / 'hcli/hawking-native.sealed-3.14.json'} --resident-binary {repo / '.hcli/instrumented/ascension_qwen38_resident'}",
+            "watch_protected_qwen_window": f"python3 -m hcli agentos protected-bench-watch --repo-root {repo} --profile {repo / 'hcli/hawking-native.sealed-3.14.json'} --resident-binary {repo / '.hcli/instrumented/ascension_qwen38_resident'} --duration-s 21600 --interval-s 60",
+            "build_flash_executable_scaffold": f"python3 -m hcli agentos flash-executable --repo-root {repo}",
             "resume_modellake_only_if_interrupted": f"python3 -m hcli agentos background resume --workspace {repo} --repo-root {repo} {MODEL_LAKE_JOB}",
             "do_not_start": "Do not launch or promote a new Odyssey; continue only through the existing HCLI/ModelLake authorities and governed windows.",
         },

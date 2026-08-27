@@ -1,0 +1,391 @@
+{
+  "budget_policy": {
+    "allocation": "No guessed per-organ actual is accepted. A provisional ceiling may be allocated only after a representation body and loader manifest exist.",
+    "overhead_must_be_counted": true,
+    "source_payload_is_not_candidate_storage": true,
+    "zero_bytes_are_not_inferred_from_missing_fields": true
+  },
+  "chosen_representation": {
+    "deltanet": "resident state-native representation",
+    "expert_bank": "shared basis plus per-expert NF residual",
+    "id": "flash-expert-shared-basis-nf-residual-v0",
+    "label": "[D]",
+    "mtp": "explicit draft/verify/rollback representation",
+    "ngram": "lookup/compositional representation, not generic dense quantization",
+    "router": "resident route metadata and selected-expert gather",
+    "sparse_attention": "budget/index-native sparse representation",
+    "status": "HYPOTHESIS_NOT_BUILT",
+    "vision": "conditional multimodal path; text-resident omission requires an explicit separate contract"
+  },
+  "claim_boundary": "This is an EBPW budget and representation contract, not a compressed artifact measurement. Missing actual bytes remain missing.",
+  "complete_system_accounting": {
+    "bases": {
+      "actual_bytes": null,
+      "budget_bytes": null,
+      "label": "[D]",
+      "status": "WAITING_FOR_REPRESENTATION_AND_LOADER"
+    },
+    "dictionaries": {
+      "actual_bytes": null,
+      "budget_bytes": null,
+      "label": "[D]",
+      "status": "WAITING_FOR_REPRESENTATION_AND_LOADER"
+    },
+    "expert_indices": {
+      "actual_bytes": null,
+      "budget_bytes": null,
+      "label": "[D]",
+      "status": "WAITING_FOR_REPRESENTATION_AND_LOADER"
+    },
+    "generators": {
+      "actual_bytes": null,
+      "budget_bytes": null,
+      "label": "[D]",
+      "status": "WAITING_FOR_REPRESENTATION_AND_LOADER"
+    },
+    "lookup_structures": {
+      "actual_bytes": null,
+      "budget_bytes": null,
+      "label": "[D]",
+      "status": "WAITING_FOR_REPRESENTATION_AND_LOADER"
+    },
+    "mtp_representation": {
+      "actual_bytes": null,
+      "budget_bytes": null,
+      "label": "[D]",
+      "status": "WAITING_FOR_REPRESENTATION_AND_LOADER"
+    },
+    "ngram_representation": {
+      "actual_bytes": null,
+      "budget_bytes": null,
+      "label": "[D]",
+      "status": "WAITING_FOR_REPRESENTATION_AND_LOADER"
+    },
+    "required_executable_metadata": {
+      "actual_bytes": null,
+      "budget_bytes": null,
+      "label": "[D]",
+      "status": "WAITING_FOR_REPRESENTATION_AND_LOADER"
+    },
+    "residuals": {
+      "actual_bytes": null,
+      "budget_bytes": null,
+      "label": "[D]",
+      "status": "WAITING_FOR_REPRESENTATION_AND_LOADER"
+    },
+    "routing_metadata": {
+      "actual_bytes": null,
+      "budget_bytes": null,
+      "label": "[D]",
+      "status": "WAITING_FOR_REPRESENTATION_AND_LOADER"
+    },
+    "scales": {
+      "actual_bytes": null,
+      "budget_bytes": null,
+      "label": "[D]",
+      "status": "WAITING_FOR_REPRESENTATION_AND_LOADER"
+    },
+    "weight_codes": {
+      "actual_bytes": null,
+      "budget_bytes": null,
+      "label": "[D]",
+      "status": "WAITING_FOR_REPRESENTATION_AND_LOADER"
+    },
+    "zero_points": {
+      "actual_bytes": null,
+      "budget_bytes": null,
+      "label": "[D]",
+      "status": "WAITING_FOR_REPRESENTATION_AND_LOADER"
+    }
+  },
+  "label": "[D]",
+  "measured": {
+    "all_required_bytes_included": false,
+    "complete_system_bytes": null,
+    "complete_system_ebpw": null,
+    "dense_parent_execution_fallback": null,
+    "fallback_count": null,
+    "hidden_dense_rematerialization": null
+  },
+  "organs": [
+    {
+      "actual_bytes_label": "NOT_MEASURED",
+      "actual_representation_bytes": null,
+      "capability_status": "NOT_RUN",
+      "chosen_representation": "shared-basis-plus-NF-residual for expert/routed paths; organ-native representation for state, sparse, n-gram, MTP, and vision paths",
+      "label": "[D]",
+      "native_kernel_status": "PLAN_ONLY",
+      "native_loader_status": "NOT_IMPLEMENTED",
+      "organ": "embeddings",
+      "representation_status": "CANDIDATE_NOT_BUILT",
+      "source_active_bytes_per_token": 5120,
+      "source_allocation_fraction": 0.0035316625839429522,
+      "source_bytes": 1271398400,
+      "source_bytes_label": "[V] pinned safetensors header payload",
+      "source_flops_per_token": 0,
+      "source_tensor_count": 1
+    },
+    {
+      "actual_bytes_label": "NOT_MEASURED",
+      "actual_representation_bytes": null,
+      "capability_status": "NOT_RUN",
+      "chosen_representation": "shared-basis-plus-NF-residual for expert/routed paths; organ-native representation for state, sparse, n-gram, MTP, and vision paths",
+      "label": "[D]",
+      "native_kernel_status": "PLAN_ONLY",
+      "native_loader_status": "NOT_IMPLEMENTED",
+      "organ": "deltanet",
+      "representation_status": "CANDIDATE_NOT_BUILT",
+      "source_active_bytes_per_token": 4173020928,
+      "source_allocation_fraction": 0.011591725987250334,
+      "source_bytes": 4173020928,
+      "source_bytes_label": "[V] pinned safetensors header payload",
+      "source_flops_per_token": 4173004800,
+      "source_tensor_count": 324
+    },
+    {
+      "actual_bytes_label": "NOT_MEASURED",
+      "actual_representation_bytes": null,
+      "capability_status": "NOT_RUN",
+      "chosen_representation": "shared-basis-plus-NF-residual for expert/routed paths; organ-native representation for state, sparse, n-gram, MTP, and vision paths",
+      "label": "[D]",
+      "native_kernel_status": "PLAN_ONLY",
+      "native_loader_status": "NOT_IMPLEMENTED",
+      "organ": "sparse_attention",
+      "representation_status": "CANDIDATE_NOT_BUILT",
+      "source_active_bytes_per_token": 1234741248,
+      "source_allocation_fraction": 0.0034297688846178843,
+      "source_bytes": 1234716672,
+      "source_bytes_label": "[V] pinned safetensors header payload",
+      "source_flops_per_token": 1234698240,
+      "source_tensor_count": 108
+    },
+    {
+      "actual_bytes_label": "NOT_MEASURED",
+      "actual_representation_bytes": null,
+      "capability_status": "NOT_RUN",
+      "chosen_representation": "shared-basis-plus-NF-residual for expert/routed paths; organ-native representation for state, sparse, n-gram, MTP, and vision paths",
+      "label": "[D]",
+      "native_kernel_status": "PLAN_ONLY",
+      "native_loader_status": "NOT_IMPLEMENTED",
+      "organ": "router",
+      "representation_status": "CANDIDATE_NOT_BUILT",
+      "source_active_bytes_per_token": 125829120,
+      "source_allocation_fraction": 0.0003495253691324984,
+      "source_bytes": 125829120,
+      "source_bytes_label": "[V] pinned safetensors header payload",
+      "source_flops_per_token": 125829120,
+      "source_tensor_count": 48
+    },
+    {
+      "actual_bytes_label": "NOT_MEASURED",
+      "actual_representation_bytes": null,
+      "capability_status": "NOT_RUN",
+      "chosen_representation": "shared-basis-plus-NF-residual for expert/routed paths; organ-native representation for state, sparse, n-gram, MTP, and vision paths",
+      "label": "[D]",
+      "native_kernel_status": "PLAN_ONLY",
+      "native_loader_status": "NOT_IMPLEMENTED",
+      "organ": "routed_experts",
+      "representation_status": "CANDIDATE_NOT_BUILT",
+      "source_active_bytes_per_token": 4718592000,
+      "source_allocation_fraction": 0.6710887087343969,
+      "source_bytes": 241591910400,
+      "source_bytes_label": "[V] pinned safetensors header payload",
+      "source_flops_per_token": 4718592000,
+      "source_tensor_count": 96
+    },
+    {
+      "actual_bytes_label": "NOT_MEASURED",
+      "actual_representation_bytes": null,
+      "capability_status": "NOT_RUN",
+      "chosen_representation": "shared-basis-plus-NF-residual for expert/routed paths; organ-native representation for state, sparse, n-gram, MTP, and vision paths",
+      "label": "[D]",
+      "native_kernel_status": "PLAN_ONLY",
+      "native_loader_status": "NOT_IMPLEMENTED",
+      "organ": "shared_expert",
+      "representation_status": "CANDIDATE_NOT_BUILT",
+      "source_active_bytes_per_token": 472104960,
+      "source_allocation_fraction": 0.0013114028009834557,
+      "source_bytes": 472104960,
+      "source_bytes_label": "[V] pinned safetensors header payload",
+      "source_flops_per_token": 472104960,
+      "source_tensor_count": 192
+    },
+    {
+      "actual_bytes_label": "NOT_MEASURED",
+      "actual_representation_bytes": null,
+      "capability_status": "NOT_RUN",
+      "chosen_representation": "shared-basis-plus-NF-residual for expert/routed paths; organ-native representation for state, sparse, n-gram, MTP, and vision paths",
+      "label": "[D]",
+      "native_kernel_status": "PLAN_ONLY",
+      "native_loader_status": "NOT_IMPLEMENTED",
+      "organ": "lm_head",
+      "representation_status": "CANDIDATE_NOT_BUILT",
+      "source_active_bytes_per_token": 1271398400,
+      "source_allocation_fraction": 0.0035316625839429522,
+      "source_bytes": 1271398400,
+      "source_bytes_label": "[V] pinned safetensors header payload",
+      "source_flops_per_token": 1271398400,
+      "source_tensor_count": 1
+    },
+    {
+      "actual_bytes_label": "NOT_MEASURED",
+      "actual_representation_bytes": null,
+      "capability_status": "NOT_RUN",
+      "chosen_representation": "shared-basis-plus-NF-residual for expert/routed paths; organ-native representation for state, sparse, n-gram, MTP, and vision paths",
+      "label": "[D]",
+      "native_kernel_status": "PLAN_ONLY",
+      "native_loader_status": "NOT_IMPLEMENTED",
+      "organ": "mtp",
+      "representation_status": "CANDIDATE_NOT_BUILT",
+      "source_active_bytes_per_token": 5214301696,
+      "source_allocation_fraction": 0.01448417286127895,
+      "source_bytes": 5214301696,
+      "source_bytes_label": "[V] pinned safetensors header payload",
+      "source_flops_per_token": 5214213120,
+      "source_tensor_count": 31
+    },
+    {
+      "actual_bytes_label": "NOT_MEASURED",
+      "actual_representation_bytes": null,
+      "capability_status": "NOT_RUN",
+      "chosen_representation": "shared-basis-plus-NF-residual for expert/routed paths; organ-native representation for state, sparse, n-gram, MTP, and vision paths",
+      "label": "[D]",
+      "native_kernel_status": "PLAN_ONLY",
+      "native_loader_status": "NOT_IMPLEMENTED",
+      "organ": "ngram_engine",
+      "representation_status": "CANDIDATE_NOT_BUILT",
+      "source_active_bytes_per_token": 65680600,
+      "source_allocation_fraction": 0.2846282823744834,
+      "source_bytes": 102466171160,
+      "source_bytes_label": "[V] pinned safetensors header payload",
+      "source_flops_per_token": 65617920,
+      "source_tensor_count": 137
+    },
+    {
+      "actual_bytes_label": "NOT_MEASURED",
+      "actual_representation_bytes": null,
+      "capability_status": "NOT_RUN",
+      "chosen_representation": "shared-basis-plus-NF-residual for expert/routed paths; organ-native representation for state, sparse, n-gram, MTP, and vision paths",
+      "label": "[D]",
+      "native_kernel_status": "PLAN_ONLY",
+      "native_loader_status": "NOT_IMPLEMENTED",
+      "organ": "vision_backbone",
+      "representation_status": "CANDIDATE_NOT_BUILT",
+      "source_active_bytes_per_token": 0,
+      "source_allocation_fraction": 0.0024940616776695616,
+      "source_bytes": 897862112,
+      "source_bytes_label": "[V] pinned safetensors header payload",
+      "source_flops_per_token": 0,
+      "source_tensor_count": 333
+    },
+    {
+      "actual_bytes_label": "NOT_MEASURED",
+      "actual_representation_bytes": null,
+      "capability_status": "NOT_RUN",
+      "chosen_representation": "shared-basis-plus-NF-residual for expert/routed paths; organ-native representation for state, sparse, n-gram, MTP, and vision paths",
+      "label": "[D]",
+      "native_kernel_status": "PLAN_ONLY",
+      "native_loader_status": "NOT_IMPLEMENTED",
+      "organ": "residual_hyperconnections",
+      "representation_status": "CANDIDATE_NOT_BUILT",
+      "source_active_bytes_per_token": 1281249280,
+      "source_allocation_fraction": 0.0035590261423011442,
+      "source_bytes": 1281249280,
+      "source_bytes_label": "[V] pinned safetensors header payload",
+      "source_flops_per_token": 1279262720,
+      "source_tensor_count": 387
+    },
+    {
+      "actual_bytes_label": "NOT_MEASURED",
+      "actual_representation_bytes": null,
+      "capability_status": "NOT_RUN",
+      "chosen_representation": "shared-basis-plus-NF-residual for expert/routed paths; organ-native representation for state, sparse, n-gram, MTP, and vision paths",
+      "label": "[D]",
+      "native_kernel_status": "PLAN_ONLY",
+      "native_loader_status": "NOT_IMPLEMENTED",
+      "organ": "support_misc",
+      "representation_status": "CANDIDATE_NOT_BUILT",
+      "source_active_bytes_per_token": 0,
+      "source_allocation_fraction": 0.0,
+      "source_bytes": 0,
+      "source_bytes_label": "[V] pinned safetensors header payload",
+      "source_flops_per_token": 0,
+      "source_tensor_count": 0
+    },
+    {
+      "actual_bytes_label": "NOT_MEASURED",
+      "actual_representation_bytes": null,
+      "capability_status": "NOT_RUN",
+      "chosen_representation": "resident sequence-isolated state with explicit read/modify/write accounting",
+      "label": "[D]",
+      "native_kernel_status": "PLAN_ONLY",
+      "native_loader_status": "NOT_IMPLEMENTED",
+      "organ": "recurrent_state",
+      "representation_status": "REQUIRED_RESIDENT_STATE_NOT_BUILT",
+      "source_active_bytes_per_token": 235339776,
+      "source_allocation_fraction": 0.0,
+      "source_bytes": 0,
+      "source_bytes_label": "[D] virtual runtime state; no source tensor payload",
+      "source_flops_per_token": 56623104
+    }
+  ],
+  "promotion_allowed": false,
+  "schema": "hcli.agentos.flash_ebpw_budget.v1",
+  "source_identity": {
+    "architecture_fingerprint": {
+      "algorithm": "sha256(canonical pinned metadata + sorted tensor names)",
+      "label": "DERIVED",
+      "value": "8dbc9c34f223d240def13a1f7c70d3cbddbc768bc9ccc9c002683e2958b6be5b"
+    },
+    "declared_dtype_bytes": 2,
+    "header_audit": {
+      "body_bytes_loaded": 0,
+      "body_bytes_requested": 0,
+      "complete": true,
+      "header_tensor_count": 1658,
+      "payload_bytes": 359999963128
+    },
+    "index_total_size": 359999963128,
+    "science_receipt": {
+      "path": "/Users/scammermike/Downloads/hawking/receipts/headless/HCLI_FLASH_NEXT_PRE_RUNTIME_SCIENCE.json",
+      "sha256": "d74f9b747e11afcccfdc1d78167bada27f926e5e70d654050ac5ae9fd47dd7d1",
+      "status": "PASSED"
+    },
+    "source_identity": {
+      "expected_complete_source_bytes": 360023286454,
+      "expected_file_count": 144,
+      "labels": {
+        "derived": "DERIVED",
+        "local_physical": "LOCAL_PHYSICAL",
+        "upstream": "UPSTREAM_SOURCE"
+      },
+      "page": "https://huggingface.co/Qwen/Qwen3.8-Flash-Next",
+      "pinned_revision": "34567a4712bc9766c4449e2e98e4468bfa24d915",
+      "repo": "Qwen/Qwen3.8-Flash-Next"
+    },
+    "source_parameter_count": 179999981564,
+    "source_payload_bytes": 359999963128
+  },
+  "status": "PLANNED_UNTIL_VERIFIED_BODY",
+  "target_contract": {
+    "complete_system_byte_fields": [
+      "weight_codes",
+      "scales",
+      "zero_points",
+      "bases",
+      "residuals",
+      "dictionaries",
+      "expert_indices",
+      "routing_metadata",
+      "generators",
+      "lookup_structures",
+      "ngram_representation",
+      "mtp_representation",
+      "required_executable_metadata"
+    ],
+    "complete_system_ebpw_max": 1.0,
+    "denominator": "source_parameter_count derived from complete pinned header payload / declared dtype bytes",
+    "target_ceiling_bytes": 179999981564,
+    "target_ceiling_is_not_an_actual_measurement": true
+  }
+}

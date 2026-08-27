@@ -158,6 +158,7 @@ tools/sovereignty/__pycache__/
 /.hcli/sessions/
 /.hcli/receipts/*.json
 /.hcli/background/
+/.hcli/instrumented/
 /.hcli/autonomy-window/
 /.hcli/autonomy-window-*/
 /.hcli/agentos/

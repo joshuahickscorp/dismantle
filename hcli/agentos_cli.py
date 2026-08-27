@@ -133,6 +133,25 @@ def build_parser() -> argparse.ArgumentParser:
     accelerator_regression.add_argument("--timeout-s", type=float, default=180.0)
     accelerator_regression.add_argument("--emit", default=None)
 
+    qwen27_runtime_archaeology = sub.add_parser(
+        "qwen27-runtime-archaeology",
+        help="reconstruct and diff the current Qwen27 runtime identity against the pinned historical receipt",
+    )
+    qwen27_runtime_archaeology.add_argument("--repo-root", default=None)
+    qwen27_runtime_archaeology.add_argument("--profile", default=None)
+    qwen27_runtime_archaeology.add_argument("--identity-emit", default=None)
+    qwen27_runtime_archaeology.add_argument("--diff-emit", default=None)
+
+    qwen27_mlp_ab = sub.add_parser(
+        "qwen27-mlp-ab",
+        help="run the bounded source-approved Qwen27 MLP selector diagnostic A/B",
+    )
+    qwen27_mlp_ab.add_argument("--repo-root", default=None)
+    qwen27_mlp_ab.add_argument("--profile", default=None)
+    qwen27_mlp_ab.add_argument("--resident-binary", default=None)
+    qwen27_mlp_ab.add_argument("--timeout-s", type=float, default=180.0)
+    qwen27_mlp_ab.add_argument("--emit", default=None)
+
     fusion_audit = sub.add_parser(
         "qwen38-fusion-audit",
         help="resolve Qwen3.8 fusion values and source-derived dispatch consequences without GPU work",
@@ -164,6 +183,16 @@ def build_parser() -> argparse.ArgumentParser:
     flash_science.add_argument("--repo-root", default=None)
     flash_science.add_argument("--timeout-s", type=float, default=30.0)
     flash_science.add_argument("--emit", default=None)
+
+    flash_executable = sub.add_parser(
+        "flash-executable",
+        help="emit the Flash-Next native executable, EBPW, and complete-token budget scaffolds",
+    )
+    flash_executable.add_argument("--repo-root", default=None)
+    flash_executable.add_argument("--science-receipt", default=None)
+    flash_executable.add_argument("--emit", default=None)
+    flash_executable.add_argument("--ebpw-emit", default=None)
+    flash_executable.add_argument("--token-ns-emit", default=None)
 
     preboard = sub.add_parser(
         "preboard",
@@ -202,6 +231,21 @@ def build_parser() -> argparse.ArgumentParser:
     )
     fpga_preboard.add_argument("--repo-root", default=None)
     fpga_preboard.add_argument("--emit", default=None)
+
+    protected_bench_watch = sub.add_parser(
+        "protected-bench-watch",
+        help="wait for a safe protected Qwen window and run the bounded diagnostic",
+    )
+    protected_bench_watch.add_argument("--repo-root", default=None)
+    protected_bench_watch.add_argument("--profile", default=None)
+    protected_bench_watch.add_argument("--resident-binary", default=None)
+    protected_bench_watch.add_argument("--emit", default=None)
+    protected_bench_watch.add_argument("--result-emit", default=None)
+    protected_bench_watch.add_argument("--duration-s", type=float, default=6 * 3600.0)
+    protected_bench_watch.add_argument("--interval-s", type=float, default=60.0)
+    protected_bench_watch.add_argument("--timeout-s", type=float, default=180.0)
+    protected_bench_watch.add_argument("--once", action="store_true")
+    protected_bench_watch.add_argument("--pause-known-jobs", action="store_true")
 
     handoff = sub.add_parser(
         "handoff",
@@ -357,6 +401,31 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             _emit(report)
             return 0 if report.get("status") == "PASSED" else 1
 
+        if args.command == "qwen27-runtime-archaeology":
+            from hcli.agentos.qwen27_runtime_identity import run_runtime_archaeology
+
+            report = run_runtime_archaeology(
+                repo_root=args.repo_root,
+                profile=args.profile,
+                identity_emit=args.identity_emit,
+                diff_emit=args.diff_emit,
+            )
+            _emit(report)
+            return 0 if report.get("status") == "PASSED" else 1
+
+        if args.command == "qwen27-mlp-ab":
+            from hcli.agentos.qwen27_mlp_diagnostic import run_qwen27_mlp_diagnostic_ab
+
+            report = run_qwen27_mlp_diagnostic_ab(
+                repo_root=args.repo_root,
+                profile=args.profile,
+                resident_binary=args.resident_binary,
+                emit=args.emit,
+                timeout_s=args.timeout_s,
+            )
+            _emit(report)
+            return 0 if report.get("status") == "PASSED" else 1
+
         if args.command == "qwen38-fusion-audit":
             from hcli.agentos.qwen38_fusion_audit import run_qwen38_fusion_source_audit
 
@@ -397,6 +466,19 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 repo_root=args.repo_root,
                 emit=args.emit,
                 timeout_s=args.timeout_s,
+            )
+            _emit(report)
+            return 0 if report.get("status") == "PASSED" else 1
+
+        if args.command == "flash-executable":
+            from hcli.agentos.flash_executable import run_flash_executable_scaffold
+
+            report = run_flash_executable_scaffold(
+                repo_root=args.repo_root,
+                science_receipt=args.science_receipt,
+                emit=args.emit,
+                ebpw_emit=args.ebpw_emit,
+                token_ns_emit=args.token_ns_emit,
             )
             _emit(report)
             return 0 if report.get("status") == "PASSED" else 1
@@ -447,6 +529,24 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             report = run_fpga_preboard(repo_root=args.repo_root, emit=args.emit)
             _emit(report)
             return 0 if report.get("status") == "PASSED" else 1
+
+        if args.command == "protected-bench-watch":
+            from hcli.agentos.protected_benchmark_watcher import run_protected_benchmark_watcher
+
+            report = run_protected_benchmark_watcher(
+                repo_root=args.repo_root,
+                profile=args.profile,
+                resident_binary=args.resident_binary,
+                emit=args.emit,
+                result_emit=args.result_emit,
+                duration_s=args.duration_s,
+                interval_s=args.interval_s,
+                once=args.once,
+                pause_known_jobs=args.pause_known_jobs,
+                timeout_s=args.timeout_s,
+            )
+            _emit(report)
+            return 0 if report.get("status") in {"COMPLETED", "WAITING_FOR_QUIESCENCE"} else 1
 
         if args.command == "handoff":
             from hcli.agentos.handoff import build_handoff

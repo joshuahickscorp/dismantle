@@ -1,7 +1,7 @@
 {
   "capacity": {
-    "free_after_expected_bytes": 3026739354954,
-    "free_bytes": 3386762641408,
+    "free_after_expected_bytes": 3026753961290,
+    "free_bytes": 3386777247744,
     "path": "/Volumes/corpdrive/hawking-modellake"
   },
   "checks": {
@@ -10,7 +10,7 @@
     "job_identity_matches_pinned_target": true,
     "job_resumable": true,
     "no_delete_policy": true,
-    "partial_not_final": true
+    "partial_not_final": false
   },
   "claim_boundary": "This receipt observes a resumable acquisition and never claims a partial tree is ready; it makes no model capability or performance claim.",
   "expected_argv": [
@@ -23,43 +23,6 @@
     "34567a4712bc9766c4449e2e98e4468bfa24d915"
   ],
   "final": {
-    "direct_bytes": 0,
-    "direct_files": 0,
-    "entries": [],
-    "path": "/Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc",
-    "present": false
-  },
-  "final_manifest": null,
-  "job": {
-    "argv": [
-      "python3",
-      "tools/odyssey/modellake.py",
-      "acquire",
-      "--repo",
-      "Qwen/Qwen3.8-Flash-Next",
-      "--revision",
-      "34567a4712bc9766c4449e2e98e4468bfa24d915"
-    ],
-    "created_at": 1787799182.557255,
-    "cwd": "/Users/scammermike/Downloads/hawking",
-    "error": null,
-    "finished_at": null,
-    "job_id": "job-2f77c1d6-e33b-44fe-bc12-549cf47805c7",
-    "label": "modellake-flash-next-acquire",
-    "log_path": "/Users/scammermike/Downloads/hawking/.hcli/background/logs/job-2f77c1d6-e33b-44fe-bc12-549cf47805c7.log",
-    "parent_job_id": null,
-    "pid": 36538,
-    "restart_policy": "explicit rerun from argv; never resume a process mid-token",
-    "resumable": true,
-    "returncode": null,
-    "schema": "hcli.agentos.background_job.v1",
-    "started_at": 1787799182.557255,
-    "state": "RUNNING",
-    "timeout_s": null
-  },
-  "next_action": "If RUNNING_SAFE, continue observing. If interrupted, re-census and explicitly resume the same pinned argv; publish only after the existing tool verifies every file and atomically renames the tree.",
-  "observed_at": 1787804930.209901,
-  "partial": {
     "direct_bytes": 360023286454,
     "direct_files": 144,
     "entries": [
@@ -640,13 +603,62 @@
         "name": "vocab.json"
       }
     ],
-    "path": "/Volumes/corpdrive/hawking-modellake/partial/Qwen--Qwen3.8-Flash-Next@34567a4712bc",
+    "path": "/Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc",
     "present": true
+  },
+  "final_manifest": {
+    "acquired_at": "2026-08-27T04:53:13Z",
+    "bytes": 360053432320,
+    "n_files": 144,
+    "n_sha256_verified": 132,
+    "n_size_only_verified": 12,
+    "path": "/Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc",
+    "reacquisition": "hf download Qwen/Qwen3.8-Flash-Next --revision 34567a4712bc9766c4449e2e98e4468bfa24d915 --local-dir <dest>",
+    "repo": "Qwen/Qwen3.8-Flash-Next",
+    "resolved_sha": "34567a4712bc9766c4449e2e98e4468bfa24d915",
+    "revision": "34567a4712bc9766c4449e2e98e4468bfa24d915",
+    "wall_s": 7210.4
+  },
+  "job": {
+    "argv": [
+      "python3",
+      "tools/odyssey/modellake.py",
+      "acquire",
+      "--repo",
+      "Qwen/Qwen3.8-Flash-Next",
+      "--revision",
+      "34567a4712bc9766c4449e2e98e4468bfa24d915"
+    ],
+    "created_at": 1787799182.557255,
+    "cwd": "/Users/scammermike/Downloads/hawking",
+    "error": null,
+    "finished_at": 1787806393.376609,
+    "job_id": "job-2f77c1d6-e33b-44fe-bc12-549cf47805c7",
+    "label": "modellake-flash-next-acquire",
+    "log_path": "/Users/scammermike/Downloads/hawking/.hcli/background/logs/job-2f77c1d6-e33b-44fe-bc12-549cf47805c7.log",
+    "parent_job_id": null,
+    "pid": 36538,
+    "restart_policy": "explicit rerun from argv; never resume a process mid-token",
+    "resumable": true,
+    "returncode": 0,
+    "schema": "hcli.agentos.background_job.v1",
+    "started_at": 1787799182.557255,
+    "state": "COMPLETED",
+    "timeout_s": null
+  },
+  "next_action": "If RUNNING_SAFE, continue observing. If interrupted, re-census and explicitly resume the same pinned argv; publish only after the existing tool verifies every file and atomically renames the tree.",
+  "observed_at": 1787807485.535199,
+  "partial": {
+    "direct_bytes": 0,
+    "direct_files": 0,
+    "entries": [],
+    "path": "/Volumes/corpdrive/hawking-modellake/partial/Qwen--Qwen3.8-Flash-Next@34567a4712bc",
+    "present": false
   },
   "qualification": "MODELLAKE_FLASH_ACQUISITION_SUPERVISED_NO_DELETE",
   "repo_root": "/Users/scammermike/Downloads/hawking",
   "schema": "hcli.agentos.modellake_supervision.v1",
-  "status": "RUNNING_SAFE",
+  "status": "PASSED",
   "target": {
     "expected_bytes": 360023286454,
     "pinned_revision": "34567a4712bc9766c4449e2e98e4468bfa24d915",

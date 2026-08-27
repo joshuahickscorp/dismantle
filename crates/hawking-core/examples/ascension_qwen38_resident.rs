@@ -16,6 +16,8 @@
 //! RuntimeBackend behind the generic native connector; other model families
 //! can provide the same JSONL contract without changing AgentOS.
 
+#![recursion_limit = "256"]
+
 use serde_json::{json, Value};
 use std::env;
 use std::io::{self, BufRead, BufReader, Write};
@@ -120,6 +122,18 @@ fn error_reply(id: &str, error: impl std::fmt::Display) -> Value {
         "protocol": PROTOCOL,
         "error": error.to_string(),
     })
+}
+
+fn sum_optional(values: &[Option<u64>]) -> Option<u64> {
+    let mut total = 0u64;
+    for value in values {
+        total = total.checked_add((*value)?)?;
+    }
+    Some(total)
+}
+
+fn sum_values(values: &[u64]) -> u64 {
+    values.iter().copied().fold(0u64, u64::saturating_add)
 }
 
 #[cfg(target_os = "macos")]
@@ -248,10 +262,29 @@ fn serve_request(
         .map_err(|e| format!("native generation: {e}"))?;
     let wall_ns = started.elapsed().as_nanos() as u64;
     let generated = result.new_tokens().to_vec();
+    let generated_count = generated.len();
+    let split = result.prompt_len.min(result.gpu_ns.len());
+    let dispatch_split = result.prompt_len.min(result.dispatches.len());
+    let prefill_gpu_ns = sum_optional(&result.gpu_ns[..split]);
+    let decode_gpu_ns = sum_optional(&result.gpu_ns[split..]);
+    let complete_gpu_ns = sum_optional(&result.gpu_ns);
+    let prefill_dispatches = sum_values(&result.dispatches[..dispatch_split]);
+    let decode_dispatches = sum_values(&result.dispatches[dispatch_split..]);
+    let dispatches = sum_values(&result.dispatches);
+    let kernel_histogram = session.dispatched_kernel_histogram();
     let text = tokenizer
         .decode(&generated, true)
         .map_err(|e| format!("decode generated tokens: {e}"))?;
-    let generated_count = generated.len();
+    let complete_wall_ns = started.elapsed().as_nanos() as u64;
+    let complete_wall_ns_per_generated_token = if generated_count > 0 {
+        Some(complete_wall_ns as f64 / generated_count as f64)
+    } else {
+        None
+    };
+    let gpu_ns_per_generated_token = complete_gpu_ns.map(|value| {
+        value as f64 / generated_count.max(1) as f64
+    });
+    let dispatches_per_generated_token = dispatches as f64 / generated_count.max(1) as f64;
     let complete_tps = if wall_ns > 0 {
         Some(generated_count as f64 / (wall_ns as f64 / 1e9))
     } else {
@@ -285,6 +318,52 @@ fn serve_request(
         "dense_w_materialized": result.dense_w_materialized,
         "model_open_count": 1,
         "weight_upload_count": 1,
+        "metrics": {
+            "generation_wall_ns": wall_ns,
+            "complete_wall_ns": complete_wall_ns,
+            "complete_wall_ns_per_generated_token": complete_wall_ns_per_generated_token,
+            "gpu_ns": complete_gpu_ns,
+            "gpu_ns_per_generated_token": gpu_ns_per_generated_token,
+            "wall_minus_gpu_ns": complete_gpu_ns.map(|value| complete_wall_ns.saturating_sub(value)),
+            "dispatches": dispatches,
+            "dispatches_per_generated_token": dispatches_per_generated_token,
+            "generated_tokens": generated_count,
+            "prefill": {
+                "steps": result.prompt_len,
+                "wall_ns": result.prefill_wall_ns,
+                "gpu_ns": prefill_gpu_ns,
+                "dispatches": prefill_dispatches,
+                "wall_ns_per_step": result.prefill_wall_ns as f64 / result.prompt_len.max(1) as f64,
+            },
+            "decode": {
+                "steps": result.decode_steps,
+                "generated_tokens_after_prefill": result.decode_steps,
+                "wall_ns": result.decode_wall_ns,
+                "gpu_ns": decode_gpu_ns,
+                "dispatches": decode_dispatches,
+                "wall_ns_per_step": result.decode_wall_ns as f64 / result.decode_steps.max(1) as f64,
+            },
+            "step_trace": {
+                "wall_ns": result.wall_ns_per_step,
+                "gpu_ns": result.gpu_ns,
+                "wait_ns": result.wait_ns,
+                "encode_ns": result.encode_ns,
+                "submit_ns": result.submit_ns,
+                "dispatches": result.dispatches,
+            },
+            "kernel_genome": {
+                "trace_enabled": env::var("HAWKING_TRACE_DISPATCH").ok().as_deref() == Some("1"),
+                "histogram": kernel_histogram,
+                "exact_when_trace_enabled": true,
+            },
+            "capability": {
+                "resident": true,
+                "fallbacks": result.fallbacks,
+                "dense_w_materialized": result.dense_w_materialized,
+                "weights_loaded_once": true,
+                "complete_token_accounting": true,
+            },
+        },
     }))
 }
 

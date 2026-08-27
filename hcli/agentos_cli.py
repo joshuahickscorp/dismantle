@@ -42,6 +42,15 @@ def _emit(value: Any) -> None:
     print(json.dumps(value, indent=2, sort_keys=True, default=str))
 
 
+def _parse_env_assignment(value: str) -> tuple[str, str]:
+    key, separator, item = str(value).partition("=")
+    if not separator or not key:
+        raise argparse.ArgumentTypeError(
+            f"expected KEY=VALUE, got {value!r}"
+        )
+    return key, item
+
+
 def _add_paths(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--workspace", default=os.getcwd(), help="AgentOS workspace root")
     parser.add_argument("--repo-root", default=None, help="repository root for read/evidence surfaces")
@@ -388,6 +397,14 @@ def build_parser() -> argparse.ArgumentParser:
     protected_accelerator.add_argument("--repo-root", default=None)
     protected_accelerator.add_argument("--profile", default=None)
     protected_accelerator.add_argument("--resident-binary", default=None)
+    protected_accelerator.add_argument(
+        "--fusion-env",
+        action="append",
+        default=[],
+        type=_parse_env_assignment,
+        metavar="KEY=VALUE",
+        help="child-only fusion environment override; repeat for multiple controls",
+    )
     protected_accelerator.add_argument("--prompt", default="Return exactly: HAWKING_OK")
     protected_accelerator.add_argument("--warmup-requests", type=int, default=1)
     protected_accelerator.add_argument("--measure-requests", type=int, default=5)
@@ -570,6 +587,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 repo_root=args.repo_root,
                 profile=args.profile,
                 resident_binary=args.resident_binary,
+                fusion_env_overrides=dict(args.fusion_env),
                 emit=args.emit,
                 timeout_s=args.timeout_s,
             )
@@ -876,6 +894,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 repo_root=args.repo_root,
                 profile=args.profile,
                 resident_binary=args.resident_binary,
+                fusion_env_overrides=dict(args.fusion_env),
                 prompt=args.prompt,
                 warmup_requests=args.warmup_requests,
                 measure_requests=args.measure_requests,

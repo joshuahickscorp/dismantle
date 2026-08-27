@@ -324,6 +324,7 @@ def run_protected_accelerator_benchmark(
     repo_root: Optional[str | os.PathLike[str]] = None,
     profile: Optional[str | os.PathLike[str]] = None,
     resident_binary: Optional[str | os.PathLike[str]] = None,
+    fusion_env_overrides: Optional[Mapping[str, Any]] = None,
     prompt: str = DEFAULT_PROMPT,
     warmup_requests: int = DEFAULT_WARMUP_REQUESTS,
     measure_requests: int = DEFAULT_MEASURE_REQUESTS,
@@ -345,6 +346,10 @@ def run_protected_accelerator_benchmark(
     ready_timeout = max(0.1, float(ready_timeout_s))
     interval = max(0.1, min(60.0, float(interval_s)))
     request_timeout = max(0.1, float(timeout_s))
+    requested_fusion_overrides = {
+        str(key): str(value)
+        for key, value in dict(fusion_env_overrides or {}).items()
+    }
     started = time.time()
     report: Dict[str, Any] = {
         "schema": SCHEMA,
@@ -377,7 +382,9 @@ def run_protected_accelerator_benchmark(
             "gpu_metric_must_be_provider_declared_or_explicitly_derived": True,
             "missing_metrics_never_become_zero": True,
             "promotion_requires_separate_capability_and_quality_gate": True,
+            "fusion_env_overrides_are_child_only": True,
         },
+        "fusion_env_overrides": dict(requested_fusion_overrides),
         "machine": {"platform": platform.platform(), "architecture": platform.machine()},
         "readiness_polls": [],
         "warmup": [],
@@ -427,6 +434,17 @@ def run_protected_accelerator_benchmark(
                 mode="resident",
                 resident_binary=str(Path(resident_binary).expanduser().resolve()),
             )
+        if requested_fusion_overrides:
+            effective_fusion_env = dict(config.fusion_env)
+            effective_fusion_env.update(requested_fusion_overrides)
+            # A deliberate one-control experiment is allowed to change the
+            # profile's required value in the child only.  The profile file,
+            # source specimen, and sealed default remain untouched.
+            config = replace(
+                config,
+                fusion_env=effective_fusion_env,
+                require_fusion_env=False,
+            )
         # Trace is a child-environment request, not a profile/source mutation.
         runtime_env = dict(getattr(config, "runtime_env", {}) or {})
         runtime_env.setdefault("HAWKING_TRACE_DISPATCH", "1")
@@ -437,6 +455,7 @@ def run_protected_accelerator_benchmark(
         report["identity"] = {
             "profile": _safe(config.identity()),
             "child_runtime_env_overrides": {"HAWKING_TRACE_DISPATCH": runtime_env.get("HAWKING_TRACE_DISPATCH")},
+            "child_fusion_env_overrides": dict(requested_fusion_overrides),
         }
         connector = HawkingNativeConnector(config)
         connector.start(timeout=request_timeout)
@@ -540,6 +559,13 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser.add_argument("--repo-root")
     parser.add_argument("--profile")
     parser.add_argument("--resident-binary")
+    parser.add_argument(
+        "--fusion-env",
+        action="append",
+        default=[],
+        metavar="KEY=VALUE",
+        help="child-only fusion environment override; repeat for multiple controls",
+    )
     parser.add_argument("--prompt", default=DEFAULT_PROMPT)
     parser.add_argument("--warmup-requests", type=int, default=DEFAULT_WARMUP_REQUESTS)
     parser.add_argument("--measure-requests", type=int, default=DEFAULT_MEASURE_REQUESTS)
@@ -549,10 +575,17 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser.add_argument("--timeout-s", type=float, default=DEFAULT_TIMEOUT_S)
     parser.add_argument("--emit")
     args = parser.parse_args(argv)
+    fusion_env_overrides: Dict[str, str] = {}
+    for assignment in args.fusion_env:
+        key, separator, value = str(assignment).partition("=")
+        if not separator or not key:
+            parser.error(f"--fusion-env requires KEY=VALUE, got {assignment!r}")
+        fusion_env_overrides[key] = value
     report = run_protected_accelerator_benchmark(
         repo_root=args.repo_root,
         profile=args.profile,
         resident_binary=args.resident_binary,
+        fusion_env_overrides=fusion_env_overrides,
         prompt=args.prompt,
         warmup_requests=args.warmup_requests,
         measure_requests=args.measure_requests,

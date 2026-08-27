@@ -974,3 +974,14 @@ def test_cli_exposes_general_science_surfaces():
     assert parser.parse_args(["flash-executable", "--router-representation-ab-receipt", "router-ab.json"]).router_representation_ab_receipt == "router-ab.json"
     assert parser.parse_args(["protected-bench-watch"]).command == "protected-bench-watch"
     assert parser.parse_args(["protected-accelerator-bench"]).command == "protected-accelerator-bench"
+    parsed = parser.parse_args([
+        "protected-accelerator-bench",
+        "--fusion-env",
+        "HAWKING_QWEN38_FUSE_MLP=pair",
+        "--fusion-env",
+        "HAWKING_QWEN38_FUSE_GQA_QKV=1",
+    ])
+    assert parsed.fusion_env == [
+        ("HAWKING_QWEN38_FUSE_MLP", "pair"),
+        ("HAWKING_QWEN38_FUSE_GQA_QKV", "1"),
+    ]

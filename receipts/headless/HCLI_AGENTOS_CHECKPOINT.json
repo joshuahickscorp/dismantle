@@ -20,7 +20,7 @@
     ],
     "download_performed": false,
     "external_write_performed": false,
-    "generated_at": 1787801797.554404,
+    "generated_at": 1787801895.649099,
     "network_probed": false,
     "repo_root": "/Users/scammermike/Downloads/hawking",
     "schema": "hcli.agentos.connectivity.v1",
@@ -321,8 +321,8 @@
     },
     "modellake_supervision": {
       "capacity": {
-        "free_after_expected_bytes": 3176911035722,
-        "free_bytes": 3536934322176,
+        "free_after_expected_bytes": 3155166862666,
+        "free_bytes": 3515190149120,
         "path": "/Volumes/corpdrive/hawking-modellake"
       },
       "checks": {
@@ -488,8 +488,8 @@
       "status": "PASSED"
     }
   },
-  "generated_at": 1787801797.5602958,
-  "git_revision": "9d373ecc4863b244fc74761c99fc837f7705f3db",
+  "generated_at": 1787801895.654111,
+  "git_revision": "e8d9871e87a8e91cda792de4f96d07fb4eb5003f",
   "host": {
     "machine": "arm64",
     "platform": "macOS-27.0-arm64-arm-64bit-Mach-O",

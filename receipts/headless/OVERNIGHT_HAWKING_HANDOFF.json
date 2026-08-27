@@ -5,48 +5,10 @@
       "9d373ecc4863b244fc74761c99fc837f7705f3db"
     ],
     "branch": "odyssey-i",
-    "git_revision": "9d373ecc4863b244fc74761c99fc837f7705f3db",
+    "git_revision": "e8d9871e87a8e91cda792de4f96d07fb4eb5003f",
     "unrelated_preserved_edit": "tools/odyssey_ctl.py",
     "working_tree_status": [
-      "M .gitignore",
-      " M hcli/agentos/__init__.py",
-      " M hcli/agentos/checkpoint.py",
-      " M hcli/agentos/runtime.py",
-      " M hcli/agentos_cli.py",
-      " M hcli/controller.py",
-      " M hcli/executors.py",
-      " M hcli/flash_next.py",
-      " M hcli/hawking_native.py",
-      " M hcli/mission.py",
-      " M receipts/headless/HCLI_AGENTOS_CHECKPOINT.json",
-      " M tools/haider/hcli/tests/test_mission.py",
-      " M tools/haider/hcli/tests/test_mutation_lock_race.py",
-      " M tools/odyssey_ctl.py",
-      "?? hcli/agentos/accelerator_regression.py",
-      "?? hcli/agentos/autonomy_gate.py",
-      "?? hcli/agentos/charge.py",
-      "?? hcli/agentos/flash_science.py",
-      "?? hcli/agentos/fpga_preboard.py",
-      "?? hcli/agentos/handoff.py",
-      "?? hcli/agentos/modellake_gate.py",
-      "?? hcli/agentos/modellake_supervisor.py",
-      "?? hcli/agentos/preboard.py",
-      "?? hcli/agentos/representation_ab.py",
-      "?? hcli/agentos/science_maps.py",
-      "?? receipts/headless/FLASH_NEXT_FPGA_ORGAN_MAP.json",
-      "?? receipts/headless/FLASH_NEXT_PRECEDENT_MAP.json",
-      "?? receipts/headless/HAWKING_INITIAL_CHARGE.json",
-      "?? receipts/headless/HCLI_ACCELERATOR_REGRESSION.json",
-      "?? receipts/headless/HCLI_AGENTOS_AUTONOMY_GATE.json",
-      "?? receipts/headless/HCLI_AGENTOS_PREBOARD.json",
-      "?? receipts/headless/HCLI_DENSE_VS_NF_AB_SCAFFOLD.json",
-      "?? receipts/headless/HCLI_FLASH_NEXT_PRE_RUNTIME_SCIENCE.json",
-      "?? receipts/headless/HCLI_FPGA_PREBOARD.json",
-      "?? receipts/headless/HCLI_MODELLAKE_FLASH_ACQUISITION_SUPERVISION.json",
-      "?? receipts/headless/HCLI_MODELLAKE_FLASH_CENSUS.json",
-      "?? receipts/headless/OVERNIGHT_HAWKING_HANDOFF.json",
-      "?? receipts/headless/QWEN27_FPGA_ORGAN_MAP.json",
-      "?? receipts/headless/QWEN38_ACCELERATOR_TRANSFER_MAP.json"
+      "M tools/odyssey_ctl.py"
     ]
   },
   "blockers": [
@@ -263,7 +225,7 @@
       "telemetry/receipt verifier"
     ]
   },
-  "generated_at": 1787801795.8466182,
+  "generated_at": 1787801894.566111,
   "hcli": {
     "background_jobs": [
       {
@@ -562,18 +524,18 @@
       "progress_workspaces": [
         {
           "checks": {},
-          "cycles": 21,
+          "cycles": 23,
           "deadline": 1787803878.20885,
           "metrics": {
-            "accepted": 20,
-            "attempted": 21,
+            "accepted": 22,
+            "attempted": 23,
             "human_interventions": 0,
             "inconclusive": 1,
-            "model_calls": 21,
+            "model_calls": 23,
             "rejected": 0,
             "retries": 1,
-            "typed_tool_calls": 42,
-            "verifier_calls": 20
+            "typed_tool_calls": 46,
+            "verifier_calls": 22
           },
           "path": "/Users/scammermike/Downloads/hawking/.hcli/autonomy-window-verified/window-progress.json",
           "started_at": 1787800278.20885,

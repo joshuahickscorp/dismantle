@@ -1,7 +1,7 @@
 {
   "capacity": {
-    "free_after_expected_bytes": 3176911035722,
-    "free_bytes": 3536934322176,
+    "free_after_expected_bytes": 3155166862666,
+    "free_bytes": 3515190149120,
     "path": "/Volumes/corpdrive/hawking-modellake"
   },
   "checks": {
@@ -58,10 +58,10 @@
     "timeout_s": null
   },
   "next_action": "If RUNNING_SAFE, continue observing. If interrupted, re-census and explicitly resume the same pinned argv; publish only after the existing tool verifies every file and atomically renames the tree.",
-  "observed_at": 1787801648.7194161,
+  "observed_at": 1787801894.5933151,
   "partial": {
-    "direct_bytes": 198547621562,
-    "direct_files": 76,
+    "direct_bytes": 219296356858,
+    "direct_files": 84,
     "entries": [
       {
         "bytes": 1570,
@@ -364,8 +364,40 @@
         "name": "model-00068-of-00131.safetensors"
       },
       {
+        "bytes": 3355443376,
+        "name": "model-00069-of-00131.safetensors"
+      },
+      {
         "bytes": 1832523520,
         "name": "model-00070-of-00131.safetensors"
+      },
+      {
+        "bytes": 3355443376,
+        "name": "model-00071-of-00131.safetensors"
+      },
+      {
+        "bytes": 1839072128,
+        "name": "model-00072-of-00131.safetensors"
+      },
+      {
+        "bytes": 3355443376,
+        "name": "model-00073-of-00131.safetensors"
+      },
+      {
+        "bytes": 1716599840,
+        "name": "model-00074-of-00131.safetensors"
+      },
+      {
+        "bytes": 3355443376,
+        "name": "model-00075-of-00131.safetensors"
+      },
+      {
+        "bytes": 1938689480,
+        "name": "model-00076-of-00131.safetensors"
+      },
+      {
+        "bytes": 1832600344,
+        "name": "model-00078-of-00131.safetensors"
       }
     ],
     "path": "/Volumes/corpdrive/hawking-modellake/partial/Qwen--Qwen3.8-Flash-Next@34567a4712bc",

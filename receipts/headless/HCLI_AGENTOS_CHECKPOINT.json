@@ -22,7 +22,7 @@
     ],
     "download_performed": false,
     "external_write_performed": false,
-    "generated_at": 1787793227.84708,
+    "generated_at": 1787794722.8122501,
     "network_probed": true,
     "repo_root": "/Users/scammermike/Downloads/hawking",
     "schema": "hcli.agentos.connectivity.v1",
@@ -45,7 +45,7 @@
         "version": "git version 2.54.0 (Apple Git-156)"
       },
       "github": {
-        "elapsed_ms": 91.57,
+        "elapsed_ms": 68.07,
         "http_status": 200,
         "status": "AVAILABLE",
         "url": "https://api.github.com/"
@@ -69,7 +69,7 @@
         "status": "AUTHENTICATED"
       },
       "huggingface": {
-        "elapsed_ms": 44.2,
+        "elapsed_ms": 40.62,
         "http_status": 200,
         "status": "AVAILABLE",
         "url": "https://huggingface.co/"
@@ -107,7 +107,7 @@
         "unresolved": []
       },
       "web": {
-        "elapsed_ms": 160.99,
+        "elapsed_ms": 102.03,
         "http_status": 200,
         "status": "AVAILABLE",
         "url": "https://www.rfc-editor.org/"
@@ -214,8 +214,8 @@
       "status": "PASSED"
     }
   },
-  "generated_at": 1787793227.849406,
-  "git_revision": "cfcf63c4194d5b59ad22cdfb47a0954f2389f39d",
+  "generated_at": 1787794722.81465,
+  "git_revision": "5a0c84d4ebde2687e60891829f81f47e06fecd3d",
   "host": {
     "machine": "arm64",
     "platform": "macOS-27.0-arm64-arm-64bit-Mach-O",

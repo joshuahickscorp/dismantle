@@ -183,6 +183,7 @@ def _gate_summary(workspace: Path, repo_root: Path) -> Dict[str, Any]:
     flash_router_body_candidates = [repo_root / "receipts" / "headless" / "FLASH_NOETIC_ROUTER_COMPONENT_BODY.json"]
     flash_router_graph_candidates = [repo_root / "receipts" / "headless" / "FLASH_NOETIC_ROUTER_GRAPH.json"]
     flash_router_selection_candidates = [repo_root / "receipts" / "headless" / "FLASH_NOETIC_ROUTER_SELECTION.json"]
+    flash_router_representation_candidates = [repo_root / "receipts" / "headless" / "FLASH_NOETIC_ROUTER_REPRESENTATION_AB.json"]
     recovery = None
     for path in recovery_candidates:
         value = _read_object(path)
@@ -455,7 +456,7 @@ def _gate_summary(workspace: Path, repo_root: Path) -> Dict[str, Any]:
     qwen27_diff = _science_receipt(qwen27_diff_candidates, fields=("summary", "classification_policy"))
     qwen27_mlp = _science_receipt(qwen27_mlp_candidates, fields=("benchmark_class", "qualification", "NOT_FOR_PROMOTION", "experiment_verdict", "selector_verdict", "checks"))
     protected_watch = _science_receipt(protected_watch_candidates, fields=("qualification", "NOT_FOR_PROMOTION", "runs", "last_poll"))
-    flash_executable = _science_receipt(flash_executable_candidates, fields=("status", "qualification", "NOT_FOR_PROMOTION", "promotion_allowed", "native_loader", "native_kernels", "complete_token_timing", "runtime_genome", "source_representation_experiment", "source_router_graph", "source_router_selection"))
+    flash_executable = _science_receipt(flash_executable_candidates, fields=("status", "qualification", "NOT_FOR_PROMOTION", "promotion_allowed", "native_loader", "native_kernels", "complete_token_timing", "runtime_genome", "source_representation_experiment", "source_router_graph", "source_router_selection", "source_router_representation_ab"))
     flash_ebpw = _science_receipt(flash_ebpw_candidates, fields=("status", "measured", "target_contract", "promotion_allowed"))
     flash_token_ns = _science_receipt(flash_token_ns_candidates, fields=("status", "system_ledger", "target_contract", "promotion_allowed"))
     flash_tensor_probe = _science_receipt(flash_tensor_probe_candidates, fields=("source_label", "candidate_label", "source_tensor", "organ", "dense_vs_packed_low_bit", "next_experiment", "body_mutated", "model_loaded"))
@@ -469,6 +470,7 @@ def _gate_summary(workspace: Path, repo_root: Path) -> Dict[str, Any]:
     flash_router_body = _science_receipt(flash_router_body_candidates, fields=("component_kind", "source_identity", "source_block", "representation_descriptor", "body", "native_loader", "source_guard", "source_independent", "candidate_body_persisted", "whole_model_capability", "whole_model_runtime", "promotion_allowed", "claim_boundary", "next_action"))
     flash_router_graph = _science_receipt(flash_router_graph_candidates, fields=("component_status", "semantic_type", "compiler_stage", "candidate_id", "source_identity", "component_window", "source_independent_execution", "candidate_body_persisted", "whole_model_capability", "complete_token_runtime", "physical_graph", "noetic_ir", "promotion_allowed", "claim_boundary", "next_action"))
     flash_router_selection = _science_receipt(flash_router_selection_candidates, fields=("semantic_type", "compiler_stage", "source_identity", "config", "selection", "source_selection", "source_selection_parity", "source_reference_execution", "execution", "physical_graph", "noetic_ir", "native_selection_execution_observed", "whole_model_capability", "complete_token_runtime", "promotion_allowed", "claim_boundary", "next_action"))
+    flash_router_representation = _science_receipt(flash_router_representation_candidates, fields=("semantic_type", "compiler_stage", "source_identity", "config", "source_block", "source_selection", "candidates", "recommendation", "physical_graph", "noetic_ir", "validation", "candidate_bodies_persisted", "whole_model_capability", "complete_token_runtime", "promotion_allowed", "claim_boundary", "next_action"))
     return {
         "recovery_gate": {
             **(recovery or {
@@ -597,6 +599,7 @@ def _gate_summary(workspace: Path, repo_root: Path) -> Dict[str, Any]:
         "flash_router_component_body": flash_router_body or {"status": "NOT_RUN", "receipt_path": None, "schema": None, "component_kind": None, "source_identity": None, "source_block": None, "representation_descriptor": None, "body": None, "native_loader": None, "source_guard": None, "source_independent": None, "candidate_body_persisted": None, "whole_model_capability": None, "whole_model_runtime": None, "promotion_allowed": False, "claim_boundary": None, "next_action": None},
         "flash_router_graph": flash_router_graph or {"status": "NOT_RUN", "receipt_path": None, "schema": None, "component_status": "NOT_COMPILED", "semantic_type": None, "compiler_stage": None, "candidate_id": None, "source_identity": None, "component_window": None, "source_independent_execution": None, "candidate_body_persisted": None, "whole_model_capability": None, "complete_token_runtime": None, "physical_graph": None, "noetic_ir": None, "promotion_allowed": False, "claim_boundary": None, "next_action": None},
         "flash_router_selection": flash_router_selection or {"status": "NOT_RUN", "receipt_path": None, "schema": None, "semantic_type": None, "compiler_stage": None, "source_identity": None, "config": None, "selection": None, "execution": None, "physical_graph": None, "noetic_ir": None, "native_selection_execution_observed": None, "whole_model_capability": None, "complete_token_runtime": None, "promotion_allowed": False, "claim_boundary": None, "next_action": None},
+        "flash_router_representation_ab": flash_router_representation or {"status": "NOT_RUN", "receipt_path": None, "schema": None, "semantic_type": None, "compiler_stage": None, "source_identity": None, "config": None, "source_block": None, "source_selection": None, "candidates": [], "recommendation": None, "physical_graph": None, "noetic_ir": None, "validation": None, "candidate_bodies_persisted": None, "whole_model_capability": None, "complete_token_runtime": None, "promotion_allowed": False, "claim_boundary": None, "next_action": None},
         "production_provider_gate": "NOT_RUN",
     }
 
@@ -774,6 +777,7 @@ def build_program_checkpoint(
             "flash_router_component_body": gates["flash_router_component_body"]["status"],
             "flash_router_graph": gates["flash_router_graph"]["status"],
             "flash_router_selection": gates["flash_router_selection"]["status"],
+            "flash_router_representation_ab": gates["flash_router_representation_ab"]["status"],
         },
         "blockers": blockers,
         "next_actions": [

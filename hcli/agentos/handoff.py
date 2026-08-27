@@ -191,6 +191,7 @@ def _flash_summary(repo: Path) -> Dict[str, Any]:
     router_kernel = _receipt(repo, "FLASH_NOETIC_ROUTER_COMPONENT_KERNEL_PARITY.json") or {}
     router_graph = _receipt(repo, "FLASH_NOETIC_ROUTER_GRAPH.json") or {}
     router_selection = _receipt(repo, "FLASH_NOETIC_ROUTER_SELECTION.json") or {}
+    router_representation_ab = _receipt(repo, "FLASH_NOETIC_ROUTER_REPRESENTATION_AB.json") or {}
     source = flash.get("source_identity") or flash.get("source") or {}
     promotion = flash.get("promotion_gate") or {}
     return {
@@ -379,6 +380,27 @@ def _flash_summary(repo: Path) -> Dict[str, Any]:
             "claim_boundary": router_selection.get("claim_boundary"),
             "next_action": router_selection.get("next_action"),
         },
+        "bounded_noetic_router_representation_ab": {
+            "status": router_representation_ab.get("status"),
+            "receipt_path": str(repo / "receipts" / "headless" / "FLASH_NOETIC_ROUTER_REPRESENTATION_AB.json"),
+            "semantic_type": router_representation_ab.get("semantic_type"),
+            "compiler_stage": router_representation_ab.get("compiler_stage"),
+            "source_identity": router_representation_ab.get("source_identity"),
+            "config": router_representation_ab.get("config"),
+            "source_block": router_representation_ab.get("source_block"),
+            "source_selection": router_representation_ab.get("source_selection"),
+            "candidates": router_representation_ab.get("candidates"),
+            "recommendation": router_representation_ab.get("recommendation"),
+            "physical_graph": router_representation_ab.get("physical_graph"),
+            "noetic_ir": router_representation_ab.get("noetic_ir"),
+            "validation": router_representation_ab.get("validation"),
+            "candidate_bodies_persisted": router_representation_ab.get("candidate_bodies_persisted"),
+            "whole_model_capability": router_representation_ab.get("whole_model_capability"),
+            "complete_token_runtime": router_representation_ab.get("complete_token_runtime"),
+            "promotion_allowed": router_representation_ab.get("promotion_allowed"),
+            "claim_boundary": router_representation_ab.get("claim_boundary"),
+            "next_action": router_representation_ab.get("next_action"),
+        },
         "bounded_noetic_graph_component": {
             "status": graph_component.get("status"),
             "component_status": graph_component.get("component_status"),
@@ -522,6 +544,7 @@ def build_handoff(repo_root: Optional[str | os.PathLike[str]] = None, *, emit: O
     router_body = flash.get("source_independent_router_component") or {}
     router_graph = flash.get("bounded_noetic_router_graph") or {}
     router_selection = flash.get("bounded_noetic_router_selection") or {}
+    router_representation_ab = flash.get("bounded_noetic_router_representation_ab") or {}
     lake = _model_lake_summary(repo)
     window = _window_summary(repo)
     promotion_status = (flash.get("promotion") or {}).get("status")
@@ -626,6 +649,7 @@ def build_handoff(repo_root: Optional[str | os.PathLike[str]] = None, *, emit: O
                 "flash_router_component_body": router_body.get("status"),
                 "flash_router_graph": router_graph.get("status"),
                 "flash_router_selection": router_selection.get("status"),
+                "flash_router_representation_ab": router_representation_ab.get("status"),
                 "modellake_supervision": lake_status,
                 "unattended_window": window_status,
             },
@@ -654,6 +678,7 @@ def build_handoff(repo_root: Optional[str | os.PathLike[str]] = None, *, emit: O
             "run_flash_router_component_body": f"python3 -m hcli agentos flash-matrix-body --root /Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc --repo-root {repo} --tensor-name model.language_model.layers.0.mlp.gate.weight --component-kind router --emit {repo / 'receipts/headless/FLASH_NOETIC_ROUTER_COMPONENT_BODY.json'}",
             "run_flash_router_graph": f"python3 -m hcli agentos flash-router-graph --repo-root {repo} --emit {repo / 'receipts/headless/FLASH_NOETIC_ROUTER_GRAPH.json'}",
             "run_flash_router_selection": f"python3 -m hcli agentos flash-router-selection --repo-root {repo} --body-receipt {repo / 'receipts/headless/FLASH_NOETIC_ROUTER_COMPONENT_FULL_BODY.json'} --kernel-receipt {repo / 'receipts/headless/FLASH_NOETIC_ROUTER_COMPONENT_FULL_KERNEL_PARITY.json'} --emit {repo / 'receipts/headless/FLASH_NOETIC_ROUTER_SELECTION.json'}",
+            "run_flash_router_representation_ab": f"python3 -m hcli agentos flash-router-representation-ab --repo-root {repo} --root /Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc --emit {repo / 'receipts/headless/FLASH_NOETIC_ROUTER_REPRESENTATION_AB.json'}",
             "run_flash_tensor_probe": f"python3 -m hcli agentos flash-tensor-probe --emit {repo / 'receipts/headless/FLASH_FIRST_TENSOR_PROBE.json'}",
             "run_flash_representation_experiment": f"python3 -m hcli agentos flash-representation-experiment --emit {repo / 'receipts/headless/FLASH_ROUTED_EXPERT_REPRESENTATION_EXPERIMENT.json'}",
             "run_flash_representation_replication": f"python3 -m hcli agentos flash-representation-experiment --expert-indices 32,33,34,35,36,37,38,39 --row-start 64 --row-count 16 --emit {repo / 'receipts/headless/FLASH_ROUTED_EXPERT_REPRESENTATION_EXPERIMENT_DISJOINT.json'}",

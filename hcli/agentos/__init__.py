@@ -109,6 +109,8 @@ __all__ = [
     "run_flash_router_graph",
     "FLASH_ROUTER_SELECTION_SCHEMA",
     "run_flash_router_selection",
+    "FLASH_ROUTER_REPRESENTATION_AB_SCHEMA",
+    "run_flash_router_representation_ab",
     "FLASH_COMPONENT_CAMPAIGN_SCHEMA",
     "run_flash_component_campaign",
     "PREBOARD_SCHEMA",
@@ -260,6 +262,10 @@ def __getattr__(name: str):
         from hcli.agentos import flash_router_selection
 
         return flash_router_selection.SCHEMA if name == "FLASH_ROUTER_SELECTION_SCHEMA" else flash_router_selection.run_flash_router_selection
+    if name in {"FLASH_ROUTER_REPRESENTATION_AB_SCHEMA", "run_flash_router_representation_ab"}:
+        from hcli.agentos import flash_router_representation_ab
+
+        return flash_router_representation_ab.SCHEMA if name == "FLASH_ROUTER_REPRESENTATION_AB_SCHEMA" else flash_router_representation_ab.run_flash_router_representation_ab
     if name in {"FLASH_COMPONENT_CAMPAIGN_SCHEMA", "run_flash_component_campaign"}:
         from hcli.agentos import flash_component_campaign
 

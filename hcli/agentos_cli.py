@@ -199,6 +199,7 @@ def build_parser() -> argparse.ArgumentParser:
     flash_executable.add_argument("--component-campaign-receipt", default=None)
     flash_executable.add_argument("--router-graph-receipt", default=None)
     flash_executable.add_argument("--router-selection-receipt", default=None)
+    flash_executable.add_argument("--router-representation-ab-receipt", default=None)
     flash_executable.add_argument("--emit", default=None)
     flash_executable.add_argument("--ebpw-emit", default=None)
     flash_executable.add_argument("--token-ns-emit", default=None)
@@ -294,6 +295,15 @@ def build_parser() -> argparse.ArgumentParser:
     flash_router_selection.add_argument("--body-receipt", default=None)
     flash_router_selection.add_argument("--kernel-receipt", default=None)
     flash_router_selection.add_argument("--emit", default=None)
+
+    flash_router_representation_ab = sub.add_parser(
+        "flash-router-representation-ab",
+        help="compare bounded Flash router representations against pinned source top-k routing",
+    )
+    flash_router_representation_ab.add_argument("--repo-root", default=None)
+    flash_router_representation_ab.add_argument("--root", default=None)
+    flash_router_representation_ab.add_argument("--tensor-name", default="model.language_model.layers.0.mlp.gate.weight")
+    flash_router_representation_ab.add_argument("--emit", default=None)
 
     flash_campaign = sub.add_parser(
         "flash-component-campaign",
@@ -605,6 +615,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 graph_component_receipt=args.graph_component_receipt,
                 component_campaign_receipt=args.component_campaign_receipt,
                 router_graph_receipt=args.router_graph_receipt,
+                router_selection_receipt=args.router_selection_receipt,
+                router_representation_ab_receipt=args.router_representation_ab_receipt,
                 emit=args.emit,
                 ebpw_emit=args.ebpw_emit,
                 token_ns_emit=args.token_ns_emit,
@@ -727,6 +739,18 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 root=args.root,
                 body_receipt=args.body_receipt,
                 kernel_receipt=args.kernel_receipt,
+                emit=args.emit,
+            )
+            _emit(report)
+            return 0 if report.get("status") == "PASSED" else 1
+
+        if args.command == "flash-router-representation-ab":
+            from hcli.agentos.flash_router_representation_ab import run_flash_router_representation_ab
+
+            report = run_flash_router_representation_ab(
+                repo_root=args.repo_root,
+                root=args.root,
+                tensor_name=args.tensor_name,
                 emit=args.emit,
             )
             _emit(report)

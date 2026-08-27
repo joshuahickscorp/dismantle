@@ -181,6 +181,7 @@ def _flash_summary(repo: Path) -> Dict[str, Any]:
     loader_roundtrip = _receipt(repo, "FLASH_ROUTED_EXPERT_LOADER_ROUNDTRIP.json") or {}
     loader_roundtrip_shared = _receipt(repo, "FLASH_ROUTED_EXPERT_LOADER_ROUNDTRIP_SHARED.json") or {}
     kernel_parity = _receipt(repo, "FLASH_NOETIC_Q4_KERNEL_PARITY.json") or {}
+    graph_component = _receipt(repo, "FLASH_NOETIC_ROUTED_EXPERT_GRAPH.json") or {}
     source = flash.get("source_identity") or flash.get("source") or {}
     promotion = flash.get("promotion_gate") or {}
     return {
@@ -212,6 +213,8 @@ def _flash_summary(repo: Path) -> Dict[str, Any]:
             "receipt_path": str(repo / "receipts" / "headless" / "FLASH_NEXT_NOETIC_EXECUTABLE.json"),
             "native_loader": executable.get("native_loader"),
             "native_kernels": executable.get("native_kernels"),
+            "graph_runtime": executable.get("graph_runtime"),
+            "source_graph_component": executable.get("source_graph_component"),
             "complete_token_timing": executable.get("complete_token_timing"),
             "runtime_genome": executable.get("runtime_genome"),
         },
@@ -282,11 +285,24 @@ def _flash_summary(repo: Path) -> Dict[str, Any]:
             "claim_boundary": kernel_parity.get("claim_boundary") or "bounded source-block Metal evidence only; complete Flash runtime remains untested",
             "next_action": kernel_parity.get("next_action"),
         },
+        "bounded_noetic_graph_component": {
+            "status": graph_component.get("status"),
+            "component_status": graph_component.get("component_status"),
+            "receipt_path": str(repo / "receipts" / "headless" / "FLASH_NOETIC_ROUTED_EXPERT_GRAPH.json"),
+            "candidate_id": graph_component.get("candidate_id"),
+            "graph_fingerprint": graph_component.get("graph_fingerprint"),
+            "source_backed": graph_component.get("source_backed"),
+            "candidate_body_persisted": graph_component.get("candidate_body_persisted"),
+            "whole_model_capability": graph_component.get("whole_model_capability"),
+            "complete_token_runtime": graph_component.get("complete_token_runtime"),
+            "promotion_allowed": graph_component.get("promotion_allowed"),
+            "claim_boundary": graph_component.get("claim_boundary"),
+        },
         "budgets": {
             "ebpw": {"status": ebpw.get("status"), "receipt_path": str(repo / "receipts" / "headless" / "FLASH_EBPW_BUDGET.json"), "measured": ebpw.get("measured"), "target_contract": ebpw.get("target_contract")},
             "token_ns": {"status": token_ns.get("status"), "receipt_path": str(repo / "receipts" / "headless" / "FLASH_TOKEN_NS_BUDGET.json"), "system_ledger": token_ns.get("system_ledger"), "target_contract": token_ns.get("target_contract")},
         },
-        "next_action": "Compose the validated Noetic descriptor and bounded kernel into a native routed-expert graph; keep complete-system EBPW and accepted Flash TPS unmeasured until native protected execution exists.",
+        "next_action": "Advance the source-backed routed-expert graph component toward a source-independent candidate body and then compose the remaining Flash organs; keep complete-system EBPW and accepted Flash TPS unmeasured until native protected execution exists.",
     }
 
 
@@ -444,6 +460,9 @@ def build_handoff(repo_root: Optional[str | os.PathLike[str]] = None, *, emit: O
     kernel_parity = _receipt(repo, "FLASH_NOETIC_Q4_KERNEL_PARITY.json") or {}
     if kernel_parity.get("status") != "PASSED":
         blockers.append("Flash-Next bounded native noetic kernel parity is absent or incomplete.")
+    graph_component = _receipt(repo, "FLASH_NOETIC_ROUTED_EXPERT_GRAPH.json") or {}
+    if graph_component.get("status") != "PASSED" or graph_component.get("promotion_allowed") is not False:
+        blockers.append("Flash-Next bounded Noetic routed-expert graph component is absent or incomplete.")
     protected_watch = _receipt(repo, "QWEN_PROTECTED_BENCH_READY.json") or {}
     if protected_watch.get("status") not in {"COMPLETED", "WAITING_FOR_QUIESCENCE"}:
         blockers.append("The bounded protected Qwen benchmark watcher is not in a safe waiting/completed state.")
@@ -489,6 +508,7 @@ def build_handoff(repo_root: Optional[str | os.PathLike[str]] = None, *, emit: O
                 "flash_transform_parity": transform_parity.get("status"),
                 "flash_loader_roundtrip": loader_roundtrip.get("status"),
                 "flash_kernel_parity": kernel_parity.get("status"),
+                "flash_graph_component": graph_component.get("status"),
                 "modellake_supervision": lake_status,
                 "unattended_window": window_status,
             },
@@ -511,6 +531,7 @@ def build_handoff(repo_root: Optional[str | os.PathLike[str]] = None, *, emit: O
             "run_qwen27_mlp_diagnostic": f"python3 -m hcli agentos qwen27-mlp-ab --repo-root {repo} --profile {repo / 'hcli/hawking-native.sealed-3.14.json'} --resident-binary {repo / '.hcli/instrumented/ascension_qwen38_resident'}",
             "watch_protected_qwen_window": f"python3 -m hcli agentos protected-bench-watch --repo-root {repo} --profile {repo / 'hcli/hawking-native.sealed-3.14.json'} --resident-binary {repo / '.hcli/instrumented/ascension_qwen38_resident'} --duration-s 21600 --interval-s 60",
             "build_flash_executable_scaffold": f"python3 -m hcli agentos flash-executable --repo-root {repo}",
+            "run_flash_graph_component": f"python3 -m hcli agentos flash-graph-component --repo-root {repo} --emit {repo / 'receipts/headless/FLASH_NOETIC_ROUTED_EXPERT_GRAPH.json'}",
             "run_flash_tensor_probe": f"python3 -m hcli agentos flash-tensor-probe --emit {repo / 'receipts/headless/FLASH_FIRST_TENSOR_PROBE.json'}",
             "run_flash_representation_experiment": f"python3 -m hcli agentos flash-representation-experiment --emit {repo / 'receipts/headless/FLASH_ROUTED_EXPERT_REPRESENTATION_EXPERIMENT.json'}",
             "run_flash_representation_replication": f"python3 -m hcli agentos flash-representation-experiment --expert-indices 32,33,34,35,36,37,38,39 --row-start 64 --row-count 16 --emit {repo / 'receipts/headless/FLASH_ROUTED_EXPERT_REPRESENTATION_EXPERIMENT_DISJOINT.json'}",

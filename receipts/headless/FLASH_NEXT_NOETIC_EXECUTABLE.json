@@ -230,6 +230,16 @@
   "ebpw_budget_receipt": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_EBPW_BUDGET.json",
   "fallback_count": null,
   "graph_runtime": {
+    "bounded_component": {
+      "candidate_body_persisted": false,
+      "candidate_id": "independent_q4_g64",
+      "complete_token_runtime": "NOT_TESTED",
+      "fingerprint": "587fb4d7a1358aa1d064c5f58e41801b98cae93433d1569d31838f29c35825d3",
+      "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_ROUTED_EXPERT_GRAPH.json",
+      "source_backed": true,
+      "status": "BOUNDED_COMPONENT_COMPILED",
+      "whole_model_capability": "NOT_TESTED"
+    },
     "fallbacks": "No fallback may be silently counted as native Flash execution.",
     "graph_source": "pinned header organ graph; runtime edges still require body-backed implementation",
     "mtp_accept_reject": "EXPLICIT_REQUIRED_EDGE",
@@ -248,7 +258,7 @@
       "support_misc",
       "recurrent_state"
     ],
-    "status": "PLAN_ONLY",
+    "status": "BOUNDED_COMPONENT_COMPILED",
     "text_only_vision_bypass": "CONDITIONAL_AND_UNPROVEN"
   },
   "hidden_dense_rematerialization": false,
@@ -465,15 +475,294 @@
     "compiler_identity": null,
     "device_identity": null,
     "executable_sha256": null,
-    "graph_fingerprint": null,
+    "graph_fingerprint": "587fb4d7a1358aa1d064c5f58e41801b98cae93433d1569d31838f29c35825d3",
     "kernel_binary_hashes": [],
     "kernel_source_hashes": [],
     "loader_sha256": null,
     "receipt_schema": "hcli.agentos.flash_next_noetic_executable.v1",
     "representation_manifest_sha256": null,
-    "status": "NOT_COMPILED"
+    "status": "BOUNDED_COMPONENT_ONLY"
   },
   "schema": "hcli.agentos.flash_next_noetic_executable.v1",
+  "source_graph_component": {
+    "candidate_body_persisted": false,
+    "candidate_id": "independent_q4_g64",
+    "claim_boundary": "Bounded source-backed routed-expert graph component compiled from validated Noetic descriptor and native kernel receipts; no complete-model loader, capability, complete-token timing, EBPW, or Flash TPS claim.",
+    "compiler_stage": "PhysicalGraphCompiler",
+    "complete_token_runtime": "NOT_TESTED",
+    "component_status": "BOUNDED_COMPONENT_COMPILED",
+    "graph_fingerprint": "587fb4d7a1358aa1d064c5f58e41801b98cae93433d1569d31838f29c35825d3",
+    "next_action": "persist candidate body and per-organ ownership only after a source-independent loader contract is implemented; then compose remaining Flash organs under the same gates",
+    "noetic_ir": {
+      "candidate_id": "independent_q4_g64",
+      "complete_model": false,
+      "operations": [
+        "stream_verified_source_block",
+        "load_serialized_representation_descriptor",
+        "dispatch_qwen_uniform_q4_group64_matvec"
+      ],
+      "schema": "hcli.noetic.ir.v1",
+      "semantic_type": "NoeticIR",
+      "source_independent": false
+    },
+    "nomenclature_version": "HAWKING_NOMENCLATURE_V1",
+    "physical_graph": {
+      "compiler_stage": "PhysicalGraphCompiler",
+      "component_scope": "one routed-expert source block; not complete Flash execution",
+      "computation": [
+        {
+          "expert": 0,
+          "id": "source_block_stream",
+          "kind": "verified_source_block",
+          "row_count": 128,
+          "row_start": 0,
+          "source_backed": true,
+          "source_block_bytes": 655360,
+          "stage": "SourceSpecimen",
+          "tensor_name": "model.language_model.layers.0.mlp.experts.gate_up_proj"
+        },
+        {
+          "candidate_id": "independent_q4_g64",
+          "descriptor_sha256": "60e7c098c67f26013e47d3411efc554b7e8612417300eb2116d8237f53568c19",
+          "id": "noetic_descriptor_load",
+          "kind": "serialized_representation_descriptor",
+          "loader_status": "BOUNDED_NOETIC_DESCRIPTOR_LOAD",
+          "schema": "hcli.noetic.representation_descriptor.v1",
+          "stage": "NoeticCompiler"
+        },
+        {
+          "dispatches_per_sample": 1,
+          "id": "routed_expert_q4_g64_matvec",
+          "kernel": "qwen_uniform_q4_group64_matvec",
+          "kind": "native_kernel_dispatch",
+          "parity_within_tolerance": true,
+          "registered": true,
+          "stage": "HawkingAccelerator"
+        },
+        {
+          "complete_token": false,
+          "id": "bounded_component_output",
+          "kind": "source_block_matvec_output",
+          "stage": "NoeticExecutableCandidate",
+          "whole_model": false
+        }
+      ],
+      "data": [
+        {
+          "active_bytes_per_token": null,
+          "bytes": null,
+          "id": "routed_expert_component",
+          "kind": "tensor_group",
+          "source": "architecture metadata; size unresolved"
+        }
+      ],
+      "dependencies": [
+        {
+          "from": "source_block_stream",
+          "kind": "typed_source_to_representation",
+          "to": "noetic_descriptor_load"
+        },
+        {
+          "from": "noetic_descriptor_load",
+          "kind": "descriptor_to_kernel",
+          "to": "routed_expert_q4_g64_matvec"
+        },
+        {
+          "from": "routed_expert_q4_g64_matvec",
+          "kind": "kernel_to_output",
+          "to": "bounded_component_output"
+        }
+      ],
+      "device_placement": {
+        "candidates": [
+          "apple_metal"
+        ],
+        "selected": null
+      },
+      "evidence": [
+        {
+          "label": "[V]",
+          "path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_ROUTED_EXPERT_LOADER_ROUNDTRIP.json",
+          "schema": "hcli.agentos.flash_loader_roundtrip.v1",
+          "sha256": "60e7c098c67f26013e47d3411efc554b7e8612417300eb2116d8237f53568c19",
+          "status": "PASSED"
+        },
+        {
+          "label": "[V]",
+          "path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_Q4_KERNEL_PARITY.json",
+          "schema": "hawking.flash_noetic_q4_kernel_parity.v1",
+          "sha256": "ebe3e2b04501c2346c30bc6520ed9ba4358e157ec6418ab68d056d5a35976fc2",
+          "status": "PASSED"
+        },
+        {
+          "label": "[V]",
+          "path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_FULL_TENSOR_TRANSFORM_PARITY.json",
+          "schema": "hcli.agentos.flash_transform_parity.v1",
+          "sha256": "f0ad216973c421a4457a9e33b091b05168c4289de8aedd23633747b5c54cf3d3",
+          "status": "PASSED"
+        }
+      ],
+      "fingerprint": "587fb4d7a1358aa1d064c5f58e41801b98cae93433d1569d31838f29c35825d3",
+      "generated_at": 1787815892.068521,
+      "graph_execution_observed": false,
+      "memory": [
+        {
+          "role": "active working set",
+          "status": "candidate",
+          "tier": "hot"
+        },
+        {
+          "role": "canonical source",
+          "status": "candidate",
+          "tier": "cold"
+        }
+      ],
+      "model_id": "Qwen/Qwen3.8-Flash-Next",
+      "native_kernel_execution_observed": true,
+      "nomenclature_version": "HAWKING_NOMENCLATURE_V1",
+      "precision": {
+        "accumulator": "unresolved",
+        "activation": "unresolved",
+        "weight": "unresolved"
+      },
+      "provider_context": {
+        "kernel": "qwen_uniform_q4_group64_matvec",
+        "provider": "apple-metal"
+      },
+      "qualification": "BOUNDED_COMPONENT_ONLY",
+      "representation": {
+        "candidate_body_persisted": false,
+        "candidate_bytes_full_tensor": 891289600,
+        "candidate_id": "independent_q4_g64",
+        "dense_rematerialization": "forbidden",
+        "descriptor_schema": "hcli.noetic.representation_descriptor.v1",
+        "effective_bits_per_value": 4.25
+      },
+      "residency": {
+        "page_cache": "unresolved",
+        "state": "unresolved",
+        "weights": "unresolved"
+      },
+      "schema": "hcli.physical_graph.v1",
+      "semantic_type": "PhysicalGraphPlan",
+      "state": {
+        "kv_cache": "unresolved",
+        "recurrent_state": "unresolved"
+      },
+      "synchronization": [
+        {
+          "kind": "runtime_boundary",
+          "status": "unresolved"
+        }
+      ]
+    },
+    "promotion_allowed": false,
+    "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_ROUTED_EXPERT_GRAPH.json",
+    "receipt_sha256": "8d3db03b9de1e18d134a727be176bb60f2055532a990739807d85d284404dfe9",
+    "schema": "hcli.agentos.flash_noetic_graph_component.v1",
+    "semantic_type": "NoeticExecutableCandidate",
+    "source_backed": true,
+    "source_identity": {
+      "manifest_path": "/Volumes/corpdrive/hawking-modellake/manifests/Qwen--Qwen3.8-Flash-Next@34567a4712bc.json",
+      "manifest_sha256": "1f536f70c963a4d9b800e17c54c0dec54ce2d31a0a36041146b4013a04221fb7",
+      "repo": "Qwen/Qwen3.8-Flash-Next",
+      "resolved_sha": "34567a4712bc9766c4449e2e98e4468bfa24d915",
+      "revision": "34567a4712bc9766c4449e2e98e4468bfa24d915",
+      "root": "/Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc"
+    },
+    "status": "PASSED",
+    "validation": {
+      "descriptor_schema": "hcli.noetic.representation_descriptor.v1",
+      "errors": [],
+      "full_transform_candidate": {
+        "candidate_bytes": 891289600,
+        "candidate_sha256": "c67c3306edc972e5fc7257d939f545e94562e0f8e1306cf24eb4264376e57f39",
+        "code_bytes": 838860800,
+        "effective_bits_per_value": 4.25,
+        "group_size": 64,
+        "id": "independent_q4_g64",
+        "label": "[D]",
+        "model_capability_tested": false,
+        "native_kernel_tested": false,
+        "pack_unpack_parity": true,
+        "packed_sha256": "5847742f10b70a201a9acc11049a3deb278fe8742993c71344f9389f1db277d1",
+        "reference_vector": {
+          "cosine": 0.9928837403313406,
+          "count": 655360,
+          "finite": true,
+          "max_abs_error": 0.5110001564025879,
+          "mean_abs_error": 0.06314619255277591,
+          "rmse": 0.07972607929790755
+        },
+        "runtime_performance_tested": false,
+        "scale_bytes": 52428800,
+        "scale_sha256": "a927cdfe0c62c4422bb11ebfc661a65afd9e93caa6d42a36766d93ae8f35034f",
+        "scheme": "symmetric_signed_4bit_group64_with_fp16_scales",
+        "source_layout_preserved": true,
+        "status": "FULL_TENSOR_TRANSFORM_ONLY",
+        "weight_reconstruction": {
+          "cosine": 0.9930165146332164,
+          "count": 1677721600,
+          "finite": true,
+          "max_abs_error": 0.0390625,
+          "mean_abs_error": 0.0013130531516401943,
+          "rmse": 0.001574400915434971
+        }
+      },
+      "native_kernel": {
+        "dispatches_per_sample": 1,
+        "grid": [
+          128,
+          1,
+          1
+        ],
+        "kernel": "qwen_uniform_q4_group64_matvec",
+        "kernel_registered": true,
+        "label": "[V]/[D]",
+        "scope": "one Flash routed-expert source block matvec",
+        "shader_family": "qwen_uniform_q4.metal",
+        "threadgroup": [
+          1,
+          1,
+          1
+        ],
+        "whole_model_capability": "NOT_TESTED",
+        "whole_model_runtime": "NOT_TESTED"
+      },
+      "native_loader": {
+        "candidate_body_persisted": false,
+        "candidate_id": "independent_q4_g64",
+        "dense_rematerialization": "forbidden",
+        "descriptor_path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_ROUTED_EXPERT_LOADER_ROUNDTRIP.json",
+        "descriptor_sha256": "60e7c098c67f26013e47d3411efc554b7e8612417300eb2116d8237f53568c19",
+        "source_block_streamed": true,
+        "status": "BOUNDED_NOETIC_DESCRIPTOR_LOAD",
+        "whole_model_capability": "NOT_TESTED",
+        "whole_model_runtime": "NOT_TESTED"
+      },
+      "parity": {
+        "cosine": 0.9999999999999639,
+        "count": 128,
+        "finite": true,
+        "max_abs_error": 1.6391277313232422e-07,
+        "rmse": 5.2521827497893166e-08,
+        "tolerance": 0.0020000000949949026,
+        "within_tolerance": true
+      },
+      "source_tensor": {
+        "dtype": "BF16",
+        "group_size": 64,
+        "layout": "row-major [expert, row, column]",
+        "shape": [
+          512,
+          1280,
+          2560
+        ],
+        "tensor_name": "model.language_model.layers.0.mlp.experts.gate_up_proj"
+      }
+    },
+    "whole_model_capability": "NOT_TESTED"
+  },
   "source_identity": {
     "architecture_fingerprint": {
       "algorithm": "sha256(canonical pinned metadata + sorted tensor names)",
@@ -485,6 +774,8 @@
     "bounded_loader_roundtrip_receipt": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_ROUTED_EXPERT_LOADER_ROUNDTRIP.json",
     "bounded_native_kernel_parity_observed": true,
     "bounded_native_kernel_parity_receipt": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_Q4_KERNEL_PARITY.json",
+    "bounded_noetic_graph_component_observed": true,
+    "bounded_noetic_graph_component_receipt": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_ROUTED_EXPERT_GRAPH.json",
     "bounded_probe_receipt": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_FIRST_TENSOR_PROBE.json",
     "bounded_representation_experiment_receipt": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_ROUTED_EXPERT_REPRESENTATION_EXPERIMENT.json",
     "bounded_source_layout_experiment_observed": true,

@@ -41,6 +41,7 @@ DEFAULT_REPRESENTATION_REPLICATION = "FLASH_ROUTED_EXPERT_REPRESENTATION_EXPERIM
 DEFAULT_TRANSFORM_PARITY = "FLASH_FULL_TENSOR_TRANSFORM_PARITY.json"
 DEFAULT_LOADER_ROUNDTRIP = "FLASH_ROUTED_EXPERT_LOADER_ROUNDTRIP.json"
 DEFAULT_KERNEL_PARITY = "FLASH_NOETIC_Q4_KERNEL_PARITY.json"
+DEFAULT_GRAPH_COMPONENT = "FLASH_NOETIC_ROUTED_EXPERT_GRAPH.json"
 DEFAULT_EXECUTABLE = "FLASH_NEXT_NOETIC_EXECUTABLE.json"
 DEFAULT_EBPW = "FLASH_EBPW_BUDGET.json"
 DEFAULT_TOKEN_NS = "FLASH_TOKEN_NS_BUDGET.json"
@@ -367,6 +368,49 @@ def _kernel_parity_summary(
         "promotion_allowed": kernel.get("promotion_allowed"),
         "claim_boundary": kernel.get("claim_boundary"),
         "next_action": kernel.get("next_action"),
+    }
+
+
+def _graph_component_summary(
+    repo: Path,
+    receipt: Optional[str | os.PathLike[str]] = None,
+) -> Dict[str, Any]:
+    """Read the bounded compiled graph component without widening its scope."""
+    path = Path(receipt).expanduser().resolve() if receipt else repo / "receipts" / "headless" / DEFAULT_GRAPH_COMPONENT
+    graph = _read_json(path)
+    if graph is None:
+        return {
+            "status": "NOT_RUN",
+            "receipt_path": str(path),
+            "component_status": "NOT_COMPILED",
+            "graph_fingerprint": None,
+            "whole_model_capability": "NOT_TESTED",
+            "complete_token_runtime": "NOT_TESTED",
+            "candidate_body_persisted": None,
+            "promotion_allowed": False,
+        }
+    return {
+        "status": graph.get("status"),
+        "receipt_path": str(path),
+        "receipt_sha256": _sha256(path),
+        "schema": graph.get("schema"),
+        "nomenclature_version": graph.get("nomenclature_version"),
+        "semantic_type": graph.get("semantic_type"),
+        "compiler_stage": graph.get("compiler_stage"),
+        "component_status": graph.get("component_status"),
+        "graph_fingerprint": graph.get("graph_fingerprint"),
+        "candidate_id": graph.get("candidate_id"),
+        "source_identity": graph.get("source_identity"),
+        "source_backed": graph.get("source_backed"),
+        "candidate_body_persisted": graph.get("candidate_body_persisted"),
+        "physical_graph": graph.get("physical_graph"),
+        "noetic_ir": graph.get("noetic_ir"),
+        "validation": graph.get("validation"),
+        "whole_model_capability": graph.get("whole_model_capability"),
+        "complete_token_runtime": graph.get("complete_token_runtime"),
+        "promotion_allowed": graph.get("promotion_allowed"),
+        "claim_boundary": graph.get("claim_boundary"),
+        "next_action": graph.get("next_action"),
     }
 
 
@@ -726,6 +770,7 @@ def _executable_manifest(
     transform_parity: Mapping[str, Any],
     loader_roundtrip: Mapping[str, Any],
     kernel_parity: Mapping[str, Any],
+    graph_component: Mapping[str, Any],
 ) -> Dict[str, Any]:
     organs = [str(row.get("organ")) for row in ebpw.get("organs") or [] if isinstance(row, Mapping)]
     return {
@@ -757,6 +802,8 @@ def _executable_manifest(
             "bounded_loader_roundtrip_receipt": loader_roundtrip.get("receipt_path"),
             "bounded_native_kernel_parity_observed": kernel_parity.get("status") == "PASSED",
             "bounded_native_kernel_parity_receipt": kernel_parity.get("receipt_path"),
+            "bounded_noetic_graph_component_observed": graph_component.get("status") == "PASSED",
+            "bounded_noetic_graph_component_receipt": graph_component.get("receipt_path"),
             "weight_body_loaded": False,
         },
         "model_lake": lake,
@@ -765,6 +812,7 @@ def _executable_manifest(
         "source_transform_parity": transform_parity,
         "source_loader_roundtrip": loader_roundtrip,
         "source_kernel_parity": kernel_parity,
+        "source_graph_component": graph_component,
         "chosen_representation": ebpw.get("chosen_representation"),
         "native_loader": {
             "status": "NOT_IMPLEMENTED",
@@ -805,9 +853,19 @@ def _executable_manifest(
             "dense_rematerialization": "FORBIDDEN_BY_FINAL_RUNTIME_POLICY",
         },
         "graph_runtime": {
-            "status": "PLAN_ONLY",
+            "status": "BOUNDED_COMPONENT_COMPILED" if graph_component.get("status") == "PASSED" else "PLAN_ONLY",
             "organ_order": organs,
             "graph_source": "pinned header organ graph; runtime edges still require body-backed implementation",
+            "bounded_component": {
+                "status": graph_component.get("component_status"),
+                "receipt_path": graph_component.get("receipt_path"),
+                "fingerprint": graph_component.get("graph_fingerprint"),
+                "candidate_id": graph_component.get("candidate_id"),
+                "source_backed": graph_component.get("source_backed"),
+                "whole_model_capability": graph_component.get("whole_model_capability"),
+                "complete_token_runtime": graph_component.get("complete_token_runtime"),
+                "candidate_body_persisted": graph_component.get("candidate_body_persisted"),
+            },
             "text_only_vision_bypass": "CONDITIONAL_AND_UNPROVEN",
             "mtp_accept_reject": "EXPLICIT_REQUIRED_EDGE",
             "fallbacks": "No fallback may be silently counted as native Flash execution.",
@@ -828,12 +886,12 @@ def _executable_manifest(
             "complete_wall_ns_per_accepted_token": None,
         },
         "runtime_genome": {
-            "status": "NOT_COMPILED",
+            "status": "BOUNDED_COMPONENT_ONLY" if graph_component.get("status") == "PASSED" else "NOT_COMPILED",
             "executable_sha256": None,
             "loader_sha256": None,
             "kernel_source_hashes": [],
             "kernel_binary_hashes": [],
-            "graph_fingerprint": None,
+            "graph_fingerprint": graph_component.get("graph_fingerprint"),
             "device_identity": None,
             "compiler_identity": None,
             "representation_manifest_sha256": None,
@@ -862,6 +920,7 @@ def run_flash_executable_scaffold(
     transform_parity_receipt: Optional[str | os.PathLike[str]] = None,
     loader_roundtrip_receipt: Optional[str | os.PathLike[str]] = None,
     kernel_parity_receipt: Optional[str | os.PathLike[str]] = None,
+    graph_component_receipt: Optional[str | os.PathLike[str]] = None,
     emit: Optional[str | os.PathLike[str]] = None,
     ebpw_emit: Optional[str | os.PathLike[str]] = None,
     token_ns_emit: Optional[str | os.PathLike[str]] = None,
@@ -896,9 +955,10 @@ def run_flash_executable_scaffold(
         transform_parity = _transform_parity_summary(repo, transform_parity_receipt)
         loader_roundtrip = _loader_roundtrip_summary(repo, loader_roundtrip_receipt)
         kernel_parity = _kernel_parity_summary(repo, kernel_parity_receipt)
+        graph_component = _graph_component_summary(repo, graph_component_receipt)
         ebpw = _ebpw_budget(science, source, tensor_probe, representation_experiment, transform_parity, loader_roundtrip, kernel_parity)
         token_ns = _token_ns_budget(science, source)
-        manifest = _executable_manifest(science, source, lake, ebpw, token_ns, tensor_probe, representation_experiment, transform_parity, loader_roundtrip, kernel_parity)
+        manifest = _executable_manifest(science, source, lake, ebpw, token_ns, tensor_probe, representation_experiment, transform_parity, loader_roundtrip, kernel_parity, graph_component)
         atomic_write_json(ebpw_path, ebpw)
         atomic_write_json(token_path, token_ns)
         manifest["ebpw_budget_receipt"] = str(ebpw_path)
@@ -929,6 +989,10 @@ def run_flash_executable_scaffold(
                 "bounded_kernel_parity_does_not_claim_whole_model": kernel_parity.get("whole_model_capability") == "NOT_TESTED" and kernel_parity.get("whole_model_runtime") == "NOT_TESTED",
                 "bounded_kernel_parity_does_not_mutate_source": kernel_parity.get("body_mutated") in {None, False},
                 "bounded_native_descriptor_load_is_explicit": (kernel_parity.get("native_loader") or {}).get("status") in {None, "NOT_RUN", "BOUNDED_NOETIC_DESCRIPTOR_LOAD"},
+                "bounded_graph_component_is_explicit": graph_component.get("status") in {"NOT_RUN", "PASSED"},
+                "bounded_graph_component_does_not_claim_whole_model": graph_component.get("whole_model_capability") in {None, "NOT_TESTED"} and graph_component.get("complete_token_runtime") in {None, "NOT_TESTED"},
+                "bounded_graph_component_does_not_persist_candidate_body": graph_component.get("candidate_body_persisted") in {None, False},
+                "bounded_graph_component_refuses_promotion": graph_component.get("promotion_allowed") is False,
                 "native_loader_status_explicit": manifest.get("native_loader", {}).get("status") == "NOT_IMPLEMENTED",
                 "native_kernels_status_explicit": manifest.get("native_kernels", {}).get("status") == "PLAN_ONLY",
                 "complete_token_timing_not_fabricated": manifest.get("complete_token_timing", {}).get("accepted_tps") is None,
@@ -959,6 +1023,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser.add_argument("--transform-parity-receipt")
     parser.add_argument("--loader-roundtrip-receipt")
     parser.add_argument("--kernel-parity-receipt")
+    parser.add_argument("--graph-component-receipt")
     parser.add_argument("--emit")
     parser.add_argument("--ebpw-emit")
     parser.add_argument("--token-ns-emit")
@@ -971,6 +1036,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         transform_parity_receipt=args.transform_parity_receipt,
         loader_roundtrip_receipt=args.loader_roundtrip_receipt,
         kernel_parity_receipt=args.kernel_parity_receipt,
+        graph_component_receipt=args.graph_component_receipt,
         emit=args.emit,
         ebpw_emit=args.ebpw_emit,
         token_ns_emit=args.token_ns_emit,

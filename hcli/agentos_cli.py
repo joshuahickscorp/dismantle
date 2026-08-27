@@ -195,6 +195,7 @@ def build_parser() -> argparse.ArgumentParser:
     flash_executable.add_argument("--transform-parity-receipt", default=None)
     flash_executable.add_argument("--loader-roundtrip-receipt", default=None)
     flash_executable.add_argument("--kernel-parity-receipt", default=None)
+    flash_executable.add_argument("--graph-component-receipt", default=None)
     flash_executable.add_argument("--emit", default=None)
     flash_executable.add_argument("--ebpw-emit", default=None)
     flash_executable.add_argument("--token-ns-emit", default=None)
@@ -241,6 +242,16 @@ def build_parser() -> argparse.ArgumentParser:
     flash_loader.add_argument("--row-start", type=int, default=0)
     flash_loader.add_argument("--row-count", type=int, default=2)
     flash_loader.add_argument("--emit", default=None)
+
+    flash_graph = sub.add_parser(
+        "flash-graph-component",
+        help="compile the bounded Flash Noetic routed-expert graph component from validated receipts",
+    )
+    flash_graph.add_argument("--repo-root", default=None)
+    flash_graph.add_argument("--loader-receipt", default=None)
+    flash_graph.add_argument("--kernel-receipt", default=None)
+    flash_graph.add_argument("--transform-receipt", default=None)
+    flash_graph.add_argument("--emit", default=None)
 
     preboard = sub.add_parser(
         "preboard",
@@ -529,6 +540,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 transform_parity_receipt=args.transform_parity_receipt,
                 loader_roundtrip_receipt=args.loader_roundtrip_receipt,
                 kernel_parity_receipt=args.kernel_parity_receipt,
+                graph_component_receipt=args.graph_component_receipt,
                 emit=args.emit,
                 ebpw_emit=args.ebpw_emit,
                 token_ns_emit=args.token_ns_emit,
@@ -590,6 +602,19 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 expert_index=args.expert_index,
                 row_start=args.row_start,
                 row_count=args.row_count,
+                emit=args.emit,
+            )
+            _emit(report)
+            return 0 if report.get("status") == "PASSED" else 1
+
+        if args.command == "flash-graph-component":
+            from hcli.agentos.flash_graph_component import run_flash_graph_component
+
+            report = run_flash_graph_component(
+                repo_root=args.repo_root,
+                loader_receipt=args.loader_receipt,
+                kernel_receipt=args.kernel_receipt,
+                transform_receipt=args.transform_receipt,
                 emit=args.emit,
             )
             _emit(report)

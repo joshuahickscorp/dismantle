@@ -5,29 +5,14 @@
       "9d373ecc4863b244fc74761c99fc837f7705f3db"
     ],
     "branch": "odyssey-i",
-    "git_revision": "43c1a505a3c215803455cea2ccd74aa6d4c6ca87",
+    "git_revision": "e57b0a9461dcaef88ea5840ee644ce77db5203ee",
     "unrelated_preserved_edit": "tools/odyssey_ctl.py",
     "working_tree_status": [
-      "M crates/hawking-core/examples/flash_noetic_q4_kernel_parity.rs",
-      " M hcli/agentos/__init__.py",
-      " M hcli/agentos/checkpoint.py",
-      " M hcli/agentos/flash_executable.py",
-      " M hcli/agentos/flash_graph_component.py",
-      " M hcli/agentos/handoff.py",
-      " M hcli/agentos_cli.py",
-      " M receipts/headless/FLASH_EBPW_BUDGET.json",
-      " M receipts/headless/FLASH_NEXT_NOETIC_EXECUTABLE.json",
-      " M receipts/headless/FLASH_NOETIC_ROUTED_EXPERT_GRAPH.json",
-      " M receipts/headless/HCLI_AGENTOS_CHECKPOINT.json",
-      " M receipts/headless/OVERNIGHT_HAWKING_HANDOFF.json",
-      " M tools/haider/test_hcli_science_boundaries.py",
+      "M receipts/headless/HCLI_AGENTOS_CHECKPOINT.json",
       " M tools/odyssey_ctl.py",
       "?? .hcli/flash-kernel-build/",
       "?? .hcli/locks/",
-      "?? .hcli/unattended-qwen-long/",
-      "?? hcli/agentos/flash_component_body.py",
-      "?? receipts/headless/FLASH_NOETIC_Q4_BODY_KERNEL_PARITY.json",
-      "?? receipts/headless/FLASH_NOETIC_ROUTED_EXPERT_BODY.json"
+      "?? .hcli/unattended-qwen-long/"
     ]
   },
   "blockers": [
@@ -1950,7 +1935,7 @@
       "telemetry/receipt verifier"
     ]
   },
-  "generated_at": 1787817411.106207,
+  "generated_at": 1787817487.2140448,
   "hcli": {
     "background_jobs": [
       {
@@ -2397,18 +2382,18 @@
         },
         {
           "checks": {},
-          "cycles": 96,
+          "cycles": 98,
           "deadline": 1787833148.5820968,
           "metrics": {
-            "accepted": 96,
-            "attempted": 96,
+            "accepted": 98,
+            "attempted": 98,
             "human_interventions": 0,
             "inconclusive": 0,
-            "model_calls": 96,
+            "model_calls": 98,
             "rejected": 0,
             "retries": 0,
-            "typed_tool_calls": 192,
-            "verifier_calls": 96
+            "typed_tool_calls": 196,
+            "verifier_calls": 98
           },
           "path": "/Users/scammermike/Downloads/hawking/.hcli/unattended-qwen-long/window-progress.json",
           "started_at": 1787811548.5820968,

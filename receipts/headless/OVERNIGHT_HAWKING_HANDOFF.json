@@ -5,37 +5,14 @@
       "9d373ecc4863b244fc74761c99fc837f7705f3db"
     ],
     "branch": "odyssey-i",
-    "git_revision": "a7925b37042ce86fe7091a4c899a53a3ede1c682",
+    "git_revision": "e75be7b5780b1c7db219cbb731d53a5bacf7493a",
     "unrelated_preserved_edit": "tools/odyssey_ctl.py",
     "working_tree_status": [
-      "M hcli/agentos/__init__.py",
-      " M hcli/agentos/checkpoint.py",
-      " M hcli/agentos/flash_executable.py",
-      " M hcli/agentos/handoff.py",
-      " M hcli/agentos_cli.py",
-      " M hcli/physical_graph.py",
-      " M receipts/headless/FLASH_EBPW_BUDGET.json",
-      " M receipts/headless/FLASH_NEXT_NOETIC_EXECUTABLE.json",
-      " M receipts/headless/FLASH_TOKEN_NS_BUDGET.json",
-      " M receipts/headless/HCLI_AGENTOS_CHECKPOINT.json",
-      " M receipts/headless/HCLI_MODELLAKE_FLASH_ACQUISITION_SUPERVISION.json",
-      " M receipts/headless/NOMENCLATURE_CENSUS.json",
-      " M receipts/headless/OVERNIGHT_HAWKING_HANDOFF.json",
-      " M tools/haider/test_hcli_science_boundaries.py",
-      " M tools/headless/nomenclature_census.py",
+      "M receipts/headless/HCLI_AGENTOS_CHECKPOINT.json",
       " M tools/odyssey_ctl.py",
       "?? .hcli/flash-kernel-build/",
       "?? .hcli/locks/",
-      "?? .hcli/unattended-qwen-long/",
-      "?? HAWKING_NOMENCLATURE.md",
-      "?? crates/hawking-core/examples/flash_noetic_q4_kernel_parity.rs",
-      "?? hcli/agentos/flash_loader_roundtrip.py",
-      "?? hcli/agentos/flash_transform_parity.py",
-      "?? hcli/nomenclature.py",
-      "?? receipts/headless/FLASH_FULL_TENSOR_TRANSFORM_PARITY.json",
-      "?? receipts/headless/FLASH_NOETIC_Q4_KERNEL_PARITY.json",
-      "?? receipts/headless/FLASH_ROUTED_EXPERT_LOADER_ROUNDTRIP.json",
-      "?? receipts/headless/FLASH_ROUTED_EXPERT_LOADER_ROUNDTRIP_SHARED.json"
+      "?? .hcli/unattended-qwen-long/"
     ]
   },
   "blockers": [
@@ -1533,7 +1510,7 @@
       "telemetry/receipt verifier"
     ]
   },
-  "generated_at": 1787814328.304008,
+  "generated_at": 1787814530.26226,
   "hcli": {
     "background_jobs": [
       {
@@ -1980,18 +1957,18 @@
         },
         {
           "checks": {},
-          "cycles": 45,
+          "cycles": 49,
           "deadline": 1787833148.5820968,
           "metrics": {
-            "accepted": 45,
-            "attempted": 45,
+            "accepted": 49,
+            "attempted": 49,
             "human_interventions": 0,
             "inconclusive": 0,
-            "model_calls": 45,
+            "model_calls": 49,
             "rejected": 0,
             "retries": 0,
-            "typed_tool_calls": 90,
-            "verifier_calls": 45
+            "typed_tool_calls": 98,
+            "verifier_calls": 49
           },
           "path": "/Users/scammermike/Downloads/hawking/.hcli/unattended-qwen-long/window-progress.json",
           "started_at": 1787811548.5820968,

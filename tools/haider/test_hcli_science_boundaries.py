@@ -22,6 +22,7 @@ from hcli.agentos import flash_router_selection
 from hcli.flash_next import PINNED_REVISION
 from hcli.agentos.fpga_preboard import simulate_partition
 from hcli.agentos.protected_benchmark_watcher import _classify_blockers
+from hcli.agentos.protected_accelerator_benchmark import _aggregate, _request_record
 from hcli.agentos_cli import build_parser
 from hcli.nomenclature import (
     CANONICAL_PIPELINE,
@@ -821,6 +822,38 @@ def test_watcher_never_classifies_modellake_as_pausable():
     assert classes["pausable_hcli_jobs"][0]["job_id"] == "bench"
 
 
+def test_protected_accelerator_benchmark_normalizes_provider_metrics_without_model_assumptions():
+    raw = {
+        "hawking": {
+            "generated_tokens": 4,
+            "new_token_ids": [10, 11, 12, 13],
+            "fallbacks": 0,
+            "prompt_tokens": 7,
+            "resident_health": {"pid": 42, "model_open_count": 1, "weight_upload_count": 1},
+            "native_metrics": {
+                "gpu_ns": 80,
+                "gpu_ns_per_generated_token": 20,
+                "wall_minus_gpu_ns": 5,
+                "dispatches": 40,
+                "dispatches_per_generated_token": 10,
+                "prefill": {"steps": 7, "wall_ns": 70},
+                "decode": {"steps": 4, "wall_ns": 100},
+                "kernel_genome": {"histogram": [["test_kernel", 4]]},
+                "capability": {"complete_token_accounting": True},
+            },
+        }
+    }
+    row = _request_record(raw, elapsed_ns=100, index=1, phase="measure")
+    summary = _aggregate([row, {**row, "index": 2}])
+    assert row["complete_wall_ns_per_token"] == 25
+    assert row["gpu_ns_per_token"] == 20
+    assert row["wall_minus_gpu_ns_per_token"] == 5
+    assert row["dispatches_per_token"] == 10
+    assert row["capability_sanity"]["status"] == "PASS"
+    assert summary["kernel_genome_exact_and_stable"] is True
+    assert summary["generated_token_ids_exact_and_stable"] is True
+
+
 def test_cli_exposes_general_science_surfaces():
     parser = build_parser()
     assert parser.parse_args(["qwen27-runtime-archaeology"]).command == "qwen27-runtime-archaeology"
@@ -842,3 +875,4 @@ def test_cli_exposes_general_science_surfaces():
     assert parser.parse_args(["flash-executable", "--router-selection-receipt", "selection.json"]).router_selection_receipt == "selection.json"
     assert parser.parse_args(["flash-executable", "--router-representation-ab-receipt", "router-ab.json"]).router_representation_ab_receipt == "router-ab.json"
     assert parser.parse_args(["protected-bench-watch"]).command == "protected-bench-watch"
+    assert parser.parse_args(["protected-accelerator-bench"]).command == "protected-accelerator-bench"

@@ -379,6 +379,22 @@ def build_parser() -> argparse.ArgumentParser:
     protected_bench_watch.add_argument("--once", action="store_true")
     protected_bench_watch.add_argument("--pause-known-jobs", action="store_true")
 
+    protected_accelerator = sub.add_parser(
+        "protected-accelerator-bench",
+        help="run one provider-neutral protected persistent-resident physical benchmark",
+    )
+    protected_accelerator.add_argument("--repo-root", default=None)
+    protected_accelerator.add_argument("--profile", default=None)
+    protected_accelerator.add_argument("--resident-binary", default=None)
+    protected_accelerator.add_argument("--prompt", default="Return exactly: HAWKING_OK")
+    protected_accelerator.add_argument("--warmup-requests", type=int, default=1)
+    protected_accelerator.add_argument("--measure-requests", type=int, default=5)
+    protected_accelerator.add_argument("--max-new-tokens", type=int, default=32)
+    protected_accelerator.add_argument("--ready-timeout-s", type=float, default=6 * 3600.0)
+    protected_accelerator.add_argument("--interval-s", type=float, default=30.0)
+    protected_accelerator.add_argument("--timeout-s", type=float, default=180.0)
+    protected_accelerator.add_argument("--emit", default=None)
+
     handoff = sub.add_parser(
         "handoff",
         help="write the resumable overnight Hawking status and continuation handoff",
@@ -848,6 +864,25 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             )
             _emit(report)
             return 0 if report.get("status") in {"COMPLETED", "WAITING_FOR_QUIESCENCE"} else 1
+
+        if args.command == "protected-accelerator-bench":
+            from hcli.agentos.protected_accelerator_benchmark import run_protected_accelerator_benchmark
+
+            report = run_protected_accelerator_benchmark(
+                repo_root=args.repo_root,
+                profile=args.profile,
+                resident_binary=args.resident_binary,
+                prompt=args.prompt,
+                warmup_requests=args.warmup_requests,
+                measure_requests=args.measure_requests,
+                max_new_tokens=args.max_new_tokens,
+                ready_timeout_s=args.ready_timeout_s,
+                interval_s=args.interval_s,
+                timeout_s=args.timeout_s,
+                emit=args.emit,
+            )
+            _emit(report)
+            return 0 if report.get("status") == "PASSED" else 1
 
         if args.command == "handoff":
             from hcli.agentos.handoff import build_handoff

@@ -5,28 +5,14 @@
       "9d373ecc4863b244fc74761c99fc837f7705f3db"
     ],
     "branch": "odyssey-i",
-    "git_revision": "e847c38db69f8c70c1ecb89fef8f8b2cf9802054",
+    "git_revision": "5ee3724292d9118162201700495fac9c7131763c",
     "unrelated_preserved_edit": "tools/odyssey_ctl.py",
     "working_tree_status": [
-      "M hcli/agentos/__init__.py",
-      " M hcli/agentos/checkpoint.py",
-      " M hcli/agentos/flash_executable.py",
-      " M hcli/agentos/flash_graph_component.py",
-      " M hcli/agentos/handoff.py",
-      " M hcli/agentos_cli.py",
-      " M receipts/headless/FLASH_NEXT_NOETIC_EXECUTABLE.json",
-      " M receipts/headless/FLASH_NOETIC_ROUTED_EXPERT_GRAPH.json",
-      " M receipts/headless/HCLI_AGENTOS_CHECKPOINT.json",
-      " M receipts/headless/OVERNIGHT_HAWKING_HANDOFF.json",
-      " M tools/haider/test_hcli_science_boundaries.py",
+      "M receipts/headless/HCLI_AGENTOS_CHECKPOINT.json",
       " M tools/odyssey_ctl.py",
       "?? .hcli/flash-kernel-build/",
       "?? .hcli/locks/",
-      "?? .hcli/unattended-qwen-long/",
-      "?? hcli/agentos/flash_component_campaign.py",
-      "?? receipts/headless/FLASH_NOETIC_Q4_BODY_KERNEL_E0_R128_256_PARITY.json",
-      "?? receipts/headless/FLASH_NOETIC_ROUTED_EXPERT_BODY_E0_R128_256.json",
-      "?? receipts/headless/FLASH_NOETIC_ROUTED_EXPERT_COMPONENT_CAMPAIGN.json"
+      "?? .hcli/unattended-qwen-long/"
     ]
   },
   "blockers": [
@@ -2363,7 +2349,7 @@
       "telemetry/receipt verifier"
     ]
   },
-  "generated_at": 1787818744.83645,
+  "generated_at": 1787818787.3582258,
   "hcli": {
     "background_jobs": [
       {

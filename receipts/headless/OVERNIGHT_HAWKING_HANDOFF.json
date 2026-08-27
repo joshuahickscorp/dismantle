@@ -5,23 +5,13 @@
       "9d373ecc4863b244fc74761c99fc837f7705f3db"
     ],
     "branch": "odyssey-i",
-    "git_revision": "16dc5863bcde86014bc0b7ffe8d2658b13bc6e29",
+    "git_revision": "21877a80bc5386798c0e8ad29aa5fb7b2aab839c",
     "unrelated_preserved_edit": "tools/odyssey_ctl.py",
     "working_tree_status": [
-      "M hcli/agentos/__init__.py",
-      " M hcli/agentos/checkpoint.py",
-      " M hcli/agentos/flash_executable.py",
-      " M hcli/agentos/handoff.py",
-      " M hcli/agentos_cli.py",
-      " M receipts/headless/FLASH_NEXT_NOETIC_EXECUTABLE.json",
-      " M receipts/headless/HCLI_AGENTOS_CHECKPOINT.json",
-      " M tools/haider/test_hcli_science_boundaries.py",
-      " M tools/odyssey_ctl.py",
+      "M tools/odyssey_ctl.py",
       "?? .hcli/flash-kernel-build/",
       "?? .hcli/locks/",
-      "?? .hcli/unattended-qwen-long/",
-      "?? hcli/agentos/flash_router_representation_ab.py",
-      "?? receipts/headless/FLASH_NOETIC_ROUTER_REPRESENTATION_AB.json"
+      "?? .hcli/unattended-qwen-long/"
     ]
   },
   "blockers": [
@@ -4171,7 +4161,7 @@
       "telemetry/receipt verifier"
     ]
   },
-  "generated_at": 1787823117.173104,
+  "generated_at": 1787823314.6099331,
   "hcli": {
     "background_jobs": [
       {
@@ -4618,18 +4608,18 @@
         },
         {
           "checks": {},
-          "cycles": 187,
+          "cycles": 190,
           "deadline": 1787833148.5820968,
           "metrics": {
-            "accepted": 186,
-            "attempted": 187,
+            "accepted": 189,
+            "attempted": 190,
             "human_interventions": 0,
             "inconclusive": 1,
-            "model_calls": 187,
+            "model_calls": 190,
             "rejected": 0,
             "retries": 1,
-            "typed_tool_calls": 374,
-            "verifier_calls": 186
+            "typed_tool_calls": 380,
+            "verifier_calls": 189
           },
           "path": "/Users/scammermike/Downloads/hawking/.hcli/unattended-qwen-long/window-progress.json",
           "started_at": 1787811548.5820968,

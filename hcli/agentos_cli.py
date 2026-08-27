@@ -198,6 +198,7 @@ def build_parser() -> argparse.ArgumentParser:
     flash_executable.add_argument("--graph-component-receipt", default=None)
     flash_executable.add_argument("--component-campaign-receipt", default=None)
     flash_executable.add_argument("--router-graph-receipt", default=None)
+    flash_executable.add_argument("--router-selection-receipt", default=None)
     flash_executable.add_argument("--emit", default=None)
     flash_executable.add_argument("--ebpw-emit", default=None)
     flash_executable.add_argument("--token-ns-emit", default=None)
@@ -283,6 +284,16 @@ def build_parser() -> argparse.ArgumentParser:
     flash_router_graph.add_argument("--body-receipt", default=None)
     flash_router_graph.add_argument("--kernel-receipt", default=None)
     flash_router_graph.add_argument("--emit", default=None)
+
+    flash_router_selection = sub.add_parser(
+        "flash-router-selection",
+        help="execute bounded Flash router FP32 softmax/top-k semantics over a persisted full Noetic body",
+    )
+    flash_router_selection.add_argument("--repo-root", default=None)
+    flash_router_selection.add_argument("--root", default=None, help="pinned ModelLake specimen root; defaults to the body receipt root")
+    flash_router_selection.add_argument("--body-receipt", default=None)
+    flash_router_selection.add_argument("--kernel-receipt", default=None)
+    flash_router_selection.add_argument("--emit", default=None)
 
     flash_campaign = sub.add_parser(
         "flash-component-campaign",
@@ -701,6 +712,19 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
             report = run_flash_router_graph(
                 repo_root=args.repo_root,
+                body_receipt=args.body_receipt,
+                kernel_receipt=args.kernel_receipt,
+                emit=args.emit,
+            )
+            _emit(report)
+            return 0 if report.get("status") == "PASSED" else 1
+
+        if args.command == "flash-router-selection":
+            from hcli.agentos.flash_router_selection import run_flash_router_selection
+
+            report = run_flash_router_selection(
+                repo_root=args.repo_root,
+                root=args.root,
                 body_receipt=args.body_receipt,
                 kernel_receipt=args.kernel_receipt,
                 emit=args.emit,

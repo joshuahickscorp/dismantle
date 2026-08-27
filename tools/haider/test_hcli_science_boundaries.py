@@ -17,6 +17,7 @@ from hcli.agentos import flash_loader_roundtrip
 from hcli.agentos import flash_graph_component
 from hcli.agentos import flash_component_campaign
 from hcli.agentos import flash_router_graph
+from hcli.agentos import flash_router_selection
 from hcli.flash_next import PINNED_REVISION
 from hcli.agentos.fpga_preboard import simulate_partition
 from hcli.agentos.protected_benchmark_watcher import _classify_blockers
@@ -648,6 +649,21 @@ def test_flash_router_graph_compiles_rank_two_source_independent_body(tmp_path):
     assert result["promotion_allowed"] is False
 
 
+def test_flash_router_selection_applies_stable_fp32_softmax_top_k_and_normalization():
+    import numpy as np
+
+    result = flash_router_selection.select_router(
+        np,
+        np.asarray([0.0, 2.0, 1.0, 2.0, -1.0], dtype=np.float32),
+        top_k=3,
+        norm_topk_prob=True,
+    )
+    assert result["expert_ids"] == [1, 3, 2]
+    assert result["probabilities_finite"] is True
+    assert abs(result["selected_weight_sum"] - 1.0) < 1e-6
+    assert result["selected_weights"][0] == result["selected_weights"][1]
+
+
 def test_canonical_nomenclature_is_versioned_without_renaming_legacy_terms():
     assert NOMENCLATURE_VERSION == "HAWKING_NOMENCLATURE_V1"
     assert CANONICAL_PIPELINE[0] == "SourceSpecimen"
@@ -729,8 +745,10 @@ def test_cli_exposes_general_science_surfaces():
     assert parser.parse_args(["flash-component-body"]).command == "flash-component-body"
     assert parser.parse_args(["flash-matrix-body"]).command == "flash-matrix-body"
     assert parser.parse_args(["flash-router-graph"]).command == "flash-router-graph"
+    assert parser.parse_args(["flash-router-selection"]).command == "flash-router-selection"
     assert parser.parse_args(["flash-component-campaign"]).command == "flash-component-campaign"
     assert parser.parse_args(["flash-graph-component"]).command == "flash-graph-component"
     assert parser.parse_args(["flash-executable", "--kernel-parity-receipt", "kernel.json"]).kernel_parity_receipt == "kernel.json"
     assert parser.parse_args(["flash-executable", "--graph-component-receipt", "graph.json"]).graph_component_receipt == "graph.json"
+    assert parser.parse_args(["flash-executable", "--router-selection-receipt", "selection.json"]).router_selection_receipt == "selection.json"
     assert parser.parse_args(["protected-bench-watch"]).command == "protected-bench-watch"

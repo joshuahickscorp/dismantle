@@ -190,6 +190,7 @@ def _flash_summary(repo: Path) -> Dict[str, Any]:
     router_body = _receipt(repo, "FLASH_NOETIC_ROUTER_COMPONENT_BODY.json") or {}
     router_kernel = _receipt(repo, "FLASH_NOETIC_ROUTER_COMPONENT_KERNEL_PARITY.json") or {}
     router_graph = _receipt(repo, "FLASH_NOETIC_ROUTER_GRAPH.json") or {}
+    router_selection = _receipt(repo, "FLASH_NOETIC_ROUTER_SELECTION.json") or {}
     source = flash.get("source_identity") or flash.get("source") or {}
     promotion = flash.get("promotion_gate") or {}
     return {
@@ -357,6 +358,24 @@ def _flash_summary(repo: Path) -> Dict[str, Any]:
             "claim_boundary": router_graph.get("claim_boundary"),
             "next_action": router_graph.get("next_action"),
         },
+        "bounded_noetic_router_selection": {
+            "status": router_selection.get("status"),
+            "receipt_path": str(repo / "receipts" / "headless" / "FLASH_NOETIC_ROUTER_SELECTION.json"),
+            "semantic_type": router_selection.get("semantic_type"),
+            "compiler_stage": router_selection.get("compiler_stage"),
+            "source_identity": router_selection.get("source_identity"),
+            "config": router_selection.get("config"),
+            "selection": router_selection.get("selection"),
+            "execution": router_selection.get("execution"),
+            "physical_graph": router_selection.get("physical_graph"),
+            "noetic_ir": router_selection.get("noetic_ir"),
+            "native_selection_execution_observed": router_selection.get("native_selection_execution_observed"),
+            "whole_model_capability": router_selection.get("whole_model_capability"),
+            "complete_token_runtime": router_selection.get("complete_token_runtime"),
+            "promotion_allowed": router_selection.get("promotion_allowed"),
+            "claim_boundary": router_selection.get("claim_boundary"),
+            "next_action": router_selection.get("next_action"),
+        },
         "bounded_noetic_graph_component": {
             "status": graph_component.get("status"),
             "component_status": graph_component.get("component_status"),
@@ -499,6 +518,7 @@ def build_handoff(repo_root: Optional[str | os.PathLike[str]] = None, *, emit: O
     flash = _flash_summary(repo)
     router_body = flash.get("source_independent_router_component") or {}
     router_graph = flash.get("bounded_noetic_router_graph") or {}
+    router_selection = flash.get("bounded_noetic_router_selection") or {}
     lake = _model_lake_summary(repo)
     window = _window_summary(repo)
     promotion_status = (flash.get("promotion") or {}).get("status")
@@ -547,6 +567,8 @@ def build_handoff(repo_root: Optional[str | os.PathLike[str]] = None, *, emit: O
         blockers.append("Flash-Next bounded source-independent router matrix body is absent or incomplete.")
     if router_graph.get("status") != "PASSED" or router_graph.get("promotion_allowed") is not False:
         blockers.append("Flash-Next bounded Noetic router graph is absent or incomplete.")
+    if router_selection.get("status") != "PASSED" or router_selection.get("promotion_allowed") is not False:
+        blockers.append("Flash-Next bounded Noetic router selection edge is absent or incomplete.")
     graph_component = _receipt(repo, "FLASH_NOETIC_ROUTED_EXPERT_GRAPH.json") or {}
     if graph_component.get("status") != "PASSED" or graph_component.get("promotion_allowed") is not False:
         blockers.append("Flash-Next bounded Noetic routed-expert graph component is absent or incomplete.")
@@ -583,7 +605,7 @@ def build_handoff(repo_root: Optional[str | os.PathLike[str]] = None, *, emit: O
         "modellake": lake,
         "fpga": _fpga_summary(repo),
         "verification": {
-            "full_suite": {"command": "pytest -q", "last_observed_status": "PASSED", "last_observed": "733 passed, 2 skipped"},
+            "full_suite": {"command": "pytest -q", "last_observed_status": "PASSED", "last_observed": "734 passed, 2 skipped"},
             "provider_focus": {"last_observed_status": "PASSED", "last_observed": "30 passed, 2 warnings"},
             "receipt_gates": {
                 "autonomy": (_receipt(repo, "HCLI_AGENTOS_AUTONOMY_GATE.json") or {}).get("status"),
@@ -600,6 +622,7 @@ def build_handoff(repo_root: Optional[str | os.PathLike[str]] = None, *, emit: O
                 "flash_graph_component": graph_component.get("status"),
                 "flash_router_component_body": router_body.get("status"),
                 "flash_router_graph": router_graph.get("status"),
+                "flash_router_selection": router_selection.get("status"),
                 "modellake_supervision": lake_status,
                 "unattended_window": window_status,
             },
@@ -627,6 +650,7 @@ def build_handoff(repo_root: Optional[str | os.PathLike[str]] = None, *, emit: O
             "run_flash_graph_component": f"python3 -m hcli agentos flash-graph-component --repo-root {repo} --emit {repo / 'receipts/headless/FLASH_NOETIC_ROUTED_EXPERT_GRAPH.json'}",
             "run_flash_router_component_body": f"python3 -m hcli agentos flash-matrix-body --root /Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc --repo-root {repo} --tensor-name model.language_model.layers.0.mlp.gate.weight --component-kind router --emit {repo / 'receipts/headless/FLASH_NOETIC_ROUTER_COMPONENT_BODY.json'}",
             "run_flash_router_graph": f"python3 -m hcli agentos flash-router-graph --repo-root {repo} --emit {repo / 'receipts/headless/FLASH_NOETIC_ROUTER_GRAPH.json'}",
+            "run_flash_router_selection": f"python3 -m hcli agentos flash-router-selection --repo-root {repo} --body-receipt {repo / 'receipts/headless/FLASH_NOETIC_ROUTER_COMPONENT_FULL_BODY.json'} --kernel-receipt {repo / 'receipts/headless/FLASH_NOETIC_ROUTER_COMPONENT_FULL_KERNEL_PARITY.json'} --emit {repo / 'receipts/headless/FLASH_NOETIC_ROUTER_SELECTION.json'}",
             "run_flash_tensor_probe": f"python3 -m hcli agentos flash-tensor-probe --emit {repo / 'receipts/headless/FLASH_FIRST_TENSOR_PROBE.json'}",
             "run_flash_representation_experiment": f"python3 -m hcli agentos flash-representation-experiment --emit {repo / 'receipts/headless/FLASH_ROUTED_EXPERT_REPRESENTATION_EXPERIMENT.json'}",
             "run_flash_representation_replication": f"python3 -m hcli agentos flash-representation-experiment --expert-indices 32,33,34,35,36,37,38,39 --row-start 64 --row-count 16 --emit {repo / 'receipts/headless/FLASH_ROUTED_EXPERT_REPRESENTATION_EXPERIMENT_DISJOINT.json'}",

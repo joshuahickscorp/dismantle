@@ -45,6 +45,7 @@ DEFAULT_BODY_KERNEL_PARITY = "FLASH_NOETIC_Q4_BODY_KERNEL_PARITY.json"
 DEFAULT_GRAPH_COMPONENT = "FLASH_NOETIC_ROUTED_EXPERT_GRAPH.json"
 DEFAULT_COMPONENT_CAMPAIGN = "FLASH_NOETIC_ROUTED_EXPERT_COMPONENT_CAMPAIGN.json"
 DEFAULT_ROUTER_GRAPH = "FLASH_NOETIC_ROUTER_GRAPH.json"
+DEFAULT_ROUTER_SELECTION = "FLASH_NOETIC_ROUTER_SELECTION.json"
 DEFAULT_EXECUTABLE = "FLASH_NEXT_NOETIC_EXECUTABLE.json"
 DEFAULT_EBPW = "FLASH_EBPW_BUDGET.json"
 DEFAULT_TOKEN_NS = "FLASH_TOKEN_NS_BUDGET.json"
@@ -516,6 +517,52 @@ def _router_graph_summary(
     }
 
 
+def _router_selection_summary(
+    repo: Path,
+    receipt: Optional[str | os.PathLike[str]] = None,
+) -> Dict[str, Any]:
+    """Read the derived router selector without promoting it to native runtime."""
+    path = Path(receipt).expanduser().resolve() if receipt else repo / "receipts" / "headless" / DEFAULT_ROUTER_SELECTION
+    selection = _read_json(path)
+    if selection is None:
+        return {
+            "status": "NOT_RUN",
+            "receipt_path": str(path),
+            "selection_status": "NOT_EXECUTED",
+            "source_independent_execution": None,
+            "candidate_body_persisted": None,
+            "native_selection_execution_observed": None,
+            "whole_model_capability": "NOT_TESTED",
+            "complete_token_runtime": "NOT_TESTED",
+            "promotion_allowed": False,
+        }
+    return {
+        "status": selection.get("status"),
+        "receipt_path": str(path),
+        "receipt_sha256": _sha256(path),
+        "schema": selection.get("schema"),
+        "nomenclature_version": selection.get("nomenclature_version"),
+        "semantic_type": selection.get("semantic_type"),
+        "compiler_stage": selection.get("compiler_stage"),
+        "selection_status": "EXECUTED" if selection.get("selection") else "NOT_EXECUTED",
+        "source_identity": selection.get("source_identity"),
+        "config": selection.get("config"),
+        "selection": selection.get("selection"),
+        "execution": selection.get("execution"),
+        "physical_graph": selection.get("physical_graph"),
+        "noetic_ir": selection.get("noetic_ir"),
+        "validation": selection.get("validation"),
+        "source_independent_execution": selection.get("execution", {}).get("source_independent") if isinstance(selection.get("execution"), Mapping) else None,
+        "candidate_body_persisted": selection.get("execution", {}).get("candidate_body_persisted") if isinstance(selection.get("execution"), Mapping) else None,
+        "native_selection_execution_observed": selection.get("native_selection_execution_observed"),
+        "whole_model_capability": selection.get("whole_model_capability"),
+        "complete_token_runtime": selection.get("complete_token_runtime"),
+        "promotion_allowed": selection.get("promotion_allowed"),
+        "claim_boundary": selection.get("claim_boundary"),
+        "next_action": selection.get("next_action"),
+    }
+
+
 def _primary_organs(science: Mapping[str, Any]) -> list[Mapping[str, Any]]:
     rows = science.get("organ_graph")
     if not isinstance(rows, list):
@@ -875,6 +922,7 @@ def _executable_manifest(
     graph_component: Mapping[str, Any],
     component_campaign: Mapping[str, Any],
     router_graph: Mapping[str, Any],
+    router_selection: Mapping[str, Any],
 ) -> Dict[str, Any]:
     organs = [str(row.get("organ")) for row in ebpw.get("organs") or [] if isinstance(row, Mapping)]
     return {
@@ -912,6 +960,8 @@ def _executable_manifest(
             "bounded_component_campaign_receipt": component_campaign.get("receipt_path"),
             "bounded_router_graph_observed": router_graph.get("status") == "PASSED",
             "bounded_router_graph_receipt": router_graph.get("receipt_path"),
+            "bounded_router_selection_observed": router_selection.get("status") == "PASSED",
+            "bounded_router_selection_receipt": router_selection.get("receipt_path"),
             "bounded_component_body_loaded": kernel_parity.get("source_independent_execution") is True,
             "bounded_component_body_receipt": (kernel_parity.get("candidate_body") or {}).get("receipt_path"),
             "weight_body_loaded": False,
@@ -925,6 +975,7 @@ def _executable_manifest(
         "source_graph_component": graph_component,
         "source_component_campaign": component_campaign,
         "source_router_graph": router_graph,
+        "source_router_selection": router_selection,
         "chosen_representation": ebpw.get("chosen_representation"),
         "native_loader": {
             "status": "NOT_IMPLEMENTED",
@@ -989,6 +1040,17 @@ def _executable_manifest(
                 "scope": "bounded router matrix matvec only; sigmoid/top-k and complete Flash execution remain unimplemented",
                 "label": DERIVED,
             },
+            "bounded_router_selection_evidence": {
+                "status": router_selection.get("status"),
+                "receipt": router_selection.get("receipt_path"),
+                "selection_status": router_selection.get("selection_status"),
+                "physical_graph_fingerprint": (router_selection.get("physical_graph") or {}).get("fingerprint"),
+                "source_independent_execution": router_selection.get("source_independent_execution"),
+                "candidate_body_persisted": router_selection.get("candidate_body_persisted"),
+                "native_selection_execution_observed": router_selection.get("native_selection_execution_observed"),
+                "scope": "derived CPU router softmax/top-k over a persisted full body; no native selection kernel or complete Flash execution",
+                "label": DERIVED,
+            },
             "dense_rematerialization": "FORBIDDEN_BY_FINAL_RUNTIME_POLICY",
         },
         "graph_runtime": {
@@ -1032,6 +1094,16 @@ def _executable_manifest(
                 "whole_model_capability": router_graph.get("whole_model_capability"),
                 "complete_token_runtime": router_graph.get("complete_token_runtime"),
             },
+            "router_selection": {
+                "status": router_selection.get("selection_status"),
+                "receipt_path": router_selection.get("receipt_path"),
+                "fingerprint": (router_selection.get("physical_graph") or {}).get("fingerprint"),
+                "source_independent_execution": router_selection.get("source_independent_execution"),
+                "candidate_body_persisted": router_selection.get("candidate_body_persisted"),
+                "native_selection_execution_observed": router_selection.get("native_selection_execution_observed"),
+                "whole_model_capability": router_selection.get("whole_model_capability"),
+                "complete_token_runtime": router_selection.get("complete_token_runtime"),
+            },
             "text_only_vision_bypass": "CONDITIONAL_AND_UNPROVEN",
             "mtp_accept_reject": "EXPLICIT_REQUIRED_EDGE",
             "fallbacks": "No fallback may be silently counted as native Flash execution.",
@@ -1066,6 +1138,7 @@ def _executable_manifest(
             "graph_fingerprint": graph_component.get("graph_fingerprint"),
             "component_campaign_fingerprint": (component_campaign.get("physical_graph") or {}).get("fingerprint"),
             "router_graph_fingerprint": (router_graph.get("physical_graph") or {}).get("fingerprint"),
+            "router_selection_fingerprint": (router_selection.get("physical_graph") or {}).get("fingerprint"),
             "device_identity": None,
             "compiler_identity": None,
             "representation_manifest_sha256": None,
@@ -1097,6 +1170,7 @@ def run_flash_executable_scaffold(
     graph_component_receipt: Optional[str | os.PathLike[str]] = None,
     component_campaign_receipt: Optional[str | os.PathLike[str]] = None,
     router_graph_receipt: Optional[str | os.PathLike[str]] = None,
+    router_selection_receipt: Optional[str | os.PathLike[str]] = None,
     emit: Optional[str | os.PathLike[str]] = None,
     ebpw_emit: Optional[str | os.PathLike[str]] = None,
     token_ns_emit: Optional[str | os.PathLike[str]] = None,
@@ -1134,9 +1208,10 @@ def run_flash_executable_scaffold(
         graph_component = _graph_component_summary(repo, graph_component_receipt)
         component_campaign = _component_campaign_summary(repo, component_campaign_receipt)
         router_graph = _router_graph_summary(repo, router_graph_receipt)
+        router_selection = _router_selection_summary(repo, router_selection_receipt)
         ebpw = _ebpw_budget(science, source, tensor_probe, representation_experiment, transform_parity, loader_roundtrip, kernel_parity)
         token_ns = _token_ns_budget(science, source)
-        manifest = _executable_manifest(science, source, lake, ebpw, token_ns, tensor_probe, representation_experiment, transform_parity, loader_roundtrip, kernel_parity, graph_component, component_campaign, router_graph)
+        manifest = _executable_manifest(science, source, lake, ebpw, token_ns, tensor_probe, representation_experiment, transform_parity, loader_roundtrip, kernel_parity, graph_component, component_campaign, router_graph, router_selection)
         atomic_write_json(ebpw_path, ebpw)
         atomic_write_json(token_path, token_ns)
         manifest["ebpw_budget_receipt"] = str(ebpw_path)
@@ -1200,6 +1275,18 @@ def run_flash_executable_scaffold(
                     )
                 ),
                 "bounded_router_graph_refuses_promotion": router_graph.get("promotion_allowed") is False,
+                "bounded_router_selection_is_explicit": router_selection.get("status") in {"NOT_RUN", "PASSED"},
+                "bounded_router_selection_does_not_claim_whole_model": router_selection.get("whole_model_capability") in {None, "NOT_TESTED"} and router_selection.get("complete_token_runtime") in {None, "NOT_TESTED"},
+                "bounded_router_selection_body_is_scoped": (
+                    router_selection.get("status") == "NOT_RUN"
+                    or (
+                        router_selection.get("status") == "PASSED"
+                        and router_selection.get("source_independent_execution") is True
+                        and router_selection.get("candidate_body_persisted") is True
+                    )
+                ),
+                "bounded_router_selection_is_not_mislabeled_native": router_selection.get("native_selection_execution_observed") in {None, False},
+                "bounded_router_selection_refuses_promotion": router_selection.get("promotion_allowed") is False,
                 "native_loader_status_explicit": manifest.get("native_loader", {}).get("status") == "NOT_IMPLEMENTED",
                 "native_kernels_status_explicit": manifest.get("native_kernels", {}).get("status") == "PLAN_ONLY",
                 "complete_token_timing_not_fabricated": manifest.get("complete_token_timing", {}).get("accepted_tps") is None,
@@ -1233,6 +1320,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser.add_argument("--graph-component-receipt")
     parser.add_argument("--component-campaign-receipt")
     parser.add_argument("--router-graph-receipt")
+    parser.add_argument("--router-selection-receipt")
     parser.add_argument("--emit")
     parser.add_argument("--ebpw-emit")
     parser.add_argument("--token-ns-emit")
@@ -1248,6 +1336,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         graph_component_receipt=args.graph_component_receipt,
         component_campaign_receipt=args.component_campaign_receipt,
         router_graph_receipt=args.router_graph_receipt,
+        router_selection_receipt=args.router_selection_receipt,
         emit=args.emit,
         ebpw_emit=args.ebpw_emit,
         token_ns_emit=args.token_ns_emit,
@@ -1256,7 +1345,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     return 0 if report.get("status") == "PASSED" else 1
 
 
-__all__ = ["DEFAULT_KERNEL_PARITY", "DEFAULT_LOADER_ROUNDTRIP", "DEFAULT_REPRESENTATION_EXPERIMENT", "DEFAULT_REPRESENTATION_REPLICATION", "DEFAULT_TENSOR_PROBE", "DEFAULT_TRANSFORM_PARITY", "EBPW_SCHEMA", "SCHEMA", "TOKEN_NS_SCHEMA", "main", "run_flash_executable_scaffold"]
+__all__ = ["DEFAULT_KERNEL_PARITY", "DEFAULT_LOADER_ROUNDTRIP", "DEFAULT_REPRESENTATION_EXPERIMENT", "DEFAULT_REPRESENTATION_REPLICATION", "DEFAULT_ROUTER_SELECTION", "DEFAULT_TENSOR_PROBE", "DEFAULT_TRANSFORM_PARITY", "EBPW_SCHEMA", "SCHEMA", "TOKEN_NS_SCHEMA", "main", "run_flash_executable_scaffold"]
 
 
 if __name__ == "__main__":

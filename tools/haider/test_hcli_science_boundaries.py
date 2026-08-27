@@ -1023,6 +1023,8 @@ def test_cli_exposes_general_science_surfaces():
     assert parser.parse_args(["flash-executable", "--native-routed-expert-dispatch-receipt", "native-dispatch.json"]).native_routed_expert_dispatch_receipt == "native-dispatch.json"
     assert parser.parse_args(["flash-executable", "--native-gate-up-swiglu-receipt", "native-gate-up.json"]).native_gate_up_swiglu_receipt == "native-gate-up.json"
     assert parser.parse_args(["flash-executable", "--native-expert-composition-receipt", "native-composition.json"]).native_expert_composition_receipt == "native-composition.json"
+    assert parser.parse_args(["flash-executable", "--native-shared-expert-composition-receipt", "native-shared-composition.json"]).native_shared_expert_composition_receipt == "native-shared-composition.json"
+    assert parser.parse_args(["flash-executable", "--native-shared-residual-hyperconnection-receipt", "native-shared-residual.json"]).native_shared_residual_hyperconnection_receipt == "native-shared-residual.json"
     assert parser.parse_args(["flash-executable", "--router-representation-ab-receipt", "router-ab.json"]).router_representation_ab_receipt == "router-ab.json"
     assert parser.parse_args(["protected-bench-watch"]).command == "protected-bench-watch"
     assert parser.parse_args(["protected-accelerator-bench"]).command == "protected-accelerator-bench"

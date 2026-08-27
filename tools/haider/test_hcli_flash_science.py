@@ -7,6 +7,8 @@ from hcli.agentos.flash_executable import (
     _native_gate_up_swiglu_summary,
     _native_router_selection_summary,
     _native_routed_expert_dispatch_summary,
+    _native_shared_expert_composition_summary,
+    _native_shared_residual_hyperconnection_summary,
 )
 from hcli.agentos.handoff import _model_lake_summary
 from hcli.agentos.flash_science import (
@@ -239,6 +241,127 @@ def test_native_expert_composition_summary_preserves_device_chain_boundary(tmp_p
     assert summary["source_independent_execution"] is True
     assert summary["complete_token_runtime"] == "NOT_TESTED"
     assert summary["complete_system_ebpw"] is None
+    assert summary["promotion_allowed"] is False
+
+
+def test_native_shared_expert_composition_summary_preserves_gated_device_chain_boundary(tmp_path):
+    receipt = tmp_path / "native-shared-expert-composition.json"
+    receipt.write_text(
+        json.dumps(
+            {
+                "schema": "hawking.flash_noetic_shared_expert_composition_native.v1",
+                "nomenclature_version": "HAWKING_NOMENCLATURE_V1",
+                "status": "PASSED",
+                "semantic_type": "NoeticExecutableCandidate",
+                "compiler_stage": "HawkingAccelerator",
+                "qualification": "BOUNDED_NATIVE_SHARED_EXPERT_Q4_G64_GATED_SWIGLU_COMPOSITION",
+                "layer": 0,
+                "execution": {
+                    "complete_shared_expert_candidate_graph": True,
+                    "native_shared_expert_gate_up_swiglu_observed": True,
+                    "native_shared_expert_down_projection_observed": True,
+                    "native_shared_expert_scalar_gate_observed": True,
+                    "native_shared_expert_sigmoid_gate_observed": True,
+                    "native_shared_expert_composition_observed": True,
+                    "device_intermediate_no_host_roundtrip": True,
+                    "dispatches_per_graph": 4,
+                },
+                "native_shared_expert_gate_up_swiglu_observed": True,
+                "native_shared_expert_down_projection_observed": True,
+                "native_shared_expert_scalar_gate_observed": True,
+                "native_shared_expert_sigmoid_gate_observed": True,
+                "native_shared_expert_composition_observed": True,
+                "noetic_ir": {"source_independent": True},
+                "intermediates": {"device_resident": True, "host_roundtrip": False},
+                "whole_model_capability": "NOT_TESTED",
+                "complete_expert_runtime": "NOT_TESTED",
+                "complete_token_runtime": "NOT_TESTED",
+                "complete_system_ebpw": None,
+                "flash_tps": None,
+                "promotion_allowed": False,
+                "physical_graph": {"fingerprint": "graph", "device_intermediate_no_host_roundtrip": True},
+                "claim_boundary": "bounded shared-expert composition only",
+                "next_action": "continue",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    summary = _native_shared_expert_composition_summary(tmp_path, receipt)
+
+    assert summary["status"] == "PASSED"
+    assert summary["native_shared_expert_gate_up_swiglu_observed"] is True
+    assert summary["native_shared_expert_down_projection_observed"] is True
+    assert summary["native_shared_expert_scalar_gate_observed"] is True
+    assert summary["native_shared_expert_sigmoid_gate_observed"] is True
+    assert summary["native_shared_expert_composition_observed"] is True
+    assert summary["device_intermediate_no_host_roundtrip"] is True
+    assert summary["source_independent_execution"] is True
+    assert summary["complete_token_runtime"] == "NOT_TESTED"
+    assert summary["complete_system_ebpw"] is None
+    assert summary["promotion_allowed"] is False
+
+
+def test_native_shared_residual_hyperconnection_summary_preserves_candidate_boundary(tmp_path):
+    receipt = tmp_path / "native-shared-residual-hyperconnection.json"
+    receipt.write_text(
+        json.dumps(
+            {
+                "schema": "hawking.flash_noetic_shared_residual_hyperconnection_native.v1",
+                "nomenclature_version": "HAWKING_NOMENCLATURE_V1",
+                "status": "PASSED",
+                "semantic_type": "NoeticExecutableCandidate",
+                "compiler_stage": "HawkingAccelerator",
+                "qualification": "BOUNDED_NATIVE_SHARED_EXPERT_RESIDUAL_HYPERCONNECTION_COMPOSITION",
+                "layer": 0,
+                "execution": {
+                    "dispatches_per_graph": 9,
+                    "native_hyperconnection_stream_injection_observed": True,
+                    "native_hyperconnection_low_rank_down_observed": True,
+                    "native_hyperconnection_low_rank_up_observed": True,
+                    "native_hyperconnection_block_inject_observed": True,
+                    "native_hyperconnection_residual_mix_observed": True,
+                    "native_shared_residual_composition_observed": True,
+                    "device_intermediate_no_host_roundtrip": True,
+                },
+                "native_shared_expert_gate_up_swiglu_observed": True,
+                "native_shared_expert_down_projection_observed": True,
+                "native_shared_expert_sigmoid_gate_observed": True,
+                "native_hyperconnection_stream_injection_observed": True,
+                "native_hyperconnection_low_rank_down_observed": True,
+                "native_hyperconnection_low_rank_up_observed": True,
+                "native_hyperconnection_block_inject_observed": True,
+                "native_hyperconnection_residual_mix_observed": True,
+                "native_shared_residual_composition_observed": True,
+                "noetic_ir": {"source_independent": True},
+                "physical_graph": {"fingerprint": "graph", "device_intermediate_no_host_roundtrip": True},
+                "candidate_semantics": {"status": "BOUNDED_CANDIDATE_ONLY", "hc_norm": "NOT_LOADED"},
+                "whole_model_capability": "NOT_TESTED",
+                "complete_expert_runtime": "NOT_TESTED",
+                "complete_token_runtime": "NOT_TESTED",
+                "complete_system_ebpw": None,
+                "flash_tps": None,
+                "promotion_allowed": False,
+                "claim_boundary": "bounded shared-expert-to-hyperconnection candidate only",
+                "next_action": "qualify exact source semantics",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    summary = _native_shared_residual_hyperconnection_summary(tmp_path, receipt)
+
+    assert summary["status"] == "PASSED"
+    assert summary["native_hyperconnection_stream_injection_observed"] is True
+    assert summary["native_hyperconnection_low_rank_down_observed"] is True
+    assert summary["native_hyperconnection_low_rank_up_observed"] is True
+    assert summary["native_hyperconnection_block_inject_observed"] is True
+    assert summary["native_hyperconnection_residual_mix_observed"] is True
+    assert summary["native_shared_residual_composition_observed"] is True
+    assert summary["device_intermediate_no_host_roundtrip"] is True
+    assert summary["source_independent_execution"] is True
+    assert summary["candidate_semantics"]["hc_norm"] == "NOT_LOADED"
+    assert summary["complete_token_runtime"] == "NOT_TESTED"
     assert summary["promotion_allowed"] is False
 
 

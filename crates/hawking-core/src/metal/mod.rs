@@ -1499,6 +1499,11 @@ mod imp {
             "qwen_next_qkvz_rearrange_conv_l2" => "qwen_next_qkvz_rearrange_conv_l2",
             "qwen_next_deltanet_gated_rmsnorm" => "qwen_next_deltanet_gated_rmsnorm",
             "qwen_next_add_residual" => "qwen_next_add_residual",
+            "qwen_next_shared_expert_sigmoid_gate" => "qwen_next_shared_expert_sigmoid_gate",
+            "qwen_next_expand_shared_to_hyper_state" => "qwen_next_expand_shared_to_hyper_state",
+            "qwen_next_hyperconnection_residual_mix_candidate" => {
+                "qwen_next_hyperconnection_residual_mix_candidate"
+            },
             "qwen80_attention_qk_norm_rope_cache" => "qwen80_attention_qk_norm_rope_cache",
             "qwen80_attention_apply_sigmoid_gate" => "qwen80_attention_apply_sigmoid_gate",
             "qwen80_postnorm_router_top10_rmsnorm" => "qwen80_postnorm_router_top10_rmsnorm",

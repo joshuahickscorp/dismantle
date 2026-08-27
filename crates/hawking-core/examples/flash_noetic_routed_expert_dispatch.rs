@@ -12,6 +12,15 @@
 //! `--expert-composition` mode chains that native gate+up/SwiGLU output directly
 //! into independently persisted down-projection bodies, proving only the
 //! bounded selected-expert composition and never a complete Flash token graph.
+//! `--shared-expert-composition` mode runs the complete layer-0 shared-expert
+//! candidate path (gate/up/SwiGLU -> down -> scalar sigmoid gate) with all
+//! intermediates retained on-device; it still stops before routed/MoE combine,
+//! residuals, attention/state, tokens, TPS, or EBPW.
+//! `--shared-residual-composition` extends that bounded shared-expert output
+//! into the layer-0 MLP hyperconnection candidate: device-side stream
+//! injection -> low-rank down/up -> block-inject gated residual mix.  It is a
+//! source-layout candidate graph only; `hc_norm`, routed/MoE semantics,
+//! complete layers, tokens, TPS, and EBPW remain outside the claim.
 
 #![recursion_limit = "512"]
 
@@ -36,6 +45,9 @@ mod macos {
     const SCHEMA: &str = "hawking.flash_noetic_routed_expert_dispatch_native.v1";
     const GATE_UP_SCHEMA: &str = "hawking.flash_noetic_routed_expert_gate_up_swiglu_native.v1";
     const COMPOSITION_SCHEMA: &str = "hawking.flash_noetic_routed_expert_composition_native.v1";
+    const SHARED_EXPERT_SCHEMA: &str = "hawking.flash_noetic_shared_expert_composition_native.v1";
+    const SHARED_RESIDUAL_SCHEMA: &str =
+        "hawking.flash_noetic_shared_residual_hyperconnection_native.v1";
     const BODY_SCHEMA: &str = "hcli.agentos.flash_noetic_component_body.v1";
     const KERNEL_SCHEMA: &str = "hawking.flash_noetic_q4_kernel_parity.v1";
     const ROUTER_SCHEMA: &str = "hawking.flash_noetic_router_selection_native.v1";
@@ -60,6 +72,29 @@ mod macos {
     const GATE_UP_ROWS: usize = 640;
     const DOWN_BODY_ROWS: usize = 2560;
     const DOWN_COLUMNS: usize = 640;
+    const SHARED_GATE_TENSOR_NAME: &str =
+        "model.language_model.layers.0.mlp.shared_expert.gate_proj.weight";
+    const SHARED_UP_TENSOR_NAME: &str =
+        "model.language_model.layers.0.mlp.shared_expert.up_proj.weight";
+    const SHARED_DOWN_TENSOR_NAME: &str =
+        "model.language_model.layers.0.mlp.shared_expert.down_proj.weight";
+    const SHARED_SCALAR_GATE_TENSOR_NAME: &str =
+        "model.language_model.layers.0.mlp.shared_expert_gate.weight";
+    const SHARED_SIGMOID_GATE_KERNEL_NAME: &str = "qwen_next_shared_expert_sigmoid_gate";
+    const SHARED_HIDDEN: usize = 2560;
+    const SHARED_INTERMEDIATE: usize = 640;
+    const HYPER_STATE_HIDDEN: usize = 2560;
+    const HYPER_STATE_STREAMS: usize = 4;
+    const HYPER_STATE_ELEMENTS: usize = HYPER_STATE_HIDDEN * HYPER_STATE_STREAMS;
+    const HYPER_LOWRANK: usize = 320;
+    const HYPER_INPUT_DOWN_TENSOR_NAME: &str =
+        "model.language_model.layers.0.mlp_hyper_connection.input_mix_weight_down.weight";
+    const HYPER_INPUT_UP_TENSOR_NAME: &str =
+        "model.language_model.layers.0.mlp_hyper_connection.input_mix_weight_up.weight";
+    const HYPER_BLOCK_INJECT_TENSOR_NAME: &str =
+        "model.language_model.layers.0.mlp_hyper_connection.block_inject_weight.weight";
+    const HYPER_EXPAND_KERNEL_NAME: &str = "qwen_next_expand_shared_to_hyper_state";
+    const HYPER_RESIDUAL_MIX_KERNEL_NAME: &str = "qwen_next_hyperconnection_residual_mix_candidate";
     const MANIFEST_PATH: &str =
         "/Volumes/corpdrive/hawking-modellake/manifests/Qwen--Qwen3.8-Flash-Next@34567a4712bc.json";
 
@@ -72,6 +107,8 @@ mod macos {
         out: PathBuf,
         gate_up_swiglu: bool,
         expert_composition: bool,
+        shared_expert_composition: bool,
+        shared_residual_composition: bool,
     }
 
     struct PackedBody {
@@ -144,6 +181,41 @@ mod macos {
         expected_down: Vec<f32>,
     }
 
+    struct LoadedSharedExpertComposition {
+        gate: PackedBody,
+        up: PackedBody,
+        down: PackedBody,
+        scalar_gate: PackedBody,
+        gate_receipt: Value,
+        gate_receipt_path: PathBuf,
+        gate_receipt_sha256: String,
+        up_receipt: Value,
+        up_receipt_path: PathBuf,
+        up_receipt_sha256: String,
+        down_receipt: Value,
+        down_receipt_path: PathBuf,
+        down_receipt_sha256: String,
+        scalar_gate_receipt: Value,
+        scalar_gate_receipt_path: PathBuf,
+        scalar_gate_receipt_sha256: String,
+        gate_codes: Buffer,
+        gate_scales: Buffer,
+        up_codes: Buffer,
+        up_scales: Buffer,
+        gate_up_output: Buffer,
+        down_codes: Buffer,
+        down_scales: Buffer,
+        down_output: Buffer,
+        scalar_gate_codes: Buffer,
+        scalar_gate_scales: Buffer,
+        scalar_gate_output: Buffer,
+        gated_output: Buffer,
+        expected_gate_up: Vec<f32>,
+        expected_down: Vec<f32>,
+        expected_scalar_gate: Vec<f32>,
+        expected_gated_output: Vec<f32>,
+    }
+
     fn repository_root() -> PathBuf {
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../..")
@@ -180,6 +252,8 @@ mod macos {
             out: repo.join("receipts/headless/FLASH_NOETIC_ROUTED_EXPERT_DISPATCH_NATIVE.json"),
             gate_up_swiglu: false,
             expert_composition: false,
+            shared_expert_composition: false,
+            shared_residual_composition: false,
         };
         let mut values = env::args().skip(1);
         while let Some(flag) = values.next() {
@@ -198,12 +272,15 @@ mod macos {
                 "--out" => args.out = PathBuf::from(values.next().ok_or("missing --out")?),
                 "--gate-up-swiglu" => args.gate_up_swiglu = true,
                 "--expert-composition" => args.expert_composition = true,
+                "--shared-expert-composition" => args.shared_expert_composition = true,
+                "--shared-residual-composition" => args.shared_residual_composition = true,
                 "--help" | "-h" => {
                     println!(
                         "usage: flash_noetic_routed_expert_dispatch [--root DIR] \
                          [--router-receipt FILE] [--campaign-receipt FILE] \
                          [--warmup N] [--reps N] [--out FILE] [--gate-up-swiglu] \
-                         [--expert-composition]"
+                         [--expert-composition] [--shared-expert-composition] \
+                         [--shared-residual-composition]"
                     );
                     std::process::exit(0);
                 }
@@ -216,13 +293,33 @@ mod macos {
         if args.reps == 0 || args.reps > 128 {
             return Err("--reps must be in 1..=128".into());
         }
-        if args.gate_up_swiglu && args.expert_composition {
-            return Err("--gate-up-swiglu and --expert-composition are mutually exclusive".into());
+        if [
+            args.gate_up_swiglu,
+            args.expert_composition,
+            args.shared_expert_composition,
+            args.shared_residual_composition,
+        ]
+        .into_iter()
+        .filter(|enabled| *enabled)
+        .count()
+            > 1
+        {
+            return Err(
+                "--gate-up-swiglu, --expert-composition, --shared-expert-composition, and --shared-residual-composition are mutually exclusive"
+                    .into(),
+            );
         }
         let default_out =
             repo.join("receipts/headless/FLASH_NOETIC_ROUTED_EXPERT_DISPATCH_NATIVE.json");
         if args.out == default_out {
-            if args.expert_composition {
+            if args.shared_residual_composition {
+                args.out = repo.join(
+                    "receipts/headless/FLASH_NOETIC_SHARED_RESIDUAL_HYPERCONNECTION_NATIVE.json",
+                );
+            } else if args.shared_expert_composition {
+                args.out = repo
+                    .join("receipts/headless/FLASH_NOETIC_SHARED_EXPERT_COMPOSITION_NATIVE.json");
+            } else if args.expert_composition {
                 args.out = repo
                     .join("receipts/headless/FLASH_NOETIC_ROUTED_EXPERT_COMPOSITION_NATIVE.json");
             } else if args.gate_up_swiglu {
@@ -503,6 +600,107 @@ mod macos {
         )
     }
 
+    fn validate_matrix_body_for(
+        path: &Path,
+        expected_tensor: &str,
+        expected_shape: [usize; 2],
+    ) -> Result<(PackedBody, Value), Box<dyn Error>> {
+        let canonical_receipt = path.canonicalize()?;
+        let (receipt, receipt_sha256) = read_json(&canonical_receipt)?;
+        if string_field(&receipt, "schema")? != BODY_SCHEMA
+            || string_field(&receipt, "status")? != "PASSED"
+            || string_field(&receipt, "repo")? != REPO_ID
+            || string_field(&receipt, "pinned_revision")? != PINNED_REVISION
+            || string_field(&receipt, "nomenclature_version")? != NOMENCLATURE_VERSION
+        {
+            return Err("matrix body receipt is not a PASSED pinned Noetic body".into());
+        }
+        if receipt.get("source_independent").and_then(Value::as_bool) != Some(true)
+            || receipt
+                .get("candidate_body_persisted")
+                .and_then(Value::as_bool)
+                != Some(true)
+            || receipt.get("body_mutated").and_then(Value::as_bool) != Some(false)
+            || receipt.get("model_loaded").and_then(Value::as_bool) != Some(false)
+        {
+            return Err("matrix body receipt fails source-independent execution guards".into());
+        }
+        let source = receipt
+            .get("source_block")
+            .ok_or("matrix body receipt has no source_block")?;
+        if string_field(source, "tensor_name")? != expected_tensor
+            || string_field(source, "dtype")?.to_uppercase() != "BF16"
+        {
+            return Err(format!(
+                "matrix body source block is not the pinned {expected_tensor} tensor"
+            )
+            .into());
+        }
+        let shape = source
+            .get("shape")
+            .and_then(Value::as_array)
+            .ok_or("matrix body source block has no shape")?;
+        if shape.len() != 2
+            || shape
+                .iter()
+                .zip(expected_shape)
+                .any(|(value, expected)| value.as_u64() != Some(expected as u64))
+        {
+            return Err(format!(
+                "matrix body source shape is not [{},{}]",
+                expected_shape[0], expected_shape[1]
+            )
+            .into());
+        }
+        let row_start = usize_field(source, "row_start")?;
+        let rows = usize_field(source, "row_count")?;
+        let columns = expected_shape[1];
+        if rows == 0
+            || rows > expected_shape[0]
+            || row_start > expected_shape[0].saturating_sub(rows)
+        {
+            return Err("matrix body window is outside the expected source shape".into());
+        }
+        if usize_field(source, "bytes")? != rows * columns * 2 {
+            return Err("matrix body source block byte count is invalid".into());
+        }
+        let body_record = receipt
+            .get("body")
+            .ok_or("matrix body receipt has no body")?;
+        let body_path = Path::new(string_field(body_record, "path")?).canonicalize()?;
+        let body_bytes = fs::read(&body_path)?;
+        let body_sha256 = sha256_bytes(&body_bytes);
+        if body_sha256 != string_field(body_record, "sha256")? {
+            return Err("matrix body bytes do not match the body receipt hash".into());
+        }
+        let code_bytes = usize_field(body_record, "code_bytes")?;
+        let scale_bytes = usize_field(body_record, "scale_bytes")?;
+        let expected_code_bytes = rows * (columns / 2);
+        let expected_scale_bytes = rows * (columns / GROUP_SIZE) * 2;
+        if code_bytes != expected_code_bytes
+            || scale_bytes != expected_scale_bytes
+            || body_bytes.len() != code_bytes + scale_bytes
+        {
+            return Err("matrix body bytes do not match the Q4/G64 window".into());
+        }
+        Ok((
+            PackedBody {
+                path: body_path,
+                receipt_sha256,
+                body_sha256,
+                expert_index: 0,
+                row_start,
+                rows,
+                columns,
+                code_bytes,
+                scale_bytes,
+                codes: body_bytes[..code_bytes].to_vec(),
+                scales: body_bytes[code_bytes..].to_vec(),
+            },
+            receipt,
+        ))
+    }
+
     fn validate_down_body(path: &Path) -> Result<(PackedBody, Value), Box<dyn Error>> {
         validate_body_for(
             path,
@@ -754,6 +952,80 @@ mod macos {
         )?)
     }
 
+    fn dispatch_shared_expert_sigmoid_gate(
+        context: &MetalContext,
+        shared_output: &Buffer,
+        gate_logit: &Buffer,
+        gated_output: &Buffer,
+        elements: usize,
+    ) -> Result<MetalDispatchTiming, Box<dyn Error>> {
+        let elements = u32::try_from(elements)?;
+        let threadgroup = 64u32;
+        Ok(context.dispatch_threads_timed(
+            SHARED_SIGMOID_GATE_KERNEL_NAME,
+            (elements, 1, 1),
+            (threadgroup, 1, 1),
+            |encoder| {
+                encoder.set_buffer(0, Some(shared_output), 0);
+                encoder.set_buffer(1, Some(gate_logit), 0);
+                encoder.set_buffer(2, Some(gated_output), 0);
+                encoder.set_bytes(3, 4, &elements as *const u32 as *const _);
+            },
+        )?)
+    }
+
+    fn dispatch_expand_shared_to_hyper_state(
+        context: &MetalContext,
+        base_state: &Buffer,
+        shared_output: &Buffer,
+        output: &Buffer,
+    ) -> Result<MetalDispatchTiming, Box<dyn Error>> {
+        let hidden = HYPER_STATE_HIDDEN as u32;
+        let streams = HYPER_STATE_STREAMS as u32;
+        let injected_stream = 1u32;
+        let elements = HYPER_STATE_ELEMENTS as u32;
+        let threadgroup = 128u32;
+        Ok(context.dispatch_threads_timed(
+            HYPER_EXPAND_KERNEL_NAME,
+            (elements, 1, 1),
+            (threadgroup, 1, 1),
+            |encoder| {
+                encoder.set_buffer(0, Some(base_state), 0);
+                encoder.set_buffer(1, Some(shared_output), 0);
+                encoder.set_buffer(2, Some(output), 0);
+                encoder.set_bytes(3, 4, &hidden as *const u32 as *const _);
+                encoder.set_bytes(4, 4, &streams as *const u32 as *const _);
+                encoder.set_bytes(5, 4, &injected_stream as *const u32 as *const _);
+            },
+        )?)
+    }
+
+    fn dispatch_hyperconnection_residual_mix(
+        context: &MetalContext,
+        state: &Buffer,
+        correction: &Buffer,
+        block_logits: &Buffer,
+        output: &Buffer,
+    ) -> Result<MetalDispatchTiming, Box<dyn Error>> {
+        let hidden = HYPER_STATE_HIDDEN as u32;
+        let streams = HYPER_STATE_STREAMS as u32;
+        let elements = HYPER_STATE_ELEMENTS as u32;
+        let threadgroup = 128u32;
+        Ok(context.dispatch_threads_timed(
+            HYPER_RESIDUAL_MIX_KERNEL_NAME,
+            (elements, 1, 1),
+            (threadgroup, 1, 1),
+            |encoder| {
+                encoder.set_buffer(0, Some(state), 0);
+                encoder.set_buffer(1, Some(correction), 0);
+                encoder.set_buffer(2, Some(block_logits), 0);
+                encoder.set_buffer(3, Some(output), 0);
+                encoder.set_bytes(4, 4, &hidden as *const u32 as *const _);
+                encoder.set_bytes(5, 4, &streams as *const u32 as *const _);
+            },
+        )?)
+    }
+
     fn cpu_gate_up_swiglu(gate: &PackedBody, up: &PackedBody, input: &[f32]) -> Vec<f32> {
         let gate_values = cpu_matvec(gate, input);
         let up_values = cpu_matvec(up, input);
@@ -762,6 +1034,10 @@ mod macos {
             .zip(up_values)
             .map(|(gate, up)| (gate / (1.0 + (-gate).exp())) * up)
             .collect()
+    }
+
+    fn sigmoid(value: f32) -> f32 {
+        1.0f32 / (1.0f32 + (-value).exp())
     }
 
     fn gpu_ns(timing: MetalDispatchTiming) -> Result<u64, Box<dyn Error>> {
@@ -2057,10 +2333,1062 @@ mod macos {
         }))
     }
 
+    fn run_shared_residual_composition(args: &Args) -> Result<Value, Box<dyn Error>> {
+        let started = Instant::now();
+        let repo = repository_root();
+        let root = args.root.canonicalize()?;
+        let manifest = validate_manifest(&root)?;
+
+        let prior_shared_receipt_path =
+            repo.join("receipts/headless/FLASH_NOETIC_SHARED_EXPERT_COMPOSITION_NATIVE.json");
+        let (prior_shared_receipt, prior_shared_receipt_sha256) =
+            read_json(&prior_shared_receipt_path)?;
+        if string_field(&prior_shared_receipt, "schema")? != SHARED_EXPERT_SCHEMA
+            || string_field(&prior_shared_receipt, "status")? != "PASSED"
+            || prior_shared_receipt
+                .get("native_shared_expert_composition_observed")
+                .and_then(Value::as_bool)
+                != Some(true)
+            || prior_shared_receipt
+                .get("promotion_allowed")
+                .and_then(Value::as_bool)
+                != Some(false)
+        {
+            return Err(
+                "prior shared-expert receipt is not a PASSED bounded non-promoted graph".into(),
+            );
+        }
+
+        let gate_receipt_path =
+            repo.join("receipts/headless/FLASH_NOETIC_SHARED_EXPERT_GATE_BODY_L0_R0_640.json");
+        let up_receipt_path =
+            repo.join("receipts/headless/FLASH_NOETIC_SHARED_EXPERT_UP_BODY_L0_R0_640.json");
+        let down_receipt_path =
+            repo.join("receipts/headless/FLASH_NOETIC_SHARED_EXPERT_DOWN_BODY_L0_R0_2560.json");
+        let scalar_gate_receipt_path =
+            repo.join("receipts/headless/FLASH_NOETIC_SHARED_EXPERT_SCALAR_GATE_BODY_L0_R0_1.json");
+        let input_down_receipt_path =
+            repo.join("receipts/headless/FLASH_NOETIC_MLP_HYPER_INPUT_DOWN_BODY_L0_R0_320.json");
+        let input_up_receipt_path =
+            repo.join("receipts/headless/FLASH_NOETIC_MLP_HYPER_INPUT_UP_BODY_L0_R0_10240.json");
+        let block_inject_receipt_path =
+            repo.join("receipts/headless/FLASH_NOETIC_MLP_HYPER_BLOCK_INJECT_BODY_L0_R0_4.json");
+
+        let (gate, gate_receipt) = validate_matrix_body_for(
+            &gate_receipt_path,
+            SHARED_GATE_TENSOR_NAME,
+            [SHARED_INTERMEDIATE, SHARED_HIDDEN],
+        )?;
+        let (up, up_receipt) = validate_matrix_body_for(
+            &up_receipt_path,
+            SHARED_UP_TENSOR_NAME,
+            [SHARED_INTERMEDIATE, SHARED_HIDDEN],
+        )?;
+        let (down, down_receipt) = validate_matrix_body_for(
+            &down_receipt_path,
+            SHARED_DOWN_TENSOR_NAME,
+            [SHARED_HIDDEN, SHARED_INTERMEDIATE],
+        )?;
+        let (scalar_gate, scalar_gate_receipt) = validate_matrix_body_for(
+            &scalar_gate_receipt_path,
+            SHARED_SCALAR_GATE_TENSOR_NAME,
+            [1, SHARED_HIDDEN],
+        )?;
+        let (input_down, input_down_receipt) = validate_matrix_body_for(
+            &input_down_receipt_path,
+            HYPER_INPUT_DOWN_TENSOR_NAME,
+            [HYPER_LOWRANK, HYPER_STATE_ELEMENTS],
+        )?;
+        let (input_up, input_up_receipt) = validate_matrix_body_for(
+            &input_up_receipt_path,
+            HYPER_INPUT_UP_TENSOR_NAME,
+            [HYPER_STATE_ELEMENTS, HYPER_LOWRANK],
+        )?;
+        let (block_inject, block_inject_receipt) = validate_matrix_body_for(
+            &block_inject_receipt_path,
+            HYPER_BLOCK_INJECT_TENSOR_NAME,
+            [HYPER_STATE_STREAMS, HYPER_STATE_ELEMENTS],
+        )?;
+
+        if gate.row_start != 0
+            || gate.rows != SHARED_INTERMEDIATE
+            || up.row_start != 0
+            || up.rows != SHARED_INTERMEDIATE
+            || down.row_start != 0
+            || down.rows != SHARED_HIDDEN
+            || scalar_gate.row_start != 0
+            || scalar_gate.rows != 1
+            || input_down.row_start != 0
+            || input_down.rows != HYPER_LOWRANK
+            || input_up.row_start != 0
+            || input_up.rows != HYPER_STATE_ELEMENTS
+            || block_inject.row_start != 0
+            || block_inject.rows != HYPER_STATE_STREAMS
+        {
+            return Err("shared/residual bodies are not complete bounded layer-0 windows".into());
+        }
+
+        let shared_input = deterministic_input(SHARED_HIDDEN);
+        let shared_input_sha256 = sha256_bytes(&f32_bytes(&shared_input));
+        let expected_gate_up = cpu_gate_up_swiglu(&gate, &up, &shared_input);
+        let expected_shared_down = cpu_matvec(&down, &expected_gate_up);
+        let expected_scalar_gate = cpu_matvec(&scalar_gate, &shared_input);
+        if expected_scalar_gate.len() != 1 {
+            return Err("shared-expert scalar gate did not produce one logit".into());
+        }
+        let expected_shared_output: Vec<f32> = expected_shared_down
+            .iter()
+            .map(|value| value * sigmoid(expected_scalar_gate[0]))
+            .collect();
+
+        let base_state = deterministic_input(HYPER_STATE_ELEMENTS);
+        let base_state_sha256 = sha256_bytes(&f32_bytes(&base_state));
+        let mut expected_hyper_state = base_state.clone();
+        expected_hyper_state[HYPER_STATE_HIDDEN..(HYPER_STATE_HIDDEN * 2)]
+            .copy_from_slice(&expected_shared_output);
+        let expected_low_rank = cpu_matvec(&input_down, &expected_hyper_state);
+        let expected_correction = cpu_matvec(&input_up, &expected_low_rank);
+        let expected_block_logits = cpu_matvec(&block_inject, &expected_hyper_state);
+        if expected_block_logits.len() != HYPER_STATE_STREAMS {
+            return Err("hyperconnection block inject did not produce four logits".into());
+        }
+        let expected_residual_output: Vec<f32> = expected_hyper_state
+            .iter()
+            .enumerate()
+            .map(|(index, value)| {
+                value
+                    + expected_correction[index]
+                        * sigmoid(expected_block_logits[index / HYPER_STATE_HIDDEN])
+            })
+            .collect();
+
+        let context = MetalContext::new_with_trace(true)?;
+        let shared_input_buffer =
+            context.new_buffer_with_bytes_checked(&f32_bytes(&shared_input))?;
+        let base_state_buffer = context.new_buffer_with_bytes_checked(&f32_bytes(&base_state))?;
+        let gate_codes = context.new_buffer_with_bytes_checked(&gate.codes)?;
+        let gate_scales = context.new_buffer_with_bytes_checked(&gate.scales)?;
+        let up_codes = context.new_buffer_with_bytes_checked(&up.codes)?;
+        let up_scales = context.new_buffer_with_bytes_checked(&up.scales)?;
+        let gate_up_output =
+            context.new_buffer_checked(SHARED_INTERMEDIATE * std::mem::size_of::<f32>())?;
+        let down_codes = context.new_buffer_with_bytes_checked(&down.codes)?;
+        let down_scales = context.new_buffer_with_bytes_checked(&down.scales)?;
+        let shared_down_output =
+            context.new_buffer_checked(SHARED_HIDDEN * std::mem::size_of::<f32>())?;
+        let scalar_gate_codes = context.new_buffer_with_bytes_checked(&scalar_gate.codes)?;
+        let scalar_gate_scales = context.new_buffer_with_bytes_checked(&scalar_gate.scales)?;
+        let scalar_gate_output = context.new_buffer_checked(std::mem::size_of::<f32>())?;
+        let shared_output =
+            context.new_buffer_checked(SHARED_HIDDEN * std::mem::size_of::<f32>())?;
+
+        let input_down_codes = context.new_buffer_with_bytes_checked(&input_down.codes)?;
+        let input_down_scales = context.new_buffer_with_bytes_checked(&input_down.scales)?;
+        let input_up_codes = context.new_buffer_with_bytes_checked(&input_up.codes)?;
+        let input_up_scales = context.new_buffer_with_bytes_checked(&input_up.scales)?;
+        let block_inject_codes = context.new_buffer_with_bytes_checked(&block_inject.codes)?;
+        let block_inject_scales = context.new_buffer_with_bytes_checked(&block_inject.scales)?;
+        let hyper_state =
+            context.new_buffer_checked(HYPER_STATE_ELEMENTS * std::mem::size_of::<f32>())?;
+        let low_rank_output =
+            context.new_buffer_checked(HYPER_LOWRANK * std::mem::size_of::<f32>())?;
+        let correction_output =
+            context.new_buffer_checked(HYPER_STATE_ELEMENTS * std::mem::size_of::<f32>())?;
+        let block_logits_output =
+            context.new_buffer_checked(HYPER_STATE_STREAMS * std::mem::size_of::<f32>())?;
+        let residual_output =
+            context.new_buffer_checked(HYPER_STATE_ELEMENTS * std::mem::size_of::<f32>())?;
+
+        let dispatch_graph = || -> Result<Vec<MetalDispatchTiming>, Box<dyn Error>> {
+            let mut timings = Vec::with_capacity(9);
+            timings.push(dispatch_gate_up_swiglu(
+                &context,
+                &gate,
+                &gate_codes,
+                &gate_scales,
+                &up_codes,
+                &up_scales,
+                &shared_input_buffer,
+                &gate_up_output,
+            )?);
+            timings.push(dispatch(
+                &context,
+                &down,
+                &down_codes,
+                &down_scales,
+                &gate_up_output,
+                &shared_down_output,
+            )?);
+            timings.push(dispatch(
+                &context,
+                &scalar_gate,
+                &scalar_gate_codes,
+                &scalar_gate_scales,
+                &shared_input_buffer,
+                &scalar_gate_output,
+            )?);
+            timings.push(dispatch_shared_expert_sigmoid_gate(
+                &context,
+                &shared_down_output,
+                &scalar_gate_output,
+                &shared_output,
+                SHARED_HIDDEN,
+            )?);
+            timings.push(dispatch_expand_shared_to_hyper_state(
+                &context,
+                &base_state_buffer,
+                &shared_output,
+                &hyper_state,
+            )?);
+            timings.push(dispatch(
+                &context,
+                &input_down,
+                &input_down_codes,
+                &input_down_scales,
+                &hyper_state,
+                &low_rank_output,
+            )?);
+            timings.push(dispatch(
+                &context,
+                &input_up,
+                &input_up_codes,
+                &input_up_scales,
+                &low_rank_output,
+                &correction_output,
+            )?);
+            timings.push(dispatch(
+                &context,
+                &block_inject,
+                &block_inject_codes,
+                &block_inject_scales,
+                &hyper_state,
+                &block_logits_output,
+            )?);
+            timings.push(dispatch_hyperconnection_residual_mix(
+                &context,
+                &hyper_state,
+                &correction_output,
+                &block_logits_output,
+                &residual_output,
+            )?);
+            Ok(timings)
+        };
+
+        let sum_gpu_ns = |timings: &[MetalDispatchTiming]| -> Result<u64, Box<dyn Error>> {
+            timings.iter().try_fold(0u64, |total, timing| {
+                Ok::<u64, Box<dyn Error>>(total.saturating_add(gpu_ns(*timing)?))
+            })
+        };
+        let sum_host_ns = |timings: &[MetalDispatchTiming]| -> u64 {
+            timings
+                .iter()
+                .map(|timing| timing.host_wall_us.saturating_mul(1000))
+                .fold(0u64, u64::saturating_add)
+        };
+
+        let mut warmup_graph_gpu_ns = Vec::with_capacity(args.warmup);
+        for _ in 0..args.warmup {
+            warmup_graph_gpu_ns.push(sum_gpu_ns(&dispatch_graph()?)?);
+        }
+
+        let mut shared_gate_up_gpu_ns = Vec::with_capacity(args.reps);
+        let mut shared_down_gpu_ns = Vec::with_capacity(args.reps);
+        let mut shared_scalar_gate_gpu_ns = Vec::with_capacity(args.reps);
+        let mut shared_sigmoid_gate_gpu_ns = Vec::with_capacity(args.reps);
+        let mut expand_gpu_ns = Vec::with_capacity(args.reps);
+        let mut low_rank_down_gpu_ns = Vec::with_capacity(args.reps);
+        let mut low_rank_up_gpu_ns = Vec::with_capacity(args.reps);
+        let mut block_inject_gpu_ns = Vec::with_capacity(args.reps);
+        let mut residual_mix_gpu_ns = Vec::with_capacity(args.reps);
+        let mut graph_gpu_ns = Vec::with_capacity(args.reps);
+        let mut graph_host_ns = Vec::with_capacity(args.reps);
+        let mut shared_output_hashes = Vec::with_capacity(args.reps);
+        let mut hyper_state_hashes = Vec::with_capacity(args.reps);
+        let mut low_rank_hashes = Vec::with_capacity(args.reps);
+        let mut correction_hashes = Vec::with_capacity(args.reps);
+        let mut block_logits_hashes = Vec::with_capacity(args.reps);
+        let mut residual_output_hashes = Vec::with_capacity(args.reps);
+        let mut last_shared_output_parity = json!({});
+        let mut last_hyper_state_parity = json!({});
+        let mut last_low_rank_parity = json!({});
+        let mut last_correction_parity = json!({});
+        let mut last_block_logits_parity = json!({});
+        let mut last_residual_output_parity = json!({});
+
+        for _ in 0..args.reps {
+            let timings = dispatch_graph()?;
+            let observed_shared_output = read_f32(&shared_output, SHARED_HIDDEN);
+            let observed_hyper_state = read_f32(&hyper_state, HYPER_STATE_ELEMENTS);
+            let observed_low_rank = read_f32(&low_rank_output, HYPER_LOWRANK);
+            let observed_correction = read_f32(&correction_output, HYPER_STATE_ELEMENTS);
+            let observed_block_logits = read_f32(&block_logits_output, HYPER_STATE_STREAMS);
+            let observed_residual_output = read_f32(&residual_output, HYPER_STATE_ELEMENTS);
+            if !observed_shared_output.iter().all(|value| value.is_finite())
+                || !observed_hyper_state.iter().all(|value| value.is_finite())
+                || !observed_low_rank.iter().all(|value| value.is_finite())
+                || !observed_correction.iter().all(|value| value.is_finite())
+                || !observed_block_logits.iter().all(|value| value.is_finite())
+                || !observed_residual_output
+                    .iter()
+                    .all(|value| value.is_finite())
+            {
+                return Err(
+                    "native shared/residual composition produced a non-finite value".into(),
+                );
+            }
+            last_shared_output_parity =
+                output_metrics(&expected_shared_output, &observed_shared_output);
+            last_hyper_state_parity = output_metrics(&expected_hyper_state, &observed_hyper_state);
+            last_low_rank_parity = output_metrics(&expected_low_rank, &observed_low_rank);
+            last_correction_parity = output_metrics(&expected_correction, &observed_correction);
+            last_block_logits_parity =
+                output_metrics(&expected_block_logits, &observed_block_logits);
+            last_residual_output_parity =
+                output_metrics(&expected_residual_output, &observed_residual_output);
+            for (label, parity) in [
+                ("shared output", &last_shared_output_parity),
+                ("hyper state", &last_hyper_state_parity),
+                ("low-rank down", &last_low_rank_parity),
+                ("low-rank correction", &last_correction_parity),
+                ("block inject", &last_block_logits_parity),
+                ("residual output", &last_residual_output_parity),
+            ] {
+                if parity.get("within_tolerance").and_then(Value::as_bool) != Some(true) {
+                    return Err(
+                        format!("native shared/residual {label} parity failed: {parity}").into(),
+                    );
+                }
+            }
+            let gpu_values: Vec<u64> = timings
+                .iter()
+                .map(|timing| gpu_ns(*timing))
+                .collect::<Result<_, _>>()?;
+            shared_gate_up_gpu_ns.push(gpu_values[0]);
+            shared_down_gpu_ns.push(gpu_values[1]);
+            shared_scalar_gate_gpu_ns.push(gpu_values[2]);
+            shared_sigmoid_gate_gpu_ns.push(gpu_values[3]);
+            expand_gpu_ns.push(gpu_values[4]);
+            low_rank_down_gpu_ns.push(gpu_values[5]);
+            low_rank_up_gpu_ns.push(gpu_values[6]);
+            block_inject_gpu_ns.push(gpu_values[7]);
+            residual_mix_gpu_ns.push(gpu_values[8]);
+            graph_gpu_ns.push(gpu_values.iter().copied().fold(0u64, u64::saturating_add));
+            graph_host_ns.push(sum_host_ns(&timings));
+            shared_output_hashes.push(sha256_bytes(&f32_bytes_for_hash(&observed_shared_output)));
+            hyper_state_hashes.push(sha256_bytes(&f32_bytes_for_hash(&observed_hyper_state)));
+            low_rank_hashes.push(sha256_bytes(&f32_bytes_for_hash(&observed_low_rank)));
+            correction_hashes.push(sha256_bytes(&f32_bytes_for_hash(&observed_correction)));
+            block_logits_hashes.push(sha256_bytes(&f32_bytes_for_hash(&observed_block_logits)));
+            residual_output_hashes
+                .push(sha256_bytes(&f32_bytes_for_hash(&observed_residual_output)));
+        }
+
+        for hashes in [
+            &shared_output_hashes,
+            &hyper_state_hashes,
+            &low_rank_hashes,
+            &correction_hashes,
+            &block_logits_hashes,
+            &residual_output_hashes,
+        ] {
+            if hashes.windows(2).any(|pair| pair[0] != pair[1]) {
+                return Err(
+                    "native shared/residual outputs changed across repeated executions".into(),
+                );
+            }
+        }
+
+        let mut physical_graph = json!({
+            "schema": "hcli.physical_graph.v1",
+            "semantic_type": "PhysicalGraph",
+            "compiler_stage": "HawkingAccelerator",
+            "component_scope": "layer-0 shared expert output injected into a four-stream MLP hyperconnection candidate: shared gate/up/SwiGLU -> down -> sigmoid gate -> device-side stream injection -> low-rank down/up -> block-inject gated residual mix",
+            "device_placement": {"selected": "apple_metal", "candidates": ["apple_metal", "cpu"]},
+            "nodes": [
+                {"id": "shared_input", "shape": [SHARED_HIDDEN], "dtype": "F32", "device_resident": true},
+                {"id": "shared_gate_proj", "shape": [SHARED_INTERMEDIATE, SHARED_HIDDEN], "representation": "independent_q4_g64"},
+                {"id": "shared_up_proj", "shape": [SHARED_INTERMEDIATE, SHARED_HIDDEN], "representation": "independent_q4_g64"},
+                {"id": "shared_gate_up_swiglu", "shape": [SHARED_INTERMEDIATE], "kernel": GATE_UP_KERNEL_NAME, "device_resident": true},
+                {"id": "shared_down_proj", "shape": [SHARED_HIDDEN, SHARED_INTERMEDIATE], "kernel": KERNEL_NAME, "device_resident": true},
+                {"id": "shared_expert_gate", "shape": [1, SHARED_HIDDEN], "representation": "independent_q4_g64"},
+                {"id": "shared_sigmoid_gate", "shape": [SHARED_HIDDEN], "kernel": SHARED_SIGMOID_GATE_KERNEL_NAME, "device_resident": true},
+                {"id": "base_hyper_state", "shape": [HYPER_STATE_ELEMENTS], "dtype": "F32", "device_resident": true},
+                {"id": "inject_shared_output", "shape": [HYPER_STATE_ELEMENTS], "kernel": HYPER_EXPAND_KERNEL_NAME, "device_resident": true},
+                {"id": "hyper_input_mix_down", "shape": [HYPER_LOWRANK, HYPER_STATE_ELEMENTS], "representation": "independent_q4_g64"},
+                {"id": "hyper_low_rank_state", "shape": [HYPER_LOWRANK], "kernel": KERNEL_NAME, "device_resident": true},
+                {"id": "hyper_input_mix_up", "shape": [HYPER_STATE_ELEMENTS, HYPER_LOWRANK], "representation": "independent_q4_g64"},
+                {"id": "hyper_correction", "shape": [HYPER_STATE_ELEMENTS], "kernel": KERNEL_NAME, "device_resident": true},
+                {"id": "hyper_block_inject", "shape": [HYPER_STATE_STREAMS, HYPER_STATE_ELEMENTS], "representation": "independent_q4_g64"},
+                {"id": "hyper_block_logits", "shape": [HYPER_STATE_STREAMS], "kernel": KERNEL_NAME, "device_resident": true},
+                {"id": "hyper_residual_mix", "shape": [HYPER_STATE_ELEMENTS], "kernel": HYPER_RESIDUAL_MIX_KERNEL_NAME, "device_resident": true}
+            ],
+            "edges": [
+                ["shared_input", "shared_gate_proj"],
+                ["shared_input", "shared_up_proj"],
+                ["shared_gate_proj", "shared_gate_up_swiglu"],
+                ["shared_up_proj", "shared_gate_up_swiglu"],
+                ["shared_gate_up_swiglu", "shared_down_proj"],
+                ["shared_input", "shared_expert_gate"],
+                ["shared_down_proj", "shared_sigmoid_gate"],
+                ["shared_expert_gate", "shared_sigmoid_gate"],
+                ["shared_sigmoid_gate", "inject_shared_output"],
+                ["base_hyper_state", "inject_shared_output"],
+                ["inject_shared_output", "hyper_input_mix_down"],
+                ["hyper_input_mix_down", "hyper_low_rank_state"],
+                ["hyper_low_rank_state", "hyper_input_mix_up"],
+                ["hyper_input_mix_up", "hyper_correction"],
+                ["inject_shared_output", "hyper_block_inject"],
+                ["hyper_block_inject", "hyper_block_logits"],
+                ["inject_shared_output", "hyper_residual_mix"],
+                ["hyper_correction", "hyper_residual_mix"],
+                ["hyper_block_logits", "hyper_residual_mix"]
+            ],
+            "native_kernels": [GATE_UP_KERNEL_NAME, KERNEL_NAME, SHARED_SIGMOID_GATE_KERNEL_NAME, HYPER_EXPAND_KERNEL_NAME, HYPER_RESIDUAL_MIX_KERNEL_NAME],
+            "native_kernel_execution_observed": true,
+            "dispatches_per_graph": 9,
+            "device_intermediate_no_host_roundtrip": true,
+            "verification_reads_after_graph": true,
+            "promotion_allowed": false,
+        });
+        let physical_graph_fingerprint = sha256_bytes(&serde_json::to_vec(&physical_graph)?);
+        physical_graph["fingerprint"] = Value::String(physical_graph_fingerprint);
+
+        let body_ref = |path: &Path, receipt: &Value| -> Result<Value, Box<dyn Error>> {
+            let digest = sha256_bytes(&fs::read(path)?);
+            Ok(component_ref(path, receipt, Some(&digest)))
+        };
+        let device_memory = context.device_memory_limits();
+        let file_name = |path: &Path| {
+            path.file_name()
+                .and_then(|name| name.to_str())
+                .unwrap_or_default()
+                .to_owned()
+        };
+        Ok(json!({
+            "schema": SHARED_RESIDUAL_SCHEMA,
+            "nomenclature_version": NOMENCLATURE_VERSION,
+            "semantic_type": "NoeticExecutableCandidate",
+            "compiler_stage": "HawkingAccelerator",
+            "status": "PASSED",
+            "qualification": "BOUNDED_NATIVE_SHARED_EXPERT_RESIDUAL_HYPERCONNECTION_COMPOSITION",
+            "repo": REPO_ID,
+            "pinned_revision": PINNED_REVISION,
+            "root": root,
+            "model_lake_manifest": manifest,
+            "layer": 0,
+            "dependencies": {
+                "prior_shared_expert_composition_receipt": {"path": prior_shared_receipt_path, "sha256": prior_shared_receipt_sha256, "status": "PASSED", "promotion_allowed": false},
+            },
+            "component_receipt_policy": {
+                "directory": repo.join("receipts/headless"),
+                "shared_gate_body": file_name(&gate_receipt_path),
+                "shared_up_body": file_name(&up_receipt_path),
+                "shared_down_body": file_name(&down_receipt_path),
+                "shared_scalar_gate_body": file_name(&scalar_gate_receipt_path),
+                "hyper_input_down_body": file_name(&input_down_receipt_path),
+                "hyper_input_up_body": file_name(&input_up_receipt_path),
+                "hyper_block_inject_body": file_name(&block_inject_receipt_path),
+            },
+            "components": {
+                "shared_gate_proj": {"body_receipt": body_ref(&gate_receipt_path, &gate_receipt)?, "candidate_body": {"path": gate.path, "sha256": gate.body_sha256, "bytes": gate.code_bytes + gate.scale_bytes, "shape": [gate.rows, gate.columns], "source_independent": true}, "native_kernel": KERNEL_NAME},
+                "shared_up_proj": {"body_receipt": body_ref(&up_receipt_path, &up_receipt)?, "candidate_body": {"path": up.path, "sha256": up.body_sha256, "bytes": up.code_bytes + up.scale_bytes, "shape": [up.rows, up.columns], "source_independent": true}, "native_kernel": KERNEL_NAME},
+                "shared_down_proj": {"body_receipt": body_ref(&down_receipt_path, &down_receipt)?, "candidate_body": {"path": down.path, "sha256": down.body_sha256, "bytes": down.code_bytes + down.scale_bytes, "shape": [down.rows, down.columns], "source_independent": true}, "native_kernel": KERNEL_NAME},
+                "shared_expert_gate": {"body_receipt": body_ref(&scalar_gate_receipt_path, &scalar_gate_receipt)?, "candidate_body": {"path": scalar_gate.path, "sha256": scalar_gate.body_sha256, "bytes": scalar_gate.code_bytes + scalar_gate.scale_bytes, "shape": [scalar_gate.rows, scalar_gate.columns], "source_independent": true}, "native_kernel": KERNEL_NAME},
+                "hyper_input_mix_down": {"body_receipt": body_ref(&input_down_receipt_path, &input_down_receipt)?, "candidate_body": {"path": input_down.path, "sha256": input_down.body_sha256, "bytes": input_down.code_bytes + input_down.scale_bytes, "shape": [input_down.rows, input_down.columns], "source_independent": true}, "native_kernel": KERNEL_NAME},
+                "hyper_input_mix_up": {"body_receipt": body_ref(&input_up_receipt_path, &input_up_receipt)?, "candidate_body": {"path": input_up.path, "sha256": input_up.body_sha256, "bytes": input_up.code_bytes + input_up.scale_bytes, "shape": [input_up.rows, input_up.columns], "source_independent": true}, "native_kernel": KERNEL_NAME},
+                "hyper_block_inject": {"body_receipt": body_ref(&block_inject_receipt_path, &block_inject_receipt)?, "candidate_body": {"path": block_inject.path, "sha256": block_inject.body_sha256, "bytes": block_inject.code_bytes + block_inject.scale_bytes, "shape": [block_inject.rows, block_inject.columns], "source_independent": true}, "native_kernel": KERNEL_NAME},
+            },
+            "execution": {
+                "provider": "apple-metal",
+                "operation": "shared expert output -> device-side stream-1 injection into 4x2560 state -> Q4/G64 low-rank input mix down/up -> Q4/G64 block inject logits -> per-stream sigmoid-gated residual mix",
+                "shared_expert_hidden": SHARED_HIDDEN,
+                "hyperconnection_hidden": HYPER_STATE_HIDDEN,
+                "hyperconnection_streams": HYPER_STATE_STREAMS,
+                "hyperconnection_elements": HYPER_STATE_ELEMENTS,
+                "hyperconnection_lowrank": HYPER_LOWRANK,
+                "injected_stream": 1,
+                "dispatches_per_graph": 9,
+                "measured_graphs": args.reps,
+                "total_measured_dispatches": args.reps * 9,
+                "native_shared_expert_gate_up_swiglu_observed": true,
+                "native_shared_expert_down_projection_observed": true,
+                "native_shared_expert_sigmoid_gate_observed": true,
+                "native_hyperconnection_stream_injection_observed": true,
+                "native_hyperconnection_low_rank_down_observed": true,
+                "native_hyperconnection_low_rank_up_observed": true,
+                "native_hyperconnection_block_inject_observed": true,
+                "native_hyperconnection_residual_mix_observed": true,
+                "native_shared_residual_composition_observed": true,
+                "device_intermediate_no_host_roundtrip": true,
+                "verification_reads_after_graph": true,
+                "source_reference_used_for_execution": false,
+                "body_mutated": false,
+                "model_loaded": false,
+                "hc_norm_loaded": false,
+                "complete_moe_combine": false,
+                "complete_token_runtime": false,
+            },
+            "input": {
+                "shared_input": {"definition": "((index * 71) mod 509 - 254) / 509", "values": shared_input.len(), "deterministic_sha256": shared_input_sha256, "label": "[V]"},
+                "base_hyper_state": {"definition": "((index * 71) mod 509 - 254) / 509", "values": base_state.len(), "deterministic_sha256": base_state_sha256, "label": "[V]"},
+                "stream_layout": "four contiguous 2560-wide streams; stream 1 is replaced on-device by the gated shared-expert output",
+            },
+            "intermediates": {
+                "shared_output": {"semantic_type": "NoeticActivationBuffer", "shape": [SHARED_HIDDEN], "dtype": "F32", "device_resident": true, "host_roundtrip": false},
+                "hyper_state": {"semantic_type": "NoeticHyperconnectionState", "shape": [HYPER_STATE_ELEMENTS], "dtype": "F32", "device_resident": true, "host_roundtrip": false, "stream_count": HYPER_STATE_STREAMS},
+                "low_rank_state": {"semantic_type": "NoeticLowRankActivation", "shape": [HYPER_LOWRANK], "dtype": "F32", "device_resident": true, "host_roundtrip": false},
+                "correction": {"semantic_type": "NoeticResidualCorrection", "shape": [HYPER_STATE_ELEMENTS], "dtype": "F32", "device_resident": true, "host_roundtrip": false},
+                "block_logits": {"semantic_type": "NoeticBlockInjectLogits", "shape": [HYPER_STATE_STREAMS], "dtype": "F32", "device_resident": true, "host_roundtrip": false},
+                "residual_output": {"semantic_type": "NoeticResidualOutput", "shape": [HYPER_STATE_ELEMENTS], "dtype": "F32", "device_resident": true, "host_roundtrip": false},
+            },
+            "candidate_semantics": {
+                "status": "BOUNDED_CANDIDATE_ONLY",
+                "formula": "state + low_rank_up(low_rank_down(state)) * sigmoid(block_inject(state)[stream])",
+                "injected_stream": 1,
+                "hc_norm": "NOT_LOADED",
+                "source_model_activation_parity": "NOT_TESTED",
+            },
+            "parity": {
+                "candidate_space": "CPU reference uses the same persisted Q4/G64 candidate bodies and the same explicit candidate stream-injection/gating formula; source BF16 activation parity remains unqualified",
+                "shared_output": last_shared_output_parity,
+                "hyper_state": last_hyper_state_parity,
+                "low_rank_down": last_low_rank_parity,
+                "low_rank_up_correction": last_correction_parity,
+                "block_inject": last_block_logits_parity,
+                "residual_output": last_residual_output_parity,
+            },
+            "gpu_timing": {
+                "device": context.device_name(),
+                "warmup_runs": args.warmup,
+                "measured_runs": args.reps,
+                "warmup_graph_gpu_ns": warmup_graph_gpu_ns,
+                "shared_gate_up_gpu_ns": shared_gate_up_gpu_ns,
+                "shared_gate_up_gpu_ns_median": percentile_median(&shared_gate_up_gpu_ns),
+                "shared_down_gpu_ns": shared_down_gpu_ns,
+                "shared_down_gpu_ns_median": percentile_median(&shared_down_gpu_ns),
+                "shared_scalar_gate_gpu_ns": shared_scalar_gate_gpu_ns,
+                "shared_scalar_gate_gpu_ns_median": percentile_median(&shared_scalar_gate_gpu_ns),
+                "shared_sigmoid_gate_gpu_ns": shared_sigmoid_gate_gpu_ns,
+                "shared_sigmoid_gate_gpu_ns_median": percentile_median(&shared_sigmoid_gate_gpu_ns),
+                "expand_gpu_ns": expand_gpu_ns,
+                "expand_gpu_ns_median": percentile_median(&expand_gpu_ns),
+                "low_rank_down_gpu_ns": low_rank_down_gpu_ns,
+                "low_rank_down_gpu_ns_median": percentile_median(&low_rank_down_gpu_ns),
+                "low_rank_up_gpu_ns": low_rank_up_gpu_ns,
+                "low_rank_up_gpu_ns_median": percentile_median(&low_rank_up_gpu_ns),
+                "block_inject_gpu_ns": block_inject_gpu_ns,
+                "block_inject_gpu_ns_median": percentile_median(&block_inject_gpu_ns),
+                "residual_mix_gpu_ns": residual_mix_gpu_ns,
+                "residual_mix_gpu_ns_median": percentile_median(&residual_mix_gpu_ns),
+                "graph_gpu_ns": graph_gpu_ns,
+                "graph_gpu_ns_median": percentile_median(&graph_gpu_ns),
+                "graph_host_wall_ns": graph_host_ns,
+                "graph_host_wall_ns_median": percentile_median(&graph_host_ns),
+                "dispatches_per_graph": 9,
+                "output_hashes": residual_output_hashes,
+                "stage_output_hashes": {"shared_output": shared_output_hashes, "hyper_state": hyper_state_hashes, "low_rank_state": low_rank_hashes, "correction": correction_hashes, "block_logits": block_logits_hashes, "residual_output": residual_output_hashes},
+                "memory_limits": {"max_buffer_length": device_memory.max_buffer_length, "recommended_max_working_set_size": device_memory.recommended_max_working_set_size, "current_allocated_size": device_memory.current_allocated_size, "has_unified_memory": device_memory.has_unified_memory},
+                "timing_authority": "Metal completed-command-buffer GPUStartTime/GPUEndTime for all nine native shared/residual dispatches; host wall is reported separately",
+            },
+            "noetic_ir": {
+                "schema": "hcli.noetic.ir.v1",
+                "semantic_type": "NoeticIR",
+                "representation": "independent_q4_g64",
+                "operations": [
+                    "load_source_independent_shared_expert_gate_proj_body",
+                    "load_source_independent_shared_expert_up_proj_body",
+                    "execute_native_q4_g64_shared_gate_up_swiglu",
+                    "execute_native_q4_g64_shared_down_projection",
+                    "execute_native_q4_g64_shared_scalar_gate",
+                    "execute_native_sigmoid_shared_expert_gate",
+                    "inject_gated_shared_output_into_hyperconnection_stream_1_on_device",
+                    "load_source_independent_mlp_hyperconnection_input_mix_down_body",
+                    "execute_native_q4_g64_hyperconnection_low_rank_down",
+                    "load_source_independent_mlp_hyperconnection_input_mix_up_body",
+                    "execute_native_q4_g64_hyperconnection_low_rank_up",
+                    "load_source_independent_mlp_hyperconnection_block_inject_body",
+                    "execute_native_q4_g64_hyperconnection_block_inject",
+                    "execute_native_candidate_block_gated_residual_mix",
+                    "emit_bounded_shared_residual_candidate_output",
+                ],
+                "source_independent": true,
+                "complete_shared_expert": true,
+                "complete_hyperconnection_candidate": true,
+                "complete_model": false,
+                "complete_token": false,
+            },
+            "physical_graph": physical_graph,
+            "whole_model_capability": "NOT_TESTED",
+            "complete_expert_runtime": "NOT_TESTED",
+            "complete_token_runtime": "NOT_TESTED",
+            "complete_system_ebpw": null,
+            "flash_tps": null,
+            "source_independent_execution": true,
+            "body_mutated": false,
+            "model_loaded": false,
+            "native_shared_expert_gate_up_swiglu_observed": true,
+            "native_shared_expert_down_projection_observed": true,
+            "native_shared_expert_sigmoid_gate_observed": true,
+            "native_hyperconnection_stream_injection_observed": true,
+            "native_hyperconnection_low_rank_down_observed": true,
+            "native_hyperconnection_low_rank_up_observed": true,
+            "native_hyperconnection_block_inject_observed": true,
+            "native_hyperconnection_residual_mix_observed": true,
+            "native_shared_residual_composition_observed": true,
+            "device_intermediate_no_host_roundtrip": true,
+            "promotion_allowed": false,
+            "claim_boundary": "PASSED bounded native layer-0 shared-expert-to-hyperconnection candidate graph: the measured shared-expert output is injected into stream 1 on-device, passed through source-independent Q4/G64 low-rank input mix down/up and source-independent block-inject logits, then combined by an explicit per-stream sigmoid-gated residual candidate kernel. This does not establish the source model's hc_norm or exact hyperconnection semantics, BF16 activation parity, routed-expert/MoE combine, attention/state, complete layers, complete-token runtime, Flash TPS, EBPW, or promotion.",
+            "next_action": "qualify hc_norm and exact same-model hyperconnection activation semantics, then compose the candidate with routed-expert selection and the next residual boundary; keep protected complete-token Flash TPS and EBPW unmeasured until all remaining native organs are capability-qualified",
+            "elapsed_s": started.elapsed().as_secs_f64(),
+        }))
+    }
+
+    fn run_shared_expert_composition(args: &Args) -> Result<Value, Box<dyn Error>> {
+        let started = Instant::now();
+        let repo = repository_root();
+        let root = args.root.canonicalize()?;
+        let manifest = validate_manifest(&root)?;
+
+        let gate_receipt_path =
+            repo.join("receipts/headless/FLASH_NOETIC_SHARED_EXPERT_GATE_BODY_L0_R0_640.json");
+        let up_receipt_path =
+            repo.join("receipts/headless/FLASH_NOETIC_SHARED_EXPERT_UP_BODY_L0_R0_640.json");
+        let down_receipt_path =
+            repo.join("receipts/headless/FLASH_NOETIC_SHARED_EXPERT_DOWN_BODY_L0_R0_2560.json");
+        let scalar_gate_receipt_path =
+            repo.join("receipts/headless/FLASH_NOETIC_SHARED_EXPERT_SCALAR_GATE_BODY_L0_R0_1.json");
+
+        let (gate, gate_receipt) = validate_matrix_body_for(
+            &gate_receipt_path,
+            SHARED_GATE_TENSOR_NAME,
+            [SHARED_INTERMEDIATE, SHARED_HIDDEN],
+        )?;
+        let (up, up_receipt) = validate_matrix_body_for(
+            &up_receipt_path,
+            SHARED_UP_TENSOR_NAME,
+            [SHARED_INTERMEDIATE, SHARED_HIDDEN],
+        )?;
+        let (down, down_receipt) = validate_matrix_body_for(
+            &down_receipt_path,
+            SHARED_DOWN_TENSOR_NAME,
+            [SHARED_HIDDEN, SHARED_INTERMEDIATE],
+        )?;
+        let (scalar_gate, scalar_gate_receipt) = validate_matrix_body_for(
+            &scalar_gate_receipt_path,
+            SHARED_SCALAR_GATE_TENSOR_NAME,
+            [1, SHARED_HIDDEN],
+        )?;
+        if gate.row_start != 0
+            || gate.rows != SHARED_INTERMEDIATE
+            || up.row_start != 0
+            || up.rows != SHARED_INTERMEDIATE
+            || down.row_start != 0
+            || down.rows != SHARED_HIDDEN
+            || scalar_gate.row_start != 0
+            || scalar_gate.rows != 1
+        {
+            return Err("shared-expert bodies are not complete layer-0 row windows".into());
+        }
+
+        let input = deterministic_input(SHARED_HIDDEN);
+        let input_sha256 = sha256_bytes(&f32_bytes(&input));
+        let expected_gate_up = cpu_gate_up_swiglu(&gate, &up, &input);
+        let expected_down = cpu_matvec(&down, &expected_gate_up);
+        let expected_scalar_gate = cpu_matvec(&scalar_gate, &input);
+        if expected_scalar_gate.len() != 1 {
+            return Err("shared-expert scalar gate did not produce one logit".into());
+        }
+        let scalar = expected_scalar_gate[0];
+        let sigmoid = 1.0f32 / (1.0f32 + (-scalar).exp());
+        let expected_gated_output: Vec<f32> =
+            expected_down.iter().map(|value| value * sigmoid).collect();
+
+        let context = MetalContext::new_with_trace(true)?;
+        let input_buffer = context.new_buffer_with_bytes_checked(&f32_bytes(&input))?;
+        let loaded = LoadedSharedExpertComposition {
+            gate_codes: context.new_buffer_with_bytes_checked(&gate.codes)?,
+            gate_scales: context.new_buffer_with_bytes_checked(&gate.scales)?,
+            up_codes: context.new_buffer_with_bytes_checked(&up.codes)?,
+            up_scales: context.new_buffer_with_bytes_checked(&up.scales)?,
+            gate_up_output: context
+                .new_buffer_checked(SHARED_INTERMEDIATE * std::mem::size_of::<f32>())?,
+            down_codes: context.new_buffer_with_bytes_checked(&down.codes)?,
+            down_scales: context.new_buffer_with_bytes_checked(&down.scales)?,
+            down_output: context.new_buffer_checked(SHARED_HIDDEN * std::mem::size_of::<f32>())?,
+            scalar_gate_codes: context.new_buffer_with_bytes_checked(&scalar_gate.codes)?,
+            scalar_gate_scales: context.new_buffer_with_bytes_checked(&scalar_gate.scales)?,
+            scalar_gate_output: context.new_buffer_checked(std::mem::size_of::<f32>())?,
+            gated_output: context.new_buffer_checked(SHARED_HIDDEN * std::mem::size_of::<f32>())?,
+            gate,
+            up,
+            down,
+            scalar_gate,
+            gate_receipt,
+            gate_receipt_path: gate_receipt_path.canonicalize()?,
+            gate_receipt_sha256: sha256_bytes(&fs::read(&gate_receipt_path)?),
+            up_receipt,
+            up_receipt_path: up_receipt_path.canonicalize()?,
+            up_receipt_sha256: sha256_bytes(&fs::read(&up_receipt_path)?),
+            down_receipt,
+            down_receipt_path: down_receipt_path.canonicalize()?,
+            down_receipt_sha256: sha256_bytes(&fs::read(&down_receipt_path)?),
+            scalar_gate_receipt,
+            scalar_gate_receipt_path: scalar_gate_receipt_path.canonicalize()?,
+            scalar_gate_receipt_sha256: sha256_bytes(&fs::read(&scalar_gate_receipt_path)?),
+            expected_gate_up,
+            expected_down,
+            expected_scalar_gate,
+            expected_gated_output,
+        };
+
+        let dispatch_graph = |item: &LoadedSharedExpertComposition| {
+            let gate_up = dispatch_gate_up_swiglu(
+                &context,
+                &item.gate,
+                &item.gate_codes,
+                &item.gate_scales,
+                &item.up_codes,
+                &item.up_scales,
+                &input_buffer,
+                &item.gate_up_output,
+            )?;
+            let down = dispatch(
+                &context,
+                &item.down,
+                &item.down_codes,
+                &item.down_scales,
+                &item.gate_up_output,
+                &item.down_output,
+            )?;
+            let scalar_gate = dispatch(
+                &context,
+                &item.scalar_gate,
+                &item.scalar_gate_codes,
+                &item.scalar_gate_scales,
+                &input_buffer,
+                &item.scalar_gate_output,
+            )?;
+            let sigmoid_gate = dispatch_shared_expert_sigmoid_gate(
+                &context,
+                &item.down_output,
+                &item.scalar_gate_output,
+                &item.gated_output,
+                SHARED_HIDDEN,
+            )?;
+            Ok::<
+                (
+                    MetalDispatchTiming,
+                    MetalDispatchTiming,
+                    MetalDispatchTiming,
+                    MetalDispatchTiming,
+                ),
+                Box<dyn Error>,
+            >((gate_up, down, scalar_gate, sigmoid_gate))
+        };
+
+        let mut warmup_graph_gpu_ns = Vec::with_capacity(args.warmup);
+        for _ in 0..args.warmup {
+            let timings = dispatch_graph(&loaded)?;
+            let total = gpu_ns(timings.0)?
+                .saturating_add(gpu_ns(timings.1)?)
+                .saturating_add(gpu_ns(timings.2)?)
+                .saturating_add(gpu_ns(timings.3)?);
+            warmup_graph_gpu_ns.push(total);
+        }
+
+        let mut gate_up_gpu_ns = Vec::with_capacity(args.reps);
+        let mut down_gpu_ns = Vec::with_capacity(args.reps);
+        let mut scalar_gate_gpu_ns = Vec::with_capacity(args.reps);
+        let mut sigmoid_gate_gpu_ns = Vec::with_capacity(args.reps);
+        let mut graph_gpu_ns = Vec::with_capacity(args.reps);
+        let mut graph_host_ns = Vec::with_capacity(args.reps);
+        let mut gate_up_hashes = Vec::with_capacity(args.reps);
+        let mut down_hashes = Vec::with_capacity(args.reps);
+        let mut scalar_gate_hashes = Vec::with_capacity(args.reps);
+        let mut gated_output_hashes = Vec::with_capacity(args.reps);
+        let mut last_gate_up_parity = json!({});
+        let mut last_down_parity = json!({});
+        let mut last_scalar_gate_parity = json!({});
+        let mut last_gated_output_parity = json!({});
+
+        for _ in 0..args.reps {
+            let timings = dispatch_graph(&loaded)?;
+            // All four buffers are inspected only after the graph has
+            // completed. The down projection consumes the gate/up buffer and
+            // the sigmoid gate consumes the down/scalar buffers on-device.
+            let observed_gate_up = read_f32(&loaded.gate_up_output, SHARED_INTERMEDIATE);
+            let observed_down = read_f32(&loaded.down_output, SHARED_HIDDEN);
+            let observed_scalar_gate = read_f32(&loaded.scalar_gate_output, 1);
+            let observed_gated_output = read_f32(&loaded.gated_output, SHARED_HIDDEN);
+            if !observed_gate_up.iter().all(|value| value.is_finite())
+                || !observed_down.iter().all(|value| value.is_finite())
+                || !observed_scalar_gate.iter().all(|value| value.is_finite())
+                || !observed_gated_output.iter().all(|value| value.is_finite())
+            {
+                return Err("native shared-expert composition produced a non-finite value".into());
+            }
+            last_gate_up_parity = output_metrics(&loaded.expected_gate_up, &observed_gate_up);
+            last_down_parity = output_metrics(&loaded.expected_down, &observed_down);
+            last_scalar_gate_parity =
+                output_metrics(&loaded.expected_scalar_gate, &observed_scalar_gate);
+            last_gated_output_parity =
+                output_metrics(&loaded.expected_gated_output, &observed_gated_output);
+            for (label, parity) in [
+                ("gate/up", &last_gate_up_parity),
+                ("down", &last_down_parity),
+                ("scalar gate", &last_scalar_gate_parity),
+                ("gated output", &last_gated_output_parity),
+            ] {
+                if parity.get("within_tolerance").and_then(Value::as_bool) != Some(true) {
+                    return Err(
+                        format!("native shared-expert {label} parity failed: {parity}").into(),
+                    );
+                }
+            }
+            let gate_up_gpu = gpu_ns(timings.0)?;
+            let down_gpu = gpu_ns(timings.1)?;
+            let scalar_gate_gpu = gpu_ns(timings.2)?;
+            let sigmoid_gate_gpu = gpu_ns(timings.3)?;
+            let graph_gpu = gate_up_gpu
+                .saturating_add(down_gpu)
+                .saturating_add(scalar_gate_gpu)
+                .saturating_add(sigmoid_gate_gpu);
+            let graph_host = timings
+                .0
+                .host_wall_us
+                .saturating_add(timings.1.host_wall_us)
+                .saturating_add(timings.2.host_wall_us)
+                .saturating_add(timings.3.host_wall_us)
+                .saturating_mul(1000);
+            gate_up_gpu_ns.push(gate_up_gpu);
+            down_gpu_ns.push(down_gpu);
+            scalar_gate_gpu_ns.push(scalar_gate_gpu);
+            sigmoid_gate_gpu_ns.push(sigmoid_gate_gpu);
+            graph_gpu_ns.push(graph_gpu);
+            graph_host_ns.push(graph_host);
+            gate_up_hashes.push(sha256_bytes(&f32_bytes_for_hash(&observed_gate_up)));
+            down_hashes.push(sha256_bytes(&f32_bytes_for_hash(&observed_down)));
+            scalar_gate_hashes.push(sha256_bytes(&f32_bytes_for_hash(&observed_scalar_gate)));
+            gated_output_hashes.push(sha256_bytes(&f32_bytes_for_hash(&observed_gated_output)));
+        }
+
+        if gate_up_hashes.windows(2).any(|pair| pair[0] != pair[1])
+            || down_hashes.windows(2).any(|pair| pair[0] != pair[1])
+            || scalar_gate_hashes.windows(2).any(|pair| pair[0] != pair[1])
+            || gated_output_hashes
+                .windows(2)
+                .any(|pair| pair[0] != pair[1])
+        {
+            return Err(
+                "native shared-expert composition outputs changed across repeated executions"
+                    .into(),
+            );
+        }
+
+        let mut physical_graph = json!({
+            "schema": "hcli.physical_graph.v1",
+            "semantic_type": "PhysicalGraph",
+            "compiler_stage": "HawkingAccelerator",
+            "component_scope": "layer-0 shared expert only: independent Q4/G64 gate/up -> native SwiGLU -> device-resident down projection -> independent Q4/G64 scalar gate -> native sigmoid gate",
+            "device_placement": {"selected": "apple_metal", "candidates": ["apple_metal", "cpu"]},
+            "nodes": [
+                {"id": "input", "shape": [SHARED_HIDDEN], "dtype": "F32", "device_resident": true},
+                {"id": "shared_gate_proj", "shape": [SHARED_INTERMEDIATE, SHARED_HIDDEN], "representation": "independent_q4_g64"},
+                {"id": "shared_up_proj", "shape": [SHARED_INTERMEDIATE, SHARED_HIDDEN], "representation": "independent_q4_g64"},
+                {"id": "shared_gate_up_swiglu", "shape": [SHARED_INTERMEDIATE], "kernel": GATE_UP_KERNEL_NAME, "device_resident": true},
+                {"id": "shared_down_proj", "shape": [SHARED_HIDDEN, SHARED_INTERMEDIATE], "kernel": KERNEL_NAME, "device_resident": true},
+                {"id": "shared_expert_gate", "shape": [1, SHARED_HIDDEN], "representation": "independent_q4_g64"},
+                {"id": "shared_sigmoid_gate", "shape": [SHARED_HIDDEN], "kernel": SHARED_SIGMOID_GATE_KERNEL_NAME, "device_resident": true},
+                {"id": "shared_output", "shape": [SHARED_HIDDEN], "dtype": "F32", "device_resident": true}
+            ],
+            "edges": [
+                ["input", "shared_gate_proj"],
+                ["input", "shared_up_proj"],
+                ["shared_gate_proj", "shared_gate_up_swiglu"],
+                ["shared_up_proj", "shared_gate_up_swiglu"],
+                ["shared_gate_up_swiglu", "shared_down_proj"],
+                ["input", "shared_expert_gate"],
+                ["shared_down_proj", "shared_sigmoid_gate"],
+                ["shared_expert_gate", "shared_sigmoid_gate"],
+                ["shared_sigmoid_gate", "shared_output"]
+            ],
+            "native_kernels": [GATE_UP_KERNEL_NAME, KERNEL_NAME, SHARED_SIGMOID_GATE_KERNEL_NAME],
+            "native_kernel_execution_observed": true,
+            "dispatches_per_graph": 4,
+            "device_intermediate_no_host_roundtrip": true,
+            "verification_reads_after_graph": true,
+            "promotion_allowed": false,
+        });
+        let physical_graph_fingerprint = sha256_bytes(&serde_json::to_vec(&physical_graph)?);
+        physical_graph["fingerprint"] = Value::String(physical_graph_fingerprint);
+
+        let device_memory = context.device_memory_limits();
+        let components = json!({
+            "shared_gate_proj": {
+                "body_receipt": component_ref(&loaded.gate_receipt_path, &loaded.gate_receipt, Some(&loaded.gate_receipt_sha256)),
+                "candidate_body": {"path": loaded.gate.path, "sha256": loaded.gate.body_sha256, "bytes": loaded.gate.code_bytes + loaded.gate.scale_bytes, "shape": [loaded.gate.rows, loaded.gate.columns], "source_independent": true, "label": "[D]"},
+                "native_kernel": KERNEL_NAME,
+            },
+            "shared_up_proj": {
+                "body_receipt": component_ref(&loaded.up_receipt_path, &loaded.up_receipt, Some(&loaded.up_receipt_sha256)),
+                "candidate_body": {"path": loaded.up.path, "sha256": loaded.up.body_sha256, "bytes": loaded.up.code_bytes + loaded.up.scale_bytes, "shape": [loaded.up.rows, loaded.up.columns], "source_independent": true, "label": "[D]"},
+                "native_kernel": KERNEL_NAME,
+            },
+            "shared_down_proj": {
+                "body_receipt": component_ref(&loaded.down_receipt_path, &loaded.down_receipt, Some(&loaded.down_receipt_sha256)),
+                "candidate_body": {"path": loaded.down.path, "sha256": loaded.down.body_sha256, "bytes": loaded.down.code_bytes + loaded.down.scale_bytes, "shape": [loaded.down.rows, loaded.down.columns], "source_independent": true, "label": "[D]"},
+                "native_kernel": KERNEL_NAME,
+            },
+            "shared_expert_gate": {
+                "body_receipt": component_ref(&loaded.scalar_gate_receipt_path, &loaded.scalar_gate_receipt, Some(&loaded.scalar_gate_receipt_sha256)),
+                "candidate_body": {"path": loaded.scalar_gate.path, "sha256": loaded.scalar_gate.body_sha256, "bytes": loaded.scalar_gate.code_bytes + loaded.scalar_gate.scale_bytes, "shape": [loaded.scalar_gate.rows, loaded.scalar_gate.columns], "source_independent": true, "label": "[D]"},
+                "native_kernel": KERNEL_NAME,
+            },
+        });
+
+        Ok(json!({
+            "schema": SHARED_EXPERT_SCHEMA,
+            "nomenclature_version": NOMENCLATURE_VERSION,
+            "semantic_type": "NoeticExecutableCandidate",
+            "compiler_stage": "HawkingAccelerator",
+            "status": "PASSED",
+            "qualification": "BOUNDED_NATIVE_SHARED_EXPERT_Q4_G64_GATED_SWIGLU_COMPOSITION",
+            "repo": REPO_ID,
+            "pinned_revision": PINNED_REVISION,
+            "root": root,
+            "model_lake_manifest": manifest,
+            "layer": 0,
+            "components": components,
+            "component_receipt_policy": {
+                "directory": repo.join("receipts/headless"),
+                "gate_body": "FLASH_NOETIC_SHARED_EXPERT_GATE_BODY_L0_R0_640.json",
+                "up_body": "FLASH_NOETIC_SHARED_EXPERT_UP_BODY_L0_R0_640.json",
+                "down_body": "FLASH_NOETIC_SHARED_EXPERT_DOWN_BODY_L0_R0_2560.json",
+                "scalar_gate_body": "FLASH_NOETIC_SHARED_EXPERT_SCALAR_GATE_BODY_L0_R0_1.json",
+            },
+            "execution": {
+                "provider": "apple-metal",
+                "operation": "full layer-0 shared_expert gate_proj + up_proj -> native gate_up_swiglu -> device-resident down_proj -> native shared_expert_gate matvec -> native sigmoid gate",
+                "shared_expert_hidden": SHARED_HIDDEN,
+                "shared_expert_intermediate": SHARED_INTERMEDIATE,
+                "dispatches_per_graph": 4,
+                "measured_graphs": args.reps,
+                "total_measured_dispatches": args.reps * 4,
+                "native_shared_expert_gate_up_swiglu_observed": true,
+                "native_shared_expert_down_projection_observed": true,
+                "native_shared_expert_scalar_gate_observed": true,
+                "native_shared_expert_sigmoid_gate_observed": true,
+                "complete_shared_expert_candidate_graph": true,
+                "device_intermediate_no_host_roundtrip": true,
+                "verification_reads_after_graph": true,
+                "source_reference_used_for_execution": false,
+                "body_mutated": false,
+                "model_loaded": false,
+                "complete_moe_combine": false,
+                "complete_token_runtime": false,
+            },
+            "input": {
+                "definition": "((index * 71) mod 509 - 254) / 509",
+                "values": input.len(),
+                "deterministic_sha256": input_sha256,
+                "label": "[V]",
+            },
+            "intermediates": {
+                "gate_up": {"semantic_type": "NoeticActivationBuffer", "shape": [SHARED_INTERMEDIATE], "dtype": "F32", "producer": GATE_UP_KERNEL_NAME, "consumer": KERNEL_NAME, "device_resident": true, "host_roundtrip": false},
+                "down": {"semantic_type": "NoeticActivationBuffer", "shape": [SHARED_HIDDEN], "dtype": "F32", "producer": KERNEL_NAME, "consumer": SHARED_SIGMOID_GATE_KERNEL_NAME, "device_resident": true, "host_roundtrip": false},
+                "scalar_gate": {"semantic_type": "NoeticGateLogit", "shape": [1], "dtype": "F32", "producer": KERNEL_NAME, "consumer": SHARED_SIGMOID_GATE_KERNEL_NAME, "device_resident": true, "host_roundtrip": false},
+            },
+            "parity": {
+                "gate_up_swiglu": last_gate_up_parity,
+                "down_projection": last_down_parity,
+                "scalar_gate": last_scalar_gate_parity,
+                "sigmoid_gated_output": last_gated_output_parity,
+                "expected_sigmoid_gate": sigmoid,
+                "candidate_space": "CPU reference uses the same persisted Q4/G64 candidate bodies; source BF16 activation parity remains a separate unqualified boundary",
+            },
+            "gpu_timing": {
+                "device": context.device_name(),
+                "warmup_runs": args.warmup,
+                "measured_runs": args.reps,
+                "warmup_graph_gpu_ns": warmup_graph_gpu_ns,
+                "gate_up_gpu_ns": gate_up_gpu_ns,
+                "gate_up_gpu_ns_median": percentile_median(&gate_up_gpu_ns),
+                "down_gpu_ns": down_gpu_ns,
+                "down_gpu_ns_median": percentile_median(&down_gpu_ns),
+                "scalar_gate_gpu_ns": scalar_gate_gpu_ns,
+                "scalar_gate_gpu_ns_median": percentile_median(&scalar_gate_gpu_ns),
+                "sigmoid_gate_gpu_ns": sigmoid_gate_gpu_ns,
+                "sigmoid_gate_gpu_ns_median": percentile_median(&sigmoid_gate_gpu_ns),
+                "graph_gpu_ns": graph_gpu_ns,
+                "graph_gpu_ns_median": percentile_median(&graph_gpu_ns),
+                "graph_host_wall_ns": graph_host_ns,
+                "graph_host_wall_ns_median": percentile_median(&graph_host_ns),
+                "dispatches_per_graph": 4,
+                "output_hashes": gated_output_hashes,
+                "stage_output_hashes": {
+                    "gate_up": gate_up_hashes,
+                    "down": down_hashes,
+                    "scalar_gate": scalar_gate_hashes,
+                    "gated_output": gated_output_hashes,
+                },
+                "memory_limits": {
+                    "max_buffer_length": device_memory.max_buffer_length,
+                    "recommended_max_working_set_size": device_memory.recommended_max_working_set_size,
+                    "current_allocated_size": device_memory.current_allocated_size,
+                    "has_unified_memory": device_memory.has_unified_memory,
+                },
+                "timing_authority": "Metal completed-command-buffer GPUStartTime/GPUEndTime for all four native shared-expert dispatches; host wall is reported separately",
+            },
+            "noetic_ir": {
+                "schema": "hcli.noetic.ir.v1",
+                "semantic_type": "NoeticIR",
+                "representation": "independent_q4_g64",
+                "operations": [
+                    "load_source_independent_shared_expert_gate_proj_body",
+                    "load_source_independent_shared_expert_up_proj_body",
+                    "execute_native_q4_g64_gate_up_swiglu",
+                    "retain_640_value_activation_on_device",
+                    "load_source_independent_shared_expert_down_proj_body",
+                    "execute_native_q4_g64_down_projection",
+                    "load_source_independent_shared_expert_scalar_gate_body",
+                    "execute_native_q4_g64_scalar_gate_matvec",
+                    "execute_native_sigmoid_shared_expert_gate",
+                    "emit_bounded_shared_expert_output",
+                ],
+                "source_independent": true,
+                "complete_shared_expert_candidate_graph": true,
+                "complete_moe_combine": false,
+                "complete_model": false,
+                "complete_token": false,
+            },
+            "physical_graph": physical_graph,
+            "whole_model_capability": "NOT_TESTED",
+            "complete_expert_runtime": "NOT_TESTED",
+            "complete_token_runtime": "NOT_TESTED",
+            "complete_system_ebpw": null,
+            "flash_tps": null,
+            "body_mutated": false,
+            "model_loaded": false,
+            "native_shared_expert_gate_up_swiglu_observed": true,
+            "native_shared_expert_down_projection_observed": true,
+            "native_shared_expert_scalar_gate_observed": true,
+            "native_shared_expert_sigmoid_gate_observed": true,
+            "native_shared_expert_composition_observed": true,
+            "promotion_allowed": false,
+            "claim_boundary": "PASSED bounded native layer-0 shared-expert candidate graph: full independent Q4/G64 gate_proj and up_proj feed native gate_up_swiglu, the device-resident 640-value activation feeds full independent Q4/G64 down_proj, and a full independent Q4/G64 shared_expert_gate logit is consumed by native sigmoid gating. This does not establish BF16 source-output parity, routed-expert/MoE combine, norms, hyperconnections, attention, recurrent state, MTP, lm_head, complete-model capability, complete-token runtime, Flash TPS, or EBPW.",
+            "next_action": "compose this bounded shared-expert candidate with the already observed routed-expert output and residual boundary; keep protected complete-token Flash TPS and EBPW unmeasured until the remaining native organs are capability-qualified",
+            "elapsed_s": started.elapsed().as_secs_f64(),
+        }))
+    }
+
     pub fn main() -> Result<(), Box<dyn Error>> {
         let args = parse_args()?;
         let destination = args.out.clone();
-        let report = match if args.expert_composition {
+        let report = match if args.shared_residual_composition {
+            run_shared_residual_composition(&args)
+        } else if args.shared_expert_composition {
+            run_shared_expert_composition(&args)
+        } else if args.expert_composition {
             run_expert_composition(&args)
         } else if args.gate_up_swiglu {
             run_gate_up_swiglu(&args)
@@ -2069,7 +3397,11 @@ mod macos {
         } {
             Ok(report) => report,
             Err(error) => json!({
-                "schema": if args.expert_composition {
+                "schema": if args.shared_residual_composition {
+                    SHARED_RESIDUAL_SCHEMA
+                } else if args.shared_expert_composition {
+                    SHARED_EXPERT_SCHEMA
+                } else if args.expert_composition {
                     COMPOSITION_SCHEMA
                 } else if args.gate_up_swiglu {
                     GATE_UP_SCHEMA
@@ -2088,6 +3420,13 @@ mod macos {
                 "native_expert_gate_up_activation_observed": false,
                 "native_down_projection_observed": false,
                 "native_expert_composition_observed": false,
+                "native_shared_expert_composition_observed": false,
+                "native_shared_residual_composition_observed": false,
+                "native_hyperconnection_stream_injection_observed": false,
+                "native_hyperconnection_low_rank_down_observed": false,
+                "native_hyperconnection_low_rank_up_observed": false,
+                "native_hyperconnection_block_inject_observed": false,
+                "native_hyperconnection_residual_mix_observed": false,
                 "whole_model_capability": "NOT_TESTED",
                 "complete_expert_runtime": "NOT_TESTED",
                 "complete_token_runtime": "NOT_TESTED",

@@ -211,6 +211,8 @@ def _flash_summary(repo: Path) -> Dict[str, Any]:
     routed_expert_dispatch_native = _receipt(repo, "FLASH_NOETIC_ROUTED_EXPERT_DISPATCH_NATIVE.json") or {}
     gate_up_swiglu_native = _receipt(repo, "FLASH_NOETIC_ROUTED_EXPERT_GATE_UP_SWIGLU_NATIVE.json") or {}
     expert_composition_native = _receipt(repo, "FLASH_NOETIC_ROUTED_EXPERT_COMPOSITION_NATIVE.json") or {}
+    shared_expert_composition_native = _receipt(repo, "FLASH_NOETIC_SHARED_EXPERT_COMPOSITION_NATIVE.json") or {}
+    shared_residual_hyperconnection_native = _receipt(repo, "FLASH_NOETIC_SHARED_RESIDUAL_HYPERCONNECTION_NATIVE.json") or {}
     router_representation_ab = _receipt(repo, "FLASH_NOETIC_ROUTER_REPRESENTATION_AB.json") or {}
     source = flash.get("source_identity") or flash.get("source") or {}
     promotion = flash.get("promotion_gate") or {}
@@ -502,6 +504,76 @@ def _flash_summary(repo: Path) -> Dict[str, Any]:
             "claim_boundary": expert_composition_native.get("claim_boundary"),
             "next_action": expert_composition_native.get("next_action"),
         },
+        "bounded_noetic_shared_expert_composition_native": {
+            "status": shared_expert_composition_native.get("status"),
+            "receipt_path": str(repo / "receipts" / "headless" / "FLASH_NOETIC_SHARED_EXPERT_COMPOSITION_NATIVE.json"),
+            "semantic_type": shared_expert_composition_native.get("semantic_type"),
+            "compiler_stage": shared_expert_composition_native.get("compiler_stage"),
+            "qualification": shared_expert_composition_native.get("qualification"),
+            "layer": shared_expert_composition_native.get("layer"),
+            "component_receipt_policy": shared_expert_composition_native.get("component_receipt_policy"),
+            "components": shared_expert_composition_native.get("components"),
+            "execution": shared_expert_composition_native.get("execution"),
+            "input": shared_expert_composition_native.get("input"),
+            "intermediates": shared_expert_composition_native.get("intermediates"),
+            "parity": shared_expert_composition_native.get("parity"),
+            "gpu_timing": shared_expert_composition_native.get("gpu_timing"),
+            "physical_graph": shared_expert_composition_native.get("physical_graph"),
+            "noetic_ir": shared_expert_composition_native.get("noetic_ir"),
+            "native_shared_expert_gate_up_swiglu_observed": shared_expert_composition_native.get("native_shared_expert_gate_up_swiglu_observed"),
+            "native_shared_expert_down_projection_observed": shared_expert_composition_native.get("native_shared_expert_down_projection_observed"),
+            "native_shared_expert_scalar_gate_observed": shared_expert_composition_native.get("native_shared_expert_scalar_gate_observed"),
+            "native_shared_expert_sigmoid_gate_observed": shared_expert_composition_native.get("native_shared_expert_sigmoid_gate_observed"),
+            "native_shared_expert_composition_observed": shared_expert_composition_native.get("native_shared_expert_composition_observed"),
+            "source_independent_execution": shared_expert_composition_native.get("source_independent_execution") or (shared_expert_composition_native.get("noetic_ir") or {}).get("source_independent"),
+            "device_intermediate_no_host_roundtrip": shared_expert_composition_native.get("device_intermediate_no_host_roundtrip") or (shared_expert_composition_native.get("physical_graph") or {}).get("device_intermediate_no_host_roundtrip"),
+            "whole_model_capability": shared_expert_composition_native.get("whole_model_capability"),
+            "complete_expert_runtime": shared_expert_composition_native.get("complete_expert_runtime"),
+            "complete_token_runtime": shared_expert_composition_native.get("complete_token_runtime"),
+            "complete_system_ebpw": shared_expert_composition_native.get("complete_system_ebpw"),
+            "flash_tps": shared_expert_composition_native.get("flash_tps"),
+            "promotion_allowed": shared_expert_composition_native.get("promotion_allowed"),
+            "claim_boundary": shared_expert_composition_native.get("claim_boundary"),
+            "next_action": shared_expert_composition_native.get("next_action"),
+        },
+        "bounded_noetic_shared_residual_hyperconnection_native": {
+            "status": shared_residual_hyperconnection_native.get("status"),
+            "receipt_path": str(repo / "receipts" / "headless" / "FLASH_NOETIC_SHARED_RESIDUAL_HYPERCONNECTION_NATIVE.json"),
+            "semantic_type": shared_residual_hyperconnection_native.get("semantic_type"),
+            "compiler_stage": shared_residual_hyperconnection_native.get("compiler_stage"),
+            "qualification": shared_residual_hyperconnection_native.get("qualification"),
+            "layer": shared_residual_hyperconnection_native.get("layer"),
+            "dependencies": shared_residual_hyperconnection_native.get("dependencies"),
+            "component_receipt_policy": shared_residual_hyperconnection_native.get("component_receipt_policy"),
+            "components": shared_residual_hyperconnection_native.get("components"),
+            "execution": shared_residual_hyperconnection_native.get("execution"),
+            "input": shared_residual_hyperconnection_native.get("input"),
+            "intermediates": shared_residual_hyperconnection_native.get("intermediates"),
+            "candidate_semantics": shared_residual_hyperconnection_native.get("candidate_semantics"),
+            "parity": shared_residual_hyperconnection_native.get("parity"),
+            "gpu_timing": shared_residual_hyperconnection_native.get("gpu_timing"),
+            "physical_graph": shared_residual_hyperconnection_native.get("physical_graph"),
+            "noetic_ir": shared_residual_hyperconnection_native.get("noetic_ir"),
+            "native_shared_expert_gate_up_swiglu_observed": shared_residual_hyperconnection_native.get("native_shared_expert_gate_up_swiglu_observed"),
+            "native_shared_expert_down_projection_observed": shared_residual_hyperconnection_native.get("native_shared_expert_down_projection_observed"),
+            "native_shared_expert_sigmoid_gate_observed": shared_residual_hyperconnection_native.get("native_shared_expert_sigmoid_gate_observed"),
+            "native_hyperconnection_stream_injection_observed": shared_residual_hyperconnection_native.get("native_hyperconnection_stream_injection_observed"),
+            "native_hyperconnection_low_rank_down_observed": shared_residual_hyperconnection_native.get("native_hyperconnection_low_rank_down_observed"),
+            "native_hyperconnection_low_rank_up_observed": shared_residual_hyperconnection_native.get("native_hyperconnection_low_rank_up_observed"),
+            "native_hyperconnection_block_inject_observed": shared_residual_hyperconnection_native.get("native_hyperconnection_block_inject_observed"),
+            "native_hyperconnection_residual_mix_observed": shared_residual_hyperconnection_native.get("native_hyperconnection_residual_mix_observed"),
+            "native_shared_residual_composition_observed": shared_residual_hyperconnection_native.get("native_shared_residual_composition_observed"),
+            "source_independent_execution": shared_residual_hyperconnection_native.get("source_independent_execution") or (shared_residual_hyperconnection_native.get("noetic_ir") or {}).get("source_independent"),
+            "device_intermediate_no_host_roundtrip": shared_residual_hyperconnection_native.get("device_intermediate_no_host_roundtrip") or (shared_residual_hyperconnection_native.get("physical_graph") or {}).get("device_intermediate_no_host_roundtrip"),
+            "whole_model_capability": shared_residual_hyperconnection_native.get("whole_model_capability"),
+            "complete_expert_runtime": shared_residual_hyperconnection_native.get("complete_expert_runtime"),
+            "complete_token_runtime": shared_residual_hyperconnection_native.get("complete_token_runtime"),
+            "complete_system_ebpw": shared_residual_hyperconnection_native.get("complete_system_ebpw"),
+            "flash_tps": shared_residual_hyperconnection_native.get("flash_tps"),
+            "promotion_allowed": shared_residual_hyperconnection_native.get("promotion_allowed"),
+            "claim_boundary": shared_residual_hyperconnection_native.get("claim_boundary"),
+            "next_action": shared_residual_hyperconnection_native.get("next_action"),
+        },
         "bounded_noetic_router_representation_ab": {
             "status": router_representation_ab.get("status"),
             "receipt_path": str(repo / "receipts" / "headless" / "FLASH_NOETIC_ROUTER_REPRESENTATION_AB.json"),
@@ -540,7 +612,7 @@ def _flash_summary(repo: Path) -> Dict[str, Any]:
             "ebpw": {"status": ebpw.get("status"), "receipt_path": str(repo / "receipts" / "headless" / "FLASH_EBPW_BUDGET.json"), "measured": ebpw.get("measured"), "target_contract": ebpw.get("target_contract")},
             "token_ns": {"status": token_ns.get("status"), "receipt_path": str(repo / "receipts" / "headless" / "FLASH_TOKEN_NS_BUDGET.json"), "system_ledger": token_ns.get("system_ledger"), "target_contract": token_ns.get("target_contract")},
         },
-        "next_action": "Use the PASSED bounded native gate/up-to-down expert composition as the next Flash graph anchor, then compose the remaining Flash organs; keep complete-system EBPW and accepted Flash TPS unmeasured until native protected complete-token execution exists.",
+        "next_action": "Use the PASSED bounded native routed-expert and layer-0 shared-expert compositions as Flash graph anchors, then compose the residual boundary and remaining Flash organs; keep complete-system EBPW and accepted Flash TPS unmeasured until native protected complete-token execution exists.",
     }
 
 
@@ -670,6 +742,8 @@ def build_handoff(repo_root: Optional[str | os.PathLike[str]] = None, *, emit: O
     routed_expert_dispatch_native = flash.get("bounded_noetic_routed_expert_dispatch_native") or {}
     gate_up_swiglu_native = flash.get("bounded_noetic_gate_up_swiglu_native") or {}
     expert_composition_native = flash.get("bounded_noetic_expert_composition_native") or {}
+    shared_expert_composition_native = flash.get("bounded_noetic_shared_expert_composition_native") or {}
+    shared_residual_hyperconnection_native = flash.get("bounded_noetic_shared_residual_hyperconnection_native") or {}
     router_representation_ab = flash.get("bounded_noetic_router_representation_ab") or {}
     lake = _model_lake_summary(repo)
     window = _window_summary(repo)
@@ -749,6 +823,31 @@ def build_handoff(repo_root: Optional[str | os.PathLike[str]] = None, *, emit: O
         or expert_composition_native.get("promotion_allowed") is not False
     ):
         blockers.append("Flash-Next bounded native expert composition has not explicitly proven device-resident scoped execution with promotion refused.")
+    if shared_expert_composition_native.get("status") not in {None, "PASSED"}:
+        blockers.append("Flash-Next bounded native shared-expert composition receipt is invalid or incomplete.")
+    if shared_expert_composition_native.get("status") == "PASSED" and (
+        shared_expert_composition_native.get("native_shared_expert_gate_up_swiglu_observed") is not True
+        or shared_expert_composition_native.get("native_shared_expert_down_projection_observed") is not True
+        or shared_expert_composition_native.get("native_shared_expert_scalar_gate_observed") is not True
+        or shared_expert_composition_native.get("native_shared_expert_sigmoid_gate_observed") is not True
+        or shared_expert_composition_native.get("native_shared_expert_composition_observed") is not True
+        or shared_expert_composition_native.get("promotion_allowed") is not False
+    ):
+        blockers.append("Flash-Next bounded native shared-expert composition has not explicitly proven device-resident scoped execution with promotion refused.")
+    if shared_residual_hyperconnection_native.get("status") not in {None, "PASSED"}:
+        blockers.append("Flash-Next bounded native shared-expert residual/hyperconnection receipt is invalid or incomplete.")
+    if shared_residual_hyperconnection_native.get("status") == "PASSED" and (
+        shared_residual_hyperconnection_native.get("native_hyperconnection_stream_injection_observed") is not True
+        or shared_residual_hyperconnection_native.get("native_hyperconnection_low_rank_down_observed") is not True
+        or shared_residual_hyperconnection_native.get("native_hyperconnection_low_rank_up_observed") is not True
+        or shared_residual_hyperconnection_native.get("native_hyperconnection_block_inject_observed") is not True
+        or shared_residual_hyperconnection_native.get("native_hyperconnection_residual_mix_observed") is not True
+        or shared_residual_hyperconnection_native.get("native_shared_residual_composition_observed") is not True
+        or shared_residual_hyperconnection_native.get("source_independent_execution") is not True
+        or shared_residual_hyperconnection_native.get("device_intermediate_no_host_roundtrip") is not True
+        or shared_residual_hyperconnection_native.get("promotion_allowed") is not False
+    ):
+        blockers.append("Flash-Next bounded native shared-expert residual/hyperconnection composition has not explicitly proven the device-resident candidate graph with promotion refused.")
     graph_component = _receipt(repo, "FLASH_NOETIC_ROUTED_EXPERT_GRAPH.json") or {}
     if graph_component.get("status") != "PASSED" or graph_component.get("promotion_allowed") is not False:
         blockers.append("Flash-Next bounded Noetic routed-expert graph component is absent or incomplete.")
@@ -785,7 +884,7 @@ def build_handoff(repo_root: Optional[str | os.PathLike[str]] = None, *, emit: O
         "modellake": lake,
         "fpga": _fpga_summary(repo),
         "verification": {
-            "full_suite": {"command": "pytest -q", "last_observed_status": "PASSED", "last_observed": "734 passed, 2 skipped"},
+            "full_suite": {"command": "pytest -q", "last_observed_status": "PASSED", "last_observed": "747 passed, 2 skipped"},
             "provider_focus": {"last_observed_status": "PASSED", "last_observed": "30 passed, 2 warnings"},
             "receipt_gates": {
                 "autonomy": (_receipt(repo, "HCLI_AGENTOS_AUTONOMY_GATE.json") or {}).get("status"),
@@ -807,6 +906,8 @@ def build_handoff(repo_root: Optional[str | os.PathLike[str]] = None, *, emit: O
                 "flash_routed_expert_dispatch_native": routed_expert_dispatch_native.get("status"),
                 "flash_gate_up_swiglu_native": gate_up_swiglu_native.get("status"),
                 "flash_expert_composition_native": expert_composition_native.get("status"),
+                "flash_shared_expert_composition_native": shared_expert_composition_native.get("status"),
+                "flash_shared_residual_hyperconnection_native": shared_residual_hyperconnection_native.get("status"),
                 "flash_router_representation_ab": router_representation_ab.get("status"),
                 "modellake_supervision": lake_status,
                 "unattended_window": window_status,
@@ -842,6 +943,8 @@ def build_handoff(repo_root: Optional[str | os.PathLike[str]] = None, *, emit: O
             "run_flash_native_routed_expert_dispatch": f"{repo / 'workspace/ops/build/rust/release/examples/flash_noetic_routed_expert_dispatch'} --root /Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc --router-receipt {repo / 'receipts/headless/FLASH_NOETIC_ROUTER_SELECTION_NATIVE.json'} --campaign-receipt {repo / 'receipts/headless/FLASH_NOETIC_ROUTED_EXPERT_COMPONENT_CAMPAIGN.json'} --warmup 2 --reps 7 --out {repo / 'receipts/headless/FLASH_NOETIC_ROUTED_EXPERT_DISPATCH_NATIVE.json'}",
             "run_flash_native_gate_up_swiglu": f"{repo / 'workspace/ops/build/rust/release/examples/flash_noetic_routed_expert_dispatch'} --root /Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc --router-receipt {repo / 'receipts/headless/FLASH_NOETIC_ROUTER_SELECTION_NATIVE.json'} --gate-up-swiglu --warmup 2 --reps 7 --out {repo / 'receipts/headless/FLASH_NOETIC_ROUTED_EXPERT_GATE_UP_SWIGLU_NATIVE.json'}",
             "run_flash_native_expert_composition": f"{repo / 'workspace/ops/build/rust/release/examples/flash_noetic_routed_expert_dispatch'} --root /Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc --router-receipt {repo / 'receipts/headless/FLASH_NOETIC_ROUTER_SELECTION_NATIVE.json'} --expert-composition --warmup 2 --reps 7 --out {repo / 'receipts/headless/FLASH_NOETIC_ROUTED_EXPERT_COMPOSITION_NATIVE.json'}",
+            "run_flash_native_shared_expert_composition": f"{repo / 'workspace/ops/build/rust/release/examples/flash_noetic_routed_expert_dispatch'} --root /Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc --shared-expert-composition --warmup 2 --reps 7 --out {repo / 'receipts/headless/FLASH_NOETIC_SHARED_EXPERT_COMPOSITION_NATIVE.json'}",
+            "run_flash_native_shared_residual_composition": f"{repo / 'workspace/ops/build/rust/release/examples/flash_noetic_routed_expert_dispatch'} --root /Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc --shared-residual-composition --warmup 2 --reps 7 --out {repo / 'receipts/headless/FLASH_NOETIC_SHARED_RESIDUAL_HYPERCONNECTION_NATIVE.json'}",
             "run_flash_router_representation_ab": f"python3 -m hcli agentos flash-router-representation-ab --repo-root {repo} --root /Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc --emit {repo / 'receipts/headless/FLASH_NOETIC_ROUTER_REPRESENTATION_AB.json'}",
             "run_flash_tensor_probe": f"python3 -m hcli agentos flash-tensor-probe --emit {repo / 'receipts/headless/FLASH_FIRST_TENSOR_PROBE.json'}",
             "run_flash_representation_experiment": f"python3 -m hcli agentos flash-representation-experiment --emit {repo / 'receipts/headless/FLASH_ROUTED_EXPERT_REPRESENTATION_EXPERIMENT.json'}",

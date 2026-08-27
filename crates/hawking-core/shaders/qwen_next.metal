@@ -350,3 +350,46 @@ kernel void qwen_next_shared_expert_sigmoid_gate(
     const float gate = 1.0f / (1.0f + exp(-gate_logit[0]));
     gated_output[id] = shared_output[id] * gate;
 }
+
+// Bounded Flash-Next hyperconnection candidate boundary.  The source census
+// exposes four 2560-wide streams (10240 values total); this helper injects a
+// device-resident 2560-wide shared-expert result into one stream while
+// preserving the other candidate state values.  It is intentionally a
+// candidate graph primitive, not a claim that the complete model's runtime
+// uses this exact stream slot or ordering.
+kernel void qwen_next_expand_shared_to_hyper_state(
+    device const float* base_state   [[buffer(0)]],
+    device const float* shared_output [[buffer(1)]],
+    device float* output             [[buffer(2)]],
+    constant uint& hidden             [[buffer(3)]],
+    constant uint& streams            [[buffer(4)]],
+    constant uint& injected_stream    [[buffer(5)]],
+    uint id                           [[thread_position_in_grid]])
+{
+    const uint elements = hidden * streams;
+    if (id >= elements) return;
+    output[id] = base_state[id];
+    const uint injected_start = injected_stream * hidden;
+    if (id >= injected_start && id < injected_start + hidden) {
+        output[id] = shared_output[id - injected_start];
+    }
+}
+
+// Candidate low-rank hyperconnection residual mix.  The four source
+// block-inject logits gate the low-rank correction per 2560-wide stream; all
+// inputs and outputs remain device-resident for this bounded graph.
+kernel void qwen_next_hyperconnection_residual_mix_candidate(
+    device const float* state         [[buffer(0)]],
+    device const float* correction    [[buffer(1)]],
+    device const float* block_logits  [[buffer(2)]],
+    device float* output              [[buffer(3)]],
+    constant uint& hidden              [[buffer(4)]],
+    constant uint& streams             [[buffer(5)]],
+    uint id                            [[thread_position_in_grid]])
+{
+    const uint elements = hidden * streams;
+    if (id >= elements) return;
+    const uint stream = id / hidden;
+    const float gate = 1.0f / (1.0f + exp(-block_logits[stream]));
+    output[id] = state[id] + correction[id] * gate;
+}

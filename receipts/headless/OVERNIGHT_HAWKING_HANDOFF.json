@@ -5,16 +5,10 @@
       "9d373ecc4863b244fc74761c99fc837f7705f3db"
     ],
     "branch": "odyssey-i",
-    "git_revision": "3c30408b6b30e2414febe8660257b86abf37ee0f",
+    "git_revision": "ccdca4193b8d873491c9f8feedf3f2bcb06908c6",
     "unrelated_preserved_edit": "tools/odyssey_ctl.py",
     "working_tree_status": [
-      "M hcli/agentos/checkpoint.py",
-      " M hcli/agentos/flash_executable.py",
-      " M hcli/agentos/flash_router_selection.py",
-      " M hcli/agentos/handoff.py",
-      " M receipts/headless/FLASH_NEXT_NOETIC_EXECUTABLE.json",
-      " M receipts/headless/FLASH_NOETIC_ROUTER_SELECTION.json",
-      " M tools/odyssey_ctl.py",
+      "M tools/odyssey_ctl.py",
       "?? .hcli/flash-kernel-build/",
       "?? .hcli/locks/",
       "?? .hcli/unattended-qwen-long/"
@@ -3381,7 +3375,7 @@
       "telemetry/receipt verifier"
     ]
   },
-  "generated_at": 1787822260.126615,
+  "generated_at": 1787822439.6990888,
   "hcli": {
     "background_jobs": [
       {
@@ -3828,18 +3822,18 @@
         },
         {
           "checks": {},
-          "cycles": 173,
+          "cycles": 176,
           "deadline": 1787833148.5820968,
           "metrics": {
-            "accepted": 172,
-            "attempted": 173,
+            "accepted": 175,
+            "attempted": 176,
             "human_interventions": 0,
             "inconclusive": 1,
-            "model_calls": 173,
+            "model_calls": 176,
             "rejected": 0,
             "retries": 1,
-            "typed_tool_calls": 346,
-            "verifier_calls": 172
+            "typed_tool_calls": 352,
+            "verifier_calls": 175
           },
           "path": "/Users/scammermike/Downloads/hawking/.hcli/unattended-qwen-long/window-progress.json",
           "started_at": 1787811548.5820968,

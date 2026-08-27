@@ -48,6 +48,7 @@ DEFAULT_KERNEL_PARITY = "FLASH_NOETIC_Q4_KERNEL_PARITY.json"
 DEFAULT_BODY_KERNEL_PARITY = "FLASH_NOETIC_Q4_BODY_KERNEL_PARITY.json"
 DEFAULT_SHARED_EXPERT_KERNEL_PARITY = "FLASH_NOETIC_Q4_MATRIX_KERNEL_SHARED_EXPERT_GATE_L0_R0_128_PARITY.json"
 DEFAULT_DELTANET_KERNEL_PARITY = "FLASH_NOETIC_Q4_MATRIX_KERNEL_DELTANET_IN_PROJ_QKV_L0_R0_128_PARITY.json"
+DEFAULT_SPARSE_ATTENTION_KERNEL_PARITY = "FLASH_NOETIC_Q4_MATRIX_KERNEL_SPARSE_INDEXER_QK_PROJ_L11_R0_128_PARITY.json"
 DEFAULT_GRAPH_COMPONENT = "FLASH_NOETIC_ROUTED_EXPERT_GRAPH.json"
 DEFAULT_COMPONENT_CAMPAIGN = "FLASH_NOETIC_ROUTED_EXPERT_COMPONENT_CAMPAIGN.json"
 DEFAULT_ROUTER_GRAPH = "FLASH_NOETIC_ROUTER_GRAPH.json"
@@ -494,6 +495,20 @@ def _deltanet_kernel_parity_summary(
         default_receipt=DEFAULT_DELTANET_KERNEL_PARITY,
         organ="deltanet",
         scope="one DeltaNet input-projection rank-2 matrix window only; state transition and complete Flash execution remain untested",
+    )
+
+
+def _sparse_attention_kernel_parity_summary(
+    repo: Path,
+    receipt: Optional[str | os.PathLike[str]] = None,
+) -> Dict[str, Any]:
+    """Read bounded sparse-attention indexer parity without claiming QSA parity."""
+    return _matrix_kernel_parity_summary(
+        repo,
+        receipt,
+        default_receipt=DEFAULT_SPARSE_ATTENTION_KERNEL_PARITY,
+        organ="sparse_attention",
+        scope="one sparse-attention indexer projection rank-2 matrix window only; budgeted selection, KV gather, and complete Flash execution remain untested",
     )
 
 
@@ -1076,6 +1091,7 @@ def _executable_manifest(
     kernel_parity: Mapping[str, Any],
     shared_expert_kernel_parity: Mapping[str, Any],
     deltanet_kernel_parity: Mapping[str, Any],
+    sparse_attention_kernel_parity: Mapping[str, Any],
     graph_component: Mapping[str, Any],
     component_campaign: Mapping[str, Any],
     router_graph: Mapping[str, Any],
@@ -1116,6 +1132,8 @@ def _executable_manifest(
             "bounded_shared_expert_kernel_parity_receipt": shared_expert_kernel_parity.get("receipt_path"),
             "bounded_deltanet_kernel_parity_observed": deltanet_kernel_parity.get("status") == "PASSED",
             "bounded_deltanet_kernel_parity_receipt": deltanet_kernel_parity.get("receipt_path"),
+            "bounded_sparse_attention_kernel_parity_observed": sparse_attention_kernel_parity.get("status") == "PASSED",
+            "bounded_sparse_attention_kernel_parity_receipt": sparse_attention_kernel_parity.get("receipt_path"),
             "bounded_noetic_graph_component_observed": graph_component.get("status") == "PASSED",
             "bounded_noetic_graph_component_receipt": graph_component.get("receipt_path"),
             "bounded_component_campaign_observed": component_campaign.get("status") == "PASSED",
@@ -1138,6 +1156,7 @@ def _executable_manifest(
         "source_kernel_parity": kernel_parity,
         "source_shared_expert_kernel_parity": shared_expert_kernel_parity,
         "source_deltanet_kernel_parity": deltanet_kernel_parity,
+        "source_sparse_attention_kernel_parity": sparse_attention_kernel_parity,
         "source_graph_component": graph_component,
         "source_component_campaign": component_campaign,
         "source_router_graph": router_graph,
@@ -1221,6 +1240,19 @@ def _executable_manifest(
                 "source_independent_execution": deltanet_kernel_parity.get("source_independent_execution"),
                 "candidate_body_persisted": deltanet_kernel_parity.get("candidate_body_persisted"),
                 "scope": deltanet_kernel_parity.get("scope"),
+                "label": DERIVED,
+            },
+            "bounded_sparse_attention_matrix_evidence": {
+                "status": sparse_attention_kernel_parity.get("status"),
+                "receipt": sparse_attention_kernel_parity.get("receipt_path"),
+                "source_tensor": sparse_attention_kernel_parity.get("source_tensor"),
+                "native_loader": sparse_attention_kernel_parity.get("native_loader"),
+                "native_kernel": sparse_attention_kernel_parity.get("native_kernel"),
+                "gpu_timing": sparse_attention_kernel_parity.get("gpu_timing"),
+                "parity": sparse_attention_kernel_parity.get("parity"),
+                "source_independent_execution": sparse_attention_kernel_parity.get("source_independent_execution"),
+                "candidate_body_persisted": sparse_attention_kernel_parity.get("candidate_body_persisted"),
+                "scope": sparse_attention_kernel_parity.get("scope"),
                 "label": DERIVED,
             },
             "bounded_router_matrix_evidence": {
@@ -1355,6 +1387,7 @@ def _executable_manifest(
             "router_representation_ab_fingerprint": (router_representation_ab.get("physical_graph") or {}).get("fingerprint"),
             "shared_expert_kernel_parity_receipt": shared_expert_kernel_parity.get("receipt_path"),
             "deltanet_kernel_parity_receipt": deltanet_kernel_parity.get("receipt_path"),
+            "sparse_attention_kernel_parity_receipt": sparse_attention_kernel_parity.get("receipt_path"),
             "device_identity": None,
             "compiler_identity": None,
             "representation_manifest_sha256": None,
@@ -1385,6 +1418,7 @@ def run_flash_executable_scaffold(
     kernel_parity_receipt: Optional[str | os.PathLike[str]] = None,
     shared_expert_kernel_parity_receipt: Optional[str | os.PathLike[str]] = None,
     deltanet_kernel_parity_receipt: Optional[str | os.PathLike[str]] = None,
+    sparse_attention_kernel_parity_receipt: Optional[str | os.PathLike[str]] = None,
     graph_component_receipt: Optional[str | os.PathLike[str]] = None,
     component_campaign_receipt: Optional[str | os.PathLike[str]] = None,
     router_graph_receipt: Optional[str | os.PathLike[str]] = None,
@@ -1426,6 +1460,7 @@ def run_flash_executable_scaffold(
         kernel_parity = _kernel_parity_summary(repo, kernel_parity_receipt)
         shared_expert_kernel_parity = _shared_expert_kernel_parity_summary(repo, shared_expert_kernel_parity_receipt)
         deltanet_kernel_parity = _deltanet_kernel_parity_summary(repo, deltanet_kernel_parity_receipt)
+        sparse_attention_kernel_parity = _sparse_attention_kernel_parity_summary(repo, sparse_attention_kernel_parity_receipt)
         graph_component = _graph_component_summary(repo, graph_component_receipt)
         component_campaign = _component_campaign_summary(repo, component_campaign_receipt)
         router_graph = _router_graph_summary(repo, router_graph_receipt)
@@ -1433,7 +1468,7 @@ def run_flash_executable_scaffold(
         router_representation_ab = _router_representation_ab_summary(repo, router_representation_ab_receipt)
         ebpw = _ebpw_budget(science, source, tensor_probe, representation_experiment, transform_parity, loader_roundtrip, kernel_parity)
         token_ns = _token_ns_budget(science, source)
-        manifest = _executable_manifest(science, source, lake, ebpw, token_ns, tensor_probe, representation_experiment, transform_parity, loader_roundtrip, kernel_parity, shared_expert_kernel_parity, deltanet_kernel_parity, graph_component, component_campaign, router_graph, router_selection, router_representation_ab)
+        manifest = _executable_manifest(science, source, lake, ebpw, token_ns, tensor_probe, representation_experiment, transform_parity, loader_roundtrip, kernel_parity, shared_expert_kernel_parity, deltanet_kernel_parity, sparse_attention_kernel_parity, graph_component, component_campaign, router_graph, router_selection, router_representation_ab)
         atomic_write_json(ebpw_path, ebpw)
         atomic_write_json(token_path, token_ns)
         manifest["ebpw_budget_receipt"] = str(ebpw_path)
@@ -1472,6 +1507,10 @@ def run_flash_executable_scaffold(
                 "bounded_deltanet_kernel_parity_does_not_claim_whole_model": deltanet_kernel_parity.get("whole_model_capability") == "NOT_TESTED" and deltanet_kernel_parity.get("whole_model_runtime") == "NOT_TESTED",
                 "bounded_deltanet_kernel_parity_does_not_mutate_source": deltanet_kernel_parity.get("body_mutated") in {None, False},
                 "bounded_deltanet_kernel_parity_refuses_promotion": deltanet_kernel_parity.get("promotion_allowed") is False,
+                "bounded_sparse_attention_kernel_parity_is_explicit": sparse_attention_kernel_parity.get("status") in {"NOT_RUN", "PASSED"},
+                "bounded_sparse_attention_kernel_parity_does_not_claim_whole_model": sparse_attention_kernel_parity.get("whole_model_capability") == "NOT_TESTED" and sparse_attention_kernel_parity.get("whole_model_runtime") == "NOT_TESTED",
+                "bounded_sparse_attention_kernel_parity_does_not_mutate_source": sparse_attention_kernel_parity.get("body_mutated") in {None, False},
+                "bounded_sparse_attention_kernel_parity_refuses_promotion": sparse_attention_kernel_parity.get("promotion_allowed") is False,
                 "bounded_graph_component_is_explicit": graph_component.get("status") in {"NOT_RUN", "PASSED"},
                 "bounded_graph_component_does_not_claim_whole_model": graph_component.get("whole_model_capability") in {None, "NOT_TESTED"} and graph_component.get("complete_token_runtime") in {None, "NOT_TESTED"},
                 "bounded_graph_component_body_is_scoped": (
@@ -1553,6 +1592,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser.add_argument("--kernel-parity-receipt")
     parser.add_argument("--shared-expert-kernel-parity-receipt")
     parser.add_argument("--deltanet-kernel-parity-receipt")
+    parser.add_argument("--sparse-attention-kernel-parity-receipt")
     parser.add_argument("--graph-component-receipt")
     parser.add_argument("--component-campaign-receipt")
     parser.add_argument("--router-graph-receipt")
@@ -1572,6 +1612,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         kernel_parity_receipt=args.kernel_parity_receipt,
         shared_expert_kernel_parity_receipt=args.shared_expert_kernel_parity_receipt,
         deltanet_kernel_parity_receipt=args.deltanet_kernel_parity_receipt,
+        sparse_attention_kernel_parity_receipt=args.sparse_attention_kernel_parity_receipt,
         graph_component_receipt=args.graph_component_receipt,
         component_campaign_receipt=args.component_campaign_receipt,
         router_graph_receipt=args.router_graph_receipt,
@@ -1585,7 +1626,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     return 0 if report.get("status") == "PASSED" else 1
 
 
-__all__ = ["DEFAULT_DELTANET_KERNEL_PARITY", "DEFAULT_KERNEL_PARITY", "DEFAULT_LOADER_ROUNDTRIP", "DEFAULT_REPRESENTATION_EXPERIMENT", "DEFAULT_REPRESENTATION_REPLICATION", "DEFAULT_ROUTER_REPRESENTATION_AB", "DEFAULT_ROUTER_SELECTION", "DEFAULT_SHARED_EXPERT_KERNEL_PARITY", "DEFAULT_TENSOR_PROBE", "DEFAULT_TRANSFORM_PARITY", "EBPW_SCHEMA", "SCHEMA", "TOKEN_NS_SCHEMA", "main", "run_flash_executable_scaffold"]
+__all__ = ["DEFAULT_DELTANET_KERNEL_PARITY", "DEFAULT_KERNEL_PARITY", "DEFAULT_LOADER_ROUNDTRIP", "DEFAULT_REPRESENTATION_EXPERIMENT", "DEFAULT_REPRESENTATION_REPLICATION", "DEFAULT_ROUTER_REPRESENTATION_AB", "DEFAULT_ROUTER_SELECTION", "DEFAULT_SHARED_EXPERT_KERNEL_PARITY", "DEFAULT_SPARSE_ATTENTION_KERNEL_PARITY", "DEFAULT_TENSOR_PROBE", "DEFAULT_TRANSFORM_PARITY", "EBPW_SCHEMA", "SCHEMA", "TOKEN_NS_SCHEMA", "main", "run_flash_executable_scaffold"]
 
 
 if __name__ == "__main__":

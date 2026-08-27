@@ -16,7 +16,7 @@
     "sha256": "1e27185d55c2f8c08b5b7eff6b5db1c7f8df98c51f290e395c32d3c6ac22585c",
     "status": "PASSED"
   },
-  "claim_boundary": "Derived source-independent Flash router selection executed from a persisted full Q4/G64 body using the pinned FP32 softmax/top-k contract; native Metal evidence is matvec parity only, and no source-model router-output parity, whole-model capability, complete-token runtime, EBPW, or Flash TPS claim is made.",
+  "claim_boundary": "Derived source-independent Flash router selection executed from a persisted full Q4/G64 body using the pinned FP32 softmax/top-k contract. A pinned BF16 tensor reference was also executed: exact source top-k parity is reported explicitly and is not qualified when it mismatches; no complete-model capability, complete-token runtime, EBPW, or Flash TPS claim is made.",
   "compiler_stage": "NoeticExecutableCandidate",
   "complete_system_ebpw": null,
   "complete_token_runtime": "NOT_TESTED",
@@ -37,7 +37,7 @@
     },
     "sha256": "889658f2508e8c61d409b02e70e0d78d8d4452ec65aaafbe129805d213d2e74b"
   },
-  "elapsed_s": 0.082,
+  "elapsed_s": 0.034,
   "execution": {
     "body_decoded": true,
     "candidate_body_persisted": true,
@@ -48,9 +48,9 @@
     "provider": "derived-cpu-selection",
     "source_independent": true
   },
-  "finished_at": 1787821572.5911748,
+  "finished_at": 1787822070.690426,
   "flash_tps": null,
-  "generated_at": 1787821572.5089548,
+  "generated_at": 1787822070.656349,
   "input": {
     "definition": "((index * 71) mod 509 - 254) / 509",
     "deterministic_sha256": "62055d5ebab03995a1e46aa8d8586ad80052602b0b1ed744c56b912c8c14593a",
@@ -66,7 +66,7 @@
     "status": "PASSED"
   },
   "native_selection_execution_observed": false,
-  "next_action": "compare selected ids and weights against a source-model router reference, then connect the verified selection edge to expert dispatch and a protected complete-token graph",
+  "next_action": "improve or compare router representations until source top-k parity is qualified, then connect the selection edge to expert dispatch and a protected complete-token graph",
   "noetic_ir": {
     "candidate_id": "independent_q4_g64",
     "complete_model": false,
@@ -192,8 +192,8 @@
         "status": "PASSED"
       }
     ],
-    "fingerprint": "22657df6b1ec53b17e4d943bc0925c2a2a638e1c85ed81a0e0bf9e2c8bee6b26",
-    "generated_at": 1787821572.5910459,
+    "fingerprint": "386b814abec80ff47a631c0147de78e4f1a4f2d462612fb8b75c45d3dbb3090e",
+    "generated_at": 1787822070.6902971,
     "graph_execution_observed": true,
     "memory": [
       {
@@ -236,6 +236,8 @@
     },
     "schema": "hcli.physical_graph.v1",
     "semantic_type": "PhysicalGraphPlan",
+    "source_selection_parity_qualified": false,
+    "source_selection_parity_status": "MISMATCH",
     "state": {
       "kv_cache": "unresolved",
       "recurrent_state": "unresolved"
@@ -326,6 +328,115 @@
     "repo": "Qwen/Qwen3.8-Flash-Next",
     "revision": "34567a4712bc9766c4449e2e98e4468bfa24d915",
     "root": "/Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc"
+  },
+  "source_reference_execution": {
+    "bytes": 2621440,
+    "label": "[V]",
+    "payload_sha256": "966e4d1ca7c18994a9311e82f0074584fe09e65e81eb8ddefe0a4dceebfc6ac6",
+    "shard": "/Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc/model-00003-of-00131.safetensors",
+    "source_guard_unchanged": true,
+    "source_mutation": false,
+    "tensor_name": "model.language_model.layers.0.mlp.gate.weight"
+  },
+  "source_selection": {
+    "expert_ids": [
+      29,
+      309,
+      455,
+      151,
+      500,
+      374,
+      15,
+      220,
+      37,
+      0
+    ],
+    "logits_sha256": "93d667bf3397252bf2ca92599eaa2a9b23301b704ba2fd5c8249f8b47d61f40f",
+    "probabilities_finite": true,
+    "probability_vector_sha256": "f27f8342ada398627d38707dffcc81d44515d3d9a5beeadf3cba3451e65b3f50",
+    "router_probabilities": [
+      0.005116026382893324,
+      0.004751706495881081,
+      0.004427797626703978,
+      0.004394805524498224,
+      0.004285440780222416,
+      0.0041353353299200535,
+      0.004015421960502863,
+      0.0038680764846503735,
+      0.0037573452573269606,
+      0.0037164699751883745
+    ],
+    "selected_probability_sum": 0.04246842488646507,
+    "selected_weight_sum": 1.0,
+    "selected_weights": [
+      0.12046658992767334,
+      0.11188798397779465,
+      0.10426093637943268,
+      0.10348407179117203,
+      0.10090886801481247,
+      0.09737434983253479,
+      0.09455076605081558,
+      0.09108123183250427,
+      0.0884738564491272,
+      0.08751136809587479
+    ]
+  },
+  "source_selection_parity": {
+    "candidate_expert_ids": [
+      29,
+      309,
+      455,
+      374,
+      151,
+      93,
+      0,
+      500,
+      149,
+      220
+    ],
+    "candidate_selection_weight_sum": 1.0000001192092896,
+    "common_selected_weights": {
+      "count": 8,
+      "expert_ids": [
+        0,
+        29,
+        151,
+        220,
+        309,
+        374,
+        455,
+        500
+      ],
+      "finite": true,
+      "max_abs_error": 0.008626729249954224,
+      "rmse": 0.004663901869207621
+    },
+    "expert_ids_exact_match": false,
+    "label": "[V]/[D]",
+    "logits": {
+      "cosine": 0.9802085757255554,
+      "count": 512,
+      "finite": true,
+      "max_abs_error": 0.2657890319824219,
+      "rmse": 0.05903181433677673
+    },
+    "qualification": "SOURCE_ROUTER_SELECTION_NOT_QUALIFIED",
+    "source_expert_ids": [
+      29,
+      309,
+      455,
+      151,
+      500,
+      374,
+      15,
+      220,
+      37,
+      0
+    ],
+    "source_selection_weight_sum": 1.0,
+    "status": "MISMATCH",
+    "top_k_overlap_count": 8,
+    "top_k_overlap_fraction": 0.8
   },
   "status": "PASSED",
   "validation": {

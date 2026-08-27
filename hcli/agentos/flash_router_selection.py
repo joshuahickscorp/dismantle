@@ -156,6 +156,77 @@ def select_router(np: Any, logits: Any, *, top_k: int, norm_topk_prob: bool) -> 
     }
 
 
+def _read_source_matrix(np: Any, root: Path, source: Mapping[str, Any], shape: list[int]) -> tuple[Any, Dict[str, Any]]:
+    tensor_name = str(source.get("tensor_name"))
+    tensor = transform._load_tensor_header(root, tensor_name)
+    if tensor.get("tensor_name") != tensor_name or tensor.get("shape") != shape or str(tensor.get("dtype") or "").upper() != "BF16":
+        raise ValueError("pinned source header does not match the router body source block")
+    shard = Path(str(tensor["shard"])).expanduser().resolve()
+    expected_bytes = int(shape[0]) * int(shape[1]) * 2
+    before = transform._source_guard(shard)
+    offset = int(tensor["data_start"]) + int(tensor["data_offsets"][0])
+    with shard.open("rb") as handle:
+        handle.seek(offset)
+        raw = handle.read(expected_bytes)
+    after = transform._source_guard(shard)
+    if len(raw) != expected_bytes:
+        raise ValueError("short pinned router source read")
+    payload_sha256 = _sha256_bytes(raw)
+    if payload_sha256 != source.get("payload_sha256"):
+        raise ValueError("pinned router source block hash does not match the body receipt")
+    if before != after:
+        raise ValueError("pinned router source changed during selection reference read")
+    return transform._decode_bf16(np, raw).reshape(shape).astype(np.float32, copy=False), {
+        "tensor_name": tensor_name,
+        "shard": str(shard),
+        "bytes": len(raw),
+        "payload_sha256": payload_sha256,
+        "source_guard_unchanged": before == after,
+        "source_mutation": False,
+        "label": "[V]",
+    }
+
+
+def _selection_parity(np: Any, source_logits: Any, candidate_logits: Any, source_selection: Mapping[str, Any], candidate_selection: Mapping[str, Any]) -> Dict[str, Any]:
+    source_values = np.asarray(source_logits, dtype=np.float32)
+    candidate_values = np.asarray(candidate_logits, dtype=np.float32)
+    delta = source_values - candidate_values
+    source_ids = [int(value) for value in source_selection.get("expert_ids") or []]
+    candidate_ids = [int(value) for value in candidate_selection.get("expert_ids") or []]
+    source_weights = {int(idx): float(weight) for idx, weight in zip(source_ids, source_selection.get("selected_weights") or [])}
+    candidate_weights = {int(idx): float(weight) for idx, weight in zip(candidate_ids, candidate_selection.get("selected_weights") or [])}
+    common_ids = sorted(set(source_ids) & set(candidate_ids))
+    common_delta = np.asarray([source_weights[idx] - candidate_weights[idx] for idx in common_ids], dtype=np.float32)
+    source_norm = float(np.linalg.norm(source_values))
+    candidate_norm = float(np.linalg.norm(candidate_values))
+    return {
+        "status": "PASSED" if source_ids == candidate_ids else "MISMATCH",
+        "qualification": "SOURCE_ROUTER_SELECTION_MATCH" if source_ids == candidate_ids else "SOURCE_ROUTER_SELECTION_NOT_QUALIFIED",
+        "expert_ids_exact_match": source_ids == candidate_ids,
+        "source_expert_ids": source_ids,
+        "candidate_expert_ids": candidate_ids,
+        "top_k_overlap_count": len(common_ids),
+        "top_k_overlap_fraction": len(common_ids) / max(1, len(source_ids)),
+        "logits": {
+            "count": int(delta.size),
+            "max_abs_error": float(np.max(np.abs(delta), initial=0.0)),
+            "rmse": float(np.sqrt(np.mean(delta * delta))),
+            "cosine": float(np.dot(source_values, candidate_values) / (source_norm * candidate_norm)) if source_norm and candidate_norm else None,
+            "finite": bool(np.isfinite(source_values).all() and np.isfinite(candidate_values).all()),
+        },
+        "common_selected_weights": {
+            "expert_ids": common_ids,
+            "count": len(common_ids),
+            "max_abs_error": float(np.max(np.abs(common_delta), initial=0.0)) if common_delta.size else None,
+            "rmse": float(np.sqrt(np.mean(common_delta * common_delta))) if common_delta.size else None,
+            "finite": bool(np.isfinite(common_delta).all()),
+        },
+        "source_selection_weight_sum": source_selection.get("selected_weight_sum"),
+        "candidate_selection_weight_sum": candidate_selection.get("selected_weight_sum"),
+        "label": "[V]/[D]",
+    }
+
+
 def _validate_pair(body_path: Path, body: Mapping[str, Any], kernel_path: Path, kernel: Mapping[str, Any]) -> list[str]:
     errors = list(flash_router_graph._validate_body(body_path, body))
     if kernel.get("schema") != KERNEL_SCHEMA or kernel.get("status") != "PASSED":
@@ -311,6 +382,15 @@ def run_flash_router_selection(
                     report["validation"] = {"errors": errors}
                     report["status"] = "FAILED"
                 else:
+                    source_values, source_read = _read_source_matrix(np, source_root, source, shape)
+                    source_logits = np.matmul(source_values, vector).astype(np.float32, copy=False)
+                    source_selection = select_router(
+                        np,
+                        source_logits,
+                        top_k=int(router_config["num_experts_per_tok"]),
+                        norm_topk_prob=bool(router_config["norm_topk_prob"]),
+                    )
+                    source_selection_parity = _selection_parity(np, source_logits, logits, source_selection, selection)
                     config_digest = _sha256_file(config_path)
                     body_ref = _ref(body_path, body)
                     kernel_ref = _ref(kernel_path, kernel)
@@ -349,6 +429,8 @@ def run_flash_router_selection(
                     physical["graph_execution_observed"] = True
                     physical["native_kernel_execution_observed"] = False
                     physical["qualification"] = "BOUNDED_ROUTER_SELECTION_DERIVED"
+                    physical["source_selection_parity_status"] = source_selection_parity["status"]
+                    physical["source_selection_parity_qualified"] = source_selection_parity["expert_ids_exact_match"]
                     physical["representation"] = {
                         "candidate_id": body.get("candidate_id"),
                         "source_layout": descriptor.get("source_tensor", {}).get("layout"),
@@ -384,6 +466,7 @@ def run_flash_router_selection(
                         },
                         "candidate_body": body_ref | {"body": body_record},
                         "native_kernel_parity": kernel_ref,
+                        "source_reference_execution": source_read,
                         "input": {
                             "definition": f"((index * {REFERENCE_MULTIPLIER}) mod {REFERENCE_MODULUS} - {REFERENCE_OFFSET}) / {REFERENCE_MODULUS}",
                             "values": shape[1],
@@ -401,6 +484,8 @@ def run_flash_router_selection(
                             "model_loaded": False,
                         },
                         "selection": selection,
+                        "source_selection": source_selection,
+                        "source_selection_parity": source_selection_parity,
                         "physical_graph": physical,
                         "noetic_ir": {
                             "schema": "hcli.noetic.ir.v1",
@@ -411,8 +496,8 @@ def run_flash_router_selection(
                             "complete_model": False,
                         },
                         "validation": {"errors": []},
-                        "claim_boundary": "Derived source-independent Flash router selection executed from a persisted full Q4/G64 body using the pinned FP32 softmax/top-k contract; native Metal evidence is matvec parity only, and no source-model router-output parity, whole-model capability, complete-token runtime, EBPW, or Flash TPS claim is made.",
-                        "next_action": "compare selected ids and weights against a source-model router reference, then connect the verified selection edge to expert dispatch and a protected complete-token graph",
+                        "claim_boundary": "Derived source-independent Flash router selection executed from a persisted full Q4/G64 body using the pinned FP32 softmax/top-k contract. A pinned BF16 tensor reference was also executed: exact source top-k parity is reported explicitly and is not qualified when it mismatches; no complete-model capability, complete-token runtime, EBPW, or Flash TPS claim is made.",
+                        "next_action": "improve or compare router representations until source top-k parity is qualified, then connect the selection edge to expert dispatch and a protected complete-token graph",
                     })
     except Exception as exc:  # noqa: BLE001 - preserve a durable execution boundary
         errors.append(f"{type(exc).__name__}: {str(exc)[:2000]}")

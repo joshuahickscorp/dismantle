@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 
 from hcli.agentos.flash_executable import (
+    _native_expert_composition_summary,
     _native_gate_up_swiglu_summary,
     _native_router_selection_summary,
     _native_routed_expert_dispatch_summary,
@@ -188,6 +189,56 @@ def test_native_gate_up_swiglu_summary_preserves_activation_boundary(tmp_path):
     assert summary["native_expert_gate_up_activation_observed"] is True
     assert summary["source_independent_execution"] is True
     assert summary["complete_expert_runtime"] == "NOT_TESTED"
+    assert summary["promotion_allowed"] is False
+
+
+def test_native_expert_composition_summary_preserves_device_chain_boundary(tmp_path):
+    receipt = tmp_path / "native-expert-composition.json"
+    receipt.write_text(
+        json.dumps(
+            {
+                "schema": "hawking.flash_noetic_routed_expert_composition_native.v1",
+                "nomenclature_version": "HAWKING_NOMENCLATURE_V1",
+                "status": "PASSED",
+                "semantic_type": "NoeticExecutableCandidate",
+                "compiler_stage": "HawkingAccelerator",
+                "qualification": "BOUNDED_NATIVE_ROUTED_EXPERT_GATE_UP_DOWN_COMPOSITION",
+                "execution": {
+                    "selected_expert_count": 2,
+                    "native_gate_up_swiglu_observed": True,
+                    "native_down_projection_observed": True,
+                    "native_expert_composition_observed": True,
+                },
+                "native_gate_up_swiglu_observed": True,
+                "native_down_projection_observed": True,
+                "native_expert_composition_observed": True,
+                "bounded_selected_expert_output_observed": True,
+                "noetic_ir": {"source_independent": True},
+                "intermediate": {"device_resident": True, "host_roundtrip": False},
+                "whole_model_capability": "NOT_TESTED",
+                "complete_expert_runtime": "NOT_TESTED",
+                "complete_token_runtime": "NOT_TESTED",
+                "complete_system_ebpw": None,
+                "flash_tps": None,
+                "promotion_allowed": False,
+                "physical_graph": {"fingerprint": "graph", "device_intermediate_no_host_roundtrip": True},
+                "claim_boundary": "bounded composition only",
+                "next_action": "continue",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    summary = _native_expert_composition_summary(tmp_path, receipt)
+
+    assert summary["status"] == "PASSED"
+    assert summary["native_gate_up_swiglu_observed"] is True
+    assert summary["native_down_projection_observed"] is True
+    assert summary["native_expert_composition_observed"] is True
+    assert summary["device_intermediate_no_host_roundtrip"] is True
+    assert summary["source_independent_execution"] is True
+    assert summary["complete_token_runtime"] == "NOT_TESTED"
+    assert summary["complete_system_ebpw"] is None
     assert summary["promotion_allowed"] is False
 
 

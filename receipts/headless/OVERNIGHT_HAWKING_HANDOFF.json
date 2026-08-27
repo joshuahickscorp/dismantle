@@ -5,42 +5,13 @@
       "9d373ecc4863b244fc74761c99fc837f7705f3db"
     ],
     "branch": "odyssey-i",
-    "git_revision": "1dc9055cf08a796d8fda3046afa12c3c9705a483",
+    "git_revision": "8561f1f576c135ab7036413e5d2fcfc922435228",
     "unrelated_preserved_edit": "tools/odyssey_ctl.py",
     "working_tree_status": [
-      "M .gitignore",
-      " M crates/hawking-core/examples/ascension_qwen38_resident.rs",
-      " M hcli/agentos/__init__.py",
-      " M hcli/agentos/accelerator_regression.py",
-      " M hcli/agentos/checkpoint.py",
-      " M hcli/agentos/flash_science.py",
-      " M hcli/agentos/fpga_preboard.py",
-      " M hcli/agentos/handoff.py",
-      " M hcli/agentos_cli.py",
-      " M hcli/hawking_native.py",
-      " M receipts/headless/FLASH_NEXT_FPGA_ORGAN_MAP.json",
-      " M receipts/headless/HCLI_ACCELERATOR_REGRESSION.json",
-      " M receipts/headless/HCLI_AGENTOS_CHECKPOINT.json",
-      " M receipts/headless/HCLI_FLASH_NEXT_PRE_RUNTIME_SCIENCE.json",
-      " M receipts/headless/HCLI_FPGA_PREBOARD.json",
-      " M receipts/headless/HCLI_MODELLAKE_FLASH_ACQUISITION_SUPERVISION.json",
-      " M receipts/headless/OVERNIGHT_HAWKING_HANDOFF.json",
-      " M receipts/headless/QWEN27_FPGA_ORGAN_MAP.json",
-      " M tools/odyssey_ctl.py",
-      "?? hcli/agentos/benchmark_boundary.py",
-      "?? hcli/agentos/flash_executable.py",
-      "?? hcli/agentos/protected_benchmark_watcher.py",
-      "?? hcli/agentos/qwen27_mlp_diagnostic.py",
-      "?? hcli/agentos/qwen27_runtime_identity.py",
-      "?? receipts/headless/FLASH_EBPW_BUDGET.json",
-      "?? receipts/headless/FLASH_NEXT_NOETIC_EXECUTABLE.json",
-      "?? receipts/headless/FLASH_TOKEN_NS_BUDGET.json",
-      "?? receipts/headless/QWEN27_HISTORICAL_RUNTIME_IDENTITY.json",
-      "?? receipts/headless/QWEN27_MLP_DIAGNOSTIC_AB.json",
-      "?? receipts/headless/QWEN27_RUNTIME_DIFF.json",
-      "?? receipts/headless/QWEN_PROTECTED_BENCH_READY.json",
-      "?? tools/haider/test_hcli_flash_science.py",
-      "?? tools/haider/test_hcli_science_boundaries.py"
+      "M receipts/headless/HCLI_AGENTOS_CHECKPOINT.json",
+      " M receipts/headless/QWEN27_HISTORICAL_RUNTIME_IDENTITY.json",
+      " M receipts/headless/QWEN27_RUNTIME_DIFF.json",
+      " M tools/odyssey_ctl.py"
     ]
   },
   "blockers": [
@@ -802,7 +773,7 @@
       "telemetry/receipt verifier"
     ]
   },
-  "generated_at": 1787808167.437393,
+  "generated_at": 1787808257.8510022,
   "hcli": {
     "background_jobs": [
       {
@@ -1469,7 +1440,7 @@
     "next_experiment": "Protected quiescent same-source A/B: record binary/artifact/tokenizer, representation, dispatches, complete wall/GPU timing, fallback count, capability, and cache/quiescence before accepting any optimization.",
     "protected_benchmark_watcher": {
       "NOT_FOR_PROMOTION": true,
-      "polls": 10,
+      "polls": 11,
       "qualification": false,
       "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/QWEN_PROTECTED_BENCH_READY.json",
       "runs": [],

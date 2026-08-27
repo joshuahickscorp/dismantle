@@ -5,12 +5,15 @@
       "9d373ecc4863b244fc74761c99fc837f7705f3db"
     ],
     "branch": "odyssey-i",
-    "git_revision": "8561f1f576c135ab7036413e5d2fcfc922435228",
+    "git_revision": "5651e858f7c2cbd5f9064b7f82e2ce76c53020e1",
     "unrelated_preserved_edit": "tools/odyssey_ctl.py",
     "working_tree_status": [
       "M receipts/headless/HCLI_AGENTOS_CHECKPOINT.json",
+      " M receipts/headless/HCLI_MODELLAKE_FLASH_ACQUISITION_SUPERVISION.json",
+      " M receipts/headless/OVERNIGHT_HAWKING_HANDOFF.json",
       " M receipts/headless/QWEN27_HISTORICAL_RUNTIME_IDENTITY.json",
       " M receipts/headless/QWEN27_RUNTIME_DIFF.json",
+      " M receipts/headless/QWEN_PROTECTED_BENCH_READY.json",
       " M tools/odyssey_ctl.py"
     ]
   },
@@ -773,7 +776,7 @@
       "telemetry/receipt verifier"
     ]
   },
-  "generated_at": 1787808257.8510022,
+  "generated_at": 1787808508.7521842,
   "hcli": {
     "background_jobs": [
       {
@@ -1440,7 +1443,7 @@
     "next_experiment": "Protected quiescent same-source A/B: record binary/artifact/tokenizer, representation, dispatches, complete wall/GPU timing, fallback count, capability, and cache/quiescence before accepting any optimization.",
     "protected_benchmark_watcher": {
       "NOT_FOR_PROMOTION": true,
-      "polls": 11,
+      "polls": 15,
       "qualification": false,
       "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/QWEN_PROTECTED_BENCH_READY.json",
       "runs": [],

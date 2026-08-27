@@ -20,7 +20,7 @@
     ],
     "download_performed": false,
     "external_write_performed": false,
-    "generated_at": 1787820900.116095,
+    "generated_at": 1787821937.411894,
     "network_probed": false,
     "repo_root": "/Users/scammermike/Downloads/hawking",
     "schema": "hcli.agentos.connectivity.v1",
@@ -1256,6 +1256,17 @@
           "source_independent_execution": true,
           "status": "PASSED"
         },
+        "bounded_router_selection_evidence": {
+          "candidate_body_persisted": true,
+          "label": "[D]",
+          "native_selection_execution_observed": false,
+          "physical_graph_fingerprint": "22657df6b1ec53b17e4d943bc0925c2a2a638e1c85ed81a0e0bf9e2c8bee6b26",
+          "receipt": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_ROUTER_SELECTION.json",
+          "scope": "derived CPU router softmax/top-k over a persisted full body; no native selection kernel or complete Flash execution",
+          "selection_status": "EXECUTED",
+          "source_independent_execution": true,
+          "status": "PASSED"
+        },
         "coverage": [
           {
             "kernel": "partitioned_embedding_lookup",
@@ -1374,6 +1385,7 @@
         "receipt_schema": "hcli.agentos.flash_next_noetic_executable.v1",
         "representation_manifest_sha256": null,
         "router_graph_fingerprint": "9764c8703c65ebb3c52d3b16813cb132cde70ffc4efde2989c73f63aeb9e7407",
+        "router_selection_fingerprint": "22657df6b1ec53b17e4d943bc0925c2a2a638e1c85ed81a0e0bf9e2c8bee6b26",
         "status": "BOUNDED_MULTI_COMPONENT_ONLY"
       },
       "schema": "hcli.agentos.flash_next_noetic_executable.v1",
@@ -1885,6 +1897,294 @@
         "schema": "hcli.agentos.flash_noetic_router_graph.v1",
         "semantic_type": "NoeticExecutableCandidate",
         "source_identity": {
+          "repo": "Qwen/Qwen3.8-Flash-Next",
+          "revision": "34567a4712bc9766c4449e2e98e4468bfa24d915",
+          "root": "/Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc"
+        },
+        "source_independent_execution": true,
+        "status": "PASSED",
+        "validation": {
+          "errors": []
+        },
+        "whole_model_capability": "NOT_TESTED"
+      },
+      "source_router_selection": {
+        "candidate_body_persisted": true,
+        "claim_boundary": "Derived source-independent Flash router selection executed from a persisted full Q4/G64 body using the pinned FP32 softmax/top-k contract; native Metal evidence is matvec parity only, and no source-model router-output parity, whole-model capability, complete-token runtime, EBPW, or Flash TPS claim is made.",
+        "compiler_stage": "NoeticExecutableCandidate",
+        "complete_token_runtime": "NOT_TESTED",
+        "config": {
+          "label": "[V]",
+          "path": "/Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc/config.json",
+          "router": {
+            "config_scope": "text_config",
+            "norm_topk_prob": true,
+            "norm_topk_prob_default_when_absent": true,
+            "norm_topk_prob_present_in_pinned_config": false,
+            "num_experts": 512,
+            "num_experts_per_tok": 10,
+            "router_logits": "F.linear(hidden_states, gate.weight)",
+            "router_probability": "softmax(router_logits, dtype=float32, dim=-1)",
+            "selection": "topk(router_probs, num_experts_per_tok)",
+            "shared_expert_sigmoid_is_not_router_selection": true
+          },
+          "sha256": "889658f2508e8c61d409b02e70e0d78d8d4452ec65aaafbe129805d213d2e74b"
+        },
+        "execution": {
+          "body_decoded": true,
+          "candidate_body_persisted": true,
+          "dtype": "float32",
+          "matvec": "candidate Q4/G64 body",
+          "model_loaded": false,
+          "native_matvec_parity_reference": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_ROUTER_COMPONENT_FULL_KERNEL_PARITY.json",
+          "provider": "derived-cpu-selection",
+          "source_independent": true
+        },
+        "native_selection_execution_observed": false,
+        "next_action": "compare selected ids and weights against a source-model router reference, then connect the verified selection edge to expert dispatch and a protected complete-token graph",
+        "noetic_ir": {
+          "candidate_id": "independent_q4_g64",
+          "complete_model": false,
+          "operations": [
+            "load_persisted_source_independent_router_body",
+            "derive_router_logits_with_q4_g64_matvec",
+            "compute_fp32_router_softmax",
+            "select_router_top_k",
+            "normalize_selected_router_weights",
+            "emit_selected_expert_ids_and_weights"
+          ],
+          "schema": "hcli.noetic.ir.v1",
+          "semantic_type": "NoeticIR",
+          "source_independent": true
+        },
+        "nomenclature_version": "HAWKING_NOMENCLATURE_V1",
+        "physical_graph": {
+          "compiler_stage": "PhysicalGraphCompiler",
+          "component_scope": "full pinned Flash router matrix body through derived FP32 softmax/top-k selection; no token graph",
+          "computation": [
+            {
+              "execution_input": false,
+              "id": "router_source_reference",
+              "kind": "verified_source_reference",
+              "shape": [
+                512,
+                2560
+              ],
+              "stage": "SourceSpecimen",
+              "tensor_name": "model.language_model.layers.0.mlp.gate.weight"
+            },
+            {
+              "body_persisted": true,
+              "candidate_id": "independent_q4_g64",
+              "execution_input": true,
+              "id": "router_body_load",
+              "kind": "source_independent_component_body",
+              "stage": "NoeticCompiler"
+            },
+            {
+              "execution_input": true,
+              "id": "router_q4_matvec_reference",
+              "kernel": "qwen_uniform_q4_group64_matvec",
+              "kind": "native_kernel_parity_reference",
+              "native_execution_observed": false,
+              "parity_within_tolerance": true,
+              "stage": "HawkingAccelerator"
+            },
+            {
+              "dtype": "float32",
+              "execution_input": true,
+              "id": "router_fp32_softmax",
+              "kind": "router_probability_normalization",
+              "stage": "NoeticExecutableCandidate"
+            },
+            {
+              "execution_input": true,
+              "id": "router_top_k",
+              "kind": "router_top_k_selection",
+              "stable_tie_break": "expert_id_ascending",
+              "stage": "NoeticExecutableCandidate",
+              "top_k": 10
+            },
+            {
+              "enabled": true,
+              "execution_input": true,
+              "id": "router_selected_weight_normalization",
+              "kind": "selected_probability_normalization",
+              "stage": "NoeticExecutableCandidate"
+            }
+          ],
+          "data": [
+            {
+              "active_bytes_per_token": null,
+              "bytes": null,
+              "id": "router",
+              "kind": "tensor_group",
+              "source": "architecture metadata; size unresolved"
+            }
+          ],
+          "dependencies": [
+            {
+              "from": "router_body_load",
+              "kind": "body_to_matvec",
+              "to": "router_q4_matvec_reference"
+            },
+            {
+              "from": "router_q4_matvec_reference",
+              "kind": "logits_to_probabilities",
+              "to": "router_fp32_softmax"
+            },
+            {
+              "from": "router_fp32_softmax",
+              "kind": "probabilities_to_selection",
+              "to": "router_top_k"
+            },
+            {
+              "from": "router_top_k",
+              "kind": "selection_to_weights",
+              "to": "router_selected_weight_normalization"
+            }
+          ],
+          "device_placement": {
+            "candidates": [
+              "cpu",
+              "apple_metal"
+            ],
+            "selected": "cpu"
+          },
+          "evidence": [
+            {
+              "label": "[V]",
+              "path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_ROUTER_COMPONENT_FULL_BODY.json",
+              "schema": "hcli.agentos.flash_noetic_component_body.v1",
+              "sha256": "1e27185d55c2f8c08b5b7eff6b5db1c7f8df98c51f290e395c32d3c6ac22585c",
+              "status": "PASSED"
+            },
+            {
+              "label": "[V]",
+              "path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_ROUTER_COMPONENT_FULL_KERNEL_PARITY.json",
+              "schema": "hawking.flash_noetic_q4_kernel_parity.v1",
+              "sha256": "038f09d59cd9f99e2ff4124c1741dd3f5bb9bed21f7fe8974749cbca80f65b77",
+              "status": "PASSED"
+            }
+          ],
+          "fingerprint": "22657df6b1ec53b17e4d943bc0925c2a2a638e1c85ed81a0e0bf9e2c8bee6b26",
+          "generated_at": 1787821572.5910459,
+          "graph_execution_observed": true,
+          "memory": [
+            {
+              "role": "active working set",
+              "status": "candidate",
+              "tier": "hot"
+            },
+            {
+              "role": "canonical source",
+              "status": "candidate",
+              "tier": "cold"
+            }
+          ],
+          "model_id": "Qwen/Qwen3.8-Flash-Next",
+          "native_kernel_execution_observed": false,
+          "nomenclature_version": "HAWKING_NOMENCLATURE_V1",
+          "precision": {
+            "accumulator": "unresolved",
+            "activation": "unresolved",
+            "weight": "unresolved"
+          },
+          "provider_context": {
+            "kernel": "qwen_uniform_q4_group64_matvec",
+            "native_parity_reference": "apple-metal",
+            "provider": "derived-cpu-selection"
+          },
+          "qualification": "BOUNDED_ROUTER_SELECTION_DERIVED",
+          "representation": {
+            "candidate_body_persisted": true,
+            "candidate_id": "independent_q4_g64",
+            "component_body_bytes": 696320,
+            "dense_rematerialization": "forbidden",
+            "source_independent_execution": true,
+            "source_layout": "row-major [row, column]"
+          },
+          "residency": {
+            "cold_source": "parity reference only",
+            "component_body": "persisted body is the execution input",
+            "whole_model": "not loaded"
+          },
+          "schema": "hcli.physical_graph.v1",
+          "semantic_type": "PhysicalGraphPlan",
+          "state": {
+            "kv_cache": "unresolved",
+            "recurrent_state": "unresolved"
+          },
+          "synchronization": [
+            {
+              "kind": "runtime_boundary",
+              "status": "unresolved"
+            }
+          ]
+        },
+        "promotion_allowed": false,
+        "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_ROUTER_SELECTION.json",
+        "receipt_sha256": "350b4b7652d454d87a3c31adf097f19b53564d96a9d33a8f1c66cb2b62e17f32",
+        "schema": "hcli.agentos.flash_noetic_router_selection.v1",
+        "selection": {
+          "expert_ids": [
+            29,
+            309,
+            455,
+            374,
+            151,
+            93,
+            0,
+            500,
+            149,
+            220
+          ],
+          "logits_sha256": "e29cb51427ee59ef9b63a49b58c197202c95d8daa00302fc54f3e9018b799658",
+          "probabilities_finite": true,
+          "probability_vector_sha256": "caf4aba4867e830ca10be091842fa281457d6774e85fd8dc0ee9c4acc2ff8e67",
+          "router_probabilities": [
+            0.005038591101765633,
+            0.004888694267719984,
+            0.004575585480779409,
+            0.004258493427187204,
+            0.004131815861910582,
+            0.004083923064172268,
+            0.003928021993488073,
+            0.003922442905604839,
+            0.0038831436540931463,
+            0.003794190939515829
+          ],
+          "selected_probability_sum": 0.04250489920377731,
+          "selected_weight_sum": 1.0000001192092896,
+          "selected_weights": [
+            0.118541419506073,
+            0.11501484364271164,
+            0.10764842480421066,
+            0.10018829256296158,
+            0.09720799326896667,
+            0.09608123451471329,
+            0.09241339564323425,
+            0.09228213876485825,
+            0.09135755151510239,
+            0.08926478773355484
+          ]
+        },
+        "selection_status": "EXECUTED",
+        "semantic_type": "NoeticExecutableCandidate",
+        "source_identity": {
+          "model_lake_manifest": {
+            "bytes": 360053432320,
+            "label": "[V]",
+            "manifest_path": "/Volumes/corpdrive/hawking-modellake/manifests/Qwen--Qwen3.8-Flash-Next@34567a4712bc.json",
+            "manifest_sha256": "1f536f70c963a4d9b800e17c54c0dec54ce2d31a0a36041146b4013a04221fb7",
+            "n_files": 144,
+            "n_sha256_verified": 132,
+            "n_size_only_verified": 12,
+            "path": "/Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc",
+            "repo": "Qwen/Qwen3.8-Flash-Next",
+            "resolved_sha": "34567a4712bc9766c4449e2e98e4468bfa24d915",
+            "revision": "34567a4712bc9766c4449e2e98e4468bfa24d915"
+          },
           "repo": "Qwen/Qwen3.8-Flash-Next",
           "revision": "34567a4712bc9766c4449e2e98e4468bfa24d915",
           "root": "/Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc"
@@ -2987,6 +3287,286 @@
       "status": "PASSED",
       "whole_model_capability": "NOT_TESTED"
     },
+    "flash_router_selection": {
+      "claim_boundary": "Derived source-independent Flash router selection executed from a persisted full Q4/G64 body using the pinned FP32 softmax/top-k contract; native Metal evidence is matvec parity only, and no source-model router-output parity, whole-model capability, complete-token runtime, EBPW, or Flash TPS claim is made.",
+      "compiler_stage": "NoeticExecutableCandidate",
+      "complete_token_runtime": "NOT_TESTED",
+      "config": {
+        "label": "[V]",
+        "path": "/Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc/config.json",
+        "router": {
+          "config_scope": "text_config",
+          "norm_topk_prob": true,
+          "norm_topk_prob_default_when_absent": true,
+          "norm_topk_prob_present_in_pinned_config": false,
+          "num_experts": 512,
+          "num_experts_per_tok": 10,
+          "router_logits": "F.linear(hidden_states, gate.weight)",
+          "router_probability": "softmax(router_logits, dtype=float32, dim=-1)",
+          "selection": "topk(router_probs, num_experts_per_tok)",
+          "shared_expert_sigmoid_is_not_router_selection": true
+        },
+        "sha256": "889658f2508e8c61d409b02e70e0d78d8d4452ec65aaafbe129805d213d2e74b"
+      },
+      "execution": {
+        "body_decoded": true,
+        "candidate_body_persisted": true,
+        "dtype": "float32",
+        "matvec": "candidate Q4/G64 body",
+        "model_loaded": false,
+        "native_matvec_parity_reference": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_ROUTER_COMPONENT_FULL_KERNEL_PARITY.json",
+        "provider": "derived-cpu-selection",
+        "source_independent": true
+      },
+      "native_selection_execution_observed": false,
+      "next_action": "compare selected ids and weights against a source-model router reference, then connect the verified selection edge to expert dispatch and a protected complete-token graph",
+      "noetic_ir": {
+        "candidate_id": "independent_q4_g64",
+        "complete_model": false,
+        "operations": [
+          "load_persisted_source_independent_router_body",
+          "derive_router_logits_with_q4_g64_matvec",
+          "compute_fp32_router_softmax",
+          "select_router_top_k",
+          "normalize_selected_router_weights",
+          "emit_selected_expert_ids_and_weights"
+        ],
+        "schema": "hcli.noetic.ir.v1",
+        "semantic_type": "NoeticIR",
+        "source_independent": true
+      },
+      "physical_graph": {
+        "compiler_stage": "PhysicalGraphCompiler",
+        "component_scope": "full pinned Flash router matrix body through derived FP32 softmax/top-k selection; no token graph",
+        "computation": [
+          {
+            "execution_input": false,
+            "id": "router_source_reference",
+            "kind": "verified_source_reference",
+            "shape": [
+              512,
+              2560
+            ],
+            "stage": "SourceSpecimen",
+            "tensor_name": "model.language_model.layers.0.mlp.gate.weight"
+          },
+          {
+            "body_persisted": true,
+            "candidate_id": "independent_q4_g64",
+            "execution_input": true,
+            "id": "router_body_load",
+            "kind": "source_independent_component_body",
+            "stage": "NoeticCompiler"
+          },
+          {
+            "execution_input": true,
+            "id": "router_q4_matvec_reference",
+            "kernel": "qwen_uniform_q4_group64_matvec",
+            "kind": "native_kernel_parity_reference",
+            "native_execution_observed": false,
+            "parity_within_tolerance": true,
+            "stage": "HawkingAccelerator"
+          },
+          {
+            "dtype": "float32",
+            "execution_input": true,
+            "id": "router_fp32_softmax",
+            "kind": "router_probability_normalization",
+            "stage": "NoeticExecutableCandidate"
+          },
+          {
+            "execution_input": true,
+            "id": "router_top_k",
+            "kind": "router_top_k_selection",
+            "stable_tie_break": "expert_id_ascending",
+            "stage": "NoeticExecutableCandidate",
+            "top_k": 10
+          },
+          {
+            "enabled": true,
+            "execution_input": true,
+            "id": "router_selected_weight_normalization",
+            "kind": "selected_probability_normalization",
+            "stage": "NoeticExecutableCandidate"
+          }
+        ],
+        "data": [
+          {
+            "active_bytes_per_token": null,
+            "bytes": null,
+            "id": "router",
+            "kind": "tensor_group",
+            "source": "architecture metadata; size unresolved"
+          }
+        ],
+        "dependencies": [
+          {
+            "from": "router_body_load",
+            "kind": "body_to_matvec",
+            "to": "router_q4_matvec_reference"
+          },
+          {
+            "from": "router_q4_matvec_reference",
+            "kind": "logits_to_probabilities",
+            "to": "router_fp32_softmax"
+          },
+          {
+            "from": "router_fp32_softmax",
+            "kind": "probabilities_to_selection",
+            "to": "router_top_k"
+          },
+          {
+            "from": "router_top_k",
+            "kind": "selection_to_weights",
+            "to": "router_selected_weight_normalization"
+          }
+        ],
+        "device_placement": {
+          "candidates": [
+            "cpu",
+            "apple_metal"
+          ],
+          "selected": "cpu"
+        },
+        "evidence": [
+          {
+            "label": "[V]",
+            "path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_ROUTER_COMPONENT_FULL_BODY.json",
+            "schema": "hcli.agentos.flash_noetic_component_body.v1",
+            "sha256": "1e27185d55c2f8c08b5b7eff6b5db1c7f8df98c51f290e395c32d3c6ac22585c",
+            "status": "PASSED"
+          },
+          {
+            "label": "[V]",
+            "path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_ROUTER_COMPONENT_FULL_KERNEL_PARITY.json",
+            "schema": "hawking.flash_noetic_q4_kernel_parity.v1",
+            "sha256": "038f09d59cd9f99e2ff4124c1741dd3f5bb9bed21f7fe8974749cbca80f65b77",
+            "status": "PASSED"
+          }
+        ],
+        "fingerprint": "22657df6b1ec53b17e4d943bc0925c2a2a638e1c85ed81a0e0bf9e2c8bee6b26",
+        "generated_at": 1787821572.5910459,
+        "graph_execution_observed": true,
+        "memory": [
+          {
+            "role": "active working set",
+            "status": "candidate",
+            "tier": "hot"
+          },
+          {
+            "role": "canonical source",
+            "status": "candidate",
+            "tier": "cold"
+          }
+        ],
+        "model_id": "Qwen/Qwen3.8-Flash-Next",
+        "native_kernel_execution_observed": false,
+        "nomenclature_version": "HAWKING_NOMENCLATURE_V1",
+        "precision": {
+          "accumulator": "unresolved",
+          "activation": "unresolved",
+          "weight": "unresolved"
+        },
+        "provider_context": {
+          "kernel": "qwen_uniform_q4_group64_matvec",
+          "native_parity_reference": "apple-metal",
+          "provider": "derived-cpu-selection"
+        },
+        "qualification": "BOUNDED_ROUTER_SELECTION_DERIVED",
+        "representation": {
+          "candidate_body_persisted": true,
+          "candidate_id": "independent_q4_g64",
+          "component_body_bytes": 696320,
+          "dense_rematerialization": "forbidden",
+          "source_independent_execution": true,
+          "source_layout": "row-major [row, column]"
+        },
+        "residency": {
+          "cold_source": "parity reference only",
+          "component_body": "persisted body is the execution input",
+          "whole_model": "not loaded"
+        },
+        "schema": "hcli.physical_graph.v1",
+        "semantic_type": "PhysicalGraphPlan",
+        "state": {
+          "kv_cache": "unresolved",
+          "recurrent_state": "unresolved"
+        },
+        "synchronization": [
+          {
+            "kind": "runtime_boundary",
+            "status": "unresolved"
+          }
+        ]
+      },
+      "promotion_allowed": false,
+      "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_ROUTER_SELECTION.json",
+      "schema": "hcli.agentos.flash_noetic_router_selection.v1",
+      "selection": {
+        "expert_ids": [
+          29,
+          309,
+          455,
+          374,
+          151,
+          93,
+          0,
+          500,
+          149,
+          220
+        ],
+        "logits_sha256": "e29cb51427ee59ef9b63a49b58c197202c95d8daa00302fc54f3e9018b799658",
+        "probabilities_finite": true,
+        "probability_vector_sha256": "caf4aba4867e830ca10be091842fa281457d6774e85fd8dc0ee9c4acc2ff8e67",
+        "router_probabilities": [
+          0.005038591101765633,
+          0.004888694267719984,
+          0.004575585480779409,
+          0.004258493427187204,
+          0.004131815861910582,
+          0.004083923064172268,
+          0.003928021993488073,
+          0.003922442905604839,
+          0.0038831436540931463,
+          0.003794190939515829
+        ],
+        "selected_probability_sum": 0.04250489920377731,
+        "selected_weight_sum": 1.0000001192092896,
+        "selected_weights": [
+          0.118541419506073,
+          0.11501484364271164,
+          0.10764842480421066,
+          0.10018829256296158,
+          0.09720799326896667,
+          0.09608123451471329,
+          0.09241339564323425,
+          0.09228213876485825,
+          0.09135755151510239,
+          0.08926478773355484
+        ]
+      },
+      "semantic_type": "NoeticExecutableCandidate",
+      "source_identity": {
+        "model_lake_manifest": {
+          "bytes": 360053432320,
+          "label": "[V]",
+          "manifest_path": "/Volumes/corpdrive/hawking-modellake/manifests/Qwen--Qwen3.8-Flash-Next@34567a4712bc.json",
+          "manifest_sha256": "1f536f70c963a4d9b800e17c54c0dec54ce2d31a0a36041146b4013a04221fb7",
+          "n_files": 144,
+          "n_sha256_verified": 132,
+          "n_size_only_verified": 12,
+          "path": "/Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc",
+          "repo": "Qwen/Qwen3.8-Flash-Next",
+          "resolved_sha": "34567a4712bc9766c4449e2e98e4468bfa24d915",
+          "revision": "34567a4712bc9766c4449e2e98e4468bfa24d915"
+        },
+        "repo": "Qwen/Qwen3.8-Flash-Next",
+        "revision": "34567a4712bc9766c4449e2e98e4468bfa24d915",
+        "root": "/Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc"
+      },
+      "status": "PASSED",
+      "whole_model_capability": "NOT_TESTED"
+    },
     "flash_science": {
       "architecture_fingerprint": {
         "algorithm": "sha256(canonical pinned metadata + sorted tensor names)",
@@ -3793,8 +4373,8 @@
       "status": "PASSED"
     }
   },
-  "generated_at": 1787820900.12656,
-  "git_revision": "fb4ca05b5f6c96abdeb6545f57ee6520bce333e5",
+  "generated_at": 1787821937.421968,
+  "git_revision": "c2cd85ab572676b987c70bc0e19f4b31f90e5eb6",
   "host": {
     "machine": "arm64",
     "platform": "macOS-27.0-arm64-arm-64bit-Mach-O",
@@ -3820,6 +4400,7 @@
     "flash_representation_experiment": "PASSED",
     "flash_router_component_body": "PASSED",
     "flash_router_graph": "PASSED",
+    "flash_router_selection": "PASSED",
     "flash_tensor_probe": "PASSED",
     "flash_token_ns_budget": "PLANNED_UNTIL_NATIVE_EXECUTION",
     "flash_transform_parity": "PASSED",

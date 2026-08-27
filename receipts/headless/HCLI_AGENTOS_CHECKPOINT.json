@@ -20,7 +20,7 @@
     ],
     "download_performed": false,
     "external_write_performed": false,
-    "generated_at": 1787825081.0873191,
+    "generated_at": 1787825201.902464,
     "network_probed": false,
     "repo_root": "/Users/scammermike/Downloads/hawking",
     "schema": "hcli.agentos.connectivity.v1",
@@ -6102,8 +6102,8 @@
       "status": "PASSED"
     }
   },
-  "generated_at": 1787825081.105547,
-  "git_revision": "e5c529e0ac6ad6b0f7eab7b0e994df775b2bb91c",
+  "generated_at": 1787825201.926142,
+  "git_revision": "31f34173aee3e9b1735eb6492f9a8bc6ac02ed9f",
   "host": {
     "machine": "arm64",
     "platform": "macOS-27.0-arm64-arm-64bit-Mach-O",

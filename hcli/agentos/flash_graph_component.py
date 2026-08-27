@@ -1,8 +1,8 @@
 """Compose the validated Flash Noetic descriptor and native kernel as a graph.
 
 This is the first executable graph boundary after descriptor and kernel
-parity.  It compiles one routed-expert source-block component from receipts;
-it does not persist a complete candidate body, load the whole model, or claim
+parity.  It compiles one routed-expert component from receipts and can consume
+the persisted bounded component body; it never loads the whole model or claims
 complete-token capability, EBPW, or Flash TPS.
 """
 from __future__ import annotations
@@ -26,6 +26,7 @@ PHYSICAL_GRAPH_SCHEMA = "hcli.physical_graph.v1"
 DESCRIPTOR_SCHEMA = "hcli.noetic.representation_descriptor.v1"
 DEFAULT_LOADER = "FLASH_ROUTED_EXPERT_LOADER_ROUNDTRIP.json"
 DEFAULT_KERNEL = "FLASH_NOETIC_Q4_KERNEL_PARITY.json"
+DEFAULT_BODY_KERNEL = "FLASH_NOETIC_Q4_BODY_KERNEL_PARITY.json"
 DEFAULT_TRANSFORM = "FLASH_FULL_TENSOR_TRANSFORM_PARITY.json"
 DEFAULT_EMIT = "FLASH_NOETIC_ROUTED_EXPERT_GRAPH.json"
 DERIVED = "[D]"
@@ -134,13 +135,18 @@ def _validate(
         errors.append("native kernel receipt is not PASSED")
     if kernel.get("schema") != "hawking.flash_noetic_q4_kernel_parity.v1":
         errors.append("kernel receipt schema is not the Flash Noetic kernel schema")
-    if native_loader.get("status") != "BOUNDED_NOETIC_DESCRIPTOR_LOAD":
+    if native_loader.get("status") not in {
+        "BOUNDED_NOETIC_DESCRIPTOR_LOAD",
+        "BOUNDED_NOETIC_DESCRIPTOR_AND_BODY_LOAD",
+    }:
         errors.append("kernel did not load the bounded Noetic descriptor")
     if native_loader.get("candidate_id") != candidate_id:
         errors.append("kernel loader and descriptor candidate_id disagree")
     if representation.get("candidate_id") != candidate_id:
         errors.append("kernel representation and descriptor candidate_id disagree")
-    if kernel.get("noetic_descriptor", {}).get("schema") != DESCRIPTOR_SCHEMA:
+    kernel_descriptor = kernel.get("noetic_descriptor")
+    kernel_descriptor = kernel_descriptor if isinstance(kernel_descriptor, Mapping) else {}
+    if kernel_descriptor.get("schema") != DESCRIPTOR_SCHEMA:
         errors.append("kernel receipt does not identify the Noetic descriptor schema")
     if native_kernel.get("kernel_registered") is not True:
         errors.append("native kernel was not registered")
@@ -184,6 +190,8 @@ def _validate(
         "parity": parity,
         "identities": identities,
         "transform_candidate": transform_candidate,
+        "source_independent_execution": native_loader.get("source_independent_execution") is True,
+        "candidate_body_persisted": native_loader.get("candidate_body_persisted") is True,
         "loader_ref": _receipt_ref(loader_path, loader),
         "kernel_ref": _receipt_ref(kernel_path, kernel),
         "transform_ref": _receipt_ref(transform_path, transform),
@@ -197,19 +205,31 @@ def _component_graph(validation: Mapping[str, Any]) -> Dict[str, Any]:
     representation = validation["representation"]
     kernel = validation["native_kernel"]
     source_identity = validation["identities"]["kernel"]
-    component_id = f"flash-routed-expert-{candidate_id}-layer0-rows0-127"
+    source_independent = bool(validation.get("source_independent_execution"))
     nodes = [
         {
-            "id": "source_block_stream",
+            "id": "source_block_reference",
             "stage": "SourceSpecimen",
-            "kind": "verified_source_block",
+            "kind": "verified_source_reference",
             "tensor_name": source.get("tensor_name"),
             "expert": 0,
             "row_start": 0,
             "row_count": 128,
             "source_block_bytes": validation["kernel_source"].get("selected_block_bytes"),
             "source_backed": True,
+            "execution_input": False,
         },
+    ]
+    if source_independent:
+        nodes.append({
+            "id": "noetic_component_body_load",
+            "stage": "NoeticCompiler",
+            "kind": "source_independent_component_body",
+            "candidate_id": candidate_id,
+            "body_persisted": True,
+            "execution_input": True,
+        })
+    nodes.extend([
         {
             "id": "noetic_descriptor_load",
             "stage": "NoeticCompiler",
@@ -218,6 +238,7 @@ def _component_graph(validation: Mapping[str, Any]) -> Dict[str, Any]:
             "candidate_id": candidate_id,
             "descriptor_sha256": validation["native_loader"].get("descriptor_sha256"),
             "loader_status": validation["native_loader"].get("status"),
+            "execution_input": True,
         },
         {
             "id": "routed_expert_q4_g64_matvec",
@@ -227,6 +248,7 @@ def _component_graph(validation: Mapping[str, Any]) -> Dict[str, Any]:
             "dispatches_per_sample": kernel.get("dispatches_per_sample"),
             "registered": kernel.get("kernel_registered"),
             "parity_within_tolerance": validation["parity"].get("within_tolerance"),
+            "source_independent_execution": source_independent,
         },
         {
             "id": "bounded_component_output",
@@ -235,12 +257,14 @@ def _component_graph(validation: Mapping[str, Any]) -> Dict[str, Any]:
             "whole_model": False,
             "complete_token": False,
         },
-    ]
+    ])
     edges = [
-        {"from": "source_block_stream", "to": "noetic_descriptor_load", "kind": "typed_source_to_representation"},
+        {"from": "source_block_reference", "to": "bounded_component_output", "kind": "parity_reference_only"},
         {"from": "noetic_descriptor_load", "to": "routed_expert_q4_g64_matvec", "kind": "descriptor_to_kernel"},
         {"from": "routed_expert_q4_g64_matvec", "to": "bounded_component_output", "kind": "kernel_to_output"},
     ]
+    if source_independent:
+        edges.insert(1, {"from": "noetic_component_body_load", "to": "noetic_descriptor_load", "kind": "body_to_descriptor"})
     physical = compile_physical_graph(
         {
             "model_id": REPO_ID,
@@ -270,7 +294,8 @@ def _component_graph(validation: Mapping[str, Any]) -> Dict[str, Any]:
         "candidate_id": candidate_id,
         "effective_bits_per_value": representation.get("effective_bits_per_value"),
         "candidate_bytes_full_tensor": validation["transform_candidate"].get("candidate_bytes"),
-        "candidate_body_persisted": False,
+        "candidate_body_persisted": validation["candidate_body_persisted"],
+        "source_independent_execution": source_independent,
         "dense_rematerialization": "forbidden",
     }
     physical["qualification"] = "BOUNDED_COMPONENT_ONLY"
@@ -303,8 +328,9 @@ def _compile_report(
         "pinned_revision": PINNED_REVISION,
         "candidate_id": validation["candidate_id"],
         "source_identity": validation["identities"].get("kernel"),
-        "source_backed": True,
-        "candidate_body_persisted": False,
+        "source_backed": not validation["source_independent_execution"],
+        "source_independent_execution": validation["source_independent_execution"],
+        "candidate_body_persisted": validation["candidate_body_persisted"],
         "whole_model_capability": "NOT_TESTED",
         "complete_token_runtime": "NOT_TESTED",
         "complete_system_ebpw": None,
@@ -332,12 +358,12 @@ def _compile_report(
                 "load_serialized_representation_descriptor",
                 "dispatch_qwen_uniform_q4_group64_matvec",
             ],
-            "source_independent": False,
+            "source_independent": validation["source_independent_execution"],
             "complete_model": False,
         },
         "physical_graph": None,
-        "claim_boundary": "Bounded source-backed routed-expert graph component compiled from validated Noetic descriptor and native kernel receipts; no complete-model loader, capability, complete-token timing, EBPW, or Flash TPS claim.",
-        "next_action": "persist candidate body and per-organ ownership only after a source-independent loader contract is implemented; then compose remaining Flash organs under the same gates",
+        "claim_boundary": "Bounded routed-expert graph component compiled from validated Noetic descriptor, persisted component body, and native kernel receipts; no complete-model loader, capability, complete-token timing, EBPW, or Flash TPS claim.",
+        "next_action": "compose the bounded source-independent component across the routed-expert organ, then extend independently-owned representation/loader contracts across the remaining Flash organs",
     }
     if validation["valid"]:
         report["physical_graph"] = _component_graph(validation)
@@ -358,7 +384,11 @@ def run_flash_graph_component(
     repo = Path(repo_root).expanduser().resolve() if repo_root else Path(__file__).resolve().parents[2]
     headless = repo / "receipts" / "headless"
     loader_path = Path(loader_receipt).expanduser().resolve() if loader_receipt else headless / DEFAULT_LOADER
-    kernel_path = Path(kernel_receipt).expanduser().resolve() if kernel_receipt else headless / DEFAULT_KERNEL
+    if kernel_receipt:
+        kernel_path = Path(kernel_receipt).expanduser().resolve()
+    else:
+        body_kernel = headless / DEFAULT_BODY_KERNEL
+        kernel_path = body_kernel if body_kernel.is_file() else headless / DEFAULT_KERNEL
     transform_path = Path(transform_receipt).expanduser().resolve() if transform_receipt else headless / DEFAULT_TRANSFORM
     destination = Path(emit).expanduser().resolve() if emit else headless / DEFAULT_EMIT
     started = time.time()

@@ -243,6 +243,22 @@ def build_parser() -> argparse.ArgumentParser:
     flash_loader.add_argument("--row-count", type=int, default=2)
     flash_loader.add_argument("--emit", default=None)
 
+    flash_body = sub.add_parser(
+        "flash-component-body",
+        help="persist one bounded source-independent Flash Noetic Q4/G64 component body",
+    )
+    flash_body.add_argument("--root", default=None, help="final specimen root; defaults to the canonical ModelLake specimen")
+    flash_body.add_argument("--repo-root", default=None)
+    flash_body.add_argument("--transform-receipt", default=None)
+    flash_body.add_argument("--loader-receipt", default=None)
+    flash_body.add_argument("--tensor-name", default=None)
+    flash_body.add_argument("--candidate", default="independent_q4_g64")
+    flash_body.add_argument("--expert-index", type=int, default=0)
+    flash_body.add_argument("--row-start", type=int, default=0)
+    flash_body.add_argument("--row-count", type=int, default=128)
+    flash_body.add_argument("--body", default=None)
+    flash_body.add_argument("--emit", default=None)
+
     flash_graph = sub.add_parser(
         "flash-graph-component",
         help="compile the bounded Flash Noetic routed-expert graph component from validated receipts",
@@ -602,6 +618,25 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 expert_index=args.expert_index,
                 row_start=args.row_start,
                 row_count=args.row_count,
+                emit=args.emit,
+            )
+            _emit(report)
+            return 0 if report.get("status") == "PASSED" else 1
+
+        if args.command == "flash-component-body":
+            from hcli.agentos.flash_component_body import DEFAULT_TENSOR, run_flash_component_body
+
+            report = run_flash_component_body(
+                root=args.root,
+                repo_root=args.repo_root,
+                transform_receipt=args.transform_receipt,
+                loader_receipt=args.loader_receipt,
+                tensor_name=args.tensor_name or DEFAULT_TENSOR,
+                candidate_id=args.candidate,
+                expert_index=args.expert_index,
+                row_start=args.row_start,
+                row_count=args.row_count,
+                body=args.body,
                 emit=args.emit,
             )
             _emit(report)

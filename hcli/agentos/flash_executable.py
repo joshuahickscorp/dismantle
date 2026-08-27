@@ -41,6 +41,7 @@ DEFAULT_REPRESENTATION_REPLICATION = "FLASH_ROUTED_EXPERT_REPRESENTATION_EXPERIM
 DEFAULT_TRANSFORM_PARITY = "FLASH_FULL_TENSOR_TRANSFORM_PARITY.json"
 DEFAULT_LOADER_ROUNDTRIP = "FLASH_ROUTED_EXPERT_LOADER_ROUNDTRIP.json"
 DEFAULT_KERNEL_PARITY = "FLASH_NOETIC_Q4_KERNEL_PARITY.json"
+DEFAULT_BODY_KERNEL_PARITY = "FLASH_NOETIC_Q4_BODY_KERNEL_PARITY.json"
 DEFAULT_GRAPH_COMPONENT = "FLASH_NOETIC_ROUTED_EXPERT_GRAPH.json"
 DEFAULT_EXECUTABLE = "FLASH_NEXT_NOETIC_EXECUTABLE.json"
 DEFAULT_EBPW = "FLASH_EBPW_BUDGET.json"
@@ -326,7 +327,11 @@ def _kernel_parity_summary(
     receipt: Optional[str | os.PathLike[str]] = None,
 ) -> Dict[str, Any]:
     """Read bounded native Metal evidence without treating it as Flash runtime."""
-    path = Path(receipt).expanduser().resolve() if receipt else repo / "receipts" / "headless" / DEFAULT_KERNEL_PARITY
+    if receipt:
+        path = Path(receipt).expanduser().resolve()
+    else:
+        body_path = repo / "receipts" / "headless" / DEFAULT_BODY_KERNEL_PARITY
+        path = body_path if body_path.is_file() else repo / "receipts" / "headless" / DEFAULT_KERNEL_PARITY
     kernel = _read_json(path)
     if kernel is None:
         return {
@@ -339,6 +344,9 @@ def _kernel_parity_summary(
             "native_kernel": None,
             "gpu_timing": None,
             "parity": None,
+            "candidate_body": None,
+            "source_independent_execution": None,
+            "candidate_body_persisted": None,
             "whole_model_capability": "NOT_TESTED",
             "whole_model_runtime": "NOT_TESTED",
         }
@@ -359,8 +367,11 @@ def _kernel_parity_summary(
         "gpu_timing": kernel.get("gpu_timing"),
         "parity": kernel.get("parity"),
         "input": kernel.get("input"),
+        "candidate_body": kernel.get("candidate_body"),
         "body_mutated": kernel.get("body_mutated"),
         "model_loaded": kernel.get("model_loaded"),
+        "source_independent_execution": (kernel.get("native_loader") or {}).get("source_independent_execution"),
+        "candidate_body_persisted": (kernel.get("native_loader") or {}).get("candidate_body_persisted"),
         "whole_model_capability": native_kernel.get("whole_model_capability", "NOT_TESTED"),
         "whole_model_runtime": native_kernel.get("whole_model_runtime", "NOT_TESTED"),
         "complete_system_ebpw": kernel.get("complete_system_ebpw"),
@@ -402,6 +413,7 @@ def _graph_component_summary(
         "candidate_id": graph.get("candidate_id"),
         "source_identity": graph.get("source_identity"),
         "source_backed": graph.get("source_backed"),
+        "source_independent_execution": graph.get("source_independent_execution"),
         "candidate_body_persisted": graph.get("candidate_body_persisted"),
         "physical_graph": graph.get("physical_graph"),
         "noetic_ir": graph.get("noetic_ir"),
@@ -804,6 +816,8 @@ def _executable_manifest(
             "bounded_native_kernel_parity_receipt": kernel_parity.get("receipt_path"),
             "bounded_noetic_graph_component_observed": graph_component.get("status") == "PASSED",
             "bounded_noetic_graph_component_receipt": graph_component.get("receipt_path"),
+            "bounded_component_body_loaded": kernel_parity.get("source_independent_execution") is True,
+            "bounded_component_body_receipt": (kernel_parity.get("candidate_body") or {}).get("receipt_path"),
             "weight_body_loaded": False,
         },
         "model_lake": lake,
@@ -820,6 +834,10 @@ def _executable_manifest(
             "bounded_descriptor_roundtrip_receipt": loader_roundtrip.get("receipt_path"),
             "bounded_native_descriptor_load_status": (kernel_parity.get("native_loader") or {}).get("status"),
             "bounded_native_descriptor_load_receipt": kernel_parity.get("receipt_path") if (kernel_parity.get("native_loader") or {}).get("status") else None,
+            "bounded_source_independent_body_load_status": (kernel_parity.get("native_loader") or {}).get("source_independent_execution"),
+            "bounded_source_independent_body_load_receipt": kernel_parity.get("receipt_path") if (kernel_parity.get("native_loader") or {}).get("source_independent_execution") else None,
+            "bounded_component_body_persisted": kernel_parity.get("candidate_body_persisted"),
+            "bounded_component_body": kernel_parity.get("candidate_body"),
             "bounded_native_kernel_parity_status": kernel_parity.get("status"),
             "bounded_native_kernel_parity_receipt": kernel_parity.get("receipt_path"),
             "required": ["verified body manifest", "zero-copy/streaming policy", "per-organ ownership", "resident lifetime", "loader hash"],
@@ -848,6 +866,8 @@ def _executable_manifest(
                 "kernel": (kernel_parity.get("native_kernel") or {}).get("kernel"),
                 "receipt": kernel_parity.get("receipt_path"),
                 "scope": "one real routed-expert source block only; not complete Flash execution",
+                "source_independent_execution": (kernel_parity.get("native_loader") or {}).get("source_independent_execution"),
+                "candidate_body": kernel_parity.get("candidate_body"),
                 "label": DERIVED,
             },
             "dense_rematerialization": "FORBIDDEN_BY_FINAL_RUNTIME_POLICY",
@@ -855,7 +875,7 @@ def _executable_manifest(
         "graph_runtime": {
             "status": "BOUNDED_COMPONENT_COMPILED" if graph_component.get("status") == "PASSED" else "PLAN_ONLY",
             "organ_order": organs,
-            "graph_source": "pinned header organ graph; runtime edges still require body-backed implementation",
+            "graph_source": "pinned header organ graph; bounded component body-backed when the native body-load receipt is present, while remaining runtime edges still require implementation",
             "bounded_component": {
                 "status": graph_component.get("component_status"),
                 "receipt_path": graph_component.get("receipt_path"),
@@ -907,7 +927,7 @@ def _executable_manifest(
             "hidden_dense_rematerialization": False,
         }),
         "promotion_allowed": False,
-        "claim_boundary": "FLASH_NEXT_NOETIC_EXECUTABLE remains a scaffold. It records full-tensor representation, bounded descriptor-loader, and bounded native-kernel evidence, not a whole-model loader, capability, complete-system EBPW, or Flash TPS claim.",
+        "claim_boundary": "FLASH_NEXT_NOETIC_EXECUTABLE remains a scaffold. It records full-tensor representation, one bounded source-independent component body, bounded descriptor-loader, and bounded native-kernel evidence, not a whole-model loader, capability, complete-system EBPW, or Flash TPS claim.",
     }
 
 
@@ -988,10 +1008,17 @@ def run_flash_executable_scaffold(
                 "bounded_kernel_parity_is_explicit": kernel_parity.get("status") in {"NOT_RUN", "PASSED"},
                 "bounded_kernel_parity_does_not_claim_whole_model": kernel_parity.get("whole_model_capability") == "NOT_TESTED" and kernel_parity.get("whole_model_runtime") == "NOT_TESTED",
                 "bounded_kernel_parity_does_not_mutate_source": kernel_parity.get("body_mutated") in {None, False},
-                "bounded_native_descriptor_load_is_explicit": (kernel_parity.get("native_loader") or {}).get("status") in {None, "NOT_RUN", "BOUNDED_NOETIC_DESCRIPTOR_LOAD"},
+                "bounded_native_descriptor_load_is_explicit": (kernel_parity.get("native_loader") or {}).get("status") in {None, "NOT_RUN", "BOUNDED_NOETIC_DESCRIPTOR_LOAD", "BOUNDED_NOETIC_DESCRIPTOR_AND_BODY_LOAD"},
                 "bounded_graph_component_is_explicit": graph_component.get("status") in {"NOT_RUN", "PASSED"},
                 "bounded_graph_component_does_not_claim_whole_model": graph_component.get("whole_model_capability") in {None, "NOT_TESTED"} and graph_component.get("complete_token_runtime") in {None, "NOT_TESTED"},
-                "bounded_graph_component_does_not_persist_candidate_body": graph_component.get("candidate_body_persisted") in {None, False},
+                "bounded_graph_component_body_is_scoped": (
+                    graph_component.get("candidate_body_persisted") in {None, False}
+                    or (
+                        graph_component.get("candidate_body_persisted") is True
+                        and graph_component.get("source_independent_execution") is True
+                        and graph_component.get("source_backed") is False
+                    )
+                ),
                 "bounded_graph_component_refuses_promotion": graph_component.get("promotion_allowed") is False,
                 "native_loader_status_explicit": manifest.get("native_loader", {}).get("status") == "NOT_IMPLEMENTED",
                 "native_kernels_status_explicit": manifest.get("native_kernels", {}).get("status") == "PLAN_ONLY",

@@ -5,23 +5,29 @@
       "9d373ecc4863b244fc74761c99fc837f7705f3db"
     ],
     "branch": "odyssey-i",
-    "git_revision": "bf96096fa0d21d78a5b7936ce5889803212b38ae",
+    "git_revision": "43c1a505a3c215803455cea2ccd74aa6d4c6ca87",
     "unrelated_preserved_edit": "tools/odyssey_ctl.py",
     "working_tree_status": [
-      "M hcli/agentos/__init__.py",
+      "M crates/hawking-core/examples/flash_noetic_q4_kernel_parity.rs",
+      " M hcli/agentos/__init__.py",
       " M hcli/agentos/checkpoint.py",
       " M hcli/agentos/flash_executable.py",
+      " M hcli/agentos/flash_graph_component.py",
       " M hcli/agentos/handoff.py",
       " M hcli/agentos_cli.py",
+      " M receipts/headless/FLASH_EBPW_BUDGET.json",
       " M receipts/headless/FLASH_NEXT_NOETIC_EXECUTABLE.json",
+      " M receipts/headless/FLASH_NOETIC_ROUTED_EXPERT_GRAPH.json",
       " M receipts/headless/HCLI_AGENTOS_CHECKPOINT.json",
+      " M receipts/headless/OVERNIGHT_HAWKING_HANDOFF.json",
       " M tools/haider/test_hcli_science_boundaries.py",
       " M tools/odyssey_ctl.py",
       "?? .hcli/flash-kernel-build/",
       "?? .hcli/locks/",
       "?? .hcli/unattended-qwen-long/",
-      "?? hcli/agentos/flash_graph_component.py",
-      "?? receipts/headless/FLASH_NOETIC_ROUTED_EXPERT_GRAPH.json"
+      "?? hcli/agentos/flash_component_body.py",
+      "?? receipts/headless/FLASH_NOETIC_Q4_BODY_KERNEL_PARITY.json",
+      "?? receipts/headless/FLASH_NOETIC_ROUTED_EXPERT_BODY.json"
     ]
   },
   "blockers": [
@@ -45,8 +51,9 @@
     "resume_modellake_only_if_interrupted": "python3 -m hcli agentos background resume --workspace /Users/scammermike/Downloads/hawking --repo-root /Users/scammermike/Downloads/hawking job-2f77c1d6-e33b-44fe-bc12-549cf47805c7",
     "run_flash_bounded_loader_roundtrip": "python3 -m hcli agentos flash-loader-roundtrip --root /Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc --repo-root /Users/scammermike/Downloads/hawking --candidate independent_q4_g64 --emit /Users/scammermike/Downloads/hawking/receipts/headless/FLASH_ROUTED_EXPERT_LOADER_ROUNDTRIP.json",
     "run_flash_bounded_loader_roundtrip_quality_alternate": "python3 -m hcli agentos flash-loader-roundtrip --root /Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc --repo-root /Users/scammermike/Downloads/hawking --candidate shared_bf16_basis_nf4_residual --emit /Users/scammermike/Downloads/hawking/receipts/headless/FLASH_ROUTED_EXPERT_LOADER_ROUNDTRIP_SHARED.json",
+    "run_flash_component_body": "python3 -m hcli agentos flash-component-body --root /Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc --repo-root /Users/scammermike/Downloads/hawking --emit /Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_ROUTED_EXPERT_BODY.json",
     "run_flash_graph_component": "python3 -m hcli agentos flash-graph-component --repo-root /Users/scammermike/Downloads/hawking --emit /Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_ROUTED_EXPERT_GRAPH.json",
-    "run_flash_native_kernel_parity": "/Users/scammermike/Downloads/hawking/.hcli/flash-kernel-build/release-fast/examples/flash_noetic_q4_kernel_parity --root /Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc --reps 7 --warmup 2 --out /Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_Q4_KERNEL_PARITY.json",
+    "run_flash_native_kernel_parity": "/Users/scammermike/Downloads/hawking/.hcli/flash-kernel-build/release-fast/release/examples/flash_noetic_q4_kernel_parity --root /Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc --descriptor /Users/scammermike/Downloads/hawking/receipts/headless/FLASH_ROUTED_EXPERT_LOADER_ROUNDTRIP.json --candidate-body /Users/scammermike/Downloads/hawking/.hcli/flash-component/flash-routed-expert-independent-q4-g64-e0-r0-128.bin --body-receipt /Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_ROUTED_EXPERT_BODY.json --reps 7 --warmup 2 --out /Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_Q4_BODY_KERNEL_PARITY.json",
     "run_flash_representation_experiment": "python3 -m hcli agentos flash-representation-experiment --emit /Users/scammermike/Downloads/hawking/receipts/headless/FLASH_ROUTED_EXPERT_REPRESENTATION_EXPERIMENT.json",
     "run_flash_representation_replication": "python3 -m hcli agentos flash-representation-experiment --expert-indices 32,33,34,35,36,37,38,39 --row-start 64 --row-count 16 --emit /Users/scammermike/Downloads/hawking/receipts/headless/FLASH_ROUTED_EXPERT_REPRESENTATION_EXPERIMENT_DISJOINT.json",
     "run_flash_tensor_probe": "python3 -m hcli agentos flash-tensor-probe --emit /Users/scammermike/Downloads/hawking/receipts/headless/FLASH_FIRST_TENSOR_PROBE.json",
@@ -166,33 +173,41 @@
     "architecture_fingerprint": "8dbc9c34f223d240def13a1f7c70d3cbddbc768bc9ccc9c002683e2958b6be5b",
     "bounded_native_kernel_parity": {
       "body_mutated": false,
-      "claim_boundary": "PASSED bounded serialized Noetic descriptor load, source-tensor Q4 Metal kernel parity, and GPU timing only; no whole-model loader, capability, complete-token runtime, EBPW, or Flash TPS claim",
+      "candidate_body": {
+        "bytes": 174080,
+        "path": "/Users/scammermike/Downloads/hawking/.hcli/flash-component/flash-routed-expert-independent-q4-g64-e0-r0-128.bin",
+        "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_ROUTED_EXPERT_BODY.json",
+        "receipt_sha256": "60deabc9be0f32005679ad17a6124a56f89a791dab2c641268d9f5bc7599672b",
+        "sha256": "5be289f04c8ec072a951fdd249d21fd44d69aad8baafedde0158e77aca72aa78",
+        "source_independent": true
+      },
+      "claim_boundary": "PASSED bounded source-independent Noetic component-body load, source-reference Q4 Metal kernel parity, and GPU timing only; no whole-model loader, capability, complete-token runtime, EBPW, or Flash TPS claim",
       "gpu_timing": {
         "device": "Apple M3 Ultra",
         "gpu_ns": [
-          451209,
-          443041,
-          451250,
-          451500,
-          441834,
-          443666,
-          449750
+          346500,
+          263250,
+          256750,
+          313166,
+          347000,
+          316000,
+          345000
         ],
-        "gpu_ns_max": 451500,
-        "gpu_ns_median": 449750,
-        "gpu_ns_min": 441834,
+        "gpu_ns_max": 347000,
+        "gpu_ns_median": 316000,
+        "gpu_ns_min": 256750,
         "host_wall_ns": [
-          805209,
-          1135250,
-          951750,
-          865083,
-          742958,
-          740208,
-          749792
+          578292,
+          461209,
+          504459,
+          562958,
+          674375,
+          554750,
+          546959
         ],
-        "host_wall_ns_max": 1135250,
-        "host_wall_ns_median": 805209,
-        "host_wall_ns_min": 740208,
+        "host_wall_ns_max": 674375,
+        "host_wall_ns_median": 554750,
+        "host_wall_ns_min": 461209,
         "measured_runs": 7,
         "memory_limits": {
           "current_allocated_size": 638976,
@@ -225,17 +240,18 @@
         "whole_model_runtime": "NOT_TESTED"
       },
       "native_loader": {
-        "candidate_body_persisted": false,
+        "candidate_body_persisted": true,
         "candidate_id": "independent_q4_g64",
         "dense_rematerialization": "forbidden",
         "descriptor_path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_ROUTED_EXPERT_LOADER_ROUNDTRIP.json",
         "descriptor_sha256": "60e7c098c67f26013e47d3411efc554b7e8612417300eb2116d8237f53568c19",
-        "source_block_streamed": true,
-        "status": "BOUNDED_NOETIC_DESCRIPTOR_LOAD",
+        "source_block_streamed_for_reference": true,
+        "source_independent_execution": true,
+        "status": "BOUNDED_NOETIC_DESCRIPTOR_AND_BODY_LOAD",
         "whole_model_capability": "NOT_TESTED",
         "whole_model_runtime": "NOT_TESTED"
       },
-      "next_action": "compose the validated descriptor and kernel into a native routed-expert graph component while keeping protected complete-token timing gated",
+      "next_action": "compose the source-independent component body into the routed-expert graph while keeping protected complete-token timing gated",
       "noetic_descriptor": {
         "candidate_id": "independent_q4_g64",
         "load_policy": "validated serialized descriptor; candidate body is not persisted by this bounded probe",
@@ -246,7 +262,7 @@
       "noetic_representation": {
         "candidate_bytes": 174080,
         "candidate_id": "independent_q4_g64",
-        "candidate_sha256": "8c6e6e389aed525cf1f869090d355388b4feef5634a19046ace3cca49e0eef6a",
+        "candidate_sha256": "5be289f04c8ec072a951fdd249d21fd44d69aad8baafedde0158e77aca72aa78",
         "code_bytes": 163840,
         "code_dtype": "uint4_packed",
         "code_offset": 8,
@@ -260,18 +276,18 @@
         "scale_scope": "one scale per 64 source values",
         "schema": "hcli.noetic.representation_descriptor.v1",
         "source_to_candidate_max_abs_error": 0.0118255615234375,
-        "source_to_candidate_rmse": 0.0016115668114025606
+        "source_to_candidate_rmse": 0.001611581793462567
       },
       "parity": {
-        "cosine": 0.9999999999999639,
+        "cosine": 0.9999999999999637,
         "count": 128,
         "finite": true,
-        "max_abs_error": 1.6391277313232422e-07,
-        "rmse": 5.2521827497893166e-08,
+        "max_abs_error": 1.564621925354004e-07,
+        "rmse": 5.2199908547982395e-08,
         "tolerance": 0.0020000000949949026,
         "within_tolerance": true
       },
-      "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_Q4_KERNEL_PARITY.json",
+      "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_Q4_BODY_KERNEL_PARITY.json",
       "source_tensor": {
         "dtype": "BF16",
         "header_sha256": "d482a7b5ad9050e1ec1541aa95e6ce3e836d943641748dbb0836f0c5232e3f9d",
@@ -299,15 +315,15 @@
       "status": "PASSED"
     },
     "bounded_noetic_graph_component": {
-      "candidate_body_persisted": false,
+      "candidate_body_persisted": true,
       "candidate_id": "independent_q4_g64",
-      "claim_boundary": "Bounded source-backed routed-expert graph component compiled from validated Noetic descriptor and native kernel receipts; no complete-model loader, capability, complete-token timing, EBPW, or Flash TPS claim.",
+      "claim_boundary": "Bounded routed-expert graph component compiled from validated Noetic descriptor, persisted component body, and native kernel receipts; no complete-model loader, capability, complete-token timing, EBPW, or Flash TPS claim.",
       "complete_token_runtime": "NOT_TESTED",
       "component_status": "BOUNDED_COMPONENT_COMPILED",
-      "graph_fingerprint": "587fb4d7a1358aa1d064c5f58e41801b98cae93433d1569d31838f29c35825d3",
+      "graph_fingerprint": "9577f562f3fd8bf5c10ef5393dd62ee7ad841fe5dc8b2fe5a1372be5dd7c6e0d",
       "promotion_allowed": false,
       "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_ROUTED_EXPERT_GRAPH.json",
-      "source_backed": true,
+      "source_backed": false,
       "status": "PASSED",
       "whole_model_capability": "NOT_TESTED"
     },
@@ -898,7 +914,7 @@
       "explicit MTP draft/verify/rollback accounting",
       "native kernels and command-boundary telemetry"
     ],
-    "next_action": "Advance the source-backed routed-expert graph component toward a source-independent candidate body and then compose the remaining Flash organs; keep complete-system EBPW and accepted Flash TPS unmeasured until native protected execution exists.",
+    "next_action": "Extend the source-independent component body across the routed-expert organ, then compose the remaining Flash organs; keep complete-system EBPW and accepted Flash TPS unmeasured until native protected execution exists.",
     "noetic_executable": {
       "NOT_FOR_PROMOTION": true,
       "complete_token_timing": {
@@ -924,17 +940,17 @@
       },
       "graph_runtime": {
         "bounded_component": {
-          "candidate_body_persisted": false,
+          "candidate_body_persisted": true,
           "candidate_id": "independent_q4_g64",
           "complete_token_runtime": "NOT_TESTED",
-          "fingerprint": "587fb4d7a1358aa1d064c5f58e41801b98cae93433d1569d31838f29c35825d3",
+          "fingerprint": "9577f562f3fd8bf5c10ef5393dd62ee7ad841fe5dc8b2fe5a1372be5dd7c6e0d",
           "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_ROUTED_EXPERT_GRAPH.json",
-          "source_backed": true,
+          "source_backed": false,
           "status": "BOUNDED_COMPONENT_COMPILED",
           "whole_model_capability": "NOT_TESTED"
         },
         "fallbacks": "No fallback may be silently counted as native Flash execution.",
-        "graph_source": "pinned header organ graph; runtime edges still require body-backed implementation",
+        "graph_source": "pinned header organ graph; bounded component body-backed when the native body-load receipt is present, while remaining runtime edges still require implementation",
         "mtp_accept_reject": "EXPLICIT_REQUIRED_EDGE",
         "organ_order": [
           "embeddings",
@@ -956,10 +972,19 @@
       },
       "native_kernels": {
         "bounded_component_evidence": {
+          "candidate_body": {
+            "bytes": 174080,
+            "path": "/Users/scammermike/Downloads/hawking/.hcli/flash-component/flash-routed-expert-independent-q4-g64-e0-r0-128.bin",
+            "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_ROUTED_EXPERT_BODY.json",
+            "receipt_sha256": "60deabc9be0f32005679ad17a6124a56f89a791dab2c641268d9f5bc7599672b",
+            "sha256": "5be289f04c8ec072a951fdd249d21fd44d69aad8baafedde0158e77aca72aa78",
+            "source_independent": true
+          },
           "kernel": "qwen_uniform_q4_group64_matvec",
           "label": "[D]",
-          "receipt": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_Q4_KERNEL_PARITY.json",
+          "receipt": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_Q4_BODY_KERNEL_PARITY.json",
           "scope": "one real routed-expert source block only; not complete Flash execution",
+          "source_independent_execution": true,
           "status": "PASSED"
         },
         "coverage": [
@@ -1039,12 +1064,23 @@
       },
       "native_loader": {
         "body_read_by_scaffold": false,
+        "bounded_component_body": {
+          "bytes": 174080,
+          "path": "/Users/scammermike/Downloads/hawking/.hcli/flash-component/flash-routed-expert-independent-q4-g64-e0-r0-128.bin",
+          "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_ROUTED_EXPERT_BODY.json",
+          "receipt_sha256": "60deabc9be0f32005679ad17a6124a56f89a791dab2c641268d9f5bc7599672b",
+          "sha256": "5be289f04c8ec072a951fdd249d21fd44d69aad8baafedde0158e77aca72aa78",
+          "source_independent": true
+        },
+        "bounded_component_body_persisted": true,
         "bounded_descriptor_roundtrip_receipt": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_ROUTED_EXPERT_LOADER_ROUNDTRIP.json",
         "bounded_descriptor_roundtrip_status": "PASSED",
-        "bounded_native_descriptor_load_receipt": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_Q4_KERNEL_PARITY.json",
-        "bounded_native_descriptor_load_status": "BOUNDED_NOETIC_DESCRIPTOR_LOAD",
-        "bounded_native_kernel_parity_receipt": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_Q4_KERNEL_PARITY.json",
+        "bounded_native_descriptor_load_receipt": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_Q4_BODY_KERNEL_PARITY.json",
+        "bounded_native_descriptor_load_status": "BOUNDED_NOETIC_DESCRIPTOR_AND_BODY_LOAD",
+        "bounded_native_kernel_parity_receipt": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_Q4_BODY_KERNEL_PARITY.json",
         "bounded_native_kernel_parity_status": "PASSED",
+        "bounded_source_independent_body_load_receipt": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_Q4_BODY_KERNEL_PARITY.json",
+        "bounded_source_independent_body_load_status": true,
         "required": [
           "verified body manifest",
           "zero-copy/streaming policy",
@@ -1061,7 +1097,7 @@
         "compiler_identity": null,
         "device_identity": null,
         "executable_sha256": null,
-        "graph_fingerprint": "587fb4d7a1358aa1d064c5f58e41801b98cae93433d1569d31838f29c35825d3",
+        "graph_fingerprint": "9577f562f3fd8bf5c10ef5393dd62ee7ad841fe5dc8b2fe5a1372be5dd7c6e0d",
         "kernel_binary_hashes": [],
         "kernel_source_hashes": [],
         "loader_sha256": null,
@@ -1070,14 +1106,14 @@
         "status": "BOUNDED_COMPONENT_ONLY"
       },
       "source_graph_component": {
-        "candidate_body_persisted": false,
+        "candidate_body_persisted": true,
         "candidate_id": "independent_q4_g64",
-        "claim_boundary": "Bounded source-backed routed-expert graph component compiled from validated Noetic descriptor and native kernel receipts; no complete-model loader, capability, complete-token timing, EBPW, or Flash TPS claim.",
+        "claim_boundary": "Bounded routed-expert graph component compiled from validated Noetic descriptor, persisted component body, and native kernel receipts; no complete-model loader, capability, complete-token timing, EBPW, or Flash TPS claim.",
         "compiler_stage": "PhysicalGraphCompiler",
         "complete_token_runtime": "NOT_TESTED",
         "component_status": "BOUNDED_COMPONENT_COMPILED",
-        "graph_fingerprint": "587fb4d7a1358aa1d064c5f58e41801b98cae93433d1569d31838f29c35825d3",
-        "next_action": "persist candidate body and per-organ ownership only after a source-independent loader contract is implemented; then compose remaining Flash organs under the same gates",
+        "graph_fingerprint": "9577f562f3fd8bf5c10ef5393dd62ee7ad841fe5dc8b2fe5a1372be5dd7c6e0d",
+        "next_action": "compose the bounded source-independent component across the routed-expert organ, then extend independently-owned representation/loader contracts across the remaining Flash organs",
         "noetic_ir": {
           "candidate_id": "independent_q4_g64",
           "complete_model": false,
@@ -1088,7 +1124,7 @@
           ],
           "schema": "hcli.noetic.ir.v1",
           "semantic_type": "NoeticIR",
-          "source_independent": false
+          "source_independent": true
         },
         "nomenclature_version": "HAWKING_NOMENCLATURE_V1",
         "physical_graph": {
@@ -1096,9 +1132,10 @@
           "component_scope": "one routed-expert source block; not complete Flash execution",
           "computation": [
             {
+              "execution_input": false,
               "expert": 0,
-              "id": "source_block_stream",
-              "kind": "verified_source_block",
+              "id": "source_block_reference",
+              "kind": "verified_source_reference",
               "row_count": 128,
               "row_start": 0,
               "source_backed": true,
@@ -1107,11 +1144,20 @@
               "tensor_name": "model.language_model.layers.0.mlp.experts.gate_up_proj"
             },
             {
+              "body_persisted": true,
+              "candidate_id": "independent_q4_g64",
+              "execution_input": true,
+              "id": "noetic_component_body_load",
+              "kind": "source_independent_component_body",
+              "stage": "NoeticCompiler"
+            },
+            {
               "candidate_id": "independent_q4_g64",
               "descriptor_sha256": "60e7c098c67f26013e47d3411efc554b7e8612417300eb2116d8237f53568c19",
+              "execution_input": true,
               "id": "noetic_descriptor_load",
               "kind": "serialized_representation_descriptor",
-              "loader_status": "BOUNDED_NOETIC_DESCRIPTOR_LOAD",
+              "loader_status": "BOUNDED_NOETIC_DESCRIPTOR_AND_BODY_LOAD",
               "schema": "hcli.noetic.representation_descriptor.v1",
               "stage": "NoeticCompiler"
             },
@@ -1122,6 +1168,7 @@
               "kind": "native_kernel_dispatch",
               "parity_within_tolerance": true,
               "registered": true,
+              "source_independent_execution": true,
               "stage": "HawkingAccelerator"
             },
             {
@@ -1143,8 +1190,13 @@
           ],
           "dependencies": [
             {
-              "from": "source_block_stream",
-              "kind": "typed_source_to_representation",
+              "from": "source_block_reference",
+              "kind": "parity_reference_only",
+              "to": "bounded_component_output"
+            },
+            {
+              "from": "noetic_component_body_load",
+              "kind": "body_to_descriptor",
               "to": "noetic_descriptor_load"
             },
             {
@@ -1174,9 +1226,9 @@
             },
             {
               "label": "[V]",
-              "path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_Q4_KERNEL_PARITY.json",
+              "path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_Q4_BODY_KERNEL_PARITY.json",
               "schema": "hawking.flash_noetic_q4_kernel_parity.v1",
-              "sha256": "ebe3e2b04501c2346c30bc6520ed9ba4358e157ec6418ab68d056d5a35976fc2",
+              "sha256": "b62c3e78a7fbb0aac0a5af6a1af6962662af7eb946e8edc871153fc8b874677d",
               "status": "PASSED"
             },
             {
@@ -1187,8 +1239,8 @@
               "status": "PASSED"
             }
           ],
-          "fingerprint": "587fb4d7a1358aa1d064c5f58e41801b98cae93433d1569d31838f29c35825d3",
-          "generated_at": 1787815892.068521,
+          "fingerprint": "9577f562f3fd8bf5c10ef5393dd62ee7ad841fe5dc8b2fe5a1372be5dd7c6e0d",
+          "generated_at": 1787817409.745667,
           "graph_execution_observed": false,
           "memory": [
             {
@@ -1216,12 +1268,13 @@
           },
           "qualification": "BOUNDED_COMPONENT_ONLY",
           "representation": {
-            "candidate_body_persisted": false,
+            "candidate_body_persisted": true,
             "candidate_bytes_full_tensor": 891289600,
             "candidate_id": "independent_q4_g64",
             "dense_rematerialization": "forbidden",
             "descriptor_schema": "hcli.noetic.representation_descriptor.v1",
-            "effective_bits_per_value": 4.25
+            "effective_bits_per_value": 4.25,
+            "source_independent_execution": true
           },
           "residency": {
             "page_cache": "unresolved",
@@ -1243,10 +1296,10 @@
         },
         "promotion_allowed": false,
         "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_ROUTED_EXPERT_GRAPH.json",
-        "receipt_sha256": "8d3db03b9de1e18d134a727be176bb60f2055532a990739807d85d284404dfe9",
+        "receipt_sha256": "9fbcc8f241a9786d100ddab7766a4727da3ecc3dd0623759c3ff25615f6a9c2d",
         "schema": "hcli.agentos.flash_noetic_graph_component.v1",
         "semantic_type": "NoeticExecutableCandidate",
-        "source_backed": true,
+        "source_backed": false,
         "source_identity": {
           "manifest_path": "/Volumes/corpdrive/hawking-modellake/manifests/Qwen--Qwen3.8-Flash-Next@34567a4712bc.json",
           "manifest_sha256": "1f536f70c963a4d9b800e17c54c0dec54ce2d31a0a36041146b4013a04221fb7",
@@ -1255,6 +1308,7 @@
           "revision": "34567a4712bc9766c4449e2e98e4468bfa24d915",
           "root": "/Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc"
         },
+        "source_independent_execution": true,
         "status": "PASSED",
         "validation": {
           "descriptor_schema": "hcli.noetic.representation_descriptor.v1",
@@ -1315,22 +1369,23 @@
             "whole_model_runtime": "NOT_TESTED"
           },
           "native_loader": {
-            "candidate_body_persisted": false,
+            "candidate_body_persisted": true,
             "candidate_id": "independent_q4_g64",
             "dense_rematerialization": "forbidden",
             "descriptor_path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_ROUTED_EXPERT_LOADER_ROUNDTRIP.json",
             "descriptor_sha256": "60e7c098c67f26013e47d3411efc554b7e8612417300eb2116d8237f53568c19",
-            "source_block_streamed": true,
-            "status": "BOUNDED_NOETIC_DESCRIPTOR_LOAD",
+            "source_block_streamed_for_reference": true,
+            "source_independent_execution": true,
+            "status": "BOUNDED_NOETIC_DESCRIPTOR_AND_BODY_LOAD",
             "whole_model_capability": "NOT_TESTED",
             "whole_model_runtime": "NOT_TESTED"
           },
           "parity": {
-            "cosine": 0.9999999999999639,
+            "cosine": 0.9999999999999637,
             "count": 128,
             "finite": true,
-            "max_abs_error": 1.6391277313232422e-07,
-            "rmse": 5.2521827497893166e-08,
+            "max_abs_error": 1.564621925354004e-07,
+            "rmse": 5.2199908547982395e-08,
             "tolerance": 0.0020000000949949026,
             "within_tolerance": true
           },
@@ -1473,7 +1528,38 @@
       ],
       "status": "INCOMPLETE"
     },
-    "repo": "Qwen/Qwen3.8-Flash-Next"
+    "repo": "Qwen/Qwen3.8-Flash-Next",
+    "source_independent_component_body": {
+      "body": {
+        "bytes": 174080,
+        "code_bytes": 163840,
+        "format": "packed uint4 codes followed by little-endian float16 G64 scales; row-major component block",
+        "label": "[D]",
+        "path": "/Users/scammermike/Downloads/hawking/.hcli/flash-component/flash-routed-expert-independent-q4-g64-e0-r0-128.bin",
+        "scale_bytes": 10240,
+        "sha256": "5be289f04c8ec072a951fdd249d21fd44d69aad8baafedde0158e77aca72aa78"
+      },
+      "candidate_body_persisted": true,
+      "candidate_id": "independent_q4_g64",
+      "claim_boundary": "One source-independent Q4/G64 routed-expert component body persisted and typed for native loading; source parity was checked against the pinned cold block, but whole-model capability, complete-token runtime, complete-system EBPW, and Flash TPS remain untested.",
+      "native_loader": {
+        "candidate_body_persisted": true,
+        "candidate_id": "independent_q4_g64",
+        "dense_rematerialization": "forbidden",
+        "source_independent": true,
+        "status": "SOURCE_INDEPENDENT_COMPONENT_BODY_PERSISTED"
+      },
+      "next_action": "load this persisted component body in the native graph, then extend the same independently-owned representation/loader contract across the remaining Flash organs",
+      "receipt_path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NOETIC_ROUTED_EXPERT_BODY.json",
+      "source_guard": {
+        "source_mutation": false,
+        "unchanged": true
+      },
+      "source_independent": true,
+      "status": "PASSED",
+      "whole_model_capability": "NOT_TESTED",
+      "whole_model_runtime": "NOT_TESTED"
+    }
   },
   "fpga": {
     "labels": {
@@ -1864,7 +1950,7 @@
       "telemetry/receipt verifier"
     ]
   },
-  "generated_at": 1787815952.708992,
+  "generated_at": 1787817411.106207,
   "hcli": {
     "background_jobs": [
       {
@@ -2311,18 +2397,18 @@
         },
         {
           "checks": {},
-          "cycles": 72,
+          "cycles": 96,
           "deadline": 1787833148.5820968,
           "metrics": {
-            "accepted": 72,
-            "attempted": 72,
+            "accepted": 96,
+            "attempted": 96,
             "human_interventions": 0,
             "inconclusive": 0,
-            "model_calls": 72,
+            "model_calls": 96,
             "rejected": 0,
             "retries": 0,
-            "typed_tool_calls": 144,
-            "verifier_calls": 72
+            "typed_tool_calls": 192,
+            "verifier_calls": 96
           },
           "path": "/Users/scammermike/Downloads/hawking/.hcli/unattended-qwen-long/window-progress.json",
           "started_at": 1787811548.5820968,
@@ -2652,16 +2738,17 @@
   "verification": {
     "full_suite": {
       "command": "pytest -q",
-      "last_observed": "730 passed, 2 skipped",
+      "last_observed": "731 passed, 2 skipped",
       "last_observed_status": "PASSED"
     },
     "provider_focus": {
-      "last_observed": "31 passed, 2 warnings",
+      "last_observed": "30 passed, 2 warnings",
       "last_observed_status": "PASSED"
     },
     "receipt_gates": {
       "accelerator_regression": "PASSED",
       "autonomy": "PASSED",
+      "flash_component_body": "PASSED",
       "flash_graph_component": "PASSED",
       "flash_kernel_parity": "PASSED",
       "flash_loader_roundtrip": "PASSED",

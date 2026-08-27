@@ -421,6 +421,35 @@ def test_flash_graph_component_compiles_validated_noetic_receipts_without_promot
     assert result["candidate_body_persisted"] is False
     assert result["promotion_allowed"] is False
 
+    body_kernel = json.loads(json.dumps(kernel))
+    body_kernel["native_loader"].update({
+        "status": "BOUNDED_NOETIC_DESCRIPTOR_AND_BODY_LOAD",
+        "source_independent_execution": True,
+        "candidate_body_persisted": True,
+    })
+    body_kernel["candidate_body"] = {
+        "path": str(tmp_path / "component.bin"),
+        "bytes": 174080,
+        "source_independent": True,
+    }
+    body_kernel_path = receipts / "body-kernel.json"
+    body_kernel_path.write_text(json.dumps(body_kernel), encoding="utf-8")
+    body_result = flash_graph_component.run_flash_graph_component(
+        repo_root=root,
+        transform_receipt=transform_path,
+        loader_receipt=loader_path,
+        kernel_receipt=body_kernel_path,
+        emit=receipts / "body-graph.json",
+    )
+
+    assert body_result["status"] == "PASSED"
+    assert body_result["source_backed"] is False
+    assert body_result["source_independent_execution"] is True
+    assert body_result["candidate_body_persisted"] is True
+    assert "noetic_component_body_load" in {
+        node["id"] for node in body_result["physical_graph"]["computation"]
+    }
+
 
 def test_canonical_nomenclature_is_versioned_without_renaming_legacy_terms():
     assert NOMENCLATURE_VERSION == "HAWKING_NOMENCLATURE_V1"
@@ -500,6 +529,7 @@ def test_cli_exposes_general_science_surfaces():
     assert parser.parse_args(["flash-representation-experiment"]).command == "flash-representation-experiment"
     assert parser.parse_args(["flash-transform-parity"]).command == "flash-transform-parity"
     assert parser.parse_args(["flash-loader-roundtrip"]).command == "flash-loader-roundtrip"
+    assert parser.parse_args(["flash-component-body"]).command == "flash-component-body"
     assert parser.parse_args(["flash-graph-component"]).command == "flash-graph-component"
     assert parser.parse_args(["flash-executable", "--kernel-parity-receipt", "kernel.json"]).kernel_parity_receipt == "kernel.json"
     assert parser.parse_args(["flash-executable", "--graph-component-receipt", "graph.json"]).graph_component_receipt == "graph.json"

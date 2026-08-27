@@ -101,6 +101,8 @@ __all__ = [
     "run_flash_loader_roundtrip",
     "FLASH_GRAPH_COMPONENT_SCHEMA",
     "run_flash_graph_component",
+    "FLASH_COMPONENT_BODY_SCHEMA",
+    "run_flash_component_body",
     "PREBOARD_SCHEMA",
     "run_preboard",
     "INITIAL_CHARGE_SCHEMA",
@@ -234,6 +236,10 @@ def __getattr__(name: str):
         from hcli.agentos import flash_graph_component
 
         return flash_graph_component.SCHEMA if name == "FLASH_GRAPH_COMPONENT_SCHEMA" else flash_graph_component.run_flash_graph_component
+    if name in {"FLASH_COMPONENT_BODY_SCHEMA", "run_flash_component_body"}:
+        from hcli.agentos import flash_component_body
+
+        return flash_component_body.SCHEMA if name == "FLASH_COMPONENT_BODY_SCHEMA" else flash_component_body.run_flash_component_body
     if name in {"PREBOARD_SCHEMA", "run_preboard"}:
         from hcli.agentos import preboard
 

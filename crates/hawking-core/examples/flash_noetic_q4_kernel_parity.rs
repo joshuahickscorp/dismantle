@@ -45,6 +45,8 @@ mod macos {
     struct Args {
         root: PathBuf,
         descriptor: PathBuf,
+        candidate_body: Option<PathBuf>,
+        body_receipt: Option<PathBuf>,
         tensor_name: String,
         expert_index: usize,
         row_start: usize,
@@ -110,6 +112,8 @@ mod macos {
         let mut args = Args {
             root: default_lake_root(),
             descriptor: root.join("receipts/headless/FLASH_ROUTED_EXPERT_LOADER_ROUNDTRIP.json"),
+            candidate_body: None,
+            body_receipt: None,
             tensor_name: TENSOR_NAME.to_owned(),
             expert_index: 0,
             row_start: 0,
@@ -125,6 +129,16 @@ mod macos {
                 "--descriptor" => {
                     args.descriptor = PathBuf::from(values.next().ok_or("missing --descriptor")?)
                 }
+                "--candidate-body" => {
+                    args.candidate_body = Some(PathBuf::from(
+                        values.next().ok_or("missing --candidate-body")?,
+                    ))
+                }
+                "--body-receipt" => {
+                    args.body_receipt = Some(PathBuf::from(
+                        values.next().ok_or("missing --body-receipt")?,
+                    ))
+                }
                 "--tensor-name" => {
                     args.tensor_name = values.next().ok_or("missing --tensor-name")?
                 }
@@ -137,7 +151,7 @@ mod macos {
                 "--help" | "-h" => {
                     println!(
                         "usage: flash_noetic_q4_kernel_parity [--root DIR] [--tensor-name NAME] \
-                         [--descriptor FILE] \
+                         [--descriptor FILE] [--candidate-body FILE] [--body-receipt FILE] \
                          [--expert-index N] [--row-start N] [--row-count N] [--warmup N] \
                          [--reps N] [--out FILE]"
                     );
@@ -481,6 +495,104 @@ mod macos {
         })
     }
 
+    fn load_candidate_body(
+        body_path: &Path,
+        receipt_path: &Path,
+        rows: usize,
+        cols: usize,
+    ) -> Result<PackedQ4, Box<dyn Error>> {
+        let body = fs::read(body_path.canonicalize()?)?;
+        let (receipt, _receipt_bytes) = read_json(&receipt_path.canonicalize()?)?;
+        if receipt.get("schema").and_then(Value::as_str)
+            != Some("hcli.agentos.flash_noetic_component_body.v1")
+            || receipt.get("status").and_then(Value::as_str) != Some("PASSED")
+        {
+            return Err("candidate body receipt is not a PASSED Noetic component body".into());
+        }
+        if receipt.get("candidate_id").and_then(Value::as_str) != Some("independent_q4_g64")
+            || receipt.get("source_independent").and_then(Value::as_bool) != Some(true)
+            || receipt
+                .get("candidate_body_persisted")
+                .and_then(Value::as_bool)
+                != Some(true)
+        {
+            return Err(
+                "candidate body receipt does not declare a source-independent Q4 body".into(),
+            );
+        }
+        let receipt_body = receipt
+            .get("body")
+            .ok_or("candidate body receipt has no body record")?;
+        let recorded_path = receipt_body
+            .get("path")
+            .and_then(Value::as_str)
+            .ok_or("candidate body receipt has no body path")?;
+        if Path::new(recorded_path).canonicalize()? != body_path.canonicalize()? {
+            return Err("candidate body path does not match its receipt".into());
+        }
+        let recorded_sha = receipt_body
+            .get("sha256")
+            .and_then(Value::as_str)
+            .ok_or("candidate body receipt has no body sha256")?;
+        if recorded_sha != sha256_hex(&body) {
+            return Err("candidate body sha256 does not match its receipt".into());
+        }
+        let code_bytes = rows * (cols / 2);
+        let scale_count = rows * (cols / GROUP_SIZE);
+        let scale_bytes = scale_count * 2;
+        if body.len() != code_bytes + scale_bytes {
+            return Err(format!(
+                "candidate body size {} does not match rows={} cols={} expected={}",
+                body.len(),
+                rows,
+                cols,
+                code_bytes + scale_bytes
+            )
+            .into());
+        }
+        let codes = body[..code_bytes].to_vec();
+        let scales_bits = body[code_bytes..]
+            .chunks_exact(2)
+            .map(|chunk| u16::from_le_bytes([chunk[0], chunk[1]]))
+            .collect::<Vec<_>>();
+        if scales_bits.len() != scale_count {
+            return Err("candidate body scale count is invalid".into());
+        }
+        Ok(PackedQ4 {
+            codes,
+            scales_bits,
+            candidate_bytes: body,
+            source_rmse: 0.0,
+            source_max_abs_error: 0.0,
+        })
+    }
+
+    fn source_error(packed: &PackedQ4, raw: &[u8], rows: usize, cols: usize) -> (f64, f32) {
+        let mut squared_error = 0.0f64;
+        let mut max_abs_error = 0.0f32;
+        let groups_per_row = cols / GROUP_SIZE;
+        for row in 0..rows {
+            for group in 0..groups_per_row {
+                let group_base = row * groups_per_row + group;
+                let scale = f16::from_bits(packed.scales_bits[group_base]).to_f32();
+                let code_base = group_base * CODE_BYTES_PER_GROUP;
+                for local in 0..GROUP_SIZE {
+                    let byte = packed.codes[code_base + local / 2];
+                    let nibble = if local % 2 == 0 {
+                        byte & 0x0f
+                    } else {
+                        byte >> 4
+                    };
+                    let observed = (nibble as i32 - 8) as f32 * scale;
+                    let error = bf16_at(raw, row * cols + group * GROUP_SIZE + local) - observed;
+                    squared_error += f64::from(error) * f64::from(error);
+                    max_abs_error = max_abs_error.max(error.abs());
+                }
+            }
+        }
+        ((squared_error / (rows * cols) as f64).sqrt(), max_abs_error)
+    }
+
     fn deterministic_input(cols: usize) -> Vec<f32> {
         (0..cols)
             .map(|index| ((index * 71 % 509) as f32 - 254.0) / 509.0)
@@ -608,7 +720,19 @@ mod macos {
         let before = fs::metadata(&location.shard)?;
         let raw = read_source_block(&location, args.expert_index, args.row_start, args.row_count)?;
         let source_hash = sha256_hex(&raw);
-        let packed = pack_q4(&raw, args.row_count, location.shape[2])?;
+        let mut packed = if let Some(body_path) = &args.candidate_body {
+            let receipt_path = args
+                .body_receipt
+                .as_ref()
+                .ok_or("--body-receipt is required with --candidate-body")?;
+            load_candidate_body(body_path, receipt_path, args.row_count, location.shape[2])?
+        } else {
+            pack_q4(&raw, args.row_count, location.shape[2])?
+        };
+        let (source_rmse, source_max_abs_error) =
+            source_error(&packed, &raw, args.row_count, location.shape[2]);
+        packed.source_rmse = source_rmse;
+        packed.source_max_abs_error = source_max_abs_error;
         let input = deterministic_input(location.shape[2]);
         let input_hash = sha256_hex(bytemuck::cast_slice(&input));
         let expected = cpu_matvec(&packed, args.row_count, location.shape[2], &input);
@@ -667,6 +791,26 @@ mod macos {
         let candidate_sha256 = sha256_hex(&packed.candidate_bytes);
         let values = args.row_count * location.shape[2];
         let elapsed_s = started.elapsed().as_secs_f64();
+        let body_info = if let Some(body_path) = &args.candidate_body {
+            let receipt_path = args.body_receipt.as_ref().unwrap();
+            let receipt_bytes = fs::read(receipt_path.canonicalize()?)?;
+            Some(json!({
+                "path": body_path.canonicalize()?.display().to_string(),
+                "sha256": candidate_sha256,
+                "bytes": packed.candidate_bytes.len(),
+                "receipt_path": receipt_path.canonicalize()?.display().to_string(),
+                "receipt_sha256": sha256_hex(&receipt_bytes),
+                "source_independent": true,
+            }))
+        } else {
+            None
+        };
+        let has_body = body_info.is_some();
+        let native_loader_status = if has_body {
+            "BOUNDED_NOETIC_DESCRIPTOR_AND_BODY_LOAD"
+        } else {
+            "BOUNDED_NOETIC_DESCRIPTOR_LOAD"
+        };
         Ok(json!({
             "schema": SCHEMA,
             "nomenclature_version": NOMENCLATURE_VERSION,
@@ -720,6 +864,7 @@ mod macos {
                 "source_to_candidate_max_abs_error": packed.source_max_abs_error,
                 "label": "[D]",
             },
+            "candidate_body": body_info,
             "native_kernel": {
                 "kernel": KERNEL_NAME,
                 "shader_family": "qwen_uniform_q4.metal",
@@ -733,12 +878,13 @@ mod macos {
                 "label": "[V]/[D]",
             },
             "native_loader": {
-                "status": "BOUNDED_NOETIC_DESCRIPTOR_LOAD",
+                "status": native_loader_status,
                 "descriptor_path": descriptor_path,
                 "descriptor_sha256": descriptor_sha256,
                 "candidate_id": descriptor_candidate_id,
-                "source_block_streamed": true,
-                "candidate_body_persisted": false,
+                "source_block_streamed_for_reference": true,
+                "candidate_body_persisted": has_body,
+                "source_independent_execution": has_body,
                 "dense_rematerialization": "forbidden",
                 "whole_model_capability": "NOT_TESTED",
                 "whole_model_runtime": "NOT_TESTED",
@@ -774,8 +920,8 @@ mod macos {
             "complete_system_ebpw": null,
             "flash_tps": null,
             "promotion_allowed": false,
-            "claim_boundary": "PASSED bounded serialized Noetic descriptor load, source-tensor Q4 Metal kernel parity, and GPU timing only; no whole-model loader, capability, complete-token runtime, EBPW, or Flash TPS claim",
-            "next_action": "compose the validated descriptor and kernel into a native routed-expert graph component while keeping protected complete-token timing gated",
+            "claim_boundary": if has_body { "PASSED bounded source-independent Noetic component-body load, source-reference Q4 Metal kernel parity, and GPU timing only; no whole-model loader, capability, complete-token runtime, EBPW, or Flash TPS claim" } else { "PASSED bounded serialized Noetic descriptor load, source-tensor Q4 Metal kernel parity, and GPU timing only; no whole-model loader, capability, complete-token runtime, EBPW, or Flash TPS claim" },
+            "next_action": if has_body { "compose the source-independent component body into the routed-expert graph while keeping protected complete-token timing gated" } else { "persist a source-independent component body, then compose it into the routed-expert graph while keeping protected complete-token timing gated" },
             "elapsed_s": elapsed_s,
         }))
     }

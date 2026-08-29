@@ -3,14 +3,14 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-29T23:31:31Z",
+  "recorded_at": "2026-08-29T23:39:21Z",
   "recorded_by": "tools/future/candidate_planner.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
  },
  "claim_boundary": "Static sidecar artifact. No hardware measurement.",
  "dependency_graph": {
-  "conflict_edge_count": 326,
+  "conflict_edge_count": 342,
   "conflict_edges": [
    {
     "a": "flash-attention-gate-fusion",
@@ -2125,6 +2125,182 @@
     ]
    },
    {
+    "a": "flash-p6-shared-fp8-simdgroup",
+    "b": "qwen27-affine2-splitk4",
+    "kind": "inferred_conflict",
+    "reasons": [
+     {
+      "kind": "distinct_model_executables",
+      "mechanism": "different model identities cannot share one physical run; each executable is its own protected window"
+     }
+    ]
+   },
+   {
+    "a": "flash-p6-shared-fp8-simdgroup",
+    "b": "qwen27-affine2-splitk4-vec",
+    "kind": "inferred_conflict",
+    "reasons": [
+     {
+      "kind": "distinct_model_executables",
+      "mechanism": "different model identities cannot share one physical run; each executable is its own protected window"
+     }
+    ]
+   },
+   {
+    "a": "flash-p6-shared-fp8-simdgroup",
+    "b": "qwen27-attention-gate-fusion",
+    "kind": "inferred_conflict",
+    "reasons": [
+     {
+      "kind": "distinct_model_executables",
+      "mechanism": "different model identities cannot share one physical run; each executable is its own protected window"
+     }
+    ]
+   },
+   {
+    "a": "flash-p6-shared-fp8-simdgroup",
+    "b": "qwen27-ba-delta-fusion",
+    "kind": "inferred_conflict",
+    "reasons": [
+     {
+      "kind": "distinct_model_executables",
+      "mechanism": "different model identities cannot share one physical run; each executable is its own protected window"
+     }
+    ]
+   },
+   {
+    "a": "flash-p6-shared-fp8-simdgroup",
+    "b": "qwen27-commit-timing-elision",
+    "kind": "inferred_conflict",
+    "reasons": [
+     {
+      "kind": "distinct_model_executables",
+      "mechanism": "different model identities cannot share one physical run; each executable is its own protected window"
+     }
+    ]
+   },
+   {
+    "a": "flash-p6-shared-fp8-simdgroup",
+    "b": "qwen27-deltanet-inproj-fusion",
+    "kind": "inferred_conflict",
+    "reasons": [
+     {
+      "kind": "distinct_model_executables",
+      "mechanism": "different model identities cannot share one physical run; each executable is its own protected window"
+     }
+    ]
+   },
+   {
+    "a": "flash-p6-shared-fp8-simdgroup",
+    "b": "qwen27-encoder-label-elision",
+    "kind": "inferred_conflict",
+    "reasons": [
+     {
+      "kind": "distinct_model_executables",
+      "mechanism": "different model identities cannot share one physical run; each executable is its own protected window"
+     }
+    ]
+   },
+   {
+    "a": "flash-p6-shared-fp8-simdgroup",
+    "b": "qwen27-fast-profile",
+    "kind": "inferred_conflict",
+    "reasons": [
+     {
+      "kind": "distinct_model_executables",
+      "mechanism": "different model identities cannot share one physical run; each executable is its own protected window"
+     }
+    ]
+   },
+   {
+    "a": "flash-p6-shared-fp8-simdgroup",
+    "b": "qwen27-gqa-qkv-fusion",
+    "kind": "inferred_conflict",
+    "reasons": [
+     {
+      "kind": "distinct_model_executables",
+      "mechanism": "different model identities cannot share one physical run; each executable is its own protected window"
+     }
+    ]
+   },
+   {
+    "a": "flash-p6-shared-fp8-simdgroup",
+    "b": "qwen27-pipeline-cache-reuse",
+    "kind": "inferred_conflict",
+    "reasons": [
+     {
+      "kind": "distinct_model_executables",
+      "mechanism": "different model identities cannot share one physical run; each executable is its own protected window"
+     }
+    ]
+   },
+   {
+    "a": "flash-p6-shared-fp8-simdgroup",
+    "b": "qwen27-pipeline-id-resolution",
+    "kind": "inferred_conflict",
+    "reasons": [
+     {
+      "kind": "distinct_model_executables",
+      "mechanism": "different model identities cannot share one physical run; each executable is its own protected window"
+     }
+    ]
+   },
+   {
+    "a": "flash-p6-shared-fp8-simdgroup",
+    "b": "qwen27-pipeline-state-elision",
+    "kind": "inferred_conflict",
+    "reasons": [
+     {
+      "kind": "distinct_model_executables",
+      "mechanism": "different model identities cannot share one physical run; each executable is its own protected window"
+     }
+    ]
+   },
+   {
+    "a": "flash-p6-shared-fp8-simdgroup",
+    "b": "qwen27-q2f-splitk4",
+    "kind": "inferred_conflict",
+    "reasons": [
+     {
+      "kind": "distinct_model_executables",
+      "mechanism": "different model identities cannot share one physical run; each executable is its own protected window"
+     }
+    ]
+   },
+   {
+    "a": "flash-p6-shared-fp8-simdgroup",
+    "b": "qwen27-q2f-splitk4-vec",
+    "kind": "inferred_conflict",
+    "reasons": [
+     {
+      "kind": "distinct_model_executables",
+      "mechanism": "different model identities cannot share one physical run; each executable is its own protected window"
+     }
+    ]
+   },
+   {
+    "a": "flash-p6-shared-fp8-simdgroup",
+    "b": "qwen27-q4-vecgroup-x64",
+    "kind": "inferred_conflict",
+    "reasons": [
+     {
+      "kind": "distinct_model_executables",
+      "mechanism": "different model identities cannot share one physical run; each executable is its own protected window"
+     }
+    ]
+   },
+   {
+    "a": "flash-p6-shared-fp8-simdgroup",
+    "b": "qwen27-resident-untimed-decode",
+    "kind": "inferred_conflict",
+    "reasons": [
+     {
+      "kind": "distinct_model_executables",
+      "mechanism": "different model identities cannot share one physical run; each executable is its own protected window"
+     }
+    ]
+   },
+   {
     "a": "flash-p7-mhc-pre-simdgroup",
     "b": "qwen27-affine2-splitk4",
     "kind": "inferred_conflict",
@@ -3734,7 +3910,7 @@
     "to": "qwen27-q2f-splitk4-vec"
    }
   ],
-  "node_count": 36,
+  "node_count": 37,
   "nodes": [
    {
     "affected_physical_region": "Flash attention output sigmoid gate",
@@ -3895,6 +4071,19 @@
     "model": "Flash",
     "mutation_env": {
      "HAWKING_DSV4F_P6_FP4_SIMD": "1"
+    },
+    "resource_tags": [
+     "moe_organ"
+    ],
+    "status": "BLOCKED"
+   },
+   {
+    "affected_physical_region": "Flash P6 shared-expert FP8 matvec",
+    "candidate_id": "flash-p6-shared-fp8-simdgroup",
+    "dependencies": [],
+    "model": "Flash",
+    "mutation_env": {
+     "HAWKING_DSV4F_P6_FP8_SIMD": "1"
     },
     "resource_tags": [
      "moe_organ"
@@ -4422,7 +4611,7 @@
    "class_id": "E013",
    "evidence": [],
    "members": [
-    "flash-p7-mhc-pre-simdgroup"
+    "flash-p6-shared-fp8-simdgroup"
    ],
    "merge_rule": "union only on geometry_refinement (same region + declared parent + geo value refined by _vec) or on shared distinctive env stems / cross-model mechanism jaccard. candidate_id spelling is never a reason to merge.",
    "singleton": true,
@@ -4430,6 +4619,16 @@
   },
   {
    "class_id": "E014",
+   "evidence": [],
+   "members": [
+    "flash-p7-mhc-pre-simdgroup"
+   ],
+   "merge_rule": "union only on geometry_refinement (same region + declared parent + geo value refined by _vec) or on shared distinctive env stems / cross-model mechanism jaccard. candidate_id spelling is never a reason to merge.",
+   "singleton": true,
+   "size": 1
+  },
+  {
+   "class_id": "E015",
    "evidence": [
     {
      "kind": "shared_distinctive_stem",
@@ -4451,7 +4650,7 @@
    "size": 4
   },
   {
-   "class_id": "E015",
+   "class_id": "E016",
    "evidence": [
     {
      "kind": "shared_distinctive_stem",
@@ -4467,7 +4666,7 @@
    "size": 2
   },
   {
-   "class_id": "E016",
+   "class_id": "E017",
    "evidence": [],
    "members": [
     "flash-routed-fp4-gate-up-swiglu-fused"
@@ -4477,7 +4676,7 @@
    "size": 1
   },
   {
-   "class_id": "E017",
+   "class_id": "E018",
    "evidence": [],
    "members": [
     "flash-router-topk-fusion"
@@ -4487,7 +4686,7 @@
    "size": 1
   },
   {
-   "class_id": "E018",
+   "class_id": "E019",
    "evidence": [],
    "members": [
     "flash-shared-fp8-gate-up-swiglu-fused"
@@ -4497,7 +4696,7 @@
    "size": 1
   },
   {
-   "class_id": "E019",
+   "class_id": "E020",
    "evidence": [],
    "members": [
     "flash-source-bf16-simd"
@@ -4507,7 +4706,7 @@
    "size": 1
   },
   {
-   "class_id": "E020",
+   "class_id": "E021",
    "evidence": [
     {
      "kind": "geometry_refinement",
@@ -4523,7 +4722,7 @@
    "size": 2
   },
   {
-   "class_id": "E021",
+   "class_id": "E022",
    "evidence": [],
    "members": [
     "qwen27-ba-delta-fusion"
@@ -4533,7 +4732,7 @@
    "size": 1
   },
   {
-   "class_id": "E022",
+   "class_id": "E023",
    "evidence": [],
    "members": [
     "qwen27-commit-timing-elision"
@@ -4543,7 +4742,7 @@
    "size": 1
   },
   {
-   "class_id": "E023",
+   "class_id": "E024",
    "evidence": [],
    "members": [
     "qwen27-deltanet-inproj-fusion"
@@ -4553,7 +4752,7 @@
    "size": 1
   },
   {
-   "class_id": "E024",
+   "class_id": "E025",
    "evidence": [],
    "members": [
     "qwen27-fast-profile"
@@ -4563,7 +4762,7 @@
    "size": 1
   },
   {
-   "class_id": "E025",
+   "class_id": "E026",
    "evidence": [],
    "members": [
     "qwen27-pipeline-state-elision"
@@ -4573,7 +4772,7 @@
    "size": 1
   },
   {
-   "class_id": "E026",
+   "class_id": "E027",
    "evidence": [
     {
      "kind": "geometry_refinement",
@@ -4589,7 +4788,7 @@
    "size": 2
   },
   {
-   "class_id": "E027",
+   "class_id": "E028",
    "evidence": [],
    "members": [
     "qwen27-q4-vecgroup-x64"
@@ -4599,7 +4798,7 @@
    "size": 1
   },
   {
-   "class_id": "E028",
+   "class_id": "E029",
    "evidence": [],
    "members": [
     "qwen27-resident-untimed-decode"
@@ -4620,20 +4819,20 @@
  ],
  "input": {
   "by_model": {
-   "Flash": 20,
+   "Flash": 21,
    "Qwen27": 16
   },
   "by_status": {
-   "BLOCKED": 19,
+   "BLOCKED": 20,
    "READY_PROTECTED": 13,
    "STATIC_ONLY": 4
   },
-  "candidate_count": 36,
+  "candidate_count": 37,
   "funnel_promotion_rule": "only a protected complete-token receipt with capability and zero-fallback gates may promote",
   "loaded_from": "/Users/scammermike/Downloads/hawking/receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
-  "queue_fingerprint": "a012692c7ed168b2138bd1bfdb11daebca5526d737e32cd857a24539d6969c6e",
+  "queue_fingerprint": "6c1c726f5827bd2cfcccb923072dad498d2fd9ae29dd7eafcbea4588f7249282",
   "queue_schema": "hawking.accelerator.physical_qualification_queue.v1",
-  "queue_sha256": "fa2cf9406a79489efa0cb30570967395e5e7347f56412600a32c15bef23d5b23",
+  "queue_sha256": "fa3b0586bd682320611283a53cb36edf2012f7c00214bbcd31b34de574f4c9d8",
   "queue_version": 1
  },
  "lineage_scars": {
@@ -4721,6 +4920,13 @@
    "same_region_peers_remain_measurable": []
   },
   "flash-p6-routed-fp4-simdgroup": {
+   "declared_siblings": [],
+   "equivalence_siblings_questioned": [],
+   "hard_invalidates_descendants": [],
+   "mechanism": "a rejection hard-invalidates declared descendants. equivalence siblings are questioned (especially cross-model: Odyssey II transfer is not automatic). same-region peers that are not descendants remain measurable because they are a different exact_mutation.",
+   "same_region_peers_remain_measurable": []
+  },
+  "flash-p6-shared-fp8-simdgroup": {
    "declared_siblings": [],
    "equivalence_siblings_questioned": [],
    "hard_invalidates_descendants": [],
@@ -5295,6 +5501,22 @@
    "status": "BLOCKED"
   },
   {
+   "affected_physical_region": "Flash P6 shared-expert FP8 matvec",
+   "blocked_reason": "Flash complete source-independent NX is not qualified and the P6 FP8 candidate has no NumericParity/coherence and protected-latency receipt",
+   "candidate_id": "flash-p6-shared-fp8-simdgroup",
+   "dependencies": [],
+   "expected_active_byte_change": "unchanged source FP8 bytes; NX active bytes unqualified",
+   "expected_dispatch_reduction": "0; the shared W1/W3/W2 matvec dispatches remain unchanged",
+   "expected_eliminated_work": "one serial thread per shared-expert output row across the three W1/W3/W2 FP8 projections per full MoE layer",
+   "expected_gpu_ns_mechanism": "one 256-threadgroup assigns eight SIMDgroups to the source 128-wide blocks and combines block partials in source block order",
+   "expected_intermediate_byte_reduction": "0; FP8 weights, E8M0 scales, activation bytes, and output buffers retain their existing ABI",
+   "model": "Flash",
+   "mutation_env": {
+    "HAWKING_DSV4F_P6_FP8_SIMD": "1"
+   },
+   "status": "BLOCKED"
+  },
+  {
    "affected_physical_region": "Flash P4B/P7 mHC-pre wide reduction",
    "blocked_reason": "Flash complete source-independent NX is not qualified and the SIMD mHC reduction has no bounded parity/coherence receipt",
    "candidate_id": "flash-p7-mhc-pre-simdgroup",
@@ -5803,6 +6025,19 @@
   },
   {
    "a": "flash-compact-moe-bf16-vec4",
+   "b": "flash-p6-shared-fp8-simdgroup",
+   "kind": "shared_resource",
+   "mechanism": "shared resource tags ['moe_organ']; overlapping host ceremony, organ path, or GEMV occupancy is predicted to make the joint effect non-additive",
+   "models": [
+    "Flash",
+    "Flash"
+   ],
+   "shared_resource_tags": [
+    "moe_organ"
+   ]
+  },
+  {
+   "a": "flash-compact-moe-bf16-vec4",
    "b": "flash-routed-fp4-gate-up-swiglu-fused",
    "kind": "shared_resource",
    "mechanism": "shared resource tags ['moe_organ']; overlapping host ceremony, organ path, or GEMV occupancy is predicted to make the joint effect non-additive",
@@ -5843,6 +6078,19 @@
   {
    "a": "flash-compact-moe-epilogue",
    "b": "flash-p6-routed-fp4-simdgroup",
+   "kind": "shared_resource",
+   "mechanism": "shared resource tags ['moe_organ']; overlapping host ceremony, organ path, or GEMV occupancy is predicted to make the joint effect non-additive",
+   "models": [
+    "Flash",
+    "Flash"
+   ],
+   "shared_resource_tags": [
+    "moe_organ"
+   ]
+  },
+  {
+   "a": "flash-compact-moe-epilogue",
+   "b": "flash-p6-shared-fp8-simdgroup",
    "kind": "shared_resource",
    "mechanism": "shared resource tags ['moe_organ']; overlapping host ceremony, organ path, or GEMV occupancy is predicted to make the joint effect non-additive",
    "models": [
@@ -6043,6 +6291,19 @@
   },
   {
    "a": "flash-meta-sub1-coherent",
+   "b": "flash-p6-shared-fp8-simdgroup",
+   "kind": "shared_resource",
+   "mechanism": "shared resource tags ['moe_organ']; overlapping host ceremony, organ path, or GEMV occupancy is predicted to make the joint effect non-additive",
+   "models": [
+    "Flash",
+    "Flash"
+   ],
+   "shared_resource_tags": [
+    "moe_organ"
+   ]
+  },
+  {
+   "a": "flash-meta-sub1-coherent",
    "b": "flash-routed-fp4-gate-up-swiglu-fused",
    "kind": "shared_resource",
    "mechanism": "shared resource tags ['moe_organ']; overlapping host ceremony, organ path, or GEMV occupancy is predicted to make the joint effect non-additive",
@@ -6082,6 +6343,19 @@
   },
   {
    "a": "flash-p6-routed-fp4-simdgroup",
+   "b": "flash-p6-shared-fp8-simdgroup",
+   "kind": "shared_resource",
+   "mechanism": "shared resource tags ['moe_organ']; overlapping host ceremony, organ path, or GEMV occupancy is predicted to make the joint effect non-additive",
+   "models": [
+    "Flash",
+    "Flash"
+   ],
+   "shared_resource_tags": [
+    "moe_organ"
+   ]
+  },
+  {
+   "a": "flash-p6-routed-fp4-simdgroup",
    "b": "flash-routed-fp4-gate-up-swiglu-fused",
    "kind": "shared_resource",
    "mechanism": "shared resource tags ['moe_organ']; overlapping host ceremony, organ path, or GEMV occupancy is predicted to make the joint effect non-additive",
@@ -6095,6 +6369,32 @@
   },
   {
    "a": "flash-p6-routed-fp4-simdgroup",
+   "b": "flash-shared-fp8-gate-up-swiglu-fused",
+   "kind": "shared_resource",
+   "mechanism": "shared resource tags ['moe_organ']; overlapping host ceremony, organ path, or GEMV occupancy is predicted to make the joint effect non-additive",
+   "models": [
+    "Flash",
+    "Flash"
+   ],
+   "shared_resource_tags": [
+    "moe_organ"
+   ]
+  },
+  {
+   "a": "flash-p6-shared-fp8-simdgroup",
+   "b": "flash-routed-fp4-gate-up-swiglu-fused",
+   "kind": "shared_resource",
+   "mechanism": "shared resource tags ['moe_organ']; overlapping host ceremony, organ path, or GEMV occupancy is predicted to make the joint effect non-additive",
+   "models": [
+    "Flash",
+    "Flash"
+   ],
+   "shared_resource_tags": [
+    "moe_organ"
+   ]
+  },
+  {
+   "a": "flash-p6-shared-fp8-simdgroup",
    "b": "flash-shared-fp8-gate-up-swiglu-fused",
    "kind": "shared_resource",
    "mechanism": "shared resource tags ['moe_organ']; overlapping host ceremony, organ path, or GEMV occupancy is predicted to make the joint effect non-additive",
@@ -6674,6 +6974,31 @@
     "parity_contract: source organ/reference parity is required; no whole-model Flash parity or NX claim is implied",
     "capability_contract: blocked until a complete source-independent NX executable and independent capability path exist",
     "blocked_reason: Flash complete source-independent NX is not qualified and the P6 FP4 candidate has no NumericParity/coherence and protected-latency receipt"
+   ],
+   "source": "status_transitions, funnel, queue_policy, measurement_contract, parity_contract, capability_contract, blocked_reason \u2014 all copied from the queue document. this sidecar invents no new status.",
+   "status": "BLOCKED"
+  },
+  {
+   "can_enter_promotion_list": false,
+   "can_enter_protected_pass": false,
+   "candidate_id": "flash-p6-shared-fp8-simdgroup",
+   "currently_in_funnel_promotion": false,
+   "funnel_lanes": [],
+   "legal_next_statuses": [
+    "STATIC_ONLY"
+   ],
+   "promotion_prerequisites": [
+    "funnel.promotion_rule: only a protected complete-token receipt with capability and zero-fallback gates may promote",
+    "queue_policy.protected_start_requires_existing_hcli_lease",
+    "queue_policy.protected_start_requires_machine_quiescence",
+    "queue_policy.diagnostic_results_do_not_promote (DIAGNOSTIC_RELATIVE never promotes)",
+    "measurement_contract.protected_pass_requires_all_fields",
+    "measurement_contract.null_policy: missing physical metrics remain null until a native protected complete-token receipt records them"
+   ],
+   "rejection_reasons_from_queue": [
+    "parity_contract: source organ/reference parity is required; no whole-model Flash parity or NX claim is implied",
+    "capability_contract: blocked until a complete source-independent NX executable and independent capability path exist",
+    "blocked_reason: Flash complete source-independent NX is not qualified and the P6 FP8 candidate has no NumericParity/coherence and protected-latency receipt"
    ],
    "source": "status_transitions, funnel, queue_policy, measurement_contract, parity_contract, capability_contract, blocked_reason \u2014 all copied from the queue document. this sidecar invents no new status.",
    "status": "BLOCKED"
@@ -7353,7 +7678,7 @@
   {
    "counts": {
     "by_status": {
-     "BLOCKED": 19,
+     "BLOCKED": 20,
      "DIAGNOSTIC_PASS": 0,
      "DIAGNOSTIC_REJECT": 0,
      "INTEGRATED": 0,
@@ -7363,11 +7688,11 @@
      "READY_PROTECTED": 13,
      "STATIC_ONLY": 4
     },
-    "candidates": 36,
+    "candidates": 37,
     "ready": 13,
     "work_units": 13
    },
-   "fingerprint": "a012692c7ed168b2138bd1bfdb11daebca5526d737e32cd857a24539d6969c6e",
+   "fingerprint": "6c1c726f5827bd2cfcccb923072dad498d2fd9ae29dd7eafcbea4588f7249282",
    "loaded_from": "/Users/scammermike/Downloads/hawking/receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
    "path": "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
    "role": "live physical qualification queue (disk authority)",
@@ -7489,6 +7814,13 @@
    "mechanism": null,
    "redundant": false,
    "region": "Flash P6 routed-expert FP4 matvec"
+  },
+  {
+   "candidate_id": "flash-p6-shared-fp8-simdgroup",
+   "dominated_by": [],
+   "mechanism": null,
+   "redundant": false,
+   "region": "Flash P6 shared-expert FP8 matvec"
   },
   {
    "candidate_id": "flash-p7-mhc-pre-simdgroup",
@@ -7660,7 +7992,7 @@
   }
  ],
  "schema": "hawking.future.candidate_planner.v1",
- "seal_sha256": "8cdc4a053e2f8e367ac9174480c54740057373bbf603537b305de0b0d24bd2a4",
+ "seal_sha256": "00271d8d722af4f57f2f37f78054bc217de06372ca410c21cc1f2f59d754d020",
  "staged_factorial_plan": {
   "blocked_unscheduled": [
    {
@@ -7736,6 +8068,13 @@
    {
     "blocked_reason": "Flash complete source-independent NX is not qualified and the P6 FP4 candidate has no NumericParity/coherence and protected-latency receipt",
     "candidate_id": "flash-p6-routed-fp4-simdgroup",
+    "reason_unscheduled": "status is BLOCKED; the sidecar will not invent a GPU cell for a candidate the queue itself refuses to run. legal next status is STATIC_ONLY after the blocked_reason clears.",
+    "scheduled": false,
+    "status": "BLOCKED"
+   },
+   {
+    "blocked_reason": "Flash complete source-independent NX is not qualified and the P6 FP8 candidate has no NumericParity/coherence and protected-latency receipt",
+    "candidate_id": "flash-p6-shared-fp8-simdgroup",
     "reason_unscheduled": "status is BLOCKED; the sidecar will not invent a GPU cell for a candidate the queue itself refuses to run. legal next status is STATIC_ONLY after the blocked_reason clears.",
     "scheduled": false,
     "status": "BLOCKED"
@@ -8509,6 +8848,7 @@
     "flash-p6-act-quant-simdgroup",
     "flash-p6-hash-single-command-buffer",
     "flash-p6-routed-fp4-simdgroup",
+    "flash-p6-shared-fp8-simdgroup",
     "flash-p7-mhc-pre-simdgroup",
     "flash-pipeline-cache-reuse",
     "flash-pipeline-id-resolution",
@@ -8545,9 +8885,9 @@
   },
   "naive_power_set": {
    "formula": "2^N including the all-off control; this sidecar does not emit that set",
-   "n_all": 36,
+   "n_all": 37,
    "n_ready_protected_measurable": 13,
-   "size_all": 68719476736,
+   "size_all": 137438953472,
    "size_ready_protected": 8192
   },
   "staged": {
@@ -8555,7 +8895,7 @@
    "contingent_cells": 8,
    "dramatically_smaller": true,
    "pair_cells": 13,
-   "reduction_vs_all": 68719476702,
+   "reduction_vs_all": 137438953438,
    "reduction_vs_ready": 8158,
    "scheduled_cells": 26,
    "single_cells": 13,

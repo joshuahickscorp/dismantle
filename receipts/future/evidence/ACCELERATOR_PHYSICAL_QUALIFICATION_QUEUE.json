@@ -2392,6 +2392,88 @@
       "status": "BLOCKED"
     },
     {
+      "affected_physical_region": "Flash P6 shared-expert FP8 matvec",
+      "baseline_path": "receipts/headless/FLASH_NEXT_NOETIC_EXECUTABLE.json",
+      "blocked_reason": "Flash complete source-independent NX is not qualified and the P6 FP8 candidate has no NumericParity/coherence and protected-latency receipt",
+      "candidate_id": "flash-p6-shared-fp8-simdgroup",
+      "capability_contract": "blocked until a complete source-independent NX executable and independent capability path exist",
+      "control_configuration": {
+        "mode": "source_oracle_or_scaffold",
+        "source_oracle_controls": {
+          "HAWKING_DSV4F_P6_FP8_SIMD": "0"
+        }
+      },
+      "dependencies": [],
+      "diagnostic_command": [
+        "python3",
+        "-m",
+        "hcli",
+        "agentos",
+        "flash-executable",
+        "--repo-root",
+        ".",
+        "--emit",
+        "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/flash-p6-shared-fp8-simdgroup-plan.json"
+      ],
+      "evidence": [],
+      "exact_mutation": {
+        "source_oracle_controls": {
+          "HAWKING_DSV4F_P6_FP8_SIMD": "1"
+        }
+      },
+      "expected_active_byte_change": "unchanged source FP8 bytes; NX active bytes unqualified",
+      "expected_dispatch_reduction": "0; the shared W1/W3/W2 matvec dispatches remain unchanged",
+      "expected_eliminated_work": "one serial thread per shared-expert output row across the three W1/W3/W2 FP8 projections per full MoE layer",
+      "expected_gpu_ns_mechanism": "one 256-threadgroup assigns eight SIMDgroups to the source 128-wide blocks and combines block partials in source block order",
+      "expected_intermediate_byte_reduction": "0; FP8 weights, E8M0 scales, activation bytes, and output buffers retain their existing ABI",
+      "measurements": {
+        "absence_reasons": {
+          "accepted_tps": "awaiting native protected complete-token receipt",
+          "active_representation_bytes_per_token": "awaiting native protected complete-token receipt",
+          "actual_read_bytes_per_token": "awaiting native protected complete-token receipt",
+          "complete_wall_ns_per_accepted_token": "awaiting native protected complete-token receipt",
+          "dispatches_per_token": "awaiting native protected complete-token receipt",
+          "fallback_count": "awaiting native protected complete-token receipt",
+          "gpu_ns_per_token": "awaiting native protected complete-token receipt",
+          "resident_bytes": "awaiting native protected complete-token receipt",
+          "sync_ns_per_token": "awaiting native protected complete-token receipt",
+          "total_nx_bytes": "awaiting native protected complete-token receipt",
+          "transient_bytes_per_token": "awaiting native protected complete-token receipt"
+        },
+        "accepted_tps": null,
+        "active_representation_bytes_per_token": null,
+        "actual_read_bytes_per_token": null,
+        "complete_wall_ns_per_accepted_token": null,
+        "dispatches_per_token": null,
+        "fallback_count": null,
+        "gpu_ns_per_token": null,
+        "resident_bytes": null,
+        "status": "NOT_MEASURED",
+        "sync_ns_per_token": null,
+        "total_nx_bytes": null,
+        "transient_bytes_per_token": null
+      },
+      "model": "Flash",
+      "parity_contract": "source organ/reference parity is required; no whole-model Flash parity or NX claim is implied",
+      "protected_command": [
+        "python3",
+        "-m",
+        "hcli",
+        "agentos",
+        "flash-executable",
+        "--repo-root",
+        ".",
+        "--emit",
+        "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/flash-p6-shared-fp8-simdgroup-plan.json"
+      ],
+      "source_evidence": [
+        "crates/hawking-core/shaders/matmul.metal",
+        "crates/hawking-core/src/gravity_deepseek_v4_p6_device.rs",
+        "workspace/docs/plans/KERNEL_BROKERS_TUNING_PLAN.md"
+      ],
+      "status": "BLOCKED"
+    },
+    {
       "affected_physical_region": "Flash P4B/P7 mHC-pre wide reduction",
       "baseline_path": "receipts/headless/FLASH_NEXT_NOETIC_EXECUTABLE.json",
       "blocked_reason": "Flash complete source-independent NX is not qualified and the SIMD mHC reduction has no bounded parity/coherence receipt",
@@ -3382,7 +3464,7 @@
   "claim_boundary": "This is a physical qualification frontier and HCLI WorkUnit proposal. It contains hypotheses and commands, not timing, placement, energy, TPS, capability, or promotion claims.",
   "counts": {
     "by_status": {
-      "BLOCKED": 19,
+      "BLOCKED": 20,
       "DIAGNOSTIC_PASS": 0,
       "DIAGNOSTIC_REJECT": 0,
       "INTEGRATED": 0,
@@ -3392,11 +3474,11 @@
       "READY_PROTECTED": 13,
       "STATIC_ONLY": 4
     },
-    "candidates": 36,
+    "candidates": 37,
     "ready": 13,
     "work_units": 13
   },
-  "fingerprint": "a012692c7ed168b2138bd1bfdb11daebca5526d737e32cd857a24539d6969c6e",
+  "fingerprint": "6c1c726f5827bd2cfcccb923072dad498d2fd9ae29dd7eafcbea4588f7249282",
   "funnel": {
     "diagnostic_relative_ab": [],
     "native_parity": [],

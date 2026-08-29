@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-29T23:33:37Z",
+  "recorded_at": "2026-08-29T23:41:27Z",
   "recorded_by": "tools/future/global_frontier.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -435,7 +435,7 @@
  ],
  "resolved_meaning": "A MISSING claim whose probe now finds ONLY sidecar files: this campaign closed the gap. The entry is retired, not refuted.",
  "schema": "hawking.future.claude_global_frontier.v1",
- "seal_sha256": "9c1a11d1535b289762d87391c0249441f0b173b21aba31d0c93cab5f4390f91d",
+ "seal_sha256": "3cc14600441e807a20a3a764091efd2bbcf01b5837239c170bd04a8e966ca2d3",
  "stale_entries": [],
  "stale_meaning": "A stale probe means the claim no longer matches disk -- usually because Codex or a sidecar lane built the thing. Retire or reclassify the entry; do not silently keep it.",
  "version": 1

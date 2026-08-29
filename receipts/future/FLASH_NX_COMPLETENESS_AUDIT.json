@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-29T23:31:40Z",
+  "recorded_at": "2026-08-29T23:39:31Z",
   "recorded_by": "tools/future/flash_nx_audit.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -246,6 +246,29 @@
   },
   {
    "baseline_path": "receipts/headless/FLASH_NEXT_NOETIC_EXECUTABLE.json",
+   "blocked_reason": "Flash complete source-independent NX is not qualified and the P6 FP8 candidate has no NumericParity/coherence and protected-latency receipt",
+   "candidate_id": "flash-p6-shared-fp8-simdgroup",
+   "capability_contract": "blocked until a complete source-independent NX executable and independent capability path exist",
+   "cluster": "DOMINANT",
+   "control_configuration": {
+    "mode": "source_oracle_or_scaffold",
+    "source_oracle_controls": {
+     "HAWKING_DSV4F_P6_FP8_SIMD": "0"
+    }
+   },
+   "extra_pieces": [],
+   "measurements_status": "NOT_MEASURED",
+   "requires": [
+    "serialized_source_independent_nx_artifact",
+    "physical_loader",
+    "whole_model_native_kernel_binding",
+    "protected_complete_token_measurement",
+    "capability_suite_on_nx"
+   ],
+   "status": "BLOCKED"
+  },
+  {
+   "baseline_path": "receipts/headless/FLASH_NEXT_NOETIC_EXECUTABLE.json",
    "blocked_reason": "Flash complete source-independent NX is not qualified and the SIMD mHC reduction has no bounded parity/coherence receipt",
    "candidate_id": "flash-p7-mhc-pre-simdgroup",
    "capability_contract": "blocked until a complete source-independent NX executable and independent capability path exist",
@@ -460,7 +483,7 @@
    "flash-meta-sub1-coherent"
   ],
   "additional_count": 2,
-  "blocked_count": 19,
+  "blocked_count": 20,
   "candidates": [
    {
     "baseline_path": "receipts/headless/FLASH_NEXT_NOETIC_EXECUTABLE.json",
@@ -699,6 +722,29 @@
    },
    {
     "baseline_path": "receipts/headless/FLASH_NEXT_NOETIC_EXECUTABLE.json",
+    "blocked_reason": "Flash complete source-independent NX is not qualified and the P6 FP8 candidate has no NumericParity/coherence and protected-latency receipt",
+    "candidate_id": "flash-p6-shared-fp8-simdgroup",
+    "capability_contract": "blocked until a complete source-independent NX executable and independent capability path exist",
+    "cluster": "DOMINANT",
+    "control_configuration": {
+     "mode": "source_oracle_or_scaffold",
+     "source_oracle_controls": {
+      "HAWKING_DSV4F_P6_FP8_SIMD": "0"
+     }
+    },
+    "extra_pieces": [],
+    "measurements_status": "NOT_MEASURED",
+    "requires": [
+     "serialized_source_independent_nx_artifact",
+     "physical_loader",
+     "whole_model_native_kernel_binding",
+     "protected_complete_token_measurement",
+     "capability_suite_on_nx"
+    ],
+    "status": "BLOCKED"
+   },
+   {
+    "baseline_path": "receipts/headless/FLASH_NEXT_NOETIC_EXECUTABLE.json",
     "blocked_reason": "Flash complete source-independent NX is not qualified and the SIMD mHC reduction has no bounded parity/coherence receipt",
     "candidate_id": "flash-p7-mhc-pre-simdgroup",
     "capability_contract": "blocked until a complete source-independent NX executable and independent capability path exist",
@@ -875,6 +921,7 @@
    "flash-p6-act-quant-simdgroup",
    "flash-p6-hash-single-command-buffer",
    "flash-p6-routed-fp4-simdgroup",
+   "flash-p6-shared-fp8-simdgroup",
    "flash-p7-mhc-pre-simdgroup",
    "flash-pipeline-cache-reuse",
    "flash-pipeline-id-resolution",
@@ -884,7 +931,7 @@
    "flash-shared-fp8-gate-up-swiglu-fused",
    "flash-source-bf16-simd"
   ],
-  "dominant_count": 17,
+  "dominant_count": 18,
   "dominant_dependency": "source-independent Flash NX with a protected complete-token measurement",
   "gpu_window_worth_the_most": {
    "cpu_prerequisites_that_must_exist_first": [
@@ -897,7 +944,7 @@
     "flash-compact-moe-epilogue",
     "flash-meta-sub1-coherent"
    ],
-   "unblocks_count": 17,
+   "unblocks_count": 18,
    "unblocks_to_qualifiable": [
     "flash-attention-gate-fusion",
     "flash-compact-moe-bf16-vec4",
@@ -908,6 +955,7 @@
     "flash-p6-act-quant-simdgroup",
     "flash-p6-hash-single-command-buffer",
     "flash-p6-routed-fp4-simdgroup",
+    "flash-p6-shared-fp8-simdgroup",
     "flash-p7-mhc-pre-simdgroup",
     "flash-pipeline-cache-reuse",
     "flash-pipeline-id-resolution",
@@ -951,6 +999,7 @@
      "flash-p6-act-quant-simdgroup",
      "flash-p6-hash-single-command-buffer",
      "flash-p6-routed-fp4-simdgroup",
+     "flash-p6-shared-fp8-simdgroup",
      "flash-p7-mhc-pre-simdgroup",
      "flash-pipeline-cache-reuse",
      "flash-pipeline-id-resolution",
@@ -999,6 +1048,7 @@
      "flash-p6-act-quant-simdgroup",
      "flash-p6-hash-single-command-buffer",
      "flash-p6-routed-fp4-simdgroup",
+     "flash-p6-shared-fp8-simdgroup",
      "flash-p7-mhc-pre-simdgroup",
      "flash-pipeline-cache-reuse",
      "flash-pipeline-id-resolution",
@@ -1041,6 +1091,7 @@
      "flash-p6-act-quant-simdgroup",
      "flash-p6-hash-single-command-buffer",
      "flash-p6-routed-fp4-simdgroup",
+     "flash-p6-shared-fp8-simdgroup",
      "flash-p7-mhc-pre-simdgroup",
      "flash-pipeline-cache-reuse",
      "flash-pipeline-id-resolution",
@@ -1088,6 +1139,7 @@
      "flash-p6-act-quant-simdgroup",
      "flash-p6-hash-single-command-buffer",
      "flash-p6-routed-fp4-simdgroup",
+     "flash-p6-shared-fp8-simdgroup",
      "flash-p7-mhc-pre-simdgroup",
      "flash-pipeline-cache-reuse",
      "flash-pipeline-id-resolution",
@@ -1107,6 +1159,7 @@
      "flash-p6-act-quant-simdgroup",
      "flash-p6-hash-single-command-buffer",
      "flash-p6-routed-fp4-simdgroup",
+     "flash-p6-shared-fp8-simdgroup",
      "flash-p7-mhc-pre-simdgroup",
      "flash-pipeline-cache-reuse",
      "flash-pipeline-id-resolution",
@@ -1150,6 +1203,7 @@
      "flash-p6-act-quant-simdgroup",
      "flash-p6-hash-single-command-buffer",
      "flash-p6-routed-fp4-simdgroup",
+     "flash-p6-shared-fp8-simdgroup",
      "flash-p7-mhc-pre-simdgroup",
      "flash-pipeline-cache-reuse",
      "flash-pipeline-id-resolution",
@@ -1169,6 +1223,7 @@
      "flash-p6-act-quant-simdgroup",
      "flash-p6-hash-single-command-buffer",
      "flash-p6-routed-fp4-simdgroup",
+     "flash-p6-shared-fp8-simdgroup",
      "flash-p7-mhc-pre-simdgroup",
      "flash-pipeline-cache-reuse",
      "flash-pipeline-id-resolution",
@@ -1236,7 +1291,7 @@
     ],
     "rank": 1,
     "state": "NOT_BUILT",
-    "still_required_by_count": 19,
+    "still_required_by_count": 20,
     "unblocks_count": 0,
     "unblocks_to_qualifiable": [],
     "why_this_position": "Must exist before any later piece can be consumed."
@@ -1249,7 +1304,7 @@
     ],
     "rank": 2,
     "state": "NOT_IMPLEMENTED",
-    "still_required_by_count": 19,
+    "still_required_by_count": 20,
     "unblocks_count": 0,
     "unblocks_to_qualifiable": [],
     "why_this_position": "Must exist before any later piece can be consumed."
@@ -1262,7 +1317,7 @@
     ],
     "rank": 3,
     "state": "PLAN_ONLY",
-    "still_required_by_count": 19,
+    "still_required_by_count": 20,
     "unblocks_count": 0,
     "unblocks_to_qualifiable": [],
     "why_this_position": "Must exist before any later piece can be consumed."
@@ -1275,8 +1330,8 @@
     ],
     "rank": 4,
     "state": "NOT_MEASURED",
-    "still_required_by_count": 19,
-    "unblocks_count": 17,
+    "still_required_by_count": 20,
+    "unblocks_count": 18,
     "unblocks_to_qualifiable": [
      "flash-attention-gate-fusion",
      "flash-compact-moe-bf16-vec4",
@@ -1287,6 +1342,7 @@
      "flash-p6-act-quant-simdgroup",
      "flash-p6-hash-single-command-buffer",
      "flash-p6-routed-fp4-simdgroup",
+     "flash-p6-shared-fp8-simdgroup",
      "flash-p7-mhc-pre-simdgroup",
      "flash-pipeline-cache-reuse",
      "flash-pipeline-id-resolution",
@@ -1306,8 +1362,8 @@
     ],
     "rank": 5,
     "state": "NOT_RUN",
-    "still_required_by_count": 19,
-    "unblocks_count": 17,
+    "still_required_by_count": 20,
+    "unblocks_count": 18,
     "unblocks_to_qualifiable": [
      "flash-attention-gate-fusion",
      "flash-compact-moe-bf16-vec4",
@@ -1318,6 +1374,7 @@
      "flash-p6-act-quant-simdgroup",
      "flash-p6-hash-single-command-buffer",
      "flash-p6-routed-fp4-simdgroup",
+     "flash-p6-shared-fp8-simdgroup",
      "flash-p7-mhc-pre-simdgroup",
      "flash-pipeline-cache-reuse",
      "flash-pipeline-id-resolution",
@@ -1407,13 +1464,14 @@
    "flash-p6-act-quant-simdgroup",
    "flash-p6-hash-single-command-buffer",
    "flash-p6-routed-fp4-simdgroup",
+   "flash-p6-shared-fp8-simdgroup",
    "flash-p7-mhc-pre-simdgroup",
    "flash-pipeline-id-resolution"
   ],
   "authority": "disk",
   "disk_additional": 2,
-  "disk_blocked_flash": 19,
-  "disk_dominant": 17,
+  "disk_blocked_flash": 20,
+  "disk_dominant": 18,
   "frontier_F001_wording": "12 of 14 BLOCKED Flash candidates"
  },
  "gaps_closed": [
@@ -1424,7 +1482,7 @@
   "designed-vs-built runtime audit for loader, kernel, catalog, and consumer",
   "verification-vs-production dense rematerialization split"
  ],
- "head": "d355718d98f1b2de063493c110f29dd80594ab56",
+ "head": "607532bd42f4028b521d14e7e10c5697e053afb2",
  "meta_measurement_state": {
   "capability": "NOT_MEASURED",
   "complete_token": "NOT_MEASURED",
@@ -2027,7 +2085,7 @@
   }
  ],
  "schema": "hawking.future.flash_nx_audit.v1",
- "seal_sha256": "9e9f8caa5318d65c1f814ced7b08c69ee111120421ffe8025f1142955f520e2a",
+ "seal_sha256": "58c38c2bd3e917910e93f423984a1ce22ebf99ea103e285111d136ba45d3845b",
  "seven_all_met": false,
  "seven_requirements": [
   {

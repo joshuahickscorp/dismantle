@@ -62,7 +62,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-29T23:34:35Z",
+  "recorded_at": "2026-08-29T23:42:48Z",
   "recorded_by": "tools/future/lpc_dataset.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -80,103 +80,103 @@
   "held-out splits by architecture, organ, and device",
   "authority helper: PROTECTED_ABSOLUTE always outranks a model"
  ],
- "head": "d355718d98f1b2de063493c110f29dd80594ab56",
+ "head": "607532bd42f4028b521d14e7e10c5697e053afb2",
  "ingest": {
   "inventory": {
    "by_contamination": {
     "DIAGNOSTIC_RELATIVE": 1,
     "PROTECTED_ABSOLUTE": 1,
-    "STATIC_ONLY": 45,
+    "STATIC_ONLY": 46,
     "UNKNOWN": 11
    },
    "by_source": {
-    "qualification_queue": 36,
+    "qualification_queue": 37,
     "qwen27_token_ns_budget": 9,
     "scoreboard": 13
    },
    "complete": 0,
    "field_presence": {
     "active_bytes": {
-     "n": 58,
+     "n": 59,
      "non_null": 0
     },
     "backend": {
-     "n": 58,
+     "n": 59,
      "non_null": 19
     },
     "capability": {
-     "n": 58,
+     "n": 59,
      "non_null": 0
     },
     "complete_token_effect": {
-     "n": 58,
+     "n": 59,
      "non_null": 0
     },
     "contamination_class": {
-     "n": 58,
-     "non_null": 58
+     "n": 59,
+     "non_null": 59
     },
     "dispatches": {
-     "n": 58,
+     "n": 59,
      "non_null": 7
     },
     "fusion": {
-     "n": 58,
-     "non_null": 36
+     "n": 59,
+     "non_null": 37
     },
     "grouping": {
-     "n": 58,
+     "n": 59,
      "non_null": 0
     },
     "latency": {
-     "n": 58,
+     "n": 59,
      "non_null": 2
     },
     "layout": {
-     "n": 58,
+     "n": 59,
      "non_null": 0
     },
     "machine_genome": {
-     "n": 58,
+     "n": 59,
      "non_null": 10
     },
     "model": {
-     "n": 58,
-     "non_null": 48
+     "n": 59,
+     "non_null": 49
     },
     "organ_fingerprint": {
-     "n": 58,
-     "non_null": 45
+     "n": 59,
+     "non_null": 46
     },
     "persistent_resources": {
-     "n": 58,
+     "n": 59,
      "non_null": 0
     },
     "physical_graph_identity": {
-     "n": 58,
+     "n": 59,
      "non_null": 2
     },
     "representation": {
-     "n": 58,
+     "n": 59,
      "non_null": 12
     },
     "resident_bytes": {
-     "n": 58,
+     "n": 59,
      "non_null": 0
     },
     "synchronization": {
-     "n": 58,
+     "n": 59,
      "non_null": 0
     },
     "tile": {
-     "n": 58,
+     "n": 59,
      "non_null": 0
     }
    },
    "invalid_null": 0,
-   "n": 58,
+   "n": 59,
    "rejected": 0,
-   "valid": 58
+   "valid": 59
   },
   "machine_genome_attach_reason": "Scoreboard rows do not carry a genome fingerprint. Attaching this identity to every row would fabricate a binding.",
   "machine_genome_attached_to_rows": false,
@@ -220,9 +220,9 @@
     "loaded_from": "disk",
     "on_disk": true,
     "path": "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
-    "projected": 36,
+    "projected": 37,
     "rejected": 0,
-    "valid": 36
+    "valid": 37
    },
    {
     "complete": 0,
@@ -241,97 +241,97 @@
   "by_contamination": {
    "DIAGNOSTIC_RELATIVE": 1,
    "PROTECTED_ABSOLUTE": 1,
-   "STATIC_ONLY": 45,
+   "STATIC_ONLY": 46,
    "UNKNOWN": 11
   },
   "by_source": {
-   "qualification_queue": 36,
+   "qualification_queue": 37,
    "qwen27_token_ns_budget": 9,
    "scoreboard": 13
   },
   "complete": 0,
   "field_presence": {
    "active_bytes": {
-    "n": 58,
+    "n": 59,
     "non_null": 0
    },
    "backend": {
-    "n": 58,
+    "n": 59,
     "non_null": 19
    },
    "capability": {
-    "n": 58,
+    "n": 59,
     "non_null": 0
    },
    "complete_token_effect": {
-    "n": 58,
+    "n": 59,
     "non_null": 0
    },
    "contamination_class": {
-    "n": 58,
-    "non_null": 58
+    "n": 59,
+    "non_null": 59
    },
    "dispatches": {
-    "n": 58,
+    "n": 59,
     "non_null": 7
    },
    "fusion": {
-    "n": 58,
-    "non_null": 36
+    "n": 59,
+    "non_null": 37
    },
    "grouping": {
-    "n": 58,
+    "n": 59,
     "non_null": 0
    },
    "latency": {
-    "n": 58,
+    "n": 59,
     "non_null": 2
    },
    "layout": {
-    "n": 58,
+    "n": 59,
     "non_null": 0
    },
    "machine_genome": {
-    "n": 58,
+    "n": 59,
     "non_null": 10
    },
    "model": {
-    "n": 58,
-    "non_null": 48
+    "n": 59,
+    "non_null": 49
    },
    "organ_fingerprint": {
-    "n": 58,
-    "non_null": 45
+    "n": 59,
+    "non_null": 46
    },
    "persistent_resources": {
-    "n": 58,
+    "n": 59,
     "non_null": 0
    },
    "physical_graph_identity": {
-    "n": 58,
+    "n": 59,
     "non_null": 2
    },
    "representation": {
-    "n": 58,
+    "n": 59,
     "non_null": 12
    },
    "resident_bytes": {
-    "n": 58,
+    "n": 59,
     "non_null": 0
    },
    "synchronization": {
-    "n": 58,
+    "n": 59,
     "non_null": 0
    },
    "tile": {
-    "n": 58,
+    "n": 59,
     "non_null": 0
    }
   },
   "invalid_null": 0,
-  "n": 58,
+  "n": 59,
   "rejected": 0,
-  "valid": 58
+  "valid": 59
  },
  "measurement_contract_reused": {
   "fields": [
@@ -506,6 +506,6 @@
   ]
  },
  "schema": "hawking.future.lpc_dataset.v1",
- "seal_sha256": "0bd61060c000127c4848b0881b688af35a2b44243878c0af82a6c3b7e2919fb6",
+ "seal_sha256": "821e0bc996645882ef361e3c36abac522fd962f75583f9f541b1d01862fe8fe5",
  "version": 1
 }

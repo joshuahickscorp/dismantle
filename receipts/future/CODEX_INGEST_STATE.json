@@ -3736,7 +3736,7 @@
     "sidecar_must_not_promote": true
    },
    "source": "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
-   "source_sha256": "fa2cf9406a79489efa0cb30570967395e5e7347f56412600a32c15bef23d5b23"
+   "source_sha256": "fa3b0586bd682320611283a53cb36edf2012f7c00214bbcd31b34de574f4c9d8"
   },
   {
    "architecture_atlas_behaviour_reference": {
@@ -53507,7 +53507,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-29T23:31:37Z",
+  "recorded_at": "2026-08-29T23:39:28Z",
   "recorded_by": "tools/future/codex_ingest.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -53516,13 +53516,13 @@
  "claim_boundary": "Static sidecar artifact. No hardware measurement. Does not produce DIAGNOSTIC_RELATIVE or PROTECTED_ABSOLUTE. Deltas are proposals for downstream modules; disk evidence stays in receipts/headless.",
  "classified_this_scan": [
   {
-   "confidence": 0.75,
+   "confidence": 0.85,
    "event": "changed",
-   "field": "status",
-   "label": "NEUTRAL",
-   "reason": "plan or scaffold status, no verdict",
-   "relpath": "receipts/headless/APPLE_ANE_DEVICE_PROFILE.json",
-   "token": "PLAN_READY"
+   "field": "candidate_statuses[2]",
+   "label": "SCAR",
+   "reason": "candidate_statuses[2] contains DIAGNOSTIC_REJECT",
+   "relpath": "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
+   "token": "DIAGNOSTIC_REJECT"
   }
  ],
  "cursor": {
@@ -54432,11 +54432,11 @@
    "driver_field": "candidate_statuses[2]",
    "driver_token": "DIAGNOSTIC_REJECT",
    "first_seen": "2026-08-29T22:44:01Z",
-   "last_classified": "2026-08-29T23:28:02Z",
-   "mtime": 1788045938.3583753,
+   "last_classified": "2026-08-29T23:39:26Z",
+   "mtime": 1788046642.2044368,
    "reason": "candidate_statuses[2] contains DIAGNOSTIC_REJECT",
-   "sha256": "fa2cf9406a79489efa0cb30570967395e5e7347f56412600a32c15bef23d5b23",
-   "size": 188655
+   "sha256": "fa3b0586bd682320611283a53cb36edf2012f7c00214bbcd31b34de574f4c9d8",
+   "size": 192621
   },
   "receipts/headless/ACCELERATOR_QUIESCENCE_INSTRUMENT.json": {
    "classification": "NEUTRAL",
@@ -73555,7 +73555,41 @@
    "size": 1325
   }
  },
- "deltas_this_scan": [],
+ "deltas_this_scan": [
+  {
+   "classification": "SCAR",
+   "consumers_notified": [
+    "odyssey_ii_law_store",
+    "odyssey_iii",
+    "negative_index",
+    "learned_physical_compiler"
+   ],
+   "driver": {
+    "confidence": 0.85,
+    "field": "candidate_statuses[2]",
+    "label": "SCAR",
+    "reason": "candidate_statuses[2] contains DIAGNOSTIC_REJECT",
+    "token": "DIAGNOSTIC_REJECT"
+   },
+   "invalidation": {
+    "action": "feed the negative index; a single model's scar never globally prunes a technique",
+    "kills": [
+     "candidate_statuses[2] contains DIAGNOSTIC_REJECT",
+     "any hypothesis that this artifact is promotion-grade PROTECTED_ABSOLUTE evidence"
+    ],
+    "level": "MODEL_SPECIFIC",
+    "makes_redundant": [
+     "retrying the same hypothesis on the same model/organ/machine without a new reopen condition",
+     "promoting a DIAGNOSTIC_RELATIVE number derived from this artifact"
+    ],
+    "organ": "UNKNOWN",
+    "reopen_condition": "UNKNOWN",
+    "sidecar_must_not_promote": true
+   },
+   "source": "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
+   "source_sha256": "fa3b0586bd682320611283a53cb36edf2012f7c00214bbcd31b34de574f4c9d8"
+  }
+ ],
  "gaps_closed": [
   "durable sha256 cursor over receipts/headless keyed by relpath",
   "pure-content LAW/SCAR/NEUTRAL classifier with recorded driver field/token",
@@ -73564,7 +73598,7 @@
   "--once --assert-idempotent refusal that is capable of firing",
   "read-only open; writes only receipts/future/CODEX_INGEST_STATE.json"
  ],
- "head": "d355718d98f1b2de063493c110f29dd80594ab56",
+ "head": "607532bd42f4028b521d14e7e10c5697e053afb2",
  "idempotence": {
   "assert_idempotent": "exit non-zero iff n_new + n_changed > 0",
   "change_detector": "sha256 of file bytes; mtime is recorded and never consulted",
@@ -73720,13 +73754,13 @@
   },
   "by_class_this_scan": {
    "LAW": 0,
-   "NEUTRAL": 1,
-   "SCAR": 0
+   "NEUTRAL": 0,
+   "SCAR": 1
   },
   "missing_from_disk": [],
   "n_active_deltas": 808,
   "n_changed": 1,
-  "n_deltas": 0,
+  "n_deltas": 1,
   "n_missing_from_disk": 0,
   "n_new": 0,
   "n_on_disk": 1669,
@@ -73735,7 +73769,7 @@
   "unreadable": []
  },
  "schema": "hawking.future.codex_ingest.v1",
- "seal_sha256": "2e57eb72de2c193acaef1f536c4d11d04297b171b714e8a68f293e47aeb4b154",
+ "seal_sha256": "790709c7dbec4e3b622f412d2f2061f35339c5dd9bf4220bdae82a382aa29992",
  "version": 1,
  "vocabulary": {
   "bench_state": "UNKNOWN",

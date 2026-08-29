@@ -1,25 +1,10 @@
 {
  "active_processes": [
   "1131 /Applications/Bl /Applications/Blender.app/Contents/MacOS/Blender -b --python /Users/scammermike/.grok-mcp/blender_headless_server.py",
-  "1390 bash             bash /Users/scammermike/.claude-grok/bin/grok-run delegate --task decode-civilization --contract /private/tmp/claude-503/-Users-scammermike-Downloads-hawking/4edeb84b-5777-46a9-a0af-2e638daf5f92/scr",
-  "1540 perl             perl -e \\012    my $t = shift; my $pid = fork();\\012    if ($pid == 0) { exec(@ARGV) or exit 127; }\\012    $SIG{ALRM} = sub { kill \"TERM\", $pid; sleep 5; kill \"KILL\", $pid; exit 124; };\\012    alarm",
-  "1541 grok             grok --prompt-file /Users/scammermike/.claude-grok/tasks/decode-civilization-20260829-183316/task.md --cwd /Users/scammermike/.claude-grok/worktrees/decode-civilization-20260829-183316 -m grok-4.6 -",
-  "1710 /Users/scammermi /Users/scammermike/.grok-mcp/bin/github-mcp-server stdio --read-only --toolsets context,issues,pull_requests,actions,repos",
-  "1715 /opt/homebrew/bi /opt/homebrew/bin/node /Users/scammermike/.claude-grok/v2/shim.mjs",
-  "4297 bash             bash /Users/scammermike/.claude-grok/bin/grok-run delegate --task device-ascension --contract /private/tmp/claude-503/-Users-scammermike-Downloads-hawking/4edeb84b-5777-46a9-a0af-2e638daf5f92/scratc",
-  "4418 perl             perl -e \\012    my $t = shift; my $pid = fork();\\012    if ($pid == 0) { exec(@ARGV) or exit 127; }\\012    $SIG{ALRM} = sub { kill \"TERM\", $pid; sleep 5; kill \"KILL\", $pid; exit 124; };\\012    alarm",
-  "4420 grok             grok --prompt-file /Users/scammermike/.claude-grok/tasks/device-ascension-20260829-183327/task.md --cwd /Users/scammermike/.claude-grok/worktrees/device-ascension-20260829-183327 -m grok-4.6 --effor",
-  "4580 /Users/scammermi /Users/scammermike/.grok-mcp/bin/github-mcp-server stdio --read-only --toolsets context,issues,pull_requests,actions,repos",
-  "4586 /opt/homebrew/bi /opt/homebrew/bin/node /Users/scammermike/.claude-grok/v2/shim.mjs",
-  "7857 bash             bash /Users/scammermike/.claude-grok/bin/grok-run delegate --task devplatform --contract /private/tmp/claude-503/-Users-scammermike-Downloads-hawking/4edeb84b-5777-46a9-a0af-2e638daf5f92/scratchpad/",
-  "8050 perl             perl -e \\012    my $t = shift; my $pid = fork();\\012    if ($pid == 0) { exec(@ARGV) or exit 127; }\\012    $SIG{ALRM} = sub { kill \"TERM\", $pid; sleep 5; kill \"KILL\", $pid; exit 124; };\\012    alarm",
-  "8052 grok             grok --prompt-file /Users/scammermike/.claude-grok/tasks/devplatform-20260829-183337/task.md --cwd /Users/scammermike/.claude-grok/worktrees/devplatform-20260829-183337 -m grok-4.6 --effort xhigh --",
-  "8218 /Users/scammermi /Users/scammermike/.grok-mcp/bin/github-mcp-server stdio --read-only --toolsets context,issues,pull_requests,actions,repos",
-  "8222 /opt/homebrew/bi /opt/homebrew/bin/node /Users/scammermike/.claude-grok/v2/shim.mjs",
-  "11353 bash             bash /Users/scammermike/.claude-grok/bin/grok-run delegate --task flash-nx-audit --contract /private/tmp/claude-503/-Users-scammermike-Downloads-hawking/4edeb84b-5777-46a9-a0af-2e638daf5f92/scratch",
-  "11593 perl             perl -e \\012    my $t = shift; my $pid = fork();\\012    if ($pid == 0) { exec(@ARGV) or exit 127; }\\012    $SIG{ALRM} = sub { kill \"TERM\", $pid; sleep 5; kill \"KILL\", $pid; exit 124; };\\012    alar",
-  "11599 grok             grok --prompt-file /Users/scammermike/.claude-grok/tasks/flash-nx-audit-20260829-183350/task.md --cwd /Users/scammermike/.claude-grok/worktrees/flash-nx-audit-20260829-183350 -m grok-4.6 --effort x",
-  "11791 /Users/scammermi /Users/scammermike/.grok-mcp/bin/github-mcp-server stdio --read-only --toolsets context,issues,pull_requests,actions,repos"
+  "25108 /Library/Framewo /Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python /Library/Frameworks/Python.framework/Versions/3.12/bin/hf download zai-org/GLM-5.3-Flash .gitattributes",
+  "29990 /Library/Framewo /Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python tools/odyssey_ctl.py cycle --go --max-lanes 14 --grok-lanes 0 --loop-secs 300 --inner-sleep 3",
+  "31420 /Library/Framewo /Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python /Library/Frameworks/Python.framework/Versions/3.12/bin/hf download ibm-granite/granite-4.0-h-tiny .gita",
+  "98220 /Library/Framewo /Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python /Users/scammermike/Downloads/hawking/tools/odyssey/modellake_watch.py --poll-secs 0.10"
  ],
  "adversarial_attack": {
   "counts": {
@@ -31,44 +16,69 @@
  },
  "arrival_questions": {
   "codex_finishes_now": {
-   "absent": [
+   "absent": [],
+   "answer": "11 of 11 systems are executable today, each with a module, a test and a sealed receipt on disk.",
+   "evidence": {
+    "candidate_queue_planner": "receipts/future/CANDIDATE_STAGED_PLAN.json",
+    "codex_mutation_surface": "receipts/future/CODEX_MUTATION_SURFACE.json",
+    "codex_receipt_ingestion": "receipts/future/CODEX_INGEST_STATE.json",
+    "contamination_science": "receipts/future/CONTAMINATION_SCIENCE.json",
+    "ebpw_category_validator": "receipts/future/EBPW_CATEGORY_VALIDATOR.json",
+    "evidence_snapshot": "receipts/future/EVIDENCE_SNAPSHOT.json",
+    "experiment_turnaround": "receipts/future/EXPERIMENT_TURNAROUND.json",
+    "flash_nx_audit": "receipts/future/FLASH_NX_COMPLETENESS_AUDIT.json",
+    "global_frontier": "receipts/future/CLAUDE_GLOBAL_FRONTIER.json",
+    "qwen27_profile_schema": "receipts/future/QWEN27_ACCELERATOR_PROFILE_SCHEMA.json",
+    "static_kernel_preflight": "receipts/future/STATIC_KERNEL_PREFLIGHT.json"
+   },
+   "executable_now": [
     "candidate_queue_planner",
+    "codex_mutation_surface",
     "codex_receipt_ingestion",
     "contamination_science",
     "ebpw_category_validator",
+    "evidence_snapshot",
     "experiment_turnaround",
     "flash_nx_audit",
+    "global_frontier",
     "qwen27_profile_schema",
     "static_kernel_preflight"
-   ],
-   "answer": "3 of 11 systems are executable today, each with a module, a test and a sealed receipt on disk.",
-   "evidence": {
-    "codex_mutation_surface": "receipts/future/CODEX_MUTATION_SURFACE.json",
-    "evidence_snapshot": "receipts/future/EVIDENCE_SNAPSHOT.json",
-    "global_frontier": "receipts/future/CLAUDE_GLOBAL_FRONTIER.json"
-   },
-   "executable_now": [
-    "codex_mutation_surface",
-    "evidence_snapshot",
-    "global_frontier"
    ],
    "partial": [],
    "question": "IF CODEX FINISHED THE CURRENT ACCELERATOR CAMPAIGN RIGHT NOW, HOW MUCH FUTURE HAWKING COULD IMMEDIATELY PLUG INTO IT?"
   },
   "cuda_arrives": {
-   "absent": [
+   "absent": [],
+   "answer": "3 of 3 systems are executable today, each with a module, a test and a sealed receipt on disk.",
+   "evidence": {
+    "device_ascension": "receipts/future/DEVICE_ASCENSION_PIPELINE.json",
+    "fusion": "receipts/future/FUSION_SIMULATION.json",
+    "hmf_hgvas": "receipts/future/HMF_MANAGED_OBJECTS.json"
+   },
+   "executable_now": [
     "device_ascension",
     "fusion",
     "hmf_hgvas"
    ],
-   "answer": "0 of 3 systems are executable today, each with a module, a test and a sealed receipt on disk.",
-   "evidence": {},
-   "executable_now": [],
    "partial": [],
    "question": "IF A CUDA NODE ARRIVED TOMORROW, WHAT COMPILER/FUSION FLOOR ALREADY EXISTS?"
   },
   "era_ii": {
-   "absent": [
+   "absent": [],
+   "answer": "10 of 10 systems are executable today, each with a module, a test and a sealed receipt on disk.",
+   "evidence": {
+    "decode_civilization": "receipts/future/DECODE_CIVILIZATION.json",
+    "developer_platform": "receipts/future/DEVELOPER_PLATFORM.json",
+    "expert_bank_school": "receipts/future/EXPERT_BANK_SCHOOL.json",
+    "meta_experiment_funnel": "receipts/future/META_EXPERIMENT_FUNNEL.json",
+    "negative_science_index": "receipts/future/NEGATIVE_SCIENCE_INDEX.json",
+    "ngram_school": "receipts/future/NGRAM_SCHOOL.json",
+    "physical_primitive_library": "receipts/future/PHYSICAL_PRIMITIVES.json",
+    "router_science": "receipts/future/ROUTER_SENSITIVE_ALLOCATION.json",
+    "static_skeleton": "receipts/future/STATIC_SKELETON.json",
+    "teacher_corpus": "receipts/future/TEACHER_CORPUS_CONTRACT.json"
+   },
+   "executable_now": [
     "decode_civilization",
     "developer_platform",
     "expert_bank_school",
@@ -80,53 +90,64 @@
     "static_skeleton",
     "teacher_corpus"
    ],
-   "answer": "0 of 10 systems are executable today, each with a module, a test and a sealed receipt on disk.",
-   "evidence": {},
-   "executable_now": [],
    "partial": [],
    "question": "IF ERA II STARTED TOMORROW, WHAT IS ALREADY EXECUTABLE?"
   },
   "era_iii": {
-   "absent": [
+   "absent": [],
+   "answer": "5 of 5 systems are executable today, each with a module, a test and a sealed receipt on disk.",
+   "evidence": {
+    "autonomous_reproducible_science": "receipts/future/REPRO_SCIENCE.json",
+    "integration_attack": "receipts/future/INTEGRATION_ATTACK.json",
+    "learned_physical_compiler": "receipts/future/LPC_DATASET.json",
+    "odyssey_ii_law_store": "receipts/future/ODYSSEY2_LAW_STORE.json",
+    "odyssey_iii_adversary": "receipts/future/ODYSSEY3_ADVERSARY.json"
+   },
+   "executable_now": [
     "autonomous_reproducible_science",
+    "integration_attack",
     "learned_physical_compiler",
     "odyssey_ii_law_store",
     "odyssey_iii_adversary"
-   ],
-   "answer": "1 of 5 systems are executable today, each with a module, a test and a sealed receipt on disk.",
-   "evidence": {
-    "integration_attack": "receipts/future/INTEGRATION_ATTACK.json"
-   },
-   "executable_now": [
-    "integration_attack"
    ],
    "partial": [],
    "question": "IF ERA III STARTED TOMORROW, WHAT IS ALREADY EXECUTABLE?"
   },
   "tournament_winner": {
-   "absent": [
+   "absent": [],
+   "answer": "4 of 4 systems are executable today, each with a module, a test and a sealed receipt on disk.",
+   "evidence": {
+    "green_machine": "receipts/future/GREEN_MACHINE.json",
+    "hcli_future_workunits": "receipts/future/HCLI_FUTURE_WORKUNITS.json",
+    "resident_install": null,
+    "tournament": "receipts/future/TOURNAMENT_READINESS.json"
+   },
+   "executable_now": [
     "green_machine",
     "hcli_future_workunits",
     "resident_install",
     "tournament"
    ],
-   "answer": "0 of 4 systems are executable today, each with a module, a test and a sealed receipt on disk.",
-   "evidence": {},
-   "executable_now": [],
    "partial": [],
    "question": "IF THE TOURNAMENT WINNER WERE SELECTED TOMORROW, WHAT REAL WORK COULD HCLI IMMEDIATELY BEGIN?"
   },
   "u50_arrives": {
-   "absent": [
+   "absent": [],
+   "answer": "5 of 5 systems are executable today, each with a module, a test and a sealed receipt on disk.",
+   "evidence": {
+    "fpga_engine_school": "receipts/future/FPGA_ENGINE_SCHOOL.json",
+    "fpga_multifidelity": "receipts/future/FPGA_MULTIFIDELITY.json",
+    "hardware_doctor": "receipts/future/HARDWARE_DOCTOR.json",
+    "hbm_doctor": "receipts/future/HBM_DOCTOR.json",
+    "hwir": "receipts/future/HWIR_V1.json"
+   },
+   "executable_now": [
     "fpga_engine_school",
     "fpga_multifidelity",
     "hardware_doctor",
     "hbm_doctor",
     "hwir"
    ],
-   "answer": "0 of 5 systems are executable today, each with a module, a test and a sealed receipt on disk.",
-   "evidence": {},
-   "executable_now": [],
    "partial": [],
    "question": "IF THE U50DD ARRIVED TOMORROW, WHAT SOFTWARE/HWIR/SIMULATION FLOOR ALREADY EXISTS?"
   }
@@ -135,7 +156,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-29T22:40:33Z",
+  "recorded_at": "2026-08-29T23:43:11Z",
   "recorded_by": "tools/future/handoff.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -147,36 +168,39 @@
  ],
  "branch": "odyssey-i",
  "claim_boundary": "Static sidecar artifact. No hardware measurement.",
- "dirty_paths": 682,
+ "dirty_paths": 717,
  "gpu_authority": false,
- "head": "5ad5646a6799a650e86855832640b506af28f86e",
- "head_subject": "feat(future): pinned evidence snapshot and adversarial integration attack",
+ "head": "607532bd42f4028b521d14e7e10c5697e053afb2",
+ "head_subject": "feat(future): static kernel preflight, negative science index, tournament harness, HCLI workunit species",
  "protected_measurements_taken": 0,
  "schema": "hawking.future.handoff.v1",
- "seal_sha256": "20f4855c10a5184f8e00f6d9c92c41b90acef795d97426d650bcfa1e32787fe5",
+ "seal_sha256": "1012cd4017688c3ce696ecb5ff8e31b1a4958c8a8570ab62e5e0152556d73f49",
  "sidecar_commits": [
+  "607532bd4 feat(future): static kernel preflight, negative science index, tournament harness, HCLI workunit species",
+  "d355718d9 feat(future): integrate 25 sidecar lanes across FPGA, representation and science",
+  "862653a9c feat(future): odyssey II law store, odyssey III adversary, HWIR v1, codex ingest",
   "5ad5646a6 feat(future): pinned evidence snapshot and adversarial integration attack",
   "b63bb01f6 feat(future): sidecar namespace with codex mutation surface and global frontier"
  ],
  "system_counts": {
-  "ABSENT": 34,
-  "EXECUTABLE": 4,
+  "ABSENT": 0,
+  "EXECUTABLE": 38,
   "PARTIAL": 0
  },
  "systems": {
   "autonomous_reproducible_science": {
-   "module": null,
-   "module_lines": 0,
-   "receipt": null,
-   "state": "ABSENT",
-   "test": null
+   "module": "tools/future/repro_science.py",
+   "module_lines": 1325,
+   "receipt": "receipts/future/REPRO_SCIENCE.json",
+   "state": "EXECUTABLE",
+   "test": "tools/future/test_repro_science.py"
   },
   "candidate_queue_planner": {
-   "module": null,
-   "module_lines": 0,
-   "receipt": null,
-   "state": "ABSENT",
-   "test": null
+   "module": "tools/future/candidate_planner.py",
+   "module_lines": 1515,
+   "receipt": "receipts/future/CANDIDATE_STAGED_PLAN.json",
+   "state": "EXECUTABLE",
+   "test": "tools/future/test_candidate_planner.py"
   },
   "codex_mutation_surface": {
    "module": "tools/future/mutation_surface.py",
@@ -186,46 +210,46 @@
    "test": "tools/future/test_mutation_surface.py"
   },
   "codex_receipt_ingestion": {
-   "module": null,
-   "module_lines": 0,
-   "receipt": null,
-   "state": "ABSENT",
-   "test": null
+   "module": "tools/future/codex_ingest.py",
+   "module_lines": 1155,
+   "receipt": "receipts/future/CODEX_INGEST_STATE.json",
+   "state": "EXECUTABLE",
+   "test": "tools/future/test_codex_ingest.py"
   },
   "contamination_science": {
-   "module": null,
-   "module_lines": 0,
-   "receipt": null,
-   "state": "ABSENT",
-   "test": null
+   "module": "tools/future/contamination.py",
+   "module_lines": 1016,
+   "receipt": "receipts/future/CONTAMINATION_SCIENCE.json",
+   "state": "EXECUTABLE",
+   "test": "tools/future/test_contamination.py"
   },
   "decode_civilization": {
-   "module": null,
-   "module_lines": 0,
-   "receipt": null,
-   "state": "ABSENT",
-   "test": null
+   "module": "tools/future/decode_civilization.py",
+   "module_lines": 1416,
+   "receipt": "receipts/future/DECODE_CIVILIZATION.json",
+   "state": "EXECUTABLE",
+   "test": "tools/future/test_decode_civilization.py"
   },
   "developer_platform": {
-   "module": null,
-   "module_lines": 0,
-   "receipt": null,
-   "state": "ABSENT",
-   "test": null
+   "module": "tools/future/devplatform.py",
+   "module_lines": 1585,
+   "receipt": "receipts/future/DEVELOPER_PLATFORM.json",
+   "state": "EXECUTABLE",
+   "test": "tools/future/test_devplatform.py"
   },
   "device_ascension": {
-   "module": null,
-   "module_lines": 0,
-   "receipt": null,
-   "state": "ABSENT",
-   "test": null
+   "module": "tools/future/device_ascension_pipeline.py",
+   "module_lines": 1158,
+   "receipt": "receipts/future/DEVICE_ASCENSION_PIPELINE.json",
+   "state": "EXECUTABLE",
+   "test": "tools/future/test_device_ascension_pipeline.py"
   },
   "ebpw_category_validator": {
-   "module": null,
-   "module_lines": 0,
-   "receipt": null,
-   "state": "ABSENT",
-   "test": null
+   "module": "tools/future/ebpw_categories.py",
+   "module_lines": 1440,
+   "receipt": "receipts/future/EBPW_CATEGORY_VALIDATOR.json",
+   "state": "EXECUTABLE",
+   "test": "tools/future/test_ebpw_categories.py"
   },
   "evidence_snapshot": {
    "module": "tools/future/evidence_snapshot.py",
@@ -235,206 +259,206 @@
    "test": "tools/future/test_evidence_snapshot.py"
   },
   "experiment_turnaround": {
-   "module": null,
-   "module_lines": 0,
-   "receipt": null,
-   "state": "ABSENT",
-   "test": null
+   "module": "tools/future/turnaround.py",
+   "module_lines": 706,
+   "receipt": "receipts/future/EXPERIMENT_TURNAROUND.json",
+   "state": "EXECUTABLE",
+   "test": "tools/future/test_turnaround.py"
   },
   "expert_bank_school": {
-   "module": null,
-   "module_lines": 0,
-   "receipt": null,
-   "state": "ABSENT",
-   "test": null
+   "module": "tools/future/expert_bank_school.py",
+   "module_lines": 1362,
+   "receipt": "receipts/future/EXPERT_BANK_SCHOOL.json",
+   "state": "EXECUTABLE",
+   "test": "tools/future/test_expert_bank_school.py"
   },
   "flash_nx_audit": {
-   "module": null,
-   "module_lines": 0,
-   "receipt": null,
-   "state": "ABSENT",
-   "test": null
+   "module": "tools/future/flash_nx_audit.py",
+   "module_lines": 1463,
+   "receipt": "receipts/future/FLASH_NX_COMPLETENESS_AUDIT.json",
+   "state": "EXECUTABLE",
+   "test": "tools/future/test_flash_nx_audit.py"
   },
   "fpga_engine_school": {
-   "module": null,
-   "module_lines": 0,
-   "receipt": null,
-   "state": "ABSENT",
-   "test": null
+   "module": "tools/future/fpga_engines.py",
+   "module_lines": 1441,
+   "receipt": "receipts/future/FPGA_ENGINE_SCHOOL.json",
+   "state": "EXECUTABLE",
+   "test": "tools/future/test_fpga_engines.py"
   },
   "fpga_multifidelity": {
-   "module": null,
-   "module_lines": 0,
-   "receipt": null,
-   "state": "ABSENT",
-   "test": null
+   "module": "tools/future/fpga_fidelity.py",
+   "module_lines": 1469,
+   "receipt": "receipts/future/FPGA_MULTIFIDELITY.json",
+   "state": "EXECUTABLE",
+   "test": "tools/future/test_fpga_fidelity.py"
   },
   "fusion": {
-   "module": null,
-   "module_lines": 0,
-   "receipt": null,
-   "state": "ABSENT",
-   "test": null
+   "module": "tools/future/fusion_sim.py",
+   "module_lines": 1679,
+   "receipt": "receipts/future/FUSION_SIMULATION.json",
+   "state": "EXECUTABLE",
+   "test": "tools/future/test_fusion_sim.py"
   },
   "global_frontier": {
    "module": "tools/future/global_frontier.py",
-   "module_lines": 394,
+   "module_lines": 431,
    "receipt": "receipts/future/CLAUDE_GLOBAL_FRONTIER.json",
    "state": "EXECUTABLE",
    "test": "tools/future/test_global_frontier.py"
   },
   "green_machine": {
-   "module": null,
-   "module_lines": 0,
-   "receipt": null,
-   "state": "ABSENT",
-   "test": null
+   "module": "tools/future/green_machine.py",
+   "module_lines": 1249,
+   "receipt": "receipts/future/GREEN_MACHINE.json",
+   "state": "EXECUTABLE",
+   "test": "tools/future/test_green_machine.py"
   },
   "hardware_doctor": {
-   "module": null,
-   "module_lines": 0,
-   "receipt": null,
-   "state": "ABSENT",
-   "test": null
+   "module": "tools/future/hardware_doctor.py",
+   "module_lines": 1222,
+   "receipt": "receipts/future/HARDWARE_DOCTOR.json",
+   "state": "EXECUTABLE",
+   "test": "tools/future/test_hardware_doctor.py"
   },
   "hbm_doctor": {
-   "module": null,
-   "module_lines": 0,
-   "receipt": null,
-   "state": "ABSENT",
-   "test": null
+   "module": "tools/future/hbm_doctor.py",
+   "module_lines": 1108,
+   "receipt": "receipts/future/HBM_DOCTOR.json",
+   "state": "EXECUTABLE",
+   "test": "tools/future/test_hbm_doctor.py"
   },
   "hcli_future_workunits": {
-   "module": null,
-   "module_lines": 0,
-   "receipt": null,
-   "state": "ABSENT",
-   "test": null
+   "module": "tools/future/workunit_species.py",
+   "module_lines": 1362,
+   "receipt": "receipts/future/HCLI_FUTURE_WORKUNITS.json",
+   "state": "EXECUTABLE",
+   "test": "tools/future/test_workunit_species.py"
   },
   "hmf_hgvas": {
-   "module": null,
-   "module_lines": 0,
-   "receipt": null,
-   "state": "ABSENT",
-   "test": null
+   "module": "tools/future/hmf_objects.py",
+   "module_lines": 1244,
+   "receipt": "receipts/future/HMF_MANAGED_OBJECTS.json",
+   "state": "EXECUTABLE",
+   "test": "tools/future/test_hmf_objects.py"
   },
   "hwir": {
-   "module": null,
-   "module_lines": 0,
-   "receipt": null,
-   "state": "ABSENT",
-   "test": null
+   "module": "tools/future/hwir.py",
+   "module_lines": 1720,
+   "receipt": "receipts/future/HWIR_V1.json",
+   "state": "EXECUTABLE",
+   "test": "tools/future/test_hwir.py"
   },
   "integration_attack": {
    "module": "tools/future/integration_attack.py",
-   "module_lines": 300,
+   "module_lines": 410,
    "receipt": "receipts/future/INTEGRATION_ATTACK.json",
    "state": "EXECUTABLE",
    "test": "tools/future/test_integration_attack.py"
   },
   "learned_physical_compiler": {
-   "module": null,
-   "module_lines": 0,
-   "receipt": null,
-   "state": "ABSENT",
-   "test": null
+   "module": "tools/future/lpc_dataset.py",
+   "module_lines": 1047,
+   "receipt": "receipts/future/LPC_DATASET.json",
+   "state": "EXECUTABLE",
+   "test": "tools/future/test_lpc_dataset.py"
   },
   "meta_experiment_funnel": {
-   "module": null,
-   "module_lines": 0,
-   "receipt": null,
-   "state": "ABSENT",
-   "test": null
+   "module": "tools/future/meta_funnel.py",
+   "module_lines": 1474,
+   "receipt": "receipts/future/META_EXPERIMENT_FUNNEL.json",
+   "state": "EXECUTABLE",
+   "test": "tools/future/test_meta_funnel.py"
   },
   "negative_science_index": {
-   "module": null,
-   "module_lines": 0,
-   "receipt": null,
-   "state": "ABSENT",
-   "test": null
+   "module": "tools/future/negative_index.py",
+   "module_lines": 1491,
+   "receipt": "receipts/future/NEGATIVE_SCIENCE_INDEX.json",
+   "state": "EXECUTABLE",
+   "test": "tools/future/test_negative_index.py"
   },
   "ngram_school": {
-   "module": null,
-   "module_lines": 0,
-   "receipt": null,
-   "state": "ABSENT",
-   "test": null
+   "module": "tools/future/ngram_school.py",
+   "module_lines": 1234,
+   "receipt": "receipts/future/NGRAM_SCHOOL.json",
+   "state": "EXECUTABLE",
+   "test": "tools/future/test_ngram_school.py"
   },
   "odyssey_ii_law_store": {
-   "module": null,
-   "module_lines": 0,
-   "receipt": null,
-   "state": "ABSENT",
-   "test": null
+   "module": "tools/future/odyssey2_law_store.py",
+   "module_lines": 1520,
+   "receipt": "receipts/future/ODYSSEY2_LAW_STORE.json",
+   "state": "EXECUTABLE",
+   "test": "tools/future/test_odyssey2_law_store.py"
   },
   "odyssey_iii_adversary": {
-   "module": null,
-   "module_lines": 0,
-   "receipt": null,
-   "state": "ABSENT",
-   "test": null
+   "module": "tools/future/odyssey3_adversary.py",
+   "module_lines": 1299,
+   "receipt": "receipts/future/ODYSSEY3_ADVERSARY.json",
+   "state": "EXECUTABLE",
+   "test": "tools/future/test_odyssey3_adversary.py"
   },
   "physical_primitive_library": {
-   "module": null,
-   "module_lines": 0,
-   "receipt": null,
-   "state": "ABSENT",
-   "test": null
+   "module": "tools/future/physical_primitives.py",
+   "module_lines": 1845,
+   "receipt": "receipts/future/PHYSICAL_PRIMITIVES.json",
+   "state": "EXECUTABLE",
+   "test": "tools/future/test_physical_primitives.py"
   },
   "qwen27_profile_schema": {
-   "module": null,
-   "module_lines": 0,
-   "receipt": null,
-   "state": "ABSENT",
-   "test": null
+   "module": "tools/future/qwen27_profile_schema.py",
+   "module_lines": 1433,
+   "receipt": "receipts/future/QWEN27_ACCELERATOR_PROFILE_SCHEMA.json",
+   "state": "EXECUTABLE",
+   "test": "tools/future/test_qwen27_profile_schema.py"
   },
   "resident_install": {
-   "module": null,
-   "module_lines": 0,
+   "module": "tools/future/resident_install.py",
+   "module_lines": 426,
    "receipt": null,
-   "state": "ABSENT",
-   "test": null
+   "state": "EXECUTABLE",
+   "test": "tools/future/test_resident_install.py"
   },
   "router_science": {
-   "module": null,
-   "module_lines": 0,
-   "receipt": null,
-   "state": "ABSENT",
-   "test": null
+   "module": "tools/future/router_science.py",
+   "module_lines": 1282,
+   "receipt": "receipts/future/ROUTER_SENSITIVE_ALLOCATION.json",
+   "state": "EXECUTABLE",
+   "test": "tools/future/test_router_science.py"
   },
   "static_kernel_preflight": {
-   "module": null,
-   "module_lines": 0,
-   "receipt": null,
-   "state": "ABSENT",
-   "test": null
+   "module": "tools/future/static_kernel_verify.py",
+   "module_lines": 1970,
+   "receipt": "receipts/future/STATIC_KERNEL_PREFLIGHT.json",
+   "state": "EXECUTABLE",
+   "test": "tools/future/test_static_kernel_verify.py"
   },
   "static_skeleton": {
-   "module": null,
-   "module_lines": 0,
-   "receipt": null,
-   "state": "ABSENT",
-   "test": null
+   "module": "tools/future/static_skeleton.py",
+   "module_lines": 1314,
+   "receipt": "receipts/future/STATIC_SKELETON.json",
+   "state": "EXECUTABLE",
+   "test": "tools/future/test_static_skeleton.py"
   },
   "teacher_corpus": {
-   "module": null,
-   "module_lines": 0,
-   "receipt": null,
-   "state": "ABSENT",
-   "test": null
+   "module": "tools/future/teacher_corpus.py",
+   "module_lines": 1434,
+   "receipt": "receipts/future/TEACHER_CORPUS_CONTRACT.json",
+   "state": "EXECUTABLE",
+   "test": "tools/future/test_teacher_corpus.py"
   },
   "tournament": {
-   "module": null,
-   "module_lines": 0,
-   "receipt": null,
-   "state": "ABSENT",
-   "test": null
+   "module": "tools/future/tournament.py",
+   "module_lines": 671,
+   "receipt": "receipts/future/TOURNAMENT_READINESS.json",
+   "state": "EXECUTABLE",
+   "test": "tools/future/test_tournament.py"
   }
  },
  "tests": {
-  "exit_code": 1,
-  "green": false,
-  "summary": "2 failed, 22 passed in 67.19s (0:01:07)"
+  "exit_code": 0,
+  "green": true,
+  "summary": "699 passed in 417.30s (0:06:57)"
  },
  "version": 1
 }

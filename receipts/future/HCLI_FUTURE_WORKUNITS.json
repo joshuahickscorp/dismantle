@@ -78,17 +78,17 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-29T23:34:58Z",
+  "recorded_at": "2026-08-29T23:43:11Z",
   "recorded_by": "tools/future/workunit_species.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
  },
  "claim_boundary": "Static sidecar artifact. No hardware measurement.",
  "counts": {
-  "blocked_flash_units": 20,
+  "blocked_flash_units": 21,
   "ready_qwen27_units": 13,
   "species": 10,
-  "work_units": 52
+  "work_units": 53
  },
  "gaps_closed": [
   "ten species with evidence parents, bounded authority, resource class, verifier, budget, stop condition",
@@ -216,7 +216,7 @@
   "tools.accelerator.physical_qualification.workunits_for_candidates": "emits READY physical candidates through WorkUnit.to_dict plus extras (candidate_id, model, diagnostic_command, protected_command, claim_boundary)"
  },
  "schema": "hawking.future.workunit_species.v1",
- "seal_sha256": "28622b6050ab79077febc72a6dabc225b94462b51a542ac0766f17018d06f368",
+ "seal_sha256": "2acd6ac04148750a7a0acbea79e027802616583a13d1010781daa80e4f825b68",
  "species": [
   {
    "bounded_authority": [
@@ -822,6 +822,7 @@
    "flash-p6-act-quant-simdgroup",
    "flash-p6-hash-single-command-buffer",
    "flash-p6-routed-fp4-simdgroup",
+   "flash-p6-shared-fp8-simdgroup",
    "flash-p7-mhc-pre-simdgroup",
    "flash-pipeline-cache-reuse",
    "flash-pipeline-id-resolution",
@@ -832,7 +833,7 @@
    "flash-source-bf16-simd"
   ],
   "by_species": {
-   "accelerator_candidate_qualification": 36,
+   "accelerator_candidate_qualification": 37,
    "architecture_transfer": 8,
    "fpga_simulation": 1,
    "fusion_simulation": 1,
@@ -844,10 +845,10 @@
    "odyssey_iii_adversarial_experiment": 1
   },
   "by_status": {
-   "blocked": 26,
+   "blocked": 27,
    "pending": 26
   },
-  "count": 52,
+  "count": 53,
   "identities": {
    "candidate_ids": [
     "flash-attention-gate-fusion",
@@ -862,6 +863,7 @@
     "flash-p6-act-quant-simdgroup",
     "flash-p6-hash-single-command-buffer",
     "flash-p6-routed-fp4-simdgroup",
+    "flash-p6-shared-fp8-simdgroup",
     "flash-p7-mhc-pre-simdgroup",
     "flash-pipeline-cache-reuse",
     "flash-pipeline-id-resolution",
@@ -915,6 +917,7 @@
     "accelerator.physical.flash-p6-act-quant-simdgroup",
     "accelerator.physical.flash-p6-hash-single-command-buffer",
     "accelerator.physical.flash-p6-routed-fp4-simdgroup",
+    "accelerator.physical.flash-p6-shared-fp8-simdgroup",
     "accelerator.physical.flash-p7-mhc-pre-simdgroup",
     "accelerator.physical.flash-pipeline-cache-reuse",
     "accelerator.physical.flash-pipeline-id-resolution",
@@ -1912,6 +1915,65 @@
    "status": "blocked",
    "verification": null,
    "verifier": "accelerator.physical.flash-p6-routed-fp4-simdgroup",
+   "workspace": "repo-root"
+  },
+  {
+   "assigned_backend": null,
+   "assigned_runtime": null,
+   "attempts": 0,
+   "backend_task_id": null,
+   "blocked_reason": "Flash complete source-independent NX is not qualified and the P6 FP8 candidate has no NumericParity/coherence and protected-latency receipt",
+   "candidate_id": "flash-p6-shared-fp8-simdgroup",
+   "candidate_status": "BLOCKED",
+   "claim_boundary": "WorkUnit is a proposal; receipt and protected capability gates remain authoritative",
+   "classification": "BLOCKED",
+   "content_hash": "7dca49037af29e975be61c69b3c4ac3936695d1116cb59089e653d3c9c7fb162",
+   "dependencies": [],
+   "description": "Qualify flash-p6-shared-fp8-simdgroup on Flash; region=Flash P6 shared-expert FP8 matvec; falsifier=source organ/reference parity is required; no whole-model Flash parity or NX claim is implied",
+   "diagnostic_command": [
+    "python3",
+    "-m",
+    "hcli",
+    "agentos",
+    "flash-executable",
+    "--repo-root",
+    ".",
+    "--emit",
+    "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/flash-p6-shared-fp8-simdgroup-plan.json"
+   ],
+   "effect_class": "REVERSIBLE",
+   "failure_context": null,
+   "finished_at": null,
+   "id": "accelerator.physical.flash-p6-shared-fp8-simdgroup",
+   "model": "Flash",
+   "preferred_backend": "metal",
+   "protected_command": [
+    "python3",
+    "-m",
+    "hcli",
+    "agentos",
+    "flash-executable",
+    "--repo-root",
+    ".",
+    "--emit",
+    "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/flash-p6-shared-fp8-simdgroup-plan.json"
+   ],
+   "provider": "accelerator_physical_queue",
+   "ready_at": null,
+   "repair_depth": 0,
+   "repair_exhausted": false,
+   "repair_reason": null,
+   "repair_root": null,
+   "repairs": null,
+   "requires_quiescence": true,
+   "resource_class": "GPU_EXCLUSIVE",
+   "role": "accelerator_physical_qualification",
+   "running_at": null,
+   "source_receipt": "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
+   "species": "accelerator_candidate_qualification",
+   "status": "blocked",
+   "verification": null,
+   "verifier": "accelerator.physical.flash-p6-shared-fp8-simdgroup",
    "workspace": "repo-root"
   },
   {

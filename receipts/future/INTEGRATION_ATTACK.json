@@ -1,0 +1,42 @@
+{
+ "attacks_run": {
+  "forbidden_status": 0,
+  "hardware_claims": 0,
+  "missing_negative_controls": 0,
+  "missing_tests": 0,
+  "placeholders": 0,
+  "seals": 0,
+  "skipped_tests": 0,
+  "write_partition": 0
+ },
+ "bench": {
+  "gpu_authority": false,
+  "machine": "Apple host CPU; receipt/header metadata only",
+  "measurement_state": "STATIC_ONLY",
+  "recorded_at": "2026-08-29T22:36:13Z",
+  "recorded_by": "tools/future/integration_attack.py",
+  "rule": "no hardware measurement claim without hardware",
+  "state": "UNKNOWN"
+ },
+ "claim_boundary": "Static sidecar artifact. No hardware measurement.",
+ "counts": {
+  "P0": 0,
+  "P1": 0,
+  "total": 0
+ },
+ "findings": [],
+ "module_count": 2,
+ "modules_examined": [
+  "global_frontier.py",
+  "mutation_surface.py"
+ ],
+ "purpose": "adversarial completion attack over the sidecar; its job is to find a reason NOT to finish",
+ "receipts_examined": [
+  "CLAUDE_GLOBAL_FRONTIER.json",
+  "CODEX_MUTATION_SURFACE.json"
+ ],
+ "schema": "hawking.future.integration_attack.v1",
+ "seal_sha256": "b4e7f4367bf602c7f2257ac9d8fdcf35b8a59164f2bb99b255bee8788240c1bb",
+ "verdict": "CLEAN",
+ "version": 1
+}

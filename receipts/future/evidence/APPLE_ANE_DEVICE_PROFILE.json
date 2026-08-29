@@ -1,0 +1,30 @@
+{
+  "claim_boundary" : "Public device discovery only; no ANE operation support, placement, latency, energy, or Flash residency claim.",
+  "compute_devices" : [
+    {
+      "description" : "<MLNeuralEngineComputeDevice: 0x10292be70>",
+      "kind" : "NEURAL_ENGINE"
+    },
+    {
+      "description" : "<MLCPUComputeDevice: 0x102930310>",
+      "kind" : "CPU"
+    }
+  ],
+  "coreml_deployment_target" : "macOS 14.4+ for MLComputePlan",
+  "mlcomputeplan" : {
+    "api" : "MLComputePlan.load(contentsOf:configuration:)",
+    "operations" : [
+
+    ],
+    "status" : "NOT_RUN_NO_COMPILED_MLPROGRAM"
+  },
+  "neural_engine_present" : true,
+  "os" : "macOS 27.0.0",
+  "public_api_only" : true,
+  "schema" : "hawking.apple_ane_device_profile.v1",
+  "status" : "DISCOVERED",
+  "supported_compute_devices" : [
+    "NEURAL_ENGINE",
+    "CPU"
+  ]
+}

@@ -1,28 +1,42 @@
 {
-  "claim_boundary" : "Public device discovery only; no ANE operation support, placement, latency, energy, or Flash residency claim.",
+  "claim_boundary" : "Public MLComputePlan operation support and preferred placement only; no runtime latency, energy, or Flash residency claim.",
   "compute_devices" : [
     {
-      "description" : "<MLNeuralEngineComputeDevice: 0x10292be70>",
+      "description" : "<MLNeuralEngineComputeDevice: 0x10499a140>",
       "kind" : "NEURAL_ENGINE"
     },
     {
-      "description" : "<MLCPUComputeDevice: 0x102930310>",
+      "description" : "<MLCPUComputeDevice: 0x10499f130>",
       "kind" : "CPU"
     }
   ],
   "coreml_deployment_target" : "macOS 14.4+ for MLComputePlan",
   "mlcomputeplan" : {
     "api" : "MLComputePlan.load(contentsOf:configuration:)",
+    "compile_api" : "not_needed",
+    "compiled_model" : "\/Users\/scammermike\/Downloads\/hawking\/workspace\/ops\/ane\/python\/coremltools\/modelrunner\/ModelRunner\/add_model.mlmodelc",
+    "model_structure" : "MLProgram",
     "operations" : [
-
+      {
+        "estimated_cost_weight" : null,
+        "function" : "main",
+        "index" : 0,
+        "operator" : "ios16.mul",
+        "placement_status" : "PLANNED",
+        "preferred" : "CPU",
+        "supported" : [
+          "CPU",
+          "NEURAL_ENGINE"
+        ]
+      }
     ],
-    "status" : "NOT_RUN_NO_COMPILED_MLPROGRAM"
+    "status" : "PLANNED"
   },
   "neural_engine_present" : true,
   "os" : "macOS 27.0.0",
   "public_api_only" : true,
   "schema" : "hawking.apple_ane_device_profile.v1",
-  "status" : "DISCOVERED",
+  "status" : "PLAN_READY",
   "supported_compute_devices" : [
     "NEURAL_ENGINE",
     "CPU"

@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-29T22:17:25Z",
+  "recorded_at": "2026-08-29T22:49:16Z",
   "recorded_by": "tools/future/global_frontier.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -16,7 +16,8 @@
    "MISSING": 8,
    "WEAK": 3
   },
-  "probes_holding": 15,
+  "probes_holding": 13,
+  "probes_resolved_by_sidecar": 2,
   "probes_stale": 0,
   "total": 15
  },
@@ -85,10 +86,20 @@
     "pattern": "*hwir*"
    },
    "probe_result": {
-    "hits": [],
-    "holds": true,
+    "hits": [
+     "./receipts/future/HWIR_V1.json",
+     "./tools/future/hwir.py",
+     "./tools/future/test_hwir.py"
+    ],
+    "holds": false,
     "kind": "absent",
-    "pattern": "*hwir*"
+    "pattern": "*hwir*",
+    "resolved_by_sidecar": true,
+    "resolving_paths": [
+     "./receipts/future/HWIR_V1.json",
+     "./tools/future/hwir.py",
+     "./tools/future/test_hwir.py"
+    ]
    },
    "resource_need": "CPU only",
    "title": "HWIR exists only as 15 hypotheses inside the atlas, not as an IR"
@@ -238,10 +249,20 @@
     "pattern": "*law_store*"
    },
    "probe_result": {
-    "hits": [],
-    "holds": true,
+    "hits": [
+     "./receipts/future/ODYSSEY2_LAW_STORE.json",
+     "./tools/future/test_odyssey2_law_store.py",
+     "./tools/future/odyssey2_law_store.py"
+    ],
+    "holds": false,
     "kind": "absent",
-    "pattern": "*law_store*"
+    "pattern": "*law_store*",
+    "resolved_by_sidecar": true,
+    "resolving_paths": [
+     "./receipts/future/ODYSSEY2_LAW_STORE.json",
+     "./tools/future/test_odyssey2_law_store.py",
+     "./tools/future/odyssey2_law_store.py"
+    ]
    },
    "resource_need": "CPU only",
    "title": "Odyssey II has receipts but no scoped law store"
@@ -366,8 +387,13 @@
  ],
  "purpose": "live frontier: missing / weak / stale / blocked / high-value-integration only",
  "recovered_from": "disk state on 2026-08-29, not from the directive text",
+ "resolved_entries": [
+  "F003",
+  "F010"
+ ],
+ "resolved_meaning": "A MISSING claim whose probe now finds ONLY sidecar files: this campaign closed the gap. The entry is retired, not refuted.",
  "schema": "hawking.future.claude_global_frontier.v1",
- "seal_sha256": "87e5a2c77d614f9e48220cd72f68c6dc73c4012bbd17e2c647b29fb4600d563b",
+ "seal_sha256": "fd2957c23b030ed05b0af50f6a3cef00589fde5cd45d38241b7fca6327bbca78",
  "stale_entries": [],
  "stale_meaning": "A stale probe means the claim no longer matches disk -- usually because Codex or a sidecar lane built the thing. Retire or reclassify the entry; do not silently keep it.",
  "version": 1

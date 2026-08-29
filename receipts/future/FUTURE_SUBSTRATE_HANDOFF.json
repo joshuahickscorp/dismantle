@@ -1,0 +1,440 @@
+{
+ "active_processes": [
+  "1131 /Applications/Bl /Applications/Blender.app/Contents/MacOS/Blender -b --python /Users/scammermike/.grok-mcp/blender_headless_server.py",
+  "1390 bash             bash /Users/scammermike/.claude-grok/bin/grok-run delegate --task decode-civilization --contract /private/tmp/claude-503/-Users-scammermike-Downloads-hawking/4edeb84b-5777-46a9-a0af-2e638daf5f92/scr",
+  "1540 perl             perl -e \\012    my $t = shift; my $pid = fork();\\012    if ($pid == 0) { exec(@ARGV) or exit 127; }\\012    $SIG{ALRM} = sub { kill \"TERM\", $pid; sleep 5; kill \"KILL\", $pid; exit 124; };\\012    alarm",
+  "1541 grok             grok --prompt-file /Users/scammermike/.claude-grok/tasks/decode-civilization-20260829-183316/task.md --cwd /Users/scammermike/.claude-grok/worktrees/decode-civilization-20260829-183316 -m grok-4.6 -",
+  "1710 /Users/scammermi /Users/scammermike/.grok-mcp/bin/github-mcp-server stdio --read-only --toolsets context,issues,pull_requests,actions,repos",
+  "1715 /opt/homebrew/bi /opt/homebrew/bin/node /Users/scammermike/.claude-grok/v2/shim.mjs",
+  "4297 bash             bash /Users/scammermike/.claude-grok/bin/grok-run delegate --task device-ascension --contract /private/tmp/claude-503/-Users-scammermike-Downloads-hawking/4edeb84b-5777-46a9-a0af-2e638daf5f92/scratc",
+  "4418 perl             perl -e \\012    my $t = shift; my $pid = fork();\\012    if ($pid == 0) { exec(@ARGV) or exit 127; }\\012    $SIG{ALRM} = sub { kill \"TERM\", $pid; sleep 5; kill \"KILL\", $pid; exit 124; };\\012    alarm",
+  "4420 grok             grok --prompt-file /Users/scammermike/.claude-grok/tasks/device-ascension-20260829-183327/task.md --cwd /Users/scammermike/.claude-grok/worktrees/device-ascension-20260829-183327 -m grok-4.6 --effor",
+  "4580 /Users/scammermi /Users/scammermike/.grok-mcp/bin/github-mcp-server stdio --read-only --toolsets context,issues,pull_requests,actions,repos",
+  "4586 /opt/homebrew/bi /opt/homebrew/bin/node /Users/scammermike/.claude-grok/v2/shim.mjs",
+  "7857 bash             bash /Users/scammermike/.claude-grok/bin/grok-run delegate --task devplatform --contract /private/tmp/claude-503/-Users-scammermike-Downloads-hawking/4edeb84b-5777-46a9-a0af-2e638daf5f92/scratchpad/",
+  "8050 perl             perl -e \\012    my $t = shift; my $pid = fork();\\012    if ($pid == 0) { exec(@ARGV) or exit 127; }\\012    $SIG{ALRM} = sub { kill \"TERM\", $pid; sleep 5; kill \"KILL\", $pid; exit 124; };\\012    alarm",
+  "8052 grok             grok --prompt-file /Users/scammermike/.claude-grok/tasks/devplatform-20260829-183337/task.md --cwd /Users/scammermike/.claude-grok/worktrees/devplatform-20260829-183337 -m grok-4.6 --effort xhigh --",
+  "8218 /Users/scammermi /Users/scammermike/.grok-mcp/bin/github-mcp-server stdio --read-only --toolsets context,issues,pull_requests,actions,repos",
+  "8222 /opt/homebrew/bi /opt/homebrew/bin/node /Users/scammermike/.claude-grok/v2/shim.mjs",
+  "11353 bash             bash /Users/scammermike/.claude-grok/bin/grok-run delegate --task flash-nx-audit --contract /private/tmp/claude-503/-Users-scammermike-Downloads-hawking/4edeb84b-5777-46a9-a0af-2e638daf5f92/scratch",
+  "11593 perl             perl -e \\012    my $t = shift; my $pid = fork();\\012    if ($pid == 0) { exec(@ARGV) or exit 127; }\\012    $SIG{ALRM} = sub { kill \"TERM\", $pid; sleep 5; kill \"KILL\", $pid; exit 124; };\\012    alar",
+  "11599 grok             grok --prompt-file /Users/scammermike/.claude-grok/tasks/flash-nx-audit-20260829-183350/task.md --cwd /Users/scammermike/.claude-grok/worktrees/flash-nx-audit-20260829-183350 -m grok-4.6 --effort x",
+  "11791 /Users/scammermi /Users/scammermike/.grok-mcp/bin/github-mcp-server stdio --read-only --toolsets context,issues,pull_requests,actions,repos"
+ ],
+ "adversarial_attack": {
+  "counts": {
+   "P0": 0,
+   "P1": 0,
+   "total": 0
+  },
+  "verdict": "CLEAN"
+ },
+ "arrival_questions": {
+  "codex_finishes_now": {
+   "absent": [
+    "candidate_queue_planner",
+    "codex_receipt_ingestion",
+    "contamination_science",
+    "ebpw_category_validator",
+    "experiment_turnaround",
+    "flash_nx_audit",
+    "qwen27_profile_schema",
+    "static_kernel_preflight"
+   ],
+   "answer": "3 of 11 systems are executable today, each with a module, a test and a sealed receipt on disk.",
+   "evidence": {
+    "codex_mutation_surface": "receipts/future/CODEX_MUTATION_SURFACE.json",
+    "evidence_snapshot": "receipts/future/EVIDENCE_SNAPSHOT.json",
+    "global_frontier": "receipts/future/CLAUDE_GLOBAL_FRONTIER.json"
+   },
+   "executable_now": [
+    "codex_mutation_surface",
+    "evidence_snapshot",
+    "global_frontier"
+   ],
+   "partial": [],
+   "question": "IF CODEX FINISHED THE CURRENT ACCELERATOR CAMPAIGN RIGHT NOW, HOW MUCH FUTURE HAWKING COULD IMMEDIATELY PLUG INTO IT?"
+  },
+  "cuda_arrives": {
+   "absent": [
+    "device_ascension",
+    "fusion",
+    "hmf_hgvas"
+   ],
+   "answer": "0 of 3 systems are executable today, each with a module, a test and a sealed receipt on disk.",
+   "evidence": {},
+   "executable_now": [],
+   "partial": [],
+   "question": "IF A CUDA NODE ARRIVED TOMORROW, WHAT COMPILER/FUSION FLOOR ALREADY EXISTS?"
+  },
+  "era_ii": {
+   "absent": [
+    "decode_civilization",
+    "developer_platform",
+    "expert_bank_school",
+    "meta_experiment_funnel",
+    "negative_science_index",
+    "ngram_school",
+    "physical_primitive_library",
+    "router_science",
+    "static_skeleton",
+    "teacher_corpus"
+   ],
+   "answer": "0 of 10 systems are executable today, each with a module, a test and a sealed receipt on disk.",
+   "evidence": {},
+   "executable_now": [],
+   "partial": [],
+   "question": "IF ERA II STARTED TOMORROW, WHAT IS ALREADY EXECUTABLE?"
+  },
+  "era_iii": {
+   "absent": [
+    "autonomous_reproducible_science",
+    "learned_physical_compiler",
+    "odyssey_ii_law_store",
+    "odyssey_iii_adversary"
+   ],
+   "answer": "1 of 5 systems are executable today, each with a module, a test and a sealed receipt on disk.",
+   "evidence": {
+    "integration_attack": "receipts/future/INTEGRATION_ATTACK.json"
+   },
+   "executable_now": [
+    "integration_attack"
+   ],
+   "partial": [],
+   "question": "IF ERA III STARTED TOMORROW, WHAT IS ALREADY EXECUTABLE?"
+  },
+  "tournament_winner": {
+   "absent": [
+    "green_machine",
+    "hcli_future_workunits",
+    "resident_install",
+    "tournament"
+   ],
+   "answer": "0 of 4 systems are executable today, each with a module, a test and a sealed receipt on disk.",
+   "evidence": {},
+   "executable_now": [],
+   "partial": [],
+   "question": "IF THE TOURNAMENT WINNER WERE SELECTED TOMORROW, WHAT REAL WORK COULD HCLI IMMEDIATELY BEGIN?"
+  },
+  "u50_arrives": {
+   "absent": [
+    "fpga_engine_school",
+    "fpga_multifidelity",
+    "hardware_doctor",
+    "hbm_doctor",
+    "hwir"
+   ],
+   "answer": "0 of 5 systems are executable today, each with a module, a test and a sealed receipt on disk.",
+   "evidence": {},
+   "executable_now": [],
+   "partial": [],
+   "question": "IF THE U50DD ARRIVED TOMORROW, WHAT SOFTWARE/HWIR/SIMULATION FLOOR ALREADY EXISTS?"
+  }
+ },
+ "bench": {
+  "gpu_authority": false,
+  "machine": "Apple host CPU; receipt/header metadata only",
+  "measurement_state": "STATIC_ONLY",
+  "recorded_at": "2026-08-29T22:40:33Z",
+  "recorded_by": "tools/future/handoff.py",
+  "rule": "no hardware measurement claim without hardware",
+  "state": "UNKNOWN"
+ },
+ "blockers": [
+  "No protected GPU authority in this campaign: every hardware quantity is UNKNOWN by rule, not by omission.",
+  "Flash has no source-independent complete NX; 12 of 14 blocked Flash candidates in the physical qualification queue depend on that one artifact.",
+  "No U50 board, no CUDA node, no Core ML/ANE compiler environment: those fidelity levels and backends are declared UNAVAILABLE rather than simulated as if present."
+ ],
+ "branch": "odyssey-i",
+ "claim_boundary": "Static sidecar artifact. No hardware measurement.",
+ "dirty_paths": 682,
+ "gpu_authority": false,
+ "head": "5ad5646a6799a650e86855832640b506af28f86e",
+ "head_subject": "feat(future): pinned evidence snapshot and adversarial integration attack",
+ "protected_measurements_taken": 0,
+ "schema": "hawking.future.handoff.v1",
+ "seal_sha256": "20f4855c10a5184f8e00f6d9c92c41b90acef795d97426d650bcfa1e32787fe5",
+ "sidecar_commits": [
+  "5ad5646a6 feat(future): pinned evidence snapshot and adversarial integration attack",
+  "b63bb01f6 feat(future): sidecar namespace with codex mutation surface and global frontier"
+ ],
+ "system_counts": {
+  "ABSENT": 34,
+  "EXECUTABLE": 4,
+  "PARTIAL": 0
+ },
+ "systems": {
+  "autonomous_reproducible_science": {
+   "module": null,
+   "module_lines": 0,
+   "receipt": null,
+   "state": "ABSENT",
+   "test": null
+  },
+  "candidate_queue_planner": {
+   "module": null,
+   "module_lines": 0,
+   "receipt": null,
+   "state": "ABSENT",
+   "test": null
+  },
+  "codex_mutation_surface": {
+   "module": "tools/future/mutation_surface.py",
+   "module_lines": 160,
+   "receipt": "receipts/future/CODEX_MUTATION_SURFACE.json",
+   "state": "EXECUTABLE",
+   "test": "tools/future/test_mutation_surface.py"
+  },
+  "codex_receipt_ingestion": {
+   "module": null,
+   "module_lines": 0,
+   "receipt": null,
+   "state": "ABSENT",
+   "test": null
+  },
+  "contamination_science": {
+   "module": null,
+   "module_lines": 0,
+   "receipt": null,
+   "state": "ABSENT",
+   "test": null
+  },
+  "decode_civilization": {
+   "module": null,
+   "module_lines": 0,
+   "receipt": null,
+   "state": "ABSENT",
+   "test": null
+  },
+  "developer_platform": {
+   "module": null,
+   "module_lines": 0,
+   "receipt": null,
+   "state": "ABSENT",
+   "test": null
+  },
+  "device_ascension": {
+   "module": null,
+   "module_lines": 0,
+   "receipt": null,
+   "state": "ABSENT",
+   "test": null
+  },
+  "ebpw_category_validator": {
+   "module": null,
+   "module_lines": 0,
+   "receipt": null,
+   "state": "ABSENT",
+   "test": null
+  },
+  "evidence_snapshot": {
+   "module": "tools/future/evidence_snapshot.py",
+   "module_lines": 179,
+   "receipt": "receipts/future/EVIDENCE_SNAPSHOT.json",
+   "state": "EXECUTABLE",
+   "test": "tools/future/test_evidence_snapshot.py"
+  },
+  "experiment_turnaround": {
+   "module": null,
+   "module_lines": 0,
+   "receipt": null,
+   "state": "ABSENT",
+   "test": null
+  },
+  "expert_bank_school": {
+   "module": null,
+   "module_lines": 0,
+   "receipt": null,
+   "state": "ABSENT",
+   "test": null
+  },
+  "flash_nx_audit": {
+   "module": null,
+   "module_lines": 0,
+   "receipt": null,
+   "state": "ABSENT",
+   "test": null
+  },
+  "fpga_engine_school": {
+   "module": null,
+   "module_lines": 0,
+   "receipt": null,
+   "state": "ABSENT",
+   "test": null
+  },
+  "fpga_multifidelity": {
+   "module": null,
+   "module_lines": 0,
+   "receipt": null,
+   "state": "ABSENT",
+   "test": null
+  },
+  "fusion": {
+   "module": null,
+   "module_lines": 0,
+   "receipt": null,
+   "state": "ABSENT",
+   "test": null
+  },
+  "global_frontier": {
+   "module": "tools/future/global_frontier.py",
+   "module_lines": 394,
+   "receipt": "receipts/future/CLAUDE_GLOBAL_FRONTIER.json",
+   "state": "EXECUTABLE",
+   "test": "tools/future/test_global_frontier.py"
+  },
+  "green_machine": {
+   "module": null,
+   "module_lines": 0,
+   "receipt": null,
+   "state": "ABSENT",
+   "test": null
+  },
+  "hardware_doctor": {
+   "module": null,
+   "module_lines": 0,
+   "receipt": null,
+   "state": "ABSENT",
+   "test": null
+  },
+  "hbm_doctor": {
+   "module": null,
+   "module_lines": 0,
+   "receipt": null,
+   "state": "ABSENT",
+   "test": null
+  },
+  "hcli_future_workunits": {
+   "module": null,
+   "module_lines": 0,
+   "receipt": null,
+   "state": "ABSENT",
+   "test": null
+  },
+  "hmf_hgvas": {
+   "module": null,
+   "module_lines": 0,
+   "receipt": null,
+   "state": "ABSENT",
+   "test": null
+  },
+  "hwir": {
+   "module": null,
+   "module_lines": 0,
+   "receipt": null,
+   "state": "ABSENT",
+   "test": null
+  },
+  "integration_attack": {
+   "module": "tools/future/integration_attack.py",
+   "module_lines": 300,
+   "receipt": "receipts/future/INTEGRATION_ATTACK.json",
+   "state": "EXECUTABLE",
+   "test": "tools/future/test_integration_attack.py"
+  },
+  "learned_physical_compiler": {
+   "module": null,
+   "module_lines": 0,
+   "receipt": null,
+   "state": "ABSENT",
+   "test": null
+  },
+  "meta_experiment_funnel": {
+   "module": null,
+   "module_lines": 0,
+   "receipt": null,
+   "state": "ABSENT",
+   "test": null
+  },
+  "negative_science_index": {
+   "module": null,
+   "module_lines": 0,
+   "receipt": null,
+   "state": "ABSENT",
+   "test": null
+  },
+  "ngram_school": {
+   "module": null,
+   "module_lines": 0,
+   "receipt": null,
+   "state": "ABSENT",
+   "test": null
+  },
+  "odyssey_ii_law_store": {
+   "module": null,
+   "module_lines": 0,
+   "receipt": null,
+   "state": "ABSENT",
+   "test": null
+  },
+  "odyssey_iii_adversary": {
+   "module": null,
+   "module_lines": 0,
+   "receipt": null,
+   "state": "ABSENT",
+   "test": null
+  },
+  "physical_primitive_library": {
+   "module": null,
+   "module_lines": 0,
+   "receipt": null,
+   "state": "ABSENT",
+   "test": null
+  },
+  "qwen27_profile_schema": {
+   "module": null,
+   "module_lines": 0,
+   "receipt": null,
+   "state": "ABSENT",
+   "test": null
+  },
+  "resident_install": {
+   "module": null,
+   "module_lines": 0,
+   "receipt": null,
+   "state": "ABSENT",
+   "test": null
+  },
+  "router_science": {
+   "module": null,
+   "module_lines": 0,
+   "receipt": null,
+   "state": "ABSENT",
+   "test": null
+  },
+  "static_kernel_preflight": {
+   "module": null,
+   "module_lines": 0,
+   "receipt": null,
+   "state": "ABSENT",
+   "test": null
+  },
+  "static_skeleton": {
+   "module": null,
+   "module_lines": 0,
+   "receipt": null,
+   "state": "ABSENT",
+   "test": null
+  },
+  "teacher_corpus": {
+   "module": null,
+   "module_lines": 0,
+   "receipt": null,
+   "state": "ABSENT",
+   "test": null
+  },
+  "tournament": {
+   "module": null,
+   "module_lines": 0,
+   "receipt": null,
+   "state": "ABSENT",
+   "test": null
+  }
+ },
+ "tests": {
+  "exit_code": 1,
+  "green": false,
+  "summary": "2 failed, 22 passed in 67.19s (0:01:07)"
+ },
+ "version": 1
+}

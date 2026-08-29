@@ -13,7 +13,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-29T22:36:13Z",
+  "recorded_at": "2026-08-29T22:50:04Z",
   "recorded_by": "tools/future/integration_attack.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -25,18 +25,30 @@
   "total": 0
  },
  "findings": [],
- "module_count": 2,
+ "module_count": 7,
  "modules_examined": [
+  "codex_ingest.py",
+  "evidence_snapshot.py",
   "global_frontier.py",
-  "mutation_surface.py"
+  "hwir.py",
+  "mutation_surface.py",
+  "odyssey2_law_store.py",
+  "odyssey3_adversary.py"
  ],
  "purpose": "adversarial completion attack over the sidecar; its job is to find a reason NOT to finish",
  "receipts_examined": [
   "CLAUDE_GLOBAL_FRONTIER.json",
-  "CODEX_MUTATION_SURFACE.json"
+  "CODEX_INGEST_STATE.json",
+  "CODEX_MUTATION_SURFACE.json",
+  "EVIDENCE_SNAPSHOT.json",
+  "FUTURE_SUBSTRATE_HANDOFF.json",
+  "HWIR_V1.json",
+  "INTEGRATION_ATTACK.json",
+  "ODYSSEY2_LAW_STORE.json",
+  "ODYSSEY3_ADVERSARY.json"
  ],
  "schema": "hawking.future.integration_attack.v1",
- "seal_sha256": "b4e7f4367bf602c7f2257ac9d8fdcf35b8a59164f2bb99b255bee8788240c1bb",
+ "seal_sha256": "f896c6b823c13d98c3a7aa4bbb02aa6e108f0f4484ced27e4a80540c9f94c174",
  "verdict": "CLEAN",
  "version": 1
 }

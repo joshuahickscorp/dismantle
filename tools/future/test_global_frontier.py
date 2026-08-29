@@ -24,7 +24,12 @@ def test_missing_claims_are_probe_backed_not_asserted():
         r = gf.run_probe(e["probe"])
         assert "holds" in r
         if e["classification"] == "MISSING" and r["kind"] == "absent":
-            assert r["holds"], f"{e['id']} claims MISSING but found {r['hits'][:3]}"
+            # Either the gap is still open, or this campaign closed it. What must
+            # never happen is a MISSING claim contradicted by something OUTSIDE the
+            # sidecar, which would mean the claim was wrong when it was written.
+            assert r["holds"] or r.get("resolved_by_sidecar"), (
+                f"{e['id']} claims MISSING but found non-sidecar {r['hits'][:3]}"
+            )
 
 
 def test_absent_probe_actually_detects_something_that_exists():

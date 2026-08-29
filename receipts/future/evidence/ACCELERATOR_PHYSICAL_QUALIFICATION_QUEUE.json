@@ -982,6 +982,120 @@
       "status": "READY_PROTECTED"
     },
     {
+      "affected_physical_region": "Qwen27 resident per-dispatch pipeline handle resolution",
+      "baseline_path": "hcli/hawking-native.sealed-3.14.json",
+      "blocked_reason": null,
+      "candidate_id": "qwen27-pipeline-id-resolution",
+      "capability_contract": "complete accepted-token capability, zero fallback, independent resident identity, and explicit native metric absence reasons",
+      "control_configuration": {
+        "child_fusion_env": {
+          "HAWKING_METAL_PIPELINE_CACHE_REUSE": "1",
+          "HAWKING_METAL_PIPELINE_ID_RESOLUTION": "0",
+          "HAWKING_QWEN38_FAST": "1"
+        }
+      },
+      "dependencies": [
+        "qwen27-pipeline-cache-reuse"
+      ],
+      "diagnostic_command": [
+        "python3",
+        "-m",
+        "hcli",
+        "agentos",
+        "protected-accelerator-bench",
+        "--profile",
+        "hcli/hawking-native.sealed-3.14.json",
+        "--repo-root",
+        ".",
+        "--warmup-requests",
+        "1",
+        "--measure-requests",
+        "3",
+        "--max-new-tokens",
+        "8",
+        "--fusion-env",
+        "HAWKING_METAL_PIPELINE_CACHE_REUSE=1",
+        "--fusion-env",
+        "HAWKING_METAL_PIPELINE_ID_RESOLUTION=1",
+        "--fusion-env",
+        "HAWKING_QWEN38_FAST=1",
+        "--emit",
+        "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/qwen27-pipeline-id-resolution-diagnostic.json"
+      ],
+      "evidence": [],
+      "exact_mutation": {
+        "child_fusion_env": {
+          "HAWKING_METAL_PIPELINE_CACHE_REUSE": "1",
+          "HAWKING_METAL_PIPELINE_ID_RESOLUTION": "1",
+          "HAWKING_QWEN38_FAST": "1"
+        }
+      },
+      "expected_active_byte_change": "unchanged resident bytes and reads",
+      "expected_dispatch_reduction": "0; command-buffer, encoder, and dispatch topology are unchanged",
+      "expected_eliminated_work": "the second kernel-name hash/map probe after resident pipeline admission",
+      "expected_gpu_ns_mechanism": "resolve warmed pipeline handles through stable per-TCB integer IDs and vector indexing while preserving the name-map control path",
+      "expected_intermediate_byte_reduction": "0; no buffers or representation are changed",
+      "measurements": {
+        "absence_reasons": {
+          "accepted_tps": "awaiting native protected complete-token receipt",
+          "active_representation_bytes_per_token": "awaiting native protected complete-token receipt",
+          "actual_read_bytes_per_token": "awaiting native protected complete-token receipt",
+          "complete_wall_ns_per_accepted_token": "awaiting native protected complete-token receipt",
+          "dispatches_per_token": "awaiting native protected complete-token receipt",
+          "fallback_count": "awaiting native protected complete-token receipt",
+          "gpu_ns_per_token": "awaiting native protected complete-token receipt",
+          "resident_bytes": "awaiting native protected complete-token receipt",
+          "sync_ns_per_token": "awaiting native protected complete-token receipt",
+          "total_nx_bytes": "awaiting native protected complete-token receipt",
+          "transient_bytes_per_token": "awaiting native protected complete-token receipt"
+        },
+        "accepted_tps": null,
+        "active_representation_bytes_per_token": null,
+        "actual_read_bytes_per_token": null,
+        "complete_wall_ns_per_accepted_token": null,
+        "dispatches_per_token": null,
+        "fallback_count": null,
+        "gpu_ns_per_token": null,
+        "resident_bytes": null,
+        "status": "NOT_MEASURED",
+        "sync_ns_per_token": null,
+        "total_nx_bytes": null,
+        "transient_bytes_per_token": null
+      },
+      "model": "Qwen27",
+      "parity_contract": "identical tokenizer-bound output ids and source-approved graph semantics; any numerical/output divergence rejects the candidate",
+      "protected_command": [
+        "python3",
+        "-m",
+        "hcli",
+        "agentos",
+        "protected-accelerator-bench",
+        "--profile",
+        "hcli/hawking-native.sealed-3.14.json",
+        "--repo-root",
+        ".",
+        "--warmup-requests",
+        "2",
+        "--measure-requests",
+        "10",
+        "--max-new-tokens",
+        "32",
+        "--fusion-env",
+        "HAWKING_METAL_PIPELINE_CACHE_REUSE=1",
+        "--fusion-env",
+        "HAWKING_METAL_PIPELINE_ID_RESOLUTION=1",
+        "--fusion-env",
+        "HAWKING_QWEN38_FAST=1",
+        "--emit",
+        "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/qwen27-pipeline-id-resolution-protected.json"
+      ],
+      "source_evidence": [
+        "crates/hawking-core/src/metal/mod.rs",
+        "crates/hawking-core/src/model/qwen38_hybrid_decode.rs"
+      ],
+      "status": "READY_PROTECTED"
+    },
+    {
       "affected_physical_region": "Qwen27 shared Metal ordered/concurrent encoder state binding",
       "baseline_path": "hcli/hawking-native.sealed-3.14.json",
       "blocked_reason": null,
@@ -2111,6 +2225,92 @@
       "status": "BLOCKED"
     },
     {
+      "affected_physical_region": "Flash native/fullseq resident pipeline handle resolution",
+      "baseline_path": "receipts/headless/FLASH_NEXT_NOETIC_EXECUTABLE.json",
+      "blocked_reason": "source-independent Flash NX and protected complete-token capability are not qualified",
+      "candidate_id": "flash-pipeline-id-resolution",
+      "capability_contract": "blocked until a complete source-independent NX executable and independent capability path exist",
+      "control_configuration": {
+        "mode": "source_oracle_or_scaffold",
+        "source_oracle_controls": {
+          "HAWKING_FLASH_PIPELINE_CACHE_REUSE": "1",
+          "HAWKING_METAL_PIPELINE_ID_RESOLUTION": "0"
+        }
+      },
+      "dependencies": [
+        "flash-pipeline-cache-reuse"
+      ],
+      "diagnostic_command": [
+        "python3",
+        "-m",
+        "hcli",
+        "agentos",
+        "flash-executable",
+        "--repo-root",
+        ".",
+        "--emit",
+        "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/flash-pipeline-id-resolution-plan.json"
+      ],
+      "evidence": [],
+      "exact_mutation": {
+        "source_oracle_controls": {
+          "HAWKING_FLASH_PIPELINE_CACHE_REUSE": "1",
+          "HAWKING_METAL_PIPELINE_ID_RESOLUTION": "1"
+        }
+      },
+      "expected_active_byte_change": "unchanged source and compact resident bytes",
+      "expected_dispatch_reduction": "0; command-buffer, encoder, and dispatch topology are unchanged",
+      "expected_eliminated_work": "the second kernel-name hash/map probe after resident pipeline admission",
+      "expected_gpu_ns_mechanism": "resolve warmed pipeline handles through stable batch integer IDs and vector indexing without changing kernel selection or arithmetic",
+      "expected_intermediate_byte_reduction": "0; no buffers or representation are changed",
+      "measurements": {
+        "absence_reasons": {
+          "accepted_tps": "awaiting native protected complete-token receipt",
+          "active_representation_bytes_per_token": "awaiting native protected complete-token receipt",
+          "actual_read_bytes_per_token": "awaiting native protected complete-token receipt",
+          "complete_wall_ns_per_accepted_token": "awaiting native protected complete-token receipt",
+          "dispatches_per_token": "awaiting native protected complete-token receipt",
+          "fallback_count": "awaiting native protected complete-token receipt",
+          "gpu_ns_per_token": "awaiting native protected complete-token receipt",
+          "resident_bytes": "awaiting native protected complete-token receipt",
+          "sync_ns_per_token": "awaiting native protected complete-token receipt",
+          "total_nx_bytes": "awaiting native protected complete-token receipt",
+          "transient_bytes_per_token": "awaiting native protected complete-token receipt"
+        },
+        "accepted_tps": null,
+        "active_representation_bytes_per_token": null,
+        "actual_read_bytes_per_token": null,
+        "complete_wall_ns_per_accepted_token": null,
+        "dispatches_per_token": null,
+        "fallback_count": null,
+        "gpu_ns_per_token": null,
+        "resident_bytes": null,
+        "status": "NOT_MEASURED",
+        "sync_ns_per_token": null,
+        "total_nx_bytes": null,
+        "transient_bytes_per_token": null
+      },
+      "model": "Flash",
+      "parity_contract": "source organ/reference parity is required; no whole-model Flash parity or NX claim is implied",
+      "protected_command": [
+        "python3",
+        "-m",
+        "hcli",
+        "agentos",
+        "flash-executable",
+        "--repo-root",
+        ".",
+        "--emit",
+        "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/flash-pipeline-id-resolution-plan.json"
+      ],
+      "source_evidence": [
+        "crates/hawking-core/src/metal/mod.rs",
+        "crates/hawking-core/src/gravity_deepseek_v4_native_token_graph.rs",
+        "crates/hawking-core/src/gravity_deepseek_v4_fullseq_attention_device.rs"
+      ],
+      "status": "BLOCKED"
+    },
+    {
       "affected_physical_region": "Flash source-BF16 Q/K/V projection and Q/K norm-RoPE-KV boundary",
       "baseline_path": "receipts/headless/FLASH_NEXT_NOETIC_EXECUTABLE.json",
       "blocked_reason": "source-independent Flash NX and protected complete-token capability are not qualified",
@@ -2853,21 +3053,21 @@
   "claim_boundary": "This is a physical qualification frontier and HCLI WorkUnit proposal. It contains hypotheses and commands, not timing, placement, energy, TPS, capability, or promotion claims.",
   "counts": {
     "by_status": {
-      "BLOCKED": 14,
+      "BLOCKED": 15,
       "DIAGNOSTIC_PASS": 0,
       "DIAGNOSTIC_REJECT": 0,
       "INTEGRATED": 0,
       "PROTECTED_PASS": 0,
       "PROTECTED_REJECT": 0,
       "READY_DIAGNOSTIC": 0,
-      "READY_PROTECTED": 12,
+      "READY_PROTECTED": 13,
       "STATIC_ONLY": 4
     },
-    "candidates": 30,
-    "ready": 12,
-    "work_units": 12
+    "candidates": 32,
+    "ready": 13,
+    "work_units": 13
   },
-  "fingerprint": "7e579fa794e6dc873252237564a4163a7fd45fa444340eb12d1f9351e8998eb9",
+  "fingerprint": "8ac6dade13b3fc5b207fedda7b91d63ce00bc7a783c555be5959835fcb7fb3ad",
   "funnel": {
     "diagnostic_relative_ab": [],
     "native_parity": [],
@@ -2883,6 +3083,7 @@
       "qwen27-fast-profile",
       "qwen27-gqa-qkv-fusion",
       "qwen27-pipeline-cache-reuse",
+      "qwen27-pipeline-id-resolution",
       "qwen27-pipeline-state-elision",
       "qwen27-q2f-splitk4",
       "qwen27-q4-vecgroup-x64"
@@ -2897,6 +3098,7 @@
       "qwen27-fast-profile",
       "qwen27-gqa-qkv-fusion",
       "qwen27-pipeline-cache-reuse",
+      "qwen27-pipeline-id-resolution",
       "qwen27-pipeline-state-elision",
       "qwen27-q2f-splitk4",
       "qwen27-q4-vecgroup-x64",
@@ -3693,6 +3895,90 @@
       "status": "pending",
       "verification": null,
       "verifier": "accelerator.physical.qwen27-pipeline-cache-reuse",
+      "workspace": "repo-root"
+    },
+    {
+      "assigned_backend": null,
+      "assigned_runtime": null,
+      "attempts": 0,
+      "backend_task_id": null,
+      "candidate_id": "qwen27-pipeline-id-resolution",
+      "claim_boundary": "WorkUnit is a proposal; receipt and protected capability gates remain authoritative",
+      "classification": null,
+      "content_hash": "3acb83f16d37cb84fb7843d5e00c8f7c7628b4fca094ea46c424c6a2602f5b9d",
+      "dependencies": [
+        "accelerator.physical.qwen27-pipeline-cache-reuse"
+      ],
+      "description": "Qualify qwen27-pipeline-id-resolution on Qwen27; region=Qwen27 resident per-dispatch pipeline handle resolution; falsifier=identical tokenizer-bound output ids and source-approved graph semantics; any numerical/output divergence rejects the candidate",
+      "diagnostic_command": [
+        "python3",
+        "-m",
+        "hcli",
+        "agentos",
+        "protected-accelerator-bench",
+        "--profile",
+        "hcli/hawking-native.sealed-3.14.json",
+        "--repo-root",
+        ".",
+        "--warmup-requests",
+        "1",
+        "--measure-requests",
+        "3",
+        "--max-new-tokens",
+        "8",
+        "--fusion-env",
+        "HAWKING_METAL_PIPELINE_CACHE_REUSE=1",
+        "--fusion-env",
+        "HAWKING_METAL_PIPELINE_ID_RESOLUTION=1",
+        "--fusion-env",
+        "HAWKING_QWEN38_FAST=1",
+        "--emit",
+        "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/qwen27-pipeline-id-resolution-diagnostic.json"
+      ],
+      "effect_class": "REVERSIBLE",
+      "failure_context": null,
+      "finished_at": null,
+      "id": "accelerator.physical.qwen27-pipeline-id-resolution",
+      "model": "Qwen27",
+      "preferred_backend": "metal",
+      "protected_command": [
+        "python3",
+        "-m",
+        "hcli",
+        "agentos",
+        "protected-accelerator-bench",
+        "--profile",
+        "hcli/hawking-native.sealed-3.14.json",
+        "--repo-root",
+        ".",
+        "--warmup-requests",
+        "2",
+        "--measure-requests",
+        "10",
+        "--max-new-tokens",
+        "32",
+        "--fusion-env",
+        "HAWKING_METAL_PIPELINE_CACHE_REUSE=1",
+        "--fusion-env",
+        "HAWKING_METAL_PIPELINE_ID_RESOLUTION=1",
+        "--fusion-env",
+        "HAWKING_QWEN38_FAST=1",
+        "--emit",
+        "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/qwen27-pipeline-id-resolution-protected.json"
+      ],
+      "provider": "accelerator_physical_queue",
+      "ready_at": null,
+      "repair_depth": 0,
+      "repair_exhausted": false,
+      "repair_reason": null,
+      "repair_root": null,
+      "repairs": null,
+      "resource_class": "GPU_EXCLUSIVE",
+      "role": "accelerator_physical_qualification",
+      "running_at": null,
+      "status": "pending",
+      "verification": null,
+      "verifier": "accelerator.physical.qwen27-pipeline-id-resolution",
       "workspace": "repo-root"
     },
     {

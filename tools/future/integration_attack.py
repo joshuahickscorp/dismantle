@@ -25,6 +25,7 @@ import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))))
 
 import argparse
+import ast
 import hashlib
 import json
 import re
@@ -210,23 +211,51 @@ def attack_missing_negative_controls() -> list[Finding]:
     return out
 
 
+def _dotted(node: ast.AST) -> str:
+    parts = []
+    while isinstance(node, ast.Attribute):
+        parts.append(node.attr)
+        node = node.value
+    if isinstance(node, ast.Name):
+        parts.append(node.id)
+    return ".".join(reversed(parts))
+
+
 def attack_skipped_tests() -> list[Finding]:
     """A suite that passes by skipping is a suite that measured nothing.
 
-    This project has already shipped grades that rested on SKIPPED tests.
-    An unconditional skip in a deliverable test module is a P0.
+    This project has already shipped grades that rested on SKIPPED tests, so an
+    unconditional skip in a deliverable test module is a P0.
+
+    Parsed with `ast`, not regex: a test that PROVES skip-detection works has to
+    write the string `@pytest.mark.skip` into a fixture, and a text scan flags
+    that as a real skip. Carving out the file would leave a blind spot in exactly
+    the module whose job is to have none, so match syntax instead of text.
     """
     out = []
     for p in sorted(FUTURE.glob("test_*.py")):
-        src = p.read_text()
-        for pat, sev in (
-            (r"@pytest\.mark\.skip\b", "P0"),
-            (r"pytest\.skip\(", "P1"),
-            (r"@pytest\.mark\.xfail\b", "P1"),
-        ):
-            for m in re.finditer(pat, src):
-                line_no = src.count("\n", 0, m.start()) + 1
-                out.append(_finding("test_skip", f"{p.name}:{line_no}", m.group(0), sev))
+        try:
+            tree = ast.parse(p.read_text())
+        except SyntaxError as e:
+            out.append(_finding("test_unparseable", p.name, repr(e), "P0"))
+            continue
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                for dec in node.decorator_list:
+                    target = dec.func if isinstance(dec, ast.Call) else dec
+                    name = _dotted(target)
+                    if name in ("pytest.mark.skip", "pytest.mark.skipif"):
+                        out.append(
+                            _finding("test_skip", f"{p.name}:{dec.lineno}", f"@{name}", "P0")
+                        )
+                    elif name == "pytest.mark.xfail":
+                        out.append(
+                            _finding("test_skip", f"{p.name}:{dec.lineno}", f"@{name}", "P1")
+                        )
+            elif isinstance(node, ast.Call) and _dotted(node.func) == "pytest.skip":
+                out.append(
+                    _finding("test_skip", f"{p.name}:{node.lineno}", "pytest.skip()", "P1")
+                )
     return out
 
 

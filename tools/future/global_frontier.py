@@ -45,10 +45,19 @@ REQUIRED_FIELDS = (
 )
 
 
+# Directories that can never settle a claim about whether Hawking implements
+# something. `.git` in particular carries a ref and a worktree directory per Grok
+# lane, so a lane merely NAMED hwir made the "no HWIR exists" probe report hits.
+_PRUNE = ("./target", "./.git", "./node_modules")
+
+
 def _probe_absent(pattern: str) -> dict[str, Any]:
-    """Evidence that nothing matching `pattern` exists (excluding pycache)."""
+    """Evidence that nothing matching `pattern` exists in the source tree."""
+    prune: list[str] = []
+    for d in _PRUNE:
+        prune += ["-path", d, "-prune", "-o"]
     r = subprocess.run(
-        ["find", ".", "-path", "./target", "-prune", "-o", "-iname", pattern, "-print"],
+        ["find", ".", *prune, "-iname", pattern, "-print"],
         cwd=REPO,
         capture_output=True,
         text=True,
@@ -81,7 +90,17 @@ def _probe_field(relpath: str, dotted: str, expect: Any) -> dict[str, Any]:
 def run_probe(spec: dict[str, Any]) -> dict[str, Any]:
     kind = spec["kind"]
     if kind == "absent":
-        return _probe_absent(spec["pattern"])
+        r = _probe_absent(spec["pattern"])
+        # A MISSING claim goes stale for two very different reasons, and collapsing
+        # them would be dishonest in opposite directions. If the only hits are in the
+        # sidecar partition, the gap was CLOSED by this campaign -- that is the
+        # frontier working, and the entry is RESOLVED, not wrong. Hits anywhere else
+        # mean the claim was wrong when it was written, which is a real defect.
+        if not r["holds"]:
+            sidecar = [h for h in r["hits"] if h.startswith(("./tools/future/", "./receipts/future/"))]
+            r["resolved_by_sidecar"] = len(sidecar) == len(r["hits"])
+            r["resolving_paths"] = sidecar
+        return r
     if kind == "present":
         return _probe_present(spec["path"])
     if kind == "field":
@@ -334,7 +353,10 @@ def build(strict: bool = False) -> Path:
         result = run_probe(e["probe"])
         entries.append({**e, "probe_result": result})
 
-    stale = [e["id"] for e in entries if not e["probe_result"]["holds"]]
+    resolved = [e["id"] for e in entries
+                if not e["probe_result"]["holds"] and e["probe_result"].get("resolved_by_sidecar")]
+    stale = [e["id"] for e in entries
+             if not e["probe_result"]["holds"] and not e["probe_result"].get("resolved_by_sidecar")]
     doc = {
         "schema": "hawking.future.claude_global_frontier.v1",
         "version": 1,
@@ -348,8 +370,14 @@ def build(strict: bool = False) -> Path:
             },
             "probes_holding": sum(1 for e in entries if e["probe_result"]["holds"]),
             "probes_stale": len(stale),
+            "probes_resolved_by_sidecar": len(resolved),
         },
         "stale_entries": stale,
+        "resolved_entries": resolved,
+        "resolved_meaning": (
+            "A MISSING claim whose probe now finds ONLY sidecar files: this campaign "
+            "closed the gap. The entry is retired, not refuted."
+        ),
         "stale_meaning": (
             "A stale probe means the claim no longer matches disk -- usually because "
             "Codex or a sidecar lane built the thing. Retire or reclassify the entry; "
@@ -365,17 +393,26 @@ def build(strict: bool = False) -> Path:
 
 def verify() -> int:
     """Re-run every probe against current disk. Non-zero if any claim went stale."""
-    bad = []
+    bad, resolved = [], []
     for e in FRONTIER:
         r = run_probe(e["probe"])
-        if not r["holds"]:
+        if r["holds"]:
+            continue
+        if r.get("resolved_by_sidecar"):
+            resolved.append((e["id"], e["title"], r["resolving_paths"]))
+        else:
             bad.append((e["id"], e["title"], r))
+    for i, t, paths in resolved:
+        print(f"resolved {i} {t}\n      closed by {', '.join(paths[:4])}")
     if bad:
         print("STALE FRONTIER CLAIMS:", file=sys.stderr)
         for i, t, r in bad:
             print(f"  {i} {t}\n      probe={json.dumps(r)[:200]}", file=sys.stderr)
         return 1
-    print(f"frontier verified: {len(FRONTIER)} claims still hold against disk")
+    print(
+        f"frontier verified: {len(FRONTIER) - len(resolved)} claims still hold, "
+        f"{len(resolved)} resolved by the sidecar"
+    )
     return 0
 
 

@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-29T22:49:16Z",
+  "recorded_at": "2026-08-29T23:21:44Z",
   "recorded_by": "tools/future/global_frontier.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -16,8 +16,8 @@
    "MISSING": 8,
    "WEAK": 3
   },
-  "probes_holding": 13,
-  "probes_resolved_by_sidecar": 2,
+  "probes_holding": 10,
+  "probes_resolved_by_sidecar": 5,
   "probes_stale": 0,
   "total": 15
  },
@@ -117,10 +117,20 @@
     "pattern": "*hardware_doctor*"
    },
    "probe_result": {
-    "hits": [],
-    "holds": true,
+    "hits": [
+     "./receipts/future/HARDWARE_DOCTOR.json",
+     "./tools/future/hardware_doctor.py",
+     "./tools/future/test_hardware_doctor.py"
+    ],
+    "holds": false,
     "kind": "absent",
-    "pattern": "*hardware_doctor*"
+    "pattern": "*hardware_doctor*",
+    "resolved_by_sidecar": true,
+    "resolving_paths": [
+     "./receipts/future/HARDWARE_DOCTOR.json",
+     "./tools/future/hardware_doctor.py",
+     "./tools/future/test_hardware_doctor.py"
+    ]
    },
    "resource_need": "CPU only",
    "title": "No Hardware Doctor"
@@ -138,10 +148,20 @@
     "pattern": "*hbm_doctor*"
    },
    "probe_result": {
-    "hits": [],
-    "holds": true,
+    "hits": [
+     "./receipts/future/HBM_DOCTOR.json",
+     "./tools/future/hbm_doctor.py",
+     "./tools/future/test_hbm_doctor.py"
+    ],
+    "holds": false,
     "kind": "absent",
-    "pattern": "*hbm_doctor*"
+    "pattern": "*hbm_doctor*",
+    "resolved_by_sidecar": true,
+    "resolving_paths": [
+     "./receipts/future/HBM_DOCTOR.json",
+     "./tools/future/hbm_doctor.py",
+     "./tools/future/test_hbm_doctor.py"
+    ]
    },
    "resource_need": "CPU only",
    "title": "No HBM Doctor"
@@ -159,10 +179,20 @@
     "pattern": "*green_machine*"
    },
    "probe_result": {
-    "hits": [],
-    "holds": true,
+    "hits": [
+     "./receipts/future/GREEN_MACHINE.json",
+     "./tools/future/test_green_machine.py",
+     "./tools/future/green_machine.py"
+    ],
+    "holds": false,
     "kind": "absent",
-    "pattern": "*green_machine*"
+    "pattern": "*green_machine*",
+    "resolved_by_sidecar": true,
+    "resolving_paths": [
+     "./receipts/future/GREEN_MACHINE.json",
+     "./tools/future/test_green_machine.py",
+     "./tools/future/green_machine.py"
+    ]
    },
    "resource_need": "CPU only; most values will honestly be UNKNOWN",
    "title": "No Green Machine energy accounting"
@@ -389,11 +419,14 @@
  "recovered_from": "disk state on 2026-08-29, not from the directive text",
  "resolved_entries": [
   "F003",
+  "F004",
+  "F005",
+  "F006",
   "F010"
  ],
  "resolved_meaning": "A MISSING claim whose probe now finds ONLY sidecar files: this campaign closed the gap. The entry is retired, not refuted.",
  "schema": "hawking.future.claude_global_frontier.v1",
- "seal_sha256": "fd2957c23b030ed05b0af50f6a3cef00589fde5cd45d38241b7fca6327bbca78",
+ "seal_sha256": "fe8b002cdc0d82385176cd217c3703acb0da36f01b6cd57742e8bca701935f00",
  "stale_entries": [],
  "stale_meaning": "A stale probe means the claim no longer matches disk -- usually because Codex or a sidecar lane built the thing. Retire or reclassify the entry; do not silently keep it.",
  "version": 1

@@ -3,19 +3,19 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-29T22:47:15Z",
+  "recorded_at": "2026-08-29T23:19:50Z",
   "recorded_by": "tools/future/evidence_snapshot.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
  },
  "captured": [
   {
-   "bytes": 172530,
+   "bytes": 180653,
    "name": "ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
-   "sha256": "4c3a7d1a02c6dd752279c68d3cf5c30ec7a61c266dfad7fa3040aabb0c745bd3",
+   "sha256": "2560c20b4e93959660ed2429e432217aa208e00a136a6c98dcb354b6f94bb01a",
    "snapshot_path": "receipts/future/evidence/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
-   "source_mtime_epoch": 1788043161.064,
-   "source_mtime_utc": "2026-08-29T22:39:21Z",
+   "source_mtime_epoch": 1788045368.336,
+   "source_mtime_utc": "2026-08-29T23:16:08Z",
    "source_path": "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json"
   },
   {
@@ -403,6 +403,6 @@
  "purpose": "Pinned copy of the Codex receipts sidecar lanes read. Lanes run in sparse git worktrees where the live, uncommitted receipts are invisible; without this snapshot a lane would silently fall back to a fixture and its conclusions would be attached to nothing.",
  "read_only_guarantee": "Codex originals are opened read-only and never modified.",
  "schema": "hawking.future.evidence_snapshot.v1",
- "seal_sha256": "82fe5b02a191ccce3ee49dea339efe48e4feea781ddd8d35541fbd7d184fa35a",
+ "seal_sha256": "15c000a8ad953aa37ee8776dca6ad954656d3b4746a2c4f5751ca240d4e7d7db",
  "version": 1
 }

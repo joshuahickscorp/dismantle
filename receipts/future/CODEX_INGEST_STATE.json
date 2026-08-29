@@ -3736,7 +3736,7 @@
     "sidecar_must_not_promote": true
    },
    "source": "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
-   "source_sha256": "4c3a7d1a02c6dd752279c68d3cf5c30ec7a61c266dfad7fa3040aabb0c745bd3"
+   "source_sha256": "2560c20b4e93959660ed2429e432217aa208e00a136a6c98dcb354b6f94bb01a"
   },
   {
    "architecture_atlas_behaviour_reference": {
@@ -53507,7 +53507,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-29T22:47:15Z",
+  "recorded_at": "2026-08-29T23:19:49Z",
   "recorded_by": "tools/future/codex_ingest.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -54422,11 +54422,11 @@
    "driver_field": "candidate_statuses[2]",
    "driver_token": "DIAGNOSTIC_REJECT",
    "first_seen": "2026-08-29T22:44:01Z",
-   "last_classified": "2026-08-29T22:44:01Z",
-   "mtime": 1788043161.063858,
+   "last_classified": "2026-08-29T23:16:30Z",
+   "mtime": 1788045368.3361974,
    "reason": "candidate_statuses[2] contains DIAGNOSTIC_REJECT",
-   "sha256": "4c3a7d1a02c6dd752279c68d3cf5c30ec7a61c266dfad7fa3040aabb0c745bd3",
-   "size": 172530
+   "sha256": "2560c20b4e93959660ed2429e432217aa208e00a136a6c98dcb354b6f94bb01a",
+   "size": 180653
   },
   "receipts/headless/ACCELERATOR_QUIESCENCE_INSTRUMENT.json": {
    "classification": "NEUTRAL",
@@ -73554,7 +73554,7 @@
   "--once --assert-idempotent refusal that is capable of firing",
   "read-only open; writes only receipts/future/CODEX_INGEST_STATE.json"
  ],
- "head": "5ad5646a6799a650e86855832640b506af28f86e",
+ "head": "862653a9cbac1f974be830e72a827478939d846c",
  "idempotence": {
   "assert_idempotent": "exit non-zero iff n_new + n_changed > 0",
   "change_detector": "sha256 of file bytes; mtime is recorded and never consulted",
@@ -73725,7 +73725,7 @@
   "unreadable": []
  },
  "schema": "hawking.future.codex_ingest.v1",
- "seal_sha256": "fd80db1f55df8ebd99323c935051a2f78eaccb09e6d33e74743c68565b4fdf86",
+ "seal_sha256": "da77123ad69688f1ec9c1343eb53131565a39797e3df4b113709d10971a41968",
  "version": 1,
  "vocabulary": {
   "bench_state": "UNKNOWN",

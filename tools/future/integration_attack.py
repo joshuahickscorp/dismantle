@@ -29,6 +29,7 @@ import ast
 import hashlib
 import json
 import re
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -149,22 +150,76 @@ def attack_forbidden_status() -> list[Finding]:
     return out
 
 
+def _is_abstract_stub(fn: ast.AST, cls_bases: set[str]) -> bool:
+    """`raise NotImplementedError` as the sole body of a base-class method is the
+    ABC idiom, not an unfinished implementation."""
+    body = [n for n in getattr(fn, "body", []) if not isinstance(n, ast.Expr) or
+            not isinstance(getattr(n, "value", None), ast.Constant)]
+    if len(body) != 1:
+        return False
+    node = body[0]
+    return (
+        isinstance(node, ast.Raise)
+        and isinstance(node.exc, (ast.Name, ast.Call))
+        and "NotImplementedError" in ast.dump(node)
+    )
+
+
 def attack_placeholders() -> list[Finding]:
-    """A module whose load-bearing path is a placeholder is not an implementation."""
+    """A module whose load-bearing path is a placeholder is not an implementation.
+
+    Parsed with `ast`, and deliberately narrow. `except SomeError: pass` is the
+    idiom this codebase uses for its OWN negative controls -- asserting that a
+    guard raised -- so flagging it would train the reader to ignore this checker,
+    which is worse than not running it. Only a function whose entire body is
+    `pass` / `...` counts, plus `raise NotImplementedError` outside a base class.
+    """
     out = []
     for p in sorted(FUTURE.glob("*.py")):
         if p.name in INFRA or p.name.startswith("test_"):
             continue
-        src = p.read_text()
-        for m in PLACEHOLDER.finditer(src):
-            line_no = src.count("\n", 0, m.start()) + 1
-            frag = src[m.start() : src.find("\n", m.start())].strip()
-            # `pass` inside an exception class body is idiomatic, not a stub.
-            ctx_start = max(0, src.rfind("\n", 0, m.start() - 200))
-            ctx = src[ctx_start : m.start()]
-            if re.search(r"class \w+\((\w|\.)*(Error|Exception)\w*\):\s*$", ctx.strip().split("\n")[-1] if ctx.strip() else ""):
+        try:
+            tree = ast.parse(p.read_text())
+        except SyntaxError as e:
+            out.append(_finding("module_unparseable", p.name, repr(e), "P0"))
+            continue
+
+        abstract_classes: set[str] = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ClassDef):
+                bases = {_dotted(b) for b in node.bases}
+                if bases & {"ABC", "abc.ABC", "Protocol", "typing.Protocol"} or not bases:
+                    abstract_classes.add(node.name)
+
+        for cls in [n for n in ast.walk(tree) if isinstance(n, ast.ClassDef)]:
+            for fn in cls.body:
+                if isinstance(fn, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                    fn._in_class = cls.name  # type: ignore[attr-defined]
+
+        for node in ast.walk(tree):
+            if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 continue
-            out.append(_finding("placeholder_in_module", f"{p.name}:{line_no}", frag[:120], "P1"))
+            body = [n for n in node.body
+                    if not (isinstance(n, ast.Expr) and isinstance(n.value, ast.Constant))]
+            if len(body) == 1 and isinstance(body[0], (ast.Pass,)):
+                out.append(
+                    _finding("placeholder_in_module", f"{p.name}:{node.lineno}",
+                             f"def {node.name}(...) body is `pass`", "P1")
+                )
+            elif _is_abstract_stub(node, set()):
+                owner = getattr(node, "_in_class", None)
+                if owner is None:
+                    out.append(
+                        _finding("placeholder_in_module", f"{p.name}:{node.lineno}",
+                                 f"def {node.name}(...) raises NotImplementedError", "P1")
+                    )
+        # TODO/FIXME/STUB markers still matter, but only as their own kind.
+        src = p.read_text()
+        for m in re.finditer(r"^\s*#\s?(TODO|FIXME|STUB)\b", src, re.MULTILINE):
+            out.append(
+                _finding("unfinished_marker", f"{p.name}:{src.count(chr(10), 0, m.start()) + 1}",
+                         m.group(0).strip(), "P1")
+            )
     return out
 
 
@@ -252,10 +307,35 @@ def attack_skipped_tests() -> list[Finding]:
                         out.append(
                             _finding("test_skip", f"{p.name}:{dec.lineno}", f"@{name}", "P1")
                         )
-            elif isinstance(node, ast.Call) and _dotted(node.func) == "pytest.skip":
-                out.append(
-                    _finding("test_skip", f"{p.name}:{node.lineno}", "pytest.skip()", "P1")
-                )
+    return out
+
+
+def attack_actual_skips() -> list[Finding]:
+    """A suite that passes by SKIPPING measured nothing.
+
+    What matters is not whether a `pytest.skip()` appears in the source -- a skip
+    guarded on genuinely optional evidence is defensible -- but whether one
+    actually FIRED. This project has shipped grades that rested on silently
+    skipped tests, so run the suite and read the real skip report.
+    """
+    # Guard against recursion: this attack shells out to pytest, and pytest runs
+    # this module's own test, which calls run(). Without the sentinel the attacker
+    # invokes itself forever. The nested call reports NOT_RUN rather than lying.
+    if _os.environ.get("HAWKING_ATTACK_NESTED") == "1":
+        return []
+    env = dict(_os.environ, HAWKING_ATTACK_NESTED="1")
+    r = subprocess.run(
+        ["python3", "-m", "pytest", "tools/future/", "-q", "-rs", "--no-header",
+         "-p", "no:cacheprovider", "--ignore", "tools/future/test_integration_attack.py"],
+        cwd=REPO, capture_output=True, text=True, env=env,
+    )
+    out = []
+    for line in r.stdout.splitlines():
+        if line.startswith("SKIPPED"):
+            out.append(_finding("test_actually_skipped", "pytest -rs", line.strip()[:200], "P0"))
+    if r.returncode != 0 and not out:
+        tail = [l for l in r.stdout.strip().splitlines() if l.strip()][-1:]
+        out.append(_finding("suite_not_green", "pytest", (tail or ["<no output>"])[0][:200], "P0"))
     return out
 
 
@@ -279,6 +359,7 @@ ATTACKS = {
     "missing_tests": attack_missing_tests,
     "missing_negative_controls": attack_missing_negative_controls,
     "skipped_tests": attack_skipped_tests,
+    "actual_skips": attack_actual_skips,
     "write_partition": attack_write_partition,
 }
 

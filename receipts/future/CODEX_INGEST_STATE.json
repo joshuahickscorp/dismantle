@@ -3736,7 +3736,7 @@
     "sidecar_must_not_promote": true
    },
    "source": "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
-   "source_sha256": "2560c20b4e93959660ed2429e432217aa208e00a136a6c98dcb354b6f94bb01a"
+   "source_sha256": "fa2cf9406a79489efa0cb30570967395e5e7347f56412600a32c15bef23d5b23"
   },
   {
    "architecture_atlas_behaviour_reference": {
@@ -53507,14 +53507,24 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-29T23:19:49Z",
+  "recorded_at": "2026-08-29T23:31:37Z",
   "recorded_by": "tools/future/codex_ingest.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
  },
  "branch": "odyssey-i",
  "claim_boundary": "Static sidecar artifact. No hardware measurement. Does not produce DIAGNOSTIC_RELATIVE or PROTECTED_ABSOLUTE. Deltas are proposals for downstream modules; disk evidence stays in receipts/headless.",
- "classified_this_scan": [],
+ "classified_this_scan": [
+  {
+   "confidence": 0.75,
+   "event": "changed",
+   "field": "status",
+   "label": "NEUTRAL",
+   "reason": "plan or scaffold status, no verdict",
+   "relpath": "receipts/headless/APPLE_ANE_DEVICE_PROFILE.json",
+   "token": "PLAN_READY"
+  }
+ ],
  "cursor": {
   "receipts/headless/ACCELERATOR_628_BOUNDARY_CENSUS.json": {
    "classification": "NEUTRAL",
@@ -54422,11 +54432,11 @@
    "driver_field": "candidate_statuses[2]",
    "driver_token": "DIAGNOSTIC_REJECT",
    "first_seen": "2026-08-29T22:44:01Z",
-   "last_classified": "2026-08-29T23:16:30Z",
-   "mtime": 1788045368.3361974,
+   "last_classified": "2026-08-29T23:28:02Z",
+   "mtime": 1788045938.3583753,
    "reason": "candidate_statuses[2] contains DIAGNOSTIC_REJECT",
-   "sha256": "2560c20b4e93959660ed2429e432217aa208e00a136a6c98dcb354b6f94bb01a",
-   "size": 180653
+   "sha256": "fa2cf9406a79489efa0cb30570967395e5e7347f56412600a32c15bef23d5b23",
+   "size": 188655
   },
   "receipts/headless/ACCELERATOR_QUIESCENCE_INSTRUMENT.json": {
    "classification": "NEUTRAL",
@@ -55083,7 +55093,7 @@
    "driver_token": "hawking.apple_ane_atlas.v1",
    "first_seen": "2026-08-29T22:44:01Z",
    "last_classified": "2026-08-29T22:44:01Z",
-   "mtime": 1788043336.8297417,
+   "mtime": 1788046158.800266,
    "reason": "metadata / census / index / schema / plan with no verdict",
    "sha256": "f591a8eedf93b071d222c13103bbc750523dffe854981532785126d2c37a9d81",
    "size": 13081
@@ -55094,10 +55104,10 @@
    "driver_field": "status",
    "driver_token": "PLAN_READY",
    "first_seen": "2026-08-29T22:44:01Z",
-   "last_classified": "2026-08-29T22:44:01Z",
-   "mtime": 1788043336.4034274,
+   "last_classified": "2026-08-29T23:31:35Z",
+   "mtime": 1788046158.3357315,
    "reason": "plan or scaffold status, no verdict",
-   "sha256": "bd3b6644bac5ef1d73e782111877350fd2e15a95e7569b039fbf7f888eed95d2",
+   "sha256": "0f25b8bfc36dd7538b4121dfe491773ceb6c855d0ac61b7ab49feca8f6c6fecd",
    "size": 1335
   },
   "receipts/headless/ARCHITECTURE_CANON.json": {
@@ -73554,7 +73564,7 @@
   "--once --assert-idempotent refusal that is capable of firing",
   "read-only open; writes only receipts/future/CODEX_INGEST_STATE.json"
  ],
- "head": "862653a9cbac1f974be830e72a827478939d846c",
+ "head": "d355718d98f1b2de063493c110f29dd80594ab56",
  "idempotence": {
   "assert_idempotent": "exit non-zero iff n_new + n_changed > 0",
   "change_detector": "sha256 of file bytes; mtime is recorded and never consulted",
@@ -73710,22 +73720,22 @@
   },
   "by_class_this_scan": {
    "LAW": 0,
-   "NEUTRAL": 0,
+   "NEUTRAL": 1,
    "SCAR": 0
   },
   "missing_from_disk": [],
   "n_active_deltas": 808,
-  "n_changed": 0,
+  "n_changed": 1,
   "n_deltas": 0,
   "n_missing_from_disk": 0,
   "n_new": 0,
   "n_on_disk": 1669,
-  "n_unchanged": 1669,
+  "n_unchanged": 1668,
   "n_unreadable": 0,
   "unreadable": []
  },
  "schema": "hawking.future.codex_ingest.v1",
- "seal_sha256": "da77123ad69688f1ec9c1343eb53131565a39797e3df4b113709d10971a41968",
+ "seal_sha256": "2e57eb72de2c193acaef1f536c4d11d04297b171b714e8a68f293e47aeb4b154",
  "version": 1,
  "vocabulary": {
   "bench_state": "UNKNOWN",

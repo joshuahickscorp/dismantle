@@ -2,11 +2,11 @@
   "claim_boundary" : "Public MLComputePlan operation support and preferred placement only; no runtime latency, energy, or Flash residency claim.",
   "compute_devices" : [
     {
-      "description" : "<MLNeuralEngineComputeDevice: 0x10499a140>",
+      "description" : "<MLNeuralEngineComputeDevice: 0x100b0e160>",
       "kind" : "NEURAL_ENGINE"
     },
     {
-      "description" : "<MLCPUComputeDevice: 0x10499f130>",
+      "description" : "<MLCPUComputeDevice: 0x100b13150>",
       "kind" : "CPU"
     }
   ],

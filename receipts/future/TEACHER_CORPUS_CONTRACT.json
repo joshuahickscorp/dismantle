@@ -23,7 +23,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-29T23:22:46Z",
+  "recorded_at": "2026-08-29T23:34:54Z",
   "recorded_by": "tools/future/teacher_corpus.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -567,14 +567,13 @@
  ],
  "purpose": "Teacher-corpus contract: bind every capture to specimen/layer/surface/provenance, compute diversity, dedup, and structurally refuse a corpus that only meets its sample-count threshold by duplication, resampling, or synthesis.",
  "recovered_implementation": {
-  "head": "862653a9cbac1f974be830e72a827478939d846c",
+  "head": "d355718d98f1b2de063493c110f29dd80594ab56",
   "missing_from_HEAD": [
    "tools/odyssey/model_specimen_seal.py",
    "receipts/headless/QWEN80_CAPTURE_INDEX.json",
    "receipts/headless/QWEN80_CAPTURE_SPEED.json",
    "receipts/headless/FLASH_ATTENTION_ROUTE_UNION_PARITY.json",
-   "receipts/headless/FLASH_ROUTER_SENSITIVITY_MAP_L3_L4.json",
-   "tools/future/teacher_corpus.py"
+   "receipts/headless/FLASH_ROUTER_SENSITIVITY_MAP_L3_L4.json"
   ],
   "note": "A path missing from this sparse worktree is not evidence it is absent from the civilization. Probes used git ls-tree HEAD.",
   "probe_results": [
@@ -679,7 +678,7 @@
     "path": "workspace/campaign/governance/odyssey/resources/teacher_traces/ODYSSEY_TEACHER_TRACE_MANIFEST.json"
    },
    {
-    "in_HEAD": false,
+    "in_HEAD": true,
     "on_disk": true,
     "path": "tools/future/teacher_corpus.py"
    }
@@ -790,7 +789,7 @@
   "route_union_definition": "Sorted unique route_ids over all rows sharing (specimen, layer, surface). Membership is the intersection of the row's route_ids with that union. Recovered from Q80 key_(layer, expert), not from FLASH_ATTENTION_ROUTE_UNION_PARITY (that receipt is not in HEAD)."
  },
  "schema": "hawking.future.teacher_corpus.v1",
- "seal_sha256": "e5ec4ef0542df6d2f04203bc8dfc8c499e4102046370d150ddace3d861a4d067",
+ "seal_sha256": "b92c5edf72dc198f7a16b3aa27c6102d2ae5cbbf0ebe918c7c4d537380a50476",
  "selftest": {
   "dedup_collision_groups": 4,
   "dedup_kept_from_duplicated": 4,

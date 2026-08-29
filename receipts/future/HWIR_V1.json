@@ -30,7 +30,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-29T23:22:43Z",
+  "recorded_at": "2026-08-29T23:34:35Z",
   "recorded_by": "tools/future/hwir.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -54,7 +54,7 @@
   "from_organ_map() lowers a real Flash/Qwen27 organ into a valid HWIR graph",
   "negative controls that actually fire"
  ],
- "head": "862653a9cbac1f974be830e72a827478939d846c",
+ "head": "d355718d98f1b2de063493c110f29dd80594ab56",
  "hwir_hypotheses": [
   {
    "behavior_id": "move_or_recompute",
@@ -891,7 +891,7 @@
   "URAM"
  ],
  "schema": "hawking.future.hwir.v1",
- "seal_sha256": "a09f640ea02cb0a1b18acd2f1caf72c08c7a6a15d7ed287dc3a59fa42e029653",
+ "seal_sha256": "ae194d9f7dac8e7bec60cefc4906b746907f23482c06772ab18585e3278de40c",
  "serialization": {
   "canonical": "json.dumps(sort_keys=True, separators=(',', ':'), ensure_ascii=True)",
   "fingerprint": "sha256 of canonical body excluding the fingerprint field",

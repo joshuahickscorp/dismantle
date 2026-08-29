@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-29T23:21:44Z",
+  "recorded_at": "2026-08-29T23:33:37Z",
   "recorded_by": "tools/future/global_frontier.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -16,8 +16,8 @@
    "MISSING": 8,
    "WEAK": 3
   },
-  "probes_holding": 10,
-  "probes_resolved_by_sidecar": 5,
+  "probes_holding": 9,
+  "probes_resolved_by_sidecar": 6,
   "probes_stale": 0,
   "total": 15
  },
@@ -382,10 +382,18 @@
     "pattern": "*static_kernel_verify*"
    },
    "probe_result": {
-    "hits": [],
-    "holds": true,
+    "hits": [
+     "./tools/future/static_kernel_verify.py",
+     "./tools/future/test_static_kernel_verify.py"
+    ],
+    "holds": false,
     "kind": "absent",
-    "pattern": "*static_kernel_verify*"
+    "pattern": "*static_kernel_verify*",
+    "resolved_by_sidecar": true,
+    "resolving_paths": [
+     "./tools/future/static_kernel_verify.py",
+     "./tools/future/test_static_kernel_verify.py"
+    ]
    },
    "resource_need": "CPU only",
    "title": "No static kernel/ABI preflight independent of the GPU"
@@ -422,11 +430,12 @@
   "F004",
   "F005",
   "F006",
-  "F010"
+  "F010",
+  "F014"
  ],
  "resolved_meaning": "A MISSING claim whose probe now finds ONLY sidecar files: this campaign closed the gap. The entry is retired, not refuted.",
  "schema": "hawking.future.claude_global_frontier.v1",
- "seal_sha256": "fe8b002cdc0d82385176cd217c3703acb0da36f01b6cd57742e8bca701935f00",
+ "seal_sha256": "9c1a11d1535b289762d87391c0249441f0b173b21aba31d0c93cab5f4390f91d",
  "stale_entries": [],
  "stale_meaning": "A stale probe means the claim no longer matches disk -- usually because Codex or a sidecar lane built the thing. Retire or reclassify the entry; do not silently keep it.",
  "version": 1

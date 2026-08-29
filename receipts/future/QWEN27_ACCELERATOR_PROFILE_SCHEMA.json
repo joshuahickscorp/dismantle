@@ -9,7 +9,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-29T23:22:44Z",
+  "recorded_at": "2026-08-29T23:34:36Z",
   "recorded_by": "tools/future/qwen27_profile_schema.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -1065,7 +1065,7 @@
   "EXPERIMENT"
  ],
  "schema": "hawking.future.qwen27_profile.v1",
- "seal_sha256": "efa5c0bfa1701e94d9b2d1c3932f1a1c13b8de1bffc7f20b5c3b3563edc33f02",
+ "seal_sha256": "c56fc273462d230bd60e719f7423ff96cb0bce6b8975b8c60195f4a2023063f8",
  "section_fields": {
   "active_byte_model": [
    "active_weight_bytes_per_token",

@@ -3,19 +3,19 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-29T23:19:50Z",
+  "recorded_at": "2026-08-29T23:31:38Z",
   "recorded_by": "tools/future/evidence_snapshot.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
  },
  "captured": [
   {
-   "bytes": 180653,
+   "bytes": 188655,
    "name": "ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
-   "sha256": "2560c20b4e93959660ed2429e432217aa208e00a136a6c98dcb354b6f94bb01a",
+   "sha256": "fa2cf9406a79489efa0cb30570967395e5e7347f56412600a32c15bef23d5b23",
    "snapshot_path": "receipts/future/evidence/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
-   "source_mtime_epoch": 1788045368.336,
-   "source_mtime_utc": "2026-08-29T23:16:08Z",
+   "source_mtime_epoch": 1788045938.358,
+   "source_mtime_utc": "2026-08-29T23:25:38Z",
    "source_path": "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json"
   },
   {
@@ -248,17 +248,17 @@
    "name": "APPLE_ANE_ATLAS.json",
    "sha256": "f591a8eedf93b071d222c13103bbc750523dffe854981532785126d2c37a9d81",
    "snapshot_path": "receipts/future/evidence/APPLE_ANE_ATLAS.json",
-   "source_mtime_epoch": 1788043336.83,
-   "source_mtime_utc": "2026-08-29T22:42:16Z",
+   "source_mtime_epoch": 1788046158.8,
+   "source_mtime_utc": "2026-08-29T23:29:18Z",
    "source_path": "receipts/headless/APPLE_ANE_ATLAS.json"
   },
   {
    "bytes": 1335,
    "name": "APPLE_ANE_DEVICE_PROFILE.json",
-   "sha256": "bd3b6644bac5ef1d73e782111877350fd2e15a95e7569b039fbf7f888eed95d2",
+   "sha256": "0f25b8bfc36dd7538b4121dfe491773ceb6c855d0ac61b7ab49feca8f6c6fecd",
    "snapshot_path": "receipts/future/evidence/APPLE_ANE_DEVICE_PROFILE.json",
-   "source_mtime_epoch": 1788043336.403,
-   "source_mtime_utc": "2026-08-29T22:42:16Z",
+   "source_mtime_epoch": 1788046158.336,
+   "source_mtime_utc": "2026-08-29T23:29:18Z",
    "source_path": "receipts/headless/APPLE_ANE_DEVICE_PROFILE.json"
   },
   {
@@ -403,6 +403,6 @@
  "purpose": "Pinned copy of the Codex receipts sidecar lanes read. Lanes run in sparse git worktrees where the live, uncommitted receipts are invisible; without this snapshot a lane would silently fall back to a fixture and its conclusions would be attached to nothing.",
  "read_only_guarantee": "Codex originals are opened read-only and never modified.",
  "schema": "hawking.future.evidence_snapshot.v1",
- "seal_sha256": "15c000a8ad953aa37ee8776dca6ad954656d3b4746a2c4f5751ca240d4e7d7db",
+ "seal_sha256": "bd4008eba8a252c14887ff9d660b44d11c75e91ca7733bd86beed94f13931683",
  "version": 1
 }

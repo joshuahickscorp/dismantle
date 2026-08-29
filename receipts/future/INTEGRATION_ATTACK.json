@@ -14,7 +14,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-29T23:22:48Z",
+  "recorded_at": "2026-08-29T23:34:58Z",
   "recorded_by": "tools/future/integration_attack.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -26,7 +26,7 @@
   "total": 0
  },
  "findings": [],
- "module_count": 33,
+ "module_count": 38,
  "modules_examined": [
   "candidate_planner.py",
   "codex_ingest.py",
@@ -51,16 +51,21 @@
   "lpc_dataset.py",
   "meta_funnel.py",
   "mutation_surface.py",
+  "negative_index.py",
   "ngram_school.py",
   "odyssey2_law_store.py",
   "odyssey3_adversary.py",
   "physical_primitives.py",
   "qwen27_profile_schema.py",
   "repro_science.py",
+  "resident_install.py",
   "router_science.py",
+  "static_kernel_verify.py",
   "static_skeleton.py",
   "teacher_corpus.py",
-  "turnaround.py"
+  "tournament.py",
+  "turnaround.py",
+  "workunit_species.py"
  ],
  "purpose": "adversarial completion attack over the sidecar; its job is to find a reason NOT to finish",
  "receipts_examined": [
@@ -84,24 +89,29 @@
   "GREEN_MACHINE.json",
   "HARDWARE_DOCTOR.json",
   "HBM_DOCTOR.json",
+  "HCLI_FUTURE_WORKUNITS.json",
   "HMF_MANAGED_OBJECTS.json",
   "HWIR_V1.json",
   "INTEGRATION_ATTACK.json",
   "LPC_BASELINES.json",
   "LPC_DATASET.json",
   "META_EXPERIMENT_FUNNEL.json",
+  "NEGATIVE_SCIENCE_INDEX.json",
   "NGRAM_SCHOOL.json",
   "ODYSSEY2_LAW_STORE.json",
   "ODYSSEY3_ADVERSARY.json",
   "PHYSICAL_PRIMITIVES.json",
   "QWEN27_ACCELERATOR_PROFILE_SCHEMA.json",
   "REPRO_SCIENCE.json",
+  "RESIDENT_INSTALL_CONTRACT.json",
   "ROUTER_SENSITIVE_ALLOCATION.json",
+  "STATIC_KERNEL_PREFLIGHT.json",
   "STATIC_SKELETON.json",
-  "TEACHER_CORPUS_CONTRACT.json"
+  "TEACHER_CORPUS_CONTRACT.json",
+  "TOURNAMENT_READINESS.json"
  ],
  "schema": "hawking.future.integration_attack.v1",
- "seal_sha256": "a82a45611474bda1eeccb73052a556f73fe2e5959df7a151cac71e8468ee711d",
+ "seal_sha256": "9376a1254647dc65a48e96b3210816674639ae2897f5b97659c36ca3184d2e19",
  "verdict": "CLEAN",
  "version": 1
 }

@@ -4,7 +4,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-29T23:22:41Z",
+  "recorded_at": "2026-08-29T23:34:32Z",
   "recorded_by": "tools/future/green_machine.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -21,7 +21,7 @@
   "Cited recovered Codex energy.rs / orch scheduler / EnergyMode / accepted-token ledger so this is not a fork of them."
  ],
  "gpu_authority": false,
- "head": "862653a9cbac1f974be830e72a827478939d846c",
+ "head": "d355718d98f1b2de063493c110f29dd80594ab56",
  "honesty_rule": "Any metric that is not trustworthily measurable is UNKNOWN. Never an estimate, never a TDP-derived guess, never a FLOP-derived CMOS guess, never an idle GPU-rail sample presented as joules_per_token, never a number with invented precision. write_receipt already refuses a numeric joules_per_token. This module does not catch that error, does not add fields to HARDWARE_FIELDS, and does not convert UNKNOWN into 0 or into a datasheet watt. Saying UNKNOWN clearly is the deliverable. This sidecar produces STATIC_ONLY with bench state UNKNOWN; it produces neither DIAGNOSTIC_RELATIVE nor PROTECTED_ABSOLUTE.",
  "measurement_is_trustworthy": false,
  "metric_contract": [
@@ -402,7 +402,7 @@
   },
   {
    "adequate_for_this_lane": true,
-   "in_git_head": false,
+   "in_git_head": true,
    "on_disk_this_worktree": true,
    "path": "tools/future/green_machine.py",
    "what": "this module (F006 integration target).",
@@ -466,6 +466,6 @@
    "path": "receipts/headless/NOETIC_SCOREBOARD.json"
   }
  },
- "seal_sha256": "cae1154402ccf445ae7d966454aeb3da1c0efbc92ccc2a6764ef4136c39ac3b8",
+ "seal_sha256": "e55053e1252576f073f4e67cd8fae2f0501597542fd5faa0d1881a37e4d90b2c",
  "version": 1
 }

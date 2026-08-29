@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-29T23:19:50Z",
+  "recorded_at": "2026-08-29T23:31:39Z",
   "recorded_by": "tools/future/expert_bank_school.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -139,7 +139,7 @@
  ],
  "counts": {
   "compute": 7,
-  "extra_scars_from_index": 0,
+  "extra_scars_from_index": 1,
   "killed_families": 3,
   "refusal_controls_fired": 3,
   "storage": 13
@@ -161,7 +161,9 @@
    "III WHERE IS HAWKING WRONG?"
   ]
  },
- "extra_scars_from_index": [],
+ "extra_scars_from_index": [
+  "INDEX-0"
+ ],
  "fit_policy": "NOT_FIT",
  "gaps_closed": [
   "queryable generator of structured (not naive) expert-bank STORAGE hypotheses, each with a native consume path that forbids densifying W",
@@ -219,8 +221,7 @@
   "Did not take a hardware measurement; every expected effect is qualitative or algebraic. Complete-token ns, tps, and joules remain UNKNOWN.",
   "receipts/future/NEGATIVE_SCIENCE_INDEX.json is not present; builtin scars plus on-disk atlas probes were used. A sibling index will be consulted if it appears.",
   "DSV4F pairwise cosine is still unmeasured (NNS-004 live check). Q80 orthogonality is not transferred.",
-  "tools/accelerator/, tools/headless/, and hcli/agentos/ are not materialized in this sparse checkout; they were recovered via git show during authoring.",
-  "Atlas files not on disk in this sparse checkout (recovered via git show during authoring, encoded as builtin scars): receipts/future/NEGATIVE_SCIENCE_INDEX.json"
+  "tools/accelerator/, tools/headless/, and hcli/agentos/ are not materialized in this sparse checkout; they were recovered via git show during authoring."
  ],
  "purpose": "Generate structured expert STORAGE-sharing and COMPUTE-sharing candidates that have not been tested, and refuse recorded-dead naive sharing (raw global similarity, trivial shared basis, unchanged archetypes). Candidates only; no specimen fit; no hardware claim.",
  "recovered_implementation": {
@@ -294,7 +295,7 @@
   "scar_sources": {
    "atlas": [
     {
-     "on_disk": false,
+     "on_disk": true,
      "path": "receipts/future/NEGATIVE_SCIENCE_INDEX.json",
      "role": "scar_source"
     },
@@ -341,7 +342,7 @@
    ],
    "consult_rule": "If NEGATIVE_SCIENCE_INDEX.json is present, extra DEAD/REFUTED phrases from it are unioned into the matcher. Else atlas files are read when on disk. Builtin scars always apply so a sparse checkout still refuses the three named dead families.",
    "index_path": "receipts/future/NEGATIVE_SCIENCE_INDEX.json",
-   "index_present": false,
+   "index_present": true,
    "named_flash_tools": [
     {
      "on_disk": true,
@@ -392,7 +393,7 @@
  "scar_sources_consulted": {
   "atlas": [
    {
-    "on_disk": false,
+    "on_disk": true,
     "path": "receipts/future/NEGATIVE_SCIENCE_INDEX.json",
     "role": "scar_source"
    },
@@ -439,7 +440,7 @@
   ],
   "consult_rule": "If NEGATIVE_SCIENCE_INDEX.json is present, extra DEAD/REFUTED phrases from it are unioned into the matcher. Else atlas files are read when on disk. Builtin scars always apply so a sparse checkout still refuses the three named dead families.",
   "index_path": "receipts/future/NEGATIVE_SCIENCE_INDEX.json",
-  "index_present": false,
+  "index_present": true,
   "named_flash_tools": [
    {
     "on_disk": true,
@@ -464,7 +465,7 @@
   ]
  },
  "schema": "hawking.future.expert_bank_school.v1",
- "seal_sha256": "115ea5a070f56e13ee855488eccc02be56c1ed786463b7b000e27a38ac34eb19",
+ "seal_sha256": "27163459596414b530e608563bd444ad293c534c676e6ffa94cba885671dca1e",
  "storage_candidates": [
   {
    "axis": "STORAGE",

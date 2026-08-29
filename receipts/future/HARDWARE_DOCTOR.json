@@ -1,112 +1,64 @@
 {
  "avoid": [
   {
-   "experiment": "Cache decoded dense W to avoid re-decode",
+   "experiment": "AMX can't eat Q4_K. ANE 4\u20137\u00d7 slower. ICB encode 0.27% of GPU. Prefetcher WILLNEED \u221229%. Multi-CQ: kernels already \u22652\u00d7 saturated. MTLHeap 8.5% slower than shared.",
    "family": "hardware_axis",
    "negative_science": [
-    "receipts/ascent-2026-08-16/NEGATIVE_SCIENCE_REGISTER.json"
+    "receipts/future/NEGATIVE_SCIENCE_INDEX.json"
    ],
    "nns_ids": [
-    "NS-018"
+    "hawking-experiments/superwave/g1/g1-arch-negative.md#cross_engine_host_dispatch_families_on_m3_uma_amx_ane_icb_prefetcher_multi_cq"
    ],
    "predicts_not_certifies": true,
-   "reason": "NS-018 is recorded REFUTED in receipts/ascent-2026-08-16/NEGATIVE_SCIENCE_REGISTER.json. Diagnosis does not re-run the dead experiment."
+   "reason": "hawking-experiments/superwave/g1/g1-arch-negative.md#cross_engine_host_dispatch_families_on_m3_uma_amx_ane_icb_prefetcher_multi_cq is recorded DEAD in receipts/future/NEGATIVE_SCIENCE_INDEX.json. Diagnosis does not re-run the dead experiment."
   },
   {
-   "experiment": "Collapse command-buffer / encoder / dispatch topology to win complete-token wall",
+   "experiment": "Random LUT gather punished on Apple GPU",
    "family": "hardware_axis",
    "negative_science": [
-    "receipts/ascent-2026-08-16/NEGATIVE_SCIENCE_REGISTER.json"
+    "receipts/future/NEGATIVE_SCIENCE_INDEX.json"
    ],
    "nns_ids": [
-    "NS-020"
+    "workspace/docs/guides/dead_levers.md#learned_codebook"
    ],
    "predicts_not_certifies": true,
-   "reason": "NS-020 is recorded REFUTED in receipts/ascent-2026-08-16/NEGATIVE_SCIENCE_REGISTER.json. Diagnosis does not re-run the dead experiment."
+   "reason": "workspace/docs/guides/dead_levers.md#learned_codebook is recorded DEAD in receipts/future/NEGATIVE_SCIENCE_INDEX.json. Diagnosis does not re-run the dead experiment."
   },
   {
-   "experiment": "DSV4F route-ID readback serializer is the token wall",
+   "experiment": "Serial 50 ms > parallel 44 ms",
    "family": "hardware_axis",
    "negative_science": [
-    "receipts/ascent-2026-08-16/NEGATIVE_SCIENCE_REGISTER.json"
+    "receipts/future/NEGATIVE_SCIENCE_INDEX.json"
    ],
    "nns_ids": [
-    "NS-022"
+    "workspace/docs/guides/dead_levers.md#moe_serial_route_dispatch"
    ],
    "predicts_not_certifies": true,
-   "reason": "NS-022 is recorded REFUTED in receipts/ascent-2026-08-16/NEGATIVE_SCIENCE_REGISTER.json. Diagnosis does not re-run the dead experiment."
+   "reason": "workspace/docs/guides/dead_levers.md#moe_serial_route_dispatch is recorded DEAD in receipts/future/NEGATIVE_SCIENCE_INDEX.json. Diagnosis does not re-run the dead experiment."
   },
   {
-   "experiment": "DRAM-row interleaving or expert co-route permutation as the token lever",
+   "experiment": "3.2% wall + serial deps",
    "family": "hardware_axis",
    "negative_science": [
-    "receipts/ascent-2026-08-16/NEGATIVE_SCIENCE_REGISTER.json"
+    "receipts/future/NEGATIVE_SCIENCE_INDEX.json"
    ],
    "nns_ids": [
-    "NS-026"
+    "workspace/docs/guides/dead_levers.md#non_gemm_cpu_offload"
    ],
    "predicts_not_certifies": true,
-   "reason": "NS-026 is recorded REFUTED in receipts/ascent-2026-08-16/NEGATIVE_SCIENCE_REGISTER.json. Diagnosis does not re-run the dead experiment."
+   "reason": "workspace/docs/guides/dead_levers.md#non_gemm_cpu_offload is recorded DEAD in receipts/future/NEGATIVE_SCIENCE_INDEX.json. Diagnosis does not re-run the dead experiment."
   },
   {
-   "experiment": "Switching-activity / Gray / LUT permutation of packed codes to cut energy or latency",
+   "experiment": "0.11 vs 18 tps; serial verify",
    "family": "hardware_axis",
    "negative_science": [
-    "receipts/ascent-2026-08-16/NEGATIVE_SCIENCE_REGISTER.json"
+    "receipts/future/NEGATIVE_SCIENCE_INDEX.json"
    ],
    "nns_ids": [
-    "NS-027"
+    "workspace/docs/guides/dead_levers.md#spec_exactshared_as_is"
    ],
    "predicts_not_certifies": true,
-   "reason": "NS-027 is recorded REFUTED in receipts/ascent-2026-08-16/NEGATIVE_SCIENCE_REGISTER.json. Diagnosis does not re-run the dead experiment."
-  },
-  {
-   "experiment": "Keep an 8 GiB persistent expert residency arena to win Q80 wall time",
-   "family": "hardware_axis",
-   "negative_science": [
-    "receipts/ascent-2026-08-16/NEGATIVE_SCIENCE_REGISTER.json"
-   ],
-   "nns_ids": [
-    "NS-028"
-   ],
-   "predicts_not_certifies": true,
-   "reason": "NS-028 is recorded REFUTED in receipts/ascent-2026-08-16/NEGATIVE_SCIENCE_REGISTER.json. Diagnosis does not re-run the dead experiment."
-  },
-  {
-   "experiment": "Prefetch this token's experts from the previous token's route set",
-   "family": "hardware_axis",
-   "negative_science": [
-    "receipts/ascent-2026-08-16/NEGATIVE_SCIENCE_REGISTER.json"
-   ],
-   "nns_ids": [
-    "NS-029"
-   ],
-   "predicts_not_certifies": true,
-   "reason": "NS-029 is recorded REFUTED in receipts/ascent-2026-08-16/NEGATIVE_SCIENCE_REGISTER.json. Diagnosis does not re-run the dead experiment."
-  },
-  {
-   "experiment": "Run rice_q1 serial bitstream expand on the per-token path",
-   "family": "hardware_axis",
-   "negative_science": [
-    "receipts/ascent-2026-08-16/NEGATIVE_SCIENCE_REGISTER.json"
-   ],
-   "nns_ids": [
-    "NS-031"
-   ],
-   "predicts_not_certifies": true,
-   "reason": "NS-031 is recorded REFUTED in receipts/ascent-2026-08-16/NEGATIVE_SCIENCE_REGISTER.json. Diagnosis does not re-run the dead experiment."
-  },
-  {
-   "experiment": "Blame 10-of-512 gather vs sequential access for the Q80 bandwidth gap",
-   "family": "hardware_axis",
-   "negative_science": [
-    "receipts/ascent-2026-08-16/NEGATIVE_SCIENCE_REGISTER.json"
-   ],
-   "nns_ids": [
-    "NS-032"
-   ],
-   "predicts_not_certifies": true,
-   "reason": "NS-032 is recorded REFUTED in receipts/ascent-2026-08-16/NEGATIVE_SCIENCE_REGISTER.json. Diagnosis does not re-run the dead experiment."
+   "reason": "workspace/docs/guides/dead_levers.md#spec_exactshared_as_is is recorded DEAD in receipts/future/NEGATIVE_SCIENCE_INDEX.json. Diagnosis does not re-run the dead experiment."
   }
  ],
  "axes": [
@@ -141,7 +93,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-29T23:22:42Z",
+  "recorded_at": "2026-08-29T23:34:33Z",
   "recorded_by": "tools/future/hardware_doctor.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -1439,19 +1391,16 @@
  ],
  "scar_query": {
   "consulted": [
-   "tools/foundry/NEGATIVE_TRANSFER_ATLAS.json",
-   "receipts/ascent-2026-08-16/NEGATIVE_SCIENCE_REGISTER.json",
-   "receipts/headless/NOETIC_NEGATIVE_SCIENCE.json",
-   "workspace/campaign/odyssey/NEGATIVE_SCIENCE.json"
+   "receipts/future/NEGATIVE_SCIENCE_INDEX.json"
   ],
-  "index_present": false,
+  "index_present": true,
   "missing": [],
-  "n_dead": 64,
-  "n_scars": 100,
-  "source_used": "fallback_atlas_files"
+  "n_dead": 51,
+  "n_scars": 653,
+  "source_used": "receipts/future/NEGATIVE_SCIENCE_INDEX.json"
  },
  "schema": "hawking.future.hardware_doctor.v1",
- "seal_sha256": "fdd00dfa973cb8c84c83d1055d15c2e37f5bc81794dc151de95ecced9b6fc26f",
+ "seal_sha256": "a505b4af22d91a6f87c2810bec488ca47314f04cb053fcb20d8d123d81632f2b",
  "simulator_ladder": [
   {
    "available": true,

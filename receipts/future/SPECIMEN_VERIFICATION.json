@@ -1,0 +1,713 @@
+{
+ "bench": {
+  "gpu_authority": false,
+  "machine": "Apple host CPU; receipt/header metadata only",
+  "measurement_state": "STATIC_ONLY",
+  "recorded_at": "2026-08-30T12:31:10Z",
+  "recorded_by": "tools/future/specimen_verify.py",
+  "rule": "no hardware measurement claim without hardware",
+  "state": "UNKNOWN"
+ },
+ "claim_boundary": "Static sidecar artifact. No hardware measurement.",
+ "counts": {
+  "corrupt": 0,
+  "incomplete": 0,
+  "partial": 0,
+  "specimens_examined": 3,
+  "whole_tree_verified": 3
+ },
+ "gaps_closed": [
+  "nothing recomputed specimen hashes offline; readiness rested on size checks"
+ ],
+ "modellake": {
+  "lake": "/Volumes/corpdrive/hawking-modellake",
+  "mounted": true,
+  "n_specimens": 8,
+  "specimens_dir": true
+ },
+ "modellake_authority": "ModelLake owns specimens. This module opens them read-only, never writes into the lake, and never edits a manifest or a seal. The verdict lives in the sidecar partition.",
+ "negative_findings": [
+  "a file with no .metadata sidecar cannot be verified offline at any effort",
+  "this does not make ModelLake wrong: its seals already say MANIFEST_ONLY"
+ ],
+ "purpose": "Earn whole-tree specimen verification offline from the HuggingFace .metadata digests, or state precisely which files cannot be verified.",
+ "recovered_implementation": [
+  "ModelLake manifests report n_sha256_verified vs n_size_only_verified",
+  "each specimen carries MODEL_LAKE_SPECIMEN_SEAL.json, currently MANIFEST_ONLY",
+  "HuggingFace .cache/huggingface/download/<file>.metadata carries the etag"
+ ],
+ "resident_callable": {
+  "entry_point": "tools.future.specimen_verify.verify_specimen(name)",
+  "fails_closed": "SpecimenError on an absent specimen; MISMATCH is CORRUPT, never rounded",
+  "frontier": "FT.MODEL_CAPABILITY.hard-gates (specimen curriculum readiness)",
+  "receipt": "receipts/future/SPECIMEN_VERIFICATION.json",
+  "workunit": "one unit per specimen; CPU_VERIFY lane; genuinely long-running"
+ },
+ "results": [
+  {
+   "bytes_hashed": 61084187391,
+   "files": [
+    {
+     "actual": "52373fe24473b1aa44333d318f578ae6bf04b49b",
+     "bytes": 1570,
+     "digest_kind": "git_blob_sha1",
+     "expected": "52373fe24473b1aa44333d318f578ae6bf04b49b",
+     "file": ".gitattributes",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "6634c8cc3133b3848ec74b9f275acaaa1ea618ab",
+     "bytes": 11343,
+     "digest_kind": "git_blob_sha1",
+     "expected": "6634c8cc3133b3848ec74b9f275acaaa1ea618ab",
+     "file": "LICENSE",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "244f89a345bb18c4ddd4bd52f1cc3cda5a467270",
+     "bytes": 16798,
+     "digest_kind": "git_blob_sha1",
+     "expected": "244f89a345bb18c4ddd4bd52f1cc3cda5a467270",
+     "file": "README.md",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "2703739b9cfc422a3a0a6c932140db18533a8d1a",
+     "bytes": 963,
+     "digest_kind": "git_blob_sha1",
+     "expected": "2703739b9cfc422a3a0a6c932140db18533a8d1a",
+     "file": "config.json",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "20a8a9156fc8c3f25295ca067f61fdf120d517c5",
+     "bytes": 239,
+     "digest_kind": "git_blob_sha1",
+     "expected": "20a8a9156fc8c3f25295ca067f61fdf120d517c5",
+     "file": "generation_config.json",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "31349551d90c7606f325fe0f11bbb8bd5fa0d7c7",
+     "bytes": 1671853,
+     "digest_kind": "git_blob_sha1",
+     "expected": "31349551d90c7606f325fe0f11bbb8bd5fa0d7c7",
+     "file": "merges.txt",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "454e77b346a61bfb201d54df60e15158838cf930617ee135113556204f2802b5",
+     "bytes": 3999417504,
+     "digest_kind": "sha256",
+     "expected": "454e77b346a61bfb201d54df60e15158838cf930617ee135113556204f2802b5",
+     "file": "model-00001-of-00016.safetensors",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "47f015d6e5bb1782a834d75c06113c5e8c77ddca1cb7daf89686a4ec0deda19e",
+     "bytes": 3999974192,
+     "digest_kind": "sha256",
+     "expected": "47f015d6e5bb1782a834d75c06113c5e8c77ddca1cb7daf89686a4ec0deda19e",
+     "file": "model-00002-of-00016.safetensors",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "ac0bf5990f2da995c1e8b77a3149dee71900b4fe1b8a614231dea9647193d96b",
+     "bytes": 3997360832,
+     "digest_kind": "sha256",
+     "expected": "ac0bf5990f2da995c1e8b77a3149dee71900b4fe1b8a614231dea9647193d96b",
+     "file": "model-00003-of-00016.safetensors",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "89b01fd34a683c70fdb7f22c2e7090538d65063335ba0db46f3654642b17d1e5",
+     "bytes": 3999975056,
+     "digest_kind": "sha256",
+     "expected": "89b01fd34a683c70fdb7f22c2e7090538d65063335ba0db46f3654642b17d1e5",
+     "file": "model-00004-of-00016.safetensors",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "9849eb3584d928e35bf5956ccfd91b64207467e1fad8304aae68dc4d92d6d6d9",
+     "bytes": 3999975400,
+     "digest_kind": "sha256",
+     "expected": "9849eb3584d928e35bf5956ccfd91b64207467e1fad8304aae68dc4d92d6d6d9",
+     "file": "model-00005-of-00016.safetensors",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "f7a0f1525557d740158fb692986ad43506e1b5901e7406ae65808c6457bc53ad",
+     "bytes": 3999975400,
+     "digest_kind": "sha256",
+     "expected": "f7a0f1525557d740158fb692986ad43506e1b5901e7406ae65808c6457bc53ad",
+     "file": "model-00006-of-00016.safetensors",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "920702a50f27a009e5f676da3b02978dbd794f6ad7854f301d709136154c1a84",
+     "bytes": 3999975472,
+     "digest_kind": "sha256",
+     "expected": "920702a50f27a009e5f676da3b02978dbd794f6ad7854f301d709136154c1a84",
+     "file": "model-00007-of-00016.safetensors",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "a85bf0cc8a8047c116172d4c08cf4792eb59d4375032708ba3e1a7ffca0f708a",
+     "bytes": 3997362064,
+     "digest_kind": "sha256",
+     "expected": "a85bf0cc8a8047c116172d4c08cf4792eb59d4375032708ba3e1a7ffca0f708a",
+     "file": "model-00008-of-00016.safetensors",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "25cd8aaed86b8e17685efb152912f92448ea3fffb1bdc247f257f04d05907604",
+     "bytes": 3999975408,
+     "digest_kind": "sha256",
+     "expected": "25cd8aaed86b8e17685efb152912f92448ea3fffb1bdc247f257f04d05907604",
+     "file": "model-00009-of-00016.safetensors",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "7c3307ee214797c4bc61c0994f81d690e768150df5f14d18edf84e53ba4810dc",
+     "bytes": 3999975400,
+     "digest_kind": "sha256",
+     "expected": "7c3307ee214797c4bc61c0994f81d690e768150df5f14d18edf84e53ba4810dc",
+     "file": "model-00010-of-00016.safetensors",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "c658cad2842d36fa4c7c7f726f8515dc5670a3d80c94e13257d4e322ffe61988",
+     "bytes": 3999975408,
+     "digest_kind": "sha256",
+     "expected": "c658cad2842d36fa4c7c7f726f8515dc5670a3d80c94e13257d4e322ffe61988",
+     "file": "model-00011-of-00016.safetensors",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "8cb898bc5e78492600053d1105c9ff61d7a719f5cc2802df63e41535a652cc26",
+     "bytes": 3987400496,
+     "digest_kind": "sha256",
+     "expected": "8cb898bc5e78492600053d1105c9ff61d7a719f5cc2802df63e41535a652cc26",
+     "file": "model-00012-of-00016.safetensors",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "599594421f314cb8e8ab4474db0eb490cc6310585067e82d73821254b93319ce",
+     "bytes": 3997353632,
+     "digest_kind": "sha256",
+     "expected": "599594421f314cb8e8ab4474db0eb490cc6310585067e82d73821254b93319ce",
+     "file": "model-00013-of-00016.safetensors",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "66d3294e9976b5f01d117a0a0bed768f128a8898eb6937e224d051de2961d363",
+     "bytes": 3999975400,
+     "digest_kind": "sha256",
+     "expected": "66d3294e9976b5f01d117a0a0bed768f128a8898eb6937e224d051de2961d363",
+     "file": "model-00014-of-00016.safetensors",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "2fe000da4fc7399ff6303bb0daec8c415a5d850f5ea53863392758c77fc37664",
+     "bytes": 3999975400,
+     "digest_kind": "sha256",
+     "expected": "2fe000da4fc7399ff6303bb0daec8c415a5d850f5ea53863392758c77fc37664",
+     "file": "model-00015-of-00016.safetensors",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "0c979e314faf06e94a5e1841abd285d4e26e763c79c1abe7710d543192d9da48",
+     "bytes": 1087928584,
+     "digest_kind": "sha256",
+     "expected": "0c979e314faf06e94a5e1841abd285d4e26e763c79c1abe7710d543192d9da48",
+     "file": "model-00016-of-00016.safetensors",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "9c1f15f44d45f6a4108ceb239ecec7b22f5c18a4",
+     "bytes": 1699758,
+     "digest_kind": "git_blob_sha1",
+     "expected": "9c1f15f44d45f6a4108ceb239ecec7b22f5c18a4",
+     "file": "model.safetensors.index.json",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "aeb13307a71acd8fe81861d94ad54ab689df773318809eed3cbe794b4492dae4",
+     "bytes": 11422654,
+     "digest_kind": "sha256",
+     "expected": "aeb13307a71acd8fe81861d94ad54ab689df773318809eed3cbe794b4492dae4",
+     "file": "tokenizer.json",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "417d038a63fa3de29cfde265caedae14d1a58d92",
+     "bytes": 9732,
+     "digest_kind": "git_blob_sha1",
+     "expected": "417d038a63fa3de29cfde265caedae14d1a58d92",
+     "file": "tokenizer_config.json",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "4783fe10ac3adce15ac8f358ef5462739852c569",
+     "bytes": 2776833,
+     "digest_kind": "git_blob_sha1",
+     "expected": "4783fe10ac3adce15ac8f358ef5462739852c569",
+     "file": "vocab.json",
+     "verdict": "VERIFIED"
+    }
+   ],
+   "mismatched": 0,
+   "modellake_mutated": false,
+   "n_files": 26,
+   "no_remote_digest": 0,
+   "skipped_time_budget": 0,
+   "specimen": "Qwen--Qwen3-30B-A3B@ad44e777bcd1",
+   "status": "WHOLE_TREE_VERIFIED",
+   "unrecognized_digest": 0,
+   "verified": 26,
+   "wall_seconds": 832.36,
+   "whole_tree_verified": true
+  },
+  {
+   "bytes_hashed": 62153207155,
+   "files": [
+    {
+     "actual": "a6344aac8c09253b3b630fb776ae94478aa0275b",
+     "bytes": 1519,
+     "digest_kind": "git_blob_sha1",
+     "expected": "a6344aac8c09253b3b630fb776ae94478aa0275b",
+     "file": ".gitattributes",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "300bd781003a23869b238fb456afe4843d781616",
+     "bytes": 6730,
+     "digest_kind": "git_blob_sha1",
+     "expected": "300bd781003a23869b238fb456afe4843d781616",
+     "file": "README.md",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "1081bacf1af7c7c6de4a585ce02cd0fd34e382da",
+     "bytes": 5499,
+     "digest_kind": "git_blob_sha1",
+     "expected": "1081bacf1af7c7c6de4a585ce02cd0fd34e382da",
+     "file": "chat_template.json",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "23665bace1ee31b9894a9a0b588ab924a83875d8",
+     "bytes": 1661,
+     "digest_kind": "git_blob_sha1",
+     "expected": "23665bace1ee31b9894a9a0b588ab924a83875d8",
+     "file": "config.json",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "7bb37933d2d86e4ceaabcc6540be989658f238e9",
+     "bytes": 269,
+     "digest_kind": "git_blob_sha1",
+     "expected": "7bb37933d2d86e4ceaabcc6540be989658f238e9",
+     "file": "generation_config.json",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "20024bfe7c83998e9aeaf98a0cd6a2ce6306c2f0",
+     "bytes": 1671839,
+     "digest_kind": "git_blob_sha1",
+     "expected": "20024bfe7c83998e9aeaf98a0cd6a2ce6306c2f0",
+     "file": "merges.txt",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "6b205ea6332a532e5b97fd6281ac700f125a1a5f9a3457a22b797edfd35a5f67",
+     "bytes": 4399341032,
+     "digest_kind": "sha256",
+     "expected": "6b205ea6332a532e5b97fd6281ac700f125a1a5f9a3457a22b797edfd35a5f67",
+     "file": "model-00001-of-00013.safetensors",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "a739a546e00643e0555bbb6bcd57fa5ba60fb2de24177c8819d2f899f02c2223",
+     "bytes": 4984970880,
+     "digest_kind": "sha256",
+     "expected": "a739a546e00643e0555bbb6bcd57fa5ba60fb2de24177c8819d2f899f02c2223",
+     "file": "model-00002-of-00013.safetensors",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "c57ec0f3fd06cae62980851f2661bd2b5e9dcdff37b8f9ece0cf44dea645efc3",
+     "bytes": 4984970888,
+     "digest_kind": "sha256",
+     "expected": "c57ec0f3fd06cae62980851f2661bd2b5e9dcdff37b8f9ece0cf44dea645efc3",
+     "file": "model-00003-of-00013.safetensors",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "46b07bc82396976dc62f86bccb51c3c585a616b36b8ad8eef700bde75fedf88b",
+     "bytes": 4984970928,
+     "digest_kind": "sha256",
+     "expected": "46b07bc82396976dc62f86bccb51c3c585a616b36b8ad8eef700bde75fedf88b",
+     "file": "model-00004-of-00013.safetensors",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "3fa2fdf4b835d885efcaf0e4f6c7c00905cbaad7e293af988a0cf5408c3078c8",
+     "bytes": 4984970928,
+     "digest_kind": "sha256",
+     "expected": "3fa2fdf4b835d885efcaf0e4f6c7c00905cbaad7e293af988a0cf5408c3078c8",
+     "file": "model-00005-of-00013.safetensors",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "89a762b82ff9db9351cd38794ecd1ee170bbe87d7fa56110ca837c088158ccfb",
+     "bytes": 4984970928,
+     "digest_kind": "sha256",
+     "expected": "89a762b82ff9db9351cd38794ecd1ee170bbe87d7fa56110ca837c088158ccfb",
+     "file": "model-00006-of-00013.safetensors",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "634e437c0a038d8f447fceb44fb4f5230600af6a71d0fbe112711d9e84d6f07a",
+     "bytes": 4984970928,
+     "digest_kind": "sha256",
+     "expected": "634e437c0a038d8f447fceb44fb4f5230600af6a71d0fbe112711d9e84d6f07a",
+     "file": "model-00007-of-00013.safetensors",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "4c6f316b27536bd914a6ea09c03ec1b80a9a8d55e3478b1bd5a307f8de8d7fbd",
+     "bytes": 4984970928,
+     "digest_kind": "sha256",
+     "expected": "4c6f316b27536bd914a6ea09c03ec1b80a9a8d55e3478b1bd5a307f8de8d7fbd",
+     "file": "model-00008-of-00013.safetensors",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "e2e2a338c724ad75aea2b64211472c1037945fab398a879116cbbbc3112391da",
+     "bytes": 4984970928,
+     "digest_kind": "sha256",
+     "expected": "e2e2a338c724ad75aea2b64211472c1037945fab398a879116cbbbc3112391da",
+     "file": "model-00009-of-00013.safetensors",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "adca9184b757627840f7fce81e8e4e1203c7551fa2c1bdb469503dc7dfab0583",
+     "bytes": 4984970928,
+     "digest_kind": "sha256",
+     "expected": "adca9184b757627840f7fce81e8e4e1203c7551fa2c1bdb469503dc7dfab0583",
+     "file": "model-00010-of-00013.safetensors",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "71b3d1ff9ddc9358de332aa52b92fc001565edfcfd61f9e3679f96f85c7cbc22",
+     "bytes": 4984970928,
+     "digest_kind": "sha256",
+     "expected": "71b3d1ff9ddc9358de332aa52b92fc001565edfcfd61f9e3679f96f85c7cbc22",
+     "file": "model-00011-of-00013.safetensors",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "f4b204bedb467a2cea642dc38d30c2cdd29e48fbd2d7d5ee5cc14ba4b786ef6f",
+     "bytes": 4984970928,
+     "digest_kind": "sha256",
+     "expected": "f4b204bedb467a2cea642dc38d30c2cdd29e48fbd2d7d5ee5cc14ba4b786ef6f",
+     "file": "model-00012-of-00013.safetensors",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "e167e2806d63c404660b6d609a7eaef2e82bca478688ba6f83155128d8187539",
+     "bytes": 2907596864,
+     "digest_kind": "sha256",
+     "expected": "e167e2806d63c404660b6d609a7eaef2e82bca478688ba6f83155128d8187539",
+     "file": "model-00013-of-00013.safetensors",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "9b96b32843a831504e0e1bd42486ed220e001e59",
+     "bytes": 80743,
+     "digest_kind": "git_blob_sha1",
+     "expected": "9b96b32843a831504e0e1bd42486ed220e001e59",
+     "file": "model.safetensors.index.json",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "2ea84a437d448ff71b08df68fdd949d5cc4ebb64",
+     "bytes": 390,
+     "digest_kind": "git_blob_sha1",
+     "expected": "2ea84a437d448ff71b08df68fdd949d5cc4ebb64",
+     "file": "preprocessor_config.json",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "c6cc1014128b19d1fc46b1d30a23e3b1d35db421",
+     "bytes": 7032403,
+     "digest_kind": "git_blob_sha1",
+     "expected": "c6cc1014128b19d1fc46b1d30a23e3b1d35db421",
+     "file": "tokenizer.json",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "d3d3763207692c78780f4bf42d4dadf49a5c8012",
+     "bytes": 10868,
+     "digest_kind": "git_blob_sha1",
+     "expected": "d3d3763207692c78780f4bf42d4dadf49a5c8012",
+     "file": "tokenizer_config.json",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "3ba673a5ad7d4d13f54155ecd38b2a94a6dac8fe",
+     "bytes": 385,
+     "digest_kind": "git_blob_sha1",
+     "expected": "3ba673a5ad7d4d13f54155ecd38b2a94a6dac8fe",
+     "file": "video_preprocessor_config.json",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "4783fe10ac3adce15ac8f358ef5462739852c569",
+     "bytes": 2776833,
+     "digest_kind": "git_blob_sha1",
+     "expected": "4783fe10ac3adce15ac8f358ef5462739852c569",
+     "file": "vocab.json",
+     "verdict": "VERIFIED"
+    }
+   ],
+   "mismatched": 0,
+   "modellake_mutated": false,
+   "n_files": 25,
+   "no_remote_digest": 0,
+   "skipped_time_budget": 0,
+   "specimen": "Qwen--Qwen3-VL-30B-A3B-Instruct@9c4b90e1e4ba",
+   "status": "WHOLE_TREE_VERIFIED",
+   "unrecognized_digest": 0,
+   "verified": 25,
+   "wall_seconds": 769.5,
+   "whole_tree_verified": true
+  },
+  {
+   "bytes_hashed": 96077777512,
+   "files": [
+    {
+     "actual": "0d4cb185280917cac60ef7195f2a6250b2b90d83",
+     "bytes": 1618,
+     "digest_kind": "git_blob_sha1",
+     "expected": "0d4cb185280917cac60ef7195f2a6250b2b90d83",
+     "file": ".gitattributes",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "49db182b24260e990b8c73990d47086723484ab7",
+     "bytes": 19022,
+     "digest_kind": "git_blob_sha1",
+     "expected": "49db182b24260e990b8c73990d47086723484ab7",
+     "file": "README.md",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "5e87a5de08b724b82d53e0d8788b247ff3af682e",
+     "bytes": 1494,
+     "digest_kind": "git_blob_sha1",
+     "expected": "5e87a5de08b724b82d53e0d8788b247ff3af682e",
+     "file": "SYSTEM_PROMPT.txt",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "d55f535097412122ac3724c76c903294da3c1152",
+     "bytes": 2772,
+     "digest_kind": "git_blob_sha1",
+     "expected": "d55f535097412122ac3724c76c903294da3c1152",
+     "file": "chat_template.json",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "c83e216efe7b6355ec25ad037f0471fd24bc47d1",
+     "bytes": 1177,
+     "digest_kind": "git_blob_sha1",
+     "expected": "c83e216efe7b6355ec25ad037f0471fd24bc47d1",
+     "file": "config.json",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "d446ca97599fa9d98b2e3744d8b83019837a2fe34a80f4353120b1e9b6249b1e",
+     "bytes": 48022792280,
+     "digest_kind": "sha256",
+     "expected": "d446ca97599fa9d98b2e3744d8b83019837a2fe34a80f4353120b1e9b6249b1e",
+     "file": "consolidated.safetensors",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "e88987414d68707443ffc03c9cac772d95cfce2e",
+     "bytes": 116,
+     "digest_kind": "git_blob_sha1",
+     "expected": "e88987414d68707443ffc03c9cac772d95cfce2e",
+     "file": "generation_config.json",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "4d735fce2330e13fa96c0ad839fbf703481ab05680593ad32b9219be30c9ff92",
+     "bytes": 4883550696,
+     "digest_kind": "sha256",
+     "expected": "4d735fce2330e13fa96c0ad839fbf703481ab05680593ad32b9219be30c9ff92",
+     "file": "model-00001-of-00010.safetensors",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "99c38a089b14a0fca228899132eb8db54ea551bdc96b639267d5177e4a172776",
+     "bytes": 4781593336,
+     "digest_kind": "sha256",
+     "expected": "99c38a089b14a0fca228899132eb8db54ea551bdc96b639267d5177e4a172776",
+     "file": "model-00002-of-00010.safetensors",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "4917b19a128315c56c8ff3cdf531d9a88371314098c2698e28ac03a6d8c77813",
+     "bytes": 4886472224,
+     "digest_kind": "sha256",
+     "expected": "4917b19a128315c56c8ff3cdf531d9a88371314098c2698e28ac03a6d8c77813",
+     "file": "model-00003-of-00010.safetensors",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "acc83eeee5e993095ca9ad7518bf29f511b9e13b6b57d4f53580e9b8b6c084fe",
+     "bytes": 4781593376,
+     "digest_kind": "sha256",
+     "expected": "acc83eeee5e993095ca9ad7518bf29f511b9e13b6b57d4f53580e9b8b6c084fe",
+     "file": "model-00004-of-00010.safetensors",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "5d81e8c278b8af82f96a69f36ce71e743a70aa8fe28d3118bd8d24dae5001b62",
+     "bytes": 4781593368,
+     "digest_kind": "sha256",
+     "expected": "5d81e8c278b8af82f96a69f36ce71e743a70aa8fe28d3118bd8d24dae5001b62",
+     "file": "model-00005-of-00010.safetensors",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "8ca257e4f5ee8446536562de3e0b7e1e2614d23b22311bf29bb88385218ba1d9",
+     "bytes": 4886472248,
+     "digest_kind": "sha256",
+     "expected": "8ca257e4f5ee8446536562de3e0b7e1e2614d23b22311bf29bb88385218ba1d9",
+     "file": "model-00006-of-00010.safetensors",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "f880e9065a25eac3e4986d9b4d45ae0225fe59e093731ad633fded7e91ce058f",
+     "bytes": 4781593376,
+     "digest_kind": "sha256",
+     "expected": "f880e9065a25eac3e4986d9b4d45ae0225fe59e093731ad633fded7e91ce058f",
+     "file": "model-00007-of-00010.safetensors",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "3bc98dc787b471919b469862a9c67f39f9ab2a407e641614da858cd35cb65823",
+     "bytes": 4781593368,
+     "digest_kind": "sha256",
+     "expected": "3bc98dc787b471919b469862a9c67f39f9ab2a407e641614da858cd35cb65823",
+     "file": "model-00008-of-00010.safetensors",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "b1ad95f53916db9384b80f3a233fb524d3085136b9065fd39a1fdf4f1749c401",
+     "bytes": 4886472248,
+     "digest_kind": "sha256",
+     "expected": "b1ad95f53916db9384b80f3a233fb524d3085136b9065fd39a1fdf4f1749c401",
+     "file": "model-00009-of-00010.safetensors",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "97a62f323631157567b35651d7f835baaf290e5fc17c92bb888023cdb43218d1",
+     "bytes": 4571866320,
+     "digest_kind": "sha256",
+     "expected": "97a62f323631157567b35651d7f835baaf290e5fc17c92bb888023cdb43218d1",
+     "file": "model-00010-of-00010.safetensors",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "c8d12958a1c6d6de8f6539883802e6e1a7bcac6a",
+     "bytes": 57907,
+     "digest_kind": "git_blob_sha1",
+     "expected": "c8d12958a1c6d6de8f6539883802e6e1a7bcac6a",
+     "file": "model.safetensors.index.json",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "ba80d5d1ebf33f2b8e7ad064f7a0c05057af7ab0",
+     "bytes": 807,
+     "digest_kind": "git_blob_sha1",
+     "expected": "ba80d5d1ebf33f2b8e7ad064f7a0c05057af7ab0",
+     "file": "params.json",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "e6fae040b04cba893fc9a65582c4eec3c525fb79",
+     "bytes": 634,
+     "digest_kind": "git_blob_sha1",
+     "expected": "e6fae040b04cba893fc9a65582c4eec3c525fb79",
+     "file": "preprocessor_config.json",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "0092b0f4fb04cc78378859f013badda71e5262c5",
+     "bytes": 189,
+     "digest_kind": "git_blob_sha1",
+     "expected": "0092b0f4fb04cc78378859f013badda71e5262c5",
+     "file": "processor_config.json",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "a47054b449916f808ab94e6d2375c00ead78cb8f",
+     "bytes": 21449,
+     "digest_kind": "git_blob_sha1",
+     "expected": "a47054b449916f808ab94e6d2375c00ead78cb8f",
+     "file": "special_tokens_map.json",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "c604f35d1035f534519622c0ec83fed6184978d4fdee92a5bd2a50bc05438094",
+     "bytes": 14801330,
+     "digest_kind": "sha256",
+     "expected": "c604f35d1035f534519622c0ec83fed6184978d4fdee92a5bd2a50bc05438094",
+     "file": "tekken.json",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "b76085f9923309d873994d444989f7eb6ec074b06f25b58f1e8d7b7741070949",
+     "bytes": 17078037,
+     "digest_kind": "sha256",
+     "expected": "b76085f9923309d873994d444989f7eb6ec074b06f25b58f1e8d7b7741070949",
+     "file": "tokenizer.json",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "c61ab81def9a66ae3c0789385d9587904ca2d840",
+     "bytes": 198120,
+     "digest_kind": "git_blob_sha1",
+     "expected": "c61ab81def9a66ae3c0789385d9587904ca2d840",
+     "file": "tokenizer_config.json",
+     "verdict": "VERIFIED"
+    }
+   ],
+   "mismatched": 0,
+   "modellake_mutated": false,
+   "n_files": 25,
+   "no_remote_digest": 0,
+   "skipped_time_budget": 0,
+   "specimen": "mistralai--Mistral-Small-3.1-24B-Instruct-2503@68faf511d618",
+   "status": "WHOLE_TREE_VERIFIED",
+   "unrecognized_digest": 0,
+   "verified": 25,
+   "wall_seconds": 987.69,
+   "whole_tree_verified": true
+  }
+ ],
+ "schema": "hawking.future.specimen_verify.v1",
+ "seal_sha256": "db6e65aef6071183eb224e92eb2ed01b2dbf22fae64fc399efc9074af713c9db",
+ "verification_rule": "VERIFIED means the hash was recomputed here and matched a published digest. Size agreement is not verification. A specimen is WHOLE_TREE_VERIFIED only when every file carried a digest and every one matched; a single undigested file yields PARTIAL_NO_REMOTE_DIGEST.",
+ "version": 1,
+ "whole_tree_verified_specimens": [
+  "Qwen--Qwen3-30B-A3B@ad44e777bcd1",
+  "Qwen--Qwen3-VL-30B-A3B-Instruct@9c4b90e1e4ba",
+  "mistralai--Mistral-Small-3.1-24B-Instruct-2503@68faf511d618"
+ ]
+}

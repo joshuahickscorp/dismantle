@@ -52,7 +52,24 @@ MISSION_STATE = RECEIPTS / "AUTONOMY_MISSION_STATE.json"
 
 # Lanes this host can actually run. GPU and ANE are blocked per Codex's own
 # blocker list, so work needing them parks SLEEPING rather than stalling the loop.
-AVAILABLE_LANES = ("CPU_ANALYSIS", "CPU_VERIFY", "CPU_REPRESENTATION", "DISK_IO")
+# The frontier's OWN lane vocabulary, imported rather than invented. These were
+# spelled CPU_ANALYSIS / CPU_VERIFY / CPU_REPRESENTATION / DISK_IO here, none of
+# which any frontier item requires, so `required_lanes <= available` was false
+# for all 31 NEXT_WORK items and both next_work() and refill() returned an empty
+# list every time. The loop still had work -- it queued capabilities directly --
+# so nothing looked wrong, and the frontier's own work was silently never run.
+AVAILABLE_LANES = tuple(sorted(fr.THIS_HOST_LANES))
+
+# Ask the frontier for more work while this many units are still queued, rather
+# than at zero.
+REFILL_WATERMARK = 4
+
+# And ask again every this many units regardless of queue depth. The frontier is
+# not static: this loop's own invocations rewrite the receipts the frontier is
+# derived from, so work can appear while earlier work is still being done. A
+# loop that only asks when its own queue drains never sees it. Nothing repeats --
+# candidates are deduped against work identity before they are queued.
+REFILL_EVERY = 25
 
 # Parents the live campaign actually runs, in the negative index's own canonical
 # slugs. A scar recorded against one named parent must not prune a different one,
@@ -63,7 +80,7 @@ LIVE_PARENTS = ("qwen3.8-27b", "qwen3-80b", "deepseek-v4-flash")
 # vocabulary. Fixed, and independent of which entries happen to carry a scar --
 # so proposing from it is generation, not a rehearsal of known-dead ideas.
 FAMILY_TAXONOMY: tuple[str, ...] = tuple(sorted(ni.FAMILY_SLUGS))
-BLOCKED_LANES = ("GPU_PROTECTED", "GPU_DIAGNOSTIC", "ANE")
+BLOCKED_LANES = tuple(sorted(fr.HARDWARE_LANES))
 
 # Capabilities the loop may invoke: cheap, read-only, receipt-producing, and
 # already bound to a frontier. Deliberately excludes anything that shells out to
@@ -370,8 +387,17 @@ def run(trial: str = "15m", timeline: Path | None = None,
     })
 
     qi = 0
+    refill_dry = False
+    last_refill_at = -1
     while time.time() - started < duration:
-        if qi >= len(queue):
+        # Top up before starvation, not after it. A daemon that only asks for
+        # more work once its queue hits zero stalls for the length of one refill
+        # every time, and in a window with enough long work queued it never
+        # exercises refilling at all -- the 1h run queued seven multi-hundred-GB
+        # verifications and so never once refilled.
+        due_periodic = qi and qi % REFILL_EVERY == 0 and qi != last_refill_at
+        if not refill_dry and (qi >= len(queue) - REFILL_WATERMARK or due_periodic):
+            last_refill_at = qi
             # Refill from the frontier rather than repeating. If the frontier has
             # nothing new, stop launching: fabricating another copy to fill the
             # clock is precisely the busywork this trial fails on.
@@ -387,12 +413,28 @@ def run(trial: str = "15m", timeline: Path | None = None,
                         if ident not in seen_identity:
                             fresh.append(cand)
                         break
+            # Refilling and reporting what is left are different acts, and the
+            # judge scores them separately: work_refilled is the loop pulling new
+            # work when its queue ran dry, next_work_left is what it hands to the
+            # next window. Emitting only the second read as never refilling.
+            if fresh:
+                doc = _emit(doc, "work_refilled", {
+                    "unit_ids": [c["frontier_id"] for c in fresh][:12],
+                    "n": len(fresh), "source": "frontiers.refill",
+                    "why": "queue near empty; the frontier was asked for more",
+                    "queue_remaining_when_asked": max(0, len(queue) - qi),
+                }, t_s=t(), cites=[c["frontier_id"] for c in fresh][:12])
+            elif qi >= len(queue) - REFILL_WATERMARK:
+                # Only latch when the queue is genuinely near empty. A periodic
+                # ask that finds nothing means nothing new has landed YET, not
+                # that nothing ever will.
+                refill_dry = True
             doc = _emit(doc, "next_work_left", {
                 "unit_ids": [c["frontier_id"] for c in fresh][:12],
                 "ids": [c["frontier_id"] for c in fresh][:12],
                 "n": len(fresh), "source": "frontiers.refill",
             }, t_s=t())
-            if not fresh:
+            if not fresh and qi >= len(queue):
                 break
             queue.extend(fresh)
 
@@ -465,11 +507,12 @@ def run(trial: str = "15m", timeline: Path | None = None,
                 r = subprocess.run(job["shell"], cwd=REPO, capture_output=True,
                                    text=True, timeout=remaining_budget)
                 tail = [l for l in r.stdout.strip().splitlines() if l.strip()][-1:]
-                doc = _emit(doc, "receipt_ingested", {
-                    "unit_id": unit_id, "receipt": job.get("receipt", ""),
+                receipt_rel = job.get("receipt", "")
+                doc = _emit(doc, "result_ingested", {
+                    "unit_id": unit_id, "receipt": receipt_rel,
                     "exit_code": r.returncode, "summary": (tail or [""])[0][:200],
                     "routed_to_frontier": job["frontier_id"],
-                }, t_s=t())
+                }, t_s=t(), cites=[c for c in (receipt_rel, unit_id) if c])
                 doc = _emit(doc, "frontier_delta", {
                     "entry_id": job["frontier_id"], "verification_exit": r.returncode,
                 }, t_s=t())
@@ -517,11 +560,11 @@ def run(trial: str = "15m", timeline: Path | None = None,
         try:
             res = orch.invoke(cap)
             ingested.append(res["receipt"])
-            doc = _emit(doc, "receipt_ingested", {
+            doc = _emit(doc, "result_ingested", {
                 "unit_id": unit_id, "receipt": res["receipt"],
                 "routed_to_frontier": res["routed_to_frontier"],
                 "wall_seconds": res["wall_seconds"],
-            }, t_s=t(), cites=[res["receipt"]])
+            }, t_s=t(), cites=[res["receipt"], unit_id])
             doc = _emit(doc, "frontier_delta", {
                 "entry_id": fid, "capability": cap, "receipt": res["receipt"],
             }, t_s=t(), cites=[res["receipt"]])

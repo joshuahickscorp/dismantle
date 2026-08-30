@@ -123,3 +123,43 @@ def test_the_metal_blocker_is_measured_not_quoted():
         assert "no Metal-capable GPU" not in why
         assert state["chip"] in why
     assert ("compiler is absent" in why) == (not state["offline_metal_compiler"])
+
+
+def test_the_driver_speaks_the_lane_vocabulary_the_frontier_actually_uses():
+    """Invented lane names made the frontier's own work silently unreachable.
+
+    The driver declared CPU_ANALYSIS / CPU_VERIFY / CPU_REPRESENTATION / DISK_IO.
+    No frontier item requires any of those, so `required_lanes <= available` was
+    false for all 31 NEXT_WORK items and next_work() and refill() returned an
+    empty list on every call. The loop still had work -- it queued capabilities
+    directly -- so nothing looked broken, and the frontier's own work never ran.
+    """
+    from tools.future import frontiers as frontiers_mod
+
+    assert set(ar.AVAILABLE_LANES) <= set(frontiers_mod.THIS_HOST_LANES)
+    assert set(ar.BLOCKED_LANES) == set(frontiers_mod.HARDWARE_LANES)
+    assert not (set(ar.AVAILABLE_LANES) & set(ar.BLOCKED_LANES))
+    assert frontiers_mod.next_work(ar.AVAILABLE_LANES), (
+        "the frontier yields no work for these lanes; the vocabulary is wrong again"
+    )
+
+
+def test_refill_is_exercised_without_waiting_for_starvation(tmp_path):
+    """A loop that only asks for work at zero never refills in a full window.
+
+    The 1h trial queued seven multi-hundred-GB verifications and so never once
+    reached the end of its queue.
+    """
+    tl = tmp_path / "tl.json"
+    ar.run(trial="15m", duration_s=180, timeline=tl)
+    doc = json.loads(tl.read_text())
+    kinds = [e["kind"] for e in doc["events"]]
+    assert "result_ingested" in kinds, "the judge scores result_ingested, not receipt_ingested"
+    refills = [e for e in doc["events"] if e["kind"] == "work_refilled"]
+    ingests = [e for e in doc["events"] if e["kind"] == "result_ingested"]
+    assert refills, "no refill happened inside the window"
+    assert min(e["t_s"] for e in ingests) < max(e["t_s"] for e in refills), (
+        "a refill must follow an ingested result to count as refilling after work"
+    )
+    for event in refills:
+        assert event["payload"]["unit_ids"], "a refill that added nothing is not a refill"

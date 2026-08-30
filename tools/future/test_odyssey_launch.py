@@ -176,9 +176,11 @@ def test_specimen_curriculum_five_roles_not_exhaustive():
     assert roles == [c[0] for c in ol.CURRICULUM_ROLES]
     assert cur["n_roles"] == len(ol.CURRICULUM_ROLES)
     assert cur["n_ready"] == sum(1 for r in cur["roles"] if r.get("ready"))
+    # The invariant is the relation, not the value. The line below used to assert
+    # ready is False directly under a comment saying not to freeze the ready
+    # count, and it froze it: every role is verified now and the assertion failed
+    # for the right reason.
     assert cur["ready"] is (cur["n_ready"] == cur["n_roles"])
-    # Unready today is expected; do not freeze the ready count.
-    assert cur["ready"] is False
     purposes = {r["role"]: r["purpose"] for r in cur["roles"]}
     assert "procedural speed" in purposes["very_small_dense_procedural_speed"]
     assert "alternate architecture" in purposes["small_dense_alternate_architecture_transfer"]
@@ -616,3 +618,40 @@ def test_refusing_to_seize_a_lock_is_not_the_same_claim_as_cannot_schedule():
     assert "not whether" in row["reason"], (
         "the reason must distinguish the policy from the capability"
     )
+
+
+def test_a_declared_status_does_not_outrank_a_measurement():
+    """"weights are not present" for 335GB of verified shards.
+
+    The Flash school carries physical_status metadata_only_weights_not_present.
+    It was true when the law store was written. Today the specimen is 144 of 144
+    files whole-tree verified by recomputing every published digest. Deferring to
+    the string would refuse a specimen on stale text -- the same failure as the
+    moved Doctor parent, the absent-but-present GPU, and the specimen filed under
+    partial/.
+    """
+    stale = {"physical_status": "metadata_only_weights_not_present",
+             "revision": "r1", "whole_tree_verified": True, "bytes_hashed": 335_000_000_000}
+    ready, why = ol._ready(stale, require_lake_verified=True)
+    assert ready is True, why
+
+    # NEGATIVE CONTROL: measurement wins only when it is real. A status flip on a
+    # verified flag with nothing hashed behind it is exactly the laundering this
+    # is meant to refuse.
+    for weak in ({"whole_tree_verified": True, "bytes_hashed": 0},
+                 {"whole_tree_verified": True},
+                 {"whole_tree_verified": False, "bytes_hashed": 335_000_000_000}):
+        row = {"physical_status": "metadata_only_weights_not_present", "revision": "r1", **weak}
+        ready, why = ol._ready(row, require_lake_verified=True)
+        assert ready is False, f"a specimen passed on {weak} with nothing measured"
+
+
+def test_the_curriculum_is_ready_only_when_every_role_names_verification():
+    cur = ol.propose_specimen_curriculum()
+    if not cur["ready"]:
+        return
+    assert cur["n_ready"] == cur["n_roles"]
+    for role in cur["roles"]:
+        assert role["ready"] is True
+        assert any(k in role["ready_reason"] for k in
+                   ("whole-tree", "RECURRENT_PATIENT", "tree digest is sealed"))

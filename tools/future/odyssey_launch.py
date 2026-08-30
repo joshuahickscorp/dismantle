@@ -420,7 +420,19 @@ def _ready(identity: Mapping[str, Any], *, require_lake_verified: bool) -> tuple
             "verified again; a stale seal is not a live first-wave specimen"
         )
     if identity.get("physical_status") == "metadata_only_weights_not_present":
-        return False, "school identity is metadata-only; weights are not present"
+        # A declared status does not outrank a measurement. This field says the
+        # weights are not present; for Flash that is 335GB and 131 safetensors
+        # shards, whole-tree verified 144 of 144 by recomputing every published
+        # digest. The declaration was true when the law store was written and is
+        # false now, and deferring to it would refuse a specimen on the strength
+        # of a stale string -- the same failure as the moved Doctor parent, the
+        # absent-but-present GPU, and the specimen filed under partial/.
+        #
+        # Measurement wins only when it is REAL: whole-tree verified AND bytes
+        # actually hashed. A status flip on anything less would be exactly the
+        # laundering this refuses.
+        if not (identity.get("whole_tree_verified") and (identity.get("bytes_hashed") or 0) > 0):
+            return False, "school identity is metadata-only; weights are not present"
     if not identity.get("revision") and not identity.get("resolved_sha") and not identity.get("patient_seal"):
         # A local directory has no repository revision. The external specimen
         # seal is that identity; lake specimens cannot take this branch.
@@ -505,17 +517,6 @@ def _lake_index(census: Mapping[str, Any] | None) -> dict[str, dict[str, Any]]:
             "source": "modellake_specimens_dir",
         }
 
-    earned = _independently_verified()
-    for row in out.values():
-        slug = (row.get("specimen_path") or "").rstrip("/").split("/")[-1]
-        hit = earned.get(slug)
-        if not hit:
-            continue
-        row["whole_tree_verified"] = True
-        row["verification_source"] = "tools/future/specimen_verify.py (offline recomputation)"
-        row["bytes_hashed"] = hit.get("bytes_hashed")
-        row["in_specimens_listing"] = True
-
     flash = census.get("source") if isinstance(census.get("source"), Mapping) else {}
     if flash.get("repo"):
         repo = str(flash.get("repo"))
@@ -536,6 +537,23 @@ def _lake_index(census: Mapping[str, Any] | None) -> dict[str, dict[str, Any]]:
             "source": "flash_pinned_census",
             "census_qualification": census.get("qualification"),
         }
+    # Earned verification is applied LAST, after every row exists. It used to run
+    # before the pinned-Flash census branch appended its row, so Flash was the one
+    # specimen that could never inherit its own whole-tree result -- 144 of 144
+    # files recomputed and the role still refused. An overlay that runs before the
+    # rows it overlays is a silent no-op for whatever comes after it.
+    earned = _independently_verified()
+    for row in out.values():
+        slug = (row.get("specimen_path") or "").rstrip("/").split("/")[-1]
+        hit = earned.get(slug)
+        if not hit:
+            continue
+        row["whole_tree_verified"] = True
+        row["verification_source"] = "tools/future/specimen_verify.py (offline recomputation)"
+        row["bytes_hashed"] = hit.get("bytes_hashed")
+        row["in_specimens_listing"] = True
+        row["published_as_verified"] = True
+
     return out
 
 

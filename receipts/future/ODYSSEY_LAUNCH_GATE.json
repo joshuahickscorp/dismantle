@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T16:13:05Z",
+  "recorded_at": "2026-08-30T16:55:10Z",
   "recorded_by": "tools/future/odyssey_launch.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -56,13 +56,43 @@
      "path_taken": "worktree",
      "resolved": "/Users/scammermike/Downloads/hawking/receipts/future/evidence/HCLI_MODELLAKE_FLASH_CENSUS.json"
     },
-    "n_ready": 4,
+    "n_ready": 5,
     "n_roles": 5,
     "not_proposed": [
      {
       "reason": "present in ModelLake, not a first-wave curriculum role",
+      "repo": "Dream-org/Dream-v0-Instruct-7B",
+      "revision": "05334cb9faaf"
+     },
+     {
+      "reason": "present in ModelLake, not a first-wave curriculum role",
+      "repo": "GSAI-ML/iLLaDA-8B-Base",
+      "revision": "a1b5b5f8a31a"
+     },
+     {
+      "reason": "present in ModelLake, not a first-wave curriculum role",
+      "repo": "HuggingFaceTB/SmolVLM2-2.2B-Instruct",
+      "revision": "482adb537c02"
+     },
+     {
+      "reason": "present in ModelLake, not a first-wave curriculum role",
+      "repo": "LiquidAI/LFM2-24B-A2B",
+      "revision": "a3bbacd91a67"
+     },
+     {
+      "reason": "present in ModelLake, not a first-wave curriculum role",
+      "repo": "LiquidAI/LFM2.5-2.6B-Base",
+      "revision": "c57bdaed1ef1"
+     },
+     {
+      "reason": "present in ModelLake, not a first-wave curriculum role",
       "repo": "Qwen/Qwen3-30B-A3B",
       "revision": "ad44e777bcd18fa416d9da3bd8f70d33ebb85d39"
+     },
+     {
+      "reason": "present in ModelLake, not a first-wave curriculum role",
+      "repo": "Qwen/Qwen3-Embedding-0.6B",
+      "revision": "97b0c614be4d"
      },
      {
       "reason": "present in ModelLake, not a first-wave curriculum role",
@@ -71,13 +101,158 @@
      },
      {
       "reason": "present in ModelLake, not a first-wave curriculum role",
+      "repo": "RWKV/RWKV7-13.3B-20260805",
+      "revision": "64ffe5934178"
+     },
+     {
+      "reason": "present in ModelLake, not a first-wave curriculum role",
+      "repo": "Wan-AI/Wan2.2-T2V-A14B",
+      "revision": "c8c270b13ee0"
+     },
+     {
+      "reason": "present in ModelLake, not a first-wave curriculum role",
+      "repo": "ai21labs/AI21-Jamba2-3B",
+      "revision": "525c6c8e1d9f"
+     },
+     {
+      "reason": "present in ModelLake, not a first-wave curriculum role",
+      "repo": "allenai/Olmo-3-1025-7B",
+      "revision": "a81bae42db39"
+     },
+     {
+      "reason": "present in ModelLake, not a first-wave curriculum role",
+      "repo": "answerdotai/ModernBERT-large",
+      "revision": "45bb4654a4d5"
+     },
+     {
+      "reason": "present in ModelLake, not a first-wave curriculum role",
+      "repo": "arcinstitute/evo2_40b",
+      "revision": "d529aa57c307"
+     },
+     {
+      "reason": "present in ModelLake, not a first-wave curriculum role",
+      "repo": "arcinstitute/evo2_7b",
+      "revision": "bda0089f9258"
+     },
+     {
+      "reason": "present in ModelLake, not a first-wave curriculum role",
+      "repo": "bigcode/starcoder2-7b",
+      "revision": "bb9afde76d79"
+     },
+     {
+      "reason": "present in ModelLake, not a first-wave curriculum role",
+      "repo": "boltz-community/boltz-2",
+      "revision": "6fdef46d763f"
+     },
+     {
+      "reason": "present in ModelLake, not a first-wave curriculum role",
       "repo": "deepseek-ai/DeepSeek-V4-Flash",
       "revision": "60d8d70770c6"
      },
      {
       "reason": "present in ModelLake, not a first-wave curriculum role",
+      "repo": "depth-anything/Depth-Anything-V2-Large-hf",
+      "revision": "7581137eff8d"
+     },
+     {
+      "reason": "present in ModelLake, not a first-wave curriculum role",
+      "repo": "facebook/musicgen-large",
+      "revision": "15ccdc920998"
+     },
+     {
+      "reason": "present in ModelLake, not a first-wave curriculum role",
+      "repo": "facebook/sam2.1-hiera-large",
+      "revision": "665f8e2ad61c"
+     },
+     {
+      "reason": "present in ModelLake, not a first-wave curriculum role",
+      "repo": "facebook/vjepa2-vitg-fpc64-256",
+      "revision": "875c192b7b70"
+     },
+     {
+      "reason": "present in ModelLake, not a first-wave curriculum role",
+      "repo": "google/flan-t5-large",
+      "revision": "0613663d0d48"
+     },
+     {
+      "reason": "present in ModelLake, not a first-wave curriculum role",
+      "repo": "google/timesfm-2.0-500m-pytorch",
+      "revision": "dc2443792ce5"
+     },
+     {
+      "reason": "present in ModelLake, not a first-wave curriculum role",
+      "repo": "ibm-granite/granite-4.0-h-micro",
+      "revision": "d5f01a3ea75f"
+     },
+     {
+      "reason": "present in ModelLake, not a first-wave curriculum role",
+      "repo": "kyutai/moshika-pytorch-bf16",
+      "revision": "a49141e28b3d"
+     },
+     {
+      "reason": "present in ModelLake, not a first-wave curriculum role",
+      "repo": "lerobot/pi0_base",
+      "revision": "25c379b52ba2"
+     },
+     {
+      "reason": "present in ModelLake, not a first-wave curriculum role",
+      "repo": "microsoft/Phi-4-multimodal-instruct",
+      "revision": "93f923e1a772"
+     },
+     {
+      "reason": "present in ModelLake, not a first-wave curriculum role",
+      "repo": "microsoft/Phi-4-reasoning-plus",
+      "revision": "69baf8528e1b"
+     },
+     {
+      "reason": "present in ModelLake, not a first-wave curriculum role",
+      "repo": "microsoft/bitnet-b1.58-2B-4T",
+      "revision": "04c3b9ad9361"
+     },
+     {
+      "reason": "present in ModelLake, not a first-wave curriculum role",
+      "repo": "microsoft/bitnet-b1.58-2B-4T-bf16",
+      "revision": "276681394656"
+     },
+     {
+      "reason": "present in ModelLake, not a first-wave curriculum role",
+      "repo": "moonshotai/Kimi-K3",
+      "revision": "9f62e4e9fffb"
+     },
+     {
+      "reason": "present in ModelLake, not a first-wave curriculum role",
       "repo": "moonshotai/Kimi-VL-A3B-Instruct",
       "revision": "398eede0903cd983a2bfa0cc634e9ac1d843f375"
+     },
+     {
+      "reason": "present in ModelLake, not a first-wave curriculum role",
+      "repo": "nvidia/audio-flamingo-3",
+      "revision": "ee26c5842398"
+     },
+     {
+      "reason": "present in ModelLake, not a first-wave curriculum role",
+      "repo": "openai/whisper-large-v3-turbo",
+      "revision": "41f01f3fe87f"
+     },
+     {
+      "reason": "present in ModelLake, not a first-wave curriculum role",
+      "repo": "state-spaces/mamba3-mimo-1.5b",
+      "revision": "bc6b5d0f7994"
+     },
+     {
+      "reason": "present in ModelLake, not a first-wave curriculum role",
+      "repo": "state-spaces/mamba3-siso-1.5b",
+      "revision": "5cfc721542ec"
+     },
+     {
+      "reason": "present in ModelLake, not a first-wave curriculum role",
+      "repo": "tencent/HunyuanVideo",
+      "revision": "6204ad6aea1a"
+     },
+     {
+      "reason": "present in ModelLake, not a first-wave curriculum role",
+      "repo": "zai-org/GLM-4.5-Air",
+      "revision": "a24ceef6ce4f"
      }
     ],
     "not_proposed_rule": "Do not exhaustively optimize every downloaded model. First-wave curriculum is the five roles above; other lake entries are recorded and deferred.",
@@ -141,7 +316,7 @@
       "weights_canonical": "/Users/scammermike/.cache/huggingface/hub/models--Qwen--Qwen3-30B-A3B/snapshots/ad44e777bcd18fa416d9da3bd8f70d33ebb85d39"
      }
     ],
-    "ready": false,
+    "ready": true,
     "roles": [
      {
       "architecture_family": "dense_transformer",
@@ -179,6 +354,7 @@
        "n_files": 13,
        "n_sha256_verified": 5,
        "n_size_only_verified": 8,
+       "published_as_verified": true,
        "repo": "tiiuae/Falcon-H1-7B-Instruct",
        "resolved_sha": "41e72f27effbab80cd45b6e884688452253a3686",
        "revision": "41e72f27effbab80cd45b6e884688452253a3686",
@@ -537,23 +713,25 @@
       "architecture_family": "qwen4_exp",
       "identity_source": "hcli.flash_next pin + modellake census + odyssey2 school",
       "modellake": {
+       "bytes_hashed": 360023286454,
        "census_qualification": "MODELLAKE_CENSUS_PINNED_FLASH_IDENTITY_NO_ACQUISITION",
-       "in_specimens_listing": false,
+       "in_specimens_listing": true,
        "manifest_path": null,
        "n_files": null,
        "n_sha256_verified": 0,
        "n_size_only_verified": null,
-       "published_as_verified": false,
+       "published_as_verified": true,
        "repo": "Qwen/Qwen3.8-Flash-Next",
        "resolved_sha": "34567a4712bc9766c4449e2e98e4468bfa24d915",
        "revision": "34567a4712bc9766c4449e2e98e4468bfa24d915",
        "source": "flash_pinned_census",
        "specimen_path": "/Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc",
-       "whole_tree_verified": false
+       "verification_source": "tools/future/specimen_verify.py (offline recomputation)",
+       "whole_tree_verified": true
       },
       "purpose": "Flash for heterogeneous frontier",
-      "ready": false,
-      "ready_reason": "ModelLake pin exists but the specimen is not published as verified",
+      "ready": true,
+      "ready_reason": "ModelLake whole-tree sha256 verification",
       "repo": "Qwen/Qwen3.8-Flash-Next",
       "revision": "34567a4712bc9766c4449e2e98e4468bfa24d915",
       "role": "flash_heterogeneous_frontier",
@@ -578,14 +756,12 @@
    "evidence": [
     {
      "curriculum_n_roles": 5,
-     "n_ready": 4,
-     "unready": [
-      "flash_heterogeneous_frontier"
-     ]
+     "n_ready": 5,
+     "unready": []
     }
    ],
    "id": "specimen_curriculum_ready",
-   "met": false,
+   "met": true,
    "operational": {
     "cli_is_not_enough": true,
     "flags": {
@@ -599,11 +775,11 @@
     },
     "notes": {
      "proposal_emitted": "true",
-     "specimens_not_all_published": "True"
+     "specimens_not_all_published": "False"
     },
     "resident_operational": false
    },
-   "reason": "curriculum proposes 5 roles; ready=4. unready=['flash_heterogeneous_frontier']. A proposal is not a ready specimen set."
+   "reason": "all 5 curriculum roles have a live sealed first-wave specimen"
   },
   {
    "evidence": [
@@ -1346,7 +1522,7 @@
   {
    "evidence": [
     {
-     "n_json": 99,
+     "n_json": 100,
      "receipts_future": "/Users/scammermike/Downloads/hawking/receipts/future"
     }
    ],
@@ -1369,7 +1545,7 @@
     },
     "resident_operational": true
    },
-   "reason": "receipts/future is present with n_json=99 (derived); write_receipt seals STATIC_ONLY and raises on hardware fields"
+   "reason": "receipts/future is present with n_json=100 (derived); write_receipt seals STATIC_ONLY and raises on hardware fields"
   }
  ],
  "criterion_ids": [
@@ -2110,7 +2286,6 @@
   "status": "completed",
   "unmet": [
    "resident_autonomy_trial_pass",
-   "specimen_curriculum_ready",
    "nr_nx_path_callable",
    "protected_scheduling"
   ],
@@ -2120,7 +2295,7 @@
   "workspace": "repo-root"
  },
  "gpu_authority": false,
- "head": "625601b25cab2e5e522181864fbd90b17b0eec9d",
+ "head": "b0ff335391d2c731bfde40e1e466e8c985c0eab2",
  "integration_points": {
   "autonomy_trial": "tools/future/autonomy_trial.py \u2014 Odyssey I resident-orchestration trial pass receipt",
   "dirty_measure": "tools/future/dirty_measure.py \u2014 dirty-class measurement that cannot launder into PROTECTED_ABSOLUTE",
@@ -2197,13 +2372,43 @@
     "path_taken": "worktree",
     "resolved": "/Users/scammermike/Downloads/hawking/receipts/future/evidence/HCLI_MODELLAKE_FLASH_CENSUS.json"
    },
-   "n_ready": 4,
+   "n_ready": 5,
    "n_roles": 5,
    "not_proposed": [
     {
      "reason": "present in ModelLake, not a first-wave curriculum role",
+     "repo": "Dream-org/Dream-v0-Instruct-7B",
+     "revision": "05334cb9faaf"
+    },
+    {
+     "reason": "present in ModelLake, not a first-wave curriculum role",
+     "repo": "GSAI-ML/iLLaDA-8B-Base",
+     "revision": "a1b5b5f8a31a"
+    },
+    {
+     "reason": "present in ModelLake, not a first-wave curriculum role",
+     "repo": "HuggingFaceTB/SmolVLM2-2.2B-Instruct",
+     "revision": "482adb537c02"
+    },
+    {
+     "reason": "present in ModelLake, not a first-wave curriculum role",
+     "repo": "LiquidAI/LFM2-24B-A2B",
+     "revision": "a3bbacd91a67"
+    },
+    {
+     "reason": "present in ModelLake, not a first-wave curriculum role",
+     "repo": "LiquidAI/LFM2.5-2.6B-Base",
+     "revision": "c57bdaed1ef1"
+    },
+    {
+     "reason": "present in ModelLake, not a first-wave curriculum role",
      "repo": "Qwen/Qwen3-30B-A3B",
      "revision": "ad44e777bcd18fa416d9da3bd8f70d33ebb85d39"
+    },
+    {
+     "reason": "present in ModelLake, not a first-wave curriculum role",
+     "repo": "Qwen/Qwen3-Embedding-0.6B",
+     "revision": "97b0c614be4d"
     },
     {
      "reason": "present in ModelLake, not a first-wave curriculum role",
@@ -2212,13 +2417,158 @@
     },
     {
      "reason": "present in ModelLake, not a first-wave curriculum role",
+     "repo": "RWKV/RWKV7-13.3B-20260805",
+     "revision": "64ffe5934178"
+    },
+    {
+     "reason": "present in ModelLake, not a first-wave curriculum role",
+     "repo": "Wan-AI/Wan2.2-T2V-A14B",
+     "revision": "c8c270b13ee0"
+    },
+    {
+     "reason": "present in ModelLake, not a first-wave curriculum role",
+     "repo": "ai21labs/AI21-Jamba2-3B",
+     "revision": "525c6c8e1d9f"
+    },
+    {
+     "reason": "present in ModelLake, not a first-wave curriculum role",
+     "repo": "allenai/Olmo-3-1025-7B",
+     "revision": "a81bae42db39"
+    },
+    {
+     "reason": "present in ModelLake, not a first-wave curriculum role",
+     "repo": "answerdotai/ModernBERT-large",
+     "revision": "45bb4654a4d5"
+    },
+    {
+     "reason": "present in ModelLake, not a first-wave curriculum role",
+     "repo": "arcinstitute/evo2_40b",
+     "revision": "d529aa57c307"
+    },
+    {
+     "reason": "present in ModelLake, not a first-wave curriculum role",
+     "repo": "arcinstitute/evo2_7b",
+     "revision": "bda0089f9258"
+    },
+    {
+     "reason": "present in ModelLake, not a first-wave curriculum role",
+     "repo": "bigcode/starcoder2-7b",
+     "revision": "bb9afde76d79"
+    },
+    {
+     "reason": "present in ModelLake, not a first-wave curriculum role",
+     "repo": "boltz-community/boltz-2",
+     "revision": "6fdef46d763f"
+    },
+    {
+     "reason": "present in ModelLake, not a first-wave curriculum role",
      "repo": "deepseek-ai/DeepSeek-V4-Flash",
      "revision": "60d8d70770c6"
     },
     {
      "reason": "present in ModelLake, not a first-wave curriculum role",
+     "repo": "depth-anything/Depth-Anything-V2-Large-hf",
+     "revision": "7581137eff8d"
+    },
+    {
+     "reason": "present in ModelLake, not a first-wave curriculum role",
+     "repo": "facebook/musicgen-large",
+     "revision": "15ccdc920998"
+    },
+    {
+     "reason": "present in ModelLake, not a first-wave curriculum role",
+     "repo": "facebook/sam2.1-hiera-large",
+     "revision": "665f8e2ad61c"
+    },
+    {
+     "reason": "present in ModelLake, not a first-wave curriculum role",
+     "repo": "facebook/vjepa2-vitg-fpc64-256",
+     "revision": "875c192b7b70"
+    },
+    {
+     "reason": "present in ModelLake, not a first-wave curriculum role",
+     "repo": "google/flan-t5-large",
+     "revision": "0613663d0d48"
+    },
+    {
+     "reason": "present in ModelLake, not a first-wave curriculum role",
+     "repo": "google/timesfm-2.0-500m-pytorch",
+     "revision": "dc2443792ce5"
+    },
+    {
+     "reason": "present in ModelLake, not a first-wave curriculum role",
+     "repo": "ibm-granite/granite-4.0-h-micro",
+     "revision": "d5f01a3ea75f"
+    },
+    {
+     "reason": "present in ModelLake, not a first-wave curriculum role",
+     "repo": "kyutai/moshika-pytorch-bf16",
+     "revision": "a49141e28b3d"
+    },
+    {
+     "reason": "present in ModelLake, not a first-wave curriculum role",
+     "repo": "lerobot/pi0_base",
+     "revision": "25c379b52ba2"
+    },
+    {
+     "reason": "present in ModelLake, not a first-wave curriculum role",
+     "repo": "microsoft/Phi-4-multimodal-instruct",
+     "revision": "93f923e1a772"
+    },
+    {
+     "reason": "present in ModelLake, not a first-wave curriculum role",
+     "repo": "microsoft/Phi-4-reasoning-plus",
+     "revision": "69baf8528e1b"
+    },
+    {
+     "reason": "present in ModelLake, not a first-wave curriculum role",
+     "repo": "microsoft/bitnet-b1.58-2B-4T",
+     "revision": "04c3b9ad9361"
+    },
+    {
+     "reason": "present in ModelLake, not a first-wave curriculum role",
+     "repo": "microsoft/bitnet-b1.58-2B-4T-bf16",
+     "revision": "276681394656"
+    },
+    {
+     "reason": "present in ModelLake, not a first-wave curriculum role",
+     "repo": "moonshotai/Kimi-K3",
+     "revision": "9f62e4e9fffb"
+    },
+    {
+     "reason": "present in ModelLake, not a first-wave curriculum role",
      "repo": "moonshotai/Kimi-VL-A3B-Instruct",
      "revision": "398eede0903cd983a2bfa0cc634e9ac1d843f375"
+    },
+    {
+     "reason": "present in ModelLake, not a first-wave curriculum role",
+     "repo": "nvidia/audio-flamingo-3",
+     "revision": "ee26c5842398"
+    },
+    {
+     "reason": "present in ModelLake, not a first-wave curriculum role",
+     "repo": "openai/whisper-large-v3-turbo",
+     "revision": "41f01f3fe87f"
+    },
+    {
+     "reason": "present in ModelLake, not a first-wave curriculum role",
+     "repo": "state-spaces/mamba3-mimo-1.5b",
+     "revision": "bc6b5d0f7994"
+    },
+    {
+     "reason": "present in ModelLake, not a first-wave curriculum role",
+     "repo": "state-spaces/mamba3-siso-1.5b",
+     "revision": "5cfc721542ec"
+    },
+    {
+     "reason": "present in ModelLake, not a first-wave curriculum role",
+     "repo": "tencent/HunyuanVideo",
+     "revision": "6204ad6aea1a"
+    },
+    {
+     "reason": "present in ModelLake, not a first-wave curriculum role",
+     "repo": "zai-org/GLM-4.5-Air",
+     "revision": "a24ceef6ce4f"
     }
    ],
    "not_proposed_rule": "Do not exhaustively optimize every downloaded model. First-wave curriculum is the five roles above; other lake entries are recorded and deferred.",
@@ -2282,7 +2632,7 @@
      "weights_canonical": "/Users/scammermike/.cache/huggingface/hub/models--Qwen--Qwen3-30B-A3B/snapshots/ad44e777bcd18fa416d9da3bd8f70d33ebb85d39"
     }
    ],
-   "ready": false,
+   "ready": true,
    "roles": [
     {
      "architecture_family": "dense_transformer",
@@ -2320,6 +2670,7 @@
       "n_files": 13,
       "n_sha256_verified": 5,
       "n_size_only_verified": 8,
+      "published_as_verified": true,
       "repo": "tiiuae/Falcon-H1-7B-Instruct",
       "resolved_sha": "41e72f27effbab80cd45b6e884688452253a3686",
       "revision": "41e72f27effbab80cd45b6e884688452253a3686",
@@ -2678,23 +3029,25 @@
      "architecture_family": "qwen4_exp",
      "identity_source": "hcli.flash_next pin + modellake census + odyssey2 school",
      "modellake": {
+      "bytes_hashed": 360023286454,
       "census_qualification": "MODELLAKE_CENSUS_PINNED_FLASH_IDENTITY_NO_ACQUISITION",
-      "in_specimens_listing": false,
+      "in_specimens_listing": true,
       "manifest_path": null,
       "n_files": null,
       "n_sha256_verified": 0,
       "n_size_only_verified": null,
-      "published_as_verified": false,
+      "published_as_verified": true,
       "repo": "Qwen/Qwen3.8-Flash-Next",
       "resolved_sha": "34567a4712bc9766c4449e2e98e4468bfa24d915",
       "revision": "34567a4712bc9766c4449e2e98e4468bfa24d915",
       "source": "flash_pinned_census",
       "specimen_path": "/Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc",
-      "whole_tree_verified": false
+      "verification_source": "tools/future/specimen_verify.py (offline recomputation)",
+      "whole_tree_verified": true
      },
      "purpose": "Flash for heterogeneous frontier",
-     "ready": false,
-     "ready_reason": "ModelLake pin exists but the specimen is not published as verified",
+     "ready": true,
+     "ready_reason": "ModelLake whole-tree sha256 verification",
      "repo": "Qwen/Qwen3.8-Flash-Next",
      "revision": "34567a4712bc9766c4449e2e98e4468bfa24d915",
      "role": "flash_heterogeneous_frontier",
@@ -3539,6 +3892,7 @@
   "verdict": {
    "allowed": false,
    "met": [
+    "specimen_curriculum_ready",
     "modellake_identity",
     "doctor_callable",
     "gravity_callable",
@@ -3553,12 +3907,11 @@
     "receipts"
    ],
    "n_criteria": 16,
-   "n_met": 12,
-   "n_unmet": 4,
+   "n_met": 13,
+   "n_unmet": 3,
    "rule": "every unmet criterion is named; the first failure does not hide the rest",
    "unmet": [
     "resident_autonomy_trial_pass",
-    "specimen_curriculum_ready",
     "nr_nx_path_callable",
     "protected_scheduling"
    ],
@@ -3574,7 +3927,7 @@
  },
  "measurement_class": "STATIC_ONLY",
  "negative_findings": [
-  "verdict=REFUSED n_unmet=4 unmet=['resident_autonomy_trial_pass', 'specimen_curriculum_ready', 'nr_nx_path_callable', 'protected_scheduling']",
+  "verdict=REFUSED n_unmet=3 unmet=['resident_autonomy_trial_pass', 'nr_nx_path_callable', 'protected_scheduling']",
   "A gate that passed today would mistake 'Odyssey infrastructure ready' for 'Odyssey started'.",
   "physical blocker sleep.no-gpu-authority: Sidecar has no GPU authority and does not invoke MetalContext. Handoff blockers record no protected GPU authority on this campaign.",
   "physical blocker sleep.metal-compiler: xcrun -f metal did not locate the Metal compiler",
@@ -3582,7 +3935,6 @@
   "physical blocker sleep.machine-heavy: contamination_class='HEAVY'; sidecar will not SIGSTOP standing workers. HEAVY (or unknown) is not a protected window.",
   "physical blocker sleep.flash-nx-scaffold: FLASH_NX_COMPLETENESS_AUDIT seven_all_met=False nx_status='SEALED_METADATA_ONLY_NOT_FOR_PROMOTION' nr_v2.status='COMPLETE_HETEROGENEOUS_CANDIDATE_NOT_FOR_PROMOTION'. SCAFFOLD_ONLY / metadata seals are not a callable NX path.",
   "physical blocker sleep.teacher-capture: teacher capture executed=0/12 workunits; target_row_counts=[256]. Unrun capture is not a synthetic corpus.",
-  "curriculum unready roles: ['flash_heterogeneous_frontier']",
   "this-wave siblings are not imported; local interfaces are the integration points autonomy_trial, dirty_measure, evidence_dag, frontiers, protected_window, resident_api, resident_identity, sandbox, succession, super_resident, wakeup, workgraph"
  ],
  "no_era_vi": true,
@@ -3825,7 +4177,7 @@
   "sleeping_are_not_results": true
  },
  "schema": "hawking.future.odyssey_launch.v1",
- "seal_sha256": "7fbe4bda2cff66722630c0ba0496937bf79a7cb2432d6596ec8499a1f2bebabe",
+ "seal_sha256": "202d3e0de4006cfaa53ec200be99deeda9cc23163fd7e819c0f1407debaca879",
  "sleeping_workunits": [
   {
    "assigned_backend": null,
@@ -4044,13 +4396,43 @@
    "path_taken": "worktree",
    "resolved": "/Users/scammermike/Downloads/hawking/receipts/future/evidence/HCLI_MODELLAKE_FLASH_CENSUS.json"
   },
-  "n_ready": 4,
+  "n_ready": 5,
   "n_roles": 5,
   "not_proposed": [
    {
     "reason": "present in ModelLake, not a first-wave curriculum role",
+    "repo": "Dream-org/Dream-v0-Instruct-7B",
+    "revision": "05334cb9faaf"
+   },
+   {
+    "reason": "present in ModelLake, not a first-wave curriculum role",
+    "repo": "GSAI-ML/iLLaDA-8B-Base",
+    "revision": "a1b5b5f8a31a"
+   },
+   {
+    "reason": "present in ModelLake, not a first-wave curriculum role",
+    "repo": "HuggingFaceTB/SmolVLM2-2.2B-Instruct",
+    "revision": "482adb537c02"
+   },
+   {
+    "reason": "present in ModelLake, not a first-wave curriculum role",
+    "repo": "LiquidAI/LFM2-24B-A2B",
+    "revision": "a3bbacd91a67"
+   },
+   {
+    "reason": "present in ModelLake, not a first-wave curriculum role",
+    "repo": "LiquidAI/LFM2.5-2.6B-Base",
+    "revision": "c57bdaed1ef1"
+   },
+   {
+    "reason": "present in ModelLake, not a first-wave curriculum role",
     "repo": "Qwen/Qwen3-30B-A3B",
     "revision": "ad44e777bcd18fa416d9da3bd8f70d33ebb85d39"
+   },
+   {
+    "reason": "present in ModelLake, not a first-wave curriculum role",
+    "repo": "Qwen/Qwen3-Embedding-0.6B",
+    "revision": "97b0c614be4d"
    },
    {
     "reason": "present in ModelLake, not a first-wave curriculum role",
@@ -4059,13 +4441,158 @@
    },
    {
     "reason": "present in ModelLake, not a first-wave curriculum role",
+    "repo": "RWKV/RWKV7-13.3B-20260805",
+    "revision": "64ffe5934178"
+   },
+   {
+    "reason": "present in ModelLake, not a first-wave curriculum role",
+    "repo": "Wan-AI/Wan2.2-T2V-A14B",
+    "revision": "c8c270b13ee0"
+   },
+   {
+    "reason": "present in ModelLake, not a first-wave curriculum role",
+    "repo": "ai21labs/AI21-Jamba2-3B",
+    "revision": "525c6c8e1d9f"
+   },
+   {
+    "reason": "present in ModelLake, not a first-wave curriculum role",
+    "repo": "allenai/Olmo-3-1025-7B",
+    "revision": "a81bae42db39"
+   },
+   {
+    "reason": "present in ModelLake, not a first-wave curriculum role",
+    "repo": "answerdotai/ModernBERT-large",
+    "revision": "45bb4654a4d5"
+   },
+   {
+    "reason": "present in ModelLake, not a first-wave curriculum role",
+    "repo": "arcinstitute/evo2_40b",
+    "revision": "d529aa57c307"
+   },
+   {
+    "reason": "present in ModelLake, not a first-wave curriculum role",
+    "repo": "arcinstitute/evo2_7b",
+    "revision": "bda0089f9258"
+   },
+   {
+    "reason": "present in ModelLake, not a first-wave curriculum role",
+    "repo": "bigcode/starcoder2-7b",
+    "revision": "bb9afde76d79"
+   },
+   {
+    "reason": "present in ModelLake, not a first-wave curriculum role",
+    "repo": "boltz-community/boltz-2",
+    "revision": "6fdef46d763f"
+   },
+   {
+    "reason": "present in ModelLake, not a first-wave curriculum role",
     "repo": "deepseek-ai/DeepSeek-V4-Flash",
     "revision": "60d8d70770c6"
    },
    {
     "reason": "present in ModelLake, not a first-wave curriculum role",
+    "repo": "depth-anything/Depth-Anything-V2-Large-hf",
+    "revision": "7581137eff8d"
+   },
+   {
+    "reason": "present in ModelLake, not a first-wave curriculum role",
+    "repo": "facebook/musicgen-large",
+    "revision": "15ccdc920998"
+   },
+   {
+    "reason": "present in ModelLake, not a first-wave curriculum role",
+    "repo": "facebook/sam2.1-hiera-large",
+    "revision": "665f8e2ad61c"
+   },
+   {
+    "reason": "present in ModelLake, not a first-wave curriculum role",
+    "repo": "facebook/vjepa2-vitg-fpc64-256",
+    "revision": "875c192b7b70"
+   },
+   {
+    "reason": "present in ModelLake, not a first-wave curriculum role",
+    "repo": "google/flan-t5-large",
+    "revision": "0613663d0d48"
+   },
+   {
+    "reason": "present in ModelLake, not a first-wave curriculum role",
+    "repo": "google/timesfm-2.0-500m-pytorch",
+    "revision": "dc2443792ce5"
+   },
+   {
+    "reason": "present in ModelLake, not a first-wave curriculum role",
+    "repo": "ibm-granite/granite-4.0-h-micro",
+    "revision": "d5f01a3ea75f"
+   },
+   {
+    "reason": "present in ModelLake, not a first-wave curriculum role",
+    "repo": "kyutai/moshika-pytorch-bf16",
+    "revision": "a49141e28b3d"
+   },
+   {
+    "reason": "present in ModelLake, not a first-wave curriculum role",
+    "repo": "lerobot/pi0_base",
+    "revision": "25c379b52ba2"
+   },
+   {
+    "reason": "present in ModelLake, not a first-wave curriculum role",
+    "repo": "microsoft/Phi-4-multimodal-instruct",
+    "revision": "93f923e1a772"
+   },
+   {
+    "reason": "present in ModelLake, not a first-wave curriculum role",
+    "repo": "microsoft/Phi-4-reasoning-plus",
+    "revision": "69baf8528e1b"
+   },
+   {
+    "reason": "present in ModelLake, not a first-wave curriculum role",
+    "repo": "microsoft/bitnet-b1.58-2B-4T",
+    "revision": "04c3b9ad9361"
+   },
+   {
+    "reason": "present in ModelLake, not a first-wave curriculum role",
+    "repo": "microsoft/bitnet-b1.58-2B-4T-bf16",
+    "revision": "276681394656"
+   },
+   {
+    "reason": "present in ModelLake, not a first-wave curriculum role",
+    "repo": "moonshotai/Kimi-K3",
+    "revision": "9f62e4e9fffb"
+   },
+   {
+    "reason": "present in ModelLake, not a first-wave curriculum role",
     "repo": "moonshotai/Kimi-VL-A3B-Instruct",
     "revision": "398eede0903cd983a2bfa0cc634e9ac1d843f375"
+   },
+   {
+    "reason": "present in ModelLake, not a first-wave curriculum role",
+    "repo": "nvidia/audio-flamingo-3",
+    "revision": "ee26c5842398"
+   },
+   {
+    "reason": "present in ModelLake, not a first-wave curriculum role",
+    "repo": "openai/whisper-large-v3-turbo",
+    "revision": "41f01f3fe87f"
+   },
+   {
+    "reason": "present in ModelLake, not a first-wave curriculum role",
+    "repo": "state-spaces/mamba3-mimo-1.5b",
+    "revision": "bc6b5d0f7994"
+   },
+   {
+    "reason": "present in ModelLake, not a first-wave curriculum role",
+    "repo": "state-spaces/mamba3-siso-1.5b",
+    "revision": "5cfc721542ec"
+   },
+   {
+    "reason": "present in ModelLake, not a first-wave curriculum role",
+    "repo": "tencent/HunyuanVideo",
+    "revision": "6204ad6aea1a"
+   },
+   {
+    "reason": "present in ModelLake, not a first-wave curriculum role",
+    "repo": "zai-org/GLM-4.5-Air",
+    "revision": "a24ceef6ce4f"
    }
   ],
   "not_proposed_rule": "Do not exhaustively optimize every downloaded model. First-wave curriculum is the five roles above; other lake entries are recorded and deferred.",
@@ -4129,7 +4656,7 @@
     "weights_canonical": "/Users/scammermike/.cache/huggingface/hub/models--Qwen--Qwen3-30B-A3B/snapshots/ad44e777bcd18fa416d9da3bd8f70d33ebb85d39"
    }
   ],
-  "ready": false,
+  "ready": true,
   "roles": [
    {
     "architecture_family": "dense_transformer",
@@ -4167,6 +4694,7 @@
      "n_files": 13,
      "n_sha256_verified": 5,
      "n_size_only_verified": 8,
+     "published_as_verified": true,
      "repo": "tiiuae/Falcon-H1-7B-Instruct",
      "resolved_sha": "41e72f27effbab80cd45b6e884688452253a3686",
      "revision": "41e72f27effbab80cd45b6e884688452253a3686",
@@ -4525,23 +5053,25 @@
     "architecture_family": "qwen4_exp",
     "identity_source": "hcli.flash_next pin + modellake census + odyssey2 school",
     "modellake": {
+     "bytes_hashed": 360023286454,
      "census_qualification": "MODELLAKE_CENSUS_PINNED_FLASH_IDENTITY_NO_ACQUISITION",
-     "in_specimens_listing": false,
+     "in_specimens_listing": true,
      "manifest_path": null,
      "n_files": null,
      "n_sha256_verified": 0,
      "n_size_only_verified": null,
-     "published_as_verified": false,
+     "published_as_verified": true,
      "repo": "Qwen/Qwen3.8-Flash-Next",
      "resolved_sha": "34567a4712bc9766c4449e2e98e4468bfa24d915",
      "revision": "34567a4712bc9766c4449e2e98e4468bfa24d915",
      "source": "flash_pinned_census",
      "specimen_path": "/Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc",
-     "whole_tree_verified": false
+     "verification_source": "tools/future/specimen_verify.py (offline recomputation)",
+     "whole_tree_verified": true
     },
     "purpose": "Flash for heterogeneous frontier",
-    "ready": false,
-    "ready_reason": "ModelLake pin exists but the specimen is not published as verified",
+    "ready": true,
+    "ready_reason": "ModelLake whole-tree sha256 verification",
     "repo": "Qwen/Qwen3.8-Flash-Next",
     "revision": "34567a4712bc9766c4449e2e98e4468bfa24d915",
     "role": "flash_heterogeneous_frontier",
@@ -4587,6 +5117,7 @@
  "verdict": {
   "allowed": false,
   "met": [
+   "specimen_curriculum_ready",
    "modellake_identity",
    "doctor_callable",
    "gravity_callable",
@@ -4601,12 +5132,11 @@
    "receipts"
   ],
   "n_criteria": 16,
-  "n_met": 12,
-  "n_unmet": 4,
+  "n_met": 13,
+  "n_unmet": 3,
   "rule": "every unmet criterion is named; the first failure does not hide the rest",
   "unmet": [
    "resident_autonomy_trial_pass",
-   "specimen_curriculum_ready",
    "nr_nx_path_callable",
    "protected_scheduling"
   ],

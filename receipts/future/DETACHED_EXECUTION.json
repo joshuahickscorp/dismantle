@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T06:16:47Z",
+  "recorded_at": "2026-08-30T06:39:07Z",
   "recorded_by": "tools/future/detached.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -29,7 +29,7 @@
   "killed mid-flight classifies crashed (exit observed) and does not hang the caller"
  ],
  "gpu_authority": false,
- "head": "9d12ebf12bb90606f0bb6c737558209ac972148a",
+ "head": "890cac9a63f0a597b112c1755b63d34631979e78",
  "identity_states": [
   "dead",
   "match",
@@ -279,7 +279,7 @@
   ]
  },
  "schema": "hawking.future.detached.v1",
- "seal_sha256": "484db29535fbe5fc4c0bc5e101cf48b4fbd2e9c4e9adfcc56c045eab031496da",
+ "seal_sha256": "58b022a97813f444e1be4dc697b26a24feec106c03c4134f9c082ed0a2d40705",
  "supervision_record": {
   "fields": [
    "pid",

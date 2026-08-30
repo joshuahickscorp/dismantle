@@ -2,11 +2,11 @@
  "attacks_run": {
   "actual_skips": 0,
   "forbidden_status": 0,
-  "hardware_claims": 0,
+  "hardware_claims": 2,
   "missing_negative_controls": 0,
-  "missing_tests": 0,
+  "missing_tests": 1,
   "placeholders": 0,
-  "seals": 0,
+  "seals": 1,
   "skipped_tests": 0,
   "write_partition": 0
  },
@@ -14,22 +14,48 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T06:20:25Z",
+  "recorded_at": "2026-08-30T06:42:38Z",
   "recorded_by": "tools/future/integration_attack.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
  },
  "claim_boundary": "Static sidecar artifact. No hardware measurement.",
  "counts": {
-  "P0": 0,
-  "P1": 0,
-  "total": 0
+  "P0": 2,
+  "P1": 2,
+  "total": 4
  },
- "findings": [],
- "module_count": 71,
+ "findings": [
+  {
+   "detail": "bench.state = None, expected UNKNOWN",
+   "kind": "bench_state_overridden",
+   "severity": "P0",
+   "where": "AUTONOMY_MISSION_STATE.json"
+  },
+  {
+   "detail": "None",
+   "kind": "gpu_authority_claimed",
+   "severity": "P0",
+   "where": "AUTONOMY_MISSION_STATE.json"
+  },
+  {
+   "detail": "no seal_sha256",
+   "kind": "unsealed_receipt",
+   "severity": "P1",
+   "where": "AUTONOMY_MISSION_STATE.json"
+  },
+  {
+   "detail": "no test_autonomy_run.py",
+   "kind": "module_without_test",
+   "severity": "P1",
+   "where": "autonomy_run.py"
+  }
+ ],
+ "module_count": 72,
  "modules_examined": [
   "abi_verdicts.py",
   "ane_preboard.py",
+  "autonomy_run.py",
   "autonomy_trial.py",
   "candidate_planner.py",
   "claude_abi_adjudication.py",
@@ -104,6 +130,8 @@
  "receipts_examined": [
   "ABI_VERDICT_HARNESS.json",
   "ANE_PREBOARD.json",
+  "AUTONOMY_MISSION_STATE.json",
+  "AUTONOMY_RUN.json",
   "AUTONOMY_TRIALS.json",
   "CANDIDATE_STAGED_PLAN.json",
   "CLAUDE_GLOBAL_FRONTIER.json",
@@ -177,7 +205,7 @@
   "WORKGRAPH_STATE.json"
  ],
  "schema": "hawking.future.integration_attack.v1",
- "seal_sha256": "0e3d8b1e068a1f52aa1870dd4281c5fdc700591a98822ab59ef988a8a56cbdb4",
- "verdict": "CLEAN",
+ "seal_sha256": "e9235c4c17e29b12f03f26730a603b7b5abdd84be8869a6f7c8477972fa367ee",
+ "verdict": "P0_PRESENT",
  "version": 1
 }

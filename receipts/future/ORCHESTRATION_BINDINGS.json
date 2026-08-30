@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T06:18:58Z",
+  "recorded_at": "2026-08-30T11:12:00Z",
   "recorded_by": "tools/future/orchestration.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -364,6 +364,12 @@
    "species": "UPDATE_SCAR"
   },
   {
+   "frontier_item": "FT.MODEL_CAPABILITY.hard-gates",
+   "module": "specimen_verify.py",
+   "receipt": "SPECIMEN_VERIFICATION.json",
+   "species": "SPECIMEN_VERIFY"
+  },
+  {
    "frontier_item": "FT.GPU_KERNELS.static-warnings",
    "module": "static_kernel_verify.py",
    "receipt": "STATIC_KERNEL_PREFLIGHT.json",
@@ -433,12 +439,12 @@
  "broken": [],
  "claim_boundary": "Static sidecar artifact. No hardware measurement.",
  "counts": {
-  "bound": 70,
+  "bound": 71,
   "broken": 0,
   "distinct_frontier_items": 40,
-  "distinct_species": 39,
+  "distinct_species": 40,
   "infrastructure_excluded": 5,
-  "unbound_production": 0
+  "unbound_production": 1
  },
  "frontier_view_keys": [
   "ABI_VERDICT_HARNESS.json",
@@ -503,6 +509,7 @@
   "RESIDENT_SANDBOX.json",
   "ROUTER_SENSITIVE_ALLOCATION.json",
   "SCAR_SCHEDULING.json",
+  "SPECIMEN_VERIFICATION.json",
   "STATIC_KERNEL_PREFLIGHT.json",
   "STATIC_SKELETON.json",
   "SUCCESSION.json",
@@ -524,7 +531,7 @@
   "orchestration.py"
  ],
  "negative_findings": [
-  "0 production modules remain unbound and are NOT credited",
+  "1 production modules remain unbound and are NOT credited",
   "0 bindings are broken and credit nothing",
   "binding a module does not make its science correct; it makes the module reachable and its result routable"
  ],
@@ -543,7 +550,9 @@
   "workunit": "tools.future.orchestration.emit_workunit(module)"
  },
  "schema": "hawking.future.orchestration.v1",
- "seal_sha256": "bc256b8173f3f6e1de972bedd607921862d7b28efb0e9b4112a37e1011d56515",
- "unbound_production": [],
+ "seal_sha256": "0fed27ce54323fb428e4b9b9ed56f1a6da6d78e6c10c699c035075c13b9de5a3",
+ "unbound_production": [
+  "autonomy_run.py"
+ ],
  "version": 1
 }

@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T06:20:12Z",
+  "recorded_at": "2026-08-30T06:42:25Z",
   "recorded_by": "tools/future/succession.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -286,7 +286,7 @@
   "BoundViolation at bound construction if promotion or canonical ownership is granted",
   "SLEEPING WorkUnits for physical axes so blocked hardware never becomes a synthetic result"
  ],
- "head": "9d12ebf12bb90606f0bb6c737558209ac972148a",
+ "head": "890cac9a63f0a597b112c1755b63d34631979e78",
  "lifecycle_owners": {
   "checkpoint": "hcli/agentos/checkpoint.py",
   "incumbent_identity": "hcli/hawking-native.sealed-3.14.json",
@@ -773,7 +773,7 @@
   ]
  },
  "schema": "hawking.future.succession.v1",
- "seal_sha256": "2f479d4ba75f5bf9483fe6eeec142ded24d9cd41d14546d21aa01c7014e22a5f",
+ "seal_sha256": "ecf95481bf2eb556157e9366a4f36f26185e50e50fa7ab8ef35b4814d6bb7481",
  "shadow": {
   "allowed": [
    "classify_receipt_static_only",

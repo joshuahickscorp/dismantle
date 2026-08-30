@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T06:19:43Z",
+  "recorded_at": "2026-08-30T11:12:01Z",
   "recorded_by": "tools/future/resident_api.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -11,13 +11,13 @@
  "bench_state": "UNKNOWN",
  "claim_boundary": "Static sidecar artifact. No hardware measurement.",
  "counts": {
-  "capabilities": 101,
-  "discovered_python": 147,
-  "human_cli_only": 73,
+  "capabilities": 103,
+  "discovered_python": 149,
+  "human_cli_only": 75,
   "import_failures": 0,
-  "not_operational": 5,
-  "operational": 70,
-  "scored": 75,
+  "not_operational": 6,
+  "operational": 71,
+  "scored": 77,
   "tests": 72,
   "work_units": 6
  },
@@ -226,6 +226,9 @@
    ],
    "tools/future/scar_scheduling.py": [
     "FT.VERIFICATION.negative-index"
+   ],
+   "tools/future/specimen_verify.py": [
+    "FT.MODEL_CAPABILITY.hard-gates"
    ],
    "tools/future/static_kernel_verify.py": [
     "F002",
@@ -453,6 +456,9 @@
    "SCAR_SCHEDULING.json": [
     "FT.VERIFICATION.negative-index"
    ],
+   "SPECIMEN_VERIFICATION.json": [
+    "FT.MODEL_CAPABILITY.hard-gates"
+   ],
    "STATIC_KERNEL_PREFLIGHT.json": [
     "F018",
     "FT.GPU_KERNELS.static-warnings"
@@ -509,6 +515,7 @@
   "does_not_emit_workunit": [
    "__init__",
    "_common",
+   "autonomy_run",
    "handoff",
    "integration_attack",
    "orchestration"
@@ -527,6 +534,7 @@
   "result_does_not_feed_a_named_frontier": [
    "__init__",
    "_common",
+   "autonomy_run",
    "handoff",
    "integration_attack",
    "orchestration"
@@ -644,7 +652,7 @@
   ],
   "tool_registry_present": true
  },
- "honest_scoring": "70 operational / 5 not operational / 75 scored. A human CLI is not an operational subsystem.",
+ "honest_scoring": "71 operational / 6 not operational / 77 scored. A human CLI is not an operational subsystem.",
  "law": "A subsystem is not operational until the RESIDENT can discover it, invoke it, schedule it and verify it; its result changes a frontier; the result persists; and next work refills. 'It has a CLI a human can run' is NOT enough.",
  "measurement_class": "STATIC_ONLY",
  "modules": [
@@ -1121,6 +1129,106 @@
    "relpath": "tools/future/ane_preboard.py",
    "status": "OPERATIONAL",
    "stem": "ane_preboard",
+   "workunit_constructs": []
+  },
+  {
+   "capabilities": [
+    "future.autonomy_run"
+   ],
+   "cli_flags": [
+    [
+     "--trial"
+    ],
+    [
+     "--timeline"
+    ],
+    [
+     "--duration-s"
+    ],
+    [
+     "--build"
+    ]
+   ],
+   "docstring": "AUTONOMY RUN \u2014 the loop that actually runs, so a trial has something to judge. `autonomy_trial.py` records and judges a timeline. Nothing produced one. This is the driver: it recovers state from disk, identifies the live frontier, selects \u2026",
+   "filename": "autonomy_run.py",
+   "gaps": [
+    "does_not_emit_workunit",
+    "result_does_not_feed_a_named_frontier"
+   ],
+   "has_if_main": true,
+   "has_main": true,
+   "hcli_tool_registered": false,
+   "human_cli_only": true,
+   "import_error": null,
+   "import_ok": true,
+   "kind": "production",
+   "preferred_callable": "build",
+   "public_callables": [
+    "run",
+    "build",
+    "main"
+   ],
+   "questions": {
+    "emits_workunit": {
+     "evidence": {
+      "constructs": [],
+      "emitted_by_orchestration_connector": false
+     },
+     "gap": "does_not_emit_workunit",
+     "pass": false
+    },
+    "fail_closed": {
+     "evidence": {
+      "raise_count": 1,
+      "rule": "fail closed means raise (or write_receipt's HardwareClaimError) rather than returning a silent default",
+      "uses_write_receipt": true
+     },
+     "pass": true
+    },
+    "feeds_named_frontier": {
+     "evidence": {
+      "frontier_present": true,
+      "named_as_integration_target": [],
+      "receipt_is_frontier_probe": [],
+      "writes_frontier_document": false
+     },
+     "gap": "result_does_not_feed_a_named_frontier",
+     "pass": false
+    },
+    "hcli_invoke": {
+     "evidence": {
+      "has_if_main": true,
+      "has_main": true,
+      "hcli_future_tools": [],
+      "hcli_tool_count": 32,
+      "hcli_tool_registered": false,
+      "import_error": null,
+      "import_ok": true,
+      "preferred_callable": "build",
+      "public_callables": [
+       "run",
+       "build",
+       "main"
+      ]
+     },
+     "pass": true
+    },
+    "produces_receipt": {
+     "evidence": {
+      "receipt": "AUTONOMY_RUN.json",
+      "uses_write_receipt": true,
+      "write_receipt_names": [
+       "AUTONOMY_RUN.json"
+      ]
+     },
+     "pass": true
+    }
+   },
+   "raise_count": 1,
+   "receipt": "AUTONOMY_RUN.json",
+   "relpath": "tools/future/autonomy_run.py",
+   "status": "NOT_OPERATIONAL",
+   "stem": "autonomy_run",
    "workunit_constructs": []
   },
   {
@@ -9032,6 +9140,111 @@
   },
   {
    "capabilities": [
+    "future.specimen_verify"
+   ],
+   "cli_flags": [
+    [
+     "--list"
+    ],
+    [
+     "--verify"
+    ],
+    [
+     "--build"
+    ],
+    [
+     "--max-seconds"
+    ]
+   ],
+   "docstring": "SPECIMEN VERIFY \u2014 earn whole-tree verification offline, or say precisely why not. `odyssey_launch` refuses on `specimen_curriculum_ready`, and it is right to: every ModelLake manifest reports `n_sha256_verified < n_files` with the rest \"si\u2026",
+   "filename": "specimen_verify.py",
+   "gaps": [],
+   "has_if_main": true,
+   "has_main": true,
+   "hcli_tool_registered": false,
+   "human_cli_only": true,
+   "import_error": null,
+   "import_ok": true,
+   "kind": "production",
+   "preferred_callable": "build",
+   "public_callables": [
+    "available",
+    "list_specimens",
+    "specimen_files",
+    "verify_specimen",
+    "build",
+    "main"
+   ],
+   "questions": {
+    "emits_workunit": {
+     "evidence": {
+      "constructs": [],
+      "emitted_by_orchestration_connector": true
+     },
+     "pass": true
+    },
+    "fail_closed": {
+     "evidence": {
+      "raise_count": 2,
+      "rule": "fail closed means raise (or write_receipt's HardwareClaimError) rather than returning a silent default",
+      "uses_write_receipt": true
+     },
+     "pass": true
+    },
+    "feeds_named_frontier": {
+     "evidence": {
+      "frontier_present": true,
+      "named_as_integration_target": [
+       "FT.MODEL_CAPABILITY.hard-gates"
+      ],
+      "receipt_is_frontier_probe": [
+       "FT.MODEL_CAPABILITY.hard-gates"
+      ],
+      "writes_frontier_document": false
+     },
+     "pass": true
+    },
+    "hcli_invoke": {
+     "evidence": {
+      "has_if_main": true,
+      "has_main": true,
+      "hcli_future_tools": [],
+      "hcli_tool_count": 32,
+      "hcli_tool_registered": false,
+      "import_error": null,
+      "import_ok": true,
+      "preferred_callable": "build",
+      "public_callables": [
+       "available",
+       "list_specimens",
+       "specimen_files",
+       "verify_specimen",
+       "build",
+       "main"
+      ]
+     },
+     "pass": true
+    },
+    "produces_receipt": {
+     "evidence": {
+      "receipt": "SPECIMEN_VERIFICATION.json",
+      "uses_write_receipt": true,
+      "write_receipt_names": [
+       "SPECIMEN_VERIFICATION.json"
+      ]
+     },
+     "pass": true
+    }
+   },
+   "raise_count": 2,
+   "receipt": "SPECIMEN_VERIFICATION.json",
+   "relpath": "tools/future/specimen_verify.py",
+   "status": "OPERATIONAL",
+   "stem": "specimen_verify",
+   "workunit_constructs": []
+  },
+  {
+   "capabilities": [
     "future.static_kernel_verify",
     "future.static_kernel_preflight"
    ],
@@ -10426,8 +10639,8 @@
   }
  ],
  "negative_findings": [
-  "5 of 75 scored modules are NOT_OPERATIONAL; operational=70. Not rounded up.",
-  "73 scored modules are human-CLI-callable (argparse / __main__) and are not registered in HCLI ToolRegistry.",
+  "6 of 77 scored modules are NOT_OPERATIONAL; operational=71. Not rounded up.",
+  "75 scored modules are human-CLI-callable (argparse / __main__) and are not registered in HCLI ToolRegistry.",
   "hcli/tool_registry.py default_tool_registry lists 32 tools and 0 future.* tools. AgentOS cannot discover the sidecar.",
   "HCLI ToolRegistry.invoke returns ToolResult(ok=False, UNKNOWN_TOOL) instead of raising; resident_api.invoke raises. Fail-closed is this surface, not HCLI's.",
   "Most modules persist a receipt a human can regenerate with `python3 tools/future/<mod>.py --build` but do not emit a WorkUnit and do not feed CLAUDE_GLOBAL_FRONTIER.json.",
@@ -10440,6 +10653,7 @@
  "not_operational_stems": [
   "__init__",
   "_common",
+  "autonomy_run",
   "handoff",
   "integration_attack",
   "orchestration"
@@ -10504,6 +10718,7 @@
   "router_science",
   "sandbox",
   "scar_scheduling",
+  "specimen_verify",
   "static_kernel_verify",
   "static_skeleton",
   "succession",
@@ -10682,6 +10897,58 @@
    "module": "tools/future/repro_science.py",
    "receipt": "REPRO_SCIENCE.json",
    "status": "OPERATIONAL"
+  },
+  "future.autonomy_run": {
+   "aliases": [
+    "future.autonomy_run"
+   ],
+   "argument_contract": {
+    "bindable": true,
+    "cli_flags": [
+     {
+      "dest": null,
+      "flags": [
+       "--trial"
+      ]
+     },
+     {
+      "dest": null,
+      "flags": [
+       "--timeline"
+      ]
+     },
+     {
+      "dest": null,
+      "flags": [
+       "--duration-s"
+      ]
+     },
+     {
+      "dest": null,
+      "flags": [
+       "--build"
+      ]
+     }
+    ],
+    "params": [
+     {
+      "has_default": true,
+      "kind": "POSITIONAL_OR_KEYWORD",
+      "name": "result",
+      "required": false
+     }
+    ]
+   },
+   "callable": "build",
+   "frontier": [],
+   "gaps": [
+    "does_not_emit_workunit",
+    "result_does_not_feed_a_named_frontier"
+   ],
+   "import_error": null,
+   "module": "tools/future/autonomy_run.py",
+   "receipt": "AUTONOMY_RUN.json",
+   "status": "NOT_OPERATIONAL"
   },
   "future.autonomy_trial": {
    "aliases": [
@@ -14327,6 +14594,63 @@
    "receipt": "SCAR_SCHEDULING.json",
    "status": "OPERATIONAL"
   },
+  "future.specimen_verify": {
+   "aliases": [
+    "future.specimen_verify"
+   ],
+   "argument_contract": {
+    "bindable": true,
+    "cli_flags": [
+     {
+      "dest": null,
+      "flags": [
+       "--list"
+      ]
+     },
+     {
+      "dest": null,
+      "flags": [
+       "--verify"
+      ]
+     },
+     {
+      "dest": null,
+      "flags": [
+       "--build"
+      ]
+     },
+     {
+      "dest": null,
+      "flags": [
+       "--max-seconds"
+      ]
+     }
+    ],
+    "params": [
+     {
+      "has_default": true,
+      "kind": "POSITIONAL_OR_KEYWORD",
+      "name": "names",
+      "required": false
+     },
+     {
+      "has_default": true,
+      "kind": "KEYWORD_ONLY",
+      "name": "max_seconds_each",
+      "required": false
+     }
+    ]
+   },
+   "callable": "build",
+   "frontier": [
+    "FT.MODEL_CAPABILITY.hard-gates"
+   ],
+   "gaps": [],
+   "import_error": null,
+   "module": "tools/future/specimen_verify.py",
+   "receipt": "SPECIMEN_VERIFICATION.json",
+   "status": "OPERATIONAL"
+  },
   "future.static_kernel_preflight": {
    "aliases": [
     "future.static_kernel_verify",
@@ -14805,7 +15129,7 @@
   ]
  },
  "schema": "hawking.future.resident_api.v1",
- "seal_sha256": "004f4cda2740840d1f72f72a13604a64e6a12f7fc0b889d02ef060329ffaa7c9",
+ "seal_sha256": "9e1a2ec72aff19627a2f41573d96ff5fbf5e7f9bc05b599c86256cb598ea10dd",
  "version": 1,
  "work_units": [
   {
@@ -14815,18 +15139,19 @@
    "backend_task_id": null,
    "claim_boundary": "Proposal only. Sidecar cannot register HCLI tools or rewrite CLAUDE_GLOBAL_FRONTIER.json.",
    "classification": "STATIC_ONLY",
-   "content_hash": "2d35c77e4a85f2918bec8d709eb87f859580fa023ba5968709cfeb9c57b5c43e",
+   "content_hash": "58507656226cea6644ee6ceaaead6b672f929a2609c66ba6493d201f420c9db1",
    "dependencies": [],
-   "description": "Close resident-callability gap 'does_not_emit_workunit' for 5 sidecar module(s).",
+   "description": "Close resident-callability gap 'does_not_emit_workunit' for 6 sidecar module(s).",
    "effect_class": "READ_ONLY",
    "failure_context": null,
    "finished_at": null,
    "gap": "does_not_emit_workunit",
    "id": "future.resident_api.close.does_not_emit_workunit",
-   "module_count": 5,
+   "module_count": 6,
    "module_stems": [
     "__init__",
     "_common",
+    "autonomy_run",
     "handoff",
     "integration_attack",
     "orchestration"
@@ -14965,18 +15290,19 @@
    "backend_task_id": null,
    "claim_boundary": "Proposal only. Sidecar cannot register HCLI tools or rewrite CLAUDE_GLOBAL_FRONTIER.json.",
    "classification": "STATIC_ONLY",
-   "content_hash": "b31ec32c05fb68d630e7f38d1a29d83666530f2490e19c9e50e20ec34e36f2ec",
+   "content_hash": "511bab92e3be1d111327fa7779bcf91291e940a1b752e4a04d2403e8856471d2",
    "dependencies": [],
-   "description": "Close resident-callability gap 'result_does_not_feed_a_named_frontier' for 5 sidecar module(s).",
+   "description": "Close resident-callability gap 'result_does_not_feed_a_named_frontier' for 6 sidecar module(s).",
    "effect_class": "READ_ONLY",
    "failure_context": null,
    "finished_at": null,
    "gap": "result_does_not_feed_a_named_frontier",
    "id": "future.resident_api.close.result_does_not_feed_a_named_frontier",
-   "module_count": 5,
+   "module_count": 6,
    "module_stems": [
     "__init__",
     "_common",
+    "autonomy_run",
     "handoff",
     "integration_attack",
     "orchestration"

@@ -1,0 +1,129 @@
+{
+ "available_lanes": [
+  "CPU_ANALYSIS",
+  "CPU_VERIFY",
+  "CPU_REPRESENTATION",
+  "DISK_IO"
+ ],
+ "bench": {
+  "gpu_authority": false,
+  "machine": "Apple host CPU; receipt/header metadata only",
+  "measurement_state": "STATIC_ONLY",
+  "recorded_at": "2026-08-30T06:42:38Z",
+  "recorded_by": "tools/future/autonomy_run.py",
+  "rule": "no hardware measurement claim without hardware",
+  "state": "UNKNOWN"
+ },
+ "blocked_lanes": [
+  "GPU_PROTECTED",
+  "GPU_DIAGNOSTIC",
+  "ANE"
+ ],
+ "claim_boundary": "Static sidecar artifact. No hardware measurement.",
+ "gaps_closed": [
+  "nothing produced a trial timeline; now the loop does"
+ ],
+ "invariants": [
+  "every workunit_launched is followed by a real orchestration.invoke()",
+  "blocked lanes park SLEEPING with a wake condition; the loop never idles",
+  "no code path emits idle / awaiting_instructions / all_tasks_complete",
+  "negative science is consulted before admission"
+ ],
+ "last_run": {
+  "blocked_lanes_parked": [
+   "GPU_PROTECTED",
+   "GPU_DIAGNOSTIC",
+   "ANE"
+  ],
+  "elapsed_s": 634,
+  "launched": 73,
+  "receipts_ingested": 68,
+  "refused_on_evidence": 0,
+  "resident_model_cognition": "UNAVAILABLE",
+  "scars_consulted": 71,
+  "timeline": "receipts/future/AUTONOMY_TIMELINE_15m.json"
+ },
+ "loop_is": "HCLI orchestration",
+ "negative_findings": [
+  "model cognition is not exercised: no resident process can start here",
+  "GPU and ANE lanes are parked, not tested"
+ ],
+ "purpose": "the autonomous loop that produces a judgeable trial timeline",
+ "recovered_implementation": [
+  "tools/future/autonomy_trial.py supplies the timeline schema, cpu_workunit and is_valid_workunit; this driver produces timelines for it to judge",
+  "tools/future/orchestration.py supplies invoke() and the frontier bindings",
+  "tools/future/frontiers.py supplies next_work/refill"
+ ],
+ "resident_callable": {
+  "entry_point": "tools.future.autonomy_run.run(trial, timeline)",
+  "fails_closed": "an invoke() failure records process_failed; it never fakes a receipt",
+  "frontier": "each launch routes a receipt to its bound frontier item",
+  "receipt": "receipts/future/AUTONOMY_RUN.json",
+  "workunit": "emits cpu_workunit units per iteration"
+ },
+ "resident_model_cognition": "UNAVAILABLE",
+ "safe_capabilities": [
+  "freshness.py",
+  "evidence_snapshot.py",
+  "codex_ingest.py",
+  "negative_index.py",
+  "hbm_doctor.py",
+  "router_science.py",
+  "ngram_school.py",
+  "expert_bank_school.py",
+  "moe_physical_school.py",
+  "hardware_doctor.py",
+  "fpga_engines.py",
+  "cuda_lowbit_hypotheses.py",
+  "flash_schools.py",
+  "p6_projection.py",
+  "decode_civilization.py",
+  "static_skeleton.py",
+  "hwir.py",
+  "resident_api.py",
+  "orchestration.py",
+  "global_frontier.py",
+  "flash_nx_audit.py",
+  "candidate_planner.py",
+  "workunit_species.py",
+  "static_kernel_verify.py",
+  "tournament.py",
+  "super_resident.py",
+  "odyssey_launch.py",
+  "meta_ready.py",
+  "teacher_corpus.py",
+  "ebpw_categories.py",
+  "physical_primitives.py",
+  "fpga_fidelity.py",
+  "device_ascension_pipeline.py",
+  "green_machine.py",
+  "repro_science.py",
+  "evidence_dag.py",
+  "scar_scheduling.py",
+  "dirty_measure.py",
+  "protected_window.py",
+  "sandbox.py",
+  "resident_identity.py",
+  "frontiers.py",
+  "succession.py",
+  "tabula.py",
+  "debugger.py",
+  "codex_behaviors.py",
+  "workgraph.py",
+  "detached.py",
+  "wakeup.py",
+  "abi_verdicts.py",
+  "devplatform.py",
+  "hmf_objects.py",
+  "fusion_sim.py",
+  "lpc_dataset.py",
+  "turnaround.py",
+  "qwen27_profile_schema.py",
+  "flash_nr_complete.py",
+  "git_lock_doctor.py"
+ ],
+ "schema": "hawking.future.autonomy_run.v1",
+ "seal_sha256": "58e34d6175b748e64692b4019e07c2dd8c115744961a4068ad4403ad697c0684",
+ "version": 1,
+ "why_unavailable": "no Metal-capable GPU and no Metal compiler on this host, per Codex's own blocker list; a resident model process cannot start"
+}

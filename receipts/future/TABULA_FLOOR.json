@@ -62,7 +62,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T06:20:18Z",
+  "recorded_at": "2026-08-30T06:42:32Z",
   "recorded_by": "tools/future/tabula.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -749,7 +749,7 @@
   }
  ],
  "gpu_authority": false,
- "head": "9d12ebf12bb90606f0bb6c737558209ac972148a",
+ "head": "890cac9a63f0a597b112c1755b63d34631979e78",
  "independent_evaluation": {
   "behavioral_target": 0.5,
   "demo_failure": {
@@ -1198,7 +1198,7 @@
   "reasoning",
   "instruction_following"
  ],
- "seal_sha256": "e7615fdf8c1103ef49652837a777d0e6f9daa89de6b348b7dc34454ac9d196eb",
+ "seal_sha256": "43b12f92ea2c05e6e6afa7f1c4ddb2c9fa612ba16fab4ab1292e15aaf53ff93b",
  "sleeping_fit": {
   "ready": false,
   "status": "sleeping",

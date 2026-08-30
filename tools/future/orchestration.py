@@ -125,6 +125,10 @@ BINDINGS: dict[str, tuple[str, str]] = {
     # so the lock doctor genuinely informs HCLI self-health rather than being
     # a stray utility.
     "git_lock_doctor.py":          ("FT.HCLI_SELF.no-launch", "HCLI_SELF_OPTIMIZE"),
+    # Whole-tree specimen verification: CPU/disk work that directly gates
+    # Odyssey I, and the only long-running honest work source on a host with
+    # no GPU.
+    "specimen_verify.py":          ("FT.MODEL_CAPABILITY.hard-gates", "SPECIMEN_VERIFY"),
     # --- physical graph / fpga / ane --------------------------------------
     "hwir.py":                     ("FT.PHYSICAL_GRAPH.hwir-lower", "HWIR_LOWER"),
     "fpga_engines.py":             ("FT.FPGA.engine-sim", "FPGA_SIMULATION"),

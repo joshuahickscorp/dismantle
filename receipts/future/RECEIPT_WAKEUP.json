@@ -19,7 +19,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T06:20:24Z",
+  "recorded_at": "2026-08-30T06:42:37Z",
   "recorded_by": "tools/future/wakeup.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -48,7 +48,7 @@
   "corrupt wakeup ledger fails closed instead of resetting the dispatch set"
  ],
  "gpu_authority": false,
- "head": "9d12ebf12bb90606f0bb6c737558209ac972148a",
+ "head": "890cac9a63f0a597b112c1755b63d34631979e78",
  "idempotent": true,
  "integration_points": {
   "detached.py": "supervisor that harvests after a detached worker exits",
@@ -320,7 +320,7 @@
   ]
  },
  "schema": "hawking.future.wakeup.v1",
- "seal_sha256": "aaaa1f8eb422f008b98ebdbae6dc990c4e85d5b1afd18acbb950384ca89cf038",
+ "seal_sha256": "d067213ab2a00293a9c3c3708c29739b1fd6cd6e1b084d7842899d5cd8fdb87e",
  "version": 1,
  "vocabulary": {
   "bench_state": "UNKNOWN",

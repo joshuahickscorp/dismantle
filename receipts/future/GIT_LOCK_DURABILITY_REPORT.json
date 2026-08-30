@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T06:17:12Z",
+  "recorded_at": "2026-08-30T06:39:32Z",
   "recorded_by": "tools/future/git_lock_doctor.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -12,7 +12,7 @@
  "evidence_inputs": [
   {
    "kind": "live_git_dir",
-   "path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/pytest-of-scammermike/pytest-1353/test_cli_rename_aside_isolated0/repo/.git",
+   "path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/pytest-of-scammermike/pytest-1355/test_cli_rename_aside_isolated0/repo/.git",
    "used_for": "index.lock, stale catalog, worktree list via .git/worktrees"
   },
   {
@@ -329,24 +329,24 @@
    "zero_bytes": 1
   },
   "layout": {
-   "common_dir": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/pytest-of-scammermike/pytest-1353/test_cli_rename_aside_isolated0/repo/.git",
+   "common_dir": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/pytest-of-scammermike/pytest-1355/test_cli_rename_aside_isolated0/repo/.git",
    "error": null,
-   "git_dir": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/pytest-of-scammermike/pytest-1353/test_cli_rename_aside_isolated0/repo/.git",
+   "git_dir": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/pytest-of-scammermike/pytest-1355/test_cli_rename_aside_isolated0/repo/.git",
    "how": "git-directory",
    "is_worktree": false,
-   "repo": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/pytest-of-scammermike/pytest-1353/test_cli_rename_aside_isolated0/repo",
-   "repo_root": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/pytest-of-scammermike/pytest-1353/test_cli_rename_aside_isolated0/repo",
+   "repo": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/pytest-of-scammermike/pytest-1355/test_cli_rename_aside_isolated0/repo",
+   "repo_root": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/pytest-of-scammermike/pytest-1355/test_cli_rename_aside_isolated0/repo",
    "worktree_paths": [
-    "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/pytest-of-scammermike/pytest-1353/test_cli_rename_aside_isolated0/repo"
+    "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/pytest-of-scammermike/pytest-1355/test_cli_rename_aside_isolated0/repo"
    ]
   },
-  "observation_now_epoch": 1788070632,
+  "observation_now_epoch": 1788071972,
   "stale_catalog": [
    {
     "mtime_epoch": 1788049000,
     "mtime_utc": "2026-08-30T00:16:40Z",
-    "name": "index.lock.stale-1788070632-testdoc",
-    "path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/pytest-of-scammermike/pytest-1353/test_cli_rename_aside_isolated0/repo/.git/index.lock.stale-1788070632-testdoc",
+    "name": "index.lock.stale-1788071972-testdoc",
+    "path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/pytest-of-scammermike/pytest-1355/test_cli_rename_aside_isolated0/repo/.git/index.lock.stale-1788071972-testdoc",
     "size_bytes": 0,
     "zero_bytes": true
    }
@@ -356,17 +356,17 @@
    {
     "action": {
      "attempted": true,
-     "destination": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/pytest-of-scammermike/pytest-1353/test_cli_rename_aside_isolated0/repo/.git/index.lock.stale-1788070632-testdoc",
-     "destination_name": "index.lock.stale-1788070632-testdoc",
+     "destination": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/pytest-of-scammermike/pytest-1355/test_cli_rename_aside_isolated0/repo/.git/index.lock.stale-1788071972-testdoc",
+     "destination_name": "index.lock.stale-1788071972-testdoc",
      "mode": "rename-aside",
      "renamed": true,
-     "source": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/pytest-of-scammermike/pytest-1353/test_cli_rename_aside_isolated0/repo/.git/index.lock"
+     "source": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/pytest-of-scammermike/pytest-1355/test_cli_rename_aside_isolated0/repo/.git/index.lock"
     },
-    "age_seconds": 21632.165,
+    "age_seconds": 22972.466,
     "age_threshold_s": 300.0,
     "conditions": [
      {
-      "detail": "age_s=21632.165 threshold_s=300.000",
+      "detail": "age_s=22972.466 threshold_s=300.000",
       "holds": true,
       "name": "age_exceeds_threshold"
      },
@@ -387,14 +387,14 @@
      }
     ],
     "failing_conditions": [],
-    "git_dir": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/pytest-of-scammermike/pytest-1353/test_cli_rename_aside_isolated0/repo/.git",
+    "git_dir": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/pytest-of-scammermike/pytest-1355/test_cli_rename_aside_isolated0/repo/.git",
     "git_processes_scanned": 0,
     "holders": [],
     "is_regular_file": true,
     "matching_git_processes": [],
     "may_rename": true,
     "mtime_epoch": 1788049000,
-    "path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/pytest-of-scammermike/pytest-1353/test_cli_rename_aside_isolated0/repo/.git/index.lock",
+    "path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/pytest-of-scammermike/pytest-1355/test_cli_rename_aside_isolated0/repo/.git/index.lock",
     "present": true,
     "role": "primary",
     "size_bytes": 0,
@@ -402,8 +402,8 @@
      {
       "mtime_epoch": 1788049000,
       "mtime_utc": "2026-08-30T00:16:40Z",
-      "name": "index.lock.stale-1788070632-testdoc",
-      "path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/pytest-of-scammermike/pytest-1353/test_cli_rename_aside_isolated0/repo/.git/index.lock.stale-1788070632-testdoc",
+      "name": "index.lock.stale-1788071972-testdoc",
+      "path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/pytest-of-scammermike/pytest-1355/test_cli_rename_aside_isolated0/repo/.git/index.lock.stale-1788071972-testdoc",
       "size_bytes": 0,
       "zero_bytes": true
      }
@@ -412,7 +412,7 @@
   ]
  },
  "schema": "hawking.future.git_lock_durability.v1",
- "seal_sha256": "af6644c4248577da62f6792b8320ba5607f6af416476d913846eeb34388cef2a",
+ "seal_sha256": "d6b26a58881f23ba28b84cae31e8ed12504ebc8182c6ca670f74425d2cae2f62",
  "version": 1,
  "vocabulary": {
   "eras": [

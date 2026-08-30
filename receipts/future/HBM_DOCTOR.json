@@ -249,7 +249,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T06:18:44Z",
+  "recorded_at": "2026-08-30T06:41:02Z",
   "recorded_by": "tools/future/hbm_doctor.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -814,7 +814,7 @@
   "Flash candidates joined from science organ_graph + EBPW + FPGA map without inventing latency.",
   "bytes_atlas consumed as byte ranking, not forked and not re-emitted as a TPS claim."
  ],
- "head": "9d12ebf12bb90606f0bb6c737558209ac972148a",
+ "head": "890cac9a63f0a597b112c1755b63d34631979e78",
  "headline": {
   "budget_bytes": 8589934592,
   "candidate_count": 14,
@@ -980,7 +980,7 @@
   }
  ],
  "schema": "hawking.future.hbm_doctor.v1",
- "seal_sha256": "03c3df23abcb05fd44860e009bd84821b27b6a9be8b29cad371158fa20f7c364",
+ "seal_sha256": "10ec4d794b9d27fd8e31cfc696e581d4a918e321ab3e7a56380e8ffbd44bba4a",
  "solution": {
   "budget_bytes": 8589934592,
   "counts": {

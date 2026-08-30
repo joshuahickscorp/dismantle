@@ -3736,7 +3736,7 @@
     "sidecar_must_not_promote": true
    },
    "source": "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
-   "source_sha256": "ae809878db91bbf2373024a1db6e5ad29ee634bda4394ac680f9381b0b231e46"
+   "source_sha256": "6b790ffe129a5bf21592557eaf3c51524e3c7eb65a673b8946412d7e821f8705"
   },
   {
    "architecture_atlas_behaviour_reference": {
@@ -53507,7 +53507,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-29T23:47:58Z",
+  "recorded_at": "2026-08-30T00:23:39Z",
   "recorded_by": "tools/future/codex_ingest.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -53523,15 +53523,6 @@
    "reason": "candidate_statuses[2] contains DIAGNOSTIC_REJECT",
    "relpath": "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
    "token": "DIAGNOSTIC_REJECT"
-  },
-  {
-   "confidence": 0.6,
-   "event": "new",
-   "field": "<default>",
-   "label": "NEUTRAL",
-   "reason": "no LAW or SCAR driver in well-known fields",
-   "relpath": "receipts/headless/FLASH_META_TEACHER_L4_CAPTURE_BOUNDARY.json",
-   "token": "no_verdict"
   }
  ],
  "cursor": {
@@ -54441,11 +54432,11 @@
    "driver_field": "candidate_statuses[2]",
    "driver_token": "DIAGNOSTIC_REJECT",
    "first_seen": "2026-08-29T22:44:01Z",
-   "last_classified": "2026-08-29T23:47:56Z",
-   "mtime": 1788047128.9973323,
+   "last_classified": "2026-08-30T00:23:38Z",
+   "mtime": 1788049352.0212984,
    "reason": "candidate_statuses[2] contains DIAGNOSTIC_REJECT",
-   "sha256": "ae809878db91bbf2373024a1db6e5ad29ee634bda4394ac680f9381b0b231e46",
-   "size": 192694
+   "sha256": "6b790ffe129a5bf21592557eaf3c51524e3c7eb65a673b8946412d7e821f8705",
+   "size": 209977
   },
   "receipts/headless/ACCELERATOR_QUIESCENCE_INSTRUMENT.json": {
    "classification": "NEUTRAL",
@@ -73608,7 +73599,7 @@
     "sidecar_must_not_promote": true
    },
    "source": "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
-   "source_sha256": "ae809878db91bbf2373024a1db6e5ad29ee634bda4394ac680f9381b0b231e46"
+   "source_sha256": "6b790ffe129a5bf21592557eaf3c51524e3c7eb65a673b8946412d7e821f8705"
   }
  ],
  "gaps_closed": [
@@ -73619,7 +73610,7 @@
   "--once --assert-idempotent refusal that is capable of firing",
   "read-only open; writes only receipts/future/CODEX_INGEST_STATE.json"
  ],
- "head": "9d55feb78ebfb18416e8f606bf37b2ba7f5389db",
+ "head": "b607d29dca57b57350a902dd29c9cd32006f4648",
  "idempotence": {
   "assert_idempotent": "exit non-zero iff n_new + n_changed > 0",
   "change_detector": "sha256 of file bytes; mtime is recorded and never consulted",
@@ -73775,7 +73766,7 @@
   },
   "by_class_this_scan": {
    "LAW": 0,
-   "NEUTRAL": 1,
+   "NEUTRAL": 0,
    "SCAR": 1
   },
   "missing_from_disk": [],
@@ -73783,14 +73774,14 @@
   "n_changed": 1,
   "n_deltas": 1,
   "n_missing_from_disk": 0,
-  "n_new": 1,
+  "n_new": 0,
   "n_on_disk": 1670,
-  "n_unchanged": 1668,
+  "n_unchanged": 1669,
   "n_unreadable": 0,
   "unreadable": []
  },
  "schema": "hawking.future.codex_ingest.v1",
- "seal_sha256": "e4479d3e514225316af12dae2e66505e81bf3ee416abb58ae3e864e0f1049aa7",
+ "seal_sha256": "288bdd53dd48ca6461ed36e0052937c477ec55bfdd0c3ffd6dc6c27229060c5d",
  "version": 1,
  "vocabulary": {
   "bench_state": "UNKNOWN",

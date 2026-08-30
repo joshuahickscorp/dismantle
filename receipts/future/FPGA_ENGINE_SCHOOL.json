@@ -4,7 +4,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-29T23:39:34Z",
+  "recorded_at": "2026-08-30T00:23:45Z",
   "recorded_by": "tools/future/fpga_engines.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -187,7 +187,7 @@
   "hbm_bandwidth",
   "gpu_token_timing"
  ],
- "head": "607532bd42f4028b521d14e7e10c5697e053afb2",
+ "head": "b607d29dca57b57350a902dd29c9cd32006f4648",
  "negative_findings": [
   "receipts/headless/FLASH_COMPLETE_V2.nr.json is not a blob at HEAD; representation recovered instead from FLASH_NEXT_NOETIC_EXECUTABLE.json and FLASH_ROUTED_EXPERT_REPRESENTATION_EXPERIMENT.json",
   "receipts/headless/ACCELERATOR_ARCHITECTURE_ATLAS.json is not a blob at HEAD (frontier F012 probed it on a machine where it was materialized)",
@@ -387,7 +387,7 @@
   "summary": "Organ maps and the FPGA preboard name organs and a mock link simulator; they do not implement arithmetic. tools/accelerator/gemm.py is a Metal tiled GEMM that loses to MLX and is not a NumPy golden. kernel_forge.py searches kernel variants; it does not define engine contracts. gravity_native.py has the sequential q4 group-64 dequant-matvec used as the qgemv width contract. C4 codebook design names fused ADC. DeltaNet gated-delta lives in the qwen38 Metal shader. Representation library lists families (shared_basis, low_rank, binary_sparse_residual, conventional_low_bit) without executable goldens. No tools/future/fpga_engines.py existed."
  },
  "schema": "hawking.future.fpga_engines.v1",
- "seal_sha256": "f289a0ac49de4411cfcef9a38537a16a966645e0497f01434934877ef9f56fad",
+ "seal_sha256": "1bec4bf8804fa2f2a9f96210fc0cb79ae845c8dd968336c47cc0c905d3d2e7e8",
  "selftest_vectors": [
   {
    "associativity": "sequential_left_to_right over K",

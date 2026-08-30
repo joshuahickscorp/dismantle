@@ -3,19 +3,19 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-29T23:39:29Z",
+  "recorded_at": "2026-08-30T00:23:41Z",
   "recorded_by": "tools/future/evidence_snapshot.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
  },
  "captured": [
   {
-   "bytes": 192621,
+   "bytes": 209977,
    "name": "ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
-   "sha256": "fa3b0586bd682320611283a53cb36edf2012f7c00214bbcd31b34de574f4c9d8",
+   "sha256": "6b790ffe129a5bf21592557eaf3c51524e3c7eb65a673b8946412d7e821f8705",
    "snapshot_path": "receipts/future/evidence/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
-   "source_mtime_epoch": 1788046642.204,
-   "source_mtime_utc": "2026-08-29T23:37:22Z",
+   "source_mtime_epoch": 1788049352.021,
+   "source_mtime_utc": "2026-08-30T00:22:32Z",
    "source_path": "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json"
   },
   {
@@ -403,6 +403,6 @@
  "purpose": "Pinned copy of the Codex receipts sidecar lanes read. Lanes run in sparse git worktrees where the live, uncommitted receipts are invisible; without this snapshot a lane would silently fall back to a fixture and its conclusions would be attached to nothing.",
  "read_only_guarantee": "Codex originals are opened read-only and never modified.",
  "schema": "hawking.future.evidence_snapshot.v1",
- "seal_sha256": "e5cb7d451575e3949ded0b83db5fe7e3c6ec493d9e56e616dcb172d5db329bb7",
+ "seal_sha256": "2f4cbc9a45ffc06ca2bedab6db91f55d6634ce38828c866346fc4ea72da9d503",
  "version": 1
 }

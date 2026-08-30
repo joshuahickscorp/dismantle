@@ -61,16 +61,16 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-29T23:42:48Z",
+  "recorded_at": "2026-08-30T00:27:30Z",
   "recorded_by": "tools/future/lpc_baselines.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
  },
  "claim_boundary": "Static sidecar artifact. No hardware measurement. Rule weights are declared model parameters in cost units, not measured nanoseconds.",
- "head": "607532bd42f4028b521d14e7e10c5697e053afb2",
+ "head": "b607d29dca57b57350a902dd29c9cd32006f4648",
  "purpose": "Honest LPC baselines: nearest measured neighbour, rule cost model, uncertainty, ABSTENTION, held-out splits, and the authority rule that a protected measurement always outranks a model.",
  "schema": "hawking.future.lpc_baselines.v1",
- "seal_sha256": "6b282baa2b451c2231f4ebd62cbb2b857d25e64b8d1fb963401d66496c378190",
+ "seal_sha256": "337b888221842582c54b75376436fda1b05ca57e6168dad225303c42e2dd1f95",
  "selftest": "passed",
  "version": 1
 }

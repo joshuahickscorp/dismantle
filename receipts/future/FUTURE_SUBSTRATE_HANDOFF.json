@@ -1,9 +1,10 @@
 {
  "active_processes": [
   "1131 /Applications/Bl /Applications/Blender.app/Contents/MacOS/Blender -b --python /Users/scammermike/.grok-mcp/blender_headless_server.py",
-  "25108 /Library/Framewo /Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python /Library/Frameworks/Python.framework/Versions/3.12/bin/hf download zai-org/GLM-5.3-Flash .gitattributes",
-  "29990 /Library/Framewo /Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python tools/odyssey_ctl.py cycle --go --max-lanes 14 --grok-lanes 0 --loop-secs 300 --inner-sleep 3",
-  "31420 /Library/Framewo /Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python /Library/Frameworks/Python.framework/Versions/3.12/bin/hf download ibm-granite/granite-4.0-h-tiny .gita",
+  "95371 /Library/Framewo /Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python tools/odyssey_ctl.py cycle --go --max-lanes 14 --grok-lanes 0 --loop-secs 300 --inner-sleep 3",
+  "95494 /Library/Framewo /Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python /Library/Frameworks/Python.framework/Versions/3.12/bin/hf download thinkingmachines/Inkling-Small .gita",
+  "96587 /Library/Framewo /Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python /Library/Frameworks/Python.framework/Versions/3.12/bin/hf download zai-org/GLM-5.3-Flash .gitattributes",
+  "96597 /Library/Framewo /Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python /Library/Frameworks/Python.framework/Versions/3.12/bin/hf download ibm-granite/granite-4.0-h-tiny .gita",
   "98220 /Library/Framewo /Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python /Users/scammermike/Downloads/hawking/tools/odyssey/modellake_watch.py --poll-secs 0.10"
  ],
  "adversarial_attack": {
@@ -17,8 +18,9 @@
  "arrival_questions": {
   "codex_finishes_now": {
    "absent": [],
-   "answer": "11 of 11 systems are executable today, each with a module, a test and a sealed receipt on disk.",
+   "answer": "13 of 13 systems are executable today, each with a module, a test and a sealed receipt on disk.",
    "evidence": {
+    "ane_preboard": "receipts/future/ANE_PREBOARD.json",
     "candidate_queue_planner": "receipts/future/CANDIDATE_STAGED_PLAN.json",
     "codex_mutation_surface": "receipts/future/CODEX_MUTATION_SURFACE.json",
     "codex_receipt_ingestion": "receipts/future/CODEX_INGEST_STATE.json",
@@ -28,10 +30,12 @@
     "experiment_turnaround": "receipts/future/EXPERIMENT_TURNAROUND.json",
     "flash_nx_audit": "receipts/future/FLASH_NX_COMPLETENESS_AUDIT.json",
     "global_frontier": "receipts/future/CLAUDE_GLOBAL_FRONTIER.json",
+    "qualification_automation": "receipts/future/QUALIFICATION_PIPELINE.json",
     "qwen27_profile_schema": "receipts/future/QWEN27_ACCELERATOR_PROFILE_SCHEMA.json",
     "static_kernel_preflight": "receipts/future/STATIC_KERNEL_PREFLIGHT.json"
    },
    "executable_now": [
+    "ane_preboard",
     "candidate_queue_planner",
     "codex_mutation_surface",
     "codex_receipt_ingestion",
@@ -41,6 +45,7 @@
     "experiment_turnaround",
     "flash_nx_audit",
     "global_frontier",
+    "qualification_automation",
     "qwen27_profile_schema",
     "static_kernel_preflight"
    ],
@@ -115,17 +120,19 @@
   },
   "tournament_winner": {
    "absent": [],
-   "answer": "4 of 4 systems are executable today, each with a module, a test and a sealed receipt on disk.",
+   "answer": "5 of 5 systems are executable today, each with a module, a test and a sealed receipt on disk.",
    "evidence": {
     "green_machine": "receipts/future/GREEN_MACHINE.json",
     "hcli_future_workunits": "receipts/future/HCLI_FUTURE_WORKUNITS.json",
     "resident_install": null,
+    "resident_optimizer": "receipts/future/RESIDENT_OPTIMIZER.json",
     "tournament": "receipts/future/TOURNAMENT_READINESS.json"
    },
    "executable_now": [
     "green_machine",
     "hcli_future_workunits",
     "resident_install",
+    "resident_optimizer",
     "tournament"
    ],
    "partial": [],
@@ -156,7 +163,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-29T23:43:11Z",
+  "recorded_at": "2026-08-30T00:28:11Z",
   "recorded_by": "tools/future/handoff.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -168,14 +175,15 @@
  ],
  "branch": "odyssey-i",
  "claim_boundary": "Static sidecar artifact. No hardware measurement.",
- "dirty_paths": 717,
+ "dirty_paths": 734,
  "gpu_authority": false,
- "head": "607532bd42f4028b521d14e7e10c5697e053afb2",
- "head_subject": "feat(future): static kernel preflight, negative science index, tournament harness, HCLI workunit species",
+ "head": "b607d29dca57b57350a902dd29c9cd32006f4648",
+ "head_subject": "feat(future): ANE preboard and resident optimizer",
  "protected_measurements_taken": 0,
  "schema": "hawking.future.handoff.v1",
- "seal_sha256": "1012cd4017688c3ce696ecb5ff8e31b1a4958c8a8570ab62e5e0152556d73f49",
+ "seal_sha256": "67906c6c14158740f56a964cd3ded236bbedf13cdf86ab26690c19209e612397",
  "sidecar_commits": [
+  "b607d29dc feat(future): ANE preboard and resident optimizer",
   "607532bd4 feat(future): static kernel preflight, negative science index, tournament harness, HCLI workunit species",
   "d355718d9 feat(future): integrate 25 sidecar lanes across FPGA, representation and science",
   "862653a9c feat(future): odyssey II law store, odyssey III adversary, HWIR v1, codex ingest",
@@ -184,10 +192,17 @@
  ],
  "system_counts": {
   "ABSENT": 0,
-  "EXECUTABLE": 38,
+  "EXECUTABLE": 41,
   "PARTIAL": 0
  },
  "systems": {
+  "ane_preboard": {
+   "module": "tools/future/ane_preboard.py",
+   "module_lines": 1773,
+   "receipt": "receipts/future/ANE_PREBOARD.json",
+   "state": "EXECUTABLE",
+   "test": "tools/future/test_ane_preboard.py"
+  },
   "autonomous_reproducible_science": {
    "module": "tools/future/repro_science.py",
    "module_lines": 1325,
@@ -405,6 +420,13 @@
    "state": "EXECUTABLE",
    "test": "tools/future/test_physical_primitives.py"
   },
+  "qualification_automation": {
+   "module": "tools/future/qualification_pipeline.py",
+   "module_lines": 1490,
+   "receipt": "receipts/future/QUALIFICATION_PIPELINE.json",
+   "state": "EXECUTABLE",
+   "test": "tools/future/test_qualification_pipeline.py"
+  },
   "qwen27_profile_schema": {
    "module": "tools/future/qwen27_profile_schema.py",
    "module_lines": 1433,
@@ -418,6 +440,13 @@
    "receipt": null,
    "state": "EXECUTABLE",
    "test": "tools/future/test_resident_install.py"
+  },
+  "resident_optimizer": {
+   "module": "tools/future/resident_optimizer.py",
+   "module_lines": 1446,
+   "receipt": "receipts/future/RESIDENT_OPTIMIZER.json",
+   "state": "EXECUTABLE",
+   "test": "tools/future/test_resident_optimizer.py"
   },
   "router_science": {
    "module": "tools/future/router_science.py",
@@ -458,7 +487,7 @@
  "tests": {
   "exit_code": 0,
   "green": true,
-  "summary": "699 passed in 417.30s (0:06:57)"
+  "summary": "766 passed in 477.28s (0:07:57)"
  },
  "version": 1
 }

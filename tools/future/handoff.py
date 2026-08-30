@@ -66,6 +66,9 @@ SYSTEMS: dict[str, tuple[str, str, str]] = {
     "global_frontier": ("global_frontier.py", "CLAUDE_GLOBAL_FRONTIER.json", "codex_finishes_now"),
     "evidence_snapshot": ("evidence_snapshot.py", "EVIDENCE_SNAPSHOT.json", "codex_finishes_now"),
     "integration_attack": ("integration_attack.py", "INTEGRATION_ATTACK.json", "era_iii"),
+    "ane_preboard": ("ane_preboard.py", "ANE_PREBOARD.json", "codex_finishes_now"),
+    "resident_optimizer": ("resident_optimizer.py", "RESIDENT_OPTIMIZER.json", "tournament_winner"),
+    "qualification_automation": ("qualification_pipeline.py", "QUALIFICATION_PIPELINE.json", "codex_finishes_now"),
 }
 
 ARRIVALS = {

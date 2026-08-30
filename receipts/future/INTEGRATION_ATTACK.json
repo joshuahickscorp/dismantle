@@ -14,7 +14,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-29T23:34:58Z",
+  "recorded_at": "2026-08-30T00:20:07Z",
   "recorded_by": "tools/future/integration_attack.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -26,8 +26,9 @@
   "total": 0
  },
  "findings": [],
- "module_count": 38,
+ "module_count": 41,
  "modules_examined": [
+  "ane_preboard.py",
   "candidate_planner.py",
   "codex_ingest.py",
   "contamination.py",
@@ -56,9 +57,11 @@
   "odyssey2_law_store.py",
   "odyssey3_adversary.py",
   "physical_primitives.py",
+  "qualification_pipeline.py",
   "qwen27_profile_schema.py",
   "repro_science.py",
   "resident_install.py",
+  "resident_optimizer.py",
   "router_science.py",
   "static_kernel_verify.py",
   "static_skeleton.py",
@@ -69,6 +72,7 @@
  ],
  "purpose": "adversarial completion attack over the sidecar; its job is to find a reason NOT to finish",
  "receipts_examined": [
+  "ANE_PREBOARD.json",
   "CANDIDATE_STAGED_PLAN.json",
   "CLAUDE_GLOBAL_FRONTIER.json",
   "CODEX_INGEST_STATE.json",
@@ -101,9 +105,11 @@
   "ODYSSEY2_LAW_STORE.json",
   "ODYSSEY3_ADVERSARY.json",
   "PHYSICAL_PRIMITIVES.json",
+  "QUALIFICATION_PIPELINE.json",
   "QWEN27_ACCELERATOR_PROFILE_SCHEMA.json",
   "REPRO_SCIENCE.json",
   "RESIDENT_INSTALL_CONTRACT.json",
+  "RESIDENT_OPTIMIZER.json",
   "ROUTER_SENSITIVE_ALLOCATION.json",
   "STATIC_KERNEL_PREFLIGHT.json",
   "STATIC_SKELETON.json",
@@ -111,7 +117,7 @@
   "TOURNAMENT_READINESS.json"
  ],
  "schema": "hawking.future.integration_attack.v1",
- "seal_sha256": "9376a1254647dc65a48e96b3210816674639ae2897f5b97659c36ca3184d2e19",
+ "seal_sha256": "567ecbd2e274a34b5431e705076ba44b83c75fb1b81f425e96c58d2a26b20a0d",
  "verdict": "CLEAN",
  "version": 1
 }

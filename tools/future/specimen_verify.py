@@ -46,7 +46,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from tools.future._common import REPO, write_receipt
+from tools.future._common import RECEIPTS, REPO, write_receipt
 
 RECEIPT = "SPECIMEN_VERIFICATION.json"
 SCHEMA = "hawking.future.specimen_verify.v1"
@@ -201,6 +201,16 @@ def record(result: dict[str, Any]) -> Path:
     complete work and is persisted as such; the receipt is the union of what has
     actually been recomputed, never a claim about what has not.
     """
+    name = str(result.get("specimen") or "")
+    known = list_specimens()
+    if known and name not in known:
+        # The Odyssey gate reads this receipt to decide specimen readiness, so a
+        # row naming something that is not a specimen is a readiness claim about
+        # a model that does not exist. A test fixture leaked exactly one such row
+        # in here once; it fails closed now.
+        raise SpecimenError(
+            f"refusing to record {name!r}: not a ModelLake specimen directory"
+        )
     prior: list[dict[str, Any]] = []
     path = RECEIPTS / RECEIPT
     if path.is_file():

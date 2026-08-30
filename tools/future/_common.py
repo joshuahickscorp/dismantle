@@ -94,10 +94,33 @@ def load_json(path: str | Path) -> dict[str, Any]:
     return json.loads(Path(path).read_text())
 
 
+# Seconds before a read-only git query is abandoned. The tree is ~43GB and dirty,
+# so `git status` can run for minutes; a query with no timeout is a query that
+# can hang a caller forever.
+GIT_TIMEOUT_S = 120
+
+
 def git(*args: str) -> str:
-    return subprocess.run(
-        ["git", *args], cwd=REPO, capture_output=True, text=True, check=False
-    ).stdout.strip()
+    """A READ-ONLY git query that cannot take, or strand, the index lock.
+
+    Every caller in this package reads: show, ls-tree, rev-parse, status,
+    worktree list. `git status` refreshes and therefore WRITES .git/index.lock
+    on a tree this size, and a git killed while holding it leaves a stale lock
+    that blocks every later commit in the repo -- which has happened repeatedly
+    here, each time with a lock several minutes old and no process holding it.
+
+    --no-optional-locks tells git not to take that lock for a query that does
+    not need it. The timeout stops a slow query becoming a hung caller. A
+    timeout returns empty, which every caller already treats as "not found".
+    """
+    try:
+        return subprocess.run(
+            ["git", "--no-optional-locks", *args],
+            cwd=REPO, capture_output=True, text=True, check=False,
+            timeout=GIT_TIMEOUT_S,
+        ).stdout.strip()
+    except (subprocess.TimeoutExpired, OSError):
+        return ""
 
 
 def sha256_file(path: str | Path) -> str:

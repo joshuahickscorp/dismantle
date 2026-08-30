@@ -109,6 +109,81 @@ def test_absent_specimen_fails_closed(tmp_path, monkeypatch):
         sv.verify_specimen("not-a-specimen@000")
 
 
+def test_record_refuses_a_row_that_is_not_a_specimen(tmp_path, monkeypatch):
+    """The gate reads this receipt. A fabricated row is a readiness claim.
+
+    A fixture leaked exactly one such row into the live receipt once, which is
+    the same shape of failure as leaving a negative control live in source.
+    """
+    _local_receipts(sv, tmp_path, monkeypatch)
+    spec = tmp_path / "specimens" / "real@1"
+    spec.mkdir(parents=True)
+    monkeypatch.setattr(sv, "SPECIMENS", spec.parent)
+    with pytest.raises(sv.SpecimenError):
+        sv.record({"specimen": "invented@0", "status": "WHOLE_TREE_VERIFIED",
+                   "n_files": 1, "verified": 1, "mismatched": 0,
+                   "no_remote_digest": 0, "bytes_hashed": 1,
+                   "whole_tree_verified": True})
+    sv.record({"specimen": "real@1", "status": "WHOLE_TREE_VERIFIED", "n_files": 1,
+               "verified": 1, "mismatched": 0, "no_remote_digest": 0,
+               "bytes_hashed": 1, "whole_tree_verified": True})
+
+
+def _local_receipts(module, tmp_path, monkeypatch):
+    """Redirect both the read side and the seal-writing side at a tmp dir."""
+    monkeypatch.setattr(module, "RECEIPTS", tmp_path)
+
+    def _write(name, doc, recorded_by):
+        out = tmp_path / name
+        out.write_text(json.dumps(doc, indent=1, default=str))
+        return out
+
+    monkeypatch.setattr(module, "write_receipt", _write)
+
+
+def test_record_persists_one_specimen_and_is_idempotent_by_name(tmp_path, monkeypatch):
+    """Whole-tree verification of 733GB does not fit one window.
+
+    A --build that must finish all seven before writing loses every completed
+    specimen when the window closes -- and that is not hypothetical: record()
+    shipped with an unimported RECEIPTS and threw AFTER seven minutes of real
+    hashing, so the first specimen the autonomy loop verified was lost. One
+    specimen is complete work and is persisted as such.
+    """
+    _local_receipts(sv, tmp_path, monkeypatch)
+    for nm in ("a@1", "b@2"):
+        (tmp_path / "specimens" / nm).mkdir(parents=True)
+    monkeypatch.setattr(sv, "SPECIMENS", tmp_path / "specimens")
+    first = {"specimen": "a@1", "status": "WHOLE_TREE_VERIFIED", "n_files": 2,
+             "verified": 2, "mismatched": 0, "no_remote_digest": 0,
+             "bytes_hashed": 10, "whole_tree_verified": True}
+    sv.record(first)
+    sv.record({**first, "specimen": "b@2"})
+    doc = json.loads((tmp_path / sv.RECEIPT).read_text())
+    assert {r["specimen"] for r in doc["results"]} == {"a@1", "b@2"}
+
+    # Re-verifying a specimen replaces its row rather than appending a second one.
+    sv.record({**first, "verified": 1, "n_files": 2, "whole_tree_verified": False,
+               "status": "PARTIAL_NO_REMOTE_DIGEST", "no_remote_digest": 1})
+    doc = json.loads((tmp_path / sv.RECEIPT).read_text())
+    rows = [r for r in doc["results"] if r["specimen"] == "a@1"]
+    assert len(rows) == 1 and rows[0]["status"] == "PARTIAL_NO_REMOTE_DIGEST"
+    assert doc["counts"]["whole_tree_verified"] == 1
+
+
+def test_record_survives_a_corrupt_prior_receipt(tmp_path, monkeypatch):
+    """A truncated write must not make every later verification unrecordable."""
+    _local_receipts(sv, tmp_path, monkeypatch)
+    (tmp_path / "specimens" / "c@3").mkdir(parents=True)
+    monkeypatch.setattr(sv, "SPECIMENS", tmp_path / "specimens")
+    (tmp_path / sv.RECEIPT).write_text("{not json")
+    sv.record({"specimen": "c@3", "status": "WHOLE_TREE_VERIFIED", "n_files": 1,
+               "verified": 1, "mismatched": 0, "no_remote_digest": 0,
+               "bytes_hashed": 5, "whole_tree_verified": True})
+    doc = json.loads((tmp_path / sv.RECEIPT).read_text())
+    assert [r["specimen"] for r in doc["results"]] == ["c@3"]
+
+
 def test_real_falcon_result_is_recorded_and_is_a_recomputation():
     """The live result must show bytes actually hashed, not files merely counted."""
     p = RECEIPTS / "SPECIMEN_VERIFICATION.json"

@@ -192,6 +192,28 @@ def verify_specimen(name: str, *, max_seconds: float | None = None) -> dict[str,
     }
 
 
+def record(result: dict[str, Any]) -> Path:
+    """Merge one specimen's verdict into the receipt, keyed by specimen name.
+
+    Whole-tree verification of the large specimens takes hours, and a single
+    --build that must finish them all before anything is written loses every
+    completed specimen when the window closes. Verifying one specimen is
+    complete work and is persisted as such; the receipt is the union of what has
+    actually been recomputed, never a claim about what has not.
+    """
+    prior: list[dict[str, Any]] = []
+    path = RECEIPTS / RECEIPT
+    if path.is_file():
+        try:
+            prior = list(json.loads(path.read_text()).get("results") or [])
+        except (json.JSONDecodeError, OSError):
+            prior = []
+    merged = [r for r in prior if r.get("specimen") != result.get("specimen")]
+    merged.append(result)
+    merged.sort(key=lambda r: str(r.get("specimen")))
+    return _receipt(merged)
+
+
 def build(names: list[str] | None = None, *, max_seconds_each: float | None = 900.0) -> Path:
     avail = available()
     results: list[dict[str, Any]] = []
@@ -202,6 +224,11 @@ def build(names: list[str] | None = None, *, max_seconds_each: float | None = 90
             except SpecimenError as exc:
                 results.append({"specimen": name, "status": "ABSENT", "why": str(exc)})
 
+    return _receipt(results)
+
+
+def _receipt(results: list[dict[str, Any]]) -> Path:
+    avail = available()
     sealed = [r["specimen"] for r in results if r.get("whole_tree_verified")]
     doc = {
         "schema": SCHEMA,
@@ -266,8 +293,10 @@ def main() -> int:
         return 0
     if a.verify:
         res = verify_specimen(a.verify, max_seconds=a.max_seconds)
+        out = record(res)
         res.pop("files", None)
         print(json.dumps(res, indent=1, sort_keys=True))
+        print(out)
         return 0
     out = build(max_seconds_each=a.max_seconds)
     doc = json.loads(out.read_text())

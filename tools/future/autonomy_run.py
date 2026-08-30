@@ -37,6 +37,7 @@ from pathlib import Path
 from typing import Any
 
 from tools.future import autonomy_trial as at
+from tools.future import flash_schools as fs
 from tools.future import frontiers as fr
 from tools.future import negative_index as ni
 from tools.future import orchestration as orch
@@ -50,6 +51,16 @@ MISSION_STATE = RECEIPTS / "AUTONOMY_MISSION_STATE.json"
 # Lanes this host can actually run. GPU and ANE are blocked per Codex's own
 # blocker list, so work needing them parks SLEEPING rather than stalling the loop.
 AVAILABLE_LANES = ("CPU_ANALYSIS", "CPU_VERIFY", "CPU_REPRESENTATION", "DISK_IO")
+
+# Parents the live campaign actually runs, in the negative index's own canonical
+# slugs. A scar recorded against one named parent must not prune a different one,
+# so the slug has to be exact or the refusal silently never fires.
+LIVE_PARENTS = ("qwen3.8-27b", "qwen3-80b", "deepseek-v4-flash")
+
+# The generator's proposal space: the negative index's canonical family
+# vocabulary. Fixed, and independent of which entries happen to carry a scar --
+# so proposing from it is generation, not a rehearsal of known-dead ideas.
+FAMILY_TAXONOMY: tuple[str, ...] = tuple(sorted(ni.FAMILY_SLUGS))
 BLOCKED_LANES = ("GPU_PROTECTED", "GPU_DIAGNOSTIC", "ANE")
 
 # Capabilities the loop may invoke: cheap, read-only, receipt-producing, and
@@ -184,6 +195,12 @@ def run(trial: str = "15m", timeline: Path | None = None,
 
     launched, ingested, refused = [], [], []
     scars_consulted = 0
+    survivors: list[dict[str, Any]] = []
+    proposed: set[tuple[str, str, str]] = set()
+    try:
+        scar_pool = ni.ingest()
+    except Exception:
+        scar_pool = []
     seen_identity: set[tuple] = set()
 
     # Work is derived from the FRONTIER, not a fixed capability list. Cycling a
@@ -192,6 +209,31 @@ def run(trial: str = "15m", timeline: Path | None = None,
     # so re-running the same capability against the same frontier item is a copy,
     # however many distinct ids it is given.
     queue: list[dict[str, Any]] = []
+    # Candidate GENERATION, then the scar filter. Neither the frontier nor the
+    # Codex candidate queue ever contains already-dead work -- both are pruned
+    # before the sidecar sees them -- so a loop that only CONSUMES those can
+    # honestly report zero refusals forever and never demonstrate it can reject
+    # anything. That was the real cause of refused_on_evidence=0, not a broken
+    # filter: the loop was asking whether a python module name was a dead
+    # hypothesis family, which is a category error the index can only answer no to.
+    #
+    # Refusal becomes real at GENERATION. Propose every canonical representation
+    # family in the index's taxonomy against every organ the Flash schools name,
+    # for each parent the campaign runs, and let recorded negative science kill
+    # what it has already killed. The taxonomy is fixed and independent of which
+    # entries happen to carry scars, so this is not a list of known-dead ideas
+    # dressed up as proposals -- most survive.
+    for model in LIVE_PARENTS:
+        for school in fs.SCHOOL_CATALOG:
+            queue.append({
+                "generate": {"model": model, "school": school,
+                             "organ": fs.SCHOOL_ORGAN_SLUG[school]},
+                "frontier_id": "FT.MODEL_REPRESENTATION.meta-gates-3-9",
+                "description": f"generate every canonical representation family for the "
+                               f"{school} organ of {model}, and refuse each one recorded "
+                               f"negative science has already killed",
+            })
+
     # Every SAFE capability against the frontier item it is BOUND to. Each pair is
     # distinct work with a distinct description, so identity differs per unit --
     # unlike cycling one list, which the judge correctly reads as copies.
@@ -252,7 +294,19 @@ def run(trial: str = "15m", timeline: Path | None = None,
     # longer trials were missing. Falcon took 243s for 15GB; Flash is ~350GB.
     try:
         from tools.future import specimen_verify as sv
-        for spec in sv.list_specimens():
+
+        def _spec_bytes(name: str) -> int:
+            try:
+                return sum(p.stat().st_size for p in sv.specimen_files(name))
+            except Exception:
+                return 0
+
+        # Cheapest first. The specimens span 14GB to 335GB and hashing runs at
+        # disk speed, so alphabetical order spends the whole window on two of
+        # them and gets killed part-way through a third. Ordering by size
+        # completes the most distinct verifications per window, and it is the
+        # campaign's own rule: cheap discriminating work before expensive work.
+        for spec in sorted(sv.list_specimens(), key=_spec_bytes):
             queue.append({
                 "shell": ["python3", "tools/future/specimen_verify.py",
                           "--verify", spec, "--max-seconds", "1800"],
@@ -307,6 +361,52 @@ def run(trial: str = "15m", timeline: Path | None = None,
             queue.extend(fresh)
 
         job = queue[qi]; qi += 1
+        if job.get("generate"):
+            g = job["generate"]
+            unit_id = f"WU.AUTONOMY.generate.{qi}"
+            unit = at.cpu_workunit(unit_id, frontier_id=job["frontier_id"],
+                                   description=job["description"],
+                                   verifier="future.negative_index.refuse_if_dead")
+            ok, why = at.is_valid_workunit(unit)
+            if not ok:
+                doc = _emit(doc, "workunit_refused",
+                            {"reason": f"invalid_unit:{why}"}, t_s=t())
+                continue
+            doc = _emit(doc, "workunit_launched", {"unit": unit, "generator": g}, t_s=t())
+            launched.append(unit_id)
+            alive = considered = 0
+            for fam in FAMILY_TAXONOMY:
+                key = (g["model"], g["organ"], fam)
+                if key in proposed:
+                    continue  # schools share organs; the same proposal is not new work
+                proposed.add(key)
+                considered += 1
+                scars_consulted += 1
+                dead = ni.refuse_if_dead({"model": g["model"], "organ": g["organ"],
+                                          "hypothesis_family": fam}, scar_pool)
+                if not dead:
+                    alive += 1
+                    survivors.append({"model": g["model"], "organ": g["organ"],
+                                      "school": g["school"], "hypothesis_family": fam})
+                    continue
+                idea = f"{fam} for the {g['organ']} organ of {g['model']}"
+                refused.append(idea)
+                doc = _emit(doc, "idea_rejected", {
+                    "idea": idea,
+                    "why": "recorded negative science already killed this hypothesis; "
+                           "rediscovery is not free",
+                    "hypothesis_family": fam, "model": g["model"], "organ": g["organ"],
+                    "verdict": dead.get("verdict"),
+                    "failure_mechanism": dead.get("failure_mechanism"),
+                    "reopen_condition": dead.get("reopen_condition"),
+                    "scar_id": dead.get("scar_id"),
+                }, t_s=t(), cites=[str(dead.get("source_path") or dead.get("scar_id") or "")])
+            doc = _emit(doc, "frontier_delta", {
+                "entry_id": job["frontier_id"], "school": g["school"], "model": g["model"],
+                "families_considered": considered, "still_live": alive,
+                "already_dead": considered - alive,
+            }, t_s=t())
+            continue
         if job.get("shell"):
             # Heavyweight verification: the full suite and the adversarial attack
             # are the most valuable work this daemon does, and they take real
@@ -434,6 +534,8 @@ def run(trial: str = "15m", timeline: Path | None = None,
         "receipts_ingested": len(ingested),
         "refused_on_evidence": len(refused),
         "scars_consulted": scars_consulted,
+        "hypotheses_proposed": len(proposed),
+        "hypotheses_still_live": len(survivors),
         "blocked_lanes_parked": list(BLOCKED_LANES),
         "resident_model_cognition": "UNAVAILABLE",
     }
@@ -444,7 +546,11 @@ def run(trial: str = "15m", timeline: Path | None = None,
     except ValueError:
         shown = str(tl_path)  # a timeline written outside the repo is fine
     return {"timeline": shown, **doc["summary"],
-            "elapsed_s": doc["elapsed_s"]}
+            "elapsed_s": doc["elapsed_s"],
+            # The surviving hypothesis space, which is the useful product of the
+            # generation pass: what negative science did NOT kill is where the
+            # representation schools may still spend effort.
+            "live_hypotheses": survivors}
 
 
 def build(result: dict[str, Any] | None = None) -> Path:

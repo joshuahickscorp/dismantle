@@ -280,6 +280,12 @@ def invoke(module: str, *, argv: list[str] | None = None) -> dict[str, Any]:
 
     started = time.time()
     out = getattr(mod, entry)()
+    if isinstance(out, dict):
+        # Some modules return a result record rather than the path alone --
+        # odyssey_launch returns {gate_path, doc, launch} because the gate
+        # receipt and the launch receipt are different artifacts. Take the path
+        # it names; str() of the dict is not one, and silently failed the bind.
+        out = out.get("path") or out.get("gate_path") or out.get("receipt")
     receipt_path = Path(str(out)) if out else None
     if receipt_path is None or not receipt_path.exists():
         raise BindingError(f"{module}.{entry}() produced no receipt on disk")

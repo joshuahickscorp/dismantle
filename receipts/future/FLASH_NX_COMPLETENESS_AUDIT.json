@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T04:50:20Z",
+  "recorded_at": "2026-08-30T05:50:56Z",
   "recorded_by": "tools/future/flash_nx_audit.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -2224,7 +2224,7 @@
   "designed-vs-built runtime audit for loader, kernel, catalog, and consumer",
   "verification-vs-production dense rematerialization split"
  ],
- "head": "0cbd19dc4d6d6de175544f8daabde7c0725b7d6c",
+ "head": "12d535429122f1ba4db860ab956940ecc5a7c206",
  "meta_measurement_state": {
   "capability": "NOT_MEASURED",
   "complete_token": "NOT_MEASURED",
@@ -2827,7 +2827,7 @@
   }
  ],
  "schema": "hawking.future.flash_nx_audit.v1",
- "seal_sha256": "69bb652431a5ec5b8052b40f353545c98c53158ff5635320cd965218b5493ce9",
+ "seal_sha256": "081014563587a5ef5c36f6d9d7839c7d95e710d98c0e02305c6a0a9bd98366f8",
  "seven_all_met": false,
  "seven_requirements": [
   {

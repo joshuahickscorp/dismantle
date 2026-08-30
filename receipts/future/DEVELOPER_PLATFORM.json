@@ -139,7 +139,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T04:50:18Z",
+  "recorded_at": "2026-08-30T05:50:52Z",
   "recorded_by": "tools/future/devplatform.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -249,13 +249,13 @@
   "schema": "hawking.future.devplatform.machine_profile.v1",
   "this_machine": {
    "arch": "arm64",
-   "cpu": "UNKNOWN",
+   "cpu": "Apple M3 Ultra",
    "gpu_authority": false,
    "host_kind": "apple_silicon",
-   "hw_model": "UNKNOWN",
+   "hw_model": "Mac15,14",
    "measurement_state": "STATIC_ONLY",
-   "mem_bytes": null,
-   "ncpu": null,
+   "mem_bytes": 103079215104,
+   "ncpu": 28,
    "notes": "Identity from platform/sysctl via hcli.machine.live_machine_identity. Not a protected measurement. tps / token_ns / gpu_ns / joules_per_token / bandwidth_gbps are omitted and UNKNOWN.",
    "os": "Darwin",
    "schema": "hawking.future.devplatform.machine_profile.v1",
@@ -499,7 +499,7 @@
   }
  ],
  "schema": "hawking.future.devplatform.v1",
- "seal_sha256": "0262a6188fe1a0f55215ae5ed83242e11662c08672ff3f59c4117fe35c3df9c0",
+ "seal_sha256": "cd10ddd2ca9a29a61d5cd4d07ad0ce94756e7b6d24a164b540da9ec6d6ffd879",
  "selftest": {
   "compat_negative_clauses": [
    "model.required_features.declared"

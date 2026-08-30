@@ -12,7 +12,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T04:54:43Z",
+  "recorded_at": "2026-08-30T05:52:54Z",
   "recorded_by": "tools/future/odyssey2_law_store.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -1114,7 +1114,7 @@
    "source_model": "Qwen3.8-27B"
   }
  },
- "seal_sha256": "88a8e75c5f40f9601e03172b84089822638b3d19b4ac6581cae912e3678aa9ea",
+ "seal_sha256": "5b079ac197fe23ac9e2bdb0088cfe9dfc2b924cdbf77ef775f55b589da07f69e",
  "seed_report": {
   "atlas_failed_keys": [
    "calibration_88_tokens",

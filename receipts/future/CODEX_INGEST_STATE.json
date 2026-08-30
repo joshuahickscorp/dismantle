@@ -53507,24 +53507,14 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T05:30:13Z",
+  "recorded_at": "2026-08-30T05:50:36Z",
   "recorded_by": "tools/future/codex_ingest.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
  },
  "branch": "odyssey-i",
  "claim_boundary": "Static sidecar artifact. No hardware measurement. Does not produce DIAGNOSTIC_RELATIVE or PROTECTED_ABSOLUTE. Deltas are proposals for downstream modules; disk evidence stays in receipts/headless.",
- "classified_this_scan": [
-  {
-   "confidence": 0.6,
-   "event": "changed",
-   "field": "<default>",
-   "label": "NEUTRAL",
-   "reason": "no LAW or SCAR driver in well-known fields",
-   "relpath": "receipts/headless/ACCELERATOR_REPATRIATION_AUDIT.json",
-   "token": "no_verdict"
-  }
- ],
+ "classified_this_scan": [],
  "cursor": {
   "receipts/headless/ACCELERATOR_628_BOUNDARY_CENSUS.json": {
    "classification": "NEUTRAL",
@@ -73588,7 +73578,7 @@
   "--once --assert-idempotent refusal that is capable of firing",
   "read-only open; writes only receipts/future/CODEX_INGEST_STATE.json"
  ],
- "head": "0cbd19dc4d6d6de175544f8daabde7c0725b7d6c",
+ "head": "12d535429122f1ba4db860ab956940ecc5a7c206",
  "idempotence": {
   "assert_idempotent": "exit non-zero iff n_new + n_changed > 0",
   "change_detector": "sha256 of file bytes; mtime is recorded and never consulted",
@@ -73744,22 +73734,22 @@
   },
   "by_class_this_scan": {
    "LAW": 0,
-   "NEUTRAL": 1,
+   "NEUTRAL": 0,
    "SCAR": 0
   },
   "missing_from_disk": [],
   "n_active_deltas": 808,
-  "n_changed": 1,
+  "n_changed": 0,
   "n_deltas": 0,
   "n_missing_from_disk": 0,
   "n_new": 0,
   "n_on_disk": 1671,
-  "n_unchanged": 1670,
+  "n_unchanged": 1671,
   "n_unreadable": 0,
   "unreadable": []
  },
  "schema": "hawking.future.codex_ingest.v1",
- "seal_sha256": "c7e766f6c9e64f60ce57ea90e438fe6dd5cb86fbc001fb82d02d39bcaae183a6",
+ "seal_sha256": "ab27a48c8337f977eb57d089cef9cf987ebf51d46f0d7c193a3afb38b7cc5f9c",
  "version": 1,
  "vocabulary": {
   "bench_state": "UNKNOWN",

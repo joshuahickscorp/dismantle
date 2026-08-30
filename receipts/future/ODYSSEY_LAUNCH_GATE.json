@@ -1,0 +1,3742 @@
+{
+ "bench": {
+  "gpu_authority": false,
+  "machine": "Apple host CPU; receipt/header metadata only",
+  "measurement_state": "STATIC_ONLY",
+  "recorded_at": "2026-08-30T05:54:45Z",
+  "recorded_by": "tools/future/odyssey_launch.py",
+  "rule": "no hardware measurement claim without hardware",
+  "state": "UNKNOWN"
+ },
+ "bench_state": "UNKNOWN",
+ "branch": "odyssey-i",
+ "claim_boundary": "Static sidecar artifact. No hardware measurement. A launch-gate REFUSED receipt is not Odyssey started. ODYSSEY_I_LAUNCH.json is the only phase-transition receipt and is written only when every criterion is met.",
+ "criteria": [
+  {
+   "evidence": [
+    {
+     "found": false,
+     "kind": "odyssey_trial",
+     "path_taken": "not_found",
+     "schema": null
+    },
+    {
+     "all_requested_stages_passed": true,
+     "found": true,
+     "kind": "hcli_agentos_autonomy",
+     "not_this_criterion": true,
+     "path_taken": "worktree",
+     "schema": "hcli.agentos.autonomy_gate.v1"
+    }
+   ],
+   "id": "resident_autonomy_trial_pass",
+   "met": false,
+   "operational": {
+    "cli_is_not_enough": true,
+    "flags": {
+     "discover": true,
+     "frontier": false,
+     "invoke": false,
+     "persist": true,
+     "refill": false,
+     "schedule": false,
+     "verify": true
+    },
+    "notes": {
+     "hcli_control_plane_is_not_odyssey_i": "true"
+    },
+    "resident_operational": false
+   },
+   "reason": "No Odyssey I resident-orchestration autonomy trial has passed. HCLI AgentOS autonomy gate path_taken='worktree' schema='hcli.agentos.autonomy_gate.v1' all_requested_stages_passed=True: that receipt proves LIVE_AGENTOS_AUTONOMY_CONTROL_PLANE, not Odyssey I start. Odyssey trial receipt path_taken='not_found' schema=None. Integration point: tools/future/autonomy_trial.py \u2014 Odyssey I resident-orchestration trial pass receipt."
+  },
+  {
+   "curriculum": {
+    "census_probe": {
+     "found": true,
+     "path_taken": "worktree",
+     "resolved": "/Users/scammermike/Downloads/hawking/receipts/future/evidence/HCLI_MODELLAKE_FLASH_CENSUS.json"
+    },
+    "n_ready": 0,
+    "n_roles": 5,
+    "not_proposed": [
+     {
+      "reason": "present in ModelLake, not a first-wave curriculum role",
+      "repo": "Qwen/Qwen3-30B-A3B",
+      "revision": "ad44e777bcd18fa416d9da3bd8f70d33ebb85d39"
+     },
+     {
+      "reason": "present in ModelLake, not a first-wave curriculum role",
+      "repo": "Qwen/Qwen3-VL-30B-A3B-Instruct",
+      "revision": "9c4b90e1e4ba969fd3b5378b57d966d725f1b86c"
+     },
+     {
+      "reason": "present in ModelLake, not a first-wave curriculum role",
+      "repo": "moonshotai/Kimi-VL-A3B-Instruct",
+      "revision": "398eede0903cd983a2bfa0cc634e9ac1d843f375"
+     }
+    ],
+    "not_proposed_rule": "Do not exhaustively optimize every downloaded model. First-wave curriculum is the five roles above; other lake entries are recorded and deferred.",
+    "prior_odyssey_i_patients": [
+     {
+      "oxx": "O001",
+      "seal": "receipts/odyssey-i/O001_PATIENT_SEAL.json",
+      "sealed_mechanisms": [
+       "external-science",
+       "ssm-accounting",
+       "sensitivity-map",
+       "gravity-hybrid",
+       "gravity-aggressive-hybrid",
+       "nx-state-hybrid"
+      ],
+      "state": "RETIRED",
+      "status": "VERIFIED",
+      "weights_canonical": "/Users/scammermike/.cache/huggingface/hub/models--tiiuae--Falcon-H1-7B-Instruct/snapshots/41e72f27effbab80cd45b6e884688452253a3686"
+     },
+     {
+      "oxx": "O003",
+      "seal": "receipts/odyssey-i/O003_PATIENT_SEAL.json",
+      "sealed_mechanisms": [
+       "external-science",
+       "route-map",
+       "sensitivity-map",
+       "gravity-moe",
+       "gravity-aggressive-moe",
+       "nx-gather-moe"
+      ],
+      "state": "RETIRED",
+      "status": "VERIFIED",
+      "weights_canonical": "/Users/scammermike/.cache/huggingface/hub/models--moonshotai--Kimi-VL-A3B-Instruct/snapshots/398eede0903cd983a2bfa0cc634e9ac1d843f375"
+     },
+     {
+      "oxx": "O004",
+      "seal": "receipts/odyssey-i/O004_PATIENT_SEAL.json",
+      "sealed_mechanisms": [
+       "external-science",
+       "sensitivity-map",
+       "gravity-dense",
+       "gravity-aggressive-dense",
+       "nx-dense"
+      ],
+      "state": "RETIRED",
+      "status": "VERIFIED",
+      "weights_canonical": "/Users/scammermike/.cache/huggingface/hub/models--mistralai--Mistral-Small-3.1-24B-Instruct-2503/snapshots/68faf511d618ef198fef186659617cfd2eb8e33a"
+     },
+     {
+      "oxx": "O005",
+      "seal": "receipts/odyssey-i/O005_PATIENT_SEAL.json",
+      "sealed_mechanisms": [
+       "external-science",
+       "route-map",
+       "sensitivity-map",
+       "gravity-moe",
+       "nx-gather-moe"
+      ],
+      "state": "RETIRED",
+      "status": "VERIFIED",
+      "weights_canonical": "/Users/scammermike/.cache/huggingface/hub/models--Qwen--Qwen3-30B-A3B/snapshots/ad44e777bcd18fa416d9da3bd8f70d33ebb85d39"
+     }
+    ],
+    "ready": false,
+    "roles": [
+     {
+      "architecture_family": "dense_transformer",
+      "identity_source": "modellake_manifest",
+      "modellake": {
+       "in_specimens_listing": false,
+       "manifest_path": "/Volumes/corpdrive/hawking-modellake/manifests/Qwen--Qwen3-0.6B@c1899de289a0.json",
+       "n_files": 10,
+       "n_sha256_verified": 2,
+       "n_size_only_verified": 8,
+       "repo": "Qwen/Qwen3-0.6B",
+       "resolved_sha": "c1899de289a04d12100db370d81485cdf75e47ca",
+       "revision": "c1899de289a04d12100db370d81485cdf75e47ca",
+       "source": "modellake_manifest",
+       "specimen_path": "/Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3-0.6B@c1899de289a0",
+       "whole_tree_verified": false
+      },
+      "purpose": "very small dense for procedural speed",
+      "ready": false,
+      "ready_reason": "identity known but specimen is not in the ModelLake specimens listing",
+      "repo": "Qwen/Qwen3-0.6B",
+      "revision": "c1899de289a04d12100db370d81485cdf75e47ca",
+      "role": "very_small_dense_procedural_speed"
+     },
+     {
+      "architecture_family": "falcon_h1",
+      "identity_source": "modellake_manifest+odyssey_i_O001",
+      "modellake": {
+       "in_specimens_listing": true,
+       "manifest_path": "/Volumes/corpdrive/hawking-modellake/manifests/tiiuae--Falcon-H1-7B-Instruct@41e72f27effb.json",
+       "n_files": 13,
+       "n_sha256_verified": 5,
+       "n_size_only_verified": 8,
+       "repo": "tiiuae/Falcon-H1-7B-Instruct",
+       "resolved_sha": "41e72f27effbab80cd45b6e884688452253a3686",
+       "revision": "41e72f27effbab80cd45b6e884688452253a3686",
+       "source": "modellake_manifest",
+       "specimen_path": "/Volumes/corpdrive/hawking-modellake/specimens/tiiuae--Falcon-H1-7B-Instruct@41e72f27effb",
+       "whole_tree_verified": false
+      },
+      "prior_odyssey_i": {
+       "oxx": "O001",
+       "seal": "receipts/odyssey-i/O001_PATIENT_SEAL.json",
+       "sealed_mechanisms": [
+        "external-science",
+        "ssm-accounting",
+        "sensitivity-map",
+        "gravity-hybrid",
+        "gravity-aggressive-hybrid",
+        "nx-state-hybrid"
+       ],
+       "state": "RETIRED",
+       "status": "VERIFIED",
+       "weights_canonical": "/Users/scammermike/.cache/huggingface/hub/models--tiiuae--Falcon-H1-7B-Instruct/snapshots/41e72f27effbab80cd45b6e884688452253a3686"
+      },
+      "purpose": "small dense alternate architecture for transfer",
+      "ready": false,
+      "ready_reason": "ModelLake manifest is partial (n_sha256_verified=5 n_files=13); not a sealed specimen",
+      "repo": "tiiuae/Falcon-H1-7B-Instruct",
+      "revision": "41e72f27effbab80cd45b6e884688452253a3686",
+      "role": "small_dense_alternate_architecture_transfer"
+     },
+     {
+      "architecture_family": "dense_transformer",
+      "identity_source": "odyssey_i_O004+modellake_partial",
+      "modellake": {
+       "stale_partial": {
+        "action": "REPORT_ONLY_NO_DELETE",
+        "active_process_evidence": false,
+        "age_s": 129994.4,
+        "candidate_stale": true,
+        "path": "/Volumes/corpdrive/hawking-modellake/partial/mistralai--Mistral-Small-3.1-24B-Instruct-2503@68faf511d618"
+       }
+      },
+      "prior_odyssey_i": {
+       "oxx": "O004",
+       "seal": "receipts/odyssey-i/O004_PATIENT_SEAL.json",
+       "sealed_mechanisms": [
+        "external-science",
+        "sensitivity-map",
+        "gravity-dense",
+        "gravity-aggressive-dense",
+        "nx-dense"
+       ],
+       "state": "RETIRED",
+       "status": "VERIFIED",
+       "weights_canonical": "/Users/scammermike/.cache/huggingface/hub/models--mistralai--Mistral-Small-3.1-24B-Instruct-2503/snapshots/68faf511d618ef198fef186659617cfd2eb8e33a"
+      },
+      "purpose": "mid-size dense for compiler",
+      "ready": false,
+      "ready_reason": "identity known but specimen is not in the ModelLake specimens listing",
+      "repo": "mistralai/Mistral-Small-3.1-24B-Instruct-2503",
+      "revision": "68faf511d618ef198fef186659617cfd2eb8e33a",
+      "role": "mid_size_dense_compiler"
+     },
+     {
+      "architecture_family": "dense_hybrid_transformer",
+      "identity_source": "odyssey2_law_store.SCHOOLS.Qwen27",
+      "modellake": {},
+      "purpose": "Qwen27 for mature physical",
+      "ready": false,
+      "ready_reason": "identity known but specimen is not in the ModelLake specimens listing",
+      "repo": "Qwen3.8-27B",
+      "revision": null,
+      "role": "qwen27_mature_physical",
+      "school": {
+       "aliases": [
+        "qwen3.8-27b-abliterated",
+        "Qwen3.8-27B",
+        "Qwen3.8-27B sealed resident / NOETIC_PARENT_A",
+        "NOETIC_PARENT_A"
+       ],
+       "architecture_family": "dense_hybrid_transformer",
+       "map_label": "Qwen3.8-27B sealed resident / NOETIC_PARENT_A",
+       "role_in_map": "model_a",
+       "school": "Qwen27",
+       "source_model": "Qwen3.8-27B"
+      }
+     },
+     {
+      "architecture_family": "qwen4_exp",
+      "identity_source": "hcli.flash_next pin + modellake census + odyssey2 school",
+      "modellake": {
+       "census_qualification": "MODELLAKE_CENSUS_PINNED_FLASH_IDENTITY_NO_ACQUISITION",
+       "in_specimens_listing": false,
+       "manifest_path": null,
+       "n_files": null,
+       "n_sha256_verified": 0,
+       "n_size_only_verified": null,
+       "published_as_verified": false,
+       "repo": "Qwen/Qwen3.8-Flash-Next",
+       "resolved_sha": "34567a4712bc9766c4449e2e98e4468bfa24d915",
+       "revision": "34567a4712bc9766c4449e2e98e4468bfa24d915",
+       "source": "flash_pinned_census",
+       "specimen_path": "/Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc",
+       "whole_tree_verified": false
+      },
+      "purpose": "Flash for heterogeneous frontier",
+      "ready": false,
+      "ready_reason": "ModelLake pin exists but the specimen is not published as verified",
+      "repo": "Qwen/Qwen3.8-Flash-Next",
+      "revision": "34567a4712bc9766c4449e2e98e4468bfa24d915",
+      "role": "flash_heterogeneous_frontier",
+      "school": {
+       "aliases": [
+        "Flash",
+        "Qwen/Qwen3.8-Flash-Next",
+        "Qwen3.8-Flash-Next",
+        "qwen4_exp"
+       ],
+       "architecture_family": "qwen4_exp",
+       "map_label": "Qwen/Qwen3.8-Flash-Next pinned ModelLake source",
+       "physical_status": "metadata_only_weights_not_present",
+       "role_in_map": "model_b",
+       "school": "Flash",
+       "source_model": "Qwen/Qwen3.8-Flash-Next"
+      }
+     }
+    ],
+    "schema": "hawking.future.odyssey_i.specimen_curriculum.v1"
+   },
+   "evidence": [
+    {
+     "curriculum_n_roles": 5,
+     "n_ready": 0,
+     "unready": [
+      "very_small_dense_procedural_speed",
+      "small_dense_alternate_architecture_transfer",
+      "mid_size_dense_compiler",
+      "qwen27_mature_physical",
+      "flash_heterogeneous_frontier"
+     ]
+    }
+   ],
+   "id": "specimen_curriculum_ready",
+   "met": false,
+   "operational": {
+    "cli_is_not_enough": true,
+    "flags": {
+     "discover": true,
+     "frontier": false,
+     "invoke": true,
+     "persist": false,
+     "refill": false,
+     "schedule": false,
+     "verify": false
+    },
+    "notes": {
+     "proposal_emitted": "true",
+     "specimens_not_all_published": "True"
+    },
+    "resident_operational": false
+   },
+   "reason": "curriculum proposes 5 roles; ready=0. unready=['very_small_dense_procedural_speed', 'small_dense_alternate_architecture_transfer', 'mid_size_dense_compiler', 'qwen27_mature_physical', 'flash_heterogeneous_frontier']. A proposal is not a ready specimen set."
+  },
+  {
+   "evidence": [
+    {
+     "census": {
+      "found": true,
+      "path_taken": "worktree",
+      "qualification": "MODELLAKE_CENSUS_PINNED_FLASH_IDENTITY_NO_ACQUISITION",
+      "schema": "hcli.agentos.modellake_census.v1",
+      "status": "PASSED"
+     },
+     "import": {
+      "file": "/Users/scammermike/Downloads/hawking/hcli/agentos/modellake_receipts.py",
+      "module": "hcli.agentos.modellake_receipts",
+      "ok": true
+     }
+    }
+   ],
+   "id": "modellake_identity",
+   "met": true,
+   "operational": {
+    "cli_is_not_enough": true,
+    "flags": {
+     "discover": true,
+     "frontier": false,
+     "invoke": true,
+     "persist": true,
+     "refill": false,
+     "schedule": false,
+     "verify": true
+    },
+    "notes": {
+     "identity_is_not_acquisition": "true"
+    },
+    "resident_operational": false
+   },
+   "reason": "ModelLake identity machinery is importable and a census receipt schema='hcli.agentos.modellake_census.v1' status='PASSED' was loaded via worktree"
+  },
+  {
+   "evidence": [
+    {
+     "n_prior_seals": 5,
+     "owned": [
+      {
+       "path_taken": "worktree",
+       "present": true,
+       "rel": "tools/odyssey/doctor_tournament.py",
+       "resolved": "/Users/scammermike/Downloads/hawking/tools/odyssey/doctor_tournament.py"
+      },
+      {
+       "path_taken": "worktree",
+       "present": true,
+       "rel": "tools/doctor_seal.py",
+       "resolved": "/Users/scammermike/Downloads/hawking/tools/doctor_seal.py"
+      },
+      {
+       "path_taken": "worktree",
+       "present": true,
+       "rel": "tools/doctor_seal.py",
+       "resolved": "/Users/scammermike/Downloads/hawking/tools/doctor_seal.py"
+      },
+      {
+       "path_taken": "worktree",
+       "present": true,
+       "rel": "tools/gravity_doctor_capability.py",
+       "resolved": "/Users/scammermike/Downloads/hawking/tools/gravity_doctor_capability.py"
+      },
+      {
+       "path_taken": "worktree",
+       "present": true,
+       "rel": "tools/gravity_doctor_dimensions.py",
+       "resolved": "/Users/scammermike/Downloads/hawking/tools/gravity_doctor_dimensions.py"
+      },
+      {
+       "path_taken": "worktree",
+       "present": true,
+       "rel": "tools/gravity_doctor_gate.py",
+       "resolved": "/Users/scammermike/Downloads/hawking/tools/gravity_doctor_gate.py"
+      }
+     ],
+     "prior_seals": [
+      "receipts/odyssey-i/O001_DOCTOR_SEAL.json",
+      "receipts/odyssey-i/O003_DOCTOR_SEAL.json",
+      "receipts/odyssey-i/O004_DOCTOR_SEAL.json",
+      "receipts/odyssey-i/O005_DOCTOR_SEAL.json",
+      "receipts/odyssey-i/O006_DOCTOR_SEAL.json"
+     ]
+    }
+   ],
+   "id": "doctor_callable",
+   "met": false,
+   "operational": {
+    "cli_is_not_enough": true,
+    "flags": {
+     "discover": true,
+     "frontier": false,
+     "invoke": true,
+     "persist": true,
+     "refill": false,
+     "schedule": false,
+     "verify": true
+    },
+    "notes": {
+     "cli_or_prior_seals": "true",
+     "integration": "tools/future/workgraph.py \u2014 WorkGraph runtime that admits, schedules and verifies the units this gate emits + tools/future/resident_api.py \u2014 discover/invoke surface HCLI uses instead of a human CLI",
+     "resident_workgraph_runtime": "missing"
+    },
+    "resident_operational": false
+   },
+   "reason": "Doctor is recovered as a human-callable tool and/or prior Odyssey I seals (n_prior=5) but is not resident-operational: schedule/frontier/refill are false. A CLI a human can run is not enough."
+  },
+  {
+   "evidence": [
+    {
+     "n_prior_seals": 108,
+     "owned": [
+      {
+       "path_taken": "worktree",
+       "present": true,
+       "rel": "tools/odyssey/decoding_gravity.py",
+       "resolved": "/Users/scammermike/Downloads/hawking/tools/odyssey/decoding_gravity.py"
+      },
+      {
+       "path_taken": "worktree",
+       "present": true,
+       "rel": "tools/odyssey/state_gravity.py",
+       "resolved": "/Users/scammermike/Downloads/hawking/tools/odyssey/state_gravity.py"
+      },
+      {
+       "path_taken": "worktree",
+       "present": true,
+       "rel": "hcli/gravity/__init__.py",
+       "resolved": "/Users/scammermike/Downloads/hawking/hcli/gravity/__init__.py"
+      }
+     ],
+     "prior_seals": [
+      "receipts/odyssey-i/O001_GRAVITY_mixed-q2q3-attn-mlp.json",
+      "receipts/odyssey-i/O001_GRAVITY_mixed-q2q3.json",
+      "receipts/odyssey-i/O001_GRAVITY_mixed-q2q4-attn-mlp.json",
+      "receipts/odyssey-i/O001_GRAVITY_mixed-q2q4.json",
+      "receipts/odyssey-i/O001_GRAVITY_mixed-q3q4-attn-mlp.json",
+      "receipts/odyssey-i/O001_GRAVITY_mixed-q3q4.json",
+      "receipts/odyssey-i/O001_GRAVITY_q2-g128-attn-mlp.json",
+      "receipts/odyssey-i/O001_GRAVITY_q2-g128.json",
+      "receipts/odyssey-i/O001_GRAVITY_q2-g32-attn-mlp.json",
+      "receipts/odyssey-i/O001_GRAVITY_q2-g32.json",
+      "receipts/odyssey-i/O001_GRAVITY_q2-g64.json",
+      "receipts/odyssey-i/O001_GRAVITY_q3-g128-attn-mlp.json",
+      "receipts/odyssey-i/O001_GRAVITY_q3-g128.json",
+      "receipts/odyssey-i/O001_GRAVITY_q3-g32-attn-mlp.json",
+      "receipts/odyssey-i/O001_GRAVITY_q3-g32.json",
+      "receipts/odyssey-i/O001_GRAVITY_q3-g64-attn-mlp.json",
+      "receipts/odyssey-i/O001_GRAVITY_q3-g64.json",
+      "receipts/odyssey-i/O001_GRAVITY_q4-g128-attn-mlp.json",
+      "receipts/odyssey-i/O001_GRAVITY_q4-g128.json",
+      "receipts/odyssey-i/O001_GRAVITY_q4-g32-attn-mlp.json",
+      "receipts/odyssey-i/O001_GRAVITY_q4-g32.json",
+      "receipts/odyssey-i/O001_GRAVITY_q4-g64-attn-mlp.json",
+      "receipts/odyssey-i/O001_GRAVITY_q4-g64.json",
+      "receipts/odyssey-i/O003_GRAVITY_mixed-q2q3-experts.json",
+      "receipts/odyssey-i/O003_GRAVITY_mixed-q2q3.json",
+      "receipts/odyssey-i/O003_GRAVITY_mixed-q2q4-experts.json",
+      "receipts/odyssey-i/O003_GRAVITY_mixed-q2q4.json",
+      "receipts/odyssey-i/O003_GRAVITY_mixed-q3q4-experts.json",
+      "receipts/odyssey-i/O003_GRAVITY_mixed-q3q4.json",
+      "receipts/odyssey-i/O003_GRAVITY_q2-g128.json",
+      "receipts/odyssey-i/O003_GRAVITY_q2-g32-experts.json",
+      "receipts/odyssey-i/O003_GRAVITY_q2-g32.json",
+      "receipts/odyssey-i/O003_GRAVITY_q2-g64-experts.json",
+      "receipts/odyssey-i/O003_GRAVITY_q2-g64.json",
+      "receipts/odyssey-i/O003_GRAVITY_q3-g128-experts.json",
+      "receipts/odyssey-i/O003_GRAVITY_q3-g128.json",
+      "receipts/odyssey-i/O003_GRAVITY_q3-g32-experts.json",
+      "receipts/odyssey-i/O003_GRAVITY_q3-g32.json",
+      "receipts/odyssey-i/O003_GRAVITY_q3-g64-experts.json",
+      "receipts/odyssey-i/O003_GRAVITY_q3-g64.json",
+      "receipts/odyssey-i/O003_GRAVITY_q4-g128-experts.json",
+      "receipts/odyssey-i/O003_GRAVITY_q4-g128.json",
+      "receipts/odyssey-i/O003_GRAVITY_q4-g32-experts.json",
+      "receipts/odyssey-i/O003_GRAVITY_q4-g32.json",
+      "receipts/odyssey-i/O003_GRAVITY_q4-g64-experts.json",
+      "receipts/odyssey-i/O003_GRAVITY_q4-g64.json",
+      "receipts/odyssey-i/O004_GRAVITY_mixed-q2q3-attn-mlp.json",
+      "receipts/odyssey-i/O004_GRAVITY_mixed-q2q3.json",
+      "receipts/odyssey-i/O004_GRAVITY_mixed-q2q4-attn-mlp.json",
+      "receipts/odyssey-i/O004_GRAVITY_mixed-q2q4.json",
+      "receipts/odyssey-i/O004_GRAVITY_mixed-q3q4-attn-mlp.json",
+      "receipts/odyssey-i/O004_GRAVITY_mixed-q3q4.json",
+      "receipts/odyssey-i/O004_GRAVITY_q2-g128-attn-mlp.json",
+      "receipts/odyssey-i/O004_GRAVITY_q2-g128.json",
+      "receipts/odyssey-i/O004_GRAVITY_q2-g32-attn-mlp.json",
+      "receipts/odyssey-i/O004_GRAVITY_q2-g32.json",
+      "receipts/odyssey-i/O004_GRAVITY_q2-g64-attn-mlp.json",
+      "receipts/odyssey-i/O004_GRAVITY_q3-g128-attn-mlp.json",
+      "receipts/odyssey-i/O004_GRAVITY_q3-g128.json",
+      "receipts/odyssey-i/O004_GRAVITY_q3-g32-attn-mlp.json",
+      "receipts/odyssey-i/O004_GRAVITY_q3-g32.json",
+      "receipts/odyssey-i/O004_GRAVITY_q3-g64-attn-mlp.json",
+      "receipts/odyssey-i/O004_GRAVITY_q3-g64.json",
+      "receipts/odyssey-i/O004_GRAVITY_q4-g128-attn-mlp.json",
+      "receipts/odyssey-i/O004_GRAVITY_q4-g128.json",
+      "receipts/odyssey-i/O004_GRAVITY_q4-g32-attn-mlp.json",
+      "receipts/odyssey-i/O004_GRAVITY_q4-g64.json",
+      "receipts/odyssey-i/O005_GRAVITY_mixed-q2q3-experts.json",
+      "receipts/odyssey-i/O005_GRAVITY_mixed-q2q3.json",
+      "receipts/odyssey-i/O005_GRAVITY_mixed-q2q4-experts.json",
+      "receipts/odyssey-i/O005_GRAVITY_mixed-q2q4.json",
+      "receipts/odyssey-i/O005_GRAVITY_mixed-q3q4-experts.json",
+      "receipts/odyssey-i/O005_GRAVITY_mixed-q3q4.json",
+      "receipts/odyssey-i/O005_GRAVITY_q2-g128-experts.json",
+      "receipts/odyssey-i/O005_GRAVITY_q2-g128.json",
+      "receipts/odyssey-i/O005_GRAVITY_q2-g32-experts.json",
+      "receipts/odyssey-i/O005_GRAVITY_q2-g32.json",
+      "receipts/odyssey-i/O005_GRAVITY_q2-g64.json",
+      "receipts/odyssey-i/O005_GRAVITY_q3-g128-experts.json",
+      "receipts/odyssey-i/O005_GRAVITY_q3-g128.json",
+      "receipts/odyssey-i/O005_GRAVITY_q3-g32-experts.json",
+      "receipts/odyssey-i/O005_GRAVITY_q3-g32.json",
+      "receipts/odyssey-i/O005_GRAVITY_q3-g64-experts.json",
+      "receipts/odyssey-i/O005_GRAVITY_q3-g64.json",
+      "receipts/odyssey-i/O005_GRAVITY_q4-g128.json",
+      "receipts/odyssey-i/O006_GRAVITY_mixed-q2q3-experts.json",
+      "receipts/odyssey-i/O006_GRAVITY_mixed-q2q3.json",
+      "receipts/odyssey-i/O006_GRAVITY_mixed-q2q4-experts.json",
+      "receipts/odyssey-i/O006_GRAVITY_mixed-q2q4.json",
+      "receipts/odyssey-i/O006_GRAVITY_mixed-q3q4-experts.json",
+      "receipts/odyssey-i/O006_GRAVITY_mixed-q3q4.json",
+      "receipts/odyssey-i/O006_GRAVITY_q2-g128-experts.json",
+      "receipts/odyssey-i/O006_GRAVITY_q2-g128.json",
+      "receipts/odyssey-i/O006_GRAVITY_q2-g32-experts.json",
+      "receipts/odyssey-i/O006_GRAVITY_q2-g32.json",
+      "receipts/odyssey-i/O006_GRAVITY_q2-g64.json",
+      "receipts/odyssey-i/O006_GRAVITY_q3-g128-experts.json",
+      "receipts/odyssey-i/O006_GRAVITY_q3-g128.json",
+      "receipts/odyssey-i/O006_GRAVITY_q3-g32-experts.json",
+      "receipts/odyssey-i/O006_GRAVITY_q3-g32.json",
+      "receipts/odyssey-i/O006_GRAVITY_q3-g64-experts.json",
+      "receipts/odyssey-i/O006_GRAVITY_q3-g64.json",
+      "receipts/odyssey-i/O006_GRAVITY_q4-g128-experts.json",
+      "receipts/odyssey-i/O006_GRAVITY_q4-g128.json",
+      "receipts/odyssey-i/O006_GRAVITY_q4-g32-experts.json",
+      "receipts/odyssey-i/O006_GRAVITY_q4-g32.json",
+      "receipts/odyssey-i/O006_GRAVITY_q4-g64-experts.json",
+      "receipts/odyssey-i/O006_GRAVITY_q4-g64.json"
+     ]
+    }
+   ],
+   "id": "gravity_callable",
+   "met": false,
+   "operational": {
+    "cli_is_not_enough": true,
+    "flags": {
+     "discover": true,
+     "frontier": false,
+     "invoke": true,
+     "persist": true,
+     "refill": false,
+     "schedule": false,
+     "verify": true
+    },
+    "notes": {
+     "cli_or_prior_seals": "true",
+     "integration": "tools/future/workgraph.py \u2014 WorkGraph runtime that admits, schedules and verifies the units this gate emits + tools/future/resident_api.py \u2014 discover/invoke surface HCLI uses instead of a human CLI",
+     "resident_workgraph_runtime": "missing"
+    },
+    "resident_operational": false
+   },
+   "reason": "Gravity is recovered as a human-callable tool and/or prior Odyssey I seals (n_prior=108) but is not resident-operational: schedule/frontier/refill are false. A CLI a human can run is not enough."
+  },
+  {
+   "evidence": [
+    {
+     "audit_path_taken": "worktree",
+     "nr_v2": {
+      "generation": "v2",
+      "kernel_requirements": [
+       {
+        "applies_to": "exact fallback organs",
+        "requires": "source_bf16_gemv_family"
+       },
+       {
+        "applies_to": "future compact routed-expert candidates only",
+        "requires": "grouped_absmax_decoder"
+       },
+       {
+        "applies_to": "routed expert family",
+        "requires": "route_conditioned_expert_selection"
+       },
+       {
+        "applies_to": "linear-attention state",
+        "requires": "gated_delta_recurrence"
+       },
+       {
+        "applies_to": "full-attention state",
+        "requires": "causal_attention_kv_state"
+       }
+      ],
+      "negative_science": [
+       {
+        "finding": 0.003477525221917917,
+        "law": "do not assume routed experts share a low-dimensional basis; sampled gate-up expert cosine was near zero",
+        "receipt": "receipts/headless/FLASH_DOCTOR_EXPERT_BANK_SCREEN.json"
+       },
+       {
+        "finding": 0.0013096139929922714,
+        "law": "do not assume n-gram shards share a low-dimensional basis; shard-row similarity was near zero",
+        "receipt": "receipts/headless/FLASH_DOCTOR_NGRAM_SCREEN.json"
+       }
+      ],
+      "next": "compile exact-control NX first, then replace only Pareto-surviving organs and measure complete accepted-token impact",
+      "path": "receipts/headless/FLASH_COMPLETE_V2.nr.json",
+      "promotion": {
+       "allowed": false,
+       "blockers": [
+        "complete accepted-token session",
+        "complete candidate byte ledger",
+        "capability suite",
+        "machine-bound NX compilation"
+       ]
+      },
+      "schema": "hawking.flash.complete_nr.v2",
+      "status": "COMPLETE_HETEROGENEOUS_CANDIDATE_NOT_FOR_PROMOTION"
+     },
+     "nx_v0_path_taken": "worktree",
+     "nx_v0_status": "SEALED_METADATA_ONLY_NOT_FOR_PROMOTION",
+     "real_checker": {
+      "failed_requirements": [
+       "complete_byte_ledger",
+       "self_contained_dependencies",
+       "accepted_generation",
+       "capability",
+       "reproducibility",
+       "protected_performance",
+       "no_forbidden_fallback"
+      ],
+      "promotable": false,
+      "reasons": [
+       "status is SEALED_METADATA_ONLY_NOT_FOR_PROMOTION",
+       "complete_byte_ledger: bound ledger is exact-control / I/O profile only; complete candidate ledger remains open (cited qualification.byte_ledger -> status/promotion_allowed={'path': 'receipts/headless/FLASH_COMPLETE_V0.BYTE_LEDGER.json', 'status': 'MEASURED_EXACT_CONTROL_WITH_ROUTE_IO_PROFILE', 'promotion_allowed': False, 'routed_expert_sensitivity.complete_storage_bytes': None})",
+       "self_contained_dependencies: NX is a metadata seal, not a self-contained executable (cited status='SEALED_METADATA_ONLY_NOT_FOR_PROMOTION')",
+       "accepted_generation: no multi-token accepted generation; a single terminal argmax is not accepted generation (cited qualification.accepted_multitoken_tps=None)",
+       "capability: no capability suite result on the NX (cited capability=None)",
+       "reproducibility: no executable closure hash; metadata hashes of source files are not byte reproducibility (cited reproducibility=None)",
+       "protected_performance: bench.state is UNKNOWN; DIAGNOSTIC_RELATIVE and metadata seals do not decide (cited bench.state='UNKNOWN')",
+       "no_forbidden_fallback: fallback_count is undisclosed; missing is not zero (cited fallback_count={'fallback_count': None, 'dense_rematerialization': None, 'source_independent': None})",
+       "qualification.resident_promotion is false"
+      ],
+      "status": "SEALED_METADATA_ONLY_NOT_FOR_PROMOTION"
+     },
+     "seven_all_met": false
+    }
+   ],
+   "id": "nr_nx_path_callable",
+   "met": false,
+   "operational": {
+    "cli_is_not_enough": true,
+    "flags": {
+     "discover": true,
+     "frontier": false,
+     "invoke": false,
+     "persist": true,
+     "refill": false,
+     "schedule": false,
+     "verify": true
+    },
+    "notes": {
+     "flash_nx_scaffold_only": "True"
+    },
+    "resident_operational": false
+   },
+   "reason": "NR/NX path is not callable. seven_all_met=False FLASH_COMPLETE_V0.nx status='SEALED_METADATA_ONLY_NOT_FOR_PROMOTION' nr_v2='COMPLETE_HETEROGENEOUS_CANDIDATE_NOT_FOR_PROMOTION'. Flash source-independent NX is SCAFFOLD_ONLY / metadata, not qualified."
+  },
+  {
+   "evidence": [
+    {
+     "dag": {
+      "path_taken": "worktree",
+      "present": true,
+      "rel": "tools/future/evidence_dag.py",
+      "resolved": "/Users/scammermike/Downloads/hawking/tools/future/evidence_dag.py"
+     },
+     "lattice": [
+      "PROTECTED_ABSOLUTE",
+      "DIAGNOSTIC_RELATIVE",
+      "STATIC_ONLY"
+     ],
+     "snapshot_captured": 46
+    }
+   ],
+   "id": "evidence_hierarchy",
+   "met": false,
+   "operational": {
+    "cli_is_not_enough": true,
+    "flags": {
+     "discover": true,
+     "frontier": false,
+     "invoke": true,
+     "persist": true,
+     "refill": false,
+     "schedule": true,
+     "verify": true
+    },
+    "notes": {
+     "evidence_dag": "worktree",
+     "integration": "tools/future/evidence_dag.py \u2014 evidence DAG the resident walks; lattice alone is not the DAG",
+     "lattice_recovered": "True"
+    },
+    "resident_operational": false
+   },
+   "reason": "measurement-class lattice is encoded (['PROTECTED_ABSOLUTE', 'DIAGNOSTIC_RELATIVE', 'STATIC_ONLY']) and evidence snapshot captured=46 via worktree, but the resident-callable evidence DAG is not landed (tools/future/evidence_dag.py \u2014 evidence DAG the resident walks; lattice alone is not the DAG). DIAGNOSTIC_RELATIVE guides and never promotes."
+  },
+  {
+   "evidence": [
+    {
+     "import_ok": true,
+     "n_scars": 653,
+     "path_taken": "worktree"
+    }
+   ],
+   "id": "negative_science",
+   "met": true,
+   "operational": {
+    "cli_is_not_enough": true,
+    "flags": {
+     "discover": true,
+     "frontier": true,
+     "invoke": true,
+     "persist": true,
+     "refill": true,
+     "schedule": true,
+     "verify": true
+    },
+    "notes": {
+     "refuse_if_dead": "tools.future.negative_index.refuse_if_dead"
+    },
+    "resident_operational": true
+   },
+   "reason": "negative-science index is importable, sealed, scars=653, query/refuse_if_dead callable"
+  },
+  {
+   "evidence": [
+    {
+     "runtime": {
+      "path_taken": "worktree",
+      "present": true,
+      "rel": "tools/future/workgraph.py",
+      "resolved": "/Users/scammermike/Downloads/hawking/tools/future/workgraph.py"
+     },
+     "workunit_species_import": true
+    }
+   ],
+   "id": "workgraphs",
+   "met": false,
+   "operational": {
+    "cli_is_not_enough": true,
+    "flags": {
+     "discover": true,
+     "frontier": false,
+     "invoke": true,
+     "persist": false,
+     "refill": false,
+     "schedule": true,
+     "verify": true
+    },
+    "notes": {
+     "integration": "tools/future/workgraph.py \u2014 WorkGraph runtime that admits, schedules and verifies the units this gate emits",
+     "runtime": "worktree",
+     "this_module_emits_units": "true"
+    },
+    "resident_operational": false
+   },
+   "reason": "This gate emits first WorkGraphs as real HCLI WorkUnits, but the WorkGraph runtime is not landed (tools/future/workgraph.py \u2014 WorkGraph runtime that admits, schedules and verifies the units this gate emits). Emitting a graph is not executing a graph."
+  },
+  {
+   "evidence": [
+    {
+     "frontier": {
+      "found": true,
+      "path_taken": "worktree"
+     },
+     "frontiers": {
+      "path_taken": "worktree",
+      "present": true,
+      "rel": "tools/future/frontiers.py",
+      "resolved": "/Users/scammermike/Downloads/hawking/tools/future/frontiers.py"
+     },
+     "succession": {
+      "path_taken": "worktree",
+      "present": true,
+      "rel": "tools/future/succession.py",
+      "resolved": "/Users/scammermike/Downloads/hawking/tools/future/succession.py"
+     }
+    }
+   ],
+   "id": "self_refill",
+   "met": false,
+   "operational": {
+    "cli_is_not_enough": true,
+    "flags": {
+     "discover": true,
+     "frontier": true,
+     "invoke": false,
+     "persist": true,
+     "refill": true,
+     "schedule": false,
+     "verify": false
+    },
+    "notes": {
+     "global_frontier_is_inventory": "true",
+     "integration": "tools/future/frontiers.py \u2014 frontier objects a result must change, and the refill that follows + tools/future/succession.py \u2014 self-refill / next-work succession under resident control"
+    },
+    "resident_operational": false
+   },
+   "reason": "CLAUDE_GLOBAL_FRONTIER path_taken=worktree is an inventory, not a refill loop. frontiers.py/succession.py are this-wave integration points and are not imported."
+  },
+  {
+   "evidence": [
+    {
+     "contamination_class": "HEAVY",
+     "dirty_measure": {
+      "path_taken": "worktree",
+      "present": true,
+      "rel": "tools/future/dirty_measure.py",
+      "resolved": "/Users/scammermike/Downloads/hawking/tools/future/dirty_measure.py"
+     },
+     "path_taken": "worktree"
+    }
+   ],
+   "id": "dirty_measurement",
+   "met": false,
+   "operational": {
+    "cli_is_not_enough": true,
+    "flags": {
+     "discover": true,
+     "frontier": false,
+     "invoke": true,
+     "persist": true,
+     "refill": false,
+     "schedule": true,
+     "verify": true
+    },
+    "notes": {
+     "contamination_is_machine_state": "true",
+     "dirty_measure_integration": "tools/future/dirty_measure.py \u2014 dirty-class measurement that cannot launder into PROTECTED_ABSOLUTE",
+     "gpu_dirty_ok_resource_class_exists": "GPU_DIRTY_OK"
+    },
+    "resident_operational": false
+   },
+   "reason": "contamination science is sealed (class='HEAVY') and refuses DIAGNOSTIC_RELATIVE promotion, but dirty-class measurement of tokens/experiments is tools/future/dirty_measure.py \u2014 dirty-class measurement that cannot launder into PROTECTED_ABSOLUTE."
+  },
+  {
+   "evidence": [
+    {
+     "contamination_class": "HEAVY",
+     "future_protected_window": {
+      "path_taken": "worktree",
+      "present": true,
+      "rel": "tools/future/protected_window.py",
+      "resolved": "/Users/scammermike/Downloads/hawking/tools/future/protected_window.py"
+     },
+     "odyssey_protected_window": {
+      "path_taken": "worktree",
+      "present": true,
+      "rel": "tools/odyssey/protected_window.py",
+      "resolved": "/Users/scammermike/Downloads/hawking/tools/odyssey/protected_window.py"
+     },
+     "qualification_path_taken": "worktree"
+    }
+   ],
+   "id": "protected_scheduling",
+   "met": false,
+   "operational": {
+    "cli_is_not_enough": true,
+    "flags": {
+     "discover": true,
+     "frontier": false,
+     "invoke": false,
+     "persist": true,
+     "refill": false,
+     "schedule": false,
+     "verify": true
+    },
+    "notes": {
+     "integration": "tools/future/protected_window.py \u2014 protected scheduling that does not seize Codex's GPU lock",
+     "prior_odyssey_protected_window": "worktree",
+     "sidecar_must_not_seize_lock": "true"
+    },
+    "resident_operational": false
+   },
+   "reason": "protected scheduling cannot start: contamination_class='HEAVY', qualification gpu_authority=False, future.protected_window path_taken=worktree. flock of the bench lock would be a seizure. tools/odyssey/protected_window.py is prior Odyssey SIGSTOP machinery, not this-wave resident scheduling."
+  },
+  {
+   "evidence": [
+    {
+     "n_laws": 24,
+     "path_taken": "worktree",
+     "schema": "hawking.future.odyssey2_law_store.v1"
+    }
+   ],
+   "id": "transfer_substrate",
+   "met": true,
+   "operational": {
+    "cli_is_not_enough": true,
+    "flags": {
+     "discover": true,
+     "frontier": true,
+     "invoke": true,
+     "persist": true,
+     "refill": true,
+     "schedule": true,
+     "verify": true
+    },
+    "notes": {
+     "raises_on_negative_transfer": "true",
+     "species": "odyssey_ii_transfer_experiment"
+    },
+    "resident_operational": true
+   },
+   "reason": "Odyssey II law store is sealed with n_laws=24; promote/transfer_candidates raise rather than flag"
+  },
+  {
+   "evidence": [
+    {
+     "n_attack_families": 9,
+     "path_taken": "worktree",
+     "schema": "hawking.future.odyssey3_adversary.v1"
+    }
+   ],
+   "id": "adversary_substrate",
+   "met": true,
+   "operational": {
+    "cli_is_not_enough": true,
+    "flags": {
+     "discover": true,
+     "frontier": true,
+     "invoke": true,
+     "persist": true,
+     "refill": true,
+     "schedule": true,
+     "verify": true
+    },
+    "notes": {
+     "a_law_that_emits_no_attack_is_refused": "true",
+     "species": "odyssey_iii_adversarial_experiment"
+    },
+    "resident_operational": true
+   },
+   "reason": "Odyssey III adversary is sealed; attack_families derived from receipt (n=9)"
+  },
+  {
+   "evidence": [
+    {
+     "faults_ok": true,
+     "git_lock": {
+      "found": true,
+      "path_taken": "worktree"
+     },
+     "hcli_recovery_import": true,
+     "recovery_gate": {
+      "found": true,
+      "path_taken": "worktree"
+     },
+     "repro_path_taken": "worktree"
+    }
+   ],
+   "id": "crash_recovery",
+   "met": true,
+   "operational": {
+    "cli_is_not_enough": true,
+    "flags": {
+     "discover": true,
+     "frontier": true,
+     "invoke": true,
+     "persist": true,
+     "refill": true,
+     "schedule": true,
+     "verify": true
+    },
+    "notes": {
+     "git_lock_doctor": true,
+     "hcli_recovery": true
+    },
+    "resident_operational": true
+   },
+   "reason": "repro_science fault injectors all_detected and HCLI recovery module importable; sidecar fail-closed"
+  },
+  {
+   "evidence": [
+    {
+     "n_json": 72,
+     "receipts_future": "/Users/scammermike/Downloads/hawking/receipts/future"
+    }
+   ],
+   "id": "receipts",
+   "met": true,
+   "operational": {
+    "cli_is_not_enough": true,
+    "flags": {
+     "discover": true,
+     "frontier": true,
+     "invoke": true,
+     "persist": true,
+     "refill": true,
+     "schedule": true,
+     "verify": true
+    },
+    "notes": {
+     "hardware_claim_raises": "HardwareClaimError",
+     "write_receipt": "tools.future._common.write_receipt"
+    },
+    "resident_operational": true
+   },
+   "reason": "receipts/future is present with n_json=72 (derived); write_receipt seals STATIC_ONLY and raises on hardware fields"
+  }
+ ],
+ "criterion_ids": [
+  "resident_autonomy_trial_pass",
+  "specimen_curriculum_ready",
+  "modellake_identity",
+  "doctor_callable",
+  "gravity_callable",
+  "nr_nx_path_callable",
+  "evidence_hierarchy",
+  "negative_science",
+  "workgraphs",
+  "self_refill",
+  "dirty_measurement",
+  "protected_scheduling",
+  "transfer_substrate",
+  "adversary_substrate",
+  "crash_recovery",
+  "receipts"
+ ],
+ "eras": [
+  "I Genesis of the Laboratory",
+  "II Compounding Civilization",
+  "III Autonomous Science Civilization",
+  "IV Synthetic Machine Civilization",
+  "V Released Hawking Civilization"
+ ],
+ "first_workgraphs": {
+  "n_units": 15,
+  "phase_listen": {
+   "barrier": null,
+   "global_barrier": false,
+   "no_era_vi": true,
+   "no_odyssey_iv": true,
+   "odysseys": [
+    "I WHAT IS TRUE?",
+    "II WHAT DID HAWKING ALREADY LEARN?",
+    "III WHERE IS HAWKING WRONG?"
+   ],
+   "phase_ii_depends_on": [
+    "odyssey-i.wg.qwen3-0-6b@c1899de289a0.laws"
+   ],
+   "phase_ii_depends_on_phase_iii": false,
+   "phase_iii_depends_on": [
+    "odyssey-i.wg.qwen3-0-6b@c1899de289a0.laws"
+   ],
+   "phase_iii_depends_on_phase_ii": false,
+   "rule": "once Phase I emits a law, Phase II may transfer it and Phase III may attack it. There is no global barrier between II and III."
+  },
+  "specimen": {
+   "repo": "Qwen/Qwen3-0.6B",
+   "revision": "c1899de289a04d12100db370d81485cdf75e47ca",
+   "slug": "qwen3-0-6b@c1899de289a0"
+  },
+  "stages": [
+   "specimen_verification",
+   "architecture_fingerprint",
+   "doctor",
+   "gravity",
+   "representation_search",
+   "physical_profiling",
+   "nr",
+   "nx",
+   "native_execution",
+   "capability",
+   "pareto",
+   "laws",
+   "scars"
+  ],
+  "units": [
+   {
+    "assigned_backend": null,
+    "assigned_runtime": null,
+    "attempts": 0,
+    "backend_task_id": null,
+    "blocked_reason": null,
+    "claim_boundary": "WorkUnit is a proposal; receipt and protected capability gates remain authoritative",
+    "classification": "STATIC_ONLY",
+    "content_hash": "ec74958097a5f4d807ce0a72503c78384695fc3977b176f73fe75965dd3828a7",
+    "dependencies": [
+     "odyssey-i.wg.qwen3-0-6b@c1899de289a0.specimen_verification"
+    ],
+    "description": "Odyssey I first WorkGraph stage architecture_fingerprint for Qwen/Qwen3-0.6B@c1899de289a04d12100db370d81485cdf75e47ca",
+    "effect_class": "READ_ONLY",
+    "era": "I",
+    "failure_context": null,
+    "finished_at": null,
+    "id": "odyssey-i.wg.qwen3-0-6b@c1899de289a0.architecture_fingerprint",
+    "odyssey": "I",
+    "output_receipt_path": "receipts/future/ODYSSEY_I_ARCHITECTURE_FINGERPRINT_qwen3-0-6b@c1899de289a0.json",
+    "preferred_backend": null,
+    "provider": "future.odyssey_launch",
+    "ready_at": null,
+    "repair_depth": 0,
+    "repair_exhausted": false,
+    "repair_reason": null,
+    "repair_root": null,
+    "repairs": null,
+    "requires_quiescence": false,
+    "resource_class": "STATIC_ANALYSIS",
+    "role": "science",
+    "running_at": null,
+    "sleeping": false,
+    "species": "odyssey_i_first_workgraph",
+    "specimen_repo": "Qwen/Qwen3-0.6B",
+    "specimen_revision": "c1899de289a04d12100db370d81485cdf75e47ca",
+    "stage": "architecture_fingerprint",
+    "status": "pending",
+    "verification": null,
+    "verifier": "future.odyssey_launch.workgraph.architecture_fingerprint:qwen3-0-6b@c1899de289a0",
+    "workspace": "repo-root"
+   },
+   {
+    "assigned_backend": null,
+    "assigned_runtime": null,
+    "attempts": 0,
+    "backend_task_id": null,
+    "blocked_reason": "SLEEPING: hardware is not qualified on this host; HCLI wakes this unit when the protected GPU lane qualifies. Not a synthetic result.",
+    "claim_boundary": "WorkUnit is a proposal; receipt and protected capability gates remain authoritative",
+    "classification": "SLEEPING",
+    "content_hash": "cb26c44079cc656422b12e29cc87f0b97857e6736e9de16c7cb14f2700c82430",
+    "dependencies": [
+     "odyssey-i.wg.qwen3-0-6b@c1899de289a0.native_execution"
+    ],
+    "description": "Odyssey I first WorkGraph stage capability for Qwen/Qwen3-0.6B@c1899de289a04d12100db370d81485cdf75e47ca",
+    "effect_class": "READ_ONLY",
+    "era": "I",
+    "failure_context": null,
+    "finished_at": null,
+    "id": "odyssey-i.wg.qwen3-0-6b@c1899de289a0.capability",
+    "odyssey": "I",
+    "output_receipt_path": "receipts/future/ODYSSEY_I_CAPABILITY_qwen3-0-6b@c1899de289a0.json",
+    "preferred_backend": null,
+    "provider": "future.odyssey_launch",
+    "ready_at": null,
+    "repair_depth": 0,
+    "repair_exhausted": false,
+    "repair_reason": null,
+    "repair_root": null,
+    "repairs": null,
+    "requires_quiescence": true,
+    "resource_class": "GPU_EXCLUSIVE",
+    "role": "science",
+    "running_at": null,
+    "sleeping": true,
+    "species": "odyssey_i_first_workgraph",
+    "specimen_repo": "Qwen/Qwen3-0.6B",
+    "specimen_revision": "c1899de289a04d12100db370d81485cdf75e47ca",
+    "stage": "capability",
+    "status": "sleeping",
+    "verification": null,
+    "verifier": "future.odyssey_launch.workgraph.capability:qwen3-0-6b@c1899de289a0",
+    "workspace": "repo-root"
+   },
+   {
+    "assigned_backend": null,
+    "assigned_runtime": null,
+    "attempts": 0,
+    "backend_task_id": null,
+    "blocked_reason": null,
+    "claim_boundary": "WorkUnit is a proposal; receipt and protected capability gates remain authoritative",
+    "classification": "STATIC_ONLY",
+    "content_hash": "a025205c5c4d090137be46301531ff7564b17e16033f27d4e889688c2ef93547",
+    "dependencies": [
+     "odyssey-i.wg.qwen3-0-6b@c1899de289a0.architecture_fingerprint"
+    ],
+    "description": "Odyssey I first WorkGraph stage doctor for Qwen/Qwen3-0.6B@c1899de289a04d12100db370d81485cdf75e47ca",
+    "effect_class": "READ_ONLY",
+    "era": "I",
+    "failure_context": null,
+    "finished_at": null,
+    "id": "odyssey-i.wg.qwen3-0-6b@c1899de289a0.doctor",
+    "odyssey": "I",
+    "output_receipt_path": "receipts/future/ODYSSEY_I_DOCTOR_qwen3-0-6b@c1899de289a0.json",
+    "preferred_backend": null,
+    "provider": "future.odyssey_launch",
+    "ready_at": null,
+    "repair_depth": 0,
+    "repair_exhausted": false,
+    "repair_reason": null,
+    "repair_root": null,
+    "repairs": null,
+    "requires_quiescence": false,
+    "resource_class": "STATIC_ANALYSIS",
+    "role": "science",
+    "running_at": null,
+    "sleeping": false,
+    "species": "odyssey_i_first_workgraph",
+    "specimen_repo": "Qwen/Qwen3-0.6B",
+    "specimen_revision": "c1899de289a04d12100db370d81485cdf75e47ca",
+    "stage": "doctor",
+    "status": "pending",
+    "verification": null,
+    "verifier": "future.odyssey_launch.workgraph.doctor:qwen3-0-6b@c1899de289a0",
+    "workspace": "repo-root"
+   },
+   {
+    "assigned_backend": null,
+    "assigned_runtime": null,
+    "attempts": 0,
+    "backend_task_id": null,
+    "blocked_reason": null,
+    "claim_boundary": "WorkUnit is a proposal; receipt and protected capability gates remain authoritative",
+    "classification": "STATIC_ONLY",
+    "content_hash": "ae7371584b15e647d99b2b87dbc9f4c59b218be3c2128f50115d15e1cbf4df41",
+    "dependencies": [
+     "odyssey-i.wg.qwen3-0-6b@c1899de289a0.doctor"
+    ],
+    "description": "Odyssey I first WorkGraph stage gravity for Qwen/Qwen3-0.6B@c1899de289a04d12100db370d81485cdf75e47ca",
+    "effect_class": "READ_ONLY",
+    "era": "I",
+    "failure_context": null,
+    "finished_at": null,
+    "id": "odyssey-i.wg.qwen3-0-6b@c1899de289a0.gravity",
+    "odyssey": "I",
+    "output_receipt_path": "receipts/future/ODYSSEY_I_GRAVITY_qwen3-0-6b@c1899de289a0.json",
+    "preferred_backend": null,
+    "provider": "future.odyssey_launch",
+    "ready_at": null,
+    "repair_depth": 0,
+    "repair_exhausted": false,
+    "repair_reason": null,
+    "repair_root": null,
+    "repairs": null,
+    "requires_quiescence": false,
+    "resource_class": "STATIC_ANALYSIS",
+    "role": "science",
+    "running_at": null,
+    "sleeping": false,
+    "species": "odyssey_i_first_workgraph",
+    "specimen_repo": "Qwen/Qwen3-0.6B",
+    "specimen_revision": "c1899de289a04d12100db370d81485cdf75e47ca",
+    "stage": "gravity",
+    "status": "pending",
+    "verification": null,
+    "verifier": "future.odyssey_launch.workgraph.gravity:qwen3-0-6b@c1899de289a0",
+    "workspace": "repo-root"
+   },
+   {
+    "assigned_backend": null,
+    "assigned_runtime": null,
+    "attempts": 0,
+    "backend_task_id": null,
+    "blocked_reason": null,
+    "claim_boundary": "WorkUnit is a proposal; receipt and protected capability gates remain authoritative",
+    "classification": "STATIC_ONLY",
+    "content_hash": "f03e99589c4e01a090c5d8ec77c1598ee4f873e3826dfb06672fd68460abc17b",
+    "dependencies": [
+     "odyssey-i.wg.qwen3-0-6b@c1899de289a0.pareto"
+    ],
+    "description": "Odyssey I first WorkGraph stage laws for Qwen/Qwen3-0.6B@c1899de289a04d12100db370d81485cdf75e47ca",
+    "effect_class": "READ_ONLY",
+    "era": "I",
+    "failure_context": null,
+    "finished_at": null,
+    "id": "odyssey-i.wg.qwen3-0-6b@c1899de289a0.laws",
+    "odyssey": "I",
+    "output_receipt_path": "receipts/future/ODYSSEY_I_LAWS_qwen3-0-6b@c1899de289a0.json",
+    "preferred_backend": null,
+    "provider": "future.odyssey_launch",
+    "ready_at": null,
+    "repair_depth": 0,
+    "repair_exhausted": false,
+    "repair_reason": null,
+    "repair_root": null,
+    "repairs": null,
+    "requires_quiescence": false,
+    "resource_class": "STATIC_ANALYSIS",
+    "role": "science",
+    "running_at": null,
+    "sleeping": false,
+    "species": "odyssey_i_first_workgraph",
+    "specimen_repo": "Qwen/Qwen3-0.6B",
+    "specimen_revision": "c1899de289a04d12100db370d81485cdf75e47ca",
+    "stage": "laws",
+    "status": "pending",
+    "verification": null,
+    "verifier": "future.odyssey_launch.workgraph.laws:qwen3-0-6b@c1899de289a0",
+    "workspace": "repo-root"
+   },
+   {
+    "assigned_backend": null,
+    "assigned_runtime": null,
+    "attempts": 0,
+    "backend_task_id": null,
+    "blocked_reason": "SLEEPING: hardware is not qualified on this host; HCLI wakes this unit when the protected GPU lane qualifies. Not a synthetic result.",
+    "claim_boundary": "WorkUnit is a proposal; receipt and protected capability gates remain authoritative",
+    "classification": "SLEEPING",
+    "content_hash": "c5ccefbaab7e1a13b3bfe1356d94b6d18bde2ed64944aead40702a797e0ca4c4",
+    "dependencies": [
+     "odyssey-i.wg.qwen3-0-6b@c1899de289a0.nx"
+    ],
+    "description": "Odyssey I first WorkGraph stage native_execution for Qwen/Qwen3-0.6B@c1899de289a04d12100db370d81485cdf75e47ca",
+    "effect_class": "READ_ONLY",
+    "era": "I",
+    "failure_context": null,
+    "finished_at": null,
+    "id": "odyssey-i.wg.qwen3-0-6b@c1899de289a0.native_execution",
+    "odyssey": "I",
+    "output_receipt_path": "receipts/future/ODYSSEY_I_NATIVE_EXECUTION_qwen3-0-6b@c1899de289a0.json",
+    "preferred_backend": null,
+    "provider": "future.odyssey_launch",
+    "ready_at": null,
+    "repair_depth": 0,
+    "repair_exhausted": false,
+    "repair_reason": null,
+    "repair_root": null,
+    "repairs": null,
+    "requires_quiescence": true,
+    "resource_class": "GPU_EXCLUSIVE",
+    "role": "science",
+    "running_at": null,
+    "sleeping": true,
+    "species": "odyssey_i_first_workgraph",
+    "specimen_repo": "Qwen/Qwen3-0.6B",
+    "specimen_revision": "c1899de289a04d12100db370d81485cdf75e47ca",
+    "stage": "native_execution",
+    "status": "sleeping",
+    "verification": null,
+    "verifier": "future.odyssey_launch.workgraph.native_execution:qwen3-0-6b@c1899de289a0",
+    "workspace": "repo-root"
+   },
+   {
+    "assigned_backend": null,
+    "assigned_runtime": null,
+    "attempts": 0,
+    "backend_task_id": null,
+    "blocked_reason": null,
+    "claim_boundary": "WorkUnit is a proposal; receipt and protected capability gates remain authoritative",
+    "classification": "STATIC_ONLY",
+    "content_hash": "d423025d0da17dedc0ab7f3f03243a8b0f2ef835d4dfbcff52f30971da6cdd69",
+    "dependencies": [
+     "odyssey-i.wg.qwen3-0-6b@c1899de289a0.physical_profiling"
+    ],
+    "description": "Odyssey I first WorkGraph stage nr for Qwen/Qwen3-0.6B@c1899de289a04d12100db370d81485cdf75e47ca",
+    "effect_class": "READ_ONLY",
+    "era": "I",
+    "failure_context": null,
+    "finished_at": null,
+    "id": "odyssey-i.wg.qwen3-0-6b@c1899de289a0.nr",
+    "odyssey": "I",
+    "output_receipt_path": "receipts/future/ODYSSEY_I_NR_qwen3-0-6b@c1899de289a0.json",
+    "preferred_backend": null,
+    "provider": "future.odyssey_launch",
+    "ready_at": null,
+    "repair_depth": 0,
+    "repair_exhausted": false,
+    "repair_reason": null,
+    "repair_root": null,
+    "repairs": null,
+    "requires_quiescence": false,
+    "resource_class": "COMPILE",
+    "role": "science",
+    "running_at": null,
+    "sleeping": false,
+    "species": "odyssey_i_first_workgraph",
+    "specimen_repo": "Qwen/Qwen3-0.6B",
+    "specimen_revision": "c1899de289a04d12100db370d81485cdf75e47ca",
+    "stage": "nr",
+    "status": "pending",
+    "verification": null,
+    "verifier": "future.odyssey_launch.workgraph.nr:qwen3-0-6b@c1899de289a0",
+    "workspace": "repo-root"
+   },
+   {
+    "assigned_backend": null,
+    "assigned_runtime": null,
+    "attempts": 0,
+    "backend_task_id": null,
+    "blocked_reason": "SLEEPING: hardware is not qualified on this host; HCLI wakes this unit when the protected GPU lane qualifies. Not a synthetic result.",
+    "claim_boundary": "WorkUnit is a proposal; receipt and protected capability gates remain authoritative",
+    "classification": "SLEEPING",
+    "content_hash": "fddfbb510ee5645011cae7214deea135cee93681b8e977819fbe8d7643933200",
+    "dependencies": [
+     "odyssey-i.wg.qwen3-0-6b@c1899de289a0.nr"
+    ],
+    "description": "Odyssey I first WorkGraph stage nx for Qwen/Qwen3-0.6B@c1899de289a04d12100db370d81485cdf75e47ca",
+    "effect_class": "READ_ONLY",
+    "era": "I",
+    "failure_context": null,
+    "finished_at": null,
+    "id": "odyssey-i.wg.qwen3-0-6b@c1899de289a0.nx",
+    "odyssey": "I",
+    "output_receipt_path": "receipts/future/ODYSSEY_I_NX_qwen3-0-6b@c1899de289a0.json",
+    "preferred_backend": null,
+    "provider": "future.odyssey_launch",
+    "ready_at": null,
+    "repair_depth": 0,
+    "repair_exhausted": false,
+    "repair_reason": null,
+    "repair_root": null,
+    "repairs": null,
+    "requires_quiescence": true,
+    "resource_class": "GPU_EXCLUSIVE",
+    "role": "science",
+    "running_at": null,
+    "sleeping": true,
+    "species": "odyssey_i_first_workgraph",
+    "specimen_repo": "Qwen/Qwen3-0.6B",
+    "specimen_revision": "c1899de289a04d12100db370d81485cdf75e47ca",
+    "stage": "nx",
+    "status": "sleeping",
+    "verification": null,
+    "verifier": "future.odyssey_launch.workgraph.nx:qwen3-0-6b@c1899de289a0",
+    "workspace": "repo-root"
+   },
+   {
+    "assigned_backend": null,
+    "assigned_runtime": null,
+    "attempts": 0,
+    "backend_task_id": null,
+    "blocked_reason": null,
+    "claim_boundary": "WorkUnit is a proposal; receipt and protected capability gates remain authoritative",
+    "classification": "STATIC_ONLY",
+    "content_hash": "9773b9e8e106e65d5d5cb551628930db516a73fc53c8f48ff413c9b08ce6c982",
+    "dependencies": [
+     "odyssey-i.wg.qwen3-0-6b@c1899de289a0.capability"
+    ],
+    "description": "Odyssey I first WorkGraph stage pareto for Qwen/Qwen3-0.6B@c1899de289a04d12100db370d81485cdf75e47ca",
+    "effect_class": "READ_ONLY",
+    "era": "I",
+    "failure_context": null,
+    "finished_at": null,
+    "id": "odyssey-i.wg.qwen3-0-6b@c1899de289a0.pareto",
+    "odyssey": "I",
+    "output_receipt_path": "receipts/future/ODYSSEY_I_PARETO_qwen3-0-6b@c1899de289a0.json",
+    "preferred_backend": null,
+    "provider": "future.odyssey_launch",
+    "ready_at": null,
+    "repair_depth": 0,
+    "repair_exhausted": false,
+    "repair_reason": null,
+    "repair_root": null,
+    "repairs": null,
+    "requires_quiescence": false,
+    "resource_class": "STATIC_ANALYSIS",
+    "role": "science",
+    "running_at": null,
+    "sleeping": false,
+    "species": "odyssey_i_first_workgraph",
+    "specimen_repo": "Qwen/Qwen3-0.6B",
+    "specimen_revision": "c1899de289a04d12100db370d81485cdf75e47ca",
+    "stage": "pareto",
+    "status": "pending",
+    "verification": null,
+    "verifier": "future.odyssey_launch.workgraph.pareto:qwen3-0-6b@c1899de289a0",
+    "workspace": "repo-root"
+   },
+   {
+    "assigned_backend": null,
+    "assigned_runtime": null,
+    "attempts": 0,
+    "backend_task_id": null,
+    "blocked_reason": null,
+    "claim_boundary": "WorkUnit is a proposal; receipt and protected capability gates remain authoritative",
+    "classification": "STATIC_ONLY",
+    "content_hash": "374a42e60cec6bb0da57dfdddd9343d2ffd8f80b57c91b44f440dcb7bd0a078c",
+    "dependencies": [
+     "odyssey-i.wg.qwen3-0-6b@c1899de289a0.laws"
+    ],
+    "description": "Odyssey II listens concurrently: once Phase I emits a law, this unit may run. No global barrier. Specimen Qwen/Qwen3-0.6B.",
+    "effect_class": "READ_ONLY",
+    "era": "III",
+    "failure_context": null,
+    "finished_at": null,
+    "id": "odyssey-i.wg.qwen3-0-6b@c1899de289a0.phase_ii_transfer",
+    "listens_on": "phase_i_law_emission",
+    "odyssey": "II",
+    "preferred_backend": null,
+    "provider": "future.odyssey_launch",
+    "ready_at": null,
+    "repair_depth": 0,
+    "repair_exhausted": false,
+    "repair_reason": null,
+    "repair_root": null,
+    "repairs": null,
+    "requires_quiescence": false,
+    "resource_class": "STATIC_ANALYSIS",
+    "role": "science",
+    "running_at": null,
+    "species": "odyssey_ii_transfer_experiment",
+    "specimen_repo": "Qwen/Qwen3-0.6B",
+    "specimen_revision": "c1899de289a04d12100db370d81485cdf75e47ca",
+    "stage": "phase_ii_transfer",
+    "status": "pending",
+    "verification": null,
+    "verifier": "future.odyssey_launch.workgraph.phase_ii_transfer:qwen3-0-6b@c1899de289a0",
+    "workspace": "repo-root"
+   },
+   {
+    "assigned_backend": null,
+    "assigned_runtime": null,
+    "attempts": 0,
+    "backend_task_id": null,
+    "blocked_reason": null,
+    "claim_boundary": "WorkUnit is a proposal; receipt and protected capability gates remain authoritative",
+    "classification": "STATIC_ONLY",
+    "content_hash": "4cd726be2123f3dc26a75d2dfe55c55b2af294aced456b7bd04cd027e86f3672",
+    "dependencies": [
+     "odyssey-i.wg.qwen3-0-6b@c1899de289a0.laws"
+    ],
+    "description": "Odyssey III listens concurrently: once Phase I emits a law, this unit may run. No global barrier. Specimen Qwen/Qwen3-0.6B.",
+    "effect_class": "READ_ONLY",
+    "era": "III",
+    "failure_context": null,
+    "finished_at": null,
+    "id": "odyssey-i.wg.qwen3-0-6b@c1899de289a0.phase_iii_attack",
+    "listens_on": "phase_i_law_emission",
+    "odyssey": "III",
+    "preferred_backend": null,
+    "provider": "future.odyssey_launch",
+    "ready_at": null,
+    "repair_depth": 0,
+    "repair_exhausted": false,
+    "repair_reason": null,
+    "repair_root": null,
+    "repairs": null,
+    "requires_quiescence": false,
+    "resource_class": "STATIC_ANALYSIS",
+    "role": "science",
+    "running_at": null,
+    "species": "odyssey_iii_adversarial_experiment",
+    "specimen_repo": "Qwen/Qwen3-0.6B",
+    "specimen_revision": "c1899de289a04d12100db370d81485cdf75e47ca",
+    "stage": "phase_iii_attack",
+    "status": "pending",
+    "verification": null,
+    "verifier": "future.odyssey_launch.workgraph.phase_iii_attack:qwen3-0-6b@c1899de289a0",
+    "workspace": "repo-root"
+   },
+   {
+    "assigned_backend": null,
+    "assigned_runtime": null,
+    "attempts": 0,
+    "backend_task_id": null,
+    "blocked_reason": "SLEEPING: hardware is not qualified on this host; HCLI wakes this unit when the protected GPU lane qualifies. Not a synthetic result.",
+    "claim_boundary": "WorkUnit is a proposal; receipt and protected capability gates remain authoritative",
+    "classification": "SLEEPING",
+    "content_hash": "2644abca1a21faf9c2c77c437312fb265e7d894e30254eb381f07b5ac2e1aa15",
+    "dependencies": [
+     "odyssey-i.wg.qwen3-0-6b@c1899de289a0.representation_search"
+    ],
+    "description": "Odyssey I first WorkGraph stage physical_profiling for Qwen/Qwen3-0.6B@c1899de289a04d12100db370d81485cdf75e47ca",
+    "effect_class": "READ_ONLY",
+    "era": "I",
+    "failure_context": null,
+    "finished_at": null,
+    "id": "odyssey-i.wg.qwen3-0-6b@c1899de289a0.physical_profiling",
+    "odyssey": "I",
+    "output_receipt_path": "receipts/future/ODYSSEY_I_PHYSICAL_PROFILING_qwen3-0-6b@c1899de289a0.json",
+    "preferred_backend": null,
+    "provider": "future.odyssey_launch",
+    "ready_at": null,
+    "repair_depth": 0,
+    "repair_exhausted": false,
+    "repair_reason": null,
+    "repair_root": null,
+    "repairs": null,
+    "requires_quiescence": true,
+    "resource_class": "GPU_EXCLUSIVE",
+    "role": "science",
+    "running_at": null,
+    "sleeping": true,
+    "species": "odyssey_i_first_workgraph",
+    "specimen_repo": "Qwen/Qwen3-0.6B",
+    "specimen_revision": "c1899de289a04d12100db370d81485cdf75e47ca",
+    "stage": "physical_profiling",
+    "status": "sleeping",
+    "verification": null,
+    "verifier": "future.odyssey_launch.workgraph.physical_profiling:qwen3-0-6b@c1899de289a0",
+    "workspace": "repo-root"
+   },
+   {
+    "assigned_backend": null,
+    "assigned_runtime": null,
+    "attempts": 0,
+    "backend_task_id": null,
+    "blocked_reason": null,
+    "claim_boundary": "WorkUnit is a proposal; receipt and protected capability gates remain authoritative",
+    "classification": "STATIC_ONLY",
+    "content_hash": "652dffa2e0bc33837570980ab58777b4b770b58964ca2dc9fe0962310149a6f9",
+    "dependencies": [
+     "odyssey-i.wg.qwen3-0-6b@c1899de289a0.gravity"
+    ],
+    "description": "Odyssey I first WorkGraph stage representation_search for Qwen/Qwen3-0.6B@c1899de289a04d12100db370d81485cdf75e47ca",
+    "effect_class": "READ_ONLY",
+    "era": "I",
+    "failure_context": null,
+    "finished_at": null,
+    "id": "odyssey-i.wg.qwen3-0-6b@c1899de289a0.representation_search",
+    "odyssey": "I",
+    "output_receipt_path": "receipts/future/ODYSSEY_I_REPRESENTATION_SEARCH_qwen3-0-6b@c1899de289a0.json",
+    "preferred_backend": null,
+    "provider": "future.odyssey_launch",
+    "ready_at": null,
+    "repair_depth": 0,
+    "repair_exhausted": false,
+    "repair_reason": null,
+    "repair_root": null,
+    "repairs": null,
+    "requires_quiescence": false,
+    "resource_class": "STATIC_ANALYSIS",
+    "role": "science",
+    "running_at": null,
+    "sleeping": false,
+    "species": "odyssey_i_first_workgraph",
+    "specimen_repo": "Qwen/Qwen3-0.6B",
+    "specimen_revision": "c1899de289a04d12100db370d81485cdf75e47ca",
+    "stage": "representation_search",
+    "status": "pending",
+    "verification": null,
+    "verifier": "future.odyssey_launch.workgraph.representation_search:qwen3-0-6b@c1899de289a0",
+    "workspace": "repo-root"
+   },
+   {
+    "assigned_backend": null,
+    "assigned_runtime": null,
+    "attempts": 0,
+    "backend_task_id": null,
+    "blocked_reason": null,
+    "claim_boundary": "WorkUnit is a proposal; receipt and protected capability gates remain authoritative",
+    "classification": "STATIC_ONLY",
+    "content_hash": "d93ba757ce779acdaad780a889af95aae40fb601dc383e05a5bbf3230b9b6475",
+    "dependencies": [
+     "odyssey-i.wg.qwen3-0-6b@c1899de289a0.laws"
+    ],
+    "description": "Odyssey I first WorkGraph stage scars for Qwen/Qwen3-0.6B@c1899de289a04d12100db370d81485cdf75e47ca",
+    "effect_class": "READ_ONLY",
+    "era": "I",
+    "failure_context": null,
+    "finished_at": null,
+    "id": "odyssey-i.wg.qwen3-0-6b@c1899de289a0.scars",
+    "odyssey": "I",
+    "output_receipt_path": "receipts/future/ODYSSEY_I_SCARS_qwen3-0-6b@c1899de289a0.json",
+    "preferred_backend": null,
+    "provider": "future.odyssey_launch",
+    "ready_at": null,
+    "repair_depth": 0,
+    "repair_exhausted": false,
+    "repair_reason": null,
+    "repair_root": null,
+    "repairs": null,
+    "requires_quiescence": false,
+    "resource_class": "STATIC_ANALYSIS",
+    "role": "science",
+    "running_at": null,
+    "sleeping": false,
+    "species": "odyssey_i_first_workgraph",
+    "specimen_repo": "Qwen/Qwen3-0.6B",
+    "specimen_revision": "c1899de289a04d12100db370d81485cdf75e47ca",
+    "stage": "scars",
+    "status": "pending",
+    "verification": null,
+    "verifier": "future.odyssey_launch.workgraph.scars:qwen3-0-6b@c1899de289a0",
+    "workspace": "repo-root"
+   },
+   {
+    "assigned_backend": null,
+    "assigned_runtime": null,
+    "attempts": 0,
+    "backend_task_id": null,
+    "blocked_reason": null,
+    "claim_boundary": "WorkUnit is a proposal; receipt and protected capability gates remain authoritative",
+    "classification": "STATIC_ONLY",
+    "content_hash": "06272da12b7206185a93b26a14008c6dab8a3a29b4a4d6a474316069ba7b35e4",
+    "dependencies": [],
+    "description": "Odyssey I first WorkGraph stage specimen_verification for Qwen/Qwen3-0.6B@c1899de289a04d12100db370d81485cdf75e47ca",
+    "effect_class": "READ_ONLY",
+    "era": "I",
+    "failure_context": null,
+    "finished_at": null,
+    "id": "odyssey-i.wg.qwen3-0-6b@c1899de289a0.specimen_verification",
+    "odyssey": "I",
+    "output_receipt_path": "receipts/future/ODYSSEY_I_SPECIMEN_VERIFICATION_qwen3-0-6b@c1899de289a0.json",
+    "preferred_backend": null,
+    "provider": "future.odyssey_launch",
+    "ready_at": null,
+    "repair_depth": 0,
+    "repair_exhausted": false,
+    "repair_reason": null,
+    "repair_root": null,
+    "repairs": null,
+    "requires_quiescence": false,
+    "resource_class": "STATIC_ANALYSIS",
+    "role": "science",
+    "running_at": null,
+    "sleeping": false,
+    "species": "odyssey_i_first_workgraph",
+    "specimen_repo": "Qwen/Qwen3-0.6B",
+    "specimen_revision": "c1899de289a04d12100db370d81485cdf75e47ca",
+    "stage": "specimen_verification",
+    "status": "pending",
+    "verification": null,
+    "verifier": "future.odyssey_launch.workgraph.specimen_verification:qwen3-0-6b@c1899de289a0",
+    "workspace": "repo-root"
+   }
+  ]
+ },
+ "fpga": "FPGA belongs to Accelerator / Physical Compiler / Fusion. This gate does not build an FPGA backend.",
+ "gaps_closed": [
+  "Sixteen launch criteria evaluated from evidence; can_launch is False until all pass.",
+  "Refuse path names every unmet criterion; it does not stop at the first.",
+  "ODYSSEY_I_LAUNCH.json is written only on pass; refuse does not write the phase-transition receipt.",
+  "Specimen curriculum proposes five roles from ModelLake seals / Odyssey I / law-store schools; other lake entries are recorded and not first-wave.",
+  "First WorkGraphs emitted as real HCLI WorkUnits with dependencies and resource lanes.",
+  "Phase II transfer and Phase III attack both depend on Phase I laws and not on each other \u2014 no global barrier.",
+  "Physical blockers become SLEEPING WorkUnits; they never become synthetic results.",
+  "HCLI AgentOS autonomy A1\u2013A5 is recovered and explicitly not this criterion."
+ ],
+ "gate_workunit": {
+  "assigned_backend": null,
+  "assigned_runtime": null,
+  "attempts": 0,
+  "backend_task_id": null,
+  "blocked_reason": "launch criteria unmet; see unmet list",
+  "claim_boundary": "WorkUnit is a proposal; receipt and protected capability gates remain authoritative",
+  "classification": "REFUSED",
+  "content_hash": "aa559adb84a92cb403de862e216ff4529ed10b40f07ec8555ba5a12d23cc2388",
+  "dependencies": [],
+  "description": "Evaluate Odyssey I launch criteria; refuse until every criterion is met",
+  "effect_class": "READ_ONLY",
+  "failure_context": null,
+  "finished_at": null,
+  "id": "odyssey-i.launch-gate",
+  "output_receipt_path": "receipts/future/ODYSSEY_LAUNCH_GATE.json",
+  "preferred_backend": null,
+  "provider": "future.odyssey_launch",
+  "ready_at": null,
+  "repair_depth": 0,
+  "repair_exhausted": false,
+  "repair_reason": null,
+  "repair_root": null,
+  "repairs": null,
+  "requires_quiescence": false,
+  "resource_class": "STATIC_ANALYSIS",
+  "role": "science",
+  "running_at": null,
+  "status": "completed",
+  "unmet": [
+   "resident_autonomy_trial_pass",
+   "specimen_curriculum_ready",
+   "doctor_callable",
+   "gravity_callable",
+   "nr_nx_path_callable",
+   "evidence_hierarchy",
+   "workgraphs",
+   "self_refill",
+   "dirty_measurement",
+   "protected_scheduling"
+  ],
+  "verdict": "REFUSED",
+  "verification": null,
+  "verifier": "future.odyssey_launch.can_launch",
+  "workspace": "repo-root"
+ },
+ "gpu_authority": false,
+ "head": "12d535429122f1ba4db860ab956940ecc5a7c206",
+ "integration_points": {
+  "autonomy_trial": "tools/future/autonomy_trial.py \u2014 Odyssey I resident-orchestration trial pass receipt",
+  "dirty_measure": "tools/future/dirty_measure.py \u2014 dirty-class measurement that cannot launder into PROTECTED_ABSOLUTE",
+  "evidence_dag": "tools/future/evidence_dag.py \u2014 evidence DAG the resident walks; lattice alone is not the DAG",
+  "frontiers": "tools/future/frontiers.py \u2014 frontier objects a result must change, and the refill that follows",
+  "protected_window": "tools/future/protected_window.py \u2014 protected scheduling that does not seize Codex's GPU lock",
+  "resident_api": "tools/future/resident_api.py \u2014 discover/invoke surface HCLI uses instead of a human CLI",
+  "resident_identity": "tools/future/resident_identity.py \u2014 canonical resident declaration the launch receipt binds",
+  "sandbox": "tools/future/sandbox.py \u2014 orchestrator sandbox identity the resident operates",
+  "succession": "tools/future/succession.py \u2014 self-refill / next-work succession under resident control",
+  "super_resident": "tools/future/super_resident.py \u2014 HCLI super-resident operating the orchestrator sandbox",
+  "wakeup": "tools/future/wakeup.py \u2014 wake SLEEPING WorkUnits when hardware qualifies",
+  "workgraph": "tools/future/workgraph.py \u2014 WorkGraph runtime that admits, schedules and verifies the units this gate emits"
+ },
+ "launch_payload_draft": {
+  "autonomy_status": {
+   "evidence": [
+    {
+     "found": false,
+     "kind": "odyssey_trial",
+     "path_taken": "not_found",
+     "schema": null
+    },
+    {
+     "all_requested_stages_passed": true,
+     "found": true,
+     "kind": "hcli_agentos_autonomy",
+     "not_this_criterion": true,
+     "path_taken": "worktree",
+     "schema": "hcli.agentos.autonomy_gate.v1"
+    }
+   ],
+   "id": "resident_autonomy_trial_pass",
+   "met": false,
+   "operational": {
+    "cli_is_not_enough": true,
+    "flags": {
+     "discover": true,
+     "frontier": false,
+     "invoke": false,
+     "persist": true,
+     "refill": false,
+     "schedule": false,
+     "verify": true
+    },
+    "notes": {
+     "hcli_control_plane_is_not_odyssey_i": "true"
+    },
+    "resident_operational": false
+   },
+   "reason": "No Odyssey I resident-orchestration autonomy trial has passed. HCLI AgentOS autonomy gate path_taken='worktree' schema='hcli.agentos.autonomy_gate.v1' all_requested_stages_passed=True: that receipt proves LIVE_AGENTOS_AUTONOMY_CONTROL_PLANE, not Odyssey I start. Odyssey trial receipt path_taken='not_found' schema=None. Integration point: tools/future/autonomy_trial.py \u2014 Odyssey I resident-orchestration trial pass receipt."
+  },
+  "claim_boundary": "Static sidecar artifact. No hardware measurement. A launch-gate REFUSED receipt is not Odyssey started. ODYSSEY_I_LAUNCH.json is the only phase-transition receipt and is written only when every criterion is met.",
+  "eras": [
+   "I Genesis of the Laboratory",
+   "II Compounding Civilization",
+   "III Autonomous Science Civilization",
+   "IV Synthetic Machine Civilization",
+   "V Released Hawking Civilization"
+  ],
+  "evidence_hierarchy": {
+   "bench": "UNKNOWN",
+   "lattice": [
+    "STATIC_ONLY",
+    "DIAGNOSTIC_RELATIVE",
+    "PROTECTED_ABSOLUTE"
+   ],
+   "measurement_state": "STATIC_ONLY",
+   "rule": "DIAGNOSTIC_RELATIVE guides and never promotes; PROTECTED_ABSOLUTE decides; this module produces neither"
+  },
+  "first_specimen_set": {
+   "census_probe": {
+    "found": true,
+    "path_taken": "worktree",
+    "resolved": "/Users/scammermike/Downloads/hawking/receipts/future/evidence/HCLI_MODELLAKE_FLASH_CENSUS.json"
+   },
+   "n_ready": 0,
+   "n_roles": 5,
+   "not_proposed": [
+    {
+     "reason": "present in ModelLake, not a first-wave curriculum role",
+     "repo": "Qwen/Qwen3-30B-A3B",
+     "revision": "ad44e777bcd18fa416d9da3bd8f70d33ebb85d39"
+    },
+    {
+     "reason": "present in ModelLake, not a first-wave curriculum role",
+     "repo": "Qwen/Qwen3-VL-30B-A3B-Instruct",
+     "revision": "9c4b90e1e4ba969fd3b5378b57d966d725f1b86c"
+    },
+    {
+     "reason": "present in ModelLake, not a first-wave curriculum role",
+     "repo": "moonshotai/Kimi-VL-A3B-Instruct",
+     "revision": "398eede0903cd983a2bfa0cc634e9ac1d843f375"
+    }
+   ],
+   "not_proposed_rule": "Do not exhaustively optimize every downloaded model. First-wave curriculum is the five roles above; other lake entries are recorded and deferred.",
+   "prior_odyssey_i_patients": [
+    {
+     "oxx": "O001",
+     "seal": "receipts/odyssey-i/O001_PATIENT_SEAL.json",
+     "sealed_mechanisms": [
+      "external-science",
+      "ssm-accounting",
+      "sensitivity-map",
+      "gravity-hybrid",
+      "gravity-aggressive-hybrid",
+      "nx-state-hybrid"
+     ],
+     "state": "RETIRED",
+     "status": "VERIFIED",
+     "weights_canonical": "/Users/scammermike/.cache/huggingface/hub/models--tiiuae--Falcon-H1-7B-Instruct/snapshots/41e72f27effbab80cd45b6e884688452253a3686"
+    },
+    {
+     "oxx": "O003",
+     "seal": "receipts/odyssey-i/O003_PATIENT_SEAL.json",
+     "sealed_mechanisms": [
+      "external-science",
+      "route-map",
+      "sensitivity-map",
+      "gravity-moe",
+      "gravity-aggressive-moe",
+      "nx-gather-moe"
+     ],
+     "state": "RETIRED",
+     "status": "VERIFIED",
+     "weights_canonical": "/Users/scammermike/.cache/huggingface/hub/models--moonshotai--Kimi-VL-A3B-Instruct/snapshots/398eede0903cd983a2bfa0cc634e9ac1d843f375"
+    },
+    {
+     "oxx": "O004",
+     "seal": "receipts/odyssey-i/O004_PATIENT_SEAL.json",
+     "sealed_mechanisms": [
+      "external-science",
+      "sensitivity-map",
+      "gravity-dense",
+      "gravity-aggressive-dense",
+      "nx-dense"
+     ],
+     "state": "RETIRED",
+     "status": "VERIFIED",
+     "weights_canonical": "/Users/scammermike/.cache/huggingface/hub/models--mistralai--Mistral-Small-3.1-24B-Instruct-2503/snapshots/68faf511d618ef198fef186659617cfd2eb8e33a"
+    },
+    {
+     "oxx": "O005",
+     "seal": "receipts/odyssey-i/O005_PATIENT_SEAL.json",
+     "sealed_mechanisms": [
+      "external-science",
+      "route-map",
+      "sensitivity-map",
+      "gravity-moe",
+      "nx-gather-moe"
+     ],
+     "state": "RETIRED",
+     "status": "VERIFIED",
+     "weights_canonical": "/Users/scammermike/.cache/huggingface/hub/models--Qwen--Qwen3-30B-A3B/snapshots/ad44e777bcd18fa416d9da3bd8f70d33ebb85d39"
+    }
+   ],
+   "ready": false,
+   "roles": [
+    {
+     "architecture_family": "dense_transformer",
+     "identity_source": "modellake_manifest",
+     "modellake": {
+      "in_specimens_listing": false,
+      "manifest_path": "/Volumes/corpdrive/hawking-modellake/manifests/Qwen--Qwen3-0.6B@c1899de289a0.json",
+      "n_files": 10,
+      "n_sha256_verified": 2,
+      "n_size_only_verified": 8,
+      "repo": "Qwen/Qwen3-0.6B",
+      "resolved_sha": "c1899de289a04d12100db370d81485cdf75e47ca",
+      "revision": "c1899de289a04d12100db370d81485cdf75e47ca",
+      "source": "modellake_manifest",
+      "specimen_path": "/Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3-0.6B@c1899de289a0",
+      "whole_tree_verified": false
+     },
+     "purpose": "very small dense for procedural speed",
+     "ready": false,
+     "ready_reason": "identity known but specimen is not in the ModelLake specimens listing",
+     "repo": "Qwen/Qwen3-0.6B",
+     "revision": "c1899de289a04d12100db370d81485cdf75e47ca",
+     "role": "very_small_dense_procedural_speed"
+    },
+    {
+     "architecture_family": "falcon_h1",
+     "identity_source": "modellake_manifest+odyssey_i_O001",
+     "modellake": {
+      "in_specimens_listing": true,
+      "manifest_path": "/Volumes/corpdrive/hawking-modellake/manifests/tiiuae--Falcon-H1-7B-Instruct@41e72f27effb.json",
+      "n_files": 13,
+      "n_sha256_verified": 5,
+      "n_size_only_verified": 8,
+      "repo": "tiiuae/Falcon-H1-7B-Instruct",
+      "resolved_sha": "41e72f27effbab80cd45b6e884688452253a3686",
+      "revision": "41e72f27effbab80cd45b6e884688452253a3686",
+      "source": "modellake_manifest",
+      "specimen_path": "/Volumes/corpdrive/hawking-modellake/specimens/tiiuae--Falcon-H1-7B-Instruct@41e72f27effb",
+      "whole_tree_verified": false
+     },
+     "prior_odyssey_i": {
+      "oxx": "O001",
+      "seal": "receipts/odyssey-i/O001_PATIENT_SEAL.json",
+      "sealed_mechanisms": [
+       "external-science",
+       "ssm-accounting",
+       "sensitivity-map",
+       "gravity-hybrid",
+       "gravity-aggressive-hybrid",
+       "nx-state-hybrid"
+      ],
+      "state": "RETIRED",
+      "status": "VERIFIED",
+      "weights_canonical": "/Users/scammermike/.cache/huggingface/hub/models--tiiuae--Falcon-H1-7B-Instruct/snapshots/41e72f27effbab80cd45b6e884688452253a3686"
+     },
+     "purpose": "small dense alternate architecture for transfer",
+     "ready": false,
+     "ready_reason": "ModelLake manifest is partial (n_sha256_verified=5 n_files=13); not a sealed specimen",
+     "repo": "tiiuae/Falcon-H1-7B-Instruct",
+     "revision": "41e72f27effbab80cd45b6e884688452253a3686",
+     "role": "small_dense_alternate_architecture_transfer"
+    },
+    {
+     "architecture_family": "dense_transformer",
+     "identity_source": "odyssey_i_O004+modellake_partial",
+     "modellake": {
+      "stale_partial": {
+       "action": "REPORT_ONLY_NO_DELETE",
+       "active_process_evidence": false,
+       "age_s": 129994.4,
+       "candidate_stale": true,
+       "path": "/Volumes/corpdrive/hawking-modellake/partial/mistralai--Mistral-Small-3.1-24B-Instruct-2503@68faf511d618"
+      }
+     },
+     "prior_odyssey_i": {
+      "oxx": "O004",
+      "seal": "receipts/odyssey-i/O004_PATIENT_SEAL.json",
+      "sealed_mechanisms": [
+       "external-science",
+       "sensitivity-map",
+       "gravity-dense",
+       "gravity-aggressive-dense",
+       "nx-dense"
+      ],
+      "state": "RETIRED",
+      "status": "VERIFIED",
+      "weights_canonical": "/Users/scammermike/.cache/huggingface/hub/models--mistralai--Mistral-Small-3.1-24B-Instruct-2503/snapshots/68faf511d618ef198fef186659617cfd2eb8e33a"
+     },
+     "purpose": "mid-size dense for compiler",
+     "ready": false,
+     "ready_reason": "identity known but specimen is not in the ModelLake specimens listing",
+     "repo": "mistralai/Mistral-Small-3.1-24B-Instruct-2503",
+     "revision": "68faf511d618ef198fef186659617cfd2eb8e33a",
+     "role": "mid_size_dense_compiler"
+    },
+    {
+     "architecture_family": "dense_hybrid_transformer",
+     "identity_source": "odyssey2_law_store.SCHOOLS.Qwen27",
+     "modellake": {},
+     "purpose": "Qwen27 for mature physical",
+     "ready": false,
+     "ready_reason": "identity known but specimen is not in the ModelLake specimens listing",
+     "repo": "Qwen3.8-27B",
+     "revision": null,
+     "role": "qwen27_mature_physical",
+     "school": {
+      "aliases": [
+       "qwen3.8-27b-abliterated",
+       "Qwen3.8-27B",
+       "Qwen3.8-27B sealed resident / NOETIC_PARENT_A",
+       "NOETIC_PARENT_A"
+      ],
+      "architecture_family": "dense_hybrid_transformer",
+      "map_label": "Qwen3.8-27B sealed resident / NOETIC_PARENT_A",
+      "role_in_map": "model_a",
+      "school": "Qwen27",
+      "source_model": "Qwen3.8-27B"
+     }
+    },
+    {
+     "architecture_family": "qwen4_exp",
+     "identity_source": "hcli.flash_next pin + modellake census + odyssey2 school",
+     "modellake": {
+      "census_qualification": "MODELLAKE_CENSUS_PINNED_FLASH_IDENTITY_NO_ACQUISITION",
+      "in_specimens_listing": false,
+      "manifest_path": null,
+      "n_files": null,
+      "n_sha256_verified": 0,
+      "n_size_only_verified": null,
+      "published_as_verified": false,
+      "repo": "Qwen/Qwen3.8-Flash-Next",
+      "resolved_sha": "34567a4712bc9766c4449e2e98e4468bfa24d915",
+      "revision": "34567a4712bc9766c4449e2e98e4468bfa24d915",
+      "source": "flash_pinned_census",
+      "specimen_path": "/Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc",
+      "whole_tree_verified": false
+     },
+     "purpose": "Flash for heterogeneous frontier",
+     "ready": false,
+     "ready_reason": "ModelLake pin exists but the specimen is not published as verified",
+     "repo": "Qwen/Qwen3.8-Flash-Next",
+     "revision": "34567a4712bc9766c4449e2e98e4468bfa24d915",
+     "role": "flash_heterogeneous_frontier",
+     "school": {
+      "aliases": [
+       "Flash",
+       "Qwen/Qwen3.8-Flash-Next",
+       "Qwen3.8-Flash-Next",
+       "qwen4_exp"
+      ],
+      "architecture_family": "qwen4_exp",
+      "map_label": "Qwen/Qwen3.8-Flash-Next pinned ModelLake source",
+      "physical_status": "metadata_only_weights_not_present",
+      "role_in_map": "model_b",
+      "school": "Flash",
+      "source_model": "Qwen/Qwen3.8-Flash-Next"
+     }
+    }
+   ],
+   "schema": "hawking.future.odyssey_i.specimen_curriculum.v1"
+  },
+  "first_workgraphs": {
+   "listen_stages": [
+    "phase_ii_transfer",
+    "phase_iii_attack"
+   ],
+   "n_units": 15,
+   "phase_listen": {
+    "barrier": null,
+    "global_barrier": false,
+    "no_era_vi": true,
+    "no_odyssey_iv": true,
+    "odysseys": [
+     "I WHAT IS TRUE?",
+     "II WHAT DID HAWKING ALREADY LEARN?",
+     "III WHERE IS HAWKING WRONG?"
+    ],
+    "phase_ii_depends_on": [
+     "odyssey-i.wg.qwen3-0-6b@c1899de289a0.laws"
+    ],
+    "phase_ii_depends_on_phase_iii": false,
+    "phase_iii_depends_on": [
+     "odyssey-i.wg.qwen3-0-6b@c1899de289a0.laws"
+    ],
+    "phase_iii_depends_on_phase_ii": false,
+    "rule": "once Phase I emits a law, Phase II may transfer it and Phase III may attack it. There is no global barrier between II and III."
+   },
+   "specimen": {
+    "repo": "Qwen/Qwen3-0.6B",
+    "revision": "c1899de289a04d12100db370d81485cdf75e47ca",
+    "slug": "qwen3-0-6b@c1899de289a0"
+   },
+   "stages": [
+    "specimen_verification",
+    "architecture_fingerprint",
+    "doctor",
+    "gravity",
+    "representation_search",
+    "physical_profiling",
+    "nr",
+    "nx",
+    "native_execution",
+    "capability",
+    "pareto",
+    "laws",
+    "scars"
+   ],
+   "units": [
+    {
+     "assigned_backend": null,
+     "assigned_runtime": null,
+     "attempts": 0,
+     "backend_task_id": null,
+     "blocked_reason": null,
+     "claim_boundary": "WorkUnit is a proposal; receipt and protected capability gates remain authoritative",
+     "classification": "STATIC_ONLY",
+     "content_hash": "ec74958097a5f4d807ce0a72503c78384695fc3977b176f73fe75965dd3828a7",
+     "dependencies": [
+      "odyssey-i.wg.qwen3-0-6b@c1899de289a0.specimen_verification"
+     ],
+     "description": "Odyssey I first WorkGraph stage architecture_fingerprint for Qwen/Qwen3-0.6B@c1899de289a04d12100db370d81485cdf75e47ca",
+     "effect_class": "READ_ONLY",
+     "era": "I",
+     "failure_context": null,
+     "finished_at": null,
+     "id": "odyssey-i.wg.qwen3-0-6b@c1899de289a0.architecture_fingerprint",
+     "odyssey": "I",
+     "output_receipt_path": "receipts/future/ODYSSEY_I_ARCHITECTURE_FINGERPRINT_qwen3-0-6b@c1899de289a0.json",
+     "preferred_backend": null,
+     "provider": "future.odyssey_launch",
+     "ready_at": null,
+     "repair_depth": 0,
+     "repair_exhausted": false,
+     "repair_reason": null,
+     "repair_root": null,
+     "repairs": null,
+     "requires_quiescence": false,
+     "resource_class": "STATIC_ANALYSIS",
+     "role": "science",
+     "running_at": null,
+     "sleeping": false,
+     "species": "odyssey_i_first_workgraph",
+     "specimen_repo": "Qwen/Qwen3-0.6B",
+     "specimen_revision": "c1899de289a04d12100db370d81485cdf75e47ca",
+     "stage": "architecture_fingerprint",
+     "status": "pending",
+     "verification": null,
+     "verifier": "future.odyssey_launch.workgraph.architecture_fingerprint:qwen3-0-6b@c1899de289a0",
+     "workspace": "repo-root"
+    },
+    {
+     "assigned_backend": null,
+     "assigned_runtime": null,
+     "attempts": 0,
+     "backend_task_id": null,
+     "blocked_reason": "SLEEPING: hardware is not qualified on this host; HCLI wakes this unit when the protected GPU lane qualifies. Not a synthetic result.",
+     "claim_boundary": "WorkUnit is a proposal; receipt and protected capability gates remain authoritative",
+     "classification": "SLEEPING",
+     "content_hash": "cb26c44079cc656422b12e29cc87f0b97857e6736e9de16c7cb14f2700c82430",
+     "dependencies": [
+      "odyssey-i.wg.qwen3-0-6b@c1899de289a0.native_execution"
+     ],
+     "description": "Odyssey I first WorkGraph stage capability for Qwen/Qwen3-0.6B@c1899de289a04d12100db370d81485cdf75e47ca",
+     "effect_class": "READ_ONLY",
+     "era": "I",
+     "failure_context": null,
+     "finished_at": null,
+     "id": "odyssey-i.wg.qwen3-0-6b@c1899de289a0.capability",
+     "odyssey": "I",
+     "output_receipt_path": "receipts/future/ODYSSEY_I_CAPABILITY_qwen3-0-6b@c1899de289a0.json",
+     "preferred_backend": null,
+     "provider": "future.odyssey_launch",
+     "ready_at": null,
+     "repair_depth": 0,
+     "repair_exhausted": false,
+     "repair_reason": null,
+     "repair_root": null,
+     "repairs": null,
+     "requires_quiescence": true,
+     "resource_class": "GPU_EXCLUSIVE",
+     "role": "science",
+     "running_at": null,
+     "sleeping": true,
+     "species": "odyssey_i_first_workgraph",
+     "specimen_repo": "Qwen/Qwen3-0.6B",
+     "specimen_revision": "c1899de289a04d12100db370d81485cdf75e47ca",
+     "stage": "capability",
+     "status": "sleeping",
+     "verification": null,
+     "verifier": "future.odyssey_launch.workgraph.capability:qwen3-0-6b@c1899de289a0",
+     "workspace": "repo-root"
+    },
+    {
+     "assigned_backend": null,
+     "assigned_runtime": null,
+     "attempts": 0,
+     "backend_task_id": null,
+     "blocked_reason": null,
+     "claim_boundary": "WorkUnit is a proposal; receipt and protected capability gates remain authoritative",
+     "classification": "STATIC_ONLY",
+     "content_hash": "a025205c5c4d090137be46301531ff7564b17e16033f27d4e889688c2ef93547",
+     "dependencies": [
+      "odyssey-i.wg.qwen3-0-6b@c1899de289a0.architecture_fingerprint"
+     ],
+     "description": "Odyssey I first WorkGraph stage doctor for Qwen/Qwen3-0.6B@c1899de289a04d12100db370d81485cdf75e47ca",
+     "effect_class": "READ_ONLY",
+     "era": "I",
+     "failure_context": null,
+     "finished_at": null,
+     "id": "odyssey-i.wg.qwen3-0-6b@c1899de289a0.doctor",
+     "odyssey": "I",
+     "output_receipt_path": "receipts/future/ODYSSEY_I_DOCTOR_qwen3-0-6b@c1899de289a0.json",
+     "preferred_backend": null,
+     "provider": "future.odyssey_launch",
+     "ready_at": null,
+     "repair_depth": 0,
+     "repair_exhausted": false,
+     "repair_reason": null,
+     "repair_root": null,
+     "repairs": null,
+     "requires_quiescence": false,
+     "resource_class": "STATIC_ANALYSIS",
+     "role": "science",
+     "running_at": null,
+     "sleeping": false,
+     "species": "odyssey_i_first_workgraph",
+     "specimen_repo": "Qwen/Qwen3-0.6B",
+     "specimen_revision": "c1899de289a04d12100db370d81485cdf75e47ca",
+     "stage": "doctor",
+     "status": "pending",
+     "verification": null,
+     "verifier": "future.odyssey_launch.workgraph.doctor:qwen3-0-6b@c1899de289a0",
+     "workspace": "repo-root"
+    },
+    {
+     "assigned_backend": null,
+     "assigned_runtime": null,
+     "attempts": 0,
+     "backend_task_id": null,
+     "blocked_reason": null,
+     "claim_boundary": "WorkUnit is a proposal; receipt and protected capability gates remain authoritative",
+     "classification": "STATIC_ONLY",
+     "content_hash": "ae7371584b15e647d99b2b87dbc9f4c59b218be3c2128f50115d15e1cbf4df41",
+     "dependencies": [
+      "odyssey-i.wg.qwen3-0-6b@c1899de289a0.doctor"
+     ],
+     "description": "Odyssey I first WorkGraph stage gravity for Qwen/Qwen3-0.6B@c1899de289a04d12100db370d81485cdf75e47ca",
+     "effect_class": "READ_ONLY",
+     "era": "I",
+     "failure_context": null,
+     "finished_at": null,
+     "id": "odyssey-i.wg.qwen3-0-6b@c1899de289a0.gravity",
+     "odyssey": "I",
+     "output_receipt_path": "receipts/future/ODYSSEY_I_GRAVITY_qwen3-0-6b@c1899de289a0.json",
+     "preferred_backend": null,
+     "provider": "future.odyssey_launch",
+     "ready_at": null,
+     "repair_depth": 0,
+     "repair_exhausted": false,
+     "repair_reason": null,
+     "repair_root": null,
+     "repairs": null,
+     "requires_quiescence": false,
+     "resource_class": "STATIC_ANALYSIS",
+     "role": "science",
+     "running_at": null,
+     "sleeping": false,
+     "species": "odyssey_i_first_workgraph",
+     "specimen_repo": "Qwen/Qwen3-0.6B",
+     "specimen_revision": "c1899de289a04d12100db370d81485cdf75e47ca",
+     "stage": "gravity",
+     "status": "pending",
+     "verification": null,
+     "verifier": "future.odyssey_launch.workgraph.gravity:qwen3-0-6b@c1899de289a0",
+     "workspace": "repo-root"
+    },
+    {
+     "assigned_backend": null,
+     "assigned_runtime": null,
+     "attempts": 0,
+     "backend_task_id": null,
+     "blocked_reason": null,
+     "claim_boundary": "WorkUnit is a proposal; receipt and protected capability gates remain authoritative",
+     "classification": "STATIC_ONLY",
+     "content_hash": "f03e99589c4e01a090c5d8ec77c1598ee4f873e3826dfb06672fd68460abc17b",
+     "dependencies": [
+      "odyssey-i.wg.qwen3-0-6b@c1899de289a0.pareto"
+     ],
+     "description": "Odyssey I first WorkGraph stage laws for Qwen/Qwen3-0.6B@c1899de289a04d12100db370d81485cdf75e47ca",
+     "effect_class": "READ_ONLY",
+     "era": "I",
+     "failure_context": null,
+     "finished_at": null,
+     "id": "odyssey-i.wg.qwen3-0-6b@c1899de289a0.laws",
+     "odyssey": "I",
+     "output_receipt_path": "receipts/future/ODYSSEY_I_LAWS_qwen3-0-6b@c1899de289a0.json",
+     "preferred_backend": null,
+     "provider": "future.odyssey_launch",
+     "ready_at": null,
+     "repair_depth": 0,
+     "repair_exhausted": false,
+     "repair_reason": null,
+     "repair_root": null,
+     "repairs": null,
+     "requires_quiescence": false,
+     "resource_class": "STATIC_ANALYSIS",
+     "role": "science",
+     "running_at": null,
+     "sleeping": false,
+     "species": "odyssey_i_first_workgraph",
+     "specimen_repo": "Qwen/Qwen3-0.6B",
+     "specimen_revision": "c1899de289a04d12100db370d81485cdf75e47ca",
+     "stage": "laws",
+     "status": "pending",
+     "verification": null,
+     "verifier": "future.odyssey_launch.workgraph.laws:qwen3-0-6b@c1899de289a0",
+     "workspace": "repo-root"
+    },
+    {
+     "assigned_backend": null,
+     "assigned_runtime": null,
+     "attempts": 0,
+     "backend_task_id": null,
+     "blocked_reason": "SLEEPING: hardware is not qualified on this host; HCLI wakes this unit when the protected GPU lane qualifies. Not a synthetic result.",
+     "claim_boundary": "WorkUnit is a proposal; receipt and protected capability gates remain authoritative",
+     "classification": "SLEEPING",
+     "content_hash": "c5ccefbaab7e1a13b3bfe1356d94b6d18bde2ed64944aead40702a797e0ca4c4",
+     "dependencies": [
+      "odyssey-i.wg.qwen3-0-6b@c1899de289a0.nx"
+     ],
+     "description": "Odyssey I first WorkGraph stage native_execution for Qwen/Qwen3-0.6B@c1899de289a04d12100db370d81485cdf75e47ca",
+     "effect_class": "READ_ONLY",
+     "era": "I",
+     "failure_context": null,
+     "finished_at": null,
+     "id": "odyssey-i.wg.qwen3-0-6b@c1899de289a0.native_execution",
+     "odyssey": "I",
+     "output_receipt_path": "receipts/future/ODYSSEY_I_NATIVE_EXECUTION_qwen3-0-6b@c1899de289a0.json",
+     "preferred_backend": null,
+     "provider": "future.odyssey_launch",
+     "ready_at": null,
+     "repair_depth": 0,
+     "repair_exhausted": false,
+     "repair_reason": null,
+     "repair_root": null,
+     "repairs": null,
+     "requires_quiescence": true,
+     "resource_class": "GPU_EXCLUSIVE",
+     "role": "science",
+     "running_at": null,
+     "sleeping": true,
+     "species": "odyssey_i_first_workgraph",
+     "specimen_repo": "Qwen/Qwen3-0.6B",
+     "specimen_revision": "c1899de289a04d12100db370d81485cdf75e47ca",
+     "stage": "native_execution",
+     "status": "sleeping",
+     "verification": null,
+     "verifier": "future.odyssey_launch.workgraph.native_execution:qwen3-0-6b@c1899de289a0",
+     "workspace": "repo-root"
+    },
+    {
+     "assigned_backend": null,
+     "assigned_runtime": null,
+     "attempts": 0,
+     "backend_task_id": null,
+     "blocked_reason": null,
+     "claim_boundary": "WorkUnit is a proposal; receipt and protected capability gates remain authoritative",
+     "classification": "STATIC_ONLY",
+     "content_hash": "d423025d0da17dedc0ab7f3f03243a8b0f2ef835d4dfbcff52f30971da6cdd69",
+     "dependencies": [
+      "odyssey-i.wg.qwen3-0-6b@c1899de289a0.physical_profiling"
+     ],
+     "description": "Odyssey I first WorkGraph stage nr for Qwen/Qwen3-0.6B@c1899de289a04d12100db370d81485cdf75e47ca",
+     "effect_class": "READ_ONLY",
+     "era": "I",
+     "failure_context": null,
+     "finished_at": null,
+     "id": "odyssey-i.wg.qwen3-0-6b@c1899de289a0.nr",
+     "odyssey": "I",
+     "output_receipt_path": "receipts/future/ODYSSEY_I_NR_qwen3-0-6b@c1899de289a0.json",
+     "preferred_backend": null,
+     "provider": "future.odyssey_launch",
+     "ready_at": null,
+     "repair_depth": 0,
+     "repair_exhausted": false,
+     "repair_reason": null,
+     "repair_root": null,
+     "repairs": null,
+     "requires_quiescence": false,
+     "resource_class": "COMPILE",
+     "role": "science",
+     "running_at": null,
+     "sleeping": false,
+     "species": "odyssey_i_first_workgraph",
+     "specimen_repo": "Qwen/Qwen3-0.6B",
+     "specimen_revision": "c1899de289a04d12100db370d81485cdf75e47ca",
+     "stage": "nr",
+     "status": "pending",
+     "verification": null,
+     "verifier": "future.odyssey_launch.workgraph.nr:qwen3-0-6b@c1899de289a0",
+     "workspace": "repo-root"
+    },
+    {
+     "assigned_backend": null,
+     "assigned_runtime": null,
+     "attempts": 0,
+     "backend_task_id": null,
+     "blocked_reason": "SLEEPING: hardware is not qualified on this host; HCLI wakes this unit when the protected GPU lane qualifies. Not a synthetic result.",
+     "claim_boundary": "WorkUnit is a proposal; receipt and protected capability gates remain authoritative",
+     "classification": "SLEEPING",
+     "content_hash": "fddfbb510ee5645011cae7214deea135cee93681b8e977819fbe8d7643933200",
+     "dependencies": [
+      "odyssey-i.wg.qwen3-0-6b@c1899de289a0.nr"
+     ],
+     "description": "Odyssey I first WorkGraph stage nx for Qwen/Qwen3-0.6B@c1899de289a04d12100db370d81485cdf75e47ca",
+     "effect_class": "READ_ONLY",
+     "era": "I",
+     "failure_context": null,
+     "finished_at": null,
+     "id": "odyssey-i.wg.qwen3-0-6b@c1899de289a0.nx",
+     "odyssey": "I",
+     "output_receipt_path": "receipts/future/ODYSSEY_I_NX_qwen3-0-6b@c1899de289a0.json",
+     "preferred_backend": null,
+     "provider": "future.odyssey_launch",
+     "ready_at": null,
+     "repair_depth": 0,
+     "repair_exhausted": false,
+     "repair_reason": null,
+     "repair_root": null,
+     "repairs": null,
+     "requires_quiescence": true,
+     "resource_class": "GPU_EXCLUSIVE",
+     "role": "science",
+     "running_at": null,
+     "sleeping": true,
+     "species": "odyssey_i_first_workgraph",
+     "specimen_repo": "Qwen/Qwen3-0.6B",
+     "specimen_revision": "c1899de289a04d12100db370d81485cdf75e47ca",
+     "stage": "nx",
+     "status": "sleeping",
+     "verification": null,
+     "verifier": "future.odyssey_launch.workgraph.nx:qwen3-0-6b@c1899de289a0",
+     "workspace": "repo-root"
+    },
+    {
+     "assigned_backend": null,
+     "assigned_runtime": null,
+     "attempts": 0,
+     "backend_task_id": null,
+     "blocked_reason": null,
+     "claim_boundary": "WorkUnit is a proposal; receipt and protected capability gates remain authoritative",
+     "classification": "STATIC_ONLY",
+     "content_hash": "9773b9e8e106e65d5d5cb551628930db516a73fc53c8f48ff413c9b08ce6c982",
+     "dependencies": [
+      "odyssey-i.wg.qwen3-0-6b@c1899de289a0.capability"
+     ],
+     "description": "Odyssey I first WorkGraph stage pareto for Qwen/Qwen3-0.6B@c1899de289a04d12100db370d81485cdf75e47ca",
+     "effect_class": "READ_ONLY",
+     "era": "I",
+     "failure_context": null,
+     "finished_at": null,
+     "id": "odyssey-i.wg.qwen3-0-6b@c1899de289a0.pareto",
+     "odyssey": "I",
+     "output_receipt_path": "receipts/future/ODYSSEY_I_PARETO_qwen3-0-6b@c1899de289a0.json",
+     "preferred_backend": null,
+     "provider": "future.odyssey_launch",
+     "ready_at": null,
+     "repair_depth": 0,
+     "repair_exhausted": false,
+     "repair_reason": null,
+     "repair_root": null,
+     "repairs": null,
+     "requires_quiescence": false,
+     "resource_class": "STATIC_ANALYSIS",
+     "role": "science",
+     "running_at": null,
+     "sleeping": false,
+     "species": "odyssey_i_first_workgraph",
+     "specimen_repo": "Qwen/Qwen3-0.6B",
+     "specimen_revision": "c1899de289a04d12100db370d81485cdf75e47ca",
+     "stage": "pareto",
+     "status": "pending",
+     "verification": null,
+     "verifier": "future.odyssey_launch.workgraph.pareto:qwen3-0-6b@c1899de289a0",
+     "workspace": "repo-root"
+    },
+    {
+     "assigned_backend": null,
+     "assigned_runtime": null,
+     "attempts": 0,
+     "backend_task_id": null,
+     "blocked_reason": null,
+     "claim_boundary": "WorkUnit is a proposal; receipt and protected capability gates remain authoritative",
+     "classification": "STATIC_ONLY",
+     "content_hash": "374a42e60cec6bb0da57dfdddd9343d2ffd8f80b57c91b44f440dcb7bd0a078c",
+     "dependencies": [
+      "odyssey-i.wg.qwen3-0-6b@c1899de289a0.laws"
+     ],
+     "description": "Odyssey II listens concurrently: once Phase I emits a law, this unit may run. No global barrier. Specimen Qwen/Qwen3-0.6B.",
+     "effect_class": "READ_ONLY",
+     "era": "III",
+     "failure_context": null,
+     "finished_at": null,
+     "id": "odyssey-i.wg.qwen3-0-6b@c1899de289a0.phase_ii_transfer",
+     "listens_on": "phase_i_law_emission",
+     "odyssey": "II",
+     "preferred_backend": null,
+     "provider": "future.odyssey_launch",
+     "ready_at": null,
+     "repair_depth": 0,
+     "repair_exhausted": false,
+     "repair_reason": null,
+     "repair_root": null,
+     "repairs": null,
+     "requires_quiescence": false,
+     "resource_class": "STATIC_ANALYSIS",
+     "role": "science",
+     "running_at": null,
+     "species": "odyssey_ii_transfer_experiment",
+     "specimen_repo": "Qwen/Qwen3-0.6B",
+     "specimen_revision": "c1899de289a04d12100db370d81485cdf75e47ca",
+     "stage": "phase_ii_transfer",
+     "status": "pending",
+     "verification": null,
+     "verifier": "future.odyssey_launch.workgraph.phase_ii_transfer:qwen3-0-6b@c1899de289a0",
+     "workspace": "repo-root"
+    },
+    {
+     "assigned_backend": null,
+     "assigned_runtime": null,
+     "attempts": 0,
+     "backend_task_id": null,
+     "blocked_reason": null,
+     "claim_boundary": "WorkUnit is a proposal; receipt and protected capability gates remain authoritative",
+     "classification": "STATIC_ONLY",
+     "content_hash": "4cd726be2123f3dc26a75d2dfe55c55b2af294aced456b7bd04cd027e86f3672",
+     "dependencies": [
+      "odyssey-i.wg.qwen3-0-6b@c1899de289a0.laws"
+     ],
+     "description": "Odyssey III listens concurrently: once Phase I emits a law, this unit may run. No global barrier. Specimen Qwen/Qwen3-0.6B.",
+     "effect_class": "READ_ONLY",
+     "era": "III",
+     "failure_context": null,
+     "finished_at": null,
+     "id": "odyssey-i.wg.qwen3-0-6b@c1899de289a0.phase_iii_attack",
+     "listens_on": "phase_i_law_emission",
+     "odyssey": "III",
+     "preferred_backend": null,
+     "provider": "future.odyssey_launch",
+     "ready_at": null,
+     "repair_depth": 0,
+     "repair_exhausted": false,
+     "repair_reason": null,
+     "repair_root": null,
+     "repairs": null,
+     "requires_quiescence": false,
+     "resource_class": "STATIC_ANALYSIS",
+     "role": "science",
+     "running_at": null,
+     "species": "odyssey_iii_adversarial_experiment",
+     "specimen_repo": "Qwen/Qwen3-0.6B",
+     "specimen_revision": "c1899de289a04d12100db370d81485cdf75e47ca",
+     "stage": "phase_iii_attack",
+     "status": "pending",
+     "verification": null,
+     "verifier": "future.odyssey_launch.workgraph.phase_iii_attack:qwen3-0-6b@c1899de289a0",
+     "workspace": "repo-root"
+    },
+    {
+     "assigned_backend": null,
+     "assigned_runtime": null,
+     "attempts": 0,
+     "backend_task_id": null,
+     "blocked_reason": "SLEEPING: hardware is not qualified on this host; HCLI wakes this unit when the protected GPU lane qualifies. Not a synthetic result.",
+     "claim_boundary": "WorkUnit is a proposal; receipt and protected capability gates remain authoritative",
+     "classification": "SLEEPING",
+     "content_hash": "2644abca1a21faf9c2c77c437312fb265e7d894e30254eb381f07b5ac2e1aa15",
+     "dependencies": [
+      "odyssey-i.wg.qwen3-0-6b@c1899de289a0.representation_search"
+     ],
+     "description": "Odyssey I first WorkGraph stage physical_profiling for Qwen/Qwen3-0.6B@c1899de289a04d12100db370d81485cdf75e47ca",
+     "effect_class": "READ_ONLY",
+     "era": "I",
+     "failure_context": null,
+     "finished_at": null,
+     "id": "odyssey-i.wg.qwen3-0-6b@c1899de289a0.physical_profiling",
+     "odyssey": "I",
+     "output_receipt_path": "receipts/future/ODYSSEY_I_PHYSICAL_PROFILING_qwen3-0-6b@c1899de289a0.json",
+     "preferred_backend": null,
+     "provider": "future.odyssey_launch",
+     "ready_at": null,
+     "repair_depth": 0,
+     "repair_exhausted": false,
+     "repair_reason": null,
+     "repair_root": null,
+     "repairs": null,
+     "requires_quiescence": true,
+     "resource_class": "GPU_EXCLUSIVE",
+     "role": "science",
+     "running_at": null,
+     "sleeping": true,
+     "species": "odyssey_i_first_workgraph",
+     "specimen_repo": "Qwen/Qwen3-0.6B",
+     "specimen_revision": "c1899de289a04d12100db370d81485cdf75e47ca",
+     "stage": "physical_profiling",
+     "status": "sleeping",
+     "verification": null,
+     "verifier": "future.odyssey_launch.workgraph.physical_profiling:qwen3-0-6b@c1899de289a0",
+     "workspace": "repo-root"
+    },
+    {
+     "assigned_backend": null,
+     "assigned_runtime": null,
+     "attempts": 0,
+     "backend_task_id": null,
+     "blocked_reason": null,
+     "claim_boundary": "WorkUnit is a proposal; receipt and protected capability gates remain authoritative",
+     "classification": "STATIC_ONLY",
+     "content_hash": "652dffa2e0bc33837570980ab58777b4b770b58964ca2dc9fe0962310149a6f9",
+     "dependencies": [
+      "odyssey-i.wg.qwen3-0-6b@c1899de289a0.gravity"
+     ],
+     "description": "Odyssey I first WorkGraph stage representation_search for Qwen/Qwen3-0.6B@c1899de289a04d12100db370d81485cdf75e47ca",
+     "effect_class": "READ_ONLY",
+     "era": "I",
+     "failure_context": null,
+     "finished_at": null,
+     "id": "odyssey-i.wg.qwen3-0-6b@c1899de289a0.representation_search",
+     "odyssey": "I",
+     "output_receipt_path": "receipts/future/ODYSSEY_I_REPRESENTATION_SEARCH_qwen3-0-6b@c1899de289a0.json",
+     "preferred_backend": null,
+     "provider": "future.odyssey_launch",
+     "ready_at": null,
+     "repair_depth": 0,
+     "repair_exhausted": false,
+     "repair_reason": null,
+     "repair_root": null,
+     "repairs": null,
+     "requires_quiescence": false,
+     "resource_class": "STATIC_ANALYSIS",
+     "role": "science",
+     "running_at": null,
+     "sleeping": false,
+     "species": "odyssey_i_first_workgraph",
+     "specimen_repo": "Qwen/Qwen3-0.6B",
+     "specimen_revision": "c1899de289a04d12100db370d81485cdf75e47ca",
+     "stage": "representation_search",
+     "status": "pending",
+     "verification": null,
+     "verifier": "future.odyssey_launch.workgraph.representation_search:qwen3-0-6b@c1899de289a0",
+     "workspace": "repo-root"
+    },
+    {
+     "assigned_backend": null,
+     "assigned_runtime": null,
+     "attempts": 0,
+     "backend_task_id": null,
+     "blocked_reason": null,
+     "claim_boundary": "WorkUnit is a proposal; receipt and protected capability gates remain authoritative",
+     "classification": "STATIC_ONLY",
+     "content_hash": "d93ba757ce779acdaad780a889af95aae40fb601dc383e05a5bbf3230b9b6475",
+     "dependencies": [
+      "odyssey-i.wg.qwen3-0-6b@c1899de289a0.laws"
+     ],
+     "description": "Odyssey I first WorkGraph stage scars for Qwen/Qwen3-0.6B@c1899de289a04d12100db370d81485cdf75e47ca",
+     "effect_class": "READ_ONLY",
+     "era": "I",
+     "failure_context": null,
+     "finished_at": null,
+     "id": "odyssey-i.wg.qwen3-0-6b@c1899de289a0.scars",
+     "odyssey": "I",
+     "output_receipt_path": "receipts/future/ODYSSEY_I_SCARS_qwen3-0-6b@c1899de289a0.json",
+     "preferred_backend": null,
+     "provider": "future.odyssey_launch",
+     "ready_at": null,
+     "repair_depth": 0,
+     "repair_exhausted": false,
+     "repair_reason": null,
+     "repair_root": null,
+     "repairs": null,
+     "requires_quiescence": false,
+     "resource_class": "STATIC_ANALYSIS",
+     "role": "science",
+     "running_at": null,
+     "sleeping": false,
+     "species": "odyssey_i_first_workgraph",
+     "specimen_repo": "Qwen/Qwen3-0.6B",
+     "specimen_revision": "c1899de289a04d12100db370d81485cdf75e47ca",
+     "stage": "scars",
+     "status": "pending",
+     "verification": null,
+     "verifier": "future.odyssey_launch.workgraph.scars:qwen3-0-6b@c1899de289a0",
+     "workspace": "repo-root"
+    },
+    {
+     "assigned_backend": null,
+     "assigned_runtime": null,
+     "attempts": 0,
+     "backend_task_id": null,
+     "blocked_reason": null,
+     "claim_boundary": "WorkUnit is a proposal; receipt and protected capability gates remain authoritative",
+     "classification": "STATIC_ONLY",
+     "content_hash": "06272da12b7206185a93b26a14008c6dab8a3a29b4a4d6a474316069ba7b35e4",
+     "dependencies": [],
+     "description": "Odyssey I first WorkGraph stage specimen_verification for Qwen/Qwen3-0.6B@c1899de289a04d12100db370d81485cdf75e47ca",
+     "effect_class": "READ_ONLY",
+     "era": "I",
+     "failure_context": null,
+     "finished_at": null,
+     "id": "odyssey-i.wg.qwen3-0-6b@c1899de289a0.specimen_verification",
+     "odyssey": "I",
+     "output_receipt_path": "receipts/future/ODYSSEY_I_SPECIMEN_VERIFICATION_qwen3-0-6b@c1899de289a0.json",
+     "preferred_backend": null,
+     "provider": "future.odyssey_launch",
+     "ready_at": null,
+     "repair_depth": 0,
+     "repair_exhausted": false,
+     "repair_reason": null,
+     "repair_root": null,
+     "repairs": null,
+     "requires_quiescence": false,
+     "resource_class": "STATIC_ANALYSIS",
+     "role": "science",
+     "running_at": null,
+     "sleeping": false,
+     "species": "odyssey_i_first_workgraph",
+     "specimen_repo": "Qwen/Qwen3-0.6B",
+     "specimen_revision": "c1899de289a04d12100db370d81485cdf75e47ca",
+     "stage": "specimen_verification",
+     "status": "pending",
+     "verification": null,
+     "verifier": "future.odyssey_launch.workgraph.specimen_verification:qwen3-0-6b@c1899de289a0",
+     "workspace": "repo-root"
+    }
+   ]
+  },
+  "gpu_authority": false,
+  "known_blockers": [
+   {
+    "holds": true,
+    "id": "sleep.no-gpu-authority",
+    "reason": "Sidecar has no GPU authority and does not invoke MetalContext. Handoff blockers record no protected GPU authority on this campaign.",
+    "sleeping": true
+   },
+   {
+    "holds": true,
+    "id": "sleep.metal-compiler",
+    "reason": "xcrun -f metal did not locate the Metal compiler",
+    "sleeping": true
+   },
+   {
+    "holds": true,
+    "id": "sleep.protected-bench-lock",
+    "reason": "lock file exists but no holder could be proven without flock (lsof status='OK' reason=None). fail closed: present=false. flock would be a seizure",
+    "sleeping": true
+   },
+   {
+    "holds": true,
+    "id": "sleep.machine-heavy",
+    "reason": "contamination_class='HEAVY'; sidecar will not SIGSTOP standing workers. HEAVY (or unknown) is not a protected window.",
+    "sleeping": true
+   },
+   {
+    "holds": true,
+    "id": "sleep.flash-nx-scaffold",
+    "reason": "FLASH_NX_COMPLETENESS_AUDIT seven_all_met=False nx_status='SEALED_METADATA_ONLY_NOT_FOR_PROMOTION' nr_v2.status='COMPLETE_HETEROGENEOUS_CANDIDATE_NOT_FOR_PROMOTION'. SCAFFOLD_ONLY / metadata seals are not a callable NX path.",
+    "sleeping": true
+   },
+   {
+    "holds": true,
+    "id": "sleep.teacher-capture",
+    "reason": "teacher capture executed=0/12 workunits; target_row_counts=[256]. Unrun capture is not a synthetic corpus.",
+    "sleeping": true
+   }
+  ],
+  "machine_genome": {
+   "arch": "arm64",
+   "genome_digest": "c2aa9de99036e68c98647d9b96ce43dcf2c0f816e3d41a1fe4d83e082d6b1e18",
+   "gpu_authority": false,
+   "knowledge_level": "PIN_ONLY",
+   "note": "digest cited; core counts and bytes from the NX seal are not copied (not a measurement claim)",
+   "os_family": "darwin",
+   "path_taken": "worktree",
+   "schema": "hawking.future.machine_genome_pin.v1",
+   "source": "/Users/scammermike/Downloads/hawking/receipts/future/evidence/FLASH_COMPLETE_V0.nx.json"
+  },
+  "next_refill_trigger": {
+   "does_not_refill_on": "a refused launch-gate re-run with the same unmet set",
+   "integration": "tools/future/frontiers.py \u2014 frontier objects a result must change, and the refill that follows",
+   "when": "a criterion flips from unmet to met, or a SLEEPING unit is woken because hardware qualified"
+  },
+  "no_era_vi": true,
+  "no_odyssey_iv": true,
+  "odyssey": "I WHAT IS TRUE?",
+  "phase_transition": "NOT_STARTED",
+  "resident_identity": {
+   "bound": false,
+   "found": true,
+   "integration_point": "tools/future/resident_identity.py \u2014 canonical resident declaration the launch receipt binds",
+   "kind": "resident",
+   "note": "Identity is not invented. A missing this-wave receipt stays unbound. HCLI prior gates, if found, are cited and are not this identity.",
+   "path_taken": "worktree",
+   "resolved": "/Users/scammermike/Downloads/hawking/receipts/future/RESIDENT_IDENTITY.json",
+   "schema": "hawking.future.resident_identity.v1",
+   "status": null
+  },
+  "resource_schedule": {
+   "by_resource_class": {
+    "COMPILE": {
+     "ids": [
+      "odyssey-i.wg.qwen3-0-6b@c1899de289a0.nr"
+     ],
+     "n": 1
+    },
+    "GPU_EXCLUSIVE": {
+     "ids": [
+      "odyssey-i.wg.qwen3-0-6b@c1899de289a0.capability",
+      "odyssey-i.wg.qwen3-0-6b@c1899de289a0.native_execution",
+      "odyssey-i.wg.qwen3-0-6b@c1899de289a0.nx",
+      "odyssey-i.wg.qwen3-0-6b@c1899de289a0.physical_profiling"
+     ],
+     "n": 4
+    },
+    "STATIC_ANALYSIS": {
+     "ids": [
+      "odyssey-i.wg.qwen3-0-6b@c1899de289a0.architecture_fingerprint",
+      "odyssey-i.wg.qwen3-0-6b@c1899de289a0.doctor",
+      "odyssey-i.wg.qwen3-0-6b@c1899de289a0.gravity",
+      "odyssey-i.wg.qwen3-0-6b@c1899de289a0.laws",
+      "odyssey-i.wg.qwen3-0-6b@c1899de289a0.pareto",
+      "odyssey-i.wg.qwen3-0-6b@c1899de289a0.phase_ii_transfer",
+      "odyssey-i.wg.qwen3-0-6b@c1899de289a0.phase_iii_attack",
+      "odyssey-i.wg.qwen3-0-6b@c1899de289a0.representation_search",
+      "odyssey-i.wg.qwen3-0-6b@c1899de289a0.scars",
+      "odyssey-i.wg.qwen3-0-6b@c1899de289a0.specimen_verification"
+     ],
+     "n": 10
+    }
+   },
+   "by_status": {
+    "pending": {
+     "ids": [
+      "odyssey-i.wg.qwen3-0-6b@c1899de289a0.architecture_fingerprint",
+      "odyssey-i.wg.qwen3-0-6b@c1899de289a0.doctor",
+      "odyssey-i.wg.qwen3-0-6b@c1899de289a0.gravity",
+      "odyssey-i.wg.qwen3-0-6b@c1899de289a0.laws",
+      "odyssey-i.wg.qwen3-0-6b@c1899de289a0.nr",
+      "odyssey-i.wg.qwen3-0-6b@c1899de289a0.pareto",
+      "odyssey-i.wg.qwen3-0-6b@c1899de289a0.phase_ii_transfer",
+      "odyssey-i.wg.qwen3-0-6b@c1899de289a0.phase_iii_attack",
+      "odyssey-i.wg.qwen3-0-6b@c1899de289a0.representation_search",
+      "odyssey-i.wg.qwen3-0-6b@c1899de289a0.scars",
+      "odyssey-i.wg.qwen3-0-6b@c1899de289a0.specimen_verification"
+     ],
+     "n": 11
+    },
+    "sleeping": {
+     "ids": [
+      "odyssey-i.wg.qwen3-0-6b@c1899de289a0.capability",
+      "odyssey-i.wg.qwen3-0-6b@c1899de289a0.native_execution",
+      "odyssey-i.wg.qwen3-0-6b@c1899de289a0.nx",
+      "odyssey-i.wg.qwen3-0-6b@c1899de289a0.physical_profiling"
+     ],
+     "n": 4
+    }
+   },
+   "gpu_authority": false,
+   "sleeping_are_not_results": true
+  },
+  "sandbox_identity": {
+   "bound": false,
+   "found": true,
+   "integration_point": "tools/future/sandbox.py \u2014 orchestrator sandbox identity the resident operates",
+   "kind": "sandbox",
+   "note": "Identity is not invented. A missing this-wave receipt stays unbound. HCLI prior gates, if found, are cited and are not this identity.",
+   "path_taken": "worktree",
+   "resolved": "/Users/scammermike/Downloads/hawking/receipts/headless/HCLI_AGENTOS_CHECKPOINT.json",
+   "schema": "hcli.agentos.program_checkpoint.v1",
+   "status": null
+  },
+  "schema": "hawking.future.odyssey_i_launch.v1",
+  "verdict": {
+   "allowed": false,
+   "met": [
+    "modellake_identity",
+    "negative_science",
+    "transfer_substrate",
+    "adversary_substrate",
+    "crash_recovery",
+    "receipts"
+   ],
+   "n_criteria": 16,
+   "n_met": 6,
+   "n_unmet": 10,
+   "rule": "every unmet criterion is named; the first failure does not hide the rest",
+   "unmet": [
+    "resident_autonomy_trial_pass",
+    "specimen_curriculum_ready",
+    "doctor_callable",
+    "gravity_callable",
+    "nr_nx_path_callable",
+    "evidence_hierarchy",
+    "workgraphs",
+    "self_refill",
+    "dirty_measurement",
+    "protected_scheduling"
+   ],
+   "verdict": "REFUSED"
+  },
+  "version": 1
+ },
+ "launch_receipt": {
+  "name": "ODYSSEY_I_LAUNCH.json",
+  "path": null,
+  "reason": "gate REFUSED; ODYSSEY_I_LAUNCH.json is a phase-transition receipt and is not written while any criterion is unmet",
+  "written": false
+ },
+ "measurement_class": "STATIC_ONLY",
+ "negative_findings": [
+  "verdict=REFUSED n_unmet=10 unmet=['resident_autonomy_trial_pass', 'specimen_curriculum_ready', 'doctor_callable', 'gravity_callable', 'nr_nx_path_callable', 'evidence_hierarchy', 'workgraphs', 'self_refill', 'dirty_measurement', 'protected_scheduling']",
+  "A gate that passed today would mistake 'Odyssey infrastructure ready' for 'Odyssey started'.",
+  "physical blocker sleep.no-gpu-authority: Sidecar has no GPU authority and does not invoke MetalContext. Handoff blockers record no protected GPU authority on this campaign.",
+  "physical blocker sleep.metal-compiler: xcrun -f metal did not locate the Metal compiler",
+  "physical blocker sleep.protected-bench-lock: lock file exists but no holder could be proven without flock (lsof status='OK' reason=None). fail closed: present=false. flock would be a seizure",
+  "physical blocker sleep.machine-heavy: contamination_class='HEAVY'; sidecar will not SIGSTOP standing workers. HEAVY (or unknown) is not a protected window.",
+  "physical blocker sleep.flash-nx-scaffold: FLASH_NX_COMPLETENESS_AUDIT seven_all_met=False nx_status='SEALED_METADATA_ONLY_NOT_FOR_PROMOTION' nr_v2.status='COMPLETE_HETEROGENEOUS_CANDIDATE_NOT_FOR_PROMOTION'. SCAFFOLD_ONLY / metadata seals are not a callable NX path.",
+  "physical blocker sleep.teacher-capture: teacher capture executed=0/12 workunits; target_row_counts=[256]. Unrun capture is not a synthetic corpus.",
+  "curriculum unready roles: ['very_small_dense_procedural_speed', 'small_dense_alternate_architecture_transfer', 'mid_size_dense_compiler', 'qwen27_mature_physical', 'flash_heterogeneous_frontier']",
+  "this-wave siblings are not imported; local interfaces are the integration points autonomy_trial, dirty_measure, evidence_dag, frontiers, protected_window, resident_api, resident_identity, sandbox, succession, super_resident, wakeup, workgraph"
+ ],
+ "no_era_vi": true,
+ "no_odyssey_iv": true,
+ "odyssey": "I WHAT IS TRUE?",
+ "odyssey_i_launch_written": false,
+ "odysseys": [
+  "I WHAT IS TRUE?",
+  "II WHAT DID HAWKING ALREADY LEARN?",
+  "III WHERE IS HAWKING WRONG?"
+ ],
+ "phase_transition": "NOT_STARTED",
+ "physical_blockers": [
+  {
+   "evidence": {
+    "gpu_authority": false,
+    "handoff_blockers": [
+     "No protected GPU authority in this campaign: every hardware quantity is UNKNOWN by rule, not by omission.",
+     "Flash has no source-independent complete NX. This is the dominant blocker: the count is read live from FLASH_NX_COMPLETENESS_AUDIT.json rather than pinned here, because Codex keeps adding candidates behind it -- it was 12 of 14 at campaign start and 27 of 28 Flash candidates by the end.",
+     "No U50 board, no CUDA node, no Core ML/ANE compiler environment: those fidelity levels and backends are declared UNAVAILABLE rather than simulated as if present."
+    ]
+   },
+   "holds": true,
+   "id": "sleep.no-gpu-authority",
+   "reason": "Sidecar has no GPU authority and does not invoke MetalContext. Handoff blockers record no protected GPU authority on this campaign.",
+   "sleeping": true,
+   "title": "No protected GPU / MetalContext not invoked",
+   "workunit_id": "odyssey-i.sleep.no-gpu-authority"
+  },
+  {
+   "evidence": {
+    "xcrun": {
+     "found": false,
+     "path": null,
+     "probed": true,
+     "returncode": 72,
+     "stderr": "xcrun: error: unable to find utility \"metal\", not a developer tool or in PATH\n"
+    }
+   },
+   "holds": true,
+   "id": "sleep.metal-compiler",
+   "reason": "xcrun -f metal did not locate the Metal compiler",
+   "sleeping": true,
+   "title": "Metal compiler under CommandLineTools",
+   "workunit_id": "odyssey-i.sleep.metal-compiler"
+  },
+  {
+   "evidence": {
+    "dry_run_stop": "lock file exists but no holder could be proven without flock (lsof status='OK' reason=None). fail closed: present=false. flock would be a seizure",
+    "lease_present": false,
+    "qualification_path_taken": "worktree"
+   },
+   "holds": true,
+   "id": "sleep.protected-bench-lock",
+   "reason": "lock file exists but no holder could be proven without flock (lsof status='OK' reason=None). fail closed: present=false. flock would be a seizure",
+   "sleeping": true,
+   "title": "Protected bench lock; holder pids unproven",
+   "workunit_id": "odyssey-i.sleep.protected-bench-lock"
+  },
+  {
+   "evidence": {
+    "contamination_class": "HEAVY",
+    "path_taken": "worktree"
+   },
+   "holds": true,
+   "id": "sleep.machine-heavy",
+   "reason": "contamination_class='HEAVY'; sidecar will not SIGSTOP standing workers. HEAVY (or unknown) is not a protected window.",
+   "sleeping": true,
+   "title": "Machine classified HEAVY; standing workers not quiesced",
+   "workunit_id": "odyssey-i.sleep.machine-heavy"
+  },
+  {
+   "evidence": {
+    "nr_v2_status": "COMPLETE_HETEROGENEOUS_CANDIDATE_NOT_FOR_PROMOTION",
+    "nx_status": "SEALED_METADATA_ONLY_NOT_FOR_PROMOTION",
+    "path_taken": "worktree",
+    "seven_all_met": false
+   },
+   "holds": true,
+   "id": "sleep.flash-nx-scaffold",
+   "reason": "FLASH_NX_COMPLETENESS_AUDIT seven_all_met=False nx_status='SEALED_METADATA_ONLY_NOT_FOR_PROMOTION' nr_v2.status='COMPLETE_HETEROGENEOUS_CANDIDATE_NOT_FOR_PROMOTION'. SCAFFOLD_ONLY / metadata seals are not a callable NX path.",
+   "sleeping": true,
+   "title": "Flash source-independent NX is not qualified",
+   "workunit_id": "odyssey-i.sleep.flash-nx-scaffold"
+  },
+  {
+   "evidence": {
+    "n_capture_workunits": 12,
+    "n_executed": 0,
+    "path_taken": "worktree",
+    "target_row_counts": [
+     256
+    ]
+   },
+   "holds": true,
+   "id": "sleep.teacher-capture",
+   "reason": "teacher capture executed=0/12 workunits; target_row_counts=[256]. Unrun capture is not a synthetic corpus.",
+   "sleeping": true,
+   "title": "Teacher capture has not run",
+   "workunit_id": "odyssey-i.sleep.teacher-capture"
+  }
+ ],
+ "recovered_implementation": {
+  "fork_decision": "extend nothing that already gated Odyssey I start; the package fence is a different campaign",
+  "hcli": {
+   "autonomy_gate": "hcli/agentos/autonomy_gate.py \u2014 control-plane A1\u2013A5, not Odyssey I start",
+   "doctor_gravity_markers": "hcli/doctor, hcli/gravity ownership markers",
+   "modellake_gate": "hcli/agentos/modellake_gate.py \u2014 identity census, no acquisition",
+   "modellake_receipts": "hcli/agentos/modellake_receipts.py \u2014 preferred census/supervision names",
+   "recovery": "hcli/agentos/recovery.py \u2014 process kill/resume",
+   "workunit": "hcli/workunit.py \u2014 units emitted through the real constructor"
+  },
+  "landed_future": {
+   "_common.write_receipt": "HardwareClaimError on numeric hardware fields",
+   "contamination": "machine-state class, HEAVY on this host",
+   "evidence_snapshot": "pinned Codex receipts",
+   "flash_nx_audit": "NR/NX completeness",
+   "negative_index": "negative science",
+   "odyssey2_law_store": "transfer substrate",
+   "odyssey3_adversary": "adversary substrate",
+   "qualification_pipeline": "protected lease fail-closed",
+   "repro_science": "crash/fault fail-closed",
+   "resident_optimizer": "propose/rank, never promote",
+   "teacher_corpus": "capture WorkUnits executed=false",
+   "workunit_species": "HCLI WorkUnit emission"
+  },
+  "prior_odyssey_i": {
+   "package_fence": "workspace/campaign/governance/odyssey/program/launch/ODYSSEY_LAUNCH.md is a different Odyssey (training-package fence, ODYSSEY_LAUNCH_AUTHORIZED=false). It is not this gate.",
+   "receipts": "receipts/odyssey-i/ patient/doctor/gravity/nx seals \u2014 recovered, not duplicated",
+   "tools": "tools/odyssey/ (READ-ONLY): doctor_tournament, decoding_gravity, state_gravity, modellake, resident_seal, protected_window, pareto_archive, noetic_compiler"
+  },
+  "this_module_existed": false
+ },
+ "resident_callable": {
+  "entry_point": "python3 tools/future/odyssey_launch.py --verify",
+  "fail_closed": "can_launch() is False while any criterion is unmet; unmet_criteria() names every unmet id; write_launch_if_passed() does not call write_receipt for ODYSSEY_I_LAUNCH.json on refuse; --launch exits 1; HardwareClaimError on numeric hardware fields; GPU units stay SLEEPING rather than inventing a result.",
+  "frontier_fed": "Odyssey I start frontier: a REFUSED gate keeps the frontier at NOT_STARTED; a pass would write ODYSSEY_I_LAUNCH.json and that is the only start mark. Next refill trigger is a criterion flip or a SLEEPING wakeup.",
+  "integration_points": {
+   "autonomy_trial": "tools/future/autonomy_trial.py \u2014 Odyssey I resident-orchestration trial pass receipt",
+   "dirty_measure": "tools/future/dirty_measure.py \u2014 dirty-class measurement that cannot launder into PROTECTED_ABSOLUTE",
+   "evidence_dag": "tools/future/evidence_dag.py \u2014 evidence DAG the resident walks; lattice alone is not the DAG",
+   "frontiers": "tools/future/frontiers.py \u2014 frontier objects a result must change, and the refill that follows",
+   "protected_window": "tools/future/protected_window.py \u2014 protected scheduling that does not seize Codex's GPU lock",
+   "resident_api": "tools/future/resident_api.py \u2014 discover/invoke surface HCLI uses instead of a human CLI",
+   "resident_identity": "tools/future/resident_identity.py \u2014 canonical resident declaration the launch receipt binds",
+   "sandbox": "tools/future/sandbox.py \u2014 orchestrator sandbox identity the resident operates",
+   "succession": "tools/future/succession.py \u2014 self-refill / next-work succession under resident control",
+   "super_resident": "tools/future/super_resident.py \u2014 HCLI super-resident operating the orchestrator sandbox",
+   "wakeup": "tools/future/wakeup.py \u2014 wake SLEEPING WorkUnits when hardware qualifies",
+   "workgraph": "tools/future/workgraph.py \u2014 WorkGraph runtime that admits, schedules and verifies the units this gate emits"
+  },
+  "launch_entry_point": "python3 tools/future/odyssey_launch.py --launch",
+  "phase_transition_receipt": "receipts/future/ODYSSEY_I_LAUNCH.json",
+  "receipt": "receipts/future/ODYSSEY_LAUNCH_GATE.json",
+  "this_wave_not_imported": [
+   "codex_behaviors",
+   "resident_api",
+   "workgraph",
+   "detached",
+   "wakeup",
+   "evidence_dag",
+   "scar_scheduling",
+   "dirty_measure",
+   "protected_window",
+   "sandbox",
+   "resident_identity",
+   "frontiers",
+   "succession",
+   "flash_schools",
+   "flash_nr_complete",
+   "super_resident",
+   "tabula",
+   "debugger",
+   "autonomy_trial"
+  ],
+  "verdict_now": "REFUSED",
+  "workunit_emitted": "odyssey-i.launch-gate plus first WorkGraph units and SLEEPING physical blockers"
+ },
+ "resource_schedule": {
+  "by_resource_class": {
+   "COMPILE": {
+    "ids": [
+     "odyssey-i.wg.qwen3-0-6b@c1899de289a0.nr"
+    ],
+    "n": 1
+   },
+   "GPU_EXCLUSIVE": {
+    "ids": [
+     "odyssey-i.wg.qwen3-0-6b@c1899de289a0.capability",
+     "odyssey-i.wg.qwen3-0-6b@c1899de289a0.native_execution",
+     "odyssey-i.wg.qwen3-0-6b@c1899de289a0.nx",
+     "odyssey-i.wg.qwen3-0-6b@c1899de289a0.physical_profiling"
+    ],
+    "n": 4
+   },
+   "STATIC_ANALYSIS": {
+    "ids": [
+     "odyssey-i.wg.qwen3-0-6b@c1899de289a0.architecture_fingerprint",
+     "odyssey-i.wg.qwen3-0-6b@c1899de289a0.doctor",
+     "odyssey-i.wg.qwen3-0-6b@c1899de289a0.gravity",
+     "odyssey-i.wg.qwen3-0-6b@c1899de289a0.laws",
+     "odyssey-i.wg.qwen3-0-6b@c1899de289a0.pareto",
+     "odyssey-i.wg.qwen3-0-6b@c1899de289a0.phase_ii_transfer",
+     "odyssey-i.wg.qwen3-0-6b@c1899de289a0.phase_iii_attack",
+     "odyssey-i.wg.qwen3-0-6b@c1899de289a0.representation_search",
+     "odyssey-i.wg.qwen3-0-6b@c1899de289a0.scars",
+     "odyssey-i.wg.qwen3-0-6b@c1899de289a0.specimen_verification"
+    ],
+    "n": 10
+   }
+  },
+  "by_status": {
+   "pending": {
+    "ids": [
+     "odyssey-i.wg.qwen3-0-6b@c1899de289a0.architecture_fingerprint",
+     "odyssey-i.wg.qwen3-0-6b@c1899de289a0.doctor",
+     "odyssey-i.wg.qwen3-0-6b@c1899de289a0.gravity",
+     "odyssey-i.wg.qwen3-0-6b@c1899de289a0.laws",
+     "odyssey-i.wg.qwen3-0-6b@c1899de289a0.nr",
+     "odyssey-i.wg.qwen3-0-6b@c1899de289a0.pareto",
+     "odyssey-i.wg.qwen3-0-6b@c1899de289a0.phase_ii_transfer",
+     "odyssey-i.wg.qwen3-0-6b@c1899de289a0.phase_iii_attack",
+     "odyssey-i.wg.qwen3-0-6b@c1899de289a0.representation_search",
+     "odyssey-i.wg.qwen3-0-6b@c1899de289a0.scars",
+     "odyssey-i.wg.qwen3-0-6b@c1899de289a0.specimen_verification"
+    ],
+    "n": 11
+   },
+   "sleeping": {
+    "ids": [
+     "odyssey-i.wg.qwen3-0-6b@c1899de289a0.capability",
+     "odyssey-i.wg.qwen3-0-6b@c1899de289a0.native_execution",
+     "odyssey-i.wg.qwen3-0-6b@c1899de289a0.nx",
+     "odyssey-i.wg.qwen3-0-6b@c1899de289a0.physical_profiling"
+    ],
+    "n": 4
+   }
+  },
+  "gpu_authority": false,
+  "sleeping_are_not_results": true
+ },
+ "schema": "hawking.future.odyssey_launch.v1",
+ "seal_sha256": "e849c440f9161d54b20e14c9efb08b5d07641463f5332793c813cfef03f454bd",
+ "sleeping_workunits": [
+  {
+   "assigned_backend": null,
+   "assigned_runtime": null,
+   "attempts": 0,
+   "backend_task_id": null,
+   "blocked_reason": "Sidecar has no GPU authority and does not invoke MetalContext. Handoff blockers record no protected GPU authority on this campaign.",
+   "claim_boundary": "WorkUnit is a proposal; receipt and protected capability gates remain authoritative",
+   "classification": "SLEEPING",
+   "content_hash": "c6e99d44d8a186e5caccd2ccd615a78b33cb62afdf92b70669e25d34fcb327aa",
+   "dependencies": [],
+   "description": "SLEEPING until hardware qualifies: No protected GPU / MetalContext not invoked",
+   "effect_class": "READ_ONLY",
+   "failure_context": null,
+   "finished_at": null,
+   "id": "odyssey-i.sleep.no-gpu-authority",
+   "preferred_backend": null,
+   "provider": "future.odyssey_launch",
+   "ready_at": null,
+   "repair_depth": 0,
+   "repair_exhausted": false,
+   "repair_reason": null,
+   "repair_root": null,
+   "repairs": null,
+   "requires_quiescence": true,
+   "resource_class": "GPU_EXCLUSIVE",
+   "role": "science",
+   "running_at": null,
+   "sleeping": true,
+   "status": "sleeping",
+   "synthetic_result_forbidden": true,
+   "verification": null,
+   "verifier": "future.odyssey_launch.wakeup:sleep.no-gpu-authority",
+   "wakeup_integration": "tools/future/wakeup.py \u2014 wake SLEEPING WorkUnits when hardware qualifies",
+   "workspace": "repo-root"
+  },
+  {
+   "assigned_backend": null,
+   "assigned_runtime": null,
+   "attempts": 0,
+   "backend_task_id": null,
+   "blocked_reason": "xcrun -f metal did not locate the Metal compiler",
+   "claim_boundary": "WorkUnit is a proposal; receipt and protected capability gates remain authoritative",
+   "classification": "SLEEPING",
+   "content_hash": "2c9f25b93e42031f48587bf1beb2206562bb1611288fbd179a5b7864273469f2",
+   "dependencies": [],
+   "description": "SLEEPING until hardware qualifies: Metal compiler under CommandLineTools",
+   "effect_class": "READ_ONLY",
+   "failure_context": null,
+   "finished_at": null,
+   "id": "odyssey-i.sleep.metal-compiler",
+   "preferred_backend": null,
+   "provider": "future.odyssey_launch",
+   "ready_at": null,
+   "repair_depth": 0,
+   "repair_exhausted": false,
+   "repair_reason": null,
+   "repair_root": null,
+   "repairs": null,
+   "requires_quiescence": true,
+   "resource_class": "GPU_EXCLUSIVE",
+   "role": "science",
+   "running_at": null,
+   "sleeping": true,
+   "status": "sleeping",
+   "synthetic_result_forbidden": true,
+   "verification": null,
+   "verifier": "future.odyssey_launch.wakeup:sleep.metal-compiler",
+   "wakeup_integration": "tools/future/wakeup.py \u2014 wake SLEEPING WorkUnits when hardware qualifies",
+   "workspace": "repo-root"
+  },
+  {
+   "assigned_backend": null,
+   "assigned_runtime": null,
+   "attempts": 0,
+   "backend_task_id": null,
+   "blocked_reason": "lock file exists but no holder could be proven without flock (lsof status='OK' reason=None). fail closed: present=false. flock would be a seizure",
+   "claim_boundary": "WorkUnit is a proposal; receipt and protected capability gates remain authoritative",
+   "classification": "SLEEPING",
+   "content_hash": "16598c3c418663e7b48f355583d0db3f4d77b686baccb2cacded027ab901a0bf",
+   "dependencies": [],
+   "description": "SLEEPING until hardware qualifies: Protected bench lock; holder pids unproven",
+   "effect_class": "READ_ONLY",
+   "failure_context": null,
+   "finished_at": null,
+   "id": "odyssey-i.sleep.protected-bench-lock",
+   "preferred_backend": null,
+   "provider": "future.odyssey_launch",
+   "ready_at": null,
+   "repair_depth": 0,
+   "repair_exhausted": false,
+   "repair_reason": null,
+   "repair_root": null,
+   "repairs": null,
+   "requires_quiescence": true,
+   "resource_class": "GPU_EXCLUSIVE",
+   "role": "science",
+   "running_at": null,
+   "sleeping": true,
+   "status": "sleeping",
+   "synthetic_result_forbidden": true,
+   "verification": null,
+   "verifier": "future.odyssey_launch.wakeup:sleep.protected-bench-lock",
+   "wakeup_integration": "tools/future/wakeup.py \u2014 wake SLEEPING WorkUnits when hardware qualifies",
+   "workspace": "repo-root"
+  },
+  {
+   "assigned_backend": null,
+   "assigned_runtime": null,
+   "attempts": 0,
+   "backend_task_id": null,
+   "blocked_reason": "contamination_class='HEAVY'; sidecar will not SIGSTOP standing workers. HEAVY (or unknown) is not a protected window.",
+   "claim_boundary": "WorkUnit is a proposal; receipt and protected capability gates remain authoritative",
+   "classification": "SLEEPING",
+   "content_hash": "ae9e8b039ee5e3f2844a3d24c61cb5738b3c00154fc402120d310198ead900da",
+   "dependencies": [],
+   "description": "SLEEPING until hardware qualifies: Machine classified HEAVY; standing workers not quiesced",
+   "effect_class": "READ_ONLY",
+   "failure_context": null,
+   "finished_at": null,
+   "id": "odyssey-i.sleep.machine-heavy",
+   "preferred_backend": null,
+   "provider": "future.odyssey_launch",
+   "ready_at": null,
+   "repair_depth": 0,
+   "repair_exhausted": false,
+   "repair_reason": null,
+   "repair_root": null,
+   "repairs": null,
+   "requires_quiescence": true,
+   "resource_class": "GPU_EXCLUSIVE",
+   "role": "science",
+   "running_at": null,
+   "sleeping": true,
+   "status": "sleeping",
+   "synthetic_result_forbidden": true,
+   "verification": null,
+   "verifier": "future.odyssey_launch.wakeup:sleep.machine-heavy",
+   "wakeup_integration": "tools/future/wakeup.py \u2014 wake SLEEPING WorkUnits when hardware qualifies",
+   "workspace": "repo-root"
+  },
+  {
+   "assigned_backend": null,
+   "assigned_runtime": null,
+   "attempts": 0,
+   "backend_task_id": null,
+   "blocked_reason": "FLASH_NX_COMPLETENESS_AUDIT seven_all_met=False nx_status='SEALED_METADATA_ONLY_NOT_FOR_PROMOTION' nr_v2.status='COMPLETE_HETEROGENEOUS_CANDIDATE_NOT_FOR_PROMOTION'. SCAFFOLD_ONLY / metadata seals are not a callable NX path.",
+   "claim_boundary": "WorkUnit is a proposal; receipt and protected capability gates remain authoritative",
+   "classification": "SLEEPING",
+   "content_hash": "5d7b3fde23ec49ae7f011b35e219108165f98e1f3878d7ae47b4817143a6cedc",
+   "dependencies": [],
+   "description": "SLEEPING until hardware qualifies: Flash source-independent NX is not qualified",
+   "effect_class": "READ_ONLY",
+   "failure_context": null,
+   "finished_at": null,
+   "id": "odyssey-i.sleep.flash-nx-scaffold",
+   "preferred_backend": null,
+   "provider": "future.odyssey_launch",
+   "ready_at": null,
+   "repair_depth": 0,
+   "repair_exhausted": false,
+   "repair_reason": null,
+   "repair_root": null,
+   "repairs": null,
+   "requires_quiescence": true,
+   "resource_class": "GPU_EXCLUSIVE",
+   "role": "science",
+   "running_at": null,
+   "sleeping": true,
+   "status": "sleeping",
+   "synthetic_result_forbidden": true,
+   "verification": null,
+   "verifier": "future.odyssey_launch.wakeup:sleep.flash-nx-scaffold",
+   "wakeup_integration": "tools/future/wakeup.py \u2014 wake SLEEPING WorkUnits when hardware qualifies",
+   "workspace": "repo-root"
+  },
+  {
+   "assigned_backend": null,
+   "assigned_runtime": null,
+   "attempts": 0,
+   "backend_task_id": null,
+   "blocked_reason": "teacher capture executed=0/12 workunits; target_row_counts=[256]. Unrun capture is not a synthetic corpus.",
+   "claim_boundary": "WorkUnit is a proposal; receipt and protected capability gates remain authoritative",
+   "classification": "SLEEPING",
+   "content_hash": "f9ec70710964ca3cb0de96e2fe08b00a99970b71d81332ea9ae022ca373e170e",
+   "dependencies": [],
+   "description": "SLEEPING until hardware qualifies: Teacher capture has not run",
+   "effect_class": "READ_ONLY",
+   "failure_context": null,
+   "finished_at": null,
+   "id": "odyssey-i.sleep.teacher-capture",
+   "preferred_backend": null,
+   "provider": "future.odyssey_launch",
+   "ready_at": null,
+   "repair_depth": 0,
+   "repair_exhausted": false,
+   "repair_reason": null,
+   "repair_root": null,
+   "repairs": null,
+   "requires_quiescence": true,
+   "resource_class": "GPU_EXCLUSIVE",
+   "role": "science",
+   "running_at": null,
+   "sleeping": true,
+   "status": "sleeping",
+   "synthetic_result_forbidden": true,
+   "verification": null,
+   "verifier": "future.odyssey_launch.wakeup:sleep.teacher-capture",
+   "wakeup_integration": "tools/future/wakeup.py \u2014 wake SLEEPING WorkUnits when hardware qualifies",
+   "workspace": "repo-root"
+  }
+ ],
+ "specimen_curriculum": {
+  "census_probe": {
+   "found": true,
+   "path_taken": "worktree",
+   "resolved": "/Users/scammermike/Downloads/hawking/receipts/future/evidence/HCLI_MODELLAKE_FLASH_CENSUS.json"
+  },
+  "n_ready": 0,
+  "n_roles": 5,
+  "not_proposed": [
+   {
+    "reason": "present in ModelLake, not a first-wave curriculum role",
+    "repo": "Qwen/Qwen3-30B-A3B",
+    "revision": "ad44e777bcd18fa416d9da3bd8f70d33ebb85d39"
+   },
+   {
+    "reason": "present in ModelLake, not a first-wave curriculum role",
+    "repo": "Qwen/Qwen3-VL-30B-A3B-Instruct",
+    "revision": "9c4b90e1e4ba969fd3b5378b57d966d725f1b86c"
+   },
+   {
+    "reason": "present in ModelLake, not a first-wave curriculum role",
+    "repo": "moonshotai/Kimi-VL-A3B-Instruct",
+    "revision": "398eede0903cd983a2bfa0cc634e9ac1d843f375"
+   }
+  ],
+  "not_proposed_rule": "Do not exhaustively optimize every downloaded model. First-wave curriculum is the five roles above; other lake entries are recorded and deferred.",
+  "prior_odyssey_i_patients": [
+   {
+    "oxx": "O001",
+    "seal": "receipts/odyssey-i/O001_PATIENT_SEAL.json",
+    "sealed_mechanisms": [
+     "external-science",
+     "ssm-accounting",
+     "sensitivity-map",
+     "gravity-hybrid",
+     "gravity-aggressive-hybrid",
+     "nx-state-hybrid"
+    ],
+    "state": "RETIRED",
+    "status": "VERIFIED",
+    "weights_canonical": "/Users/scammermike/.cache/huggingface/hub/models--tiiuae--Falcon-H1-7B-Instruct/snapshots/41e72f27effbab80cd45b6e884688452253a3686"
+   },
+   {
+    "oxx": "O003",
+    "seal": "receipts/odyssey-i/O003_PATIENT_SEAL.json",
+    "sealed_mechanisms": [
+     "external-science",
+     "route-map",
+     "sensitivity-map",
+     "gravity-moe",
+     "gravity-aggressive-moe",
+     "nx-gather-moe"
+    ],
+    "state": "RETIRED",
+    "status": "VERIFIED",
+    "weights_canonical": "/Users/scammermike/.cache/huggingface/hub/models--moonshotai--Kimi-VL-A3B-Instruct/snapshots/398eede0903cd983a2bfa0cc634e9ac1d843f375"
+   },
+   {
+    "oxx": "O004",
+    "seal": "receipts/odyssey-i/O004_PATIENT_SEAL.json",
+    "sealed_mechanisms": [
+     "external-science",
+     "sensitivity-map",
+     "gravity-dense",
+     "gravity-aggressive-dense",
+     "nx-dense"
+    ],
+    "state": "RETIRED",
+    "status": "VERIFIED",
+    "weights_canonical": "/Users/scammermike/.cache/huggingface/hub/models--mistralai--Mistral-Small-3.1-24B-Instruct-2503/snapshots/68faf511d618ef198fef186659617cfd2eb8e33a"
+   },
+   {
+    "oxx": "O005",
+    "seal": "receipts/odyssey-i/O005_PATIENT_SEAL.json",
+    "sealed_mechanisms": [
+     "external-science",
+     "route-map",
+     "sensitivity-map",
+     "gravity-moe",
+     "nx-gather-moe"
+    ],
+    "state": "RETIRED",
+    "status": "VERIFIED",
+    "weights_canonical": "/Users/scammermike/.cache/huggingface/hub/models--Qwen--Qwen3-30B-A3B/snapshots/ad44e777bcd18fa416d9da3bd8f70d33ebb85d39"
+   }
+  ],
+  "ready": false,
+  "roles": [
+   {
+    "architecture_family": "dense_transformer",
+    "identity_source": "modellake_manifest",
+    "modellake": {
+     "in_specimens_listing": false,
+     "manifest_path": "/Volumes/corpdrive/hawking-modellake/manifests/Qwen--Qwen3-0.6B@c1899de289a0.json",
+     "n_files": 10,
+     "n_sha256_verified": 2,
+     "n_size_only_verified": 8,
+     "repo": "Qwen/Qwen3-0.6B",
+     "resolved_sha": "c1899de289a04d12100db370d81485cdf75e47ca",
+     "revision": "c1899de289a04d12100db370d81485cdf75e47ca",
+     "source": "modellake_manifest",
+     "specimen_path": "/Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3-0.6B@c1899de289a0",
+     "whole_tree_verified": false
+    },
+    "purpose": "very small dense for procedural speed",
+    "ready": false,
+    "ready_reason": "identity known but specimen is not in the ModelLake specimens listing",
+    "repo": "Qwen/Qwen3-0.6B",
+    "revision": "c1899de289a04d12100db370d81485cdf75e47ca",
+    "role": "very_small_dense_procedural_speed"
+   },
+   {
+    "architecture_family": "falcon_h1",
+    "identity_source": "modellake_manifest+odyssey_i_O001",
+    "modellake": {
+     "in_specimens_listing": true,
+     "manifest_path": "/Volumes/corpdrive/hawking-modellake/manifests/tiiuae--Falcon-H1-7B-Instruct@41e72f27effb.json",
+     "n_files": 13,
+     "n_sha256_verified": 5,
+     "n_size_only_verified": 8,
+     "repo": "tiiuae/Falcon-H1-7B-Instruct",
+     "resolved_sha": "41e72f27effbab80cd45b6e884688452253a3686",
+     "revision": "41e72f27effbab80cd45b6e884688452253a3686",
+     "source": "modellake_manifest",
+     "specimen_path": "/Volumes/corpdrive/hawking-modellake/specimens/tiiuae--Falcon-H1-7B-Instruct@41e72f27effb",
+     "whole_tree_verified": false
+    },
+    "prior_odyssey_i": {
+     "oxx": "O001",
+     "seal": "receipts/odyssey-i/O001_PATIENT_SEAL.json",
+     "sealed_mechanisms": [
+      "external-science",
+      "ssm-accounting",
+      "sensitivity-map",
+      "gravity-hybrid",
+      "gravity-aggressive-hybrid",
+      "nx-state-hybrid"
+     ],
+     "state": "RETIRED",
+     "status": "VERIFIED",
+     "weights_canonical": "/Users/scammermike/.cache/huggingface/hub/models--tiiuae--Falcon-H1-7B-Instruct/snapshots/41e72f27effbab80cd45b6e884688452253a3686"
+    },
+    "purpose": "small dense alternate architecture for transfer",
+    "ready": false,
+    "ready_reason": "ModelLake manifest is partial (n_sha256_verified=5 n_files=13); not a sealed specimen",
+    "repo": "tiiuae/Falcon-H1-7B-Instruct",
+    "revision": "41e72f27effbab80cd45b6e884688452253a3686",
+    "role": "small_dense_alternate_architecture_transfer"
+   },
+   {
+    "architecture_family": "dense_transformer",
+    "identity_source": "odyssey_i_O004+modellake_partial",
+    "modellake": {
+     "stale_partial": {
+      "action": "REPORT_ONLY_NO_DELETE",
+      "active_process_evidence": false,
+      "age_s": 129994.4,
+      "candidate_stale": true,
+      "path": "/Volumes/corpdrive/hawking-modellake/partial/mistralai--Mistral-Small-3.1-24B-Instruct-2503@68faf511d618"
+     }
+    },
+    "prior_odyssey_i": {
+     "oxx": "O004",
+     "seal": "receipts/odyssey-i/O004_PATIENT_SEAL.json",
+     "sealed_mechanisms": [
+      "external-science",
+      "sensitivity-map",
+      "gravity-dense",
+      "gravity-aggressive-dense",
+      "nx-dense"
+     ],
+     "state": "RETIRED",
+     "status": "VERIFIED",
+     "weights_canonical": "/Users/scammermike/.cache/huggingface/hub/models--mistralai--Mistral-Small-3.1-24B-Instruct-2503/snapshots/68faf511d618ef198fef186659617cfd2eb8e33a"
+    },
+    "purpose": "mid-size dense for compiler",
+    "ready": false,
+    "ready_reason": "identity known but specimen is not in the ModelLake specimens listing",
+    "repo": "mistralai/Mistral-Small-3.1-24B-Instruct-2503",
+    "revision": "68faf511d618ef198fef186659617cfd2eb8e33a",
+    "role": "mid_size_dense_compiler"
+   },
+   {
+    "architecture_family": "dense_hybrid_transformer",
+    "identity_source": "odyssey2_law_store.SCHOOLS.Qwen27",
+    "modellake": {},
+    "purpose": "Qwen27 for mature physical",
+    "ready": false,
+    "ready_reason": "identity known but specimen is not in the ModelLake specimens listing",
+    "repo": "Qwen3.8-27B",
+    "revision": null,
+    "role": "qwen27_mature_physical",
+    "school": {
+     "aliases": [
+      "qwen3.8-27b-abliterated",
+      "Qwen3.8-27B",
+      "Qwen3.8-27B sealed resident / NOETIC_PARENT_A",
+      "NOETIC_PARENT_A"
+     ],
+     "architecture_family": "dense_hybrid_transformer",
+     "map_label": "Qwen3.8-27B sealed resident / NOETIC_PARENT_A",
+     "role_in_map": "model_a",
+     "school": "Qwen27",
+     "source_model": "Qwen3.8-27B"
+    }
+   },
+   {
+    "architecture_family": "qwen4_exp",
+    "identity_source": "hcli.flash_next pin + modellake census + odyssey2 school",
+    "modellake": {
+     "census_qualification": "MODELLAKE_CENSUS_PINNED_FLASH_IDENTITY_NO_ACQUISITION",
+     "in_specimens_listing": false,
+     "manifest_path": null,
+     "n_files": null,
+     "n_sha256_verified": 0,
+     "n_size_only_verified": null,
+     "published_as_verified": false,
+     "repo": "Qwen/Qwen3.8-Flash-Next",
+     "resolved_sha": "34567a4712bc9766c4449e2e98e4468bfa24d915",
+     "revision": "34567a4712bc9766c4449e2e98e4468bfa24d915",
+     "source": "flash_pinned_census",
+     "specimen_path": "/Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3.8-Flash-Next@34567a4712bc",
+     "whole_tree_verified": false
+    },
+    "purpose": "Flash for heterogeneous frontier",
+    "ready": false,
+    "ready_reason": "ModelLake pin exists but the specimen is not published as verified",
+    "repo": "Qwen/Qwen3.8-Flash-Next",
+    "revision": "34567a4712bc9766c4449e2e98e4468bfa24d915",
+    "role": "flash_heterogeneous_frontier",
+    "school": {
+     "aliases": [
+      "Flash",
+      "Qwen/Qwen3.8-Flash-Next",
+      "Qwen3.8-Flash-Next",
+      "qwen4_exp"
+     ],
+     "architecture_family": "qwen4_exp",
+     "map_label": "Qwen/Qwen3.8-Flash-Next pinned ModelLake source",
+     "physical_status": "metadata_only_weights_not_present",
+     "role_in_map": "model_b",
+     "school": "Flash",
+     "source_model": "Qwen/Qwen3.8-Flash-Next"
+    }
+   }
+  ],
+  "schema": "hawking.future.odyssey_i.specimen_curriculum.v1"
+ },
+ "this_wave_siblings_not_imported": [
+  "codex_behaviors",
+  "resident_api",
+  "workgraph",
+  "detached",
+  "wakeup",
+  "evidence_dag",
+  "scar_scheduling",
+  "dirty_measure",
+  "protected_window",
+  "sandbox",
+  "resident_identity",
+  "frontiers",
+  "succession",
+  "flash_schools",
+  "flash_nr_complete",
+  "super_resident",
+  "tabula",
+  "debugger",
+  "autonomy_trial"
+ ],
+ "verdict": {
+  "allowed": false,
+  "met": [
+   "modellake_identity",
+   "negative_science",
+   "transfer_substrate",
+   "adversary_substrate",
+   "crash_recovery",
+   "receipts"
+  ],
+  "n_criteria": 16,
+  "n_met": 6,
+  "n_unmet": 10,
+  "rule": "every unmet criterion is named; the first failure does not hide the rest",
+  "unmet": [
+   "resident_autonomy_trial_pass",
+   "specimen_curriculum_ready",
+   "doctor_callable",
+   "gravity_callable",
+   "nr_nx_path_callable",
+   "evidence_hierarchy",
+   "workgraphs",
+   "self_refill",
+   "dirty_measurement",
+   "protected_scheduling"
+  ],
+  "verdict": "REFUSED"
+ },
+ "version": 1
+}

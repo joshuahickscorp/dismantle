@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T05:30:20Z",
+  "recorded_at": "2026-08-30T05:51:13Z",
   "recorded_by": "tools/future/freshness.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -116,7 +116,7 @@
        "evidence_source": "live_headless",
        "kind": "this_worktree",
        "path": "/Users/scammermike/Downloads/hawking/receipts/future/CANDIDATE_STAGED_PLAN.json",
-       "sha256": "d4eee6dbf4323e1ca8aa4e0d1dd78164565d4a07a7c2e76c3ebf86be97569939"
+       "sha256": "78535956043f804043040a7f96b7c0fd507cef3df8582f1e132b04c688b4e655"
       },
       {
        "evidence_source": "live_headless",
@@ -241,7 +241,7 @@
      ],
      "current_candidate_count": null,
      "current_semantic_fingerprint": "a02999b8f3827b0e6bb37969c88c3ad182bdbef4a51e5ea49c3287b245bd1f10",
-     "current_sha256": "d4eee6dbf4323e1ca8aa4e0d1dd78164565d4a07a7c2e76c3ebf86be97569939",
+     "current_sha256": "78535956043f804043040a7f96b7c0fd507cef3df8582f1e132b04c688b4e655",
      "evidence_source": "live_headless",
      "historical_path": null,
      "reason": "derived artifact records no provenance to compare",
@@ -4374,7 +4374,7 @@
   "STALE_SEMANTIC": 0,
   "UNKNOWN": 4,
   "registered": 6,
-  "unregistered": 45
+  "unregistered": 65
  },
  "eras": [
   "I Genesis of the Laboratory",
@@ -4394,7 +4394,7 @@
   "registry of derived -> source(s) -> producer; unregistered receipts/future/*.json are findings",
   "source resolution copes with live-present, live-absent, and pinned-snapshot copies and records which"
  ],
- "head": "0cbd19dc4d6d6de175544f8daabde7c0725b7d6c",
+ "head": "12d535429122f1ba4db860ab956940ecc5a7c206",
  "measurement_class": "STATIC_ONLY",
  "negative_findings": [
   "QUALIFICATION_PIPELINE.json, FLASH_NX_COMPLETENESS_AUDIT.json, HCLI_FUTURE_WORKUNITS.json and TOURNAMENT_READINESS.json record no source sha256/semantic fingerprint, so they classify UNKNOWN until those producers start writing the CANDIDATE_STAGED_PLAN.input pattern",
@@ -4403,7 +4403,7 @@
   "no GPU / FPGA / power meter in this lane; no hardware quantity is asserted",
   "--refresh was not invoked by --check/--report; STALE_SEMANTIC artifacts stay on disk until a caller passes --refresh",
   "UNKNOWN artifacts: QUALIFICATION_PIPELINE.json, FLASH_NX_COMPLETENESS_AUDIT.json, HCLI_FUTURE_WORKUNITS.json, TOURNAMENT_READINESS.json",
-  "45 receipts/future/*.json files are not in the freshness registry"
+  "65 receipts/future/*.json files are not in the freshness registry"
  ],
  "no_era_vi": true,
  "no_odyssey_iv": true,
@@ -4568,24 +4568,33 @@
   }
  ],
  "schema": "hawking.future.freshness.v1",
- "seal_sha256": "76bb0771cc2d4e74c58f549fd32d262b3dac97442f94c472f93653f389f9ab4f",
+ "seal_sha256": "49e10f1ade48fd33fa238720ca7f1c15a652dd772551a0325df522a48f2de02b",
  "unregistered": [
   "ABI_VERDICT_HARNESS.json",
   "ANE_PREBOARD.json",
+  "AUTONOMY_TRIALS.json",
   "CLAUDE_GLOBAL_FRONTIER.json",
   "CLAUDE_SIDECAR_ABI_ADJUDICATION.json",
   "CODEX_INGEST_STATE.json",
   "CODEX_MUTATION_SURFACE.json",
+  "CODEX_WORKUNIT_SPECIES.json",
   "CONTAMINATION_SCIENCE.json",
   "CUDA_LOWBIT_HYPOTHESES.json",
+  "DEBUGGER_LAB.json",
   "DECODE_CIVILIZATION.json",
+  "DETACHED_EXECUTION.json",
   "DEVELOPER_PLATFORM.json",
   "DEVICE_ASCENSION_PIPELINE.json",
+  "DIRTY_MEASUREMENT.json",
   "EBPW_CATEGORY_VALIDATOR.json",
+  "EVIDENCE_DAG.json",
   "EXPERIMENT_TURNAROUND.json",
   "EXPERT_BANK_SCHOOL.json",
+  "FLASH_NR_COMPLETE.json",
+  "FLASH_ORGAN_SCHOOLS.json",
   "FPGA_ENGINE_SCHOOL.json",
   "FPGA_MULTIFIDELITY.json",
+  "FRONTIER_STATE.json",
   "FUSION_SIMULATION.json",
   "FUTURE_SUBSTRATE_HANDOFF.json",
   "GIT_LOCK_DURABILITY_REPORT.json",
@@ -4604,17 +4613,28 @@
   "NGRAM_SCHOOL.json",
   "ODYSSEY2_LAW_STORE.json",
   "ODYSSEY3_ADVERSARY.json",
+  "ODYSSEY_LAUNCH_GATE.json",
   "P6_PRIMITIVE_PROJECTION.json",
   "PHYSICAL_PRIMITIVES.json",
   "PROPAGATION_STATE.json",
+  "PROTECTED_WINDOW_PLAN.json",
   "QWEN27_ACCELERATOR_PROFILE_SCHEMA.json",
+  "RECEIPT_WAKEUP.json",
   "REPRO_SCIENCE.json",
+  "RESIDENT_API_AUDIT.json",
+  "RESIDENT_IDENTITY.json",
   "RESIDENT_INSTALL_CONTRACT.json",
   "RESIDENT_OPTIMIZER.json",
+  "RESIDENT_SANDBOX.json",
   "ROUTER_SENSITIVE_ALLOCATION.json",
+  "SCAR_SCHEDULING.json",
   "STATIC_KERNEL_PREFLIGHT.json",
   "STATIC_SKELETON.json",
-  "TEACHER_CORPUS_CONTRACT.json"
+  "SUCCESSION.json",
+  "SUPER_RESIDENT_FLOOR.json",
+  "TABULA_FLOOR.json",
+  "TEACHER_CORPUS_CONTRACT.json",
+  "WORKGRAPH_STATE.json"
  ],
  "version": 1,
  "vocabulary": {

@@ -4,7 +4,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T04:53:48Z",
+  "recorded_at": "2026-08-30T05:52:51Z",
   "recorded_by": "tools/future/green_machine.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -21,7 +21,7 @@
   "Cited recovered Codex energy.rs / orch scheduler / EnergyMode / accepted-token ledger so this is not a fork of them."
  ],
  "gpu_authority": false,
- "head": "0cbd19dc4d6d6de175544f8daabde7c0725b7d6c",
+ "head": "12d535429122f1ba4db860ab956940ecc5a7c206",
  "honesty_rule": "Any metric that is not trustworthily measurable is UNKNOWN. Never an estimate, never a TDP-derived guess, never a FLOP-derived CMOS guess, never an idle GPU-rail sample presented as joules_per_token, never a number with invented precision. write_receipt already refuses a numeric joules_per_token. This module does not catch that error, does not add fields to HARDWARE_FIELDS, and does not convert UNKNOWN into 0 or into a datasheet watt. Saying UNKNOWN clearly is the deliverable. This sidecar produces STATIC_ONLY with bench state UNKNOWN; it produces neither DIAGNOSTIC_RELATIVE nor PROTECTED_ABSOLUTE.",
  "measurement_is_trustworthy": false,
  "metric_contract": [
@@ -159,10 +159,9 @@
   "Cannot wrap TOKEN_NS: no complete-token interval is available to this process.",
   "Cannot run cargo test on hawking-core energy.rs (crates/ is Codex-owned; GPU touch forbidden).",
   "powermetrics without root failed: powermetrics must be invoked as the superuser",
-  "sudo -n powermetrics is not available (no password prompt was issued): [Errno 1] Operation not permitted: 'sudo'",
-  "pmset -g therm ran but is not a thermal_state measurement: Error:Failed to get thermal warning level with error code 0xe00002bc Error: Failed to get performance warning level with error code 0xe00002bc Error: No CPU power status with error code 0xe00002bc",
+  "sudo -n powermetrics is not available (no password prompt was issued): sudo: a password is required",
+  "pmset -g therm ran but is not a thermal_state measurement: Note: No thermal warning level has been recorded Note: No performance warning level has been recorded Note: No CPU power status has been recorded",
   "sysctl thermal oids (machdep.xcpm.* / machdep.thermal) are absent on this Darwin.",
-  "IOReportCreateSubscription returned null in this process; live GPU Energy nJ was not read.",
   "ioreg AppleSmartBattery PowerTelemetryData is named Estimate and was not recorded as a joule.",
   "Could not inspect ACCELERATOR_SCOREBOARD.json contents; energy-axis slot is described against the noetic scoreboard instead."
  ],
@@ -180,10 +179,10 @@
   {
    "command_ok": false,
    "id": "sudo_n_powermetrics",
-   "invoked": false,
-   "missing_dependency": "permission",
+   "invoked": true,
+   "missing_dependency": "root",
    "numeric_sample_recorded": false,
-   "observation": "[Errno 1] Operation not permitted: 'sudo'",
+   "observation": "sudo: a password is required",
    "succeeded": false,
    "trustworthy_for_token_energy": false
   },
@@ -193,7 +192,7 @@
    "invoked": true,
    "missing_dependency": null,
    "numeric_sample_recorded": false,
-   "observation": "Error:Failed to get thermal warning level with error code 0xe00002bc Error: Failed to get performance warning level with error code 0xe00002bc Error: No CPU power status with error code 0xe00002bc",
+   "observation": "Note: No thermal warning level has been recorded Note: No performance warning level has been recorded Note: No CPU power status has been recorded",
    "succeeded": false,
    "trustworthy_for_token_energy": false,
    "why_not_thermal_state": "pmset -g therm reports whether a warning was logged; 'No thermal warning level has been recorded' is not a temperature or headroom reading"
@@ -256,14 +255,13 @@
    "command_ok": true,
    "id": "ioreport_energy_model_subscription",
    "invoked": true,
-   "missing_dependency": "IOReportCreateSubscription",
+   "missing_dependency": null,
    "numeric_sample_recorded": false,
    "observation": {
-    "error": "IOReportCreateSubscription returned null",
-    "note": "crates/hawking-core/src/token_ns/energy.rs documents a 2026-08-16 standing finding that GPU Energy (nJ) incremented without root. This sidecar process cannot obtain a subscription, so live samples are not reproduced here. Channel catalog (probe ioreport_energy_model_catalog) is the part that still holds.",
-    "subscription_obtained": false
+    "note": "Live samples would still not be joules_per_token: this sidecar has no GPU lease and does not wrap TOKEN_NS. Numeric nJ is deliberately not recorded.",
+    "subscription_obtained": true
    },
-   "succeeded": false,
+   "succeeded": true,
    "trustworthy_for_token_energy": false
   },
   {
@@ -283,7 +281,6 @@
  ],
  "probes_failed": [
   "ioreg_power_telemetry",
-  "ioreport_energy_model_subscription",
   "pmset_therm",
   "powermetrics_without_root",
   "sudo_n_powermetrics",
@@ -291,6 +288,7 @@
  ],
  "probes_succeeded": [
   "ioreport_energy_model_catalog",
+  "ioreport_energy_model_subscription",
   "pmset_batt"
  ],
  "produces_diagnostic_relative": false,
@@ -468,6 +466,6 @@
    "path": "receipts/headless/NOETIC_SCOREBOARD.json"
   }
  },
- "seal_sha256": "3fe78cfe1dfcabb3ff63e187236a03301e987ef0b04b37054ff3685b6195acc0",
+ "seal_sha256": "f10fbc248605b362cdf6160825a67288e906b4afb8480127b5cc996adf6bb0c5",
  "version": 1
 }

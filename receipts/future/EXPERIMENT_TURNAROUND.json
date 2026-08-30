@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T04:55:34Z",
+  "recorded_at": "2026-08-30T05:54:19Z",
   "recorded_by": "tools/future/turnaround.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -88,7 +88,7 @@
  "dominant_cost": {
   "among_measured_cpu_side": {
    "evidence": "largest median_ms among MEASURED_CPU_SIDE phases; process timings, not a GPU measurement",
-   "median_ms": 409.258,
+   "median_ms": 478.721,
    "phase": "verify"
   },
   "full_experiment_loop": {
@@ -134,44 +134,44 @@
   "Did not touch hcli/ledger.py; ledger timing is a tempfile JSONL analog"
  ],
  "phase_wall_ms_cpu_side": {
-  "ledger": 0.288,
-  "next_decision": 0.021,
-  "receipt": 0.953,
-  "source_discovery": 67.705,
-  "transform": 41.601,
-  "verify": 409.258
+  "ledger": 0.28,
+  "next_decision": 0.014,
+  "receipt": 0.743,
+  "source_discovery": 79.138,
+  "transform": 41.608,
+  "verify": 478.721
  },
  "phases": [
   {
-   "max_ms": 93.129,
+   "max_ms": 91.64,
    "measurement_kind": "git_ls_tree_full_inventory",
-   "median_ms": 67.705,
-   "min_ms": 42.281,
+   "median_ms": 79.138,
+   "min_ms": 66.635,
    "n": 2,
    "name": "source_discovery",
-   "phase_wall_ms_cpu_side": 67.705,
-   "range_ms": 50.848,
+   "phase_wall_ms_cpu_side": 79.138,
+   "range_ms": 25.005,
    "reason": null,
    "samples_ms": [
-    93.129,
-    42.281
+    66.635,
+    91.64
    ],
    "scoreboard_field": null,
    "state": "MEASURED_CPU_SIDE"
   },
   {
-   "max_ms": 43.418,
+   "max_ms": 42.171,
    "measurement_kind": "python_import_tools.future._common",
-   "median_ms": 41.601,
-   "min_ms": 39.784,
+   "median_ms": 41.608,
+   "min_ms": 41.044,
    "n": 2,
    "name": "transform",
-   "phase_wall_ms_cpu_side": 41.601,
-   "range_ms": 3.634,
+   "phase_wall_ms_cpu_side": 41.608,
+   "range_ms": 1.127,
    "reason": null,
    "samples_ms": [
-    43.418,
-    39.784
+    41.044,
+    42.171
    ],
    "scoreboard_field": "transform_ns",
    "state": "MEASURED_CPU_SIDE"
@@ -247,69 +247,69 @@
    "state": "UNKNOWN"
   },
   {
-   "max_ms": 420.674,
+   "max_ms": 485.484,
    "measurement_kind": "pytest_collect_only_tools.future",
-   "median_ms": 409.258,
-   "min_ms": 397.841,
+   "median_ms": 478.721,
+   "min_ms": 471.957,
    "n": 2,
    "name": "verify",
-   "phase_wall_ms_cpu_side": 409.258,
-   "range_ms": 22.833,
+   "phase_wall_ms_cpu_side": 478.721,
+   "range_ms": 13.527,
    "reason": null,
    "samples_ms": [
-    420.674,
-    397.841
+    471.957,
+    485.484
    ],
    "scoreboard_field": "verification_ns",
    "state": "MEASURED_CPU_SIDE"
   },
   {
-   "max_ms": 0.954,
+   "max_ms": 0.873,
    "measurement_kind": "serialize_seal_fsync_tempfile",
-   "median_ms": 0.953,
-   "min_ms": 0.952,
+   "median_ms": 0.743,
+   "min_ms": 0.614,
    "n": 2,
    "name": "receipt",
-   "phase_wall_ms_cpu_side": 0.953,
-   "range_ms": 0.002,
+   "phase_wall_ms_cpu_side": 0.743,
+   "range_ms": 0.259,
    "reason": null,
    "samples_ms": [
-    0.952,
-    0.954
+    0.873,
+    0.614
    ],
    "scoreboard_field": "receipt_ns",
    "state": "MEASURED_CPU_SIDE"
   },
   {
-   "max_ms": 0.294,
+   "max_ms": 0.286,
    "measurement_kind": "jsonl_append_fsync_tempfile",
-   "median_ms": 0.288,
-   "min_ms": 0.282,
+   "median_ms": 0.28,
+   "min_ms": 0.273,
    "n": 2,
    "name": "ledger",
-   "phase_wall_ms_cpu_side": 0.288,
-   "range_ms": 0.012,
+   "phase_wall_ms_cpu_side": 0.28,
+   "range_ms": 0.013,
    "reason": null,
    "samples_ms": [
-    0.282,
-    0.294
+    0.286,
+    0.273
    ],
    "scoreboard_field": null,
    "state": "MEASURED_CPU_SIDE"
   },
   {
-   "max_ms": 0.036,
+   "max_ms": 0.024,
    "measurement_kind": "dominant_cost_and_lever_selection",
-   "median_ms": 0.021,
-   "min_ms": 0.006,
+   "median_ms": 0.014,
+   "min_ms": 0.005,
    "n": 2,
    "name": "next_decision",
-   "phase_wall_ms_cpu_side": 0.021,
-   "range_ms": 0.03,
+   "phase_wall_ms_cpu_side": 0.014,
+   "range_ms": 0.019,
    "reason": null,
    "samples_ms": [
-    0.036,
-    0.006
+    0.024,
+    0.005
    ],
    "scoreboard_field": null,
    "state": "MEASURED_CPU_SIDE"
@@ -392,7 +392,7 @@
   },
   "values_in_this_receipt": "all null \u2014 CPU timings are not ns GPU/build quantities"
  },
- "seal_sha256": "2c97d45949eef45192e4730422fcc233c2436845e46605335974e1289d337d6c",
+ "seal_sha256": "176a34254f7e923e0c9479e14f9ec9c3791c1edf3055d5c4997bac4796b13189",
  "source_inventory": {
   "by_suffix": {
    ".bash": 1,
@@ -419,7 +419,7 @@
    ".ico": 1,
    ".journal": 12,
    ".js": 1,
-   ".json": 7166,
+   ".json": 7167,
    ".jsonl": 134,
    ".lean": 2,
    ".lock": 24,
@@ -466,7 +466,7 @@
    ".zsh": 1,
    "<none>": 95
   },
-  "file_count": 12937,
+  "file_count": 12938,
   "hawking_core_metal": 47,
   "hawking_core_rs": 503,
   "metal": 50,

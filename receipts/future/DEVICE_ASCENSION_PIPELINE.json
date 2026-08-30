@@ -30,7 +30,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T04:50:18Z",
+  "recorded_at": "2026-08-30T05:50:52Z",
   "recorded_by": "tools/future/device_ascension_pipeline.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -63,7 +63,7 @@
   "stage 8 refuses to emit VERIFIED performance laws when stage 7 is UNAVAILABLE",
   "Odyssey II field names (law_id, scope, evidence_strength) without importing a sibling law store"
  ],
- "head": "0cbd19dc4d6d6de175544f8daabde7c0725b7d6c",
+ "head": "12d535429122f1ba4db860ab956940ecc5a7c206",
  "negative_findings": [
   "receipts/headless/APPLE_ANE_DEVICE_PROFILE.json is not in HEAD; ANE is present-unprofiled at best",
   "no Odyssey II scoped law store on disk (frontier F010); field names used locally",
@@ -88,8 +88,8 @@
   "III WHERE IS HAWKING WRONG?"
  ],
  "pipeline": {
-  "dest_machine_id": "UNKNOWN|arm64|cpu=UNKNOWN|gpu=60|mem=UNKNOWN",
-  "dest_machine_id_sha256": "2a565e9e748737917e6c3b8ad483faad576d09bcfb4323ab0f004982b88108f4",
+  "dest_machine_id": "Apple M3 Ultra|arm64|cpu=28|gpu=60|mem=103079215104",
+  "dest_machine_id_sha256": "26b5070fb1609db887ad6994473d2ff4d37d78f82eb2c6c86a9a07c279a22b12",
   "downgrade_rule": {
    "id": "hawking.future.device_ascension.downgrade.v1",
    "import_surfaces": [
@@ -115,23 +115,23 @@
     "name": "discover_hardware",
     "payload": {
      "arch": "arm64",
-     "cpu_cores": null,
+     "cpu_cores": 28,
      "discovery_class": "STATIC_ONLY",
      "discovery_means": [
       "sysctl",
       "ioreg AGXAccelerator",
       "platform"
      ],
-     "efficiency_cores": null,
+     "efficiency_cores": 8,
      "gpu_cores": 60,
-     "machine_id": "UNKNOWN|arm64|cpu=UNKNOWN|gpu=60|mem=UNKNOWN",
-     "machine_id_sha256": "2a565e9e748737917e6c3b8ad483faad576d09bcfb4323ab0f004982b88108f4",
-     "memory_bytes": null,
+     "machine_id": "Apple M3 Ultra|arm64|cpu=28|gpu=60|mem=103079215104",
+     "machine_id_sha256": "26b5070fb1609db887ad6994473d2ff4d37d78f82eb2c6c86a9a07c279a22b12",
+     "memory_bytes": 103079215104,
      "not_measured": "bandwidth, tps, token_ns, gpu_ns, joules, sustained thermal envelope",
      "os": "Darwin 27.0.0",
-     "os_product": "UNKNOWN",
-     "perf_cores": null,
-     "soc": "UNKNOWN"
+     "os_product": "27.0",
+     "perf_cores": 20,
+     "soc": "Apple M3 Ultra"
     },
     "status": "COMPLETED"
    },
@@ -142,18 +142,18 @@
     "payload": {
      "identity": {
       "arch": "arm64",
-      "cpu_cores": null,
-      "efficiency_cores": null,
+      "cpu_cores": 28,
+      "efficiency_cores": 8,
       "gpu_cores": 60,
-      "memory_bytes": null,
+      "memory_bytes": 103079215104,
       "os": "Darwin 27.0.0",
-      "os_product": "UNKNOWN",
-      "perf_cores": null,
-      "soc": "UNKNOWN"
+      "os_product": "27.0",
+      "perf_cores": 20,
+      "soc": "Apple M3 Ultra"
      },
      "knowledge_level": "INSTANCE",
-     "machine_id": "UNKNOWN|arm64|cpu=UNKNOWN|gpu=60|mem=UNKNOWN",
-     "machine_id_sha256": "2a565e9e748737917e6c3b8ad483faad576d09bcfb4323ab0f004982b88108f4",
+     "machine_id": "Apple M3 Ultra|arm64|cpu=28|gpu=60|mem=103079215104",
+     "machine_id_sha256": "26b5070fb1609db887ad6994473d2ff4d37d78f82eb2c6c86a9a07c279a22b12",
      "measured_bandwidth": {
       "reason": "sidecar has no GPU authority; a bandwidth number would be an invented measurement. Codex's sealed genome is receipts/headless/MACHINE_GENOME.json and is not re-asserted here",
       "status": "UNKNOWN"
@@ -186,7 +186,7 @@
       "profile_path": "receipts/headless/APPLE_ANE_DEVICE_PROFILE.json",
       "reason": "H11ANEIn is visible in ioreg; APPLE_ANE_DEVICE_PROFILE.json is not in HEAD, so ANE capability is present-unprofiled, not measured"
      },
-     "apple_silicon": false,
+     "apple_silicon": true,
      "cuda": {
       "performance": "UNKNOWN",
       "present": false,
@@ -200,7 +200,7 @@
       "present": false,
       "role": "Accelerator / Physical Compiler / Fusion"
      },
-     "machine_id": "UNKNOWN|arm64|cpu=UNKNOWN|gpu=60|mem=UNKNOWN",
+     "machine_id": "Apple M3 Ultra|arm64|cpu=28|gpu=60|mem=103079215104",
      "measurement_state": "STATIC_ONLY",
      "metal": {
       "api": "Metal",
@@ -209,7 +209,7 @@
        "reason": "xcrun metal is not installed; AOT metallib compilation is unavailable",
        "status": "ABSENT"
       },
-      "eligible": false,
+      "eligible": true,
       "performance": "UNKNOWN"
      },
      "protected_gpu_lease": {
@@ -219,7 +219,7 @@
      "unified_memory": {
       "evidence": "STATIC_ONLY identity (arch+soc); not a protected A/B",
       "note": "On unified memory the CUDA-era host<->device copies are structurally avoidable. That is a topology fact, not a speedup number, and it does not transfer to a discrete-GPU machine.",
-      "present": false
+      "present": true
      }
     },
     "status": "COMPLETED"
@@ -234,7 +234,7 @@
       {
        "calibration_axis": "identity",
        "crosses_machine_boundary": true,
-       "dest_machine_id": "UNKNOWN|arm64|cpu=UNKNOWN|gpu=60|mem=UNKNOWN",
+       "dest_machine_id": "Apple M3 Ultra|arm64|cpu=28|gpu=60|mem=103079215104",
        "downgrade_reason": "origin_machine_id != dest_machine_id: a law imported from another machine arrives as a hypothesis with scope clamped; VERIFIED and PROTECTED_ABSOLUTE cannot survive the boundary",
        "downgrade_rule": "hawking.future.device_ascension.downgrade.v1",
        "evidence_class": "STATIC_ONLY",
@@ -254,7 +254,7 @@
       {
        "calibration_axis": "fusion",
        "crosses_machine_boundary": true,
-       "dest_machine_id": "UNKNOWN|arm64|cpu=UNKNOWN|gpu=60|mem=UNKNOWN",
+       "dest_machine_id": "Apple M3 Ultra|arm64|cpu=28|gpu=60|mem=103079215104",
        "downgrade_reason": "origin_machine_id != dest_machine_id: a law imported from another machine arrives as a hypothesis with scope clamped; VERIFIED and PROTECTED_ABSOLUTE cannot survive the boundary",
        "downgrade_rule": "hawking.future.device_ascension.downgrade.v1",
        "evidence_class": "STATIC_ONLY",
@@ -274,7 +274,7 @@
       {
        "calibration_axis": "bandwidth",
        "crosses_machine_boundary": true,
-       "dest_machine_id": "UNKNOWN|arm64|cpu=UNKNOWN|gpu=60|mem=UNKNOWN",
+       "dest_machine_id": "Apple M3 Ultra|arm64|cpu=28|gpu=60|mem=103079215104",
        "downgrade_reason": "origin_machine_id != dest_machine_id: a law imported from another machine arrives as a hypothesis with scope clamped; VERIFIED and PROTECTED_ABSOLUTE cannot survive the boundary",
        "downgrade_rule": "hawking.future.device_ascension.downgrade.v1",
        "evidence_class": "STATIC_ONLY",
@@ -294,7 +294,7 @@
       {
        "calibration_axis": "unified_memory",
        "crosses_machine_boundary": true,
-       "dest_machine_id": "UNKNOWN|arm64|cpu=UNKNOWN|gpu=60|mem=UNKNOWN",
+       "dest_machine_id": "Apple M3 Ultra|arm64|cpu=28|gpu=60|mem=103079215104",
        "downgrade_reason": "origin_machine_id != dest_machine_id: a law imported from another machine arrives as a hypothesis with scope clamped; VERIFIED and PROTECTED_ABSOLUTE cannot survive the boundary",
        "downgrade_rule": "hawking.future.device_ascension.downgrade.v1",
        "evidence_class": "STATIC_ONLY",
@@ -314,7 +314,7 @@
       {
        "calibration_axis": "representation",
        "crosses_machine_boundary": true,
-       "dest_machine_id": "UNKNOWN|arm64|cpu=UNKNOWN|gpu=60|mem=UNKNOWN",
+       "dest_machine_id": "Apple M3 Ultra|arm64|cpu=28|gpu=60|mem=103079215104",
        "downgrade_reason": "origin_machine_id != dest_machine_id: a law imported from another machine arrives as a hypothesis with scope clamped; VERIFIED and PROTECTED_ABSOLUTE cannot survive the boundary",
        "downgrade_rule": "hawking.future.device_ascension.downgrade.v1",
        "evidence_class": "STATIC_ONLY",
@@ -418,9 +418,9 @@
        "ane"
       ],
       "fpga_note": "FPGA is a candidate backend of Accelerator / Physical Compiler / Fusion, not a civilization; selected is never fpga here",
-      "selected": "cpu"
+      "selected": "metal"
      },
-     "fingerprint": "f10a550eaaa4983bc81ac90366864f48654a1742c40f8afa92a30c146ce77e44",
+     "fingerprint": "f4f39db187b7d282d04b726daa01aa5b710ae381eb14d3ded75b2c232817acbd",
      "hypotheses_in_scope": [
       "LAW-FOREIGN-ALREADY-HYPOTHESIS",
       "LAW-FOREIGN-GENERIC-FUSION",
@@ -428,7 +428,7 @@
       "LAW-FOREIGN-M1MAX-UNIFIED-MEMORY",
       "LAW-FOREIGN-MODEL-MLP-FLOOR"
      ],
-     "machine_id": "UNKNOWN|arm64|cpu=UNKNOWN|gpu=60|mem=UNKNOWN",
+     "machine_id": "Apple M3 Ultra|arm64|cpu=28|gpu=60|mem=103079215104",
      "measurement_state": "STATIC_ONLY",
      "not_executed": true,
      "not_the_hcli_compiler": "hcli.physical_graph.compile_physical_graph",
@@ -441,7 +441,7 @@
      "residency": {
       "page_cache": "unresolved",
       "state": "unresolved",
-      "weights": "unresolved"
+      "weights": "unified_memory_candidate"
      },
      "schema": "hawking.future.physical_graph.plan_only.v1"
     },
@@ -518,9 +518,9 @@
        "imported": false,
        "law_id": "LAW-DEST-IDENTITY-SOC",
        "note": "identity, not a performance law; DISCOVERED is not VERIFIED",
-       "origin_machine_id": "UNKNOWN|arm64|cpu=UNKNOWN|gpu=60|mem=UNKNOWN",
+       "origin_machine_id": "Apple M3 Ultra|arm64|cpu=28|gpu=60|mem=103079215104",
        "scope": "MACHINE_LOCAL",
-       "statement": "THIS machine's SoC identity WAS 'UNKNOWN' under STATIC sysctl discovery.",
+       "statement": "THIS machine's SoC identity WAS 'Apple M3 Ultra' under STATIC sysctl discovery.",
        "status": "ACTIVE",
        "verified_on_dest": false
       },
@@ -530,9 +530,9 @@
        "imported": false,
        "law_id": "LAW-DEST-UNIFIED-MEMORY-TOPOLOGY",
        "note": "topology from arch+soc; copy-elimination MAGNITUDE is unmeasured",
-       "origin_machine_id": "UNKNOWN|arm64|cpu=UNKNOWN|gpu=60|mem=UNKNOWN",
+       "origin_machine_id": "Apple M3 Ultra|arm64|cpu=28|gpu=60|mem=103079215104",
        "scope": "MACHINE_LOCAL",
-       "statement": "THIS machine was not classified as unified-memory Apple Silicon",
+       "statement": "THIS machine has unified memory",
        "status": "ACTIVE",
        "verified_on_dest": false
       }
@@ -621,6 +621,6 @@
   "SOC_FAMILY",
   "GENERIC_VERIFIED"
  ],
- "seal_sha256": "a972757ea1e1dc7b1d4457739bfa130a9a24ab33cbcff1c6794c747f9e636c9b",
+ "seal_sha256": "920326edf5a6f2bfcac1fa31642f3caf2fbaac9d21c2ed0eecad70069cdfdb07",
  "version": 1
 }

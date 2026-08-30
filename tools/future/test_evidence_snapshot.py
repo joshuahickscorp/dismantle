@@ -13,7 +13,11 @@ def test_build_captures_and_hashes():
         p = REPO / row["snapshot_path"]
         assert p.exists()
         assert sha256_file(p) == row["sha256"]
-        assert row["source_path"].startswith(("receipts/", "tools/", "workspace/"))
+        # The Codex handoff is sealed at the REPO ROOT, not under a subtree.
+        # Pin the property that matters -- the source is inside the repo and is
+        # a real relative path -- not the directories that happened to exist.
+        assert not row["source_path"].startswith(("/", "../"))
+        assert (REPO / row["source_path"]).exists()
 
 
 def test_verify_is_green():

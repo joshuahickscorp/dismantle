@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T20:37:01Z",
+  "recorded_at": "2026-08-30T21:57:11Z",
   "recorded_by": "tools/future/status_causality.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -256,7 +256,7 @@
    "schema": "hawking.future.odyssey2_law_store.v1"
   },
   {
-   "n_keys": 35,
+   "n_keys": 36,
    "rel": "receipts/future/ODYSSEY_LAUNCH_GATE.json",
    "schema": "hawking.future.odyssey_launch.v1"
   },
@@ -425,7 +425,7 @@
  },
  "scar": "STATUS_LABEL_LAUNDERED_AS_CAUSAL_CLAIM",
  "schema": "hawking.future.status_causality.v1",
- "seal_sha256": "31b52a2c84e868404f39ee5eedfd3591665edec3ed992b15d92012403f4823dc",
+ "seal_sha256": "496d728801e70cd22e6aee9415b3a34210e14ad2a59d09832382beb8cd3e375a",
  "supported_fixtures": [
   {
    "alternatives": [

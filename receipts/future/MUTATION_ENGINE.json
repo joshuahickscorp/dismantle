@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T20:37:08Z",
+  "recorded_at": "2026-08-30T21:57:11Z",
   "recorded_by": "tools/future/mutation_engine.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -32,10 +32,10 @@
   "RESIDENT_ARTIFACT"
  ],
  "needs_protected": [
-  "REPRESENTATION_BPW",
+  "RESIDENT_ARTIFACT",
   "KERNEL_OR_GPU",
   "TOKEN_RATE",
-  "RESIDENT_ARTIFACT"
+  "REPRESENTATION_BPW"
  ],
  "negative_findings": [
   "KERNEL_OR_GPU / TOKEN_RATE / REPRESENTATION_BPW performance cannot be measured here",
@@ -146,7 +146,7 @@
   "workunit": "one CPU_ANALYSIS unit; bind a reversible scope, then propose/apply/evidence/rollback/verdict. PIPELINE_SELF is completable as work-completed counts; KERNEL_OR_GPU and TOKEN_RATE park BLOCKED_ON_PROTECTED_WINDOW."
  },
  "schema": "hawking.future.mutation_engine.v1",
- "seal_sha256": "3efafb109b34cc2e0f9abb59b402452208f8d3e4538458e5605b37f87138cc06",
+ "seal_sha256": "aad5980ea37f5ec9fccd4ea052ad1a828a49c1ac69aa020bf9e22b5018399bb2",
  "trial_table": {
   "refill_count": 4,
   "refill_ids": 25,

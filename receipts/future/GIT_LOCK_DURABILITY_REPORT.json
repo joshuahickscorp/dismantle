@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T19:17:49Z",
+  "recorded_at": "2026-08-30T21:44:41Z",
   "recorded_by": "tools/future/git_lock_doctor.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -381,10 +381,21 @@
     "/Users/scammermike/Downloads/hawking",
     "/Users/scammermike/Downloads/hawking/workspace/ops/local/genesis-agentos-worktrees/gravity",
     "/Users/scammermike/Downloads/forge/projects/hawking",
-    "/Users/scammermike/Downloads/hawking/workspace/ops/local/genesis-agentos-worktrees/kernel"
+    "/Users/scammermike/Downloads/hawking/workspace/ops/local/genesis-agentos-worktrees/kernel",
+    "/Users/scammermike/.claude-grok/worktrees/l23-protected-capability-20260830-152210",
+    "/Users/scammermike/.claude-grok/worktrees/l24-nr-nx-generic-20260830-152224",
+    "/Users/scammermike/.claude-grok/worktrees/l25-status-causality-20260830-152239",
+    "/Users/scammermike/.claude-grok/worktrees/l26-no-wait-subagents-20260830-152347",
+    "/Users/scammermike/.claude-grok/worktrees/l27-concurrency-doctor-20260830-152402",
+    "/Users/scammermike/.claude-grok/worktrees/l28-flash-organ-pivot-20260830-152415",
+    "/Users/scammermike/.claude-grok/worktrees/l29-abliteration-science-20260830-161118",
+    "/Users/scammermike/.claude-grok/worktrees/l30-mutation-engine-20260830-161129",
+    "/Users/scammermike/.claude-grok/worktrees/l31-gate-rewire-20260830-164013",
+    "/Users/scammermike/.claude-grok/worktrees/l32-nr-nx-parameterize-20260830-171151",
+    "/Users/scammermike/.claude-grok/worktrees/l33-power-torture-20260830-171240"
    ]
   },
-  "observation_now_epoch": 1788117469,
+  "observation_now_epoch": 1788126281,
   "stale_catalog": [
    {
     "mtime_epoch": 1788088904,
@@ -1018,10 +1029,17 @@
      "no_git_process"
     ],
     "git_dir": "/Users/scammermike/Downloads/hawking/.git",
-    "git_processes_scanned": 0,
+    "git_processes_scanned": 1,
     "holders": null,
     "is_regular_file": false,
-    "matching_git_processes": [],
+    "matching_git_processes": [
+     {
+      "comm": "/Library/Develop",
+      "command": "/Library/Developer/CommandLineTools/usr/bin/git -c core.quotepath=false -c safe.directory=* -c core.fsmonitor=false -c branch.autoSetupMerge=false status --porcelain=v2 --branch -z",
+      "cwd": "/Users/scammermike/Downloads/hawking",
+      "pid": 436
+     }
+    ],
     "may_rename": false,
     "mtime_epoch": null,
     "path": "/Users/scammermike/Downloads/hawking/.git/index.lock",
@@ -1626,7 +1644,7 @@
   ]
  },
  "schema": "hawking.future.git_lock_durability.v1",
- "seal_sha256": "fc49281e676f77d423377eaf7c1c308139fab2b1f784eb8f8717edc706695b57",
+ "seal_sha256": "7c9d612e450d3367c0c960b6b7f1a2318c8186c1fe107ce4e16df168106b076b",
  "version": 1,
  "vocabulary": {
   "eras": [

@@ -155,6 +155,8 @@ BINDINGS: dict[str, tuple[str, str]] = {
     "abliteration.py":            ("FT.MODEL_CAPABILITY.tournament-refuse", "ABLITERATION"),
     "mutation_engine.py":         ("FT.HCLI_SELF.emit-workunits", "MUTATION_ENGINE"),
     "power_torture.py":           ("FT.VERIFICATION.repro", "POWER_TORTURE"),
+    "resident_provider.py":       ("FT.CHILD_RESIDENT.install-dry-run", "RESIDENT_PROVIDER"),
+    "model_bearing.py":           ("FT.HCLI_SELF.emit-workunits", "MODEL_BEARING"),
     "trial_workload.py":          ("FT.VERIFICATION.repro", "TRIAL_WORKLOAD"),
     "sprint_profile.py":          ("FT.EXPERIMENT_TURNAROUND.refresh", "WALL_ATTRIBUTION"),
     "resident_health.py":         ("FT.HCLI_SELF.no-launch", "RESIDENT_TELEMETRY"),

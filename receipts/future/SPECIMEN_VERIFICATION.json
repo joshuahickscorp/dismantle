@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T20:16:00Z",
+  "recorded_at": "2026-08-30T22:13:09Z",
   "recorded_by": "tools/future/specimen_verify.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -14,8 +14,8 @@
   "corrupt": 0,
   "incomplete": 0,
   "partial": 0,
-  "specimens_examined": 37,
-  "whole_tree_verified": 37
+  "specimens_examined": 39,
+  "whole_tree_verified": 39
  },
  "gaps_closed": [
   "nothing recomputed specimen hashes offline; readiness rested on size checks"
@@ -210,6 +210,153 @@
    "whole_tree_verified": true
   },
   {
+   "bytes_hashed": 16512918618,
+   "files": [
+    {
+     "actual": "52373fe24473b1aa44333d318f578ae6bf04b49b",
+     "bytes": 1570,
+     "digest_kind": "git_blob_sha1",
+     "expected": "52373fe24473b1aa44333d318f578ae6bf04b49b",
+     "file": ".gitattributes",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "c86dcacdee189143a3677f115e9698d8c7623d8b",
+     "bytes": 2341,
+     "digest_kind": "git_blob_sha1",
+     "expected": "c86dcacdee189143a3677f115e9698d8c7623d8b",
+     "file": "README.md",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "b0c3b12c2c95c44e8b23bac07a3e9b7cb19dd0ef",
+     "bytes": 1647,
+     "digest_kind": "git_blob_sha1",
+     "expected": "b0c3b12c2c95c44e8b23bac07a3e9b7cb19dd0ef",
+     "file": "SECURITY.md",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "93c8543cfab485895a5f06c8073bff99251efc49",
+     "bytes": 477,
+     "digest_kind": "git_blob_sha1",
+     "expected": "93c8543cfab485895a5f06c8073bff99251efc49",
+     "file": "chat_template.jinja",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "415852650c55534dab17d69b67d65e05302ad75d",
+     "bytes": 944,
+     "digest_kind": "git_blob_sha1",
+     "expected": "415852650c55534dab17d69b67d65e05302ad75d",
+     "file": "config.json",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "bad6d42476a0b63ff422b3720eff7635c057dbe5",
+     "bytes": 3003,
+     "digest_kind": "git_blob_sha1",
+     "expected": "bad6d42476a0b63ff422b3720eff7635c057dbe5",
+     "file": "configuration_illada.py",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "36966e54d22708a3204593bd75781c34f9fa4760",
+     "bytes": 111,
+     "digest_kind": "git_blob_sha1",
+     "expected": "36966e54d22708a3204593bd75781c34f9fa4760",
+     "file": "generation_config.json",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "c83160fce649d87fed6ffa4c543dc83bd87393e90ab93d4d4dcaea20af65b829",
+     "bytes": 4962001760,
+     "digest_kind": "sha256",
+     "expected": "c83160fce649d87fed6ffa4c543dc83bd87393e90ab93d4d4dcaea20af65b829",
+     "file": "model-00001-of-00004.safetensors",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "fe8eeca4cec7b85a05ded44b61044a25f8bb2f924fe85de082c42f2263e5e01a",
+     "bytes": 4915916160,
+     "digest_kind": "sha256",
+     "expected": "fe8eeca4cec7b85a05ded44b61044a25f8bb2f924fe85de082c42f2263e5e01a",
+     "file": "model-00002-of-00004.safetensors",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "8c08a73848b3046912ec5ea1de21f8ffb17518f6e2a563bf309ddc49cb142ba7",
+     "bytes": 4999819336,
+     "digest_kind": "sha256",
+     "expected": "8c08a73848b3046912ec5ea1de21f8ffb17518f6e2a563bf309ddc49cb142ba7",
+     "file": "model-00003-of-00004.safetensors",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "d15b88adf89bd0b59bd223ee44bc2b6b9cdabfd8d1b48e4efcab64cb204037a4",
+     "bytes": 1623221024,
+     "digest_kind": "sha256",
+     "expected": "d15b88adf89bd0b59bd223ee44bc2b6b9cdabfd8d1b48e4efcab64cb204037a4",
+     "file": "model-00004-of-00004.safetensors",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "1febeb70641135e6ad390c278690b76d57f1daf7",
+     "bytes": 23986,
+     "digest_kind": "git_blob_sha1",
+     "expected": "1febeb70641135e6ad390c278690b76d57f1daf7",
+     "file": "model.safetensors.index.json",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "b0c04b1d56731a9c6d67f96567fbcedbd57375e8",
+     "bytes": 22286,
+     "digest_kind": "git_blob_sha1",
+     "expected": "b0c04b1d56731a9c6d67f96567fbcedbd57375e8",
+     "file": "modeling_illada.py",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "82bc88b6eaff44f33cb8673b6f30274764cdf75d",
+     "bytes": 563,
+     "digest_kind": "git_blob_sha1",
+     "expected": "82bc88b6eaff44f33cb8673b6f30274764cdf75d",
+     "file": "special_tokens_map.json",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "62dd8b84b725abc895c3c845fb2632e53d9ebaabfb49443f9c8a117dec8668c7",
+     "bytes": 11880930,
+     "digest_kind": "sha256",
+     "expected": "62dd8b84b725abc895c3c845fb2632e53d9ebaabfb49443f9c8a117dec8668c7",
+     "file": "tokenizer.json",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "cf0ae6c57a3753ebf15ba5d9949fb40cabec08d0",
+     "bytes": 22480,
+     "digest_kind": "git_blob_sha1",
+     "expected": "cf0ae6c57a3753ebf15ba5d9949fb40cabec08d0",
+     "file": "tokenizer_config.json",
+     "verdict": "VERIFIED"
+    }
+   ],
+   "mismatched": 0,
+   "modellake_mutated": false,
+   "n_files": 16,
+   "no_remote_digest": 0,
+   "owner": "modellake",
+   "skipped_time_budget": 0,
+   "source_mutated": false,
+   "specimen": "GSAI-ML--iLLaDA-8B-Base@a1b5b5f8a31a",
+   "specimen_path": "/Volumes/corpdrive/hawking-modellake/specimens/GSAI-ML--iLLaDA-8B-Base@a1b5b5f8a31a",
+   "status": "WHOLE_TREE_VERIFIED",
+   "unrecognized_digest": 0,
+   "verified": 16,
+   "wall_seconds": 278.57,
+   "whole_tree_verified": true
+  },
+  {
    "bytes_hashed": 8992155310,
    "files": [
     {
@@ -353,7 +500,7 @@
    "status": "WHOLE_TREE_VERIFIED",
    "unrecognized_digest": 0,
    "verified": 16,
-   "wall_seconds": 118.58,
+   "wall_seconds": 102.42,
    "whole_tree_verified": true
   },
   {
@@ -444,7 +591,7 @@
    "status": "WHOLE_TREE_VERIFIED",
    "unrecognized_digest": 0,
    "verified": 9,
-   "wall_seconds": 89.66,
+   "wall_seconds": 55.6,
    "whole_tree_verified": true
   },
   {
@@ -543,7 +690,7 @@
    "status": "WHOLE_TREE_VERIFIED",
    "unrecognized_digest": 0,
    "verified": 10,
-   "wall_seconds": 15.35,
+   "wall_seconds": 24.83,
    "whole_tree_verified": true
   },
   {
@@ -973,7 +1120,7 @@
    "status": "WHOLE_TREE_VERIFIED",
    "unrecognized_digest": 0,
    "verified": 11,
-   "wall_seconds": 23.96,
+   "wall_seconds": 25.16,
    "whole_tree_verified": true
   },
   {
@@ -2364,6 +2511,161 @@
    "whole_tree_verified": true
   },
   {
+   "bytes_hashed": 26542560647,
+   "files": [
+    {
+     "actual": "2264b63ec1152a5e87f179de42a544379141372e",
+     "bytes": 137,
+     "digest_kind": "git_blob_sha1",
+     "expected": "2264b63ec1152a5e87f179de42a544379141372e",
+     "file": ".gitattributes",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "2ac3d968e6c29520a3be1e615cb285c04fc35444",
+     "bytes": 11558,
+     "digest_kind": "git_blob_sha1",
+     "expected": "2ac3d968e6c29520a3be1e615cb285c04fc35444",
+     "file": "LICENSE",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "0f8ebb58d84386eccaee42338a72b57725c5f5c4",
+     "bytes": 140,
+     "digest_kind": "git_blob_sha1",
+     "expected": "0f8ebb58d84386eccaee42338a72b57725c5f5c4",
+     "file": "NOTICE",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "a73f8cae9747a3e640317173a1e676908f07fa15",
+     "bytes": 8382,
+     "digest_kind": "git_blob_sha1",
+     "expected": "a73f8cae9747a3e640317173a1e676908f07fa15",
+     "file": "README.md",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "bd38ecf5645f30d76222d8ad91830414de349be7",
+     "bytes": 2389,
+     "digest_kind": "git_blob_sha1",
+     "expected": "bd38ecf5645f30d76222d8ad91830414de349be7",
+     "file": "chat_template.jinja",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "47bf55a86c40411c13243649808af70d066f6d93",
+     "bytes": 596,
+     "digest_kind": "git_blob_sha1",
+     "expected": "47bf55a86c40411c13243649808af70d066f6d93",
+     "file": "config.json",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "525b11c6a3f428d9addb83e8a88056af0e6ea677",
+     "bytes": 93,
+     "digest_kind": "git_blob_sha1",
+     "expected": "525b11c6a3f428d9addb83e8a88056af0e6ea677",
+     "file": "generation_config.json",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "3c627f16015c9891a29dcc6011aeb7e924e7d9558ae66ae3e0a1bfb62a2b1339",
+     "bytes": 4995084264,
+     "digest_kind": "sha256",
+     "expected": "3c627f16015c9891a29dcc6011aeb7e924e7d9558ae66ae3e0a1bfb62a2b1339",
+     "file": "model-00001-of-00006.safetensors",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "aeae73795aa4f37569eca90006703d202e048699a505db5905b421728d3e5ad7",
+     "bytes": 4875689376,
+     "digest_kind": "sha256",
+     "expected": "aeae73795aa4f37569eca90006703d202e048699a505db5905b421728d3e5ad7",
+     "file": "model-00002-of-00006.safetensors",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "9ee6f0275005455e20d8c9ad3d6286227aca448ee8ba9564016baa82860dafa6",
+     "bytes": 4976327808,
+     "digest_kind": "sha256",
+     "expected": "9ee6f0275005455e20d8c9ad3d6286227aca448ee8ba9564016baa82860dafa6",
+     "file": "model-00003-of-00006.safetensors",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "c914f79173066f41890b987df798a68e6dadc37411abefb798bc6e3ddcb9ed1e",
+     "bytes": 4976352664,
+     "digest_kind": "sha256",
+     "expected": "c914f79173066f41890b987df798a68e6dadc37411abefb798bc6e3ddcb9ed1e",
+     "file": "model-00004-of-00006.safetensors",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "0748187982b3137d9c38877f544084b1218b905cee64d2cea10ebeea058c786c",
+     "bytes": 4976352664,
+     "digest_kind": "sha256",
+     "expected": "0748187982b3137d9c38877f544084b1218b905cee64d2cea10ebeea058c786c",
+     "file": "model-00005-of-00006.safetensors",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "e48d1fad07b99328b94b361e4067392a7c325035cfb65ee1415c5c6886a21e74",
+     "bytes": 1740996312,
+     "digest_kind": "sha256",
+     "expected": "e48d1fad07b99328b94b361e4067392a7c325035cfb65ee1415c5c6886a21e74",
+     "file": "model-00006-of-00006.safetensors",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "de24b3387774e20dcd78e2f1dfdd41f9175e67a3",
+     "bytes": 141105,
+     "digest_kind": "git_blob_sha1",
+     "expected": "de24b3387774e20dcd78e2f1dfdd41f9175e67a3",
+     "file": "model.safetensors.index.json",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "f9e4e85c25cd6017081ba79e2ebe4d2913e33215",
+     "bytes": 11728,
+     "digest_kind": "git_blob_sha1",
+     "expected": "f9e4e85c25cd6017081ba79e2ebe4d2913e33215",
+     "file": "release-manifest.json",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "c1bdb0eea4e8a9d45beae1a704491305e8e5187b",
+     "bytes": 1580973,
+     "digest_kind": "git_blob_sha1",
+     "expected": "c1bdb0eea4e8a9d45beae1a704491305e8e5187b",
+     "file": "tokenizer.json",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "1081163c249aefb43dee7e1155ee9e410cd3a995",
+     "bytes": 458,
+     "digest_kind": "git_blob_sha1",
+     "expected": "1081163c249aefb43dee7e1155ee9e410cd3a995",
+     "file": "tokenizer_config.json",
+     "verdict": "VERIFIED"
+    }
+   ],
+   "mismatched": 0,
+   "modellake_mutated": false,
+   "n_files": 17,
+   "no_remote_digest": 0,
+   "owner": "modellake",
+   "skipped_time_budget": 0,
+   "source_mutated": false,
+   "specimen": "RWKV--RWKV7-13.3B-20260805@64ffe5934178",
+   "specimen_path": "/Volumes/corpdrive/hawking-modellake/specimens/RWKV--RWKV7-13.3B-20260805@64ffe5934178",
+   "status": "WHOLE_TREE_VERIFIED",
+   "unrecognized_digest": 0,
+   "verified": 17,
+   "wall_seconds": 282.63,
+   "whole_tree_verified": true
+  },
+  {
    "bytes_hashed": 11870488581,
    "files": [
     {
@@ -2542,7 +2844,7 @@
    "status": "WHOLE_TREE_VERIFIED",
    "unrecognized_digest": 0,
    "verified": 12,
-   "wall_seconds": 82.68,
+   "wall_seconds": 101.95,
    "whole_tree_verified": true
   },
   {
@@ -2756,7 +3058,7 @@
    "status": "WHOLE_TREE_VERIFIED",
    "unrecognized_digest": 0,
    "verified": 7,
-   "wall_seconds": 12.94,
+   "wall_seconds": 27.91,
    "whole_tree_verified": true
   },
   {
@@ -2981,7 +3283,7 @@
    "status": "WHOLE_TREE_VERIFIED",
    "unrecognized_digest": 0,
    "verified": 4,
-   "wall_seconds": 71.93,
+   "wall_seconds": 98.5,
    "whole_tree_verified": true
   },
   {
@@ -3040,7 +3342,7 @@
    "status": "WHOLE_TREE_VERIFIED",
    "unrecognized_digest": 0,
    "verified": 5,
-   "wall_seconds": 26.27,
+   "wall_seconds": 22.42,
    "whole_tree_verified": true
   },
   {
@@ -3214,7 +3516,7 @@
    "status": "WHOLE_TREE_VERIFIED",
    "unrecognized_digest": 0,
    "verified": 8,
-   "wall_seconds": 10.93,
+   "wall_seconds": 20.12,
    "whole_tree_verified": true
   },
   {
@@ -3289,7 +3591,7 @@
    "status": "WHOLE_TREE_VERIFIED",
    "unrecognized_digest": 0,
    "verified": 7,
-   "wall_seconds": 102.05,
+   "wall_seconds": 74.7,
    "whole_tree_verified": true
   },
   {
@@ -3380,7 +3682,7 @@
    "status": "WHOLE_TREE_VERIFIED",
    "unrecognized_digest": 0,
    "verified": 9,
-   "wall_seconds": 59.01,
+   "wall_seconds": 52.37,
    "whole_tree_verified": true
   },
   {
@@ -3431,7 +3733,7 @@
    "status": "WHOLE_TREE_VERIFIED",
    "unrecognized_digest": 0,
    "verified": 4,
-   "wall_seconds": 15.72,
+   "wall_seconds": 39.24,
    "whole_tree_verified": true
   },
   {
@@ -3562,7 +3864,7 @@
    "status": "WHOLE_TREE_VERIFIED",
    "unrecognized_digest": 0,
    "verified": 14,
-   "wall_seconds": 82.23,
+   "wall_seconds": 100.12,
    "whole_tree_verified": true
   },
   {
@@ -4046,7 +4348,7 @@
    "status": "WHOLE_TREE_VERIFIED",
    "unrecognized_digest": 0,
    "verified": 10,
-   "wall_seconds": 44.71,
+   "wall_seconds": 71.85,
    "whole_tree_verified": true
   },
   {
@@ -4145,7 +4447,7 @@
    "status": "WHOLE_TREE_VERIFIED",
    "unrecognized_digest": 0,
    "verified": 10,
-   "wall_seconds": 28.3,
+   "wall_seconds": 26.71,
    "whole_tree_verified": true
   },
   {
@@ -4588,7 +4890,7 @@
    "status": "WHOLE_TREE_VERIFIED",
    "unrecognized_digest": 0,
    "verified": 3,
-   "wall_seconds": 0.47,
+   "wall_seconds": 2.48,
    "whole_tree_verified": true
   },
   {
@@ -4711,7 +5013,7 @@
    "status": "WHOLE_TREE_VERIFIED",
    "unrecognized_digest": 0,
    "verified": 13,
-   "wall_seconds": 12.93,
+   "wall_seconds": 33.86,
    "whole_tree_verified": true
   },
   {
@@ -5029,7 +5331,7 @@
    "status": "WHOLE_TREE_VERIFIED",
    "unrecognized_digest": 0,
    "verified": 4,
-   "wall_seconds": 33.6,
+   "wall_seconds": 29.06,
    "whole_tree_verified": true
   },
   {
@@ -5080,7 +5382,7 @@
    "status": "WHOLE_TREE_VERIFIED",
    "unrecognized_digest": 0,
    "verified": 4,
-   "wall_seconds": 25.75,
+   "wall_seconds": 36.08,
    "whole_tree_verified": true
   },
   {
@@ -5115,7 +5417,7 @@
    "status": "WHOLE_TREE_VERIFIED",
    "unrecognized_digest": 0,
    "verified": 2,
-   "wall_seconds": 1.17,
+   "wall_seconds": 1.42,
    "whole_tree_verified": true
   },
   {
@@ -5243,11 +5545,12 @@
   }
  ],
  "schema": "hawking.future.specimen_verify.v1",
- "seal_sha256": "741c953ed331697f46dd6dbc9a9322a8b837a4ce08fb0501ee60dbbba8ea17d1",
+ "seal_sha256": "9dae7dcbf2611df5483c4b6fa7659c6fa2b7ce4c1c7a3a51fa3082e731e53c39",
  "verification_rule": "VERIFIED means the hash was recomputed here and matched a published digest. Size agreement is not verification. A specimen is WHOLE_TREE_VERIFIED only when every file carried a digest and every one matched; a single undigested file yields PARTIAL_NO_REMOTE_DIGEST.",
  "version": 1,
  "whole_tree_verified_specimens": [
   "Dream-org--Dream-v0-Instruct-7B@05334cb9faaf",
+  "GSAI-ML--iLLaDA-8B-Base@a1b5b5f8a31a",
   "HuggingFaceTB--SmolVLM2-2.2B-Instruct@482adb537c02",
   "LiquidAI--LFM2.5-2.6B-Base@c57bdaed1ef1",
   "Qwen--Qwen3-0.6B@c1899de289a0",
@@ -5256,6 +5559,7 @@
   "Qwen--Qwen3-Embedding-0.6B@97b0c614be4d",
   "Qwen--Qwen3-VL-30B-A3B-Instruct@9c4b90e1e4ba",
   "Qwen--Qwen3.8-Flash-Next@34567a4712bc",
+  "RWKV--RWKV7-13.3B-20260805@64ffe5934178",
   "Wan-AI--Wan2.2-T2V-A14B@c8c270b13ee0",
   "ai21labs--AI21-Jamba2-3B@525c6c8e1d9f",
   "allenai--Olmo-3-1025-7B@a81bae42db39",

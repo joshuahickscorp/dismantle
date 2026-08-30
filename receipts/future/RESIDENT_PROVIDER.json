@@ -1,0 +1,329 @@
+{
+ "bench": {
+  "gpu_authority": false,
+  "machine": "Apple host CPU; receipt/header metadata only",
+  "measurement_state": "STATIC_ONLY",
+  "recorded_at": "2026-08-30T22:21:53Z",
+  "recorded_by": "tools/future/resident_provider.py",
+  "rule": "no hardware measurement claim without hardware",
+  "state": "UNKNOWN"
+ },
+ "claim_boundary": "Static sidecar artifact. No hardware measurement. A provider-side elapsed_s is SELF_MEASURED_DIRTY process telemetry on a contaminated machine with no lease; it ranks nothing.",
+ "eras": [
+  "I Genesis of the Laboratory",
+  "II Compounding Civilization",
+  "III Autonomous Science Civilization",
+  "IV Synthetic Machine Civilization",
+  "V Released Hawking Civilization"
+ ],
+ "evidence_class": "STATIC_ONLY",
+ "flock": false,
+ "gaps_closed": [
+  "a future-partition driver that spawns the JSONL resident, waits for ready, and correlates ask/reply",
+  "logical sessions multiplexed over one process (no second 9.9GB body)",
+  "inference slot held only while a request is in flight",
+  "reuse proven: several asks through one start, same pid, model_open_count stays 1",
+  "stop/restart that return to ready and serve",
+  "stdin=PIPE (the live probe's first death was DEVNULL EOF)"
+ ],
+ "gpu_authority": false,
+ "launch": {
+  "argv_flags": [
+   "--artifact-root",
+   "--tokenizer",
+   "--max-seq-len",
+   "--resident-identity"
+  ],
+  "artifact_digest_kind": "resident_binary_sha256",
+  "binary": "/Users/scammermike/Downloads/hawking/workspace/ops/build/rust/release-fast/examples/ascension_qwen38_resident",
+  "identity": "sealed-3.14",
+  "missing": [],
+  "present": true,
+  "protocol": "hawking.qwen38.resident.v1",
+  "reason": null,
+  "source": "sealed:ON_DISK+probe:receipts/future/evidence/RESIDENT_LIVE_PROBE.json",
+  "started_model_process": false,
+  "stdin": "PIPE",
+  "stdin_why": "the first live probe died because nohup gave it /dev/null on stdin; a request-driven resident reaching EOF is not a resident that failed to start"
+ },
+ "live_probe": {
+  "reached_ready": true,
+  "source": "receipts/future/evidence/RESIDENT_LIVE_PROBE.json",
+  "verdict": "RESIDENT_STARTS_AND_GENERATES"
+ },
+ "negative_findings": [
+  "build() did not spawn the sealed 9.9GB resident: a live campaign is running and this sidecar has no GPU lease",
+  "timings are SELF_MEASURED_DIRTY and rank nothing",
+  "orchestration.py BINDINGS was not edited (not in this lane's WRITE list)",
+  "hcli/hawking_native.ResidentProcess remains the HCLI driver; this module does not replace it",
+  "the rust resident resets KV per request; logical sessions are prompt-side history over shared weights",
+  "restart_supervisor.restart cannot drive this protocol (stdin=DEVNULL)"
+ ],
+ "odysseys": [
+  "I WHAT IS TRUE?",
+  "II WHAT DID HAWKING ALREADY LEARN?",
+  "III WHERE IS HAWKING WRONG?"
+ ],
+ "proofs": {
+  "all_passed": true,
+  "gpu_authority": false,
+  "n": 18,
+  "proofs": {
+   "ask_before_ready": {
+    "detail": "ask before ready is refused, not queued",
+    "fires": true
+   },
+   "dead_is_absent_rss_null": {
+    "detail": {
+     "alive": false,
+     "authorizes": "liveness_only",
+     "dead": true,
+     "evidence_class": "SELF_MEASURED_DIRTY",
+     "failures": 0,
+     "generation": 1,
+     "gpu_authority": false,
+     "identity": "sealed-3.14",
+     "in_flight": null,
+     "model_open_count": 1,
+     "pid": 57264,
+     "presence": "ABSENT",
+     "queue_depth": 0,
+     "ready": false,
+     "reason": "resident pid is not alive",
+     "requests_served": 0,
+     "rss_bytes": null,
+     "sessions": 0,
+     "start_token": "1788128513.590355",
+     "waiters": 0,
+     "weight_upload_count": 1
+    },
+    "fires": true
+   },
+   "dirty_metrics_stripped": {
+    "detail": {
+     "keys": [
+      "cost",
+      "fallbacks",
+      "generated_tokens",
+      "generation",
+      "id",
+      "model_open_count",
+      "pid",
+      "session",
+      "status",
+      "text",
+      "weight_upload_count"
+     ],
+     "leaked": []
+    },
+    "fires": true
+   },
+   "error_status_not_answer": {
+    "detail": "forced",
+    "fires": true
+   },
+   "malformed_raises": {
+    "detail": "stdout is not JSONL: 'this is not json' (Expecting value: line 1 column 1 (char 0))",
+    "fires": true
+   },
+   "missing_binary_spec_not_present": {
+    "detail": "explicit argv[0] or binary is not on disk",
+    "fires": true
+   },
+   "missing_binary_start_refuses": {
+    "detail": "explicit argv[0] or binary is not on disk",
+    "fires": true
+   },
+   "never_ready_refuses": {
+    "detail": "resident did not emit status ready before timeout; stderr_tail=''",
+    "fires": true
+   },
+   "one_body_across_asks": {
+    "detail": {
+     "r1": 1,
+     "r2": 1
+    },
+    "fires": true
+   },
+   "reload_is_defect": {
+    "detail": "ask model_open_count=2 weight_upload_count=2; the provider reloaded weights and that is a defect",
+    "fires": true
+   },
+   "resolve_launch_names_probe_argv": {
+    "detail": {
+     "flags": [
+      "--artifact-root",
+      "--tokenizer",
+      "--max-seq-len",
+      "--resident-identity"
+     ],
+     "present": true
+    },
+    "fires": true
+   },
+   "restart_reaches_ready_and_serves": {
+    "detail": {
+     "new": 57235,
+     "old": 57234,
+     "text": "echo:User: What is the capital of France?\nAssistant: echo:What is the capital of France?\nUser: Name one reason a status label can be wrong.\nAssistant: echo:User: What is the capital of France?\nAssistant: e"
+    },
+    "fires": true
+   },
+   "reuse_same_pid": {
+    "detail": {
+     "pid": 57234,
+     "served": 2
+    },
+    "fires": true
+   },
+   "slot_idle_when_nothing_in_flight": {
+    "detail": {
+     "in_flight": null,
+     "queue_depth": 0
+    },
+    "fires": true
+   },
+   "start_reaches_ready": {
+    "detail": {
+     "open": 1,
+     "pid": 57234
+    },
+    "fires": true
+   },
+   "stop_kills": {
+    "detail": {
+     "pid": 57235
+    },
+    "fires": true
+   },
+   "two_sessions_one_pid": {
+    "detail": {
+     "generation": 1,
+     "n": 2,
+     "pid": 57234,
+     "same_process": true,
+     "second_model_body": false,
+     "sessions": [
+      {
+       "id": "s1",
+       "last_request_id": "ceeb673523c140e8ad59feda1118251d",
+       "n_turns": 2,
+       "process_generation": 1
+      },
+      {
+       "id": "s2",
+       "last_request_id": "95664c0a09844a84884b5396e449a99a",
+       "n_turns": 1,
+       "process_generation": 1
+      }
+     ]
+    },
+    "fires": true
+   },
+   "undeclared_not_healthy_zero": {
+    "detail": {
+     "alive": false,
+     "authorizes": "liveness_only",
+     "dead": false,
+     "evidence_class": "SELF_MEASURED_DIRTY",
+     "failures": 0,
+     "generation": 0,
+     "gpu_authority": false,
+     "identity": null,
+     "in_flight": null,
+     "model_open_count": null,
+     "pid": null,
+     "presence": "UNDECLARED",
+     "queue_depth": 0,
+     "ready": false,
+     "reason": "no resident pid; will not invent one from the largest RSS neighbour",
+     "requests_served": 0,
+     "rss_bytes": null,
+     "sessions": 0,
+     "start_token": null,
+     "waiters": 0,
+     "weight_upload_count": null
+    },
+    "fires": true
+   }
+  },
+  "started_protocol_double": true,
+  "started_sealed_resident": false
+ },
+ "protocol": "hawking.qwen38.resident.v1",
+ "purpose": "Durable provider that owns one hawking.qwen38.resident.v1 process and serves many logical sessions over that one model body.",
+ "recovered_implementation": [
+  "receipts/future/evidence/RESIDENT_LIVE_PROBE.json (proof the resident starts and generates; records the invocation)",
+  "hcli/hawking-native.sealed-3.14.json (artifact_root, tokenizer, resident_binary, fusion_env, protocol)",
+  "crates/hawking-core/examples/ascension_qwen38_resident.rs (JSONL protocol; session.reset per request; model_open_count=1)",
+  "hcli/hawking_native.py ResidentProcess (cited, not imported: stdin PIPE, await ready, correlated request)",
+  "hcli/providers.py ResidentProvider Protocol (start/stop/generate/health; this sidecar is the future-partition driver)",
+  "tools/future/restart_supervisor.py (stop SIGTERM/SIGKILL, start_token; its restart() uses stdin=DEVNULL which kills this protocol)",
+  "tools/future/resident_health.py (rss_bytes_of; ABSENT rss_bytes null, never healthy-with-zero)",
+  "tools/future/super_resident.py (provider-neutral daemon contract; StubProvider is in-process and does not spawn)",
+  "tools/future/fallback_resident.py (sealed identity surfaces; does not start a process)",
+  "tools/future/no_wait_scheduler.py (do not pin the resident while doing nothing; inference slot)",
+  "tools/future/resident_identity.py (load_authority for the sealed profile)"
+ ],
+ "resident_callable": {
+  "entry_point": "tools.future.resident_provider.ResidentProvider.start()",
+  "fails_closed": "ask before ready \u2192 NotReady; dead pid \u2192 health presence=ABSENT rss_bytes=null; climbing model_open_count \u2192 WeightReload; malformed JSONL \u2192 MalformedReply; missing binary \u2192 launch_absent; hardware-named fields stripped and refused in receipts",
+  "frontier": "FT.CHILD_RESIDENT.launch",
+  "python_api": {
+   "ask": "ResidentProvider.ask(session, text, max_new_tokens) -> reply+cost",
+   "health": "ResidentProvider.health() -> presence/rss/queue_depth",
+   "resolve_launch": "resolve_launch() -> sealed argv, does not spawn",
+   "restart": "ResidentProvider.restart() -> ready handle",
+   "sessions": "ResidentProvider.sessions() -> logical states, one pid",
+   "start": "ResidentProvider.start(spec=None) -> handle",
+   "stop": "ResidentProvider.stop()"
+  },
+  "receipt": "receipts/future/RESIDENT_PROVIDER.json",
+  "workunit": "one CPU_ANALYSIS unit; protocol-double start/ask/sessions/health/stop/restart; does not take a GPU lease"
+ },
+ "schema": "hawking.future.resident_provider.v1",
+ "seal_sha256": "f18e6686d88cd66e50eacfb36f17ef83401bd500c33e6ee7e745b5ca6e286ee1",
+ "started_model_process": false,
+ "started_protocol_double": true,
+ "started_sealed_resident": false,
+ "took_gpu_lease": false,
+ "version": 1,
+ "work_units": [
+  {
+   "assigned_backend": null,
+   "assigned_runtime": null,
+   "attempts": 0,
+   "backend_task_id": null,
+   "claim_boundary": "WorkUnit is a proposal; receipt remains authoritative; this unit cannot take a GPU lease or rank a kernel.",
+   "classification": "STATIC_ONLY",
+   "command": "python3 tools/future/resident_provider.py --build",
+   "content_hash": "8682ec7b806e539f54ce5fb27a36519db6200183f420cb549ba2ac14cda4bfd6",
+   "dependencies": [],
+   "description": "Own one hawking.qwen38.resident.v1 process: start, correlated ask, logical sessions over shared weights, health, stop, restart. CPU/protocol-double proven; sealed 9.9GB spawn is a later MODEL_SESSION.",
+   "effect_class": "READ_ONLY",
+   "failure_context": null,
+   "finished_at": null,
+   "id": "future.resident_provider.drive",
+   "may_modify_verifier": false,
+   "may_promote": false,
+   "output_receipt_path": "receipts/future/RESIDENT_PROVIDER.json",
+   "preferred_backend": null,
+   "provider": "future.resident_provider",
+   "ready_at": null,
+   "repair_depth": 0,
+   "repair_exhausted": false,
+   "repair_reason": null,
+   "repair_root": null,
+   "repairs": null,
+   "requires_quiescence": false,
+   "resource_class": "STATIC_ANALYSIS",
+   "role": "science",
+   "running_at": null,
+   "species": "CPU_ANALYSIS",
+   "status": "pending",
+   "verification": null,
+   "verifier": "future.resident_provider.run_proofs",
+   "workspace": "repo-root"
+  }
+ ]
+}

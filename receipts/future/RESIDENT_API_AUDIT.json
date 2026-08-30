@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T21:43:19Z",
+  "recorded_at": "2026-08-30T23:18:06Z",
   "recorded_by": "tools/future/resident_api.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -11,14 +11,14 @@
  "bench_state": "UNKNOWN",
  "claim_boundary": "Static sidecar artifact. No hardware measurement.",
  "counts": {
-  "capabilities": 134,
-  "discovered_python": 214,
-  "human_cli_only": 106,
+  "capabilities": 136,
+  "discovered_python": 218,
+  "human_cli_only": 108,
   "import_failures": 0,
-  "not_operational": 7,
-  "operational": 101,
-  "scored": 108,
-  "tests": 106,
+  "not_operational": 8,
+  "operational": 102,
+  "scored": 110,
+  "tests": 108,
   "work_units": 6
  },
  "five_questions": [
@@ -247,6 +247,9 @@
    "tools/future/physical_primitives.py": [
     "F012",
     "FT.MODEL_EXECUTION.static-skeleton"
+   ],
+   "tools/future/power_torture.py": [
+    "FT.VERIFICATION.repro"
    ],
    "tools/future/propagate.py": [
     "F016",
@@ -570,6 +573,9 @@
    "PHYSICAL_PRIMITIVES.json": [
     "FT.MODEL_EXECUTION.static-skeleton"
    ],
+   "POWER_TORTURE.json": [
+    "FT.VERIFICATION.repro"
+   ],
    "PROPAGATION_STATE.json": [
     "FT.TOOLS.propagate-skips"
    ],
@@ -698,8 +704,8 @@
    "autonomy_run",
    "handoff",
    "integration_attack",
-   "orchestration",
-   "power_torture"
+   "model_bearing",
+   "orchestration"
   ],
   "does_not_produce_receipt": [
    "__init__",
@@ -718,8 +724,9 @@
    "autonomy_run",
    "handoff",
    "integration_attack",
+   "model_bearing",
    "orchestration",
-   "power_torture"
+   "resident_provider"
   ]
  },
  "gaps_closed": [
@@ -834,7 +841,7 @@
   ],
   "tool_registry_present": true
  },
- "honest_scoring": "101 operational / 7 not operational / 108 scored. A human CLI is not an operational subsystem.",
+ "honest_scoring": "102 operational / 8 not operational / 110 scored. A human CLI is not an operational subsystem.",
  "law": "A subsystem is not operational until the RESIDENT can discover it, invoke it, schedule it and verify it; its result changes a frontier; the result persists; and next work refills. 'It has a CLI a human can run' is NOT enough.",
  "measurement_class": "STATIC_ONLY",
  "modules": [
@@ -8151,6 +8158,135 @@
   },
   {
    "capabilities": [
+    "future.model_bearing"
+   ],
+   "cli_flags": [
+    [
+     "--build"
+    ]
+   ],
+   "docstring": "MODEL BEARING \u2014 put the resident in the loop so an hour of torture is not scripted Python with a model bolted on. autonomy_run.py is the loop; every trial recorded resident_model_cognition UNAVAILABLE because nothing asked a model to inter\u2026",
+   "filename": "model_bearing.py",
+   "gaps": [
+    "does_not_emit_workunit",
+    "result_does_not_feed_a_named_frontier"
+   ],
+   "has_if_main": true,
+   "has_main": true,
+   "hcli_tool_registered": false,
+   "human_cli_only": true,
+   "import_error": null,
+   "import_ok": true,
+   "kind": "production",
+   "preferred_callable": "build",
+   "public_callables": [
+    "bind_provider",
+    "unbind_provider",
+    "load_provider",
+    "provider_interface",
+    "cognition_state",
+    "hypothesis_from",
+    "meaningfully_different",
+    "reset_log",
+    "decision_log",
+    "record_outcome",
+    "fixed_policy_choose",
+    "interpret",
+    "choose",
+    "explain_failure",
+    "next_hypothesis",
+    "delegate",
+    "enter_loop",
+    "run_trajectory",
+    "materially_participated",
+    "live_probe_record",
+    "build",
+    "main"
+   ],
+   "questions": {
+    "emits_workunit": {
+     "evidence": {
+      "constructs": [],
+      "emitted_by_orchestration_connector": false
+     },
+     "gap": "does_not_emit_workunit",
+     "pass": false
+    },
+    "fail_closed": {
+     "evidence": {
+      "raise_count": 15,
+      "rule": "fail closed means raise (or write_receipt's HardwareClaimError) rather than returning a silent default",
+      "uses_write_receipt": true
+     },
+     "pass": true
+    },
+    "feeds_named_frontier": {
+     "evidence": {
+      "frontier_present": true,
+      "named_as_integration_target": [],
+      "receipt_is_frontier_probe": [],
+      "writes_frontier_document": false
+     },
+     "gap": "result_does_not_feed_a_named_frontier",
+     "pass": false
+    },
+    "hcli_invoke": {
+     "evidence": {
+      "has_if_main": true,
+      "has_main": true,
+      "hcli_future_tools": [],
+      "hcli_tool_count": 32,
+      "hcli_tool_registered": false,
+      "import_error": null,
+      "import_ok": true,
+      "preferred_callable": "build",
+      "public_callables": [
+       "bind_provider",
+       "unbind_provider",
+       "load_provider",
+       "provider_interface",
+       "cognition_state",
+       "hypothesis_from",
+       "meaningfully_different",
+       "reset_log",
+       "decision_log",
+       "record_outcome",
+       "fixed_policy_choose",
+       "interpret",
+       "choose",
+       "explain_failure",
+       "next_hypothesis",
+       "delegate",
+       "enter_loop",
+       "run_trajectory",
+       "materially_participated",
+       "live_probe_record",
+       "build",
+       "main"
+      ]
+     },
+     "pass": true
+    },
+    "produces_receipt": {
+     "evidence": {
+      "receipt": "MODEL_BEARING.json",
+      "uses_write_receipt": true,
+      "write_receipt_names": [
+       "MODEL_BEARING.json"
+      ]
+     },
+     "pass": true
+    }
+   },
+   "raise_count": 15,
+   "receipt": "MODEL_BEARING.json",
+   "relpath": "tools/future/model_bearing.py",
+   "status": "NOT_OPERATIONAL",
+   "stem": "model_bearing",
+   "workunit_constructs": []
+  },
+  {
+   "capabilities": [
     "future.moe_physical_school"
    ],
    "cli_flags": [
@@ -8960,7 +9096,7 @@
      "--build"
     ]
    ],
-   "docstring": "NR_NX_GENERIC \u2014 prove the generic NR\u2192NX pipeline on a real small specimen. nr_nx_path_callable currently fails because Flash has no packed final NX. That conflates a generic orchestration capability with one model's artifact readiness, and\u2026",
+   "docstring": "NR_NX_GENERIC \u2014 drive the generic NR\u2192NX path on a specimen the compiler can see. The previous receipt was right about the shape of the miss and wrong about the label: GENERIC_NR_NX_PIPELINE_CALLABLE was False because Doctor and PhysicalGra\u2026",
    "filename": "nr_nx_generic.py",
    "gaps": [],
    "has_if_main": true,
@@ -8977,6 +9113,10 @@
     "generic_pipeline_callable",
     "declare_pipeline_callable",
     "source_independence",
+    "load_tensor",
+    "probe_specimen",
+    "adapt",
+    "callable_on",
     "choose_specimen",
     "organ_library",
     "native_engine_architectures",
@@ -8997,6 +9137,7 @@
     "first_failing_stage",
     "flash_nx_ready",
     "emit_sleeping_lower",
+    "run",
     "assemble",
     "build",
     "main"
@@ -9013,7 +9154,7 @@
     },
     "fail_closed": {
      "evidence": {
-      "raise_count": 10,
+      "raise_count": 20,
       "rule": "fail closed means raise (or write_receipt's HardwareClaimError) rather than returning a silent default",
       "uses_write_receipt": true
      },
@@ -9048,6 +9189,10 @@
        "generic_pipeline_callable",
        "declare_pipeline_callable",
        "source_independence",
+       "load_tensor",
+       "probe_specimen",
+       "adapt",
+       "callable_on",
        "choose_specimen",
        "organ_library",
        "native_engine_architectures",
@@ -9068,6 +9213,7 @@
        "first_failing_stage",
        "flash_nx_ready",
        "emit_sleeping_lower",
+       "run",
        "assemble",
        "build",
        "main"
@@ -9086,7 +9232,7 @@
      "pass": true
     }
    },
-   "raise_count": 10,
+   "raise_count": 20,
    "receipt": "NR_NX_GENERIC.json",
    "relpath": "tools/future/nr_nx_generic.py",
    "status": "OPERATIONAL",
@@ -10245,10 +10391,7 @@
    ],
    "docstring": "POWER TORTURE \u2014 compose a 30-minute transition-density workload the 1h trial never ran. The frozen 1h autonomy trial passed a clock. Scrutiny of its own timeline showed what it did not do: 222 rejections of one table in nine seconds, four \u2026",
    "filename": "power_torture.py",
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -10278,10 +10421,9 @@
     "emits_workunit": {
      "evidence": {
       "constructs": [],
-      "emitted_by_orchestration_connector": false
+      "emitted_by_orchestration_connector": true
      },
-     "gap": "does_not_emit_workunit",
-     "pass": false
+     "pass": true
     },
     "fail_closed": {
      "evidence": {
@@ -10294,12 +10436,15 @@
     "feeds_named_frontier": {
      "evidence": {
       "frontier_present": true,
-      "named_as_integration_target": [],
-      "receipt_is_frontier_probe": [],
+      "named_as_integration_target": [
+       "FT.VERIFICATION.repro"
+      ],
+      "receipt_is_frontier_probe": [
+       "FT.VERIFICATION.repro"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -10345,7 +10490,7 @@
    "raise_count": 18,
    "receipt": "POWER_TORTURE.json",
    "relpath": "tools/future/power_torture.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "power_torture",
    "workunit_constructs": []
   },
@@ -11824,6 +11969,119 @@
    "workunit_constructs": [
     "WorkUnit",
     "emit_workunit"
+   ]
+  },
+  {
+   "capabilities": [
+    "future.resident_provider"
+   ],
+   "cli_flags": [
+    [
+     "--build"
+    ]
+   ],
+   "docstring": "DRIVE THE REAL RESIDENT \u2014 own one model body; serve many logical sessions. The sealed-3.14 resident already starts and generates (receipts/future/evidence/RESIDENT_LIVE_PROBE.json). Nothing in this sidecar owned the process. This module do\u2026",
+   "filename": "resident_provider.py",
+   "gaps": [
+    "result_does_not_feed_a_named_frontier"
+   ],
+   "has_if_main": true,
+   "has_main": true,
+   "hcli_tool_registered": false,
+   "human_cli_only": true,
+   "import_error": null,
+   "import_ok": true,
+   "kind": "production",
+   "preferred_callable": "build",
+   "public_callables": [
+    "load_live_probe",
+    "resolve_launch",
+    "explicit_launch",
+    "write_protocol_double",
+    "start",
+    "run_proofs",
+    "emit_workunits",
+    "recovered_implementation",
+    "gaps_closed",
+    "negative_findings",
+    "build",
+    "selftest",
+    "main"
+   ],
+   "questions": {
+    "emits_workunit": {
+     "evidence": {
+      "constructs": [
+       "emit_hcli_workunit"
+      ],
+      "emitted_by_orchestration_connector": false
+     },
+     "pass": true
+    },
+    "fail_closed": {
+     "evidence": {
+      "raise_count": 41,
+      "rule": "fail closed means raise (or write_receipt's HardwareClaimError) rather than returning a silent default",
+      "uses_write_receipt": true
+     },
+     "pass": true
+    },
+    "feeds_named_frontier": {
+     "evidence": {
+      "frontier_present": true,
+      "named_as_integration_target": [],
+      "receipt_is_frontier_probe": [],
+      "writes_frontier_document": false
+     },
+     "gap": "result_does_not_feed_a_named_frontier",
+     "pass": false
+    },
+    "hcli_invoke": {
+     "evidence": {
+      "has_if_main": true,
+      "has_main": true,
+      "hcli_future_tools": [],
+      "hcli_tool_count": 32,
+      "hcli_tool_registered": false,
+      "import_error": null,
+      "import_ok": true,
+      "preferred_callable": "build",
+      "public_callables": [
+       "load_live_probe",
+       "resolve_launch",
+       "explicit_launch",
+       "write_protocol_double",
+       "start",
+       "run_proofs",
+       "emit_workunits",
+       "recovered_implementation",
+       "gaps_closed",
+       "negative_findings",
+       "build",
+       "selftest",
+       "main"
+      ]
+     },
+     "pass": true
+    },
+    "produces_receipt": {
+     "evidence": {
+      "receipt": "RESIDENT_PROVIDER.json",
+      "uses_write_receipt": true,
+      "write_receipt_names": [
+       "RESIDENT_PROVIDER.json"
+      ]
+     },
+     "pass": true
+    }
+   },
+   "raise_count": 41,
+   "receipt": "RESIDENT_PROVIDER.json",
+   "relpath": "tools/future/resident_provider.py",
+   "status": "NOT_OPERATIONAL",
+   "stem": "resident_provider",
+   "workunit_constructs": [
+    "emit_hcli_workunit"
    ]
   },
   {
@@ -14728,8 +14986,8 @@
   }
  ],
  "negative_findings": [
-  "7 of 108 scored modules are NOT_OPERATIONAL; operational=101. Not rounded up.",
-  "106 scored modules are human-CLI-callable (argparse / __main__) and are not registered in HCLI ToolRegistry.",
+  "8 of 110 scored modules are NOT_OPERATIONAL; operational=102. Not rounded up.",
+  "108 scored modules are human-CLI-callable (argparse / __main__) and are not registered in HCLI ToolRegistry.",
   "hcli/tool_registry.py default_tool_registry lists 32 tools and 0 future.* tools. AgentOS cannot discover the sidecar.",
   "HCLI ToolRegistry.invoke returns ToolResult(ok=False, UNKNOWN_TOOL) instead of raising; resident_api.invoke raises. Fail-closed is this surface, not HCLI's.",
   "Most modules persist a receipt a human can regenerate with `python3 tools/future/<mod>.py --build` but do not emit a WorkUnit and do not feed CLAUDE_GLOBAL_FRONTIER.json.",
@@ -14745,8 +15003,9 @@
   "autonomy_run",
   "handoff",
   "integration_attack",
+  "model_bearing",
   "orchestration",
-  "power_torture"
+  "resident_provider"
  ],
  "operational_stems": [
   "abi_verdicts",
@@ -14816,6 +15075,7 @@
   "p6_projection",
   "phase_listeners",
   "physical_primitives",
+  "power_torture",
   "propagate",
   "protected_scheduler",
   "protected_window",
@@ -17878,6 +18138,33 @@
    "receipt": "METAL_REACHABILITY.json",
    "status": "OPERATIONAL"
   },
+  "future.model_bearing": {
+   "aliases": [
+    "future.model_bearing"
+   ],
+   "argument_contract": {
+    "bindable": true,
+    "cli_flags": [
+     {
+      "dest": null,
+      "flags": [
+       "--build"
+      ]
+     }
+    ],
+    "params": []
+   },
+   "callable": "build",
+   "frontier": [],
+   "gaps": [
+    "does_not_emit_workunit",
+    "result_does_not_feed_a_named_frontier"
+   ],
+   "import_error": null,
+   "module": "tools/future/model_bearing.py",
+   "receipt": "MODEL_BEARING.json",
+   "status": "NOT_OPERATIONAL"
+  },
   "future.moe_physical_school": {
    "aliases": [
     "future.moe_physical_school"
@@ -18736,15 +19023,14 @@
     "params": []
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.VERIFICATION.repro"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/power_torture.py",
    "receipt": "POWER_TORTURE.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.propagate": {
    "aliases": [
@@ -19283,6 +19569,32 @@
    "module": "tools/future/resident_optimizer.py",
    "receipt": "RESIDENT_OPTIMIZER.json",
    "status": "OPERATIONAL"
+  },
+  "future.resident_provider": {
+   "aliases": [
+    "future.resident_provider"
+   ],
+   "argument_contract": {
+    "bindable": true,
+    "cli_flags": [
+     {
+      "dest": null,
+      "flags": [
+       "--build"
+      ]
+     }
+    ],
+    "params": []
+   },
+   "callable": "build",
+   "frontier": [],
+   "gaps": [
+    "result_does_not_feed_a_named_frontier"
+   ],
+   "import_error": null,
+   "module": "tools/future/resident_provider.py",
+   "receipt": "RESIDENT_PROVIDER.json",
+   "status": "NOT_OPERATIONAL"
   },
   "future.restart_supervisor": {
    "aliases": [
@@ -20220,7 +20532,7 @@
   ]
  },
  "schema": "hawking.future.resident_api.v1",
- "seal_sha256": "b3bb78feb4ac1897a88fa88a507deb63f5a102ebbce67b52c0f663a08efb9aee",
+ "seal_sha256": "0dfc9df599c9455cdc07e4ac583d57e19785d2344fb45ecbc5f2260244e8d65c",
  "version": 1,
  "work_units": [
   {
@@ -20245,8 +20557,8 @@
     "autonomy_run",
     "handoff",
     "integration_attack",
-    "orchestration",
-    "power_torture"
+    "model_bearing",
+    "orchestration"
    ],
    "preferred_backend": null,
    "provider": "future.resident_api",
@@ -20382,23 +20694,24 @@
    "backend_task_id": null,
    "claim_boundary": "Proposal only. Sidecar cannot register HCLI tools or rewrite CLAUDE_GLOBAL_FRONTIER.json.",
    "classification": "STATIC_ONLY",
-   "content_hash": "387edd3efb2b098fa5f1d40a2c7511655912c553c0d826506684779ee086c23b",
+   "content_hash": "4a572f5f757b554a0cd4ecdba152c47f2d04ff6c15597e145103c8026704ebea",
    "dependencies": [],
-   "description": "Close resident-callability gap 'result_does_not_feed_a_named_frontier' for 7 sidecar module(s).",
+   "description": "Close resident-callability gap 'result_does_not_feed_a_named_frontier' for 8 sidecar module(s).",
    "effect_class": "READ_ONLY",
    "failure_context": null,
    "finished_at": null,
    "gap": "result_does_not_feed_a_named_frontier",
    "id": "future.resident_api.close.result_does_not_feed_a_named_frontier",
-   "module_count": 7,
+   "module_count": 8,
    "module_stems": [
     "__init__",
     "_common",
     "autonomy_run",
     "handoff",
     "integration_attack",
+    "model_bearing",
     "orchestration",
-    "power_torture"
+    "resident_provider"
    ],
    "preferred_backend": null,
    "provider": "future.resident_api",

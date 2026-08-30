@@ -11,7 +11,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T20:17:45Z",
+  "recorded_at": "2026-08-30T22:14:17Z",
   "recorded_by": "tools/future/autonomy_run.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -47,11 +47,11 @@
    "FPGA",
    "GPU_PROTECTED"
   ],
-  "composed_replan_pairs": 1,
-  "elapsed_s": 3629,
+  "composed_replan_pairs": 0,
+  "elapsed_s": 1829,
   "hypotheses_proposed": 1701,
   "hypotheses_still_live": 1479,
-  "launched": 175,
+  "launched": 171,
   "live_hypotheses": [
    {
     "hypothesis_family": "activation_corrected_rowwise_q3",
@@ -8928,11 +8928,11 @@
     "school": "NORMALIZATION"
    }
   ],
-  "receipts_ingested": 100,
+  "receipts_ingested": 106,
   "refused_on_evidence": 222,
   "resident_model_cognition": "UNAVAILABLE",
-  "scars_consulted": 1802,
-  "timeline": "receipts/future/AUTONOMY_TIMELINE_1h.json"
+  "scars_consulted": 1808,
+  "timeline": "receipts/future/AUTONOMY_TIMELINE_30m.json"
  },
  "loop_is": "HCLI orchestration",
  "negative_findings": [
@@ -9014,7 +9014,7 @@
   "git_lock_doctor.py"
  ],
  "schema": "hawking.future.autonomy_run.v1",
- "seal_sha256": "9eac1d27cbb11bd6e5868f84b07b4cfbbc5ad588c4b76b71d7d4011fa3f4e8d7",
+ "seal_sha256": "0aa00fe34c1b0c7a0b92a582503a2fa74229133bc19fb7260cc201d446f5a0d3",
  "version": 1,
  "why_unavailable": "measured on this host, not quoted from a blocker list: Apple M3 Ultra GPU is present; the offline Metal shader compiler is absent (developer dir is /Library/Developer/CommandLineTools, full Xcode not installed), so no .metallib can be built ahead of time here; runtime shader compilation from source is AVAILABLE (exercised with the crate the runtime uses), so the missing offline compiler is a cold-start cost, not a wall"
 }

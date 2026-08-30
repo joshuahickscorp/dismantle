@@ -53507,7 +53507,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T19:19:47Z",
+  "recorded_at": "2026-08-30T21:46:40Z",
   "recorded_by": "tools/future/codex_ingest.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -73578,7 +73578,7 @@
   "--once --assert-idempotent refusal that is capable of firing",
   "read-only open; writes only receipts/future/CODEX_INGEST_STATE.json"
  ],
- "head": "c5962d8bbd97fab99ce2fd66ed5fb3916793b8d0",
+ "head": "0e4e9a93b3a196ba5c4472bf6d1998be6ae2dc75",
  "idempotence": {
   "assert_idempotent": "exit non-zero iff n_new + n_changed > 0",
   "change_detector": "sha256 of file bytes; mtime is recorded and never consulted",
@@ -73749,7 +73749,7 @@
   "unreadable": []
  },
  "schema": "hawking.future.codex_ingest.v1",
- "seal_sha256": "5a03cf00104a06c7a584d005b202629539255989fd99a7dcf72405da9b506f50",
+ "seal_sha256": "f70e9822d64bc2674570fa4c4d066d8770c20b98b7a8056228c08810f57e4480",
  "version": 1,
  "vocabulary": {
   "bench_state": "UNKNOWN",

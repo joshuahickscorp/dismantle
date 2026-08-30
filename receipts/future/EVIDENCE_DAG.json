@@ -25,7 +25,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T21:11:06Z",
+  "recorded_at": "2026-08-30T21:47:30Z",
   "recorded_by": "tools/future/evidence_dag.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -162,7 +162,7 @@
   "one input byte, a deleted input, a post-seal family scar, and an empty recorded_inputs list each flip REUSE -> RERUN"
  ],
  "gpu_authority": false,
- "head": "f9f8c7d390e368bd6d7688537b9aae3cfc94ed6b",
+ "head": "0e4e9a93b3a196ba5c4472bf6d1998be6ae2dc75",
  "host": {
   "gpu_authority": false,
   "note": "Unavailability is an authority fact of this sidecar, not a device query. MetalContext / xcrun were not probed.",
@@ -681,7 +681,7 @@
   "work_first_pass": 4
  },
  "schema": "hawking.future.evidence_dag.v1",
- "seal_sha256": "b73bbe4f99c9754ab831c13013112c1f1191baf1e0117afe3cc039c9f445f4ee",
+ "seal_sha256": "0f085731662dbdfcefeb2913c68a33ee5409e31fcace591473699d069215e6ae",
  "static_ladder": {
   "holds": true,
   "n_proved": 8,

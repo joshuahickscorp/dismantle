@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T19:19:45Z",
+  "recorded_at": "2026-08-30T21:46:38Z",
   "recorded_by": "tools/future/freshness.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -116,12 +116,24 @@
        "evidence_source": "live_headless",
        "kind": "this_worktree",
        "path": "/Users/scammermike/Downloads/hawking/receipts/future/CANDIDATE_STAGED_PLAN.json",
-       "sha256": "5bd3712452aaf4ea956e264172813ae6bd63dcdfb5afbdb7aaf5173c45917680"
+       "sha256": "575ec7061bb62f496c196cdaa8e77b41efd3323d5d088987c4973208953f9e60"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/l28-flash-organ-pivot-20260830-152415/receipts/future/CANDIDATE_STAGED_PLAN.json",
+       "sha256": "83b04a9ece722e1dcc24a805e29cfe47f6bc6119c6f84f24546108d3944b7690"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/l31-gate-rewire-20260830-164013/receipts/future/CANDIDATE_STAGED_PLAN.json",
+       "sha256": "e095327175e797eb9f2e65ad010dd480ea06757eaac328dbe053373be1feac8e"
       }
      ],
      "current_candidate_count": null,
      "current_semantic_fingerprint": "a02999b8f3827b0e6bb37969c88c3ad182bdbef4a51e5ea49c3287b245bd1f10",
-     "current_sha256": "5bd3712452aaf4ea956e264172813ae6bd63dcdfb5afbdb7aaf5173c45917680",
+     "current_sha256": "575ec7061bb62f496c196cdaa8e77b41efd3323d5d088987c4973208953f9e60",
      "evidence_source": "live_headless",
      "historical_path": null,
      "reason": "derived artifact records no provenance to compare",
@@ -1804,6 +1816,18 @@
        "sha256": "f13e78c9f1568c66af5feec01017b02bb479d07a0fd42a36a461437e70348b05"
       },
       {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/l28-flash-organ-pivot-20260830-152415/receipts/QWEN80_CROSS_EXPERT_STRUCTURE_NEGATIVE.json",
+       "sha256": "f13e78c9f1568c66af5feec01017b02bb479d07a0fd42a36a461437e70348b05"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/l31-gate-rewire-20260830-164013/receipts/QWEN80_CROSS_EXPERT_STRUCTURE_NEGATIVE.json",
+       "sha256": "f13e78c9f1568c66af5feec01017b02bb479d07a0fd42a36a461437e70348b05"
+      },
+      {
        "evidence_source": "pinned_snapshot",
        "kind": "pinned_snapshot",
        "path": "/Users/scammermike/Downloads/hawking/receipts/future/evidence/QWEN80_CROSS_EXPERT_STRUCTURE_NEGATIVE.json",
@@ -2094,7 +2118,7 @@
   "STALE_SEMANTIC": 0,
   "UNKNOWN": 4,
   "registered": 6,
-  "unregistered": 94
+  "unregistered": 104
  },
  "eras": [
   "I Genesis of the Laboratory",
@@ -2114,7 +2138,7 @@
   "registry of derived -> source(s) -> producer; unregistered receipts/future/*.json are findings",
   "source resolution copes with live-present, live-absent, and pinned-snapshot copies and records which"
  ],
- "head": "c5962d8bbd97fab99ce2fd66ed5fb3916793b8d0",
+ "head": "0e4e9a93b3a196ba5c4472bf6d1998be6ae2dc75",
  "measurement_class": "STATIC_ONLY",
  "negative_findings": [
   "QUALIFICATION_PIPELINE.json, FLASH_NX_COMPLETENESS_AUDIT.json, HCLI_FUTURE_WORKUNITS.json and TOURNAMENT_READINESS.json record no source sha256/semantic fingerprint, so they classify UNKNOWN until those producers start writing the CANDIDATE_STAGED_PLAN.input pattern",
@@ -2123,7 +2147,7 @@
   "no GPU / FPGA / power meter in this lane; no hardware quantity is asserted",
   "--refresh was not invoked by --check/--report; STALE_SEMANTIC artifacts stay on disk until a caller passes --refresh",
   "UNKNOWN artifacts: QUALIFICATION_PIPELINE.json, FLASH_NX_COMPLETENESS_AUDIT.json, HCLI_FUTURE_WORKUNITS.json, TOURNAMENT_READINESS.json",
-  "94 receipts/future/*.json files are not in the freshness registry"
+  "104 receipts/future/*.json files are not in the freshness registry"
  ],
  "no_era_vi": true,
  "no_odyssey_iv": true,
@@ -2288,9 +2312,10 @@
   }
  ],
  "schema": "hawking.future.freshness.v1",
- "seal_sha256": "7b005de6443d98288b01aa2ab24700df360a0e85b16d9a3ae1c109b26872b766",
+ "seal_sha256": "bc96648a8c205cd883b6ebc2b05b8c78954b6ed58d1959a8c413d6d4171cc853",
  "unregistered": [
   "ABI_VERDICT_HARNESS.json",
+  "ABLITERATION.json",
   "ACCELERATOR_WORKUNITS.json",
   "ADAPTIVE_VERIFICATION.json",
   "ANE_PREBOARD.json",
@@ -2299,6 +2324,7 @@
   "AUTONOMY_SCARS.json",
   "AUTONOMY_TIMELINE_15m.json",
   "AUTONOMY_TIMELINE_1h.json",
+  "AUTONOMY_TIMELINE_30m.json",
   "AUTONOMY_TRIALS.json",
   "CLAUDE_GLOBAL_FRONTIER.json",
   "CLAUDE_SIDECAR_ABI_ADJUDICATION.json",
@@ -2323,6 +2349,7 @@
   "FLASH_BPW_LADDER.json",
   "FLASH_META_REPLAN.json",
   "FLASH_NR_COMPLETE.json",
+  "FLASH_ORGAN_PIVOT.json",
   "FLASH_ORGAN_SCHOOLS.json",
   "FLASH_ORGAN_WORKGRAPHS.json",
   "FPGA_ENGINE_SCHOOL.json",
@@ -2345,8 +2372,11 @@
   "META_DOWNSTREAM_READY.json",
   "META_EXPERIMENT_FUNNEL.json",
   "MOE_PHYSICAL_SCHOOL.json",
+  "MUTATION_ENGINE.json",
   "NEGATIVE_SCIENCE_INDEX.json",
   "NGRAM_SCHOOL.json",
+  "NO_WAIT_SCHEDULER.json",
+  "NR_NX_GENERIC.json",
   "NR_NX_PATH.json",
   "ODYSSEY2_LAW_STORE.json",
   "ODYSSEY3_ADVERSARY.json",
@@ -2358,12 +2388,15 @@
   "P6_PRIMITIVE_PROJECTION.json",
   "PHASE_LISTENERS.json",
   "PHYSICAL_PRIMITIVES.json",
+  "POWER_TORTURE.json",
   "PROPAGATION_STATE.json",
+  "PROTECTED_SCHEDULER.json",
   "PROTECTED_WINDOW_PLAN.json",
   "QWEN27_ACCELERATOR_PROFILE_SCHEMA.json",
   "RECEIPT_WAKEUP.json",
   "REPRO_SCIENCE.json",
   "RESIDENT_API_AUDIT.json",
+  "RESIDENT_CONCURRENCY_DOCTOR.json",
   "RESIDENT_HEALTH.json",
   "RESIDENT_IDENTITY.json",
   "RESIDENT_INSTALL_CONTRACT.json",
@@ -2376,6 +2409,7 @@
   "SPECIMEN_VERIFICATION.json",
   "STATIC_KERNEL_PREFLIGHT.json",
   "STATIC_SKELETON.json",
+  "STATUS_CAUSALITY_CHALLENGE.json",
   "SUCCESSION.json",
   "SUPER_RESIDENT_FLOOR.json",
   "TABULA_FLOOR.json",

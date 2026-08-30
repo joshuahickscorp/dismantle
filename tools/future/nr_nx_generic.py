@@ -1,14 +1,16 @@
-"""NR_NX_GENERIC — prove the generic NR→NX pipeline on a real small specimen.
+"""NR_NX_GENERIC — drive the generic NR→NX path on a specimen the compiler can see.
 
-nr_nx_path_callable currently fails because Flash has no packed final NX.
-That conflates a generic orchestration capability with one model's artifact
-readiness, and it contradicts the bootstrap in which Qwen27 launches Odyssey
-while Flash remains an evolving child.
+The previous receipt was right about the shape of the miss and wrong about
+the label: GENERIC_NR_NX_PIPELINE_CALLABLE was False because Doctor and
+PhysicalGraphCompiler were hardcoded to one model's tensor names, not because
+the pipeline is an empty shell. This module parameterizes the specimen from
+its own config.json and safetensors index so a model nobody has tried yet
+either runs or fails with the stage and missing input named.
 
-This module drives the real compiler stages on the cheapest whole-tree-verified
-specimen the compiler can actually see. It does not pack an NX, does not mint a
-fixture, does not rename a source pointer, does not write physical EBPW, and
-does not declare the pipeline callable when any stage was skipped or refused.
+It still does not pack an NX, mint a fixture, rename a source pointer, write
+physical EBPW, or declare the pipeline callable when any stage was skipped
+or a packed body is missing. A green boolean earned by weakening NX is a
+hardcoded-True.
 
     python3 tools/future/nr_nx_generic.py --build
     python3 -m pytest tools/future/test_nr_nx_generic.py -q
@@ -29,13 +31,39 @@ from typing import Any, Mapping, Sequence
 
 from tools.future._common import RECEIPTS, REPO, git, load_json, write_receipt
 from tools.future import flash_nx_audit as nx_audit
+
+
+def _extend_sys_path_for_sparse_checkout() -> list[str]:
+    """tools/odyssey and hcli live in the primary checkout; this worktree is sparse."""
+    added: list[str] = []
+    for root in nx_audit.evidence_roots():
+        s = str(root)
+        if s not in _sys.path:
+            _sys.path.append(s)
+            added.append(s)
+    return added
+
+
+_SPARSE_PATHS = _extend_sys_path_for_sparse_checkout()
+
 from tools.future import nr_nx_path as nnp
 from tools.future import specimen_verify as sv
 from tools.future import workunit_species as wus
-from tools.odyssey import arch_recognizer as ar
-from tools.odyssey import doctor_tournament as doctor
-from tools.odyssey import noetic_compiler as nc
-from tools.odyssey import physical_graph_compiler as pgc
+
+try:
+    from tools.odyssey import arch_recognizer as ar
+    from tools.odyssey import doctor_tournament as doctor
+    from tools.odyssey import noetic_compiler as nc
+    from tools.odyssey import physical_graph_compiler as pgc
+    ODYSSEY_IMPORT_ERROR: str | None = None
+except ModuleNotFoundError as _exc:
+    ar = doctor = nc = pgc = None  # type: ignore[assignment]
+    ODYSSEY_IMPORT_ERROR = f"{type(_exc).__name__}: {_exc}"
+
+try:
+    import numpy as np
+except ImportError:
+    np = None  # type: ignore[assignment]
 
 RECEIPT = "NR_NX_GENERIC.json"
 SCHEMA = "hawking.future.nr_nx_generic.v1"
@@ -75,16 +103,21 @@ STAGE_ORDER: tuple[str, ...] = (
     "Verifier",
 )
 
+# Cheapness-ordered search pool named by the lane. Iteration order is not an
+# adapt() branch: adapt() never reads these identifiers.
 QWEN06_ID = "Qwen--Qwen3-0.6B@c1899de289a0"
 QWEN06_REPO = "Qwen/Qwen3-0.6B"
 QWEN06_REV = "c1899de289a0"
 FALCON_ID = "tiiuae--Falcon-H1-7B-Instruct@41e72f27effb"
 FALCON_REPO = "tiiuae/Falcon-H1-7B-Instruct"
 FALCON_REV = "41e72f27effb"
+QWEN30_ID = "Qwen--Qwen3-30B-A3B@ad44e777bcd1"
+QWEN30_REPO = "Qwen/Qwen3-30B-A3B"
+QWEN30_REV = "ad44e777bcd1"
 
-# Collapse tensors PhysicalGraphCompiler.get() will look up. Dense Qwen3-0.6B
-# stores the same roles without `.experts.N.`; Falcon uses feed_forward.* and
-# mamba.*. Either way the compiler's hardcoded MoE path is a miss.
+LANE_CANDIDATES: tuple[str, ...] = (QWEN06_ID, FALCON_ID, QWEN30_ID)
+
+# Compiler-hardcoded names. Cited as overlap evidence, never used as the mapping.
 PGC_COLLAPSE_TENSORS: tuple[str, ...] = (
     "model.layers.0.mlp.experts.0.gate_proj.weight",
     "model.layers.0.mlp.experts.0.up_proj.weight",
@@ -99,6 +132,54 @@ SOURCE_FILE_NAMES = frozenset(
         "model.safetensors.index.json",
         "consolidated.safetensors",
     }
+)
+
+_SILU_ACTS = frozenset({"silu", "silu_and_mul", "swiglu"})
+_LAYER_RE = re.compile(r"\.layers\.(\d+)\.")
+_EXPERT_RE = re.compile(r"\.experts\.(\d+)\.")
+_DOCTOR_MAX_ROWS = 2048
+_SWIGLU_TOLERANCE = 1e-9
+
+# Needles tried in order. MoE expert paths before dense mlp so a routed model
+# is not classified as dense because both mention gate_proj.
+_GATE_NEEDLES = (
+    ".mlp.experts.{E}.gate_proj.weight",
+    ".mlp.experts.{E}.w1.weight",
+    ".mlp.gate_proj.weight",
+    ".feed_forward.gate_proj.weight",
+    ".mlp.w1.weight",
+    ".feed_forward.w1.weight",
+)
+_UP_NEEDLES = (
+    ".mlp.experts.{E}.up_proj.weight",
+    ".mlp.experts.{E}.w3.weight",
+    ".mlp.up_proj.weight",
+    ".feed_forward.up_proj.weight",
+    ".mlp.w3.weight",
+    ".feed_forward.w3.weight",
+)
+_DOWN_NEEDLES = (
+    ".mlp.experts.{E}.down_proj.weight",
+    ".mlp.experts.{E}.w2.weight",
+    ".mlp.down_proj.weight",
+    ".feed_forward.down_proj.weight",
+    ".mlp.w2.weight",
+    ".feed_forward.w2.weight",
+)
+_ROUTER_NEEDLES = (
+    ".mlp.gate.weight",
+    ".mlp.router.weight",
+    ".mlp.gate.wg",
+)
+_Q_NEEDLES = (
+    ".self_attn.q_proj.weight",
+    ".attention.wq.weight",
+    ".self_attn.qkv_proj.weight",
+)
+_RECURRENT_NEEDLES = (
+    ".linear_attn.out_proj.weight",
+    ".mamba.out_proj.weight",
+    ".mamba.in_proj.weight",
 )
 
 
@@ -328,7 +409,642 @@ def source_independence(
 
 
 # ---------------------------------------------------------------------------
-# Specimen choice. Cheapest whole-tree-verified dense body the compiler sees.
+# Safetensors I/O. Header-first; payload is sliced, never assumed.
+# ---------------------------------------------------------------------------
+
+
+def _safetensors_header(path: Path) -> tuple[dict[str, Any], int]:
+    with open(path, "rb") as fh:
+        n = struct.unpack("<Q", fh.read(8))[0]
+        header = json.loads(fh.read(n))
+    return header, n
+
+
+def _safetensors_names(path: Path) -> list[str]:
+    header, _ = _safetensors_header(path)
+    return sorted(k for k in header if k != "__metadata__")
+
+
+def _tensor_names(spec_dir: Path) -> tuple[list[str], str, dict[str, str]]:
+    index = spec_dir / "model.safetensors.index.json"
+    if index.is_file():
+        weight_map = json.loads(index.read_text()).get("weight_map") or {}
+        shard_map = {str(k): str(v) for k, v in weight_map.items()}
+        return sorted(shard_map), "model.safetensors.index.json", shard_map
+    shard = spec_dir / "model.safetensors"
+    if shard.is_file():
+        names = _safetensors_names(shard)
+        return names, "model.safetensors header", {n: "model.safetensors" for n in names}
+    return [], "absent", {}
+
+
+def _bf16_to_f64(raw: bytes, shape: Sequence[int]):
+    if np is None:
+        raise RuntimeError("numpy is required to decode BF16")
+    u16 = np.frombuffer(raw, dtype="<u2")
+    u32 = u16.astype(np.uint32) << 16
+    f32 = u32.view(np.float32)
+    return np.asarray(f32, dtype=np.float64).reshape(shape)
+
+
+def _decode_tensor(raw: bytes, dtype: str, shape: Sequence[int]):
+    if np is None:
+        raise RuntimeError("numpy is required to decode tensors")
+    kind = (dtype or "").upper()
+    if kind == "BF16":
+        return _bf16_to_f64(raw, shape)
+    dt = {
+        "F32": "<f4",
+        "F16": "<f2",
+        "F64": "<f8",
+        "I32": "<i4",
+        "I64": "<i8",
+        "U8": "|u1",
+    }.get(kind)
+    if dt is None:
+        raise ValueError(f"unsupported safetensors dtype {dtype!r}")
+    arr = np.frombuffer(raw, dtype=dt)
+    return arr.astype(np.float64).reshape(shape)
+
+
+_TENSOR_CACHE: dict[tuple[str, str], Any] = {}
+_HEADER_CACHE: dict[str, tuple[dict[str, Any], int]] = {}
+
+
+def _cached_header(path: Path) -> tuple[dict[str, Any], int]:
+    key = str(path)
+    hit = _HEADER_CACHE.get(key)
+    if hit is None:
+        hit = _safetensors_header(path)
+        _HEADER_CACHE[key] = hit
+    return hit
+
+
+def load_tensor(spec_dir: Path, shard_map: Mapping[str, str], name: str):
+    """Load one tensor as float64. Refuses to guess a missing name or dtype."""
+    if np is None:
+        raise RuntimeError("numpy is not importable; tensor load refused")
+    shard = shard_map.get(name)
+    if not shard:
+        raise FileNotFoundError(f"tensor {name!r} has no shard mapping")
+    path = spec_dir / shard
+    cache_key = (str(path), name)
+    cached = _TENSOR_CACHE.get(cache_key)
+    if cached is not None:
+        return cached
+    if not path.is_file():
+        raise FileNotFoundError(f"shard not on disk: {path}")
+    header, header_len = _cached_header(path)
+    info = header.get(name)
+    if not isinstance(info, Mapping):
+        raise KeyError(f"{name} absent from {path.name} header")
+    dtype = str(info.get("dtype") or "")
+    shape = list(info.get("shape") or [])
+    offsets = info.get("data_offsets") or [0, 0]
+    start, end = int(offsets[0]), int(offsets[1])
+    with open(path, "rb") as fh:
+        fh.seek(8 + header_len + start)
+        raw = fh.read(end - start)
+    arr = _decode_tensor(raw, dtype, shape)
+    _TENSOR_CACHE[cache_key] = arr
+    return arr
+
+
+# ---------------------------------------------------------------------------
+# probe_specimen / adapt / callable_on — derived from config + index.
+# ---------------------------------------------------------------------------
+
+
+def _split_lake_id(sid: str) -> tuple[str, str]:
+    """ModelLake identity convention: org--name@rev, optional #partial."""
+    text = sid[:-8] if sid.endswith("#partial") else sid
+    if "@" in text:
+        body, rev = text.rsplit("@", 1)
+    else:
+        body, rev = text, ""
+    repo = body.replace("--", "/", 1)
+    return repo, rev
+
+
+def _config_from_dir(spec_dir: Path) -> dict[str, Any] | None:
+    cfg_path = spec_dir / "config.json"
+    if not cfg_path.is_file():
+        return None
+    raw = json.loads(cfg_path.read_text())
+    return raw if isinstance(raw, dict) else None
+
+
+def probe_specimen(name: str | Path | Mapping[str, Any]) -> dict[str, Any]:
+    """What tensors this specimen actually has, read from its index or header.
+
+    Names are never assumed from the specimen id. An absent body is a refusal.
+    """
+    if isinstance(name, Mapping):
+        if name.get("tensor_names") is not None and name.get("config") is not None:
+            cfg = name.get("config")
+            names = [str(n) for n in (name.get("tensor_names") or [])]
+            sid = str(name.get("id") or name.get("specimen") or name.get("name") or "supplied")
+            repo = name.get("repo")
+            rev = name.get("revision")
+            if not repo:
+                repo, parsed_rev = _split_lake_id(sid)
+                rev = rev or parsed_rev
+            shard_map = name.get("shard_map") or {}
+            if not isinstance(shard_map, dict):
+                shard_map = {}
+            if not shard_map and names:
+                shard_map = {n: "model.safetensors" for n in names}
+            path = name.get("specimen_path")
+            return {
+                "ok": True,
+                "id": sid,
+                "repo": repo,
+                "revision": rev,
+                "specimen_path": None if path is None else str(path),
+                "config": dict(cfg) if isinstance(cfg, Mapping) else {},
+                "tensor_names": names,
+                "n_tensors": len(names),
+                "names_via": str(name.get("names_via") or "caller"),
+                "shard_map": {str(k): str(v) for k, v in shard_map.items()},
+                "why": "caller-supplied config + tensor names",
+            }
+        if name.get("ok") is False and not name.get("tensor_names"):
+            return {
+                "ok": False,
+                "id": name.get("id"),
+                "why": str(name.get("why") or "probe refused by caller"),
+                "config": None,
+                "tensor_names": [],
+                "n_tensors": 0,
+                "names_via": "absent",
+                "shard_map": {},
+                "specimen_path": name.get("specimen_path"),
+            }
+        if name.get("specimen_path"):
+            sid = str(name.get("id") or name.get("specimen") or Path(str(name["specimen_path"])).name)
+            return probe_specimen(Path(str(name["specimen_path"]))) | {"id": sid}
+        if name.get("id"):
+            return probe_specimen(str(name["id"]))
+        return {
+            "ok": False,
+            "id": None,
+            "why": "mapping had neither tensor_names+config, nor a specimen id/path",
+            "config": None,
+            "tensor_names": [],
+            "n_tensors": 0,
+            "names_via": "absent",
+            "shard_map": {},
+        }
+
+    if isinstance(name, Path) or (isinstance(name, str) and (name.startswith("/") or name.startswith("."))):
+        spec_dir = Path(name)
+        sid = spec_dir.name
+        return _probe_dir(sid, spec_dir)
+
+    sid = str(name)
+    try:
+        spec_dir = sv.specimen_dir(sid)
+    except Exception as exc:
+        return {
+            "ok": False,
+            "id": sid,
+            "why": f"specimen_dir raised {type(exc).__name__}: {exc}",
+            "config": None,
+            "tensor_names": [],
+            "n_tensors": 0,
+            "names_via": "absent",
+            "shard_map": {},
+        }
+    return _probe_dir(sid, spec_dir)
+
+
+def _probe_dir(sid: str, spec_dir: Path) -> dict[str, Any]:
+    repo, rev = _split_lake_id(sid)
+    if not spec_dir.is_dir():
+        return {
+            "ok": False,
+            "id": sid,
+            "repo": repo,
+            "revision": rev,
+            "specimen_path": str(spec_dir),
+            "why": f"specimen directory is not on disk: {spec_dir}",
+            "config": None,
+            "tensor_names": [],
+            "n_tensors": 0,
+            "names_via": "absent",
+            "shard_map": {},
+        }
+    cfg = _config_from_dir(spec_dir)
+    if cfg is None:
+        return {
+            "ok": False,
+            "id": sid,
+            "repo": repo,
+            "revision": rev,
+            "specimen_path": str(spec_dir),
+            "why": f"config.json missing under {spec_dir}",
+            "config": None,
+            "tensor_names": [],
+            "n_tensors": 0,
+            "names_via": "missing_config",
+            "shard_map": {},
+        }
+    names, via, shard_map = _tensor_names(spec_dir)
+    if not names:
+        return {
+            "ok": False,
+            "id": sid,
+            "repo": repo,
+            "revision": rev,
+            "specimen_path": str(spec_dir),
+            "config": cfg,
+            "tensor_names": [],
+            "n_tensors": 0,
+            "names_via": via,
+            "shard_map": {},
+            "why": (
+                f"no safetensors index or shard under {spec_dir}; "
+                "refusing to assume tensor names from the specimen id"
+            ),
+        }
+    return {
+        "ok": True,
+        "id": sid,
+        "repo": repo,
+        "revision": rev,
+        "specimen_path": str(spec_dir),
+        "config": cfg,
+        "tensor_names": names,
+        "n_tensors": len(names),
+        "names_via": via,
+        "shard_map": shard_map,
+        "why": f"read {len(names)} tensor names via {via}",
+    }
+
+
+def _templates_from_names(names: Sequence[str]) -> set[str]:
+    out: set[str] = set()
+    for n in names:
+        t = _LAYER_RE.sub(".layers.{L}.", n)
+        t = _EXPERT_RE.sub(".experts.{E}.", t)
+        out.add(t)
+    return out
+
+
+def _pick_template(templates: set[str], needles: Sequence[str]) -> str | None:
+    for needle in needles:
+        exact = [t for t in templates if t.endswith(needle)]
+        if exact:
+            return sorted(exact, key=len)[0]
+        loose = [t for t in templates if needle in t]
+        if loose:
+            return sorted(loose, key=len)[0]
+    return None
+
+
+def _format_tensor(template: str, layer: int, expert: int | None = None) -> str:
+    out = template.replace("{L}", str(layer))
+    if "{E}" in out:
+        out = out.replace("{E}", str(0 if expert is None else expert))
+    return out
+
+
+def _present_layers(
+    names: set[str],
+    template: str | None,
+    n_layers: int,
+    expert: int | None = None,
+) -> list[int]:
+    if not template or n_layers <= 0:
+        return []
+    found: list[int] = []
+    for L in range(n_layers):
+        if _format_tensor(template, L, expert) in names:
+            found.append(L)
+    return found
+
+
+def _sample_layers(present: Sequence[int]) -> tuple[int, ...]:
+    have = list(dict.fromkeys(int(x) for x in present))
+    if not have:
+        return ()
+    if len(have) <= 3:
+        return tuple(have)
+    return (have[0], have[len(have) // 2], have[-1])
+
+
+def _n_layers(cfg: Mapping[str, Any], names: Sequence[str]) -> int:
+    n = cfg.get("num_hidden_layers")
+    if isinstance(n, int) and n > 0:
+        return n
+    found = [int(m.group(1)) for nm in names if (m := _LAYER_RE.search(nm))]
+    return (max(found) + 1) if found else 0
+
+
+def _hidden_act(cfg: Mapping[str, Any]) -> str:
+    raw = cfg.get("hidden_act") or cfg.get("hidden_activation") or ""
+    return str(raw).lower()
+
+
+def _compiler_hardcoded_overlap(names: Sequence[str]) -> dict[str, Any]:
+    name_set = set(names)
+    doctor_names: list[str] = []
+    if doctor is not None:
+        for _organ, pat, layers in doctor.PROBE_TENSORS:
+            for L in layers:
+                doctor_names.append(pat.format(L=L))
+    pgc_names = list(PGC_COLLAPSE_TENSORS)
+    return {
+        "doctor_parent": None if doctor is None else str(doctor.PARENT),
+        "doctor_probes": doctor_names,
+        "doctor_probes_present": [n for n in doctor_names if n in name_set],
+        "doctor_probes_absent": [n for n in doctor_names if n not in name_set],
+        "pgc_collapse_present": [n for n in pgc_names if n in name_set],
+        "pgc_collapse_absent": [n for n in pgc_names if n not in name_set],
+    }
+
+
+def adapt(specimen: str | Path | Mapping[str, Any]) -> dict[str, Any]:
+    """Map this specimen's architecture onto what the pipeline needs.
+
+    Derived from config.json + the real tensor index. A branch on the specimen
+    id would reproduce the original defect with a second hardcoded name.
+    """
+    probe = specimen if isinstance(specimen, Mapping) and "tensor_names" in specimen and "config" in specimen else probe_specimen(specimen)
+    if probe.get("ok") is not True:
+        return {
+            "ok": False,
+            "id": probe.get("id"),
+            "why": str(probe.get("why") or "probe refused; adaptation is not invented"),
+            "pipeline_can_start": False,
+            "family": "unknown",
+            "probe_plan": [],
+            "collapse_plan": [],
+            "missing": [str(probe.get("why") or "probe refused")],
+        }
+    cfg = probe.get("config") if isinstance(probe.get("config"), Mapping) else {}
+    names = list(probe.get("tensor_names") or [])
+    name_set = set(names)
+    templates = _templates_from_names(names)
+    n_layers = _n_layers(cfg, names)
+    act = _hidden_act(cfg)
+    swiglu = act in _SILU_ACTS
+    gate = _pick_template(templates, _GATE_NEEDLES)
+    up = _pick_template(templates, _UP_NEEDLES)
+    down = _pick_template(templates, _DOWN_NEEDLES)
+    router = _pick_template(templates, _ROUTER_NEEDLES)
+    q_proj = _pick_template(templates, _Q_NEEDLES)
+    recurrent = _pick_template(templates, _RECURRENT_NEEDLES)
+    moe = bool(gate and "{E}" in gate)
+    dense = bool(gate and "{E}" not in gate)
+    mlp_kind = "moe" if moe else ("dense" if dense else "absent")
+    if recurrent and (dense or moe):
+        family = "hybrid_recurrent"
+    elif moe:
+        family = "moe_swiglu_transformer" if swiglu else "moe_transformer"
+    elif dense:
+        family = "dense_swiglu_transformer" if swiglu else "dense_transformer"
+    else:
+        family = "unknown"
+
+    expert = 0 if moe else None
+    gate_layers = _present_layers(name_set, gate, n_layers, expert)
+    up_layers = _present_layers(name_set, up, n_layers, expert)
+    down_layers = _present_layers(name_set, down, n_layers, expert)
+    q_layers = _present_layers(name_set, q_proj, n_layers, None)
+    rec_layers = _present_layers(name_set, recurrent, n_layers, None)
+
+    probe_plan: list[dict[str, Any]] = []
+    if gate:
+        for L in _sample_layers(gate_layers):
+            probe_plan.append(
+                {"organ": "mlp", "role": "gate", "layer": L, "tensor": _format_tensor(gate, L, expert)}
+            )
+        if down:
+            for L in _sample_layers(down_layers):
+                probe_plan.append(
+                    {"organ": "mlp", "role": "down", "layer": L, "tensor": _format_tensor(down, L, expert)}
+                )
+    if q_proj:
+        for L in _sample_layers(q_layers):
+            probe_plan.append(
+                {"organ": "attention_gqa", "role": "q", "layer": L, "tensor": _format_tensor(q_proj, L, None)}
+            )
+    if recurrent:
+        rec_organ = "deltanet" if "linear_attn" in recurrent else "recurrent_state"
+        for L in _sample_layers(rec_layers):
+            probe_plan.append(
+                {"organ": rec_organ, "role": "out", "layer": L, "tensor": _format_tensor(recurrent, L, None)}
+            )
+
+    collapse_plan: list[dict[str, Any]] = []
+    collapse_missing: list[str] = []
+    shared = sorted(set(gate_layers) & set(up_layers) & set(down_layers))
+    if gate and up and down and swiglu and shared:
+        L = shared[0]
+        g_name = _format_tensor(gate, L, expert)
+        u_name = _format_tensor(up, L, expert)
+        d_name = _format_tensor(down, L, expert)
+        collapse_plan.append(
+            {
+                "collapse": "gate_up_swiglu",
+                "layer": L,
+                "expert": expert,
+                "gate": g_name,
+                "up": u_name,
+                "down": d_name,
+            }
+        )
+    elif gate and up and down and not swiglu:
+        collapse_missing.append(
+            f"hidden_act={act!r} is not a SwiGLU/SiLU activation; refusing to run the silu fusion"
+        )
+    elif not (gate and up and down):
+        collapse_missing.append(
+            "no gate/up/down templates derived from the tensor index; SwiGLU collapse has nothing to fuse"
+        )
+
+    router_applicable = bool(moe and router)
+    router_collapse = {
+        "applicable": router_applicable,
+        "template": router,
+        "missing_input": (
+            "X_layer activation capture (not fabricated)" if router_applicable else None
+        ),
+        "why": (
+            "router top-k collapse needs a real activation capture; a random X would not be this specimen"
+            if router_applicable
+            else "dense MLP has no expert router; router collapse is not an operator on this architecture"
+        ),
+    }
+
+    missing = list(collapse_missing)
+    if not names:
+        missing.append("no tensor names")
+    if not cfg:
+        missing.append("no config")
+
+    can_start = bool(
+        cfg
+        and names
+        and collapse_plan
+        and probe_plan
+        and swiglu
+    )
+    overlap = _compiler_hardcoded_overlap(names)
+    why = (
+        f"family={family} mlp={mlp_kind} swiglu={swiglu} n_layers={n_layers} "
+        f"n_tensors={len(names)} collapse={len(collapse_plan)} probes={len(probe_plan)}; "
+        f"compiler-hardcoded doctor probes present "
+        f"{len(overlap['doctor_probes_present'])}/{len(overlap['doctor_probes'] or [])}; "
+        f"compiler-hardcoded PGC MoE tensors present "
+        f"{len(overlap['pgc_collapse_present'])}/{len(PGC_COLLAPSE_TENSORS)}"
+    )
+    prefix = None
+    for t in templates:
+        if ".layers.{L}." in t:
+            prefix = t.split(".layers.{L}.")[0]
+            break
+    return {
+        "ok": True,
+        "id": probe.get("id"),
+        "why": why,
+        "pipeline_can_start": can_start,
+        "family": family,
+        "mlp_kind": mlp_kind,
+        "moe": moe,
+        "n_layers": n_layers,
+        "hidden_act": act or None,
+        "swiglu": swiglu,
+        "layer_prefix": prefix,
+        "architectures": cfg.get("architectures"),
+        "model_type": cfg.get("model_type"),
+        "num_experts": cfg.get("num_experts") or cfg.get("num_local_experts"),
+        "num_experts_per_tok": cfg.get("num_experts_per_tok"),
+        "templates": {
+            "gate": gate,
+            "up": up,
+            "down": down,
+            "router": router,
+            "q_proj": q_proj,
+            "recurrent": recurrent,
+        },
+        "probe_plan": probe_plan,
+        "collapse_plan": collapse_plan,
+        "router_collapse": router_collapse,
+        "missing": missing,
+        "compiler_hardcoded_overlap": overlap,
+        "names_via": probe.get("names_via"),
+        "n_tensors": len(names),
+    }
+
+
+def callable_on(specimen: str | Path | Mapping[str, Any]) -> dict[str, Any]:
+    """Can the full path run here? If not, which stage fails and on which missing input.
+
+    Preflight only. Does not load weights and does not mint an NX.
+    """
+    supplied = isinstance(specimen, Mapping) and specimen.get("tensor_names") is not None
+    probe = probe_specimen(specimen)
+    adaptation = adapt(probe)
+    native = native_engine_architectures()
+    path = Path(str(probe.get("specimen_path") or ""))
+    present = supplied or path.is_dir()
+    preview: list[dict[str, Any]] = []
+
+    def add(stage: str, ready: bool, missing: str | None) -> None:
+        preview.append({"stage": stage, "ready": ready, "missing_input": missing})
+
+    add("SpecimenSelect", bool(probe.get("id")), None if probe.get("id") else "no specimen id")
+    add(
+        "SpecimenPresent",
+        bool(present and probe.get("ok")),
+        None if present and probe.get("ok") else str(probe.get("why") or "specimen body not present"),
+    )
+    add(
+        "ArchitectureRecognizer",
+        bool(probe.get("ok") and probe.get("config") is not None and ar is not None),
+        None
+        if probe.get("ok") and ar is not None
+        else (ODYSSEY_IMPORT_ERROR or "no config/names"),
+    )
+    add("OrganGraph", bool(probe.get("ok") and pgc is not None), None if pgc is not None else ODYSSEY_IMPORT_ERROR)
+    add("NrIdentifyOrCreate", bool(probe.get("ok")), None if probe.get("ok") else "no organ graph input")
+    probe_names = [p["tensor"] for p in adaptation.get("probe_plan") or [] if p.get("tensor")]
+    missing_probes = [n for n in probe_names if n not in set(probe.get("tensor_names") or [])]
+    doctor_ready = bool(probe_names) and not missing_probes
+    add(
+        "Doctor",
+        doctor_ready,
+        None if doctor_ready else (
+            f"adapted probe tensors missing: {missing_probes}" if missing_probes
+            else "adapt() derived an empty probe plan"
+        ),
+    )
+    rl_ok, rl_err = _representation_library()
+    add(
+        "RepresentationPlanner",
+        bool(rl_ok and probe.get("ok")),
+        None if rl_ok else (rl_err or "representation_library unimportable"),
+    )
+    collapse = list(adaptation.get("collapse_plan") or [])
+    pgc_ready = bool(collapse) and adaptation.get("swiglu") is True
+    add(
+        "PhysicalGraphCompiler",
+        pgc_ready,
+        None if pgc_ready else (
+            "; ".join(adaptation.get("missing") or ["no parameterized SwiGLU collapse"])
+        ),
+    )
+    add(
+        "KernelPlanner",
+        False,
+        "KERNEL_LIBRARY has no specimen field and no shape-matched kernels for this specimen",
+    )
+    add(
+        "DeviceCompiler",
+        False,
+        "no DeviceCompiler callable; native GGUF match arms "
+        f"{native.get('architectures')!r} do not make a safetensors packer",
+    )
+    add(
+        "NoeticExecutable",
+        False,
+        "no generic NX packer; first_noetic_executable.py is Qwen3.8-27B-specific",
+    )
+    add("SourceIndependence", False, "no packed NX body")
+    add("ExecutableDependencyAccounting", False, "no packed NX body")
+    add("Verifier", False, "no packed NX body")
+
+    first = next((row for row in preview if row["ready"] is not True), None)
+    return {
+        "ok": first is None,
+        "id": probe.get("id"),
+        "first_failing_stage": None if first is None else first["stage"],
+        "missing_input": None if first is None else first["missing_input"],
+        "stage_preview": preview,
+        "adaptation_family": adaptation.get("family"),
+        "pipeline_can_start": adaptation.get("pipeline_can_start"),
+        "probe_ok": probe.get("ok"),
+        "why": (
+            "every stage has its input"
+            if first is None
+            else f"{first['stage']}: {first['missing_input']}"
+        ),
+    }
+
+
+def _representation_library() -> tuple[Any, str | None]:
+    try:
+        from tools.headless import representation_library as rl
+
+        return rl, None
+    except Exception as exc:
+        return None, f"{type(exc).__name__}: {exc}"
+
+
+# ---------------------------------------------------------------------------
+# Specimen choice. Cheapness-ordered candidates, ranked by adapt() not by name.
 # ---------------------------------------------------------------------------
 
 
@@ -349,116 +1065,160 @@ def _verification_index() -> dict[str, Any]:
     }
 
 
-def _safetensors_names(path: Path) -> list[str]:
-    """Header-only. Payload is never mapped; independence of weights is the point."""
-    with open(path, "rb") as fh:
-        n = struct.unpack("<Q", fh.read(8))[0]
-        header = json.loads(fh.read(n))
-    return sorted(k for k in header if k != "__metadata__")
-
-
-def _tensor_names(spec_dir: Path) -> tuple[list[str], str]:
-    index = spec_dir / "model.safetensors.index.json"
-    if index.is_file():
-        weight_map = json.loads(index.read_text()).get("weight_map") or {}
-        return sorted(weight_map), "model.safetensors.index.json"
-    shard = spec_dir / "model.safetensors"
-    if shard.is_file():
-        return _safetensors_names(shard), "model.safetensors header"
-    return [], "absent"
-
-
 def choose_specimen(
     *,
     present: set[str] | None = None,
     verified: Mapping[str, Mapping[str, Any]] | None = None,
     lake_mounted: bool | None = None,
+    candidates: Sequence[str] | None = None,
+    probes: Mapping[str, Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    """Qwen3-0.6B if it is here and whole-tree verified; Falcon is not a silent substitute.
+    """First cheapness-ordered candidate whose adapt() says the pipeline can start.
 
-    Falcon-H1 is in the recognizer's O001 blind set, but it is 15GB, hybrid
-    recurrent_state, and the shipping engine has no falcon_h1 match arm.
-    Substituting it when 0.6B is missing would hide the cheap-specimen question.
+    Falcon is not a silent substitute: if 0.6B cannot start, the attempt log
+    names why, then the next candidate is probed through the same adapt().
     """
     mounted = sv.available()["mounted"] if lake_mounted is None else lake_mounted
     vidx = _verification_index() if verified is None else {
         "present": True,
         "via": "caller",
         "rows": dict(verified),
-        "whole_tree": [k for k, r in verified.items() if r.get("whole_tree_verified") or r.get("status") == "WHOLE_TREE_VERIFIED"],
+        "whole_tree": [
+            k for k, r in verified.items()
+            if r.get("whole_tree_verified") or r.get("status") == "WHOLE_TREE_VERIFIED"
+        ],
     }
+    pool = list(candidates) if candidates is not None else list(LANE_CANDIDATES)
     if present is None:
-        present = set()
+        present_set: set[str] = set()
         if mounted:
             try:
-                present.update(sv.list_specimens())
+                present_set.update(sv.list_specimens())
             except OSError:
-                present = set()
-            for name in (QWEN06_ID, FALCON_ID):
+                present_set = set()
+            for name in pool:
                 try:
                     if sv.specimen_dir(name).is_dir():
-                        present.add(name)
+                        present_set.add(name)
                 except Exception:
                     continue
+    else:
+        present_set = set(present)
 
-    q06_row = (vidx.get("rows") or {}).get(QWEN06_ID) if isinstance(vidx.get("rows"), dict) else None
-    falcon_row = (vidx.get("rows") or {}).get(FALCON_ID) if isinstance(vidx.get("rows"), dict) else None
-    q06_verified = isinstance(q06_row, Mapping) and (
-        q06_row.get("whole_tree_verified") is True or q06_row.get("status") == "WHOLE_TREE_VERIFIED"
-    )
-    falcon_verified = isinstance(falcon_row, Mapping) and (
-        falcon_row.get("whole_tree_verified") is True or falcon_row.get("status") == "WHOLE_TREE_VERIFIED"
-    )
-    q06_present = QWEN06_ID in present
-    falcon_present = FALCON_ID in present
+    attempts: list[dict[str, Any]] = []
+    chosen: dict[str, Any] | None = None
+    rows = vidx.get("rows") if isinstance(vidx.get("rows"), dict) else {}
 
-    why_not_falcon = (
-        "Falcon-H1-7B is whole-tree verified (~15.18GB, 751 tensors, recurrent_state) "
-        "and sits in ArchitectureRecognizer's O001 blind set, but the shipping engine "
-        "match arm has no falcon_h1/mamba2, PhysicalGraphCompiler is MoE-hardcoded, "
-        "and a procedure question does not need a 10× heavier hybrid"
-    )
-    if q06_present and q06_verified:
-        spec_dir = str(sv.specimen_dir(QWEN06_ID)) if mounted else (q06_row or {}).get("specimen_path")
-        return {
-            "ok": True,
-            "id": QWEN06_ID,
-            "repo": QWEN06_REPO,
-            "revision": QWEN06_REV,
-            "family": "dense_transformer",
-            "architectures_expected": ["Qwen3ForCausalLM"],
-            "specimen_path": spec_dir,
-            "bytes_hashed": (q06_row or {}).get("bytes_hashed"),
-            "n_files": (q06_row or {}).get("n_files"),
-            "verification_status": (q06_row or {}).get("status"),
-            "verification_via": vidx.get("via"),
-            "why_chosen": (
-                "cheapest whole-tree-verified specimen the ArchitectureRecognizer "
-                "can run on without loading weights: dense Qwen3, 28 layers, "
-                "single 1.50GB shard, 311 tensors. Closest shipping runtime is "
-                "qwen_dense (GGUF qwen2/qwen), which is still not a qwen3 match arm"
+    for sid in pool:
+        vrow = rows.get(sid) if isinstance(rows, dict) else None
+        is_verified = isinstance(vrow, Mapping) and (
+            vrow.get("whole_tree_verified") is True or vrow.get("status") == "WHOLE_TREE_VERIFIED"
+        )
+        is_present = sid in present_set
+        if not is_present:
+            attempts.append(
+                {"id": sid, "chosen": False, "not_chosen_because": "not present on this host"}
+            )
+            continue
+        if not is_verified:
+            attempts.append(
+                {"id": sid, "chosen": False, "not_chosen_because": "not whole-tree verified"}
+            )
+            continue
+        if probes is not None and sid in probes:
+            probe = probe_specimen(probes[sid])
+        else:
+            spec_path = None
+            if mounted:
+                try:
+                    d = sv.specimen_dir(sid)
+                    if d.is_dir():
+                        spec_path = d
+                except Exception:
+                    spec_path = None
+            if spec_path is None and isinstance(vrow, Mapping) and vrow.get("specimen_path"):
+                cand = Path(str(vrow["specimen_path"]))
+                spec_path = cand if cand.is_dir() else None
+            if spec_path is None:
+                attempts.append(
+                    {
+                        "id": sid,
+                        "chosen": False,
+                        "not_chosen_because": "verified and listed present but directory is not on disk; refusing to invent tensors",
+                    }
+                )
+                continue
+            probe = probe_specimen(spec_path)
+            probe["id"] = sid
+        ad = adapt(probe)
+        attempt = {
+            "id": sid,
+            "chosen": False,
+            "present": True,
+            "verified": True,
+            "pipeline_can_start": ad.get("pipeline_can_start"),
+            "family": ad.get("family"),
+            "mlp_kind": ad.get("mlp_kind"),
+            "n_tensors": probe.get("n_tensors"),
+            "names_via": probe.get("names_via"),
+            "not_chosen_because": None if ad.get("pipeline_can_start") else (
+                "; ".join(ad.get("missing") or []) or ad.get("why")
             ),
-            "why_not_falcon": why_not_falcon,
-            "falcon_present": falcon_present,
-            "falcon_verified": falcon_verified,
-            "lake_mounted": mounted,
         }
+        if ad.get("pipeline_can_start") and chosen is None:
+            attempt["chosen"] = True
+            attempt["not_chosen_because"] = None
+            chosen = {
+                "ok": True,
+                "id": sid,
+                "repo": probe.get("repo"),
+                "revision": probe.get("revision"),
+                "family": ad.get("family"),
+                "architectures_expected": ad.get("architectures"),
+                "specimen_path": probe.get("specimen_path"),
+                "bytes_hashed": None if not isinstance(vrow, Mapping) else vrow.get("bytes_hashed"),
+                "n_files": None if not isinstance(vrow, Mapping) else vrow.get("n_files"),
+                "verification_status": None if not isinstance(vrow, Mapping) else vrow.get("status"),
+                "verification_via": vidx.get("via"),
+                "why_chosen": (
+                    f"first cheapness-ordered candidate whose adapt() derived a SwiGLU "
+                    f"collapse and a probe plan from this specimen's own index "
+                    f"(family={ad.get('family')}, mlp={ad.get('mlp_kind')}, "
+                    f"n_tensors={probe.get('n_tensors')}, via={probe.get('names_via')})"
+                ),
+                "lake_mounted": mounted,
+                "probe": {k: probe.get(k) for k in (
+                    "ok", "id", "repo", "revision", "specimen_path", "n_tensors",
+                    "names_via", "why",
+                )},
+                "adaptation": ad,
+            }
+        attempts.append(attempt)
+
+    if chosen is not None:
+        later = [a["id"] for a in attempts if a["id"] != chosen["id"]]
+        chosen["attempts"] = attempts
+        chosen["why_not_later_candidates"] = (
+            "later candidates were not needed; adapt() already accepted a cheaper body. "
+            + "; ".join(
+                f"{a['id']}: {a.get('not_chosen_because') or 'not reached'}"
+                for a in attempts if a["id"] != chosen["id"]
+            )
+        )
+        chosen["later_candidates"] = later
+        return chosen
     return {
         "ok": False,
         "id": None,
         "why": (
-            f"Qwen3-0.6B present={q06_present} whole_tree_verified={q06_verified}; "
-            f"Falcon present={falcon_present} whole_tree_verified={falcon_verified}; "
-            f"lake_mounted={mounted}; verification_receipt={vidx.get('via')}. "
-            "Refusing to invent a specimen. Falcon is not substituted: " + why_not_falcon
+            "no cheapness-ordered candidate was present, whole-tree verified, and "
+            "accepted by adapt() derived from its own config+index. "
+            "Refusing to invent a specimen. attempts="
+            + json.dumps([{k: a.get(k) for k in ('id', 'not_chosen_because', 'pipeline_can_start')} for a in attempts])
         ),
-        "q06_present": q06_present,
-        "q06_verified": q06_verified,
-        "falcon_present": falcon_present,
-        "falcon_verified": falcon_verified,
+        "attempts": attempts,
         "lake_mounted": mounted,
         "verification_via": vidx.get("via"),
-        "why_not_falcon": why_not_falcon,
     }
 
 
@@ -524,7 +1284,6 @@ def native_engine_architectures(src: str | None = None) -> dict[str, Any]:
 
 def _native_includes_qwen3_dense(native: Mapping[str, Any]) -> bool:
     arches = list(native.get("architectures") or [])
-    # qwen3moe is a different family. A lone "qwen3" token would admit dense.
     return "qwen3" in arches
 
 
@@ -538,13 +1297,15 @@ def stage_specimen_select(choice: Mapping[str, Any]) -> dict[str, Any]:
         return _stage(
             "SpecimenSelect",
             PASSED,
-            why=str(choice.get("why_chosen")),
+            why=str(choice.get("why_chosen") or choice.get("why") or "specimen selected by adapt()"),
             invoked=True,
             evidence={
                 "id": choice.get("id"),
                 "repo": choice.get("repo"),
                 "bytes_hashed": choice.get("bytes_hashed"),
-                "why_not_falcon": choice.get("why_not_falcon"),
+                "family": choice.get("family"),
+                "why_not_later_candidates": choice.get("why_not_later_candidates"),
+                "attempts": choice.get("attempts"),
             },
         )
     return _stage(
@@ -556,7 +1317,56 @@ def stage_specimen_select(choice: Mapping[str, Any]) -> dict[str, Any]:
     )
 
 
-def stage_specimen_present(choice: Mapping[str, Any]) -> dict[str, Any]:
+def stage_specimen_present(choice: Mapping[str, Any], probe: Mapping[str, Any]) -> dict[str, Any]:
+    if probe.get("ok") is True and probe.get("tensor_names") and probe.get("config") is not None:
+        path = Path(str(probe.get("specimen_path") or ""))
+        on_disk = path.is_dir()
+        if not on_disk and probe.get("names_via") not in {"caller"}:
+            return _stage(
+                "SpecimenPresent",
+                REFUSED,
+                why=f"specimen directory is not on disk: {path}",
+                invoked=True,
+                error="not_a_directory",
+                evidence={"path": str(path)},
+            )
+        weights = path / "model.safetensors" if on_disk else None
+        index = path / "model.safetensors.index.json" if on_disk else None
+        size = weights.stat().st_size if weights is not None and weights.is_file() else None
+        expected = None
+        if choice.get("id"):
+            vrow = (_verification_index().get("rows") or {}).get(choice["id"])
+            if isinstance(vrow, Mapping):
+                for f in vrow.get("files") or []:
+                    if isinstance(f, Mapping) and f.get("file") == "model.safetensors":
+                        expected = f.get("bytes")
+        if expected is not None and size is not None and size != expected:
+            return _stage(
+                "SpecimenPresent",
+                FAILED,
+                why=(
+                    f"model.safetensors size {size} != verification receipt {expected}; "
+                    "refusing to proceed on a drifted body"
+                ),
+                invoked=True,
+                error="size_drift",
+                evidence={"path": str(path), "size": size, "expected": expected},
+            )
+        return _stage(
+            "SpecimenPresent",
+            PASSED,
+            why="specimen config and tensor names are in hand (index or header, not assumed)",
+            invoked=True,
+            evidence={
+                "path": None if not on_disk else str(path),
+                "on_disk": on_disk,
+                "n_tensors": probe.get("n_tensors"),
+                "names_via": probe.get("names_via"),
+                "single_shard": bool(weights is not None and weights.is_file()),
+                "index_json": bool(index is not None and index.is_file()),
+                "model_safetensors_bytes": size,
+            },
+        )
     if choice.get("ok") is not True:
         return _stage(
             "SpecimenPresent",
@@ -564,58 +1374,13 @@ def stage_specimen_present(choice: Mapping[str, Any]) -> dict[str, Any]:
             why="no specimen was selected; presence is not assumed",
             invoked=True,
         )
-    path = Path(str(choice.get("specimen_path") or ""))
-    if not path.is_dir():
-        return _stage(
-            "SpecimenPresent",
-            REFUSED,
-            why=f"specimen directory is not on disk: {path}",
-            invoked=True,
-            error="not_a_directory",
-            evidence={"path": str(path)},
-        )
-    cfg = path / "config.json"
-    weights = path / "model.safetensors"
-    index = path / "model.safetensors.index.json"
-    if not cfg.is_file():
-        return _stage(
-            "SpecimenPresent",
-            REFUSED,
-            why=f"config.json missing under {path}",
-            invoked=True,
-            error="missing_config",
-        )
-    size = weights.stat().st_size if weights.is_file() else None
-    expected = None
-    vrow = (_verification_index().get("rows") or {}).get(choice["id"])
-    if isinstance(vrow, Mapping):
-        for f in vrow.get("files") or []:
-            if isinstance(f, Mapping) and f.get("file") == "model.safetensors":
-                expected = f.get("bytes")
-    if expected is not None and size is not None and size != expected:
-        return _stage(
-            "SpecimenPresent",
-            FAILED,
-            why=(
-                f"model.safetensors size {size} != verification receipt {expected}; "
-                "refusing to proceed on a drifted body"
-            ),
-            invoked=True,
-            error="size_drift",
-            evidence={"path": str(path), "size": size, "expected": expected},
-        )
     return _stage(
         "SpecimenPresent",
-        PASSED,
-        why="specimen directory, config.json, and weight shard/index are on disk",
+        REFUSED,
+        why=str(probe.get("why") or "probe refused"),
         invoked=True,
-        evidence={
-            "path": str(path),
-            "config": True,
-            "single_shard": weights.is_file(),
-            "index_json": index.is_file(),
-            "model_safetensors_bytes": size,
-        },
+        error="probe_refused",
+        evidence={"probe_why": probe.get("why")},
     )
 
 
@@ -633,9 +1398,17 @@ def stage_architecture_recognizer(
             why="no specimen/config; recognizer was not fed a default",
             invoked=False,
         )
+    if ar is None:
+        return _stage(
+            "ArchitectureRecognizer",
+            FAILED,
+            why=f"tools.odyssey.arch_recognizer is not importable: {ODYSSEY_IMPORT_ERROR}",
+            invoked=False,
+            error="odyssey_not_importable",
+        )
     lib = organ_library()
     as_compiler = ar.recognize(
-        str(choice["repo"]), str(choice["revision"]), dict(cfg), list(names)
+        str(choice.get("repo") or ""), str(choice.get("revision") or ""), dict(cfg), list(names)
     )
     organs, unknown, n_un, folded = ar.classify(
         list(names), dict(cfg), lib["known"], lib["declared"]
@@ -685,6 +1458,14 @@ def stage_organ_graph(
             why="ArchitectureRecognizer did not pass; organ graph is not invented",
             invoked=False,
         )
+    if pgc is None:
+        return _stage(
+            "OrganGraph",
+            FAILED,
+            why=f"physical_graph_compiler is not importable: {ODYSSEY_IMPORT_ERROR}",
+            invoked=False,
+            error="odyssey_not_importable",
+        )
     og = pgc.organ_graph(dict(cfg), list(names))
     return _stage(
         "OrganGraph",
@@ -700,12 +1481,7 @@ def stage_nr_identify(
     arch_row: Mapping[str, Any],
     og_row: Mapping[str, Any],
 ) -> dict[str, Any]:
-    """Composition NR from organs is not a packed NR information payload.
-
-    flash_nr_complete already refuses to bill composition-document bytes as
-    serialized_nr_information. This stage identifies the organ inventory and
-    records that no packed NR for this specimen exists.
-    """
+    """Composition NR from organs is not a packed NR information payload."""
     if og_row.get("status") != PASSED:
         return _stage(
             "NrIdentifyOrCreate",
@@ -760,92 +1536,385 @@ def stage_nr_identify(
     )
 
 
-def stage_doctor(choice: Mapping[str, Any], names: Sequence[str]) -> dict[str, Any]:
-    probe_names = [
-        pat.format(L=L)
-        for _organ, pat, layers in doctor.PROBE_TENSORS
-        for L in layers
-    ]
-    missing = [n for n in probe_names if n not in set(names)]
-    parent = Path(doctor.PARENT)
+def _silu(x):
+    if pgc is not None:
+        return pgc.silu(x)
+    if np is None:
+        raise RuntimeError("numpy missing")
+    return x / (1.0 + np.exp(-x))
+
+
+def _doctor_stats(W) -> dict[str, Any]:
+    if np is None:
+        raise RuntimeError("numpy missing")
+    mat = W
+    if mat.shape[0] > _DOCTOR_MAX_ROWS:
+        mat = mat[:_DOCTOR_MAX_ROWS]
+    flat = mat.flatten()
+    std = float(flat.std())
+    mean = float(flat.mean())
+    z = (flat - mean) / (std + 1e-12)
+    kurt = float(np.mean(z ** 4) - 3.0)
+    outlier = float(np.mean(np.abs(z) > 4))
+    sv = np.linalg.svd(mat, compute_uv=False)
+    energy = sv ** 2
+    denom = float(energy.sum())
+    if denom <= 0:
+        r50 = r90 = int(min(mat.shape))
+    else:
+        cum = np.cumsum(energy) / denom
+        r50 = int(np.sum(cum < 0.50)) + 1
+        r90 = int(np.sum(cum < 0.90)) + 1
+    n = int(min(mat.shape))
+    rown = np.linalg.norm(mat, axis=1)
+    dead = float(np.mean(rown < 0.01 * (rown.mean() + 1e-12)))
+    return {
+        "shape": [int(mat.shape[0]), int(mat.shape[1])],
+        "excess_kurtosis": round(kurt, 3),
+        "outlier_frac_beyond_4sigma": round(outlier, 6),
+        "rank_for_50pct_energy": r50,
+        "rank_for_90pct_energy": r90,
+        "full_rank": n,
+        "r90_over_full_rank": round(r90 / n, 4) if n else None,
+        "near_zero_row_frac": round(dead, 6),
+    }
+
+
+def stage_doctor(
+    choice: Mapping[str, Any],
+    names: Sequence[str],
+    *,
+    adaptation: Mapping[str, Any],
+    probe: Mapping[str, Any],
+) -> dict[str, Any]:
+    overlap = adaptation.get("compiler_hardcoded_overlap") or _compiler_hardcoded_overlap(names)
+    plan = list(adaptation.get("probe_plan") or [])
+    if not plan:
+        return _stage(
+            "Doctor",
+            FAILED,
+            why=(
+                "adapt() derived an empty probe plan from this specimen's tensor index; "
+                "refusing to fall back to the compiler's hardcoded PARENT names "
+                f"(absent={len(overlap.get('doctor_probes_absent') or [])}/"
+                f"{len(overlap.get('doctor_probes') or [])})"
+            ),
+            invoked=True,
+            error="no_adapted_probe_tensors",
+            evidence={
+                "entry_point": "tools/odyssey/doctor_tournament.py (algorithm; probes() not called)",
+                "compiler_hardcoded_overlap": overlap,
+                "did_not_call_probes": True,
+                "adapted_probe_tensors": [],
+            },
+        )
+    missing = [p["tensor"] for p in plan if p.get("tensor") not in set(names)]
+    if missing:
+        return _stage(
+            "Doctor",
+            FAILED,
+            why=f"adapted probe tensors are absent from this specimen: {missing}",
+            invoked=True,
+            error="adapted_probe_tensors_missing",
+            evidence={
+                "missing": missing,
+                "adapted_probe_tensors": [p.get("tensor") for p in plan],
+                "compiler_hardcoded_overlap": overlap,
+                "did_not_call_probes": True,
+            },
+        )
+    spec_dir = Path(str(probe.get("specimen_path") or ""))
+    shard_map = probe.get("shard_map") or {}
+    if not spec_dir.is_dir() or not shard_map:
+        return _stage(
+            "Doctor",
+            FAILED,
+            why=(
+                "probe plan exists but the weight shards are not on disk; "
+                "Doctor preconditions are weights-only and are not fabricated"
+            ),
+            invoked=True,
+            error="weights_not_on_disk",
+            evidence={
+                "adapted_probe_tensors": [p.get("tensor") for p in plan],
+                "compiler_hardcoded_overlap": overlap,
+                "did_not_call_probes": True,
+            },
+        )
+    if np is None:
+        return _stage(
+            "Doctor",
+            FAILED,
+            why="numpy is not importable; CPU weight preconditions cannot run",
+            invoked=True,
+            error="numpy_missing",
+            evidence={"did_not_call_probes": True, "adapted_probe_tensors": [p.get("tensor") for p in plan]},
+        )
+    stats_by_organ: dict[str, list[dict[str, Any]]] = {}
+    slices: dict[str, dict[int, Any]] = {}
+    loaded: list[str] = []
+    try:
+        for item in plan:
+            tensor = str(item["tensor"])
+            W = load_tensor(spec_dir, shard_map, tensor)
+            row = _doctor_stats(W)
+            row["tensor"] = tensor
+            row["layer"] = item.get("layer")
+            stats_by_organ.setdefault(str(item.get("organ")), []).append(row)
+            loaded.append(tensor)
+            sl = W[:512, :512] if min(W.shape) >= 1 else W
+            slices.setdefault(str(item.get("organ")), {})[int(item.get("layer") or 0)] = sl
+    except Exception as exc:
+        return _stage(
+            "Doctor",
+            FAILED,
+            why=f"adapted tensor load/stats raised {type(exc).__name__}: {exc}",
+            invoked=True,
+            error=f"{type(exc).__name__}: {exc}",
+            evidence={
+                "loaded": loaded,
+                "adapted_probe_tensors": [p.get("tensor") for p in plan],
+                "did_not_call_probes": True,
+                "compiler_hardcoded_overlap": overlap,
+            },
+        )
+    share: dict[str, Any] = {}
+    for organ, mats in slices.items():
+        Ls = sorted(mats)
+        cos = []
+        for i in range(len(Ls)):
+            for j in range(i + 1, len(Ls)):
+                a, b = mats[Ls[i]].flatten(), mats[Ls[j]].flatten()
+                denom = float(np.linalg.norm(a) * np.linalg.norm(b) + 1e-12)
+                c = float(np.dot(a, b) / denom)
+                cos.append({"layers": [Ls[i], Ls[j]], "cosine": round(c, 5)})
+        share[organ] = {
+            "pairs": cos,
+            "max_abs_cosine": None if not cos else round(max(abs(p["cosine"]) for p in cos), 5),
+        }
     return _stage(
         "Doctor",
-        FAILED,
+        PASSED,
         why=(
-            "tools.odyssey.doctor_tournament is parameterized on a hardcoded PARENT "
-            f"({parent}) with Qwen3.8-27B tensor names; {len(missing)}/{len(probe_names)} "
-            "probe tensors are absent from this specimen. probes() was not run: it "
-            "imports torch+safetensors and would load the wrong model"
+            f"weights-only preconditions on {len(loaded)} tensors derived from this "
+            f"specimen's index (not doctor_tournament.PROBE_TENSORS / PARENT). "
+            f"probes() was not called: it hardcodes PARENT="
+            f"{overlap.get('doctor_parent')}. "
+            f"compiler-hardcoded names present "
+            f"{len(overlap.get('doctor_probes_present') or [])}/"
+            f"{len(overlap.get('doctor_probes') or [])}"
         ),
         invoked=True,
-        error="parameterized_on_wrong_parent",
+        extra={"loaded_weights": True},
         evidence={
-            "entry_point": "tools/odyssey/doctor_tournament.py",
-            "hardcoded_parent": str(parent),
-            "parent_is_this_specimen": str(parent) == str(choice.get("specimen_path")),
-            "probe_tensors": probe_names,
-            "probe_tensors_missing_from_specimen": missing,
+            "entry_point": "tools.future.nr_nx_generic._doctor_stats (doctor_tournament algorithm, parameterized names)",
             "did_not_call_probes": True,
-            "did_not_load_weights": True,
+            "did_not_load_compiler_parent": True,
+            "loaded_weights": True,
+            "n_probed": len(loaded),
+            "adapted_probe_tensors": loaded,
+            "compiler_hardcoded_overlap": overlap,
+            "diagnosis": stats_by_organ,
+            "cross_layer": share,
+            "claim_boundary": (
+                "CPU weights-only preconditions. Not a hardware measurement. "
+                "Not physical EBPW. Not a packed NR."
+            ),
         },
     )
 
 
-def stage_representation_planner(choice: Mapping[str, Any]) -> dict[str, Any]:
-    error = None
-    try:
-        from tools.odyssey.transfer_rehearsal import rehearse
-
-        rehearse("P1-A", str(choice.get("repo")), str(choice.get("revision")))
+def stage_representation_planner(
+    choice: Mapping[str, Any],
+    *,
+    organs: Sequence[Mapping[str, Any]],
+    model_type: Any,
+) -> dict[str, Any]:
+    if choice.get("ok") is not True:
         return _stage(
             "RepresentationPlanner",
-            FAILED,
-            why=(
-                "rehearse() returned without raising but this specimen is not in "
-                "ARCHITECTURE_RECOGNIZER_FIXTURES; a returned plan for the wrong "
-                "model is not a plan for this specimen"
-            ),
-            invoked=True,
+            REFUSED,
+            why="no specimen selected",
+            invoked=False,
         )
-    except ModuleNotFoundError as exc:
-        error = f"ModuleNotFoundError: {exc}"
+    rl, err = _representation_library()
+    if rl is None:
+        producer_git = bool(git("show", "HEAD:tools/headless/representation_library.py"))
         return _stage(
             "RepresentationPlanner",
             FAILED,
             why=(
-                "invoked tools.odyssey.transfer_rehearsal.rehearse; it imports "
-                "representation_library from tools/headless, which is not "
-                "materialized in this sparse checkout. That is a worktree gap, "
-                "not proof the producer is absent from git"
+                "tools.headless.representation_library is not importable in this "
+                f"checkout ({err}). That is a worktree gap, not proof the producer "
+                "is absent from git. rehearse() was not called: it fetches HuggingFace "
+                "when the specimen is not in ARCHITECTURE_RECOGNIZER_FIXTURES"
             ),
             invoked=True,
-            error=error,
+            error=err,
             evidence={
-                "entry_point": "tools/odyssey/transfer_rehearsal.py:rehearse",
-                "producer_in_git": bool(git("show", "HEAD:tools/headless/representation_library.py")),
+                "entry_point": "tools.headless.representation_library.seed",
+                "producer_in_git": producer_git,
                 "producer_on_disk": (REPO / "tools/headless/representation_library.py").is_file(),
+                "did_not_call_rehearse": True,
+                "did_not_fetch_network": True,
             },
         )
-    except Exception as exc:
-        error = f"{type(exc).__name__}: {exc}"
+    organ_names = []
+    for node in organs:
+        if isinstance(node, Mapping) and node.get("organ"):
+            organ_names.append(str(node["organ"]))
+    if not organ_names:
         return _stage(
             "RepresentationPlanner",
             FAILED,
-            why="rehearse() raised rather than planning this specimen",
+            why="no organs to seed; a plan for an empty inventory is not a plan",
             invoked=True,
-            error=error,
+            error="no_organs",
         )
+    try:
+        fams = rl.build()
+        seeds = []
+        arch_class = str(model_type or "unknown")
+        alias = getattr(ar, "ALIAS_TO_FAMILY", {}) if ar is not None else {}
+        for organ in organ_names:
+            fam_name = alias.get(organ, organ) if isinstance(alias, dict) else organ
+            seeded = rl.seed(fams, fam_name, arch_class)
+            ranked = list(seeded.get("ranked") or [])[:3]
+            seeds.append(
+                {
+                    "organ": organ,
+                    "family_name": fam_name,
+                    "arch_class": arch_class,
+                    "top": [
+                        {"family": r.get("family"), "score": r.get("score"), "evidence": r.get("evidence")}
+                        for r in ranked
+                        if isinstance(r, Mapping)
+                    ],
+                    "n_ranked": len(seeded.get("ranked") or []),
+                    "n_excluded": len(seeded.get("excluded") or []),
+                    "law": seeded.get("law"),
+                }
+            )
+    except Exception as exc:
+        return _stage(
+            "RepresentationPlanner",
+            FAILED,
+            why=f"representation_library.build/seed raised {type(exc).__name__}: {exc}",
+            invoked=True,
+            error=f"{type(exc).__name__}: {exc}",
+            evidence={"did_not_call_rehearse": True, "did_not_fetch_network": True},
+        )
+    return _stage(
+        "RepresentationPlanner",
+        PASSED,
+        why=(
+            "invoked tools.headless.representation_library.seed on this specimen's "
+            f"organs ({organ_names}) and arch_class={model_type!r}. "
+            "rehearse() was not called (it fetches when fixtures miss). "
+            "This is a seeded candidate list, not a packed representation"
+        ),
+        invoked=True,
+        evidence={
+            "entry_point": "tools.headless.representation_library.seed",
+            "did_not_call_rehearse": True,
+            "did_not_fetch_network": True,
+            "organs_seeded": organ_names,
+            "seeds": seeds,
+            "claim_boundary": (
+                "COMPILE_TIME_SCIENCE_ONLY candidate ranking. MODEL_SPECIFIC Qwen "
+                "failures warn, they do not prune. Not a packed NR. Not physical EBPW"
+            ),
+        },
+    )
 
 
-def stage_physical_graph_compiler(choice: Mapping[str, Any], names: Sequence[str]) -> dict[str, Any]:
-    spec_dir = Path(str(choice.get("specimen_path") or ""))
+def _parameterized_gate_up_swiglu(
+    spec_dir: Path,
+    shard_map: Mapping[str, str],
+    gate_name: str,
+    up_name: str,
+    down_name: str,
+) -> dict[str, Any]:
+    if np is None:
+        raise RuntimeError("numpy is not importable")
+    g = load_tensor(spec_dir, shard_map, gate_name)
+    u = load_tensor(spec_dir, shard_map, up_name)
+    d = load_tensor(spec_dir, shard_map, down_name)
+    rng = np.random.default_rng(0)
+    x = rng.standard_normal((8, g.shape[1]))
+    h_gate = x @ g.T
+    h_up = x @ u.T
+    unfused = (_silu(h_gate) * h_up) @ d.T
+    gu = np.concatenate([g, u], axis=0)
+    h = x @ gu.T
+    n = g.shape[0]
+    fused = (_silu(h[:, :n]) * h[:, n:]) @ d.T
+    err = float(np.abs(unfused - fused).max())
+    scale = float(np.abs(unfused).max())
+    used_compiler_silu = pgc is not None
+    return {
+        "collapse": "gate_up_swiglu",
+        "source_nodes": ["gate_proj matvec", "up_proj matvec", "silu", "elementwise multiply"],
+        "physical_nodes": ["gate_up_swiglu (one fused operator)"],
+        "n_source_nodes": 4,
+        "n_physical_nodes": 1,
+        "gate": gate_name,
+        "up": up_name,
+        "down": down_name,
+        "used_compiler_silu": used_compiler_silu,
+        "semantic_justification": (
+            "gate and up read the same activation vector and their outputs are consumed "
+            "only by the SwiGLU, so the intermediates are not observable outside the region"
+        ),
+        "max_abs_diff": err,
+        "max_abs_value": scale,
+        "relative": None if not scale else err / scale,
+        "tolerance": _SWIGLU_TOLERANCE,
+        "numerically_equivalent": err <= _SWIGLU_TOLERANCE,
+        "weight_reads_before": 3,
+        "weight_reads_after": 2,
+        "intermediates_materialized_before": 2,
+        "intermediates_materialized_after": 0,
+    }
+
+
+def stage_physical_graph_compiler(
+    choice: Mapping[str, Any],
+    names: Sequence[str],
+    *,
+    adaptation: Mapping[str, Any],
+    probe: Mapping[str, Any],
+) -> dict[str, Any]:
+    spec_dir = Path(str(probe.get("specimen_path") or choice.get("specimen_path") or ""))
     index = spec_dir / "model.safetensors.index.json"
-    collapse_present = [t for t in PGC_COLLAPSE_TENSORS if t in set(names)]
-    collapse_absent = [t for t in PGC_COLLAPSE_TENSORS if t not in set(names)]
+    overlap = adaptation.get("compiler_hardcoded_overlap") or _compiler_hardcoded_overlap(names)
+    plan = list(adaptation.get("collapse_plan") or [])
+    parameterized: dict[str, Any] | None = None
+    param_error: str | None = None
+    if plan and spec_dir.is_dir() and probe.get("shard_map") and np is not None:
+        item = plan[0]
+        try:
+            parameterized = _parameterized_gate_up_swiglu(
+                spec_dir,
+                probe.get("shard_map") or {},
+                str(item["gate"]),
+                str(item["up"]),
+                str(item["down"]),
+            )
+        except Exception as exc:
+            param_error = f"{type(exc).__name__}: {exc}"
+    elif not plan:
+        param_error = "; ".join(adaptation.get("missing") or ["adapt() produced no collapse plan"])
+    elif np is None:
+        param_error = "numpy is not importable; collapse cannot be checked"
+    elif not spec_dir.is_dir():
+        param_error = f"specimen directory is not on disk: {spec_dir}"
+
     stdout = stderr = ""
     returncode: int | None = None
-    invoked = False
-    if spec_dir.is_dir():
+    invoked_main = False
+    emitted = False
+    if spec_dir.is_dir() and (REPO / "tools/odyssey/physical_graph_compiler.py").is_file():
         with tempfile.TemporaryDirectory(prefix="nr-nx-generic-pgc-") as tmp:
             emit = Path(tmp) / "PHYSICAL_GRAPH_COMPILER.emit.json"
             proc = subprocess.run(
@@ -866,43 +1935,101 @@ def stage_physical_graph_compiler(choice: Mapping[str, Any], names: Sequence[str
                 text=True,
                 timeout=60,
             )
-            invoked = True
+            invoked_main = True
             returncode = proc.returncode
             stdout = (proc.stdout or "")[-400:]
             stderr = (proc.stderr or "")[-1200:]
             emitted = emit.is_file()
-    else:
-        emitted = False
+    elif spec_dir.is_dir():
+        # Sparse checkout: the compiler lives in the primary tree. Drive it from there.
+        pgc_py = None
+        for root in nx_audit.evidence_roots():
+            cand = root / "tools/odyssey/physical_graph_compiler.py"
+            if cand.is_file():
+                pgc_py = cand
+                break
+        if pgc_py is not None:
+            with tempfile.TemporaryDirectory(prefix="nr-nx-generic-pgc-") as tmp:
+                emit = Path(tmp) / "PHYSICAL_GRAPH_COMPILER.emit.json"
+                proc = subprocess.run(
+                    [
+                        _sys.executable,
+                        str(pgc_py),
+                        "--model-dir",
+                        str(spec_dir),
+                        "--capture",
+                        str(Path(tmp) / "no-capture"),
+                        "--layer",
+                        "0",
+                        "--emit",
+                        str(emit),
+                    ],
+                    cwd=str(pgc_py.parents[2]),
+                    capture_output=True,
+                    text=True,
+                    timeout=60,
+                )
+                invoked_main = True
+                returncode = proc.returncode
+                stdout = (proc.stdout or "")[-400:]
+                stderr = (proc.stderr or "")[-1200:]
+                emitted = emit.is_file()
+
     err_line = None
     for line in (stderr or "").splitlines()[::-1]:
         if line.strip():
             err_line = line.strip()
             break
+
+    param_ok = bool(parameterized and parameterized.get("numerically_equivalent") is True)
+    evidence = {
+        "entry_point": "tools.future.nr_nx_generic._parameterized_gate_up_swiglu",
+        "compiler_main": "tools/odyssey/physical_graph_compiler.py:main",
+        "parameterized_collapse": parameterized,
+        "parameterized_error": param_error,
+        "compiler_main_returncode": returncode,
+        "compiler_main_invoked": invoked_main,
+        "index_json_present": index.is_file() if spec_dir.is_dir() else False,
+        "compiler_hardcoded_overlap": overlap,
+        "collapse_plan": plan,
+        "router_collapse": adaptation.get("router_collapse"),
+        "emit_written": emitted,
+        "stderr_tail": stderr,
+        "stdout_tail": stdout,
+        "used_compiler_silu": None if parameterized is None else parameterized.get("used_compiler_silu"),
+    }
+    if param_ok:
+        return _stage(
+            "PhysicalGraphCompiler",
+            PASSED,
+            why=(
+                "parameterized gate_up_swiglu on tensors derived from this specimen's "
+                f"index is numerically equivalent (max_abs_diff="
+                f"{parameterized.get('max_abs_diff')}, used_compiler_silu="
+                f"{parameterized.get('used_compiler_silu')}). "
+                f"compiler main() still hardcoded to MoE index.json "
+                f"(returncode={returncode}, index_json={index.is_file() if spec_dir.is_dir() else False}); "
+                "that is a Codex-owned compiler gap, not a miss in this specimen's names"
+            ),
+            invoked=True,
+            error=None,
+            evidence=evidence,
+        )
     return _stage(
         "PhysicalGraphCompiler",
         FAILED,
         why=(
-            "invoked tools/odyssey/physical_graph_compiler.py --model-dir <specimen>. "
-            f"returncode={returncode}. main() requires model.safetensors.index.json "
-            f"(present={index.is_file()}) and an X_layer capture, and the collapse "
-            "looks up MoE expert tensors this dense specimen does not have"
+            "parameterized SwiGLU collapse did not verify on this specimen: "
+            f"{param_error or (parameterized or {}).get('max_abs_diff')}. "
+            f"compiler main() returncode={returncode} err={err_line!r}"
         ),
-        invoked=invoked,
-        error=err_line,
-        evidence={
-            "entry_point": "tools/odyssey/physical_graph_compiler.py:main",
-            "returncode": returncode,
-            "index_json_present": index.is_file(),
-            "collapse_tensors_present": collapse_present,
-            "collapse_tensors_absent": collapse_absent,
-            "emit_written": emitted,
-            "stderr_tail": stderr,
-            "stdout_tail": stdout,
-        },
+        invoked=True,
+        error=param_error or err_line or "collapse_not_equivalent",
+        evidence=evidence,
     )
 
 
-def stage_kernel_planner() -> dict[str, Any]:
+def stage_kernel_planner(organs: Sequence[str]) -> dict[str, Any]:
     path = nx_audit.evidence_path(REL_KERNELS)
     if path is None:
         return _stage(
@@ -914,36 +2041,56 @@ def stage_kernel_planner() -> dict[str, Any]:
         )
     doc = load_json(path)
     kernels = doc.get("kernels") or []
-    organs = sorted(
+    lib_organs = sorted(
         {
             k.get("organ_identity")
             for k in kernels
             if isinstance(k, Mapping) and k.get("organ_identity")
         }
     )
+    specimen_organs = set(organs)
+    intersection = sorted(specimen_organs & set(lib_organs))
+    matched = []
+    for k in kernels:
+        if not isinstance(k, Mapping):
+            continue
+        org = k.get("organ_identity")
+        if org in specimen_organs:
+            matched.append(
+                {
+                    "kernel_identity": k.get("kernel_identity"),
+                    "organ_identity": org,
+                    "representation_identity": k.get("representation_identity"),
+                    "machine_identity": k.get("machine_identity"),
+                }
+            )
     specimen_field = doc.get("specimen")
     return _stage(
         "KernelPlanner",
         FAILED,
         why=(
-            "KERNEL_LIBRARY.json exists and was read, but it has no specimen field "
-            "and catalogues qwen38 organs. The G023 stage audit already recorded "
-            "treating this as AUTOMATIC-on-model-#2 as overstated. Reading the "
-            "library is not a kernel plan for Qwen3-0.6B"
+            "KERNEL_LIBRARY.json was read and compared to this specimen's organs. "
+            f"role intersection={intersection}. None of the {len(matched)} role-matched "
+            "kernels carry this specimen's id or shapes. A shared organ name is not a "
+            "compiled kernel for this body. specimen_field="
+            f"{specimen_field!r}"
         ),
         invoked=True,
         evidence={
             "path": str(path),
             "n_kernels": doc.get("n_kernels") if doc.get("n_kernels") is not None else len(kernels),
-            "organs": organs,
+            "library_organs": lib_organs,
+            "specimen_organs": sorted(specimen_organs),
+            "intersection": intersection,
+            "role_matched_kernels": matched,
             "specimen_field": specimen_field,
             "names_this_specimen": False,
         },
     )
 
 
-def stage_device_compiler(native: Mapping[str, Any]) -> dict[str, Any]:
-    blocked = dict(nc.BLOCKED.get("DeviceCompiler") or {})
+def stage_device_compiler(native: Mapping[str, Any], *, family: Any = None) -> dict[str, Any]:
+    blocked = dict((nc.BLOCKED.get("DeviceCompiler") or {}) if nc is not None else {})
     return _stage(
         "DeviceCompiler",
         BLOCKED,
@@ -954,7 +2101,7 @@ def stage_device_compiler(native: Mapping[str, Any]) -> dict[str, Any]:
             "GGUF match arms are "
             f"{native.get('architectures')!r}; qwen3 dense is "
             f"{'present' if _native_includes_qwen3_dense(native) else 'absent'} "
-            "(qwen3moe is a different family)"
+            f"(qwen3moe is a different family). adapted family={family!r}"
         ),
         invoked=True,
         error="no_entry_point",
@@ -962,6 +2109,7 @@ def stage_device_compiler(native: Mapping[str, Any]) -> dict[str, Any]:
             "noetic_compiler_blocked_why": blocked.get("why"),
             "noetic_compiler_missing_capability": blocked.get("missing_capability"),
             "copied_as_this_specimen": False,
+            "adapted_family": family,
             "native": {
                 "path": native.get("path"),
                 "architectures": native.get("architectures"),
@@ -979,7 +2127,7 @@ def stage_device_compiler(native: Mapping[str, Any]) -> dict[str, Any]:
     )
 
 
-def stage_noetic_executable() -> dict[str, Any]:
+def stage_noetic_executable(choice: Mapping[str, Any]) -> dict[str, Any]:
     on_disk = (REPO / HEADLESS_FIRST_NX).is_file()
     blob = git("show", f"HEAD:{HEADLESS_FIRST_NX}") if not on_disk else (REPO / HEADLESS_FIRST_NX).read_text()
     parent_line = None
@@ -992,9 +2140,9 @@ def stage_noetic_executable() -> dict[str, Any]:
         BLOCKED,
         why=(
             "the only packed-NX producer in git is tools/headless/first_noetic_executable.py, "
-            "which hardlinks a Qwen3.8-27B uniform-q4 catalog and is not this specimen. "
-            "It is not materialized in this sparse checkout. No generic DeviceCompiler→NX "
-            "entry exists. No packed NX for Qwen3-0.6B is on disk"
+            "which hardlinks a Qwen3.8-27B uniform-q4 catalog and is not this specimen "
+            f"({choice.get('id')}). No generic DeviceCompiler→NX entry exists. "
+            "No packed NX was minted here: a renamed source pointer is not an NX"
         ),
         invoked=True,
         error="no_generic_packer",
@@ -1003,7 +2151,9 @@ def stage_noetic_executable() -> dict[str, Any]:
             "producer_on_disk": on_disk,
             "producer_in_git": bool(blob),
             "parent_line": parent_line,
+            "specimen": choice.get("id"),
             "did_not_execute_first_noetic_executable": True,
+            "did_not_mint_nx": True,
             "did_not_load_27b": True,
         },
     )
@@ -1122,18 +2272,24 @@ def flash_nx_ready() -> dict[str, Any]:
     }
 
 
-def emit_sleeping_lower(first: Mapping[str, Any] | None, native: Mapping[str, Any]) -> dict[str, Any]:
+def emit_sleeping_lower(
+    first: Mapping[str, Any] | None,
+    native: Mapping[str, Any],
+    *,
+    pgc_passed: bool = False,
+) -> dict[str, Any]:
     wakes = [
         {
-            "id": "physical_graph_compiler_accepts_dense_single_shard",
-            "holds": False,
+            "id": "parameterized_physical_graph_holds",
+            "holds": pgc_passed,
             "evidence": (
-                "PhysicalGraphCompiler.main requires model.safetensors.index.json and "
-                "MoE expert tensors; Qwen3-0.6B is a single-shard dense checkpoint"
+                "parameterized gate_up_swiglu numerically equivalent on this specimen"
+                if pgc_passed
+                else "parameterized collapse did not hold; compiler main() remains MoE-hardcoded"
             ),
         },
         {
-            "id": "native_engine_match_arm_includes_qwen3_dense",
+            "id": "native_engine_match_arm_includes_this_family",
             "holds": _native_includes_qwen3_dense(native),
             "evidence": f"architectures={native.get('architectures')!r}",
         },
@@ -1150,7 +2306,7 @@ def emit_sleeping_lower(first: Mapping[str, Any] | None, native: Mapping[str, An
         {
             "id": "packed_source_independent_nx_on_disk",
             "holds": False,
-            "evidence": "no NX body for Qwen3-0.6B; FLASH_COMPLETE_V0.nx is a metadata seal of a different model",
+            "evidence": "no NX body was packed for this specimen; a metadata seal of another model is not this path",
         },
     ]
     holding = [w["id"] for w in wakes if not w["holds"]]
@@ -1196,48 +2352,80 @@ def emit_sleeping_lower(first: Mapping[str, Any] | None, native: Mapping[str, An
     }
 
 
-# ---------------------------------------------------------------------------
-# Assemble.
-# ---------------------------------------------------------------------------
+def _choice_from_probe(probe: Mapping[str, Any], adaptation: Mapping[str, Any]) -> dict[str, Any]:
+    if probe.get("ok") is not True:
+        return {
+            "ok": False,
+            "id": probe.get("id"),
+            "why": probe.get("why"),
+            "specimen_path": probe.get("specimen_path"),
+        }
+    return {
+        "ok": True,
+        "id": probe.get("id"),
+        "repo": probe.get("repo"),
+        "revision": probe.get("revision"),
+        "family": adaptation.get("family"),
+        "architectures_expected": adaptation.get("architectures"),
+        "specimen_path": probe.get("specimen_path"),
+        "why_chosen": f"run() on {probe.get('id')}; adapt() family={adaptation.get('family')}",
+        "adaptation": adaptation,
+        "probe": probe,
+    }
 
 
-def _load_specimen_inputs(choice: Mapping[str, Any]) -> tuple[dict[str, Any] | None, list[str], str]:
-    if choice.get("ok") is not True or not choice.get("specimen_path"):
-        return None, [], "absent"
-    spec_dir = Path(str(choice["specimen_path"]))
-    cfg_path = spec_dir / "config.json"
-    if not cfg_path.is_file():
-        return None, [], "missing_config"
-    cfg = json.loads(cfg_path.read_text())
-    names, via = _tensor_names(spec_dir)
-    return cfg, names, via
+def run(specimen: str | Path | Mapping[str, Any]) -> dict[str, Any]:
+    """The real path: NR, NX lower, dependency accounting, independence, verifier.
 
+    Does not pack an NX. packed_nx stays None; later stages FAIL on that absence
+    rather than receive a renamed source pointer.
+    """
+    if isinstance(specimen, Mapping) and specimen.get("ok") is True and specimen.get("id") and "why_chosen" in specimen:
+        choice = dict(specimen)
+        probe = probe_specimen(choice.get("probe") or choice)
+        if choice.get("adaptation"):
+            adaptation = dict(choice["adaptation"])
+        else:
+            adaptation = adapt(probe)
+        if not choice.get("repo"):
+            choice["repo"] = probe.get("repo")
+            choice["revision"] = probe.get("revision")
+        if not choice.get("specimen_path"):
+            choice["specimen_path"] = probe.get("specimen_path")
+        if not choice.get("family"):
+            choice["family"] = adaptation.get("family")
+    else:
+        probe = probe_specimen(specimen)
+        adaptation = adapt(probe)
+        choice = _choice_from_probe(probe, adaptation)
 
-def assemble() -> dict[str, Any]:
-    choice = choose_specimen()
-    cfg, names, names_via = _load_specimen_inputs(choice)
+    cfg = probe.get("config") if isinstance(probe.get("config"), Mapping) else None
+    names = list(probe.get("tensor_names") or [])
+    names_via = str(probe.get("names_via") or "absent")
     native = native_engine_architectures()
+    preflight = callable_on(probe if probe.get("ok") else specimen)
 
     stages: list[dict[str, Any]] = []
     stages.append(stage_specimen_select(choice))
-    stages.append(stage_specimen_present(choice))
+    stages.append(stage_specimen_present(choice, probe))
     arch = stage_architecture_recognizer(choice, cfg=cfg, names=names, names_via=names_via)
     stages.append(arch)
     og = stage_organ_graph(arch, cfg=cfg, names=names)
     stages.append(og)
     stages.append(stage_nr_identify(choice, arch, og))
-    stages.append(stage_doctor(choice, names))
-    stages.append(stage_representation_planner(choice) if choice.get("ok") else _stage(
-        "RepresentationPlanner", REFUSED, why="no specimen selected", invoked=False
-    ))
-    stages.append(
-        stage_physical_graph_compiler(choice, names)
-        if choice.get("ok") and Path(str(choice.get("specimen_path") or "")).is_dir()
-        else _stage("PhysicalGraphCompiler", REFUSED, why="specimen directory not on disk", invoked=False)
-    )
-    stages.append(stage_kernel_planner())
-    stages.append(stage_device_compiler(native))
-    stages.append(stage_noetic_executable())
+    stages.append(stage_doctor(choice, names, adaptation=adaptation, probe=probe))
+    organ_nodes = list((og.get("evidence") or {}).get("nodes") or [])
+    model_type = (arch.get("evidence") or {}).get("model_type") if arch.get("status") == PASSED else adaptation.get("model_type")
+    stages.append(stage_representation_planner(choice, organs=organ_nodes, model_type=model_type))
+    stages.append(stage_physical_graph_compiler(choice, names, adaptation=adaptation, probe=probe))
+    organ_names = [
+        str(n.get("organ"))
+        for n in organ_nodes
+        if isinstance(n, Mapping) and n.get("organ")
+    ]
+    stages.append(stage_kernel_planner(organ_names))
+    stages.append(stage_device_compiler(native, family=adaptation.get("family")))
+    stages.append(stage_noetic_executable(choice))
 
     packed_nx = None
     packed_path = None
@@ -1258,11 +2446,7 @@ def assemble() -> dict[str, Any]:
     except PipelineCallableForbidden:
         callable_ok = False
     first = first_failing_stage(stages)
-    nx_lower_names = {
-        "PhysicalGraphCompiler",
-        "DeviceCompiler",
-        "NoeticExecutable",
-    }
+    nx_lower_names = {"PhysicalGraphCompiler", "DeviceCompiler", "NoeticExecutable"}
     first_nx_lower = next(
         (
             {
@@ -1276,25 +2460,59 @@ def assemble() -> dict[str, Any]:
         ),
         None,
     )
+    return {
+        "choice": choice,
+        "probe": {
+            "ok": probe.get("ok"),
+            "id": probe.get("id"),
+            "repo": probe.get("repo"),
+            "revision": probe.get("revision"),
+            "specimen_path": probe.get("specimen_path"),
+            "n_tensors": probe.get("n_tensors"),
+            "names_via": probe.get("names_via"),
+            "why": probe.get("why"),
+        },
+        "adaptation": adaptation,
+        "preflight": preflight,
+        "native": native,
+        "stages": stages,
+        "packed_nx": packed_nx,
+        "packed_path": packed_path,
+        "callable_ok": callable_ok,
+        "first_failing_stage": first,
+        "first_nx_lower_failure": first_nx_lower,
+    }
+
+
+def assemble() -> dict[str, Any]:
+    choice = choose_specimen()
+    result = run(choice)
+    native = result["native"]
+    stages = result["stages"]
+    callable_ok = result["callable_ok"]
+    first = result["first_failing_stage"]
+    first_nx_lower = result["first_nx_lower_failure"]
     flash = flash_nx_ready()
-    sleeping = emit_sleeping_lower(first_nx_lower or first, native)
+    pgc_row = next((s for s in stages if s["stage"] == "PhysicalGraphCompiler"), None)
+    pgc_passed = bool(pgc_row and pgc_row.get("status") == PASSED)
+    sleeping = emit_sleeping_lower(first_nx_lower or first, native, pgc_passed=pgc_passed)
 
     launch_still_flash = (
-        "odyssey_launch._eval_nr_nx still keys nr_nx_path_callable on "
-        "FLASH_NX_COMPLETENESS_AUDIT.seven_all_met and FLASH_COMPLETE_V0.nx status. "
-        "That criterion is Flash-specific. This lane does not rewrite it. The "
-        "bootstrap architecture (Qwen27 launches Odyssey; Flash is an evolving "
-        "child) says the generic path should be enough; the generic path is not "
-        "callable today, so the Flash-specific gate stays standing for two "
-        "independent reasons, not one collapsed reason"
+        "odyssey_launch._eval_nr_nx keys nr_nx_path_callable on "
+        "GENERIC_NR_NX_PIPELINE_CALLABLE from this module. FLASH_NX_READY is a "
+        "separate field. Parameterizing tensor names closed the Doctor/PGC naming "
+        "miss; it did not pack an NX. The generic path is still not callable, so "
+        "the launch criterion stays unmet for a precise remaining reason, not the "
+        "original hardcoded-name reason"
     )
 
     doc: dict[str, Any] = {
         "schema": SCHEMA,
         "version": VERSION,
         "purpose": (
-            "Drive the real NR→NX compiler stages on the cheapest whole-tree-verified "
-            "specimen and keep GENERIC_NR_NX_PIPELINE_CALLABLE separate from FLASH_NX_READY"
+            "Parameterize the NR→NX compiler stages from a specimen's own config "
+            "and tensor index, drive them on the cheapest whole-tree-verified body "
+            "adapt() accepts, and keep GENERIC_NR_NX_PIPELINE_CALLABLE separate from FLASH_NX_READY"
         ),
         "evidence_class": "STATIC_ONLY",
         "gpu_authority": False,
@@ -1303,7 +2521,10 @@ def assemble() -> dict[str, Any]:
         "GENERIC_NR_NX_PIPELINE_CALLABLE": False if not callable_ok else True,
         "FLASH_NX_READY": flash["FLASH_NX_READY"],
         "facts_are_independent": True,
-        "specimen": choice,
+        "specimen": result["choice"],
+        "probe": result["probe"],
+        "adaptation": result["adaptation"],
+        "preflight": result["preflight"],
         "native_engine": {
             "path": native.get("path"),
             "architectures": native.get("architectures"),
@@ -1321,63 +2542,71 @@ def assemble() -> dict[str, Any]:
         "sleeping_workunit": sleeping,
         "physical_ebpw": None,
         "physical_ebpw_written": False,
+        "sparse_sys_path_added": _SPARSE_PATHS,
         "compiler_entry_points": {
+            "probe_specimen": "tools.future.nr_nx_generic.probe_specimen",
+            "adapt": "tools.future.nr_nx_generic.adapt",
+            "callable_on": "tools.future.nr_nx_generic.callable_on",
+            "run": "tools.future.nr_nx_generic.run",
             "ArchitectureRecognizer": "tools/odyssey/arch_recognizer.py:recognize",
             "OrganGraph": "tools/odyssey/physical_graph_compiler.py:organ_graph",
-            "Doctor": "tools/odyssey/doctor_tournament.py (PARENT hardcoded to Qwen3.8-27B)",
-            "RepresentationPlanner": "tools/odyssey/transfer_rehearsal.py:rehearse",
-            "PhysicalGraphCompiler": "tools/odyssey/physical_graph_compiler.py:main",
+            "Doctor": "parameterized _doctor_stats; doctor_tournament.probes() not called (PARENT hardcoded)",
+            "RepresentationPlanner": "tools.headless.representation_library.seed (rehearse not called)",
+            "PhysicalGraphCompiler": "parameterized gate_up_swiglu + compiler main() still hardcoded",
             "KernelPlanner": "receipts/headless/KERNEL_LIBRARY.json (no specimen field)",
             "DeviceCompiler": "NO CALLABLE; tools/odyssey/noetic_compiler.py BLOCKED map",
             "NoeticExecutable": "tools/headless/first_noetic_executable.py (Qwen38 27B only)",
             "native_loader": NATIVE_LOADER,
-            "nx_verifier": "tools/future/flash_nx_audit.py:check_nx",
+            "nx_verifier": "tools.future.flash_nx_audit.py:check_nx",
         },
         "recovered_implementation": [
+            "tools/future/nr_nx_generic.py — EXTENDED: probe_specimen/adapt/callable_on/run; previous stage driver kept and parameterized",
             "tools/future/nr_nx_path.py — seven-requirement map, SLEEPING units, physical_ebpw refusal; EXTENDED, not forked",
             "tools/future/flash_nx_audit.py — check_nx, evidence_path, METADATA_ONLY, synthetic_promotable_nx",
             "tools/future/flash_nr_complete.py — composition NR is not serialized_nr_information",
             "tools/future/ebpw_categories.py — typed EBPW; physical remains unwritten",
             "tools/future/specimen_verify.py — WHOLE_TREE_VERIFIED list; ModelLake not mutated",
             "tools/odyssey/arch_recognizer.py — invoked on local config+names, no network, no weights",
-            "tools/odyssey/physical_graph_compiler.py — organ_graph invoked; main() subprocessed and failed",
-            "tools/odyssey/doctor_tournament.py — PARENT/PROBE_TENSORS read, probes() not called",
-            "tools/odyssey/transfer_rehearsal.py — rehearse() invoked, ModuleNotFoundError recorded",
-            "tools/odyssey/noetic_compiler.py — BLOCKED map cited as a note, not as a drive of 0.6B",
+            "tools/odyssey/physical_graph_compiler.py — organ_graph + silu invoked; main() still MoE-hardcoded",
+            "tools/odyssey/doctor_tournament.py — algorithm reused on adapted names; probes() not called",
+            "tools/headless/representation_library.py — seed() invoked on this specimen's organs",
+            "tools/odyssey/noetic_compiler.py — BLOCKED map cited as a note, not as a drive of this specimen",
             "crates/hawking-core/src/model/mod.rs — shipping GGUF match arms",
-            "tools/future/odyssey_launch.py _eval_nr_nx — Flash-specific launch criterion, read not rewritten",
+            "tools/future/odyssey_launch.py _eval_nr_nx — reads GENERIC_NR_NX_PIPELINE_CALLABLE, not rewritten",
             "tools/future/workunit_species.py emit_hcli_workunit — SLEEPING unit, never pending",
         ],
         "gaps_closed": [
-            "generic NR→NX stages driven on a real specimen instead of inferred from Flash's missing NX",
-            "GENERIC_NR_NX_PIPELINE_CALLABLE and FLASH_NX_READY recorded as separate facts",
-            "source-independence checker that fails a runtime read into the source tree and a renamed source pointer",
-            "PhysicalGraphCompiler live invocation captured: FileNotFoundError on model.safetensors.index.json",
-            "pipeline_callable refuses SKIPPED stages and refuses a pass without a packed NX",
+            "probe_specimen reads the real safetensors index/header instead of assuming Qwen3.8-27B names",
+            "adapt() derives gate/up/down/router/attention/recurrent templates from the index, not from a specimen-id branch",
+            "callable_on names the first stage that lacks an input instead of a single hardcoded False",
+            "Doctor CPU preconditions run on this specimen's tensors; compiler PARENT probes are overlap evidence only",
+            "PhysicalGraphCompiler SwiGLU collapse runs on dense single-shard names; compiler main() remains hardcoded and is recorded as such",
+            "RepresentationPlanner seeds from representation_library on local organs; rehearse() is not called (it would fetch)",
+            "GENERIC_NR_NX_PIPELINE_CALLABLE stays False: no packed NX was produced",
         ],
         "negative_findings": [
-            "GENERIC_NR_NX_PIPELINE_CALLABLE is False on Qwen3-0.6B",
-            "FLASH_NX_READY is False; FLASH_COMPLETE_V0.nx remains SEALED_METADATA_ONLY_NOT_FOR_PROMOTION",
-            "PhysicalGraphCompiler cannot run on a dense single-shard specimen",
-            "Doctor is hardcoded to Qwen3.8-27B tensor names",
-            "RepresentationPlanner cannot import tools/headless/representation_library in this checkout",
+            "GENERIC_NR_NX_PIPELINE_CALLABLE is False: DeviceCompiler has no callable and no packed NX exists",
+            "FLASH_NX_READY is False; FLASH_COMPLETE_V0.nx remains a metadata seal of a different model",
+            "doctor_tournament.probes() is still hardcoded to Qwen3.8-27B PARENT; it was not called",
+            "physical_graph_compiler.main() still requires model.safetensors.index.json, an X_layer capture, and MoE expert tensors",
+            "KERNEL_LIBRARY.json has no specimen field; role-name overlap is not a kernel for this body",
             "native engine match arms include qwen2 and qwen3moe, not dense qwen3, not falcon_h1",
             "no generic NX packer; first_noetic_executable is a 27B mix",
             "no physical EBPW was written",
         ],
         "what_this_cannot_establish": [
-            "a packed source-independent NX for Qwen3-0.6B, Falcon-H1, or Flash",
-            "that parameterizing PhysicalGraphCompiler for dense MLP would produce a correct collapse",
+            "a packed source-independent NX for this specimen, Falcon-H1, Qwen3-30B-A3B, or Flash",
+            "that editing tools/odyssey/physical_graph_compiler.py to accept dense names would be accepted by Codex",
             "that adding a qwen3 GGUF match arm would load this safetensors specimen",
             "protected complete-token performance or physical EBPW",
-            "that Odyssey I can launch; the Flash-specific criterion still stands",
+            "that Odyssey I can launch; nr_nx_path_callable stays unmet until a real NX exists",
         ],
         "next_workunits": [
             {
-                "id": "WU.CPU.nr-nx-generic.parameterize-physical-graph-compiler",
+                "id": "WU.CPU.nr-nx-generic.device-compiler-entry",
                 "schedule": "CPU_NEXT",
-                "owner": "Codex (tools/odyssey/physical_graph_compiler.py is Codex-owned)",
-                "wake": "accept dense single-shard specimens and dense mlp.gate_proj paths",
+                "owner": "Codex (native reader + DeviceCompiler are Codex-owned)",
+                "wake": "a DeviceCompiler callable that accepts the adapted family, then a generic NX packer",
             },
             {
                 "id": sleeping["id"],
@@ -1386,23 +2615,24 @@ def assemble() -> dict[str, Any]:
             },
         ],
         "resident_callable": {
-            "entry_point": "tools.future.nr_nx_generic.build()",
+            "entry_point": "tools.future.nr_nx_generic.run()",
             "workunit": (
-                "one CPU_ANALYSIS unit; drive compiler stages on a real specimen; "
-                "no GPU authority; no packer"
+                "one CPU_ANALYSIS unit; probe+adapt+drive compiler stages on a real specimen; "
+                "no GPU authority; no packer; no minted NX"
             ),
             "receipt": f"receipts/future/{RECEIPT}",
             "frontier": "FT.MODEL_EXECUTION.complete-token",
             "fails_closed": (
-                "absent specimen/config is REFUSED; a stage that cannot run is FAILED/"
-                "BLOCKED by name, never SKIPPED; source independence fails on a source-tree "
-                "read; GENERIC_NR_NX_PIPELINE_CALLABLE cannot be True if any stage was "
+                "absent specimen/config/index is REFUSED; a stage that cannot run is FAILED/"
+                "BLOCKED by name, never SKIPPED; adapt() does not branch on specimen id; "
+                "source independence fails on a source-tree read; "
+                "GENERIC_NR_NX_PIPELINE_CALLABLE cannot be True if any stage was "
                 "skipped or no packed NX exists; physical_ebpw cannot be written"
             ),
         },
     }
     assert_no_physical_ebpw(doc)
-    if doc["GENERIC_NR_NX_PIPELINE_CALLABLE"] is True and packed_path is None:
+    if doc["GENERIC_NR_NX_PIPELINE_CALLABLE"] is True and result["packed_path"] is None:
         raise PipelineCallableForbidden("callable True with no packed NX")
     if doc["FLASH_NX_READY"] is True and flash.get("metadata_only"):
         raise PipelineCallableForbidden("FLASH_NX_READY True on a metadata seal")

@@ -65,6 +65,25 @@ fn go(ctx: &MetalContext) {
 }
 """
 
+GENERATED_QWEN_METAL = r"""
+#include <metal_stdlib>
+using namespace metal;
+#define QWEN_UNIFORM_Q4_MATMUL_K(KVAL) \
+kernel void qwen_uniform_q4_group64_matmul_k##KVAL##_geo_tpr64_tg128() {}
+QWEN_UNIFORM_Q4_MATMUL_K(1)
+"""
+
+GENERATED_QWEN_HOST = """
+fn go(ctx: &MetalContext) {
+    ctx.dispatch_threads(
+        "qwen_uniform_q4_group64_matmul_k1_geo_tpr64_tg128",
+        (128, 1, 1),
+        (128, 1, 1),
+        |_enc| {},
+    );
+}
+"""
+
 TYPE_MISMATCH_HOST = """
 fn go(ctx: &MetalContext, x: &Buffer, out: &Buffer) {
     ctx.dispatch_threads("demo_k", (64, 1, 1), (64, 1, 1), |enc| {
@@ -241,6 +260,16 @@ def test_missing_kernel_name_is_error():
     )
     hits = _find(raw, "ERROR", "kernel_existence", kernel="no_such_kernel")
     assert hits, raw["counts"]
+
+
+def test_token_pasted_qwen_kernel_name_is_recovered_without_fake_abi():
+    raw = skv.analyze(
+        {"qwen_uniform_q4.metal": GENERATED_QWEN_METAL},
+        {"synth.rs": GENERATED_QWEN_HOST},
+    )
+    name = "qwen_uniform_q4_group64_matmul_k1_geo_tpr64_tg128"
+    assert not _find(raw, "ERROR", "kernel_existence", kernel=name)
+    assert raw["generated_kernel_names"][name]["macro"] == "QWEN_UNIFORM_Q4_MATMUL_K"
 
 
 QWEN_SET_HOST = """

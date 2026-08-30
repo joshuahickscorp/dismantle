@@ -110,6 +110,13 @@ def run_probe(spec: dict[str, Any]) -> dict[str, Any]:
 
 # ---------------------------------------------------------------------------
 # The frontier itself. Recovered from disk on 2026-08-29, not from the prompt.
+#
+# 2026-08-29 compounding-mode amendment: F003/F004/F005/F006/F010/F014 were
+# closed by the scaffold campaign and their probes now resolve to sidecar files.
+# They stay listed as history -- retiring them silently would lose the record
+# that they were ever open -- and the entries below them are the COMPOUNDING
+# frontier: the gaps that exist because Codex keeps moving, not because
+# something was never built.
 # ---------------------------------------------------------------------------
 
 FRONTIER: list[dict[str, Any]] = [
@@ -340,6 +347,98 @@ FRONTIER: list[dict[str, Any]] = [
         "integration_target": "tools/future/codex_ingest.py",
         "duplication_check": "modellake_watch.py watches downloads, not receipts",
         "probe": {"kind": "present", "path": "receipts/headless/ACCELERATOR_SCOREBOARD.json"},
+    },
+    {
+        "id": "F016",
+        "title": "Ingest deltas are emitted but nothing applies them",
+        "classification": "HIGH_VALUE_INTEGRATION",
+        "detail": (
+            "codex_ingest classifies 1671 Codex artifacts and emits ~800 deltas, each naming "
+            "its downstream consumers (Odyssey II, Odyssey III, atlas, PhysicalGraph, LPC, "
+            "HWIR). No consumer reads them. The compounding loop is therefore open: the "
+            "sidecar records that the frontier moved without any store changing."
+        ),
+        "prerequisite": "codex_ingest (exists) plus the seven consumer modules (all landed)",
+        "expected_value": "closes the loop the whole sidecar exists to run",
+        "resource_need": "CPU only",
+        "evidence_level": "grep: only handoff.py and global_frontier.py reference the ingest receipt, and neither applies a delta",
+        "integration_target": "tools/future/propagate.py",
+        "duplication_check": "consumers already own their validation; the propagator routes, it does not re-implement",
+        "probe": {"kind": "present", "path": "receipts/future/CODEX_INGEST_STATE.json"},
+    },
+    {
+        "id": "F017",
+        "title": "Derived artifacts cannot tell a cosmetic queue rewrite from a semantic one",
+        "classification": "WEAK",
+        "detail": (
+            "Codex rewrote the queue repeatedly (37 -> 41 -> 44 -> 47 candidates), and every "
+            "rewrite changes the file sha even when nothing semantic moved. Derived artifacts "
+            "record queue_sha256 but have no way to say STALE_FINGERPRINT_ONLY versus "
+            "STALE_SEMANTIC, so the only safe response is to regenerate everything every time."
+        ),
+        "prerequisite": "derived artifacts already record source sha and fingerprint",
+        "expected_value": "makes resync cheap enough to run continuously rather than by hand",
+        "resource_need": "CPU only",
+        "evidence_level": "observed: plan built at 44 candidates while live was 47, detected only by manual comparison",
+        "integration_target": "tools/future/freshness.py",
+        "duplication_check": "codex_ingest already does sha-based change detection for receipts; this is the semantic layer above it",
+        "probe": {"kind": "present", "path": "receipts/future/CANDIDATE_STAGED_PLAN.json"},
+    },
+    {
+        "id": "F018",
+        "title": "Six ABI findings await a Codex verdict with no prepared response",
+        "classification": "BLOCKED",
+        "detail": (
+            "The static preflight raised 6 ERROR-class host/shader findings. Codex owns the "
+            "investigation. Without a prepared response per verdict class, a false positive "
+            "will simply be re-raised next scan and a confirmed bug will not become "
+            "permanently detectable."
+        ),
+        "prerequisite": "Codex's verdict; the sidecar must not pre-judge or edit Codex files",
+        "expected_value": "each verdict permanently improves the preflight instead of being consumed once",
+        "resource_need": "CPU only; the verdict itself is Codex's",
+        "evidence_level": "receipt-backed: STATIC_KERNEL_PREFLIGHT.json findings[] severity ERROR",
+        "integration_target": "tools/future/abi_verdicts.py",
+        "duplication_check": "the preflight owns detection; this owns the response to adjudication",
+        "probe": {"kind": "present", "path": "receipts/future/STATIC_KERNEL_PREFLIGHT.json"},
+    },
+    {
+        "id": "F019",
+        "title": "Flash meta is blocked at teacher capture, and capture is blocked on GPU",
+        "classification": "BLOCKED",
+        "detail": (
+            "All nine real Flash meta families stall at gate 2 real_teacher_fit. Codex "
+            "attempted the capture and recorded BLOCKED_NO_METAL_GPU with 0 of 256 required "
+            "rows, failing at dense_source_bf16_prefix_initialization. Two independent paths "
+            "agree on the same binding constraint."
+        ),
+        "prerequisite": "a Metal-capable GPU for dense source-BF16 prefix initialization",
+        "expected_value": "everything downstream of gate 2 is idle until this clears",
+        "resource_need": "GPU authority the sidecar does not have",
+        "evidence_level": "receipt-backed: FLASH_META_TEACHER_L4_CAPTURE_BOUNDARY.json status field",
+        "integration_target": "tools/future/meta_ready.py prepares gates 3-9 to start on arrival",
+        "duplication_check": "teacher_corpus owns admission; meta_funnel owns the gates; this is readiness only",
+        "probe": {"kind": "field", "path": "receipts/headless/FLASH_META_TEACHER_L4_CAPTURE_BOUNDARY.json",
+                  "field": "status", "expect": "BLOCKED_NO_METAL_GPU"},
+    },
+    {
+        "id": "F020",
+        "title": "Codex P6/P7 physical concepts are not projected into future hardware",
+        "classification": "HIGH_VALUE_INTEGRATION",
+        "detail": (
+            "Fourteen P6/P7 candidates encode reusable physical concepts -- routed gate/up "
+            "fusion, W2/down fusion, shared FP8 fusion, concurrent prefix, learned reader "
+            "reuse, bounded expert cache reuse. None has a Hawking primitive, an HWIR "
+            "hypothesis, an FPGA realization, a transfer scope or an Odyssey III "
+            "counterexample. All are BLOCKED and unmeasured, so nothing may be claimed."
+        ),
+        "prerequisite": "physical_primitives (17 landed), hwir, odyssey3_adversary -- all exist",
+        "expected_value": "the mechanism by which one physical win propagates to every future backend",
+        "resource_need": "CPU only",
+        "evidence_level": "queue: 14 candidate ids matching flash-p6-* / flash-p7-*, all BLOCKED",
+        "integration_target": "tools/future/p6_projection.py",
+        "duplication_check": "the atlas holds behaviours; this maps THESE candidates onto the existing primitives",
+        "probe": {"kind": "present", "path": "receipts/headless/ACCELERATOR_FRONT_G_P6.json"},
     },
 ]
 

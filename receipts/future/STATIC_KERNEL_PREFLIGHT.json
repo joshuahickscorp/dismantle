@@ -8,30 +8,30 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T01:02:03Z",
+  "recorded_at": "2026-08-30T01:49:30Z",
   "recorded_by": "tools/future/static_kernel_verify.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
  },
- "blocking_defect_count": 6,
+ "blocking_defect_count": 1,
  "branch": "odyssey-i",
  "claim_boundary": "Static sidecar artifact. No hardware measurement.",
  "counts": {
-  "ERROR": 6,
-  "INFO_pass_like": 860,
-  "UNVERIFIABLE": 526,
-  "WARNING": 78
+  "ERROR": 1,
+  "INFO_pass_like": 871,
+  "UNVERIFIABLE": 532,
+  "WARNING": 75
  },
  "coverage": {
-  "binding_pairs_with_matching_index_sets": 750,
-  "dispatches_resolved": 776,
+  "binding_pairs_with_matching_index_sets": 753,
+  "dispatches_resolved": 780,
   "dispatches_unverifiable_name": 89,
   "honesty": "PASS-like INFO is only recorded when the checker followed both sides to a concrete index or layout. A bind it could not follow is UNVERIFIABLE, never PASS. Matching indices are not a speed claim.",
-  "host_dispatches": 865,
+  "host_dispatches": 869,
   "host_files_with_dispatch": 66,
   "metal_files": 45,
-  "metal_kernels": 766,
-  "referenced_kernel_names": 754,
+  "metal_kernels": 770,
+  "referenced_kernel_names": 757,
   "shaders_not_in_metalcontext_library": [
    "affine2_group32_matvec.metal",
    "bandwidth_roof.metal",
@@ -44,8 +44,8 @@
    "qwen_direct_packed_gate_up_pair.metal",
    "shared_basis_kernel.metal"
   ],
-  "structs_paired": 39,
-  "threadgroup_triples_resolved": 460,
+  "structs_paired": 43,
+  "threadgroup_triples_resolved": 461,
   "unreferenced_kernel_names": 14
  },
  "decode_family_named_kernels": [
@@ -82,19 +82,6 @@
  "does_not_substitute_for_protected_measurement": true,
  "evidence_class": "STATIC_ONLY",
  "findings": [
-  {
-   "check": "kernel_existence",
-   "extra": {
-    "host_sites": [
-     "crates/hawking-core/src/kernels/mod.rs:8509"
-    ]
-   },
-   "host": "crates/hawking-core/src/kernels/mod.rs:8509",
-   "kernel": "kv_append_q8_0_f32",
-   "message": "host references kernel 'kv_append_q8_0_f32' but no shader defines `kernel void kv_append_q8_0_f32(`",
-   "severity": "ERROR",
-   "shader": null
-  },
   {
    "check": "kernel_existence",
    "extra": {
@@ -179,7 +166,7 @@
    "kernel": "deepseek_v4_p6a_learned_bias_route_sqrtsoftplus_authority",
    "message": "threadgroup product 1 is not a multiple of simdgroup width 32",
    "severity": "WARNING",
-   "shader": "crates/hawking-core/shaders/moe.metal:2235"
+   "shader": "crates/hawking-core/shaders/moe.metal:2314"
   },
   {
    "check": "dispatch_geometry",
@@ -187,7 +174,7 @@
    "kernel": "deepseek_v4_p3a_layer0_hc_attn_pre_bos_authority",
    "message": "threadgroup product 1 is not a multiple of simdgroup width 32",
    "severity": "WARNING",
-   "shader": "crates/hawking-core/shaders/matmul.metal:1190"
+   "shader": "crates/hawking-core/shaders/matmul.metal:1312"
   },
   {
    "check": "dispatch_geometry",
@@ -195,7 +182,7 @@
    "kernel": "deepseek_v4_p3a_rmsnorm_bf16_authority",
    "message": "threadgroup product 1 is not a multiple of simdgroup width 32",
    "severity": "WARNING",
-   "shader": "crates/hawking-core/shaders/matmul.metal:1835"
+   "shader": "crates/hawking-core/shaders/matmul.metal:1956"
   },
   {
    "check": "dispatch_geometry",
@@ -203,7 +190,7 @@
    "kernel": "deepseek_v4_p3a_rmsnorm_bf16_authority",
    "message": "threadgroup product 1 is not a multiple of simdgroup width 32",
    "severity": "WARNING",
-   "shader": "crates/hawking-core/shaders/matmul.metal:1835"
+   "shader": "crates/hawking-core/shaders/matmul.metal:1956"
   },
   {
    "check": "dispatch_geometry",
@@ -211,7 +198,7 @@
    "kernel": "deepseek_v4_p3a_layer0_hc_attn_pre_bos_authority",
    "message": "threadgroup product 1 is not a multiple of simdgroup width 32",
    "severity": "WARNING",
-   "shader": "crates/hawking-core/shaders/matmul.metal:1190"
+   "shader": "crates/hawking-core/shaders/matmul.metal:1312"
   },
   {
    "check": "dispatch_geometry",
@@ -219,7 +206,7 @@
    "kernel": "deepseek_v4_p3a_rmsnorm_bf16_authority",
    "message": "threadgroup product 1 is not a multiple of simdgroup width 32",
    "severity": "WARNING",
-   "shader": "crates/hawking-core/shaders/matmul.metal:1835"
+   "shader": "crates/hawking-core/shaders/matmul.metal:1956"
   },
   {
    "check": "dispatch_geometry",
@@ -227,7 +214,7 @@
    "kernel": "deepseek_v4_p3a_rmsnorm_bf16_authority",
    "message": "threadgroup product 1 is not a multiple of simdgroup width 32",
    "severity": "WARNING",
-   "shader": "crates/hawking-core/shaders/matmul.metal:1835"
+   "shader": "crates/hawking-core/shaders/matmul.metal:1956"
   },
   {
    "check": "dispatch_geometry",
@@ -235,7 +222,7 @@
    "kernel": "deepseek_v4_p3a_rmsnorm_bf16_authority",
    "message": "threadgroup product 1 is not a multiple of simdgroup width 32",
    "severity": "WARNING",
-   "shader": "crates/hawking-core/shaders/matmul.metal:1835"
+   "shader": "crates/hawking-core/shaders/matmul.metal:1956"
   },
   {
    "check": "dispatch_geometry",
@@ -243,7 +230,7 @@
    "kernel": "deepseek_v4_p3a_layer0_hc_attn_pre_bos_authority",
    "message": "threadgroup product 1 is not a multiple of simdgroup width 32",
    "severity": "WARNING",
-   "shader": "crates/hawking-core/shaders/matmul.metal:1190"
+   "shader": "crates/hawking-core/shaders/matmul.metal:1312"
   },
   {
    "check": "dispatch_geometry",
@@ -251,7 +238,7 @@
    "kernel": "deepseek_v4_p4b_hc_post_comb_precise_exp_candidate",
    "message": "threadgroup product 1 is not a multiple of simdgroup width 32",
    "severity": "WARNING",
-   "shader": "crates/hawking-core/shaders/matmul.metal:1337"
+   "shader": "crates/hawking-core/shaders/matmul.metal:1459"
   },
   {
    "check": "dispatch_geometry",
@@ -259,7 +246,7 @@
    "kernel": "deepseek_v4_p3a_rmsnorm_bf16_authority",
    "message": "threadgroup product 1 is not a multiple of simdgroup width 32",
    "severity": "WARNING",
-   "shader": "crates/hawking-core/shaders/matmul.metal:1835"
+   "shader": "crates/hawking-core/shaders/matmul.metal:1956"
   },
   {
    "check": "dispatch_geometry",
@@ -275,7 +262,7 @@
    "kernel": "deepseek_v4_p3a_rmsnorm_bf16_authority",
    "message": "threadgroup product 1 is not a multiple of simdgroup width 32",
    "severity": "WARNING",
-   "shader": "crates/hawking-core/shaders/matmul.metal:1835"
+   "shader": "crates/hawking-core/shaders/matmul.metal:1956"
   },
   {
    "check": "dispatch_geometry",
@@ -299,7 +286,7 @@
    "kernel": "deepseek_v4_p3a_layer0_hc_attn_pre_bos_authority",
    "message": "threadgroup product 1 is not a multiple of simdgroup width 32",
    "severity": "WARNING",
-   "shader": "crates/hawking-core/shaders/matmul.metal:1190"
+   "shader": "crates/hawking-core/shaders/matmul.metal:1312"
   },
   {
    "check": "dispatch_geometry",
@@ -307,7 +294,7 @@
    "kernel": "deepseek_v4_p3a_rmsnorm_bf16_authority",
    "message": "threadgroup product 1 is not a multiple of simdgroup width 32",
    "severity": "WARNING",
-   "shader": "crates/hawking-core/shaders/matmul.metal:1835"
+   "shader": "crates/hawking-core/shaders/matmul.metal:1956"
   },
   {
    "check": "dispatch_geometry",
@@ -323,47 +310,47 @@
    "kernel": "deepseek_v4_p3a_rmsnorm_bf16_authority",
    "message": "threadgroup product 1 is not a multiple of simdgroup width 32",
    "severity": "WARNING",
-   "shader": "crates/hawking-core/shaders/matmul.metal:1835"
+   "shader": "crates/hawking-core/shaders/matmul.metal:1956"
   },
   {
    "check": "dispatch_geometry",
-   "host": "crates/hawking-core/src/gravity_deepseek_v4_native_token_graph.rs:1807",
+   "host": "crates/hawking-core/src/gravity_deepseek_v4_native_token_graph.rs:1875",
    "kernel": "deepseek_v4_p3a_rmsnorm_bf16_authority",
    "message": "threadgroup product 1 is not a multiple of simdgroup width 32",
    "severity": "WARNING",
-   "shader": "crates/hawking-core/shaders/matmul.metal:1835"
+   "shader": "crates/hawking-core/shaders/matmul.metal:1956"
   },
   {
    "check": "dispatch_geometry",
-   "host": "crates/hawking-core/src/gravity_deepseek_v4_native_token_graph.rs:3455",
+   "host": "crates/hawking-core/src/gravity_deepseek_v4_native_token_graph.rs:3523",
    "kernel": "deepseek_v4_p6a_hash_route_sqrtsoftplus_authority",
    "message": "threadgroup product 1 is not a multiple of simdgroup width 32",
    "severity": "WARNING",
-   "shader": "crates/hawking-core/shaders/moe.metal:2160"
+   "shader": "crates/hawking-core/shaders/moe.metal:2239"
   },
   {
    "check": "dispatch_geometry",
-   "host": "crates/hawking-core/src/gravity_deepseek_v4_native_token_graph.rs:3469",
+   "host": "crates/hawking-core/src/gravity_deepseek_v4_native_token_graph.rs:3537",
    "kernel": "deepseek_v4_p6a_learned_bias_route_sqrtsoftplus_authority",
    "message": "threadgroup product 1 is not a multiple of simdgroup width 32",
    "severity": "WARNING",
-   "shader": "crates/hawking-core/shaders/moe.metal:2235"
+   "shader": "crates/hawking-core/shaders/moe.metal:2314"
   },
   {
    "check": "dispatch_geometry",
-   "host": "crates/hawking-core/src/gravity_deepseek_v4_native_token_graph.rs:4551",
+   "host": "crates/hawking-core/src/gravity_deepseek_v4_native_token_graph.rs:4641",
    "kernel": "deepseek_v4_p6a_hash_route_sqrtsoftplus_authority",
    "message": "threadgroup product 1 is not a multiple of simdgroup width 32",
    "severity": "WARNING",
-   "shader": "crates/hawking-core/shaders/moe.metal:2160"
+   "shader": "crates/hawking-core/shaders/moe.metal:2239"
   },
   {
    "check": "dispatch_geometry",
-   "host": "crates/hawking-core/src/gravity_deepseek_v4_native_token_graph.rs:4567",
+   "host": "crates/hawking-core/src/gravity_deepseek_v4_native_token_graph.rs:4657",
    "kernel": "deepseek_v4_p6a_learned_bias_route_sqrtsoftplus_authority",
    "message": "threadgroup product 1 is not a multiple of simdgroup width 32",
    "severity": "WARNING",
-   "shader": "crates/hawking-core/shaders/moe.metal:2235"
+   "shader": "crates/hawking-core/shaders/moe.metal:2314"
   },
   {
    "check": "dispatch_geometry",
@@ -371,7 +358,7 @@
    "kernel": "deepseek_v4_p3a_rmsnorm_bf16_authority",
    "message": "threadgroup product 1 is not a multiple of simdgroup width 32",
    "severity": "WARNING",
-   "shader": "crates/hawking-core/shaders/matmul.metal:1835"
+   "shader": "crates/hawking-core/shaders/matmul.metal:1956"
   },
   {
    "check": "dispatch_geometry",
@@ -379,7 +366,7 @@
    "kernel": "deepseek_v4_p3a_layer0_hc_attn_pre_bos_authority",
    "message": "threadgroup product 1 is not a multiple of simdgroup width 32",
    "severity": "WARNING",
-   "shader": "crates/hawking-core/shaders/matmul.metal:1190"
+   "shader": "crates/hawking-core/shaders/matmul.metal:1312"
   },
   {
    "check": "dispatch_geometry",
@@ -387,7 +374,7 @@
    "kernel": "deepseek_v4_p3a_rmsnorm_bf16_authority",
    "message": "threadgroup product 1 is not a multiple of simdgroup width 32",
    "severity": "WARNING",
-   "shader": "crates/hawking-core/shaders/matmul.metal:1835"
+   "shader": "crates/hawking-core/shaders/matmul.metal:1956"
   },
   {
    "check": "dispatch_geometry",
@@ -395,7 +382,7 @@
    "kernel": "deepseek_v4_p3a_rmsnorm_bf16_authority",
    "message": "threadgroup product 1 is not a multiple of simdgroup width 32",
    "severity": "WARNING",
-   "shader": "crates/hawking-core/shaders/matmul.metal:1835"
+   "shader": "crates/hawking-core/shaders/matmul.metal:1956"
   },
   {
    "check": "dispatch_geometry",
@@ -403,7 +390,7 @@
    "kernel": "deepseek_v4_p3a_rmsnorm_bf16_authority",
    "message": "threadgroup product 1 is not a multiple of simdgroup width 32",
    "severity": "WARNING",
-   "shader": "crates/hawking-core/shaders/matmul.metal:1835"
+   "shader": "crates/hawking-core/shaders/matmul.metal:1956"
   },
   {
    "check": "dispatch_geometry",
@@ -487,7 +474,7 @@
   },
   {
    "check": "dispatch_geometry",
-   "host": "crates/hawking-core/src/kernels/mod.rs:702",
+   "host": "crates/hawking-core/src/kernels/mod.rs:727",
    "kernel": "gemm_q5_k_serial_authority",
    "message": "threadgroup product 1 is not a multiple of simdgroup width 32",
    "severity": "WARNING",
@@ -495,155 +482,7 @@
   },
   {
    "check": "dispatch_geometry",
-   "host": "crates/hawking-core/src/kernels/mod.rs:771",
-   "kernel": "gemm_q5_k_serial_authority",
-   "message": "threadgroup product 1 is not a multiple of simdgroup width 32",
-   "severity": "WARNING",
-   "shader": "crates/hawking-core/shaders/quant.metal:244"
-  },
-  {
-   "check": "binding_index",
-   "extra": {
-    "extra_on_host": [
-     4
-    ],
-    "host_indices": [
-     0,
-     1,
-     2,
-     3,
-     4
-    ],
-    "missing_on_host": [],
-    "off_by_one": false,
-    "shader_indices": [
-     0,
-     1,
-     2,
-     3
-    ]
-   },
-   "host": "crates/hawking-core/src/kernels/mod.rs:8686",
-   "kernel": "gemv_f32_attn",
-   "message": "host binds buffers [0, 1, 2, 3, 4] but shader declares [0, 1, 2, 3]",
-   "severity": "WARNING",
-   "shader": "crates/hawking-core/shaders/attn.metal:149"
-  },
-  {
-   "check": "type_width",
-   "extra": {
-    "host_kind": "constant_u32",
-    "index": 3,
-    "shader_kind": "constant_struct"
-   },
-   "host": "crates/hawking-core/src/kernels/mod.rs:8694",
-   "kernel": "gemv_f32_attn",
-   "message": "buffer(3): host bind kind constant_u32 is not compatible with shader constant_struct ('constant ArgbufRowsCols&' args)",
-   "severity": "ERROR",
-   "shader": "crates/hawking-core/shaders/attn.metal:149"
-  },
-  {
-   "check": "binding_index",
-   "extra": {
-    "extra_on_host": [
-     4
-    ],
-    "host_indices": [
-     0,
-     1,
-     2,
-     3,
-     4
-    ],
-    "missing_on_host": [],
-    "off_by_one": false,
-    "shader_indices": [
-     0,
-     1,
-     2,
-     3
-    ]
-   },
-   "host": "crates/hawking-core/src/kernels/mod.rs:8781",
-   "kernel": "gemv_f32_attn",
-   "message": "host binds buffers [0, 1, 2, 3, 4] but shader declares [0, 1, 2, 3]",
-   "severity": "WARNING",
-   "shader": "crates/hawking-core/shaders/attn.metal:149"
-  },
-  {
-   "check": "type_width",
-   "extra": {
-    "host_kind": "constant_u32",
-    "index": 3,
-    "shader_kind": "constant_struct"
-   },
-   "host": "crates/hawking-core/src/kernels/mod.rs:8789",
-   "kernel": "gemv_f32_attn",
-   "message": "buffer(3): host bind kind constant_u32 is not compatible with shader constant_struct ('constant ArgbufRowsCols&' args)",
-   "severity": "ERROR",
-   "shader": "crates/hawking-core/shaders/attn.metal:149"
-  },
-  {
-   "check": "type_width",
-   "extra": {
-    "host_kind": "constant_u32",
-    "index": 3,
-    "shader_kind": "constant_struct"
-   },
-   "host": "crates/hawking-core/src/kernels/mod.rs:9166",
-   "kernel": "moe_batched_silu_mul",
-   "message": "buffer(3): host bind kind constant_u32 is not compatible with shader constant_struct ('constant ArgbufN&' args)",
-   "severity": "ERROR",
-   "shader": "crates/hawking-core/shaders/moe.metal:1360"
-  },
-  {
-   "check": "binding_index",
-   "extra": {
-    "extra_on_host": [
-     5,
-     6
-    ],
-    "host_indices": [
-     0,
-     1,
-     2,
-     3,
-     4,
-     5,
-     6
-    ],
-    "missing_on_host": [],
-    "off_by_one": false,
-    "shader_indices": [
-     0,
-     1,
-     2,
-     3,
-     4
-    ]
-   },
-   "host": "crates/hawking-core/src/kernels/mod.rs:9184",
-   "kernel": "moe_route_accumulate",
-   "message": "host binds buffers [0, 1, 2, 3, 4, 5, 6] but shader declares [0, 1, 2, 3, 4]",
-   "severity": "WARNING",
-   "shader": "crates/hawking-core/shaders/moe.metal:1368"
-  },
-  {
-   "check": "type_width",
-   "extra": {
-    "host_kind": "constant_u32",
-    "index": 4,
-    "shader_kind": "constant_struct"
-   },
-   "host": "crates/hawking-core/src/kernels/mod.rs:9193",
-   "kernel": "moe_route_accumulate",
-   "message": "buffer(4): host bind kind constant_u32 is not compatible with shader constant_struct ('constant ArgbufRouteAcc&' args)",
-   "severity": "ERROR",
-   "shader": "crates/hawking-core/shaders/moe.metal:1368"
-  },
-  {
-   "check": "dispatch_geometry",
-   "host": "crates/hawking-core/src/kernels/mod.rs:9419",
+   "host": "crates/hawking-core/src/kernels/mod.rs:796",
    "kernel": "gemm_q5_k_serial_authority",
    "message": "threadgroup product 1 is not a multiple of simdgroup width 32",
    "severity": "WARNING",
@@ -651,7 +490,15 @@
   },
   {
    "check": "dispatch_geometry",
-   "host": "crates/hawking-core/src/kernels/mod.rs:14186",
+   "host": "crates/hawking-core/src/kernels/mod.rs:9470",
+   "kernel": "gemm_q5_k_serial_authority",
+   "message": "threadgroup product 1 is not a multiple of simdgroup width 32",
+   "severity": "WARNING",
+   "shader": "crates/hawking-core/shaders/quant.metal:244"
+  },
+  {
+   "check": "dispatch_geometry",
+   "host": "crates/hawking-core/src/kernels/mod.rs:14237",
    "kernel": "qwen_next_bf16_expert_gate_up_swiglu",
    "message": "threadgroup product 1 is not a multiple of simdgroup width 32",
    "severity": "WARNING",
@@ -659,7 +506,7 @@
   },
   {
    "check": "dispatch_geometry",
-   "host": "crates/hawking-core/src/kernels/mod.rs:14259",
+   "host": "crates/hawking-core/src/kernels/mod.rs:14310",
    "kernel": "qwen_next_bf16_expert_down",
    "message": "threadgroup product 1 is not a multiple of simdgroup width 32",
    "severity": "WARNING",
@@ -667,7 +514,7 @@
   },
   {
    "check": "dispatch_geometry",
-   "host": "crates/hawking-core/src/kernels/mod.rs:14299",
+   "host": "crates/hawking-core/src/kernels/mod.rs:14350",
    "kernel": "qwen_next_bf16_compact_expert_gate_up_swiglu",
    "message": "threadgroup product 1 is not a multiple of simdgroup width 32",
    "severity": "WARNING",
@@ -675,7 +522,7 @@
   },
   {
    "check": "dispatch_geometry",
-   "host": "crates/hawking-core/src/kernels/mod.rs:14387",
+   "host": "crates/hawking-core/src/kernels/mod.rs:14438",
    "kernel": "qwen_next_bf16_compact_expert_gate_up_shared_swiglu",
    "message": "threadgroup product 1 is not a multiple of simdgroup width 32",
    "severity": "WARNING",
@@ -683,7 +530,7 @@
   },
   {
    "check": "dispatch_geometry",
-   "host": "crates/hawking-core/src/kernels/mod.rs:14387",
+   "host": "crates/hawking-core/src/kernels/mod.rs:14438",
    "kernel": "qwen_next_bf16_compact_expert_gate_up_shared_swiglu_vec4",
    "message": "threadgroup product 1 is not a multiple of simdgroup width 32",
    "severity": "WARNING",
@@ -691,7 +538,7 @@
   },
   {
    "check": "dispatch_geometry",
-   "host": "crates/hawking-core/src/kernels/mod.rs:14431",
+   "host": "crates/hawking-core/src/kernels/mod.rs:14482",
    "kernel": "qwen_next_bf16_compact_expert_down",
    "message": "threadgroup product 1 is not a multiple of simdgroup width 32",
    "severity": "WARNING",
@@ -699,7 +546,7 @@
   },
   {
    "check": "dispatch_geometry",
-   "host": "crates/hawking-core/src/kernels/mod.rs:15786",
+   "host": "crates/hawking-core/src/kernels/mod.rs:15837",
    "kernel": "qwen_complete_normalize_route_weights",
    "message": "threadgroup product 1 is not a multiple of simdgroup width 32",
    "severity": "WARNING",
@@ -707,7 +554,7 @@
   },
   {
    "check": "dispatch_geometry",
-   "host": "crates/hawking-core/src/kernels/mod.rs:17536",
+   "host": "crates/hawking-core/src/kernels/mod.rs:17587",
    "kernel": "strand_bitslice_entry_sizeof",
    "message": "threadgroup product 1 is not a multiple of simdgroup width 32",
    "severity": "WARNING",
@@ -715,7 +562,7 @@
   },
   {
    "check": "dispatch_geometry",
-   "host": "crates/hawking-core/src/kernels/mod.rs:17551",
+   "host": "crates/hawking-core/src/kernels/mod.rs:17602",
    "kernel": "strand_bitslice_compact_entry_sizeof",
    "message": "threadgroup product 1 is not a multiple of simdgroup width 32",
    "severity": "WARNING",
@@ -1034,7 +881,7 @@
   {
    "check": "binding_index",
    "extra": {
-    "count": 73,
+    "count": 75,
     "sample": [
      {
       "check": "binding_index",
@@ -1136,14 +983,14 @@
    },
    "host": null,
    "kernel": null,
-   "message": "73 UNVERIFIABLE site(s) for binding_index (sample of 12)",
+   "message": "75 UNVERIFIABLE site(s) for binding_index (sample of 12)",
    "severity": "UNVERIFIABLE",
    "shader": null
   },
   {
    "check": "dispatch_geometry",
    "extra": {
-    "count": 363,
+    "count": 367,
     "sample": [
      {
       "check": "dispatch_geometry",
@@ -1167,7 +1014,7 @@
       "kernel": "deepseek_v4_fp8_act_quant_e4m3fn_e8m0_matvec_authority",
       "message": "threadgroup size is not a literal/const triple; coverage of the problem size is not scored as PASS",
       "severity": "UNVERIFIABLE",
-      "shader": "crates/hawking-core/shaders/matmul.metal:1061"
+      "shader": "crates/hawking-core/shaders/matmul.metal:1117"
      },
      {
       "check": "dispatch_geometry",
@@ -1179,7 +1026,7 @@
       "kernel": "deepseek_v4_fp8_act_quant_e4m3fn_e8m0_matvec_simdgroup_occupancy_candidate",
       "message": "threadgroup size is not a literal/const triple; coverage of the problem size is not scored as PASS",
       "severity": "UNVERIFIABLE",
-      "shader": "crates/hawking-core/shaders/matmul.metal:2495"
+      "shader": "crates/hawking-core/shaders/matmul.metal:2616"
      },
      {
       "check": "dispatch_geometry",
@@ -1293,7 +1140,7 @@
    },
    "host": null,
    "kernel": null,
-   "message": "363 UNVERIFIABLE site(s) for dispatch_geometry (sample of 12)",
+   "message": "367 UNVERIFIABLE site(s) for dispatch_geometry (sample of 12)",
    "severity": "UNVERIFIABLE",
    "shader": null
   },
@@ -1308,7 +1155,7 @@
        "metal": "LlamaB9430RopeArgs",
        "rust": "LlamaB9430RopeArgs"
       },
-      "host": "crates/hawking-core/src/kernels/mod.rs:466",
+      "host": "crates/hawking-core/src/kernels/mod.rs:491",
       "kernel": null,
       "message": "struct LlamaB9430RopeArgs exists on both sides but a nested field could not be sized",
       "severity": "UNVERIFIABLE",
@@ -1485,11 +1332,27 @@
    "kernel": null,
    "message": "repr(C) ActivationAwareParams matches metal ActivationAwareParams (16 bytes, 4 fields)",
    "severity": "INFO",
-   "shader": "crates/hawking-core/shaders/matmul.metal:2552"
+   "shader": "crates/hawking-core/shaders/matmul.metal:2673"
   },
   {
    "check": "host_shader_abi",
-   "host": "crates/hawking-core/src/kernels/mod.rs:502",
+   "host": "crates/hawking-core/src/kernels/mod.rs:461",
+   "kernel": null,
+   "message": "repr(C) ArgbufKvAppend matches metal ArgbufKvAppend (12 bytes, 3 fields)",
+   "severity": "INFO",
+   "shader": "crates/hawking-core/shaders/common.metal:50"
+  },
+  {
+   "check": "host_shader_abi",
+   "host": "crates/hawking-core/src/kernels/mod.rs:454",
+   "kernel": null,
+   "message": "repr(C) ArgbufN matches metal ArgbufN (4 bytes, 1 fields)",
+   "severity": "INFO",
+   "shader": "crates/hawking-core/shaders/common.metal:44"
+  },
+  {
+   "check": "host_shader_abi",
+   "host": "crates/hawking-core/src/kernels/mod.rs:527",
    "kernel": null,
    "message": "repr(C) ArgbufQkvRopeAppend matches metal ArgbufQkvRopeAppend (52 bytes, 13 fields)",
    "severity": "INFO",
@@ -1497,11 +1360,19 @@
   },
   {
    "check": "host_shader_abi",
-   "host": "crates/hawking-core/src/kernels/mod.rs:456",
+   "host": "crates/hawking-core/src/kernels/mod.rs:481",
    "kernel": null,
    "message": "repr(C) ArgbufRmsnorm matches metal ArgbufRmsnorm (8 bytes, 2 fields)",
    "severity": "INFO",
    "shader": "crates/hawking-core/shaders/common.metal:33"
+  },
+  {
+   "check": "host_shader_abi",
+   "host": "crates/hawking-core/src/kernels/mod.rs:470",
+   "kernel": null,
+   "message": "repr(C) ArgbufRouteAcc matches metal ArgbufRouteAcc (12 bytes, 3 fields)",
+   "severity": "INFO",
+   "shader": "crates/hawking-core/shaders/common.metal:53"
   },
   {
    "check": "host_shader_abi",
@@ -1529,7 +1400,15 @@
   },
   {
    "check": "host_shader_abi",
-   "host": "crates/hawking-core/src/gravity_deepseek_v4_p6_device.rs:344",
+   "host": "crates/hawking-core/src/gravity_deepseek_v4_p6_device.rs:400",
+   "kernel": null,
+   "message": "repr(C) P6ActQuantRef matches metal DeepSeekV4P6ActQuantRef (32 bytes, 5 fields)",
+   "severity": "INFO",
+   "shader": "crates/hawking-core/shaders/matmul.metal:920"
+  },
+  {
+   "check": "host_shader_abi",
+   "host": "crates/hawking-core/src/gravity_deepseek_v4_p6_device.rs:383",
    "kernel": null,
    "message": "repr(C) P6Fp4DownRef matches metal DeepSeekV4P6Fp4DownRef (48 bytes, 7 fields)",
    "severity": "INFO",
@@ -1537,7 +1416,7 @@
   },
   {
    "check": "host_shader_abi",
-   "host": "crates/hawking-core/src/gravity_deepseek_v4_p6_device.rs:327",
+   "host": "crates/hawking-core/src/gravity_deepseek_v4_p6_device.rs:366",
    "kernel": null,
    "message": "repr(C) P6Fp4GateUpRef matches metal DeepSeekV4P6Fp4GateUpRef (48 bytes, 7 fields)",
    "severity": "INFO",
@@ -1545,7 +1424,7 @@
   },
   {
    "check": "host_shader_abi",
-   "host": "crates/hawking-core/src/gravity_deepseek_v4_native_token_graph.rs:2002",
+   "host": "crates/hawking-core/src/gravity_deepseek_v4_native_token_graph.rs:2070",
    "kernel": null,
    "message": "repr(C) ExpertRef matches metal Dsv4fExpertRef (16 bytes, 2 fields)",
    "severity": "INFO",
@@ -1553,7 +1432,7 @@
   },
   {
    "check": "host_shader_abi",
-   "host": "crates/hawking-core/src/gravity_deepseek_v4_native_token_graph.rs:809",
+   "host": "crates/hawking-core/src/gravity_deepseek_v4_native_token_graph.rs:828",
    "kernel": null,
    "message": "repr(C) WorklistEntry matches metal Dsv4fWorklistEntry (16 bytes, 4 fields)",
    "severity": "INFO",
@@ -1561,7 +1440,7 @@
   },
   {
    "check": "host_shader_abi",
-   "host": "crates/hawking-core/src/gravity_deepseek_v4_native_token_graph.rs:2002",
+   "host": "crates/hawking-core/src/gravity_deepseek_v4_native_token_graph.rs:2070",
    "kernel": null,
    "message": "repr(C) ExpertRef matches metal GkExpertRef (16 bytes, 2 fields)",
    "severity": "INFO",
@@ -1569,7 +1448,7 @@
   },
   {
    "check": "host_shader_abi",
-   "host": "crates/hawking-core/src/gravity_deepseek_v4_native_token_graph.rs:809",
+   "host": "crates/hawking-core/src/gravity_deepseek_v4_native_token_graph.rs:828",
    "kernel": null,
    "message": "repr(C) WorklistEntry matches metal GkWorklistEntry (16 bytes, 4 fields)",
    "severity": "INFO",
@@ -1793,7 +1672,7 @@
   },
   {
    "check": "feature_gate",
-   "host": "crates/hawking-core/src/kernels/mod.rs:17628",
+   "host": "crates/hawking-core/src/kernels/mod.rs:17679",
    "kernel": "strand_bitslice_decode",
    "message": "kernel strand_bitslice_decode host sites are cfg-gated ['tq']; reachable_when_on=True genuinely_unreachable_when_off=True",
    "severity": "INFO",
@@ -1817,7 +1696,7 @@
   },
   {
    "check": "feature_gate",
-   "host": "crates/hawking-core/src/kernels/mod.rs:17536",
+   "host": "crates/hawking-core/src/kernels/mod.rs:17587",
    "kernel": "strand_bitslice_entry_sizeof",
    "message": "kernel strand_bitslice_entry_sizeof host sites are cfg-gated ['tq']; reachable_when_on=True genuinely_unreachable_when_off=True",
    "severity": "INFO",
@@ -1825,7 +1704,7 @@
   },
   {
    "check": "feature_gate",
-   "host": "crates/hawking-core/src/kernels/mod.rs:17551",
+   "host": "crates/hawking-core/src/kernels/mod.rs:17602",
    "kernel": "strand_bitslice_compact_entry_sizeof",
    "message": "kernel strand_bitslice_compact_entry_sizeof host sites are cfg-gated ['tq']; reachable_when_on=True genuinely_unreachable_when_off=True",
    "severity": "INFO",
@@ -1833,7 +1712,7 @@
   },
   {
    "check": "feature_gate",
-   "host": "crates/hawking-core/src/kernels/mod.rs:17725",
+   "host": "crates/hawking-core/src/kernels/mod.rs:17776",
    "kernel": "strand_bitslice_gemv_partials",
    "message": "kernel strand_bitslice_gemv_partials host sites are cfg-gated ['tq']; reachable_when_on=True genuinely_unreachable_when_off=True",
    "severity": "INFO",
@@ -1841,7 +1720,7 @@
   },
   {
    "check": "feature_gate",
-   "host": "crates/hawking-core/src/kernels/mod.rs:17820",
+   "host": "crates/hawking-core/src/kernels/mod.rs:17871",
    "kernel": "strand_bitslice_gemv_partials_hashed",
    "message": "kernel strand_bitslice_gemv_partials_hashed host sites are cfg-gated ['tq']; reachable_when_on=True genuinely_unreachable_when_off=True",
    "severity": "INFO",
@@ -1849,7 +1728,7 @@
   },
   {
    "check": "feature_gate",
-   "host": "crates/hawking-core/src/kernels/mod.rs:17820",
+   "host": "crates/hawking-core/src/kernels/mod.rs:17871",
    "kernel": "strand_bitslice_gemv_partials_computed",
    "message": "kernel strand_bitslice_gemv_partials_computed host sites are cfg-gated ['tq']; reachable_when_on=True genuinely_unreachable_when_off=True",
    "severity": "INFO",
@@ -1857,7 +1736,7 @@
   },
   {
    "check": "feature_gate",
-   "host": "crates/hawking-core/src/kernels/mod.rs:17820",
+   "host": "crates/hawking-core/src/kernels/mod.rs:17871",
    "kernel": "strand_bitslice_gemv_partials_compact",
    "message": "kernel strand_bitslice_gemv_partials_compact host sites are cfg-gated ['tq']; reachable_when_on=True genuinely_unreachable_when_off=True",
    "severity": "INFO",
@@ -1865,7 +1744,7 @@
   },
   {
    "check": "feature_gate",
-   "host": "crates/hawking-core/src/kernels/mod.rs:17747",
+   "host": "crates/hawking-core/src/kernels/mod.rs:17798",
    "kernel": "strand_bitslice_reduce_rows",
    "message": "kernel strand_bitslice_reduce_rows host sites are cfg-gated ['tq']; reachable_when_on=True genuinely_unreachable_when_off=True",
    "severity": "INFO",
@@ -1873,7 +1752,7 @@
   },
   {
    "check": "feature_gate",
-   "host": "crates/hawking-core/src/kernels/mod.rs:17937",
+   "host": "crates/hawking-core/src/kernels/mod.rs:17988",
    "kernel": "strand_bitslice_reduce_rows_accum",
    "message": "kernel strand_bitslice_reduce_rows_accum host sites are cfg-gated ['tq']; reachable_when_on=True genuinely_unreachable_when_off=True",
    "severity": "INFO",
@@ -1881,7 +1760,7 @@
   },
   {
    "check": "feature_gate",
-   "host": "crates/hawking-core/src/kernels/mod.rs:17789",
+   "host": "crates/hawking-core/src/kernels/mod.rs:17840",
    "kernel": "strand_rht_forward_cols",
    "message": "kernel strand_rht_forward_cols host sites are cfg-gated ['tq']; reachable_when_on=True genuinely_unreachable_when_off=True",
    "severity": "INFO",
@@ -1889,7 +1768,7 @@
   },
   {
    "check": "feature_gate",
-   "host": "crates/hawking-core/src/kernels/mod.rs:17984",
+   "host": "crates/hawking-core/src/kernels/mod.rs:18035",
    "kernel": "strand_rht_forward_cols_batched",
    "message": "kernel strand_rht_forward_cols_batched host sites are cfg-gated ['tq']; reachable_when_on=True genuinely_unreachable_when_off=True",
    "severity": "INFO",
@@ -1897,7 +1776,7 @@
   },
   {
    "check": "feature_gate",
-   "host": "crates/hawking-core/src/kernels/mod.rs:17862",
+   "host": "crates/hawking-core/src/kernels/mod.rs:17913",
    "kernel": "strand_outlier_correct",
    "message": "kernel strand_outlier_correct host sites are cfg-gated ['tq']; reachable_when_on=True genuinely_unreachable_when_off=True",
    "severity": "INFO",
@@ -1905,7 +1784,7 @@
   },
   {
    "check": "feature_gate",
-   "host": "crates/hawking-core/src/kernels/mod.rs:18044",
+   "host": "crates/hawking-core/src/kernels/mod.rs:18095",
    "kernel": "strand_outlier_correct_batched",
    "message": "kernel strand_outlier_correct_batched host sites are cfg-gated ['tq']; reachable_when_on=True genuinely_unreachable_when_off=True",
    "severity": "INFO",
@@ -1913,7 +1792,7 @@
   },
   {
    "check": "feature_gate",
-   "host": "crates/hawking-core/src/kernels/mod.rs:18032",
+   "host": "crates/hawking-core/src/kernels/mod.rs:18083",
    "kernel": "strand_bitslice_reduce_rows_small_batch",
    "message": "kernel strand_bitslice_reduce_rows_small_batch host sites are cfg-gated ['tq']; reachable_when_on=True genuinely_unreachable_when_off=True",
    "severity": "INFO",
@@ -1921,7 +1800,7 @@
   },
   {
    "check": "feature_gate",
-   "host": "crates/hawking-core/src/kernels/mod.rs:18032",
+   "host": "crates/hawking-core/src/kernels/mod.rs:18083",
    "kernel": "strand_bitslice_reduce_rows_small_batch_accum",
    "message": "kernel strand_bitslice_reduce_rows_small_batch_accum host sites are cfg-gated ['tq']; reachable_when_on=True genuinely_unreachable_when_off=True",
    "severity": "INFO",
@@ -1929,7 +1808,7 @@
   },
   {
    "check": "feature_gate",
-   "host": "crates/hawking-core/src/kernels/mod.rs:18180",
+   "host": "crates/hawking-core/src/kernels/mod.rs:18231",
    "kernel": "strand_bitslice_reduce_rows_gemm",
    "message": "kernel strand_bitslice_reduce_rows_gemm host sites are cfg-gated ['tq']; reachable_when_on=True genuinely_unreachable_when_off=True",
    "severity": "INFO",
@@ -1961,8 +1840,8 @@
    "check": "info_tally",
    "extra": {
     "feature_gate": 19,
-    "host_shader_abi": 114,
-    "type_width": 746
+    "host_shader_abi": 118,
+    "type_width": 753
    },
    "host": null,
    "kernel": null,
@@ -1983,7 +1862,7 @@
   "queue identity described statically (one queue per MetalContext; four encode modes)",
   "UNVERIFIABLE is a first-class result: a bind this checker cannot follow is never PASS"
  ],
- "head": "269a627f65f751707489a106357b801c53de0f6a",
+ "head": "bb8c0f38666345e2910d9653d347cd46b3b1184f",
  "library_membership_files": [
   [
    "attn.metal",
@@ -2164,7 +2043,7 @@
   "metal_mod_trace_name_tests": "crates/hawking-core/src/metal/mod.rs \u2014 static_kernel_name plus per-family `SHADER_X.contains(kernel void {name}()` tests. Compile/trace-name contract, not host bind vs [[buffer(N)]]."
  },
  "schema": "hawking.future.static_kernel_verify.v1",
- "seal_sha256": "4bfd143dd0673e2b701775bf31002e1aa7d7c0cb5989a257cc06660f1b07cf2c",
+ "seal_sha256": "3f52eaf0be8fc088fdc53bed495aa69d8cd357320de3e6a78fb84942e80c8533",
  "static_correctness_does_not_prove_speed": "Static correctness does NOT prove speed and does NOT substitute for a protected measurement. A finding of no static ERROR is not a tps number, not a token_ns, not a complete-token, and not PROTECTED_ABSOLUTE. This tool exists to stop wasting a protected GPU window on a defect that was detectable from the .metal sources and their Rust hosts. It produces neither DIAGNOSTIC_RELATIVE nor PROTECTED_ABSOLUTE. Everything here is STATIC_ONLY with bench state UNKNOWN.",
  "version": 1,
  "would_waste_a_protected_window": true

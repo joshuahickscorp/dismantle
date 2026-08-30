@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T01:45:09Z",
+  "recorded_at": "2026-08-30T01:51:18Z",
   "recorded_by": "tools/future/global_frontier.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -11,15 +11,15 @@
  "claim_boundary": "Static sidecar artifact. No hardware measurement.",
  "counts": {
   "by_classification": {
-   "BLOCKED": 2,
-   "HIGH_VALUE_INTEGRATION": 2,
+   "BLOCKED": 4,
+   "HIGH_VALUE_INTEGRATION": 4,
    "MISSING": 8,
-   "WEAK": 3
+   "WEAK": 4
   },
-  "probes_holding": 9,
+  "probes_holding": 14,
   "probes_resolved_by_sidecar": 6,
   "probes_stale": 0,
-  "total": 15
+  "total": 20
  },
  "entries": [
   {
@@ -421,6 +421,128 @@
    },
    "resource_need": "CPU only, read-only on the Codex surface",
    "title": "Codex receipts are never ingested into anything downstream"
+  },
+  {
+   "classification": "HIGH_VALUE_INTEGRATION",
+   "detail": "codex_ingest classifies 1671 Codex artifacts and emits ~800 deltas, each naming its downstream consumers (Odyssey II, Odyssey III, atlas, PhysicalGraph, LPC, HWIR). No consumer reads them. The compounding loop is therefore open: the sidecar records that the frontier moved without any store changing.",
+   "duplication_check": "consumers already own their validation; the propagator routes, it does not re-implement",
+   "evidence_level": "grep: only handoff.py and global_frontier.py reference the ingest receipt, and neither applies a delta",
+   "expected_value": "closes the loop the whole sidecar exists to run",
+   "id": "F016",
+   "integration_target": "tools/future/propagate.py",
+   "prerequisite": "codex_ingest (exists) plus the seven consumer modules (all landed)",
+   "probe": {
+    "kind": "present",
+    "path": "receipts/future/CODEX_INGEST_STATE.json"
+   },
+   "probe_result": {
+    "hits": [
+     "receipts/future/CODEX_INGEST_STATE.json"
+    ],
+    "holds": true,
+    "kind": "present",
+    "path": "receipts/future/CODEX_INGEST_STATE.json"
+   },
+   "resource_need": "CPU only",
+   "title": "Ingest deltas are emitted but nothing applies them"
+  },
+  {
+   "classification": "WEAK",
+   "detail": "Codex rewrote the queue repeatedly (37 -> 41 -> 44 -> 47 candidates), and every rewrite changes the file sha even when nothing semantic moved. Derived artifacts record queue_sha256 but have no way to say STALE_FINGERPRINT_ONLY versus STALE_SEMANTIC, so the only safe response is to regenerate everything every time.",
+   "duplication_check": "codex_ingest already does sha-based change detection for receipts; this is the semantic layer above it",
+   "evidence_level": "observed: plan built at 44 candidates while live was 47, detected only by manual comparison",
+   "expected_value": "makes resync cheap enough to run continuously rather than by hand",
+   "id": "F017",
+   "integration_target": "tools/future/freshness.py",
+   "prerequisite": "derived artifacts already record source sha and fingerprint",
+   "probe": {
+    "kind": "present",
+    "path": "receipts/future/CANDIDATE_STAGED_PLAN.json"
+   },
+   "probe_result": {
+    "hits": [
+     "receipts/future/CANDIDATE_STAGED_PLAN.json"
+    ],
+    "holds": true,
+    "kind": "present",
+    "path": "receipts/future/CANDIDATE_STAGED_PLAN.json"
+   },
+   "resource_need": "CPU only",
+   "title": "Derived artifacts cannot tell a cosmetic queue rewrite from a semantic one"
+  },
+  {
+   "classification": "BLOCKED",
+   "detail": "The static preflight raised 6 ERROR-class host/shader findings. Codex owns the investigation. Without a prepared response per verdict class, a false positive will simply be re-raised next scan and a confirmed bug will not become permanently detectable.",
+   "duplication_check": "the preflight owns detection; this owns the response to adjudication",
+   "evidence_level": "receipt-backed: STATIC_KERNEL_PREFLIGHT.json findings[] severity ERROR",
+   "expected_value": "each verdict permanently improves the preflight instead of being consumed once",
+   "id": "F018",
+   "integration_target": "tools/future/abi_verdicts.py",
+   "prerequisite": "Codex's verdict; the sidecar must not pre-judge or edit Codex files",
+   "probe": {
+    "kind": "present",
+    "path": "receipts/future/STATIC_KERNEL_PREFLIGHT.json"
+   },
+   "probe_result": {
+    "hits": [
+     "receipts/future/STATIC_KERNEL_PREFLIGHT.json"
+    ],
+    "holds": true,
+    "kind": "present",
+    "path": "receipts/future/STATIC_KERNEL_PREFLIGHT.json"
+   },
+   "resource_need": "CPU only; the verdict itself is Codex's",
+   "title": "Six ABI findings await a Codex verdict with no prepared response"
+  },
+  {
+   "classification": "BLOCKED",
+   "detail": "All nine real Flash meta families stall at gate 2 real_teacher_fit. Codex attempted the capture and recorded BLOCKED_NO_METAL_GPU with 0 of 256 required rows, failing at dense_source_bf16_prefix_initialization. Two independent paths agree on the same binding constraint.",
+   "duplication_check": "teacher_corpus owns admission; meta_funnel owns the gates; this is readiness only",
+   "evidence_level": "receipt-backed: FLASH_META_TEACHER_L4_CAPTURE_BOUNDARY.json status field",
+   "expected_value": "everything downstream of gate 2 is idle until this clears",
+   "id": "F019",
+   "integration_target": "tools/future/meta_ready.py prepares gates 3-9 to start on arrival",
+   "prerequisite": "a Metal-capable GPU for dense source-BF16 prefix initialization",
+   "probe": {
+    "expect": "BLOCKED_NO_METAL_GPU",
+    "field": "status",
+    "kind": "field",
+    "path": "receipts/headless/FLASH_META_TEACHER_L4_CAPTURE_BOUNDARY.json"
+   },
+   "probe_result": {
+    "actual": "BLOCKED_NO_METAL_GPU",
+    "expect": "BLOCKED_NO_METAL_GPU",
+    "field": "status",
+    "holds": true,
+    "kind": "field",
+    "path": "receipts/headless/FLASH_META_TEACHER_L4_CAPTURE_BOUNDARY.json"
+   },
+   "resource_need": "GPU authority the sidecar does not have",
+   "title": "Flash meta is blocked at teacher capture, and capture is blocked on GPU"
+  },
+  {
+   "classification": "HIGH_VALUE_INTEGRATION",
+   "detail": "Fourteen P6/P7 candidates encode reusable physical concepts -- routed gate/up fusion, W2/down fusion, shared FP8 fusion, concurrent prefix, learned reader reuse, bounded expert cache reuse. None has a Hawking primitive, an HWIR hypothesis, an FPGA realization, a transfer scope or an Odyssey III counterexample. All are BLOCKED and unmeasured, so nothing may be claimed.",
+   "duplication_check": "the atlas holds behaviours; this maps THESE candidates onto the existing primitives",
+   "evidence_level": "queue: 14 candidate ids matching flash-p6-* / flash-p7-*, all BLOCKED",
+   "expected_value": "the mechanism by which one physical win propagates to every future backend",
+   "id": "F020",
+   "integration_target": "tools/future/p6_projection.py",
+   "prerequisite": "physical_primitives (17 landed), hwir, odyssey3_adversary -- all exist",
+   "probe": {
+    "kind": "present",
+    "path": "receipts/headless/ACCELERATOR_FRONT_G_P6.json"
+   },
+   "probe_result": {
+    "hits": [
+     "receipts/headless/ACCELERATOR_FRONT_G_P6.json"
+    ],
+    "holds": true,
+    "kind": "present",
+    "path": "receipts/headless/ACCELERATOR_FRONT_G_P6.json"
+   },
+   "resource_need": "CPU only",
+   "title": "Codex P6/P7 physical concepts are not projected into future hardware"
   }
  ],
  "purpose": "live frontier: missing / weak / stale / blocked / high-value-integration only",
@@ -435,7 +557,7 @@
  ],
  "resolved_meaning": "A MISSING claim whose probe now finds ONLY sidecar files: this campaign closed the gap. The entry is retired, not refuted.",
  "schema": "hawking.future.claude_global_frontier.v1",
- "seal_sha256": "44a0df63e2bd4a3f50b4a96e0451e3332dc8f4c055b0bd6c175d823207c796cb",
+ "seal_sha256": "d980e50d51a7f0595587766cf5d1fe424ebcab4fd4a1fe16b250f1f1346f30cf",
  "stale_entries": [],
  "stale_meaning": "A stale probe means the claim no longer matches disk -- usually because Codex or a sidecar lane built the thing. Retire or reclassify the entry; do not silently keep it.",
  "version": 1

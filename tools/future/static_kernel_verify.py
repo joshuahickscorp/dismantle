@@ -565,6 +565,57 @@ def parse_metal(src: str, path: str) -> tuple[list[MetalKernel], list[StructDef]
     return kernels, structs
 
 
+def generated_kernel_names(metal_files: dict[str, str]) -> dict[str, dict[str, str]]:
+    """Recover concrete names emitted by the small shader macro families.
+
+    The source preflight intentionally does not run the Metal preprocessor.
+    That is the right boundary for host/shader ABI parsing, but a literal
+    ``kernel void`` regex cannot see token-pasted entry points. Keep the
+    recovery table explicit and source-backed: the checker can close a false
+    kernel-existence alarm while still reporting that binding/PSO analysis for
+    the generated body is deferred to the compiler/runtime.
+    """
+    generated: dict[str, dict[str, str]] = {}
+    specs = (
+        (
+            "QWEN_UNIFORM_Q4_MATMUL_K",
+            re.compile(r"(?m)^\s*QWEN_UNIFORM_Q4_MATMUL_K\(\s*(\d+)\s*\)"),
+            lambda m: f"qwen_uniform_q4_group64_matmul_k{m.group(1)}_geo_tpr64_tg128",
+        ),
+        (
+            "QWEN_UNIFORM_Q4_MATMUL_RK",
+            re.compile(
+                r"(?m)^\s*QWEN_UNIFORM_Q4_MATMUL_RK\(\s*(\d+)\s*,\s*(\d+)\s*\)"
+            ),
+            lambda m: (
+                f"qwen_uniform_q4_group64_matmul_r{m.group(1)}k{m.group(2)}"
+                "_geo_tpr64_tg128"
+            ),
+        ),
+        (
+            "QWEN_BINARY_PLANES",
+            re.compile(r"(?m)^\s*QWEN_BINARY_PLANES\(\s*(\d+)\s*\)"),
+            lambda m: f"qwen_binary_planes_k{m.group(1)}_matvec_geo_tpr64_tg128",
+        ),
+    )
+    for path, src in sorted(metal_files.items()):
+        if not path.endswith("qwen_uniform_q4.metal"):
+            continue
+        for macro, call_re, name_fn in specs:
+            for match in call_re.finditer(src):
+                name = name_fn(match)
+                generated[name] = {
+                    "path": path,
+                    "macro": macro,
+                    "invocation": match.group(0).strip(),
+                    "verification": (
+                        "NAME_RECOVERED_FROM_MACRO; body binding and PSO geometry remain "
+                        "compiler/runtime checks"
+                    ),
+                }
+    return generated
+
+
 # ---------------------------------------------------------------------------
 # Rust host parser
 # ---------------------------------------------------------------------------
@@ -1128,7 +1179,11 @@ def analyze(
     by_name: dict[str, list[MetalKernel]] = defaultdict(list)
     for k in kernels:
         by_name[k.name].append(k)
-    metal_names = set(by_name)
+    generated_names = generated_kernel_names(metal_files)
+    # Generated names are existence-resolved, but intentionally not inserted
+    # into `by_name`: without preprocessing there is no trustworthy parameter
+    # list to use for host binding/geometry checks.
+    metal_names = set(by_name) | set(generated_names)
 
     for name, ks in sorted(by_name.items()):
         if len(ks) > 1:
@@ -1699,6 +1754,7 @@ def analyze(
         "findings": findings,
         "referenced": referenced,
         "metal_names": metal_names,
+        "generated_kernel_names": generated_names,
         "family_named": family_named,
         "binding_checked": binding_checked,
         "geometry_checked": geometry_checked,
@@ -1806,6 +1862,7 @@ def report_from_analyze(raw: dict[str, Any]) -> dict[str, Any]:
     findings: list[Finding] = raw["findings"]
     metal_names: set[str] = raw["metal_names"]
     referenced: dict[str, list[str]] = raw["referenced"]
+    generated_names: dict[str, dict[str, str]] = raw["generated_kernel_names"]
 
     errors = [f for f in findings if f.severity == "ERROR"]
     return {
@@ -1890,6 +1947,8 @@ def report_from_analyze(raw: dict[str, Any]) -> dict[str, Any]:
         "coverage": {
             "metal_files": len({k.path for k in kernels}),
             "metal_kernels": len(metal_names),
+            "metal_source_kernels": len(metal_names - set(generated_names)),
+            "metal_generated_kernels": len(generated_names),
             "host_files_with_dispatch": len({d.path for d in dispatches}),
             "host_dispatches": len(dispatches),
             "dispatches_resolved": sum(1 for d in dispatches if d.resolved),
@@ -1918,6 +1977,7 @@ def report_from_analyze(raw: dict[str, Any]) -> dict[str, Any]:
         "queue_identity": raw["queue_identity"],
         "library_membership_files": sorted(raw["library_membership"].items()),
         "decode_family_named_kernels": raw["family_named"],
+        "generated_kernel_names": generated_names,
         "apple_static_limits": {
             "max_threads_per_threadgroup": APPLE_MAX_THREADS_PER_THREADGROUP,
             "simdgroup_width": APPLE_SIMDGROUP_WIDTH,

@@ -79,7 +79,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T15:04:17Z",
+  "recorded_at": "2026-08-30T15:20:05Z",
   "recorded_by": "tools/future/physical_primitives.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -1416,7 +1416,7 @@
   }
  },
  "schema": "hawking.future.physical_primitives.v1",
- "seal_sha256": "fc4d5123ab20afa787aec94eb9c36d04061a44978db7eb40a64aa59539f3731c",
+ "seal_sha256": "0ccfe4814167c49d1f3d553efd6d04615cadcdeab05e7c35e1ffb483dea0c341",
  "version": 1,
  "vocabulary": {
   "disk_state_is_authority": true,

@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T15:10:44Z",
+  "recorded_at": "2026-08-30T15:17:54Z",
   "recorded_by": "tools/future/external_specimen_seal.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -314,7 +314,7 @@
   "workunit": "one CPU_ANALYSIS unit; recover verification, hash only small non-weight files, emit the tree digest; never take a GPU lease"
  },
  "schema": "hawking.future.external_specimen_seal.v1",
- "seal_sha256": "723e6435ed7e1818b45de9578b3168a43aa5ac933218d59c2a67283412246457",
+ "seal_sha256": "22d3e47dd2ab872885866bb1820c3627138637a7daf8fbcdab86b78b03c7caf9",
  "sha256_sources": {
   "recomputed_here": 12,
   "recovered_from_verification_actual": 19,

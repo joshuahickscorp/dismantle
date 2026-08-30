@@ -11,7 +11,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T15:10:38Z",
+  "recorded_at": "2026-08-30T15:21:34Z",
   "recorded_by": "tools/future/trial_freeze.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -59,7 +59,7 @@
   "tools/future/integration_attack.py",
   "tools/future/test_integration_attack.py"
  ],
- "freeze_time": "2026-08-30T15:10:38Z",
+ "freeze_time": "2026-08-30T15:21:34Z",
  "frontier_digest": "2e24cb2dad80ad583b893c6f75dd2a69be6c726fc13970fc29a9d698638b8b22",
  "frozen_builds": [
   {
@@ -242,7 +242,7 @@
    ],
    "driver": "tools/future/autonomy_run.py",
    "evidence_class": "STATIC_ONLY",
-   "freeze_time": "2026-08-30T15:10:38Z",
+   "freeze_time": "2026-08-30T15:21:34Z",
    "frontier_digest": "2e24cb2dad80ad583b893c6f75dd2a69be6c726fc13970fc29a9d698638b8b22",
    "frontier_items": [
     {
@@ -572,6 +572,8 @@
     "dirty": true,
     "dirty_sample": [
      " M receipts/future/ABI_VERDICT_HARNESS.json",
+     " M receipts/future/ACCELERATOR_WORKUNITS.json",
+     " M receipts/future/ADAPTIVE_VERIFICATION.json",
      " M receipts/future/ANE_PREBOARD.json",
      " M receipts/future/AUTONOMY_MISSION_STATE.json",
      " M receipts/future/AUTONOMY_RUN.json",
@@ -580,12 +582,10 @@
      " M receipts/future/CANDIDATE_STAGED_PLAN.json",
      " M receipts/future/CLAUDE_GLOBAL_FRONTIER.json",
      " M receipts/future/CLAUDE_SIDECAR_ABI_ADJUDICATION.json",
-     " M receipts/future/CODEX_INGEST_STATE.json",
-     " M receipts/future/CODEX_MUTATION_SURFACE.json",
-     " M receipts/future/CODEX_WORKUNIT_SPECIES.json"
+     " M receipts/future/CODEX_INGEST_STATE.json"
     ],
     "dirty_scope": "tools/future + receipts/future",
-    "head": "db6ba56903f61fc4e13b41e24d96594dcbf7c748",
+    "head": "1697edcb950204dd0346ac14417f0cb5688df772",
     "why": null
    },
    "gpu_authority": false,
@@ -647,19 +647,19 @@
     {
      "path": "receipts/future/CLAUDE_GLOBAL_FRONTIER.json",
      "role": "driver_startup_read",
-     "sha256": "35daa9df710d9180cbb0a6e8ec185f31569a888b8135e2a951bb475cc72f74d0",
+     "sha256": "0852eadfb3008ab788fde65bbc277e674aedd429dbda51ff79715a38ff4c1caa",
      "state": "HASHED"
     },
     {
      "path": "receipts/future/ORCHESTRATION_BINDINGS.json",
      "role": "driver_startup_read",
-     "sha256": "09aac22f863f1210456992d4dbbf0d2f303737ba8bec1f0a6e1ea2032e8fcd5a",
+     "sha256": "fbc10588024832369b4ffe889392a3742741176e30be37de3cb2c9d8faba5f5d",
      "state": "HASHED"
     },
     {
      "path": "receipts/future/RESIDENT_IDENTITY.json",
      "role": "driver_startup_read",
-     "sha256": "7f4cac1e175115838a2519dbfcff207e2c8d630f8363ca926385a13f3a5130dc",
+     "sha256": "a4cde435fbf5069d7c270aa4446980b844c07b30c697c59341c9ef93b7fab9ad",
      "state": "HASHED"
     }
    ],
@@ -849,7 +849,7 @@
    ],
    "driver": "tools/future/autonomy_run.py",
    "evidence_class": "STATIC_ONLY",
-   "freeze_time": "2026-08-30T15:10:38Z",
+   "freeze_time": "2026-08-30T15:21:34Z",
    "frontier_digest": "2e24cb2dad80ad583b893c6f75dd2a69be6c726fc13970fc29a9d698638b8b22",
    "frontier_items": [
     {
@@ -1179,6 +1179,8 @@
     "dirty": true,
     "dirty_sample": [
      " M receipts/future/ABI_VERDICT_HARNESS.json",
+     " M receipts/future/ACCELERATOR_WORKUNITS.json",
+     " M receipts/future/ADAPTIVE_VERIFICATION.json",
      " M receipts/future/ANE_PREBOARD.json",
      " M receipts/future/AUTONOMY_MISSION_STATE.json",
      " M receipts/future/AUTONOMY_RUN.json",
@@ -1187,12 +1189,10 @@
      " M receipts/future/CANDIDATE_STAGED_PLAN.json",
      " M receipts/future/CLAUDE_GLOBAL_FRONTIER.json",
      " M receipts/future/CLAUDE_SIDECAR_ABI_ADJUDICATION.json",
-     " M receipts/future/CODEX_INGEST_STATE.json",
-     " M receipts/future/CODEX_MUTATION_SURFACE.json",
-     " M receipts/future/CODEX_WORKUNIT_SPECIES.json"
+     " M receipts/future/CODEX_INGEST_STATE.json"
     ],
     "dirty_scope": "tools/future + receipts/future",
-    "head": "db6ba56903f61fc4e13b41e24d96594dcbf7c748",
+    "head": "1697edcb950204dd0346ac14417f0cb5688df772",
     "why": null
    },
    "gpu_authority": false,
@@ -1254,19 +1254,19 @@
     {
      "path": "receipts/future/CLAUDE_GLOBAL_FRONTIER.json",
      "role": "driver_startup_read",
-     "sha256": "35daa9df710d9180cbb0a6e8ec185f31569a888b8135e2a951bb475cc72f74d0",
+     "sha256": "0852eadfb3008ab788fde65bbc277e674aedd429dbda51ff79715a38ff4c1caa",
      "state": "HASHED"
     },
     {
      "path": "receipts/future/ORCHESTRATION_BINDINGS.json",
      "role": "driver_startup_read",
-     "sha256": "09aac22f863f1210456992d4dbbf0d2f303737ba8bec1f0a6e1ea2032e8fcd5a",
+     "sha256": "fbc10588024832369b4ffe889392a3742741176e30be37de3cb2c9d8faba5f5d",
      "state": "HASHED"
     },
     {
      "path": "receipts/future/RESIDENT_IDENTITY.json",
      "role": "driver_startup_read",
-     "sha256": "7f4cac1e175115838a2519dbfcff207e2c8d630f8363ca926385a13f3a5130dc",
+     "sha256": "a4cde435fbf5069d7c270aa4446980b844c07b30c697c59341c9ef93b7fab9ad",
      "state": "HASHED"
     }
    ],
@@ -1456,7 +1456,7 @@
    ],
    "driver": "tools/future/autonomy_run.py",
    "evidence_class": "STATIC_ONLY",
-   "freeze_time": "2026-08-30T15:10:38Z",
+   "freeze_time": "2026-08-30T15:21:34Z",
    "frontier_digest": "2e24cb2dad80ad583b893c6f75dd2a69be6c726fc13970fc29a9d698638b8b22",
    "frontier_items": [
     {
@@ -1786,6 +1786,8 @@
     "dirty": true,
     "dirty_sample": [
      " M receipts/future/ABI_VERDICT_HARNESS.json",
+     " M receipts/future/ACCELERATOR_WORKUNITS.json",
+     " M receipts/future/ADAPTIVE_VERIFICATION.json",
      " M receipts/future/ANE_PREBOARD.json",
      " M receipts/future/AUTONOMY_MISSION_STATE.json",
      " M receipts/future/AUTONOMY_RUN.json",
@@ -1794,12 +1796,10 @@
      " M receipts/future/CANDIDATE_STAGED_PLAN.json",
      " M receipts/future/CLAUDE_GLOBAL_FRONTIER.json",
      " M receipts/future/CLAUDE_SIDECAR_ABI_ADJUDICATION.json",
-     " M receipts/future/CODEX_INGEST_STATE.json",
-     " M receipts/future/CODEX_MUTATION_SURFACE.json",
-     " M receipts/future/CODEX_WORKUNIT_SPECIES.json"
+     " M receipts/future/CODEX_INGEST_STATE.json"
     ],
     "dirty_scope": "tools/future + receipts/future",
-    "head": "db6ba56903f61fc4e13b41e24d96594dcbf7c748",
+    "head": "1697edcb950204dd0346ac14417f0cb5688df772",
     "why": null
    },
    "gpu_authority": false,
@@ -1861,19 +1861,19 @@
     {
      "path": "receipts/future/CLAUDE_GLOBAL_FRONTIER.json",
      "role": "driver_startup_read",
-     "sha256": "35daa9df710d9180cbb0a6e8ec185f31569a888b8135e2a951bb475cc72f74d0",
+     "sha256": "0852eadfb3008ab788fde65bbc277e674aedd429dbda51ff79715a38ff4c1caa",
      "state": "HASHED"
     },
     {
      "path": "receipts/future/ORCHESTRATION_BINDINGS.json",
      "role": "driver_startup_read",
-     "sha256": "09aac22f863f1210456992d4dbbf0d2f303737ba8bec1f0a6e1ea2032e8fcd5a",
+     "sha256": "fbc10588024832369b4ffe889392a3742741176e30be37de3cb2c9d8faba5f5d",
      "state": "HASHED"
     },
     {
      "path": "receipts/future/RESIDENT_IDENTITY.json",
      "role": "driver_startup_read",
-     "sha256": "7f4cac1e175115838a2519dbfcff207e2c8d630f8363ca926385a13f3a5130dc",
+     "sha256": "a4cde435fbf5069d7c270aa4446980b844c07b30c697c59341c9ef93b7fab9ad",
      "state": "HASHED"
     }
    ],
@@ -2063,7 +2063,7 @@
    ],
    "driver": "tools/future/autonomy_run.py",
    "evidence_class": "STATIC_ONLY",
-   "freeze_time": "2026-08-30T15:10:38Z",
+   "freeze_time": "2026-08-30T15:21:34Z",
    "frontier_digest": "2e24cb2dad80ad583b893c6f75dd2a69be6c726fc13970fc29a9d698638b8b22",
    "frontier_items": [
     {
@@ -2393,6 +2393,8 @@
     "dirty": true,
     "dirty_sample": [
      " M receipts/future/ABI_VERDICT_HARNESS.json",
+     " M receipts/future/ACCELERATOR_WORKUNITS.json",
+     " M receipts/future/ADAPTIVE_VERIFICATION.json",
      " M receipts/future/ANE_PREBOARD.json",
      " M receipts/future/AUTONOMY_MISSION_STATE.json",
      " M receipts/future/AUTONOMY_RUN.json",
@@ -2401,12 +2403,10 @@
      " M receipts/future/CANDIDATE_STAGED_PLAN.json",
      " M receipts/future/CLAUDE_GLOBAL_FRONTIER.json",
      " M receipts/future/CLAUDE_SIDECAR_ABI_ADJUDICATION.json",
-     " M receipts/future/CODEX_INGEST_STATE.json",
-     " M receipts/future/CODEX_MUTATION_SURFACE.json",
-     " M receipts/future/CODEX_WORKUNIT_SPECIES.json"
+     " M receipts/future/CODEX_INGEST_STATE.json"
     ],
     "dirty_scope": "tools/future + receipts/future",
-    "head": "db6ba56903f61fc4e13b41e24d96594dcbf7c748",
+    "head": "1697edcb950204dd0346ac14417f0cb5688df772",
     "why": null
    },
    "gpu_authority": false,
@@ -2468,19 +2468,19 @@
     {
      "path": "receipts/future/CLAUDE_GLOBAL_FRONTIER.json",
      "role": "driver_startup_read",
-     "sha256": "35daa9df710d9180cbb0a6e8ec185f31569a888b8135e2a951bb475cc72f74d0",
+     "sha256": "0852eadfb3008ab788fde65bbc277e674aedd429dbda51ff79715a38ff4c1caa",
      "state": "HASHED"
     },
     {
      "path": "receipts/future/ORCHESTRATION_BINDINGS.json",
      "role": "driver_startup_read",
-     "sha256": "09aac22f863f1210456992d4dbbf0d2f303737ba8bec1f0a6e1ea2032e8fcd5a",
+     "sha256": "fbc10588024832369b4ffe889392a3742741176e30be37de3cb2c9d8faba5f5d",
      "state": "HASHED"
     },
     {
      "path": "receipts/future/RESIDENT_IDENTITY.json",
      "role": "driver_startup_read",
-     "sha256": "7f4cac1e175115838a2519dbfcff207e2c8d630f8363ca926385a13f3a5130dc",
+     "sha256": "a4cde435fbf5069d7c270aa4446980b844c07b30c697c59341c9ef93b7fab9ad",
      "state": "HASHED"
     }
    ],
@@ -2503,6 +2503,8 @@
   "dirty": true,
   "dirty_sample": [
    " M receipts/future/ABI_VERDICT_HARNESS.json",
+   " M receipts/future/ACCELERATOR_WORKUNITS.json",
+   " M receipts/future/ADAPTIVE_VERIFICATION.json",
    " M receipts/future/ANE_PREBOARD.json",
    " M receipts/future/AUTONOMY_MISSION_STATE.json",
    " M receipts/future/AUTONOMY_RUN.json",
@@ -2511,12 +2513,10 @@
    " M receipts/future/CANDIDATE_STAGED_PLAN.json",
    " M receipts/future/CLAUDE_GLOBAL_FRONTIER.json",
    " M receipts/future/CLAUDE_SIDECAR_ABI_ADJUDICATION.json",
-   " M receipts/future/CODEX_INGEST_STATE.json",
-   " M receipts/future/CODEX_MUTATION_SURFACE.json",
-   " M receipts/future/CODEX_WORKUNIT_SPECIES.json"
+   " M receipts/future/CODEX_INGEST_STATE.json"
   ],
   "dirty_scope": "tools/future + receipts/future",
-  "head": "db6ba56903f61fc4e13b41e24d96594dcbf7c748",
+  "head": "1697edcb950204dd0346ac14417f0cb5688df772",
   "why": null
  },
  "glob_refused": "tools/future/*.py is 182 files; the driver graph is 19. A glob would false-invalidate on unrelated edits.",
@@ -2571,24 +2571,24 @@
   "why": "this sidecar does not start a resident model process; autonomy_run records resident_model_cognition UNAVAILABLE as a measurement of that fact, not as a quoted blocker"
  },
  "schema": "hawking.future.trial_freeze.v1",
- "seal_sha256": "a73e1373f2af4c270a7220c24d8a10171b28b989b95f61a30509e764e51fa216",
+ "seal_sha256": "01fe926f3175e653ba95ea612b19203a30e1f36e0a255e0ebe705f1e0d4e4085",
  "startup_receipts": [
   {
    "path": "receipts/future/CLAUDE_GLOBAL_FRONTIER.json",
    "role": "driver_startup_read",
-   "sha256": "35daa9df710d9180cbb0a6e8ec185f31569a888b8135e2a951bb475cc72f74d0",
+   "sha256": "0852eadfb3008ab788fde65bbc277e674aedd429dbda51ff79715a38ff4c1caa",
    "state": "HASHED"
   },
   {
    "path": "receipts/future/ORCHESTRATION_BINDINGS.json",
    "role": "driver_startup_read",
-   "sha256": "09aac22f863f1210456992d4dbbf0d2f303737ba8bec1f0a6e1ea2032e8fcd5a",
+   "sha256": "fbc10588024832369b4ffe889392a3742741176e30be37de3cb2c9d8faba5f5d",
    "state": "HASHED"
   },
   {
    "path": "receipts/future/RESIDENT_IDENTITY.json",
    "role": "driver_startup_read",
-   "sha256": "7f4cac1e175115838a2519dbfcff207e2c8d630f8363ca926385a13f3a5130dc",
+   "sha256": "a4cde435fbf5069d7c270aa4446980b844c07b30c697c59341c9ef93b7fab9ad",
    "state": "HASHED"
   }
  ],

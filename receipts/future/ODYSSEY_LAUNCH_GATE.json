@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T15:10:46Z",
+  "recorded_at": "2026-08-30T15:20:04Z",
   "recorded_by": "tools/future/odyssey_launch.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -1169,7 +1169,7 @@
   {
    "evidence": [
     {
-     "contamination_class": "LIGHT",
+     "contamination_class": "HEAVY",
      "dirty_measure": {
       "path_taken": "worktree",
       "present": true,
@@ -1204,7 +1204,7 @@
   {
    "evidence": [
     {
-     "contamination_class": "LIGHT",
+     "contamination_class": "HEAVY",
      "future_protected_window": {
       "path_taken": "worktree",
       "present": true,
@@ -1240,7 +1240,7 @@
     },
     "resident_operational": false
    },
-   "reason": "protected scheduling cannot start: contamination_class='LIGHT', qualification gpu_authority=False, future.protected_window path_taken=worktree. flock of the bench lock would be a seizure. tools/odyssey/protected_window.py is prior Odyssey SIGSTOP machinery, not this-wave resident scheduling."
+   "reason": "protected scheduling cannot start: contamination_class='HEAVY', qualification gpu_authority=False, future.protected_window path_taken=worktree. flock of the bench lock would be a seizure. tools/odyssey/protected_window.py is prior Odyssey SIGSTOP machinery, not this-wave resident scheduling."
   },
   {
    "evidence": [
@@ -2116,7 +2116,7 @@
   "workspace": "repo-root"
  },
  "gpu_authority": false,
- "head": "db6ba56903f61fc4e13b41e24d96594dcbf7c748",
+ "head": "1697edcb950204dd0346ac14417f0cb5688df772",
  "integration_points": {
   "autonomy_trial": "tools/future/autonomy_trial.py \u2014 Odyssey I resident-orchestration trial pass receipt",
   "dirty_measure": "tools/future/dirty_measure.py \u2014 dirty-class measurement that cannot launder into PROTECTED_ABSOLUTE",
@@ -3405,10 +3405,10 @@
     "sleeping": true
    },
    {
-    "holds": false,
+    "holds": true,
     "id": "sleep.machine-heavy",
-    "reason": "contamination_class='LIGHT'; sidecar will not SIGSTOP standing workers. HEAVY (or unknown) is not a protected window.",
-    "sleeping": false
+    "reason": "contamination_class='HEAVY'; sidecar will not SIGSTOP standing workers. HEAVY (or unknown) is not a protected window.",
+    "sleeping": true
    },
    {
     "holds": true,
@@ -3572,6 +3572,7 @@
   "physical blocker sleep.no-gpu-authority: Sidecar has no GPU authority and does not invoke MetalContext. Handoff blockers record no protected GPU authority on this campaign.",
   "physical blocker sleep.metal-compiler: xcrun -f metal did not locate the Metal compiler",
   "physical blocker sleep.protected-bench-lock: lock file exists but no holder could be proven without flock (lsof status='OK' reason=None). fail closed: present=false. flock would be a seizure",
+  "physical blocker sleep.machine-heavy: contamination_class='HEAVY'; sidecar will not SIGSTOP standing workers. HEAVY (or unknown) is not a protected window.",
   "physical blocker sleep.flash-nx-scaffold: FLASH_NX_COMPLETENESS_AUDIT seven_all_met=False nx_status='SEALED_METADATA_ONLY_NOT_FOR_PROMOTION' nr_v2.status='COMPLETE_HETEROGENEOUS_CANDIDATE_NOT_FOR_PROMOTION'. SCAFFOLD_ONLY / metadata seals are not a callable NX path.",
   "physical blocker sleep.teacher-capture: teacher capture executed=0/12 workunits; target_row_counts=[256]. Unrun capture is not a synthetic corpus.",
   "curriculum unready roles: ['very_small_dense_procedural_speed', 'flash_heterogeneous_frontier']",
@@ -3636,15 +3637,15 @@
   },
   {
    "evidence": {
-    "contamination_class": "LIGHT",
+    "contamination_class": "HEAVY",
     "path_taken": "worktree"
    },
-   "holds": false,
+   "holds": true,
    "id": "sleep.machine-heavy",
-   "reason": "contamination_class='LIGHT'; sidecar will not SIGSTOP standing workers. HEAVY (or unknown) is not a protected window.",
-   "sleeping": false,
+   "reason": "contamination_class='HEAVY'; sidecar will not SIGSTOP standing workers. HEAVY (or unknown) is not a protected window.",
+   "sleeping": true,
    "title": "Machine classified HEAVY; standing workers not quiesced",
-   "workunit_id": null
+   "workunit_id": "odyssey-i.sleep.machine-heavy"
   },
   {
    "evidence": {
@@ -3817,7 +3818,7 @@
   "sleeping_are_not_results": true
  },
  "schema": "hawking.future.odyssey_launch.v1",
- "seal_sha256": "83233d3a693f00939230d43f068afc193fc24a9b13fca67618af1ec192d5ee5f",
+ "seal_sha256": "42dd98fc74b8eb58933acac783b6ddecd057525097cf41944fcd1b23d587a8b9",
  "sleeping_workunits": [
   {
    "assigned_backend": null,
@@ -3921,6 +3922,41 @@
    "synthetic_result_forbidden": true,
    "verification": null,
    "verifier": "future.odyssey_launch.wakeup:sleep.protected-bench-lock",
+   "wakeup_integration": "tools/future/wakeup.py \u2014 wake SLEEPING WorkUnits when hardware qualifies",
+   "workspace": "repo-root"
+  },
+  {
+   "assigned_backend": null,
+   "assigned_runtime": null,
+   "attempts": 0,
+   "backend_task_id": null,
+   "blocked_reason": "contamination_class='HEAVY'; sidecar will not SIGSTOP standing workers. HEAVY (or unknown) is not a protected window.",
+   "claim_boundary": "WorkUnit is a proposal; receipt and protected capability gates remain authoritative",
+   "classification": "SLEEPING",
+   "content_hash": "ae9e8b039ee5e3f2844a3d24c61cb5738b3c00154fc402120d310198ead900da",
+   "dependencies": [],
+   "description": "SLEEPING until hardware qualifies: Machine classified HEAVY; standing workers not quiesced",
+   "effect_class": "READ_ONLY",
+   "failure_context": null,
+   "finished_at": null,
+   "id": "odyssey-i.sleep.machine-heavy",
+   "preferred_backend": null,
+   "provider": "future.odyssey_launch",
+   "ready_at": null,
+   "repair_depth": 0,
+   "repair_exhausted": false,
+   "repair_reason": null,
+   "repair_root": null,
+   "repairs": null,
+   "requires_quiescence": true,
+   "resource_class": "GPU_EXCLUSIVE",
+   "role": "science",
+   "running_at": null,
+   "sleeping": true,
+   "status": "sleeping",
+   "synthetic_result_forbidden": true,
+   "verification": null,
+   "verifier": "future.odyssey_launch.wakeup:sleep.machine-heavy",
    "wakeup_integration": "tools/future/wakeup.py \u2014 wake SLEEPING WorkUnits when hardware qualifies",
    "workspace": "repo-root"
   },

@@ -23,7 +23,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T15:05:41Z",
+  "recorded_at": "2026-08-30T15:21:28Z",
   "recorded_by": "tools/future/teacher_corpus.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -565,7 +565,7 @@
  ],
  "purpose": "Teacher-corpus contract: bind every capture to specimen/layer/surface/provenance, compute diversity, dedup, and structurally refuse a corpus that only meets its sample-count threshold by duplication, resampling, or synthesis.",
  "recovered_implementation": {
-  "head": "448bbd79d6f9b3c4737d60191620bb4605a919e9",
+  "head": "1697edcb950204dd0346ac14417f0cb5688df772",
   "missing_from_HEAD": [
    "receipts/headless/QWEN80_CAPTURE_INDEX.json",
    "receipts/headless/QWEN80_CAPTURE_SPEED.json",
@@ -786,7 +786,7 @@
   "route_union_definition": "Sorted unique route_ids over all rows sharing (specimen, layer, surface). Membership is the intersection of the row's route_ids with that union. Recovered from Q80 key_(layer, expert), not from FLASH_ATTENTION_ROUTE_UNION_PARITY (that receipt is not in HEAD)."
  },
  "schema": "hawking.future.teacher_corpus.v1",
- "seal_sha256": "5e5d7b714e1ae1ef22f02298e1fd4dccc9583b5388fd45e6a2ad682fa18dd01e",
+ "seal_sha256": "7005eeb8c06be04513060b27800f7f0932d418edb0bf002508f64b9c62c0e62b",
  "selftest": {
   "dedup_collision_groups": 4,
   "dedup_kept_from_duplicated": 4,

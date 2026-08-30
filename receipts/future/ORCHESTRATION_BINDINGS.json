@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T15:04:16Z",
+  "recorded_at": "2026-08-30T15:25:38Z",
   "recorded_by": "tools/future/orchestration.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -14,6 +14,18 @@
    "module": "abi_verdicts.py",
    "receipt": "ABI_VERDICT_HARNESS.json",
    "species": "HOST_SHADER_ABI_VERIFY"
+  },
+  {
+   "frontier_item": "FT.GPU_KERNELS.ready-protected",
+   "module": "accelerator_workunits.py",
+   "receipt": "ACCELERATOR_WORKUNITS.json",
+   "species": "ACCELERATOR_SPECIES"
+  },
+  {
+   "frontier_item": "FT.VERIFICATION.repro",
+   "module": "adaptive_verification.py",
+   "receipt": "ADAPTIVE_VERIFICATION.json",
+   "species": "MULTI_FIDELITY_SCREEN"
   },
   {
    "frontier_item": "FT.ANE.preboard",
@@ -56,6 +68,12 @@
    "module": "codex_ingest.py",
    "receipt": "CODEX_INGEST_STATE.json",
    "species": "INGEST_PROPAGATE"
+  },
+  {
+   "frontier_item": "FT.ODYSSEY_TRANSFER.re-earn",
+   "module": "consolidated_run.py",
+   "receipt": "ODYSSEY_CONSOLIDATED_RUN.json",
+   "species": "ODYSSEY_RUN_DESCRIPTOR"
   },
   {
    "frontier_item": "FT.VERIFICATION.contamination",
@@ -130,6 +148,30 @@
    "species": "GRAVITY_SEARCH"
   },
   {
+   "frontier_item": "FT.MODEL_CAPABILITY.hard-gates",
+   "module": "external_specimen_seal.py",
+   "receipt": "EXTERNAL_SPECIMEN_SEAL.json",
+   "species": "EXTERNAL_SPECIMEN"
+  },
+  {
+   "frontier_item": "FT.CHILD_RESIDENT.install-dry-run",
+   "module": "fallback_resident.py",
+   "receipt": "FALLBACK_RESIDENT.json",
+   "species": "RESIDENT_FALLBACK"
+  },
+  {
+   "frontier_item": "FT.MODEL_REPRESENTATION.meta-gates-3-9",
+   "module": "flash_bpw_ladder.py",
+   "receipt": "FLASH_BPW_LADDER.json",
+   "species": "EBPW_LADDER"
+  },
+  {
+   "frontier_item": "FT.MODEL_REPRESENTATION.meta-gates-3-9",
+   "module": "flash_meta_replan.py",
+   "receipt": "FLASH_META_REPLAN.json",
+   "species": "META_REPLAN"
+  },
+  {
    "frontier_item": "FT.MODEL_REPRESENTATION.meta-gates-3-9",
    "module": "flash_nr_complete.py",
    "receipt": "FLASH_NR_COMPLETE.json",
@@ -140,6 +182,12 @@
    "module": "flash_nx_audit.py",
    "receipt": "FLASH_NX_COMPLETENESS_AUDIT.json",
    "species": "NX_COMPLETENESS_AUDIT"
+  },
+  {
+   "frontier_item": "FT.MODEL_REPRESENTATION.meta-gates-3-9",
+   "module": "flash_organ_workgraphs.py",
+   "receipt": "FLASH_ORGAN_WORKGRAPHS.json",
+   "species": "ORGAN_WORKGRAPH"
   },
   {
    "frontier_item": "FT.MODEL_REPRESENTATION.meta-gates-3-9",
@@ -206,6 +254,12 @@
    "module": "hbm_doctor.py",
    "receipt": "HBM_DOCTOR.json",
    "species": "HBM_RESIDENCY"
+  },
+  {
+   "frontier_item": "FT.LATENCY.cpu-turnaround",
+   "module": "hcli_self_profile.py",
+   "receipt": "HCLI_SELF_PROFILE.json",
+   "species": "HCLI_SELF_OPTIMIZATION"
   },
   {
    "frontier_item": "FT.MEMORY.hmf",
@@ -298,6 +352,12 @@
    "species": "SEARCH_ARCHITECTURE_LAWS"
   },
   {
+   "frontier_item": "FT.ODYSSEY_TRANSFER.re-earn",
+   "module": "phase_listeners.py",
+   "receipt": "PHASE_LISTENERS.json",
+   "species": "PHASE_LISTENER"
+  },
+  {
    "frontier_item": "FT.MODEL_EXECUTION.static-skeleton",
    "module": "physical_primitives.py",
    "receipt": "PHYSICAL_PRIMITIVES.json",
@@ -340,6 +400,12 @@
    "species": "HCLI_SELF_OPTIMIZE"
   },
   {
+   "frontier_item": "FT.HCLI_SELF.no-launch",
+   "module": "resident_health.py",
+   "receipt": "RESIDENT_HEALTH.json",
+   "species": "RESIDENT_TELEMETRY"
+  },
+  {
    "frontier_item": "FT.HCLI_SELF.emit-workunits",
    "module": "resident_identity.py",
    "receipt": "RESIDENT_IDENTITY.json",
@@ -356,6 +422,12 @@
    "module": "resident_optimizer.py",
    "receipt": "RESIDENT_OPTIMIZER.json",
    "species": "CHILD_PROPOSAL"
+  },
+  {
+   "frontier_item": "FT.CHILD_RESIDENT.install-dry-run",
+   "module": "restart_supervisor.py",
+   "receipt": "RESTART_SUPERVISOR.json",
+   "species": "RESIDENT_RESTART"
   },
   {
    "frontier_item": "FT.MODEL_REPRESENTATION.meta-gates-3-9",
@@ -380,6 +452,12 @@
    "module": "specimen_verify.py",
    "receipt": "SPECIMEN_VERIFICATION.json",
    "species": "SPECIMEN_VERIFY"
+  },
+  {
+   "frontier_item": "FT.EXPERIMENT_TURNAROUND.refresh",
+   "module": "sprint_profile.py",
+   "receipt": "ODYSSEY_LAUNCH_SPRINT_PROFILE.json",
+   "species": "WALL_ATTRIBUTION"
   },
   {
    "frontier_item": "FT.GPU_KERNELS.static-warnings",
@@ -418,10 +496,22 @@
    "species": "TEACHER_CAPTURE"
   },
   {
+   "frontier_item": "FT.MODEL_REPRESENTATION.teacher-capture",
+   "module": "teacher_corpus_expansion.py",
+   "receipt": "TEACHER_CORPUS_EXPANSION.json",
+   "species": "TEACHER_PLAN"
+  },
+  {
    "frontier_item": "FT.MODEL_CAPABILITY.tournament-refuse",
    "module": "tournament.py",
    "receipt": "TOURNAMENT_READINESS.json",
    "species": "CAPABILITY_GATE"
+  },
+  {
+   "frontier_item": "FT.VERIFICATION.repro",
+   "module": "trial_freeze.py",
+   "receipt": "HCLI_AUTONOMY_BUILD.json",
+   "species": "TRIAL_BUILD_SEAL"
   },
   {
    "frontier_item": "FT.LATENCY.cpu-turnaround",
@@ -434,6 +524,12 @@
    "module": "wakeup.py",
    "receipt": "RECEIPT_WAKEUP.json",
    "species": "HCLI_SELF_OPTIMIZE"
+  },
+  {
+   "frontier_item": "FT.HCLI_SELF.emit-workunits",
+   "module": "work_events.py",
+   "receipt": "WORK_EVENT_CONTRACT.json",
+   "species": "EVENT_CONTRACT"
   },
   {
    "frontier_item": "FT.HCLI_SELF.no-launch",
@@ -451,15 +547,17 @@
  "broken": [],
  "claim_boundary": "Static sidecar artifact. No hardware measurement.",
  "counts": {
-  "bound": 73,
+  "bound": 89,
   "broken": 0,
   "distinct_frontier_items": 40,
-  "distinct_species": 42,
+  "distinct_species": 58,
   "infrastructure_excluded": 5,
   "unbound_production": 1
  },
  "frontier_view_keys": [
   "ABI_VERDICT_HARNESS.json",
+  "ACCELERATOR_WORKUNITS.json",
+  "ADAPTIVE_VERIFICATION.json",
   "ANE_PREBOARD.json",
   "AUTONOMY_SCARS.json",
   "AUTONOMY_TRIALS.json",
@@ -483,9 +581,14 @@
   "EVIDENCE_SNAPSHOT.json",
   "EXPERIMENT_TURNAROUND.json",
   "EXPERT_BANK_SCHOOL.json",
+  "EXTERNAL_SPECIMEN_SEAL.json",
+  "FALLBACK_RESIDENT.json",
+  "FLASH_BPW_LADDER.json",
+  "FLASH_META_REPLAN.json",
   "FLASH_NR_COMPLETE.json",
   "FLASH_NX_COMPLETENESS_AUDIT.json",
   "FLASH_ORGAN_SCHOOLS.json",
+  "FLASH_ORGAN_WORKGRAPHS.json",
   "FPGA_ENGINE_SCHOOL.json",
   "FPGA_MULTIFIDELITY.json",
   "FRONTIER_STATE.json",
@@ -494,7 +597,9 @@
   "GREEN_MACHINE.json",
   "HARDWARE_DOCTOR.json",
   "HBM_DOCTOR.json",
+  "HCLI_AUTONOMY_BUILD.json",
   "HCLI_FUTURE_WORKUNITS.json",
+  "HCLI_SELF_PROFILE.json",
   "HMF_MANAGED_OBJECTS.json",
   "HWIR_V1.json",
   "LPC_BASELINES.json",
@@ -507,8 +612,11 @@
   "NGRAM_SCHOOL.json",
   "ODYSSEY2_LAW_STORE.json",
   "ODYSSEY3_ADVERSARY.json",
+  "ODYSSEY_CONSOLIDATED_RUN.json",
   "ODYSSEY_LAUNCH_GATE.json",
+  "ODYSSEY_LAUNCH_SPRINT_PROFILE.json",
   "P6_PRIMITIVE_PROJECTION.json",
+  "PHASE_LISTENERS.json",
   "PHYSICAL_PRIMITIVES.json",
   "PROPAGATION_STATE.json",
   "PROTECTED_WINDOW_PLAN.json",
@@ -517,10 +625,12 @@
   "RECEIPT_WAKEUP.json",
   "REPRO_SCIENCE.json",
   "RESIDENT_API_AUDIT.json",
+  "RESIDENT_HEALTH.json",
   "RESIDENT_IDENTITY.json",
   "RESIDENT_INSTALL_CONTRACT.json",
   "RESIDENT_OPTIMIZER.json",
   "RESIDENT_SANDBOX.json",
+  "RESTART_SUPERVISOR.json",
   "ROUTER_SENSITIVE_ALLOCATION.json",
   "SCAR_SCHEDULING.json",
   "SPECIMEN_VERIFICATION.json",
@@ -530,8 +640,10 @@
   "SUPER_RESIDENT_FLOOR.json",
   "TABULA_FLOOR.json",
   "TEACHER_CORPUS_CONTRACT.json",
+  "TEACHER_CORPUS_EXPANSION.json",
   "TOURNAMENT_READINESS.json",
-  "WORKGRAPH_STATE.json"
+  "WORKGRAPH_STATE.json",
+  "WORK_EVENT_CONTRACT.json"
  ],
  "gaps_closed": [
   "result_does_not_feed_a_named_frontier (70 modules)",
@@ -564,7 +676,7 @@
   "workunit": "tools.future.orchestration.emit_workunit(module)"
  },
  "schema": "hawking.future.orchestration.v1",
- "seal_sha256": "c70a72972bf2203152b1355312d74521a11b7235d8d7a82e81f69a76c80e31ee",
+ "seal_sha256": "199f7b28864d83b299e07178c7c3dcec61179c5898136b5553ae7f4533714a61",
  "unbound_production": [
   "autonomy_run.py"
  ],

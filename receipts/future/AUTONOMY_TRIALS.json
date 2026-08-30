@@ -8,7 +8,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T15:01:48Z",
+  "recorded_at": "2026-08-30T15:17:23Z",
   "recorded_by": "tools/future/autonomy_trial.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -142,7 +142,7 @@
    "path_taken": "disk:receipts/future/QUALIFICATION_PIPELINE.json"
   }
  ],
- "head": "448bbd79d6f9b3c4737d60191620bb4605a919e9",
+ "head": "1697edcb950204dd0346ac14417f0cb5688df772",
  "integration_points": {
   "codex_behaviors.py": "Codex blocker list is data in CODEX_REPORTED_BLOCKERS plus pinned evidence.",
   "debugger.py": "Process recovery is judged from process_failed/completed + process_recovered.",
@@ -372,7 +372,7 @@
   ]
  },
  "schema": "hawking.future.autonomy_trial.v1",
- "seal_sha256": "ffdbe55e7eff2ecfe4040ea34786fd4a485afb0fa3f98311158784747688dff8",
+ "seal_sha256": "0ee13292233b7c40f45c5b9f1b05032d4ec5bc47616f3803a3b49bd2ac08e1d2",
  "thirteen_acceptance_conditions": [
   "recover_state",
   "identify_live_frontier",

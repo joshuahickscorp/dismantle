@@ -6,7 +6,7 @@
    "cost": "git_query",
    "cost_state": "MEASURED_SELF_DIRTY",
    "does_not_decide": true,
-   "median_ms": 138.566,
+   "median_ms": 155.972,
    "removal": {
     "kind": "wait",
     "what_would_remove_it": "Pass --no-optional-locks on the HCLI git.status argv (the sidecar path already does). That skips the index refresh. The lock doctor is durability after a kill, not the removal of the wait."
@@ -21,7 +21,7 @@
    "cost": "subprocess_launch",
    "cost_state": "MEASURED_SELF_DIRTY",
    "does_not_decide": true,
-   "median_ms": 26.078,
+   "median_ms": 26.019,
    "removal": {
     "kind": "call",
     "what_would_remove_it": "In-process pytest runner for tiny files already imported in this interpreter, and reuse one git child for batched read-only queries. Spawn stays for isolation of untrusted commands."
@@ -36,7 +36,7 @@
    "cost": "scheduler_decision",
    "cost_state": "MEASURED_SELF_DIRTY",
    "does_not_decide": true,
-   "median_ms": 1.742,
+   "median_ms": 1.858,
    "removal": {
     "kind": "information",
     "what_would_remove_it": "Keep a ready-set incrementally instead of scanning all units every dispatch, and debounce _persist to a dirty flag. The scan is cheap next to git.status; persist is the scheduler cost that actually copies."
@@ -51,7 +51,7 @@
    "cost": "source_receipt_io",
    "cost_state": "MEASURED_SELF_DIRTY",
    "does_not_decide": true,
-   "median_ms": 0.662,
+   "median_ms": 1.119,
    "removal": {
     "kind": "re-read",
     "what_would_remove_it": "Content-address the evidence blob (mtime+size or sha) and skip a persist when the DAG hash is unchanged. Receipts are already sealed; the cache key is the seal."
@@ -66,7 +66,7 @@
    "cost": "context_construction",
    "cost_state": "MEASURED_SELF_DIRTY",
    "does_not_decide": true,
-   "median_ms": 0.176,
+   "median_ms": 0.257,
    "removal": {
     "kind": "copy",
     "what_would_remove_it": "Treat sealed receipts as the authority and put only paths + seals in context, fetching bodies on miss. FT.CONTEXT.disk-authority already names this bug: a context blob must not compete with a receipt."
@@ -77,32 +77,32 @@
   },
   {
    "actionable": true,
-   "cheapest_falsifier": "Time ToolRegistry.get+validate (this analog) against git_query. If routing median_ms is not in the ranked head, do not rewrite the dispatcher.",
-   "cost": "tool_routing",
-   "cost_state": "MEASURED_SELF_DIRTY",
-   "does_not_decide": true,
-   "median_ms": 0.119,
-   "removal": {
-    "kind": "call",
-    "what_would_remove_it": "Stop calling git.status on every turn. Route status through the sidecar git() (already --no-optional-locks) or skip untracked. Routing itself does not need a new dispatcher."
-   },
-   "status": "HYPOTHESIS",
-   "why_this_cost_exists": "ToolRegistry.invoke looks up a name, validates input, checks permissions, calls the handler, validates output. The dict lookup is cheap; the handler (often git.status or a network fetch) is the cost mis-attributed to routing.",
-   "worked_example": false
-  },
-  {
-   "actionable": true,
    "cheapest_falsifier": "This module's negative control: `true` and `exit 0` must come back rejected. If they are admitted, the overhead is fiction and the verifier is the bug. If rejected and median_ms is in the tail, do not rewrite it.",
    "cost": "verifier_overhead",
    "cost_state": "MEASURED_SELF_DIRTY",
    "does_not_decide": true,
-   "median_ms": 0.105,
+   "median_ms": 0.166,
    "removal": {
     "kind": "call",
     "what_would_remove_it": "Cache admissibility by command hash. Do not weaken the vacuous-command refuse: a verifier nobody has watched reject is a verifier that will silently drift."
    },
    "status": "HYPOTHESIS",
    "why_this_cost_exists": "command_is_admissible tokenizes, splits on shell combinators, and AST-parses python -c bodies so `true` / `exit 0` / `cmd || true` cannot launder a pass. evaluate_python_test_file may spawn pytest.",
+   "worked_example": false
+  },
+  {
+   "actionable": true,
+   "cheapest_falsifier": "Time ToolRegistry.get+validate (this analog) against git_query. If routing median_ms is not in the ranked head, do not rewrite the dispatcher.",
+   "cost": "tool_routing",
+   "cost_state": "MEASURED_SELF_DIRTY",
+   "does_not_decide": true,
+   "median_ms": 0.16,
+   "removal": {
+    "kind": "call",
+    "what_would_remove_it": "Stop calling git.status on every turn. Route status through the sidecar git() (already --no-optional-locks) or skip untracked. Routing itself does not need a new dispatcher."
+   },
+   "status": "HYPOTHESIS",
+   "why_this_cost_exists": "ToolRegistry.invoke looks up a name, validates input, checks permissions, calls the handler, validates output. The dict lookup is cheap; the handler (often git.status or a network fetch) is the cost mis-attributed to routing.",
    "worked_example": false
   },
   {
@@ -178,17 +178,16 @@
    "reason": null,
    "self_timing": {
     "evidence_class": "SELF_MEASURED_DIRTY",
-    "max_ms": 1.848,
-    "median_ms": 1.742,
-    "min_ms": 1.728,
-    "n": 3,
+    "max_ms": 1.958,
+    "median_ms": 1.858,
+    "min_ms": 1.758,
+    "n": 2,
     "not_a_hardware_measurement": true,
     "not_protected_absolute": true,
-    "range_ms": 0.12,
+    "range_ms": 0.2,
     "samples_ms": [
-     1.848,
-     1.742,
-     1.728
+     1.958,
+     1.758
     ],
     "use": "rank and prune; decide nothing"
    },
@@ -245,17 +244,16 @@
    "reason": null,
    "self_timing": {
     "evidence_class": "SELF_MEASURED_DIRTY",
-    "max_ms": 26.728,
-    "median_ms": 26.078,
-    "min_ms": 24.861,
-    "n": 3,
+    "max_ms": 26.123,
+    "median_ms": 26.019,
+    "min_ms": 25.914,
+    "n": 2,
     "not_a_hardware_measurement": true,
     "not_protected_absolute": true,
-    "range_ms": 1.867,
+    "range_ms": 0.209,
     "samples_ms": [
-     26.728,
-     26.078,
-     24.861
+     26.123,
+     25.914
     ],
     "use": "rank and prune; decide nothing"
    },
@@ -279,24 +277,23 @@
     "worked_example": false
    },
    "last": {
-    "bytes_read": 424439,
+    "bytes_read": 422560,
     "receipts_read": 8
    },
    "measurement_kind": "receipt_read_plus_tempfile_fsync",
    "reason": null,
    "self_timing": {
     "evidence_class": "SELF_MEASURED_DIRTY",
-    "max_ms": 1.487,
-    "median_ms": 0.662,
-    "min_ms": 0.657,
-    "n": 3,
+    "max_ms": 1.568,
+    "median_ms": 1.119,
+    "min_ms": 0.669,
+    "n": 2,
     "not_a_hardware_measurement": true,
     "not_protected_absolute": true,
-    "range_ms": 0.83,
+    "range_ms": 0.899,
     "samples_ms": [
-     1.487,
-     0.657,
-     0.662
+     1.568,
+     0.669
     ],
     "use": "rank and prune; decide nothing"
    },
@@ -328,17 +325,16 @@
    "reason": null,
    "self_timing": {
     "evidence_class": "SELF_MEASURED_DIRTY",
-    "max_ms": 0.326,
-    "median_ms": 0.176,
-    "min_ms": 0.173,
-    "n": 3,
+    "max_ms": 0.329,
+    "median_ms": 0.257,
+    "min_ms": 0.186,
+    "n": 2,
     "not_a_hardware_measurement": true,
     "not_protected_absolute": true,
-    "range_ms": 0.153,
+    "range_ms": 0.143,
     "samples_ms": [
-     0.326,
-     0.176,
-     0.173
+     0.329,
+     0.186
     ],
     "use": "rank and prune; decide nothing"
    },
@@ -372,17 +368,16 @@
    "reason": null,
    "self_timing": {
     "evidence_class": "SELF_MEASURED_DIRTY",
-    "max_ms": 0.202,
-    "median_ms": 0.119,
-    "min_ms": 0.112,
-    "n": 3,
+    "max_ms": 0.201,
+    "median_ms": 0.16,
+    "min_ms": 0.119,
+    "n": 2,
     "not_a_hardware_measurement": true,
     "not_protected_absolute": true,
-    "range_ms": 0.09,
+    "range_ms": 0.082,
     "samples_ms": [
-     0.202,
-     0.119,
-     0.112
+     0.201,
+     0.119
     ],
     "use": "rank and prune; decide nothing"
    },
@@ -423,17 +418,16 @@
    "reason": null,
    "self_timing": {
     "evidence_class": "SELF_MEASURED_DIRTY",
-    "max_ms": 0.239,
-    "median_ms": 0.105,
-    "min_ms": 0.099,
-    "n": 3,
+    "max_ms": 0.231,
+    "median_ms": 0.166,
+    "min_ms": 0.1,
+    "n": 2,
     "not_a_hardware_measurement": true,
     "not_protected_absolute": true,
-    "range_ms": 0.14,
+    "range_ms": 0.131,
     "samples_ms": [
-     0.239,
-     0.105,
-     0.099
+     0.231,
+     0.1
     ],
     "use": "rank and prune; decide nothing"
    },
@@ -480,7 +474,7 @@
    },
    "is_hcli_path": false,
    "last": {
-    "n_lines": 809,
+    "n_lines": 745,
     "returncode": 0,
     "timed_out": false
    },
@@ -489,17 +483,16 @@
    "reason": null,
    "self_timing": {
     "evidence_class": "SELF_MEASURED_DIRTY",
-    "max_ms": 140.451,
-    "median_ms": 138.566,
-    "min_ms": 136.286,
-    "n": 3,
+    "max_ms": 173.181,
+    "median_ms": 155.972,
+    "min_ms": 138.763,
+    "n": 2,
     "not_a_hardware_measurement": true,
     "not_protected_absolute": true,
-    "range_ms": 4.165,
+    "range_ms": 34.418,
     "samples_ms": [
-     138.566,
-     140.451,
-     136.286
+     173.181,
+     138.763
     ],
     "use": "rank and prune; decide nothing"
    },
@@ -574,7 +567,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T15:10:44Z",
+  "recorded_at": "2026-08-30T15:19:44Z",
   "recorded_by": "tools/future/hcli_self_profile.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -608,50 +601,50 @@
  "ranked": [
   {
    "cost": "git_query",
-   "median_ms": 138.566,
-   "n": 3,
+   "median_ms": 155.972,
+   "n": 2,
    "rank": 1,
    "rank_use": "SELF_MEASURED_DIRTY rank and prune; decide nothing"
   },
   {
    "cost": "subprocess_launch",
-   "median_ms": 26.078,
-   "n": 3,
+   "median_ms": 26.019,
+   "n": 2,
    "rank": 2,
    "rank_use": "SELF_MEASURED_DIRTY rank and prune; decide nothing"
   },
   {
    "cost": "scheduler_decision",
-   "median_ms": 1.742,
-   "n": 3,
+   "median_ms": 1.858,
+   "n": 2,
    "rank": 3,
    "rank_use": "SELF_MEASURED_DIRTY rank and prune; decide nothing"
   },
   {
    "cost": "source_receipt_io",
-   "median_ms": 0.662,
-   "n": 3,
+   "median_ms": 1.119,
+   "n": 2,
    "rank": 4,
    "rank_use": "SELF_MEASURED_DIRTY rank and prune; decide nothing"
   },
   {
    "cost": "context_construction",
-   "median_ms": 0.176,
-   "n": 3,
+   "median_ms": 0.257,
+   "n": 2,
    "rank": 5,
    "rank_use": "SELF_MEASURED_DIRTY rank and prune; decide nothing"
   },
   {
-   "cost": "tool_routing",
-   "median_ms": 0.119,
-   "n": 3,
+   "cost": "verifier_overhead",
+   "median_ms": 0.166,
+   "n": 2,
    "rank": 6,
    "rank_use": "SELF_MEASURED_DIRTY rank and prune; decide nothing"
   },
   {
-   "cost": "verifier_overhead",
-   "median_ms": 0.105,
-   "n": 3,
+   "cost": "tool_routing",
+   "median_ms": 0.16,
+   "n": 2,
    "rank": 7,
    "rank_use": "SELF_MEASURED_DIRTY rank and prune; decide nothing"
   }
@@ -682,21 +675,21 @@
   "workunit": "one ANALYSIS unit; profile HCLI self costs as SELF_MEASURED_DIRTY; rank removal hypotheses; never promote"
  },
  "schema": "hawking.future.hcli_self_profile.v1",
- "seal_sha256": "09cc45a8665c9f6e803138d329bdcdbcc69d72a215d62fc1c3f9c50d801f541d",
+ "seal_sha256": "bc3711f83a0bbb13a80f2a8d634c4016eaa3427d0ccc13cbfcaf57334a918c6d",
  "self_timing": {
   "contamination": {
    "competing_workloads": [
     {
-     "cpu_pct": 37.1,
+     "cpu_pct": 2.6,
      "name": "/Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python",
-     "pid": 17912,
-     "rss_gib": 30.5
+     "pid": 45172,
+     "rss_gib": 30.12
     },
     {
-     "cpu_pct": 162.6,
+     "cpu_pct": 144.5,
      "name": "/Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python",
-     "pid": 35611,
-     "rss_gib": 10.24
+     "pid": 57653,
+     "rss_gib": 16.42
     }
    ],
    "contamination_class": "HEAVY",
@@ -704,9 +697,9 @@
    "did_not_take_gpu_lease": true,
    "live_campaign_declared": true,
    "live_campaign_note": "a live Codex Accelerator campaign is running in this repo; SELF_MEASURED_DIRTY timings are contaminated by construction",
-   "load_15m": 6.06591796875,
-   "load_1m": 4.8662109375,
-   "load_5m": 5.67431640625,
+   "load_15m": 6.3154296875,
+   "load_1m": 7.71630859375,
+   "load_5m": 6.59228515625,
    "memory_pressure_name": "warn",
    "ncpu": 28,
    "reason": null,
@@ -718,7 +711,7 @@
   "not_a_hardware_measurement": true,
   "not_protected_absolute": true,
   "numbers_decide_nothing": true,
-  "repeats": 3,
+  "repeats": 2,
   "use": "rank and prune; decide nothing"
  },
  "verifier_negative_fired": true,
@@ -746,7 +739,7 @@
   },
   "id": "H.GIT.no-optional-locks",
   "observed_after": {
-   "median_ms": 138.566,
+   "median_ms": 155.972,
    "note": "~0.2s is the recovered operator figure; median_ms is this run",
    "path": "git --no-optional-locks status --porcelain",
    "state": "MEASURED_SELF_DIRTY"

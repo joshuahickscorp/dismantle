@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T15:05:03Z",
+  "recorded_at": "2026-08-30T15:20:53Z",
   "recorded_by": "tools/future/router_science.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -888,7 +888,7 @@
   "topk_form": "no derivative; use route_margins"
  },
  "schema": "hawking.future.router_science.v1",
- "seal_sha256": "16a9c34fb029f9316ebf294b9eb4e54c3165ee1ed72469669f56860d60a7ccf4",
+ "seal_sha256": "919bc55b8676a556eb2811bcd3b32ac34b79ae950ddd72e630ae58e7379a3f16",
  "seam": {
   "hidden": 2560,
   "k": 10,

@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T15:05:03Z",
+  "recorded_at": "2026-08-30T15:20:50Z",
   "recorded_by": "tools/future/resident_identity.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -817,8 +817,8 @@
    "missing_evidence": [],
    "note": "HEAVY is recorded on CONTAMINATION_SCIENCE / QUALIFICATION_PIPELINE. This sidecar does not quiesce standing workers and does not seize the lock.",
    "value": {
-    "contamination_class": "LIGHT",
-    "contamination_reason": "contenders or mild pressure without a HEAVY trigger",
+    "contamination_class": "HEAVY",
+    "contamination_reason": "at least one HEAVY probe fired",
     "gpu_authority": false,
     "lease_present_on_qualification_receipt": false,
     "lock_file": {
@@ -2722,7 +2722,7 @@
       "receipts/future/QUALIFICATION_PIPELINE.json"
      ],
      "id": "W-CONTAMINATION-HEAVY",
-     "statement": "Contamination class is 'LIGHT'; qualification will not quiesce standing workers."
+     "statement": "Contamination class is 'HEAVY'; qualification will not quiesce standing workers."
     },
     {
      "blocks": [
@@ -3083,6 +3083,7 @@
    "blocked_workunits",
    "sandbox_authority.gpu_authority=false",
    "gpu_authority=false",
+   "contamination_class=HEAVY",
    "qualified_physical_ebpw=UNKNOWN",
    "tps_token_ns_evidence=UNKNOWN"
   ],
@@ -3099,6 +3100,7 @@
      "blocked_workunits",
      "sandbox_authority.gpu_authority=false",
      "gpu_authority=false",
+     "contamination_class=HEAVY",
      "qualified_physical_ebpw=UNKNOWN"
     ],
     "named_refusal": "REJECTED: tps_token_ns_evidence: protected TPS/token_ns must be UNKNOWN; got 24.4086",
@@ -3115,12 +3117,13 @@
      "blocked_workunits",
      "sandbox_authority.gpu_authority=false",
      "gpu_authority=false",
+     "contamination_class=HEAVY",
      "qualified_physical_ebpw=UNKNOWN",
      "tps_token_ns_evidence=UNKNOWN"
     ],
-    "named_refusal": "REJECTED: known_weaknesses is empty while real blockers exist: blocked_workunits, sandbox_authority.gpu_authority=false, gpu_authority=false, qualified_physical_ebpw=UNKNOWN, tps_token_ns_evidence=UNKNOWN",
+    "named_refusal": "REJECTED: known_weaknesses is empty while real blockers exist: blocked_workunits, sandbox_authority.gpu_authority=false, gpu_authority=false, contamination_class=HEAVY, qualified_physical_ebpw=UNKNOWN, tps_token_ns_evidence=UNKNOWN",
     "reasons": [
-     "known_weaknesses is empty while real blockers exist: blocked_workunits, sandbox_authority.gpu_authority=false, gpu_authority=false, qualified_physical_ebpw=UNKNOWN, tps_token_ns_evidence=UNKNOWN"
+     "known_weaknesses is empty while real blockers exist: blocked_workunits, sandbox_authority.gpu_authority=false, gpu_authority=false, contamination_class=HEAVY, qualified_physical_ebpw=UNKNOWN, tps_token_ns_evidence=UNKNOWN"
     ],
     "status": "REJECTED"
    }
@@ -3314,7 +3317,7 @@
   }
  },
  "schema": "hawking.future.resident_identity.v1",
- "seal_sha256": "7b01c4c3c6a62583f9e218e28b0a29758cb0c354a9c481e6e03f66976b3c2f8b",
+ "seal_sha256": "7f946a0e1d1342303b3b26b610deff9965dc1e1ac1620f3180db04dd50bd60f8",
  "version": 1,
  "work_unit": {
   "assigned_runtime": null,

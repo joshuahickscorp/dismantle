@@ -129,6 +129,25 @@ BINDINGS: dict[str, tuple[str, str]] = {
     # Odyssey I, and the only long-running honest work source on a host with
     # no GPU.
     "autonomy_scars.py":          ("FT.HCLI_SELF.emit-workunits", "AUTONOMY_DEFECT"),
+    # The sprint tooling. Each drives a frontier item that already existed; none
+    # invents one, because a binding to a frontier nobody is watching informs
+    # nothing.
+    "trial_freeze.py":            ("FT.VERIFICATION.repro", "TRIAL_BUILD_SEAL"),
+    "work_events.py":             ("FT.HCLI_SELF.emit-workunits", "EVENT_CONTRACT"),
+    "restart_supervisor.py":      ("FT.CHILD_RESIDENT.install-dry-run", "RESIDENT_RESTART"),
+    "fallback_resident.py":       ("FT.CHILD_RESIDENT.install-dry-run", "RESIDENT_FALLBACK"),
+    "adaptive_verification.py":   ("FT.VERIFICATION.repro", "MULTI_FIDELITY_SCREEN"),
+    "phase_listeners.py":         ("FT.ODYSSEY_TRANSFER.re-earn", "PHASE_LISTENER"),
+    "consolidated_run.py":        ("FT.ODYSSEY_TRANSFER.re-earn", "ODYSSEY_RUN_DESCRIPTOR"),
+    "accelerator_workunits.py":   ("FT.GPU_KERNELS.ready-protected", "ACCELERATOR_SPECIES"),
+    "hcli_self_profile.py":       ("FT.LATENCY.cpu-turnaround", "HCLI_SELF_OPTIMIZATION"),
+    "flash_organ_workgraphs.py":  ("FT.MODEL_REPRESENTATION.meta-gates-3-9", "ORGAN_WORKGRAPH"),
+    "external_specimen_seal.py":  ("FT.MODEL_CAPABILITY.hard-gates", "EXTERNAL_SPECIMEN"),
+    "sprint_profile.py":          ("FT.EXPERIMENT_TURNAROUND.refresh", "WALL_ATTRIBUTION"),
+    "resident_health.py":         ("FT.HCLI_SELF.no-launch", "RESIDENT_TELEMETRY"),
+    "flash_meta_replan.py":       ("FT.MODEL_REPRESENTATION.meta-gates-3-9", "META_REPLAN"),
+    "teacher_corpus_expansion.py": ("FT.MODEL_REPRESENTATION.teacher-capture", "TEACHER_PLAN"),
+    "flash_bpw_ladder.py":        ("FT.MODEL_REPRESENTATION.meta-gates-3-9", "EBPW_LADDER"),
     "metal_reachability.py":      ("FT.MODEL_EXECUTION.complete-token", "HOST_CAPABILITY"),
     "specimen_verify.py":          ("FT.MODEL_CAPABILITY.hard-gates", "SPECIMEN_VERIFY"),
     # --- physical graph / fpga / ane --------------------------------------

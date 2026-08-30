@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T15:05:40Z",
+  "recorded_at": "2026-08-30T15:21:27Z",
   "recorded_by": "tools/future/super_resident.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -963,7 +963,7 @@
   ]
  },
  "schema": "hawking.future.super_resident.v1",
- "seal_sha256": "050ca402781b0d8afd08a5d32d53c3897b8ac92aedf59178f33340b67c4f7c3d",
+ "seal_sha256": "1b5d6aab853b06865b0359a6923e6328db3f2a4feb29b667ae3269ac1a4d8ad4",
  "started_model_process": false,
  "status": {
   "flash": {

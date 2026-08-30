@@ -8,7 +8,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T15:10:40Z",
+  "recorded_at": "2026-08-30T15:11:37Z",
   "recorded_by": "tools/future/adaptive_verification.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -406,6 +406,6 @@
   "workunit": "one CPU_ANALYSIS unit; screen one candidate cheapest-first and name the meta_funnel gates that were therefore not launched"
  },
  "schema": "hawking.future.adaptive_verification.v1",
- "seal_sha256": "bb15e5aff9b51f94dbeb307ac76e060cd9e33bf1f81e7aec1973155e6657d3ac",
+ "seal_sha256": "f4aa67b91c62885255b5cec66f646a3580665aefcab40b2d297662b47f6373fc",
  "version": 1
 }

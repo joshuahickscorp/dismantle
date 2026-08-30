@@ -14,7 +14,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T15:04:04Z",
+  "recorded_at": "2026-08-30T15:19:51Z",
   "recorded_by": "tools/future/odyssey3_adversary.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -1797,7 +1797,7 @@
   "MACHINE_LOCAL",
   "REFUTED"
  ],
- "seal_sha256": "6dce6e5d02ccd5861edd7f826b1e51cc8398884ac5ac627aec98c02fef4656c5",
+ "seal_sha256": "3ba5d8208aa1a9e8f64b76c0fa02d60fed4ec5fdd4a355d69fc1b6e769e7bfb7",
  "selection_rule": "selection_score = cost_units / p_refutation; emit lowest score first (cheapest expected cost per refutation). Every law gets at least one attack or the emitter refuses.",
  "version": 1
 }

@@ -69,6 +69,14 @@ SYSTEMS: dict[str, tuple[str, str, str]] = {
     "ane_preboard": ("ane_preboard.py", "ANE_PREBOARD.json", "codex_finishes_now"),
     "resident_optimizer": ("resident_optimizer.py", "RESIDENT_OPTIMIZER.json", "tournament_winner"),
     "qualification_automation": ("qualification_pipeline.py", "QUALIFICATION_PIPELINE.json", "codex_finishes_now"),
+    "propagation_engine": ("propagate.py", "PROPAGATION_STATE.json", "codex_finishes_now"),
+    "derived_freshness": ("freshness.py", "DERIVED_FRESHNESS.json", "codex_finishes_now"),
+    "abi_verdict_harness": ("abi_verdicts.py", "ABI_VERDICT_HARNESS.json", "codex_finishes_now"),
+    "p6_primitive_projection": ("p6_projection.py", "P6_PRIMITIVE_PROJECTION.json", "u50_arrives"),
+    "git_lock_durability": ("git_lock_doctor.py", "GIT_LOCK_DURABILITY_REPORT.json", "era_iii"),
+    "meta_downstream_ready": ("meta_ready.py", "META_DOWNSTREAM_READY.json", "era_ii"),
+    "cuda_lowbit_hypotheses": ("cuda_lowbit_hypotheses.py", "CUDA_LOWBIT_HYPOTHESES.json", "cuda_arrives"),
+    "moe_physical_school": ("moe_physical_school.py", "MOE_PHYSICAL_SCHOOL.json", "era_ii"),
 }
 
 ARRIVALS = {

@@ -78,17 +78,17 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T01:43:57Z",
+  "recorded_at": "2026-08-30T02:52:11Z",
   "recorded_by": "tools/future/workunit_species.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
  },
  "claim_boundary": "Static sidecar artifact. No hardware measurement.",
  "counts": {
-  "blocked_flash_units": 31,
+  "blocked_flash_units": 32,
   "ready_qwen27_units": 13,
   "species": 10,
-  "work_units": 63
+  "work_units": 64
  },
  "gaps_closed": [
   "ten species with evidence parents, bounded authority, resource class, verifier, budget, stop condition",
@@ -216,7 +216,7 @@
   "tools.accelerator.physical_qualification.workunits_for_candidates": "emits READY physical candidates through WorkUnit.to_dict plus extras (candidate_id, model, diagnostic_command, protected_command, claim_boundary)"
  },
  "schema": "hawking.future.workunit_species.v1",
- "seal_sha256": "3d88cb22e9354ab1bf3dc33f9160a05c79f52846b379df2b4e957d765ce73aeb",
+ "seal_sha256": "3e675ec86304e7d0e5f77bc0d21cbbc0318f2baf827ff947c1f6de39d7a5b00c",
  "species": [
   {
    "bounded_authority": [
@@ -821,6 +821,7 @@
    "flash-meta-sub1-coherent",
    "flash-p6-act-quant-simdgroup",
    "flash-p6-batched-down-qat",
+   "flash-p6-fused-down-shared-combine",
    "flash-p6-fused-epilogue-stack",
    "flash-p6-hash-single-command-buffer",
    "flash-p6-learned-expert-cache-reuse",
@@ -843,7 +844,7 @@
    "flash-source-bf16-simd"
   ],
   "by_species": {
-   "accelerator_candidate_qualification": 47,
+   "accelerator_candidate_qualification": 48,
    "architecture_transfer": 8,
    "fpga_simulation": 1,
    "fusion_simulation": 1,
@@ -855,10 +856,10 @@
    "odyssey_iii_adversarial_experiment": 1
   },
   "by_status": {
-   "blocked": 37,
+   "blocked": 38,
    "pending": 26
   },
-  "count": 63,
+  "count": 64,
   "identities": {
    "candidate_ids": [
     "flash-attention-gate-fusion",
@@ -872,6 +873,7 @@
     "flash-meta-sub1-coherent",
     "flash-p6-act-quant-simdgroup",
     "flash-p6-batched-down-qat",
+    "flash-p6-fused-down-shared-combine",
     "flash-p6-fused-epilogue-stack",
     "flash-p6-hash-single-command-buffer",
     "flash-p6-learned-expert-cache-reuse",
@@ -936,6 +938,7 @@
     "accelerator.physical.flash-meta-sub1-coherent",
     "accelerator.physical.flash-p6-act-quant-simdgroup",
     "accelerator.physical.flash-p6-batched-down-qat",
+    "accelerator.physical.flash-p6-fused-down-shared-combine",
     "accelerator.physical.flash-p6-fused-epilogue-stack",
     "accelerator.physical.flash-p6-hash-single-command-buffer",
     "accelerator.physical.flash-p6-learned-expert-cache-reuse",
@@ -1893,19 +1896,80 @@
    "assigned_runtime": null,
    "attempts": 0,
    "backend_task_id": null,
+   "blocked_reason": "Flash source-independent NX and protected complete-token capability are not qualified; this full composition still requires matched parity/coherence and protected latency",
+   "candidate_id": "flash-p6-fused-down-shared-combine",
+   "candidate_status": "BLOCKED",
+   "claim_boundary": "WorkUnit is a proposal; receipt and protected capability gates remain authoritative",
+   "classification": "BLOCKED",
+   "content_hash": "9cb3884063a1a5de9935da2d5114574f67fbfa2446f6f0d6d46581e4ad56127f",
+   "dependencies": [
+    "accelerator.physical.flash-p6-routed-fp4-down-bf16-fused",
+    "accelerator.physical.flash-shared-fp8-down-combine-fused"
+   ],
+   "description": "Qualify flash-p6-fused-down-shared-combine on Flash; region=Flash P6 routed FP4 W2 plus shared FP8 W2 and BF16 combine; falsifier=source organ/reference parity is required; no whole-model Flash parity or NX claim is implied",
+   "diagnostic_command": [
+    "python3",
+    "-m",
+    "hcli",
+    "agentos",
+    "flash-executable",
+    "--repo-root",
+    ".",
+    "--emit",
+    "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/flash-p6-fused-down-shared-combine-plan.json"
+   ],
+   "effect_class": "REVERSIBLE",
+   "failure_context": null,
+   "finished_at": null,
+   "id": "accelerator.physical.flash-p6-fused-down-shared-combine",
+   "model": "Flash",
+   "preferred_backend": "metal",
+   "protected_command": [
+    "python3",
+    "-m",
+    "hcli",
+    "agentos",
+    "flash-executable",
+    "--repo-root",
+    ".",
+    "--emit",
+    "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/flash-p6-fused-down-shared-combine-plan.json"
+   ],
+   "provider": "accelerator_physical_queue",
+   "ready_at": null,
+   "repair_depth": 0,
+   "repair_exhausted": false,
+   "repair_reason": null,
+   "repair_root": null,
+   "repairs": null,
+   "requires_quiescence": true,
+   "resource_class": "GPU_EXCLUSIVE",
+   "role": "accelerator_physical_qualification",
+   "running_at": null,
+   "source_receipt": "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
+   "species": "accelerator_candidate_qualification",
+   "status": "blocked",
+   "verification": null,
+   "verifier": "accelerator.physical.flash-p6-fused-down-shared-combine",
+   "workspace": "repo-root"
+  },
+  {
+   "assigned_backend": null,
+   "assigned_runtime": null,
+   "attempts": 0,
+   "backend_task_id": null,
    "blocked_reason": "Flash source-independent NX and protected complete-token capability are not qualified; composition interactions require a fresh parity/coherence and latency receipt",
    "candidate_id": "flash-p6-fused-epilogue-stack",
    "candidate_status": "BLOCKED",
    "claim_boundary": "WorkUnit is a proposal; receipt and protected capability gates remain authoritative",
    "classification": "BLOCKED",
-   "content_hash": "8aacd7207ba2eccbbf72b43303beadc542d91e0fc7dea0af0414705c2e27ae16",
+   "content_hash": "878257b0ade18948ee908f8c74a0df4fe2e3c6ab2f0aa03c6688cb6081f1f13a",
    "dependencies": [
     "accelerator.physical.flash-p6-hash-single-command-buffer",
     "accelerator.physical.flash-p6-prefix-concurrent-wave",
     "accelerator.physical.flash-p6-routed-fp4-gate-up-swiglu-fused",
-    "accelerator.physical.flash-p6-routed-fp4-down-bf16-fused",
+    "accelerator.physical.flash-p6-fused-down-shared-combine",
     "accelerator.physical.flash-shared-fp8-gate-up-swiglu-fused",
-    "accelerator.physical.flash-shared-fp8-down-combine-fused",
     "accelerator.physical.flash-p6-batched-down-qat"
    ],
    "description": "Qualify flash-p6-fused-epilogue-stack on Flash; region=Flash reusable P6 composed latency stack; falsifier=source organ/reference parity is required; no whole-model Flash parity or NX claim is implied",
@@ -1965,9 +2029,9 @@
    "candidate_status": "BLOCKED",
    "claim_boundary": "WorkUnit is a proposal; receipt and protected capability gates remain authoritative",
    "classification": "BLOCKED",
-   "content_hash": "f45a84e4ee8b9c6cdf1052d4599ab8498a03e61d637daaaff0547575c88ba6a4",
+   "content_hash": "b1f3eaccc6ce5fa6b923c70e615f5c70218f15d577b96e05416fcf78571d63e3",
    "dependencies": [],
-   "description": "Qualify flash-p6-hash-single-command-buffer on Flash; region=Flash hash-route P6 command-buffer topology; falsifier=source organ/reference parity is required; no whole-model Flash parity or NX claim is implied",
+   "description": "Qualify flash-p6-hash-single-command-buffer on Flash; region=Flash P6 command-buffer topology after route resolution; falsifier=source organ/reference parity is required; no whole-model Flash parity or NX claim is implied",
    "diagnostic_command": [
     "python3",
     "-m",

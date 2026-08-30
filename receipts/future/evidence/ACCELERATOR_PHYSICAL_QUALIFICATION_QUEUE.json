@@ -2422,6 +2422,98 @@
       "transfer_evidence": []
     },
     {
+      "affected_physical_region": "Flash P6 routed FP4 W2 plus shared FP8 W2 and BF16 combine",
+      "baseline_path": "receipts/headless/FLASH_NEXT_NOETIC_EXECUTABLE.json",
+      "blocked_reason": "Flash source-independent NX and protected complete-token capability are not qualified; this full composition still requires matched parity/coherence and protected latency",
+      "candidate_id": "flash-p6-fused-down-shared-combine",
+      "capability_contract": "blocked until a complete source-independent NX executable and independent capability path exist",
+      "control_configuration": {
+        "mode": "source_oracle_or_scaffold",
+        "source_oracle_controls": {
+          "HAWKING_DSV4F_P6_FP4_DOWN_BF16_FUSED": "0",
+          "HAWKING_DSV4F_P6_FP4_DOWN_SHARED_COMBINE_FUSED": "0"
+        }
+      },
+      "dependencies": [
+        "flash-p6-routed-fp4-down-bf16-fused",
+        "flash-shared-fp8-down-combine-fused"
+      ],
+      "diagnostic_command": [
+        "python3",
+        "-m",
+        "hcli",
+        "agentos",
+        "flash-executable",
+        "--repo-root",
+        ".",
+        "--emit",
+        "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/flash-p6-fused-down-shared-combine-plan.json"
+      ],
+      "evidence": [],
+      "exact_mutation": {
+        "source_oracle_controls": {
+          "HAWKING_DSV4F_P6_FP4_DOWN_BF16_FUSED": "1",
+          "HAWKING_DSV4F_P6_FP4_DOWN_SHARED_COMBINE_FUSED": "1"
+        }
+      },
+      "expected_active_byte_change": "unchanged routed FP4 weights, shared FP8 weights, E8M0 scales, and seven activation-quantized input buffers; inactive scratch allocation is reduced by 344022 structural bytes and transient down traffic is reduced",
+      "expected_dispatch_reduction": "replace the fifteen downstream W2/cast/combine dispatches with one source-order fused launch; fixed-hash P6 structural topology falls from 60 to 46 while the seven authoritative QAT launches remain",
+      "expected_eliminated_work": "six routed FP4 W2 dispatches, one shared FP8 W2 dispatch, seven FP32-to-BF16 cast dispatches, one final combine dispatch, and the routed/shared down intermediates",
+      "expected_gpu_ns_mechanism": "one 256-thread row launch reads six resident indirect FP4 records, computes source-order FP4 rows with BF16 round-trips, computes the shared FP8 row with 128-value blocks, then performs the fixed-six numeric-order BF16 combine directly into output",
+      "expected_intermediate_byte_reduction": "bypass six routed down_f32/down_bf16 buffers and the shared down FP32/BF16 staging at the consumer; inactive authority scratch is one-byte guarded storage, while QAT bytes and final caller-owned BF16 output remain explicit",
+      "measurements": {
+        "absence_reasons": {
+          "accepted_tps": "awaiting native protected complete-token receipt",
+          "active_representation_bytes_per_token": "awaiting native protected complete-token receipt",
+          "actual_read_bytes_per_token": "awaiting native protected complete-token receipt",
+          "complete_wall_ns_per_accepted_token": "awaiting native protected complete-token receipt",
+          "dispatches_per_token": "awaiting native protected complete-token receipt",
+          "fallback_count": "awaiting native protected complete-token receipt",
+          "gpu_ns_per_token": "awaiting native protected complete-token receipt",
+          "resident_bytes": "awaiting native protected complete-token receipt",
+          "sync_ns_per_token": "awaiting native protected complete-token receipt",
+          "total_nx_bytes": "awaiting native protected complete-token receipt",
+          "transient_bytes_per_token": "awaiting native protected complete-token receipt"
+        },
+        "accepted_tps": null,
+        "active_representation_bytes_per_token": null,
+        "actual_read_bytes_per_token": null,
+        "complete_wall_ns_per_accepted_token": null,
+        "dispatches_per_token": null,
+        "fallback_count": null,
+        "gpu_ns_per_token": null,
+        "resident_bytes": null,
+        "status": "NOT_MEASURED",
+        "sync_ns_per_token": null,
+        "total_nx_bytes": null,
+        "transient_bytes_per_token": null
+      },
+      "model": "Flash",
+      "parity_contract": "source organ/reference parity is required; no whole-model Flash parity or NX claim is implied",
+      "protected_command": [
+        "python3",
+        "-m",
+        "hcli",
+        "agentos",
+        "flash-executable",
+        "--repo-root",
+        ".",
+        "--emit",
+        "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/flash-p6-fused-down-shared-combine-plan.json"
+      ],
+      "scope_tags": [
+        "MODEL_LOCAL"
+      ],
+      "source_evidence": [
+        "crates/hawking-core/shaders/moe.metal",
+        "crates/hawking-core/shaders/matmul.metal",
+        "crates/hawking-core/src/gravity_deepseek_v4_p6_device.rs",
+        "crates/hawking-core/src/metal/mod.rs"
+      ],
+      "status": "BLOCKED",
+      "transfer_evidence": []
+    },
+    {
       "affected_physical_region": "Flash reusable P6 composed latency stack",
       "baseline_path": "receipts/headless/FLASH_NEXT_NOETIC_EXECUTABLE.json",
       "blocked_reason": "Flash source-independent NX and protected complete-token capability are not qualified; composition interactions require a fresh parity/coherence and latency receipt",
@@ -2431,11 +2523,11 @@
         "mode": "source_oracle_or_scaffold",
         "source_oracle_controls": {
           "HAWKING_DSV4F_FP4_GATE_UP_SWIGLU_FUSED": "0",
-          "HAWKING_DSV4F_FP8_SHARED_DOWN_COMBINE_FUSED": "0",
           "HAWKING_DSV4F_FP8_SHARED_GATE_UP_SWIGLU_FUSED": "0",
           "HAWKING_DSV4F_P6_BATCHED_DOWN_QAT": "0",
           "HAWKING_DSV4F_P6_FP4_DOWN_BF16_FUSED": "0",
           "HAWKING_DSV4F_P6_FP4_DOWN_BF16_SIMD": "0",
+          "HAWKING_DSV4F_P6_FP4_DOWN_SHARED_COMBINE_FUSED": "0",
           "HAWKING_DSV4F_P6_FP4_GATE_UP_SWIGLU_SIMD": "0",
           "HAWKING_DSV4F_P6_PREFIX_CONCURRENT": "0",
           "HAWKING_DSV4F_P6_SINGLE_CB": "0"
@@ -2445,9 +2537,8 @@
         "flash-p6-hash-single-command-buffer",
         "flash-p6-prefix-concurrent-wave",
         "flash-p6-routed-fp4-gate-up-swiglu-fused",
-        "flash-p6-routed-fp4-down-bf16-fused",
+        "flash-p6-fused-down-shared-combine",
         "flash-shared-fp8-gate-up-swiglu-fused",
-        "flash-shared-fp8-down-combine-fused",
         "flash-p6-batched-down-qat"
       ],
       "diagnostic_command": [
@@ -2465,21 +2556,21 @@
       "exact_mutation": {
         "source_oracle_controls": {
           "HAWKING_DSV4F_FP4_GATE_UP_SWIGLU_FUSED": "1",
-          "HAWKING_DSV4F_FP8_SHARED_DOWN_COMBINE_FUSED": "1",
           "HAWKING_DSV4F_FP8_SHARED_GATE_UP_SWIGLU_FUSED": "1",
           "HAWKING_DSV4F_P6_BATCHED_DOWN_QAT": "1",
           "HAWKING_DSV4F_P6_FP4_DOWN_BF16_FUSED": "1",
           "HAWKING_DSV4F_P6_FP4_DOWN_BF16_SIMD": "0",
+          "HAWKING_DSV4F_P6_FP4_DOWN_SHARED_COMBINE_FUSED": "1",
           "HAWKING_DSV4F_P6_FP4_GATE_UP_SWIGLU_SIMD": "0",
           "HAWKING_DSV4F_P6_PREFIX_CONCURRENT": "1",
           "HAWKING_DSV4F_P6_SINGLE_CB": "1"
         }
       },
       "expected_active_byte_change": "unchanged source FP4/FP8 weights, E8M0 scales, route IDs/weights, and BF16 final output contract",
-      "expected_dispatch_reduction": "P6 structural target is 60 to 8 dispatches, 10 to 5 compute encoders, and 2 to 1 command buffer on the hash path; measure interaction rather than summing isolated wins",
-      "expected_eliminated_work": "the independently bounded routed/shared gate-up epilogues, seven-to-one down activation-quantization wave, routed down cast boundary, shared down/combine boundary, one prefix encoder, and one hash-route command-buffer wait",
+      "expected_dispatch_reduction": "P6 structural target is 60 to 7 dispatches, 10 to 4 compute encoders, and 2 to 1 command buffer on the hash path; the fixed-seven QAT producer and full down fusion share one serial dependency encoder, so measure interaction rather than summing isolated wins",
+      "expected_eliminated_work": "the independently bounded routed/shared gate-up epilogues, seven-to-one down activation-quantization wave, full routed FP4/shared FP8 down-and-combine tail, one prefix encoder, and one hash-route command-buffer wait",
       "expected_gpu_ns_mechanism": "compose the existing guarded primitives with explicit dependency waves; no new arithmetic or representation is introduced by the stack row",
-      "expected_intermediate_byte_reduction": "retain only the output buffers required by the fixed-six combine contract; dormant authority scratch remains allocated for matched A/B compatibility",
+      "expected_intermediate_byte_reduction": "retain only the output buffers required by the fixed-six combine contract; the full down fusion bypasses routed/shared down staging while dormant authority scratch remains allocated for matched A/B compatibility",
       "measurements": {
         "absence_reasons": {
           "accepted_tps": "awaiting native protected complete-token receipt",
@@ -2534,7 +2625,7 @@
       "transfer_evidence": []
     },
     {
-      "affected_physical_region": "Flash hash-route P6 command-buffer topology",
+      "affected_physical_region": "Flash P6 command-buffer topology after route resolution",
       "baseline_path": "receipts/headless/FLASH_NEXT_NOETIC_EXECUTABLE.json",
       "blocked_reason": "Flash complete source-independent NX is not qualified and the single-command-buffer path has no matched parity/coherence and protected-latency receipt",
       "candidate_id": "flash-p6-hash-single-command-buffer",
@@ -2564,9 +2655,9 @@
         }
       },
       "expected_active_byte_change": "unchanged source BF16/FP4/FP8 bytes; NX active bytes unqualified",
-      "expected_dispatch_reduction": "1 command buffer and wait instead of the historical 2; 60 dispatches remain unchanged",
-      "expected_eliminated_work": "one CPU-visible commit/wait between the device-resident up/SwiGLU wave and down/combine wave",
-      "expected_gpu_ns_mechanism": "append the dependency-ordered down/combine concurrent waves to the first P6 command buffer while preserving explicit wave boundaries and Metal hazards",
+      "expected_dispatch_reduction": "hash path: 1 command buffer and wait instead of historical 2; learned path: 2 instead of 3; 60 dispatches remain unchanged",
+      "expected_eliminated_work": "one CPU-visible commit/wait between the device-resident up/SwiGLU wave and down/combine wave; on learned layers the same switch removes the post-residency phase fence",
+      "expected_gpu_ns_mechanism": "append dependency-ordered down/combine waves to the first P6 command buffer while preserving the route/readback residency boundary, explicit wave boundaries, and Metal hazards",
       "expected_intermediate_byte_reduction": "0; all routed/shared BF16 and route-control buffers remain resident",
       "measurements": {
         "absence_reasons": {
@@ -2653,11 +2744,11 @@
           "HAWKING_DSV4F_P6_LEARNED_READER_REUSE": "1"
         }
       },
-      "expected_active_byte_change": "unchanged source FP4/FP8 and activation bytes; only CPU source-cache lifetime changes",
+      "expected_active_byte_change": "unchanged source FP4/FP8 and activation bytes; overlapping routes reuse existing GPU weight buffers rather than uploading a second copy",
       "expected_dispatch_reduction": "0; device dispatch topology, route-ID readback, and GPU upload boundaries are unchanged",
-      "expected_eliminated_work": "repeated source chunk materialization for expert bundles that overlap successive learned routes",
-      "expected_gpu_ns_mechanism": "avoid repeated host source reads before GPU upload when route overlap exists; route overlap and complete-token wall time are the falsifiers",
-      "expected_intermediate_byte_reduction": "retain at most the exact six-bundle hot capacity; no dense or decoded representation is added",
+      "expected_eliminated_work": "repeated source chunk materialization and GPU re-upload of expert bundles that overlap successive learned routes",
+      "expected_gpu_ns_mechanism": "avoid repeated host source reads and GPU buffer uploads before the expert wave when route overlap exists; route overlap, allocation bytes, and complete-token wall time are the falsifiers",
+      "expected_intermediate_byte_reduction": "retain at most the exact six-bundle hot capacity plus the same six-entry GPU weight handle cache; pre-route FP4 placeholders are one byte per pointer component, and no dense or decoded representation is added",
       "measurements": {
         "absence_reasons": {
           "accepted_tps": "awaiting native protected complete-token receipt",
@@ -2910,7 +3001,7 @@
           "HAWKING_DSV4F_P6_FP4_DOWN_BF16_FUSED": "1"
         }
       },
-      "expected_active_byte_change": "unchanged six routed FP4 W2 weight/scale buffers, per-expert QAT outputs, and final BF16 combine bytes",
+      "expected_active_byte_change": "unchanged six routed FP4 W2 weight/scale buffers, per-expert QAT outputs, and final BF16 combine bytes; inactive routed down_f32 scratch is reduced by 98298 structural bytes",
       "expected_dispatch_reduction": "reduce the fixed hash graph from 60 to 49 dispatches; P6 batch 2 falls from 22 to 11",
       "expected_eliminated_work": "six routed W2 launches and six routed FP32-to-BF16 cast launches",
       "expected_gpu_ns_mechanism": "one fixed-six indirect launch consumes the already-authoritative per-expert E4M3FN/UE8M0 QAT buffers, preserves FP4 block accumulation, and writes exact BF16 W2 outputs",
@@ -3087,11 +3178,11 @@
           "HAWKING_DSV4F_P6_FP4_GATE_UP_SWIGLU_SIMD": "0"
         }
       },
-      "expected_active_byte_change": "unchanged six routed FP4 weight/scale buffers, activation quantization, and per-expert BF16 output contract",
+      "expected_active_byte_change": "unchanged six routed FP4 weight/scale buffers and activation bytes; inactive gate/up scratch allocation is reduced by 147432 structural bytes",
       "expected_dispatch_reduction": "reduce P6 batch 1 from 38 to 9 and the fixed hash graph from 60 to 31 dispatches",
       "expected_eliminated_work": "six routed W1 launches, six routed W3 launches, twelve routed FP32-to-BF16 casts, and six routed SwiGLU launches",
       "expected_gpu_ns_mechanism": "one fixed-six indirect-address launch performs paired source-order FP4 reductions, exact BF16 round-trips, clamp/SwiGLU, and device route weighting; explicit read/write residency covers every indirect buffer",
-      "expected_intermediate_byte_reduction": "routed gate/up FP32 and BF16 staging buffers remain allocated for authority compatibility but are not written by the fused candidate",
+      "expected_intermediate_byte_reduction": "routed gate/up FP32 and BF16 staging is replaced by one-byte guarded placeholders; the live per-expert BF16 SwiGLU output contract remains explicit",
       "measurements": {
         "absence_reasons": {
           "accepted_tps": "awaiting native protected complete-token receipt",
@@ -3498,7 +3589,10 @@
       "candidate_id": "flash-pipeline-cache-reuse",
       "capability_contract": "blocked until a complete source-independent NX executable and independent capability path exist",
       "control_configuration": {
-        "mode": "source_oracle_or_scaffold"
+        "mode": "source_oracle_or_scaffold",
+        "source_oracle_controls": {
+          "HAWKING_FLASH_PIPELINE_CACHE_REUSE": "0"
+        }
       },
       "dependencies": [],
       "diagnostic_command": [
@@ -3845,7 +3939,10 @@
       "candidate_id": "flash-router-topk-fusion",
       "capability_contract": "blocked until a complete source-independent NX executable and independent capability path exist",
       "control_configuration": {
-        "mode": "source_oracle_or_scaffold"
+        "mode": "source_oracle_or_scaffold",
+        "source_oracle_controls": {
+          "HAWKING_FLASH_ROUTER_TOPK_FUSED": "0"
+        }
       },
       "dependencies": [],
       "diagnostic_command": [
@@ -3926,7 +4023,10 @@
       "candidate_id": "flash-shared-fp8-down-combine-fused",
       "capability_contract": "blocked until a complete source-independent NX executable and independent capability path exist",
       "control_configuration": {
-        "mode": "source_oracle_or_scaffold"
+        "mode": "source_oracle_or_scaffold",
+        "source_oracle_controls": {
+          "HAWKING_DSV4F_FP8_SHARED_DOWN_COMBINE_FUSED": "0"
+        }
       },
       "dependencies": [],
       "diagnostic_command": [
@@ -3946,7 +4046,7 @@
           "HAWKING_DSV4F_FP8_SHARED_DOWN_COMBINE_FUSED": "1"
         }
       },
-      "expected_active_byte_change": "unchanged shared FP8 W2 weights, E8M0 scales, shared activation-quantized bytes, and six routed BF16 output rows",
+      "expected_active_byte_change": "unchanged shared FP8 W2 weights, E8M0 scales, shared activation-quantized bytes, and six routed BF16 output rows; inactive shared down scratch is reduced by 24574 structural bytes",
       "expected_dispatch_reduction": "reduce the shared W2/cast/combine sequence from three dispatches to one; P6 hash topology falls from 60 to 58",
       "expected_eliminated_work": "one shared FP8 W2 dispatch, one shared FP32-to-BF16 cast dispatch, and one standalone routed/shared combine dispatch per layer",
       "expected_gpu_ns_mechanism": "compute the source-order shared FP8 W2 row, explicitly round-trip it through BF16, then add the six routed BF16 rows in numeric-expert order before the final BF16 store",
@@ -4010,7 +4110,10 @@
       "candidate_id": "flash-shared-fp8-gate-up-swiglu-fused",
       "capability_contract": "blocked until a complete source-independent NX executable and independent capability path exist",
       "control_configuration": {
-        "mode": "source_oracle_or_scaffold"
+        "mode": "source_oracle_or_scaffold",
+        "source_oracle_controls": {
+          "HAWKING_DSV4F_FP8_SHARED_GATE_UP_SWIGLU_FUSED": "0"
+        }
       },
       "dependencies": [],
       "diagnostic_command": [
@@ -4030,11 +4133,11 @@
           "HAWKING_DSV4F_FP8_SHARED_GATE_UP_SWIGLU_FUSED": "1"
         }
       },
-      "expected_active_byte_change": "unchanged FP8 weight and activation reads; lower transient intermediate traffic",
+      "expected_active_byte_change": "unchanged FP8 weight and activation reads; inactive shared gate/up scratch allocation is reduced by 24572 structural bytes",
       "expected_dispatch_reduction": "reduce the shared gate/up/SwiGLU sequence from five dispatches to one",
       "expected_eliminated_work": "two shared FP8 matvec dispatches, two FP32-to-BF16 staging dispatches, and one standalone shared SwiGLU dispatch per layer",
       "expected_gpu_ns_mechanism": "pair the two source-order FP8 reductions and consume their explicit BF16 round-trips in one kernel",
-      "expected_intermediate_byte_reduction": "remove shared gate/up FP32 and BF16 staging traffic; fixed scratch allocation remains unchanged",
+      "expected_intermediate_byte_reduction": "remove shared gate/up FP32 and BF16 staging traffic; inactive shared scratch is replaced by one-byte guarded placeholders",
       "measurements": {
         "absence_reasons": {
           "accepted_tps": "awaiting native protected complete-token receipt",
@@ -4531,7 +4634,7 @@
   "claim_boundary": "This is a physical qualification frontier and HCLI WorkUnit proposal. It contains hypotheses and commands, not timing, placement, energy, TPS, capability, or promotion claims.",
   "counts": {
     "by_status": {
-      "BLOCKED": 30,
+      "BLOCKED": 31,
       "DIAGNOSTIC_PASS": 0,
       "DIAGNOSTIC_REJECT": 0,
       "INTEGRATED": 0,
@@ -4541,11 +4644,11 @@
       "READY_PROTECTED": 13,
       "STATIC_ONLY": 4
     },
-    "candidates": 47,
+    "candidates": 48,
     "ready": 13,
     "work_units": 13
   },
-  "fingerprint": "2f426604bab4044095706c8dcb2e10d1f750595fa60aa3b6f416dedf6f148cab",
+  "fingerprint": "24fb3af01fab27d8c991086eecb220be10f7502a782554b8725e4d034d82e0c4",
   "funnel": {
     "diagnostic_relative_ab": [],
     "native_parity": [],

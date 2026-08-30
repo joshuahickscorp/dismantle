@@ -3,6 +3,8 @@
     {
       "candidate_id": "qwen27-affine2-splitk4",
       "model": "Qwen27",
+      "outcome": "IMPLEMENTED_UNMEASURED",
+      "outcome_reason": "no protected result is present; implementation remains unmeasured",
       "scope_tags": [
         "MODEL_LOCAL"
       ],
@@ -12,6 +14,8 @@
     {
       "candidate_id": "qwen27-attention-gate-fusion",
       "model": "Qwen27",
+      "outcome": "IMPLEMENTED_UNMEASURED",
+      "outcome_reason": "no protected result is present; implementation remains unmeasured",
       "scope_tags": [
         "MODEL_LOCAL"
       ],
@@ -21,6 +25,8 @@
     {
       "candidate_id": "qwen27-ba-delta-fusion",
       "model": "Qwen27",
+      "outcome": "IMPLEMENTED_UNMEASURED",
+      "outcome_reason": "no protected result is present; implementation remains unmeasured",
       "scope_tags": [
         "MODEL_LOCAL"
       ],
@@ -30,6 +36,8 @@
     {
       "candidate_id": "qwen27-commit-timing-elision",
       "model": "Qwen27",
+      "outcome": "IMPLEMENTED_UNMEASURED",
+      "outcome_reason": "no protected result is present; implementation remains unmeasured",
       "scope_tags": [
         "MODEL_LOCAL"
       ],
@@ -39,6 +47,8 @@
     {
       "candidate_id": "qwen27-deltanet-inproj-fusion",
       "model": "Qwen27",
+      "outcome": "IMPLEMENTED_UNMEASURED",
+      "outcome_reason": "no protected result is present; implementation remains unmeasured",
       "scope_tags": [
         "MODEL_LOCAL"
       ],
@@ -48,6 +58,8 @@
     {
       "candidate_id": "qwen27-encoder-label-elision",
       "model": "Qwen27",
+      "outcome": "GENERIC_CANDIDATE",
+      "outcome_reason": "generic transfer remains unverified",
       "scope_tags": [
         "BACKEND_FAMILY",
         "GENERIC_CANDIDATE"
@@ -60,6 +72,8 @@
     {
       "candidate_id": "qwen27-fast-profile",
       "model": "Qwen27",
+      "outcome": "IMPLEMENTED_UNMEASURED",
+      "outcome_reason": "no protected result is present; implementation remains unmeasured",
       "scope_tags": [
         "MODEL_LOCAL"
       ],
@@ -69,6 +83,8 @@
     {
       "candidate_id": "qwen27-gqa-qkv-fusion",
       "model": "Qwen27",
+      "outcome": "IMPLEMENTED_UNMEASURED",
+      "outcome_reason": "no protected result is present; implementation remains unmeasured",
       "scope_tags": [
         "MODEL_LOCAL"
       ],
@@ -78,6 +94,8 @@
     {
       "candidate_id": "qwen27-pipeline-cache-reuse",
       "model": "Qwen27",
+      "outcome": "GENERIC_CANDIDATE",
+      "outcome_reason": "generic transfer remains unverified",
       "scope_tags": [
         "BACKEND_FAMILY",
         "GENERIC_CANDIDATE"
@@ -90,6 +108,8 @@
     {
       "candidate_id": "qwen27-pipeline-id-resolution",
       "model": "Qwen27",
+      "outcome": "GENERIC_CANDIDATE",
+      "outcome_reason": "generic transfer remains unverified",
       "scope_tags": [
         "BACKEND_FAMILY",
         "GENERIC_CANDIDATE"
@@ -102,6 +122,8 @@
     {
       "candidate_id": "qwen27-pipeline-state-elision",
       "model": "Qwen27",
+      "outcome": "GENERIC_CANDIDATE",
+      "outcome_reason": "generic transfer remains unverified",
       "scope_tags": [
         "BACKEND_FAMILY",
         "GENERIC_CANDIDATE"
@@ -114,6 +136,8 @@
     {
       "candidate_id": "qwen27-q2f-splitk4",
       "model": "Qwen27",
+      "outcome": "IMPLEMENTED_UNMEASURED",
+      "outcome_reason": "no protected result is present; implementation remains unmeasured",
       "scope_tags": [
         "MODEL_LOCAL"
       ],
@@ -123,6 +147,8 @@
     {
       "candidate_id": "qwen27-q4-vecgroup-x64",
       "model": "Qwen27",
+      "outcome": "IMPLEMENTED_UNMEASURED",
+      "outcome_reason": "no protected result is present; implementation remains unmeasured",
       "scope_tags": [
         "MODEL_LOCAL"
       ],
@@ -132,6 +158,8 @@
     {
       "candidate_id": "flash-attention-gate-fusion",
       "model": "Flash",
+      "outcome": "IMPLEMENTED_UNMEASURED",
+      "outcome_reason": "no protected result is present; implementation remains unmeasured",
       "scope_tags": [
         "MODEL_LOCAL"
       ],
@@ -141,6 +169,8 @@
     {
       "candidate_id": "flash-compact-moe-bf16-vec4",
       "model": "Flash",
+      "outcome": "IMPLEMENTED_UNMEASURED",
+      "outcome_reason": "no protected result is present; implementation remains unmeasured",
       "scope_tags": [
         "MODEL_LOCAL"
       ],
@@ -150,6 +180,8 @@
     {
       "candidate_id": "flash-compact-moe-epilogue",
       "model": "Flash",
+      "outcome": "IMPLEMENTED_UNMEASURED",
+      "outcome_reason": "no protected result is present; implementation remains unmeasured",
       "scope_tags": [
         "MODEL_LOCAL"
       ],
@@ -159,6 +191,8 @@
     {
       "candidate_id": "flash-encoder-label-elision",
       "model": "Flash",
+      "outcome": "GENERIC_CANDIDATE",
+      "outcome_reason": "generic transfer remains unverified",
       "scope_tags": [
         "BACKEND_FAMILY",
         "GENERIC_CANDIDATE"
@@ -171,6 +205,8 @@
     {
       "candidate_id": "flash-fullseq-catalog-cache",
       "model": "Flash",
+      "outcome": "IMPLEMENTED_UNMEASURED",
+      "outcome_reason": "no protected result is present; implementation remains unmeasured",
       "scope_tags": [
         "MODEL_LOCAL"
       ],
@@ -180,6 +216,8 @@
     {
       "candidate_id": "flash-fullseq-ordered-encoder",
       "model": "Flash",
+      "outcome": "IMPLEMENTED_UNMEASURED",
+      "outcome_reason": "no protected result is present; implementation remains unmeasured",
       "scope_tags": [
         "MODEL_LOCAL"
       ],
@@ -189,6 +227,8 @@
     {
       "candidate_id": "flash-hc-router-topk-fusion",
       "model": "Flash",
+      "outcome": "IMPLEMENTED_UNMEASURED",
+      "outcome_reason": "no protected result is present; implementation remains unmeasured",
       "scope_tags": [
         "MODEL_LOCAL"
       ],
@@ -198,6 +238,8 @@
     {
       "candidate_id": "flash-hc-staged-threadgroup",
       "model": "Flash",
+      "outcome": "IMPLEMENTED_UNMEASURED",
+      "outcome_reason": "no protected result is present; implementation remains unmeasured",
       "scope_tags": [
         "MODEL_LOCAL"
       ],
@@ -207,6 +249,8 @@
     {
       "candidate_id": "flash-meta-sub1-coherent",
       "model": "Flash",
+      "outcome": "IMPLEMENTED_UNMEASURED",
+      "outcome_reason": "no protected result is present; implementation remains unmeasured",
       "scope_tags": [
         "MODEL_LOCAL"
       ],
@@ -216,6 +260,8 @@
     {
       "candidate_id": "flash-p6-act-quant-simdgroup",
       "model": "Flash",
+      "outcome": "IMPLEMENTED_UNMEASURED",
+      "outcome_reason": "no protected result is present; implementation remains unmeasured",
       "scope_tags": [
         "MODEL_LOCAL"
       ],
@@ -225,6 +271,19 @@
     {
       "candidate_id": "flash-p6-batched-down-qat",
       "model": "Flash",
+      "outcome": "IMPLEMENTED_UNMEASURED",
+      "outcome_reason": "no protected result is present; implementation remains unmeasured",
+      "scope_tags": [
+        "MODEL_LOCAL"
+      ],
+      "status": "BLOCKED",
+      "transfer_evidence": []
+    },
+    {
+      "candidate_id": "flash-p6-fused-down-shared-combine",
+      "model": "Flash",
+      "outcome": "IMPLEMENTED_UNMEASURED",
+      "outcome_reason": "no protected result is present; implementation remains unmeasured",
       "scope_tags": [
         "MODEL_LOCAL"
       ],
@@ -234,6 +293,8 @@
     {
       "candidate_id": "flash-p6-fused-epilogue-stack",
       "model": "Flash",
+      "outcome": "IMPLEMENTED_UNMEASURED",
+      "outcome_reason": "no protected result is present; implementation remains unmeasured",
       "scope_tags": [
         "MODEL_LOCAL"
       ],
@@ -243,6 +304,8 @@
     {
       "candidate_id": "flash-p6-hash-single-command-buffer",
       "model": "Flash",
+      "outcome": "IMPLEMENTED_UNMEASURED",
+      "outcome_reason": "no protected result is present; implementation remains unmeasured",
       "scope_tags": [
         "MODEL_LOCAL"
       ],
@@ -252,6 +315,8 @@
     {
       "candidate_id": "flash-p6-learned-expert-cache-reuse",
       "model": "Flash",
+      "outcome": "IMPLEMENTED_UNMEASURED",
+      "outcome_reason": "no protected result is present; implementation remains unmeasured",
       "scope_tags": [
         "MODEL_LOCAL"
       ],
@@ -261,6 +326,8 @@
     {
       "candidate_id": "flash-p6-learned-reader-reuse",
       "model": "Flash",
+      "outcome": "IMPLEMENTED_UNMEASURED",
+      "outcome_reason": "no protected result is present; implementation remains unmeasured",
       "scope_tags": [
         "MODEL_LOCAL"
       ],
@@ -270,6 +337,8 @@
     {
       "candidate_id": "flash-p6-prefix-concurrent-wave",
       "model": "Flash",
+      "outcome": "IMPLEMENTED_UNMEASURED",
+      "outcome_reason": "no protected result is present; implementation remains unmeasured",
       "scope_tags": [
         "MODEL_LOCAL"
       ],
@@ -279,6 +348,8 @@
     {
       "candidate_id": "flash-p6-routed-fp4-down-bf16-fused",
       "model": "Flash",
+      "outcome": "IMPLEMENTED_UNMEASURED",
+      "outcome_reason": "no protected result is present; implementation remains unmeasured",
       "scope_tags": [
         "MODEL_LOCAL"
       ],
@@ -288,6 +359,8 @@
     {
       "candidate_id": "flash-p6-routed-fp4-down-bf16-simd",
       "model": "Flash",
+      "outcome": "IMPLEMENTED_UNMEASURED",
+      "outcome_reason": "no protected result is present; implementation remains unmeasured",
       "scope_tags": [
         "MODEL_LOCAL"
       ],
@@ -297,6 +370,8 @@
     {
       "candidate_id": "flash-p6-routed-fp4-gate-up-swiglu-fused",
       "model": "Flash",
+      "outcome": "IMPLEMENTED_UNMEASURED",
+      "outcome_reason": "no protected result is present; implementation remains unmeasured",
       "scope_tags": [
         "MODEL_LOCAL"
       ],
@@ -306,6 +381,8 @@
     {
       "candidate_id": "flash-p6-routed-fp4-gate-up-swiglu-simd",
       "model": "Flash",
+      "outcome": "IMPLEMENTED_UNMEASURED",
+      "outcome_reason": "no protected result is present; implementation remains unmeasured",
       "scope_tags": [
         "MODEL_LOCAL"
       ],
@@ -315,6 +392,8 @@
     {
       "candidate_id": "flash-p6-routed-fp4-simdgroup",
       "model": "Flash",
+      "outcome": "IMPLEMENTED_UNMEASURED",
+      "outcome_reason": "no protected result is present; implementation remains unmeasured",
       "scope_tags": [
         "MODEL_LOCAL"
       ],
@@ -324,6 +403,8 @@
     {
       "candidate_id": "flash-p6-shared-fp8-simdgroup",
       "model": "Flash",
+      "outcome": "IMPLEMENTED_UNMEASURED",
+      "outcome_reason": "no protected result is present; implementation remains unmeasured",
       "scope_tags": [
         "MODEL_LOCAL"
       ],
@@ -333,6 +414,8 @@
     {
       "candidate_id": "flash-p7-mhc-pre-simdgroup",
       "model": "Flash",
+      "outcome": "IMPLEMENTED_UNMEASURED",
+      "outcome_reason": "no protected result is present; implementation remains unmeasured",
       "scope_tags": [
         "MODEL_LOCAL"
       ],
@@ -342,6 +425,8 @@
     {
       "candidate_id": "flash-pipeline-cache-reuse",
       "model": "Flash",
+      "outcome": "GENERIC_CANDIDATE",
+      "outcome_reason": "generic transfer remains unverified",
       "scope_tags": [
         "BACKEND_FAMILY",
         "GENERIC_CANDIDATE"
@@ -354,6 +439,8 @@
     {
       "candidate_id": "flash-pipeline-id-resolution",
       "model": "Flash",
+      "outcome": "GENERIC_CANDIDATE",
+      "outcome_reason": "generic transfer remains unverified",
       "scope_tags": [
         "BACKEND_FAMILY",
         "GENERIC_CANDIDATE"
@@ -366,6 +453,8 @@
     {
       "candidate_id": "flash-qkv-gqa-rope-fusion",
       "model": "Flash",
+      "outcome": "IMPLEMENTED_UNMEASURED",
+      "outcome_reason": "no protected result is present; implementation remains unmeasured",
       "scope_tags": [
         "MODEL_LOCAL"
       ],
@@ -375,6 +464,8 @@
     {
       "candidate_id": "flash-routed-fp4-gate-up-swiglu-fused",
       "model": "Flash",
+      "outcome": "IMPLEMENTED_UNMEASURED",
+      "outcome_reason": "no protected result is present; implementation remains unmeasured",
       "scope_tags": [
         "MODEL_LOCAL"
       ],
@@ -384,6 +475,8 @@
     {
       "candidate_id": "flash-router-topk-fusion",
       "model": "Flash",
+      "outcome": "IMPLEMENTED_UNMEASURED",
+      "outcome_reason": "no protected result is present; implementation remains unmeasured",
       "scope_tags": [
         "MODEL_LOCAL"
       ],
@@ -393,6 +486,8 @@
     {
       "candidate_id": "flash-shared-fp8-down-combine-fused",
       "model": "Flash",
+      "outcome": "IMPLEMENTED_UNMEASURED",
+      "outcome_reason": "no protected result is present; implementation remains unmeasured",
       "scope_tags": [
         "MODEL_LOCAL"
       ],
@@ -402,6 +497,8 @@
     {
       "candidate_id": "flash-shared-fp8-gate-up-swiglu-fused",
       "model": "Flash",
+      "outcome": "IMPLEMENTED_UNMEASURED",
+      "outcome_reason": "no protected result is present; implementation remains unmeasured",
       "scope_tags": [
         "MODEL_LOCAL"
       ],
@@ -411,6 +508,8 @@
     {
       "candidate_id": "flash-source-bf16-simd",
       "model": "Flash",
+      "outcome": "IMPLEMENTED_UNMEASURED",
+      "outcome_reason": "no protected result is present; implementation remains unmeasured",
       "scope_tags": [
         "MODEL_LOCAL"
       ],
@@ -420,6 +519,8 @@
     {
       "candidate_id": "qwen27-affine2-splitk4-vec",
       "model": "Qwen27",
+      "outcome": "IMPLEMENTED_UNMEASURED",
+      "outcome_reason": "no protected result is present; implementation remains unmeasured",
       "scope_tags": [
         "MODEL_LOCAL"
       ],
@@ -429,6 +530,8 @@
     {
       "candidate_id": "qwen27-q2f-splitk4-vec",
       "model": "Qwen27",
+      "outcome": "IMPLEMENTED_UNMEASURED",
+      "outcome_reason": "no protected result is present; implementation remains unmeasured",
       "scope_tags": [
         "MODEL_LOCAL"
       ],
@@ -438,6 +541,8 @@
     {
       "candidate_id": "qwen27-resident-untimed-decode",
       "model": "Qwen27",
+      "outcome": "IMPLEMENTED_UNMEASURED",
+      "outcome_reason": "no protected result is present; implementation remains unmeasured",
       "scope_tags": [
         "MODEL_LOCAL"
       ],
@@ -1490,14 +1595,14 @@
       ]
     }
   ],
-  "fingerprint": "ff5b0b0746e897c0458ecee9b0e961126afe6d2f5ad8402492914ef0f4a1a1a9",
+  "fingerprint": "e7fed6de08a4d2c02e28a112291c36e2e777ec0a7abc55c365f1fee3fc2cb82b",
   "levels": [
     "SPECIMEN_IMPLEMENTATION",
     "ACCELERATOR_PRIMITIVE",
     "PHYSICAL_LAW"
   ],
   "physical_queue": {
-    "fingerprint": "2f426604bab4044095706c8dcb2e10d1f750595fa60aa3b6f416dedf6f148cab",
+    "fingerprint": "24fb3af01fab27d8c991086eecb220be10f7502a782554b8725e4d034d82e0c4",
     "path": "/Users/scammermike/Downloads/hawking/receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
     "schema": "hawking.accelerator.physical_qualification_queue.v1"
   },

@@ -1,9 +1,9 @@
 {
  "active_processes": [
   "1131 /Applications/Bl /Applications/Blender.app/Contents/MacOS/Blender -b --python /Users/scammermike/.grok-mcp/blender_headless_server.py",
-  "46975 /Library/Framewo /Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python tools/odyssey_ctl.py cycle --go --max-lanes 14 --grok-lanes 0 --loop-secs 300 --inner-sleep 3",
-  "47701 /Library/Framewo /Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python /Library/Frameworks/Python.framework/Versions/3.12/bin/hf download zai-org/GLM-5.3-Flash .gitattributes",
-  "48087 /Library/Framewo /Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python /Library/Frameworks/Python.framework/Versions/3.12/bin/hf download ibm-granite/granite-4.0-h-tiny .gita",
+  "16941 /Library/Framewo /Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python tools/odyssey_ctl.py cycle --go --max-lanes 14 --grok-lanes 0 --loop-secs 300 --inner-sleep 3",
+  "21666 /Library/Framewo /Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python /Library/Frameworks/Python.framework/Versions/3.12/bin/hf download zai-org/GLM-5.3-Flash .gitattributes",
+  "22436 /Library/Framewo /Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python /Library/Frameworks/Python.framework/Versions/3.12/bin/hf download thinkingmachines/Inkling-Small .gita",
   "98220 /Library/Framewo /Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python /Users/scammermike/Downloads/hawking/tools/odyssey/modellake_watch.py --poll-secs 0.10"
  ],
  "adversarial_attack": {
@@ -17,33 +17,39 @@
  "arrival_questions": {
   "codex_finishes_now": {
    "absent": [],
-   "answer": "13 of 13 systems are executable today, each with a module, a test and a sealed receipt on disk.",
+   "answer": "16 of 16 systems are executable today, each with a module, a test and a sealed receipt on disk.",
    "evidence": {
+    "abi_verdict_harness": "receipts/future/ABI_VERDICT_HARNESS.json",
     "ane_preboard": "receipts/future/ANE_PREBOARD.json",
     "candidate_queue_planner": "receipts/future/CANDIDATE_STAGED_PLAN.json",
     "codex_mutation_surface": "receipts/future/CODEX_MUTATION_SURFACE.json",
     "codex_receipt_ingestion": "receipts/future/CODEX_INGEST_STATE.json",
     "contamination_science": "receipts/future/CONTAMINATION_SCIENCE.json",
+    "derived_freshness": "receipts/future/DERIVED_FRESHNESS.json",
     "ebpw_category_validator": "receipts/future/EBPW_CATEGORY_VALIDATOR.json",
     "evidence_snapshot": "receipts/future/EVIDENCE_SNAPSHOT.json",
     "experiment_turnaround": "receipts/future/EXPERIMENT_TURNAROUND.json",
     "flash_nx_audit": "receipts/future/FLASH_NX_COMPLETENESS_AUDIT.json",
     "global_frontier": "receipts/future/CLAUDE_GLOBAL_FRONTIER.json",
+    "propagation_engine": "receipts/future/PROPAGATION_STATE.json",
     "qualification_automation": "receipts/future/QUALIFICATION_PIPELINE.json",
     "qwen27_profile_schema": "receipts/future/QWEN27_ACCELERATOR_PROFILE_SCHEMA.json",
     "static_kernel_preflight": "receipts/future/STATIC_KERNEL_PREFLIGHT.json"
    },
    "executable_now": [
+    "abi_verdict_harness",
     "ane_preboard",
     "candidate_queue_planner",
     "codex_mutation_surface",
     "codex_receipt_ingestion",
     "contamination_science",
+    "derived_freshness",
     "ebpw_category_validator",
     "evidence_snapshot",
     "experiment_turnaround",
     "flash_nx_audit",
     "global_frontier",
+    "propagation_engine",
     "qualification_automation",
     "qwen27_profile_schema",
     "static_kernel_preflight"
@@ -53,13 +59,15 @@
   },
   "cuda_arrives": {
    "absent": [],
-   "answer": "3 of 3 systems are executable today, each with a module, a test and a sealed receipt on disk.",
+   "answer": "4 of 4 systems are executable today, each with a module, a test and a sealed receipt on disk.",
    "evidence": {
+    "cuda_lowbit_hypotheses": "receipts/future/CUDA_LOWBIT_HYPOTHESES.json",
     "device_ascension": "receipts/future/DEVICE_ASCENSION_PIPELINE.json",
     "fusion": "receipts/future/FUSION_SIMULATION.json",
     "hmf_hgvas": "receipts/future/HMF_MANAGED_OBJECTS.json"
    },
    "executable_now": [
+    "cuda_lowbit_hypotheses",
     "device_ascension",
     "fusion",
     "hmf_hgvas"
@@ -69,12 +77,14 @@
   },
   "era_ii": {
    "absent": [],
-   "answer": "10 of 10 systems are executable today, each with a module, a test and a sealed receipt on disk.",
+   "answer": "12 of 12 systems are executable today, each with a module, a test and a sealed receipt on disk.",
    "evidence": {
     "decode_civilization": "receipts/future/DECODE_CIVILIZATION.json",
     "developer_platform": "receipts/future/DEVELOPER_PLATFORM.json",
     "expert_bank_school": "receipts/future/EXPERT_BANK_SCHOOL.json",
+    "meta_downstream_ready": "receipts/future/META_DOWNSTREAM_READY.json",
     "meta_experiment_funnel": "receipts/future/META_EXPERIMENT_FUNNEL.json",
+    "moe_physical_school": "receipts/future/MOE_PHYSICAL_SCHOOL.json",
     "negative_science_index": "receipts/future/NEGATIVE_SCIENCE_INDEX.json",
     "ngram_school": "receipts/future/NGRAM_SCHOOL.json",
     "physical_primitive_library": "receipts/future/PHYSICAL_PRIMITIVES.json",
@@ -86,7 +96,9 @@
     "decode_civilization",
     "developer_platform",
     "expert_bank_school",
+    "meta_downstream_ready",
     "meta_experiment_funnel",
+    "moe_physical_school",
     "negative_science_index",
     "ngram_school",
     "physical_primitive_library",
@@ -99,9 +111,10 @@
   },
   "era_iii": {
    "absent": [],
-   "answer": "5 of 5 systems are executable today, each with a module, a test and a sealed receipt on disk.",
+   "answer": "6 of 6 systems are executable today, each with a module, a test and a sealed receipt on disk.",
    "evidence": {
     "autonomous_reproducible_science": "receipts/future/REPRO_SCIENCE.json",
+    "git_lock_durability": "receipts/future/GIT_LOCK_DURABILITY_REPORT.json",
     "integration_attack": "receipts/future/INTEGRATION_ATTACK.json",
     "learned_physical_compiler": "receipts/future/LPC_DATASET.json",
     "odyssey_ii_law_store": "receipts/future/ODYSSEY2_LAW_STORE.json",
@@ -109,6 +122,7 @@
    },
    "executable_now": [
     "autonomous_reproducible_science",
+    "git_lock_durability",
     "integration_attack",
     "learned_physical_compiler",
     "odyssey_ii_law_store",
@@ -139,20 +153,22 @@
   },
   "u50_arrives": {
    "absent": [],
-   "answer": "5 of 5 systems are executable today, each with a module, a test and a sealed receipt on disk.",
+   "answer": "6 of 6 systems are executable today, each with a module, a test and a sealed receipt on disk.",
    "evidence": {
     "fpga_engine_school": "receipts/future/FPGA_ENGINE_SCHOOL.json",
     "fpga_multifidelity": "receipts/future/FPGA_MULTIFIDELITY.json",
     "hardware_doctor": "receipts/future/HARDWARE_DOCTOR.json",
     "hbm_doctor": "receipts/future/HBM_DOCTOR.json",
-    "hwir": "receipts/future/HWIR_V1.json"
+    "hwir": "receipts/future/HWIR_V1.json",
+    "p6_primitive_projection": "receipts/future/P6_PRIMITIVE_PROJECTION.json"
    },
    "executable_now": [
     "fpga_engine_school",
     "fpga_multifidelity",
     "hardware_doctor",
     "hbm_doctor",
-    "hwir"
+    "hwir",
+    "p6_primitive_projection"
    ],
    "partial": [],
    "question": "IF THE U50DD ARRIVED TOMORROW, WHAT SOFTWARE/HWIR/SIMULATION FLOOR ALREADY EXISTS?"
@@ -162,7 +178,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T01:02:06Z",
+  "recorded_at": "2026-08-30T02:52:12Z",
   "recorded_by": "tools/future/handoff.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -174,14 +190,17 @@
  ],
  "branch": "odyssey-i",
  "claim_boundary": "Static sidecar artifact. No hardware measurement.",
- "dirty_paths": 737,
+ "dirty_paths": 767,
  "gpu_authority": false,
- "head": "269a627f65f751707489a106357b801c53de0f6a",
- "head_subject": "fix(future): plan-size guard must not depend on a capped convenience integer",
+ "head": "b511b5e1b047a92224e0083ebdbdafe100bf00c2",
+ "head_subject": "feat(future): compounding-mode frontier entries F016-F020",
  "protected_measurements_taken": 0,
  "schema": "hawking.future.handoff.v1",
- "seal_sha256": "0dc355cdd55504e7e4c77e9ff64cb5bd6edc818f90a6625e833a1bc3ae8446f6",
+ "seal_sha256": "e5083bf560a60205ec2e308b171212e6b9e3a4e27fd0742faa8c2576e6e53385",
  "sidecar_commits": [
+  "b511b5e1b feat(future): compounding-mode frontier entries F016-F020",
+  "bb8c0f386 chore(future): resync derived artifacts against the live 47-candidate queue",
+  "6e246058f chore(future): final handoff at campaign close",
   "269a627f6 fix(future): plan-size guard must not depend on a capped convenience integer",
   "c5863bb69 feat(future): physical qualification pipeline",
   "b607d29dc feat(future): ANE preboard and resident optimizer",
@@ -193,10 +212,17 @@
  ],
  "system_counts": {
   "ABSENT": 0,
-  "EXECUTABLE": 41,
+  "EXECUTABLE": 49,
   "PARTIAL": 0
  },
  "systems": {
+  "abi_verdict_harness": {
+   "module": "tools/future/abi_verdicts.py",
+   "module_lines": 1497,
+   "receipt": "receipts/future/ABI_VERDICT_HARNESS.json",
+   "state": "EXECUTABLE",
+   "test": "tools/future/test_abi_verdicts.py"
+  },
   "ane_preboard": {
    "module": "tools/future/ane_preboard.py",
    "module_lines": 1773,
@@ -213,7 +239,7 @@
   },
   "candidate_queue_planner": {
    "module": "tools/future/candidate_planner.py",
-   "module_lines": 1526,
+   "module_lines": 1971,
    "receipt": "receipts/future/CANDIDATE_STAGED_PLAN.json",
    "state": "EXECUTABLE",
    "test": "tools/future/test_candidate_planner.py"
@@ -239,12 +265,26 @@
    "state": "EXECUTABLE",
    "test": "tools/future/test_contamination.py"
   },
+  "cuda_lowbit_hypotheses": {
+   "module": "tools/future/cuda_lowbit_hypotheses.py",
+   "module_lines": 1518,
+   "receipt": "receipts/future/CUDA_LOWBIT_HYPOTHESES.json",
+   "state": "EXECUTABLE",
+   "test": "tools/future/test_cuda_lowbit_hypotheses.py"
+  },
   "decode_civilization": {
    "module": "tools/future/decode_civilization.py",
    "module_lines": 1416,
    "receipt": "receipts/future/DECODE_CIVILIZATION.json",
    "state": "EXECUTABLE",
    "test": "tools/future/test_decode_civilization.py"
+  },
+  "derived_freshness": {
+   "module": "tools/future/freshness.py",
+   "module_lines": 1228,
+   "receipt": "receipts/future/DERIVED_FRESHNESS.json",
+   "state": "EXECUTABLE",
+   "test": "tools/future/test_freshness.py"
   },
   "developer_platform": {
    "module": "tools/future/devplatform.py",
@@ -269,7 +309,7 @@
   },
   "evidence_snapshot": {
    "module": "tools/future/evidence_snapshot.py",
-   "module_lines": 179,
+   "module_lines": 184,
    "receipt": "receipts/future/EVIDENCE_SNAPSHOT.json",
    "state": "EXECUTABLE",
    "test": "tools/future/test_evidence_snapshot.py"
@@ -316,9 +356,16 @@
    "state": "EXECUTABLE",
    "test": "tools/future/test_fusion_sim.py"
   },
+  "git_lock_durability": {
+   "module": "tools/future/git_lock_doctor.py",
+   "module_lines": 1237,
+   "receipt": "receipts/future/GIT_LOCK_DURABILITY_REPORT.json",
+   "state": "EXECUTABLE",
+   "test": "tools/future/test_git_lock_doctor.py"
+  },
   "global_frontier": {
    "module": "tools/future/global_frontier.py",
-   "module_lines": 431,
+   "module_lines": 530,
    "receipt": "receipts/future/CLAUDE_GLOBAL_FRONTIER.json",
    "state": "EXECUTABLE",
    "test": "tools/future/test_global_frontier.py"
@@ -379,12 +426,26 @@
    "state": "EXECUTABLE",
    "test": "tools/future/test_lpc_dataset.py"
   },
+  "meta_downstream_ready": {
+   "module": "tools/future/meta_ready.py",
+   "module_lines": 1816,
+   "receipt": "receipts/future/META_DOWNSTREAM_READY.json",
+   "state": "EXECUTABLE",
+   "test": "tools/future/test_meta_ready.py"
+  },
   "meta_experiment_funnel": {
    "module": "tools/future/meta_funnel.py",
    "module_lines": 1474,
    "receipt": "receipts/future/META_EXPERIMENT_FUNNEL.json",
    "state": "EXECUTABLE",
    "test": "tools/future/test_meta_funnel.py"
+  },
+  "moe_physical_school": {
+   "module": "tools/future/moe_physical_school.py",
+   "module_lines": 2241,
+   "receipt": "receipts/future/MOE_PHYSICAL_SCHOOL.json",
+   "state": "EXECUTABLE",
+   "test": "tools/future/test_moe_physical_school.py"
   },
   "negative_science_index": {
    "module": "tools/future/negative_index.py",
@@ -414,12 +475,26 @@
    "state": "EXECUTABLE",
    "test": "tools/future/test_odyssey3_adversary.py"
   },
+  "p6_primitive_projection": {
+   "module": "tools/future/p6_projection.py",
+   "module_lines": 1695,
+   "receipt": "receipts/future/P6_PRIMITIVE_PROJECTION.json",
+   "state": "EXECUTABLE",
+   "test": "tools/future/test_p6_projection.py"
+  },
   "physical_primitive_library": {
    "module": "tools/future/physical_primitives.py",
    "module_lines": 1845,
    "receipt": "receipts/future/PHYSICAL_PRIMITIVES.json",
    "state": "EXECUTABLE",
    "test": "tools/future/test_physical_primitives.py"
+  },
+  "propagation_engine": {
+   "module": "tools/future/propagate.py",
+   "module_lines": 1592,
+   "receipt": "receipts/future/PROPAGATION_STATE.json",
+   "state": "EXECUTABLE",
+   "test": "tools/future/test_propagate.py"
   },
   "qualification_automation": {
    "module": "tools/future/qualification_pipeline.py",
@@ -458,7 +533,7 @@
   },
   "static_kernel_preflight": {
    "module": "tools/future/static_kernel_verify.py",
-   "module_lines": 1970,
+   "module_lines": 2030,
    "receipt": "receipts/future/STATIC_KERNEL_PREFLIGHT.json",
    "state": "EXECUTABLE",
    "test": "tools/future/test_static_kernel_verify.py"
@@ -488,7 +563,7 @@
  "tests": {
   "exit_code": 0,
   "green": true,
-  "summary": "766 passed in 464.27s (0:07:44)"
+  "summary": "942 passed in 510.63s (0:08:30)"
  },
  "version": 1
 }

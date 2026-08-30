@@ -155,7 +155,11 @@ def control_env(row: Mapping[str, Any]) -> dict[str, str]:
     raw = row.get("control_configuration") or {}
     if not isinstance(raw, Mapping):
         return {}
-    nested = raw.get("child_fusion_env") or raw
+    nested = (
+        raw.get("child_fusion_env")
+        or raw.get("source_oracle_controls")
+        or raw
+    )
     if not isinstance(nested, Mapping):
         return {}
     return {str(k): str(v) for k, v in nested.items() if not isinstance(v, (dict, list))}
@@ -885,6 +889,442 @@ def promotion_table(queue: Mapping[str, Any], rows: Sequence[Mapping[str, Any]])
 READY_STATUSES = frozenset({"READY_DIAGNOSTIC", "READY_PROTECTED"})
 MEASURABLE_NOW = frozenset({"READY_PROTECTED"})
 
+# The first protected return is intentionally a small, named frontier. These
+# are the Flash mechanisms with a concrete source implementation and a
+# material physical falsifier; the rest of the blocked queue remains in the
+# graph but is not promoted into the first return window.
+PROTECTED_FLASH_RETURN_ORDER = (
+    "flash-p7-mhc-pre-simdgroup",
+    "flash-p6-hash-single-command-buffer",
+    "flash-p6-prefix-concurrent-wave",
+    "flash-p6-routed-fp4-gate-up-swiglu-fused",
+    "flash-p6-routed-fp4-down-bf16-fused",
+    "flash-p6-batched-down-qat",
+    "flash-shared-fp8-gate-up-swiglu-fused",
+    "flash-shared-fp8-down-combine-fused",
+    "flash-p6-fused-down-shared-combine",
+    "flash-pipeline-cache-reuse",
+    "flash-pipeline-id-resolution",
+    "flash-p6-learned-reader-reuse",
+    "flash-p6-learned-expert-cache-reuse",
+    "flash-p6-fused-epilogue-stack",
+)
+
+# Put the authoritative fast profile and host-ceremony controls first, then
+# isolate the geometry/fusion mechanisms. All 13 READY_PROTECTED Qwen rows
+# are retained; this is an execution order, not a pruning decision.
+PROTECTED_QWEN_FIRST_ORDER = (
+    "qwen27-fast-profile",
+    "qwen27-pipeline-state-elision",
+    "qwen27-pipeline-cache-reuse",
+    "qwen27-pipeline-id-resolution",
+    "qwen27-commit-timing-elision",
+    "qwen27-encoder-label-elision",
+    "qwen27-affine2-splitk4",
+    "qwen27-q2f-splitk4",
+    "qwen27-q4-vecgroup-x64",
+    "qwen27-gqa-qkv-fusion",
+    "qwen27-attention-gate-fusion",
+    "qwen27-deltanet-inproj-fusion",
+    "qwen27-ba-delta-fusion",
+)
+
+PROTECTED_MEASUREMENT_FIELDS = (
+    "total_nx_bytes",
+    "resident_bytes",
+    "active_representation_bytes_per_token",
+    "actual_read_bytes_per_token",
+    "transient_bytes_per_token",
+    "gpu_ns_per_token",
+    "complete_wall_ns_per_accepted_token",
+    "dispatches_per_token",
+    "sync_ns_per_token",
+    "accepted_tps",
+    "fallback_count",
+)
+
+
+def _ordered_present(
+    identifiers: Iterable[str],
+    preferred: Sequence[str],
+) -> list[str]:
+    present = {str(identifier) for identifier in identifiers}
+    ordered = [identifier for identifier in preferred if identifier in present]
+    ordered.extend(sorted(present - set(ordered)))
+    return ordered
+
+
+def _batch_candidate_spec(
+    row: Mapping[str, Any],
+    *,
+    sequence: int,
+    batch: str,
+    execution_state: str,
+    selection_reason: str,
+    requires_survivors: Sequence[str] = (),
+) -> dict[str, Any]:
+    """Copy the exact queue contract into a non-executable batch plan row."""
+    return {
+        "sequence": sequence,
+        "batch": batch,
+        "candidate_id": cid(row),
+        "model": row.get("model"),
+        "queue_status": row.get("status"),
+        "execution_state": execution_state,
+        "selection_reason": selection_reason,
+        "exact_mutation": row.get("exact_mutation") or {},
+        "control_configuration": row.get("control_configuration") or {},
+        "mutation_env": dict(sorted(mutation_env(row).items())),
+        "control_env": dict(sorted(control_env(row).items())),
+        "dependencies": list(row.get("dependencies") or []),
+        "requires_survivors": list(requires_survivors),
+        "affected_physical_region": row.get("affected_physical_region"),
+        "baseline_path": row.get("baseline_path"),
+        "diagnostic_command": list(row.get("diagnostic_command") or []),
+        "protected_command": list(row.get("protected_command") or []),
+        "parity_contract": row.get("parity_contract"),
+        "capability_contract": row.get("capability_contract"),
+        "expected_eliminated_work": row.get("expected_eliminated_work"),
+        "expected_dispatch_reduction": row.get("expected_dispatch_reduction"),
+        "expected_intermediate_byte_reduction": row.get(
+            "expected_intermediate_byte_reduction"
+        ),
+        "expected_active_byte_change": row.get("expected_active_byte_change"),
+        "expected_gpu_ns_mechanism": row.get("expected_gpu_ns_mechanism"),
+        "scope_tags": list(row.get("scope_tags") or []),
+        "transfer_evidence": list(row.get("transfer_evidence") or []),
+        "source_evidence": list(row.get("source_evidence") or []),
+        "blocked_reason": row.get("blocked_reason"),
+        "allowed_outcomes": [
+            "IMPLEMENTED_UNMEASURED",
+            "REJECTED_PARITY",
+            "REJECTED_PHYSICAL",
+            "PHYSICAL_WIN_MODEL_LOCAL",
+            "PHYSICAL_WIN_FAMILY",
+            "GENERIC_CANDIDATE",
+            "GENERIC_VERIFIED",
+        ],
+    }
+
+
+def protected_batch_plan(
+    queue: Mapping[str, Any],
+    staged: Mapping[str, Any],
+    interactions: Sequence[Mapping[str, Any]],
+) -> dict[str, Any]:
+    """Build the exact first protected return without executing anything.
+
+    Qwen's READY_PROTECTED singleton cells are the first executable batch. The
+    Flash rows are an explicit return batch, but remain blocked until a
+    source-independent NX and qualified Metal authority exist. This distinction
+    keeps the plan useful while preserving the fail-closed physical boundary.
+    """
+    rows = list(queue.get("candidates") or [])
+    index = _row_map(rows)
+    stage1_ids = [
+        identifier
+        for cell in staged.get("cells", [])
+        if cell.get("stage") == "1"
+        for identifier in cell.get("candidates", [])
+    ]
+    qwen_ids = _ordered_present(
+        (
+            identifier
+            for identifier in stage1_ids
+            if identifier in index and index[identifier].get("model") == "Qwen27"
+        ),
+        PROTECTED_QWEN_FIRST_ORDER,
+    )
+    qwen_specs = [
+        _batch_candidate_spec(
+            index[identifier],
+            sequence=sequence,
+            batch="QWEN_FIRST_PROTECTED_SINGLES",
+            execution_state="READY_ON_AUTHORITY",
+            selection_reason=(
+                "stage-1 singleton from the dependency-aware plan; run against "
+                "this row's exact control_env before any composition"
+            ),
+            requires_survivors=(),
+        )
+        for sequence, identifier in enumerate(qwen_ids, start=1)
+    ]
+
+    flash_missing = [
+        identifier
+        for identifier in PROTECTED_FLASH_RETURN_ORDER
+        if identifier not in index
+    ]
+    flash_specs: list[dict[str, Any]] = []
+    for sequence, identifier in enumerate(PROTECTED_FLASH_RETURN_ORDER, start=1):
+        row = index.get(identifier)
+        if row is None:
+            continue
+        dependencies = [str(value) for value in (row.get("dependencies") or [])]
+        if identifier == "flash-p6-fused-down-shared-combine":
+            reason = (
+                "high-information full downstream fusion; run only after the "
+                "routed-down and shared-down singleton outcomes are known"
+            )
+        elif identifier == "flash-p6-fused-epilogue-stack":
+            reason = (
+                "terminal composed P6 stack; run only after its primitive and "
+                "full-down parents survive parity and physical gates"
+            )
+        elif identifier == "flash-p6-learned-expert-cache-reuse":
+            reason = (
+                "highest-EV route/cache descendant; isolate reader reuse before "
+                "testing bounded six-expert cache reuse"
+            )
+        elif identifier == "flash-pipeline-id-resolution":
+            reason = (
+                "pipeline-cache descendant; isolate stable ID resolution only "
+                "after warmed handle persistence is accepted"
+            )
+        else:
+            reason = (
+                "material dispatch, wait, resource-admission, fusion, or "
+                "route/cache mechanism selected for the Flash return batch"
+            )
+        execution_state = (
+            "CONTINGENT_AFTER_SURVIVORS"
+            if dependencies
+            else "WAITING_FOR_FLASH_AUTHORITY"
+        )
+        flash_specs.append(
+            _batch_candidate_spec(
+                row,
+                sequence=sequence,
+                batch="FLASH_RETURN_PROTECTED_SINGLETONS_AND_COMPOSITIONS",
+                execution_state=execution_state,
+                selection_reason=reason,
+                requires_survivors=dependencies,
+            )
+        )
+
+    interaction_pairs = []
+    for cell in staged.get("cells", []):
+        if cell.get("stage") not in {"2", "3"}:
+            continue
+        members = [str(identifier) for identifier in cell.get("candidates", [])]
+        if not members or not all(identifier in index for identifier in members):
+            continue
+        prediction = next(
+            (
+                prediction
+                for prediction in interactions
+                if set(
+                    (str(prediction.get("a")), str(prediction.get("b")))
+                )
+                == set(members)
+            ),
+            None,
+        )
+        interaction_pairs.append(
+            {
+                "cell_id": cell.get("cell_id"),
+                "stage": cell.get("stage"),
+                "kind": cell.get("kind"),
+                "candidates": members,
+                "requires_survivors": list(cell.get("requires_survivors") or []),
+                "mutex_group": cell.get("mutex_group"),
+                "predicted_interaction": (
+                    {
+                        "kind": prediction.get("kind"),
+                        "mechanism": prediction.get("mechanism"),
+                    }
+                    if prediction is not None
+                    else None
+                ),
+                "execution_state": "CONTINGENT_AFTER_SINGLETON_SURVIVORS",
+            }
+        )
+
+    return {
+        "schema": "hawking.future.protected_batch_plan.v1",
+        "version": 1,
+        "status": "WAITING_FOR_AUTHORITY",
+        "purpose": (
+            "exact first protected batch for the current Accelerator frontier; "
+            "Qwen is the authoritative executable control lane, while Flash is "
+            "a staged return plan held closed until source-independent NX and "
+            "qualified Metal authority return"
+        ),
+        "frontier_snapshot": {
+            "queue_candidate_count": len(rows),
+            "queue_fingerprint": queue.get("fingerprint"),
+            "qwen_ready_protected_count": len(qwen_specs),
+            "qwen_first_batch_count": len(qwen_specs),
+            "flash_return_batch_count": len(flash_specs),
+            "flash_return_missing_ids": flash_missing,
+            "staged_cell_count": (staged.get("staged") or {}).get("cell_count"),
+            "blocked_candidates_remain_unscheduled": True,
+        },
+        "execution_authority": {
+            "plan_only": True,
+            "executes_benchmark": False,
+            "acquires_lease": False,
+            "quiesces_machine": False,
+            "current_gpu_authority": False,
+            "qwen_gate": (
+                "queue rows are READY_PROTECTED, but a protected HCLI lease "
+                "and QUIESCENT machine are still required at execution time"
+            ),
+            "flash_gate": (
+                "do not run Flash rows until a source-independent Flash NX "
+                "executable, Metal GPU/compiler capability, and protected "
+                "complete-token receipt path are qualified"
+            ),
+            "when_metal_returns": (
+                "STOP INVENTING: execute the named batch, record parity first, "
+                "then prune, combine, and reprofile from protected receipts"
+            ),
+        },
+        "current_environment": {
+            "repo_root": str(REPO),
+            "queue_source": queue.get("_loaded_from"),
+            "qwen_profile": "hcli/hawking-native.sealed-3.14.json",
+            "qwen_protected_protocol": {
+                "warmup_requests": 2,
+                "measure_requests": 10,
+                "max_new_tokens": 32,
+                "pairing": "ABAB interleaving within one protected lease",
+            },
+            "flash_command_mode": (
+                "source_oracle_or_scaffold only; not a protected timing command"
+            ),
+            "metal_compiler": "UNAVAILABLE_ON_CURRENT_HOST",
+            "metal_gpu": "UNAVAILABLE_ON_CURRENT_HOST",
+            "teacher_capture_rows": 0,
+            "flash_physical_ebpw": "UNKNOWN",
+            "prospective_meta_bpw": 0.8871807728336929,
+            "protected_lock_paths": [
+                ".hcli/locks/protected-accelerator-bench.lock",
+                ".hcli/locks/qwen-protected-bench.lock",
+            ],
+            "lock_policy": (
+                "do not clear or seize a live lock; holder uncertainty is a "
+                "fail-closed gate"
+            ),
+            "machine_contamination": (
+                "latest qualification walk classified the host HEAVY; do not "
+                "quiesce or pause standing workers from this sidecar"
+            ),
+            "static_preflight": {
+                "error_count": 0,
+                "physical_correctness_proven": False,
+            },
+        },
+        "qwen_first_batch": {
+            "name": "QWEN_FIRST_PROTECTED_SINGLES",
+            "model": "Qwen27",
+            "authoritative_control": {
+                "profile": "hcli/hawking-native.sealed-3.14.json",
+                "fast_profile_anchor": "qwen27-fast-profile",
+                "rule": (
+                    "qwen27-fast-profile is run first against its empty "
+                    "control; every other row uses its copied control_env, "
+                    "never an implicit default"
+                ),
+            },
+            "count": len(qwen_specs),
+            "run_order": qwen_specs,
+            "after_singletons": {
+                "predicted_interaction_and_union_cells": interaction_pairs,
+                "rule": (
+                    "run only cells whose required singleton survivors remain "
+                    "parity-clean and physically faster; geometry mutexes and "
+                    "same-region conflicts are never co-scheduled"
+                ),
+            },
+        },
+        "flash_return_batch": {
+            "name": "FLASH_RETURN_PROTECTED_SINGLETONS_AND_COMPOSITIONS",
+            "model": "Flash",
+            "count": len(flash_specs),
+            "run_order": flash_specs,
+            "rule": (
+                "all rows remain queue BLOCKED and execution-closed now; after "
+                "Flash authority returns, run singleton rows first, then the "
+                "full-down and terminal-stack descendants only when parents "
+                "survive"
+            ),
+        },
+        "rejection_thresholds": {
+            "paired_repetitions_minimum": 7,
+            "statistics": {
+                "primary": (
+                    "paired median of "
+                    "complete_wall_ns_per_accepted_token"
+                ),
+                "uncertainty": "paired bootstrap CI95 and IQR",
+                "decision_delta": (
+                    "candidate minus matched control; lower is faster"
+                ),
+                "win_requires": (
+                    "candidate median strictly below control and paired CI95 "
+                    "upper bound strictly below zero; never decide from mean "
+                    "alone"
+                ),
+            },
+            "parity": {
+                "outcome": "REJECTED_PARITY",
+                "reject_if": [
+                    "token sequence differs",
+                    "accepted-token count or stop behavior differs",
+                    "output hash or numeric tolerance contract differs",
+                    "route/top-K tie, source-order accumulation, or BF16 round-trip differs",
+                ],
+            },
+            "physical": {
+                "outcome": "REJECTED_PHYSICAL",
+                "reject_if": [
+                    "no protected complete-token receipt",
+                    "any required measurement field is missing",
+                    "fallback_count is nonzero or capability checks fail",
+                    "lease, quiescence, persistent resident identity, or clean-window checks fail",
+                    "complete-token latency does not beat the matched control under the paired CI rule",
+                ],
+                "required_measurement_fields": list(PROTECTED_MEASUREMENT_FIELDS),
+            },
+            "outcome_vocabulary": [
+                "IMPLEMENTED_UNMEASURED",
+                "REJECTED_PARITY",
+                "REJECTED_PHYSICAL",
+                "PHYSICAL_WIN_MODEL_LOCAL",
+                "PHYSICAL_WIN_FAMILY",
+                "GENERIC_CANDIDATE",
+                "GENERIC_VERIFIED",
+            ],
+            "scope_rule": (
+                "a protected win is MODEL_LOCAL first; PHYSICAL_WIN_FAMILY, "
+                "GENERIC_CANDIDATE, and GENERIC_VERIFIED require explicit "
+                "cross-model transfer evidence, not structural similarity"
+            ),
+        },
+        "representation_boundary": {
+            "prospective_meta_bpw": 0.8871807728336929,
+            "qualified_physical_ebpw": "UNKNOWN",
+            "teacher_capture_rows": 0,
+            "binding_dependency": "REAL_TEACHER_CORPUS",
+            "rule": (
+                "do not synthesize teacher rows or fit downstream meta "
+                "encodings before qualified teacher capture"
+            ),
+        },
+        "source_receipts": [
+            "receipts/headless/FLASH_META_TEACHER_L4_CAPTURE_BOUNDARY.json",
+            "receipts/headless/FLASH_META_REPRESENTATION_SUB1.json",
+            "receipts/headless/ACCELERATOR_REPATRIATION_EFFECTS.json",
+            "receipts/future/STATIC_KERNEL_PREFLIGHT.json",
+            "receipts/future/QUALIFICATION_PIPELINE.json",
+        ],
+        "claim_boundary": (
+            "static protected-batch plan only; no hardware measurement, "
+            "physical EBPW, latency, or throughput is claimed"
+        ),
+    }
+
 
 def _row_map(rows: Sequence[Mapping[str, Any]]) -> dict[str, Mapping[str, Any]]:
     return {cid(r): r for r in rows}
@@ -1367,6 +1807,7 @@ def plan_from_queue(queue: Mapping[str, Any]) -> dict[str, Any]:
     )
     assert_plan_dramatically_smaller(plan)
     assert_no_incompatible_cell(plan, rows)
+    protected_batch = protected_batch_plan(queue, plan, interactions)
 
     by_status: dict[str, int] = defaultdict(int)
     by_model: dict[str, int] = defaultdict(int)
@@ -1477,6 +1918,7 @@ def plan_from_queue(queue: Mapping[str, Any]) -> dict[str, Any]:
         "lineage_scars": scars,
         "promotion_and_rejection": promotions,
         "staged_factorial_plan": plan,
+        "protected_batch": protected_batch,
         "recovered_implementation": recovered,
         "gaps_closed": [
             "dependency graph over declared dependencies AND inferred conflicts "
@@ -1490,6 +1932,9 @@ def plan_from_queue(queue: Mapping[str, Any]) -> dict[str, Any]:
             "lineage/scar table: hard-invalidate descendants, question equivalence siblings",
             "promotion prerequisites and rejection reasons copied from the queue funnel, "
             "status_transitions, queue_policy, measurement_contract, parity/capability contracts",
+            "exact protected batch receipt: Qwen READY_PROTECTED singletons first, "
+            "serious Flash return rows held behind authority and survivor gates, "
+            "copied controls/commands, parity thresholds, and outcome vocabulary",
         ],
         "negative_findings": negative,
         "non_goals": [

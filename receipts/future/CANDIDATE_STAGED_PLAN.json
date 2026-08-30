@@ -3,14 +3,14 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T01:45:24Z",
+  "recorded_at": "2026-08-30T02:47:34Z",
   "recorded_by": "tools/future/candidate_planner.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
  },
  "claim_boundary": "Static sidecar artifact. No hardware measurement.",
  "dependency_graph": {
-  "conflict_edge_count": 505,
+  "conflict_edge_count": 521,
   "conflict_edges": [
    {
     "a": "flash-attention-gate-fusion",
@@ -1939,6 +1939,182 @@
    },
    {
     "a": "flash-p6-batched-down-qat",
+    "b": "qwen27-resident-untimed-decode",
+    "kind": "inferred_conflict",
+    "reasons": [
+     {
+      "kind": "distinct_model_executables",
+      "mechanism": "different model identities cannot share one physical run; each executable is its own protected window"
+     }
+    ]
+   },
+   {
+    "a": "flash-p6-fused-down-shared-combine",
+    "b": "qwen27-affine2-splitk4",
+    "kind": "inferred_conflict",
+    "reasons": [
+     {
+      "kind": "distinct_model_executables",
+      "mechanism": "different model identities cannot share one physical run; each executable is its own protected window"
+     }
+    ]
+   },
+   {
+    "a": "flash-p6-fused-down-shared-combine",
+    "b": "qwen27-affine2-splitk4-vec",
+    "kind": "inferred_conflict",
+    "reasons": [
+     {
+      "kind": "distinct_model_executables",
+      "mechanism": "different model identities cannot share one physical run; each executable is its own protected window"
+     }
+    ]
+   },
+   {
+    "a": "flash-p6-fused-down-shared-combine",
+    "b": "qwen27-attention-gate-fusion",
+    "kind": "inferred_conflict",
+    "reasons": [
+     {
+      "kind": "distinct_model_executables",
+      "mechanism": "different model identities cannot share one physical run; each executable is its own protected window"
+     }
+    ]
+   },
+   {
+    "a": "flash-p6-fused-down-shared-combine",
+    "b": "qwen27-ba-delta-fusion",
+    "kind": "inferred_conflict",
+    "reasons": [
+     {
+      "kind": "distinct_model_executables",
+      "mechanism": "different model identities cannot share one physical run; each executable is its own protected window"
+     }
+    ]
+   },
+   {
+    "a": "flash-p6-fused-down-shared-combine",
+    "b": "qwen27-commit-timing-elision",
+    "kind": "inferred_conflict",
+    "reasons": [
+     {
+      "kind": "distinct_model_executables",
+      "mechanism": "different model identities cannot share one physical run; each executable is its own protected window"
+     }
+    ]
+   },
+   {
+    "a": "flash-p6-fused-down-shared-combine",
+    "b": "qwen27-deltanet-inproj-fusion",
+    "kind": "inferred_conflict",
+    "reasons": [
+     {
+      "kind": "distinct_model_executables",
+      "mechanism": "different model identities cannot share one physical run; each executable is its own protected window"
+     }
+    ]
+   },
+   {
+    "a": "flash-p6-fused-down-shared-combine",
+    "b": "qwen27-encoder-label-elision",
+    "kind": "inferred_conflict",
+    "reasons": [
+     {
+      "kind": "distinct_model_executables",
+      "mechanism": "different model identities cannot share one physical run; each executable is its own protected window"
+     }
+    ]
+   },
+   {
+    "a": "flash-p6-fused-down-shared-combine",
+    "b": "qwen27-fast-profile",
+    "kind": "inferred_conflict",
+    "reasons": [
+     {
+      "kind": "distinct_model_executables",
+      "mechanism": "different model identities cannot share one physical run; each executable is its own protected window"
+     }
+    ]
+   },
+   {
+    "a": "flash-p6-fused-down-shared-combine",
+    "b": "qwen27-gqa-qkv-fusion",
+    "kind": "inferred_conflict",
+    "reasons": [
+     {
+      "kind": "distinct_model_executables",
+      "mechanism": "different model identities cannot share one physical run; each executable is its own protected window"
+     }
+    ]
+   },
+   {
+    "a": "flash-p6-fused-down-shared-combine",
+    "b": "qwen27-pipeline-cache-reuse",
+    "kind": "inferred_conflict",
+    "reasons": [
+     {
+      "kind": "distinct_model_executables",
+      "mechanism": "different model identities cannot share one physical run; each executable is its own protected window"
+     }
+    ]
+   },
+   {
+    "a": "flash-p6-fused-down-shared-combine",
+    "b": "qwen27-pipeline-id-resolution",
+    "kind": "inferred_conflict",
+    "reasons": [
+     {
+      "kind": "distinct_model_executables",
+      "mechanism": "different model identities cannot share one physical run; each executable is its own protected window"
+     }
+    ]
+   },
+   {
+    "a": "flash-p6-fused-down-shared-combine",
+    "b": "qwen27-pipeline-state-elision",
+    "kind": "inferred_conflict",
+    "reasons": [
+     {
+      "kind": "distinct_model_executables",
+      "mechanism": "different model identities cannot share one physical run; each executable is its own protected window"
+     }
+    ]
+   },
+   {
+    "a": "flash-p6-fused-down-shared-combine",
+    "b": "qwen27-q2f-splitk4",
+    "kind": "inferred_conflict",
+    "reasons": [
+     {
+      "kind": "distinct_model_executables",
+      "mechanism": "different model identities cannot share one physical run; each executable is its own protected window"
+     }
+    ]
+   },
+   {
+    "a": "flash-p6-fused-down-shared-combine",
+    "b": "qwen27-q2f-splitk4-vec",
+    "kind": "inferred_conflict",
+    "reasons": [
+     {
+      "kind": "distinct_model_executables",
+      "mechanism": "different model identities cannot share one physical run; each executable is its own protected window"
+     }
+    ]
+   },
+   {
+    "a": "flash-p6-fused-down-shared-combine",
+    "b": "qwen27-q4-vecgroup-x64",
+    "kind": "inferred_conflict",
+    "reasons": [
+     {
+      "kind": "distinct_model_executables",
+      "mechanism": "different model identities cannot share one physical run; each executable is its own protected window"
+     }
+    ]
+   },
+   {
+    "a": "flash-p6-fused-down-shared-combine",
     "b": "qwen27-resident-untimed-decode",
     "kind": "inferred_conflict",
     "reasons": [
@@ -5592,7 +5768,7 @@
     ]
    }
   ],
-  "declared_edge_count": 28,
+  "declared_edge_count": 29,
   "declared_edges": [
    {
     "from": "flash-hc-staged-threadgroup",
@@ -5604,6 +5780,12 @@
     "from": "flash-p6-batched-down-qat",
     "kind": "declared_dependency",
     "mechanism": "flash-p6-fused-epilogue-stack names flash-p6-batched-down-qat in dependencies; the parent is a precondition of the child",
+    "to": "flash-p6-fused-epilogue-stack"
+   },
+   {
+    "from": "flash-p6-fused-down-shared-combine",
+    "kind": "declared_dependency",
+    "mechanism": "flash-p6-fused-epilogue-stack names flash-p6-fused-down-shared-combine in dependencies; the parent is a precondition of the child",
     "to": "flash-p6-fused-epilogue-stack"
    },
    {
@@ -5627,8 +5809,8 @@
    {
     "from": "flash-p6-routed-fp4-down-bf16-fused",
     "kind": "declared_dependency",
-    "mechanism": "flash-p6-fused-epilogue-stack names flash-p6-routed-fp4-down-bf16-fused in dependencies; the parent is a precondition of the child",
-    "to": "flash-p6-fused-epilogue-stack"
+    "mechanism": "flash-p6-fused-down-shared-combine names flash-p6-routed-fp4-down-bf16-fused in dependencies; the parent is a precondition of the child",
+    "to": "flash-p6-fused-down-shared-combine"
    },
    {
     "from": "flash-p6-routed-fp4-down-bf16-fused",
@@ -5663,8 +5845,8 @@
    {
     "from": "flash-shared-fp8-down-combine-fused",
     "kind": "declared_dependency",
-    "mechanism": "flash-p6-fused-epilogue-stack names flash-shared-fp8-down-combine-fused in dependencies; the parent is a precondition of the child",
-    "to": "flash-p6-fused-epilogue-stack"
+    "mechanism": "flash-p6-fused-down-shared-combine names flash-shared-fp8-down-combine-fused in dependencies; the parent is a precondition of the child",
+    "to": "flash-p6-fused-down-shared-combine"
    },
    {
     "from": "flash-shared-fp8-gate-up-swiglu-fused",
@@ -5763,7 +5945,7 @@
     "to": "qwen27-q2f-splitk4-vec"
    }
   ],
-  "node_count": 47,
+  "node_count": 48,
   "nodes": [
    {
     "affected_physical_region": "Flash attention output sigmoid gate",
@@ -5918,25 +6100,39 @@
     "status": "BLOCKED"
    },
    {
+    "affected_physical_region": "Flash P6 routed FP4 W2 plus shared FP8 W2 and BF16 combine",
+    "candidate_id": "flash-p6-fused-down-shared-combine",
+    "dependencies": [
+     "flash-p6-routed-fp4-down-bf16-fused",
+     "flash-shared-fp8-down-combine-fused"
+    ],
+    "model": "Flash",
+    "mutation_env": {
+     "HAWKING_DSV4F_P6_FP4_DOWN_BF16_FUSED": "1",
+     "HAWKING_DSV4F_P6_FP4_DOWN_SHARED_COMBINE_FUSED": "1"
+    },
+    "resource_tags": [],
+    "status": "BLOCKED"
+   },
+   {
     "affected_physical_region": "Flash reusable P6 composed latency stack",
     "candidate_id": "flash-p6-fused-epilogue-stack",
     "dependencies": [
      "flash-p6-hash-single-command-buffer",
      "flash-p6-prefix-concurrent-wave",
      "flash-p6-routed-fp4-gate-up-swiglu-fused",
-     "flash-p6-routed-fp4-down-bf16-fused",
+     "flash-p6-fused-down-shared-combine",
      "flash-shared-fp8-gate-up-swiglu-fused",
-     "flash-shared-fp8-down-combine-fused",
      "flash-p6-batched-down-qat"
     ],
     "model": "Flash",
     "mutation_env": {
      "HAWKING_DSV4F_FP4_GATE_UP_SWIGLU_FUSED": "1",
-     "HAWKING_DSV4F_FP8_SHARED_DOWN_COMBINE_FUSED": "1",
      "HAWKING_DSV4F_FP8_SHARED_GATE_UP_SWIGLU_FUSED": "1",
      "HAWKING_DSV4F_P6_BATCHED_DOWN_QAT": "1",
      "HAWKING_DSV4F_P6_FP4_DOWN_BF16_FUSED": "1",
      "HAWKING_DSV4F_P6_FP4_DOWN_BF16_SIMD": "0",
+     "HAWKING_DSV4F_P6_FP4_DOWN_SHARED_COMBINE_FUSED": "1",
      "HAWKING_DSV4F_P6_FP4_GATE_UP_SWIGLU_SIMD": "0",
      "HAWKING_DSV4F_P6_PREFIX_CONCURRENT": "1",
      "HAWKING_DSV4F_P6_SINGLE_CB": "1"
@@ -5947,7 +6143,7 @@
     "status": "BLOCKED"
    },
    {
-    "affected_physical_region": "Flash hash-route P6 command-buffer topology",
+    "affected_physical_region": "Flash P6 command-buffer topology after route resolution",
     "candidate_id": "flash-p6-hash-single-command-buffer",
     "dependencies": [],
     "model": "Flash",
@@ -6598,7 +6794,7 @@
    "class_id": "E012",
    "evidence": [],
    "members": [
-    "flash-p6-fused-epilogue-stack"
+    "flash-p6-fused-down-shared-combine"
    ],
    "merge_rule": "union only on geometry_refinement (same region + declared parent + geo value refined by _vec) or on shared distinctive env stems / cross-model mechanism jaccard. candidate_id spelling is never a reason to merge.",
    "singleton": true,
@@ -6608,7 +6804,7 @@
    "class_id": "E013",
    "evidence": [],
    "members": [
-    "flash-p6-hash-single-command-buffer"
+    "flash-p6-fused-epilogue-stack"
    ],
    "merge_rule": "union only on geometry_refinement (same region + declared parent + geo value refined by _vec) or on shared distinctive env stems / cross-model mechanism jaccard. candidate_id spelling is never a reason to merge.",
    "singleton": true,
@@ -6618,7 +6814,7 @@
    "class_id": "E014",
    "evidence": [],
    "members": [
-    "flash-p6-learned-expert-cache-reuse"
+    "flash-p6-hash-single-command-buffer"
    ],
    "merge_rule": "union only on geometry_refinement (same region + declared parent + geo value refined by _vec) or on shared distinctive env stems / cross-model mechanism jaccard. candidate_id spelling is never a reason to merge.",
    "singleton": true,
@@ -6628,7 +6824,7 @@
    "class_id": "E015",
    "evidence": [],
    "members": [
-    "flash-p6-learned-reader-reuse"
+    "flash-p6-learned-expert-cache-reuse"
    ],
    "merge_rule": "union only on geometry_refinement (same region + declared parent + geo value refined by _vec) or on shared distinctive env stems / cross-model mechanism jaccard. candidate_id spelling is never a reason to merge.",
    "singleton": true,
@@ -6638,7 +6834,7 @@
    "class_id": "E016",
    "evidence": [],
    "members": [
-    "flash-p6-prefix-concurrent-wave"
+    "flash-p6-learned-reader-reuse"
    ],
    "merge_rule": "union only on geometry_refinement (same region + declared parent + geo value refined by _vec) or on shared distinctive env stems / cross-model mechanism jaccard. candidate_id spelling is never a reason to merge.",
    "singleton": true,
@@ -6648,7 +6844,7 @@
    "class_id": "E017",
    "evidence": [],
    "members": [
-    "flash-p6-routed-fp4-down-bf16-fused"
+    "flash-p6-prefix-concurrent-wave"
    ],
    "merge_rule": "union only on geometry_refinement (same region + declared parent + geo value refined by _vec) or on shared distinctive env stems / cross-model mechanism jaccard. candidate_id spelling is never a reason to merge.",
    "singleton": true,
@@ -6658,7 +6854,7 @@
    "class_id": "E018",
    "evidence": [],
    "members": [
-    "flash-p6-routed-fp4-down-bf16-simd"
+    "flash-p6-routed-fp4-down-bf16-fused"
    ],
    "merge_rule": "union only on geometry_refinement (same region + declared parent + geo value refined by _vec) or on shared distinctive env stems / cross-model mechanism jaccard. candidate_id spelling is never a reason to merge.",
    "singleton": true,
@@ -6668,7 +6864,7 @@
    "class_id": "E019",
    "evidence": [],
    "members": [
-    "flash-p6-routed-fp4-gate-up-swiglu-fused"
+    "flash-p6-routed-fp4-down-bf16-simd"
    ],
    "merge_rule": "union only on geometry_refinement (same region + declared parent + geo value refined by _vec) or on shared distinctive env stems / cross-model mechanism jaccard. candidate_id spelling is never a reason to merge.",
    "singleton": true,
@@ -6678,7 +6874,7 @@
    "class_id": "E020",
    "evidence": [],
    "members": [
-    "flash-p6-routed-fp4-gate-up-swiglu-simd"
+    "flash-p6-routed-fp4-gate-up-swiglu-fused"
    ],
    "merge_rule": "union only on geometry_refinement (same region + declared parent + geo value refined by _vec) or on shared distinctive env stems / cross-model mechanism jaccard. candidate_id spelling is never a reason to merge.",
    "singleton": true,
@@ -6688,7 +6884,7 @@
    "class_id": "E021",
    "evidence": [],
    "members": [
-    "flash-p6-routed-fp4-simdgroup"
+    "flash-p6-routed-fp4-gate-up-swiglu-simd"
    ],
    "merge_rule": "union only on geometry_refinement (same region + declared parent + geo value refined by _vec) or on shared distinctive env stems / cross-model mechanism jaccard. candidate_id spelling is never a reason to merge.",
    "singleton": true,
@@ -6698,7 +6894,7 @@
    "class_id": "E022",
    "evidence": [],
    "members": [
-    "flash-p6-shared-fp8-simdgroup"
+    "flash-p6-routed-fp4-simdgroup"
    ],
    "merge_rule": "union only on geometry_refinement (same region + declared parent + geo value refined by _vec) or on shared distinctive env stems / cross-model mechanism jaccard. candidate_id spelling is never a reason to merge.",
    "singleton": true,
@@ -6708,7 +6904,7 @@
    "class_id": "E023",
    "evidence": [],
    "members": [
-    "flash-p7-mhc-pre-simdgroup"
+    "flash-p6-shared-fp8-simdgroup"
    ],
    "merge_rule": "union only on geometry_refinement (same region + declared parent + geo value refined by _vec) or on shared distinctive env stems / cross-model mechanism jaccard. candidate_id spelling is never a reason to merge.",
    "singleton": true,
@@ -6716,6 +6912,16 @@
   },
   {
    "class_id": "E024",
+   "evidence": [],
+   "members": [
+    "flash-p7-mhc-pre-simdgroup"
+   ],
+   "merge_rule": "union only on geometry_refinement (same region + declared parent + geo value refined by _vec) or on shared distinctive env stems / cross-model mechanism jaccard. candidate_id spelling is never a reason to merge.",
+   "singleton": true,
+   "size": 1
+  },
+  {
+   "class_id": "E025",
    "evidence": [
     {
      "kind": "shared_distinctive_stem",
@@ -6737,7 +6943,7 @@
    "size": 4
   },
   {
-   "class_id": "E025",
+   "class_id": "E026",
    "evidence": [
     {
      "kind": "shared_distinctive_stem",
@@ -6753,7 +6959,7 @@
    "size": 2
   },
   {
-   "class_id": "E026",
+   "class_id": "E027",
    "evidence": [],
    "members": [
     "flash-routed-fp4-gate-up-swiglu-fused"
@@ -6763,7 +6969,7 @@
    "size": 1
   },
   {
-   "class_id": "E027",
+   "class_id": "E028",
    "evidence": [],
    "members": [
     "flash-router-topk-fusion"
@@ -6773,7 +6979,7 @@
    "size": 1
   },
   {
-   "class_id": "E028",
+   "class_id": "E029",
    "evidence": [],
    "members": [
     "flash-shared-fp8-down-combine-fused"
@@ -6783,7 +6989,7 @@
    "size": 1
   },
   {
-   "class_id": "E029",
+   "class_id": "E030",
    "evidence": [],
    "members": [
     "flash-shared-fp8-gate-up-swiglu-fused"
@@ -6793,7 +6999,7 @@
    "size": 1
   },
   {
-   "class_id": "E030",
+   "class_id": "E031",
    "evidence": [],
    "members": [
     "flash-source-bf16-simd"
@@ -6803,7 +7009,7 @@
    "size": 1
   },
   {
-   "class_id": "E031",
+   "class_id": "E032",
    "evidence": [
     {
      "kind": "geometry_refinement",
@@ -6819,7 +7025,7 @@
    "size": 2
   },
   {
-   "class_id": "E032",
+   "class_id": "E033",
    "evidence": [],
    "members": [
     "qwen27-ba-delta-fusion"
@@ -6829,7 +7035,7 @@
    "size": 1
   },
   {
-   "class_id": "E033",
+   "class_id": "E034",
    "evidence": [],
    "members": [
     "qwen27-commit-timing-elision"
@@ -6839,7 +7045,7 @@
    "size": 1
   },
   {
-   "class_id": "E034",
+   "class_id": "E035",
    "evidence": [],
    "members": [
     "qwen27-deltanet-inproj-fusion"
@@ -6849,7 +7055,7 @@
    "size": 1
   },
   {
-   "class_id": "E035",
+   "class_id": "E036",
    "evidence": [],
    "members": [
     "qwen27-fast-profile"
@@ -6859,7 +7065,7 @@
    "size": 1
   },
   {
-   "class_id": "E036",
+   "class_id": "E037",
    "evidence": [],
    "members": [
     "qwen27-pipeline-state-elision"
@@ -6869,7 +7075,7 @@
    "size": 1
   },
   {
-   "class_id": "E037",
+   "class_id": "E038",
    "evidence": [
     {
      "kind": "geometry_refinement",
@@ -6885,7 +7091,7 @@
    "size": 2
   },
   {
-   "class_id": "E038",
+   "class_id": "E039",
    "evidence": [],
    "members": [
     "qwen27-q4-vecgroup-x64"
@@ -6895,7 +7101,7 @@
    "size": 1
   },
   {
-   "class_id": "E039",
+   "class_id": "E040",
    "evidence": [],
    "members": [
     "qwen27-resident-untimed-decode"
@@ -6912,24 +7118,25 @@
   "staged factorial: singles, predicted-nonadditive pairs, contingent survivor unions, contingent STATIC_ONLY descendants \u2014 not 2^N",
   "interaction/conflict prediction with a stated mechanism per pair",
   "lineage/scar table: hard-invalidate descendants, question equivalence siblings",
-  "promotion prerequisites and rejection reasons copied from the queue funnel, status_transitions, queue_policy, measurement_contract, parity/capability contracts"
+  "promotion prerequisites and rejection reasons copied from the queue funnel, status_transitions, queue_policy, measurement_contract, parity/capability contracts",
+  "exact protected batch receipt: Qwen READY_PROTECTED singletons first, serious Flash return rows held behind authority and survivor gates, copied controls/commands, parity thresholds, and outcome vocabulary"
  ],
  "input": {
   "by_model": {
-   "Flash": 31,
+   "Flash": 32,
    "Qwen27": 16
   },
   "by_status": {
-   "BLOCKED": 30,
+   "BLOCKED": 31,
    "READY_PROTECTED": 13,
    "STATIC_ONLY": 4
   },
-  "candidate_count": 47,
+  "candidate_count": 48,
   "funnel_promotion_rule": "only a protected complete-token receipt with capability and zero-fallback gates may promote",
   "loaded_from": "/Users/scammermike/Downloads/hawking/receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
-  "queue_fingerprint": "2f426604bab4044095706c8dcb2e10d1f750595fa60aa3b6f416dedf6f148cab",
+  "queue_fingerprint": "24fb3af01fab27d8c991086eecb220be10f7502a782554b8725e4d034d82e0c4",
   "queue_schema": "hawking.accelerator.physical_qualification_queue.v1",
-  "queue_sha256": "6881b8a10c72caba224af6d2df4773dca7fac64b73d991410e71107277f0bd69",
+  "queue_sha256": "9a8cd23383daffa56fc9fea9dcfd289d165c6bd8caf8960748df5a28711f0687",
   "queue_version": 1
  },
  "lineage_scars": {
@@ -7018,9 +7225,19 @@
    "mechanism": "a rejection hard-invalidates declared descendants. equivalence siblings are questioned (especially cross-model: Odyssey II transfer is not automatic). same-region peers that are not descendants remain measurable because they are a different exact_mutation.",
    "same_region_peers_remain_measurable": []
   },
+  "flash-p6-fused-down-shared-combine": {
+   "declared_siblings": [
+    "flash-p6-routed-fp4-down-bf16-simd"
+   ],
+   "equivalence_siblings_questioned": [],
+   "hard_invalidates_descendants": [
+    "flash-p6-fused-epilogue-stack"
+   ],
+   "mechanism": "a rejection hard-invalidates declared descendants. equivalence siblings are questioned (especially cross-model: Odyssey II transfer is not automatic). same-region peers that are not descendants remain measurable because they are a different exact_mutation.",
+   "same_region_peers_remain_measurable": []
+  },
   "flash-p6-fused-epilogue-stack": {
    "declared_siblings": [
-    "flash-p6-routed-fp4-down-bf16-simd",
     "flash-p6-routed-fp4-gate-up-swiglu-simd"
    ],
    "equivalence_siblings_questioned": [],
@@ -7066,15 +7283,16 @@
    "declared_siblings": [],
    "equivalence_siblings_questioned": [],
    "hard_invalidates_descendants": [
-    "flash-p6-fused-epilogue-stack",
-    "flash-p6-routed-fp4-down-bf16-simd"
+    "flash-p6-fused-down-shared-combine",
+    "flash-p6-routed-fp4-down-bf16-simd",
+    "flash-p6-fused-epilogue-stack"
    ],
    "mechanism": "a rejection hard-invalidates declared descendants. equivalence siblings are questioned (especially cross-model: Odyssey II transfer is not automatic). same-region peers that are not descendants remain measurable because they are a different exact_mutation.",
    "same_region_peers_remain_measurable": []
   },
   "flash-p6-routed-fp4-down-bf16-simd": {
    "declared_siblings": [
-    "flash-p6-fused-epilogue-stack"
+    "flash-p6-fused-down-shared-combine"
    ],
    "equivalence_siblings_questioned": [],
    "hard_invalidates_descendants": [],
@@ -7174,6 +7392,7 @@
    "declared_siblings": [],
    "equivalence_siblings_questioned": [],
    "hard_invalidates_descendants": [
+    "flash-p6-fused-down-shared-combine",
     "flash-p6-fused-epilogue-stack"
    ],
    "mechanism": "a rejection hard-invalidates declared descendants. equivalence siblings are questioned (especially cross-model: Odyssey II transfer is not automatic). same-region peers that are not descendants remain measurable because they are a different exact_mutation.",
@@ -7677,6 +7896,26 @@
    "status": "BLOCKED"
   },
   {
+   "affected_physical_region": "Flash P6 routed FP4 W2 plus shared FP8 W2 and BF16 combine",
+   "blocked_reason": "Flash source-independent NX and protected complete-token capability are not qualified; this full composition still requires matched parity/coherence and protected latency",
+   "candidate_id": "flash-p6-fused-down-shared-combine",
+   "dependencies": [
+    "flash-p6-routed-fp4-down-bf16-fused",
+    "flash-shared-fp8-down-combine-fused"
+   ],
+   "expected_active_byte_change": "unchanged routed FP4 weights, shared FP8 weights, E8M0 scales, and seven activation-quantized input buffers; inactive scratch allocation is reduced by 344022 structural bytes and transient down traffic is reduced",
+   "expected_dispatch_reduction": "replace the fifteen downstream W2/cast/combine dispatches with one source-order fused launch; fixed-hash P6 structural topology falls from 60 to 46 while the seven authoritative QAT launches remain",
+   "expected_eliminated_work": "six routed FP4 W2 dispatches, one shared FP8 W2 dispatch, seven FP32-to-BF16 cast dispatches, one final combine dispatch, and the routed/shared down intermediates",
+   "expected_gpu_ns_mechanism": "one 256-thread row launch reads six resident indirect FP4 records, computes source-order FP4 rows with BF16 round-trips, computes the shared FP8 row with 128-value blocks, then performs the fixed-six numeric-order BF16 combine directly into output",
+   "expected_intermediate_byte_reduction": "bypass six routed down_f32/down_bf16 buffers and the shared down FP32/BF16 staging at the consumer; inactive authority scratch is one-byte guarded storage, while QAT bytes and final caller-owned BF16 output remain explicit",
+   "model": "Flash",
+   "mutation_env": {
+    "HAWKING_DSV4F_P6_FP4_DOWN_BF16_FUSED": "1",
+    "HAWKING_DSV4F_P6_FP4_DOWN_SHARED_COMBINE_FUSED": "1"
+   },
+   "status": "BLOCKED"
+  },
+  {
    "affected_physical_region": "Flash reusable P6 composed latency stack",
    "blocked_reason": "Flash source-independent NX and protected complete-token capability are not qualified; composition interactions require a fresh parity/coherence and latency receipt",
    "candidate_id": "flash-p6-fused-epilogue-stack",
@@ -7684,24 +7923,23 @@
     "flash-p6-hash-single-command-buffer",
     "flash-p6-prefix-concurrent-wave",
     "flash-p6-routed-fp4-gate-up-swiglu-fused",
-    "flash-p6-routed-fp4-down-bf16-fused",
+    "flash-p6-fused-down-shared-combine",
     "flash-shared-fp8-gate-up-swiglu-fused",
-    "flash-shared-fp8-down-combine-fused",
     "flash-p6-batched-down-qat"
    ],
    "expected_active_byte_change": "unchanged source FP4/FP8 weights, E8M0 scales, route IDs/weights, and BF16 final output contract",
-   "expected_dispatch_reduction": "P6 structural target is 60 to 8 dispatches, 10 to 5 compute encoders, and 2 to 1 command buffer on the hash path; measure interaction rather than summing isolated wins",
-   "expected_eliminated_work": "the independently bounded routed/shared gate-up epilogues, seven-to-one down activation-quantization wave, routed down cast boundary, shared down/combine boundary, one prefix encoder, and one hash-route command-buffer wait",
+   "expected_dispatch_reduction": "P6 structural target is 60 to 7 dispatches, 10 to 4 compute encoders, and 2 to 1 command buffer on the hash path; the fixed-seven QAT producer and full down fusion share one serial dependency encoder, so measure interaction rather than summing isolated wins",
+   "expected_eliminated_work": "the independently bounded routed/shared gate-up epilogues, seven-to-one down activation-quantization wave, full routed FP4/shared FP8 down-and-combine tail, one prefix encoder, and one hash-route command-buffer wait",
    "expected_gpu_ns_mechanism": "compose the existing guarded primitives with explicit dependency waves; no new arithmetic or representation is introduced by the stack row",
-   "expected_intermediate_byte_reduction": "retain only the output buffers required by the fixed-six combine contract; dormant authority scratch remains allocated for matched A/B compatibility",
+   "expected_intermediate_byte_reduction": "retain only the output buffers required by the fixed-six combine contract; the full down fusion bypasses routed/shared down staging while dormant authority scratch remains allocated for matched A/B compatibility",
    "model": "Flash",
    "mutation_env": {
     "HAWKING_DSV4F_FP4_GATE_UP_SWIGLU_FUSED": "1",
-    "HAWKING_DSV4F_FP8_SHARED_DOWN_COMBINE_FUSED": "1",
     "HAWKING_DSV4F_FP8_SHARED_GATE_UP_SWIGLU_FUSED": "1",
     "HAWKING_DSV4F_P6_BATCHED_DOWN_QAT": "1",
     "HAWKING_DSV4F_P6_FP4_DOWN_BF16_FUSED": "1",
     "HAWKING_DSV4F_P6_FP4_DOWN_BF16_SIMD": "0",
+    "HAWKING_DSV4F_P6_FP4_DOWN_SHARED_COMBINE_FUSED": "1",
     "HAWKING_DSV4F_P6_FP4_GATE_UP_SWIGLU_SIMD": "0",
     "HAWKING_DSV4F_P6_PREFIX_CONCURRENT": "1",
     "HAWKING_DSV4F_P6_SINGLE_CB": "1"
@@ -7709,14 +7947,14 @@
    "status": "BLOCKED"
   },
   {
-   "affected_physical_region": "Flash hash-route P6 command-buffer topology",
+   "affected_physical_region": "Flash P6 command-buffer topology after route resolution",
    "blocked_reason": "Flash complete source-independent NX is not qualified and the single-command-buffer path has no matched parity/coherence and protected-latency receipt",
    "candidate_id": "flash-p6-hash-single-command-buffer",
    "dependencies": [],
    "expected_active_byte_change": "unchanged source BF16/FP4/FP8 bytes; NX active bytes unqualified",
-   "expected_dispatch_reduction": "1 command buffer and wait instead of the historical 2; 60 dispatches remain unchanged",
-   "expected_eliminated_work": "one CPU-visible commit/wait between the device-resident up/SwiGLU wave and down/combine wave",
-   "expected_gpu_ns_mechanism": "append the dependency-ordered down/combine concurrent waves to the first P6 command buffer while preserving explicit wave boundaries and Metal hazards",
+   "expected_dispatch_reduction": "hash path: 1 command buffer and wait instead of historical 2; learned path: 2 instead of 3; 60 dispatches remain unchanged",
+   "expected_eliminated_work": "one CPU-visible commit/wait between the device-resident up/SwiGLU wave and down/combine wave; on learned layers the same switch removes the post-residency phase fence",
+   "expected_gpu_ns_mechanism": "append dependency-ordered down/combine waves to the first P6 command buffer while preserving the route/readback residency boundary, explicit wave boundaries, and Metal hazards",
    "expected_intermediate_byte_reduction": "0; all routed/shared BF16 and route-control buffers remain resident",
    "model": "Flash",
    "mutation_env": {
@@ -7731,11 +7969,11 @@
    "dependencies": [
     "flash-p6-learned-reader-reuse"
    ],
-   "expected_active_byte_change": "unchanged source FP4/FP8 and activation bytes; only CPU source-cache lifetime changes",
+   "expected_active_byte_change": "unchanged source FP4/FP8 and activation bytes; overlapping routes reuse existing GPU weight buffers rather than uploading a second copy",
    "expected_dispatch_reduction": "0; device dispatch topology, route-ID readback, and GPU upload boundaries are unchanged",
-   "expected_eliminated_work": "repeated source chunk materialization for expert bundles that overlap successive learned routes",
-   "expected_gpu_ns_mechanism": "avoid repeated host source reads before GPU upload when route overlap exists; route overlap and complete-token wall time are the falsifiers",
-   "expected_intermediate_byte_reduction": "retain at most the exact six-bundle hot capacity; no dense or decoded representation is added",
+   "expected_eliminated_work": "repeated source chunk materialization and GPU re-upload of expert bundles that overlap successive learned routes",
+   "expected_gpu_ns_mechanism": "avoid repeated host source reads and GPU buffer uploads before the expert wave when route overlap exists; route overlap, allocation bytes, and complete-token wall time are the falsifiers",
+   "expected_intermediate_byte_reduction": "retain at most the exact six-bundle hot capacity plus the same six-entry GPU weight handle cache; pre-route FP4 placeholders are one byte per pointer component, and no dense or decoded representation is added",
    "model": "Flash",
    "mutation_env": {
     "HAWKING_DSV4F_P6_LEARNED_EXPERT_CACHE_REUSE": "1",
@@ -7780,7 +8018,7 @@
    "blocked_reason": "Flash source-independent NX and protected complete-token capability are not qualified",
    "candidate_id": "flash-p6-routed-fp4-down-bf16-fused",
    "dependencies": [],
-   "expected_active_byte_change": "unchanged six routed FP4 W2 weight/scale buffers, per-expert QAT outputs, and final BF16 combine bytes",
+   "expected_active_byte_change": "unchanged six routed FP4 W2 weight/scale buffers, per-expert QAT outputs, and final BF16 combine bytes; inactive routed down_f32 scratch is reduced by 98298 structural bytes",
    "expected_dispatch_reduction": "reduce the fixed hash graph from 60 to 49 dispatches; P6 batch 2 falls from 22 to 11",
    "expected_eliminated_work": "six routed W2 launches and six routed FP32-to-BF16 cast launches",
    "expected_gpu_ns_mechanism": "one fixed-six indirect launch consumes the already-authoritative per-expert E4M3FN/UE8M0 QAT buffers, preserves FP4 block accumulation, and writes exact BF16 W2 outputs",
@@ -7815,11 +8053,11 @@
    "blocked_reason": "Flash source-independent NX and protected complete-token capability are not qualified",
    "candidate_id": "flash-p6-routed-fp4-gate-up-swiglu-fused",
    "dependencies": [],
-   "expected_active_byte_change": "unchanged six routed FP4 weight/scale buffers, activation quantization, and per-expert BF16 output contract",
+   "expected_active_byte_change": "unchanged six routed FP4 weight/scale buffers and activation bytes; inactive gate/up scratch allocation is reduced by 147432 structural bytes",
    "expected_dispatch_reduction": "reduce P6 batch 1 from 38 to 9 and the fixed hash graph from 60 to 31 dispatches",
    "expected_eliminated_work": "six routed W1 launches, six routed W3 launches, twelve routed FP32-to-BF16 casts, and six routed SwiGLU launches",
    "expected_gpu_ns_mechanism": "one fixed-six indirect-address launch performs paired source-order FP4 reductions, exact BF16 round-trips, clamp/SwiGLU, and device route weighting; explicit read/write residency covers every indirect buffer",
-   "expected_intermediate_byte_reduction": "routed gate/up FP32 and BF16 staging buffers remain allocated for authority compatibility but are not written by the fused candidate",
+   "expected_intermediate_byte_reduction": "routed gate/up FP32 and BF16 staging is replaced by one-byte guarded placeholders; the live per-expert BF16 SwiGLU output contract remains explicit",
    "model": "Flash",
    "mutation_env": {
     "HAWKING_DSV4F_FP4_GATE_UP_SWIGLU_FUSED": "1",
@@ -7982,7 +8220,7 @@
    "blocked_reason": "Flash source-independent NX and protected complete-token capability are not qualified",
    "candidate_id": "flash-shared-fp8-down-combine-fused",
    "dependencies": [],
-   "expected_active_byte_change": "unchanged shared FP8 W2 weights, E8M0 scales, shared activation-quantized bytes, and six routed BF16 output rows",
+   "expected_active_byte_change": "unchanged shared FP8 W2 weights, E8M0 scales, shared activation-quantized bytes, and six routed BF16 output rows; inactive shared down scratch is reduced by 24574 structural bytes",
    "expected_dispatch_reduction": "reduce the shared W2/cast/combine sequence from three dispatches to one; P6 hash topology falls from 60 to 58",
    "expected_eliminated_work": "one shared FP8 W2 dispatch, one shared FP32-to-BF16 cast dispatch, and one standalone routed/shared combine dispatch per layer",
    "expected_gpu_ns_mechanism": "compute the source-order shared FP8 W2 row, explicitly round-trip it through BF16, then add the six routed BF16 rows in numeric-expert order before the final BF16 store",
@@ -7998,11 +8236,11 @@
    "blocked_reason": "Flash source-independent NX and protected complete-token capability are not qualified",
    "candidate_id": "flash-shared-fp8-gate-up-swiglu-fused",
    "dependencies": [],
-   "expected_active_byte_change": "unchanged FP8 weight and activation reads; lower transient intermediate traffic",
+   "expected_active_byte_change": "unchanged FP8 weight and activation reads; inactive shared gate/up scratch allocation is reduced by 24572 structural bytes",
    "expected_dispatch_reduction": "reduce the shared gate/up/SwiGLU sequence from five dispatches to one",
    "expected_eliminated_work": "two shared FP8 matvec dispatches, two FP32-to-BF16 staging dispatches, and one standalone shared SwiGLU dispatch per layer",
    "expected_gpu_ns_mechanism": "pair the two source-order FP8 reductions and consume their explicit BF16 round-trips in one kernel",
-   "expected_intermediate_byte_reduction": "remove shared gate/up FP32 and BF16 staging traffic; fixed scratch allocation remains unchanged",
+   "expected_intermediate_byte_reduction": "remove shared gate/up FP32 and BF16 staging traffic; inactive shared scratch is replaced by one-byte guarded placeholders",
    "model": "Flash",
    "mutation_env": {
     "HAWKING_DSV4F_FP8_SHARED_GATE_UP_SWIGLU_FUSED": "1"
@@ -9685,6 +9923,31 @@
   {
    "can_enter_promotion_list": false,
    "can_enter_protected_pass": false,
+   "candidate_id": "flash-p6-fused-down-shared-combine",
+   "currently_in_funnel_promotion": false,
+   "funnel_lanes": [],
+   "legal_next_statuses": [
+    "STATIC_ONLY"
+   ],
+   "promotion_prerequisites": [
+    "funnel.promotion_rule: only a protected complete-token receipt with capability and zero-fallback gates may promote",
+    "queue_policy.protected_start_requires_existing_hcli_lease",
+    "queue_policy.protected_start_requires_machine_quiescence",
+    "queue_policy.diagnostic_results_do_not_promote (DIAGNOSTIC_RELATIVE never promotes)",
+    "measurement_contract.protected_pass_requires_all_fields",
+    "measurement_contract.null_policy: missing physical metrics remain null until a native protected complete-token receipt records them"
+   ],
+   "rejection_reasons_from_queue": [
+    "parity_contract: source organ/reference parity is required; no whole-model Flash parity or NX claim is implied",
+    "capability_contract: blocked until a complete source-independent NX executable and independent capability path exist",
+    "blocked_reason: Flash source-independent NX and protected complete-token capability are not qualified; this full composition still requires matched parity/coherence and protected latency"
+   ],
+   "source": "status_transitions, funnel, queue_policy, measurement_contract, parity_contract, capability_contract, blocked_reason \u2014 all copied from the queue document. this sidecar invents no new status.",
+   "status": "BLOCKED"
+  },
+  {
+   "can_enter_promotion_list": false,
+   "can_enter_protected_pass": false,
    "candidate_id": "flash-p6-fused-epilogue-stack",
    "currently_in_funnel_promotion": false,
    "funnel_lanes": [],
@@ -10644,6 +10907,3077 @@
    "status": "STATIC_ONLY"
   }
  ],
+ "protected_batch": {
+  "claim_boundary": "static protected-batch plan only; no hardware measurement, physical EBPW, latency, or throughput is claimed",
+  "current_environment": {
+   "flash_command_mode": "source_oracle_or_scaffold only; not a protected timing command",
+   "flash_physical_ebpw": "UNKNOWN",
+   "lock_policy": "do not clear or seize a live lock; holder uncertainty is a fail-closed gate",
+   "machine_contamination": "latest qualification walk classified the host HEAVY; do not quiesce or pause standing workers from this sidecar",
+   "metal_compiler": "UNAVAILABLE_ON_CURRENT_HOST",
+   "metal_gpu": "UNAVAILABLE_ON_CURRENT_HOST",
+   "prospective_meta_bpw": 0.8871807728336929,
+   "protected_lock_paths": [
+    ".hcli/locks/protected-accelerator-bench.lock",
+    ".hcli/locks/qwen-protected-bench.lock"
+   ],
+   "queue_source": "/Users/scammermike/Downloads/hawking/receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
+   "qwen_profile": "hcli/hawking-native.sealed-3.14.json",
+   "qwen_protected_protocol": {
+    "max_new_tokens": 32,
+    "measure_requests": 10,
+    "pairing": "ABAB interleaving within one protected lease",
+    "warmup_requests": 2
+   },
+   "repo_root": "/Users/scammermike/Downloads/hawking",
+   "static_preflight": {
+    "error_count": 0,
+    "physical_correctness_proven": false
+   },
+   "teacher_capture_rows": 0
+  },
+  "execution_authority": {
+   "acquires_lease": false,
+   "current_gpu_authority": false,
+   "executes_benchmark": false,
+   "flash_gate": "do not run Flash rows until a source-independent Flash NX executable, Metal GPU/compiler capability, and protected complete-token receipt path are qualified",
+   "plan_only": true,
+   "quiesces_machine": false,
+   "qwen_gate": "queue rows are READY_PROTECTED, but a protected HCLI lease and QUIESCENT machine are still required at execution time",
+   "when_metal_returns": "STOP INVENTING: execute the named batch, record parity first, then prune, combine, and reprofile from protected receipts"
+  },
+  "flash_return_batch": {
+   "count": 14,
+   "model": "Flash",
+   "name": "FLASH_RETURN_PROTECTED_SINGLETONS_AND_COMPOSITIONS",
+   "rule": "all rows remain queue BLOCKED and execution-closed now; after Flash authority returns, run singleton rows first, then the full-down and terminal-stack descendants only when parents survive",
+   "run_order": [
+    {
+     "affected_physical_region": "Flash P4B/P7 mHC-pre wide reduction",
+     "allowed_outcomes": [
+      "IMPLEMENTED_UNMEASURED",
+      "REJECTED_PARITY",
+      "REJECTED_PHYSICAL",
+      "PHYSICAL_WIN_MODEL_LOCAL",
+      "PHYSICAL_WIN_FAMILY",
+      "GENERIC_CANDIDATE",
+      "GENERIC_VERIFIED"
+     ],
+     "baseline_path": "receipts/headless/FLASH_NEXT_NOETIC_EXECUTABLE.json",
+     "batch": "FLASH_RETURN_PROTECTED_SINGLETONS_AND_COMPOSITIONS",
+     "blocked_reason": "Flash complete source-independent NX is not qualified and the SIMD mHC reduction has no bounded parity/coherence receipt",
+     "candidate_id": "flash-p7-mhc-pre-simdgroup",
+     "capability_contract": "blocked until a complete source-independent NX executable and independent capability path exist",
+     "control_configuration": {
+      "mode": "source_oracle_or_scaffold",
+      "source_oracle_controls": {
+       "HAWKING_DSV4F_MHC_PRE_SIMD": "0"
+      }
+     },
+     "control_env": {
+      "HAWKING_DSV4F_MHC_PRE_SIMD": "0"
+     },
+     "dependencies": [],
+     "diagnostic_command": [
+      "python3",
+      "-m",
+      "hcli",
+      "agentos",
+      "flash-executable",
+      "--repo-root",
+      ".",
+      "--emit",
+      "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/flash-p7-mhc-pre-simdgroup-plan.json"
+     ],
+     "exact_mutation": {
+      "source_oracle_controls": {
+       "HAWKING_DSV4F_MHC_PRE_SIMD": "1"
+      }
+     },
+     "execution_state": "WAITING_FOR_FLASH_AUTHORITY",
+     "expected_active_byte_change": "unchanged source BF16 residual and F32 control bytes; NX active bytes unqualified",
+     "expected_dispatch_reduction": "0; the shared mHC-pre remains one dispatch with a 24-SIMDgroup threadgroup",
+     "expected_eliminated_work": "one-thread serialization across the 24 source mHC rows and 16,384-wide dot products in the bounded P4B attention and P7 FFN graphs",
+     "expected_gpu_ns_mechanism": "assign one 24-SIMDgroup threadgroup to the shared P4B/P7 mHC-pre rows, stage the RMS partials, and leave the nonlinear Sinkhorn/control grammar source-ordered",
+     "expected_intermediate_byte_reduction": "0; the existing reduced BF16 and mHC diagnostic buffers are retained",
+     "model": "Flash",
+     "mutation_env": {
+      "HAWKING_DSV4F_MHC_PRE_SIMD": "1"
+     },
+     "parity_contract": "source organ/reference parity is required; no whole-model Flash parity or NX claim is implied",
+     "protected_command": [
+      "python3",
+      "-m",
+      "hcli",
+      "agentos",
+      "flash-executable",
+      "--repo-root",
+      ".",
+      "--emit",
+      "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/flash-p7-mhc-pre-simdgroup-plan.json"
+     ],
+     "queue_status": "BLOCKED",
+     "requires_survivors": [],
+     "scope_tags": [
+      "MODEL_LOCAL"
+     ],
+     "selection_reason": "material dispatch, wait, resource-admission, fusion, or route/cache mechanism selected for the Flash return batch",
+     "sequence": 1,
+     "source_evidence": [
+      "crates/hawking-core/shaders/deepseek_v4_p7.metal",
+      "crates/hawking-core/src/gravity_deepseek_v4_p4b_device.rs",
+      "crates/hawking-core/src/gravity_deepseek_v4_p7_device.rs",
+      "workspace/docs/plans/KERNEL_BROKERS_TUNING_PLAN.md"
+     ],
+     "transfer_evidence": []
+    },
+    {
+     "affected_physical_region": "Flash P6 command-buffer topology after route resolution",
+     "allowed_outcomes": [
+      "IMPLEMENTED_UNMEASURED",
+      "REJECTED_PARITY",
+      "REJECTED_PHYSICAL",
+      "PHYSICAL_WIN_MODEL_LOCAL",
+      "PHYSICAL_WIN_FAMILY",
+      "GENERIC_CANDIDATE",
+      "GENERIC_VERIFIED"
+     ],
+     "baseline_path": "receipts/headless/FLASH_NEXT_NOETIC_EXECUTABLE.json",
+     "batch": "FLASH_RETURN_PROTECTED_SINGLETONS_AND_COMPOSITIONS",
+     "blocked_reason": "Flash complete source-independent NX is not qualified and the single-command-buffer path has no matched parity/coherence and protected-latency receipt",
+     "candidate_id": "flash-p6-hash-single-command-buffer",
+     "capability_contract": "blocked until a complete source-independent NX executable and independent capability path exist",
+     "control_configuration": {
+      "mode": "source_oracle_or_scaffold",
+      "source_oracle_controls": {
+       "HAWKING_DSV4F_P6_SINGLE_CB": "0"
+      }
+     },
+     "control_env": {
+      "HAWKING_DSV4F_P6_SINGLE_CB": "0"
+     },
+     "dependencies": [],
+     "diagnostic_command": [
+      "python3",
+      "-m",
+      "hcli",
+      "agentos",
+      "flash-executable",
+      "--repo-root",
+      ".",
+      "--emit",
+      "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/flash-p6-hash-single-command-buffer-plan.json"
+     ],
+     "exact_mutation": {
+      "source_oracle_controls": {
+       "HAWKING_DSV4F_P6_SINGLE_CB": "1"
+      }
+     },
+     "execution_state": "WAITING_FOR_FLASH_AUTHORITY",
+     "expected_active_byte_change": "unchanged source BF16/FP4/FP8 bytes; NX active bytes unqualified",
+     "expected_dispatch_reduction": "hash path: 1 command buffer and wait instead of historical 2; learned path: 2 instead of 3; 60 dispatches remain unchanged",
+     "expected_eliminated_work": "one CPU-visible commit/wait between the device-resident up/SwiGLU wave and down/combine wave; on learned layers the same switch removes the post-residency phase fence",
+     "expected_gpu_ns_mechanism": "append dependency-ordered down/combine waves to the first P6 command buffer while preserving the route/readback residency boundary, explicit wave boundaries, and Metal hazards",
+     "expected_intermediate_byte_reduction": "0; all routed/shared BF16 and route-control buffers remain resident",
+     "model": "Flash",
+     "mutation_env": {
+      "HAWKING_DSV4F_P6_SINGLE_CB": "1"
+     },
+     "parity_contract": "source organ/reference parity is required; no whole-model Flash parity or NX claim is implied",
+     "protected_command": [
+      "python3",
+      "-m",
+      "hcli",
+      "agentos",
+      "flash-executable",
+      "--repo-root",
+      ".",
+      "--emit",
+      "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/flash-p6-hash-single-command-buffer-plan.json"
+     ],
+     "queue_status": "BLOCKED",
+     "requires_survivors": [],
+     "scope_tags": [
+      "MODEL_LOCAL"
+     ],
+     "selection_reason": "material dispatch, wait, resource-admission, fusion, or route/cache mechanism selected for the Flash return batch",
+     "sequence": 2,
+     "source_evidence": [
+      "crates/hawking-core/src/gravity_deepseek_v4_p6_device.rs",
+      "crates/hawking-core/src/metal/mod.rs",
+      "workspace/docs/plans/KERNEL_BROKERS_TUNING_PLAN.md"
+     ],
+     "transfer_evidence": []
+    },
+    {
+     "affected_physical_region": "Flash P6 Gate and activation-quantization prefix",
+     "allowed_outcomes": [
+      "IMPLEMENTED_UNMEASURED",
+      "REJECTED_PARITY",
+      "REJECTED_PHYSICAL",
+      "PHYSICAL_WIN_MODEL_LOCAL",
+      "PHYSICAL_WIN_FAMILY",
+      "GENERIC_CANDIDATE",
+      "GENERIC_VERIFIED"
+     ],
+     "baseline_path": "receipts/headless/FLASH_NEXT_NOETIC_EXECUTABLE.json",
+     "batch": "FLASH_RETURN_PROTECTED_SINGLETONS_AND_COMPOSITIONS",
+     "blocked_reason": "Flash complete source-independent NX is not qualified and the shared prefix has no matched parity/coherence and protected-latency receipt",
+     "candidate_id": "flash-p6-prefix-concurrent-wave",
+     "capability_contract": "blocked until a complete source-independent NX executable and independent capability path exist",
+     "control_configuration": {
+      "mode": "source_oracle_or_scaffold",
+      "source_oracle_controls": {
+       "HAWKING_DSV4F_P6_PREFIX_CONCURRENT": "0"
+      }
+     },
+     "control_env": {
+      "HAWKING_DSV4F_P6_PREFIX_CONCURRENT": "0"
+     },
+     "dependencies": [],
+     "diagnostic_command": [
+      "python3",
+      "-m",
+      "hcli",
+      "agentos",
+      "flash-executable",
+      "--repo-root",
+      ".",
+      "--emit",
+      "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/flash-p6-prefix-concurrent-wave-plan.json"
+     ],
+     "exact_mutation": {
+      "source_oracle_controls": {
+       "HAWKING_DSV4F_P6_PREFIX_CONCURRENT": "1"
+      }
+     },
+     "execution_state": "WAITING_FOR_FLASH_AUTHORITY",
+     "expected_active_byte_change": "unchanged source BF16 input, Gate BF16 weights, and quantizer output bytes",
+     "expected_dispatch_reduction": "0; Gate, QAT, and route dispatches remain unchanged",
+     "expected_eliminated_work": "one compute-encoder boundary between the independent Gate reduction and activation quantization",
+     "expected_gpu_ns_mechanism": "place Gate and activation quantization in one concurrent encoder because both only read the shared input and write disjoint outputs, then retain a separate route dependency boundary",
+     "expected_intermediate_byte_reduction": "0; Gate logits and E4M3FN/UE8M0 quantized buffers remain separate and source-visible",
+     "model": "Flash",
+     "mutation_env": {
+      "HAWKING_DSV4F_P6_PREFIX_CONCURRENT": "1"
+     },
+     "parity_contract": "source organ/reference parity is required; no whole-model Flash parity or NX claim is implied",
+     "protected_command": [
+      "python3",
+      "-m",
+      "hcli",
+      "agentos",
+      "flash-executable",
+      "--repo-root",
+      ".",
+      "--emit",
+      "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/flash-p6-prefix-concurrent-wave-plan.json"
+     ],
+     "queue_status": "BLOCKED",
+     "requires_survivors": [],
+     "scope_tags": [
+      "MODEL_LOCAL"
+     ],
+     "selection_reason": "material dispatch, wait, resource-admission, fusion, or route/cache mechanism selected for the Flash return batch",
+     "sequence": 3,
+     "source_evidence": [
+      "crates/hawking-core/src/gravity_deepseek_v4_p6_device.rs",
+      "crates/hawking-core/src/metal/mod.rs"
+     ],
+     "transfer_evidence": []
+    },
+    {
+     "affected_physical_region": "Flash P6A fixed-six routed FP4 gate/up/SwiGLU epilogue",
+     "allowed_outcomes": [
+      "IMPLEMENTED_UNMEASURED",
+      "REJECTED_PARITY",
+      "REJECTED_PHYSICAL",
+      "PHYSICAL_WIN_MODEL_LOCAL",
+      "PHYSICAL_WIN_FAMILY",
+      "GENERIC_CANDIDATE",
+      "GENERIC_VERIFIED"
+     ],
+     "baseline_path": "receipts/headless/FLASH_NEXT_NOETIC_EXECUTABLE.json",
+     "batch": "FLASH_RETURN_PROTECTED_SINGLETONS_AND_COMPOSITIONS",
+     "blocked_reason": "Flash source-independent NX and protected complete-token capability are not qualified",
+     "candidate_id": "flash-p6-routed-fp4-gate-up-swiglu-fused",
+     "capability_contract": "blocked until a complete source-independent NX executable and independent capability path exist",
+     "control_configuration": {
+      "mode": "source_oracle_or_scaffold",
+      "source_oracle_controls": {
+       "HAWKING_DSV4F_FP4_GATE_UP_SWIGLU_FUSED": "0",
+       "HAWKING_DSV4F_P6_FP4_GATE_UP_SWIGLU_SIMD": "0"
+      }
+     },
+     "control_env": {
+      "HAWKING_DSV4F_FP4_GATE_UP_SWIGLU_FUSED": "0",
+      "HAWKING_DSV4F_P6_FP4_GATE_UP_SWIGLU_SIMD": "0"
+     },
+     "dependencies": [],
+     "diagnostic_command": [
+      "python3",
+      "-m",
+      "hcli",
+      "agentos",
+      "flash-executable",
+      "--repo-root",
+      ".",
+      "--emit",
+      "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/flash-p6-routed-fp4-gate-up-swiglu-fused-plan.json"
+     ],
+     "exact_mutation": {
+      "source_oracle_controls": {
+       "HAWKING_DSV4F_FP4_GATE_UP_SWIGLU_FUSED": "1",
+       "HAWKING_DSV4F_P6_FP4_GATE_UP_SWIGLU_SIMD": "0"
+      }
+     },
+     "execution_state": "WAITING_FOR_FLASH_AUTHORITY",
+     "expected_active_byte_change": "unchanged six routed FP4 weight/scale buffers and activation bytes; inactive gate/up scratch allocation is reduced by 147432 structural bytes",
+     "expected_dispatch_reduction": "reduce P6 batch 1 from 38 to 9 and the fixed hash graph from 60 to 31 dispatches",
+     "expected_eliminated_work": "six routed W1 launches, six routed W3 launches, twelve routed FP32-to-BF16 casts, and six routed SwiGLU launches",
+     "expected_gpu_ns_mechanism": "one fixed-six indirect-address launch performs paired source-order FP4 reductions, exact BF16 round-trips, clamp/SwiGLU, and device route weighting; explicit read/write residency covers every indirect buffer",
+     "expected_intermediate_byte_reduction": "routed gate/up FP32 and BF16 staging is replaced by one-byte guarded placeholders; the live per-expert BF16 SwiGLU output contract remains explicit",
+     "model": "Flash",
+     "mutation_env": {
+      "HAWKING_DSV4F_FP4_GATE_UP_SWIGLU_FUSED": "1",
+      "HAWKING_DSV4F_P6_FP4_GATE_UP_SWIGLU_SIMD": "0"
+     },
+     "parity_contract": "source organ/reference parity is required; no whole-model Flash parity or NX claim is implied",
+     "protected_command": [
+      "python3",
+      "-m",
+      "hcli",
+      "agentos",
+      "flash-executable",
+      "--repo-root",
+      ".",
+      "--emit",
+      "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/flash-p6-routed-fp4-gate-up-swiglu-fused-plan.json"
+     ],
+     "queue_status": "BLOCKED",
+     "requires_survivors": [],
+     "scope_tags": [
+      "MODEL_LOCAL"
+     ],
+     "selection_reason": "material dispatch, wait, resource-admission, fusion, or route/cache mechanism selected for the Flash return batch",
+     "sequence": 4,
+     "source_evidence": [
+      "crates/hawking-core/shaders/moe.metal",
+      "crates/hawking-core/src/gravity_deepseek_v4_p6_device.rs",
+      "crates/hawking-core/src/metal/mod.rs"
+     ],
+     "transfer_evidence": []
+    },
+    {
+     "affected_physical_region": "Flash P6A routed FP4 W2/down projection and BF16 boundary",
+     "allowed_outcomes": [
+      "IMPLEMENTED_UNMEASURED",
+      "REJECTED_PARITY",
+      "REJECTED_PHYSICAL",
+      "PHYSICAL_WIN_MODEL_LOCAL",
+      "PHYSICAL_WIN_FAMILY",
+      "GENERIC_CANDIDATE",
+      "GENERIC_VERIFIED"
+     ],
+     "baseline_path": "receipts/headless/FLASH_NEXT_NOETIC_EXECUTABLE.json",
+     "batch": "FLASH_RETURN_PROTECTED_SINGLETONS_AND_COMPOSITIONS",
+     "blocked_reason": "Flash source-independent NX and protected complete-token capability are not qualified",
+     "candidate_id": "flash-p6-routed-fp4-down-bf16-fused",
+     "capability_contract": "blocked until a complete source-independent NX executable and independent capability path exist",
+     "control_configuration": {
+      "mode": "source_oracle_or_scaffold",
+      "source_oracle_controls": {
+       "HAWKING_DSV4F_P6_FP4_DOWN_BF16_FUSED": "0"
+      }
+     },
+     "control_env": {
+      "HAWKING_DSV4F_P6_FP4_DOWN_BF16_FUSED": "0"
+     },
+     "dependencies": [],
+     "diagnostic_command": [
+      "python3",
+      "-m",
+      "hcli",
+      "agentos",
+      "flash-executable",
+      "--repo-root",
+      ".",
+      "--emit",
+      "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/flash-p6-routed-fp4-down-bf16-fused-plan.json"
+     ],
+     "exact_mutation": {
+      "source_oracle_controls": {
+       "HAWKING_DSV4F_P6_FP4_DOWN_BF16_FUSED": "1"
+      }
+     },
+     "execution_state": "WAITING_FOR_FLASH_AUTHORITY",
+     "expected_active_byte_change": "unchanged six routed FP4 W2 weight/scale buffers, per-expert QAT outputs, and final BF16 combine bytes; inactive routed down_f32 scratch is reduced by 98298 structural bytes",
+     "expected_dispatch_reduction": "reduce the fixed hash graph from 60 to 49 dispatches; P6 batch 2 falls from 22 to 11",
+     "expected_eliminated_work": "six routed W2 launches and six routed FP32-to-BF16 cast launches",
+     "expected_gpu_ns_mechanism": "one fixed-six indirect launch consumes the already-authoritative per-expert E4M3FN/UE8M0 QAT buffers, preserves FP4 block accumulation, and writes exact BF16 W2 outputs",
+     "expected_intermediate_byte_reduction": "routed down FP32 staging is bypassed; the existing six per-expert BF16 outputs remain the combine contract",
+     "model": "Flash",
+     "mutation_env": {
+      "HAWKING_DSV4F_P6_FP4_DOWN_BF16_FUSED": "1"
+     },
+     "parity_contract": "source organ/reference parity is required; no whole-model Flash parity or NX claim is implied",
+     "protected_command": [
+      "python3",
+      "-m",
+      "hcli",
+      "agentos",
+      "flash-executable",
+      "--repo-root",
+      ".",
+      "--emit",
+      "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/flash-p6-routed-fp4-down-bf16-fused-plan.json"
+     ],
+     "queue_status": "BLOCKED",
+     "requires_survivors": [],
+     "scope_tags": [
+      "MODEL_LOCAL"
+     ],
+     "selection_reason": "material dispatch, wait, resource-admission, fusion, or route/cache mechanism selected for the Flash return batch",
+     "sequence": 5,
+     "source_evidence": [
+      "crates/hawking-core/shaders/moe.metal",
+      "crates/hawking-core/src/gravity_deepseek_v4_p6_device.rs",
+      "crates/hawking-core/src/metal/mod.rs"
+     ],
+     "transfer_evidence": []
+    },
+    {
+     "affected_physical_region": "Flash P6 fixed-seven down activation quantization wave",
+     "allowed_outcomes": [
+      "IMPLEMENTED_UNMEASURED",
+      "REJECTED_PARITY",
+      "REJECTED_PHYSICAL",
+      "PHYSICAL_WIN_MODEL_LOCAL",
+      "PHYSICAL_WIN_FAMILY",
+      "GENERIC_CANDIDATE",
+      "GENERIC_VERIFIED"
+     ],
+     "baseline_path": "receipts/headless/FLASH_NEXT_NOETIC_EXECUTABLE.json",
+     "batch": "FLASH_RETURN_PROTECTED_SINGLETONS_AND_COMPOSITIONS",
+     "blocked_reason": "Flash source-independent NX and protected complete-token capability are not qualified",
+     "candidate_id": "flash-p6-batched-down-qat",
+     "capability_contract": "blocked until a complete source-independent NX executable and independent capability path exist",
+     "control_configuration": {
+      "mode": "source_oracle_or_scaffold",
+      "source_oracle_controls": {
+       "HAWKING_DSV4F_P6_BATCHED_DOWN_QAT": "0"
+      }
+     },
+     "control_env": {
+      "HAWKING_DSV4F_P6_BATCHED_DOWN_QAT": "0"
+     },
+     "dependencies": [],
+     "diagnostic_command": [
+      "python3",
+      "-m",
+      "hcli",
+      "agentos",
+      "flash-executable",
+      "--repo-root",
+      ".",
+      "--emit",
+      "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/flash-p6-batched-down-qat-plan.json"
+     ],
+     "exact_mutation": {
+      "source_oracle_controls": {
+       "HAWKING_DSV4F_P6_BATCHED_DOWN_QAT": "1"
+      }
+     },
+     "execution_state": "WAITING_FOR_FLASH_AUTHORITY",
+     "expected_active_byte_change": "unchanged BF16 SwiGLU inputs, E4M3FN quantized outputs, and E8M0FNU scale bytes",
+     "expected_dispatch_reduction": "replace seven down-QAT dispatches with one fixed-seven indirect dispatch; P6 structural topology falls from 60 to 54 while compute-encoder count is unchanged",
+     "expected_eliminated_work": "six routed and one shared independent BF16-to-E4M3FN/E8M0 activation-quantization launch boundaries",
+     "expected_gpu_ns_mechanism": "one logical source 128-value block per thread reads one of six routed or one shared scratch tensor through a fixed indirect record; block arithmetic and byte order match the authority quantizer",
+     "expected_intermediate_byte_reduction": "same seven quantized activation buffers and seven E8M0FNU scale buffers remain the downstream ABI; only pointer binding is packed",
+     "model": "Flash",
+     "mutation_env": {
+      "HAWKING_DSV4F_P6_BATCHED_DOWN_QAT": "1"
+     },
+     "parity_contract": "source organ/reference parity is required; no whole-model Flash parity or NX claim is implied",
+     "protected_command": [
+      "python3",
+      "-m",
+      "hcli",
+      "agentos",
+      "flash-executable",
+      "--repo-root",
+      ".",
+      "--emit",
+      "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/flash-p6-batched-down-qat-plan.json"
+     ],
+     "queue_status": "BLOCKED",
+     "requires_survivors": [],
+     "scope_tags": [
+      "MODEL_LOCAL"
+     ],
+     "selection_reason": "material dispatch, wait, resource-admission, fusion, or route/cache mechanism selected for the Flash return batch",
+     "sequence": 6,
+     "source_evidence": [
+      "crates/hawking-core/shaders/matmul.metal",
+      "crates/hawking-core/src/gravity_deepseek_v4_p6_device.rs",
+      "crates/hawking-core/src/metal/mod.rs"
+     ],
+     "transfer_evidence": []
+    },
+    {
+     "affected_physical_region": "Flash shared FP8 gate/up/SwiGLU epilogue",
+     "allowed_outcomes": [
+      "IMPLEMENTED_UNMEASURED",
+      "REJECTED_PARITY",
+      "REJECTED_PHYSICAL",
+      "PHYSICAL_WIN_MODEL_LOCAL",
+      "PHYSICAL_WIN_FAMILY",
+      "GENERIC_CANDIDATE",
+      "GENERIC_VERIFIED"
+     ],
+     "baseline_path": "receipts/headless/FLASH_NEXT_NOETIC_EXECUTABLE.json",
+     "batch": "FLASH_RETURN_PROTECTED_SINGLETONS_AND_COMPOSITIONS",
+     "blocked_reason": "Flash source-independent NX and protected complete-token capability are not qualified",
+     "candidate_id": "flash-shared-fp8-gate-up-swiglu-fused",
+     "capability_contract": "blocked until a complete source-independent NX executable and independent capability path exist",
+     "control_configuration": {
+      "mode": "source_oracle_or_scaffold",
+      "source_oracle_controls": {
+       "HAWKING_DSV4F_FP8_SHARED_GATE_UP_SWIGLU_FUSED": "0"
+      }
+     },
+     "control_env": {
+      "HAWKING_DSV4F_FP8_SHARED_GATE_UP_SWIGLU_FUSED": "0"
+     },
+     "dependencies": [],
+     "diagnostic_command": [
+      "python3",
+      "-m",
+      "hcli",
+      "agentos",
+      "flash-executable",
+      "--repo-root",
+      ".",
+      "--emit",
+      "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/flash-shared-fp8-gate-up-swiglu-fused-plan.json"
+     ],
+     "exact_mutation": {
+      "source_oracle_controls": {
+       "HAWKING_DSV4F_FP8_SHARED_GATE_UP_SWIGLU_FUSED": "1"
+      }
+     },
+     "execution_state": "WAITING_FOR_FLASH_AUTHORITY",
+     "expected_active_byte_change": "unchanged FP8 weight and activation reads; inactive shared gate/up scratch allocation is reduced by 24572 structural bytes",
+     "expected_dispatch_reduction": "reduce the shared gate/up/SwiGLU sequence from five dispatches to one",
+     "expected_eliminated_work": "two shared FP8 matvec dispatches, two FP32-to-BF16 staging dispatches, and one standalone shared SwiGLU dispatch per layer",
+     "expected_gpu_ns_mechanism": "pair the two source-order FP8 reductions and consume their explicit BF16 round-trips in one kernel",
+     "expected_intermediate_byte_reduction": "remove shared gate/up FP32 and BF16 staging traffic; inactive shared scratch is replaced by one-byte guarded placeholders",
+     "model": "Flash",
+     "mutation_env": {
+      "HAWKING_DSV4F_FP8_SHARED_GATE_UP_SWIGLU_FUSED": "1"
+     },
+     "parity_contract": "source organ/reference parity is required; no whole-model Flash parity or NX claim is implied",
+     "protected_command": [
+      "python3",
+      "-m",
+      "hcli",
+      "agentos",
+      "flash-executable",
+      "--repo-root",
+      ".",
+      "--emit",
+      "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/flash-shared-fp8-gate-up-swiglu-fused-plan.json"
+     ],
+     "queue_status": "BLOCKED",
+     "requires_survivors": [],
+     "scope_tags": [
+      "MODEL_LOCAL"
+     ],
+     "selection_reason": "material dispatch, wait, resource-admission, fusion, or route/cache mechanism selected for the Flash return batch",
+     "sequence": 7,
+     "source_evidence": [
+      "crates/hawking-core/shaders/matmul.metal",
+      "crates/hawking-core/src/gravity_deepseek_v4_native_token_graph.rs",
+      "crates/hawking-core/src/gravity_deepseek_v4_p6_device.rs",
+      "crates/hawking-core/src/metal/mod.rs"
+     ],
+     "transfer_evidence": []
+    },
+    {
+     "affected_physical_region": "Flash shared FP8 W2/down and fixed-six combine boundary",
+     "allowed_outcomes": [
+      "IMPLEMENTED_UNMEASURED",
+      "REJECTED_PARITY",
+      "REJECTED_PHYSICAL",
+      "PHYSICAL_WIN_MODEL_LOCAL",
+      "PHYSICAL_WIN_FAMILY",
+      "GENERIC_CANDIDATE",
+      "GENERIC_VERIFIED"
+     ],
+     "baseline_path": "receipts/headless/FLASH_NEXT_NOETIC_EXECUTABLE.json",
+     "batch": "FLASH_RETURN_PROTECTED_SINGLETONS_AND_COMPOSITIONS",
+     "blocked_reason": "Flash source-independent NX and protected complete-token capability are not qualified",
+     "candidate_id": "flash-shared-fp8-down-combine-fused",
+     "capability_contract": "blocked until a complete source-independent NX executable and independent capability path exist",
+     "control_configuration": {
+      "mode": "source_oracle_or_scaffold",
+      "source_oracle_controls": {
+       "HAWKING_DSV4F_FP8_SHARED_DOWN_COMBINE_FUSED": "0"
+      }
+     },
+     "control_env": {
+      "HAWKING_DSV4F_FP8_SHARED_DOWN_COMBINE_FUSED": "0"
+     },
+     "dependencies": [],
+     "diagnostic_command": [
+      "python3",
+      "-m",
+      "hcli",
+      "agentos",
+      "flash-executable",
+      "--repo-root",
+      ".",
+      "--emit",
+      "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/flash-shared-fp8-down-combine-fused-plan.json"
+     ],
+     "exact_mutation": {
+      "source_oracle_controls": {
+       "HAWKING_DSV4F_FP8_SHARED_DOWN_COMBINE_FUSED": "1"
+      }
+     },
+     "execution_state": "WAITING_FOR_FLASH_AUTHORITY",
+     "expected_active_byte_change": "unchanged shared FP8 W2 weights, E8M0 scales, shared activation-quantized bytes, and six routed BF16 output rows; inactive shared down scratch is reduced by 24574 structural bytes",
+     "expected_dispatch_reduction": "reduce the shared W2/cast/combine sequence from three dispatches to one; P6 hash topology falls from 60 to 58",
+     "expected_eliminated_work": "one shared FP8 W2 dispatch, one shared FP32-to-BF16 cast dispatch, and one standalone routed/shared combine dispatch per layer",
+     "expected_gpu_ns_mechanism": "compute the source-order shared FP8 W2 row, explicitly round-trip it through BF16, then add the six routed BF16 rows in numeric-expert order before the final BF16 store",
+     "expected_intermediate_byte_reduction": "remove shared down FP32 and BF16 staging from the fused path; routed BF16 outputs and final BF16 output remain the source contract",
+     "model": "Flash",
+     "mutation_env": {
+      "HAWKING_DSV4F_FP8_SHARED_DOWN_COMBINE_FUSED": "1"
+     },
+     "parity_contract": "source organ/reference parity is required; no whole-model Flash parity or NX claim is implied",
+     "protected_command": [
+      "python3",
+      "-m",
+      "hcli",
+      "agentos",
+      "flash-executable",
+      "--repo-root",
+      ".",
+      "--emit",
+      "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/flash-shared-fp8-down-combine-fused-plan.json"
+     ],
+     "queue_status": "BLOCKED",
+     "requires_survivors": [],
+     "scope_tags": [
+      "MODEL_LOCAL"
+     ],
+     "selection_reason": "material dispatch, wait, resource-admission, fusion, or route/cache mechanism selected for the Flash return batch",
+     "sequence": 8,
+     "source_evidence": [
+      "crates/hawking-core/shaders/matmul.metal",
+      "crates/hawking-core/src/gravity_deepseek_v4_native_token_graph.rs",
+      "crates/hawking-core/src/gravity_deepseek_v4_p6_device.rs",
+      "crates/hawking-core/src/metal/mod.rs"
+     ],
+     "transfer_evidence": []
+    },
+    {
+     "affected_physical_region": "Flash P6 routed FP4 W2 plus shared FP8 W2 and BF16 combine",
+     "allowed_outcomes": [
+      "IMPLEMENTED_UNMEASURED",
+      "REJECTED_PARITY",
+      "REJECTED_PHYSICAL",
+      "PHYSICAL_WIN_MODEL_LOCAL",
+      "PHYSICAL_WIN_FAMILY",
+      "GENERIC_CANDIDATE",
+      "GENERIC_VERIFIED"
+     ],
+     "baseline_path": "receipts/headless/FLASH_NEXT_NOETIC_EXECUTABLE.json",
+     "batch": "FLASH_RETURN_PROTECTED_SINGLETONS_AND_COMPOSITIONS",
+     "blocked_reason": "Flash source-independent NX and protected complete-token capability are not qualified; this full composition still requires matched parity/coherence and protected latency",
+     "candidate_id": "flash-p6-fused-down-shared-combine",
+     "capability_contract": "blocked until a complete source-independent NX executable and independent capability path exist",
+     "control_configuration": {
+      "mode": "source_oracle_or_scaffold",
+      "source_oracle_controls": {
+       "HAWKING_DSV4F_P6_FP4_DOWN_BF16_FUSED": "0",
+       "HAWKING_DSV4F_P6_FP4_DOWN_SHARED_COMBINE_FUSED": "0"
+      }
+     },
+     "control_env": {
+      "HAWKING_DSV4F_P6_FP4_DOWN_BF16_FUSED": "0",
+      "HAWKING_DSV4F_P6_FP4_DOWN_SHARED_COMBINE_FUSED": "0"
+     },
+     "dependencies": [
+      "flash-p6-routed-fp4-down-bf16-fused",
+      "flash-shared-fp8-down-combine-fused"
+     ],
+     "diagnostic_command": [
+      "python3",
+      "-m",
+      "hcli",
+      "agentos",
+      "flash-executable",
+      "--repo-root",
+      ".",
+      "--emit",
+      "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/flash-p6-fused-down-shared-combine-plan.json"
+     ],
+     "exact_mutation": {
+      "source_oracle_controls": {
+       "HAWKING_DSV4F_P6_FP4_DOWN_BF16_FUSED": "1",
+       "HAWKING_DSV4F_P6_FP4_DOWN_SHARED_COMBINE_FUSED": "1"
+      }
+     },
+     "execution_state": "CONTINGENT_AFTER_SURVIVORS",
+     "expected_active_byte_change": "unchanged routed FP4 weights, shared FP8 weights, E8M0 scales, and seven activation-quantized input buffers; inactive scratch allocation is reduced by 344022 structural bytes and transient down traffic is reduced",
+     "expected_dispatch_reduction": "replace the fifteen downstream W2/cast/combine dispatches with one source-order fused launch; fixed-hash P6 structural topology falls from 60 to 46 while the seven authoritative QAT launches remain",
+     "expected_eliminated_work": "six routed FP4 W2 dispatches, one shared FP8 W2 dispatch, seven FP32-to-BF16 cast dispatches, one final combine dispatch, and the routed/shared down intermediates",
+     "expected_gpu_ns_mechanism": "one 256-thread row launch reads six resident indirect FP4 records, computes source-order FP4 rows with BF16 round-trips, computes the shared FP8 row with 128-value blocks, then performs the fixed-six numeric-order BF16 combine directly into output",
+     "expected_intermediate_byte_reduction": "bypass six routed down_f32/down_bf16 buffers and the shared down FP32/BF16 staging at the consumer; inactive authority scratch is one-byte guarded storage, while QAT bytes and final caller-owned BF16 output remain explicit",
+     "model": "Flash",
+     "mutation_env": {
+      "HAWKING_DSV4F_P6_FP4_DOWN_BF16_FUSED": "1",
+      "HAWKING_DSV4F_P6_FP4_DOWN_SHARED_COMBINE_FUSED": "1"
+     },
+     "parity_contract": "source organ/reference parity is required; no whole-model Flash parity or NX claim is implied",
+     "protected_command": [
+      "python3",
+      "-m",
+      "hcli",
+      "agentos",
+      "flash-executable",
+      "--repo-root",
+      ".",
+      "--emit",
+      "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/flash-p6-fused-down-shared-combine-plan.json"
+     ],
+     "queue_status": "BLOCKED",
+     "requires_survivors": [
+      "flash-p6-routed-fp4-down-bf16-fused",
+      "flash-shared-fp8-down-combine-fused"
+     ],
+     "scope_tags": [
+      "MODEL_LOCAL"
+     ],
+     "selection_reason": "high-information full downstream fusion; run only after the routed-down and shared-down singleton outcomes are known",
+     "sequence": 9,
+     "source_evidence": [
+      "crates/hawking-core/shaders/moe.metal",
+      "crates/hawking-core/shaders/matmul.metal",
+      "crates/hawking-core/src/gravity_deepseek_v4_p6_device.rs",
+      "crates/hawking-core/src/metal/mod.rs"
+     ],
+     "transfer_evidence": []
+    },
+    {
+     "affected_physical_region": "Flash native/fullseq/P6 per-batch Metal pipeline lookup",
+     "allowed_outcomes": [
+      "IMPLEMENTED_UNMEASURED",
+      "REJECTED_PARITY",
+      "REJECTED_PHYSICAL",
+      "PHYSICAL_WIN_MODEL_LOCAL",
+      "PHYSICAL_WIN_FAMILY",
+      "GENERIC_CANDIDATE",
+      "GENERIC_VERIFIED"
+     ],
+     "baseline_path": "receipts/headless/FLASH_NEXT_NOETIC_EXECUTABLE.json",
+     "batch": "FLASH_RETURN_PROTECTED_SINGLETONS_AND_COMPOSITIONS",
+     "blocked_reason": "source-independent Flash NX and protected complete-token capability are not qualified",
+     "candidate_id": "flash-pipeline-cache-reuse",
+     "capability_contract": "blocked until a complete source-independent NX executable and independent capability path exist",
+     "control_configuration": {
+      "mode": "source_oracle_or_scaffold",
+      "source_oracle_controls": {
+       "HAWKING_FLASH_PIPELINE_CACHE_REUSE": "0"
+      }
+     },
+     "control_env": {
+      "HAWKING_FLASH_PIPELINE_CACHE_REUSE": "0"
+     },
+     "dependencies": [],
+     "diagnostic_command": [
+      "python3",
+      "-m",
+      "hcli",
+      "agentos",
+      "flash-executable",
+      "--repo-root",
+      ".",
+      "--emit",
+      "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/flash-pipeline-cache-reuse-plan.json"
+     ],
+     "exact_mutation": {
+      "source_oracle_controls": {
+       "HAWKING_FLASH_PIPELINE_CACHE_REUSE": "1"
+      }
+     },
+     "execution_state": "WAITING_FOR_FLASH_AUTHORITY",
+     "expected_active_byte_change": "unchanged source and compact resident bytes",
+     "expected_dispatch_reduction": "0; command-buffer and dispatch topology are unchanged",
+     "expected_eliminated_work": "steady-state context-wide pipeline-cache lock acquisition for each distinct kernel in every native organ batch, repeated fullseq attention position, and adjacent P6 MoE batch",
+     "expected_gpu_ns_mechanism": "move warmed pipeline handles across native graph batches, repeated fullseq positions, and the four P6 MoE batches so host lookup ceremony is removed without changing kernel arithmetic or binding identity",
+     "expected_intermediate_byte_reduction": "0; no buffers or representation are changed",
+     "model": "Flash",
+     "mutation_env": {
+      "HAWKING_FLASH_PIPELINE_CACHE_REUSE": "1"
+     },
+     "parity_contract": "source organ/reference parity is required; no whole-model Flash parity or NX claim is implied",
+     "protected_command": [
+      "python3",
+      "-m",
+      "hcli",
+      "agentos",
+      "flash-executable",
+      "--repo-root",
+      ".",
+      "--emit",
+      "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/flash-pipeline-cache-reuse-plan.json"
+     ],
+     "queue_status": "BLOCKED",
+     "requires_survivors": [],
+     "scope_tags": [
+      "BACKEND_FAMILY",
+      "GENERIC_CANDIDATE"
+     ],
+     "selection_reason": "material dispatch, wait, resource-admission, fusion, or route/cache mechanism selected for the Flash return batch",
+     "sequence": 10,
+     "source_evidence": [
+      "crates/hawking-core/src/metal/mod.rs",
+      "crates/hawking-core/src/gravity_deepseek_v4_native_token_graph.rs",
+      "crates/hawking-core/src/gravity_deepseek_v4_fullseq_attention_device.rs",
+      "crates/hawking-core/src/gravity_deepseek_v4_p6_device.rs"
+     ],
+     "transfer_evidence": [
+      "shared Metal runtime implementation is exercised by matched Qwen27 and Flash queue rows; protected cross-model transfer remains unverified"
+     ]
+    },
+    {
+     "affected_physical_region": "Flash native/fullseq resident pipeline handle resolution",
+     "allowed_outcomes": [
+      "IMPLEMENTED_UNMEASURED",
+      "REJECTED_PARITY",
+      "REJECTED_PHYSICAL",
+      "PHYSICAL_WIN_MODEL_LOCAL",
+      "PHYSICAL_WIN_FAMILY",
+      "GENERIC_CANDIDATE",
+      "GENERIC_VERIFIED"
+     ],
+     "baseline_path": "receipts/headless/FLASH_NEXT_NOETIC_EXECUTABLE.json",
+     "batch": "FLASH_RETURN_PROTECTED_SINGLETONS_AND_COMPOSITIONS",
+     "blocked_reason": "source-independent Flash NX and protected complete-token capability are not qualified",
+     "candidate_id": "flash-pipeline-id-resolution",
+     "capability_contract": "blocked until a complete source-independent NX executable and independent capability path exist",
+     "control_configuration": {
+      "mode": "source_oracle_or_scaffold",
+      "source_oracle_controls": {
+       "HAWKING_FLASH_PIPELINE_CACHE_REUSE": "1",
+       "HAWKING_METAL_PIPELINE_ID_RESOLUTION": "0"
+      }
+     },
+     "control_env": {
+      "HAWKING_FLASH_PIPELINE_CACHE_REUSE": "1",
+      "HAWKING_METAL_PIPELINE_ID_RESOLUTION": "0"
+     },
+     "dependencies": [
+      "flash-pipeline-cache-reuse"
+     ],
+     "diagnostic_command": [
+      "python3",
+      "-m",
+      "hcli",
+      "agentos",
+      "flash-executable",
+      "--repo-root",
+      ".",
+      "--emit",
+      "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/flash-pipeline-id-resolution-plan.json"
+     ],
+     "exact_mutation": {
+      "source_oracle_controls": {
+       "HAWKING_FLASH_PIPELINE_CACHE_REUSE": "1",
+       "HAWKING_METAL_PIPELINE_ID_RESOLUTION": "1"
+      }
+     },
+     "execution_state": "CONTINGENT_AFTER_SURVIVORS",
+     "expected_active_byte_change": "unchanged source and compact resident bytes",
+     "expected_dispatch_reduction": "0; command-buffer, encoder, and dispatch topology are unchanged",
+     "expected_eliminated_work": "the second kernel-name hash/map probe after resident pipeline admission",
+     "expected_gpu_ns_mechanism": "resolve warmed pipeline handles through stable batch integer IDs and vector indexing without changing kernel selection or arithmetic",
+     "expected_intermediate_byte_reduction": "0; no buffers or representation are changed",
+     "model": "Flash",
+     "mutation_env": {
+      "HAWKING_FLASH_PIPELINE_CACHE_REUSE": "1",
+      "HAWKING_METAL_PIPELINE_ID_RESOLUTION": "1"
+     },
+     "parity_contract": "source organ/reference parity is required; no whole-model Flash parity or NX claim is implied",
+     "protected_command": [
+      "python3",
+      "-m",
+      "hcli",
+      "agentos",
+      "flash-executable",
+      "--repo-root",
+      ".",
+      "--emit",
+      "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/flash-pipeline-id-resolution-plan.json"
+     ],
+     "queue_status": "BLOCKED",
+     "requires_survivors": [
+      "flash-pipeline-cache-reuse"
+     ],
+     "scope_tags": [
+      "BACKEND_FAMILY",
+      "GENERIC_CANDIDATE"
+     ],
+     "selection_reason": "pipeline-cache descendant; isolate stable ID resolution only after warmed handle persistence is accepted",
+     "sequence": 11,
+     "source_evidence": [
+      "crates/hawking-core/src/metal/mod.rs",
+      "crates/hawking-core/src/gravity_deepseek_v4_native_token_graph.rs",
+      "crates/hawking-core/src/gravity_deepseek_v4_fullseq_attention_device.rs"
+     ],
+     "transfer_evidence": [
+      "shared Metal runtime implementation is exercised by matched Qwen27 and Flash queue rows; protected cross-model transfer remains unverified"
+     ]
+    },
+    {
+     "affected_physical_region": "Flash P6 learned-route source admission boundary",
+     "allowed_outcomes": [
+      "IMPLEMENTED_UNMEASURED",
+      "REJECTED_PARITY",
+      "REJECTED_PHYSICAL",
+      "PHYSICAL_WIN_MODEL_LOCAL",
+      "PHYSICAL_WIN_FAMILY",
+      "GENERIC_CANDIDATE",
+      "GENERIC_VERIFIED"
+     ],
+     "baseline_path": "receipts/headless/FLASH_NEXT_NOETIC_EXECUTABLE.json",
+     "batch": "FLASH_RETURN_PROTECTED_SINGLETONS_AND_COMPOSITIONS",
+     "blocked_reason": "Flash source-independent NX and protected complete-token capability are not qualified",
+     "candidate_id": "flash-p6-learned-reader-reuse",
+     "capability_contract": "blocked until a complete source-independent NX executable and independent capability path exist",
+     "control_configuration": {
+      "mode": "source_oracle_or_scaffold",
+      "source_oracle_controls": {
+       "HAWKING_DSV4F_P6_LEARNED_READER_REUSE": "0"
+      }
+     },
+     "control_env": {
+      "HAWKING_DSV4F_P6_LEARNED_READER_REUSE": "0"
+     },
+     "dependencies": [],
+     "diagnostic_command": [
+      "python3",
+      "-m",
+      "hcli",
+      "agentos",
+      "flash-executable",
+      "--repo-root",
+      ".",
+      "--emit",
+      "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/flash-p6-learned-reader-reuse-plan.json"
+     ],
+     "exact_mutation": {
+      "source_oracle_controls": {
+       "HAWKING_DSV4F_P6_LEARNED_READER_REUSE": "1"
+      }
+     },
+     "execution_state": "WAITING_FOR_FLASH_AUTHORITY",
+     "expected_active_byte_change": "unchanged source FP4/FP8 and activation bytes; no decoded weights are retained by the reader",
+     "expected_dispatch_reduction": "0; device dispatch topology and the selected-ID residency boundary are unchanged",
+     "expected_eliminated_work": "repeated sealed-reader manifest/index admission and metadata-map construction on each changed learned route",
+     "expected_gpu_ns_mechanism": "remove repeated host admission ceremony before the second GPU wave while preserving the manifest-seal guard, source reads, uploads, and route-ID readback",
+     "expected_intermediate_byte_reduction": "0; the candidate retains a metadata-only reader and still creates a fresh bounded six-expert cache",
+     "model": "Flash",
+     "mutation_env": {
+      "HAWKING_DSV4F_P6_LEARNED_READER_REUSE": "1"
+     },
+     "parity_contract": "source organ/reference parity is required; no whole-model Flash parity or NX claim is implied",
+     "protected_command": [
+      "python3",
+      "-m",
+      "hcli",
+      "agentos",
+      "flash-executable",
+      "--repo-root",
+      ".",
+      "--emit",
+      "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/flash-p6-learned-reader-reuse-plan.json"
+     ],
+     "queue_status": "BLOCKED",
+     "requires_survivors": [],
+     "scope_tags": [
+      "MODEL_LOCAL"
+     ],
+     "selection_reason": "material dispatch, wait, resource-admission, fusion, or route/cache mechanism selected for the Flash return batch",
+     "sequence": 12,
+     "source_evidence": [
+      "crates/hawking-core/src/gravity_deepseek_v4_p6_device.rs",
+      "crates/hawking-core/src/gravity_deepseek_v4.rs",
+      "crates/hawking-core/src/gravity_deepseek_v4_expert_cache.rs"
+     ],
+     "transfer_evidence": []
+    },
+    {
+     "affected_physical_region": "Flash P6 learned-route bounded expert source cache",
+     "allowed_outcomes": [
+      "IMPLEMENTED_UNMEASURED",
+      "REJECTED_PARITY",
+      "REJECTED_PHYSICAL",
+      "PHYSICAL_WIN_MODEL_LOCAL",
+      "PHYSICAL_WIN_FAMILY",
+      "GENERIC_CANDIDATE",
+      "GENERIC_VERIFIED"
+     ],
+     "baseline_path": "receipts/headless/FLASH_NEXT_NOETIC_EXECUTABLE.json",
+     "batch": "FLASH_RETURN_PROTECTED_SINGLETONS_AND_COMPOSITIONS",
+     "blocked_reason": "Flash source-independent NX and protected complete-token capability are not qualified",
+     "candidate_id": "flash-p6-learned-expert-cache-reuse",
+     "capability_contract": "blocked until a complete source-independent NX executable and independent capability path exist",
+     "control_configuration": {
+      "mode": "source_oracle_or_scaffold",
+      "source_oracle_controls": {
+       "HAWKING_DSV4F_P6_LEARNED_EXPERT_CACHE_REUSE": "0",
+       "HAWKING_DSV4F_P6_LEARNED_READER_REUSE": "1"
+      }
+     },
+     "control_env": {
+      "HAWKING_DSV4F_P6_LEARNED_EXPERT_CACHE_REUSE": "0",
+      "HAWKING_DSV4F_P6_LEARNED_READER_REUSE": "1"
+     },
+     "dependencies": [
+      "flash-p6-learned-reader-reuse"
+     ],
+     "diagnostic_command": [
+      "python3",
+      "-m",
+      "hcli",
+      "agentos",
+      "flash-executable",
+      "--repo-root",
+      ".",
+      "--emit",
+      "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/flash-p6-learned-expert-cache-reuse-plan.json"
+     ],
+     "exact_mutation": {
+      "source_oracle_controls": {
+       "HAWKING_DSV4F_P6_LEARNED_EXPERT_CACHE_REUSE": "1",
+       "HAWKING_DSV4F_P6_LEARNED_READER_REUSE": "1"
+      }
+     },
+     "execution_state": "CONTINGENT_AFTER_SURVIVORS",
+     "expected_active_byte_change": "unchanged source FP4/FP8 and activation bytes; overlapping routes reuse existing GPU weight buffers rather than uploading a second copy",
+     "expected_dispatch_reduction": "0; device dispatch topology, route-ID readback, and GPU upload boundaries are unchanged",
+     "expected_eliminated_work": "repeated source chunk materialization and GPU re-upload of expert bundles that overlap successive learned routes",
+     "expected_gpu_ns_mechanism": "avoid repeated host source reads and GPU buffer uploads before the expert wave when route overlap exists; route overlap, allocation bytes, and complete-token wall time are the falsifiers",
+     "expected_intermediate_byte_reduction": "retain at most the exact six-bundle hot capacity plus the same six-entry GPU weight handle cache; pre-route FP4 placeholders are one byte per pointer component, and no dense or decoded representation is added",
+     "model": "Flash",
+     "mutation_env": {
+      "HAWKING_DSV4F_P6_LEARNED_EXPERT_CACHE_REUSE": "1",
+      "HAWKING_DSV4F_P6_LEARNED_READER_REUSE": "1"
+     },
+     "parity_contract": "source organ/reference parity is required; no whole-model Flash parity or NX claim is implied",
+     "protected_command": [
+      "python3",
+      "-m",
+      "hcli",
+      "agentos",
+      "flash-executable",
+      "--repo-root",
+      ".",
+      "--emit",
+      "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/flash-p6-learned-expert-cache-reuse-plan.json"
+     ],
+     "queue_status": "BLOCKED",
+     "requires_survivors": [
+      "flash-p6-learned-reader-reuse"
+     ],
+     "scope_tags": [
+      "MODEL_LOCAL"
+     ],
+     "selection_reason": "highest-EV route/cache descendant; isolate reader reuse before testing bounded six-expert cache reuse",
+     "sequence": 13,
+     "source_evidence": [
+      "crates/hawking-core/src/gravity_deepseek_v4_p6_device.rs",
+      "crates/hawking-core/src/gravity_deepseek_v4_expert_cache.rs",
+      "crates/hawking-core/src/gravity_deepseek_v4.rs"
+     ],
+     "transfer_evidence": []
+    },
+    {
+     "affected_physical_region": "Flash reusable P6 composed latency stack",
+     "allowed_outcomes": [
+      "IMPLEMENTED_UNMEASURED",
+      "REJECTED_PARITY",
+      "REJECTED_PHYSICAL",
+      "PHYSICAL_WIN_MODEL_LOCAL",
+      "PHYSICAL_WIN_FAMILY",
+      "GENERIC_CANDIDATE",
+      "GENERIC_VERIFIED"
+     ],
+     "baseline_path": "receipts/headless/FLASH_NEXT_NOETIC_EXECUTABLE.json",
+     "batch": "FLASH_RETURN_PROTECTED_SINGLETONS_AND_COMPOSITIONS",
+     "blocked_reason": "Flash source-independent NX and protected complete-token capability are not qualified; composition interactions require a fresh parity/coherence and latency receipt",
+     "candidate_id": "flash-p6-fused-epilogue-stack",
+     "capability_contract": "blocked until a complete source-independent NX executable and independent capability path exist",
+     "control_configuration": {
+      "mode": "source_oracle_or_scaffold",
+      "source_oracle_controls": {
+       "HAWKING_DSV4F_FP4_GATE_UP_SWIGLU_FUSED": "0",
+       "HAWKING_DSV4F_FP8_SHARED_GATE_UP_SWIGLU_FUSED": "0",
+       "HAWKING_DSV4F_P6_BATCHED_DOWN_QAT": "0",
+       "HAWKING_DSV4F_P6_FP4_DOWN_BF16_FUSED": "0",
+       "HAWKING_DSV4F_P6_FP4_DOWN_BF16_SIMD": "0",
+       "HAWKING_DSV4F_P6_FP4_DOWN_SHARED_COMBINE_FUSED": "0",
+       "HAWKING_DSV4F_P6_FP4_GATE_UP_SWIGLU_SIMD": "0",
+       "HAWKING_DSV4F_P6_PREFIX_CONCURRENT": "0",
+       "HAWKING_DSV4F_P6_SINGLE_CB": "0"
+      }
+     },
+     "control_env": {
+      "HAWKING_DSV4F_FP4_GATE_UP_SWIGLU_FUSED": "0",
+      "HAWKING_DSV4F_FP8_SHARED_GATE_UP_SWIGLU_FUSED": "0",
+      "HAWKING_DSV4F_P6_BATCHED_DOWN_QAT": "0",
+      "HAWKING_DSV4F_P6_FP4_DOWN_BF16_FUSED": "0",
+      "HAWKING_DSV4F_P6_FP4_DOWN_BF16_SIMD": "0",
+      "HAWKING_DSV4F_P6_FP4_DOWN_SHARED_COMBINE_FUSED": "0",
+      "HAWKING_DSV4F_P6_FP4_GATE_UP_SWIGLU_SIMD": "0",
+      "HAWKING_DSV4F_P6_PREFIX_CONCURRENT": "0",
+      "HAWKING_DSV4F_P6_SINGLE_CB": "0"
+     },
+     "dependencies": [
+      "flash-p6-hash-single-command-buffer",
+      "flash-p6-prefix-concurrent-wave",
+      "flash-p6-routed-fp4-gate-up-swiglu-fused",
+      "flash-p6-fused-down-shared-combine",
+      "flash-shared-fp8-gate-up-swiglu-fused",
+      "flash-p6-batched-down-qat"
+     ],
+     "diagnostic_command": [
+      "python3",
+      "-m",
+      "hcli",
+      "agentos",
+      "flash-executable",
+      "--repo-root",
+      ".",
+      "--emit",
+      "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/flash-p6-fused-epilogue-stack-plan.json"
+     ],
+     "exact_mutation": {
+      "source_oracle_controls": {
+       "HAWKING_DSV4F_FP4_GATE_UP_SWIGLU_FUSED": "1",
+       "HAWKING_DSV4F_FP8_SHARED_GATE_UP_SWIGLU_FUSED": "1",
+       "HAWKING_DSV4F_P6_BATCHED_DOWN_QAT": "1",
+       "HAWKING_DSV4F_P6_FP4_DOWN_BF16_FUSED": "1",
+       "HAWKING_DSV4F_P6_FP4_DOWN_BF16_SIMD": "0",
+       "HAWKING_DSV4F_P6_FP4_DOWN_SHARED_COMBINE_FUSED": "1",
+       "HAWKING_DSV4F_P6_FP4_GATE_UP_SWIGLU_SIMD": "0",
+       "HAWKING_DSV4F_P6_PREFIX_CONCURRENT": "1",
+       "HAWKING_DSV4F_P6_SINGLE_CB": "1"
+      }
+     },
+     "execution_state": "CONTINGENT_AFTER_SURVIVORS",
+     "expected_active_byte_change": "unchanged source FP4/FP8 weights, E8M0 scales, route IDs/weights, and BF16 final output contract",
+     "expected_dispatch_reduction": "P6 structural target is 60 to 7 dispatches, 10 to 4 compute encoders, and 2 to 1 command buffer on the hash path; the fixed-seven QAT producer and full down fusion share one serial dependency encoder, so measure interaction rather than summing isolated wins",
+     "expected_eliminated_work": "the independently bounded routed/shared gate-up epilogues, seven-to-one down activation-quantization wave, full routed FP4/shared FP8 down-and-combine tail, one prefix encoder, and one hash-route command-buffer wait",
+     "expected_gpu_ns_mechanism": "compose the existing guarded primitives with explicit dependency waves; no new arithmetic or representation is introduced by the stack row",
+     "expected_intermediate_byte_reduction": "retain only the output buffers required by the fixed-six combine contract; the full down fusion bypasses routed/shared down staging while dormant authority scratch remains allocated for matched A/B compatibility",
+     "model": "Flash",
+     "mutation_env": {
+      "HAWKING_DSV4F_FP4_GATE_UP_SWIGLU_FUSED": "1",
+      "HAWKING_DSV4F_FP8_SHARED_GATE_UP_SWIGLU_FUSED": "1",
+      "HAWKING_DSV4F_P6_BATCHED_DOWN_QAT": "1",
+      "HAWKING_DSV4F_P6_FP4_DOWN_BF16_FUSED": "1",
+      "HAWKING_DSV4F_P6_FP4_DOWN_BF16_SIMD": "0",
+      "HAWKING_DSV4F_P6_FP4_DOWN_SHARED_COMBINE_FUSED": "1",
+      "HAWKING_DSV4F_P6_FP4_GATE_UP_SWIGLU_SIMD": "0",
+      "HAWKING_DSV4F_P6_PREFIX_CONCURRENT": "1",
+      "HAWKING_DSV4F_P6_SINGLE_CB": "1"
+     },
+     "parity_contract": "source organ/reference parity is required; no whole-model Flash parity or NX claim is implied",
+     "protected_command": [
+      "python3",
+      "-m",
+      "hcli",
+      "agentos",
+      "flash-executable",
+      "--repo-root",
+      ".",
+      "--emit",
+      "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/flash-p6-fused-epilogue-stack-plan.json"
+     ],
+     "queue_status": "BLOCKED",
+     "requires_survivors": [
+      "flash-p6-hash-single-command-buffer",
+      "flash-p6-prefix-concurrent-wave",
+      "flash-p6-routed-fp4-gate-up-swiglu-fused",
+      "flash-p6-fused-down-shared-combine",
+      "flash-shared-fp8-gate-up-swiglu-fused",
+      "flash-p6-batched-down-qat"
+     ],
+     "scope_tags": [
+      "MODEL_LOCAL"
+     ],
+     "selection_reason": "terminal composed P6 stack; run only after its primitive and full-down parents survive parity and physical gates",
+     "sequence": 14,
+     "source_evidence": [
+      "crates/hawking-core/src/gravity_deepseek_v4_p6_device.rs",
+      "crates/hawking-core/src/gravity_deepseek_v4_native_token_graph.rs",
+      "crates/hawking-core/shaders/moe.metal",
+      "crates/hawking-core/shaders/matmul.metal",
+      "crates/hawking-core/src/metal/mod.rs"
+     ],
+     "transfer_evidence": []
+    }
+   ]
+  },
+  "frontier_snapshot": {
+   "blocked_candidates_remain_unscheduled": true,
+   "flash_return_batch_count": 14,
+   "flash_return_missing_ids": [],
+   "queue_candidate_count": 48,
+   "queue_fingerprint": "24fb3af01fab27d8c991086eecb220be10f7502a782554b8725e4d034d82e0c4",
+   "qwen_first_batch_count": 13,
+   "qwen_ready_protected_count": 13,
+   "staged_cell_count": 34
+  },
+  "purpose": "exact first protected batch for the current Accelerator frontier; Qwen is the authoritative executable control lane, while Flash is a staged return plan held closed until source-independent NX and qualified Metal authority return",
+  "qwen_first_batch": {
+   "after_singletons": {
+    "predicted_interaction_and_union_cells": [
+     {
+      "candidates": [
+       "qwen27-affine2-splitk4",
+       "qwen27-q4-vecgroup-x64"
+      ],
+      "cell_id": "S2-qwen27-affine2-splitk4__qwen27-q4-vecgroup-x64",
+      "execution_state": "CONTINGENT_AFTER_SINGLETON_SURVIVORS",
+      "kind": "pair",
+      "mutex_group": null,
+      "predicted_interaction": {
+       "kind": "shared_resource",
+       "mechanism": "shared resource tags ['gemm_geometry']; overlapping host ceremony, organ path, or GEMV occupancy is predicted to make the joint effect non-additive"
+      },
+      "requires_survivors": [
+       "qwen27-affine2-splitk4",
+       "qwen27-q4-vecgroup-x64"
+      ],
+      "stage": "2"
+     },
+     {
+      "candidates": [
+       "qwen27-attention-gate-fusion",
+       "qwen27-gqa-qkv-fusion"
+      ],
+      "cell_id": "S2-qwen27-attention-gate-fusion__qwen27-gqa-qkv-fusion",
+      "execution_state": "CONTINGENT_AFTER_SINGLETON_SURVIVORS",
+      "kind": "pair",
+      "mutex_group": null,
+      "predicted_interaction": {
+       "kind": "shared_resource",
+       "mechanism": "shared resource tags ['attention_organ']; overlapping host ceremony, organ path, or GEMV occupancy is predicted to make the joint effect non-additive"
+      },
+      "requires_survivors": [
+       "qwen27-attention-gate-fusion",
+       "qwen27-gqa-qkv-fusion"
+      ],
+      "stage": "2"
+     },
+     {
+      "candidates": [
+       "qwen27-ba-delta-fusion",
+       "qwen27-deltanet-inproj-fusion"
+      ],
+      "cell_id": "S2-qwen27-ba-delta-fusion__qwen27-deltanet-inproj-fusion",
+      "execution_state": "CONTINGENT_AFTER_SINGLETON_SURVIVORS",
+      "kind": "pair",
+      "mutex_group": null,
+      "predicted_interaction": {
+       "kind": "shared_resource",
+       "mechanism": "shared resource tags ['deltanet_organ']; overlapping host ceremony, organ path, or GEMV occupancy is predicted to make the joint effect non-additive"
+      },
+      "requires_survivors": [
+       "qwen27-ba-delta-fusion",
+       "qwen27-deltanet-inproj-fusion"
+      ],
+      "stage": "2"
+     },
+     {
+      "candidates": [
+       "qwen27-commit-timing-elision",
+       "qwen27-encoder-label-elision"
+      ],
+      "cell_id": "S2-qwen27-commit-timing-elision__qwen27-encoder-label-elision",
+      "execution_state": "CONTINGENT_AFTER_SINGLETON_SURVIVORS",
+      "kind": "pair",
+      "mutex_group": null,
+      "predicted_interaction": {
+       "kind": "shared_resource",
+       "mechanism": "shared resource tags ['host_metal_path']; overlapping host ceremony, organ path, or GEMV occupancy is predicted to make the joint effect non-additive"
+      },
+      "requires_survivors": [
+       "qwen27-commit-timing-elision",
+       "qwen27-encoder-label-elision"
+      ],
+      "stage": "2"
+     },
+     {
+      "candidates": [
+       "qwen27-commit-timing-elision",
+       "qwen27-pipeline-cache-reuse"
+      ],
+      "cell_id": "S2-qwen27-commit-timing-elision__qwen27-pipeline-cache-reuse",
+      "execution_state": "CONTINGENT_AFTER_SINGLETON_SURVIVORS",
+      "kind": "pair",
+      "mutex_group": null,
+      "predicted_interaction": {
+       "kind": "shared_resource",
+       "mechanism": "shared resource tags ['host_metal_path']; overlapping host ceremony, organ path, or GEMV occupancy is predicted to make the joint effect non-additive"
+      },
+      "requires_survivors": [
+       "qwen27-commit-timing-elision",
+       "qwen27-pipeline-cache-reuse"
+      ],
+      "stage": "2"
+     },
+     {
+      "candidates": [
+       "qwen27-commit-timing-elision",
+       "qwen27-pipeline-id-resolution"
+      ],
+      "cell_id": "S2-qwen27-commit-timing-elision__qwen27-pipeline-id-resolution",
+      "execution_state": "CONTINGENT_AFTER_SINGLETON_SURVIVORS",
+      "kind": "pair",
+      "mutex_group": null,
+      "predicted_interaction": {
+       "kind": "shared_resource",
+       "mechanism": "shared resource tags ['host_metal_path']; overlapping host ceremony, organ path, or GEMV occupancy is predicted to make the joint effect non-additive"
+      },
+      "requires_survivors": [
+       "qwen27-commit-timing-elision",
+       "qwen27-pipeline-id-resolution"
+      ],
+      "stage": "2"
+     },
+     {
+      "candidates": [
+       "qwen27-commit-timing-elision",
+       "qwen27-pipeline-state-elision"
+      ],
+      "cell_id": "S2-qwen27-commit-timing-elision__qwen27-pipeline-state-elision",
+      "execution_state": "CONTINGENT_AFTER_SINGLETON_SURVIVORS",
+      "kind": "pair",
+      "mutex_group": null,
+      "predicted_interaction": {
+       "kind": "shared_resource",
+       "mechanism": "shared resource tags ['host_metal_path']; overlapping host ceremony, organ path, or GEMV occupancy is predicted to make the joint effect non-additive"
+      },
+      "requires_survivors": [
+       "qwen27-commit-timing-elision",
+       "qwen27-pipeline-state-elision"
+      ],
+      "stage": "2"
+     },
+     {
+      "candidates": [
+       "qwen27-encoder-label-elision",
+       "qwen27-pipeline-cache-reuse"
+      ],
+      "cell_id": "S2-qwen27-encoder-label-elision__qwen27-pipeline-cache-reuse",
+      "execution_state": "CONTINGENT_AFTER_SINGLETON_SURVIVORS",
+      "kind": "pair",
+      "mutex_group": null,
+      "predicted_interaction": {
+       "kind": "shared_resource",
+       "mechanism": "shared resource tags ['host_encoder_ceremony', 'host_metal_path']; overlapping host ceremony, organ path, or GEMV occupancy is predicted to make the joint effect non-additive"
+      },
+      "requires_survivors": [
+       "qwen27-encoder-label-elision",
+       "qwen27-pipeline-cache-reuse"
+      ],
+      "stage": "2"
+     },
+     {
+      "candidates": [
+       "qwen27-encoder-label-elision",
+       "qwen27-pipeline-id-resolution"
+      ],
+      "cell_id": "S2-qwen27-encoder-label-elision__qwen27-pipeline-id-resolution",
+      "execution_state": "CONTINGENT_AFTER_SINGLETON_SURVIVORS",
+      "kind": "pair",
+      "mutex_group": null,
+      "predicted_interaction": {
+       "kind": "shared_resource",
+       "mechanism": "shared resource tags ['host_encoder_ceremony', 'host_metal_path']; overlapping host ceremony, organ path, or GEMV occupancy is predicted to make the joint effect non-additive"
+      },
+      "requires_survivors": [
+       "qwen27-encoder-label-elision",
+       "qwen27-pipeline-id-resolution"
+      ],
+      "stage": "2"
+     },
+     {
+      "candidates": [
+       "qwen27-encoder-label-elision",
+       "qwen27-pipeline-state-elision"
+      ],
+      "cell_id": "S2-qwen27-encoder-label-elision__qwen27-pipeline-state-elision",
+      "execution_state": "CONTINGENT_AFTER_SINGLETON_SURVIVORS",
+      "kind": "pair",
+      "mutex_group": null,
+      "predicted_interaction": {
+       "kind": "shared_resource",
+       "mechanism": "shared resource tags ['host_encoder', 'host_encoder_ceremony', 'host_metal_path']; overlapping host ceremony, organ path, or GEMV occupancy is predicted to make the joint effect non-additive"
+      },
+      "requires_survivors": [
+       "qwen27-encoder-label-elision",
+       "qwen27-pipeline-state-elision"
+      ],
+      "stage": "2"
+     },
+     {
+      "candidates": [
+       "qwen27-pipeline-cache-reuse",
+       "qwen27-pipeline-state-elision"
+      ],
+      "cell_id": "S2-qwen27-pipeline-cache-reuse__qwen27-pipeline-state-elision",
+      "execution_state": "CONTINGENT_AFTER_SINGLETON_SURVIVORS",
+      "kind": "pair",
+      "mutex_group": null,
+      "predicted_interaction": {
+       "kind": "shared_resource",
+       "mechanism": "shared resource tags ['host_encoder_ceremony', 'host_metal_path']; overlapping host ceremony, organ path, or GEMV occupancy is predicted to make the joint effect non-additive"
+      },
+      "requires_survivors": [
+       "qwen27-pipeline-cache-reuse",
+       "qwen27-pipeline-state-elision"
+      ],
+      "stage": "2"
+     },
+     {
+      "candidates": [
+       "qwen27-pipeline-id-resolution",
+       "qwen27-pipeline-state-elision"
+      ],
+      "cell_id": "S2-qwen27-pipeline-id-resolution__qwen27-pipeline-state-elision",
+      "execution_state": "CONTINGENT_AFTER_SINGLETON_SURVIVORS",
+      "kind": "pair",
+      "mutex_group": null,
+      "predicted_interaction": {
+       "kind": "shared_resource",
+       "mechanism": "shared resource tags ['host_encoder_ceremony', 'host_metal_path']; overlapping host ceremony, organ path, or GEMV occupancy is predicted to make the joint effect non-additive"
+      },
+      "requires_survivors": [
+       "qwen27-pipeline-id-resolution",
+       "qwen27-pipeline-state-elision"
+      ],
+      "stage": "2"
+     },
+     {
+      "candidates": [
+       "qwen27-q2f-splitk4",
+       "qwen27-q4-vecgroup-x64"
+      ],
+      "cell_id": "S2-qwen27-q2f-splitk4__qwen27-q4-vecgroup-x64",
+      "execution_state": "CONTINGENT_AFTER_SINGLETON_SURVIVORS",
+      "kind": "pair",
+      "mutex_group": null,
+      "predicted_interaction": {
+       "kind": "shared_resource",
+       "mechanism": "shared resource tags ['gemm_geometry']; overlapping host ceremony, organ path, or GEMV occupancy is predicted to make the joint effect non-additive"
+      },
+      "requires_survivors": [
+       "qwen27-q2f-splitk4",
+       "qwen27-q4-vecgroup-x64"
+      ],
+      "stage": "2"
+     },
+     {
+      "candidates": [
+       "qwen27-commit-timing-elision",
+       "qwen27-encoder-label-elision",
+       "qwen27-pipeline-id-resolution",
+       "qwen27-pipeline-state-elision"
+      ],
+      "cell_id": "S3-host-ceremony-union",
+      "execution_state": "CONTINGENT_AFTER_SINGLETON_SURVIVORS",
+      "kind": "union",
+      "mutex_group": null,
+      "predicted_interaction": null,
+      "requires_survivors": [
+       "qwen27-commit-timing-elision",
+       "qwen27-encoder-label-elision",
+       "qwen27-pipeline-id-resolution",
+       "qwen27-pipeline-state-elision"
+      ],
+      "stage": "3"
+     },
+     {
+      "candidates": [
+       "qwen27-attention-gate-fusion",
+       "qwen27-ba-delta-fusion",
+       "qwen27-deltanet-inproj-fusion",
+       "qwen27-gqa-qkv-fusion"
+      ],
+      "cell_id": "S3-fusion-organ-union",
+      "execution_state": "CONTINGENT_AFTER_SINGLETON_SURVIVORS",
+      "kind": "union",
+      "mutex_group": null,
+      "predicted_interaction": null,
+      "requires_survivors": [
+       "qwen27-attention-gate-fusion",
+       "qwen27-ba-delta-fusion",
+       "qwen27-deltanet-inproj-fusion",
+       "qwen27-gqa-qkv-fusion"
+      ],
+      "stage": "3"
+     },
+     {
+      "candidates": [
+       "qwen27-affine2-splitk4",
+       "qwen27-attention-gate-fusion",
+       "qwen27-ba-delta-fusion",
+       "qwen27-commit-timing-elision",
+       "qwen27-deltanet-inproj-fusion",
+       "qwen27-encoder-label-elision",
+       "qwen27-gqa-qkv-fusion",
+       "qwen27-pipeline-id-resolution",
+       "qwen27-pipeline-state-elision",
+       "qwen27-q4-vecgroup-x64"
+      ],
+      "cell_id": "S3-survivor-union-affine2",
+      "execution_state": "CONTINGENT_AFTER_SINGLETON_SURVIVORS",
+      "kind": "union",
+      "mutex_group": "qwen27-geo-assignment",
+      "predicted_interaction": null,
+      "requires_survivors": [
+       "qwen27-affine2-splitk4",
+       "qwen27-attention-gate-fusion",
+       "qwen27-ba-delta-fusion",
+       "qwen27-commit-timing-elision",
+       "qwen27-deltanet-inproj-fusion",
+       "qwen27-encoder-label-elision",
+       "qwen27-gqa-qkv-fusion",
+       "qwen27-pipeline-id-resolution",
+       "qwen27-pipeline-state-elision",
+       "qwen27-q4-vecgroup-x64"
+      ],
+      "stage": "3"
+     },
+     {
+      "candidates": [
+       "qwen27-attention-gate-fusion",
+       "qwen27-ba-delta-fusion",
+       "qwen27-commit-timing-elision",
+       "qwen27-deltanet-inproj-fusion",
+       "qwen27-encoder-label-elision",
+       "qwen27-gqa-qkv-fusion",
+       "qwen27-pipeline-id-resolution",
+       "qwen27-pipeline-state-elision",
+       "qwen27-q2f-splitk4",
+       "qwen27-q4-vecgroup-x64"
+      ],
+      "cell_id": "S3-survivor-union-q2f",
+      "execution_state": "CONTINGENT_AFTER_SINGLETON_SURVIVORS",
+      "kind": "union",
+      "mutex_group": "qwen27-geo-assignment",
+      "predicted_interaction": null,
+      "requires_survivors": [
+       "qwen27-attention-gate-fusion",
+       "qwen27-ba-delta-fusion",
+       "qwen27-commit-timing-elision",
+       "qwen27-deltanet-inproj-fusion",
+       "qwen27-encoder-label-elision",
+       "qwen27-gqa-qkv-fusion",
+       "qwen27-pipeline-id-resolution",
+       "qwen27-pipeline-state-elision",
+       "qwen27-q2f-splitk4",
+       "qwen27-q4-vecgroup-x64"
+      ],
+      "stage": "3"
+     }
+    ],
+    "rule": "run only cells whose required singleton survivors remain parity-clean and physically faster; geometry mutexes and same-region conflicts are never co-scheduled"
+   },
+   "authoritative_control": {
+    "fast_profile_anchor": "qwen27-fast-profile",
+    "profile": "hcli/hawking-native.sealed-3.14.json",
+    "rule": "qwen27-fast-profile is run first against its empty control; every other row uses its copied control_env, never an implicit default"
+   },
+   "count": 13,
+   "model": "Qwen27",
+   "name": "QWEN_FIRST_PROTECTED_SINGLES",
+   "run_order": [
+    {
+     "affected_physical_region": "complete Qwen27 resident token",
+     "allowed_outcomes": [
+      "IMPLEMENTED_UNMEASURED",
+      "REJECTED_PARITY",
+      "REJECTED_PHYSICAL",
+      "PHYSICAL_WIN_MODEL_LOCAL",
+      "PHYSICAL_WIN_FAMILY",
+      "GENERIC_CANDIDATE",
+      "GENERIC_VERIFIED"
+     ],
+     "baseline_path": "hcli/hawking-native.sealed-3.14.json",
+     "batch": "QWEN_FIRST_PROTECTED_SINGLES",
+     "blocked_reason": null,
+     "candidate_id": "qwen27-fast-profile",
+     "capability_contract": "complete accepted-token capability, zero fallback, independent resident identity, and explicit native metric absence reasons",
+     "control_configuration": {
+      "child_fusion_env": {}
+     },
+     "control_env": {},
+     "dependencies": [],
+     "diagnostic_command": [
+      "python3",
+      "-m",
+      "hcli",
+      "agentos",
+      "protected-accelerator-bench",
+      "--profile",
+      "hcli/hawking-native.sealed-3.14.json",
+      "--repo-root",
+      ".",
+      "--warmup-requests",
+      "1",
+      "--measure-requests",
+      "3",
+      "--max-new-tokens",
+      "8",
+      "--fusion-env",
+      "HAWKING_QWEN38_FAST=1",
+      "--emit",
+      "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/qwen27-fast-profile-diagnostic.json"
+     ],
+     "exact_mutation": {
+      "child_fusion_env": {
+       "HAWKING_QWEN38_FAST": "1"
+      }
+     },
+     "execution_state": "READY_ON_AUTHORITY",
+     "expected_active_byte_change": "unchanged packed resident; measure actual reads/token",
+     "expected_dispatch_reduction": "measure from current sealed control; no assumed count",
+     "expected_eliminated_work": "profile-selected fusion, geometry, and state-organ boundaries",
+     "expected_gpu_ns_mechanism": "remove repeated dispatch/synchronization and select measured packed geometry",
+     "expected_intermediate_byte_reduction": "no representation change; measure transient movement",
+     "model": "Qwen27",
+     "mutation_env": {
+      "HAWKING_QWEN38_FAST": "1"
+     },
+     "parity_contract": "identical tokenizer-bound output ids and source-approved graph semantics; any numerical/output divergence rejects the candidate",
+     "protected_command": [
+      "python3",
+      "-m",
+      "hcli",
+      "agentos",
+      "protected-accelerator-bench",
+      "--profile",
+      "hcli/hawking-native.sealed-3.14.json",
+      "--repo-root",
+      ".",
+      "--warmup-requests",
+      "2",
+      "--measure-requests",
+      "10",
+      "--max-new-tokens",
+      "32",
+      "--fusion-env",
+      "HAWKING_QWEN38_FAST=1",
+      "--emit",
+      "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/qwen27-fast-profile-protected.json"
+     ],
+     "queue_status": "READY_PROTECTED",
+     "requires_survivors": [],
+     "scope_tags": [
+      "MODEL_LOCAL"
+     ],
+     "selection_reason": "stage-1 singleton from the dependency-aware plan; run against this row's exact control_env before any composition",
+     "sequence": 1,
+     "source_evidence": [
+      "crates/hawking-core/src/model/qwen38_hybrid_decode.rs",
+      "receipts/headless/QWEN27_MLP_PROTECTED_AB_AFTER_FLASH.json"
+     ],
+     "transfer_evidence": []
+    },
+    {
+     "affected_physical_region": "Qwen27 shared Metal ordered/concurrent encoder state binding",
+     "allowed_outcomes": [
+      "IMPLEMENTED_UNMEASURED",
+      "REJECTED_PARITY",
+      "REJECTED_PHYSICAL",
+      "PHYSICAL_WIN_MODEL_LOCAL",
+      "PHYSICAL_WIN_FAMILY",
+      "GENERIC_CANDIDATE",
+      "GENERIC_VERIFIED"
+     ],
+     "baseline_path": "hcli/hawking-native.sealed-3.14.json",
+     "batch": "QWEN_FIRST_PROTECTED_SINGLES",
+     "blocked_reason": null,
+     "candidate_id": "qwen27-pipeline-state-elision",
+     "capability_contract": "complete accepted-token capability, zero fallback, independent resident identity, and explicit native metric absence reasons",
+     "control_configuration": {
+      "child_fusion_env": {
+       "HAWKING_METAL_PIPELINE_STATE_ELISION": "0",
+       "HAWKING_QWEN38_FAST": "1"
+      }
+     },
+     "control_env": {
+      "HAWKING_METAL_PIPELINE_STATE_ELISION": "0",
+      "HAWKING_QWEN38_FAST": "1"
+     },
+     "dependencies": [
+      "qwen27-fast-profile"
+     ],
+     "diagnostic_command": [
+      "python3",
+      "-m",
+      "hcli",
+      "agentos",
+      "protected-accelerator-bench",
+      "--profile",
+      "hcli/hawking-native.sealed-3.14.json",
+      "--repo-root",
+      ".",
+      "--warmup-requests",
+      "1",
+      "--measure-requests",
+      "3",
+      "--max-new-tokens",
+      "8",
+      "--fusion-env",
+      "HAWKING_METAL_PIPELINE_STATE_ELISION=1",
+      "--fusion-env",
+      "HAWKING_QWEN38_FAST=1",
+      "--emit",
+      "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/qwen27-pipeline-state-elision-diagnostic.json"
+     ],
+     "exact_mutation": {
+      "child_fusion_env": {
+       "HAWKING_METAL_PIPELINE_STATE_ELISION": "1",
+       "HAWKING_QWEN38_FAST": "1"
+      }
+     },
+     "execution_state": "READY_ON_AUTHORITY",
+     "expected_active_byte_change": "unchanged resident bytes and reads",
+     "expected_dispatch_reduction": "0; command-buffer and dispatch topology are unchanged",
+     "expected_eliminated_work": "redundant host-side setComputePipelineState calls plus sticky-name heap churn for repeated kernels in one shared encoder",
+     "expected_gpu_ns_mechanism": "remove encoder-state submission ceremony only; arithmetic and kernel selection remain identical",
+     "expected_intermediate_byte_reduction": "0; no buffers or representation are changed",
+     "model": "Qwen27",
+     "mutation_env": {
+      "HAWKING_METAL_PIPELINE_STATE_ELISION": "1",
+      "HAWKING_QWEN38_FAST": "1"
+     },
+     "parity_contract": "identical tokenizer-bound output ids and source-approved graph semantics; any numerical/output divergence rejects the candidate",
+     "protected_command": [
+      "python3",
+      "-m",
+      "hcli",
+      "agentos",
+      "protected-accelerator-bench",
+      "--profile",
+      "hcli/hawking-native.sealed-3.14.json",
+      "--repo-root",
+      ".",
+      "--warmup-requests",
+      "2",
+      "--measure-requests",
+      "10",
+      "--max-new-tokens",
+      "32",
+      "--fusion-env",
+      "HAWKING_METAL_PIPELINE_STATE_ELISION=1",
+      "--fusion-env",
+      "HAWKING_QWEN38_FAST=1",
+      "--emit",
+      "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/qwen27-pipeline-state-elision-protected.json"
+     ],
+     "queue_status": "READY_PROTECTED",
+     "requires_survivors": [],
+     "scope_tags": [
+      "BACKEND_FAMILY",
+      "GENERIC_CANDIDATE"
+     ],
+     "selection_reason": "stage-1 singleton from the dependency-aware plan; run against this row's exact control_env before any composition",
+     "sequence": 2,
+     "source_evidence": [
+      "crates/hawking-core/src/metal/mod.rs"
+     ],
+     "transfer_evidence": [
+      "shared Metal runtime implementation is exercised by matched Qwen27 and Flash queue rows; protected cross-model transfer remains unverified"
+     ]
+    },
+    {
+     "affected_physical_region": "Qwen27 resident per-token Metal pipeline lookup",
+     "allowed_outcomes": [
+      "IMPLEMENTED_UNMEASURED",
+      "REJECTED_PARITY",
+      "REJECTED_PHYSICAL",
+      "PHYSICAL_WIN_MODEL_LOCAL",
+      "PHYSICAL_WIN_FAMILY",
+      "GENERIC_CANDIDATE",
+      "GENERIC_VERIFIED"
+     ],
+     "baseline_path": "hcli/hawking-native.sealed-3.14.json",
+     "batch": "QWEN_FIRST_PROTECTED_SINGLES",
+     "blocked_reason": null,
+     "candidate_id": "qwen27-pipeline-cache-reuse",
+     "capability_contract": "complete accepted-token capability, zero fallback, independent resident identity, and explicit native metric absence reasons",
+     "control_configuration": {
+      "child_fusion_env": {
+       "HAWKING_METAL_PIPELINE_CACHE_REUSE": "0",
+       "HAWKING_QWEN38_FAST": "1"
+      }
+     },
+     "control_env": {
+      "HAWKING_METAL_PIPELINE_CACHE_REUSE": "0",
+      "HAWKING_QWEN38_FAST": "1"
+     },
+     "dependencies": [
+      "qwen27-fast-profile"
+     ],
+     "diagnostic_command": [
+      "python3",
+      "-m",
+      "hcli",
+      "agentos",
+      "protected-accelerator-bench",
+      "--profile",
+      "hcli/hawking-native.sealed-3.14.json",
+      "--repo-root",
+      ".",
+      "--warmup-requests",
+      "1",
+      "--measure-requests",
+      "3",
+      "--max-new-tokens",
+      "8",
+      "--fusion-env",
+      "HAWKING_METAL_PIPELINE_CACHE_REUSE=1",
+      "--fusion-env",
+      "HAWKING_QWEN38_FAST=1",
+      "--emit",
+      "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/qwen27-pipeline-cache-reuse-diagnostic.json"
+     ],
+     "exact_mutation": {
+      "child_fusion_env": {
+       "HAWKING_METAL_PIPELINE_CACHE_REUSE": "1",
+       "HAWKING_QWEN38_FAST": "1"
+      }
+     },
+     "execution_state": "READY_ON_AUTHORITY",
+     "expected_active_byte_change": "unchanged resident bytes and reads",
+     "expected_dispatch_reduction": "0; command-buffer and dispatch topology are unchanged",
+     "expected_eliminated_work": "steady-state context-wide pipeline-cache lock acquisition for each distinct kernel in every token",
+     "expected_gpu_ns_mechanism": "move warmed pipeline handles across token command buffers so host lookup ceremony is removed without changing kernel arithmetic or binding identity",
+     "expected_intermediate_byte_reduction": "0; no buffers or representation are changed",
+     "model": "Qwen27",
+     "mutation_env": {
+      "HAWKING_METAL_PIPELINE_CACHE_REUSE": "1",
+      "HAWKING_QWEN38_FAST": "1"
+     },
+     "parity_contract": "identical tokenizer-bound output ids and source-approved graph semantics; any numerical/output divergence rejects the candidate",
+     "protected_command": [
+      "python3",
+      "-m",
+      "hcli",
+      "agentos",
+      "protected-accelerator-bench",
+      "--profile",
+      "hcli/hawking-native.sealed-3.14.json",
+      "--repo-root",
+      ".",
+      "--warmup-requests",
+      "2",
+      "--measure-requests",
+      "10",
+      "--max-new-tokens",
+      "32",
+      "--fusion-env",
+      "HAWKING_METAL_PIPELINE_CACHE_REUSE=1",
+      "--fusion-env",
+      "HAWKING_QWEN38_FAST=1",
+      "--emit",
+      "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/qwen27-pipeline-cache-reuse-protected.json"
+     ],
+     "queue_status": "READY_PROTECTED",
+     "requires_survivors": [],
+     "scope_tags": [
+      "BACKEND_FAMILY",
+      "GENERIC_CANDIDATE"
+     ],
+     "selection_reason": "stage-1 singleton from the dependency-aware plan; run against this row's exact control_env before any composition",
+     "sequence": 3,
+     "source_evidence": [
+      "crates/hawking-core/src/metal/mod.rs",
+      "crates/hawking-core/src/model/qwen38_hybrid_decode.rs"
+     ],
+     "transfer_evidence": [
+      "shared Metal runtime implementation is exercised by matched Qwen27 and Flash queue rows; protected cross-model transfer remains unverified"
+     ]
+    },
+    {
+     "affected_physical_region": "Qwen27 resident per-dispatch pipeline handle resolution",
+     "allowed_outcomes": [
+      "IMPLEMENTED_UNMEASURED",
+      "REJECTED_PARITY",
+      "REJECTED_PHYSICAL",
+      "PHYSICAL_WIN_MODEL_LOCAL",
+      "PHYSICAL_WIN_FAMILY",
+      "GENERIC_CANDIDATE",
+      "GENERIC_VERIFIED"
+     ],
+     "baseline_path": "hcli/hawking-native.sealed-3.14.json",
+     "batch": "QWEN_FIRST_PROTECTED_SINGLES",
+     "blocked_reason": null,
+     "candidate_id": "qwen27-pipeline-id-resolution",
+     "capability_contract": "complete accepted-token capability, zero fallback, independent resident identity, and explicit native metric absence reasons",
+     "control_configuration": {
+      "child_fusion_env": {
+       "HAWKING_METAL_PIPELINE_CACHE_REUSE": "1",
+       "HAWKING_METAL_PIPELINE_ID_RESOLUTION": "0",
+       "HAWKING_QWEN38_FAST": "1"
+      }
+     },
+     "control_env": {
+      "HAWKING_METAL_PIPELINE_CACHE_REUSE": "1",
+      "HAWKING_METAL_PIPELINE_ID_RESOLUTION": "0",
+      "HAWKING_QWEN38_FAST": "1"
+     },
+     "dependencies": [
+      "qwen27-pipeline-cache-reuse"
+     ],
+     "diagnostic_command": [
+      "python3",
+      "-m",
+      "hcli",
+      "agentos",
+      "protected-accelerator-bench",
+      "--profile",
+      "hcli/hawking-native.sealed-3.14.json",
+      "--repo-root",
+      ".",
+      "--warmup-requests",
+      "1",
+      "--measure-requests",
+      "3",
+      "--max-new-tokens",
+      "8",
+      "--fusion-env",
+      "HAWKING_METAL_PIPELINE_CACHE_REUSE=1",
+      "--fusion-env",
+      "HAWKING_METAL_PIPELINE_ID_RESOLUTION=1",
+      "--fusion-env",
+      "HAWKING_QWEN38_FAST=1",
+      "--emit",
+      "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/qwen27-pipeline-id-resolution-diagnostic.json"
+     ],
+     "exact_mutation": {
+      "child_fusion_env": {
+       "HAWKING_METAL_PIPELINE_CACHE_REUSE": "1",
+       "HAWKING_METAL_PIPELINE_ID_RESOLUTION": "1",
+       "HAWKING_QWEN38_FAST": "1"
+      }
+     },
+     "execution_state": "READY_ON_AUTHORITY",
+     "expected_active_byte_change": "unchanged resident bytes and reads",
+     "expected_dispatch_reduction": "0; command-buffer, encoder, and dispatch topology are unchanged",
+     "expected_eliminated_work": "the second kernel-name hash/map probe after resident pipeline admission",
+     "expected_gpu_ns_mechanism": "resolve warmed pipeline handles through stable per-TCB integer IDs and vector indexing while preserving the name-map control path",
+     "expected_intermediate_byte_reduction": "0; no buffers or representation are changed",
+     "model": "Qwen27",
+     "mutation_env": {
+      "HAWKING_METAL_PIPELINE_CACHE_REUSE": "1",
+      "HAWKING_METAL_PIPELINE_ID_RESOLUTION": "1",
+      "HAWKING_QWEN38_FAST": "1"
+     },
+     "parity_contract": "identical tokenizer-bound output ids and source-approved graph semantics; any numerical/output divergence rejects the candidate",
+     "protected_command": [
+      "python3",
+      "-m",
+      "hcli",
+      "agentos",
+      "protected-accelerator-bench",
+      "--profile",
+      "hcli/hawking-native.sealed-3.14.json",
+      "--repo-root",
+      ".",
+      "--warmup-requests",
+      "2",
+      "--measure-requests",
+      "10",
+      "--max-new-tokens",
+      "32",
+      "--fusion-env",
+      "HAWKING_METAL_PIPELINE_CACHE_REUSE=1",
+      "--fusion-env",
+      "HAWKING_METAL_PIPELINE_ID_RESOLUTION=1",
+      "--fusion-env",
+      "HAWKING_QWEN38_FAST=1",
+      "--emit",
+      "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/qwen27-pipeline-id-resolution-protected.json"
+     ],
+     "queue_status": "READY_PROTECTED",
+     "requires_survivors": [],
+     "scope_tags": [
+      "BACKEND_FAMILY",
+      "GENERIC_CANDIDATE"
+     ],
+     "selection_reason": "stage-1 singleton from the dependency-aware plan; run against this row's exact control_env before any composition",
+     "sequence": 4,
+     "source_evidence": [
+      "crates/hawking-core/src/metal/mod.rs",
+      "crates/hawking-core/src/model/qwen38_hybrid_decode.rs"
+     ],
+     "transfer_evidence": [
+      "shared Metal runtime implementation is exercised by matched Qwen27 and Flash queue rows; protected cross-model transfer remains unverified"
+     ]
+    },
+    {
+     "affected_physical_region": "Qwen27 uninstrumented TokenCommandBuffer commit/fence",
+     "allowed_outcomes": [
+      "IMPLEMENTED_UNMEASURED",
+      "REJECTED_PARITY",
+      "REJECTED_PHYSICAL",
+      "PHYSICAL_WIN_MODEL_LOCAL",
+      "PHYSICAL_WIN_FAMILY",
+      "GENERIC_CANDIDATE",
+      "GENERIC_VERIFIED"
+     ],
+     "baseline_path": "hcli/hawking-native.sealed-3.14.json",
+     "batch": "QWEN_FIRST_PROTECTED_SINGLES",
+     "blocked_reason": null,
+     "candidate_id": "qwen27-commit-timing-elision",
+     "capability_contract": "complete accepted-token capability, zero fallback, independent resident identity, and explicit native metric absence reasons",
+     "control_configuration": {
+      "child_fusion_env": {
+       "HAWKING_METAL_COMMIT_TIMING_ELISION": "0",
+       "HAWKING_QWEN38_FAST": "1"
+      }
+     },
+     "control_env": {
+      "HAWKING_METAL_COMMIT_TIMING_ELISION": "0",
+      "HAWKING_QWEN38_FAST": "1"
+     },
+     "dependencies": [
+      "qwen27-fast-profile"
+     ],
+     "diagnostic_command": [
+      "python3",
+      "-m",
+      "hcli",
+      "agentos",
+      "protected-accelerator-bench",
+      "--profile",
+      "hcli/hawking-native.sealed-3.14.json",
+      "--repo-root",
+      ".",
+      "--warmup-requests",
+      "1",
+      "--measure-requests",
+      "3",
+      "--max-new-tokens",
+      "8",
+      "--fusion-env",
+      "HAWKING_METAL_COMMIT_TIMING_ELISION=1",
+      "--fusion-env",
+      "HAWKING_QWEN38_FAST=1",
+      "--emit",
+      "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/qwen27-commit-timing-elision-diagnostic.json"
+     ],
+     "exact_mutation": {
+      "child_fusion_env": {
+       "HAWKING_METAL_COMMIT_TIMING_ELISION": "1",
+       "HAWKING_QWEN38_FAST": "1"
+      }
+     },
+     "execution_state": "READY_ON_AUTHORITY",
+     "expected_active_byte_change": "unchanged resident bytes and reads",
+     "expected_dispatch_reduction": "0; command-buffer, encoder, and dispatch topology are unchanged",
+     "expected_eliminated_work": "CPU clock reads, GPU timeline queries, and the post-fence status query on the no-timing commit API",
+     "expected_gpu_ns_mechanism": "remove commit-side measurement ceremony only; the command-buffer fence and kernel arithmetic remain identical",
+     "expected_intermediate_byte_reduction": "0; no buffers or representation are changed",
+     "model": "Qwen27",
+     "mutation_env": {
+      "HAWKING_METAL_COMMIT_TIMING_ELISION": "1",
+      "HAWKING_QWEN38_FAST": "1"
+     },
+     "parity_contract": "identical tokenizer-bound output ids and source-approved graph semantics; any numerical/output divergence rejects the candidate",
+     "protected_command": [
+      "python3",
+      "-m",
+      "hcli",
+      "agentos",
+      "protected-accelerator-bench",
+      "--profile",
+      "hcli/hawking-native.sealed-3.14.json",
+      "--repo-root",
+      ".",
+      "--warmup-requests",
+      "2",
+      "--measure-requests",
+      "10",
+      "--max-new-tokens",
+      "32",
+      "--fusion-env",
+      "HAWKING_METAL_COMMIT_TIMING_ELISION=1",
+      "--fusion-env",
+      "HAWKING_QWEN38_FAST=1",
+      "--emit",
+      "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/qwen27-commit-timing-elision-protected.json"
+     ],
+     "queue_status": "READY_PROTECTED",
+     "requires_survivors": [],
+     "scope_tags": [
+      "MODEL_LOCAL"
+     ],
+     "selection_reason": "stage-1 singleton from the dependency-aware plan; run against this row's exact control_env before any composition",
+     "sequence": 5,
+     "source_evidence": [
+      "crates/hawking-core/src/metal/mod.rs"
+     ],
+     "transfer_evidence": []
+    },
+    {
+     "affected_physical_region": "Qwen27 shared Metal ordinary encoder labeling",
+     "allowed_outcomes": [
+      "IMPLEMENTED_UNMEASURED",
+      "REJECTED_PARITY",
+      "REJECTED_PHYSICAL",
+      "PHYSICAL_WIN_MODEL_LOCAL",
+      "PHYSICAL_WIN_FAMILY",
+      "GENERIC_CANDIDATE",
+      "GENERIC_VERIFIED"
+     ],
+     "baseline_path": "hcli/hawking-native.sealed-3.14.json",
+     "batch": "QWEN_FIRST_PROTECTED_SINGLES",
+     "blocked_reason": null,
+     "candidate_id": "qwen27-encoder-label-elision",
+     "capability_contract": "complete accepted-token capability, zero fallback, independent resident identity, and explicit native metric absence reasons",
+     "control_configuration": {
+      "child_fusion_env": {
+       "HAWKING_METAL_ENCODER_LABEL_ELISION": "0",
+       "HAWKING_QWEN38_FAST": "1"
+      }
+     },
+     "control_env": {
+      "HAWKING_METAL_ENCODER_LABEL_ELISION": "0",
+      "HAWKING_QWEN38_FAST": "1"
+     },
+     "dependencies": [
+      "qwen27-fast-profile"
+     ],
+     "diagnostic_command": [
+      "python3",
+      "-m",
+      "hcli",
+      "agentos",
+      "protected-accelerator-bench",
+      "--profile",
+      "hcli/hawking-native.sealed-3.14.json",
+      "--repo-root",
+      ".",
+      "--warmup-requests",
+      "1",
+      "--measure-requests",
+      "3",
+      "--max-new-tokens",
+      "8",
+      "--fusion-env",
+      "HAWKING_METAL_ENCODER_LABEL_ELISION=1",
+      "--fusion-env",
+      "HAWKING_QWEN38_FAST=1",
+      "--emit",
+      "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/qwen27-encoder-label-elision-diagnostic.json"
+     ],
+     "exact_mutation": {
+      "child_fusion_env": {
+       "HAWKING_METAL_ENCODER_LABEL_ELISION": "1",
+       "HAWKING_QWEN38_FAST": "1"
+      }
+     },
+     "execution_state": "READY_ON_AUTHORITY",
+     "expected_active_byte_change": "unchanged resident bytes and reads",
+     "expected_dispatch_reduction": "0; command-buffer and dispatch topology are unchanged",
+     "expected_eliminated_work": "per-dispatch diagnostic setLabel calls when neither trace nor physical capture is active",
+     "expected_gpu_ns_mechanism": "remove ordinary encoder-label Objective-C ceremony from the fast path while retaining labels for trace and physical capture",
+     "expected_intermediate_byte_reduction": "0; no buffers or representation are changed",
+     "model": "Qwen27",
+     "mutation_env": {
+      "HAWKING_METAL_ENCODER_LABEL_ELISION": "1",
+      "HAWKING_QWEN38_FAST": "1"
+     },
+     "parity_contract": "identical tokenizer-bound output ids and source-approved graph semantics; any numerical/output divergence rejects the candidate",
+     "protected_command": [
+      "python3",
+      "-m",
+      "hcli",
+      "agentos",
+      "protected-accelerator-bench",
+      "--profile",
+      "hcli/hawking-native.sealed-3.14.json",
+      "--repo-root",
+      ".",
+      "--warmup-requests",
+      "2",
+      "--measure-requests",
+      "10",
+      "--max-new-tokens",
+      "32",
+      "--fusion-env",
+      "HAWKING_METAL_ENCODER_LABEL_ELISION=1",
+      "--fusion-env",
+      "HAWKING_QWEN38_FAST=1",
+      "--emit",
+      "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/qwen27-encoder-label-elision-protected.json"
+     ],
+     "queue_status": "READY_PROTECTED",
+     "requires_survivors": [],
+     "scope_tags": [
+      "BACKEND_FAMILY",
+      "GENERIC_CANDIDATE"
+     ],
+     "selection_reason": "stage-1 singleton from the dependency-aware plan; run against this row's exact control_env before any composition",
+     "sequence": 6,
+     "source_evidence": [
+      "crates/hawking-core/src/metal/mod.rs"
+     ],
+     "transfer_evidence": [
+      "shared Metal runtime implementation is exercised by matched Qwen27 and Flash queue rows; protected cross-model transfer remains unverified"
+     ]
+    },
+    {
+     "affected_physical_region": "Qwen27 HGRAVF01 affine Q2 GEMV",
+     "allowed_outcomes": [
+      "IMPLEMENTED_UNMEASURED",
+      "REJECTED_PARITY",
+      "REJECTED_PHYSICAL",
+      "PHYSICAL_WIN_MODEL_LOCAL",
+      "PHYSICAL_WIN_FAMILY",
+      "GENERIC_CANDIDATE",
+      "GENERIC_VERIFIED"
+     ],
+     "baseline_path": "hcli/hawking-native.sealed-3.14.json",
+     "batch": "QWEN_FIRST_PROTECTED_SINGLES",
+     "blocked_reason": null,
+     "candidate_id": "qwen27-affine2-splitk4",
+     "capability_contract": "complete accepted-token capability, zero fallback, independent resident identity, and explicit native metric absence reasons",
+     "control_configuration": {
+      "child_fusion_env": {
+       "HAWKING_AFFINE2_GEO": "tpr64",
+       "HAWKING_Q2F_GEO": "tpr64",
+       "HAWKING_QWEN38_FAST": "1"
+      }
+     },
+     "control_env": {
+      "HAWKING_AFFINE2_GEO": "tpr64",
+      "HAWKING_Q2F_GEO": "tpr64",
+      "HAWKING_QWEN38_FAST": "1"
+     },
+     "dependencies": [
+      "qwen27-fast-profile"
+     ],
+     "diagnostic_command": [
+      "python3",
+      "-m",
+      "hcli",
+      "agentos",
+      "protected-accelerator-bench",
+      "--profile",
+      "hcli/hawking-native.sealed-3.14.json",
+      "--repo-root",
+      ".",
+      "--warmup-requests",
+      "1",
+      "--measure-requests",
+      "3",
+      "--max-new-tokens",
+      "8",
+      "--fusion-env",
+      "HAWKING_AFFINE2_GEO=splitk4",
+      "--fusion-env",
+      "HAWKING_Q2F_GEO=tpr64",
+      "--fusion-env",
+      "HAWKING_QWEN38_FAST=1",
+      "--emit",
+      "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/qwen27-affine2-splitk4-diagnostic.json"
+     ],
+     "exact_mutation": {
+      "child_fusion_env": {
+       "HAWKING_AFFINE2_GEO": "splitk4",
+       "HAWKING_Q2F_GEO": "tpr64",
+       "HAWKING_QWEN38_FAST": "1"
+      }
+     },
+     "execution_state": "READY_ON_AUTHORITY",
+     "expected_active_byte_change": "unchanged packed Q2; split-K changes concurrent reads only",
+     "expected_dispatch_reduction": "0",
+     "expected_eliminated_work": "none; geometry-only candidate",
+     "expected_gpu_ns_mechanism": "four-way split-K increases row-local parallelism for wide projections",
+     "expected_intermediate_byte_reduction": "0",
+     "model": "Qwen27",
+     "mutation_env": {
+      "HAWKING_AFFINE2_GEO": "splitk4",
+      "HAWKING_Q2F_GEO": "tpr64",
+      "HAWKING_QWEN38_FAST": "1"
+     },
+     "parity_contract": "identical tokenizer-bound output ids and source-approved graph semantics; any numerical/output divergence rejects the candidate",
+     "protected_command": [
+      "python3",
+      "-m",
+      "hcli",
+      "agentos",
+      "protected-accelerator-bench",
+      "--profile",
+      "hcli/hawking-native.sealed-3.14.json",
+      "--repo-root",
+      ".",
+      "--warmup-requests",
+      "2",
+      "--measure-requests",
+      "10",
+      "--max-new-tokens",
+      "32",
+      "--fusion-env",
+      "HAWKING_AFFINE2_GEO=splitk4",
+      "--fusion-env",
+      "HAWKING_Q2F_GEO=tpr64",
+      "--fusion-env",
+      "HAWKING_QWEN38_FAST=1",
+      "--emit",
+      "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/qwen27-affine2-splitk4-protected.json"
+     ],
+     "queue_status": "READY_PROTECTED",
+     "requires_survivors": [],
+     "scope_tags": [
+      "MODEL_LOCAL"
+     ],
+     "selection_reason": "stage-1 singleton from the dependency-aware plan; run against this row's exact control_env before any composition",
+     "sequence": 7,
+     "source_evidence": [
+      "crates/hawking-core/shaders/q80_mixed_decode.metal",
+      "receipts/headless/ACCELERATOR_KERNEL_BOTTLENECK.json"
+     ],
+     "transfer_evidence": []
+    },
+    {
+     "affected_physical_region": "Qwen27 biasless Q2F projection family",
+     "allowed_outcomes": [
+      "IMPLEMENTED_UNMEASURED",
+      "REJECTED_PARITY",
+      "REJECTED_PHYSICAL",
+      "PHYSICAL_WIN_MODEL_LOCAL",
+      "PHYSICAL_WIN_FAMILY",
+      "GENERIC_CANDIDATE",
+      "GENERIC_VERIFIED"
+     ],
+     "baseline_path": "hcli/hawking-native.sealed-3.14.json",
+     "batch": "QWEN_FIRST_PROTECTED_SINGLES",
+     "blocked_reason": null,
+     "candidate_id": "qwen27-q2f-splitk4",
+     "capability_contract": "complete accepted-token capability, zero fallback, independent resident identity, and explicit native metric absence reasons",
+     "control_configuration": {
+      "child_fusion_env": {
+       "HAWKING_AFFINE2_GEO": "tpr64",
+       "HAWKING_Q2F_GEO": "tpr64",
+       "HAWKING_QWEN38_FAST": "1"
+      }
+     },
+     "control_env": {
+      "HAWKING_AFFINE2_GEO": "tpr64",
+      "HAWKING_Q2F_GEO": "tpr64",
+      "HAWKING_QWEN38_FAST": "1"
+     },
+     "dependencies": [
+      "qwen27-fast-profile"
+     ],
+     "diagnostic_command": [
+      "python3",
+      "-m",
+      "hcli",
+      "agentos",
+      "protected-accelerator-bench",
+      "--profile",
+      "hcli/hawking-native.sealed-3.14.json",
+      "--repo-root",
+      ".",
+      "--warmup-requests",
+      "1",
+      "--measure-requests",
+      "3",
+      "--max-new-tokens",
+      "8",
+      "--fusion-env",
+      "HAWKING_AFFINE2_GEO=tpr64",
+      "--fusion-env",
+      "HAWKING_Q2F_GEO=splitk4",
+      "--fusion-env",
+      "HAWKING_QWEN38_FAST=1",
+      "--emit",
+      "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/qwen27-q2f-splitk4-diagnostic.json"
+     ],
+     "exact_mutation": {
+      "child_fusion_env": {
+       "HAWKING_AFFINE2_GEO": "tpr64",
+       "HAWKING_Q2F_GEO": "splitk4",
+       "HAWKING_QWEN38_FAST": "1"
+      }
+     },
+     "execution_state": "READY_ON_AUTHORITY",
+     "expected_active_byte_change": "unchanged packed Q2F; split-K changes concurrent reads only",
+     "expected_dispatch_reduction": "0",
+     "expected_eliminated_work": "none; geometry-only candidate",
+     "expected_gpu_ns_mechanism": "four-way split-K increases row-local parallelism for wide Q2F projections",
+     "expected_intermediate_byte_reduction": "0",
+     "model": "Qwen27",
+     "mutation_env": {
+      "HAWKING_AFFINE2_GEO": "tpr64",
+      "HAWKING_Q2F_GEO": "splitk4",
+      "HAWKING_QWEN38_FAST": "1"
+     },
+     "parity_contract": "identical tokenizer-bound output ids and source-approved graph semantics; any numerical/output divergence rejects the candidate",
+     "protected_command": [
+      "python3",
+      "-m",
+      "hcli",
+      "agentos",
+      "protected-accelerator-bench",
+      "--profile",
+      "hcli/hawking-native.sealed-3.14.json",
+      "--repo-root",
+      ".",
+      "--warmup-requests",
+      "2",
+      "--measure-requests",
+      "10",
+      "--max-new-tokens",
+      "32",
+      "--fusion-env",
+      "HAWKING_AFFINE2_GEO=tpr64",
+      "--fusion-env",
+      "HAWKING_Q2F_GEO=splitk4",
+      "--fusion-env",
+      "HAWKING_QWEN38_FAST=1",
+      "--emit",
+      "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/qwen27-q2f-splitk4-protected.json"
+     ],
+     "queue_status": "READY_PROTECTED",
+     "requires_survivors": [],
+     "scope_tags": [
+      "MODEL_LOCAL"
+     ],
+     "selection_reason": "stage-1 singleton from the dependency-aware plan; run against this row's exact control_env before any composition",
+     "sequence": 8,
+     "source_evidence": [
+      "crates/hawking-core/shaders/q80_mixed_decode.metal",
+      "crates/hawking-core/src/model/qwen38_hybrid_decode.rs::qwen38_q2f_geo_from_env"
+     ],
+     "transfer_evidence": []
+    },
+    {
+     "affected_physical_region": "Qwen27 standalone uniform-Q4 GEMV",
+     "allowed_outcomes": [
+      "IMPLEMENTED_UNMEASURED",
+      "REJECTED_PARITY",
+      "REJECTED_PHYSICAL",
+      "PHYSICAL_WIN_MODEL_LOCAL",
+      "PHYSICAL_WIN_FAMILY",
+      "GENERIC_CANDIDATE",
+      "GENERIC_VERIFIED"
+     ],
+     "baseline_path": "hcli/hawking-native.sealed-3.14.json",
+     "batch": "QWEN_FIRST_PROTECTED_SINGLES",
+     "blocked_reason": null,
+     "candidate_id": "qwen27-q4-vecgroup-x64",
+     "capability_contract": "complete accepted-token capability, zero fallback, independent resident identity, and explicit native metric absence reasons",
+     "control_configuration": {
+      "child_fusion_env": {
+       "HAWKING_QWEN38_FAST": "1",
+       "HAWKING_QWEN38_Q4_GEO": "tpr64"
+      }
+     },
+     "control_env": {
+      "HAWKING_QWEN38_FAST": "1",
+      "HAWKING_QWEN38_Q4_GEO": "tpr64"
+     },
+     "dependencies": [
+      "qwen27-fast-profile"
+     ],
+     "diagnostic_command": [
+      "python3",
+      "-m",
+      "hcli",
+      "agentos",
+      "protected-accelerator-bench",
+      "--profile",
+      "hcli/hawking-native.sealed-3.14.json",
+      "--repo-root",
+      ".",
+      "--warmup-requests",
+      "1",
+      "--measure-requests",
+      "3",
+      "--max-new-tokens",
+      "8",
+      "--fusion-env",
+      "HAWKING_QWEN38_FAST=1",
+      "--fusion-env",
+      "HAWKING_QWEN38_Q4_GEO=vecgroup_x64",
+      "--emit",
+      "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/qwen27-q4-vecgroup-x64-diagnostic.json"
+     ],
+     "exact_mutation": {
+      "child_fusion_env": {
+       "HAWKING_QWEN38_FAST": "1",
+       "HAWKING_QWEN38_Q4_GEO": "vecgroup_x64"
+      }
+     },
+     "execution_state": "READY_ON_AUTHORITY",
+     "expected_active_byte_change": "unchanged packed Q4 bytes; measure actual reads/token",
+     "expected_dispatch_reduction": "0; standalone dispatch count is unchanged",
+     "expected_eliminated_work": "none; geometry-only candidate",
+     "expected_gpu_ns_mechanism": "retarget standalone group-64 Q4 GEMVs to the existing 64-thread-per-row vector-group tile; fused Q4 and affine-Q2 kernels remain on their incumbent bindings",
+     "expected_intermediate_byte_reduction": "0; packed Q4 buffers and output contract are unchanged",
+     "model": "Qwen27",
+     "mutation_env": {
+      "HAWKING_QWEN38_FAST": "1",
+      "HAWKING_QWEN38_Q4_GEO": "vecgroup_x64"
+     },
+     "parity_contract": "identical tokenizer-bound output ids and source-approved graph semantics; any numerical/output divergence rejects the candidate",
+     "protected_command": [
+      "python3",
+      "-m",
+      "hcli",
+      "agentos",
+      "protected-accelerator-bench",
+      "--profile",
+      "hcli/hawking-native.sealed-3.14.json",
+      "--repo-root",
+      ".",
+      "--warmup-requests",
+      "2",
+      "--measure-requests",
+      "10",
+      "--max-new-tokens",
+      "32",
+      "--fusion-env",
+      "HAWKING_QWEN38_FAST=1",
+      "--fusion-env",
+      "HAWKING_QWEN38_Q4_GEO=vecgroup_x64",
+      "--emit",
+      "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/qwen27-q4-vecgroup-x64-protected.json"
+     ],
+     "queue_status": "READY_PROTECTED",
+     "requires_survivors": [],
+     "scope_tags": [
+      "MODEL_LOCAL"
+     ],
+     "selection_reason": "stage-1 singleton from the dependency-aware plan; run against this row's exact control_env before any composition",
+     "sequence": 9,
+     "source_evidence": [
+      "crates/hawking-core/src/model/qwen38_hybrid_decode.rs",
+      "crates/hawking-core/shaders/qwen_uniform_q4.metal",
+      "receipts/ascent-2026-08-16/matvec-occupancy-230x.json"
+     ],
+     "transfer_evidence": []
+    },
+    {
+     "affected_physical_region": "Qwen27 GQA Q/K/V packed projection",
+     "allowed_outcomes": [
+      "IMPLEMENTED_UNMEASURED",
+      "REJECTED_PARITY",
+      "REJECTED_PHYSICAL",
+      "PHYSICAL_WIN_MODEL_LOCAL",
+      "PHYSICAL_WIN_FAMILY",
+      "GENERIC_CANDIDATE",
+      "GENERIC_VERIFIED"
+     ],
+     "baseline_path": "hcli/hawking-native.sealed-3.14.json",
+     "batch": "QWEN_FIRST_PROTECTED_SINGLES",
+     "blocked_reason": null,
+     "candidate_id": "qwen27-gqa-qkv-fusion",
+     "capability_contract": "complete accepted-token capability, zero fallback, independent resident identity, and explicit native metric absence reasons",
+     "control_configuration": {
+      "child_fusion_env": {
+       "HAWKING_QWEN38_FAST": "1",
+       "HAWKING_QWEN38_FUSE_GQA_QKV": "0"
+      }
+     },
+     "control_env": {
+      "HAWKING_QWEN38_FAST": "1",
+      "HAWKING_QWEN38_FUSE_GQA_QKV": "0"
+     },
+     "dependencies": [
+      "qwen27-fast-profile"
+     ],
+     "diagnostic_command": [
+      "python3",
+      "-m",
+      "hcli",
+      "agentos",
+      "protected-accelerator-bench",
+      "--profile",
+      "hcli/hawking-native.sealed-3.14.json",
+      "--repo-root",
+      ".",
+      "--warmup-requests",
+      "1",
+      "--measure-requests",
+      "3",
+      "--max-new-tokens",
+      "8",
+      "--fusion-env",
+      "HAWKING_QWEN38_FAST=1",
+      "--fusion-env",
+      "HAWKING_QWEN38_FUSE_GQA_QKV=1",
+      "--emit",
+      "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/qwen27-gqa-qkv-fusion-diagnostic.json"
+     ],
+     "exact_mutation": {
+      "child_fusion_env": {
+       "HAWKING_QWEN38_FAST": "1",
+       "HAWKING_QWEN38_FUSE_GQA_QKV": "1"
+      }
+     },
+     "execution_state": "READY_ON_AUTHORITY",
+     "expected_active_byte_change": "unchanged packed weights",
+     "expected_dispatch_reduction": "reduce by two per GQA layer; verify trace",
+     "expected_eliminated_work": "two projection dispatch boundaries per GQA layer",
+     "expected_gpu_ns_mechanism": "shared input traversal and one command boundary for Q/K/V outputs",
+     "expected_intermediate_byte_reduction": "remove separate Q/K/V projection staging where fused contract permits",
+     "model": "Qwen27",
+     "mutation_env": {
+      "HAWKING_QWEN38_FAST": "1",
+      "HAWKING_QWEN38_FUSE_GQA_QKV": "1"
+     },
+     "parity_contract": "identical tokenizer-bound output ids and source-approved graph semantics; any numerical/output divergence rejects the candidate",
+     "protected_command": [
+      "python3",
+      "-m",
+      "hcli",
+      "agentos",
+      "protected-accelerator-bench",
+      "--profile",
+      "hcli/hawking-native.sealed-3.14.json",
+      "--repo-root",
+      ".",
+      "--warmup-requests",
+      "2",
+      "--measure-requests",
+      "10",
+      "--max-new-tokens",
+      "32",
+      "--fusion-env",
+      "HAWKING_QWEN38_FAST=1",
+      "--fusion-env",
+      "HAWKING_QWEN38_FUSE_GQA_QKV=1",
+      "--emit",
+      "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/qwen27-gqa-qkv-fusion-protected.json"
+     ],
+     "queue_status": "READY_PROTECTED",
+     "requires_survivors": [],
+     "scope_tags": [
+      "MODEL_LOCAL"
+     ],
+     "selection_reason": "stage-1 singleton from the dependency-aware plan; run against this row's exact control_env before any composition",
+     "sequence": 10,
+     "source_evidence": [
+      "crates/hawking-core/src/model/qwen38_hybrid_decode.rs"
+     ],
+     "transfer_evidence": []
+    },
+    {
+     "affected_physical_region": "Qwen27 GQA attention output sigmoid gate",
+     "allowed_outcomes": [
+      "IMPLEMENTED_UNMEASURED",
+      "REJECTED_PARITY",
+      "REJECTED_PHYSICAL",
+      "PHYSICAL_WIN_MODEL_LOCAL",
+      "PHYSICAL_WIN_FAMILY",
+      "GENERIC_CANDIDATE",
+      "GENERIC_VERIFIED"
+     ],
+     "baseline_path": "hcli/hawking-native.sealed-3.14.json",
+     "batch": "QWEN_FIRST_PROTECTED_SINGLES",
+     "blocked_reason": null,
+     "candidate_id": "qwen27-attention-gate-fusion",
+     "capability_contract": "complete accepted-token capability, zero fallback, independent resident identity, and explicit native metric absence reasons",
+     "control_configuration": {
+      "child_fusion_env": {
+       "HAWKING_QWEN38_FAST": "1",
+       "HAWKING_QWEN38_FUSE_ATTENTION_GATE": "0"
+      }
+     },
+     "control_env": {
+      "HAWKING_QWEN38_FAST": "1",
+      "HAWKING_QWEN38_FUSE_ATTENTION_GATE": "0"
+     },
+     "dependencies": [
+      "qwen27-fast-profile"
+     ],
+     "diagnostic_command": [
+      "python3",
+      "-m",
+      "hcli",
+      "agentos",
+      "protected-accelerator-bench",
+      "--profile",
+      "hcli/hawking-native.sealed-3.14.json",
+      "--repo-root",
+      ".",
+      "--warmup-requests",
+      "1",
+      "--measure-requests",
+      "3",
+      "--max-new-tokens",
+      "8",
+      "--fusion-env",
+      "HAWKING_QWEN38_FAST=1",
+      "--fusion-env",
+      "HAWKING_QWEN38_FUSE_ATTENTION_GATE=1",
+      "--emit",
+      "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/qwen27-attention-gate-fusion-diagnostic.json"
+     ],
+     "exact_mutation": {
+      "child_fusion_env": {
+       "HAWKING_QWEN38_FAST": "1",
+       "HAWKING_QWEN38_FUSE_ATTENTION_GATE": "1"
+      }
+     },
+     "execution_state": "READY_ON_AUTHORITY",
+     "expected_active_byte_change": "unchanged resident weights; lower transient activation traffic expected",
+     "expected_dispatch_reduction": "reduce by the number of GQA layers; verify trace",
+     "expected_eliminated_work": "one standalone attention-gate dispatch per GQA layer",
+     "expected_gpu_ns_mechanism": "fuse sigmoid gate into the final attention write without changing output order",
+     "expected_intermediate_byte_reduction": "remove gated attention output intermediate read/write",
+     "model": "Qwen27",
+     "mutation_env": {
+      "HAWKING_QWEN38_FAST": "1",
+      "HAWKING_QWEN38_FUSE_ATTENTION_GATE": "1"
+     },
+     "parity_contract": "identical tokenizer-bound output ids and source-approved graph semantics; any numerical/output divergence rejects the candidate",
+     "protected_command": [
+      "python3",
+      "-m",
+      "hcli",
+      "agentos",
+      "protected-accelerator-bench",
+      "--profile",
+      "hcli/hawking-native.sealed-3.14.json",
+      "--repo-root",
+      ".",
+      "--warmup-requests",
+      "2",
+      "--measure-requests",
+      "10",
+      "--max-new-tokens",
+      "32",
+      "--fusion-env",
+      "HAWKING_QWEN38_FAST=1",
+      "--fusion-env",
+      "HAWKING_QWEN38_FUSE_ATTENTION_GATE=1",
+      "--emit",
+      "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/qwen27-attention-gate-fusion-protected.json"
+     ],
+     "queue_status": "READY_PROTECTED",
+     "requires_survivors": [],
+     "scope_tags": [
+      "MODEL_LOCAL"
+     ],
+     "selection_reason": "stage-1 singleton from the dependency-aware plan; run against this row's exact control_env before any composition",
+     "sequence": 11,
+     "source_evidence": [
+      "crates/hawking-core/src/model/qwen38_hybrid_decode.rs"
+     ],
+     "transfer_evidence": []
+    },
+    {
+     "affected_physical_region": "Qwen27 DeltaNet input projection",
+     "allowed_outcomes": [
+      "IMPLEMENTED_UNMEASURED",
+      "REJECTED_PARITY",
+      "REJECTED_PHYSICAL",
+      "PHYSICAL_WIN_MODEL_LOCAL",
+      "PHYSICAL_WIN_FAMILY",
+      "GENERIC_CANDIDATE",
+      "GENERIC_VERIFIED"
+     ],
+     "baseline_path": "hcli/hawking-native.sealed-3.14.json",
+     "batch": "QWEN_FIRST_PROTECTED_SINGLES",
+     "blocked_reason": null,
+     "candidate_id": "qwen27-deltanet-inproj-fusion",
+     "capability_contract": "complete accepted-token capability, zero fallback, independent resident identity, and explicit native metric absence reasons",
+     "control_configuration": {
+      "child_fusion_env": {
+       "HAWKING_QWEN38_FAST": "1",
+       "HAWKING_QWEN38_FUSE_DN_INPROJ": "0"
+      }
+     },
+     "control_env": {
+      "HAWKING_QWEN38_FAST": "1",
+      "HAWKING_QWEN38_FUSE_DN_INPROJ": "0"
+     },
+     "dependencies": [
+      "qwen27-fast-profile"
+     ],
+     "diagnostic_command": [
+      "python3",
+      "-m",
+      "hcli",
+      "agentos",
+      "protected-accelerator-bench",
+      "--profile",
+      "hcli/hawking-native.sealed-3.14.json",
+      "--repo-root",
+      ".",
+      "--warmup-requests",
+      "1",
+      "--measure-requests",
+      "3",
+      "--max-new-tokens",
+      "8",
+      "--fusion-env",
+      "HAWKING_QWEN38_FAST=1",
+      "--fusion-env",
+      "HAWKING_QWEN38_FUSE_DN_INPROJ=1",
+      "--emit",
+      "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/qwen27-deltanet-inproj-fusion-diagnostic.json"
+     ],
+     "exact_mutation": {
+      "child_fusion_env": {
+       "HAWKING_QWEN38_FAST": "1",
+       "HAWKING_QWEN38_FUSE_DN_INPROJ": "1"
+      }
+     },
+     "execution_state": "READY_ON_AUTHORITY",
+     "expected_active_byte_change": "unchanged packed weights",
+     "expected_dispatch_reduction": "reduce by the number of DeltaNet layers; verify trace",
+     "expected_eliminated_work": "one DeltaNet input-projection dispatch per recurrent layer",
+     "expected_gpu_ns_mechanism": "fuse the shared projection producer with recurrent input preparation",
+     "expected_intermediate_byte_reduction": "remove fused in-projection staging if parity holds",
+     "model": "Qwen27",
+     "mutation_env": {
+      "HAWKING_QWEN38_FAST": "1",
+      "HAWKING_QWEN38_FUSE_DN_INPROJ": "1"
+     },
+     "parity_contract": "identical tokenizer-bound output ids and source-approved graph semantics; any numerical/output divergence rejects the candidate",
+     "protected_command": [
+      "python3",
+      "-m",
+      "hcli",
+      "agentos",
+      "protected-accelerator-bench",
+      "--profile",
+      "hcli/hawking-native.sealed-3.14.json",
+      "--repo-root",
+      ".",
+      "--warmup-requests",
+      "2",
+      "--measure-requests",
+      "10",
+      "--max-new-tokens",
+      "32",
+      "--fusion-env",
+      "HAWKING_QWEN38_FAST=1",
+      "--fusion-env",
+      "HAWKING_QWEN38_FUSE_DN_INPROJ=1",
+      "--emit",
+      "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/qwen27-deltanet-inproj-fusion-protected.json"
+     ],
+     "queue_status": "READY_PROTECTED",
+     "requires_survivors": [],
+     "scope_tags": [
+      "MODEL_LOCAL"
+     ],
+     "selection_reason": "stage-1 singleton from the dependency-aware plan; run against this row's exact control_env before any composition",
+     "sequence": 12,
+     "source_evidence": [
+      "crates/hawking-core/src/model/qwen38_hybrid_decode.rs",
+      "receipts/headless/DELTANET_ORGAN.json"
+     ],
+     "transfer_evidence": []
+    },
+    {
+     "affected_physical_region": "Qwen27 DeltaNet BA/state transition",
+     "allowed_outcomes": [
+      "IMPLEMENTED_UNMEASURED",
+      "REJECTED_PARITY",
+      "REJECTED_PHYSICAL",
+      "PHYSICAL_WIN_MODEL_LOCAL",
+      "PHYSICAL_WIN_FAMILY",
+      "GENERIC_CANDIDATE",
+      "GENERIC_VERIFIED"
+     ],
+     "baseline_path": "hcli/hawking-native.sealed-3.14.json",
+     "batch": "QWEN_FIRST_PROTECTED_SINGLES",
+     "blocked_reason": null,
+     "candidate_id": "qwen27-ba-delta-fusion",
+     "capability_contract": "complete accepted-token capability, zero fallback, independent resident identity, and explicit native metric absence reasons",
+     "control_configuration": {
+      "child_fusion_env": {
+       "HAWKING_QWEN38_FAST": "1",
+       "HAWKING_QWEN38_FUSE_BA_DELTA": "0"
+      }
+     },
+     "control_env": {
+      "HAWKING_QWEN38_FAST": "1",
+      "HAWKING_QWEN38_FUSE_BA_DELTA": "0"
+     },
+     "dependencies": [
+      "qwen27-fast-profile"
+     ],
+     "diagnostic_command": [
+      "python3",
+      "-m",
+      "hcli",
+      "agentos",
+      "protected-accelerator-bench",
+      "--profile",
+      "hcli/hawking-native.sealed-3.14.json",
+      "--repo-root",
+      ".",
+      "--warmup-requests",
+      "1",
+      "--measure-requests",
+      "3",
+      "--max-new-tokens",
+      "8",
+      "--fusion-env",
+      "HAWKING_QWEN38_FAST=1",
+      "--fusion-env",
+      "HAWKING_QWEN38_FUSE_BA_DELTA=1",
+      "--emit",
+      "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/qwen27-ba-delta-fusion-diagnostic.json"
+     ],
+     "exact_mutation": {
+      "child_fusion_env": {
+       "HAWKING_QWEN38_FAST": "1",
+       "HAWKING_QWEN38_FUSE_BA_DELTA": "1"
+      }
+     },
+     "execution_state": "READY_ON_AUTHORITY",
+     "expected_active_byte_change": "unchanged resident recurrent state and weights",
+     "expected_dispatch_reduction": "reduce by the number of fused recurrent layers; verify trace",
+     "expected_eliminated_work": "one standalone BA/delta state dispatch per recurrent layer",
+     "expected_gpu_ns_mechanism": "fuse recurrent state update with BA transition and keep state resident",
+     "expected_intermediate_byte_reduction": "remove BA/delta staging only if state parity is exact",
+     "model": "Qwen27",
+     "mutation_env": {
+      "HAWKING_QWEN38_FAST": "1",
+      "HAWKING_QWEN38_FUSE_BA_DELTA": "1"
+     },
+     "parity_contract": "identical tokenizer-bound output ids and source-approved graph semantics; any numerical/output divergence rejects the candidate",
+     "protected_command": [
+      "python3",
+      "-m",
+      "hcli",
+      "agentos",
+      "protected-accelerator-bench",
+      "--profile",
+      "hcli/hawking-native.sealed-3.14.json",
+      "--repo-root",
+      ".",
+      "--warmup-requests",
+      "2",
+      "--measure-requests",
+      "10",
+      "--max-new-tokens",
+      "32",
+      "--fusion-env",
+      "HAWKING_QWEN38_FAST=1",
+      "--fusion-env",
+      "HAWKING_QWEN38_FUSE_BA_DELTA=1",
+      "--emit",
+      "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/qwen27-ba-delta-fusion-protected.json"
+     ],
+     "queue_status": "READY_PROTECTED",
+     "requires_survivors": [],
+     "scope_tags": [
+      "MODEL_LOCAL"
+     ],
+     "selection_reason": "stage-1 singleton from the dependency-aware plan; run against this row's exact control_env before any composition",
+     "sequence": 13,
+     "source_evidence": [
+      "crates/hawking-core/src/model/qwen38_hybrid_decode.rs",
+      "receipts/headless/QWEN27_MLP_PROTECTED_AB_AFTER_FLASH.json"
+     ],
+     "transfer_evidence": []
+    }
+   ]
+  },
+  "rejection_thresholds": {
+   "outcome_vocabulary": [
+    "IMPLEMENTED_UNMEASURED",
+    "REJECTED_PARITY",
+    "REJECTED_PHYSICAL",
+    "PHYSICAL_WIN_MODEL_LOCAL",
+    "PHYSICAL_WIN_FAMILY",
+    "GENERIC_CANDIDATE",
+    "GENERIC_VERIFIED"
+   ],
+   "paired_repetitions_minimum": 7,
+   "parity": {
+    "outcome": "REJECTED_PARITY",
+    "reject_if": [
+     "token sequence differs",
+     "accepted-token count or stop behavior differs",
+     "output hash or numeric tolerance contract differs",
+     "route/top-K tie, source-order accumulation, or BF16 round-trip differs"
+    ]
+   },
+   "physical": {
+    "outcome": "REJECTED_PHYSICAL",
+    "reject_if": [
+     "no protected complete-token receipt",
+     "any required measurement field is missing",
+     "fallback_count is nonzero or capability checks fail",
+     "lease, quiescence, persistent resident identity, or clean-window checks fail",
+     "complete-token latency does not beat the matched control under the paired CI rule"
+    ],
+    "required_measurement_fields": [
+     "total_nx_bytes",
+     "resident_bytes",
+     "active_representation_bytes_per_token",
+     "actual_read_bytes_per_token",
+     "transient_bytes_per_token",
+     "gpu_ns_per_token",
+     "complete_wall_ns_per_accepted_token",
+     "dispatches_per_token",
+     "sync_ns_per_token",
+     "accepted_tps",
+     "fallback_count"
+    ]
+   },
+   "scope_rule": "a protected win is MODEL_LOCAL first; PHYSICAL_WIN_FAMILY, GENERIC_CANDIDATE, and GENERIC_VERIFIED require explicit cross-model transfer evidence, not structural similarity",
+   "statistics": {
+    "decision_delta": "candidate minus matched control; lower is faster",
+    "primary": "paired median of complete_wall_ns_per_accepted_token",
+    "uncertainty": "paired bootstrap CI95 and IQR",
+    "win_requires": "candidate median strictly below control and paired CI95 upper bound strictly below zero; never decide from mean alone"
+   }
+  },
+  "representation_boundary": {
+   "binding_dependency": "REAL_TEACHER_CORPUS",
+   "prospective_meta_bpw": 0.8871807728336929,
+   "qualified_physical_ebpw": "UNKNOWN",
+   "rule": "do not synthesize teacher rows or fit downstream meta encodings before qualified teacher capture",
+   "teacher_capture_rows": 0
+  },
+  "schema": "hawking.future.protected_batch_plan.v1",
+  "source_receipts": [
+   "receipts/headless/FLASH_META_TEACHER_L4_CAPTURE_BOUNDARY.json",
+   "receipts/headless/FLASH_META_REPRESENTATION_SUB1.json",
+   "receipts/headless/ACCELERATOR_REPATRIATION_EFFECTS.json",
+   "receipts/future/STATIC_KERNEL_PREFLIGHT.json",
+   "receipts/future/QUALIFICATION_PIPELINE.json"
+  ],
+  "status": "WAITING_FOR_AUTHORITY",
+  "version": 1
+ },
  "purpose": "static sidecar plan over Codex's live physical qualification queue. FIVE ERAS, THREE ODYSSEYS. FPGA stays inside Accelerator / Physical Compiler / Fusion. DISK STATE IS AUTHORITY. this module proposes a plan; it does not decide a physical result.",
  "recovered_implementation": [
   {
@@ -10657,7 +13991,7 @@
   {
    "counts": {
     "by_status": {
-     "BLOCKED": 30,
+     "BLOCKED": 31,
      "DIAGNOSTIC_PASS": 0,
      "DIAGNOSTIC_REJECT": 0,
      "INTEGRATED": 0,
@@ -10667,11 +14001,11 @@
      "READY_PROTECTED": 13,
      "STATIC_ONLY": 4
     },
-    "candidates": 47,
+    "candidates": 48,
     "ready": 13,
     "work_units": 13
    },
-   "fingerprint": "2f426604bab4044095706c8dcb2e10d1f750595fa60aa3b6f416dedf6f148cab",
+   "fingerprint": "24fb3af01fab27d8c991086eecb220be10f7502a782554b8725e4d034d82e0c4",
    "loaded_from": "/Users/scammermike/Downloads/hawking/receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
    "path": "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
    "role": "live physical qualification queue (disk authority)",
@@ -10788,6 +14122,13 @@
    "region": "Flash P6 fixed-seven down activation quantization wave"
   },
   {
+   "candidate_id": "flash-p6-fused-down-shared-combine",
+   "dominated_by": [],
+   "mechanism": null,
+   "redundant": false,
+   "region": "Flash P6 routed FP4 W2 plus shared FP8 W2 and BF16 combine"
+  },
+  {
    "candidate_id": "flash-p6-fused-epilogue-stack",
    "dominated_by": [],
    "mechanism": null,
@@ -10799,7 +14140,7 @@
    "dominated_by": [],
    "mechanism": null,
    "redundant": false,
-   "region": "Flash hash-route P6 command-buffer topology"
+   "region": "Flash P6 command-buffer topology after route resolution"
   },
   {
    "candidate_id": "flash-p6-learned-expert-cache-reuse",
@@ -11041,7 +14382,7 @@
   }
  ],
  "schema": "hawking.future.candidate_planner.v1",
- "seal_sha256": "23c081a568607df5393d00523285276cc8e682e6be4e385499fdd7c1c8842d11",
+ "seal_sha256": "294bb7c030c2692793540463ed1acdfd05d369f22f032c50ffb9601101d1bf04",
  "staged_factorial_plan": {
   "blocked_unscheduled": [
    {
@@ -11110,6 +14451,13 @@
    {
     "blocked_reason": "Flash source-independent NX and protected complete-token capability are not qualified",
     "candidate_id": "flash-p6-batched-down-qat",
+    "reason_unscheduled": "status is BLOCKED; the sidecar will not invent a GPU cell for a candidate the queue itself refuses to run. legal next status is STATIC_ONLY after the blocked_reason clears.",
+    "scheduled": false,
+    "status": "BLOCKED"
+   },
+   {
+    "blocked_reason": "Flash source-independent NX and protected complete-token capability are not qualified; this full composition still requires matched parity/coherence and protected latency",
+    "candidate_id": "flash-p6-fused-down-shared-combine",
     "reason_unscheduled": "status is BLOCKED; the sidecar will not invent a GPU cell for a candidate the queue itself refuses to run. legal next status is STATIC_ONLY after the blocked_reason clears.",
     "scheduled": false,
     "status": "BLOCKED"
@@ -11966,6 +15314,7 @@
     "flash-meta-sub1-coherent",
     "flash-p6-act-quant-simdgroup",
     "flash-p6-batched-down-qat",
+    "flash-p6-fused-down-shared-combine",
     "flash-p6-fused-epilogue-stack",
     "flash-p6-hash-single-command-buffer",
     "flash-p6-learned-expert-cache-reuse",
@@ -12014,9 +15363,9 @@
   },
   "naive_power_set": {
    "formula": "2^N including the all-off control; this sidecar does not emit that set",
-   "n_all": 47,
+   "n_all": 48,
    "n_ready_protected_measurable": 13,
-   "size_all": 140737488355328,
+   "size_all": 281474976710656,
    "size_ready_protected": 8192
   },
   "staged": {
@@ -12024,7 +15373,7 @@
    "contingent_cells": 8,
    "dramatically_smaller": true,
    "pair_cells": 13,
-   "reduction_vs_all": 140737488355294,
+   "reduction_vs_all": 281474976710622,
    "reduction_vs_ready": 8158,
    "scheduled_cells": 26,
    "single_cells": 13,

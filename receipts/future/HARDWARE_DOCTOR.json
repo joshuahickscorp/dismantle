@@ -93,7 +93,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T01:00:42Z",
+  "recorded_at": "2026-08-30T02:50:27Z",
   "recorded_by": "tools/future/hardware_doctor.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -1400,7 +1400,7 @@
   "source_used": "receipts/future/NEGATIVE_SCIENCE_INDEX.json"
  },
  "schema": "hawking.future.hardware_doctor.v1",
- "seal_sha256": "93f6098606ee0c63637a596b540609039cbb2b3635667497f797f28df9ed8cff",
+ "seal_sha256": "1cfa6a48f2f326a13be326b723a98ec62ea73d7c6e689aadb01da48b90bd9148",
  "simulator_ladder": [
   {
    "available": true,

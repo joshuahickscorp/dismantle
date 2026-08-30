@@ -404,6 +404,60 @@ def test_blocked_candidates_are_not_measurement_cells(live_queue, live_rows):
     assert unscheduled == blocked
 
 
+def test_protected_batch_is_exact_and_fail_closed(live_queue):
+    doc = cp.plan_from_queue(live_queue)
+    batch = doc["protected_batch"]
+
+    assert batch["status"] == "WAITING_FOR_AUTHORITY"
+    assert batch["frontier_snapshot"]["queue_candidate_count"] == 48
+    assert batch["qwen_first_batch"]["count"] == 13
+    assert batch["flash_return_batch"]["count"] == len(cp.PROTECTED_FLASH_RETURN_ORDER)
+    assert batch["frontier_snapshot"]["flash_return_missing_ids"] == []
+
+    qwen_ids = [
+        row["candidate_id"]
+        for row in batch["qwen_first_batch"]["run_order"]
+    ]
+    assert qwen_ids == list(cp.PROTECTED_QWEN_FIRST_ORDER)
+    assert all(
+        row["queue_status"] == "READY_PROTECTED"
+        and row["execution_state"] == "READY_ON_AUTHORITY"
+        and row["protected_command"]
+        for row in batch["qwen_first_batch"]["run_order"]
+    )
+
+    flash_rows = batch["flash_return_batch"]["run_order"]
+    assert [row["candidate_id"] for row in flash_rows] == list(
+        cp.PROTECTED_FLASH_RETURN_ORDER
+    )
+    assert all(row["queue_status"] == "BLOCKED" for row in flash_rows)
+    assert all(row["control_env"] for row in flash_rows)
+    assert all(
+        row["execution_state"]
+        in {"WAITING_FOR_FLASH_AUTHORITY", "CONTINGENT_AFTER_SURVIVORS"}
+        for row in flash_rows
+    )
+    full = next(
+        row
+        for row in flash_rows
+        if row["candidate_id"] == "flash-p6-fused-down-shared-combine"
+    )
+    assert full["mutation_env"]["HAWKING_DSV4F_P6_FP4_DOWN_SHARED_COMBINE_FUSED"] == "1"
+    stack = next(
+        row
+        for row in flash_rows
+        if row["candidate_id"] == "flash-p6-fused-epilogue-stack"
+    )
+    assert stack["mutation_env"]["HAWKING_DSV4F_P6_FP4_DOWN_SHARED_COMBINE_FUSED"] == "1"
+    assert "flash-p6-fused-down-shared-combine" in stack["requires_survivors"]
+
+    assert batch["execution_authority"]["executes_benchmark"] is False
+    assert batch["execution_authority"]["acquires_lease"] is False
+    assert batch["current_environment"]["teacher_capture_rows"] == 0
+    assert batch["current_environment"]["prospective_meta_bpw"] == 0.8871807728336929
+    assert batch["current_environment"]["flash_physical_ebpw"] == "UNKNOWN"
+
+
 def test_plan_from_queue_is_deterministic(live_queue):
     a = cp.plan_from_queue(live_queue)
     b = cp.plan_from_queue(live_queue)

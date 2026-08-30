@@ -3736,7 +3736,7 @@
     "sidecar_must_not_promote": true
    },
    "source": "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
-   "source_sha256": "6881b8a10c72caba224af6d2df4773dca7fac64b73d991410e71107277f0bd69"
+   "source_sha256": "9a8cd23383daffa56fc9fea9dcfd289d165c6bd8caf8960748df5a28711f0687"
   },
   {
    "architecture_atlas_behaviour_reference": {
@@ -53507,7 +53507,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T01:44:16Z",
+  "recorded_at": "2026-08-30T02:47:25Z",
   "recorded_by": "tools/future/codex_ingest.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -54450,11 +54450,11 @@
    "driver_field": "candidate_statuses[2]",
    "driver_token": "DIAGNOSTIC_REJECT",
    "first_seen": "2026-08-29T22:44:01Z",
-   "last_classified": "2026-08-30T01:44:14Z",
-   "mtime": 1788053457.054849,
+   "last_classified": "2026-08-30T02:47:23Z",
+   "mtime": 1788057999.6240752,
    "reason": "candidate_statuses[2] contains DIAGNOSTIC_REJECT",
-   "sha256": "6881b8a10c72caba224af6d2df4773dca7fac64b73d991410e71107277f0bd69",
-   "size": 241090
+   "sha256": "9a8cd23383daffa56fc9fea9dcfd289d165c6bd8caf8960748df5a28711f0687",
+   "size": 247254
   },
   "receipts/headless/ACCELERATOR_QUIESCENCE_INSTRUMENT.json": {
    "classification": "NEUTRAL",
@@ -54534,10 +54534,10 @@
    "driver_field": "<default>",
    "driver_token": "no_verdict",
    "first_seen": "2026-08-29T22:44:01Z",
-   "last_classified": "2026-08-30T01:44:14Z",
-   "mtime": 1788053457.3180232,
+   "last_classified": "2026-08-30T02:47:23Z",
+   "mtime": 1788058010.3487659,
    "reason": "no LAW or SCAR driver in well-known fields",
-   "sha256": "b4aaf80b6f2264caa5706ab5194b0791ce8bf82d3d22859e0187ab55ad278643",
+   "sha256": "6ecc0b422e1b82c75408dbe2893f40f9c072b585af1c4bc64b8af3f81eae4b72",
    "size": 11344
   },
   "receipts/headless/ACCELERATOR_REPATRIATION_EFFECTS.json": {
@@ -54546,11 +54546,11 @@
    "driver_field": "schema",
    "driver_token": "hawking.accelerator.repatriation_effects.v1",
    "first_seen": "2026-08-30T00:29:31Z",
-   "last_classified": "2026-08-30T01:44:14Z",
-   "mtime": 1788053457.1832108,
+   "last_classified": "2026-08-30T02:47:23Z",
+   "mtime": 1788058007.220508,
    "reason": "metadata / census / index / schema / plan with no verdict",
-   "sha256": "8a8bf9dd2cedec61b80914628b8710654a8cddf404f8dcdb3850be614c568a68",
-   "size": 44497
+   "sha256": "c5d693a1ffcd52c55811ef771800e41caaa62063d61bc848fdf6f4e8ff362aea",
+   "size": 50987
   },
   "receipts/headless/ACCELERATOR_REPATRIATION_QUEUE.json": {
    "classification": "NEUTRAL",
@@ -73629,7 +73629,7 @@
     "sidecar_must_not_promote": true
    },
    "source": "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
-   "source_sha256": "6881b8a10c72caba224af6d2df4773dca7fac64b73d991410e71107277f0bd69"
+   "source_sha256": "9a8cd23383daffa56fc9fea9dcfd289d165c6bd8caf8960748df5a28711f0687"
   }
  ],
  "gaps_closed": [
@@ -73640,7 +73640,7 @@
   "--once --assert-idempotent refusal that is capable of firing",
   "read-only open; writes only receipts/future/CODEX_INGEST_STATE.json"
  ],
- "head": "6e246058f2b34abe64f5fc346c625a8fe4a0658f",
+ "head": "b511b5e1b047a92224e0083ebdbdafe100bf00c2",
  "idempotence": {
   "assert_idempotent": "exit non-zero iff n_new + n_changed > 0",
   "change_detector": "sha256 of file bytes; mtime is recorded and never consulted",
@@ -73811,7 +73811,7 @@
   "unreadable": []
  },
  "schema": "hawking.future.codex_ingest.v1",
- "seal_sha256": "918e43c454608a6cc1de12eb42c4c4c9f97b58c482745460bb16dc93fb601ad7",
+ "seal_sha256": "33d4c8d2b4e03dae3e46e8b18ab5b33ec2481732180ed3126b67c1908b7d431e",
  "version": 1,
  "vocabulary": {
   "bench_state": "UNKNOWN",

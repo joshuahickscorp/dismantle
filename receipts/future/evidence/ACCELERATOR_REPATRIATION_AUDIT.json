@@ -40,7 +40,7 @@
         "/Users/scammermike/Downloads/hawking/receipts/headless/ACCELERATOR_REPATRIATION_QUEUE.json"
       ],
       "observed": {
-        "candidate_scope_bindings": 47,
+        "candidate_scope_bindings": 48,
         "claim_boundary": "effects validation is scoped provenance, not physical performance",
         "entries": 15,
         "passed": true,
@@ -249,7 +249,7 @@
       ],
       "observed": {
         "atlas_fingerprint": "e763623e8a4ddcfc8350d6b5f680284a23db68f8bfbca53428e258d24adfc2ab",
-        "effects_fingerprint": "ff5b0b0746e897c0458ecee9b0e961126afe6d2f5ad8402492914ef0f4a1a1a9",
+        "effects_fingerprint": "e7fed6de08a4d2c02e28a112291c36e2e777ec0a7abc55c365f1fee3fc2cb82b",
         "queue_fingerprint": "2614343a763063e3812f0d9a5fbc786385a88d9e183708f347667124097e4e5b"
       },
       "passed": true,
@@ -257,7 +257,7 @@
     }
   ],
   "claim_boundary": "This audit proves structural/provenance/funnel invariants only; it does not claim physical performance, capability, FPGA timing, or ASIC suitability.",
-  "fingerprint": "8d9aa410cb7d706dc7671b378e38a4038bd77cf7ac1407c3e9439a866e6f0598",
+  "fingerprint": "07167980a84900f320d43b46b42fb04e5c02548124dbfe4fcc4ffd95223b6b85",
   "passed": true,
   "schema": "hawking.accelerator.repatriation_audit.v1",
   "version": 1

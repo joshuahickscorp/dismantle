@@ -3736,7 +3736,7 @@
     "sidecar_must_not_promote": true
    },
    "source": "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
-   "source_sha256": "6b790ffe129a5bf21592557eaf3c51524e3c7eb65a673b8946412d7e821f8705"
+   "source_sha256": "a26c61b7b42e8099cf8f2c815634551a6d06c93c241d5214721ee825caaa0b35"
   },
   {
    "architecture_atlas_behaviour_reference": {
@@ -53507,7 +53507,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T00:23:39Z",
+  "recorded_at": "2026-08-30T00:36:30Z",
   "recorded_by": "tools/future/codex_ingest.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -53523,6 +53523,24 @@
    "reason": "candidate_statuses[2] contains DIAGNOSTIC_REJECT",
    "relpath": "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
    "token": "DIAGNOSTIC_REJECT"
+  },
+  {
+   "confidence": 0.6,
+   "event": "changed",
+   "field": "<default>",
+   "label": "NEUTRAL",
+   "reason": "no LAW or SCAR driver in well-known fields",
+   "relpath": "receipts/headless/ACCELERATOR_REPATRIATION_AUDIT.json",
+   "token": "no_verdict"
+  },
+  {
+   "confidence": 0.8,
+   "event": "changed",
+   "field": "schema",
+   "label": "NEUTRAL",
+   "reason": "metadata / census / index / schema / plan with no verdict",
+   "relpath": "receipts/headless/ACCELERATOR_REPATRIATION_EFFECTS.json",
+   "token": "hawking.accelerator.repatriation_effects.v1"
   }
  ],
  "cursor": {
@@ -54432,11 +54450,11 @@
    "driver_field": "candidate_statuses[2]",
    "driver_token": "DIAGNOSTIC_REJECT",
    "first_seen": "2026-08-29T22:44:01Z",
-   "last_classified": "2026-08-30T00:23:38Z",
-   "mtime": 1788049352.0212984,
+   "last_classified": "2026-08-30T00:36:28Z",
+   "mtime": 1788050100.503084,
    "reason": "candidate_statuses[2] contains DIAGNOSTIC_REJECT",
-   "sha256": "6b790ffe129a5bf21592557eaf3c51524e3c7eb65a673b8946412d7e821f8705",
-   "size": 209977
+   "sha256": "a26c61b7b42e8099cf8f2c815634551a6d06c93c241d5214721ee825caaa0b35",
+   "size": 218416
   },
   "receipts/headless/ACCELERATOR_QUIESCENCE_INSTRUMENT.json": {
    "classification": "NEUTRAL",
@@ -54516,11 +54534,23 @@
    "driver_field": "<default>",
    "driver_token": "no_verdict",
    "first_seen": "2026-08-29T22:44:01Z",
-   "last_classified": "2026-08-29T22:44:01Z",
-   "mtime": 1787984719.6871107,
+   "last_classified": "2026-08-30T00:36:28Z",
+   "mtime": 1788050100.6492643,
    "reason": "no LAW or SCAR driver in well-known fields",
-   "sha256": "1e05be0669e032d7f8a3cb785ff9755ae7502833283dd9ecb0530adee840d638",
-   "size": 10101
+   "sha256": "f2f0d67ca0ebdfbdefd61a6785baceb8f9f2cb94a81ce7347e7b5e7bd8b99b2e",
+   "size": 11344
+  },
+  "receipts/headless/ACCELERATOR_REPATRIATION_EFFECTS.json": {
+   "classification": "NEUTRAL",
+   "confidence": 0.8,
+   "driver_field": "schema",
+   "driver_token": "hawking.accelerator.repatriation_effects.v1",
+   "first_seen": "2026-08-30T00:29:31Z",
+   "last_classified": "2026-08-30T00:36:28Z",
+   "mtime": 1788050100.5771608,
+   "reason": "metadata / census / index / schema / plan with no verdict",
+   "sha256": "8d2dcde6cb530d91481f6f1dd57551aa60a1005553877f6158632e63a3b854ad",
+   "size": 43478
   },
   "receipts/headless/ACCELERATOR_REPATRIATION_QUEUE.json": {
    "classification": "NEUTRAL",
@@ -73599,7 +73629,7 @@
     "sidecar_must_not_promote": true
    },
    "source": "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
-   "source_sha256": "6b790ffe129a5bf21592557eaf3c51524e3c7eb65a673b8946412d7e821f8705"
+   "source_sha256": "a26c61b7b42e8099cf8f2c815634551a6d06c93c241d5214721ee825caaa0b35"
   }
  ],
  "gaps_closed": [
@@ -73610,7 +73640,7 @@
   "--once --assert-idempotent refusal that is capable of firing",
   "read-only open; writes only receipts/future/CODEX_INGEST_STATE.json"
  ],
- "head": "b607d29dca57b57350a902dd29c9cd32006f4648",
+ "head": "c5863bb694c47a75a5ba6c289a59d7982cfd6cfc",
  "idempotence": {
   "assert_idempotent": "exit non-zero iff n_new + n_changed > 0",
   "change_detector": "sha256 of file bytes; mtime is recorded and never consulted",
@@ -73761,27 +73791,27 @@
  "scan": {
   "by_class_cursor": {
    "LAW": 767,
-   "NEUTRAL": 862,
+   "NEUTRAL": 863,
    "SCAR": 41
   },
   "by_class_this_scan": {
    "LAW": 0,
-   "NEUTRAL": 0,
+   "NEUTRAL": 2,
    "SCAR": 1
   },
   "missing_from_disk": [],
   "n_active_deltas": 808,
-  "n_changed": 1,
+  "n_changed": 3,
   "n_deltas": 1,
   "n_missing_from_disk": 0,
   "n_new": 0,
-  "n_on_disk": 1670,
-  "n_unchanged": 1669,
+  "n_on_disk": 1671,
+  "n_unchanged": 1668,
   "n_unreadable": 0,
   "unreadable": []
  },
  "schema": "hawking.future.codex_ingest.v1",
- "seal_sha256": "288bdd53dd48ca6461ed36e0052937c477ec55bfdd0c3ffd6dc6c27229060c5d",
+ "seal_sha256": "a546fc4bd60c8221eeccc344753ca3235c1531b0a02ee17b5cc910d3f56a0154",
  "version": 1,
  "vocabulary": {
   "bench_state": "UNKNOWN",

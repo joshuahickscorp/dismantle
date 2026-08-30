@@ -14,7 +14,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T00:20:07Z",
+  "recorded_at": "2026-08-30T00:40:04Z",
   "recorded_by": "tools/future/integration_attack.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -117,7 +117,7 @@
   "TOURNAMENT_READINESS.json"
  ],
  "schema": "hawking.future.integration_attack.v1",
- "seal_sha256": "567ecbd2e274a34b5431e705076ba44b83c75fb1b81f425e96c58d2a26b20a0d",
+ "seal_sha256": "248e72bff2afa29d548ecd3bd0a93060f656b87e0ca52911c9cfb9bc9a693634",
  "verdict": "CLEAN",
  "version": 1
 }

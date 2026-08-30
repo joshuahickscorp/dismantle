@@ -1205,8 +1205,13 @@ def staged_factorial_plan(
 
     n_all = len(rows)
     n_ready = len(measurable)
-    naive_all = 1 << n_all if n_all <= 40 else None
-    naive_ready = 1 << n_ready if n_ready <= 40 else None
+    # The exponent is the guard; the integer is only for reading. Python ints are
+    # unbounded, but a queue of a few hundred rows would serialize a 100-digit
+    # number into the receipt for no benefit -- so keep the value while it stays
+    # readable and let the comparison fall back to the exponent. A hard cap on
+    # the VALUE is what broke this the moment Codex grew the queue past 40 rows.
+    naive_all = 1 << n_all if n_all <= 256 else None
+    naive_ready = 1 << n_ready if n_ready <= 256 else None
     cell_count = len(cells)
     pair_count = sum(1 for c in cells if c["kind"] == "pair")
     return {
@@ -1271,11 +1276,17 @@ def assert_plan_dramatically_smaller(plan: Mapping[str, Any]) -> None:
     staged = plan["staged"]
     naive = plan["naive_power_set"]
     cells = staged["cell_count"]
+    n_ready = naive["n_ready_protected_measurable"]
+    n_all = naive["n_all"]
+    # Derive from the exponent when the convenience integer was omitted for size.
+    # The guard must not weaken just because the queue got bigger -- a bigger
+    # queue makes the naive power set MORE absurd, not less.
     size_ready = naive["size_ready_protected"]
     size_all = naive["size_all"]
-    n_ready = naive["n_ready_protected_measurable"]
-    if size_ready is None or size_all is None:
-        raise AssertionError("naive power-set size missing")
+    if size_ready is None:
+        size_ready = 1 << int(n_ready)
+    if size_all is None:
+        size_all = 1 << int(n_all)
     if not (cells < size_ready):
         raise AssertionError(f"staged cell_count {cells} is not < 2^N_ready {size_ready}")
     if not (cells < size_all):

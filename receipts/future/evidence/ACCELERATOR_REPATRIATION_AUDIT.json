@@ -1,6 +1,7 @@
 {
   "artifact_paths": {
     "atlas": "/Users/scammermike/Downloads/hawking/receipts/headless/ACCELERATOR_ARCHITECTURE_ATLAS.json",
+    "effects": "/Users/scammermike/Downloads/hawking/receipts/headless/ACCELERATOR_REPATRIATION_EFFECTS.json",
     "queue": "/Users/scammermike/Downloads/hawking/receipts/headless/ACCELERATOR_REPATRIATION_QUEUE.json"
   },
   "bench": {
@@ -30,6 +31,24 @@
       },
       "passed": true,
       "requirement": "The canonical atlas passes its own schema, effect, queue, HWIR, and ASIC invariants."
+    },
+    {
+      "check_id": "effects-ledger",
+      "evidence": [
+        "/Users/scammermike/Downloads/hawking/receipts/headless/ACCELERATOR_REPATRIATION_EFFECTS.json",
+        "/Users/scammermike/Downloads/hawking/receipts/headless/ACCELERATOR_ARCHITECTURE_ATLAS.json",
+        "/Users/scammermike/Downloads/hawking/receipts/headless/ACCELERATOR_REPATRIATION_QUEUE.json"
+      ],
+      "observed": {
+        "candidate_scope_bindings": 42,
+        "claim_boundary": "effects validation is scoped provenance, not physical performance",
+        "entries": 15,
+        "passed": true,
+        "physical_laws": 0,
+        "schema": "hawking.accelerator.repatriation_effects_validation.v1"
+      },
+      "passed": true,
+      "requirement": "Every imported behavior binds its source school, invariant, Hawking primitive, implementation, scope, evidence, measured-result boundary, and falsifier without promoting a generic law."
     },
     {
       "check_id": "source-schools",
@@ -225,10 +244,12 @@
       "check_id": "artifact-identity",
       "evidence": [
         "/Users/scammermike/Downloads/hawking/receipts/headless/ACCELERATOR_ARCHITECTURE_ATLAS.json",
-        "/Users/scammermike/Downloads/hawking/receipts/headless/ACCELERATOR_REPATRIATION_QUEUE.json"
+        "/Users/scammermike/Downloads/hawking/receipts/headless/ACCELERATOR_REPATRIATION_QUEUE.json",
+        "/Users/scammermike/Downloads/hawking/receipts/headless/ACCELERATOR_REPATRIATION_EFFECTS.json"
       ],
       "observed": {
         "atlas_fingerprint": "e763623e8a4ddcfc8350d6b5f680284a23db68f8bfbca53428e258d24adfc2ab",
+        "effects_fingerprint": "070e710dcd5b9f81c7a16f2f0a9e6c62707f138a52c62a00d1de48042cd05dce",
         "queue_fingerprint": "2614343a763063e3812f0d9a5fbc786385a88d9e183708f347667124097e4e5b"
       },
       "passed": true,
@@ -236,7 +257,7 @@
     }
   ],
   "claim_boundary": "This audit proves structural/provenance/funnel invariants only; it does not claim physical performance, capability, FPGA timing, or ASIC suitability.",
-  "fingerprint": "49c70fe7e6a13eb8d65d0805bcdc1b4dfad73dcd4eb5aedd87a315e6e7f646e6",
+  "fingerprint": "ba158e60269fcb6b5e9ded7b1592dbd7c43ef0dc0ff8fa81c75bc9a69121ab83",
   "passed": true,
   "schema": "hawking.accelerator.repatriation_audit.v1",
   "version": 1

@@ -8,7 +8,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T00:28:06Z",
+  "recorded_at": "2026-08-30T00:40:00Z",
   "recorded_by": "tools/future/static_kernel_verify.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -18,20 +18,20 @@
  "claim_boundary": "Static sidecar artifact. No hardware measurement.",
  "counts": {
   "ERROR": 6,
-  "INFO_pass_like": 857,
-  "UNVERIFIABLE": 523,
+  "INFO_pass_like": 858,
+  "UNVERIFIABLE": 524,
   "WARNING": 78
  },
  "coverage": {
   "binding_pairs_with_matching_index_sets": 748,
   "dispatches_resolved": 774,
-  "dispatches_unverifiable_name": 88,
+  "dispatches_unverifiable_name": 89,
   "honesty": "PASS-like INFO is only recorded when the checker followed both sides to a concrete index or layout. A bind it could not follow is UNVERIFIABLE, never PASS. Matching indices are not a speed claim.",
-  "host_dispatches": 862,
+  "host_dispatches": 863,
   "host_files_with_dispatch": 66,
   "metal_files": 45,
-  "metal_kernels": 764,
-  "referenced_kernel_names": 752,
+  "metal_kernels": 765,
+  "referenced_kernel_names": 753,
   "shaders_not_in_metalcontext_library": [
    "affine2_group32_matvec.metal",
    "bandwidth_roof.metal",
@@ -44,7 +44,7 @@
    "qwen_direct_packed_gate_up_pair.metal",
    "shared_basis_kernel.metal"
   ],
-  "structs_paired": 38,
+  "structs_paired": 39,
   "threadgroup_triples_resolved": 460,
   "unreferenced_kernel_names": 14
  },
@@ -179,7 +179,7 @@
    "kernel": "deepseek_v4_p6a_learned_bias_route_sqrtsoftplus_authority",
    "message": "threadgroup product 1 is not a multiple of simdgroup width 32",
    "severity": "WARNING",
-   "shader": "crates/hawking-core/shaders/moe.metal:2130"
+   "shader": "crates/hawking-core/shaders/moe.metal:2176"
   },
   {
    "check": "dispatch_geometry",
@@ -339,7 +339,7 @@
    "kernel": "deepseek_v4_p6a_hash_route_sqrtsoftplus_authority",
    "message": "threadgroup product 1 is not a multiple of simdgroup width 32",
    "severity": "WARNING",
-   "shader": "crates/hawking-core/shaders/moe.metal:2054"
+   "shader": "crates/hawking-core/shaders/moe.metal:2101"
   },
   {
    "check": "dispatch_geometry",
@@ -347,7 +347,7 @@
    "kernel": "deepseek_v4_p6a_learned_bias_route_sqrtsoftplus_authority",
    "message": "threadgroup product 1 is not a multiple of simdgroup width 32",
    "severity": "WARNING",
-   "shader": "crates/hawking-core/shaders/moe.metal:2130"
+   "shader": "crates/hawking-core/shaders/moe.metal:2176"
   },
   {
    "check": "dispatch_geometry",
@@ -355,7 +355,7 @@
    "kernel": "deepseek_v4_p6a_hash_route_sqrtsoftplus_authority",
    "message": "threadgroup product 1 is not a multiple of simdgroup width 32",
    "severity": "WARNING",
-   "shader": "crates/hawking-core/shaders/moe.metal:2054"
+   "shader": "crates/hawking-core/shaders/moe.metal:2101"
   },
   {
    "check": "dispatch_geometry",
@@ -363,7 +363,7 @@
    "kernel": "deepseek_v4_p6a_learned_bias_route_sqrtsoftplus_authority",
    "message": "threadgroup product 1 is not a multiple of simdgroup width 32",
    "severity": "WARNING",
-   "shader": "crates/hawking-core/shaders/moe.metal:2130"
+   "shader": "crates/hawking-core/shaders/moe.metal:2176"
   },
   {
    "check": "dispatch_geometry",
@@ -1325,7 +1325,7 @@
   {
    "check": "kernel_name",
    "extra": {
-    "count": 88,
+    "count": 89,
     "sample": [
      {
       "check": "kernel_name",
@@ -1475,7 +1475,7 @@
    },
    "host": null,
    "kernel": null,
-   "message": "88 UNVERIFIABLE site(s) for kernel_name (sample of 12)",
+   "message": "89 UNVERIFIABLE site(s) for kernel_name (sample of 12)",
    "severity": "UNVERIFIABLE",
    "shader": null
   },
@@ -1529,7 +1529,15 @@
   },
   {
    "check": "host_shader_abi",
-   "host": "crates/hawking-core/src/gravity_deepseek_v4_p6_device.rs:292",
+   "host": "crates/hawking-core/src/gravity_deepseek_v4_p6_device.rs:318",
+   "kernel": null,
+   "message": "repr(C) P6Fp4DownRef matches metal DeepSeekV4P6Fp4DownRef (48 bytes, 7 fields)",
+   "severity": "INFO",
+   "shader": "crates/hawking-core/shaders/moe.metal:1753"
+  },
+  {
+   "check": "host_shader_abi",
+   "host": "crates/hawking-core/src/gravity_deepseek_v4_p6_device.rs:301",
    "kernel": null,
    "message": "repr(C) P6Fp4GateUpRef matches metal DeepSeekV4P6Fp4GateUpRef (48 bytes, 7 fields)",
    "severity": "INFO",
@@ -1953,7 +1961,7 @@
    "check": "info_tally",
    "extra": {
     "feature_gate": 19,
-    "host_shader_abi": 113,
+    "host_shader_abi": 114,
     "type_width": 744
    },
    "host": null,
@@ -1975,7 +1983,7 @@
   "queue identity described statically (one queue per MetalContext; four encode modes)",
   "UNVERIFIABLE is a first-class result: a bind this checker cannot follow is never PASS"
  ],
- "head": "b607d29dca57b57350a902dd29c9cd32006f4648",
+ "head": "c5863bb694c47a75a5ba6c289a59d7982cfd6cfc",
  "library_membership_files": [
   [
    "attn.metal",
@@ -2156,7 +2164,7 @@
   "metal_mod_trace_name_tests": "crates/hawking-core/src/metal/mod.rs \u2014 static_kernel_name plus per-family `SHADER_X.contains(kernel void {name}()` tests. Compile/trace-name contract, not host bind vs [[buffer(N)]]."
  },
  "schema": "hawking.future.static_kernel_verify.v1",
- "seal_sha256": "5027654508ed89b0df736ba93b6656860657e669c87c47d45117edda233c890e",
+ "seal_sha256": "c56b7bc71d658e3ff51ba1bd4dbcd7a4aec59d1762d91c65140aa9a1655b8f4b",
  "static_correctness_does_not_prove_speed": "Static correctness does NOT prove speed and does NOT substitute for a protected measurement. A finding of no static ERROR is not a tps number, not a token_ns, not a complete-token, and not PROTECTED_ABSOLUTE. This tool exists to stop wasting a protected GPU window on a defect that was detectable from the .metal sources and their Rust hosts. It produces neither DIAGNOSTIC_RELATIVE nor PROTECTED_ABSOLUTE. Everything here is STATIC_ONLY with bench state UNKNOWN.",
  "version": 1,
  "would_waste_a_protected_window": true

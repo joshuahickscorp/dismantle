@@ -3736,7 +3736,7 @@
     "sidecar_must_not_promote": true
    },
    "source": "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
-   "source_sha256": "fa3b0586bd682320611283a53cb36edf2012f7c00214bbcd31b34de574f4c9d8"
+   "source_sha256": "ae809878db91bbf2373024a1db6e5ad29ee634bda4394ac680f9381b0b231e46"
   },
   {
    "architecture_atlas_behaviour_reference": {
@@ -53507,7 +53507,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-29T23:39:28Z",
+  "recorded_at": "2026-08-29T23:47:58Z",
   "recorded_by": "tools/future/codex_ingest.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -53523,6 +53523,15 @@
    "reason": "candidate_statuses[2] contains DIAGNOSTIC_REJECT",
    "relpath": "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
    "token": "DIAGNOSTIC_REJECT"
+  },
+  {
+   "confidence": 0.6,
+   "event": "new",
+   "field": "<default>",
+   "label": "NEUTRAL",
+   "reason": "no LAW or SCAR driver in well-known fields",
+   "relpath": "receipts/headless/FLASH_META_TEACHER_L4_CAPTURE_BOUNDARY.json",
+   "token": "no_verdict"
   }
  ],
  "cursor": {
@@ -54432,11 +54441,11 @@
    "driver_field": "candidate_statuses[2]",
    "driver_token": "DIAGNOSTIC_REJECT",
    "first_seen": "2026-08-29T22:44:01Z",
-   "last_classified": "2026-08-29T23:39:26Z",
-   "mtime": 1788046642.2044368,
+   "last_classified": "2026-08-29T23:47:56Z",
+   "mtime": 1788047128.9973323,
    "reason": "candidate_statuses[2] contains DIAGNOSTIC_REJECT",
-   "sha256": "fa3b0586bd682320611283a53cb36edf2012f7c00214bbcd31b34de574f4c9d8",
-   "size": 192621
+   "sha256": "ae809878db91bbf2373024a1db6e5ad29ee634bda4394ac680f9381b0b231e46",
+   "size": 192694
   },
   "receipts/headless/ACCELERATOR_QUIESCENCE_INSTRUMENT.json": {
    "classification": "NEUTRAL",
@@ -61421,6 +61430,18 @@
    "reason": "no LAW or SCAR driver in well-known fields",
    "sha256": "993e62421f1ffd77009dbab5c501cfd9f7fda1555c24bd46b309f171cb5849d9",
    "size": 15016
+  },
+  "receipts/headless/FLASH_META_TEACHER_L4_CAPTURE_BOUNDARY.json": {
+   "classification": "NEUTRAL",
+   "confidence": 0.6,
+   "driver_field": "<default>",
+   "driver_token": "no_verdict",
+   "first_seen": "2026-08-29T23:47:56Z",
+   "last_classified": "2026-08-29T23:47:56Z",
+   "mtime": 1788046889.7321782,
+   "reason": "no LAW or SCAR driver in well-known fields",
+   "sha256": "40e580c6b68cafaecbb2cf1f5c8ab4da5cde53a5822a9580dcd36bd8fa8b97af",
+   "size": 1032
   },
   "receipts/headless/FLASH_NEXT_ARCHITECTURE_CENSUS_CURRENT.json": {
    "classification": "LAW",
@@ -73587,7 +73608,7 @@
     "sidecar_must_not_promote": true
    },
    "source": "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
-   "source_sha256": "fa3b0586bd682320611283a53cb36edf2012f7c00214bbcd31b34de574f4c9d8"
+   "source_sha256": "ae809878db91bbf2373024a1db6e5ad29ee634bda4394ac680f9381b0b231e46"
   }
  ],
  "gaps_closed": [
@@ -73598,7 +73619,7 @@
   "--once --assert-idempotent refusal that is capable of firing",
   "read-only open; writes only receipts/future/CODEX_INGEST_STATE.json"
  ],
- "head": "607532bd42f4028b521d14e7e10c5697e053afb2",
+ "head": "9d55feb78ebfb18416e8f606bf37b2ba7f5389db",
  "idempotence": {
   "assert_idempotent": "exit non-zero iff n_new + n_changed > 0",
   "change_detector": "sha256 of file bytes; mtime is recorded and never consulted",
@@ -73749,12 +73770,12 @@
  "scan": {
   "by_class_cursor": {
    "LAW": 767,
-   "NEUTRAL": 861,
+   "NEUTRAL": 862,
    "SCAR": 41
   },
   "by_class_this_scan": {
    "LAW": 0,
-   "NEUTRAL": 0,
+   "NEUTRAL": 1,
    "SCAR": 1
   },
   "missing_from_disk": [],
@@ -73762,14 +73783,14 @@
   "n_changed": 1,
   "n_deltas": 1,
   "n_missing_from_disk": 0,
-  "n_new": 0,
-  "n_on_disk": 1669,
+  "n_new": 1,
+  "n_on_disk": 1670,
   "n_unchanged": 1668,
   "n_unreadable": 0,
   "unreadable": []
  },
  "schema": "hawking.future.codex_ingest.v1",
- "seal_sha256": "790709c7dbec4e3b622f412d2f2061f35339c5dd9bf4220bdae82a382aa29992",
+ "seal_sha256": "e4479d3e514225316af12dae2e66505e81bf3ee416abb58ae3e864e0f1049aa7",
  "version": 1,
  "vocabulary": {
   "bench_state": "UNKNOWN",

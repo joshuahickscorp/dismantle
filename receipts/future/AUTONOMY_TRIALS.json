@@ -8,7 +8,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T21:10:14Z",
+  "recorded_at": "2026-08-30T21:43:12Z",
   "recorded_by": "tools/future/autonomy_trial.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -145,7 +145,7 @@
    "path_taken": "disk:receipts/future/QUALIFICATION_PIPELINE.json"
   }
  ],
- "head": "f9f8c7d390e368bd6d7688537b9aae3cfc94ed6b",
+ "head": "b2712c429452c118c681ad8f043362934eb16cea",
  "integration_points": {
   "codex_behaviors.py": "Codex blocker list is data in CODEX_REPORTED_BLOCKERS plus pinned evidence.",
   "debugger.py": "Process recovery is judged from process_failed/completed + process_recovered.",
@@ -172,59 +172,53 @@
   "claim_boundary": "Persisted timeline judgement. resident_orchestration true does not mean a model was thinking. A FAIL is stored as FAIL.",
   "conditions_met": [
    "recover_state",
-   "identify_live_frontier",
+   "identify_live_frontier"
+  ],
+  "conditions_unmet": [
    "launch_valid_workunit",
    "durable_mission_state",
-   "leave_next_work",
-   "maintain_multiple_fronts",
-   "ingest_completed_result",
-   "reject_bad_idea_on_evidence",
-   "refill_work",
-   "never_conversational_wait"
+   "leave_next_work"
   ],
-  "conditions_unmet": [],
-  "duration_s": 3600,
+  "duration_s": 900,
   "elapsed_is_not_a_pass": true,
   "elapsed_meets_duration": true,
-  "elapsed_s": 3629,
+  "elapsed_s": 900,
   "evidence_class": "STATIC_ONLY",
   "fields_are_independent": true,
   "frozen_build": {
    "available": true,
-   "digest": "032f6aa1496bfc69a7d6427c9df754742fbd08bf670084b8e4ab1abdf019dc43",
+   "digest": "81cc861a4128ffe843ae687db95ef60db8edeb3a0ecd94d07ca56bf4b5d43230",
    "freeze_receipt": "receipts/future/HCLI_AUTONOMY_BUILD.json",
    "freeze_receipt_seal": "bdc0c729826e3669defa62f0ddf1cd5b9b346c2d8f57235f984a798217a14da3",
    "path_taken": "disk:receipts/future/HCLI_AUTONOMY_BUILD.json",
    "substrate_verdict": "INVALIDATED_BY_SUBSTRATE_MUTATION",
-   "trial": "1h",
-   "why": "3 code path(s) moved"
+   "trial": "15m",
+   "why": "5 code path(s) moved"
   },
-  "frozen_build_manifest_digest": "032f6aa1496bfc69a7d6427c9df754742fbd08bf670084b8e4ab1abdf019dc43",
+  "frozen_build_manifest_digest": "81cc861a4128ffe843ae687db95ef60db8edeb3a0ecd94d07ca56bf4b5d43230",
   "gpu_authority": false,
-  "launch_eligible_trial": true,
-  "n_conditions": 10,
-  "n_events": 836,
-  "n_results_ingested": 130,
-  "n_workunits_launched": 175,
+  "launch_eligible_trial": false,
+  "n_conditions": 5,
+  "n_events": 3,
+  "n_results_ingested": 0,
+  "n_workunits_launched": 0,
   "orchestration_is_not_cognition": true,
-  "reason": "all 10 required conditions met on timeline evidence",
+  "reason": "unmet: launch_valid_workunit, durable_mission_state, leave_next_work (duration elapsed is not a pass)",
   "resident_model_cognition": "UNAVAILABLE",
-  "resident_model_cognition_reason": "measured: Apple M3 Ultra GPU is present; the offline Metal shader compiler is absent (developer dir is /Library/Developer/CommandLineTools, full Xcode not installed), so no .metallib can be built ahead of time here; runtime shader compilation from source is AVAILABLE (exercised with the crate the runtime uses), so the missing offline compiler is a cold-start cost, not a wall; the loop under test is HCLI orchestration, not model cognition",
-  "resident_orchestration": true,
-  "resident_orchestration_reason": "HCLI loop launched 175 workunit(s) and ingested 130 result(s)",
+  "resident_model_cognition_reason": "timeline did not record resident_model_cognition; refusing to infer a model was thinking",
+  "resident_orchestration": false,
+  "resident_orchestration_reason": "no HCLI orchestration evidence: launched=0 ingested=0 bindings_present=False",
   "schema": "hawking.future.autonomy_trial.persisted_verdict.v1",
   "timeline_internal_seal": {
-   "expected": "fc89eaaf6db4db8176802579508c5a29376402cb5b9cf38eedbc38ca7d9f2708",
-   "present": true,
-   "recomputed": "fc89eaaf6db4db8176802579508c5a29376402cb5b9cf38eedbc38ca7d9f2708",
-   "verifies": true,
-   "why": "internal seal_sha256 matches body"
+   "present": false,
+   "verifies": null,
+   "why": "timeline has no internal seal_sha256; file digest is the transcript seal"
   },
   "timeline_not_rewritten": true,
-  "timeline_path": "receipts/future/AUTONOMY_TIMELINE_1h.json",
-  "timeline_seal_digest": "72f00ec20f958aa83f30e2346839ddbeb4e5e31679f91235eb8775952bd7f011",
-  "trial": "1h",
-  "verdict": "PASS"
+  "timeline_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/pytest-of-scammermike/pytest-1461/test_cli_verify_exit_codes0/bad.json",
+  "timeline_seal_digest": "7d1f761ef6230cda5d7bfb9195a57087c3766a1a7d2a737d3ed5357aa4623484",
+  "trial": "15m",
+  "verdict": "FAIL"
  },
  "negative_controls_watched": [
   {
@@ -307,6 +301,13 @@
   },
   {
    "automatic_failures": [],
+   "n_conditions": 16,
+   "trial": "30m",
+   "unmet": [],
+   "verdict": "PASS"
+  },
+  {
+   "automatic_failures": [],
    "n_conditions": 10,
    "trial": "1h",
    "unmet": [],
@@ -371,7 +372,7 @@
     "path_taken": "disk:receipts/future/HCLI_AUTONOMY_BUILD.json",
     "substrate_verdict": "INVALIDATED_BY_SUBSTRATE_MUTATION",
     "trial": "15m",
-    "why": "3 code path(s) moved"
+    "why": "5 code path(s) moved"
    },
    "frozen_build_manifest_digest": "81cc861a4128ffe843ae687db95ef60db8edeb3a0ecd94d07ca56bf4b5d43230",
    "gpu_authority": false,
@@ -393,7 +394,7 @@
     "why": "timeline has no internal seal_sha256; file digest is the transcript seal"
    },
    "timeline_not_rewritten": true,
-   "timeline_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/pytest-of-scammermike/pytest-1451/test_cli_verify_exit_codes0/bad.json",
+   "timeline_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/pytest-of-scammermike/pytest-1461/test_cli_verify_exit_codes0/bad.json",
    "timeline_seal_digest": "7d1f761ef6230cda5d7bfb9195a57087c3766a1a7d2a737d3ed5357aa4623484",
    "trial": "15m",
    "verdict": "FAIL"
@@ -558,12 +559,13 @@
    "future.autonomy.sleeping.teacher_capture_zero",
    "future.autonomy.trial-15m",
    "future.autonomy.trial-1h",
+   "future.autonomy.trial-30m",
    "future.autonomy.trial-3h",
    "future.autonomy.trial-6h"
   ]
  },
  "schema": "hawking.future.autonomy_trial.v1",
- "seal_sha256": "3de9fd69d804ca9b3ef67c144eaba68c690b3eef52ccfc6f9077d7fde1c26e72",
+ "seal_sha256": "25a990f8bce1d31601b4842bf9a8843a013c86c154d9c0320e6e3ea651e9c23c",
  "thirteen_acceptance_conditions": [
   "recover_state",
   "identify_live_frontier",
@@ -604,6 +606,27 @@
     "reject_bad_idea_on_evidence",
     "refill_work",
     "never_conversational_wait"
+   ]
+  },
+  "30m": {
+   "duration_s": 1800,
+   "required_conditions": [
+    "recover_state",
+    "identify_live_frontier",
+    "launch_valid_workunit",
+    "durable_mission_state",
+    "leave_next_work",
+    "maintain_multiple_fronts",
+    "ingest_completed_result",
+    "reject_bad_idea_on_evidence",
+    "refill_work",
+    "never_conversational_wait",
+    "overlap_detached_work",
+    "use_negative_science",
+    "alter_priority_from_evidence",
+    "mutation_proposed_and_rolled_back",
+    "status_causality_challenged",
+    "protected_work_parked_not_idled"
    ]
   },
   "3h": {
@@ -965,6 +988,43 @@
    "finished_at": null,
    "frontier_id": "F008",
    "id": "future.autonomy.trial-1h",
+   "preferred_backend": null,
+   "provider": "future.autonomy_trial",
+   "ready_at": null,
+   "repair_depth": 0,
+   "repair_exhausted": false,
+   "repair_reason": null,
+   "repair_root": null,
+   "repairs": null,
+   "requires_quiescence": false,
+   "resource_class": "STATIC_ANALYSIS",
+   "role": "science",
+   "running_at": null,
+   "species": "independent_reproduction",
+   "status": "pending",
+   "verification": null,
+   "verifier": "future.autonomy_trial.verify",
+   "workspace": "repo-root"
+  },
+  {
+   "assigned_backend": null,
+   "assigned_runtime": null,
+   "attempts": 0,
+   "backend_task_id": null,
+   "claim_boundary": "Static sidecar artifact. No hardware measurement. Cannot promote, weaken a verifier, choose the Singularity, or perform a destructive mutation.",
+   "classification": "STATIC_ONLY",
+   "content_hash": "7d99ec23b7ab23b9b60e61fa6f603d4117fba8fb36c597b53e4b6aac54008380",
+   "dependencies": [],
+   "description": "Record and then separately verify the 30m autonomy trial (1800s window). Judge the timeline; a timer expiring is not a pass.",
+   "effect_class": "READ_ONLY",
+   "evidence_parents": [
+    "frontier:F008",
+    "receipts/future/CLAUDE_GLOBAL_FRONTIER.json"
+   ],
+   "failure_context": null,
+   "finished_at": null,
+   "frontier_id": "F008",
+   "id": "future.autonomy.trial-30m",
    "preferred_backend": null,
    "provider": "future.autonomy_trial",
    "ready_at": null,

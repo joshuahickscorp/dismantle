@@ -70,9 +70,10 @@ ODYSSEYS = (
     "III WHERE IS HAWKING WRONG?",
 )
 
-TRIAL_IDS = ("15m", "1h", "3h", "6h")
+TRIAL_IDS = ("15m", "30m", "1h", "3h", "6h")
 TRIAL_DURATION_S = {
     "15m": 15 * 60,
+    "30m": 30 * 60,
     "1h": 60 * 60,
     "3h": 3 * 60 * 60,
     "6h": 6 * 60 * 60,
@@ -97,6 +98,16 @@ THIRTEEN_ACCEPTANCE = (
     "alter_priority_from_evidence",
 )
 
+# The power-torture conditions. These are the transition classes that landed
+# AFTER the 1h trial, so the 1h pass says nothing about any of them. This trial
+# is strictly harder than the 1h -- all thirteen acceptance conditions plus these
+# -- because its purpose is density, not duration.
+_POWER_TORTURE_EXTRA = (
+    "mutation_proposed_and_rolled_back",
+    "status_causality_challenged",
+    "protected_work_parked_not_idled",
+)
+
 _THREE_H_EXTRA = (
     "frontier_movement_or_falsification",
     "recover_process",
@@ -106,6 +117,7 @@ _SIX_H_EXTRA = _THREE_H_EXTRA + ("verified_scientific_progress",)
 REQUIRED_CONDITIONS: dict[str, tuple[str, ...]] = {
     "15m": THIRTEEN_ACCEPTANCE[:5],
     "1h": THIRTEEN_ACCEPTANCE[:10],
+    "30m": THIRTEEN_ACCEPTANCE + _POWER_TORTURE_EXTRA,
     "3h": THIRTEEN_ACCEPTANCE + _THREE_H_EXTRA,
     "6h": THIRTEEN_ACCEPTANCE + _SIX_H_EXTRA,
 }
@@ -1192,6 +1204,120 @@ def eval_verified_scientific_progress(view: TimelineView) -> dict[str, Any]:
     )
 
 
+def _cited_receipt(view: "TimelineView", *names: str) -> dict[str, Any] | None:
+    """The first cited receipt on this timeline whose path matches one of `names`.
+
+    The judge reads the RECEIPT, not the event label. A unit carrying the right
+    transition_class proves only that something with that name ran; the proof of
+    the transition lives in what the capability actually wrote.
+    """
+    for event in view.events:
+        for cite in _cites(event):
+            if any(n in cite for n in names):
+                path = REPO / cite
+                if path.is_file():
+                    try:
+                        return json.loads(path.read_text())
+                    except (json.JSONDecodeError, OSError):
+                        return None
+    return None
+
+
+def eval_mutation_proposed_and_rolled_back(view: TimelineView) -> dict[str, Any]:
+    """A mutation is only demonstrated when its UNDO was proven.
+
+    A mutation engine without a tested rollback is a way to break the system
+    autonomously, so the rollback -- not the mutation -- is the evidence.
+    """
+    doc = _cited_receipt(view, "MUTATION_ENGINE.json")
+    if not doc:
+        return _unmet("mutation_proposed_and_rolled_back",
+                      "no MUTATION_ENGINE receipt cited on the timeline")
+    proofs = doc.get("proofs") or {}
+    if proofs.get("all_hold") is not True:
+        return _unmet("mutation_proposed_and_rolled_back",
+                      "the mutation engine's own proofs do not all hold")
+    # A rollback is demonstrated either by a kept mutation whose undo digest
+    # matched, or by a harmful mutation that was actually reverted. Either is a
+    # proven undo; neither is a declaration.
+    digest_ok = (proofs.get("pipeline_self") or {}).get("rollback_digest_match") is True
+    reverted = str((proofs.get("harmful_rolled_back") or {}).get("verdict") or "") == "ROLLED_BACK"
+    if not (digest_ok or reverted):
+        return _unmet("mutation_proposed_and_rolled_back",
+                      "no rollback was proven: neither a matching rollback digest nor a "
+                      "harmful mutation actually reverted")
+    return _met("mutation_proposed_and_rolled_back",
+                "a mutation was applied and its undo proven"
+                + (" by digest match" if digest_ok else " by real revert"), [])
+
+
+def eval_status_causality_challenged(view: TimelineView) -> dict[str, Any]:
+    """A challenge must have reached a verdict on a real recorded label."""
+    doc = _cited_receipt(view, "STATUS_CAUSALITY_CHALLENGE.json")
+    if not doc:
+        return _unmet("status_causality_challenged",
+                      "no STATUS_CAUSALITY_CHALLENGE receipt cited on the timeline")
+    over = [r for r in (doc.get("historical_cases") or [])
+            if isinstance(r, Mapping) and str(r.get("verdict") or "") == "OVERREACHING"]
+    supported = [r for r in (doc.get("supported_fixtures") or [])
+                 if isinstance(r, Mapping) and str(r.get("verdict") or "") == "SUPPORTED"]
+    if not over:
+        return _unmet("status_causality_challenged",
+                      "no recorded status label was found OVERREACHING; UNTESTED is not a challenge")
+    if not supported:
+        # A detector that flags everything is a detector nobody will keep. This
+        # partition has already had one regex attacker cry wolf fifteen times.
+        return _unmet("status_causality_challenged",
+                      "no well-founded label was found SUPPORTED, so the routine cannot "
+                      "be shown to discriminate rather than flag everything")
+    return _met("status_causality_challenged",
+                f"{len(over)} label(s) OVERREACHING and {len(supported)} SUPPORTED: the "
+                f"routine discriminates", [])
+
+
+def eval_protected_work_parked_not_idled(view: TimelineView) -> dict[str, Any]:
+    """Parking a blocked unit only counts if the loop kept working afterwards.
+
+    Parking and then stopping is idling with extra steps.
+    """
+    parked = [e for e in view.of("workunit_sleeping")
+              if "protected" in json.dumps(_payload(e)).lower()]
+    if not parked:
+        return _unmet("protected_work_parked_not_idled",
+                      "no protected-required unit was parked SLEEPING")
+    t_park = min(int(e.get("t_s") or 0) for e in parked)
+    after = [e for e in view.of("workunit_launched", "result_ingested")
+             if int(e.get("t_s") or 0) > t_park]
+    if not after:
+        return _unmet("protected_work_parked_not_idled",
+                      "a protected unit was parked but no work followed it; parking then "
+                      "stopping is idling with extra steps")
+    # A wake condition may be recorded as a field or stated in the unit's own
+    # description. Demanding one exact key would flag a unit that DOES record its
+    # wake -- a narrow probe producing a broad verdict, which is the defect this
+    # whole trial exists to catch.
+    def _has_wake(event: Mapping[str, Any]) -> bool:
+        pay = _payload(event)
+        if pay.get("wake_condition"):
+            return True
+        unit = pay.get("unit")
+        if isinstance(unit, Mapping):
+            if unit.get("wake_condition"):
+                return True
+            if "until" in str(unit.get("description") or "").lower():
+                return True
+        return "until" in str(pay.get("why") or "").lower()
+
+    unspecified = [e for e in parked if not _has_wake(e)]
+    if unspecified:
+        return _unmet("protected_work_parked_not_idled",
+                      f"{len(unspecified)} parked unit(s) record no wake condition anywhere; "
+                      "a parked unit with no wake is dropped work")
+    return _met("protected_work_parked_not_idled",
+                f"parked protected work and continued with {len(after)} later action(s)",
+                parked[:3])
+
+
 EVALUATORS = {
     "recover_state": eval_recover_state,
     "identify_live_frontier": eval_identify_live_frontier,
@@ -1203,6 +1329,9 @@ EVALUATORS = {
     "reject_bad_idea_on_evidence": eval_reject_bad_idea_on_evidence,
     "refill_work": eval_refill_work,
     "never_conversational_wait": eval_never_conversational_wait,
+    "mutation_proposed_and_rolled_back": eval_mutation_proposed_and_rolled_back,
+    "status_causality_challenged": eval_status_causality_challenged,
+    "protected_work_parked_not_idled": eval_protected_work_parked_not_idled,
     "overlap_detached_work": eval_overlap_detached_work,
     "use_negative_science": eval_use_negative_science,
     "alter_priority_from_evidence": eval_alter_priority_from_evidence,
@@ -2110,6 +2239,76 @@ def build_passing_timeline(trial: str) -> dict[str, Any]:
                     payload={"process_id": "job-a"},
                 ),
             ]
+        )
+    if "mutation_proposed_and_rolled_back" in needed:
+        events.append(
+            _ev(
+                51,
+                "result_ingested",
+                cites=["receipts/future/MUTATION_ENGINE.json",
+                       "WU.TORTURE.mutation"],
+                payload={
+                    "unit_id": "WU.TORTURE.mutation",
+                    "receipt": "receipts/future/MUTATION_ENGINE.json",
+                    "routed_to_frontier": "FT.HCLI_SELF.emit-workunits",
+                },
+            )
+        )
+    if "status_causality_challenged" in needed:
+        events.append(
+            _ev(
+                52,
+                "result_ingested",
+                cites=["receipts/future/STATUS_CAUSALITY_CHALLENGE.json",
+                       "WU.TORTURE.status_challenge"],
+                payload={
+                    "unit_id": "WU.TORTURE.status_challenge",
+                    "receipt": "receipts/future/STATUS_CAUSALITY_CHALLENGE.json",
+                    "routed_to_frontier": "FT.VERIFICATION.negative-index",
+                },
+            )
+        )
+    if "protected_work_parked_not_idled" in needed:
+        events.append(
+            _ev(
+                53,
+                "workunit_sleeping",
+                payload={
+                    "unit_id": "WU.TORTURE.protected_ab",
+                    "resource_class": "GPU_PROTECTED",
+                    "status": "BLOCKED_ON_PROTECTED_WINDOW",
+                    "wake_condition": "a QUIESCENT machine and a proven HCLI lease",
+                    "why": "protected-required work parks; it never becomes a synthetic result",
+                },
+            )
+        )
+        # Parking then stopping is idling with extra steps, so the fixture has to
+        # show the loop kept working after it parked.
+        events.append(
+            _ev(
+                54,
+                "workunit_launched",
+                payload={
+                    "unit": cpu_workunit(
+                        "WU.TORTURE.after_park",
+                        frontier_id="FT.TOOLS.freshness",
+                        description="continue with CPU work while protected work sleeps",
+                    ),
+                    "capability": "freshness.py",
+                },
+            )
+        )
+        events.append(
+            _ev(
+                55,
+                "result_ingested",
+                cites=["receipts/future/DERIVED_FRESHNESS.json", "WU.TORTURE.after_park"],
+                payload={
+                    "unit_id": "WU.TORTURE.after_park",
+                    "receipt": "receipts/future/DERIVED_FRESHNESS.json",
+                    "routed_to_frontier": "FT.TOOLS.freshness",
+                },
+            )
         )
     if "verified_scientific_progress" in needed:
         events.append(

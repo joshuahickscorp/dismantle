@@ -471,9 +471,16 @@ def run(trial: str = "15m", timeline: Path | None = None,
     # executor, and it cannot be demonstrated on work that has no dependencies.
     composed_replan_pairs: list[dict[str, Any]] = []
     try:
-        from tools.future import trial_workload as twl
+        if trial == "30m":
+            # The power torture is a transition-density mix, not the endurance
+            # mix: it exists to force every capability that landed AFTER the 1h
+            # trial to demonstrate real behaviour rather than have its build()
+            # invoked.
+            from tools.future import power_torture as twl
+        else:
+            from tools.future import trial_workload as twl
 
-        composed = twl.compose(trial)
+        composed = twl.compose(trial) if trial != "30m" else twl.compose()
         composed_replan_pairs = list(composed.get("replan_pairs") or [])
         for unit in composed.get("units") or []:
             module = unit.get("module") or ""
@@ -563,7 +570,13 @@ def run(trial: str = "15m", timeline: Path | None = None,
             # Refill from the frontier rather than repeating. If the frontier has
             # nothing new, stop launching: fabricating another copy to fill the
             # clock is precisely the busywork this trial fails on.
-            more = fr.refill(AVAILABLE_LANES) or []
+            # Tell the frontier what we already hold. refill used to be an alias
+            # for next_work, so it re-offered the identical set every time and the
+            # loop could never tell "nothing new" from "here is your own queue
+            # again". The 1h timeline shows four refills returning the same 25
+            # ids and then none for 47 minutes.
+            held = {str(j.get("frontier_id")) for j in queue if j.get("frontier_id")}
+            more = fr.refill(AVAILABLE_LANES, exclude=held) or []
             fresh = []
             for item in more:
                 fid = str(item.get("id") or "")

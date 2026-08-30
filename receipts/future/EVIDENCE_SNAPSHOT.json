@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T19:19:46Z",
+  "recorded_at": "2026-08-30T21:43:21Z",
   "recorded_by": "tools/future/evidence_snapshot.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -439,6 +439,6 @@
  "purpose": "Pinned copy of the Codex receipts sidecar lanes read. Lanes run in sparse git worktrees where the live, uncommitted receipts are invisible; without this snapshot a lane would silently fall back to a fixture and its conclusions would be attached to nothing.",
  "read_only_guarantee": "Codex originals are opened read-only and never modified.",
  "schema": "hawking.future.evidence_snapshot.v1",
- "seal_sha256": "ce4bb2e4e694e07f98c398159ed3bbd7befcea03d42ee46866492b7e7cbf62f4",
+ "seal_sha256": "fd45ae7cc3844b124b9010ecb412dc3374f5f82f68ff06b656fbafe42d8b8ae7",
  "version": 1
 }

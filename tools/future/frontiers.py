@@ -1751,9 +1751,26 @@ class FrontierBook:
         )
         return doc
 
-    def refill(self, available_lanes: Iterable[str] | str | None = None) -> list[dict[str, Any]]:
-        """After work lands, rebuild next_work from disk-backed items. Never idle while ACTIVE."""
-        return self.next_work(available_lanes)
+    def refill(
+        self,
+        available_lanes: Iterable[str] | str | None = None,
+        *,
+        exclude: Iterable[str] = (),
+    ) -> list[dict[str, Any]]:
+        """Work the caller does NOT already have. Never idle while ACTIVE.
+
+        This used to be a bare alias for next_work, so every refill returned the
+        identical set the caller was already holding. The 1h autonomy timeline
+        shows the consequence: four refills at t13/28/70/119 each returning the
+        same 25 frontier ids, and none at all in the remaining 2864 seconds. A
+        replay is not a refill, and a resident that cannot tell the difference
+        cannot know when its frontier is actually exhausted.
+
+        `exclude` is what the caller already holds. An empty result now means
+        genuinely nothing new, which is a fact worth acting on.
+        """
+        held = {str(x) for x in exclude}
+        return [i for i in self.next_work(available_lanes) if str(i.get("id")) not in held]
 
     def to_doc(self, *, available_lanes: Iterable[str] | str | None = None) -> dict[str, Any]:
         lanes = _lanes(available_lanes)
@@ -2157,8 +2174,13 @@ def is_idle(*, book: FrontierBook | None = None) -> bool:
     return (book or load_book()).is_idle()
 
 
-def refill(available_lanes: Iterable[str] | str | None = None, *, book: FrontierBook | None = None) -> list[dict[str, Any]]:
-    return (book or load_book()).refill(available_lanes)
+def refill(
+    available_lanes: Iterable[str] | str | None = None,
+    *,
+    exclude: Iterable[str] = (),
+    book: FrontierBook | None = None,
+) -> list[dict[str, Any]]:
+    return (book or load_book()).refill(available_lanes, exclude=exclude)
 
 
 def build(*, available_lanes: Iterable[str] | str | None = None, book: FrontierBook | None = None) -> Path:

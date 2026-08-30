@@ -154,6 +154,7 @@ BINDINGS: dict[str, tuple[str, str]] = {
     "flash_organ_pivot.py":       ("FT.MODEL_REPRESENTATION.meta-gates-3-9", "ORGAN_PIVOT"),
     "abliteration.py":            ("FT.MODEL_CAPABILITY.tournament-refuse", "ABLITERATION"),
     "mutation_engine.py":         ("FT.HCLI_SELF.emit-workunits", "MUTATION_ENGINE"),
+    "power_torture.py":           ("FT.VERIFICATION.repro", "POWER_TORTURE"),
     "trial_workload.py":          ("FT.VERIFICATION.repro", "TRIAL_WORKLOAD"),
     "sprint_profile.py":          ("FT.EXPERIMENT_TURNAROUND.refresh", "WALL_ATTRIBUTION"),
     "resident_health.py":         ("FT.HCLI_SELF.no-launch", "RESIDENT_TELEMETRY"),

@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T20:38:36Z",
+  "recorded_at": "2026-08-30T21:43:21Z",
   "recorded_by": "tools/future/orchestration.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -412,6 +412,12 @@
    "species": "PHYSICAL_GRAPH_SEARCH"
   },
   {
+   "frontier_item": "FT.VERIFICATION.repro",
+   "module": "power_torture.py",
+   "receipt": "POWER_TORTURE.json",
+   "species": "POWER_TORTURE"
+  },
+  {
    "frontier_item": "FT.TOOLS.propagate-skips",
    "module": "propagate.py",
    "receipt": "PROPAGATION_STATE.json",
@@ -619,10 +625,10 @@
  "broken": [],
  "claim_boundary": "Static sidecar artifact. No hardware measurement.",
  "counts": {
-  "bound": 101,
+  "bound": 102,
   "broken": 0,
   "distinct_frontier_items": 41,
-  "distinct_species": 70,
+  "distinct_species": 71,
   "infrastructure_excluded": 5,
   "unbound_production": 1
  },
@@ -697,6 +703,7 @@
   "P6_PRIMITIVE_PROJECTION.json",
   "PHASE_LISTENERS.json",
   "PHYSICAL_PRIMITIVES.json",
+  "POWER_TORTURE.json",
   "PROPAGATION_STATE.json",
   "PROTECTED_SCHEDULER.json",
   "PROTECTED_WINDOW_PLAN.json",
@@ -760,7 +767,7 @@
   "workunit": "tools.future.orchestration.emit_workunit(module)"
  },
  "schema": "hawking.future.orchestration.v1",
- "seal_sha256": "4ab5e601db829b236e55e6a54b1db00575b46020c2622451b97caf07dcd752b3",
+ "seal_sha256": "e9c6624ed10fe1f011aff13e08cbe76f4ba7361293f5452711c60bc46ca2f618",
  "unbound_production": [
   "autonomy_run.py"
  ],

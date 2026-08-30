@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T16:01:11Z",
+  "recorded_at": "2026-08-30T18:55:12Z",
   "recorded_by": "tools/future/moe_physical_school.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -2258,7 +2258,7 @@
   ]
  },
  "schema": "hawking.future.moe_physical.v1",
- "seal_sha256": "8d08ecfd9acb65974f7bd0175b1e3f146a1916b1c8857daf3b2e7cac09b2ce97",
+ "seal_sha256": "3bfcf115dbdce47231fa71588bd2c931a7f7f55d97fc2839aed744991b127b72",
  "skeleton_cross_reference": {
   "expert_id_is_permitted": true,
   "flash_moe_component": "tools/future/static_skeleton.py::flash_moe_component_skeleton already models Flash router STATIC + expert bank SLOT_INDEXED on EXPERT_ID + shared expert STATIC. this school does not fork it.",

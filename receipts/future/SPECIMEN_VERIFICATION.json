@@ -3,18 +3,19 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T16:44:09Z",
+  "recorded_at": "2026-08-30T18:37:57Z",
   "recorded_by": "tools/future/specimen_verify.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
  },
+ "budget_rule": "build() is bounded so a resident can invoke it as a unit. Specimens it did not reach are named rather than silently omitted, and a prior verdict is carried forward rather than dropped.",
  "claim_boundary": "Static sidecar artifact. No hardware measurement.",
  "counts": {
   "corrupt": 0,
   "incomplete": 0,
   "partial": 0,
-  "specimens_examined": 8,
-  "whole_tree_verified": 8
+  "specimens_examined": 15,
+  "whole_tree_verified": 15
  },
  "gaps_closed": [
   "nothing recomputed specimen hashes offline; readiness rested on size checks"
@@ -30,6 +31,46 @@
   "a file with no .metadata sidecar cannot be verified offline at any effort",
   "this does not make ModelLake wrong: its seals already say MANIFEST_ONLY"
  ],
+ "not_reached_this_pass": [
+  "answerdotai--ModernBERT-large@45bb4654a4d5",
+  "openai--whisper-large-v3-turbo@41f01f3fe87f",
+  "google--timesfm-2.0-500m-pytorch@dc2443792ce5",
+  "state-spaces--mamba3-siso-1.5b@5cfc721542ec",
+  "state-spaces--mamba3-mimo-1.5b@bc6b5d0f7994",
+  "google--flan-t5-large@0613663d0d48",
+  "facebook--vjepa2-vitg-fpc64-256@875c192b7b70",
+  "boltz-community--boltz-2@6fdef46d763f",
+  "microsoft--bitnet-b1.58-2B-4T-bf16@276681394656",
+  "LiquidAI--LFM2.5-2.6B-Base@c57bdaed1ef1",
+  "ibm-granite--granite-4.0-h-micro@d5f01a3ea75f",
+  "ai21labs--AI21-Jamba2-3B@525c6c8e1d9f",
+  "HuggingFaceTB--SmolVLM2-2.2B-Instruct@482adb537c02",
+  "microsoft--Phi-4-multimodal-instruct@93f923e1a772",
+  "Wan-AI--Wan2.2-T2V-A14B@c8c270b13ee0",
+  "arcinstitute--evo2_7b@bda0089f9258",
+  "facebook--musicgen-large@15ccdc920998",
+  "lerobot--pi0_base@25c379b52ba2",
+  "bigcode--starcoder2-7b@bb9afde76d79",
+  "allenai--Olmo-3-1025-7B@a81bae42db39",
+  "Dream-org--Dream-v0-Instruct-7B@05334cb9faaf",
+  "kyutai--moshika-pytorch-bf16@a49141e28b3d",
+  "GSAI-ML--iLLaDA-8B-Base@a1b5b5f8a31a",
+  "RWKV--RWKV7-13.3B-20260805@64ffe5934178",
+  "microsoft--Phi-4-reasoning-plus@69baf8528e1b",
+  "LiquidAI--LFM2-24B-A2B@a3bbacd91a67",
+  "arcinstitute--evo2_40b@d529aa57c307",
+  "deepseek-ai--DeepSeek-V4-Flash@60d8d70770c6",
+  "zai-org--GLM-4.5-Air@a24ceef6ce4f",
+  "moonshotai--Kimi-K3@9f62e4e9fffb",
+  "tiiuae--Falcon-H1-7B-Instruct@41e72f27effb",
+  "moonshotai--Kimi-VL-A3B-Instruct@398eede0903c",
+  "qwen3.8-27b-abliterated-bf16@local",
+  "Qwen--Qwen3-30B-A3B@ad44e777bcd1",
+  "Qwen--Qwen3-VL-30B-A3B-Instruct@9c4b90e1e4ba",
+  "mistralai--Mistral-Small-3.1-24B-Instruct-2503@68faf511d618",
+  "Qwen--Qwen3.8-Flash-Next@34567a4712bc",
+  "Qwen--Qwen3-0.6B@c1899de289a0#partial"
+ ],
  "purpose": "Earn whole-tree specimen verification offline from the HuggingFace .metadata digests, or state precisely which files cannot be verified.",
  "recovered_implementation": [
   "ModelLake manifests report n_sha256_verified vs n_size_only_verified",
@@ -44,6 +85,531 @@
   "workunit": "one unit per specimen; CPU_VERIFY lane; genuinely long-running"
  },
  "results": [
+  {
+   "bytes_hashed": 23782,
+   "files": [
+    {
+     "actual": "89541fd47902a6361964702b8da2c22cd5f20224",
+     "bytes": 23743,
+     "digest_kind": "git_blob_sha1",
+     "expected": "89541fd47902a6361964702b8da2c22cd5f20224",
+     "file": "README.md",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "30b44608b74f674e692d3242a2153e667ddb816f",
+     "bytes": 39,
+     "digest_kind": "git_blob_sha1",
+     "expected": "30b44608b74f674e692d3242a2153e667ddb816f",
+     "file": "config.json",
+     "verdict": "VERIFIED"
+    }
+   ],
+   "mismatched": 0,
+   "modellake_mutated": false,
+   "n_files": 2,
+   "no_remote_digest": 0,
+   "owner": "modellake",
+   "skipped_time_budget": 0,
+   "source_mutated": false,
+   "specimen": "tencent--HunyuanVideo@6204ad6aea1a",
+   "specimen_path": "/Volumes/corpdrive/hawking-modellake/specimens/tencent--HunyuanVideo@6204ad6aea1a",
+   "status": "WHOLE_TREE_VERIFIED",
+   "unrecognized_digest": 0,
+   "verified": 2,
+   "wall_seconds": 0.81,
+   "whole_tree_verified": true
+  },
+  {
+   "bytes_hashed": 37612,
+   "files": [
+    {
+     "actual": "c939847f6b90a76c6ad0728cbf9fbb7e69eff071",
+     "bytes": 1802,
+     "digest_kind": "git_blob_sha1",
+     "expected": "c939847f6b90a76c6ad0728cbf9fbb7e69eff071",
+     "file": ".gitattributes",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "4a4c6cf78911b5dda2c895925e53492170c6c9ba",
+     "bytes": 24612,
+     "digest_kind": "git_blob_sha1",
+     "expected": "4a4c6cf78911b5dda2c895925e53492170c6c9ba",
+     "file": "README.md",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "de4b974a569495da2cd3a00c1722f4089548e6b9969c1ace99636805d91d3a10",
+     "bytes": 11198,
+     "digest_kind": "sha256",
+     "expected": "de4b974a569495da2cd3a00c1722f4089548e6b9969c1ace99636805d91d3a10",
+     "file": "config.json",
+     "verdict": "VERIFIED"
+    }
+   ],
+   "mismatched": 0,
+   "modellake_mutated": false,
+   "n_files": 3,
+   "no_remote_digest": 0,
+   "owner": "modellake",
+   "skipped_time_budget": 0,
+   "source_mutated": false,
+   "specimen": "nvidia--audio-flamingo-3@ee26c5842398",
+   "specimen_path": "/Volumes/corpdrive/hawking-modellake/specimens/nvidia--audio-flamingo-3@ee26c5842398",
+   "status": "WHOLE_TREE_VERIFIED",
+   "unrecognized_digest": 0,
+   "verified": 3,
+   "wall_seconds": 1.51,
+   "whole_tree_verified": true
+  },
+  {
+   "bytes_hashed": 897929900,
+   "files": [
+    {
+     "actual": "a6344aac8c09253b3b630fb776ae94478aa0275b",
+     "bytes": 1519,
+     "digest_kind": "git_blob_sha1",
+     "expected": "a6344aac8c09253b3b630fb776ae94478aa0275b",
+     "file": ".gitattributes",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "be863d6696ff1dd6ea8c88ab46ae04e5f7fe68e6",
+     "bytes": 19979,
+     "digest_kind": "git_blob_sha1",
+     "expected": "be863d6696ff1dd6ea8c88ab46ae04e5f7fe68e6",
+     "file": "README.md",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "62a1dd93657b383ec1e9bad75699747951d307c7",
+     "bytes": 5705,
+     "digest_kind": "git_blob_sha1",
+     "expected": "62a1dd93657b383ec1e9bad75699747951d307c7",
+     "file": "config.json",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "dc407dce21301fd94abb395c5099b4f2c455fdc8a8f261ac3d0ea6d4cd197230",
+     "bytes": 897897416,
+     "digest_kind": "sha256",
+     "expected": "dc407dce21301fd94abb395c5099b4f2c455fdc8a8f261ac3d0ea6d4cd197230",
+     "file": "model.safetensors",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "8499e53cb79bf1786a890021550e6994b9808f39",
+     "bytes": 683,
+     "digest_kind": "git_blob_sha1",
+     "expected": "8499e53cb79bf1786a890021550e6994b9808f39",
+     "file": "preprocessor_config.json",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "7556f607c3581a19f545de09d8b3fc98502b9f36",
+     "bytes": 95,
+     "digest_kind": "git_blob_sha1",
+     "expected": "7556f607c3581a19f545de09d8b3fc98502b9f36",
+     "file": "processor_config.json",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "33c9097f34ea90beae52776eb88ad8eb1632ab66",
+     "bytes": 3798,
+     "digest_kind": "git_blob_sha1",
+     "expected": "33c9097f34ea90beae52776eb88ad8eb1632ab66",
+     "file": "sam2.1_hiera_l.yaml",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "aceb9b5b612e726cea11ae4db21c0964629aac3a",
+     "bytes": 705,
+     "digest_kind": "git_blob_sha1",
+     "expected": "aceb9b5b612e726cea11ae4db21c0964629aac3a",
+     "file": "video_preprocessor_config.json",
+     "verdict": "VERIFIED"
+    }
+   ],
+   "mismatched": 0,
+   "modellake_mutated": false,
+   "n_files": 8,
+   "no_remote_digest": 0,
+   "owner": "modellake",
+   "skipped_time_budget": 0,
+   "source_mutated": false,
+   "specimen": "facebook--sam2.1-hiera-large@665f8e2ad61c",
+   "specimen_path": "/Volumes/corpdrive/hawking-modellake/specimens/facebook--sam2.1-hiera-large@665f8e2ad61c",
+   "status": "WHOLE_TREE_VERIFIED",
+   "unrecognized_digest": 0,
+   "verified": 8,
+   "wall_seconds": 12.42,
+   "whole_tree_verified": true
+  },
+  {
+   "bytes_hashed": 1187777736,
+   "files": [
+    {
+     "actual": "a6344aac8c09253b3b630fb776ae94478aa0275b",
+     "bytes": 1519,
+     "digest_kind": "git_blob_sha1",
+     "expected": "a6344aac8c09253b3b630fb776ae94478aa0275b",
+     "file": ".gitattributes",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "48ea6616b5b8581df3401872996cecf1f8b08a0d",
+     "bytes": 1073,
+     "digest_kind": "git_blob_sha1",
+     "expected": "48ea6616b5b8581df3401872996cecf1f8b08a0d",
+     "file": "LICENSE",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "34bf8c6fb3024fc9195a7ee0dce583ce8af4bf65",
+     "bytes": 9647,
+     "digest_kind": "git_blob_sha1",
+     "expected": "34bf8c6fb3024fc9195a7ee0dce583ce8af4bf65",
+     "file": "README.md",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "4acf191af5817ad7534d03d3ca8a45a8d4f4a82a",
+     "bytes": 844,
+     "digest_kind": "git_blob_sha1",
+     "expected": "4acf191af5817ad7534d03d3ca8a45a8d4f4a82a",
+     "file": "config.json",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "156c5705d7cf1e2f11a27e62f673c4576af7aa19",
+     "bytes": 3861,
+     "digest_kind": "git_blob_sha1",
+     "expected": "156c5705d7cf1e2f11a27e62f673c4576af7aa19",
+     "file": "data_summary_card.md",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "650ab2390d65b8182f2599fe7a0f2014eec3f38b",
+     "bytes": 199,
+     "digest_kind": "git_blob_sha1",
+     "expected": "650ab2390d65b8182f2599fe7a0f2014eec3f38b",
+     "file": "generation_config.json",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "8143ae115ed6babe5e5ada8fb8c5b769d8f417802b2db042ad98b4f7ed73975b",
+     "bytes": 1178623988,
+     "digest_kind": "sha256",
+     "expected": "8143ae115ed6babe5e5ada8fb8c5b769d8f417802b2db042ad98b4f7ed73975b",
+     "file": "model.safetensors",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "d8cd5076496dbe4be2320312abc10adc43097b81",
+     "bytes": 73,
+     "digest_kind": "git_blob_sha1",
+     "expected": "d8cd5076496dbe4be2320312abc10adc43097b81",
+     "file": "special_tokens_map.json",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "b197f72effb9d5ed16ee0f5663e11e4cfac2ba62",
+     "bytes": 9085698,
+     "digest_kind": "git_blob_sha1",
+     "expected": "b197f72effb9d5ed16ee0f5663e11e4cfac2ba62",
+     "file": "tokenizer.json",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "d54415c89774937967b9baac420d12455ff6e267",
+     "bytes": 50834,
+     "digest_kind": "git_blob_sha1",
+     "expected": "d54415c89774937967b9baac420d12455ff6e267",
+     "file": "tokenizer_config.json",
+     "verdict": "VERIFIED"
+    }
+   ],
+   "mismatched": 0,
+   "modellake_mutated": false,
+   "n_files": 10,
+   "no_remote_digest": 0,
+   "owner": "modellake",
+   "skipped_time_budget": 0,
+   "source_mutated": false,
+   "specimen": "microsoft--bitnet-b1.58-2B-4T@04c3b9ad9361",
+   "specimen_path": "/Volumes/corpdrive/hawking-modellake/specimens/microsoft--bitnet-b1.58-2B-4T@04c3b9ad9361",
+   "status": "WHOLE_TREE_VERIFIED",
+   "unrecognized_digest": 0,
+   "verified": 10,
+   "wall_seconds": 16.02,
+   "whole_tree_verified": true
+  },
+  {
+   "bytes_hashed": 1207488728,
+   "files": [
+    {
+     "actual": "52373fe24473b1aa44333d318f578ae6bf04b49b",
+     "bytes": 1570,
+     "digest_kind": "git_blob_sha1",
+     "expected": "52373fe24473b1aa44333d318f578ae6bf04b49b",
+     "file": ".gitattributes",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "00a82ea60dfb1d8aed899c16e2b4f12673cd2f79",
+     "bytes": 17237,
+     "digest_kind": "git_blob_sha1",
+     "expected": "00a82ea60dfb1d8aed899c16e2b4f12673cd2f79",
+     "file": "README.md",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "cef2749ee93607b8f9a58ec72f4f6bfaf874e71d",
+     "bytes": 727,
+     "digest_kind": "git_blob_sha1",
+     "expected": "cef2749ee93607b8f9a58ec72f4f6bfaf874e71d",
+     "file": "config.json",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "76aef3ade63553ebb698fe3c2a3264040ed093f8",
+     "bytes": 215,
+     "digest_kind": "git_blob_sha1",
+     "expected": "76aef3ade63553ebb698fe3c2a3264040ed093f8",
+     "file": "config_sentence_transformers.json",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "d46f1983345269c582611bbedb3ca0a13f8e5f7b",
+     "bytes": 117,
+     "digest_kind": "git_blob_sha1",
+     "expected": "d46f1983345269c582611bbedb3ca0a13f8e5f7b",
+     "file": "generation_config.json",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "31349551d90c7606f325fe0f11bbb8bd5fa0d7c7",
+     "bytes": 1671853,
+     "digest_kind": "git_blob_sha1",
+     "expected": "31349551d90c7606f325fe0f11bbb8bd5fa0d7c7",
+     "file": "merges.txt",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "0437e45c94563b09e13cb7a64478fc406947a93cb34a7e05870fc8dcd48e23fd",
+     "bytes": 1191586416,
+     "digest_kind": "sha256",
+     "expected": "0437e45c94563b09e13cb7a64478fc406947a93cb34a7e05870fc8dcd48e23fd",
+     "file": "model.safetensors",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "952a9b81c0bfd99800fabf352f69c7ccd46c5e43",
+     "bytes": 349,
+     "digest_kind": "git_blob_sha1",
+     "expected": "952a9b81c0bfd99800fabf352f69c7ccd46c5e43",
+     "file": "modules.json",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "def76fb086971c7867b829c23a26261e38d9d74e02139253b38aeb9df8b4b50a",
+     "bytes": 11423705,
+     "digest_kind": "sha256",
+     "expected": "def76fb086971c7867b829c23a26261e38d9d74e02139253b38aeb9df8b4b50a",
+     "file": "tokenizer.json",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "7345216a0785dc7086e8c245b2a9d3896ce2b756",
+     "bytes": 9706,
+     "digest_kind": "git_blob_sha1",
+     "expected": "7345216a0785dc7086e8c245b2a9d3896ce2b756",
+     "file": "tokenizer_config.json",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "4783fe10ac3adce15ac8f358ef5462739852c569",
+     "bytes": 2776833,
+     "digest_kind": "git_blob_sha1",
+     "expected": "4783fe10ac3adce15ac8f358ef5462739852c569",
+     "file": "vocab.json",
+     "verdict": "VERIFIED"
+    }
+   ],
+   "mismatched": 0,
+   "modellake_mutated": false,
+   "n_files": 11,
+   "no_remote_digest": 0,
+   "owner": "modellake",
+   "skipped_time_budget": 0,
+   "source_mutated": false,
+   "specimen": "Qwen--Qwen3-Embedding-0.6B@97b0c614be4d",
+   "specimen_path": "/Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3-Embedding-0.6B@97b0c614be4d",
+   "status": "WHOLE_TREE_VERIFIED",
+   "unrecognized_digest": 0,
+   "verified": 11,
+   "wall_seconds": 12.9,
+   "whole_tree_verified": true
+  },
+  {
+   "bytes_hashed": 1341331020,
+   "files": [
+    {
+     "actual": "a6344aac8c09253b3b630fb776ae94478aa0275b",
+     "bytes": 1519,
+     "digest_kind": "git_blob_sha1",
+     "expected": "a6344aac8c09253b3b630fb776ae94478aa0275b",
+     "file": ".gitattributes",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "019a5c3b2fee1e494e5cd9b20888339b3d8b7794",
+     "bytes": 4427,
+     "digest_kind": "git_blob_sha1",
+     "expected": "019a5c3b2fee1e494e5cd9b20888339b3d8b7794",
+     "file": "README.md",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "ecf6e643113d1bb5ae566347665b8d78cea38617",
+     "bytes": 1431,
+     "digest_kind": "git_blob_sha1",
+     "expected": "ecf6e643113d1bb5ae566347665b8d78cea38617",
+     "file": "config.json",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "4e01e34ed5549b529b70b92d53226bc370f03041977b390d3dde45d47f516cf9",
+     "bytes": 1341322868,
+     "digest_kind": "sha256",
+     "expected": "4e01e34ed5549b529b70b92d53226bc370f03041977b390d3dde45d47f516cf9",
+     "file": "model.safetensors",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "a7822a90a0e91a14d50d1996953bac8f389a4377",
+     "bytes": 775,
+     "digest_kind": "git_blob_sha1",
+     "expected": "a7822a90a0e91a14d50d1996953bac8f389a4377",
+     "file": "preprocessor_config.json",
+     "verdict": "VERIFIED"
+    }
+   ],
+   "mismatched": 0,
+   "modellake_mutated": false,
+   "n_files": 5,
+   "no_remote_digest": 0,
+   "owner": "modellake",
+   "skipped_time_budget": 0,
+   "source_mutated": false,
+   "specimen": "depth-anything--Depth-Anything-V2-Large-hf@7581137eff8d",
+   "specimen_path": "/Volumes/corpdrive/hawking-modellake/specimens/depth-anything--Depth-Anything-V2-Large-hf@7581137eff8d",
+   "status": "WHOLE_TREE_VERIFIED",
+   "unrecognized_digest": 0,
+   "verified": 5,
+   "wall_seconds": 11.37,
+   "whole_tree_verified": true
+  },
+  {
+   "bytes_hashed": 1519209243,
+   "files": [
+    {
+     "actual": "52373fe24473b1aa44333d318f578ae6bf04b49b",
+     "bytes": 1570,
+     "digest_kind": "git_blob_sha1",
+     "expected": "52373fe24473b1aa44333d318f578ae6bf04b49b",
+     "file": ".gitattributes",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "6634c8cc3133b3848ec74b9f275acaaa1ea618ab",
+     "bytes": 11343,
+     "digest_kind": "git_blob_sha1",
+     "expected": "6634c8cc3133b3848ec74b9f275acaaa1ea618ab",
+     "file": "LICENSE",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "a50b19e76f5274f9ec99f5a5d99873dca5bff25e",
+     "bytes": 13965,
+     "digest_kind": "git_blob_sha1",
+     "expected": "a50b19e76f5274f9ec99f5a5d99873dca5bff25e",
+     "file": "README.md",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "f5c3703b78ae2a478ae15b247e9f855e0ce2107b",
+     "bytes": 726,
+     "digest_kind": "git_blob_sha1",
+     "expected": "f5c3703b78ae2a478ae15b247e9f855e0ce2107b",
+     "file": "config.json",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "20a8a9156fc8c3f25295ca067f61fdf120d517c5",
+     "bytes": 239,
+     "digest_kind": "git_blob_sha1",
+     "expected": "20a8a9156fc8c3f25295ca067f61fdf120d517c5",
+     "file": "generation_config.json",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "31349551d90c7606f325fe0f11bbb8bd5fa0d7c7",
+     "bytes": 1671853,
+     "digest_kind": "git_blob_sha1",
+     "expected": "31349551d90c7606f325fe0f11bbb8bd5fa0d7c7",
+     "file": "merges.txt",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "f47f71177f32bcd101b7573ec9171e6a57f4f4d31148d38e382306f42996874b",
+     "bytes": 1503300328,
+     "digest_kind": "sha256",
+     "expected": "f47f71177f32bcd101b7573ec9171e6a57f4f4d31148d38e382306f42996874b",
+     "file": "model.safetensors",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "aeb13307a71acd8fe81861d94ad54ab689df773318809eed3cbe794b4492dae4",
+     "bytes": 11422654,
+     "digest_kind": "sha256",
+     "expected": "aeb13307a71acd8fe81861d94ad54ab689df773318809eed3cbe794b4492dae4",
+     "file": "tokenizer.json",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "417d038a63fa3de29cfde265caedae14d1a58d92",
+     "bytes": 9732,
+     "digest_kind": "git_blob_sha1",
+     "expected": "417d038a63fa3de29cfde265caedae14d1a58d92",
+     "file": "tokenizer_config.json",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "4783fe10ac3adce15ac8f358ef5462739852c569",
+     "bytes": 2776833,
+     "digest_kind": "git_blob_sha1",
+     "expected": "4783fe10ac3adce15ac8f358ef5462739852c569",
+     "file": "vocab.json",
+     "verdict": "VERIFIED"
+    }
+   ],
+   "mismatched": 0,
+   "modellake_mutated": false,
+   "n_files": 10,
+   "no_remote_digest": 0,
+   "owner": "modellake",
+   "skipped_time_budget": 0,
+   "source_mutated": false,
+   "specimen": "Qwen--Qwen3-0.6B@c1899de289a0",
+   "specimen_path": "/Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3-0.6B@c1899de289a0",
+   "status": "WHOLE_TREE_VERIFIED",
+   "unrecognized_digest": 0,
+   "verified": 10,
+   "wall_seconds": 12.35,
+   "whole_tree_verified": true
+  },
   {
    "bytes_hashed": 1519209243,
    "files": [
@@ -2543,10 +3109,17 @@
   }
  ],
  "schema": "hawking.future.specimen_verify.v1",
- "seal_sha256": "32d2c2889cb57e3463706779bb35eb1ec4526746bd30c493666b0f62372ac1f5",
+ "seal_sha256": "c88740e399cbba93419c6920e169ee52a00d67bd9338e6b843292805471be137",
  "verification_rule": "VERIFIED means the hash was recomputed here and matched a published digest. Size agreement is not verification. A specimen is WHOLE_TREE_VERIFIED only when every file carried a digest and every one matched; a single undigested file yields PARTIAL_NO_REMOTE_DIGEST.",
  "version": 1,
  "whole_tree_verified_specimens": [
+  "tencent--HunyuanVideo@6204ad6aea1a",
+  "nvidia--audio-flamingo-3@ee26c5842398",
+  "facebook--sam2.1-hiera-large@665f8e2ad61c",
+  "microsoft--bitnet-b1.58-2B-4T@04c3b9ad9361",
+  "Qwen--Qwen3-Embedding-0.6B@97b0c614be4d",
+  "depth-anything--Depth-Anything-V2-Large-hf@7581137eff8d",
+  "Qwen--Qwen3-0.6B@c1899de289a0",
   "Qwen--Qwen3-0.6B@c1899de289a0#partial",
   "Qwen--Qwen3-30B-A3B@ad44e777bcd1",
   "Qwen--Qwen3-VL-30B-A3B-Instruct@9c4b90e1e4ba",

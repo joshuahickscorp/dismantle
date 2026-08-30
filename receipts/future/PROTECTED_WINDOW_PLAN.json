@@ -20,7 +20,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T16:01:32Z",
+  "recorded_at": "2026-08-30T18:55:33Z",
   "recorded_by": "tools.future.protected_window.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -74,7 +74,7 @@
   "blocked physical work is emitted as SLEEPING WorkUnits that HCLI can wake; never a synthetic PROTECTED_ABSOLUTE result",
   "--dry-run walks all envelope stages against the real batch and real lock probe and reports the execution stop (lease on this host)"
  ],
- "head": "b06d725701ec506644ab109f4ea8be802a527f51",
+ "head": "e16e1779f466de611ec7341a0f05fd358b8ee30b",
  "integration": {
   "execute": "execute(*, explicit_execute=False, lease=None, contamination_class=None) -> None  # always raises WindowRefused",
   "load_staged_batch": "load_staged_batch(injected=None) -> dict  # Codex order, not a guess",
@@ -213,7 +213,7 @@
   ]
  },
  "schema": "hawking.future.protected_window.v1",
- "seal_sha256": "ad8686881df6bc0b700b76c5a1de77a7ffcaac415a995e097b679608eb0706c0",
+ "seal_sha256": "593c1274bc36518277d57ab534f734581be02d6601b1e23d80b9cdc172cd4c25",
  "stages_declared": [
   "estimate_qualification_value",
   "decide_eviction",

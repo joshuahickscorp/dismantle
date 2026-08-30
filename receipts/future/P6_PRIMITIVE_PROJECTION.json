@@ -33,7 +33,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T16:02:24Z",
+  "recorded_at": "2026-08-30T18:56:22Z",
   "recorded_by": "tools.future.p6_projection.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -115,7 +115,7 @@
   "FPGA form cites fpga_engines functional references; no HDL, no backend."
  ],
  "gpu_authority": false,
- "head": "b06d725701ec506644ab109f4ea8be802a527f51",
+ "head": "e16e1779f466de611ec7341a0f05fd358b8ee30b",
  "negative_findings": [
   "No protected GPU lease: every hardware quantity remains UNKNOWN.",
   "No FPGA board, bitstream, or cycle-accurate model; FPGA forms are hypotheses.",
@@ -4958,7 +4958,7 @@
   "p6_projection_module_existed": false
  },
  "schema": "hawking.future.p6_projection.v1",
- "seal_sha256": "af6a87adb5c627fa370429040fcb466c82afc1f93eae79f685630bc552e52656",
+ "seal_sha256": "53be84f7a24f0c7f15f0817ec71411d439e95eae3fd29e07d8a6598554551d3f",
  "spatially_not_meaningful_ids": [
   "flash-p6-hash-single-command-buffer",
   "flash-p6-learned-reader-reuse"

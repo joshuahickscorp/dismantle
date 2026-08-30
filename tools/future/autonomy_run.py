@@ -94,6 +94,13 @@ REFILL_WATERMARK = 4
 # candidates are deduped against work identity before they are queued.
 REFILL_EVERY = 25
 
+# ...and at least this often in wall time. A unit-count cadence silently changes
+# meaning when unit cost changes: bounding each invoke to a subprocess took units
+# from milliseconds to seconds, and a 180s window stopped reaching 25 units at
+# all, so refill was never exercised. What the resident actually needs is to ask
+# the frontier again periodically, which is a time property, not a count.
+REFILL_INTERVAL_S = 90
+
 # Parents the live campaign actually runs, in the negative index's own canonical
 # slugs. A scar recorded against one named parent must not prune a different one,
 # so the slug has to be exact or the refusal silently never fires.
@@ -192,6 +199,41 @@ def _sealed(doc: dict[str, Any], recorded_by: str) -> dict[str, Any]:
     return seal(doc)
 
 
+# Longest a single capability may hold the loop. A unit that outlives its own
+# trial makes the window meaningless.
+UNIT_BUDGET_S = 600
+
+
+def _invoke_bounded(capability: str, budget_s: int) -> dict[str, Any]:
+    """Run one bound capability in a subprocess under a deadline.
+
+    In-process orch.invoke() cannot be interrupted, and a capability whose
+    build() does unbounded work therefore blocks the loop past its own window.
+    That is not hypothetical: specimen_verify.build() iterates every specimen in
+    ModelLake at 900s each, ModelLake went from 7 specimens to 43 mid-trial as
+    the download workers promoted a batch, and one unit ran for 37 minutes past
+    the end of a 1-hour trial with no way to stop it. The trial was killed and
+    discarded rather than reported.
+
+    A subprocess can be killed. The cost is one interpreter start per unit.
+    """
+    out = subprocess.run(
+        [_sys.executable, "-c",
+         "import json,sys;"
+         "sys.path.insert(0, %r);" % str(REPO) +
+         "from tools.future import orchestration as o;"
+         "print(json.dumps(o.invoke(%r)))" % capability],
+        cwd=REPO, capture_output=True, text=True, timeout=budget_s,
+    )
+    if out.returncode != 0:
+        raise RuntimeError(f"invoke failed rc={out.returncode}: {out.stderr.strip()[-300:]}")
+    for line in reversed(out.stdout.strip().splitlines()):
+        line = line.strip()
+        if line.startswith("{"):
+            return json.loads(line)
+    raise RuntimeError("invoke produced no result object")
+
+
 def _metal_why() -> str:
     """The real Metal blocker on this host, measured each run.
 
@@ -226,12 +268,39 @@ def _metal_why() -> str:
     return "; ".join(parts)
 
 
+# Where _emit flushes to. Set once per run; a module-level slot keeps the flush
+# out of every _emit call signature.
+_FLUSH_TO: list[Path | None] = [None]
+
+
+def _flush(doc: dict[str, Any], path: Path | None) -> None:
+    """Persist the timeline as it grows.
+
+    It used to be written once, at the end. A trial killed mid-run therefore
+    lost every event it had recorded -- which is exactly what happened to the
+    run that exposed the unbounded-unit defect: 37 minutes of real work and not
+    one judgeable event survived. Evidence that only exists at the end is
+    evidence that a crash destroys.
+    """
+    if path is None:
+        return
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_suffix(path.suffix + ".partial")
+        tmp.write_text(json.dumps(dict(doc, partial=True), indent=1, sort_keys=True))
+        tmp.replace(path)
+    except OSError:
+        pass  # a flush failure must never kill the run it is recording
+
+
 def _emit(doc: dict[str, Any], kind: str, payload: dict[str, Any],
           *, t_s: int, cites: list[str] | None = None) -> dict[str, Any]:
     event: dict[str, Any] = {"kind": kind, "payload": payload}
     if cites:
         event["cites"] = cites
-    return at.append_event(doc, event, t_s=t_s)
+    doc = at.append_event(doc, event, t_s=t_s)
+    _flush(doc, _FLUSH_TO[0])
+    return doc
 
 
 def _live_frontier() -> tuple[dict[str, Any], list[dict[str, Any]]]:
@@ -245,6 +314,7 @@ def run(trial: str = "15m", timeline: Path | None = None,
     started = time.time()
     duration = duration_s if duration_s is not None else at.TRIAL_DURATION_S[trial]
     tl_path = Path(timeline) if timeline else (RECEIPTS / f"AUTONOMY_TIMELINE_{trial}.json")
+    _FLUSH_TO[0] = tl_path
 
     doc = at.init_timeline(trial) if hasattr(at, "init_timeline") else {
         "trial": trial, "duration_s": duration, "events": [],
@@ -307,43 +377,6 @@ def run(trial: str = "15m", timeline: Path | None = None,
     # so re-running the same capability against the same frontier item is a copy,
     # however many distinct ids it is given.
     queue: list[dict[str, Any]] = []
-    # The COMPOSED workload first. A trial whose queue is whatever the connector
-    # happens to expose is a checklist; trial_workload composes a declared mix of
-    # real current frontier work -- fast specimen science, a genuinely long unit,
-    # a negative-science query that can refuse, a multi-fidelity screen, an HCLI
-    # self-optimization unit, an Odyssey-II transfer and an Odyssey-III attack --
-    # and, for the longer trials, pairs where one unit's RESULT legitimately
-    # reprioritizes another. Replanning is what separates a resident from an
-    # executor, and it cannot be demonstrated on work that has no dependencies.
-    composed_replan_pairs: list[dict[str, Any]] = []
-    try:
-        from tools.future import trial_workload as twl
-
-        composed = twl.compose(trial)
-        composed_replan_pairs = list(composed.get("replan_pairs") or [])
-        for unit in composed.get("units") or []:
-            module = unit.get("module") or ""
-            if module and module in orch.BINDINGS:
-                queue.append({
-                    "capability": module,
-                    "frontier_id": unit.get("frontier_id") or orch.BINDINGS[module][0],
-                    "description": str(unit.get("description") or "")[:180],
-                    "composed_unit_id": unit.get("id"),
-                    "mix_role": unit.get("mix_role"),
-                })
-        for unit in composed.get("sleeping") or []:
-            doc = _emit(doc, "workunit_sleeping", {
-                "unit_id": unit.get("id"),
-                "resource_class": unit.get("resource_class"),
-                "wake_condition": unit.get("wake_condition")
-                                  or "the resource this unit needs is not available here",
-                "why": "composed into the mix, parked rather than dropped",
-            }, t_s=t())
-    except Exception as exc:
-        doc = _emit(doc, "workunit_refused", {
-            "reason": f"workload_compose_failed:{type(exc).__name__}: {exc}",
-        }, t_s=t())
-
     # Candidate GENERATION, then the scar filter. Neither the frontier nor the
     # Codex candidate queue ever contains already-dead work -- both are pruned
     # before the sidecar sees them -- so a loop that only CONSUMES those can
@@ -424,6 +457,47 @@ def run(trial: str = "15m", timeline: Path | None = None,
     ):
         queue.append({"capability": cap, "frontier_id": fid, "description": desc})
 
+    # The COMPOSED workload, after generation. Generation is milliseconds per
+    # proposal and prunes a 1701-cell hypothesis space; a composed unit can be
+    # minutes of hashing. Cheapest discriminating work first is the campaign's
+    # own rule, and putting the expensive mix first meant a short window spent
+    # itself on one specimen and never reached the science. A trial whose queue is whatever the connector
+    # happens to expose is a checklist; trial_workload composes a declared mix of
+    # real current frontier work -- fast specimen science, a genuinely long unit,
+    # a negative-science query that can refuse, a multi-fidelity screen, an HCLI
+    # self-optimization unit, an Odyssey-II transfer and an Odyssey-III attack --
+    # and, for the longer trials, pairs where one unit's RESULT legitimately
+    # reprioritizes another. Replanning is what separates a resident from an
+    # executor, and it cannot be demonstrated on work that has no dependencies.
+    composed_replan_pairs: list[dict[str, Any]] = []
+    try:
+        from tools.future import trial_workload as twl
+
+        composed = twl.compose(trial)
+        composed_replan_pairs = list(composed.get("replan_pairs") or [])
+        for unit in composed.get("units") or []:
+            module = unit.get("module") or ""
+            if module and module in orch.BINDINGS:
+                queue.append({
+                    "capability": module,
+                    "frontier_id": unit.get("frontier_id") or orch.BINDINGS[module][0],
+                    "description": str(unit.get("description") or "")[:180],
+                    "composed_unit_id": unit.get("id"),
+                    "mix_role": unit.get("mix_role"),
+                })
+        for unit in composed.get("sleeping") or []:
+            doc = _emit(doc, "workunit_sleeping", {
+                "unit_id": unit.get("id"),
+                "resource_class": unit.get("resource_class"),
+                "wake_condition": unit.get("wake_condition")
+                                  or "the resource this unit needs is not available here",
+                "why": "composed into the mix, parked rather than dropped",
+            }, t_s=t())
+    except Exception as exc:
+        doc = _emit(doc, "workunit_refused", {
+            "reason": f"workload_compose_failed:{type(exc).__name__}: {exc}",
+        }, t_s=t())
+
     # Per-specimen whole-tree verification. Each specimen is DISTINCT work with a
     # distinct description, and it is genuinely long-running -- which is what the
     # longer trials were missing. Falcon took 243s for 15GB; Flash is ~350GB.
@@ -471,15 +545,21 @@ def run(trial: str = "15m", timeline: Path | None = None,
     qi = 0
     refill_dry = False
     last_refill_at = -1
+    last_refill_at_s = started
     while time.time() - started < duration:
         # Top up before starvation, not after it. A daemon that only asks for
         # more work once its queue hits zero stalls for the length of one refill
         # every time, and in a window with enough long work queued it never
         # exercises refilling at all -- the 1h run queued seven multi-hundred-GB
         # verifications and so never once refilled.
-        due_periodic = qi and qi % REFILL_EVERY == 0 and qi != last_refill_at
+        now = time.time()
+        due_periodic = (
+            (qi and qi % REFILL_EVERY == 0 and qi != last_refill_at)
+            or (now - last_refill_at_s) >= REFILL_INTERVAL_S
+        )
         if not refill_dry and (qi >= len(queue) - REFILL_WATERMARK or due_periodic):
             last_refill_at = qi
+            last_refill_at_s = now
             # Refill from the frontier rather than repeating. If the frontier has
             # nothing new, stop launching: fabricating another copy to fill the
             # clock is precisely the busywork this trial fails on.
@@ -640,7 +720,9 @@ def run(trial: str = "15m", timeline: Path | None = None,
         launched.append(unit_id)
 
         try:
-            res = orch.invoke(cap)
+            unit_budget = min(UNIT_BUDGET_S,
+                              max(30, int(duration - (time.time() - started))))
+            res = _invoke_bounded(cap, unit_budget)
             ingested.append(res["receipt"])
             doc = _emit(doc, "result_ingested", {
                 "unit_id": unit_id, "receipt": res["receipt"],

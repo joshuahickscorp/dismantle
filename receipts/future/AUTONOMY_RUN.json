@@ -11,7 +11,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T16:03:25Z",
+  "recorded_at": "2026-08-30T18:57:20Z",
   "recorded_by": "tools/future/autonomy_run.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -122,7 +122,7 @@
   "git_lock_doctor.py"
  ],
  "schema": "hawking.future.autonomy_run.v1",
- "seal_sha256": "db2255dbe07d25d71a36b01309e347209e61e6e23c22f929983c58845ac4ad2d",
+ "seal_sha256": "df4de069d0e216c3beba823515a26cda6a5500c8f5805dfc429443fcb3cd9f59",
  "version": 1,
  "why_unavailable": "measured on this host, not quoted from a blocker list: Apple M3 Ultra GPU is present; the offline Metal shader compiler is absent (developer dir is /Library/Developer/CommandLineTools, full Xcode not installed), so no .metallib can be built ahead of time here; runtime shader compilation from source is AVAILABLE (exercised with the crate the runtime uses), so the missing offline compiler is a cold-start cost, not a wall"
 }

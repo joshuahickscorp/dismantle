@@ -371,7 +371,11 @@ def _catalog() -> tuple[dict[str, Any], ...]:
     hd = "receipts/headless"
     return (
         _item(
-            id="FT.MODEL_CAPABILITY.hard-gates",
+            # Distinct from the OPEN_QUESTION already on this frontier. Reusing
+            # that id put two items with one id in the book, which the freeze
+            # manifest caught as a duplicate. An open question and the work that
+            # answers it are different items.
+            id="FT.MODEL_CAPABILITY.hard-gates.drive-tools",
             frontier="MODEL_CAPABILITY",
             kind="NEXT_WORK",
             title="Drive the Odyssey Doctor and Gravity tools from the resident and route their receipts",

@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T16:42:26Z",
+  "recorded_at": "2026-08-30T18:59:18Z",
   "recorded_by": "tools/future/orchestration.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -352,7 +352,7 @@
    "species": "ODYSSEY_LAUNCH_GATE"
   },
   {
-   "frontier_item": "FT.MODEL_CAPABILITY.hard-gates",
+   "frontier_item": "FT.MODEL_CAPABILITY.hard-gates.drive-tools",
    "module": "odyssey_tool_driver.py",
    "receipt": "ODYSSEY_TOOL_DRIVER.json",
    "species": "ODYSSEY_TOOL_DRIVER"
@@ -567,7 +567,7 @@
  "counts": {
   "bound": 92,
   "broken": 0,
-  "distinct_frontier_items": 40,
+  "distinct_frontier_items": 41,
   "distinct_species": 61,
   "infrastructure_excluded": 5,
   "unbound_production": 1
@@ -697,7 +697,7 @@
   "workunit": "tools.future.orchestration.emit_workunit(module)"
  },
  "schema": "hawking.future.orchestration.v1",
- "seal_sha256": "4d7e17650f47ca156de02a14c4ce06492d94dd6baade621dde7a895225be8cd5",
+ "seal_sha256": "571f400f669cb54ffd5c1bac0eda2045687fd5b8698ba0ad2c46706212589a70",
  "unbound_production": [
   "autonomy_run.py"
  ],

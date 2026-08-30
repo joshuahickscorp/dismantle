@@ -278,20 +278,67 @@ def record(result: dict[str, Any]) -> Path:
     return _receipt(merged)
 
 
-def build(names: list[str] | None = None, *, max_seconds_each: float | None = 900.0) -> Path:
+# A whole-lake pass is not a bounded unit. ModelLake went from 7 specimens to 43
+# during one autonomy trial as the download workers promoted a batch, and
+# build() -- iterating every specimen at 900s each -- became an eleven-hour call
+# that ran 37 minutes past the end of a 1-hour trial with no way to stop it.
+# A capability the resident invokes must finish, or report honestly what it did
+# not reach.
+BUILD_TOTAL_BUDGET_S = 480.0
+
+
+def build(
+    names: list[str] | None = None,
+    *,
+    max_seconds_each: float | None = 900.0,
+    max_total_seconds: float | None = BUILD_TOTAL_BUDGET_S,
+) -> Path:
+    started = time.time()
     avail = available()
     results: list[dict[str, Any]] = []
+    not_reached: list[str] = []
     if avail["mounted"]:
-        for name in (names or list_specimens()):
+        # Cheapest first, and prefer specimens with no verdict yet: a rerun that
+        # spends its whole budget rehashing what is already verified learns
+        # nothing.
+        prior = {}
+        path = RECEIPTS / RECEIPT
+        if path.is_file():
+            try:
+                prior = {r.get("specimen"): r for r in
+                         (json.loads(path.read_text()).get("results") or [])}
+            except (json.JSONDecodeError, OSError):
+                prior = {}
+
+        def _size(name: str) -> int:
+            try:
+                return sum(f.stat().st_size for f in specimen_files(name))
+            except Exception:
+                return 0
+
+        queue = list(names or list_specimens())
+        queue.sort(key=lambda n: (n in prior, _size(n)))
+        for name in queue:
+            if max_total_seconds is not None and (time.time() - started) > max_total_seconds:
+                not_reached.append(name)
+                continue
             try:
                 results.append(verify_specimen(name, max_seconds=max_seconds_each))
             except SpecimenError as exc:
                 results.append({"specimen": name, "status": "ABSENT", "why": str(exc)})
+        # Anything verified in an earlier pass and not revisited stays on the
+        # record; dropping it would make a bounded run look like a regression.
+        seen = {r.get("specimen") for r in results}
+        for name, row in prior.items():
+            if name not in seen:
+                results.append(row)
+                if name not in not_reached:
+                    not_reached.append(str(name))
 
-    return _receipt(results)
+    return _receipt(results, not_reached=not_reached)
 
 
-def _receipt(results: list[dict[str, Any]]) -> Path:
+def _receipt(results: list[dict[str, Any]], *, not_reached: list[str] | None = None) -> Path:
     avail = available()
     sealed = [r["specimen"] for r in results if r.get("whole_tree_verified")]
     doc = {
@@ -321,6 +368,12 @@ def _receipt(results: list[dict[str, Any]]) -> Path:
             "incomplete": sum(1 for r in results if r.get("status") == "INCOMPLETE_TIME_BUDGET"),
         },
         "whole_tree_verified_specimens": sealed,
+        "not_reached_this_pass": list(not_reached or []),
+        "budget_rule": (
+            "build() is bounded so a resident can invoke it as a unit. Specimens "
+            "it did not reach are named rather than silently omitted, and a prior "
+            "verdict is carried forward rather than dropped."
+        ),
         "results": results,
         "recovered_implementation": [
             "ModelLake manifests report n_sha256_verified vs n_size_only_verified",

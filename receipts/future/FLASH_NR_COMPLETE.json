@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T16:03:56Z",
+  "recorded_at": "2026-08-30T18:57:52Z",
   "recorded_by": "tools/future/flash_nr_complete.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -937,7 +937,7 @@
   "SLEEPING GPU WorkUnit for the physical measurement; STATIC_ANALYSIS WorkUnit for --build. Fail closed: no synthetic physical EBPW."
  ],
  "gpu_authority": false,
- "head": "b06d725701ec506644ab109f4ea8be802a527f51",
+ "head": "e16e1779f466de611ec7341a0f05fd358b8ee30b",
  "integration_points": [
   "tools/future/ebpw_categories.py (Quantity, can_promote, judge_dense_rematerialization) \u2014 imported, not forked",
   "tools/future/flash_nx_audit.py \u2014 NX completeness; not imported at runtime to avoid missing-ledger raises",
@@ -1087,7 +1087,7 @@
   ]
  },
  "schema": "hawking.future.flash_nr_complete.v1",
- "seal_sha256": "2ec2731460904f2abf585964b83cd91b3e8c787066237e6651b1397b3e7c5939",
+ "seal_sha256": "7e40a60856d2a01ed29190b03ff400dc8daa5e08fd21e8698e821fd893fac296",
  "selftest": {
   "billed_runtime_nr_accepted": true,
   "cross_category_arithmetic_message": "refused source_control_ebpw + prospective_meta_bpw: EBPW categories are not interchangeable",

@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T16:04:00Z",
+  "recorded_at": "2026-08-30T18:57:56Z",
   "recorded_by": "tools/future/git_lock_doctor.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -382,12 +382,10 @@
     "/Users/scammermike/Downloads/hawking/workspace/ops/local/genesis-agentos-worktrees/gravity",
     "/Users/scammermike/Downloads/forge/projects/hawking",
     "/Users/scammermike/Downloads/hawking/workspace/ops/local/genesis-agentos-worktrees/kernel",
-    "/Users/scammermike/.claude-grok/worktrees/l19-doctor-gravity-driver-20260830-112209",
-    "/Users/scammermike/.claude-grok/worktrees/l20-rival-codec-screen-20260830-112709",
-    "/Users/scammermike/.claude-grok/worktrees/l21-trial-workload-20260830-112722"
+    "/Users/scammermike/.claude-grok/worktrees/l20-rival-codec-screen-20260830-112709"
    ]
   },
-  "observation_now_epoch": 1788105840,
+  "observation_now_epoch": 1788116276,
   "stale_catalog": [
    {
     "mtime_epoch": 1788088904,
@@ -990,17 +988,17 @@
      "mode": "report",
      "renamed": false
     },
-    "age_seconds": 906.033,
+    "age_seconds": 6914.181,
     "age_threshold_s": 300.0,
     "conditions": [
      {
-      "detail": "age_s=906.033 threshold_s=300.000",
+      "detail": "age_s=6914.181 threshold_s=300.000",
       "holds": true,
       "name": "age_exceeds_threshold"
      },
      {
-      "detail": "size_bytes=0",
-      "holds": true,
+      "detail": "size_bytes=1048576",
+      "holds": false,
       "name": "zero_bytes"
      },
      {
@@ -1014,18 +1012,20 @@
       "name": "no_git_process"
      }
     ],
-    "failing_conditions": [],
+    "failing_conditions": [
+     "zero_bytes"
+    ],
     "git_dir": "/Users/scammermike/Downloads/hawking/.git",
     "git_processes_scanned": 0,
     "holders": [],
     "is_regular_file": true,
     "matching_git_processes": [],
-    "may_rename": true,
-    "mtime_epoch": 1788104934,
+    "may_rename": false,
+    "mtime_epoch": 1788109362,
     "path": "/Users/scammermike/Downloads/hawking/.git/index.lock",
     "present": true,
     "role": "primary",
-    "size_bytes": 0,
+    "size_bytes": 1048576,
     "stale_siblings": [
      {
       "mtime_epoch": 1788088904,
@@ -1624,7 +1624,7 @@
   ]
  },
  "schema": "hawking.future.git_lock_durability.v1",
- "seal_sha256": "c73eacc2a7bfeeb3b6e658b6de44506bbda55dddced27fb894769325294c60dd",
+ "seal_sha256": "c18012539d3e1b233682982a7ca4ae819c860d4900bb49d22b05e8fd7126891b",
  "version": 1,
  "vocabulary": {
   "eras": [

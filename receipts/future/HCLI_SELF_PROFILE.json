@@ -6,7 +6,7 @@
    "cost": "git_query",
    "cost_state": "MEASURED_SELF_DIRTY",
    "does_not_decide": true,
-   "median_ms": 140.675,
+   "median_ms": 132.897,
    "removal": {
     "kind": "wait",
     "what_would_remove_it": "Pass --no-optional-locks on the HCLI git.status argv (the sidecar path already does). That skips the index refresh. The lock doctor is durability after a kill, not the removal of the wait."
@@ -21,7 +21,7 @@
    "cost": "subprocess_launch",
    "cost_state": "MEASURED_SELF_DIRTY",
    "does_not_decide": true,
-   "median_ms": 23.928,
+   "median_ms": 25.872,
    "removal": {
     "kind": "call",
     "what_would_remove_it": "In-process pytest runner for tiny files already imported in this interpreter, and reuse one git child for batched read-only queries. Spawn stays for isolation of untrusted commands."
@@ -36,7 +36,7 @@
    "cost": "scheduler_decision",
    "cost_state": "MEASURED_SELF_DIRTY",
    "does_not_decide": true,
-   "median_ms": 1.8,
+   "median_ms": 1.732,
    "removal": {
     "kind": "information",
     "what_would_remove_it": "Keep a ready-set incrementally instead of scanning all units every dispatch, and debounce _persist to a dirty flag. The scan is cheap next to git.status; persist is the scheduler cost that actually copies."
@@ -51,7 +51,7 @@
    "cost": "source_receipt_io",
    "cost_state": "MEASURED_SELF_DIRTY",
    "does_not_decide": true,
-   "median_ms": 0.867,
+   "median_ms": 0.718,
    "removal": {
     "kind": "re-read",
     "what_would_remove_it": "Content-address the evidence blob (mtime+size or sha) and skip a persist when the DAG hash is unchanged. Receipts are already sealed; the cache key is the seal."
@@ -66,7 +66,7 @@
    "cost": "context_construction",
    "cost_state": "MEASURED_SELF_DIRTY",
    "does_not_decide": true,
-   "median_ms": 0.225,
+   "median_ms": 0.22,
    "removal": {
     "kind": "copy",
     "what_would_remove_it": "Treat sealed receipts as the authority and put only paths + seals in context, fetching bodies on miss. FT.CONTEXT.disk-authority already names this bug: a context blob must not compete with a receipt."
@@ -81,7 +81,7 @@
    "cost": "tool_routing",
    "cost_state": "MEASURED_SELF_DIRTY",
    "does_not_decide": true,
-   "median_ms": 0.157,
+   "median_ms": 0.118,
    "removal": {
     "kind": "call",
     "what_would_remove_it": "Stop calling git.status on every turn. Route status through the sidecar git() (already --no-optional-locks) or skip untracked. Routing itself does not need a new dispatcher."
@@ -96,7 +96,7 @@
    "cost": "verifier_overhead",
    "cost_state": "MEASURED_SELF_DIRTY",
    "does_not_decide": true,
-   "median_ms": 0.146,
+   "median_ms": 0.105,
    "removal": {
     "kind": "call",
     "what_would_remove_it": "Cache admissibility by command hash. Do not weaken the vacuous-command refuse: a verifier nobody has watched reject is a verifier that will silently drift."
@@ -178,16 +178,17 @@
    "reason": null,
    "self_timing": {
     "evidence_class": "SELF_MEASURED_DIRTY",
-    "max_ms": 1.841,
-    "median_ms": 1.8,
-    "min_ms": 1.759,
-    "n": 2,
+    "max_ms": 2.032,
+    "median_ms": 1.732,
+    "min_ms": 1.726,
+    "n": 3,
     "not_a_hardware_measurement": true,
     "not_protected_absolute": true,
-    "range_ms": 0.082,
+    "range_ms": 0.306,
     "samples_ms": [
-     1.841,
-     1.759
+     2.032,
+     1.732,
+     1.726
     ],
     "use": "rank and prune; decide nothing"
    },
@@ -244,16 +245,17 @@
    "reason": null,
    "self_timing": {
     "evidence_class": "SELF_MEASURED_DIRTY",
-    "max_ms": 24.387,
-    "median_ms": 23.928,
-    "min_ms": 23.47,
-    "n": 2,
+    "max_ms": 26.516,
+    "median_ms": 25.872,
+    "min_ms": 25.707,
+    "n": 3,
     "not_a_hardware_measurement": true,
     "not_protected_absolute": true,
-    "range_ms": 0.917,
+    "range_ms": 0.809,
     "samples_ms": [
-     24.387,
-     23.47
+     26.516,
+     25.872,
+     25.707
     ],
     "use": "rank and prune; decide nothing"
    },
@@ -277,23 +279,24 @@
     "worked_example": false
    },
    "last": {
-    "bytes_read": 424543,
+    "bytes_read": 420691,
     "receipts_read": 8
    },
    "measurement_kind": "receipt_read_plus_tempfile_fsync",
    "reason": null,
    "self_timing": {
     "evidence_class": "SELF_MEASURED_DIRTY",
-    "max_ms": 1.033,
-    "median_ms": 0.867,
-    "min_ms": 0.7,
-    "n": 2,
+    "max_ms": 4.527,
+    "median_ms": 0.718,
+    "min_ms": 0.655,
+    "n": 3,
     "not_a_hardware_measurement": true,
     "not_protected_absolute": true,
-    "range_ms": 0.333,
+    "range_ms": 3.872,
     "samples_ms": [
-     1.033,
-     0.7
+     4.527,
+     0.718,
+     0.655
     ],
     "use": "rank and prune; decide nothing"
    },
@@ -318,23 +321,24 @@
    },
    "last": {
     "asked": 6,
-    "chars": 235066,
+    "chars": 242811,
     "files_read": 6
    },
    "measurement_kind": "read_named_sidecar_sources",
    "reason": null,
    "self_timing": {
     "evidence_class": "SELF_MEASURED_DIRTY",
-    "max_ms": 0.295,
-    "median_ms": 0.225,
-    "min_ms": 0.156,
-    "n": 2,
+    "max_ms": 1.59,
+    "median_ms": 0.22,
+    "min_ms": 0.172,
+    "n": 3,
     "not_a_hardware_measurement": true,
     "not_protected_absolute": true,
-    "range_ms": 0.139,
+    "range_ms": 1.418,
     "samples_ms": [
-     0.295,
-     0.156
+     1.59,
+     0.22,
+     0.172
     ],
     "use": "rank and prune; decide nothing"
    },
@@ -368,16 +372,17 @@
    "reason": null,
    "self_timing": {
     "evidence_class": "SELF_MEASURED_DIRTY",
-    "max_ms": 0.197,
-    "median_ms": 0.157,
-    "min_ms": 0.117,
-    "n": 2,
+    "max_ms": 0.203,
+    "median_ms": 0.118,
+    "min_ms": 0.11,
+    "n": 3,
     "not_a_hardware_measurement": true,
     "not_protected_absolute": true,
-    "range_ms": 0.08,
+    "range_ms": 0.093,
     "samples_ms": [
-     0.197,
-     0.117
+     0.203,
+     0.118,
+     0.11
     ],
     "use": "rank and prune; decide nothing"
    },
@@ -418,16 +423,17 @@
    "reason": null,
    "self_timing": {
     "evidence_class": "SELF_MEASURED_DIRTY",
-    "max_ms": 0.206,
-    "median_ms": 0.146,
-    "min_ms": 0.087,
-    "n": 2,
+    "max_ms": 0.235,
+    "median_ms": 0.105,
+    "min_ms": 0.095,
+    "n": 3,
     "not_a_hardware_measurement": true,
     "not_protected_absolute": true,
-    "range_ms": 0.119,
+    "range_ms": 0.14,
     "samples_ms": [
-     0.206,
-     0.087
+     0.235,
+     0.105,
+     0.095
     ],
     "use": "rank and prune; decide nothing"
    },
@@ -474,7 +480,7 @@
    },
    "is_hcli_path": false,
    "last": {
-    "n_lines": 764,
+    "n_lines": 700,
     "returncode": 0,
     "timed_out": false
    },
@@ -483,16 +489,17 @@
    "reason": null,
    "self_timing": {
     "evidence_class": "SELF_MEASURED_DIRTY",
-    "max_ms": 143.727,
-    "median_ms": 140.675,
-    "min_ms": 137.623,
-    "n": 2,
+    "max_ms": 292.154,
+    "median_ms": 132.897,
+    "min_ms": 131.957,
+    "n": 3,
     "not_a_hardware_measurement": true,
     "not_protected_absolute": true,
-    "range_ms": 6.104,
+    "range_ms": 160.197,
     "samples_ms": [
-     143.727,
-     137.623
+     292.154,
+     132.897,
+     131.957
     ],
     "use": "rank and prune; decide nothing"
    },
@@ -567,7 +574,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T15:46:03Z",
+  "recorded_at": "2026-08-30T18:47:05Z",
   "recorded_by": "tools/future/hcli_self_profile.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -601,50 +608,50 @@
  "ranked": [
   {
    "cost": "git_query",
-   "median_ms": 140.675,
-   "n": 2,
+   "median_ms": 132.897,
+   "n": 3,
    "rank": 1,
    "rank_use": "SELF_MEASURED_DIRTY rank and prune; decide nothing"
   },
   {
    "cost": "subprocess_launch",
-   "median_ms": 23.928,
-   "n": 2,
+   "median_ms": 25.872,
+   "n": 3,
    "rank": 2,
    "rank_use": "SELF_MEASURED_DIRTY rank and prune; decide nothing"
   },
   {
    "cost": "scheduler_decision",
-   "median_ms": 1.8,
-   "n": 2,
+   "median_ms": 1.732,
+   "n": 3,
    "rank": 3,
    "rank_use": "SELF_MEASURED_DIRTY rank and prune; decide nothing"
   },
   {
    "cost": "source_receipt_io",
-   "median_ms": 0.867,
-   "n": 2,
+   "median_ms": 0.718,
+   "n": 3,
    "rank": 4,
    "rank_use": "SELF_MEASURED_DIRTY rank and prune; decide nothing"
   },
   {
    "cost": "context_construction",
-   "median_ms": 0.225,
-   "n": 2,
+   "median_ms": 0.22,
+   "n": 3,
    "rank": 5,
    "rank_use": "SELF_MEASURED_DIRTY rank and prune; decide nothing"
   },
   {
    "cost": "tool_routing",
-   "median_ms": 0.157,
-   "n": 2,
+   "median_ms": 0.118,
+   "n": 3,
    "rank": 6,
    "rank_use": "SELF_MEASURED_DIRTY rank and prune; decide nothing"
   },
   {
    "cost": "verifier_overhead",
-   "median_ms": 0.146,
-   "n": 2,
+   "median_ms": 0.105,
+   "n": 3,
    "rank": 7,
    "rank_use": "SELF_MEASURED_DIRTY rank and prune; decide nothing"
   }
@@ -675,25 +682,31 @@
   "workunit": "one ANALYSIS unit; profile HCLI self costs as SELF_MEASURED_DIRTY; rank removal hypotheses; never promote"
  },
  "schema": "hawking.future.hcli_self_profile.v1",
- "seal_sha256": "40c4feabe90e8ec2a0f52e89173b0f3199f11a23f63f43e83016716035afb519",
+ "seal_sha256": "07b82b140bbbe0fb60ec5a547da8d94498b13e9ab39feec856c21fe1d73981d5",
  "self_timing": {
   "contamination": {
    "competing_workloads": [
     {
-     "cpu_pct": 0.0,
+     "cpu_pct": 104.6,
      "name": "/Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python",
-     "pid": 17562,
-     "rss_gib": 9.26
+     "pid": 6715,
+     "rss_gib": 7.23
+    },
+    {
+     "cpu_pct": 51.2,
+     "name": "/Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python",
+     "pid": 6723,
+     "rss_gib": 3.0
     }
    ],
-   "contamination_class": "HEAVY",
-   "contamination_reason": "at least one HEAVY probe fired",
+   "contamination_class": "LIGHT",
+   "contamination_reason": "contenders or mild pressure without a HEAVY trigger",
    "did_not_take_gpu_lease": true,
    "live_campaign_declared": true,
    "live_campaign_note": "a live Codex Accelerator campaign is running in this repo; SELF_MEASURED_DIRTY timings are contaminated by construction",
-   "load_15m": 5.4130859375,
-   "load_1m": 4.1474609375,
-   "load_5m": 4.86572265625,
+   "load_15m": 4.83349609375,
+   "load_1m": 4.0380859375,
+   "load_5m": 4.3974609375,
    "memory_pressure_name": "warn",
    "ncpu": 28,
    "reason": null,
@@ -705,7 +718,7 @@
   "not_a_hardware_measurement": true,
   "not_protected_absolute": true,
   "numbers_decide_nothing": true,
-  "repeats": 2,
+  "repeats": 3,
   "use": "rank and prune; decide nothing"
  },
  "verifier_negative_fired": true,
@@ -733,7 +746,7 @@
   },
   "id": "H.GIT.no-optional-locks",
   "observed_after": {
-   "median_ms": 140.675,
+   "median_ms": 132.897,
    "note": "~0.2s is the recovered operator figure; median_ms is this run",
    "path": "git --no-optional-locks status --porcelain",
    "state": "MEASURED_SELF_DIRTY"

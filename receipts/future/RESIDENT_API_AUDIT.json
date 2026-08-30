@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T16:42:28Z",
+  "recorded_at": "2026-08-30T18:59:09Z",
   "recorded_by": "tools/future/resident_api.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -1532,7 +1532,7 @@
     },
     "fail_closed": {
      "evidence": {
-      "raise_count": 1,
+      "raise_count": 3,
       "rule": "fail closed means raise (or write_receipt's HardwareClaimError) rather than returning a silent default",
       "uses_write_receipt": true
      },
@@ -1577,7 +1577,7 @@
      "pass": true
     }
    },
-   "raise_count": 1,
+   "raise_count": 3,
    "receipt": "AUTONOMY_RUN.json",
    "relpath": "tools/future/autonomy_run.py",
    "status": "NOT_OPERATIONAL",
@@ -17893,6 +17893,12 @@
       "kind": "KEYWORD_ONLY",
       "name": "max_seconds_each",
       "required": false
+     },
+     {
+      "has_default": true,
+      "kind": "KEYWORD_ONLY",
+      "name": "max_total_seconds",
+      "required": false
      }
     ]
    },
@@ -18538,7 +18544,7 @@
   ]
  },
  "schema": "hawking.future.resident_api.v1",
- "seal_sha256": "77282eb9fd90e4b3370318b4fff2f63870954168150255b74b533360ab90ae06",
+ "seal_sha256": "f14a772fdc6e1720cb0c1da59f23cd49e030892471ac4d8cc67f24afa9e3fb55",
  "version": 1,
  "work_units": [
   {

@@ -11,7 +11,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T15:48:45Z",
+  "recorded_at": "2026-08-30T18:59:16Z",
   "recorded_by": "tools/future/trial_freeze.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -31,19 +31,30 @@
   "import": [
    "tools/future/__init__.py",
    "tools/future/_common.py",
+   "tools/future/adaptive_verification.py",
    "tools/future/autonomy_trial.py",
    "tools/future/candidate_planner.py",
+   "tools/future/contamination.py",
    "tools/future/expert_bank_school.py",
+   "tools/future/external_specimen_seal.py",
+   "tools/future/flash_nx_audit.py",
    "tools/future/flash_schools.py",
    "tools/future/frontiers.py",
    "tools/future/hardware_doctor.py",
+   "tools/future/meta_funnel.py",
    "tools/future/mutation_surface.py",
    "tools/future/negative_index.py",
    "tools/future/ngram_school.py",
+   "tools/future/odyssey2_law_store.py",
+   "tools/future/odyssey3_adversary.py",
+   "tools/future/odyssey_launch.py",
    "tools/future/orchestration.py",
+   "tools/future/phase_listeners.py",
    "tools/future/repro_science.py",
    "tools/future/router_science.py",
    "tools/future/specimen_verify.py",
+   "tools/future/trial_workload.py",
+   "tools/future/workgraph.py",
    "tools/future/workunit_species.py"
   ],
   "subprocess": [
@@ -59,8 +70,8 @@
   "tools/future/integration_attack.py",
   "tools/future/test_integration_attack.py"
  ],
- "freeze_time": "2026-08-30T15:48:45Z",
- "frontier_digest": "2e24cb2dad80ad583b893c6f75dd2a69be6c726fc13970fc29a9d698638b8b22",
+ "freeze_time": "2026-08-30T18:59:16Z",
+ "frontier_digest": "d7159f3cb6904bf059bac5bbfac616e9c2cdbc1439ed0223b7613b90d4bdb135",
  "frozen_builds": [
   {
    "argv_executed": [
@@ -103,11 +114,19 @@
      "state": "HASHED"
     },
     {
+     "path": "tools/future/adaptive_verification.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "6db3478ce56548080923b0a000d37a9eb506459accf3d3b1e9849880eab1b246",
+     "state": "HASHED"
+    },
+    {
      "path": "tools/future/autonomy_run.py",
      "routes": [
       "driver"
      ],
-     "sha256": "f8a14b99132bcff20889251a704d165f4f7c15664876fd651a08b2724c48bda8",
+     "sha256": "2412fe52d888b452f6aa4b6b7ec435e905cd07910abf72a9eaf1ef23a203e0c3",
      "state": "HASHED"
     },
     {
@@ -127,11 +146,35 @@
      "state": "HASHED"
     },
     {
+     "path": "tools/future/contamination.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "058798e160c2690d5d24a6c057d1c248e799d3d48ecbb402b0d0381e6431f972",
+     "state": "HASHED"
+    },
+    {
      "path": "tools/future/expert_bank_school.py",
      "routes": [
       "import"
      ],
      "sha256": "a8291a5da366c30367730f6358b3f286cc775014cf9960e71f8ef303e6c08cdf",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/external_specimen_seal.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "8d020ce056aeacc8204f328abf5332a84b26ecacf9673298a58318366bd0d20d",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/flash_nx_audit.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "4a2c00f4c5e5fcbfa8882134b4bf487270e8cc3302d5c1653b143ab9ecf8b6f8",
      "state": "HASHED"
     },
     {
@@ -147,7 +190,7 @@
      "routes": [
       "import"
      ],
-     "sha256": "b6ef3453976ba4869c9558e470da6662a5676f0a77953d1152fa0fff5400e27a",
+     "sha256": "1a15a87cdd7e35a59f4afa508b77104c180b063739606f56c37ced827bd5873d",
      "state": "HASHED"
     },
     {
@@ -164,6 +207,14 @@
       "subprocess"
      ],
      "sha256": "ab8a798df267066fa71716c85141fd1cae15333ae0870a4b10a5bdd74120736a",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/meta_funnel.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "6f96e4591b491a8fd5d4daff5b3d1dc8f2a9e5cf7859aed4a0760f020f652c09",
      "state": "HASHED"
     },
     {
@@ -191,11 +242,43 @@
      "state": "HASHED"
     },
     {
+     "path": "tools/future/odyssey2_law_store.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "052b051dcd0a817f0dae70b6546c39fb93bc5789b10a2ce8c419ad4062bdd8c2",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/odyssey3_adversary.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "b8984765a73213a918b763ca0836b50bed924745bceae47c481dc5ed5a669227",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/odyssey_launch.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "66b924cbf9d70b571ce863d36ee2b085ad76ed601def9b6a77c44691b6df1f95",
+     "state": "HASHED"
+    },
+    {
      "path": "tools/future/orchestration.py",
      "routes": [
       "import"
      ],
-     "sha256": "accf3b74a66d8d1016425209c3c316e08d77dfb216e17971161b9f7692993251",
+     "sha256": "2499660e110d90a88c67a647c8794550e42bd2ca05aad7695936f2a40122c552",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/phase_listeners.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "4fff69c6d6e4ca0e5420be5c0ac8a00d8567de861f4947df6a90e5d489df9f69",
      "state": "HASHED"
     },
     {
@@ -220,7 +303,7 @@
       "import",
       "subprocess"
      ],
-     "sha256": "2364d4cd04d717fe97c36b071d398f926e7f31ab7cafc52e8dcf6b4c5a1e969e",
+     "sha256": "b82751f5f6ec3bf683c4fe967afe87bded3fa79d817053d98697aa7dc5570228",
      "state": "HASHED"
     },
     {
@@ -229,6 +312,22 @@
       "subprocess"
      ],
      "sha256": "63d556ac2308628b17d7e795eb670b90212024d3f43c824187e43d1a57dafa9b",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/trial_workload.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "603ecdd13a7ee63befe463e2a06ad096eada8a726b71bc7a329c285fd1769631",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/workgraph.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "8dcda78ebf0c16980e25b8b9cf767525050b94ca8428e8d3c786660804c5d76f",
      "state": "HASHED"
     },
     {
@@ -242,8 +341,8 @@
    ],
    "driver": "tools/future/autonomy_run.py",
    "evidence_class": "STATIC_ONLY",
-   "freeze_time": "2026-08-30T15:48:45Z",
-   "frontier_digest": "2e24cb2dad80ad583b893c6f75dd2a69be6c726fc13970fc29a9d698638b8b22",
+   "freeze_time": "2026-08-30T18:59:16Z",
+   "frontier_digest": "d7159f3cb6904bf059bac5bbfac616e9c2cdbc1439ed0223b7613b90d4bdb135",
    "frontier_items": [
     {
      "id": "FT.ACTIVE_BYTES.hbm-rank",
@@ -399,6 +498,11 @@
      "id": "FT.MODEL_CAPABILITY.hard-gates",
      "kind": "OPEN_QUESTION",
      "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.MODEL_CAPABILITY.hard-gates.drive-tools",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
     },
     {
      "id": "FT.MODEL_CAPABILITY.tournament-refuse",
@@ -572,20 +676,20 @@
     "dirty": true,
     "dirty_sample": [
      " M receipts/future/ABI_VERDICT_HARNESS.json",
-     " M receipts/future/ACCELERATOR_WORKUNITS.json",
-     " M receipts/future/ADAPTIVE_VERIFICATION.json",
-     " M receipts/future/ANE_PREBOARD.json",
      " M receipts/future/AUTONOMY_MISSION_STATE.json",
      " M receipts/future/AUTONOMY_RUN.json",
-     " M receipts/future/AUTONOMY_SCARS.json",
-     " M receipts/future/AUTONOMY_TRIALS.json",
      " M receipts/future/CANDIDATE_STAGED_PLAN.json",
      " M receipts/future/CLAUDE_GLOBAL_FRONTIER.json",
-     " M receipts/future/CLAUDE_SIDECAR_ABI_ADJUDICATION.json",
-     " M receipts/future/CODEX_INGEST_STATE.json"
+     " M receipts/future/CODEX_INGEST_STATE.json",
+     " M receipts/future/CODEX_WORKUNIT_SPECIES.json",
+     " M receipts/future/CUDA_LOWBIT_HYPOTHESES.json",
+     " M receipts/future/DEBUGGER_LAB.json",
+     " M receipts/future/DECODE_CIVILIZATION.json",
+     " M receipts/future/DERIVED_FRESHNESS.json",
+     " M receipts/future/DETACHED_EXECUTION.json"
     ],
     "dirty_scope": "tools/future + receipts/future",
-    "head": "b06d725701ec506644ab109f4ea8be802a527f51",
+    "head": "e16e1779f466de611ec7341a0f05fd358b8ee30b",
     "why": null
    },
    "gpu_authority": false,
@@ -595,9 +699,9 @@
     "source": "tools.future.resident_identity.load",
     "value": "qwen3.8-27b-sealed-3.14"
    },
-   "n_code_files": 19,
-   "n_future_py_on_disk": 188,
-   "n_hashed": 19,
+   "n_code_files": 30,
+   "n_future_py_on_disk": 194,
+   "n_hashed": 30,
    "resident_identity": {
     "gpu_authority": false,
     "model_family": "qwen3.8",
@@ -621,19 +725,30 @@
     "import": [
      "tools/future/__init__.py",
      "tools/future/_common.py",
+     "tools/future/adaptive_verification.py",
      "tools/future/autonomy_trial.py",
      "tools/future/candidate_planner.py",
+     "tools/future/contamination.py",
      "tools/future/expert_bank_school.py",
+     "tools/future/external_specimen_seal.py",
+     "tools/future/flash_nx_audit.py",
      "tools/future/flash_schools.py",
      "tools/future/frontiers.py",
      "tools/future/hardware_doctor.py",
+     "tools/future/meta_funnel.py",
      "tools/future/mutation_surface.py",
      "tools/future/negative_index.py",
      "tools/future/ngram_school.py",
+     "tools/future/odyssey2_law_store.py",
+     "tools/future/odyssey3_adversary.py",
+     "tools/future/odyssey_launch.py",
      "tools/future/orchestration.py",
+     "tools/future/phase_listeners.py",
      "tools/future/repro_science.py",
      "tools/future/router_science.py",
      "tools/future/specimen_verify.py",
+     "tools/future/trial_workload.py",
+     "tools/future/workgraph.py",
      "tools/future/workunit_species.py"
     ],
     "subprocess": [
@@ -647,19 +762,19 @@
     {
      "path": "receipts/future/CLAUDE_GLOBAL_FRONTIER.json",
      "role": "driver_startup_read",
-     "sha256": "ea81be0b12d94f960efcc0fe2dda751baf50675945ca83d9994c9d48f9b50802",
+     "sha256": "007c06f53d283f83f77f49abc707956d33504861bd421131f841ace6f1b5b23c",
      "state": "HASHED"
     },
     {
      "path": "receipts/future/ORCHESTRATION_BINDINGS.json",
      "role": "driver_startup_read",
-     "sha256": "b462d97e936e80b7d067b5e9d1d77518881161b1d548e1dc405a0299d5505cfd",
+     "sha256": "90943afd3cc72e557f42e7abb18ff957de45824ba5c783fc5fff73fa01df3c11",
      "state": "HASHED"
     },
     {
      "path": "receipts/future/RESIDENT_IDENTITY.json",
      "role": "driver_startup_read",
-     "sha256": "98f3cad5bbbd5099a9e914f97ee9a191155aa053768dcf865f754ea3c9d6b3df",
+     "sha256": "3cf09fc93bd35ede1de29d5e658f2118de56277bb0d9f8b79b359596a789bd1d",
      "state": "HASHED"
     }
    ],
@@ -710,11 +825,19 @@
      "state": "HASHED"
     },
     {
+     "path": "tools/future/adaptive_verification.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "6db3478ce56548080923b0a000d37a9eb506459accf3d3b1e9849880eab1b246",
+     "state": "HASHED"
+    },
+    {
      "path": "tools/future/autonomy_run.py",
      "routes": [
       "driver"
      ],
-     "sha256": "f8a14b99132bcff20889251a704d165f4f7c15664876fd651a08b2724c48bda8",
+     "sha256": "2412fe52d888b452f6aa4b6b7ec435e905cd07910abf72a9eaf1ef23a203e0c3",
      "state": "HASHED"
     },
     {
@@ -734,11 +857,35 @@
      "state": "HASHED"
     },
     {
+     "path": "tools/future/contamination.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "058798e160c2690d5d24a6c057d1c248e799d3d48ecbb402b0d0381e6431f972",
+     "state": "HASHED"
+    },
+    {
      "path": "tools/future/expert_bank_school.py",
      "routes": [
       "import"
      ],
      "sha256": "a8291a5da366c30367730f6358b3f286cc775014cf9960e71f8ef303e6c08cdf",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/external_specimen_seal.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "8d020ce056aeacc8204f328abf5332a84b26ecacf9673298a58318366bd0d20d",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/flash_nx_audit.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "4a2c00f4c5e5fcbfa8882134b4bf487270e8cc3302d5c1653b143ab9ecf8b6f8",
      "state": "HASHED"
     },
     {
@@ -754,7 +901,7 @@
      "routes": [
       "import"
      ],
-     "sha256": "b6ef3453976ba4869c9558e470da6662a5676f0a77953d1152fa0fff5400e27a",
+     "sha256": "1a15a87cdd7e35a59f4afa508b77104c180b063739606f56c37ced827bd5873d",
      "state": "HASHED"
     },
     {
@@ -771,6 +918,14 @@
       "subprocess"
      ],
      "sha256": "ab8a798df267066fa71716c85141fd1cae15333ae0870a4b10a5bdd74120736a",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/meta_funnel.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "6f96e4591b491a8fd5d4daff5b3d1dc8f2a9e5cf7859aed4a0760f020f652c09",
      "state": "HASHED"
     },
     {
@@ -798,11 +953,43 @@
      "state": "HASHED"
     },
     {
+     "path": "tools/future/odyssey2_law_store.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "052b051dcd0a817f0dae70b6546c39fb93bc5789b10a2ce8c419ad4062bdd8c2",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/odyssey3_adversary.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "b8984765a73213a918b763ca0836b50bed924745bceae47c481dc5ed5a669227",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/odyssey_launch.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "66b924cbf9d70b571ce863d36ee2b085ad76ed601def9b6a77c44691b6df1f95",
+     "state": "HASHED"
+    },
+    {
      "path": "tools/future/orchestration.py",
      "routes": [
       "import"
      ],
-     "sha256": "accf3b74a66d8d1016425209c3c316e08d77dfb216e17971161b9f7692993251",
+     "sha256": "2499660e110d90a88c67a647c8794550e42bd2ca05aad7695936f2a40122c552",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/phase_listeners.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "4fff69c6d6e4ca0e5420be5c0ac8a00d8567de861f4947df6a90e5d489df9f69",
      "state": "HASHED"
     },
     {
@@ -827,7 +1014,7 @@
       "import",
       "subprocess"
      ],
-     "sha256": "2364d4cd04d717fe97c36b071d398f926e7f31ab7cafc52e8dcf6b4c5a1e969e",
+     "sha256": "b82751f5f6ec3bf683c4fe967afe87bded3fa79d817053d98697aa7dc5570228",
      "state": "HASHED"
     },
     {
@@ -836,6 +1023,22 @@
       "subprocess"
      ],
      "sha256": "63d556ac2308628b17d7e795eb670b90212024d3f43c824187e43d1a57dafa9b",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/trial_workload.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "603ecdd13a7ee63befe463e2a06ad096eada8a726b71bc7a329c285fd1769631",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/workgraph.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "8dcda78ebf0c16980e25b8b9cf767525050b94ca8428e8d3c786660804c5d76f",
      "state": "HASHED"
     },
     {
@@ -849,8 +1052,8 @@
    ],
    "driver": "tools/future/autonomy_run.py",
    "evidence_class": "STATIC_ONLY",
-   "freeze_time": "2026-08-30T15:48:45Z",
-   "frontier_digest": "2e24cb2dad80ad583b893c6f75dd2a69be6c726fc13970fc29a9d698638b8b22",
+   "freeze_time": "2026-08-30T18:59:16Z",
+   "frontier_digest": "d7159f3cb6904bf059bac5bbfac616e9c2cdbc1439ed0223b7613b90d4bdb135",
    "frontier_items": [
     {
      "id": "FT.ACTIVE_BYTES.hbm-rank",
@@ -1006,6 +1209,11 @@
      "id": "FT.MODEL_CAPABILITY.hard-gates",
      "kind": "OPEN_QUESTION",
      "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.MODEL_CAPABILITY.hard-gates.drive-tools",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
     },
     {
      "id": "FT.MODEL_CAPABILITY.tournament-refuse",
@@ -1179,20 +1387,20 @@
     "dirty": true,
     "dirty_sample": [
      " M receipts/future/ABI_VERDICT_HARNESS.json",
-     " M receipts/future/ACCELERATOR_WORKUNITS.json",
-     " M receipts/future/ADAPTIVE_VERIFICATION.json",
-     " M receipts/future/ANE_PREBOARD.json",
      " M receipts/future/AUTONOMY_MISSION_STATE.json",
      " M receipts/future/AUTONOMY_RUN.json",
-     " M receipts/future/AUTONOMY_SCARS.json",
-     " M receipts/future/AUTONOMY_TRIALS.json",
      " M receipts/future/CANDIDATE_STAGED_PLAN.json",
      " M receipts/future/CLAUDE_GLOBAL_FRONTIER.json",
-     " M receipts/future/CLAUDE_SIDECAR_ABI_ADJUDICATION.json",
-     " M receipts/future/CODEX_INGEST_STATE.json"
+     " M receipts/future/CODEX_INGEST_STATE.json",
+     " M receipts/future/CODEX_WORKUNIT_SPECIES.json",
+     " M receipts/future/CUDA_LOWBIT_HYPOTHESES.json",
+     " M receipts/future/DEBUGGER_LAB.json",
+     " M receipts/future/DECODE_CIVILIZATION.json",
+     " M receipts/future/DERIVED_FRESHNESS.json",
+     " M receipts/future/DETACHED_EXECUTION.json"
     ],
     "dirty_scope": "tools/future + receipts/future",
-    "head": "b06d725701ec506644ab109f4ea8be802a527f51",
+    "head": "e16e1779f466de611ec7341a0f05fd358b8ee30b",
     "why": null
    },
    "gpu_authority": false,
@@ -1202,9 +1410,9 @@
     "source": "tools.future.resident_identity.load",
     "value": "qwen3.8-27b-sealed-3.14"
    },
-   "n_code_files": 19,
-   "n_future_py_on_disk": 188,
-   "n_hashed": 19,
+   "n_code_files": 30,
+   "n_future_py_on_disk": 194,
+   "n_hashed": 30,
    "resident_identity": {
     "gpu_authority": false,
     "model_family": "qwen3.8",
@@ -1228,19 +1436,30 @@
     "import": [
      "tools/future/__init__.py",
      "tools/future/_common.py",
+     "tools/future/adaptive_verification.py",
      "tools/future/autonomy_trial.py",
      "tools/future/candidate_planner.py",
+     "tools/future/contamination.py",
      "tools/future/expert_bank_school.py",
+     "tools/future/external_specimen_seal.py",
+     "tools/future/flash_nx_audit.py",
      "tools/future/flash_schools.py",
      "tools/future/frontiers.py",
      "tools/future/hardware_doctor.py",
+     "tools/future/meta_funnel.py",
      "tools/future/mutation_surface.py",
      "tools/future/negative_index.py",
      "tools/future/ngram_school.py",
+     "tools/future/odyssey2_law_store.py",
+     "tools/future/odyssey3_adversary.py",
+     "tools/future/odyssey_launch.py",
      "tools/future/orchestration.py",
+     "tools/future/phase_listeners.py",
      "tools/future/repro_science.py",
      "tools/future/router_science.py",
      "tools/future/specimen_verify.py",
+     "tools/future/trial_workload.py",
+     "tools/future/workgraph.py",
      "tools/future/workunit_species.py"
     ],
     "subprocess": [
@@ -1254,19 +1473,19 @@
     {
      "path": "receipts/future/CLAUDE_GLOBAL_FRONTIER.json",
      "role": "driver_startup_read",
-     "sha256": "ea81be0b12d94f960efcc0fe2dda751baf50675945ca83d9994c9d48f9b50802",
+     "sha256": "007c06f53d283f83f77f49abc707956d33504861bd421131f841ace6f1b5b23c",
      "state": "HASHED"
     },
     {
      "path": "receipts/future/ORCHESTRATION_BINDINGS.json",
      "role": "driver_startup_read",
-     "sha256": "b462d97e936e80b7d067b5e9d1d77518881161b1d548e1dc405a0299d5505cfd",
+     "sha256": "90943afd3cc72e557f42e7abb18ff957de45824ba5c783fc5fff73fa01df3c11",
      "state": "HASHED"
     },
     {
      "path": "receipts/future/RESIDENT_IDENTITY.json",
      "role": "driver_startup_read",
-     "sha256": "98f3cad5bbbd5099a9e914f97ee9a191155aa053768dcf865f754ea3c9d6b3df",
+     "sha256": "3cf09fc93bd35ede1de29d5e658f2118de56277bb0d9f8b79b359596a789bd1d",
      "state": "HASHED"
     }
    ],
@@ -1317,11 +1536,19 @@
      "state": "HASHED"
     },
     {
+     "path": "tools/future/adaptive_verification.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "6db3478ce56548080923b0a000d37a9eb506459accf3d3b1e9849880eab1b246",
+     "state": "HASHED"
+    },
+    {
      "path": "tools/future/autonomy_run.py",
      "routes": [
       "driver"
      ],
-     "sha256": "f8a14b99132bcff20889251a704d165f4f7c15664876fd651a08b2724c48bda8",
+     "sha256": "2412fe52d888b452f6aa4b6b7ec435e905cd07910abf72a9eaf1ef23a203e0c3",
      "state": "HASHED"
     },
     {
@@ -1341,11 +1568,35 @@
      "state": "HASHED"
     },
     {
+     "path": "tools/future/contamination.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "058798e160c2690d5d24a6c057d1c248e799d3d48ecbb402b0d0381e6431f972",
+     "state": "HASHED"
+    },
+    {
      "path": "tools/future/expert_bank_school.py",
      "routes": [
       "import"
      ],
      "sha256": "a8291a5da366c30367730f6358b3f286cc775014cf9960e71f8ef303e6c08cdf",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/external_specimen_seal.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "8d020ce056aeacc8204f328abf5332a84b26ecacf9673298a58318366bd0d20d",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/flash_nx_audit.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "4a2c00f4c5e5fcbfa8882134b4bf487270e8cc3302d5c1653b143ab9ecf8b6f8",
      "state": "HASHED"
     },
     {
@@ -1361,7 +1612,7 @@
      "routes": [
       "import"
      ],
-     "sha256": "b6ef3453976ba4869c9558e470da6662a5676f0a77953d1152fa0fff5400e27a",
+     "sha256": "1a15a87cdd7e35a59f4afa508b77104c180b063739606f56c37ced827bd5873d",
      "state": "HASHED"
     },
     {
@@ -1378,6 +1629,14 @@
       "subprocess"
      ],
      "sha256": "ab8a798df267066fa71716c85141fd1cae15333ae0870a4b10a5bdd74120736a",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/meta_funnel.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "6f96e4591b491a8fd5d4daff5b3d1dc8f2a9e5cf7859aed4a0760f020f652c09",
      "state": "HASHED"
     },
     {
@@ -1405,11 +1664,43 @@
      "state": "HASHED"
     },
     {
+     "path": "tools/future/odyssey2_law_store.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "052b051dcd0a817f0dae70b6546c39fb93bc5789b10a2ce8c419ad4062bdd8c2",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/odyssey3_adversary.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "b8984765a73213a918b763ca0836b50bed924745bceae47c481dc5ed5a669227",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/odyssey_launch.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "66b924cbf9d70b571ce863d36ee2b085ad76ed601def9b6a77c44691b6df1f95",
+     "state": "HASHED"
+    },
+    {
      "path": "tools/future/orchestration.py",
      "routes": [
       "import"
      ],
-     "sha256": "accf3b74a66d8d1016425209c3c316e08d77dfb216e17971161b9f7692993251",
+     "sha256": "2499660e110d90a88c67a647c8794550e42bd2ca05aad7695936f2a40122c552",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/phase_listeners.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "4fff69c6d6e4ca0e5420be5c0ac8a00d8567de861f4947df6a90e5d489df9f69",
      "state": "HASHED"
     },
     {
@@ -1434,7 +1725,7 @@
       "import",
       "subprocess"
      ],
-     "sha256": "2364d4cd04d717fe97c36b071d398f926e7f31ab7cafc52e8dcf6b4c5a1e969e",
+     "sha256": "b82751f5f6ec3bf683c4fe967afe87bded3fa79d817053d98697aa7dc5570228",
      "state": "HASHED"
     },
     {
@@ -1443,6 +1734,22 @@
       "subprocess"
      ],
      "sha256": "63d556ac2308628b17d7e795eb670b90212024d3f43c824187e43d1a57dafa9b",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/trial_workload.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "603ecdd13a7ee63befe463e2a06ad096eada8a726b71bc7a329c285fd1769631",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/workgraph.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "8dcda78ebf0c16980e25b8b9cf767525050b94ca8428e8d3c786660804c5d76f",
      "state": "HASHED"
     },
     {
@@ -1456,8 +1763,8 @@
    ],
    "driver": "tools/future/autonomy_run.py",
    "evidence_class": "STATIC_ONLY",
-   "freeze_time": "2026-08-30T15:48:45Z",
-   "frontier_digest": "2e24cb2dad80ad583b893c6f75dd2a69be6c726fc13970fc29a9d698638b8b22",
+   "freeze_time": "2026-08-30T18:59:16Z",
+   "frontier_digest": "d7159f3cb6904bf059bac5bbfac616e9c2cdbc1439ed0223b7613b90d4bdb135",
    "frontier_items": [
     {
      "id": "FT.ACTIVE_BYTES.hbm-rank",
@@ -1613,6 +1920,11 @@
      "id": "FT.MODEL_CAPABILITY.hard-gates",
      "kind": "OPEN_QUESTION",
      "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.MODEL_CAPABILITY.hard-gates.drive-tools",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
     },
     {
      "id": "FT.MODEL_CAPABILITY.tournament-refuse",
@@ -1786,20 +2098,20 @@
     "dirty": true,
     "dirty_sample": [
      " M receipts/future/ABI_VERDICT_HARNESS.json",
-     " M receipts/future/ACCELERATOR_WORKUNITS.json",
-     " M receipts/future/ADAPTIVE_VERIFICATION.json",
-     " M receipts/future/ANE_PREBOARD.json",
      " M receipts/future/AUTONOMY_MISSION_STATE.json",
      " M receipts/future/AUTONOMY_RUN.json",
-     " M receipts/future/AUTONOMY_SCARS.json",
-     " M receipts/future/AUTONOMY_TRIALS.json",
      " M receipts/future/CANDIDATE_STAGED_PLAN.json",
      " M receipts/future/CLAUDE_GLOBAL_FRONTIER.json",
-     " M receipts/future/CLAUDE_SIDECAR_ABI_ADJUDICATION.json",
-     " M receipts/future/CODEX_INGEST_STATE.json"
+     " M receipts/future/CODEX_INGEST_STATE.json",
+     " M receipts/future/CODEX_WORKUNIT_SPECIES.json",
+     " M receipts/future/CUDA_LOWBIT_HYPOTHESES.json",
+     " M receipts/future/DEBUGGER_LAB.json",
+     " M receipts/future/DECODE_CIVILIZATION.json",
+     " M receipts/future/DERIVED_FRESHNESS.json",
+     " M receipts/future/DETACHED_EXECUTION.json"
     ],
     "dirty_scope": "tools/future + receipts/future",
-    "head": "b06d725701ec506644ab109f4ea8be802a527f51",
+    "head": "e16e1779f466de611ec7341a0f05fd358b8ee30b",
     "why": null
    },
    "gpu_authority": false,
@@ -1809,9 +2121,9 @@
     "source": "tools.future.resident_identity.load",
     "value": "qwen3.8-27b-sealed-3.14"
    },
-   "n_code_files": 19,
-   "n_future_py_on_disk": 188,
-   "n_hashed": 19,
+   "n_code_files": 30,
+   "n_future_py_on_disk": 194,
+   "n_hashed": 30,
    "resident_identity": {
     "gpu_authority": false,
     "model_family": "qwen3.8",
@@ -1835,19 +2147,30 @@
     "import": [
      "tools/future/__init__.py",
      "tools/future/_common.py",
+     "tools/future/adaptive_verification.py",
      "tools/future/autonomy_trial.py",
      "tools/future/candidate_planner.py",
+     "tools/future/contamination.py",
      "tools/future/expert_bank_school.py",
+     "tools/future/external_specimen_seal.py",
+     "tools/future/flash_nx_audit.py",
      "tools/future/flash_schools.py",
      "tools/future/frontiers.py",
      "tools/future/hardware_doctor.py",
+     "tools/future/meta_funnel.py",
      "tools/future/mutation_surface.py",
      "tools/future/negative_index.py",
      "tools/future/ngram_school.py",
+     "tools/future/odyssey2_law_store.py",
+     "tools/future/odyssey3_adversary.py",
+     "tools/future/odyssey_launch.py",
      "tools/future/orchestration.py",
+     "tools/future/phase_listeners.py",
      "tools/future/repro_science.py",
      "tools/future/router_science.py",
      "tools/future/specimen_verify.py",
+     "tools/future/trial_workload.py",
+     "tools/future/workgraph.py",
      "tools/future/workunit_species.py"
     ],
     "subprocess": [
@@ -1861,19 +2184,19 @@
     {
      "path": "receipts/future/CLAUDE_GLOBAL_FRONTIER.json",
      "role": "driver_startup_read",
-     "sha256": "ea81be0b12d94f960efcc0fe2dda751baf50675945ca83d9994c9d48f9b50802",
+     "sha256": "007c06f53d283f83f77f49abc707956d33504861bd421131f841ace6f1b5b23c",
      "state": "HASHED"
     },
     {
      "path": "receipts/future/ORCHESTRATION_BINDINGS.json",
      "role": "driver_startup_read",
-     "sha256": "b462d97e936e80b7d067b5e9d1d77518881161b1d548e1dc405a0299d5505cfd",
+     "sha256": "90943afd3cc72e557f42e7abb18ff957de45824ba5c783fc5fff73fa01df3c11",
      "state": "HASHED"
     },
     {
      "path": "receipts/future/RESIDENT_IDENTITY.json",
      "role": "driver_startup_read",
-     "sha256": "98f3cad5bbbd5099a9e914f97ee9a191155aa053768dcf865f754ea3c9d6b3df",
+     "sha256": "3cf09fc93bd35ede1de29d5e658f2118de56277bb0d9f8b79b359596a789bd1d",
      "state": "HASHED"
     }
    ],
@@ -1924,11 +2247,19 @@
      "state": "HASHED"
     },
     {
+     "path": "tools/future/adaptive_verification.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "6db3478ce56548080923b0a000d37a9eb506459accf3d3b1e9849880eab1b246",
+     "state": "HASHED"
+    },
+    {
      "path": "tools/future/autonomy_run.py",
      "routes": [
       "driver"
      ],
-     "sha256": "f8a14b99132bcff20889251a704d165f4f7c15664876fd651a08b2724c48bda8",
+     "sha256": "2412fe52d888b452f6aa4b6b7ec435e905cd07910abf72a9eaf1ef23a203e0c3",
      "state": "HASHED"
     },
     {
@@ -1948,11 +2279,35 @@
      "state": "HASHED"
     },
     {
+     "path": "tools/future/contamination.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "058798e160c2690d5d24a6c057d1c248e799d3d48ecbb402b0d0381e6431f972",
+     "state": "HASHED"
+    },
+    {
      "path": "tools/future/expert_bank_school.py",
      "routes": [
       "import"
      ],
      "sha256": "a8291a5da366c30367730f6358b3f286cc775014cf9960e71f8ef303e6c08cdf",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/external_specimen_seal.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "8d020ce056aeacc8204f328abf5332a84b26ecacf9673298a58318366bd0d20d",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/flash_nx_audit.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "4a2c00f4c5e5fcbfa8882134b4bf487270e8cc3302d5c1653b143ab9ecf8b6f8",
      "state": "HASHED"
     },
     {
@@ -1968,7 +2323,7 @@
      "routes": [
       "import"
      ],
-     "sha256": "b6ef3453976ba4869c9558e470da6662a5676f0a77953d1152fa0fff5400e27a",
+     "sha256": "1a15a87cdd7e35a59f4afa508b77104c180b063739606f56c37ced827bd5873d",
      "state": "HASHED"
     },
     {
@@ -1985,6 +2340,14 @@
       "subprocess"
      ],
      "sha256": "ab8a798df267066fa71716c85141fd1cae15333ae0870a4b10a5bdd74120736a",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/meta_funnel.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "6f96e4591b491a8fd5d4daff5b3d1dc8f2a9e5cf7859aed4a0760f020f652c09",
      "state": "HASHED"
     },
     {
@@ -2012,11 +2375,43 @@
      "state": "HASHED"
     },
     {
+     "path": "tools/future/odyssey2_law_store.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "052b051dcd0a817f0dae70b6546c39fb93bc5789b10a2ce8c419ad4062bdd8c2",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/odyssey3_adversary.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "b8984765a73213a918b763ca0836b50bed924745bceae47c481dc5ed5a669227",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/odyssey_launch.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "66b924cbf9d70b571ce863d36ee2b085ad76ed601def9b6a77c44691b6df1f95",
+     "state": "HASHED"
+    },
+    {
      "path": "tools/future/orchestration.py",
      "routes": [
       "import"
      ],
-     "sha256": "accf3b74a66d8d1016425209c3c316e08d77dfb216e17971161b9f7692993251",
+     "sha256": "2499660e110d90a88c67a647c8794550e42bd2ca05aad7695936f2a40122c552",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/phase_listeners.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "4fff69c6d6e4ca0e5420be5c0ac8a00d8567de861f4947df6a90e5d489df9f69",
      "state": "HASHED"
     },
     {
@@ -2041,7 +2436,7 @@
       "import",
       "subprocess"
      ],
-     "sha256": "2364d4cd04d717fe97c36b071d398f926e7f31ab7cafc52e8dcf6b4c5a1e969e",
+     "sha256": "b82751f5f6ec3bf683c4fe967afe87bded3fa79d817053d98697aa7dc5570228",
      "state": "HASHED"
     },
     {
@@ -2050,6 +2445,22 @@
       "subprocess"
      ],
      "sha256": "63d556ac2308628b17d7e795eb670b90212024d3f43c824187e43d1a57dafa9b",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/trial_workload.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "603ecdd13a7ee63befe463e2a06ad096eada8a726b71bc7a329c285fd1769631",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/workgraph.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "8dcda78ebf0c16980e25b8b9cf767525050b94ca8428e8d3c786660804c5d76f",
      "state": "HASHED"
     },
     {
@@ -2063,8 +2474,8 @@
    ],
    "driver": "tools/future/autonomy_run.py",
    "evidence_class": "STATIC_ONLY",
-   "freeze_time": "2026-08-30T15:48:45Z",
-   "frontier_digest": "2e24cb2dad80ad583b893c6f75dd2a69be6c726fc13970fc29a9d698638b8b22",
+   "freeze_time": "2026-08-30T18:59:16Z",
+   "frontier_digest": "d7159f3cb6904bf059bac5bbfac616e9c2cdbc1439ed0223b7613b90d4bdb135",
    "frontier_items": [
     {
      "id": "FT.ACTIVE_BYTES.hbm-rank",
@@ -2220,6 +2631,11 @@
      "id": "FT.MODEL_CAPABILITY.hard-gates",
      "kind": "OPEN_QUESTION",
      "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.MODEL_CAPABILITY.hard-gates.drive-tools",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
     },
     {
      "id": "FT.MODEL_CAPABILITY.tournament-refuse",
@@ -2393,20 +2809,20 @@
     "dirty": true,
     "dirty_sample": [
      " M receipts/future/ABI_VERDICT_HARNESS.json",
-     " M receipts/future/ACCELERATOR_WORKUNITS.json",
-     " M receipts/future/ADAPTIVE_VERIFICATION.json",
-     " M receipts/future/ANE_PREBOARD.json",
      " M receipts/future/AUTONOMY_MISSION_STATE.json",
      " M receipts/future/AUTONOMY_RUN.json",
-     " M receipts/future/AUTONOMY_SCARS.json",
-     " M receipts/future/AUTONOMY_TRIALS.json",
      " M receipts/future/CANDIDATE_STAGED_PLAN.json",
      " M receipts/future/CLAUDE_GLOBAL_FRONTIER.json",
-     " M receipts/future/CLAUDE_SIDECAR_ABI_ADJUDICATION.json",
-     " M receipts/future/CODEX_INGEST_STATE.json"
+     " M receipts/future/CODEX_INGEST_STATE.json",
+     " M receipts/future/CODEX_WORKUNIT_SPECIES.json",
+     " M receipts/future/CUDA_LOWBIT_HYPOTHESES.json",
+     " M receipts/future/DEBUGGER_LAB.json",
+     " M receipts/future/DECODE_CIVILIZATION.json",
+     " M receipts/future/DERIVED_FRESHNESS.json",
+     " M receipts/future/DETACHED_EXECUTION.json"
     ],
     "dirty_scope": "tools/future + receipts/future",
-    "head": "b06d725701ec506644ab109f4ea8be802a527f51",
+    "head": "e16e1779f466de611ec7341a0f05fd358b8ee30b",
     "why": null
    },
    "gpu_authority": false,
@@ -2416,9 +2832,9 @@
     "source": "tools.future.resident_identity.load",
     "value": "qwen3.8-27b-sealed-3.14"
    },
-   "n_code_files": 19,
-   "n_future_py_on_disk": 188,
-   "n_hashed": 19,
+   "n_code_files": 30,
+   "n_future_py_on_disk": 194,
+   "n_hashed": 30,
    "resident_identity": {
     "gpu_authority": false,
     "model_family": "qwen3.8",
@@ -2442,19 +2858,30 @@
     "import": [
      "tools/future/__init__.py",
      "tools/future/_common.py",
+     "tools/future/adaptive_verification.py",
      "tools/future/autonomy_trial.py",
      "tools/future/candidate_planner.py",
+     "tools/future/contamination.py",
      "tools/future/expert_bank_school.py",
+     "tools/future/external_specimen_seal.py",
+     "tools/future/flash_nx_audit.py",
      "tools/future/flash_schools.py",
      "tools/future/frontiers.py",
      "tools/future/hardware_doctor.py",
+     "tools/future/meta_funnel.py",
      "tools/future/mutation_surface.py",
      "tools/future/negative_index.py",
      "tools/future/ngram_school.py",
+     "tools/future/odyssey2_law_store.py",
+     "tools/future/odyssey3_adversary.py",
+     "tools/future/odyssey_launch.py",
      "tools/future/orchestration.py",
+     "tools/future/phase_listeners.py",
      "tools/future/repro_science.py",
      "tools/future/router_science.py",
      "tools/future/specimen_verify.py",
+     "tools/future/trial_workload.py",
+     "tools/future/workgraph.py",
      "tools/future/workunit_species.py"
     ],
     "subprocess": [
@@ -2468,19 +2895,19 @@
     {
      "path": "receipts/future/CLAUDE_GLOBAL_FRONTIER.json",
      "role": "driver_startup_read",
-     "sha256": "ea81be0b12d94f960efcc0fe2dda751baf50675945ca83d9994c9d48f9b50802",
+     "sha256": "007c06f53d283f83f77f49abc707956d33504861bd421131f841ace6f1b5b23c",
      "state": "HASHED"
     },
     {
      "path": "receipts/future/ORCHESTRATION_BINDINGS.json",
      "role": "driver_startup_read",
-     "sha256": "b462d97e936e80b7d067b5e9d1d77518881161b1d548e1dc405a0299d5505cfd",
+     "sha256": "90943afd3cc72e557f42e7abb18ff957de45824ba5c783fc5fff73fa01df3c11",
      "state": "HASHED"
     },
     {
      "path": "receipts/future/RESIDENT_IDENTITY.json",
      "role": "driver_startup_read",
-     "sha256": "98f3cad5bbbd5099a9e914f97ee9a191155aa053768dcf865f754ea3c9d6b3df",
+     "sha256": "3cf09fc93bd35ede1de29d5e658f2118de56277bb0d9f8b79b359596a789bd1d",
      "state": "HASHED"
     }
    ],
@@ -2503,23 +2930,23 @@
   "dirty": true,
   "dirty_sample": [
    " M receipts/future/ABI_VERDICT_HARNESS.json",
-   " M receipts/future/ACCELERATOR_WORKUNITS.json",
-   " M receipts/future/ADAPTIVE_VERIFICATION.json",
-   " M receipts/future/ANE_PREBOARD.json",
    " M receipts/future/AUTONOMY_MISSION_STATE.json",
    " M receipts/future/AUTONOMY_RUN.json",
-   " M receipts/future/AUTONOMY_SCARS.json",
-   " M receipts/future/AUTONOMY_TRIALS.json",
    " M receipts/future/CANDIDATE_STAGED_PLAN.json",
    " M receipts/future/CLAUDE_GLOBAL_FRONTIER.json",
-   " M receipts/future/CLAUDE_SIDECAR_ABI_ADJUDICATION.json",
-   " M receipts/future/CODEX_INGEST_STATE.json"
+   " M receipts/future/CODEX_INGEST_STATE.json",
+   " M receipts/future/CODEX_WORKUNIT_SPECIES.json",
+   " M receipts/future/CUDA_LOWBIT_HYPOTHESES.json",
+   " M receipts/future/DEBUGGER_LAB.json",
+   " M receipts/future/DECODE_CIVILIZATION.json",
+   " M receipts/future/DERIVED_FRESHNESS.json",
+   " M receipts/future/DETACHED_EXECUTION.json"
   ],
   "dirty_scope": "tools/future + receipts/future",
-  "head": "b06d725701ec506644ab109f4ea8be802a527f51",
+  "head": "e16e1779f466de611ec7341a0f05fd358b8ee30b",
   "why": null
  },
- "glob_refused": "tools/future/*.py is 188 files; the driver graph is 19. A glob would false-invalidate on unrelated edits.",
+ "glob_refused": "tools/future/*.py is 194 files; the driver graph is 30. A glob would false-invalidate on unrelated edits.",
  "gpu_authority": false,
  "graph_rule": "AST import graph from autonomy_run.py plus literal tools/future/<name>.py strings in that driver's subprocess argv lists; not tools/future/*.py",
  "model_identity": {
@@ -2527,9 +2954,9 @@
   "source": "tools.future.resident_identity.load",
   "value": "qwen3.8-27b-sealed-3.14"
  },
- "n_code_files": 19,
- "n_future_py_on_disk": 188,
- "n_hashed": 19,
+ "n_code_files": 30,
+ "n_future_py_on_disk": 194,
+ "n_hashed": 30,
  "negative_findings": [
   "resident_model_process is UNAVAILABLE: this sidecar does not start a resident model process",
   "startup receipt bytes are sealed at freeze; the loop itself rewrites some of them, so receipt drift is reported separately and is not by itself INVALIDATED_BY_SUBSTRATE_MUTATION",
@@ -2571,24 +2998,24 @@
   "why": "this sidecar does not start a resident model process; autonomy_run records resident_model_cognition UNAVAILABLE as a measurement of that fact, not as a quoted blocker"
  },
  "schema": "hawking.future.trial_freeze.v1",
- "seal_sha256": "255556c762c5d1715511b845320022920063f584f29b7d427d20bf7d51b8e610",
+ "seal_sha256": "bdc0c729826e3669defa62f0ddf1cd5b9b346c2d8f57235f984a798217a14da3",
  "startup_receipts": [
   {
    "path": "receipts/future/CLAUDE_GLOBAL_FRONTIER.json",
    "role": "driver_startup_read",
-   "sha256": "ea81be0b12d94f960efcc0fe2dda751baf50675945ca83d9994c9d48f9b50802",
+   "sha256": "007c06f53d283f83f77f49abc707956d33504861bd421131f841ace6f1b5b23c",
    "state": "HASHED"
   },
   {
    "path": "receipts/future/ORCHESTRATION_BINDINGS.json",
    "role": "driver_startup_read",
-   "sha256": "b462d97e936e80b7d067b5e9d1d77518881161b1d548e1dc405a0299d5505cfd",
+   "sha256": "90943afd3cc72e557f42e7abb18ff957de45824ba5c783fc5fff73fa01df3c11",
    "state": "HASHED"
   },
   {
    "path": "receipts/future/RESIDENT_IDENTITY.json",
    "role": "driver_startup_read",
-   "sha256": "98f3cad5bbbd5099a9e914f97ee9a191155aa053768dcf865f754ea3c9d6b3df",
+   "sha256": "3cf09fc93bd35ede1de29d5e658f2118de56277bb0d9f8b79b359596a789bd1d",
    "state": "HASHED"
   }
  ],

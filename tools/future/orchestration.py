@@ -143,7 +143,7 @@ BINDINGS: dict[str, tuple[str, str]] = {
     "hcli_self_profile.py":       ("FT.LATENCY.cpu-turnaround", "HCLI_SELF_OPTIMIZATION"),
     "flash_organ_workgraphs.py":  ("FT.MODEL_REPRESENTATION.meta-gates-3-9", "ORGAN_WORKGRAPH"),
     "external_specimen_seal.py":  ("FT.MODEL_CAPABILITY.hard-gates", "EXTERNAL_SPECIMEN"),
-    "odyssey_tool_driver.py":     ("FT.MODEL_CAPABILITY.hard-gates", "ODYSSEY_TOOL_DRIVER"),
+    "odyssey_tool_driver.py":     ("FT.MODEL_CAPABILITY.hard-gates.drive-tools", "ODYSSEY_TOOL_DRIVER"),
     "nr_nx_path.py":              ("FT.GPU_KERNELS.flash-nx", "NR_NX_PATH_MAP"),
     "trial_workload.py":          ("FT.VERIFICATION.repro", "TRIAL_WORKLOAD"),
     "sprint_profile.py":          ("FT.EXPERIMENT_TURNAROUND.refresh", "WALL_ATTRIBUTION"),

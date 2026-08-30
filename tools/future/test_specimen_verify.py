@@ -242,3 +242,47 @@ def test_the_local_specimen_verifies_by_exactly_the_same_rule():
     assert digested, "no HuggingFace .metadata sidecars; it cannot be verified this way"
     meta = sv._read_metadata(sv.specimen_dir(name), digested[0].name)
     assert meta["digest_kind"] in {"sha256", "git_blob_sha1"}
+
+
+def test_build_is_bounded_and_names_what_it_did_not_reach(tmp_path, monkeypatch):
+    """A whole-lake pass is not a bounded unit.
+
+    ModelLake went from 7 specimens to 43 during one autonomy trial as the
+    download workers promoted a batch. build() iterating all of them at 900s
+    each became an eleven-hour call that ran 37 minutes past the end of a 1-hour
+    trial with no way to stop it, and the trial was discarded.
+    """
+    _local_receipts(sv, tmp_path, monkeypatch)
+    specs = tmp_path / "specimens"
+    for i in range(4):
+        d = specs / f"s{i}@x"
+        (d / ".cache" / "huggingface" / "download").mkdir(parents=True)
+        (d / "w.bin").write_bytes(b"x" * 64)
+    monkeypatch.setattr(sv, "SPECIMENS", specs)
+
+    out = sv.build(max_total_seconds=0.0)  # budget exhausted before the first
+    doc = json.loads(out.read_text())
+    skipped = set(doc["not_reached_this_pass"])
+    assert skipped, "a bounded pass must name what it skipped"
+    # list_specimens() also yields the registered non-lake specimens, so assert
+    # the fixtures are covered rather than pinning a count to this environment.
+    assert {f"s{i}@x" for i in range(4)} <= skipped
+    assert doc["counts"]["specimens_examined"] == 0
+    assert "budget_rule" in doc
+
+
+def test_a_bounded_pass_carries_prior_verdicts_forward(tmp_path, monkeypatch):
+    """Dropping an earlier verdict would make a bounded run look like a regression."""
+    _local_receipts(sv, tmp_path, monkeypatch)
+    specs = tmp_path / "specimens"
+    (specs / "kept@1").mkdir(parents=True)
+    monkeypatch.setattr(sv, "SPECIMENS", specs)
+    sv.record({"specimen": "kept@1", "status": "WHOLE_TREE_VERIFIED", "n_files": 1,
+               "verified": 1, "mismatched": 0, "no_remote_digest": 0,
+               "bytes_hashed": 10, "whole_tree_verified": True})
+
+    doc = json.loads(sv.build(max_total_seconds=0.0).read_text())
+    kept = [r for r in doc["results"] if r["specimen"] == "kept@1"]
+    assert len(kept) == 1, "a prior verdict was dropped by a bounded pass"
+    assert kept[0]["whole_tree_verified"] is True
+    assert "kept@1" in doc["not_reached_this_pass"]

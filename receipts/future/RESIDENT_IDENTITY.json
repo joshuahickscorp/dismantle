@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T06:42:01Z",
+  "recorded_at": "2026-08-30T12:58:30Z",
   "recorded_by": "tools/future/resident_identity.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -689,8 +689,8 @@
    "claim_class": "STATIC_ONLY",
    "counts": {
     "by_classification": {
-     "BLOCKED": 4,
-     "HIGH_VALUE_INTEGRATION": 4,
+     "BLOCKED": 3,
+     "HIGH_VALUE_INTEGRATION": 5,
      "MISSING": 8,
      "WEAK": 4
     },
@@ -797,9 +797,9 @@
      "title": "Six ABI findings await a Codex verdict with no prepared response"
     },
     {
-     "classification": "BLOCKED",
+     "classification": "HIGH_VALUE_INTEGRATION",
      "id": "F019",
-     "title": "Flash meta is blocked at teacher capture, and capture is blocked on GPU"
+     "title": "Flash meta stalls at teacher capture, and the stated GPU blocker is false"
     },
     {
      "classification": "HIGH_VALUE_INTEGRATION",
@@ -3314,7 +3314,7 @@
   }
  },
  "schema": "hawking.future.resident_identity.v1",
- "seal_sha256": "7f55bae5915ff4c37bb4adfcbd8a7520f5ced3885589e69f9a7007822779476d",
+ "seal_sha256": "a7566c61d2d1478abdffcb104e023b851131cf8efe10033d1c93710d89a68c3d",
  "version": 1,
  "work_unit": {
   "assigned_runtime": null,

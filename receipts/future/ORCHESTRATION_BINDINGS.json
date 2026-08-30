@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T11:12:00Z",
+  "recorded_at": "2026-08-30T14:24:11Z",
   "recorded_by": "tools/future/orchestration.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -20,6 +20,12 @@
    "module": "ane_preboard.py",
    "receipt": "ANE_PREBOARD.json",
    "species": "ANE_PREBOARD"
+  },
+  {
+   "frontier_item": "FT.HCLI_SELF.emit-workunits",
+   "module": "autonomy_scars.py",
+   "receipt": "AUTONOMY_SCARS.json",
+   "species": "AUTONOMY_DEFECT"
   },
   {
    "frontier_item": "FT.CHILD_RESIDENT.launch",
@@ -238,6 +244,12 @@
    "species": "GRAVITY_SEARCH"
   },
   {
+   "frontier_item": "FT.MODEL_EXECUTION.complete-token",
+   "module": "metal_reachability.py",
+   "receipt": "METAL_REACHABILITY.json",
+   "species": "HOST_CAPABILITY"
+  },
+  {
    "frontier_item": "FT.GPU_KERNELS.flash-nx",
    "module": "moe_physical_school.py",
    "receipt": "MOE_PHYSICAL_SCHOOL.json",
@@ -439,16 +451,17 @@
  "broken": [],
  "claim_boundary": "Static sidecar artifact. No hardware measurement.",
  "counts": {
-  "bound": 71,
+  "bound": 73,
   "broken": 0,
   "distinct_frontier_items": 40,
-  "distinct_species": 40,
+  "distinct_species": 42,
   "infrastructure_excluded": 5,
   "unbound_production": 1
  },
  "frontier_view_keys": [
   "ABI_VERDICT_HARNESS.json",
   "ANE_PREBOARD.json",
+  "AUTONOMY_SCARS.json",
   "AUTONOMY_TRIALS.json",
   "CANDIDATE_STAGED_PLAN.json",
   "CLAUDE_GLOBAL_FRONTIER.json",
@@ -486,6 +499,7 @@
   "HWIR_V1.json",
   "LPC_BASELINES.json",
   "LPC_DATASET.json",
+  "METAL_REACHABILITY.json",
   "META_DOWNSTREAM_READY.json",
   "META_EXPERIMENT_FUNNEL.json",
   "MOE_PHYSICAL_SCHOOL.json",
@@ -550,7 +564,7 @@
   "workunit": "tools.future.orchestration.emit_workunit(module)"
  },
  "schema": "hawking.future.orchestration.v1",
- "seal_sha256": "0fed27ce54323fb428e4b9b9ed56f1a6da6d78e6c10c699c035075c13b9de5a3",
+ "seal_sha256": "8b36100ce42ddfd884fccc6aa785638682f64b10e6a48fa4d7f0ed90e6a105ea",
  "unbound_production": [
   "autonomy_run.py"
  ],

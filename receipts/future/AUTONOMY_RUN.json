@@ -1,27 +1,39 @@
 {
  "available_lanes": [
-  "CPU_ANALYSIS",
-  "CPU_VERIFY",
-  "CPU_REPRESENTATION",
-  "DISK_IO"
+  "ANALYSIS",
+  "CPU",
+  "ODYSSEY",
+  "REPRESENTATION",
+  "SIMULATION",
+  "TOOLING"
  ],
  "bench": {
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T06:42:38Z",
+  "recorded_at": "2026-08-30T14:24:11Z",
   "recorded_by": "tools/future/autonomy_run.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
  },
  "blocked_lanes": [
-  "GPU_PROTECTED",
-  "GPU_DIAGNOSTIC",
-  "ANE"
+  "ANE",
+  "FPGA",
+  "GPU_PROTECTED"
  ],
  "claim_boundary": "Static sidecar artifact. No hardware measurement.",
  "gaps_closed": [
   "nothing produced a trial timeline; now the loop does"
+ ],
+ "invalidated_runs": [
+  {
+   "kept": "the specimen verifications it completed are real recomputations and stand on their own: Qwen3-30B-A3B, Qwen3-VL-30B, Mistral-24B, Kimi-VL-A3B and Falcon-H1-7B, all whole-tree verified",
+   "killed": "2026-08-30T10:17:34-04:00",
+   "started": "2026-08-30T08:57:13-04:00",
+   "trial": "1h",
+   "verdict": "INVALIDATED_BY_SUBSTRATE_MUTATION",
+   "why": "specimen_verify.py was edited while the run was in flight, and the loop invokes it as a subprocess, so later units ran different code from earlier ones. odyssey_launch.py was edited too. No timeline was written."
+  }
  ],
  "invariants": [
   "every workunit_launched is followed by a real orchestration.invoke()",
@@ -29,20 +41,7 @@
   "no code path emits idle / awaiting_instructions / all_tasks_complete",
   "negative science is consulted before admission"
  ],
- "last_run": {
-  "blocked_lanes_parked": [
-   "GPU_PROTECTED",
-   "GPU_DIAGNOSTIC",
-   "ANE"
-  ],
-  "elapsed_s": 634,
-  "launched": 73,
-  "receipts_ingested": 68,
-  "refused_on_evidence": 0,
-  "resident_model_cognition": "UNAVAILABLE",
-  "scars_consulted": 71,
-  "timeline": "receipts/future/AUTONOMY_TIMELINE_15m.json"
- },
+ "last_run": null,
  "loop_is": "HCLI orchestration",
  "negative_findings": [
   "model cognition is not exercised: no resident process can start here",
@@ -123,7 +122,7 @@
   "git_lock_doctor.py"
  ],
  "schema": "hawking.future.autonomy_run.v1",
- "seal_sha256": "58e34d6175b748e64692b4019e07c2dd8c115744961a4068ad4403ad697c0684",
+ "seal_sha256": "e16fcc2c93517259529f89b4cc7c98e6bcdade9b22c7248c895dfdf0d330f5fc",
  "version": 1,
- "why_unavailable": "no Metal-capable GPU and no Metal compiler on this host, per Codex's own blocker list; a resident model process cannot start"
+ "why_unavailable": "measured on this host, not quoted from a blocker list: Apple M3 Ultra GPU is present; the offline Metal shader compiler is absent (developer dir is /Library/Developer/CommandLineTools, full Xcode not installed), so no .metallib can be built ahead of time here; runtime shader compilation from source is AVAILABLE (exercised with the crate the runtime uses), so the missing offline compiler is a cold-start cost, not a wall"
 }

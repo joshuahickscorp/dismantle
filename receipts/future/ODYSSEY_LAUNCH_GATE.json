@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T06:41:15Z",
+  "recorded_at": "2026-08-30T14:16:51Z",
   "recorded_by": "tools/future/odyssey_launch.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -56,7 +56,7 @@
      "path_taken": "worktree",
      "resolved": "/Users/scammermike/Downloads/hawking/receipts/future/evidence/HCLI_MODELLAKE_FLASH_CENSUS.json"
     },
-    "n_ready": 0,
+    "n_ready": 2,
     "n_roles": 5,
     "not_proposed": [
      {
@@ -68,6 +68,11 @@
       "reason": "present in ModelLake, not a first-wave curriculum role",
       "repo": "Qwen/Qwen3-VL-30B-A3B-Instruct",
       "revision": "9c4b90e1e4ba969fd3b5378b57d966d725f1b86c"
+     },
+     {
+      "reason": "present in ModelLake, not a first-wave curriculum role",
+      "repo": "deepseek-ai/DeepSeek-V4-Flash",
+      "revision": "60d8d70770c6"
      },
      {
       "reason": "present in ModelLake, not a first-wave curriculum role",
@@ -165,6 +170,7 @@
       "architecture_family": "falcon_h1",
       "identity_source": "modellake_manifest+odyssey_i_O001",
       "modellake": {
+       "bytes_hashed": 15182220635,
        "in_specimens_listing": true,
        "manifest_path": "/Volumes/corpdrive/hawking-modellake/manifests/tiiuae--Falcon-H1-7B-Instruct@41e72f27effb.json",
        "n_files": 13,
@@ -175,7 +181,8 @@
        "revision": "41e72f27effbab80cd45b6e884688452253a3686",
        "source": "modellake_manifest",
        "specimen_path": "/Volumes/corpdrive/hawking-modellake/specimens/tiiuae--Falcon-H1-7B-Instruct@41e72f27effb",
-       "whole_tree_verified": false
+       "verification_source": "tools/future/specimen_verify.py (offline recomputation)",
+       "whole_tree_verified": true
       },
       "prior_odyssey_i": {
        "oxx": "O001",
@@ -193,8 +200,8 @@
        "weights_canonical": "/Users/scammermike/.cache/huggingface/hub/models--tiiuae--Falcon-H1-7B-Instruct/snapshots/41e72f27effbab80cd45b6e884688452253a3686"
       },
       "purpose": "small dense alternate architecture for transfer",
-      "ready": false,
-      "ready_reason": "ModelLake manifest is partial (n_sha256_verified=5 n_files=13); not a sealed specimen",
+      "ready": true,
+      "ready_reason": "RECURRENT_PATIENT: retired from the historical first wave, prior seal intact, and whole-tree verified again now",
       "repo": "tiiuae/Falcon-H1-7B-Instruct",
       "revision": "41e72f27effbab80cd45b6e884688452253a3686",
       "role": "small_dense_alternate_architecture_transfer"
@@ -226,15 +233,16 @@
        "weights_canonical": "/Users/scammermike/.cache/huggingface/hub/models--mistralai--Mistral-Small-3.1-24B-Instruct-2503/snapshots/68faf511d618ef198fef186659617cfd2eb8e33a"
       },
       "purpose": "mid-size dense for compiler",
-      "ready": false,
-      "ready_reason": "identity known but specimen is not in the ModelLake specimens listing",
+      "ready": true,
+      "ready_reason": "RECURRENT_PATIENT: retired from the historical first wave, prior seal intact, and whole-tree verified again now",
       "repo": "mistralai/Mistral-Small-3.1-24B-Instruct-2503",
-      "revision": "68faf511d618ef198fef186659617cfd2eb8e33a",
+      "revision": "68faf511d618",
       "role": "mid_size_dense_compiler"
      },
      {
       "architecture_family": "dense_hybrid_transformer",
       "identity_source": "odyssey2_law_store.SCHOOLS.Qwen27",
+      "local_specimen": null,
       "modellake": {},
       "purpose": "Qwen27 for mature physical",
       "ready": false,
@@ -301,11 +309,9 @@
    "evidence": [
     {
      "curriculum_n_roles": 5,
-     "n_ready": 0,
+     "n_ready": 2,
      "unready": [
       "very_small_dense_procedural_speed",
-      "small_dense_alternate_architecture_transfer",
-      "mid_size_dense_compiler",
       "qwen27_mature_physical",
       "flash_heterogeneous_frontier"
      ]
@@ -330,7 +336,7 @@
     },
     "resident_operational": false
    },
-   "reason": "curriculum proposes 5 roles; ready=0. unready=['very_small_dense_procedural_speed', 'small_dense_alternate_architecture_transfer', 'mid_size_dense_compiler', 'qwen27_mature_physical', 'flash_heterogeneous_frontier']. A proposal is not a ready specimen set."
+   "reason": "curriculum proposes 5 roles; ready=2. unready=['very_small_dense_procedural_speed', 'qwen27_mature_physical', 'flash_heterogeneous_frontier']. A proposal is not a ready specimen set."
   },
   {
    "evidence": [
@@ -372,6 +378,16 @@
   {
    "evidence": [
     {
+     "absent_inputs": [],
+     "declared_inputs": [
+      {
+       "declared_in": "tools/odyssey/doctor_tournament.py",
+       "name": "PARENT",
+       "path": "/Volumes/corpdrive/personalmodel/correspondent/qwen3.8-27b-abliterated-bf16",
+       "present": true
+      }
+     ],
+     "missing_inputs": [],
      "n_prior_seals": 5,
      "owned": [
       {
@@ -417,7 +433,14 @@
       "receipts/odyssey-i/O004_DOCTOR_SEAL.json",
       "receipts/odyssey-i/O005_DOCTOR_SEAL.json",
       "receipts/odyssey-i/O006_DOCTOR_SEAL.json"
-     ]
+     ],
+     "resident_schedulable": {
+      "frontier": null,
+      "refill": false,
+      "schedule": false,
+      "why": "no orchestration binding drives this tool"
+     },
+     "stale_declared_paths": []
     }
    ],
    "id": "doctor_callable",
@@ -435,16 +458,33 @@
     },
     "notes": {
      "cli_or_prior_seals": "true",
+     "declared_inputs_missing": "none",
      "integration": "tools/future/workgraph.py \u2014 WorkGraph runtime that admits, schedules and verifies the units this gate emits + tools/future/resident_api.py \u2014 discover/invoke surface HCLI uses instead of a human CLI",
-     "resident_workgraph_runtime": "missing"
+     "stale_declared_paths": "none"
     },
     "resident_operational": false
    },
-   "reason": "Doctor is recovered as a human-callable tool and/or prior Odyssey I seals (n_prior=5) but is not resident-operational: schedule/frontier/refill are false. A CLI a human can run is not enough."
+   "reason": "Doctor is recovered (n_prior=5) but is not resident-operational. Unmet: schedule, frontier, refill. A CLI a human can run is not enough."
   },
   {
    "evidence": [
     {
+     "absent_inputs": [],
+     "declared_inputs": [
+      {
+       "declared_in": "tools/odyssey/decoding_gravity.py",
+       "name": "PARENT",
+       "path": "/Volumes/corpdrive/personalmodel/correspondent/qwen3.8-27b-abliterated-bf16",
+       "present": true
+      },
+      {
+       "declared_in": "tools/odyssey/state_gravity.py",
+       "name": "PARENT",
+       "path": "/Volumes/corpdrive/personalmodel/correspondent/qwen3.8-27b-abliterated-bf16",
+       "present": true
+      }
+     ],
+     "missing_inputs": [],
      "n_prior_seals": 108,
      "owned": [
       {
@@ -575,7 +615,14 @@
       "receipts/odyssey-i/O006_GRAVITY_q4-g32.json",
       "receipts/odyssey-i/O006_GRAVITY_q4-g64-experts.json",
       "receipts/odyssey-i/O006_GRAVITY_q4-g64.json"
-     ]
+     ],
+     "resident_schedulable": {
+      "frontier": null,
+      "refill": false,
+      "schedule": false,
+      "why": "no orchestration binding drives this tool"
+     },
+     "stale_declared_paths": []
     }
    ],
    "id": "gravity_callable",
@@ -593,12 +640,13 @@
     },
     "notes": {
      "cli_or_prior_seals": "true",
+     "declared_inputs_missing": "none",
      "integration": "tools/future/workgraph.py \u2014 WorkGraph runtime that admits, schedules and verifies the units this gate emits + tools/future/resident_api.py \u2014 discover/invoke surface HCLI uses instead of a human CLI",
-     "resident_workgraph_runtime": "missing"
+     "stale_declared_paths": "none"
     },
     "resident_operational": false
    },
-   "reason": "Gravity is recovered as a human-callable tool and/or prior Odyssey I seals (n_prior=108) but is not resident-operational: schedule/frontier/refill are false. A CLI a human can run is not enough."
+   "reason": "Gravity is recovered (n_prior=108) but is not resident-operational. Unmet: schedule, frontier, refill. A CLI a human can run is not enough."
   },
   {
    "evidence": [
@@ -1027,7 +1075,7 @@
   {
    "evidence": [
     {
-     "n_json": 75,
+     "n_json": 79,
      "receipts_future": "/Users/scammermike/Downloads/hawking/receipts/future"
     }
    ],
@@ -1050,7 +1098,7 @@
     },
     "resident_operational": true
    },
-   "reason": "receipts/future is present with n_json=75 (derived); write_receipt seals STATIC_ONLY and raises on hardware fields"
+   "reason": "receipts/future is present with n_json=79 (derived); write_receipt seals STATIC_ONLY and raises on hardware fields"
   }
  ],
  "criterion_ids": [
@@ -1803,7 +1851,7 @@
   "workspace": "repo-root"
  },
  "gpu_authority": false,
- "head": "890cac9a63f0a597b112c1755b63d34631979e78",
+ "head": "d6eb11c79f401d2d45080cfb3d4032296851250a",
  "integration_points": {
   "autonomy_trial": "tools/future/autonomy_trial.py \u2014 Odyssey I resident-orchestration trial pass receipt",
   "dirty_measure": "tools/future/dirty_measure.py \u2014 dirty-class measurement that cannot launder into PROTECTED_ABSOLUTE",
@@ -1880,7 +1928,7 @@
     "path_taken": "worktree",
     "resolved": "/Users/scammermike/Downloads/hawking/receipts/future/evidence/HCLI_MODELLAKE_FLASH_CENSUS.json"
    },
-   "n_ready": 0,
+   "n_ready": 2,
    "n_roles": 5,
    "not_proposed": [
     {
@@ -1892,6 +1940,11 @@
      "reason": "present in ModelLake, not a first-wave curriculum role",
      "repo": "Qwen/Qwen3-VL-30B-A3B-Instruct",
      "revision": "9c4b90e1e4ba969fd3b5378b57d966d725f1b86c"
+    },
+    {
+     "reason": "present in ModelLake, not a first-wave curriculum role",
+     "repo": "deepseek-ai/DeepSeek-V4-Flash",
+     "revision": "60d8d70770c6"
     },
     {
      "reason": "present in ModelLake, not a first-wave curriculum role",
@@ -1989,6 +2042,7 @@
      "architecture_family": "falcon_h1",
      "identity_source": "modellake_manifest+odyssey_i_O001",
      "modellake": {
+      "bytes_hashed": 15182220635,
       "in_specimens_listing": true,
       "manifest_path": "/Volumes/corpdrive/hawking-modellake/manifests/tiiuae--Falcon-H1-7B-Instruct@41e72f27effb.json",
       "n_files": 13,
@@ -1999,7 +2053,8 @@
       "revision": "41e72f27effbab80cd45b6e884688452253a3686",
       "source": "modellake_manifest",
       "specimen_path": "/Volumes/corpdrive/hawking-modellake/specimens/tiiuae--Falcon-H1-7B-Instruct@41e72f27effb",
-      "whole_tree_verified": false
+      "verification_source": "tools/future/specimen_verify.py (offline recomputation)",
+      "whole_tree_verified": true
      },
      "prior_odyssey_i": {
       "oxx": "O001",
@@ -2017,8 +2072,8 @@
       "weights_canonical": "/Users/scammermike/.cache/huggingface/hub/models--tiiuae--Falcon-H1-7B-Instruct/snapshots/41e72f27effbab80cd45b6e884688452253a3686"
      },
      "purpose": "small dense alternate architecture for transfer",
-     "ready": false,
-     "ready_reason": "ModelLake manifest is partial (n_sha256_verified=5 n_files=13); not a sealed specimen",
+     "ready": true,
+     "ready_reason": "RECURRENT_PATIENT: retired from the historical first wave, prior seal intact, and whole-tree verified again now",
      "repo": "tiiuae/Falcon-H1-7B-Instruct",
      "revision": "41e72f27effbab80cd45b6e884688452253a3686",
      "role": "small_dense_alternate_architecture_transfer"
@@ -2050,15 +2105,16 @@
       "weights_canonical": "/Users/scammermike/.cache/huggingface/hub/models--mistralai--Mistral-Small-3.1-24B-Instruct-2503/snapshots/68faf511d618ef198fef186659617cfd2eb8e33a"
      },
      "purpose": "mid-size dense for compiler",
-     "ready": false,
-     "ready_reason": "identity known but specimen is not in the ModelLake specimens listing",
+     "ready": true,
+     "ready_reason": "RECURRENT_PATIENT: retired from the historical first wave, prior seal intact, and whole-tree verified again now",
      "repo": "mistralai/Mistral-Small-3.1-24B-Instruct-2503",
-     "revision": "68faf511d618ef198fef186659617cfd2eb8e33a",
+     "revision": "68faf511d618",
      "role": "mid_size_dense_compiler"
     },
     {
      "architecture_family": "dense_hybrid_transformer",
      "identity_source": "odyssey2_law_store.SCHOOLS.Qwen27",
+     "local_specimen": null,
      "modellake": {},
      "purpose": "Qwen27 for mature physical",
      "ready": false,
@@ -2987,7 +3043,7 @@
   "physical blocker sleep.protected-bench-lock: lock file exists but no holder could be proven without flock (lsof status='OK' reason=None). fail closed: present=false. flock would be a seizure",
   "physical blocker sleep.flash-nx-scaffold: FLASH_NX_COMPLETENESS_AUDIT seven_all_met=False nx_status='SEALED_METADATA_ONLY_NOT_FOR_PROMOTION' nr_v2.status='COMPLETE_HETEROGENEOUS_CANDIDATE_NOT_FOR_PROMOTION'. SCAFFOLD_ONLY / metadata seals are not a callable NX path.",
   "physical blocker sleep.teacher-capture: teacher capture executed=0/12 workunits; target_row_counts=[256]. Unrun capture is not a synthetic corpus.",
-  "curriculum unready roles: ['very_small_dense_procedural_speed', 'small_dense_alternate_architecture_transfer', 'mid_size_dense_compiler', 'qwen27_mature_physical', 'flash_heterogeneous_frontier']",
+  "curriculum unready roles: ['very_small_dense_procedural_speed', 'qwen27_mature_physical', 'flash_heterogeneous_frontier']",
   "this-wave siblings are not imported; local interfaces are the integration points autonomy_trial, dirty_measure, evidence_dag, frontiers, protected_window, resident_api, resident_identity, sandbox, succession, super_resident, wakeup, workgraph"
  ],
  "no_era_vi": true,
@@ -3230,7 +3286,7 @@
   "sleeping_are_not_results": true
  },
  "schema": "hawking.future.odyssey_launch.v1",
- "seal_sha256": "5fa1b0f67c0f145ffa1bbc043e551f4258eaa92e95d4c77dd0ff5d679c9d5b05",
+ "seal_sha256": "904ab2221240195e4aae062a3f3dd2104f3b83b9ac6233283d5430aa82676dd1",
  "sleeping_workunits": [
   {
    "assigned_backend": null,
@@ -3414,7 +3470,7 @@
    "path_taken": "worktree",
    "resolved": "/Users/scammermike/Downloads/hawking/receipts/future/evidence/HCLI_MODELLAKE_FLASH_CENSUS.json"
   },
-  "n_ready": 0,
+  "n_ready": 2,
   "n_roles": 5,
   "not_proposed": [
    {
@@ -3426,6 +3482,11 @@
     "reason": "present in ModelLake, not a first-wave curriculum role",
     "repo": "Qwen/Qwen3-VL-30B-A3B-Instruct",
     "revision": "9c4b90e1e4ba969fd3b5378b57d966d725f1b86c"
+   },
+   {
+    "reason": "present in ModelLake, not a first-wave curriculum role",
+    "repo": "deepseek-ai/DeepSeek-V4-Flash",
+    "revision": "60d8d70770c6"
    },
    {
     "reason": "present in ModelLake, not a first-wave curriculum role",
@@ -3523,6 +3584,7 @@
     "architecture_family": "falcon_h1",
     "identity_source": "modellake_manifest+odyssey_i_O001",
     "modellake": {
+     "bytes_hashed": 15182220635,
      "in_specimens_listing": true,
      "manifest_path": "/Volumes/corpdrive/hawking-modellake/manifests/tiiuae--Falcon-H1-7B-Instruct@41e72f27effb.json",
      "n_files": 13,
@@ -3533,7 +3595,8 @@
      "revision": "41e72f27effbab80cd45b6e884688452253a3686",
      "source": "modellake_manifest",
      "specimen_path": "/Volumes/corpdrive/hawking-modellake/specimens/tiiuae--Falcon-H1-7B-Instruct@41e72f27effb",
-     "whole_tree_verified": false
+     "verification_source": "tools/future/specimen_verify.py (offline recomputation)",
+     "whole_tree_verified": true
     },
     "prior_odyssey_i": {
      "oxx": "O001",
@@ -3551,8 +3614,8 @@
      "weights_canonical": "/Users/scammermike/.cache/huggingface/hub/models--tiiuae--Falcon-H1-7B-Instruct/snapshots/41e72f27effbab80cd45b6e884688452253a3686"
     },
     "purpose": "small dense alternate architecture for transfer",
-    "ready": false,
-    "ready_reason": "ModelLake manifest is partial (n_sha256_verified=5 n_files=13); not a sealed specimen",
+    "ready": true,
+    "ready_reason": "RECURRENT_PATIENT: retired from the historical first wave, prior seal intact, and whole-tree verified again now",
     "repo": "tiiuae/Falcon-H1-7B-Instruct",
     "revision": "41e72f27effbab80cd45b6e884688452253a3686",
     "role": "small_dense_alternate_architecture_transfer"
@@ -3584,15 +3647,16 @@
      "weights_canonical": "/Users/scammermike/.cache/huggingface/hub/models--mistralai--Mistral-Small-3.1-24B-Instruct-2503/snapshots/68faf511d618ef198fef186659617cfd2eb8e33a"
     },
     "purpose": "mid-size dense for compiler",
-    "ready": false,
-    "ready_reason": "identity known but specimen is not in the ModelLake specimens listing",
+    "ready": true,
+    "ready_reason": "RECURRENT_PATIENT: retired from the historical first wave, prior seal intact, and whole-tree verified again now",
     "repo": "mistralai/Mistral-Small-3.1-24B-Instruct-2503",
-    "revision": "68faf511d618ef198fef186659617cfd2eb8e33a",
+    "revision": "68faf511d618",
     "role": "mid_size_dense_compiler"
    },
    {
     "architecture_family": "dense_hybrid_transformer",
     "identity_source": "odyssey2_law_store.SCHOOLS.Qwen27",
+    "local_specimen": null,
     "modellake": {},
     "purpose": "Qwen27 for mature physical",
     "ready": false,

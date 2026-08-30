@@ -8,7 +8,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T06:38:49Z",
+  "recorded_at": "2026-08-30T12:51:12Z",
   "recorded_by": "tools/future/autonomy_trial.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -26,8 +26,8 @@
  "fpga": "FPGA belongs to Accelerator / Physical Compiler / Fusion. This harness does not build an FPGA backend.",
  "frontier_census": {
   "by_classification": {
-   "BLOCKED": 4,
-   "HIGH_VALUE_INTEGRATION": 4,
+   "BLOCKED": 3,
+   "HIGH_VALUE_INTEGRATION": 5,
    "MISSING": 8,
    "WEAK": 4
   },
@@ -142,7 +142,7 @@
    "path_taken": "disk:receipts/future/QUALIFICATION_PIPELINE.json"
   }
  ],
- "head": "890cac9a63f0a597b112c1755b63d34631979e78",
+ "head": "d73317bba1a0f87fe935ea8586e77daf41a56a11",
  "integration_points": {
   "codex_behaviors.py": "Codex blocker list is data in CODEX_REPORTED_BLOCKERS plus pinned evidence.",
   "debugger.py": "Process recovery is judged from process_failed/completed + process_recovered.",
@@ -372,7 +372,7 @@
   ]
  },
  "schema": "hawking.future.autonomy_trial.v1",
- "seal_sha256": "3612e9d9244521420407db6ac5511763a6bc9c299e6d3520bb24ab5a373b96be",
+ "seal_sha256": "cee06cc569d8befa6b8ab6131a2706edf535b0f9a25fff9e42a5c3006bb37aee",
  "thirteen_acceptance_conditions": [
   "recover_state",
   "identify_live_frontier",

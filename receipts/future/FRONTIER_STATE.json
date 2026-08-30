@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T06:39:32Z",
+  "recorded_at": "2026-08-30T12:59:22Z",
   "recorded_by": "tools/future/frontiers.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -961,46 +961,12 @@
    "status": "ACTIVE"
   },
   "MODEL_CAPABILITY": {
-   "blocked": [
-    {
-     "bench_state": "UNKNOWN",
-     "detail": "All nine real Flash meta families stall at gate 2 real_teacher_fit. Codex attempted the capture and recorded BLOCKED_NO_METAL_GPU with 0 of 256 required rows, failing at dense_source_bf16_prefix_initialization. Two independent paths agree on the same binding constraint.",
-     "evidence": [
-      "receipts/future/CLAUDE_GLOBAL_FRONTIER.json",
-      "tools/future/meta_ready.py prepares gates 3-9 to start on arrival"
-     ],
-     "evidence_class": "STATIC_ONLY",
-     "expected_information_gain": 3,
-     "frontier": "MODEL_CAPABILITY",
-     "hypothesis_family": "campaign_f019",
-     "id": "FT.MODEL_CAPABILITY.campaign.F019",
-     "kind": "BLOCKED",
-     "redundancy_key": "MODEL_CAPABILITY|campaign_f019|",
-     "required_lanes": [
-      "GPU_PROTECTED"
-     ],
-     "source_f": "F019",
-     "species": "independent_reproduction",
-     "title": "Flash meta is blocked at teacher capture, and capture is blocked on GPU",
-     "verifier": "future.global_frontier.F019",
-     "wake_all_of": [
-      "Metal-capable GPU present on the execution host (MetalContext)",
-      "xcrun locates the Metal compiler (not CommandLineTools-missing)",
-      "existing HCLI protected lease with a proven holder pid (read, never flock)",
-      "qualification pipeline classifies the machine QUIESCENT (assessed, never coerced)"
-     ],
-     "wake_never": [
-      "synthetic result",
-      "lease seizure / flock",
-      "quiesce standing workers"
-     ]
-    }
-   ],
+   "blocked": [],
    "counts": {
-    "blocked": 1,
+    "blocked": 0,
     "next_work": 1,
-    "open_questions": 1,
-    "runnable_questions": 1
+    "open_questions": 2,
+    "runnable_questions": 2
    },
    "name": "MODEL_CAPABILITY",
    "next_work": [
@@ -1029,6 +995,29 @@
     }
    ],
    "open_questions": [
+    {
+     "bench_state": "UNKNOWN",
+     "detail": "All nine real Flash meta families stall at gate 2 real_teacher_fit. Codex attempted the capture and recorded BLOCKED_NO_METAL_GPU with 0 of 256 required rows, failing at dense_source_bf16_prefix_initialization -- and this sidecar's meta funnel independently placed the same nine families at the same gate, so the STALL is corroborated. The stated CAUSE is not. METAL_REACHABILITY.json shows the host GPU is an Apple M3 Ultra, that the exact metal crate the runtime uses returns that device from an ordinary process here, and that shaders compile from source. The blocker is the process context of that one run, which nothing has yet identified -- not the machine.",
+     "evidence": [
+      "receipts/future/CLAUDE_GLOBAL_FRONTIER.json",
+      "tools/future/meta_ready.py prepares gates 3-9 to start on arrival"
+     ],
+     "evidence_class": "STATIC_ONLY",
+     "expected_information_gain": 2,
+     "frontier": "MODEL_CAPABILITY",
+     "hypothesis_family": "campaign_f019",
+     "id": "FT.MODEL_CAPABILITY.campaign.F019",
+     "kind": "OPEN_QUESTION",
+     "redundancy_key": "MODEL_CAPABILITY|campaign_f019|",
+     "required_lanes": [
+      "CPU",
+      "ANALYSIS"
+     ],
+     "source_f": "F019",
+     "species": "independent_reproduction",
+     "title": "Flash meta stalls at teacher capture, and the stated GPU blocker is false",
+     "verifier": "future.global_frontier.F019"
+    },
     {
      "bench_state": "UNKNOWN",
      "detail": "Tournament hard gates cite capability_suite and resident_gate. Inventory which items are receipt-decidable vs GPU-bound.",
@@ -1147,7 +1136,7 @@
    "blocked": [
     {
      "bench_state": "UNKNOWN",
-     "detail": "FLASH_META_TEACHER_L4_CAPTURE_BOUNDARY status BLOCKED_NO_METAL_GPU at dense_source_bf16_prefix_initialization. Sleeps. No synthetic rows.",
+     "detail": "FLASH_META_TEACHER_L4_CAPTURE_BOUNDARY status BLOCKED_NO_METAL_GPU at dense_source_bf16_prefix_initialization. Sleeps. No synthetic rows. The STATUS is not the CAUSE: METAL_REACHABILITY.json shows this host's GPU is reachable from the same metal crate, so the wake condition is identifying that process's context, not acquiring hardware.",
      "evidence": [
       "receipts/headless/FLASH_META_TEACHER_L4_CAPTURE_BOUNDARY.json",
       "receipts/future/TEACHER_CORPUS_CONTRACT.json"
@@ -1532,39 +1521,6 @@
    "blocked": [
     {
      "bench_state": "UNKNOWN",
-     "detail": "All nine real Flash meta families stall at gate 2 real_teacher_fit. Codex attempted the capture and recorded BLOCKED_NO_METAL_GPU with 0 of 256 required rows, failing at dense_source_bf16_prefix_initialization. Two independent paths agree on the same binding constraint.",
-     "evidence": [
-      "receipts/future/CLAUDE_GLOBAL_FRONTIER.json",
-      "tools/future/meta_ready.py prepares gates 3-9 to start on arrival"
-     ],
-     "evidence_class": "STATIC_ONLY",
-     "expected_information_gain": 3,
-     "frontier": "STATE",
-     "hypothesis_family": "campaign_f019",
-     "id": "FT.STATE.campaign.F019",
-     "kind": "BLOCKED",
-     "redundancy_key": "STATE|campaign_f019|",
-     "required_lanes": [
-      "GPU_PROTECTED"
-     ],
-     "source_f": "F019",
-     "species": "independent_reproduction",
-     "title": "Flash meta is blocked at teacher capture, and capture is blocked on GPU",
-     "verifier": "future.global_frontier.F019",
-     "wake_all_of": [
-      "Metal-capable GPU present on the execution host (MetalContext)",
-      "xcrun locates the Metal compiler (not CommandLineTools-missing)",
-      "existing HCLI protected lease with a proven holder pid (read, never flock)",
-      "qualification pipeline classifies the machine QUIESCENT (assessed, never coerced)"
-     ],
-     "wake_never": [
-      "synthetic result",
-      "lease seizure / flock",
-      "quiesce standing workers"
-     ]
-    },
-    {
-     "bench_state": "UNKNOWN",
      "detail": "Newest stateful attention receipt proves two-position persistent KV slots; full 48-layer executor integration remains open. Sleeps.",
      "evidence": [
       "CODEX_ACCELERATOR_HANDOFF.json"
@@ -1596,10 +1552,10 @@
     }
    ],
    "counts": {
-    "blocked": 2,
+    "blocked": 1,
     "next_work": 1,
-    "open_questions": 0,
-    "runnable_questions": 0
+    "open_questions": 1,
+    "runnable_questions": 1
    },
    "name": "STATE",
    "next_work": [
@@ -1627,7 +1583,31 @@
      "verifier": "future.state.organ_coverage"
     }
    ],
-   "open_questions": [],
+   "open_questions": [
+    {
+     "bench_state": "UNKNOWN",
+     "detail": "All nine real Flash meta families stall at gate 2 real_teacher_fit. Codex attempted the capture and recorded BLOCKED_NO_METAL_GPU with 0 of 256 required rows, failing at dense_source_bf16_prefix_initialization -- and this sidecar's meta funnel independently placed the same nine families at the same gate, so the STALL is corroborated. The stated CAUSE is not. METAL_REACHABILITY.json shows the host GPU is an Apple M3 Ultra, that the exact metal crate the runtime uses returns that device from an ordinary process here, and that shaders compile from source. The blocker is the process context of that one run, which nothing has yet identified -- not the machine.",
+     "evidence": [
+      "receipts/future/CLAUDE_GLOBAL_FRONTIER.json",
+      "tools/future/meta_ready.py prepares gates 3-9 to start on arrival"
+     ],
+     "evidence_class": "STATIC_ONLY",
+     "expected_information_gain": 2,
+     "frontier": "STATE",
+     "hypothesis_family": "campaign_f019",
+     "id": "FT.STATE.campaign.F019",
+     "kind": "OPEN_QUESTION",
+     "redundancy_key": "STATE|campaign_f019|",
+     "required_lanes": [
+      "CPU",
+      "ANALYSIS"
+     ],
+     "source_f": "F019",
+     "species": "independent_reproduction",
+     "title": "Flash meta stalls at teacher capture, and the stated GPU blocker is false",
+     "verifier": "future.global_frontier.F019"
+    }
+   ],
    "status": "ACTIVE"
   },
   "TOOLS": {
@@ -1985,7 +1965,7 @@
   "stale_entries": []
  },
  "gpu_authority": false,
- "head": "890cac9a63f0a597b112c1755b63d34631979e78",
+ "head": "d6eb11c79f401d2d45080cfb3d4032296851250a",
  "idle_proof": {
   "active": [
    "ACTIVE_BYTES",
@@ -2054,7 +2034,6 @@
   "next_work_available_lanes": [
    "ANALYSIS",
    "CPU",
-   "FPGA",
    "ODYSSEY",
    "REPRESENTATION",
    "SIMULATION",
@@ -2086,7 +2065,7 @@
  },
  "n_frontiers": 22,
  "n_next_work": 31,
- "n_sleeping": 16,
+ "n_sleeping": 14,
  "negative_findings": [
   "MetalContext reports no Metal-capable GPU on this host (Codex handoff / contract)",
   "xcrun cannot locate the Metal compiler under CommandLineTools",
@@ -3968,7 +3947,7 @@
   "workunit_emitted": "HCLI WorkUnit via tools.future.workunit_species.emit_hcli_workunit; extras: frontier, required_lanes, wake_condition, redundancy_key, expected_information_gain, hypothesis_family"
  },
  "schema": "hawking.future.frontiers.v1",
- "seal_sha256": "ab661354b0591165e4aa0a049bcca3155e76abd919c83ccd2e12b8681f4aa65c",
+ "seal_sha256": "623299eaccbcfa9778322b3cf4c9de00fcd6e3abd7af3a4ca9cd299e0f898d5e",
  "sleeping": [
   {
    "assigned_backend": null,
@@ -4602,69 +4581,6 @@
    "attempts": 0,
    "backend_task_id": null,
    "bench_state": "UNKNOWN",
-   "blocked_reason": "Metal-capable GPU present on the execution host (MetalContext); xcrun locates the Metal compiler (not CommandLineTools-missing); existing HCLI protected lease with a proven holder pid (read, never flock); qualification pipeline classifies the machine QUIESCENT (assessed, never coerced)",
-   "candidate_status": "SLEEPING",
-   "claim_boundary": "WorkUnit is a proposal; receipt and protected capability gates remain authoritative",
-   "classification": "SLEEPING",
-   "content_hash": "7f83e22d31fa4913cbaacefca7df9e3fba2cb4eba616e4bc3b39b26ed03a5648",
-   "dependencies": [],
-   "description": "All nine real Flash meta families stall at gate 2 real_teacher_fit. Codex attempted the capture and recorded BLOCKED_NO_METAL_GPU with 0 of 256 required rows, failing at dense_source_bf16_prefix_initialization. Two independent paths agree on the same binding constraint.",
-   "effect_class": "READ_ONLY",
-   "evidence_class": "STATIC_ONLY",
-   "evidence_parents": [
-    "receipts/future/CLAUDE_GLOBAL_FRONTIER.json",
-    "tools/future/meta_ready.py prepares gates 3-9 to start on arrival"
-   ],
-   "expected_information_gain": 3,
-   "failure_context": null,
-   "finished_at": null,
-   "frontier": "MODEL_CAPABILITY",
-   "hypothesis_family": "campaign_f019",
-   "id": "FT.MODEL_CAPABILITY.campaign.F019",
-   "kind": "BLOCKED",
-   "preferred_backend": null,
-   "provider": "future.frontiers",
-   "ready_at": null,
-   "redundancy_key": "MODEL_CAPABILITY|campaign_f019|",
-   "repair_depth": 0,
-   "repair_exhausted": false,
-   "repair_reason": null,
-   "repair_root": null,
-   "repairs": null,
-   "required_lanes": [
-    "GPU_PROTECTED"
-   ],
-   "requires_quiescence": true,
-   "resource_class": "GPU_EXCLUSIVE",
-   "role": "science",
-   "running_at": null,
-   "source_f": "F019",
-   "species": "independent_reproduction",
-   "status": "blocked",
-   "title": "Flash meta is blocked at teacher capture, and capture is blocked on GPU",
-   "verification": null,
-   "verifier": "future.global_frontier.F019",
-   "wake_condition": {
-    "all_of": [
-     "Metal-capable GPU present on the execution host (MetalContext)",
-     "xcrun locates the Metal compiler (not CommandLineTools-missing)",
-     "existing HCLI protected lease with a proven holder pid (read, never flock)",
-     "qualification pipeline classifies the machine QUIESCENT (assessed, never coerced)"
-    ],
-    "never": [
-     "synthetic result",
-     "lease seizure / flock",
-     "quiesce standing workers"
-    ]
-   },
-   "workspace": "repo-root"
-  },
-  {
-   "assigned_backend": null,
-   "assigned_runtime": null,
-   "attempts": 0,
-   "backend_task_id": null,
-   "bench_state": "UNKNOWN",
    "blocked_reason": "Metal-capable GPU present on the execution host (MetalContext); xcrun locates the Metal compiler (not CommandLineTools-missing); existing HCLI protected lease with a proven holder pid (read, never flock); qualification pipeline classifies the machine QUIESCENT (assessed, never coerced); Flash source-independent NX is qualified (not SCAFFOLD_ONLY / SEALED_METADATA_ONLY)",
    "candidate_status": "SLEEPING",
    "claim_boundary": "WorkUnit is a proposal; receipt and protected capability gates remain authoritative",
@@ -4732,9 +4648,9 @@
    "candidate_status": "SLEEPING",
    "claim_boundary": "WorkUnit is a proposal; receipt and protected capability gates remain authoritative",
    "classification": "SLEEPING",
-   "content_hash": "2114568e6a27896fbd2a06f7499499919ecc7acb8cf9312bbdd3b6f6e63fdfb6",
+   "content_hash": "adbe863e226ddaf3e53e3a18b41a98f8b43225c030164983152f78cf765b66e0",
    "dependencies": [],
-   "description": "FLASH_META_TEACHER_L4_CAPTURE_BOUNDARY status BLOCKED_NO_METAL_GPU at dense_source_bf16_prefix_initialization. Sleeps. No synthetic rows.",
+   "description": "FLASH_META_TEACHER_L4_CAPTURE_BOUNDARY status BLOCKED_NO_METAL_GPU at dense_source_bf16_prefix_initialization. Sleeps. No synthetic rows. The STATUS is not the CAUSE: METAL_REACHABILITY.json shows this host's GPU is reachable from the same metal crate, so the wake condition is identifying that process's context, not acquiring hardware.",
    "effect_class": "READ_ONLY",
    "evidence_class": "STATIC_ONLY",
    "evidence_parents": [
@@ -4774,69 +4690,6 @@
     "all_of": [
      "Metal-capable GPU for dense source-BF16 prefix initialization",
      "teacher capture rows meet the minimum (disk count, never a synthetic corpus)"
-    ],
-    "never": [
-     "synthetic result",
-     "lease seizure / flock",
-     "quiesce standing workers"
-    ]
-   },
-   "workspace": "repo-root"
-  },
-  {
-   "assigned_backend": null,
-   "assigned_runtime": null,
-   "attempts": 0,
-   "backend_task_id": null,
-   "bench_state": "UNKNOWN",
-   "blocked_reason": "Metal-capable GPU present on the execution host (MetalContext); xcrun locates the Metal compiler (not CommandLineTools-missing); existing HCLI protected lease with a proven holder pid (read, never flock); qualification pipeline classifies the machine QUIESCENT (assessed, never coerced)",
-   "candidate_status": "SLEEPING",
-   "claim_boundary": "WorkUnit is a proposal; receipt and protected capability gates remain authoritative",
-   "classification": "SLEEPING",
-   "content_hash": "7f83e22d31fa4913cbaacefca7df9e3fba2cb4eba616e4bc3b39b26ed03a5648",
-   "dependencies": [],
-   "description": "All nine real Flash meta families stall at gate 2 real_teacher_fit. Codex attempted the capture and recorded BLOCKED_NO_METAL_GPU with 0 of 256 required rows, failing at dense_source_bf16_prefix_initialization. Two independent paths agree on the same binding constraint.",
-   "effect_class": "READ_ONLY",
-   "evidence_class": "STATIC_ONLY",
-   "evidence_parents": [
-    "receipts/future/CLAUDE_GLOBAL_FRONTIER.json",
-    "tools/future/meta_ready.py prepares gates 3-9 to start on arrival"
-   ],
-   "expected_information_gain": 3,
-   "failure_context": null,
-   "finished_at": null,
-   "frontier": "STATE",
-   "hypothesis_family": "campaign_f019",
-   "id": "FT.STATE.campaign.F019",
-   "kind": "BLOCKED",
-   "preferred_backend": null,
-   "provider": "future.frontiers",
-   "ready_at": null,
-   "redundancy_key": "STATE|campaign_f019|",
-   "repair_depth": 0,
-   "repair_exhausted": false,
-   "repair_reason": null,
-   "repair_root": null,
-   "repairs": null,
-   "required_lanes": [
-    "GPU_PROTECTED"
-   ],
-   "requires_quiescence": true,
-   "resource_class": "GPU_EXCLUSIVE",
-   "role": "science",
-   "running_at": null,
-   "source_f": "F019",
-   "species": "independent_reproduction",
-   "status": "blocked",
-   "title": "Flash meta is blocked at teacher capture, and capture is blocked on GPU",
-   "verification": null,
-   "verifier": "future.global_frontier.F019",
-   "wake_condition": {
-    "all_of": [
-     "Metal-capable GPU present on the execution host (MetalContext)",
-     "xcrun locates the Metal compiler (not CommandLineTools-missing)",
-     "existing HCLI protected lease with a proven holder pid (read, never flock)",
-     "qualification pipeline classifies the machine QUIESCENT (assessed, never coerced)"
     ],
     "never": [
      "synthetic result",

@@ -117,7 +117,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T06:39:24Z",
+  "recorded_at": "2026-08-30T12:57:38Z",
   "recorded_by": "tools/future/fpga_fidelity.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -470,7 +470,7 @@
   "Four adaptation clocks with identity, compatibility predicate, cost class, cache key, footprint.",
   "Local StructuralGraph stand-in so this lane does not import in-flight hwir.py."
  ],
- "head": "890cac9a63f0a597b112c1755b63d34631979e78",
+ "head": "d6eb11c79f401d2d45080cfb3d4032296851250a",
  "negative_findings": [
   "receipts/headless/ACCELERATOR_ARCHITECTURE_ATLAS.json is not in git HEAD and is not on disk here; the 15 hwir_hypotheses were not readable. Node kinds are a local catalog, not atlas-derived.",
   "hcli/agentos/test_fpga_preboard.py does not exist in git HEAD.",
@@ -628,7 +628,7 @@
   }
  ],
  "schema": "hawking.future.fpga_fidelity.v1",
- "seal_sha256": "40f062517095d211308ea5b42ac638a86d21380db26db26fc94db93088a758cd",
+ "seal_sha256": "a29a057f2f6a7d6d9246924fdae1ddacb90c3c5b9c44742e2afd6ef828d9b714",
  "search_ladder": {
   "evidence_class": "STATIC_ONLY",
   "highest_available_level": "CYCLE_MODEL",
